@@ -6,6 +6,7 @@ config.log
 config.cache
 config.status
 confdefs.h
+autom4te.cache
 lib/
 
 Ted/makefile
