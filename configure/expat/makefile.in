@@ -1,0 +1,19 @@
+CC=@CC@
+XML_BYTE_ORDER=@XML_BYTE_ORDER@
+
+CFLAGS= \
+	@CFLAGS@				\
+	-Ixmltok -Ixmlparse -DXML_NS		\
+	-DXML_BYTE_ORDER=$(XML_BYTE_ORDER)
+
+# Use one of the next two lines; unixfilemap is better if it works.
+FILEMAP_OBJ=xmlwf/unixfilemap.o
+#FILEMAP_OBJ=xmlwf/readfilemap.o
+
+OBJS=	xmltok/xmltok.o		\
+	xmltok/xmlrole.o	\
+	xmlparse/xmlparse.o	\
+	xmlparse/hashtable.o
+
+libexpat.a:	$(OBJS)
+	ar ruv $@ $(OBJS) && @RANLIB@ $@
