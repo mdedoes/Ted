@@ -17,7 +17,7 @@
 #   ifndef	UTIL_POSTSCRIPT_FACE_H
 #   define	UTIL_POSTSCRIPT_FACE_H
 
-#   include	<docFont.h>
+#   include	<utilDocFont.h>
 #   include	<psFont.h>
 
 #   define	FACElenID	24

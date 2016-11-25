@@ -13,7 +13,7 @@
 
 #   include	<locale.h>
 
-#   include	"docFont.h"
+#   include	"utilDocFont.h"
 #   include	"psFont.h"
 #   include	"utilMatchFont.h"
 #   include	"appSystem.h"

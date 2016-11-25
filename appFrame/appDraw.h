@@ -6,7 +6,7 @@
 #   include	<utilPropMask.h>
 
 #   include	<geo2DInteger.h>
-#   include	<docFont.h>
+#   include	<utilDocFont.h>
 #   include	<psFont.h>
 #   include	<bmcolor.h>
 

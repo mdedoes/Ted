@@ -290,9 +290,10 @@ void docInitItem(	BufferItem *		bi,
 /*									*/
 /************************************************************************/
 
-static void docSetSectExternalParents(		BufferItem *	sectBi,
-						int		n )
+static void docSetSectHeadFootScopes(		BufferItem *	sectBi )
     {
+    int		n= sectBi->biNumberInParent;
+
     if  ( sectBi->biSectHeader.eiItem )
 	{
 	sectBi->biSectHeader.eiItem->
@@ -393,9 +394,8 @@ void docDeleteItems(	BufferDocument *	bd,
 	bi->biChildren[f]->biNumberInParent= f;
 	bi->biChildren[f]->biLeftParagraphs -= paragraphsDeleted;
 
-	if  ( bi->biLevel == DOClevSECT			&&
-	      bi->biInExternalItem != DOCinBODY		)
-	    { docSetSectExternalParents( bi, f ); }
+	if  ( bi->biChildren[f]->biLevel == DOClevSECT )
+	    { docSetSectHeadFootScopes( bi->biChildren[f] ); }
 
 	f++;
 	}
@@ -501,9 +501,8 @@ BufferItem * docInsertItem(	const BufferDocument *	bd,
 
 	freshChildren[i]->biNumberInParent= i;
 
-	if  ( freshChildren[i]->biLevel == DOClevSECT		&&
-	      freshChildren[i]->biInExternalItem != DOCinBODY	)
-	    { docSetSectExternalParents( freshChildren[i], i ); }
+	if  ( freshChildren[i]->biLevel == DOClevSECT )
+	    { docSetSectHeadFootScopes( freshChildren[i] ); }
 	}
 
     freshChildren[n]= bi;

@@ -8,7 +8,7 @@
 #   define	DOC_EXPANDED_TEXT_ATTRIBUTE_H
 
 #   include	<utilTextAttribute.h>
-#   include	<docFont.h>
+#   include	<utilDocFont.h>
 #   include	<psFont.h>
 #   include	<bmcolor.h>
 

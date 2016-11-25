@@ -289,6 +289,7 @@ int docDeleteColumnsFromRows(	EditOperation *	eo,
 	{
 	BufferItem *	rowBi= sectBi->biChildren[row];
 
+	int		sectionsDeleted= 0;
 	int		firstParaDeleted= -1;
 	int		paragraphsDeleted= 0;
 
@@ -296,13 +297,14 @@ int docDeleteColumnsFromRows(	EditOperation *	eo,
 							    delCol0, count ) )
 	    { LLDEB(delCol0,count); continue;	}
 
-	docEditDeleteItems( eo, &firstParaDeleted, &paragraphsDeleted,
-						    rowBi, delCol0, count );
+	docEditDeleteItems( eo, &sectionsDeleted,
+					&firstParaDeleted, &paragraphsDeleted,
+					rowBi, delCol0, count );
 
 	if  ( rowBi->biInExternalItem == DOCinBODY )
 	    {
 	    const int		isSplit= 0;
-	    const int		sectShift= 0;
+	    const int		sectShift= -sectionsDeleted;
 	    const int		stroffFrom= 0;
 	    const int		stroffShift= 0;
 

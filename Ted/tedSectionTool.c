@@ -61,11 +61,18 @@ static void tedFormatToolRefreshSectionPage(	SectionTool *	st )
 
     appIntegerToTextWidget( st->stColumnsText, sp->spColumnCount );
 
-    appGeoLengthToString( scratch, sp->spColumnSpacingTwips, UNITtyPOINTS );
-    appStringToTextWidget( st->stColumnSpacingText, scratch );
+    if  ( sp->spColumnCount > 1 )
+	{
+	appGeoLengthToString( scratch, sp->spColumnSpacingTwips, UNITtyPOINTS );
+	appStringToTextWidget( st->stColumnSpacingText, scratch );
 
-    appGeoLengthToString( scratch, sp->spColumnWidthTwips, UNITtyPOINTS );
-    appStringToTextWidget( st->stColumnWidthText, scratch );
+	appGeoLengthToString( scratch, sp->spColumnWidthTwips, UNITtyPOINTS );
+	appStringToTextWidget( st->stColumnWidthText, scratch );
+	}
+    else{
+	appStringToTextWidget( st->stColumnSpacingText, "" );
+	appStringToTextWidget( st->stColumnWidthText, "" );
+	}
 
     return;
     }
@@ -145,15 +152,18 @@ static APP_BUTTON_CALLBACK_H( tedFormatChangeSectPushed, w, voidst )
 						    1, 0, INT_MAX, 0 ) )
 	{ return;	}
 
-    if  ( appGetLengthFromTextWidget( st->stColumnSpacingText,
+    if  ( spNew->spColumnCount > 1 )
+	{
+	if  ( appGetLengthFromTextWidget( st->stColumnSpacingText,
 		    &(spNew->spColumnSpacingTwips), &changed, UNITtyPOINTS,
 		    minValue, adaptToMin, maxValue, adaptToMax ) )
-	{ return;	}
+	    { return;	}
 
-    if  ( appGetLengthFromTextWidget( st->stColumnWidthText,
+	if  ( appGetLengthFromTextWidget( st->stColumnWidthText,
 		    &(spNew->spColumnWidthTwips), &changed, UNITtyPOINTS,
 		    minValue, adaptToMin, maxValue, adaptToMax ) )
-	{ return;	}
+	    { return;	}
+	}
 
     PROPmaskCLEAR( &updMask );
     PROPmaskFILL( &updMask, SPprop_COUNT );

@@ -268,15 +268,48 @@ static int utilPrinterGetLpPrinters(	const char *		command,
     return found;
     }
 
+static int utilPrinterSetCustom(	PrintDestination *	pd,
+					const char *		customCommand,
+					const char *		customName )
+    {
+    const char *	p;
+
+    pd->pdCommand= strdup( customCommand );
+    pd->pdPrinterName= strdup( customName );
+
+    pd->pdCommandLength= strlen( customCommand );
+    pd->pdPercentCount= 0;
+
+    if  ( ! pd->pdCommand && ! pd->pdPrinterName )
+	{ XXDEB(pd->pdCommand,pd->pdPrinterName); return -1; }
+
+    p= customCommand;
+    while( *p )
+	{
+	if  ( p[0] == '%' && p[1] == 'f' )
+	    { pd->pdPercentCount++;	}
+	p++;
+	}
+
+    if  ( pd->pdPercentCount > 0 )
+	{ pd->pdPrintKind= APPprinterTMPFILE;	}
+    else{ pd->pdPrintKind= APPprinterPIPE;	}
+
+    return 0;
+    }
+
 int utilPrinterGetPrinters(	int *			pPrinterCount,
 				int *			pDefaultPrinter,
 				PrintDestination **	pDestinations,
 				const char *		customCommand,
-				const char *		customName )
+				const char *		customName,
+				const char *		customCommand2,
+				const char *		customName2 )
     {
     PrintDestination *		pd= (PrintDestination *)0;
     int				count= 0;
     int				defaultPrinter= -1;
+    int				extra= 0;
 
     /*  1  */
     if  ( count == 0 )
@@ -311,46 +344,41 @@ int utilPrinterGetPrinters(	int *			pPrinterCount,
 
     if  ( customName || customCommand )
 	{
-	if  ( ! customName )
+	if  ( ! customName || ! customCommand )
 	    { XXDEB(customName,customCommand);	}
-	if  ( ! customCommand )
-	    { XXDEB(customName,customCommand);	}
+	else{ extra++;				}
+	}
+
+    if  ( customName2 || customCommand2 )
+	{
+	if  ( ! customName2 || ! customCommand2 )
+	    { XXDEB(customName2,customCommand2);	}
+	else{ extra++;					}
+	}
+
+    if  ( extra > 0 )
+	{
+	PrintDestination *	fresh;
+
+	fresh= (PrintDestination *)realloc( pd,
+				(count+ extra)*sizeof( PrintDestination ) );
+	if  ( ! fresh )
+	    { LLXDEB(count,extra,fresh); return -1;	}
+	pd= fresh;
 	}
 
     if  ( customName && customCommand )
 	{
-	const char *		p;
-	PrintDestination *	fresh;
+	if  ( utilPrinterSetCustom( pd+ count, customCommand, customName ) )
+	    { LLDEB(extra,count); return -1;		}
+	else{ defaultPrinter= count++;			}
+	}
 
-	fresh= (PrintDestination *)realloc( pd,
-				(count+ 1)*sizeof( PrintDestination ) );
-	if  ( ! fresh )
-	    { XDEB(fresh); return -1;	}
-	pd= fresh;
-
-	fresh += count;
-
-	fresh->pdCommand= strdup( customCommand );
-	fresh->pdPrinterName= strdup( customName );
-
-	fresh->pdCommandLength= strlen( customCommand );
-	fresh->pdPercentCount= 0;
-
-	p= customCommand;
-	while( *p )
-	    {
-	    if  ( p[0] == '%' && p[1] == 'f' )
-		{ fresh->pdPercentCount++;	}
-	    p++;
-	    }
-
-	if  ( fresh->pdPercentCount > 0 )
-	    { fresh->pdPrintKind= APPprinterTMPFILE;	}
-	else{ fresh->pdPrintKind= APPprinterPIPE;	}
-
-	if  ( fresh->pdCommand && fresh->pdPrinterName )
-	    { defaultPrinter= count++;				}
-	else{ XXDEB(fresh->pdCommand,fresh->pdPrinterName);	}
+    if  ( customName2 && customCommand2 )
+	{
+	if  ( utilPrinterSetCustom( pd+ count, customCommand2, customName2 ) )
+	    { LLDEB(extra,count); return -1;		}
+	else{ count++;					}
 	}
 
     *pPrinterCount= count;

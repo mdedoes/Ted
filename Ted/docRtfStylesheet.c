@@ -150,6 +150,8 @@ static int docRtfStyleGroup(		SimpleInputStream *	sis,
 				    docRtfStyleName, (RtfCommitGroup)0 ) )
 	{ SLDEB(rcw->rcwWord,arg); return -1;	}
 
+    rrc->rrcDocumentStyle.dsLevel= DOClevANY;
+
     return 0;
     }
 

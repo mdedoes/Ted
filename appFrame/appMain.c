@@ -488,6 +488,12 @@ static AppConfigurableResource	APP_ApplicationResourceTable[]=
     APP_RESOURCE( "customPrinterName",
 		offsetof(EditApplication,eaCustomPrinterName),
 		(char *)0 ),
+    APP_RESOURCE( "customPrintCommand2",
+		offsetof(EditApplication,eaCustomPrintCommand2),
+		(char *)0 ),
+    APP_RESOURCE( "customPrinterName2",
+		offsetof(EditApplication,eaCustomPrinterName2),
+		(char *)0 ),
 
     APP_RESOURCE( "rulerFont",
 		offsetof(EditApplication,eaRulerFont),
@@ -743,7 +749,9 @@ int appGetPrintDestinations(		EditApplication *	ea )
 				    &(ea->eaDefaultPrintDestination),
 				    &(ea->eaPrintDestinations),
 				    ea->eaCustomPrintCommand,
-				    ea->eaCustomPrinterName ) )
+				    ea->eaCustomPrinterName,
+				    ea->eaCustomPrintCommand2,
+				    ea->eaCustomPrinterName2 ) )
 	{ LDEB(1); return -1; 	}
 
     return 0;

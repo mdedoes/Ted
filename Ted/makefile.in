@@ -325,7 +325,7 @@ docBuf.o: \
     tedConfig.h \
     ../appUtil/utilFontEncoding.h \
     ../appUtil/utilMatchFont.h \
-    ../appUtil/docFont.h \
+    ../appUtil/utilDocFont.h \
     ../appUtil/utilPropMask.h \
     ../appUtil/utilTextAttribute.h \
     ../appUtil/psFont.h \
@@ -379,7 +379,7 @@ docCellProperties.o: \
     ../bitmap/bitmap.h \
     ../appUtil/sioGeneral.h \
     ../bitmap/bmcolor.h \
-    ../appUtil/docFont.h \
+    ../appUtil/utilDocFont.h \
     ../appUtil/utilPropMask.h \
     ../appUtil/utilTextAttribute.h \
     ../appUtil/utilFontEncoding.h \
@@ -429,7 +429,7 @@ docChftnField.o: \
     ../bitmap/bitmap.h \
     ../appUtil/sioGeneral.h \
     ../bitmap/bmcolor.h \
-    ../appUtil/docFont.h \
+    ../appUtil/utilDocFont.h \
     ../appUtil/utilPropMask.h \
     ../appUtil/utilTextAttribute.h \
     ../appUtil/utilFontEncoding.h \
@@ -478,7 +478,7 @@ docDebug.o: \
     ../bitmap/bitmap.h \
     ../appUtil/sioGeneral.h \
     ../bitmap/bmcolor.h \
-    ../appUtil/docFont.h \
+    ../appUtil/utilDocFont.h \
     ../appUtil/utilPropMask.h \
     ../appUtil/utilTextAttribute.h \
     ../appUtil/utilFontEncoding.h \
@@ -529,7 +529,7 @@ docDocpropField.o: \
     ../bitmap/bitmap.h \
     ../appUtil/sioGeneral.h \
     ../bitmap/bmcolor.h \
-    ../appUtil/docFont.h \
+    ../appUtil/utilDocFont.h \
     ../appUtil/utilPropMask.h \
     ../appUtil/utilTextAttribute.h \
     ../appUtil/utilFontEncoding.h \
@@ -579,7 +579,7 @@ docDocumentList.o: \
     ../appUtil/utilTextAttribute.h \
     docTabStop.h \
     docParaProperties.h \
-    ../appUtil/docFont.h \
+    ../appUtil/utilDocFont.h \
     ../appUtil/utilFontEncoding.h \
     docPropVal.h \
     docBorderProperties.h \
@@ -597,7 +597,7 @@ docDocumentProperties.o: \
     docDocumentProperties.h \
     ../appUtil/utilDocumentGeometry.h \
     ../appUtil/appUnit.h \
-    ../appUtil/docFont.h \
+    ../appUtil/utilDocFont.h \
     ../appUtil/utilTextAttribute.h \
     ../appUtil/utilFontEncoding.h \
     ../bitmap/bmcolor.h \
@@ -624,7 +624,7 @@ docDraw.o: \
     ../bitmap/bitmap.h \
     ../appUtil/sioGeneral.h \
     ../bitmap/bmcolor.h \
-    ../appUtil/docFont.h \
+    ../appUtil/utilDocFont.h \
     ../appUtil/utilPropMask.h \
     ../appUtil/utilTextAttribute.h \
     ../appUtil/utilFontEncoding.h \
@@ -680,7 +680,7 @@ docDrawExternalItem.o: \
     ../bitmap/bitmap.h \
     ../appUtil/sioGeneral.h \
     ../bitmap/bmcolor.h \
-    ../appUtil/docFont.h \
+    ../appUtil/utilDocFont.h \
     ../appUtil/utilPropMask.h \
     ../appUtil/utilTextAttribute.h \
     ../appUtil/utilFontEncoding.h \
@@ -736,7 +736,7 @@ docDrawUtil.o: \
     ../bitmap/bitmap.h \
     ../appUtil/sioGeneral.h \
     ../bitmap/bmcolor.h \
-    ../appUtil/docFont.h \
+    ../appUtil/utilDocFont.h \
     ../appUtil/utilPropMask.h \
     ../appUtil/utilTextAttribute.h \
     ../appUtil/utilFontEncoding.h \
@@ -804,7 +804,7 @@ docEdit.o: \
     ../bitmap/bitmap.h \
     ../appUtil/sioGeneral.h \
     ../bitmap/bmcolor.h \
-    ../appUtil/docFont.h \
+    ../appUtil/utilDocFont.h \
     ../appUtil/utilPropMask.h \
     ../appUtil/utilTextAttribute.h \
     ../appUtil/utilFontEncoding.h \
@@ -853,7 +853,7 @@ docEditOperation.o: \
     ../bitmap/bitmap.h \
     ../appUtil/sioGeneral.h \
     ../bitmap/bmcolor.h \
-    ../appUtil/docFont.h \
+    ../appUtil/utilDocFont.h \
     ../appUtil/utilPropMask.h \
     ../appUtil/utilTextAttribute.h \
     ../appUtil/utilFontEncoding.h \
@@ -903,7 +903,7 @@ docEditTable.o: \
     ../bitmap/bitmap.h \
     ../appUtil/sioGeneral.h \
     ../bitmap/bmcolor.h \
-    ../appUtil/docFont.h \
+    ../appUtil/utilDocFont.h \
     ../appUtil/utilPropMask.h \
     ../appUtil/utilTextAttribute.h \
     ../appUtil/utilFontEncoding.h \
@@ -959,7 +959,7 @@ docExternalItem.o: \
     ../bitmap/bitmap.h \
     ../appUtil/sioGeneral.h \
     ../bitmap/bmcolor.h \
-    ../appUtil/docFont.h \
+    ../appUtil/utilDocFont.h \
     ../appUtil/utilPropMask.h \
     ../appUtil/utilTextAttribute.h \
     ../appUtil/utilFontEncoding.h \
@@ -1008,7 +1008,7 @@ docField.o: \
     ../bitmap/bitmap.h \
     ../appUtil/sioGeneral.h \
     ../bitmap/bmcolor.h \
-    ../appUtil/docFont.h \
+    ../appUtil/utilDocFont.h \
     ../appUtil/utilPropMask.h \
     ../appUtil/utilTextAttribute.h \
     ../appUtil/utilFontEncoding.h \
@@ -1057,7 +1057,7 @@ docFieldAdm.o: \
     ../bitmap/bitmap.h \
     ../appUtil/sioGeneral.h \
     ../bitmap/bmcolor.h \
-    ../appUtil/docFont.h \
+    ../appUtil/utilDocFont.h \
     ../appUtil/utilPropMask.h \
     ../appUtil/utilTextAttribute.h \
     ../appUtil/utilFontEncoding.h \
@@ -1105,7 +1105,7 @@ docFieldEdit.o: \
     ../bitmap/bitmap.h \
     ../appUtil/sioGeneral.h \
     ../bitmap/bmcolor.h \
-    ../appUtil/docFont.h \
+    ../appUtil/utilDocFont.h \
     ../appUtil/utilPropMask.h \
     ../appUtil/utilTextAttribute.h \
     ../appUtil/utilFontEncoding.h \
@@ -1155,7 +1155,7 @@ docFieldGetSet.o: \
     ../bitmap/bitmap.h \
     ../appUtil/sioGeneral.h \
     ../bitmap/bmcolor.h \
-    ../appUtil/docFont.h \
+    ../appUtil/utilDocFont.h \
     ../appUtil/utilPropMask.h \
     ../appUtil/utilTextAttribute.h \
     ../appUtil/utilFontEncoding.h \
@@ -1202,7 +1202,7 @@ docFind.o: \
     ../bitmap/bitmap.h \
     ../appUtil/sioGeneral.h \
     ../bitmap/bmcolor.h \
-    ../appUtil/docFont.h \
+    ../appUtil/utilDocFont.h \
     ../appUtil/utilPropMask.h \
     ../appUtil/utilTextAttribute.h \
     ../appUtil/utilFontEncoding.h \
@@ -1252,7 +1252,7 @@ docFindBookmark.o: \
     ../bitmap/bitmap.h \
     ../appUtil/sioGeneral.h \
     ../bitmap/bmcolor.h \
-    ../appUtil/docFont.h \
+    ../appUtil/utilDocFont.h \
     ../appUtil/utilPropMask.h \
     ../appUtil/utilTextAttribute.h \
     ../appUtil/utilFontEncoding.h \
@@ -1302,7 +1302,7 @@ docFindInParagraph.o: \
     ../bitmap/bitmap.h \
     ../appUtil/sioGeneral.h \
     ../bitmap/bmcolor.h \
-    ../appUtil/docFont.h \
+    ../appUtil/utilDocFont.h \
     ../appUtil/utilPropMask.h \
     ../appUtil/utilTextAttribute.h \
     ../appUtil/utilFontEncoding.h \
@@ -1359,7 +1359,7 @@ docFont.o: \
     ../appUtil/psFont.h \
     ../appUtil/utilFontEncoding.h \
     ../appUtil/utilPostscriptFace.h \
-    ../appUtil/docFont.h \
+    ../appUtil/utilDocFont.h \
     ../appUtil/utilTextAttribute.h \
     ../appUtil/utilAffineTransform.h \
     ../appUtil/utilNup.h \
@@ -1426,7 +1426,7 @@ docHeaderFooter.o: \
     ../bitmap/bitmap.h \
     ../appUtil/sioGeneral.h \
     ../bitmap/bmcolor.h \
-    ../appUtil/docFont.h \
+    ../appUtil/utilDocFont.h \
     ../appUtil/utilPropMask.h \
     ../appUtil/utilTextAttribute.h \
     ../appUtil/utilFontEncoding.h \
@@ -1474,7 +1474,7 @@ docHtmlWrite.o: \
     ../appUtil/appSystem.h \
     ../appFrame/appWinMeta.h \
     ../appFrame/appGuiBase.h \
-    ../appUtil/docFont.h \
+    ../appUtil/utilDocFont.h \
     ../appUtil/utilPropMask.h \
     ../appUtil/utilTextAttribute.h \
     ../appUtil/utilFontEncoding.h \
@@ -1538,7 +1538,7 @@ docHyperlinkField.o: \
     ../bitmap/bitmap.h \
     ../appUtil/sioGeneral.h \
     ../bitmap/bmcolor.h \
-    ../appUtil/docFont.h \
+    ../appUtil/utilDocFont.h \
     ../appUtil/utilPropMask.h \
     ../appUtil/utilTextAttribute.h \
     ../appUtil/utilFontEncoding.h \
@@ -1595,7 +1595,7 @@ docIncludePictureField.o: \
     ../appFrame/appDraw.h \
     ../appUtil/utilPropMask.h \
     ../appUtil/geo2DInteger.h \
-    ../appUtil/docFont.h \
+    ../appUtil/utilDocFont.h \
     ../appUtil/utilTextAttribute.h \
     ../appUtil/utilFontEncoding.h \
     ../appUtil/psFont.h \
@@ -1653,7 +1653,7 @@ docItemTree.o: \
     ../bitmap/bitmap.h \
     ../appUtil/sioGeneral.h \
     ../bitmap/bmcolor.h \
-    ../appUtil/docFont.h \
+    ../appUtil/utilDocFont.h \
     ../appUtil/utilPropMask.h \
     ../appUtil/utilTextAttribute.h \
     ../appUtil/utilFontEncoding.h \
@@ -1705,7 +1705,7 @@ docLayout.o: \
     ../appFrame/appDraw.h \
     ../appUtil/utilPropMask.h \
     ../appUtil/geo2DInteger.h \
-    ../appUtil/docFont.h \
+    ../appUtil/utilDocFont.h \
     ../appUtil/utilTextAttribute.h \
     ../appUtil/utilFontEncoding.h \
     ../appUtil/psFont.h \
@@ -1760,7 +1760,7 @@ docLayoutExternalItem.o: \
     docBuf.h \
     ../bitmap/bitmap.h \
     ../bitmap/bmcolor.h \
-    ../appUtil/docFont.h \
+    ../appUtil/utilDocFont.h \
     ../appUtil/utilPropMask.h \
     ../appUtil/utilTextAttribute.h \
     docShape.h \
@@ -1809,7 +1809,7 @@ docLayoutLine.o: \
     docLayoutLine.c \
     tedConfig.h \
     ../appUtil/utilMatchFont.h \
-    ../appUtil/docFont.h \
+    ../appUtil/utilDocFont.h \
     ../appUtil/utilPropMask.h \
     ../appUtil/utilTextAttribute.h \
     ../appUtil/utilFontEncoding.h \
@@ -1876,7 +1876,7 @@ docLayoutLines.o: \
     ../appFrame/appDraw.h \
     ../appUtil/utilPropMask.h \
     ../appUtil/geo2DInteger.h \
-    ../appUtil/docFont.h \
+    ../appUtil/utilDocFont.h \
     ../appUtil/utilTextAttribute.h \
     ../appUtil/utilFontEncoding.h \
     ../appUtil/psFont.h \
@@ -1931,7 +1931,7 @@ docLayoutNotes.o: \
     docBuf.h \
     ../bitmap/bitmap.h \
     ../bitmap/bmcolor.h \
-    ../appUtil/docFont.h \
+    ../appUtil/utilDocFont.h \
     ../appUtil/utilPropMask.h \
     ../appUtil/utilTextAttribute.h \
     docShape.h \
@@ -1987,7 +1987,7 @@ docLayoutParagraphs.o: \
     ../appFrame/appDraw.h \
     ../appUtil/utilPropMask.h \
     ../appUtil/geo2DInteger.h \
-    ../appUtil/docFont.h \
+    ../appUtil/utilDocFont.h \
     ../appUtil/utilTextAttribute.h \
     ../appUtil/utilFontEncoding.h \
     ../appUtil/psFont.h \
@@ -2042,7 +2042,7 @@ docLayoutRow.o: \
     docBuf.h \
     ../bitmap/bitmap.h \
     ../bitmap/bmcolor.h \
-    ../appUtil/docFont.h \
+    ../appUtil/utilDocFont.h \
     ../appUtil/utilPropMask.h \
     ../appUtil/utilTextAttribute.h \
     docShape.h \
@@ -2098,7 +2098,7 @@ docLayoutSect.o: \
     ../appFrame/appDraw.h \
     ../appUtil/utilPropMask.h \
     ../appUtil/geo2DInteger.h \
-    ../appUtil/docFont.h \
+    ../appUtil/utilDocFont.h \
     ../appUtil/utilTextAttribute.h \
     ../appUtil/utilFontEncoding.h \
     ../appUtil/psFont.h \
@@ -2148,7 +2148,7 @@ docLayoutUtil.o: \
     tedConfig.h \
     ../include/charnames.h \
     ../appUtil/utilMatchFont.h \
-    ../appUtil/docFont.h \
+    ../appUtil/utilDocFont.h \
     ../appUtil/utilPropMask.h \
     ../appUtil/utilTextAttribute.h \
     ../appUtil/utilFontEncoding.h \
@@ -2210,7 +2210,7 @@ docListLevel.o: \
     ../appUtil/utilTextAttribute.h \
     docTabStop.h \
     docParaProperties.h \
-    ../appUtil/docFont.h \
+    ../appUtil/utilDocFont.h \
     ../appUtil/utilFontEncoding.h \
     docPropVal.h \
     docBorderProperties.h \
@@ -2230,7 +2230,7 @@ docListNumberTree.o: \
     ../appUtil/utilTextAttribute.h \
     docTabStop.h \
     docParaProperties.h \
-    ../appUtil/docFont.h \
+    ../appUtil/utilDocFont.h \
     ../appUtil/utilFontEncoding.h \
     docPropVal.h \
     docBorderProperties.h \
@@ -2251,7 +2251,7 @@ docListOverride.o: \
     ../appUtil/utilTextAttribute.h \
     docTabStop.h \
     docParaProperties.h \
-    ../appUtil/docFont.h \
+    ../appUtil/utilDocFont.h \
     ../appUtil/utilFontEncoding.h \
     docPropVal.h \
     docBorderProperties.h \
@@ -2271,7 +2271,7 @@ docListOverrideLevel.o: \
     ../appUtil/utilTextAttribute.h \
     docTabStop.h \
     docParaProperties.h \
-    ../appUtil/docFont.h \
+    ../appUtil/utilDocFont.h \
     ../appUtil/utilFontEncoding.h \
     docPropVal.h \
     docBorderProperties.h \
@@ -2293,7 +2293,7 @@ docListOverrideTable.o: \
     ../appUtil/utilTextAttribute.h \
     docTabStop.h \
     docParaProperties.h \
-    ../appUtil/docFont.h \
+    ../appUtil/utilDocFont.h \
     ../appUtil/utilFontEncoding.h \
     docPropVal.h \
     docBorderProperties.h \
@@ -2314,7 +2314,7 @@ docListTable.o: \
     ../appUtil/utilTextAttribute.h \
     docTabStop.h \
     docParaProperties.h \
-    ../appUtil/docFont.h \
+    ../appUtil/utilDocFont.h \
     ../appUtil/utilFontEncoding.h \
     docPropVal.h \
     docBorderProperties.h \
@@ -2332,7 +2332,7 @@ docListUtil.o: \
     ../bitmap/bitmap.h \
     ../appUtil/sioGeneral.h \
     ../bitmap/bmcolor.h \
-    ../appUtil/docFont.h \
+    ../appUtil/utilDocFont.h \
     ../appUtil/utilPropMask.h \
     ../appUtil/utilTextAttribute.h \
     ../appUtil/utilFontEncoding.h \
@@ -2382,7 +2382,7 @@ docListtextField.o: \
     ../bitmap/bitmap.h \
     ../appUtil/sioGeneral.h \
     ../bitmap/bmcolor.h \
-    ../appUtil/docFont.h \
+    ../appUtil/utilDocFont.h \
     ../appUtil/utilPropMask.h \
     ../appUtil/utilTextAttribute.h \
     ../appUtil/utilFontEncoding.h \
@@ -2434,7 +2434,7 @@ docNotes.o: \
     ../bitmap/bitmap.h \
     ../appUtil/sioGeneral.h \
     ../bitmap/bmcolor.h \
-    ../appUtil/docFont.h \
+    ../appUtil/utilDocFont.h \
     ../appUtil/utilPropMask.h \
     ../appUtil/utilTextAttribute.h \
     ../appUtil/utilFontEncoding.h \
@@ -2491,7 +2491,7 @@ docObject.o: \
     ../bitmap/bitmap.h \
     ../appUtil/sioGeneral.h \
     ../bitmap/bmcolor.h \
-    ../appUtil/docFont.h \
+    ../appUtil/utilDocFont.h \
     ../appUtil/utilPropMask.h \
     ../appUtil/utilTextAttribute.h \
     ../appUtil/utilFontEncoding.h \
@@ -2546,7 +2546,7 @@ docOpenObject.o: \
     ../appFrame/appDraw.h \
     ../appUtil/utilPropMask.h \
     ../appUtil/geo2DInteger.h \
-    ../appUtil/docFont.h \
+    ../appUtil/utilDocFont.h \
     ../appUtil/utilTextAttribute.h \
     ../appUtil/utilFontEncoding.h \
     ../appUtil/psFont.h \
@@ -2598,7 +2598,7 @@ docPageField.o: \
     ../bitmap/bitmap.h \
     ../appUtil/sioGeneral.h \
     ../bitmap/bmcolor.h \
-    ../appUtil/docFont.h \
+    ../appUtil/utilDocFont.h \
     ../appUtil/utilPropMask.h \
     ../appUtil/utilTextAttribute.h \
     ../appUtil/utilFontEncoding.h \
@@ -2647,7 +2647,7 @@ docParaParticules.o: \
     ../bitmap/bitmap.h \
     ../appUtil/sioGeneral.h \
     ../bitmap/bmcolor.h \
-    ../appUtil/docFont.h \
+    ../appUtil/utilDocFont.h \
     ../appUtil/utilPropMask.h \
     ../appUtil/utilTextAttribute.h \
     ../appUtil/utilFontEncoding.h \
@@ -2695,7 +2695,7 @@ docParaProperties.o: \
     ../include/appDebug.h \
     ../appUtil/appUnit.h \
     docParaProperties.h \
-    ../appUtil/docFont.h \
+    ../appUtil/utilDocFont.h \
     ../appUtil/utilPropMask.h \
     ../appUtil/utilTextAttribute.h \
     ../appUtil/utilFontEncoding.h \
@@ -2716,7 +2716,7 @@ docParaString.o: \
     ../bitmap/bitmap.h \
     ../appUtil/sioGeneral.h \
     ../bitmap/bmcolor.h \
-    ../appUtil/docFont.h \
+    ../appUtil/utilDocFont.h \
     ../appUtil/utilPropMask.h \
     ../appUtil/utilTextAttribute.h \
     ../appUtil/utilFontEncoding.h \
@@ -2764,7 +2764,7 @@ docPlainRead.o: \
     ../bitmap/bitmap.h \
     ../appUtil/sioGeneral.h \
     ../bitmap/bmcolor.h \
-    ../appUtil/docFont.h \
+    ../appUtil/utilDocFont.h \
     ../appUtil/utilPropMask.h \
     ../appUtil/utilTextAttribute.h \
     ../appUtil/utilFontEncoding.h \
@@ -2810,7 +2810,7 @@ docPlainWrite.o: \
     ../bitmap/bitmap.h \
     ../appUtil/sioGeneral.h \
     ../bitmap/bmcolor.h \
-    ../appUtil/docFont.h \
+    ../appUtil/utilDocFont.h \
     ../appUtil/utilPropMask.h \
     ../appUtil/utilTextAttribute.h \
     ../appUtil/utilFontEncoding.h \
@@ -2856,7 +2856,7 @@ docProperties.o: \
     tedConfig.h \
     ../appUtil/appUnit.h \
     ../appUtil/utilMatchFont.h \
-    ../appUtil/docFont.h \
+    ../appUtil/utilDocFont.h \
     ../appUtil/utilPropMask.h \
     ../appUtil/utilTextAttribute.h \
     ../appUtil/utilFontEncoding.h \
@@ -2906,7 +2906,7 @@ docPsListFonts.o: \
     docPsListFonts.c \
     tedConfig.h \
     ../appUtil/utilMatchFont.h \
-    ../appUtil/docFont.h \
+    ../appUtil/utilDocFont.h \
     ../appUtil/utilPropMask.h \
     ../appUtil/utilTextAttribute.h \
     ../appUtil/utilFontEncoding.h \
@@ -2977,7 +2977,7 @@ docPsPrint.o: \
     ../appFrame/appDraw.h \
     ../appUtil/utilPropMask.h \
     ../appUtil/geo2DInteger.h \
-    ../appUtil/docFont.h \
+    ../appUtil/utilDocFont.h \
     ../appUtil/utilTextAttribute.h \
     ../appUtil/utilFontEncoding.h \
     ../appUtil/psFont.h \
@@ -3038,7 +3038,7 @@ docRowProperties.o: \
     ../bitmap/bitmap.h \
     ../appUtil/sioGeneral.h \
     ../bitmap/bmcolor.h \
-    ../appUtil/docFont.h \
+    ../appUtil/utilDocFont.h \
     ../appUtil/utilPropMask.h \
     ../appUtil/utilTextAttribute.h \
     ../appUtil/utilFontEncoding.h \
@@ -3086,7 +3086,7 @@ docRtfBorderProperties.o: \
     ../bitmap/bitmap.h \
     ../appUtil/sioGeneral.h \
     ../bitmap/bmcolor.h \
-    ../appUtil/docFont.h \
+    ../appUtil/utilDocFont.h \
     ../appUtil/utilPropMask.h \
     ../appUtil/utilTextAttribute.h \
     ../appUtil/utilFontEncoding.h \
@@ -3137,7 +3137,7 @@ docRtfCellProperties.o: \
     ../bitmap/bitmap.h \
     ../appUtil/sioGeneral.h \
     ../bitmap/bmcolor.h \
-    ../appUtil/docFont.h \
+    ../appUtil/utilDocFont.h \
     ../appUtil/utilPropMask.h \
     ../appUtil/utilTextAttribute.h \
     ../appUtil/utilFontEncoding.h \
@@ -3189,7 +3189,7 @@ docRtfColorTable.o: \
     ../bitmap/bitmap.h \
     ../appUtil/sioGeneral.h \
     ../bitmap/bmcolor.h \
-    ../appUtil/docFont.h \
+    ../appUtil/utilDocFont.h \
     ../appUtil/utilPropMask.h \
     ../appUtil/utilTextAttribute.h \
     ../appUtil/utilFontEncoding.h \
@@ -3241,7 +3241,7 @@ docRtfDocumentProperties.o: \
     docBuf.h \
     ../bitmap/bitmap.h \
     ../bitmap/bmcolor.h \
-    ../appUtil/docFont.h \
+    ../appUtil/utilDocFont.h \
     ../appUtil/utilPropMask.h \
     ../appUtil/utilTextAttribute.h \
     docShape.h \
@@ -3290,7 +3290,7 @@ docRtfDrawingObject.o: \
     ../include/appDebug.h \
     docRtf.h \
     docBuf.h \
-    ../appUtil/docFont.h \
+    ../appUtil/utilDocFont.h \
     ../appUtil/utilPropMask.h \
     ../appUtil/utilTextAttribute.h \
     ../appUtil/utilFontEncoding.h \
@@ -3344,7 +3344,7 @@ docRtfFontTable.o: \
     docBuf.h \
     ../bitmap/bitmap.h \
     ../bitmap/bmcolor.h \
-    ../appUtil/docFont.h \
+    ../appUtil/utilDocFont.h \
     ../appUtil/utilPropMask.h \
     ../appUtil/utilTextAttribute.h \
     docShape.h \
@@ -3392,7 +3392,7 @@ docRtfFrameProperties.o: \
     ../bitmap/bitmap.h \
     ../appUtil/sioGeneral.h \
     ../bitmap/bmcolor.h \
-    ../appUtil/docFont.h \
+    ../appUtil/utilDocFont.h \
     ../appUtil/utilPropMask.h \
     ../appUtil/utilTextAttribute.h \
     ../appUtil/utilFontEncoding.h \
@@ -3443,7 +3443,7 @@ docRtfListOverrideTable.o: \
     ../bitmap/bitmap.h \
     ../appUtil/sioGeneral.h \
     ../bitmap/bmcolor.h \
-    ../appUtil/docFont.h \
+    ../appUtil/utilDocFont.h \
     ../appUtil/utilPropMask.h \
     ../appUtil/utilTextAttribute.h \
     ../appUtil/utilFontEncoding.h \
@@ -3494,7 +3494,7 @@ docRtfListTable.o: \
     ../bitmap/bitmap.h \
     ../appUtil/sioGeneral.h \
     ../bitmap/bmcolor.h \
-    ../appUtil/docFont.h \
+    ../appUtil/utilDocFont.h \
     ../appUtil/utilPropMask.h \
     ../appUtil/utilTextAttribute.h \
     ../appUtil/utilFontEncoding.h \
@@ -3545,7 +3545,7 @@ docRtfParaProperties.o: \
     ../bitmap/bitmap.h \
     ../appUtil/sioGeneral.h \
     ../bitmap/bmcolor.h \
-    ../appUtil/docFont.h \
+    ../appUtil/utilDocFont.h \
     ../appUtil/utilPropMask.h \
     ../appUtil/utilTextAttribute.h \
     ../appUtil/utilFontEncoding.h \
@@ -3598,7 +3598,7 @@ docRtfRead.o: \
     docBuf.h \
     ../bitmap/bitmap.h \
     ../bitmap/bmcolor.h \
-    ../appUtil/docFont.h \
+    ../appUtil/utilDocFont.h \
     ../appUtil/utilPropMask.h \
     ../appUtil/utilTextAttribute.h \
     docShape.h \
@@ -3647,7 +3647,7 @@ docRtfReadField.o: \
     ../bitmap/bitmap.h \
     ../appUtil/sioGeneral.h \
     ../bitmap/bmcolor.h \
-    ../appUtil/docFont.h \
+    ../appUtil/utilDocFont.h \
     ../appUtil/utilPropMask.h \
     ../appUtil/utilTextAttribute.h \
     ../appUtil/utilFontEncoding.h \
@@ -3698,7 +3698,7 @@ docRtfReadObjects.o: \
     ../include/appDebug.h \
     docRtf.h \
     docBuf.h \
-    ../appUtil/docFont.h \
+    ../appUtil/utilDocFont.h \
     ../appUtil/utilPropMask.h \
     ../appUtil/utilTextAttribute.h \
     ../appUtil/utilFontEncoding.h \
@@ -3749,7 +3749,7 @@ docRtfReadShape.o: \
     ../bitmap/bitmap.h \
     ../appUtil/sioGeneral.h \
     ../bitmap/bmcolor.h \
-    ../appUtil/docFont.h \
+    ../appUtil/utilDocFont.h \
     ../appUtil/utilPropMask.h \
     ../appUtil/utilTextAttribute.h \
     ../appUtil/utilFontEncoding.h \
@@ -3800,7 +3800,7 @@ docRtfRowProperties.o: \
     ../bitmap/bitmap.h \
     ../appUtil/sioGeneral.h \
     ../bitmap/bmcolor.h \
-    ../appUtil/docFont.h \
+    ../appUtil/utilDocFont.h \
     ../appUtil/utilPropMask.h \
     ../appUtil/utilTextAttribute.h \
     ../appUtil/utilFontEncoding.h \
@@ -3851,7 +3851,7 @@ docRtfSectProperties.o: \
     ../bitmap/bitmap.h \
     ../appUtil/sioGeneral.h \
     ../bitmap/bmcolor.h \
-    ../appUtil/docFont.h \
+    ../appUtil/utilDocFont.h \
     ../appUtil/utilPropMask.h \
     ../appUtil/utilTextAttribute.h \
     ../appUtil/utilFontEncoding.h \
@@ -3903,7 +3903,7 @@ docRtfStylesheet.o: \
     ../bitmap/bitmap.h \
     ../appUtil/sioGeneral.h \
     ../bitmap/bmcolor.h \
-    ../appUtil/docFont.h \
+    ../appUtil/utilDocFont.h \
     ../appUtil/utilPropMask.h \
     ../appUtil/utilTextAttribute.h \
     ../appUtil/utilFontEncoding.h \
@@ -3956,7 +3956,7 @@ docRtfTab.o: \
     ../bitmap/bitmap.h \
     ../appUtil/sioGeneral.h \
     ../bitmap/bmcolor.h \
-    ../appUtil/docFont.h \
+    ../appUtil/utilDocFont.h \
     ../appUtil/utilPropMask.h \
     ../appUtil/utilTextAttribute.h \
     ../appUtil/psFont.h \
@@ -4007,7 +4007,7 @@ docRtfTables.o: \
     ../bitmap/bitmap.h \
     ../appUtil/sioGeneral.h \
     ../bitmap/bmcolor.h \
-    ../appUtil/docFont.h \
+    ../appUtil/utilDocFont.h \
     ../appUtil/utilPropMask.h \
     ../appUtil/utilTextAttribute.h \
     ../appUtil/utilFontEncoding.h \
@@ -4057,7 +4057,7 @@ docRtfTabs.o: \
     ../bitmap/bitmap.h \
     ../appUtil/sioGeneral.h \
     ../bitmap/bmcolor.h \
-    ../appUtil/docFont.h \
+    ../appUtil/utilDocFont.h \
     ../appUtil/utilPropMask.h \
     ../appUtil/utilTextAttribute.h \
     ../appUtil/utilFontEncoding.h \
@@ -4109,7 +4109,7 @@ docRtfTagHash.o: \
     ../bitmap/bitmap.h \
     ../appUtil/sioGeneral.h \
     ../bitmap/bmcolor.h \
-    ../appUtil/docFont.h \
+    ../appUtil/utilDocFont.h \
     ../appUtil/utilPropMask.h \
     ../appUtil/utilTextAttribute.h \
     ../appUtil/utilFontEncoding.h \
@@ -4160,7 +4160,7 @@ docRtfTextProperties.o: \
     ../bitmap/bitmap.h \
     ../appUtil/sioGeneral.h \
     ../bitmap/bmcolor.h \
-    ../appUtil/docFont.h \
+    ../appUtil/utilDocFont.h \
     ../appUtil/utilPropMask.h \
     ../appUtil/utilTextAttribute.h \
     ../appUtil/utilFontEncoding.h \
@@ -4213,7 +4213,7 @@ docRtfUtil.o: \
     ../bitmap/bitmap.h \
     ../appUtil/sioGeneral.h \
     ../bitmap/bmcolor.h \
-    ../appUtil/docFont.h \
+    ../appUtil/utilDocFont.h \
     ../appUtil/utilPropMask.h \
     ../appUtil/utilTextAttribute.h \
     ../appUtil/utilFontEncoding.h \
@@ -4266,7 +4266,7 @@ docRtfWrite.o: \
     ../appUtil/utilFontEncoding.h \
     docRtf.h \
     docBuf.h \
-    ../appUtil/docFont.h \
+    ../appUtil/utilDocFont.h \
     ../appUtil/utilPropMask.h \
     ../appUtil/utilTextAttribute.h \
     docShape.h \
@@ -4317,7 +4317,7 @@ docRtfWriteUtil.o: \
     ../bitmap/bitmap.h \
     ../appUtil/sioGeneral.h \
     ../bitmap/bmcolor.h \
-    ../appUtil/docFont.h \
+    ../appUtil/utilDocFont.h \
     ../appUtil/utilPropMask.h \
     ../appUtil/utilTextAttribute.h \
     ../appUtil/psFont.h \
@@ -4374,7 +4374,7 @@ docSectProperties.o: \
     ../appUtil/utilDocumentGeometry.h \
     docNotesProperties.h \
     docParaNumber.h \
-    ../appUtil/docFont.h \
+    ../appUtil/utilDocFont.h \
     ../appUtil/utilTextAttribute.h \
     ../appUtil/utilFontEncoding.h
 
@@ -4387,7 +4387,7 @@ docSelect.o: \
     ../bitmap/bitmap.h \
     ../appUtil/sioGeneral.h \
     ../bitmap/bmcolor.h \
-    ../appUtil/docFont.h \
+    ../appUtil/utilDocFont.h \
     ../appUtil/utilPropMask.h \
     ../appUtil/utilTextAttribute.h \
     ../appUtil/utilFontEncoding.h \
@@ -4436,7 +4436,7 @@ docSetFont.o: \
     ../bitmap/bitmap.h \
     ../appUtil/sioGeneral.h \
     ../bitmap/bmcolor.h \
-    ../appUtil/docFont.h \
+    ../appUtil/utilDocFont.h \
     ../appUtil/utilPropMask.h \
     ../appUtil/utilTextAttribute.h \
     ../appUtil/utilFontEncoding.h \
@@ -4486,7 +4486,7 @@ docShading.o: \
     ../bitmap/bitmap.h \
     ../appUtil/sioGeneral.h \
     ../bitmap/bmcolor.h \
-    ../appUtil/docFont.h \
+    ../appUtil/utilDocFont.h \
     ../appUtil/utilPropMask.h \
     ../appUtil/utilTextAttribute.h \
     ../appUtil/utilFontEncoding.h \
@@ -4533,7 +4533,7 @@ docSpell.o: \
     ../bitmap/bitmap.h \
     ../appUtil/sioGeneral.h \
     ../bitmap/bmcolor.h \
-    ../appUtil/docFont.h \
+    ../appUtil/utilDocFont.h \
     ../appUtil/utilPropMask.h \
     ../appUtil/utilTextAttribute.h \
     ../appUtil/utilFontEncoding.h \
@@ -4583,7 +4583,7 @@ docStyleSheet.o: \
     ../include/appDebug.h \
     docStyleSheet.h \
     ../appUtil/utilPropMask.h \
-    ../appUtil/docFont.h \
+    ../appUtil/utilDocFont.h \
     ../appUtil/utilTextAttribute.h \
     ../appUtil/utilFontEncoding.h \
     docSectProperties.h \
@@ -4608,7 +4608,7 @@ docSymbolField.o: \
     ../bitmap/bitmap.h \
     ../appUtil/sioGeneral.h \
     ../bitmap/bmcolor.h \
-    ../appUtil/docFont.h \
+    ../appUtil/utilDocFont.h \
     ../appUtil/utilPropMask.h \
     ../appUtil/utilTextAttribute.h \
     ../appUtil/utilFontEncoding.h \
@@ -4656,7 +4656,7 @@ docTabStop.o: \
     ../appFrame/appGuiBase.h \
     ../appUtil/utilPropMask.h \
     ../appUtil/geo2DInteger.h \
-    ../appUtil/docFont.h \
+    ../appUtil/utilDocFont.h \
     ../appUtil/utilTextAttribute.h \
     ../appUtil/utilFontEncoding.h \
     ../appUtil/psFont.h \
@@ -4675,7 +4675,7 @@ docTable.o: \
     ../bitmap/bitmap.h \
     ../appUtil/sioGeneral.h \
     ../bitmap/bmcolor.h \
-    ../appUtil/docFont.h \
+    ../appUtil/utilDocFont.h \
     ../appUtil/utilPropMask.h \
     ../appUtil/utilTextAttribute.h \
     ../appUtil/utilFontEncoding.h \
@@ -4723,7 +4723,7 @@ docTableRectangle.o: \
     ../bitmap/bitmap.h \
     ../appUtil/sioGeneral.h \
     ../bitmap/bmcolor.h \
-    ../appUtil/docFont.h \
+    ../appUtil/utilDocFont.h \
     ../appUtil/utilPropMask.h \
     ../appUtil/utilTextAttribute.h \
     ../appUtil/utilFontEncoding.h \
@@ -4777,7 +4777,7 @@ tedApp.o: \
     ../appUtil/psFont.h \
     ../appUtil/utilFontEncoding.h \
     ../appUtil/utilPostscriptFace.h \
-    ../appUtil/docFont.h \
+    ../appUtil/utilDocFont.h \
     ../appUtil/utilTextAttribute.h \
     ../appUtil/utilAffineTransform.h \
     ../appUtil/utilNup.h \
@@ -4841,7 +4841,7 @@ tedAppColor.o: \
     ../appUtil/psFont.h \
     ../appUtil/utilFontEncoding.h \
     ../appUtil/utilPostscriptFace.h \
-    ../appUtil/docFont.h \
+    ../appUtil/utilDocFont.h \
     ../appUtil/utilTextAttribute.h \
     ../appUtil/utilAffineTransform.h \
     ../appUtil/utilNup.h \
@@ -4905,7 +4905,7 @@ tedAppFont.o: \
     ../appUtil/psFont.h \
     ../appUtil/utilFontEncoding.h \
     ../appUtil/utilPostscriptFace.h \
-    ../appUtil/docFont.h \
+    ../appUtil/utilDocFont.h \
     ../appUtil/utilTextAttribute.h \
     ../appUtil/utilAffineTransform.h \
     ../appUtil/utilNup.h \
@@ -4972,7 +4972,7 @@ tedBlinkGtk.o: \
     ../appUtil/psFont.h \
     ../appUtil/utilFontEncoding.h \
     ../appUtil/utilPostscriptFace.h \
-    ../appUtil/docFont.h \
+    ../appUtil/utilDocFont.h \
     ../appUtil/utilTextAttribute.h \
     ../appUtil/utilAffineTransform.h \
     ../appUtil/utilNup.h \
@@ -5038,7 +5038,7 @@ tedBlinkMotif.o: \
     ../appUtil/psFont.h \
     ../appUtil/utilFontEncoding.h \
     ../appUtil/utilPostscriptFace.h \
-    ../appUtil/docFont.h \
+    ../appUtil/utilDocFont.h \
     ../appUtil/utilTextAttribute.h \
     ../appUtil/utilAffineTransform.h \
     ../appUtil/utilNup.h \
@@ -5104,7 +5104,7 @@ tedBookmarkDialog.o: \
     ../appUtil/psFont.h \
     ../appUtil/utilFontEncoding.h \
     ../appUtil/utilPostscriptFace.h \
-    ../appUtil/docFont.h \
+    ../appUtil/utilDocFont.h \
     ../appUtil/utilTextAttribute.h \
     ../appUtil/utilAffineTransform.h \
     ../appUtil/utilNup.h \
@@ -5168,7 +5168,7 @@ tedBorderTool.o: \
     ../appUtil/psFont.h \
     ../appUtil/utilFontEncoding.h \
     ../appUtil/utilPostscriptFace.h \
-    ../appUtil/docFont.h \
+    ../appUtil/utilDocFont.h \
     ../appUtil/utilTextAttribute.h \
     ../appUtil/utilAffineTransform.h \
     ../appUtil/utilNup.h \
@@ -5262,7 +5262,7 @@ tedCellTool.o: \
     ../appUtil/psFont.h \
     ../appUtil/utilFontEncoding.h \
     ../appUtil/utilPostscriptFace.h \
-    ../appUtil/docFont.h \
+    ../appUtil/utilDocFont.h \
     ../appUtil/utilTextAttribute.h \
     ../appUtil/utilAffineTransform.h \
     ../appUtil/utilNup.h \
@@ -5354,7 +5354,7 @@ tedColumnTool.o: \
     ../appUtil/psFont.h \
     ../appUtil/utilFontEncoding.h \
     ../appUtil/utilPostscriptFace.h \
-    ../appUtil/docFont.h \
+    ../appUtil/utilDocFont.h \
     ../appUtil/utilTextAttribute.h \
     ../appUtil/utilAffineTransform.h \
     ../appUtil/utilNup.h \
@@ -5444,7 +5444,7 @@ tedCopyPaste.o: \
     ../appUtil/psFont.h \
     ../appUtil/utilFontEncoding.h \
     ../appUtil/utilPostscriptFace.h \
-    ../appUtil/docFont.h \
+    ../appUtil/utilDocFont.h \
     ../appUtil/utilTextAttribute.h \
     ../appUtil/utilAffineTransform.h \
     ../appUtil/utilNup.h \
@@ -5505,7 +5505,7 @@ tedDocRuler.o: \
     docBuf.h \
     ../bitmap/bitmap.h \
     ../bitmap/bmcolor.h \
-    ../appUtil/docFont.h \
+    ../appUtil/utilDocFont.h \
     ../appUtil/utilPropMask.h \
     ../appUtil/utilTextAttribute.h \
     ../appUtil/utilFontEncoding.h \
@@ -5581,7 +5581,7 @@ tedDocprops.o: \
     ../appUtil/psFont.h \
     ../appUtil/utilFontEncoding.h \
     ../appUtil/utilPostscriptFace.h \
-    ../appUtil/docFont.h \
+    ../appUtil/utilDocFont.h \
     ../appUtil/utilTextAttribute.h \
     ../appUtil/utilAffineTransform.h \
     ../appUtil/utilNup.h \
@@ -5635,7 +5635,7 @@ tedDocument.o: \
     ../appUtil/sioGeneral.h \
     ../appUtil/appSystem.h \
     ../appUtil/utilMatchFont.h \
-    ../appUtil/docFont.h \
+    ../appUtil/utilDocFont.h \
     ../appUtil/utilPropMask.h \
     ../appUtil/utilTextAttribute.h \
     ../appUtil/utilFontEncoding.h \
@@ -5718,7 +5718,7 @@ tedDraw.o: \
     ../appUtil/psFont.h \
     ../appUtil/utilFontEncoding.h \
     ../appUtil/utilPostscriptFace.h \
-    ../appUtil/docFont.h \
+    ../appUtil/utilDocFont.h \
     ../appUtil/utilTextAttribute.h \
     ../appUtil/utilAffineTransform.h \
     ../appUtil/utilNup.h \
@@ -5785,7 +5785,7 @@ tedDrawGtk.o: \
     ../appUtil/psFont.h \
     ../appUtil/utilFontEncoding.h \
     ../appUtil/utilPostscriptFace.h \
-    ../appUtil/docFont.h \
+    ../appUtil/utilDocFont.h \
     ../appUtil/utilTextAttribute.h \
     ../appUtil/utilAffineTransform.h \
     ../appUtil/utilNup.h \
@@ -5851,7 +5851,7 @@ tedDrawMotif.o: \
     ../appUtil/psFont.h \
     ../appUtil/utilFontEncoding.h \
     ../appUtil/utilPostscriptFace.h \
-    ../appUtil/docFont.h \
+    ../appUtil/utilDocFont.h \
     ../appUtil/utilTextAttribute.h \
     ../appUtil/utilAffineTransform.h \
     ../appUtil/utilNup.h \
@@ -5917,7 +5917,7 @@ tedDrawingObject.o: \
     ../appUtil/psFont.h \
     ../appUtil/utilFontEncoding.h \
     ../appUtil/utilPostscriptFace.h \
-    ../appUtil/docFont.h \
+    ../appUtil/utilDocFont.h \
     ../appUtil/utilTextAttribute.h \
     ../appUtil/utilAffineTransform.h \
     ../appUtil/utilNup.h \
@@ -5980,7 +5980,7 @@ tedEdit.o: \
     docBuf.h \
     ../bitmap/bitmap.h \
     ../bitmap/bmcolor.h \
-    ../appUtil/docFont.h \
+    ../appUtil/utilDocFont.h \
     ../appUtil/utilPropMask.h \
     ../appUtil/utilTextAttribute.h \
     docShape.h \
@@ -6047,7 +6047,7 @@ tedEditList.o: \
     docBuf.h \
     ../bitmap/bitmap.h \
     ../bitmap/bmcolor.h \
-    ../appUtil/docFont.h \
+    ../appUtil/utilDocFont.h \
     ../appUtil/utilPropMask.h \
     ../appUtil/utilTextAttribute.h \
     docShape.h \
@@ -6112,7 +6112,7 @@ tedEditOperation.o: \
     ../bitmap/bitmap.h \
     ../appUtil/sioGeneral.h \
     ../bitmap/bmcolor.h \
-    ../appUtil/docFont.h \
+    ../appUtil/utilDocFont.h \
     ../appUtil/utilPropMask.h \
     ../appUtil/utilTextAttribute.h \
     ../appUtil/utilFontEncoding.h \
@@ -6187,7 +6187,7 @@ tedFind.o: \
     ../appUtil/psFont.h \
     ../appUtil/utilFontEncoding.h \
     ../appUtil/utilPostscriptFace.h \
-    ../appUtil/docFont.h \
+    ../appUtil/utilDocFont.h \
     ../appUtil/utilTextAttribute.h \
     ../appUtil/utilAffineTransform.h \
     ../appUtil/utilNup.h \
@@ -6255,7 +6255,7 @@ tedFindItem.o: \
     ../appUtil/psFont.h \
     ../appUtil/utilFontEncoding.h \
     ../appUtil/utilPostscriptFace.h \
-    ../appUtil/docFont.h \
+    ../appUtil/utilDocFont.h \
     ../appUtil/utilTextAttribute.h \
     ../appUtil/utilAffineTransform.h \
     ../appUtil/utilNup.h \
@@ -6321,7 +6321,7 @@ tedFollowLink.o: \
     ../appUtil/psFont.h \
     ../appUtil/utilFontEncoding.h \
     ../appUtil/utilPostscriptFace.h \
-    ../appUtil/docFont.h \
+    ../appUtil/utilDocFont.h \
     ../appUtil/utilTextAttribute.h \
     ../appUtil/utilAffineTransform.h \
     ../appUtil/utilNup.h \
@@ -6385,7 +6385,7 @@ tedFont.o: \
     ../appUtil/psFont.h \
     ../appUtil/utilFontEncoding.h \
     ../appUtil/utilPostscriptFace.h \
-    ../appUtil/docFont.h \
+    ../appUtil/utilDocFont.h \
     ../appUtil/utilTextAttribute.h \
     ../appUtil/utilAffineTransform.h \
     ../appUtil/utilNup.h \
@@ -6451,7 +6451,7 @@ tedFontTool.o: \
     ../appUtil/psFont.h \
     ../appUtil/utilFontEncoding.h \
     ../appUtil/utilPostscriptFace.h \
-    ../appUtil/docFont.h \
+    ../appUtil/utilDocFont.h \
     ../appUtil/utilTextAttribute.h \
     ../appUtil/utilAffineTransform.h \
     ../appUtil/utilNup.h \
@@ -6538,7 +6538,7 @@ tedFormat.o: \
     docBuf.h \
     ../bitmap/bitmap.h \
     ../bitmap/bmcolor.h \
-    ../appUtil/docFont.h \
+    ../appUtil/utilDocFont.h \
     ../appUtil/utilPropMask.h \
     ../appUtil/utilTextAttribute.h \
     docShape.h \
@@ -6612,7 +6612,7 @@ tedFormatTool.o: \
     ../appUtil/psFont.h \
     ../appUtil/utilFontEncoding.h \
     ../appUtil/utilPostscriptFace.h \
-    ../appUtil/docFont.h \
+    ../appUtil/utilDocFont.h \
     ../appUtil/utilTextAttribute.h \
     ../appUtil/utilAffineTransform.h \
     ../appUtil/utilNup.h \
@@ -6704,7 +6704,7 @@ tedFormatToolUtil.o: \
     ../appUtil/psFont.h \
     ../appUtil/utilFontEncoding.h \
     ../appUtil/utilPostscriptFace.h \
-    ../appUtil/docFont.h \
+    ../appUtil/utilDocFont.h \
     ../appUtil/utilTextAttribute.h \
     ../appUtil/utilAffineTransform.h \
     ../appUtil/utilNup.h \
@@ -6789,7 +6789,7 @@ tedHeaderFooter.o: \
     docBuf.h \
     ../bitmap/bitmap.h \
     ../bitmap/bmcolor.h \
-    ../appUtil/docFont.h \
+    ../appUtil/utilDocFont.h \
     ../appUtil/utilPropMask.h \
     ../appUtil/utilTextAttribute.h \
     docShape.h \
@@ -6859,7 +6859,7 @@ tedHeaderFooterTool.o: \
     ../appUtil/psFont.h \
     ../appUtil/utilFontEncoding.h \
     ../appUtil/utilPostscriptFace.h \
-    ../appUtil/docFont.h \
+    ../appUtil/utilDocFont.h \
     ../appUtil/utilTextAttribute.h \
     ../appUtil/utilAffineTransform.h \
     ../appUtil/utilNup.h \
@@ -6953,7 +6953,7 @@ tedHeightTool.o: \
     ../appUtil/psFont.h \
     ../appUtil/utilFontEncoding.h \
     ../appUtil/utilPostscriptFace.h \
-    ../appUtil/docFont.h \
+    ../appUtil/utilDocFont.h \
     ../appUtil/utilTextAttribute.h \
     ../appUtil/utilAffineTransform.h \
     ../appUtil/utilNup.h \
@@ -7044,7 +7044,7 @@ tedIcons.o: \
     ../appUtil/psFont.h \
     ../appUtil/utilFontEncoding.h \
     ../appUtil/utilPostscriptFace.h \
-    ../appUtil/docFont.h \
+    ../appUtil/utilDocFont.h \
     ../appUtil/utilTextAttribute.h \
     ../appUtil/utilAffineTransform.h \
     ../appUtil/utilNup.h \
@@ -7110,7 +7110,7 @@ tedInput.o: \
     ../bitmap/bitmap.h \
     ../appUtil/sioGeneral.h \
     ../bitmap/bmcolor.h \
-    ../appUtil/docFont.h \
+    ../appUtil/utilDocFont.h \
     ../appUtil/utilPropMask.h \
     ../appUtil/utilTextAttribute.h \
     ../appUtil/utilFontEncoding.h \
@@ -7185,7 +7185,7 @@ tedLayout.o: \
     ../appUtil/psFont.h \
     ../appUtil/utilFontEncoding.h \
     ../appUtil/utilPostscriptFace.h \
-    ../appUtil/docFont.h \
+    ../appUtil/utilDocFont.h \
     ../appUtil/utilTextAttribute.h \
     ../appUtil/utilAffineTransform.h \
     ../appUtil/utilNup.h \
@@ -7246,7 +7246,7 @@ tedLink.o: \
     ../bitmap/bitmap.h \
     ../appUtil/sioGeneral.h \
     ../bitmap/bmcolor.h \
-    ../appUtil/docFont.h \
+    ../appUtil/utilDocFont.h \
     ../appUtil/utilPropMask.h \
     ../appUtil/utilTextAttribute.h \
     ../appUtil/utilFontEncoding.h \
@@ -7321,7 +7321,7 @@ tedLinkDialog.o: \
     ../appUtil/psFont.h \
     ../appUtil/utilFontEncoding.h \
     ../appUtil/utilPostscriptFace.h \
-    ../appUtil/docFont.h \
+    ../appUtil/utilDocFont.h \
     ../appUtil/utilTextAttribute.h \
     ../appUtil/utilAffineTransform.h \
     ../appUtil/utilNup.h \
@@ -7381,7 +7381,7 @@ tedListTool.o: \
     ../bitmap/bitmap.h \
     ../appUtil/sioGeneral.h \
     ../bitmap/bmcolor.h \
-    ../appUtil/docFont.h \
+    ../appUtil/utilDocFont.h \
     ../appUtil/utilPropMask.h \
     ../appUtil/utilTextAttribute.h \
     ../appUtil/utilFontEncoding.h \
@@ -7469,7 +7469,7 @@ tedMain.o: \
     tedConfig.h \
     ../appUtil/appSystem.h \
     ../appUtil/utilMatchFont.h \
-    ../appUtil/docFont.h \
+    ../appUtil/utilDocFont.h \
     ../appUtil/utilPropMask.h \
     ../appUtil/utilTextAttribute.h \
     ../appUtil/utilFontEncoding.h \
@@ -7547,36 +7547,19 @@ tedNotesTool.o: \
     tedNotesTool.c \
     tedConfig.h \
     ../appUtil/appGeoString.h \
-    ../appUtil/appUnit.h \
-    tedApp.h \
-    ../appFrame/appFrame.h \
-    ../appFrame/appGuiBase.h \
-    ../appFrame/appGuiResource.h \
-    ../appUtil/geo2DInteger.h \
-    ../appUtil/utilPs.h \
-    ../appUtil/sioGeneral.h \
-    ../appUtil/utilDocumentGeometry.h \
-    ../appUtil/utilPropMask.h \
-    ../appUtil/psFont.h \
-    ../appUtil/utilFontEncoding.h \
-    ../appUtil/utilPostscriptFace.h \
-    ../appUtil/docFont.h \
-    ../appUtil/utilTextAttribute.h \
-    ../appUtil/utilAffineTransform.h \
-    ../appUtil/utilNup.h \
-    ../appUtil/utilPrinter.h \
-    ../appUtil/utilMailContent.h \
-    ../appFrame/appIcons.h \
-    ../appFrame/appTool.h \
-    ../appFrame/appDraw.h \
-    ../bitmap/bmcolor.h \
-    ../appFrame/appInspector.h \
-    ../appFrame/appImage.h \
-    ../bitmap/bitmap.h \
-    ../appUtil/utilMemoryBuffer.h \
-    ../appFrame/docExpandedTextAttribute.h \
+    docEvalField.h \
     docBuf.h \
+    ../bitmap/bitmap.h \
+    ../appUtil/sioGeneral.h \
+    ../bitmap/bmcolor.h \
+    ../appUtil/utilDocFont.h \
+    ../appUtil/utilPropMask.h \
+    ../appUtil/utilTextAttribute.h \
+    ../appUtil/utilFontEncoding.h \
+    ../appUtil/psFont.h \
     docShape.h \
+    ../appUtil/geo2DInteger.h \
+    ../appUtil/utilMemoryBuffer.h \
     ../appUtil/utilTextAttributeAdmin.h \
     docParaProperties.h \
     docPropVal.h \
@@ -7587,9 +7570,11 @@ tedNotesTool.o: \
     docFrameProperties.h \
     docRowProperties.h \
     docSectProperties.h \
+    ../appUtil/utilDocumentGeometry.h \
     docNotesProperties.h \
     docStyleSheet.h \
     docDocumentProperties.h \
+    ../appUtil/appUnit.h \
     docListTable.h \
     docDocumentList.h \
     docListLevel.h \
@@ -7601,9 +7586,25 @@ tedNotesTool.o: \
     docObject.h \
     docDrawingObject.h \
     ../appFrame/appFrameConfig.h \
+    ../appFrame/appGuiBase.h \
     docSelect.h \
     docExternalItem.h \
     docListNumberTree.h \
+    tedApp.h \
+    ../appFrame/appFrame.h \
+    ../appFrame/appGuiResource.h \
+    ../appUtil/utilPs.h \
+    ../appUtil/utilPostscriptFace.h \
+    ../appUtil/utilAffineTransform.h \
+    ../appUtil/utilNup.h \
+    ../appUtil/utilPrinter.h \
+    ../appUtil/utilMailContent.h \
+    ../appFrame/appIcons.h \
+    ../appFrame/appTool.h \
+    ../appFrame/appDraw.h \
+    ../appFrame/appInspector.h \
+    ../appFrame/appImage.h \
+    ../appFrame/docExpandedTextAttribute.h \
     docScreenFontList.h \
     tedFormatTool.h \
     tedParaLayoutTool.h \
@@ -7650,7 +7651,7 @@ tedObjects.o: \
     ../appFrame/appGuiBase.h \
     ../appUtil/utilPropMask.h \
     ../appUtil/geo2DInteger.h \
-    ../appUtil/docFont.h \
+    ../appUtil/utilDocFont.h \
     ../appUtil/utilTextAttribute.h \
     ../appUtil/utilFontEncoding.h \
     ../appUtil/psFont.h \
@@ -7724,7 +7725,7 @@ tedPage.o: \
     ../appUtil/psFont.h \
     ../appUtil/utilFontEncoding.h \
     ../appUtil/utilPostscriptFace.h \
-    ../appUtil/docFont.h \
+    ../appUtil/utilDocFont.h \
     ../appUtil/utilTextAttribute.h \
     ../appUtil/utilAffineTransform.h \
     ../appUtil/utilNup.h \
@@ -7791,7 +7792,7 @@ tedPageLayoutTool.o: \
     ../appUtil/psFont.h \
     ../appUtil/utilFontEncoding.h \
     ../appUtil/utilPostscriptFace.h \
-    ../appUtil/docFont.h \
+    ../appUtil/utilDocFont.h \
     ../appUtil/utilTextAttribute.h \
     ../appUtil/utilAffineTransform.h \
     ../appUtil/utilNup.h \
@@ -7885,7 +7886,7 @@ tedParaLayoutTool.o: \
     ../appUtil/psFont.h \
     ../appUtil/utilFontEncoding.h \
     ../appUtil/utilPostscriptFace.h \
-    ../appUtil/docFont.h \
+    ../appUtil/utilDocFont.h \
     ../appUtil/utilTextAttribute.h \
     ../appUtil/utilAffineTransform.h \
     ../appUtil/utilNup.h \
@@ -7977,7 +7978,7 @@ tedParaOrnamentsTool.o: \
     ../appUtil/psFont.h \
     ../appUtil/utilFontEncoding.h \
     ../appUtil/utilPostscriptFace.h \
-    ../appUtil/docFont.h \
+    ../appUtil/utilDocFont.h \
     ../appUtil/utilTextAttribute.h \
     ../appUtil/utilAffineTransform.h \
     ../appUtil/utilNup.h \
@@ -8069,7 +8070,7 @@ tedRowTool.o: \
     ../appUtil/psFont.h \
     ../appUtil/utilFontEncoding.h \
     ../appUtil/utilPostscriptFace.h \
-    ../appUtil/docFont.h \
+    ../appUtil/utilDocFont.h \
     ../appUtil/utilTextAttribute.h \
     ../appUtil/utilAffineTransform.h \
     ../appUtil/utilNup.h \
@@ -8160,7 +8161,7 @@ tedRuler.o: \
     ../appUtil/psFont.h \
     ../appUtil/utilFontEncoding.h \
     ../appUtil/utilPostscriptFace.h \
-    ../appUtil/docFont.h \
+    ../appUtil/utilDocFont.h \
     ../appUtil/utilTextAttribute.h \
     ../appUtil/utilAffineTransform.h \
     ../appUtil/utilNup.h \
@@ -8223,7 +8224,7 @@ tedSectionTool.o: \
     ../appUtil/psFont.h \
     ../appUtil/utilFontEncoding.h \
     ../appUtil/utilPostscriptFace.h \
-    ../appUtil/docFont.h \
+    ../appUtil/utilDocFont.h \
     ../appUtil/utilTextAttribute.h \
     ../appUtil/utilAffineTransform.h \
     ../appUtil/utilNup.h \
@@ -8308,7 +8309,7 @@ tedSelect.o: \
     docBuf.h \
     ../bitmap/bitmap.h \
     ../bitmap/bmcolor.h \
-    ../appUtil/docFont.h \
+    ../appUtil/utilDocFont.h \
     ../appUtil/utilPropMask.h \
     ../appUtil/utilTextAttribute.h \
     docShape.h \
@@ -8379,7 +8380,7 @@ tedShadingTool.o: \
     ../appUtil/psFont.h \
     ../appUtil/utilFontEncoding.h \
     ../appUtil/utilPostscriptFace.h \
-    ../appUtil/docFont.h \
+    ../appUtil/utilDocFont.h \
     ../appUtil/utilTextAttribute.h \
     ../appUtil/utilAffineTransform.h \
     ../appUtil/utilNup.h \
@@ -8472,7 +8473,7 @@ tedTable.o: \
     ../appUtil/psFont.h \
     ../appUtil/utilFontEncoding.h \
     ../appUtil/utilPostscriptFace.h \
-    ../appUtil/docFont.h \
+    ../appUtil/utilDocFont.h \
     ../appUtil/utilTextAttribute.h \
     ../appUtil/utilAffineTransform.h \
     ../appUtil/utilNup.h \
@@ -8540,7 +8541,7 @@ tedTableTool.o: \
     ../appUtil/psFont.h \
     ../appUtil/utilFontEncoding.h \
     ../appUtil/utilPostscriptFace.h \
-    ../appUtil/docFont.h \
+    ../appUtil/utilDocFont.h \
     ../appUtil/utilTextAttribute.h \
     ../appUtil/utilAffineTransform.h \
     ../appUtil/utilNup.h \
@@ -8632,7 +8633,7 @@ tedTabsTool.o: \
     ../appUtil/psFont.h \
     ../appUtil/utilFontEncoding.h \
     ../appUtil/utilPostscriptFace.h \
-    ../appUtil/docFont.h \
+    ../appUtil/utilDocFont.h \
     ../appUtil/utilTextAttribute.h \
     ../appUtil/utilAffineTransform.h \
     ../appUtil/utilNup.h \

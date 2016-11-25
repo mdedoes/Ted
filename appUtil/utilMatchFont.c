@@ -19,7 +19,7 @@
 #   include	<appDebugon.h>
 
 #   include	"utilPropMask.h"
-#   include	"docFont.h"
+#   include	"utilDocFont.h"
 #   include	"psFont.h"
 #   include	"utilMatchFont.h"
 

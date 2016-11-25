@@ -8,7 +8,7 @@
 #   define	DOC_STYLE_SHEET_H
 
 #   include	<utilPropMask.h>
-#   include	<docFont.h>
+#   include	<utilDocFont.h>
 
 #   include	"docSectProperties.h"
 #   include	"docParaProperties.h"

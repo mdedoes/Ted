@@ -229,8 +229,15 @@ int docRtfRememberParagraphProperty(	SimpleInputStream *	sis,
     switch( rcw->rcwID )
 	{
 	case PPprop_NONE:
+	    {
+	    int		sav= pp->ppStyle;
+
 	    docCleanParagraphProperties( pp );
 	    docInitParagraphProperties( pp );
+
+	    if  ( rrc->rrcDocumentStyle.dsLevel == DOClevPARA )
+		{ pp->ppStyle= sav; }
+	    }
 	    return 0;
 
 	case PPpropSTYLE:

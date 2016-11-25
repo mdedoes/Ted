@@ -7,7 +7,7 @@
 #   include	<appGuiBase.h>
 
 #   include	<bitmap.h>
-#   include	<docFont.h>
+#   include	<utilDocFont.h>
 #   include	<utilPostscriptFace.h>
 #   include	<appDraw.h>
 #   include	<appImage.h>

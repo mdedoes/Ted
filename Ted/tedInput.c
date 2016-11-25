@@ -961,18 +961,25 @@ static void tedProcessKeyEvent(	EditDocument *		ed,
 
 	case KEY_KP_Home:
 	case KEY_Home:
-	    if  ( ( state & KEY_SHIFT_MASK ) && ds.dsDirection >= 0 )
+	    if  ( ( state & KEY_CONTROL_MASK ) )
 		{
-		dpNew= ds.dsEnd;
-
-		if  ( docBeginOfLine( &dpNew, sg.sgEnd.pgAtLineHead ) )
+		if  ( docFirstPosition( &dpNew, &(bd->bdItem) ) )
 		    { return;	}
 		}
 	    else{
-		dpNew= ds.dsBegin;
+		if  ( ( state & KEY_SHIFT_MASK ) && ds.dsDirection >= 0 )
+		    {
+		    dpNew= ds.dsEnd;
 
-		if  ( docBeginOfLine( &dpNew, sg.sgBegin.pgAtLineHead ) )
-		    { return;	}
+		    if  ( docBeginOfLine( &dpNew, sg.sgEnd.pgAtLineHead ) )
+			{ return;	}
+		    }
+		else{
+		    dpNew= ds.dsBegin;
+
+		    if  ( docBeginOfLine( &dpNew, sg.sgBegin.pgAtLineHead ) )
+			{ return;	}
+		    }
 		}
 
 	    tedInputAvoidHeadField( &dpNew, bd );
@@ -986,18 +993,25 @@ static void tedProcessKeyEvent(	EditDocument *		ed,
 
 	case KEY_KP_End:
 	case KEY_End:
-	    if  ( ! ( state & KEY_SHIFT_MASK ) || ds.dsDirection >= 0 )
+	    if  ( ( state & KEY_CONTROL_MASK ) )
 		{
-		dpNew= ds.dsEnd;
-
-		if  ( docEndOfLine( &dpNew, sg.sgEnd.pgAtLineHead ) )
+		if  ( docLastPosition( &dpNew, &(bd->bdItem) ) )
 		    { return;	}
 		}
 	    else{
-		dpNew= ds.dsBegin;
+		if  ( ! ( state & KEY_SHIFT_MASK ) || ds.dsDirection >= 0 )
+		    {
+		    dpNew= ds.dsEnd;
 
-		if  ( docEndOfLine( &dpNew, sg.sgBegin.pgAtLineHead ) )
-		    { return;	}
+		    if  ( docEndOfLine( &dpNew, sg.sgEnd.pgAtLineHead ) )
+			{ return;	}
+		    }
+		else{
+		    dpNew= ds.dsBegin;
+
+		    if  ( docEndOfLine( &dpNew, sg.sgBegin.pgAtLineHead ) )
+			{ return;	}
+		    }
 		}
 
 	    {

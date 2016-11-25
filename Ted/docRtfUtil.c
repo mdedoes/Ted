@@ -907,7 +907,7 @@ int docRtfAdjustLevel(	RtfReadingContext *	rrc,
 		}
 	    }
 
-	if  ( rrc->rrcLevel == DOClevROW )
+	if  ( rrc->rrcLevel == DOClevROW && bi->biRowHasTableParagraphs )
 	    {
 	    if  ( docCopyRowProperties( &(bi->biRowProperties),
 				 &(rrc->rrcRowProperties), (const int *)0 ) )

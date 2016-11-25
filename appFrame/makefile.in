@@ -152,7 +152,7 @@ appColorChooser.o: \
     ../appFrame/appDraw.h \
     ../appUtil/utilPropMask.h \
     ../appUtil/geo2DInteger.h \
-    ../appUtil/docFont.h \
+    ../appUtil/utilDocFont.h \
     ../appUtil/utilTextAttribute.h \
     ../appUtil/utilFontEncoding.h \
     ../appUtil/psFont.h \
@@ -180,7 +180,7 @@ appColorGtk.o: \
     ../appFrame/appGuiBase.h \
     ../appUtil/utilPropMask.h \
     ../appUtil/geo2DInteger.h \
-    ../appUtil/docFont.h \
+    ../appUtil/utilDocFont.h \
     ../appUtil/utilTextAttribute.h \
     ../appUtil/utilFontEncoding.h \
     ../appUtil/psFont.h \
@@ -196,7 +196,7 @@ appColorMotif.o: \
     ../appFrame/appGuiBase.h \
     ../appUtil/utilPropMask.h \
     ../appUtil/geo2DInteger.h \
-    ../appUtil/docFont.h \
+    ../appUtil/utilDocFont.h \
     ../appUtil/utilTextAttribute.h \
     ../appUtil/utilFontEncoding.h \
     ../appUtil/psFont.h \
@@ -219,7 +219,7 @@ appCopyPasteGtk.o: \
     ../appUtil/psFont.h \
     ../appUtil/utilFontEncoding.h \
     ../appUtil/utilPostscriptFace.h \
-    ../appUtil/docFont.h \
+    ../appUtil/utilDocFont.h \
     ../appUtil/utilTextAttribute.h \
     ../appUtil/utilAffineTransform.h \
     ../appUtil/utilNup.h \
@@ -247,7 +247,7 @@ appCopyPasteMotif.o: \
     ../appUtil/psFont.h \
     ../appUtil/utilFontEncoding.h \
     ../appUtil/utilPostscriptFace.h \
-    ../appUtil/docFont.h \
+    ../appUtil/utilDocFont.h \
     ../appUtil/utilTextAttribute.h \
     ../appUtil/utilAffineTransform.h \
     ../appUtil/utilNup.h \
@@ -275,7 +275,7 @@ appDialogGtk.o: \
     ../appUtil/psFont.h \
     ../appUtil/utilFontEncoding.h \
     ../appUtil/utilPostscriptFace.h \
-    ../appUtil/docFont.h \
+    ../appUtil/utilDocFont.h \
     ../appUtil/utilTextAttribute.h \
     ../appUtil/utilAffineTransform.h \
     ../appUtil/utilNup.h \
@@ -303,7 +303,7 @@ appDialogMotif.o: \
     ../appUtil/psFont.h \
     ../appUtil/utilFontEncoding.h \
     ../appUtil/utilPostscriptFace.h \
-    ../appUtil/docFont.h \
+    ../appUtil/utilDocFont.h \
     ../appUtil/utilTextAttribute.h \
     ../appUtil/utilAffineTransform.h \
     ../appUtil/utilNup.h \
@@ -333,7 +333,7 @@ appDocMetricRuler.o: \
     ../appUtil/psFont.h \
     ../appUtil/utilFontEncoding.h \
     ../appUtil/utilPostscriptFace.h \
-    ../appUtil/docFont.h \
+    ../appUtil/utilDocFont.h \
     ../appUtil/utilTextAttribute.h \
     ../appUtil/utilAffineTransform.h \
     ../appUtil/utilNup.h \
@@ -367,7 +367,7 @@ appDocument.o: \
     ../appUtil/utilDocumentGeometry.h \
     ../appUtil/utilPropMask.h \
     ../appUtil/utilPostscriptFace.h \
-    ../appUtil/docFont.h \
+    ../appUtil/utilDocFont.h \
     ../appUtil/utilTextAttribute.h \
     ../appUtil/utilAffineTransform.h \
     ../appUtil/utilNup.h \
@@ -395,7 +395,7 @@ appDocumentGtk.o: \
     ../appUtil/psFont.h \
     ../appUtil/utilFontEncoding.h \
     ../appUtil/utilPostscriptFace.h \
-    ../appUtil/docFont.h \
+    ../appUtil/utilDocFont.h \
     ../appUtil/utilTextAttribute.h \
     ../appUtil/utilAffineTransform.h \
     ../appUtil/utilNup.h \
@@ -423,7 +423,7 @@ appDocumentMotif.o: \
     ../appUtil/psFont.h \
     ../appUtil/utilFontEncoding.h \
     ../appUtil/utilPostscriptFace.h \
-    ../appUtil/docFont.h \
+    ../appUtil/utilDocFont.h \
     ../appUtil/utilTextAttribute.h \
     ../appUtil/utilAffineTransform.h \
     ../appUtil/utilNup.h \
@@ -444,7 +444,7 @@ appDrawGtk.o: \
     appDraw.h \
     ../appFrame/appGuiBase.h \
     ../appUtil/utilPropMask.h \
-    ../appUtil/docFont.h \
+    ../appUtil/utilDocFont.h \
     ../appUtil/utilTextAttribute.h \
     ../appUtil/utilFontEncoding.h \
     ../appUtil/psFont.h \
@@ -460,7 +460,7 @@ appDrawMotif.o: \
     appDraw.h \
     ../appFrame/appGuiBase.h \
     ../appUtil/utilPropMask.h \
-    ../appUtil/docFont.h \
+    ../appUtil/utilDocFont.h \
     ../appUtil/utilTextAttribute.h \
     ../appUtil/utilFontEncoding.h \
     ../appUtil/psFont.h \
@@ -485,7 +485,7 @@ appDrawPage.o: \
     ../appUtil/psFont.h \
     ../appUtil/utilFontEncoding.h \
     ../appUtil/utilPostscriptFace.h \
-    ../appUtil/docFont.h \
+    ../appUtil/utilDocFont.h \
     ../appUtil/utilTextAttribute.h \
     ../appUtil/utilAffineTransform.h \
     ../appUtil/utilNup.h \
@@ -513,7 +513,7 @@ appDrawnPulldown.o: \
     ../appUtil/psFont.h \
     ../appUtil/utilFontEncoding.h \
     ../appUtil/utilPostscriptFace.h \
-    ../appUtil/docFont.h \
+    ../appUtil/utilDocFont.h \
     ../appUtil/utilTextAttribute.h \
     ../appUtil/utilAffineTransform.h \
     ../appUtil/utilNup.h \
@@ -543,7 +543,7 @@ appDrawnPulldownGtk.o: \
     ../appUtil/psFont.h \
     ../appUtil/utilFontEncoding.h \
     ../appUtil/utilPostscriptFace.h \
-    ../appUtil/docFont.h \
+    ../appUtil/utilDocFont.h \
     ../appUtil/utilTextAttribute.h \
     ../appUtil/utilAffineTransform.h \
     ../appUtil/utilNup.h \
@@ -571,7 +571,7 @@ appDrawnPulldownMotif.o: \
     ../appUtil/psFont.h \
     ../appUtil/utilFontEncoding.h \
     ../appUtil/utilPostscriptFace.h \
-    ../appUtil/docFont.h \
+    ../appUtil/utilDocFont.h \
     ../appUtil/utilTextAttribute.h \
     ../appUtil/utilAffineTransform.h \
     ../appUtil/utilNup.h \
@@ -602,7 +602,7 @@ appEncodingMenu.o: \
     ../appUtil/utilDocumentGeometry.h \
     ../appUtil/utilPropMask.h \
     ../appUtil/utilPostscriptFace.h \
-    ../appUtil/docFont.h \
+    ../appUtil/utilDocFont.h \
     ../appUtil/utilTextAttribute.h \
     ../appUtil/utilAffineTransform.h \
     ../appUtil/utilNup.h \
@@ -623,7 +623,7 @@ appEventGtk.o: \
     appDraw.h \
     ../appFrame/appGuiBase.h \
     ../appUtil/utilPropMask.h \
-    ../appUtil/docFont.h \
+    ../appUtil/utilDocFont.h \
     ../appUtil/utilTextAttribute.h \
     ../appUtil/utilFontEncoding.h \
     ../appUtil/psFont.h \
@@ -639,7 +639,7 @@ appEventMotif.o: \
     appDraw.h \
     ../appFrame/appGuiBase.h \
     ../appUtil/utilPropMask.h \
-    ../appUtil/docFont.h \
+    ../appUtil/utilDocFont.h \
     ../appUtil/utilTextAttribute.h \
     ../appUtil/utilFontEncoding.h \
     ../appUtil/psFont.h \
@@ -664,7 +664,7 @@ appFileChooser.o: \
     ../appUtil/psFont.h \
     ../appUtil/utilFontEncoding.h \
     ../appUtil/utilPostscriptFace.h \
-    ../appUtil/docFont.h \
+    ../appUtil/utilDocFont.h \
     ../appUtil/utilTextAttribute.h \
     ../appUtil/utilAffineTransform.h \
     ../appUtil/utilNup.h \
@@ -694,7 +694,7 @@ appFileChooserGtk.o: \
     ../appUtil/psFont.h \
     ../appUtil/utilFontEncoding.h \
     ../appUtil/utilPostscriptFace.h \
-    ../appUtil/docFont.h \
+    ../appUtil/utilDocFont.h \
     ../appUtil/utilTextAttribute.h \
     ../appUtil/utilAffineTransform.h \
     ../appUtil/utilNup.h \
@@ -724,7 +724,7 @@ appFileChooserMotif.o: \
     ../appUtil/psFont.h \
     ../appUtil/utilFontEncoding.h \
     ../appUtil/utilPostscriptFace.h \
-    ../appUtil/docFont.h \
+    ../appUtil/utilDocFont.h \
     ../appUtil/utilTextAttribute.h \
     ../appUtil/utilAffineTransform.h \
     ../appUtil/utilNup.h \
@@ -753,7 +753,7 @@ appFindTool.o: \
     ../appUtil/psFont.h \
     ../appUtil/utilFontEncoding.h \
     ../appUtil/utilPostscriptFace.h \
-    ../appUtil/docFont.h \
+    ../appUtil/utilDocFont.h \
     ../appUtil/utilTextAttribute.h \
     ../appUtil/utilAffineTransform.h \
     ../appUtil/utilNup.h \
@@ -774,7 +774,7 @@ appFont.o: \
     ../include/appDebug.h \
     ../appUtil/utilPropMask.h \
     ../appUtil/utilMatchFont.h \
-    ../appUtil/docFont.h \
+    ../appUtil/utilDocFont.h \
     ../appUtil/utilTextAttribute.h \
     ../appUtil/utilFontEncoding.h \
     ../appUtil/psFont.h \
@@ -804,7 +804,7 @@ appFontTool.o: \
     ../appUtil/psFont.h \
     ../appUtil/utilFontEncoding.h \
     ../appUtil/utilPostscriptFace.h \
-    ../appUtil/docFont.h \
+    ../appUtil/utilDocFont.h \
     ../appUtil/utilTextAttribute.h \
     ../appUtil/utilAffineTransform.h \
     ../appUtil/utilNup.h \
@@ -834,7 +834,7 @@ appGetImageGtk.o: \
     ../appFrame/appDraw.h \
     ../appUtil/utilPropMask.h \
     ../appUtil/geo2DInteger.h \
-    ../appUtil/docFont.h \
+    ../appUtil/utilDocFont.h \
     ../appUtil/utilTextAttribute.h \
     ../appUtil/utilFontEncoding.h \
     ../appUtil/psFont.h \
@@ -853,7 +853,7 @@ appGetImageMotif.o: \
     ../appFrame/appDraw.h \
     ../appUtil/utilPropMask.h \
     ../appUtil/geo2DInteger.h \
-    ../appUtil/docFont.h \
+    ../appUtil/utilDocFont.h \
     ../appUtil/utilTextAttribute.h \
     ../appUtil/utilFontEncoding.h \
     ../appUtil/psFont.h \
@@ -887,7 +887,7 @@ appGuiMotif.o: \
     ../appUtil/psFont.h \
     ../appUtil/utilFontEncoding.h \
     ../appUtil/utilPostscriptFace.h \
-    ../appUtil/docFont.h \
+    ../appUtil/utilDocFont.h \
     ../appUtil/utilTextAttribute.h \
     ../appUtil/utilAffineTransform.h \
     ../appUtil/utilNup.h \
@@ -917,7 +917,7 @@ appGuiUtil.o: \
     ../appUtil/psFont.h \
     ../appUtil/utilFontEncoding.h \
     ../appUtil/utilPostscriptFace.h \
-    ../appUtil/docFont.h \
+    ../appUtil/utilDocFont.h \
     ../appUtil/utilTextAttribute.h \
     ../appUtil/utilAffineTransform.h \
     ../appUtil/utilNup.h \
@@ -947,7 +947,7 @@ appIconsGtk.o: \
     ../appUtil/psFont.h \
     ../appUtil/utilFontEncoding.h \
     ../appUtil/utilPostscriptFace.h \
-    ../appUtil/docFont.h \
+    ../appUtil/utilDocFont.h \
     ../appUtil/utilTextAttribute.h \
     ../appUtil/utilAffineTransform.h \
     ../appUtil/utilNup.h \
@@ -976,7 +976,7 @@ appIconsMotif.o: \
     ../appUtil/psFont.h \
     ../appUtil/utilFontEncoding.h \
     ../appUtil/utilPostscriptFace.h \
-    ../appUtil/docFont.h \
+    ../appUtil/utilDocFont.h \
     ../appUtil/utilTextAttribute.h \
     ../appUtil/utilAffineTransform.h \
     ../appUtil/utilNup.h \
@@ -1002,7 +1002,7 @@ appImage.o: \
     ../appFrame/appDraw.h \
     ../appUtil/utilPropMask.h \
     ../appUtil/geo2DInteger.h \
-    ../appUtil/docFont.h \
+    ../appUtil/utilDocFont.h \
     ../appUtil/utilTextAttribute.h \
     ../appUtil/utilFontEncoding.h \
     ../appUtil/psFont.h \
@@ -1035,7 +1035,7 @@ appInspector.o: \
     ../appUtil/psFont.h \
     ../appUtil/utilFontEncoding.h \
     ../appUtil/utilPostscriptFace.h \
-    ../appUtil/docFont.h \
+    ../appUtil/utilDocFont.h \
     ../appUtil/utilTextAttribute.h \
     ../appUtil/utilAffineTransform.h \
     ../appUtil/utilNup.h \
@@ -1065,7 +1065,7 @@ appInspectorGtk.o: \
     ../appUtil/psFont.h \
     ../appUtil/utilFontEncoding.h \
     ../appUtil/utilPostscriptFace.h \
-    ../appUtil/docFont.h \
+    ../appUtil/utilDocFont.h \
     ../appUtil/utilTextAttribute.h \
     ../appUtil/utilAffineTransform.h \
     ../appUtil/utilNup.h \
@@ -1093,7 +1093,7 @@ appInspectorMotif.o: \
     ../appUtil/psFont.h \
     ../appUtil/utilFontEncoding.h \
     ../appUtil/utilPostscriptFace.h \
-    ../appUtil/docFont.h \
+    ../appUtil/utilDocFont.h \
     ../appUtil/utilTextAttribute.h \
     ../appUtil/utilAffineTransform.h \
     ../appUtil/utilNup.h \
@@ -1123,7 +1123,7 @@ appKeystrokeMotif.o: \
     ../appUtil/psFont.h \
     ../appUtil/utilFontEncoding.h \
     ../appUtil/utilPostscriptFace.h \
-    ../appUtil/docFont.h \
+    ../appUtil/utilDocFont.h \
     ../appUtil/utilTextAttribute.h \
     ../appUtil/utilAffineTransform.h \
     ../appUtil/utilNup.h \
@@ -1152,7 +1152,7 @@ appLabelGtk.o: \
     ../appUtil/psFont.h \
     ../appUtil/utilFontEncoding.h \
     ../appUtil/utilPostscriptFace.h \
-    ../appUtil/docFont.h \
+    ../appUtil/utilDocFont.h \
     ../appUtil/utilTextAttribute.h \
     ../appUtil/utilAffineTransform.h \
     ../appUtil/utilNup.h \
@@ -1180,7 +1180,7 @@ appLabelMotif.o: \
     ../appUtil/psFont.h \
     ../appUtil/utilFontEncoding.h \
     ../appUtil/utilPostscriptFace.h \
-    ../appUtil/docFont.h \
+    ../appUtil/utilDocFont.h \
     ../appUtil/utilTextAttribute.h \
     ../appUtil/utilAffineTransform.h \
     ../appUtil/utilNup.h \
@@ -1210,7 +1210,7 @@ appListGtk.o: \
     ../appUtil/psFont.h \
     ../appUtil/utilFontEncoding.h \
     ../appUtil/utilPostscriptFace.h \
-    ../appUtil/docFont.h \
+    ../appUtil/utilDocFont.h \
     ../appUtil/utilTextAttribute.h \
     ../appUtil/utilAffineTransform.h \
     ../appUtil/utilNup.h \
@@ -1238,7 +1238,7 @@ appListMotif.o: \
     ../appUtil/psFont.h \
     ../appUtil/utilFontEncoding.h \
     ../appUtil/utilPostscriptFace.h \
-    ../appUtil/docFont.h \
+    ../appUtil/utilDocFont.h \
     ../appUtil/utilTextAttribute.h \
     ../appUtil/utilAffineTransform.h \
     ../appUtil/utilNup.h \
@@ -1261,7 +1261,7 @@ appMacPict.o: \
     ../bitmap/bitmap.h \
     ../appUtil/sioGeneral.h \
     ../bitmap/bmcolor.h \
-    ../appUtil/docFont.h \
+    ../appUtil/utilDocFont.h \
     ../appUtil/utilPropMask.h \
     ../appUtil/utilTextAttribute.h \
     ../appUtil/utilFontEncoding.h \
@@ -1288,7 +1288,7 @@ appMacPictPs.o: \
     ../bitmap/bitmap.h \
     ../appUtil/sioGeneral.h \
     ../bitmap/bmcolor.h \
-    ../appUtil/docFont.h \
+    ../appUtil/utilDocFont.h \
     ../appUtil/utilPropMask.h \
     ../appUtil/utilTextAttribute.h \
     ../appUtil/utilFontEncoding.h \
@@ -1316,7 +1316,7 @@ appMacPictX11.o: \
     ../bitmap/bitmap.h \
     ../appUtil/sioGeneral.h \
     ../bitmap/bmcolor.h \
-    ../appUtil/docFont.h \
+    ../appUtil/utilDocFont.h \
     ../appUtil/utilPropMask.h \
     ../appUtil/utilTextAttribute.h \
     ../appUtil/utilFontEncoding.h \
@@ -1352,7 +1352,7 @@ appMailDialog.o: \
     ../appUtil/psFont.h \
     ../appUtil/utilFontEncoding.h \
     ../appUtil/utilPostscriptFace.h \
-    ../appUtil/docFont.h \
+    ../appUtil/utilDocFont.h \
     ../appUtil/utilTextAttribute.h \
     ../appUtil/utilAffineTransform.h \
     ../appUtil/utilNup.h \
@@ -1381,7 +1381,7 @@ appMain.o: \
     ../appUtil/psFont.h \
     ../appUtil/utilFontEncoding.h \
     ../appUtil/utilPostscriptFace.h \
-    ../appUtil/docFont.h \
+    ../appUtil/utilDocFont.h \
     ../appUtil/utilTextAttribute.h \
     ../appUtil/utilAffineTransform.h \
     ../appUtil/utilNup.h \
@@ -1412,7 +1412,7 @@ appMarginTool.o: \
     ../appUtil/psFont.h \
     ../appUtil/utilFontEncoding.h \
     ../appUtil/utilPostscriptFace.h \
-    ../appUtil/docFont.h \
+    ../appUtil/utilDocFont.h \
     ../appUtil/utilTextAttribute.h \
     ../appUtil/utilAffineTransform.h \
     ../appUtil/utilNup.h \
@@ -1443,7 +1443,7 @@ appMenu.o: \
     ../appUtil/psFont.h \
     ../appUtil/utilFontEncoding.h \
     ../appUtil/utilPostscriptFace.h \
-    ../appUtil/docFont.h \
+    ../appUtil/utilDocFont.h \
     ../appUtil/utilTextAttribute.h \
     ../appUtil/utilAffineTransform.h \
     ../appUtil/utilNup.h \
@@ -1471,7 +1471,7 @@ appMenuGtk.o: \
     ../appUtil/psFont.h \
     ../appUtil/utilFontEncoding.h \
     ../appUtil/utilPostscriptFace.h \
-    ../appUtil/docFont.h \
+    ../appUtil/utilDocFont.h \
     ../appUtil/utilTextAttribute.h \
     ../appUtil/utilAffineTransform.h \
     ../appUtil/utilNup.h \
@@ -1499,7 +1499,7 @@ appMenuMotif.o: \
     ../appUtil/psFont.h \
     ../appUtil/utilFontEncoding.h \
     ../appUtil/utilPostscriptFace.h \
-    ../appUtil/docFont.h \
+    ../appUtil/utilDocFont.h \
     ../appUtil/utilTextAttribute.h \
     ../appUtil/utilAffineTransform.h \
     ../appUtil/utilNup.h \
@@ -1521,7 +1521,7 @@ appMetafilePs.o: \
     ../bitmap/bitmap.h \
     ../appUtil/sioGeneral.h \
     ../bitmap/bmcolor.h \
-    ../appUtil/docFont.h \
+    ../appUtil/utilDocFont.h \
     ../appUtil/utilPropMask.h \
     ../appUtil/utilTextAttribute.h \
     ../appUtil/utilFontEncoding.h \
@@ -1547,7 +1547,7 @@ appMetafileX11.o: \
     ../bitmap/bitmap.h \
     ../appUtil/sioGeneral.h \
     ../bitmap/bmcolor.h \
-    ../appUtil/docFont.h \
+    ../appUtil/utilDocFont.h \
     ../appUtil/utilPropMask.h \
     ../appUtil/utilTextAttribute.h \
     ../appUtil/utilFontEncoding.h \
@@ -1579,7 +1579,7 @@ appMetricRuler.o: \
     ../appUtil/psFont.h \
     ../appUtil/utilFontEncoding.h \
     ../appUtil/utilPostscriptFace.h \
-    ../appUtil/docFont.h \
+    ../appUtil/utilDocFont.h \
     ../appUtil/utilTextAttribute.h \
     ../appUtil/utilAffineTransform.h \
     ../appUtil/utilNup.h \
@@ -1610,7 +1610,7 @@ appOptionmenuGtk.o: \
     ../appUtil/psFont.h \
     ../appUtil/utilFontEncoding.h \
     ../appUtil/utilPostscriptFace.h \
-    ../appUtil/docFont.h \
+    ../appUtil/utilDocFont.h \
     ../appUtil/utilTextAttribute.h \
     ../appUtil/utilAffineTransform.h \
     ../appUtil/utilNup.h \
@@ -1638,7 +1638,7 @@ appOptionmenuMotif.o: \
     ../appUtil/psFont.h \
     ../appUtil/utilFontEncoding.h \
     ../appUtil/utilPostscriptFace.h \
-    ../appUtil/docFont.h \
+    ../appUtil/utilDocFont.h \
     ../appUtil/utilTextAttribute.h \
     ../appUtil/utilAffineTransform.h \
     ../appUtil/utilNup.h \
@@ -1670,7 +1670,7 @@ appPageLayoutTool.o: \
     ../appUtil/psFont.h \
     ../appUtil/utilFontEncoding.h \
     ../appUtil/utilPostscriptFace.h \
-    ../appUtil/docFont.h \
+    ../appUtil/utilDocFont.h \
     ../appUtil/utilTextAttribute.h \
     ../appUtil/utilAffineTransform.h \
     ../appUtil/utilNup.h \
@@ -1705,7 +1705,7 @@ appPageTool.o: \
     ../appUtil/psFont.h \
     ../appUtil/utilFontEncoding.h \
     ../appUtil/utilPostscriptFace.h \
-    ../appUtil/docFont.h \
+    ../appUtil/utilDocFont.h \
     ../appUtil/utilTextAttribute.h \
     ../appUtil/utilAffineTransform.h \
     ../appUtil/utilNup.h \
@@ -1739,7 +1739,7 @@ appPaperChooser.o: \
     ../appUtil/psFont.h \
     ../appUtil/utilFontEncoding.h \
     ../appUtil/utilPostscriptFace.h \
-    ../appUtil/docFont.h \
+    ../appUtil/utilDocFont.h \
     ../appUtil/utilTextAttribute.h \
     ../appUtil/utilAffineTransform.h \
     ../appUtil/utilNup.h \
@@ -1769,7 +1769,7 @@ appPrintDialog.o: \
     ../appUtil/psFont.h \
     ../appUtil/utilFontEncoding.h \
     ../appUtil/utilPostscriptFace.h \
-    ../appUtil/docFont.h \
+    ../appUtil/utilDocFont.h \
     ../appUtil/utilTextAttribute.h \
     ../appUtil/utilAffineTransform.h \
     ../appUtil/utilNup.h \
@@ -1805,7 +1805,7 @@ appPrintDocument.o: \
     ../appUtil/psFont.h \
     ../appUtil/utilFontEncoding.h \
     ../appUtil/utilPostscriptFace.h \
-    ../appUtil/docFont.h \
+    ../appUtil/utilDocFont.h \
     ../appUtil/utilTextAttribute.h \
     ../appUtil/utilAffineTransform.h \
     ../appUtil/utilNup.h \
@@ -1830,7 +1830,7 @@ appPutImageGtk.o: \
     ../appFrame/appDraw.h \
     ../appUtil/utilPropMask.h \
     ../appUtil/geo2DInteger.h \
-    ../appUtil/docFont.h \
+    ../appUtil/utilDocFont.h \
     ../appUtil/utilTextAttribute.h \
     ../appUtil/utilFontEncoding.h \
     ../appUtil/psFont.h \
@@ -1848,7 +1848,7 @@ appPutImageMotif.o: \
     ../appFrame/appDraw.h \
     ../appUtil/utilPropMask.h \
     ../appUtil/geo2DInteger.h \
-    ../appUtil/docFont.h \
+    ../appUtil/utilDocFont.h \
     ../appUtil/utilTextAttribute.h \
     ../appUtil/utilFontEncoding.h \
     ../appUtil/psFont.h \
@@ -1869,7 +1869,7 @@ appQuestion.o: \
     ../appUtil/psFont.h \
     ../appUtil/utilFontEncoding.h \
     ../appUtil/utilPostscriptFace.h \
-    ../appUtil/docFont.h \
+    ../appUtil/utilDocFont.h \
     ../appUtil/utilTextAttribute.h \
     ../appUtil/utilAffineTransform.h \
     ../appUtil/utilNup.h \
@@ -1897,7 +1897,7 @@ appReally.o: \
     ../appUtil/psFont.h \
     ../appUtil/utilFontEncoding.h \
     ../appUtil/utilPostscriptFace.h \
-    ../appUtil/docFont.h \
+    ../appUtil/utilDocFont.h \
     ../appUtil/utilTextAttribute.h \
     ../appUtil/utilAffineTransform.h \
     ../appUtil/utilNup.h \
@@ -1925,7 +1925,7 @@ appRgbChooserPage.o: \
     ../appUtil/psFont.h \
     ../appUtil/utilFontEncoding.h \
     ../appUtil/utilPostscriptFace.h \
-    ../appUtil/docFont.h \
+    ../appUtil/utilDocFont.h \
     ../appUtil/utilTextAttribute.h \
     ../appUtil/utilAffineTransform.h \
     ../appUtil/utilNup.h \
@@ -1951,7 +1951,7 @@ appRgbCube.o: \
     ../appFrame/appGuiBase.h \
     ../appUtil/utilPropMask.h \
     ../appUtil/geo2DInteger.h \
-    ../appUtil/docFont.h \
+    ../appUtil/utilDocFont.h \
     ../appUtil/utilTextAttribute.h \
     ../appUtil/utilFontEncoding.h \
     ../appUtil/psFont.h \
@@ -1969,7 +1969,7 @@ appRuler.o: \
     ../appFrame/appGuiBase.h \
     ../appUtil/utilPropMask.h \
     ../appUtil/geo2DInteger.h \
-    ../appUtil/docFont.h \
+    ../appUtil/utilDocFont.h \
     ../appUtil/utilTextAttribute.h \
     ../appUtil/utilFontEncoding.h \
     ../appUtil/psFont.h \
@@ -1993,7 +1993,7 @@ appScrollDocument.o: \
     ../appUtil/psFont.h \
     ../appUtil/utilFontEncoding.h \
     ../appUtil/utilPostscriptFace.h \
-    ../appUtil/docFont.h \
+    ../appUtil/utilDocFont.h \
     ../appUtil/utilTextAttribute.h \
     ../appUtil/utilAffineTransform.h \
     ../appUtil/utilNup.h \
@@ -2025,7 +2025,7 @@ appSpellTool.o: \
     ../appUtil/psFont.h \
     ../appUtil/utilFontEncoding.h \
     ../appUtil/utilPostscriptFace.h \
-    ../appUtil/docFont.h \
+    ../appUtil/utilDocFont.h \
     ../appUtil/utilTextAttribute.h \
     ../appUtil/utilAffineTransform.h \
     ../appUtil/utilNup.h \
@@ -2054,7 +2054,7 @@ appSymbolPicker.o: \
     ../appUtil/psFont.h \
     ../appUtil/utilFontEncoding.h \
     ../appUtil/utilPostscriptFace.h \
-    ../appUtil/docFont.h \
+    ../appUtil/utilDocFont.h \
     ../appUtil/utilTextAttribute.h \
     ../appUtil/utilAffineTransform.h \
     ../appUtil/utilNup.h \
@@ -2087,7 +2087,7 @@ appTextGtk.o: \
     ../appUtil/psFont.h \
     ../appUtil/utilFontEncoding.h \
     ../appUtil/utilPostscriptFace.h \
-    ../appUtil/docFont.h \
+    ../appUtil/utilDocFont.h \
     ../appUtil/utilTextAttribute.h \
     ../appUtil/utilAffineTransform.h \
     ../appUtil/utilNup.h \
@@ -2115,7 +2115,7 @@ appTextMotif.o: \
     ../appUtil/psFont.h \
     ../appUtil/utilFontEncoding.h \
     ../appUtil/utilPostscriptFace.h \
-    ../appUtil/docFont.h \
+    ../appUtil/utilDocFont.h \
     ../appUtil/utilTextAttribute.h \
     ../appUtil/utilAffineTransform.h \
     ../appUtil/utilNup.h \
@@ -2147,7 +2147,7 @@ appTextUtil.o: \
     ../appUtil/psFont.h \
     ../appUtil/utilFontEncoding.h \
     ../appUtil/utilPostscriptFace.h \
-    ../appUtil/docFont.h \
+    ../appUtil/utilDocFont.h \
     ../appUtil/utilTextAttribute.h \
     ../appUtil/utilAffineTransform.h \
     ../appUtil/utilNup.h \
@@ -2176,7 +2176,7 @@ appTree.o: \
     ../appUtil/psFont.h \
     ../appUtil/utilFontEncoding.h \
     ../appUtil/utilPostscriptFace.h \
-    ../appUtil/docFont.h \
+    ../appUtil/utilDocFont.h \
     ../appUtil/utilTextAttribute.h \
     ../appUtil/utilAffineTransform.h \
     ../appUtil/utilNup.h \
@@ -2198,7 +2198,7 @@ appWinMeta.o: \
     ../bitmap/bitmap.h \
     ../appUtil/sioGeneral.h \
     ../bitmap/bmcolor.h \
-    ../appUtil/docFont.h \
+    ../appUtil/utilDocFont.h \
     ../appUtil/utilPropMask.h \
     ../appUtil/utilTextAttribute.h \
     ../appUtil/utilFontEncoding.h \
@@ -2226,7 +2226,7 @@ appWinMetaImg.o: \
     ../bitmap/bitmap.h \
     ../appUtil/sioGeneral.h \
     ../bitmap/bmcolor.h \
-    ../appUtil/docFont.h \
+    ../appUtil/utilDocFont.h \
     ../appUtil/utilPropMask.h \
     ../appUtil/utilTextAttribute.h \
     ../appUtil/utilFontEncoding.h \
@@ -2249,7 +2249,7 @@ appWinMetaPs.o: \
     ../bitmap/bitmap.h \
     ../appUtil/sioGeneral.h \
     ../bitmap/bmcolor.h \
-    ../appUtil/docFont.h \
+    ../appUtil/utilDocFont.h \
     ../appUtil/utilPropMask.h \
     ../appUtil/utilTextAttribute.h \
     ../appUtil/utilFontEncoding.h \
@@ -2277,7 +2277,7 @@ appWinMetaX11.o: \
     ../bitmap/bitmap.h \
     ../appUtil/sioGeneral.h \
     ../bitmap/bmcolor.h \
-    ../appUtil/docFont.h \
+    ../appUtil/utilDocFont.h \
     ../appUtil/utilPropMask.h \
     ../appUtil/utilTextAttribute.h \
     ../appUtil/utilFontEncoding.h \
@@ -2308,7 +2308,7 @@ appXvCopyPaste.o: \
     ../appFrame/appDraw.h \
     ../appUtil/utilPropMask.h \
     ../appUtil/geo2DInteger.h \
-    ../appUtil/docFont.h \
+    ../appUtil/utilDocFont.h \
     ../appUtil/utilTextAttribute.h \
     ../appUtil/utilFontEncoding.h \
     ../appUtil/psFont.h \
@@ -2329,7 +2329,7 @@ appZoomMenu.o: \
     ../appUtil/psFont.h \
     ../appUtil/utilFontEncoding.h \
     ../appUtil/utilPostscriptFace.h \
-    ../appUtil/docFont.h \
+    ../appUtil/utilDocFont.h \
     ../appUtil/utilTextAttribute.h \
     ../appUtil/utilAffineTransform.h \
     ../appUtil/utilNup.h \
@@ -2352,7 +2352,7 @@ docExpandedTextAttribute.o: \
     ../appUtil/utilPropMask.h \
     ../appUtil/utilTextAttribute.h \
     ../appFrame/docExpandedTextAttribute.h \
-    ../appUtil/docFont.h \
+    ../appUtil/utilDocFont.h \
     ../appUtil/utilFontEncoding.h \
     ../appUtil/psFont.h \
     ../appUtil/sioGeneral.h \

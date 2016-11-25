@@ -823,56 +823,96 @@ static int docParaAppend(	EditOperation *		eo,
 /*									*/
 /************************************************************************/
 
+static BufferItem * docDeleteEmptyParents(
+					BufferDocument *	bd,
+					int *			pSectsDeleted,
+					BufferItem *		bi )
+    {
+    int		sectionsDeleted= 0;
+
+    while( bi && bi->biChildCount == 0 )
+	{
+	int		numberInParent= bi->biNumberInParent;
+	BufferItem *	parent= bi->biParent;
+
+	if  ( bi->biLevel == DOClevSECT )
+	    { sectionsDeleted++;	}
+
+	docDeleteItem( bd, bi );
+
+	if  ( parent				&&
+	      parent->biLevel == DOClevROW	&&
+	      parent->biRowHasTableParagraphs	)
+	    {
+	    if  ( docDeleteColumnsFromRow( &(parent->biRowProperties),
+							numberInParent, 1 ) )
+		{ LDEB(numberInParent);	}
+	    }
+
+	bi= parent;
+
+	if  ( ! bi )
+	    { break;	}
+
+	if  ( bi->biLevel == DOClevSECT	&&
+	      bi->biChildCount > 0		)
+	    { docSectDelimitTables( bi );	}
+	}
+
+    *pSectsDeleted= sectionsDeleted;
+    return bi;
+    }
+
 int docRemoveSelectionTail(	EditOperation *			eo,
 				const DocumentSelection *	ds )
     {
-    BufferItem *	nextBi;
+    BufferItem *	lastBi;
     int			paraShift= 0;
     int			sectShift= 0;
 
     int			firstDeleted= -1;
 
-    nextBi= docNextParagraph( ds->dsBegin.dpBi );
-    if  ( ! nextBi )
-	{ XDEB(nextBi); return -1;	}
+    lastBi= ds->dsEnd.dpBi;
 
     for (;;)
 	{
-	BufferItem *	parent= nextBi->biParent;
+	BufferItem *	parent= lastBi->biParent;
+	BufferItem *	prevBi= docPrevParagraph( lastBi );
 
+	int		sectionsDeleted= 0;
 	int		firstParaDeleted= -1;
 	int		paragraphsDeleted= 0;
+	int		numberInParent= lastBi->biNumberInParent;
 
-	docEditDeleteItems( eo, &firstParaDeleted, &paragraphsDeleted,
-					parent, nextBi->biNumberInParent, 1 );
+	docEditDeleteItems( eo, &sectionsDeleted,
+					&firstParaDeleted, &paragraphsDeleted,
+					parent, numberInParent, 1 );
+
+	if  ( parent->biLevel == DOClevROW	&&
+	      parent->biRowHasTableParagraphs	)
+	    {
+	    if  ( docDeleteColumnsFromRow( &(parent->biRowProperties),
+							numberInParent, 1 ) )
+		{ LDEB(numberInParent);	}
+	    }
+
+	sectShift += sectionsDeleted;
 	paraShift += paragraphsDeleted;
-	if  ( firstDeleted < 0 )
-	    { firstDeleted= firstParaDeleted;	}
-
-	if  ( nextBi == ds->dsEnd.dpBi )
+	if  ( firstParaDeleted >= 0 )
 	    {
-	    while( parent && parent->biChildCount == 0 )
-		{
-		BufferItem *	pp= parent->biParent;
-
-		docDeleteItem( eo->eoBd, parent );
-		parent= pp;
-		}
-
-	    break;
+	    if  ( firstDeleted < 0 || firstDeleted > firstParaDeleted )
+		{ firstDeleted= firstParaDeleted;	}
 	    }
 
-	nextBi= docNextParagraph( ds->dsBegin.dpBi );
-	if  ( ! nextBi )
-	    { XDEB(nextBi); return -1;	}
+	sectionsDeleted= 0;
+	parent= docDeleteEmptyParents( eo->eoBd, &sectionsDeleted, parent );
 
-	while( parent && parent->biChildCount == 0 )
-	    {
-	    BufferItem *	pp= parent->biParent;
+	sectShift += sectionsDeleted;
 
-	    docDeleteItem( eo->eoBd, parent );
-	    parent= pp;
-	    }
+	if  ( prevBi == ds->dsBegin.dpBi )
+	    { break;	}
+
+	lastBi= prevBi;
 	}
 
     if  ( paraShift > 0 )
@@ -884,7 +924,7 @@ int docRemoveSelectionTail(	EditOperation *			eo,
 	    const int	stroffShift= 0;
 
 	    if  ( firstDeleted < 0 )
-		{ LDEB(firstDeleted);	}
+		{ LDEB(firstDeleted); firstDeleted= 0;	}
 
 	    docEditShiftReferences( eo->eoBd, firstDeleted+ paraShift,
 					isSplit, stroffFrom,
@@ -932,6 +972,11 @@ int docReplaceSelection(EditOperation *			eo,
     if  ( ds->dsBegin.dpBi != ds->dsEnd.dpBi )
 	{
 	int		replaceEnd= ds->dsEnd.dpStroff;
+	int		untable= 0;
+
+	if  ( ds->dsBegin.dpBi->biParaInTable	&&
+	      ! ds->dsEnd.dpBi->biParaInTable	)
+	    { untable= 1;	}
 
 	/*  2  */
 	if  ( docParaReplaceText( eo, ds->dsBegin.dpBi, ds->dsBegin.dpStroff,
@@ -975,6 +1020,28 @@ int docReplaceSelection(EditOperation *			eo,
 	/*  4  */
 	if  ( docRemoveSelectionTail( eo, ds ) )
 	    { LDEB(1); rval= -1; goto ready;	}
+
+	if  ( untable )
+	    {
+	    BufferItem *	rowBi= ds->dsBegin.dpBi;
+
+	    while( rowBi && rowBi->biLevel != DOClevROW )
+		{ rowBi= rowBi->biParent;	}
+
+	    if  ( ! rowBi )
+		{ XDEB(rowBi);	}
+	    else{
+		if  ( rowBi->biRowHasTableParagraphs	&&
+		      rowBi->biChildCount == 1		)
+		    {
+		    docCleanRowProperties( &(rowBi->biRowProperties) );
+		    docInitRowProperties( &(rowBi->biRowProperties) );
+
+		    rowBi->biRowHasTableParagraphs= 0;
+		    ds->dsBegin.dpBi->biParaInTable= 0;
+		    }
+		}
+	    }
 	}
     else{
 	/*  5  */
@@ -1011,7 +1078,8 @@ static int docSplitParaItemLow(	EditOperation *		eo,
 				int *			fieldMap,
 				BufferItem **		pNewBi,
 				BufferItem *		oldBi,
-				int			stroff )
+				int			stroff,
+				int			splitLevel )
     {
     BufferDocument *		bd= eo->eoBd;
     int				rval= 0;
@@ -1070,6 +1138,40 @@ static int docSplitParaItemLow(	EditOperation *		eo,
 				oldBi->biNumberInParent+ 1, oldBi->biLevel );
     if  ( ! newBi )
 	{ XDEB(newBi); rval= -1; goto ready;	}
+
+    if  ( splitLevel < DOClevPARA )
+	{
+	BufferItem *	insBi;
+	BufferItem *	aftBi;
+
+	if  ( docSplitGroupItem( bd, &insBi, &aftBi, oldBi->biParent,
+				 oldBi->biNumberInParent+ 1, splitLevel ) )
+	    { LDEB(1); return -1;	}
+
+	if  ( aftBi && aftBi->biParent )
+	    { docEditIncludeItemInReformatRange( eo, aftBi->biParent );	}
+	else{ XDEB(aftBi);	}
+	}
+    else{
+	/*  2  */
+	docEditIncludeItemInReformatRange( eo, oldBi );
+
+	/*  4  */
+	docEditIncludeItemInReformatRange( eo, newBi );
+	}
+
+    if  ( newBi->biInExternalItem == DOCinBODY )
+	{
+	const int	paraNr= docNumberOfParagraph( oldBi );
+	const int	isSplit= 1;
+	const int	stroffFrom= 0;
+	const int	paraShift= 1;
+	const int	stroffShift= 0;
+	const int	sectShift= splitLevel <= DOClevSECT;
+
+	docEditShiftReferences( eo->eoBd, paraNr+ 1, isSplit, stroffFrom,
+					    sectShift, paraShift, stroffShift );
+	}
 
     PROPmaskCLEAR( &ppChgMask );
 
@@ -1164,12 +1266,15 @@ static int docSplitParaItemLow(	EditOperation *		eo,
 		break;
 
 	    case DOCkindOBJECT:
-	    case DOCkindNOTE:
 	    case DOCkindTEXT:
 	    case DOCkindTAB:
 	    case DOCkindLINEBREAK:
 	    case DOCkindPAGEBREAK:
 	    case DOCkindCOLUMNBREAK:
+		break;
+
+	    case DOCkindNOTE:
+		eo->eoNotesAdded++;
 		break;
 	    }
 
@@ -1214,6 +1319,18 @@ static int docSplitParaItemLow(	EditOperation *		eo,
 	    }
 	}
 
+    tp= oldBi->biParaParticules+ truncatedParticuleCount;
+    for ( part= truncatedParticuleCount;
+	  part < oldBi->biParaParticuleCount;
+	  tp++, part++ )
+	{
+	if  ( tp->tpKind == DOCkindNOTE )
+	    {
+	    eo->eoNotesDeleted++;
+	    docDeleteNoteOfParticule( bd, oldBi, tp );
+	    }
+	}
+
     oldBi->biParaParticuleCount= truncatedParticuleCount;
     oldBi->biParaStrlen= stroff;
 
@@ -1252,7 +1369,8 @@ static int docSplitParaItemLow(	EditOperation *		eo,
 int docSplitParaItem(		EditOperation *		eo,
 				BufferItem **		pNewBi,
 				BufferItem *		oldBi,
-				int			stroff )
+				int			stroff,
+				int			splitLevel )
     {
     int *	fieldMap;
     int		rval;
@@ -1261,7 +1379,8 @@ int docSplitParaItem(		EditOperation *		eo,
     if  ( ! fieldMap )
 	{ XDEB(fieldMap); return -1;	}
 
-    rval= docSplitParaItemLow( eo, fieldMap, pNewBi, oldBi, stroff );
+    rval= docSplitParaItemLow( eo, fieldMap, pNewBi,
+						oldBi, stroff, splitLevel );
 
     free( fieldMap );
 
@@ -1480,6 +1599,7 @@ void docCleanItemObjects(	int *			pNoteCount,
 /************************************************************************/
 
 void docEditDeleteItems(	EditOperation *		eo,
+				int *			pSectionsDeleted,
 				int *			pFirstParaDeleted,
 				int *			pParagraphsDeleted,
 				BufferItem *		bi,
@@ -1487,10 +1607,10 @@ void docEditDeleteItems(	EditOperation *		eo,
 				int			count )
     {
     int		i;
-    int		f= first;
 
     int		firstParaDeleted= -1;
     int		bulletsDeleted= 0;
+    int		sectionsDeleted= 0;
     int		paragraphsDeleted= 0;
     int		notesDeleted= 0;
 
@@ -1499,24 +1619,27 @@ void docEditDeleteItems(	EditOperation *		eo,
 	DocumentPosition	dp;
 
 	/*  1  */
-	if  ( docFirstPosition( &dp, bi->biChildren[f] ) )
-	    { LDEB(1);						}
+	if  ( docFirstPosition( &dp, bi->biChildren[first] ) )
+	    { LDEB(1);							}
 	else{ firstParaDeleted= docNumberOfParagraph( dp.dpBi );	}
 
 	/*  2  */
 	docEditIncludeItemInReformatRange( eo, bi );
 	}
 
-    for ( i= 0; i < count; f++, i++ )
+    for ( i= first+ count- 1; i >= first; i-- )
 	{
 	docCleanItemObjects( &notesDeleted, &bulletsDeleted, &paragraphsDeleted,
-					eo->eoBd, bi->biChildren[f],
+					eo->eoBd, bi->biChildren[i],
 					eo->eoVoidadd, eo->eoCloseObject );
 	}
 
     eo->eoNotesDeleted += notesDeleted;
 
     docDeleteItems( eo->eoBd, bi, first, count );
+
+    if  ( bi->biLevel == DOClevDOC )
+	{ sectionsDeleted= count;	}
 
     if  ( firstParaDeleted < 0 )
 	{ LDEB(firstParaDeleted);	}
@@ -1526,6 +1649,7 @@ void docEditDeleteItems(	EditOperation *		eo,
 					-paragraphsDeleted );
 	}
 
+    *pSectionsDeleted= sectionsDeleted;
     *pFirstParaDeleted= firstParaDeleted;
     eo->eoBulletsChanged += bulletsDeleted;
     *pParagraphsDeleted= paragraphsDeleted;

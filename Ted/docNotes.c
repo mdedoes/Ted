@@ -450,6 +450,9 @@ void docRenumberNotes(		int *			pChanged,
 /*  Adapt references from notes to the text because the number of	*/
 /*  paragraphs changed in the document.					*/
 /*									*/
+/*  1)  Paranoia check. Skipping the paragraphs before the forst one	*/
+/*	also skips the deleted paragraphs with dn->dnParaNr == -1.	*/
+/*									*/
 /************************************************************************/
 
 void docShiftNoteReferences(		BufferDocument *	bd,
@@ -462,11 +465,17 @@ void docShiftNoteReferences(		BufferDocument *	bd,
     DocumentNote *	dn;
     int			i;
 
+    /*  1  */
+    if  ( paraFrom < 1 )
+	{ LDEB(paraFrom); return;	}
+
     dn= bd->bdNotes;
     for ( i= 0; i < bd->bdNoteCount; dn++, i++ )
 	{
+	/*  1  */
 	if  ( dn->dnParaNr < paraFrom )
 	    { continue;	}
+
 	if  ( dn->dnParaNr > paraFrom )
 	    {
 	    if  ( sectShift == 0 && paraShift == 0 )
@@ -474,6 +483,13 @@ void docShiftNoteReferences(		BufferDocument *	bd,
 
 	    dn->dnSectNr += sectShift;
 	    dn->dnParaNr += paraShift;
+
+	    if  ( dn->dnExternalItem.eiItem )
+		{
+		dn->dnExternalItem.eiItem->
+			biSectSelectionScope.ssSectNrExternalTo= dn->dnSectNr;
+		}
+
 	    continue;
 	    }
 
@@ -484,6 +500,13 @@ void docShiftNoteReferences(		BufferDocument *	bd,
 	    dn->dnSectNr += sectShift;
 	    dn->dnParaNr += paraShift;
 	    dn->dnStroff += stroffShift;
+
+	    if  ( dn->dnExternalItem.eiItem )
+		{
+		dn->dnExternalItem.eiItem->
+			biSectSelectionScope.ssSectNrExternalTo= dn->dnSectNr;
+		}
+
 	    continue;
 	    }
 	}

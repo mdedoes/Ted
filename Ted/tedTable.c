@@ -380,11 +380,11 @@ static int tedDeleteRowsFromTableOperation(
     DocumentPosition		dpNew;
 
     int				paraNr;
+    int				sectionsDeleted= 0;
     int				firstParaDeleted= -1;
     int				paragraphsDeleted= 0;
 
     const int			stroffFrom= 0;
-    const int			sectShift= 0;
     const int			stroffShift= 0;
 
     if  ( docDelimitTable( ds->dsBegin.dpBi, &selSectBi,
@@ -421,7 +421,8 @@ static int tedDeleteRowsFromTableOperation(
 
     docEditIncludeItemInReformatRange( eo, selSectBi );
 
-    docEditDeleteItems( eo, &firstParaDeleted, &paragraphsDeleted,
+    docEditDeleteItems( eo, &sectionsDeleted,
+				&firstParaDeleted, &paragraphsDeleted,
 				selSectBi, delRow0, delRow1- delRow0+ 1 );
 
     /* NO! done by docEditDeleteItems()
@@ -433,7 +434,7 @@ static int tedDeleteRowsFromTableOperation(
 	const int	isSplit= 0;
 
 	docEditShiftReferences( eo->eoBd, paraNr, isSplit, stroffFrom,
-				    sectShift, -paragraphsDeleted,
+				    -sectionsDeleted, -paragraphsDeleted,
 				    stroffShift );
 	}
 

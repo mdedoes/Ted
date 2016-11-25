@@ -1632,7 +1632,7 @@ static EditApplication	TedApplication=
 		    /*  Name of the picture for the application window.	*/
 		    /****************************************************/
     "Ted",
-    "Ted, Version 2.15, April 5, 2004",
+    "Ted, Version 2.16, April 18, 2004",
     "http://www.nllgg.nl/Ted",
 
 

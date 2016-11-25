@@ -47,7 +47,7 @@ typedef struct GuessSubstitution
 
 typedef struct PossibleWord
     {
-    int				pwStartPosition;
+    int				pwStartAt;
     int				pwInsertionPoint;
     int				pwRejectedAt;
     int				pwAcceptedAt;

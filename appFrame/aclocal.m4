@@ -212,10 +212,11 @@ AC_DEFUN(AC_PATH_XM,
 	for ac_dir in				\
 	    /usr/X11R6/include			\
 	    /usr/local/include			\
-	    /usr/dt/include				\
-	    /opt/SUNWmotif/include			\
-	    /usr/include/Motif2.1			\
+	    /usr/dt/include			\
+	    /opt/SUNWmotif/include		\
+	    /usr/include/Motif2.1		\
 	    /usr/apps/include			\
+	    /usr/pkg/include			\
 	    /usr/local/LessTif/include		\
 	    /usr/X11R6/LessTif/Motif1.2/include
 	do
@@ -230,12 +231,13 @@ AC_DEFUN(AC_PATH_XM,
     if  test $ac_xm_libraries = NO
     then
 	# Libraries
-	for ac_dir in			\
+	for ac_dir in				\
 	    /usr/X11R6/lib			\
 	    /usr/local/lib			\
-	    /usr/dt/lib			\
-	    /opt/SUNWmotif/lib		\
+	    /usr/dt/lib				\
+	    /opt/SUNWmotif/lib			\
 	    /usr/apps/lib			\
+	    /usr/pkg/lib			\
 	    /usr/local/LessTif/lib		\
 	    /usr/X11R6/LessTif/Motif1.2/lib
 	do
@@ -271,6 +273,18 @@ AC_DEFUN(AC_PATH_XM,
 
     #echo Includes : $ac_xm_includes
     #echo Libraries: $ac_xm_libraries
+
+    #  Too simple..
+    #  AC_CHECK_LIB( Xp, XpStartPage, XM_EXTRA_LIBS="-lXp" )
+    if  test -r $x_libraries/libXp.a
+    then
+	XM_EXTRA_LIBS="-lXp"
+    else
+	if  test -r $x_libraries/libXp.so
+	then
+	    XM_EXTRA_LIBS="-lXp"
+	fi
+    fi
 
     if  test $ac_xm_includes != NO
     then
@@ -320,18 +334,6 @@ AC_DEFUN(AC_PATH_XM,
 	fi
     fi
 
-    #  Too simple..
-    #  AC_CHECK_LIB( Xp, XpStartPage, XM_EXTRA_LIBS="-lXp" )
-    if  test -r $ac_xm_libraries/libXp.a
-    then
-	XM_EXTRA_LIBS="-lXp"
-    else
-	if  test -r $ac_xm_libraries/libXp.so
-	then
-	    XM_EXTRA_LIBS="-lXp"
-	fi
-    fi
-
     if  test $ac_xm_static_lib != NO
     then
 	XM_STATIC_REF="$ac_xm_static_lib"
@@ -355,8 +357,9 @@ AC_DEFUN(AC_PATH_XM,
 	then
 	    ac_os_xm=`uname -s`
 	    case $ac_os_xm in
-		FreeBsd|NetBsd|OpenBsd)
+		FreeBsd|NetBsd|OpenBsd|FreeBSD|NetBSD|OpenBSD)
 		    XM_EXTRA_LIBS="$XM_EXTRA_LIBS -Wl,-R$ac_xm_libraries"
+		    XM_EXTRA_LIBS="$XM_EXTRA_LIBS -Wl,-R$x_libraries"
 		    ;;
 		*)
 		    ;;

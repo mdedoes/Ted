@@ -122,18 +122,66 @@ static int docCheckChild(	const BufferItem *	parent,
     return rval;
     }
 
-int docCheckItem(		const BufferItem *	bi )
+int docCheckItem(	const BufferItem *	bi )
     {
     int			i;
     int			rval= 0;
 
     if  ( bi->biLevel == DOClevPARA )
 	{
+	const BufferItem *	rowBi;
+
 	if  ( bi->biLeftParagraphs != bi->biNumberInParent+ 1 )
 	    {
 	    appDebug( "############## %s:\n",
-				    docLevelStr(bi->biLevel) );
+					docLevelStr(bi->biLevel) );
 	    LLDEB(bi->biLeftParagraphs,bi->biNumberInParent+1);
+	    }
+
+	rowBi= bi;
+	while( rowBi && rowBi->biLevel != DOClevROW )
+	    { rowBi= rowBi->biParent; }
+
+	if  ( ! rowBi )
+	    {
+	    appDebug( "############## %s:\n",
+					docLevelStr(bi->biLevel) );
+	    XDEB(rowBi);
+	    }
+	else{
+	    if  ( rowBi->biRowHasTableParagraphs != bi->biParaInTable )
+		{
+		appDebug( "############## %s:\n",
+					docLevelStr(bi->biLevel) );
+		LLDEB(rowBi->biRowHasTableParagraphs,bi->biParaInTable);
+		}
+	    }
+	}
+
+    if  ( bi->biLevel == DOClevROW )
+	{
+	if  ( bi->biRowHasTableParagraphs )
+	    {
+	    if  ( bi->biRowCellCount <= 0 )
+		{
+		appDebug( "############## %s:\n",
+					docLevelStr(bi->biLevel) );
+		LLDEB(bi->biRowHasTableParagraphs,bi->biRowCellCount);
+		}
+	    if  ( bi->biRowCellCount != bi->biChildCount )
+		{
+		appDebug( "############## %s:\n",
+					docLevelStr(bi->biLevel) );
+		LLDEB(bi->biRowCellCount,bi->biChildCount);
+		}
+	    }
+	else{
+	    if  ( bi->biRowCellCount != 0 )
+		{
+		appDebug( "############## %s:\n",
+					docLevelStr(bi->biLevel) );
+		LLDEB(bi->biRowHasTableParagraphs,bi->biRowCellCount);
+		}
 	    }
 	}
 
@@ -171,6 +219,7 @@ int docCheckItem(		const BufferItem *	bi )
 	if  ( docCheckChild( bi, bi->biChildren[i], i,
 				(LayoutPosition *)0, (LayoutPosition *)0 ) )
 	    { rval= -1;	}
+
 	if  ( docCheckItem( bi->biChildren[i] ) )
 	    { rval= -1;	}
 	}
@@ -243,9 +292,10 @@ void docListItem(	int			indent,
 	    break;
 
 	case DOClevROW:
-	    appDebug( "%*s{ %4d children %d cells\n", indent+ 4, "",
-						bi->biChildCount,
-						bi->biRowCellCount );
+	    appDebug( "%*s{ %s %4d children %d cells\n", indent+ 4, "",
+				bi->biRowHasTableParagraphs?"T:":"--",
+				bi->biChildCount,
+				bi->biRowCellCount );
 
 	    docListChildren( indent, bi );
 
@@ -517,6 +567,9 @@ void docListNotes(	const BufferDocument *	bd )
     dn= bd->bdNotes;
     for ( i= 0; i < bd->bdNoteCount; dn++, i++ )
 	{
+	if  ( dn->dnParaNr < 0 )
+	    { appDebug( "deleted\n" ); continue; }
+
 	appDebug( "%-8s %3d: NR=%3d PG=%3d SECT=%2d PARA=%3d STROFF=%3d\n",
 	    docExternalKindStr( dn->dnExternalItemKind ),
 	    i, dn->dnNoteNumber,

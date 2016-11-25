@@ -13,7 +13,7 @@
 
 #   include	<utilDocumentGeometry.h>
 #   include	<appUnit.h>
-#   include	<docFont.h>
+#   include	<utilDocFont.h>
 #   include	<bmcolor.h>
 
 #   include	"docNotesProperties.h"

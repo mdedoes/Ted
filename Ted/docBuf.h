@@ -10,7 +10,7 @@
 #   include	<time.h>
 
 #   include	<bitmap.h>
-#   include	<docFont.h>
+#   include	<utilDocFont.h>
 #   include	<psFont.h>
 #   include	"docShape.h"
 #   include	<geo2DInteger.h>

@@ -112,6 +112,8 @@ int docSpellParaFindNext(	DocumentSelection *		ds,
 
 	if  ( stroff >= paraBi->biParaStrlen )
 	    { break;	}
+	if  ( stroff >= stroffUpto )
+	    { continue;	}
 
 	indAddCharacterToPossibilities( &ssj, *str );
 
@@ -140,7 +142,7 @@ int docSpellParaFindNext(	DocumentSelection *		ds,
 		{ XDEB(maxpw); return -1;	}
 
 	    docSetParaSelection( ds, paraBi, direction,
-						maxpw->pwStartPosition,
+						maxpw->pwStartAt,
 						maxpw->pwInsertionPoint );
 	    indCleanSpellScanJob( &ssj );
 

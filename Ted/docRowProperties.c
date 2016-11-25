@@ -155,7 +155,6 @@ int docDeleteColumnsFromRow(	RowProperties *		rp,
     if  ( col0+ count > rp->rpCellCount )
 	{ LLLDEB(col0,count,rp->rpCellCount); return -1;	}
 
-
     if  ( col0 == 0 )
 	{ left= rp->rpLeftIndentTwips;				}
     else{ left= rp->rpCells[col0-1].cpRightBoundaryTwips;	}

@@ -7,7 +7,7 @@
 #   ifndef	DOC_PARA_NUMBER_H
 #   define	DOC_PARA_NUMBER_H
 
-#   include	<docFont.h>
+#   include	<utilDocFont.h>
 
 /************************************************************************/
 /*									*/

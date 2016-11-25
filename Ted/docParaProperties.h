@@ -7,7 +7,7 @@
 #   ifndef	DOC_PARA_PROP_H
 #   define	DOC_PARA_PROP_H
 
-#   include	<docFont.h>
+#   include	<utilDocFont.h>
 #   include	"utilPropMask.h"
 #   include	"docPropVal.h"
 #   include	"docTabStop.h"

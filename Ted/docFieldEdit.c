@@ -155,6 +155,11 @@ static int docBottomParticuleForPosition(
     if  ( docFindParticuleOfPosition( &part1, dp, 1 ) )
 	{ LDEB(dp->dpStroff); return -1;	}
 
+if(part0>=dp->dpBi->biParaParticuleCount)
+{ SLLDEB("##",part0,dp->dpBi->biParaParticuleCount); }
+if(part1>=dp->dpBi->biParaParticuleCount)
+{ SLLDEB("##",part1,dp->dpBi->biParaParticuleCount); }
+
     part= part0;
     tp= paraBi->biParaParticules+ part;
 
@@ -190,7 +195,10 @@ static int docBottomParticuleForPosition(
 		if  ( level < levelFound		||
 		      ( last && level == levelFound )	)
 		    {
-		    flp->flpParticule= part+ 1;
+		    if  ( part >= dp->dpBi->biParaParticuleCount- 1 )
+			{ flp->flpParticule= part;	}
+		    else{ flp->flpParticule= part+ 1;	}
+
 		    flp->flpLevel= level;
 		    flp->flpRoLevel= roLevel;
 
@@ -234,7 +242,7 @@ static int docFieldCalculateTextFieldLevel(
 /************************************************************************/
 /*									*/
 /*  Move the beginning of a selection to a certain nesting level of	*/
-/*  text levels.							*/
+/*  text fields.							*/
 /*									*/
 /*  1)  Try to move right to find the beginning of a higher level at	*/
 /*	the same string position.					*/
@@ -317,7 +325,7 @@ static void docFieldBalanceBegin(
 /************************************************************************/
 /*									*/
 /*  Move the end of a selection to a certain nesting level of text	*/
-/*  levels.								*/
+/*  fields.								*/
 /*									*/
 /*  1)  Find the first text particule that contains the end position.	*/
 /*  2)  Move right until the nesting level reaches the bottom level	*/
@@ -451,8 +459,15 @@ int docBalanceFieldSelection(	int *			pBeginMoved,
 	if  ( flpEnd.flpLevel < 0 || flpEnd.flpRoLevel < 0 )
 	    { LLDEB(flpEnd.flpLevel,flpEnd.flpRoLevel);	}
 
-	docFieldBalanceBegin( &flpBegin, &flpEnd, dpBegin->dpBi, dfl );
-	docFieldBalanceEnd( &flpBegin, &flpEnd, dpEnd->dpBi, dfl );
+	if  ( flpBegin.flpLevel >= flpEnd.flpLevel )
+	    {
+	    docFieldBalanceEnd( &flpBegin, &flpEnd, dpEnd->dpBi, dfl );
+	    docFieldBalanceBegin( &flpBegin, &flpEnd, dpBegin->dpBi, dfl );
+	    }
+	else{
+	    docFieldBalanceBegin( &flpBegin, &flpEnd, dpBegin->dpBi, dfl );
+	    docFieldBalanceEnd( &flpBegin, &flpEnd, dpEnd->dpBi, dfl );
+	    }
 	}
     else{
 	FieldLevelPosition		flpPara;

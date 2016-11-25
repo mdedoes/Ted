@@ -302,11 +302,11 @@ bmeps.o: \
     ../appUtil/geo2DInteger.h \
     ../appUtil/utilDocumentGeometry.h \
     ../appUtil/utilPropMask.h \
-    ../appUtil/docFont.h \
-    ../appUtil/utilTextAttribute.h \
     ../appUtil/psFont.h \
     ../appUtil/utilFontEncoding.h \
     ../appUtil/utilPostscriptFace.h \
+    ../appUtil/utilDocFont.h \
+    ../appUtil/utilTextAttribute.h \
     ../appUtil/utilAffineTransform.h \
     ../appUtil/utilNup.h \
     ../include/appDebugon.h \
@@ -327,6 +327,8 @@ bmfilter.o: \
 bmflip.o: \
     bmflip.c \
     bitmapConfig.h \
+    ../appUtil/utilAffineTransform.h \
+    ../appUtil/geo2DInteger.h \
     bmintern.h \
     bitmap.h \
     ../appUtil/sioGeneral.h \
@@ -568,6 +570,19 @@ bmwbmp.o: \
     ../appUtil/sioStdio.h \
     ../include/appDebugon.h \
     ../include/appDebug.h
+
+bmwmf.o: \
+    bmwmf.c \
+    bitmapConfig.h \
+    bmintern.h \
+    bitmap.h \
+    ../appUtil/sioGeneral.h \
+    bmcolor.h \
+    ../include/appDebugon.h \
+    ../include/appDebug.h \
+    ../appUtil/sioStdio.h \
+    ../appUtil/sioEndian.h \
+    ../appUtil/utilEndian.h
 
 bmxbm.o: \
     bmxbm.c \

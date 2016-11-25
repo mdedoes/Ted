@@ -69,7 +69,11 @@ static int bpPngiToBitmap(	const png_info *		pngi,
 
 	case PNG_COLOR_TYPE_RGB_ALPHA:
 	    bd->bdHasAlpha= 1;
-	    LDEB(pngi->color_type); return -1;
+	    bd->bdColorEncoding= BMcoRGB;
+	    bd->bdBitsPerSample= pngi->bit_depth;
+	    bd->bdSamplesPerPixel= pngi->channels;
+	    bd->bdBitsPerPixel= pngi->pixel_depth;
+	    break;
 
 	case PNG_COLOR_TYPE_GRAY_ALPHA:
 	    bd->bdHasAlpha= 1;

@@ -6,12 +6,12 @@ DIR=`pwd`/pkgscratch
 rm -rf $DIR
 mkdir $DIR
 
-PKGFILE=Ted_2.15_@PLATFORM@.pkg
+PKGFILE=Ted_2.16_@PLATFORM@.pkg
 
 tar xvf TedBindist.tar
 cp ../Ted/Ted.static bin/Ted
 chmod 755 bin/Ted
-pkgmk -o -b . -f ./ted.prototype -r . -d $DIR
+pkgmk -o -b . -f ./Ted.prototype -r . -d $DIR
 
 #/usr/sbin/pkgchk -d $DIR Ted
 

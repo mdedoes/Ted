@@ -10,7 +10,7 @@ I_PREFIX=	@PREFIX@
 
 #
 #		Name of the binary arrchive
-BINDIST=	Ted_2.15_$(PLATFORM)
+BINDIST=	Ted_2.16_$(PLATFORM)
 #
 #
 PKG_OWNER=	@M_PKG_OWNER@

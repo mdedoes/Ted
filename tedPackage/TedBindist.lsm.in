@@ -1,7 +1,7 @@
 Begin3
 Title:          @BINDIST@
-Version:        2.15
-Entered-date:   05APR04
+Version:        2.16
+Entered-date:   18APR04
 Description:    Ted is an easy rich text processor. It can edit RTF files
 		in a wysiwyg manner. It supports multiple fonts and can
 		print to PostScript printers.

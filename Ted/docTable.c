@@ -388,6 +388,7 @@ void docGetCellTopBorder(	const BorderProperties **	pBpTop,
 /*									*/
 /*  Decide what bottom border to use for a table cell (If any)		*/
 /*									*/
+/*  0)  Paranoia checks: Bugs that I actually once programmed.		*/
 /*  1)  Get the table row below the current row.			*/
 /*  2)  By default use the cells bottom border.				*/
 /*  3)  If a cell has a bottom boder, and the next one a top border,	*/
@@ -412,6 +413,13 @@ void docGetCellBottomBorder(	const BorderProperties **	pBpBottom,
     int				useBelow= 0;
 
     const BorderProperties *	bpBottom;
+
+    /*  0  */
+    if  ( col >= rowBi->biRowCellCount )
+	{ LLDEB(col,rowBi->biRowCellCount);	}
+    if  ( rowBi->biRowTablePast < 0				||
+	  rowBi->biRowTablePast > rowBi->biParent->biChildCount	)
+	{ LLDEB(rowBi->biRowTablePast,rowBi->biParent->biChildCount); }
 
     /*  1  */
     if  ( rowBi->biNumberInParent < rowBi->biRowTablePast- 1 )

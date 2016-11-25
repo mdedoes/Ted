@@ -7,7 +7,7 @@
 #   ifndef	UTIL_MATCH_FONT_H
 #   define	UTIL_MATCH_FONT_H
 
-#   include	<docFont.h>
+#   include	<utilDocFont.h>
 #   include	<psFont.h>
 
 /************************************************************************/

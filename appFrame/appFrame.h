@@ -469,6 +469,8 @@ typedef struct EditApplication
     char *			eaFaxCommand;
     char *			eaCustomPrintCommand;
     char *			eaCustomPrinterName;
+    char *			eaCustomPrintCommand2;
+    char *			eaCustomPrinterName2;
     char *			eaAuthor;
     char *			eaPageNumberFormat;
     char *			eaFocusColor;

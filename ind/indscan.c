@@ -83,13 +83,15 @@ void indCleanSpellGuessContext(	SpellGuessContext *	sgc )
     return;
     }
 
-/****************************************************************/
-/*  Start a new possibility.					*/
-/****************************************************************/
+/************************************************************************/
+/*									*/
+/*  Start a new possibility.						*/
+/*									*/
+/************************************************************************/
 
 int	indNewPossibility(	SpellScanJob *		ssj,
 				int			position,
-				int			firstCharacter	)
+				int			firstCharacter )
     {
     PossibleWord *	next= ssj->ssjPossibleWords;
     PossibleWord *	pw= (PossibleWord *)malloc(sizeof(PossibleWord));
@@ -97,7 +99,7 @@ int	indNewPossibility(	SpellScanJob *		ssj,
     if  ( ! pw )
 	{ XDEB(pw); return -1;	}
 
-    pw->pwStartPosition= position;
+    pw->pwStartAt= position;
     pw->pwInsertionPoint= 1;
     pw->pwRejectedAt= -1;
     pw->pwAcceptedAt= -1;
@@ -125,7 +127,7 @@ void indAddCharacterToPossibilities(	SpellScanJob *	ssj,
 	    {
 	    if  ( pw->pwInsertionPoint >= FORM_MAX )
 		{
-		pw->pwRejectedAt= pw->pwStartPosition+ pw->pwInsertionPoint;
+		pw->pwRejectedAt= pw->pwStartAt+ pw->pwInsertionPoint;
 		}
 	    else{
 		pw->pwForm[pw->pwInsertionPoint++]= c;
@@ -201,7 +203,7 @@ int indCountPossibilities(	SpellScanJob *		ssj,
 
 	    rejectedAsWord= indCheckWord( pw->pwForm, scc, 0 );
 
-	    /* SLDEB(pw->pwForm,rejected); */
+	    /* LSLDEB(pw->pwStartAt,pw->pwForm,rejectedAsWord); */
 
 	    if  ( rejectedAsWord )
 		{
@@ -241,9 +243,11 @@ int indCountPossibilities(	SpellScanJob *		ssj,
     return count;
     }
 
-/****************************************************************/
-/*  Make a list of the possibilities.				*/
-/****************************************************************/
+/************************************************************************/
+/*									*/
+/*  Make a list of the possibilities.					*/
+/*									*/
+/************************************************************************/
 
 void	indLogPossibilities(	SpellScanJob *	ssj	)
     {
@@ -251,8 +255,9 @@ void	indLogPossibilities(	SpellScanJob *	ssj	)
 
     while( pw )
 	{
-	appDebug( "\"%s\": Rejected %d Accepted %d\r\n",
-			pw->pwForm, pw->pwRejectedAt, pw->pwAcceptedAt );
+	appDebug( "\"%s\": Start %d Rejected %d Accepted %d\r\n",
+			pw->pwForm,
+			pw->pwStartAt, pw->pwRejectedAt, pw->pwAcceptedAt );
 
 	pw= pw->pwNext;
 	}
@@ -260,9 +265,12 @@ void	indLogPossibilities(	SpellScanJob *	ssj	)
     return;
     }
 
-/****************************************************************/
-/*  Cleanup routine: Remove rejected possibilities.		*/
-/****************************************************************/
+/************************************************************************/
+/*									*/
+/*  Cleanup routine: Remove rejected possibilities.			*/
+/*									*/
+/************************************************************************/
+
 void indRejectPossibilities(	int *			pAcceptedPos,
 				int			acceptedPos,
 				SpellScanJob *		ssj	)
@@ -342,10 +350,10 @@ PossibleWord * indMaximalPossibility(	SpellScanJob *	ssj	)
 	{
 	if  ( pw->pwAcceptedAt == -1 )
 	    {
-	    if  ( pw->pwStartPosition < rval->pwStartPosition )
+	    if  ( pw->pwStartAt < rval->pwStartAt )
 		{ rval= pw; }
 	    else{
-		if  ( pw->pwStartPosition == rval->pwStartPosition	&&
+		if  ( pw->pwStartAt == rval->pwStartAt	&&
 		      pw->pwRejectedAt    >  rval->pwRejectedAt   	)
 		    { rval= pw; }
 		}

@@ -180,7 +180,7 @@ int docDrawFootnotesForColumn(	int				page,
 	if  ( dn->dnParaNr < 0 )
 	    { continue;	}
 	if  ( dn->dnReferringPage < page )
-	    { LLDEB(i,dn->dnReferringPage); continue;	}
+	    { LLLDEB(i,page,dn->dnReferringPage); continue;	}
 	if  ( dn->dnReferringPage > page )
 	    { break;	}
 

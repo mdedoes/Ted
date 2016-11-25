@@ -50,6 +50,7 @@ OBS	=	\
 		utilFileName.o\
 		utilEndian.o\
 		utilDocumentGeometry.o\
+		utilDocFont.o\
 		utilDate.o\
 		utilCgiEcho.o\
 		utilBase85.o\
@@ -84,7 +85,6 @@ OBS	=	\
 		psFont.o\
 		psAfm.o\
 		geo2DInteger.o\
-		docFont.o\
 		appUrl.o\
 		appUnit.o\
 		appTagval.o\
@@ -175,18 +175,6 @@ appUrl.o: \
     ../include/appDebugon.h \
     ../include/appDebug.h
 
-docFont.o: \
-    docFont.c \
-    appUtilConfig.h \
-    ../include/appDebugon.h \
-    ../include/appDebug.h \
-    utilPropMask.h \
-    docFont.h \
-    ../appUtil/utilPropMask.h \
-    ../appUtil/utilTextAttribute.h \
-    ../appUtil/utilFontEncoding.h \
-    utilFontEncoding.h
-
 geo2DInteger.o: \
     geo2DInteger.c \
     appUtilConfig.h \
@@ -206,7 +194,7 @@ psAfm.o: \
 psFont.o: \
     psFont.c \
     appUtilConfig.h \
-    docFont.h \
+    utilDocFont.h \
     ../appUtil/utilPropMask.h \
     ../appUtil/utilTextAttribute.h \
     ../appUtil/utilFontEncoding.h \
@@ -235,7 +223,7 @@ psTtf.o: \
     ../appUtil/utilEndian.h \
     ../appUtil/sioHex.h \
     ../appUtil/utilMatchFont.h \
-    ../appUtil/docFont.h \
+    ../appUtil/utilDocFont.h \
     ../appUtil/utilPropMask.h \
     ../appUtil/utilTextAttribute.h \
     ../appUtil/utilFontEncoding.h \
@@ -476,6 +464,18 @@ utilDate.o: \
     ../include/appDebugon.h \
     ../include/appDebug.h
 
+utilDocFont.o: \
+    utilDocFont.c \
+    appUtilConfig.h \
+    ../include/appDebugon.h \
+    ../include/appDebug.h \
+    utilPropMask.h \
+    utilDocFont.h \
+    ../appUtil/utilPropMask.h \
+    ../appUtil/utilTextAttribute.h \
+    ../appUtil/utilFontEncoding.h \
+    utilFontEncoding.h
+
 utilDocumentGeometry.o: \
     utilDocumentGeometry.c \
     appUtilConfig.h \
@@ -580,14 +580,14 @@ utilMatchFont.o: \
     ../include/appDebugon.h \
     ../include/appDebug.h \
     utilPropMask.h \
-    docFont.h \
+    utilDocFont.h \
     ../appUtil/utilPropMask.h \
     ../appUtil/utilTextAttribute.h \
     ../appUtil/utilFontEncoding.h \
     psFont.h \
     ../appUtil/sioGeneral.h \
     utilMatchFont.h \
-    ../appUtil/docFont.h \
+    ../appUtil/utilDocFont.h \
     ../appUtil/psFont.h
 
 utilMemoryBuffer.o: \
@@ -613,7 +613,7 @@ utilPostscriptFace.o: \
     appUtilConfig.h \
     ../appUtil/utilTree.h \
     ../appUtil/utilPostscriptFace.h \
-    ../appUtil/docFont.h \
+    ../appUtil/utilDocFont.h \
     ../appUtil/utilPropMask.h \
     ../appUtil/utilTextAttribute.h \
     ../appUtil/utilFontEncoding.h \
@@ -625,14 +625,14 @@ utilPostscriptFace.o: \
 utilPostscriptFontCatalog.o: \
     utilPostscriptFontCatalog.c \
     appUtilConfig.h \
-    docFont.h \
+    utilDocFont.h \
     ../appUtil/utilPropMask.h \
     ../appUtil/utilTextAttribute.h \
     ../appUtil/utilFontEncoding.h \
     psFont.h \
     ../appUtil/sioGeneral.h \
     utilMatchFont.h \
-    ../appUtil/docFont.h \
+    ../appUtil/utilDocFont.h \
     ../appUtil/psFont.h \
     appSystem.h \
     utilT1Entries.h \
@@ -663,7 +663,7 @@ utilPs.o: \
     ../appUtil/psFont.h \
     ../appUtil/utilFontEncoding.h \
     ../appUtil/utilPostscriptFace.h \
-    ../appUtil/docFont.h \
+    ../appUtil/utilDocFont.h \
     ../appUtil/utilTextAttribute.h \
     ../appUtil/utilAffineTransform.h \
     ../appUtil/utilNup.h \

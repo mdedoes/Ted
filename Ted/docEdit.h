@@ -116,13 +116,15 @@ extern int docParaReplaceText(	EditOperation *		eo,
 extern int docSplitParaItem(	EditOperation *		eo,
 				BufferItem **		pNewBi,
 				BufferItem *		oldBi,
-				int			stroff );
+				int			stroff,
+				int			splitLevel );
 
 extern int docRemoveSelectionTail(
 				EditOperation *			eo,
 				const DocumentSelection *	ds );
 
 extern void docEditDeleteItems(	EditOperation *		eo,
+				int *			pSectionsDeleted,
 				int *			pFirstParaDeleted,
 				int *			pParagraphsDeleted,
 				BufferItem *		bi,

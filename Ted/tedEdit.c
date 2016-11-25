@@ -731,8 +731,6 @@ static int tedIncludeDocument(	EditDocument *			edTo,
 				const DocumentSelection *	dsTo,
 				const SelectionGeometry *	sgTo )
     {
-    TedDocument *		tdTo= (TedDocument *)edTo->edPrivateData;
-    BufferDocument *		bdTo= tdTo->tdDocument;
     BufferDocument *		bdFrom= dcj->dcjBdFrom;
 
     int				stroffShift= 0;
@@ -782,20 +780,9 @@ static int tedIncludeDocument(	EditDocument *			edTo,
 	TextParticule *	tpFrom;
 
 	/*  4  */
-	if  ( docSplitParaItem( eo, &newBi, biTo, stroff+ charactersCopied ) )
+	if  ( docSplitParaItem( eo, &newBi,
+				biTo, stroff+ charactersCopied, DOClevPARA ) )
 	    { LDEB(stroff+ charactersCopied); return -1; }
-
-	if  ( newBi->biInExternalItem == DOCinBODY )
-	    {
-	    const int	paraNr= docNumberOfParagraph( biTo );
-	    const int	isSplit= 0;
-	    const int	stroffSh= stroff+ charactersCopied;
-	    const int	sectShift= 0;
-	    const int	paraShift= 1;
-
-	    docEditShiftReferences( bdTo, paraNr, isSplit, stroffSh,
-					    sectShift, paraShift, -stroffSh );
-	    }
 
 	/*  C  */
 	docEditIncludeItemInReformatRange( eo, biTo );
@@ -1091,15 +1078,13 @@ int tedSplitParaContents(	EditOperation *		eo,
 
     AppDrawingData *		add= &(ed->edDrawingData);
 
-    int				n;
     int				paraNr= -1;
-    int				sectShift= 0;
     const int			paraShift= 1;
 
     paraNr= docNumberOfParagraph( bi );
 
     /*  1  */
-    if  ( docSplitParaItem( eo, &newBi, bi, stroff ) )
+    if  ( docSplitParaItem( eo, &newBi, bi, stroff, splitLevel ) )
 	{ LDEB(stroff); return -1;	}
 
     newBi->biParaStartsOnNewPage= ! newBi->biParaInTable && onNewPage;
@@ -1118,48 +1103,6 @@ int tedSplitParaContents(	EditOperation *		eo,
 	{ newBi->biParaTopBorder.bpStyle=   DOCbsNONE;	}
     if  ( newBi->biParaSpaceBeforeTwips > 0 )
 	{ newBi->biParaSpaceBeforeTwips= 0;	}
-
-    n= newBi->biNumberInParent;
-    if  ( splitLevel < DOClevPARA )
-	{
-	BufferItem *	insBi;
-	BufferItem *	aftBi;
-
-	if  ( docSplitGroupItem( bd, &insBi, &aftBi, bi->biParent,
-							    n, splitLevel ) )
-	    { LDEB(1); return -1;	}
-
-	if  ( splitLevel <= DOClevSECT )
-	    { sectShift= 1;	}
-
-	if  ( bi->biInExternalItem == DOCinBODY )
-	    {
-	    const int	isSplit= 1;
-
-	    docEditShiftReferences( bd, paraNr, isSplit, stroff,
-					    sectShift, paraShift, -stroff );
-	    }
-
-	if  ( aftBi && aftBi->biParent )
-	    { docEditIncludeItemInReformatRange( eo, aftBi->biParent );	}
-
-	else{ XDEB(aftBi);	}
-	}
-    else{
-	if  ( bi->biInExternalItem == DOCinBODY )
-	    {
-	    const int	isSplit= 1;
-
-	    docEditShiftReferences( bd, paraNr, isSplit, stroff,
-					    sectShift, paraShift, -stroff );
-	    }
-
-	/*  2  */
-	docEditIncludeItemInReformatRange( eo, bi );
-
-	/*  4  */
-	docEditIncludeItemInReformatRange( eo, newBi );
-	}
 
     /*  5  */
     if  ( newBi->biParaListOverride > 0 )
@@ -1405,23 +1348,24 @@ int tedDeleteCurrentParagraph(	EditApplication *	ea )
 	}
     else{
 	int		firstParaDeleted= -1;
+	int		sectionsDeleted= 0;
 	int		paragraphsDeleted= 0;
 
 	tedEditIncludeItemInRedraw( &eo, ed, paraBi );
 
-	docEditDeleteItems( &eo, &firstParaDeleted, &paragraphsDeleted,
-						parentBi, childNumber, 1 );
+	docEditDeleteItems( &eo, &sectionsDeleted,
+					&firstParaDeleted, &paragraphsDeleted,
+					parentBi, childNumber, 1 );
 
 	if  ( parentBi->biInExternalItem == DOCinBODY )
 	    {
 	    const int		isSplit= 0;
-	    const int		sectShift= 0;
 	    const int		stroffFrom= 0;
 	    const int		stroffShift= 0;
 
 	    docEditShiftReferences( bd, firstParaDeleted+ paragraphsDeleted,
-				isSplit, stroffFrom,
-				-sectShift, -paragraphsDeleted, stroffShift );
+			    isSplit, stroffFrom,
+			    -sectionsDeleted, -paragraphsDeleted, stroffShift );
 	    }
 
 	/*  NO ! called by docEditDeleteItems()
@@ -1502,7 +1446,6 @@ int tedDeleteCurrentSection(	EditApplication *	ea )
 
     int				paraNrOld= -1;
     int				paraNrNew= -1;
-    int				sectShift;
 
     tedStartEditOperation( &eo, &ds, &sg, &sd, ed, 1 );
     paraBi= ds.dsBegin.dpBi;
@@ -1537,6 +1480,7 @@ int tedDeleteCurrentSection(	EditApplication *	ea )
 
 	int			paraNr;
 	int			firstParaDeleted= -1;
+	int			sectionsDeleted= 0;
 	int			paragraphsDeleted= 0;
 
 	const int * const	colorMap= (const int *)0;
@@ -1557,7 +1501,8 @@ int tedDeleteCurrentSection(	EditApplication *	ea )
 
 	tedEditIncludeItemInRedraw( &eo, ed, sectBi );
 
-	docEditDeleteItems( &eo, &firstParaDeleted, &paragraphsDeleted,
+	docEditDeleteItems( &eo, &sectionsDeleted,
+					&firstParaDeleted, &paragraphsDeleted,
 					sectBi, 0, sectBi->biChildCount );
 
 	if  ( tedSectionParagraph( bd, &paraBi, sectBi,
@@ -1566,8 +1511,6 @@ int tedDeleteCurrentSection(	EditApplication *	ea )
 
 	paraNr= docNumberOfParagraph( paraBi );
 	docEditShiftReformatRangeParaNr( &eo, paraNr, 1 );
-
-	sectShift= 0;
 
 	docCleanParagraphProperties( &pp );
 
@@ -1582,7 +1525,8 @@ int tedDeleteCurrentSection(	EditApplication *	ea )
 		const int	stroffShift= 0;
 
 		docEditShiftReferences( bd, paraNrOld+ 1, isSplit, stroffFrom,
-				-sectShift, paraNrNew- paraNrOld, stroffShift );
+				-sectionsDeleted,
+				paraNrNew- paraNrOld, stroffShift );
 		}
 
 	    /*  NO! Done by docEditDeleteItems()
@@ -1594,15 +1538,15 @@ int tedDeleteCurrentSection(	EditApplication *	ea )
 	dpNew.dpBi= paraBi; dpNew.dpStroff= 0;
 	}
     else{
+	int		sectionsDeleted= 0;
 	int		firstParaDeleted= -1;
 	int		paragraphsDeleted= 0;
 
 	tedEditIncludeItemInRedraw( &eo, ed, sectBi );
 
-	docEditDeleteItems( &eo, &firstParaDeleted, &paragraphsDeleted,
+	docEditDeleteItems( &eo, &sectionsDeleted,
+				    &firstParaDeleted, &paragraphsDeleted,
 				    parentBi, sectBi->biNumberInParent, 1 );
-
-	sectShift= 1;
 
 	if  ( newPositionIsPast )
 	    {
@@ -1614,8 +1558,9 @@ int tedDeleteCurrentSection(	EditApplication *	ea )
 		const int	stroffFrom= 0;
 		const int	stroffShift= 0;
 
-		docEditShiftReferences( bd, paraNrOld+ 1, isSplit, stroffFrom,
-			    -sectShift, paraNrNew- paraNrOld, stroffShift );
+		docEditShiftReferences( bd, paraNrOld, isSplit, stroffFrom,
+			    -sectionsDeleted,
+			    paraNrNew- paraNrOld, stroffShift );
 		}
 
 	    /*  NO! Done by docEditDeleteItems()
@@ -1754,8 +1699,9 @@ int tedInsertSection(	EditApplication *	ea,
 
     BufferItem *		paraBi;
     BufferItem *		sectBi;
-    BufferItem *		newBi;
-    BufferItem *		bi;
+    BufferItem *		newSectBi;
+    BufferItem *		newParaBi;
+    int				paraNr;
 
     int				textAttributeNumber;
     BufferItem *		parentBi;
@@ -1788,6 +1734,8 @@ int tedInsertSection(	EditApplication *	ea,
 	pos= sectBi->biNumberInParent+ 1;
 	textAttributeNumber= paraBi->biParaParticules[
 			paraBi->biParaParticuleCount-1].tpTextAttributeNumber;
+
+	paraNr= docNumberOfParagraph( dpRef.dpBi )+ 1;
 	}
     else{
 	paraBi= ds.dsBegin.dpBi;
@@ -1805,28 +1753,42 @@ int tedInsertSection(	EditApplication *	ea,
 
 	pos= sectBi->biNumberInParent;
 	textAttributeNumber= paraBi->biParaParticules[0].tpTextAttributeNumber;
+
+	paraNr= docNumberOfParagraph( dpRef.dpBi );
 	}
 
     tedEditIncludeItemInRedraw( &eo, ed, sectBi );
 
     parentBi= sectBi->biParent;
 
-    newBi= docInsertItem( bd, parentBi, pos, DOClevSECT );
-    if  ( ! newBi )
-	{ XDEB(newBi); return -1;	}
+    newSectBi= docInsertItem( bd, parentBi, pos, DOClevSECT );
+    if  ( ! newSectBi )
+	{ XDEB(newSectBi); return -1;	}
 
-    if  ( docCopySectionProperties( &(newBi->biSectProperties),
+    if  ( docCopySectionProperties( &(newSectBi->biSectProperties),
 						&(sectBi->biSectProperties) ) )
 	{ LDEB(1);	}
 
-    if  ( tedSectionParagraph( bd, &bi, newBi,
+    if  ( tedSectionParagraph( bd, &newParaBi, newSectBi,
 			&(paraBi->biParaProperties), textAttributeNumber ) )
 	{ LDEB(1); return -1;	}
 
-    docEditIncludeItemInReformatRange( &eo, sectBi );
-    docEditIncludeItemInReformatRange( &eo, newBi );
+    if  ( sectBi->biInExternalItem == DOCinBODY )
+	{
+	const int	isSplit= 0;
+	const int	stroffFrom= 0;
+	const int	sectShift= 1;
+	const int	paraShift= 1;
+	const int	stroffShift= 0;
 
-    tedEditFinishIBarSelection( ed, &eo, bi, 0 );
+	docEditShiftReferences( bd, paraNr, isSplit, stroffFrom,
+					sectShift, paraShift, stroffShift );
+	}
+
+    docEditIncludeItemInReformatRange( &eo, sectBi );
+    docEditIncludeItemInReformatRange( &eo, newSectBi );
+
+    tedEditFinishIBarSelection( ed, &eo, newParaBi, 0 );
 
     appDocumentChanged( ed, 1 );
 

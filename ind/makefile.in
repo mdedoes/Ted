@@ -17,7 +17,7 @@ CFLAGS=				\
 
 #CFLAGS	= $(WFLAGS) -g -O2 -I. -I../appUtil -I../include
 
-# 15 lines
+# 16 lines
 OBS	=	\
 		indword.o\
 		indutil.o\
@@ -31,16 +31,23 @@ OBS	=	\
 		indind.o\
 		indguess.o\
 		indfront.o\
-		inddeb.o
+		inddeb.o\
+		indAffix.o
 
 LIB=	../lib/ind.a
-INC=	../include/ind.h
 
 $(LIB):	$(OBS)
 	ar r $@ $(OBS) && @RANLIB@ $@
 
 # deps -I. -I../appUtil -I../include
 ######################################## !! sh
+
+indAffix.o: \
+    indAffix.c \
+    ../include/charnames.h \
+    ../include/appDebugon.h \
+    ../include/appDebug.h \
+    indAffix.h
 
 inddeb.o: \
     inddeb.c \

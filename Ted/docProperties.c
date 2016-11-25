@@ -357,6 +357,13 @@ int docMergeDocumentLists(	int **				pFontMap,
 	if  ( ! fontUsed[from] )
 	    { continue;	}
 
+	if  ( dfFrom->dfDocFontNumber < 0 )
+	    { LDEB(dfFrom->dfDocFontNumber); continue;	} 
+	if  ( ! dfFrom->dfFamilyStyle )
+	    { XDEB(dfFrom->dfFamilyStyle); continue;	}
+	if  ( ! dfFrom->dfName )
+	    { XDEB(dfFrom->dfName); continue;	}
+
 	to= docMergeFontIntoFontlist( dflTo, dfFrom );
 	if  ( to < 0 )
 	    { LDEB(to); rval= -1; goto ready;	}

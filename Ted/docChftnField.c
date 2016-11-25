@@ -126,7 +126,12 @@ int docCalculateChftnFieldString(	int *			pCalculated,
 	    }
 
 	if  ( docGetNote( &dn, bd, paraBi, tp->tpStroff ) < 0 )
-	    { LDEB(tp->tpStroff); *pCalculated= 0; return 0; }
+	    {
+	    int paraNr= docNumberOfParagraph( paraBi );
+
+	    LLDEB(paraNr,tp->tpStroff);
+	    *pCalculated= 0; return 0;
+	    }
 
 	if  ( docFormatChftnField( target, targetSize,
 					    &(bd->bdProperties),

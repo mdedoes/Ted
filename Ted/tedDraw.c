@@ -1098,7 +1098,13 @@ static int tedDrawTextLine(	const BufferItem *		bi,
 /*	width of the table cell.					*/
 /*  3)  Where to we start the selected rectangle? (left)		*/
 /*  4)  Where to we end the selected rectangle? (right)			*/
-/*  5)  Intersect with clipping rectangle.				*/
+/*  5)  Do the line and the selection overlap. The two separate tests	*/
+/*	reject the situation where only the begin or end position of	*/
+/*	the line is in the selection.					*/
+/*	Either the begin of the selection must be before the end of the	*/
+/*	line or the end of the selection must be after the end of the	*/
+/*	line.								*/
+/*  6)  Intersect with clipping rectangle.				*/
 /*									*/
 /************************************************************************/
 
@@ -1122,10 +1128,10 @@ static int tedLineRectangle(	DocumentRectangle *		drRedraw,
     DocumentRectangle	drLine;
 
     int			tableRectangle;
-    int			cmp_ee;
-    int			cmp_bb;
-    int			cmp_be;
-    int			cmp_eb;
+    int			cmp_SeLe;
+    int			cmp_SbLb;
+    int			cmp_SbLe;
+    int			cmp_SeLb;
 
     int			partLineBegin;
     int			partLineEnd;
@@ -1151,26 +1157,36 @@ static int tedLineRectangle(	DocumentRectangle *		drRedraw,
 	  ! docPositionsInsideCell( &(ds->dsBegin), &(ds->dsEnd) )	)
 	{ tableRectangle= 1; }
 
-    cmp_bb= docComparePositions( &(ds->dsBegin), &(dsLine.dsBegin) );
-    cmp_eb= docComparePositions( &(ds->dsEnd), &(dsLine.dsBegin) );
-    cmp_be= docComparePositions( &(ds->dsBegin), &(dsLine.dsEnd) );
-    cmp_ee= docComparePositions( &(ds->dsEnd), &(dsLine.dsEnd) );
+    cmp_SbLb= docComparePositions( &(ds->dsBegin), &(dsLine.dsBegin) );
+    cmp_SeLb= docComparePositions( &(ds->dsEnd), &(dsLine.dsBegin) );
+    cmp_SbLe= docComparePositions( &(ds->dsBegin), &(dsLine.dsEnd) );
+    cmp_SeLe= docComparePositions( &(ds->dsEnd), &(dsLine.dsEnd) );
 
     /*  3  */
-    if  ( cmp_bb < 0 || ( cmp_bb == 0 && tableRectangle ) )
+    if  ( cmp_SbLb < 0 || ( cmp_SbLb == 0 && tableRectangle ) )
 	{ drLine.drX0= pf->pfX0Pixels;		}
     else{ drLine.drX0= sg->sgBegin.pgXPixels;	}
 
     /*  4  */
-    if  ( cmp_ee > 0 || ( cmp_ee == 0 && tableRectangle ) )
+    if  ( cmp_SeLe > 0 || ( cmp_SeLe == 0 && tableRectangle ) )
 	{ drLine.drX1= pf->pfX1Pixels;		}
     else{ drLine.drX1= sg->sgEnd.pgXPixels;	}
 
+    /*  5  */
     inSelection= 0;
-    if  ( cmp_eb >= 0 && cmp_be < 0 )
+    if  ( cmp_SbLe < 0 && cmp_SeLb > 0 )
 	{ inSelection= 1;	}
 
-    /*  5  */
+    if  ( ds->dsEnd  .dpBi->biParaStrlen == 0	&&
+	  cmp_SeLb == 0				)
+	{ cmp_SeLb=  1;	}
+    if  ( ds->dsBegin.dpBi->biParaStrlen == 0	&&
+	  cmp_SbLe == 0				)
+	{ cmp_SbLe= -1;	}
+    if  ( cmp_SbLe < 0 && cmp_SeLb > 0 )
+	{ inSelection= 1;	}
+
+    /*  6  */
     if  ( ! drClip || docIntersectRectangle( drRedraw, drClip, &drLine ) )
 	{ *pInSelection= inSelection; return 1;	}
     else{ return 0;	}
