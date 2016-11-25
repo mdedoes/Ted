@@ -219,6 +219,8 @@ int docDrawEndnotesForSection(		int			sect,
     LayoutPosition		lpHere;
     DocumentPosition		dp;
 
+    const int			pShift= 0;
+
     /*  1  */
     if  ( sect >= 0 )
 	{
@@ -252,7 +254,7 @@ int docDrawEndnotesForSection(		int			sect,
 	{ return 0;	}
 
     if  ( docDrawToPageOfItem( sectBi, sectBi, ei->eiItem,
-						through, &lpHere, dc ) )
+					    through, &lpHere, dc, pShift ) )
 	{ LDEB(1); return -1;	}
 
     /*  2  */
@@ -280,7 +282,7 @@ int docDrawEndnotesForSection(		int			sect,
 	    { return 0;	}
 
 	if  ( docDrawToPageOfItem( sectBi, sectBi, ei->eiItem,
-						through, &lpHere, dc ) )
+					    through, &lpHere, dc, pShift ) )
 	    { LDEB(1); return -1;	}
 
 	if  ( dc->dcFirstPage < 0					||

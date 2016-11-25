@@ -21,7 +21,10 @@ typedef int (*DRAW_TEXT_LINE)(	const BufferItem *		bi,
 				int				line,
 				const struct ParagraphFrame *	pf,
 				void *				through,
-				struct DrawingContext *		dc );
+				struct DrawingContext *		dc,
+				int				pShift,
+				int				xShift,
+				int				yShift );
 
 typedef int (*DRAW_PARA_TOP)(	const BorderProperties *	bpTop,
 				const BorderProperties *	bpLeft,
@@ -196,7 +199,8 @@ extern int docDrawToPageOfItem(		BufferItem *		prevBodyBi,
 					BufferItem *		thisBi,
 					void *			through,
 					LayoutPosition *	lpHere,
-					DrawingContext *	dc );
+					DrawingContext *	dc,
+					int			pShift );
 
 extern void docDrawSetColorRgb(		DrawingContext *	dc,
 					void *			through,

@@ -136,7 +136,9 @@ static int scanFillRow_8_FromRGB(	unsigned char *		to,
 
 		r= fj->fjDc7[r]; g= fj->fjDc7[g]; b= fj->fjDc7[b];
 		}
-	    else{ r= g= b= 0; n= 0; }
+	    else{ r= g= b= 0; }
+
+	    n= 0;
 	    }
 	}
     else{
@@ -228,9 +230,9 @@ static int scanFillRow_8_FromRGB(	unsigned char *		to,
 
 		    r= fj->fjDc7[r]; g= fj->fjDc7[g]; b= fj->fjDc7[b];
 		    }
-		else{ r= g= b= n= 0;	}
+		else{ r= g= b= 0;	}
 
-		e -= d2; cor++;
+		n= 0; e -= d2; cor++;
 		}
 
 	    e += e2;

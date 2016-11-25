@@ -188,6 +188,14 @@ static void docPsLayoutAdjustBottom(	int *			pChanged,
 /*									*/
 /*  Place successive items, after the predecessor.			*/
 /*									*/
+/*  NOTE: In a future incremental version of the formatter, the loop	*/
+/*	over the children can be stopped if the bottom position of a	*/
+/*	child is not changed, and there is no reason to continue	*/
+/*	anyway.								*/
+/*									*/
+/*	One of the reasons to continue anyway is that a previous table	*/
+/*	header has changed height.					*/
+/*									*/
 /************************************************************************/
 
 static int docLayoutPlaceChildren(
@@ -510,6 +518,8 @@ static int docAdjustParentGeometry(	BufferItem *		bi,
 
 	switch( parentBi->biLevel )
 	    {
+	    int		keepRowOnPage;
+
 	    case DOClevDOC:
 		if  ( bi->biNumberInParent == 0			&&
 		      docPsFixupParentGeometry( bi, parentBi )	)
@@ -550,7 +560,6 @@ static int docAdjustParentGeometry(	BufferItem *		bi,
 		    }
 
 		break;
-
 
 	    parentRowAsGroup:
 		if  ( bi->biNumberInParent == 0			&&
@@ -593,9 +602,12 @@ static int docAdjustParentGeometry(	BufferItem *		bi,
 		if  ( ! parentBi->biRowHasTableParagraphs )
 		    { goto parentRowAsGroup;	}
 
+		keepRowOnPage= parentBi->biRowKeepOnOnePage ||
+					    parentBi->biRowIsTableHeader;
+
 		if  ( parentBi->biNumberInParent > 0	&&
 		      parentBi->biParent		&&
-		      parentBi->biRowKeepOnOnePage	)
+		      keepRowOnPage			)
 		    {
 		    BufferItem *	pp= parentBi->biParent;
 		    BufferItem *	ch;

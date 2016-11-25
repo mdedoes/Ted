@@ -29,6 +29,8 @@
 /*									*/
 /*  Initialize/Clean a mac pict device.					*/
 /*									*/
+/*  1)  1=BLACK= (foreground), 0=WHITE= (background)			*/
+/*									*/
 /************************************************************************/
 
 void appMacPictInitDeviceHeader(	MacpictDevice *		md,
@@ -42,16 +44,54 @@ void appMacPictInitDeviceHeader(	MacpictDevice *		md,
     md->mdInX1= 0;
     md->mdInY1= 0;
 
+    md->mdRectX0= 0;
+    md->mdRectY0= 0;
+    md->mdRectX1= 0;
+    md->mdRectY1= 0;
+
+    md->mdOvalX0= 0;
+    md->mdOvalY0= 0;
+    md->mdOvalX1= 0;
+    md->mdOvalY1= 0;
+
+    md->mdPolyX0= 0;
+    md->mdPolyY0= 0;
+    md->mdPolyX1= 0;
+    md->mdPolyY1= 0;
+
     md->mdOutWide= outWide;
     md->mdOutHigh= outHigh;
 
     md->mdPenMode= PENMODE_patOr;
+    md->mdPenX= 0;
+    md->mdPenY= 0;
+
+    /*  1  */
+    memset( md->mdPenPattern, 1, 8 );
+    md->mdPenIsSolid= 1;
+
+    /*  1  */
+    memset( md->mdFillPattern, 0, 8 );
+    md->mdFillIsSolid= 1;
+
+    /*  1  */
+    memset( md->mdBackPattern, 0, 8 );
+    md->mdBackIsSolid= 1;
 
     bmInitRGB8Color( &(md->mdForeColor) );
     bmInitRGB8Color( &(md->mdBackColor) );
     bmInitRGB8Color( &(md->mdColorSet) );
 
-    md->mdPoints= (APP_POINT *)0;
+    md->mdFontName= (char *)0;
+    md->mdFontSizePoints= 12;
+    md->mdCurrentPhysicalFont= (AppPhysicalFont *)0;
+
+    md->mdStippleSet= STIPPLE_UNDEF;
+    md->mdTilePixmap= (APP_BITMAP_IMAGE)0;
+
+    md->mdTextString= (char *)0;
+    md->mdPolyPoints= (APP_POINT *)0;
+    md->mdPolyPointCount= 0;
 
     appInitDrawingData( &(md->mdDrawingData) );
 
@@ -60,8 +100,15 @@ void appMacPictInitDeviceHeader(	MacpictDevice *		md,
 
 void appMacPictCleanDeviceHeader(	MacpictDevice *		md )
     {
-    if  ( md->mdPoints )
-	{ free( md->mdPoints ); }
+    if  ( md->mdFontName )
+	{ free( md->mdFontName ); }
+    if  ( md->mdTextString )
+	{ free( md->mdTextString ); }
+    if  ( md->mdPolyPoints )
+	{ free( md->mdPolyPoints ); }
+
+    if  ( md->mdTilePixmap )
+	{ appDrawFreePixmap( &(md->mdDrawingData), md->mdTilePixmap );	}
 
     appCleanDrawingData( &(md->mdDrawingData) );
 
@@ -226,16 +273,45 @@ int appMacPictGetColor(	RGB8Color *		rgb8,
 
 /************************************************************************/
 /*									*/
+/*  Retrieve a text string.						*/
+/*									*/
+/************************************************************************/
+
+int appMacPictGetCountAndString(	MacpictDevice *		md,
+					int *			pCount,
+					SimpleInputStream *	sis )
+    {
+    int		count= sioInGetCharacter( sis );
+
+    int			i;
+    unsigned char *	fresh;
+
+    fresh= realloc( md->mdTextString, count+ 1 );
+    if  ( ! fresh )
+	{ LXDEB(count,fresh); return -1;	}
+    md->mdTextString= (char *)fresh;
+
+    for ( i= 0; i < count; fresh++, i++ )
+	{
+	*fresh= sioInGetCharacter( sis );
+
+	if  ( *fresh == '\r' )
+	    { *fresh= '\n';	}
+	else{ *fresh= docMAC_to_ISO1[*fresh];	}
+	}
+    *fresh= '\0';
+
+    *pCount= count;
+    return 0;
+    }
+
+/************************************************************************/
+/*									*/
 /*  Retrieve the points of a polyline/polygon.				*/
 /*									*/
 /************************************************************************/
 
-int appMacPictGetCountAndPoints(	MacpictDevice *		md,
-					int *			pX0,
-					int *			pY0,
-					int *			pX1,
-					int *			pY1,
-					int *			pCount,
+int appMacPictGetPoly(			MacpictDevice *		md,
 					SimpleInputStream *	sis )
     {
     int			bytes;
@@ -253,15 +329,17 @@ int appMacPictGetCountAndPoints(	MacpictDevice *		md,
 
     count= bytes/ 4;
 
-    xp= (APP_POINT *)realloc( md->mdPoints, (count+ 1)* sizeof(APP_POINT) );
+    xp= (APP_POINT *)realloc( md->mdPolyPoints, (count+ 1)* sizeof(APP_POINT) );
     if  ( ! xp )
 	{ LXDEB(count,xp); return -1;	}
-    md->mdPoints= xp;
 
-    *pY0= sioEndianGetBeInt16( sis );
-    *pX0= sioEndianGetBeInt16( sis );
-    *pY1= sioEndianGetBeInt16( sis );
-    *pX1= sioEndianGetBeInt16( sis );
+    md->mdPolyPoints= xp;
+    md->mdPolyPointCount= count;
+
+    md->mdPolyY0= sioEndianGetBeInt16( sis );
+    md->mdPolyX0= sioEndianGetBeInt16( sis );
+    md->mdPolyY1= sioEndianGetBeInt16( sis );
+    md->mdPolyX1= sioEndianGetBeInt16( sis );
 
     for ( done= 0; done < count; xp++, done++ )
 	{
@@ -272,9 +350,9 @@ int appMacPictGetCountAndPoints(	MacpictDevice *		md,
 	xp->y= MD_Y( y, md );
 	}
 
-    *xp= md->mdPoints[0];
+    *xp= md->mdPolyPoints[0];
 
-    *pCount= count; return 0;
+    return 0;
     }
 
 /************************************************************************/
@@ -344,8 +422,10 @@ int appMacPictReadPacBitsRow(	unsigned char *			to,
 	{ byteCount= sioEndianGetBeInt16( sis ); bytesRead += 2;	}
     else{ byteCount= sioInGetCharacter( sis ); bytesRead++;		}
 
+    /*
     if  ( byteCount > bd->bdBytesPerRow )
 	{ LLDEB(byteCount,bd->bdBytesPerRow); return -1;	}
+    */
 
     bytesRead += byteCount;
 
@@ -367,7 +447,15 @@ int appMacPictReadPacBitsRow(	unsigned char *			to,
 	    l= 257- c0;
 
 	    if  ( done+ l > bd->bdBytesPerRow )
-		{ LLLDEB(done,l,bd->bdBytesPerRow); return -1; }
+		{
+		if  ( bd->bdBytesPerRow % 2		&&
+		      done+ l == bd->bdBytesPerRow+ 1	)
+		    { l--;		}
+		else{
+		    LLLDEB(done,l,bd->bdBytesPerRow);
+		    return -1;
+		    }
+		}
 
 	    byteCount -= 2; done += l;
 

@@ -39,6 +39,12 @@ static int docRtfStyleName(	RtfReadingContext *	rrc,
 	case DOClevTEXT:
 	    break;
 
+	case -1:
+	    LDEB(rrc->rrcDocumentStyle.dsLevel);
+	    ds->dsStyleNumber= 0;
+	    ds->dsLevel= DOClevPARA;
+	    break;
+
 	case DOClevPARA:
 	    ds->dsStyleNumber= rrs->rrsParagraphProperties.ppStyle;
 	    break;

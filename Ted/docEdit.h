@@ -155,6 +155,11 @@ extern void docIncludePositionInReformat(
 extern void docEditIncludeItemInReformatRange(	EditOperation *		eo,
 						BufferItem *		bi );
 
+extern void docEditIncludeRowsInReformatRange(
+					EditOperation *		eo,
+					BufferItem *		sectBi,
+					int			row0,
+					int			row1 );
 
 extern void docEditShiftReformatRangeParaNr(
 					EditOperation *		eo,

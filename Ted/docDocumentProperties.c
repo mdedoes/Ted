@@ -60,7 +60,6 @@ void docInitDocumentProperties(	DocumentProperties *	dp )
     dp->dpTitle= (unsigned char *)0;
     dp->dpSubject= (unsigned char *)0;
     dp->dpKeywords= (unsigned char *)0;
-    dp->dpComment= (unsigned char *)0;
     dp->dpDoccomm= (unsigned char *)0;
     dp->dpAuthor= (unsigned char *)0;
     dp->dpHlinkbase= (unsigned char *)0;
@@ -97,8 +96,6 @@ void docCleanDocumentProperties(	DocumentProperties *	dp )
 	{ free( dp->dpSubject );	}
     if  ( dp->dpKeywords )
 	{ free( dp->dpKeywords );	}
-    if  ( dp->dpComment )
-	{ free( dp->dpComment );	}
     if  ( dp->dpDoccomm )
 	{ free( dp->dpDoccomm );	}
     if  ( dp->dpAuthor )
@@ -131,7 +128,6 @@ int docCopyDocumentProperties(	DocumentProperties *		to,
     copy.dpTitle= (unsigned char *)0;
     copy.dpSubject= (unsigned char *)0;
     copy.dpKeywords= (unsigned char *)0;
-    copy.dpComment= (unsigned char *)0;
     copy.dpDoccomm= (unsigned char *)0;
     copy.dpAuthor= (unsigned char *)0;
     copy.dpHlinkbase= (unsigned char *)0;
@@ -211,19 +207,9 @@ int docCopyDocumentProperties(	DocumentProperties *		to,
 	    }
 	}
 
-    if  ( from->dpComment )
-	{
-	copy.dpComment= (unsigned char *)strdup( (char *)from->dpComment );
-	if  ( ! copy.dpComment )
-	    {
-	    XDEB(copy.dpComment);
-	    docCleanDocumentProperties( &copy ); return -1;
-	    }
-	}
-
     if  ( from->dpDoccomm )
 	{
-	copy.dpComment= (unsigned char *)strdup( (char *)from->dpDoccomm );
+	copy.dpDoccomm= (unsigned char *)strdup( (char *)from->dpDoccomm );
 	if  ( ! copy.dpDoccomm )
 	    {
 	    XDEB(copy.dpDoccomm);

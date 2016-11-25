@@ -220,13 +220,85 @@ static void appOpenChooserOk(	Widget		fileChooser,
 
 /************************************************************************/
 /*									*/
+/*  The file selection box was toold to filter via the normal motif	*/
+/*  mechanisms: Adapt the OptionMenu with extensions to the filter.	*/
+/*									*/
+/************************************************************************/
+
+static void appFileFilterActivated(	Widget		w,
+					XtPointer	voidaci,
+					XtPointer	voidpbcs )
+    {
+    AppChooserInformation *	aci= (AppChooserInformation *)voidaci;
+
+    Widget text= XmFileSelectionBoxGetChild( aci->aciDialog.adDialog,
+							XmDIALOG_FILTER_TEXT );
+
+    char *		filter= XmTextGetString( text );
+    const char *	extS;
+
+
+    if  ( ! filter )
+	{ return;	}
+
+    extS= appFileExtensionOfName( filter );
+    if  ( extS )
+	{
+	int				i;
+	const AppFileExtension *	afe= aci->aciExtensions;
+
+	Widget				current= (Widget)0;
+	WidgetList			children;
+	Cardinal			childCount= 0;
+
+	XtVaGetValues( aci->aciFilterOptionmenu.aomPulldown,
+			XmNmenuHistory,		&current,
+			XmNchildren,		&children,
+			XmNnumChildren,		&childCount,
+			NULL );
+
+	for ( i= 0; i < childCount; i++ )
+	    {
+	    if  ( children[i] == current )
+		{ break;	}
+	    }
+
+	if  ( i >= childCount				||
+	      i >= aci->aciExtensionCount		||
+	      strcmp( extS, afe[i].afeExtension )	)
+	    {
+	    for ( i= 0; i < aci->aciExtensionCount; afe++, i++ )
+		{
+		if  ( i >= childCount )
+		    { continue;	}
+		if  ( ! XtIsManaged( children[i] ) )
+		    { continue;	}
+		if  ( ! XtIsSensitive( children[i] ) )
+		    { continue;	}
+
+		if  ( ! strcmp( extS, afe->afeExtension )	)
+		    { break;	}
+		}
+
+	    if  ( i < aci->aciExtensionCount )
+		{ appSetOptionmenu( &(aci->aciFilterOptionmenu), i );	}
+	    }
+	}
+
+    XtFree( filter );
+
+    return;
+    }
+
+/************************************************************************/
+/*									*/
 /*  Add a pulldown with filters to a file chooser.			*/
 /*									*/
 /************************************************************************/
 
 static void appFileFilterChosen(	Widget		w,
 					XtPointer	voidaci,
-					XtPointer	voidpbcs	 )
+					XtPointer	voidpbcs )
     {
     AppChooserInformation *	aci= (AppChooserInformation *)voidaci;
     const AppFileExtension *	afe= aci->aciExtensions;
@@ -490,6 +562,7 @@ static int appMakeFileChooser( AppChooserInformation **	pAci,
     XmString			filterString= (XmString)0;
 
     Widget			helpButton;
+    Widget			filterButton;
     AppChooserInformation *	aci;
 
     MwmHints			hints;
@@ -549,6 +622,17 @@ static int appMakeFileChooser( AppChooserInformation **	pAci,
 			XmNbackground,	WhitePixel( display, screen ),
 			XmNforeground,	BlackPixel( display, screen ),
 			NULL );
+
+    /*  Not necessary
+    XtAddCallback( text, XmNactivateCallback,
+				    appFileFilterActivated, (void *)aci );
+    */
+
+    filterButton= XmFileSelectionBoxGetChild( aci->aciDialog.adDialog,
+						    XmDIALOG_APPLY_BUTTON );
+
+    XtAddCallback( filterButton, XmNactivateCallback,
+				    appFileFilterActivated, (void *)aci );
 
     text= XmFileSelectionBoxGetChild( aci->aciDialog.adDialog, XmDIALOG_TEXT );
     XtVaSetValues( text,

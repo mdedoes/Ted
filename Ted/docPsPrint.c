@@ -444,6 +444,8 @@ static void psFlushLink(	PrintingState *		ps,
     }
 
 static int psPrintDrawTab(	DrawingContext *	dc,
+				int			xShift,
+				int			yShift,
 				PrintingState *		ps,
 				const TextAttribute *	ta,
 				int			x0,
@@ -458,13 +460,16 @@ static int psPrintDrawTab(	DrawingContext *	dc,
 
     docDrawSetColorNumber( dc, (void *)ps, ta->taTextColorNumber );
 
-    sioOutPrintf( ps->psSos, "%d %d %d %s\n", x1- x0, x0, baseLine, tabProc );
+    sioOutPrintf( ps->psSos, "%d %d %d %s\n",
+		    x1- x0+ xShift, x0+ xShift, baseLine+ yShift, tabProc );
 
     return 0;
     }
 
 static int psPrintTab(	PrintingState *			ps,
 			DrawingContext *		dc,
+			int				xShift,
+			int				yShift,
 			const BufferItem *		bi,
 			const TextParticule *		tp,
 			ParticuleData *			pd,
@@ -492,11 +497,11 @@ static int psPrintTab(	PrintingState *			ps,
 
 	    if  ( ta.taFontIsBold )
 		{
-		psPrintDrawTab( dc, ps, &ta, x0, x1, baseLine,
+		psPrintDrawTab( dc, xShift, yShift, ps, &ta, x0, x1, baseLine,
 							60, "dot-tab-bold" );
 		}
 	    else{
-		psPrintDrawTab( dc, ps, &ta, x0, x1, baseLine,
+		psPrintDrawTab( dc, xShift, yShift, ps, &ta, x0, x1, baseLine,
 							60, "dot-tab" );
 		}
 
@@ -506,11 +511,11 @@ static int psPrintTab(	PrintingState *			ps,
 
 	    if  ( ta.taFontIsBold )
 		{
-		psPrintDrawTab( dc, ps, &ta, x0, x1, baseLine,
+		psPrintDrawTab( dc, xShift, yShift, ps, &ta, x0, x1, baseLine,
 							20, "ul-tab-bold" );
 		}
 	    else{
-		psPrintDrawTab( dc, ps, &ta, x0, x1, baseLine,
+		psPrintDrawTab( dc, xShift, yShift, ps, &ta, x0, x1, baseLine,
 							20, "ul-tab" );
 		}
 
@@ -520,11 +525,11 @@ static int psPrintTab(	PrintingState *			ps,
 
 	    if  ( ta.taFontIsBold )
 		{
-		psPrintDrawTab( dc, ps, &ta, x0, x1, baseLine,
+		psPrintDrawTab( dc, xShift, yShift, ps, &ta, x0, x1, baseLine,
 							140, "dash-tab-bold" );
 		}
 	    else{
-		psPrintDrawTab( dc, ps, &ta, x0, x1, baseLine,
+		psPrintDrawTab( dc, xShift, yShift, ps, &ta, x0, x1, baseLine,
 							140, "dash-tab" );
 		}
 
@@ -547,6 +552,8 @@ static int psPrintTab(	PrintingState *			ps,
     }
 
 static void psPrintObjectBox(	DrawingContext *	dc,
+				int			xShift,
+				int			yShift,
 				PrintingState *		ps,
 				const InsertedObject *	io,
 				const ParticuleData *	pd,
@@ -554,16 +561,19 @@ static void psPrintObjectBox(	DrawingContext *	dc,
     {
     int		high;
 
+    int		x0= pd->pdX0+ xShift;
+    int		y0= baseLine+ yShift;
+
     docDrawSetColorRgb( dc, (void *)ps, 0, 0, 0 );
 
     high= ( io->ioScaleY* io->ioTwipsHigh )/ 100;
     sioOutPrintf( ps->psSos, "%d %d moveto ",
-			    pd->pdX0, baseLine- high );
+			    x0, y0- high );
     sioOutPrintf( ps->psSos, "%d %d lineto ",
-			    pd->pdX0+ pd->pdWidth, baseLine- high );
+			    x0+ pd->pdWidth, y0- high );
     sioOutPrintf( ps->psSos, "%d %d lineto ",
-			    pd->pdX0+ pd->pdWidth, baseLine );
-    sioOutPrintf( ps->psSos, "%d %d lineto ", pd->pdX0, baseLine );
+			    x0+ pd->pdWidth, y0 );
+    sioOutPrintf( ps->psSos, "%d %d lineto ", x0, y0 );
     sioOutPrintf( ps->psSos, "closepath stroke\n" );
 
     return;
@@ -571,6 +581,8 @@ static void psPrintObjectBox(	DrawingContext *	dc,
 
 static void psPrintString(	PrintingState *			ps,
 				DrawingContext *		dc,
+				int				xShift,
+				int				yShift,
 				int				baseLine,
 				const ParticuleData *		pd,
 				const TextAttribute *		ta,
@@ -611,7 +623,7 @@ static void psPrintString(	PrintingState *			ps,
 	if  ( ta->taSuperSub == DOCfontSUBSCRIPT )
 	    { y += ( 4* capHeight )/ 10; }
 
-	sioOutPrintf( ps->psSos, " %d %d mvs\n", pd->pdX0, y );
+	sioOutPrintf( ps->psSos, " %d %d mvs\n", pd->pdX0+ xShift, y+ yShift );
 	}
 
     return;
@@ -636,6 +648,8 @@ static void psPrintSegment(	PrintingState *			ps,
 
 static void psPrintSegments(	PrintingState *			ps,
 				DrawingContext *		dc,
+				int				xShift,
+				int				yShift,
 				int				baseLine,
 				const ParticuleData *		pd,
 				const TextAttribute *		ta,
@@ -651,14 +665,16 @@ static void psPrintSegments(	PrintingState *			ps,
 
     if  ( segments[0] > 0 )
 	{
-	psPrintString( ps, dc, baseLine, pd, &taN, physF, s, segments[0] );
+	psPrintString( ps, dc, xShift, yShift, baseLine, pd,
+						&taN, physF, s, segments[0] );
 	s += segments[0];
 
 	psPrintSegment( ps, dc, ta, physF, s, segments[1] );
 	s += segments[1];
 	}
     else{
-	psPrintString( ps, dc, baseLine, pd, ta, physF, s, segments[1] );
+	psPrintString( ps, dc, xShift, yShift, baseLine, pd,
+						ta, physF, s, segments[1] );
 	s += segments[1];
 	}
 
@@ -688,6 +704,8 @@ static void psPrintSegments(	PrintingState *			ps,
 
 static int psPrintBitmapObject(	PrintingState *			ps,
 				DrawingContext *		dc,
+				int				xShift,
+				int				yShift,
 				const ParticuleData *		pd,
 				int				baseLine,
 				const InsertedObject *		io )
@@ -717,7 +735,7 @@ static int psPrintBitmapObject(	PrintingState *			ps,
 
     if  ( bmPsPrintBitmap( ps->psSos, 1,
 			    20.0* scaleX, -20.0* scaleY,
-			    pd->pdX0, baseLine, 0, 0,
+			    pd->pdX0+ xShift, baseLine+ yShift, 0, 0,
 			    bd->bdPixelsWide, bd->bdPixelsHigh,
 			    ps->psUsePostScriptFilters,
 			    ps->psUsePostScriptIndexedImages,
@@ -728,6 +746,8 @@ static int psPrintBitmapObject(	PrintingState *			ps,
     }
 
 static void psPrintParticuleUnderlines(	DrawingContext *	dc,
+					int			xShift,
+					int			yShift,
 					PrintingState *		ps,
 					const TextParticule *	tp,
 					const ParticuleData *	pd,
@@ -773,7 +793,8 @@ static void psPrintParticuleUnderlines(	DrawingContext *	dc,
 
 	docDrawSetColorNumber( dc, (void *)ps, ta.taTextColorNumber );
 
-	sioOutPrintf( ps->psSos, "%d %d %d %d rectfill\n", x0, y0, x1- x0, h );
+	sioOutPrintf( ps->psSos, "%d %d %d %d rectfill\n",
+					x0+ xShift, y0+ yShift, x1- x0, h );
 	}
 
     return;
@@ -781,6 +802,8 @@ static void psPrintParticuleUnderlines(	DrawingContext *	dc,
 
 static void psPrintParticuleStrikethrough(
 					DrawingContext *	dc,
+					int			xShift,
+					int			yShift,
 					PrintingState *		ps,
 					const TextParticule *	tp,
 					const ParticuleData *	pd,
@@ -833,13 +856,16 @@ static void psPrintParticuleStrikethrough(
 
 	docDrawSetColorNumber( dc, (void *)ps, ta.taTextColorNumber );
 
-	sioOutPrintf( ps->psSos, "%d %d %d %d rectfill\n", x0, y0, x1- x0, h );
+	sioOutPrintf( ps->psSos, "%d %d %d %d rectfill\n",
+					x0+ xShift, y0+ yShift, x1- x0, h );
 	}
 
     return;
     }
 
 static void psPrintChftnsep(	DrawingContext *	dc,
+				int			xShift,
+				int			yShift,
 				PrintingState *		ps,
 				const TextParticule *	tp,
 				const ParticuleData *	pd,
@@ -871,13 +897,16 @@ static void psPrintChftnsep(	DrawingContext *	dc,
 
     docDrawSetColorNumber( dc, (void *)ps, ta.taTextColorNumber );
 
-    sioOutPrintf( ps->psSos, "%d %d %d %d rectfill\n", x0, y0, x1- x0, h );
+    sioOutPrintf( ps->psSos, "%d %d %d %d rectfill\n",
+					x0+ xShift, y0+ yShift, x1- x0, h );
 
     return;
     }
 
 static int psPrintParticules(	PrintingState *			ps,
 				DrawingContext *		dc,
+				int				xShift,
+				int				yShift,
 				const BufferItem *		bi,
 				int				part,
 				const DocumentFontList *	dfl,
@@ -908,7 +937,8 @@ static int psPrintParticules(	PrintingState *			ps,
 	    if  ( pd->pdTabNumber >= 0				&&
 		  pd->pdTabNumber < tsl->tslTabStopCount	)
 		{
-		if  ( psPrintTab( ps, dc, bi, tp, pd, baseLine, lineHeight ) )
+		if  ( psPrintTab( ps, dc, xShift, yShift, bi, tp, pd,
+						    baseLine, lineHeight ) )
 		    { LDEB(1);	}
 		}
 
@@ -919,10 +949,10 @@ static int psPrintParticules(	PrintingState *			ps,
 
 	    drawn= 1;
 
-	    psPrintParticuleUnderlines( dc, ps, tp, pd, drawn,
-						    fontSizeTwips, baseLine );
-	    psPrintParticuleStrikethrough( dc, ps, tp, pd, drawn,
-						    fontSizeTwips, baseLine );
+	    psPrintParticuleUnderlines( dc, xShift, yShift, ps,
+				    tp, pd, drawn, fontSizeTwips, baseLine );
+	    psPrintParticuleStrikethrough( dc, xShift, yShift, ps,
+				    tp, pd, drawn, fontSizeTwips, baseLine );
 	    return drawn;
 
 	case DOCkindTEXT:
@@ -1039,7 +1069,8 @@ static int psPrintParticules(	PrintingState *			ps,
 		case DOCokPICTWMETAFILE:
 		case DOCokMACPICT:
 		    if  ( psPrintMetafile( ps, io,
-				    afmDirectory, pd->pdX0, baseLine,
+				    afmDirectory,
+				    pd->pdX0+ xShift, baseLine+ yShift,
 				    io->ioScaleX, io->ioScaleY,
 				    io->io_xWinExt, io->io_yWinExt,
 				    io->ioTwipsWide, io->ioTwipsHigh ) )
@@ -1061,7 +1092,8 @@ static int psPrintParticules(	PrintingState *			ps,
 
 		    if  ( io->ioPrivate )
 			{
-			if  ( psPrintBitmapObject( ps, dc, pd, baseLine, io ) )
+			if  ( psPrintBitmapObject( ps, dc, xShift, yShift,
+							pd, baseLine, io ) )
 			    { LDEB(1); return -1;	}
 
 			ps->psLinkParticulesDone++;
@@ -1073,7 +1105,8 @@ static int psPrintParticules(	PrintingState *			ps,
 		    if  ( io->ioResultKind == DOCokPICTWMETAFILE )
 			{
 			if  ( psPrintMetafile( ps, io,
-				    afmDirectory, pd->pdX0, baseLine,
+				    afmDirectory,
+				    pd->pdX0+ xShift, baseLine+ yShift,
 				    io->ioScaleX, io->ioScaleY,
 				    io->io_xWinExt, io->io_yWinExt,
 				    io->ioTwipsWide, io->ioTwipsHigh ) )
@@ -1090,8 +1123,8 @@ static int psPrintParticules(	PrintingState *			ps,
 
 		    if  ( io->ioResultKind == DOCokEPS_FILE )
 			{
-			if  ( psPrintIncludeEpsObject( ps,
-						io, pd->pdX0, baseLine ) )
+			if  ( psPrintIncludeEpsObject( ps, io,
+					pd->pdX0+ xShift, baseLine+ yShift ) )
 			    { LDEB(1); break;	}
 
 			dc->dcCurrentTextAttributeSet= 0;
@@ -1103,7 +1136,8 @@ static int psPrintParticules(	PrintingState *			ps,
 		    if  ( io->ioResultKind == DOCokBITMAP_FILE	&&
 			  io->ioPrivate				)
 			{
-			if  ( psPrintBitmapObject( ps, dc, pd, baseLine, io ) )
+			if  ( psPrintBitmapObject( ps, dc, xShift, yShift,
+							pd, baseLine, io ) )
 			    { LDEB(1); return -1;	}
 
 			ps->psLinkParticulesDone++;
@@ -1116,12 +1150,12 @@ static int psPrintParticules(	PrintingState *			ps,
 		    LDEB(io->ioKind); return 0;
 		}
 
-	    psPrintObjectBox( dc, ps, io, pd, baseLine );
+	    psPrintObjectBox( dc, xShift, yShift, ps, io, pd, baseLine );
 	    ps->psLinkParticulesDone++;
 	    return 1;
 
 	case DOCkindCHFTNSEP:
-	    psPrintChftnsep( dc, ps, tp, pd, baseLine );
+	    psPrintChftnsep( dc, xShift, yShift, ps, tp, pd, baseLine );
 	    return 1;
 
 	default:
@@ -1154,12 +1188,14 @@ static int psPrintParticules(	PrintingState *			ps,
 
 	if  ( ta.taSmallCaps && ! ta.taCapitals )
 	    {
-	    psPrintSegments(  ps, dc, baseLine, pd, &ta, tp->tpPhysicalFont,
+	    psPrintSegments(  ps, dc, xShift, yShift, baseLine, pd,
+					&ta, tp->tpPhysicalFont,
 					printString, segments, segmentCount );
 	    }
 	else{
-	    psPrintString( ps, dc, baseLine, pd, &ta, tp->tpPhysicalFont,
-							printString, len );
+	    psPrintString( ps, dc, xShift, yShift, baseLine, pd,
+					&ta, tp->tpPhysicalFont,
+					printString, len );
 	    }
 
 	if  ( upperString )
@@ -1168,9 +1204,9 @@ static int psPrintParticules(	PrintingState *			ps,
 	    { free( segments );	}
 	}
 
-    psPrintParticuleUnderlines( dc, ps, tp, pd, drawn,
+    psPrintParticuleUnderlines( dc, xShift, yShift, ps, tp, pd, drawn,
 						    fontSizeTwips, baseLine );
-    psPrintParticuleStrikethrough( dc, ps, tp, pd, drawn,
+    psPrintParticuleStrikethrough( dc, xShift, yShift, ps, tp, pd, drawn,
 						    fontSizeTwips, baseLine );
 
     ps->psLinkParticulesDone += drawn;
@@ -1186,6 +1222,8 @@ static int psPrintParticules(	PrintingState *			ps,
 
 static int psPrintTextLine(	PrintingState *			ps,
 				DrawingContext *		dc,
+				int				xShift,
+				int				yShift,
 				const DocumentFontList *	dfl,
 				const char *			afmDirectory,
 				const BufferItem *		bi,
@@ -1203,7 +1241,8 @@ static int psPrintTextLine(	PrintingState *			ps,
 	{
 	int		drawn;
 
-	drawn= psPrintParticules( ps, dc, bi, part, dfl, afmDirectory, tp, pd,
+	drawn= psPrintParticules( ps, dc, xShift, yShift,
+			bi, part, dfl, afmDirectory, tp, pd,
 			particuleCount- done, baseLine, lineTop, lineHeight );
 
 	if  ( drawn < 1 )
@@ -1228,7 +1267,10 @@ static int docPsPrintTextLine(	const BufferItem *		bi,
 				int				line,
 				const ParagraphFrame *		pf,
 				void *				vps,
-				DrawingContext *		dc )
+				DrawingContext *		dc,
+				int				pShift,
+				int				xShift,
+				int				yShift )
     {
     BufferDocument *		bd= dc->dcDocument;
     const DocumentProperties *	dp= &(bd->bdProperties);
@@ -1260,7 +1302,8 @@ static int docPsPrintTextLine(	const BufferItem *		bi,
 
     baseline= tl->tlTopPosition.lpPageYTwips+ tl->tlLineAscentTwips;
 
-    psPrintTextLine( ps, dc, &(dp->dpFontList), apfl->apflAfmDirectory,
+    psPrintTextLine( ps, dc, xShift, yShift, &(dp->dpFontList),
+			apfl->apflAfmDirectory,
 			bi, part, tp, accepted, pd,
 			baseline, tl->tlTopPosition.lpPageYTwips,
 			tl->tlLineHeightTwips );
@@ -1349,8 +1392,8 @@ static int docPsPrintParaTop(	const BorderProperties *	bp,
     if  ( pf->pfX0FirstLineTwips < x0 )
 	{ x0= pf->pfX0FirstLineTwips;	}
 
-    psPrintHorizontalBorder( bp, bpLeft, bpRight,
-					dc, vps, x0, pf->pfX1TextLinesTwips,
+    psPrintHorizontalBorder( bp, bpLeft, bpRight, dc,
+					vps, x0, pf->pfX1TextLinesTwips,
 					above, lpTop->lpPageYTwips );
 
     return 0;
@@ -1370,8 +1413,8 @@ static int docPsPrintParaBottom( const BorderProperties *	bp,
     if  ( pf->pfX0FirstLineTwips < x0 )
 	{ x0= pf->pfX0FirstLineTwips;	}
 
-    psPrintHorizontalBorder( bp, bpLeft, bpRight,
-					dc, vps, x0, pf->pfX1TextLinesTwips,
+    psPrintHorizontalBorder( bp, bpLeft, bpRight, dc,
+					vps, x0, pf->pfX1TextLinesTwips,
 					above, lpBelow->lpPageYTwips );
 
     return 0;
@@ -1410,8 +1453,8 @@ static int docPsPrintCellTop(	const BorderProperties *	bp,
 	{
 	const int		above= 0;
 
-	psPrintHorizontalBorder( bp, bpLeft, bpRight, dc, vps,
-				x0Twips, x1Twips, above, lpTop->lpPageYTwips );
+	psPrintHorizontalBorder( bp, bpLeft, bpRight, dc,
+			vps, x0Twips, x1Twips, above, lpTop->lpPageYTwips );
 	}
 
     return 0;
@@ -1442,8 +1485,8 @@ static int docPsPrintCellBottom( const BorderProperties *	bp,
 	/*  1  */
 	const int		above= 0;
 
-	psPrintHorizontalBorder( bp, bpLeft, bpRight, dc, vps,
-			    x0Twips, x1Twips, above, lpBottom->lpPageYTwips );
+	psPrintHorizontalBorder( bp, bpLeft, bpRight, dc,
+			vps, x0Twips, x1Twips, above, lpBottom->lpPageYTwips );
 	}
 
     return 0;

@@ -25,7 +25,6 @@
 /*									*/
 /************************************************************************/
 
-
 static void tedFormatToolRefreshRowPage( RowTool *	rt )
     {
     const RowProperties *	rp= &(rt->rtPropertiesChosen);
@@ -116,6 +115,11 @@ void tedFormatToolRefreshRowTool(
     appGuiEnableWidget( is->isNextButton,
 				    tr->trRow1 < tr->trRow11 );
 
+    appGuiEnableWidget( rt->rtIsTableHeaderToggle,
+				rowBi->biInExternalItem == DOCinBODY	&&
+				tr->trRow0 == tr->trRow00		&&
+				tr->trRow1 == tr->trRow00		);
+
     tedFormatToolRefreshRowPage( rt );
 
     *pEnabled= 1;
@@ -171,6 +175,10 @@ static APP_BUTTON_CALLBACK_H( tedFormatChangeRowPushed, w, voidrt )
     PROPmaskCLEAR( &cpSetMask );
 
     PROPmaskADD( &rpSetMask, RPpropKEEP_ON_ONE_PAGE );
+    PROPmaskADD( &rpSetMask, RPpropIS_TABLE_HEADER );
+    /* No! not yet
+    PROPmaskADD( &rpSetMask, RPpropKEEP_WITH_NEXT );
+    */
 
     docInitBorderProperties( &bp );
 
@@ -596,8 +604,6 @@ void tedFormatFillRowPage(  RowTool *				rt,
 	    &(is->isRevertButton), &(is->isApplyButton),
 	    isr->isrRevert, isr->isrApplyToSubject,
 	    tedFormatRevertRowPushed, tedFormatChangeRowPushed, (void *)rt );
-
-    appGuiEnableWidget( rt->rtIsTableHeaderToggle, 0 );
 
     return;
     }

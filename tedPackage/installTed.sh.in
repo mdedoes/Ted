@@ -260,6 +260,7 @@ for pkg in	@BINDIST@	\
 		Ted_de_DE	\
 		Ted_es_ES	\
 		Ted_pt_PT	\
+		Ted_pt_BR	\
 		Ted_fr_FR	\
 		Ted_it_IT	\
 		Ted_cs_CZ	\

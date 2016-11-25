@@ -33,7 +33,6 @@ typedef struct PropertyDialog
     char *			dpdAuthorText;
     char *			dpdSubjectText;
     char *			dpdKeywordsText;
-    char *			dpdCommentText;
     char *			dpdDoccommText;
     char *			dpdHlinkbaseText;
 
@@ -51,7 +50,6 @@ typedef struct PropertyDialog
     APP_WIDGET			dpdAuthorWidget;
     APP_WIDGET			dpdSubjectWidget;
     APP_WIDGET			dpdKeywordsWidget;
-    APP_WIDGET			dpdCommentWidget;
     APP_WIDGET			dpdDoccommWidget;
     APP_WIDGET			dpdHlinkbaseWidget;
 
@@ -82,12 +80,9 @@ static AppConfigurableResource TED_PropertyDialogResourceTable[]=
 	APP_RESOURCE( "propDialogKeywords",
 		    offsetof(PropertyDialog,dpdKeywordsText),
 		    "Keywords" ),
-	APP_RESOURCE( "propDialogComment",
-		    offsetof(PropertyDialog,dpdCommentText),
-		    "Comment" ),
 	APP_RESOURCE( "propDialogDoccom",
 		    offsetof(PropertyDialog,dpdDoccommText),
-		    "Document Comment" ),
+		    "Comment" ),
 	APP_RESOURCE( "propDialogHlinkbase",
 		    offsetof(PropertyDialog,dpdHlinkbaseText),
 		    "Links Relative to" ),
@@ -239,9 +234,6 @@ static void tedPropsDialogMakeTextForm( APP_WIDGET		parent,
 
     tedPropsDialogMakePropertyRow( &row, &label, &(dpd->dpdKeywordsWidget),
 			    parent, dpd, dpd->dpdKeywordsText, changeable );
-
-    tedPropsDialogMakePropertyRow( &row, &label, &(dpd->dpdCommentWidget),
-			    parent, dpd, dpd->dpdCommentText, changeable );
 
     tedPropsDialogMakePropertyRow( &row, &label, &(dpd->dpdDoccommWidget),
 			    parent, dpd, dpd->dpdDoccommText, changeable );
@@ -470,7 +462,6 @@ int tedRunPropertyDialog(	EditDocument *			ed,
     tedPropToWidget( dpd->dpdAuthorWidget, dp->dpAuthor );
     tedPropToWidget( dpd->dpdSubjectWidget, dp->dpSubject );
     tedPropToWidget( dpd->dpdKeywordsWidget, dp->dpKeywords );
-    tedPropToWidget( dpd->dpdCommentWidget, dp->dpComment );
     tedPropToWidget( dpd->dpdDoccommWidget, dp->dpDoccomm );
     tedPropToWidget( dpd->dpdHlinkbaseWidget, dp->dpHlinkbase );
 
@@ -516,10 +507,6 @@ int tedRunPropertyDialog(	EditDocument *			ed,
 
     if  ( tedPropChangeProperty( &changed, &(dp->dpKeywords),
 						dpd->dpdKeywordsWidget ) )
-	{ LDEB(1); return -1;	}
-
-    if  ( tedPropChangeProperty( &changed, &(dp->dpComment),
-						dpd->dpdCommentWidget ) )
 	{ LDEB(1); return -1;	}
 
     if  ( tedPropChangeProperty( &changed, &(dp->dpDoccomm),

@@ -898,9 +898,10 @@ void tedDocInsertPageNumber(	APP_WIDGET	option,
 /*									*/
 /************************************************************************/
 
-void tedDocInsertFootnote(	APP_WIDGET	option,
+static void tedDocInsertNote(	APP_WIDGET	option,
 				void *		voided,
-				void *		voidpbcs )
+				int		noteInExtIt,
+				int		sepInExtIt )
     {
     EditDocument *		ed= (EditDocument *)voided;
     AppDrawingData *		add= &(ed->edDrawingData);
@@ -953,10 +954,10 @@ void tedDocInsertFootnote(	APP_WIDGET	option,
 	{ SDEB(fieldInst); return;	}
 
     /*  2  */
-    if  ( docMakeNote( &dn, bd, &(dsField.dsEnd), DOCinFOOTNOTE ) )
+    if  ( docMakeNote( &dn, bd, &(dsField.dsEnd), noteInExtIt ) )
 	{ LDEB(1); return;	}
 
-    if  ( docCheckNoteSeparatorItem( bd, DOCinFTNSEP ) )
+    if  ( docCheckNoteSeparatorItem( bd, sepInExtIt ) )
 	{ LDEB(1); return;	}
 
     changed= 0;
@@ -1015,3 +1016,19 @@ void tedDocInsertFootnote(	APP_WIDGET	option,
 
     return;
     }
+
+
+void tedDocInsertFootnote(	APP_WIDGET	option,
+				void *		voided,
+				void *		voidpbcs )
+    {
+    tedDocInsertNote( option, voided, DOCinFOOTNOTE, DOCinFTNSEP );
+    }
+
+void tedDocInsertEndnote(	APP_WIDGET	option,
+				void *		voided,
+				void *		voidpbcs )
+    {
+    tedDocInsertNote( option, voided, DOCinENDNOTE, DOCinAFTNSEP );
+    }
+

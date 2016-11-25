@@ -523,14 +523,26 @@ RtfControlWord	docRtfPropertyWords[]=
 
     RTF_CELL_DEFAULT( "celld" ),
 
-    RTF_CELL_VALUE( "clcfpat",		CLpropSHADE_FORE_COLOR ),
-    RTF_CELL_VALUE( "clcbpat",		CLpropSHADE_BACK_COLOR ),
-
     RTF_CELL_BORDER( "clbrdrt",		CLpropTOP_BORDER ),
     RTF_CELL_BORDER( "clbrdrb",		CLpropBOTTOM_BORDER ),
     RTF_CELL_BORDER( "clbrdrl",		CLpropLEFT_BORDER ),
     RTF_CELL_BORDER( "clbrdrr",		CLpropRIGHT_BORDER ),
 
+    RTF_CELL_ENUM( "clbgbdiag",		CLpropSHADE_PATTERN, DOCspBGBDIAG ),
+    RTF_CELL_ENUM( "clbgcross",		CLpropSHADE_PATTERN, DOCspBGCROSS ),
+    RTF_CELL_ENUM( "clbgdcross",	CLpropSHADE_PATTERN, DOCspBGDCROSS ),
+    RTF_CELL_ENUM( "clbgdkbdiag",	CLpropSHADE_PATTERN, DOCspBGDKBDIAG ),
+    RTF_CELL_ENUM( "clbgdkcross",	CLpropSHADE_PATTERN, DOCspBGDKCROSS ),
+    RTF_CELL_ENUM( "clbgdkdcross",	CLpropSHADE_PATTERN, DOCspBGDKDCROSS ),
+    RTF_CELL_ENUM( "clbgdkfdiag",	CLpropSHADE_PATTERN, DOCspBGDKFDIAG ),
+    RTF_CELL_ENUM( "clbgdkhor",		CLpropSHADE_PATTERN, DOCspBGDKHORIZ ),
+    RTF_CELL_ENUM( "clbgdkvert",	CLpropSHADE_PATTERN, DOCspBGDKVERT ),
+    RTF_CELL_ENUM( "clbgfdiag",		CLpropSHADE_PATTERN, DOCspBGFDIAG ),
+    RTF_CELL_ENUM( "clbghoriz",		CLpropSHADE_PATTERN, DOCspBGHORIZ ),
+    RTF_CELL_ENUM( "clbgvert",		CLpropSHADE_PATTERN, DOCspBGVERT ),
+
+    RTF_CELL_VALUE( "clcfpat",		CLpropSHADE_FORE_COLOR ),
+    RTF_CELL_VALUE( "clcbpat",		CLpropSHADE_BACK_COLOR ),
     RTF_CELL_VALUE( "clshdng",		CLpropSHADE_LEVEL ),
 
     RTF_CELL_ENUM( "clvertalt",		CLpropTEXT_VERT_ALIGN,
@@ -545,20 +557,6 @@ RtfControlWord	docRtfPropertyWords[]=
     RTF_CELL_ENUM( "cltxbtlr",		CLpropTEXT_FLOW, CLflowTXBTLR ),
     RTF_CELL_ENUM( "cltxlrtbv",		CLpropTEXT_FLOW, CLflowTXLRTBV ),
     RTF_CELL_ENUM( "cltxtbrlv",		CLpropTEXT_FLOW, CLflowTXTBRLV ),
-
-
-    RTF_CELL_ENUM( "clbgbdiag",		CLpropSHADE_PATTERN, DOCspBGBDIAG ),
-    RTF_CELL_ENUM( "clbgcross",		CLpropSHADE_PATTERN, DOCspBGCROSS ),
-    RTF_CELL_ENUM( "clbgdcross",	CLpropSHADE_PATTERN, DOCspBGDCROSS ),
-    RTF_CELL_ENUM( "clbgdkbdiag",	CLpropSHADE_PATTERN, DOCspBGDKBDIAG ),
-    RTF_CELL_ENUM( "clbgdkcross",	CLpropSHADE_PATTERN, DOCspBGDKCROSS ),
-    RTF_CELL_ENUM( "clbgdkdcross",	CLpropSHADE_PATTERN, DOCspBGDKDCROSS ),
-    RTF_CELL_ENUM( "clbgdkfdiag",	CLpropSHADE_PATTERN, DOCspBGDKFDIAG ),
-    RTF_CELL_ENUM( "clbgdkhor",		CLpropSHADE_PATTERN, DOCspBGDKHORIZ ),
-    RTF_CELL_ENUM( "clbgdkvert",	CLpropSHADE_PATTERN, DOCspBGDKVERT ),
-    RTF_CELL_ENUM( "clbgfdiag",		CLpropSHADE_PATTERN, DOCspBGFDIAG ),
-    RTF_CELL_ENUM( "clbghoriz",		CLpropSHADE_PATTERN, DOCspBGHORIZ ),
-    RTF_CELL_ENUM( "clbgvert",		CLpropSHADE_PATTERN, DOCspBGVERT ),
 
     RTF_CELL_FLAG( "clmgf",		CLpropLEFT_IN_MERGED ),
     RTF_CELL_FLAG( "clmrg",		CLpropMERGED_WITH_LEFT ),
@@ -591,6 +589,7 @@ RtfControlWord	docRtfPropertyWords[]=
 
     RTF_ROW_FLAG( "trhdr",		RPpropIS_TABLE_HEADER ),
     RTF_ROW_FLAG( "trkeep",		RPpropKEEP_ON_ONE_PAGE ),
+    RTF_ROW_FLAG( "trkeepfollow",	RPpropKEEP_WITH_NEXT ),
     RTF_ROW_FLAG( "trautofit",		RPpropAUTOFIT ),
 
     RTF_ROW_ENUM( "trql",		RPpropALIGNMENT,	DOCiaLEFT ),
@@ -637,6 +636,24 @@ RtfControlWord	docRtfPropertyWords[]=
 
     RTF_ROW_VALUE( "trftsWidthB",	RPpropTRFTS_WIDTHB ),
     RTF_ROW_VALUE( "trftsWidthA",	RPpropTRFTS_WIDTHA ),
+
+    /**/
+    RTF_ROW_ENUM( "trbgbdiag",		RPpropSHADE_PATTERN, DOCspBGBDIAG ),
+    RTF_ROW_ENUM( "trbgcross",		RPpropSHADE_PATTERN, DOCspBGCROSS ),
+    RTF_ROW_ENUM( "trbgdcross",		RPpropSHADE_PATTERN, DOCspBGDCROSS ),
+    RTF_ROW_ENUM( "trbgdkbdiag",	RPpropSHADE_PATTERN, DOCspBGDKBDIAG ),
+    RTF_ROW_ENUM( "trbgdkcross",	RPpropSHADE_PATTERN, DOCspBGDKCROSS ),
+    RTF_ROW_ENUM( "trbgdkdcross",	RPpropSHADE_PATTERN, DOCspBGDKDCROSS ),
+    RTF_ROW_ENUM( "trbgdkfdiag",	RPpropSHADE_PATTERN, DOCspBGDKFDIAG ),
+    RTF_ROW_ENUM( "trbgdkhor",		RPpropSHADE_PATTERN, DOCspBGDKHORIZ ),
+    RTF_ROW_ENUM( "trbgdkvert",		RPpropSHADE_PATTERN, DOCspBGDKVERT ),
+    RTF_ROW_ENUM( "trbgfdiag",		RPpropSHADE_PATTERN, DOCspBGFDIAG ),
+    RTF_ROW_ENUM( "trbghoriz",		RPpropSHADE_PATTERN, DOCspBGHORIZ ),
+    RTF_ROW_ENUM( "trbgvert",		RPpropSHADE_PATTERN, DOCspBGVERT ),
+
+    RTF_ROW_VALUE( "trcfpat",		RPpropSHADE_FORE_COLOR ),
+    RTF_ROW_VALUE( "trcbpat",		RPpropSHADE_BACK_COLOR ),
+    RTF_ROW_VALUE( "trshdng",		RPpropSHADE_LEVEL ),
 
 				/****************************************/
 				/*  Document formatting.		*/

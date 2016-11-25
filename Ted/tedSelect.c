@@ -1334,10 +1334,17 @@ void tedDocTableSelectColumn(	APP_WIDGET	option,
 static void tedPositionEnvironment(
 				const BufferDocument *		bd,
 				const DocumentPosition *	dp,
+				int *				pInExtIt,
+				int *				pInBody,
+				int *				pInHeadFoot,
+				int *				pInTable,
+				int *				pInTableHeader,
 				int *				pInHyperlink,
 				int *				pInField,
 				int *				pInBookmark )
     {
+    int				i;
+
     int				startPart;
     int				endPart;
     const char *		markName;
@@ -1346,9 +1353,33 @@ static void tedPositionEnvironment(
     const char *		fileName;
     int				fileSize;
 
+    const BufferItem *		rowBi= dp->dpBi;
+
+    while( rowBi && rowBi->biLevel != DOClevROW )
+	{ rowBi= rowBi->biParent;	}
+
+    *pInTable= dp->dpBi->biParaInTable != 0;
+    *pInExtIt= dp->dpBi->biInExternalItem;
+    *pInBody= *pInExtIt == DOCinBODY;
+    *pInHeadFoot= 0;
+
+    for ( i= 0; i < PAGES__COUNT; i++ )
+	{
+	if  ( *pInExtIt == DOC_HeaderScopes[i] )
+	    { *pInHeadFoot= 1; break;	}
+	if  ( *pInExtIt == DOC_FooterScopes[i] )
+	    { *pInHeadFoot= 1; break;	}
+	}
+
+    *pInTableHeader= 0;
     *pInHyperlink= 0;
     *pInField= 0;
     *pInBookmark= 0;
+
+    if  ( rowBi					&&
+	  rowBi->biRowHasTableParagraphs	&&
+	  rowBi->biRowIsTableHeader		)
+	{ *pInTableHeader= 1;	}
 
     if  ( ! docGetHyperlinkForPosition( bd, dp, &startPart, &endPart,
 				&fileName, &fileSize, &markName, &markSize ) )
@@ -1380,8 +1411,6 @@ static void tedAdaptToolsToPosition(	EditDocument *		ed )
     BufferDocument *		bd= td->tdDocument;
     const DocumentPosition *	dp= &(td->tdDocumentSelection.dsBegin);
 
-    int				i;
-
     int				inHyperlink;
     int				inField;
     int				inTable;
@@ -1390,25 +1419,16 @@ static void tedAdaptToolsToPosition(	EditDocument *		ed )
     int				inExtIt;
     int				inBody;
     int				inHeadFoot;
+    int				inTableHeader;
 
     if  ( ! ed->edIsReadonly )
 	{ td->tdCanReplaceSelection= 1;	}
 
     canReplace= td->tdCanReplaceSelection;
-    inTable= dp->dpBi->biParaInTable != 0;
-    inExtIt= dp->dpBi->biInExternalItem;
-    inBody= inExtIt == DOCinBODY;
 
-    inHeadFoot= 0;
-    for ( i= 0; i < PAGES__COUNT; i++ )
-	{
-	if  ( inExtIt == DOC_HeaderScopes[i] )
-	    { inHeadFoot= 1; break;	}
-	if  ( inExtIt == DOC_FooterScopes[i] )
-	    { inHeadFoot= 1; break;	}
-	}
-
-    tedPositionEnvironment( bd, dp, &inHyperlink, &inField, &inBookmark );
+    tedPositionEnvironment( bd, dp,
+		&inExtIt, &inBody, &inHeadFoot, &inTable,
+		&inTableHeader, &inHyperlink, &inField, &inBookmark );
 
     tedDocAdaptHorizontalRuler( ed, dp->dpBi );
 
@@ -1426,6 +1446,12 @@ static void tedAdaptToolsToPosition(	EditDocument *		ed )
     appGuiEnableWidget( td->tdInsBookmarkOption, inBookmark || ! inField );
 
     appGuiEnableWidget( td->tdInsInsertFootnoteOption,
+				    canReplace			&&
+				    inBody			&&
+				    ! inTableHeader		&&
+				    ! inField			);
+
+    appGuiEnableWidget( td->tdInsInsertEndnoteOption,
 				    canReplace			&&
 				    inBody			&&
 				    ! inField			);
@@ -1473,6 +1499,7 @@ void tedAdaptToolsToSelection(	EditDocument *		ed )
 
     int				inHyperlink;
     int				inField;
+    int				inTable;
     int				inBookmark;
 
     const DocumentPosition *	dpBegin= &(td->tdDocumentSelection.dsBegin);
@@ -1480,33 +1507,23 @@ void tedAdaptToolsToSelection(	EditDocument *		ed )
 
     TableRectangle		tr;
 
-    int				i;
-
     int				inExtIt;
     int				inBody;
     int				inHeadFoot;
+    int				inTableHeader;
     int				canReplace;
     int				tableRectangle= 0;
     int				oneParagraph;
     int				tableSlice= 0;
 
-    inExtIt= dpBegin->dpBi->biInExternalItem;
-    inBody= inExtIt == DOCinBODY;
-    oneParagraph= dpEnd->dpBi == dpBegin->dpBi;
-
-    inHeadFoot= 0;
-    for ( i= 0; i < PAGES__COUNT; i++ )
-	{
-	if  ( inExtIt == DOC_HeaderScopes[i] )
-	    { inHeadFoot= 1; break;	}
-	if  ( inExtIt == DOC_FooterScopes[i] )
-	    { inHeadFoot= 1; break;	}
-	}
-
     if  ( tedHasIBarSelection( td ) )
 	{ tedAdaptToolsToPosition( ed ); return; }
 
-    tedPositionEnvironment( bd, dpBegin, &inHyperlink, &inField, &inBookmark );
+    oneParagraph= dpBegin->dpBi == dpEnd->dpBi;
+
+    tedPositionEnvironment( bd, dpBegin,
+			&inExtIt, &inBody, &inHeadFoot, &inTable,
+			&inTableHeader, &inHyperlink, &inField, &inBookmark );
 
     if  ( ! docGetTableRectangle( &tr, &(td->tdDocumentSelection) ) )
 	{
@@ -1552,6 +1569,13 @@ void tedAdaptToolsToSelection(	EditDocument *		ed )
 				    ( inBookmark || ! inField ) );
 
     appGuiEnableWidget( td->tdInsInsertFootnoteOption,
+				    canReplace		&&
+				    oneParagraph	&&
+				    inBody		&&
+				    ! inTableHeader	&&
+				    ! inField		);
+
+    appGuiEnableWidget( td->tdInsInsertEndnoteOption,
 				    canReplace		&&
 				    oneParagraph	&&
 				    inBody		&&

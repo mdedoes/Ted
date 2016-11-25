@@ -267,6 +267,7 @@ int docGetRootOfSelectionScope(	ExternalItem **		pEi,
 	case DOCinFIRST_HEADER:
 	case DOCinLEFT_HEADER:
 	case DOCinRIGHT_HEADER:
+
 	case DOCinSECT_FOOTER:
 	case DOCinFIRST_FOOTER:
 	case DOCinLEFT_FOOTER:

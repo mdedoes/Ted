@@ -263,6 +263,17 @@ void docEditIncludeItemInReformatRange(	EditOperation *		eo,
     return;
     }
 
+void docEditIncludeRowsInReformatRange(	EditOperation *		eo,
+					BufferItem *		sectBi,
+					int			row0,
+					int			row1 )
+    {
+    docEditIncludeItemInReformatRange( eo, sectBi->biChildren[row0] );
+    docEditIncludeItemInReformatRange( eo, sectBi->biChildren[row1] );
+
+    return;
+    }
+
 void docSetParagraphAdjust(	EditOperation *		eo,
 				BufferItem *		paraBi,
 				int			fromLine,

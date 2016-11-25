@@ -166,7 +166,7 @@ int docCalculateDocStringFieldString(	int *			pCalculated,
     switch( df->dfKind )
 	{
 	case DOCfkAUTHOR:	val= dp->dpAuthor;	break;
-	case DOCfkCOMMENTS:	val= dp->dpComment;	break;
+	case DOCfkCOMMENTS:	val= dp->dpDoccomm;	break;
 	case DOCfkDOCCOMM:	val= dp->dpDoccomm;	break;
 	case DOCfkKEYWORDS:	val= dp->dpKeywords;	break;
 	case DOCfkSUBJECT:	val= dp->dpSubject;	break;

@@ -249,6 +249,17 @@ typedef struct BufferSect
 /*	optimize position lookups and to delimit areas to redraw	*/
 /*	correctly, the position below all 'rowspan' columns is		*/
 /*	remembered.							*/
+/*  4)  If a row is a table header, it might be repeated on every page	*/
+/*	where the table is continued. When the row is drawn on a	*/
+/*	different page. A separate administration must be kept to	*/
+/*	handle the case where a row starts on a new page and the header	*/
+/*	appears above it. Additionally we need to know on what page the	*/
+/*	header apprears in the normal text flow.			*/
+/*  6)  The top position of the table header row that appears above an	*/
+/*	ordinary row. (This must be kept with ordinary rows at the top	*/
+/*	of a page.)							*/
+/*  7)  A flag indicating that this row is preceded by a table header	*/
+/*	that does not appear at its home position.			*/
 /*									*/
 /************************************************************************/
 
@@ -264,6 +275,11 @@ typedef struct BufferRow
 
 				/*  3  */
     LayoutPosition		brBelowAllPosition;
+
+				/*  4,6  */
+    LayoutPosition		brAboveHeaderPosition;
+				/*  4,7  */
+    int				brPrecededByHeader;
     } BufferRow;
 
 /************************************************************************/
@@ -344,19 +360,22 @@ typedef enum ItemLevel
 #	define	biRowTableFirst		BIU.biuRow.brTableFirst
 #	define	biRowTablePast		BIU.biuRow.brTablePast
 #	define	biRowTableFirstIsHeader	BIU.biuRow.brTableFirstIsHeader
+#	define	biRowPrecededByHeader	BIU.biuRow.brPrecededByHeader
 #	define	biRowBelowAllPosition	BIU.biuRow.brBelowAllPosition
+#	define	biRowAboveHeaderPosition \
+					BIU.biuRow.brAboveHeaderPosition
 
 #	define	biRowProperties		BIU.biuRow.brRowProperties
 
 #	define	biRowHasTableParagraphs	biRowProperties.rpHasTableParagraphs
 #	define	biRowHalfGapWidthTwips	biRowProperties.rpHalfGapWidthTwips
-#	define	biRowHalfGapWidthPixels \
-					biRowProperties.rpHalfGapWidthPixels
+#	define	biRowHalfGapWidthPixels biRowProperties.rpHalfGapWidthPixels
 #	define	biRowLeftIndentTwips	biRowProperties.rpLeftIndentTwips
 #	define	biRowLeftIndentPixels	biRowProperties.rpLeftIndentPixels
 #	define	biRowHeightTwips	biRowProperties.rpHeightTwips
 #	define	biRowIsTableHeader	biRowProperties.rpIsTableHeader
 #	define	biRowKeepOnOnePage	biRowProperties.rpKeepOnOnePage
+#	define	biRowKeepWithNext	biRowProperties.rpKeepWithNext
 #	define	biRowAutofit		biRowProperties.rpAutofit
 #	define	biRowCells		biRowProperties.rpCells
 #	define	biRowCellCount		biRowProperties.rpCellCount
@@ -380,9 +399,9 @@ typedef enum ItemLevel
 	*/
 
     DOClevPARA,
-			/********************************/
-			/*  Paragraph.			*/
-			/********************************/
+			/****************************************/
+			/*  Paragraph.				*/
+			/****************************************/
 #	define	biParaString		BIU.biuPara.btString
 #	define	biParaStrlen		BIU.biuPara.btStrlen
 #	define	biParaParticuleCount	BIU.biuPara.btParticuleCount
@@ -393,7 +412,18 @@ typedef enum ItemLevel
 #	define	biParaLines		BIU.biuPara.btLines
 #	define	biParaShapeCount	BIU.biuPara.btShapeCount
 #	define	biParaShapes		BIU.biuPara.btShapes
+
+#	define	biParaAscentTwips	BIU.biuPara.btAscentTwips
+#	define	biParaDescentTwips	BIU.biuPara.btDescentTwips
+#	define	biParaLeadingTwips	BIU.biuPara.btLeadingTwips
+
+#	define	biParaBorderAboveParagraph \
+					BIU.biuPara.btBorderAboveParagraph
+#	define	biParaBorderBelowParagraph \
+					BIU.biuPara.btBorderBelowParagraph
+
 #	define	biParaProperties	BIU.biuPara.btProperties
+
 #	define	biParaInTable		biParaProperties.ppInTable
 #	define	biParaLineSpacingIsMultiple \
 					biParaProperties.ppLineSpacingIsMultiple
@@ -422,19 +452,10 @@ typedef enum ItemLevel
 #	define	biParaListOverride	biParaProperties.ppListOverride
 #	define	biParaWidowControl	biParaProperties.ppWidowControl
 
-#	define	biParaAscentTwips	BIU.biuPara.btAscentTwips
-#	define	biParaDescentTwips	BIU.biuPara.btDescentTwips
-#	define	biParaLeadingTwips	BIU.biuPara.btLeadingTwips
-
-#	define	biParaBorderAboveParagraph \
-					BIU.biuPara.btBorderAboveParagraph
-#	define	biParaBorderBelowParagraph \
-					BIU.biuPara.btBorderBelowParagraph
-
     DOClevTEXT
-			/********************************/
-			/*  Handeled inside TEXT.	*/
-			/********************************/
+			/****************************************/
+			/*  Handeled inside TEXT.		*/
+			/****************************************/
     } ItemLevel;
 
 /************************************************************************/

@@ -261,18 +261,26 @@ void docRtfPushReadingState(	RtfReadingContext *	rrc,
 
     utilInitMemoryBuffer( &(rrs->rrsSavedText) );
 
+    rrs->rrsBytesPerUnicode= 1;
+    rrs->rrsUnicodeBytesToSkip= 0;
+
     if  ( rrc->rrcState )
 	{
+	const RtfReadingState *	above= rrc->rrcState;
+
+	rrs->rrsBytesPerUnicode= above->rrsBytesPerUnicode;
+	rrs->rrsUnicodeBytesToSkip= 0;
+
 	/*
 	utilCopyTextAttribute( &(rrs->rrsTextAttribute),
-					&(rrc->rrcState->rrsTextAttribute) );
+					&(above->rrsTextAttribute) );
 	*/
-	rrs->rrsTextAttribute= rrc->rrcState->rrsTextAttribute;
+	rrs->rrsTextAttribute= above->rrsTextAttribute;
 
 	docCopyParagraphProperties( &(rrs->rrsParagraphProperties),
-				    &(rrc->rrcState->rrsParagraphProperties) );
+				    &(above->rrsParagraphProperties) );
 	docCopySectionProperties( &(rrs->rrsSectionProperties),
-				    &(rrc->rrcState->rrsSectionProperties) );
+				    &(above->rrsSectionProperties) );
 	}
 
     rrs->rrsPrev= rrc->rrcState;
@@ -315,9 +323,11 @@ static int docRtfReadControlWord(	SimpleInputStream *	sis,
 					int *			pGotArg,
 					int *			pArg )
     {
-    int		c;
-    int		len= 0;
-    int		sign= 1;
+    RtfReadingState *	rrs= rrc->rrcState;
+
+    int			c;
+    int			len= 0;
+    int			sign= 1;
 
     c= sioInGetCharacter( sis );
     while( c == '\n' || c == '\r' )
@@ -430,7 +440,11 @@ static int docRtfReadControlWord(	SimpleInputStream *	sis,
     if  ( *pGotArg && ! strcmp( controlWord, "u" ) )
 	{
 	if  ( *pArg >= 0 && *pArg <= 255 )
-	    { *pC= *pArg;		}
+	    {
+	    *pC= *pArg;
+
+	    rrs->rrsUnicodeBytesToSkip= rrs->rrsBytesPerUnicode;
+	    }
 	else{ *pC= ISO1_currency;	}
 
 	if  ( c != ' ' )
@@ -510,8 +524,10 @@ int docRtfFindControl(		SimpleInputStream *	sis,
 				int *			pGotArg,
 				int *			pArg		)
     {
-    int				c;
-    int				res;
+    RtfReadingState *	rrs= rrc->rrcState;
+
+    int			c;
+    int			res;
 
     if  ( rrc->rrcCharacterAhead != EOF )
 	{
@@ -608,6 +624,9 @@ int docRtfFindControl(		SimpleInputStream *	sis,
 			    sscanf( b, "%x", &uc ); c= uc;
 			    }
 
+			if  ( rrs->rrsUnicodeBytesToSkip > 0 )
+			    { rrs->rrsUnicodeBytesToSkip= 0;	}
+
 			if  ( res != 2 )
 			    { rrc->rrcCharacterAhead= rrc->rrcInputMapping[c]; }
 			else{ rrc->rrcCharacterAhead= c; }
@@ -634,6 +653,10 @@ int docRtfFindControl(		SimpleInputStream *	sis,
 		*pC= c; return RTFfiTAB;
 
 	    default: defaultCase:
+
+		if  ( rrs->rrsUnicodeBytesToSkip > 0 )
+		    { rrs->rrsUnicodeBytesToSkip--; continue;	}
+
 		*pC= rrc->rrcInputMapping[c]; return RTFfiCHAR;
 	    }
 	}

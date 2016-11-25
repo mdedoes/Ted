@@ -56,9 +56,6 @@ static int docRtfTextSpecial(	SimpleInputStream *	sis,
     {
     switch( rcw->rcwID )
 	{
-	case RTFidU:
-	    break;
-
 	default:
 	    SLDEB(rcw->rcwWord,rcw->rcwID);
 	    break;
@@ -131,6 +128,7 @@ static int docRtfHierarchy(	SimpleInputStream *	sis,
 	    break;
 
 	case RTFidLINE:
+	case RTFidLBR:
 	    if  ( docSaveSpecialParticule( rrc->rrcBd, rrc->rrcBi, 0,
 				&(rrs->rrsTextAttribute), DOCkindLINEBREAK ) )
 		{ LDEB(1); return -1;	}
@@ -212,13 +210,13 @@ RtfControlWord	docRtfDocumentWords[]=
 	{ "zwj",	RTFidZWJ,	DOClevTEXT, docRtfTextSpecial,	},
 	{ "zwnj",	RTFidZWNJ,	DOClevTEXT, docRtfTextSpecial,	},
 
-	{ "u",		RTFidU,		DOClevTEXT, docRtfTextSpecial,	},
 				/****************************************/
 				/*  Hierarchy/Structure tags.		*/
 				/****************************************/
 	{ "chftnsep",	RTFidCHFTNSEP,	DOClevTEXT, docRtfHierarchy, },
 	{ "tab",	RTFidTAB,	DOClevTEXT, docRtfHierarchy, },
 	{ "line",	RTFidLINE,	DOClevTEXT, docRtfHierarchy, },
+	{ "lbr",	RTFidLBR,	DOClevTEXT, docRtfHierarchy, },
 	{ "page",	RTFidPAGE,	DOClevTEXT, docRtfHierarchy, },
 
 	{ "par",	RTFidPAR,	DOClevANY,  docRtfHierarchy, },

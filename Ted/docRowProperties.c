@@ -50,14 +50,17 @@ void docInitRowProperties(	RowProperties *	rp )
 
     rp->rpIsTableHeader= 0;
     rp->rpKeepOnOnePage= 0;
+    rp->rpKeepWithNext= 0;
     rp->rpAutofit= 0;
 
-    docInitBorderProperties( &rp->rpTopBorder );
-    docInitBorderProperties( &rp->rpBottomBorder );
-    docInitBorderProperties( &rp->rpLeftBorder );
-    docInitBorderProperties( &rp->rpRightBorder );
-    docInitBorderProperties( &rp->rpHorizontalBorder );
-    docInitBorderProperties( &rp->rpVerticalBorder );
+    docInitBorderProperties( &(rp->rpTopBorder) );
+    docInitBorderProperties( &(rp->rpBottomBorder) );
+    docInitBorderProperties( &(rp->rpLeftBorder) );
+    docInitBorderProperties( &(rp->rpRightBorder) );
+    docInitBorderProperties( &(rp->rpHorizontalBorder) );
+    docInitBorderProperties( &(rp->rpVerticalBorder) );
+
+    docInitItemShading( &(rp->rpShading) );
 
     /**/
     rp->rpPreferredWidth= 0;
@@ -200,12 +203,14 @@ int docCopyRowProperties(	RowProperties *		rpTo,
 /************************************************************************/
 
 /*  1  */
-int docAlignedColumns(	const RowProperties *	rp1,
-			const RowProperties *	rp2 )
+int docApproximatelyAlignedColumns(	const RowProperties *	rp1,
+					const RowProperties *	rp2 )
     {
     CellProperties *	cp1;
     CellProperties *	cp2;
     int			i;
+
+    const int		D= 40;
 
     if  ( rp1->rpHasTableParagraphs != rp2->rpHasTableParagraphs )
 	{ return 0;	}
@@ -213,17 +218,21 @@ int docAlignedColumns(	const RowProperties *	rp1,
     if  ( rp1->rpCellCount != rp2->rpCellCount )
 	{ return 0;	}
 
+    /* No!
     if  ( rp1->rpHalfGapWidthTwips != rp2->rpHalfGapWidthTwips )
 	{ return 0;	}
+    */
 
-    if  ( rp1->rpLeftIndentTwips != rp2->rpLeftIndentTwips )
+    if  ( rp1->rpLeftIndentTwips > rp2->rpLeftIndentTwips+ D	||
+	  rp1->rpLeftIndentTwips < rp2->rpLeftIndentTwips- D	)
 	{ return 0;	}
 
     cp1= rp1->rpCells;
     cp2= rp2->rpCells;
     for ( i= 0; i < rp1->rpCellCount; cp2++, cp1++, i++ )
 	{
-	if  ( cp1->cpRightBoundaryTwips != cp2->cpRightBoundaryTwips )
+	if  ( cp1->cpRightBoundaryTwips > cp2->cpRightBoundaryTwips+ D	||
+	      cp1->cpRightBoundaryTwips < cp2->cpRightBoundaryTwips- D	)
 	    { return 0;	}
 	}
 
@@ -289,6 +298,7 @@ int docUpdRowProperties(	PropertyMask *			pRpDonePask,
 				const int *			colorMap )
     {
     PropertyMask		rpDoneMask;
+    PropertyMask		isUpdMask;
 
     PROPmaskCLEAR( &rpDoneMask );
 
@@ -427,6 +437,20 @@ int docUpdRowProperties(	PropertyMask *			pRpDonePask,
 	    }
 	}
 
+    docShadingMaskFromRowMask( &isUpdMask, rpUpdMask );
+    if  ( ! utilPropMaskIsEmpty( &isUpdMask ) )
+	{
+	PropertyMask	isDoneMask;
+
+	PROPmaskCLEAR( &isDoneMask );
+
+	docUpdateItemShading( &isDoneMask, &(rpTo->rpShading),
+				&isUpdMask, &(rpFrom->rpShading), colorMap );
+
+	docShadingMaskToRowMask( &isDoneMask, &isDoneMask );
+	utilPropMaskOr( &rpDoneMask, &rpDoneMask, &isDoneMask );
+	}
+
     if  ( PROPmaskISSET( rpUpdMask, RPpropALIGNMENT ) )
 	{
 	if  ( rpTo->rpAlignment != rpFrom->rpAlignment )
@@ -451,6 +475,15 @@ int docUpdRowProperties(	PropertyMask *			pRpDonePask,
 	    {
 	    rpTo->rpKeepOnOnePage= rpFrom->rpKeepOnOnePage;
 	    PROPmaskADD( &rpDoneMask, RPpropKEEP_ON_ONE_PAGE );
+	    }
+	}
+
+    if  ( PROPmaskISSET( rpUpdMask, RPpropKEEP_WITH_NEXT ) )
+	{
+	if  ( rpTo->rpKeepWithNext != rpFrom->rpKeepWithNext )
+	    {
+	    rpTo->rpKeepWithNext= rpFrom->rpKeepWithNext;
+	    PROPmaskADD( &rpDoneMask, RPpropKEEP_WITH_NEXT );
 	    }
 	}
 
@@ -703,20 +736,21 @@ int docUpdRowProperties(	PropertyMask *			pRpDonePask,
 /*									*/
 /************************************************************************/
 
-void docRowPropertyDifference(	PropertyMask *			pRpChgPask,
+void docRowPropertyDifference(	PropertyMask *			pRpDiffPask,
 				const RowProperties *		rp1,
 				const RowProperties *		rp2,
 				const PropertyMask *		rpUpdMask,
 				const int *			colorMap )
     {
-    PropertyMask		rpChgMask;
+    PropertyMask		rpDiffMask;
+    PropertyMask		isUpdMask;
 
-    PROPmaskCLEAR( &rpChgMask );
+    PROPmaskCLEAR( &rpDiffMask );
 
     if  ( PROPmaskISSET( rpUpdMask, RPpropCOLUMNS ) )
 	{
 	if  ( rp1->rpCellCount != rp2->rpCellCount )
-	    { PROPmaskADD( &rpChgMask, RPpropCOLUMNS );	}
+	    { PROPmaskADD( &rpDiffMask, RPpropCOLUMNS );	}
 	else{
 	    int				col;
 	    const CellProperties *	cp1;
@@ -726,18 +760,18 @@ void docRowPropertyDifference(	PropertyMask *			pRpChgPask,
 	    cp2= rp2->rpCells;
 	    for ( col= 0; col < rp1->rpCellCount; cp1++, cp2++, col++ )
 		{
-		PropertyMask	cpChgMask;
+		PropertyMask	cpDiffMask;
 		PropertyMask	cpUpdMask;
 
 		PROPmaskFILL( &cpUpdMask, CLprop_COUNT );
-		PROPmaskCLEAR( &cpChgMask );
+		PROPmaskCLEAR( &cpDiffMask );
 
-		docCellPropertyDifference( &cpChgMask, cp1,
+		docCellPropertyDifference( &cpDiffMask, cp1,
 						    cp2, &cpUpdMask, colorMap );
 
-		if  ( ! utilPropMaskIsEmpty( &cpChgMask ) )
+		if  ( ! utilPropMaskIsEmpty( &cpDiffMask ) )
 		    {
-		    PROPmaskADD( &rpChgMask, RPpropCOLUMNS );
+		    PROPmaskADD( &rpDiffMask, RPpropCOLUMNS );
 		    break;
 		    }
 		}
@@ -747,99 +781,119 @@ void docRowPropertyDifference(	PropertyMask *			pRpChgPask,
     if  ( PROPmaskISSET( rpUpdMask, RPpropGAP_WIDTH ) )
 	{
 	if  ( rp1->rpHalfGapWidthTwips != rp2->rpHalfGapWidthTwips )
-	    { PROPmaskADD( &rpChgMask, RPpropGAP_WIDTH );	}
+	    { PROPmaskADD( &rpDiffMask, RPpropGAP_WIDTH );	}
 	}
 
     if  ( PROPmaskISSET( rpUpdMask, RPpropLEFT_INDENT ) )
 	{
 	if  ( rp1->rpLeftIndentTwips != rp2->rpLeftIndentTwips )
-	    { PROPmaskADD( &rpChgMask, RPpropLEFT_INDENT );	}
+	    { PROPmaskADD( &rpDiffMask, RPpropLEFT_INDENT );	}
 	}
 
     if  ( PROPmaskISSET( rpUpdMask, RPpropHEIGHT ) )
 	{
 	if  ( rp1->rpHeightTwips != rp2->rpHeightTwips )
-	    { PROPmaskADD( &rpChgMask, RPpropHEIGHT );	}
+	    { PROPmaskADD( &rpDiffMask, RPpropHEIGHT );	}
 	}
 
     /**/
     if  ( PROPmaskISSET( rpUpdMask, RPpropTOP_BORDER ) )
 	{
 	if  ( docBordersDiffer( &(rp1->rpTopBorder), &(rp2->rpTopBorder), colorMap ) )
-	    { PROPmaskADD( &rpChgMask, RPpropTOP_BORDER );	}
+	    { PROPmaskADD( &rpDiffMask, RPpropTOP_BORDER );	}
 	}
 
     if  ( PROPmaskISSET( rpUpdMask, RPpropBOTTOM_BORDER ) )
 	{
 	if  ( docBordersDiffer( &(rp1->rpBottomBorder),
 						&(rp2->rpBottomBorder), colorMap ) )
-	    { PROPmaskADD( &rpChgMask, RPpropBOTTOM_BORDER );	}
+	    { PROPmaskADD( &rpDiffMask, RPpropBOTTOM_BORDER );	}
 	}
 
     if  ( PROPmaskISSET( rpUpdMask, RPpropLEFT_BORDER ) )
 	{
 	if  ( docBordersDiffer( &(rp1->rpLeftBorder),
-						&(rp2->rpLeftBorder), colorMap ) )
-	    { PROPmaskADD( &rpChgMask, RPpropLEFT_BORDER );	}
+					&(rp2->rpLeftBorder), colorMap ) )
+	    { PROPmaskADD( &rpDiffMask, RPpropLEFT_BORDER );	}
 	}
 
     if  ( PROPmaskISSET( rpUpdMask, RPpropRIGHT_BORDER ) )
 	{
 	if  ( docBordersDiffer( &(rp1->rpRightBorder),
-						&(rp2->rpRightBorder), colorMap ) )
-	    { PROPmaskADD( &rpChgMask, RPpropRIGHT_BORDER );	}
+					&(rp2->rpRightBorder), colorMap ) )
+	    { PROPmaskADD( &rpDiffMask, RPpropRIGHT_BORDER );	}
 	}
 
     if  ( PROPmaskISSET( rpUpdMask, RPpropHORIZ_BORDER ) )
 	{
 	if  ( docBordersDiffer( &(rp1->rpHorizontalBorder),
-						&(rp2->rpHorizontalBorder), colorMap ) )
-	    { PROPmaskADD( &rpChgMask, RPpropHORIZ_BORDER );	}
+				    &(rp2->rpHorizontalBorder), colorMap ) )
+	    { PROPmaskADD( &rpDiffMask, RPpropHORIZ_BORDER );	}
 	}
 
     if  ( PROPmaskISSET( rpUpdMask, RPpropVERT_BORDER ) )
 	{
 	if  ( docBordersDiffer( &(rp1->rpVerticalBorder),
-						&(rp2->rpVerticalBorder), colorMap ) )
-	    { PROPmaskADD( &rpChgMask, RPpropVERT_BORDER );	}
+				    &(rp2->rpVerticalBorder), colorMap ) )
+	    { PROPmaskADD( &rpDiffMask, RPpropVERT_BORDER );	}
+	}
+
+    docShadingMaskFromRowMask( &isUpdMask, rpUpdMask );
+    if  ( ! utilPropMaskIsEmpty( &isUpdMask ) )
+	{
+	PropertyMask	isDiffMask;
+
+	PROPmaskCLEAR( &isDiffMask );
+
+	docItemShadingDifference( &isDiffMask, &(rp1->rpShading),
+				    &(rp2->rpShading), &isUpdMask, colorMap );
+
+	docShadingMaskToRowMask( &isDiffMask, &isDiffMask );
+	utilPropMaskOr( &rpDiffMask, &rpDiffMask, &isDiffMask );
 	}
 
     /**/
     if  ( PROPmaskISSET( rpUpdMask, RPpropALIGNMENT ) )
 	{
 	if  ( rp1->rpAlignment != rp2->rpAlignment )
-	    { PROPmaskADD( &rpChgMask, RPpropALIGNMENT ); }
+	    { PROPmaskADD( &rpDiffMask, RPpropALIGNMENT ); }
 	}
 
     if  ( PROPmaskISSET( rpUpdMask, RPpropIS_TABLE_HEADER ) )
 	{
 	if  ( rp1->rpIsTableHeader != rp2->rpIsTableHeader )
-	    { PROPmaskADD( &rpChgMask, RPpropIS_TABLE_HEADER ); }
+	    { PROPmaskADD( &rpDiffMask, RPpropIS_TABLE_HEADER ); }
 	}
 
     if  ( PROPmaskISSET( rpUpdMask, RPpropKEEP_ON_ONE_PAGE ) )
 	{
 	if  ( rp1->rpKeepOnOnePage != rp2->rpKeepOnOnePage )
-	    { PROPmaskADD( &rpChgMask, RPpropKEEP_ON_ONE_PAGE ); }
+	    { PROPmaskADD( &rpDiffMask, RPpropKEEP_ON_ONE_PAGE ); }
+	}
+
+    if  ( PROPmaskISSET( rpUpdMask, RPpropKEEP_WITH_NEXT ) )
+	{
+	if  ( rp1->rpKeepWithNext != rp2->rpKeepWithNext )
+	    { PROPmaskADD( &rpDiffMask, RPpropKEEP_WITH_NEXT ); }
 	}
 
     if  ( PROPmaskISSET( rpUpdMask, RPpropAUTOFIT ) )
 	{
 	if  ( rp1->rpAutofit != rp2->rpAutofit )
-	    { PROPmaskADD( &rpChgMask, RPpropAUTOFIT ); }
+	    { PROPmaskADD( &rpDiffMask, RPpropAUTOFIT ); }
 	}
 
     /**/
     if  ( PROPmaskISSET( rpUpdMask, RPpropTRW_WIDTH ) )
 	{
 	if  ( rp1->rpPreferredWidth != rp2->rpPreferredWidth )
-	    { PROPmaskADD( &rpChgMask, RPpropTRW_WIDTH );	}
+	    { PROPmaskADD( &rpDiffMask, RPpropTRW_WIDTH );	}
 	}
 
     if  ( PROPmaskISSET( rpUpdMask, RPpropTRFTS_WIDTH ) )
 	{
 	if  ( rp1->rpPreferredWidthUnit != rp2->rpPreferredWidthUnit )
-	    { PROPmaskADD( &rpChgMask, RPpropTRFTS_WIDTH );	}
+	    { PROPmaskADD( &rpDiffMask, RPpropTRFTS_WIDTH );	}
 	}
 
     /**/
@@ -847,28 +901,28 @@ void docRowPropertyDifference(	PropertyMask *			pRpChgPask,
 	{
 	if  ( rp1->rpLeftDefaultCellSpacing !=
 				      rp2->rpLeftDefaultCellSpacing )
-	    { PROPmaskADD( &rpChgMask, RPpropTRSPDL ); }
+	    { PROPmaskADD( &rpDiffMask, RPpropTRSPDL ); }
 	}
 
     if  ( PROPmaskISSET( rpUpdMask, RPpropTRSPDR ) )
 	{
 	if  ( rp1->rpRightDefaultCellSpacing !=
 				    rp2->rpRightDefaultCellSpacing )
-	    { PROPmaskADD( &rpChgMask, RPpropTRSPDR ); }
+	    { PROPmaskADD( &rpDiffMask, RPpropTRSPDR ); }
 	}
 
     if  ( PROPmaskISSET( rpUpdMask, RPpropTRSPDT ) )
 	{
 	if  ( rp1->rpTopDefaultCellSpacing !=
 				    rp2->rpTopDefaultCellSpacing )
-	    { PROPmaskADD( &rpChgMask, RPpropTRSPDT ); }
+	    { PROPmaskADD( &rpDiffMask, RPpropTRSPDT ); }
 	}
 
     if  ( PROPmaskISSET( rpUpdMask, RPpropTRSPDB ) )
 	{
 	if  ( rp1->rpBottomDefaultCellSpacing !=
 				    rp2->rpBottomDefaultCellSpacing )
-	    { PROPmaskADD( &rpChgMask, RPpropTRSPDB ); }
+	    { PROPmaskADD( &rpDiffMask, RPpropTRSPDB ); }
 	}
 
     /**/
@@ -876,28 +930,28 @@ void docRowPropertyDifference(	PropertyMask *			pRpChgPask,
 	{
 	if  ( rp1->rpLeftDefaultCellSpacingUnit !=
 				      rp2->rpLeftDefaultCellSpacingUnit )
-	    { PROPmaskADD( &rpChgMask, RPpropTRSPDFL ); }
+	    { PROPmaskADD( &rpDiffMask, RPpropTRSPDFL ); }
 	}
 
     if  ( PROPmaskISSET( rpUpdMask, RPpropTRSPDFR ) )
 	{
 	if  ( rp1->rpRightDefaultCellSpacingUnit !=
 				    rp2->rpRightDefaultCellSpacingUnit )
-	    { PROPmaskADD( &rpChgMask, RPpropTRSPDFR ); }
+	    { PROPmaskADD( &rpDiffMask, RPpropTRSPDFR ); }
 	}
 
     if  ( PROPmaskISSET( rpUpdMask, RPpropTRSPDFT ) )
 	{
 	if  ( rp1->rpTopDefaultCellSpacingUnit !=
 				    rp2->rpTopDefaultCellSpacingUnit )
-	    { PROPmaskADD( &rpChgMask, RPpropTRSPDFT ); }
+	    { PROPmaskADD( &rpDiffMask, RPpropTRSPDFT ); }
 	}
 
     if  ( PROPmaskISSET( rpUpdMask, RPpropTRSPDFB ) )
 	{
 	if  ( rp1->rpBottomDefaultCellSpacingUnit !=
 				    rp2->rpBottomDefaultCellSpacingUnit )
-	    { PROPmaskADD( &rpChgMask, RPpropTRSPDFB ); }
+	    { PROPmaskADD( &rpDiffMask, RPpropTRSPDFB ); }
 	}
 
     /**/
@@ -905,28 +959,28 @@ void docRowPropertyDifference(	PropertyMask *			pRpChgPask,
 	{
 	if  ( rp1->rpLeftDefaultCellMargin !=
 				      rp2->rpLeftDefaultCellMargin )
-	    { PROPmaskADD( &rpChgMask, RPpropTRPADDL ); }
+	    { PROPmaskADD( &rpDiffMask, RPpropTRPADDL ); }
 	}
 
     if  ( PROPmaskISSET( rpUpdMask, RPpropTRPADDR ) )
 	{
 	if  ( rp1->rpRightDefaultCellMargin !=
 				    rp2->rpRightDefaultCellMargin )
-	    { PROPmaskADD( &rpChgMask, RPpropTRPADDR ); }
+	    { PROPmaskADD( &rpDiffMask, RPpropTRPADDR ); }
 	}
 
     if  ( PROPmaskISSET( rpUpdMask, RPpropTRPADDT ) )
 	{
 	if  ( rp1->rpTopDefaultCellMargin !=
 				    rp2->rpTopDefaultCellMargin )
-	    { PROPmaskADD( &rpChgMask, RPpropTRPADDT ); }
+	    { PROPmaskADD( &rpDiffMask, RPpropTRPADDT ); }
 	}
 
     if  ( PROPmaskISSET( rpUpdMask, RPpropTRPADDB ) )
 	{
 	if  ( rp1->rpBottomDefaultCellMargin !=
 				    rp2->rpBottomDefaultCellMargin )
-	    { PROPmaskADD( &rpChgMask, RPpropTRPADDB ); }
+	    { PROPmaskADD( &rpDiffMask, RPpropTRPADDB ); }
 	}
 
     /**/
@@ -934,59 +988,59 @@ void docRowPropertyDifference(	PropertyMask *			pRpChgPask,
 	{
 	if  ( rp1->rpLeftDefaultCellMarginUnit !=
 				      rp2->rpLeftDefaultCellMarginUnit )
-	    { PROPmaskADD( &rpChgMask, RPpropTRPADDFL ); }
+	    { PROPmaskADD( &rpDiffMask, RPpropTRPADDFL ); }
 	}
 
     if  ( PROPmaskISSET( rpUpdMask, RPpropTRPADDFR ) )
 	{
 	if  ( rp1->rpRightDefaultCellMarginUnit !=
 				    rp2->rpRightDefaultCellMarginUnit )
-	    { PROPmaskADD( &rpChgMask, RPpropTRPADDFR ); }
+	    { PROPmaskADD( &rpDiffMask, RPpropTRPADDFR ); }
 	}
 
     if  ( PROPmaskISSET( rpUpdMask, RPpropTRPADDFT ) )
 	{
 	if  ( rp1->rpTopDefaultCellMarginUnit !=
 				    rp2->rpTopDefaultCellMarginUnit )
-	    { PROPmaskADD( &rpChgMask, RPpropTRPADDFT ); }
+	    { PROPmaskADD( &rpDiffMask, RPpropTRPADDFT ); }
 	}
 
     if  ( PROPmaskISSET( rpUpdMask, RPpropTRPADDFB ) )
 	{
 	if  ( rp1->rpBottomDefaultCellMarginUnit !=
 				    rp2->rpBottomDefaultCellMarginUnit )
-	    { PROPmaskADD( &rpChgMask, RPpropTRPADDFB ); }
+	    { PROPmaskADD( &rpDiffMask, RPpropTRPADDFB ); }
 	}
 
     /**/
     if  ( PROPmaskISSET( rpUpdMask, RPpropTRW_WIDTHB ) )
 	{
 	if  ( rp1->rpCellWidthBefore != rp2->rpCellWidthBefore )
-	    { PROPmaskADD( &rpChgMask, RPpropTRW_WIDTHB );	}
+	    { PROPmaskADD( &rpDiffMask, RPpropTRW_WIDTHB );	}
 	}
 
     if  ( PROPmaskISSET( rpUpdMask, RPpropTRW_WIDTHA ) )
 	{
 	if  ( rp1->rpCellWidthAfter != rp2->rpCellWidthAfter )
-	    { PROPmaskADD( &rpChgMask, RPpropTRW_WIDTHA );	}
+	    { PROPmaskADD( &rpDiffMask, RPpropTRW_WIDTHA );	}
 	}
 
     /**/
     if  ( PROPmaskISSET( rpUpdMask, RPpropTRFTS_WIDTHB ) )
 	{
 	if  ( rp1->rpCellWidthBeforeUnit != rp2->rpCellWidthBeforeUnit )
-	    { PROPmaskADD( &rpChgMask, RPpropTRFTS_WIDTHB );	}
+	    { PROPmaskADD( &rpDiffMask, RPpropTRFTS_WIDTHB );	}
 	}
 
     if  ( PROPmaskISSET( rpUpdMask, RPpropTRFTS_WIDTHA ) )
 	{
 	if  ( rp1->rpCellWidthAfterUnit != rp2->rpCellWidthAfterUnit )
-	    { PROPmaskADD( &rpChgMask, RPpropTRFTS_WIDTHA );	}
+	    { PROPmaskADD( &rpDiffMask, RPpropTRFTS_WIDTHA );	}
 	}
 
     /**/
 
-    *pRpChgPask= rpChgMask; return;
+    *pRpDiffPask= rpDiffMask; return;
     }
 
 /************************************************************************/
@@ -1102,6 +1156,58 @@ void docRowSetShadingInCols(	RowProperties *			rp,
 						isSetMask, isSet, colorMap );
 	}
 
+    return;
+    }
+
+/************************************************************************/
+/*									*/
+/*  Translate an item shading property mask to a cell property mask	*/
+/*									*/
+/************************************************************************/
+
+void docShadingMaskToRowMask(	PropertyMask *		rpPropMask,
+				const PropertyMask *	isPropMask )
+    {
+    PropertyMask	pm;
+
+    PROPmaskCLEAR( &pm );
+
+    if  ( PROPmaskISSET( isPropMask, ISpropFORE_COLOR ) )
+	{ PROPmaskADD( &pm, RPpropSHADE_FORE_COLOR );	}
+
+    if  ( PROPmaskISSET( isPropMask, ISpropBACK_COLOR ) )
+	{ PROPmaskADD( &pm, RPpropSHADE_BACK_COLOR );	}
+
+    if  ( PROPmaskISSET( isPropMask, ISpropLEVEL ) )
+	{ PROPmaskADD( &pm, RPpropSHADE_LEVEL );	}
+
+    if  ( PROPmaskISSET( isPropMask, ISpropPATTERN ) )
+	{ PROPmaskADD( &pm, RPpropSHADE_PATTERN );	}
+
+    *rpPropMask= pm;
+    return;
+    }
+
+void docShadingMaskFromRowMask(		PropertyMask *		isPropMask,
+					const PropertyMask *	rpPropMask )
+    {
+    PropertyMask	pm;
+
+    PROPmaskCLEAR( &pm );
+
+    if  ( PROPmaskISSET( rpPropMask, RPpropSHADE_FORE_COLOR ) )
+	{ PROPmaskADD( &pm, ISpropFORE_COLOR );	}
+
+    if  ( PROPmaskISSET( rpPropMask, RPpropSHADE_BACK_COLOR ) )
+	{ PROPmaskADD( &pm, ISpropBACK_COLOR );	}
+
+    if  ( PROPmaskISSET( rpPropMask, RPpropSHADE_LEVEL ) )
+	{ PROPmaskADD( &pm, ISpropLEVEL );	}
+
+    if  ( PROPmaskISSET( rpPropMask, RPpropSHADE_PATTERN ) )
+	{ PROPmaskADD( &pm, ISpropPATTERN );	}
+
+    *isPropMask= pm;
     return;
     }
 

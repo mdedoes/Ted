@@ -201,7 +201,6 @@ int tedSetDocumentProperties(	EditApplication *		ea,
 	if  ( PROPmaskISSET( &changed, DPpropTITLE )	||
 	      PROPmaskISSET( &changed, DPpropSUBJECT )	||
 	      PROPmaskISSET( &changed, DPpropKEYWORDS )	||
-	      PROPmaskISSET( &changed, DPpropCOMMENT )	||
 	      PROPmaskISSET( &changed, DPpropDOCCOMM )	||
 	      PROPmaskISSET( &changed, DPpropAUTHOR )	||
 	      PROPmaskISSET( &changed, DPpropCREATIM )	||

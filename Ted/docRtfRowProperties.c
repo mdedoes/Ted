@@ -47,6 +47,8 @@ void docRtfSaveRowProperties(		const RowProperties *	rp,
 	{ docRtfWriteTag( "\\trhdr", pCol, sos ); }
     if  ( rp->rpKeepOnOnePage )
 	{ docRtfWriteTag( "\\trkeep", pCol, sos ); }
+    if  ( rp->rpKeepWithNext )
+	{ docRtfWriteTag( "\\trkeepfollow", pCol, sos ); }
     if  ( rp->rpAutofit )
 	{ docRtfWriteArgTag( "\\trautofit", pCol, rp->rpAutofit, sos ); }
 
@@ -68,6 +70,67 @@ void docRtfSaveRowProperties(		const RowProperties *	rp,
     if  ( rp->rpHorizontalBorder.bpStyle != DOCbsNONE )
 	{
 	docRtfSaveBorder( "\\trbrdrh", pCol, &(rp->rpHorizontalBorder), sos );
+	}
+
+    /**/
+    switch( rp->rpShading.isPattern )
+	{
+	case DOCspSOLID:
+	    break;
+
+	case DOCspBGBDIAG:
+	    docRtfWriteTag( "\\trbgbdiag", pCol, sos );
+	    break;
+	case DOCspBGCROSS:
+	    docRtfWriteTag( "\\trbgcross", pCol, sos );
+	    break;
+	case DOCspBGDCROSS:
+	    docRtfWriteTag( "\\trbgdcross", pCol, sos );
+	    break;
+	case DOCspBGDKBDIAG:
+	    docRtfWriteTag( "\\trbgdkbdiag", pCol, sos );
+	    break;
+	case DOCspBGDKCROSS:
+	    docRtfWriteTag( "\\trbgdkcross", pCol, sos );
+	    break;
+	case DOCspBGDKDCROSS:
+	    docRtfWriteTag( "\\trbgdkdcross", pCol, sos );
+	    break;
+	case DOCspBGDKFDIAG:
+	    docRtfWriteTag( "\\trbgdkfdiag", pCol, sos );
+	    break;
+	case DOCspBGDKHORIZ:
+	    docRtfWriteTag( "\\trbgdkhor", pCol, sos );
+	    break;
+	case DOCspBGDKVERT:
+	    docRtfWriteTag( "\\trbgdkvert", pCol, sos );
+	    break;
+	case DOCspBGFDIAG:
+	    docRtfWriteTag( "\\trbgfdiag", pCol, sos );
+	    break;
+	case DOCspBGHORIZ:
+	    docRtfWriteTag( "\\trbghoriz", pCol, sos );
+	    break;
+	case DOCspBGVERT:
+	    docRtfWriteTag( "\\trbgvert", pCol, sos );
+	    break;
+
+	default:
+	    LDEB(rp->rpShading.isPattern);
+	    break;
+	}
+
+    if  ( rp->rpShading.isForeColor > 0 )
+	{
+	docRtfWriteArgTag( "\\trcfpat", pCol, rp->rpShading.isForeColor, sos );
+	}
+    if  ( rp->rpShading.isBackColor > 0 )
+	{
+	docRtfWriteArgTag( "\\trcbpat", pCol, rp->rpShading.isBackColor, sos );
+	}
+    if  ( rp->rpShading.isLevel > 0 )
+	{
+	docRtfWriteArgTag( "\\trshdng", pCol, rp->rpShading.isLevel, sos );
 	}
 
     /**/
@@ -143,142 +206,162 @@ int docRtfRememberRowProperty(		SimpleInputStream *	sis,
 					int			arg,
 					RtfReadingContext *	rrc )
     {
+    RowProperties *	rp= &(rrc->rrcRowProperties);
+
     switch( rcw->rcwID )
 	{
 	case RPprop_NONE:
-	    docCleanRowProperties( &(rrc->rrcRowProperties) );
-	    docInitRowProperties(  &(rrc->rrcRowProperties) );
+	    docCleanRowProperties( rp );
+	    docInitRowProperties(  rp );
 
 	    docCleanCellProperties( &(rrc->rrcCellProperties) );
 	    docInitCellProperties(  &(rrc->rrcCellProperties) );
 	    return 0;
 
 	case RPpropGAP_WIDTH:
-	    rrc->rrcRowProperties.rpHalfGapWidthTwips= arg;
+	    rp->rpHalfGapWidthTwips= arg;
 	    break;
 
 	case RPpropLEFT_INDENT:
-	    rrc->rrcRowProperties.rpLeftIndentTwips= arg;
+	    rp->rpLeftIndentTwips= arg;
 	    break;
 
 	case RPpropHEIGHT:
-	    rrc->rrcRowProperties.rpHeightTwips= arg;
+	    rp->rpHeightTwips= arg;
 	    break;
 
 	case RPpropTOP_BORDER:
-	    rrc->rrcRowProperties.rpTopBorder= rrc->rrcBorderProperties;
+	    rp->rpTopBorder= rrc->rrcBorderProperties;
 	    docInitBorderProperties( &(rrc->rrcBorderProperties) );
 	    break;
 	case RPpropBOTTOM_BORDER:
-	    rrc->rrcRowProperties.rpBottomBorder= rrc->rrcBorderProperties;
+	    rp->rpBottomBorder= rrc->rrcBorderProperties;
 	    docInitBorderProperties( &(rrc->rrcBorderProperties) );
 	    break;
 	case RPpropLEFT_BORDER:
-	    rrc->rrcRowProperties.rpLeftBorder= rrc->rrcBorderProperties;
+	    rp->rpLeftBorder= rrc->rrcBorderProperties;
 	    docInitBorderProperties( &(rrc->rrcBorderProperties) );
 	    break;
 	case RPpropRIGHT_BORDER:
-	    rrc->rrcRowProperties.rpRightBorder= rrc->rrcBorderProperties;
+	    rp->rpRightBorder= rrc->rrcBorderProperties;
 	    docInitBorderProperties( &(rrc->rrcBorderProperties) );
 	    break;
 	case RPpropHORIZ_BORDER:
-	    rrc->rrcRowProperties.rpHorizontalBorder= rrc->rrcBorderProperties;
+	    rp->rpHorizontalBorder= rrc->rrcBorderProperties;
 	    docInitBorderProperties( &(rrc->rrcBorderProperties) );
 	    break;
 	case RPpropVERT_BORDER:
-	    rrc->rrcRowProperties.rpVerticalBorder= rrc->rrcBorderProperties;
+	    rp->rpVerticalBorder= rrc->rrcBorderProperties;
 	    docInitBorderProperties( &(rrc->rrcBorderProperties) );
 	    break;
 
+	/**/
+	case RPpropSHADE_FORE_COLOR:
+	    rp->rpShading.isForeColor= arg;
+	    break;
+	case RPpropSHADE_BACK_COLOR:
+	    rp->rpShading.isBackColor= arg;
+	    break;
+	case RPpropSHADE_LEVEL:
+	    rp->rpShading.isLevel= arg;
+	    break;
+	case RPpropSHADE_PATTERN:
+	    rp->rpShading.isPattern= rcw->rcwEnumValue;
+	    break;
+
+	/**/
 	case RPpropALIGNMENT:
-	    rrc->rrcRowProperties.rpAlignment= rcw->rcwEnumValue;
+	    rp->rpAlignment= rcw->rcwEnumValue;
 	    break;
 
 	case RPpropIS_TABLE_HEADER:
-	    rrc->rrcRowProperties.rpIsTableHeader= ( arg != 0 );
+	    rp->rpIsTableHeader= ( arg != 0 );
 	    break;
 	case RPpropKEEP_ON_ONE_PAGE:
-	    rrc->rrcRowProperties.rpKeepOnOnePage= ( arg != 0 );
+	    rp->rpKeepOnOnePage= ( arg != 0 );
+	    break;
+	case RPpropKEEP_WITH_NEXT:
+	    rp->rpKeepWithNext= ( arg != 0 );
 	    break;
 	case RPpropAUTOFIT:
-	    rrc->rrcRowProperties.rpAutofit= ( arg != 0 );
+	    rp->rpAutofit= ( arg != 0 );
 	    break;
 
 	/**/
 	case RPpropTRW_WIDTH:
-	    rrc->rrcRowProperties.rpPreferredWidth= arg;
+	    rp->rpPreferredWidth= arg;
 	    break;
 	case RPpropTRFTS_WIDTH:
-	    rrc->rrcRowProperties.rpPreferredWidthUnit= arg;
+	    rp->rpPreferredWidthUnit= arg;
 	    break;
 
 	/**/
 	case RPpropTRSPDL:
-	    rrc->rrcRowProperties.rpLeftDefaultCellSpacing= arg;
+	    rp->rpLeftDefaultCellSpacing= arg;
 	    break;
 	case RPpropTRSPDR:
-	    rrc->rrcRowProperties.rpRightDefaultCellSpacing= arg;
+	    rp->rpRightDefaultCellSpacing= arg;
 	    break;
 	case RPpropTRSPDT:
-	    rrc->rrcRowProperties.rpTopDefaultCellSpacing= arg;
+	    rp->rpTopDefaultCellSpacing= arg;
 	    break;
 	case RPpropTRSPDB:
-	    rrc->rrcRowProperties.rpBottomDefaultCellSpacing= arg;
+	    rp->rpBottomDefaultCellSpacing= arg;
 	    break;
 
 	case RPpropTRSPDFL:
-	    rrc->rrcRowProperties.rpLeftDefaultCellSpacingUnit= arg;
+	    rp->rpLeftDefaultCellSpacingUnit= arg;
 	    break;
 	case RPpropTRSPDFR:
-	    rrc->rrcRowProperties.rpRightDefaultCellSpacingUnit= arg;
+	    rp->rpRightDefaultCellSpacingUnit= arg;
 	    break;
 	case RPpropTRSPDFT:
-	    rrc->rrcRowProperties.rpTopDefaultCellSpacingUnit= arg;
+	    rp->rpTopDefaultCellSpacingUnit= arg;
 	    break;
 	case RPpropTRSPDFB:
-	    rrc->rrcRowProperties.rpBottomDefaultCellSpacingUnit= arg;
+	    rp->rpBottomDefaultCellSpacingUnit= arg;
 	    break;
 
 	/**/
 	case RPpropTRPADDL:
-	    rrc->rrcRowProperties.rpLeftDefaultCellMargin= arg;
+	    rp->rpLeftDefaultCellMargin= arg;
 	    break;
 	case RPpropTRPADDR:
-	    rrc->rrcRowProperties.rpRightDefaultCellMargin= arg;
+	    rp->rpRightDefaultCellMargin= arg;
 	    break;
 	case RPpropTRPADDT:
-	    rrc->rrcRowProperties.rpTopDefaultCellMargin= arg;
+	    rp->rpTopDefaultCellMargin= arg;
 	    break;
 	case RPpropTRPADDB:
-	    rrc->rrcRowProperties.rpBottomDefaultCellMargin= arg;
+	    rp->rpBottomDefaultCellMargin= arg;
 	    break;
 
 	case RPpropTRPADDFL:
-	    rrc->rrcRowProperties.rpLeftDefaultCellMarginUnit= arg;
+	    rp->rpLeftDefaultCellMarginUnit= arg;
 	    break;
 	case RPpropTRPADDFR:
-	    rrc->rrcRowProperties.rpRightDefaultCellMarginUnit= arg;
+	    rp->rpRightDefaultCellMarginUnit= arg;
 	    break;
 	case RPpropTRPADDFT:
-	    rrc->rrcRowProperties.rpTopDefaultCellMarginUnit= arg;
+	    rp->rpTopDefaultCellMarginUnit= arg;
 	    break;
 	case RPpropTRPADDFB:
-	    rrc->rrcRowProperties.rpBottomDefaultCellMarginUnit= arg;
+	    rp->rpBottomDefaultCellMarginUnit= arg;
 	    break;
 
 	/**/
 	case RPpropTRW_WIDTHB:
-	    rrc->rrcRowProperties.rpCellWidthBefore= arg;
+	    rp->rpCellWidthBefore= arg;
 	    break;
 	case RPpropTRW_WIDTHA:
-	    rrc->rrcRowProperties.rpCellWidthAfter= arg;
+	    rp->rpCellWidthAfter= arg;
 	    break;
 
 	case RPpropTRFTS_WIDTHB:
-	    rrc->rrcRowProperties.rpCellWidthBeforeUnit= arg;
+	    rp->rpCellWidthBeforeUnit= arg;
 	    break;
 	case RPpropTRFTS_WIDTHA:
-	    rrc->rrcRowProperties.rpCellWidthAfterUnit= arg;
+	    rp->rpCellWidthAfterUnit= arg;
 	    break;
 
 	default:

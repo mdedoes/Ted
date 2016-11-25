@@ -83,7 +83,6 @@ typedef enum DocumentProperty
     DPpropTITLE,
     DPpropSUBJECT,
     DPpropKEYWORDS,
-    DPpropCOMMENT,
     DPpropDOCCOMM,
     DPpropAUTHOR,
     DPpropHLINKBASE,
@@ -143,7 +142,6 @@ typedef struct DocumentProperties
     unsigned char *	dpTitle;
     unsigned char *	dpSubject;
     unsigned char *	dpKeywords;
-    unsigned char *	dpComment;
     unsigned char *	dpDoccomm;
     unsigned char *	dpAuthor;
     unsigned char *	dpHlinkbase;
@@ -155,7 +153,6 @@ typedef struct DocumentProperties
 		( (dp)->dpTitle			||	\
 		  (dp)->dpSubject		||	\
 		  (dp)->dpKeywords		||	\
-		  (dp)->dpComment		||	\
 		  (dp)->dpDoccomm		||	\
 		  (dp)->dpHlinkbase		||	\
 		  (dp)->dpAuthor		||	\

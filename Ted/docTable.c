@@ -286,13 +286,17 @@ void docSectDelimitTables(	BufferItem *		sectBi )
 	    {
 	    rowBi= sectBi->biChildren[past];
 
-	    if  ( ! docAlignedColumns( &(rowBiFirst->biRowProperties),
+	    if  ( ! docApproximatelyAlignedColumns(
+					&(rowBiFirst->biRowProperties),
 					&(rowBi->biRowProperties) )	)
 		{ break;	}
 
+	    /*
+	    No !
 	    if  ( ! docEqualRowBorders( &(rowBiFirst->biRowProperties),
 					&(rowBi->biRowProperties) )	)
 		{ break;	}
+	    */
 
 	    past++; 
 	    }

@@ -317,6 +317,7 @@ typedef enum RtfTag
     RTFidENSPACE,
     RTFidLDBLQUOTE,
     RTFidLINE,
+    RTFidLBR,
     RTFidLQUOTE,
     RTFidLTRMARK,
     RTFidPAGE,
@@ -332,7 +333,6 @@ typedef enum RtfTag
     RTFidZWJ,
     RTFidZWNJ,
 
-    RTFidU,
 				/****************************************/
 				/*  Hierarchy.				*/
 				/****************************************/

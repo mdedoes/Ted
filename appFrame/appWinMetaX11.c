@@ -537,6 +537,8 @@ static int appMetaGetPointsX11(	DeviceContextX11 *	dcx,
 	xp->y= DCX_yViewport( y, dcx );
 	}
 
+    *xp= dc->dcPoints[0];
+
     return 0;
     }
 
@@ -1288,6 +1290,18 @@ static int appMeta_PolygonX11(	SimpleInputStream *	sis,
     WMFDEB(appDebug("Polygon( count=%d, ... ) Fill= %d Borders= %d\n",
 			    count, dc->dcFillInsides, dc->dcDrawBorders ));
 
+#   if 1
+    {
+    int	i;
+
+    for ( i= 0; i < count; i++ )
+	{
+	WMFDEB(appDebug(" %3d: [%3d,%3d]\n",
+			   i,  dc->dcPoints[i].x, dc->dcPoints[i].y ));
+	}
+    }
+#   endif
+
     if  ( dc->dcFillInsides )
 	{
 	appMeta_SetFillX11( dcx, 1 );
@@ -1301,7 +1315,7 @@ static int appMeta_PolygonX11(	SimpleInputStream *	sis,
 	{
 	appDrawSetForegroundColor( add, &(dcx->dcxPenColor) );
 
-	appDrawDrawLines( add, dc->dcPoints, count );
+	appDrawDrawLines( add, dc->dcPoints, count+ 1 );
 	}
 
     return 0;
@@ -1610,7 +1624,7 @@ static int appMeta_PolyPolygonX11(	SimpleInputStream *	sis,
 	if  ( appMetaGetPointsX11( dcx, counts[i], sis ) )
 	    { LDEB(counts[i]); return -1;	}
 
-#	if 0
+#	if 1
 	if  ( dc->dcFillInsides )
 	    {
 	    appDrawSetForegroundColor( add, &(dcx->dcxBrushColor) );
@@ -1623,7 +1637,7 @@ static int appMeta_PolyPolygonX11(	SimpleInputStream *	sis,
 	    {
 	    appDrawSetForegroundColor( add, &(dcx->dcxPenColor) );
 
-	    appDrawDrawLines( add, dc->dcPoints, counts[i] );
+	    appDrawDrawLines( add, dc->dcPoints, counts[i]+ 1 );
 	    }
 	}
 

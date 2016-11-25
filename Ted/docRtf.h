@@ -39,6 +39,9 @@ typedef struct RtfBookmarkLevel
 
 typedef struct RtfReadingState
     {
+    int				rrsBytesPerUnicode;
+    int				rrsUnicodeBytesToSkip;
+
     TextAttribute		rrsTextAttribute;
     ParagraphProperties		rrsParagraphProperties;
     SectionProperties		rrsSectionProperties;

@@ -294,8 +294,8 @@ int docRtfRememberSectionProperty(	SimpleInputStream *	sis,
 	    break;
 
 	case SPpropSTYLE:
-	    sp->spStyle= arg;
 	    rrc->rrcDocumentStyle.dsLevel= DOClevSECT;
+	    sp->spStyle= arg;
 	    break;
 
 	case SPpropTITLEPG:

@@ -44,6 +44,7 @@ static void docRtfParaSaveProperties( SimpleOutputStream *	sos,
 				int				fromDefault,
 				int				saveIntbl,
 				int *				pPropertyChange,
+				int *				pTabsSaved,
 				int *				pCol,
 				const ParagraphProperties *	newPP,
 				const ParagraphProperties *	prevPP )
@@ -84,6 +85,10 @@ static void docRtfParaSaveProperties( SimpleOutputStream *	sos,
 
     docRtfSaveParagraphProperties( sos, pCol, &updMask, newPP );
 
+    if  ( PROPmaskISSET( &updMask, PPpropTAB_STOPS )	&&
+	  newPP->ppTabStopList.tslTabStopCount > 0	)
+	{ *pTabsSaved= 1;	}
+
     return;
     }
 
@@ -92,6 +97,7 @@ int docRtfSaveRuler(	SimpleOutputStream *		sos,
     {
     int				col= 0;
     int				propChange= 1;
+    int				tabsSaved= 0;
     int				saveIntbl= 0;
     int				noRestart= 0;
 
@@ -103,7 +109,7 @@ int docRtfSaveRuler(	SimpleOutputStream *		sos,
     docRtfWriteTag( "\\pard", &col, sos );
 
     docRtfParaSaveProperties( sos, noRestart, saveIntbl,
-					&propChange, &col, pp, &refPP );
+				&propChange, &tabsSaved, &col, pp, &refPP );
 
     docRtfWriteDestinationEnd( &col, sos );
 
@@ -581,6 +587,7 @@ static int docRtfSaveParaItem(	SimpleOutputStream *		sos,
     int					saveIntbl;
     int					restartFromDefault= 0;
     int					propChange= 0;
+    int					tabsSaved= 0;
 
     const DocumentField *		df;
     const FieldKindInformation *	fki;
@@ -601,7 +608,7 @@ static int docRtfSaveParaItem(	SimpleOutputStream *		sos,
 	}
 
     docRtfParaSaveProperties( sos, restartFromDefault, saveIntbl,
-					&propChange, pCol,
+					&propChange, &tabsSaved, pCol,
 					&(bi->biParaProperties),
 					&(rwc->rwcParagraphProperties) );
 
@@ -907,6 +914,7 @@ static int docRtfSaveParaItem(	SimpleOutputStream *		sos,
 
 	if  ( ( ! bi->biParaInTable				&&
 	        bi->biInExternalItem == DOCinBODY		)	||
+	      tabsSaved							||
 	      bi->biNumberInParent < bi->biParent->biChildCount- 1	)
 	    {
 	    docRtfWriteTag( "\\par", pCol, sos );

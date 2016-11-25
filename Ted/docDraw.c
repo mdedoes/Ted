@@ -53,12 +53,15 @@ static void docInitCellDrawingProgress(	CellDrawingProgress *	cdp )
 /*									*/
 /************************************************************************/
 
-static int docDrawOneLine(	void *				through,
+static int docDrawOneTextLine(	void *				through,
 				const BufferItem *		bi,
 				int				part,
 				const ParagraphFrame *		pf,
 				int				line,
-				DrawingContext *		dc )
+				DrawingContext *		dc,
+				int				pShift,
+				int				xShift,
+				int				yShift )
     {
     const TextLine *		tl= bi->biParaLines+ line;
 
@@ -74,17 +77,19 @@ static int docDrawOneLine(	void *				through,
 	LayoutPosition		lpTop;
 
 	lpTop= bi->biTopPosition;
+	lpTop.lpPage += pShift;
+	lpTop.lpPageYTwips += yShift;
 	lpTop.lpPageYTwips += bi->biParaSpaceBeforeTwips;
 
 	if  ( (*dc->dcDrawParaTop)( bi->biParaBorderAboveParagraph,
-						    bpLeft, bpRight,
-						    pf, &lpTop, through, dc ) )
+				bpLeft, bpRight, pf, &lpTop, through, dc ) )
 	    { LDEB(1); return -1;	}
 	}
 
     if  ( dc->dcDrawTextLine )
 	{
-	accepted= (*dc->dcDrawTextLine)( bi, line, pf, through, dc );
+	accepted= (*dc->dcDrawTextLine)( bi, line, pf, through,
+						dc, pShift, xShift, yShift );
 	}
     else{ accepted= tl->tlParticuleCount;	}
 
@@ -99,6 +104,8 @@ static int docDrawOneLine(	void *				through,
 	    LayoutPosition	lpBelow;
 
 	    lpBelow= bi->biBelowPosition;
+	    lpBelow.lpPage += pShift;
+	    lpBelow.lpPageYTwips += yShift;
 	    lpBelow.lpPageYTwips -= bi->biParaSpaceAfterTwips;
 
 	    if  ( (*dc->dcDrawParaBottom)( bi->biParaBorderBelowParagraph,
@@ -116,7 +123,10 @@ static int docDrawTextLines(	void *				through,
 				const LayoutPosition *		lpHere,
 				const ParagraphFrame *		pf,
 				int *				pLinesDone,
-				DrawingContext *		dc )
+				DrawingContext *		dc,
+				int				pShift,
+				int				xShift,
+				int				yShift )
     {
     int				done= 0;
     int				pastSelectionEnd= 0;
@@ -129,19 +139,20 @@ static int docDrawTextLines(	void *				through,
 	int	accepted;
 	int	beforeSelectionBegin= 0;
 
-	if  ( tl->tlTopPosition.lpPage > lpHere->lpPage )
+	if  ( tl->tlTopPosition.lpPage+ pShift > lpHere->lpPage )
 	    { break;	}
 
-	if  ( tl->tlTopPosition.lpPage < lpHere->lpPage )
+	if  ( tl->tlTopPosition.lpPage+ pShift < lpHere->lpPage )
 	    { beforeSelectionBegin= 1;	}
 
 	if  ( dc->dcClipRect )
 	    {
 	    AppDrawingData *		add= dc->dcDrawingData;
 
-	    int	y1= TL_BELOW_PIXELS( add, tl );
+	    int y0= TL_TOP_PIXELS_SH( add, tl, pShift, yShift );
+	    int	y1= TL_BELOW_PIXELS_SH( add, tl, pShift, yShift );
 
-	    if  ( TL_TOP_PIXELS( add, tl ) > dc->dcClipRect->drY1 )
+	    if  ( y0 > dc->dcClipRect->drY1 )
 		{ pastSelectionEnd= 1;	}
 	    if  ( y1 < dc->dcClipRect->drY0 )
 		{ beforeSelectionBegin= 1;	}
@@ -178,8 +189,8 @@ static int docDrawTextLines(	void *				through,
 	if  ( beforeSelectionBegin || pastSelectionEnd )
 	    { accepted= tl->tlParticuleCount;		}
 	else{
-	    accepted= docDrawOneLine( through, bi, tl->tlFirstParticule,
-							    pf, line, dc );
+	    accepted= docDrawOneTextLine( through, bi, tl->tlFirstParticule,
+					pf, line, dc, pShift, xShift, yShift );
 	    }
 
 	if  ( accepted < 1 )
@@ -282,12 +293,13 @@ int docDrawToPageOfItem(		BufferItem *		prevBodyBi,
 					BufferItem *		thisBi,
 					void *			through,
 					LayoutPosition *	lpHere,
-					DrawingContext *	dc )
+					DrawingContext *	dc,
+					int			pShift )
     {
     BlockFrame	bf;
 
-    while( thisBi->biTopPosition.lpPage > lpHere->lpPage	&&
-	   thisBi->biTopPosition.lpPage > dc->dcFirstPage	)
+    while( thisBi->biTopPosition.lpPage+ pShift > lpHere->lpPage	&&
+	   thisBi->biTopPosition.lpPage+ pShift > dc->dcFirstPage	)
 	{
 	if  ( docDrawToNextColumn( prevBodyBi, thisBodyBi, through,
 						    lpHere, &bf, dc )	)
@@ -308,7 +320,10 @@ static int docDrawBelowPara(	int *				pLinesDone,
 				int				countAfter,
 				int				linesDone,
 				const LayoutPosition *		lpHere,
-				LayoutPosition *		lpBelow )
+				LayoutPosition *		lpBelow,
+				int				pShift,
+				int				xShift,
+				int				yShift )
     {
     const TextLine *	tl;
     LayoutPosition	lp;
@@ -326,7 +341,7 @@ static int docDrawBelowPara(	int *				pLinesDone,
 					    tl->tlLineSpacingTwips;
 	lp.lpAtTopOfColumn= 0;
 
-	docLayoutPushBottomDown( lpBelow, &lp );
+	docLayoutPushBottomDownShifted( lpBelow, &lp, pShift, yShift );
 
 	linesDone++; tl++;
 	}
@@ -338,7 +353,7 @@ static int docDrawBelowPara(	int *				pLinesDone,
 	if  ( ! countAfter )
 	    { lp.lpPageYTwips -= paraBi->biParaSpaceAfterTwips;	}
 
-	docLayoutPushBottomDown( lpBelow, &lp );
+	docLayoutPushBottomDownShifted( lpBelow, &lp, pShift, yShift );
 	}
 
     *pLinesDone= linesDone;
@@ -355,7 +370,10 @@ static int docDrawBelowPara(	int *				pLinesDone,
 
 static int docDrawParaItem(	BufferItem *			paraBi,
 				void *				through,
-				DrawingContext *		dc )
+				DrawingContext *		dc,
+				int				pShift,
+				int				xShift,
+				int				yShift )
     {
     ParagraphFrame		pf;
     int				line= 0;
@@ -378,6 +396,10 @@ static int docDrawParaItem(	BufferItem *			paraBi,
 	{ (*dc->dcParaFramePixels) ( &pf, dc->dcDrawingData, paraBi ); }
 
     lpTop= paraBi->biTopPosition;
+
+    lpTop.lpPage += pShift;
+    lpTop.lpPageYTwips += yShift;
+
     lpShadeTop= lpTop;
 
     if  ( ! lpShadeTop.lpAtTopOfColumn )
@@ -388,13 +410,13 @@ static int docDrawParaItem(	BufferItem *			paraBi,
 	if  ( dc->dcDrawParaShade )
 	    {
 	    int			paraLinesDone= line;
-	    LayoutPosition	lpBelow;
+	    LayoutPosition	lpShadeBelow;
 	    const int		countAfter= 0;
 
-	    lpBelow= lpTop;
+	    lpShadeBelow= lpShadeTop;
 
 	    if  ( docDrawBelowPara( &paraLinesDone, paraBi, countAfter, line,
-							&lpTop, &lpBelow ) )
+			    &lpTop, &lpShadeBelow, pShift, xShift, yShift ) )
 		{ LDEB(1); return -1;	}
 
 	    if  ( paraLinesDone > line )
@@ -403,12 +425,13 @@ static int docDrawParaItem(	BufferItem *			paraBi,
 						through, dc,
 						pf.pfX0GeometryTwips,
 						pf.pfX1GeometryTwips,
-						&lpShadeTop, &lpBelow ) )
+						&lpShadeTop, &lpShadeBelow ) )
 		    { LDEB(1); return -1;	}
 		}
 	    }
 
-	if  ( docDrawTextLines( through, paraBi, &lpTop, &pf, &line, dc ) )
+	if  ( docDrawTextLines( through, paraBi, &lpTop, &pf, &line,
+						dc, pShift, xShift, yShift ) )
 	    { LDEB(lpTop.lpPage); return -1;	}
 
 	/*  1  */
@@ -458,6 +481,8 @@ static int docDrawCellOrnaments(
 			int					atBottomOfPage,
 			void *					through,
 			DrawingContext *			dc,
+			int					xShift,
+			int					yShift,
 			const LayoutPosition *			lpTop,
 			const LayoutPosition *			lpBelow )
     {
@@ -560,11 +585,11 @@ static int docDrawCellOrnaments(
 	      ! useAbove					&&
 	      ( bpTop->bpStyle != DOCbsNONE || topAsGrid )	)
 	    {
-	    if  ( (*dc->dcDrawCellTop)(		bpTop, bpLeft, bpRight,
-						topAsGrid,
-						cdp->cdpX0Twips,
-						cdp->cdpX1Twips,
-						through, dc, lpTop ) )
+	    if  ( (*dc->dcDrawCellTop)(	bpTop, bpLeft, bpRight,
+					topAsGrid,
+					cdp->cdpX0Twips,
+					cdp->cdpX1Twips,
+					through, dc, lpTop ) )
 		{ LDEB(1); return -1;	}
 	    }
 
@@ -574,10 +599,9 @@ static int docDrawCellOrnaments(
 	      ! leftHasBorder						&&
 	      ( cp->cpLeftBorder.bpStyle != DOCbsNONE || leftAsGrid )	)
 	    {
-	    if  ( (*dc->dcDrawCellLeft)(	&(cp->cpLeftBorder),
+	    if  ( (*dc->dcDrawCellLeft)( &(cp->cpLeftBorder),
 						bpTop, bpBottom,
-						leftAsGrid,
-						through, dc,
+						leftAsGrid, through, dc,
 						cdp->cdpX0Twips,
 						lpTop, &lpBelowCell ) )
 		{ LDEB(1); return -1;	}
@@ -588,10 +612,9 @@ static int docDrawCellOrnaments(
 	      dc->dcDrawCellRight					&&
 	      ( cp->cpRightBorder.bpStyle != DOCbsNONE || rightAsGrid )	)
 	    {
-	    if  ( (*dc->dcDrawCellRight)(	&(cp->cpRightBorder),
+	    if  ( (*dc->dcDrawCellRight)( &(cp->cpRightBorder),
 						bpTop, bpBottom,
-						rightAsGrid,
-						through, dc,
+						rightAsGrid, through, dc,
 						cdp->cdpX1Twips,
 						lpTop, &lpBelowCell ) )
 		{ LDEB(1); return -1;	}
@@ -601,11 +624,11 @@ static int docDrawCellOrnaments(
 	if  ( dc->dcDrawCellBottom					&&
 	      ( cp->cpBottomBorder.bpStyle != DOCbsNONE || bottomAsGrid ) )
 	    {
-	    if  ( (*dc->dcDrawCellBottom)(	bpBottom, bpLeft, bpRight,
-						bottomAsGrid,
-						cdp->cdpX0Twips,
-						cdp->cdpX1Twips,
-						through, dc, &lpBelowCell ) )
+	    if  ( (*dc->dcDrawCellBottom)( bpBottom, bpLeft, bpRight,
+				bottomAsGrid,
+				cdp->cdpX0Twips,
+				cdp->cdpX1Twips,
+				through, dc, &lpBelowCell ) )
 		{ LDEB(1); return -1;	}
 	    }
 	}
@@ -633,7 +656,10 @@ static int docDrawBelowCell(
 			const BufferItem *			cellBi,
 			const LayoutPosition *			lpHere,
 			const CellDrawingProgress * const	cdp,
-			LayoutPosition *			lpBelow )
+			LayoutPosition *			lpBelow,
+			int					pShift,
+			int					xShift,
+			int					yShift )
     {
     int		para= cdp->cdpPara;
     int		linesDone= cdp->cdpLinesDone;
@@ -649,7 +675,7 @@ static int docDrawBelowCell(
 
 	/*  2  */
 	if  ( docDrawBelowPara( &paraLinesDone, paraBi, countAfter, linesDone,
-							    lpHere, lpBelow ) )
+				    lpHere, lpBelow, pShift, xShift, yShift ) )
 	    { LDEB(1); return -1;	}
 
 	/*  3  */
@@ -684,7 +710,10 @@ static int docDrawAdvanceCell(	void *				through,
 				const LayoutPosition *		lpHere,
 				CellDrawingProgress * const	cdp,
 				BlockFrame *			bf,
-				DrawingContext *		dc )
+				DrawingContext *		dc,
+				int				pShift,
+				int				xShift,
+				int				yShift )
 				
     {
     int				bottomTwips= -1;
@@ -716,6 +745,10 @@ static int docDrawAdvanceCell(	void *				through,
 		}
 
 	    lpTop= paraBi->biTopPosition;
+
+	    lpTop.lpPage += pShift;
+	    lpTop.lpPageYTwips += yShift;
+
 	    lpShadeTop= lpTop;
 	    lpShadeTop.lpPageYTwips += paraBi->biParaSpaceBeforeTwips;
 	    }
@@ -723,13 +756,14 @@ static int docDrawAdvanceCell(	void *				through,
 	if  ( dc->dcDrawParaShade )
 	    {
 	    int			paraLinesDone= cdp->cdpLinesDone;
-	    LayoutPosition	lpBelow;
+	    LayoutPosition	lpShadeBelow;
 	    const int		countAfter= 0;
 
-	    lpBelow= lpTop;
+	    lpShadeBelow= lpShadeTop;
 
 	    if  ( docDrawBelowPara( &paraLinesDone, paraBi, countAfter,
-					cdp->cdpLinesDone, &lpTop, &lpBelow ) )
+				    cdp->cdpLinesDone, &lpTop, &lpShadeBelow,
+				    pShift, xShift, yShift ) )
 		{ LDEB(1); return -1;	}
 
 	    if  ( paraLinesDone > cdp->cdpLinesDone )
@@ -738,13 +772,14 @@ static int docDrawAdvanceCell(	void *				through,
 				    through, dc,
 				    cdp->cdpParagraphFrame.pfX0GeometryTwips,
 				    cdp->cdpParagraphFrame.pfX1GeometryTwips,
-				    &lpShadeTop, &lpBelow ) )
+				    &lpShadeTop, &lpShadeBelow ) )
 		    { LDEB(1); return -1;	}
 		}
 	    }
 
 	if  ( docDrawTextLines( through, paraBi, lpHere,
-				&(cdp->cdpParagraphFrame), &linesDone, dc ) )
+				    &(cdp->cdpParagraphFrame), &linesDone,
+				    dc, pShift, xShift, yShift ) )
 	    { LDEB(lpHere->lpPage); return -1;	}
 
 	/*
@@ -776,6 +811,9 @@ static int docDrawRowPageStrip(	BufferItem *			rowBi,
 				CellDrawingProgress * const	cdpRow,
 				void *				through,
 				DrawingContext *		dc,
+				int				pShift,
+				int				xShift,
+				int				yShift,
 				const LayoutPosition *		lpTop )
     {
     BufferDocument *		bd= dc->dcDocument;
@@ -816,7 +854,8 @@ static int docDrawRowPageStrip(	BufferItem *			rowBi,
 
 	if  ( docDrawBelowCell( &(cdp->cdpAdvanceColumnThisPage),
 						&colToNextPage, cellBi,
-						lpHere, cdp, &lpBelowCell ) )
+						lpHere, cdp, &lpBelowCell,
+						pShift, xShift, yShift ) )
 	    { LDEB(1); return -1;	}
 
 	if  ( ! cp->cpTopInMergedColumn )
@@ -831,7 +870,8 @@ static int docDrawRowPageStrip(	BufferItem *			rowBi,
 
     if  ( ! toNextPage )
 	{
-	docLayoutPushBottomDown( &lpBottom, &(rowBi->biBelowPosition) );
+	docLayoutPushBottomDownShifted( &lpBottom,
+				&(rowBi->biBelowPosition), pShift, yShift );
 	}
 
     if  ( rowAdvanced )
@@ -840,8 +880,8 @@ static int docDrawRowPageStrip(	BufferItem *			rowBi,
 	const int	atBottomOfPage= toNextPage;
 
 	if  ( docDrawCellOrnaments( rowBi, cdpRow,
-					atTopOfColumn, atBottomOfPage,
-					through, dc, lpTop, &lpBottom ) )
+			    atTopOfColumn, atBottomOfPage,
+			    through, dc, xShift, yShift, lpTop, &lpBottom ) )
 	    { LDEB(1); return -1;	}
 	}
 
@@ -877,13 +917,15 @@ static int docDrawRowPageStrip(	BufferItem *			rowBi,
 	lpBelowCell= lpBottom;
 
 	if  ( docDrawBelowCell( &cellAdvanced, &colToNextPage, cellBi,
-						lpHere, cdp, &lpBelowCell ) )
+						lpHere, cdp, &lpBelowCell,
+						pShift, xShift, yShift ) )
 	    { LDEB(1); return -1;	}
 
 	if  ( ! cp->cpTopInMergedColumn )
 	    { docLayoutPushBottomDown( &lpBottom, &lpBelowCell );	}
 
-	if  ( docDrawAdvanceCell( through, cellBi, lpHere, cdp, &bf, dc ) )
+	if  ( docDrawAdvanceCell( through, cellBi, lpHere, cdp, &bf,
+						dc, pShift, xShift, yShift ) )
 	    { LDEB(1); return -1;	}
 
 	if  ( cellAdvanced )
@@ -968,6 +1010,41 @@ static void docStartDrawRowItem(	const BufferItem *	rowBi,
 
 /************************************************************************/
 /*									*/
+/*  Draw a table header.						*/
+/*									*/
+/************************************************************************/
+
+static int docDrawRowItem(	BufferItem *			rowBi,
+				void *				through,
+				DrawingContext *		dc,
+				int				pShift,
+				int				xShift,
+				int				yShift );
+
+static int docDrawTableHeader(	const BufferItem *		rowBi,
+				void *				through,
+				DrawingContext *		dc,
+				const LayoutPosition *		lpTop )
+    {
+    int			pShift;
+    int			xShift= 0;
+    int			yShift;
+
+    BufferItem *	headerBi;
+
+    headerBi= rowBi->biParent->biChildren[rowBi->biRowTableFirst];
+
+    pShift= lpTop->lpPage- headerBi->biTopPosition.lpPage;
+    yShift= lpTop->lpPageYTwips- headerBi->biTopPosition.lpPageYTwips;
+
+    if  ( docDrawRowItem( headerBi, through, dc, pShift, xShift, yShift ) )
+	{ LDEB(1); return -1;	}
+
+    return 0;
+    }
+
+/************************************************************************/
+/*									*/
 /*  Draw a table row by successively drawing the portions that fit on	*/
 /*  the current page and moving to the next page.			*/
 /*									*/
@@ -981,7 +1058,10 @@ static void docStartDrawRowItem(	const BufferItem *	rowBi,
 
 static int docDrawRowItem(	BufferItem *			rowBi,
 				void *				through,
-				DrawingContext *		dc )
+				DrawingContext *		dc,
+				int				pShift,
+				int				xShift,
+				int				yShift )
     {
     const RowProperties *	rp= &(rowBi->biRowProperties);
 
@@ -1018,8 +1098,24 @@ static int docDrawRowItem(	BufferItem *			rowBi,
     lpTop= rowBi->biTopPosition;
     lpHere= rowBi->biTopPosition;
 
+    lpTop.lpPage += pShift;
+    lpTop.lpPageYTwips += yShift;
+
+    lpHere.lpPage += pShift;
+    lpHere.lpPageYTwips += yShift;
+
+    if  ( rowBi->biRowPrecededByHeader )
+	{
+	LayoutPosition	lpHeader;
+
+	lpHeader= rowBi->biRowAboveHeaderPosition;
+
+	if  ( docDrawTableHeader( rowBi, through, dc, &lpHeader ) )
+	    { LDEB(rowBi->biRowPrecededByHeader); rval= -1; goto ready;	}
+	}
+
     if  ( docDrawRowPageStrip( rowBi, &lpHere, &toNextPage, cdp,
-						    through, dc, &lpTop ) )
+				through, dc, pShift, xShift, yShift, &lpTop ) )
 	{ LDEB(1); rval= -1; goto ready;	}
 
     while( toNextPage )
@@ -1036,8 +1132,15 @@ static int docDrawRowItem(	BufferItem *			rowBi,
 
 	lpHere= lpTop;
 
+	if  ( ! rowBi->biRowIsTableHeader	&&
+	      rowBi->biRowTableFirstIsHeader	)
+	    {
+	    if  ( docDrawTableHeader( rowBi, through, dc, &lpHere ) )
+		{ LDEB(rowBi->biRowIsTableHeader); rval= -1; goto ready; }
+	    }
+
 	if  ( docDrawRowPageStrip( rowBi, &lpHere, &toNextPage, cdp,
-						    through, dc, &lpTop ) )
+			    through, dc, pShift, xShift, yShift, &lpTop ) )
 	    { LDEB(1); rval= -1; goto ready;	}
 	}
 
@@ -1057,7 +1160,10 @@ static int docDrawRowItem(	BufferItem *			rowBi,
 
 static int docDrawGroupItem(	const BufferItem *		bi,
 				void *				through,
-				DrawingContext *		dc )
+				DrawingContext *		dc,
+				int				pShift,
+				int				xShift,
+				int				yShift )
     {
     AppDrawingData *		add= dc->dcDrawingData;
 
@@ -1072,35 +1178,59 @@ static int docDrawGroupItem(	const BufferItem *		bi,
     lpHere= bi->biTopPosition;
     for ( i= 0; i < bi->biChildCount; i++ )
 	{
-	BufferItem *	thisBi= bi->biChildren[i];
+	BufferItem *	childBi= bi->biChildren[i];
+	int		y0= BI_TOP_PIXELS_SH( add, childBi, pShift, yShift );
 
-	if  ( dc->dcClipRect						&&
-	      BI_TOP_PIXELS( add, thisBi ) > dc->dcClipRect->drY1	)
-	    { break;	}
+	if  ( dc->dcClipRect		&&
+	      y0 > dc->dcClipRect->drY1	)
+	    {
+	    if  ( childBi->biLevel == DOClevROW		&&
+		  childBi->biRowPrecededByHeader	)
+		{
+		int		hY0;
+		int		hY1;
+
+		LayoutPosition	lpHeader= childBi->biRowAboveHeaderPosition;
+
+		hY0= LP_YPIXELS( add, &lpHeader );
+		hY1= LP_YPIXELS( add, &(childBi->biTopPosition) );
+
+		if  ( hY0 <= dc->dcClipRect->drY1	&&
+		      hY1 >= dc->dcClipRect->drY0	)
+		    {
+		    if  ( docDrawTableHeader( childBi,
+						through, dc, &lpHeader ) )
+			{ LDEB(childBi->biRowPrecededByHeader); return -1; }
+		    }
+		}
+
+	    break;
+	    }
 
 	if  ( dc->dcDocumentSelection					&&
-	      docCompareItemPositions( thisBi,
+	      docCompareItemPositions( childBi,
 			    dc->dcDocumentSelection->dsEnd.dpBi ) > 0	)
 	    { break;	}
 
-	if  ( dc->dcLastPage >= 0				&&
-	      thisBi->biTopPosition.lpPage > dc->dcLastPage	)
+	if  ( dc->dcLastPage >= 0					&&
+	      childBi->biTopPosition.lpPage+ pShift > dc->dcLastPage	)
 	    { break;	}
 
-	if  ( dc->dcFirstPage < 0				||
-	      thisBi->biBelowPosition.lpPage >= dc->dcFirstPage	)
+	if  ( dc->dcFirstPage < 0					||
+	      childBi->biBelowPosition.lpPage+ pShift >=
+						    dc->dcFirstPage	)
 	    {
-	    if  ( docDrawToPageOfItem( prevBi, thisBi, thisBi,
-						    through, &lpHere, dc ) )
-		{ SDEB(docLevelStr(thisBi->biLevel)); return -1;	}
+	    if  ( docDrawToPageOfItem( prevBi, childBi, childBi,
+					    through, &lpHere, dc, pShift ) )
+		{ SDEB(docLevelStr(childBi->biLevel)); return -1;	}
 
-	    if  ( docDrawItem( thisBi, through, dc ) )
+	    if  ( docDrawItem( childBi, through, dc ) )
 		{ LDEB(i); return -1;	}
 
-	    lpHere= thisBi->biBelowPosition;
+	    lpHere= childBi->biBelowPosition;
 	    }
 
-	prevBi= thisBi;
+	prevBi= childBi;
 	}
 
     return 0;
@@ -1119,7 +1249,11 @@ static int docDrawDocItem(	const BufferItem *		docBi,
     BufferDocument *		bd= dc->dcDocument;
     DocumentProperties *	dp= &(bd->bdProperties);
 
-    if  ( docDrawGroupItem( docBi, through, dc ) )
+    const int			pShift= 0;
+    const int			xShift= 0;
+    const int			yShift= 0;
+
+    if  ( docDrawGroupItem( docBi, through, dc, pShift, xShift, yShift ) )
 	{ LDEB(1); return -1;	}
 
     if  ( docBi->biInExternalItem == DOCinBODY				&&
@@ -1145,7 +1279,11 @@ static int docDrawSectItem(	const BufferItem *		sectBi,
     BufferDocument *		bd= dc->dcDocument;
     DocumentProperties *	dp= &(bd->bdProperties);
 
-    if  ( docDrawGroupItem( sectBi, through, dc ) )
+    const int			pShift= 0;
+    const int			xShift= 0;
+    const int			yShift= 0;
+
+    if  ( docDrawGroupItem( sectBi, through, dc, pShift, xShift, yShift ) )
 	{ LDEB(1); return -1;	}
 
     if  ( sectBi->biInExternalItem == DOCinBODY				&&
@@ -1179,6 +1317,8 @@ int docDrawItem(	BufferItem *			bi,
 
     LayoutPosition		lpBelow;
 
+    const int			pShift= 0;
+
     /*  1  */
     lpBelow= bi->biBelowPosition;
     if  ( bi->biLevel == DOClevROW		&&
@@ -1207,12 +1347,12 @@ int docDrawItem(	BufferItem *			bi,
 	}
 
     /*  4  */
-    if  ( dc->dcFirstPage >= 0				&&
-	  lpBelow.lpPage < dc->dcFirstPage		)
+    if  ( dc->dcFirstPage >= 0					&&
+	  lpBelow.lpPage+ pShift < dc->dcFirstPage		)
 	{ return 0;	}
 
-    if  ( dc->dcLastPage >= 0				&&
-	  bi->biTopPosition.lpPage > dc->dcLastPage	)
+    if  ( dc->dcLastPage >= 0					&&
+	  bi->biTopPosition.lpPage+ pShift > dc->dcLastPage	)
 	{ return 0;	}
 
     switch( bi->biLevel )
@@ -1229,22 +1369,37 @@ int docDrawItem(	BufferItem *			bi,
 
 	case DOClevCELL:
 	rowAsGroup:
-	    if  ( docDrawGroupItem( bi, through, dc ) )
+	    {
+	    const int	xShift= 0;
+	    const int	yShift= 0;
+
+	    if  ( docDrawGroupItem( bi, through, dc, pShift, xShift, yShift ) )
 		{ LDEB(1); return -1;	}
+	    }
 	    break;
 
 	case DOClevROW:
 	    if  ( ! bi->biRowHasTableParagraphs )
 		{ goto rowAsGroup;	}
 
-	    if  ( docDrawRowItem( bi, through, dc ) )
+	    {
+	    const int	xShift= 0;
+	    const int	yShift= 0;
+
+	    if  ( docDrawRowItem( bi, through, dc, pShift, xShift, yShift ) )
 		{ LDEB(1); return -1;	}
+	    }
 
 	    break;
 
 	case DOClevPARA:
-	    if  ( docDrawParaItem( bi, through, dc ) )
+	    {
+	    const int	xShift= 0;
+	    const int	yShift= 0;
+
+	    if  ( docDrawParaItem( bi, through, dc, pShift, xShift, yShift ) )
 		{ LDEB(1); return -1;	}
+	    }
 
 	    break;
 

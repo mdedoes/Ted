@@ -42,6 +42,7 @@ typedef struct TedDocument
     APP_WIDGET		tdInsHyperlinkOption;
     APP_WIDGET		tdInsBookmarkOption;
     APP_WIDGET		tdInsInsertFootnoteOption;
+    APP_WIDGET		tdInsInsertEndnoteOption;
     APP_WIDGET		tdInsInsertChftnsepOption;
     APP_WIDGET		tdInsInsertTableOption;
     APP_WIDGET		tdInsInsertPageNumberOption;
@@ -459,6 +460,10 @@ extern void tedDocInsertBookmark(	APP_WIDGET	option,
 					void *		voidpbcs );
 
 extern void tedDocInsertFootnote(	APP_WIDGET	option,
+					void *		voided,
+					void *		voidpbcs );
+
+extern void tedDocInsertEndnote(	APP_WIDGET	option,
 					void *		voided,
 					void *		voidpbcs );
 

@@ -127,10 +127,6 @@ typedef enum ParagraphProperty
     PPprop_COUNT
     } ParagraphProperty;
 
-#   if  PPprop_COUNT > PROPmaskMAXPROPS
-    This crashes: increase PROPmaskSIZE
-#   endif
-
 /************************************************************************/
 /*									*/
 /*  Routine declarations.						*/

@@ -1005,7 +1005,7 @@ static void tedProcessKeyEvent(	EditDocument *		ed,
 	    return;
 #	endif
 
-#	if 1
+#	if 0
 	case KEY_y:
 	    docListItem(0,ds.dsBegin.dpBi);
 	    break;
@@ -1022,6 +1022,7 @@ static void tedProcessKeyEvent(	EditDocument *		ed,
 	case KEY_KP_Insert:
 	case KEY_Num_Lock:
 	    return;
+
 	default: unknown:
 #	    ifdef USE_GTK
 #		if GTK_MAJOR_VERSION < 2

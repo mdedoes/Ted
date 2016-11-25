@@ -536,11 +536,11 @@ void appDrawDrawArc(		AppDrawingData *	add,
 				int			y,
 				int			wide,
 				int			high,
-				int			angle1,
-				int			angle2 )
+				int			alpha0,
+				int			alpha_step )
     {
     XDrawArc( add->addDisplay, add->addDrawable, add->addGc,
-					    x, y, wide, high, angle1, angle2 );
+					x, y, wide, high, alpha0, alpha_step );
     }
 
 void appDrawFillArc(		AppDrawingData *	add,
@@ -548,11 +548,11 @@ void appDrawFillArc(		AppDrawingData *	add,
 				int			y,
 				int			wide,
 				int			high,
-				int			angle1,
-				int			angle2 )
+				int			alpha0,
+				int			alpha_step )
     {
     XFillArc( add->addDisplay, add->addDrawable, add->addGc,
-					    x, y, wide, high, angle1, angle2 );
+					x, y, wide, high, alpha0, alpha_step );
     }
 
 #   endif

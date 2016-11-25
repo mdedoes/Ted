@@ -132,10 +132,6 @@ typedef enum CellProperty
     CLprop_COUNT
     } CellProperty;
 
-#   if  CLprop_COUNT > PROPmaskMAXPROPS
-    This will crash: change PROPmaskSIZE !!
-#   endif
-
 /************************************************************************/
 /*									*/
 /*  Row Properties.							*/
@@ -166,10 +162,13 @@ typedef struct RowProperties
     BorderProperties	rpHorizontalBorder;
     BorderProperties	rpVerticalBorder;
 
+    ItemShading		rpShading;
+
     ItemAlignment	rpAlignment:3;
 
     unsigned int	rpIsTableHeader:1;
     unsigned int	rpKeepOnOnePage:1;
+    unsigned int	rpKeepWithNext:1;
     unsigned int	rpAutofit:1;
 
     unsigned int	rpHasTableParagraphs:1;
@@ -226,9 +225,15 @@ typedef enum RowProperty
     RPpropHORIZ_BORDER,
     RPpropVERT_BORDER,
 
+    RPpropSHADE_FORE_COLOR,
+    RPpropSHADE_BACK_COLOR,
+    RPpropSHADE_LEVEL,
+    RPpropSHADE_PATTERN,
+
     RPpropALIGNMENT,
     RPpropIS_TABLE_HEADER,
     RPpropKEEP_ON_ONE_PAGE,
+    RPpropKEEP_WITH_NEXT,
     RPpropAUTOFIT,
 
     /**/
@@ -267,10 +272,6 @@ typedef enum RowProperty
     RPprop_COUNT
     } RowProperty;
 
-#   if  RPprop_COUNT > PROPmaskMAXPROPS
-    This will crash: change PROPmaskSIZE !!
-#   endif
-
 /************************************************************************/
 /*									*/
 /*  Routine declarations.						*/
@@ -280,8 +281,8 @@ typedef enum RowProperty
 extern void docShadingMaskToCellMask(	PropertyMask *		cpPropMask,
 					const PropertyMask *	isPropMask );
 
-extern void docShadingMaskFromCellMask(	PropertyMask *		cpPropMask,
-					const PropertyMask *	isPropMask );
+extern void docShadingMaskFromCellMask(	PropertyMask *		isPropMask,
+					const PropertyMask *	cpPropMask );
 
 extern void docInitRowProperties(	RowProperties *		rp );
 extern void docCleanRowProperties(	RowProperties *		rp );
@@ -296,7 +297,8 @@ extern int docInsertRowColumn(	RowProperties *			rp,
 				const CellProperties *		cp,
 				const int *			colorMap );
 
-extern int docAlignedColumns(	const RowProperties *	rp1,
+extern int docApproximatelyAlignedColumns(
+				const RowProperties *	rp1,
 				const RowProperties *	rp2 );
 
 extern int docEqualRowBorders(	const RowProperties *	rp1,
@@ -324,6 +326,12 @@ extern void docCopyCellProperties(
 				CellProperties *		cpTo,
 				const CellProperties *		cpFrom,
 				const int *			colorMap );
+
+extern void docShadingMaskToRowMask(	PropertyMask *		rpPropMask,
+					const PropertyMask *	isPropMask );
+
+extern void docShadingMaskFromRowMask(	PropertyMask *		isPropMask,
+					const PropertyMask *	rpPropMask );
 
 extern int docUpdRowProperties(	PropertyMask *			pRpChgPask,
 				RowProperties *			rp,

@@ -1880,11 +1880,11 @@ int docHtmlSaveDocument(	SimpleOutputStream *	sos,
 	docHtmlNewLine( &hwc );
 	}
 
-    if  ( dp->dpComment )
+    if  ( dp->dpDoccomm )
 	{
 	docHtmlPutString(
 		    "<META NAME=\"comment\" CONTENT=\"", &hwc );
-	docHtmlEscapeString( dp->dpComment, &hwc );
+	docHtmlEscapeString( dp->dpDoccomm, &hwc );
 	docHtmlPutString( "\">", &hwc );
 	docHtmlNewLine( &hwc );
 	}

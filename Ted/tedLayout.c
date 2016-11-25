@@ -999,8 +999,8 @@ int tedCheckPageOfSelectedExtItem(
 				ExternalItem *			selRootEi,
 				AppDrawingData *		add )
     {
-    int			y0Twips;
-    BufferItem *	selRootBodySectBi= (BufferItem *)0;
+    int				y0Twips;
+    BufferItem *		selRootBodySectBi= (BufferItem *)0;
 
     if  ( ! selRootEi->eiItem )
 	{ XDEB(selRootEi->eiItem); return -1;	}
@@ -1015,13 +1015,22 @@ int tedCheckPageOfSelectedExtItem(
 	case DOCinFIRST_HEADER:
 	case DOCinLEFT_HEADER:
 	case DOCinRIGHT_HEADER:
-	    y0Twips= selRootEi->eiY0UsedTwips;
-	    break;
 
 	case DOCinSECT_FOOTER:
 	case DOCinFIRST_FOOTER:
 	case DOCinLEFT_FOOTER:
 	case DOCinRIGHT_FOOTER:
+
+	    if  ( selRootEi->eiItem )
+		{
+		BufferItem *		docBi= &(bd->bdItem);
+
+		const SelectionScope *	ss;
+
+		ss= &(selRootEi->eiItem->biSectSelectionScope);
+		selRootBodySectBi= docBi->biChildren[ss->ssSectNrExternalTo];
+		}
+
 	    y0Twips= selRootEi->eiY0UsedTwips;
 	    break;
 

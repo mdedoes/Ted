@@ -338,7 +338,7 @@ static void tedDrawVerticalBorder(
 
 static int tedDrawItemShade(	const ItemShading *		is,
 				void *				vsdd,
-				struct DrawingContext *		dc,
+				DrawingContext *		dc,
 				const BorderProperties *	bpTop,
 				const BorderProperties *	bpLeft,
 				const BorderProperties *	bpRight,
@@ -356,11 +356,14 @@ static int tedDrawItemShade(	const ItemShading *		is,
     const DocumentRectangle *	drClip= dc->dcClipRect;
     DocumentRectangle		drShade;
 
-    int				x0Pixels= TWIPStoPIXELS( xfac, x0Twips );
-    int				x1Pixels= TWIPStoPIXELS( xfac, x1Twips );
+    int				x0Pixels;
+    int				x1Pixels;
 
     int				thick;
     int				wide;
+
+    x0Pixels= TWIPStoPIXELS( xfac, x0Twips );
+    x1Pixels= TWIPStoPIXELS( xfac, x1Twips );
 
     drShade.drX0= x0Pixels;
     drShade.drX1= x1Pixels;
@@ -731,6 +734,9 @@ static void tedDrawParticuleStrikethrough(
 /************************************************************************/
 
 static void tedDrawChftnsep(	DrawingContext *	dc,
+				int			pShift,
+				int			xShift,
+				int			yShift,
 				void *			vsdd,
 				const TextParticule *	tp,
 				const TextLine *	tl )
@@ -739,11 +745,13 @@ static void tedDrawChftnsep(	DrawingContext *	dc,
     AppDrawingData *		add= dc->dcDrawingData;
     const BufferDocument *	bd= dc->dcDocument;
 
-    int				baseLine= TL_BASE_PIXELS( add, tl );
+    int				baseLine;
     int				y;
     const AppPhysicalFont *	apf;
 
     TextAttribute		ta;
+
+    baseLine= TL_BASE_PIXELS_SH( add, tl, pShift, yShift );
 
 #   ifdef USE_MOTIF
     XSetLineAttributes( add->addDisplay, add->addGc,
@@ -854,6 +862,9 @@ static void tedDrawSegments(	DrawingContext *		dc,
 /************************************************************************/
 
 static int tedDrawParticules(	DrawingContext *	dc,
+				int			pShift,
+				int			xShift,
+				int			yShift,
 				void *			vsdd,
 				const BufferItem *	paraBi,
 				int			part,
@@ -915,7 +926,7 @@ static int tedDrawParticules(	DrawingContext *	dc,
 	    return drawn= 1;
 
 	case DOCkindCHFTNSEP:
-	    tedDrawChftnsep( dc, vsdd, tp, tl );
+	    tedDrawChftnsep( dc, pShift, xShift, yShift, vsdd, tp, tl );
 
 	    return drawn= 1;
 
@@ -967,7 +978,6 @@ static int tedDrawParticules(	DrawingContext *	dc,
 	    printString= upperString;
 	    }
 
-
 	if  ( ta.taSuperSub == DOCfontSUPERSCRIPT )
 	    { y -= ( 10* apf->apfXHeightPixels )/ 6; }
 
@@ -1008,7 +1018,10 @@ static int tedDrawTextLine(	const BufferItem *		bi,
 				int				line,
 				const ParagraphFrame *		pf,
 				void *				vsdd,
-				DrawingContext *		dc )
+				DrawingContext *		dc,
+				int				pShift,
+				int				xShift,
+				int				yShift )
     {
     AppDrawingData *		add= dc->dcDrawingData;
 
@@ -1016,14 +1029,16 @@ static int tedDrawTextLine(	const BufferItem *		bi,
     int				part= tl->tlFirstParticule;
     int				done;
 
-    int				baseline= TL_BASE_PIXELS( add, tl );
+    int				baseline;
+
+    baseline= TL_BASE_PIXELS_SH( add, tl, pShift, yShift );
 
     done= 0;
     while( done < tl->tlParticuleCount )
 	{
 	int		drawn;
 
-	drawn= tedDrawParticules( dc, vsdd, bi, part,
+	drawn= tedDrawParticules( dc, pShift, xShift, yShift, vsdd, bi, part,
 				tl->tlParticuleCount- done, tl, baseline );
 	if  ( drawn < 1 )
 	    { LDEB(drawn); return -1;	}
@@ -1102,7 +1117,10 @@ static int tedDrawTextReverse(	const BufferItem *		bi,
 				int				line,
 				const ParagraphFrame *		pf,
 				void *				vsdd,
-				DrawingContext *		dc )
+				DrawingContext *		dc,
+				int				pShift,
+				int				xShift,
+				int				yShift )
     {
     ScreenDrawingData *		sdd= (ScreenDrawingData *)vsdd;
     AppDrawingData *		add= dc->dcDrawingData;
@@ -1119,7 +1137,7 @@ static int tedDrawTextReverse(	const BufferItem *		bi,
 
 	appDrawSetClipRect( add, &drRedraw );
 
-	done= tedDrawTextLine( bi, line, pf, vsdd, dc );
+	done= tedDrawTextLine( bi, line, pf, vsdd, dc, pShift, xShift, yShift );
 	}
     else{
 	TextLine *	tl= bi->biParaLines+ line;
@@ -1134,7 +1152,10 @@ static int tedDrawTextSelected(	const BufferItem *		bi,
 				int				line,
 				const ParagraphFrame *		pf,
 				void *				vsdd,
-				DrawingContext *		dc )
+				DrawingContext *		dc,
+				int				pShift,
+				int				xShift,
+				int				yShift )
     {
     ScreenDrawingData *		sdd= (ScreenDrawingData *)vsdd;
     AppDrawingData *		add= dc->dcDrawingData;
@@ -1162,7 +1183,7 @@ static int tedDrawTextSelected(	const BufferItem *		bi,
 		drRedraw.drX1- drRedraw.drX0+ 1,
 		drRedraw.drY1- drRedraw.drY0+ 1 );
 
-	done= tedDrawTextLine( bi, line, pf, vsdd, dc );
+	done= tedDrawTextLine( bi, line, pf, vsdd, dc, pShift, xShift, yShift );
 	}
     else{
 	TextLine *	tl= bi->biParaLines+ line;
@@ -1185,7 +1206,7 @@ static int tedDrawTextSelected(	const BufferItem *		bi,
 
 static int tedDrawParaShade(	const ParagraphProperties *	pp,
 				void *				vsdd,
-				struct DrawingContext *		dc,
+				DrawingContext *		dc,
 				int				x0Twips,
 				int				x1Twips,
 				const LayoutPosition *		lpTop,
@@ -1273,8 +1294,8 @@ static int tedDrawCellTop(	const BorderProperties *	bp,
     AppDrawingData *		add= dc->dcDrawingData;
     const int			above= 0;
 
-    tedDrawHorizontalBorder( bp, bpLeft, bpRight, asGrid, dc, sdd, above,
-				    x0Twips, x1Twips,
+    tedDrawHorizontalBorder( bp, bpLeft, bpRight, asGrid, dc,
+				    sdd, above, x0Twips, x1Twips,
 				    LP_YPIXELS( add, lpTop ) );
 
     return 0;
@@ -1346,9 +1367,9 @@ static int tedDrawCellBottom(	const BorderProperties *	bp,
     /*  1  */
     const int			above= 0;
 
-    tedDrawHorizontalBorder( bp, bpLeft, bpRight, asGrid, dc, sdd, above,
-				    x0Twips, x1Twips,
-				    LP_YPIXELS( add, lpBottom ) );
+    tedDrawHorizontalBorder( bp, bpLeft, bpRight, asGrid, dc,
+						sdd, above, x0Twips, x1Twips,
+						LP_YPIXELS( add, lpBottom ) );
 
     return 0;
     }

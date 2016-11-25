@@ -681,7 +681,9 @@ void tedDocSetTableProperties(	EditDocument *		ed,
 
     tedAdaptToolsToSelection( ed );
 
-    appDocumentChanged( ed, 1 );
+    if  ( ! utilPropMaskIsEmpty( rpSetMask )	&&
+	  ! utilPropMaskIsEmpty( cpSetMask )	)
+	{ appDocumentChanged( ed, 1 );	}
 
     return;
     }
@@ -747,6 +749,15 @@ void tedAppSetTableSelection(	EditDocument *		ed,
 /*									*/
 /*  Change table layout from various table related tools.		*/
 /*									*/
+/*  1)  Reformat at least all rows that are touched.			*/
+/*  2)  Start edit operation.						*/
+/*  3)  Include all rows touched by the operation in the reformat.	*/
+/*  4)  If the 'IsTableHeader' property is changed, the whole table	*/
+/*	must be reformatted.						*/
+/*  5)  Apply changes.							*/
+/*  6)  Finish edit operation. I.E: Redo layout where needed and expose	*/
+/*	the affected area to be redrawn.				*/
+/*									*/
 /************************************************************************/
 
 void tedChangeTableLayout(	EditDocument *		ed,
@@ -764,17 +775,39 @@ void tedChangeTableLayout(	EditDocument *		ed,
     DocumentSelection		ds;
     SelectionGeometry		sg;
 
+    /*  1  */
     if  ( row1Reformat < row1Change )
 	{ row1Reformat=  row1Change;	}
 
+    /*  2  */
     tedStartEditOperation( &eo, &ds, &sg, ed, 1 );
 
-    tedEditIncludeRowsInRedraw( &eo, ed, sectBi, row0Change, row1Reformat );
+    /*  3  */
+    docEditIncludeRowsInReformatRange( &eo,
+				    sectBi, row0Change, row1Reformat );
+    tedEditIncludeRowsInRedraw( &eo, ed,
+				    sectBi, row0Change, row1Reformat );
 
+    /*  4  */
+    if  ( PROPmaskISSET( rpSetMask, RPpropIS_TABLE_HEADER ) )
+	{
+	const BufferItem *	rowBi= sectBi->biChildren[row0Change];
+
+	if  ( row0Change != row1Change )
+	    { LLDEB(row0Change,row1Change);	}
+
+	docEditIncludeRowsInReformatRange( &eo,
+				sectBi, row0Change, rowBi->biRowTablePast- 1 );
+	tedEditIncludeRowsInRedraw( &eo, ed,
+				sectBi, row0Change, rowBi->biRowTablePast- 1 );
+	}
+
+    /*  5  */
     docChangeTableLayout( &eo, sectBi,
 			    row0Change, row1Change, col0Change, col1Change,
 			    rpSetMask, cpSetMask, rpSet );
 
+    /*  6  */
     if  ( tedEditFinishSelection( ed, &eo, &ds ) )
 	{ LDEB(1);	}
 

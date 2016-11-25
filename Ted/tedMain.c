@@ -691,28 +691,35 @@ static AppMenuItem TED_DocInsertMenuItems[]=
     "docInsertMenuFootnoteKeyText",	(char *)0,
 					ITEMtyOPTION, tedDocInsertFootnote,
     },
-#   define	TEDmiDocInsertInsChftnsep	5
+#   define	TEDmiDocInsertInsEndnote	5
+    {
+    "docInsertMenuEndnoteText",		"Endnote",
+    "docInsertMenuEndnoteKey",		(char *)0,
+    "docInsertMenuEndnoteKeyText",	(char *)0,
+					ITEMtyOPTION, tedDocInsertEndnote,
+    },
+#   define	TEDmiDocInsertInsChftnsep	6
     {
     "docInsertMenuChftnsepText",	"Footnote Separator",
     "docInsertMenuChftnsepKey",		(char *)0,
     "docInsertMenuChftnsepKeyText",	(char *)0,
 					ITEMtyOPTION, tedDocInsertChftnsep,
     },
-#   define	TEDmiDocInsertInsFile		6
+#   define	TEDmiDocInsertInsFile		7
     {
     "docInsertMenuInsertFileText",	"File ...",
     "docInsertMenuInsertFileKey",	(char *)0,
     "docInsertMenuInsertFileKeyText",	(char *)0,
 					ITEMtyOPTION, tedDocInsertFile,
     },
-#   define	TEDmiDocInsertInsTable		7
+#   define	TEDmiDocInsertInsTable		8
     {
     "docInsertMenuInsertTableText",	"Table",
     "docInsertMenuInsertTableKey",	(char *)0,
     "docInsertMenuInsertTableKeyText",	(char *)0,
 					ITEMtyOPTION, tedDocTableInsertTable,
     },
-#   define	TEDmiDocInsertInsPageNumber	8
+#   define	TEDmiDocInsertInsPageNumber	9
     {
     "docInsertMenuInsertPageNumberText",	"Page Number",
     "docInsertMenuInsertPageNumberKey",		(char *)0,
@@ -720,24 +727,24 @@ static AppMenuItem TED_DocInsertMenuItems[]=
 				    ITEMtyOPTION, tedDocInsertPageNumber,
     },
 
-    /*  9  */
+    /*  10  */
     { "",	"", "", (char *)0, "", (char *)0, ITEMtySEPARATOR, },
 
-#   define	TEDmiDocInsertInsLineBreak	10
+#   define	TEDmiDocInsertInsLineBreak	11
     {
     "docInsertMenuInsertLineBreakText",	"Line Break",
     "docInsertMenuInsertLineBreakKey",		(char *)0,
     "docInsertMenuInsertLineBreakKeyText",	(char *)0,
 				    ITEMtyOPTION, tedDocInsertLineBreak,
     },
-#   define	TEDmiDocInsertInsPageBreak	11
+#   define	TEDmiDocInsertInsPageBreak	12
     {
     "docInsertMenuInsertPageBreakText",	"Page Break",
     "docInsertMenuInsertPageBreakKey",		(char *)0,
     "docInsertMenuInsertPageBreakKeyText",	(char *)0,
 				    ITEMtyOPTION, tedDocInsertPageBreak,
     },
-#   define	TEDmiDocInsertInsSectBreak	12
+#   define	TEDmiDocInsertInsSectBreak	13
     {
     "docInsertMenuInsertSectBreakText",	"Section Break",
     "docInsertMenuInsertSectBreakKey",		(char *)0,
@@ -1076,6 +1083,7 @@ void tedMakeDocumentReadonly(	EditDocument *	ed )
     XtUnmanageChild( td->tdInsSymbolOption );
     XtUnmanageChild( td->tdInsFileOption );
     XtUnmanageChild( td->tdInsInsertFootnoteOption );
+    XtUnmanageChild( td->tdInsInsertEndnoteOption );
     XtUnmanageChild( td->tdInsInsertChftnsepOption );
     XtUnmanageChild( td->tdInsInsertTableOption );
     XtUnmanageChild( td->tdInsInsertPageNumberOption );
@@ -1146,6 +1154,8 @@ static void tedMakePrivateDocumentMenus( EditApplication *	ea,
 	    TED_DocInsertMenuItems[TEDmiDocInsertInsBookmark].amiOptionWidget;
     td->tdInsInsertFootnoteOption=
 	    TED_DocInsertMenuItems[TEDmiDocInsertInsFootnote].amiOptionWidget;
+    td->tdInsInsertEndnoteOption=
+	    TED_DocInsertMenuItems[TEDmiDocInsertInsEndnote].amiOptionWidget;
     td->tdInsInsertChftnsepOption=
 	    TED_DocInsertMenuItems[TEDmiDocInsertInsChftnsep].amiOptionWidget;
     td->tdInsInsertTableOption=
@@ -1435,11 +1445,12 @@ static MailContent	TedMailContents[]=
 
 static AppSelectionTargetType TedPrimaryTargets[]=
     {
-	{ "RTF",	(APP_ATOM)0,	tedPastePrimaryRtf,
+	{ "application/rtf",
+			(APP_ATOM)0,	tedPastePrimaryRtf,
 					tedCopyPrimaryRtf		},
 	{ "STRING",	(APP_ATOM)0,	tedPastePrimaryString,
 					tedCopyPrimaryString		},
-	{ "PNG",	(APP_ATOM)0,	tedPastePrimaryPng,
+	{ "image/png",	(APP_ATOM)0,	tedPastePrimaryPng,
 					tedCopyPrimaryPng		},
 	{ "PIXMAP",	(APP_ATOM)0,	tedPastePrimaryPixmap,
 					tedCopyPrimaryPixmap		},
@@ -1449,7 +1460,8 @@ static AppSelectionTargetType TedPrimaryTargets[]=
 
 AppSelectionTargetType TedPrimaryTextTargets[]=
     {
-	{ "RTF",	(APP_ATOM)0,	tedPastePrimaryRtf,
+	{ "application/rtf",
+			(APP_ATOM)0,	tedPastePrimaryRtf,
 					tedCopyPrimaryRtf		},
 	{ "STRING",	(APP_ATOM)0,	tedPastePrimaryString,
 					tedCopyPrimaryString		},
@@ -1460,9 +1472,10 @@ const int TedPrimaryTextTargetCount=
 
 AppSelectionTargetType TedPrimaryPictureTargets[]=
     {
-	{ "RTF",	(APP_ATOM)0,	tedPastePrimaryRtf,
+	{ "application/rtf",
+			(APP_ATOM)0,	tedPastePrimaryRtf,
 					tedCopyPrimaryRtf		},
-	{ "PNG",	(APP_ATOM)0,	tedPastePrimaryPng,
+	{ "image/png",	(APP_ATOM)0,	tedPastePrimaryPng,
 					tedCopyPrimaryPng		},
 	{ "PIXMAP",	(APP_ATOM)0,	tedPastePrimaryPixmap,
 					tedCopyPrimaryPixmap		},
@@ -1553,7 +1566,7 @@ static EditApplication	TedApplication=
 		    /*  Name of the picture for the application window.	*/
 		    /****************************************************/
     "Ted",
-    "Ted, Version 2.13, Mar 15, 2003",
+    "Ted, Version 2.14, April 6, 2003",
     "http://www.nllgg.nl/Ted",
 
 
@@ -1724,12 +1737,22 @@ static EditApplication	TedApplication=
 /*									*/
 /*  Main() of the 'Ted' Application.					*/
 /*									*/
+/*  1)  Sanity checks							*/
+/*									*/
 /************************************************************************/
 
 int main(	int		argc,
 		char *		argv[]	)
     {
     EditApplication *	ea= &TedApplication;
+
+    /*  1  */
+    if  ( RPprop_COUNT > PROPmaskMAXPROPS )
+	{ LLDEB(RPprop_COUNT,PROPmaskMAXPROPS); return 1;	}
+    if  ( PPprop_COUNT > PROPmaskMAXPROPS )
+	{ LLDEB(PPprop_COUNT,PROPmaskMAXPROPS); return 1;	}
+    if  ( CLprop_COUNT > PROPmaskMAXPROPS )
+	{ LLDEB(CLprop_COUNT,PROPmaskMAXPROPS); return 1;	}
 
     TEDResources.tarDefaultAnsicpgInt= -1;
     TEDResources.tarShowTableGridInt= 0;

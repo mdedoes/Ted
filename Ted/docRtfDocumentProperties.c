@@ -47,6 +47,11 @@ void docRtfReadSetAnsicpg(	RtfReadingContext *	rrc,
 	    dp->dpAnsiCodepage= arg;
 	    break;
 
+	case 10000:
+	    memcpy( rrc->rrcInputMapping, docMAC_to_ISO1, 256 );
+	    dp->dpAnsiCodepage= arg;
+	    break;
+
 	default:
 	    LDEB(arg); break;
 	}
@@ -341,7 +346,6 @@ int docRtfSaveDocumentProperties(	SimpleOutputStream *	sos,
 	docRtfSaveInfo( "\\author ",	dp->dpAuthor, rwc, pCol, sos );
 	docRtfSaveInfo( "\\subject ",	dp->dpSubject, rwc, pCol, sos );
 	docRtfSaveInfo( "\\keywords ",	dp->dpKeywords, rwc, pCol, sos );
-	docRtfSaveInfo( "\\comment ",	dp->dpComment, rwc, pCol, sos );
 	docRtfSaveInfo( "\\doccomm ",	dp->dpDoccomm, rwc, pCol, sos );
 	docRtfSaveInfo( "\\hlinkbase ",	dp->dpHlinkbase, rwc, pCol, sos );
 

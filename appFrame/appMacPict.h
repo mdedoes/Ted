@@ -55,17 +55,19 @@
 # define MACPICT_DHText			0x29
 # define MACPICT_DVText			0x2a
 # define MACPICT_DHDVText		0x2b
-# define MACPICT_fontName		0x2c
-# define MACPICT_frameRect		0x30
-# define MACPICT_paintRect		0x31
-# define MACPICT_eraseRect		0x32
+# define MACPICT_FontName		0x2c
+# define MACPICT_LineJustify		0x2d
+# define MACPICT_GlyphState		0x2e
+# define MACPICT_FrameRect		0x30
+# define MACPICT_PaintRect		0x31
+# define MACPICT_EraseRect		0x32
 # define MACPICT_invertRect		0x33
-# define MACPICT_fillRect		0x34
-# define MACPICT_frameSameRect		0x38
-# define MACPICT_paintSameRect		0x39
-# define MACPICT_eraseSameRect		0x3a
-# define MACPICT_invertSameRect		0x3b
-# define MACPICT_fillSameRect		0x3c
+# define MACPICT_FillRect		0x34
+# define MACPICT_FrameSameRect		0x38
+# define MACPICT_PaintSameRect		0x39
+# define MACPICT_EraseSameRect		0x3a
+# define MACPICT_InvertSameRect		0x3b
+# define MACPICT_FillSameRect		0x3c
 # define MACPICT_frameRRect		0x40
 # define MACPICT_paintRRect		0x41
 # define MACPICT_eraseRRect		0x42
@@ -76,17 +78,17 @@
 # define MACPICT_eraseSameRRect		0x4a
 # define MACPICT_invertSameRRect	0x4b
 # define MACPICT_fillSameRRect		0x4c
-# define MACPICT_frameOval		0x50
-# define MACPICT_paintOval		0x51
-# define MACPICT_eraseOval		0x52
-# define MACPICT_invertOval		0x53
-# define MACPICT_fillOval		0x54
-# define MACPICT_frameSameOval		0x58
-# define MACPICT_paintSameOval		0x59
-# define MACPICT_eraseSameOval		0x5a
-# define MACPICT_invertSameOval		0x5b
-# define MACPICT_fillSameOval		0x5c
-# define MACPICT_frameArc		0x60
+# define MACPICT_FrameOval		0x50
+# define MACPICT_PaintOval		0x51
+# define MACPICT_EraseOval		0x52
+# define MACPICT_InvertOval		0x53
+# define MACPICT_FillOval		0x54
+# define MACPICT_FrameSameOval		0x58
+# define MACPICT_PaintSameOval		0x59
+# define MACPICT_EraseSameOval		0x5a
+# define MACPICT_InvertSameOval		0x5b
+# define MACPICT_FillSameOval		0x5c
+# define MACPICT_FrameArc		0x60
 # define MACPICT_paintArc		0x61
 # define MACPICT_eraseArc		0x62
 # define MACPICT_invertArc		0x63
@@ -96,7 +98,7 @@
 # define MACPICT_eraseSameArc		0x6a
 # define MACPICT_invertSameArc		0x6b
 # define MACPICT_fillSameArc		0x6c
-# define MACPICT_framePoly		0x70
+# define MACPICT_FramePoly		0x70
 # define MACPICT_PaintPoly		0x71
 # define MACPICT_erasePoly		0x72
 # define MACPICT_invertPoly		0x73
@@ -133,6 +135,17 @@
 /*									*/
 /************************************************************************/
 
+/* ??
+# define PENMODE_srcCopy	0
+# define PENMODE_srcOr		1
+# define PENMODE_srcXor		2
+# define PENMODE_srcBic		3
+# define PENMODE_notSrcCopy	4
+# define PENMODE_notSrcOr	5
+# define PENMODE_notSrcXor	6
+# define PENMODE_notSrcBic	7
+*/
+
 # define PENMODE_patCopy	8
 # define PENMODE_patOr		9
 # define PENMODE_patXor		10
@@ -157,24 +170,70 @@ typedef struct MacpictDevice
     int			mdInX1;
     int			mdInY1;
 
+    int			mdRectX0;
+    int			mdRectY0;
+    int			mdRectX1;
+    int			mdRectY1;
+
+    int			mdOvalX0;
+    int			mdOvalY0;
+    int			mdOvalX1;
+    int			mdOvalY1;
+
+    int			mdPolyX0;
+    int			mdPolyY0;
+    int			mdPolyX1;
+    int			mdPolyY1;
+
     int			mdOutWide;
     int			mdOutHigh;
 
     int			mdPenMode;
+    int			mdPenX;
+    int			mdPenY;
+
+    unsigned char	mdPenPattern[8];
+    int			mdPenIsSolid;
+
+    unsigned char	mdFillPattern[8];
+    int			mdFillIsSolid;
+
+    unsigned char	mdBackPattern[8];
+    int			mdBackIsSolid;
 
     RGB8Color		mdForeColor;
     RGB8Color		mdBackColor;
     RGB8Color		mdColorSet;
 
-    APP_POINT *		mdPoints;
+    char *		mdFontName;
+    int			mdFontSizePoints;
+    AppPhysicalFont *	mdCurrentPhysicalFont;
+
+    int			mdStippleSet;
+    APP_BITMAP_IMAGE	mdTilePixmap;
+
+    char *		mdTextString;
+    APP_POINT *		mdPolyPoints;
+    int			mdPolyPointCount;
 
     AppDrawingData	mdDrawingData;
     } MacpictDevice;
+
+#   define	STIPPLE_SOLID	0
+#   define	STIPPLE_PEN	1
+#   define	STIPPLE_BACK	2
+#   define	STIPPLE_FILL	3
+#   define	STIPPLE_UNDEF	4
 
 # define MD_X( x, md ) \
     ( ( (md)->mdOutWide* ( (x)-(md)->mdInX0 ) )/( (md)->mdInX1-(md)->mdInX0 ) )
 # define MD_Y( y, md ) \
     ( ( (md)->mdOutHigh* ( (y)-(md)->mdInY0 ) )/( (md)->mdInY1-(md)->mdInY0 ) )
+
+# define MD_W( w, md ) \
+    ( ( (md)->mdOutWide* ( (w) ) )/( (md)->mdInX1-(md)->mdInX0 ) )
+# define MD_H( h, md ) \
+    ( ( (md)->mdOutHigh* ( (h) ) )/( (md)->mdInY1-(md)->mdInY0 ) )
 
 /************************************************************************/
 /*									*/
@@ -200,12 +259,7 @@ extern int appMacPictGetColor(	RGB8Color *		rgb8,
 				const MacpictDevice *	md,
 				SimpleInputStream *	sis );
 
-extern int appMacPictGetCountAndPoints(	MacpictDevice *		md,
-					int *			pX0,
-					int *			pY0,
-					int *			pX1,
-					int *			pY1,
-					int *			pCount,
+extern int appMacPictGetPoly(		MacpictDevice *		md,
 					SimpleInputStream *	sis );
 
 extern int appMacPictReadPaletteColors(	BitmapDescription *	bd,
@@ -256,4 +310,8 @@ extern int appMacPictListFontsPs( PostScriptFaceList *	psfl,
 				int			yWinExt,
 				int			twipsWide,
 				int			twipsHigh );
+
+extern int appMacPictGetCountAndString(	MacpictDevice *		md,
+					int *			pCount,
+					SimpleInputStream *	sis );
 

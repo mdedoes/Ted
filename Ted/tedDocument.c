@@ -620,6 +620,7 @@ void * tedMakePrivateData()
     td->tdInsHyperlinkOption= (APP_WIDGET)0;
     td->tdInsBookmarkOption= (APP_WIDGET)0;
     td->tdInsInsertFootnoteOption= (APP_WIDGET)0;
+    td->tdInsInsertEndnoteOption= (APP_WIDGET)0;
     td->tdInsInsertChftnsepOption= (APP_WIDGET)0;
     td->tdInsInsertTableOption= (APP_WIDGET)0;
     td->tdInsInsertPageNumberOption= (APP_WIDGET)0;

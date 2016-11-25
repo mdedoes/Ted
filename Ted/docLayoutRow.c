@@ -283,12 +283,58 @@ static void docLayoutStartRow(	BufferItem *			rowBi,
 
 /************************************************************************/
 /*									*/
+/*  Reserve space for a table header.					*/
+/*									*/
+/************************************************************************/
+
+static void docLayoutRowSkipHeaderHeight( LayoutPosition *	lp,
+					BufferItem *		rowBi,
+					int			atTopOfRow )
+    {
+    const BufferItem *	headerBi;
+    int			headerHeight;
+
+    if  ( ! rowBi->biRowTableFirstIsHeader )
+	{ LDEB(rowBi->biRowTableFirstIsHeader); return;	}
+    if  ( rowBi->biRowIsTableHeader )
+	{ LDEB(rowBi->biRowIsTableHeader); return;	}
+
+    headerBi= rowBi->biParent->biChildren[rowBi->biRowTableFirst];
+    if  ( ! headerBi->biRowIsTableHeader )
+	{ LDEB(headerBi->biRowIsTableHeader);	}
+
+    if  ( headerBi->biBelowPosition.lpPage	!=
+	  headerBi->biTopPosition.lpPage	)
+	{
+	LLDEB(headerBi->biBelowPosition.lpPage,headerBi->biTopPosition.lpPage);
+	return;
+	}
+
+    if  ( atTopOfRow )
+	{
+	rowBi->biRowAboveHeaderPosition= *lp;
+	rowBi->biRowPrecededByHeader= 1;
+	}
+
+    headerHeight= headerBi->biBelowPosition.lpPageYTwips- 
+					headerBi->biTopPosition.lpPageYTwips;
+
+    lp->lpAtTopOfColumn= 0;
+    lp->lpPageYTwips += headerHeight;
+
+    return;
+    }
+
+/************************************************************************/
+/*									*/
 /*  Continue a table row on the next page.				*/
 /*									*/
 /*  1)  Finish the footnotes that we found on the current page.		*/
 /*  2)  Move to the next page. (Column in multi column sections)	*/
-/*  3)  Reserve space for the top border of the cells.			*/
-/*  4)  Initialize the layout of the different table columns.		*/
+/*  3)  Skipping to a subsequent page.. Allocate space for the table	*/
+/*	header.								*/
+/*  4)  Reserve space for the top border of the cells.			*/
+/*  5)  Initialize the layout of the different table columns.		*/
 /*									*/
 /************************************************************************/
 
@@ -296,6 +342,7 @@ static int docRowToNextPage(	BufferItem *			rowBi,
 				LayoutJob *			lj,
 				int				bottomTwips,
 				int				stripHigh,
+				int				atTopOfRow,
 				BlockFrame *			bf,
 				ColumnLayoutJob *		rowClj,
 				const ParagraphLayoutContext *	plc )
@@ -321,6 +368,13 @@ static int docRowToNextPage(	BufferItem *			rowBi,
     docLayoutToNextColumn( rowBi, lj->ljBd, &(lj->ljPosition), bf );
 
     /*  3  */
+    if  ( ! rowBi->biRowIsTableHeader		&&
+	  rowBi->biRowTableFirstIsHeader	)
+	{
+	docLayoutRowSkipHeaderHeight( &(lj->ljPosition), rowBi, atTopOfRow );
+	}
+
+    /*  4  */
     for ( col= 0; col < rowBi->biChildCount; col++ )
 	{
 	int				useAbove= 0;
@@ -333,7 +387,7 @@ static int docRowToNextPage(	BufferItem *			rowBi,
 
     lj->ljPosition.lpPageYTwips += inset;
 
-    /*  4  */
+    /*  5  */
     cp= rowBi->biRowCells;
     clj= rowClj;
     for ( col= 0; col < rowBi->biChildCount; cp++, clj++, col++ )
@@ -447,6 +501,8 @@ static void docLayoutFinishRow(	BufferItem *		rowBi,
 /*  Calculate the layout of a table row.				*/
 /*									*/
 /*  1)  Sanity check against crashes.					*/
+/*	This fix is a thourough memory leak. It is hardly ever		*/
+/*	activated and it prevents crashes with incorrect rtf files.	*/
 /*  2)  Allocate memory to monitor the progress of the layout of the	*/
 /*	cells in the row.						*/
 /*  3)  Initialize and place as much row content on the current page	*/
@@ -477,11 +533,14 @@ int docLayoutRowItem(		BufferItem *			rowBi,
     int				rowHeightTwips;
     int				toNextPage;
 
-    ColumnLayoutJob *		staticClj;
+    ColumnLayoutJob *		rowClj;
 
     int				bottomTwips= -1;
 
     const ScreenLayout *	sl= &(plc->plcScreenLayout);
+    int				keepRowOnOnePage;
+
+    keepRowOnOnePage= rowBi->biRowKeepOnOnePage || rowBi->biRowIsTableHeader;
 
     /*  1  */
     if  ( rowBi->biRowCellCount < rowBi->biChildCount )
@@ -492,10 +551,10 @@ int docLayoutRowItem(		BufferItem *			rowBi,
 	}
 
     /*  2  */
-    staticClj= (ColumnLayoutJob *)malloc( 
+    rowClj= (ColumnLayoutJob *)malloc( 
 			rowBi->biRowCellCount* sizeof(ColumnLayoutJob) );
-    if  ( ! staticClj )
-	{ LXDEB(rowBi->biRowCellCount,staticClj); rval= -1; goto ready;	}
+    if  ( ! rowClj )
+	{ LXDEB(rowBi->biRowCellCount,rowClj); rval= -1; goto ready;	}
 
     if  ( sl && sl->slStartRow					&&
 	  (*sl->slStartRow)( rowBi, lj->ljAdd, lj->ljBd )	)
@@ -509,21 +568,25 @@ int docLayoutRowItem(		BufferItem *			rowBi,
 
     docLayoutCalculateRowTopInset( rowBi, lj->ljPosition.lpAtTopOfColumn );
 
-    docLayoutStartRow( rowBi, &(lj->ljPosition), staticClj );
+    rowBi->biRowAboveHeaderPosition= rowBi->biTopPosition;
+    rowBi->biRowPrecededByHeader= 0;
+
+    docLayoutStartRow( rowBi, &(lj->ljPosition), rowClj );
 
     if  ( docLayoutRowPageStrip( rowBi, &toNextPage,
-				    &rowHeightTwips, plc, staticClj, bf, lj ) )
+				    &rowHeightTwips, plc, rowClj, bf, lj ) )
 	{ LDEB(1); rval= -1; goto ready;	}
 
     /*  4  */
     if  ( toNextPage && ! rowBi->biTopPosition.lpAtTopOfColumn )
 	{
 	int				someAtTop= 0;
+	int				restartRow;
 	int				col;
 	const ColumnLayoutJob *		clj;
 
 	/*  5  */
-	clj= staticClj;
+	clj= rowClj;
 	for ( col= 0; col < rowBi->biChildCount; clj++, col++ )
 	    {
 	    const ParagraphLayoutJob *		plj= &(clj->cljPlj);
@@ -546,20 +609,28 @@ int docLayoutRowItem(		BufferItem *			rowBi,
 		}
 	    }
 
+	/*  7  */
+	restartRow= rowBi->biRowKeepOnOnePage || someAtTop;
+
 	/*  6  */
 	if  ( docRowToNextPage( rowBi, lj, bottomTwips, rowHeightTwips,
-							bf, staticClj, plc ) )
+							restartRow,
+							bf, rowClj, plc ) )
 	    { LDEB(toNextPage); rval= -1; goto ready;	}
 
 	/*  7  */
-	if  ( rowBi->biRowKeepOnOnePage || someAtTop )
+	if  ( restartRow )
 	    {
 	    rowBi->biTopPosition= lj->ljPosition;
+
+	    if  ( rowBi->biRowIsTableHeader		||
+		  ! rowBi->biRowTableFirstIsHeader	)
+		{ rowBi->biRowAboveHeaderPosition= rowBi->biTopPosition; }
 
 	    docLayoutCalculateRowTopInset( rowBi,
 					    lj->ljPosition.lpAtTopOfColumn );
 
-	    docLayoutStartRow( rowBi, &(lj->ljPosition), staticClj );
+	    docLayoutStartRow( rowBi, &(lj->ljPosition), rowClj );
 
 	    rowHeightTwips= 0;
 	    if  ( rowBi->biRowHeightTwips < 0 )
@@ -571,28 +642,30 @@ int docLayoutRowItem(		BufferItem *			rowBi,
 
 	/*  8  */
 	if  ( docLayoutRowPageStrip( rowBi, &toNextPage,
-				&rowHeightTwips, plc, staticClj, bf, lj ) )
+				&rowHeightTwips, plc, rowClj, bf, lj ) )
 	    { LDEB(1); rval= -1; goto ready;	}
 	}
 
     /*  9  */
     while( toNextPage )
 	{
+	const int	atTopOfRow= 0;
+
 	if  ( docRowToNextPage( rowBi, lj, bottomTwips, rowHeightTwips,
-							bf, staticClj, plc ) )
+						atTopOfRow, bf, rowClj, plc ) )
 	    { LDEB(toNextPage); rval= -1; goto ready;	}
 
 	if  ( docLayoutRowPageStrip( rowBi, &toNextPage,
-				&rowHeightTwips, plc, staticClj, bf, lj ) )
+				&rowHeightTwips, plc, rowClj, bf, lj ) )
 	    { LDEB(1); rval= -1; goto ready;	}
 	}
 
-    docLayoutFinishRow( rowBi, lj, staticClj, rowHeightTwips );
+    docLayoutFinishRow( rowBi, lj, rowClj, rowHeightTwips );
 
   ready:
 
-    if  ( staticClj )
-	{ free( staticClj );	}
+    if  ( rowClj )
+	{ free( rowClj );	}
 
     return rval;
     }

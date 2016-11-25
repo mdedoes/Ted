@@ -59,6 +59,8 @@ static int appMetaGetPointsPs(	DeviceContext *		dc,
 	xp->y= DC_yViewport( y, dc );
 	}
 
+    *xp= dc->dcPoints[0];
+
     return 0;
     }
 
@@ -221,46 +223,8 @@ static int appMetaBitmapImagePs(	SimpleInputStream *	sis,
 	return 0;
 	}
 
-#   if 1
-
     twipsWide= DC_wViewport( dstXExt, dc );
     twipsHigh= DC_hViewport( dstYExt, dc );
-
-#   else
-
-    dstYExtAbs= dstYExt;
-    if  ( dstYExtAbs < 0 )
-	{ dstYExtAbs= -dstYExtAbs;	}
-
-    switch( bd->bdUnit )
-	{
-	case BMunM:
-	    twipsWide= ( dstXExt* TWIPS_PER_M )/ bd->bdXResolution;
-	    twipsHigh= ( dstYExtAbs* TWIPS_PER_M )/ bd->bdYResolution;
-	    break;
-
-	case BMunINCH:
-	    twipsWide= ( dstXExt* 20* 72 )/ bd->bdXResolution;
-	    twipsHigh= ( dstYExtAbs* 20* 72 )/ bd->bdYResolution;
-	    break;
-
-	case BMunPOINT:
-	    twipsWide= ( dstXExt* 20 )/ bd->bdXResolution;
-	    twipsHigh= ( dstYExtAbs* 20 )/ bd->bdYResolution;
-	    break;
-
-	case BMunPIXEL:
-	    twipsWide= DC_wViewport( dstXExt, dc );
-	    twipsHigh= DC_hViewport( dstYExtAbs, dc );
-	    break;
-
-	default:
-	    SDEB(bmunIntToString(bd->bdUnit));
-	    twipsWide= DC_wViewport( dstXExt, dc );
-	    twipsHigh= DC_hViewport( dstYExtAbs, dc );
-	    break;
-	}
-#   endif
 
     if  ( twipsWide < 0 )
 	{ twipsWide= -twipsWide;	}
@@ -269,6 +233,11 @@ static int appMetaBitmapImagePs(	SimpleInputStream *	sis,
 
     dstX= DC_xViewport( dstX, dc );
     dstY= DC_yViewport( dstY, dc );
+
+    sioOutPrintf( sos, "gsave 1 setgray\n" );
+    sioOutPrintf( sos, "%d %d %g %g rectfill\n", dstX, dstY,
+						    twipsWide, twipsHigh );
+    sioOutPrintf( sos, "grestore\n" );
 
     if  ( bmPsPrintBitmapImage( sos, 1,
 			    twipsWide, -twipsHigh,
@@ -695,7 +664,7 @@ static void appMetaDrawPolygonPs(	SimpleOutputStream *	sos,
 	appMetaSetColorPs( sos, dc, &(dc->dcPen.lpColor) );
 	appMetaSetPenPs( sos, dc, &(dc->dcPen) );
 
-	for ( done= 0; done < count; done++ )
+	for ( done= 0; done < count+ 1; done++ )
 	    {
 	    sioOutPrintf( sos, "%d %d %s",
 				dc->dcPoints[done].x- x0,
@@ -725,6 +694,7 @@ static int appMeta_PolygonPs(	SimpleInputStream *	sis,
     count= sioEndianGetLeInt16( sis );
 
     WMFDEB(appDebug("Polygon( count=%d, ... )\n", count ));
+    WMFLOG(sioOutPrintf( sos, "%% Polygon( count=%d, ... )\n", count ));
 
     if  ( appMetaGetPointsPs( dc, count, sis ) )
 	{ LDEB(count); return -1;	}
@@ -2020,43 +1990,43 @@ static const char *	APPMETAPS_FillPrep[]=
 "    {",
 "    pathbbox",
 "    clip newpath",
-"			% llx-u  lly-u  urx-u  ury-u",
+"			% llx_usr  lly_usr  urx_usr  ury_usr",
 "    [ 0 0 0 0 0 0 ] currentmatrix",
 "    transform",
 "    [ 0 0 0 0 0 0 ] defaultmatrix [ 0 0 0 0 0 0 ] invertmatrix",
 "    transform",
-"			% llx-u  lly-u  urx-d  ury-d",
+"			% llx_usr  lly_usr  urx_dev  ury_dev",
 "    4 2 roll",
-"			% urx-d  ury-d  llx-u  lly-u",
+"			% urx_dev  ury_dev  llx_usr  lly_usr",
 "    [ 0 0 0 0 0 0 ] currentmatrix",
 "    transform",
 "    [ 0 0 0 0 0 0 ] defaultmatrix [ 0 0 0 0 0 0 ] invertmatrix",
 "    transform",
-"			% urx-d  ury-d  llx-d  lly-d",
+"			% urx_dev  ury_dev  llx_dev  lly_dev",
 "    3 -1 roll",
-"			% urx-d  llx-d  lly-d  ury-d",
+"			% urx_dev  llx_dev  lly_dev  ury_dev",
 "    exch",
-"			% urx-d  llx-d  ury-d  lly-d",
+"			% urx_dev  llx_dev  ury_dev  lly_dev",
 "    2 copy lt { exch } if",
-"			% urx-d  llx-d  ury=d  lly=d",
+"			% urx_dev  llx_dev  ury=d  lly=d",
 "    /fill-high load div floor   /fill-high load mul",
-"			% urx-d  llx-d  ury=d  lly=d-",
+"			% urx_dev  llx_dev  ury=d  LLY_dev",
 "    exch",
 "    /fill-high load div ceiling /fill-high load mul",
-"			% urx-d  llx-d  lly=d- ury=d+",
+"			% urx_dev  llx_dev  LLY_dev URY_dev",
 "    4 2 roll",
-"			% lly=d- ury=d+ urx-d  llx-d",
+"			% LLY_dev URY_dev urx_dev  llx_dev",
 "    2 copy lt { exch } if",
-"			% lly=d- ury=d+ urx=d  llx=d",
+"			% LLY_dev URY_dev urx=d  llx=d",
 "    /fill-wide load div floor   /fill-wide load mul",
-"			% lly=d- ury=d+ urx=d  llx=d-",
+"			% LLY_dev URY_dev urx=d  LLX_dev",
 "    exch",
 "    /fill-wide load div ceiling /fill-wide load mul",
-"			% lly=d- ury=d+ llx=d- urx=d+",
+"			% LLY_dev URY_dev LLX_dev URX_dev",
 "    4 2 roll",
-"			% llx=d- urx=d+ lly=d- ury=d+",
+"			% LLX_dev URX_dev LLY_dev URY_dev",
 "    [ 0 0 0 0 0 0 ] defaultmatrix setmatrix",
-"			% llx=d- urx=d+ lly=d- ury=d+",
+"			% LLX_dev URX_dev LLY_dev URY_dev",
 "    } bind def",
 "",
 };
@@ -2066,14 +2036,14 @@ static const char *	APPMETAPS_FillPattern[]=
 "/fill-pattern",
 "    {",
 "    gsave fill-prep",
-"			% llx=d- urx=d+ lly=d- ury=d+",
+"			% LLX_dev URX_dev LLY_dev URY_dev",
 "    /fill-high load exch",
-"			% llx=d- urx=d+ lly=d- <fill-high> ury=d+",
+"			% LLX_dev URX_dev LLY_dev <fill-high> URY_dev",
 "	{",
 "	gsave",
-"			% llx=d- urx=d+ y",
+"			% LLX_dev URX_dev y",
 "	0 exch translate",
-"			% llx=d- urx=d+",
+"			% LLX_dev URX_dev",
 "	2 copy /fill-wide load exch",
 "	    {",
 "	    gsave",
@@ -2095,13 +2065,13 @@ static const char *	APPMETAPS_HatchHorizontal[]=
 {
 "/hatch-horizontal",
 "    {",
-"			% llx=d- urx=d+ lly=d- ury=d+",
+"			% LLX_dev URX_dev LLY_dev URY_dev",
 "    /fill-high load exch",
-"			% llx=d- urx=d+ lly=d- <fill-high> ury=d+",
+"			% LLX_dev URX_dev LLY_dev <fill-high> URY_dev",
 "	{",
-"			% llx=d- urx=d+ y",
+"			% LLX_dev URX_dev y",
 "	2 copy moveto",
-"			% llx=d- urx=d+ y",
+"			% LLX_dev URX_dev y",
 "	3 copy exch pop",
 "	lineto pop stroke",
 "	} for",
@@ -2115,15 +2085,15 @@ static const char *	APPMETAPS_HatchVertical[]=
 {
 "/hatch-vertical",
 "    {",
-"			% llx=d- urx=d+ lly=d- ury=d+",
+"			% LLX_dev URX_dev LLY_dev URY_dev",
 "    4 2 roll",
-"			% lly=d- ury=d+ llx=d- urx=d+",
+"			% LLY_dev URY_dev LLX_dev URX_dev",
 "    /fill-wide load exch",
-"			% lly=d- ury=d+ llx=d- <fill-wide> urx=d+",
+"			% LLY_dev URY_dev LLX_dev <fill-wide> URX_dev",
 "	{",
-"			% lly=d- ury=d+ x",
+"			% LLY_dev URY_dev x",
 "	2 copy exch moveto",
-"			% lly=d- ury=d+ x",
+"			% LLY_dev URY_dev x",
 "	3 copy exch pop",
 "	exch lineto pop stroke",
 "	} for",
@@ -2137,31 +2107,31 @@ static const char *	APPMETAPS_HatchFdiagonal[]=
 {
 "/hatch-fdiagonal",
 "    {",
-"			% llx=d- urx=d+ lly=d- ury=d+",
+"			% LLX_dev URX_dev LLY_dev URY_dev",
 "    4 2 roll 2 copy exch sub 1 copy",
-"			% lly=d- ury=d+ llx=d- urx=d+ <dx> <dx>",
+"			% LLY_dev URY_dev LLX_dev URX_dev <dx> <dx>",
 "    4 2 roll",
-"			% lly=d- ury=d+ <dx> <dx> llx=d- urx=d+",
+"			% LLY_dev URY_dev <dx> <dx> LLX_dev URX_dev",
 "    6 3 roll",
-"			% <dx> llx=d- urx=d+ lly=d- ury=d+ <dx>",
+"			% <dx> LLX_dev URX_dev LLY_dev URY_dev <dx>",
 "    3 -1 roll",
-"			% <dx> llx=d- urx=d+ ury=d+ <dx> lly=d-",
+"			% <dx> LLX_dev URX_dev URY_dev <dx> LLY_dev",
 "    exch sub exch",
 "",
 "    /fill-high load exch",
-"			% <dx> llx=d- urx=d+ <dx> lly=d-- <fill-high> ury=d+",
+"			% <dx> LLX_dev URX_dev <dx> LLY_dev- <fill-high> URY_dev",
 "	{",
-"			% <dx> llx=d- urx=d+ y",
+"			% <dx> LLX_dev URX_dev y",
 "	2 copy moveto",
-"			% <dx> llx=d- urx=d+ y",
+"			% <dx> LLX_dev URX_dev y",
 "	4 copy",
-"			% <dx> llx=d- urx=d+ y <dx> llx=d- urx=d+ y",
+"			% <dx> LLX_dev URX_dev y <dx> LLX_dev URX_dev y",
 "	exch pop",
-"			% <dx> llx=d- urx=d+ y <dx> llx=d- y",
+"			% <dx> LLX_dev URX_dev y <dx> LLX_dev y",
 "	3 -1 roll",
-"			% <dx> llx=d- urx=d+ y llx=d- y <dx>",
+"			% <dx> LLX_dev URX_dev y LLX_dev y <dx>",
 "	add",
-"			% <dx> llx=d- urx=d+ y llx=d- y--",
+"			% <dx> LLX_dev URX_dev y LLX_dev y--",
 "	lineto pop stroke",
 "	} for",
 "",
@@ -2174,27 +2144,27 @@ static const char *	APPMETAPS_HatchBdiagonal[]=
 {
 "/hatch-bdiagonal",
 "    {",
-"			% llx=d- urx=d+ lly=d- ury=d+",
+"			% LLX_dev URX_dev LLY_dev URY_dev",
 "    4 2 roll 2 copy exch sub 1 copy",
-"			% lly=d- ury=d+ llx=d- urx=d+ <dx> <dx>",
+"			% LLY_dev URY_dev LLX_dev URX_dev <dx> <dx>",
 "    4 2 roll",
-"			% lly=d- ury=d+ <dx> <dx> llx=d- urx=d+",
+"			% LLY_dev URY_dev <dx> <dx> LLX_dev URX_dev",
 "    6 3 roll",
-"			% <dx> llx=d- urx=d+ lly=d- ury=d+ <dx>",
+"			% <dx> LLX_dev URX_dev LLY_dev URY_dev <dx>",
 "    add /fill-high load exch",
-"			% <dx> llx=d- urx=d+ <dx> lly=d- <fill-high> ury=d++",
+"			% <dx> LLX_dev URX_dev <dx> LLY_dev <fill-high> URY_dev+",
 "	{",
-"			% <dx> llx=d- urx=d+ y",
+"			% <dx> LLX_dev URX_dev y",
 "	2 copy moveto",
-"			% <dx> llx=d- urx=d+ y",
+"			% <dx> LLX_dev URX_dev y",
 "	4 copy",
-"			% <dx> llx=d- urx=d+ y <dx> llx=d- urx=d+ y",
+"			% <dx> LLX_dev URX_dev y <dx> LLX_dev URX_dev y",
 "	exch pop",
-"			% <dx> llx=d- urx=d+ y <dx> llx=d- y",
+"			% <dx> LLX_dev URX_dev y <dx> LLX_dev y",
 "	3 -1 roll",
-"			% <dx> llx=d- urx=d+ y llx=d- y <dx>",
+"			% <dx> LLX_dev URX_dev y LLX_dev y <dx>",
 "	sub",
-"			% <dx> llx=d- urx=d+ y llx=d- y--",
+"			% <dx> LLX_dev URX_dev y LLX_dev y--",
 "	lineto pop stroke",
 "	} for",
 "",
@@ -2209,10 +2179,10 @@ static const char *	APPMETAPS_FillHorizontal[]=
 "    {",
 "    gsave",
 "",
-"    1 setlinewidth",
+"    0.3 setlinewidth",
 "",
-"    /fill-wide 8 store",
-"    /fill-high 8 store",
+"    /fill-wide 4 store",
+"    /fill-high 4 store",
 "",
 "    fill-prep",
 "    hatch-horizontal",
@@ -2228,10 +2198,10 @@ static const char *	APPMETAPS_FillVertical[]=
 "    {",
 "    gsave",
 "",
-"    1 setlinewidth",
+"    0.3 setlinewidth",
 "",
-"    /fill-wide 8 store",
-"    /fill-high 8 store",
+"    /fill-wide 4 store",
+"    /fill-high 4 store",
 "",
 "    fill-prep",
 "    hatch-vertical",
@@ -2247,10 +2217,10 @@ static const char *	APPMETAPS_FillCross[]=
 "    {",
 "    gsave",
 "",
-"    1 setlinewidth",
+"    0.3 setlinewidth",
 "",
-"    /fill-wide 8 store",
-"    /fill-high 8 store",
+"    /fill-wide 4 store",
+"    /fill-high 4 store",
 "",
 "    fill-prep",
 "    4 copy",
@@ -2268,10 +2238,10 @@ static const char *	APPMETAPS_FillBdiagonal[]=
 "    {",
 "    gsave",
 "",
-"    1 setlinewidth",
+"    0.3 setlinewidth",
 "",
-"    /fill-wide 8 store",
-"    /fill-high 8 store",
+"    /fill-wide 4 store",
+"    /fill-high 4 store",
 "",
 "    fill-prep",
 "    hatch-bdiagonal",
@@ -2287,10 +2257,10 @@ static const char *	APPMETAPS_FillFdiagonal[]=
 "    {",
 "    gsave",
 "",
-"    1 setlinewidth",
+"    0.3 setlinewidth",
 "",
-"    /fill-wide 8 store",
-"    /fill-high 8 store",
+"    /fill-wide 4 store",
+"    /fill-high 4 store",
 "",
 "    fill-prep",
 "    hatch-fdiagonal",
@@ -2306,10 +2276,10 @@ static const char *	APPMETAPS_FillDiagcross[]=
 "    {",
 "    gsave",
 "",
-"    1 setlinewidth",
+"    0.3 setlinewidth",
 "",
-"    /fill-wide 8 store",
-"    /fill-high 8 store",
+"    /fill-wide 4 store",
+"    /fill-high 4 store",
 "",
 "    fill-prep",
 "    4 copy",

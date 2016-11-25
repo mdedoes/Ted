@@ -48,17 +48,18 @@ static void tedFormatToolRefreshCellPage(	CellTool *	ct )
     appIntegerToTextWidget( ct->ctColumnText, tr->trCol0+ 1 );
 
     if  ( tr->trCol0 == tr->trCol1	&&
-	  tr->trRow0 == tr->trRow1	)
+	  tr->trRow0 == tr->trRow1	&&
+	  ! rp->rpIsTableHeader		)
 	{
-	appGuiEnableWidget( ct->ctColspanText, 1 );
-	appGuiEnableWidget( ct->ctRowspanText, 1 );
+	appEnableText( ct->ctColspanText, 1 );
+	appEnableText( ct->ctRowspanText, 1 );
 
 	appIntegerToTextWidget( ct->ctColspanText, tr->trCellColspan );
 	appIntegerToTextWidget( ct->ctRowspanText, tr->trCellRowspan );
 	}
     else{
-	appGuiEnableWidget( ct->ctColspanText, 0 );
-	appGuiEnableWidget( ct->ctRowspanText, 0 );
+	appEnableText( ct->ctColspanText, 0 );
+	appEnableText( ct->ctRowspanText, 0 );
 
 	appStringToTextWidget( ct->ctColspanText, "" );
 	appStringToTextWidget( ct->ctRowspanText, "" );
@@ -107,10 +108,8 @@ void tedFormatToolRefreshCellTool(
 						    rp, (const int *)0 ) )
 	{ LDEB(1); return;	}
 
-    appGuiEnableWidget( is->isPrevButton,
-				    tr->trCol0 > 0 );
-    appGuiEnableWidget( is->isNextButton,
-				    tr->trCol1 < tr->trCol11 );
+    appGuiEnableWidget( is->isPrevButton, tr->trCol0 > 0 );
+    appGuiEnableWidget( is->isNextButton, tr->trCol1 < tr->trCol11 );
 
     tedFormatToolRefreshCellPage( ct );
 
@@ -216,7 +215,8 @@ static APP_BUTTON_CALLBACK_H( tedTableChangeCellPushed, w, voidct )
     /****/
 
     if  ( tr->trCol0 == tr->trCol1	&&
-	  tr->trRow0 == tr->trRow1	)
+	  tr->trRow0 == tr->trRow1	&&
+	  ! rp->rpIsTableHeader		)
 	{
 	maxValue= tr->trRow11- tr->trRow0+ 1;
 

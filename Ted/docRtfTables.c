@@ -69,15 +69,25 @@ int docRtfRevisionTable(	SimpleInputStream *	sis,
 static int docRtfInfoText(	RtfReadingContext *	rrc,
 				unsigned char **	pText,
 				const unsigned char *	text,
-				int			len	)
+				int			len )
     {
-    char *	saved= (char *)malloc( len+ 1 );
+    char *	saved;
     char *	to;
 
+    int		oldLen= 0;
+
+    if  ( *pText )
+	{ oldLen= strlen( (char *)*pText );	}
+
+    saved= (char *)malloc( oldLen+ len+ 1 );
     if  ( ! saved )
 	{ XDEB(saved); return -1;	}
 
     to= saved;
+
+    if  ( *pText )
+	{ strcpy( to, *pText ); to += oldLen;	}
+
     while( len > 0 )
 	{ *(to++)= *(text++); len--;	}
     *to= '\0';
@@ -122,14 +132,6 @@ static int docRtfKeywordsText(	RtfReadingContext *	rrc,
 								text, len );
     }
 
-static int docRtfCommentText(	RtfReadingContext *	rrc,
-				const unsigned char *	text,
-				int			len )
-    {
-    return docRtfInfoText( rrc, &(rrc->rrcBd->bdProperties.dpComment),
-								text, len );
-    }
-
 static int docRtfDoccommText(	RtfReadingContext *	rrc,
 				const unsigned char *	text,
 				int			len )
@@ -169,10 +171,6 @@ static int docRtfDocInfoGroup(	SimpleInputStream *	sis,
 
 	case DPpropKEYWORDS:
 	    addTextParticule= docRtfKeywordsText;
-	    break;
-
-	case DPpropCOMMENT:
-	    addTextParticule= docRtfCommentText;
 	    break;
 
 	case DPpropDOCCOMM:
@@ -236,7 +234,7 @@ static RtfControlWord	docRtfInfoGroups[]=
 	{ "author",	DPpropAUTHOR,	DOClevDOC, docRtfDocInfoGroup,	},
 	{ "subject",	DPpropSUBJECT,	DOClevDOC, docRtfDocInfoGroup,	},
 	{ "keywords",	DPpropKEYWORDS,	DOClevDOC, docRtfDocInfoGroup,	},
-	{ "comment",	DPpropCOMMENT,	DOClevDOC, docRtfDocInfoGroup,	},
+	{ "comment",	DPpropDOCCOMM,	DOClevDOC, docRtfDocInfoGroup,	},
 	{ "doccomm",	DPpropDOCCOMM,	DOClevDOC, docRtfDocInfoGroup,	},
 	{ "hlinkbase",	DPpropHLINKBASE,DOClevDOC, docRtfDocInfoGroup,	},
 

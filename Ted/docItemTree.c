@@ -230,10 +230,12 @@ void docInitItem(	BufferItem *		bi,
 	    bi->biRowTableFirst= -1;
 	    bi->biRowTablePast= -1;
 	    bi->biRowTableFirstIsHeader= 0;
+	    bi->biRowPrecededByHeader= 0;
 
 	    docInitRowProperties( &(bi->biRowProperties) );
 
 	    docInitLayoutPosition( &(bi->biRowBelowAllPosition) );
+	    docInitLayoutPosition( &(bi->biRowAboveHeaderPosition) );
 	    break;
 
 	case DOClevPARA:

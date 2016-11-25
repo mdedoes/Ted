@@ -643,6 +643,23 @@ void docLayoutPushBottomDown(		LayoutPosition *	lpParentBottom,
     return;
     }
 
+void docLayoutPushBottomDownShifted(	LayoutPosition *	lpParentBottom,
+					const LayoutPosition *	lpChildBottom,
+					int			pShift,
+					int			yShift )
+    {
+    LayoutPosition	lpShifted;
+
+    lpShifted= *lpChildBottom;
+    lpShifted.lpPage += pShift;
+    lpShifted.lpPageYTwips += yShift;
+
+    if  ( yShift != 0 )
+	{ lpShifted.lpAtTopOfColumn= 0;	}
+
+    docLayoutPushBottomDown( lpParentBottom, &lpShifted );
+    }
+
 /************************************************************************/
 /*									*/
 /*  Translate a stretch of text to upper case for capitals or smallcaps	*/

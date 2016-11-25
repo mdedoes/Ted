@@ -32,6 +32,11 @@
 # define BI_BELOW_PIXELS( add, bi ) \
 			LP_YPIXELS( add, &((bi)->biBelowPosition) )
 
+# define BI_TOP_PIXELS_SH( add, bi, pS, yS ) \
+	( (add)->addPageStepPixels* ( (bi)->biTopPosition.lpPage+ (pS) )+ \
+	  TWIPStoPIXELS( (add)->addMagnifiedPixelsPerTwip, \
+	    (bi)->biTopPosition.lpPageYTwips+ (yS) ) )
+
 /**/
 
 # define PG_TOP_PIXELS( add, pg ) \
@@ -42,14 +47,29 @@
 # define TL_TOP_PIXELS( add, tl ) LP_YPIXELS( add, &((tl)->tlTopPosition) )
 
 # define TL_BASE_PIXELS( add, tl ) \
-	    ( (add)->addPageStepPixels* (tl)->tlTopPosition.lpPage+ \
-	      TWIPStoPIXELS( (add)->addMagnifiedPixelsPerTwip, \
-		(tl)->tlTopPosition.lpPageYTwips+ (tl)->tlLineAscentTwips ) )
+	( (add)->addPageStepPixels* (tl)->tlTopPosition.lpPage+ \
+	  TWIPStoPIXELS( (add)->addMagnifiedPixelsPerTwip, \
+	    (tl)->tlTopPosition.lpPageYTwips+ (tl)->tlLineAscentTwips ) )
 
 # define TL_BELOW_PIXELS( add, tl ) \
-	    ( (add)->addPageStepPixels* (tl)->tlTopPosition.lpPage+ \
-	      TWIPStoPIXELS( (add)->addMagnifiedPixelsPerTwip, \
-		(tl)->tlTopPosition.lpPageYTwips+ (tl)->tlLineSpacingTwips ) )
+	( (add)->addPageStepPixels* (tl)->tlTopPosition.lpPage+ \
+	  TWIPStoPIXELS( (add)->addMagnifiedPixelsPerTwip, \
+	    (tl)->tlTopPosition.lpPageYTwips+ (tl)->tlLineSpacingTwips ) )
+
+# define TL_TOP_PIXELS_SH( add, tl, pS, yS ) \
+	( (add)->addPageStepPixels* ( (tl)->tlTopPosition.lpPage+ (pS) )+ \
+	  TWIPStoPIXELS( (add)->addMagnifiedPixelsPerTwip, \
+	    (tl)->tlTopPosition.lpPageYTwips+ (yS) ) )
+
+# define TL_BASE_PIXELS_SH( add, tl, pS, yS ) \
+	( (add)->addPageStepPixels* ( (tl)->tlTopPosition.lpPage+ (pS) )+ \
+	  TWIPStoPIXELS( (add)->addMagnifiedPixelsPerTwip, \
+	    (tl)->tlTopPosition.lpPageYTwips+ (yS)+ (tl)->tlLineAscentTwips ) )
+
+# define TL_BELOW_PIXELS_SH( add, tl, pS, yS ) \
+	( (add)->addPageStepPixels* ( (tl)->tlTopPosition.lpPage+ (pS) )+ \
+	  TWIPStoPIXELS( (add)->addMagnifiedPixelsPerTwip, \
+	    (tl)->tlTopPosition.lpPageYTwips+ (yS)+ (tl)->tlLineSpacingTwips ) )
 
 /************************************************************************/
 /*									*/
@@ -401,6 +421,12 @@ extern int docLayoutRowItem(	BufferItem *			rowBi,
 
 extern void docLayoutPushBottomDown(	LayoutPosition *	lpRowBottom,
 					const LayoutPosition *	lpColBottom );
+
+extern void docLayoutPushBottomDownShifted(
+					LayoutPosition *	lpRowBottom,
+					const LayoutPosition *	lpColBottom,
+					int			pShift,
+					int			yShift );
 
 extern void docParagraphFrameTwips(
 				ParagraphFrame *		pf,
