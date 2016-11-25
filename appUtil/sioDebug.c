@@ -1,7 +1,7 @@
 /************************************************************************/
 /*									*/
 /*  Simple io streams: Duplicate the stream to another one: Usually	*/
-/*  for debugging putposes.						*/
+/*  for debugging purposes.						*/
 /*									*/
 /************************************************************************/
 
@@ -15,7 +15,7 @@
 
 /************************************************************************/
 /*									*/
-/*  Exchange of hexed binary little endian data.			*/
+/*  Duplicate input to logging.						*/
 /*									*/
 /************************************************************************/
 
@@ -72,8 +72,7 @@ SimpleInputStream * sioInDebugOpen(	SimpleInputStream *	sisIn )
     dis->disSisIn= sisIn;
     dis->disExhausted= 0;
 
-    sis= sioInOpen( (void *)dis,
-			    sioInDebugReadBytes, (SIOinSEEK)0, sioDebugClose );
+    sis= sioInOpen( (void *)dis, sioInDebugReadBytes, sioDebugClose );
 
     if  ( ! sis )
 	{ XDEB(sis); free( dis ); return (SimpleInputStream *)0; }
@@ -95,8 +94,10 @@ static int sioOutDebugWriteBytes(	void *			voiddos,
 					int			count )
     {
     DebuggingOutputStream *	dos= (DebuggingOutputStream *)voiddos;
+    int				i;
 
-    appDebug( "%*s", count, buffer );
+    for ( i= 0; i < count; i++ )
+	{ appDebug( "%c", buffer[i] ); }
 
     if  ( dos->dosSosOut )
 	{ return sioOutWriteBytes( dos->dosSosOut, buffer, count );	}
@@ -113,6 +114,32 @@ SimpleOutputStream * sioOutDebugOpen(	SimpleOutputStream *	sosOut )
 	{ XDEB(dos); return (SimpleOutputStream *)0;	}
 
     dos->dosSosOut= sosOut;
+
+    sos= sioOutOpen( (void *)dos, sioOutDebugWriteBytes,
+						(SIOoutSEEK)0, sioDebugClose );
+
+    if  ( ! sos )
+	{ XDEB(sos); free( dos ); return (SimpleOutputStream *)0; }
+
+    return sos;
+    }
+
+/************************************************************************/
+/*									*/
+/*  Return a simple output stream to the debug log.			*/
+/*									*/
+/************************************************************************/
+
+SimpleOutputStream * sioOutAppDebugOpen()
+    {
+    SimpleOutputStream *	sos;
+    DebuggingOutputStream *	dos;
+
+    dos= malloc( sizeof(DebugedInputStream) );
+    if  ( ! dos )
+	{ XDEB(dos); return (SimpleOutputStream *)0;	}
+
+    dos->dosSosOut= (SimpleOutputStream *)0;
 
     sos= sioOutOpen( (void *)dos, sioOutDebugWriteBytes,
 						(SIOoutSEEK)0, sioDebugClose );

@@ -9,6 +9,7 @@
 
 #   include	<utilPropMask.h>
 #   include	<utilTextAttribute.h>
+#   include	<utilFontEncoding.h>
 
 /************************************************************************/
 /*									*/
@@ -19,39 +20,52 @@
 /*	It is possible that two fonts with the same name exist. In that	*/
 /*	case, the character set helps to distinguish between them.	*/
 /*									*/
+/*  2)  The administration distinguishes between fonts that are 'used'	*/
+/*	and those that are not. For efficient PostScript production,	*/
+/*	the distincion might be too coarse: Many fonts that have been	*/
+/*	used count as used. The purpose of the administration is to	*/
+/*	decide what fonts to save in a document. Typically the set of	*/
+/*	fonts that count as used consistes of the fonts that were in	*/
+/*	the font list of a document when it was opened plus the ones	*/
+/*	that have been assigned to a stretch of text during editing.	*/
+/*									*/
 /************************************************************************/
 
+					/*  fprqN			*/
 #   define FONTpitchDEFAULT		0
 #   define FONTpitchFIXED		1
 #   define FONTpitchVARIABLE		2
 
 #   define FONTlenPANOSE		20
 
-typedef struct DocumentFontInstance
+typedef enum FontFaceIndex
     {
-    TextAttribute	dfiAttribute;
-    int			dfiPhysicalFont;
-    int			dfiPsFaceNumber;
-    } DocumentFontInstance;
+    FONTfaceREGULAR= 0,
+    FONTfaceBOLD,
+    FONTfaceSLANTED,
+    FONTfaceBOLD_SLANTED,
+
+    FONTface_COUNT
+    } FontFaceIndex;
 
 typedef struct DocumentFont
     {
     char *			dfFamilyStyle;	/*  fnil, fswiss ..	*/
     char *			dfName;		/*  Helvetica,		*/
-						/*  Helvetica Narrow.	*/
     char *			dfAltName;	/*  \\falt in rtf	*/
-    int				dfDocFamilyNumber;/*  f0, f1 ...	*/
+    short int			dfDocFontNumber;/*  f0, f1 ...	*/
 
-    int				dfPsFamilyNumber;
+    short int			dfDocFamilyIndex;
+    short int			dfEncodingSet;
 
-    int				dfInstanceCount;
-    DocumentFontInstance *	dfInstances;
+    short int			dfCharset;	/*  fcharsetN		*/
+    short int			dfCodepage;	/*  cpgN		*/
 
-    int				dfCharset;	/*  fcharsetN		*/
-    int				dfCodepage;	/*  cpgN		*/
-    int				dfEncodingUsed;
+    short int			dfPsFamilyNumber;
+    short int			dfPsFaceNumber[FONTface_COUNT];
 
-    int				dfPitch;	/*  fprqN		*/
+    unsigned char		dfPitch;	/*  fprqN		*/
+    unsigned char		dfUsed;		/*  2			*/
     char			dfPanose[FONTlenPANOSE+1];
     } DocumentFont;
 
@@ -68,10 +82,18 @@ typedef enum DocumentFontProperty
     DFprop_COUNT
     } DocumentFontProperty;
 
+typedef struct DocumentFontFamily
+    {
+    char *		dffFamilyName;
+    int			dffFontForEncoding[ENCODINGps_COUNT];
+    } DocumentFontFamily;
+
 typedef struct DocumentFontList
     {
-    int			dflCount;
-    DocumentFont *	dflFonts;
+    int				dflFontCount;
+    DocumentFont *		dflFonts;
+    int				dflFamilyCount;
+    DocumentFontFamily *	dflFamilies;
     } DocumentFontList;
 
 typedef enum DocumentFontStyle
@@ -87,12 +109,9 @@ typedef enum DocumentFontStyle
     DFstyle_COUNT
     } DocumentFontStyle;
 
-/************************************************************************/
-/*									*/
-/*  Default attributes.							*/
-/*									*/
-/************************************************************************/
-
+#define FACE_INDEX( isS, isB ) ( 2*( (isS) != 0 )+ ( (isB) != 0 ) )
+#define FACE_BOLD( idx ) ( (idx) % 2 != 0 )
+#define FACE_SLANTED( idx ) ( ((idx)/2) % 2 != 0 )
 
 /************************************************************************/
 /*									*/
@@ -100,25 +119,25 @@ typedef enum DocumentFontStyle
 /*									*/
 /************************************************************************/
 
-extern void docInitDocumentFont(	DocumentFont *	df );
+extern void docInitDocumentFont(	DocumentFont *		df );
 
-extern void docCleanDocumentFont(	DocumentFont *	df );
+extern void docCleanDocumentFont(	DocumentFont *		df );
 
-extern int docCopyDocumentFont(	DocumentFont *		to,
-			const DocumentFont *	from );
+extern int docCopyDocumentFont(		DocumentFont *		to,
+					const DocumentFont *	from );
 
-extern void docInitFontList(	DocumentFontList *	dfl );
+extern void docInitFontList(		DocumentFontList *	dfl );
 
-extern void docCleanFontList(	DocumentFontList *	dfl );
+extern void docCleanFontList(		DocumentFontList *	dfl );
 
-extern int docCopyFontList(	DocumentFontList *		to,
-				const DocumentFontList *	from );
+extern int docCopyFontList(		DocumentFontList *		to,
+					const DocumentFontList *	from );
 
 extern int utilFontFamilyStyle( const char * fontFamilyName );
 
-extern DocumentFont *	docInsertFont(	DocumentFontList *	dfl,
-					int			n,
-					const DocumentFont *	df );
+extern DocumentFont *	docInsertFont(	DocumentFontList *		dfl,
+					int				n,
+					const DocumentFont *		df );
 
 extern int utilFontCompareFaces(	const void *	veft1,
 					const void *	veft2 );

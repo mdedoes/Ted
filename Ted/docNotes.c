@@ -36,7 +36,7 @@ void docInitNote(		DocumentNote *		dn )
     dn->dnStroff= -1;
 
     dn->dnExternalItemKind= DOCinFOOTNOTE;
-    dn->dnAutoNumber= 0;
+    dn->dnAutoNumber= 1;
 
     return;
     }
@@ -398,22 +398,22 @@ void docRenumberNotes(		int *			pChanged,
 	/****/
 	np= &(dp->dpFootnoteProperties);
 
-	if  ( np->npRestart == DPftnRST_PER_SECTION	&&
+	if  ( np->npRestart == FTN_RST_PER_SECTION	&&
 	      dn->dnSectNr != sect			)
 	    { footN= 0;	}
 
-	if  ( np->npRestart == DPftnRST_PER_PAGE	&&
+	if  ( np->npRestart == FTN_RST_PER_PAGE	&&
 	      dn->dnReferringPage != page		)
 	    { footN= 0;	}
 
 	/****/
 	np= &(dp->dpEndnoteProperties);
 
-	if  ( np->npRestart == DPftnRST_PER_SECTION	&&
+	if  ( np->npRestart == FTN_RST_PER_SECTION	&&
 	      dn->dnSectNr != sect			)
 	    { endN= 0;	}
 
-	if  ( np->npRestart == DPftnRST_PER_PAGE	&&
+	if  ( np->npRestart == FTN_RST_PER_PAGE	&&
 	      dn->dnReferringPage != page		)
 	    { endN= 0;	}
 
@@ -510,111 +510,85 @@ void docShiftNoteReferences(		BufferDocument *	bd,
 
 int docMakeNote(	DocumentNote **			pDn,
 			BufferDocument *		bd,
-			const DocumentPosition *	dp,
+			BufferItem *			paraBi,
+			int				part,
+			int				stroff,
 			int				extItKind )
     {
     TextParticule *	tp;
     TextAttribute	ta;
     int			textAttributeNumberPlain;
+    int			textAttributeNumberSuper;
 
     DocumentNote *	dn;
-    BufferItem *	paraBi;
 
-    DocumentField *	df;
-    int			fieldNumber;
     int			noteIndex;
 
     int			stroffShift= 0;
     const int		autoNumber= 1;
 
-    if  ( dp->dpBi->biInExternalItem != DOCinBODY )
-	{ LDEB(dp->dpBi->biInExternalItem); return -1;	}
+    BufferItem *	noteParaBi;
 
+    if  ( paraBi->biInExternalItem != DOCinBODY )
+	{ LDEB(paraBi->biInExternalItem); return -1;	}
 
     /*  1  */
-    noteIndex= docInsertNote( &dn, bd, dp->dpBi, dp->dpStroff, autoNumber );
+    noteIndex= docInsertNote( &dn, bd, paraBi, stroff, autoNumber );
     if  ( noteIndex < 0 )
 	{ LDEB(noteIndex); return -1;	}
 
     dn->dnExternalItemKind= extItKind;
 
-    if  ( dp->dpParticule > 0 )
-	{ tp= dp->dpBi->biParaParticules+ dp->dpParticule- 1;	}
-    else{ tp= dp->dpBi->biParaParticules+ dp->dpParticule;	}
+    if  ( part > 0 )
+	{ tp= paraBi->biParaParticules+ part- 1;	}
+    else{ tp= paraBi->biParaParticules+ part;		}
 
     utilGetTextAttributeByNumber( &ta,
 		&(bd->bdTextAttributeList), tp->tpTextAttributeNumber );
     ta.taSuperSub= DOCfontREGULAR;
     textAttributeNumberPlain=
 		utilTextAttributeNumber( &(bd->bdTextAttributeList), &ta );
-    /*
-    ta.taSuperSub= DOCfontSUPERSCRIPT;
-    textAttributeNumberSuper=
-		utilTextAttributeNumber( &(bd->bdTextAttributeList), &ta );
-    */
 
     /*  2  */
-    tp= docInsertTextParticule( dp->dpBi, dp->dpParticule+ 1,
-		    dp->dpStroff, 0, DOCkindNOTE, textAttributeNumberPlain );
-    if  ( ! tp )
-	{ LDEB(dp->dpBi->biParaParticuleCount); return -1; }
-
-    /*  4  */
-    paraBi= docMakeExternalparagraph( bd, &(dn->dnExternalItem),
-					dp->dpBi, textAttributeNumberPlain,
-					noteIndex, DOCinFOOTNOTE );
-    if  ( ! paraBi )
-	{ XDEB(paraBi); return -1;	}
-
-    /*  5  */
-    df= docClaimField( &fieldNumber, &(bd->bdFieldList) );
-    if  ( ! df )
-	{ XDEB(df); return -1;	}
-
-    df->dfKind= DOCfkCHFTN;
-
-    tp= docInsertTextParticule( paraBi, 1, 0, 0, DOCkindFIELDEND,
-						    textAttributeNumberPlain );
+    tp= docInsertTextParticule( paraBi, part+ 1,
+			stroff, 0, DOCkindNOTE, textAttributeNumberPlain );
     if  ( ! tp )
 	{ LDEB(paraBi->biParaParticuleCount); return -1; }
 
-    tp= paraBi->biParaParticules;
-    tp[0].tpKind= DOCkindFIELDSTART;
-    tp[0].tpObjectNumber= fieldNumber;
-    tp[1].tpObjectNumber= fieldNumber;
+    /*  4  */
+    noteParaBi= docMakeExternalparagraph( bd, &(dn->dnExternalItem),
+					paraBi, textAttributeNumberPlain,
+					noteIndex, DOCinFOOTNOTE );
+    if  ( ! noteParaBi )
+	{ XDEB(noteParaBi); return -1;	}
 
     {
     TextAttribute	taSet;
-    PropertyMask	taSetMask;
 
-    /*
-    utilInitTextAttribute( &taSet );
-    */
     taSet= ta;
-    PROPmaskCLEAR( &taSetMask );
 
     taSet.taSuperSub= DOCfontSUPERSCRIPT;
-    PROPmaskADD( &taSetMask, TApropSUPERSUB );
 
-    if  ( docChangeParticuleAttributes( (PropertyMask *)0, bd,
-						    paraBi, 0, 2,
-						    &taSet, &taSetMask ) )
-	{ LDEB(1);	}
+    textAttributeNumberSuper=
+		utilTextAttributeNumber( &(bd->bdTextAttributeList), &taSet );
     }
 
+    /*  5  */
+    if  ( docInsertParaHeadField( noteParaBi, bd,
+				    DOCfkCHFTN, textAttributeNumberSuper ) )
+	{ LDEB(1); return -1;	}
+
     /*  6  */
-    if  ( docParaStringReplace( &stroffShift, paraBi,
-				paraBi->biParaStrlen, paraBi->biParaStrlen,
-				(const unsigned char *)" ", 1 ) )
-	{ LDEB(paraBi->biParaStrlen); return -1; }
+    if  ( docParaStringReplace( &stroffShift, noteParaBi,
+			    noteParaBi->biParaStrlen, noteParaBi->biParaStrlen,
+			    (const unsigned char *)" ", 1 ) )
+	{ LDEB(noteParaBi->biParaStrlen); return -1; }
 
-    tp= docInsertTextParticule( paraBi, paraBi->biParaParticuleCount,
-				    paraBi->biParaStrlen- 1, 1,
-				    DOCkindTEXT, textAttributeNumberPlain );
+    tp= docInsertTextParticule( noteParaBi, noteParaBi->biParaParticuleCount,
+			    noteParaBi->biParaStrlen- 1, 1,
+			    DOCkindTEXT, textAttributeNumberPlain );
     if  ( ! tp )
-	{ LDEB(paraBi->biParaParticuleCount); return -1; }
-
-    bd->bdFieldList.dflFieldCount++;
+	{ LDEB(noteParaBi->biParaParticuleCount); return -1; }
 
     *pDn= dn; return 0;
     }
@@ -644,47 +618,259 @@ int docDeleteNoteOfParticule(		BufferDocument *	bd,
 /*									*/
 /*  Get the note corresponding to a selection.				*/
 /*									*/
+/*  1)  Get the note. Outside the note itself, only notes that are	*/
+/*	exactly the end position of the selection are found. In the	*/
+/*	note itself, the note is returned.				*/
+/*  2)  In body?							*/
+/*  3)  If the selection spans more than one paragraph, it does not	*/
+/*	qualify as the selection of exactly the bote refrence.		*/
+/*  4)  For a range selection, see whether the selection exactly covers	*/
+/*	the note number.						*/
+/*  5)  Look for the beginning of a note field at the beginning of the	*/
+/*	selection.							*/
+/*  6)  Does the same note field end at the end of the selection?	*/
+/*  A)  Look for a note number field that ends at the IBar.		*/
+/*  B)  Look for the beginning of the field.				*/
+/*  a)  Look for a note number field at the beginning of the note item.	*/
+/*  b)  Look for the end of the field.					*/
+/*									*/
 /************************************************************************/
 
+void docNoteGetTextBefore(	unsigned char *		fixedText,
+				int *			pFixedLen,
+				int *			pTextAttrNr,
+				int			fixedTextSize,
+				const BufferItem *	paraBi,
+				int			stroff )
+    {
+    int				part;
+    const TextParticule *	tp= paraBi->biParaParticules+ part;
+
+    if  ( docFindParticule( &part, paraBi, stroff, 1 ) )
+	{ LDEB(stroff); fixedText[0]= '\0'; return;	}
+
+    while( part >= 0 )
+	{
+	if  ( tp->tpStroff+ tp->tpStrlen < stroff )
+	    { break;	}
+
+	if  ( tp->tpKind == DOCkindTEXT		&&
+	      tp->tpStroff < stroff		)
+	    {
+	    int		from= tp->tpStroff;
+	    int		len= tp->tpStrlen;
+
+	    if  ( len > fixedTextSize )
+		{ len= fixedTextSize; from += len- fixedTextSize; }
+
+	    *pFixedLen= len;
+	    *pTextAttrNr= tp->tpTextAttributeNumber;
+
+	    strncpy( (char *)fixedText,
+			(char *)paraBi->biParaString+ from, len )[len]= '\0';
+	    return;
+	    }
+
+	part--; tp--;
+	}
+
+    fixedText[0]= '\0';
+    return;
+    }
+
+void docNoteGetTextAtHead(	unsigned char *		fixedText,
+				int *			pFixedLen,
+				int			fixedTextSize,
+				const BufferItem *	paraBi )
+    {
+    const int			partB= 0;
+    const int			stroff= 0;
+    int				part= partB;
+    const TextParticule *	tp= paraBi->biParaParticules+ part;
+
+    while( part >= 0 )
+	{
+	if  ( tp->tpStroff > stroff )
+	    { break;	}
+
+	if  ( tp->tpKind == DOCkindTEXT			&&
+	      tp->tpStroff+ tp->tpStrlen > stroff	)
+	    {
+	    int		len= tp->tpStrlen;
+
+	    if  ( len > fixedTextSize )
+		{ len= fixedTextSize;	}
+
+	    *pFixedLen= len;
+	    strncpy( (char *)fixedText,
+		(char *)paraBi->biParaString+ tp->tpStroff, len )[len]= '\0';
+	    return;
+	    }
+
+	part++; tp++;
+	}
+
+    *pFixedLen= 0;
+    fixedText[0]= '\0';
+    return;
+    }
+
+int docDelimitNoteReference(	int *			pFieldNr,
+				int *			pPartBegin,
+				int *			pPartEnd,
+				int *			pStroffBegin,
+				int *			pStroffEnd,
+				const BufferItem *	paraBi,
+				int			stroff,
+				const BufferDocument *	bd )
+    {
+    const TextParticule *	tp;
+
+    int				fieldNr= -1;
+    int				partBegin= -1;
+    int				partEnd= -1;
+    int				stroffBegin= -1;
+    int				stroffEnd= -1;
+
+    if  ( docFindParticule( &partEnd, paraBi, stroff, 1 ) )
+	{ LDEB(stroff); return -1;	}
+
+    /*  A  */
+    tp= paraBi->biParaParticules+ partEnd;
+    while( partEnd >= 0			&&
+	   tp->tpStroff == stroff	)
+	{
+	if  ( tp->tpKind == DOCkindFIELDEND )
+	    {
+	    const DocumentField *	df;
+
+	    df= bd->bdFieldList.dflFields+ tp->tpObjectNumber;
+	    if  ( df->dfKind == DOCfkCHFTN )
+		{
+		fieldNr= tp->tpObjectNumber;
+		stroffEnd= tp->tpStroff;
+		break;
+		}
+	    }
+
+	partEnd--; tp--;
+	}
+
+    /*  B  */
+    if  ( fieldNr >= 0 )
+	{
+	partBegin= partEnd;
+	partBegin--; tp--;
+
+	while( partBegin >= 0 )
+	    {
+	    if  ( tp->tpKind == DOCkindFIELDSTART	&&
+		  tp->tpObjectNumber == fieldNr		)
+		{
+		stroffBegin= tp->tpStroff;
+		break;
+		}
+
+	    partBegin--; tp--;
+	    }
+
+	if  ( partBegin < 0 )
+	    { fieldNr= -1;	}
+	}
+
+    if  ( fieldNr < 0 )
+	{ return 1;	}
+
+    *pFieldNr= fieldNr;
+    *pPartBegin= partBegin;
+    *pPartEnd= partEnd;
+    *pStroffBegin= stroffBegin;
+    *pStroffEnd= stroffEnd;
+
+    return 0;
+    }
+
 int docGetSelectedNote(		DocumentNote **			pDn,
+				int *				pFieldNr,
+				unsigned char *			fixedText,
+				int				fixedTextSize,
 				BufferDocument *		bd,
 				const DocumentSelection *	ds )
     {
     DocumentNote *		dn;
     int				noteIndex;
 
+    const BufferItem *		paraBi;
+
+    int				fieldNr= -1;
+    int				partBegin= -1;
+    int				partEnd= -1;
+    int				stroffBegin= -1;
+    int				stroffEnd= -1;
+
+    /*  1  */
     noteIndex= docGetNote( &dn, bd, ds->dsEnd.dpBi, ds->dsEnd.dpStroff );
     if  ( noteIndex < 0 )
 	{ return noteIndex;	}
 
-    if  ( ds->dsSelectionScope.ssInExternalItem != DOCinFOOTNOTE	&&
-	  ds->dsSelectionScope.ssInExternalItem != DOCinENDNOTE		&&
-	  ! docIsIBarSelection( ds )					)
+    /*  2  */
+    if  ( ds->dsSelectionScope.ssInExternalItem == DOCinFOOTNOTE	||
+	  ds->dsSelectionScope.ssInExternalItem == DOCinENDNOTE		)
 	{
-	const TextParticule *		tpBegin;
-	const TextParticule *		tpEnd;
-	const DocumentField *		dfBegin;
+	DocumentPosition	dpBegin;
 
+	if  ( docFirstPosition( &dpBegin, dn->dnExternalItem.eiItem ) )
+	    { LDEB(1); return -1;	}
+
+	paraBi= dpBegin.dpBi;
+
+	if  ( docDelimitParaHeadField( &fieldNr, &partBegin, &partEnd,
+				    &stroffBegin, &stroffEnd, paraBi, bd ) )
+	    {
+	    if  ( fixedTextSize > 0 )
+		{
+		int	fixedLen= 0;
+
+		docNoteGetTextAtHead( fixedText, &fixedLen, fixedTextSize,
+								    paraBi );
+		}
+	    }
+	else{
+	    if  ( fixedTextSize > 0 )
+		{ fixedText[0]= '\0'; }
+	    }
+	}
+    else{
+	paraBi= ds->dsBegin.dpBi;
+
+	/*  3  */
 	if  ( ! docIsParaSelection( ds ) )
 	    { return -1;	}
 
-	tpBegin= ds->dsBegin.dpBi->biParaParticules+ ds->dsBegin.dpParticule;
-	if  ( tpBegin->tpKind != DOCkindFIELDSTART )
-	    { return -1;	}
+	if  ( ! docDelimitNoteReference( &fieldNr, &partBegin, &partEnd,
+		&stroffBegin, &stroffEnd, paraBi, ds->dsEnd.dpStroff, bd ) )
+	    {
+	    if  ( ! docIsIBarSelection( ds )		&&
+		  ds->dsBegin.dpStroff != stroffBegin	)
+		{ return 1;	}
+	    }
 
-	dfBegin= bd->bdFieldList.dflFields+ tpBegin->tpObjectNumber;
-	if  ( dfBegin->dfKind != DOCfkCHFTN )
-	    { return -1;	}
+	if  ( fixedTextSize > 0 )
+	    {
+	    if  ( fieldNr >= 0 )
+		{ fixedText[0]= '\0'; }
+	    else{
+		int	fixedLen= 0;
+		int	textAttrNr;
 
-	tpEnd= ds->dsEnd.dpBi->biParaParticules+ ds->dsEnd.dpParticule;
-	if  ( tpEnd->tpKind != DOCkindFIELDEND )
-	    { return -1;	}
-
-	if  ( tpEnd->tpObjectNumber != tpBegin->tpObjectNumber )
-	    { return -1;	}
+		docNoteGetTextBefore( fixedText, &fixedLen, &textAttrNr,
+				fixedTextSize, paraBi, ds->dsEnd.dpStroff );
+		}
+	    }
 	}
 
     *pDn= dn;
+    *pFieldNr= fieldNr;
     return noteIndex;
     }
 
@@ -701,6 +887,25 @@ int docCheckNoteSeparatorItem(		BufferDocument *	bd,
 					int			extItKind )
     {
     ExternalItem *	ei;
+    int			particuleKind;
+
+    switch( extItKind )
+	{
+	case DOCinFTNSEP:
+	case DOCinAFTNSEP:
+	    particuleKind= DOCkindCHFTNSEP;
+	    break;
+
+	case DOCinFTNSEPC:
+	case DOCinAFTNSEPC:
+	    particuleKind= DOCkindCHFTNSEPC;
+	    break;
+
+	default:
+	    LDEB(extItKind);
+	    particuleKind= DOCkindCHFTNSEP;
+	    break;
+	}
 
     ei= docDocumentNoteSeparator( bd, extItKind );
     if  ( ! ei )
@@ -732,7 +937,7 @@ int docCheckNoteSeparatorItem(		BufferDocument *	bd,
 	    else{
 		TextParticule *	tp= bi->biParaParticules;
 
-		tp->tpKind= DOCkindCHFTNSEP;
+		tp->tpKind= particuleKind;
 		tp->tpStrlen= 1;
 		bi->biParaStrlen++;
 		}
@@ -742,3 +947,25 @@ int docCheckNoteSeparatorItem(		BufferDocument *	bd,
     return 0;
     }
 
+/************************************************************************/
+/*									*/
+/*  Return the position in the document body where a note is		*/
+/*  referenced.								*/
+/*									*/
+/************************************************************************/
+
+int docGetNotePosition(		DocumentPosition *		dp,
+				BufferDocument *		bd,
+				const DocumentNote *		dn )
+    {
+    BufferItem *	paraBi;
+
+    paraBi= docGetParagraphByNumber( &(bd->bdItem), dn->dnParaNr );
+    if  ( ! paraBi )
+	{ LXDEB(dn->dnParaNr,paraBi); return -1;	}
+
+    if  ( docSetDocumentPosition( dp, paraBi, dn->dnStroff ) )
+	{ LLDEB(paraBi->biParaStrlen,dn->dnStroff); return -1;	}
+
+    return 0;
+    }

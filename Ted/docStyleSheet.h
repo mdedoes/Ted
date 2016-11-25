@@ -30,6 +30,7 @@ typedef struct DocumentStyle
     int			dsLevel;
     int			dsAutoupd;
     int			dsHidden;
+    int			dsSemiHidden;
     int			dsPersonal;
     int			dsBusy;
 
@@ -52,6 +53,7 @@ typedef enum DocumentStyleProperty
     DSpropLEVEL,
     DSpropAUTO_UPD,
     DSpropHIDDEN,
+    DSpropSEMI_HIDDEN,
     DSpropPERSONAL,
     DSpropNAME,
 

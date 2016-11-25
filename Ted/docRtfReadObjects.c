@@ -44,6 +44,14 @@ int docRtfObjectProperty(	SimpleInputStream *	sis,
 	    break;
 
 	case IOpropRESULT_KIND:
+	    io->ioRtfResultKind= rcw->rcwEnumValue;
+	    break;
+
+	case IOpropEMBED_KIND:
+	    io->ioRtfEmbedKind= rcw->rcwEnumValue;
+	    break;
+
+	case IOpropPICT_RESULT_KIND:
 	    io->ioResultKind= rcw->rcwEnumValue;
 
 	    if  ( io->ioResultKind == DOCokPICTWMETAFILE )
@@ -164,18 +172,9 @@ int docRtfObjectProperty(	SimpleInputStream *	sis,
     return 0;
     }
 
-static RtfControlWord	docRtfPictWords[]=
-    {
-	{ "bin",	RTFidBIN,	DOClevPARA, docRtfObjectProperty, },
-
-	{ 0, 0, 0 }
-    };
-
 static RtfControlWord	docRtfResultPictWords[]=
     {
-	{ "bin",	RTFidBIN,	DOClevPARA, docRtfObjectProperty, },
-
-	{ "wmetafile",	IOpropRESULT_KIND,	DOClevANY, docRtfObjectProperty,
+	{ "wmetafile",	IOpropPICT_RESULT_KIND,	DOClevANY, docRtfObjectProperty,
 							DOCokPICTWMETAFILE },
 
 	{ 0, 0, 0 }
@@ -241,7 +240,7 @@ int docRtfReadPict(	SimpleInputStream *	sis,
     docRtfPushReadingState( rrc, &internRrs );
 
     rval= docRtfConsumeGroup( sis, DOClevPARA, rrc,
-				docRtfPictWords, docRtfEmptyTable,
+				(const RtfControlWord *)0, docRtfEmptyTable,
 				docRtfSaveObjectData );
 
     if  ( rval )
@@ -252,7 +251,6 @@ int docRtfReadPict(	SimpleInputStream *	sis,
 
     return rval;
     }
-
 
 static RtfControlWord	docRtfXshppictGroups[]=
     {
@@ -458,6 +456,8 @@ int docRtfReadObject(	SimpleInputStream *	sis,
     if  ( ! docInsertObject( rrc->rrcBd, bi, &(rrc->rrcInsertedObject), -1,
 					    off, &(rrs->rrsTextAttribute) ) )
 	{ LDEB(bi->biParaParticuleCount); return -1;	}
+
+    rrc->rrcInsertedObject->ioKind= DOCokOLEOBJECT;
 
     rval= docRtfConsumeGroup( sis, DOClevPARA, rrc,
 				(const RtfControlWord *)0, docRtfObjectGroups,

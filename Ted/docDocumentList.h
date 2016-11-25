@@ -2,6 +2,8 @@
 /*									*/
 /*  List table of a document.						*/
 /*									*/
+/*  Refer to page 21 of the RTF 1.7 document.				*/
+/*									*/
 /************************************************************************/
 
 #   ifndef	DOC_DOCUMENT_LIST_H
@@ -50,9 +52,14 @@ extern void docInitDocumentList(	DocumentList *		dl );
 extern void docCleanDocumentList(	DocumentList *		dl );
 
 extern int docCopyDocumentList(	DocumentList *		to,
-				const DocumentList *	from );
+				const DocumentList *	from,
+				const int *		fontMap,
+				const int *		colorMap );
 
-extern int docDocumentListAddLevel(	DocumentList *			dl,
-					const DocumentListLevel *	dll );
+extern int docDocumentListAddLevel(
+				DocumentList *			dl,
+				const DocumentListLevel *	dll,
+				const int *			fontMap,
+				const int *			colorMap );
 
 #   endif

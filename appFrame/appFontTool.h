@@ -39,6 +39,7 @@ typedef struct AppFontToolResources
     ColorChooserResources	aftrTextColorChooserResources;
 
     char *			aftrEncodings[ENCODINGps_COUNT];
+    char *			aftrFaces[FONTface_COUNT];
     } AppFontToolResources;
 
 typedef void (*FontChooserSetFont)(
@@ -75,6 +76,8 @@ typedef struct AppFontChooser
     APP_WIDGET			afcSetButton;
 
     APP_WIDGET			afcSampleDrawing;
+    APP_WIDGET			afcX11Name;
+    APP_WIDGET			afcPsName;
 
     AppEncodingMenu		afcEncodingMenu;
 
@@ -90,12 +93,17 @@ typedef struct AppFontChooser
 
     FontChooserSetFont		afcSetFont;
     
-    AppFontFamily *		afcFontFamilies;
-    int				afcFontFamilyCount;
+    unsigned int		afcCurrentDocumentId;
+    DocumentFontList		afcDocumentFontList;
 
     AppDrawingData		afcDrawingData;
+    const PostScriptFontList *	afcPostScriptFontList;
     APP_FONT *			afcFont;
     char			afcChoiceText[120+1];
+    char			afcX11ChoiceText[120+1];
+    int				afcFaceMapFwd[FONTface_COUNT];
+    int				afcFaceMapBck[FONTface_COUNT];
+    AppFontToolResources	afcResources;
     } AppFontChooser;
 
 /************************************************************************/
@@ -103,13 +111,6 @@ typedef struct AppFontChooser
 /*  Routine declarations						*/
 /*									*/
 /************************************************************************/
-
-extern int appFontSetCurrentFont(
-				AppFontChooser *		afc,
-				const PropertyMask *		updMask,
-				const ExpandedTextAttribute *	etaNew,
-				const RGB8Color *		colors,
-				int				colorCount );
 
 extern void appFontToolFillPage(AppFontChooser *		afc,
 				const AppFontToolResources *	aftr,
@@ -119,8 +120,7 @@ extern void appFontToolFillPage(AppFontChooser *		afc,
 				const InspectorSubjectResources * isr );
 
 extern void appFontToolGetResourceTable(EditApplication *		ea,
-					AppFontToolResources *		aftr,
-					InspectorSubjectResources *	isr );
+					AppFontToolResources *		aftr );
 
 extern void appFontChooserCleanPage( AppFontChooser *	afc );
 
@@ -131,5 +131,14 @@ extern void appFontToolFillChoosers(
 extern void appFontToolFinishPage(
 				AppFontChooser *		afc,
 				const AppFontToolResources *	aftr );
+
+extern int appFontExpandCurrentFont(
+				AppFontChooser *		afc,
+				const PropertyMask *		newMask,
+				const TextAttribute *		taNew,
+				unsigned int			documentId,
+				const DocumentFontList *	dfl,
+				const RGB8Color *		colors,
+				int				colorCount );
 
 #   endif /*	APP_FONT_TOOL_H  */

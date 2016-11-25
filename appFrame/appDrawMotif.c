@@ -47,7 +47,7 @@ void appCollectExposures(	DocumentRectangle *	drClip,
     drClip->drY1= oy+ event->xexpose.y+ event->xexpose.height;
 
 #   if LOG_EXPOSES
-    appDebug( "======: [%4d+%4d]x[%4d+%4d]\n",
+    appDebug( "E=====: [%4d+%4d]x[%4d+%4d]\n",
 		    drClip->drX0,
 		    drClip->drX1- drClip->drX0+ 1,
 		    drClip->drY0,
@@ -74,7 +74,7 @@ void appCollectExposures(	DocumentRectangle *	drClip,
 	drMore.drY1= oy+ nextEvent.xexpose.y+ nextEvent.xexpose.height;
 
 #	if LOG_EXPOSES
-	appDebug( "++++++: [%4d+%4d]x[%4d+%4d]\n",
+	appDebug( "E+++++: [%4d+%4d]x[%4d+%4d]\n",
 			drMore.drX0,
 			drMore.drX1- drMore.drX0+ 1,
 			drMore.drY0,
@@ -84,7 +84,7 @@ void appCollectExposures(	DocumentRectangle *	drClip,
 	docUnionRectangle( drClip, drClip, &drMore );
 
 #	if LOG_EXPOSES
-	appDebug( "......: [%4d+%4d]x[%4d+%4d]\n",
+	appDebug( "E.....: [%4d+%4d]x[%4d+%4d]\n",
 			drClip->drX0,
 			drClip->drX1- drClip->drX0+ 1,
 			drClip->drY0,
@@ -106,6 +106,9 @@ void appExposeRectangle(	const AppDrawingData *	add,
 				int			high )
     {
     XEvent	xev;
+
+    if  ( ! add->addDrawable )
+	{ XDEB(add->addDrawable); return; }
 
     if  ( wide == 0 || high == 0 )
 	{
@@ -158,7 +161,8 @@ void appInitDrawingData(	AppDrawingData *	add )
     add->addGc= None;
     add->addScreen= -1;
 
-    appInitFontList( &(add->addPhysicalFontList) );
+    add->addPostScriptFontList= (const PostScriptFontList *)0;
+    appInitFontList( &(add->addScreenFontList) );
     }
 
 void appCleanDrawingData(	AppDrawingData *	add )
@@ -167,20 +171,18 @@ void appCleanDrawingData(	AppDrawingData *	add )
 	{ XFreeGC( add->addDisplay, add->addGc );	}
 
     if  ( add->addDisplay )
-	{ appCleanFontList( add, &(add->addPhysicalFontList) ); }
+	{ appCleanFontList( add, &(add->addScreenFontList) ); }
 
     return ;
     }
 
 void appSetDrawingEnvironment(
-			AppDrawingData *	add,
-			double			magnification,
-			double			xfac,
-			double			screenPixelsPerMM,
-			const char *		afmDirectory,
-			const char *		ghostscriptFontmap,
-			const char *		ghostscriptFontToXmapping,
-			APP_WIDGET		w )
+			AppDrawingData *		add,
+			double				magnification,
+			double				xfac,
+			double				screenPixelsPerMM,
+			const PostScriptFontList *	psfl,
+			APP_WIDGET			w )
     {
     Display *	display= XtDisplay( w );
 
@@ -191,12 +193,7 @@ void appSetDrawingEnvironment(
     add->addMagnifiedPixelsPerTwip= xfac;
     add->addScreenPixelsPerMM= screenPixelsPerMM;
 
-    add->addPhysicalFontList.apflAfmDirectory=
-					    afmDirectory;
-    add->addPhysicalFontList.apflGhostscriptFontmap=
-					    ghostscriptFontmap;
-    add->addPhysicalFontList.apflGhostscriptFontToXmapping=
-					    ghostscriptFontToXmapping;
+    add->addPostScriptFontList= psfl;
 
     add->addDisplay= display;
     add->addScreen= DefaultScreen( display );
@@ -214,12 +211,7 @@ void appCloneDrawingEnvironment(	AppDrawingData *	add,
     add->addMagnifiedPixelsPerTwip= xfac;
     add->addScreenPixelsPerMM= parent_add->addScreenPixelsPerMM;
 
-    add->addPhysicalFontList.apflAfmDirectory=
-		parent_add->addPhysicalFontList.apflAfmDirectory;
-    add->addPhysicalFontList.apflGhostscriptFontmap=
-		parent_add->addPhysicalFontList.apflGhostscriptFontmap;
-    add->addPhysicalFontList.apflGhostscriptFontToXmapping=
-		parent_add->addPhysicalFontList.apflGhostscriptFontToXmapping;
+    add->addPostScriptFontList= parent_add->addPostScriptFontList;
 
     add->addDisplay= parent_add->addDisplay;
     add->addScreen= parent_add->addScreen;
@@ -418,6 +410,10 @@ void appDrawTextExtents(	int *			pWidth,
 
 void appDrawNoClipping(		AppDrawingData *	add )
     {
+#   if LOG_EXPOSES
+    appDebug( "C=====: OFF\n" );
+#   endif
+
     XSetClipMask( add->addDisplay, add->addGc, None );
 
     return;
@@ -432,6 +428,14 @@ extern void appDrawSetClipRect(	AppDrawingData *		add,
     xRect.y= drClip->drY0;
     xRect.width= drClip->drX1- drClip->drX0+ 1;
     xRect.height= drClip->drY1- drClip->drY0+ 1;
+
+#   if LOG_EXPOSES
+    appDebug( "C=====: [%4d+%4d]x[%4d+%4d]\n",
+		    drClip->drX0,
+		    drClip->drX1- drClip->drX0+ 1,
+		    drClip->drY0,
+		    drClip->drY1- drClip->drY0+ 1 );
+#   endif
 
     XSetClipRectangles( add->addDisplay, add->addGc,
 						0, 0, &xRect, 1, Unsorted );
@@ -530,6 +534,16 @@ void appDrawDrawSegments(	AppDrawingData *	add,
     XDrawSegments( add->addDisplay, add->addDrawable, add->addGc,
 							    segments, count );
     }
+
+/************************************************************************/
+/*									*/
+/*  Draw an arc. Angles are in X11 style:				*/
+/*									*/
+/*  Unit:		1/64 degree.					*/
+/*  Origin:		At the right of the circle.			*/
+/*  Orientation:	Counterclockwise.				*/
+/*									*/
+/************************************************************************/
 
 void appDrawDrawArc(		AppDrawingData *	add,
 				int			x,

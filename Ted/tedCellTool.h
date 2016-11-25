@@ -77,10 +77,11 @@ typedef struct CellTool
 extern void tedFormatToolRefreshCellTool(
 				CellTool *			ct,
 				int *				pEnabled,
+				int *				pPref,
 				InspectorSubject *		is,
 				const DocumentSelection *	bs );
 
-extern void tedFormatFillCellChoosers(	CellTool *			ct,
+extern void tedCellToolFillChoosers(	CellTool *			ct,
 					const CellPageResources *	cpr );
 
 extern void tedFormatFillCellPage( CellTool *			ct,

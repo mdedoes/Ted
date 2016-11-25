@@ -25,9 +25,11 @@ static int docDrawHeaderFooter(	BufferItem *		bodySectBi,
 				DrawingContext *	dc,
 				int			page )
     {
+    AppDrawingData *	add= dc->dcDrawingData;
+    ScreenFontList *	sfl= dc->dcScreenFontList;
+
     if  ( dc->dcClipRect )
 	{
-	AppDrawingData *	add= dc->dcDrawingData;
 	BufferDocument *	bd= dc->dcDocument;
 
 	const int		justUsed= 1;
@@ -44,8 +46,8 @@ static int docDrawHeaderFooter(	BufferItem *		bodySectBi,
     if  ( page != ei->eiPageFormattedFor				&&
 	  docLayoutExternalItem( ei, (DocumentRectangle *)0,
 			page, ei->eiY0UsedTwips,
-			dc->dcDocument, bodySectBi, dc->dcDrawingData,
-			dc->dcLayoutExternal, dc->dcCloseObject )	)
+			dc->dcDocument, bodySectBi, add, sfl,
+			dc->dcInitLayoutExternal, dc->dcCloseObject )	)
 	{ LDEB(1); return -1;	}
 
     if  ( docDrawItem( ei->eiItem, through, dc ) )
@@ -143,8 +145,9 @@ static int docDrawNoteSeparator(void *			through,
     if  ( page != eiNoteSep->eiPageFormattedFor				&&
 	  docLayoutExternalItem( eiNoteSep, (DocumentRectangle *)0,
 			page, y0Twips,
-			dc->dcDocument, (BufferItem *)0, dc->dcDrawingData,
-			dc->dcLayoutExternal, dc->dcCloseObject )	)
+			dc->dcDocument, (BufferItem *)0,
+			dc->dcDrawingData, dc->dcScreenFontList,
+			dc->dcInitLayoutExternal, dc->dcCloseObject )	)
 	{ LDEB(1); return -1;	}
 
     /*  4  */

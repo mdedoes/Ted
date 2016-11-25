@@ -57,6 +57,7 @@ static void tedFormatToolRefreshParaOrnamentsPage(
 void tedFormatToolRefreshParaOrnamentsTool(
 				ParagraphOrnamentsTool *	pot,
 				int *				pEnabled,
+				int *				pPref,
 				InspectorSubject *		is,
 				const DocumentSelection *	ds )
     {
@@ -66,6 +67,9 @@ void tedFormatToolRefreshParaOrnamentsTool(
     PropertyMask			ppUpdMask;
 
     BufferItem *			bi= ds->dsBegin.dpBi;
+
+    const int * const			colorMap= (const int *)0;
+    const int * const			listStyleMap= (const int *)0;
 
     pp= &(bi->biParaProperties);
 
@@ -77,13 +81,15 @@ void tedFormatToolRefreshParaOrnamentsTool(
     PROPmaskCLEAR( &ppChgMask );
 
     if  ( docUpdParaProperties( &ppChgMask, &(pot->potPropertiesChosen),
-					    &ppUpdMask, pp, (const int *)0 ) )
+					    &ppUpdMask, pp,
+					    colorMap, listStyleMap ) )
 	{ LDEB(1); return ;	}
 
     PROPmaskCLEAR( &ppChgMask );
 
     if  ( docUpdParaProperties( &ppChgMask, &(pot->potPropertiesSet),
-					    &ppUpdMask, pp, (const int *)0 ) )
+					    &ppUpdMask, pp,
+					    colorMap, listStyleMap ) )
 	{ LDEB(1); return ;	}
 
     appGuiEnableWidget( is->isPrevButton,
@@ -110,13 +116,17 @@ static APP_BUTTON_CALLBACK_H( tedFormatParaRevertPushed, w, voidpot )
     PropertyMask		ppChgMask;
     PropertyMask		ppUpdMask;
 
+    const int * const		colorMap= (const int *)0;
+    const int * const		listStyleMap= (const int *)0;
+
     PROPmaskCLEAR( &ppChgMask );
 
     PROPmaskCLEAR( &ppUpdMask );
     PROPmaskFILL( &ppUpdMask, PPprop_COUNT );
 
     docUpdParaProperties( &ppChgMask, &(pot->potPropertiesChosen),
-			&ppUpdMask, &(pot->potPropertiesSet), (const int *)0 );
+			&ppUpdMask, &(pot->potPropertiesSet),
+			colorMap, listStyleMap );
 
     tedFormatToolRefreshParaOrnamentsPage( pot );
 

@@ -73,6 +73,7 @@ static void tedFormatToolRefreshSectionPage(	SectionTool *	st )
 void tedFormatToolRefreshSectionTool(
 				SectionTool *			st,
 				int *				pEnabled,
+				int *				pPref,
 				InspectorSubject *		is,
 				const DocumentSelection *	ds )
     {

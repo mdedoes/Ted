@@ -55,7 +55,7 @@ int bmGifReadGif(		BitmapDescription *	bd,
 	const RGB8Color *	rgb8From;
 	RGB8Color *		rgb8To;
 
-	if  ( DGifGetRecordType( gft, &grt ) != GIF_OK )
+	if  ( bmGifGetRecordType( gft, &grt ) != GIF_OK )
 	    { LDEB(1); DGifCloseFile( gft ); return -1;	}
 
 	switch( grt )

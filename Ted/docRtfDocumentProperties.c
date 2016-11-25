@@ -32,23 +32,38 @@ void docRtfReadSetAnsicpg(	RtfReadingContext *	rrc,
     switch( arg )
 	{
 	case 1250:
-	    memcpy( rrc->rrcInputMapping, docWIN1250_to_ISO2, 256 );
+	    memcpy( rrc->rrcDefaultInputMapping, docWIN1250_to_ISO2, 256 );
 	    dp->dpAnsiCodepage= arg;
 	    break;
 
 	case 1251:
-	    memcpy( rrc->rrcInputMapping, docWIN1251_to_KOI8R, 256 );
+	    memcpy( rrc->rrcDefaultInputMapping, docWIN1251_to_ISO5, 256 );
 	    dp->dpAnsiCodepage= arg;
 	    break;
 
 	case 1252:
 	    for ( i= 0; i < 256; i++ )
-		{ rrc->rrcInputMapping[i]= i;	}
+		{ rrc->rrcDefaultInputMapping[i]= i;	}
+	    dp->dpAnsiCodepage= arg;
+	    break;
+
+	case 1253:
+	    memcpy( rrc->rrcDefaultInputMapping, docWIN1253_to_ISO7, 256 );
+	    dp->dpAnsiCodepage= arg;
+	    break;
+
+	case 1254:
+	    memcpy( rrc->rrcDefaultInputMapping, docWIN1254_to_ISO9, 256 );
+	    dp->dpAnsiCodepage= arg;
+	    break;
+
+	case 1257:
+	    memcpy( rrc->rrcDefaultInputMapping, docWIN1257_to_ISO13, 256 );
 	    dp->dpAnsiCodepage= arg;
 	    break;
 
 	case 10000:
-	    memcpy( rrc->rrcInputMapping, docMAC_to_ISO1, 256 );
+	    memcpy( rrc->rrcDefaultInputMapping, docMAC_to_ISO1, 256 );
 	    dp->dpAnsiCodepage= arg;
 	    break;
 
@@ -70,22 +85,22 @@ static void docRtfReadSetDocumentCharset(
 	{
 	case DOCcharsetANSI:
 	    for ( i= 0; i < 256; i++ )
-		{ rrc->rrcInputMapping[i]= i;	}
+		{ rrc->rrcDefaultInputMapping[i]= i;	}
 	    dp->dpDocumentCharset= arg;
 	    break;
 
 	case DOCcharsetPC:
-	    memcpy( rrc->rrcInputMapping, docDOS437_to_ISO1, 256 );
+	    memcpy( rrc->rrcDefaultInputMapping, docDOS437_to_ISO1, 256 );
 	    dp->dpDocumentCharset= arg;
 	    break;
 
 	case DOCcharsetPCA:
-	    memcpy( rrc->rrcInputMapping, docDOS850_to_ISO1, 256 );
+	    memcpy( rrc->rrcDefaultInputMapping, docDOS850_to_ISO1, 256 );
 	    dp->dpDocumentCharset= arg;
 	    break;
 
 	case DOCcharsetMAC:
-	    memcpy( rrc->rrcInputMapping, docMAC_to_ISO1, 256 );
+	    memcpy( rrc->rrcDefaultInputMapping, docMAC_to_ISO1, 256 );
 	    dp->dpDocumentCharset= arg;
 	    break;
 
@@ -136,11 +151,13 @@ int docRtfRememberDocProperty(	SimpleInputStream *	sis,
 	    break;
 
 	case DPpropFACING_PAGES:
-	    dp->dpHasFacingPages= 1;
+	    dp->dpHasFacingPages= arg != 0;
 	    break;
-
 	case DPpropWIDOWCTRL:
-	    dp->dpWidowControl= 1;
+	    dp->dpWidowControl= arg != 0;
+	    break;
+	case DPpropTWO_ON_ONE:
+	    dp->dpTwoOnOne= arg != 0;
 	    break;
 
 	case DPpropSTART_PAGE:
@@ -149,9 +166,22 @@ int docRtfRememberDocProperty(	SimpleInputStream *	sis,
 	case DPpropDEFTAB:
 	    dp->dpTabIntervalTwips= arg;
 	    break;
+
 	case DPpropDEFF:
 	    dp->dpDefaultFont= arg;
 	    rrs->rrsTextAttribute.taFontNumber= arg;
+	    break;
+	case DPpropSTSHFDBCH:
+	    dp->dpDefaultFontDbch= arg;
+	    break;
+	case DPpropSTSHFLOCH:
+	    dp->dpDefaultFontLoch= arg;
+	    break;
+	case DPpropSTSHFHICH:
+	    dp->dpDefaultFontHich= arg;
+	    break;
+	case DPpropSTSHFBI:
+	    dp->dpDefaultFontBi= arg;
 	    break;
 
 	case DPpropNOTETYPES:
@@ -199,6 +229,36 @@ int docRtfRememberDocProperty(	SimpleInputStream *	sis,
 	    docRtfReadSetAnsicpg( rrc, arg );
 	    break;
 
+	case DPpropTOP_BORDER:
+	    dp->dpTopBorder= rrc->rrcBorderProperties;
+	    docInitBorderProperties( &(rrc->rrcBorderProperties) );
+	    break;
+
+	case DPpropBOTTOM_BORDER:
+	    dp->dpBottomBorder= rrc->rrcBorderProperties;
+	    docInitBorderProperties( &(rrc->rrcBorderProperties) );
+	    break;
+
+	case DPpropLEFT_BORDER:
+	    dp->dpLeftBorder= rrc->rrcBorderProperties;
+	    docInitBorderProperties( &(rrc->rrcBorderProperties) );
+	    break;
+
+	case DPpropRIGHT_BORDER:
+	    dp->dpRightBorder= rrc->rrcBorderProperties;
+	    docInitBorderProperties( &(rrc->rrcBorderProperties) );
+	    break;
+
+	case DPpropHEAD_BORDER:
+	    dp->dpHeadBorder= rrc->rrcBorderProperties;
+	    docInitBorderProperties( &(rrc->rrcBorderProperties) );
+	    break;
+
+	case DPpropFOOT_BORDER:
+	    dp->dpFootBorder= rrc->rrcBorderProperties;
+	    docInitBorderProperties( &(rrc->rrcBorderProperties) );
+	    break;
+
 	default:
 	    break;
 	}
@@ -223,7 +283,7 @@ static void docRtfSaveInfo(	const char *		tag,
 
     docRtfWriteDestinationBegin( tag, pCol, sos );
 
-    docRtfEscapeString( info, rwc->rwcOutputMapping,
+    docRtfEscapeString( info, rwc->rwcDefaultOutputMapping,
 					pCol, strlen( (char *)info ), sos );
 
     docRtfWriteDestinationEnd( pCol, sos );
@@ -280,16 +340,31 @@ int docRtfSaveDocumentProperties(	SimpleOutputStream *	sos,
 	    {
 	    case 1250:
 		docRtfWriteArgTag( "\\ansicpg", pCol, codePage, sos );
-		memcpy( rwc->rwcOutputMapping, docISO2_to_WIN1250, 256 );
+		memcpy( rwc->rwcDefaultOutputMapping, docISO2_to_WIN1250, 256 );
 		break;
 
 	    case 1251:
 		docRtfWriteArgTag( "\\ansicpg", pCol, codePage, sos );
-		memcpy( rwc->rwcOutputMapping, docKOI8R_to_WIN1251, 256 );
+		memcpy( rwc->rwcDefaultOutputMapping, docISO5_to_WIN1251, 256 );
 		break;
 
 	    case 1252:
 		docRtfWriteArgTag( "\\ansicpg", pCol, codePage, sos );
+		break;
+
+	    case 1253:
+		docRtfWriteArgTag( "\\ansicpg", pCol, codePage, sos );
+		memcpy( rwc->rwcDefaultOutputMapping, docISO7_to_WIN1253, 256 );
+		break;
+
+	    case 1254:
+		docRtfWriteArgTag( "\\ansicpg", pCol, codePage, sos );
+		memcpy( rwc->rwcDefaultOutputMapping, docISO9_to_WIN1254, 256 );
+		break;
+
+	    case 1257:
+		docRtfWriteArgTag( "\\ansicpg", pCol, codePage, sos );
+		memcpy( rwc->rwcDefaultOutputMapping, docISO13_to_WIN1257, 256 );
 		break;
 
 	    default:
@@ -297,7 +372,33 @@ int docRtfSaveDocumentProperties(	SimpleOutputStream *	sos,
 	    }
 	}
 
-    if  ( dp->dpFontList.dflCount > 0 )
+    if  ( dp->dpDefaultFont >= 0			&&
+	  dp->dpDefaultFont < dp->dpFontList.dflFontCount	)
+	{ docRtfWriteArgTag( "\\deff", pCol, dp->dpDefaultFont, sos );	}
+
+    if  ( dp->dpDefaultFontDbch >= 0			&&
+	  dp->dpDefaultFontDbch < dp->dpFontList.dflFontCount	)
+	{
+	docRtfWriteArgTag( "\\stshfdbch", pCol, dp->dpDefaultFontDbch, sos );
+	}
+
+    if  ( dp->dpDefaultFontLoch >= 0			&&
+	  dp->dpDefaultFontLoch < dp->dpFontList.dflFontCount	)
+	{
+	docRtfWriteArgTag( "\\stshfloch", pCol, dp->dpDefaultFontLoch, sos );
+	}
+
+    if  ( dp->dpDefaultFontHich >= 0			&&
+	  dp->dpDefaultFontHich < dp->dpFontList.dflFontCount	)
+	{
+	docRtfWriteArgTag( "\\stshfhich", pCol, dp->dpDefaultFontHich, sos );
+	}
+
+    if  ( dp->dpDefaultFontBi >= 0			&&
+	  dp->dpDefaultFontBi < dp->dpFontList.dflFontCount	)
+	{ docRtfWriteArgTag( "\\stshfbi", pCol, dp->dpDefaultFontBi, sos ); }
+
+    if  ( dp->dpFontList.dflFontCount > 0 )
 	{
 	docRtfWriteNextLine( pCol, sos );
 	docRtfWriteFontTable( sos, pCol, &(dp->dpFontList) );
@@ -312,29 +413,31 @@ int docRtfSaveDocumentProperties(	SimpleOutputStream *	sos,
     if  ( bd->bdStyleSheet.dssStyleCount > 0 )
 	{
 	docRtfWriteNextLine( pCol, sos );
-	docRtfWriteStyleSheet( sos, rwc->rwcOutputMapping,
+	docRtfWriteStyleSheet( sos, rwc->rwcDefaultOutputMapping,
 					    pCol, &(bd->bdStyleSheet) );
 	}
 
     if  ( dp->dpListTable.dltListCount > 0 )
 	{
 	docRtfWriteNextLine( pCol, sos );
-	docRtfWriteListTable( sos, rwc->rwcOutputMapping,
+	docRtfWriteListTable( sos, rwc->rwcDefaultOutputMapping,
 					    pCol, &(dp->dpListTable) );
 	}
 
     if  ( dp->dpListOverrideTable.lotOverrideCount > 0 )
 	{
 	docRtfWriteNextLine( pCol, sos );
-	docRtfWriteListOverrideTable( sos, rwc->rwcOutputMapping,
+	docRtfWriteListOverrideTable( sos, rwc->rwcDefaultOutputMapping,
 					    pCol, &(dp->dpListOverrideTable) );
 	}
 
     if  ( dp->dpAuthorCount > 0 )
 	{
 	docRtfWriteNextLine( pCol, sos );
-	docRtfWriteRevisorTable( sos, rwc->rwcOutputMapping, pCol, dp );
+	docRtfWriteRevisorTable( sos, rwc->rwcDefaultOutputMapping, pCol, dp );
 	}
+
+    docRtfSaveInfo( "\\generator ",	dp->dpGenerator, rwc, pCol, sos );
 
     if  ( docHasDocumentInfo( dp ) )
 	{
@@ -344,6 +447,7 @@ int docRtfSaveDocumentProperties(	SimpleOutputStream *	sos,
 
 	docRtfSaveInfo( "\\title ",	dp->dpTitle, rwc, pCol, sos );
 	docRtfSaveInfo( "\\author ",	dp->dpAuthor, rwc, pCol, sos );
+	docRtfSaveInfo( "\\company ",	dp->dpCompany, rwc, pCol, sos );
 	docRtfSaveInfo( "\\subject ",	dp->dpSubject, rwc, pCol, sos );
 	docRtfSaveInfo( "\\keywords ",	dp->dpKeywords, rwc, pCol, sos );
 	docRtfSaveInfo( "\\doccomm ",	dp->dpDoccomm, rwc, pCol, sos );
@@ -375,6 +479,9 @@ int docRtfSaveDocumentProperties(	SimpleOutputStream *	sos,
     if  ( dp->dpWidowControl )
 	{ docRtfWriteTag( "\\widowctrl", pCol, sos );	}
 
+    if  ( dp->dpTwoOnOne )
+	{ docRtfWriteTag( "\\twoonone", pCol, sos );	}
+
     if  ( dp->dpTabIntervalTwips > 0 && dp->dpTabIntervalTwips != 720 )
 	{ docRtfWriteArgTag( "\\deftab", pCol, dp->dpTabIntervalTwips, sos ); }
 
@@ -382,16 +489,16 @@ int docRtfSaveDocumentProperties(	SimpleOutputStream *	sos,
 
     switch( dp->dpFootnoteProperties.npPosition )
 	{
-	case DPftnPOS_SECT_END:
+	case FTN_POS_SECT_END:
 	    docRtfWriteTag( "\\endnotes", pCol, sos );
 	    break;
-	case DPftnPOS_DOC_END:
+	case FTN_POS_DOC_END:
 	    docRtfWriteTag( "\\enddoc", pCol, sos );
 	    break;
-	case DPftnPOS_BELOW_TEXT:
+	case FTN_POS_BELOW_TEXT:
 	    docRtfWriteTag( "\\ftntj", pCol, sos );
 	    break;
-	case DPftnPOS_PAGE_BOTTOM:
+	case FTN_POS_PAGE_BOTTOM:
 	    docRtfWriteTag( "\\ftnbj", pCol, sos );
 	    break;
 	default:
@@ -400,16 +507,16 @@ int docRtfSaveDocumentProperties(	SimpleOutputStream *	sos,
 
     switch( dp->dpEndnoteProperties.npPosition )
 	{
-	case DPftnPOS_SECT_END:
+	case FTN_POS_SECT_END:
 	    docRtfWriteTag( "\\aendnotes", pCol, sos );
 	    break;
-	case DPftnPOS_DOC_END:
+	case FTN_POS_DOC_END:
 	    docRtfWriteTag( "\\aenddoc", pCol, sos );
 	    break;
-	case DPftnPOS_BELOW_TEXT:
+	case FTN_POS_BELOW_TEXT:
 	    docRtfWriteTag( "\\aftntj", pCol, sos );
 	    break;
-	case DPftnPOS_PAGE_BOTTOM:
+	case FTN_POS_PAGE_BOTTOM:
 	    docRtfWriteTag( "\\aftnbj", pCol, sos );
 	    break;
 	default:
@@ -429,13 +536,13 @@ int docRtfSaveDocumentProperties(	SimpleOutputStream *	sos,
 
     switch( dp->dpFootnoteProperties.npRestart )
 	{
-	case DPftnRST_CONTINUOUS:
+	case FTN_RST_CONTINUOUS:
 	    docRtfWriteTag( "\\ftnrstcont", pCol, sos );
 	    break;
-	case DPftnRST_PER_SECTION:
+	case FTN_RST_PER_SECTION:
 	    docRtfWriteTag( "\\ftnrestart", pCol, sos );
 	    break;
-	case DPftnRST_PER_PAGE:
+	case FTN_RST_PER_PAGE:
 	    docRtfWriteTag( "\\ftnrstpg", pCol, sos );
 	    break;
 	default:
@@ -444,15 +551,17 @@ int docRtfSaveDocumentProperties(	SimpleOutputStream *	sos,
 
     switch( dp->dpEndnoteProperties.npRestart )
 	{
-	case DPftnRST_CONTINUOUS:
+	case FTN_RST_CONTINUOUS:
 	    docRtfWriteTag( "\\aftnrstcont", pCol, sos );
 	    break;
-	case DPftnRST_PER_SECTION:
+	case FTN_RST_PER_SECTION:
 	    docRtfWriteTag( "\\aftnrestart", pCol, sos );
 	    break;
-	case DPftnRST_PER_PAGE:
+	/* No!
+	case FTN_RST_PER_PAGE:
 	    docRtfWriteTag( "\\aftnrstpg", pCol, sos );
 	    break;
+	*/
 	default:
 	    LDEB(dp->dpEndnoteProperties.npRestart); break;
 	}
@@ -460,22 +569,22 @@ int docRtfSaveDocumentProperties(	SimpleOutputStream *	sos,
 
     switch( dp->dpFootnoteProperties.npNumberStyle )
 	{
-	case DPftnNAR:
+	case FTNstyleNAR:
 	    docRtfWriteTag( "\\ftnnar", pCol, sos );
 	    break;
-	case DPftnNALC:
+	case FTNstyleNALC:
 	    docRtfWriteTag( "\\ftnnalc", pCol, sos );
 	    break;
-	case DPftnNAUC:
+	case FTNstyleNAUC:
 	    docRtfWriteTag( "\\ftnnauc", pCol, sos );
 	    break;
-	case DPftnNRLC:
+	case FTNstyleNRLC:
 	    docRtfWriteTag( "\\ftnnrlc", pCol, sos );
 	    break;
-	case DPftnNRUC:
+	case FTNstyleNRUC:
 	    docRtfWriteTag( "\\ftnnruc", pCol, sos );
 	    break;
-	case DPftnNCHI:
+	case FTNstyleNCHI:
 	    docRtfWriteTag( "\\ftnnchi", pCol, sos );
 	    break;
 	default:
@@ -484,27 +593,40 @@ int docRtfSaveDocumentProperties(	SimpleOutputStream *	sos,
 
     switch( dp->dpEndnoteProperties.npNumberStyle )
 	{
-	case DPftnNAR:
+	case FTNstyleNAR:
 	    docRtfWriteTag( "\\aftnnar", pCol, sos );
 	    break;
-	case DPftnNALC:
+	case FTNstyleNALC:
 	    docRtfWriteTag( "\\aftnnalc", pCol, sos );
 	    break;
-	case DPftnNAUC:
+	case FTNstyleNAUC:
 	    docRtfWriteTag( "\\aftnnauc", pCol, sos );
 	    break;
-	case DPftnNRLC:
+	case FTNstyleNRLC:
 	    docRtfWriteTag( "\\aftnnrlc", pCol, sos );
 	    break;
-	case DPftnNRUC:
+	case FTNstyleNRUC:
 	    docRtfWriteTag( "\\aftnnruc", pCol, sos );
 	    break;
-	case DPftnNCHI:
+	case FTNstyleNCHI:
 	    docRtfWriteTag( "\\aftnnchi", pCol, sos );
 	    break;
 	default:
 	    LDEB(dp->dpEndnoteProperties.npNumberStyle); break;
 	}
+
+    if  ( dp->dpTopBorder.bpStyle != DOCbsNONE )
+	{ docRtfSaveBorder( "\\pgbrdrt", pCol, &(dp->dpTopBorder), sos ); }
+    if  ( dp->dpBottomBorder.bpStyle != DOCbsNONE )
+	{ docRtfSaveBorder( "\\pgbrdrb", pCol, &(dp->dpBottomBorder), sos ); }
+    if  ( dp->dpLeftBorder.bpStyle != DOCbsNONE )
+	{ docRtfSaveBorder( "\\pgbrdrl", pCol, &(dp->dpLeftBorder), sos ); }
+    if  ( dp->dpRightBorder.bpStyle != DOCbsNONE )
+	{ docRtfSaveBorder( "\\pgbrdrr", pCol, &(dp->dpRightBorder), sos ); }
+    if  ( dp->dpHeadBorder.bpStyle != DOCbsNONE )
+	{ docRtfSaveBorder( "\\pgbrdrhead", pCol, &(dp->dpHeadBorder), sos ); }
+    if  ( dp->dpFootBorder.bpStyle != DOCbsNONE )
+	{ docRtfSaveBorder( "\\pgbrdrfoot", pCol, &(dp->dpFootBorder), sos ); }
 
     docRtfWriteNextLine( pCol, sos );
 

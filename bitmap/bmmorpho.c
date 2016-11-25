@@ -441,10 +441,6 @@ int bmMorphoLineElement(	BitmapDescription *		bdOut,
     if  ( ! bufOut )
 	{ LXDEB(bufferLength,bufOut); return -1;	}
 
-    memset( bufOut, 0x00, bufferLength );
-
-    bmDrawLine( bufOut, x0, y0, x1, y1, 1, bytesPerRow );
-
     bmInitDescription( bdOut );
 
     bdOut->bdColorEncoding= BMcoWHITEBLACK;
@@ -460,6 +456,10 @@ int bmMorphoLineElement(	BitmapDescription *		bdOut,
 
     bdOut->bdBytesPerRow= bytesPerRow;
     bdOut->bdBufferLength= bufferLength;
+
+    memset( bufOut, 0x00, bufferLength );
+
+    bmDrawLine( bufOut, bdOut, x0, y0, x1, y1, 1 );
 
     *pBufOut= bufOut;
     return 0;

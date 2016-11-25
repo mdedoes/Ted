@@ -13,6 +13,7 @@
 #   include	<string.h>
 #   include	<ctype.h>
 
+#   include	<appSystem.h>
 #   include	<utilFontmap.h>
 
 #   include	<appDebugon.h>
@@ -26,9 +27,6 @@ typedef struct FontmapEntry
 
 static FontmapEntry *	UTIL_FontmapEntries;
 int			UTIL_FontmapEntryCount;
-
-static FontmapEntry *	UTIL_FontmapT1Entries;
-int			UTIL_FontmapT1EntryCount;
 
 /************************************************************************/
 /*									*/
@@ -72,11 +70,6 @@ const char * utilFontmapGetEntry(	const char *	from )
     return utilFontmapGet( from,
 			UTIL_FontmapEntries, UTIL_FontmapEntryCount );
     }
-const char * utilFontmapGetT1Entry(	const char *	from )
-    {
-    return utilFontmapGet( from,
-			UTIL_FontmapT1Entries, UTIL_FontmapT1EntryCount );
-    }
 
 /************************************************************************/
 /*									*/
@@ -84,6 +77,11 @@ const char * utilFontmapGetT1Entry(	const char *	from )
 /*									*/
 /*  1)  Syntax error in the Cyrillic fonts section.			*/
 /*	As usual, people do not follow their own file format.		*/
+/*  2)  The standard GhostScript distribution comes with a reference	*/
+/*	to Fontmap.greek in Fontmap. As this file does not exist and	*/
+/*	GhostScript seems to enjoy this kind of mess, only include	*/
+/*	existing files.	(This is an aspect of Macho culture.. tidiness	*/
+/*	seems to be for girls and weaklings.)				*/
 /*									*/
 /************************************************************************/
 
@@ -121,8 +119,17 @@ int utilFontmapReadMap(	const char *	filename )
     FILE *	f= (FILE *)0;
     int		c;
 
-    if  ( UTIL_FontmapEntryCount > 0 )
+    static int	recursive= 0;
+
+    static const char runlibfile[]= ".runlibfile";
+
+    recursive++;
+
+    if  ( recursive == 1 && UTIL_FontmapEntryCount > 0 )
 	{ /* LDEB(UTIL_FontmapEntryCount); rval= -1; */ goto ready;	}
+
+    if  ( recursive > 20 )
+	{ LDEB(recursive); rval= -1; goto ready;	}
 
     f= fopen( filename, "r" );
     if  ( ! f )
@@ -134,14 +141,78 @@ int utilFontmapReadMap(	const char *	filename )
 	FontmapEntry *	fe;
 
 	char		scratch[200+ 1];
+	char		runfile[400+ 1];
 	int		l;
 
-	/*  1  */
-	if  ( c == ';' )
-	    { c= utilFontmapNextItem( f ); continue;	}
+	switch( c )
+	    {
+	    case ';':
+		/*  1  */
+		c= utilFontmapNextItem( f );
+		continue;
 
-	if  ( c != '/' )
-	    { CDEB(c); rval= -1; goto ready;	}
+	    case '(':
+		for ( l= 0; l < 200; l++ )
+		    {
+		    c= getc( f );
+		    if  ( c == EOF )
+			{ LDEB(c); rval= -1; goto ready;	}
+		    if  ( c == ')' )
+			{ break;	}
+
+		    scratch[l]= c;
+		    }
+		if  ( l >= 200 )
+		    { LDEB(l); rval= -1; goto ready;	}
+		scratch[l]= '\0';
+
+		c= getc( f );
+		if  ( c == EOF )
+		    { LDEB(c); rval= -1; goto ready;	}
+
+		while( isspace( c ) )
+		    {
+		    c= getc( f );
+		    if  ( c == EOF )
+			{ LDEB(c); rval= -1; goto ready;	}
+		    }
+
+		for ( l= 0; l < sizeof(runlibfile)- 1; l++ )
+		    {
+		    if  ( c != runlibfile[l] )
+			{ SCDEB(runlibfile+l,c); rval= -1; goto ready; }
+		    c= getc( f );
+		    }
+
+		while( isspace( c ) && c != '\n' )
+		    {
+		    c= getc( f );
+		    if  ( c == EOF )
+			{ LDEB(c); rval= -1; goto ready;	}
+		    }
+
+		if  ( c != '\n' )
+		    { CDEB(c); rval= -1; goto ready; }
+
+		if  ( appAbsoluteName( runfile, sizeof(runfile)- 1,
+						scratch, 1, filename ) < 0 )
+		    { SSDEB(filename,scratch); rval= -1; goto ready;	}
+
+		/*  2  */
+		if  ( ! appTestFileExists( runfile )	&&
+		      utilFontmapReadMap( runfile )	)
+		    { SDEB(runfile); rval= -1; goto ready;	}
+
+		c= utilFontmapNextItem( f );
+		continue;
+
+	    case '/':
+		break;
+
+	    default:
+		CDEB(c);
+		rval= -1; goto ready;
+	    }
 
 	fe= realloc( UTIL_FontmapEntries,
 			( UTIL_FontmapEntryCount+ 1)* sizeof(FontmapEntry) );
@@ -228,111 +299,9 @@ int utilFontmapReadMap(	const char *	filename )
 	}
 
   ready:
-    if  ( f )
-	{ fclose( f );	}
 
-    return rval;
-    }
+    recursive--;
 
-/************************************************************************/
-/*									*/
-/*  Read the T1 font map.						*/
-/*									*/
-/************************************************************************/
-
-static char *	utilFontmapGetInputLine(	char *		s,
-						int *		pLen,
-						int		size,
-						FILE *		stream )
-    {
-    s= fgets( s, size, stream );
-
-    if  ( s )
-	{
-	int		lineLength= strlen( s );
-
-	if  ( lineLength > 0 )
-	    {
-	    if  ( s[lineLength-1] == '\n' )
-		{
-		s[--lineLength]= '\0';
-
-		if  ( lineLength > 0		&&
-		      s[lineLength-1] == '\r'	)
-		    { s[--lineLength]= '\0'; }
-		}
-
-	    while( lineLength > 0 && s[lineLength-1] == ' ' )
-		{ s[--lineLength]= '\0'; }
-	    }
-
-	*pLen= lineLength;
-	}
-
-    return s;
-    }
-
-int utilFontmapReadT1Map(	const char *	filename )
-    {
-    int		rval= 0;
-    FILE *	f= (FILE *)0;
-
-    char	scratch[200+1];
-    int		l;
-    int		line= 0;
-
-    if  ( UTIL_FontmapT1EntryCount > 0 )
-	{ /* LDEB(UTIL_FontmapT1EntryCount); rval= -1; */ goto ready;	}
-
-    f= fopen( filename, "r" );
-    if  ( ! f )
-	{ SXDEB(filename,f); rval= -1; goto ready;	}
-
-    while( utilFontmapGetInputLine( scratch, &l, 200, f ) )
-	{
-	FontmapEntry *	fe;
-	char *		s= scratch;
-
-	while( *s && ! isspace( *s ) )
-	    { s++; }
-
-	if  ( ! *s )
-	    {
-	    if  ( line != 0 )
-		{ SDEB(scratch);	}
-
-	    line++; continue;
-	    }
-
-	*(s++)= '\0';
-	while( isspace( *s ) )
-	    { s++;	}
-	if  ( ! *s )
-	    { SDEB(scratch); continue;	}
-
-	fe= realloc( UTIL_FontmapT1Entries,
-			( UTIL_FontmapT1EntryCount+ 1)* sizeof(FontmapEntry) );
-	if  ( ! fe )
-	    { LXDEB(UTIL_FontmapT1EntryCount,fe); rval= -1; goto ready; }
-	UTIL_FontmapT1Entries= fe;
-
-	fe += UTIL_FontmapT1EntryCount;
-
-	fe->feFrom= strdup( scratch );
-	if  ( ! fe->feFrom )
-	    { XDEB(fe->feFrom); rval= -1; goto ready;	}
-
-	fe->feTo= strdup( s );
-	if  ( ! fe->feTo )
-	    { XDEB(fe->feTo); rval= -1; goto ready;	}
-
-	fe->feIsAlias= 0;
-
-	UTIL_FontmapT1EntryCount++;
-	line++; continue;
-	}
-
-  ready:
     if  ( f )
 	{ fclose( f );	}
 

@@ -52,8 +52,12 @@ static int docPlainSaveParaItem(	SimpleOutputStream *		sos,
 
     if  ( ds && ds->dsBegin.dpBi == bi )
 	{
-	part= ds->dsBegin.dpParticule;
+	const int	lastOne= 1;
+
 	stroff= ds->dsBegin.dpStroff;
+
+	if  ( docFindParticuleOfPosition( &part, &(ds->dsBegin), lastOne ) )
+	    { LDEB(stroff); return -1;	}
 	}
 
     tp= bi->biParaParticules+ part;
@@ -123,6 +127,7 @@ static int docPlainSaveParaItem(	SimpleOutputStream *		sos,
 		break;
 
 	    case DOCkindPAGEBREAK:
+	    case DOCkindCOLUMNBREAK:
 		sioOutPutCharacter( '\n', sos );
 		sioOutPutCharacter( '\f', sos );
 		pos= 0; paragraphUnderlined= 0;

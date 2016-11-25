@@ -92,21 +92,10 @@ static int docRtfAddCurrentFontToList(	RtfReadingContext *	rrc )
 	DocumentFont *		df;
 	DocumentProperties *	dp= &(rrc->rrcBd->bdProperties);
 
-#	if 0
-	if  ( dp->dpAnsiCodepage >= 0					&&
-	      rrc->rrcCurrentFont.dfCharset == FONTcharsetDEFAULT	)
-	    {
-	    int charset;
-
-	    charset= utilWindowsCharsetFromCodepage( dp->dpAnsiCodepage );
-
-	    if  ( charset >= 0 )
-		{ rrc->rrcCurrentFont.dfCharset= charset;	}
-	    }
-#	endif
+	rrc->rrcCurrentFont.dfUsed= 1;
 
 	df= docInsertFont( &(dp->dpFontList),
-					rrc->rrcCurrentFont.dfDocFamilyNumber,
+					rrc->rrcCurrentFont.dfDocFontNumber,
 					&(rrc->rrcCurrentFont) );
 	if  ( ! df )
 	    { SDEB(rrc->rrcCurrentFont.dfName); return -1; }
@@ -139,7 +128,21 @@ static int docRtfFontNumber(	SimpleInputStream *	sis,
     docCleanDocumentFont( &(rrc->rrcCurrentFont) );
     docInitDocumentFont( &(rrc->rrcCurrentFont) );
 
-    rrc->rrcCurrentFont.dfDocFamilyNumber= arg;
+    /*
+    DocumentProperties *	dp= &(rrc->rrcBd->bdProperties);
+
+    if  ( dp->dpAnsiCodepage >= 0 )
+	{
+	int charset;
+
+	charset= utilWindowsCharsetFromCodepage( dp->dpAnsiCodepage );
+
+	if  ( charset >= 0 )
+	    { rrc->rrcCurrentFont.dfCharset= charset;	}
+	}
+    */
+
+    rrc->rrcCurrentFont.dfDocFontNumber= arg;
 
     return 0;
     }
@@ -190,12 +193,26 @@ static RtfControlWord	docRtfFontGroupGroups[]=
 static int docRtfFontGroup(	SimpleInputStream *	sis,
 				const RtfControlWord *	rcw,
 				int			arg,
-				RtfReadingContext *	rrc	)
+				RtfReadingContext *	rrc )
     {
     docCleanDocumentFont( &(rrc->rrcCurrentFont) );
     docInitDocumentFont( &(rrc->rrcCurrentFont) );
 
-    rrc->rrcCurrentFont.dfDocFamilyNumber= arg;
+    /*
+    DocumentProperties *	dp= &(rrc->rrcBd->bdProperties);
+
+    if  ( dp->dpAnsiCodepage >= 0 )
+	{
+	int charset;
+
+	charset= utilWindowsCharsetFromCodepage( dp->dpAnsiCodepage );
+
+	if  ( charset >= 0 )
+	    { rrc->rrcCurrentFont.dfCharset= charset;	}
+	}
+    */
+
+    rrc->rrcCurrentFont.dfDocFontNumber= arg;
 
     if  ( docRtfReadGroup( sis, rcw->rcwLevel,
 				(RtfControlWord *)0, 0, 0, rrc,
@@ -250,15 +267,17 @@ void docRtfWriteFontTable(	SimpleOutputStream *		sos,
     docRtfWriteDestinationBegin( "\\fonttbl", pCol, sos );
     docRtfWriteNextLine( pCol, sos );
 
-    for ( i= 0; i < dfl->dflCount; df++, i++ )
+    for ( i= 0; i < dfl->dflFontCount; df++, i++ )
 	{
 	int		afterTag= 0;
 
+	if  ( ! df->dfUsed )
+	    { continue;	}
 	if  ( ! df->dfFamilyStyle && ! df->dfName )
 	    { continue;	}
 
 	docRtfWriteArgDestinationBegin( "\\f", pCol,
-					    df->dfDocFamilyNumber, sos );
+					    df->dfDocFontNumber, sos );
 
 	sioOutPutCharacter( '\\', sos ); *pCol += 1;
 	if  ( df->dfFamilyStyle )
@@ -325,7 +344,7 @@ void docRtfWriteFontTable(	SimpleOutputStream *		sos,
 	sioOutPutCharacter( ';', sos ); *pCol += 1;
 
 	docRtfWriteDestinationEnd( pCol, sos );
-	if  ( i+ 1 < dfl->dflCount )
+	if  ( i+ 1 < dfl->dflFontCount )
 	    { docRtfWriteNextLine( pCol, sos );	}
 	}
 

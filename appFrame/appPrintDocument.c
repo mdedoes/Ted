@@ -484,19 +484,13 @@ static int appPrintJobForCommand(	PrintJob *		pj,
 
 	appSetDrawingEnvironment( add, ea->eaMagnification, xfac,
 			    screenPixelsPerMM,
-			    ea->eaAfmDirectory,
-			    ea->eaGhostscriptFontmap,
-			    ea->eaGhostscriptFontToXmapping,
+			    &(ea->eaPostScriptFontList),
 			    ea->eaToplevel.atTopWidget );
 
 	add->addPageGapPixels= (int)( ea->eaPageGapMM* verPixPerMM );
 	}
     else{
-	add->addPhysicalFontList.apflAfmDirectory= ea->eaAfmDirectory;
-	add->addPhysicalFontList.apflGhostscriptFontmap=
-					    ea->eaGhostscriptFontmap;
-	add->addPhysicalFontList.apflGhostscriptFontToXmapping=
-					    ea->eaGhostscriptFontToXmapping;
+	add->addPostScriptFontList= &(ea->eaPostScriptFontList);
 	}
 
     pj->pjDrawingData= add;
@@ -549,6 +543,9 @@ static int appPrintStartCommandRun(	EditApplication *	ea,
 
     if  ( appPrintJobForCommand( pj, add, ea, fromName ) )
 	{ SDEB(fromName); return -1;	}
+
+    if  ( ea->eaSuggestNup )
+	{ (*ea->eaSuggestNup)( pg, pj->pjPrivateData );	}
 
     if  ( (*ea->eaLayoutDocument)( pj->pjPrivateData, pj->pjFormat, add,
 						    &(pg->pgSheetGeometry) ) )
@@ -637,12 +634,8 @@ int appPrintToPrinter(	EditApplication *	ea,
     utilInitPrintGeometry( &pg );
     appInitDrawingData( &add );
 
-    if  ( ea->eaPrintDestinationCount == 0				&&
-	  utilPrinterGetPrinters( &(ea->eaPrintDestinationCount),
-				    &(ea->eaDefaultPrintDestination),
-				    &(ea->eaPrintDestinations),
-				    ea->eaCustomPrintCommand,
-				    ea->eaCustomPrinterName )		)
+    if  ( ! ea->eaPrintDestinationsCollected	&&
+	  appGetPrintDestinations( ea )		)
 	{ LDEB(1); return -1;	}
 
     printer= ea->eaDefaultPrintDestination;
@@ -655,9 +648,12 @@ int appPrintToPrinter(	EditApplication *	ea,
 	pd= ea->eaPrintDestinations;
 	for ( i= 0; i < ea->eaPrintDestinationCount; pd++, i++ )
 	    {
-	    if  ( ! strcmp( fromName, pd->pdPrinterName ) )
+	    if  ( ! strcmp( toName, pd->pdPrinterName ) )
 		{ printer= i; break;	}
 	    }
+
+	if  ( i >= ea->eaPrintDestinationCount )
+	    { SDEB(toName); return -1;	}
 	}
 
     if  ( printer < 0 )

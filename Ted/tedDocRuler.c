@@ -182,7 +182,7 @@ static void tedUpdateTableColumns(	EditDocument *		ed,
 
 	tedAdaptToolsToSelection( ed );
 
-	tedAdaptFormatToolToDocument( ed );
+	tedAdaptFormatToolToDocument( ed, 0 );
 
 	appDocumentChanged( ed, 1 );
 	}
@@ -204,8 +204,7 @@ static int tedGetRulerTwips(
 			int				firstIndentPixels,
 			int				leftIndentPixels,
 			int				rightIndentPixels,
-			int				tabCount,
-			const TabStop *			tabStops )
+			const TabStopList *		tslNew )
     {
     ParagraphFrame		pf;
     double			xfac= add->addMagnifiedPixelsPerTwip;
@@ -217,6 +216,9 @@ static int tedGetRulerTwips(
     int				x1GeometryPixels;
 
     BlockFrame			bf;
+
+    int				tabCount= tslNew->tslTabStopCount;
+    const TabStop *		tabStops= tslNew->tslTabStops;
 
     docBlockFrameTwips( &bf, bi, bd, bi->biTopPosition.lpPage,
 					    bi->biTopPosition.lpColumn );
@@ -268,8 +270,7 @@ static APP_EVENT_HANDLER_H( tedHorizontalRulerButtonDown, w, voided, downEvent )
     int				leftIndentNew;
     int				firstIndentNew;
     int				rightIndentNew;
-    int				tabCountNew= 0;
-    TabStop *			tabsNew= (TabStop *)0;
+    TabStopList			tslNew;
 
     int				csCountNew= 0;
     ColumnSeparator *		csNew= (ColumnSeparator *)0;
@@ -296,12 +297,18 @@ static APP_EVENT_HANDLER_H( tedHorizontalRulerButtonDown, w, voided, downEvent )
 
     DocumentSelection		ds;
     SelectionGeometry		sg;
+    SelectionDescription	sd;
 
-    if  ( tedGetSelection( &ds, &sg, td ) )
+    const int * const	colorMap= (const int *)0;
+    const int * const	listStyleMap= (const int *)0;
+
+    docInitTabStopList( &tslNew );
+
+    if  ( tedGetSelection( &ds, &sg, &sd, td ) )
 	{ LDEB(1); return;	}
     bi= ds.dsBegin.dpBi;
 
-    tabCountNew= bi->biParaTabStopList.tslTabStopCount;
+    tslNew.tslTabStopCount= bi->biParaTabStopCount;
 
     PROPmaskCLEAR( &taSetMask );
     PROPmaskCLEAR( &ppUpdMask );
@@ -319,7 +326,7 @@ static APP_EVENT_HANDLER_H( tedHorizontalRulerButtonDown, w, voided, downEvent )
 
     tedHorizontalRulerTrackMouse(
 			    &firstIndentNew, &leftIndentNew, &rightIndentNew,
-			    &tabCountNew, &tabsNew,
+			    &tslNew,
 			    &csCountNew, &csNew, &prop,
 			    w, ea, downEvent, ed->edTopRuler,
 			    (void *)ed, tedDragVerticalHair );
@@ -354,12 +361,13 @@ static APP_EVENT_HANDLER_H( tedHorizontalRulerButtonDown, w, voided, downEvent )
     PROPmaskCLEAR( &ppChgMask );
 
     if  ( docUpdParaProperties( &ppChgMask, &ppNew, &ppUpdMask,
-				&(bi->biParaProperties), (const int *)0 ) )
+						    &(bi->biParaProperties),
+						    colorMap, listStyleMap ) )
 	{ LDEB(1); return;	}
 
     if  ( tedGetRulerTwips( add, bi, &ppNew, bd,
 			    firstIndentNew, leftIndentNew, rightIndentNew,
-			    tabCountNew, tabsNew ) )
+			    &tslNew ) )
 	{ LDEB(1); return;	}
 
     if  ( tedChangeSelectionProperties( ed,
@@ -435,8 +443,7 @@ void tedDocAdaptHorizontalRuler(	EditDocument *		ed,
 	tedAdaptHorizontalRuler( ed->edTopRuler, ed->edTopRulerWidget,
 		    add->addDocRect.drX0, add->addDocRect.drX1,
 		    firstIndent, leftIndent, rightIndent,
-		    add->addPaperRect.drX1,
-		    tsl->tslTabStopCount, tsl->tslTabStops );
+		    add->addPaperRect.drX1, tsl );
 	}
 
 	if  ( bi->biParaInTable )
@@ -571,8 +578,9 @@ void tedDocFormatCopyRul(	APP_WIDGET	fontsOption,
 
     DocumentSelection		ds;
     SelectionGeometry		sg;
+    SelectionDescription	sd;
 
-    if  ( tedGetSelection( &ds, &sg, td ) )
+    if  ( tedGetSelection( &ds, &sg, &sd, td ) )
 	{ LDEB(1); return;	}
     bi= ds.dsBegin.dpBi;
 

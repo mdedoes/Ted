@@ -1,3 +1,6 @@
+#   ifndef		BM_SEGMENTS_H
+#   define		BM_SEGMENTS_H
+
 #   include	<stdio.h>
 #   include	<stddef.h>
 #   include	<stdlib.h>
@@ -5,9 +8,9 @@
 
 typedef struct DataRun
     {
-    int	drX0;
-    int	drX1;
-    int	drRepeatCount;
+    short int	drX0;
+    short int	drXp;
+    short int	drRepeatCount;
     } DataRun;
 
 typedef struct SegmentEdge
@@ -24,8 +27,7 @@ typedef struct SegmentNode
     SegmentEdge **	snDownEdges;
     short int		snUpEdgeCount;
     short int		snDownEdgeCount;
-    int			snY0;
-    int			snY1;
+    short int		snY0;
     } SegmentNode;
 
 /************************************************************************/
@@ -40,10 +42,10 @@ typedef struct SegmentNode
 
 typedef struct BitmapSegment
     {
-    int				bsX0;
-    int				bsX1;
-    int				bsY0;
-    int				bsY1;
+    short int			bsX0;
+    short int			bsX1;
+    short int			bsY0;
+    short int			bsY1;
     short int			bsNodeCount;
     short int			bsEdgeCount;
     SegmentNode **		bsNodes;
@@ -61,6 +63,8 @@ extern int bcComponents(	BitmapSegment ***		pSegments,
 				const unsigned char *		buffer,
 				const BitmapDescription *	bd );
 
+extern void bmFreeSegment(	BitmapSegment * bs );
+
 extern int bmcDrawComponent(	const BitmapSegment *	bs,
 				unsigned char *		buffer,
 				int			col0,
@@ -75,3 +79,5 @@ extern void bmcStatistics(	const BitmapSegment *		bs,
 				float *				pSxx,
 				float *				pSyy,
 				float *				pSxy );
+
+#   endif	/*	BM_SEGMENTS_H	*/

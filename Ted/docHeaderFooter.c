@@ -131,28 +131,29 @@ int docSectionHeaderFooterFirstPage(
     {
     const SectionProperties *	sp= &(bodySectBi->biSectProperties);
     int				topPage= bodySectBi->biTopPosition.lpPage;
+    int				belowPage= bodySectBi->biBelowPosition.lpPage;
     int				page;
+
+    const BufferItem *		prevBi= (const BufferItem *)0;
 
     if  ( bodySectBi->biNumberInParent > 0 )
 	{
-	const	BufferItem *	prevBi;
-
 	prevBi= bodySectBi->biParent->biChildren[
 					    bodySectBi->biNumberInParent- 1];
 
-	if  ( prevBi->biBelowPosition.lpPage >= topPage )
-	    { return -1;	}
+	if  ( prevBi->biBelowPosition.lpPage >= belowPage )
+	    { *pExists= 0; return -1;	}
 	}
 
     switch( which )
 	{
 	case DOCinBODY:
-	    LDEB(which); return -1;
+	    LDEB(which); *pExists= 0; return -1;
 
 	case DOCinSECT_HEADER:
 	case DOCinSECT_FOOTER:
 	    if  ( dp->dpHasFacingPages )
-		{ return -1;	}
+		{ *pExists= 0; return -1;	}
 	    if  ( sp->spHasTitlePage )
 		{ page= topPage+ 1;	}
 	    else{ page= topPage;	}
@@ -161,14 +162,18 @@ int docSectionHeaderFooterFirstPage(
 	case DOCinFIRST_HEADER:
 	case DOCinFIRST_FOOTER:
 	    if  ( ! sp->spHasTitlePage )
-		{ return -1;	}
+		{ *pExists= 0; return -1;	}
+
+	    if  ( prevBi && prevBi->biBelowPosition.lpPage >= topPage )
+		{ *pExists= 0; return topPage;
+		}
 	    page= topPage;
 	    break;
 
 	case DOCinLEFT_HEADER:
 	case DOCinLEFT_FOOTER:
 	    if  ( ! dp->dpHasFacingPages )
-		{ return -1;	}
+		{ *pExists= 0; return -1;	}
 	    if  ( topPage % 2 )
 		{
 		if  ( sp->spHasTitlePage )
@@ -181,7 +186,7 @@ int docSectionHeaderFooterFirstPage(
 	case DOCinRIGHT_HEADER:
 	case DOCinRIGHT_FOOTER:
 	    if  ( ! dp->dpHasFacingPages )
-		{ return -1;	}
+		{ *pExists= 0; return -1;	}
 	    if  ( ! ( topPage % 2 ) )
 		{
 		if  ( sp->spHasTitlePage )
@@ -192,7 +197,7 @@ int docSectionHeaderFooterFirstPage(
 	    break;
 
 	default:
-	    LDEB(which); return -1;
+	    LDEB(which); *pExists= 0; return -1;
 	}
 
     *pExists= page <= bodySectBi->biBelowPosition.lpPage;

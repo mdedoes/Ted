@@ -36,12 +36,15 @@
 
 int docGetBookmarkForPosition(	const BufferDocument *		bd,
 				const DocumentPosition *	dp,
+				DocumentSelection *		ds,
 				int *				pBeginPart,
 				int *				pEndPart,
 				const char **			pMarkName,
 				int *				pMarkSize )
     {
     BufferItem *	bi= dp->dpBi;
+    int			beginStroff= 0;
+    int			endStroff= 0;
     int			beginPart;
     int			endPart;
     TextParticule *	tp;
@@ -51,7 +54,9 @@ int docGetBookmarkForPosition(	const BufferDocument *		bd,
 
     int			beginObjectNumber= -1;
 
-    beginPart= dp->dpParticule;
+    if  ( docFindParticule( &beginPart, dp->dpBi, dp->dpStroff, 1 ) )
+	{ LDEB(dp->dpStroff); return -1;	}
+
     tp= bi->biParaParticules+ beginPart;
     while( beginPart >= 0 )
 	{
@@ -59,7 +64,11 @@ int docGetBookmarkForPosition(	const BufferDocument *		bd,
 	    {
 	    dfBegin= bd->bdFieldList.dflFields+ tp->tpObjectNumber;
 	    if  ( dfBegin->dfKind == DOCfkBOOKMARK )
-		{ beginObjectNumber= tp->tpObjectNumber; break;	}
+		{
+		beginStroff= tp->tpStroff;
+		beginObjectNumber= tp->tpObjectNumber;
+		break;
+		}
 	    }
 
 	tp--; beginPart--;
@@ -68,7 +77,8 @@ int docGetBookmarkForPosition(	const BufferDocument *		bd,
     if  ( beginPart < 0 )
 	{ return -1;	}
 
-    endPart= dp->dpParticule;
+    if  ( docFindParticule( &endPart, dp->dpBi, dp->dpStroff, 0 ) )
+	{ LDEB(dp->dpStroff); return -1;	}
     tp= bi->biParaParticules+ endPart;
     while( endPart < bi->biParaParticuleCount )
 	{
@@ -82,6 +92,11 @@ int docGetBookmarkForPosition(	const BufferDocument *		bd,
 
 	    if  ( docFieldGetBookmark( dfEnd, pMarkName, pMarkSize ) )
 		{ LDEB(1); return -1;	}
+
+	    endStroff= tp->tpStroff;
+
+	    docSetParaSelection( ds, bi,
+		endStroff > beginStroff, beginStroff, endStroff- beginStroff );
 
 	    *pBeginPart= beginPart;
 	    *pEndPart= endPart;
@@ -343,6 +358,7 @@ int docFieldGetIncludePicture(	const DocumentField *	df,
 
 int docGetHyperlinkForPosition(	const BufferDocument *		bd,
 				const DocumentPosition *	dp,
+				DocumentSelection *		ds,
 				int *				pBeginPart,
 				int *				pEndPart,
 				const char **			pFileName,
@@ -351,8 +367,12 @@ int docGetHyperlinkForPosition(	const BufferDocument *		bd,
 				int *				pMarkSize )
     {
     BufferItem *	bi= dp->dpBi;
+
+    int			beginStroff= 0;
+    int			endStroff= 0;
     int			beginPart;
     int			endPart;
+
     TextParticule *	tp;
 
     DocumentField *	dfEnd= (DocumentField *)0;
@@ -364,7 +384,8 @@ int docGetHyperlinkForPosition(	const BufferDocument *		bd,
     const char *	markName;
     int			markSize;
 
-    beginPart= dp->dpParticule;
+    if  ( docFindParticule( &beginPart, dp->dpBi, dp->dpStroff, 1 ) )
+	{ LDEB(dp->dpStroff); return -1;	}
     tp= bi->biParaParticules+ beginPart;
     while( beginPart >= 0 )
 	{
@@ -376,16 +397,21 @@ int docGetHyperlinkForPosition(	const BufferDocument *		bd,
 
 	    if  ( ! docFieldGetHyperlink( df,
 				&fileName, &fileSize, &markName, &markSize ) )
-		{ beginObjectNumber= tp->tpObjectNumber; break;	}
+		{
+		beginStroff= tp->tpStroff;
+		beginObjectNumber= tp->tpObjectNumber;
+		break;
+		}
 	    }
 
 	tp--; beginPart--;
 	}
 
     if  ( beginPart < 0 )
-	{ return -1;	}
+	{ return 1;	}
 
-    endPart= dp->dpParticule;
+    if  ( docFindParticule( &endPart, dp->dpBi, dp->dpStroff, 0 ) )
+	{ LDEB(dp->dpStroff); return -1;	}
     tp= bi->biParaParticules+ endPart;
     while( endPart < bi->biParaParticuleCount )
 	{
@@ -396,6 +422,11 @@ int docGetHyperlinkForPosition(	const BufferDocument *		bd,
 
 	    if  ( dfEnd->dfKind != DOCfkHYPERLINK )
 		{ LDEB(dfEnd->dfKind); return -1;	}
+
+	    endStroff= tp->tpStroff;
+
+	    docSetParaSelection( ds, bi,
+		endStroff > beginStroff, beginStroff, endStroff- beginStroff );
 
 	    *pBeginPart= beginPart;
 	    *pEndPart= endPart;
@@ -410,7 +441,7 @@ int docGetHyperlinkForPosition(	const BufferDocument *		bd,
 	tp++; endPart++;
 	}
 
-    return -1;
+    return 1;
     }
 
 int docFieldSetHyperlink(	DocumentField *			df,

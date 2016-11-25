@@ -119,8 +119,8 @@ typedef int (*SET_COLOR_RGB)(	struct DrawingContext *		dc,
 
 typedef int (*SET_FONT)(	struct DrawingContext *		dc,
 				void *				through,
-				const TextAttribute *		ta,
-				int				physicalFont );
+				int				textAttr,
+				const TextAttribute *		ta );
 
 typedef struct DrawingContext
     {
@@ -129,7 +129,10 @@ typedef struct DrawingContext
     int				dcCurrentColorSet;
     RGB8Color			dcCurrentColor;
 
+    const PostScriptFontList *	dcPostScriptFontList;
     AppDrawingData *		dcDrawingData;
+    ScreenFontList *		dcScreenFontList;	/*  Do not use	*/
+							/*  for printing */
     BufferDocument *		dcDocument;
     const DocumentRectangle *	dcClipRect;
     const DocumentSelection *	dcDocumentSelection;
@@ -156,7 +159,7 @@ typedef struct DrawingContext
     FINISH_PAGE			dcFinishPage;
     START_PAGE			dcStartPage;
     PARA_SIDES_PIXELS		dcParaFramePixels;
-    LAYOUT_EXTERNAL		dcLayoutExternal;
+    INIT_LAYOUT_EXTERNAL	dcInitLayoutExternal;
     DOC_CLOSE_OBJECT		dcCloseObject;
     } DrawingContext;
 
@@ -223,7 +226,7 @@ extern void docDrawDelimitString(	int *			pLen,
 
 extern void docDrawSetFont(	DrawingContext *	dc,
 				void *			through,
-				const TextAttribute *	ta,
-				int			physicalFont );
+				int			textAttr,
+				const TextAttribute *	ta );
 
 #   endif

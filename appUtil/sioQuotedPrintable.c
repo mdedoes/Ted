@@ -24,16 +24,6 @@ static unsigned char		SioHexIndices[256];
 
 /************************************************************************/
 /*									*/
-/*  Refuse to seek.							*/
-/*									*/
-/************************************************************************/
-
-static int sioQuotedSeek(	void *			voidsos,
-				long			pos )
-    { LDEB(1); return -1; return 0; }
-
-/************************************************************************/
-/*									*/
 /*  Input.								*/
 /*									*/
 /*  1)  Contrary to the rfc 2045 standard, decoding stops at a single	*/
@@ -183,8 +173,7 @@ SimpleInputStream * sioInQuotedPrintableOpen(
     qis->qisExhausted= 0;
     qis->qisColumn= 0;
 
-    sis= sioInOpen( (void *)qis, sioInQuotedReadBytes,
-					    sioQuotedSeek, sioInQuotedClose );
+    sis= sioInOpen( (void *)qis, sioInQuotedReadBytes, sioInQuotedClose );
 
     if  ( ! sis )
 	{ XDEB(sis); free( qis ); return (SimpleInputStream *)0; }
@@ -335,7 +324,7 @@ SimpleOutputStream * sioOutQuotedPrintableOpen(
     qos->qosAfterWhiteSpace= 0;
 
     sos= sioOutOpen( (void *)qos, sioOutQuotedWriteBytes,
-					    sioQuotedSeek, sioOutQuotedClose );
+					    (SIOoutSEEK)0, sioOutQuotedClose );
 
     if  ( ! sos )
 	{ XDEB(sos); free( qos ); return (SimpleOutputStream *)0; }

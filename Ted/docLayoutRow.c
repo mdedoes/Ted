@@ -493,12 +493,24 @@ static void docLayoutFinishRow(	BufferItem *		rowBi,
 	lj->ljPosition.lpAtTopOfColumn= 0;
 	}
 
+    docLayoutPushBottomDown( &(rowBi->biRowBelowAllPosition),
+							&(lj->ljPosition) );
+
     return;
     }
 
 /************************************************************************/
 /*									*/
 /*  Calculate the layout of a table row.				*/
+/*									*/
+/*  NOTE  Table headers that appear by themselves as the last table row	*/
+/*	on the page should have been pushed to the next page. Some	*/
+/*	thought reveals however that the result on the formatting of	*/
+/*	the rest of the document is not altered by moving the header	*/
+/*	row to the next page. For that reason, and to keep the 		*/
+/*	formatter simple, we simplay ignore the situation. To		*/
+/*	compensate, the drawing code simply skips the row in its home	*/
+/*	position and the visible result is the same.			*/
 /*									*/
 /*  1)  Sanity check against crashes.					*/
 /*	This fix is a thourough memory leak. It is hardly ever		*/

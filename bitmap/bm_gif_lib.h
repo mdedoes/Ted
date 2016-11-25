@@ -39,7 +39,7 @@
 # define DGifGetExtension bm_DGifGetExtension
 # define DGifGetExtensionNext bm_DGifGetExtensionNext
 # define DGifGetImageDesc bm_DGifGetImageDesc
-# define DGifGetRecordType bm_DGifGetRecordType
+# define bmGifGetRecordType bm_DGifGetRecordType
 
 # define _GifError bm__GifError
 
@@ -180,7 +180,7 @@ int EGifCloseFile(GifFileType *GifFile);
 ******************************************************************************/
 
 GifFileType *DGifOpenFileHandle(	SimpleInputStream *	sis );
-int DGifGetRecordType(GifFileType *GifFile, GifRecordType *GifType);
+int bmGifGetRecordType(GifFileType *GifFile, GifRecordType *GifType);
 int DGifGetImageDesc(GifFileType *GifFile);
 
 extern int bmGifGetPixels(	GifFileType *	GifFile,

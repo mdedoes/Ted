@@ -53,26 +53,26 @@ static int docEditClaimFieldParticules(	TextParticule **	pTp,
 /*									*/
 /************************************************************************/
 
-static int docCleanupFields(	BufferDocument *	bd,
-				BufferItem *		bi,
+static int docCleanupFields(	int *			pBulletDeleted,
+				BufferDocument *	bd,
+				BufferItem *		paraBi,
 				TextParticule *		fieldParticules,
 				int			fieldCount )
     {
     int		from;
     int		to;
+    int		bulletDeleted= 0;
 
     to= 0;
     for ( from= 0; from < fieldCount; from++ )
 	{
 	DocumentField *		dfFrom;
-	DocumentField *		dfI;
 	int			i;
 
 	switch( fieldParticules[from].tpKind )
 	    {
 	    /*  1  */
 	    case DOCkindFIELDSTART:
-		dfI= (DocumentField *)0;
 		dfFrom= bd->bdFieldList.dflFields+
 					fieldParticules[from].tpObjectNumber;
 		for ( i= from+ 1; i < fieldCount; i++ )
@@ -83,6 +83,9 @@ static int docCleanupFields(	BufferDocument *	bd,
 
 		if  ( i < fieldCount )
 		    {
+		    if  ( dfFrom->dfKind == DOCfkLISTTEXT )
+			{ bulletDeleted= 1;	}
+
 		    docCleanField( dfFrom );
 		    docInitField( dfFrom );
 		    fieldParticules[from].tpKind= DOCkindUNKNOWN; /* a */
@@ -112,12 +115,20 @@ static int docCleanupFields(	BufferDocument *	bd,
 
 	    case DOCkindLINEBREAK:
 	    case DOCkindPAGEBREAK:
+	    case DOCkindCOLUMNBREAK:
 	    default:
 		LDEB(fieldParticules[from].tpKind);
 		return -1;
 	    }
 	}
 
+    if  ( bulletDeleted && paraBi->biParaListOverride > 0 )
+	{
+	if  ( docRemoveParagraphFromList( paraBi, bd ) )
+	    { LDEB(bulletDeleted);	}
+	}
+
+    *pBulletDeleted= bulletDeleted;
     return to;
     }
 
@@ -167,6 +178,7 @@ static int docReinsertFieldParticule(	BufferDocument *	bd,
 	case DOCkindUNKNOWN:
 	case DOCkindLINEBREAK:
 	case DOCkindPAGEBREAK:
+	case DOCkindCOLUMNBREAK:
 	default:
 	    LDEB(tpField->tpKind);
 	    return -1;
@@ -255,6 +267,7 @@ static int docReinsertFieldParticule(	BufferDocument *	bd,
 /*									*/
 /*  22) Realise that the TextLine administration is left in an		*/
 /*	inconsistent state.						*/
+/*  23) Remember the current particule number.				*/
 /*									*/
 /************************************************************************/
 
@@ -348,7 +361,6 @@ static void docFindSubstitutionEnd(	int *			pPartEnd,
 
 int docParaReplaceText(		EditOperation *		eo,
 				BufferItem *		bi,
-				int			partBegin,
 				unsigned int		stroffBegin,
 				int *			pPartShift,
 				int *			pStroffShift,
@@ -365,6 +377,7 @@ int docParaReplaceText(		EditOperation *		eo,
     int				part;
     TextParticule *		tp;
 
+    int				partBegin;
     int				partEnd;
     TextParticule *		tpBegin;
     TextParticule *		tpEnd;
@@ -383,6 +396,7 @@ int docParaReplaceText(		EditOperation *		eo,
     int				fieldCount= 0;
 
     int				savedAttributeNumber;
+    const int			lastOne= 1;
 
     /*  1  */
     if  ( docEditClaimFieldParticules( &fieldParticules,
@@ -392,6 +406,9 @@ int docParaReplaceText(		EditOperation *		eo,
     /*  2  */
     stroffShift= 0;
     partShift= 0;
+
+    if  ( docFindParticule( &partBegin, bi, stroffBegin, lastOne ) )
+	{ LDEB(stroffBegin); return -1;	}
 
     /*  3  */
     if  ( addedStrlen == 0 )
@@ -538,8 +555,13 @@ int docParaReplaceText(		EditOperation *		eo,
     /*  13  */
     if  ( fieldCount > 0 )
 	{
-	fieldCount=
-	    docCleanupFields( eo->eoBd, bi, fieldParticules, fieldCount );
+	int	bulletDeleted= 0;
+
+	fieldCount= docCleanupFields( &bulletDeleted, eo->eoBd,
+					    bi, fieldParticules, fieldCount );
+
+	if  ( bulletDeleted )
+	    { eo->eoFieldUpdate |= FIELDdoLISTTEXT;	}
 	}
     if  ( fieldCount < 0 )
 	{ LDEB(fieldCount); return -1;	}
@@ -639,24 +661,36 @@ int docParaReplaceText(		EditOperation *		eo,
 	{ LDEB(stroffShift);	}
 
 #   if DEB_PARTICULES
+    {
+    int		p;
+
     appDebug( "\n" );
 
-    part= 0; tp= bi->biParaParticules;
-    while( part < bi->biParaParticuleCount )
+    p= 0; tp= bi->biParaParticules;
+    while( p < bi->biParaParticuleCount )
 	{
-	appDebug( "=== %3d: [%4d..%4d] %s \"%.*s\"\n", part,
+	appDebug( "=== %3d: [%4d..%4d] %s \"%.*s\"\n", p,
 		    tp->tpStroff,
 		    tp->tpStroff+ tp->tpStrlen,
 		    docKindStr( tp->tpKind ),
 		    (int)tp->tpStrlen,
 		    bi->biParaString+ tp->tpStroff );
-	part++; tp++;
+	p++; tp++;
 	}
+    }
 #   endif
 
     /*  22  */
     *pPartShift += partShift;
     *pStroffShift += stroffShift;
+
+    eo->eoParaBi= bi;
+    eo->eoStroff= stroffBegin+ addedStrlen;
+
+    /* 23 */
+    if  ( docFindParticule( &(eo->eoParticule), eo->eoParaBi,
+						    eo->eoStroff, lastOne ) )
+	{ LDEB(eo->eoStroff); return -1;	}
 
     return 0;
     }
@@ -680,12 +714,11 @@ static int docParaAppend(	EditOperation *		eo,
 				unsigned int *		pFieldUpd,
 				BufferItem *		biTo,
 				BufferItem *		biFrom,
-				int			part,
 				unsigned int		stroffFrom )
     {
     int			rval= 0;
 
-    TextParticule *	tpFrom= biFrom->biParaParticules+ part;
+    TextParticule *	tpFrom;
     TextParticule *	newTp;
 
     int			stroffShift= 0;
@@ -694,7 +727,16 @@ static int docParaAppend(	EditOperation *		eo,
 
     int			stroffTo;
 
-    if  ( part < biFrom->biParaParticuleCount- 1		&&
+    const int		lastOne= 0;
+    int			part;
+
+    if  ( docFindParticule( &part, biFrom, stroffFrom, lastOne ) )
+	{ LLDEB(stroffFrom,biFrom->biParaStrlen); return -1;	}
+
+    tpFrom= biFrom->biParaParticules+ part;
+
+    while( part < biFrom->biParaParticuleCount- 1		&&
+	  tpFrom->tpKind != DOCkindFIELDSTART			&&
 	  stroffFrom == tpFrom->tpStroff+ tpFrom->tpStrlen	)
 	{ tpFrom++; part++;	}
 
@@ -716,11 +758,10 @@ static int docParaAppend(	EditOperation *		eo,
 	      tpFrom->tpTextAttributeNumber ==
 					  newTp->tpTextAttributeNumber	)
 	    {
-	    int		ignored;
+	    int		xPartShift= 0;
 
-	    if  ( docParaReplaceText( eo, biTo, biTo->biParaParticuleCount- 1,
-				biTo->biParaStrlen,
-				&partShift, &ignored,
+	    if  ( docParaReplaceText( eo, biTo, biTo->biParaStrlen,
+				&partShift, &xPartShift,
 				biTo->biParaStrlen,
 				biFrom->biParaString+ stroffFrom,
 				tpFrom->tpStroff+ tpFrom->tpStrlen- stroffFrom,
@@ -747,7 +788,7 @@ static int docParaAppend(	EditOperation *		eo,
 
 	strlenTo= tpFrom->tpStroff+ tpFrom->tpStrlen- stroffFrom;
 
-	if  ( docCopyParticuleAndData( &newTp, dcj, pFieldUpd, biTo, partTo,
+	if  ( docCopyParticuleAndData( &newTp, dcj, eo, biTo, partTo,
 				    stroffTo, strlenTo, biFrom, tpFrom ) )
 	    { LDEB(1); rval= -1; goto ready;	}
 
@@ -764,6 +805,10 @@ static int docParaAppend(	EditOperation *		eo,
 	stroffTo += strlenTo; stroffFrom += strlenTo;
 	tpFrom++; part++; partShift++;
 	}
+
+    eo->eoParaBi= biTo;
+    eo->eoStroff= biTo->biParaStrlen;
+    eo->eoParticule= biTo->biParaParticuleCount- 1;
 
   ready:
 
@@ -794,7 +839,6 @@ int docRemoveSelectionTail(	EditOperation *			eo,
     for (;;)
 	{
 	BufferItem *	parent= nextBi->biParent;
-	BufferItem *	pp;
 
 	int		firstParaDeleted= -1;
 	int		paragraphsDeleted= 0;
@@ -809,7 +853,8 @@ int docRemoveSelectionTail(	EditOperation *			eo,
 	    {
 	    while( parent && parent->biChildCount == 0 )
 		{
-		pp= parent->biParent;
+		BufferItem *	pp= parent->biParent;
+
 		docDeleteItem( eo->eoBd, parent );
 		parent= pp;
 		}
@@ -823,7 +868,8 @@ int docRemoveSelectionTail(	EditOperation *			eo,
 
 	while( parent && parent->biChildCount == 0 )
 	    {
-	    pp= parent->biParent;
+	    BufferItem *	pp= parent->biParent;
+
 	    docDeleteItem( eo->eoBd, parent );
 	    parent= pp;
 	    }
@@ -833,11 +879,16 @@ int docRemoveSelectionTail(	EditOperation *			eo,
 	{
 	if  ( ds->dsBegin.dpBi->biInExternalItem == DOCinBODY )
 	    {
+	    const int	isSplit= 0;
+	    const int	stroffFrom= 0;
+	    const int	stroffShift= 0;
+
 	    if  ( firstDeleted < 0 )
 		{ LDEB(firstDeleted);	}
 
-	    docShiftNoteReferences( eo->eoBd, firstDeleted+ paraShift, 0,
-						-sectShift, -paraShift, 0 );
+	    docEditShiftReferences( eo->eoBd, firstDeleted+ paraShift,
+					isSplit, stroffFrom,
+					-sectShift, -paraShift, stroffShift );
 	    }
 
 	/*  NO! done by docEditDeleteItems()
@@ -853,8 +904,11 @@ int docRemoveSelectionTail(	EditOperation *			eo,
 /*  Replace a selection with a piece of text.				*/
 /*									*/
 /*  1)  If the selection spans more than one paragraph...		*/
-/*  2)  Replace the tail of the beginning paragraph with the new text.	*/
-/*  3)  Merge the two paragraphs.					*/
+/*  2)  Replace the tail of the first paragraph with the new text.	*/
+/*  2b) Make sure thet the bullet of the last paragraph is not included	*/
+/*	in the pail that is to be appended to the first paragraph.	*/
+/*  3)  Merge the two paragraphs. I.E: append what remains of the last	*/
+/*	paragraph to the first paragraph.				*/
 /*  4)  Erase all paragraphs after the beginning of the selection	*/
 /*	upto and including the end of the selection.			*/
 /*  5)  Otherwise just replace the text inside the selected paragraph.	*/
@@ -870,7 +924,6 @@ int docReplaceSelection(EditOperation *			eo,
 			int				addedAttributeNumber )
     {
     int			rval= 0;
-
     DocumentCopyJob	dcj;
 
     docInitDocumentCopyJob( &dcj );
@@ -878,16 +931,36 @@ int docReplaceSelection(EditOperation *			eo,
     /*  1  */
     if  ( ds->dsBegin.dpBi != ds->dsEnd.dpBi )
 	{
+	int		replaceEnd= ds->dsEnd.dpStroff;
+
 	/*  2  */
-	if  ( docParaReplaceText( eo, ds->dsBegin.dpBi,
-		    ds->dsBegin.dpParticule, ds->dsBegin.dpStroff,
+	if  ( docParaReplaceText( eo, ds->dsBegin.dpBi, ds->dsBegin.dpStroff,
 		    pPartShift, pStroffShift,
 		    ds->dsBegin.dpBi->biParaStrlen,
 		    addedString, addedStrlen, addedAttributeNumber ) )
 	    { LDEB(addedStrlen); rval= -1; goto ready;	}
 
+	/*  2b  */
+	if  ( ds->dsEnd.dpBi->biParaListOverride > 0 )
+	    {
+	    int		fieldNr= -1;
+	    int		partBegin= -1;
+	    int		partEnd= -1;
+	    int		stroffBegin= -1;
+	    int		stroffEnd= -1;
+
+	    if  ( docDelimitParaHeadField( &fieldNr, &partBegin, &partEnd,
+						&stroffBegin, &stroffEnd,
+						ds->dsEnd.dpBi, eo->eoBd ) )
+		{ LDEB(1);	}
+	    else{
+		if  ( replaceEnd < stroffEnd )
+		    { replaceEnd=  stroffEnd;	}
+		}
+	    }
+
 	/*  3  */
-	if  ( ds->dsEnd.dpStroff < ds->dsEnd.dpBi->biParaStrlen )
+	if  ( replaceEnd < ds->dsEnd.dpBi->biParaStrlen )
 	    {
 	    unsigned int	fieldUpd= FIELDdoNOTHING;
 
@@ -895,8 +968,7 @@ int docReplaceSelection(EditOperation *			eo,
 		{ LDEB(1); rval= -1; goto ready;	}
 
 	    if  ( docParaAppend( eo, &dcj, &fieldUpd,
-				ds->dsBegin.dpBi, ds->dsEnd.dpBi,
-				ds->dsEnd.dpParticule, ds->dsEnd.dpStroff ) )
+			    ds->dsBegin.dpBi, ds->dsEnd.dpBi, replaceEnd ) )
 		{ LDEB(addedStrlen); rval= -1; goto ready;	}
 	    }
 
@@ -906,8 +978,7 @@ int docReplaceSelection(EditOperation *			eo,
 	}
     else{
 	/*  5  */
-	if  ( docParaReplaceText( eo, ds->dsBegin.dpBi, ds->dsBegin.dpParticule,
-			    ds->dsBegin.dpStroff,
+	if  ( docParaReplaceText( eo, ds->dsBegin.dpBi, ds->dsBegin.dpStroff,
 			    pPartShift, pStroffShift,
 			    ds->dsEnd.dpStroff,
 			    addedString, addedStrlen, addedAttributeNumber ) )
@@ -932,15 +1003,17 @@ int docReplaceSelection(EditOperation *			eo,
 /*  2)  Allocate space for the string of the successor.			*/
 /*  3)  If the position is in the middle of a particule, split it.	*/
 /*  4)  Move the rest of the particules to the new paragraph.		*/
+/*  5)  Keep field ends at the split position in the old paragraph.	*/
 /*									*/
 /************************************************************************/
 
-static int docSplitParaItemLow(	BufferDocument *	bd,
+static int docSplitParaItemLow(	EditOperation *		eo,
 				int *			fieldMap,
 				BufferItem **		pNewBi,
 				BufferItem *		oldBi,
 				int			stroff )
     {
+    BufferDocument *		bd= eo->eoBd;
     int				rval= 0;
 
     BufferItem *		newBi;
@@ -948,7 +1021,7 @@ static int docSplitParaItemLow(	BufferDocument *	bd,
     TextParticule *		tp;
     TextParticule *		newTp;
 
-    int				splittingField= 0;
+    int				fieldLevel= 0;
 
     int				stroffShift= 0;
     int				partShift= 0;
@@ -1005,8 +1078,12 @@ static int docSplitParaItemLow(	BufferDocument *	bd,
 
     /*  1a  */
     if  ( docUpdParaProperties( &ppChgMask, &(newBi->biParaProperties),
-		&ppUpdMask, &(oldBi->biParaProperties), dcj.dcjColorMap ) )
+				    &ppUpdMask, &(oldBi->biParaProperties),
+				    dcj.dcjColorMap, dcj.dcjListStyleMap ) )
 	{ LDEB(1); rval= -1; goto ready;	}
+
+    if  ( oldBi->biParaListOverride > 0 )
+	{ dcj.dcjBulletsCopied++;	}
 
     /*  2  */
     if  ( docParaStringReplace( &stroffShift, newBi, 0, 0,
@@ -1018,7 +1095,23 @@ static int docSplitParaItemLow(	BufferDocument *	bd,
 	rval= -1; goto ready;
 	}
 
-    splittingField= docParticuleInField( oldBi, part );
+    fieldLevel= 0;
+    {
+    int				p;
+    const TextParticule *	t;
+
+    t= oldBi->biParaParticules;
+    for ( p= 0; p < part; t++, p++ )
+	{
+	if  ( t->tpKind == DOCkindFIELDSTART )
+	    { fieldLevel++;	}
+	if  ( t->tpKind == DOCkindFIELDEND )
+	    { fieldLevel--;	}
+	}
+
+    if  ( fieldLevel < 0 )
+	{ LDEB(fieldLevel); fieldLevel= 0;	}
+    }
 
     /*  3  */
     if  ( part < oldBi->biParaParticuleCount	&&
@@ -1055,10 +1148,11 @@ static int docSplitParaItemLow(	BufferDocument *	bd,
 		continue;
 
 	    case DOCkindFIELDEND:
+		/*  5  */
 		fieldParticules[fieldCount++]= *tp;
-		if  ( splittingField )
+		if  ( fieldLevel > 0 )
 		    {
-		    splittingField= 0;
+		    fieldLevel--;
 		    newStrlen += tp->tpStrlen; part++; tp++;
 		    continue;
 		    }
@@ -1075,10 +1169,11 @@ static int docSplitParaItemLow(	BufferDocument *	bd,
 	    case DOCkindTAB:
 	    case DOCkindLINEBREAK:
 	    case DOCkindPAGEBREAK:
+	    case DOCkindCOLUMNBREAK:
 		break;
 	    }
 
-	if  ( docCopyParticuleAndData( &newTp, &dcj, &fieldUpd,
+	if  ( docCopyParticuleAndData( &newTp, &dcj, eo,
 						newBi, partShift++,
 						newStrlen, tp->tpStrlen,
 						oldBi, tp ) )
@@ -1091,8 +1186,13 @@ static int docSplitParaItemLow(	BufferDocument *	bd,
 	{
 	int		i;
 	TextParticule *	tpField;
+	int		bulletDeleted= 0;
 
-	fieldCount= docCleanupFields( bd, oldBi, fieldParticules, fieldCount );
+	fieldCount= docCleanupFields( &bulletDeleted,
+				    bd, oldBi, fieldParticules, fieldCount );
+
+	if  ( bulletDeleted )
+	    { fieldUpd |= FIELDdoLISTTEXT;	}
 
 	if  ( fieldCount < 0 )
 	    { LDEB(fieldCount); rval= -1; goto ready;	}
@@ -1149,7 +1249,7 @@ static int docSplitParaItemLow(	BufferDocument *	bd,
     return rval;
     }
 
-int docSplitParaItem(		BufferDocument *	bd,
+int docSplitParaItem(		EditOperation *		eo,
 				BufferItem **		pNewBi,
 				BufferItem *		oldBi,
 				int			stroff )
@@ -1157,11 +1257,11 @@ int docSplitParaItem(		BufferDocument *	bd,
     int *	fieldMap;
     int		rval;
 
-    fieldMap= docAllocateFieldMap( bd );
+    fieldMap= docAllocateFieldMap( eo->eoBd );
     if  ( ! fieldMap )
 	{ XDEB(fieldMap); return -1;	}
 
-    rval= docSplitParaItemLow( bd, fieldMap, pNewBi, oldBi, stroff );
+    rval= docSplitParaItemLow( eo, fieldMap, pNewBi, oldBi, stroff );
 
     free( fieldMap );
 
@@ -1296,9 +1396,10 @@ TextParticule * docParaSpecialParticule(BufferDocument *	bd,
 /*									*/
 /************************************************************************/
 
-static void docCloseParaObjects(	int *			pNoteCount,
+static void docCleanParaObjects(	int *			pNoteCount,
+					int *			pBulletsDeleted,
 					BufferDocument *	bd,
-					BufferItem *		bi,
+					BufferItem *		paraBi,
 					void *			voidadd,
 					DOC_CLOSE_OBJECT	closeObject )
     {
@@ -1307,21 +1408,30 @@ static void docCloseParaObjects(	int *			pNoteCount,
 
     int			noteCount= 0;
 
-    tp= bi->biParaParticules;
-    for ( part= 0; part < bi->biParaParticuleCount; tp++, part++ )
+    tp= paraBi->biParaParticules;
+    for ( part= 0; part < paraBi->biParaParticuleCount; tp++, part++ )
 	{
 	if  ( tp->tpKind == DOCkindNOTE )
 	    { noteCount++;	}
 
 	if  ( tp->tpKind == DOCkindOBJECT )
-	    { (*closeObject)( bd, bi, tp, voidadd );	}
+	    { (*closeObject)( bd, paraBi, tp, voidadd );	}
+	}
+
+    if  ( paraBi->biParaListOverride > 0 )
+	{
+	if  ( docRemoveParagraphFromList( paraBi, bd ) )
+	    { LDEB(1);	}
+
+	(*pBulletsDeleted)++;
 	}
 
     *pNoteCount += noteCount;
     return;
     }
 
-void docCloseItemObjects(	int *			pNoteCount,
+void docCleanItemObjects(	int *			pNoteCount,
+				int *			pBulletsDeleted,
 				int *			pParagraphCount,
 				BufferDocument *	bd,
 				BufferItem *		bi,
@@ -1338,14 +1448,16 @@ void docCloseItemObjects(	int *			pNoteCount,
 	case DOClevCELL:
 	    for ( i= 0; i < bi->biChildCount; i++ )
 		{
-		docCloseItemObjects( pNoteCount, pParagraphCount,
+		docCleanItemObjects( pNoteCount, pBulletsDeleted,
+						    pParagraphCount,
 						    bd, bi->biChildren[i],
 						    voidadd, closeObject );
 		}
 	    break;
 
 	case DOClevPARA:
-	    docCloseParaObjects( pNoteCount, bd, bi, voidadd, closeObject );
+	    docCleanParaObjects( pNoteCount, pBulletsDeleted,
+						bd, bi, voidadd, closeObject );
 	    (*pParagraphCount)++;
 	    break;
 
@@ -1378,6 +1490,7 @@ void docEditDeleteItems(	EditOperation *		eo,
     int		f= first;
 
     int		firstParaDeleted= -1;
+    int		bulletsDeleted= 0;
     int		paragraphsDeleted= 0;
     int		notesDeleted= 0;
 
@@ -1396,7 +1509,7 @@ void docEditDeleteItems(	EditOperation *		eo,
 
     for ( i= 0; i < count; f++, i++ )
 	{
-	docCloseItemObjects( &notesDeleted, &paragraphsDeleted,
+	docCleanItemObjects( &notesDeleted, &bulletsDeleted, &paragraphsDeleted,
 					eo->eoBd, bi->biChildren[f],
 					eo->eoVoidadd, eo->eoCloseObject );
 	}
@@ -1414,6 +1527,7 @@ void docEditDeleteItems(	EditOperation *		eo,
 	}
 
     *pFirstParaDeleted= firstParaDeleted;
+    eo->eoBulletsChanged += bulletsDeleted;
     *pParagraphsDeleted= paragraphsDeleted;
     return;
     }
@@ -1431,11 +1545,13 @@ int docEditMakeParagraphEmpty(		BufferItem *		paraBi,
     int			textAttributeNumber= tp->tpTextAttributeNumber;
 
     int			notesDeleted= 0;
+    int			bulletsDeleted= 0;
 
-    docCloseParaObjects( &notesDeleted,
+    docCleanParaObjects( &notesDeleted, &bulletsDeleted,
 			eo->eoBd, paraBi, eo->eoVoidadd, eo->eoCloseObject );
 
     eo->eoNotesDeleted += notesDeleted;
+    eo->eoBulletsChanged += bulletsDeleted;
 
     paraBi->biParaStrlen= 0;
     docDeleteParticules( paraBi, 0, paraBi->biParaParticuleCount );
@@ -1445,6 +1561,162 @@ int docEditMakeParagraphEmpty(		BufferItem *		paraBi,
 							textAttributeNumber ) )
 	{ LDEB(1); return -1;	}
 
+    return 0;
+    }
+
+/************************************************************************/
+/*									*/
+/*  Shift references in various administrations.			*/
+/*									*/
+/************************************************************************/
+
+void docEditShiftReferences(		BufferDocument *	bd,
+					int			paraFrom,
+					int			isSplit,
+					int			stroffFrom,
+					int			sectShift,
+					int			paraShift,
+					int			stroffShift )
+    {
+    docShiftNoteReferences( bd, paraFrom, stroffFrom,
+					sectShift, paraShift, stroffShift );
+
+    if  ( paraShift != 0 )
+	{
+	int			i;
+	ListNumberTreeNode *	node;
+
+	int			paraFromBullet= paraFrom;
+
+	if  ( isSplit )
+	    { paraFromBullet++;	}
+
+	node= bd->bdListNumberTrees;
+	for ( i= 0; i < bd->bdListNumberTreeCount; node++, i++ )
+	    { docShiftBulletReferences( node, paraFromBullet, paraShift ); }
+	}
+
+    return;
+    }
+
+/************************************************************************/
+/*									*/
+/*  Update paragraph properties and do extra administration.		*/
+/*									*/
+/************************************************************************/
+
+int docEditUpdParaProperties(	EditOperation *			eo,
+				PropertyMask *			pPpDoneMask,
+				BufferItem *			paraBi,
+				const PropertyMask *		ppSetMask,
+				const ParagraphProperties *	ppNew,
+				const int *			colorMap,
+				const int *			listStyleMap )
+    {
+    BufferDocument *		bd= eo->eoBd;
+
+    int				wasInList= 0;
+    int				isInList= 0;
+
+    ListNumberTreeNode *	root= (ListNumberTreeNode *)0;
+    int				override= -1;
+    int				ilvl= 0;
+
+    PropertyMask		ppDoneMask;
+    PropertyMask		ppSetMaskThisPara;
+
+    int				bulletFieldNr= -1;
+    int				bulletPartBegin= -1;
+    int				bulletPartEnd= -1;
+    int				bulletStroffBegin= -1;
+    int				bulletStroffEnd= -1;
+
+    ppSetMaskThisPara= *ppSetMask;
+
+    PROPmaskCLEAR( &ppDoneMask );
+
+    /*  A  */
+    if  ( paraBi->biParaProperties.ppListOverride > 0 )
+	{
+	wasInList= 1;
+	override= paraBi->biParaProperties.ppListOverride;
+	ilvl= paraBi->biParaProperties.ppListLevel;
+	root= &(bd->bdListNumberTrees[override]);
+
+	if  ( docDelimitParaHeadField( &bulletFieldNr,
+			&bulletPartBegin, &bulletPartEnd,
+			&bulletStroffBegin, &bulletStroffEnd, paraBi, bd ) )
+	    { LDEB(1);	}
+
+	PROPmaskUNSET( &ppSetMaskThisPara, PPpropLEFT_INDENT );
+	PROPmaskUNSET( &ppSetMaskThisPara, PPpropFIRST_INDENT );
+	}
+
+    if  ( ! PROPmaskISEMPTY( &ppSetMaskThisPara ) )
+	{
+	if  ( docUpdParaProperties( &ppDoneMask, &(paraBi->biParaProperties),
+						&ppSetMaskThisPara, ppNew,
+						colorMap, listStyleMap ) )
+	    { LDEB(1); return -1;	}
+	}
+
+    if  ( paraBi->biParaProperties.ppListOverride > 0 )
+	{ isInList= 1;	}
+
+    if  ( wasInList && ! isInList )
+	{
+	int		paraNr= docNumberOfParagraph( paraBi );
+
+	int		partShift= 0;
+	int		stroffShift= 0;
+
+	int		addedStrlen= 0;
+	int		textAttributeNumberFrom= -1;
+
+	if  ( docListNumberTreeDeleteParagraph( root, paraNr ) )
+	    { LLDEB(override,paraNr);	}
+
+	if  ( docParaReplaceText( eo, paraBi, bulletStroffBegin,
+				    &partShift, &stroffShift,
+				    bulletStroffEnd, (const unsigned char *)0,
+				    addedStrlen, textAttributeNumberFrom ) )
+	    { LDEB(1); return -1;	}
+
+	eo->eoFieldUpdate |= FIELDdoLISTTEXT;
+	eo->eoBulletsChanged++;
+	}
+
+    if  ( ! wasInList && isInList )
+	{
+	if  ( docInsertListtextField( paraBi, bd ) )
+	    { LDEB(1); return -1;	}
+
+	eo->eoFieldUpdate |= FIELDdoLISTTEXT;
+	eo->eoBulletsChanged++;
+	}
+
+    if  ( wasInList							&&
+	  isInList							&&
+	  ( paraBi->biParaProperties.ppListOverride != override	||
+	    paraBi->biParaProperties.ppListLevel != ilvl	)	)
+	{
+	int			paraNr= docNumberOfParagraph( paraBi );
+
+	if  ( docListNumberTreeDeleteParagraph( root, paraNr ) )
+	    { LLDEB(override,paraNr);	}
+
+	override= paraBi->biParaProperties.ppListOverride;
+	ilvl= paraBi->biParaProperties.ppListLevel;
+	root= &(bd->bdListNumberTrees[override]);
+
+	if  ( docListNumberTreeInsertParagraph( root, ilvl, paraNr ) )
+	    { LLLDEB(override,ilvl,paraNr);	}
+
+	eo->eoFieldUpdate |= FIELDdoLISTTEXT;
+	eo->eoBulletsChanged++;
+	}
+
+    *pPpDoneMask= ppDoneMask;
     return 0;
     }
 

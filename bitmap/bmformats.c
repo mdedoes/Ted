@@ -115,6 +115,17 @@ static BitmapFileType	bmXbmFile=
     "X-Windows bitmap ( *.xbm )",
     };
 
+static BitmapFileType	bmWmfFile=
+    {
+    bmWriteWmfFile,
+    bmCanWriteWmfFile,
+    NULL, /* bmReadWmfFile, */
+    "wmf",
+    "*.wmf",
+    "wmfFile",
+    "Windows Meta File ( *.wmf )",
+    };
+
 static BitmapFileType	bmPngFile=
     {
     bmWritePngFile,
@@ -181,6 +192,17 @@ static BitmapFileType	bmPpmFile=
     "Portable Pixmap ( *.ppm )",
     };
 
+static BitmapFileType	bmWbmpFile=
+    {
+    bmWriteWbmpFile,
+    bmCanWriteWbmpFile,
+    bmReadWbmpFile,
+    "wbmp",
+    "*.wbmp",
+    "wbmpFile",
+    "WAP Wireless Bitmap Format ( *.wbmp )",
+    };
+
 # if 0
 static BitmapFileType	bmSgiFile=
     {
@@ -207,11 +229,13 @@ BitmapFileType * bmFileTypes[]=
     &bmJpgFile,
     &bmXbmFile,
     &bmPngFile,
+    &bmWmfFile,
     &bmPcxFile,
     &bmXpmFile,
     &bmPgmFile,
     &bmPbmFile,
     &bmPpmFile,
+    &bmWbmpFile,
     };
 
 BitmapFileFormat	bmFileFormats[]=
@@ -272,6 +296,10 @@ BitmapFileFormat	bmFileFormats[]=
 			    3,				&bmPbmFile },
 	{ "PPM  Pixmap (Raw)", "pgm6File",
 			    6,				&bmPbmFile },
+	{ "WBMP  Wireless Bitmap", "wbmp0File",
+			    0,				&bmWbmpFile },
+	{ "WMF  Windows Meta File", "wmfFile",
+			    0,				&bmWmfFile },
 	/*
 	{ "SGI Image File", "sgiFile",
 			    0,				&bmSgiFile },

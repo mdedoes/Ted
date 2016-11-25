@@ -328,12 +328,17 @@ static int docFindNextSeparator(	DocumentPosition *	dp,
 
 	    case DOCinFTNSEPC:
 	    case DOCinFTNCN:
-		LDEB(DOC_FindDocNoteItems[sep]); continue;
+		/*LDEB(DOC_FindDocNoteItems[sep]);*/ continue;
 
 	    case DOCinAFTNSEP:
+		if  ( docGetFirstNoteOfDocument( &dn, bd, DOCinENDNOTE ) < 0 )
+		    { continue;	}
+		page= ei->eiItem->biTopPosition.lpPage;
+		break;
+
 	    case DOCinAFTNSEPC:
 	    case DOCinAFTNCN:
-		LDEB(DOC_FindDocNoteItems[sep]); continue;
+		/*LDEB(DOC_FindDocNoteItems[sep]);*/ continue;
 
 	    default:
 		LDEB(DOC_FindDocNoteItems[sep]); return -1;
@@ -359,34 +364,39 @@ static int docFindNextSeparator(	DocumentPosition *	dp,
 /*									*/
 /************************************************************************/
 
-static int docFindNextNextTree(		DocumentFindJob *	dfj,
+static int docFindNextNextTree(		DocumentPosition *	dp,
+					int *			pPage,
+					int			samePhase,
 					BufferDocument *	bd )
     {
+    int				phaseTo;
+    int				phaseFrom;
+
     int				res;
     int				hfFrom;
     int				noteFrom;
     int				sectFrom;
     int				sepFrom;
-    int				phase;
 
     const BufferItem *		selSectBi;
     const SelectionScope *	ss;
 
-    selSectBi= dfj->dfjCurrentPosition.dpBi;
+    selSectBi= dp->dpBi;
     while( selSectBi && selSectBi->biLevel != DOClevSECT )
 	{ selSectBi= selSectBi->biParent;	}
     if  ( ! selSectBi )
 	{ XDEB(selSectBi); return -1;	}
     ss= &(selSectBi->biSectSelectionScope);
 
-    phase= 0;
+    phaseTo= 0;
     sectFrom= 0; hfFrom= 0; noteFrom= 0; sepFrom= 0;
 
     switch( ss->ssInExternalItem )
 	{
 	case DOCinBODY:
 
-	    phase= 1;
+	    phaseFrom= 0;
+	    phaseTo= 1;
 	    break;
 
 	case DOCinFIRST_HEADER:	case DOCinFIRST_FOOTER:
@@ -394,7 +404,8 @@ static int docFindNextNextTree(		DocumentFindJob *	dfj,
 	case DOCinLEFT_HEADER:	case DOCinLEFT_FOOTER:
 	case DOCinRIGHT_HEADER:	case DOCinRIGHT_FOOTER:
 
-	    phase= 1;
+	    phaseFrom= 1;
+	    phaseTo= 1;
 	    sectFrom= ss->ssSectNrExternalTo;
 	    hfFrom= docFindGetHeaderFooterIndex( selSectBi->biInExternalItem );
 	    if  ( hfFrom < 0 )
@@ -406,7 +417,8 @@ static int docFindNextNextTree(		DocumentFindJob *	dfj,
 	case DOCinFOOTNOTE:
 	case DOCinENDNOTE:
 
-	    phase= 2;
+	    phaseFrom= 2;
+	    phaseTo= 2;
 	    noteFrom= ss->ssNoteArrayIndex+ 1;
 
 	    break;
@@ -415,7 +427,8 @@ static int docFindNextNextTree(		DocumentFindJob *	dfj,
 	case DOCinFTNSEPC:	case DOCinAFTNSEPC:
 	case DOCinFTNCN:	case DOCinAFTNCN:
 
-	    phase= 3;
+	    phaseFrom= 3;
+	    phaseTo= 3;
 	    sepFrom= docFindGetDocNoteItemIndex( selSectBi->biInExternalItem );
 	    if  ( sepFrom < 0 )
 		{ LLDEB(selSectBi->biInExternalItem,sepFrom); return -1; }
@@ -429,45 +442,55 @@ static int docFindNextNextTree(		DocumentFindJob *	dfj,
 	    return -1;
 	}
 
-    if  ( phase <= 0 || phase > 3 )
-	{ LDEB(phase); return -1;	}
+    if  ( phaseTo <= 0 || phaseTo > 3 )
+	{ LDEB(phaseTo); return -1;	}
 
-    if  ( phase <= 1 )
+    if  ( samePhase && ( phaseTo != phaseFrom ) )
+	{ return 1;	}
+
+    if  ( phaseTo <= 1 )
 	{
-	res= docFindNextHeaderFooter( &(dfj->dfjCurrentPosition),
-			&(dfj->dfjExternalItemPage), bd, sectFrom, hfFrom );
+	res= docFindNextHeaderFooter( dp, pPage, bd, sectFrom, hfFrom );
 	if  ( res < 0 )
 	    { LDEB(res); return res;	}
 	if  ( res == 0 )
 	    { return res;	}
 
-	phase++;
+	phaseTo++;
 	}
 
-    if  ( phase <= 2 )
+    if  ( samePhase && ( phaseTo != phaseFrom ) )
+	{ return 1;	}
+
+    if  ( phaseTo <= 2 )
 	{
-	res= docFindNextNote( &(dfj->dfjCurrentPosition), bd, noteFrom );
+	res= docFindNextNote( dp, bd, noteFrom );
 	if  ( res < 0 )
 	    { LDEB(res); return res;	}
 	if  ( res == 0 )
 	    { return res;	}
 
-	phase++;
+	phaseTo++;
 	}
 
-    if  ( phase <= 3 )
+    if  ( samePhase && ( phaseTo != phaseFrom ) )
+	{ return 1;	}
+
+    if  ( phaseTo <= 3 )
 	{
-	res= docFindNextSeparator( &(dfj->dfjCurrentPosition),
-				&(dfj->dfjExternalItemPage), bd, sepFrom );
+	res= docFindNextSeparator( dp, pPage, bd, sepFrom );
 	if  ( res < 0 )
 	    { LDEB(res); return res;	}
 	if  ( res == 0 )
 	    { return res;	}
 
-	phase++;
+	phaseTo++;
 	}
 
-    if  ( docFirstPosition( &(dfj->dfjCurrentPosition), &(bd->bdItem) ) )
+    if  ( samePhase && ( phaseTo != phaseFrom ) )
+	{ return 1;	}
+
+    if  ( docFirstPosition( dp, &(bd->bdItem) ) )
 	{ LDEB(1); return -1;	}
 
     return 0;
@@ -598,10 +621,14 @@ static int docFindPrevSeparator(	DocumentPosition *	dp,
     return 1;
     }
 
-static int docFindPrevNextTree(		DocumentFindJob *	dfj,
+static int docFindPrevPrevTree(		DocumentPosition *	dp,
+					int *			pPage,
+					int			samePhase,
 					BufferDocument *	bd )
     {
-    int				phase;
+    int				phaseTo;
+    int				phaseFrom;
+
     int				res;
     int				hfFrom;
     int				noteFrom;
@@ -611,7 +638,7 @@ static int docFindPrevNextTree(		DocumentFindJob *	dfj,
     const BufferItem *		selSectBi;
     const SelectionScope *	ss;
 
-    selSectBi= dfj->dfjCurrentPosition.dpBi;
+    selSectBi= dp->dpBi;
     while( selSectBi && selSectBi->biLevel != DOClevSECT )
 	{ selSectBi= selSectBi->biParent;	}
     if  ( ! selSectBi )
@@ -627,7 +654,8 @@ static int docFindPrevNextTree(		DocumentFindJob *	dfj,
 	{
 	case DOCinBODY:
 
-	    phase= 3;
+	    phaseFrom= 0;
+	    phaseTo= 3;
 	    break;
 
 	case DOCinFIRST_HEADER:	case DOCinFIRST_FOOTER:
@@ -635,7 +663,8 @@ static int docFindPrevNextTree(		DocumentFindJob *	dfj,
 	case DOCinLEFT_HEADER:	case DOCinLEFT_FOOTER:
 	case DOCinRIGHT_HEADER:	case DOCinRIGHT_FOOTER:
 
-	    phase= 1;
+	    phaseFrom= 1;
+	    phaseTo= 1;
 	    sectFrom= ss->ssSectNrExternalTo;
 	    hfFrom= docFindGetHeaderFooterIndex( selSectBi->biInExternalItem );
 	    if  ( hfFrom < 0 )
@@ -648,7 +677,8 @@ static int docFindPrevNextTree(		DocumentFindJob *	dfj,
 	case DOCinFOOTNOTE:
 	case DOCinENDNOTE:
 
-	    phase= 2;
+	    phaseFrom= 2;
+	    phaseTo= 2;
 	    noteFrom= ss->ssNoteArrayIndex- 1;
 
 	    break;
@@ -657,7 +687,8 @@ static int docFindPrevNextTree(		DocumentFindJob *	dfj,
 	case DOCinFTNSEPC:	case DOCinAFTNSEPC:
 	case DOCinFTNCN:	case DOCinAFTNCN:
 
-	    phase= 3;
+	    phaseFrom= 3;
+	    phaseTo= 3;
 	    sepFrom= docFindGetDocNoteItemIndex( selSectBi->biInExternalItem );
 	    if  ( sepFrom < 0 )
 		{ LLDEB(selSectBi->biInExternalItem,sepFrom); return -1; }
@@ -671,45 +702,55 @@ static int docFindPrevNextTree(		DocumentFindJob *	dfj,
 	    return -1;
 	}
 
-    if  ( phase <= 0 || phase > 3 )
-	{ LDEB(phase); return -1;	}
+    if  ( phaseTo <= 0 || phaseTo > 3 )
+	{ LDEB(phaseTo); return -1;	}
 
-    if  ( phase >= 3 )
+    if  ( samePhase && ( phaseTo != phaseFrom ) )
+	{ return 1;	}
+
+    if  ( phaseTo >= 3 )
 	{
-	res= docFindPrevSeparator( &(dfj->dfjCurrentPosition),
-				&(dfj->dfjExternalItemPage), bd, sepFrom );
+	res= docFindPrevSeparator( dp, pPage, bd, sepFrom );
 	if  ( res < 0 )
 	    { LDEB(res); return res;	}
 	if  ( res == 0 )
 	    { return res;	}
 
-	phase--;
+	phaseTo--;
 	}
 
-    if  ( phase >= 2 )
+    if  ( samePhase && ( phaseTo != phaseFrom ) )
+	{ return 1;	}
+
+    if  ( phaseTo >= 2 )
 	{
-	res= docFindPrevNote( &(dfj->dfjCurrentPosition), bd, noteFrom );
+	res= docFindPrevNote( dp, bd, noteFrom );
 	if  ( res < 0 )
 	    { LDEB(res); return res;	}
 	if  ( res == 0 )
 	    { return res;	}
 
-	phase--;
+	phaseTo--;
 	}
 
-    if  ( phase >= 1 )
+    if  ( samePhase && ( phaseTo != phaseFrom ) )
+	{ return 1;	}
+
+    if  ( phaseTo >= 1 )
 	{
-	res= docFindPrevHeaderFooter( &(dfj->dfjCurrentPosition),
-			&(dfj->dfjExternalItemPage), bd, sectFrom, hfFrom );
+	res= docFindPrevHeaderFooter( dp, pPage, bd, sectFrom, hfFrom );
 	if  ( res < 0 )
 	    { LDEB(res); return res;	}
 	if  ( res == 0 )
 	    { return res;	}
 
-	phase--;
+	phaseTo--;
 	}
 
-    if  ( docLastPosition( &(dfj->dfjCurrentPosition), &(bd->bdItem) ) )
+    if  ( samePhase && ( phaseTo != phaseFrom ) )
+	{ return 1;	}
+
+    if  ( docLastPosition( dp, &(bd->bdItem) ) )
 	{ LDEB(1); return 1;	}
 
     return 0;
@@ -811,6 +852,7 @@ int docFindFindNextInDocument(	DocumentSelection *		ds,
     DocumentSelection		dsNew;
 
     const int			reverse= 0;
+    const int			samePhase= 0;
 
     docInitDocumentSelection( &dsNew );
     docFindInitFindJob( &dfj, reverse, dpFrom, bd );
@@ -856,7 +898,8 @@ int docFindFindNextInDocument(	DocumentSelection *		ds,
 	    dfj.dfjWrapCount++;
 	    }
 
-	ret= docFindNextNextTree( &dfj, bd );
+	ret= docFindNextNextTree( &(dfj.dfjCurrentPosition),
+				&(dfj.dfjExternalItemPage), samePhase, bd );
 	if  ( ret < 0 )
 	    { LDEB(ret); return -1;	}
 	if  ( ret > 0 )
@@ -877,6 +920,7 @@ int docFindFindPrevInDocument(	DocumentSelection *		ds,
     DocumentSelection		dsNew;
 
     const int			reverse= 1;
+    const int			samePhase= 0;
 
     docInitDocumentSelection( &dsNew );
     docFindInitFindJob( &dfj, reverse, dpFrom, bd );
@@ -922,7 +966,8 @@ int docFindFindPrevInDocument(	DocumentSelection *		ds,
 	    dfj.dfjWrapCount++;
 	    }
 
-	ret= docFindPrevNextTree( &dfj, bd );
+	ret= docFindPrevPrevTree( &(dfj.dfjCurrentPosition),
+				&(dfj.dfjExternalItemPage), samePhase, bd );
 	if  ( ret < 0 )
 	    { LDEB(ret); return -1;	}
 	if  ( ret > 0 )
@@ -932,3 +977,36 @@ int docFindFindPrevInDocument(	DocumentSelection *		ds,
     return 1;
     }
 
+/************************************************************************/
+/*									*/
+/*  Navigation betweem external items with the PageUp/PageDown keys.	*/
+/*									*/
+/************************************************************************/
+
+int docNextSimilarRoot(		DocumentPosition *	dp,
+				BufferDocument *	bd )
+    {
+    int		page= dp->dpBi->biTopPosition.lpPage;
+    const int	samePhase= 1;
+
+    int ret= docFindNextNextTree( dp, &page, samePhase, bd );
+
+    if  ( ret < 0 )
+	{ LDEB(ret); return -1;	}
+
+    return ret;
+    }
+
+int docPrevSimilarRoot(		DocumentPosition *	dp,
+				BufferDocument *	bd )
+    {
+    int		page= dp->dpBi->biTopPosition.lpPage;
+    const int	samePhase= 1;
+
+    int ret= docFindPrevPrevTree( dp, &page, samePhase, bd );
+
+    if  ( ret < 0 )
+	{ LDEB(ret); return -1;	}
+
+    return ret;
+    }

@@ -80,6 +80,7 @@ static void tedFormatToolRefreshCellPage(	CellTool *	ct )
 void tedFormatToolRefreshCellTool(
 				CellTool *			ct,
 				int *				pEnabled,
+				int *				pPref,
 				InspectorSubject *		is,
 				const DocumentSelection *	ds )
     {
@@ -138,9 +139,9 @@ static APP_TXACTIVATE_CALLBACK_H( tedCellToolRowspanChanged, w, voidct )
 
     maxValue= tr->trRow11- tr->trRow0+ 1;
 
-    if  ( ! appGetIntegerFromTextWidget( w, &rowspan,
+    if  ( ! appGetIntegerFromTextWidget( ct->ctRowspanText, &rowspan,
 			    minValue, adaptToMin, maxValue, adaptToMax ) )
-	{ appIntegerToTextWidget( w, rowspan );	}
+	{ appIntegerToTextWidget( ct->ctRowspanText, rowspan );	}
 
     return;
     }
@@ -159,9 +160,9 @@ static APP_TXACTIVATE_CALLBACK_H( tedCellToolColspanChanged, w, voidct )
 
     maxValue= tr->trCol11- tr->trCol0+ 1;
 
-    if  ( ! appGetIntegerFromTextWidget( w, &colspan,
+    if  ( ! appGetIntegerFromTextWidget( ct->ctColspanText, &colspan,
 			    minValue, adaptToMin, maxValue, adaptToMax ) )
-	{ appIntegerToTextWidget( w, colspan );	}
+	{ appIntegerToTextWidget( ct->ctColspanText, colspan );	}
 
     return;
     }
@@ -526,7 +527,7 @@ void tedFormatFillCellPage(	CellTool *			ct,
     return;
     }
 
-void tedFormatFillCellChoosers(		CellTool *			ct,
+void tedCellToolFillChoosers(		CellTool *			ct,
 					const CellPageResources *	cpr )
     {
     return;

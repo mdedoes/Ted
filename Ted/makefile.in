@@ -12,6 +12,7 @@ GUI_CFLAGS=$(@GUI@_CFLAGS)
 WFLAGS=	-Wall			\
 	-pedantic		\
 	-Wpointer-arith		\
+	-Wno-format-y2k		\
 	-Wstrict-prototypes	\
 	-Wmissing-declarations	\
 	-Wnested-externs	\
@@ -32,6 +33,7 @@ CFLAGS=			\
 	$(INCLUDES)
 
 LDFLAGS=@LDFLAGS@
+LD_FLAGS_STATIC=@LD_FLAGS_STATIC@
 
 X_LIBS=@X_LIBS@
 # -lXmu added below because on RH 7.3 OpenMotif uses editres. (15sep2002)
@@ -61,12 +63,14 @@ OBS	=	\
 		tedFindItem.o			\
 		tedObjects.o			\
 		tedDraw.o			\
+		tedDrawingObject.o		\
 		tedDrawMotif.o			\
 		tedDrawGtk.o			\
 		tedHeaderFooter.o		\
 		tedSelect.o			\
 		tedEdit.o			\
 		tedFormat.o			\
+		tedEditList.o			\
 		tedEditOperation.o		\
 		tedInput.o			\
 		tedBlinkMotif.o			\
@@ -86,6 +90,7 @@ OBS	=	\
 		tedFormatToolUtil.o		\
 		tedTableTool.o			\
 		tedRowTool.o			\
+		tedFontTool.o			\
 		tedParaLayoutTool.o		\
 		tedParaOrnamentsTool.o		\
 		tedTabsTool.o			\
@@ -94,6 +99,7 @@ OBS	=	\
 		tedColumnTool.o			\
 		tedCellTool.o			\
 		tedNotesTool.o			\
+		tedListTool.o			\
 		tedHeaderFooterTool.o		\
 		tedBorderTool.o			\
 		tedShadingTool.o		\
@@ -112,6 +118,7 @@ OBS	=	\
 		docObject.o			\
 		docField.o			\
 		docChftnField.o			\
+		docListtextField.o		\
 		docSymbolField.o		\
 		docPageField.o			\
 		docDocpropField.o		\
@@ -128,18 +135,21 @@ OBS	=	\
 		docDebug.o			\
 		docEditTable.o			\
 		docEdit.o			\
+		docFont.o			\
 		docSetFont.o			\
 		docEditOperation.o		\
 		docParaProperties.o		\
 		docTabStop.o			\
 		docBorderProperties.o		\
 		docItemShading.o		\
+		docListUtil.o			\
 		docListTable.o			\
 		docDocumentList.o		\
 		docListLevel.o			\
 		docListOverrideTable.o		\
 		docListOverride.o		\
 		docListOverrideLevel.o		\
+		docListNumberTree.o		\
 		docSectProperties.o		\
 		docStyleSheet.o			\
 		docDocumentProperties.o		\
@@ -162,10 +172,12 @@ OBS	=	\
 		docLayoutUtil.o			\
 		docFrameProperties.o		\
 		docShading.o			\
+		docDrawingObject.o		\
 		docRtfRead.o			\
 		docRtfTab.o			\
 		docRtfTagHash.o			\
 		docRtfDocumentProperties.o	\
+		docNotesProperties.o		\
 		docRtfFontTable.o		\
 		docRtfColorTable.o		\
 		docRtfStylesheet.o		\
@@ -183,12 +195,14 @@ OBS	=	\
 		docRtfRowProperties.o		\
 		docRtfCellProperties.o		\
 		docRtfBorderProperties.o	\
+		docRtfDrawingObject.o		\
 		docRtfWrite.o			\
 		docRtfWriteUtil.o		\
 		docRtfUtil.o			\
 		docHtmlWrite.o			\
 		docPlainRead.o			\
-		docPlainWrite.o
+		docPlainWrite.o			\
+		docScreenFontList.o
 
 ALIBS	=	../lib/appFrame.a		\
 		../lib/bitmap.a			\
@@ -234,7 +248,7 @@ GUI_SHARED_LIBS=	@XPM_SHARED_REF@ $(@GUI@_SHARED_LIBS)
 EFENCE	=	/home/mark/gnu/ElectricFence-2.1/libefence.a
 MECHECK	=	../lib/mecheck.a
 
-Ted:	$(OBS) $(ALIBS)
+Ted Ted.dynamic: $(OBS) $(ALIBS)
 	$(CC) $(LDFLAGS) -o $@ $(OBS) $(ALIBS) \
 			    $(IMG_SHARED_LIBS) $(GUI_SHARED_LIBS) -lm
 
@@ -242,6 +256,27 @@ Ted.static:	$(OBS) $(ALIBS)
 	$(CC) $(LDFLAGS) -o $@ $(OBS) $(ALIBS) \
 			    $(IMG_STATIC_LIBS) $(GUI_STATIC_LIBS) -lm
 	ldd $@ || true
+
+Ted.fullystatic: $(OBS) $(ALIBS)
+	$(CC) $(LDFLAGS) $(LD_FLAGS_STATIC) -o $@ $(OBS) $(ALIBS) \
+			    $(IMG_STATIC_LIBS) $(GUI_STATIC_LIBS) -ldl -lm
+	ldd $@ || true
+
+refresh:
+	rm -f	Ted \
+		../lib/appFrame.a \
+		../lib/reg.a \
+		../lib/ind.a \
+		../lib/bitmap.a \
+		../lib/appUtil.a \
+		../lib/mecheck.a
+	( cd ../mecheck && make )
+	( cd ../appUtil && make )
+	( cd ../bitmap && make )
+	( cd ../ind && make )
+	( cd ../libreg && make )
+	( cd ../appFrame && make )
+	make Ted
 
 ###########################################################################
 #
@@ -289,15 +324,18 @@ docBuf.o: \
     docBuf.c \
     tedConfig.h \
     ../appUtil/utilFontEncoding.h \
+    ../appUtil/utilMatchFont.h \
+    ../appUtil/docFont.h \
+    ../appUtil/utilPropMask.h \
+    ../appUtil/utilTextAttribute.h \
+    ../appUtil/psFont.h \
+    ../appUtil/sioGeneral.h \
+    ../appFrame/docExpandedTextAttribute.h \
+    ../bitmap/bmcolor.h \
     ../include/appDebugon.h \
     ../include/appDebug.h \
     docBuf.h \
     ../bitmap/bitmap.h \
-    ../appUtil/sioGeneral.h \
-    ../bitmap/bmcolor.h \
-    ../appUtil/docFont.h \
-    ../appUtil/utilPropMask.h \
-    ../appUtil/utilTextAttribute.h \
     docShape.h \
     ../appUtil/geo2DInteger.h \
     ../appUtil/utilMemoryBuffer.h \
@@ -312,6 +350,7 @@ docBuf.o: \
     docRowProperties.h \
     docSectProperties.h \
     ../appUtil/utilDocumentGeometry.h \
+    docNotesProperties.h \
     docStyleSheet.h \
     docDocumentProperties.h \
     ../appUtil/appUnit.h \
@@ -324,15 +363,18 @@ docBuf.o: \
     docShapeProperties.h \
     docField.h \
     docObject.h \
+    docDrawingObject.h \
+    ../appFrame/appFrameConfig.h \
+    ../appFrame/appGuiBase.h \
     docSelect.h \
-    docExternalItem.h
+    docExternalItem.h \
+    docListNumberTree.h
 
 docCellProperties.o: \
     docCellProperties.c \
     tedConfig.h \
     ../include/appDebugon.h \
     ../include/appDebug.h \
-    ../appUtil/appUnit.h \
     docBuf.h \
     ../bitmap/bitmap.h \
     ../appUtil/sioGeneral.h \
@@ -340,6 +382,8 @@ docCellProperties.o: \
     ../appUtil/docFont.h \
     ../appUtil/utilPropMask.h \
     ../appUtil/utilTextAttribute.h \
+    ../appUtil/utilFontEncoding.h \
+    ../appUtil/psFont.h \
     docShape.h \
     ../appUtil/geo2DInteger.h \
     ../appUtil/utilMemoryBuffer.h \
@@ -354,8 +398,10 @@ docCellProperties.o: \
     docRowProperties.h \
     docSectProperties.h \
     ../appUtil/utilDocumentGeometry.h \
+    docNotesProperties.h \
     docStyleSheet.h \
     docDocumentProperties.h \
+    ../appUtil/appUnit.h \
     docListTable.h \
     docDocumentList.h \
     docListLevel.h \
@@ -365,15 +411,20 @@ docCellProperties.o: \
     docShapeProperties.h \
     docField.h \
     docObject.h \
+    docDrawingObject.h \
+    ../appFrame/appFrameConfig.h \
+    ../appFrame/appGuiBase.h \
     docSelect.h \
-    docExternalItem.h
+    docExternalItem.h \
+    docListNumberTree.h
 
 docChftnField.o: \
     docChftnField.c \
     tedConfig.h \
     ../include/appDebugon.h \
     ../include/appDebug.h \
-    ../appUtil/appUnit.h \
+    ../appUtil/utilBase26.h \
+    ../appUtil/utilRoman.h \
     docBuf.h \
     ../bitmap/bitmap.h \
     ../appUtil/sioGeneral.h \
@@ -381,6 +432,8 @@ docChftnField.o: \
     ../appUtil/docFont.h \
     ../appUtil/utilPropMask.h \
     ../appUtil/utilTextAttribute.h \
+    ../appUtil/utilFontEncoding.h \
+    ../appUtil/psFont.h \
     docShape.h \
     ../appUtil/geo2DInteger.h \
     ../appUtil/utilMemoryBuffer.h \
@@ -395,8 +448,10 @@ docChftnField.o: \
     docRowProperties.h \
     docSectProperties.h \
     ../appUtil/utilDocumentGeometry.h \
+    docNotesProperties.h \
     docStyleSheet.h \
     docDocumentProperties.h \
+    ../appUtil/appUnit.h \
     docListTable.h \
     docDocumentList.h \
     docListLevel.h \
@@ -406,10 +461,15 @@ docChftnField.o: \
     docShapeProperties.h \
     docField.h \
     docObject.h \
+    docDrawingObject.h \
+    ../appFrame/appFrameConfig.h \
+    ../appFrame/appGuiBase.h \
     docSelect.h \
     docExternalItem.h \
+    docListNumberTree.h \
     docEvalField.h \
-    docEdit.h
+    docEdit.h \
+    docScreenFontList.h
 
 docDebug.o: \
     docDebug.c \
@@ -421,6 +481,8 @@ docDebug.o: \
     ../appUtil/docFont.h \
     ../appUtil/utilPropMask.h \
     ../appUtil/utilTextAttribute.h \
+    ../appUtil/utilFontEncoding.h \
+    ../appUtil/psFont.h \
     docShape.h \
     ../appUtil/geo2DInteger.h \
     ../appUtil/utilMemoryBuffer.h \
@@ -435,6 +497,7 @@ docDebug.o: \
     docRowProperties.h \
     docSectProperties.h \
     ../appUtil/utilDocumentGeometry.h \
+    docNotesProperties.h \
     docStyleSheet.h \
     docDocumentProperties.h \
     ../appUtil/appUnit.h \
@@ -447,8 +510,12 @@ docDebug.o: \
     docShapeProperties.h \
     docField.h \
     docObject.h \
+    docDrawingObject.h \
+    ../appFrame/appFrameConfig.h \
+    ../appFrame/appGuiBase.h \
     docSelect.h \
     docExternalItem.h \
+    docListNumberTree.h \
     ../include/appDebugon.h \
     ../include/appDebug.h
 
@@ -465,6 +532,8 @@ docDocpropField.o: \
     ../appUtil/docFont.h \
     ../appUtil/utilPropMask.h \
     ../appUtil/utilTextAttribute.h \
+    ../appUtil/utilFontEncoding.h \
+    ../appUtil/psFont.h \
     docShape.h \
     ../appUtil/geo2DInteger.h \
     ../appUtil/utilMemoryBuffer.h \
@@ -479,6 +548,7 @@ docDocpropField.o: \
     docRowProperties.h \
     docSectProperties.h \
     ../appUtil/utilDocumentGeometry.h \
+    docNotesProperties.h \
     docStyleSheet.h \
     docDocumentProperties.h \
     docListTable.h \
@@ -490,8 +560,12 @@ docDocpropField.o: \
     docShapeProperties.h \
     docField.h \
     docObject.h \
+    docDrawingObject.h \
+    ../appFrame/appFrameConfig.h \
+    ../appFrame/appGuiBase.h \
     docSelect.h \
     docExternalItem.h \
+    docListNumberTree.h \
     docEvalField.h
 
 docDocumentList.o: \
@@ -506,6 +580,7 @@ docDocumentList.o: \
     docTabStop.h \
     docParaProperties.h \
     ../appUtil/docFont.h \
+    ../appUtil/utilFontEncoding.h \
     docPropVal.h \
     docBorderProperties.h \
     ../bitmap/bmcolor.h \
@@ -524,7 +599,9 @@ docDocumentProperties.o: \
     ../appUtil/appUnit.h \
     ../appUtil/docFont.h \
     ../appUtil/utilTextAttribute.h \
+    ../appUtil/utilFontEncoding.h \
     ../bitmap/bmcolor.h \
+    docNotesProperties.h \
     docListTable.h \
     docDocumentList.h \
     docListLevel.h \
@@ -550,6 +627,8 @@ docDraw.o: \
     ../appUtil/docFont.h \
     ../appUtil/utilPropMask.h \
     ../appUtil/utilTextAttribute.h \
+    ../appUtil/utilFontEncoding.h \
+    ../appUtil/psFont.h \
     docShape.h \
     ../appUtil/geo2DInteger.h \
     ../appUtil/utilMemoryBuffer.h \
@@ -564,6 +643,7 @@ docDraw.o: \
     docRowProperties.h \
     docSectProperties.h \
     ../appUtil/utilDocumentGeometry.h \
+    docNotesProperties.h \
     docStyleSheet.h \
     docDocumentProperties.h \
     ../appUtil/appUnit.h \
@@ -576,17 +656,19 @@ docDraw.o: \
     docShapeProperties.h \
     docField.h \
     docObject.h \
+    docDrawingObject.h \
+    ../appFrame/appFrameConfig.h \
+    ../appFrame/appGuiBase.h \
     docSelect.h \
     docExternalItem.h \
+    docListNumberTree.h \
     docLayout.h \
-    ../appUtil/psFont.h \
-    ../appUtil/utilFontEncoding.h \
+    docScreenFontList.h \
     ../appUtil/utilPs.h \
     ../appUtil/utilPostscriptFace.h \
     ../appUtil/utilAffineTransform.h \
     ../appUtil/utilNup.h \
     ../appFrame/appDraw.h \
-    ../appFrame/appGuiBase.h \
     ../include/appDebugon.h \
     ../include/appDebug.h
 
@@ -601,6 +683,8 @@ docDrawExternalItem.o: \
     ../appUtil/docFont.h \
     ../appUtil/utilPropMask.h \
     ../appUtil/utilTextAttribute.h \
+    ../appUtil/utilFontEncoding.h \
+    ../appUtil/psFont.h \
     docShape.h \
     ../appUtil/geo2DInteger.h \
     ../appUtil/utilMemoryBuffer.h \
@@ -615,6 +699,7 @@ docDrawExternalItem.o: \
     docRowProperties.h \
     docSectProperties.h \
     ../appUtil/utilDocumentGeometry.h \
+    docNotesProperties.h \
     docStyleSheet.h \
     docDocumentProperties.h \
     ../appUtil/appUnit.h \
@@ -627,17 +712,19 @@ docDrawExternalItem.o: \
     docShapeProperties.h \
     docField.h \
     docObject.h \
+    docDrawingObject.h \
+    ../appFrame/appFrameConfig.h \
+    ../appFrame/appGuiBase.h \
     docSelect.h \
     docExternalItem.h \
+    docListNumberTree.h \
     docLayout.h \
-    ../appUtil/psFont.h \
-    ../appUtil/utilFontEncoding.h \
+    docScreenFontList.h \
     ../appUtil/utilPs.h \
     ../appUtil/utilPostscriptFace.h \
     ../appUtil/utilAffineTransform.h \
     ../appUtil/utilNup.h \
     ../appFrame/appDraw.h \
-    ../appFrame/appGuiBase.h \
     ../include/appDebugon.h \
     ../include/appDebug.h
 
@@ -652,6 +739,8 @@ docDrawUtil.o: \
     ../appUtil/docFont.h \
     ../appUtil/utilPropMask.h \
     ../appUtil/utilTextAttribute.h \
+    ../appUtil/utilFontEncoding.h \
+    ../appUtil/psFont.h \
     docShape.h \
     ../appUtil/geo2DInteger.h \
     ../appUtil/utilMemoryBuffer.h \
@@ -666,6 +755,7 @@ docDrawUtil.o: \
     docRowProperties.h \
     docSectProperties.h \
     ../appUtil/utilDocumentGeometry.h \
+    docNotesProperties.h \
     docStyleSheet.h \
     docDocumentProperties.h \
     ../appUtil/appUnit.h \
@@ -678,19 +768,31 @@ docDrawUtil.o: \
     docShapeProperties.h \
     docField.h \
     docObject.h \
+    docDrawingObject.h \
+    ../appFrame/appFrameConfig.h \
+    ../appFrame/appGuiBase.h \
     docSelect.h \
     docExternalItem.h \
+    docListNumberTree.h \
     docLayout.h \
-    ../appUtil/psFont.h \
-    ../appUtil/utilFontEncoding.h \
+    docScreenFontList.h \
     ../appUtil/utilPs.h \
     ../appUtil/utilPostscriptFace.h \
     ../appUtil/utilAffineTransform.h \
     ../appUtil/utilNup.h \
     ../appFrame/appDraw.h \
-    ../appFrame/appGuiBase.h \
     ../include/appDebugon.h \
     ../include/appDebug.h
+
+docDrawingObject.o: \
+    docDrawingObject.c \
+    tedConfig.h \
+    ../include/appDebugon.h \
+    ../include/appDebug.h \
+    docDrawingObject.h \
+    ../appFrame/appFrameConfig.h \
+    ../bitmap/bmcolor.h \
+    ../appFrame/appGuiBase.h
 
 docEdit.o: \
     docEdit.c \
@@ -705,6 +807,8 @@ docEdit.o: \
     ../appUtil/docFont.h \
     ../appUtil/utilPropMask.h \
     ../appUtil/utilTextAttribute.h \
+    ../appUtil/utilFontEncoding.h \
+    ../appUtil/psFont.h \
     docShape.h \
     ../appUtil/geo2DInteger.h \
     ../appUtil/utilMemoryBuffer.h \
@@ -719,6 +823,7 @@ docEdit.o: \
     docRowProperties.h \
     docSectProperties.h \
     ../appUtil/utilDocumentGeometry.h \
+    docNotesProperties.h \
     docStyleSheet.h \
     docDocumentProperties.h \
     docListTable.h \
@@ -730,9 +835,14 @@ docEdit.o: \
     docShapeProperties.h \
     docField.h \
     docObject.h \
+    docDrawingObject.h \
+    ../appFrame/appFrameConfig.h \
+    ../appFrame/appGuiBase.h \
     docSelect.h \
     docExternalItem.h \
-    docEdit.h
+    docListNumberTree.h \
+    docEdit.h \
+    docScreenFontList.h
 
 docEditOperation.o: \
     docEditOperation.c \
@@ -746,6 +856,8 @@ docEditOperation.o: \
     ../appUtil/docFont.h \
     ../appUtil/utilPropMask.h \
     ../appUtil/utilTextAttribute.h \
+    ../appUtil/utilFontEncoding.h \
+    ../appUtil/psFont.h \
     docShape.h \
     ../appUtil/geo2DInteger.h \
     ../appUtil/utilMemoryBuffer.h \
@@ -760,6 +872,7 @@ docEditOperation.o: \
     docRowProperties.h \
     docSectProperties.h \
     ../appUtil/utilDocumentGeometry.h \
+    docNotesProperties.h \
     docStyleSheet.h \
     docDocumentProperties.h \
     ../appUtil/appUnit.h \
@@ -772,14 +885,20 @@ docEditOperation.o: \
     docShapeProperties.h \
     docField.h \
     docObject.h \
+    docDrawingObject.h \
+    ../appFrame/appFrameConfig.h \
+    ../appFrame/appGuiBase.h \
     docSelect.h \
     docExternalItem.h \
-    docEdit.h
+    docListNumberTree.h \
+    docEdit.h \
+    docScreenFontList.h
 
 docEditTable.o: \
     docEditTable.c \
     tedConfig.h \
     docEdit.h \
+    docScreenFontList.h \
     docBuf.h \
     ../bitmap/bitmap.h \
     ../appUtil/sioGeneral.h \
@@ -787,6 +906,8 @@ docEditTable.o: \
     ../appUtil/docFont.h \
     ../appUtil/utilPropMask.h \
     ../appUtil/utilTextAttribute.h \
+    ../appUtil/utilFontEncoding.h \
+    ../appUtil/psFont.h \
     docShape.h \
     ../appUtil/geo2DInteger.h \
     ../appUtil/utilMemoryBuffer.h \
@@ -801,6 +922,7 @@ docEditTable.o: \
     docRowProperties.h \
     docSectProperties.h \
     ../appUtil/utilDocumentGeometry.h \
+    docNotesProperties.h \
     docStyleSheet.h \
     docDocumentProperties.h \
     ../appUtil/appUnit.h \
@@ -813,17 +935,18 @@ docEditTable.o: \
     docShapeProperties.h \
     docField.h \
     docObject.h \
+    docDrawingObject.h \
+    ../appFrame/appFrameConfig.h \
+    ../appFrame/appGuiBase.h \
     docSelect.h \
     docExternalItem.h \
+    docListNumberTree.h \
     docLayout.h \
-    ../appUtil/psFont.h \
-    ../appUtil/utilFontEncoding.h \
     ../appUtil/utilPs.h \
     ../appUtil/utilPostscriptFace.h \
     ../appUtil/utilAffineTransform.h \
     ../appUtil/utilNup.h \
     ../appFrame/appDraw.h \
-    ../appFrame/appGuiBase.h \
     ../include/appDebugon.h \
     ../include/appDebug.h
 
@@ -839,6 +962,8 @@ docExternalItem.o: \
     ../appUtil/docFont.h \
     ../appUtil/utilPropMask.h \
     ../appUtil/utilTextAttribute.h \
+    ../appUtil/utilFontEncoding.h \
+    ../appUtil/psFont.h \
     docShape.h \
     ../appUtil/geo2DInteger.h \
     ../appUtil/utilMemoryBuffer.h \
@@ -853,6 +978,7 @@ docExternalItem.o: \
     docRowProperties.h \
     docSectProperties.h \
     ../appUtil/utilDocumentGeometry.h \
+    docNotesProperties.h \
     docStyleSheet.h \
     docDocumentProperties.h \
     ../appUtil/appUnit.h \
@@ -865,8 +991,12 @@ docExternalItem.o: \
     docShapeProperties.h \
     docField.h \
     docObject.h \
+    docDrawingObject.h \
+    ../appFrame/appFrameConfig.h \
+    ../appFrame/appGuiBase.h \
     docSelect.h \
-    docExternalItem.h
+    docExternalItem.h \
+    docListNumberTree.h
 
 docField.o: \
     docField.c \
@@ -881,6 +1011,8 @@ docField.o: \
     ../appUtil/docFont.h \
     ../appUtil/utilPropMask.h \
     ../appUtil/utilTextAttribute.h \
+    ../appUtil/utilFontEncoding.h \
+    ../appUtil/psFont.h \
     docShape.h \
     ../appUtil/geo2DInteger.h \
     ../appUtil/utilMemoryBuffer.h \
@@ -895,6 +1027,7 @@ docField.o: \
     docRowProperties.h \
     docSectProperties.h \
     ../appUtil/utilDocumentGeometry.h \
+    docNotesProperties.h \
     docStyleSheet.h \
     docDocumentProperties.h \
     docListTable.h \
@@ -906,8 +1039,12 @@ docField.o: \
     docShapeProperties.h \
     docField.h \
     docObject.h \
+    docDrawingObject.h \
+    ../appFrame/appFrameConfig.h \
+    ../appFrame/appGuiBase.h \
     docSelect.h \
     docExternalItem.h \
+    docListNumberTree.h \
     docEvalField.h
 
 docFieldAdm.o: \
@@ -923,6 +1060,8 @@ docFieldAdm.o: \
     ../appUtil/docFont.h \
     ../appUtil/utilPropMask.h \
     ../appUtil/utilTextAttribute.h \
+    ../appUtil/utilFontEncoding.h \
+    ../appUtil/psFont.h \
     docShape.h \
     ../appUtil/geo2DInteger.h \
     ../appUtil/utilMemoryBuffer.h \
@@ -937,6 +1076,7 @@ docFieldAdm.o: \
     docRowProperties.h \
     docSectProperties.h \
     ../appUtil/utilDocumentGeometry.h \
+    docNotesProperties.h \
     docStyleSheet.h \
     docDocumentProperties.h \
     docListTable.h \
@@ -948,8 +1088,12 @@ docFieldAdm.o: \
     docShapeProperties.h \
     docField.h \
     docObject.h \
+    docDrawingObject.h \
+    ../appFrame/appFrameConfig.h \
+    ../appFrame/appGuiBase.h \
     docSelect.h \
-    docExternalItem.h
+    docExternalItem.h \
+    docListNumberTree.h
 
 docFieldEdit.o: \
     docFieldEdit.c \
@@ -964,6 +1108,8 @@ docFieldEdit.o: \
     ../appUtil/docFont.h \
     ../appUtil/utilPropMask.h \
     ../appUtil/utilTextAttribute.h \
+    ../appUtil/utilFontEncoding.h \
+    ../appUtil/psFont.h \
     docShape.h \
     ../appUtil/geo2DInteger.h \
     ../appUtil/utilMemoryBuffer.h \
@@ -978,6 +1124,7 @@ docFieldEdit.o: \
     docRowProperties.h \
     docSectProperties.h \
     ../appUtil/utilDocumentGeometry.h \
+    docNotesProperties.h \
     docStyleSheet.h \
     docDocumentProperties.h \
     docListTable.h \
@@ -989,9 +1136,14 @@ docFieldEdit.o: \
     docShapeProperties.h \
     docField.h \
     docObject.h \
+    docDrawingObject.h \
+    ../appFrame/appFrameConfig.h \
+    ../appFrame/appGuiBase.h \
     docSelect.h \
     docExternalItem.h \
-    docEdit.h
+    docListNumberTree.h \
+    docEdit.h \
+    docScreenFontList.h
 
 docFieldGetSet.o: \
     docFieldGetSet.c \
@@ -1006,6 +1158,8 @@ docFieldGetSet.o: \
     ../appUtil/docFont.h \
     ../appUtil/utilPropMask.h \
     ../appUtil/utilTextAttribute.h \
+    ../appUtil/utilFontEncoding.h \
+    ../appUtil/psFont.h \
     docShape.h \
     ../appUtil/geo2DInteger.h \
     ../appUtil/utilMemoryBuffer.h \
@@ -1020,6 +1174,7 @@ docFieldGetSet.o: \
     docRowProperties.h \
     docSectProperties.h \
     ../appUtil/utilDocumentGeometry.h \
+    docNotesProperties.h \
     docStyleSheet.h \
     docDocumentProperties.h \
     docListTable.h \
@@ -1031,8 +1186,12 @@ docFieldGetSet.o: \
     docShapeProperties.h \
     docField.h \
     docObject.h \
+    docDrawingObject.h \
+    ../appFrame/appFrameConfig.h \
+    ../appFrame/appGuiBase.h \
     docSelect.h \
-    docExternalItem.h
+    docExternalItem.h \
+    docListNumberTree.h
 
 docFind.o: \
     docFind.c \
@@ -1046,6 +1205,8 @@ docFind.o: \
     ../appUtil/docFont.h \
     ../appUtil/utilPropMask.h \
     ../appUtil/utilTextAttribute.h \
+    ../appUtil/utilFontEncoding.h \
+    ../appUtil/psFont.h \
     docShape.h \
     ../appUtil/geo2DInteger.h \
     ../appUtil/utilMemoryBuffer.h \
@@ -1060,6 +1221,7 @@ docFind.o: \
     docRowProperties.h \
     docSectProperties.h \
     ../appUtil/utilDocumentGeometry.h \
+    docNotesProperties.h \
     docStyleSheet.h \
     docDocumentProperties.h \
     ../appUtil/appUnit.h \
@@ -1072,8 +1234,12 @@ docFind.o: \
     docShapeProperties.h \
     docField.h \
     docObject.h \
+    docDrawingObject.h \
+    ../appFrame/appFrameConfig.h \
+    ../appFrame/appGuiBase.h \
     docSelect.h \
     docExternalItem.h \
+    docListNumberTree.h \
     docFind.h \
     ../include/reg.h
 
@@ -1089,6 +1255,8 @@ docFindBookmark.o: \
     ../appUtil/docFont.h \
     ../appUtil/utilPropMask.h \
     ../appUtil/utilTextAttribute.h \
+    ../appUtil/utilFontEncoding.h \
+    ../appUtil/psFont.h \
     docShape.h \
     ../appUtil/geo2DInteger.h \
     ../appUtil/utilMemoryBuffer.h \
@@ -1103,6 +1271,7 @@ docFindBookmark.o: \
     docRowProperties.h \
     docSectProperties.h \
     ../appUtil/utilDocumentGeometry.h \
+    docNotesProperties.h \
     docStyleSheet.h \
     docDocumentProperties.h \
     ../appUtil/appUnit.h \
@@ -1115,8 +1284,12 @@ docFindBookmark.o: \
     docShapeProperties.h \
     docField.h \
     docObject.h \
+    docDrawingObject.h \
+    ../appFrame/appFrameConfig.h \
+    ../appFrame/appGuiBase.h \
     docSelect.h \
     docExternalItem.h \
+    docListNumberTree.h \
     docFind.h \
     ../include/reg.h
 
@@ -1132,6 +1305,8 @@ docFindInParagraph.o: \
     ../appUtil/docFont.h \
     ../appUtil/utilPropMask.h \
     ../appUtil/utilTextAttribute.h \
+    ../appUtil/utilFontEncoding.h \
+    ../appUtil/psFont.h \
     docShape.h \
     ../appUtil/geo2DInteger.h \
     ../appUtil/utilMemoryBuffer.h \
@@ -1146,6 +1321,7 @@ docFindInParagraph.o: \
     docRowProperties.h \
     docSectProperties.h \
     ../appUtil/utilDocumentGeometry.h \
+    docNotesProperties.h \
     docStyleSheet.h \
     docDocumentProperties.h \
     ../appUtil/appUnit.h \
@@ -1158,11 +1334,81 @@ docFindInParagraph.o: \
     docShapeProperties.h \
     docField.h \
     docObject.h \
+    docDrawingObject.h \
+    ../appFrame/appFrameConfig.h \
+    ../appFrame/appGuiBase.h \
     docSelect.h \
     docExternalItem.h \
+    docListNumberTree.h \
     docFind.h \
     ../include/reg.h \
     ../include/charnames.h
+
+docFont.o: \
+    docFont.c \
+    tedConfig.h \
+    tedApp.h \
+    ../appFrame/appFrame.h \
+    ../appFrame/appGuiBase.h \
+    ../appFrame/appGuiResource.h \
+    ../appUtil/geo2DInteger.h \
+    ../appUtil/utilPs.h \
+    ../appUtil/sioGeneral.h \
+    ../appUtil/utilDocumentGeometry.h \
+    ../appUtil/utilPropMask.h \
+    ../appUtil/psFont.h \
+    ../appUtil/utilFontEncoding.h \
+    ../appUtil/utilPostscriptFace.h \
+    ../appUtil/docFont.h \
+    ../appUtil/utilTextAttribute.h \
+    ../appUtil/utilAffineTransform.h \
+    ../appUtil/utilNup.h \
+    ../appUtil/utilPrinter.h \
+    ../appUtil/utilMailContent.h \
+    ../appFrame/appIcons.h \
+    ../appFrame/appTool.h \
+    ../appFrame/appDraw.h \
+    ../bitmap/bmcolor.h \
+    ../appFrame/appInspector.h \
+    ../appFrame/appImage.h \
+    ../bitmap/bitmap.h \
+    ../appUtil/utilMemoryBuffer.h \
+    ../appFrame/docExpandedTextAttribute.h \
+    docBuf.h \
+    docShape.h \
+    ../appUtil/utilTextAttributeAdmin.h \
+    docParaProperties.h \
+    docPropVal.h \
+    docTabStop.h \
+    docBorderProperties.h \
+    docItemShading.h \
+    docParaNumber.h \
+    docFrameProperties.h \
+    docRowProperties.h \
+    docSectProperties.h \
+    docNotesProperties.h \
+    docStyleSheet.h \
+    docDocumentProperties.h \
+    ../appUtil/appUnit.h \
+    docListTable.h \
+    docDocumentList.h \
+    docListLevel.h \
+    docListOverrideTable.h \
+    docListOverride.h \
+    docListOverrideLevel.h \
+    docShapeProperties.h \
+    docField.h \
+    docObject.h \
+    docDrawingObject.h \
+    ../appFrame/appFrameConfig.h \
+    docSelect.h \
+    docExternalItem.h \
+    docListNumberTree.h \
+    docScreenFontList.h \
+    tedEdit.h \
+    docEdit.h \
+    ../include/appDebugon.h \
+    ../include/appDebug.h
 
 docFrameProperties.o: \
     docFrameProperties.c \
@@ -1183,6 +1429,8 @@ docHeaderFooter.o: \
     ../appUtil/docFont.h \
     ../appUtil/utilPropMask.h \
     ../appUtil/utilTextAttribute.h \
+    ../appUtil/utilFontEncoding.h \
+    ../appUtil/psFont.h \
     docShape.h \
     ../appUtil/geo2DInteger.h \
     ../appUtil/utilMemoryBuffer.h \
@@ -1197,6 +1445,7 @@ docHeaderFooter.o: \
     docRowProperties.h \
     docSectProperties.h \
     ../appUtil/utilDocumentGeometry.h \
+    docNotesProperties.h \
     docStyleSheet.h \
     docDocumentProperties.h \
     ../appUtil/appUnit.h \
@@ -1209,8 +1458,12 @@ docHeaderFooter.o: \
     docShapeProperties.h \
     docField.h \
     docObject.h \
+    docDrawingObject.h \
+    ../appFrame/appFrameConfig.h \
+    ../appFrame/appGuiBase.h \
     docSelect.h \
-    docExternalItem.h
+    docExternalItem.h \
+    docListNumberTree.h
 
 docHtmlWrite.o: \
     docHtmlWrite.c \
@@ -1224,12 +1477,13 @@ docHtmlWrite.o: \
     ../appUtil/docFont.h \
     ../appUtil/utilPropMask.h \
     ../appUtil/utilTextAttribute.h \
+    ../appUtil/utilFontEncoding.h \
     ../appUtil/utilPostscriptFace.h \
     ../appUtil/psFont.h \
-    ../appUtil/utilFontEncoding.h \
     ../appFrame/appDraw.h \
     ../appUtil/geo2DInteger.h \
     ../appFrame/appImage.h \
+    ../appFrame/appMetafile.h \
     ../appUtil/sioStdio.h \
     ../appUtil/sioMemory.h \
     ../appUtil/utilMemoryBuffer.h \
@@ -1248,6 +1502,7 @@ docHtmlWrite.o: \
     docRowProperties.h \
     docSectProperties.h \
     ../appUtil/utilDocumentGeometry.h \
+    docNotesProperties.h \
     docStyleSheet.h \
     docDocumentProperties.h \
     ../appUtil/appUnit.h \
@@ -1260,9 +1515,13 @@ docHtmlWrite.o: \
     docShapeProperties.h \
     docField.h \
     docObject.h \
+    docDrawingObject.h \
+    ../appFrame/appFrameConfig.h \
     docSelect.h \
     docExternalItem.h \
+    docListNumberTree.h \
     docLayout.h \
+    docScreenFontList.h \
     ../appUtil/utilPs.h \
     ../appUtil/utilAffineTransform.h \
     ../appUtil/utilNup.h \
@@ -1282,6 +1541,8 @@ docHyperlinkField.o: \
     ../appUtil/docFont.h \
     ../appUtil/utilPropMask.h \
     ../appUtil/utilTextAttribute.h \
+    ../appUtil/utilFontEncoding.h \
+    ../appUtil/psFont.h \
     docShape.h \
     ../appUtil/geo2DInteger.h \
     ../appUtil/utilMemoryBuffer.h \
@@ -1296,6 +1557,7 @@ docHyperlinkField.o: \
     docRowProperties.h \
     docSectProperties.h \
     ../appUtil/utilDocumentGeometry.h \
+    docNotesProperties.h \
     docStyleSheet.h \
     docDocumentProperties.h \
     ../appUtil/appUnit.h \
@@ -1308,9 +1570,14 @@ docHyperlinkField.o: \
     docShapeProperties.h \
     docField.h \
     docObject.h \
+    docDrawingObject.h \
+    ../appFrame/appFrameConfig.h \
+    ../appFrame/appGuiBase.h \
     docSelect.h \
     docExternalItem.h \
+    docListNumberTree.h \
     docEdit.h \
+    docScreenFontList.h \
     docEvalField.h
 
 docIncludePictureField.o: \
@@ -1330,8 +1597,8 @@ docIncludePictureField.o: \
     ../appUtil/geo2DInteger.h \
     ../appUtil/docFont.h \
     ../appUtil/utilTextAttribute.h \
-    ../appUtil/psFont.h \
     ../appUtil/utilFontEncoding.h \
+    ../appUtil/psFont.h \
     ../appUtil/appUnit.h \
     ../appUtil/appSystem.h \
     docBuf.h \
@@ -1347,6 +1614,7 @@ docIncludePictureField.o: \
     docRowProperties.h \
     docSectProperties.h \
     ../appUtil/utilDocumentGeometry.h \
+    docNotesProperties.h \
     docStyleSheet.h \
     docDocumentProperties.h \
     docListTable.h \
@@ -1358,8 +1626,11 @@ docIncludePictureField.o: \
     docShapeProperties.h \
     docField.h \
     docObject.h \
+    docDrawingObject.h \
+    ../appFrame/appFrameConfig.h \
     docSelect.h \
     docExternalItem.h \
+    docListNumberTree.h \
     docEvalField.h \
     ../include/appDebugon.h \
     ../include/appDebug.h
@@ -1385,6 +1656,8 @@ docItemTree.o: \
     ../appUtil/docFont.h \
     ../appUtil/utilPropMask.h \
     ../appUtil/utilTextAttribute.h \
+    ../appUtil/utilFontEncoding.h \
+    ../appUtil/psFont.h \
     docShape.h \
     ../appUtil/geo2DInteger.h \
     ../appUtil/utilMemoryBuffer.h \
@@ -1399,6 +1672,7 @@ docItemTree.o: \
     docRowProperties.h \
     docSectProperties.h \
     ../appUtil/utilDocumentGeometry.h \
+    docNotesProperties.h \
     docStyleSheet.h \
     docDocumentProperties.h \
     ../appUtil/appUnit.h \
@@ -1411,9 +1685,14 @@ docItemTree.o: \
     docShapeProperties.h \
     docField.h \
     docObject.h \
+    docDrawingObject.h \
+    ../appFrame/appFrameConfig.h \
+    ../appFrame/appGuiBase.h \
     docSelect.h \
     docExternalItem.h \
-    docEdit.h
+    docListNumberTree.h \
+    docEdit.h \
+    docScreenFontList.h
 
 docLayout.o: \
     docLayout.c \
@@ -1428,8 +1707,8 @@ docLayout.o: \
     ../appUtil/geo2DInteger.h \
     ../appUtil/docFont.h \
     ../appUtil/utilTextAttribute.h \
-    ../appUtil/psFont.h \
     ../appUtil/utilFontEncoding.h \
+    ../appUtil/psFont.h \
     docLayout.h \
     docBuf.h \
     docShape.h \
@@ -1445,6 +1724,7 @@ docLayout.o: \
     docRowProperties.h \
     docSectProperties.h \
     ../appUtil/utilDocumentGeometry.h \
+    docNotesProperties.h \
     docStyleSheet.h \
     docDocumentProperties.h \
     ../appUtil/appUnit.h \
@@ -1457,8 +1737,12 @@ docLayout.o: \
     docShapeProperties.h \
     docField.h \
     docObject.h \
+    docDrawingObject.h \
+    ../appFrame/appFrameConfig.h \
     docSelect.h \
     docExternalItem.h \
+    docListNumberTree.h \
+    docScreenFontList.h \
     ../appUtil/utilPs.h \
     ../appUtil/utilPostscriptFace.h \
     ../appUtil/utilAffineTransform.h \
@@ -1471,14 +1755,14 @@ docLayoutExternalItem.o: \
     tedConfig.h \
     docLayout.h \
     ../appUtil/psFont.h \
+    ../appUtil/utilFontEncoding.h \
+    ../appUtil/sioGeneral.h \
+    docBuf.h \
+    ../bitmap/bitmap.h \
+    ../bitmap/bmcolor.h \
     ../appUtil/docFont.h \
     ../appUtil/utilPropMask.h \
     ../appUtil/utilTextAttribute.h \
-    ../appUtil/utilFontEncoding.h \
-    docBuf.h \
-    ../bitmap/bitmap.h \
-    ../appUtil/sioGeneral.h \
-    ../bitmap/bmcolor.h \
     docShape.h \
     ../appUtil/geo2DInteger.h \
     ../appUtil/utilMemoryBuffer.h \
@@ -1493,6 +1777,7 @@ docLayoutExternalItem.o: \
     docRowProperties.h \
     docSectProperties.h \
     ../appUtil/utilDocumentGeometry.h \
+    docNotesProperties.h \
     docStyleSheet.h \
     docDocumentProperties.h \
     ../appUtil/appUnit.h \
@@ -1505,32 +1790,37 @@ docLayoutExternalItem.o: \
     docShapeProperties.h \
     docField.h \
     docObject.h \
+    docDrawingObject.h \
+    ../appFrame/appFrameConfig.h \
+    ../appFrame/appGuiBase.h \
     docSelect.h \
     docExternalItem.h \
+    docListNumberTree.h \
+    docScreenFontList.h \
     ../appUtil/utilPs.h \
     ../appUtil/utilPostscriptFace.h \
     ../appUtil/utilAffineTransform.h \
     ../appUtil/utilNup.h \
     ../appFrame/appDraw.h \
-    ../appFrame/appGuiBase.h \
     ../include/appDebugon.h \
     ../include/appDebug.h
 
 docLayoutLine.o: \
     docLayoutLine.c \
     tedConfig.h \
+    ../appUtil/utilMatchFont.h \
+    ../appUtil/docFont.h \
+    ../appUtil/utilPropMask.h \
+    ../appUtil/utilTextAttribute.h \
+    ../appUtil/utilFontEncoding.h \
+    ../appUtil/psFont.h \
+    ../appUtil/sioGeneral.h \
     ../appFrame/appImage.h \
     ../bitmap/bitmap.h \
-    ../appUtil/sioGeneral.h \
     ../bitmap/bmcolor.h \
     ../appFrame/appGuiBase.h \
     ../appFrame/appDraw.h \
-    ../appUtil/utilPropMask.h \
     ../appUtil/geo2DInteger.h \
-    ../appUtil/docFont.h \
-    ../appUtil/utilTextAttribute.h \
-    ../appUtil/psFont.h \
-    ../appUtil/utilFontEncoding.h \
     docLayout.h \
     docBuf.h \
     docShape.h \
@@ -1546,6 +1836,7 @@ docLayoutLine.o: \
     docRowProperties.h \
     docSectProperties.h \
     ../appUtil/utilDocumentGeometry.h \
+    docNotesProperties.h \
     docStyleSheet.h \
     docDocumentProperties.h \
     ../appUtil/appUnit.h \
@@ -1558,13 +1849,18 @@ docLayoutLine.o: \
     docShapeProperties.h \
     docField.h \
     docObject.h \
+    docDrawingObject.h \
+    ../appFrame/appFrameConfig.h \
     docSelect.h \
     docExternalItem.h \
+    docListNumberTree.h \
+    docScreenFontList.h \
     ../appUtil/utilPs.h \
     ../appUtil/utilPostscriptFace.h \
     ../appUtil/utilAffineTransform.h \
     ../appUtil/utilNup.h \
     ../appFrame/appWinMeta.h \
+    ../appFrame/appMetafile.h \
     ../appFrame/appMacPict.h \
     ../include/appDebugon.h \
     ../include/appDebug.h
@@ -1582,8 +1878,8 @@ docLayoutLines.o: \
     ../appUtil/geo2DInteger.h \
     ../appUtil/docFont.h \
     ../appUtil/utilTextAttribute.h \
-    ../appUtil/psFont.h \
     ../appUtil/utilFontEncoding.h \
+    ../appUtil/psFont.h \
     docLayout.h \
     docBuf.h \
     docShape.h \
@@ -1599,6 +1895,7 @@ docLayoutLines.o: \
     docRowProperties.h \
     docSectProperties.h \
     ../appUtil/utilDocumentGeometry.h \
+    docNotesProperties.h \
     docStyleSheet.h \
     docDocumentProperties.h \
     ../appUtil/appUnit.h \
@@ -1611,8 +1908,12 @@ docLayoutLines.o: \
     docShapeProperties.h \
     docField.h \
     docObject.h \
+    docDrawingObject.h \
+    ../appFrame/appFrameConfig.h \
     docSelect.h \
     docExternalItem.h \
+    docListNumberTree.h \
+    docScreenFontList.h \
     ../appUtil/utilPs.h \
     ../appUtil/utilPostscriptFace.h \
     ../appUtil/utilAffineTransform.h \
@@ -1625,14 +1926,14 @@ docLayoutNotes.o: \
     tedConfig.h \
     docLayout.h \
     ../appUtil/psFont.h \
+    ../appUtil/utilFontEncoding.h \
+    ../appUtil/sioGeneral.h \
+    docBuf.h \
+    ../bitmap/bitmap.h \
+    ../bitmap/bmcolor.h \
     ../appUtil/docFont.h \
     ../appUtil/utilPropMask.h \
     ../appUtil/utilTextAttribute.h \
-    ../appUtil/utilFontEncoding.h \
-    docBuf.h \
-    ../bitmap/bitmap.h \
-    ../appUtil/sioGeneral.h \
-    ../bitmap/bmcolor.h \
     docShape.h \
     ../appUtil/geo2DInteger.h \
     ../appUtil/utilMemoryBuffer.h \
@@ -1647,6 +1948,7 @@ docLayoutNotes.o: \
     docRowProperties.h \
     docSectProperties.h \
     ../appUtil/utilDocumentGeometry.h \
+    docNotesProperties.h \
     docStyleSheet.h \
     docDocumentProperties.h \
     ../appUtil/appUnit.h \
@@ -1659,14 +1961,18 @@ docLayoutNotes.o: \
     docShapeProperties.h \
     docField.h \
     docObject.h \
+    docDrawingObject.h \
+    ../appFrame/appFrameConfig.h \
+    ../appFrame/appGuiBase.h \
     docSelect.h \
     docExternalItem.h \
+    docListNumberTree.h \
+    docScreenFontList.h \
     ../appUtil/utilPs.h \
     ../appUtil/utilPostscriptFace.h \
     ../appUtil/utilAffineTransform.h \
     ../appUtil/utilNup.h \
     ../appFrame/appDraw.h \
-    ../appFrame/appGuiBase.h \
     ../include/appDebugon.h \
     ../include/appDebug.h
 
@@ -1683,8 +1989,8 @@ docLayoutParagraphs.o: \
     ../appUtil/geo2DInteger.h \
     ../appUtil/docFont.h \
     ../appUtil/utilTextAttribute.h \
-    ../appUtil/psFont.h \
     ../appUtil/utilFontEncoding.h \
+    ../appUtil/psFont.h \
     docLayout.h \
     docBuf.h \
     docShape.h \
@@ -1700,6 +2006,7 @@ docLayoutParagraphs.o: \
     docRowProperties.h \
     docSectProperties.h \
     ../appUtil/utilDocumentGeometry.h \
+    docNotesProperties.h \
     docStyleSheet.h \
     docDocumentProperties.h \
     ../appUtil/appUnit.h \
@@ -1712,8 +2019,12 @@ docLayoutParagraphs.o: \
     docShapeProperties.h \
     docField.h \
     docObject.h \
+    docDrawingObject.h \
+    ../appFrame/appFrameConfig.h \
     docSelect.h \
     docExternalItem.h \
+    docListNumberTree.h \
+    docScreenFontList.h \
     ../appUtil/utilPs.h \
     ../appUtil/utilPostscriptFace.h \
     ../appUtil/utilAffineTransform.h \
@@ -1726,14 +2037,14 @@ docLayoutRow.o: \
     tedConfig.h \
     docLayout.h \
     ../appUtil/psFont.h \
+    ../appUtil/utilFontEncoding.h \
+    ../appUtil/sioGeneral.h \
+    docBuf.h \
+    ../bitmap/bitmap.h \
+    ../bitmap/bmcolor.h \
     ../appUtil/docFont.h \
     ../appUtil/utilPropMask.h \
     ../appUtil/utilTextAttribute.h \
-    ../appUtil/utilFontEncoding.h \
-    docBuf.h \
-    ../bitmap/bitmap.h \
-    ../appUtil/sioGeneral.h \
-    ../bitmap/bmcolor.h \
     docShape.h \
     ../appUtil/geo2DInteger.h \
     ../appUtil/utilMemoryBuffer.h \
@@ -1748,6 +2059,7 @@ docLayoutRow.o: \
     docRowProperties.h \
     docSectProperties.h \
     ../appUtil/utilDocumentGeometry.h \
+    docNotesProperties.h \
     docStyleSheet.h \
     docDocumentProperties.h \
     ../appUtil/appUnit.h \
@@ -1760,14 +2072,18 @@ docLayoutRow.o: \
     docShapeProperties.h \
     docField.h \
     docObject.h \
+    docDrawingObject.h \
+    ../appFrame/appFrameConfig.h \
+    ../appFrame/appGuiBase.h \
     docSelect.h \
     docExternalItem.h \
+    docListNumberTree.h \
+    docScreenFontList.h \
     ../appUtil/utilPs.h \
     ../appUtil/utilPostscriptFace.h \
     ../appUtil/utilAffineTransform.h \
     ../appUtil/utilNup.h \
     ../appFrame/appDraw.h \
-    ../appFrame/appGuiBase.h \
     ../include/appDebugon.h \
     ../include/appDebug.h
 
@@ -1784,8 +2100,8 @@ docLayoutSect.o: \
     ../appUtil/geo2DInteger.h \
     ../appUtil/docFont.h \
     ../appUtil/utilTextAttribute.h \
-    ../appUtil/psFont.h \
     ../appUtil/utilFontEncoding.h \
+    ../appUtil/psFont.h \
     docLayout.h \
     docBuf.h \
     docShape.h \
@@ -1801,6 +2117,7 @@ docLayoutSect.o: \
     docRowProperties.h \
     docSectProperties.h \
     ../appUtil/utilDocumentGeometry.h \
+    docNotesProperties.h \
     docStyleSheet.h \
     docDocumentProperties.h \
     ../appUtil/appUnit.h \
@@ -1813,8 +2130,12 @@ docLayoutSect.o: \
     docShapeProperties.h \
     docField.h \
     docObject.h \
+    docDrawingObject.h \
+    ../appFrame/appFrameConfig.h \
     docSelect.h \
     docExternalItem.h \
+    docListNumberTree.h \
+    docScreenFontList.h \
     ../appUtil/utilPs.h \
     ../appUtil/utilPostscriptFace.h \
     ../appUtil/utilAffineTransform.h \
@@ -1826,15 +2147,16 @@ docLayoutUtil.o: \
     docLayoutUtil.c \
     tedConfig.h \
     ../include/charnames.h \
-    docLayout.h \
-    ../appUtil/psFont.h \
+    ../appUtil/utilMatchFont.h \
     ../appUtil/docFont.h \
     ../appUtil/utilPropMask.h \
     ../appUtil/utilTextAttribute.h \
     ../appUtil/utilFontEncoding.h \
+    ../appUtil/psFont.h \
+    ../appUtil/sioGeneral.h \
+    docLayout.h \
     docBuf.h \
     ../bitmap/bitmap.h \
-    ../appUtil/sioGeneral.h \
     ../bitmap/bmcolor.h \
     docShape.h \
     ../appUtil/geo2DInteger.h \
@@ -1850,6 +2172,7 @@ docLayoutUtil.o: \
     docRowProperties.h \
     docSectProperties.h \
     ../appUtil/utilDocumentGeometry.h \
+    docNotesProperties.h \
     docStyleSheet.h \
     docDocumentProperties.h \
     ../appUtil/appUnit.h \
@@ -1862,14 +2185,18 @@ docLayoutUtil.o: \
     docShapeProperties.h \
     docField.h \
     docObject.h \
+    docDrawingObject.h \
+    ../appFrame/appFrameConfig.h \
+    ../appFrame/appGuiBase.h \
     docSelect.h \
     docExternalItem.h \
+    docListNumberTree.h \
+    docScreenFontList.h \
     ../appUtil/utilPs.h \
     ../appUtil/utilPostscriptFace.h \
     ../appUtil/utilAffineTransform.h \
     ../appUtil/utilNup.h \
     ../appFrame/appDraw.h \
-    ../appFrame/appGuiBase.h \
     ../include/appDebugon.h \
     ../include/appDebug.h
 
@@ -1884,6 +2211,27 @@ docListLevel.o: \
     docTabStop.h \
     docParaProperties.h \
     ../appUtil/docFont.h \
+    ../appUtil/utilFontEncoding.h \
+    docPropVal.h \
+    docBorderProperties.h \
+    ../bitmap/bmcolor.h \
+    docItemShading.h \
+    docParaNumber.h \
+    docFrameProperties.h
+
+docListNumberTree.o: \
+    docListNumberTree.c \
+    tedConfig.h \
+    ../include/appDebugon.h \
+    ../include/appDebug.h \
+    docListNumberTree.h \
+    docListLevel.h \
+    ../appUtil/utilPropMask.h \
+    ../appUtil/utilTextAttribute.h \
+    docTabStop.h \
+    docParaProperties.h \
+    ../appUtil/docFont.h \
+    ../appUtil/utilFontEncoding.h \
     docPropVal.h \
     docBorderProperties.h \
     ../bitmap/bmcolor.h \
@@ -1904,6 +2252,7 @@ docListOverride.o: \
     docTabStop.h \
     docParaProperties.h \
     ../appUtil/docFont.h \
+    ../appUtil/utilFontEncoding.h \
     docPropVal.h \
     docBorderProperties.h \
     ../bitmap/bmcolor.h \
@@ -1923,6 +2272,7 @@ docListOverrideLevel.o: \
     docTabStop.h \
     docParaProperties.h \
     ../appUtil/docFont.h \
+    ../appUtil/utilFontEncoding.h \
     docPropVal.h \
     docBorderProperties.h \
     ../bitmap/bmcolor.h \
@@ -1944,6 +2294,7 @@ docListOverrideTable.o: \
     docTabStop.h \
     docParaProperties.h \
     ../appUtil/docFont.h \
+    ../appUtil/utilFontEncoding.h \
     docPropVal.h \
     docBorderProperties.h \
     ../bitmap/bmcolor.h \
@@ -1964,12 +2315,114 @@ docListTable.o: \
     docTabStop.h \
     docParaProperties.h \
     ../appUtil/docFont.h \
+    ../appUtil/utilFontEncoding.h \
     docPropVal.h \
     docBorderProperties.h \
     ../bitmap/bmcolor.h \
     docItemShading.h \
     docParaNumber.h \
     docFrameProperties.h
+
+docListUtil.o: \
+    docListUtil.c \
+    tedConfig.h \
+    ../include/appDebugon.h \
+    ../include/appDebug.h \
+    docBuf.h \
+    ../bitmap/bitmap.h \
+    ../appUtil/sioGeneral.h \
+    ../bitmap/bmcolor.h \
+    ../appUtil/docFont.h \
+    ../appUtil/utilPropMask.h \
+    ../appUtil/utilTextAttribute.h \
+    ../appUtil/utilFontEncoding.h \
+    ../appUtil/psFont.h \
+    docShape.h \
+    ../appUtil/geo2DInteger.h \
+    ../appUtil/utilMemoryBuffer.h \
+    ../appUtil/utilTextAttributeAdmin.h \
+    docParaProperties.h \
+    docPropVal.h \
+    docTabStop.h \
+    docBorderProperties.h \
+    docItemShading.h \
+    docParaNumber.h \
+    docFrameProperties.h \
+    docRowProperties.h \
+    docSectProperties.h \
+    ../appUtil/utilDocumentGeometry.h \
+    docNotesProperties.h \
+    docStyleSheet.h \
+    docDocumentProperties.h \
+    ../appUtil/appUnit.h \
+    docListTable.h \
+    docDocumentList.h \
+    docListLevel.h \
+    docListOverrideTable.h \
+    docListOverride.h \
+    docListOverrideLevel.h \
+    docShapeProperties.h \
+    docField.h \
+    docObject.h \
+    docDrawingObject.h \
+    ../appFrame/appFrameConfig.h \
+    ../appFrame/appGuiBase.h \
+    docSelect.h \
+    docExternalItem.h \
+    docListNumberTree.h
+
+docListtextField.o: \
+    docListtextField.c \
+    tedConfig.h \
+    ../include/appDebugon.h \
+    ../include/appDebug.h \
+    ../appUtil/utilBase26.h \
+    ../appUtil/utilRoman.h \
+    docBuf.h \
+    ../bitmap/bitmap.h \
+    ../appUtil/sioGeneral.h \
+    ../bitmap/bmcolor.h \
+    ../appUtil/docFont.h \
+    ../appUtil/utilPropMask.h \
+    ../appUtil/utilTextAttribute.h \
+    ../appUtil/utilFontEncoding.h \
+    ../appUtil/psFont.h \
+    docShape.h \
+    ../appUtil/geo2DInteger.h \
+    ../appUtil/utilMemoryBuffer.h \
+    ../appUtil/utilTextAttributeAdmin.h \
+    docParaProperties.h \
+    docPropVal.h \
+    docTabStop.h \
+    docBorderProperties.h \
+    docItemShading.h \
+    docParaNumber.h \
+    docFrameProperties.h \
+    docRowProperties.h \
+    docSectProperties.h \
+    ../appUtil/utilDocumentGeometry.h \
+    docNotesProperties.h \
+    docStyleSheet.h \
+    docDocumentProperties.h \
+    ../appUtil/appUnit.h \
+    docListTable.h \
+    docDocumentList.h \
+    docListLevel.h \
+    docListOverrideTable.h \
+    docListOverride.h \
+    docListOverrideLevel.h \
+    docShapeProperties.h \
+    docField.h \
+    docObject.h \
+    docDrawingObject.h \
+    ../appFrame/appFrameConfig.h \
+    ../appFrame/appGuiBase.h \
+    docSelect.h \
+    docExternalItem.h \
+    docListNumberTree.h \
+    docEvalField.h \
+    docEdit.h \
+    docScreenFontList.h
 
 docNotes.o: \
     docNotes.c \
@@ -1984,6 +2437,8 @@ docNotes.o: \
     ../appUtil/docFont.h \
     ../appUtil/utilPropMask.h \
     ../appUtil/utilTextAttribute.h \
+    ../appUtil/utilFontEncoding.h \
+    ../appUtil/psFont.h \
     docShape.h \
     ../appUtil/geo2DInteger.h \
     ../appUtil/utilMemoryBuffer.h \
@@ -1998,6 +2453,7 @@ docNotes.o: \
     docRowProperties.h \
     docSectProperties.h \
     ../appUtil/utilDocumentGeometry.h \
+    docNotesProperties.h \
     docStyleSheet.h \
     docDocumentProperties.h \
     docListTable.h \
@@ -2009,9 +2465,22 @@ docNotes.o: \
     docShapeProperties.h \
     docField.h \
     docObject.h \
+    docDrawingObject.h \
+    ../appFrame/appFrameConfig.h \
+    ../appFrame/appGuiBase.h \
     docSelect.h \
     docExternalItem.h \
-    docEdit.h
+    docListNumberTree.h \
+    docEdit.h \
+    docScreenFontList.h
+
+docNotesProperties.o: \
+    docNotesProperties.c \
+    tedConfig.h \
+    ../appUtil/utilPropMask.h \
+    ../include/appDebugon.h \
+    ../include/appDebug.h \
+    docNotesProperties.h
 
 docObject.o: \
     docObject.c \
@@ -2025,6 +2494,8 @@ docObject.o: \
     ../appUtil/docFont.h \
     ../appUtil/utilPropMask.h \
     ../appUtil/utilTextAttribute.h \
+    ../appUtil/utilFontEncoding.h \
+    ../appUtil/psFont.h \
     docShape.h \
     ../appUtil/geo2DInteger.h \
     ../appUtil/utilMemoryBuffer.h \
@@ -2039,6 +2510,7 @@ docObject.o: \
     docRowProperties.h \
     docSectProperties.h \
     ../appUtil/utilDocumentGeometry.h \
+    docNotesProperties.h \
     docStyleSheet.h \
     docDocumentProperties.h \
     ../appUtil/appUnit.h \
@@ -2051,9 +2523,14 @@ docObject.o: \
     docShapeProperties.h \
     docField.h \
     docObject.h \
+    docDrawingObject.h \
+    ../appFrame/appFrameConfig.h \
+    ../appFrame/appGuiBase.h \
     docSelect.h \
     docExternalItem.h \
-    docEdit.h
+    docListNumberTree.h \
+    docEdit.h \
+    docScreenFontList.h
 
 docOpenObject.o: \
     docOpenObject.c \
@@ -2071,10 +2548,11 @@ docOpenObject.o: \
     ../appUtil/geo2DInteger.h \
     ../appUtil/docFont.h \
     ../appUtil/utilTextAttribute.h \
-    ../appUtil/psFont.h \
     ../appUtil/utilFontEncoding.h \
+    ../appUtil/psFont.h \
     ../appFrame/appWinMeta.h \
     ../appUtil/utilPostscriptFace.h \
+    ../appFrame/appMetafile.h \
     ../include/appDebugon.h \
     ../include/appDebug.h \
     docBuf.h \
@@ -2090,6 +2568,7 @@ docOpenObject.o: \
     docRowProperties.h \
     docSectProperties.h \
     ../appUtil/utilDocumentGeometry.h \
+    docNotesProperties.h \
     docStyleSheet.h \
     docDocumentProperties.h \
     ../appUtil/appUnit.h \
@@ -2102,15 +2581,19 @@ docOpenObject.o: \
     docShapeProperties.h \
     docField.h \
     docObject.h \
+    docDrawingObject.h \
+    ../appFrame/appFrameConfig.h \
     docSelect.h \
-    docExternalItem.h
+    docExternalItem.h \
+    docListNumberTree.h
 
 docPageField.o: \
     docPageField.c \
     tedConfig.h \
     ../include/appDebugon.h \
     ../include/appDebug.h \
-    ../appUtil/appUnit.h \
+    ../appUtil/utilBase26.h \
+    ../appUtil/utilRoman.h \
     docBuf.h \
     ../bitmap/bitmap.h \
     ../appUtil/sioGeneral.h \
@@ -2118,6 +2601,8 @@ docPageField.o: \
     ../appUtil/docFont.h \
     ../appUtil/utilPropMask.h \
     ../appUtil/utilTextAttribute.h \
+    ../appUtil/utilFontEncoding.h \
+    ../appUtil/psFont.h \
     docShape.h \
     ../appUtil/geo2DInteger.h \
     ../appUtil/utilMemoryBuffer.h \
@@ -2132,8 +2617,10 @@ docPageField.o: \
     docRowProperties.h \
     docSectProperties.h \
     ../appUtil/utilDocumentGeometry.h \
+    docNotesProperties.h \
     docStyleSheet.h \
     docDocumentProperties.h \
+    ../appUtil/appUnit.h \
     docListTable.h \
     docDocumentList.h \
     docListLevel.h \
@@ -2143,8 +2630,12 @@ docPageField.o: \
     docShapeProperties.h \
     docField.h \
     docObject.h \
+    docDrawingObject.h \
+    ../appFrame/appFrameConfig.h \
+    ../appFrame/appGuiBase.h \
     docSelect.h \
     docExternalItem.h \
+    docListNumberTree.h \
     docEvalField.h
 
 docParaParticules.o: \
@@ -2159,6 +2650,8 @@ docParaParticules.o: \
     ../appUtil/docFont.h \
     ../appUtil/utilPropMask.h \
     ../appUtil/utilTextAttribute.h \
+    ../appUtil/utilFontEncoding.h \
+    ../appUtil/psFont.h \
     docShape.h \
     ../appUtil/geo2DInteger.h \
     ../appUtil/utilMemoryBuffer.h \
@@ -2173,6 +2666,7 @@ docParaParticules.o: \
     docRowProperties.h \
     docSectProperties.h \
     ../appUtil/utilDocumentGeometry.h \
+    docNotesProperties.h \
     docStyleSheet.h \
     docDocumentProperties.h \
     ../appUtil/appUnit.h \
@@ -2185,9 +2679,14 @@ docParaParticules.o: \
     docShapeProperties.h \
     docField.h \
     docObject.h \
+    docDrawingObject.h \
+    ../appFrame/appFrameConfig.h \
+    ../appFrame/appGuiBase.h \
     docSelect.h \
     docExternalItem.h \
-    docEdit.h
+    docListNumberTree.h \
+    docEdit.h \
+    docScreenFontList.h
 
 docParaProperties.o: \
     docParaProperties.c \
@@ -2199,6 +2698,7 @@ docParaProperties.o: \
     ../appUtil/docFont.h \
     ../appUtil/utilPropMask.h \
     ../appUtil/utilTextAttribute.h \
+    ../appUtil/utilFontEncoding.h \
     docPropVal.h \
     docTabStop.h \
     docBorderProperties.h \
@@ -2219,6 +2719,8 @@ docParaString.o: \
     ../appUtil/docFont.h \
     ../appUtil/utilPropMask.h \
     ../appUtil/utilTextAttribute.h \
+    ../appUtil/utilFontEncoding.h \
+    ../appUtil/psFont.h \
     docShape.h \
     ../appUtil/geo2DInteger.h \
     ../appUtil/utilMemoryBuffer.h \
@@ -2233,6 +2735,7 @@ docParaString.o: \
     docRowProperties.h \
     docSectProperties.h \
     ../appUtil/utilDocumentGeometry.h \
+    docNotesProperties.h \
     docStyleSheet.h \
     docDocumentProperties.h \
     ../appUtil/appUnit.h \
@@ -2245,8 +2748,12 @@ docParaString.o: \
     docShapeProperties.h \
     docField.h \
     docObject.h \
+    docDrawingObject.h \
+    ../appFrame/appFrameConfig.h \
+    ../appFrame/appGuiBase.h \
     docSelect.h \
-    docExternalItem.h
+    docExternalItem.h \
+    docListNumberTree.h
 
 docPlainRead.o: \
     docPlainRead.c \
@@ -2260,6 +2767,8 @@ docPlainRead.o: \
     ../appUtil/docFont.h \
     ../appUtil/utilPropMask.h \
     ../appUtil/utilTextAttribute.h \
+    ../appUtil/utilFontEncoding.h \
+    ../appUtil/psFont.h \
     docShape.h \
     ../appUtil/geo2DInteger.h \
     ../appUtil/utilMemoryBuffer.h \
@@ -2274,6 +2783,7 @@ docPlainRead.o: \
     docRowProperties.h \
     docSectProperties.h \
     ../appUtil/utilDocumentGeometry.h \
+    docNotesProperties.h \
     docStyleSheet.h \
     docDocumentProperties.h \
     ../appUtil/appUnit.h \
@@ -2286,8 +2796,12 @@ docPlainRead.o: \
     docShapeProperties.h \
     docField.h \
     docObject.h \
+    docDrawingObject.h \
+    ../appFrame/appFrameConfig.h \
+    ../appFrame/appGuiBase.h \
     docSelect.h \
-    docExternalItem.h
+    docExternalItem.h \
+    docListNumberTree.h
 
 docPlainWrite.o: \
     docPlainWrite.c \
@@ -2299,6 +2813,8 @@ docPlainWrite.o: \
     ../appUtil/docFont.h \
     ../appUtil/utilPropMask.h \
     ../appUtil/utilTextAttribute.h \
+    ../appUtil/utilFontEncoding.h \
+    ../appUtil/psFont.h \
     docShape.h \
     ../appUtil/geo2DInteger.h \
     ../appUtil/utilMemoryBuffer.h \
@@ -2313,6 +2829,7 @@ docPlainWrite.o: \
     docRowProperties.h \
     docSectProperties.h \
     ../appUtil/utilDocumentGeometry.h \
+    docNotesProperties.h \
     docStyleSheet.h \
     docDocumentProperties.h \
     ../appUtil/appUnit.h \
@@ -2325,24 +2842,29 @@ docPlainWrite.o: \
     docShapeProperties.h \
     docField.h \
     docObject.h \
+    docDrawingObject.h \
+    ../appFrame/appFrameConfig.h \
+    ../appFrame/appGuiBase.h \
     docSelect.h \
     docExternalItem.h \
+    docListNumberTree.h \
     ../include/appDebugon.h \
     ../include/appDebug.h
 
 docProperties.o: \
     docProperties.c \
     tedConfig.h \
-    ../include/appDebugon.h \
-    ../include/appDebug.h \
     ../appUtil/appUnit.h \
-    docBuf.h \
-    ../bitmap/bitmap.h \
-    ../appUtil/sioGeneral.h \
-    ../bitmap/bmcolor.h \
+    ../appUtil/utilMatchFont.h \
     ../appUtil/docFont.h \
     ../appUtil/utilPropMask.h \
     ../appUtil/utilTextAttribute.h \
+    ../appUtil/utilFontEncoding.h \
+    ../appUtil/psFont.h \
+    ../appUtil/sioGeneral.h \
+    docBuf.h \
+    ../bitmap/bitmap.h \
+    ../bitmap/bmcolor.h \
     docShape.h \
     ../appUtil/geo2DInteger.h \
     ../appUtil/utilMemoryBuffer.h \
@@ -2357,6 +2879,7 @@ docProperties.o: \
     docRowProperties.h \
     docSectProperties.h \
     ../appUtil/utilDocumentGeometry.h \
+    docNotesProperties.h \
     docStyleSheet.h \
     docDocumentProperties.h \
     docListTable.h \
@@ -2368,26 +2891,33 @@ docProperties.o: \
     docShapeProperties.h \
     docField.h \
     docObject.h \
+    docDrawingObject.h \
+    ../appFrame/appFrameConfig.h \
+    ../appFrame/appGuiBase.h \
     docSelect.h \
     docExternalItem.h \
+    docListNumberTree.h \
     docFind.h \
-    ../include/reg.h
+    ../include/reg.h \
+    ../include/appDebugon.h \
+    ../include/appDebug.h
 
 docPsListFonts.o: \
     docPsListFonts.c \
     tedConfig.h \
+    ../appUtil/utilMatchFont.h \
+    ../appUtil/docFont.h \
+    ../appUtil/utilPropMask.h \
+    ../appUtil/utilTextAttribute.h \
+    ../appUtil/utilFontEncoding.h \
+    ../appUtil/psFont.h \
+    ../appUtil/sioGeneral.h \
     ../appFrame/appImage.h \
     ../bitmap/bitmap.h \
-    ../appUtil/sioGeneral.h \
     ../bitmap/bmcolor.h \
     ../appFrame/appGuiBase.h \
     ../appFrame/appDraw.h \
-    ../appUtil/utilPropMask.h \
     ../appUtil/geo2DInteger.h \
-    ../appUtil/docFont.h \
-    ../appUtil/utilTextAttribute.h \
-    ../appUtil/psFont.h \
-    ../appUtil/utilFontEncoding.h \
     docLayout.h \
     docBuf.h \
     docShape.h \
@@ -2403,6 +2933,7 @@ docPsListFonts.o: \
     docRowProperties.h \
     docSectProperties.h \
     ../appUtil/utilDocumentGeometry.h \
+    docNotesProperties.h \
     docStyleSheet.h \
     docDocumentProperties.h \
     ../appUtil/appUnit.h \
@@ -2415,8 +2946,12 @@ docPsListFonts.o: \
     docShapeProperties.h \
     docField.h \
     docObject.h \
+    docDrawingObject.h \
+    ../appFrame/appFrameConfig.h \
     docSelect.h \
     docExternalItem.h \
+    docListNumberTree.h \
+    docScreenFontList.h \
     ../appUtil/utilPs.h \
     ../appUtil/utilPostscriptFace.h \
     ../appUtil/utilAffineTransform.h \
@@ -2426,6 +2961,7 @@ docPsListFonts.o: \
     ../appUtil/sioHex.h \
     ../appUtil/sioMemory.h \
     ../appFrame/appWinMeta.h \
+    ../appFrame/appMetafile.h \
     ../appFrame/appMacPict.h \
     ../include/appDebugon.h \
     ../include/appDebug.h
@@ -2443,10 +2979,11 @@ docPsPrint.o: \
     ../appUtil/geo2DInteger.h \
     ../appUtil/docFont.h \
     ../appUtil/utilTextAttribute.h \
-    ../appUtil/psFont.h \
     ../appUtil/utilFontEncoding.h \
+    ../appUtil/psFont.h \
     ../appFrame/appWinMeta.h \
     ../appUtil/utilPostscriptFace.h \
+    ../appFrame/appMetafile.h \
     ../appFrame/appMacPict.h \
     ../appUtil/sioMemory.h \
     ../appUtil/utilMemoryBuffer.h \
@@ -2465,6 +3002,7 @@ docPsPrint.o: \
     docRowProperties.h \
     docSectProperties.h \
     ../appUtil/utilDocumentGeometry.h \
+    docNotesProperties.h \
     docStyleSheet.h \
     docDocumentProperties.h \
     ../appUtil/appUnit.h \
@@ -2477,9 +3015,13 @@ docPsPrint.o: \
     docShapeProperties.h \
     docField.h \
     docObject.h \
+    docDrawingObject.h \
+    ../appFrame/appFrameConfig.h \
     docSelect.h \
     docExternalItem.h \
+    docListNumberTree.h \
     docLayout.h \
+    docScreenFontList.h \
     ../appUtil/utilPs.h \
     ../appUtil/utilAffineTransform.h \
     ../appUtil/utilNup.h \
@@ -2499,6 +3041,8 @@ docRowProperties.o: \
     ../appUtil/docFont.h \
     ../appUtil/utilPropMask.h \
     ../appUtil/utilTextAttribute.h \
+    ../appUtil/utilFontEncoding.h \
+    ../appUtil/psFont.h \
     docShape.h \
     ../appUtil/geo2DInteger.h \
     ../appUtil/utilMemoryBuffer.h \
@@ -2513,6 +3057,7 @@ docRowProperties.o: \
     docRowProperties.h \
     docSectProperties.h \
     ../appUtil/utilDocumentGeometry.h \
+    docNotesProperties.h \
     docStyleSheet.h \
     docDocumentProperties.h \
     docListTable.h \
@@ -2524,8 +3069,12 @@ docRowProperties.o: \
     docShapeProperties.h \
     docField.h \
     docObject.h \
+    docDrawingObject.h \
+    ../appFrame/appFrameConfig.h \
+    ../appFrame/appGuiBase.h \
     docSelect.h \
-    docExternalItem.h
+    docExternalItem.h \
+    docListNumberTree.h
 
 docRtfBorderProperties.o: \
     docRtfBorderProperties.c \
@@ -2540,6 +3089,8 @@ docRtfBorderProperties.o: \
     ../appUtil/docFont.h \
     ../appUtil/utilPropMask.h \
     ../appUtil/utilTextAttribute.h \
+    ../appUtil/utilFontEncoding.h \
+    ../appUtil/psFont.h \
     docShape.h \
     ../appUtil/geo2DInteger.h \
     ../appUtil/utilMemoryBuffer.h \
@@ -2554,6 +3105,7 @@ docRtfBorderProperties.o: \
     docRowProperties.h \
     docSectProperties.h \
     ../appUtil/utilDocumentGeometry.h \
+    docNotesProperties.h \
     docStyleSheet.h \
     docDocumentProperties.h \
     ../appUtil/appUnit.h \
@@ -2566,8 +3118,12 @@ docRtfBorderProperties.o: \
     docShapeProperties.h \
     docField.h \
     docObject.h \
+    docDrawingObject.h \
+    ../appFrame/appFrameConfig.h \
+    ../appFrame/appGuiBase.h \
     docSelect.h \
     docExternalItem.h \
+    docListNumberTree.h \
     docRtfTagEnum.h \
     docRtfShapeEnum.h
 
@@ -2584,6 +3140,8 @@ docRtfCellProperties.o: \
     ../appUtil/docFont.h \
     ../appUtil/utilPropMask.h \
     ../appUtil/utilTextAttribute.h \
+    ../appUtil/utilFontEncoding.h \
+    ../appUtil/psFont.h \
     docShape.h \
     ../appUtil/geo2DInteger.h \
     ../appUtil/utilMemoryBuffer.h \
@@ -2598,6 +3156,7 @@ docRtfCellProperties.o: \
     docRowProperties.h \
     docSectProperties.h \
     ../appUtil/utilDocumentGeometry.h \
+    docNotesProperties.h \
     docStyleSheet.h \
     docDocumentProperties.h \
     ../appUtil/appUnit.h \
@@ -2610,8 +3169,12 @@ docRtfCellProperties.o: \
     docShapeProperties.h \
     docField.h \
     docObject.h \
+    docDrawingObject.h \
+    ../appFrame/appFrameConfig.h \
+    ../appFrame/appGuiBase.h \
     docSelect.h \
     docExternalItem.h \
+    docListNumberTree.h \
     docRtfTagEnum.h \
     docRtfShapeEnum.h
 
@@ -2629,6 +3192,8 @@ docRtfColorTable.o: \
     ../appUtil/docFont.h \
     ../appUtil/utilPropMask.h \
     ../appUtil/utilTextAttribute.h \
+    ../appUtil/utilFontEncoding.h \
+    ../appUtil/psFont.h \
     docShape.h \
     ../appUtil/geo2DInteger.h \
     ../appUtil/utilMemoryBuffer.h \
@@ -2643,6 +3208,7 @@ docRtfColorTable.o: \
     docRowProperties.h \
     docSectProperties.h \
     ../appUtil/utilDocumentGeometry.h \
+    docNotesProperties.h \
     docStyleSheet.h \
     docDocumentProperties.h \
     docListTable.h \
@@ -2654,8 +3220,12 @@ docRtfColorTable.o: \
     docShapeProperties.h \
     docField.h \
     docObject.h \
+    docDrawingObject.h \
+    ../appFrame/appFrameConfig.h \
+    ../appFrame/appGuiBase.h \
     docSelect.h \
     docExternalItem.h \
+    docListNumberTree.h \
     docRtfTagEnum.h \
     docRtfShapeEnum.h
 
@@ -2665,15 +3235,15 @@ docRtfDocumentProperties.o: \
     ../include/appDebugon.h \
     ../include/appDebug.h \
     ../appUtil/psFont.h \
-    ../appUtil/docFont.h \
-    ../appUtil/utilPropMask.h \
-    ../appUtil/utilTextAttribute.h \
     ../appUtil/utilFontEncoding.h \
+    ../appUtil/sioGeneral.h \
     docRtf.h \
     docBuf.h \
     ../bitmap/bitmap.h \
-    ../appUtil/sioGeneral.h \
     ../bitmap/bmcolor.h \
+    ../appUtil/docFont.h \
+    ../appUtil/utilPropMask.h \
+    ../appUtil/utilTextAttribute.h \
     docShape.h \
     ../appUtil/geo2DInteger.h \
     ../appUtil/utilMemoryBuffer.h \
@@ -2688,6 +3258,7 @@ docRtfDocumentProperties.o: \
     docRowProperties.h \
     docSectProperties.h \
     ../appUtil/utilDocumentGeometry.h \
+    docNotesProperties.h \
     docStyleSheet.h \
     docDocumentProperties.h \
     ../appUtil/appUnit.h \
@@ -2700,8 +3271,63 @@ docRtfDocumentProperties.o: \
     docShapeProperties.h \
     docField.h \
     docObject.h \
+    docDrawingObject.h \
+    ../appFrame/appFrameConfig.h \
+    ../appFrame/appGuiBase.h \
     docSelect.h \
     docExternalItem.h \
+    docListNumberTree.h \
+    docRtfTagEnum.h \
+    docRtfShapeEnum.h
+
+docRtfDrawingObject.o: \
+    docRtfDrawingObject.c \
+    tedConfig.h \
+    ../bitmap/bitmap.h \
+    ../appUtil/sioGeneral.h \
+    ../bitmap/bmcolor.h \
+    ../include/appDebugon.h \
+    ../include/appDebug.h \
+    docRtf.h \
+    docBuf.h \
+    ../appUtil/docFont.h \
+    ../appUtil/utilPropMask.h \
+    ../appUtil/utilTextAttribute.h \
+    ../appUtil/utilFontEncoding.h \
+    ../appUtil/psFont.h \
+    docShape.h \
+    ../appUtil/geo2DInteger.h \
+    ../appUtil/utilMemoryBuffer.h \
+    ../appUtil/utilTextAttributeAdmin.h \
+    docParaProperties.h \
+    docPropVal.h \
+    docTabStop.h \
+    docBorderProperties.h \
+    docItemShading.h \
+    docParaNumber.h \
+    docFrameProperties.h \
+    docRowProperties.h \
+    docSectProperties.h \
+    ../appUtil/utilDocumentGeometry.h \
+    docNotesProperties.h \
+    docStyleSheet.h \
+    docDocumentProperties.h \
+    ../appUtil/appUnit.h \
+    docListTable.h \
+    docDocumentList.h \
+    docListLevel.h \
+    docListOverrideTable.h \
+    docListOverride.h \
+    docListOverrideLevel.h \
+    docShapeProperties.h \
+    docField.h \
+    docObject.h \
+    docDrawingObject.h \
+    ../appFrame/appFrameConfig.h \
+    ../appFrame/appGuiBase.h \
+    docSelect.h \
+    docExternalItem.h \
+    docListNumberTree.h \
     docRtfTagEnum.h \
     docRtfShapeEnum.h
 
@@ -2712,15 +3338,15 @@ docRtfFontTable.o: \
     ../include/appDebug.h \
     ../appUtil/appUnit.h \
     ../appUtil/psFont.h \
-    ../appUtil/docFont.h \
-    ../appUtil/utilPropMask.h \
-    ../appUtil/utilTextAttribute.h \
     ../appUtil/utilFontEncoding.h \
+    ../appUtil/sioGeneral.h \
     docRtf.h \
     docBuf.h \
     ../bitmap/bitmap.h \
-    ../appUtil/sioGeneral.h \
     ../bitmap/bmcolor.h \
+    ../appUtil/docFont.h \
+    ../appUtil/utilPropMask.h \
+    ../appUtil/utilTextAttribute.h \
     docShape.h \
     ../appUtil/geo2DInteger.h \
     ../appUtil/utilMemoryBuffer.h \
@@ -2735,6 +3361,7 @@ docRtfFontTable.o: \
     docRowProperties.h \
     docSectProperties.h \
     ../appUtil/utilDocumentGeometry.h \
+    docNotesProperties.h \
     docStyleSheet.h \
     docDocumentProperties.h \
     docListTable.h \
@@ -2746,8 +3373,12 @@ docRtfFontTable.o: \
     docShapeProperties.h \
     docField.h \
     docObject.h \
+    docDrawingObject.h \
+    ../appFrame/appFrameConfig.h \
+    ../appFrame/appGuiBase.h \
     docSelect.h \
     docExternalItem.h \
+    docListNumberTree.h \
     docRtfTagEnum.h \
     docRtfShapeEnum.h
 
@@ -2764,6 +3395,8 @@ docRtfFrameProperties.o: \
     ../appUtil/docFont.h \
     ../appUtil/utilPropMask.h \
     ../appUtil/utilTextAttribute.h \
+    ../appUtil/utilFontEncoding.h \
+    ../appUtil/psFont.h \
     docShape.h \
     ../appUtil/geo2DInteger.h \
     ../appUtil/utilMemoryBuffer.h \
@@ -2778,6 +3411,7 @@ docRtfFrameProperties.o: \
     docRowProperties.h \
     docSectProperties.h \
     ../appUtil/utilDocumentGeometry.h \
+    docNotesProperties.h \
     docStyleSheet.h \
     docDocumentProperties.h \
     ../appUtil/appUnit.h \
@@ -2790,8 +3424,12 @@ docRtfFrameProperties.o: \
     docShapeProperties.h \
     docField.h \
     docObject.h \
+    docDrawingObject.h \
+    ../appFrame/appFrameConfig.h \
+    ../appFrame/appGuiBase.h \
     docSelect.h \
     docExternalItem.h \
+    docListNumberTree.h \
     docRtfTagEnum.h \
     docRtfShapeEnum.h
 
@@ -2808,6 +3446,8 @@ docRtfListOverrideTable.o: \
     ../appUtil/docFont.h \
     ../appUtil/utilPropMask.h \
     ../appUtil/utilTextAttribute.h \
+    ../appUtil/utilFontEncoding.h \
+    ../appUtil/psFont.h \
     docShape.h \
     ../appUtil/geo2DInteger.h \
     ../appUtil/utilMemoryBuffer.h \
@@ -2822,6 +3462,7 @@ docRtfListOverrideTable.o: \
     docRowProperties.h \
     docSectProperties.h \
     ../appUtil/utilDocumentGeometry.h \
+    docNotesProperties.h \
     docStyleSheet.h \
     docDocumentProperties.h \
     ../appUtil/appUnit.h \
@@ -2834,8 +3475,12 @@ docRtfListOverrideTable.o: \
     docShapeProperties.h \
     docField.h \
     docObject.h \
+    docDrawingObject.h \
+    ../appFrame/appFrameConfig.h \
+    ../appFrame/appGuiBase.h \
     docSelect.h \
     docExternalItem.h \
+    docListNumberTree.h \
     docRtfTagEnum.h \
     docRtfShapeEnum.h
 
@@ -2852,6 +3497,8 @@ docRtfListTable.o: \
     ../appUtil/docFont.h \
     ../appUtil/utilPropMask.h \
     ../appUtil/utilTextAttribute.h \
+    ../appUtil/utilFontEncoding.h \
+    ../appUtil/psFont.h \
     docShape.h \
     ../appUtil/geo2DInteger.h \
     ../appUtil/utilMemoryBuffer.h \
@@ -2866,6 +3513,7 @@ docRtfListTable.o: \
     docRowProperties.h \
     docSectProperties.h \
     ../appUtil/utilDocumentGeometry.h \
+    docNotesProperties.h \
     docStyleSheet.h \
     docDocumentProperties.h \
     ../appUtil/appUnit.h \
@@ -2878,8 +3526,12 @@ docRtfListTable.o: \
     docShapeProperties.h \
     docField.h \
     docObject.h \
+    docDrawingObject.h \
+    ../appFrame/appFrameConfig.h \
+    ../appFrame/appGuiBase.h \
     docSelect.h \
     docExternalItem.h \
+    docListNumberTree.h \
     docRtfTagEnum.h \
     docRtfShapeEnum.h
 
@@ -2896,6 +3548,8 @@ docRtfParaProperties.o: \
     ../appUtil/docFont.h \
     ../appUtil/utilPropMask.h \
     ../appUtil/utilTextAttribute.h \
+    ../appUtil/utilFontEncoding.h \
+    ../appUtil/psFont.h \
     docShape.h \
     ../appUtil/geo2DInteger.h \
     ../appUtil/utilMemoryBuffer.h \
@@ -2910,6 +3564,7 @@ docRtfParaProperties.o: \
     docRowProperties.h \
     docSectProperties.h \
     ../appUtil/utilDocumentGeometry.h \
+    docNotesProperties.h \
     docStyleSheet.h \
     docDocumentProperties.h \
     ../appUtil/appUnit.h \
@@ -2922,8 +3577,12 @@ docRtfParaProperties.o: \
     docShapeProperties.h \
     docField.h \
     docObject.h \
+    docDrawingObject.h \
+    ../appFrame/appFrameConfig.h \
+    ../appFrame/appGuiBase.h \
     docSelect.h \
     docExternalItem.h \
+    docListNumberTree.h \
     docRtfTagEnum.h \
     docRtfShapeEnum.h
 
@@ -2933,15 +3592,15 @@ docRtfRead.o: \
     ../include/appDebugon.h \
     ../include/appDebug.h \
     ../appUtil/psFont.h \
-    ../appUtil/docFont.h \
-    ../appUtil/utilPropMask.h \
-    ../appUtil/utilTextAttribute.h \
     ../appUtil/utilFontEncoding.h \
+    ../appUtil/sioGeneral.h \
     docRtf.h \
     docBuf.h \
     ../bitmap/bitmap.h \
-    ../appUtil/sioGeneral.h \
     ../bitmap/bmcolor.h \
+    ../appUtil/docFont.h \
+    ../appUtil/utilPropMask.h \
+    ../appUtil/utilTextAttribute.h \
     docShape.h \
     ../appUtil/geo2DInteger.h \
     ../appUtil/utilMemoryBuffer.h \
@@ -2956,6 +3615,7 @@ docRtfRead.o: \
     docRowProperties.h \
     docSectProperties.h \
     ../appUtil/utilDocumentGeometry.h \
+    docNotesProperties.h \
     docStyleSheet.h \
     docDocumentProperties.h \
     ../appUtil/appUnit.h \
@@ -2968,8 +3628,12 @@ docRtfRead.o: \
     docShapeProperties.h \
     docField.h \
     docObject.h \
+    docDrawingObject.h \
+    ../appFrame/appFrameConfig.h \
+    ../appFrame/appGuiBase.h \
     docSelect.h \
     docExternalItem.h \
+    docListNumberTree.h \
     docRtfTagEnum.h \
     docRtfShapeEnum.h
 
@@ -2986,6 +3650,8 @@ docRtfReadField.o: \
     ../appUtil/docFont.h \
     ../appUtil/utilPropMask.h \
     ../appUtil/utilTextAttribute.h \
+    ../appUtil/utilFontEncoding.h \
+    ../appUtil/psFont.h \
     docShape.h \
     ../appUtil/geo2DInteger.h \
     ../appUtil/utilMemoryBuffer.h \
@@ -3000,6 +3666,7 @@ docRtfReadField.o: \
     docRowProperties.h \
     docSectProperties.h \
     ../appUtil/utilDocumentGeometry.h \
+    docNotesProperties.h \
     docStyleSheet.h \
     docDocumentProperties.h \
     ../appUtil/appUnit.h \
@@ -3012,8 +3679,12 @@ docRtfReadField.o: \
     docShapeProperties.h \
     docField.h \
     docObject.h \
+    docDrawingObject.h \
+    ../appFrame/appFrameConfig.h \
+    ../appFrame/appGuiBase.h \
     docSelect.h \
     docExternalItem.h \
+    docListNumberTree.h \
     docRtfTagEnum.h \
     docRtfShapeEnum.h
 
@@ -3030,6 +3701,8 @@ docRtfReadObjects.o: \
     ../appUtil/docFont.h \
     ../appUtil/utilPropMask.h \
     ../appUtil/utilTextAttribute.h \
+    ../appUtil/utilFontEncoding.h \
+    ../appUtil/psFont.h \
     docShape.h \
     ../appUtil/geo2DInteger.h \
     ../appUtil/utilMemoryBuffer.h \
@@ -3044,6 +3717,7 @@ docRtfReadObjects.o: \
     docRowProperties.h \
     docSectProperties.h \
     ../appUtil/utilDocumentGeometry.h \
+    docNotesProperties.h \
     docStyleSheet.h \
     docDocumentProperties.h \
     ../appUtil/appUnit.h \
@@ -3056,8 +3730,12 @@ docRtfReadObjects.o: \
     docShapeProperties.h \
     docField.h \
     docObject.h \
+    docDrawingObject.h \
+    ../appFrame/appFrameConfig.h \
+    ../appFrame/appGuiBase.h \
     docSelect.h \
     docExternalItem.h \
+    docListNumberTree.h \
     docRtfTagEnum.h \
     docRtfShapeEnum.h
 
@@ -3074,6 +3752,8 @@ docRtfReadShape.o: \
     ../appUtil/docFont.h \
     ../appUtil/utilPropMask.h \
     ../appUtil/utilTextAttribute.h \
+    ../appUtil/utilFontEncoding.h \
+    ../appUtil/psFont.h \
     docShape.h \
     ../appUtil/geo2DInteger.h \
     ../appUtil/utilMemoryBuffer.h \
@@ -3088,6 +3768,7 @@ docRtfReadShape.o: \
     docRowProperties.h \
     docSectProperties.h \
     ../appUtil/utilDocumentGeometry.h \
+    docNotesProperties.h \
     docStyleSheet.h \
     docDocumentProperties.h \
     ../appUtil/appUnit.h \
@@ -3100,8 +3781,12 @@ docRtfReadShape.o: \
     docShapeProperties.h \
     docField.h \
     docObject.h \
+    docDrawingObject.h \
+    ../appFrame/appFrameConfig.h \
+    ../appFrame/appGuiBase.h \
     docSelect.h \
     docExternalItem.h \
+    docListNumberTree.h \
     docRtfTagEnum.h \
     docRtfShapeEnum.h
 
@@ -3118,6 +3803,8 @@ docRtfRowProperties.o: \
     ../appUtil/docFont.h \
     ../appUtil/utilPropMask.h \
     ../appUtil/utilTextAttribute.h \
+    ../appUtil/utilFontEncoding.h \
+    ../appUtil/psFont.h \
     docShape.h \
     ../appUtil/geo2DInteger.h \
     ../appUtil/utilMemoryBuffer.h \
@@ -3132,6 +3819,7 @@ docRtfRowProperties.o: \
     docRowProperties.h \
     docSectProperties.h \
     ../appUtil/utilDocumentGeometry.h \
+    docNotesProperties.h \
     docStyleSheet.h \
     docDocumentProperties.h \
     ../appUtil/appUnit.h \
@@ -3144,8 +3832,12 @@ docRtfRowProperties.o: \
     docShapeProperties.h \
     docField.h \
     docObject.h \
+    docDrawingObject.h \
+    ../appFrame/appFrameConfig.h \
+    ../appFrame/appGuiBase.h \
     docSelect.h \
     docExternalItem.h \
+    docListNumberTree.h \
     docRtfTagEnum.h \
     docRtfShapeEnum.h
 
@@ -3162,6 +3854,8 @@ docRtfSectProperties.o: \
     ../appUtil/docFont.h \
     ../appUtil/utilPropMask.h \
     ../appUtil/utilTextAttribute.h \
+    ../appUtil/utilFontEncoding.h \
+    ../appUtil/psFont.h \
     docShape.h \
     ../appUtil/geo2DInteger.h \
     ../appUtil/utilMemoryBuffer.h \
@@ -3176,6 +3870,7 @@ docRtfSectProperties.o: \
     docRowProperties.h \
     docSectProperties.h \
     ../appUtil/utilDocumentGeometry.h \
+    docNotesProperties.h \
     docStyleSheet.h \
     docDocumentProperties.h \
     ../appUtil/appUnit.h \
@@ -3188,8 +3883,12 @@ docRtfSectProperties.o: \
     docShapeProperties.h \
     docField.h \
     docObject.h \
+    docDrawingObject.h \
+    ../appFrame/appFrameConfig.h \
+    ../appFrame/appGuiBase.h \
     docSelect.h \
     docExternalItem.h \
+    docListNumberTree.h \
     docRtfTagEnum.h \
     docRtfShapeEnum.h
 
@@ -3207,6 +3906,8 @@ docRtfStylesheet.o: \
     ../appUtil/docFont.h \
     ../appUtil/utilPropMask.h \
     ../appUtil/utilTextAttribute.h \
+    ../appUtil/utilFontEncoding.h \
+    ../appUtil/psFont.h \
     docShape.h \
     ../appUtil/geo2DInteger.h \
     ../appUtil/utilMemoryBuffer.h \
@@ -3221,6 +3922,7 @@ docRtfStylesheet.o: \
     docRowProperties.h \
     docSectProperties.h \
     ../appUtil/utilDocumentGeometry.h \
+    docNotesProperties.h \
     docStyleSheet.h \
     docDocumentProperties.h \
     docListTable.h \
@@ -3232,8 +3934,12 @@ docRtfStylesheet.o: \
     docShapeProperties.h \
     docField.h \
     docObject.h \
+    docDrawingObject.h \
+    ../appFrame/appFrameConfig.h \
+    ../appFrame/appGuiBase.h \
     docSelect.h \
     docExternalItem.h \
+    docListNumberTree.h \
     docRtfTagEnum.h \
     docRtfShapeEnum.h
 
@@ -3253,6 +3959,7 @@ docRtfTab.o: \
     ../appUtil/docFont.h \
     ../appUtil/utilPropMask.h \
     ../appUtil/utilTextAttribute.h \
+    ../appUtil/psFont.h \
     docShape.h \
     ../appUtil/geo2DInteger.h \
     ../appUtil/utilMemoryBuffer.h \
@@ -3267,6 +3974,7 @@ docRtfTab.o: \
     docRowProperties.h \
     docSectProperties.h \
     ../appUtil/utilDocumentGeometry.h \
+    docNotesProperties.h \
     docStyleSheet.h \
     docDocumentProperties.h \
     ../appUtil/appUnit.h \
@@ -3279,8 +3987,12 @@ docRtfTab.o: \
     docShapeProperties.h \
     docField.h \
     docObject.h \
+    docDrawingObject.h \
+    ../appFrame/appFrameConfig.h \
+    ../appFrame/appGuiBase.h \
     docSelect.h \
     docExternalItem.h \
+    docListNumberTree.h \
     docRtfTagEnum.h \
     docRtfShapeEnum.h
 
@@ -3298,6 +4010,8 @@ docRtfTables.o: \
     ../appUtil/docFont.h \
     ../appUtil/utilPropMask.h \
     ../appUtil/utilTextAttribute.h \
+    ../appUtil/utilFontEncoding.h \
+    ../appUtil/psFont.h \
     docShape.h \
     ../appUtil/geo2DInteger.h \
     ../appUtil/utilMemoryBuffer.h \
@@ -3312,6 +4026,7 @@ docRtfTables.o: \
     docRowProperties.h \
     docSectProperties.h \
     ../appUtil/utilDocumentGeometry.h \
+    docNotesProperties.h \
     docStyleSheet.h \
     docDocumentProperties.h \
     docListTable.h \
@@ -3323,8 +4038,12 @@ docRtfTables.o: \
     docShapeProperties.h \
     docField.h \
     docObject.h \
+    docDrawingObject.h \
+    ../appFrame/appFrameConfig.h \
+    ../appFrame/appGuiBase.h \
     docSelect.h \
     docExternalItem.h \
+    docListNumberTree.h \
     docRtfTagEnum.h \
     docRtfShapeEnum.h
 
@@ -3341,6 +4060,8 @@ docRtfTabs.o: \
     ../appUtil/docFont.h \
     ../appUtil/utilPropMask.h \
     ../appUtil/utilTextAttribute.h \
+    ../appUtil/utilFontEncoding.h \
+    ../appUtil/psFont.h \
     docShape.h \
     ../appUtil/geo2DInteger.h \
     ../appUtil/utilMemoryBuffer.h \
@@ -3355,6 +4076,7 @@ docRtfTabs.o: \
     docRowProperties.h \
     docSectProperties.h \
     ../appUtil/utilDocumentGeometry.h \
+    docNotesProperties.h \
     docStyleSheet.h \
     docDocumentProperties.h \
     ../appUtil/appUnit.h \
@@ -3367,8 +4089,12 @@ docRtfTabs.o: \
     docShapeProperties.h \
     docField.h \
     docObject.h \
+    docDrawingObject.h \
+    ../appFrame/appFrameConfig.h \
+    ../appFrame/appGuiBase.h \
     docSelect.h \
     docExternalItem.h \
+    docListNumberTree.h \
     docRtfTagEnum.h \
     docRtfShapeEnum.h
 
@@ -3386,6 +4112,8 @@ docRtfTagHash.o: \
     ../appUtil/docFont.h \
     ../appUtil/utilPropMask.h \
     ../appUtil/utilTextAttribute.h \
+    ../appUtil/utilFontEncoding.h \
+    ../appUtil/psFont.h \
     docShape.h \
     ../appUtil/geo2DInteger.h \
     ../appUtil/utilMemoryBuffer.h \
@@ -3400,6 +4128,7 @@ docRtfTagHash.o: \
     docRowProperties.h \
     docSectProperties.h \
     ../appUtil/utilDocumentGeometry.h \
+    docNotesProperties.h \
     docStyleSheet.h \
     docDocumentProperties.h \
     ../appUtil/appUnit.h \
@@ -3412,8 +4141,12 @@ docRtfTagHash.o: \
     docShapeProperties.h \
     docField.h \
     docObject.h \
+    docDrawingObject.h \
+    ../appFrame/appFrameConfig.h \
+    ../appFrame/appGuiBase.h \
     docSelect.h \
     docExternalItem.h \
+    docListNumberTree.h \
     docRtfTagEnum.h \
     docRtfShapeEnum.h
 
@@ -3430,6 +4163,8 @@ docRtfTextProperties.o: \
     ../appUtil/docFont.h \
     ../appUtil/utilPropMask.h \
     ../appUtil/utilTextAttribute.h \
+    ../appUtil/utilFontEncoding.h \
+    ../appUtil/psFont.h \
     docShape.h \
     ../appUtil/geo2DInteger.h \
     ../appUtil/utilMemoryBuffer.h \
@@ -3444,6 +4179,7 @@ docRtfTextProperties.o: \
     docRowProperties.h \
     docSectProperties.h \
     ../appUtil/utilDocumentGeometry.h \
+    docNotesProperties.h \
     docStyleSheet.h \
     docDocumentProperties.h \
     ../appUtil/appUnit.h \
@@ -3456,8 +4192,12 @@ docRtfTextProperties.o: \
     docShapeProperties.h \
     docField.h \
     docObject.h \
+    docDrawingObject.h \
+    ../appFrame/appFrameConfig.h \
+    ../appFrame/appGuiBase.h \
     docSelect.h \
     docExternalItem.h \
+    docListNumberTree.h \
     docRtfTagEnum.h \
     docRtfShapeEnum.h
 
@@ -3476,6 +4216,8 @@ docRtfUtil.o: \
     ../appUtil/docFont.h \
     ../appUtil/utilPropMask.h \
     ../appUtil/utilTextAttribute.h \
+    ../appUtil/utilFontEncoding.h \
+    ../appUtil/psFont.h \
     docShape.h \
     ../appUtil/geo2DInteger.h \
     ../appUtil/utilMemoryBuffer.h \
@@ -3490,6 +4232,7 @@ docRtfUtil.o: \
     docRowProperties.h \
     docSectProperties.h \
     ../appUtil/utilDocumentGeometry.h \
+    docNotesProperties.h \
     docStyleSheet.h \
     docDocumentProperties.h \
     docListTable.h \
@@ -3501,8 +4244,12 @@ docRtfUtil.o: \
     docShapeProperties.h \
     docField.h \
     docObject.h \
+    docDrawingObject.h \
+    ../appFrame/appFrameConfig.h \
+    ../appFrame/appGuiBase.h \
     docSelect.h \
     docExternalItem.h \
+    docListNumberTree.h \
     docRtfTagEnum.h \
     docRtfShapeEnum.h
 
@@ -3516,12 +4263,12 @@ docRtfWrite.o: \
     ../include/appDebug.h \
     ../include/charnames.h \
     ../appUtil/psFont.h \
-    ../appUtil/docFont.h \
-    ../appUtil/utilPropMask.h \
-    ../appUtil/utilTextAttribute.h \
     ../appUtil/utilFontEncoding.h \
     docRtf.h \
     docBuf.h \
+    ../appUtil/docFont.h \
+    ../appUtil/utilPropMask.h \
+    ../appUtil/utilTextAttribute.h \
     docShape.h \
     ../appUtil/geo2DInteger.h \
     ../appUtil/utilMemoryBuffer.h \
@@ -3536,6 +4283,7 @@ docRtfWrite.o: \
     docRowProperties.h \
     docSectProperties.h \
     ../appUtil/utilDocumentGeometry.h \
+    docNotesProperties.h \
     docStyleSheet.h \
     docDocumentProperties.h \
     ../appUtil/appUnit.h \
@@ -3548,8 +4296,12 @@ docRtfWrite.o: \
     docShapeProperties.h \
     docField.h \
     docObject.h \
+    docDrawingObject.h \
+    ../appFrame/appFrameConfig.h \
+    ../appFrame/appGuiBase.h \
     docSelect.h \
     docExternalItem.h \
+    docListNumberTree.h \
     docRtfTagEnum.h \
     docRtfShapeEnum.h
 
@@ -3568,6 +4320,7 @@ docRtfWriteUtil.o: \
     ../appUtil/docFont.h \
     ../appUtil/utilPropMask.h \
     ../appUtil/utilTextAttribute.h \
+    ../appUtil/psFont.h \
     docShape.h \
     ../appUtil/geo2DInteger.h \
     ../appUtil/utilMemoryBuffer.h \
@@ -3582,6 +4335,7 @@ docRtfWriteUtil.o: \
     docRowProperties.h \
     docSectProperties.h \
     ../appUtil/utilDocumentGeometry.h \
+    docNotesProperties.h \
     docStyleSheet.h \
     docDocumentProperties.h \
     ../appUtil/appUnit.h \
@@ -3594,10 +4348,20 @@ docRtfWriteUtil.o: \
     docShapeProperties.h \
     docField.h \
     docObject.h \
+    docDrawingObject.h \
+    ../appFrame/appFrameConfig.h \
+    ../appFrame/appGuiBase.h \
     docSelect.h \
     docExternalItem.h \
+    docListNumberTree.h \
     docRtfTagEnum.h \
     docRtfShapeEnum.h
+
+docScreenFontList.o: \
+    docScreenFontList.c \
+    docScreenFontList.h \
+    ../include/appDebugon.h \
+    ../include/appDebug.h
 
 docSectProperties.o: \
     docSectProperties.c \
@@ -3608,9 +4372,11 @@ docSectProperties.o: \
     ../appUtil/utilPropMask.h \
     docSectProperties.h \
     ../appUtil/utilDocumentGeometry.h \
+    docNotesProperties.h \
     docParaNumber.h \
     ../appUtil/docFont.h \
-    ../appUtil/utilTextAttribute.h
+    ../appUtil/utilTextAttribute.h \
+    ../appUtil/utilFontEncoding.h
 
 docSelect.o: \
     docSelect.c \
@@ -3624,6 +4390,8 @@ docSelect.o: \
     ../appUtil/docFont.h \
     ../appUtil/utilPropMask.h \
     ../appUtil/utilTextAttribute.h \
+    ../appUtil/utilFontEncoding.h \
+    ../appUtil/psFont.h \
     docShape.h \
     ../appUtil/geo2DInteger.h \
     ../appUtil/utilMemoryBuffer.h \
@@ -3638,6 +4406,7 @@ docSelect.o: \
     docRowProperties.h \
     docSectProperties.h \
     ../appUtil/utilDocumentGeometry.h \
+    docNotesProperties.h \
     docStyleSheet.h \
     docDocumentProperties.h \
     ../appUtil/appUnit.h \
@@ -3650,8 +4419,12 @@ docSelect.o: \
     docShapeProperties.h \
     docField.h \
     docObject.h \
+    docDrawingObject.h \
+    ../appFrame/appFrameConfig.h \
+    ../appFrame/appGuiBase.h \
     docSelect.h \
-    docExternalItem.h
+    docExternalItem.h \
+    docListNumberTree.h
 
 docSetFont.o: \
     docSetFont.c \
@@ -3666,6 +4439,8 @@ docSetFont.o: \
     ../appUtil/docFont.h \
     ../appUtil/utilPropMask.h \
     ../appUtil/utilTextAttribute.h \
+    ../appUtil/utilFontEncoding.h \
+    ../appUtil/psFont.h \
     docShape.h \
     ../appUtil/geo2DInteger.h \
     ../appUtil/utilMemoryBuffer.h \
@@ -3680,6 +4455,7 @@ docSetFont.o: \
     docRowProperties.h \
     docSectProperties.h \
     ../appUtil/utilDocumentGeometry.h \
+    docNotesProperties.h \
     docStyleSheet.h \
     docDocumentProperties.h \
     docListTable.h \
@@ -3691,9 +4467,14 @@ docSetFont.o: \
     docShapeProperties.h \
     docField.h \
     docObject.h \
+    docDrawingObject.h \
+    ../appFrame/appFrameConfig.h \
+    ../appFrame/appGuiBase.h \
     docSelect.h \
     docExternalItem.h \
-    docEdit.h
+    docListNumberTree.h \
+    docEdit.h \
+    docScreenFontList.h
 
 docShading.o: \
     docShading.c \
@@ -3708,6 +4489,8 @@ docShading.o: \
     ../appUtil/docFont.h \
     ../appUtil/utilPropMask.h \
     ../appUtil/utilTextAttribute.h \
+    ../appUtil/utilFontEncoding.h \
+    ../appUtil/psFont.h \
     docShape.h \
     ../appUtil/geo2DInteger.h \
     ../appUtil/utilMemoryBuffer.h \
@@ -3722,6 +4505,7 @@ docShading.o: \
     docRowProperties.h \
     docSectProperties.h \
     ../appUtil/utilDocumentGeometry.h \
+    docNotesProperties.h \
     docStyleSheet.h \
     docDocumentProperties.h \
     docListTable.h \
@@ -3733,8 +4517,12 @@ docShading.o: \
     docShapeProperties.h \
     docField.h \
     docObject.h \
+    docDrawingObject.h \
+    ../appFrame/appFrameConfig.h \
+    ../appFrame/appGuiBase.h \
     docSelect.h \
-    docExternalItem.h
+    docExternalItem.h \
+    docListNumberTree.h
 
 docSpell.o: \
     docSpell.c \
@@ -3748,6 +4536,8 @@ docSpell.o: \
     ../appUtil/docFont.h \
     ../appUtil/utilPropMask.h \
     ../appUtil/utilTextAttribute.h \
+    ../appUtil/utilFontEncoding.h \
+    ../appUtil/psFont.h \
     docShape.h \
     ../appUtil/geo2DInteger.h \
     ../appUtil/utilMemoryBuffer.h \
@@ -3762,6 +4552,7 @@ docSpell.o: \
     docRowProperties.h \
     docSectProperties.h \
     ../appUtil/utilDocumentGeometry.h \
+    docNotesProperties.h \
     docStyleSheet.h \
     docDocumentProperties.h \
     ../appUtil/appUnit.h \
@@ -3774,8 +4565,12 @@ docSpell.o: \
     docShapeProperties.h \
     docField.h \
     docObject.h \
+    docDrawingObject.h \
+    ../appFrame/appFrameConfig.h \
+    ../appFrame/appGuiBase.h \
     docSelect.h \
     docExternalItem.h \
+    docListNumberTree.h \
     docFind.h \
     ../include/reg.h \
     ../ind/ind.h \
@@ -3790,8 +4585,10 @@ docStyleSheet.o: \
     ../appUtil/utilPropMask.h \
     ../appUtil/docFont.h \
     ../appUtil/utilTextAttribute.h \
+    ../appUtil/utilFontEncoding.h \
     docSectProperties.h \
     ../appUtil/utilDocumentGeometry.h \
+    docNotesProperties.h \
     docParaNumber.h \
     docParaProperties.h \
     docPropVal.h \
@@ -3814,6 +4611,8 @@ docSymbolField.o: \
     ../appUtil/docFont.h \
     ../appUtil/utilPropMask.h \
     ../appUtil/utilTextAttribute.h \
+    ../appUtil/utilFontEncoding.h \
+    ../appUtil/psFont.h \
     docShape.h \
     ../appUtil/geo2DInteger.h \
     ../appUtil/utilMemoryBuffer.h \
@@ -3828,6 +4627,7 @@ docSymbolField.o: \
     docRowProperties.h \
     docSectProperties.h \
     ../appUtil/utilDocumentGeometry.h \
+    docNotesProperties.h \
     docStyleSheet.h \
     docDocumentProperties.h \
     docListTable.h \
@@ -3839,9 +4639,14 @@ docSymbolField.o: \
     docShapeProperties.h \
     docField.h \
     docObject.h \
+    docDrawingObject.h \
+    ../appFrame/appFrameConfig.h \
+    ../appFrame/appGuiBase.h \
     docSelect.h \
     docExternalItem.h \
+    docListNumberTree.h \
     docEdit.h \
+    docScreenFontList.h \
     docEvalField.h
 
 docTabStop.o: \
@@ -3853,8 +4658,9 @@ docTabStop.o: \
     ../appUtil/geo2DInteger.h \
     ../appUtil/docFont.h \
     ../appUtil/utilTextAttribute.h \
-    ../appUtil/psFont.h \
     ../appUtil/utilFontEncoding.h \
+    ../appUtil/psFont.h \
+    ../appUtil/sioGeneral.h \
     ../bitmap/bmcolor.h \
     docTabStop.h \
     ../include/appDebugon.h \
@@ -3872,6 +4678,8 @@ docTable.o: \
     ../appUtil/docFont.h \
     ../appUtil/utilPropMask.h \
     ../appUtil/utilTextAttribute.h \
+    ../appUtil/utilFontEncoding.h \
+    ../appUtil/psFont.h \
     docShape.h \
     ../appUtil/geo2DInteger.h \
     ../appUtil/utilMemoryBuffer.h \
@@ -3886,6 +4694,7 @@ docTable.o: \
     docRowProperties.h \
     docSectProperties.h \
     ../appUtil/utilDocumentGeometry.h \
+    docNotesProperties.h \
     docStyleSheet.h \
     docDocumentProperties.h \
     ../appUtil/appUnit.h \
@@ -3898,8 +4707,12 @@ docTable.o: \
     docShapeProperties.h \
     docField.h \
     docObject.h \
+    docDrawingObject.h \
+    ../appFrame/appFrameConfig.h \
+    ../appFrame/appGuiBase.h \
     docSelect.h \
-    docExternalItem.h
+    docExternalItem.h \
+    docListNumberTree.h
 
 docTableRectangle.o: \
     docTableRectangle.c \
@@ -3913,6 +4726,8 @@ docTableRectangle.o: \
     ../appUtil/docFont.h \
     ../appUtil/utilPropMask.h \
     ../appUtil/utilTextAttribute.h \
+    ../appUtil/utilFontEncoding.h \
+    ../appUtil/psFont.h \
     docShape.h \
     ../appUtil/geo2DInteger.h \
     ../appUtil/utilMemoryBuffer.h \
@@ -3927,6 +4742,7 @@ docTableRectangle.o: \
     docRowProperties.h \
     docSectProperties.h \
     ../appUtil/utilDocumentGeometry.h \
+    docNotesProperties.h \
     docStyleSheet.h \
     docDocumentProperties.h \
     ../appUtil/appUnit.h \
@@ -3939,8 +4755,12 @@ docTableRectangle.o: \
     docShapeProperties.h \
     docField.h \
     docObject.h \
+    docDrawingObject.h \
+    ../appFrame/appFrameConfig.h \
+    ../appFrame/appGuiBase.h \
     docSelect.h \
-    docExternalItem.h
+    docExternalItem.h \
+    docListNumberTree.h
 
 tedApp.o: \
     tedApp.c \
@@ -3954,11 +4774,11 @@ tedApp.o: \
     ../appUtil/sioGeneral.h \
     ../appUtil/utilDocumentGeometry.h \
     ../appUtil/utilPropMask.h \
-    ../appUtil/docFont.h \
-    ../appUtil/utilTextAttribute.h \
     ../appUtil/psFont.h \
     ../appUtil/utilFontEncoding.h \
     ../appUtil/utilPostscriptFace.h \
+    ../appUtil/docFont.h \
+    ../appUtil/utilTextAttribute.h \
     ../appUtil/utilAffineTransform.h \
     ../appUtil/utilNup.h \
     ../appUtil/utilPrinter.h \
@@ -3984,6 +4804,7 @@ tedApp.o: \
     docFrameProperties.h \
     docRowProperties.h \
     docSectProperties.h \
+    docNotesProperties.h \
     docStyleSheet.h \
     docDocumentProperties.h \
     ../appUtil/appUnit.h \
@@ -3996,8 +4817,12 @@ tedApp.o: \
     docShapeProperties.h \
     docField.h \
     docObject.h \
+    docDrawingObject.h \
+    ../appFrame/appFrameConfig.h \
     docSelect.h \
     docExternalItem.h \
+    docListNumberTree.h \
+    docScreenFontList.h \
     ../include/appDebugon.h \
     ../include/appDebug.h
 
@@ -4013,11 +4838,11 @@ tedAppColor.o: \
     ../appUtil/sioGeneral.h \
     ../appUtil/utilDocumentGeometry.h \
     ../appUtil/utilPropMask.h \
-    ../appUtil/docFont.h \
-    ../appUtil/utilTextAttribute.h \
     ../appUtil/psFont.h \
     ../appUtil/utilFontEncoding.h \
     ../appUtil/utilPostscriptFace.h \
+    ../appUtil/docFont.h \
+    ../appUtil/utilTextAttribute.h \
     ../appUtil/utilAffineTransform.h \
     ../appUtil/utilNup.h \
     ../appUtil/utilPrinter.h \
@@ -4043,6 +4868,7 @@ tedAppColor.o: \
     docFrameProperties.h \
     docRowProperties.h \
     docSectProperties.h \
+    docNotesProperties.h \
     docStyleSheet.h \
     docDocumentProperties.h \
     ../appUtil/appUnit.h \
@@ -4055,8 +4881,12 @@ tedAppColor.o: \
     docShapeProperties.h \
     docField.h \
     docObject.h \
+    docDrawingObject.h \
+    ../appFrame/appFrameConfig.h \
     docSelect.h \
     docExternalItem.h \
+    docListNumberTree.h \
+    docScreenFontList.h \
     ../include/appDebugon.h \
     ../include/appDebug.h
 
@@ -4072,11 +4902,11 @@ tedAppFont.o: \
     ../appUtil/sioGeneral.h \
     ../appUtil/utilDocumentGeometry.h \
     ../appUtil/utilPropMask.h \
-    ../appUtil/docFont.h \
-    ../appUtil/utilTextAttribute.h \
     ../appUtil/psFont.h \
     ../appUtil/utilFontEncoding.h \
     ../appUtil/utilPostscriptFace.h \
+    ../appUtil/docFont.h \
+    ../appUtil/utilTextAttribute.h \
     ../appUtil/utilAffineTransform.h \
     ../appUtil/utilNup.h \
     ../appUtil/utilPrinter.h \
@@ -4102,6 +4932,7 @@ tedAppFont.o: \
     docFrameProperties.h \
     docRowProperties.h \
     docSectProperties.h \
+    docNotesProperties.h \
     docStyleSheet.h \
     docDocumentProperties.h \
     ../appUtil/appUnit.h \
@@ -4114,8 +4945,14 @@ tedAppFont.o: \
     docShapeProperties.h \
     docField.h \
     docObject.h \
+    docDrawingObject.h \
+    ../appFrame/appFrameConfig.h \
     docSelect.h \
     docExternalItem.h \
+    docListNumberTree.h \
+    docScreenFontList.h \
+    tedLayout.h \
+    docLayout.h \
     ../appFrame/appSymbolPicker.h \
     ../include/appDebugon.h \
     ../include/appDebug.h
@@ -4132,11 +4969,11 @@ tedBlinkGtk.o: \
     ../appUtil/sioGeneral.h \
     ../appUtil/utilDocumentGeometry.h \
     ../appUtil/utilPropMask.h \
-    ../appUtil/docFont.h \
-    ../appUtil/utilTextAttribute.h \
     ../appUtil/psFont.h \
     ../appUtil/utilFontEncoding.h \
     ../appUtil/utilPostscriptFace.h \
+    ../appUtil/docFont.h \
+    ../appUtil/utilTextAttribute.h \
     ../appUtil/utilAffineTransform.h \
     ../appUtil/utilNup.h \
     ../appUtil/utilPrinter.h \
@@ -4162,6 +4999,7 @@ tedBlinkGtk.o: \
     docFrameProperties.h \
     docRowProperties.h \
     docSectProperties.h \
+    docNotesProperties.h \
     docStyleSheet.h \
     docDocumentProperties.h \
     ../appUtil/appUnit.h \
@@ -4174,8 +5012,12 @@ tedBlinkGtk.o: \
     docShapeProperties.h \
     docField.h \
     docObject.h \
+    docDrawingObject.h \
+    ../appFrame/appFrameConfig.h \
     docSelect.h \
     docExternalItem.h \
+    docListNumberTree.h \
+    docScreenFontList.h \
     tedRuler.h \
     ../appFrame/appRuler.h \
     ../include/appDebugon.h \
@@ -4193,11 +5035,11 @@ tedBlinkMotif.o: \
     ../appUtil/sioGeneral.h \
     ../appUtil/utilDocumentGeometry.h \
     ../appUtil/utilPropMask.h \
-    ../appUtil/docFont.h \
-    ../appUtil/utilTextAttribute.h \
     ../appUtil/psFont.h \
     ../appUtil/utilFontEncoding.h \
     ../appUtil/utilPostscriptFace.h \
+    ../appUtil/docFont.h \
+    ../appUtil/utilTextAttribute.h \
     ../appUtil/utilAffineTransform.h \
     ../appUtil/utilNup.h \
     ../appUtil/utilPrinter.h \
@@ -4223,6 +5065,7 @@ tedBlinkMotif.o: \
     docFrameProperties.h \
     docRowProperties.h \
     docSectProperties.h \
+    docNotesProperties.h \
     docStyleSheet.h \
     docDocumentProperties.h \
     ../appUtil/appUnit.h \
@@ -4235,8 +5078,12 @@ tedBlinkMotif.o: \
     docShapeProperties.h \
     docField.h \
     docObject.h \
+    docDrawingObject.h \
+    ../appFrame/appFrameConfig.h \
     docSelect.h \
     docExternalItem.h \
+    docListNumberTree.h \
+    docScreenFontList.h \
     tedRuler.h \
     ../appFrame/appRuler.h \
     ../include/appDebugon.h \
@@ -4254,11 +5101,11 @@ tedBookmarkDialog.o: \
     ../appUtil/sioGeneral.h \
     ../appUtil/utilDocumentGeometry.h \
     ../appUtil/utilPropMask.h \
-    ../appUtil/docFont.h \
-    ../appUtil/utilTextAttribute.h \
     ../appUtil/psFont.h \
     ../appUtil/utilFontEncoding.h \
     ../appUtil/utilPostscriptFace.h \
+    ../appUtil/docFont.h \
+    ../appUtil/utilTextAttribute.h \
     ../appUtil/utilAffineTransform.h \
     ../appUtil/utilNup.h \
     ../appUtil/utilPrinter.h \
@@ -4284,6 +5131,7 @@ tedBookmarkDialog.o: \
     docFrameProperties.h \
     docRowProperties.h \
     docSectProperties.h \
+    docNotesProperties.h \
     docStyleSheet.h \
     docDocumentProperties.h \
     ../appUtil/appUnit.h \
@@ -4296,8 +5144,12 @@ tedBookmarkDialog.o: \
     docShapeProperties.h \
     docField.h \
     docObject.h \
+    docDrawingObject.h \
+    ../appFrame/appFrameConfig.h \
     docSelect.h \
     docExternalItem.h \
+    docListNumberTree.h \
+    docScreenFontList.h \
     ../include/appDebugon.h \
     ../include/appDebug.h
 
@@ -4313,11 +5165,11 @@ tedBorderTool.o: \
     ../appUtil/sioGeneral.h \
     ../appUtil/utilDocumentGeometry.h \
     ../appUtil/utilPropMask.h \
-    ../appUtil/docFont.h \
-    ../appUtil/utilTextAttribute.h \
     ../appUtil/psFont.h \
     ../appUtil/utilFontEncoding.h \
     ../appUtil/utilPostscriptFace.h \
+    ../appUtil/docFont.h \
+    ../appUtil/utilTextAttribute.h \
     ../appUtil/utilAffineTransform.h \
     ../appUtil/utilNup.h \
     ../appUtil/utilPrinter.h \
@@ -4343,6 +5195,7 @@ tedBorderTool.o: \
     docFrameProperties.h \
     docRowProperties.h \
     docSectProperties.h \
+    docNotesProperties.h \
     docStyleSheet.h \
     docDocumentProperties.h \
     ../appUtil/appUnit.h \
@@ -4355,8 +5208,12 @@ tedBorderTool.o: \
     docShapeProperties.h \
     docField.h \
     docObject.h \
+    docDrawingObject.h \
+    ../appFrame/appFrameConfig.h \
     docSelect.h \
     docExternalItem.h \
+    docListNumberTree.h \
+    docScreenFontList.h \
     tedFormatTool.h \
     tedParaLayoutTool.h \
     tedBorderTool.h \
@@ -4378,9 +5235,11 @@ tedBorderTool.o: \
     tedColumnTool.h \
     tedCellTool.h \
     tedTabsTool.h \
+    tedListTool.h \
+    tedFontTool.h \
     ../appFrame/appFontTool.h \
     ../appFrame/appEncodingMenu.h \
-    ../appFrame/appFrameConfig.h \
+    tedLinkTool.h \
     ../appFrame/appRgbChooserPage.h \
     ../appFrame/appRgbCube.h \
     ../include/appDebugon.h \
@@ -4400,11 +5259,11 @@ tedCellTool.o: \
     ../appUtil/sioGeneral.h \
     ../appUtil/utilDocumentGeometry.h \
     ../appUtil/utilPropMask.h \
-    ../appUtil/docFont.h \
-    ../appUtil/utilTextAttribute.h \
     ../appUtil/psFont.h \
     ../appUtil/utilFontEncoding.h \
     ../appUtil/utilPostscriptFace.h \
+    ../appUtil/docFont.h \
+    ../appUtil/utilTextAttribute.h \
     ../appUtil/utilAffineTransform.h \
     ../appUtil/utilNup.h \
     ../appUtil/utilPrinter.h \
@@ -4430,6 +5289,7 @@ tedCellTool.o: \
     docFrameProperties.h \
     docRowProperties.h \
     docSectProperties.h \
+    docNotesProperties.h \
     docStyleSheet.h \
     docDocumentProperties.h \
     docListTable.h \
@@ -4441,8 +5301,12 @@ tedCellTool.o: \
     docShapeProperties.h \
     docField.h \
     docObject.h \
+    docDrawingObject.h \
+    ../appFrame/appFrameConfig.h \
     docSelect.h \
     docExternalItem.h \
+    docListNumberTree.h \
+    docScreenFontList.h \
     tedFormatTool.h \
     tedParaLayoutTool.h \
     tedBorderTool.h \
@@ -4463,9 +5327,11 @@ tedCellTool.o: \
     tedColumnTool.h \
     tedCellTool.h \
     tedTabsTool.h \
+    tedListTool.h \
+    tedFontTool.h \
     ../appFrame/appFontTool.h \
     ../appFrame/appEncodingMenu.h \
-    ../appFrame/appFrameConfig.h \
+    tedLinkTool.h \
     ../appFrame/appRgbChooserPage.h \
     ../appFrame/appRgbCube.h \
     ../include/appDebugon.h \
@@ -4485,11 +5351,11 @@ tedColumnTool.o: \
     ../appUtil/sioGeneral.h \
     ../appUtil/utilDocumentGeometry.h \
     ../appUtil/utilPropMask.h \
-    ../appUtil/docFont.h \
-    ../appUtil/utilTextAttribute.h \
     ../appUtil/psFont.h \
     ../appUtil/utilFontEncoding.h \
     ../appUtil/utilPostscriptFace.h \
+    ../appUtil/docFont.h \
+    ../appUtil/utilTextAttribute.h \
     ../appUtil/utilAffineTransform.h \
     ../appUtil/utilNup.h \
     ../appUtil/utilPrinter.h \
@@ -4515,6 +5381,7 @@ tedColumnTool.o: \
     docFrameProperties.h \
     docRowProperties.h \
     docSectProperties.h \
+    docNotesProperties.h \
     docStyleSheet.h \
     docDocumentProperties.h \
     docListTable.h \
@@ -4526,8 +5393,12 @@ tedColumnTool.o: \
     docShapeProperties.h \
     docField.h \
     docObject.h \
+    docDrawingObject.h \
+    ../appFrame/appFrameConfig.h \
     docSelect.h \
     docExternalItem.h \
+    docListNumberTree.h \
+    docScreenFontList.h \
     tedFormatTool.h \
     tedParaLayoutTool.h \
     tedBorderTool.h \
@@ -4548,9 +5419,11 @@ tedColumnTool.o: \
     tedColumnTool.h \
     tedCellTool.h \
     tedTabsTool.h \
+    tedListTool.h \
+    tedFontTool.h \
     ../appFrame/appFontTool.h \
     ../appFrame/appEncodingMenu.h \
-    ../appFrame/appFrameConfig.h \
+    tedLinkTool.h \
     ../appFrame/appRgbChooserPage.h \
     ../appFrame/appRgbCube.h \
     ../include/appDebugon.h \
@@ -4568,11 +5441,11 @@ tedCopyPaste.o: \
     ../appUtil/sioGeneral.h \
     ../appUtil/utilDocumentGeometry.h \
     ../appUtil/utilPropMask.h \
-    ../appUtil/docFont.h \
-    ../appUtil/utilTextAttribute.h \
     ../appUtil/psFont.h \
     ../appUtil/utilFontEncoding.h \
     ../appUtil/utilPostscriptFace.h \
+    ../appUtil/docFont.h \
+    ../appUtil/utilTextAttribute.h \
     ../appUtil/utilAffineTransform.h \
     ../appUtil/utilNup.h \
     ../appUtil/utilPrinter.h \
@@ -4598,6 +5471,7 @@ tedCopyPaste.o: \
     docFrameProperties.h \
     docRowProperties.h \
     docSectProperties.h \
+    docNotesProperties.h \
     docStyleSheet.h \
     docDocumentProperties.h \
     ../appUtil/appUnit.h \
@@ -4610,8 +5484,12 @@ tedCopyPaste.o: \
     docShapeProperties.h \
     docField.h \
     docObject.h \
+    docDrawingObject.h \
+    ../appFrame/appFrameConfig.h \
     docSelect.h \
     docExternalItem.h \
+    docListNumberTree.h \
+    docScreenFontList.h \
     ../appUtil/sioMemory.h \
     ../appFrame/sioXprop.h \
     ../include/appDebugon.h \
@@ -4630,6 +5508,8 @@ tedDocRuler.o: \
     ../appUtil/docFont.h \
     ../appUtil/utilPropMask.h \
     ../appUtil/utilTextAttribute.h \
+    ../appUtil/utilFontEncoding.h \
+    ../appUtil/psFont.h \
     docShape.h \
     ../appUtil/geo2DInteger.h \
     ../appUtil/utilTextAttributeAdmin.h \
@@ -4643,6 +5523,7 @@ tedDocRuler.o: \
     docRowProperties.h \
     docSectProperties.h \
     ../appUtil/utilDocumentGeometry.h \
+    docNotesProperties.h \
     docStyleSheet.h \
     docDocumentProperties.h \
     ../appUtil/appUnit.h \
@@ -4655,17 +5536,19 @@ tedDocRuler.o: \
     docShapeProperties.h \
     docField.h \
     docObject.h \
+    docDrawingObject.h \
+    ../appFrame/appFrameConfig.h \
+    ../appFrame/appGuiBase.h \
     docSelect.h \
     docExternalItem.h \
+    docListNumberTree.h \
     docLayout.h \
-    ../appUtil/psFont.h \
-    ../appUtil/utilFontEncoding.h \
+    docScreenFontList.h \
     ../appUtil/utilPs.h \
     ../appUtil/utilPostscriptFace.h \
     ../appUtil/utilAffineTransform.h \
     ../appUtil/utilNup.h \
     ../appFrame/appDraw.h \
-    ../appFrame/appGuiBase.h \
     tedApp.h \
     ../appFrame/appFrame.h \
     ../appFrame/appGuiResource.h \
@@ -4695,11 +5578,11 @@ tedDocprops.o: \
     ../appUtil/sioGeneral.h \
     ../appUtil/utilDocumentGeometry.h \
     ../appUtil/utilPropMask.h \
-    ../appUtil/docFont.h \
-    ../appUtil/utilTextAttribute.h \
     ../appUtil/psFont.h \
     ../appUtil/utilFontEncoding.h \
     ../appUtil/utilPostscriptFace.h \
+    ../appUtil/docFont.h \
+    ../appUtil/utilTextAttribute.h \
     ../appUtil/utilAffineTransform.h \
     ../appUtil/utilNup.h \
     ../appUtil/utilPrinter.h \
@@ -4725,6 +5608,7 @@ tedDocprops.o: \
     docFrameProperties.h \
     docRowProperties.h \
     docSectProperties.h \
+    docNotesProperties.h \
     docStyleSheet.h \
     docDocumentProperties.h \
     ../appUtil/appUnit.h \
@@ -4737,8 +5621,12 @@ tedDocprops.o: \
     docShapeProperties.h \
     docField.h \
     docObject.h \
+    docDrawingObject.h \
+    ../appFrame/appFrameConfig.h \
     docSelect.h \
-    docExternalItem.h
+    docExternalItem.h \
+    docListNumberTree.h \
+    docScreenFontList.h
 
 tedDocument.o: \
     tedDocument.c \
@@ -4746,6 +5634,12 @@ tedDocument.o: \
     ../appUtil/sioStdio.h \
     ../appUtil/sioGeneral.h \
     ../appUtil/appSystem.h \
+    ../appUtil/utilMatchFont.h \
+    ../appUtil/docFont.h \
+    ../appUtil/utilPropMask.h \
+    ../appUtil/utilTextAttribute.h \
+    ../appUtil/utilFontEncoding.h \
+    ../appUtil/psFont.h \
     ../appFrame/appSpellTool.h \
     ../ind/ind.h \
     ../appFrame/appFrame.h \
@@ -4754,11 +5648,6 @@ tedDocument.o: \
     ../appUtil/geo2DInteger.h \
     ../appUtil/utilPs.h \
     ../appUtil/utilDocumentGeometry.h \
-    ../appUtil/utilPropMask.h \
-    ../appUtil/docFont.h \
-    ../appUtil/utilTextAttribute.h \
-    ../appUtil/psFont.h \
-    ../appUtil/utilFontEncoding.h \
     ../appUtil/utilPostscriptFace.h \
     ../appUtil/utilAffineTransform.h \
     ../appUtil/utilNup.h \
@@ -4786,6 +5675,7 @@ tedDocument.o: \
     docFrameProperties.h \
     docRowProperties.h \
     docSectProperties.h \
+    docNotesProperties.h \
     docStyleSheet.h \
     docDocumentProperties.h \
     ../appUtil/appUnit.h \
@@ -4798,12 +5688,18 @@ tedDocument.o: \
     docShapeProperties.h \
     docField.h \
     docObject.h \
+    docDrawingObject.h \
+    ../appFrame/appFrameConfig.h \
     docSelect.h \
     docExternalItem.h \
+    docListNumberTree.h \
+    docScreenFontList.h \
     tedRuler.h \
     ../appFrame/appRuler.h \
     docLayout.h \
     docEdit.h \
+    docFind.h \
+    ../include/reg.h \
     ../include/appDebugon.h \
     ../include/appDebug.h
 
@@ -4819,11 +5715,11 @@ tedDraw.o: \
     ../appUtil/sioGeneral.h \
     ../appUtil/utilDocumentGeometry.h \
     ../appUtil/utilPropMask.h \
-    ../appUtil/docFont.h \
-    ../appUtil/utilTextAttribute.h \
     ../appUtil/psFont.h \
     ../appUtil/utilFontEncoding.h \
     ../appUtil/utilPostscriptFace.h \
+    ../appUtil/docFont.h \
+    ../appUtil/utilTextAttribute.h \
     ../appUtil/utilAffineTransform.h \
     ../appUtil/utilNup.h \
     ../appUtil/utilPrinter.h \
@@ -4849,6 +5745,7 @@ tedDraw.o: \
     docFrameProperties.h \
     docRowProperties.h \
     docSectProperties.h \
+    docNotesProperties.h \
     docStyleSheet.h \
     docDocumentProperties.h \
     ../appUtil/appUnit.h \
@@ -4861,8 +5758,12 @@ tedDraw.o: \
     docShapeProperties.h \
     docField.h \
     docObject.h \
+    docDrawingObject.h \
+    ../appFrame/appFrameConfig.h \
     docSelect.h \
     docExternalItem.h \
+    docListNumberTree.h \
+    docScreenFontList.h \
     tedLayout.h \
     docLayout.h \
     docDraw.h \
@@ -4881,11 +5782,11 @@ tedDrawGtk.o: \
     ../appUtil/sioGeneral.h \
     ../appUtil/utilDocumentGeometry.h \
     ../appUtil/utilPropMask.h \
-    ../appUtil/docFont.h \
-    ../appUtil/utilTextAttribute.h \
     ../appUtil/psFont.h \
     ../appUtil/utilFontEncoding.h \
     ../appUtil/utilPostscriptFace.h \
+    ../appUtil/docFont.h \
+    ../appUtil/utilTextAttribute.h \
     ../appUtil/utilAffineTransform.h \
     ../appUtil/utilNup.h \
     ../appUtil/utilPrinter.h \
@@ -4911,6 +5812,7 @@ tedDrawGtk.o: \
     docFrameProperties.h \
     docRowProperties.h \
     docSectProperties.h \
+    docNotesProperties.h \
     docStyleSheet.h \
     docDocumentProperties.h \
     ../appUtil/appUnit.h \
@@ -4923,8 +5825,12 @@ tedDrawGtk.o: \
     docShapeProperties.h \
     docField.h \
     docObject.h \
+    docDrawingObject.h \
+    ../appFrame/appFrameConfig.h \
     docSelect.h \
     docExternalItem.h \
+    docListNumberTree.h \
+    docScreenFontList.h \
     docDraw.h \
     docLayout.h \
     ../include/appDebugon.h \
@@ -4942,11 +5848,11 @@ tedDrawMotif.o: \
     ../appUtil/sioGeneral.h \
     ../appUtil/utilDocumentGeometry.h \
     ../appUtil/utilPropMask.h \
-    ../appUtil/docFont.h \
-    ../appUtil/utilTextAttribute.h \
     ../appUtil/psFont.h \
     ../appUtil/utilFontEncoding.h \
     ../appUtil/utilPostscriptFace.h \
+    ../appUtil/docFont.h \
+    ../appUtil/utilTextAttribute.h \
     ../appUtil/utilAffineTransform.h \
     ../appUtil/utilNup.h \
     ../appUtil/utilPrinter.h \
@@ -4972,6 +5878,7 @@ tedDrawMotif.o: \
     docFrameProperties.h \
     docRowProperties.h \
     docSectProperties.h \
+    docNotesProperties.h \
     docStyleSheet.h \
     docDocumentProperties.h \
     ../appUtil/appUnit.h \
@@ -4984,10 +5891,82 @@ tedDrawMotif.o: \
     docShapeProperties.h \
     docField.h \
     docObject.h \
+    docDrawingObject.h \
+    ../appFrame/appFrameConfig.h \
     docSelect.h \
     docExternalItem.h \
+    docListNumberTree.h \
+    docScreenFontList.h \
     docDraw.h \
     docLayout.h \
+    ../include/appDebugon.h \
+    ../include/appDebug.h
+
+tedDrawingObject.o: \
+    tedDrawingObject.c \
+    tedConfig.h \
+    tedApp.h \
+    ../appFrame/appFrame.h \
+    ../appFrame/appGuiBase.h \
+    ../appFrame/appGuiResource.h \
+    ../appUtil/geo2DInteger.h \
+    ../appUtil/utilPs.h \
+    ../appUtil/sioGeneral.h \
+    ../appUtil/utilDocumentGeometry.h \
+    ../appUtil/utilPropMask.h \
+    ../appUtil/psFont.h \
+    ../appUtil/utilFontEncoding.h \
+    ../appUtil/utilPostscriptFace.h \
+    ../appUtil/docFont.h \
+    ../appUtil/utilTextAttribute.h \
+    ../appUtil/utilAffineTransform.h \
+    ../appUtil/utilNup.h \
+    ../appUtil/utilPrinter.h \
+    ../appUtil/utilMailContent.h \
+    ../appFrame/appIcons.h \
+    ../appFrame/appTool.h \
+    ../appFrame/appDraw.h \
+    ../bitmap/bmcolor.h \
+    ../appFrame/appInspector.h \
+    ../appFrame/appImage.h \
+    ../bitmap/bitmap.h \
+    ../appUtil/utilMemoryBuffer.h \
+    ../appFrame/docExpandedTextAttribute.h \
+    docBuf.h \
+    docShape.h \
+    ../appUtil/utilTextAttributeAdmin.h \
+    docParaProperties.h \
+    docPropVal.h \
+    docTabStop.h \
+    docBorderProperties.h \
+    docItemShading.h \
+    docParaNumber.h \
+    docFrameProperties.h \
+    docRowProperties.h \
+    docSectProperties.h \
+    docNotesProperties.h \
+    docStyleSheet.h \
+    docDocumentProperties.h \
+    ../appUtil/appUnit.h \
+    docListTable.h \
+    docDocumentList.h \
+    docListLevel.h \
+    docListOverrideTable.h \
+    docListOverride.h \
+    docListOverrideLevel.h \
+    docShapeProperties.h \
+    docField.h \
+    docObject.h \
+    docDrawingObject.h \
+    ../appFrame/appFrameConfig.h \
+    docSelect.h \
+    docExternalItem.h \
+    docListNumberTree.h \
+    docScreenFontList.h \
+    docDraw.h \
+    docLayout.h \
+    ../appFrame/appWinMeta.h \
+    ../appFrame/appMetafile.h \
     ../include/appDebugon.h \
     ../include/appDebug.h
 
@@ -4996,14 +5975,14 @@ tedEdit.o: \
     tedConfig.h \
     docLayout.h \
     ../appUtil/psFont.h \
+    ../appUtil/utilFontEncoding.h \
+    ../appUtil/sioGeneral.h \
+    docBuf.h \
+    ../bitmap/bitmap.h \
+    ../bitmap/bmcolor.h \
     ../appUtil/docFont.h \
     ../appUtil/utilPropMask.h \
     ../appUtil/utilTextAttribute.h \
-    ../appUtil/utilFontEncoding.h \
-    docBuf.h \
-    ../bitmap/bitmap.h \
-    ../appUtil/sioGeneral.h \
-    ../bitmap/bmcolor.h \
     docShape.h \
     ../appUtil/geo2DInteger.h \
     ../appUtil/utilMemoryBuffer.h \
@@ -5018,6 +5997,7 @@ tedEdit.o: \
     docRowProperties.h \
     docSectProperties.h \
     ../appUtil/utilDocumentGeometry.h \
+    docNotesProperties.h \
     docStyleSheet.h \
     docDocumentProperties.h \
     ../appUtil/appUnit.h \
@@ -5030,14 +6010,85 @@ tedEdit.o: \
     docShapeProperties.h \
     docField.h \
     docObject.h \
+    docDrawingObject.h \
+    ../appFrame/appFrameConfig.h \
+    ../appFrame/appGuiBase.h \
     docSelect.h \
     docExternalItem.h \
+    docListNumberTree.h \
+    docScreenFontList.h \
     ../appUtil/utilPs.h \
     ../appUtil/utilPostscriptFace.h \
     ../appUtil/utilAffineTransform.h \
     ../appUtil/utilNup.h \
     ../appFrame/appDraw.h \
+    tedEdit.h \
+    tedApp.h \
+    ../appFrame/appFrame.h \
+    ../appFrame/appGuiResource.h \
+    ../appUtil/utilPrinter.h \
+    ../appUtil/utilMailContent.h \
+    ../appFrame/appIcons.h \
+    ../appFrame/appTool.h \
+    ../appFrame/appInspector.h \
+    ../appFrame/appImage.h \
+    ../appFrame/docExpandedTextAttribute.h \
+    docEdit.h \
+    ../include/appDebugon.h \
+    ../include/appDebug.h
+
+tedEditList.o: \
+    tedEditList.c \
+    tedConfig.h \
+    docLayout.h \
+    ../appUtil/psFont.h \
+    ../appUtil/utilFontEncoding.h \
+    ../appUtil/sioGeneral.h \
+    docBuf.h \
+    ../bitmap/bitmap.h \
+    ../bitmap/bmcolor.h \
+    ../appUtil/docFont.h \
+    ../appUtil/utilPropMask.h \
+    ../appUtil/utilTextAttribute.h \
+    docShape.h \
+    ../appUtil/geo2DInteger.h \
+    ../appUtil/utilMemoryBuffer.h \
+    ../appUtil/utilTextAttributeAdmin.h \
+    docParaProperties.h \
+    docPropVal.h \
+    docTabStop.h \
+    docBorderProperties.h \
+    docItemShading.h \
+    docParaNumber.h \
+    docFrameProperties.h \
+    docRowProperties.h \
+    docSectProperties.h \
+    ../appUtil/utilDocumentGeometry.h \
+    docNotesProperties.h \
+    docStyleSheet.h \
+    docDocumentProperties.h \
+    ../appUtil/appUnit.h \
+    docListTable.h \
+    docDocumentList.h \
+    docListLevel.h \
+    docListOverrideTable.h \
+    docListOverride.h \
+    docListOverrideLevel.h \
+    docShapeProperties.h \
+    docField.h \
+    docObject.h \
+    docDrawingObject.h \
+    ../appFrame/appFrameConfig.h \
     ../appFrame/appGuiBase.h \
+    docSelect.h \
+    docExternalItem.h \
+    docListNumberTree.h \
+    docScreenFontList.h \
+    ../appUtil/utilPs.h \
+    ../appUtil/utilPostscriptFace.h \
+    ../appUtil/utilAffineTransform.h \
+    ../appUtil/utilNup.h \
+    ../appFrame/appDraw.h \
     tedEdit.h \
     tedApp.h \
     ../appFrame/appFrame.h \
@@ -5056,16 +6107,16 @@ tedEdit.o: \
 tedEditOperation.o: \
     tedEditOperation.c \
     tedConfig.h \
-    docLayout.h \
-    ../appUtil/psFont.h \
-    ../appUtil/docFont.h \
-    ../appUtil/utilPropMask.h \
-    ../appUtil/utilTextAttribute.h \
-    ../appUtil/utilFontEncoding.h \
+    tedLayout.h \
     docBuf.h \
     ../bitmap/bitmap.h \
     ../appUtil/sioGeneral.h \
     ../bitmap/bmcolor.h \
+    ../appUtil/docFont.h \
+    ../appUtil/utilPropMask.h \
+    ../appUtil/utilTextAttribute.h \
+    ../appUtil/utilFontEncoding.h \
+    ../appUtil/psFont.h \
     docShape.h \
     ../appUtil/geo2DInteger.h \
     ../appUtil/utilMemoryBuffer.h \
@@ -5080,6 +6131,7 @@ tedEditOperation.o: \
     docRowProperties.h \
     docSectProperties.h \
     ../appUtil/utilDocumentGeometry.h \
+    docNotesProperties.h \
     docStyleSheet.h \
     docDocumentProperties.h \
     ../appUtil/appUnit.h \
@@ -5092,14 +6144,19 @@ tedEditOperation.o: \
     docShapeProperties.h \
     docField.h \
     docObject.h \
+    docDrawingObject.h \
+    ../appFrame/appFrameConfig.h \
+    ../appFrame/appGuiBase.h \
     docSelect.h \
     docExternalItem.h \
+    docListNumberTree.h \
+    docLayout.h \
+    docScreenFontList.h \
     ../appUtil/utilPs.h \
     ../appUtil/utilPostscriptFace.h \
     ../appUtil/utilAffineTransform.h \
     ../appUtil/utilNup.h \
     ../appFrame/appDraw.h \
-    ../appFrame/appGuiBase.h \
     tedEdit.h \
     tedApp.h \
     ../appFrame/appFrame.h \
@@ -5127,11 +6184,11 @@ tedFind.o: \
     ../appUtil/sioGeneral.h \
     ../appUtil/utilDocumentGeometry.h \
     ../appUtil/utilPropMask.h \
-    ../appUtil/docFont.h \
-    ../appUtil/utilTextAttribute.h \
     ../appUtil/psFont.h \
     ../appUtil/utilFontEncoding.h \
     ../appUtil/utilPostscriptFace.h \
+    ../appUtil/docFont.h \
+    ../appUtil/utilTextAttribute.h \
     ../appUtil/utilAffineTransform.h \
     ../appUtil/utilNup.h \
     ../appUtil/utilPrinter.h \
@@ -5157,6 +6214,7 @@ tedFind.o: \
     docFrameProperties.h \
     docRowProperties.h \
     docSectProperties.h \
+    docNotesProperties.h \
     docStyleSheet.h \
     docDocumentProperties.h \
     ../appUtil/appUnit.h \
@@ -5169,8 +6227,12 @@ tedFind.o: \
     docShapeProperties.h \
     docField.h \
     docObject.h \
+    docDrawingObject.h \
+    ../appFrame/appFrameConfig.h \
     docSelect.h \
     docExternalItem.h \
+    docListNumberTree.h \
+    docScreenFontList.h \
     ../appFrame/appSpellTool.h \
     ../ind/ind.h \
     docFind.h \
@@ -5190,11 +6252,11 @@ tedFindItem.o: \
     ../appUtil/sioGeneral.h \
     ../appUtil/utilDocumentGeometry.h \
     ../appUtil/utilPropMask.h \
-    ../appUtil/docFont.h \
-    ../appUtil/utilTextAttribute.h \
     ../appUtil/psFont.h \
     ../appUtil/utilFontEncoding.h \
     ../appUtil/utilPostscriptFace.h \
+    ../appUtil/docFont.h \
+    ../appUtil/utilTextAttribute.h \
     ../appUtil/utilAffineTransform.h \
     ../appUtil/utilNup.h \
     ../appUtil/utilPrinter.h \
@@ -5220,6 +6282,7 @@ tedFindItem.o: \
     docFrameProperties.h \
     docRowProperties.h \
     docSectProperties.h \
+    docNotesProperties.h \
     docStyleSheet.h \
     docDocumentProperties.h \
     ../appUtil/appUnit.h \
@@ -5232,8 +6295,12 @@ tedFindItem.o: \
     docShapeProperties.h \
     docField.h \
     docObject.h \
+    docDrawingObject.h \
+    ../appFrame/appFrameConfig.h \
     docSelect.h \
     docExternalItem.h \
+    docListNumberTree.h \
+    docScreenFontList.h \
     tedLayout.h \
     docLayout.h \
     ../include/appDebugon.h \
@@ -5251,11 +6318,11 @@ tedFollowLink.o: \
     ../appUtil/sioGeneral.h \
     ../appUtil/utilDocumentGeometry.h \
     ../appUtil/utilPropMask.h \
-    ../appUtil/docFont.h \
-    ../appUtil/utilTextAttribute.h \
     ../appUtil/psFont.h \
     ../appUtil/utilFontEncoding.h \
     ../appUtil/utilPostscriptFace.h \
+    ../appUtil/docFont.h \
+    ../appUtil/utilTextAttribute.h \
     ../appUtil/utilAffineTransform.h \
     ../appUtil/utilNup.h \
     ../appUtil/utilPrinter.h \
@@ -5281,6 +6348,7 @@ tedFollowLink.o: \
     docFrameProperties.h \
     docRowProperties.h \
     docSectProperties.h \
+    docNotesProperties.h \
     docStyleSheet.h \
     docDocumentProperties.h \
     ../appUtil/appUnit.h \
@@ -5293,8 +6361,12 @@ tedFollowLink.o: \
     docShapeProperties.h \
     docField.h \
     docObject.h \
+    docDrawingObject.h \
+    ../appFrame/appFrameConfig.h \
     docSelect.h \
     docExternalItem.h \
+    docListNumberTree.h \
+    docScreenFontList.h \
     ../include/appDebugon.h \
     ../include/appDebug.h
 
@@ -5310,11 +6382,11 @@ tedFont.o: \
     ../appUtil/sioGeneral.h \
     ../appUtil/utilDocumentGeometry.h \
     ../appUtil/utilPropMask.h \
-    ../appUtil/docFont.h \
-    ../appUtil/utilTextAttribute.h \
     ../appUtil/psFont.h \
     ../appUtil/utilFontEncoding.h \
     ../appUtil/utilPostscriptFace.h \
+    ../appUtil/docFont.h \
+    ../appUtil/utilTextAttribute.h \
     ../appUtil/utilAffineTransform.h \
     ../appUtil/utilNup.h \
     ../appUtil/utilPrinter.h \
@@ -5340,6 +6412,7 @@ tedFont.o: \
     docFrameProperties.h \
     docRowProperties.h \
     docSectProperties.h \
+    docNotesProperties.h \
     docStyleSheet.h \
     docDocumentProperties.h \
     ../appUtil/appUnit.h \
@@ -5352,10 +6425,106 @@ tedFont.o: \
     docShapeProperties.h \
     docField.h \
     docObject.h \
+    docDrawingObject.h \
+    ../appFrame/appFrameConfig.h \
     docSelect.h \
     docExternalItem.h \
+    docListNumberTree.h \
+    docScreenFontList.h \
     tedEdit.h \
     docEdit.h \
+    ../include/appDebugon.h \
+    ../include/appDebug.h
+
+tedFontTool.o: \
+    tedFontTool.c \
+    tedConfig.h \
+    tedApp.h \
+    ../appFrame/appFrame.h \
+    ../appFrame/appGuiBase.h \
+    ../appFrame/appGuiResource.h \
+    ../appUtil/geo2DInteger.h \
+    ../appUtil/utilPs.h \
+    ../appUtil/sioGeneral.h \
+    ../appUtil/utilDocumentGeometry.h \
+    ../appUtil/utilPropMask.h \
+    ../appUtil/psFont.h \
+    ../appUtil/utilFontEncoding.h \
+    ../appUtil/utilPostscriptFace.h \
+    ../appUtil/docFont.h \
+    ../appUtil/utilTextAttribute.h \
+    ../appUtil/utilAffineTransform.h \
+    ../appUtil/utilNup.h \
+    ../appUtil/utilPrinter.h \
+    ../appUtil/utilMailContent.h \
+    ../appFrame/appIcons.h \
+    ../appFrame/appTool.h \
+    ../appFrame/appDraw.h \
+    ../bitmap/bmcolor.h \
+    ../appFrame/appInspector.h \
+    ../appFrame/appImage.h \
+    ../bitmap/bitmap.h \
+    ../appUtil/utilMemoryBuffer.h \
+    ../appFrame/docExpandedTextAttribute.h \
+    docBuf.h \
+    docShape.h \
+    ../appUtil/utilTextAttributeAdmin.h \
+    docParaProperties.h \
+    docPropVal.h \
+    docTabStop.h \
+    docBorderProperties.h \
+    docItemShading.h \
+    docParaNumber.h \
+    docFrameProperties.h \
+    docRowProperties.h \
+    docSectProperties.h \
+    docNotesProperties.h \
+    docStyleSheet.h \
+    docDocumentProperties.h \
+    ../appUtil/appUnit.h \
+    docListTable.h \
+    docDocumentList.h \
+    docListLevel.h \
+    docListOverrideTable.h \
+    docListOverride.h \
+    docListOverrideLevel.h \
+    docShapeProperties.h \
+    docField.h \
+    docObject.h \
+    docDrawingObject.h \
+    ../appFrame/appFrameConfig.h \
+    docSelect.h \
+    docExternalItem.h \
+    docListNumberTree.h \
+    docScreenFontList.h \
+    tedFormatTool.h \
+    tedParaLayoutTool.h \
+    tedBorderTool.h \
+    ../appFrame/appColorChooser.h \
+    tedShadingTool.h \
+    tedHeightTool.h \
+    tedParaOrnamentsTool.h \
+    tedRowTool.h \
+    tedSectionTool.h \
+    tedPageLayoutTool.h \
+    ../appFrame/appPageLayoutTool.h \
+    ../appUtil/appPaper.h \
+    ../appFrame/appPaperChooser.h \
+    ../appFrame/appMarginTool.h \
+    ../appUtil/appGeoString.h \
+    tedNotesTool.h \
+    tedHeaderFooterTool.h \
+    tedTableTool.h \
+    tedColumnTool.h \
+    tedCellTool.h \
+    tedTabsTool.h \
+    tedListTool.h \
+    tedFontTool.h \
+    ../appFrame/appFontTool.h \
+    ../appFrame/appEncodingMenu.h \
+    tedLinkTool.h \
+    ../appFrame/appRgbChooserPage.h \
+    ../appFrame/appRgbCube.h \
     ../include/appDebugon.h \
     ../include/appDebug.h
 
@@ -5364,14 +6533,14 @@ tedFormat.o: \
     tedConfig.h \
     docLayout.h \
     ../appUtil/psFont.h \
+    ../appUtil/utilFontEncoding.h \
+    ../appUtil/sioGeneral.h \
+    docBuf.h \
+    ../bitmap/bitmap.h \
+    ../bitmap/bmcolor.h \
     ../appUtil/docFont.h \
     ../appUtil/utilPropMask.h \
     ../appUtil/utilTextAttribute.h \
-    ../appUtil/utilFontEncoding.h \
-    docBuf.h \
-    ../bitmap/bitmap.h \
-    ../appUtil/sioGeneral.h \
-    ../bitmap/bmcolor.h \
     docShape.h \
     ../appUtil/geo2DInteger.h \
     ../appUtil/utilMemoryBuffer.h \
@@ -5386,6 +6555,7 @@ tedFormat.o: \
     docRowProperties.h \
     docSectProperties.h \
     ../appUtil/utilDocumentGeometry.h \
+    docNotesProperties.h \
     docStyleSheet.h \
     docDocumentProperties.h \
     ../appUtil/appUnit.h \
@@ -5398,14 +6568,18 @@ tedFormat.o: \
     docShapeProperties.h \
     docField.h \
     docObject.h \
+    docDrawingObject.h \
+    ../appFrame/appFrameConfig.h \
+    ../appFrame/appGuiBase.h \
     docSelect.h \
     docExternalItem.h \
+    docListNumberTree.h \
+    docScreenFontList.h \
     ../appUtil/utilPs.h \
     ../appUtil/utilPostscriptFace.h \
     ../appUtil/utilAffineTransform.h \
     ../appUtil/utilNup.h \
     ../appFrame/appDraw.h \
-    ../appFrame/appGuiBase.h \
     tedEdit.h \
     tedApp.h \
     ../appFrame/appFrame.h \
@@ -5435,11 +6609,11 @@ tedFormatTool.o: \
     ../appUtil/sioGeneral.h \
     ../appUtil/utilDocumentGeometry.h \
     ../appUtil/utilPropMask.h \
-    ../appUtil/docFont.h \
-    ../appUtil/utilTextAttribute.h \
     ../appUtil/psFont.h \
     ../appUtil/utilFontEncoding.h \
     ../appUtil/utilPostscriptFace.h \
+    ../appUtil/docFont.h \
+    ../appUtil/utilTextAttribute.h \
     ../appUtil/utilAffineTransform.h \
     ../appUtil/utilNup.h \
     ../appUtil/utilPrinter.h \
@@ -5465,6 +6639,7 @@ tedFormatTool.o: \
     docFrameProperties.h \
     docRowProperties.h \
     docSectProperties.h \
+    docNotesProperties.h \
     docStyleSheet.h \
     docDocumentProperties.h \
     docListTable.h \
@@ -5476,8 +6651,12 @@ tedFormatTool.o: \
     docShapeProperties.h \
     docField.h \
     docObject.h \
+    docDrawingObject.h \
+    ../appFrame/appFrameConfig.h \
     docSelect.h \
     docExternalItem.h \
+    docListNumberTree.h \
+    docScreenFontList.h \
     tedFormatTool.h \
     tedParaLayoutTool.h \
     tedBorderTool.h \
@@ -5498,9 +6677,11 @@ tedFormatTool.o: \
     tedColumnTool.h \
     tedCellTool.h \
     tedTabsTool.h \
+    tedListTool.h \
+    tedFontTool.h \
     ../appFrame/appFontTool.h \
     ../appFrame/appEncodingMenu.h \
-    ../appFrame/appFrameConfig.h \
+    tedLinkTool.h \
     ../appFrame/appRgbChooserPage.h \
     ../appFrame/appRgbCube.h \
     ../include/appDebugon.h \
@@ -5520,11 +6701,11 @@ tedFormatToolUtil.o: \
     ../appUtil/sioGeneral.h \
     ../appUtil/utilDocumentGeometry.h \
     ../appUtil/utilPropMask.h \
-    ../appUtil/docFont.h \
-    ../appUtil/utilTextAttribute.h \
     ../appUtil/psFont.h \
     ../appUtil/utilFontEncoding.h \
     ../appUtil/utilPostscriptFace.h \
+    ../appUtil/docFont.h \
+    ../appUtil/utilTextAttribute.h \
     ../appUtil/utilAffineTransform.h \
     ../appUtil/utilNup.h \
     ../appUtil/utilPrinter.h \
@@ -5550,6 +6731,7 @@ tedFormatToolUtil.o: \
     docFrameProperties.h \
     docRowProperties.h \
     docSectProperties.h \
+    docNotesProperties.h \
     docStyleSheet.h \
     docDocumentProperties.h \
     docListTable.h \
@@ -5561,8 +6743,12 @@ tedFormatToolUtil.o: \
     docShapeProperties.h \
     docField.h \
     docObject.h \
+    docDrawingObject.h \
+    ../appFrame/appFrameConfig.h \
     docSelect.h \
     docExternalItem.h \
+    docListNumberTree.h \
+    docScreenFontList.h \
     tedFormatTool.h \
     tedParaLayoutTool.h \
     tedBorderTool.h \
@@ -5583,9 +6769,11 @@ tedFormatToolUtil.o: \
     tedColumnTool.h \
     tedCellTool.h \
     tedTabsTool.h \
+    tedListTool.h \
+    tedFontTool.h \
     ../appFrame/appFontTool.h \
     ../appFrame/appEncodingMenu.h \
-    ../appFrame/appFrameConfig.h \
+    tedLinkTool.h \
     ../appFrame/appRgbChooserPage.h \
     ../appFrame/appRgbCube.h \
     ../include/appDebugon.h \
@@ -5596,14 +6784,14 @@ tedHeaderFooter.o: \
     tedConfig.h \
     docLayout.h \
     ../appUtil/psFont.h \
+    ../appUtil/utilFontEncoding.h \
+    ../appUtil/sioGeneral.h \
+    docBuf.h \
+    ../bitmap/bitmap.h \
+    ../bitmap/bmcolor.h \
     ../appUtil/docFont.h \
     ../appUtil/utilPropMask.h \
     ../appUtil/utilTextAttribute.h \
-    ../appUtil/utilFontEncoding.h \
-    docBuf.h \
-    ../bitmap/bitmap.h \
-    ../appUtil/sioGeneral.h \
-    ../bitmap/bmcolor.h \
     docShape.h \
     ../appUtil/geo2DInteger.h \
     ../appUtil/utilMemoryBuffer.h \
@@ -5618,6 +6806,7 @@ tedHeaderFooter.o: \
     docRowProperties.h \
     docSectProperties.h \
     ../appUtil/utilDocumentGeometry.h \
+    docNotesProperties.h \
     docStyleSheet.h \
     docDocumentProperties.h \
     ../appUtil/appUnit.h \
@@ -5630,14 +6819,18 @@ tedHeaderFooter.o: \
     docShapeProperties.h \
     docField.h \
     docObject.h \
+    docDrawingObject.h \
+    ../appFrame/appFrameConfig.h \
+    ../appFrame/appGuiBase.h \
     docSelect.h \
     docExternalItem.h \
+    docListNumberTree.h \
+    docScreenFontList.h \
     ../appUtil/utilPs.h \
     ../appUtil/utilPostscriptFace.h \
     ../appUtil/utilAffineTransform.h \
     ../appUtil/utilNup.h \
     ../appFrame/appDraw.h \
-    ../appFrame/appGuiBase.h \
     tedApp.h \
     ../appFrame/appFrame.h \
     ../appFrame/appGuiResource.h \
@@ -5663,11 +6856,11 @@ tedHeaderFooterTool.o: \
     ../appUtil/sioGeneral.h \
     ../appUtil/utilDocumentGeometry.h \
     ../appUtil/utilPropMask.h \
-    ../appUtil/docFont.h \
-    ../appUtil/utilTextAttribute.h \
     ../appUtil/psFont.h \
     ../appUtil/utilFontEncoding.h \
     ../appUtil/utilPostscriptFace.h \
+    ../appUtil/docFont.h \
+    ../appUtil/utilTextAttribute.h \
     ../appUtil/utilAffineTransform.h \
     ../appUtil/utilNup.h \
     ../appUtil/utilPrinter.h \
@@ -5693,6 +6886,7 @@ tedHeaderFooterTool.o: \
     docFrameProperties.h \
     docRowProperties.h \
     docSectProperties.h \
+    docNotesProperties.h \
     docStyleSheet.h \
     docDocumentProperties.h \
     ../appUtil/appUnit.h \
@@ -5705,8 +6899,12 @@ tedHeaderFooterTool.o: \
     docShapeProperties.h \
     docField.h \
     docObject.h \
+    docDrawingObject.h \
+    ../appFrame/appFrameConfig.h \
     docSelect.h \
     docExternalItem.h \
+    docListNumberTree.h \
+    docScreenFontList.h \
     tedFormatTool.h \
     tedParaLayoutTool.h \
     tedBorderTool.h \
@@ -5728,9 +6926,11 @@ tedHeaderFooterTool.o: \
     tedColumnTool.h \
     tedCellTool.h \
     tedTabsTool.h \
+    tedListTool.h \
+    tedFontTool.h \
     ../appFrame/appFontTool.h \
     ../appFrame/appEncodingMenu.h \
-    ../appFrame/appFrameConfig.h \
+    tedLinkTool.h \
     ../appFrame/appRgbChooserPage.h \
     ../appFrame/appRgbCube.h \
     ../include/appDebugon.h \
@@ -5750,11 +6950,11 @@ tedHeightTool.o: \
     ../appUtil/sioGeneral.h \
     ../appUtil/utilDocumentGeometry.h \
     ../appUtil/utilPropMask.h \
-    ../appUtil/docFont.h \
-    ../appUtil/utilTextAttribute.h \
     ../appUtil/psFont.h \
     ../appUtil/utilFontEncoding.h \
     ../appUtil/utilPostscriptFace.h \
+    ../appUtil/docFont.h \
+    ../appUtil/utilTextAttribute.h \
     ../appUtil/utilAffineTransform.h \
     ../appUtil/utilNup.h \
     ../appUtil/utilPrinter.h \
@@ -5780,6 +6980,7 @@ tedHeightTool.o: \
     docFrameProperties.h \
     docRowProperties.h \
     docSectProperties.h \
+    docNotesProperties.h \
     docStyleSheet.h \
     docDocumentProperties.h \
     docListTable.h \
@@ -5791,8 +6992,12 @@ tedHeightTool.o: \
     docShapeProperties.h \
     docField.h \
     docObject.h \
+    docDrawingObject.h \
+    ../appFrame/appFrameConfig.h \
     docSelect.h \
     docExternalItem.h \
+    docListNumberTree.h \
+    docScreenFontList.h \
     tedFormatTool.h \
     tedParaLayoutTool.h \
     tedBorderTool.h \
@@ -5813,9 +7018,11 @@ tedHeightTool.o: \
     tedColumnTool.h \
     tedCellTool.h \
     tedTabsTool.h \
+    tedListTool.h \
+    tedFontTool.h \
     ../appFrame/appFontTool.h \
     ../appFrame/appEncodingMenu.h \
-    ../appFrame/appFrameConfig.h \
+    tedLinkTool.h \
     ../appFrame/appRgbChooserPage.h \
     ../appFrame/appRgbCube.h \
     ../include/appDebugon.h \
@@ -5834,11 +7041,11 @@ tedIcons.o: \
     ../appUtil/sioGeneral.h \
     ../appUtil/utilDocumentGeometry.h \
     ../appUtil/utilPropMask.h \
-    ../appUtil/docFont.h \
-    ../appUtil/utilTextAttribute.h \
     ../appUtil/psFont.h \
     ../appUtil/utilFontEncoding.h \
     ../appUtil/utilPostscriptFace.h \
+    ../appUtil/docFont.h \
+    ../appUtil/utilTextAttribute.h \
     ../appUtil/utilAffineTransform.h \
     ../appUtil/utilNup.h \
     ../appUtil/utilPrinter.h \
@@ -5863,6 +7070,7 @@ tedIcons.o: \
     docFrameProperties.h \
     docRowProperties.h \
     docSectProperties.h \
+    docNotesProperties.h \
     docStyleSheet.h \
     docDocumentProperties.h \
     ../appUtil/appUnit.h \
@@ -5875,8 +7083,12 @@ tedIcons.o: \
     docShapeProperties.h \
     docField.h \
     docObject.h \
+    docDrawingObject.h \
+    ../appFrame/appFrameConfig.h \
     docSelect.h \
     docExternalItem.h \
+    docListNumberTree.h \
+    docScreenFontList.h \
     teddoc.xpm \
     tedfont.xpm \
     tedfind.xpm \
@@ -5893,16 +7105,16 @@ tedIcons.o: \
 tedInput.o: \
     tedInput.c \
     tedConfig.h \
-    docLayout.h \
-    ../appUtil/psFont.h \
-    ../appUtil/docFont.h \
-    ../appUtil/utilPropMask.h \
-    ../appUtil/utilTextAttribute.h \
-    ../appUtil/utilFontEncoding.h \
+    tedLayout.h \
     docBuf.h \
     ../bitmap/bitmap.h \
     ../appUtil/sioGeneral.h \
     ../bitmap/bmcolor.h \
+    ../appUtil/docFont.h \
+    ../appUtil/utilPropMask.h \
+    ../appUtil/utilTextAttribute.h \
+    ../appUtil/utilFontEncoding.h \
+    ../appUtil/psFont.h \
     docShape.h \
     ../appUtil/geo2DInteger.h \
     ../appUtil/utilMemoryBuffer.h \
@@ -5917,6 +7129,7 @@ tedInput.o: \
     docRowProperties.h \
     docSectProperties.h \
     ../appUtil/utilDocumentGeometry.h \
+    docNotesProperties.h \
     docStyleSheet.h \
     docDocumentProperties.h \
     ../appUtil/appUnit.h \
@@ -5929,14 +7142,19 @@ tedInput.o: \
     docShapeProperties.h \
     docField.h \
     docObject.h \
+    docDrawingObject.h \
+    ../appFrame/appFrameConfig.h \
+    ../appFrame/appGuiBase.h \
     docSelect.h \
     docExternalItem.h \
+    docListNumberTree.h \
+    docLayout.h \
+    docScreenFontList.h \
     ../appUtil/utilPs.h \
     ../appUtil/utilPostscriptFace.h \
     ../appUtil/utilAffineTransform.h \
     ../appUtil/utilNup.h \
     ../appFrame/appDraw.h \
-    ../appFrame/appGuiBase.h \
     tedApp.h \
     ../appFrame/appFrame.h \
     ../appFrame/appGuiResource.h \
@@ -5964,11 +7182,11 @@ tedLayout.o: \
     ../appUtil/sioGeneral.h \
     ../appUtil/utilDocumentGeometry.h \
     ../appUtil/utilPropMask.h \
-    ../appUtil/docFont.h \
-    ../appUtil/utilTextAttribute.h \
     ../appUtil/psFont.h \
     ../appUtil/utilFontEncoding.h \
     ../appUtil/utilPostscriptFace.h \
+    ../appUtil/docFont.h \
+    ../appUtil/utilTextAttribute.h \
     ../appUtil/utilAffineTransform.h \
     ../appUtil/utilNup.h \
     ../appUtil/utilPrinter.h \
@@ -5994,6 +7212,7 @@ tedLayout.o: \
     docFrameProperties.h \
     docRowProperties.h \
     docSectProperties.h \
+    docNotesProperties.h \
     docStyleSheet.h \
     docDocumentProperties.h \
     ../appUtil/appUnit.h \
@@ -6006,8 +7225,12 @@ tedLayout.o: \
     docShapeProperties.h \
     docField.h \
     docObject.h \
+    docDrawingObject.h \
+    ../appFrame/appFrameConfig.h \
     docSelect.h \
     docExternalItem.h \
+    docListNumberTree.h \
+    docScreenFontList.h \
     tedEdit.h \
     docEdit.h \
     tedLayout.h \
@@ -6026,6 +7249,8 @@ tedLink.o: \
     ../appUtil/docFont.h \
     ../appUtil/utilPropMask.h \
     ../appUtil/utilTextAttribute.h \
+    ../appUtil/utilFontEncoding.h \
+    ../appUtil/psFont.h \
     docShape.h \
     ../appUtil/geo2DInteger.h \
     ../appUtil/utilMemoryBuffer.h \
@@ -6040,6 +7265,7 @@ tedLink.o: \
     docRowProperties.h \
     docSectProperties.h \
     ../appUtil/utilDocumentGeometry.h \
+    docNotesProperties.h \
     docStyleSheet.h \
     docDocumentProperties.h \
     ../appUtil/appUnit.h \
@@ -6052,17 +7278,18 @@ tedLink.o: \
     docShapeProperties.h \
     docField.h \
     docObject.h \
+    docDrawingObject.h \
+    ../appFrame/appFrameConfig.h \
+    ../appFrame/appGuiBase.h \
     docSelect.h \
     docExternalItem.h \
+    docListNumberTree.h \
     ../include/reg.h \
     tedEdit.h \
     tedApp.h \
     ../appFrame/appFrame.h \
-    ../appFrame/appGuiBase.h \
     ../appFrame/appGuiResource.h \
     ../appUtil/utilPs.h \
-    ../appUtil/psFont.h \
-    ../appUtil/utilFontEncoding.h \
     ../appUtil/utilPostscriptFace.h \
     ../appUtil/utilAffineTransform.h \
     ../appUtil/utilNup.h \
@@ -6074,6 +7301,7 @@ tedLink.o: \
     ../appFrame/appInspector.h \
     ../appFrame/appImage.h \
     ../appFrame/docExpandedTextAttribute.h \
+    docScreenFontList.h \
     docEdit.h \
     ../include/appDebugon.h \
     ../include/appDebug.h
@@ -6090,11 +7318,11 @@ tedLinkDialog.o: \
     ../appUtil/sioGeneral.h \
     ../appUtil/utilDocumentGeometry.h \
     ../appUtil/utilPropMask.h \
-    ../appUtil/docFont.h \
-    ../appUtil/utilTextAttribute.h \
     ../appUtil/psFont.h \
     ../appUtil/utilFontEncoding.h \
     ../appUtil/utilPostscriptFace.h \
+    ../appUtil/docFont.h \
+    ../appUtil/utilTextAttribute.h \
     ../appUtil/utilAffineTransform.h \
     ../appUtil/utilNup.h \
     ../appUtil/utilPrinter.h \
@@ -6120,6 +7348,7 @@ tedLinkDialog.o: \
     docFrameProperties.h \
     docRowProperties.h \
     docSectProperties.h \
+    docNotesProperties.h \
     docStyleSheet.h \
     docDocumentProperties.h \
     ../appUtil/appUnit.h \
@@ -6132,44 +7361,34 @@ tedLinkDialog.o: \
     docShapeProperties.h \
     docField.h \
     docObject.h \
+    docDrawingObject.h \
+    ../appFrame/appFrameConfig.h \
     docSelect.h \
     docExternalItem.h \
+    docListNumberTree.h \
+    docScreenFontList.h \
+    tedLinkTool.h \
     ../include/appDebugon.h \
     ../include/appDebug.h
 
-tedMain.o: \
-    tedMain.c \
+tedListTool.o: \
+    tedListTool.c \
     tedConfig.h \
-    ../appUtil/appSystem.h \
-    tedApp.h \
-    ../appFrame/appFrame.h \
-    ../appFrame/appGuiBase.h \
-    ../appFrame/appGuiResource.h \
-    ../appUtil/geo2DInteger.h \
-    ../appUtil/utilPs.h \
-    ../appUtil/sioGeneral.h \
-    ../appUtil/utilDocumentGeometry.h \
-    ../appUtil/utilPropMask.h \
-    ../appUtil/docFont.h \
-    ../appUtil/utilTextAttribute.h \
-    ../appUtil/psFont.h \
-    ../appUtil/utilFontEncoding.h \
-    ../appUtil/utilPostscriptFace.h \
-    ../appUtil/utilAffineTransform.h \
-    ../appUtil/utilNup.h \
-    ../appUtil/utilPrinter.h \
-    ../appUtil/utilMailContent.h \
-    ../appFrame/appIcons.h \
-    ../appFrame/appTool.h \
-    ../appFrame/appDraw.h \
-    ../bitmap/bmcolor.h \
-    ../appFrame/appInspector.h \
-    ../appFrame/appImage.h \
-    ../bitmap/bitmap.h \
-    ../appUtil/utilMemoryBuffer.h \
-    ../appFrame/docExpandedTextAttribute.h \
+    ../appUtil/appGeoString.h \
+    ../appUtil/appUnit.h \
+    docEvalField.h \
     docBuf.h \
+    ../bitmap/bitmap.h \
+    ../appUtil/sioGeneral.h \
+    ../bitmap/bmcolor.h \
+    ../appUtil/docFont.h \
+    ../appUtil/utilPropMask.h \
+    ../appUtil/utilTextAttribute.h \
+    ../appUtil/utilFontEncoding.h \
+    ../appUtil/psFont.h \
     docShape.h \
+    ../appUtil/geo2DInteger.h \
+    ../appUtil/utilMemoryBuffer.h \
     ../appUtil/utilTextAttributeAdmin.h \
     docParaProperties.h \
     docPropVal.h \
@@ -6180,77 +7399,8 @@ tedMain.o: \
     docFrameProperties.h \
     docRowProperties.h \
     docSectProperties.h \
-    docStyleSheet.h \
-    docDocumentProperties.h \
-    ../appUtil/appUnit.h \
-    docListTable.h \
-    docDocumentList.h \
-    docListLevel.h \
-    docListOverrideTable.h \
-    docListOverride.h \
-    docListOverrideLevel.h \
-    docShapeProperties.h \
-    docField.h \
-    docObject.h \
-    docSelect.h \
-    docExternalItem.h \
-    tedRuler.h \
-    ../appFrame/appRuler.h \
-    ../appFrame/appSymbolPicker.h \
-    ../appFrame/appSpellTool.h \
-    ../ind/ind.h \
-    ../appUtil/appGeoString.h \
-    ../appUtil/appPaper.h \
-    ../appUtil/sioStdio.h \
-    ../appUtil/sioMemory.h \
-    ../appUtil/sioBase64.h \
-    ../include/appDebugon.h \
-    ../include/appDebug.h
-
-tedNotesTool.o: \
-    tedNotesTool.c \
-    tedConfig.h \
-    ../appUtil/appGeoString.h \
-    ../appUtil/appUnit.h \
-    tedApp.h \
-    ../appFrame/appFrame.h \
-    ../appFrame/appGuiBase.h \
-    ../appFrame/appGuiResource.h \
-    ../appUtil/geo2DInteger.h \
-    ../appUtil/utilPs.h \
-    ../appUtil/sioGeneral.h \
     ../appUtil/utilDocumentGeometry.h \
-    ../appUtil/utilPropMask.h \
-    ../appUtil/docFont.h \
-    ../appUtil/utilTextAttribute.h \
-    ../appUtil/psFont.h \
-    ../appUtil/utilFontEncoding.h \
-    ../appUtil/utilPostscriptFace.h \
-    ../appUtil/utilAffineTransform.h \
-    ../appUtil/utilNup.h \
-    ../appUtil/utilPrinter.h \
-    ../appUtil/utilMailContent.h \
-    ../appFrame/appIcons.h \
-    ../appFrame/appTool.h \
-    ../appFrame/appDraw.h \
-    ../bitmap/bmcolor.h \
-    ../appFrame/appInspector.h \
-    ../appFrame/appImage.h \
-    ../bitmap/bitmap.h \
-    ../appUtil/utilMemoryBuffer.h \
-    ../appFrame/docExpandedTextAttribute.h \
-    docBuf.h \
-    docShape.h \
-    ../appUtil/utilTextAttributeAdmin.h \
-    docParaProperties.h \
-    docPropVal.h \
-    docTabStop.h \
-    docBorderProperties.h \
-    docItemShading.h \
-    docParaNumber.h \
-    docFrameProperties.h \
-    docRowProperties.h \
-    docSectProperties.h \
+    docNotesProperties.h \
     docStyleSheet.h \
     docDocumentProperties.h \
     docListTable.h \
@@ -6262,8 +7412,28 @@ tedNotesTool.o: \
     docShapeProperties.h \
     docField.h \
     docObject.h \
+    docDrawingObject.h \
+    ../appFrame/appFrameConfig.h \
+    ../appFrame/appGuiBase.h \
     docSelect.h \
     docExternalItem.h \
+    docListNumberTree.h \
+    tedApp.h \
+    ../appFrame/appFrame.h \
+    ../appFrame/appGuiResource.h \
+    ../appUtil/utilPs.h \
+    ../appUtil/utilPostscriptFace.h \
+    ../appUtil/utilAffineTransform.h \
+    ../appUtil/utilNup.h \
+    ../appUtil/utilPrinter.h \
+    ../appUtil/utilMailContent.h \
+    ../appFrame/appIcons.h \
+    ../appFrame/appTool.h \
+    ../appFrame/appDraw.h \
+    ../appFrame/appInspector.h \
+    ../appFrame/appImage.h \
+    ../appFrame/docExpandedTextAttribute.h \
+    docScreenFontList.h \
     tedFormatTool.h \
     tedParaLayoutTool.h \
     tedBorderTool.h \
@@ -6284,9 +7454,182 @@ tedNotesTool.o: \
     tedColumnTool.h \
     tedCellTool.h \
     tedTabsTool.h \
+    tedListTool.h \
+    tedFontTool.h \
     ../appFrame/appFontTool.h \
     ../appFrame/appEncodingMenu.h \
+    tedLinkTool.h \
+    ../appFrame/appRgbChooserPage.h \
+    ../appFrame/appRgbCube.h \
+    ../include/appDebugon.h \
+    ../include/appDebug.h
+
+tedMain.o: \
+    tedMain.c \
+    tedConfig.h \
+    ../appUtil/appSystem.h \
+    ../appUtil/utilMatchFont.h \
+    ../appUtil/docFont.h \
+    ../appUtil/utilPropMask.h \
+    ../appUtil/utilTextAttribute.h \
+    ../appUtil/utilFontEncoding.h \
+    ../appUtil/psFont.h \
+    ../appUtil/sioGeneral.h \
+    tedApp.h \
+    ../appFrame/appFrame.h \
+    ../appFrame/appGuiBase.h \
+    ../appFrame/appGuiResource.h \
+    ../appUtil/geo2DInteger.h \
+    ../appUtil/utilPs.h \
+    ../appUtil/utilDocumentGeometry.h \
+    ../appUtil/utilPostscriptFace.h \
+    ../appUtil/utilAffineTransform.h \
+    ../appUtil/utilNup.h \
+    ../appUtil/utilPrinter.h \
+    ../appUtil/utilMailContent.h \
+    ../appFrame/appIcons.h \
+    ../appFrame/appTool.h \
+    ../appFrame/appDraw.h \
+    ../bitmap/bmcolor.h \
+    ../appFrame/appInspector.h \
+    ../appFrame/appImage.h \
+    ../bitmap/bitmap.h \
+    ../appUtil/utilMemoryBuffer.h \
+    ../appFrame/docExpandedTextAttribute.h \
+    docBuf.h \
+    docShape.h \
+    ../appUtil/utilTextAttributeAdmin.h \
+    docParaProperties.h \
+    docPropVal.h \
+    docTabStop.h \
+    docBorderProperties.h \
+    docItemShading.h \
+    docParaNumber.h \
+    docFrameProperties.h \
+    docRowProperties.h \
+    docSectProperties.h \
+    docNotesProperties.h \
+    docStyleSheet.h \
+    docDocumentProperties.h \
+    ../appUtil/appUnit.h \
+    docListTable.h \
+    docDocumentList.h \
+    docListLevel.h \
+    docListOverrideTable.h \
+    docListOverride.h \
+    docListOverrideLevel.h \
+    docShapeProperties.h \
+    docField.h \
+    docObject.h \
+    docDrawingObject.h \
     ../appFrame/appFrameConfig.h \
+    docSelect.h \
+    docExternalItem.h \
+    docListNumberTree.h \
+    docScreenFontList.h \
+    tedRuler.h \
+    ../appFrame/appRuler.h \
+    ../appFrame/appSymbolPicker.h \
+    ../appFrame/appSpellTool.h \
+    ../ind/ind.h \
+    docLayout.h \
+    ../appUtil/appGeoString.h \
+    ../appUtil/appPaper.h \
+    ../appUtil/sioStdio.h \
+    ../appUtil/sioStdin.h \
+    ../appUtil/sioStdout.h \
+    ../appUtil/sioMemory.h \
+    ../appUtil/sioBase64.h \
+    ../include/appDebugon.h \
+    ../include/appDebug.h
+
+tedNotesTool.o: \
+    tedNotesTool.c \
+    tedConfig.h \
+    ../appUtil/appGeoString.h \
+    ../appUtil/appUnit.h \
+    tedApp.h \
+    ../appFrame/appFrame.h \
+    ../appFrame/appGuiBase.h \
+    ../appFrame/appGuiResource.h \
+    ../appUtil/geo2DInteger.h \
+    ../appUtil/utilPs.h \
+    ../appUtil/sioGeneral.h \
+    ../appUtil/utilDocumentGeometry.h \
+    ../appUtil/utilPropMask.h \
+    ../appUtil/psFont.h \
+    ../appUtil/utilFontEncoding.h \
+    ../appUtil/utilPostscriptFace.h \
+    ../appUtil/docFont.h \
+    ../appUtil/utilTextAttribute.h \
+    ../appUtil/utilAffineTransform.h \
+    ../appUtil/utilNup.h \
+    ../appUtil/utilPrinter.h \
+    ../appUtil/utilMailContent.h \
+    ../appFrame/appIcons.h \
+    ../appFrame/appTool.h \
+    ../appFrame/appDraw.h \
+    ../bitmap/bmcolor.h \
+    ../appFrame/appInspector.h \
+    ../appFrame/appImage.h \
+    ../bitmap/bitmap.h \
+    ../appUtil/utilMemoryBuffer.h \
+    ../appFrame/docExpandedTextAttribute.h \
+    docBuf.h \
+    docShape.h \
+    ../appUtil/utilTextAttributeAdmin.h \
+    docParaProperties.h \
+    docPropVal.h \
+    docTabStop.h \
+    docBorderProperties.h \
+    docItemShading.h \
+    docParaNumber.h \
+    docFrameProperties.h \
+    docRowProperties.h \
+    docSectProperties.h \
+    docNotesProperties.h \
+    docStyleSheet.h \
+    docDocumentProperties.h \
+    docListTable.h \
+    docDocumentList.h \
+    docListLevel.h \
+    docListOverrideTable.h \
+    docListOverride.h \
+    docListOverrideLevel.h \
+    docShapeProperties.h \
+    docField.h \
+    docObject.h \
+    docDrawingObject.h \
+    ../appFrame/appFrameConfig.h \
+    docSelect.h \
+    docExternalItem.h \
+    docListNumberTree.h \
+    docScreenFontList.h \
+    tedFormatTool.h \
+    tedParaLayoutTool.h \
+    tedBorderTool.h \
+    ../appFrame/appColorChooser.h \
+    tedShadingTool.h \
+    tedHeightTool.h \
+    tedParaOrnamentsTool.h \
+    tedRowTool.h \
+    tedSectionTool.h \
+    tedPageLayoutTool.h \
+    ../appFrame/appPageLayoutTool.h \
+    ../appUtil/appPaper.h \
+    ../appFrame/appPaperChooser.h \
+    ../appFrame/appMarginTool.h \
+    tedNotesTool.h \
+    tedHeaderFooterTool.h \
+    tedTableTool.h \
+    tedColumnTool.h \
+    tedCellTool.h \
+    tedTabsTool.h \
+    tedListTool.h \
+    tedFontTool.h \
+    ../appFrame/appFontTool.h \
+    ../appFrame/appEncodingMenu.h \
+    tedLinkTool.h \
     ../appFrame/appRgbChooserPage.h \
     ../appFrame/appRgbCube.h \
     ../include/appDebugon.h \
@@ -6309,13 +7652,14 @@ tedObjects.o: \
     ../appUtil/geo2DInteger.h \
     ../appUtil/docFont.h \
     ../appUtil/utilTextAttribute.h \
-    ../appUtil/psFont.h \
     ../appUtil/utilFontEncoding.h \
+    ../appUtil/psFont.h \
     ../bitmap/bmcolor.h \
     ../appFrame/appImage.h \
     ../bitmap/bitmap.h \
     ../appFrame/appWinMeta.h \
     ../appUtil/utilPostscriptFace.h \
+    ../appFrame/appMetafile.h \
     ../appFrame/appMacPict.h \
     docLayout.h \
     docBuf.h \
@@ -6331,6 +7675,7 @@ tedObjects.o: \
     docRowProperties.h \
     docSectProperties.h \
     ../appUtil/utilDocumentGeometry.h \
+    docNotesProperties.h \
     docStyleSheet.h \
     docDocumentProperties.h \
     ../appUtil/appUnit.h \
@@ -6343,8 +7688,12 @@ tedObjects.o: \
     docShapeProperties.h \
     docField.h \
     docObject.h \
+    docDrawingObject.h \
+    ../appFrame/appFrameConfig.h \
     docSelect.h \
     docExternalItem.h \
+    docListNumberTree.h \
+    docScreenFontList.h \
     ../appUtil/utilPs.h \
     ../appUtil/utilAffineTransform.h \
     ../appUtil/utilNup.h \
@@ -6372,11 +7721,11 @@ tedPage.o: \
     ../appUtil/sioGeneral.h \
     ../appUtil/utilDocumentGeometry.h \
     ../appUtil/utilPropMask.h \
-    ../appUtil/docFont.h \
-    ../appUtil/utilTextAttribute.h \
     ../appUtil/psFont.h \
     ../appUtil/utilFontEncoding.h \
     ../appUtil/utilPostscriptFace.h \
+    ../appUtil/docFont.h \
+    ../appUtil/utilTextAttribute.h \
     ../appUtil/utilAffineTransform.h \
     ../appUtil/utilNup.h \
     ../appUtil/utilPrinter.h \
@@ -6402,6 +7751,7 @@ tedPage.o: \
     docFrameProperties.h \
     docRowProperties.h \
     docSectProperties.h \
+    docNotesProperties.h \
     docStyleSheet.h \
     docDocumentProperties.h \
     ../appUtil/appUnit.h \
@@ -6414,8 +7764,12 @@ tedPage.o: \
     docShapeProperties.h \
     docField.h \
     docObject.h \
+    docDrawingObject.h \
+    ../appFrame/appFrameConfig.h \
     docSelect.h \
     docExternalItem.h \
+    docListNumberTree.h \
+    docScreenFontList.h \
     tedRuler.h \
     ../appFrame/appRuler.h \
     docLayout.h \
@@ -6434,11 +7788,11 @@ tedPageLayoutTool.o: \
     ../appUtil/sioGeneral.h \
     ../appUtil/utilDocumentGeometry.h \
     ../appUtil/utilPropMask.h \
-    ../appUtil/docFont.h \
-    ../appUtil/utilTextAttribute.h \
     ../appUtil/psFont.h \
     ../appUtil/utilFontEncoding.h \
     ../appUtil/utilPostscriptFace.h \
+    ../appUtil/docFont.h \
+    ../appUtil/utilTextAttribute.h \
     ../appUtil/utilAffineTransform.h \
     ../appUtil/utilNup.h \
     ../appUtil/utilPrinter.h \
@@ -6464,6 +7818,7 @@ tedPageLayoutTool.o: \
     docFrameProperties.h \
     docRowProperties.h \
     docSectProperties.h \
+    docNotesProperties.h \
     docStyleSheet.h \
     docDocumentProperties.h \
     ../appUtil/appUnit.h \
@@ -6476,8 +7831,12 @@ tedPageLayoutTool.o: \
     docShapeProperties.h \
     docField.h \
     docObject.h \
+    docDrawingObject.h \
+    ../appFrame/appFrameConfig.h \
     docSelect.h \
     docExternalItem.h \
+    docListNumberTree.h \
+    docScreenFontList.h \
     tedFormatTool.h \
     tedParaLayoutTool.h \
     tedBorderTool.h \
@@ -6499,9 +7858,11 @@ tedPageLayoutTool.o: \
     tedColumnTool.h \
     tedCellTool.h \
     tedTabsTool.h \
+    tedListTool.h \
+    tedFontTool.h \
     ../appFrame/appFontTool.h \
     ../appFrame/appEncodingMenu.h \
-    ../appFrame/appFrameConfig.h \
+    tedLinkTool.h \
     ../appFrame/appRgbChooserPage.h \
     ../appFrame/appRgbCube.h \
     ../include/appDebugon.h \
@@ -6521,11 +7882,11 @@ tedParaLayoutTool.o: \
     ../appUtil/sioGeneral.h \
     ../appUtil/utilDocumentGeometry.h \
     ../appUtil/utilPropMask.h \
-    ../appUtil/docFont.h \
-    ../appUtil/utilTextAttribute.h \
     ../appUtil/psFont.h \
     ../appUtil/utilFontEncoding.h \
     ../appUtil/utilPostscriptFace.h \
+    ../appUtil/docFont.h \
+    ../appUtil/utilTextAttribute.h \
     ../appUtil/utilAffineTransform.h \
     ../appUtil/utilNup.h \
     ../appUtil/utilPrinter.h \
@@ -6551,6 +7912,7 @@ tedParaLayoutTool.o: \
     docFrameProperties.h \
     docRowProperties.h \
     docSectProperties.h \
+    docNotesProperties.h \
     docStyleSheet.h \
     docDocumentProperties.h \
     docListTable.h \
@@ -6562,8 +7924,12 @@ tedParaLayoutTool.o: \
     docShapeProperties.h \
     docField.h \
     docObject.h \
+    docDrawingObject.h \
+    ../appFrame/appFrameConfig.h \
     docSelect.h \
     docExternalItem.h \
+    docListNumberTree.h \
+    docScreenFontList.h \
     tedFormatTool.h \
     tedParaLayoutTool.h \
     tedBorderTool.h \
@@ -6584,9 +7950,11 @@ tedParaLayoutTool.o: \
     tedColumnTool.h \
     tedCellTool.h \
     tedTabsTool.h \
+    tedListTool.h \
+    tedFontTool.h \
     ../appFrame/appFontTool.h \
     ../appFrame/appEncodingMenu.h \
-    ../appFrame/appFrameConfig.h \
+    tedLinkTool.h \
     ../appFrame/appRgbChooserPage.h \
     ../appFrame/appRgbCube.h \
     ../include/appDebugon.h \
@@ -6606,11 +7974,11 @@ tedParaOrnamentsTool.o: \
     ../appUtil/sioGeneral.h \
     ../appUtil/utilDocumentGeometry.h \
     ../appUtil/utilPropMask.h \
-    ../appUtil/docFont.h \
-    ../appUtil/utilTextAttribute.h \
     ../appUtil/psFont.h \
     ../appUtil/utilFontEncoding.h \
     ../appUtil/utilPostscriptFace.h \
+    ../appUtil/docFont.h \
+    ../appUtil/utilTextAttribute.h \
     ../appUtil/utilAffineTransform.h \
     ../appUtil/utilNup.h \
     ../appUtil/utilPrinter.h \
@@ -6636,6 +8004,7 @@ tedParaOrnamentsTool.o: \
     docFrameProperties.h \
     docRowProperties.h \
     docSectProperties.h \
+    docNotesProperties.h \
     docStyleSheet.h \
     docDocumentProperties.h \
     docListTable.h \
@@ -6647,8 +8016,12 @@ tedParaOrnamentsTool.o: \
     docShapeProperties.h \
     docField.h \
     docObject.h \
+    docDrawingObject.h \
+    ../appFrame/appFrameConfig.h \
     docSelect.h \
     docExternalItem.h \
+    docListNumberTree.h \
+    docScreenFontList.h \
     tedFormatTool.h \
     tedParaLayoutTool.h \
     tedBorderTool.h \
@@ -6669,9 +8042,11 @@ tedParaOrnamentsTool.o: \
     tedColumnTool.h \
     tedCellTool.h \
     tedTabsTool.h \
+    tedListTool.h \
+    tedFontTool.h \
     ../appFrame/appFontTool.h \
     ../appFrame/appEncodingMenu.h \
-    ../appFrame/appFrameConfig.h \
+    tedLinkTool.h \
     ../appFrame/appRgbChooserPage.h \
     ../appFrame/appRgbCube.h \
     ../include/appDebugon.h \
@@ -6691,11 +8066,11 @@ tedRowTool.o: \
     ../appUtil/sioGeneral.h \
     ../appUtil/utilDocumentGeometry.h \
     ../appUtil/utilPropMask.h \
-    ../appUtil/docFont.h \
-    ../appUtil/utilTextAttribute.h \
     ../appUtil/psFont.h \
     ../appUtil/utilFontEncoding.h \
     ../appUtil/utilPostscriptFace.h \
+    ../appUtil/docFont.h \
+    ../appUtil/utilTextAttribute.h \
     ../appUtil/utilAffineTransform.h \
     ../appUtil/utilNup.h \
     ../appUtil/utilPrinter.h \
@@ -6721,6 +8096,7 @@ tedRowTool.o: \
     docFrameProperties.h \
     docRowProperties.h \
     docSectProperties.h \
+    docNotesProperties.h \
     docStyleSheet.h \
     docDocumentProperties.h \
     docListTable.h \
@@ -6732,8 +8108,12 @@ tedRowTool.o: \
     docShapeProperties.h \
     docField.h \
     docObject.h \
+    docDrawingObject.h \
+    ../appFrame/appFrameConfig.h \
     docSelect.h \
     docExternalItem.h \
+    docListNumberTree.h \
+    docScreenFontList.h \
     tedFormatTool.h \
     tedParaLayoutTool.h \
     tedBorderTool.h \
@@ -6754,9 +8134,11 @@ tedRowTool.o: \
     tedColumnTool.h \
     tedCellTool.h \
     tedTabsTool.h \
+    tedListTool.h \
+    tedFontTool.h \
     ../appFrame/appFontTool.h \
     ../appFrame/appEncodingMenu.h \
-    ../appFrame/appFrameConfig.h \
+    tedLinkTool.h \
     ../appFrame/appRgbChooserPage.h \
     ../appFrame/appRgbCube.h \
     ../include/appDebugon.h \
@@ -6775,11 +8157,11 @@ tedRuler.o: \
     ../appUtil/sioGeneral.h \
     ../appUtil/utilDocumentGeometry.h \
     ../appUtil/utilPropMask.h \
-    ../appUtil/docFont.h \
-    ../appUtil/utilTextAttribute.h \
     ../appUtil/psFont.h \
     ../appUtil/utilFontEncoding.h \
     ../appUtil/utilPostscriptFace.h \
+    ../appUtil/docFont.h \
+    ../appUtil/utilTextAttribute.h \
     ../appUtil/utilAffineTransform.h \
     ../appUtil/utilNup.h \
     ../appUtil/utilPrinter.h \
@@ -6804,6 +8186,7 @@ tedRuler.o: \
     docFrameProperties.h \
     docRowProperties.h \
     docSectProperties.h \
+    docNotesProperties.h \
     docStyleSheet.h \
     docDocumentProperties.h \
     docListTable.h \
@@ -6815,8 +8198,11 @@ tedRuler.o: \
     docShapeProperties.h \
     docField.h \
     docObject.h \
+    docDrawingObject.h \
+    ../appFrame/appFrameConfig.h \
     docSelect.h \
     docExternalItem.h \
+    docListNumberTree.h \
     ../include/appDebugon.h \
     ../include/appDebug.h
 
@@ -6834,11 +8220,11 @@ tedSectionTool.o: \
     ../appUtil/sioGeneral.h \
     ../appUtil/utilDocumentGeometry.h \
     ../appUtil/utilPropMask.h \
-    ../appUtil/docFont.h \
-    ../appUtil/utilTextAttribute.h \
     ../appUtil/psFont.h \
     ../appUtil/utilFontEncoding.h \
     ../appUtil/utilPostscriptFace.h \
+    ../appUtil/docFont.h \
+    ../appUtil/utilTextAttribute.h \
     ../appUtil/utilAffineTransform.h \
     ../appUtil/utilNup.h \
     ../appUtil/utilPrinter.h \
@@ -6864,6 +8250,7 @@ tedSectionTool.o: \
     docFrameProperties.h \
     docRowProperties.h \
     docSectProperties.h \
+    docNotesProperties.h \
     docStyleSheet.h \
     docDocumentProperties.h \
     docListTable.h \
@@ -6875,8 +8262,12 @@ tedSectionTool.o: \
     docShapeProperties.h \
     docField.h \
     docObject.h \
+    docDrawingObject.h \
+    ../appFrame/appFrameConfig.h \
     docSelect.h \
     docExternalItem.h \
+    docListNumberTree.h \
+    docScreenFontList.h \
     tedFormatTool.h \
     tedParaLayoutTool.h \
     tedBorderTool.h \
@@ -6897,9 +8288,11 @@ tedSectionTool.o: \
     tedColumnTool.h \
     tedCellTool.h \
     tedTabsTool.h \
+    tedListTool.h \
+    tedFontTool.h \
     ../appFrame/appFontTool.h \
     ../appFrame/appEncodingMenu.h \
-    ../appFrame/appFrameConfig.h \
+    tedLinkTool.h \
     ../appFrame/appRgbChooserPage.h \
     ../appFrame/appRgbCube.h \
     ../include/appDebugon.h \
@@ -6910,14 +8303,14 @@ tedSelect.o: \
     tedConfig.h \
     docLayout.h \
     ../appUtil/psFont.h \
+    ../appUtil/utilFontEncoding.h \
+    ../appUtil/sioGeneral.h \
+    docBuf.h \
+    ../bitmap/bitmap.h \
+    ../bitmap/bmcolor.h \
     ../appUtil/docFont.h \
     ../appUtil/utilPropMask.h \
     ../appUtil/utilTextAttribute.h \
-    ../appUtil/utilFontEncoding.h \
-    docBuf.h \
-    ../bitmap/bitmap.h \
-    ../appUtil/sioGeneral.h \
-    ../bitmap/bmcolor.h \
     docShape.h \
     ../appUtil/geo2DInteger.h \
     ../appUtil/utilMemoryBuffer.h \
@@ -6932,6 +8325,7 @@ tedSelect.o: \
     docRowProperties.h \
     docSectProperties.h \
     ../appUtil/utilDocumentGeometry.h \
+    docNotesProperties.h \
     docStyleSheet.h \
     docDocumentProperties.h \
     ../appUtil/appUnit.h \
@@ -6944,14 +8338,18 @@ tedSelect.o: \
     docShapeProperties.h \
     docField.h \
     docObject.h \
+    docDrawingObject.h \
+    ../appFrame/appFrameConfig.h \
+    ../appFrame/appGuiBase.h \
     docSelect.h \
     docExternalItem.h \
+    docListNumberTree.h \
+    docScreenFontList.h \
     ../appUtil/utilPs.h \
     ../appUtil/utilPostscriptFace.h \
     ../appUtil/utilAffineTransform.h \
     ../appUtil/utilNup.h \
     ../appFrame/appDraw.h \
-    ../appFrame/appGuiBase.h \
     tedApp.h \
     ../appFrame/appFrame.h \
     ../appFrame/appGuiResource.h \
@@ -6978,11 +8376,11 @@ tedShadingTool.o: \
     ../appUtil/sioGeneral.h \
     ../appUtil/utilDocumentGeometry.h \
     ../appUtil/utilPropMask.h \
-    ../appUtil/docFont.h \
-    ../appUtil/utilTextAttribute.h \
     ../appUtil/psFont.h \
     ../appUtil/utilFontEncoding.h \
     ../appUtil/utilPostscriptFace.h \
+    ../appUtil/docFont.h \
+    ../appUtil/utilTextAttribute.h \
     ../appUtil/utilAffineTransform.h \
     ../appUtil/utilNup.h \
     ../appUtil/utilPrinter.h \
@@ -7008,6 +8406,7 @@ tedShadingTool.o: \
     docFrameProperties.h \
     docRowProperties.h \
     docSectProperties.h \
+    docNotesProperties.h \
     docStyleSheet.h \
     docDocumentProperties.h \
     ../appUtil/appUnit.h \
@@ -7020,8 +8419,12 @@ tedShadingTool.o: \
     docShapeProperties.h \
     docField.h \
     docObject.h \
+    docDrawingObject.h \
+    ../appFrame/appFrameConfig.h \
     docSelect.h \
     docExternalItem.h \
+    docListNumberTree.h \
+    docScreenFontList.h \
     tedFormatTool.h \
     tedParaLayoutTool.h \
     tedBorderTool.h \
@@ -7043,9 +8446,11 @@ tedShadingTool.o: \
     tedColumnTool.h \
     tedCellTool.h \
     tedTabsTool.h \
+    tedListTool.h \
+    tedFontTool.h \
     ../appFrame/appFontTool.h \
     ../appFrame/appEncodingMenu.h \
-    ../appFrame/appFrameConfig.h \
+    tedLinkTool.h \
     ../appFrame/appRgbChooserPage.h \
     ../appFrame/appRgbCube.h \
     ../include/appDebugon.h \
@@ -7064,11 +8469,11 @@ tedTable.o: \
     ../appUtil/sioGeneral.h \
     ../appUtil/utilDocumentGeometry.h \
     ../appUtil/utilPropMask.h \
-    ../appUtil/docFont.h \
-    ../appUtil/utilTextAttribute.h \
     ../appUtil/psFont.h \
     ../appUtil/utilFontEncoding.h \
     ../appUtil/utilPostscriptFace.h \
+    ../appUtil/docFont.h \
+    ../appUtil/utilTextAttribute.h \
     ../appUtil/utilAffineTransform.h \
     ../appUtil/utilNup.h \
     ../appUtil/utilPrinter.h \
@@ -7094,6 +8499,7 @@ tedTable.o: \
     docFrameProperties.h \
     docRowProperties.h \
     docSectProperties.h \
+    docNotesProperties.h \
     docStyleSheet.h \
     docDocumentProperties.h \
     ../appUtil/appUnit.h \
@@ -7106,8 +8512,12 @@ tedTable.o: \
     docShapeProperties.h \
     docField.h \
     docObject.h \
+    docDrawingObject.h \
+    ../appFrame/appFrameConfig.h \
     docSelect.h \
     docExternalItem.h \
+    docListNumberTree.h \
+    docScreenFontList.h \
     docEdit.h \
     docLayout.h \
     ../include/appDebugon.h \
@@ -7127,11 +8537,11 @@ tedTableTool.o: \
     ../appUtil/sioGeneral.h \
     ../appUtil/utilDocumentGeometry.h \
     ../appUtil/utilPropMask.h \
-    ../appUtil/docFont.h \
-    ../appUtil/utilTextAttribute.h \
     ../appUtil/psFont.h \
     ../appUtil/utilFontEncoding.h \
     ../appUtil/utilPostscriptFace.h \
+    ../appUtil/docFont.h \
+    ../appUtil/utilTextAttribute.h \
     ../appUtil/utilAffineTransform.h \
     ../appUtil/utilNup.h \
     ../appUtil/utilPrinter.h \
@@ -7157,6 +8567,7 @@ tedTableTool.o: \
     docFrameProperties.h \
     docRowProperties.h \
     docSectProperties.h \
+    docNotesProperties.h \
     docStyleSheet.h \
     docDocumentProperties.h \
     docListTable.h \
@@ -7168,8 +8579,12 @@ tedTableTool.o: \
     docShapeProperties.h \
     docField.h \
     docObject.h \
+    docDrawingObject.h \
+    ../appFrame/appFrameConfig.h \
     docSelect.h \
     docExternalItem.h \
+    docListNumberTree.h \
+    docScreenFontList.h \
     tedFormatTool.h \
     tedParaLayoutTool.h \
     tedBorderTool.h \
@@ -7190,9 +8605,11 @@ tedTableTool.o: \
     tedColumnTool.h \
     tedCellTool.h \
     tedTabsTool.h \
+    tedListTool.h \
+    tedFontTool.h \
     ../appFrame/appFontTool.h \
     ../appFrame/appEncodingMenu.h \
-    ../appFrame/appFrameConfig.h \
+    tedLinkTool.h \
     ../appFrame/appRgbChooserPage.h \
     ../appFrame/appRgbCube.h \
     ../include/appDebugon.h \
@@ -7212,11 +8629,11 @@ tedTabsTool.o: \
     ../appUtil/sioGeneral.h \
     ../appUtil/utilDocumentGeometry.h \
     ../appUtil/utilPropMask.h \
-    ../appUtil/docFont.h \
-    ../appUtil/utilTextAttribute.h \
     ../appUtil/psFont.h \
     ../appUtil/utilFontEncoding.h \
     ../appUtil/utilPostscriptFace.h \
+    ../appUtil/docFont.h \
+    ../appUtil/utilTextAttribute.h \
     ../appUtil/utilAffineTransform.h \
     ../appUtil/utilNup.h \
     ../appUtil/utilPrinter.h \
@@ -7242,6 +8659,7 @@ tedTabsTool.o: \
     docFrameProperties.h \
     docRowProperties.h \
     docSectProperties.h \
+    docNotesProperties.h \
     docStyleSheet.h \
     docDocumentProperties.h \
     docListTable.h \
@@ -7253,8 +8671,12 @@ tedTabsTool.o: \
     docShapeProperties.h \
     docField.h \
     docObject.h \
+    docDrawingObject.h \
+    ../appFrame/appFrameConfig.h \
     docSelect.h \
     docExternalItem.h \
+    docListNumberTree.h \
+    docScreenFontList.h \
     tedFormatTool.h \
     tedParaLayoutTool.h \
     tedBorderTool.h \
@@ -7275,9 +8697,11 @@ tedTabsTool.o: \
     tedColumnTool.h \
     tedCellTool.h \
     tedTabsTool.h \
+    tedListTool.h \
+    tedFontTool.h \
     ../appFrame/appFontTool.h \
     ../appFrame/appEncodingMenu.h \
-    ../appFrame/appFrameConfig.h \
+    tedLinkTool.h \
     ../appFrame/appRgbChooserPage.h \
     ../appFrame/appRgbCube.h \
     ../include/appDebugon.h \

@@ -22,10 +22,6 @@ typedef enum TabAlignment
 
 # define DOCta_BITS	4
 
-#   if  (1<<DOCta_BITS) < DOCta_COUNT
-    This will crash: Increase DOCta_COUNT
-#   endif
-
 typedef enum TabLeader
     {
     DOCtlNONE= 0,
@@ -41,10 +37,6 @@ typedef enum TabLeader
     } TabLeader;
 
 # define DOCtl_BITS	4
-
-#   if  (1<<DOCtl_BITS) < DOCtl_COUNT
-    This will crash: Increase DOCtl_COUNT
-#   endif
 
 typedef struct TabStop
     {
@@ -85,12 +77,16 @@ void docCleanTabStopList(	TabStopList *		tsl );
 extern int docAddTabToList(		TabStopList *		tsl,
 					const TabStop *		tsNew );
 
+extern int docAddTabToListPixels(	TabStopList *		tsl,
+					const TabStop *		tsNew );
+
 extern void docDeleteTabFromList(	TabStopList *		tsl,
 					int			n );
 
 extern int docCopyTabStopList(	int *				pChanged,
 				TabStopList *			to,
-				const TabStopList *		from );
+				const TabStopList *		from,
+				int				pixels );
 
 extern void docCompareTabStopLists(	int *			pDifferent,
 					const TabStopList *	tsl1,

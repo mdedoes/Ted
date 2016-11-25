@@ -21,8 +21,8 @@ void docInitDocumentListLevel(	DocumentListLevel *	dll )
     {
     dll->dllStartAt= 0;
     dll->dllNumberStyle= 0;
-    dll->dllJustification= 0;
-    dll->dllFollow= 0;
+    dll->dllJustification= DOCllaLEFT;
+    dll->dllFollow= DOCllfTAB;
     dll->dllPrevToDigits= 0;
     dll->dllNoRestart= 0;
     dll->dllPictureNumber= -1;
@@ -41,8 +41,8 @@ void docInitDocumentListLevel(	DocumentListLevel *	dll )
     dll->dllSpace= 0;			/*  O  */
 
     docInitTabStopList( &(dll->dllTabStopList) );
-    dll->dllLeftIndent= 0;
-    dll->dllFirstIndent= 0;
+    dll->dllLeftIndentTwips= 0;
+    dll->dllFirstIndentTwips= 0;
     PROPmaskCLEAR( &(dll->dllParaPropertyMask) );
 
     utilInitTextAttribute( &(dll->dllTextAttribute) );
@@ -60,19 +60,23 @@ void docCleanDocumentListLevel(	DocumentListLevel *	dll )
     }
 
 int docCopyDocumentListLevel(	DocumentListLevel *		to,
-				const DocumentListLevel *	from )
+				const DocumentListLevel *	from,
+				const int *			fontMap,
+				const int *			colorMap )
     {
     int			rval= 0;
 
     unsigned char *	text= (unsigned char *)0;
     unsigned char *	numbers= (unsigned char *)0;
     TabStopList		tsl;
+    const int		pixels= 0;
 
     int			changed= 0;
 
     docInitTabStopList( &tsl );
 
-    if  ( docCopyTabStopList( &changed, &tsl, &(from->dllTabStopList) ) )
+    if  ( docCopyTabStopList( &changed, &tsl,
+					&(from->dllTabStopList), pixels ) )
 	{ LDEB(1); rval= -1; goto ready;	}
 
     if  ( from->dllText )
@@ -102,6 +106,21 @@ int docCopyDocumentListLevel(	DocumentListLevel *		to,
     docCleanTabStopList( &(to->dllTabStopList) );
 
     *to= *from;
+
+    if  ( fontMap							&&
+	  PROPmaskISSET( &(to->dllTextAttributeMask), TApropDOC_FONT_NUMBER ) )
+	{
+	to->dllTextAttribute.taFontNumber=
+				fontMap[from->dllTextAttribute.taFontNumber];
+	}
+
+    if  ( colorMap							&&
+	  PROPmaskISSET( &(to->dllTextAttributeMask), TApropDOC_FONT_NUMBER ) &&
+	  from->dllTextAttribute.taTextColorNumber > 0			)
+	{
+	to->dllTextAttribute.taTextColorNumber=
+			    colorMap[from->dllTextAttribute.taTextColorNumber];
+	}
 
     /* steal */
     to->dllText= text; text= (unsigned char *)0;
@@ -140,10 +159,11 @@ int documentListLevelSetStyle(	DocumentListLevel *		dll,
 
     if  ( PROPmaskISSET( paraMask, PPpropTAB_STOPS ) )
 	{
-	int	changed= 0;
+	const int	pixels= 0;
+	int		changed= 0;
 
-	if  ( docCopyTabStopList( &changed,
-			    &(dll->dllTabStopList), &(pp->ppTabStopList) ) )
+	if  ( docCopyTabStopList( &changed, &(dll->dllTabStopList),
+					    &(pp->ppTabStopList), pixels ) )
 	    { LDEB(1); return -1;	}
 
 	PROPmaskADD( &(dll->dllParaPropertyMask), PPpropTAB_STOPS );
@@ -151,13 +171,13 @@ int documentListLevelSetStyle(	DocumentListLevel *		dll,
 
     if  ( PROPmaskISSET( paraMask, PPpropLEFT_INDENT ) )
 	{
-	dll->dllLeftIndent= pp->ppLeftIndentTwips;
+	dll->dllLeftIndentTwips= pp->ppLeftIndentTwips;
 	PROPmaskADD( &(dll->dllParaPropertyMask), PPpropLEFT_INDENT );
 	}
 
     if  ( PROPmaskISSET( paraMask, PPpropFIRST_INDENT ) )
 	{
-	dll->dllFirstIndent= pp->ppFirstIndentTwips;
+	dll->dllFirstIndentTwips= pp->ppFirstIndentTwips;
 	PROPmaskADD( &(dll->dllParaPropertyMask), PPpropFIRST_INDENT );
 	}
 

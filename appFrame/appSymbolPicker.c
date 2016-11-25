@@ -52,6 +52,7 @@ static AppConfigurableResource APP_SymbolPickerResourceTable[]=
 typedef struct AppSymbolPicker
     {
     EditApplication *		aspApplication;
+    unsigned int		aspCurrentDocumentId;
 
     AppSymbolPickerResources *	aspResources;
 
@@ -69,12 +70,10 @@ typedef struct AppSymbolPicker
     SymbolPickerInsert		aspInsert;
     void *			aspTarget;
 
-    AppFontFamily *		aspFontFamilies;
-    int				aspFontFamilyCount;
-
     int				aspSymbolSelected;
 
-    ExpandedTextAttribute	aspTextAttribute;
+    DocumentFontList		aspDocumentFontList;
+    TextAttribute		aspTextAttribute;
     int				aspFontFamilyChosen;
 
     APP_FONT *			aspFont;
@@ -98,34 +97,36 @@ typedef struct AppSymbolPicker
 static int appSymbolAdaptDrawingToFont(		AppSymbolPicker *	asp )
     {
     AppDrawingData *		add= &(asp->aspDrawingData);
-    char			scratch[120];
-    APP_FONT *			xfs;
-    const AppFontFamily *	aff;
-    ExpandedTextAttribute *	eta= &(asp->aspTextAttribute);
-
-    const int			twipsSize= 20* 10;
+    const DocumentFontList *	dfl= &(asp->aspDocumentFontList);
+    TextAttribute *		ta= &(asp->aspTextAttribute);
+    int				physicalFont;
 
     if  ( asp->aspFontFamilyChosen < 0 )
 	{ LDEB(asp->aspFontFamilyChosen); return -1;	}
 
-    aff= asp->aspFontFamilies+ asp->aspFontFamilyChosen;
-    if  ( appFontXFont( scratch, add, aff, eta->etaFontEncoding,
-				aff->affFaces, twipsSize, DOCfontREGULAR ) )
-	{ SLDEB(aff->affFontFamilyName,eta->etaFontEncoding); return- 1; }
-
-    xfs= appDrawOpenFont( add, scratch );
-    if  ( ! xfs )
-	{ SXDEB(scratch,xfs); return -1;	}
-
     if  ( asp->aspFont )
-	{ appDrawFreeFont( add, asp->aspFont );	}
-    asp->aspFont= xfs;
+	{
+	/*  No! managed by the drawing data
+	appDrawFreeFont( add, asp->aspFont );
+	*/
+	asp->aspFont= (APP_FONT *)0;
+	}
 
-    appDrawSetFont( add, asp->aspFont );
+    physicalFont= appOpenScreenFont( add, dfl, ta );
+    if  ( physicalFont < 0 )
+	{ LDEB(physicalFont);	}
+    else{
+	const DrawScreenFontList *	apfl= &(add->addScreenFontList);
+	DrawScreenFont *		apf;
+
+	apf= apfl->apflFonts+ physicalFont;
+	asp->aspFont= apf->apfFontStruct;
+
+	appDrawSetFont( add, apf->apfFontStruct );
+	}
 
     appExposeRectangle( add, 0, 0, 0, 0 );
 
-    /*  9  */
     asp->aspSymbolSelected= -1;
     appGuiEnableWidget( asp->aspInsertButton, 0 );
 
@@ -134,11 +135,13 @@ static int appSymbolAdaptDrawingToFont(		AppSymbolPicker *	asp )
 
 static int appSymbolAdaptToFamily(  AppSymbolPicker *	asp )
     {
+    const DocumentFontList *	dfl= &(asp->aspDocumentFontList);
+
     if  ( asp->aspFontFamilyChosen < 0 )
 	{ LDEB(asp->aspFontFamilyChosen); return -1;	}
 
     appEncodingMenuAdaptToFamilyEncodings( &(asp->aspEncodingMenu),
-			    asp->aspFontFamilies+ asp->aspFontFamilyChosen );
+			    dfl->dflFamilies+ asp->aspFontFamilyChosen );
 
     if  ( appSymbolAdaptDrawingToFont( asp ) )
 	{ LDEB(asp->aspFontFamilyChosen); return -1;	}
@@ -162,7 +165,7 @@ static void appSymbolPickerInsertSymbol(	AppSymbolPicker *	asp )
 	{ LXDEB(asp->aspSymbolSelected,asp->aspInsert); return;	}
 
     if  ( asp->aspFontFamilyChosen >= 0 )
-	{ PROPmaskADD( &setMask, TApropFONTFAMILY );	}
+	{ PROPmaskADD( &setMask, TApropDOC_FONT_NUMBER );	}
 
     (*asp->aspInsert)( asp->aspTarget, asp->aspSymbolSelected,
 				    &(asp->aspTextAttribute), &setMask );
@@ -442,33 +445,52 @@ static APP_EVENT_HANDLER_H( appSymbolMousePress, w, voidasp, downEvent )
 /*  1  */
 static APP_OITEM_CALLBACK_H( appSymbolFontFamilyChosen, w, voidasp )
     {
-    int				i;
+    int				fam;
     AppSymbolPicker *		asp= (AppSymbolPicker *)voidasp;
+    AppEncodingMenu *		aem= &(asp->aspEncodingMenu);
+    const DocumentFontList *	dfl= &(asp->aspDocumentFontList);
+    const DocumentFontFamily *	dff;
+    int				encoding= aem->aemFontEncoding;
     int				changed= 0;
-    const AppFontFamily *	aff;
 
-    i= appGuiGetOptionmenuItemIndex( &(asp->aspFontOptionmenu), w );
-    if  ( i < 0 || i >= asp->aspFontFamilyCount )
-	{ LLDEB(i,asp->aspFontFamilyCount); return;	}
+    fam= appGuiGetOptionmenuItemIndex( &(asp->aspFontOptionmenu), w );
+    if  ( fam < 0 || fam >= dfl->dflFamilyCount )
+	{ LLDEB(fam,dfl->dflFamilyCount); return;	}
 
-    aff= asp->aspFontFamilies+ i;
-    if  ( docExpandedTextAttributeSetFamilyAndEncoding(
-				    &(asp->aspTextAttribute),
-				    &changed, aff,
-				    asp->aspTextAttribute.etaFontEncoding ) )
-	{ LDEB(i); return;	}
+    dff= dfl->dflFamilies+ fam;
+    if  ( encoding < 0				||
+	  dff->dffFontForEncoding[encoding] < 0	)
+	{
+	int	enc;
+
+	encoding= -1;
+
+	for ( enc= 0; enc < ENCODINGps_COUNT; enc++ )
+	    {
+	    if  ( dff->dffFontForEncoding[enc] >= 0 )
+		{ encoding= enc; break;	}
+	    }
+	}
+
+    if  ( encoding >= 0 )
+	{
+	TextAttribute *		ta= &(asp->aspTextAttribute);
+
+	if  ( ta->taFontNumber != dff->dffFontForEncoding[encoding] )
+	    {
+	    ta->taFontNumber= dff->dffFontForEncoding[encoding];
+	    changed= 1;
+	    }
+	}
 
     if  ( changed )
 	{
-	AppEncodingMenu *		aem= &(asp->aspEncodingMenu);
+	asp->aspFontFamilyChosen= fam;
 
-	asp->aspFontFamilyChosen= i;
-
-	appEncodingMenuSetEncoding( aem, aff,
-				    asp->aspTextAttribute.etaFontEncoding );
+	appEncodingMenuSetEncoding( aem, dff, encoding );
 
 	if  ( appSymbolAdaptToFamily( asp ) )
-	    { LDEB(i);	}
+	    { LDEB(fam);	}
 	}
 
     return;
@@ -477,24 +499,31 @@ static APP_OITEM_CALLBACK_H( appSymbolFontFamilyChosen, w, voidasp )
 /*  2  */
 static APP_OITEM_CALLBACK_H( appSymbolFontEncodingChosen, w, voidasp )
     {
-    int				i;
+    int				enc;
     AppSymbolPicker *		asp= (AppSymbolPicker *)voidasp;
     int				changed= 0;
-    const AppFontFamily *	aff;
 
-    i= appGuiGetOptionmenuItemIndex(
+    enc= appGuiGetOptionmenuItemIndex(
 			&(asp->aspEncodingMenu.aemEncodingOptionmenu), w );
-    if  ( i < 0 || i >= ENCODINGps_COUNT )
-	{ LLDEB(i,ENCODINGps_COUNT); return;	}
+    if  ( enc < 0 || enc >= ENCODINGps_COUNT )
+	{ LLDEB(enc,ENCODINGps_COUNT); return;	}
 
     if  ( asp->aspFontFamilyChosen >= 0 )
 	{
-	aff= asp->aspFontFamilies+ asp->aspFontFamilyChosen;
+	const DocumentFontList *	dfl= &(asp->aspDocumentFontList);
+	const DocumentFontFamily *	dff;
+	TextAttribute *			ta= &(asp->aspTextAttribute);
 
-	if  ( docExpandedTextAttributeSetFamilyAndEncoding(
-						&(asp->aspTextAttribute),
-						&changed, aff, i ) )
-	    { LDEB(i); return;	}
+	dff= dfl->dflFamilies+ asp->aspFontFamilyChosen;
+
+	if  ( dff->dffFontForEncoding[enc] < 0 )
+	    { LLDEB(enc,dff->dffFontForEncoding[enc]); return;	}
+
+	if  ( ta->taFontNumber != dff->dffFontForEncoding[enc] )
+	    {
+	    ta->taFontNumber= dff->dffFontForEncoding[enc];
+	    changed= 1;
+	    }
 
 	if  ( changed )
 	    {
@@ -503,8 +532,7 @@ static APP_OITEM_CALLBACK_H( appSymbolFontEncodingChosen, w, voidasp )
 	    if  ( appSymbolAdaptDrawingToFont( asp ) )
 		{ LDEB(asp->aspFontFamilyChosen);	}
 
-	    appEncodingMenuSetEncoding( aem, aff,
-				    asp->aspTextAttribute.etaFontEncoding );
+	    appEncodingMenuSetEncoding( aem, dff, enc );
 	    }
 	}
 
@@ -608,26 +636,22 @@ static APP_WIDGET appSymbolMakeButtonRow( APP_WIDGET		parent,
 static void appSymbolFillFontMenu(	AppSymbolPickerResources *	aspr,
 					AppSymbolPicker *		asp )
     {
-    int			i;
-    AppFontFamily *	aff;
+    int				fam;
+    const DocumentFontList *	dfl= &(asp->aspDocumentFontList);
+    const DocumentFontFamily *	dff;
 
     appEmptyOptionmenu( &(asp->aspFontOptionmenu) );
 
-    aff= asp->aspFontFamilies;
-    for ( i= 0; i < asp->aspFontFamilyCount; aff++, i++ )
+    dff= dfl->dflFamilies;
+    for ( fam= 0; fam < dfl->dflFamilyCount; dff++, fam++ )
 	{
-	char *		labelText;
-
-	if  ( aff->affFontFamilyText )
-	    { labelText= aff->affFontFamilyText;	}
-	else{ labelText= aff->affFontFamilyName;	}
-
-	asp->aspFontFamilyOptions[i]= appAddItemToOptionmenu(
-				    &(asp->aspFontOptionmenu), labelText,
+	asp->aspFontFamilyOptions[fam]= appAddItemToOptionmenu(
+				    &(asp->aspFontOptionmenu),
+				    dff->dffFamilyName,
 				    appSymbolFontFamilyChosen, (void *)asp );
 	}
 
-    if  ( asp->aspFontFamilyCount == 0 )
+    if  ( dfl->dflFamilyCount == 0 )
 	{
 	asp->aspFontFamilyOptions[0]= appAddItemToOptionmenu(
 				&(asp->aspFontOptionmenu), aspr->asprNone,
@@ -635,9 +659,10 @@ static void appSymbolFillFontMenu(	AppSymbolPickerResources *	aspr,
 
 	appGuiEnableWidget( asp->aspTopWidget, 0 );
 	}
+    else{ appGuiEnableWidget( asp->aspTopWidget, 1 );	}
 
-    appSetOptionmenu( &(asp->aspFontOptionmenu), 0 );
     asp->aspFontFamilyChosen= 0;
+    appSetOptionmenu( &(asp->aspFontOptionmenu), 0 );
 
     appOptionmenuRefreshWidth( &(asp->aspFontOptionmenu) );
 
@@ -658,10 +683,12 @@ static APP_CLOSE_CALLBACK_H( appCloseSymbolPicker, w, voidasp )
     if  ( asp->aspDestroy )
 	{ (*asp->aspDestroy)( asp->aspTarget );	}
 
+    /* No! managed by the drawing data
     if  ( asp->aspFont )
 	{ appDrawFreeFont( &(asp->aspDrawingData), asp->aspFont );	}
+    */
 
-    docCleanExpandedTextAttribute( &(asp->aspTextAttribute) );
+    docCleanFontList( &(asp->aspDocumentFontList) );
 
     appCleanDrawingData( &(asp->aspDrawingData) );
 
@@ -698,9 +725,6 @@ void * appMakeSymbolPicker(	APP_WIDGET		symbolOption,
     double				xfac;
     double				yfac;
 
-    AppFontFamily *			fontFamilies;
-    int					fontFamilyCount;
-
     static AppSymbolPickerResources	aspr;
     static int				gotResources;
 
@@ -716,26 +740,23 @@ void * appMakeSymbolPicker(	APP_WIDGET		symbolOption,
 	gotResources= 1;
 	}
 
-    if  ( psFontCatalog( ea->eaAfmDirectory,
-				    &fontFamilies, &fontFamilyCount ) )
-	{
-	SDEB(ea->eaAfmDirectory);
-	fontFamilies= (AppFontFamily *)0;
-	fontFamilyCount= 0;
-	}
+    if  ( appPostScriptFontCatalog( ea ) )
+	{ SDEB(ea->eaAfmDirectory);	}
 
     appGetFactors( ea, &horPixPerMM, &verPixPerMM, &xfac, &yfac );
 
     asp= (AppSymbolPicker *)malloc( sizeof(AppSymbolPicker)+
-					fontFamilyCount* sizeof(APP_WIDGET) );
+		ea->eaPostScriptFontList.psflFamilyCount* sizeof(APP_WIDGET) );
     if  ( ! asp )
 	{ XDEB(asp); return (void *)0;	}
 
     asp->aspApplication= ea;
-    asp->aspFontFamilies= fontFamilies;
-    asp->aspFontFamilyCount= fontFamilyCount;
+    asp->aspCurrentDocumentId= 0;
+    docInitFontList( &(asp->aspDocumentFontList) );
 
     asp->aspResources= &aspr;
+
+    appInitOptionmenu( &(asp->aspFontOptionmenu) );
 
     asp->aspTopWidget= (APP_WIDGET)0;
     asp->aspSymbolDrawing= (APP_WIDGET)0;
@@ -751,7 +772,9 @@ void * appMakeSymbolPicker(	APP_WIDGET		symbolOption,
     asp->aspFont= (APP_FONT *)0;
     appInitDrawingData( &(asp->aspDrawingData) );
 
-    docInitExpandedTextAttribute( &(asp->aspTextAttribute) );
+    asp->aspDrawingData.addPostScriptFontList= &(ea->eaPostScriptFontList);
+
+    utilInitTextAttribute( &(asp->aspTextAttribute) );
 
     appMakeVerticalTool( &(asp->aspTopWidget), &(asp->aspMainWidget), ea,
 			    iconPixmap, iconMask, widgetName, userResizable,
@@ -808,44 +831,48 @@ void appShowSymbolPicker(	void *	voidasp	)
 
 int appAdaptSymbolPickerToFontFamily(
 				void *				voidasp,
-				const ExpandedTextAttribute *	etaNew,
+				unsigned int			documentId,
+				const DocumentFontList *	dflFrom,
+				const TextAttribute *		taNew,
 				const PropertyMask *		newMask )
     {
     AppSymbolPicker *		asp= (AppSymbolPicker *)voidasp;
+    DocumentFontList *		dfl= &(asp->aspDocumentFontList);
     AppEncodingMenu *		aem= &(asp->aspEncodingMenu);
     int				rval= 0;
+    const DocumentFont *	df= dfl->dflFonts;
 
     PropertyMask		doneMask;
 
-    PROPmaskCLEAR( &doneMask );
-    docUpdateExpandedTextAttribute( &doneMask, &(asp->aspTextAttribute),
-							    etaNew, newMask );
-
-    if  ( PROPmaskISSET( &doneMask, TApropFONTFAMILY )	&&
-	  etaNew->etaFontFamilyName			)
+    if  ( asp->aspCurrentDocumentId != documentId )
 	{
-	const AppFontFamily *	aff;
-	int			i;
+	if  ( docCopyFontList( dfl, dflFrom ) )
+	    { LDEB(1); return -1; }
 
-	aff= asp->aspFontFamilies;
-	for ( i= 0; i < asp->aspFontFamilyCount; aff++, i++ )
-	    {
-	    if  ( ! strcmp( etaNew->etaFontFamilyName,
-						aff->affFontFamilyName ) )
-		{ asp->aspFontFamilyChosen= i; break;	}
-	    }
+	appSymbolFillFontMenu( asp->aspResources, asp );
+
+	asp->aspCurrentDocumentId= documentId;
+	}
+
+    PROPmaskCLEAR( &doneMask );
+    utilUpdateTextAttribute( &doneMask, &(asp->aspTextAttribute),
+							    taNew, newMask );
+
+    asp->aspTextAttribute.taFontSizeHalfPoints= 20;
+    asp->aspTextAttribute.taFontIsBold= 0;
+    asp->aspTextAttribute.taFontIsSlanted= 0;
+
+    if  ( asp->aspTextAttribute.taFontNumber >= 0 )
+	{
+	df= dfl->dflFonts+ asp->aspTextAttribute.taFontNumber;
+	asp->aspFontFamilyChosen= df->dfDocFamilyIndex;
 	}
 
     if  ( asp->aspFontFamilyChosen < 0 )
 	{
-	int		changed= 0;
-
-	asp->aspFontFamilyChosen=  0; 
-
-	docExpandedTextAttributeSetFamilyAndEncoding(
-				&(asp->aspTextAttribute), &changed,
-				asp->aspFontFamilies,
-				asp->aspFontFamilies->affDefaultEncoding );
+	asp->aspFontFamilyChosen= 0; 
+	asp->aspTextAttribute.taFontNumber= 0;
+	df= dfl->dflFonts+ asp->aspTextAttribute.taFontNumber;
 	}
 
     if  ( appSymbolAdaptToFamily( asp ) )
@@ -855,8 +882,8 @@ int appAdaptSymbolPickerToFontFamily(
 					    asp->aspFontFamilyChosen );
 
     appEncodingMenuSetEncoding( aem,
-			    asp->aspFontFamilies+ asp->aspFontFamilyChosen,
-			    asp->aspTextAttribute.etaFontEncoding );
+			    dfl->dflFamilies+ asp->aspFontFamilyChosen,
+			    df->dfEncodingSet );
 
     return rval;
     }

@@ -26,7 +26,10 @@ void docRtfSaveTextAttribute(		SimpleOutputStream *	sos,
 					const PropertyMask *	updMask,
 					const TextAttribute *	ta )
     {
-    if  ( PROPmaskISSET( updMask, TApropFONTFAMILY ) )
+    if  ( PROPmaskISSET( updMask, TApropTEXT_STYLE ) )
+	{ docRtfWriteArgTag( "\\cs", pCol, ta->taTextStyleNumber, sos ); }
+
+    if  ( PROPmaskISSET( updMask, TApropDOC_FONT_NUMBER ) )
 	{ docRtfWriteArgTag( "\\f", pCol, ta->taFontNumber, sos ); }
 
     if  ( PROPmaskISSET( updMask, TApropFONTSIZE ) )
@@ -123,12 +126,16 @@ static int docRtfRememberTextPropertyImpl(	TextAttribute *		ta,
 	    ta->taFontSizeHalfPoints= 24;
 	    break;
 
-	case TApropFONTFAMILY:
+	case TApropDOC_FONT_NUMBER:
 	    ta->taFontNumber= arg;
 	    break;
 
 	case TApropFONTSIZE:
 	    ta->taFontSizeHalfPoints= arg;
+	    break;
+
+	case TApropTEXT_STYLE:
+	    ta->taTextStyleNumber= arg;
 	    break;
 
 	case TApropTEXT_COLOR:
@@ -181,6 +188,26 @@ int docRtfRememberTextProperty(		SimpleInputStream *	sis,
     if  ( rcw->rcwID == TAprop_NONE )
 	{ rrc->rrcInDeletedText= 0;	}
 
+    if  ( rcw->rcwID == TApropTEXT_STYLE )
+	{
+	const	DocumentStyleSheet *	dss= &(rrc->rrcBd->bdStyleSheet);
+
+	rrc->rrcDocumentStyle.dsLevel= DOClevTEXT;
+
+	if  ( arg >= 0 && arg < dss->dssStyleCount )
+	    {
+	    const DocumentStyle *	ds= dss->dssStyles+ arg;
+
+	    if  ( ds->dsLevel == DOClevTEXT )
+		{
+		PropertyMask	doneMask;
+
+		utilUpdateTextAttribute( &doneMask, &(rrs->rrsTextAttribute),
+				    &(ds->dsTextAttribute), &(ds->dsTextMask) );
+		}
+	    }
+	}
+
     if  ( docRtfRememberTextPropertyImpl(
 		    &(rrs->rrsTextAttribute), rrc->rrcBd, rcw, arg ) )
 	{ SDEB(rcw->rcwWord); return -1;	}
@@ -203,3 +230,20 @@ int docRtfRememberPntextProperty(	SimpleInputStream *	sis,
 
     return 0;
     }
+
+/************************************************************************/
+/*									*/
+/*  Text shading: Currently unimplemented.				*/
+/*									*/
+/************************************************************************/
+
+int docRtfRememberTextShadingPattern(	SimpleInputStream *	sis,
+					const RtfControlWord *	rcw,
+					int			arg,
+					RtfReadingContext *	rrc )
+    {
+    rrc->rrcTextShadingPattern= rcw->rcwEnumValue;
+
+    return 0;
+    }
+

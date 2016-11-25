@@ -50,8 +50,8 @@ void tedAppEditHeaderFooter(		EditApplication *	ea,
 
     DocumentSelection		ds;
     SelectionGeometry		sg;
+    SelectionDescription	sd;
     SelectionScope *		ss;
-    DocumentPosition		dp;
 
     int				page= -1;
     int				pg;
@@ -61,6 +61,7 @@ void tedAppEditHeaderFooter(		EditApplication *	ea,
     int				scrolledY= 0;
 
     DocumentRectangle		drChanged;
+    ScreenFontList *		sfl;
 
     if  ( ! ed )
 	{ XDEB(ed); return;	}
@@ -69,8 +70,9 @@ void tedAppEditHeaderFooter(		EditApplication *	ea,
     td= (TedDocument *)ed->edPrivateData;
     bd= td->tdDocument;
     docp= &(bd->bdProperties);
+    sfl= &(td->tdScreenFontList);
 
-    if  ( tedGetSelection( &ds, &sg, td ) )
+    if  ( tedGetSelection( &ds, &sg, &sd, td ) )
 	{ LDEB(1); return;	}
     ss= &(ds.dsSelectionScope);
 
@@ -93,7 +95,7 @@ void tedAppEditHeaderFooter(		EditApplication *	ea,
 	if  ( ! paraBi )
 	    { XDEB(paraBi); return; }
 
-	if  ( tedLayoutItem( bodySectBi, bd, add, &drChanged ) )
+	if  ( tedLayoutItem( bodySectBi, bd, add, sfl, &drChanged ) )
 	    { LDEB(1); return;	}
 
 	appDocumentChanged( ed, 1 );
@@ -154,12 +156,9 @@ void tedAppEditHeaderFooter(		EditApplication *	ea,
 	return;
 	}
 
-    if  ( docFirstPosition( &dp, ei->eiItem ) )
-	{ LDEB(1); return;	}
-
     ei->eiPageSelectedUpon= page;
 
-    tedSetSelectedPosition( ed, &dp, &scrolledX, &scrolledY );
+    tedSelectItemHome( ed, ei->eiItem, &scrolledX, &scrolledY );
 
     tedAdaptToolsToSelection( ed );
 
@@ -190,17 +189,21 @@ void tedAppDeleteHeaderFooter(		EditApplication *	ea,
 
     DocumentSelection		ds;
     SelectionGeometry		sg;
+    SelectionDescription	sd;
 
     int				scrolledX= 0;
     int				scrolledY= 0;
+
+    const ScreenFontList *	sfl;
 
     if  ( ! ed )
 	{ XDEB(ed); return;	}
 
     td= (TedDocument *)ed->edPrivateData;
     bd= td->tdDocument;
+    sfl= &(td->tdScreenFontList);
 
-    if  ( tedGetSelection( &ds, &sg, td ) )
+    if  ( tedGetSelection( &ds, &sg, &sd, td ) )
 	{ LDEB(1); return;	}
 
     /*  1  */
@@ -218,6 +221,7 @@ void tedAppDeleteHeaderFooter(		EditApplication *	ea,
 	    {
 	    int			docX;
 	    int			docY;
+	    const int		lastLine= 0;
 
 	    DocumentPosition	dp;
 	    PositionGeometry	pg;
@@ -226,10 +230,12 @@ void tedAppDeleteHeaderFooter(		EditApplication *	ea,
 	    docY= sg.sgBegin.pgBaselinePixels;
 
 	    if  ( tedFindPosition( &dp, &pg, bd, &(bd->bdItem),
-							add, docX, docY ) )
+						    add, sfl, docX, docY ) )
 		{ LLDEB(docX,docY); return;	}
 
-	    tedSetSelectedPosition( ed, &dp, &scrolledX, &scrolledY );
+	    tedSetSelectedPosition( ed, &dp, lastLine, &scrolledX, &scrolledY );
+
+	    tedAdaptToolsToSelection( ed );
 	    }
 
 	docCleanExternalItem( bd, ei );
@@ -262,22 +268,29 @@ void tedAppEditNote(		EditApplication *	ea )
 
     DocumentSelection		ds;
     SelectionGeometry		sg;
-
-    DocumentPosition		dp;
+    SelectionDescription	sd;
 
     int				scrolledX= 0;
     int				scrolledY= 0;
 
+    int				noteFieldNr= -1;
+    unsigned char *		fixedText= (unsigned char *)0;
+    const int			fixedTextSize= 0;
+
+    if  ( ! ed )
+	{ XDEB(ed); return;	}
+
     td= (TedDocument *)ed->edPrivateData;
     bd= td->tdDocument;
 
-    if  ( tedGetSelection( &ds, &sg, td ) )
+    if  ( tedGetSelection( &ds, &sg, &sd, td ) )
 	{ LDEB(1); return;	}
 
     if  ( ds.dsSelectionScope.ssInExternalItem != DOCinBODY )
 	{ LDEB(ds.dsSelectionScope.ssInExternalItem); return;	}
 
-    noteIndex= docGetSelectedNote( &dn, bd, &ds );
+    noteIndex= docGetSelectedNote( &dn, &noteFieldNr,
+					fixedText, fixedTextSize, bd, &ds );
     if  ( noteIndex < 0 )
 	{ LDEB(noteIndex); return;	}
 
@@ -286,10 +299,7 @@ void tedAppEditNote(		EditApplication *	ea )
     if  ( ! eiNote->eiItem )
 	{ XDEB(eiNote->eiItem); return;	}
 
-    if  ( docFirstPosition( &dp, eiNote->eiItem ) )
-	{ LDEB(1); return;	}
-
-    tedSetSelectedPosition( ed, &dp, &scrolledX, &scrolledY );
+    tedSelectItemHome( ed, eiNote->eiItem, &scrolledX, &scrolledY );
 
     tedAdaptToolsToSelection( ed );
 
@@ -314,31 +324,40 @@ void tedAppGotoNoteRef(		EditApplication *	ea )
 
     DocumentSelection		ds;
     SelectionGeometry		sg;
-
-    BufferItem *		bi;
+    SelectionDescription	sd;
 
     int				scrolledX= 0;
     int				scrolledY= 0;
 
+    int				noteFieldNr= -1;
+    unsigned char *		fixedText= (unsigned char *)0;
+    const int			fixedTextSize= 0;
+
+    DocumentPosition		dpNoteref;
+
+    if  ( ! ed )
+	{ XDEB(ed); return;	}
+
     td= (TedDocument *)ed->edPrivateData;
     bd= td->tdDocument;
 
-    if  ( tedGetSelection( &ds, &sg, td ) )
+    if  ( tedGetSelection( &ds, &sg, &sd, td ) )
 	{ LDEB(1); return;	}
 
     if  ( ds.dsSelectionScope.ssInExternalItem != DOCinFOOTNOTE	&&
 	  ds.dsSelectionScope.ssInExternalItem != DOCinENDNOTE	)
 	{ LDEB(ds.dsSelectionScope.ssInExternalItem); return;	}
 
-    noteIndex= docGetSelectedNote( &dn, bd, &ds );
+    noteIndex= docGetSelectedNote( &dn, &noteFieldNr,
+					fixedText, fixedTextSize, bd, &ds );
     if  ( noteIndex < 0 )
 	{ LDEB(noteIndex); return;	}
 
-    bi= docGetParagraphByNumber( &(bd->bdItem), dn->dnParaNr );
-    if  ( ! bi )
-	{ LXDEB(dn->dnParaNr,bi); return;	}
+    if  ( docGetNotePosition( &dpNoteref, bd, dn ) )
+	{ LDEB(1); return;	}
 
-    tedSetIBarSelection( ed, bi, dn->dnStroff, &scrolledX, &scrolledY );
+    tedSetIBarSelection( ed, dpNoteref.dpBi, dpNoteref.dpStroff,
+						    &scrolledX, &scrolledY );
 
     return;
     }

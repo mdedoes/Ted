@@ -15,15 +15,14 @@
 /*									*/
 /************************************************************************/
 
-void appEncodingMenuSetEncoding(	AppEncodingMenu *	aem,
-					const AppFontFamily *	aff,
-					int			enc )
+void appEncodingMenuSetEncoding(	AppEncodingMenu *		aem,
+					const DocumentFontFamily *	dff,
+					int				enc )
     {
     int				i;
-    const SupportedCharset *	sc;
 
     if  ( enc < 0 || enc >= ENCODINGps_COUNT )
-	{ LLDEB(enc,ENCODINGps_COUNT);		}
+	{ appEncodingMenuUnsetEncoding( aem );	}
     else{
 	if  ( aem->aemFontEncoding != enc )
 	    {
@@ -33,11 +32,39 @@ void appEncodingMenuSetEncoding(	AppEncodingMenu *	aem,
 	    }
 	}
 
-    sc= aff->affSupportedCharsets;
-    for ( i= 0; i < ENCODINGps_COUNT; sc++, i++ )
+    for ( i= 0; i < ENCODINGps_COUNT; i++ )
 	{
 	appGuiEnableWidget( aem->aemFontEncodingOptions[i],
-						    sc->scSupported != 0 );
+					    dff->dffFontForEncoding[i] >= 0 );
+	}
+
+    return;
+    }
+
+void appEncodingMenuSetDocEncoding(	AppEncodingMenu *	aem,
+					const int *		fontForEncoding,
+					int			enc )
+    {
+    int				i;
+
+    if  ( enc < 0 || enc >= ENCODINGps_COUNT )
+	{ LLDEB(enc,ENCODINGps_COUNT);		}
+    else{
+	if  ( fontForEncoding[enc] < 0 )
+	    { LLDEB(enc,fontForEncoding[enc]);	}
+
+	if  ( aem->aemFontEncoding != enc )
+	    {
+	    aem->aemFontEncoding= enc;
+
+	    appSetOptionmenu( &(aem->aemEncodingOptionmenu), enc );
+	    }
+	}
+
+    for ( i= 0; i < ENCODINGps_COUNT; i++ )
+	{
+	appGuiEnableWidget( aem->aemFontEncodingOptions[i],
+						fontForEncoding[i] >= 0 );
 	}
 
     return;
@@ -58,22 +85,17 @@ void appEncodingMenuUnsetEncoding(	AppEncodingMenu *	aem )
 /************************************************************************/
 
 void appEncodingMenuAdaptToFamilyEncodings(
-					AppEncodingMenu *	aem,
-					const AppFontFamily *	aff )
+					AppEncodingMenu *		aem,
+					const DocumentFontFamily *	dff )
     {
     int			enc= -1;
 
-    enc= aff->affDefaultEncoding;
-
     if  ( aem->aemFontEncoding >= 0				&&
 	  aem->aemFontEncoding < ENCODINGps_COUNT		&&
-	  aff->affSupportedCharsets[
-			    aem->aemFontEncoding].scSupported	)
-	{
-	enc= aem->aemFontEncoding;
-	}
+	  dff->dffFontForEncoding[aem->aemFontEncoding] >= 0	)
+	{ enc= aem->aemFontEncoding; }
 
-    appEncodingMenuSetEncoding( aem, aff, enc );
+    appEncodingMenuSetEncoding( aem, dff, enc );
 
     return;
     }
@@ -126,12 +148,7 @@ void appEncodingMenuGetOptionTexts(	char **			opts,
     acri= acr;
     for ( i= 0; i < ENCODINGps_COUNT; fc++, acri++, i++ )
 	{
-	APP_SET_RESOURCE( acri, fc->fcId,
-		    /*
-		    offsetof(AppSymbolPickerResources,asprEncodings[i]),
-		    */
-		    i* sizeof(char *),
-		    fc->fcLabel );
+	APP_SET_RESOURCE( acri, fc->fcId, i* sizeof(char *), fc->fcLabel );
 	}
 
     appGuiGetResourceValues( ea, opts, acr, ENCODINGps_COUNT );

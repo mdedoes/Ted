@@ -65,7 +65,9 @@ typedef	struct	TreeNode
 
 
 /************************************************************************/
+/*									*/
 /*  Avoid unnecessary typing						*/
+/*									*/
 /************************************************************************/
 
 #   define	sl_val	sl_ptr.pt_val
@@ -308,7 +310,8 @@ int utilTreeStoreValue(	void *		tree,
 	tm->tr_root= no;
 	tm->tr_curr= no;
 	tm->trCurrentDeleted= 0;
-	*pStoredKey= tm->tr_lfcu= savedKey;
+	if  ( pStoredKey )
+	    { *pStoredKey= tm->tr_lfcu= savedKey;	}
 
 	return 0;
 	}
@@ -418,7 +421,8 @@ int utilTreeStoreValue(	void *		tree,
 	    no->no_L.sl_val= val;
 	    tm->tr_curr= no;
 	    tm->trCurrentDeleted= 0;
-	    *pStoredKey= tm->tr_lfcu= no->no_L.nsKey;
+	    if  ( pStoredKey )
+		{ *pStoredKey= tm->tr_lfcu= no->no_L.nsKey;	}
 	    break;
 
 	case 2:
@@ -440,7 +444,8 @@ int utilTreeStoreValue(	void *		tree,
 	    no->no_M.sl_val= val;
 	    tm->tr_curr= no;
 	    tm->trCurrentDeleted= 0;
-	    *pStoredKey= tm->tr_lfcu= no->no_M.nsKey;
+	    if  ( pStoredKey )
+		{ *pStoredKey= tm->tr_lfcu= no->no_M.nsKey;	}
 	    break;
 
 	case 4:
@@ -451,7 +456,8 @@ int utilTreeStoreValue(	void *		tree,
 	    no->no_R.nsKey= (char *)0;
 	    tm->tr_curr= nw;
 	    tm->trCurrentDeleted= 0;
-	    *pStoredKey= tm->tr_lfcu= savedKey;
+	    if  ( pStoredKey )
+		{ *pStoredKey= tm->tr_lfcu= savedKey;	}
 	    break;
 
 	case 5:
@@ -461,7 +467,8 @@ int utilTreeStoreValue(	void *		tree,
 	    no->no_R.sl_val= val;
 	    tm->tr_curr= no;
 	    tm->trCurrentDeleted= 0;
-	    *pStoredKey= tm->tr_lfcu= no->no_R.nsKey;
+	    if  ( pStoredKey )
+		{ *pStoredKey= tm->tr_lfcu= no->no_R.nsKey;	}
 	    break;
 
 	case 6:
@@ -472,7 +479,8 @@ int utilTreeStoreValue(	void *		tree,
 	    no->no_R.nsKey= (char *)0;
 	    tm->tr_curr= nw;
 	    tm->trCurrentDeleted= 0;
-	    *pStoredKey= tm->tr_lfcu= savedKey;
+	    if  ( pStoredKey )
+		{ *pStoredKey= tm->tr_lfcu= savedKey;	}
 	    break;
 
 	default:
@@ -749,53 +757,113 @@ void * utilTreeGetEQ(		void *		tree,
     int			cmp;
 
     if  ( ! tree )
-	{ *pStoredKey= (const char *)0; return (void *)0;	}
+	{
+	if  ( pStoredKey )
+	    { *pStoredKey= (const char *)0;	}
+
+	return (void *)0;
+	}
     no= tm->tr_root;
     if  ( ! no )
-	{ *pStoredKey= (const char *)0; return (void *)0;	}
+	{
+	if  ( pStoredKey )
+	    { *pStoredKey= (const char *)0;	}
+
+	return (void *)0;
+	}
 
     if  ( tm->trStatusFlag == TRsCLOSE )
 	{
 	LDEB(tm->trStatusFlag);
-	*pStoredKey= (const char *)0; return (void *)0;
+
+	if  ( pStoredKey )
+	    { *pStoredKey= (const char *)0;	}
+
+	return (void *)0;
 	}
 
     /*  get leaf with key	*/
     no= treeGetLeaf( no, key );
     if  ( ! no )
-	{ XDEB(no); *pStoredKey= (const char *)0; return (void *)0; }
+	{
+	XDEB(no);
+
+	if  ( pStoredKey )
+	    { *pStoredKey= (const char *)0;	}
+
+	return (void *)0;
+	}
 
     cmp= strcmp( key, no->no_L.nsKey );
-    if  ( cmp <  0 )			{ return (void *)0;		}
+    if  ( cmp <  0 )
+	{
+	if  ( pStoredKey )
+	    { *pStoredKey= (const char *)0;	}
+
+	return (void *)0;
+	}
+
     if  ( cmp == 0 )
 	{
 	tm->tr_curr= no;
 	tm->trCurrentDeleted= 0;
-	*pStoredKey= tm->tr_lfcu= no->no_L.nsKey;
+
+	if  ( pStoredKey )
+	    { *pStoredKey= tm->tr_lfcu= no->no_L.nsKey;	}
+
 	return no->no_L.sl_val;
 	}
 
-    if  ( ! no->no_M.nsKey )		{ return (void *)0;		}
+    if  ( ! no->no_M.nsKey )
+	{
+	if  ( pStoredKey )
+	    { *pStoredKey= (const char *)0;	}
+
+	return (void *)0;
+	}
+
     cmp= strcmp( key, no->no_M.nsKey );
-    if  ( cmp <  0 )			{ return (void *)0;		}
+    if  ( cmp <  0 )
+	{
+	if  ( pStoredKey )
+	    { *pStoredKey= (const char *)0;	}
+
+	return (void *)0;
+	}
+
     if  ( cmp == 0 )
 	{
 	tm->tr_curr= no;
 	tm->trCurrentDeleted= 0;
-	*pStoredKey= tm->tr_lfcu= no->no_M.nsKey;
+
+	if  ( pStoredKey )
+	    { *pStoredKey= tm->tr_lfcu= no->no_M.nsKey;	}
+
 	return no->no_M.sl_val;
 	}
 
-    if  ( ! no->no_R.nsKey )	{ return (void *)0;		}
+    if  ( ! no->no_R.nsKey )
+	{
+	if  ( pStoredKey )
+	    { *pStoredKey= (const char *)0;	}
+
+	return (void *)0;
+	}
+
     cmp= strcmp( key, no->no_R.nsKey );
     if  ( cmp == 0 )
 	{
 	tm->tr_curr= no;
 	tm->trCurrentDeleted= 0;
-	*pStoredKey= tm->tr_lfcu= no->no_R.nsKey;
+
+	if  ( pStoredKey )
+	    { *pStoredKey= tm->tr_lfcu= no->no_R.nsKey;	}
+
 	return no->no_R.sl_val;
 	}
 
+    if  ( pStoredKey )
+	{ *pStoredKey= (const char *)0;	}
     return (void *)0;
     }
 

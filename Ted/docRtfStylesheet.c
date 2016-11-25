@@ -27,11 +27,17 @@ static int docRtfStyleName(	RtfReadingContext *	rrc,
 				const unsigned char *	name,
 				int			len )
     {
-    RtfReadingState *	rrs= rrc->rrcState;
-    DocumentStyle *	ds;
+    RtfReadingState *		rrs= rrc->rrcState;
+    BufferDocument *		bd= rrc->rrcBd;
+    DocumentProperties *	dp= &(bd->bdProperties);
 
-    PropertyMask	ppChgMask;
-    PropertyMask	ppUpdMask;
+    DocumentStyle *		ds;
+
+    PropertyMask		ppChgMask;
+    PropertyMask		ppUpdMask;
+
+    const int * const		colorMap= (const int *)0;
+    const int * const		listStyleMap= (const int *)0;
 
     ds= &(rrc->rrcDocumentStyle);
     switch( ds->dsLevel )
@@ -91,7 +97,7 @@ static int docRtfStyleName(	RtfReadingContext *	rrc,
 
     docUpdParaProperties( &ppChgMask, &(ds->dsParagraphProperties),
 				&ppUpdMask, &(rrs->rrsParagraphProperties),
-				(const int *)0 );
+				colorMap, listStyleMap );
 
     ds->dsTextAttribute= rrs->rrsTextAttribute;
 
@@ -103,6 +109,9 @@ static int docRtfStyleName(	RtfReadingContext *	rrc,
     utilInitTextAttribute( &(rrs->rrsTextAttribute) );
     rrs->rrsTextAttribute.taFontSizeHalfPoints= 24;
     rrc->rrcInDeletedText= 0;
+
+    if  ( dp->dpDefaultFont >= 0 )
+	{ rrs->rrsTextAttribute.taFontNumber= dp->dpDefaultFont;	}
 
     return 0;
     }
@@ -339,6 +348,8 @@ void docRtfWriteStyleSheet(	SimpleOutputStream *		sos,
 	    { docRtfWriteTag( "\\sautoupd", pCol, sos ); }
 	if  ( ds->dsHidden )
 	    { docRtfWriteTag( "\\shidden", pCol, sos ); }
+	if  ( ds->dsSemiHidden )
+	    { docRtfWriteTag( "\\ssemihidden", pCol, sos ); }
 	if  ( ds->dsPersonal )
 	    { docRtfWriteTag( "\\spersonal", pCol, sos ); }
 
@@ -392,6 +403,9 @@ int docRtfRememberStyleProperty(	SimpleInputStream *	sis,
 	    break;
 	case DSpropHIDDEN:
 	    ds->dsHidden= arg != 0;
+	    break;
+	case DSpropSEMI_HIDDEN:
+	    ds->dsSemiHidden= arg != 0;
 	    break;
 	case DSpropPERSONAL:
 	    ds->dsPersonal= arg != 0;

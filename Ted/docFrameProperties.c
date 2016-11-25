@@ -20,26 +20,29 @@
 /*									*/
 /************************************************************************/
 
-void docInitTextFrameProperties(	TextFrameProperties *	tfp )
+void docInitTextFrameProperties(	FramePosition *	fp )
     {
-    tfp->tfpFrameWidthTwips= 0;
-    tfp->tfpFrameHeightTwips= 0;
+    fp->fpFrameWidthTwips= 0;
+    fp->fpFrameHeightTwips= 0;
 
-    tfp->tfpFrameXTwips= 0;
-    tfp->tfpFrameYTwips= 0;
+    fp->fpFrameXTwips= 0;
+    fp->fpFrameYTwips= 0;
 
-    tfp->tfpDistanceFromTextTwips= 0;
-    tfp->tfpHorDistanceFromTextTwips= 0;
-    tfp->tfpVerDistanceFromTextTwips= 0;
+    fp->fpDistanceFromTextTwipsLeft= 0;
+    fp->fpDistanceFromTextTwipsRight= 0;
+    fp->fpDistanceFromTextTwipsTop= 0;
+    fp->fpDistanceFromTextTwipsBottom= 0;
+    fp->fpDistanceFromTextSet= 0;
 
-    tfp->tfpHorizontalFrameReference= HFRphCOL;
-    tfp->tfpHorizontalFrameAlignment= HFAposXL;
+    fp->fpHorizontalFrameReference= HFRphCOL;
+    fp->fpHorizontalFrameAlignment= HFAposXL;
 
-    tfp->tfpVerticalFrameReference= VFRpvMRG;
-    tfp->tfpVerticalFrameAlignment= VFAposYIL;
-    tfp->tfpFrameLockedToParagraph= 0;
+    fp->fpVerticalFrameReference= VFRpvMRG;
+    fp->fpVerticalFrameAlignment= VFAposYIL;
+    fp->fpFrameLockedToParagraph= 0;
 
-    tfp->tfpFrameWrapStyle= FWSwrapWRAP;
+    fp->fpFrameWrapStyle= FWSwrapWRAP;
+    fp->fpNoOverlap= 0;
 
     return;
     }

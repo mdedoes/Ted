@@ -70,8 +70,7 @@ typedef struct TedTopRuler
     int			ttrLeftIndent;		/*  pixels		*/
     int			ttrRightIndent;		/*  pixels		*/
 
-    int			ttrTabCount;
-    TabStop *		ttrTabStops;
+    TabStopList		ttrTabStopList;
     int			ttrTabKind;		/************************/
 						/*  alignment for fresh	*/
 						/*  tabs.		*/
@@ -145,8 +144,7 @@ void * tedMakeTopRuler(	int			height,
     rd->rdSizeAcross= height;
     rd->rdSizeAlong= 0;
 
-    ttr->ttrTabCount= 0;
-    ttr->ttrTabStops= (TabStop *)0;
+    docInitTabStopList( &(ttr->ttrTabStopList) );
     ttr->ttrTabKind= DOCtaLEFT;
 
     ttr->ttrColumnCount= 0;
@@ -163,8 +161,7 @@ void tedFreeHorizontalRuler(	void *		voidttr )
     {
     TedTopRuler *		ttr= (TedTopRuler *)voidttr;
 
-    if  ( ttr->ttrTabStops )
-	{ free( ttr->ttrTabStops );			}
+    docCleanTabStopList( &(ttr->ttrTabStopList) );
 
     appCleanRulerData( &(ttr->ttrRulerData) );
 
@@ -782,8 +779,8 @@ static void tedDrawTopRuler(	APP_WIDGET		w,
 
     appDrawSetForegroundColor( add, &(add->addForeColor) );
 
-    ts= ttr->ttrTabStops;
-    for ( tab= 0; tab < ttr->ttrTabCount; ts++, tab++ )
+    ts= ttr->ttrTabStopList.tslTabStops;
+    for ( tab= 0; tab < ttr->ttrTabStopList.tslTabStopCount; ts++, tab++ )
 	{
 	if  ( ts->tsPixels < rd->rdVisibleC0	||
 	      ts->tsPixels > rd->rdVisibleC1	)
@@ -911,8 +908,8 @@ static void tedRulerChangeRect(	int *				pChanged,
 	    { docUnionRectangle( drRedraw, drRedraw, &drButMore ); changed= 1; }
 	}
 
-    ts= ttr->ttrTabStops;
-    for ( tab= 0; tab < ttr->ttrTabCount; ts++, tab++ )
+    ts= ttr->ttrTabStopList.tslTabStops;
+    for ( tab= 0; tab < ttr->ttrTabStopList.tslTabStopCount; ts++, tab++ )
 	{
 	int	y= whY+ WHITE_HEIGHT(sizeAcross);
 
@@ -1205,7 +1202,7 @@ static void tedHorizontalRulerDragTab(	int *			pChanged,
 
     int			y;
 
-    TabStop *		ts= ttr->ttrTabStops+ item;
+    TabStop *		ts= ttr->ttrTabStopList.tslTabStops+ item;
 
     int			x0= ts->tsPixels;
     int			x1;
@@ -1228,18 +1225,14 @@ static void tedHorizontalRulerDragTab(	int *			pChanged,
 	if  ( y <  WHITE_TOP(sizeAcross)				||
 	      y >  WHITE_TOP(sizeAcross)+ WHITE_HEIGHT(sizeAcross)	)
 	    {
-	    int		i;
-
-	    ttr->ttrTabCount--;
-	    for ( i= item; i < ttr->ttrTabCount; i++ )
-		{ ttr->ttrTabStops[i]= ttr->ttrTabStops[i+ 1]; }
+	    docDeleteTabFromList( &(ttr->ttrTabStopList), item );
 
 	    appExposeRectangle( add, 0, 0, 0, 0 );
 	    }
 	}
 
-    qsort( ttr->ttrTabStops, ttr->ttrTabCount, sizeof(TabStop),
-						tedCompareTabStopsPixels );
+    qsort( ttr->ttrTabStopList.tslTabStops, ttr->ttrTabStopList.tslTabStopCount,
+				sizeof(TabStop), tedCompareTabStopsPixels );
 
     return;
     }
@@ -1247,8 +1240,7 @@ static void tedHorizontalRulerDragTab(	int *			pChanged,
 void tedHorizontalRulerTrackMouse(	int *			pFirstIndent,
 					int *			pLeftIndent,
 					int *			pRightIndent,
-					int *			pTabCount,
-					TabStop **		pTabStops,
+					TabStopList *		tsl,
 					int *			pCsCount,
 					ColumnSeparator **	pCs,
 					int *			pProperty,
@@ -1297,8 +1289,8 @@ void tedHorizontalRulerTrackMouse(	int *			pFirstIndent,
 	{
 	TabStop *		ts;
 
-	ts= ttr->ttrTabStops;
-	for ( item= 0; item < ttr->ttrTabCount; ts++, item++ )
+	ts= ttr->ttrTabStopList.tslTabStops;
+	for ( item= 0; item < ttr->ttrTabStopList.tslTabStopCount; ts++, item++ )
 	    {
 	    if  ( x+ ox >= ts->tsPixels			&&
 		  x+ ox <  ts->tsPixels+ tabWidth	)
@@ -1308,8 +1300,7 @@ void tedHorizontalRulerTrackMouse(	int *			pFirstIndent,
 
 		if  ( changed )
 		    {
-		    *pTabCount= ttr->ttrTabCount;
-		    *pTabStops= ttr->ttrTabStops;
+		    *tsl= ttr->ttrTabStopList;
 		    *pProperty= PPpropTAB_STOPS;
 		    }
 		else{ *pProperty= PPprop_NONE; }
@@ -1334,8 +1325,7 @@ void tedHorizontalRulerTrackMouse(	int *			pFirstIndent,
 	if  ( changed )
 	    {
 	    *pFirstIndent= ttr->ttrFirstIndent;
-	    *pTabCount= ttr->ttrTabCount;
-	    *pTabStops= ttr->ttrTabStops;
+	    *tsl= ttr->ttrTabStopList;
 	    *pProperty= PPpropFIRST_INDENT;
 	    }
 	else{ *pProperty= PPprop_NONE; }
@@ -1358,8 +1348,7 @@ void tedHorizontalRulerTrackMouse(	int *			pFirstIndent,
 	if  ( changed )
 	    {
 	    *pLeftIndent= ttr->ttrLeftIndent;
-	    *pTabCount= ttr->ttrTabCount;
-	    *pTabStops= ttr->ttrTabStops;
+	    *tsl= ttr->ttrTabStopList;
 	    *pProperty= PPpropLEFT_INDENT;
 	    }
 	else{ *pProperty= PPprop_NONE; }
@@ -1382,8 +1371,7 @@ void tedHorizontalRulerTrackMouse(	int *			pFirstIndent,
 	if  ( changed )
 	    {
 	    *pRightIndent= ttr->ttrRightIndent;
-	    *pTabCount= ttr->ttrTabCount;
-	    *pTabStops= ttr->ttrTabStops;
+	    *tsl= ttr->ttrTabStopList;
 	    *pProperty= PPpropRIGHT_INDENT;
 	    }
 	else{ *pProperty= PPprop_NONE; }
@@ -1396,38 +1384,23 @@ void tedHorizontalRulerTrackMouse(	int *			pFirstIndent,
 	  x+ ox >= ttr->ttrColX0	&&
 	  x+ ox <= ttr->ttrColX1	)
 	{
-	int		i;
-	TabStop *	fresh;
+	TabStop		tsNew;
 
-	fresh= (TabStop *)realloc( ttr->ttrTabStops,
-				    ( ttr->ttrTabCount+ 1)* sizeof(TabStop) );
-	if  ( ! fresh )
-	    { LXDEB(ttr->ttrTabCount,fresh); *pProperty= PPprop_NONE; return; }
+	docInitTabStop( &tsNew );
 
-	ttr->ttrTabStops= fresh;
+	tsNew.tsPixels= x+ ox;
+	tsNew.tsAlignment= ttr->ttrTabKind;
 
-	for ( item= 0; item < ttr->ttrTabCount; item++ )
-	    {
-	    if  ( ttr->ttrTabStops[item].tsPixels >= x+ ox )
-		{ break;	}
-	    }
-
-	for ( i= ttr->ttrTabCount; i > item; i-- )
-	    { ttr->ttrTabStops[i]= ttr->ttrTabStops[i-1];	}
-
-	docInitTabStop( ttr->ttrTabStops+ item );
-
-	ttr->ttrTabStops[item].tsPixels= x+ ox;
-	ttr->ttrTabStops[item].tsAlignment= ttr->ttrTabKind;
-	ttr->ttrTabCount++;
+	item= docAddTabToListPixels( &(ttr->ttrTabStopList), &tsNew );
+	if  ( item < 0 )
+	    { LDEB(item); *pProperty= PPprop_NONE; return;	}
 
 	appExposeRectangle( add, 0, 0, 0, 0 );
 
 	tedHorizontalRulerDragTab( &changed, w, ea, downEvent, ttr,
 					    item, x+ ox, ox, voided, dragHair );
 
-	*pTabCount= ttr->ttrTabCount;
-	*pTabStops= ttr->ttrTabStops;
+	*tsl= ttr->ttrTabStopList;
 	*pProperty= PPpropTAB_STOPS; return;
 	}
 
@@ -1502,25 +1475,23 @@ void tedHorizontalRulerTrackMouse(	int *			pFirstIndent,
 /*									*/
 /************************************************************************/
 
-void tedAdaptHorizontalRuler(	void *		voidttr,
-				APP_WIDGET	w,
-				int		documentC0,
-				int		documentC1,
-				int		firstIndent,
-				int		leftIndent,
-				int		rightIndent,
-				int		rulerC1,
-				int		tabCount,
-				TabStop *	tabStops )
+void tedAdaptHorizontalRuler(	void *			voidttr,
+				APP_WIDGET		w,
+				int			documentC0,
+				int			documentC1,
+				int			firstIndent,
+				int			leftIndent,
+				int			rightIndent,
+				int			rulerC1,
+				const TabStopList *	tslSet )
     {
     TedTopRuler *	ttr= (TedTopRuler *)voidttr;
     RulerData *		rd= &(ttr->ttrRulerData);
     AppDrawingData *	add= &(rd->rdDrawingData);
-    TabStop *		ts;
 
+    int			tabsChanged= 0;
     int			changed= 0;
-
-    int			i;
+    const int		pixels= 1;
 
     rd->rdDocumentC0= documentC0;
     rd->rdDocumentC1= documentC1;
@@ -1537,39 +1508,11 @@ void tedAdaptHorizontalRuler(	void *		voidttr,
     if  ( rd->rdRulerC1 != rulerC1 )
 	{ rd->rdRulerC1=   rulerC1; changed= 1;	}
 
-    if  ( tabCount != ttr->ttrTabCount )
-	{
-	if  ( tabCount > ttr->ttrTabCount )
-	    {
-	    TabStop *	fresh;
-
-	    fresh= (TabStop *)realloc( ttr->ttrTabStops,
-						tabCount* sizeof(TabStop) );
-	    if  ( ! fresh )
-		{ LXDEB(tabCount,fresh); return;	}
-
-	    ttr->ttrTabStops= fresh;
-	    }
-
-	ttr->ttrTabCount= tabCount;
-	changed= 1;
-	}
-
-    ts= ttr->ttrTabStops;
-    for ( i= 0; i < tabCount; ts++, tabStops++, i++ )
-	{
-	int		different= 0;
-
-	if  ( ts->tsPixels != tabStops->tsPixels )
-	    { different= 1; changed= 1;	}
-	if  ( ts->tsAlignment != tabStops->tsAlignment )
-	    { different= 1; changed= 1;	}
-	if  ( ts->tsLeader != tabStops->tsLeader )
-	    { different= 1;	}
-
-	if  ( different )
-	    { *ts= *tabStops;	}
-	}
+    if  ( docCopyTabStopList( &tabsChanged, &(ttr->ttrTabStopList),
+							tslSet, pixels ) )
+	{ LDEB(1); return;	}
+    if  ( tabsChanged )
+	{ changed= 1;	}
 
 #   ifdef USE_MOTIF
     if  ( changed && XtIsRealized( w ) )
@@ -1623,6 +1566,15 @@ int tedSetRulerColumns(		APP_WIDGET		w,
 		{ LXDEB(csCount,fresh); return -1;	}
 
 	    ttr->ttrColumns= fresh;
+	    fresh += ttr->ttrColumnCount;
+
+	    while( ttr->ttrColumnCount < csCount )
+		{
+		fresh->csX0= 0;
+		fresh->csX1= 0;
+
+		ttr->ttrColumnCount++; fresh++;
+		}
 	    }
 
 	ttr->ttrColumnCount= csCount;

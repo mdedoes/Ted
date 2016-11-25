@@ -75,13 +75,15 @@ int bmSelect(	BitmapDescription *		bdOut,
 	    to= buffer+ row* bytesPerRow;
 	    from= bufIn+ ( row+ y0 )* bdIn->bdBytesPerRow+ originByte;
 
+	    *to=   *from << originBit; from++;
+
 	    for ( byte= 1; byte < bytesPerRow; byte++ )
 		{
-		*to= *(from++) << originBit;
-		*(to++) |= *from >> rightShift;
+		*to |= *from >> rightShift; to++;
+		*to=   *from << originBit; from++;
 		}
 
-	    *to= *from << originBit;
+	    *to |= *from >> rightShift;
 	    }
 	}
 

@@ -28,6 +28,13 @@ extern int docCopyListTable(	DocumentListTable *		to,
 				const DocumentListTable *	from );
 
 extern int docDocumentListTableAddList(	DocumentListTable *	dlt,
-					const DocumentList *	dl );
+					const DocumentList *	dl,
+					const int *		fontMap,
+					const int *		colorMap );
+
+extern int docMergeListIntoTable(	DocumentListTable *	dlt,
+					const DocumentList *	dl,
+					const int *		fontMap,
+					const int *		colorMap );
 
 #   endif

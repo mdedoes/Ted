@@ -173,9 +173,24 @@ int docSplitFieldInstructions(	const MemoryBuffer *		mb,
 	if  ( n >= maxComponent )
 	    { LLDEB(n,maxComponent); return 0;	}
 
+	if  ( bytes[0] == '\\'		&&
+	      offset < mb->mbSize- 1	&&
+	      bytes[1] != ' '		)
+	    {
+	    fic->ficOffset= offset;
+
+	    offset += 2;  bytes += 2;
+	    fic->ficSize= 2;
+	    n++; fic++;
+	    continue;
+	    }
+
 	if  ( bytes[0] == '"' )
 	    {
 	    offset++; bytes++;
+
+	    if  ( bytes[0] == '"' )
+		{ offset++; bytes++; continue; }
 
 	    fic->ficOffset= offset;
 	    while( offset < mb->mbSize && *bytes != '"' )

@@ -108,10 +108,8 @@ int bmReadPbmFile(	const char *		filename,
 	    bd->bdColorEncoding= BMcoBLACKWHITE;
 	    bd->bdSamplesPerPixel= 1;
 	    bd->bdBitsPerSample= 1;
-	    bd->bdBitsPerPixel= 1;
-	    bd->bdBytesPerRow= ( wide+ 7 )/8;
-	    bd->bdBufferLength= high* bd->bdBytesPerRow;
 	    break;
+
 	case 2: case 5:
 	    if  ( bmPbmGetNumber( &mval, f ) )
 		{ LDEB(1); fclose( f ); return -1;	}
@@ -119,24 +117,21 @@ int bmReadPbmFile(	const char *		filename,
 	    bd->bdColorEncoding= BMcoWHITEBLACK;
 	    bd->bdSamplesPerPixel= 1;
 	    bd->bdBitsPerSample= 8;
-	    bd->bdBitsPerPixel= 8;
-	    bd->bdBytesPerRow= wide;
-	    bd->bdBufferLength= high* bd->bdBytesPerRow;
 	    break;
+
 	case 3: case 6:
 	    if  ( bmPbmGetNumber( &mval, f ) )
 		{ LDEB(1); fclose( f ); return -1;	}
 
 	    bd->bdColorEncoding= BMcoRGB;
-	    bd->bdSamplesPerPixel= 3;
 	    bd->bdBitsPerSample= 8;
-	    bd->bdBitsPerPixel= 24;
-	    bd->bdBytesPerRow= 3* wide;
-	    bd->bdBufferLength= high* bd->bdBytesPerRow;
 	    break;
+
 	default:
 	    CDEB(c); fclose( f ); return -1;
 	}
+
+    bmCalculateSizes( bd );
 
     buffer= (unsigned char *)malloc( bd->bdBufferLength );
     if  ( ! buffer )
@@ -163,12 +158,13 @@ int bmReadPbmFile(	const char *		filename,
 		    }
 		}
 	    break;
+
 	case 4:
 	    c= getc( f );
 	    for ( row= 0; row < high; row++ )
 		{
 		to= buffer+ row* bd->bdBytesPerRow;
-		if  ( fread( buffer, 1, bd->bdBytesPerRow, f ) !=
+		if  ( fread( to, 1, bd->bdBytesPerRow, f ) !=
 							bd->bdBytesPerRow )
 		    {
 		    LDEB(bd->bdBufferLength);
@@ -176,6 +172,7 @@ int bmReadPbmFile(	const char *		filename,
 		    }
 		}
 	    break;
+
 	case 5:
 	    switch( bd->bdBitsPerPixel )
 		{
@@ -194,6 +191,7 @@ int bmReadPbmFile(	const char *		filename,
 		    free( buffer ); fclose( f ); return -1;
 		}
 	    break;
+
 	case 2:
 	    switch( bd->bdBitsPerPixel )
 		{
@@ -218,6 +216,7 @@ int bmReadPbmFile(	const char *		filename,
 		    free( buffer ); fclose( f ); return -1;
 		}
 	    break;
+
 	case 3:
 	    switch( bd->bdBitsPerSample )
 		{
@@ -261,6 +260,7 @@ int bmReadPbmFile(	const char *		filename,
 		    free( buffer ); fclose( f ); return -1;
 		}
 	    break;
+
 	default:
 	    free( buffer );
 	    LDEB(privateFormat); fclose( f ); return -1;

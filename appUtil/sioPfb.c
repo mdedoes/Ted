@@ -183,8 +183,7 @@ SimpleInputStream * sioInPfbOpen(	SimpleInputStream *	sisPfb )
     bfs->bfsHexColumn= 0;
     bfs->bfsHasAhead= 0;
 
-    sis= sioInOpen( (void *)bfs,
-			    sioInPfbReadBytes, (SIOinSEEK)0, sioPfbClose );
+    sis= sioInOpen( (void *)bfs, sioInPfbReadBytes, sioPfbClose );
 
     if  ( ! sis )
 	{ XDEB(sis); free( bfs ); return (SimpleInputStream *)0; }

@@ -56,7 +56,9 @@ void docCleanDocumentList(	DocumentList *	dl )
     }
 
 int docCopyDocumentList(	DocumentList *		to,
-				const DocumentList *	from )
+				const DocumentList *	from,
+				const int *		fontMap,
+				const int *		colorMap )
     {
     int			rval= 0;
 
@@ -85,7 +87,8 @@ int docCopyDocumentList(	DocumentList *		to,
 
     for ( i= 0; i < from->dlLevelCount; i++ )
 	{
-	if  ( docCopyDocumentListLevel( &(levels[i]), &(from->dlLevels[i]) ) )
+	if  ( docCopyDocumentListLevel( &(levels[i]), &(from->dlLevels[i]),
+							fontMap, colorMap ) )
 	    { LDEB(i); rval= -1; goto ready;	}
 	}
 
@@ -129,13 +132,16 @@ int docCopyDocumentList(	DocumentList *		to,
     return rval;
     }
 
-int docDocumentListAddLevel(		DocumentList *			dl,
-					const DocumentListLevel *	dll )
+int docDocumentListAddLevel(	DocumentList *			dl,
+				const DocumentListLevel *	dll,
+				const int *			fontMap,
+				const int *			colorMap )
     {
     if  ( dl->dlLevelCount < 0 || dl->dlLevelCount >= DLmaxLEVELS )
 	{ LLDEB(dl->dlLevelCount,DLmaxLEVELS); return -1;	}
 
-    if  ( docCopyDocumentListLevel( &(dl->dlLevels[dl->dlLevelCount]), dll ) )
+    if  ( docCopyDocumentListLevel( &(dl->dlLevels[dl->dlLevelCount]), dll,
+							fontMap, colorMap ) )
 	{ LDEB(dl->dlLevelCount); return -1;	}
 
     dl->dlLevelCount++;

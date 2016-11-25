@@ -87,6 +87,34 @@ int docAddTabToList(		TabStopList *		tsl,
     return i;
     }
 
+int docAddTabToListPixels(	TabStopList *		tsl,
+				const TabStop *		tsNew )
+    {
+    TabStop *		ts;
+    int			newSize;
+    int			i;
+
+    if  ( tsl->tslTabStopCount % 10 )
+	{ newSize= tsl->tslTabStopCount+  1; }
+    else{ newSize= tsl->tslTabStopCount+ 11; }
+
+    newSize *= sizeof(TabStop);
+
+    ts= (TabStop *)realloc( tsl->tslTabStops, newSize );
+    if  ( ! ts )
+	{ LXDEB(newSize,ts); return -1; }
+    tsl->tslTabStops= ts;
+
+    i= tsl->tslTabStopCount; ts= tsl->tslTabStops+ tsl->tslTabStopCount;
+    while( i > 0 && ts[-1].tsPixels > tsNew->tsPixels )
+	{ ts[0]= ts[-1]; i--; ts--;	}
+
+    *ts= *tsNew;
+    tsl->tslTabStopCount++;
+
+    return i;
+    }
+
 /************************************************************************/
 /*									*/
 /*  Remove a tab stop from the ruler of a paragraph.			*/
@@ -118,7 +146,8 @@ void docDeleteTabFromList(	TabStopList *		tsl,
 
 int docCopyTabStopList(		int *			pChanged,
 				TabStopList *		to,
-				const TabStopList *	from )
+				const TabStopList *	from,
+				int			pixels )
     {
     int		changed= 0;
 
@@ -145,7 +174,13 @@ int docCopyTabStopList(		int *			pChanged,
 		{
 		if  ( to->tslTabStopCount == from->tslTabStopCount )
 		    {
-		    if  ( nts->tsTwips != ots->tsTwips			||
+		    int		posDiffer;
+
+		    if  ( pixels )
+			{ posDiffer= nts->tsPixels != ots->tsPixels;	}
+		    else{ posDiffer= nts->tsTwips != ots->tsTwips;	}
+
+		    if  ( posDiffer					||
 			  nts->tsAlignment != ots->tsAlignment		||
 			  nts->tsLeader != ots->tsLeader		||
 			  nts->tsFromStyleOrList !=

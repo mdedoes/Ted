@@ -15,7 +15,6 @@ typedef enum RtfTag
 				/****************************************/
     RTFidFONTTBL,
     RTFidCOLORTBL,
-    RTFidPNTEXT,
     RTFidPN,
     RTFidSTYLESHEET,
     RTFidINFO,
@@ -38,6 +37,7 @@ typedef enum RtfTag
 				/*  Color references.			*/
 				/****************************************/
     RTFidOGUTTER,
+    RTFidRTLGUTTER,
 
     RTFidDEFLANGFE,
     RTFidVIEWKIND,
@@ -100,13 +100,6 @@ typedef enum RtfTag
     RTFidWRAPTRSP,
     RTFidVIEWZK,
 
-    RTFidPGBRDRHEAD,
-    RTFidPGBRDRFOOT,
-    RTFidPGBRDRT,
-    RTFidPGBRDRB,
-    RTFidPGBRDRL,
-    RTFidPGBRDRR,
-    RTFidBRDRART,
     RTFidPGBRDROPT,
     RTFidPGBRDRSNAP,
 
@@ -180,7 +173,6 @@ typedef enum RtfTag
 				/****************************************/
 				/*  Paragraph Formatting Properties	*/
 				/****************************************/
-    RTFidINTBL,
     RTFidLEVEL,
     RTFidLTRPAR,
     RTFidNOLINE,
@@ -223,6 +215,7 @@ typedef enum RtfTag
     RTFidADJUSTRIGHT, RTFidADJUSTLEFT,
 
     RTFidFC,
+    RTFidFCS,
 				/****************************************/
 				/*  Character Formatting Properties	*/
 				/****************************************/
@@ -258,19 +251,6 @@ typedef enum RtfTag
     RTFidCGRID,
     RTFidCHARSCALEX,
 
-    RTFidCHBGHORIZ,
-    RTFidCHBGVERT,
-    RTFidCHBGFDIAG,
-    RTFidCHBGBDIAG,
-    RTFidCHBGCROSS,
-    RTFidCHBGDCROSS,
-    RTFidCHBGDKHORIZ,
-    RTFidCHBGDKVERT,
-    RTFidCHBGDKFDIAG,
-    RTFidCHBGDKBDIAG,
-    RTFidCHBGDKCROSS,
-    RTFidCHBGDKDCROSS,
-
     RTFidCHBRDR,
 
     RTFidCHCBPAT,
@@ -284,9 +264,7 @@ typedef enum RtfTag
     RTFidPICT,
     RTFidNONSHPPICT,
     RTFidSHPPICT,
-
-    RTFidBIN,
-
+    RTFidDO,
 				/****************************************/
 				/*  Pictures, objects			*/
 				/****************************************/
@@ -302,34 +280,20 @@ typedef enum RtfTag
 				/****************************************/
     RTFidBULLET,
     RTFidCHATN,
-    RTFidCHDATE,
-    RTFidCHDPA,
-    RTFidCHDPL,
-    RTFidCHFTN,
-    RTFidCHFTNSEP,
-    RTFidCHFTNSEPC,
-    RTFidCHPGN,
-    RTFidCHTIME,
-    RTFidCOLUMN,
     RTFidEMDASH,
     RTFidEMSPACE,
     RTFidENDASH,
     RTFidENSPACE,
     RTFidLDBLQUOTE,
-    RTFidLINE,
-    RTFidLBR,
     RTFidLQUOTE,
     RTFidLTRMARK,
-    RTFidPAGE,
     RTFidRDBLQUOTE,
     RTFidRQUOTE,
     RTFidRTLMARK,
-    RTFidSECTNUM,
     RTFidSOFTCOL,
     RTFidSOFTLHEIGHT,
     RTFidSOFTLINE,
     RTFidSOFTPAGE,
-    RTFidTAB,
     RTFidZWJ,
     RTFidZWNJ,
 
@@ -361,34 +325,18 @@ typedef enum RtfTag
 				/*  (No destinations)			*/
 				/****************************************/
     RTFidPNACROSS,
-    RTFidPNCARD,
-    RTFidPNDEC,
     RTFidPNHANG,
-    RTFidPNINDENT,
-    RTFidPNLCLTR,
-    RTFidPNLCRM,
     RTFidPNLVL,
     RTFidPNLVLBLT,
     RTFidPNLVLBODY,
     RTFidPNLVLCONT,
     RTFidPNNUMONCE,
-    RTFidPNORD,
-    RTFidPNORDT,
-    RTFidPNPREV,
-    RTFidPNQC,
-    RTFidPNQL,
-    RTFidPNQR,
     RTFidPNRESTART,
-    RTFidPNSP,
-    RTFidPNSTART,
-    RTFidPNUCLTR,
-    RTFidPNUCRM,
     RTFidPNULD,
     RTFidPNULDB,
     RTFidPNULNONE,
     RTFidPNULW,
 
-    RTFidILVL,
     RTFidPNRNOT,
 				/****************************************/
 				/*  Fields, Bookmarks.			*/
@@ -410,15 +358,12 @@ typedef enum RtfTag
 				/*  Index entries.			*/
 				/*  Table of contents entries.		*/
 				/****************************************/
-    RTFidXE,
     RTFidTXE,
     RTFidRXE,
     RTFidIXE,
     RTFidBXE,
     RTFidXEF,
 
-    RTFidTC,
-    RTFidTCN,
     RTFidTCF,
     RTFidTCL,
 				/****************************************/
@@ -468,27 +413,6 @@ typedef enum RtfTag
 				/*  Shapes.				*/
 				/****************************************/
     RTFidSHP,
-
-    RTFidSHPLEFT,
-    RTFidSHPTOP,
-    RTFidSHPBOTTOM,
-    RTFidSHPRIGHT,
-    RTFidSHPLID,
-    RTFidSHPZ,
-    RTFidSHPFHDR,
-    RTFidSHPBXPAGE,
-    RTFidSHPBXMARGIN,
-    RTFidSHPBXCOLUMN,
-    RTFidSHPBXIGNORE,
-    RTFidSHPBYPAGE,
-    RTFidSHPBYMARGIN,
-    RTFidSHPBYCOLUMN,
-    RTFidSHPBYIGNORE,
-    RTFidSHPBYPARA,
-    RTFidSHPWR,
-    RTFidSHPWRK,
-    RTFidSHPFBLWTXT,
-    RTFidSHPLOCKANCHOR,
 
     RTFidSHPTXT,
     RTFidSHPRSLT,

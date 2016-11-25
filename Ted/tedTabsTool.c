@@ -143,6 +143,7 @@ static void tedFormatToolRefreshTabsPage(	TabsTool *	tt )
 void tedFormatToolRefreshTabsTool(
 				TabsTool *			tt,
 				int *				pEnabled,
+				int *				pPref,
 				InspectorSubject *		is,
 				const DocumentSelection *	ds,
 				const DocumentProperties *	dp )
@@ -152,6 +153,9 @@ void tedFormatToolRefreshTabsTool(
     PropertyMask			chgMask;
     PropertyMask			updMask;
 
+    const int * const			colorMap= (const int *)0;
+    const int * const			listStyleMap= (const int *)0;
+
     pp= &(ds->dsBegin.dpBi->biParaProperties);
 
     PROPmaskCLEAR( &updMask );
@@ -160,13 +164,13 @@ void tedFormatToolRefreshTabsTool(
     PROPmaskCLEAR( &chgMask );
 
     if  ( docUpdParaProperties( &chgMask, &(tt->ttParaPropertiesChosen),
-					    &updMask, pp, (const int *)0 ) )
+				    &updMask, pp, colorMap, listStyleMap ) )
 	{ LDEB(1); return ;	}
 
     PROPmaskCLEAR( &chgMask );
 
     if  ( docUpdParaProperties( &chgMask, &(tt->ttParaPropertiesSet),
-					    &updMask, pp, (const int *)0 ) )
+				    &updMask, pp, colorMap, listStyleMap ) )
 	{ LDEB(1); return ;	}
 
     /**/
@@ -211,10 +215,13 @@ void tedFormatToolRefreshTabsTool(
 
 static APP_BUTTON_CALLBACK_H( tedFormatTabsRevertParaPushed, w, voidtt )
     {
-    TabsTool *			tt= (TabsTool *)voidtt;
+    TabsTool *		tt= (TabsTool *)voidtt;
 
-    PropertyMask		chgMask;
-    PropertyMask		updMask;
+    PropertyMask	chgMask;
+    PropertyMask	updMask;
+
+    const int * const	colorMap= (const int *)0;
+    const int * const	listStyleMap= (const int *)0;
 
     PROPmaskCLEAR( &chgMask );
 
@@ -222,7 +229,8 @@ static APP_BUTTON_CALLBACK_H( tedFormatTabsRevertParaPushed, w, voidtt )
     PROPmaskADD( &updMask, PPpropTAB_STOPS );
 
     docUpdParaProperties( &chgMask, &(tt->ttParaPropertiesChosen),
-			&updMask, &(tt->ttParaPropertiesSet), (const int *)0 );
+			&updMask, &(tt->ttParaPropertiesSet),
+			colorMap, listStyleMap );
 
     tedFormatToolRefreshTabsPage( tt );
 
@@ -500,7 +508,7 @@ static APP_BUTTON_CALLBACK_H( tedFormatChangeParaTabs, w, voidtt )
 	{ tt->ttTabStopValue.tsTwips= value;	}
 
     /*  4  */
-    if  ( tt->ttTabStopNumber >= 0		&&
+    if  ( tt->ttTabStopNumber >= 0			&&
 	  tt->ttTabStopNumber < tsl->tslTabStopCount	)
 	{ docParaDeleteTab( pp, tt->ttTabStopNumber );	}
 
@@ -594,7 +602,7 @@ static APP_BUTTON_CALLBACK_H( tedFormatTabsApplyDocPushed, w, voidtt )
     if  ( changed )
 	{ dp->dpTabIntervalTwips= value;	}
 
-    if  ( tedSetDocumentProperties( ea, dp, &updMask ) )
+    if  ( tedAppSetDocumentProperties( ea, dp, &updMask ) )
 	{ LDEB(1);	}
 
     return;
@@ -749,11 +757,11 @@ void tedFormatFillTabsPage(	TabsTool *			tt,
 
 /************************************************************************/
 /*									*/
-/*  Finish the paragraph page.						*/
+/*  Finish the tabs page.						*/
 /*									*/
 /************************************************************************/
 
-void tedFormatFillTabsChoosers(		TabsTool *			tt )
+void tedTabsToolFillChoosers(		TabsTool *			tt )
     {
     const TabsPageResources *	tpr= tt->ttPageResources;
 

@@ -389,6 +389,19 @@ void indSpellIso2CharacterKinds(	SpellCheckContext *	scc )
     return;
     }
 
+void indSpellIso5CharacterKinds(	SpellCheckContext *	scc )
+    {
+    int		i;
+
+    memset( scc->sccCharKinds, 0, 256 );
+    for ( i= 0; i < 256; i++ )
+	{ scc->sccCharShifts[i]= i; }
+
+    utilSetLatin5CharacterKinds( scc->sccCharKinds, scc->sccCharShifts );
+
+    return;
+    }
+
 void indSpellIso7CharacterKinds(	SpellCheckContext *	scc )
     {
     int		i;
@@ -397,7 +410,7 @@ void indSpellIso7CharacterKinds(	SpellCheckContext *	scc )
     for ( i= 0; i < 256; i++ )
 	{ scc->sccCharShifts[i]= i; }
 
-    utilSetLatin2CharacterKinds( scc->sccCharKinds, scc->sccCharShifts );
+    utilSetLatin7CharacterKinds( scc->sccCharKinds, scc->sccCharShifts );
 
     return;
     }

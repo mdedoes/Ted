@@ -16,6 +16,7 @@
 #   undef	y1
 
 #   include	<charnames.h>
+#   include	<utilMatchFont.h>
 
 #   include	"docLayout.h"
 
@@ -41,6 +42,7 @@ void docPsInitLayoutJob(	LayoutJob *	lj )
     lj->ljChangedRectanglePixels= (DocumentRectangle *)0;
     lj->ljAdd= (AppDrawingData *)0;
     lj->ljBd= (BufferDocument *)0;
+    lj->ljScreenFontList= (ScreenFontList *)0;
     lj->ljChangedItem= (BufferItem *)0;
 
     docInitLayoutPosition( &(lj->ljPosition) );
@@ -262,12 +264,13 @@ static void docLayoutCalculateParaBottomInset(	BufferItem *	paraBi )
 /*									*/
 /************************************************************************/
 
-int docPsParagraphLineExtents(	const AppPhysicalFontList *	apfl,
+int docPsParagraphLineExtents(	const BufferDocument *		bd,
+				const PostScriptFontList *	psfl,
 				BufferItem *			bi )
     {
     const TextParticule *	tp= bi->biParaParticules;
 
-    int				size;
+    int				sizeTwips;
     int				paraAscent= 0;
     int				paraDescent= 0;
     int				i;
@@ -278,12 +281,14 @@ int docPsParagraphLineExtents(	const AppPhysicalFontList *	apfl,
     int				found;
     int				foundCount;
 
-    fresh= (int *)realloc( counts, apfl->apflCount* sizeof(int) );
+    const TextAttributeList *	tal= &(bd->bdTextAttributeList);
+
+    fresh= (int *)realloc( counts, tal->talCount* sizeof(int) );
     if  ( ! fresh )
-	{ LXDEB(apfl->apflCount,fresh); return -1;	}
+	{ LXDEB(tal->talCount,fresh); return -1;	}
     counts= fresh;
 
-    for ( i= 0; i < apfl->apflCount; i++ )
+    for ( i= 0; i < tal->talCount; i++ )
 	{ counts[i]= 0;	}
 
     for ( i= 0; i < bi->biParaParticuleCount; tp++, i++ )
@@ -293,16 +298,19 @@ int docPsParagraphLineExtents(	const AppPhysicalFontList *	apfl,
 	      tp->tpKind != DOCkindOBJECT	)
 	    { continue;	}
 
-	if  ( tp->tpPhysicalFont < 0			||
-	      tp->tpPhysicalFont >= apfl->apflCount	)
-	    { LLDEB(tp->tpPhysicalFont,apfl->apflCount); continue;	}
+	if  ( tp->tpTextAttributeNumber < 0			||
+	      tp->tpTextAttributeNumber >= tal->talCount	)
+	    {
+	    LLDEB(tp->tpTextAttributeNumber,tal->talCount);
+	    continue;
+	    }
 
-	counts[tp->tpPhysicalFont] += tp->tpStrlen+ 1;
+	counts[tp->tpTextAttributeNumber] += tp->tpStrlen+ 1;
 	}
 
     found= -1;
     foundCount= 0;
-    for ( i= 0; i < apfl->apflCount; i++ )
+    for ( i= 0; i < tal->talCount; i++ )
 	{
 	if  ( counts[i] > foundCount )
 	    { found= i; foundCount= counts[i];	}
@@ -310,22 +318,30 @@ int docPsParagraphLineExtents(	const AppPhysicalFontList *	apfl,
 
     if  ( found >= 0 )
 	{
-	AfmFontInfo *	afi;
-	int		encoding;
+	const DocumentProperties *	dp= &(bd->bdProperties);
+	const DocumentFontList *	dfl= &(dp->dpFontList);
 
-	afi= docPsPrintGetAfi( &encoding, apfl, found );
+	TextAttribute			ta;
+	AfmFontInfo *			afi;
+	int				encoding;
 
-	size= 10* apfl->apflFonts[found].apfAttribute.taFontSizeHalfPoints;
+	utilGetTextAttributeByNumber( &ta, &(bd->bdTextAttributeList), found );
 
-	paraAscent= ( size* afi->afiFontBBox.abbTop+ 500 ) / 1000;
-	paraDescent= paraAscent- size;
+	afi= utilPsGetAfi( &encoding, dfl, psfl, &ta );
+	if  ( ! afi )
+	    { XDEB(afi); return -1;	}
+
+	sizeTwips= 10* ta.taFontSizeHalfPoints;
+
+	paraAscent= ( sizeTwips* afi->afiFontBBox.abbTop+ 500 ) / 1000;
+	paraDescent= paraAscent- sizeTwips;
 	}
-    else{ /* LDEB(found); */ size= 200;	}
+    else{ /* LDEB(found); */ sizeTwips= 200;	}
 
     bi->biParaAscentTwips= paraAscent;
     bi->biParaDescentTwips= paraDescent;
 
-    bi->biParaLeadingTwips= size/ LINEDISTFAC;
+    bi->biParaLeadingTwips= sizeTwips/ LINEDISTFAC;
 
     docLayoutCalculateParaTopInset( bi );
     docLayoutCalculateParaBottomInset( bi );
@@ -339,22 +355,32 @@ int docPsParagraphLineExtents(	const AppPhysicalFontList *	apfl,
 /*									*/
 /************************************************************************/
 
-int docLayoutExternalItem(	ExternalItem *			ei,
-				DocumentRectangle *		drChanged,
-				int				page,
-				int				y0Twips,
-				BufferDocument *		bd,
-				const BufferItem *		sectBi,
-				AppDrawingData *		add,
-				LAYOUT_EXTERNAL			layoutExternal,
-				DOC_CLOSE_OBJECT		closeObject )
+/************************************************************************/
+/*									*/
+/*  Calculate the layout of a page header.				*/
+/*									*/
+/************************************************************************/
+
+int docLayoutExternalItem(	ExternalItem *		ei,
+				DocumentRectangle *	drChanged,
+				int			page,
+				int			y0Twips,
+				BufferDocument *	bd,
+				const BufferItem *	sectBi,
+				AppDrawingData *	add,
+				ScreenFontList *	sfl,
+				INIT_LAYOUT_EXTERNAL	initLayoutExternal,
+				DOC_CLOSE_OBJECT	closeObject )
     {
+    int		rval= 0;
+
     if  ( page != ei->eiPageFormattedFor )
 	{
 	RecalculateFields		rf;
-	int				y1Twips;
+	LayoutJob			lj;
 
 	docInitRecalculateFields( &rf );
+	docPsInitLayoutJob( &lj );
 
 	rf.rfBd= bd;
 	rf.rfVoidadd= (void *)add;
@@ -368,19 +394,32 @@ int docLayoutExternalItem(	ExternalItem *			ei,
 							    sectBi, page ) )
 	    { LDEB(page); return -1;	}
 
-	y1Twips= y0Twips;
+	lj.ljPosition.lpPage= page;
+	lj.ljPosition.lpPageYTwips= y0Twips;
+	lj.ljPosition.lpAtTopOfColumn= 1; /* not really */
 
-	if  ( layoutExternal 					&&
-	      (*layoutExternal)( &y1Twips, ei, page, y0Twips,
-					bd, add, drChanged )	)
-	    { LDEB(1); return -1;	}
+	lj.ljChangedRectanglePixels= drChanged;
+	lj.ljAdd= add;
+	lj.ljBd= bd;
+	lj.ljScreenFontList= sfl;
+	lj.ljChangedItem= &(bd->bdItem);
+
+	if  ( initLayoutExternal 			&&
+	      (*initLayoutExternal)( &lj, ei, page )	)
+	    { LDEB(1); rval= -1; goto ready;	}
+
+	if  ( docLayoutItemAndParents( ei->eiItem, &lj ) )
+	    { LDEB(1); rval= -1; goto ready;	}
 
 	ei->eiPageFormattedFor= page;
 	ei->eiY0UsedTwips= y0Twips;
-	ei->eiY1UsedTwips= y1Twips;
+	ei->eiY1UsedTwips= lj.ljPosition.lpPageYTwips;
+
+      ready:
+	docPsCleanLayoutJob( &lj );
 	}
 
-    return 0;
+    return rval;
     }
 
 /************************************************************************/
@@ -688,8 +727,8 @@ int docMakeCapsString(		unsigned char **	pUpperString,
     unsigned char *		upperString= (unsigned char *)0;
     int *			segments= (int *)0;
 
-    if  ( df->dfEncodingUsed >= 0		&&
-	  df->dfEncodingUsed < ENCODINGps_COUNT	)
+    if  ( df->dfEncodingSet >= 0		&&
+	  df->dfEncodingSet < ENCODINGps_COUNT	)
 	{
 	const unsigned char *	charKinds;
 	const unsigned char *	charShifts;
@@ -697,8 +736,8 @@ int docMakeCapsString(		unsigned char **	pUpperString,
 	const unsigned char *	from;
 	unsigned char *		to;
 
-	charKinds= PS_Encodings[df->dfEncodingUsed].fcCharKinds;
-	charShifts= PS_Encodings[df->dfEncodingUsed].fcCharShifts;
+	charKinds= PS_Encodings[df->dfEncodingSet].fcCharKinds;
+	charShifts= PS_Encodings[df->dfEncodingSet].fcCharShifts;
 
 	upperString= malloc( len+ 1 );
 	if  ( ! upperString )

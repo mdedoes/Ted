@@ -52,7 +52,7 @@ const char *	bmunStrings[]=
     0
     };
 
-const char *	bmunIntToString( int unitInt )
+const char * bmunIntToString( int unitInt )
     {
     if  ( unitInt >= 0						&&
 	  unitInt < sizeof( bmcoStrings )/sizeof(char *) -1	)
@@ -61,7 +61,7 @@ const char *	bmunIntToString( int unitInt )
     LDEB(unitInt); return (char *)0;
     }
 
-int		bmunStringToInt( const char * unitString )
+int bmunStringToInt( const char * unitString )
     {
     int	i;
 
@@ -219,7 +219,7 @@ void bmImageSizeTwips(	int *				pImageWideTwips,
 
 /************************************************************************/
 /*									*/
-/*  Derive the sizes of a description from the other fileds.		*/
+/*  Derive the sizes of a description from the other fields.		*/
 /*									*/
 /************************************************************************/
 

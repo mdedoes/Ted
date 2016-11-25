@@ -81,7 +81,9 @@ static int docRtfListOverrideLevelLevel(
 				int			arg,
 				RtfReadingContext *	rrc )
     {
-    RtfReadingState *	rrs= rrc->rrcState;
+    RtfReadingState *		rrs= rrc->rrcState;
+    BufferDocument *		bd= rrc->rrcBd;
+    DocumentProperties *	dp= &(bd->bdProperties);
 
     docCleanDocumentListLevel( &(rrc->rrcDocumentListLevel) );
     docInitDocumentListLevel( &(rrc->rrcDocumentListLevel) );
@@ -91,6 +93,9 @@ static int docRtfListOverrideLevelLevel(
     utilInitTextAttribute( &(rrs->rrsTextAttribute) );
     rrs->rrsTextAttribute.taFontSizeHalfPoints= 24;
     rrc->rrcInDeletedText= 0;
+
+    if  ( dp->dpDefaultFont >= 0 )
+	{ rrs->rrsTextAttribute.taFontNumber= dp->dpDefaultFont;	}
 
     PROPmaskCLEAR( &(rrc->rrcDocumentStyle.dsParaMask) );
     PROPmaskCLEAR( &(rrc->rrcDocumentStyle.dsTextMask) );
@@ -102,7 +107,7 @@ static int docRtfListOverrideLevelLevel(
 	{ SLDEB(rcw->rcwWord,arg); return -1;	}
 
     if  ( docCopyDocumentListLevel( &(rrc->rrcListOverrideLevel.lolListLevel),
-					    &(rrc->rrcDocumentListLevel) ) )
+			&(rrc->rrcDocumentListLevel), (int *)0, (int *)0 ) )
 	{ LDEB(1); return -1;	}
 
     docCleanDocumentListLevel( &(rrc->rrcDocumentListLevel) );
@@ -120,9 +125,9 @@ static RtfControlWord	docRtfListOverrideLevelGroups[]=
     };
 
 static int docRtfListOverrideLevel(	SimpleInputStream *	sis,
-				const RtfControlWord *	rcw,
-				int			arg,
-				RtfReadingContext *	rrc )
+					const RtfControlWord *	rcw,
+					int			arg,
+					RtfReadingContext *	rrc )
     {
     docCleanListOverrideLevel( &(rrc->rrcListOverrideLevel) );
     docInitListOverrideLevel( &(rrc->rrcListOverrideLevel) );
@@ -134,7 +139,7 @@ static int docRtfListOverrideLevel(	SimpleInputStream *	sis,
 	{ SLDEB(rcw->rcwWord,arg); return -1;	}
 
     if  ( docListOverrideAddLevel( &(rrc->rrcListOverride),
-					&(rrc->rrcListOverrideLevel) ) )
+			&(rrc->rrcListOverrideLevel), (int *)0, (int *)0 ) )
 	{ LDEB(1); return -1;	}
 
     docCleanListOverrideLevel( &(rrc->rrcListOverrideLevel) );
@@ -167,7 +172,9 @@ static int docRtfListOverride(	SimpleInputStream *	sis,
 	{ SLDEB(rcw->rcwWord,arg); return -1;	}
 
     if  ( docListOverrideTableAddOverride( &(dp->dpListOverrideTable),
-						&(rrc->rrcListOverride) ) )
+					    &(rrc->rrcListOverride),
+					    rrc->rrcListOverride.loIndex,
+					    (int *)0, (int *)0 ) )
 	{ LDEB(1); return -1;	}
 
     docCleanListOverride( &(rrc->rrcListOverride) );
@@ -183,16 +190,35 @@ static RtfControlWord	docRtfListtableGroups[]=
 	{ 0, 0, 0 }
     };
 
+/************************************************************************/
+/*									*/
+/*  Read the list override table of a document.				*/
+/*									*/
+/*  1)  Read the overrides in the table.				*/
+/*  2)  Allocate memory to manage the paragraphs in the lists.		*/
+/*									*/
+/************************************************************************/
+
 int docRtfListOverrideTable(	SimpleInputStream *	sis,
 				const RtfControlWord *	rcw,
 				int			arg,
 				RtfReadingContext *	rrc )
     {
+    BufferDocument *		bd= rrc->rrcBd;
+    DocumentProperties *	dp= &(bd->bdProperties);
+
+    /*  1  */
     if  ( docRtfReadGroup( sis, rcw->rcwLevel,
 				(RtfControlWord *)0, 0, 0, rrc,
 				docRtfEmptyTable, docRtfListtableGroups,
 				docRtfIgnoreText, (RtfCommitGroup)0 ) )
 	{ SLDEB(rcw->rcwWord,arg); return -1;	}
+
+    /*  2  */
+    if  ( docClaimListNumberTreeNodes( &(bd->bdListNumberTrees),
+				   &(bd->bdListNumberTreeCount),
+				   dp->dpListOverrideTable.lotOverrideCount ) )
+	{ LDEB(dp->dpListOverrideTable.lotOverrideCount); return -1;	}
 
     return 0;
     }
@@ -203,23 +229,69 @@ int docRtfListOverrideTable(	SimpleInputStream *	sis,
 /*									*/
 /************************************************************************/
 
+static void docRtfWriteListOverrideLevels(
+				SimpleOutputStream *		sos,
+				const unsigned char *		outputMapping,
+				int *				pCol,
+				const ListOverride *		lo )
+    {
+    const ListOverrideLevel *	lol;
+    int				lev;
+
+    docRtfWriteNextLine( pCol, sos );
+
+    lol= lo->loLevels;
+    for ( lev= 0; lev < lo->loLevelCount; lol++, lev++ )
+	{
+	docRtfWriteDestinationBegin( "\\lfolevel", pCol, sos );
+
+	if  ( lol->lolOverrideStartAt && ! lol->lolOverrideFormat )
+	    {
+	    docRtfWriteArgTag( "\\listoverridestartat\\levelstartat",
+				pCol, lol->lolListLevel.dllStartAt, sos );
+	    }
+
+	if  ( lol->lolOverrideFormat )
+	    {
+	    docRtfWriteTag( "\\listoverrideformat", pCol, sos );
+
+	    docRtfWriteListLevel( sos, outputMapping, pCol,
+						&(lol->lolListLevel) );
+	    }
+
+	docRtfWriteDestinationEnd( pCol, sos );
+	docRtfWriteNextLine( pCol, sos );
+	}
+    return;
+    }
+
+/************************************************************************/
+/*									*/
+/*  Write the list override table for a document.			*/
+/*									*/
+/************************************************************************/
+
 void docRtfWriteListOverrideTable(
 				SimpleOutputStream *		sos,
 				const unsigned char *		outputMapping,
 				int *				pCol,
 				const ListOverrideTable *	lot )
     {
-    int				i;
-    const ListOverride *	lo= lot->lotOverrides;
+    int				ov;
+    const ListOverride *	lo;
+    int				overrideCount;
 
     docRtfWriteDestinationBegin( "\\*\\listoverridetable", pCol, sos );
     docRtfWriteNextLine( pCol, sos );
 
-    for ( i= 0; i < lot->lotOverrideCount; lo++, i++ )
-	{
-	const ListOverrideLevel *	lol;
-	int				lev;
+    overrideCount= lot->lotOverrideCount;
+    while( lot->lotOverrideCount > 0				&&
+	   lot->lotOverrides[overrideCount- 1].loIndex < 0	)
+	{ overrideCount--;	}
 
+    lo= lot->lotOverrides;
+    for ( ov= 0; ov < overrideCount; lo++, ov++ )
+	{
 	if  ( lo->loIndex < 1 )
 	    { continue;	}
 
@@ -232,35 +304,12 @@ void docRtfWriteListOverrideTable(
 					    pCol, lo->loOverrideCount, sos );
 
 	if  ( lo->loLevelCount > 0 )
-	    { docRtfWriteNextLine( pCol, sos );	}
-
-	lol= lo->loLevels;
-	for ( lev= 0; lev < lo->loLevelCount; lol++, lev++ )
-	    {
-	    docRtfWriteDestinationBegin( "\\lfolevel", pCol, sos );
-
-	    if  ( lol->lolOverrideStartAt && ! lol->lolOverrideFormat )
-		{
-		docRtfWriteArgTag( "\\listoverridestartat\\levelstartat",
-				    pCol, lol->lolListLevel.dllStartAt, sos );
-		}
-
-	    if  ( lol->lolOverrideFormat )
-		{
-		docRtfWriteTag( "\\listoverrideformat", pCol, sos );
-
-		docRtfWriteListLevel( sos, outputMapping, pCol,
-						    &(lol->lolListLevel) );
-		}
-
-	    docRtfWriteDestinationEnd( pCol, sos );
-	    docRtfWriteNextLine( pCol, sos );
-	    }
+	    { docRtfWriteListOverrideLevels( sos, outputMapping, pCol, lo ); }
 
 	docRtfWriteArgTag( "\\ls", pCol, lo->loIndex, sos );
 
 	docRtfWriteDestinationEnd( pCol, sos );
-	if  ( i+ 1 < lot->lotOverrideCount )
+	if  ( ov+ 1 < overrideCount )
 	    { docRtfWriteNextLine( pCol, sos );	}
 	}
 

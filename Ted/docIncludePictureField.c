@@ -171,7 +171,7 @@ int docRecalculateIncludePictureField(
 				BufferDocument *		bd,
 				int *				pPartShift,
 				int *				pStroffShift,
-				BufferItem *			bi,
+				BufferItem *			paraBi,
 				int				part,
 				int				partCount,
 				DocumentField *			df,
@@ -186,8 +186,8 @@ int docRecalculateIncludePictureField(
     InsertedObject *			io;
     int					objectNumber;
 
-    int					oldPartCount= bi->biParaParticuleCount;
-    int					oldStrlen= bi->biParaStrlen;
+    int					oldPartCount= paraBi->biParaParticuleCount;
+    int					oldStrlen= paraBi->biParaStrlen;
     int					stroff;
 
     int					stroffShift= 0;
@@ -199,32 +199,22 @@ int docRecalculateIncludePictureField(
     int					textAttributeNumber;
     const char *			extension;
 
-    tp= bi->biParaParticules+ part+ 1;
+    tp= paraBi->biParaParticules+ part+ 1;
 
     if  ( partCount == 1		&&
 	  tp->tpKind == DOCkindOBJECT	)
 	{
-	io= bi->biParaObjects+ tp->tpObjectNumber;
+	io= paraBi->biParaObjects+ tp->tpObjectNumber;
 
 	if  ( io->ioKind == DOCokINCLUDEPICTURE )
-	    {
-	    *pCalculated= 0;
-	    *pPartShift= 0;
-	    *pStroffShift= 0;
-	    return 0;
-	    }
+	    { *pCalculated= 0; return 0; }
 	}
 
     if  ( docFieldGetIncludePicture( df, &fileName, &fileSize ) )
 	{ LDEB(1); return -1;	}
 
     if  ( fileSize < 1 )
-	{
-	LDEB(fileSize);
-	*pPartShift= 0;
-	*pStroffShift= 0;
-	return 0;
-	}
+	{ LDEB(fileSize); *pCalculated= 0; return 0; }
 
     {
     char *	scratch= malloc( fileSize+ 1 );
@@ -232,23 +222,20 @@ int docRecalculateIncludePictureField(
     if  ( ! scratch )
 	{ XDEB(scratch); i= -1;	}
     else{
+	const int	relativeIsFile= 1;
+
 	strncpy( scratch, fileName, fileSize )[fileSize]= '\0';
 
 	i= appAbsoluteName( fullName, 1000, scratch,
-					    (const char *)dp->dpFilename );
+				relativeIsFile, (const char *)dp->dpFilename );
 	free( scratch );
 	}
 
     if  ( i < 0 )
-	{
-	LDEB(i);
-	*pPartShift= 0;
-	*pStroffShift= 0;
-	return 0;
-	}
+	{ LDEB(i); *pCalculated= 0; return 0; }
     }
 
-    io= docClaimObject( &objectNumber, bi );
+    io= docClaimObject( &objectNumber, paraBi );
     if  ( ! io )
 	{ XDEB(io); return -1;	}
     
@@ -256,46 +243,20 @@ int docRecalculateIncludePictureField(
 	{ return -1;	}
     io->ioKind= DOCokINCLUDEPICTURE;
 
-    stroff= tp->tpStroff;
 
-    if  ( partCount > 0 )
-	{
-	int	stroffShift= 0;
+    if  ( docFieldReplaceContents( &stroff,
+			    &stroffShift, &textAttributeNumber,
+			    bd, paraBi, part, partCount,
+			    *pStroffShift, (unsigned char *)" ", 1,
+			    voidadd, closeObject ) )
+	{ LDEB(1); return -1;	}
 
-	tp= bi->biParaParticules+ part+ 1;
-	textAttributeNumber= tp->tpTextAttributeNumber;
-	for ( i= 0; i < partCount; tp++, i++ )
-	    {
-	    (*closeObject)( bd, bi, tp, voidadd );
-	    docCleanParticuleObject( bi, tp );
-	    }
-
-	docDeleteParticules( bi, part+ 1, partCount );
-
-	if  ( docParaStringReplace( &stroffShift, bi, tp->tpStroff,
-						tp[partCount-1].tpStroff+
-						tp[partCount-1].tpStrlen,
-						(unsigned char *)" ", 1 ) )
-	    { LDEB(0); return -1;	}
-	}
-    else{
-	tp= bi->biParaParticules+ part;
-	textAttributeNumber= tp->tpTextAttributeNumber;
-
-	if  ( docParaStringReplace( &stroffShift, bi,
-						tp->tpStroff+ tp->tpStrlen,
-						tp->tpStroff+ tp->tpStrlen,
-						(unsigned char *)" ", 1 ) )
-	    { LDEB(0); return -1;	}
-	}
-
-    tp= docInsertTextParticule( bi, part+ 1,
-				tp->tpStroff+ tp->tpStrlen, 1,
+    tp= docInsertTextParticule( paraBi, part+ 1, stroff, 1,
 				DOCkindOBJECT, textAttributeNumber );
     if  ( ! tp )
 	{ XDEB(tp); return -1;	}
 
-    tp->tpObjectNumber= bi->biParaObjectCount++;
+    tp->tpObjectNumber= paraBi->biParaObjectCount++;
 
     extension= appFileExtensionOfName( fullName );
 
@@ -317,8 +278,8 @@ int docRecalculateIncludePictureField(
   ready:
 
     *pCalculated= 1;
-    *pPartShift= bi->biParaParticuleCount- oldPartCount;
-    *pStroffShift= bi->biParaStrlen- oldStrlen;
+    *pPartShift= paraBi->biParaParticuleCount- oldPartCount;
+    *pStroffShift= paraBi->biParaStrlen- oldStrlen;
     return 0;
     }
 

@@ -88,10 +88,18 @@ void docRtfSaveBorder(		char *				tag,
 	case DOCbsOUTSET:
 	    docRtfWriteTag( "\\brdroutset", pCol, sos ); break;
 
+	case DOCbsTBL:
+	    docRtfWriteTag( "\\brdrtbl", pCol, sos ); break;
+	case DOCbsNIL:
+	    docRtfWriteTag( "\\brdrnil", pCol, sos ); break;
+
 	default:
 	    LDEB(bp->bpStyle);
 	    break;
 	}
+
+    if  ( bp->bpArt != 0 )
+	{ docRtfWriteArgTag( "\\brdrart", pCol, bp->bpColor, sos );	}
 
     if  ( bp->bpColor != 0 )
 	{ docRtfWriteArgTag( "\\brdrcf", pCol, bp->bpColor, sos );	}
@@ -144,6 +152,10 @@ int docRtfBrdrProperty(		SimpleInputStream *	sis,
 
 	case BRDRpropSTYLE:
 	    rrc->rrcBorderProperties.bpStyle= rcw->rcwEnumValue;
+	    break;
+
+	case BRDRpropART:
+	    rrc->rrcBorderProperties.bpArt= arg;
 	    break;
 
 	default:

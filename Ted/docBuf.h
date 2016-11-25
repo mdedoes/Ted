@@ -11,6 +11,7 @@
 
 #   include	<bitmap.h>
 #   include	<docFont.h>
+#   include	<psFont.h>
 #   include	"docShape.h"
 #   include	<geo2DInteger.h>
 #   include	<sioGeneral.h>
@@ -28,6 +29,7 @@
 #   include	"docSelect.h"
 #   include	"docExternalItem.h"
 #   include	"docListTable.h"
+#   include	"docListNumberTree.h"
 
 /************************************************************************/
 /*									*/
@@ -61,7 +63,9 @@ typedef enum DocParticuleKind
     DOCkindXE,
     DOCkindLINEBREAK,
     DOCkindPAGEBREAK,
+    DOCkindCOLUMNBREAK,
     DOCkindCHFTNSEP,
+    DOCkindCHFTNSEPC,
 
     DOCkind_COUNT
     } DocParticuleKind;
@@ -75,19 +79,14 @@ typedef enum DocParticuleKind
 
 #   define	DOCkind_BITS	6
 
-#   if  (1<<DOCkind_BITS) < DOCkind_COUNT
-    This will crash: Increase DOCkind_BITS
-#   endif
-
 typedef struct TextParticule
     {
     unsigned int	tpStroff:16;
-    unsigned int	tpStrlen:12;
+    unsigned int	tpStrlen:14;
     unsigned int	tpX0:12;
     unsigned int	tpPixelsWide:12;
     unsigned int	tpKind:DOCkind_BITS;
     unsigned int	tpInField:1;
-    short int		tpPhysicalFont;
     short int		tpObjectNumber;
     int			tpTextAttributeNumber;
     } TextParticule;
@@ -441,6 +440,7 @@ typedef enum ItemLevel
 #	define	biParaShadingLevel	biParaProperties.ppShadingLevel
 #	define	biParaShadingPattern	biParaProperties.ppShadingPattern
 #	define	biParaOutlineLevel	biParaProperties.ppOutlineLevel
+#	define	biParaListLevel		biParaProperties.ppListLevel
 #	define	biParaTopBorder		biParaProperties.ppTopBorder
 #	define	biParaBottomBorder	biParaProperties.ppBottomBorder
 #	define	biParaLeftBorder	biParaProperties.ppLeftBorder
@@ -452,6 +452,8 @@ typedef enum ItemLevel
 #	define	biParaListOverride	biParaProperties.ppListOverride
 #	define	biParaWidowControl	biParaProperties.ppWidowControl
 
+#	define	biParaTabStopCount	biParaTabStopList.tslTabStopCount
+#	define	biParaTabStops		biParaTabStopList.tslTabStops
     DOClevTEXT
 			/****************************************/
 			/*  Handeled inside TEXT.		*/
@@ -510,24 +512,27 @@ typedef struct BufferItem
 
 typedef struct BufferDocument
     {
-    TextAttributeList	bdTextAttributeList;
+    TextAttributeList		bdTextAttributeList;
 
-    BufferItem		bdItem;
-    DocumentProperties	bdProperties;
+    BufferItem			bdItem;
+    DocumentProperties		bdProperties;
 
-    DocumentStyleSheet	bdStyleSheet;
-    DocumentFieldList	bdFieldList;
+    DocumentStyleSheet		bdStyleSheet;
+    DocumentFieldList		bdFieldList;
 
-    DocumentNote *	bdNotes;
-    int			bdNoteCount;
+    DocumentNote *		bdNotes;
+    int				bdNoteCount;
 
-    ExternalItem	bdEiFtnsep;
-    ExternalItem	bdEiFtnsepc;
-    ExternalItem	bdEiFtncn;
+    ListNumberTreeNode *	bdListNumberTrees;
+    int				bdListNumberTreeCount;
 
-    ExternalItem	bdEiAftnsep;
-    ExternalItem	bdEiAftnsepc;
-    ExternalItem	bdEiAftncn;
+    ExternalItem		bdEiFtnsep;
+    ExternalItem		bdEiFtnsepc;
+    ExternalItem		bdEiFtncn;
+
+    ExternalItem		bdEiAftnsep;
+    ExternalItem		bdEiAftnsepc;
+    ExternalItem		bdEiAftncn;
     } BufferDocument;
 
 /************************************************************************/
@@ -564,12 +569,13 @@ extern BufferDocument *	docRtfReadFile(	SimpleInputStream *	sis,
 extern BufferDocument *	docLeafReadFile(	SimpleInputStream *	sis );
 extern BufferDocument *	docWordReadFile(	SimpleInputStream *	sis );
 
-extern BufferDocument * docNewFile(	TextAttribute *		ta,
-					const char *		fontName,
-					int			fontSizeHalfpt,
-					int			docCharset,
-					int			ansiCodepage,
-					const DocumentGeometry * dg );
+extern BufferDocument * docNewFile(
+				TextAttribute *			taDefault,
+				const char *			defaultFont,
+				int				docCharset,
+				int				ansiCodepage,
+				const PostScriptFontList *	psfl,
+				const DocumentGeometry * 	dg );
 
 extern int docRtfSaveDocument(	SimpleOutputStream *		sos,
 				BufferDocument *		bd,
@@ -680,26 +686,21 @@ extern BufferItem * docPrevSection(	BufferItem *	bi );
 
 extern int docNextPosition(	DocumentPosition *	dp );
 
-extern int docPrevPosition(	DocumentPosition *	dp,
-				int			lastOne );
+extern int docPrevPosition(	DocumentPosition *	dp );
 
-extern int docNextWord(		DocumentPosition *	dp,
-				int			lastOne );
-extern int docPrevWord(		DocumentPosition *	dp,
-				int			lastOne );
+extern int docNextWord(		DocumentPosition *	dp );
+extern int docPrevWord(		DocumentPosition *	dp );
 
-extern int docParaBegin(	DocumentPosition *	dp,
-				int			lastOne );
-extern int docParaEnd(		DocumentPosition *	dp,
-				int			lastOne );
+extern int docParaBegin(	DocumentPosition *	dp );
+extern int docParaEnd(		DocumentPosition *	dp );
 
-extern int docLineDown(		TextParticule **	pTp,
-				TextLine **		pTl,
-				DocumentPosition *	dp );
+extern int docLineDown(		TextLine **		pTl,
+				DocumentPosition *	dp,
+				int			line );
 
-extern int docLineUp(		TextParticule **	pTp,
-				TextLine **		pTl,
-				DocumentPosition *	dp );
+extern int docLineUp(		TextLine **		pTl,
+				DocumentPosition *	dp,
+				int			line );
 
 extern int docFirstPosition(	DocumentPosition *	dp,
 				BufferItem *		bi );
@@ -720,25 +721,29 @@ extern void docSetParaSelection( DocumentSelection *	ds,
 				int			length );
 
 extern int docComparePositions(	const DocumentPosition *	dp1,
-				const DocumentPosition *	dp2,
-				int				mindPart );
+				const DocumentPosition *	dp2 );
 
 extern int docCompareItemPositions(	const BufferItem *	bi1,
 					const BufferItem *	bi2 );
 
 extern int docSetDocumentPosition(	DocumentPosition *	dp,
 					BufferItem *		bi,
-					int			stroff,
-					int			lastOne );
+					int			stroff );
 
 extern int docFindParticule(		int *			pPart,
 					const BufferItem *	bi,
 					int			stroff,
 					int			lastOne );
 
-extern int docFindLineOfParticule(	int *			pLine,
-					const BufferItem *	bi,
-					int			part );
+extern int docFindParticuleOfPosition(
+				int *				pPart,
+				const DocumentPosition *	dp,
+				int				lastOne );
+
+extern int docFindLineOfPosition(
+				int *				pLine,
+				const DocumentPosition *	dp,
+				int				lastOne );
 
 extern void docDeleteItem(		BufferDocument *	bd,
 					BufferItem *		bi );
@@ -818,6 +823,7 @@ extern void docTableDetermineCellspans(	int *			pRowspan,
 extern int docGetBookmarkForPosition(
 				const BufferDocument *		bd,
 				const DocumentPosition *	dp,
+				DocumentSelection *		dsBookmark,
 				int *				pPart,
 				int *				pEndPart,
 				const char **			pMarkName,
@@ -826,6 +832,7 @@ extern int docGetBookmarkForPosition(
 extern int docGetHyperlinkForPosition(
 				const BufferDocument *		bd,
 				const DocumentPosition *	dp,
+				DocumentSelection *		dsHyperlink,
 				int *				pStartPart,
 				int *				pEndPart,
 				const char **			pFileName,
@@ -839,12 +846,13 @@ extern void docCleanShape(	DrawingShape *	ds );
 extern DrawingShape * docClaimShape(	int *			pNr,
 					BufferItem *		bi );
 
-extern int docParticuleInField(		BufferItem *	bi,
-					int		part );
+extern int docPositionInField(		const DocumentPosition *	dp,
+					const BufferDocument *		bd );
 
 extern int docSaveParticules(	BufferDocument *	bd,
 				BufferItem *		paraBi,
 				const TextAttribute *	ta,
+				const unsigned char *	map,
 				const unsigned char *	text,
 				int			len );
 
@@ -865,6 +873,8 @@ extern void docLogRectangles(	const char *			label1,
 extern void docInitLayoutPosition(	LayoutPosition *	lp );
 
 extern void docLineSelection(	DocumentSelection *	dsLine,
+				int *			pPartLineBegin,
+				int *			pPartLineEnd,
 				const BufferItem *	bi,
 				int			line );
 
@@ -913,12 +923,6 @@ extern int docRedivideStringInParticules(
 					int		partsFree,
 					int		textAttributeNumber );
 
-extern int docBalanceFieldSelection(	int *			pBeginMoved,
-					int *			pEndMoved,
-					const BufferDocument *	bd,
-					DocumentPosition *	dpBegin,
-					DocumentPosition *	dpEnd );
-
 extern int docSplitFieldInstructions(	const MemoryBuffer *	mb,
 				FieldInstructionsComponent *	fic,
 				int				count );
@@ -965,10 +969,13 @@ extern int docTableRectangleSelection(	DocumentSelection *	ds,
 					BufferDocument *	bd,
 					const TableRectangle *	tr );
 
-extern int docMergeFontAndColorLists( int **		pFontMap,
-					int **			pColorMap,
-					BufferDocument *	bdTo,
-					BufferDocument *	bdFrom );
+extern int docMergeDocumentLists(
+				int **				pFontMap,
+				int **				pColorMap,
+				int **				pListStyleMap,
+				BufferDocument *		bdTo,
+				BufferDocument *		bdFrom,
+				const PostScriptFontList *	psfl );
 
 extern int docFindBookmarkInDocument(	DocumentSelection *	ds,
 					BufferDocument *	bd,
@@ -976,10 +983,11 @@ extern int docFindBookmarkInDocument(	DocumentSelection *	ds,
 					int			markSize );
 
 extern int docSurroundTextSelectionByField(
+				DocumentField **		pDf,
 				BufferDocument *		bd,
-				DocumentSelection *		dsField,
+				int *				pStartPart,
+				int *				pEndPart,
 				const DocumentSelection *	ds,
-				int				fieldNumber,
 				const PropertyMask *		taSetMask,
 				const TextAttribute *		taSet );
 
@@ -991,7 +999,7 @@ extern void docUnionParaSelections(	DocumentSelection *		ds,
 					const DocumentSelection *	ds1,
 					const DocumentSelection *	ds2 );
 
-extern int *	docAllocateFieldMap(	const BufferDocument *	bdFrom );
+extern int * docAllocateFieldMap(	const BufferDocument *	bdFrom );
 
 extern int docParaStringReplace(	int *			pStroffShift,
 					BufferItem *		bi,
@@ -1013,12 +1021,39 @@ extern int docGetNote(			DocumentNote **		pDn,
 
 extern int docMakeNote(	DocumentNote **			pDn,
 			BufferDocument *		bd,
-			const DocumentPosition *	dp,
+			BufferItem *			paraBi,
+			int				part,
+			int				stroff,
 			int				extItKind );
 
 int docGetSelectedNote(		DocumentNote **			pDn,
+				int *				pFieldNr,
+				unsigned char *			fixedText,
+				int				fixedTextSize,
 				BufferDocument *		bd,
 				const DocumentSelection *	ds );
+
+extern void docNoteGetTextAtHead(	unsigned char *		fixedText,
+					int *			pFixedLen,
+					int			fixedTextSize,
+					const BufferItem *	paraBi );
+
+extern void docNoteGetTextBefore(	unsigned char *		fixedText,
+					int *			pFixedLen,
+					int *			pTextAttrNr,
+					int			fixedTextSize,
+					const BufferItem *	paraBi,
+					int			stroff );
+
+extern int docDelimitNoteReference(
+				int *			pFieldNr,
+				int *			pPartBegin,
+				int *			pPartEnd,
+				int *			pStroffBegin,
+				int *			pStroffEnd,
+				const BufferItem *	paraBi,
+				int			stroff,
+				const BufferDocument *	bd );
 
 extern void docRenumberNotes(		int *			pChanged,
 					BufferDocument *	bd );
@@ -1042,12 +1077,30 @@ extern int docGetRootOfSelectionScope(	ExternalItem **		pEi,
 					const SelectionScope *	ss );
 
 extern int docGetTopOfColumn(	DocumentPosition *		dp,
+				int *				pPartTop,
 				BufferDocument *		bd,
 				int				page,
 				int				column );
 
+extern int docGetFirstInColumnForItem(
+				DocumentPosition *		dp,
+				int *				pLineTop,
+				int *				pPartTop,
+				BufferItem *			bi,
+				int				page,
+				int				column );
+
 extern int docGetBottomOfColumn(DocumentPosition *		dp,
+				int *				pPartBot,
 				BufferDocument *		bd,
+				int				page,
+				int				column );
+
+extern int docGetLastInColumnForItem(
+				DocumentPosition *		dp,
+				int *				pLineBot,
+				int *				pPartBot,
+				BufferItem *			bi,
 				int				page,
 				int				column );
 
@@ -1172,5 +1225,80 @@ extern int docInsertAdminParticule(	BufferDocument *	bd,
 					int			objectNumber,
 					const TextAttribute *	ta,
 					int			kind );
+
+extern int docBalanceFieldSelection(	int *			pBeginMoved,
+					int *			pEndMoved,
+					const BufferDocument *	bd,
+					DocumentPosition *	dpBegin,
+					DocumentPosition *	dpEnd );
+
+extern int docGetListOfParagraph(	ListOverride **		pLo,
+					ListNumberTreeNode **	pRoot,
+					DocumentList **		pDl,
+					int			ls,
+					BufferDocument *	bd );
+
+extern int docGetListOfOverride(	ListOverride *			lo,
+					const DocumentListTable *	dlt );
+
+extern int docListGetFormatPath(int *				startPath,
+				int *				formatPath,
+				const DocumentListLevel **	pDll,
+				int				ilvl,
+				const DocumentList *		dl,
+				const ListOverride *		lo );
+
+extern int docInsertListtextField(	BufferItem *		paraBi,
+					BufferDocument *	bd );
+
+extern int docRemoveParagraphFromList(	BufferItem *		paraBi,
+					BufferDocument *	bd );
+
+extern int docParaHeadFieldKind(	const BufferItem *	paraBi,
+					const BufferDocument *	bd );
+
+extern int docDelimitParaHeadField(
+				int *			pFieldNr,
+				int *			pPartBegin,
+				int *			pPartEnd,
+				int *			pStroffBegin,
+				int *			pStroffEnd,
+				const BufferItem *	paraBi,
+				const BufferDocument *	bd );
+
+extern int docFindListOfSelection(
+				int *				pLs,
+				int *				pLevel,
+				int *				pMultiList,
+				int *				pMultiLevel,
+				int *				pParaNr,
+				const DocumentSelection *	ds );
+
+extern int docApplyListRuler(	const ListNumberTreeNode *	root,
+				const DocumentList *		dl,
+				const ListOverride *		lo,
+				BufferDocument *		bd );
+
+extern void docGetSelectionAttributes(
+				BufferDocument *		bd,
+				const DocumentSelection *	ds,
+				PropertyMask *			pUpdMask,
+				TextAttribute *			pTaNew );
+
+extern int docInsertParaHeadField(
+				BufferItem *			paraBi,
+				BufferDocument *		bd,
+				int				fieldKind,
+				int				textAttrNr );
+
+extern int docGetNotePosition(	DocumentPosition *		dp,
+				BufferDocument *		bd,
+				const DocumentNote *		dn );
+
+extern int docNextSimilarRoot(	DocumentPosition *		dp,
+				BufferDocument *		bd );
+
+extern int docPrevSimilarRoot(	DocumentPosition *		dp,
+				BufferDocument *		bd );
 
 #   endif

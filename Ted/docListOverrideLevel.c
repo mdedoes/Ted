@@ -33,12 +33,14 @@ void docCleanListOverrideLevel(	ListOverrideLevel *	lol )
     }
 
 int docCopyListOverrideLevel(	ListOverrideLevel *		to,
-				const ListOverrideLevel *	from )
+				const ListOverrideLevel *	from,
+				const int *			fontMap,
+				const int *			colorMap )
     {
     if  ( from->lolOverrideFormat )
 	{
 	if  ( docCopyDocumentListLevel( &(to->lolListLevel),
-						    &(from->lolListLevel) ) )
+				&(from->lolListLevel), fontMap, colorMap ) )
 	    { LDEB(1); return -1;	}
 	}
     else{ to->lolListLevel.dllStartAt= from->lolListLevel.dllStartAt;	}

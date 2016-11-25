@@ -95,6 +95,7 @@ extern void tedFormatToolGetTabsResourceTable(	EditApplication *	ea,
 extern void tedFormatToolRefreshTabsTool(
 				TabsTool *			tt,
 				int *				pEnabled,
+				int *				pPref,
 				InspectorSubject *		is,
 				const DocumentSelection *	bs,
 				const DocumentProperties *	dp );
@@ -105,7 +106,7 @@ extern void tedFormatFillTabsPage( TabsTool *			tt,
 				APP_WIDGET			pageWidget,
 				const InspectorSubjectResources *	isr );
 
-extern void tedFormatFillTabsChoosers(	TabsTool *			tt );
+extern void tedTabsToolFillChoosers(	TabsTool *			tt );
 
 extern void tedFormatFinishTabsPage(	TabsTool *			tt );
 

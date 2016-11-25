@@ -60,7 +60,7 @@ typedef struct AffineTransform3D
 /*									*/
 /************************************************************************/
 
-extern int utilAffineTransformForRectangles(	AffineTransform2D *	atRes,
+extern int utilAffineTransformForTriangles(	AffineTransform2D *	atRes,
 						double			x_1,
 						double			x_2,
 						double			y_1,
@@ -84,6 +84,9 @@ extern void utilAffineTransform2DProduct(
 					const AffineTransform2D *	b,
 					const AffineTransform2D *	a );
 
+extern double utilAffineTransformDeterminant2D(
+					const AffineTransform2D *	at2 );
+
 extern void utilInitAffineTransform3D(		AffineTransform3D *	at3 );
 extern void utilIdentityAffineTransform3D(	AffineTransform3D *	at3 );
 extern void utilXYRotationAffineTransform3D(	AffineTransform3D *	at3,
@@ -97,5 +100,8 @@ extern void utilAffineTransform3DProduct(
 					AffineTransform3D *		ba,
 					const AffineTransform3D *	b,
 					const AffineTransform3D *	a );
+
+extern double utilAffineTransformDeterminant3D(
+					const AffineTransform3D *	at3 );
 
 #   endif	/*  UTIL_AFFINE_TRANSFORM_H	*/

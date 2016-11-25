@@ -53,8 +53,8 @@ static int docPsSetColorRgb(	DrawingContext *	dc,
 
 static int docPsSetFont(	DrawingContext *	dc,
 				void *			vps,
-				const TextAttribute *	ta,
-				int			physicalFont )
+				int			textAttr,
+				const TextAttribute *	ta )
     {
     PrintingState *		ps= (PrintingState *)vps;
 
@@ -181,7 +181,7 @@ static void psPrintVerticalBorder(
 
 typedef int (*PLAY_METAFILE)(	SimpleOutputStream *		sos,
 				SimpleInputStream *		sis,
-				const char *			afmDirectory,
+				const PostScriptFontList *	psfl,
 				int				useFilters,
 				int				indexedImages,
 				int				mapMode,
@@ -192,7 +192,7 @@ typedef int (*PLAY_METAFILE)(	SimpleOutputStream *		sos,
 
 static int psPrintMetafile(	PrintingState *			ps,
 				const InsertedObject *		io,
-				const char *			afmDirectory,
+				const PostScriptFontList *	psfl,
 				int				x0,
 				int				baseline,
 				int				scaleX,
@@ -206,22 +206,16 @@ static int psPrintMetafile(	PrintingState *			ps,
     SimpleInputStream *		sisMeta;
     const MemoryBuffer *	mb;
 
-    PostScriptFaceList		psfl;
+    PostScriptTypeList		pstl;
 
     int				y0;
-    int				i;
 
     PLAY_METAFILE		playMetafile;
     int				mapMode= 0;
 
-    int				encodingDefined[ENCODINGps_COUNT];
+    utilInitPostScriptFaceList( &pstl );
 
-    for ( i= 0; i < ENCODINGps_COUNT; i++ )
-	{ encodingDefined[i]= ps->psEncodingDefined[i];	}
-
-    utilInitPostScriptFaceList( &psfl );
-
-    if  ( docPsListObjectFonts( &psfl, io, afmDirectory, "pf" ) )
+    if  ( docPsListObjectFonts( &pstl, io, psfl, "pf" ) )
 	{ LDEB(1); return -1;	}
 
     switch( io->ioKind )
@@ -261,28 +255,28 @@ static int psPrintMetafile(	PrintingState *			ps,
 
     sioOutPrintf( ps->psSos, "100 dict begin\n" );
 
-    appPsFontNames( ps, &psfl, encodingDefined, /*allFonts=*/ 1 );
+    appPsFontNames( ps, &pstl, /*allFonts=*/ 1 );
 
-    sioOutPrintf( ps->psSos, "gsave %d %d translate\n", x0, y0 );
+    sioOutPrintf( ps->psSos, "gsave %d %d translate %%{IMG\n", x0, y0 );
 
     if  ( scaleX != 100 || scaleY != 100 )
 	{
 	sioOutPrintf( ps->psSos, "%f %f scale\n", scaleX/100.0, scaleY/100.0 );
 	}
 
-    if  ( (*playMetafile)( ps->psSos, sisMeta, afmDirectory,
+    if  ( (*playMetafile)( ps->psSos, sisMeta, psfl,
 				    ps->psUsePostScriptFilters,
 				    ps->psUsePostScriptIndexedImages,
 				    mapMode,
 				    xWinExt, yWinExt, twipsWide, twipsHigh ) )
 	{ LDEB(1);	}
 
-    sioOutPrintf( ps->psSos, "grestore end\n" );
+    sioOutPrintf( ps->psSos, "grestore end %%}IMG\n" );
 
     sioInClose( sisMeta );
     sioInClose( sisMem );
 
-    utilCleanPostScriptFaceList( &psfl );
+    utilCleanPostScriptFaceList( &pstl );
 
     return 0;
     }
@@ -425,8 +419,33 @@ static void psFlushLink(	PrintingState *		ps,
 
 	if  ( ps->psLinkFileSize == 0 )
 	    {
-	    sioOutPrintf( ps->psSos, "  /Dest /%.*s\n",
-					ps->psLinkMarkSize, ps->psLinkMark );
+	    if  ( ! ps->psLinkMark )
+		{ XDEB(ps->psLinkMark);	}
+	    else{
+		int		i;
+		const char *	s;
+
+		sioOutPrintf( ps->psSos, "  /Dest /" );
+
+		s= ps->psLinkMark;
+		for ( i= 0; i < ps->psLinkMarkSize; s++, i++ )
+		    {
+		    if  ( *s == '('	|| *s == ')'		||
+			  *s == '<'	|| *s == '>'		||
+			  *s == '['	|| *s == ']'		||
+			  *s == '{'	|| *s == '}'		||
+			  *s == '/'	|| *s == '%'		||
+			  isspace( *s ) || ! isascii( *s )	)
+			{
+			sioOutPutCharacter( '_', ps->psSos );
+			continue;
+			}
+
+		    sioOutPutCharacter( *s, ps->psSos );
+		    }
+
+		sioOutPrintf( ps->psSos, "\n" );
+		}
 	    }
 	else{
 	    psFileLinkDestination( ps );
@@ -585,8 +604,8 @@ static void psPrintString(	PrintingState *			ps,
 				int				yShift,
 				int				baseLine,
 				const ParticuleData *		pd,
+				int				textAttr,
 				const TextAttribute *		ta,
-				int				physicalFont,
 				const unsigned char *		s,
 				int				len )
     {
@@ -600,7 +619,7 @@ static void psPrintString(	PrintingState *			ps,
 	int			capHeight;
 	int			xHeight;
 
-	docDrawSetFont( dc, (void *)ps, ta, physicalFont );
+	docDrawSetFont( dc, (void *)ps, textAttr, ta );
 	docDrawSetColorNumber( dc, (void *)ps, ta->taTextColorNumber );
 
 	sioOutPutCharacter( '(', ps->psSos );
@@ -631,12 +650,12 @@ static void psPrintString(	PrintingState *			ps,
 
 static void psPrintSegment(	PrintingState *			ps,
 				DrawingContext *		dc,
+				int				textAttr,
 				const TextAttribute *		ta,
-				int				physicalFont,
 				const unsigned char *		s,
 				int				len )
     {
-    docDrawSetFont( dc, (void *)ps, ta, physicalFont );
+    docDrawSetFont( dc, (void *)ps, textAttr, ta );
 
     sioOutPutCharacter( '(', ps->psSos );
     appPsPrintString( ps->psSos, s, len );
@@ -652,8 +671,8 @@ static void psPrintSegments(	PrintingState *			ps,
 				int				yShift,
 				int				baseLine,
 				const ParticuleData *		pd,
+				int				textAttr,
 				const TextAttribute *		ta,
-				int				physF,
 				const unsigned char *		s,
 				const int *			segments,
 				int				segmentCount )
@@ -666,15 +685,15 @@ static void psPrintSegments(	PrintingState *			ps,
     if  ( segments[0] > 0 )
 	{
 	psPrintString( ps, dc, xShift, yShift, baseLine, pd,
-						&taN, physF, s, segments[0] );
+					    textAttr, &taN, s, segments[0] );
 	s += segments[0];
 
-	psPrintSegment( ps, dc, ta, physF, s, segments[1] );
+	psPrintSegment( ps, dc, textAttr, ta, s, segments[1] );
 	s += segments[1];
 	}
     else{
 	psPrintString( ps, dc, xShift, yShift, baseLine, pd,
-						ta, physF, s, segments[1] );
+					    textAttr, ta, s, segments[1] );
 	s += segments[1];
 	}
 
@@ -682,13 +701,13 @@ static void psPrintSegments(	PrintingState *			ps,
 	{
 	if  ( segments[2* seg+ 0] > 0 )
 	    {
-	    psPrintSegment( ps, dc, &taN, physF, s, segments[2* seg+ 0] );
+	    psPrintSegment( ps, dc, textAttr, &taN, s, segments[2* seg+ 0] );
 	    s += segments[2* seg+ 0];
 	    }
 
 	if  ( segments[2* seg+ 1] > 0 )
 	    {
-	    psPrintSegment( ps, dc, ta, physF, s, segments[2* seg+ 1] );
+	    psPrintSegment( ps, dc, textAttr, ta, s, segments[2* seg+ 1] );
 	    s += segments[2* seg+ 1];
 	    }
 	}
@@ -910,7 +929,7 @@ static int psPrintParticules(	PrintingState *			ps,
 				const BufferItem *		bi,
 				int				part,
 				const DocumentFontList *	dfl,
-				const char *			afmDirectory,
+				const PostScriptFontList *	psfl,
 				const TextParticule *		tp,
 				ParticuleData *			pd,
 				int				count,
@@ -1058,6 +1077,7 @@ static int psPrintParticules(	PrintingState *			ps,
 	case DOCkindTC:
 	case DOCkindLINEBREAK:
 	case DOCkindPAGEBREAK:
+	case DOCkindCOLUMNBREAK:
 	case DOCkindNOTE:
 	    return drawn= 1;
 
@@ -1069,7 +1089,7 @@ static int psPrintParticules(	PrintingState *			ps,
 		case DOCokPICTWMETAFILE:
 		case DOCokMACPICT:
 		    if  ( psPrintMetafile( ps, io,
-				    afmDirectory,
+				    psfl,
 				    pd->pdX0+ xShift, baseLine+ yShift,
 				    io->ioScaleX, io->ioScaleY,
 				    io->io_xWinExt, io->io_yWinExt,
@@ -1105,7 +1125,7 @@ static int psPrintParticules(	PrintingState *			ps,
 		    if  ( io->ioResultKind == DOCokPICTWMETAFILE )
 			{
 			if  ( psPrintMetafile( ps, io,
-				    afmDirectory,
+				    psfl,
 				    pd->pdX0+ xShift, baseLine+ yShift,
 				    io->ioScaleX, io->ioScaleY,
 				    io->io_xWinExt, io->io_yWinExt,
@@ -1155,6 +1175,7 @@ static int psPrintParticules(	PrintingState *			ps,
 	    return 1;
 
 	case DOCkindCHFTNSEP:
+	case DOCkindCHFTNSEPC:
 	    psPrintChftnsep( dc, xShift, yShift, ps, tp, pd, baseLine );
 	    return 1;
 
@@ -1176,6 +1197,7 @@ static int psPrintParticules(	PrintingState *			ps,
 	unsigned char *		upperString= (unsigned char *)0;
 	int *			segments= (int *)0;
 	int			segmentCount= 0;
+	int			textAttr= tp->tpTextAttributeNumber;
 
 	if  ( ta.taSmallCaps || ta.taCapitals )
 	    {
@@ -1189,13 +1211,11 @@ static int psPrintParticules(	PrintingState *			ps,
 	if  ( ta.taSmallCaps && ! ta.taCapitals )
 	    {
 	    psPrintSegments(  ps, dc, xShift, yShift, baseLine, pd,
-					&ta, tp->tpPhysicalFont,
-					printString, segments, segmentCount );
+			textAttr, &ta, printString, segments, segmentCount );
 	    }
 	else{
 	    psPrintString( ps, dc, xShift, yShift, baseLine, pd,
-					&ta, tp->tpPhysicalFont,
-					printString, len );
+			textAttr, &ta, printString, len );
 	    }
 
 	if  ( upperString )
@@ -1225,7 +1245,7 @@ static int psPrintTextLine(	PrintingState *			ps,
 				int				xShift,
 				int				yShift,
 				const DocumentFontList *	dfl,
-				const char *			afmDirectory,
+				const PostScriptFontList *	psfl,
 				const BufferItem *		bi,
 				int				part,
 				const TextParticule *		tp,
@@ -1242,7 +1262,7 @@ static int psPrintTextLine(	PrintingState *			ps,
 	int		drawn;
 
 	drawn= psPrintParticules( ps, dc, xShift, yShift,
-			bi, part, dfl, afmDirectory, tp, pd,
+			bi, part, dfl, psfl, tp, pd,
 			particuleCount- done, baseLine, lineTop, lineHeight );
 
 	if  ( drawn < 1 )
@@ -1274,9 +1294,8 @@ static int docPsPrintTextLine(	const BufferItem *		bi,
     {
     BufferDocument *		bd= dc->dcDocument;
     const DocumentProperties *	dp= &(bd->bdProperties);
-    AppDrawingData *		add= dc->dcDrawingData;
     PrintingState *		ps= (PrintingState *)vps;
-    AppPhysicalFontList *	apfl= &(add->addPhysicalFontList);
+    const PostScriptFontList *	psfl= dc->dcPostScriptFontList;
 
     const TextLine *		tl= bi->biParaLines+ line;
     int				part= tl->tlFirstParticule;
@@ -1292,7 +1311,7 @@ static int docPsPrintTextLine(	const BufferItem *		bi,
 	{ LDEB(bi->biParaParticuleCount); return -1;	}
 
     boxLine= *tl;
-    accepted= docLayoutLineBox( bd, &boxLine, bi, part, apfl, pd, pf );
+    accepted= docLayoutLineBox( bd, &boxLine, bi, part, psfl, pd, pf );
 
     if  ( accepted < 1 )
 	{ LDEB(accepted); return -1;	}
@@ -1302,8 +1321,7 @@ static int docPsPrintTextLine(	const BufferItem *		bi,
 
     baseline= tl->tlTopPosition.lpPageYTwips+ tl->tlLineAscentTwips;
 
-    psPrintTextLine( ps, dc, xShift, yShift, &(dp->dpFontList),
-			apfl->apflAfmDirectory,
+    psPrintTextLine( ps, dc, xShift, yShift, &(dp->dpFontList), psfl,
 			bi, part, tp, accepted, pd,
 			baseline, tl->tlTopPosition.lpPageYTwips,
 			tl->tlLineHeightTwips );
@@ -1566,7 +1584,7 @@ static int docPsFinishPage(	void *				vps,
     return 0;
     }
 
-static int docPrintStartPage(	void *				vps,
+static int docPsPrintStartPage(	void *				vps,
 				const DocumentGeometry *	dgPage,
 				DrawingContext *		dc,
 				int				page )
@@ -1723,6 +1741,7 @@ int docPsPrintDocument(	SimpleOutputStream *		sos,
 			const char *			title,
 			const char *			applicationName,
 			const char *			applicationReference,
+			const char *			fontDirectory,
 			AppDrawingData *		add,
 			BufferDocument *		bd,
 			const PrintGeometry *		pg,
@@ -1730,14 +1749,13 @@ int docPsPrintDocument(	SimpleOutputStream *		sos,
 			int				indexedImages,
 			int				firstPage,
 			int				lastPage,
-			LAYOUT_EXTERNAL			layoutExternal,
 			DOC_CLOSE_OBJECT		closeObject )
     {
     DocumentProperties *	dp= &(bd->bdProperties);
     DocumentGeometry *		dg= &(dp->dpGeometry);
     BufferItem *		docBi= &(bd->bdItem);
 
-    PostScriptFaceList		psfl;
+    PostScriptTypeList		pstl;
     int				i;
 
     DrawingContext		dc;
@@ -1746,9 +1764,16 @@ int docPsPrintDocument(	SimpleOutputStream *		sos,
     int				hasPageHeader= 0;
     int				hasPageFooter= 0;
 
-    utilInitPostScriptFaceList( &psfl );
+    INIT_LAYOUT_EXTERNAL	initLayoutExternal= (INIT_LAYOUT_EXTERNAL)0;
+
+    const PostScriptFontList *	psfl= add->addPostScriptFontList;
+
+    utilInitPostScriptFaceList( &pstl );
+    pstl.pstlFontDirectory= fontDirectory;
 
     docInitDrawingContext( &dc );
+
+    dc.dcPostScriptFontList= psfl;
 
     dc.dcSetColorRgb= docPsSetColorRgb;
     dc.dcSetFont= docPsSetFont;
@@ -1763,11 +1788,12 @@ int docPsPrintDocument(	SimpleOutputStream *		sos,
     dc.dcDrawCellRight= docPsPrintCellRight;
     dc.dcDrawCellShade= docPsPrintCellShade;
     dc.dcFinishPage= docPsFinishPage;
-    dc.dcStartPage= docPrintStartPage;
-    dc.dcLayoutExternal= layoutExternal;
+    dc.dcStartPage= docPsPrintStartPage;
+    dc.dcInitLayoutExternal= initLayoutExternal;
     dc.dcCloseObject= closeObject;
 
     dc.dcDrawingData= add;
+    dc.dcScreenFontList= (ScreenFontList *)0;
     dc.dcDocument= bd;
 
     dc.dcFirstPage= firstPage;
@@ -1804,10 +1830,10 @@ int docPsPrintDocument(	SimpleOutputStream *		sos,
     if  ( utilPsSetNupSchema( &ps, dg, pg, hasPageHeader, hasPageFooter ) )
 	{ LDEB(1); return -1;	}
 
-    if  ( docPsPrintGetDocumentFonts( bd, &psfl, &(add->addPhysicalFontList) ) )
+    if  ( docPsPrintGetDocumentFonts( bd, &pstl, psfl ) )
 	{ LDEB(1); return -1;	}
 
-    utilPsStartDSCDocument( &ps, &psfl,
+    utilPsStartDSCDocument( &ps, &pstl,
 			    title, applicationName, applicationReference );
 
     sioOutPrintf( sos, "%%%%BeginProlog\n" );
@@ -1822,7 +1848,9 @@ int docPsPrintDocument(	SimpleOutputStream *		sos,
 
     appPsDefineEpsProcs( sos );
 
-    appPsFontNames( &ps, &psfl, ps.psEncodingDefined, /*allFonts=*/ 0 );
+    appPsIncludeFonts( &ps, &pstl );
+
+    appPsFontNames( &ps, &pstl, /*allFonts=*/ 0 );
 
     appMetaDefineProcsetPs( sos );
 
@@ -1871,7 +1899,7 @@ int docPsPrintDocument(	SimpleOutputStream *		sos,
     if  ( i >= docBi->biChildCount )
 	{ LDEB(i); return -1; }
 
-    docPrintStartPage( (void *)&ps,
+    docPsPrintStartPage( (void *)&ps,
 	    &(docBi->biChildren[i]->biSectDocumentGeometry), &dc, firstPage );
     docDrawPageHeader( docBi->biChildren[i], (void *)&ps, &dc, firstPage );
 
@@ -1897,7 +1925,9 @@ int docPsPrintDocument(	SimpleOutputStream *		sos,
 
     appPsCleanPrintingState( &ps );
 
-    utilCleanPostScriptFaceList( &psfl );
+    utilCleanPostScriptFaceList( &pstl );
+
+    docResetExternalItemLayout( bd );
 
     return 0;
     }

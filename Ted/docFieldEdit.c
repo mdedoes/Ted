@@ -19,94 +19,182 @@
 
 /************************************************************************/
 /*									*/
-/*  Editing and field balancing code.					*/
-/*									*/
-/*  Extend a selection such that it does not partially cover a text	*/
-/*  level field. Besides find out whether the whole selection is inside	*/
-/*  a field with a read-only result.					*/
+/*  Field editing and field balancing code.				*/
 /*									*/
 /************************************************************************/
 
-static int docTextFieldLevels(		int			textFieldLevel,
-					int *			pReadonly,
-					int *			pRonlyLevel,
-					int *			pHigest,
-					int *			pLowest,
-					const BufferDocument *	bd,
-					const BufferItem *	bi,
-					int			part,
-					int			partUpto )
+typedef struct FieldLevelPosition
     {
-    const TextParticule *	tp;
-    int				read_only= *pReadonly;
-    int				readOnlyLevel= *pRonlyLevel;
-    int				highest= *pHigest;
-    int				lowest= *pLowest;
+    int		flpStroff;
+    int		flpParticule;
+    int		flpLevel;
+    int		flpRoLevel;
+    } FieldLevelPosition;
 
-    const DocumentFieldList *	dfl= &(bd->bdFieldList);
+static void docInitFieldLevelPosition(	FieldLevelPosition *	flp )
+    {
+    flp->flpStroff= -1;
+    flp->flpParticule= -1;
+    flp->flpLevel= -1;
+    flp->flpRoLevel= -1;
 
-    if  ( partUpto > bi->biParaParticuleCount )
+    return;
+    }
+
+/************************************************************************/
+/*									*/
+/*  Adjust the text field level on the basis of a certain particule.	*/
+/*									*/
+/*  NOTE: Though only DOCkindFIELDSTART and DOCkindFIELDEND particules	*/
+/*	impact on the nesting of text fields, a simple way to prevent	*/
+/*	docAdjustTextFieldLevels() to be called too often would be to	*/
+/*	call it for all particules except text particules.		*/
+/*									*/
+/************************************************************************/
+
+static int docAdjustTextFieldLevels(
+				int *				plevel,
+				int *				pRoLevel,
+				int				step,
+				const DocumentFieldList *	dfl,
+				const TextParticule *		tp )
+    {
+    int					done= 0;
+    int					level= *plevel;
+    int					roLevel= *pRoLevel;
+
+    const DocumentField *		df;
+    const FieldKindInformation *	fki;
+
+    if  ( tp->tpKind == DOCkindFIELDSTART )
 	{
-	LLDEB(partUpto,bi->biParaParticuleCount);
-	partUpto= bi->biParaParticuleCount;
+	if  ( tp->tpObjectNumber < 0			||
+	      tp->tpObjectNumber >= dfl->dflFieldCount	)
+	    { LLDEB(tp->tpObjectNumber,dfl->dflFieldCount); goto ready;	}
+
+	df= dfl->dflFields+ tp->tpObjectNumber;
+	fki= DOC_FieldKinds+ df->dfKind;
+
+	if  ( df->dfKind <  0			||
+	      df->dfKind >= DOC_FieldKindCount	)
+	    { LLDEB(df->dfKind,DOC_FieldKindCount); goto ready;	}
+
+	if  ( fki->fkiLevel == DOClevTEXT )
+	    {
+	    level += step;
+
+	    if  ( ! fki->fkiResultEditable )
+		{ roLevel += step;	}
+
+	    done= step;
+	    }
 	}
 
-    tp= bi->biParaParticules+ part;
-    while( part < partUpto )
+    if  ( tp->tpKind == DOCkindFIELDEND )
 	{
-	const DocumentField *		df;
-	const FieldKindInformation *	fki;
+	if  ( tp->tpObjectNumber < 0			||
+	      tp->tpObjectNumber >= dfl->dflFieldCount	)
+	    { LLDEB(tp->tpObjectNumber,dfl->dflFieldCount); goto ready;	}
 
-	if  ( lowest > textFieldLevel )
-	    { lowest=  textFieldLevel;	}
-	if  ( highest < textFieldLevel )
-	    { highest=  textFieldLevel;	}
+	df= dfl->dflFields+ tp->tpObjectNumber;
+	fki= DOC_FieldKinds+ df->dfKind;
 
-	if  ( tp->tpKind == DOCkindFIELDSTART )
+	if  ( df->dfKind <  0			||
+	      df->dfKind >= DOC_FieldKindCount	)
+	    { LLDEB(df->dfKind,DOC_FieldKindCount); goto ready;	}
+
+	if  ( fki->fkiLevel == DOClevTEXT )
 	    {
-	    if  ( tp->tpObjectNumber < 0			||
-		  tp->tpObjectNumber >= dfl->dflFieldCount	)
-		{ LLDEB(tp->tpObjectNumber,dfl->dflFieldCount);	}
+	    level -= step;
 
-	    df= dfl->dflFields+ tp->tpObjectNumber;
-	    fki= DOC_FieldKinds+ df->dfKind;
+	    if  ( ! fki->fkiResultEditable )
+		{ roLevel -= step;	}
 
-	    if  ( fki->fkiLevel == DOClevTEXT )
+	    done= -step;
+	    }
+	}
+
+  ready:
+    *pRoLevel= roLevel;
+    *plevel= level;
+
+    return done;
+    }
+
+/************************************************************************/
+/*									*/
+/*  Look for the particule with the lowest text field nesting level in	*/
+/*  a position.								*/
+/*									*/
+/*  The particule returned is a particule that starts at the lowest	*/
+/*  nesting level.							*/
+/*									*/
+/************************************************************************/
+
+static int docBottomParticuleForPosition(
+					FieldLevelPosition *		flp,
+					const DocumentFieldList *	dfl,
+					const DocumentPosition *	dp,
+					int				level,
+					int				last )
+    {
+    const BufferItem *		paraBi= dp->dpBi;
+
+    int				part0;
+    int				part1;
+    int				part;
+    const TextParticule *	tp;
+
+    int				levelFound= 0;
+    int				roLevel= 0;
+
+    const int			step= 1;
+
+    if  ( docFindParticuleOfPosition( &part0, dp, 0 ) )
+	{ LDEB(dp->dpStroff); return -1;	}
+    if  ( docFindParticuleOfPosition( &part1, dp, 1 ) )
+	{ LDEB(dp->dpStroff); return -1;	}
+
+    part= part0;
+    tp= paraBi->biParaParticules+ part;
+
+    flp->flpStroff= dp->dpStroff;
+    flp->flpParticule= part;
+    flp->flpLevel= level;
+    flp->flpRoLevel= roLevel;
+    levelFound= level;
+
+    while( part <= part1 )
+	{
+	if  ( tp->tpKind != DOCkindTEXT )
+	    {
+	    int		done;
+	    
+	    done= docAdjustTextFieldLevels( &level, &roLevel, step, dfl, tp );
+
+	    if  ( done > 0 )
 		{
-		textFieldLevel++;
-		if  ( ! fki->fkiResultEditable )
+		if  ( level -1 < levelFound			||
+		      ( last && level -1 == levelFound )	)
 		    {
-		    if  ( ! read_only )
-			{ readOnlyLevel= textFieldLevel- 1;	}
+		    flp->flpParticule= part;
+		    flp->flpLevel= level- 1;
+		    flp->flpRoLevel= roLevel;
 
-		    read_only++;
+		    levelFound= level- 1;
 		    }
 		}
-	    }
 
-	if  ( tp->tpKind == DOCkindFIELDEND )
-	    {
-	    if  ( tp->tpObjectNumber < 0			||
-		  tp->tpObjectNumber >= dfl->dflFieldCount	)
-		{ LLDEB(tp->tpObjectNumber,dfl->dflFieldCount);	}
-
-	    df= dfl->dflFields+ tp->tpObjectNumber;
-	    fki= DOC_FieldKinds+ df->dfKind;
-
-	    if  ( df->dfKind <  0			||
-		  df->dfKind >= DOC_FieldKindCount	)
-		{ LLDEB(df->dfKind,DOC_FieldKindCount);	}
-
-	    if  ( fki->fkiLevel == DOClevTEXT )
+	    if  ( done < 0 )
 		{
-		textFieldLevel--;
-		if  ( textFieldLevel < 0 )
-		    { LDEB(textFieldLevel); textFieldLevel= 0;	}
-		if  ( ! fki->fkiResultEditable )
+		if  ( level < levelFound		||
+		      ( last && level == levelFound )	)
 		    {
-		    read_only--;
-		    if  ( read_only < 0 )
-			{ LDEB(read_only); read_only= 0;	}
+		    flp->flpParticule= part+ 1;
+		    flp->flpLevel= level;
+		    flp->flpRoLevel= roLevel;
+
+		    levelFound= level;
 		    }
 		}
 	    }
@@ -114,133 +202,210 @@ static int docTextFieldLevels(		int			textFieldLevel,
 	part++; tp++;
 	}
 
-    *pReadonly= read_only;
-    *pRonlyLevel= readOnlyLevel;
-    *pHigest= highest;
-    *pLowest= lowest;
-
-    return textFieldLevel;
-    }
-
-static int docFieldBalanceBegin(	int *			pMoved,
-					DocumentPosition *	dp,
-					const BufferDocument *	bd,
-					int			beginLevel,
-					int			lowest )
-    {
-    BufferItem *		bi= dp->dpBi;
-    int				textFieldLevel= beginLevel;
-    int				part;
-    const TextParticule *	tp;
-
-    const DocumentFieldList *	dfl= &(bd->bdFieldList);
-
-    part= dp->dpParticule;
-    tp= bi->biParaParticules+ part;
-
-    while( part > 0 )
-	{
-	const DocumentField *		df;
-	const FieldKindInformation *	fki;
-
-	if  ( tp->tpKind == DOCkindFIELDSTART )
-	    {
-	    df= dfl->dflFields+ tp->tpObjectNumber;
-	    fki= DOC_FieldKinds+ df->dfKind;
-
-	    if  ( fki->fkiLevel == DOClevTEXT )
-		{
-		textFieldLevel--;
-		if  ( textFieldLevel < 0 )
-		    { LDEB(textFieldLevel); textFieldLevel= 0;	}
-		}
-	    }
-
-	if  ( tp->tpKind == DOCkindFIELDEND )
-	    {
-	    df= dfl->dflFields+ tp->tpObjectNumber;
-	    fki= DOC_FieldKinds+ df->dfKind;
-
-	    if  ( fki->fkiLevel == DOClevTEXT )
-		{ textFieldLevel++; }
-	    }
-
-	if  ( textFieldLevel <= lowest )
-	    { break;	}
-
-	part--; tp--;
-	}
-
-    if  ( dp->dpParticule != part )
-	{ *pMoved= 1;	}
-    dp->dpParticule= part;
-    dp->dpStroff= tp->tpStroff;
-
     return 0;
     }
 
-static int docFieldBalanceEnd(		int *			pMoved,
-					DocumentPosition *	dp,
-					const BufferDocument *	bd,
-					int			endLevel,
-					int			lowest )
+static int docFieldCalculateTextFieldLevel(
+				int *				pRoLevel,
+				const BufferItem *		paraBi,
+				const DocumentFieldList *	dfl,
+				int				level,
+				int				part0,
+				int				part1 )
     {
-    BufferItem *		bi= dp->dpBi;
-    int				textFieldLevel= endLevel;
     int				part;
     const TextParticule *	tp;
 
-    const DocumentFieldList *	dfl= &(bd->bdFieldList);
+    const int			step= 1;
 
-    part= dp->dpParticule;
-    tp= bi->biParaParticules+ part;
-
-    while( part < bi->biParaParticuleCount )
+    part= part0;
+    tp= paraBi->biParaParticules+ part;
+    while( part <= part1 )
 	{
-	const DocumentField *		df;
-	const FieldKindInformation *	fki;
-
-	if  ( tp->tpKind == DOCkindFIELDSTART )
-	    {
-	    df= dfl->dflFields+ tp->tpObjectNumber;
-	    fki= DOC_FieldKinds+ df->dfKind;
-
-	    if  ( fki->fkiLevel == DOClevTEXT )
-		{ textFieldLevel++;	}
-	    }
-
-	if  ( tp->tpKind == DOCkindFIELDEND )
-	    {
-	    df= dfl->dflFields+ tp->tpObjectNumber;
-	    fki= DOC_FieldKinds+ df->dfKind;
-
-	    if  ( fki->fkiLevel == DOClevTEXT )
-		{
-		textFieldLevel--;
-		if  ( textFieldLevel < 0 )
-		    { LDEB(textFieldLevel); textFieldLevel= 0;	}
-		}
-	    }
-
-	if  ( textFieldLevel <= lowest )
-	    { break;	}
+	if  ( tp->tpKind != DOCkindTEXT )
+	    { docAdjustTextFieldLevels( &level, pRoLevel, step, dfl, tp ); }
 
 	part++; tp++;
 	}
 
-    if  ( part >= bi->biParaParticuleCount )
+    return level;
+    }
+
+/************************************************************************/
+/*									*/
+/*  Move the beginning of a selection to a certain nesting level of	*/
+/*  text levels.							*/
+/*									*/
+/*  1)  Try to move right to find the beginning of a higher level at	*/
+/*	the same string position.					*/
+/*  2)  Move left to find the beginning of a lower level.		*/
+/*									*/
+/************************************************************************/
+
+static void docFieldBalanceBegin(
+				FieldLevelPosition *		flpBegin,
+				const FieldLevelPosition *	flpEnd,
+				const BufferItem *		paraBi,
+				const DocumentFieldList *	dfl )
+    {
+    const TextParticule *	tp;
+    int				part;
+
+    const int			step= -1;
+
+    /*  1  */
+    if  ( flpBegin->flpLevel <= flpEnd->flpLevel	&&
+	  flpBegin->flpRoLevel <= 0			)
 	{
-	part= bi->biParaParticuleCount- 1;
-	tp= bi->biParaParticules+ part;
+	int		level= flpBegin->flpLevel;
+	int		roLevel= flpBegin->flpRoLevel;
+
+	part= flpBegin->flpParticule;
+	tp= paraBi->biParaParticules+ part;
+
+	for ( part= part; part < flpEnd->flpParticule; tp++, part++ )
+	    {
+	    if  ( tp->tpStroff > flpBegin->flpStroff )
+		{ break;	}
+
+	    if  ( tp->tpKind != DOCkindTEXT )
+		{
+		docAdjustTextFieldLevels( &level, &roLevel, -step, dfl, tp );
+		if  ( level < flpBegin->flpLevel )
+		    { return;	}
+		if  ( level == flpEnd->flpLevel )
+		    {
+		    flpBegin->flpParticule= part+ 1;
+		    flpBegin->flpLevel= level;
+		    flpBegin->flpRoLevel= roLevel;
+		    return;
+		    }
+		}
+	    }
+
+	return;
 	}
 
-    if  ( dp->dpParticule != part )
-	{ *pMoved= 1;	}
-    dp->dpParticule= part;
-    dp->dpStroff= tp->tpStroff+ tp->tpStrlen;
+    /*  2  */
+    part= flpBegin->flpParticule- 1;
+    tp= paraBi->biParaParticules+ part;
 
-    return 0;
+    for ( part= part; part >= 0; tp--, part-- )
+	{
+	if  ( tp->tpKind != DOCkindTEXT )
+	    {
+	    docAdjustTextFieldLevels( &(flpBegin->flpLevel),
+				    &(flpBegin->flpRoLevel), step, dfl, tp );
+
+	    if  ( flpBegin->flpLevel <= flpEnd->flpLevel	&&
+		  flpBegin->flpRoLevel <= 0			)
+		{ break;	}
+	    }
+	}
+
+    if  ( part < 0 )
+	{ LDEB(part); return;	}
+
+    tp= paraBi->biParaParticules+ part;
+
+    flpBegin->flpParticule= part;
+    flpBegin->flpStroff= tp->tpStroff;
+
+    return;
     }
+
+/************************************************************************/
+/*									*/
+/*  Move the end of a selection to a certain nesting level of text	*/
+/*  levels.								*/
+/*									*/
+/*  1)  Find the first text particule that contains the end position.	*/
+/*  2)  Move right until the nesting level reaches the bottom level	*/
+/*	of the nested fields.						*/
+/*									*/
+/************************************************************************/
+
+static void docFieldBalanceEnd(	const FieldLevelPosition *	flpBegin,
+				FieldLevelPosition *		flpEnd,
+				const BufferItem *		paraBi,
+				const DocumentFieldList *	dfl )
+    {
+    const TextParticule *	tp;
+    int				part;
+
+    const int			step= 1;
+
+    if  ( flpEnd->flpLevel <= flpBegin->flpLevel	&&
+	  flpEnd->flpRoLevel <= 0			)
+	{
+	int		level= flpEnd->flpLevel;
+	int		roLevel= flpEnd->flpRoLevel;
+
+	part= flpEnd->flpParticule;
+	tp= paraBi->biParaParticules+ part;
+
+	for ( part= part; part > flpBegin->flpParticule; tp--, part-- )
+	    {
+	    if  ( tp->tpStroff < flpEnd->flpStroff )
+		{ break;	}
+
+	    if  ( tp->tpKind != DOCkindTEXT )
+		{
+		docAdjustTextFieldLevels( &level, &roLevel, -step, dfl, tp );
+		if  ( level < flpEnd->flpLevel )
+		    { return;	}
+		if  ( level == flpBegin->flpLevel )
+		    {
+		    flpEnd->flpParticule= part- 1;
+		    flpEnd->flpLevel= level;
+		    flpEnd->flpRoLevel= roLevel;
+		    return;
+		    }
+		}
+	    }
+
+	return;
+	}
+
+    part= flpEnd->flpParticule+ 1;
+    tp= paraBi->biParaParticules+ part;
+
+    for ( part= flpEnd->flpParticule+ 1;
+			    part < paraBi->biParaParticuleCount; tp++, part++ )
+	{
+	if  ( tp->tpKind != DOCkindTEXT )
+	    {
+	    docAdjustTextFieldLevels( &(flpEnd->flpLevel),
+					&(flpEnd->flpRoLevel), step, dfl, tp );
+
+	    if  ( flpEnd->flpLevel <= flpBegin->flpLevel	&&
+		  flpEnd->flpRoLevel <= 0			)
+		{ break;	}
+	    }
+	}
+
+    if  ( part >= paraBi->biParaParticuleCount )
+	{ LLDEB(part,paraBi->biParaParticuleCount); return;	}
+
+    tp= paraBi->biParaParticules+ part;
+
+    flpEnd->flpParticule= part;
+    flpEnd->flpStroff= tp->tpStroff+ tp->tpStrlen;
+
+    return;
+    }
+
+/************************************************************************/
+/*									*/
+/*  Balance a selection such that it does not partially cover any	*/
+/*  field.								*/
+/*									*/
+/*  A)  Determine particule numbers for the least nested particules	*/
+/*	at the beginning and the end of the selection.			*/
+/*  B)  Determine actual values of the text field nesting levels.	*/
+/*  C)  And look for the matching particules at the same level.		*/
+/*									*/
+/************************************************************************/
 
 int docBalanceFieldSelection(	int *			pBeginMoved,
 				int *			pEndMoved,
@@ -248,111 +413,113 @@ int docBalanceFieldSelection(	int *			pBeginMoved,
 				DocumentPosition *	dpBegin,
 				DocumentPosition *	dpEnd )
     {
-    int				beginLevel;
-    int				endLevel;
-    int				read_only;
-    int				readOnlyLevel;
-
-    int				highest= 0;
-    int				lowest;
-
     int				beginMoved= 0;
     int				endMoved= 0;
 
-    lowest= INT_MAX;
-    beginLevel= 0;
-    read_only= 0;
-    readOnlyLevel= -1;
-    beginLevel= docTextFieldLevels( beginLevel, &read_only, &readOnlyLevel,
-						&highest, &lowest,
-						bd, dpBegin->dpBi,
-						0,
-						dpBegin->dpParticule+ 1 );
+    FieldLevelPosition		flpBegin;
+    FieldLevelPosition		flpEnd;
+
+    const DocumentFieldList *	dfl= &(bd->bdFieldList);
+
+    /*  A  */
+    docInitFieldLevelPosition( &flpBegin );
+    docInitFieldLevelPosition( &flpEnd );
+
+    if  ( docBottomParticuleForPosition( &flpBegin, dfl, dpBegin, 0, 0 ) )
+	{ LDEB(1); goto ready;	}
+    if  ( docBottomParticuleForPosition( &flpEnd, dfl, dpEnd, 0, 1 ) )
+	{ LDEB(1); goto ready;	}
+
+    /*  B  */
+    flpBegin.flpRoLevel= 0;
+    flpBegin.flpLevel= docFieldCalculateTextFieldLevel( &(flpBegin.flpRoLevel),
+					dpBegin->dpBi, dfl,
+					0, 0, flpBegin.flpParticule- 1 );
+    if  ( flpBegin.flpLevel < 0 || flpBegin.flpRoLevel < 0 )
+	{ LLDEB(flpBegin.flpLevel,flpBegin.flpRoLevel);	}
 
     if  ( dpBegin->dpBi == dpEnd->dpBi )
 	{
-	lowest= beginLevel;
-	endLevel= docTextFieldLevels( beginLevel, &read_only, &readOnlyLevel,
-						&highest, &lowest,
-						bd, dpEnd->dpBi,
-						dpBegin->dpParticule+ 1,
-						dpEnd->dpParticule+ 1 );
+	/*  B  */
+	flpEnd.flpRoLevel= flpBegin.flpRoLevel;
+	flpEnd.flpLevel= docFieldCalculateTextFieldLevel( &(flpEnd.flpRoLevel),
+						dpEnd->dpBi, dfl,
+						flpBegin.flpLevel,
+						flpBegin.flpParticule,
+						flpEnd.flpParticule- 1 );
+
+	if  ( flpEnd.flpLevel < 0 || flpEnd.flpRoLevel < 0 )
+	    { LLDEB(flpEnd.flpLevel,flpEnd.flpRoLevel);	}
+
+	docFieldBalanceBegin( &flpBegin, &flpEnd, dpBegin->dpBi, dfl );
+	docFieldBalanceEnd( &flpBegin, &flpEnd, dpEnd->dpBi, dfl );
 	}
     else{
-	lowest= INT_MAX;
-	beginLevel= 0;
-	read_only= 0;
-	readOnlyLevel= -1;
-	endLevel= docTextFieldLevels( beginLevel, &read_only, &readOnlyLevel,
-						&highest, &lowest,
-						bd, dpEnd->dpBi,
-						0,
-						dpEnd->dpParticule+ 1 );
-	lowest= 0;
+	FieldLevelPosition		flpPara;
+
+	/*  B  */
+	flpEnd.flpRoLevel= 0;
+	flpEnd.flpLevel= docFieldCalculateTextFieldLevel( &(flpEnd.flpRoLevel),
+						dpEnd->dpBi, dfl,
+						0, 0,
+						flpEnd.flpParticule- 1 );
+	if  ( flpEnd.flpLevel < 0 || flpEnd.flpRoLevel < 0 )
+	    { LLDEB(flpEnd.flpLevel,flpEnd.flpRoLevel);	}
+
+	docInitFieldLevelPosition( &flpPara );
+	flpPara.flpStroff= dpBegin->dpBi->biParaStrlen;
+	flpPara.flpParticule= dpBegin->dpBi->biParaParticuleCount;
+	flpPara.flpLevel= 0;
+	flpPara.flpRoLevel= 0;
+	docFieldBalanceBegin( &flpBegin, &flpPara, dpBegin->dpBi, dfl );
+
+	docInitFieldLevelPosition( &flpPara );
+	flpPara.flpStroff= 0;
+	flpPara.flpParticule= 0;
+	flpPara.flpLevel= 0;
+	flpPara.flpRoLevel= 0;
+	docFieldBalanceEnd( &flpPara, &flpEnd, dpEnd->dpBi, dfl );
 	}
 
-    if  ( beginLevel > lowest )
-	{
-	if  ( docFieldBalanceBegin( &beginMoved, dpBegin, bd,
-							beginLevel, lowest ) )
-	    { LDEB(1); return -1;	}
-	}
+    if  ( dpBegin->dpStroff != flpBegin.flpStroff )
+	{ dpBegin->dpStroff= flpBegin.flpStroff; beginMoved= 1; }
+    if  ( dpEnd->dpStroff != flpEnd.flpStroff )
+	{ dpEnd->dpStroff= flpEnd.flpStroff; endMoved= 1; }
 
-    if  ( endLevel > lowest )
-	{
-	if  ( docFieldBalanceEnd( &endMoved, dpEnd, bd, endLevel, lowest ) )
-	    { LDEB(1); return -1;	}
-	}
-
-    if  ( dpBegin->dpBi == dpEnd->dpBi	&&
-	  read_only			)
-	{
-	lowest= INT_MAX;
-	beginLevel= 0;
-	read_only= 0;
-	readOnlyLevel= -1;
-	beginLevel= docTextFieldLevels( beginLevel, &read_only, &readOnlyLevel,
-						&highest, &lowest,
-						bd, dpBegin->dpBi,
-						0,
-						dpBegin->dpParticule );
-
-	if  ( read_only )
-	    {
-	    if  ( docFieldBalanceBegin( &beginMoved, dpBegin, bd,
-						beginLevel, readOnlyLevel ) )
-		{ LDEB(1); return -1;	}
-
-	    if  ( docFieldBalanceEnd( &endMoved, dpEnd, bd,
-						endLevel, readOnlyLevel ) )
-		{ LDEB(1); return -1;	}
-	    }
-	}
+  ready:
 
     *pBeginMoved= beginMoved;
     *pEndMoved= endMoved;
     return 0;
     }
 
-static int docFieldCalculateBalance(	const BufferItem *	bi,
-					int			part,
-					int			partUpto )
+/************************************************************************/
+/*									*/
+/*  Are we in a field?.							*/
+/*									*/
+/************************************************************************/
+
+int docPositionInField(		const DocumentPosition *	dp,
+				const BufferDocument *		bd )
     {
-    int				fieldLevel= 0;
-    const TextParticule *	tp;
+    FieldLevelPosition		flp;
 
-    tp= bi->biParaParticules+ part;
-    while( part < bi->biParaParticuleCount )
-	{
-	if  ( tp->tpKind == DOCkindFIELDSTART )
-	    { fieldLevel++;	}
-	if  ( tp->tpKind == DOCkindFIELDEND )
-	    { fieldLevel--;	}
+    const DocumentFieldList *	dfl= &(bd->bdFieldList);
 
-	part++; tp++;
-	}
+    /*  A  */
+    docInitFieldLevelPosition( &flp );
 
-    return fieldLevel;
+    if  ( docBottomParticuleForPosition( &flp, dfl, dp, 0, 0 ) )
+	{ LDEB(1); return 0;	}
+
+    flp.flpRoLevel= 0;
+    flp.flpLevel= docFieldCalculateTextFieldLevel( &(flp.flpRoLevel),
+					dp->dpBi, dfl,
+					0, 0, flp.flpParticule- 1 );
+    if  ( flp.flpLevel < 0 || flp.flpRoLevel < 0 )
+	{ LLDEB(flp.flpLevel,flp.flpRoLevel);	}
+
+    return flp.flpLevel > 0;
     }
 
 /************************************************************************/
@@ -369,6 +536,7 @@ static int docFieldCalculateBalance(	const BufferItem *	bi,
 static int docFieldInsertEndParticule(
 				BufferDocument *		bd,
 				const DocumentPosition *	dpEnd,
+				int				part1,
 				int *				pEndPart,
 				int				fieldNumber,
 				const PropertyMask *		taSetMask,
@@ -377,37 +545,36 @@ static int docFieldInsertEndParticule(
     TextParticule *	tp;
     int			textAttributeNumber;
 
-    int			endPart= dpEnd->dpParticule;
     BufferItem *	bi= dpEnd->dpBi;
 
     /*  1  */
-    tp= bi->biParaParticules+ endPart;
+    tp= bi->biParaParticules+ part1;
     if  ( tp->tpStrlen > 0				&&
 	  dpEnd->dpStroff == tp->tpStroff+ tp->tpStrlen	)
-	{ endPart++; tp++;	}
+	{ part1++; tp++;	}
 
-    if  ( endPart < bi->biParaParticuleCount )
+    if  ( part1 < bi->biParaParticuleCount )
 	{ textAttributeNumber= tp[ 0].tpTextAttributeNumber; }
     else{ textAttributeNumber= tp[-1].tpTextAttributeNumber; }
 
     /*  2  */
-    if  ( endPart < bi->biParaParticuleCount	&&
+    if  ( part1 < bi->biParaParticuleCount	&&
 	  tp->tpStroff != dpEnd->dpStroff	)
 	{
 	int	len= tp->tpStroff+ tp->tpStrlen- dpEnd->dpStroff;
 
 	tp->tpStrlen= dpEnd->dpStroff- tp->tpStroff;
 
-	tp= docInsertTextParticule( bi, endPart+ 1,
+	tp= docInsertTextParticule( bi, part1+ 1,
 		    dpEnd->dpStroff, len, tp->tpKind, textAttributeNumber );
 	if  ( ! tp )
 	    { XDEB(tp); return -1;	}
 
-	endPart++;
+	part1++;
 	}
 
     /*  3  */
-    tp= docInsertTextParticule( bi, endPart,
+    tp= docInsertTextParticule( bi, part1,
 		    dpEnd->dpStroff, 0, DOCkindFIELDEND, textAttributeNumber );
     if  ( ! tp )
 	{ XDEB(tp); return -1;	}
@@ -418,12 +585,12 @@ static int docFieldInsertEndParticule(
     if  ( taSetMask && ! PROPmaskISEMPTY( taSetMask ) )
 	{
 	if  ( docChangeParticuleAttributes( (PropertyMask *)0,
-						bd, bi, endPart, endPart+ 1,
+						bd, bi, part1, part1+ 1,
 						taSet, taSetMask ) )
-	    { LDEB(endPart); return -1;	}
+	    { LDEB(part1); return -1;	}
 	}
 
-    *pEndPart= endPart;
+    *pEndPart= part1;
     return 0;
     }
 
@@ -441,6 +608,7 @@ static int docFieldInsertEndParticule(
 static int docFieldInsertStartParticule(
 				BufferDocument *		bd,
 				const DocumentPosition *	dpStart,
+				int				part0,
 				int *				pStartPart,
 				int *				pEndPart,
 				int				fieldNumber,
@@ -450,24 +618,22 @@ static int docFieldInsertStartParticule(
     TextParticule *	tp;
     int			textAttributeNumber;
 
-    int			endPart= *pEndPart;
+    int			part1= *pEndPart;
 
-    int			startPart;
     BufferItem *	bi= dpStart->dpBi;
 
     /*  1  */
-    startPart= dpStart->dpParticule;
-    tp= bi->biParaParticules+ startPart;
+    tp= bi->biParaParticules+ part0;
     if  ( tp->tpStrlen > 0					&&
 	  dpStart->dpStroff == tp->tpStroff+ tp->tpStrlen	)
-	{ startPart++; tp++;	}
+	{ part0++; tp++;	}
 
-    if  ( startPart < bi->biParaParticuleCount )
+    if  ( part0 < bi->biParaParticuleCount )
 	{ textAttributeNumber= tp[ 0].tpTextAttributeNumber; }
     else{ textAttributeNumber= tp[-1].tpTextAttributeNumber; }
 
     /*  2  */
-    if  ( startPart < bi->biParaParticuleCount	&&
+    if  ( part0 < bi->biParaParticuleCount	&&
 	  tp->tpStroff != dpStart->dpStroff	)
 	{
 	int		stroff= tp->tpStroff;
@@ -476,19 +642,19 @@ static int docFieldInsertStartParticule(
 	tp->tpStrlen= tp->tpStroff+ tp->tpStrlen- dpStart->dpStroff;
 	tp->tpStroff= dpStart->dpStroff;
 
-	tp= docInsertTextParticule( bi, startPart,
+	tp= docInsertTextParticule( bi, part0,
 				stroff, len, tp->tpKind, textAttributeNumber );
 	if  ( ! tp )
 	    { XDEB(tp); return -1;	}
 
-	if  ( endPart >= startPart )
-	    { endPart++;	}
+	if  ( part1 >= part0 )
+	    { part1++;	}
 
-	startPart++;
+	part0++;
 	}
 
     /*  3  */
-    tp= docInsertTextParticule( bi, startPart,
+    tp= docInsertTextParticule( bi, part0,
 		dpStart->dpStroff, 0, DOCkindFIELDSTART, textAttributeNumber );
     if  ( ! tp )
 	{ XDEB(tp); return -1;	}
@@ -499,58 +665,72 @@ static int docFieldInsertStartParticule(
     if  ( taSetMask && ! PROPmaskISEMPTY( taSetMask ) )
 	{
 	if  ( docChangeParticuleAttributes( (PropertyMask *)0, bd,
-						bi, startPart, startPart+ 1,
+						bi, part0, part0+ 1,
 						taSet, taSetMask ) )
-	    { LDEB(endPart); return -1;	}
+	    { LDEB(part1); return -1;	}
 	}
 
-    if  ( endPart >= startPart )
-	{ endPart++;	}
+    if  ( part1 >= part0 )
+	{ part1++;	}
 
-    *pStartPart= startPart; *pEndPart= endPart; return 0;
+    *pStartPart= part0; *pEndPart= part1; return 0;
     }
 
 /************************************************************************/
 /*									*/
-/*  Surround a selected range of text by a field level field.		*/
+/*  Surround a selected range of text by a text level field.		*/
 /*									*/
 /************************************************************************/
 
 int docSurroundTextSelectionByField(
+				DocumentField **		pDf,
 				BufferDocument *		bd,
-				DocumentSelection *		dsField,
+				int *				pStartPart,
+				int *				pEndPart,
 				const DocumentSelection *	ds,
-				int				fieldNumber,
 				const PropertyMask *		taSetMask,
 				const TextAttribute *		taSet )
     {
-    DocumentSelection	dsNew;
-    int			fieldBalance;
+    int				level= 0;
+    int				roLevel= 0;
+    int				part0;
+    int				part1;
+
+    DocumentField *		df;
+    int				fieldNumber;
+
+    const DocumentFieldList *	dfl= &(bd->bdFieldList);
 
     if  ( ds->dsBegin.dpBi != ds->dsEnd.dpBi )
 	{ XXDEB(ds->dsBegin.dpBi,ds->dsEnd.dpBi); return -1;	}
 
-    dsNew= *ds;
+    df= docClaimField( &fieldNumber, &(bd->bdFieldList) );
+    if  ( ! df )
+	{ XDEB(df); return -1;	}
 
-    fieldBalance= docFieldCalculateBalance( dsNew.dsBegin.dpBi,
-					    dsNew.dsBegin.dpParticule,
-					    dsNew.dsEnd.dpParticule );
-    if  ( fieldBalance != 0 )
+    if  ( docFindParticuleOfPosition( &part0, &(ds->dsBegin), 1 ) )
+	{ LDEB(ds->dsBegin.dpStroff); return -1;	}
+    if  ( docFindParticuleOfPosition( &part1, &(ds->dsEnd), 0 ) )
+	{ LDEB(ds->dsEnd.dpStroff); return -1;	}
+
+    level= docFieldCalculateTextFieldLevel( &roLevel,
+				ds->dsBegin.dpBi, dfl, level, part0, part1 );
+    if  ( level != 0 )
 	{
-	LLDEB(dsNew.dsBegin.dpParticule,dsNew.dsEnd.dpParticule);
-	LDEB(fieldBalance); return -1;
+	LLLDEB(part0,part1,level);
+	docListItem(0,ds->dsBegin.dpBi);
+	return -1;
 	}
 
     /*  find end, split?, insert end particule */
-    if  ( docFieldInsertEndParticule( bd, &(dsNew.dsEnd),
-					    &(dsNew.dsEnd.dpParticule),
+    if  ( docFieldInsertEndParticule( bd, &(ds->dsEnd),
+					    part1, &part1,
 					    fieldNumber, taSetMask, taSet ) )
 	{ LDEB(1); return -1;	}
 
     /*  find begin, split?, insert start particule */
-    if  ( docFieldInsertStartParticule( bd, &(dsNew.dsBegin),
-					    &(dsNew.dsBegin.dpParticule),
-					    &(dsNew.dsEnd.dpParticule),
+    if  ( docFieldInsertStartParticule( bd, &(ds->dsBegin),
+					    part0, &part0, &part1,
 					    fieldNumber, taSetMask, taSet ) )
 	{ LDEB(1); return -1;	}
 
@@ -562,13 +742,14 @@ int docSurroundTextSelectionByField(
 
 	if  ( docChangeParticuleAttributes( &taDoneMask, bd,
 						ds->dsBegin.dpBi,
-						dsNew.dsBegin.dpParticule,
-						dsNew.dsEnd.dpParticule,
+						part0, part1,
 						taSet, taSetMask ) )
 	    { LDEB(1);	}
 	}
 
-    *dsField= dsNew;
+    *pDf= df;
+    *pStartPart= part0;
+    *pEndPart= part1;
 
     return 0;
     }
@@ -632,5 +813,177 @@ int docCountParticulesInField(		const BufferItem *	bi,
     LLDEB(fieldLevel,fieldNumber);
     docListItem(0,bi);
     return -1;
+    }
+
+/************************************************************************/
+/*									*/
+/*  Find the special field at the head of a paragraph in a list.	*/
+/*									*/
+/************************************************************************/
+
+int docParaHeadFieldKind(	const BufferItem *	paraBi,
+				const BufferDocument *	bd )
+    {
+    int		fieldKind= -1;
+
+    if  ( paraBi->biInExternalItem == DOCinFOOTNOTE	||
+	  paraBi->biInExternalItem == DOCinENDNOTE	)
+	{
+	const int		stroff= 0;
+	DocumentNote *		dn;
+	DocumentPosition	dp;
+
+	if  ( docGetNote( &dn, bd, paraBi, stroff ) < 0 )
+	    { LDEB(stroff); return -1;	}
+
+	if  ( docFirstPosition( &dp, dn->dnExternalItem.eiItem ) )
+	    { LDEB(1); return -1;	}
+
+	if  ( dp.dpBi == paraBi )
+	    { fieldKind= DOCfkCHFTN;	}
+	}
+
+    if  ( paraBi->biParaListOverride > 0 )
+	{ fieldKind= DOCfkLISTTEXT;	}
+
+    return fieldKind;
+    }
+
+int docDelimitParaHeadField(	int *			pFieldNr,
+				int *			pPartBegin,
+				int *			pPartEnd,
+				int *			pStroffBegin,
+				int *			pStroffEnd,
+				const BufferItem *	paraBi,
+				const BufferDocument *	bd )
+    {
+    int				part;
+    const TextParticule *	tp;
+
+    int		fieldNr= -1;
+    int		partBegin= -1;
+    int		partEnd= -1;
+    int		stroffBegin= -1;
+    int		stroffEnd= -1;
+
+    int		fieldKind;
+
+    fieldKind= docParaHeadFieldKind( paraBi, bd );
+    if  ( fieldKind < 0 )
+	{ return 1;	}
+
+    tp= paraBi->biParaParticules;
+    for ( part= 0; part < paraBi->biParaParticuleCount; tp++, part++ )
+	{
+	const DocumentField *	df;
+
+	if  ( tp->tpKind == DOCkindFIELDSTART )
+	    {
+	    df= bd->bdFieldList.dflFields+ tp->tpObjectNumber;
+	    if  ( df->dfKind == fieldKind )
+		{
+		partBegin= part;
+		stroffBegin= tp->tpStroff;
+		fieldNr= tp->tpObjectNumber;
+		}
+	    }
+
+	if  ( tp->tpKind == DOCkindFIELDEND	&&
+	      tp->tpObjectNumber == fieldNr	)
+	    { partEnd= part; stroffEnd= tp->tpStroff; break;	}
+	}
+
+    if  ( partBegin < 0 )
+	{ return 1;	}
+    if  ( partEnd <= partBegin )
+	{ LLDEB(partBegin,partEnd); return -1;	}
+
+    *pFieldNr= fieldNr;
+    *pPartBegin= partBegin;
+    *pPartEnd= partEnd;
+    *pStroffBegin= stroffBegin;
+    *pStroffEnd= stroffEnd;
+
+    return 0;
+    }
+
+/************************************************************************/
+/*									*/
+/*  Insert the special field at the head of a numbered paragraph.	*/
+/*  (buller), or of a foot/endnote.					*/
+/*									*/
+/*  1)  Allocate a field.						*/
+/*  2)  Insert start particule.						*/
+/*  3)  Insert end particule.						*/
+/*  4)  Insert a text particule at the head of the paragraph as a	*/
+/*	temporary field value.						*/
+/*									*/
+/************************************************************************/
+
+int docInsertParaHeadField(	BufferItem *		paraBi,
+				BufferDocument *	bd,
+				int			fieldKind,
+				int			textAttributeNumber )
+    {
+    int				fieldNumber;
+    DocumentField *		df;
+    TextParticule *		tpField;
+    TextParticule *		tpText;
+
+    int				stroffShift= 0;
+
+    const int			head= 0;
+    const int			len= 0;
+    const int			stroffHead= 0;
+
+    int				wasEmpty= ( paraBi->biParaStrlen == 0 );
+
+    /*  4  */
+    if  ( docParaStringReplace( &stroffShift, paraBi,
+		    stroffHead, stroffHead, (const unsigned char *)"?", 1 ) )
+	{ LDEB(paraBi->biParaStrlen); return -1; }
+
+    if  ( wasEmpty )
+	{
+	tpText= paraBi->biParaParticules;
+	if  ( tpText->tpKind != DOCkindTEXT )
+	    { SDEB(docKindStr(tpText->tpKind)); return -1;	}
+
+	tpText->tpStrlen= 1;
+	}
+    else{
+	tpText= docInsertTextParticule( paraBi, head,
+			    stroffHead, 1, DOCkindTEXT, textAttributeNumber );
+	if  ( ! tpText )
+	    { LXDEB(paraBi->biParaParticuleCount,tpText); return -1; }
+
+	if  ( docShiftParticuleOffsets( bd, paraBi, head+ 1,
+				paraBi->biParaParticuleCount, stroffShift ) )
+	    { LDEB(stroffShift); }
+	}
+
+    /*  1  */
+    df= docClaimField( &fieldNumber, &(bd->bdFieldList) );
+    if  ( ! df )
+	{ XDEB(df); return -1;	}
+    df->dfKind= DOCfkUNKNOWN;
+
+    /*  2  */
+    tpField= docInsertTextParticule( paraBi, head, stroffHead, len,
+				DOCkindFIELDSTART, textAttributeNumber );
+    if  ( ! tpField )
+	{ XDEB(tpField); return -1;	}
+    tpField->tpObjectNumber= fieldNumber;
+
+    /*  3  */
+    tpField= docInsertTextParticule( paraBi, head+ 2, stroffHead+ 1, len,
+				DOCkindFIELDEND, textAttributeNumber );
+    if  ( ! tpField )
+	{ XDEB(tpField); return -1;	}
+    tpField->tpObjectNumber= fieldNumber;
+
+    df->dfKind= fieldKind;
+
+    return 0;
     }
 

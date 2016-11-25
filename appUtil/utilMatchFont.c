@@ -21,6 +21,7 @@
 #   include	"utilPropMask.h"
 #   include	"docFont.h"
 #   include	"psFont.h"
+#   include	"utilMatchFont.h"
 
 /************************************************************************/
 /*									*/
@@ -59,8 +60,13 @@ int utilFontFamilyStyle(	const char *	fontFamilyName )
 	if  ( l == 5 && ! strncmp( fontFamilyName, "Ohlfs", 5 ) )
 	    { return DFstyleFMODERN;	}
 
-	if  ( l == 5 && ! strncmp( fontFamilyName, "Wingdings", 9 ) )
+	if  ( l == 9 && ! strncmp( fontFamilyName, "Wingdings", 9 ) )
 	    { return DFstyleFTECH;	}
+	if  ( l == 8 && ! strncmp( fontFamilyName, "Webdings", 8 ) )
+	    { return DFstyleFTECH;	}
+
+	if  ( l == 7 && ! strncmp( fontFamilyName, "Corsiva", 7 ) )
+	    { return DFstyleFSCRIPT;	}
 
 	for ( i= 0; i < l- 1; i++ )
 	    {
@@ -93,41 +99,33 @@ int utilFontFamilyStyle(	const char *	fontFamilyName )
 void utilFontFaceDistance(	int *			pDifCount,
 				double *		pDistance,
 				const AppFontTypeface *	aft1,
-				const AppFontTypeface *	aft2 )
+				int			isSlanted,
+				int			weight )
     {
     double	d;
 
     double	distance= 0.0;
     int		difCount= 0;
 
-    if  ( aft1->aftWidth != aft2->aftWidth )
+    if  ( aft1->aftWeight != weight )
 	{
-	d= aft2->aftWidth- aft1->aftWidth;
-	d /= ( FONTwidth_MAX- FONTwidth_MIN );
-
-	distance += d* d;
-	difCount++;
-	}
-
-    if  ( aft1->aftWeight != aft2->aftWeight )
-	{
-	d= aft2->aftWeight- aft1->aftWeight;
+	d= weight- aft1->aftWeight;
 	d /= ( FONTweight_MAX- FONTweight_MIN );
 
 	distance += d* d;
 	difCount++;
 	}
 
-    if  ( aft1->aftIsSlanted != aft2->aftIsSlanted )
+    if  ( aft1->aftIsSlanted != isSlanted )
 	{
-	d= aft2->aftIsSlanted- aft1->aftIsSlanted;
+	d= isSlanted- aft1->aftIsSlanted;
 	/* d /= 1.0; */
 
 	distance += d* d;
 	difCount++;
 	}
 
-    distance /= 3.0;
+    distance /= 2.0;
     distance= sqrt( distance );
 
     *pDifCount= difCount;
@@ -136,19 +134,11 @@ void utilFontFaceDistance(	int *			pDifCount,
     return;
     }
 
-static void utilFontCompareProps(	int *		pDifCount1,
-					int *		pDifCount2,
-					int *		pCmp,
+static void utilFontCompareProps(	int *		pCmp,
 					int		weight,
-					int		vnormal,
 					int		v1,
 					int		v2 )
     {
-    if  ( v1 != vnormal )
-	{ (*pDifCount1)++;	}
-    if  ( v2 != vnormal )
-	{ (*pDifCount2)++;	}
-
     if  ( v1 > v2 )
 	{ (*pCmp) += weight;	}
     if  ( v1 < v2 )
@@ -164,30 +154,16 @@ int utilFontCompareFaces(	const void *	vaft1,
     const AppFontTypeface *	aft1= (AppFontTypeface *)vaft1;
     const AppFontTypeface *	aft2= (AppFontTypeface *)vaft2;
 
-    int				difs1= 0;
-    int				difs2= 0;
     int				cmp= 0;
 
-    int				weight_range;
+    utilFontCompareProps( &cmp, 
+			4, aft1->aftWidth, aft2->aftWidth );
 
-    weight_range= ( FONTweight_MAX- FONTweight_MIN );
+    utilFontCompareProps( &cmp, 
+			2, aft1->aftWeight, aft2->aftWeight );
 
-    utilFontCompareProps( &difs1, &difs2, &cmp, 
-			4* ( weight_range+ 1 ), FONTwidthMEDIUM,
-			aft1->aftWidth, aft2->aftWidth );
-
-    utilFontCompareProps( &difs1, &difs2, &cmp, 
-			2, FONTweightMEDIUM,
-			aft1->aftWeight, aft2->aftWeight );
-
-    utilFontCompareProps( &difs1, &difs2, &cmp, 
-			1, 0,
-			aft1->aftIsSlanted, aft2->aftIsSlanted );
-
-    if  ( difs1 > difs2 )
-	{ return  1;	}
-    if  ( difs1 < difs2 )
-	{ return -1;	}
+    utilFontCompareProps( &cmp, 
+			1, aft1->aftIsSlanted, aft2->aftIsSlanted );
 
     if  ( cmp > 0 )
 	{ return  1;	}
@@ -214,30 +190,11 @@ int utilFontCompareFaces(	const void *	vaft1,
 /*									*/
 /************************************************************************/
 
-static int utilGetPsFamilyByText(	int *			pFamily,
-					const char *		name,
-					const AppFontFamily *	psf,
-					int			psfCount )
-    {
-    int			fam;
-
-    if  ( ! name )
-	{ return -1;	}
-
-    for ( fam= 0; fam < psfCount; psf++, fam++ )
-	{
-	if  ( psf->affFontFamilyText				&&
-	      ! strcmp( name, psf->affFontFamilyText )	)
-	    { *pFamily= fam; return 0;	}
-	}
-
-    return -1;
-    }
-
-static int utilGetPsFamilyByName(	int *			pFamily,
-					const char *		name,
-					const AppFontFamily *	psfList,
-					int			psfCount )
+static int utilGetPsFamilyByText(
+				int *				pFamily,
+				const char *			name,
+				int				encoding,
+				const PostScriptFontList *	psfl )
     {
     int				fam;
     const AppFontFamily *	psf;
@@ -245,9 +202,39 @@ static int utilGetPsFamilyByName(	int *			pFamily,
     if  ( ! name )
 	{ return -1;	}
 
-    psf= psfList;
-    for ( fam= 0; fam < psfCount; psf++, fam++ )
+    psf= psfl->psflFamilies;
+    for ( fam= 0; fam < psfl->psflFamilyCount; psf++, fam++ )
 	{
+	if  ( encoding != ENCODINGpsFONTSPECIFIC		&&
+	      ! psf->affSupportedCharsets[encoding].scSupported	)
+	    { continue;	}
+
+	if  ( psf->affFontFamilyName			&&
+	      ! strcmp( name, psf->affFontFamilyName )	)
+	    { *pFamily= fam; return 0;	}
+	}
+
+    return -1;
+    }
+
+static int utilGetPsFamilyByName( int *				pFamily,
+				const char *			name,
+				int				encoding,
+				const PostScriptFontList *	psfl )
+    {
+    int				fam;
+    const AppFontFamily *	psf;
+
+    if  ( ! name )
+	{ return -1;	}
+
+    psf= psfl->psflFamilies;
+    for ( fam= 0; fam < psfl->psflFamilyCount; psf++, fam++ )
+	{
+	if  ( encoding != ENCODINGpsFONTSPECIFIC		&&
+	      ! psf->affSupportedCharsets[encoding].scSupported	)
+	    { continue;	}
+
 	if  ( ! strcmp( name, psf->affFontFamilyName ) )
 	    { *pFamily= fam; return 0;	}
 	}
@@ -256,27 +243,38 @@ static int utilGetPsFamilyByName(	int *			pFamily,
 	{ name= "Times";	}
     if  ( ! strncmp( name, "Courier New", 11 ) )
 	{ name= "Courier";	}
-
+    if  ( ! strcmp( name, "Arial" ) )
+	{ name= "Helvetica";	}
+    if  ( ! strcmp( name, "Apple Chancery" ) )
+	{ name= "ITC Zapf Chancery";	}
     if  ( ! strncmp( name, "Wingdings", 9 ) )
 	{ name= "ITC Zapf Dingbats";	}
+    if  ( ! strncmp( name, "Webdings", 8 ) )
+	{ name= "ITC Zapf Dingbats";	}
 
-    psf= psfList;
-    for ( fam= 0; fam < psfCount; psf++, fam++ )
+    psf= psfl->psflFamilies;
+    for ( fam= 0; fam < psfl->psflFamilyCount; psf++, fam++ )
 	{
+	if  ( encoding != ENCODINGpsFONTSPECIFIC		&&
+	      ! psf->affSupportedCharsets[encoding].scSupported	)
+	    { continue;	}
+
 	if  ( ! strcmp( name, psf->affFontFamilyName ) )
 	    { *pFamily= fam; return 0;	}
 	}
 
-    if  ( ! strcmp( name, "Times New Roman" ) )
-	{ name= "Times";	}
-    if  ( ! strcmp( name, "Courier New" ) )
-	{ name= "Courier";	}
-    if  ( ! strcmp( name, "Apple Chancery" ) )
-	{ name= "ITC Zapf Chancery";	}
+    if  ( ! strncmp( name, "Wingdings", 9 ) )
+	{ name= "Dingbats";	}
+    if  ( ! strncmp( name, "Webdings", 8 ) )
+	{ name= "Dingbats";	}
 
-    psf= psfList;
-    for ( fam= 0; fam < psfCount; psf++, fam++ )
+    psf= psfl->psflFamilies;
+    for ( fam= 0; fam < psfl->psflFamilyCount; psf++, fam++ )
 	{
+	if  ( encoding != ENCODINGpsFONTSPECIFIC		&&
+	      ! psf->affSupportedCharsets[encoding].scSupported	)
+	    { continue;	}
+
 	if  ( ! strcmp( name, psf->affFontFamilyName ) )
 	    { *pFamily= fam; return 0;	}
 	}
@@ -284,22 +282,27 @@ static int utilGetPsFamilyByName(	int *			pFamily,
     return -1;
     }
 
-static int utilGetPsFamilyByStyle(	int *			pFamily,
-					const DocumentFont *	df,
-					const AppFontFamily *	psf,
-					int			psfCount )
+static int utilGetPsFamilyByStyle(
+				int *				pFamily,
+				const DocumentFont *		df,
+				int				encoding,
+				const PostScriptFontList *	psfl )
     {
     int				fam;
-    const AppFontFamily *	aff;
+    const AppFontFamily *	psf;
 
     /*  5  */
     if  ( ! df->dfFamilyStyle			||
 	  ! strcmp( df->dfFamilyStyle, "fnil" ) )
 	{
-	aff= psf;
-	for ( fam= 0; fam < psfCount; aff++, fam++ )
+	psf= psfl->psflFamilies;
+	for ( fam= 0; fam < psfl->psflFamilyCount; psf++, fam++ )
 	    {
-	    if  ( ! strcmp( "Helvetica", aff->affFontFamilyName ) )
+	    if  ( encoding != ENCODINGpsFONTSPECIFIC			&&
+		  ! psf->affSupportedCharsets[encoding].scSupported	)
+		{ continue;	}
+
+	    if  ( ! strcmp( "Helvetica", psf->affFontFamilyName ) )
 		{ *pFamily= fam; return 0;	}
 	    }
 	}
@@ -307,10 +310,14 @@ static int utilGetPsFamilyByStyle(	int *			pFamily,
     /*  6  */
     if  ( ! strcmp( df->dfFamilyStyle, "fswiss" ) )
 	{
-	aff= psf;
-	for ( fam= 0; fam < psfCount; aff++, fam++ )
+	psf= psfl->psflFamilies;
+	for ( fam= 0; fam < psfl->psflFamilyCount; psf++, fam++ )
 	    {
-	    if  ( ! strcmp( "Helvetica", aff->affFontFamilyName ) )
+	    if  ( encoding != ENCODINGpsFONTSPECIFIC			&&
+		  ! psf->affSupportedCharsets[encoding].scSupported	)
+		{ continue;	}
+
+	    if  ( ! strcmp( "Helvetica", psf->affFontFamilyName ) )
 		{ *pFamily= fam; return 0;	}
 	    }
 	}
@@ -318,10 +325,14 @@ static int utilGetPsFamilyByStyle(	int *			pFamily,
     /*  7  */
     if  ( ! strcmp( df->dfFamilyStyle, "froman" ) )
 	{
-	aff= psf;
-	for ( fam= 0; fam < psfCount; aff++, fam++ )
+	psf= psfl->psflFamilies;
+	for ( fam= 0; fam < psfl->psflFamilyCount; psf++, fam++ )
 	    {
-	    if  ( ! strcmp( "Times", aff->affFontFamilyName ) )
+	    if  ( encoding != ENCODINGpsFONTSPECIFIC			&&
+		  ! psf->affSupportedCharsets[encoding].scSupported	)
+		{ continue;	}
+
+	    if  ( ! strcmp( "Times", psf->affFontFamilyName ) )
 		{ *pFamily= fam; return 0;	}
 	    }
 	}
@@ -329,10 +340,14 @@ static int utilGetPsFamilyByStyle(	int *			pFamily,
     /*  8  */
     if  ( ! strcmp( df->dfFamilyStyle, "fmodern" ) )
 	{
-	aff= psf;
-	for ( fam= 0; fam < psfCount; aff++, fam++ )
+	psf= psfl->psflFamilies;
+	for ( fam= 0; fam < psfl->psflFamilyCount; psf++, fam++ )
 	    {
-	    if  ( ! strcmp( "Courier", aff->affFontFamilyName ) )
+	    if  ( encoding != ENCODINGpsFONTSPECIFIC			&&
+		  ! psf->affSupportedCharsets[encoding].scSupported	)
+		{ continue;	}
+
+	    if  ( ! strcmp( "Courier", psf->affFontFamilyName ) )
 		{ *pFamily= fam; return 0;	}
 	    }
 	}
@@ -340,10 +355,14 @@ static int utilGetPsFamilyByStyle(	int *			pFamily,
     /*  9  */
     if  ( ! strcmp( df->dfFamilyStyle, "fscript" ) )
 	{
-	aff= psf;
-	for ( fam= 0; fam < psfCount; aff++, fam++ )
+	psf= psfl->psflFamilies;
+	for ( fam= 0; fam < psfl->psflFamilyCount; psf++, fam++ )
 	    {
-	    if  ( ! strcmp( "ITC Zapf Chancery", aff->affFontFamilyName ) )
+	    if  ( encoding != ENCODINGpsFONTSPECIFIC			&&
+		  ! psf->affSupportedCharsets[encoding].scSupported	)
+		{ continue;	}
+
+	    if  ( ! strcmp( "ITC Zapf Chancery", psf->affFontFamilyName ) )
 		{ *pFamily= fam; return 0;	}
 	    }
 	}
@@ -351,10 +370,29 @@ static int utilGetPsFamilyByStyle(	int *			pFamily,
     /*  10  */
     if  ( ! strcmp( df->dfFamilyStyle, "fdecor" ) )
 	{
-	aff= psf;
-	for ( fam= 0; fam < psfCount; aff++, fam++ )
+	psf= psfl->psflFamilies;
+	for ( fam= 0; fam < psfl->psflFamilyCount; psf++, fam++ )
 	    {
-	    if  ( ! strcmp( "ITC Zapf Dingbats", aff->affFontFamilyName ) )
+	    if  ( encoding != ENCODINGpsFONTSPECIFIC			&&
+		  ! psf->affSupportedCharsets[encoding].scSupported	)
+		{ continue;	}
+
+	    if  ( ! strcmp( "ITC Zapf Chancery", psf->affFontFamilyName ) )
+		{ *pFamily= fam; return 0;	}
+	    }
+	}
+
+    /*  10  */
+    if  ( ! strcmp( df->dfFamilyStyle, "ftech" ) )
+	{
+	psf= psfl->psflFamilies;
+	for ( fam= 0; fam < psfl->psflFamilyCount; psf++, fam++ )
+	    {
+	    if  ( encoding != ENCODINGpsFONTSPECIFIC			&&
+		  ! psf->affSupportedCharsets[encoding].scSupported	)
+		{ continue;	}
+
+	    if  ( ! strcmp( "Symbol", psf->affFontFamilyName ) )
 		{ *pFamily= fam; return 0;	}
 	    }
 	}
@@ -362,65 +400,24 @@ static int utilGetPsFamilyByStyle(	int *			pFamily,
     return -1;
     }
 
-int utilFontGetPsFont(	int *			pFamily,
-			int *			pFace,
-			AppFontFamily **	pAff,
-			AppFontTypeface **	pAft,
-			int *			pFontEncoding,
-			const char *		afmDirectory,
-			const DocumentFont *	df,
-			const TextAttribute *	ta )
+/************************************************************************/
+/*									*/
+/*  Find the PostScript font family that best matches a document font	*/
+/*									*/
+/************************************************************************/
+
+static int utilGetPsFamilyForFont(
+				int *				pFamily,
+				int *				pFontEncoding,
+				const DocumentFont *		df,
+				const PostScriptFontList *	psfl )
     {
-    int			fam;
-    int			face;
-    int			turn;
-
-    AppFontFamily *	aff;
-    int			affCount;
-
-    AppFontFamily *	psf;
-    AppFontTypeface *	pst;
-
-    AppFontTypeface	aft;
-
-    int			encoding;
-
-    /*  3  */
-    if  ( psFontCatalog( afmDirectory, &aff, &affCount ) )
-	{ SDEB(afmDirectory); return -1;	}
-
-    /*  4  */
-    if  ( utilGetPsFamilyByText(  &fam, df->dfName, aff, affCount )	&&
-	  utilGetPsFamilyByName(  &fam, df->dfName, aff, affCount )	&&
-	  utilGetPsFamilyByStyle( &fam, df, aff, affCount )		)
-	{
-	SSDEB(df->dfName,df->dfFamilyStyle);
-
-	for ( fam= 0; fam < affCount; fam++ )
-	    { LSDEB(fam,aff[fam].affFontFamilyName);	}
-
-	return -1;
-	}
-
-    docInitFontTypeface( &aft );
-    
-    if  ( ta->taFontIsBold )
-	{
-	aft.aftIsBold= 1;
-	aft.aftWeight= FONTweightBOLD;
-	}
-
-    if  ( ta->taFontIsSlanted )
-	{ aft.aftIsSlanted= 1;	}
-
-    psf= aff+ fam;
+    int		encoding;
 
     switch( df->dfCharset )
 	{
 	case FONTcharsetDEFAULT:
-	    if  ( psf->affDefaultEncoding >= 0 )
-		{ encoding= psf->affDefaultEncoding;	}
-	    else{ encoding= ENCODINGpsISO_8859_1;	}
+	    encoding= ENCODINGpsFONTSPECIFIC;
 	    break;
 
 	case FONTcharsetSYMBOL:
@@ -436,16 +433,25 @@ int utilFontGetPsFont(	int *			pFamily,
 	    break;
 
 	case FONTcharsetRUSSIAN:
-	    LDEB(df->dfCharset);
-	    return -1;
+	    encoding= ENCODINGpsADOBE_CYRILLIC;
+	    break;
 
 	case FONTcharsetEE:
 	    encoding= ENCODINGpsISO_8859_2;
 	    break;
 
 	case FONTcharsetGREEK:
+	    encoding= ENCODINGpsISO_8859_7;
+	    break;
+
 	case FONTcharsetTURKISH:
+	    encoding= ENCODINGpsISO_8859_9;
+	    break;
+
 	case FONTcharsetBALTIC:
+	    encoding= ENCODINGpsISO_8859_13;
+	    break;
+
 	case FONTcharsetHEBREW:
 	case FONTcharsetARABIC:
 	case FONTcharsetSHIFTJIS:
@@ -453,66 +459,516 @@ int utilFontGetPsFont(	int *			pFamily,
 	case FONTcharsetGB2313:
 	case FONTcharsetCHINESEBIG5:
 	default:
-	    LDEB(df->dfCharset);
-	    if  ( psf->affDefaultEncoding >= 0 )
-		{ encoding= psf->affDefaultEncoding;	}
-	    else{ encoding= ENCODINGpsISO_8859_1;	}
+	    /*LDEB(df->dfCharset);*/
+	    encoding= ENCODINGpsFONTSPECIFIC;
 	    break;
 	}
 
-    for ( turn= 0; turn < 2; turn++ )
+    /*  4  */
+    if  ( utilGetPsFamilyByText(  pFamily, df->dfName, encoding, psfl )	&&
+	  utilGetPsFamilyByName(  pFamily, df->dfName, encoding, psfl )	&&
+	  utilGetPsFamilyByStyle( pFamily, df, encoding, psfl )		)
 	{
-	int		faceFound= psf->affFaceCount;
-	int		difCountFound= 999;
-	double		distanceFound= 999;
+	/* SSLLDEB(df->dfName,df->dfFamilyStyle,df->dfCharset,encoding);*/
+	encoding= ENCODINGpsFONTSPECIFIC;
+	}
 
-	pst= psf->affFaces;
-	for ( face= 0; face < psf->affFaceCount; pst++, face++ )
+    if  ( utilGetPsFamilyByText(  pFamily, df->dfName, encoding, psfl )	&&
+	  utilGetPsFamilyByName(  pFamily, df->dfName, encoding, psfl )	&&
+	  utilGetPsFamilyByStyle( pFamily, df, encoding, psfl )		)
+	{
+	SSLLDEB(df->dfName,df->dfFamilyStyle,df->dfCharset,encoding);
+	/*
+	{
+	int		fam;
+
+	for ( fam= 0; fam < psfl->psflFamilyCount; fam++ )
+	    { LSDEB(fam,psfl->psflFamilies[fam].affFontFamilyName);	}
+	}
+	*/
+
+	return -1;
+	}
+
+    if  ( encoding == ENCODINGpsFONTSPECIFIC )
+	{ encoding= psfl->psflFamilies[*pFamily].affDefaultEncoding;	}
+
+    *pFontEncoding= encoding;
+    return 0;
+    }
+
+/************************************************************************/
+/*									*/
+/*  Add the list of available PostScript fonts to the font list of the	*/
+/*  document.								*/
+/*									*/
+/************************************************************************/
+
+int utilAddPsFontsToDocList(	DocumentFontList *		dfl,
+				const PostScriptFontList *	psfl )
+    {
+    int				fam;
+    const AppFontFamily *	psf;
+
+    psf= psfl->psflFamilies;
+    for ( fam= 0; fam < psfl->psflFamilyCount; psf++, fam++ )
+	{
+	int			enc;
+	int			fac;
+	const AppFontTypeface *	aft= psf->affFaces;
+	short int		psFaceNumber[FONTface_COUNT];
+
+	for ( fac= 0; fac < FONTface_COUNT; fac++ )
+	    { psFaceNumber[fac]= -1; }
+
+	for ( fac= 0; fac < psf->affFaceCount; aft++, fac++ )
 	    {
-	    int		difCount;
-	    double	distance;
+	    psFaceNumber[FACE_INDEX(aft->aftIsSlanted,aft->aftIsBold)]= fac;
+	    }
 
-	    AfmFontInfo *	afi= (AfmFontInfo *)pst->aftPrintingData;
+	if  ( psFaceNumber[0] < 0 )
+	    {
+	    for ( fac= 0; fac < FONTface_COUNT; fac++ )
+		{ 
+		if  ( psFaceNumber[fac] >= 0 )
+		    { psFaceNumber[0]= psFaceNumber[fac]; break; }
+		}
+	    }
+	for ( fac= 0; fac < FONTface_COUNT; fac++ )
+	    { 
+	    if  ( psFaceNumber[fac] < 0 )
+		{ psFaceNumber[fac]= psFaceNumber[0]; }
+	    }
 
-	    if  ( ! afi->afiSupportedCharsets[encoding].scSupported )
+	for ( enc= 0; enc < ENCODINGps_COUNT; enc++ )
+	    {
+	    int				fontNumber;
+	    DocumentFont *		df;
+	    const char *		name= psf->affFontFamilyName;
+	    DocumentFontFamily *	dff;
+
+	    if  ( ! psf->affSupportedCharsets[enc].scSupported )
 		{ continue;	}
 
-	    utilFontFaceDistance( &difCount, &distance, pst, &aft );
+	    fontNumber= docGetFontByName( dfl, name, enc );
+	    if  ( fontNumber < 0 )
+		{ SLDEB(name,fontNumber); return -1; }
 
-	    if  ( difCount < difCountFound		&&
-		  distance < distanceFound		)
+	    df= dfl->dflFonts+ fontNumber;
+	    if  ( df->dfPsFamilyNumber < 0 )
+		{ df->dfPsFamilyNumber= fam;	}
+
+	    dff= dfl->dflFamilies+ df->dfDocFamilyIndex;
+
+	    if  ( df->dfEncodingSet < 0 )
+		{ df->dfEncodingSet= enc; }
+	    if  ( dff->dffFontForEncoding[enc] < 0 )
+		{ dff->dffFontForEncoding[enc]= fontNumber;	}
+
+	    for ( fac= 0; fac < FONTface_COUNT; fac++ )
 		{
-		faceFound= face;
-		difCountFound= difCount;
-		distanceFound= distance;
+		if  ( psFaceNumber[fac] >= 0 )
+		    { df->dfPsFaceNumber[fac]= psFaceNumber[fac];	}
+		}
+	    }
+	}
+
+    return 0;
+    }
+
+/************************************************************************/
+/*									*/
+/*  Find PostScript fonts for the fonts in the font list.		*/
+/*									*/
+/*  1)  For all document fonts in the font list.			*/
+/*  2)  If we already have a PostScript font with the font, we must be	*/
+/*	happy.								*/
+/*  3)  Match a PostScript family to this font. If this fails proceed	*/
+/*	with the next font. Otherwise remember the match.		*/
+/*  4)  If no encoding could be derived from explicit data such as \cpg	*/
+/*	or \fcharset tags in the document, derive an encoding from the	*/
+/*	PostScript font.						*/
+/*  4a) Default encoding.						*/
+/*  4b) The first encoding that is supported.				*/
+/*  5)  Remember that this document font supports its encoding with the	*/
+/*	document font family.						*/
+/*  6)  Remember what faces are available. Derive the information from	*/
+/*	the PostScript faces.						*/
+/*									*/
+/************************************************************************/
+
+int utilFindPsFontsForDocFonts(	DocumentFontList *		dfl,
+				const PostScriptFontList *	psfl )
+    {
+    int			font;
+    DocumentFont *	df;
+
+    /*  1  */
+    df= dfl->dflFonts;
+    for ( font= 0; font < dfl->dflFontCount; df++, font++ )
+	{
+	/*  2  */
+	if  ( df->dfPsFamilyNumber >= 0 )
+	    { continue;	}
+	if  ( df->dfDocFontNumber < 0 )
+	    { continue;	}
+	if  ( ! df->dfName )
+	    { continue;	}
+
+	if  ( utilFindPsFontForDocFont( df, dfl, psfl ) )
+	    { SDEB(df->dfName); continue;	}
+	}
+
+    return 0;
+    }
+
+int utilFindPsFontForDocFont(	DocumentFont *			df,
+				DocumentFontList *		dfl,
+				const PostScriptFontList *	psfl )
+    {
+    int				fam;
+    int				fac;
+    int				encoding;
+
+    const AppFontFamily *	psf;
+    const AppFontTypeface *	aft;
+
+    /*  3  */
+    if  ( utilGetPsFamilyForFont( &fam, &encoding, df, psfl ) )
+	{ SDEB(df->dfName); return -1; }
+
+    df->dfPsFamilyNumber= fam;
+    psf= psfl->psflFamilies+ fam;
+
+    /*  4  */
+    if  ( df->dfEncodingSet < 0 )
+	{
+	/*  4a  */
+	if  ( psf->affDefaultEncoding >= 0 )
+	    { df->dfEncodingSet= psf->affDefaultEncoding;	}
+	else{
+	    int		enc;
+
+	    /*  4b  */
+	    for ( enc= 0; enc < ENCODINGps_COUNT; enc++ )
+		{
+		if  ( psf->affSupportedCharsets[enc].scSupported )
+		    { df->dfEncodingSet= enc; break;	}
 		}
 	    }
 
-	if  ( turn == 0				&&
-	      face >= psf->affFaceCount		&&
-	      psf->affDefaultEncoding >= 0	)
-	    {
-	    encoding= psf->affDefaultEncoding;
-	    continue;
-	    }
-
-	face= faceFound;
-	pst= psf->affFaces+ face;
-
-	if  ( face >= psf->affFaceCount )
-	    { face= 0; pst= psf->affFaces;	}
-
-	break;
+	if  ( df->dfEncodingSet < 0 )
+	    { SLDEB(df->dfName,df->dfEncodingSet);	}
+	}
+    else{
+	if  ( encoding != df->dfEncodingSet )
+	    { df->dfEncodingSet= encoding;	}
 	}
 
-    if  ( face >= psf->affFaceCount )
-	{ LLDEB(ta->taFontIsBold,ta->taFontIsSlanted); return -1;	}
 
-    *pFamily= fam;
-    *pFace= face;
-    *pAff= psf;
-    *pAft= pst;
-    *pFontEncoding= encoding;
+    /*  5  */
+    if  ( df->dfEncodingSet >= 0 )
+	{
+	DocumentFontFamily *	dff;
+
+	dff= dfl->dflFamilies+ df->dfDocFamilyIndex;
+
+	if  ( dff->dffFontForEncoding[df->dfEncodingSet] < 0 )
+	    {
+	    dff->dffFontForEncoding[df->dfEncodingSet]= df->dfDocFontNumber;
+	    }
+	}
+
+    /*  6  */
+    aft= psf->affFaces;
+    for ( fac= 0; fac < psf->affFaceCount; aft++, fac++ )
+	{
+	df->dfPsFaceNumber[FACE_INDEX(aft->aftIsSlanted,aft->aftIsBold)]=
+								    fac;
+	}
+
+    if  ( df->dfPsFaceNumber[0] < 0 )
+	{
+	for ( fac= 0; fac < FONTface_COUNT; fac++ )
+	    { 
+	    if  ( df->dfPsFaceNumber[fac] >= 0 )
+		{ df->dfPsFaceNumber[0]= df->dfPsFaceNumber[fac]; break; }
+	    }
+	}
+    for ( fac= 0; fac < FONTface_COUNT; fac++ )
+	{ 
+	if  ( df->dfPsFaceNumber[fac] < 0 )
+	    { df->dfPsFaceNumber[fac]= df->dfPsFaceNumber[0]; }
+	}
+
+    return 0;
+    }
+
+/************************************************************************/
+/*									*/
+/*  Find PostScript face for a text attribute.				*/
+/*									*/
+/************************************************************************/
+
+AfmFontInfo * utilPsGetAfi(	int *				pEncoding,
+				const DocumentFontList *	dfl,
+				const PostScriptFontList *	psfl,
+				const TextAttribute *		ta )
+    {
+    const AppFontFamily *		aff;
+    const AppFontTypeface *		aft;
+    const DocumentFont *		df;
+    int					fac;
+
+    if  ( ta->taFontNumber < 0 || ta->taFontNumber >= dfl->dflFontCount )
+	{
+	LLDEB(ta->taFontNumber,dfl->dflFontCount);
+	return (AfmFontInfo *)0;
+	}
+
+    df= dfl->dflFonts+ ta->taFontNumber;
+
+    if  ( df->dfPsFamilyNumber < 0			||
+	  df->dfPsFamilyNumber >= psfl->psflFamilyCount	)
+	{
+	SLLDEB(df->dfName,df->dfPsFamilyNumber,psfl->psflFamilyCount);
+	return (AfmFontInfo *)0;
+	}
+
+    aff= psfl->psflFamilies+ df->dfPsFamilyNumber;
+
+    fac= df->dfPsFaceNumber[FACE_INDEX(ta->taFontIsSlanted,ta->taFontIsBold)];
+    if  ( fac < 0 || fac >= aff->affFaceCount )
+	{
+	SDEB(df->dfName);
+	LLDEB(ta->taFontIsSlanted,ta->taFontIsBold);
+	LLDEB(fac,aff->affFaceCount);
+	fac= 0;
+	}
+
+    aft= aff->affFaces+ fac;
+
+    if  ( ! aft->aftPrintingData )
+	{ XDEB(aft->aftPrintingData);	}
+
+    *pEncoding= df->dfEncodingSet;
+    return (AfmFontInfo *)aft->aftPrintingData;
+    }
+
+/************************************************************************/
+/*									*/
+/*  Derive a font weight from the string designation.			*/
+/*									*/
+/************************************************************************/
+
+int utilFontWeightFromString(		int *		pWeight,
+					int *		pStart,
+					int *		pLength,
+					const char *	name )
+    {
+    const char *	s= name;
+
+    while( s[0] == ' ' )
+	{ s++;	}
+
+    while( *s )
+	{
+	if  ( ! strncmp( s, "Extra Light", 11 ) )
+	    {
+	    *pWeight= FONTweightEXTRA_LIGHT;
+	    *pStart= s- name;
+	    *pLength= 11;
+	    return 1;
+	    }
+
+	if  ( ! strncmp( s, "Ultralight", 10 ) )
+	    {
+	    *pWeight= FONTweightEXTRA_LIGHT;
+	    *pStart= s- name;
+	    *pLength= 10;
+	    return 1;
+	    }
+
+	if  ( ! strncmp( s, "Light", 5 ) )
+	    {
+	    *pWeight= FONTweightLIGHT;
+	    *pStart= s- name;
+	    *pLength= 5;
+	    return 1;
+	    }
+
+	if  ( ! strncmp( s, "Book", 4 ) )
+	    {
+	    *pWeight= FONTweightSEMI_LIGHT;
+	    *pStart= s- name;
+	    *pLength= 4;
+	    return 1;
+	    }
+
+	if  ( ! strncmp( s, "Regular", 7 ) )
+	    {
+	    *pWeight= FONTweightMEDIUM;
+	    *pStart= s- name;
+	    *pLength= 7;
+	    return 1;
+	    }
+	if  ( ! strncmp( s, "Normal", 6 ) )
+	    {
+	    *pWeight= FONTweightMEDIUM;
+	    *pStart= s- name;
+	    *pLength= 6;
+	    return 1;
+	    }
+	if  ( ! strncmp( s, "Medium", 6 ) )
+	    {
+	    *pWeight= FONTweightMEDIUM;
+	    *pStart= s- name;
+	    *pLength= 6;
+	    return 1;
+	    }
+	if  ( ! strncmp( s, "Roman", 5 ) )
+	    {
+	    *pWeight= FONTweightMEDIUM;
+	    *pStart= s- name;
+	    *pLength= 5;
+	    return 1;
+	    }
+
+
+	if  ( ! strncmp( s, "Semibold", 8 ) )
+	    {
+	    *pWeight= FONTweightSEMI_BOLD;
+	    *pStart= s- name;
+	    *pLength= 8;
+	    return 1;
+	    }
+	if  ( ! strncmp( s, "Demibold", 8 ) )
+	    {
+	    *pWeight= FONTweightSEMI_BOLD;
+	    *pStart= s- name;
+	    *pLength= 8;
+	    return 1;
+	    }
+	if  ( ! strncmp( s, "Demi", 4 ) )
+	    {
+	    *pWeight= FONTweightSEMI_BOLD;
+	    *pStart= s- name;
+	    *pLength= 4;
+	    return 1;
+	    }
+
+	if  ( ! strncmp( s, "Bold", 4 ) )
+	    {
+	    *pWeight= FONTweightBOLD;
+	    *pStart= s- name;
+	    *pLength= 4;
+	    return 1;
+	    }
+
+	if  ( ! strncmp( s, "Extrabold", 9 ) )
+	    {
+	    *pWeight= FONTweightEXTRA_BOLD;
+	    *pStart= s- name;
+	    *pLength= 9;
+	    return 1;
+	    }
+
+	if  ( ! strncmp( s, "Heavy", 5 ) )
+	    {
+	    *pWeight= FONTweightEXTRA_BOLD;
+	    *pStart= s- name;
+	    *pLength= 5;
+	    return 1;
+	    }
+
+	if  ( ! strncmp( s, "Black", 5 ) )
+	    {
+	    *pWeight= FONTweightULTRA_BOLD;
+	    *pStart= s- name;
+	    *pLength= 5;
+	    return 1;
+	    }
+
+
+	while( s[0] && s[0] != ' ' )
+	    { s++;	}
+	while( s[0] == ' ' )
+	    { s++;	}
+	}
+
+    return 0;
+    }
+
+
+int utilFontWidthFromString(		int *		pWidth,
+					int *		pStart,
+					int *		pLength,
+					const char *	name )
+    {
+    const char *	s= name;
+
+    while( s[0] == ' ' )
+	{ s++;	}
+
+    while( *s )
+	{
+	if  ( ! strncmp( s, "Narrow", 6 )		&&
+	      ( s[6] == '\0' || s[6] == ' ' )	)
+	    {
+	    *pWidth= FONTwidthCONDENSED;
+	    *pStart= s- name;
+	    *pLength= 6;
+	    return 1;
+	    }
+
+	if  ( ! strncmp( s, "Extra Condensed", 15 )	&&
+	      ( s[6] == '\0' || s[6] == ' ' )	)
+	    {
+	    *pWidth= FONTwidthEXTRA_CONDENSED;
+	    *pStart= s- name;
+	    *pLength= 15;
+	    return 1;
+	    }
+	
+	if  ( ! strncmp( s, "Condensed", 9 )	&&
+	      ( s[9] == '\0' || s[9] == ' ' )	)
+	    {
+	    *pWidth= FONTwidthCONDENSED;
+	    *pStart= s- name;
+	    *pLength= 9;
+	    return 1;
+	    }
+	if  ( ! strncmp( s, "Compressed", 9 )	&&
+	      ( s[9] == '\0' || s[9] == ' ' )	)
+	    {
+	    *pWidth= FONTwidthCONDENSED;
+	    *pStart= s- name;
+	    *pLength= 9;
+	    return 1;
+	    }
+	if  ( ! strncmp( s, "Compact", 9 )	&&
+	      ( s[9] == '\0' || s[9] == ' ' )	)
+	    {
+	    *pWidth= FONTwidthCONDENSED;
+	    *pStart= s- name;
+	    *pLength= 9;
+	    return 1;
+	    }
+	
+	if  ( ! strncmp( s, "Extended", 8 )	&&
+	      ( s[8] == '\0' || s[8] == ' ' )	)
+	    {
+	    *pWidth= FONTwidthEXPANDED;
+	    *pStart= s- name;
+	    *pLength= 8;
+	    return 1;
+	    }
+
+	while( s[0] && s[0] != ' ' )
+	    { s++;	}
+	while( s[0] == ' ' )
+	    { s++;	}
+	}
 
     return 0;
     }

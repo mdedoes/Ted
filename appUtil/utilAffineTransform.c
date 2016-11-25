@@ -13,7 +13,7 @@
 
 =========================================================
 
-Affine transform T: T(x)= Ax+ t, maps trangle XYZ to PQR.
+Affine transform T: T(x)= Ax+ t, maps triangle XYZ to PQR.
 XYZ nor PQR is collinear.
 
 Derivation...
@@ -115,7 +115,7 @@ a_21=
 
 #   define	PARANOIA 	0
 
-int utilAffineTransformForRectangles(	AffineTransform2D *	atRes,
+int utilAffineTransformForTriangles(	AffineTransform2D *	atRes,
 					double			x_1,
 					double			x_2,
 					double			y_1,
@@ -320,7 +320,7 @@ void zzz( void )
 			    if  ( r_2 == q_2 && r_2 == p_2 )
 				{ continue;	}
 
-			    utilAffineTransformForRectangles( &at,
+			    utilAffineTransformForTriangles( &at,
 								x_1, x_2,
 								y_1, y_2,
 								z_1, z_2,
@@ -370,14 +370,35 @@ void utilIdentityAffineTransform2D(	AffineTransform2D *	at2 )
 void utilRotationAffineTransform2D(	AffineTransform2D *	at2,
 					double			a )
     {
+    double	cosa= cos( a );
+    double	sina= sin( a );
+
     utilInitAffineTransform2D( at2 );
 
-    at2->at2Axx= +cos( a );
-    at2->at2Axy= +sin( a );
-    at2->at2Ayx= -sin( a );
-    at2->at2Ayy= +cos( a );
+    at2->at2Axx= +cosa;
+    at2->at2Axy= +sina;
+    at2->at2Ayx= -sina;
+    at2->at2Ayy= +cosa;
 
     return;
+    }
+
+double utilAffineTransformDeterminant2D(
+				    const AffineTransform2D *	at2 )
+    {
+    return	at2->at2Axx* at2->at2Ayy-
+		at2->at2Axy* at2->at2Ayx;
+    }
+
+double utilAffineTransformDeterminant3D(
+				    const AffineTransform3D *	at3 )
+    {
+    return	at3->at3Axx* at3->at3Ayy* at3->at3Azz+
+		at3->at3Axy* at3->at3Azy* at3->at3Axz+
+		at3->at3Azx* at3->at3Axy* at3->at3Ayz-
+		at3->at3Axz* at3->at3Ayy* at3->at3Azx-
+		at3->at3Ayz* at3->at3Azy* at3->at3Axx-
+		at3->at3Azz* at3->at3Axy* at3->at3Ayx;
     }
 
 /************************************************************************/
@@ -421,12 +442,15 @@ void utilIdentityAffineTransform3D(	AffineTransform3D *	at3 )
 void utilXYRotationAffineTransform3D(	AffineTransform3D *	at3,
 					double			a )
     {
+    double	cosa= cos( a );
+    double	sina= sin( a );
+
     utilInitAffineTransform3D( at3 );
 
-    at3->at3Axx= +cos( a );
-    at3->at3Axy= +sin( a );
-    at3->at3Ayx= -sin( a );
-    at3->at3Ayy= +cos( a );
+    at3->at3Axx= +cosa;
+    at3->at3Axy= +sina;
+    at3->at3Ayx= -sina;
+    at3->at3Ayy= +cosa;
 
     at3->at3Azz= 1.0;
 
@@ -436,12 +460,15 @@ void utilXYRotationAffineTransform3D(	AffineTransform3D *	at3,
 void utilXZRotationAffineTransform3D(	AffineTransform3D *	at3,
 					double			a )
     {
+    double	cosa= cos( a );
+    double	sina= sin( a );
+
     utilInitAffineTransform3D( at3 );
 
-    at3->at3Axx= +cos( a );
-    at3->at3Axz= +sin( a );
-    at3->at3Azx= -sin( a );
-    at3->at3Azz= +cos( a );
+    at3->at3Axx= +cosa;
+    at3->at3Axz= +sina;
+    at3->at3Azx= -sina;
+    at3->at3Azz= +cosa;
 
     at3->at3Ayy= 1.0;
 
@@ -451,12 +478,15 @@ void utilXZRotationAffineTransform3D(	AffineTransform3D *	at3,
 void utilYZRotationAffineTransform3D(	AffineTransform3D *	at3,
 					double			a )
     {
+    double	cosa= cos( a );
+    double	sina= sin( a );
+
     utilInitAffineTransform3D( at3 );
 
-    at3->at3Ayy= +cos( a );
-    at3->at3Ayz= +sin( a );
-    at3->at3Azy= -sin( a );
-    at3->at3Azz= +cos( a );
+    at3->at3Ayy= +cosa;
+    at3->at3Ayz= +sina;
+    at3->at3Azy= -sina;
+    at3->at3Azz= +cosa;
 
     at3->at3Axx= 1.0;
 

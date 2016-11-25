@@ -20,11 +20,15 @@ WFLAGS=	-Wall			\
 
 #CFLAGS	= $(WFLAGS) -g -O2 $(INCLUDES)
 
-# 62 lines
+# 74 lines
 OBS	=	\
+		utilX11FontNames.o\
 		utilTree.o\
 		utilTextAttributeAdmin.o\
 		utilTextAttribute.o\
+		utilT1Entries.o\
+		utilRoman.o\
+		utilQuadTree.o\
 		utilPs.o\
 		utilPropMask.o\
 		utilPrinter.o\
@@ -33,6 +37,10 @@ OBS	=	\
 		utilNup.o\
 		utilMemoryBuffer.o\
 		utilMatchFont.o\
+		utilMapFontEncoding_ISO9_WIN1254.o\
+		utilMapFontEncoding_ISO7_WIN1253.o\
+		utilMapFontEncoding_ISO13_WIN1257.o\
+		utilMapFontEncodingCyrillic.o\
 		utilMapFontEncoding.o\
 		utilMD5.o\
 		utilJenkinsPerfectHash.o\
@@ -46,9 +54,11 @@ OBS	=	\
 		utilCgiEcho.o\
 		utilBase85.o\
 		utilBase64.o\
+		utilBase26.o\
 		utilAffineTransform.o\
 		sioStdout.o\
 		sioStdio.o\
+		sioStdin.o\
 		sioSmtp.o\
 		sioQuotedPrintable.o\
 		sioPrintf.o\
@@ -69,8 +79,10 @@ OBS	=	\
 		sioBlocked.o\
 		sioBase85.o\
 		sioBase64.o\
+		psTtf.o\
 		psGlyphs.o\
 		psFont.o\
+		psAfm.o\
 		geo2DInteger.o\
 		docFont.o\
 		appUrl.o\
@@ -172,6 +184,7 @@ docFont.o: \
     docFont.h \
     ../appUtil/utilPropMask.h \
     ../appUtil/utilTextAttribute.h \
+    ../appUtil/utilFontEncoding.h \
     utilFontEncoding.h
 
 geo2DInteger.o: \
@@ -181,15 +194,24 @@ geo2DInteger.o: \
     ../include/appDebugon.h \
     ../include/appDebug.h
 
+psAfm.o: \
+    psAfm.c \
+    appUtilConfig.h \
+    psFont.h \
+    ../appUtil/utilFontEncoding.h \
+    ../appUtil/sioGeneral.h \
+    ../include/appDebugon.h \
+    ../include/appDebug.h
+
 psFont.o: \
     psFont.c \
     appUtilConfig.h \
     docFont.h \
     ../appUtil/utilPropMask.h \
     ../appUtil/utilTextAttribute.h \
-    psFont.h \
-    ../appUtil/docFont.h \
     ../appUtil/utilFontEncoding.h \
+    psFont.h \
+    ../appUtil/sioGeneral.h \
     appSystem.h \
     ../include/appDebugon.h \
     ../include/appDebug.h
@@ -198,11 +220,29 @@ psGlyphs.o: \
     psGlyphs.c \
     appUtilConfig.h \
     psFont.h \
+    ../appUtil/utilFontEncoding.h \
+    ../appUtil/sioGeneral.h \
+    ../include/charnames.h \
+    ../include/appDebugon.h \
+    ../include/appDebug.h
+
+psTtf.o: \
+    psTtf.c \
+    ../appUtil/sioMemory.h \
+    ../appUtil/sioGeneral.h \
+    ../appUtil/utilMemoryBuffer.h \
+    ../appUtil/sioEndian.h \
+    ../appUtil/utilEndian.h \
+    ../appUtil/sioHex.h \
+    ../appUtil/utilMatchFont.h \
     ../appUtil/docFont.h \
     ../appUtil/utilPropMask.h \
     ../appUtil/utilTextAttribute.h \
     ../appUtil/utilFontEncoding.h \
-    ../include/charnames.h
+    ../appUtil/psFont.h \
+    ../appUtil/utilAffineTransform.h \
+    ../include/appDebugon.h \
+    ../include/appDebug.h
 
 sioBase64.o: \
     sioBase64.c \
@@ -376,6 +416,14 @@ sioSmtp.o: \
     ../include/appDebugon.h \
     ../include/appDebug.h
 
+sioStdin.o: \
+    sioStdin.c \
+    appUtilConfig.h \
+    ../appUtil/sioStdin.h \
+    ../appUtil/sioGeneral.h \
+    ../include/appDebugon.h \
+    ../include/appDebug.h
+
 sioStdio.o: \
     sioStdio.c \
     appUtilConfig.h \
@@ -395,6 +443,13 @@ sioStdout.o: \
 utilAffineTransform.o: \
     utilAffineTransform.c \
     utilAffineTransform.h \
+    ../include/appDebugon.h \
+    ../include/appDebug.h
+
+utilBase26.o: \
+    utilBase26.c \
+    appUtilConfig.h \
+    utilBase26.h \
     ../include/appDebugon.h \
     ../include/appDebug.h
 
@@ -453,6 +508,7 @@ utilFontEncoding.o: \
 utilFontmap.o: \
     utilFontmap.c \
     ../appUtil/appUtilConfig.h \
+    ../appUtil/appSystem.h \
     ../appUtil/utilFontmap.h \
     ../include/appDebugon.h \
     ../include/appDebug.h
@@ -482,10 +538,40 @@ utilMapFontEncoding.o: \
     utilMapFontEncoding.c \
     appUtilConfig.h \
     psFont.h \
-    ../appUtil/docFont.h \
-    ../appUtil/utilPropMask.h \
-    ../appUtil/utilTextAttribute.h \
     ../appUtil/utilFontEncoding.h \
+    ../appUtil/sioGeneral.h \
+    ../include/charnames.h
+
+utilMapFontEncodingCyrillic.o: \
+    utilMapFontEncodingCyrillic.c \
+    appUtilConfig.h \
+    psFont.h \
+    ../appUtil/utilFontEncoding.h \
+    ../appUtil/sioGeneral.h \
+    ../include/charnames.h
+
+utilMapFontEncoding_ISO13_WIN1257.o: \
+    utilMapFontEncoding_ISO13_WIN1257.c \
+    appUtilConfig.h \
+    psFont.h \
+    ../appUtil/utilFontEncoding.h \
+    ../appUtil/sioGeneral.h \
+    ../include/charnames.h
+
+utilMapFontEncoding_ISO7_WIN1253.o: \
+    utilMapFontEncoding_ISO7_WIN1253.c \
+    appUtilConfig.h \
+    psFont.h \
+    ../appUtil/utilFontEncoding.h \
+    ../appUtil/sioGeneral.h \
+    ../include/charnames.h
+
+utilMapFontEncoding_ISO9_WIN1254.o: \
+    utilMapFontEncoding_ISO9_WIN1254.c \
+    appUtilConfig.h \
+    psFont.h \
+    ../appUtil/utilFontEncoding.h \
+    ../appUtil/sioGeneral.h \
     ../include/charnames.h
 
 utilMatchFont.o: \
@@ -497,9 +583,12 @@ utilMatchFont.o: \
     docFont.h \
     ../appUtil/utilPropMask.h \
     ../appUtil/utilTextAttribute.h \
+    ../appUtil/utilFontEncoding.h \
     psFont.h \
+    ../appUtil/sioGeneral.h \
+    utilMatchFont.h \
     ../appUtil/docFont.h \
-    ../appUtil/utilFontEncoding.h
+    ../appUtil/psFont.h
 
 utilMemoryBuffer.o: \
     utilMemoryBuffer.c \
@@ -522,12 +611,14 @@ utilNup.o: \
 utilPostscriptFace.o: \
     utilPostscriptFace.c \
     appUtilConfig.h \
+    ../appUtil/utilTree.h \
     ../appUtil/utilPostscriptFace.h \
     ../appUtil/docFont.h \
     ../appUtil/utilPropMask.h \
     ../appUtil/utilTextAttribute.h \
-    ../appUtil/psFont.h \
     ../appUtil/utilFontEncoding.h \
+    ../appUtil/psFont.h \
+    ../appUtil/sioGeneral.h \
     ../include/appDebugon.h \
     ../include/appDebug.h
 
@@ -537,10 +628,14 @@ utilPostscriptFontCatalog.o: \
     docFont.h \
     ../appUtil/utilPropMask.h \
     ../appUtil/utilTextAttribute.h \
-    psFont.h \
-    ../appUtil/docFont.h \
     ../appUtil/utilFontEncoding.h \
+    psFont.h \
+    ../appUtil/sioGeneral.h \
+    utilMatchFont.h \
+    ../appUtil/docFont.h \
+    ../appUtil/psFont.h \
     appSystem.h \
+    utilT1Entries.h \
     ../include/appDebugon.h \
     ../include/appDebug.h
 
@@ -565,13 +660,47 @@ utilPs.o: \
     ../appUtil/geo2DInteger.h \
     ../appUtil/utilDocumentGeometry.h \
     ../appUtil/utilPropMask.h \
-    ../appUtil/docFont.h \
-    ../appUtil/utilTextAttribute.h \
     ../appUtil/psFont.h \
     ../appUtil/utilFontEncoding.h \
     ../appUtil/utilPostscriptFace.h \
+    ../appUtil/docFont.h \
+    ../appUtil/utilTextAttribute.h \
     ../appUtil/utilAffineTransform.h \
     ../appUtil/utilNup.h \
+    ../appUtil/utilTree.h \
+    ../appUtil/utilFontmap.h \
+    ../appUtil/appSystem.h \
+    ../appUtil/sioStdio.h \
+    ../appUtil/sioPfb.h \
+    ../include/appDebugon.h \
+    ../include/appDebug.h
+
+utilQuadTree.o: \
+    utilQuadTree.c \
+    utilQuadTree.h \
+    appUtilConfig.h \
+    geo2DInteger.h \
+    ../include/appDebugon.h \
+    ../include/appDebug.h
+
+utilRoman.o: \
+    utilRoman.c \
+    appUtilConfig.h \
+    utilRoman.h \
+    ../include/appDebugon.h \
+    ../include/appDebug.h
+
+utilT1Entries.o: \
+    utilT1Entries.c \
+    appUtilConfig.h \
+    psFont.h \
+    ../appUtil/utilFontEncoding.h \
+    ../appUtil/sioGeneral.h \
+    appSystem.h \
+    utilX11FontNames.h \
+    utilT1Entries.h \
+    ../appUtil/psFont.h \
+    utilFontmap.h \
     ../include/appDebugon.h \
     ../include/appDebug.h
 
@@ -596,6 +725,13 @@ utilTextAttributeAdmin.o: \
 utilTree.o: \
     utilTree.c \
     utilTree.h \
+    ../include/appDebugon.h \
+    ../include/appDebug.h
+
+utilX11FontNames.o: \
+    utilX11FontNames.c \
+    appUtilConfig.h \
+    utilX11FontNames.h \
     ../include/appDebugon.h \
     ../include/appDebug.h
 

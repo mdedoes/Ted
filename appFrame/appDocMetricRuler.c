@@ -244,8 +244,7 @@ void appRemoveRectangleSelection( DocumentRectangle *	drVisible,
 
     if  ( drSelected->drX1 >= 0 )
 	{
-	appExposeRectangle( add,
-			drSelected->drX1- ox, 0, 2, high );
+	appExposeRectangle( add, drSelected->drX1- ox, 0, 2, high );
 
 	drSelected->drX1= -1;
 	}
@@ -280,14 +279,12 @@ void appSetHorRectangleSelection( DocumentRectangle *	drVisible,
 	{
 	if  ( drSelected->drX0 >= 0 )
 	    {
-	    appExposeRectangle( add,
-		    drSelected->drX0- ox- 2, 0, 2, high );
+	    appExposeRectangle( add, drSelected->drX0- ox- 2, 0, 2, high );
 	    }
 
 	if  ( x0Screen >= 0 )
 	    {
-	    appExposeRectangle( add,
-				x0Screen- ox- 2, 0, 2, high );
+	    appExposeRectangle( add, x0Screen- ox- 2, 0, 2, high );
 	    }
 
 	drSelected->drX0= x0Screen;
@@ -297,8 +294,7 @@ void appSetHorRectangleSelection( DocumentRectangle *	drVisible,
 	{
 	if  ( drSelected->drX1 >= 0 )
 	    {
-	    appExposeRectangle( add,
-			drSelected->drX1- ox, 0, 2, high );
+	    appExposeRectangle( add, drSelected->drX1- ox, 0, 2, high );
 	    }
 
 	if  ( x1Screen >= 0 )

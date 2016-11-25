@@ -46,6 +46,12 @@ extern int bmReadBmpFile(	const char *		filename,
 				int *			pPrivateFormat,
 				double *		pCompressionFactor );
 
+extern int bmReadWbmpFile(	const char *		filename,
+				unsigned char **	pBuffer,
+				BitmapDescription *	bd,
+				int *			pPrivateFormat,
+				double *		pCompressionFactor );
+
 extern int bmReadIcoFile(	const char *		filename,
 				unsigned char **	pBuffer,
 				BitmapDescription *	bd,
@@ -56,11 +62,21 @@ extern int bmCanWriteBmpFile( const BitmapDescription *	bd,
 				int			privateFormat,
 				double			compressionFactor );
 
+extern int bmCanWriteWbmpFile( const BitmapDescription *	bd,
+				int			privateFormat,
+				double			compressionFactor );
+
 extern int bmCanWriteIcoFile( const BitmapDescription *	bd,
 				int			privateFormat,
 				double			compressionFactor );
 
 extern int bmWriteBmpFile(	const char *		filename,
+				const unsigned char *	buffer,
+				const BitmapDescription * bd,
+				int			privateFormat,
+				double			compressionFactor );
+
+extern int bmWriteWbmpFile(	const char *		filename,
 				const unsigned char *	buffer,
 				const BitmapDescription * bd,
 				int			privateFormat,
@@ -153,6 +169,16 @@ extern int bmWriteXbmFile(	const char *		filename,
 				int			privateFormat,
 				double			compressionFactor );
 
+extern int bmCanWriteWmfFile( const BitmapDescription *	bd,
+				int			privateFormat,
+				double			compressionFactor );
+
+extern int bmWriteWmfFile(	const char *		filename,
+				const unsigned char *	buffer,
+				const BitmapDescription *	bd,
+				int			privateFormat,
+				double			compressionFactor );
+
 extern int bmReadPngFile(	const char *		filename,
 				unsigned char **	pBuffer,
 				BitmapDescription *	bd,
@@ -226,23 +252,6 @@ extern int bmFillBlock(	unsigned char *		buffer,
 
 extern unsigned char *	bmBackgroundBuffer(	int	bufferLength,
 						int	colorEncoding	);
-
-extern int bmDrawLine(	unsigned char *		buffer,
-			int			x0,
-			int			y0,
-			int			x1,
-			int			y1,
-			int			wide,
-			int			bytesPerRow );
-
-extern int bmDrawBox(	unsigned char *		buffer,
-			int			x0,
-			int			y0,
-			int			x1,
-			int			y1,
-			int			width,
-			int			bytesPerRow );
-
 
 extern int bmMakeGrayPalette(	const BitmapDescription *	bd,
 				int *				pColorCount,

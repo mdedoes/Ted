@@ -74,6 +74,7 @@ extern void tedFormatFillParagraphOrnamentsPage(
 extern void tedFormatToolRefreshParaOrnamentsTool(
 				ParagraphOrnamentsTool *	pot,
 				int *				pEnabled,
+				int *				pPref,
 				InspectorSubject *		is,
 				const DocumentSelection *	bs );
 

@@ -61,7 +61,6 @@ int docChangeParticuleAttributes(	PropertyMask *		pTaAllMask,
 		{ LDEB(attributeNumber); return -1;	}
 
 	    tp->tpTextAttributeNumber= attributeNumber;
-	    tp->tpPhysicalFont= -1;
 	    }
 	}
 
@@ -77,8 +76,8 @@ int docChangeParticuleAttributes(	PropertyMask *		pTaAllMask,
 int docMapTextAttributeNumber(	DocumentCopyJob *	dcj,
 				int			attributeNumberFrom )
     {
-    TextAttribute	taTo;
-    TextAttribute	taFrom;
+    TextAttribute		taTo;
+    TextAttribute		taFrom;
 
     int			attributeNumberTo;
 
@@ -96,7 +95,14 @@ int docMapTextAttributeNumber(	DocumentCopyJob *	dcj,
 
     if  ( dcj->dcjBdTo != dcj->dcjBdFrom )
 	{
+	DocumentProperties *	dpTo= &(dcj->dcjBdTo->bdProperties);
+	DocumentFontList *	dflTo= &(dpTo->dpFontList);
+
 	taTo.taFontNumber= dcj->dcjFontMap[taFrom.taFontNumber];
+
+	if  ( taTo.taFontNumber >= 0			&&
+	      taTo.taFontNumber < dflTo->dflFontCount	)
+	    { dflTo->dflFonts[taTo.taFontNumber].dfUsed= 1;	}
 
 	if  ( taFrom.taTextColorNumber > 0 )
 	    {

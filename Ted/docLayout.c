@@ -31,57 +31,7 @@
 static int docLayoutOpenParaFonts(	const BufferDocument *		bd,
 					BufferItem *			paraBi,
 					AppDrawingData *		add )
-    {
-    const DocumentProperties *	dp= &(bd->bdProperties);
-    const DocumentFontList *	dfl= &(dp->dpFontList);
-
-    int				part;
-    TextParticule *		tp;
-
-				/*  1  */
-    int				curTextAttributeNumber= -1;
-    int				curPhysicalFont= -1;
-
-    tp= paraBi->biParaParticules;
-    for ( part= 0; part < paraBi->biParaParticuleCount; tp++, part++ )
-	{
-	/*  1  */
-	if  ( tp->tpPhysicalFont < 0					&&
-	      curTextAttributeNumber >= 0				&&
-	      tp->tpTextAttributeNumber == curTextAttributeNumber	)
-	    { tp->tpPhysicalFont= curPhysicalFont;	}
-
-	/*  2  */
-	if  ( tp->tpPhysicalFont < 0 )
-	    {
-	    TextAttribute	ta;
-
-	    /*  2a  */
-	    utilGetTextAttributeByNumber( &ta, &(bd->bdTextAttributeList),
-						tp->tpTextAttributeNumber );
-
-	    /*  2b  */
-	    tp->tpPhysicalFont= appOpenDocumentFont( add, dfl, ta );
-
-	    if  ( tp->tpPhysicalFont < 0 )
-		{
-		APP_DEB(appDebug( "\"%.*s\"\n",
-		    (int)tp->tpStrlen, paraBi->biParaString+ tp->tpStroff ));
-		LLDEB(part,tp->tpPhysicalFont);
-		return -1;
-		}
-	    }
-
-	/*  1  */
-	if  ( tp->tpPhysicalFont >= 0 )
-	    {
-	    curTextAttributeNumber= tp->tpTextAttributeNumber;
-	    curPhysicalFont= tp->tpPhysicalFont;
-	    }
-	}
-
-    return 0;
-    }
+    { return 0;	}
 
 static int docLayoutParaInit(	const BufferDocument *		bd,
 				BufferItem *			paraBi,
@@ -90,7 +40,7 @@ static int docLayoutParaInit(	const BufferDocument *		bd,
     if  ( docLayoutOpenParaFonts( bd, paraBi, add ) )
 	{ LDEB(1); return -1;	}
 
-    if  ( docPsParagraphLineExtents( &(add->addPhysicalFontList), paraBi ) )
+    if  ( docPsParagraphLineExtents( bd, add->addPostScriptFontList, paraBi ) )
 	{ LDEB(1); return -1;	}
 
     paraBi->biParaLineCount= 0;
@@ -228,7 +178,7 @@ static int docLayoutPlaceChildren(
 		    { LDEB(1); return -1;	}
 
 		if  ( child->biInExternalItem == DOCinBODY		&&
-		      npEndnotes->npPosition == DPftnPOS_SECT_END	)
+		      npEndnotes->npPosition == FTN_POS_SECT_END	)
 		    {
 		    if  ( docLayoutEndnotesForSection(
 					    child->biNumberInParent, bf, lj ) )
@@ -307,6 +257,7 @@ static int docRedoBodyLayout(		BufferItem *		bodyBi,
     bodyLj= *ljRef;
     bodyLj.ljAdd= ljRef->ljAdd;
     bodyLj.ljBd= ljRef->ljBd;
+    bodyLj.ljScreenFontList= ljRef->ljScreenFontList;
     bodyLj.ljChangedItem= bodyBi;
     bodyLj.ljPosition= bodyBi->biTopPosition;
 
@@ -451,6 +402,7 @@ static int docAdjustParentGeometry(	BufferItem *		bi,
     plc.plcChangedRectanglePixels= lj->ljChangedRectanglePixels;
     plc.plcAdd= lj->ljAdd;
     plc.plcBd= lj->ljBd;
+    plc.plcScreenFontList= lj->ljScreenFontList;
 
     plc.plcScreenLayout= lj->ljPlaceScreen;
     plc.plcStartParagraph= docPlaceParaInit;
@@ -532,7 +484,7 @@ static int docAdjustParentGeometry(	BufferItem *		bi,
 		else{ lj->ljPosition= bi->biBelowPosition;		}
 
 		if  ( parentBi->biInExternalItem == DOCinBODY		&&
-		      npEndnotes->npPosition == DPftnPOS_DOC_END	)
+		      npEndnotes->npPosition == FTN_POS_DOC_END	)
 		    {
 		    if  ( docLayoutEndnotesForDocument( bf, lj ) )
 			{ LDEB(1); return -1;	}
@@ -552,7 +504,7 @@ static int docAdjustParentGeometry(	BufferItem *		bi,
 		else{ lj->ljPosition= bi->biBelowPosition;		}
 
 		if  ( parentBi->biInExternalItem == DOCinBODY		&&
-		      npEndnotes->npPosition == DPftnPOS_SECT_END	)
+		      npEndnotes->npPosition == FTN_POS_SECT_END	)
 		    {
 		    if  ( docLayoutEndnotesForSection(
 				    parentBi->biNumberInParent, bf, lj ) )
@@ -750,7 +702,7 @@ static int docLayoutDocItem(		BufferItem *		docBi,
 	}
 
     if  ( docBi->biInExternalItem == DOCinBODY		&&
-	  npEndnotes->npPosition == DPftnPOS_DOC_END	)
+	  npEndnotes->npPosition == FTN_POS_DOC_END	)
 	{
 	if  ( docLayoutEndnotesForDocument( bf, lj ) )
 	    { LDEB(1); return -1;	}
@@ -780,6 +732,7 @@ int docLayoutItemImplementation(	BufferItem *		bi,
     plc.plcChangedRectanglePixels= lj->ljChangedRectanglePixels;
     plc.plcAdd= lj->ljAdd;
     plc.plcBd= lj->ljBd;
+    plc.plcScreenFontList= lj->ljScreenFontList;
 
     plc.plcScreenLayout= lj->ljLayoutScreen;
     plc.plcStartParagraph= docLayoutParaInit;
@@ -886,18 +839,26 @@ int docLayoutItemAndParents(	BufferItem *		bi,
 
     if  ( bi->biLevel != DOClevDOC )
 	{
+	const BufferItem *	prevParaBi= (const BufferItem *)0;
+
 	docBlockFrameTwips( &bf, bi, bd,
 			    lj->ljPosition.lpPage, lj->ljPosition.lpColumn );
 
-	if  ( bi->biInExternalItem == DOCinBODY		&&
-	      docPrevParagraph( bi )			)
+	if  ( bi->biInExternalItem == DOCinBODY )
+	    { prevParaBi= docPrevParagraph( bi );	}
+
+	if  ( prevParaBi						&&
+	      prevParaBi->biBelowPosition.lpPage >=
+						lj->ljPosition.lpPage	)
 	    {
 	    DocumentPosition		dpHere;
+	    int				partHere;
 
 	    if  ( docFirstPosition( &dpHere, bi ) )
 		{ LDEB(1); return -1;	}
+	    partHere= 0;
 
-	    if  ( docCollectFootnotesForColumn( &bf, &dpHere, lj ) )
+	    if  ( docCollectFootnotesForColumn( &bf, &dpHere, partHere, lj ) )
 		{ LDEB(lj->ljPosition.lpPage); return -1;	}
 	    }
 	}
@@ -1116,6 +1077,8 @@ int docAdjustParaLayout(	BufferItem *		paraBi,
 
     BlockFrame			bf;
 
+    ScreenFontList *		sfl= lj->ljScreenFontList;
+
 #   if 0
     LDEB(444);
     lj->ljPosition= paraBi->biTopPosition;
@@ -1127,10 +1090,12 @@ int docAdjustParaLayout(	BufferItem *		paraBi,
     plcL.plcChangedRectanglePixels= lj->ljChangedRectanglePixels;
     plcL.plcAdd= lj->ljAdd;
     plcL.plcBd= lj->ljBd;
+    plcL.plcScreenFontList= sfl;
 
     plcP.plcChangedRectanglePixels= lj->ljChangedRectanglePixels;
     plcP.plcAdd= lj->ljAdd;
     plcP.plcBd= lj->ljBd;
+    plcP.plcScreenFontList= sfl;
 
     plcL.plcScreenLayout= lj->ljLayoutScreen;
     plcL.plcStartParagraph= docLayoutParaInit;
@@ -1169,17 +1134,21 @@ int docAdjustParaLayout(	BufferItem *		paraBi,
     if  ( paraBi->biInExternalItem == DOCinBODY	)
 	{
 	DocumentSelection	dsLine;
+	int			partLineBegin;
+	int			partLineEnd;
 
-	docLineSelection( &dsLine, paraBi, fromLine );
+	docLineSelection( &dsLine, &partLineBegin, &partLineEnd,
+							paraBi, fromLine );
 
-	if  ( docCollectFootnotesForColumn( &bf, &(dsLine.dsBegin), lj ) )
+	if  ( docCollectFootnotesForColumn( &bf, &(dsLine.dsBegin),
+							partLineBegin, lj ) )
 	    { LDEB(lj->ljPosition.lpPage); return -1;	}
 	}
 
     docParagraphFrameTwips( &(plp.plpFormattingFrame), &bf,
 					bottomTwips, stripHigh, paraBi );
 
-    if  ( docPsParagraphLineExtents( &(add->addPhysicalFontList), paraBi ) )
+    if  ( docPsParagraphLineExtents( bd, add->addPostScriptFontList, paraBi ) )
 	{ LDEB(1); return -1;	}
 
     if  ( lj->ljLayoutScreen.slScreenFrame )
@@ -1189,7 +1158,8 @@ int docAdjustParaLayout(	BufferItem *		paraBi,
 	}
 
     if  ( lj->ljLayoutScreen.slStartParagraph				&&
-	  (*lj->ljLayoutScreen.slStartParagraph)( paraBi, add, bd )	)
+	  (*lj->ljLayoutScreen.slStartParagraph)(
+						paraBi, add, sfl, bd )	)
 	{ LDEB(1); return -1;	}
 
     if  ( drChanged )
@@ -1280,7 +1250,6 @@ int docAdjustParaLayout(	BufferItem *		paraBi,
 	boxLine= *tl;
 	accepted= docPsLayoutOneLine( &boxLine, paraBi, &plp, pd, 
 						&plcL, lj, drChanged, &bf );
-
 	if  ( accepted < 1 )
 	    { LDEB(accepted); return -1;	}
 

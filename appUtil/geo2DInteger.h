@@ -64,6 +64,9 @@ extern int geo2DIIntersectSegments(	Point2DI *		p1,
 extern double geo2DIDistanceToLine(	const Point2DI *	ab,
 					const Point2DI *	c );
 
+extern double geo2DIProjectionOnLine(	const Point2DI *	ab,
+					const Point2DI *	c );
+
 extern int geo2DIPointInPolygon(	const Point2DI *	p,
 					const Point2DI *	points,
 					int			pointCount );

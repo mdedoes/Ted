@@ -5,7 +5,6 @@
 #   include	<sioGeneral.h>
 #   include	<geo2DInteger.h>
 #   include	<utilDocumentGeometry.h>
-#   include	<docFont.h>
 #   include	<psFont.h>
 #   include	<utilFontEncoding.h>
 #   include	<utilPostscriptFace.h>
@@ -45,8 +44,6 @@ typedef struct PrintingState
 
     int				psUsePostScriptFilters;
     int				psUsePostScriptIndexedImages;
-
-    int				psEncodingDefined[ENCODINGps_COUNT];
     } PrintingState;
 
 /************************************************************************/
@@ -57,7 +54,7 @@ typedef struct PrintingState
 
 extern void utilPsStartDSCDocument(
 			const PrintingState *		ps,
-			const PostScriptFaceList *	psfl,
+			const PostScriptTypeList *	psfl,
 			const char *			title,
 			const char *			creatorName,
 			const char *			creatorReference );
@@ -102,9 +99,11 @@ extern int utilPsGetNupFactor(	AffineTransform2D *		pAt1Page,
 				const PrintGeometry *		pg );
 
 extern void appPsFontNames(	PrintingState *			ps,
-				const PostScriptFaceList *	psfl,
-				int *				encodingDefined,
+				const PostScriptTypeList *	psfl,
 				int				allFonts );
+
+extern int appPsIncludeFonts(	PrintingState *			ps,
+				const PostScriptTypeList *	psfl );
 
 extern void appPsWriteEpsHeader(	SimpleOutputStream *	sos,
 					const char *		creator,

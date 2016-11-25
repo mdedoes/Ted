@@ -14,10 +14,10 @@
 
 typedef struct ExpandedTextAttribute
     {
-    char *		etaFontFamilyName;
-    int			etaFontEncoding;
+    int			etaFontNumber;
 
     int			etaFontSizeHalfPoints;
+    int			etaTextStyleNumber;
 
     RGB8Color		etaTextColor;
     int			etaTextColorExplicit;
@@ -66,34 +66,19 @@ extern void docIndirectTextAttribute(
 				TextAttribute *			taTo,
 				const ExpandedTextAttribute *	etaFrom,
 				const PropertyMask *		setMask,
-				DocumentFontList *		dfl,
 				RGB8Color **			pColors,
 				int *				pColorCount );
 
 extern void docExpandedAttributeToString(
 				char *				target,
 				const PropertyMask *		updMask,
+				const DocumentFontList *	dfl,
 				const ExpandedTextAttribute *	etaNew );
 
-extern int docExpandedTextAttributeSetFamilyName(
-			    ExpandedTextAttribute *		etaTo,
-			    int *				pChanged,
-			    const char *			familyName );
-
-extern int docExpandedTextAttributeSetFamilyAndEncoding(
-			    ExpandedTextAttribute *		etaTo,
-			    int *				pChanged,
-			    const AppFontFamily *		aff,
-			    int					encoding );
-
-extern void docExpandedTextAttributeSetFace(
-			    ExpandedTextAttribute *		etaTo,
-			    int *				pChanged,
-			    const AppFontTypeface *		aft );
-
 extern int docExpandedAttributeFromString(
-			    const char *			attributeString,
-			    PropertyMask *			pSetMask,
-			    ExpandedTextAttribute *		pEtaSet );
+			PropertyMask *			pSetMask,
+			ExpandedTextAttribute *		pEtaSet,
+			DocumentFontList *		dfl,
+			const char *			attributeString );
 
 #   endif	/*  DOC_EXPANDED_TEXT_ATTRIBUTE_H  */

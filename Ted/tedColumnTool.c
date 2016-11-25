@@ -74,6 +74,7 @@ static void tedFormatToolRefreshColumnPage(	ColumnTool *	ct )
 void tedFormatToolRefreshColumnTool(
 				ColumnTool *			ct,
 				int *				pEnabled,
+				int *				pPref,
 				InspectorSubject *		is,
 				const DocumentSelection *	ds )
     {
@@ -564,7 +565,7 @@ void tedFormatFillColumnPage(	ColumnTool *			ct,
     return;
     }
 
-void tedFormatFillColumnChoosers(	ColumnTool *			ct,
+void tedColumnToolFillChoosers(	ColumnTool *			ct,
 					const ColumnPageResources *	cpr )
     {
     return;

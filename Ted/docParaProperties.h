@@ -64,6 +64,7 @@ typedef struct ParagraphProperties
     ItemShading		ppShading;
 
     unsigned int	ppOutlineLevel:4;
+    unsigned int	ppListLevel:4; 			/*  ilvl	*/
 
     unsigned int	ppAlignment:3;			/*  (enum)	*/
 
@@ -118,6 +119,7 @@ typedef enum ParagraphProperty
     PPpropSHADE_PATTERN,
 
     PPpropOUTLINELEVEL,
+    PPpropLISTLEVEL,
     PPpropHYPHPAR,
 
     PPpropCOLUMNS,			/*  Not a real property.	*/
@@ -143,7 +145,8 @@ extern int docUpdParaProperties( PropertyMask *			pPpChgPask,
 				ParagraphProperties *		pp,
 				const PropertyMask *		ppUpdMask,
 				const ParagraphProperties *	ppNew,
-				const int *			colorMap );
+				const int *			colorMap,
+				const int *			listStyleMap );
 
 extern void docParaPropertyDifference(
 				PropertyMask *			pChgMask,

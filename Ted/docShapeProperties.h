@@ -17,14 +17,20 @@ typedef enum ShapeHorizontalAttachment
     {
     SHPshaPAGE= 0,
     SHPshaMARGIN,
-    SHPshaCOLUMN
+    SHPshaCOLUMN,
+    SHPshaIGNORE,
+
+    SHPsha_COUNT
     } ShapeHorizontalAttachment;
 
 typedef enum ShapeVerticalAttachment
     {
     SHPsvaPAGE= 0,
     SHPsvaMARGIN,
-    SHPsvaPARAGRAPH
+    SHPsvaPARAGRAPH,
+    SHPsvaIGNORE,
+
+    SHPsva_COUNT
     } ShapeVerticalAttachment;
 
 typedef enum ShapeWrapStyle
@@ -57,6 +63,31 @@ typedef struct ShapeProperties
     unsigned int	spWrapSide:2;			/*  (enum)	*/
     unsigned int	spLockAnchor:1;
     } ShapeProperties;
+
+/************************************************************************/
+/*									*/
+/*  Numbers of shape properies.					*/
+/*									*/
+/************************************************************************/
+
+typedef enum ShapeProperty
+    {
+    SHPpropLEFT= 0,
+    SHPpropTOP,
+    SHPpropBOTTOM,
+    SHPpropRIGHT,
+    SHPpropLID,
+    SHPpropZ,
+    SHPpropFHDR,
+    SHPpropBX,
+    SHPpropBY,
+    SHPpropWR,
+    SHPpropWRK,
+    SHPpropFBLWTXT,
+    SHPpropLOCKANCHOR,
+
+    SHPprop_COUNT
+    } ShapeProperty;
 
 /************************************************************************/
 /*									*/

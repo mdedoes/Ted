@@ -389,6 +389,8 @@ static void appChooserMakeOptionmenu(	AppOptionmenu *	aom,
     Arg				al[20];
     int				ac= 0;
 
+    appInitOptionmenu( aom );
+
     ac= 0;
     XtSetArg( al[ac], XmNresizeWidth,		False ); ac++;
     XtSetArg( al[ac], XmNtopAttachment,		XmATTACH_FORM ); ac++;
@@ -549,6 +551,7 @@ static void appFileFillFilter(	EditApplication *	ea,
 static int appMakeFileChooser( AppChooserInformation **	pAci,
 				Widget				relative,
 				EditApplication *		ea,
+				int				withFilter,
 				const char *			defaultFilter,
 				Widget				option )
     {
@@ -624,15 +627,21 @@ static int appMakeFileChooser( AppChooserInformation **	pAci,
 			NULL );
 
     /*  Not necessary
-    XtAddCallback( text, XmNactivateCallback,
+    if  ( withFilter )
+	{
+	XtAddCallback( text, XmNactivateCallback,
 				    appFileFilterActivated, (void *)aci );
+	}
     */
 
     filterButton= XmFileSelectionBoxGetChild( aci->aciDialog.adDialog,
 						    XmDIALOG_APPLY_BUTTON );
 
-    XtAddCallback( filterButton, XmNactivateCallback,
+    if  ( withFilter )
+	{
+	XtAddCallback( filterButton, XmNactivateCallback,
 				    appFileFilterActivated, (void *)aci );
+	}
 
     text= XmFileSelectionBoxGetChild( aci->aciDialog.adDialog, XmDIALOG_TEXT );
     XtVaSetValues( text,
@@ -705,14 +714,15 @@ void appRunOpenChooser( Widget			option,
 			EditApplication *	ea )
     {
     AppChooserInformation *	aci= (AppChooserInformation *)0;
+    const int			withFilter= extensionCount > 0;
 
-    if  ( appMakeFileChooser( &aci, relative, ea, defaultFilter, option ) )
+    if  ( appMakeFileChooser( &aci, relative, ea, withFilter, defaultFilter, option ) )
 	{ LDEB(1); return;	}
 
     XtAddCallback( aci->aciDialog.adDialog,
 			XmNokCallback, appOpenChooserOk, (XtPointer)aci );
 
-    if  ( extensionCount > 0 )
+    if  ( withFilter )
 	{
 	appFileMakeFilter( aci );
 
@@ -727,7 +737,7 @@ void appRunOpenChooser( Widget			option,
     aci->aciOpenDocument= openDocument;
     aci->aciFilename= (char *)0;
 
-    if  ( extensionCount > 0 )
+    if  ( withFilter )
 	{
 	WidgetList		children;
 	Cardinal		childCount= 0;
@@ -920,16 +930,17 @@ int appRunSaveChooser(		APP_WIDGET		option,
 				char **			pFilename )
     {
     AppChooserInformation *	aci= (AppChooserInformation *)0;
+    const int			withFilter= ea->eaFileExtensionCount > 0;
     int				response;
 
-    if  ( appMakeFileChooser( &aci, relative, ea,
+    if  ( appMakeFileChooser( &aci, relative, ea, withFilter,
 					    ea->eaDefaultFileFilter, option ) )
 	{ return ACIrespFAILURE;	}
 
     XtAddCallback( aci->aciDialog.adDialog,
 			    XmNokCallback, appSaveOkPushed, (XtPointer)aci );
 
-    if  ( ea->eaFileExtensionCount > 0 )
+    if  ( withFilter )
 	{
 	appFileMakeFilter( aci );
 
@@ -977,9 +988,10 @@ int appRunPrintToFileChooser(		Widget			option,
 					char **			pFilename )
     {
     AppChooserInformation *	aci= (AppChooserInformation *)0;
+    const int			withFilter= 0;
     int				response;
 
-    if  ( appMakeFileChooser( &aci, panel, ea, "*.ps", option ) )
+    if  ( appMakeFileChooser( &aci, panel, ea, withFilter, "*.ps", option ) )
 	{ LDEB(1); return ACIrespFAILURE;	}
 
     XtAddCallback( aci->aciDialog.adDialog,

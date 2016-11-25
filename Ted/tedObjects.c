@@ -36,14 +36,12 @@ int tedDrawObject(		const BufferItem *	bi,
     {
     InsertedObject *	io= bi->biParaObjects+ tp->tpObjectNumber;
 
-    if  ( tp->tpPhysicalFont < 0 )
-	{ LDEB(tp->tpPhysicalFont); return -1;	}
-
     if  ( ( io->ioKind == DOCokPICTWMETAFILE	||
 	    io->ioKind == DOCokMACPICT		||
 	    io->ioKind == DOCokPICTPNGBLIP	||
 	    io->ioKind == DOCokPICTJPEGBLIP	||
-	    io->ioKind == DOCokINCLUDEPICTURE	)	&&
+	    io->ioKind == DOCokINCLUDEPICTURE	||
+	    io->ioKind == DOCokDRAWING_OBJECT	)	&&
 	  io->ioPixmap					)
 	{
 	appDrawDrawPixmap( add, io->ioPixmap,
@@ -204,11 +202,25 @@ static int tedOpenEpsfObject(		InsertedObject *	io,
     return 0;
     }
 
+static int tedOpenDrawingObject(	InsertedObject *	io,
+					AppColors *		ac,
+					AppDrawingData *	add )
+    {
+    io->ioPixmap= appMakePixmap( add, io->ioPixelsWide, io->ioPixelsHigh );
+    if  ( ! io->ioPixmap )
+	{ XDEB(io->ioPixmap); return -1;	}
+
+    if  ( tedDrawDrawingPixmap( io->ioPixmap, io, ac, add ) )
+	{ LDEB(1); return -1;	}
+
+    return 0;
+    }
+
 static int tedOpenObject(	InsertedObject *	io,
 				AppColors *		ac,
 				AppDrawingData *	add )
     {
-    if  ( io->ioTwipsWide < 10 || io->ioTwipsHigh < 10 )
+    if  ( io->ioTwipsWide < 1 || io->ioTwipsHigh < 1 )
 	{ LLDEB(io->ioTwipsWide,io->ioTwipsHigh); return -1; }
 
     switch( io->ioKind )
@@ -294,6 +306,12 @@ static int tedOpenObject(	InsertedObject *	io,
 
 	    LLDEB(io->ioKind,io->ioResultKind); return 0;
 
+	case DOCokDRAWING_OBJECT:
+	    if  ( ! io->ioPixmap			&&
+		  tedOpenDrawingObject( io, ac, add )	)
+		{ LDEB(1); return 0;	}
+	    return 0;
+
 	default:
 	    LDEB(io->ioKind); return 0;
 	}
@@ -315,9 +333,6 @@ static int tedOpenParaObjects(	BufferItem *		bi,
 
 	if  ( tp->tpKind != DOCkindOBJECT )
 	    { continue;	}
-
-	if  ( tp->tpPhysicalFont < 0 )
-	    { LLDEB(part,tp->tpPhysicalFont); continue;	}
 
 	io= bi->biParaObjects+ tp->tpObjectNumber;
 
@@ -409,8 +424,7 @@ void tedCloseObject(		BufferDocument *	bd,
     {
     InsertedObject *	io;
 
-    if  ( tp->tpKind != DOCkindOBJECT	||
-	  tp->tpPhysicalFont < 0	)
+    if  ( tp->tpKind != DOCkindOBJECT )
 	{ return;	}
 
     io= bi->biParaObjects+ tp->tpObjectNumber;
@@ -462,6 +476,18 @@ void tedCloseObject(		BufferDocument *	bd,
 
 	    break;
 
+	case DOCokDRAWING_OBJECT:
+
+	    if  ( io->ioPixmap )
+		{
+		AppDrawingData *	add= (AppDrawingData *)voidadd;
+
+		appDrawFreePixmap( add, io->ioPixmap );
+		io->ioPixmap= (APP_WINDOW)0;
+		}
+
+	    break;
+
 	default:
 	    LDEB(io->ioKind); break;
 	}
@@ -500,13 +526,14 @@ static void tedScaleObjectToParagraph(	EditDocument *		ed,
 
     DocumentSelection		ds;
     SelectionGeometry		sg;
+    SelectionDescription	sd;
 
     const int			bottom= -1;
     const int			stripHigh= -1;
 
     BlockFrame			bf;
 
-    if  ( tedGetSelection( &ds, &sg, td ) )
+    if  ( tedGetSelection( &ds, &sg, &sd, td ) )
 	{ LDEB(1); return;	}
 
     docBlockFrameTwips( &bf, ds.dsBegin.dpBi, bd,
@@ -611,8 +638,7 @@ InsertedObject * tedObjectMakeBitmapObject(
 	io->ioKind= DOCokPICTPNGBLIP;
 	}
     else{
-	if  ( appMetaSaveBitmapMetafile( &(abi->abiBitmap), abi->abiBuffer,
-								    sosHex ) )
+	if  ( bmWmfWriteWmf( &(abi->abiBitmap), abi->abiBuffer, sosHex ) )
 	    { LDEB(1); return (InsertedObject *)0;	}
 
 	io->ioMetafileIsBitmap= 1;
@@ -636,6 +662,11 @@ InsertedObject * tedObjectMakeBitmapObject(
 				( io->ioScaleX* io->ioTwipsWide )/ 100 );
     io->ioPixelsHigh= TWIPStoPIXELS( xfac,
 				( io->ioScaleY* io->ioTwipsHigh )/ 100 );
+    if  ( io->ioPixelsWide < 1 )
+	{ io->ioPixelsWide=  1;	}
+    if  ( io->ioPixelsHigh < 1 )
+	{ io->ioPixelsHigh=  1;	}
+
     io->ioPrivate= abi;
 
     io->io_xWinExt= (int) ( ( 100000.0* io->ioTwipsWide )/
@@ -736,7 +767,7 @@ static InsertedObject * tedMakeMetafileObject(
 	io->io_yWinExt= top- bottom;
 	}
     else{
-	if  ( 0 && key == 0x90001 )
+	if  ( key == 0x90001 )
 	    {
 	    io->ioTwipsWide= 20* 72* 4;		/*  10 cm	*/
 	    io->ioTwipsHigh= 20* 72* 4;		/*  10 cm	*/
@@ -781,6 +812,10 @@ static InsertedObject * tedMakeMetafileObject(
 				( io->ioScaleX* io->ioTwipsWide )/ 100 );
     io->ioPixelsHigh= TWIPStoPIXELS( xfac,
 				( io->ioScaleY* io->ioTwipsHigh )/ 100 );
+    if  ( io->ioPixelsWide < 1 )
+	{ io->ioPixelsWide=  1;	}
+    if  ( io->ioPixelsHigh < 1 )
+	{ io->ioPixelsHigh=  1;	}
 
     io->io_xWinExt= (int) ( ( 100000.0* io->ioTwipsWide )/
 						    ( 20* POINTS_PER_M ) );
@@ -808,8 +843,9 @@ static int tedObjectOpenPicture(	void *		voided,
 
     DocumentSelection		ds;
     SelectionGeometry		sg;
+    SelectionDescription	sd;
 
-    if  ( tedGetSelection( &ds, &sg, td ) )
+    if  ( tedGetSelection( &ds, &sg, &sd, td ) )
 	{ LDEB(1); return -1;	}
 
     ext= appFileExtensionOfName( filename );

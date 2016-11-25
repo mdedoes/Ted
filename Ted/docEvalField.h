@@ -15,6 +15,12 @@
 /*									*/
 /************************************************************************/
 
+extern int docFormatChftnField(	unsigned char *			target,
+				int				targetSize,
+				const DocumentProperties *	dp,
+				int				noteNumber,
+				int				extItKind );
+
 extern int docCalculateChftnFieldString(int *			pCalculated,
 					int *			pNewSize,
 					unsigned char *		target,
@@ -180,6 +186,18 @@ extern int docRecalculateParaChftnTextParticules(
 				void *				voidadd,
 				DOC_CLOSE_OBJECT		closeObject );
 
+extern int docRecalculateParaListtextTextParticules(
+				int *				pCalculated,
+				BufferDocument *		bd,
+				int *				pPartShift,
+				int *				pStroffShift,
+				BufferItem *			bi,
+				int				part,
+				int				partCount,
+				DocumentField *			df,
+				void *				voidadd,
+				DOC_CLOSE_OBJECT		closeObject );
+
 extern int docRecalculateParaSymbolTextParticules(
 				int *				pCalculated,
 				BufferDocument *		bd,
@@ -191,5 +209,27 @@ extern int docRecalculateParaSymbolTextParticules(
 				DocumentField *			df,
 				void *				voidadd,
 				DOC_CLOSE_OBJECT		closeObject );
+
+extern int docFieldReplaceContents(	int *			pStroff,
+					int *			pStroffShift,
+					int *			pTextAttrNr,
+					BufferDocument *	bd,
+					BufferItem *		paraBi,
+					int			part,
+					int			partCount,
+					int			stroffShift,
+					const unsigned char *	addedString,
+					int			addedStrlen,
+					void *			voidadd,
+					DOC_CLOSE_OBJECT	closeObject );
+
+extern int docCalculateListtextString(	
+				unsigned char *			target,
+				int				maxsize,
+				int				ilvl,
+				const int *			numberPath,
+				const int *			startPath,
+				const int *			formatPath,
+				const DocumentListLevel *	dll );
 
 #   endif	/*  DOC_EVAL_FIELD_H  */

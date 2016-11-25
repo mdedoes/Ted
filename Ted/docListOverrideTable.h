@@ -28,7 +28,16 @@ extern int docCopyListOverrideTable(	ListOverrideTable *		to,
 					const ListOverrideTable *	from );
 
 extern int docListOverrideTableAddOverride(
-					ListOverrideTable *		lot,
-					const ListOverride *		lo );
+				ListOverrideTable *		lot,
+				const ListOverride *		lo,
+				int				idx,
+				const int *			fontMap,
+				const int *			colorMap );
+
+extern int docMergeListOverrideIntoTable(
+				ListOverrideTable *		lot,
+				const ListOverride *		lo,
+				const int *			fontMap,
+				const int *			colorMap );
 
 #   endif

@@ -10,8 +10,6 @@
 #   include	<stdio.h>
 #   include	<stddef.h>
 
-#   include	<reg.h>
-
 #   include	"appFrame.h"
 
 #   ifdef USE_MOTIF
@@ -62,6 +60,7 @@ typedef struct AppFindTool
     FindToolFind		aftFindNext;
     FindToolFind		aftFindPrev;
     FindToolReplace		aftReplace;
+    FindToolSetPattern		aftSetPattern;
 
     void *			aftTarget;
 
@@ -161,40 +160,26 @@ static APP_TXTYPING_CALLBACK_H( appFindToolReplacementChanged, w, voidaft )
 /*									*/
 /************************************************************************/
 
-static int appFindToolGetProgram(	regProg **	pProg,
-					AppFindTool *	aft )
+static int appFindToolSetProgram(	AppFindTool *	aft )
     {
     char *		pattern;
-    regProg *		prog;
+    int			res;
+
+    if  ( ! aft->aftSetPattern )
+	{ XDEB(aft->aftSetPattern); return -1;	}
 
     pattern= appGetStringFromTextWidget( aft->aftPatternText );
 
-    if  ( aft->aftUseRegex )
-	{
-	prog= regCompile( (const unsigned char *)pattern );
-	if  ( ! prog )
-	    {
-	    SXDEB(pattern,prog);
-	    appFreeStringFromTextWidget( pattern ); return -1;
-	    }
-	}
-    else{
-	prog= regCompileEscaped( (const unsigned char *)pattern );
-	if  ( ! prog )
-	    {
-	    SXDEB(pattern,prog);
-	    appFreeStringFromTextWidget( pattern ); return -1;
-	    }
-	}
+    res= (*aft->aftSetPattern)( aft->aftTarget,
+				(unsigned char *)pattern, aft->aftUseRegex );
 
     appFreeStringFromTextWidget( pattern );
 
-    *pProg= prog; return 0;
+    return res;
     }
 
 static void appFindToolFindNext(	AppFindTool *	aft )
     {
-    regProg *		prog;
     int			result;
 
     if  ( ! aft->aftFindNext )
@@ -203,13 +188,11 @@ static void appFindToolFindNext(	AppFindTool *	aft )
 	appFindToolSetFindResult( aft, -1 ); return;
 	}
 
-    if  ( appFindToolGetProgram( &prog, aft ) )
+    if  ( appFindToolSetProgram( aft ) )
 	{ appFindToolSetFindResult( aft, -1 ); return; }
 
-    result= (*aft->aftFindNext)( aft->aftTarget, prog );
+    result= (*aft->aftFindNext)( aft->aftTarget );
     appFindToolSetFindResult( aft, result );
-
-    free( prog );
 
     return;
     }
@@ -226,7 +209,6 @@ static APP_BUTTON_CALLBACK_H( appFindToolFindNextPushed, w, voidaft )
 static APP_BUTTON_CALLBACK_H( appFindToolFindPrev, w, voidaft )
     {
     AppFindTool *	aft= (AppFindTool *)voidaft;
-    regProg *		prog;
     int			result;
 
     if  ( ! aft->aftFindPrev )
@@ -235,13 +217,11 @@ static APP_BUTTON_CALLBACK_H( appFindToolFindPrev, w, voidaft )
 	appFindToolSetFindResult( aft, -1 ); return;
 	}
 
-    if  ( appFindToolGetProgram( &prog, aft ) )
+    if  ( appFindToolSetProgram( aft ) )
 	{ appFindToolSetFindResult( aft, -1 ); return; }
 
-    result= (*aft->aftFindPrev)( aft->aftTarget, prog );
+    result= (*aft->aftFindPrev)( aft->aftTarget );
     appFindToolSetFindResult( aft, result );
-
-    free( prog );
 
     return;
     }
@@ -458,7 +438,7 @@ static APP_CLOSE_CALLBACK_H( appCloseFindTool, w, voidaft )
     }
 
 #   ifdef USE_MOTIF
-static void appFindToolCancel(		APP_WIDGET		w,
+static void appFindToolKey(		APP_WIDGET		w,
 					void *			voidaft,
 					XEvent *		event,
 					Boolean *		pRefused )
@@ -470,6 +450,9 @@ static void appFindToolCancel(		APP_WIDGET		w,
 
 	if  ( XKeysymToKeycode( XtDisplay(w), XK_Escape ) == kevent->keycode )
 	    { appDestroyFindTool( aft ); *pRefused= 0; return; }
+
+	if  ( XKeysymToKeycode( XtDisplay(w), XK_F3 ) == kevent->keycode )
+	    { appFindToolFindNext( aft ); *pRefused= 0; return; }
 	}
 
     *pRefused= 1; return;
@@ -567,6 +550,7 @@ void * appMakeFindTool(		APP_WIDGET		findOption,
 				FindToolFind		findNext,
 				FindToolFind		findPrev,
 				FindToolReplace		replace,
+				FindToolSetPattern	setPattern,
 				void *			target )
     {
     AppFindTool *	aft;
@@ -595,6 +579,7 @@ void * appMakeFindTool(		APP_WIDGET		findOption,
     aft->aftDestroy= destroy;
     aft->aftFindNext= findNext;
     aft->aftFindPrev= findPrev;
+    aft->aftSetPattern= setPattern;
     aft->aftReplace= replace;
     aft->aftTarget= target;
     aft->aftVisible= 0;
@@ -623,19 +608,19 @@ void * appMakeFindTool(		APP_WIDGET		findOption,
 
 #   ifdef USE_MOTIF
     XtInsertEventHandler( aft->aftPatternText, KeyReleaseMask, False,
-				appFindToolCancel, (void *)aft, XtListHead );
+				appFindToolKey, (void *)aft, XtListHead );
     XtInsertEventHandler( aft->aftReplaceText, KeyReleaseMask, False,
-				appFindToolCancel, (void *)aft, XtListHead );
+				appFindToolKey, (void *)aft, XtListHead );
 
     XtInsertEventHandler( aft->aftReplaceButton, KeyReleaseMask, False,
-				appFindToolCancel, (void *)aft, XtListHead );
+				appFindToolKey, (void *)aft, XtListHead );
     XtInsertEventHandler( aft->aftReplaceNextButton, KeyReleaseMask, False,
-				appFindToolCancel, (void *)aft, XtListHead );
+				appFindToolKey, (void *)aft, XtListHead );
 
     XtInsertEventHandler( aft->aftFindNextButton, KeyReleaseMask, False,
-				appFindToolCancel, (void *)aft, XtListHead );
+				appFindToolKey, (void *)aft, XtListHead );
     XtInsertEventHandler( aft->aftFindPrevButton, KeyReleaseMask, False,
-				appFindToolCancel, (void *)aft, XtListHead );
+				appFindToolKey, (void *)aft, XtListHead );
 #   endif
 
     return (void *)aft;
@@ -708,11 +693,29 @@ void appEnableFindTool(		void *	voidaft,
     return;
     }
 
-void appFindToolDisableReplace(		void *	voidaft )
+void appFindToolEnableReplace(	void *	voidaft,
+				int	enabled )
     {
     AppFindTool *	aft= (AppFindTool *)voidaft;
 
-    appGuiEnableWidget( aft->aftReplaceFrame, 0 );
+    appGuiEnableWidget( aft->aftReplaceFrame, enabled );
+
+    return;
+    }
+
+void appFindToolSetPattern(	void *			voidaft,
+				const unsigned char *	pattern,
+				int			useRegex )
+    {
+    AppFindTool *	aft= (AppFindTool *)voidaft;
+
+    aft->aftUseRegex= useRegex;
+
+    appStringToTextWidget( aft->aftPatternText, (const char *)pattern );
+
+    appGuiSetToggleState( aft->aftRegexToggle, aft->aftUseRegex );
+
+    appFindToolReflectPatternText( aft );
 
     return;
     }

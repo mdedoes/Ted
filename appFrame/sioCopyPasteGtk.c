@@ -20,16 +20,6 @@ static GdkAtom	XA_STRING= (GdkAtom)0;
 
 /************************************************************************/
 /*									*/
-/*  Dummy: Refuse to seek in copy paste streams.			*/
-/*									*/
-/************************************************************************/
-
-static int sioXpropSeek(	void *			voidp,
-				long			pos )
-    { LDEB(pos); return -1;	}
-
-/************************************************************************/
-/*									*/
 /*  Input..								*/
 /*									*/
 /************************************************************************/
@@ -83,8 +73,7 @@ SimpleInputStream * sioInOpenPaste(	APP_WIDGET		w,
 	free( pis ); return (SimpleInputStream *)0;
 	}
 
-    sis= sioInOpen( (void *)pis, sioInPasteReadBytes,
-					    sioXpropSeek, sioInPasteClose );
+    sis= sioInOpen( (void *)pis, sioInPasteReadBytes, sioInPasteClose );
     if  ( ! sis )
 	{ XDEB(sis); free( pis ); return (SimpleInputStream *)0; }
 
@@ -159,8 +148,8 @@ SimpleOutputStream * sioOutOpenCopy(	APP_WIDGET		w,
 	free( cs ); return (SimpleOutputStream *)0;
 	}
 
-    sos= sioOutOpen( (void *)cs, sioOutCopyWriteBytes,
-					    sioXpropSeek, sioOutCopyClose );
+    sos= sioOutOpen( (void *)cs, sioOutCopyWriteBytes, (SIOoutSEEK)0,
+							    sioOutCopyClose );
     if  ( ! sos )
 	{ XDEB(sos); free( cs ); return (SimpleOutputStream *)0; }
 
@@ -227,7 +216,7 @@ SimpleOutputStream * sioOutOpenXvCopy(	APP_WIDGET		w )
 	}
 
     sos= sioOutOpen( (void *)cs, sioOutCopyWriteBytes,
-					    sioXpropSeek, sioOutXvCopyClose );
+					    (SIOoutSEEK)0, sioOutXvCopyClose );
     if  ( ! sos )
 	{ XDEB(sos); free( cs ); return (SimpleOutputStream *)0; }
 

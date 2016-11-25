@@ -70,7 +70,8 @@ void docRtfInitReadingContext(	RtfReadingContext *	rrc	)
 				/****************************************/
 				/* Attributes of the current position.	*/
 				/****************************************/
-    docInitTextFrameProperties( &(rrc->rrcTextFrameProperties) );
+    docInitTextFrameProperties( &(rrc->rrcParaFramePosition) );
+    docInitTextFrameProperties( &(rrc->rrcRowFramePosition) );
     docInitCellProperties( &(rrc->rrcCellProperties) );
     docInitRowProperties( &(rrc->rrcRowProperties) );
 
@@ -120,7 +121,8 @@ void docRtfInitReadingContext(	RtfReadingContext *	rrc	)
 				/****************************************/
 
     for ( i= 0; i < 256; i++ )
-	{ rrc->rrcInputMapping[i]= i;	}
+	{ rrc->rrcDefaultInputMapping[i]= i;	}
+    rrc->rrcTextInputMapping= rrc->rrcDefaultInputMapping;
     }
 
 void docRtfCleanReadingContext(	RtfReadingContext *	rrc )
@@ -169,6 +171,9 @@ int docRtfCopyReadingContext(	RtfReadingContext *		to,
     PropertyMask		ppChgMask;
     PropertyMask		ppUpdMask;
 
+    const int * const		fontMap= (const int *)0;
+    const int * const		colorMap= (const int *)0;
+
     PROPmaskCLEAR( &ppChgMask );
 
     PROPmaskCLEAR( &ppUpdMask );
@@ -204,13 +209,13 @@ int docRtfCopyReadingContext(	RtfReadingContext *		to,
     docInitListOverrideLevel( &(to->rrcListOverrideLevel) );
 
     docCopyDocumentList( &(to->rrcDocumentList),
-					    &(from->rrcDocumentList) );
+			    &(from->rrcDocumentList), fontMap, colorMap );
     docCopyListOverride( &(to->rrcListOverride),
-					    &(from->rrcListOverride) );
+			    &(from->rrcListOverride), fontMap, colorMap );
     docCopyDocumentListLevel( &(to->rrcDocumentListLevel),
-					    &(from->rrcDocumentListLevel) );
+			    &(from->rrcDocumentListLevel), fontMap, colorMap );
     docCopyListOverrideLevel( &(to->rrcListOverrideLevel),
-					    &(from->rrcListOverrideLevel) );
+			    &(from->rrcListOverrideLevel), fontMap, colorMap );
 
     return 0;
     }
@@ -219,6 +224,9 @@ int docRtfCopyReadingContext(	RtfReadingContext *		to,
 void docRtfCopyReadingContextBack(	RtfReadingContext *	to,
 					RtfReadingContext *	from )
     {
+    const int * const		fontMap= (const int *)0;
+    const int * const		colorMap= (const int *)0;
+
     to->rrcBi= from->rrcBi;
     to->rrcLevel= from->rrcLevel;
     to->rrcSplitLevel= from->rrcSplitLevel;
@@ -241,20 +249,29 @@ void docRtfCopyReadingContextBack(	RtfReadingContext *	to,
     to->rrcTm= from->rrcTm;
 
     docCopyDocumentList( &(to->rrcDocumentList),
-					    &(from->rrcDocumentList) );
+			    &(from->rrcDocumentList), fontMap, colorMap );
     docCopyListOverride( &(to->rrcListOverride),
-					    &(from->rrcListOverride) );
+			    &(from->rrcListOverride), fontMap, colorMap );
     docCopyDocumentListLevel( &(to->rrcDocumentListLevel),
-					    &(from->rrcDocumentListLevel) );
+			    &(from->rrcDocumentListLevel), fontMap, colorMap );
     docCopyListOverrideLevel( &(to->rrcListOverrideLevel),
-					    &(from->rrcListOverrideLevel) );
+			    &(from->rrcListOverrideLevel), fontMap, colorMap );
     }
 
 void docRtfPushReadingState(	RtfReadingContext *	rrc,
 				RtfReadingState *	rrs )
     {
+    BufferDocument *		bd= rrc->rrcBd;
+    const DocumentProperties *	dp= (const DocumentProperties *)0;
+
+    if  ( bd )
+	{ dp= &(bd->bdProperties); }
+
     utilInitTextAttribute( &(rrs->rrsTextAttribute) );
     rrs->rrsTextAttribute.taFontSizeHalfPoints= 24;
+
+    if  ( dp && dp->dpDefaultFont >= 0 )
+	{ rrs->rrsTextAttribute.taFontNumber= dp->dpDefaultFont;	}
 
     docInitParagraphProperties( &(rrs->rrsParagraphProperties) );
     docInitSectionProperties( &(rrs->rrsSectionProperties) );
@@ -423,7 +440,7 @@ static int docRtfReadControlWord(	SimpleInputStream *	sis,
     if  ( c == '-' )
 	{ sign= -1; c= sioInGetCharacter( sis );	}
 
-    *pGotArg= isdigit( c );
+    *pGotArg= ( isdigit( c ) != 0 );
     if  ( *pGotArg )
 	{
 	int arg= c- '0';
@@ -439,6 +456,9 @@ static int docRtfReadControlWord(	SimpleInputStream *	sis,
     /* HACK */
     if  ( *pGotArg && ! strcmp( controlWord, "u" ) )
 	{
+	if  ( *pArg < 0 )
+	    { *pArg= (int)0x1000+ *pArg;	}
+
 	if  ( *pArg >= 0 && *pArg <= 255 )
 	    {
 	    *pC= *pArg;
@@ -500,7 +520,7 @@ int docRtfApplyControlWord(	SimpleInputStream *	sis,
 	{ arg= -1;	}
 
     if  ( (*rcw->rcwApply) ( sis, rcw, arg, rrc ) )
-	{ SLDEB(rcw->rcwWord,arg); return -1;	}
+	{ LSLDEB(rrc->rrcCurrentLine,rcw->rcwWord,arg); return -1;	}
 
     return 0;
     }
@@ -627,9 +647,7 @@ int docRtfFindControl(		SimpleInputStream *	sis,
 			if  ( rrs->rrsUnicodeBytesToSkip > 0 )
 			    { rrs->rrsUnicodeBytesToSkip= 0;	}
 
-			if  ( res != 2 )
-			    { rrc->rrcCharacterAhead= rrc->rrcInputMapping[c]; }
-			else{ rrc->rrcCharacterAhead= c; }
+			rrc->rrcCharacterAhead= c;
 
 			return RTFfiTEXTGROUP;
 			}
@@ -654,10 +672,10 @@ int docRtfFindControl(		SimpleInputStream *	sis,
 
 	    default: defaultCase:
 
-		if  ( rrs->rrsUnicodeBytesToSkip > 0 )
+		if  ( rrs && rrs->rrsUnicodeBytesToSkip > 0 )
 		    { rrs->rrsUnicodeBytesToSkip--; continue;	}
 
-		*pC= rrc->rrcInputMapping[c]; return RTFfiCHAR;
+		*pC= c; return RTFfiCHAR;
 	    }
 	}
     }
@@ -679,8 +697,13 @@ int docRtfAdjustLevel(	RtfReadingContext *	rrc,
 			int			toLevel,
 			int			textLevel )
     {
-    RtfReadingState *	rrs= rrc->rrcState;
-    BufferItem *	bi= rrc->rrcBi;
+    RtfReadingState *		rrs= rrc->rrcState;
+    BufferItem *		bi= rrc->rrcBi;
+    BufferDocument *		bd= rrc->rrcBd;
+    const DocumentProperties *	dp= &(bd->bdProperties);
+
+    const int * const		colorMap= (const int *)0;
+    const int * const		listStyleMap= (const int *)0;
 
     if  ( ! bi )
 	{ XDEB(bi); return -1;	}
@@ -715,8 +738,16 @@ int docRtfAdjustLevel(	RtfReadingContext *	rrc,
 
 	if  ( bi->biLevel == DOClevPARA )
 	    {
-	    PropertyMask	ppChgMask;
-	    PropertyMask	ppUpdMask;
+	    PropertyMask		ppChgMask;
+	    PropertyMask		ppUpdMask;
+	    int				paraNr;
+	    int				textAttributeNumber;
+
+	    ListNumberTreeNode *	root;
+
+	    textAttributeNumber= bi->biParaParticules->tpTextAttributeNumber;
+
+	    paraNr= docNumberOfParagraph( bi );
 
 	    if  ( docRtfFlushBookmarks( -1, bi, rrc ) )
 		{ LDEB(1); return -1;	}
@@ -725,12 +756,48 @@ int docRtfAdjustLevel(	RtfReadingContext *	rrc,
 
 	    PROPmaskCLEAR( &ppUpdMask );
 	    PROPmaskFILL( &ppUpdMask, PPprop_COUNT );
+	    PROPmaskUNSET( &ppUpdMask, PPpropIN_TABLE );
 
 	    /*  3  */
 	    if  ( docUpdParaProperties( &ppChgMask, &(bi->biParaProperties),
 				&ppUpdMask, &(rrs->rrsParagraphProperties),
-				(const int *)0 ) )
+				colorMap, listStyleMap ) )
 		{ LDEB(1); return -1;	}
+
+	    if  ( bi->biParaListOverride > 0 )
+		{
+		int				fieldNr= -1;
+		int				partBegin= -1;
+		int				partEnd= -1;
+		int				stroffBegin= -1;
+		int				stroffEnd= -1;
+
+		const ListOverrideTable *	lot;
+
+		lot= &(dp->dpListOverrideTable);
+
+		if  ( bi->biParaListOverride >= lot->lotOverrideCount )
+		    {
+		    LLDEB(bi->biParaListOverride,lot->lotOverrideCount);
+		    return -1;
+		    }
+
+		if  ( docDelimitParaHeadField( &fieldNr, &partBegin, &partEnd,
+					&stroffBegin, &stroffEnd, bi, bd ) )
+		    {
+		    if  ( docInsertParaHeadField( bi, bd,
+					DOCfkLISTTEXT, textAttributeNumber ) )
+			{
+			LDEB(bi->biParaListOverride); return -1;
+			}
+		    }
+
+		root= &(bd->bdListNumberTrees[bi->biParaListOverride]);
+
+		if  ( docListNumberTreeInsertParagraph( root,
+					    bi->biParaListLevel, paraNr ) )
+		    { LDEB(paraNr);	}
+		}
 	    }
 
 	if  ( bi->biLevel == DOClevSECT )
@@ -781,7 +848,7 @@ int docRtfAdjustLevel(	RtfReadingContext *	rrc,
 
 	    if  ( docUpdParaProperties( &ppChgMask, &(bi->biParaProperties),
 				&ppUpdMask, &(rrs->rrsParagraphProperties),
-				(const int *)0 ) )
+				colorMap, listStyleMap ) )
 		{ LDEB(1); return -1;	}
 
 	    /*  5  */
@@ -895,7 +962,7 @@ static int docRtfReadText(	SimpleInputStream *	sis,
 				int *			pArg,
 
 				RtfReadingContext *	rrc,
-				RtfAddTextParticule	addParticule	)
+				RtfAddTextParticule	addParticule )
     {
     int				res;
 
@@ -991,9 +1058,8 @@ static int docRtfReadText(	SimpleInputStream *	sis,
 		    collectedText= fresh;
 		    collectedSize= size;
 		    }
-		if  ( map )
-		    { collectedText[len++]= rrc->rrcInputMapping[c];	}
-		else{ collectedText[len++]= c;				}
+
+		collectedText[len++]= c;
 		collectedText[len  ]= '\0';
 		break;
 
@@ -1131,10 +1197,10 @@ int docRtfReadWordGroup(	SimpleInputStream *	sis,
 	}
     else{
 	if  ( rrc->rrcComplainUnknown )
-	    { SDEB(controlWord);	}
+	    { LSDEB(rrc->rrcCurrentLine,controlWord);	}
 
 	if  ( docRtfReadUnknownGroup( sis, rrc ) )
-	    { LDEB(1); return -1;	}
+	    { LSDEB(rrc->rrcCurrentLine,controlWord); return -1;	}
 	}
 
     return 0;
@@ -1165,6 +1231,10 @@ int docRtfConsumeGroup(	SimpleInputStream *	sis,
 
     for (;;)
 	{
+	const RtfControlWord *	rcwApplyFirst;
+	int			argApplyFirst;
+	int			gotArgApplyFirst;
+
 	switch( res )
 	    {
 	    case RTFfiCLOSE:
@@ -1282,6 +1352,19 @@ int docRtfConsumeGroup(	SimpleInputStream *	sis,
 		if  ( rcw )
 		    { goto groupFound; }
 
+		rcw= docRtfFindWord( controlWord, groupWords, 0 );
+		if  ( rcw )
+		    {
+		    if  ( ! gotArg )
+			{ arg= -1;	}
+
+		    rcwApplyFirst= rcw;
+		    argApplyFirst= arg;
+		    gotArgApplyFirst= gotArg;
+
+		    goto textGroup;
+		    }
+
 		rrc->rrcInIgnoredGroup++;
 
 		if  ( docRtfReadUnknownGroup( sis, rrc ) )
@@ -1296,10 +1379,16 @@ int docRtfConsumeGroup(	SimpleInputStream *	sis,
 		break;
 
 	    case RTFfiTEXTGROUP:
+		rcwApplyFirst= (RtfControlWord *)0;
+		argApplyFirst= -1;
+		gotArgApplyFirst= 0;
+
+	      textGroup:
 		if  ( docRtfReadGroup( sis, textLevel,
-					(RtfControlWord *)0, 0, 0, rrc,
-					contolWords, groupWords,
-					addParticule, (RtfCommitGroup)0 ) )
+			    rcwApplyFirst, gotArgApplyFirst, argApplyFirst,
+			    rrc,
+			    contolWords, groupWords,
+			    addParticule, (RtfCommitGroup)0 ) )
 		    { LDEB(1); return -1;	}
 
 		res= docRtfFindControl( sis, rrc, &c,

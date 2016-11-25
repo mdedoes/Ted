@@ -145,6 +145,159 @@ void docRtfSaveSectionProperties( SimpleOutputStream *		sos,
 
     docRtfWriteNextLine( pCol, sos );
 
+    /**************/
+
+    if  ( PROPmaskISSET( updMask, SPpropFOOTNOTE_POSITION ) )
+	{
+	switch( sp->spFootnoteProperties.npPosition )
+	    {
+	    /* No!
+	    case FTN_POS_SECT_END:
+		docRtfWriteTag( "\\endnotes", pCol, sos );
+		break;
+	    case FTN_POS_DOC_END:
+		docRtfWriteTag( "\\enddoc", pCol, sos );
+		break;
+	    */
+	    case FTN_POS_BELOW_TEXT:
+		docRtfWriteTag( "\\sftntj", pCol, sos );
+		break;
+	    case FTN_POS_PAGE_BOTTOM:
+		docRtfWriteTag( "\\sftnbj", pCol, sos );
+		break;
+	    default:
+		LDEB(sp->spFootnoteProperties.npPosition); break;
+	    }
+	}
+
+    if  ( PROPmaskISSET( updMask, SPpropENDNOTE_POSITION ) )
+	{
+	switch( sp->spEndnoteProperties.npPosition )
+	    {
+	    /* No!
+	    case FTN_POS_SECT_END:
+		docRtfWriteTag( "\\aendnotes", pCol, sos );
+		break;
+	    case FTN_POS_DOC_END:
+		docRtfWriteTag( "\\aenddoc", pCol, sos );
+		break;
+	    */
+	    case FTN_POS_BELOW_TEXT:
+		docRtfWriteTag( "\\saftntj", pCol, sos );
+		break;
+	    case FTN_POS_PAGE_BOTTOM:
+		docRtfWriteTag( "\\saftnbj", pCol, sos );
+		break;
+	    default:
+		LDEB(sp->spEndnoteProperties.npPosition); break;
+	    }
+	}
+
+    if  ( PROPmaskISSET( updMask, SPpropFOOTNOTE_STARTNR ) )
+	{
+	docRtfWriteArgTag( "\\sftnstart", pCol,
+			    sp->spFootnoteProperties.npStartNumber, sos );
+	}
+    if  ( PROPmaskISSET( updMask, SPpropENDNOTE_STARTNR ) )
+	{
+	docRtfWriteArgTag( "\\saftnstart", pCol,
+			    sp->spEndnoteProperties.npStartNumber, sos );
+	}
+
+    if  ( PROPmaskISSET( updMask, SPpropFOOTNOTE_RESTART ) )
+	{
+	switch( sp->spFootnoteProperties.npRestart )
+	    {
+	    case FTN_RST_CONTINUOUS:
+		docRtfWriteTag( "\\sftnrstcont", pCol, sos );
+		break;
+	    case FTN_RST_PER_SECTION:
+		docRtfWriteTag( "\\sftnrestart", pCol, sos );
+		break;
+	    case FTN_RST_PER_PAGE:
+		docRtfWriteTag( "\\sftnrstpg", pCol, sos );
+		break;
+	    default:
+		LDEB(sp->spFootnoteProperties.npRestart); break;
+	    }
+	}
+
+    if  ( PROPmaskISSET( updMask, SPpropENDNOTE_RESTART ) )
+	{
+	switch( sp->spEndnoteProperties.npRestart )
+	    {
+	    case FTN_RST_CONTINUOUS:
+		docRtfWriteTag( "\\saftnrstcont", pCol, sos );
+		break;
+	    case FTN_RST_PER_SECTION:
+		docRtfWriteTag( "\\saftnrestart", pCol, sos );
+		break;
+	    /* No!
+	    case FTN_RST_PER_PAGE:
+		docRtfWriteTag( "\\saftnrstpg", pCol, sos );
+		break;
+	    */
+	    default:
+		LDEB(sp->spEndnoteProperties.npRestart); break;
+	    }
+	}
+
+    if  ( PROPmaskISSET( updMask, SPpropFOOTNOTE_STYLE ) )
+	{
+	switch( sp->spFootnoteProperties.npNumberStyle )
+	    {
+	    case FTNstyleNAR:
+		docRtfWriteTag( "\\sftnnar", pCol, sos );
+		break;
+	    case FTNstyleNALC:
+		docRtfWriteTag( "\\sftnnalc", pCol, sos );
+		break;
+	    case FTNstyleNAUC:
+		docRtfWriteTag( "\\sftnnauc", pCol, sos );
+		break;
+	    case FTNstyleNRLC:
+		docRtfWriteTag( "\\sftnnrlc", pCol, sos );
+		break;
+	    case FTNstyleNRUC:
+		docRtfWriteTag( "\\sftnnruc", pCol, sos );
+		break;
+	    case FTNstyleNCHI:
+		docRtfWriteTag( "\\sftnnchi", pCol, sos );
+		break;
+	    default:
+		LDEB(sp->spFootnoteProperties.npNumberStyle); break;
+	    }
+	}
+
+    if  ( PROPmaskISSET( updMask, SPpropENDNOTE_STYLE ) )
+	{
+	switch( sp->spEndnoteProperties.npNumberStyle )
+	    {
+	    case FTNstyleNAR:
+		docRtfWriteTag( "\\saftnnar", pCol, sos );
+		break;
+	    case FTNstyleNALC:
+		docRtfWriteTag( "\\saftnnalc", pCol, sos );
+		break;
+	    case FTNstyleNAUC:
+		docRtfWriteTag( "\\saftnnauc", pCol, sos );
+		break;
+	    case FTNstyleNRLC:
+		docRtfWriteTag( "\\saftnnrlc", pCol, sos );
+		break;
+	    case FTNstyleNRUC:
+		docRtfWriteTag( "\\saftnnruc", pCol, sos );
+		break;
+	    case FTNstyleNCHI:
+		docRtfWriteTag( "\\saftnnchi", pCol, sos );
+		break;
+	    default:
+		LDEB(sp->spEndnoteProperties.npNumberStyle); break;
+	    }
+	}
+
+    /**************/
+
     pn= sp->spParagraphNumbers;
     for ( i= 0; i < sp->spParagraphNumberCount; pn++, i++ )
 	{
@@ -154,7 +307,7 @@ void docRtfSaveSectionProperties( SimpleOutputStream *		sos,
 	docRtfWriteDestinationBegin( "\\*", pCol, sos );
 	docRtfWriteArgTag( "\\pnseclvl", pCol, pn->pnLevel+ 1, sos );
 
-	switch( pn->pnStyle )
+	switch( pn->pnNumberStyle )
 	    {
 	    case DOCpnCARD:
 		docRtfWriteTag( "\\pncard", pCol, sos );
@@ -181,16 +334,19 @@ void docRtfSaveSectionProperties( SimpleOutputStream *		sos,
 		docRtfWriteTag( "\\pnordt", pCol, sos );
 		break;
 	    default:
-		LDEB(pn->pnStyle); break;
+		LDEB(pn->pnNumberStyle); break;
 	    }
 
-	docRtfWriteArgTag( "\\pnstart", pCol, pn->pnStartNumber+ 1, sos );
+	docRtfWriteArgTag( "\\pnstart", pCol, pn->pnStartAt+ 1, sos );
 
 	if  ( pn->pnUseHangingIndent )
 	    { sioOutPutString( "\\pnhang", sos );	}
 
-	if  ( pn->pnIndentTwips > 0 )
-	    { docRtfWriteArgTag( "\\pnindent", pCol, pn->pnIndentTwips, sos ); }
+	if  ( pn->pnIndent > 0 )
+	    { docRtfWriteArgTag( "\\pnindent", pCol, pn->pnIndent, sos ); }
+
+	if  ( pn->pnSpace > 0 )
+	    { docRtfWriteArgTag( "\\pnsp", pCol, pn->pnSpace, sos ); }
 
 	if  ( pn->pnTextBefore[0] )
 	    {
@@ -239,19 +395,19 @@ int docRtfRememberSectionProperty(	SimpleInputStream *	sis,
 	{
 	case SPprop_NONE:
 	    {
-	    const DocumentGeometry *	dgDoc;
-	    DocumentGeometry *		dgSect;
+	    const DocumentProperties *	dp;
 
 	    if  ( ! rrc->rrcBd )
 		{ XDEB(rrc->rrcBd); return -1;	}
 
-	    dgDoc= &(rrc->rrcBd->bdProperties.dpGeometry);
-	    dgSect= &(sp->spDocumentGeometry);
+	    dp= &(rrc->rrcBd->bdProperties);
 
 	    docCleanSectionProperties( sp );
 	    docInitSectionProperties( sp );
 
-	    *dgSect= *dgDoc;
+	    sp->spDocumentGeometry= dp->dpGeometry;
+	    sp->spFootnoteProperties= dp->dpFootnoteProperties;
+	    sp->spEndnoteProperties= dp->dpEndnoteProperties;
 	    }
 	    return 0;
 
@@ -329,6 +485,41 @@ int docRtfRememberSectionProperty(	SimpleInputStream *	sis,
 	case SPpropCOLUMN_WIDTH:
 	    sp->spColumnWidthTwips= arg;
 	    break;
+
+	/***/
+	case SPpropFOOTNOTE_STARTNR:
+	    sp->spFootnoteProperties.npStartNumber= arg;
+	    break;
+	case SPpropENDNOTE_STARTNR:
+	    sp->spEndnoteProperties.npStartNumber= arg;
+	    break;
+
+	case SPpropFOOTNOTE_POSITION:
+	    sp->spFootnoteProperties.npPosition= rcw->rcwEnumValue;
+	    break;
+	/* No!
+	case SPpropENDNOTE_POSITION:
+	    sp->spEndnoteProperties.npPosition= rcw->rcwEnumValue;
+	    break;
+	*/
+
+	case SPpropFOOTNOTE_RESTART:
+	    sp->spFootnoteProperties.npRestart= rcw->rcwEnumValue;
+	    break;
+
+	case SPpropENDNOTE_RESTART:
+	    sp->spEndnoteProperties.npRestart= rcw->rcwEnumValue;
+	    break;
+
+	case SPpropFOOTNOTE_STYLE:
+	    sp->spFootnoteProperties.npNumberStyle= rcw->rcwEnumValue;
+	    break;
+
+	case SPpropENDNOTE_STYLE:
+	    sp->spEndnoteProperties.npNumberStyle= rcw->rcwEnumValue;
+	    break;
+
+	/***/
 
 	default:
 	    SDEB(rcw->rcwWord);

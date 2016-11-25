@@ -87,7 +87,8 @@ typedef struct RtfReadingContext
 				/****************************************/
 				/*  Text attributes of the current pos.	*/
 				/****************************************/
-    TextFrameProperties		rrcTextFrameProperties;
+    FramePosition		rrcParaFramePosition;
+    FramePosition		rrcRowFramePosition;
     CellProperties		rrcCellProperties;
     RowProperties		rrcRowProperties;
     BorderProperties		rrcBorderProperties;
@@ -135,7 +136,8 @@ typedef struct RtfReadingContext
 				/*  For coping with the way word saves	*/
 				/*  {\pntext ... }			*/
 				/****************************************/
-    unsigned char		rrcInputMapping[256];
+    unsigned char		rrcDefaultInputMapping[256];
+    const unsigned char *	rrcTextInputMapping;
     } RtfReadingContext;
 
 
@@ -167,28 +169,29 @@ typedef struct PushedAttribute
 
 typedef struct RtfWritingContext
     {
-    TextAttribute	rwcTextAttribute;
-    ParagraphProperties	rwcParagraphProperties;
-    RowProperties	rwcRowProperties;
+    TextAttribute		rwcTextAttribute;
+    ParagraphProperties		rwcParagraphProperties;
+    RowProperties		rwcRowProperties;
 
-    TextAttribute	rwcOutsideTableTextAttribute;
-    ParagraphProperties	rwcOutsideTableParagraphProperties;
+    TextAttribute		rwcOutsideTableTextAttribute;
+    ParagraphProperties		rwcOutsideTableParagraphProperties;
 
-    PushedAttribute *	rwcOutsideFldrsltAttribute;
-    int			rwcInFldrslt;
-    int			rwcInTable;
+    PushedAttribute *		rwcOutsideFldrsltAttribute;
+    int				rwcInFldrslt;
+    int				rwcInTable;
 
-    int			rwcHasPrecedingTags;
-    int			rwcSaveBookmarks;
+    int				rwcHasPrecedingTags;
+    int				rwcSaveBookmarks;
 
-    int			rwcSaveAsLink;
-    int			rwcSaveAsLinkAsRef;
-    int			rwcSaveAsLinkAsPageref;
-    DocumentField	rwcSaveAsHyperlinkField;
-    DocumentField	rwcSaveAsRefField;
-    DocumentField	rwcSaveAsPagerefField;
+    int				rwcSaveAsLink;
+    int				rwcSaveAsLinkAsRef;
+    int				rwcSaveAsLinkAsPageref;
+    DocumentField		rwcSaveAsHyperlinkField;
+    DocumentField		rwcSaveAsRefField;
+    DocumentField		rwcSaveAsPagerefField;
 
-    unsigned char	rwcOutputMapping[256];
+    unsigned char		rwcDefaultOutputMapping[256];
+    const unsigned char *	rwcTextOutputMapping;
     } RtfWritingContext;
 
 /************************************************************************/
@@ -333,6 +336,12 @@ extern int docRtfReadObject(	SimpleInputStream *	sis,
 				int			arg,
 				RtfReadingContext *	rrc );
 
+extern int docRtfReadDrawingObject(
+				SimpleInputStream *	sis,
+				const RtfControlWord *	rcw,
+				int			arg,
+				RtfReadingContext *	rrc );
+
 extern int docRtfAdjustLevel(	RtfReadingContext *	rrc,
 				int			toLevel,
 				int			textLevel );
@@ -351,7 +360,12 @@ extern int docRtfReadField(	SimpleInputStream *	sis,
 				int			arg,
 				RtfReadingContext *	rrc );
 
-extern int docRtfReadLookupEntry(SimpleInputStream *	sis,
+extern int docRtfReadTextField(	SimpleInputStream *	sis,
+				const RtfControlWord *	rcw,
+				int			arg,
+				RtfReadingContext *	rrc );
+
+extern int docRtfLookupEntry(	SimpleInputStream *	sis,
 				const RtfControlWord *	rcw,
 				int			arg,
 				RtfReadingContext *	rrc );
@@ -366,11 +380,6 @@ extern int docRtfReadFootnote(	SimpleInputStream *	sis,
 				int			arg,
 				RtfReadingContext *	rrc );
 
-extern int docRtfChftn(		SimpleInputStream *	sis,
-				const RtfControlWord *	rcw,
-				int			arg,
-				RtfReadingContext *	rrc );
-
 extern int docRtfBkmkStart(	SimpleInputStream *	sis,
 				const RtfControlWord *	rcw,
 				int			arg,
@@ -381,7 +390,7 @@ extern int docRtfBkmkEnd(	SimpleInputStream *	sis,
 				int			arg,
 				RtfReadingContext *	rrc );
 
-extern int docRtfSpecialToField(	SimpleInputStream *	sis,
+extern int docRtfTextSpecialToField(	SimpleInputStream *	sis,
 					const RtfControlWord *	rcw,
 					int			arg,
 					RtfReadingContext *	rrc );
@@ -553,6 +562,12 @@ extern int docRtfRememberPntextProperty(SimpleInputStream *	sis,
 					int			arg,
 					RtfReadingContext *	rrc );
 
+extern int docRtfRememberTextShadingPattern(
+					SimpleInputStream *	sis,
+					const RtfControlWord *	rcw,
+					int			arg,
+					RtfReadingContext *	rrc );
+
 extern void docRtfWriteArgDestinationBegin( const char *	tag,
 					int *			pCol,
 					int			arg,
@@ -566,13 +581,19 @@ extern int docRtfSaveDocumentProperties( SimpleOutputStream *	sos,
 extern void docRtfReadSetAnsicpg(	RtfReadingContext *	rrc,
 					int			arg );
 
-extern void docRtfSaveTextFrameProperties(
+extern void docRtfSaveParaFrameProperties(
 				SimpleOutputStream *		sos,
 				int *				pCol,
 				const PropertyMask *		updMask,
-				const TextFrameProperties *	tfp );
+				const FramePosition *		fp );
 
-extern int docRtfRememberTextFrameProperty(
+extern int docRtfRememberParaFrameProperty(
+					SimpleInputStream *	sis,
+					const RtfControlWord *	rcw,
+					int			arg,
+					RtfReadingContext *	rrc );
+
+extern int docRtfRememberRowFrameProperty(
 					SimpleInputStream *	sis,
 					const RtfControlWord *	rcw,
 					int			arg,
@@ -711,5 +732,41 @@ extern int docRtfObjectProperty(	SimpleInputStream *	sis,
 					RtfReadingContext *	rrc );
 
 extern int docRtfCommitListLevelStyle(	RtfReadingContext *	rrc );
+
+extern int docRtfTextSpecialChar(	SimpleInputStream *	sis,
+					const RtfControlWord *	rcw,
+					int			arg,
+					RtfReadingContext *	rrc );
+
+extern int docRtfTextSpecialParticule(	SimpleInputStream *	sis,
+					const RtfControlWord *	rcw,
+					int			arg,
+					RtfReadingContext *	rrc );
+
+extern int docRtfDrawingObjectProperty(	SimpleInputStream *	sis,
+					const RtfControlWord *	rcw,
+					int			arg,
+					RtfReadingContext *	rrc );
+
+extern int docRtfDrawingObjectCoordinate(
+					SimpleInputStream *	sis,
+					const RtfControlWord *	rcw,
+					int			arg,
+					RtfReadingContext *	rrc );
+
+extern int docRtfDocInfoGroup(		SimpleInputStream *	sis,
+					const RtfControlWord *	rcw,
+					int			arg,
+					RtfReadingContext *	rrc );
+
+extern int docRtfShpProperty(		SimpleInputStream *	sis,
+					const RtfControlWord *	rcw,
+					int			arg,
+					RtfReadingContext *	rrc );
+
+extern int docRtfPnProperty(		SimpleInputStream *	sis,
+					const RtfControlWord *	rcw,
+					int			arg,
+					RtfReadingContext *	rrc );
 
 #    endif	/*  DOC_RTF_H	*/

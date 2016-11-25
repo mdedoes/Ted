@@ -31,6 +31,8 @@ void docCleanObject(	InsertedObject *	io )
     if  ( io->ioObjectClass )
 	{ free( io->ioObjectClass );	}
     
+    docCleanDrawingObject( &(io->ioDrawingObject) );
+
     return;
     }
 
@@ -38,6 +40,8 @@ static void docInitObject(	InsertedObject *	io )
     {
     io->ioKind= DOCokUNKNOWN;
     io->ioResultKind= DOCokUNKNOWN;
+    io->ioRtfResultKind= RESULTkindUNKNOWN;
+    io->ioRtfEmbedKind= EMBEDkindOBJEMB;
 
     io->ioTwipsWide= 0;
     io->ioTwipsHigh= 0;
@@ -74,6 +78,8 @@ static void docInitObject(	InsertedObject *	io )
     io->ioObjectName= (unsigned char *)0;
     io->ioObjectClass= (unsigned char *)0;
     io->ioBliptag= 0;
+
+    docInitDrawingObject( &(io->ioDrawingObject) );
 
     io->ioPixmap= 0L;
     io->ioPrivate= (void *)0;
@@ -152,6 +158,8 @@ InsertedObject * docClaimObjectCopy(	BufferItem *		bi,
 
     ioTo->ioKind= ioFrom->ioKind;
     ioTo->ioResultKind= ioFrom->ioResultKind;
+    ioTo->ioRtfResultKind= ioFrom->ioRtfResultKind;
+    ioTo->ioRtfEmbedKind= ioFrom->ioRtfEmbedKind;
     ioTo->ioTwipsWide= ioFrom->ioTwipsWide;
     ioTo->ioTwipsHigh= ioFrom->ioTwipsHigh;
     ioTo->ioScaleX= ioFrom->ioScaleX;
@@ -195,8 +203,7 @@ void docCleanParticuleObject(	BufferItem *	bi,
     {
     InsertedObject *	io;
 
-    if  ( tp->tpKind != DOCkindOBJECT	||
-	  tp->tpPhysicalFont != 0	)
+    if  ( tp->tpKind != DOCkindOBJECT )
 	{ return;	}
 
     io= bi->biParaObjects+ tp->tpObjectNumber;
@@ -326,7 +333,7 @@ InsertedObject *	docClaimObject(	int *			pNr,
 /************************************************************************/
 
 int docCopyParticuleData(	DocumentCopyJob *	dcj,
-				unsigned int *		pFieldUpd,
+				EditOperation *		eo,
 				BufferItem *		biTo,
 				const BufferItem *	biFrom,
 				TextParticule *		tpTo,
@@ -344,6 +351,7 @@ int docCopyParticuleData(	DocumentCopyJob *	dcj,
 	case DOCkindTAB:
 	case DOCkindLINEBREAK:
 	case DOCkindPAGEBREAK:
+	case DOCkindCOLUMNBREAK:
 	    break;
 
 	case DOCkindOBJECT:
@@ -403,7 +411,7 @@ int docCopyParticuleData(	DocumentCopyJob *	dcj,
 		{ LDEB(tpFrom->tpObjectNumber); }
 	    else{ dcj->dcjFieldMap[tpFrom->tpObjectNumber]= nr;		}
 
-	    *pFieldUpd |= fki->fkiCalculateWhen;
+	    eo->eoFieldUpdate |= fki->fkiCalculateWhen;
 	    }
 
 	    break;
@@ -449,7 +457,7 @@ int docCopyParticuleData(	DocumentCopyJob *	dcj,
 		ss.ssSectNrExternalTo= sectBiTo->biNumberInParent;
 		ss.ssNoteArrayIndex= noteIndex;
 
-		dnTo->dnExternalItem.eiItem= docCopySectItem( dcj, pFieldUpd,
+		dnTo->dnExternalItem.eiItem= docCopySectItem( dcj, eo,
 				    (BufferItem *)0, 0,
 				    dnFrom->dnExternalItem.eiItem, &ss );
 
@@ -458,6 +466,22 @@ int docCopyParticuleData(	DocumentCopyJob *	dcj,
 		}
 
 	    dnTo->dnExternalItemKind= dnFrom->dnExternalItemKind;
+
+	    switch( dnTo->dnExternalItemKind )
+		{
+		case DOCinFOOTNOTE:
+		    if  ( docCheckNoteSeparatorItem( bdTo, DOCinFTNSEP ) )
+			{ LDEB(dnTo->dnExternalItemKind); return -1;	}
+		    break;
+
+		case DOCinENDNOTE:
+		    if  ( docCheckNoteSeparatorItem( bdTo, DOCinAFTNSEP ) )
+			{ LDEB(dnTo->dnExternalItemKind); return -1;	}
+		    break;
+
+		default:
+		    LDEB(dnFrom->dnExternalItemKind);
+		}
 	    }
 	    break;
 
@@ -478,7 +502,7 @@ int docCopyParticuleData(	DocumentCopyJob *	dcj,
 /************************************************************************/
 
 int docCopyFieldRelative(	DocumentCopyJob *	dcj,
-				unsigned int *		pFieldUpd,
+				EditOperation *		eo,
 				BufferItem *		biTo,
 				const BufferItem *	biFrom,
 				TextParticule *		tpTo,
@@ -533,7 +557,7 @@ int docCopyFieldRelative(	DocumentCopyJob *	dcj,
 	return 0;
 	}
 
-    if  ( docCopyParticuleData( dcj, pFieldUpd, biTo, biFrom, tpTo, tpFrom ) )
+    if  ( docCopyParticuleData( dcj, eo, biTo, biFrom, tpTo, tpFrom ) )
 	{ LDEB(1); return -1;	}
 
     return 0;

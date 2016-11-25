@@ -35,7 +35,7 @@ static int docIsMergeformat(		const unsigned char *		bytes,
 					int				n,
 					int				comp )
     {
-    if  ( comp < n-1					&&
+    if  ( comp < n-1						&&
 	  fic[comp].ficSize == 2				&&
 	  ! memcmp( bytes+ fic[comp].ficOffset, "\\*", 2 )	&&
 	  fic[comp+ 1].ficSize == 11				)
@@ -76,10 +76,14 @@ int docCalculateDocDateFieldString(	int *			pCalculated,
 
     int				mergeFormat= 0;
     int				pictureComp= -1;
+    const char *		defaultFormat= (const char *)0;
+
+    time_t			t;
+    struct tm			tmNow;
 
     n= docSplitFieldInstructions( &(df->dfInstructions), fic, FIC_COUNT );
-    if  ( n < 2 )
-	{ LDEB(n); return -1;	}
+    if  ( n < 1 )
+	{ SLDEB((char *)bytes,n); return -1;	}
 
     for ( comp= 1; comp < n; comp++ )
 	{
@@ -99,9 +103,31 @@ int docCalculateDocDateFieldString(	int *			pCalculated,
 
     switch( df->dfKind )
 	{
-	case DOCfkCREATEDATE:	tm= &(dp->dpCreatim);	break;
-	case DOCfkSAVEDATE:	tm= &(dp->dpRevtim);	break;
-	case DOCfkPRINTDATE:	tm= &(dp->dpPrintim);	break;
+	case DOCfkCREATEDATE:
+	    tm= &(dp->dpCreatim);
+	    defaultFormat= "%c";
+	    break;
+	case DOCfkSAVEDATE:
+	    tm= &(dp->dpRevtim);
+	    defaultFormat= "%c";
+	    break;
+	case DOCfkPRINTDATE:
+	    tm= &(dp->dpPrintim);
+	    defaultFormat= "%c";
+	    break;
+
+	case DOCfkDATE:
+	    t= time( (time_t *)0 );
+	    tmNow= *localtime( &t );
+	    tm= &tmNow;
+	    defaultFormat= "%x";
+	    break;
+	case DOCfkTIME:
+	    t= time( (time_t *)0 );
+	    tmNow= *localtime( &t );
+	    tm= &tmNow;
+	    defaultFormat= "%X";
+	    break;
 
 	default:
 	    LDEB(df->dfKind); *pCalculated= 0; return 0;
@@ -130,9 +156,7 @@ int docCalculateDocDateFieldString(	int *			pCalculated,
 
     if  ( mergeFormat )
 	{
-	/*  GCC: Sut Up! */
-	const char *	frm= "%c";
-	if  ( strftime( (char *)target, targetSize, frm, tm ) < 1 )
+	if  ( strftime( (char *)target, targetSize, defaultFormat, tm ) < 1 )
 	    { *pCalculated= 0; return 0;	}
 
 	*pNewSize= strlen( (char *)target );

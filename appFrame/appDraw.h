@@ -43,33 +43,30 @@
 /*									*/
 /************************************************************************/
 
-typedef struct AppPhysicalFont
+typedef struct DrawScreenFont
     {
-    TextAttribute	apfAttribute;
-    int			apfDocFamilyNumber;
-    int			apfFontEncoding;
+			/*  KEY  */
+    short int		apfPsFamilyNumber;
+    short int		apfFontEncoding;
+    short int		apfFaceIndex;
+    short int		apfFullSizePixels;
 
-    int			apfPsFamilyNumber;
-    int			apfPsFaceNumber;
-
+			/*  DEP  */
+    short int		apfUnderLinePositionPixels;
+    short int		apfUnderlineThicknessPixels;
+    short int		apfAscentPixels;
+    short int		apfScapsSizePixels;
+    short int		apfDescentPixels;
+    short int		apfXHeightPixels;
     APP_FONT *		apfFontStruct;
     APP_FONT *		apfScapsFontStruct;
-    unsigned long	apfUnderLinePositionPixels;
-    unsigned long	apfUnderlineThicknessPixels;
-    int			apfAscentPixels;
-    int			apfDescentPixels;
-    int			apfFullSizePixels;
-    unsigned long	apfXHeightPixels;
-    } AppPhysicalFont;
+    } DrawScreenFont;
 
-typedef struct AppPhysicalFontList
+typedef struct DrawScreenFontList
     {
-    const char *	apflAfmDirectory;
-    const char *	apflGhostscriptFontmap;
-    const char *	apflGhostscriptFontToXmapping;
-    int			apflCount;
-    AppPhysicalFont *	apflFonts;
-    } AppPhysicalFontList;
+    int			apflFontCount;
+    DrawScreenFont *	apflFonts;
+    } DrawScreenFontList;
 
 typedef struct AppDrawingData
     {
@@ -87,7 +84,8 @@ typedef struct AppDrawingData
     double			addMagnifiedPixelsPerTwip;
     double			addScreenPixelsPerMM;
 
-    AppPhysicalFontList		addPhysicalFontList;
+    const PostScriptFontList *	addPostScriptFontList;
+    DrawScreenFontList		addScreenFontList;
 
     APP_COLOR_RGB		addForeColor;
     APP_COLOR_RGB		addBackColor;
@@ -177,30 +175,24 @@ extern void appInitDrawingData(		AppDrawingData *	add );
 extern void appCleanDrawingData(	AppDrawingData *	add );
 
 
-extern void appInitFontList(	AppPhysicalFontList *	apfl );
+extern void appInitFontList(	DrawScreenFontList *	apfl );
 extern void appCleanFontList(	AppDrawingData *	add,
-				AppPhysicalFontList *	apfl );
+				DrawScreenFontList *	apfl );
 
 extern int appFontCatalog(	AppDrawingData *	add,
 				AppFontFamily **	pFamilies,
 				int *			pCount		);
 
-extern void appFontFormatCurrent(	char *			target,
-					AppFontFamily *		aff,
-					AppFontTypeface *	aft,
-					int			size	);
-
-extern int appOpenDocumentFont(	AppDrawingData *		add,
+extern int appOpenScreenFont(	AppDrawingData *		add,
 				const DocumentFontList *	dfl,
-				TextAttribute			ta );
+				const TextAttribute *		ta );
 
 extern int appFontXFont(	char *			target,
 				AppDrawingData *	add,
 				const AppFontFamily *	aff,
 				int			encoding,
-				AppFontTypeface *	aft,
-				int			twipsSize,
-				int			variant );
+				const AppFontTypeface *	aft,
+				int			pixelSize );
 
 extern int appCharExistsInFont(	const APP_FONT *	xfs,
 				int			ch );
@@ -224,14 +216,12 @@ extern int appDrawVerticalString(	VerticalXFont *		vxf,
 					int			length );
 
 extern void appSetDrawingEnvironment(
-			AppDrawingData *	add,
-			double			magnification,
-			double			xfac,
-			double			screenPixPerMM,
-			const char *		afmDirectory,
-			const char *		apflGhostscriptFontmap,
-			const char *		ghostscriptFontToXmapping,
-			APP_WIDGET		appWidget );
+			AppDrawingData *		add,
+			double				magnification,
+			double				xfac,
+			double				screenPixPerMM,
+			const PostScriptFontList *	psfl,
+			APP_WIDGET			appWidget );
 
 extern void appExposeRectangle(		const AppDrawingData *	add,
 					int			x,

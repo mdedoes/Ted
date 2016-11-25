@@ -21,13 +21,13 @@
 /*									*/
 /************************************************************************/
 
-static char *	APP_PasteTranlationString=
+static char *	APP_PasteTranslationString=
     "Ctrl <Key>v: copy-primary()\n"	/*  PASTE	*/
     "Ctrl <Key>c: copy-clipboard()\n"	/*  COPY	*/
     "Ctrl <Key>x: cut-clipboard()\n"	/*  CUT		*/
     ;
 
-static XtTranslations APP_PasteTranlations= (XtTranslations)0;
+static XtTranslations APP_PasteTranslations= (XtTranslations)0;
 
 /************************************************************************/
 /*									*/
@@ -52,10 +52,10 @@ void appMakeTextInRow(		Widget *		pText,
     Arg			al[20];
     int			ac= 0;
 
-    if  ( ! APP_PasteTranlations )
+    if  ( ! APP_PasteTranslations )
 	{
-	APP_PasteTranlations=
-		    XtParseTranslationTable( APP_PasteTranlationString );
+	APP_PasteTranslations=
+		    XtParseTranslationTable( APP_PasteTranslationString );
 	}
 
     ac= 0;
@@ -86,8 +86,8 @@ void appMakeTextInRow(		Widget *		pText,
 
     text= XmCreateText( row, WIDGET_NAME, al, ac );
 
-    if  ( APP_PasteTranlations )
-	{ XtOverrideTranslations( text, APP_PasteTranlations ); }
+    if  ( APP_PasteTranslations )
+	{ XtOverrideTranslations( text, APP_PasteTranslations ); }
 
     XtManageChild( text );
 
@@ -115,10 +115,10 @@ void appMakeTextInColumn(	Widget *	pText,
     Arg			al[20];
     int			ac= 0;
 
-    if  ( ! APP_PasteTranlations )
+    if  ( ! APP_PasteTranslations )
 	{
-	APP_PasteTranlations=
-		    XtParseTranslationTable( APP_PasteTranlationString );
+	APP_PasteTranslations=
+		    XtParseTranslationTable( APP_PasteTranslationString );
 	}
 
     ac= 0;
@@ -143,8 +143,8 @@ void appMakeTextInColumn(	Widget *	pText,
 
     text= XmCreateText( column, WIDGET_NAME, al, ac );
 
-    if  ( APP_PasteTranlations )
-	{ XtOverrideTranslations( text, APP_PasteTranlations ); }
+    if  ( APP_PasteTranslations )
+	{ XtOverrideTranslations( text, APP_PasteTranslations ); }
 
     XtManageChild( text );
 

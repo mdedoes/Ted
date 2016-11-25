@@ -41,8 +41,9 @@ void tedRedoDocumentLayout(	EditDocument *		ed )
 	{
 	DocumentSelection	ds;
 	SelectionGeometry	sg;
+	SelectionDescription	sd;
 
-	if  ( tedGetSelection( &ds, &sg, td ) )
+	if  ( tedGetSelection( &ds, &sg, &sd, td ) )
 	    { LDEB(1); return;	}
 
 	tedDocAdaptHorizontalRuler( ed, ds.dsBegin.dpBi );
@@ -126,7 +127,7 @@ void tedSetPageLayout(	EditApplication *		ea,
 
 	    tedRedoDocumentLayout( ed );
 
-	    tedAdaptFormatToolToDocument( ed );
+	    tedAdaptFormatToolToDocument( ed, 0 );
 	    }
 	}
     else{
@@ -148,7 +149,7 @@ void tedSetPageLayout(	EditApplication *		ea,
     return;
     }
 
-int tedSetDocumentProperties(	EditApplication *		ea,
+int tedAppSetDocumentProperties( EditApplication *		ea,
 				const DocumentProperties *	dpNew,
 				const PropertyMask *		updMask )
     {
@@ -203,6 +204,7 @@ int tedSetDocumentProperties(	EditApplication *		ea,
 	      PROPmaskISSET( &changed, DPpropKEYWORDS )	||
 	      PROPmaskISSET( &changed, DPpropDOCCOMM )	||
 	      PROPmaskISSET( &changed, DPpropAUTHOR )	||
+	      PROPmaskISSET( &changed, DPpropCOMPANY )	||
 	      PROPmaskISSET( &changed, DPpropCREATIM )	||
 	      PROPmaskISSET( &changed, DPpropREVTIM )	||
 	      PROPmaskISSET( &changed, DPpropPRINTIM )	)
@@ -220,7 +222,7 @@ int tedSetDocumentProperties(	EditApplication *		ea,
 
 	tedRedoDocumentLayout( ed );
 
-	tedAdaptFormatToolToDocument( ed );
+	tedAdaptFormatToolToDocument( ed, 0 );
 	}
 
     return 0;
@@ -309,46 +311,24 @@ void tedScreenRectangles(	AppDrawingData *		add,
 /*									*/
 /*  (re)Calculate the layout of a whole document.			*/
 /*									*/
-/*  1)  Make sure that a defective document with an empty font list has	*/
-/*	at least one font by supplying 'Helvetica'			*/
-/*									*/
 /************************************************************************/
 
 int tedLayoutDocumentTree(	TedDocument *		td,
 				AppDrawingData *	add )
     {
+    ScreenFontList *		sfl= &(td->tdScreenFontList);
     BufferDocument *		bd= td->tdDocument;
     DocumentProperties *	dp= &(bd->bdProperties);
 
     DocumentRectangle		drChanged;
 
     /*  1  */
-    if  ( dp->dpFontList.dflCount == 0 )
-	{
-	DocumentFont	df;
-	const int	fontNumber= 0;
-	const char *	fontAltName= (const char *)0;
-
-	LDEB(dp->dpFontList.dflCount);
-
-	docInitDocumentFont( &df );
-	df.dfCharset= FONTcharsetANSI;
-
-	if  ( docFontSetFamilyStyle( &df, DFstyleFSWISS )	||
-	      docFontSetFamilyName( &df, "Helvetica" )		||
-	      docFontSetAltName( &df, fontAltName )		)
-	    { LDEB(1); goto ready;	}
-
-	if  ( ! docInsertFont( &(dp->dpFontList), fontNumber, &df ) )
-	    { LDEB(dp->dpFontList.dflCount);	}
-
-      ready:
-	docCleanDocumentFont( &df );
-	}
+    if  ( dp->dpFontList.dflFontCount == 0 )
+	{ LDEB(dp->dpFontList.dflFontCount); return -1;	}
 
     drChanged= add->addBackRect;
 
-    if  ( tedLayoutItem( &(bd->bdItem), bd, add, &drChanged ) )
+    if  ( tedLayoutItem( &(bd->bdItem), bd, add, sfl, &drChanged ) )
 	{ LDEB(1); return -1;	}
 
     return 0;

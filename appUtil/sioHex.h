@@ -11,6 +11,7 @@ extern SimpleInputStream * sioInHexOpen(	SimpleInputStream * sisHex );
 
 extern SimpleOutputStream * sioOutHexOpenFolded(
 				    SimpleOutputStream *	sosHex,
-				    int				wide );
+				    int				wide,
+				    int				lastNl );
 
 extern SimpleOutputStream * sioOutHexOpen(	SimpleOutputStream * sosHex );

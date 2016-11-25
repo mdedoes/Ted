@@ -31,6 +31,7 @@ extern int tedAdjustParagraphLayout(
 extern int tedStartEditOperation(	EditOperation *		eo,
 					DocumentSelection *	ds,
 					SelectionGeometry *	sg,
+					SelectionDescription *	sd,
 					EditDocument *		ed,
 					int			fullWidth );
 
@@ -44,10 +45,13 @@ extern int tedEditFinishSelection(
 				EditOperation *			eo,
 				const DocumentSelection *	dsNew );
 
+extern int tedEditFinishOldSelection(
+				EditDocument *			ed,
+				EditOperation *			eo );
+
 extern void tedAdjustRedrawBegin(	EditDocument *		ed,
 					EditOperation *		eo,
-					int *			pLine,
-					int			part );
+					int *			pLine );
 
 extern int tedEditReplaceSelection(	EditOperation *		eo,
 					DocumentSelection *	dsRep,
@@ -73,13 +77,22 @@ extern int tedEditIncludeRowsInRedraw(	EditOperation *		eo,
 					int			row0,
 					int			row1 );
 
-extern int tedChangeParticuleAttributes( PropertyMask *		pTaAllMask,
-					AppDrawingData *	add,
-					BufferDocument *	bd,
-					BufferItem *		bi,
-					int			partFrom,
-					int			partUpto,
-					const TextAttribute *	taSet,
-					const PropertyMask *	taSetMask );
+extern int tedChangeParticuleAttributes(
+				PropertyMask *			pTaAllMask,
+				AppDrawingData *		add,
+				ScreenFontList *		sfl,
+				BufferDocument *		bd,
+				BufferItem *			bi,
+				int				partFrom,
+				int				partUpto,
+				const TextAttribute *		taSet,
+				const PropertyMask *		taSetMask );
+
+extern int tedOpenParaScreenFonts( BufferDocument *		bd,
+				AppDrawingData *		add,
+				ScreenFontList *		sfl,
+				BufferItem *			paraBi,
+				int				partFrom,
+				int				partUpto );
 
 #   endif	/*	TED_EDIT_H	*/

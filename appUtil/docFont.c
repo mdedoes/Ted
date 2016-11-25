@@ -24,23 +24,149 @@
 /*									*/
 /************************************************************************/
 
+static void docInitFontFamily(	DocumentFontFamily *	dff )
+    {
+    int		i;
+
+    dff->dffFamilyName= (char *)0;
+
+    for ( i= 0; i < ENCODINGps_COUNT; i++ )
+	{ dff->dffFontForEncoding[i]= -1;	}
+    }
+
+static void docCleanFontFamily(	DocumentFontFamily *	dff )
+    {
+    if  ( dff->dffFamilyName )
+	{ free( dff->dffFamilyName );	}
+    }
+
 void docInitFontList(	DocumentFontList *	dfl )
     {
     utilInitializeFontEncodings();
 
-    dfl->dflCount= 0;
+    dfl->dflFontCount= 0;
     dfl->dflFonts= (DocumentFont *)0;
+    dfl->dflFamilyCount= 0;
+    dfl->dflFamilies= (DocumentFontFamily *)0;
     }
 
 void docCleanFontList(	DocumentFontList *	dfl )
     {
     int		i;
 
-    for ( i = 0; i < dfl->dflCount; i++ )
+    for ( i = 0; i < dfl->dflFontCount; i++ )
 	{ docCleanDocumentFont( dfl->dflFonts+ i );	}
 
     if  ( dfl->dflFonts )
 	{ free( dfl->dflFonts );	}
+
+    for ( i = 0; i < dfl->dflFamilyCount; i++ )
+	{ docCleanFontFamily( dfl->dflFamilies+ i );	}
+
+    if  ( dfl->dflFamilies )
+	{ free( dfl->dflFamilies );	}
+
+    return;
+    }
+
+static int docEncodingForCharset(	int		charset )
+    {
+    int		encoding;
+
+    if  ( charset == -1 )
+	{ return -1;	}
+
+    for ( encoding= 0; encoding < ENCODINGps_COUNT; encoding++ )
+	{
+	if  ( PS_Encodings[encoding].fcOfficeCharset == charset )
+	    { return encoding;	}
+	}
+
+    return -1;
+    }
+
+static int docRememberFontName(		DocumentFontList *	dfl,
+					DocumentFont *		df,
+					int			encoding )
+    {
+    int				rval= 0;
+    char *			allocated= (char *)0;
+    const char *		fontFamilyName= df->dfName;
+    DocumentFontFamily *	dff;
+
+    int				idx;
+
+    if  ( encoding < 0				&&
+	  df->dfCharset != FONTcharsetDEFAULT	)
+	{ encoding= docEncodingForCharset( df->dfCharset );	}
+
+    if  ( encoding >= 0 )
+	{
+	const FontCharset *	fc= PS_Encodings+ encoding;
+	const char *		suffix= fc->fcOfficeFontnameSuffix;
+
+	if  ( suffix )
+	    {
+	    int			lenN= strlen( fontFamilyName );
+	    int			lenS= strlen( suffix );
+
+	    if  ( lenN > lenS						&&
+		  ! strcmp( fontFamilyName+ lenN- lenS, suffix )	)
+		{
+		allocated= strdup( fontFamilyName );
+		if  ( ! allocated )
+		    { LXDEB(lenN,allocated); rval= -1; goto ready;	}
+
+		allocated[lenN- lenS]= '\0';
+		fontFamilyName= allocated;
+		}
+	    }
+	}
+
+    dff= dfl->dflFamilies;
+    for ( idx= 0; idx < dfl->dflFamilyCount; dff++, idx++ )
+	{
+	if  ( ! strcmp( dff->dffFamilyName, fontFamilyName ) )
+	    { break; }
+	}
+
+    if  ( idx >= dfl->dflFamilyCount )
+	{
+	dff= realloc( dfl->dflFamilies,
+		    ( dfl->dflFamilyCount+ 1 )* sizeof(DocumentFontFamily) );
+	if  ( ! dff )
+	    { LXDEB(dfl->dflFamilyCount,dff); rval= -1; goto ready;	}
+
+	dfl->dflFamilies= dff;
+
+	dff += dfl->dflFamilyCount;
+
+	docInitFontFamily( dff );
+
+	if  ( ! allocated )
+	    {
+	    allocated= strdup( fontFamilyName );
+	    if  ( ! allocated )
+		{ XDEB(allocated); rval= -1; goto ready;	}
+	    }
+
+	dff->dffFamilyName= allocated; allocated= (char *)0; /* steal */
+
+	dfl->dflFamilyCount++;
+	}
+
+    if  ( encoding >= 0 )
+	{ dff->dffFontForEncoding[encoding]= df->dfDocFontNumber; }
+
+    df->dfDocFamilyIndex= idx;
+    df->dfEncodingSet= encoding;
+
+  ready:
+
+    if  ( allocated )
+	{ free( allocated );	}
+
+    return rval;
     }
 
 int docCopyFontList(	DocumentFontList *		to,
@@ -49,20 +175,31 @@ int docCopyFontList(	DocumentFontList *		to,
     int			i;
     DocumentFontList	copy;
 
+    DocumentFont *		dfTo;
+    const DocumentFont *	dfFrom;
+
     docInitFontList( &copy );
 
-    copy.dflFonts= malloc( from->dflCount* sizeof(DocumentFont) );
+    copy.dflFonts= malloc( from->dflFontCount* sizeof(DocumentFont) );
     if  ( ! copy.dflFonts )
 	{ XDEB(copy.dflFonts); docCleanFontList( &copy ); return -1;	}
 
-    for ( i = 0; i < from->dflCount; i++ )
+    for ( i = 0; i < from->dflFontCount; i++ )
 	{ docInitDocumentFont( copy.dflFonts+ i );	}
-    copy.dflCount= from->dflCount;
+    copy.dflFontCount= from->dflFontCount;
 
-    for ( i = 0; i < from->dflCount; i++ )
+    dfTo= copy.dflFonts;
+    dfFrom= from->dflFonts;
+    for ( i = 0; i < from->dflFontCount; dfTo++, dfFrom++, i++ )
 	{
-	if  ( docCopyDocumentFont( copy.dflFonts+ i, from->dflFonts+ i ) )
+	if  ( docCopyDocumentFont( dfTo, dfFrom ) )
 	    { LDEB(i); docCleanFontList( &copy ); return -1;	}
+
+	if  ( ! dfTo->dfName )
+	    { continue;	}
+
+	if  ( docRememberFontName( &copy, dfTo, dfFrom->dfEncodingSet ) )
+	    { LDEB(1); docCleanFontList( &copy ); return -1;	}
 	}
 
     docCleanFontList( to );
@@ -78,21 +215,26 @@ int docCopyFontList(	DocumentFontList *		to,
 /*									*/
 /************************************************************************/
 
-void docInitDocumentFont(	DocumentFont *	df	)
+void docInitDocumentFont(	DocumentFont *	df )
     {
+    int		i;
+
     df->dfFamilyStyle= (char *)0;
     df->dfName= (char *)0;
     df->dfAltName= (char *)0;
-    df->dfDocFamilyNumber= -1;
+    df->dfDocFontNumber= -1;
     df->dfPsFamilyNumber= -1;
-    df->dfInstanceCount= 0;
-    df->dfInstances= (DocumentFontInstance *)0;
+    df->dfDocFamilyIndex= -1;
+    df->dfEncodingSet= -1;
     df->dfCharset= FONTcharsetDEFAULT;
     df->dfCodepage= -1;
-    df->dfEncodingUsed= -1;
     df->dfPitch= FONTpitchDEFAULT;
+    df->dfUsed= 0;
 
     df->dfPanose[0]= '\0';
+
+    for ( i= 0; i < FONTface_COUNT; i++ )
+	{ df->dfPsFaceNumber[i]= -1;	}
     }
 
 void docCleanDocumentFont(	DocumentFont *	df	)
@@ -105,9 +247,6 @@ void docCleanDocumentFont(	DocumentFont *	df	)
 
     if  ( df->dfAltName )
 	{ free( df->dfAltName );	}
-
-    if  ( df->dfInstances )
-	{ free( df->dfInstances );	}
     }
 
 static int docFontSetFamilyStyleString(	DocumentFont *	df,
@@ -206,7 +345,6 @@ int docCopyDocumentFont(	DocumentFont *		to,
     copy.dfFamilyStyle= (char *)0;
     copy.dfName= (char *)0;
     copy.dfAltName= (char *)0;
-    copy.dfInstances= (DocumentFontInstance *)0;
 
     if  ( docFontSetFamilyStyleString( &copy, from->dfFamilyStyle ) )
 	{ LDEB(1); rval= -1; goto ready;	}
@@ -216,20 +354,6 @@ int docCopyDocumentFont(	DocumentFont *		to,
 
     if  ( docFontSetAltName( &copy, from->dfAltName ) )
 	{ LDEB(1); rval= -1; goto ready;	}
-
-    if  ( from->dfInstanceCount > 0 )
-	{
-	int	i;
-
-	copy.dfInstances= (DocumentFontInstance *)
-	    malloc( from->dfInstanceCount* sizeof( DocumentFontInstance ) );
-
-	if  ( ! copy.dfInstances )
-	    { LDEB(1); rval= -1; goto ready;	}
-
-	for ( i= 0; i < from->dfInstanceCount; i++ )
-	    { copy.dfInstances[i]= from->dfInstances[i];	}
-	}
 
     docCleanDocumentFont( to );
 
@@ -261,17 +385,17 @@ DocumentFont * docInsertFont(	DocumentFontList *	dfl,
 
     docInitDocumentFont( &dfNew );
 
-    if  ( n > dfl->dflCount )
+    if  ( n > dfl->dflFontCount )
 	{
 	df= (DocumentFont *)realloc( dfl->dflFonts,
 		    ( n + 1 ) * sizeof( DocumentFont ) );
 	}
     else{
 	df= (DocumentFont *)realloc( dfl->dflFonts,
-		    ( dfl->dflCount + 1 ) * sizeof( DocumentFont ) );
+		    ( dfl->dflFontCount + 1 ) * sizeof( DocumentFont ) );
 	}
     if  ( ! df )
-	{ LLDEB(dfl->dflCount,df); goto failed;	}
+	{ LLDEB(dfl->dflFontCount,df); goto failed;	}
     dfl->dflFonts= df;
 
     if  ( docCopyDocumentFont( &dfNew, dfSet ) )
@@ -280,36 +404,39 @@ DocumentFont * docInsertFont(	DocumentFontList *	dfl,
     if  ( n == -1 )
 	{
 	df= dfl->dflFonts;
-	for ( n= 0; n < dfl->dflCount; df++, n++ )
+	for ( n= 0; n < dfl->dflFontCount; df++, n++ )
 	    {
-	    if  ( df->dfDocFamilyNumber < 0 )
+	    if  ( df->dfDocFontNumber < 0 )
 		{ break;	}
 	    }
 	}
     else{
-	if  ( n < dfl->dflCount && dfl->dflFonts[n].dfDocFamilyNumber >= 0 )
-	    { LLDEB(n,dfl->dflFonts[n].dfDocFamilyNumber);	}
+	if  ( n < dfl->dflFontCount && dfl->dflFonts[n].dfDocFontNumber >= 0 )
+	    { LLDEB(n,dfl->dflFonts[n].dfDocFontNumber);	}
 
 	/* No!!
 	df= dfl->dflFonts;
-	for ( i= dfl->dflCount; i > n; i-- )
+	for ( i= dfl->dflFontCount; i > n; i-- )
 	    { df[i]= df[i-1];	}
 	*/
 	}
 
-    df= dfl->dflFonts+ dfl->dflCount;
-    for ( i= dfl->dflCount; i <= n; df++, i++ )
+    df= dfl->dflFonts+ dfl->dflFontCount;
+    for ( i= dfl->dflFontCount; i <= n; df++, i++ )
 	{ docInitDocumentFont( df );	}
 
-    dfNew.dfDocFamilyNumber= n;
+    dfNew.dfDocFontNumber= n;
+
+    if  ( docRememberFontName( dfl, &dfNew, -1 ) )
+	{ SDEB(dfNew.dfName); goto failed;	}
 
     df= dfl->dflFonts+ n;
     docCleanDocumentFont( df );
 
     *df= dfNew;
 
-    if  ( n >= dfl->dflCount )
-	{ dfl->dflCount= n+ 1;	}
+    if  ( n >= dfl->dflFontCount )
+	{ dfl->dflFontCount= n+ 1;	}
 
     return df;
 
@@ -344,35 +471,64 @@ int docGetFontByName(	DocumentFontList *	dflTo,
 
     char *		allocated= (char *)0;
     int			charset= FONTcharsetDEFAULT;
+    int			encodingWasDefault= ( encoding < 0 );
 
     utilInitializeFontEncodings();
 
     if  ( encoding >= 0 )
 	{
 	const FontCharset *	fc= PS_Encodings+ encoding;
+	const char *		suffix= fc->fcOfficeFontnameSuffix;
 
-	if  ( PS_Encodings[encoding].fcOfficeFontnameSuffix )
+	if  ( suffix )
 	    {
-	    allocated= malloc( strlen( fontFamilyName )+ 
-				strlen( fc->fcOfficeFontnameSuffix )+ 1 );
-	    
-	    if  ( ! allocated )
-		{ XDEB(allocated); return -1;	}
+	    int			lenN= strlen( fontFamilyName );
+	    int			lenS= strlen( suffix );
 
-	    strcpy( allocated, fontFamilyName );
-	    strcat( allocated, fc->fcOfficeFontnameSuffix );
+	    if  ( lenN <= lenS					||
+		  strcmp( fontFamilyName+ lenN- lenS, suffix )	)
+		{
+		allocated= malloc( lenN+ lenS+ 1 );
+		if  ( ! allocated )
+		    { LLXDEB(lenN,lenS,allocated); return -1;	}
 
-	    fontFamilyName= allocated;
+		strcpy( allocated,       fontFamilyName );
+		strcpy( allocated+ lenN, suffix );
+
+		fontFamilyName= allocated;
+		}
 	    }
 
 	charset= fc->fcOfficeCharset;
 	}
+    else{
+	int			enc;
+	int			lenN= strlen( fontFamilyName );
+	const FontCharset *	fc= PS_Encodings;
+
+	for ( enc= 0; enc < ENCODINGps_COUNT; fc++, enc++ )
+	    {
+	    const char *	suffix= fc->fcOfficeFontnameSuffix;
+	    int			lenS= suffix?strlen( suffix ):0;
+
+	    if  ( ! suffix )
+		{ suffix= "";	}
+
+	    if  ( lenN > lenS						&&
+		  ! strcmp( fontFamilyName+ lenN- lenS, suffix )	)
+		{
+		encoding= enc;
+		charset= fc->fcOfficeCharset;
+		break;
+		}
+	    }
+	}
 
     dfTo= dflTo->dflFonts;
-    for ( i= 0; i < dflTo->dflCount; dfTo++, i++ )
+    for ( i= 0; i < dflTo->dflFontCount; dfTo++, i++ )
 	{
-	if  ( dfTo->dfDocFamilyNumber < 0	||
-	      ! dfTo->dfName			)
+	if  ( dfTo->dfDocFontNumber < 0	||
+	      ! dfTo->dfName		)
 	    { continue;	}
 
 
@@ -381,7 +537,21 @@ int docGetFontByName(	DocumentFontList *	dflTo,
 	    { break;	}
 	}
 
-    if  ( i >= dflTo->dflCount )
+    if  ( i >= dflTo->dflFontCount && encodingWasDefault )
+	{
+	dfTo= dflTo->dflFonts;
+	for ( i= 0; i < dflTo->dflFontCount; dfTo++, i++ )
+	    {
+	    if  ( dfTo->dfDocFontNumber < 0	||
+		  ! dfTo->dfName		)
+		{ continue;	}
+
+	    if  ( ! strcmp( dfTo->dfName, fontFamilyName ) )
+		{ break;	}
+	    }
+	}
+
+    if  ( i >= dflTo->dflFontCount )
 	{
 	int			fontFamilyStyle;
 	DocumentFont		dfNew;
@@ -390,6 +560,7 @@ int docGetFontByName(	DocumentFontList *	dflTo,
 
 	docInitDocumentFont( &dfNew );
 	dfNew.dfCharset= charset;
+	dfNew.dfEncodingSet= encoding;
 
 	if  ( docFontSetFamilyStyle( &dfNew, fontFamilyStyle ) )
 	    { LDEB(1); return -1;	}
@@ -398,7 +569,7 @@ int docGetFontByName(	DocumentFontList *	dflTo,
 
 	dfTo= docInsertFont( dflTo, -1, &dfNew );
 	if  ( ! dfTo )
-	    { LDEB(dflTo->dflCount); return -1;	}
+	    { LDEB(dflTo->dflFontCount); return -1;	}
 
 	docCleanDocumentFont( &dfNew );
 	}
@@ -406,7 +577,7 @@ int docGetFontByName(	DocumentFontList *	dflTo,
     if  ( allocated )
 	{ free( allocated );	}
 
-    return dfTo->dfDocFamilyNumber;
+    return dfTo->dfDocFontNumber;
     }
 
 int docMergeFontIntoFontlist(	DocumentFontList *	dflTo,
@@ -416,9 +587,9 @@ int docMergeFontIntoFontlist(	DocumentFontList *	dflTo,
     DocumentFont *	dfTo;
 
     dfTo= dflTo->dflFonts;
-    for ( i= 0; i < dflTo->dflCount; dfTo++, i++ )
+    for ( i= 0; i < dflTo->dflFontCount; dfTo++, i++ )
 	{
-	if  ( dfTo->dfDocFamilyNumber < 0 )
+	if  ( dfTo->dfDocFontNumber < 0 )
 	    { continue;	} 
 	if  ( ! dfTo->dfFamilyStyle )
 	    { XDEB(dfTo->dfFamilyStyle); continue;	}
@@ -428,13 +599,13 @@ int docMergeFontIntoFontlist(	DocumentFontList *	dflTo,
 	    { break;	}
 	}
 
-    if  ( i < dflTo->dflCount )
+    if  ( i < dflTo->dflFontCount )
 	{ return i;	}
 
     dfTo= docInsertFont( dflTo, -1, dfFrom );
     if  ( ! dfTo )
 	{ XDEB(dfTo); return -1;	}
 
-    return dfTo->dfDocFamilyNumber;
+    return dfTo->dfDocFontNumber;
     }
 

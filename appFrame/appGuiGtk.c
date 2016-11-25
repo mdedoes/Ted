@@ -745,7 +745,7 @@ void appGuiGetStringFromKeyboardEvent(	APP_INPUT_CONTEXT	ic,
 					int *			pGotString,
 					int *			pGotKey,
 					unsigned int *		pState,
-					char *			buf,
+					unsigned char *		buf,
 					int			capacity,
 					APP_KEY_VALUE *		pKey )
     {
@@ -786,7 +786,13 @@ void appSetDestroyCallback(	APP_WIDGET		shell,
     {
     if  ( destroyCallback )
 	{
+	/*
 	gtk_signal_connect( GTK_OBJECT( shell ), "destroy_event",
+				    (GtkSignalFunc)destroyCallback, through );
+	gtk_signal_connect( GTK_OBJECT( shell ), "destroy-event",
+				    (GtkSignalFunc)destroyCallback, through );
+	*/
+	gtk_signal_connect( GTK_OBJECT( shell ), "destroy",
 				    (GtkSignalFunc)destroyCallback, through );
 	}
     }

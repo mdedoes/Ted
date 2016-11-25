@@ -39,6 +39,8 @@ typedef enum HorizontalFrameAlignment
 typedef enum VerticalFrameAlignment
     {
     VFAposYIL= 0,
+    VFAposYIN,
+    VFAposYOUT,
     VFAposYT,
     VFAposYC,
     VFAposYB,
@@ -55,27 +57,34 @@ typedef enum FrameWrapStyle
     FWSwrap_COUNT
     } FrameWrapStyle;
 
-typedef struct TextFrameProperties
+typedef struct FramePosition
     {
-    int			tfpFrameWidthTwips;
-    int			tfpFrameHeightTwips;
+    int			fpFrameWidthTwips;
+    int			fpFrameHeightTwips;
 
-    int			tfpFrameXTwips;
-    int			tfpFrameYTwips;
+    int			fpFrameXTwips;
+    int			fpFrameYTwips;
 
-    int			tfpDistanceFromTextTwips;
-    int			tfpHorDistanceFromTextTwips;
-    int			tfpVerDistanceFromTextTwips;
+    int			fpDistanceFromTextTwipsLeft;
+    int			fpDistanceFromTextTwipsRight;
+    int			fpDistanceFromTextTwipsTop;
+    int			fpDistanceFromTextTwipsBottom;
+    unsigned int	fpDistanceFromTextSet:4;
+#			define DISTsetLEFT	(1<<0)
+#			define DISTsetRIGHT	(1<<1)
+#			define DISTsetTOP	(1<<2)
+#			define DISTsetBOTTOM	(1<<3)
 
-    unsigned int	tfpHorizontalFrameReference:2;
-    unsigned int	tfpHorizontalFrameAlignment:3;
+    unsigned int	fpHorizontalFrameReference:2;
+    unsigned int	fpHorizontalFrameAlignment:3;
 
-    unsigned int	tfpVerticalFrameReference:2;
-    unsigned int	tfpVerticalFrameAlignment:3;
-    unsigned int	tfpFrameLockedToParagraph:1;
+    unsigned int	fpVerticalFrameReference:2;
+    unsigned int	fpVerticalFrameAlignment:3;
+    unsigned int	fpFrameLockedToParagraph:1;
 
-    unsigned int	tfpFrameWrapStyle:2;
-    } TextFrameProperties;
+    unsigned int	fpFrameWrapStyle:2;
+    unsigned int	fpNoOverlap:1;
+    } FramePosition;
 
 /************************************************************************/
 /*									*/
@@ -90,19 +99,25 @@ typedef enum TextFrameProperty
     TFPpropABSW= 0,
     TFPpropABSH,
 
-    TFPpropHORIZONTAL_REFERENCE,
-    TFPpropHORIZONTAL_POSITION,
-    TFPpropHORIZONTAL_ALIGNMENT,
+    TFPpropNO_OVERLAP,
 
-    TFPpropVERTICAL_REFERENCE,
-    TFPpropVERTICAL_POSITION,
-    TFPpropVERTICAL_ALIGNMENT,
+    TFPpropHORIZONTAL_REF,
+    TFPpropHORIZONTAL_POS,
+    TFPpropHORIZONTAL_ALIGN,
+
+    TFPpropVERTICAL_REF,
+    TFPpropVERTICAL_POS,
+    TFPpropVERTICAL_ALIGN,
     TFPpropLOCKED_TO_PARA,
 
     TFPpropWRAP_STYLE,
-    TFPpropDXFRTEXT,
+    TFPpropDFRMTXT,
     TFPpropDFRMTXTX,
     TFPpropDFRMTXTY,
+    TFPpropDFRMTXTL,
+    TFPpropDFRMTXTR,
+    TFPpropDFRMTXTT,
+    TFPpropDFRMTXTB,
 
     TFPprop_COUNT
     } TextFrameProperty;
@@ -113,6 +128,6 @@ typedef enum TextFrameProperty
 /*									*/
 /************************************************************************/
 
-extern void docInitTextFrameProperties(	TextFrameProperties *	tfp );
+extern void docInitTextFrameProperties(	FramePosition *	fp );
 
 #   endif	/*  DOC_FRAME_PROPERTIES_H	*/

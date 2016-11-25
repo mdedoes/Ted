@@ -16,52 +16,19 @@
 #   include	<docFont.h>
 #   include	<bmcolor.h>
 
+#   include	"docNotesProperties.h"
 #   include	"docListTable.h"
 #   include	"docListOverrideTable.h"
-
-#   define	DPfetFOOT_ONLY		0
-#   define	DPfetEND_ONLY		1
-#   define	DPfetFOOT_END_BOTH	2
-
-typedef enum NotesPosition
-    {
-    DPftnPOS_SECT_END= 0,
-    DPftnPOS_DOC_END,
-    DPftnPOS_BELOW_TEXT,
-    DPftnPOS_PAGE_BOTTOM,
-
-    DPftnPOS__COUNT
-    } NotesPosition;
-
-typedef enum NotesRestart
-    {
-    DPftnRST_CONTINUOUS= 0,
-    DPftnRST_PER_SECTION,
-    DPftnRST_PER_PAGE,
-
-    DPftnRST__COUNT
-    } NotesRestart;
-
-typedef enum NoteNumberStyle
-    {
-    DPftnNAR= 0,
-    DPftnNALC,
-    DPftnNAUC,
-    DPftnNRLC,
-    DPftnNRUC,
-    DPftnNCHI,
-
-    DPftn_NCOUNT
-    } NoteNumberStyle;
 
 typedef enum DocumentProperty
     {
     DPpropNONE= -1,
 
     DPpropSTART_PAGE= DGprop_COUNT,
-    DPpropFACING_PAGES,
 
+    DPpropFACING_PAGES,
     DPpropWIDOWCTRL,
+    DPpropTWO_ON_ONE,
 
     DPpropNOTETYPES,	/*  \fetN	*/
 
@@ -76,20 +43,34 @@ typedef enum DocumentProperty
     DPpropENDNOTE_STYLE,
 
     DPpropDEFTAB,
-    DPpropDEFF,
     DPpropDOC_CHARSET,
     DPpropANSICPG,
 
+    DPpropDEFF,
+    DPpropSTSHFDBCH,
+    DPpropSTSHFLOCH,
+    DPpropSTSHFHICH,
+    DPpropSTSHFBI,
+
+    DPpropGENERATOR,
     DPpropTITLE,
     DPpropSUBJECT,
     DPpropKEYWORDS,
     DPpropDOCCOMM,
     DPpropAUTHOR,
+    DPpropCOMPANY,
     DPpropHLINKBASE,
 
     DPpropCREATIM,
     DPpropREVTIM,
     DPpropPRINTIM,
+
+    DPpropTOP_BORDER,
+    DPpropBOTTOM_BORDER,
+    DPpropLEFT_BORDER,
+    DPpropRIGHT_BORDER,
+    DPpropHEAD_BORDER,
+    DPpropFOOT_BORDER,
 
     DPpropLISTTABLE,
     DPpropLISTOVERRIDETABLE,
@@ -97,27 +78,25 @@ typedef enum DocumentProperty
     DPprop_COUNT
     } DocumentProperty;
 
-typedef struct NotesProperties
-    {
-    int			npStartNumber;
-    unsigned int	npPosition:2;
-    unsigned int	npRestart:2;
-    unsigned int	npNumberStyle:3;
-    } NotesProperties;
-
 typedef struct DocumentProperties
     {
     int			dpContainsTables;
     int			dpTabIntervalTwips;
     int			dpDefaultColor;
-    int			dpDefaultFont;
     int			dpDocumentCharset; /* ansi, mac, pc, pca */
     int			dpAnsiCodepage;
+
+    int			dpDefaultFont;
+    int			dpDefaultFontDbch;
+    int			dpDefaultFontLoch;
+    int			dpDefaultFontHich;
+    int			dpDefaultFontBi;
 
     int			dpStartPageNumber;
 
     unsigned int	dpHasFacingPages:1;
     unsigned int	dpWidowControl:1;
+    unsigned int	dpTwoOnOne:1;
 
     unsigned int	dpFootEndNoteType:2;
     NotesProperties	dpFootnoteProperties;
@@ -139,12 +118,21 @@ typedef struct DocumentProperties
     struct tm		dpRevtim;
     struct tm		dpPrintim;
 
+    unsigned char *	dpGenerator;
     unsigned char *	dpTitle;
     unsigned char *	dpSubject;
     unsigned char *	dpKeywords;
     unsigned char *	dpDoccomm;
     unsigned char *	dpAuthor;
+    unsigned char *	dpCompany;
     unsigned char *	dpHlinkbase;
+
+    BorderProperties	dpTopBorder;
+    BorderProperties	dpBottomBorder;
+    BorderProperties	dpLeftBorder;
+    BorderProperties	dpRightBorder;
+    BorderProperties	dpHeadBorder;
+    BorderProperties	dpFootBorder;
 
     unsigned char *	dpFilename;
     } DocumentProperties;
@@ -156,6 +144,7 @@ typedef struct DocumentProperties
 		  (dp)->dpDoccomm		||	\
 		  (dp)->dpHlinkbase		||	\
 		  (dp)->dpAuthor		||	\
+		  (dp)->dpCompany		||	\
 		  (dp)->dpCreatim.tm_mday != 0	||	\
 		  (dp)->dpRevtim.tm_mday != 0	||	\
 		  (dp)->dpPrintim.tm_mday != 0	)
@@ -187,5 +176,7 @@ extern int docPropertiesSetFilename(	DocumentProperties *	dp,
 
 extern int docAllocateDocumentColor(	DocumentProperties *	dp,
 					const RGB8Color *	rgb8 );
+
+extern int docMakeOverrideForEveryList(	DocumentProperties *	dp );
 
 #   endif	/*  DOC_DOCUMENT_PROPERTIES_H  */

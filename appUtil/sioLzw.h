@@ -17,6 +17,3 @@ extern SimpleInputStream * sioInLzwGifOpen(
 extern SimpleOutputStream * sioOutLzwGifOpen(
 					SimpleOutputStream *	sosLzw,
 					int			codeSize );
-
-extern SimpleOutputStream * sioOutLzwPsOpen(
-					SimpleOutputStream *	sosLzw );

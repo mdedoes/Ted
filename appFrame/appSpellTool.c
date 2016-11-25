@@ -241,6 +241,65 @@ static int appSpellToolOpenIndices(	SpellCheckContext *	scc,
 
 /************************************************************************/
 /*									*/
+/*  Adapt buttons to different situations..				*/
+/*									*/
+/************************************************************************/
+
+static void appSpellToolSomethingFound(	AppSpellTool *	ast,
+					int		yes_no )
+    {
+    appGuiEnableWidget( ast->astLearnButton, yes_no );
+    appGuiEnableWidget( ast->astIgnoreButton, yes_no );
+
+    return;
+    }
+
+static void appSpellToolGotAlternative(	AppSpellTool *	ast,
+					int		yes_no )
+    {
+    appGuiEnableWidget( ast->astForgetButton, yes_no );
+    appGuiEnableWidget( ast->astCorrectButton, yes_no );
+    appGuiEnableWidget( ast->astGuessButton, yes_no );
+
+    return;
+    }
+
+/************************************************************************/
+/*									*/
+/*  Look for the next unknown word.					*/
+/*									*/
+/************************************************************************/
+
+static void appSpellToolFindNext(	AppSpellTool *	ast )
+    {
+    AppSpellCheckContext *	ascc;
+    SpellCheckContext *		scc;
+
+    if  ( ast->astCurrentDictionary < 0 )
+	{ LDEB(ast->astCurrentDictionary); return;	}
+
+    if  ( ! ast->astFindNext < 0 )
+	{ XDEB(ast->astFindNext); return;	}
+
+    ascc= ast->astDictionaryContexts+ ast->astCurrentDictionary;
+    scc= &(ascc->asccSpellCheckContext);
+
+    appStringToTextWidget( ast->astWordText, "" );
+    appGuiEmptyListWidget( ast->astGuessList );
+
+    if  ( ! scc->sccStaticInd			&&
+	  appSpellToolOpenIndices( scc, ast )	)
+	{ return;	}
+
+    if  ( ! (*ast->astFindNext)( ast->astTarget, scc ) )
+	{ appSpellToolSomethingFound( ast, 1 );	}
+    else{ appSpellToolSomethingFound( ast, 0 );	}
+
+    appSpellToolGotAlternative( ast, 0 );
+    }
+
+/************************************************************************/
+/*									*/
 /*  'Learn' button has been pushed.					*/
 /*									*/
 /************************************************************************/
@@ -284,8 +343,12 @@ static APP_BUTTON_CALLBACK_H( appSpellToolLearnPushed, w, voidast )
 
     fclose( privateDict );
 
+#   if 1
+    appSpellToolFindNext( ast );
+#   else
     appGuiEnableWidget( ast->astLearnButton, 0 );
     appGuiEnableWidget( ast->astForgetButton, 1 );
+#   endif
 
     return;
     }
@@ -342,61 +405,10 @@ static APP_BUTTON_CALLBACK_H( appSpellToolForgetPushed, w, voidast )
     }
 
 /************************************************************************/
-/*  Adapt buttons to different situations..				*/
-/************************************************************************/
-
-static void appSpellToolSomethingFound(	AppSpellTool *	ast,
-					int		yes_no )
-    {
-    appGuiEnableWidget( ast->astLearnButton, yes_no );
-    appGuiEnableWidget( ast->astIgnoreButton, yes_no );
-
-    return;
-    }
-
-static void appSpellToolGotAlternative(	AppSpellTool *	ast,
-					int		yes_no )
-    {
-    appGuiEnableWidget( ast->astForgetButton, yes_no );
-    appGuiEnableWidget( ast->astCorrectButton, yes_no );
-    appGuiEnableWidget( ast->astGuessButton, yes_no );
-
-    return;
-    }
-
-/************************************************************************/
 /*									*/
 /*  'Find Next' button has been pushed.					*/
 /*									*/
 /************************************************************************/
-
-static void appSpellToolFindNext(	AppSpellTool *	ast )
-    {
-    AppSpellCheckContext *	ascc;
-    SpellCheckContext *		scc;
-
-    if  ( ast->astCurrentDictionary < 0 )
-	{ LDEB(ast->astCurrentDictionary); return;	}
-
-    if  ( ! ast->astFindNext < 0 )
-	{ XDEB(ast->astFindNext); return;	}
-
-    ascc= ast->astDictionaryContexts+ ast->astCurrentDictionary;
-    scc= &(ascc->asccSpellCheckContext);
-
-    appStringToTextWidget( ast->astWordText, "" );
-    appGuiEmptyListWidget( ast->astGuessList );
-
-    if  ( ! scc->sccStaticInd			&&
-	  appSpellToolOpenIndices( scc, ast )	)
-	{ return;	}
-
-    if  ( ! (*ast->astFindNext)( ast->astTarget, scc ) )
-	{ appSpellToolSomethingFound( ast, 1 );	}
-    else{ appSpellToolSomethingFound( ast, 0 );	}
-
-    appSpellToolGotAlternative( ast, 0 );
-    }
 
 static APP_BUTTON_CALLBACK_H( appSpellToolFindNextPushed, w, voidast )
     {
@@ -745,6 +757,7 @@ static int appSpellAddDictionary(	const char *		filename,
     /********************************************/
     if  ( ! strcmp( name, "Czech" )	||
 	  ! strcmp( name, "Polish" )	||
+	  ! strcmp( name, "Hungarian" )	||
 	  ! strcmp( name, "Slovak" )	)
 	{
 	indSpellIso2CharacterKinds( &(fresh->asccSpellCheckContext) );
@@ -753,7 +766,7 @@ static int appSpellAddDictionary(	const char *		filename,
 
     if  ( ! strcmp( name, "Russian" )	)
 	{
-	indSpellKoi8rCharacterKinds( &(fresh->asccSpellCheckContext) );
+	indSpellIso5CharacterKinds( &(fresh->asccSpellCheckContext) );
 	return 0;
 	}
 
@@ -935,6 +948,8 @@ void * appMakeSpellTool(	APP_WIDGET		spellOption,
     ast->astDictionaryContexts= (AppSpellCheckContext *)0;
     ast->astDictionaryCount= 0;
     ast->astCurrentDictionary= -1;
+
+    appInitOptionmenu( &(ast->astDictionaryOptionmenu) );
 
     appSpellGetDictionaries( ast, &astr );
 

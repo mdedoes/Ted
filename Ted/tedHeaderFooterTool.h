@@ -79,10 +79,12 @@ typedef struct HeaderFooterTool
 extern void tedFormatToolRefreshHeaderFooterTool(
 				HeaderFooterTool *		hft,
 				int *				pEnabled,
+				int *				pPref,
 				InspectorSubject *		is,
 				const DocumentSelection *	ds,
+				const SelectionDescription *	sd,
 				const SelectionGeometry *	sg,
-				const DocumentProperties *	dp );
+				BufferDocument *		bd );
 
 extern void tedFormatToolGetHeaderFooterResourceTable( EditApplication * ea,
 					HeaderFooterPageResources *	hfpr,

@@ -11,19 +11,25 @@
 #   include	<stdio.h>
 #   include	<string.h>
 #   include	<ctype.h>
+#   include	<ctype.h>
+#   include	<locale.h>
 
 #   include	<appSystem.h>
+#   include	<utilMatchFont.h>
 
 #   include	"tedApp.h"
 #   include	"tedRuler.h"
 
 #   include	<appSymbolPicker.h>
 #   include	<appSpellTool.h>
+#   include	"docLayout.h"
 
 #   include	<appGeoString.h>
 #   include	<appPaper.h>
 
 #   include	<sioStdio.h>
+#   include	<sioStdin.h>
+#   include	<sioStdout.h>
 #   include	<sioMemory.h>
 #   include	<sioBase64.h>
 
@@ -192,6 +198,10 @@ static TedAppResources			TEDResources;
 /*									*/
 /*  Open a document.							*/
 /*									*/
+/*  1)  Read the file.							*/
+/*  2)  Get the list of fonts that are available on the machine.	*/
+/*  3)  Add them to the font list of the document.			*/
+/*									*/
 /************************************************************************/
 
 static int tedOpenDocument(	EditApplication *	ea,
@@ -199,13 +209,32 @@ static int tedOpenDocument(	EditApplication *	ea,
 				int *			pFormat,
 				APP_WIDGET		relative,
 				APP_WIDGET		option,
-				const char *		filename	)
+				const char *		filename )
     {
-    TedDocument *	td= (TedDocument *)voidtd;
+    TedDocument *		td= (TedDocument *)voidtd;
+    BufferDocument *		bd= td->tdDocument;
+    DocumentProperties *	dp= &(bd->bdProperties);
 
+    /*  1  */
     if  ( tedOpenDocumentFile( ea, pFormat, &(td->tdDocument),
 					    filename, relative, option ) )
 	{ /*SDEB(filename);*/ return -1;	}
+
+    bd= td->tdDocument;
+    dp= &(bd->bdProperties);
+
+    /*  2  */
+    if  ( appPostScriptFontCatalog( ea ) )
+	{ SDEB(ea->eaAfmDirectory); return -1;	}
+
+    /*  3  */
+    if  ( utilAddPsFontsToDocList( &(dp->dpFontList), 
+					&(ea->eaPostScriptFontList) ) )
+	{ LDEB(ea->eaPostScriptFontList.psflFamilyCount); return -1;	}
+
+    if  ( utilFindPsFontsForDocFonts( &(dp->dpFontList),
+					&(ea->eaPostScriptFontList) ) )
+	{ LDEB(ea->eaPostScriptFontList.psflFamilyCount); return -1;	}
 
     return 0;
     }
@@ -222,12 +251,13 @@ static void tedDocFilePrint(	APP_WIDGET	printOption,
     int			firstPage= -1;
     int			lastPage= -1;
 
-    DocumentSelection	ds;
-    SelectionGeometry	sg;
+    DocumentSelection		ds;
+    SelectionGeometry		sg;
+    SelectionDescription	sd;
 
     const DocumentGeometry *	dgDoc= &(bd->bdProperties.dpGeometry);
 
-    if  ( ! tedGetSelection( &ds, &sg, td )	)
+    if  ( ! tedGetSelection( &ds, &sg, &sd, td )	)
 	{
 	firstPage= sg.sgBegin.pgTopPosition.lpPage;
 	lastPage= sg.sgEnd.pgTopPosition.lpPage;
@@ -352,9 +382,11 @@ static void tedDocFormatTool(	APP_WIDGET	option,
     EditDocument *	ed= (EditDocument *)voided;
     EditApplication *	ea= ed->edApplication;
 
-    tedShowFormatTool( option, ea, "tedFormatTool", "tedtable" );
+    /* option == td->tdToolsFormatToolOption */
 
-    tedAdaptFormatToolToDocument( ed );
+    tedShowFormatTool( option, ea );
+
+    tedAdaptFormatToolToDocument( ed, 0 );
     }
 
 static void tedDocShowPageTool(		APP_WIDGET	pageOption,
@@ -646,6 +678,13 @@ static AppMenuItem TED_DocEditMenuItems[]=
     "docToolMenuFindKeyText",		"^F",
 					ITEMtyOPTION, tedDocToolFind,
     },
+#   define	TEDmiDocEditFindNext	6
+    {
+    "docToolMenuFindNextText",		"Find Next",
+    "docToolMenuFindNextKey",		"<Key>F3",
+    "docToolMenuFindNextKeyText",	"F3",
+					ITEMtyOPTION, tedDocToolFindNext,
+    },
 };
 
 /************************************************************************/
@@ -672,7 +711,7 @@ static AppMenuItem TED_DocInsertMenuItems[]=
     },
 #   define	TEDmiDocInsertInsHyperlink	2
     {
-    "docInsertMenuHyperlinkText",	"Hyperlink ...",
+    "docInsertMenuHyperlinkText",	"Hyperlink",
     "docInsertMenuHyperlinkKey",	"Ctrl <Key>k",
     "docInsertMenuHyperlinkKeyText",	"^K",
 					ITEMtyOPTION, tedDocInsertLink,
@@ -1354,10 +1393,34 @@ static int tedWriteRtfMail(	SimpleOutputStream *		sos,
 	sioOutPutCharacter( '\r', sos ); sioOutPutCharacter( '\n', sos );
 	sioOutPutString( "Content-Type: text/plain", sos );
 	sioOutPutCharacter( '\r', sos ); sioOutPutCharacter( '\n', sos );
-	sioOutPutString( "Content-Transfer-Encoding: 7bit", sos );
+	sioOutPutString( "Content-Transfer-Encoding: 8bit", sos );
 	sioOutPutCharacter( '\r', sos ); sioOutPutCharacter( '\n', sos );
 
 	sioOutPutCharacter( '\r', sos ); sioOutPutCharacter( '\n', sos );
+
+	if  ( dp->dpTitle && strcmp( mimeBoundary, dp->dpTitle ) )
+	    {
+	    sioOutPutString( (char *)dp->dpTitle, sos );
+	    sioOutPutCharacter( '\r', sos ); sioOutPutCharacter( '\n', sos );
+	    }
+	else{
+	    DocumentPosition	dp;
+	    DocumentSelection	ds;
+
+	    if  ( docFirstPosition( &dp, &(bd->bdItem) ) )
+		{ sioOutPutString( "application/rtf\r\n", sos );	}
+	    else{
+		const int		fold= 1;
+		const int		closed= 1;
+		const int		direction= 1;
+
+		BufferItem *		bi= dp.dpBi;
+
+		docSetParaSelection( &ds, bi, direction, 0, bi->biParaStrlen );
+
+		return docPlainSaveDocument( sos, bd, &ds, fold, closed );
+		}
+	    }
 
 	sioOutPutCharacter( '-', sos ); sioOutPutCharacter( '-', sos );
 	sioOutPutString( mimeBoundary, sos );
@@ -1416,10 +1479,13 @@ static int tedWritePlainMail(	SimpleOutputStream *		sos,
 				const char *			mimeBoundary,
 				void *				voidbd )
     {
+    const int	fold= 1;
+    const int	closed= 1;
+
     return docPlainSaveDocument( sos,
 				(BufferDocument *)voidbd,
 				(const DocumentSelection *)0,
-				1, 1 );
+				fold, closed );
     }
 
 static MailContent	TedMailContents[]=
@@ -1566,7 +1632,7 @@ static EditApplication	TedApplication=
 		    /*  Name of the picture for the application window.	*/
 		    /****************************************************/
     "Ted",
-    "Ted, Version 2.14, April 6, 2003",
+    "Ted, Version 2.15, April 5, 2004",
     "http://www.nllgg.nl/Ted",
 
 
@@ -1671,9 +1737,11 @@ static EditApplication	TedApplication=
     tedNewDocument,
     tedLayoutDocument,
     tedFinishDocumentSetup,
+    tedDocumentFirstVisible,
     NULL,					/*  CanSave		*/
     tedSaveDocument,				/*  Save		*/
     tedFreeDocument,				/*  Free		*/
+    tedSuggestNup,				/*  SuggestNup		*/
     tedPrintDocument,				/*  PrintDocument	*/
     tedDrawRectangle,
 		    /****************************************************/
@@ -1726,7 +1794,7 @@ static EditApplication	TedApplication=
     (AppSelectionType *)0,
     0/ sizeof(AppSelectionType),
 
-    0,0,0,
+    0,0,0,0,
 
     TedMailContents,
     sizeof(TedMailContents)/sizeof(MailContent),
@@ -1735,9 +1803,178 @@ static EditApplication	TedApplication=
 
 /************************************************************************/
 /*									*/
+/*  Miscelaneous file conversion calls.					*/
+/*									*/
+/************************************************************************/
+
+static int tedFileConvert(
+		    const char *	nameOut,
+		    const char *	nameIn,
+		    int (*cvf)(	SimpleOutputStream *	_sosOut,
+				SimpleInputStream *	_sisIn ) )
+    {
+    int				rval= 0;
+    SimpleOutputStream *	sosOut= (SimpleOutputStream *)0;
+    SimpleInputStream *		sisIn= (SimpleInputStream *)0;
+
+    sisIn= sioInStdioOpen( nameIn );
+    if  ( ! sisIn )
+	{ SXDEB(nameIn,sisIn); rval= -1; goto ready;	}
+
+    sosOut= sioOutStdioOpen( nameOut );
+    if  ( ! sosOut )
+	{ SXDEB(nameOut,sosOut); rval= -1; goto ready;	}
+
+    if  ( (*cvf)( sosOut, sisIn ) )
+	{ SSDEB(nameOut,nameIn); rval= -1; goto ready;	}
+
+  ready:
+
+    if  ( sosOut )
+	{ sioOutClose( sosOut );	}
+    if  ( sisIn )
+	{ sioInClose( sisIn );	}
+
+    return rval;
+    }
+
+static int tedRtfToPsPaper(	EditApplication *	ea,
+				const char *		paperString )
+    {
+    int				rval= 0;
+
+    SimpleOutputStream *	sosOut= (SimpleOutputStream *)0;
+    SimpleInputStream *		sisIn= (SimpleInputStream *)0;
+
+    TedAppResources *		tar= (TedAppResources *)ea->eaResourceData;
+    BufferDocument *		bd= (BufferDocument *)0;
+
+    AppDrawingData		add;
+    PrintGeometry		pg;
+    LayoutJob			lj;
+    RecalculateFields		rf;
+
+    const int			firstPage= -1;
+    const int			lastPage= -1;
+
+    int				noteNumbersChanged= 0;
+
+    setlocale( LC_NUMERIC, "" );
+
+    appInitDrawingData( &add );
+    utilInitPrintGeometry( &pg );
+    docPsInitLayoutJob( &lj );
+    docInitRecalculateFields( &rf );
+
+    appGetApplicationResourceValues( ea );
+
+    if  ( appPostScriptFontCatalog( ea ) )
+	{ SDEB(ea->eaAfmDirectory); rval= -1; goto ready; }
+
+    if  ( paperString )
+	{
+	DocumentGeometry *	dg= &(pg.pgSheetGeometry);
+	int			paperFormat;
+
+	if  ( appPaperFormatFromString( &paperFormat,
+					    &(dg->dgPageWideTwips),
+					    &(dg->dgPageHighTwips),
+					    ea->eaUnitInt, paperString ) )
+	    { SDEB(paperString); rval= -1; goto ready;	}
+	}
+
+    sisIn= sioInStdinOpen();
+    if  ( ! sisIn )
+	{ XDEB(sisIn); rval= -1; goto ready;	}
+    sosOut= sioOutStdoutOpen();
+    if  ( ! sosOut )
+	{ XDEB(sosOut); rval= -1; goto ready;	}
+
+    bd= docRtfReadFile( sisIn, tar->tarDefaultAnsicpgInt );
+    if  ( ! bd )
+	{ XDEB(bd); rval= -1; goto ready;	}
+
+    if  ( utilFindPsFontsForDocFonts( &(bd->bdProperties.dpFontList),
+					&(ea->eaPostScriptFontList) ) )
+	{
+	LDEB(ea->eaPostScriptFontList.psflFamilyCount);
+	rval= -1; goto ready;
+	}
+
+    add.addPostScriptFontList= &(ea->eaPostScriptFontList);
+
+    rf.rfBd= bd;
+    rf.rfVoidadd= (void *)&add;
+    rf.rfCloseObject= tedCloseObject;
+    rf.rfUpdateFlags= FIELDdoDOC_INFO|FIELDdoDOC_COMPLETE|FIELDdoCHFTN;
+    rf.rfFieldsUpdated= 0;
+
+    if  ( docRecalculateTextLevelFields( &rf, &(bd->bdItem) ) )
+	{ LDEB(1); rval= -1; goto ready;	}
+
+    lj.ljAdd= &add;
+    lj.ljBd= bd;
+    lj.ljChangedItem= &(bd->bdItem);
+
+    if  ( docLayoutItemAndParents( &(bd->bdItem), &lj ) )
+	{ LDEB(1); rval= -1; goto ready;	}
+
+    docRenumberNotes( &noteNumbersChanged, bd );
+
+    rf.rfUpdateFlags= FIELDdoDOC_FORMATTED;
+    rf.rfFieldsUpdated= 0;
+
+    if  ( noteNumbersChanged )
+	{ rf.rfUpdateFlags |= FIELDdoCHFTN;	}
+
+    if  ( docRecalculateTextLevelFields( &rf, &(bd->bdItem) ) )
+	{ LDEB(1); rval= -1; goto ready;	}
+
+    if  ( rf.rfFieldsUpdated > 0 )
+	{
+	docPsCleanLayoutJob( &lj );
+	docPsInitLayoutJob( &lj );
+
+	lj.ljAdd= &add;
+	lj.ljBd= bd;
+	lj.ljChangedItem= &(bd->bdItem);
+
+	if  ( docLayoutItemAndParents( &(bd->bdItem), &lj ) )
+	    { LDEB(1); rval= -1; goto ready;	}
+	}
+
+    setlocale( LC_NUMERIC, "C" );
+
+    if  ( docPsPrintDocument( sosOut, "<stdin>",
+		ea->eaApplicationName, ea->eaReference, ea->eaFontDirectory,
+		&add, bd, &pg,
+		ea->eaUsePostScriptFilters, ea->eaUsePostScriptIndexedImages,
+		firstPage, lastPage, tedCloseObject ) )
+	{ LDEB(1); rval= -1; goto ready;	}
+
+  ready:
+
+    setlocale( LC_NUMERIC, "" );
+
+    docPsCleanLayoutJob( &lj );
+    appCleanDrawingData( &add );
+
+    if  ( bd )
+	{ docFreeDocument( bd );	}
+    if  ( sosOut )
+	{ sioOutClose( sosOut );	}
+    if  ( sisIn )
+	{ sioInClose( sisIn );	}
+
+    return rval;
+    }
+
+/************************************************************************/
+/*									*/
 /*  Main() of the 'Ted' Application.					*/
 /*									*/
 /*  1)  Sanity checks							*/
+/*  2)  Initialisation of the application wide data.			*/
 /*									*/
 /************************************************************************/
 
@@ -1753,11 +1990,115 @@ int main(	int		argc,
 	{ LLDEB(PPprop_COUNT,PROPmaskMAXPROPS); return 1;	}
     if  ( CLprop_COUNT > PROPmaskMAXPROPS )
 	{ LLDEB(CLprop_COUNT,PROPmaskMAXPROPS); return 1;	}
+    if  ( DPprop_COUNT > PROPmaskMAXPROPS )
+	{ LLDEB(DPprop_COUNT,PROPmaskMAXPROPS); return 1;	}
 
+    if  ( DOCtl_COUNT > (1<<DOCtl_BITS) )
+	{ LLDEB(DOCtl_COUNT,(1<<DOCtl_BITS)); return 1;		}
+    if  ( DOCbs_COUNT > (1<<DOCbs_BITS) )
+	{ LLDEB(DOCbs_COUNT,(1<<DOCbs_BITS)); return 1;		}
+    if  ( DOCkind_COUNT > (1<<DOCkind_BITS) )
+	{ LLDEB(DOCkind_COUNT,(1<<DOCkind_BITS)); return 1;	}
+    if  ( DOCsp_COUNT > (1<<DOCsp_BITS) )
+	{ LLDEB(DOCsp_COUNT,(1<<DOCsp_BITS)); return 1;		}
+    if  ( DOCta_COUNT > (1<<DOCta_BITS) )
+	{ LLDEB(DOCta_COUNT,(1<<DOCta_BITS)); return 1;		}
+    if  ( TRauto_COUNT > (1<<TRauto_BITS) )
+	{ LLDEB(TRauto_COUNT,(1<<TRauto_BITS)); return 1;	}
+
+    if  ( DOxa_COUNT > (1<<DOxa_BITS) )
+	{ LLDEB(DOxa_COUNT,(1<<DOxa_BITS)); return 1;		}
+    if  ( DOya_COUNT > (1<<DOya_BITS) )
+	{ LLDEB(DOya_COUNT,(1<<DOya_BITS)); return 1;		}
+    if  ( DOkind_COUNT > (1<<DOkind_BITS) )
+	{ LLDEB(DOkind_COUNT,(1<<DOkind_BITS)); return 1;	}
+    if  ( DOline_COUNT > (1<<DOline_BITS) )
+	{ LLDEB(DOline_COUNT,(1<<DOline_BITS)); return 1;	}
+    if  ( DOfill_COUNT > (1<<DOfill_BITS) )
+	{ LLDEB(DOfill_COUNT,(1<<DOfill_BITS)); return 1;	}
+
+    /*  2  */
     TEDResources.tarDefaultAnsicpgInt= -1;
     TEDResources.tarShowTableGridInt= 0;
+
+    TEDResources.tarFindPattern= (const unsigned char *)0;
+    TEDResources.tarFindRegex= 0;
+
+    if  ( argc >= 3			&&
+	  ! strcmp( argv[1], "--Find" )	)
+	{
+	TEDResources.tarFindPattern= (const unsigned char *)argv[2];
+	TEDResources.tarFindRegex= 0;
+	argc -= 2; argv += 2;
+	}
+    else{
+	if  ( argc >= 3				&&
+	      ! strcmp( argv[1], "--RegFind" )	)
+	    {
+	    TEDResources.tarFindPattern= (const unsigned char *)argv[2];
+	    TEDResources.tarFindRegex= 1;
+	    argc -= 2; argv += 2;
+	    }
+	}
+
+    if  ( argc >= 2 && !  strcmp( argv[1], "--TtfToAfm" ) )
+	{
+	if  ( argc != 4 )
+	    { SSLDEB(argv[0],argv[1],argc); return 1;	}
+
+	if  ( tedFileConvert( argv[3], argv[2], psTtfToAfm ) )
+	    { SSSDEB(argv[1],argv[2],argv[3]); return 1;	}
+
+	return 0;
+	}
+
+    if  ( argc >= 2 && !  strcmp( argv[1], "--TtfToPt42" ) )
+	{
+	if  ( argc != 4 )
+	    { SSLDEB(argv[0],argv[1],argc); return 1;	}
+
+	if  ( tedFileConvert( argv[3], argv[2], psTtfToPf42 ) )
+	    { SSSDEB(argv[1],argv[2],argv[3]); return 1;	}
+
+	return 0;
+	}
+
+    if  ( argc >= 2 && !  strcmp( argv[1], "--TtfToPt1" ) )
+	{
+	if  ( argc != 4 )
+	    { SSLDEB(argv[0],argv[1],argc); return 1;	}
+
+	if  ( tedFileConvert( argv[3], argv[2], psTtfToPt1 ) )
+	    { SSSDEB(argv[1],argv[2],argv[3]); return 1;	}
+
+	return 0;
+	}
+
+    if  ( argc >= 2 && !  strcmp( argv[1], "--RtfToPs" ) )
+	{
+	if  ( argc != 2 )
+	    { SSLDEB(argv[0],argv[1],argc); return 1;	}
+
+	if  ( tedRtfToPsPaper( ea, (const char *)0 ) )
+	    { SDEB(argv[1]); return 1;	}
+
+	return 0;
+	}
+
+    if  ( argc >= 2 && !  strcmp( argv[1], "--RtfToPsPaper" ) )
+	{
+	if  ( argc != 3 )
+	    { SSLDEB(argv[0],argv[1],argc); return 1;	}
+
+	if  ( tedRtfToPsPaper( ea, argv[2] ) )
+	    { SSDEB(argv[1],argv[2]); return 1;	}
+
+	return 0;
+	}
+
 
     tedGetNamedPictures( ea );
 
     return appMain( ea, argc, argv );
     }
+

@@ -31,14 +31,14 @@ extern int appImgMakeImage(	AppDrawingData *	add,
 				int			toWide,
 				int			toHigh,
 				AppColors *		ac,
-				AppBitmapImage *	abi );
+				const AppBitmapImage *	abi );
 
 extern int appImgMakePixmap(	AppDrawingData *		add,
 				APP_WINDOW *			pPixmap,
 				int				toWide,
 				int				toHigh,
 				AppColors *			ac,
-				AppBitmapImage *		abi );
+				const AppBitmapImage *		abi );
 
 extern void appCleanBitmapImage(	AppBitmapImage *	abi );
 

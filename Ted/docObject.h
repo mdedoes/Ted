@@ -10,6 +10,8 @@
 
 #   include	<utilMemoryBuffer.h>
 
+#   include	"docDrawingObject.h"
+
 struct BufferDocument;
 struct BufferItem;
 struct TextParticule;
@@ -37,6 +39,9 @@ typedef enum ObjectKind
     DOCokINCLUDEPICTURE,
     DOCokEPS_FILE,
     DOCokBITMAP_FILE,
+
+    DOCokDRAWING_OBJECT,
+
 	    /************************************************************/
 	    /*  To include pictures. In Particular EPS pictures. As	*/
 	    /*  this is different from what 'Word' does when you	*/
@@ -45,6 +50,33 @@ typedef enum ObjectKind
 
     DOCok__COUNT
     } ObjectKind;
+
+typedef enum ResultKind
+    {
+    RESULTkindUNKNOWN= 0,
+
+    RESULTkindRTF,
+    RESULTkindTXT,
+    RESULTkindPICT,
+    RESULTkindBMP,
+    RESULTkindHTML,
+
+    RESULTkind_COUNT
+    } ResultKind;
+
+typedef enum EmbeddedKind
+    {
+    EMBEDkindOBJEMB= 0,
+    EMBEDkindOBJLINK,
+    EMBEDkindOBJAUTLINK,
+    EMBEDkindOBJSUB,
+    EMBEDkindOBJPUB,
+    EMBEDkindOBJICEMB,
+    EMBEDkindOBJHTML,
+    EMBEDkindOBJOCX,
+
+    EMBEDkind_COUNT
+    } EmbeddedKind;
 
 typedef struct InsertedObject
     {
@@ -58,6 +90,9 @@ typedef struct InsertedObject
     int			ioPixelsHigh;	/*  Height of object on screen	*/
     int			io_xWinExt;	/*  Of metafile picture.	*/
     int			io_yWinExt;	/*  Of metafile picture.	*/
+
+    unsigned int	ioRtfResultKind:4; /*  From rslt* tags.		*/
+    unsigned int	ioRtfEmbedKind:4;  /*  From objemb.. tags.	*/
 
     int			ioTopCropTwips;
     int			ioBottomCropTwips;
@@ -86,6 +121,8 @@ typedef struct InsertedObject
     unsigned char *	ioObjectClass;
     int			ioBliptag;
 
+    DrawingObject	ioDrawingObject;
+
 #   ifdef USE_MOTIF
     unsigned long	ioPixmap;
 #   endif
@@ -101,6 +138,8 @@ typedef enum InsertedObjectProperty
     {
     IOpropKIND= 0,
     IOpropRESULT_KIND,
+    IOpropEMBED_KIND,
+    IOpropPICT_RESULT_KIND,
 
     IOpropOBJTWIPS_WIDE,
     IOpropOBJTWIPS_HIGH,

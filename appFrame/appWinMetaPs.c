@@ -5,6 +5,7 @@
 
 #   include	<appWinMeta.h>
 #   include	<utilPs.h>
+#   include	<utilMatchFont.h>
 #   include	<sioEndian.h>
 
 #   define	y0	math_y0
@@ -30,39 +31,6 @@
 # else
 #    define	WMFLOG(x)	/*nothing*/
 # endif
-
-/************************************************************************/
-/*									*/
-/*  Collect a series of points.						*/
-/*									*/
-/************************************************************************/
-
-static int appMetaGetPointsPs(	DeviceContext *		dc,
-				int			count,
-				SimpleInputStream *	sis )
-    {
-    APP_POINT *		xp;
-
-    int			done;
-
-    xp= (APP_POINT *)realloc( dc->dcPoints, (count+ 1)* sizeof(APP_POINT) );
-    if  ( ! xp )
-	{ LXDEB(count,xp); return -1;	}
-    dc->dcPoints= xp;
-
-    for ( done= 0; done < count; xp++, done++ )
-	{
-	int	x= sioEndianGetLeInt16( sis );
-	int	y= sioEndianGetLeInt16( sis );
-
-	xp->x= DC_xViewport( x, dc );
-	xp->y= DC_yViewport( y, dc );
-	}
-
-    *xp= dc->dcPoints[0];
-
-    return 0;
-    }
 
 /************************************************************************/
 /*									*/
@@ -201,6 +169,8 @@ static int appMetaBitmapImagePs(	SimpleInputStream *	sis,
 					int			dstXExt,
 					int			dstYExt )
     {
+    int				rval= 0;
+
     AppBitmapImage *		abi;
     BitmapDescription *		bd;
     double			twipsWide;
@@ -244,15 +214,11 @@ static int appMetaBitmapImagePs(	SimpleInputStream *	sis,
 			    dstX, ( dstY+ twipsHigh ), 0, 0,
 			    bd->bdPixelsWide, bd->bdPixelsHigh,
 			    useFilters, indexedImages, bd, abi->abiBuffer ) )
-	{
-	LDEB(1);
-	appCleanBitmapImage( abi ); free( abi );
-	return -1;
-	}
+	{ LDEB(1); rval= -1;	}
 
     appCleanBitmapImage( abi ); free( abi );
 
-    return 0;
+    return rval;
     }
 
 static int appMetaSelectPenObjectPs(	DeviceContext *		dc,
@@ -346,60 +312,9 @@ static int appMetaSelectPatternBrushObjectPs(	DeviceContext *		dc,
 						int			ob )
     {
     PatternBrush *	pb= &(dc->dcObjects[ob].mfoPatternBrush);
-    AppBitmapImage *	abi= &(pb->pbAbi);
-    int			bytesPerRow;
 
-    const int		useFilters= 0;
-    const int		indexedImages= 0;
-    BitmapPrinter	bp;
-
-    WMFDEB(appDebug( "SelectObject( ob= %d ) ", ob ));
-    WMFDEB(appDebug( "PATTERNBRUSH\n" ));
-
-    bytesPerRow= bmPsRowStringSize( &(abi->abiBitmap),
-						abi->abiBitmap.bdPixelsWide,
-						indexedImages );
-    if  ( bytesPerRow < 1 )
-	{ LDEB(bytesPerRow); return -1;	}
-
-    sioOutPrintf( sos, "currentfile %d string readhexstring\n",
-				    abi->abiBitmap.bdPixelsHigh* bytesPerRow );
-
-    bmPsOpenBitmapPrinter( &bp, sos, &(abi->abiBitmap),
-						useFilters, indexedImages );
-
-    if  ( bmPsWriteBitmapData( &bp, 0, 0,
-				abi->abiBitmap.bdPixelsWide,
-				abi->abiBitmap.bdPixelsHigh,
-				&(abi->abiBitmap), abi->abiBuffer ) )
+    if  ( appMetafileStartPatternFillPs( sos, &(pb->pbAbi) ) )
 	{ LDEB(1); return -1;	}
-
-    bmCloseBitmapPrinter( &bp );
-
-    sioOutPrintf( sos, "%%\n" );
-    sioOutPrintf( sos, "pop /fill-data exch store\n" );
-
-    sioOutPrintf( sos, "/fill-wide %d store\n", abi->abiBitmap.bdPixelsWide );
-    sioOutPrintf( sos, "/fill-high %d store\n", abi->abiBitmap.bdPixelsHigh );
-
-    sioOutPrintf( sos, "/fill-cell " );
-    sioOutPrintf( sos, "{ " );
-    sioOutPrintf( sos, "gsave " );
-    sioOutPrintf( sos, "%d %d scale\n" ,
-			    abi->abiBitmap.bdPixelsWide,
-			    abi->abiBitmap.bdPixelsHigh );
-
-    sioOutPrintf( sos, "1 setgray 0 0 1 1 rectfill\n" );
-
-    bmPsWriteImageInstructions( sos,
-			    &(abi->abiBitmap),
-			    abi->abiBitmap.bdPixelsWide,
-			    abi->abiBitmap.bdPixelsHigh,
-			    "{ /fill-data load } bind",
-			    indexedImages );
-
-    sioOutPrintf( sos, "grestore " );
-    sioOutPrintf( sos, "} bind def\n" );
 
     dc->dcFillHatched= 0;
     dc->dcFillPattern= 1;
@@ -452,25 +367,18 @@ static int appMetaSelectBrushObjectPs(	DeviceContext *		dc,
     }
 
 static int appMetaSelectFontObjectPs( DeviceContext *		dc,
-				const char *			afmDirectory,
+				const PostScriptFontList *	psfl,
 				SimpleOutputStream *		sos,
 				int				ob )
     {
-    LogicalFont *	lf= &(dc->dcObjects[ob].mfoLogicalFont);
+    LogicalFont *		lf= &(dc->dcObjects[ob].mfoLogicalFont);
 
-    int			family;
-    int			face;
+    DocumentFontList *		dfl= &(dc->x_dcFontList);
+    DocumentFont *		df;
 
-    AppFontFamily *	aff;
-    AppFontTypeface *	aft;
-    int			fontEncoding;
+    df= dfl->dflFonts+ lf->lfTextAttribute.taFontNumber;
 
-    DocumentFont *	df;
-
-    df= dc->x_dcFontList.dflFonts+ lf->lfTextAttribute.taFontNumber;
-
-    if  ( utilFontGetPsFont( &family, &face, &aff, &aft, &fontEncoding,
-				afmDirectory, df, &(lf->lfTextAttribute) ) )
+    if  ( utilFindPsFontForDocFont( df, dfl, psfl ) )
 	{
 	LDEB(lf->lfTextAttribute.taFontNumber);
 	dc->dcAfi= (AfmFontInfo *)0;
@@ -478,8 +386,10 @@ static int appMetaSelectFontObjectPs( DeviceContext *		dc,
 	return -1;
 	}
 
-    dc->dcAfi= (AfmFontInfo *)aft->aftPrintingData;
-    dc->dcFontEncoding= fontEncoding;
+    dc->dcAfi= utilPsGetAfi( &(dc->dcFontEncoding), dfl,
+					    psfl, &(lf->lfTextAttribute) );
+    if  ( ! dc->dcAfi )
+	{ XDEB(dc->dcAfi); return -1;	}
 
     dc->dcFont= *lf;
 
@@ -487,7 +397,7 @@ static int appMetaSelectFontObjectPs( DeviceContext *		dc,
     }
 
 static int appMetaSelectObjectPs( DeviceContext *		dc,
-				const char *			afmDirectory,
+				const PostScriptFontList *	psfl,
 				SimpleOutputStream *		sos,
 				int				recordSize,
 				SimpleInputStream *		sis )
@@ -519,7 +429,7 @@ static int appMetaSelectObjectPs( DeviceContext *		dc,
 	case MFtypeFONT:
 	    WMFDEB(appDebug( "SelectObject( ob= %d ) ", ob ));
 	    WMFDEB(appDebug( "FONT\n" ));
-	    if  ( appMetaSelectFontObjectPs( dc, afmDirectory, sos, ob ) )
+	    if  ( appMetaSelectFontObjectPs( dc, psfl, sos, ob ) )
 		{ LDEB(ob); return -1;	}
 	    break;
 
@@ -532,7 +442,7 @@ static int appMetaSelectObjectPs( DeviceContext *		dc,
     return 0;
     }
 
-static int appMeta_FillPath(	SimpleOutputStream *	sos,
+static int appWinMeta_FillPath(	SimpleOutputStream *	sos,
 				DeviceContext *		dc )
     {
     if  ( dc->dcFillPattern )
@@ -628,7 +538,6 @@ static void appMetaDrawPolygonPs(	SimpleOutputStream *	sos,
 					DeviceContext *		dc,
 					int			count )
     {
-    int		done;
     char *	command;
     int		x0;
     int		y0;
@@ -636,25 +545,11 @@ static void appMetaDrawPolygonPs(	SimpleOutputStream *	sos,
 
     if  ( dc->dcFillInsides )
 	{
-	command= "bp"; x0= 0; y0= 0;
-
-	for ( done= 0; done < count; done++ )
-	    {
-	    sioOutPrintf( sos, "%d %d %s",
-				dc->dcPoints[done].x- x0,
-				dc->dcPoints[done].y- y0,
-				command );
-
-	    if  ( done % 8 == 7 )
-		{ sioOutPutCharacter( '\n', sos );		}
-	    else{ sioOutPutCharacter( ' ', sos );		}
-
-	    command= "rl"; x0= dc->dcPoints[done].x; y0= dc->dcPoints[done].y;
-	    }
+	appMetafilePolygonPathPs( sos, dc->dcPoints, count );
 
 	sioOutPrintf( sos, "closepath\n" );
 
-	appMeta_FillPath( sos, dc );
+	appWinMeta_FillPath( sos, dc );
 	}
 
     if  ( dc->dcDrawBorders )
@@ -664,19 +559,7 @@ static void appMetaDrawPolygonPs(	SimpleOutputStream *	sos,
 	appMetaSetColorPs( sos, dc, &(dc->dcPen.lpColor) );
 	appMetaSetPenPs( sos, dc, &(dc->dcPen) );
 
-	for ( done= 0; done < count+ 1; done++ )
-	    {
-	    sioOutPrintf( sos, "%d %d %s",
-				dc->dcPoints[done].x- x0,
-				dc->dcPoints[done].y- y0,
-				command );
-
-	    if  ( done % 8 == 7 )
-		{ sioOutPutCharacter( '\n', sos );		}
-	    else{ sioOutPutCharacter( ' ', sos );		}
-
-	    command= "rl"; x0= dc->dcPoints[done].x; y0= dc->dcPoints[done].y;
-	    }
+	appMetafilePolygonPathPs( sos, dc->dcPoints, count );
 
 	sioOutPrintf( sos, "stroke\n" );
 	}
@@ -696,31 +579,12 @@ static int appMeta_PolygonPs(	SimpleInputStream *	sis,
     WMFDEB(appDebug("Polygon( count=%d, ... )\n", count ));
     WMFLOG(sioOutPrintf( sos, "%% Polygon( count=%d, ... )\n", count ));
 
-    if  ( appMetaGetPointsPs( dc, count, sis ) )
+    if  ( appWinMetaGetPoints( dc, count, sis ) )
 	{ LDEB(count); return -1;	}
 
     appMetaDrawPolygonPs( sos, dc, count );
 
     return 0;
-    }
-
-static void appMeta_RectPathPs(		SimpleOutputStream *	sos,
-					int			x0,
-					int			y0,
-					int			x1,
-					int			y1 )
-    {
-    int		dx= x1- x0;
-    int		dy= y1- y0;
-
-    sioOutPrintf( sos, "%d %d bp ",  x0,  y0 );
-    sioOutPrintf( sos, "%d %d rl ",  dx,   0 );
-    sioOutPrintf( sos, "%d %d rl ",   0,  dy );
-    sioOutPrintf( sos, "%d %d rl ", -dx,   0 );
-
-    sioOutPrintf( sos, "closepath\n" );
-
-    return;
     }
 
 static int appMeta_RectanglePs(	SimpleInputStream *	sis,
@@ -767,8 +631,8 @@ static int appMeta_RectanglePs(	SimpleInputStream *	sis,
 
     if  ( dc->dcFillInsides )
 	{
-	appMeta_RectPathPs( sos, x0, y0, x1, y1 );
-	appMeta_FillPath( sos, dc );
+	appMetafileRectPathPs( sos, x0, y0, x1, y1 );
+	appWinMeta_FillPath( sos, dc );
 	}
 
     if  ( dc->dcDrawBorders )
@@ -776,7 +640,7 @@ static int appMeta_RectanglePs(	SimpleInputStream *	sis,
 	appMetaSetColorPs( sos, dc, &(dc->dcPen.lpColor) );
 	appMetaSetPenPs( sos, dc, &(dc->dcPen) );
 
-	appMeta_RectPathPs( sos, x0, y0, x1, y1 );
+	appMetafileRectPathPs( sos, x0, y0, x1, y1 );
 	sioOutPrintf( sos, "stroke\n" );
 	}
 
@@ -830,9 +694,7 @@ static void appMetaShowStringPs(	SimpleOutputStream *	sos,
     LogicalFont *	lf= &(dc->dcFont);
 
     int			width;
-
     AfmBBox		abb;
-
     const int		withKerning= 0;
     int			fontSizeTwips;
 
@@ -1019,8 +881,8 @@ static int appMeta_PatBltPs(	SimpleInputStream *	sis,
 
     if  ( dc->dcFillInsides )
 	{
-	appMeta_RectPathPs( sos, x0, y0, x1, y1 );
-	appMeta_FillPath( sos, dc );
+	appMetafileRectPathPs( sos, x0, y0, x1, y1 );
+	appWinMeta_FillPath( sos, dc );
 	}
 
     return 0;
@@ -1140,21 +1002,21 @@ static int appMeta_ArcPs(	SimpleInputStream *	sis,
     appMetaGetArcPs( sis, dc, "Arc", 
 			    &y0, &x0, &y1, &x1, &ys, &xs, &as, &ae );
 
-    sioOutPrintf( sos, "gsave [1 0 0 %g 0 %d] concat\n",
-			    (double)(y0- y1)/(double)(x1- x0), ( y0+ y1 )/ 2 );
-
     if  ( dc->dcDrawBorders )
 	{
 	appMetaSetColorPs( sos, dc, &(dc->dcPen.lpColor) );
 	appMetaSetPenPs( sos, dc, &(dc->dcPen) );
 
+	sioOutPrintf( sos, "gsave [1 0 0 %g 0 %d] concat\n",
+			    (double)(y0- y1)/(double)(x1- x0), ( y0+ y1 )/ 2 );
+
 	sioOutPrintf( sos, "%d %d bp ", xs, ys );
 
 	sioOutPrintf( sos, "%d 0 %d %f %f arc stroke\n",
 					( x0+ x1 )/ 2, (x1- x0)/2, as, ae );
-	}
 
-    sioOutPrintf( sos, "grestore\n" );
+	sioOutPrintf( sos, "grestore\n" );
+	}
 
     return 0;
     }
@@ -1190,7 +1052,7 @@ static int appMeta_PiePs(	SimpleInputStream *	sis,
 	sioOutPrintf( sos, "%d  0 lineto ", ( x0+ x1 )/ 2 );
 	sioOutPrintf( sos, "%d %d lineto closepath\n", xs, ys );
 
-	appMeta_FillPath( sos, dc );
+	appWinMeta_FillPath( sos, dc );
 	}
 
     if  ( dc->dcDrawBorders )
@@ -1288,7 +1150,7 @@ static int appMeta_EllipsePs(	SimpleInputStream *	sis,
 	sioOutPrintf( sos, "%d 0 %d 0 360 arc closepath\n",
 					    ( x0+ x1 )/ 2, (x1- x0)/2 );
 
-	appMeta_FillPath( sos, dc );
+	appWinMeta_FillPath( sos, dc );
 	}
 
     if  ( dc->dcDrawBorders )
@@ -1363,17 +1225,11 @@ static int appMeta_RoundRectPs(	SimpleInputStream *	sis,
 
     if  ( dc->dcFillInsides )
 	{
-	sioOutPrintf( sos, "%d %d bp\n", x0, bottom+ radius );
-	sioOutPrintf( sos, "%d %d %d %d %d arct\n",
-				    x0, top, x0+ radius, top, radius );
-	sioOutPrintf( sos, "%d %d %d %d %d arct\n",
-				    x1, top, x1, top- radius, radius );
-	sioOutPrintf( sos, "%d %d %d %d %d arct\n",
-				    x1, bottom, x1- radius, bottom, radius );
-	sioOutPrintf( sos, "%d %d %d %d %d arct closepath\n",
-				    x0, bottom, x0, bottom+ radius, radius );
+	appMetafileRoundRectPathPs( sos, x0, y0, x1, y1, w, h );
 
-	appMeta_FillPath( sos, dc );
+	sioOutPrintf( sos, "closepath\n" );
+
+	appWinMeta_FillPath( sos, dc );
 	}
 
     if  ( dc->dcDrawBorders )
@@ -1381,15 +1237,8 @@ static int appMeta_RoundRectPs(	SimpleInputStream *	sis,
 	appMetaSetColorPs( sos, dc, &(dc->dcPen.lpColor) );
 	appMetaSetPenPs( sos, dc, &(dc->dcPen) );
 
-	sioOutPrintf( sos, "%d %d bp\n", x0, bottom+ radius );
-	sioOutPrintf( sos, "%d %d %d %d %d arct\n",
-				    x0, top, x0+ radius, top, radius );
-	sioOutPrintf( sos, "%d %d %d %d %d arct\n",
-				    x1, top, x1, top- radius, radius );
-	sioOutPrintf( sos, "%d %d %d %d %d arct\n",
-				    x1, bottom, x1- radius, bottom, radius );
-	sioOutPrintf( sos, "%d %d %d %d %d arct stroke\n",
-				    x0, bottom, x0, bottom+ radius, radius );
+	appMetafileRoundRectPathPs( sos, x0, y0, x1, y1, w, h );
+	sioOutPrintf( sos, "stroke\n" );
 	}
 
     sioOutPrintf( sos, "grestore\n" );
@@ -1414,7 +1263,7 @@ static int appMeta_PolyPolygonPs(	SimpleInputStream *	sis,
 
     for ( i= 0; i < count; i++ )
 	{
-	if  ( appMetaGetPointsPs( dc, counts[i], sis ) )
+	if  ( appWinMetaGetPoints( dc, counts[i], sis ) )
 	    { LDEB(counts[i]); return -1;	}
 
 	appMetaDrawPolygonPs( sos, dc, counts[i] );
@@ -1425,7 +1274,7 @@ static int appMeta_PolyPolygonPs(	SimpleInputStream *	sis,
 
 int appMetaPlayFilePs(	SimpleOutputStream *		sos,
 			SimpleInputStream *		sis,
-			const char *			afmDirectory,
+			const PostScriptFontList *	psfl,
 			int				useFilters,
 			int				indexedImages,
 			int				mapMode,
@@ -1459,7 +1308,7 @@ int appMetaPlayFilePs(	SimpleOutputStream *		sos,
     maxRecordSize= sioEndianGetLeInt32( sis );
     parameterCount= sioEndianGetLeInt16( sis );
 
-    if  ( appMetaInitDeviceContext( &dc, objectCount, mapMode,
+    if  ( appMetaInitDeviceContext( &dc, psfl, objectCount, mapMode,
 				    xWinExt, yWinExt,
 				    twipsWide, twipsHigh,
 				    twipsWide, twipsHigh ) )
@@ -1595,7 +1444,7 @@ int appMetaPlayFilePs(	SimpleOutputStream *		sos,
 		continue;
 
 	    case WINMETA_SelectObject:
-		if  ( appMetaSelectObjectPs( &dc, afmDirectory, sos,
+		if  ( appMetaSelectObjectPs( &dc, psfl, sos,
 							recordSize, sis ) )
 		    { LDEB(recordSize); return -1;	}
 		continue;
@@ -1853,9 +1702,9 @@ int appMetaPlayFilePs(	SimpleOutputStream *		sos,
 /*									*/
 /************************************************************************/
 
-int appMetaListFontsPs( PostScriptFaceList *	psfl,
+int appMetaListFontsPs( PostScriptTypeList *	pstl,
 			SimpleInputStream *	sis,
-			const char *		afmDirectory,
+			const PostScriptFontList * psfl,
 			const char *		prefix,
 			int			mapMode,
 			int			xWinExt,
@@ -1873,6 +1722,8 @@ int appMetaListFontsPs( PostScriptFaceList *	psfl,
 
     DeviceContext	dc;
 
+    DocumentFontList *	dfl= &(dc.x_dcFontList);
+
     if  ( sioInGetCharacter( sis ) == EOF )
 	{ return 0;	}
     sioInUngetLastRead( sis );
@@ -1885,7 +1736,7 @@ int appMetaListFontsPs( PostScriptFaceList *	psfl,
     maxRecordSize= sioEndianGetLeInt32( sis );
     parameterCount= sioEndianGetLeInt16( sis );
 
-    if  ( appMetaInitDeviceContext( &dc, objectCount, mapMode,
+    if  ( appMetaInitDeviceContext( &dc, psfl, objectCount, mapMode,
 						    xWinExt, yWinExt,
 						    twipsWide, twipsHigh,
 						    twipsWide, twipsHigh ) )
@@ -1902,11 +1753,6 @@ int appMetaListFontsPs( PostScriptFaceList *	psfl,
 	int			function;
 
 	LogicalFont *		lf;
-	int			family;
-	int			face;
-
-	AppFontFamily *		aff;
-	AppFontTypeface *	aft;
 
 	DocumentFont *		df;
 	AfmFontInfo *		afi;
@@ -1943,14 +1789,18 @@ int appMetaListFontsPs( PostScriptFaceList *	psfl,
 
 		df= dc.x_dcFontList.dflFonts+ lf->lfTextAttribute.taFontNumber;
 
-		if  ( utilFontGetPsFont( &family, &face, &aff, &aft, &encoding,
-				    afmDirectory, df, &(lf->lfTextAttribute) ) )
+		df= dfl->dflFonts+ lf->lfTextAttribute.taFontNumber;
+
+		if  ( utilFindPsFontForDocFont( df, dfl, psfl ) )
 		    { LDEB(lf->lfTextAttribute.taFontNumber); return -1; }
 
-		afi= (AfmFontInfo *)aft->aftPrintingData;
+		afi= utilPsGetAfi( &encoding, dfl,
+					    psfl, &(lf->lfTextAttribute) );
+		if  ( ! afi )
+		    { XDEB(afi); return -1;	}
 
-		if  ( utilRememberPostsciptFace( psfl, encoding, afi,
-				lf->lfTextAttribute, prefix, appearsInText ) )
+		if  ( utilRememberPostsciptFace( pstl, encoding, afi,
+			    &(lf->lfTextAttribute), prefix, appearsInText ) )
 		    { SDEB(afi->afiFontName); return -1;	}
 
 		appMetaCleanObject( mfo );

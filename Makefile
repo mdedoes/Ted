@@ -5,20 +5,23 @@
 ####	No explicit 'configure' is needed as it is done by the 'make' process
 ####	for the various targets.
 ####
-####	Sensible targets are:
-####	---------------------
+####	Targets for external use are:
+####	-----------------------------
 ####
 ####	compile:	Just build an executable in the 'Ted' directory.
 ####	private:	Install the Ted executable and the most essential
 ####			files for yourself only.
-####	package:	Build a package. Must be run as root.
+####	package:	Build a package. Must sometimes be run as root.
+####	sysvpkg:	Build a Unix system V (Solaris) package. 
 ####	install:	Install the package. Must be run as root.
 ####	clean:		Cleanup rubbish from previous attempts.
 ####
 ####	compile.shared:	Compile, do not try to link statically.
 ####	package.shared:	Build a package, using the dynamically linked
 ####			executable.
-####	install.shared:	Install the package. Must be run as root.
+####	install.shared:	Install the package. Must be run as root,
+####			or another user with sufficient privileges to 
+####			create the directories and files.
 ####			Installs the package just made, does not force
 ####			the package to be dynamically linked. This target
 ####			exists only for convenience.
@@ -36,7 +39,7 @@
 ####
 ####
 ####
-####	P.S.	To port to Compaq OpenVMS, use the files in vms_files.tar.
+####	P.S.	To port to Compaq OpenVMS, use the descrip.mms file
 ####		It contains an explanatory note as well.
 ####
 ####	P.S.	I admit that this makefile is more like a shell script.
@@ -50,7 +53,8 @@ compile:	tedlibs		\
 	:
 	: Static executable Ted/Ted.static ready
 	: *   To make an installation package
-	:     you can now run 'make package' AS ROOT
+	:     you can now run 'make package'. Depending on the platform, 
+	:     it might be that this must be done AS ROOT.
 	: *   To install Ted for yourself only
 	:     you can now run 'make private'
 
@@ -164,6 +168,11 @@ package.shared: tedPackage/makefile compile.shared
 tedPackage/makefile: tedPackage/makefile.in Makefile
 	cd tedPackage && ./configure $(CONFIGURE_OPTIONS)
 
+sysvpkg: tedPackage/makefile compile
+	cd tedPackage && $(MAKE) sysvpkg
+	:
+	: UNIX system V Package ready.
+
 ####
 ####	Install Ted from the package just built
 ####
@@ -195,7 +204,9 @@ $(PRIVATE_FILES):
 	h=`pwd` && cd && tar xvf $$h/tedPackage/TedBindist.tar
 
 private: $(HOME)/bin/Ted $(PRIVATE_FILES)
-	@echo ========= Include the following in $(HOME)/.Xdefaults =========
+	@echo ========= Include the following in $(HOME)/.Xdefaults,
+	@echo ========= $(HOME)/.Xresources and/or enter them directly
+	@echo ========= into xrdb -merge.
 	@echo Ted.documentFileName: $(HOME)/Ted/TedDocument-en_US.rtf
 	@echo Ted.afmDirectory: $(HOME)/afm
 	@echo Ted.spellToolSystemDicts: $(HOME)/ind

@@ -39,6 +39,9 @@ void tedSetObjectWindows(	EditDocument *			ed,
     int				wide= io->ioPixelsWide;
     int				high= io->ioPixelsHigh;
 
+    int				x= pg->pgXPixels- ox;
+    int				y= pg->pgBaselinePixels- high- oy;
+
     XSetWindowAttributes	xswa;
 
     static Cursor		moveCursor;
@@ -61,8 +64,7 @@ void tedSetObjectWindows(	EditDocument *			ed,
 	{
 	xswa.cursor= moveCursor;
 	td->tdObjectWindow= XCreateWindow( display, win,
-			    pg->pgXPixels- ox, pg->pgBaselinePixels- high- oy,
-			    wide, high,
+			    x, y, wide, high,
 			    0, CopyFromParent, InputOnly, CopyFromParent,
 			    0L, &xswa );
 
@@ -92,9 +94,7 @@ void tedSetObjectWindows(	EditDocument *			ed,
 	XMapRaised( display, td->tdObjectCornerWindow );
 	}
     else{
-	XMoveResizeWindow( display, td->tdObjectWindow,
-			    pg->pgXPixels- ox, pg->pgBaselinePixels- high- oy,
-			    wide, high );
+	XMoveResizeWindow( display, td->tdObjectWindow, x, y, wide, high );
 
 	XMoveWindow( display, td->tdObjectBottomWindow,
 				wide/ 2- RESIZE_BLOCK/ 2, high- RESIZE_BLOCK );

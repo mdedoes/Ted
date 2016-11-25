@@ -17,6 +17,24 @@
 
 #   define	DLmaxLEVELS	9
 
+typedef enum ListLevelAlignment
+    {
+    DOCllaLEFT= 0,
+    DOCllaCENTERED,
+    DOCllaRIGHT,
+
+    DOClla_COUNT
+    } ListLevelAlignment;
+
+typedef enum ListLevelFollow
+    {
+    DOCllfTAB= 0,
+    DOCllfSPACE,
+    DOCllfNONE,
+
+    DOCllf_COUNT
+    } ListLevelFollow;
+
 typedef struct DocumentListLevel
     {
     int			dllStartAt;
@@ -41,8 +59,8 @@ typedef struct DocumentListLevel
     int			dllSpace;		/*  O  */
 
     TabStopList		dllTabStopList;
-    int			dllLeftIndent;
-    int			dllFirstIndent;
+    int			dllLeftIndentTwips;
+    int			dllFirstIndentTwips;
     PropertyMask	dllParaPropertyMask;
 
     TextAttribute	dllTextAttribute;
@@ -82,8 +100,11 @@ typedef enum ListLevelProperty
 extern void docInitDocumentListLevel(	DocumentListLevel *		dll );
 extern void docCleanDocumentListLevel(	DocumentListLevel *		dll );
 
-extern int docCopyDocumentListLevel(	DocumentListLevel *		to,
-					const DocumentListLevel *	from );
+extern int docCopyDocumentListLevel(
+				DocumentListLevel *		to,
+				const DocumentListLevel *	from,
+				const int *			fontMap,
+				const int *			colorMap );
 
 extern int documentListLevelSetStyle(
 				DocumentListLevel *		dll,

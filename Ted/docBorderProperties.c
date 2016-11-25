@@ -26,6 +26,7 @@ void docInitBorderProperties(	BorderProperties *	bp )
     bp->bpSpacingTwips= 0;
     bp->bpPenWideTwips= 15;
     bp->bpStyle= DOCbsNONE;
+    bp->bpArt= 0;
     }
 
 /************************************************************************/
@@ -106,6 +107,12 @@ static void docBorderPropertyDifference(
 	    { PROPmaskADD( &bpChgMask, BRDRpropSTYLE ); }
 	}
 
+    if  ( PROPmaskISSET( bpSetMask, BRDRpropART ) )
+	{
+	if  ( bpTo->bpArt != bpFrom->bpArt )
+	    { PROPmaskADD( &bpChgMask, BRDRpropART ); }
+	}
+
     *pBpUpdMask= bpChgMask;
     return;
     }
@@ -152,6 +159,15 @@ void docUpdateBorderProperties(	PropertyMask *			pBpDoneMask,
 	    {
 	    bpTo->bpStyle= bpFrom->bpStyle;
 	    PROPmaskADD( &bpDoneMask, BRDRpropSTYLE );
+	    }
+	}
+
+    if  ( PROPmaskISSET( bpSetMask, BRDRpropART ) )
+	{
+	if  ( bpTo->bpArt != bpFrom->bpArt )
+	    {
+	    bpTo->bpArt= bpFrom->bpArt;
+	    PROPmaskADD( &bpDoneMask, BRDRpropART );
 	    }
 	}
 
@@ -227,6 +243,7 @@ void docExpandBorderProperties(	ExpandedBorderProperties *	ebp,
 
     ebp->ebpPenWideTwips= bp->bpPenWideTwips;
     ebp->ebpStyle= bp->bpStyle;
+    ebp->ebpArt= bp->bpArt;
     ebp->ebpSpacingTwips= bp->bpSpacingTwips;
 
     return;
@@ -301,6 +318,15 @@ int docIndirectBorderProperties(
 	    }
 	}
 
+    if  ( PROPmaskISSET( bpSetMask, BRDRpropART ) )
+	{
+	if  ( bpTo->bpArt != ebpFrom->ebpArt )
+	    {
+	    bpTo->bpArt= ebpFrom->ebpArt;
+	    PROPmaskADD( &bpDoneMask, BRDRpropART );
+	    }
+	}
+
     *pBpDoneMask= bpDoneMask;
     return 0;
     }
@@ -321,5 +347,6 @@ void docInitExpandedBorderProperties(	ExpandedBorderProperties *	ebp )
     ebp->ebpSpacingTwips= 0;
     ebp->ebpPenWideTwips= 15;
     ebp->ebpStyle= DOCbsNONE;
+    ebp->ebpArt= 0;
     }
 

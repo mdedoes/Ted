@@ -14,17 +14,32 @@ AC_DEFUN(AC_PATH_GTK,
     GTK_HEADERS_FOUND=NO
     GTK_LIBS_FOUND=NO
 
-    if  ( gtk-config --cflags ) > /dev/null
+    # gtk 1.*
+    if  ( gtk-config --cflags ) > /dev/null 2>&1
     then
 	GTK_CFLAGS=`gtk-config --cflags`
 	GTK_HEADERS_FOUND=YES
     fi
 
-    if  ( gtk-config --libs ) > /dev/null
+    if  ( gtk-config --libs ) > /dev/null 2>&1
     then
 	GTK_LIBS=`gtk-config --libs`
 	GTK_LIBS_FOUND=YES
     fi
+
+    # gtk 2.0
+    if  ( pkg-config --cflags gtk+-2.0 ) > /dev/null 2>&1
+    then
+	GTK_CFLAGS=`pkg-config --cflags gtk+-2.0`
+	GTK_HEADERS_FOUND=YES
+    fi
+
+    if  ( pkg-config --libs gtk+-2.0 ) > /dev/null 2>&1
+    then
+	GTK_LIBS=`pkg-config --libs gtk+-2.0`
+	GTK_LIBS_FOUND=YES
+    fi
+
 
     AC_SUBST(GTK_CFLAGS)dnl
     AC_SUBST(GTK_LIBS)dnl
@@ -45,7 +60,6 @@ AC_DEFUN(AC_PATH_XPM,
     XPM_SHARED_REF=
 
     XPM_FOUND=0
-    AC_DEFINE(XPM_FOUND,0)
 
     ac_xpm_includes=${ac_xpm_includes:-NO}
     ac_xpm_libraries=${ac_xpm_libraries:-NO}
@@ -102,6 +116,14 @@ AC_DEFUN(AC_PATH_XPM,
 		break
 	    fi
 
+	if  test -r "$ac_dir/libXpm.dylib"
+	    then
+		ac_xpm_libraries=$ac_dir
+		ac_xpm_shared_lib=$ac_dir/libXpm.dylib
+		found=yes
+		break
+	    fi
+
 	if  test $found = yes
 	    then
 		break
@@ -113,8 +135,11 @@ AC_DEFUN(AC_PATH_XPM,
     #echo Includes : $ac_xpm_includes
     #echo Libraries: $ac_xpm_libraries
 
-    if  test $ac_xpm_includes != NO
+    if  test $ac_xpm_includes = NO
     then
+	XPM_FOUND=0
+	AC_DEFINE(XPM_FOUND,0)
+    else
 	XPM_FOUND=1
 	AC_DEFINE(XPM_FOUND,1)
 
@@ -230,6 +255,13 @@ AC_DEFUN(AC_PATH_XM,
 		found=yes
 	    fi
 
+	if  test -r "$ac_dir/libXm.dylib"
+	    then
+		ac_xm_libraries=$ac_dir
+		ac_xm_shared_lib=$ac_dir/libXm.dylib
+		found=yes
+	    fi
+
 	if  test $found = yes
 	    then
 		break
@@ -242,7 +274,7 @@ AC_DEFUN(AC_PATH_XM,
 
     if  test $ac_xm_includes != NO
     then
-	XM_CFLAGS=-I$ac_xm_includes
+	XM_CFLAGS=" -I$ac_xm_includes"
 	MOTIF_HEADERS_FOUND=YES
 
 	if  test "$XM_CFLAGS" = "$X_CFLAGS"
@@ -253,7 +285,7 @@ AC_DEFUN(AC_PATH_XM,
 
     if  test $ac_xm_libraries != NO
     then
-	XM_LIBS="-L$ac_xm_libraries"
+	XM_LIBS=" -L$ac_xm_libraries"
 	MOTIF_LIBS_FOUND=YES
 
 	if  test "$XM_LIBS" = "$X_LIBS"
@@ -305,6 +337,31 @@ AC_DEFUN(AC_PATH_XM,
 	XM_STATIC_REF="$ac_xm_static_lib"
     else
 	XM_STATIC_REF="$XM_LIBS -lXm"
+    fi
+
+    #  Hack to cope with the linker on some BSD operating systems
+    #  I do not think that this hack will be acceptable on the long 
+    #  term.
+    #  *   The hack is in the wrong position: It is in the Motif 
+    #      configuration, whereas it should be in some more generic 
+    #      environment.
+    #  *   It bypasses the generic autoconf framework. This might 
+    #      pose more issues than it removes.
+    #
+
+    if  test $ac_xm_libraries != NO
+    then
+	if  uname -s > /dev/null
+	then
+	    ac_os_xm=`uname -s`
+	    case $ac_os_xm in
+		FreeBsd|NetBsd|OpenBsd)
+		    XM_EXTRA_LIBS="$XM_EXTRA_LIBS -Wl,-R$ac_xm_libraries"
+		    ;;
+		*)
+		    ;;
+	    esac
+	fi
     fi
 
     XM_SHARED_REF="$XM_LIBS -lXm"

@@ -210,10 +210,19 @@ typedef		GtkWidget		APP_LIST_CHOICE;
 typedef		APP_LIST_CALLBACK_H ((*APP_LIST_CALLBACK_T),w,t,c);
 
 /****/
+# if 0
+For "destroy-event" that does not arrive
 #define		APP_DESTROY_CALLBACK_H(n,w,t)				\
 		void n(			GtkWidget *		w,	\
 					GdkEvent *		e,	\
 					void *			t	)
+
+# else
+#define		APP_DESTROY_CALLBACK_H(n,w,t)				\
+		void n(			GtkWidget *		w,	\
+					void *			t	)
+
+# endif
 
 typedef		APP_DESTROY_CALLBACK_H ((*APP_DESTROY_CALLBACK_T),w,t);
 
@@ -305,6 +314,8 @@ typedef struct AppOptionmenu
     {
     APP_WIDGET	aomInplace;
     APP_WIDGET	aomPulldown;
+
+    int		aomOptionsVisible;
     } AppOptionmenu;
 
 /************************************************************************/

@@ -23,8 +23,6 @@
 /*									*/
 /*  Edit menu actions.							*/
 /*									*/
-/*  2)  If the beginning of the selection is the beginning of a		*/
-/*	kyperlink, try to include the link.				*/
 /*  8)  Also put a copied picture on the clipboard that 'xv' implements	*/
 /*	on the root window.						*/
 /*									*/
@@ -35,13 +33,15 @@ static void tedFinishTextCopy(	TedDocument *			td,
 				const DocumentSelection *	ds )
     {
     BufferDocument *		bd= td->tdDocument;
+    const ScreenFontList *	sfl= &(td->tdScreenFontList);
     SelectionGeometry		sg;
+    const int			lastLine= 1;
 
-    tedSelectionGeometry( &sg, ds, bd, add );
+    tedSelectionGeometry( &sg, ds, lastLine, bd, add, sfl );
 
     td->tdCopiedSelectionClosed= 1;
 
-    if  ( (unsigned)ds->dsEnd.dpStroff < ds->dsEnd.dpBi->biParaStrlen )
+    if  ( ds->dsEnd.dpStroff < ds->dsEnd.dpBi->biParaStrlen )
 	{ td->tdCopiedSelectionClosed= 0;	}
 
     if  ( docIsParaSelection( ds )		&&
@@ -58,76 +58,42 @@ static int tedDocCopySelection(	EditDocument *	ed )
     {
     EditApplication *		ea= ed->edApplication;
     TedDocument *		td= (TedDocument *)ed->edPrivateData;
-    BufferDocument *		bd= td->tdDocument;
     AppDrawingData *		add= &(ed->edDrawingData);
 
-    BufferItem *		bi;
-    TextParticule *		tp;
     DocumentPosition		dpObject;
+    int				partObject;
     InsertedObject *		io;
 
     SimpleOutputStream *	sos;
 
-    DocumentSelection		dsNew;
     const int			saveBookmarks= 0;
-
-    int				startPart;
-    int				endPart;
 
     DocumentSelection		ds;
     SelectionGeometry		sg;
-
-    const char *		fileName= (const char *)0;
-    int				fileSize= 0;
-    const char *		markName= (const char *)0;
-    int				markSize= 0;
+    SelectionDescription	sd;
 
     if  ( ! tedHasSelection( td ) || tedHasIBarSelection( td ) )
 	{ return -1; }
 
-    if  ( tedGetSelection( &ds, &sg, td ) )
+    if  ( tedGetSelection( &ds, &sg, &sd, td ) )
 	{ return -1;	}
-
-    dsNew= ds;
-
-    /*  2  */
-    if  ( ! docGetHyperlinkForPosition( bd, &(dsNew.dsBegin),
-				&startPart, &endPart,
-				&fileName, &fileSize, &markName, &markSize ) )
-	{
-	bi= dsNew.dsBegin.dpBi;
-	tp= bi->biParaParticules+ dsNew.dsBegin.dpParticule;
-
-	if  ( startPart < dsNew.dsBegin.dpParticule			&&
-	      bi->biParaParticules[startPart].tpStroff == tp->tpStroff	)
-	    { dsNew.dsBegin.dpParticule= startPart;	}
-
-	if  ( dsNew.dsEnd.dpBi == bi )
-	    {
-	    tp= bi->biParaParticules+ dsNew.dsEnd.dpParticule;
-
-	    if  ( endPart > dsNew.dsEnd.dpParticule			&&
-		  bi->biParaParticules[endPart].tpStroff == tp->tpStroff )
-		{ dsNew.dsEnd.dpParticule= endPart;	}
-	    }
-	}
 
     sos= sioOutMemoryOpen( &(td->tdCopiedSelection) );
     if  ( ! sos )
 	{ XDEB(sos); return -1;    }
 
-    if  ( docRtfSaveDocument( sos, td->tdDocument, &dsNew, saveBookmarks ) )
+    if  ( docRtfSaveDocument( sos, td->tdDocument, &ds, saveBookmarks ) )
 	{ LDEB(1); sioOutClose( sos ); return -1;	}
 
     if  ( sioOutClose( sos ) )
 	{ LDEB(1); return -1;	}
 
-    tedFinishTextCopy( td, add, &dsNew );
+    tedFinishTextCopy( td, add, &ds );
 
     docInitDocumentPosition( &dpObject );
 
-    if  ( ea->eaSupportXvCopyPaste				&&
-	  ! tedGetObjectSelection( td, &dpObject, &io )		&&
+    if  ( ea->eaSupportXvCopyPaste					&&
+	  ! tedGetObjectSelection( td, &partObject, &dpObject, &io )	&&
 	  ! tedSaveObjectPicture( &(td->tdCopiedImage), io )	)
 	{
 	/*  8  */
@@ -137,7 +103,7 @@ static int tedDocCopySelection(	EditDocument *	ed )
 	}
 
     if  ( appDocOwnSelection( ed, "PRIMARY",
-		TedPrimaryTextTargets, TedPrimaryTextTargetCount ) )
+			TedPrimaryTextTargets, TedPrimaryTextTargetCount ) )
 	{ LDEB(1); return -1;	}
 
     return 0;
@@ -199,8 +165,9 @@ void tedDocCut(			EditDocument *	ed )
 
     DocumentSelection		ds;
     SelectionGeometry		sg;
+    SelectionDescription	sd;
 
-    if  ( tedGetSelection( &ds, &sg, td ) )
+    if  ( tedGetSelection( &ds, &sg, &sd, td ) )
 	{ return;	}
 
     if  ( ! docGetTableSliceSelection( &isRowSlice, &isColSlice, &tr, &ds ) )
@@ -225,11 +192,12 @@ void tedDocCopy(		EditDocument *	ed )
 
     DocumentSelection		ds;
     SelectionGeometry		sg;
+    SelectionDescription	sd;
 
     const int			scrolledX= 0;
     const int			scrolledY= 0;
 
-    if  ( tedGetSelection( &ds, &sg, td ) )
+    if  ( tedGetSelection( &ds, &sg, &sd, td ) )
 	{ return;	}
 
     if  ( tedDocCopySelection( ed ) )
@@ -257,13 +225,14 @@ void tedPrimaryLost(	APP_WIDGET			w,
 
     DocumentSelection		ds;
     SelectionGeometry		sg;
+    SelectionDescription	sd;
 
-    if  ( tedGetSelection( &ds, &sg, td ) )
+    if  ( tedGetSelection( &ds, &sg, &sd, td ) )
 	{ return;	}
 
     td->tdVisibleSelectionCopied= 0;
 
-    if  ( tedHasSelection( td ) && ! tedHasIBarSelection( td ) )
+    if  ( tedHasSelection( td ) && ! sd.sdIsIBarSelection )
 	{
 	const int	scrolledX= 0;
 	const int	scrolledY= 0;

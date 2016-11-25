@@ -60,9 +60,9 @@
 /************************************************/
 /*  Libraries that are (Un)Available.		*/
 /************************************************/
-#   define	JPEG_FOUND 0
-#   define	TIFF_FOUND 0
-#   define	PNG_FOUND 0
-#   define	XPM_FOUND 0
+#   define	JPEG_FOUND 1
+#   define	TIFF_FOUND 1
+#   define	PNG_FOUND 1
+#   define	XPM_FOUND 1
 
 #   endif	/*  BITMAP_CONFIG_H  */

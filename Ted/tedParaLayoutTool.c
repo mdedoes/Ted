@@ -53,6 +53,20 @@ static void tedFormatToolRefreshParagraphPage(	ParagraphLayoutTool *	plt )
 
     char		scratch[50];
 
+    if  ( pp->ppListOverride > 0 )
+	{
+	appIntegerToTextWidget( plt->ptListLevelText, pp->ppListLevel+ 1 );
+
+	appEnableText( plt->ptFirstIndentText, 0 );
+	appEnableText( plt->ptLeftIndentText, 0 );
+	}
+    else{
+	appStringToTextWidget( plt->ptListLevelText, "" );
+
+	appEnableText( plt->ptFirstIndentText, 1 );
+	appEnableText( plt->ptLeftIndentText, 1 );
+	}
+
     appGeoLengthToString( scratch,
 	    pp->ppLeftIndentTwips+ pp->ppFirstIndentTwips, UNITtyPOINTS );
     appStringToTextWidget( plt->ptFirstIndentText, scratch );
@@ -87,6 +101,7 @@ static void tedFormatToolRefreshParagraphPage(	ParagraphLayoutTool *	plt )
 void tedFormatToolRefreshParaLayoutTool(
 				ParagraphLayoutTool *		plt,
 				int *				pEnabled,
+				int *				pPref,
 				InspectorSubject *		is,
 				const DocumentSelection *	ds )
     {
@@ -97,6 +112,9 @@ void tedFormatToolRefreshParaLayoutTool(
 
     BufferItem *			bi= ds->dsBegin.dpBi;
 
+    const int * const			colorMap= (const int *)0;
+    const int * const			listStyleMap= (const int *)0;
+
     pp= &(bi->biParaProperties);
 
     PROPmaskCLEAR( &ppUpdMask );
@@ -106,13 +124,13 @@ void tedFormatToolRefreshParaLayoutTool(
     PROPmaskCLEAR( &ppChgMask );
 
     if  ( docUpdParaProperties( &ppChgMask, &(plt->ptPropertiesChosen),
-					    &ppUpdMask, pp, (const int *)0 ) )
+				    &ppUpdMask, pp, colorMap, listStyleMap ) )
 	{ LDEB(1); return ;	}
 
     PROPmaskCLEAR( &ppChgMask );
 
     if  ( docUpdParaProperties( &ppChgMask, &(plt->ptPropertiesSet),
-					    &ppUpdMask, pp, (const int *)0 ) )
+				    &ppUpdMask, pp, colorMap, listStyleMap ) )
 	{ LDEB(1); return ;	}
 
     appGuiEnableWidget( plt->ptOnNewPageToggle,
@@ -143,13 +161,17 @@ static APP_BUTTON_CALLBACK_H( tedFormatParaRevertPushed, w, voidplt )
     PropertyMask		ppChgMask;
     PropertyMask		ppUpdMask;
 
+    const int * const		colorMap= (const int *)0;
+    const int * const		listStyleMap= (const int *)0;
+
     PROPmaskCLEAR( &ppChgMask );
 
     PROPmaskCLEAR( &ppUpdMask );
     PROPmaskFILL( &ppUpdMask, PPprop_COUNT );
 
     docUpdParaProperties( &ppChgMask, &(plt->ptPropertiesChosen),
-			&ppUpdMask, &(plt->ptPropertiesSet), (const int *)0 );
+					&ppUpdMask, &(plt->ptPropertiesSet),
+					colorMap, listStyleMap );
 
     tedFormatToolRefreshParagraphPage( plt );
 
@@ -625,20 +647,24 @@ void tedFormatFillParagraphLayoutPage(
     docInitParagraphProperties( &(plt->ptPropertiesChosen) );
 
     /**/
+    appMakeLabelAndTextRow( &row, &firstLabel, &(plt->ptListLevelText),
+		    pageWidget, plpr->plprParaListLevel, textColumns, 0 );
+
+    /**/
     appMakeLabelAndTextRow( &row, &firstLabel, &(plt->ptFirstIndentText),
-		    pageWidget, plpr->pprParaFirstIndent, textColumns, 1 );
+		    pageWidget, plpr->plprParaFirstIndent, textColumns, 1 );
 
     appGuiSetGotValueCallbackForText( plt->ptFirstIndentText,
 				    tedParaFirstIndentChanged, (void *)plt );
     /**/
     appMakeLabelAndTextRow( &row, &leftLabel, &(plt->ptLeftIndentText),
-		    pageWidget, plpr->pprParaLeftIndent, textColumns, 1 );
+		    pageWidget, plpr->plprParaLeftIndent, textColumns, 1 );
 
     appGuiSetGotValueCallbackForText( plt->ptLeftIndentText,
 				    tedParaLeftIndentChanged, (void *)plt );
     /**/
     appMakeLabelAndTextRow( &row, &rightLabel, &(plt->ptRightIndentText),
-		    pageWidget, plpr->pprParaRightIndent, textColumns, 1 );
+		    pageWidget, plpr->plprParaRightIndent, textColumns, 1 );
 
     appGuiSetGotValueCallbackForText( plt->ptRightIndentText,
 				    tedParaRightIndentChanged, (void *)plt );
@@ -797,14 +823,17 @@ static AppConfigurableResource TED_TedParagraphSubjectResourceTable[]=
 static AppConfigurableResource TED_TedParagraphToolResourceTable[]=
     {
     /**/
+    APP_RESOURCE( "formatToolParaListLevel",
+	offsetof(ParagraphLayoutPageResources,plprParaListLevel),
+	"List Level" ),
     APP_RESOURCE( "formatToolParaFirstIndent",
-	offsetof(ParagraphLayoutPageResources,pprParaFirstIndent),
+	offsetof(ParagraphLayoutPageResources,plprParaFirstIndent),
 	"First Line Indent" ),
     APP_RESOURCE( "formatToolParaLeftIndent",
-	offsetof(ParagraphLayoutPageResources,pprParaLeftIndent),
+	offsetof(ParagraphLayoutPageResources,plprParaLeftIndent),
 	"Left Indent" ),
     APP_RESOURCE( "formatToolParaRightIndent",
-	offsetof(ParagraphLayoutPageResources,pprParaRightIndent),
+	offsetof(ParagraphLayoutPageResources,plprParaRightIndent),
 	"Right Indent" ),
 
     /**/

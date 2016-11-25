@@ -14,6 +14,7 @@ typedef struct TextAttribute
     short int		taFontNumber;
     short int		taFontSizeHalfPoints;
     short int		taTextColorNumber;
+    short int		taTextStyleNumber;
 
     unsigned int	taFontIsBold:1;
     unsigned int	taFontIsSlanted:1;
@@ -33,7 +34,7 @@ typedef enum TextProperty
     {
     TAprop_NONE= -1,
 
-    TApropFONTFAMILY= 0,
+    TApropDOC_FONT_NUMBER= 0,
     TApropFONTSIZE,
     TApropFONTBOLD,
     TApropFONTSLANTED,
@@ -43,6 +44,7 @@ typedef enum TextProperty
     TApropCAPITALS,
     TApropSTRIKETHROUGH,
     TApropTEXT_COLOR,
+    TApropTEXT_STYLE,
 
     TAprop_COUNT
     } TextProperty;

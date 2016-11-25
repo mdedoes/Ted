@@ -167,7 +167,8 @@ void appInitDrawingData(	AppDrawingData *	add )
     add->addGc= (GdkGC *)0;
     add->addCurrentFont= (GdkFont *)0;
 
-    appInitFontList( &(add->addPhysicalFontList) );
+    add->addPostScriptFontList= (const PostScriptFontList *)0;
+    appInitFontList( &(add->addScreenFontList) );
     }
 
 void appCleanDrawingData(	AppDrawingData *	add )
@@ -175,20 +176,18 @@ void appCleanDrawingData(	AppDrawingData *	add )
     if  ( add->addGc )
 	{ gdk_gc_unref( add->addGc );	}
 
-    appCleanFontList( add, &(add->addPhysicalFontList) );
+    appCleanFontList( add, &(add->addScreenFontList) );
 
     return ;
     }
 
 void appSetDrawingEnvironment(
-			AppDrawingData *	add,
-			double			magnification,
-			double			xfac,
-			double			screenPixelsPerMM,
-			const char *		afmDirectory,
-			const char *		ghostscriptFontmap,
-			const char *		ghostscriptFontToXmapping,
-			APP_WIDGET		w )
+			AppDrawingData *		add,
+			double				magnification,
+			double				xfac,
+			double				screenPixelsPerMM,
+			const PostScriptFontList *	psfl,
+			APP_WIDGET			w )
     {
     if  ( w )
 	{ add->addForScreenDrawing= 1; }
@@ -197,11 +196,7 @@ void appSetDrawingEnvironment(
     add->addMagnifiedPixelsPerTwip= xfac;
     add->addScreenPixelsPerMM= screenPixelsPerMM;
 
-    add->addPhysicalFontList.apflAfmDirectory= afmDirectory;
-    add->addPhysicalFontList.apflGhostscriptFontmap=
-					    ghostscriptFontmap;
-    add->addPhysicalFontList.apflGhostscriptFontToXmapping=
-					    ghostscriptFontToXmapping;
+    add->addPostScriptFontList= psfl;
 
     return;
     }
@@ -216,12 +211,7 @@ void appCloneDrawingEnvironment(	AppDrawingData *	add,
     add->addMagnifiedPixelsPerTwip= xfac;
     add->addScreenPixelsPerMM= parent_add->addScreenPixelsPerMM;
 
-    add->addPhysicalFontList.apflAfmDirectory=
-		parent_add->addPhysicalFontList.apflAfmDirectory;
-    add->addPhysicalFontList.apflGhostscriptFontmap=
-		parent_add->addPhysicalFontList.apflGhostscriptFontmap;
-    add->addPhysicalFontList.apflGhostscriptFontToXmapping=
-		parent_add->addPhysicalFontList.apflGhostscriptFontToXmapping;
+    add->addPostScriptFontList= parent_add->addPostScriptFontList;
 
     add->addDrawable= drawable;
 
@@ -570,16 +560,26 @@ void appDrawDrawSegments(	AppDrawingData *	add,
     gdk_draw_segments( add->addDrawable, add->addGc, segments, count );
     }
 
+/************************************************************************/
+/*									*/
+/*  Draw an arc. Angles are in X11 style:				*/
+/*									*/
+/*  Unit:		1/64 degree.					*/
+/*  Origin:		At the right of the circle.			*/
+/*  Orientation:	Counterclockwise.				*/
+/*									*/
+/************************************************************************/
+
 void appDrawDrawArc(		AppDrawingData *	add,
 				int			x,
 				int			y,
 				int			wide,
 				int			high,
-				int			angle1,
-				int			angle2 )
+				int			alpha0,
+				int			alpha_step )
     {
     gdk_draw_arc( add->addDrawable, add->addGc, FALSE,
-					    x, y, wide, high, angle1, angle2 );
+					x, y, wide, high, alpha0, alpha_step );
     }
 
 void appDrawFillArc(		AppDrawingData *	add,
@@ -587,11 +587,11 @@ void appDrawFillArc(		AppDrawingData *	add,
 				int			y,
 				int			wide,
 				int			high,
-				int			angle1,
-				int			angle2 )
+				int			alpha0,
+				int			alpha_step )
     {
     gdk_draw_arc( add->addDrawable, add->addGc, TRUE,
-					    x, y, wide, high, angle1, angle2 );
+					x, y, wide, high, alpha0, alpha_step );
     }
 
 #   endif

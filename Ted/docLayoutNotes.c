@@ -148,15 +148,17 @@ static int docLayoutCollectFootnoteHeight(
 			int				referringPage,
 			int				referringColumn,
 			BufferDocument *		bd,
+			int				partFrom,
+			int				partUpto,
 			const DocumentPosition *	dpFrom,
 			const DocumentPosition *	dpUpto )
     {
-    const int		mindLine= 0;
     int			cmp;
 
+    int			partHere= partFrom;
     DocumentPosition	dpHere= *dpFrom;
 
-    cmp= docComparePositions( &dpHere, dpUpto, mindLine );
+    cmp= docComparePositions( &dpHere, dpUpto );
     if  ( cmp > 0 )
 	{ LDEB(cmp);	}
     while( cmp < 0 )
@@ -165,8 +167,7 @@ static int docLayoutCollectFootnoteHeight(
 	    {
 	    if  ( docLayoutCollectParaFootnoteHeight( nr,
 				    referringPage, referringColumn,
-				    bd, dpHere.dpBi, dpHere.dpParticule,
-				    dpUpto->dpParticule ) )
+				    bd, dpHere.dpBi, partHere, partUpto ) )
 		{ LDEB(1);	}
 
 	    break;
@@ -174,7 +175,7 @@ static int docLayoutCollectFootnoteHeight(
 	else{
 	    if  ( docLayoutCollectParaFootnoteHeight( nr,
 				referringPage, referringColumn,
-				bd, dpHere.dpBi, dpHere.dpParticule,
+				bd, dpHere.dpBi, partHere,
 				dpHere.dpBi->biParaParticuleCount ) )
 		{ LDEB(1);	}
 
@@ -184,8 +185,9 @@ static int docLayoutCollectFootnoteHeight(
 
 	    if  ( docFirstPosition( &dpHere, dpHere.dpBi ) )
 		{ LDEB(1); return -1;	}
+	    partHere= 0;
 
-	    cmp= docComparePositions( &dpHere, dpUpto, mindLine );
+	    cmp= docComparePositions( &dpHere, dpUpto );
 	    if  ( cmp > 0 )
 		{ LDEB(cmp);	}
 	    }
@@ -204,6 +206,7 @@ static int docLayoutCollectFootnoteHeight(
 int docCollectFootnotesForColumn(
 				BlockFrame *			bf,
 				const DocumentPosition *	dpHere,
+				int				partHere,
 				const LayoutJob *		refLj )
     {
     BufferDocument *		bd= refLj->ljBd;
@@ -211,17 +214,20 @@ int docCollectFootnotesForColumn(
     DocumentPosition		dpPageTop;
     NotesReservation		nr;
 
+    int				partPageTop;
+
     docInitNotesReservation( &nr );
 
-    if  ( docGetTopOfColumn( &dpPageTop, bd,
+    if  ( docGetTopOfColumn( &dpPageTop, &partPageTop, bd,
 					refLj->ljPosition.lpPage,
 					refLj->ljPosition.lpColumn ) )
-	{ LDEB(refLj->ljPosition.lpPage); return -1;	}
+	{ LDEB(refLj->ljPosition.lpPage); return -1; }
 
     if  ( docLayoutCollectFootnoteHeight( &nr,
 					    refLj->ljPosition.lpPage,
 					    refLj->ljPosition.lpColumn,
-					    bd, &dpPageTop, dpHere ) )
+					    bd, partPageTop, partHere,
+					    &dpPageTop, dpHere ) )
 	{ LDEB(1); return -1;	}
 
     bf->bfNotesReservation= nr;
@@ -282,7 +288,7 @@ int docLayoutFootnotesForColumn(	const BlockFrame *	refBf,
     notesLj.ljPosition.lpAtTopOfColumn= 1; /* not really */
 
     /*  4  */
-    if  ( npFootnotes->npPosition == DPftnPOS_PAGE_BOTTOM )
+    if  ( npFootnotes->npPosition == FTN_POS_PAGE_BOTTOM )
 	{
 	int		high= sepHigh;
 

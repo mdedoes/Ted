@@ -14,6 +14,7 @@
 
 #   include	"geo2DInteger.h"
 #   include	"utilPs.h"
+#   include	<psFont.h>
 #   include	"utilPrinter.h"
 #   include	"utilMailContent.h"
 #   include	<appIcons.h>
@@ -137,6 +138,7 @@ typedef struct EditDocument
     char *			edCheckpointFilename;
     int				edFormat;
     int				edFileReadOnly;
+    unsigned int		edDocumentId;
 
     AppToplevel			edToplevel;
 
@@ -197,6 +199,7 @@ typedef struct EditDocument
     int				edTargetTypeCount;
 
     int				edMapped;	/*  Struggle with fvwm	*/
+    int				edNotYetDrawn;	/*  For FirstVisible	*/
     } EditDocument;
 
 /************************************************************************/
@@ -307,7 +310,8 @@ typedef struct EditApplication
 				AppDrawingData *		add,
 				const DocumentGeometry *	defDg );
     int			(*eaFinishDocumentSetup)(
-				struct EditApplication *	ea,
+				EditDocument *			ed );
+    void		(*eaDocumentFirstVisible)(
 				EditDocument *			ed );
     int			(*eaCanSaveDocument)(
 				const void *			privateData,
@@ -322,6 +326,9 @@ typedef struct EditApplication
 				void *				privateData,
 				int				format,
 				AppDrawingData *		add );
+    void		(*eaSuggestNup)(
+				PrintGeometry *			pg,
+				void *				privateData );
     int			(*eaPrintDocument)(
 				SimpleOutputStream *		sos,
 				const PrintJob *		pj,
@@ -406,6 +413,7 @@ typedef struct EditApplication
     PrintDestination *	eaPrintDestinations;
     int			eaPrintDestinationCount;
     int			eaDefaultPrintDestination;
+    int			eaPrintDestinationsCollected;
 
     MailContent *	eaMailContents;
     int			eaMailContentCount;
@@ -416,6 +424,8 @@ typedef struct EditApplication
 
     APP_ATOM		eaCloseAtom;
 
+    unsigned int	eaNextDocumentId;
+
     /*  2  */
 #   ifdef USE_MOTIF
     XtAppContext		eaContext;
@@ -424,43 +434,44 @@ typedef struct EditApplication
     AppToplevel			eaToplevel;
 	APP_INPUT_METHOD	eaInputMethod;
 	APP_CURSOR		eaDocumentCursor;
-    APP_WIDGET		eaMainWindow;
-    APP_WIDGET		eaMenuBar;
-    APP_WIDGET		eaFileMenu;
-    APP_WIDGET		eaFileMenuButton;
-    APP_WIDGET		eaWinMenu;
-    APP_WIDGET		eaWinMenuButton;
-    APP_WIDGET		eaHelpMenu;
-    APP_WIDGET		eaHelpMenuButton;
+    APP_WIDGET			eaMainWindow;
+    APP_WIDGET			eaMenuBar;
+    APP_WIDGET			eaFileMenu;
+    APP_WIDGET			eaFileMenuButton;
+    APP_WIDGET			eaWinMenu;
+    APP_WIDGET			eaWinMenuButton;
+    APP_WIDGET			eaHelpMenu;
+    APP_WIDGET			eaHelpMenuButton;
 
-    void *		eaSpellTool;
-    void *		eaFindTool;
-    void *		eaPageTool;
-    void *		eaSymbolPicker;
-    void *		eaPrintDialog;
+    void *			eaSpellTool;
+    void *			eaFindTool;
+    void *			eaPageTool;
+    void *			eaSymbolPicker;
+    void *			eaPrintDialog;
 
-    int			eaArgc;
-    char **		eaArgv;
+    int				eaArgc;
+    char **			eaArgv;
 
-    EditDocument *	eaCurrentDocument;
-    EditDocument **	eaOpenDocuments;
-    int			eaOpenCount;
-    int			eaVisibleDocumentCount;
-    int			eaMainVisibleAsAbout;
+    EditDocument *		eaCurrentDocument;
+    EditDocument **		eaOpenDocuments;
+    int				eaOpenCount;
+    int				eaVisibleDocumentCount;
+    int				eaMainVisibleAsAbout;
 
-    char *		eaAfmDirectory;
-    char *		eaGhostscriptFontmap;
-    char *		eaGhostscriptFontToXmapping;
-    int			eaGhostscriptMappingsRead;
-    char *		eaDefaultFont;
-    char *		eaRulerFont;
-    char *		eaPrintDialogFont;
-    char *		eaFaxCommand;
-    char *		eaCustomPrintCommand;
-    char *		eaCustomPrinterName;
-    char *		eaAuthor;
-    char *		eaPageNumberFormat;
-    char *		eaFocusColor;
+    char *			eaAfmDirectory;
+    char *			eaFontDirectory;
+    char *			eaGhostscriptFontmap;
+    char *			eaGhostscriptFontToXmapping;
+    int				eaGhostscriptMappingsRead;
+    char *			eaDefaultFont;
+    char *			eaRulerFont;
+    char *			eaPrintDialogFont;
+    char *			eaFaxCommand;
+    char *			eaCustomPrintCommand;
+    char *			eaCustomPrinterName;
+    char *			eaAuthor;
+    char *			eaPageNumberFormat;
+    char *			eaFocusColor;
 
     int				eaSupportXvCopyPaste;
     int				eaHideSaveToOption;
@@ -474,6 +485,8 @@ typedef struct EditApplication
     char *			eaHideSaveToOptionString;
     char *			eaUsePostScriptFiltersString;
     char *			eaUsePostScriptIndexedImagesString;
+
+    PostScriptFontList		eaPostScriptFontList;
     } EditApplication;
 
 typedef int (*APP_OPEN_DOCUMENT)(	void *		through,
@@ -487,8 +500,12 @@ typedef int (*APP_OPEN_DOCUMENT)(	void *		through,
 /*									*/
 /************************************************************************/
 
-typedef int (*FindToolFind)( void * target, void * prog );
-typedef void (*FindToolReplace)( void * target, const unsigned char * guess );
+typedef int (*FindToolFind)(		void *			target );
+typedef void (*FindToolReplace)(	void *			target,
+					const unsigned char *	guess );
+typedef int (*FindToolSetPattern)(	void *			voidea,
+					const unsigned char *	pattern,
+					int			useRegex );
 
 /************************************************************************/
 /*									*/
@@ -1078,9 +1095,7 @@ extern int appPrintToPrinter(	EditApplication *	ea,
 				const char *		toName,
 				const char *		paperString );
 
-extern void appDestroyEditDocument(	APP_WIDGET		w,
-					void *			voided,
-					void *			callData );
+APP_DESTROY_CALLBACK_H( appDestroyEditDocument, w, voided );
 
 extern APP_WIDGET appMakePageDrawing(	APP_WIDGET		parent,
 					EditApplication *	ea,
@@ -1120,15 +1135,21 @@ extern void * appMakeFindTool(		APP_WIDGET		findOption,
 					FindToolFind		findNext,
 					FindToolFind		findPrev,
 					FindToolReplace		replace,
+					FindToolSetPattern	setPattern,
 					void *			target );
+
+extern void appFindToolSetPattern(	void *			voidaft,
+					const unsigned char *	pattern,
+					int			useRegex );
 
 extern void appShowFindTool(		APP_WIDGET		reference,
 					void *			voidaft );
 
-extern void appEnableFindTool(		void *	voidaft,
-					int	enabled );
+extern void appEnableFindTool(		void *		voidaft,
+					int		enabled );
 
-extern void appFindToolDisableReplace(	void *	voidaft );
+extern void appFindToolEnableReplace(	void *		voidaft,
+					int		enabled );
 
 extern void appMakeColumnInRow(		APP_WIDGET *	pColumn,
 					APP_WIDGET	row,
@@ -1372,7 +1393,7 @@ void appGuiGetStringFromKeyboardEvent(	APP_INPUT_CONTEXT	ic,
 					int *			pGotString,
 					int *			pGotKey,
 					unsigned int *		pState,
-					char *			buf,
+					unsigned char *		buf,
 					int			capacity,
 					APP_KEY_VALUE *		pKey );
 
@@ -1531,5 +1552,9 @@ extern int appGuiGetPositionFromListCallback(	APP_LIST	list,
 
 extern void appOptionmenuItemSetVisibility(	APP_WIDGET	w,
 						int		visible );
+
+extern int appPostScriptFontCatalog(		EditApplication *	ea );
+
+extern int appGetPrintDestinations(		EditApplication *	ea );
 
 #   endif

@@ -1425,12 +1425,12 @@ void regdump( regProg *r )
 	s = r->rpProgram + 1;
 	while (op != END) {	/* While that wasn't END last time... */
 		op = OP(s);
-		appDebug("%2d%s", s-r->rpProgram, regprop(s));	/* Where, what. */
+		appDebug("%2ld%s", (long)(s-r->rpProgram), regprop(s));
 		next = regGetNextNode(s);
 		if (next == NULL)		/* Next ptr. */
 			appDebug("(0)");
 		else 
-			appDebug("(%d)", (s-r->rpProgram)+(next-s));
+			appDebug("(%ld)", (long)((s-r->rpProgram)+(next-s)));
 		s += 3;
 		if (op == ANYOF || op == ANYBUT || op == EXACTLY) {
 			/* Literal string, where present. */

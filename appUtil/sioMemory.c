@@ -62,8 +62,7 @@ SimpleInputStream * sioInMemoryOpen(	const MemoryBuffer *	mb )
     smp->smpBuffer= (MemoryBuffer *)mb;
     smp->smpPosition= 0;
 
-    sis= sioInOpen( (void *)smp,
-		    sioInMemoryReadBytes, sioMemorySeek, sioMemoryClose );
+    sis= sioInOpen( (void *)smp, sioInMemoryReadBytes, sioMemoryClose );
 
     if  ( ! sis )
 	{ XDEB(sis); free( smp ); return (SimpleInputStream *)0; }

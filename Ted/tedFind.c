@@ -16,20 +16,15 @@
 
 #   include	<appDebugon.h>
 
-static void tedFindToolClosed(		void *		voidea	)
+static void tedFindToolClosed(		void *		voidea )
     {
     EditApplication *	ea=	(EditApplication *)voidea;
 
     ea->eaFindTool= (void *)0;
     }
 
-static int tedFindToolFindNext(		void *		voidea,
-					void *		vprog )
+int tedDocFindNext(	EditDocument *	ed )
     {
-    regProg *			prog= (regProg *)vprog;
-
-    EditApplication *		ea= (EditApplication *)voidea;
-    EditDocument *		ed= ea->eaCurrentDocument;
     TedDocument *		td;
     BufferDocument *		bd;
 
@@ -42,41 +37,43 @@ static int tedFindToolFindNext(		void *		voidea,
 
     DocumentSelection		ds;
     SelectionGeometry		sg;
-
-    if  ( ! ed )
-	{ XDEB(ed); return -1;	}
+    SelectionDescription	sd;
 
     td= (TedDocument *)ed->edPrivateData;
     bd= td->tdDocument;
 
-    if  ( tedGetSelection( &ds, &sg, td ) )
+    if  ( ! td->tdFindProg )
+	{ XDEB(td->tdFindProg); return -1;	}
+
+    if  ( tedGetSelection( &ds, &sg, &sd, td ) )
 	{ LDEB(1); return -1;	}
 
     docInitDocumentSelection( &dsNew );
 
     ret= docFindFindNextInDocument( &dsNew, &(ds.dsEnd), bd,
-				    docFindParaFindNext, (void *)prog );
+				docFindParaFindNext, (void *)td->tdFindProg );
 
     if  ( ret < 0 )
 	{ LDEB(ret); return -1;	}
 
     if  ( ret == 0 )
 	{
-	tedSetSelection( ed, &dsNew, &scrolledX, &scrolledY );
+	EditApplication *	ea= ed->edApplication;
+	const int		lastLine= 0;
+
+	tedSetSelection( ed, &dsNew, lastLine, &scrolledX, &scrolledY );
 
 	tedAdaptToolsToSelection( ed );
+
+	if  ( ea->eaFindTool )
+	    { appFindToolEnableReplace( ea->eaFindTool, 1 );	}
 	}
 
     return ret;
     }
 
-static int tedFindToolFindPrev(		void *		voidea,
-					void *		vprog )
+int tedDocFindPrev(	EditDocument *	ed )
     {
-    regProg *			prog= (regProg *)vprog;
-
-    EditApplication *		ea= (EditApplication *)voidea;
-    EditDocument *		ed= ea->eaCurrentDocument;
     TedDocument *		td;
     BufferDocument *		bd;
 
@@ -89,32 +86,104 @@ static int tedFindToolFindPrev(		void *		voidea,
 
     DocumentSelection		ds;
     SelectionGeometry		sg;
-
-    if  ( ! ed )
-	{ XDEB(ed); return -1;	}
+    SelectionDescription	sd;
 
     td= (TedDocument *)ed->edPrivateData;
     bd= td->tdDocument;
 
-    if  ( tedGetSelection( &ds, &sg, td ) )
+    if  ( ! td->tdFindProg )
+	{ XDEB(td->tdFindProg); return -1;	}
+
+    if  ( tedGetSelection( &ds, &sg, &sd, td ) )
 	{ LDEB(1); return -1;	}
 
     docInitDocumentSelection( &dsNew );
 
     ret= docFindFindPrevInDocument( &dsNew, &(ds.dsBegin), bd,
-				    docFindParaFindPrev, (void *)prog );
+				docFindParaFindPrev, (void *)td->tdFindProg );
 
     if  ( ret < 0 )
 	{ LDEB(ret); return -1;	}
 
     if  ( ret == 0 )
 	{
-	tedSetSelection( ed, &dsNew, &scrolledX, &scrolledY );
+	EditApplication *	ea= ed->edApplication;
+	const int		lastLine= 0;
+
+	tedSetSelection( ed, &dsNew, lastLine, &scrolledX, &scrolledY );
 
 	tedAdaptToolsToSelection( ed );
+
+	if  ( ea->eaFindTool )
+	    { appFindToolEnableReplace( ea->eaFindTool, 1 );	}
 	}
 
     return ret;
+    }
+
+static int tedFindToolFindNext(		void *		voidea )
+    {
+    EditApplication *		ea= (EditApplication *)voidea;
+    EditDocument *		ed= ea->eaCurrentDocument;
+
+    if  ( ! ed )
+	{ XDEB(ed); return -1;	}
+
+    return tedDocFindNext( ed );
+    }
+
+static int tedFindToolFindPrev(		void *		voidea )
+    {
+    EditApplication *		ea= (EditApplication *)voidea;
+    EditDocument *		ed= ea->eaCurrentDocument;
+
+    if  ( ! ed )
+	{ XDEB(ed); return -1;	}
+
+    return tedDocFindPrev( ed );
+    }
+
+int tedFindSetPattern(		EditDocument *		ed,
+				const unsigned char *	pattern,
+				int			useRegex )
+    {
+    TedDocument *		td;
+
+    regProg *			prog;
+
+    td= (TedDocument *)ed->edPrivateData;
+
+    if  ( useRegex )
+	{
+	prog= regCompile( pattern );
+	if  ( ! prog )
+	    { SXDEB((char *)pattern,prog); return -1;	}
+	}
+    else{
+	prog= regCompileEscaped( pattern );
+	if  ( ! prog )
+	    { SXDEB((char *)pattern,prog); return -1;	}
+	}
+
+    if  ( td->tdFindProg )
+	{ free( td->tdFindProg );	}
+
+    td->tdFindProg= (void *)prog;
+
+    return 0;
+    }
+
+static int tedFindToolSetPattern(	void *			voidea,
+					const unsigned char *	pattern,
+					int			useRegex )
+    {
+    EditApplication *		ea= (EditApplication *)voidea;
+    EditDocument *		ed= ea->eaCurrentDocument;
+
+    if  ( ! ed )
+	{ XDEB(ed); return -1;	}
+
+    return tedFindSetPattern( ed, pattern, useRegex );
     }
 
 void tedDocToolFind(			APP_WIDGET	findOption,
@@ -133,6 +202,8 @@ void tedDocToolFind(			APP_WIDGET	findOption,
 	APP_BITMAP_IMAGE	iconPixmap= (APP_BITMAP_IMAGE)0;
 	APP_BITMAP_MASK		iconMask= (APP_BITMAP_MASK)0;
 
+	TedAppResources *	tar= (TedAppResources *)ea->eaResourceData;
+
 	if  ( appGetImagePixmap( ea, pixmapName, &iconPixmap, &iconMask )  )
 	    { SDEB(pixmapName); return;	}
 
@@ -143,14 +214,45 @@ void tedDocToolFind(			APP_WIDGET	findOption,
 			    tedFindToolFindNext,
 			    tedFindToolFindPrev,
 			    tedAppReplace,
+			    tedFindToolSetPattern,
 			    (void *)ea );
 	if  ( ! ea->eaFindTool )
 	    { XDEB(ea->eaFindTool); return;	}
+
+	if  ( tar->tarFindPattern )
+	    {
+	    appFindToolSetPattern( ea->eaFindTool,
+				    tar->tarFindPattern, tar->tarFindRegex );
+	    }
 	}
 
     appShowFindTool( ed->edToplevel.atTopWidget, ea->eaFindTool );
 
-    appFindToolDisableReplace( ea->eaFindTool );
+    if  ( ea->eaFindTool )
+	{ appFindToolEnableReplace( ea->eaFindTool, 1 );	}
+
+    return;
+    }
+
+void tedDocToolFindNext(		APP_WIDGET	findOption,
+					void *		voided,
+					void *		voidcbs )
+    {
+    EditDocument *	ed= (EditDocument *)voided;
+    TedDocument *	td;
+
+    if  ( ! ed )
+	{ XDEB(ed); return;	}
+
+    td= (TedDocument *)ed->edPrivateData;
+
+    if  ( ! td->tdFindProg )
+	{
+	tedDocToolFind( findOption, voided, voidcbs );
+	return;
+	}
+
+    tedDocFindNext( ed );
 
     return;
     }
@@ -172,6 +274,7 @@ static int tedSpellFindNext(	void *			voidea,
 
     DocumentSelection		ds;
     SelectionGeometry		sg;
+    SelectionDescription	sd;
 
     if  ( ! ed )
 	{ XDEB(ed); return -1;	}
@@ -179,7 +282,7 @@ static int tedSpellFindNext(	void *			voidea,
     td= (TedDocument *)ed->edPrivateData;
     bd= td->tdDocument;
 
-    if  ( tedGetSelection( &ds, &sg, td ) )
+    if  ( tedGetSelection( &ds, &sg, &sd, td ) )
 	{ LDEB(1); return -1;	}
 
     docInitDocumentSelection( &dsNew );
@@ -192,7 +295,9 @@ static int tedSpellFindNext(	void *			voidea,
 
     if  ( ret == 0 )
 	{
-	tedSetSelection( ed, &dsNew, &scrolledX, &scrolledY );
+	const int	lastLine= 0;
+
+	tedSetSelection( ed, &dsNew, lastLine, &scrolledX, &scrolledY );
 
 	tedAdaptToolsToSelection( ed );
 

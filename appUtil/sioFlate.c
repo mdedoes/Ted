@@ -284,8 +284,7 @@ SimpleInputStream * sioInFlateOpen(	SimpleInputStream *	sisFlate )
     if  ( ret != Z_OK )
 	{ LDEB(ret); free( fis ); return (SimpleInputStream *)0;	}
 
-    sis= sioInOpen( (void *)fis, sioInFlateReadBytes,
-					sioFlateSeek, sioInFlateClose );
+    sis= sioInOpen( (void *)fis, sioInFlateReadBytes, sioInFlateClose );
 
     if  ( ! sis )
 	{

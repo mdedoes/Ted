@@ -78,6 +78,7 @@ extern void tedFormatToolGetSectResourceTable(	EditApplication *	ea,
 extern void tedFormatToolRefreshSectionTool(
 				SectionTool *			st,
 				int *				pEnabled,
+				int *				pPref,
 				InspectorSubject *		is,
 				const DocumentSelection *	bs );
 

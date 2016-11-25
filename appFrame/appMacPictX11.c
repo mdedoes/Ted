@@ -34,11 +34,11 @@ static int appMacPictSetColorX11(	MacpictDevice *		md,
     if  ( bmRGB8ColorsDiffer( &(md->mdColorSet), rgb8 ) )
 	{
 	AppDrawingData *	add= &(md->mdDrawingData);
-	APP_COLOR_RGB		xc;
 
-	appColorRgb( &xc, ac, rgb8->rgb8Red, rgb8->rgb8Green, rgb8->rgb8Blue );
+	appColorRgb( &(md->mdDeviceColorSet), ac,
+			    rgb8->rgb8Red, rgb8->rgb8Green, rgb8->rgb8Blue );
 
-	appDrawSetForegroundColor( add, &xc );
+	appDrawSetForegroundColor( add, &(md->mdDeviceColorSet) );
 
 	md->mdColorSet= *rgb8;
 	}
@@ -57,6 +57,7 @@ static void appMacPictFillBackgroundX11(	MacpictDevice *	md )
     AppDrawingData *	add= &(md->mdDrawingData);
 
     appDrawSetForegroundWhite( add );
+
     appDrawFillRectangle( add, 0, 0, md->mdOutWide, md->mdOutHigh );
 
     return;
@@ -74,7 +75,7 @@ static void appMacPictFillBackgroundX11(	MacpictDevice *	md )
 /*									*/
 /************************************************************************/
 
-static int appMacPictSetStipple(	MacpictDevice *		md,
+static int appMacPictSetStippleX11(	MacpictDevice *		md,
 					AppColors *		ac,
 					unsigned char		pattern[8],
 					int			which )
@@ -176,50 +177,87 @@ static int appMacPictSetStipple(	MacpictDevice *		md,
 /*									*/
 /************************************************************************/
 
-static int appMacPictSetPen(		MacpictDevice *		md,
+static int appMacPictSetPenX11(		MacpictDevice *		md,
 					AppColors *		ac )
     {
     if  ( md->mdPenIsSolid )
 	{
-	if  ( appMacPictSetStipple( md, ac, md->mdPenPattern, STIPPLE_SOLID ) )
+	if  ( appMacPictSetStippleX11( md, ac,
+				md->mdPenPattern, STIPPLE_SOLID ) )
 	    { LDEB(STIPPLE_SOLID); return -1;	}
 	}
     else{
-	if  ( appMacPictSetStipple( md, ac, md->mdPenPattern, STIPPLE_PEN ) )
+	if  ( appMacPictSetStippleX11( md, ac,
+				md->mdPenPattern, STIPPLE_PEN ) )
 	    { LDEB(STIPPLE_PEN); return -1;	}
 	}
 
     return 0;
     }
 
-static int appMacPictSetFill(		MacpictDevice *		md,
+static int appMacPictSetFillX11(	MacpictDevice *		md,
 					AppColors *		ac )
     {
     if  ( md->mdFillIsSolid )
 	{
-	if  ( appMacPictSetStipple( md, ac, md->mdFillPattern, STIPPLE_SOLID ) )
+	if  ( appMacPictSetStippleX11( md, ac,
+				md->mdFillPattern, STIPPLE_SOLID ) )
 	    { LDEB(STIPPLE_SOLID); return -1;	}
 	}
     else{
-	if  ( appMacPictSetStipple( md, ac, md->mdFillPattern, STIPPLE_FILL ) )
+	if  ( appMacPictSetStippleX11( md, ac,
+				md->mdFillPattern, STIPPLE_FILL ) )
 	    { LDEB(STIPPLE_FILL); return -1;	}
 	}
 
     return 0;
     }
 
-static int appMacPictSetBack(		MacpictDevice *		md,
+static int appMacPictSetBackX11(	MacpictDevice *		md,
 					AppColors *		ac )
     {
     if  ( md->mdBackIsSolid )
 	{
-	if  ( appMacPictSetStipple( md, ac, md->mdBackPattern, STIPPLE_SOLID ) )
+	if  ( appMacPictSetStippleX11( md, ac,
+				md->mdBackPattern, STIPPLE_SOLID ) )
 	    { LDEB(STIPPLE_SOLID); return -1;	}
 	}
     else{
-	if  ( appMacPictSetStipple( md, ac, md->mdBackPattern, STIPPLE_BACK ) )
+	if  ( appMacPictSetStippleX11( md, ac,
+				md->mdBackPattern, STIPPLE_BACK ) )
 	    { LDEB(STIPPLE_BACK); return -1;	}
 	}
+
+    return 0;
+    }
+
+/************************************************************************/
+/*									*/
+/*  Draw a line.							*/
+/*									*/
+/************************************************************************/
+
+static int appMacPictDrawLineX11(	MacpictDevice *		md,
+					AppColors *		ac,
+					int			x0,
+					int			y0,
+					int			x1,
+					int			y1 )
+    {
+    AppDrawingData *	add= &(md->mdDrawingData);
+
+    if  ( x1 == x0 && y1 == y0 )
+	{ return 0;	}
+
+    if  ( appMacPictSetPenX11( md, ac ) )
+	{ LDEB(1); return -1;	}
+
+    x0= MD_X( x0, md );
+    y0= MD_Y( y0, md );
+    x1= MD_X( x1, md );
+    y1= MD_Y( y1, md );
+
+    appDrawDrawLine( add, x0, y0, x1, y1 );
 
     return 0;
     }
@@ -236,10 +274,7 @@ static int appMacPictDrawStringX11(	MacpictDevice *		md,
 					int			y,
 					int			count )
     {
-    AppDrawingData *	add= &(md->mdDrawingData);
-
-    if  ( appMacPictSetPen( md, ac ) )
-	{ LDEB(1); return -1;	}
+    AppDrawingData *		add= &(md->mdDrawingData);
 
     while( count > 0 && isspace( md->mdTextString[count-1] ) )
 	{ count--;	}
@@ -247,8 +282,31 @@ static int appMacPictDrawStringX11(	MacpictDevice *		md,
     if  ( count == 0 )
 	{ return 0;	}
 
+    if  ( appMacPictSetPenX11( md, ac ) )
+	{ LDEB(1); return -1;	}
+
     x= MD_X( x, md );
     y= MD_Y( y, md );
+
+    if  ( md->mdPrivateFont < 0 )
+	{
+	if  ( md->mdTextAttribute.taFontNumber < 0 )
+	    { LDEB(md->mdTextAttribute.taFontNumber);	}
+	else{
+	    md->mdPrivateFont= appOpenScreenFont( add,
+				&(md->mdFontList), &(md->mdTextAttribute) );
+
+	    if  ( md->mdPrivateFont < 0 )
+		{ LDEB(md->mdPrivateFont);	}
+	    else{
+		DrawScreenFont *	apf;
+
+		apf= add->addScreenFontList.apflFonts+ md->mdPrivateFont;
+
+		appDrawSetFont( add, apf->apfFontStruct );
+		}
+	    }
+	}
 
     appDrawDrawString( add, x, y, (char *)md->mdTextString, count );
 
@@ -271,7 +329,7 @@ static int appMacPictFrameRectX11(	MacpictDevice *		md,
     int x1= MD_X( md->mdRectX1, md );
     int y1= MD_Y( md->mdRectY1, md );
 
-    if  ( appMacPictSetPen( md, ac ) )
+    if  ( appMacPictSetPenX11( md, ac ) )
 	{ LDEB(1); return -1;	}
 
     appDrawDrawRectangle( add, x0, y0, x1- x0, y1- y0 );
@@ -289,33 +347,15 @@ static int appMacPictPaintRectX11(	MacpictDevice *		md,
     int x1= MD_X( md->mdRectX1, md );
     int y1= MD_Y( md->mdRectY1, md );
 
-    if  ( appMacPictSetPen( md, ac ) )
+    if  ( appMacPictSetPenX11( md, ac ) )
 	{ LDEB(1); return -1;	}
 
     appDrawFillRectangle( add, x0, y0, x1- x0, y1- y0 );
 
-    if  ( appMacPictSetPen( md, ac ) )
+    if  ( appMacPictSetPenX11( md, ac ) )
 	{ LDEB(1); return -1;	}
 
     appDrawDrawRectangle( add, x0, y0, x1- x0, y1- y0 );
-
-    return 0;
-    }
-
-static int appMacPictFillRectX11(	MacpictDevice *		md,
-					AppColors *		ac )
-    {
-    AppDrawingData *	add= &(md->mdDrawingData);
-
-    int x0= MD_X( md->mdRectX0, md );
-    int y0= MD_Y( md->mdRectY0, md );
-    int x1= MD_X( md->mdRectX1, md );
-    int y1= MD_Y( md->mdRectY1, md );
-
-    if  ( appMacPictSetFill( md, ac ) )
-	{ LDEB(1); return -1;	}
-
-    appDrawFillRectangle( add, x0, y0, x1- x0, y1- y0 );
 
     return 0;
     }
@@ -330,10 +370,146 @@ static int appMacPictEraseRectX11(	MacpictDevice *		md,
     int x1= MD_X( md->mdRectX1, md );
     int y1= MD_Y( md->mdRectY1, md );
 
-    if  ( appMacPictSetBack( md, ac ) )
+    if  ( appMacPictSetBackX11( md, ac ) )
 	{ LDEB(1); return -1;	}
 
     appDrawFillRectangle( add, x0, y0, x1- x0, y1- y0 );
+
+    return 0;
+    }
+
+static int appMacPictFillRectX11(	MacpictDevice *		md,
+					AppColors *		ac )
+    {
+    AppDrawingData *	add= &(md->mdDrawingData);
+
+    int x0= MD_X( md->mdRectX0, md );
+    int y0= MD_Y( md->mdRectY0, md );
+    int x1= MD_X( md->mdRectX1, md );
+    int y1= MD_Y( md->mdRectY1, md );
+
+    if  ( appMacPictSetFillX11( md, ac ) )
+	{ LDEB(1); return -1;	}
+
+    appDrawFillRectangle( add, x0, y0, x1- x0, y1- y0 );
+
+    return 0;
+    }
+
+/************************************************************************/
+/*									*/
+/*  PaintRRect/FrameRRect variants.					*/
+/*									*/
+/************************************************************************/
+
+static int appMacPictFrameRRectX11(	MacpictDevice *		md,
+					AppColors *		ac )
+    {
+    AppDrawingData *	add= &(md->mdDrawingData);
+
+    const int		fill= 0;
+    const int		borders= 1;
+
+    int x0= MD_X( md->mdRRectX0, md );
+    int y0= MD_Y( md->mdRRectY0, md );
+    int x1= MD_X( md->mdRRectX1, md );
+    int y1= MD_Y( md->mdRRectY1, md );
+
+    int h= MD_H( md->mdRRectOvalHigh, md );
+    int w= MD_W( md->mdRRectOvalWide, md );
+
+    if  ( appMacPictSetPenX11( md, ac ) )
+	{ LDEB(1); return -1;	}
+
+    if  ( appMetafileDrawRoundRectX11( add, x0, y0, x1, y1, w, h,
+						    fill, borders,
+						    &(md->mdDeviceColorSet),
+						    &(md->mdDeviceColorSet) ) )
+	{ LDEB(1); return -1;	}
+
+    return 0;
+    }
+
+static int appMacPictPaintRRectX11(	MacpictDevice *		md,
+					AppColors *		ac )
+    {
+    AppDrawingData *	add= &(md->mdDrawingData);
+
+    const int		fill= 1;
+    const int		borders= 1;
+
+    int x0= MD_X( md->mdRRectX0, md );
+    int y0= MD_Y( md->mdRRectY0, md );
+    int x1= MD_X( md->mdRRectX1, md );
+    int y1= MD_Y( md->mdRRectY1, md );
+
+    int h= MD_H( md->mdRRectOvalHigh, md );
+    int w= MD_W( md->mdRRectOvalWide, md );
+
+    if  ( appMacPictSetPenX11( md, ac ) )
+	{ LDEB(1); return -1;	}
+
+    if  ( appMetafileDrawRoundRectX11( add, x0, y0, x1, y1, w, h,
+						    fill, borders,
+						    &(md->mdDeviceColorSet),
+						    &(md->mdDeviceColorSet) ) )
+	{ LDEB(1); return -1;	}
+
+    return 0;
+    }
+
+static int appMacPictEraseRRectX11(	MacpictDevice *		md,
+					AppColors *		ac )
+    {
+    AppDrawingData *	add= &(md->mdDrawingData);
+
+    const int		fill= 1;
+    const int		borders= 1;
+
+    int x0= MD_X( md->mdRRectX0, md );
+    int y0= MD_Y( md->mdRRectY0, md );
+    int x1= MD_X( md->mdRRectX1, md );
+    int y1= MD_Y( md->mdRRectY1, md );
+
+    int h= MD_H( md->mdRRectOvalHigh, md );
+    int w= MD_W( md->mdRRectOvalWide, md );
+
+    if  ( appMacPictSetBackX11( md, ac ) )
+	{ LDEB(1); return -1;	}
+
+    if  ( appMetafileDrawRoundRectX11( add, x0, y0, x1, y1, w, h,
+						    fill, borders,
+						    &(md->mdDeviceColorSet),
+						    &(md->mdDeviceColorSet) ) )
+	{ LDEB(1); return -1;	}
+
+    return 0;
+    }
+
+static int appMacPictFillRRectX11(	MacpictDevice *		md,
+					AppColors *		ac )
+    {
+    AppDrawingData *	add= &(md->mdDrawingData);
+
+    const int		fill= 1;
+    const int		borders= 0;
+
+    int x0= MD_X( md->mdRRectX0, md );
+    int y0= MD_Y( md->mdRRectY0, md );
+    int x1= MD_X( md->mdRRectX1, md );
+    int y1= MD_Y( md->mdRRectY1, md );
+
+    int h= MD_H( md->mdRRectOvalHigh, md );
+    int w= MD_W( md->mdRRectOvalWide, md );
+
+    if  ( appMacPictSetPenX11( md, ac ) )
+	{ LDEB(1); return -1;	}
+
+    if  ( appMetafileDrawRoundRectX11( add, x0, y0, x1, y1, w, h,
+						    fill, borders,
+						    &(md->mdDeviceColorSet),
+						    &(md->mdDeviceColorSet) ) )
+	{ LDEB(1); return -1;	}
 
     return 0;
     }
@@ -344,17 +520,17 @@ static int appMacPictEraseRectX11(	MacpictDevice *		md,
 /*									*/
 /************************************************************************/
 
-static int appMacPictPaintPoly(		MacpictDevice *		md,
+static int appMacPictPaintPolyX11(	MacpictDevice *		md,
 					AppColors *		ac )
     {
     AppDrawingData *	add= &(md->mdDrawingData);
 
-    if  ( appMacPictSetPen( md, ac ) )
+    if  ( appMacPictSetPenX11( md, ac ) )
 	{ LDEB(1); return -1;	}
 
     appDrawFillPolygon( add, md->mdPolyPoints, md->mdPolyPointCount );
 
-    if  ( appMacPictSetPen( md, ac ) )
+    if  ( appMacPictSetPenX11( md, ac ) )
 	{ LDEB(1); return -1;	}
 
     appDrawDrawLines( add, md->mdPolyPoints, md->mdPolyPointCount );
@@ -362,12 +538,12 @@ static int appMacPictPaintPoly(		MacpictDevice *		md,
     return 0;
     }
 
-static int appMacPictFramePoly(		MacpictDevice *		md,
+static int appMacPictFramePolyX11(	MacpictDevice *		md,
 					AppColors *		ac )
     {
     AppDrawingData *	add= &(md->mdDrawingData);
 
-    if  ( appMacPictSetPen( md, ac ) )
+    if  ( appMacPictSetPenX11( md, ac ) )
 	{ LDEB(1); return -1;	}
 
     appDrawDrawLines( add, md->mdPolyPoints, md->mdPolyPointCount );
@@ -381,7 +557,7 @@ static int appMacPictFramePoly(		MacpictDevice *		md,
 /*									*/
 /************************************************************************/
 
-static int appMacPictPaintOval(		MacpictDevice *		md,
+static int appMacPictPaintOvalX11(	MacpictDevice *		md,
 					AppColors *		ac )
     {
     AppDrawingData *	add= &(md->mdDrawingData);
@@ -397,12 +573,12 @@ static int appMacPictPaintOval(		MacpictDevice *		md,
     if  ( y1 < y0 )
 	{ swap= y0; y0= y1; y1= swap; }
 
-    if  ( appMacPictSetPen( md, ac ) )
+    if  ( appMacPictSetPenX11( md, ac ) )
 	{ LDEB(1); return -1;	}
 
     appDrawFillArc( add, x0, y0, x1- x0, y1- y0, 64* 0, 64* 360 );
 
-    if  ( appMacPictSetPen( md, ac ) )
+    if  ( appMacPictSetPenX11( md, ac ) )
 	{ LDEB(1); return -1;	}
 
     appDrawDrawArc( add, x0, y0, x1- x0, y1- y0, 64* 0, 64* 360 );
@@ -410,7 +586,7 @@ static int appMacPictPaintOval(		MacpictDevice *		md,
     return 0;
     }
 
-static int appMacPictFrameOval(		MacpictDevice *		md,
+static int appMacPictFrameOvalX11(	MacpictDevice *		md,
 					AppColors *		ac )
     {
     AppDrawingData *	add= &(md->mdDrawingData);
@@ -426,10 +602,72 @@ static int appMacPictFrameOval(		MacpictDevice *		md,
     if  ( y1 < y0 )
 	{ swap= y0; y0= y1; y1= swap; }
 
-    if  ( appMacPictSetPen( md, ac ) )
+    if  ( appMacPictSetPenX11( md, ac ) )
 	{ LDEB(1); return -1;	}
 
     appDrawDrawArc( add, x0, y0, x1- x0, y1- y0, 64* 0, 64* 360 );
+
+    return 0;
+    }
+
+/************************************************************************/
+/*									*/
+/*  PaintArc/FrameArc variants.						*/
+/*									*/
+/************************************************************************/
+
+static int appMacPictFrameArcX11(	MacpictDevice *		md,
+					AppColors *		ac )
+    {
+    AppDrawingData *	add= &(md->mdDrawingData);
+    int			swap;
+
+    int			x0= MD_X( md->mdArcX0, md );
+    int			y0= MD_Y( md->mdArcY0, md );
+    int			x1= MD_X( md->mdArcX1, md );
+    int			y1= MD_Y( md->mdArcY1, md );
+
+    if  ( x1 < x0 )
+	{ swap= x0; x0= x1; x1= swap; }
+    if  ( y1 < y0 )
+	{ swap= y0; y0= y1; y1= swap; }
+
+    if  ( appMacPictSetPenX11( md, ac ) )
+	{ LDEB(1); return -1;	}
+
+    appDrawDrawArc( add, x0, y0, x1- x0, y1- y0,
+			    64* ( 90- md->mdArcA0 ), 64* ( -md->mdArcA1 ) );
+
+    return 0;
+    }
+
+static int appMacPictPaintArcX11(	MacpictDevice *		md,
+					AppColors *		ac )
+    {
+    AppDrawingData *	add= &(md->mdDrawingData);
+    int			swap;
+
+    int			x0= MD_X( md->mdArcX0, md );
+    int			y0= MD_Y( md->mdArcY0, md );
+    int			x1= MD_X( md->mdArcX1, md );
+    int			y1= MD_Y( md->mdArcY1, md );
+
+    if  ( x1 < x0 )
+	{ swap= x0; x0= x1; x1= swap; }
+    if  ( y1 < y0 )
+	{ swap= y0; y0= y1; y1= swap; }
+
+    if  ( appMacPictSetPenX11( md, ac ) )
+	{ LDEB(1); return -1;	}
+
+    appDrawFillArc( add, x0, y0, x1- x0, y1- y0,
+			    64* ( 90- md->mdArcA0 ), 64* ( -md->mdArcA1 ) );
+
+    if  ( appMacPictSetPenX11( md, ac ) )
+	{ LDEB(1); return -1;	}
+
+    appDrawDrawArc( add, x0, y0, x1- x0, y1- y0,
+			    64* ( 90- md->mdArcA0 ), 64* ( -md->mdArcA1 ) );
 
     return 0;
     }
@@ -439,36 +677,20 @@ static int appMacPictFrameOval(		MacpictDevice *		md,
 /*  MACPICT_PackBitsRect						*/
 /*									*/
 /*  1)  Initialise bitmap.						*/
-/*  2)  Get bytes per row and palette flag.				*/
-/*  3)  Get image frame.						*/
-/*  4)  Default is a black and white image.				*/
-/*  5)  For color images, get additional information.			*/
-/*  6)  Retrieve palette.						*/
-/*  7)  Finish bitmap administration and allocate buffer.		*/
-/*  8)  Read source and destination rectangle.				*/
-/*  9)  Read raster operation. (Assume copy anyway)			*/
-/*  10) Read bitmap data.						*/
-/*  11) Later versions of mac pict have an even number of bytes per	*/
-/*	operation.							*/
+/*  2)  Get image.							*/
 /*  12) Draw image.							*/
 /*  13) Ready: clean image related data.				*/
 /*									*/
 /************************************************************************/
 
-static int appMacPict_BitsRectX11(	MacpictDevice *		md,
+static int appMacPictDrawImageX11(	MacpictDevice *		md,
 					AppColors *		ac,
 					SimpleInputStream *	sis,
-					int			packed )
+					int			packed,
+					int			direct,
+					int			clipRegion )
     {
     int			rval= 0;
-
-    unsigned int	bytesPerRow;
-    int			hasPalette= 0;
-
-    int			y0Frame;
-    int			x0Frame;
-    int			y1Frame;
-    int			x1Frame;
 
     int			y0Source;
     int			x0Source;
@@ -480,8 +702,6 @@ static int appMacPict_BitsRectX11(	MacpictDevice *		md,
     int			y1Dest;
     int			x1Dest;
 
-    int			rop;
-
     AppBitmapImage	abi;
 
     int			bytesRead= 0;
@@ -490,150 +710,11 @@ static int appMacPict_BitsRectX11(	MacpictDevice *		md,
     appInitBitmapImage( &abi );
 
     /*  2  */
-    bytesPerRow= sioEndianGetBeUint16( sis ); bytesRead += 2;
-    if  ( bytesPerRow & 0x8000 )
-	{
-	hasPalette= 1;
-	bytesPerRow &= ~0x8000;
-	}
-
-    /*  3  */
-    y0Frame= sioEndianGetBeInt16( sis ); bytesRead += 2;
-    x0Frame= sioEndianGetBeInt16( sis ); bytesRead += 2;
-    y1Frame= sioEndianGetBeInt16( sis ); bytesRead += 2;
-    x1Frame= sioEndianGetBeInt16( sis ); bytesRead += 2;
-
-    abi.abiBitmap.bdPixelsWide= x1Frame- x0Frame;
-    abi.abiBitmap.bdPixelsHigh= y1Frame- y0Frame;
-
-    abi.abiBitmap.bdBytesPerRow= bytesPerRow;
-
-    /*  4  */
-    abi.abiBitmap.bdBitsPerPixel= 1;
-    abi.abiBitmap.bdSamplesPerPixel= 1;
-    abi.abiBitmap.bdBitsPerSample= 1;
-    abi.abiBitmap.bdColorEncoding= BMcoBLACKWHITE;
-
-    /*  5  */
-    if  ( hasPalette )
-	{
-	int		version;
-	int		packType;
-	long		packSize;
-	int		xRes;
-	int		yRes;
-	int		pixelType;
-	int		planeBytes;
-	int		table;
-	int		reserved;
-
-	version= sioEndianGetBeInt16( sis ); bytesRead += 2;
-	packType= sioEndianGetBeInt16( sis ); bytesRead += 2;
-	packSize= sioEndianGetBeInt32( sis ); bytesRead += 4;
-	xRes= sioEndianGetBeInt32( sis ); bytesRead += 4;
-	yRes= sioEndianGetBeInt32( sis ); bytesRead += 4;
-	pixelType= sioEndianGetBeInt16( sis ); bytesRead += 2;
-	abi.abiBitmap.bdBitsPerPixel= sioEndianGetBeInt16( sis ); bytesRead += 2;
-	abi.abiBitmap.bdSamplesPerPixel= sioEndianGetBeInt16( sis ); bytesRead += 2;
-	abi.abiBitmap.bdBitsPerSample= sioEndianGetBeInt16( sis ); bytesRead += 2;
-	planeBytes= sioEndianGetBeInt32( sis ); bytesRead += 4;
-	table= sioEndianGetBeInt32( sis ); bytesRead += 4;
-	reserved= sioEndianGetBeInt32( sis ); bytesRead += 4;
-
-	if  ( abi.abiBitmap.bdSamplesPerPixel == 4 )
-	    { abi.abiBitmap.bdHasAlpha= 1;	}
-
-	version= version;
-	packType= packType;
-	packSize= packSize;
-	xRes= xRes;
-	yRes= yRes;
-	pixelType= pixelType;
-	planeBytes= planeBytes;
-	table= table;
-	reserved= reserved;
-	}
-
-    /*  6  */
-    if  ( hasPalette )
-	{
-	long		seed;
-	int		flags;
-	int		colorCount;
-
-	int		done;
-
-	seed= sioEndianGetBeInt32( sis ); bytesRead += 4;
-	flags= sioEndianGetBeUint16( sis ); bytesRead += 2;
-	colorCount= sioEndianGetBeInt16( sis )+ 1; bytesRead += 2;
-
-
-	abi.abiBitmap.bdColorEncoding= BMcoRGB8PALETTE;
-
-	if  ( appMacPictReadPaletteColors( &(abi.abiBitmap), &done, md,
-						    colorCount, flags, sis ) )
-	    { LDEB(hasPalette); rval= -1; goto ready;	}
-
-	bytesRead += done;
-	}
-
-    /*  7  */
-    bmCalculateSizes( &(abi.abiBitmap) );
-
-    abi.abiBuffer= malloc( abi.abiBitmap.bdBufferLength );
-    if  ( ! abi.abiBuffer )
-	{
-	LXDEB(abi.abiBitmap.bdBufferLength,abi.abiBuffer);
-	rval= -1; goto ready;
-	}
-
-    /*  8  */
-    y0Source= sioEndianGetBeInt16( sis ); bytesRead += 2;
-    x0Source= sioEndianGetBeInt16( sis ); bytesRead += 2;
-    y1Source= sioEndianGetBeInt16( sis ); bytesRead += 2;
-    x1Source= sioEndianGetBeInt16( sis ); bytesRead += 2;
-
-    y0Dest= sioEndianGetBeInt16( sis ); bytesRead += 2;
-    x0Dest= sioEndianGetBeInt16( sis ); bytesRead += 2;
-    y1Dest= sioEndianGetBeInt16( sis ); bytesRead += 2;
-    x1Dest= sioEndianGetBeInt16( sis ); bytesRead += 2;
-
-    /*  9  */
-    rop= sioEndianGetBeInt16( sis ); bytesRead += 2;
-    if  ( rop != 0 )
-	{ LDEB(rop);	}
-
-    /*  10  */
-    if  ( ! packed || bytesPerRow < 8 )
-	{
-	int		row;
-
-	for ( row= 0; row < abi.abiBitmap.bdPixelsHigh; row++ )
-	    {
-	    unsigned char *	to;
-	    int			i;
-
-	    to= abi.abiBuffer+ row* abi.abiBitmap.bdBytesPerRow;
-
-	    for ( i= 0; i < bytesPerRow; i++ )
-		{ *(to++)= sioInGetCharacter( sis ); bytesRead++; }
-	    }
-	}
-    else{
-	int	row;
-
-	for ( row= 0; row < abi.abiBitmap.bdPixelsHigh; row++ )
-	    {
-	    int		done;
-
-	    if  ( appMacPictReadPacBitsRow(
-			abi.abiBuffer+ row* abi.abiBitmap.bdBytesPerRow,
-			&done, bytesPerRow, md, &(abi.abiBitmap), sis ) )
-		{ LDEB(row); rval= -1; goto ready; }
-
-	    bytesRead += done;
-	    }
-	}
+    if  ( appMacPictGetImage( &abi,
+			&y0Source, &x0Source, &y1Source, &x1Source,
+			&y0Dest, &x0Dest, &y1Dest, &x1Dest,
+			md, sis, packed, direct, clipRegion ) )
+	{ LDEB(1); rval= -1; goto ready;	}
 
     /*  11  */
     if  ( md->mdVersion > 1 && bytesRead % 2 )
@@ -641,8 +722,8 @@ static int appMacPict_BitsRectX11(	MacpictDevice *		md,
 
     /*  12  */
     {
-    int			pixelsWide= x1Dest- x0Dest;
-    int			pixelsHigh= y1Dest- y0Dest;
+    int			pixelsWide= x1Dest- x0Dest+ 1;
+    int			pixelsHigh= y1Dest- y0Dest+ 1;
 
     int			srcX= x0Source;
     int			srcY= y0Source;
@@ -686,7 +767,6 @@ static int appMacPict_BitsRectX11(	MacpictDevice *		md,
     return rval;
     }
 
-
 /************************************************************************/
 /*									*/
 /*  Play a macpict metafile.						*/
@@ -717,14 +797,18 @@ int appMacPictPlayFileX11( SimpleInputStream *	sis,
     MacpictDevice	md;
 
 
-    appMacPictInitDeviceHeader( &md, pixelsWide, pixelsHigh );
+    appMacPictInitDeviceHeader( &md, pixelsWide, pixelsHigh,
+						    twipsWide, twipsHigh );
 
     if  ( appMacPictGetDeviceHeader( &md, sis ) )
 	{ LDEB(1); return -1;	}
 
-    PICTDEB(appDebug( "MACPICT( %d .. %d x %d .. %d -> %d x %d )\n",
+    md.mdPostScriptFontList= parent_add->addPostScriptFontList;
+
+    PICTDEB(appDebug( "\n" ));
+    PICTDEB(appDebug( "MACPICT X11( %d .. %d x %d .. %d -> %d x %d ) VERSION %d\n",
 		    md.mdInX0, md.mdInX1, md.mdInY0, md.mdInY1,
-		    md.mdOutWide, md.mdOutHigh ));
+		    md.mdOutWide, md.mdOutHigh, md.mdVersion ));
 
     pixelsPerTwip= sqrt( (double)( pixelsWide* pixelsHigh )/
 						( twipsWide* twipsHigh ) );
@@ -735,29 +819,40 @@ int appMacPictPlayFileX11( SimpleInputStream *	sis,
 
     appMacPictFillBackgroundX11( &md );
 
-    md.mdBackColor.rgb8Red= 255;
-    md.mdBackColor.rgb8Green= 255;
-    md.mdBackColor.rgb8Blue= 255;
-
-    md.mdForeColor.rgb8Red= 0;
-    md.mdForeColor.rgb8Green= 0;
-    md.mdForeColor.rgb8Blue= 0;
-
-    md.mdColorSet.rgb8Red= 0;
-    md.mdColorSet.rgb8Green= 0;
-    md.mdColorSet.rgb8Blue= 0;
+    appColorRgb( &(md.mdDeviceColorSet), ac, 0, 0, 0 );
     appDrawSetForegroundBlack( &(md.mdDrawingData) );
 
     for (;;)
 	{
-	int	opcode;
-	int	bytes;
+	unsigned int	opcode;
+	int		bytes;
 
 	if  ( appMacPictGetOpcode( &opcode, &bytes, &md, sis ) )
 	    { LDEB(1); rval= -1; goto ready;	}
 
 	switch( opcode )
 	    {
+	    case MACPICT_NOP:
+		PICTDEB(appDebug( "NOP()\n" ));
+		continue;
+
+	    case MACPICT_PnSize:
+		{
+		int			h;
+		int			w;
+
+		h= sioEndianGetBeInt16( sis );
+		w= sioEndianGetBeInt16( sis );
+
+		PICTDEB(appDebug( "PnSize( %d, %d )\n", w, h ));
+		}
+		continue;
+
+	    case MACPICT_OvSize:
+		if  ( appMacPictGetOvSize( &md, sis ) )
+		    { LDEB(1); rval= -1; goto ready;	}
+		continue;
+
 	    case MACPICT_DefHilite:
 		PICTDEB(appDebug( "DefHilite()\n" ));
 		continue;
@@ -823,20 +918,9 @@ int appMacPictPlayFileX11( SimpleInputStream *	sis,
 		continue;
 
 	    case MACPICT_PnPat:
-		md.mdPenPattern[0]= sioInGetCharacter( sis );
-		md.mdPenIsSolid=
-			( md.mdPenPattern[0] == 0x00 ||
-			  md.mdPenPattern[0] == 0xff );
-		for ( i= 1; i < 8; i++ )
-		    {
-		    md.mdPenPattern[i]= sioInGetCharacter( sis );
-
-		    if  ( md.mdPenPattern[i] != md.mdPenPattern[0] )
-			{ md.mdPenIsSolid= 0;	}
-		    }
-
-		if  ( md.mdStippleSet == STIPPLE_PEN )
-		    { md.mdStippleSet=   STIPPLE_UNDEF;	}
+		if  ( appMacPictGetPattern( &md, sis, STIPPLE_PEN,
+				    &(md.mdPenIsSolid), md.mdPenPattern ) )
+		    { LDEB(1); rval= -1; goto ready;	}
 
 		PICTDEB(appDebug(
 			"PnPat(%02x.%02x.%02x.%02x.%02x.%02x.%02x.%02x)\n",
@@ -852,21 +936,9 @@ int appMacPictPlayFileX11( SimpleInputStream *	sis,
 		continue;
 
 	    case MACPICT_FillPat:
-
-		md.mdFillPattern[0]= sioInGetCharacter( sis );
-		md.mdFillIsSolid=
-			( md.mdFillPattern[0] == 0x00 ||
-			  md.mdFillPattern[0] == 0xff );
-		for ( i= 1; i < 8; i++ )
-		    {
-		    md.mdFillPattern[i]= sioInGetCharacter( sis );
-
-		    if  ( md.mdFillPattern[i] != md.mdFillPattern[0] )
-			{ md.mdFillIsSolid= 0;	}
-		    }
-
-		if  ( md.mdStippleSet == STIPPLE_FILL )
-		    { md.mdStippleSet=   STIPPLE_UNDEF;	}
+		if  ( appMacPictGetPattern( &md, sis, STIPPLE_FILL,
+				    &(md.mdFillIsSolid), md.mdFillPattern ) )
+		    { LDEB(1); rval= -1; goto ready;	}
 
 		PICTDEB(appDebug(
 			"FillPat(%02x.%02x.%02x.%02x.%02x.%02x.%02x.%02x)\n",
@@ -882,21 +954,9 @@ int appMacPictPlayFileX11( SimpleInputStream *	sis,
 		continue;
 
 	    case MACPICT_BkPat:
-
-		md.mdBackPattern[0]= sioInGetCharacter( sis );
-		md.mdBackIsSolid=
-			( md.mdBackPattern[0] == 0x00 ||
-			  md.mdBackPattern[0] == 0xff );
-		for ( i= 1; i < 8; i++ )
-		    {
-		    md.mdBackPattern[i]= sioInGetCharacter( sis );
-
-		    if  ( md.mdBackPattern[i] != md.mdBackPattern[0] )
-			{ md.mdBackIsSolid= 0;	}
-		    }
-
-		if  ( md.mdStippleSet == STIPPLE_BACK )
-		    { md.mdStippleSet=   STIPPLE_UNDEF;	}
+		if  ( appMacPictGetPattern( &md, sis, STIPPLE_BACK,
+				    &(md.mdBackIsSolid), md.mdBackPattern ) )
+		    { LDEB(1); rval= -1; goto ready;	}
 
 		PICTDEB(appDebug(
 			"BkPat(%02x.%02x.%02x.%02x.%02x.%02x.%02x.%02x)\n",
@@ -908,19 +968,6 @@ int appMacPictPlayFileX11( SimpleInputStream *	sis,
 					    md.mdBackPattern[4],
 					    md.mdBackPattern[6],
 					    md.mdBackPattern[7] ));
-
-		continue;
-
-	    case MACPICT_PnSize:
-		{
-		int			h;
-		int			w;
-
-		h= sioEndianGetBeInt16( sis );
-		w= sioEndianGetBeInt16( sis );
-
-		PICTDEB(appDebug( "PnSize( %d, %d )\n", w, h ));
-		}
 
 		continue;
 
@@ -943,16 +990,14 @@ int appMacPictPlayFileX11( SimpleInputStream *	sis,
 
 	    case MACPICT_FrameOval:
 		{
-		md.mdOvalY0= sioEndianGetBeInt16( sis );
-		md.mdOvalX0= sioEndianGetBeInt16( sis );
-		md.mdOvalY1= sioEndianGetBeInt16( sis );
-		md.mdOvalX1= sioEndianGetBeInt16( sis );
+		if  ( appMacPictGetOval( &md, sis ) )
+		    { LDEB(1); rval= -1; goto ready;	}
 
 		PICTDEB(appDebug( "FrameOval( %d, %d, %d, %d )\n",
 						md.mdOvalX0, md.mdOvalY0,
 						md.mdOvalX1, md.mdOvalY1 ));
 
-		if  ( appMacPictFrameOval( &md, ac ) )
+		if  ( appMacPictFrameOvalX11( &md, ac ) )
 		    { LDEB(1); rval= -1; goto ready;	}
 		}
 		continue;
@@ -961,23 +1006,21 @@ int appMacPictPlayFileX11( SimpleInputStream *	sis,
 		{
 		PICTDEB(appDebug( "FrameSameOval()\n" ));
 
-		if  ( appMacPictFrameOval( &md, ac ) )
+		if  ( appMacPictFrameOvalX11( &md, ac ) )
 		    { LDEB(1); rval= -1; goto ready;	}
 		}
 		continue;
 
 	    case MACPICT_PaintOval:
 		{
-		md.mdOvalY0= sioEndianGetBeInt16( sis );
-		md.mdOvalX0= sioEndianGetBeInt16( sis );
-		md.mdOvalY1= sioEndianGetBeInt16( sis );
-		md.mdOvalX1= sioEndianGetBeInt16( sis );
+		if  ( appMacPictGetOval( &md, sis ) )
+		    { LDEB(1); rval= -1; goto ready;	}
 
 		PICTDEB(appDebug( "PaintOval( %d, %d, %d, %d )\n",
 						md.mdOvalX0, md.mdOvalY0,
 						md.mdOvalX1, md.mdOvalY1 ));
 
-		if  ( appMacPictPaintOval( &md, ac ) )
+		if  ( appMacPictPaintOvalX11( &md, ac ) )
 		    { LDEB(1); rval= -1; goto ready;	}
 		}
 		continue;
@@ -986,7 +1029,7 @@ int appMacPictPlayFileX11( SimpleInputStream *	sis,
 		{
 		PICTDEB(appDebug( "PaintSameOval()\n" ));
 
-		if  ( appMacPictPaintOval( &md, ac ) )
+		if  ( appMacPictPaintOvalX11( &md, ac ) )
 		    { LDEB(1); rval= -1; goto ready;	}
 		}
 		continue;
@@ -998,7 +1041,7 @@ int appMacPictPlayFileX11( SimpleInputStream *	sis,
 
 		PICTDEB(appDebug( "PaintPoly(,%d)\n", md.mdPolyPointCount ));
 
-		if  ( appMacPictPaintPoly( &md, ac ) )
+		if  ( appMacPictPaintPolyX11( &md, ac ) )
 		    { LDEB(1); return -1;	}
 		}
 		continue;
@@ -1010,103 +1053,180 @@ int appMacPictPlayFileX11( SimpleInputStream *	sis,
 
 		PICTDEB(appDebug( "FramePoly(,%d)\n", md.mdPolyPointCount ));
 
-		if  ( appMacPictFramePoly( &md, ac ) )
+		if  ( appMacPictFramePolyX11( &md, ac ) )
 		    { LDEB(1); return -1;	}
+		}
+		continue;
+
+	    case MACPICT_OpColor:
+		{
+		md.mdRedMax= sioEndianGetBeUint16( sis );
+		md.mdGreenMax= sioEndianGetBeUint16( sis );
+		md.mdBlueMax= sioEndianGetBeUint16( sis );
+
+		PICTDEB(appDebug( "OpColor(%u,%u,%u)\n",
+				md.mdRedMax, md.mdGreenMax, md.mdBlueMax ));
 		}
 		continue;
 
 	    case MACPICT_ShortLine:
 		{
-		AppDrawingData *	add= &(md.mdDrawingData);
-		int			y0= sioEndianGetBeInt16( sis );
-		int			x0= sioEndianGetBeInt16( sis );
-		int			y1;
+		int			x0;
+		int			y0;
 		int			x1;
-		int			c;
+		int			y1;
 
-		c= sioInGetCharacter( sis );
-		if  ( c & 0x80 )
-		    { x1= x0+ c- 256;	}
-		else{ x1= x0+ c;	}
+		if  ( appMacPictGetShortLine( &x0, &y0, &x1, &y1, &md, sis ) )
+		    { LDEB(1); rval= -1; goto ready;	}
 
-		c= sioInGetCharacter( sis );
-		if  ( c & 0x80 )
-		    { y1= y0+ c- 256;	}
-		else{ y1= y0+ c;	}
-
-
-		PICTDEB(appDebug( "ShortLine( %d+ %d, %d+ %d )\n",
-						x0, x1- x0, y0, y1- y0 ));
-
-		if  ( x1 != x0 || y1 != y0 )
-		    {
-		    /*  !  */
-		    md.mdPenX= x1;
-		    md.mdPenY= y1;
-
-		    if  ( appMacPictSetPen( &md, ac ) )
-			{ LDEB(1); return -1;	}
-
-		    x0= MD_X( x0, &md );
-		    y0= MD_Y( y0, &md );
-		    x1= MD_X( x1, &md );
-		    y1= MD_Y( y1, &md );
-		    appDrawDrawLine( add, x0, y0, x1, y1 );
-		    }
+		if  ( appMacPictDrawLineX11( &md, ac, x0, y0, x1, y1 ) )
+		    { LDEB(1); rval= -1; goto ready;	}
 		}
 		continue;
 
 	    case MACPICT_ShortLineFrom:
 		{
-		AppDrawingData *	add= &(md.mdDrawingData);
-		int			y0= md.mdPenY;
-		int			x0= md.mdPenX;
+		int			y0;
+		int			x0;
 		int			y1;
 		int			x1;
-		int			c;
 
-		c= sioInGetCharacter( sis );
-		if  ( c & 0x80 )
-		    { x1= x0+ c- 256;	}
-		else{ x1= x0+ c;	}
+		if  ( appMacPictGetShortLineFrom( &x0, &y0, &x1, &y1,
+								&md, sis ) )
+		    { LDEB(1); rval= -1; goto ready;	}
 
-		c= sioInGetCharacter( sis );
-		if  ( c & 0x80 )
-		    { y1= y0+ c- 256;	}
-		else{ y1= y0+ c;	}
-
-		PICTDEB(appDebug( "ShortLineFrom( %d+ %d, %d+ %d )\n",
-						x0, x1- x0, y0, y1- y0 ));
-
-		if  ( appMacPictSetPen( &md, ac ) )
-		    { LDEB(1); return -1;	}
-
-		x0= MD_X( x0, &md );
-		y0= MD_Y( y0, &md );
-		x1= MD_X( x1, &md );
-		y1= MD_Y( y1, &md );
-		appDrawDrawLine( add, x0, y0, x1, y1 );
+		if  ( appMacPictDrawLineX11( &md, ac, x0, y0, x1, y1 ) )
+		    { LDEB(1); rval= -1; goto ready;	}
 		}
 		continue;
 
 	    case MACPICT_LineFrom:
 		{
-		AppDrawingData *	add= &(md.mdDrawingData);
-		int			y0= sioEndianGetBeInt16( sis );
-		int			x0= sioEndianGetBeInt16( sis );
-		int			y1= md.mdPenY;
-		int			x1= md.mdPenX;
+		int			y0;
+		int			x0;
+		int			y1;
+		int			x1;
 
-		PICTDEB(appDebug( "LineFrom( %d, %d )\n", x0, y0 ));
+		if  ( appMacPictGetLineFrom( &x0, &y0, &x1, &y1, &md, sis ) )
+		    { LDEB(1); rval= -1; goto ready;	}
 
-		if  ( appMacPictSetPen( &md, ac ) )
-		    { LDEB(1); return -1;	}
+		if  ( appMacPictDrawLineX11( &md, ac, x0, y0, x1, y1 ) )
+		    { LDEB(1); rval= -1; goto ready;	}
+		}
+		continue;
 
-		x0= MD_X( x0, &md );
-		y0= MD_Y( y0, &md );
-		x1= MD_X( x1, &md );
-		y1= MD_Y( y1, &md );
-		appDrawDrawLine( add, x0, y0, md.mdPenX, md.mdPenY );
+	    case MACPICT_Line:
+		{
+		int			y0;
+		int			x0;
+		int			y1;
+		int			x1;
+
+		if  ( appMacPictGetLine( &x0, &y0, &x1, &y1, &md, sis ) )
+		    { LDEB(1); rval= -1; goto ready;	}
+
+		if  ( appMacPictDrawLineX11( &md, ac, x0, y0, x1, y1 ) )
+		    { LDEB(1); rval= -1; goto ready;	}
+		}
+		continue;
+
+	    case MACPICT_FrameRRect:
+		{
+		md.mdRRectY0= sioEndianGetBeInt16( sis );
+		md.mdRRectX0= sioEndianGetBeInt16( sis );
+		md.mdRRectY1= sioEndianGetBeInt16( sis );
+		md.mdRRectX1= sioEndianGetBeInt16( sis );
+
+		PICTDEB(appDebug( "FrameRRect( %d, %d, %d, %d )\n",
+						md.mdRRectX0, md.mdRRectY0,
+						md.mdRRectX1, md.mdRRectY1 ));
+
+		if  ( appMacPictFrameRRectX11( &md, ac ) )
+		    { LDEB(1); rval= -1; goto ready;	}
+		}
+		continue;
+
+	    case MACPICT_FrameSameRRect:
+		{
+		PICTDEB(appDebug( "FrameSameRRect()\n" ));
+
+		if  ( appMacPictFrameRRectX11( &md, ac ) )
+		    { LDEB(1); rval= -1; goto ready;	}
+		}
+		continue;
+
+	    case MACPICT_PaintRRect:
+		{
+		md.mdRRectY0= sioEndianGetBeInt16( sis );
+		md.mdRRectX0= sioEndianGetBeInt16( sis );
+		md.mdRRectY1= sioEndianGetBeInt16( sis );
+		md.mdRRectX1= sioEndianGetBeInt16( sis );
+
+		PICTDEB(appDebug( "PaintRRect( %d, %d, %d, %d )\n",
+						md.mdRRectX0, md.mdRRectY0,
+						md.mdRRectX1, md.mdRRectY1 ));
+
+		if  ( appMacPictPaintRRectX11( &md, ac ) )
+		    { LDEB(1); rval= -1; goto ready;	}
+		}
+		continue;
+
+	    case MACPICT_PaintSameRRect:
+		{
+		PICTDEB(appDebug( "PaintSameRRect()\n" ));
+
+		if  ( appMacPictPaintRRectX11( &md, ac ) )
+		    { LDEB(1); rval= -1; goto ready;	}
+		}
+		continue;
+
+	    case MACPICT_FillRRect:
+		{
+		md.mdRRectY0= sioEndianGetBeInt16( sis );
+		md.mdRRectX0= sioEndianGetBeInt16( sis );
+		md.mdRRectY1= sioEndianGetBeInt16( sis );
+		md.mdRRectX1= sioEndianGetBeInt16( sis );
+
+		PICTDEB(appDebug( "FillRRect( %d, %d, %d, %d )\n",
+						md.mdRRectX0, md.mdRRectY0,
+						md.mdRRectX1, md.mdRRectY1 ));
+
+		if  ( appMacPictFillRRectX11( &md, ac ) )
+		    { LDEB(1); rval= -1; goto ready;	}
+		}
+		continue;
+
+	    case MACPICT_FillSameRRect:
+		{
+		PICTDEB(appDebug( "FillSameRRect()\n" ));
+
+		if  ( appMacPictFillRRectX11( &md, ac ) )
+		    { LDEB(1); rval= -1; goto ready;	}
+		}
+		continue;
+
+	    case MACPICT_EraseRRect:
+		{
+		md.mdRRectY0= sioEndianGetBeInt16( sis );
+		md.mdRRectX0= sioEndianGetBeInt16( sis );
+		md.mdRRectY1= sioEndianGetBeInt16( sis );
+		md.mdRRectX1= sioEndianGetBeInt16( sis );
+
+		PICTDEB(appDebug( "EraseRRect( %d, %d, %d, %d )\n",
+						md.mdRRectX0, md.mdRRectY0,
+						md.mdRRectX1, md.mdRRectY1 ));
+
+		if  ( appMacPictEraseRRectX11( &md, ac ) )
+		    { LDEB(1); rval= -1; goto ready;	}
+		}
+		continue;
+
+	    case MACPICT_EraseSameRRect:
+		{
+		PICTDEB(appDebug( "EraseSameRRect()\n" ));
+
+		if  ( appMacPictEraseRRectX11( &md, ac ) )
+		    { LDEB(1); rval= -1; goto ready;	}
 		}
 		continue;
 
@@ -1212,247 +1332,108 @@ int appMacPictPlayFileX11( SimpleInputStream *	sis,
 
 	    case MACPICT_FrameArc:
 		{
-		AppDrawingData *	add= &(md.mdDrawingData);
-		int			y0= sioEndianGetBeInt16( sis );
-		int			x0= sioEndianGetBeInt16( sis );
-		int			y1= sioEndianGetBeInt16( sis );
-		int			x1= sioEndianGetBeInt16( sis );
-
-		int			a0= sioEndianGetBeInt16( sis );
-		int			a1= sioEndianGetBeInt16( sis );
-
-		int			swap;
-
-		PICTDEB(appDebug( "FrameArc( %d, %d, %d, %d, %d, %d )\n",
-						x0, y0, x1, y1, a0, a1 ));
-
-		if  ( appMacPictSetPen( &md, ac ) )
+		if  ( appMacPictGetArc( &md, sis ) )
 		    { LDEB(1); rval= -1; goto ready;	}
 
-		x0= MD_X( x0, &md );
-		y0= MD_Y( y0, &md );
-		x1= MD_X( x1, &md );
-		y1= MD_Y( y1, &md );
+		PICTDEB(appDebug( "FrameArc( %d, %d, %d, %d, %d, %d )\n",
+						    md.mdArcX0, md.mdArcY0,
+						    md.mdArcX1, md.mdArcY1,
+						    md.mdArcA0, md.mdArcA1 ));
 
-		if  ( x1 < x0 )
-		    { swap= x0; x0= x1; x1= swap; }
-		if  ( y1 < y0 )
-		    { swap= y0; y0= y1; y1= swap; }
-
-		appDrawDrawArc( add, x0, y0, x1- x0, y1- y0,
-						    64* a0, 64* ( a1- a0 ) );
+		if  ( appMacPictFrameArcX11( &md, ac ) )
+		    { LDEB(1); rval= -1; goto ready;	}
 		}
 		continue;
 
-	    case MACPICT_Line:
+	    case MACPICT_PaintArc:
 		{
-		AppDrawingData *	add= &(md.mdDrawingData);
-		int			y0= sioEndianGetBeInt16( sis );
-		int			x0= sioEndianGetBeInt16( sis );
-		int			y1= sioEndianGetBeInt16( sis );
-		int			x1= sioEndianGetBeInt16( sis );
-
-		PICTDEB(appDebug( "Line( %d, %d, %d, %d )\n",
-						x0, y0, x1, y1 ));
-
-		if  ( appMacPictSetPen( &md, ac ) )
+		if  ( appMacPictGetArc( &md, sis ) )
 		    { LDEB(1); rval= -1; goto ready;	}
 
-		md.mdPenX= x1;
-		md.mdPenY= y1;
+		PICTDEB(appDebug( "PaintArc( %d, %d, %d, %d, %d, %d )\n",
+						    md.mdArcX0, md.mdArcY0,
+						    md.mdArcX1, md.mdArcY1,
+						    md.mdArcA0, md.mdArcA1 ));
 
-		x0= MD_X( x0, &md );
-		y0= MD_Y( y0, &md );
-		x1= MD_X( x1, &md );
-		y1= MD_Y( y1, &md );
-		appDrawDrawLine( add, x0, y0, x1, y1 );
+		if  ( appMacPictPaintArcX11( &md, ac ) )
+		    { LDEB(1); rval= -1; goto ready;	}
 		}
 		continue;
 
 	    case MACPICT_FontName:
-		{
-		int	dataLength= sioEndianGetBeInt16( sis );
-		int	oldFontId= sioEndianGetBeInt16( sis );
-		int	nameLength= sioInGetCharacter( sis );
-
-		int	i;
-		char *	fresh;
-
-		oldFontId= oldFontId;
-
-		fresh= realloc( md.mdFontName, nameLength+ 1 );
-		if  ( ! fresh )
-		    { LXDEB(nameLength,fresh); rval= -1; goto ready;	}
-		md.mdFontName= fresh;
-
-		for ( i= 0; i < nameLength; fresh++, i++ )
-		    { *fresh= sioInGetCharacter( sis ); }
-		*fresh= '\0';
-
-		PICTDEB(appDebug( "FontName( %d, %d, %d, \"%s\" )\n",
-			dataLength, oldFontId, nameLength, md.mdFontName ));
-
-		for ( i= 3+ nameLength; i < dataLength; i++ )
-		    { (void) sioInGetCharacter( sis );	}
-		}
+		if  ( appMacPictGetFontName( &md, sis ) )
+		    { LDEB(1); rval= -1; goto ready;	}
 		continue;
 
 	    case MACPICT_TxFont:
-		{
-		int	val= sioEndianGetBeInt16( sis );
-
-		PICTDEB(appDebug( "TxFont( %d )\n", val ));
-
-		val= val;
-		}
+		if  ( appMacPictGetTxFont( &md, sis ) )
+		    { LDEB(1); rval= -1; goto ready;	}
 		continue;
 
 	    case MACPICT_TxFace:
-		{
-		int	val= sioInGetCharacter( sis );
-
-		PICTDEB(appDebug( "TxFace( %d )\n", val ));
-
-		val= val;
-
-		if  ( md.mdVersion > 1 )
-		    { (void)sioInGetCharacter( sis );	}
-		}
+		if  ( appMacPictGetTxFace( &md, sis ) )
+		    { LDEB(1); rval= -1; goto ready;	}
 		continue;
 
 	    case MACPICT_TxSize:
-		{
-		md.mdFontSizePoints= sioEndianGetBeInt16( sis );
-
-		PICTDEB(appDebug( "TxSize( %d )\n", md.mdFontSizePoints ));
-		}
+		if  ( appMacPictGetTxSize( &md, sis ) )
+		    { LDEB(1); rval= -1; goto ready;	}
 		continue;
 
 	    case MACPICT_GlyphState:
-		{
-		int	dataLength= sioEndianGetBeInt16( sis );
-		int	i;
-		int	c;
-
-		int	outlinePreferred= 0;
-		int	preserveGlyph= 0;
-		int	fractionalWidth= 0;
-		int	scalingDisabled= 0;
-
-		for ( i= 0; i < dataLength; i++ )
-		    {
-		    c= sioInGetCharacter( sis );
-
-		    if  ( i == 0 )
-			{ outlinePreferred= c;	}
-		    if  ( i == 1 )
-			{ preserveGlyph= c;	}
-		    if  ( i == 2 )
-			{ fractionalWidth= c;	}
-		    if  ( i == 3 )
-			{ scalingDisabled= c;	}
-		    }
-
-		PICTDEB(appDebug( "GlyphState( %d:%x,%x,%x,%x )\n",
-					    dataLength,
-					    outlinePreferred,
-					    preserveGlyph,
-					    fractionalWidth,
-					    scalingDisabled ));
-
-		md.mdPenX= 0;
-		md.mdPenY= 0;
-		}
+		if  ( appMacPictGetGlyphState( &md, sis ) )
+		    { LDEB(1); rval= -1; goto ready;	}
 		continue;
 
 	    case MACPICT_DHText:
 		{
-		int	dh= sioInGetCharacter( sis );
 		int	count;
 
-		if  ( appMacPictGetCountAndString( &md, &count, sis ) )
+		if  ( appMacPictGetDHText( &count, &md, sis ) )
 		    { LDEB(1); rval= -1; goto ready;	}
-
-		PICTDEB(appDebug( "DHText( %d, %d: \"%s\" )\n",
-					    dh, count, md.mdTextString ));
-
-		md.mdPenX += dh;
 
 		if  ( appMacPictDrawStringX11( &md, ac,
 					    md.mdPenX, md.mdPenY, count ) )
 		    { LDEB(count); rval= -1; goto ready;	}
-
-		if  ( md.mdVersion > 1 && count % 2 )
-		    { (void)sioInGetCharacter( sis );	}
 		}
 		continue;
 
 	    case MACPICT_DVText:
 		{
-		int			dv= sioInGetCharacter( sis );
-		int			count;
+		int	count;
 
-		if  ( appMacPictGetCountAndString( &md, &count, sis ) )
+		if  ( appMacPictGetDVText( &count, &md, sis ) )
 		    { LDEB(1); rval= -1; goto ready;	}
-
-		PICTDEB(appDebug( "DVText( %d, %d: \"%s\" )\n",
-					    dv, count, md.mdTextString ));
-
-		md.mdPenY += dv;
 
 		if  ( appMacPictDrawStringX11( &md, ac,
 					    md.mdPenX, md.mdPenY, count ) )
 		    { LDEB(count); rval= -1; goto ready;	}
-
-		if  ( md.mdVersion > 1 && count % 2 )
-		    { (void)sioInGetCharacter( sis );	}
 		}
 		continue;
 
 	    case MACPICT_DHDVText:
 		{
-		int	dh= sioInGetCharacter( sis );
-		int	dv= sioInGetCharacter( sis );
 		int	count;
 
-		if  ( appMacPictGetCountAndString( &md, &count, sis ) )
+		if  ( appMacPictGetDHDVText( &count, &md, sis ) )
 		    { LDEB(1); rval= -1; goto ready;	}
-
-		PICTDEB(appDebug( "DHDVText( %d, %d, %d: \"%s\" )\n",
-					    dh, dv, count, md.mdTextString ));
-
-		md.mdPenX += dh;
-		md.mdPenY += dv;
 
 		if  ( appMacPictDrawStringX11( &md, ac,
 					    md.mdPenX, md.mdPenY, count ) )
 		    { LDEB(count); rval= -1; goto ready;	}
-
-		if  ( md.mdVersion > 1 && count % 2 == 0 )
-		    { (void)sioInGetCharacter( sis );	}
 		}
 		continue;
 
 	    case MACPICT_LongText:
 		{
-		int	y= sioEndianGetBeInt16( sis );
-		int	x= sioEndianGetBeInt16( sis );
 		int	count;
 
-		if  ( appMacPictGetCountAndString( &md, &count, sis ) )
+		if  ( appMacPictGetLongText( &count, &md, sis ) )
 		    { LDEB(1); rval= -1; goto ready;	}
 
-		PICTDEB(appDebug( "LongText( %d, %d, %d: \"%s\" )\n",
-					    x, y, count, md.mdTextString ));
-
-		md.mdPenX= x;
-		md.mdPenY= y;
-
-		if  ( appMacPictDrawStringX11( &md, ac, x, y, count ) )
+		if  ( appMacPictDrawStringX11( &md, ac,
+					    md.mdPenX, md.mdPenY, count ) )
 		    { LDEB(count); rval= -1; goto ready;	}
-
-		if  ( md.mdVersion > 1 && count % 2 == 0 )
-		    { (void)sioInGetCharacter( sis );	}
 		}
 		continue;
 
@@ -1463,10 +1444,42 @@ int appMacPictPlayFileX11( SimpleInputStream *	sis,
 
 		kind= kind;
 
-		PICTDEB(appDebug( "LongComment( %d, %d, .. )\n", kind, size ));
+		switch( kind )
+		    {
+		    case PICTCMT_TextBegin:
+			{
+			int	justify;
+			int	flip;
+			int	angle;
+			int	line;
+			int	cmnt;
+			int	angleFixed;
 
-		for ( i= 0; i < size; i++ )
-		    { c= sioInGetCharacter( sis );	}
+			if  ( size != 12 )
+			    { goto defaultCase;	}
+
+			justify= sioEndianGetBeInt16( sis );
+			flip= sioEndianGetBeInt16( sis );
+			angle= sioEndianGetBeInt16( sis );
+			line= sioEndianGetBeInt16( sis );
+			cmnt= sioEndianGetBeInt16( sis );
+			angleFixed= sioEndianGetBeInt16( sis );
+
+			PICTDEB(appDebug(
+			    "LongComment( %s, j=%d, f=%d, a=%d, af=%d )\n",
+				appMacPictCommentName( kind ),
+				justify, flip, angle, angleFixed ));
+			}
+			break;
+
+		    default:
+		    defaultCase:
+			PICTDEB(appDebug( "LongComment( %d:%s, %d, .. )\n",
+				kind, appMacPictCommentName( kind ), size ));
+			for ( i= 0; i < size; i++ )
+			    { c= sioInGetCharacter( sis );	}
+			break;
+		    }
 
 		if  ( md.mdVersion > 1 && size % 2 )
 		    { (void)sioInGetCharacter( sis );	}
@@ -1475,21 +1488,57 @@ int appMacPictPlayFileX11( SimpleInputStream *	sis,
 
 	    case MACPICT_ShortComment:
 		{
-		int	val= sioEndianGetBeInt16( sis );
+		int	kind= sioEndianGetBeInt16( sis );
 
-		PICTDEB(appDebug( "ShortComment( %d )\n", val ));
+		PICTDEB(appDebug( "ShortComment( %d:%s )\n",
+				kind, appMacPictCommentName( kind ) ));
 
-		val= val;
+		kind= kind;
+		}
+		continue;
+
+	    case MACPICT_FrameRgn:
+		{
+		int	regionBytes= sioEndianGetBeInt16( sis );
+		int	i;
+
+		PICTDEB(appDebug( "FrameRgn( %d )\n", regionBytes ));
+
+		for ( i= 2; i < regionBytes; i++ )
+		    {
+		    int		regionCoord;
+
+		    regionCoord= sioInGetCharacter( sis );
+		    }
+		}
+		continue;
+
+	    case MACPICT_PaintRgn:
+		{
+		int	regionBytes= sioEndianGetBeInt16( sis );
+		int	i;
+
+		PICTDEB(appDebug( "PaintRgn( %d )\n", regionBytes ));
+
+		for ( i= 2; i < regionBytes; i++ )
+		    {
+		    int		regionCoord;
+
+		    regionCoord= sioInGetCharacter( sis );
+		    }
 		}
 		continue;
 
 	    case MACPICT_BitsRect:
 		{
 		const int	packed= 0;
+		const int	direct= 0;
+		const int	clipRegion= 0;
 
 		PICTDEB(appDebug( "BitsRect( .. )\n" ));
 
-		if  ( appMacPict_BitsRectX11( &md, ac, sis, packed ) )
+		if  ( appMacPictDrawImageX11( &md, ac, sis,
+						packed, direct, clipRegion ) )
 		    { LDEB(1); rval= -1; goto ready;	}
 		}
 		continue;
@@ -1497,15 +1546,102 @@ int appMacPictPlayFileX11( SimpleInputStream *	sis,
 	    case MACPICT_PackBitsRect:
 		{
 		const int	packed= 1;
+		const int	direct= 0;
+		const int	clipRegion= 0;
 
 		PICTDEB(appDebug( "PackBitsRect( .. )\n" ));
 
-		if  ( appMacPict_BitsRectX11( &md, ac, sis, packed ) )
+		if  ( appMacPictDrawImageX11( &md, ac, sis,
+						packed, direct, clipRegion ) )
 		    { LDEB(1); rval= -1; goto ready;	}
 		}
 		continue;
 
+	    case MACPICT_PackBitsRgn:
+		{
+		const int	packed= 1;
+		const int	direct= 0;
+		const int	clipRegion= 1;
+
+		PICTDEB(appDebug( "PackBitsRgn( .. )\n" ));
+
+		if  ( appMacPictDrawImageX11( &md, ac, sis,
+						packed, direct, clipRegion ) )
+		    { LDEB(1); rval= -1; goto ready;	}
+		}
+		continue;
+
+	    case MACPICT_DirectBitsRect:
+		{
+		const int	packed= 0;
+		const int	direct= 1;
+		const int	clipRegion= 0;
+
+		PICTDEB(appDebug( "DirectBitsRect( .. )\n" ));
+
+		if  ( appMacPictDrawImageX11( &md, ac, sis,
+						packed, direct, clipRegion ) )
+		    { LDEB(1); rval= -1; goto ready;	}
+		}
+		continue;
+
+	    case MACPICT_DirectBitsRgn:
+		{
+		const int	packed= 0;
+		const int	direct= 1;
+		const int	clipRegion= 1;
+
+		PICTDEB(appDebug( "DirectBitsRgn( .. )\n" ));
+
+		if  ( appMacPictDrawImageX11( &md, ac, sis,
+						packed, direct, clipRegion ) )
+		    { LDEB(1); rval= -1; goto ready;	}
+		}
+		continue;
+
+	    case MACPICT_CompressedQuickTime:
+		{
+		long	qtbytes= sioEndianGetBeInt32( sis );
+		int	i;
+
+		PICTDEB(appDebug( "CompressedQuickTime( %ld )\n",
+							    qtbytes ));
+
+		for ( i= 0; i < qtbytes; i++ )
+		    {
+		    int		qtdata;
+
+		    qtdata= sioInGetCharacter( sis );
+		    }
+
+		}
+		continue;
+
+	    case MACPICT_UncompressedQuickTime:
+		{
+		long	qtbytes= sioEndianGetBeInt32( sis );
+		int	i;
+
+		PICTDEB(appDebug( "UncompressedQuickTime( %ld )\n",
+							    qtbytes ));
+
+		for ( i= 0; i < qtbytes; i++ )
+		    {
+		    int		qtdata;
+
+		    qtdata= sioInGetCharacter( sis );
+		    }
+
+		}
+		continue;
+
+	    case 0x66:
+		XLDEB(opcode,bytes);
+		bytes= 12;
+		goto skipBytes;
+
 	    default:
+	    skipBytes:
 		if  ( bytes >= 0 )
 		    {
 		    XLDEB(opcode,bytes);

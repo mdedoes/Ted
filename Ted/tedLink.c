@@ -1,6 +1,6 @@
 /************************************************************************/
 /*									*/
-/*  Ted: The 'Hyperlink' dialog.					*/
+/*  Ted: Field,Bookmark,Hyperlink related editing functionality.	*/
 /*									*/
 /************************************************************************/
 
@@ -18,40 +18,39 @@
 
 /************************************************************************/
 /*									*/
-/*  Management of link related stuff.					*/
-/*									*/
-/************************************************************************/
-
-/************************************************************************/
-/*									*/
 /*  Determine the area covered by a field or a bookmark.		*/
 /*									*/
 /************************************************************************/
 
-static void tedLinkArea(	DocumentRectangle *	drChanged,
-				EditDocument *		ed,
-				BufferItem *		bi,
-				int			startPart,
-				int			endPart )
+static void tedIncludeFieldInRedraw(	EditOperation *		eo,
+					AppDrawingData *	add,
+					BufferItem *		paraBi,
+					int			startPart,
+					int			endPart )
     {
-    AppDrawingData *		add= &(ed->edDrawingData);
-    TedDocument *		td= (TedDocument *)ed->edPrivateData;
-    BufferDocument *		bd= td->tdDocument;
+    BufferDocument *		bd= eo->eoBd;
+    const ScreenFontList *	sfl= eo->eoScreenFontList;
 
     DocumentSelection		dsNew;
     SelectionGeometry		sgNew;
 
     const int			direction= 1;
+    const int			lastLine= 0;
+
+    int				length;
 
     docInitDocumentSelection( &dsNew );
 
-    docSetParaSelection( &dsNew, bi, direction,
-				bi->biParaParticules[startPart].tpStroff,
-				bi->biParaParticules[endPart].tpStroff );
+    length=  paraBi->biParaParticules[endPart].tpStroff-
+			    paraBi->biParaParticules[startPart].tpStroff;
 
-    tedSelectionGeometry( &sgNew, &dsNew, bd, add );
 
-    *drChanged= sgNew.sgRectangle;
+    docSetParaSelection( &dsNew, paraBi, direction,
+			paraBi->biParaParticules[startPart].tpStroff, length );
+
+    tedSelectionGeometry( &sgNew, &dsNew, lastLine, bd, add, sfl );
+
+    docIncludeRectangleInChange( eo, &(sgNew.sgRectangle) );
 
     return;
     }
@@ -132,16 +131,18 @@ static int tedFinishSetField(	EditDocument *			ed,
 /************************************************************************/
 
 static void tedDeleteField(	EditDocument *		ed,
-				BufferItem *		bi,
+				BufferItem *		paraBi,
 				int			startPart,
 				int			endPart )
     {
+    AppDrawingData *		add= &(ed->edDrawingData);
     TedDocument *		td= (TedDocument *)ed->edPrivateData;
     BufferDocument *		bd= td->tdDocument;
 
     DocumentSelection		dsNew;
     DocumentSelection		ds;
     SelectionGeometry		sg;
+    SelectionDescription	sd;
 
     TextParticule *		tp;
     DocumentField *		df;
@@ -152,27 +153,27 @@ static void tedDeleteField(	EditDocument *		ed,
     const int			col0= -1;
     const int			col1= -1;
 
-    tedStartEditOperation( &eo, &ds, &sg, ed, 0 );
+    tedStartEditOperation( &eo, &ds, &sg, &sd, ed, 0 );
 
     /*  0  */
-    tp= bi->biParaParticules+ startPart;
+    tp= paraBi->biParaParticules+ startPart;
     df= bd->bdFieldList.dflFields+ tp->tpObjectNumber;
     docCleanField( df ); docInitField( df );
 
     /*  1  */
-    tedLinkArea( &(eo.eoChangedRectangle), ed, bi, startPart, endPart );
+    tedIncludeFieldInRedraw( &eo, add, paraBi, startPart, endPart );
 
     /*  2  */
-    docDeleteParticules( bi, endPart, 1 );
-    docDeleteParticules( bi, startPart, 1 );
+    docDeleteParticules( paraBi, endPart, 1 );
+    docDeleteParticules( paraBi, startPart, 1 );
 
-    docEditIncludeItemInReformatRange( &eo, bi );
+    docEditIncludeItemInReformatRange( &eo, paraBi );
 
     /*  3  */
     docSetDocumentPosition( &(ds.dsBegin),
-				ds.dsBegin.dpBi, ds.dsBegin.dpStroff, 1 );
+				ds.dsBegin.dpBi, ds.dsBegin.dpStroff );
     docSetDocumentPosition( &(ds.dsEnd),
-				ds.dsEnd.dpBi, ds.dsEnd.dpStroff, 0 );
+				ds.dsEnd.dpBi, ds.dsEnd.dpStroff );
 
     docInitDocumentSelection( &dsNew );
 
@@ -197,34 +198,19 @@ void tedDocInsertLink(	APP_WIDGET	option,
 			void *		voidpbcs )
     {
     EditDocument *		ed= (EditDocument *)voided;
-    EditApplication *		ea= ed->edApplication;
     TedDocument *		td= (TedDocument *)ed->edPrivateData;
-    BufferDocument *		bd= td->tdDocument;
+    EditApplication *		ea= ed->edApplication;
 
-    DocumentSelection		ds;
-    SelectionGeometry		sg;
+    tedShowFormatTool( td->tdToolsFormatToolOption, ea );
 
-    int				startPart;
-    int				endPart;
+    tedAdaptFormatToolToDocument( ed, 0 );
 
-    const char *		fileName= (const char *)0;
-    int				fileSize= 0;
-    const char *		markName= (const char *)0;
-    int				markSize= 0;
-
-    tedGetSelection( &ds, &sg, td );
-
-    docGetHyperlinkForPosition( bd, &(ds.dsBegin), &startPart, &endPart,
-				&fileName, &fileSize, &markName, &markSize );
-
-    tedRunLinkDialog( ea, ed, option, fileName, fileSize, markName, markSize );
-
-    tedAdaptToolsToSelection( ed );
+    tedFormatShowLinkPage( ea );
 
     return;
     }
 
-int tedSetHyperlink(	EditDocument *		ed,
+int tedDocSetHyperlink(	EditDocument *		ed,
 			const char *		file,
 			const char *		mark,
 			int			asRef,
@@ -235,9 +221,11 @@ int tedSetHyperlink(	EditDocument *		ed,
 
     DocumentSelection		ds;
     SelectionGeometry		sg;
+    SelectionDescription	sd;
 
-    int				startPart;
-    int				endPart;
+    DocumentSelection		dsHyperlink;
+    int				linkStartPart;
+    int				linkEndPart;
 
     const char *		fileName= (const char *)0;
     int				fileSize= 0;
@@ -258,7 +246,7 @@ int tedSetHyperlink(	EditDocument *		ed,
     utilInitTextAttribute( &taSet );
     PROPmaskCLEAR( &taSetMask );
 
-    tedStartEditOperation( &eo, &ds, &sg, ed, 0 );
+    tedStartEditOperation( &eo, &ds, &sg, &sd, ed, 0 );
 
     if  ( mark )
 	{
@@ -269,17 +257,14 @@ int tedSetHyperlink(	EditDocument *		ed,
 	docAdaptBookmarkName( &newMarkSize, adaptedMark );
 	}
 
-    if  ( docGetHyperlinkForPosition( bd, &(ds.dsBegin), &startPart, &endPart,
+    if  ( docGetHyperlinkForPosition( bd, &(ds.dsBegin),
+				&dsHyperlink, &linkStartPart, &linkEndPart,
 				&fileName, &fileSize, &markName, &markSize ) )
 	{
 	DocumentProperties *	dp= &(bd->bdProperties);
 
-	int			numHyper;
-
 	DocumentSelection	dsRep;
 	DocumentSelection	dsHyperlink;
-	DocumentSelection	dsField;
-
 	int			beginMoved= 0;
 	int			endMoved= 0;
 
@@ -316,6 +301,10 @@ int tedSetHyperlink(	EditDocument *		ed,
 	if  ( asRef || asPageref )
 	    {
 	    const FieldKindInformation *	fki;
+	    int					innerStartPart= -1;
+	    int					innerEndPart= -1;
+	    int					fieldNumber;
+	    TextParticule *			tp;
 
 	    if  ( tedEditReplaceSelection( &eo, &dsRep, ed,
 					    (const unsigned char *)"?", 1 ) )
@@ -325,32 +314,26 @@ int tedSetHyperlink(	EditDocument *		ed,
 
 	    if  ( asRef )
 		{
-		int		numRef;
 		DocumentField *	dfRef;
+		int		refStartPart;
+		int		refEndPart;
 
-		dfRef= docClaimField( &numRef, &(bd->bdFieldList) );
-		if  ( ! dfRef )
-		    { XDEB(dfRef); return -1;	}
+		if  ( docSurroundTextSelectionByField( &dfRef, bd,
+					&refStartPart, &refEndPart, &dsRep,
+					&taSetMask, &taSet ) )
+		    { LDEB(1); return -1;	}
 
 		if  ( docFieldSetRef( dfRef,
 				(unsigned char *)adaptedMark, newMarkSize ) )
 		    { LDEB(newMarkSize); return -1;	}
 
-		if  ( docSurroundTextSelectionByField( bd, &dsField,
-						    &dsRep, numRef,
-						    &taSetMask, &taSet ) )
-		    { LDEB(1); return -1;	}
-
-		dsHyperlink.dsEnd.dpParticule += 2;
-
 		dfRef->dfKind= DOCfkREF;
 		fki= DOC_FieldKinds+ dfRef->dfKind;
 		whenMask |= fki->fkiCalculateWhen;
 
-		docUnionParaSelections( &dsHyperlink, &dsHyperlink, &dsField );
-		dsRep= dsField;
-		dsRep.dsEnd.dpParticule++;
 		dsRep.dsBegin= dsRep.dsEnd;
+		innerStartPart= refStartPart;
+		innerEndPart= refEndPart;
 		}
 
 	    if  ( asRef && asPageref )
@@ -360,75 +343,87 @@ int tedSetHyperlink(	EditDocument *		ed,
 		int			stroffShift= 0;
 
 		tp= docParaSpecialParticule( bd, dsRep.dsEnd.dpBi, DOCkindTAB,
-				    dsRep.dsEnd.dpParticule,
+				    innerEndPart+ 1,
 				    dsRep.dsEnd.dpStroff,
 				    &partShift, &stroffShift );
 		if  ( ! tp )
 		    { XDEB(tp); return -1;	}
 		
-		dsRep.dsEnd.dpParticule += partShift;
 		dsRep.dsEnd.dpStroff += stroffShift;
 		dsRep.dsBegin= dsRep.dsEnd;
-
-		dsHyperlink.dsEnd.dpParticule += partShift;
+		innerEndPart++;
 
 		docUnionParaSelections( &dsHyperlink, &dsHyperlink, &dsRep );
 		}
 
 	    if  ( asPageref )
 		{
-		int		numPageref;
 		DocumentField *	dfPageref;
+		int		pageStartPart;
+		int		pageEndPart;
 
-		dfPageref= docClaimField( &numPageref, &(bd->bdFieldList) );
-		if  ( ! dfPageref )
-		    { XDEB(dfPageref); return -1;	}
+		if  ( docSurroundTextSelectionByField( &dfPageref, bd,
+					&pageStartPart, &pageEndPart, &dsRep,
+					&taSetMask, &taSet ) )
+		    {
+		    LLDEB(innerStartPart,innerEndPart);
+		    docListItem(0,dsRep.dsEnd.dpBi);
+		    return -1;
+		    }
 
 		if  ( docFieldSetPageref( dfPageref,
 				(unsigned char *)adaptedMark, newMarkSize ) )
 		    { LDEB(newMarkSize); return -1;	}
 
-		if  ( docSurroundTextSelectionByField( bd, &dsField,
-						    &dsRep, numPageref,
-						    &taSetMask, &taSet ) )
-		    {
-		    LLDEB(dsRep.dsBegin.dpParticule,dsRep.dsEnd.dpParticule);
-		    docListItem(0,dsRep.dsEnd.dpBi);
-		    return -1;
-		    }
-
-		dsHyperlink.dsEnd.dpParticule += 2;
-
 		dfPageref->dfKind= DOCfkPAGEREF;
 		fki= DOC_FieldKinds+ dfPageref->dfKind;
 		whenMask |= fki->fkiCalculateWhen;
 
-		docUnionParaSelections( &dsHyperlink, &dsHyperlink, &dsField );
-		dsRep= dsField;
-		dsRep.dsEnd.dpParticule++;
 		dsRep.dsBegin= dsRep.dsEnd;
+		if  ( innerStartPart < 0 )
+		    { innerStartPart= pageStartPart;	}
+		innerEndPart= pageEndPart;
 		}
-	    }
 
-	dfHyper= docClaimField( &numHyper, &(bd->bdFieldList) );
-	if  ( ! dfHyper )
-	    { XDEB(dfHyper); return -1;	}
+	    dfHyper= docClaimField( &fieldNumber, &(bd->bdFieldList) );
+	    if  ( ! dfHyper )
+		{ XDEB(dfHyper); return -1;	}
+
+	    linkStartPart= innerStartPart;
+	    linkEndPart= innerEndPart+ 1;
+	    tp= docInsertTextParticule( ds.dsEnd.dpBi, linkEndPart,
+			    dsRep.dsEnd.dpStroff, 0, DOCkindFIELDEND,
+			    ds.dsEnd.dpBi->biParaParticules[
+					innerEndPart].tpTextAttributeNumber );
+	    if  ( ! tp )
+		{ XDEB(tp); return -1;	}
+	    tp->tpObjectNumber= fieldNumber;
+
+	    tp= docInsertTextParticule( ds.dsBegin.dpBi, linkStartPart,
+			    dsRep.dsBegin.dpStroff, 0, DOCkindFIELDSTART,
+			    ds.dsBegin.dpBi->biParaParticules[
+					innerStartPart].tpTextAttributeNumber );
+	    if  ( ! tp )
+		{ XDEB(tp); return -1;	}
+	    tp->tpObjectNumber= fieldNumber;
+	    }
+	else{
+	    /*  4  */
+	    if  ( docSurroundTextSelectionByField( &dfHyper, bd,
+				&linkStartPart, &linkEndPart, &dsHyperlink,
+				&taSetMask, &taSet ) )
+		{ LDEB(1); return -1;	}
+	    }
 
 	if  ( docFieldSetHyperlink( dfHyper, (unsigned char *)file, newFileSize,
 				(unsigned char *)adaptedMark, newMarkSize ) )
 	    { SSDEB(file,adaptedMark); return -1;	}
 
-	/*  4  */
-	if  ( docSurroundTextSelectionByField( bd, &dsField,
-						&dsHyperlink, numHyper,
-						&taSetMask, &taSet ) )
-	    { LDEB(1); return -1;	}
-
 	dfHyper->dfKind= DOCfkHYPERLINK;
 
 	/*  5  */
-	if  ( tedFinishSetField( ed, &dsField, &eo, whenMask ) )
-	    { LDEB(numHyper); return -1;	}
+	if  ( tedFinishSetField( ed, &dsHyperlink, &eo, whenMask ) )
+	    { LDEB(1); return -1;	}
 
 	if  ( adaptedMark )
 	    { free( adaptedMark );	}
@@ -439,7 +434,7 @@ int tedSetHyperlink(	EditDocument *		ed,
 	BufferItem *	bi= ds.dsBegin.dpBi;
 
 	dfHyper= bd->bdFieldList.dflFields;
-	dfHyper += bi->biParaParticules[startPart].tpObjectNumber;
+	dfHyper += bi->biParaParticules[linkStartPart].tpObjectNumber;
 
 	if  ( docFieldSetHyperlink( dfHyper,
 				(unsigned char *)file, newFileSize,
@@ -455,11 +450,26 @@ int tedSetHyperlink(	EditDocument *		ed,
 	}
     }
 
-int tedRemoveHyperlink(	EditDocument *		ed )
+int tedAppSetHyperlink(	EditApplication *	ea,
+			const char *		file,
+			const char *		mark,
+			int			asRef,
+			int			asPageref )
+    {
+    EditDocument *	ed= ea->eaCurrentDocument;
+
+    if  ( ! ed )
+	{ XDEB(ed); return -1;	}
+
+    return tedDocSetHyperlink( ed, file, mark, asRef, asPageref );
+    }
+
+int tedDocRemoveHyperlink(	EditDocument *		ed )
     {
     TedDocument *		td= (TedDocument *)ed->edPrivateData;
     BufferDocument *		bd= td->tdDocument;
 
+    DocumentSelection		dsHyperlink;
     int				startPart;
     int				endPart;
 
@@ -470,21 +480,33 @@ int tedRemoveHyperlink(	EditDocument *		ed )
 
     DocumentSelection		ds;
     SelectionGeometry		sg;
+    SelectionDescription	sd;
 
-    tedGetSelection( &ds, &sg, td );
+    tedGetSelection( &ds, &sg, &sd, td );
 
-    if  ( docGetHyperlinkForPosition( bd, &(ds.dsBegin), &startPart, &endPart,
+    if  ( docGetHyperlinkForPosition( bd, &(ds.dsBegin),
+				&dsHyperlink, &startPart, &endPart,
 				&fileName, &fileSize, &markName, &markSize ) )
 	{ LDEB(1); return -1;	}
     else{
-	BufferItem *	bi= ds.dsBegin.dpBi;
+	BufferItem *	paraBi= ds.dsBegin.dpBi;
 
-	tedDeleteField( ed, bi, startPart, endPart );
+	tedDeleteField( ed, paraBi, startPart, endPart );
 
 	appDocumentChanged( ed, 1 );
 
 	return 0;
 	}
+    }
+
+int tedAppRemoveHyperlink(	EditApplication *	ea )
+    {
+    EditDocument *	ed= ea->eaCurrentDocument;
+
+    if  ( ! ed )
+	{ XDEB(ed); return -1;	}
+
+    return tedDocRemoveHyperlink( ed );
     }
 
 /************************************************************************/
@@ -502,6 +524,7 @@ void tedDocInsertBookmark(	APP_WIDGET	option,
     TedDocument *		td= (TedDocument *)ed->edPrivateData;
     BufferDocument *		bd= td->tdDocument;
 
+    DocumentSelection		dsBookmark;
     int				startPart;
     int				endPart;
 
@@ -513,11 +536,13 @@ void tedDocInsertBookmark(	APP_WIDGET	option,
 
     DocumentSelection		ds;
     SelectionGeometry		sg;
+    SelectionDescription	sd;
 
-    tedGetSelection( &ds, &sg, td );
+    tedGetSelection( &ds, &sg, &sd, td );
 
-    if  ( docGetBookmarkForPosition( bd, &(ds.dsBegin), &startPart, &endPart,
-						    &markName, &markSize ) )
+    if  ( docGetBookmarkForPosition( bd, &(ds.dsBegin),
+					    &dsBookmark, &startPart, &endPart,
+					    &markName, &markSize ) )
 	{
 	BufferItem *	bi= ds.dsBegin.dpBi;
 	int		stroff= ds.dsBegin.dpStroff;
@@ -530,8 +555,8 @@ void tedDocInsertBookmark(	APP_WIDGET	option,
 	    unsigned char *	e;
 	    unsigned char *	p;
 
-	    while( ! isalnum( *s )		&&
-		   stroff < ds.dsEnd.dpStroff	)
+	    while( stroff < ds.dsEnd.dpStroff	&&
+		   ! isalnum( *s )		)
 		{ s++; stroff++;	}
 
 	    p= e= s;
@@ -600,6 +625,7 @@ int tedSetBookmark(	EditDocument *		ed,
     TedDocument *		td= (TedDocument *)ed->edPrivateData;
     BufferDocument *		bd= td->tdDocument;
 
+    DocumentSelection		dsBookmark;
     int				startPart;
     int				endPart;
 
@@ -615,6 +641,7 @@ int tedSetBookmark(	EditDocument *		ed,
 
     DocumentSelection		ds;
     SelectionGeometry		sg;
+    SelectionDescription	sd;
 
     TextAttribute		taSet;
     PropertyMask		taSetMask;
@@ -622,7 +649,7 @@ int tedSetBookmark(	EditDocument *		ed,
     utilInitTextAttribute( &taSet );
     PROPmaskCLEAR( &taSetMask );
 
-    tedStartEditOperation( &eo, &ds, &sg, ed, 0 );
+    tedStartEditOperation( &eo, &ds, &sg, &sd, ed, 0 );
 
     adaptedMark= strdup( mark );
     if  ( ! adaptedMark )
@@ -630,13 +657,14 @@ int tedSetBookmark(	EditDocument *		ed,
 
     docAdaptBookmarkName( &newMarkSize, adaptedMark );
 
-    if  ( docGetBookmarkForPosition( bd, &(ds.dsBegin), &startPart, &endPart,
-						    &markName, &markSize ) )
+    if  ( docGetBookmarkForPosition( bd, &(ds.dsBegin),
+					    &dsBookmark, &startPart, &endPart,
+					    &markName, &markSize ) )
 	{
-	int			fieldNumber;
-
 	DocumentSelection	dsRep;
-	DocumentSelection	dsField;
+
+	int			startPart;
+	int			endPart;
 
 	int			beginMoved= 0;
 	int			endMoved= 0;
@@ -647,25 +675,21 @@ int tedSetBookmark(	EditDocument *		ed,
 
 	markSize= strlen( adaptedMark );
 
-	df= docClaimField( &fieldNumber, &(bd->bdFieldList) );
-	if  ( ! df )
-	    { XDEB(df); return -1;	}
+	/*  4  */
+	if  ( docSurroundTextSelectionByField( &df, bd,
+						&startPart, &endPart, &dsRep,
+						&taSetMask, &taSet ) )
+	    { LDEB(1); return -1;	}
 
 	if  ( docFieldSetBookmark( df,
 			    (unsigned char *)adaptedMark, newMarkSize ) )
 	    { SDEB(adaptedMark); return -1;	}
 
-	/*  4  */
-	if  ( docSurroundTextSelectionByField( bd, &dsField,
-						&dsRep, fieldNumber,
-						&taSetMask, &taSet ) )
-	    { LDEB(1); return -1;	}
-
 	df->dfKind= DOCfkBOOKMARK;
 
 	/*  5  */
-	if  ( tedFinishSetField( ed, &dsField, &eo, FIELDdoNOTHING ) )
-	    { LDEB(fieldNumber); return -1;	}
+	if  ( tedFinishSetField( ed, &dsRep, &eo, FIELDdoNOTHING ) )
+	    { LDEB(1); return -1;	}
 
 	return 0;
 	}
@@ -690,6 +714,7 @@ int tedRemoveBookmark(	EditDocument *		ed )
     TedDocument *		td= (TedDocument *)ed->edPrivateData;
     BufferDocument *		bd= td->tdDocument;
 
+    DocumentSelection		dsBookmark;
     int				startPart;
     int				endPart;
 
@@ -698,11 +723,13 @@ int tedRemoveBookmark(	EditDocument *		ed )
 
     DocumentSelection		ds;
     SelectionGeometry		sg;
+    SelectionDescription	sd;
 
-    tedGetSelection( &ds, &sg, td );
+    tedGetSelection( &ds, &sg, &sd, td );
 
-    if  ( docGetBookmarkForPosition( bd, &(ds.dsBegin), &startPart, &endPart,
-						    &markName, &markSize ) )
+    if  ( docGetBookmarkForPosition( bd, &(ds.dsBegin),
+					    &dsBookmark, &startPart, &endPart,
+					    &markName, &markSize ) )
 	{ LDEB(1); return -1;	}
     else{
 	BufferItem *	bi= ds.dsBegin.dpBi;
@@ -757,6 +784,8 @@ int tedGoToBookmark(	EditDocument *		ed,
     int				beginMoved= 0;
     int				endMoved= 0;
 
+    const int			lastLine= 0;
+
     td= (TedDocument *)ed->edPrivateData;
 
     docInitDocumentSelection( &ds );
@@ -766,7 +795,7 @@ int tedGoToBookmark(	EditDocument *		ed,
 
     docConstrainSelectionToOneParagraph( &beginMoved, &endMoved, &ds );
 
-    tedSetSelection( ed, &ds, &scrolledX, &scrolledY );
+    tedSetSelection( ed, &ds, lastLine, &scrolledX, &scrolledY );
 
     tedAdaptToolsToSelection( ed );
 
@@ -785,6 +814,8 @@ int tedGoToBookmark(	EditDocument *		ed,
 /************************************************************************/
 
 static int tedDocReplaceSelectionWithField(
+					int *			pStartPart,
+					int *			pEndPart,
 					DocumentSelection *	dsField,
 					EditOperation *		eo,
 					EditDocument *		ed,
@@ -798,7 +829,6 @@ static int tedDocReplaceSelectionWithField(
 
     DocumentSelection		dsRep;
 
-    int				fieldNumber;
     DocumentField *		df;
 
     /*  2  */
@@ -806,20 +836,17 @@ static int tedDocReplaceSelectionWithField(
 					    (const unsigned char *)"?", 1 ) )
 	{ LDEB(1); return -1;	}
 
-    /*  3  */
-    df= docClaimField( &fieldNumber, &(bd->bdFieldList) );
-    if  ( ! df )
-	{ XDEB(df); return -1;	}
+    /*  3,4  */
+    if  ( docSurroundTextSelectionByField( &df, bd,
+					    pStartPart, pEndPart, &dsRep,
+					    taSetMask, taSet ) )
+	{ LDEB(1); return -1;	}
 
     if  ( docSetFieldInst( df,
 			(unsigned char *)fieldInst, strlen( fieldInst ) ) )
 	{ SDEB(fieldInst); return -1;	}
 
-    /*  4  */
-    if  ( docSurroundTextSelectionByField( bd, dsField, &dsRep, fieldNumber,
-							taSetMask, taSet ) )
-	{ LDEB(1); return -1;	}
-
+    *dsField= dsRep;
     df->dfKind= fieldKind;
 
     return 0;
@@ -856,14 +883,18 @@ void tedDocInsertPageNumber(	APP_WIDGET	option,
 
     DocumentSelection		ds;
     SelectionGeometry		sg;
+    SelectionDescription	sd;
 
     TextAttribute		taSet;
     PropertyMask		taSetMask;
 
+    int				startPart;
+    int				endPart;
+
     utilInitTextAttribute( &taSet );
     PROPmaskCLEAR( &taSetMask );
 
-    tedStartEditOperation( &eo, &ds, &sg, ed, 0 );
+    tedStartEditOperation( &eo, &ds, &sg, &sd, ed, 0 );
 
     /*  1  */
     if  ( docGetHeaderFooter( &ei, &bodySectBi, &ds, bd,
@@ -873,7 +904,8 @@ void tedDocInsertPageNumber(	APP_WIDGET	option,
     ei->eiPageFormattedFor= -1;
 
     /*  2  */
-    if  ( tedDocReplaceSelectionWithField( &dsField, &eo, ed, 
+    if  ( tedDocReplaceSelectionWithField( &startPart, &endPart, &dsField,
+						    &eo, ed, 
 						    fieldInst, DOCfkPAGE,
 						    &taSetMask, &taSet ) )
 	{ SDEB(fieldInst); return;	}
@@ -907,6 +939,7 @@ static void tedDocInsertNote(	APP_WIDGET	option,
     AppDrawingData *		add= &(ed->edDrawingData);
     TedDocument *		td= (TedDocument *)ed->edPrivateData;
     BufferDocument *		bd= td->tdDocument;
+    ScreenFontList *		sfl= &(td->tdScreenFontList);
 
     DocumentSelection		dsField;
 
@@ -922,6 +955,7 @@ static void tedDocInsertNote(	APP_WIDGET	option,
 
     DocumentSelection		ds;
     SelectionGeometry		sg;
+    SelectionDescription	sd;
 
     DocumentPosition		dpEnd;
 
@@ -930,13 +964,16 @@ static void tedDocInsertNote(	APP_WIDGET	option,
     TextAttribute		taSet;
     PropertyMask		taSetMask;
 
+    int				startPart;
+    int				endPart;
+
     utilInitTextAttribute( &taSet );
     PROPmaskCLEAR( &taSetMask );
 
     PROPmaskADD( &taSetMask, TApropSUPERSUB );
     taSet.taSuperSub= DOCfontSUPERSCRIPT;
 
-    tedStartEditOperation( &eo, &ds, &sg, ed, 0 );
+    tedStartEditOperation( &eo, &ds, &sg, &sd, ed, 0 );
 
     if  ( ds.dsSelectionScope.ssInExternalItem != DOCinBODY )
 	{ LDEB(ds.dsSelectionScope.ssInExternalItem); return;	}
@@ -948,13 +985,15 @@ static void tedDocInsertNote(	APP_WIDGET	option,
 	{ XDEB(bodySectBi); return;	}
 
     /*  1  */
-    if  ( tedDocReplaceSelectionWithField( &dsField, &eo, ed,
-						fieldInst, DOCfkCHFTN,
-						&taSetMask, &taSet ) )
+    if  ( tedDocReplaceSelectionWithField( &startPart, &endPart, &dsField,
+						    &eo, ed,
+						    fieldInst, DOCfkCHFTN,
+						    &taSetMask, &taSet ) )
 	{ SDEB(fieldInst); return;	}
 
     /*  2  */
-    if  ( docMakeNote( &dn, bd, &(dsField.dsEnd), noteInExtIt ) )
+    if  ( docMakeNote( &dn, bd, dsField.dsEnd.dpBi,
+			    endPart, dsField.dsEnd.dpStroff, noteInExtIt ) )
 	{ LDEB(1); return;	}
 
     if  ( docCheckNoteSeparatorItem( bd, sepInExtIt ) )
@@ -995,8 +1034,11 @@ static void tedDocInsertNote(	APP_WIDGET	option,
     */
 
     /*  Exclude from Edit operation: In another tree */
-    if  ( tedLayoutItem( dn->dnExternalItem.eiItem, bd, add,
-						&(eo.eoChangedRectangle) ) )
+    if  ( ! eo.eoChangedRectSet )
+	{ LDEB(eo.eoChangedRectSet);	}
+
+    if  ( tedLayoutItem( dn->dnExternalItem.eiItem, bd, add, sfl,
+							&(eo.eoChangedRect) ) )
 	{ LDEB(1); return;	}
 
     /*  4  */
@@ -1017,7 +1059,6 @@ static void tedDocInsertNote(	APP_WIDGET	option,
     return;
     }
 
-
 void tedDocInsertFootnote(	APP_WIDGET	option,
 				void *		voided,
 				void *		voidpbcs )
@@ -1030,5 +1071,403 @@ void tedDocInsertEndnote(	APP_WIDGET	option,
 				void *		voidpbcs )
     {
     tedDocInsertNote( option, voided, DOCinENDNOTE, DOCinAFTNSEP );
+    }
+
+
+/************************************************************************/
+/*									*/
+/*  Change the kind of note for the current selection.			*/
+/*									*/
+/************************************************************************/
+
+static int tedEditSetNoteItemAuto(	EditOperation *		eo,
+					AppDrawingData *	add,
+					int *			pChanged,
+					DocumentNote *		dn,
+					BufferDocument *	bd )
+    {
+    DocumentPosition	dpHead;
+
+    int			fieldNr= -1;
+    int			partBegin= -1;
+    int			partEnd= -1;
+    int			stroffBegin= -1;
+    int			stroffEnd= -1;
+
+    int			changed= 0;
+
+    int			txtAttrNr;
+
+    if  ( docFirstPosition( &dpHead, dn->dnExternalItem.eiItem ) )
+	{ LDEB(1); return -1;	}
+
+    txtAttrNr= dpHead.dpBi->biParaParticules->tpTextAttributeNumber;
+
+    if  ( ! docDelimitParaHeadField( &fieldNr, &partBegin, &partEnd,
+						&stroffBegin, &stroffEnd,
+						dpHead.dpBi, bd ) )
+	{ return 0;	}
+    else{
+	unsigned char	fixedText[30+1];
+	int		fixedLen;
+
+	int		partShift= 0;
+	int		stroffShift= 0;
+
+	const int	stroffHead= 0;
+
+	docNoteGetTextAtHead( fixedText, &fixedLen,
+					sizeof(fixedText)- 1, dpHead.dpBi );
+
+	if  ( docParaReplaceText( eo, dpHead.dpBi, stroffHead,
+					&partShift, &stroffShift, fixedLen,
+					(const unsigned char *)0, 0, -1 ) )
+	    { LDEB(1); return -1;	}
+
+	if  ( docInsertParaHeadField( dpHead.dpBi, bd, DOCfkCHFTN, txtAttrNr ) )
+	    { LDEB(1);	}
+
+	eo->eoNotesAdded++;
+	eo->eoNotesDeleted++;
+	eo->eoFieldUpdate |= FIELDdoCHFTN;
+	changed= 1;
+	}
+
+    if  ( changed )
+	{ *pChanged= 1;	}
+
+    return 0;
+    }
+
+static int tedEditSetNoteReferenceAuto(	EditOperation *		eo,
+					AppDrawingData *	add,
+					int *			pChanged,
+					DocumentNote *		dn,
+					BufferDocument *	bd )
+    {
+    /*
+    AppDrawingData *	add= &(ed->edDrawingData);
+    */
+
+    DocumentPosition	dpNoteref;
+
+    int			fieldNr= -1;
+    int			partBegin= -1;
+    int			partEnd= -1;
+    int			stroffBegin= -1;
+    int			stroffEnd= -1;
+
+    int			changed= 0;
+
+    if  ( docGetNotePosition( &dpNoteref, bd, dn ) )
+	{ LDEB(1); return -1;	}
+
+    if  ( ! docDelimitNoteReference( &fieldNr, &partBegin, &partEnd,
+				    &stroffBegin, &stroffEnd,
+				    dpNoteref.dpBi, dpNoteref.dpStroff, bd ) )
+	{ return 0;	}
+    else{
+	unsigned char		fixedText[30+1];
+	int			fixedLen;
+
+	TextAttribute		taSet;
+	PropertyMask		taSetMask;
+	int			textAttributeNumber;
+
+	DocumentField *		df;
+	DocumentSelection	dsField;
+
+	docNoteGetTextBefore( fixedText, &fixedLen, &textAttributeNumber,
+		    sizeof(fixedText)- 1, dpNoteref.dpBi, dpNoteref.dpStroff );
+
+	docSetParaSelection( &dsField, dpNoteref.dpBi, 1,
+				    dpNoteref.dpStroff- fixedLen, fixedLen );
+
+	utilInitTextAttribute( &taSet );
+	PROPmaskCLEAR( &taSetMask );
+
+	utilGetTextAttributeByNumber( &taSet, &(bd->bdTextAttributeList),
+							textAttributeNumber );
+
+	PROPmaskADD( &taSetMask, TApropSUPERSUB );
+	taSet.taSuperSub= DOCfontSUPERSCRIPT;
+
+	if  ( docSurroundTextSelectionByField( &df, bd,
+					    &partBegin, &partEnd,
+					    &dsField, &taSetMask, &taSet ) )
+	    { LDEB(1); return -1;	}
+
+	df->dfKind= DOCfkCHFTN;
+
+	eo->eoNotesAdded++;
+	eo->eoNotesDeleted++;
+	eo->eoFieldUpdate |= FIELDdoCHFTN;
+	changed= 1;
+	}
+
+    if  ( changed )
+	{ *pChanged= 1;	}
+
+    return 0;
+    }
+
+static int tedEditSetNoteItemFixed(	EditOperation *		eo,
+					AppDrawingData *	add,
+					int *			pChanged,
+					DocumentNote *		dn,
+					BufferDocument *	bd,
+					const unsigned char *	fixedTextSet )
+    {
+    DocumentPosition	dpHead;
+
+    int			fieldNr= -1;
+    int			partBegin= -1;
+    int			partEnd= -1;
+    int			stroffBegin= -1;
+    int			stroffEnd= -1;
+
+    int			changed= 0;
+
+    int			txtAttrNr;
+
+    int			partShift= 0;
+    int			stroffShift= 0;
+
+    int			fixedLenSet= strlen( (const char *)fixedTextSet );
+
+    if  ( docFirstPosition( &dpHead, dn->dnExternalItem.eiItem ) )
+	{ LDEB(1); return -1;	}
+
+    txtAttrNr= dpHead.dpBi->biParaParticules->tpTextAttributeNumber;
+
+    if  ( docDelimitParaHeadField( &fieldNr, &partBegin, &partEnd,
+						&stroffBegin, &stroffEnd,
+						dpHead.dpBi, bd ) )
+	{
+	const int	stroffHead= 0;
+
+	unsigned char	fixedText[30+1];
+	int		fixedLen;
+
+	docNoteGetTextAtHead( fixedText, &fixedLen,
+					sizeof(fixedText)- 1, dpHead.dpBi );
+
+	if  ( fixedLen == fixedLenSet					&&
+	      ! strncmp( (char *)fixedText, (char *)fixedTextSet,
+							fixedLen )	)
+	    { return 0;	}
+
+	if  ( docParaReplaceText( eo, dpHead.dpBi, stroffHead,
+				    &partShift, &stroffShift, fixedLen,
+				    fixedTextSet, fixedLenSet, txtAttrNr ) )
+	    { LDEB(1); return -1;	}
+
+
+	changed= 1;
+	}
+    else{
+	BufferDocument *	bd= eo->eoBd;
+	DocumentField *		df;
+
+	df= bd->bdFieldList.dflFields+ fieldNr;
+	docCleanField( df ); docInitField( df );
+
+	tedIncludeFieldInRedraw( eo, add, dpHead.dpBi, partBegin, partEnd );
+
+	docDeleteParticules( dpHead.dpBi, partEnd, 1 );
+	docDeleteParticules( dpHead.dpBi, partBegin, 1 );
+
+	if  ( docParaReplaceText( eo, dpHead.dpBi, stroffBegin,
+				    &partShift, &stroffShift, 
+				    stroffEnd- stroffBegin,
+				    fixedTextSet, fixedLenSet, txtAttrNr ) )
+	    { LDEB(1); return -1;	}
+
+	changed= 1;
+	}
+
+    if  ( changed )
+	{ *pChanged= 1;	}
+
+    return 0;
+    }
+
+static int tedEditSetNoteReferenceFixed( EditOperation *	eo,
+					AppDrawingData *	add,
+					int *			pChanged,
+					DocumentNote *		dn,
+					BufferDocument *	bd,
+					const unsigned char *	fixedTextSet )
+    {
+    DocumentPosition	dpNoteref;
+
+    int			fieldNr= -1;
+    int			partBegin= -1;
+    int			partEnd= -1;
+    int			stroffBegin= -1;
+    int			stroffEnd= -1;
+
+    int			changed= 0;
+
+    int			partShift= 0;
+    int			stroffShift= 0;
+
+    int			fixedLenSet= strlen( (const char *)fixedTextSet );
+
+    int			txtAttrNr;
+
+    if  ( docGetNotePosition( &dpNoteref, bd, dn ) )
+	{ LDEB(1); return -1;	}
+
+    if  ( docDelimitNoteReference( &fieldNr, &partBegin, &partEnd,
+				    &stroffBegin, &stroffEnd,
+				    dpNoteref.dpBi, dpNoteref.dpStroff, bd ) )
+	{
+	unsigned char	fixedText[30+1];
+	int		fixedLen;
+
+	docNoteGetTextBefore( fixedText, &fixedLen, &txtAttrNr,
+		    sizeof(fixedText)- 1, dpNoteref.dpBi, dpNoteref.dpStroff );
+
+	if  ( fixedLen == fixedLenSet					&&
+	      ! strncmp( (char *)fixedText, (char *)fixedTextSet,
+							fixedLen )	)
+	    { return 0;	}
+
+	if  ( docParaReplaceText( eo, dpNoteref.dpBi,
+				dpNoteref.dpStroff- fixedLen,
+				&partShift, &stroffShift, dpNoteref.dpStroff,
+				fixedTextSet, fixedLenSet, txtAttrNr ) )
+	    { LDEB(1); return -1;	}
+
+	changed= 1;
+	}
+    else{
+	BufferDocument *	bd= eo->eoBd;
+	DocumentField *		df;
+
+	df= bd->bdFieldList.dflFields+ fieldNr;
+	docCleanField( df ); docInitField( df );
+
+	txtAttrNr= dpNoteref.dpBi->biParaParticules[partBegin+1].
+						    tpTextAttributeNumber;
+
+	tedIncludeFieldInRedraw( eo, add, dpNoteref.dpBi, partBegin, partEnd );
+
+	docDeleteParticules( dpNoteref.dpBi, partEnd, 1 );
+	docDeleteParticules( dpNoteref.dpBi, partBegin, 1 );
+
+	if  ( docParaReplaceText( eo, dpNoteref.dpBi, stroffBegin,
+				    &partShift, &stroffShift, stroffEnd,
+				    fixedTextSet, fixedLenSet, txtAttrNr ) )
+	    { LDEB(1); return -1;	}
+
+	changed= 1;
+	}
+
+    if  ( changed )
+	{ *pChanged= 1;	}
+
+    return 0;
+    }
+
+int tedChangeCurrentNote(	EditApplication *	ea,
+				int			autoNumber,
+				const unsigned char *	fixedTextSet,
+				int			extItKind )
+    {
+    EditDocument *		ed= ea->eaCurrentDocument;
+    AppDrawingData *		add= &(ed->edDrawingData);
+    TedDocument *		td= (TedDocument *)ed->edPrivateData;
+    BufferDocument *		bd= td->tdDocument;
+
+    int				noteIndex;
+    DocumentNote *		dn= (DocumentNote *)0;
+    ExternalItem *		eiNote= (ExternalItem *)0;
+
+    EditOperation		eo;
+    DocumentSelection		ds;
+    SelectionGeometry		sg;
+    SelectionDescription	sd;
+
+    int				noteFieldNr= -1;
+    unsigned char		fixedText[30+1];
+
+    int				changed= 0;
+
+    tedStartEditOperation( &eo, &ds, &sg, &sd, ed, 1 );
+
+    noteIndex= docGetSelectedNote( &dn, &noteFieldNr,
+				fixedText, sizeof(fixedText)- 1, bd, &ds );
+    if  ( noteIndex < 0 )
+	{ LDEB(noteIndex); return -1;	}
+
+    if  ( autoNumber )
+	{
+	if  ( tedEditSetNoteItemAuto( &eo, add, &changed, dn, bd ) )
+	    { LDEB(1); return -1;	}
+
+	if  ( tedEditSetNoteReferenceAuto( &eo, add, &changed, dn, bd ) )
+	    { LDEB(1); return -1;	}
+	}
+    else{
+	if  ( tedEditSetNoteItemFixed( &eo, add,
+					    &changed, dn, bd, fixedTextSet ) )
+	    { LDEB(1); return -1;	}
+
+	if  ( tedEditSetNoteReferenceFixed( &eo, add,
+					    &changed, dn, bd, fixedTextSet ) )
+	    { LDEB(1); return -1;	}
+	}
+
+    if  ( dn->dnAutoNumber != autoNumber )
+	{ dn->dnAutoNumber= autoNumber; changed= 1;	}
+
+    if  ( dn->dnExternalItemKind != extItKind )
+	{
+	switch( extItKind )
+	    {
+	    case DOCinFOOTNOTE:
+		if  ( docCheckNoteSeparatorItem( bd, DOCinFTNSEP ) )
+		    { LLDEB(extItKind,DOCinFTNSEP); return -1;	}
+		break;
+
+	    case DOCinENDNOTE:
+		if  ( docCheckNoteSeparatorItem( bd, DOCinAFTNSEP ) )
+		    { LLDEB(extItKind,DOCinAFTNSEP); return -1;	}
+		break;
+
+	    default:
+		LDEB(extItKind); return -1;
+	    }
+
+	eiNote= &(dn->dnExternalItem);
+
+	if  ( ds.dsSelectionScope.ssInExternalItem == dn->dnExternalItemKind )
+	    { ds.dsSelectionScope.ssInExternalItem= extItKind;	}
+
+	dn->dnExternalItemKind= extItKind;
+	dn->dnNoteNumber= 0;
+	eiNote->eiPageFormattedFor= -1;
+
+	if  ( ! eiNote->eiItem )
+	    { XDEB(eiNote->eiItem); return -1;	}
+
+	docSetExternalItemKind( eiNote->eiItem, dn->dnExternalItemKind );
+	changed= 1;
+	}
+
+    if  ( changed )
+	{
+	eo.eoNotesDeleted++;
+	eo.eoNotesAdded++;
+
+	if  ( tedEditFinishOldSelection( ed, &eo ) )
+	    { LDEB(1);	}
+
+	appDocumentChanged( ed, 1 );
+	}
+
+    return 0;
     }
 

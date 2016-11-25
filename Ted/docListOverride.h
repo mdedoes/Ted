@@ -13,6 +13,7 @@ typedef struct ListOverride
     {
     long			loListID;
     short int			loIndex;
+    short int			loListIndex;
     unsigned char		loOverrideCount;
 
     ListOverrideLevel		loLevels[DLmaxLEVELS];
@@ -40,9 +41,14 @@ extern void docInitListOverride(	ListOverride *		lo );
 extern void docCleanListOverride(	ListOverride *		lo );
 
 extern int docCopyListOverride(	ListOverride *		to,
-				const ListOverride *	from );
+				const ListOverride *	from,
+				const int *		fontMap,
+				const int *		colorMap );
 
-extern int docListOverrideAddLevel(	ListOverride *			lo,
-					const ListOverrideLevel *	lol );
+extern int docListOverrideAddLevel(
+				ListOverride *			lo,
+				const ListOverrideLevel *	lol,
+				const int *			fontMap,
+				const int *			colorMap );
 
 #   endif

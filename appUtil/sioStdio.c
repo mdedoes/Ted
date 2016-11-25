@@ -34,8 +34,7 @@ SimpleInputStream * sioInStdioOpen(	const char *	filename )
     if  ( ! f )
 	{ SXDEB(filename,f); return (SimpleInputStream *)0;	}
 
-    sis= sioInOpen( (void *)f,
-		    sioInStdioReadBytes, sioStdioSeek, sioStdioClose );
+    sis= sioInOpen( (void *)f, sioInStdioReadBytes, sioStdioClose );
 
     if  ( ! sis )
 	{ SXDEB(filename,sis); fclose( f ); return (SimpleInputStream *)0; }

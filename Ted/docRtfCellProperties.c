@@ -269,6 +269,10 @@ int docRtfRememberCellProperty(		SimpleInputStream *	sis,
 	    cp->cpNoWrap= ( arg != 0 );
 	    break;
 
+	case CLpropNO_SHADING:
+	    cp->cpNoShading= ( arg != 0 );
+	    break;
+
 	case CLpropTEXT_VERT_ALIGN:
 	    cp->cpTextVerticalAlignment= rcw->rcwEnumValue;
 	    break;

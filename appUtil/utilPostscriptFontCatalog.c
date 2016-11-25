@@ -15,13 +15,110 @@
 
 #   include	"docFont.h"
 #   include	"psFont.h"
+#   include	"utilMatchFont.h"
 #   include	"appSystem.h"
+#   include	"utilT1Entries.h"
 
 #   include	<appDebugon.h>
 
 #   ifndef	M_PI
 #	define	M_PI	3.14159265358979323846
 #   endif
+
+/************************************************************************/
+/*									*/
+/*  HACK: map some (URW) names to standard font names (ADOBE base 35).	*/
+/*									*/
+/************************************************************************/
+
+typedef struct NameMap
+    {
+    const char *	nmFrom;
+    const char *	nmTo;
+    } NameMap;
+
+static const NameMap PS_FamilyMap[]=
+    {
+	{ "Century Schoolbook L",	"New Century Schoolbook"	},
+	{ "Nimbus Mono L",		"Courier"			},
+	{ "Nimbus Roman No9 L",		"Times"				},
+	{ "Nimbus Sans L",		"Helvetica"			},
+	{ "Standard Symbols L",		"Symbol"			},
+	{ "URW Antiqua T",		"New Century Schoolbook"	},
+	{ "URW Bookman L",		"ITC Bookman"			},
+	{ "URW Chancery L",		"ITC Zapf Chancery"		},
+	{ "URW Gothic L",		"ITC Avant Garde Gothic"	},
+	{ "URW Palladio L",		"Palatino"			},
+	{ "Dingbats",			"ITC Zapf Dingbats"		},
+    };
+
+static const NameMap PS_FullMap[]=
+    {
+    { "URW Gothic L Book",  "ITC Avant Garde Gothic Book"	},
+    { "URW Gothic L Book Oblique",
+			    "ITC Avant Garde Gothic Book Oblique"	},
+    { "URW Gothic L Demi",  "ITC Avant Garde Gothic Demi"	},
+    { "URW Gothic L Demi Oblique",
+			    "ITC Avant Garde Gothic Demi Oblique"	},
+    { "URW Bookman L Light",
+			    "ITC Bookman Light"	},
+    { "URW Bookman L Light Italic",
+			    "ITC Bookman Light Italic"	},
+    { "URW Bookman L Demi Bold",
+			    "ITC Bookman Demi"	},
+    { "URW Bookman L Demi Bold Italic",
+			    "ITC Bookman Demi Italic"	},
+    { "Nimbus Mono L Regular",
+			    "Courier"	},
+    { "Nimbus Mono L Regular Oblique",
+			    "Courier Oblique"	},
+    { "Nimbus Mono L Bold", "Courier Bold"	},
+    { "Nimbus Mono L Bold Oblique",
+			    "Courier Bold Oblique"	},
+    { "Nimbus Sans L Regular",
+			    "Helvetica"	},
+    { "Nimbus Sans L Regular Italic",
+			    "Helvetica Oblique"	},
+    { "Nimbus Sans L Bold", "Helvetica Bold"	},
+    { "Nimbus Sans L Bold Italic",
+			    "Helvetica Bold Oblique"	},
+    { "Nimbus Sans L Regular Condensed",
+			    "Helvetica Narrow"	},
+    { "Nimbus Sans L Regular Condensed Italic" ,
+			    "Helvetica Narrow Oblique"	},
+    { "Nimbus Sans L Bold Condensed",
+			    "Helvetica Narrow Bold"	},
+    { "Nimbus Sans L Bold Condensed Italic",
+			    "Helvetica Narrow Bold Oblique"	},
+    { "Century Schoolbook L Roman",
+			    "New Century Schoolbook Roman"	},
+    { "Century Schoolbook L Italic",
+			    "New Century Schoolbook Italic"	},
+    { "Century Schoolbook L Bold",
+			    "New Century Schoolbook Bold"	},
+    { "Century Schoolbook L Bold Italic",
+			    "New Century Schoolbook Bold Italic"	},
+    { "URW Palladio L Roman",
+			    "Palatino Roman"	},
+    { "URW Palladio L Italic",
+			    "Palatino Italic"	},
+    { "URW Palladio L Bold",
+			    "Palatino Bold"	},
+    { "URW Palladio L Bold Italic",
+			    "Palatino Bold Italic"	},
+    { "Standard Symbols L", "Symbol"	},
+    { "Nimbus Roman No9 L Regular",
+			    "Times Roman"	},
+    { "Nimbus Roman No9 L Regular Italic",
+			    "Times Italic"	},
+    { "Nimbus Roman No9 L Medium",
+			    "Times Bold"	},
+    { "Nimbus Roman No9 L Medium Italic",
+			    "Times Bold Italic"	},
+    { "URW Chancery L Medium Italic",
+			    "ITC Zapf Chancery Medium Italic"	},
+    { "Dingbats",	    "ITC Zapf Dingbats"	},
+    };
 
 /************************************************************************/
 /*									*/
@@ -50,6 +147,8 @@ static int psAfmIgnore(			FILE *, int, char *,AfmFontInfo *);
 static int psAfmFontMetrics(		FILE *,	int, char *,AfmFontInfo *);
 static int psAfmFontName(		FILE *,	int, char *,AfmFontInfo *);
 static int psAfmFullName(		FILE *,	int, char *,AfmFontInfo *);
+static int psAfmNotice(			FILE *,	int, char *,AfmFontInfo *);
+static int psAfmVersion(		FILE *,	int, char *,AfmFontInfo *);
 static int psAfmFamilyName(		FILE *,	int, char *,AfmFontInfo *);
 static int psAfmWeight(			FILE *,	int, char *,AfmFontInfo *);
 static int psAfmFontBBox(		FILE *,	int, char *,AfmFontInfo *);
@@ -91,8 +190,8 @@ static AfmKeyword	psAfmMetricsKeywords[]=
 	{ "FamilyName",		psAfmFamilyName,	},
 	{ "Weight",		psAfmWeight,		},
 	{ "FontBBox",		psAfmFontBBox,		},
-	{ "Version",		psAfmIgnore,		},
-	{ "Notice",		psAfmIgnore,		},
+	{ "Version",		psAfmVersion,		},
+	{ "Notice",		psAfmNotice,		},
 	{ "EncodingScheme",	psAfmEncodingScheme,	},
 	{ "MappingScheme",	psAfmMappingScheme,	},
 	{ "EscChar",		psAfmIgnore,		},
@@ -131,150 +230,23 @@ static AfmKeyword	psAfmMetricsKeywords[]=
 	{ "EndFontMetrics",	0,			},
     };
 
-/************************************************************************/
-/*									*/
-/*  Initialise an AfmFontInfo						*/
-/*									*/
-/************************************************************************/
-
-static void psInitAfmFontInfo(	AfmFontInfo *	afi )
-    {
-    afi->afiFontName= (char *)0;
-    afi->afiFullName= (char *)0;
-    afi->afiFamilyName= (char *)0;
-    afi->afiWeight= (char *)0;
-
-    afi->afiItalicAngle= 0.0;
-    afi->afiTanItalicAngle= 0.0;
-
-    afi->afiIsFixedPitch= 0;
-    afi->afiFontBBox.abbLeft= 0;
-    afi->afiFontBBox.abbBottom= 0;
-    afi->afiFontBBox.abbRight= 0;
-    afi->afiFontBBox.abbTop= 0;
-    afi->afiUnderlinePosition= 0;
-    afi->afiUnderlineThickness= 0;
-    afi->afiEncodingScheme= (char *)0;
-    afi->afiCapHeight= 0;
-    afi->afiXHeight= 0;
-    afi->afiAscender= 0;
-    afi->afiDescender= 0;
-    afi->afiCharacterSet= (char *)0;
-
-    afi->afiMetricCount= 0;
-    afi->afiMetrics= (AfmCharMetric *)0;
-
-    return;
-    }
-
-static void psCleanAfmFontInfo(	AfmFontInfo *	afi )
-    {
-    if  ( afi->afiFontName )
-	{ free( afi->afiFontName );	}
-    if  ( afi->afiFullName )
-	{ free( afi->afiFullName );	}
-    if  ( afi->afiFamilyName )
-	{ free( afi->afiFamilyName );	}
-    if  ( afi->afiWeight )
-	{ free( afi->afiWeight );	}
-    if  ( afi->afiEncodingScheme )
-	{ free( afi->afiEncodingScheme );}
-    if  ( afi->afiCharacterSet )
-	{ free( afi->afiCharacterSet );}
-
-    if  ( afi->afiMetrics )
-	{ free( afi->afiMetrics );}
-
-    return;
-    }
-
-static int psGetWeight(		int *			pWeight,
-				const char *		weight )
-    {
-    if  ( ! strcmp( weight, "Extra Light" ) )
-	{ *pWeight= FONTweightEXTRA_LIGHT; return 0;	}
-
-    if  ( ! strcmp( weight, "Light" ) )
-	{ *pWeight= FONTweightLIGHT; return 0;	}
-
-    if  ( ! strcmp( weight, "Book" ) )
-	{ *pWeight= FONTweightSEMI_LIGHT; return 0;	}
-
-    if  ( ! strcmp( weight, "Regular" ) )
-	{ *pWeight= FONTweightMEDIUM; return 0;	}
-    if  ( ! strcmp( weight, "Normal" ) )
-	{ *pWeight= FONTweightMEDIUM; return 0;	}
-    if  ( ! strcmp( weight, "Medium" ) )
-	{ *pWeight= FONTweightMEDIUM; return 0;	}
-    if  ( ! strcmp( weight, "Roman" ) )
-	{ *pWeight= FONTweightMEDIUM; return 0;	}
-
-    if  ( ! strcmp( weight, "Semibold" ) )
-	{ *pWeight= FONTweightSEMI_BOLD; return 0;	}
-    if  ( ! strcmp( weight, "Demibold" ) )
-	{ *pWeight= FONTweightSEMI_BOLD; return 0;	}
-    if  ( ! strcmp( weight, "Demi" ) )
-	{ *pWeight= FONTweightSEMI_BOLD; return 0;	}
-
-    if  ( ! strcmp( weight, "Bold" ) )
-	{ *pWeight= FONTweightBOLD; return 0;	}
-
-    if  ( ! strcmp( weight, "Extrabold" ) )
-	{ *pWeight= FONTweightEXTRA_BOLD; return 0;	}
-
-    if  ( ! strcmp( weight, "Black" ) )
-	{ *pWeight= FONTweightULTRA_BOLD; return 0;	}
-
-    SDEB(weight); return -1;
-    }
-
-static void psFontWidthFromName(	int *		pWidth,
-					const char *	name )
-    {
-    const char *	s= name;
-
-    while( s[0] == ' ' )
-	{ s++;	}
-
-    while( *s )
-	{
-	if  ( ! strncmp( s, "Narrow", 6 )		&&
-	      ( s[6] == '\0' || s[6] == ' ' )	)
-	    { *pWidth= FONTwidthCONDENSED; return;	}
-
-	if  ( ! strncmp( s, "Extra Condensed", 15 )	&&
-	      ( s[6] == '\0' || s[6] == ' ' )	)
-	    { *pWidth= FONTwidthEXTRA_CONDENSED; return;	}
-	
-	if  ( ! strncmp( s, "Condensed", 9 )	&&
-	      ( s[9] == '\0' || s[9] == ' ' )	)
-	    { *pWidth= FONTwidthCONDENSED; return;	}
-	if  ( ! strncmp( s, "Compressed", 9 )	&&
-	      ( s[9] == '\0' || s[9] == ' ' )	)
-	    { *pWidth= FONTwidthCONDENSED; return;	}
-	if  ( ! strncmp( s, "Compact", 9 )	&&
-	      ( s[9] == '\0' || s[9] == ' ' )	)
-	    { *pWidth= FONTwidthCONDENSED; return;	}
-	
-	if  ( ! strncmp( s, "Extended", 8 )	&&
-	      ( s[8] == '\0' || s[8] == ' ' )	)
-	    { *pWidth= FONTwidthEXPANDED; return;	}
-
-	while( s[0] && s[0] != ' ' )
-	    { s++;	}
-	while( s[0] == ' ' )
-	    { s++;	}
-	}
-    }
-
 static void psFillFaceFromInfo(		AppFontTypeface *	aft,
 					const AfmFontInfo *	afi )
     {
     int		i;
 
-    if  ( afi->afiWeight					&&
-	  psGetWeight( &(aft->aftWeight), afi->afiWeight )	)
-	{ SDEB(afi->afiWeight);	}
+    int		widthStart;
+    int		widthLength;
+
+    int		weightStart;
+    int		weightLength;
+
+    if  ( afi->afiWeight )
+	{
+	if  ( ! utilFontWeightFromString( &(aft->aftWeight),
+			    &weightStart, &weightLength, afi->afiWeight ) )
+	    { SDEB(afi->afiWeight);	}
+	}
 
     if  ( aft->aftWeight > FONTweightMEDIUM )
 	{ aft->aftIsBold= 1;	}
@@ -284,7 +256,8 @@ static void psFillFaceFromInfo(		AppFontTypeface *	aft,
 	{ aft->aftIsSlanted= 1; }
     else{ aft->aftIsSlanted= 0;	}
 
-    psFontWidthFromName( &(aft->aftWidth), afi->afiFullName );
+    utilFontWidthFromString( &(aft->aftWidth),
+				&widthStart, &widthLength, afi->afiFullName );
 
     for ( i= 0; i < ENCODINGps_COUNT; i++ )
 	{
@@ -343,6 +316,8 @@ static int psFontCompareTypeInfos(	const void *	voidafi1,
 /*									*/
 /*  Get a line of input. (Essentially fgets())				*/
 /*									*/
+/*  3)  Remove a second carriage return. Some files really have this.	*/
+/*									*/
 /************************************************************************/
 
 static char *	psGetInputLine(	char *		s,
@@ -356,17 +331,18 @@ static char *	psGetInputLine(	char *		s,
 	{
 	int		lineLength= strlen( s );
 
-	if  ( lineLength > 0 )
-	    {
-	    if  ( s[lineLength-1] == '\n' )
-		{
-		s[--lineLength]= '\0';
+	if  ( lineLength > 0		&&
+	      s[lineLength-1] == '\n'	)
+	    { s[--lineLength]= '\0'; 	}
 
-		if  ( lineLength > 0		&&
-		      s[lineLength-1] == '\r'	)
-		    { s[--lineLength]= '\0'; }
-		}
-	    }
+	if  ( lineLength > 0		&&
+	      s[lineLength-1] == '\r'	)
+	    { s[--lineLength]= '\0';	}
+
+	/*  3  */
+	if  ( lineLength > 0		&&
+	      s[lineLength-1] == '\r'	)
+	    { s[--lineLength]= '\0';	}
 
 	*pLen= lineLength;
 	}
@@ -382,6 +358,7 @@ static char *	psGetInputLine(	char *		s,
 /*  does not vary over different calls to the routine.			*/
 /*									*/
 /*  A:  Consume one file.						*/
+/*  B:  Ignore errors in cerian hopeless files.				*/
 /*									*/
 /************************************************************************/
 
@@ -398,6 +375,10 @@ static int psGotAfmFile(	const char *	filename,
     char		input[AFMlenLINE+1];
     FILE *		afmFile;
     int			res;
+
+    int			i;
+    int			mappedFamily= -1;
+    int			mappedFull= -1;
 
     AfmFontInfo *	afi;
 
@@ -417,10 +398,13 @@ static int psGotAfmFile(	const char *	filename,
 
     afmFile= fopen( filename, "r" );
     if  ( ! afmFile )
-	{ SXDEB(filename,afmFile); psCleanAfmFontInfo( afi ); return 0; }
+	{
+	SXDEB(filename,afmFile);
+	psCleanAfmFontInfo( afi ); return 0;
+	}
 
     res= psAfmConsumeLines( afmFile, input, afi, psAfmFileKeywords,
-			sizeof(psAfmFileKeywords)/sizeof(AfmKeyword) );
+				sizeof(psAfmFileKeywords)/sizeof(AfmKeyword) );
 
     fclose( afmFile );
 
@@ -429,13 +413,56 @@ static int psGotAfmFile(	const char *	filename,
 
     if  ( psGetFontEncodings( afi ) )
 	{
-	SSDEB(filename,afi->afiFullName);
-	SDEB(afi->afiEncodingScheme);
+	int		l= strlen( filename );
+	int		h;
+	int		complain= 1;
+
+	const char * const	hopeless[]=
+	    {
+	    "/ghostscript/fonts/fcyr.afm",
+	    "/ghostscript/fonts/fcyri.afm",
+	    };
+
+	for ( h= 0; h < sizeof(hopeless)/sizeof(char *); h++ )
+	    {
+	    int		ll= strlen( hopeless[h] );
+
+	    if  ( ll < l && ! strcmp( filename+ l- ll,  hopeless[h] ) )
+		{ complain= 0; break;	}
+	    }
+
+	if  ( complain )
+	    { SSSDEB(filename,afi->afiFullName,"SUPPORTS NO KNOWN ENCODINGS"); }
+
 	psCleanAfmFontInfo( afi ); return 0;
 	}
 
     if  ( ! afi->afiFamilyName )
-	{ XDEB(afi->afiFamilyName); return -1;	}
+	{
+	SXDEB(filename,afi->afiFamilyName);
+	psCleanAfmFontInfo( afi ); return 0;
+	}
+
+    for ( i= 0; i < sizeof(PS_FamilyMap)/sizeof(NameMap); i++ )
+	{
+	if  ( ! strcmp( afi->afiFamilyName, PS_FamilyMap[i].nmFrom ) )
+	    { mappedFamily= i; break; }
+	}
+
+    for ( i= 0; i < sizeof(PS_FullMap)/sizeof(NameMap); i++ )
+	{
+	if  ( ! strcmp( afi->afiFullName, PS_FullMap[i].nmFrom ) )
+	    { mappedFull= i; break; }
+	}
+
+    if  ( mappedFamily >= 0 && mappedFull >= 0 )
+	{
+	free( afi->afiFamilyName );
+	afi->afiFamilyName= strdup( PS_FamilyMap[mappedFamily].nmTo );
+
+	free( afi->afiFullName );
+	afi->afiFullName= strdup( PS_FullMap[mappedFull].nmTo );
+	}
 
     UtilFontPsInfoCount++; return 0;
     }
@@ -451,15 +478,49 @@ static int psGotAfmFile(	const char *	filename,
 
 static int appPsSetFontFaces(	AppFontFamily *		aff,
 				int			count,
-				const AfmFontInfo *	afi )
+				AfmFontInfo *		afi )
     {
     AppFontTypeface *	aft;
     int			face;
+
+    int			width= -1;
+    int			widthStart= -1;
+    int			widthLength= 0;
+    const char *	widthStartString= (const char *)0;
+
+    if  ( count == 0 )
+	{ LDEB(count); return 0;	}
 
     aft= realloc( aff->affFaces, count* sizeof( AppFontTypeface ) );
     if  ( ! aft )
 	{ LXDEB(count,aft); return -1;	}
     aff->affFaces= aft;
+
+    aff->affFontFamilyName_Orig= afi->afiFamilyName;
+    aff->affFontFamilyName= afi->afiFamilyName;
+
+    docInitFontTypeface( aft );
+    psFillFaceFromInfo( aft, afi );
+
+    aff->affWidth= aft->aftWidth;
+
+    utilFontWidthFromString( &width, &widthStart, &widthLength,
+							afi->afiFullName );
+    if  ( widthStart >= 0 )
+	{
+	if  ( ! afi->afiWidth )
+	    {
+	    afi->afiWidth= malloc( widthLength+ 1 );
+	    if  ( afi->afiWidth )
+		{
+		strncpy( afi->afiWidth,
+			afi->afiFullName+ widthStart,
+			widthLength )[widthLength]= '\0';
+		}
+	    }
+
+	widthStartString= afi->afiFullName+ widthStart;
+	}
 
     for ( face= 0; face < count; aft++, afi++, face++ )
 	{
@@ -470,9 +531,6 @@ static int appPsSetFontFaces(	AppFontFamily *		aff,
 
 	aft->aftPrintingData= (void *)afi;
 	aft->aftFaceName= afi->afiFullName;
-
-	aff->affFontFamilyName= afi->afiFamilyName;
-	aff->affFontFamilyText= afi->afiFamilyName;
 
 	if  ( aft->aftIsFixedWidth )
 	    {
@@ -543,6 +601,22 @@ static int appPsSetFontFaces(	AppFontFamily *		aff,
 	aff->affDefaultEncoding= aff->affFaces[0].aftDefaultEncoding;
 	}
 
+    if  ( widthStart >= 0 )
+	{
+	int	len= strlen( aff->affFontFamilyName );
+	char *	text= malloc( len+ 1+ widthLength+ 1 );
+
+	if  ( text )
+	    {
+	    strcpy( text, aff->affFontFamilyName );
+	    text[len]= ' ';
+	    strncpy( text+ len+ 1, widthStartString, widthLength );
+	    text[len+ 1+ widthLength]= '\0';
+
+	    aff->affFontFamilyName= text;
+	    }
+	}
+
     return 0;
     }
 
@@ -563,22 +637,14 @@ static int appPsSetFontFaces(	AppFontFamily *		aff,
 static AppFontFamily *	EditFontPsFamilies= (AppFontFamily *)0;
 static int		EditFontPsFamilyCount= 0;
 
-int psFontCatalog(	const char *		afmDirectory,
-			AppFontFamily **	pFamilies,
-			int *			pCount		)
+int psFontCatalog(	PostScriptFontList *	psfl,
+			const char *		afmDirectory )
     {
-    FILE *			xfontDir;
-    int				lineLength;
-
     int				j;
     int				from;
 
     int				fam;
-    int				face;
-
     AppFontFamily *		aff;
-    AppFontTypeface *		aft;
-    AfmFontInfo *		afi;
 
     char			scratch[FILEL+ 1];
 
@@ -590,8 +656,8 @@ int psFontCatalog(	const char *		afmDirectory,
 
     if  ( EditFontPsFamilyCount > 0 )
 	{
-	*pFamilies= EditFontPsFamilies;
-	*pCount= EditFontPsFamilyCount;
+	psfl->psflFamilies= EditFontPsFamilies;
+	psfl->psflFamilyCount= EditFontPsFamilyCount;
 	return 0;
 	}
 
@@ -604,6 +670,16 @@ int psFontCatalog(	const char *		afmDirectory,
 
     if  ( j )
 	{ SDEB(afmDirectory); return -1;	}
+
+    if  ( UtilFontPsInfoCount < 1 )
+	{
+	LDEB(UtilFontPsInfoCount);
+
+	psfl->psflFamilies= EditFontPsFamilies;
+	psfl->psflFamilyCount= EditFontPsFamilyCount;
+
+	return 0;
+	}
 
     qsort( UtilFontPsInfos, UtilFontPsInfoCount,
 			    sizeof(AfmFontInfo), psFontCompareTypeInfos );
@@ -622,7 +698,8 @@ int psFontCatalog(	const char *		afmDirectory,
 	psFillFaceFromInfo( &aft2, &(UtilFontPsInfos[j- 1]) );
 
 	if  ( strcmp( UtilFontPsInfos[j].afiFamilyName,
-				UtilFontPsInfos[j- 1].afiFamilyName )	)
+				UtilFontPsInfos[j- 1].afiFamilyName )	||
+	      aft1.aftWidth != aft2.aftWidth				)
 	    { fam++;	}
 	}
 
@@ -650,7 +727,8 @@ int psFontCatalog(	const char *		afmDirectory,
 	psFillFaceFromInfo( &aft2, &(UtilFontPsInfos[j- 1]) );
 
 	if  ( ! strcmp( UtilFontPsInfos[j].afiFamilyName,
-				UtilFontPsInfos[j- 1].afiFamilyName )	)
+				UtilFontPsInfos[j- 1].afiFamilyName )	&&
+	      aft1.aftWidth == aft2.aftWidth				)
 	    { continue;	}
 
 	if  ( appPsSetFontFaces( EditFontPsFamilies+ fam,
@@ -666,60 +744,17 @@ int psFontCatalog(	const char *		afmDirectory,
 
     EditFontPsFamilyCount= fam+ 1;
 
+    psfl->psflFamilies= EditFontPsFamilies;
+    psfl->psflFamilyCount= EditFontPsFamilyCount;
+
     sprintf( scratch, "%s/xfonts.dir", afmDirectory );
-    xfontDir= fopen( scratch, "r" );
-    if  ( xfontDir )
+    if  ( ! appTestFileExists( scratch ) )
 	{
-	while( psGetInputLine( scratch, &lineLength, FILEL, xfontDir ) )
-	    {
-	    char *	s= scratch;
+	const int	mapNames= 0;
 
-	    while( *s && ! isspace( *s ) )
-		{ s++; }
-
-	    if  ( ! *s )
-		{ SDEB(scratch); continue;	}
-
-	    *(s++)= '\0';
-	    while( isspace( *s ) )
-		{ s++;	}
-	    if  ( ! *s )
-		{ SDEB(scratch); continue;	}
-
-	    aff= EditFontPsFamilies; aft= (AppFontTypeface *)0;
-	    for ( fam= 0; fam < EditFontPsFamilyCount; aff++, fam++ )
-		{
-		aft= aff->affFaces;
-		for ( face= 0; face < aff->affFaceCount; aft++, face++ )
-		    {
-		    afi= (AfmFontInfo *)aft->aftPrintingData;
-
-		    if  ( ! strcmp( afi->afiFontName, scratch )	)
-			{ break;	}
-		    }
-
-		if  ( face < aff->affFaceCount )
-		    { break;	}
-		}
-
-	    if  ( fam < EditFontPsFamilyCount )
-		{
-		j= strlen( s );
-		while( j > 1 && ( s[j-1] == '\n' || isspace( s[j-1] ) ) )
-		    { j--; s[j]= '\0';	}
-
-		aft->aftXQueryFormat= (char *)malloc( j+ 1 );
-		if  ( ! aft->aftXQueryFormat )
-		    { XDEB(aft->aftXQueryFormat); return -1;	}
-		strcpy( aft->aftXQueryFormat, s );
-		}
-	    }
-
-	fclose( xfontDir );
+	if  ( utilSetT1EntriesForFonts( scratch, mapNames, psfl ) )
+	    { SDEB(scratch); return -1;	}
 	}
-
-    *pFamilies= EditFontPsFamilies;
-    *pCount= EditFontPsFamilyCount;
 
     return 0;
     }
@@ -865,6 +900,18 @@ static int psAfmFullName(	FILE *		f,
 				char *		input,
 				AfmFontInfo *	afi )
     { return psAfmSaveString( &(afi->afiFullName), input+ valPos ); }
+
+static int psAfmNotice(		FILE *		f,
+				int		valPos,
+				char *		input,
+				AfmFontInfo *	afi )
+    { return psAfmSaveString( &(afi->afiNotice), input+ valPos ); }
+
+static int psAfmVersion(		FILE *		f,
+				int		valPos,
+				char *		input,
+				AfmFontInfo *	afi )
+    { return psAfmSaveString( &(afi->afiVersion), input+ valPos ); }
 
 static int psAfmFamilyName(	FILE *		f,
 				int		valPos,

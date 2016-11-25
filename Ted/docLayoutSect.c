@@ -127,7 +127,7 @@ int docLayoutSectItem(			BufferItem *		sectBi,
     /**/
 
     if  ( sectBi->biInExternalItem == DOCinBODY		&&
-	  npEndnotes->npPosition == DPftnPOS_SECT_END	)
+	  npEndnotes->npPosition == FTN_POS_SECT_END	)
 	{
 	if  ( docLayoutEndnotesForSection( sectBi->biNumberInParent, bf, lj ) )
 	    { LDEB(sectBi->biNumberInParent); return -1;	}

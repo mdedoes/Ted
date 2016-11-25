@@ -467,6 +467,9 @@ static AppConfigurableResource	APP_ApplicationResourceTable[]=
     APP_RESOURCE( "afmDirectory",
 		offsetof(EditApplication,eaAfmDirectory),
 		AFMDIR ),
+    APP_RESOURCE( "fontDirectory",
+		offsetof(EditApplication,eaFontDirectory),
+		(char *)0 ),
     APP_RESOURCE( "ghostscriptFontmap",
 		offsetof(EditApplication,eaGhostscriptFontmap),
 		(char *)0 ),
@@ -725,6 +728,29 @@ void appGetApplicationResourceValues(	EditApplication *	ea )
 
 /************************************************************************/
 /*									*/
+/*  Collect a list of printers.						*/
+/*									*/
+/************************************************************************/
+
+int appGetPrintDestinations(		EditApplication *	ea )
+    {
+    if  ( ea->eaPrintDestinationsCollected )
+	{ return 0;	}
+
+    ea->eaPrintDestinationsCollected= 1;
+
+    if  ( utilPrinterGetPrinters( &(ea->eaPrintDestinationCount),
+				    &(ea->eaDefaultPrintDestination),
+				    &(ea->eaPrintDestinations),
+				    ea->eaCustomPrintCommand,
+				    ea->eaCustomPrinterName ) )
+	{ LDEB(1); return -1; 	}
+
+    return 0;
+    }
+
+/************************************************************************/
+/*									*/
 /*  Handle Special Calls.						*/
 /*									*/
 /*  1)  It is not necessary to initialize TedApplication to convert	*/
@@ -883,14 +909,6 @@ int appMain(	EditApplication *	ea,
     /*  b  */
     appGetApplicationResourceValues( ea );
 
-    if  ( ea->eaPrintDestinationCount == 0				&&
-	  utilPrinterGetPrinters( &(ea->eaPrintDestinationCount),
-				    &(ea->eaDefaultPrintDestination),
-				    &(ea->eaPrintDestinations),
-				    ea->eaCustomPrintCommand,
-				    ea->eaCustomPrinterName )		)
-	{ LDEB(1); 	}
-
     if  ( appFinishApplicationWindow( ea ) )
 	{ LDEB(1); return -1;	}
 
@@ -1005,9 +1023,10 @@ int appMain(	EditApplication *	ea,
 	    }
 	else{
 	    const char * const	fileRelativeTo= (const char *)0;
+	    int			relativeIsFile= 1;
 
 	    if  ( appAbsoluteName( absolute, 1000,
-					argv[arg], fileRelativeTo ) < 0 )
+			    argv[arg], relativeIsFile, fileRelativeTo ) < 0 )
 		{
 		SDEB(argv[arg]);
 		ed= appOpenDocument( ea, ea->eaToplevel.atTopWidget,

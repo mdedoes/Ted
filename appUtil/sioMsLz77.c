@@ -33,16 +33,6 @@
 
 /************************************************************************/
 /*									*/
-/*  Refuse to seek in input and on output.				*/
-/*									*/
-/************************************************************************/
-
-static int sioMsLz77Seek(		void *			voidsos,
-					long			pos )
-    { LDEB(1); return -1; return 0; }
-
-/************************************************************************/
-/*									*/
 /*  Input steam for flate decompression using zlib.			*/
 /*									*/
 /************************************************************************/
@@ -315,8 +305,7 @@ SimpleInputStream * sioInMsLz77Open(	SimpleInputStream *	sisMsLz77 )
     mis->misBytesRead= 0;
     mis->misDecompressedSize= decompressedSize;
 
-    sis= sioInOpen( (void *)mis, sioInMsLz77ReadBytes,
-					sioMsLz77Seek, sioInMsLz77Close );
+    sis= sioInOpen( (void *)mis, sioInMsLz77ReadBytes, sioInMsLz77Close );
 
     if  ( ! sis )
 	{ XDEB(sis); return (SimpleInputStream *)0; }

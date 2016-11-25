@@ -12,6 +12,8 @@
 #   include	<string.h>
 
 #   include	<appSystem.h>
+#   include	<utilFontmap.h>
+#   include	<utilT1Entries.h>
 #   include	"appFrame.h"
 
 #   include	<appDebugon.h>
@@ -95,6 +97,8 @@ void appDocFileClose(	APP_WIDGET	option,
 	{ appRunReallyCloseDialog( option, ed ); return; }
 
     appCloseDocument( ea, ed );
+
+    return;
     }
 
 APP_CLOSE_CALLBACK_H( appDocFileCloseCallback, w, voided )
@@ -292,11 +296,24 @@ void appDocEditSelAll(	APP_WIDGET	option,
 /************************************************************************/
 
 void appCloseDocument(	EditApplication *	ea,
-			EditDocument *		ed	)
+			EditDocument *		ed )
     {
     appRemoveDocument( ea, ed );
 
+    /* No! is done by the widget destroy callback
+    if  ( ed->edPrivateData )
+	{
+	(*ea->eaFreeDocument)( ed->edPrivateData, ed->edFormat,
+						    &(ed->edDrawingData) );
+	ed->edPrivateData= (void *)0;
+	}
+    */
+
     appDestroyShellWidget( ed->edToplevel.atTopWidget );
+
+    /* No! is done by the widget destroy callback
+    appFreeDocument( ea, ed );
+    */
 
     return;
     }
@@ -484,6 +501,7 @@ void appInitEditDocument(	EditApplication *	ea,
     appInitDrawingData( &(ed->edDrawingData) );
 
     ed->edMapped= 0;
+    ed->edNotYetDrawn= 1;
 
     return;
     }
@@ -514,6 +532,9 @@ int appMakeDocumentWindow(	EditDocument **		pEd,
 	{ XDEB(ed); return -1;	}
 
     appInitEditDocument( ea, ed );
+
+    ea->eaNextDocumentId++; /* Never 0 */
+    ed->edDocumentId= ea->eaNextDocumentId;
 
     if  ( filename )
 	{ ed->edFilename= strdup( filename );	}
@@ -552,9 +573,7 @@ int appSetupDocument(	EditApplication *	ea,
 
     appSetDrawingEnvironment( add, ea->eaMagnification, xfac,
 			screenPixelsPerMM,
-			ea->eaAfmDirectory,
-			ea->eaGhostscriptFontmap,
-			ea->eaGhostscriptFontToXmapping,
+			&(ea->eaPostScriptFontList),
 			ea->eaToplevel.atTopWidget );
 
     add->addPageGapPixels= (int)( ea->eaPageGapMM* verPixPerMM );
@@ -630,7 +649,7 @@ int appSetupDocument(	EditApplication *	ea,
     gtk_widget_realize( ed->edToplevel.atTopWidget );
 #   endif
 
-    if  ( ea->eaFinishDocumentSetup && (*ea->eaFinishDocumentSetup)( ea, ed ) )
+    if  ( ea->eaFinishDocumentSetup && (*ea->eaFinishDocumentSetup)( ed ) )
 	{ SDEB(ed->edFilename); return -1; }
 
     appShowShellWidget( ed->edToplevel.atTopWidget );
@@ -897,9 +916,7 @@ int appFileConvert(	EditApplication *	ea,
 /*									*/
 /************************************************************************/
 
-void appDestroyEditDocument(	APP_WIDGET		w,
-				void *			voided,
-				void *			callData )
+APP_DESTROY_CALLBACK_H( appDestroyEditDocument, w, voided )
     {
     EditDocument *		ed= (EditDocument *)voided;
     EditApplication *		ea= ed->edApplication;
@@ -908,6 +925,7 @@ void appDestroyEditDocument(	APP_WIDGET		w,
 	{
 	(*ea->eaFreeDocument)( ed->edPrivateData, ed->edFormat,
 						    &(ed->edDrawingData) );
+	ed->edPrivateData= (void *)0;
 	}
 
     appFreeDocument( ea, ed );
@@ -931,6 +949,12 @@ APP_EVENT_HANDLER_H( appDocExposeHandler, w, voided, exposeEvent )
     int				oy= ed->edVisibleRect.drY0;
 
     DocumentRectangle		drClip;
+
+    if  ( ed->edNotYetDrawn				&&
+	  ea->eaDocumentFirstVisible			)
+	{ (*ea->eaDocumentFirstVisible)( ed );	}
+
+    ed->edNotYetDrawn= 0;
 
     /*  1  */
     appCollectExposures( &drClip, add, ox, oy, exposeEvent );
@@ -1008,3 +1032,28 @@ void appDocExposeRectangle(	const EditDocument *		ed,
 	}
     }
 
+int appPostScriptFontCatalog(		EditApplication *	ea )
+    {
+    const int		mapNames= 1;
+
+    if  ( ea->eaPostScriptFontList.psflFamilyCount > 0 )
+	{ return 0;	}
+
+    if  ( psFontCatalog( &(ea->eaPostScriptFontList), ea->eaAfmDirectory ) )
+	{ SDEB(ea->eaAfmDirectory); return -1;	}
+
+    if  ( ea->eaGhostscriptFontmap			&&
+	  ! ea->eaGhostscriptMappingsRead		)
+	{
+	if  ( utilFontmapReadMap( ea->eaGhostscriptFontmap ) )
+	    { SDEB(ea->eaGhostscriptFontmap); return -1;	}
+
+	if  ( utilSetT1EntriesForFonts( ea->eaGhostscriptFontToXmapping,
+				    mapNames, &(ea->eaPostScriptFontList) ) )
+	    { SDEB(ea->eaGhostscriptFontToXmapping); return -1; }
+
+	ea->eaGhostscriptMappingsRead= 1;
+	}
+
+    return 0;
+    }

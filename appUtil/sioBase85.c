@@ -17,16 +17,6 @@
 
 /************************************************************************/
 /*									*/
-/*  Exchange of Base 85 encoded data.					*/
-/*									*/
-/************************************************************************/
-
-static int sioBase85Seek(	void *			voidsos,
-				long			pos )
-    { LDEB(1); return -1; return 0; }
-
-/************************************************************************/
-/*									*/
 /*  Input.								*/
 /*									*/
 /************************************************************************/
@@ -185,8 +175,7 @@ SimpleInputStream * sioInBase85Open(	SimpleInputStream *	sisBase85 )
     bis->bisBase85Indices= utilBase85GetIndexArray();
 
 
-    sis= sioInOpen( (void *)bis, sioInBase85ReadBytes,
-					    sioBase85Seek, sioInBase85Close );
+    sis= sioInOpen( (void *)bis, sioInBase85ReadBytes, sioInBase85Close );
 
     if  ( ! sis )
 	{ XDEB(sis); free( bis ); return (SimpleInputStream *)0; }
@@ -351,7 +340,7 @@ SimpleOutputStream * sioOutBase85Open(	SimpleOutputStream *	sosBase85 )
     bos->bosColumn= 0;
 
     sos= sioOutOpen( (void *)bos, sioOutBase85WriteBytes,
-					    sioBase85Seek, sioOutBase85Close );
+					    (SIOoutSEEK)0, sioOutBase85Close );
 
     if  ( ! sos )
 	{ XDEB(sos); free( bos ); return (SimpleOutputStream *)0; }

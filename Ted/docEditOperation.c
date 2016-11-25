@@ -34,7 +34,8 @@ void docInitEditOperation(	EditOperation *	eo )
     {
     docInitSelectionScope( &(eo->eoSelectionScope) );
 
-    docInitRectangle( &(eo->eoChangedRectangle) );
+    docInitRectangle( &(eo->eoChangedRect) );
+    eo->eoChangedRectSet= 0;
     eo->eoOldBackY1= 0;
 
     eo->eoIBarSelectionOld= 0;
@@ -46,15 +47,22 @@ void docInitEditOperation(	EditOperation *	eo )
     eo->eoParaAdjustStroffUpto= 0;
 
     docInitEditRange( &(eo->eoReformatRange) );
+    docInitEditRange( &(eo->eoSelectedRange) );
 
     eo->eoNotesDeleted= 0;
     eo->eoNotesAdded= 0;
+    eo->eoBulletsChanged= 0;
     eo->eoParagraphsInserted= 0;
     eo->eoFieldUpdate= FIELDdoNOTHING;
 
     eo->eoBd= (BufferDocument *)0;
+    eo->eoScreenFontList= (ScreenFontList *)0;
     eo->eoVoidadd= (void *)0;
     eo->eoCloseObject= (DOC_CLOSE_OBJECT)0;
+
+    eo->eoParaBi= (BufferItem *)0;
+    eo->eoParticule= -1;
+    eo->eoStroff= -1;
 
     return;
     }
@@ -66,6 +74,7 @@ void docInitDocumentCopyJob(	DocumentCopyJob *	dcj )
     dcj->dcjFieldMap= (int *)0;
     dcj->dcjFontMap= (int *)0;
     dcj->dcjColorMap= (int *)0;
+    dcj->dcjListStyleMap= (int *)0;
     dcj->dcjRefFileName= (char *)0;
     dcj->dcjRefFileSize= 0;
 
@@ -73,6 +82,7 @@ void docInitDocumentCopyJob(	DocumentCopyJob *	dcj )
     dcj->dcjCurrentTextAttributeNumberTo= -1;
 
     dcj->dcjNotesCopied= 0;
+    dcj->dcjBulletsCopied= 0;
 
     return;
     }
@@ -87,6 +97,9 @@ void docCleanDocumentCopyJob(	DocumentCopyJob *	dcj )
 
     if  ( dcj->dcjColorMap )
 	{ free( dcj->dcjColorMap );	}
+
+    if  ( dcj->dcjListStyleMap )
+	{ free( dcj->dcjListStyleMap );	}
 
     return;
     }
@@ -114,31 +127,38 @@ int docSet1DocumentCopyJob(	DocumentCopyJob *		dcj,
 int docSet2DocumentCopyJob(	DocumentCopyJob *		dcj,
 				BufferDocument *		bdTo,
 				BufferDocument *		bdFrom,
+				const PostScriptFontList *	psfl,
 				const char *			refFileName )
     {
-    int *	fmap;
+    int *	fldmap;
+    int *	fontmap;
     int *	cmap;
+    int *	lsmap;
 
     dcj->dcjBdTo= bdTo;
     dcj->dcjBdFrom= bdFrom;
 
-    fmap= docAllocateFieldMap( bdFrom );
-    if  ( ! fmap )
-	{ XDEB(fmap); return -1;	}
+    fldmap= docAllocateFieldMap( bdFrom );
+    if  ( ! fldmap )
+	{ XDEB(fldmap); return -1;	}
     if  ( dcj->dcjFieldMap )
 	{ free( dcj->dcjFieldMap );	}
-    dcj->dcjFieldMap= fmap;
+    dcj->dcjFieldMap= fldmap;
 
-    if  ( docMergeFontAndColorLists( &fmap, &cmap, bdTo, bdFrom ) )
+    if  ( docMergeDocumentLists( &fontmap, &cmap, &lsmap, bdTo, bdFrom, psfl ) )
 	{ LDEB(1); return -1;	}
 
     if  ( dcj->dcjFontMap )
 	{ free( dcj->dcjFontMap );	}
-    dcj->dcjFontMap= fmap;
+    dcj->dcjFontMap= fontmap;
 
     if  ( dcj->dcjColorMap )
 	{ free( dcj->dcjColorMap );	}
     dcj->dcjColorMap= cmap;
+
+    if  ( dcj->dcjListStyleMap )
+	{ free( dcj->dcjListStyleMap );	}
+    dcj->dcjListStyleMap= lsmap;
 
     if  ( refFileName )
 	{
@@ -329,19 +349,10 @@ void docExtendParagraphAdjust(	EditOperation *		eo,
     return;
     }
 
-void docEditShiftReformatRangeParaNr(	EditOperation *		eo,
-					int			from,
-					int			by )
+static void docEditShiftEditRangeParaNr(	EditRange *	er,
+						int		from,
+						int		by )
     {
-    EditRange *		er= &(eo->eoReformatRange);
-
-    if  ( from < by )
-	{ LLDEB(from,by);	}
-
-    if  ( eo->eoParaAdjustParagraphNumber >= 0	&&
-	  eo->eoParaAdjustParagraphNumber >= from	)
-	{ eo->eoParaAdjustParagraphNumber += by;	}
-
     if  ( er->erStartPosition.epParagraphNumber >= 0	&&
 	  er->erStartPosition.epParagraphNumber >= from	)
 	{ er->erStartPosition.epParagraphNumber += by;	}
@@ -369,4 +380,35 @@ void docEditShiftReformatRangeParaNr(	EditOperation *		eo,
 	{ er->erEndPosition.epParagraphNumber= 1;	}
 
     return;
+    }
+
+void docEditShiftReformatRangeParaNr(	EditOperation *		eo,
+					int			from,
+					int			by )
+    {
+    if  ( from < by )
+	{ LLDEB(from,by);	}
+
+    if  ( eo->eoParaAdjustParagraphNumber >= 0	&&
+	  eo->eoParaAdjustParagraphNumber >= from	)
+	{ eo->eoParaAdjustParagraphNumber += by;	}
+
+    docEditShiftEditRangeParaNr( &(eo->eoReformatRange), from, by );
+    docEditShiftEditRangeParaNr( &(eo->eoSelectedRange), from, by );
+
+    return;
+    }
+
+void docIncludeRectangleInChange(	EditOperation *			eo,
+					const DocumentRectangle *	dr )
+    {
+    if  ( eo->eoChangedRectSet )
+	{
+	docUnionRectangle( &(eo->eoChangedRect), &(eo->eoChangedRect), dr );
+	return;
+	}
+    else{
+	eo->eoChangedRect= *dr;
+	eo->eoChangedRectSet= 1;
+	}
     }

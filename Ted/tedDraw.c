@@ -30,14 +30,21 @@
 
 typedef struct ScreenDrawingData
     {
-    RGB8Color		sddForeColor;
-    RGB8Color		sddBackColor;
-    RGB8Color		sddGridColor;
-    RGB8Color		sddPageColor;
+    RGB8Color			sddForeColor;
+    RGB8Color			sddBackColor;
+    RGB8Color			sddGridColor;
+    RGB8Color			sddPageColor;
 
-    int			sddOx;
-    int			sddOy;
-    AppColors *		sddColors;
+    int				sddOx;
+    int				sddOy;
+    AppColors *			sddColors;
+    const ScreenFontList *	sddScreenFontList;
+
+    ExternalItem *		sddSelRootEi;
+    BufferItem *		sddSelRootBi;
+    BufferItem *		sddSelRootBodySectBi;
+    int				sddBoxFirstPage;
+    int				sddBoxLastPage;
     } ScreenDrawingData;
 
 /************************************************************************/
@@ -56,10 +63,12 @@ void tedExposeSelection(	const EditDocument *		ed,
     BufferDocument *		bd= td->tdDocument;
 
     const AppDrawingData *	add= &(ed->edDrawingData);
+    const ScreenFontList *	sfl= &(td->tdScreenFontList);
+    const int			lastLine= 0;
 
     SelectionGeometry		sg;
 
-    tedSelectionGeometry( &sg, ds, bd, add );
+    tedSelectionGeometry( &sg, ds, lastLine, bd, add, sfl );
 
     appDocExposeRectangle( ed, &(sg.sgRectangle), scrolledX, scrolledY );
 
@@ -82,11 +91,12 @@ void tedUndrawIBar(	const EditDocument *	ed )
 
     DocumentSelection		ds;
     SelectionGeometry		sg;
+    SelectionDescription	sd;
 
     const int			scrolledX= 0;
     const int			scrolledY= 0;
 
-    if  ( tedGetSelection( &ds, &sg, td ) )
+    if  ( tedGetSelection( &ds, &sg, &sd, td ) )
 	{ LDEB(1); return;	}
 
     appDocExposeRectangle( ed, &(sg.sgRectangle), scrolledX, scrolledY );
@@ -145,21 +155,24 @@ static void tedDrawSetBorderColor(	DrawingContext *	dc,
 
 static int tedDrawSetFont(	DrawingContext *	dc,
 				void *			vsdd,
-				const TextAttribute *	ta,
-				int			physicalFont )
+				int			textAttr,
+				const TextAttribute *	ta )
     {
     AppDrawingData *		add= dc->dcDrawingData;
-    const AppPhysicalFontList *	apfl= &(add->addPhysicalFontList);
+    const ScreenFontList *	sfl= dc->dcScreenFontList;
+    const DrawScreenFontList *	apfl= &(add->addScreenFontList);
 
-    AppPhysicalFont *		apf;
+    int				screenFont;
+    DrawScreenFont *		dsf;
 
-    if  ( physicalFont < 0			||
-	  physicalFont >=  apfl->apflCount	)
-	{ LLDEB(physicalFont,apfl->apflCount); return -1; }
+    if  ( textAttr >= sfl->sflAttributeToScreenCount	||
+	  sfl->sflAttributeToScreen[textAttr] < 0	)
+	{ LDEB(textAttr); return -1;	}
 
-    apf= apfl->apflFonts+ physicalFont;
+    screenFont= sfl->sflAttributeToScreen[textAttr];
+    dsf= apfl->apflFonts+ screenFont;
 
-    appDrawSetFont( add, apf->apfFontStruct );
+    appDrawSetFont( add, dsf->apfFontStruct );
 
     return 0;
     }
@@ -227,7 +240,7 @@ static void tedDrawHorizontalBorder(
 	DocumentRectangle		drBorder;
 
 	if  ( above )
-	    { y -= thick;	}
+	    { y -= thick- 1;	}
 
 	drBorder.drX0= TWIPStoPIXELS( xfac, x0Twips );
 	drBorder.drX1= TWIPStoPIXELS( xfac, x1Twips );
@@ -432,19 +445,23 @@ static int tedDrawTab(	const BufferItem *	bi,
 			DrawingContext *	dc )
     {
     AppDrawingData *		add= dc->dcDrawingData;
+    const DrawScreenFontList *	apfl= &(add->addScreenFontList);
     const BufferDocument *	bd= dc->dcDocument;
     const TabStopList *		tsl= &(bi->biParaTabStopList);
     const TabStop *		ts= tsl->tslTabStops+ tp->tpObjectNumber;
+    const ScreenFontList *	sfl= sdd->sddScreenFontList;
 
     int				x0;
     int				x1;
 
-    AppPhysicalFont *		apf;
-
+    int				textAttr;
+    int				screenFont;
+    DrawScreenFont *		dsf;
     TextAttribute		ta;
 
-    utilGetTextAttributeByNumber( &ta, &(bd->bdTextAttributeList),
-						tp->tpTextAttributeNumber );
+    textAttr= tp->tpTextAttributeNumber;
+
+    utilGetTextAttributeByNumber( &ta, &(bd->bdTextAttributeList), textAttr );
 
     switch( ts->tsLeader )
 	{
@@ -452,12 +469,16 @@ static int tedDrawTab(	const BufferItem *	bi,
 	    break;
 
 	case DOCtlDOTS:
-	    if  ( tp->tpPhysicalFont < 0 )
-		{ LDEB(tp->tpPhysicalFont); return -1;	}
-	    apf= add->addPhysicalFontList.apflFonts+ tp->tpPhysicalFont;
 
-	    x0= tp->tpX0+ apf->apfFullSizePixels/ 4;
-	    x1= tp->tpX0+ tp->tpPixelsWide- apf->apfFullSizePixels/ 2;
+	    if  ( textAttr >= sfl->sflAttributeToScreenCount	||
+		  sfl->sflAttributeToScreen[textAttr] < 0	)
+		{ LDEB(textAttr); return -1;	}
+
+	    screenFont= sfl->sflAttributeToScreen[textAttr];
+	    dsf= apfl->apflFonts+ screenFont;
+
+	    x0= tp->tpX0+ dsf->apfFullSizePixels/ 4;
+	    x1= tp->tpX0+ tp->tpPixelsWide- dsf->apfFullSizePixels/ 2;
 
 	    x0= 3* ( ( x0+ 2 )/ 3 );
 
@@ -512,12 +533,15 @@ static int tedDrawTab(	const BufferItem *	bi,
 	    break;
 
 	case DOCtlUNDERLINE:
-	    if  ( tp->tpPhysicalFont < 0 )
-		{ LDEB(tp->tpPhysicalFont); return -1;	}
-	    apf= add->addPhysicalFontList.apflFonts+ tp->tpPhysicalFont;
+	    if  ( textAttr >= sfl->sflAttributeToScreenCount	||
+		  sfl->sflAttributeToScreen[textAttr] < 0	)
+		{ LDEB(textAttr); return -1;	}
 
-	    x0= tp->tpX0+ apf->apfFullSizePixels/ 4;
-	    x1= tp->tpX0+ tp->tpPixelsWide- apf->apfFullSizePixels/ 2;
+	    screenFont= sfl->sflAttributeToScreen[textAttr];
+	    dsf= apfl->apflFonts+ screenFont;
+
+	    x0= tp->tpX0+ dsf->apfFullSizePixels/ 4;
+	    x1= tp->tpX0+ tp->tpPixelsWide- dsf->apfFullSizePixels/ 2;
 
 	    if  ( x1 <= x0 )
 		{ return 0;	}
@@ -554,12 +578,15 @@ static int tedDrawTab(	const BufferItem *	bi,
 	    break;
 
 	case DOCtlHYPH:
-	    if  ( tp->tpPhysicalFont < 0 )
-		{ LDEB(tp->tpPhysicalFont); return -1;	}
-	    apf= add->addPhysicalFontList.apflFonts+ tp->tpPhysicalFont;
+	    if  ( textAttr >= sfl->sflAttributeToScreenCount	||
+		  sfl->sflAttributeToScreen[textAttr] < 0	)
+		{ LDEB(textAttr); return -1;	}
 
-	    x0= tp->tpX0+ apf->apfFullSizePixels/ 4;
-	    x1= tp->tpX0+ tp->tpPixelsWide- apf->apfFullSizePixels/ 2;
+	    screenFont= sfl->sflAttributeToScreen[textAttr];
+	    dsf= apfl->apflFonts+ screenFont;
+
+	    x0= tp->tpX0+ dsf->apfFullSizePixels/ 4;
+	    x1= tp->tpX0+ tp->tpPixelsWide- dsf->apfFullSizePixels/ 2;
 
 	    x0= 7* ( ( x0+ 6 )/ 7 );
 
@@ -634,7 +661,7 @@ static void tedDrawParticuleUnderlines(	DrawingContext *	dc,
 					ScreenDrawingData *	sdd,
 					const TextParticule *	tp,
 					int			drawn,
-					const AppPhysicalFont *	apf,
+					const DrawScreenFont *	dsf,
 					int			baseLine )
     {
     AppDrawingData *		add= dc->dcDrawingData;
@@ -656,8 +683,8 @@ static void tedDrawParticuleUnderlines(	DrawingContext *	dc,
 	    { i++; continue;	}
 
 	x1= x0= tp[i].tpX0;
-	y0= baseLine+ apf->apfUnderLinePositionPixels;
-	h= apf->apfUnderlineThicknessPixels;
+	y0= baseLine+ dsf->apfUnderLinePositionPixels;
+	h= dsf->apfUnderlineThicknessPixels;
 
 	while( i < drawn )
 	    {
@@ -682,7 +709,7 @@ static void tedDrawParticuleStrikethrough(
 					ScreenDrawingData *	sdd,
 					const TextParticule *	tp,
 					int			drawn,
-					const AppPhysicalFont *	apf,
+					const DrawScreenFont *	dsf,
 					int			baseLine )
     {
     AppDrawingData *		add= dc->dcDrawingData;
@@ -704,10 +731,10 @@ static void tedDrawParticuleStrikethrough(
 	    { i++; continue;	}
 
 	x1= x0= tp[i].tpX0;
-	if  ( apf->apfXHeightPixels > 1 )
-	    { y0= baseLine- apf->apfXHeightPixels/ 2;	}
-	else{ y0= baseLine- apf->apfFullSizePixels/ 4;	}
-	h= apf->apfUnderlineThicknessPixels;
+	if  ( dsf->apfXHeightPixels > 1 )
+	    { y0= baseLine- dsf->apfXHeightPixels/ 2;	}
+	else{ y0= baseLine- dsf->apfFullSizePixels/ 4;	}
+	h= dsf->apfUnderlineThicknessPixels;
 
 	while( i < drawn )
 	    {
@@ -742,13 +769,17 @@ static void tedDrawChftnsep(	DrawingContext *	dc,
 				const TextLine *	tl )
     {
     ScreenDrawingData *		sdd= (ScreenDrawingData *)vsdd;
+    const ScreenFontList *	sfl= sdd->sddScreenFontList;
     AppDrawingData *		add= dc->dcDrawingData;
+    const DrawScreenFontList *	apfl= &(add->addScreenFontList);
     const BufferDocument *	bd= dc->dcDocument;
 
     int				baseLine;
     int				y;
-    const AppPhysicalFont *	apf;
+    const DrawScreenFont *	dsf;
 
+    int				textAttr;
+    int				screenFont;
     TextAttribute		ta;
 
     baseLine= TL_BASE_PIXELS_SH( add, tl, pShift, yShift );
@@ -765,9 +796,15 @@ static void tedDrawChftnsep(	DrawingContext *	dc,
 
     y= baseLine;
 
-    apf= add->addPhysicalFontList.apflFonts+ tp->tpPhysicalFont;
+    textAttr= tp->tpTextAttributeNumber;
+    if  ( textAttr >= sfl->sflAttributeToScreenCount	||
+	  sfl->sflAttributeToScreen[textAttr] < 0	)
+	{ LDEB(textAttr); return;	}
 
-    y -= ( apf->apfXHeightPixels )/ 2;
+    screenFont= sfl->sflAttributeToScreen[textAttr];
+    dsf= apfl->apflFonts+ screenFont;
+
+    y -= ( dsf->apfXHeightPixels )/ 2;
 
     utilGetTextAttributeByNumber( &ta, &(bd->bdTextAttributeList),
 						tp->tpTextAttributeNumber );
@@ -791,7 +828,7 @@ static void tedDrawSegments(	DrawingContext *		dc,
 				AppDrawingData *		add,
 				int				x,
 				int				y,
-				const AppPhysicalFont *		apf,
+				const DrawScreenFont *		dsf,
 				const unsigned char *		s,
 				const int *			segments,
 				int				segmentCount )
@@ -810,14 +847,14 @@ static void tedDrawSegments(	DrawingContext *		dc,
 	    {
 	    if  ( scaps )
 		{
-		appDrawSetFont( add, apf->apfFontStruct );
+		appDrawSetFont( add, dsf->apfFontStruct );
 		scaps= 0;
 		}
 
 	    appDrawDrawString( add, x, y, (char *)s, segments[2* seg+ 0] );
 
 	    appDrawTextExtents( &wide, &fontAscent, &fontDescent,
-				    add, apf->apfFontStruct,
+				    add, dsf->apfFontStruct,
 				    (const char *)s, segments[2* seg+ 0] );
 
 	    s += segments[2* seg+ 0];
@@ -828,16 +865,16 @@ static void tedDrawSegments(	DrawingContext *		dc,
 	    {
 	    if  ( ! scaps )
 		{
-		appDrawSetFont( add, apf->apfScapsFontStruct );
+		appDrawSetFont( add, dsf->apfScapsFontStruct );
 		scaps= 1;
 		}
 
-	    appDrawSetFont( add, apf->apfScapsFontStruct );
+	    appDrawSetFont( add, dsf->apfScapsFontStruct );
 
 	    appDrawDrawString( add, x, y, (char *)s, segments[2* seg+ 1] );
 
 	    appDrawTextExtents( &wide, &fontAscent, &fontDescent,
-				    add, apf->apfScapsFontStruct,
+				    add, dsf->apfScapsFontStruct,
 				    (const char *)s, segments[2* seg+ 1] );
 
 	    s += segments[2* seg+ 1];
@@ -873,7 +910,9 @@ static int tedDrawParticules(	DrawingContext *	dc,
 				int			baseLine )
     {
     ScreenDrawingData *		sdd= (ScreenDrawingData *)vsdd;
+    const ScreenFontList *	sfl= sdd->sddScreenFontList;
     AppDrawingData *		add= dc->dcDrawingData;
+    const DrawScreenFontList *	apfl= &(add->addScreenFontList);
     const BufferDocument *	bd= dc->dcDocument;
     const TextParticule *	tp= paraBi->biParaParticules+ part;
     const TabStopList *		tsl= &(paraBi->biParaTabStopList);
@@ -881,8 +920,10 @@ static int tedDrawParticules(	DrawingContext *	dc,
     int				drawn;
     int				len;
 
+    int				textAttr;
+    int				screenFont;
     TextAttribute		ta;
-    const AppPhysicalFont *	apf;
+    const DrawScreenFont *	dsf;
 
     /*  1  */
     switch( tp->tpKind )
@@ -899,10 +940,16 @@ static int tedDrawParticules(	DrawingContext *	dc,
 	    drawn= 1;
 
 	    /*  2  */
-	    apf= add->addPhysicalFontList.apflFonts+ tp->tpPhysicalFont;
+	    textAttr= tp->tpTextAttributeNumber;
+	    if  ( textAttr >= sfl->sflAttributeToScreenCount	||
+		  sfl->sflAttributeToScreen[textAttr] < 0	)
+		{ LDEB(textAttr); return -1;	}
 
-	    tedDrawParticuleUnderlines( dc, sdd, tp, drawn, apf, baseLine );
-	    tedDrawParticuleStrikethrough( dc, sdd, tp, drawn, apf, baseLine );
+	    screenFont= sfl->sflAttributeToScreen[textAttr];
+	    dsf= apfl->apflFonts+ screenFont;
+
+	    tedDrawParticuleUnderlines( dc, sdd, tp, drawn, dsf, baseLine );
+	    tedDrawParticuleStrikethrough( dc, sdd, tp, drawn, dsf, baseLine );
 
 	    return drawn;
 
@@ -915,6 +962,7 @@ static int tedDrawParticules(	DrawingContext *	dc,
 	case DOCkindTC:
 	case DOCkindLINEBREAK:
 	case DOCkindPAGEBREAK:
+	case DOCkindCOLUMNBREAK:
 	case DOCkindNOTE:
 	    return drawn= 1;
 
@@ -926,6 +974,7 @@ static int tedDrawParticules(	DrawingContext *	dc,
 	    return drawn= 1;
 
 	case DOCkindCHFTNSEP:
+	case DOCkindCHFTNSEPC:
 	    tedDrawChftnsep( dc, pShift, xShift, yShift, vsdd, tp, tl );
 
 	    return drawn= 1;
@@ -933,11 +982,6 @@ static int tedDrawParticules(	DrawingContext *	dc,
 	default:
 	    LDEB(tp->tpKind); return -1;
 	}
-
-    /*
-    drawn= 1;
-    len= tp[drawn-1].tpStroff+ tp[drawn-1].tpStrlen- tp->tpStroff;
-    */
 
     {
     const int	separate= 1;
@@ -947,17 +991,13 @@ static int tedDrawParticules(	DrawingContext *	dc,
     }
 
     {
-    const AppPhysicalFontList *	apfl= &(add->addPhysicalFontList);
+    textAttr= tp->tpTextAttributeNumber;
+    if  ( textAttr >= sfl->sflAttributeToScreenCount	||
+	  sfl->sflAttributeToScreen[textAttr] < 0	)
+	{ LLDEB(textAttr,sfl->sflAttributeToScreenCount); return -1;	}
 
-    if  ( tp->tpPhysicalFont < 0			||
-	  tp->tpPhysicalFont >=  apfl->apflCount	)
-	{
-	LLDEB(tp->tpPhysicalFont,apfl->apflCount);
-	docListParticule( 0, "FFF", drawn, paraBi, tp );
-	return -1;
-	}
-
-    apf= apfl->apflFonts+ tp->tpPhysicalFont;
+    screenFont= sfl->sflAttributeToScreen[textAttr];
+    dsf= apfl->apflFonts+ screenFont;
     }
 
     if  ( len > 0 )
@@ -979,19 +1019,18 @@ static int tedDrawParticules(	DrawingContext *	dc,
 	    }
 
 	if  ( ta.taSuperSub == DOCfontSUPERSCRIPT )
-	    { y -= ( 10* apf->apfXHeightPixels )/ 6; }
+	    { y -= ( 10* dsf->apfXHeightPixels )/ 6; }
 
 	if  ( ta.taSuperSub == DOCfontSUBSCRIPT )
-	    { y += ( 3* apf->apfFullSizePixels )/ 10; }
+	    { y += ( 3* dsf->apfFullSizePixels )/ 10; }
 
-	docDrawSetFont( dc, vsdd, &ta, tp->tpPhysicalFont );
-
+	docDrawSetFont( dc, vsdd, textAttr, &ta );
 	docDrawSetColorNumber( dc, (void *)sdd, ta.taTextColorNumber );
 
 	if  ( ta.taSmallCaps && ! ta.taCapitals )
 	    {
 	    tedDrawSegments( dc, add, tp->tpX0- sdd->sddOx, y- sdd->sddOy,
-				    apf, printString, segments, segmentCount );
+				    dsf, printString, segments, segmentCount );
 	    }
 	else{
 	    appDrawDrawString( add, tp->tpX0- sdd->sddOx, y- sdd->sddOy,
@@ -1008,8 +1047,8 @@ static int tedDrawParticules(	DrawingContext *	dc,
 	    { free( segments );	}
 	}
 
-    tedDrawParticuleUnderlines( dc, sdd, tp, drawn, apf, baseLine );
-    tedDrawParticuleStrikethrough( dc, sdd, tp, drawn, apf, baseLine );
+    tedDrawParticuleUnderlines( dc, sdd, tp, drawn, dsf, baseLine );
+    tedDrawParticuleStrikethrough( dc, sdd, tp, drawn, dsf, baseLine );
 
     return drawn;
     }
@@ -1064,27 +1103,44 @@ static int tedDrawTextLine(	const BufferItem *		bi,
 /************************************************************************/
 
 static int tedLineRectangle(	DocumentRectangle *		drRedraw,
+				int *				pInSelection,
 				const BufferItem *		bi,
 				DrawingContext *		dc,
+				ScreenDrawingData *		sdd,
 				int				line,
 				const ParagraphFrame *		pf )
     {
     const DocumentSelection *	ds= dc->dcDocumentSelection;
     const SelectionGeometry *	sg= dc->dcSelectionGeometry;
     const DocumentRectangle *	drClip= dc->dcClipRect;
+    const ScreenFontList *	sfl= sdd->sddScreenFontList;
 
     DocumentSelection	dsLine;
     SelectionGeometry	sgLine;
 
+    const int		lastLine= 0;
     DocumentRectangle	drLine;
 
-    const int		mindPart= 1;
     int			tableRectangle;
-    int			cmp;
+    int			cmp_ee;
+    int			cmp_bb;
+    int			cmp_be;
+    int			cmp_eb;
+
+    int			partLineBegin;
+    int			partLineEnd;
+
+    int			inSelection;
 
     /*  1  */
-    docLineSelection( &dsLine, bi, line );
-    tedSelectionGeometry( &sgLine, &dsLine, dc->dcDocument, dc->dcDrawingData );
+    docLineSelection( &dsLine, &partLineBegin, &partLineEnd, bi, line );
+    tedSelectionGeometry( &sgLine, &dsLine, lastLine,
+				    dc->dcDocument, dc->dcDrawingData, sfl );
+
+    if  ( sgLine.sgBegin.pgLine != line )
+	{ LLDEB(sgLine.sgBegin.pgLine,line);	}
+    if  ( sgLine.sgEnd.pgLine != line )
+	{ LLDEB(sgLine.sgEnd.pgLine,line);	}
 
     drLine= sgLine.sgRectangle;
 
@@ -1095,21 +1151,28 @@ static int tedLineRectangle(	DocumentRectangle *		drRedraw,
 	  ! docPositionsInsideCell( &(ds->dsBegin), &(ds->dsEnd) )	)
 	{ tableRectangle= 1; }
 
+    cmp_bb= docComparePositions( &(ds->dsBegin), &(dsLine.dsBegin) );
+    cmp_eb= docComparePositions( &(ds->dsEnd), &(dsLine.dsBegin) );
+    cmp_be= docComparePositions( &(ds->dsBegin), &(dsLine.dsEnd) );
+    cmp_ee= docComparePositions( &(ds->dsEnd), &(dsLine.dsEnd) );
+
     /*  3  */
-    cmp= docComparePositions( &(ds->dsBegin), &(dsLine.dsBegin), mindPart );
-    if  ( cmp < 0 || ( cmp == 0 && tableRectangle ) )
+    if  ( cmp_bb < 0 || ( cmp_bb == 0 && tableRectangle ) )
 	{ drLine.drX0= pf->pfX0Pixels;		}
     else{ drLine.drX0= sg->sgBegin.pgXPixels;	}
 
     /*  4  */
-    cmp= docComparePositions( &(ds->dsEnd), &(dsLine.dsEnd), mindPart );
-    if  ( cmp > 0 || ( cmp == 0 && tableRectangle ) )
+    if  ( cmp_ee > 0 || ( cmp_ee == 0 && tableRectangle ) )
 	{ drLine.drX1= pf->pfX1Pixels;		}
     else{ drLine.drX1= sg->sgEnd.pgXPixels;	}
 
+    inSelection= 0;
+    if  ( cmp_eb >= 0 && cmp_be < 0 )
+	{ inSelection= 1;	}
+
     /*  5  */
     if  ( ! drClip || docIntersectRectangle( drRedraw, drClip, &drLine ) )
-	{ return 1;	}
+	{ *pInSelection= inSelection; return 1;	}
     else{ return 0;	}
     }
 
@@ -1127,8 +1190,9 @@ static int tedDrawTextReverse(	const BufferItem *		bi,
 
     DocumentRectangle		drRedraw;
     int				done;
+    int				inSelection;
 
-    if  ( tedLineRectangle( &drRedraw, bi, dc, line, pf ) )
+    if  ( tedLineRectangle( &drRedraw, &inSelection, bi, dc, sdd, line, pf ) )
 	{
 	drRedraw.drX0 -= sdd->sddOx;
 	drRedraw.drX1 -= sdd->sddOx;
@@ -1162,26 +1226,30 @@ static int tedDrawTextSelected(	const BufferItem *		bi,
 
     DocumentRectangle		drRedraw;
     int				done;
+    int				inSelection;
 
-    if  ( tedLineRectangle( &drRedraw, bi, dc, line, pf ) )
+    if  ( tedLineRectangle( &drRedraw, &inSelection, bi, dc, sdd, line, pf ) )
 	{
 	drRedraw.drX0 -= sdd->sddOx;
 	drRedraw.drX1 -= sdd->sddOx;
 	drRedraw.drY0 -= sdd->sddOy;
 	drRedraw.drY1 -= sdd->sddOy;
 
-	docDrawSetColorRgb( dc, (void *)sdd,
-			    sdd->sddBackColor.rgb8Red,
-			    sdd->sddBackColor.rgb8Green,
-			    sdd->sddBackColor.rgb8Blue );
-
 	appDrawSetClipRect( add, &drRedraw );
 
-	appDrawFillRectangle( add,
-		drRedraw.drX0,
-		drRedraw.drY0,
-		drRedraw.drX1- drRedraw.drX0+ 1,
-		drRedraw.drY1- drRedraw.drY0+ 1 );
+	if  ( inSelection )
+	    {
+	    docDrawSetColorRgb( dc, (void *)sdd,
+				sdd->sddBackColor.rgb8Red,
+				sdd->sddBackColor.rgb8Green,
+				sdd->sddBackColor.rgb8Blue );
+
+	    appDrawFillRectangle( add,
+		    drRedraw.drX0,
+		    drRedraw.drY0,
+		    drRedraw.drX1- drRedraw.drX0+ 1,
+		    drRedraw.drY1- drRedraw.drY0+ 1 );
+	    }
 
 	done= tedDrawTextLine( bi, line, pf, vsdd, dc, pShift, xShift, yShift );
 	}
@@ -1449,6 +1517,10 @@ static void tedDrawObjectBlocks(	int			x0,
     APP_POINT		xp[8];
     int			i;
 
+/*
+appDrawNoClipping(add);
+*/
+
     /*  bottom  */
     xp[0].x= x0- sdd->sddOx;
     xp[0].y= y- RESIZE_BLOCK- sdd->sddOy;
@@ -1510,31 +1582,12 @@ static void tedDrawObjectBlocks(	int			x0,
 /*									*/
 /************************************************************************/
 
-static void tedDrawExternalItemBox(
-			    const BufferItem *		bodySectBi,
-			    const ExternalItem *	ei,
-			    ScreenDrawingData *		sdd,
-			    DrawingContext *		dc,
-			    const DocumentRectangle *	drClip )
+static void tedDrawItemBox(	AppDrawingData *		add,
+				ScreenDrawingData *		sdd,
+				DrawingContext *		dc,
+				const DocumentRectangle *	drBox )
     {
-    AppDrawingData *		add= dc->dcDrawingData;
-    
-    DocumentRectangle		drIntersect;
-    DocumentRectangle		drBox;
-
-    const int			justUsed= 0;
-
     static char			dot[]= { 1, 2 };
-
-    if  ( ei->eiPageFormattedFor < 0 )
-	{ LDEB(ei->eiPageFormattedFor); return;	}
-
-    if  ( docGetExternalItemBox( &drBox, bodySectBi, ei, justUsed,
-			    ei->eiPageFormattedFor, dc->dcDocument, add ) )
-	{ LDEB(1); return;	}
-
-    if  ( ! docIntersectRectangle( &drIntersect, &drBox, drClip ) )
-	{ return;	}
 
 #   ifdef USE_MOTIF
     XSetLineAttributes( add->addDisplay, add->addGc,
@@ -1553,17 +1606,45 @@ static void tedDrawExternalItemBox(
     docDrawSetColorRgb( dc, (void *)sdd, 0, 0, 0 );
 
     appDrawDrawLine( add,
-			    drBox.drX0- sdd->sddOx, drBox.drY0- sdd->sddOy,
-			    drBox.drX1- sdd->sddOx, drBox.drY0- sdd->sddOy );
+			    drBox->drX0- sdd->sddOx, drBox->drY0- sdd->sddOy,
+			    drBox->drX1- sdd->sddOx, drBox->drY0- sdd->sddOy );
     appDrawDrawLine( add,
-			    drBox.drX0- sdd->sddOx, drBox.drY1- sdd->sddOy,
-			    drBox.drX1- sdd->sddOx, drBox.drY1- sdd->sddOy );
+			    drBox->drX0- sdd->sddOx, drBox->drY1- sdd->sddOy,
+			    drBox->drX1- sdd->sddOx, drBox->drY1- sdd->sddOy );
     appDrawDrawLine( add,
-			    drBox.drX0- sdd->sddOx, drBox.drY0- sdd->sddOy,
-			    drBox.drX0- sdd->sddOx, drBox.drY1- sdd->sddOy );
+			    drBox->drX0- sdd->sddOx, drBox->drY0- sdd->sddOy,
+			    drBox->drX0- sdd->sddOx, drBox->drY1- sdd->sddOy );
     appDrawDrawLine( add,
-			    drBox.drX1- sdd->sddOx, drBox.drY0- sdd->sddOy,
-			    drBox.drX1- sdd->sddOx, drBox.drY1- sdd->sddOy );
+			    drBox->drX1- sdd->sddOx, drBox->drY0- sdd->sddOy,
+			    drBox->drX1- sdd->sddOx, drBox->drY1- sdd->sddOy );
+
+    }
+
+static void tedDrawExternalItemBox(
+			    const BufferItem *		bodySectBi,
+			    const ExternalItem *	ei,
+			    ScreenDrawingData *		sdd,
+			    DrawingContext *		dc,
+			    const DocumentRectangle *	drClip )
+    {
+    AppDrawingData *		add= dc->dcDrawingData;
+    
+    DocumentRectangle		drIntersect;
+    DocumentRectangle		drBox;
+
+    const int			justUsed= 0;
+
+    if  ( ei->eiPageFormattedFor < 0 )
+	{ LDEB(ei->eiPageFormattedFor); return;	}
+
+    if  ( docGetExternalItemBox( &drBox, bodySectBi, ei, justUsed,
+			    ei->eiPageFormattedFor, dc->dcDocument, add ) )
+	{ LDEB(1); return;	}
+
+    if  ( ! docIntersectRectangle( &drIntersect, &drBox, drClip ) )
+	{ return;	}
+
+    tedDrawItemBox( add, sdd, dc, &drBox );
 
     return;
     }
@@ -1573,17 +1654,73 @@ static int tedDrawCheckPageOfSelectedExtItem(
 				    const DocumentSelection *	ds,
 				    BufferDocument *		bd,
 				    ExternalItem *		selRootEi,
-				    AppDrawingData *		add )
+				    AppDrawingData *		add,
+				    ScreenFontList *		sfl )
     {
     int			changed= 0;
     DocumentRectangle	drChanged;
+    const int		lastLine= 1;
 
     if  ( tedCheckPageOfSelectedExtItem( &changed, &drChanged,
-							bd, selRootEi, add ) )
+						bd, selRootEi, add, sfl ) )
 	{ LDEB(1); return -1;	}
 
     if  ( changed )
-	{ tedSelectionGeometry( sg, ds, bd, add );	}
+	{ tedSelectionGeometry( sg, ds, lastLine, bd, add, sfl );	}
+
+    return 0;
+    }
+
+/************************************************************************/
+/*									*/
+/*  Start a page: Draw an external item box if needed.			*/
+/*									*/
+/*  1)  Selection not in an external item?				*/
+/*  2)  In range? covers the case where both numbers are -1 because	*/
+/*	nothing needs to be done.					*/
+/*  3)  Calculate box on this page.					*/
+/*  4)  Intersects clip rectangle?					*/
+/*  5)  Draw!								*/
+/*									*/
+/************************************************************************/
+
+static int tedDrawStartPage(	void *				vsdd,
+				const DocumentGeometry *	dgPage,
+				DrawingContext *		dc,
+				int				page )
+    {
+    ScreenDrawingData *		sdd= (ScreenDrawingData *)vsdd;
+    ExternalItem *		selRootEi= sdd->sddSelRootEi;
+    BufferItem *		selRootBi= sdd->sddSelRootBi;
+    BufferItem *		selRootBodySectBi= sdd->sddSelRootBodySectBi;
+
+    AppDrawingData *		add= dc->dcDrawingData;
+    const DocumentRectangle *	drClip= dc->dcClipRect;
+
+    const int			justUsed= 0;
+    DocumentRectangle		drBox;
+    DocumentRectangle		drIntersect;
+
+    /*  1  */
+    if  ( ! selRootEi || ! selRootBi )
+	{ return 0;	}
+
+    /*  2  */
+    if  ( sdd->sddBoxFirstPage > page		||
+	  sdd->sddBoxLastPage < page		)
+	{ return 0;	}
+
+    /*  3  */
+    if  ( docGetExternalItemBox( &drBox, selRootBodySectBi, selRootEi, justUsed,
+					    page, dc->dcDocument, add ) )
+	{ LDEB(1); return 0;	}
+
+    /*  4  */
+    if  ( drClip && ! docIntersectRectangle( &drIntersect, &drBox, drClip ) )
+	{ return 0;	}
+
+    /*  5  */
+    tedDrawItemBox( add, sdd, dc, &drBox );
 
     return 0;
     }
@@ -1603,7 +1740,7 @@ static int tedDrawCheckPageOfSelectedExtItem(
 
 void tedRedrawRectangle(	APP_WIDGET		w,
 				TedDocument *		td,
-				DocumentRectangle *	drClip,
+				const DocumentRectangle *	drClip,
 				AppDrawingData *	add,
 				AppColors *		acSys,
 				int			ox,
@@ -1621,11 +1758,14 @@ void tedRedrawRectangle(	APP_WIDGET		w,
 
     DocumentSelection		ds;
     SelectionGeometry		sg;
+    SelectionDescription	sd;
 
     ExternalItem *		selRootEi= (ExternalItem *)0;
     BufferItem *		selRootBodySectBi= (BufferItem *)0;
 
-    if  ( tedGetSelection( &ds, &sg, td ) )
+    ScreenFontList *		sfl= &(td->tdScreenFontList);
+
+    if  ( tedGetSelection( &ds, &sg, &sd, td ) )
 	{
 	docInitDocumentSelection( &ds );
 	docInitSelectionGeometry( &sg );
@@ -1639,6 +1779,7 @@ void tedRedrawRectangle(	APP_WIDGET		w,
 
     dc.dcDrawingData= add;
     dc.dcDocument= bd;
+    dc.dcScreenFontList= sfl;
     dc.dcDrawTableGrid= ( td->tdDrawTableGrid >= 0 );
     dc.dcClipRect= drClip;
     dc.dcSetColorRgb= tedDrawSetColorRgb;
@@ -1647,6 +1788,7 @@ void tedRedrawRectangle(	APP_WIDGET		w,
     sdd.sddOx= ox;
     sdd.sddOy= oy;
     sdd.sddColors= acSys;
+    sdd.sddScreenFontList= sfl;
 
     sdd.sddForeColor.rgb8Red= 0;
     sdd.sddForeColor.rgb8Green= 0;
@@ -1703,6 +1845,24 @@ void tedRedrawRectangle(	APP_WIDGET		w,
     sdd.sddBackColor.rgb8Green= 255;
     sdd.sddBackColor.rgb8Blue= 255;
 
+    sdd.sddSelRootBi= selRootBi;
+    sdd.sddSelRootEi= selRootEi;
+    sdd.sddSelRootBodySectBi= selRootBodySectBi;
+    sdd.sddBoxFirstPage= -1;
+    sdd.sddBoxLastPage= -1;
+
+    if  ( selRootEi )
+	{
+	const BufferItem *	selRoolSectBi= selRootEi->eiItem;
+
+	if  ( selRoolSectBi->biInExternalItem == DOCinFOOTNOTE	||
+	      selRoolSectBi->biInExternalItem == DOCinENDNOTE	)
+	    {
+	    sdd.sddBoxFirstPage= selRoolSectBi->biTopPosition.lpPage;
+	    sdd.sddBoxLastPage= selRoolSectBi->biBelowPosition.lpPage;
+	    }
+	}
+
     dc.dcDrawTextLine= tedDrawTextLine;
     dc.dcDrawParaTop= tedDrawParaTop;
     dc.dcDrawParaBottom= tedDrawParaBottom;
@@ -1713,8 +1873,9 @@ void tedRedrawRectangle(	APP_WIDGET		w,
     dc.dcDrawCellRight= tedDrawCellRight;
     dc.dcDrawCellShade= tedDrawCellShade;
     dc.dcParaFramePixels= tedParagraphFramePixels;
+    dc.dcStartPage= tedDrawStartPage;
 
-    dc.dcLayoutExternal= tedLayoutExternalItem;
+    dc.dcInitLayoutExternal= tedInitLayoutExternalItem;
     dc.dcCloseObject= tedCloseObject;
     dc.dcDrawHeadersFooters= 1;
 
@@ -1798,7 +1959,7 @@ void tedRedrawRectangle(	APP_WIDGET		w,
     }
 
     if  ( selRootBi					&&
-	  ! tedHasIBarSelection( td )			)
+	  ! sd.sdIsIBarSelection			)
 	{
 	if  ( acSys->acAllocator.caDepth < 4 )
 	    {
@@ -1831,7 +1992,7 @@ void tedRedrawRectangle(	APP_WIDGET		w,
 	dc.dcFinishPage= (FINISH_PAGE)0;
 	dc.dcStartPage= (START_PAGE)0;
 
-	dc.dcLayoutExternal= (LAYOUT_EXTERNAL)0;
+	dc.dcInitLayoutExternal= (INIT_LAYOUT_EXTERNAL)0;
 	dc.dcCloseObject= tedCloseObject;
 	dc.dcDrawHeadersFooters= 0;
 
@@ -1840,7 +2001,7 @@ void tedRedrawRectangle(	APP_WIDGET		w,
 
 	if  ( selRootBi->biInExternalItem != DOCinBODY			&&
 	      tedDrawCheckPageOfSelectedExtItem( &sg, &ds, bd,
-						    selRootEi, add )	)
+						selRootEi, add, sfl )	)
 	    { LDEB(1); return; }
 
 	if  ( docDrawItem( selRootBi, (void *)&sdd, &dc ) )
@@ -1858,6 +2019,9 @@ void tedRedrawRectangle(	APP_WIDGET		w,
 				&bodySectBi, bd, &(ds.dsSelectionScope) ) )
 	    { LDEB(1);	}
 	else{
+	    if  ( sdd.sddSelRootEi != x_selRootEi )
+		{ XXDEB(sdd.sddSelRootEi,x_selRootEi);	}
+
 	    tedDrawExternalItemBox( bodySectBi, x_selRootEi,
 							&sdd, &dc, drClip );
 	    }
@@ -1869,62 +2033,83 @@ void tedRedrawRectangle(	APP_WIDGET		w,
 			    sdd.sddForeColor.rgb8Blue );
 
     /*  5  */
-    if  ( tedHasIBarSelection( td ) )
+    if  ( selRootBi )
 	{
-	const PositionGeometry *	pgBegin= &(sg.sgBegin);
-
-	if  ( selRootBi->biInExternalItem != DOCinBODY			&&
-	      tedDrawCheckPageOfSelectedExtItem( &sg, &ds, bd,
-						    selRootEi, add )	)
-	    { LDEB(1); return; }
-
-	if  ( drClip->drY0 <= pgBegin->pgY1Pixels		&&
-	      drClip->drY1 >= PG_TOP_PIXELS( add, pgBegin )	&&
-	      ! td->tdShowIBarId				)
-	    { tedDrawIBar( pgBegin, ox, oy, add ); }
-	}
-    else{
-	InsertedObject *	io;
-	DocumentPosition	dpO;
-
-	docInitDocumentPosition( &dpO );
-
-	if  ( td->tdObjectSelected				&&
-	      ! tedGetObjectSelection( td, &dpO, &io  )	)
+	if  ( sd.sdIsIBarSelection )
 	    {
-	    PositionGeometry	pgO;
+	    const PositionGeometry *	pgBegin= &(sg.sgBegin);
 
 	    if  ( selRootBi->biInExternalItem != DOCinBODY		&&
 		  tedDrawCheckPageOfSelectedExtItem( &sg, &ds, bd,
-						    selRootEi, add )	)
+						selRootEi, add, sfl )	)
 		{ LDEB(1); return; }
 
-	    sdd.sddForeColor.rgb8Red= 0;
-	    sdd.sddForeColor.rgb8Green= 0;
-	    sdd.sddForeColor.rgb8Blue= 0;
+	    if  ( drClip->drY0 <= pgBegin->pgY1Pixels		&&
+		  drClip->drY1 >= PG_TOP_PIXELS( add, pgBegin )	&&
+		  ! td->tdShowIBarId				)
+		{ tedDrawIBar( pgBegin, ox, oy, add ); }
+	    }
+	else{
+	    InsertedObject *	io;
+	    int			partO;
+	    DocumentPosition	dpO;
 
-	    docDrawSetColorRgb( &dc, (void *)&sdd,
-			    sdd.sddForeColor.rgb8Red,
-			    sdd.sddForeColor.rgb8Green,
-			    sdd.sddForeColor.rgb8Blue );
+	    docInitDocumentPosition( &dpO );
 
-	    sdd.sddBackColor= selColor;
-
-	    tedPositionGeometry( &pgO, &dpO, bd, add );
-
-	    if  ( drClip->drY0 <= pgO.pgY1Pixels		&&
-		  drClip->drY1 >= PG_TOP_PIXELS( add, &pgO )	)
+	    if  ( td->tdObjectSelected					&&
+		  ! tedGetObjectSelection( td, &partO, &dpO, &io  )	)
 		{
-		if  ( io->ioDragWide > 0 )
+		PositionGeometry	pgO;
+		const int		lastOne= 1;
+
+		if  ( selRootBi->biInExternalItem != DOCinBODY		&&
+		      tedDrawCheckPageOfSelectedExtItem( &sg, &ds, bd,
+						selRootEi, add, sfl )	)
+		    { LDEB(1); return; }
+
+		sdd.sddForeColor.rgb8Red= 0;
+		sdd.sddForeColor.rgb8Green= 0;
+		sdd.sddForeColor.rgb8Blue= 0;
+
+		docDrawSetColorRgb( &dc, (void *)&sdd,
+				sdd.sddForeColor.rgb8Red,
+				sdd.sddForeColor.rgb8Green,
+				sdd.sddForeColor.rgb8Blue );
+
+		sdd.sddBackColor= selColor;
+
+		tedPositionGeometry( &pgO, &dpO, lastOne, bd, add, sfl );
+
+		{
+		DocumentRectangle	drRestore;
+
+		drRestore= *drClip;
+		drRestore.drX0 -= ox;
+		drRestore.drY0 -= oy;
+		drRestore.drX1 -= ox;
+		drRestore.drY1 -= oy;
+
+		appDrawSetClipRect( add, &drRestore );
+		}
+
+		if  ( drClip->drY0 <= pgO.pgY1Pixels			&&
+		      drClip->drY1 >= PG_TOP_PIXELS( add, &pgO )	)
 		    {
-		    tedDrawObjectBlocks( pgO.pgXPixels,
-			pgO.pgBaselinePixels+ io->ioDragHigh- io->ioPixelsHigh,
-			io->ioDragWide, io->ioDragHigh, &dc, &sdd );
-		    }
-		else{
-		    tedDrawObjectBlocks( pgO.pgXPixels,
-					 pgO.pgBaselinePixels,
-			io->ioPixelsWide, io->ioPixelsHigh, &dc, &sdd );
+		    if  ( io->ioDragWide > 0 )
+			{
+			int	dy;
+
+			dy= io->ioDragHigh- io->ioPixelsHigh;
+
+			tedDrawObjectBlocks( pgO.pgXPixels, 
+					     pgO.pgBaselinePixels+ dy,
+			    io->ioDragWide, io->ioDragHigh, &dc, &sdd );
+			}
+		    else{
+			tedDrawObjectBlocks( pgO.pgXPixels,
+					     pgO.pgBaselinePixels,
+			    io->ioPixelsWide, io->ioPixelsHigh, &dc, &sdd );
+			}
 		    }
 		}
 	    }
@@ -2398,6 +2583,10 @@ void tedDrawHorizontalBorderLine(	AppDrawingData *	add,
 	case DOCbsOUTSET:
 	    tedBorderSetLineSolid( add, 1 );
 	    appDrawDrawLine( add, x0, y, x1, y );
+	    break;
+
+	case DOCbsTBL:
+	case DOCbsNIL:
 	    break;
 
 	default:

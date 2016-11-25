@@ -34,6 +34,13 @@ void docRtfSaveRowProperties(		const RowProperties *	rp,
 
     docRtfWriteTag( "\\trowd", pCol, sos );
 
+    if  ( rp->rpRowNumber >= 0 )
+	{ docRtfWriteArgTag( "\\irow", pCol, rp->rpRowNumber, sos ); }
+    if  ( rp->rpRowBandNumber >= 0 )
+	{ docRtfWriteArgTag( "\\irowband", pCol, rp->rpRowBandNumber, sos ); }
+    if  ( rp->rpRowStyle >= 0 )
+	{ docRtfWriteArgTag( "\\ts", pCol, rp->rpRowStyle, sos ); }
+
     if  ( rp->rpHalfGapWidthTwips != 0 )
 	{ docRtfWriteArgTag( "\\trgaph", pCol, rp->rpHalfGapWidthTwips, sos ); }
 
@@ -362,6 +369,48 @@ int docRtfRememberRowProperty(		SimpleInputStream *	sis,
 	    break;
 	case RPpropTRFTS_WIDTHA:
 	    rp->rpCellWidthAfterUnit= arg;
+	    break;
+
+	case RPpropAUTOFORMAT_BORDERS:
+	    rp->rpAutoformatBorders= ( arg != 0 );
+	    break;
+	case RPpropAUTOFORMAT_SHADING:
+	    rp->rpAutoformatShading= ( arg != 0 );
+	    break;
+	case RPpropAUTOFORMAT_FONT:
+	    rp->rpAutoformatFont= ( arg != 0 );
+	    break;
+	case RPpropAUTOFORMAT_COLOR:
+	    rp->rpAutoformatColor= ( arg != 0 );
+	    break;
+	case RPpropAUTOFORMAT_APPLY_BEST_FIT:
+	    rp->rpAutoformatApplyBestFit= ( arg != 0 );
+	    break;
+	case RPpropAUTOFORMAT_FIRST_ROW:
+	    rp->rpAutoformatFirstRow= ( arg != 0 );
+	    break;
+	case RPpropAUTOFORMAT_LAST_ROW:
+	    rp->rpAutoformatLastRow= ( arg != 0 );
+	    break;
+	case RPpropAUTOFORMAT_FIRST_COLUMN:
+	    rp->rpAutoformatFirstColumn= ( arg != 0 );
+	    break;
+	case RPpropAUTOFORMAT_LAST_COLUMN:
+	    rp->rpAutoformatLastColumn= ( arg != 0 );
+	    break;
+
+	case RPpropROW_NUMBER:
+	    rp->rpRowNumber= arg;
+	    break;
+	case RPpropROW_BAND_NUMBER:
+	    rp->rpRowBandNumber= arg;
+	    break;
+	case RPpropROW_STYLE:
+	    rp->rpRowStyle= arg;
+	    break;
+
+	case RPpropIS_LAST_ROW:
+	    rp->rpIsLastRow= ( arg != 0 );
 	    break;
 
 	default:

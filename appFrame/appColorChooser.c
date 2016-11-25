@@ -247,7 +247,7 @@ static APP_EVENT_HANDLER_H( tedColorChooserRedrawPulldown, w, voidcc, exposeEven
 
 	    ccpc= cc->ccColors+ color;
 	    if  ( ccpc->ccpcStatus == CCstatusFREE )
-		{ LDEB(ccpc->ccpcStatus); continue;	}
+		{ /*LDEB(ccpc->ccpcStatus);*/ continue;	}
 
 	    if  ( ! ccpc->ccpcColorAllocated )
 		{
@@ -541,6 +541,16 @@ static int appColorChooserCompareIntensity(	const void *	vccpc1,
     ccpc1= (const ColorChooserPaletteColor *)vccpc1;
     ccpc2= (const ColorChooserPaletteColor *)vccpc2;
 
+    if  ( ccpc1->ccpcStatus == CCstatusFREE	&&
+	  ccpc2->ccpcStatus == CCstatusFREE	)
+	{ return  0;	}
+    if  ( ccpc1->ccpcStatus != CCstatusFREE	&&
+	  ccpc2->ccpcStatus == CCstatusFREE	)
+	{ return -1;	}
+    if  ( ccpc1->ccpcStatus == CCstatusFREE	&&
+	  ccpc2->ccpcStatus != CCstatusFREE	)
+	{ return  1;	}
+
     rgb1= &(ccpc1->ccpcRGB8Color);
     rgb2= &(ccpc2->ccpcRGB8Color);
 
@@ -569,6 +579,16 @@ static int appColorChooserCompareHue(		const void *	vccpc1,
 
     ccpc1= (const ColorChooserPaletteColor *)vccpc1;
     ccpc2= (const ColorChooserPaletteColor *)vccpc2;
+
+    if  ( ccpc1->ccpcStatus == CCstatusFREE	&&
+	  ccpc2->ccpcStatus == CCstatusFREE	)
+	{ return  0;	}
+    if  ( ccpc1->ccpcStatus != CCstatusFREE	&&
+	  ccpc2->ccpcStatus == CCstatusFREE	)
+	{ return -1;	}
+    if  ( ccpc1->ccpcStatus == CCstatusFREE	&&
+	  ccpc2->ccpcStatus != CCstatusFREE	)
+	{ return  1;	}
 
     rgb1= &(ccpc1->ccpcRGB8Color);
     rgb2= &(ccpc2->ccpcRGB8Color);

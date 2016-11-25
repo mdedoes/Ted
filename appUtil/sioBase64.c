@@ -17,16 +17,6 @@
 
 /************************************************************************/
 /*									*/
-/*  Exchange of Base 64 encoded data.					*/
-/*									*/
-/************************************************************************/
-
-static int sioBase64Seek(	void *			voidsos,
-				long			pos )
-    { LDEB(1); return -1; return 0; }
-
-/************************************************************************/
-/*									*/
 /*  Input.								*/
 /*									*/
 /*  1)  Contrary to the rfc 2045 standard, decoding stops at a single	*/
@@ -169,8 +159,7 @@ SimpleInputStream * sioInBase64Open(	SimpleInputStream *	sisBase64 )
     bis->bisBase64Indices= utilBase64GetIndexArray();
 
 
-    sis= sioInOpen( (void *)bis, sioInBase64ReadBytes,
-					    sioBase64Seek, sioInBase64Close );
+    sis= sioInOpen( (void *)bis, sioInBase64ReadBytes, sioInBase64Close );
 
     if  ( ! sis )
 	{ XDEB(sis); free( bis ); return (SimpleInputStream *)0; }
@@ -334,7 +323,7 @@ SimpleOutputStream * sioOutBase64Open(	SimpleOutputStream *	sosBase64 )
     bos->bosColumn= 0;
 
     sos= sioOutOpen( (void *)bos, sioOutBase64WriteBytes,
-					    sioBase64Seek, sioOutBase64Close );
+					    (SIOoutSEEK)0, sioOutBase64Close );
 
     if  ( ! sos )
 	{ XDEB(sos); free( bos ); return (SimpleOutputStream *)0; }

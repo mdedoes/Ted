@@ -179,6 +179,6 @@ char * appGuiGetStringFromListCallback(	APP_LIST		list,
     }
 
 void appFreeStringFromListCallback(	char *		s )
-    { /* first implement appGuiGetStringFromListCallback(); */ return;	}
+    { return;	}
 
 #   endif

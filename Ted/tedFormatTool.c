@@ -39,12 +39,14 @@ typedef struct TedFormatToolResources
     ParagraphLayoutPageResources	tttrParaLayoutPageResources;
     TabsPageResources			tttrTabsPageResources;
     ParagraphOrnamentsPageResources	tttrParaOrnamentsPageResources;
+    ListsPageResources			tttrListsPageResources;
     SectionPageResources		tttrSectPageResources;
     PageLayoutPageResources		tttrPageLayoutPageResources;
     HeaderFooterPageResources		tttrHeadFootPageResources;
     NotesPageResources			tttrNotesPageResources;
     AppFontToolResources		tttrFontToolResources;
     RgbChooserPageResources		tttrRgbChooserPageResources;
+    LinkToolResources			tttrLinkToolResources;
     } TedFormatToolResources;
 
 static void tedFormatFillPages(	const TedFormatToolResources *	tftr,
@@ -97,6 +99,12 @@ static void tedFormatFillPages(	const TedFormatToolResources *	tftr,
 			    ai->aiSubjects[TEDtsiPARA_ORN].isPage,
 			    &(tftr->tttrSubjectResources[TEDtsiPARA_ORN]) );
 
+    tedFormatFillListsPage( &(tft->tftListsTool),
+			    &(tftr->tttrListsPageResources),
+			    &(ai->aiSubjects[TEDtsiLISTS]),
+			    ai->aiSubjects[TEDtsiLISTS].isPage,
+			    &(tftr->tttrSubjectResources[TEDtsiLISTS]) );
+
     tedFormatFillSectionPage( &(tft->tftSectionTool),
 			    &(tftr->tttrSectPageResources),
 			    &(ai->aiSubjects[TEDtsiSECT]),
@@ -128,6 +136,20 @@ static void tedFormatFillPages(	const TedFormatToolResources *	tftr,
 			    ai->aiSubjects[TEDtsiFONT].isPage,
 			    &(tftr->tttrSubjectResources[TEDtsiFONT]) );
 
+    appFontToolFillPage( &(tft->tftListFontTool),
+			    &(tftr->tttrFontToolResources),
+			    TEDtsiLISTFONT,
+			    &(ai->aiSubjects[TEDtsiLISTFONT]),
+			    ai->aiSubjects[TEDtsiLISTFONT].isPage,
+			    &(tftr->tttrSubjectResources[TEDtsiLISTFONT]) );
+
+    tedFormatFillLinkPage( &(tft->tftLinkTool),
+			    &(tftr->tttrLinkToolResources),
+			    &(ai->aiSubjects[TEDtsiLINK]),
+			    ai->aiSubjects[TEDtsiLINK].isPage,
+			    &(tftr->tttrSubjectResources[TEDtsiLINK]) );
+
+    /**/
     appRgbChooserPageFillPage( &(tft->tftRgbPage),
 			    &(tftr->tttrRgbChooserPageResources),
 			    &(ai->aiSubjects[TEDtsiRGB]),
@@ -160,59 +182,20 @@ static void tedDestroyFormatTool(	void *	voidtft )
     tedFormatCleanParaLayoutTool( &(tft->tftParagraphLayoutTool) );
     tedFormatCleanParaTabsTool( &(tft->tftTabsTool) );
     tedCleanParaOrnamentsTool( &(tft->tftParagraphOrnamentsTool) );
+    tedFormatCleanListsTool( &(tft->tftListsTool) );
     tedFormatCleanSectionTool( &(tft->tftSectionTool) );
     tedFormatCleanPageLayoutTool( &(tft->tftPageLayoutTool) );
     tedFormatCleanHeaderFooterTool( &(tft->tftHeaderFooterTool) );
     tedFormatCleanNotesTool( &(tft->tftNotesTool) );
     appFontChooserCleanPage( &(tft->tftFontTool) );
+    appFontChooserCleanPage( &(tft->tftListFontTool) );
+    tedFormatCleanLinkTool( &(tft->tftLinkTool) );
+
     appRgbChooserPageCleanPage( &(tft->tftRgbPage) );
 
     free( tft );
 
     tar->tarInspector= (void *)0;
-
-    return;
-    }
-
-/************************************************************************/
-/*									*/
-/*  Intermediary routine to refresh the font tool.			*/
-/*									*/
-/************************************************************************/
-
-static void tedRefreshFontTool(	AppFontChooser *		afc,
-				int *				pEnabled,
-				InspectorSubject *		is,
-				const DocumentSelection *	ds,
-				BufferDocument *		bd )
-    {
-    const DocumentProperties *	dp= &(bd->bdProperties);
-    const DocumentFontList *	dfl= &(dp->dpFontList);
-
-    PropertyMask		updMask;
-    PropertyMask		doneMask;
-
-    TextAttribute		ta;
-    ExpandedTextAttribute	eta;
-
-    PROPmaskCLEAR( &updMask );
-    PROPmaskCLEAR( &doneMask );
-
-    utilInitTextAttribute( &ta );
-    docInitExpandedTextAttribute( &eta );
-
-    tedGetSelectionAttributes( bd, ds, &updMask, &ta );
-
-    docExpandTextAttribute( &doneMask, &eta, &ta, &updMask, dfl,
-					    dp->dpColors, dp->dpColorCount );
-
-    if  ( appFontSetCurrentFont( afc, &updMask, &eta,
-					    dp->dpColors, dp->dpColorCount ) )
-	{ LDEB(1);	}
-
-    docCleanExpandedTextAttribute( &eta );
-
-    *pEnabled= 1;
 
     return;
     }
@@ -244,9 +227,7 @@ static void tedFormatToolNotifySubject(	AppInspector *		ai,
 /************************************************************************/
 
 void tedShowFormatTool(	APP_WIDGET		option,
-			EditApplication *	ea,
-			const char *		widgetName,
-			const char *		pixmapName )
+			EditApplication *	ea )
     {
     AppInspector *			ai;
     TedFormatTool *			tft;
@@ -255,6 +236,9 @@ void tedShowFormatTool(	APP_WIDGET		option,
     static int				gotResources;
 
     TedAppResources *			tar;
+
+    const char *		widgetName= "tedFormatTool";
+    const char *		pixmapName= "tedtable";
 
     tar= (TedAppResources *)ea->eaResourceData;
 
@@ -297,6 +281,10 @@ void tedShowFormatTool(	APP_WIDGET		option,
 				&(tftr.tttrParaOrnamentsPageResources),
 				&(tftr.tttrSubjectResources[TEDtsiPARA_ORN]) );
 
+	tedFormatToolGetListsResourceTable( ea,
+				&(tftr.tttrListsPageResources),
+				&(tftr.tttrSubjectResources[TEDtsiLISTS]) );
+
 	tedFormatToolGetSectResourceTable( ea,
 				&(tftr.tttrSectPageResources),
 				&(tftr.tttrSubjectResources[TEDtsiSECT]) );
@@ -313,9 +301,16 @@ void tedShowFormatTool(	APP_WIDGET		option,
 				&(tftr.tttrNotesPageResources),
 				&(tftr.tttrSubjectResources[TEDtsiNOTES]) );
 
-	appFontToolGetResourceTable( ea,
+	tedFontToolGetResourceTable( ea,
 				&(tftr.tttrFontToolResources),
 				&(tftr.tttrSubjectResources[TEDtsiFONT]) );
+
+	tedListFontToolGetResourceTable( ea,
+				&(tftr.tttrSubjectResources[TEDtsiLISTFONT]) );
+
+	tedLinkToolGetResourceTable( ea,
+				&(tftr.tttrLinkToolResources),
+				&(tftr.tttrSubjectResources[TEDtsiLINK]) );
 
 	appRgbChooserPageGetResourceTable( ea,
 				&(tftr.tttrRgbChooserPageResources),
@@ -335,6 +330,7 @@ void tedShowFormatTool(	APP_WIDGET		option,
     tedInitCellTool( &(tft->tftCellTool) );
     tedInitParaOrnamentsTool( &(tft->tftParagraphOrnamentsTool) );
     tedInitRowTool( &(tft->tftRowTool) );
+    tedFormatInitLinkTool( &(tft->tftLinkTool) );
 
     /******/
     tft->tftTableTool.ttApplication= ea;
@@ -344,11 +340,14 @@ void tedShowFormatTool(	APP_WIDGET		option,
     tft->tftParagraphLayoutTool.ptApplication= ea;
     tft->tftTabsTool.ttApplication= ea;
     tft->tftParagraphOrnamentsTool.potApplication= ea;
+    tft->tftListsTool.ltApplication= ea;
     tft->tftSectionTool.stApplication= ea;
     tft->tftPageLayoutTool.pltApplication= ea;
     tft->tftHeaderFooterTool.hftApplication= ea;
     tft->tftNotesTool.ntApplication= ea;
     tft->tftFontTool.afcApplication= ea;
+    tft->tftListFontTool.afcApplication= ea;
+    tft->tftLinkTool.ltApplication= ea;
     tft->tftRgbPage.rcpApplication= ea;
 
     ai= appMakeInspector( ea, option, pixmapName, widgetName,
@@ -366,11 +365,14 @@ void tedShowFormatTool(	APP_WIDGET		option,
     tft->tftParagraphLayoutTool.ptInspector= ai;
     tft->tftTabsTool.ttInspector= ai;
     tft->tftParagraphOrnamentsTool.potInspector= ai;
+    tft->tftListsTool.ltInspector= ai;
     tft->tftSectionTool.stInspector= ai;
     tft->tftPageLayoutTool.pltInspector= ai;
     tft->tftHeaderFooterTool.hftInspector= ai;
     tft->tftNotesTool.ntInspector= ai;
     tft->tftFontTool.afcInspector= ai;
+    tft->tftListFontTool.afcInspector= ai;
+    tft->tftLinkTool.ltInspector= ai;
     tft->tftRgbPage.rcpInspector= ai;
 
     /******/
@@ -380,30 +382,36 @@ void tedShowFormatTool(	APP_WIDGET		option,
     /******/
 
     tft->tftFontTool.afcSetFont= tedFontToolSet;
+    tft->tftListFontTool.afcSetFont= tedListFontToolSet;
 
     /******/
     /*tedFormatFillTableChoosers()*/
     tedFormatFillRowChoosers( &(tft->tftRowTool),
 					    &(tftr.tttrRowPageResources) );
-    tedFormatFillColumnChoosers( &(tft->tftColumnTool),
+    tedColumnToolFillChoosers( &(tft->tftColumnTool),
 					&(tftr.tttrColumnPageResources) );
-    tedFormatFillCellChoosers( &(tft->tftCellTool),
+    tedCellToolFillChoosers( &(tft->tftCellTool),
 					&(tftr.tttrCellPageResources) );
     tedFormatFillParagraphLayoutChoosers( &(tft->tftParagraphLayoutTool),
 				    &(tftr.tttrParaLayoutPageResources) );
-    tedFormatFillTabsChoosers( &(tft->tftTabsTool) );
+    tedTabsToolFillChoosers( &(tft->tftTabsTool) );
     tedFormatFillParagraphOrnamentsChoosers( &(tft->tftParagraphOrnamentsTool),
 				    &(tftr.tttrParaOrnamentsPageResources) );
+    tedFormatFillListChoosers( &(tft->tftListsTool) );
     tedFormatFillSectionChoosers( &(tft->tftSectionTool),
 					    &(tftr.tttrSectPageResources) );
     appPageLayoutPageFillChoosers( &(tft->tftPageLayoutTool),
 					&(tftr.tttrPageLayoutPageResources) );
     tedFormatFillHeaderFooterChoosers( &(tft->tftHeaderFooterTool),
 					&(tftr.tttrHeadFootPageResources) );
-    appFontToolFillChoosers( &(tft->tftFontTool),
-					&(tftr.tttrFontToolResources) );
     tedFormatFillNotesChoosers( &(tft->tftNotesTool),
 					&(tftr.tttrNotesPageResources) );
+    appFontToolFillChoosers( &(tft->tftFontTool),
+					&(tftr.tttrFontToolResources) );
+    appFontToolFillChoosers( &(tft->tftListFontTool),
+					&(tftr.tttrFontToolResources) );
+    tedLinkToolFillChoosers( &(tft->tftLinkTool),
+					&(tftr.tttrLinkToolResources) );
     /******/
 
     appFinishInspector( ai );
@@ -415,6 +423,7 @@ void tedShowFormatTool(	APP_WIDGET		option,
     tedFormatFinishTabsPage( &(tft->tftTabsTool) );
     tedFormatFinishParaOrnamentsPage( &(tft->tftParagraphOrnamentsTool), tft,
 				    &(tftr.tttrParaOrnamentsPageResources) );
+    tedFormatFinishListPage( &(tft->tftListsTool) );
     tedFormatFinishSectionPage( &(tft->tftSectionTool), tft,
 					    &(tftr.tttrSectPageResources) );
     tedFormatFinishPageLayoutPage( &(tft->tftPageLayoutTool), tft,
@@ -429,6 +438,10 @@ void tedShowFormatTool(	APP_WIDGET		option,
 					&(tftr.tttrNotesPageResources) );
     appFontToolFinishPage( &(tft->tftFontTool),
 					&(tftr.tttrFontToolResources) );
+    appFontToolFinishPage( &(tft->tftListFontTool),
+					&(tftr.tttrFontToolResources) );
+    tedFinishLinkTool( &(tft->tftLinkTool),
+					&(tftr.tttrLinkToolResources) );
     appRgbChooserPageFinishPage( &(tft->tftRgbPage),
 					&(tftr.tttrRgbChooserPageResources) );
 
@@ -457,79 +470,114 @@ void tedFormatShowPagePage(	EditApplication *	ea )
     return;
     }
 
-void tedFormatShowFontPage(	EditApplication *	ea )
+void tedFormatShowLinkPage(	EditApplication *	ea )
     {
     TedAppResources *		tar= (TedAppResources *)ea->eaResourceData;
 
     if  ( ! tar->tarInspector )
 	{ XDEB(tar->tarInspector); return;	}
 
-    appEnableInspectorSubject( tar->tarInspector, TEDtsiFONT, 1 );
+    appEnableInspectorSubject( tar->tarInspector, TEDtsiLINK, 1 );
 
-    appInspectorSelectSubject( tar->tarInspector, TEDtsiFONT );
+    appInspectorSelectSubject( tar->tarInspector, TEDtsiLINK );
 
     return;
     }
 
 static void tedFormatRefreshToolPages(	int *				enabled,
+					int *				prefs,
 					TedFormatTool *			tft,
 					AppInspector *			ai,
-					BufferDocument *		bd,
+					EditDocument *			ed,
 					const DocumentSelection *	ds,
-					const SelectionGeometry *	sg )
+					const SelectionGeometry *	sg,
+					const SelectionDescription *	sd )
     {
+    TedDocument *		td= (TedDocument *)ed->edPrivateData;
+    BufferDocument *		bd= td->tdDocument;
+
     tedFormatToolRefreshTableTool( &(tft->tftTableTool),
 				    enabled+ TEDtsiTABLE,
+				    prefs+ TEDtsiTABLE,
 				    ai->aiSubjects+ TEDtsiTABLE, ds );
 
     tedFormatToolRefreshColumnTool( &(tft->tftColumnTool),
 				    enabled+ TEDtsiCOLUMN,
+				    prefs+ TEDtsiCOLUMN,
 				    ai->aiSubjects+ TEDtsiCOLUMN, ds );
 
     tedFormatToolRefreshRowTool( &(tft->tftRowTool),
 				    enabled+ TEDtsiROW,
+				    prefs+ TEDtsiROW,
 				    ai->aiSubjects+ TEDtsiROW, ds );
 
     tedFormatToolRefreshCellTool( &(tft->tftCellTool),
 				    enabled+ TEDtsiCELL,
+				    prefs+ TEDtsiCELL,
 				    ai->aiSubjects+ TEDtsiCELL, ds );
 
     tedFormatToolRefreshParaLayoutTool(  &(tft->tftParagraphLayoutTool),
 				    enabled+ TEDtsiPARA_LAY,
+				    prefs+ TEDtsiPARA_LAY,
 				    ai->aiSubjects+ TEDtsiPARA_LAY, ds );
 
     tedFormatToolRefreshTabsTool( &(tft->tftTabsTool),
 				    enabled+ TEDtsiTABS,
+				    prefs+ TEDtsiTABS,
 				    ai->aiSubjects+ TEDtsiTABS,
 				    ds, &(bd->bdProperties) );
 
     tedFormatToolRefreshParaOrnamentsTool(  &(tft->tftParagraphOrnamentsTool),
 				    enabled+ TEDtsiPARA_ORN,
+				    prefs+ TEDtsiPARA_ORN,
 				    ai->aiSubjects+ TEDtsiPARA_ORN, ds );
+
+    tedFormatToolRefreshListTool(  &(tft->tftListsTool),
+				    enabled+ TEDtsiLISTS,
+				    prefs+ TEDtsiLISTS,
+				    ai->aiSubjects+ TEDtsiLISTS,
+				    ds, sd, bd );
 
     tedFormatToolRefreshSectionTool( &(tft->tftSectionTool),
 				    enabled+ TEDtsiSECT,
+				    prefs+ TEDtsiSECT,
 				    ai->aiSubjects+ TEDtsiSECT, ds );
 
     tedFormatToolRefreshPageLayoutTool( &(tft->tftPageLayoutTool),
 				    enabled+ TEDtsiPAGE,
+				    prefs+ TEDtsiPAGE,
 				    ai->aiSubjects+ TEDtsiPAGE,
 				    ds, &(bd->bdProperties) );
 
     tedFormatToolRefreshHeaderFooterTool( &(tft->tftHeaderFooterTool),
 				    enabled+ TEDtsiHEADFOOT,
+				    prefs+ TEDtsiHEADFOOT,
 				    ai->aiSubjects+ TEDtsiHEADFOOT,
-				    ds, sg, &(bd->bdProperties) );
+				    ds, sd, sg, bd );
 
     tedFormatToolRefreshNotesTool( &(tft->tftNotesTool),
 				    enabled+ TEDtsiNOTES,
+				    prefs+ TEDtsiNOTES,
 				    ai->aiSubjects+ TEDtsiNOTES,
 				    ds, bd );
 
     tedRefreshFontTool( &(tft->tftFontTool),
 				    enabled+ TEDtsiFONT,
+				    prefs+ TEDtsiFONT,
 				    ai->aiSubjects+ TEDtsiFONT,
-				    ds, bd );
+				    ds, sd, ed );
+
+    tedRefreshListFontTool( &(tft->tftListFontTool),
+				    enabled+ TEDtsiLISTFONT,
+				    prefs+ TEDtsiLISTFONT,
+				    ai->aiSubjects+ TEDtsiLISTFONT,
+				    ds, sd, bd );
+
+    tedRefreshLinkTool( &(tft->tftLinkTool),
+				    enabled+ TEDtsiLINK,
+				    prefs+ TEDtsiLINK,
+				    ai->aiSubjects+ TEDtsiLINK,
+				    ds, sd, bd );
 
     /*  no refresh  */
     enabled[TEDtsiRGB]= 0;
@@ -538,25 +586,32 @@ static void tedFormatRefreshToolPages(	int *				enabled,
     }
 
 void tedFormatToolAdaptToSelection( AppInspector *		ai,
-				BufferDocument *		bd,
+				EditDocument *			ed,
+				int				choosePage,
 				const DocumentSelection *	ds,
 				const SelectionGeometry *	sg,
-				int				fileReadonly )
+				const SelectionDescription *	sd )
     {
     TedFormatTool *		tft= (TedFormatTool *)ai->aiTarget;
 
     int				subject;
     int				enabled[TEDtsi_COUNT];
+    int				prefs[TEDtsi_COUNT];
+    int				highest= -1;
+    int				preferred= -1;
 
     for ( subject= 0; subject < TEDtsi_COUNT; subject++ )
-	{ enabled[subject]= 1;	}
+	{
+	enabled[subject]= 1;
+	prefs[subject]= 5;
+	}
 
     if  ( ! ds->dsBegin.dpBi )
 	{ appEnableInspector( ai, 0 ); return; }
     else{
-	tedFormatRefreshToolPages( enabled, tft, ai, bd, ds, sg );
+	tedFormatRefreshToolPages( enabled, prefs, tft, ai, ed, ds, sg, sd );
 
-	if  ( fileReadonly )
+	if  ( ed->edFileReadOnly )
 	    { appEnableInspector( ai, 0 );	}
 	else{ appEnableInspector( ai, 1 );	}
 	}
@@ -565,19 +620,14 @@ void tedFormatToolAdaptToSelection( AppInspector *		ai,
 	{
 	appEnableInspectorSubject( ai, subject,
 				    enabled[subject] != 0 );
+
+	if  ( enabled[subject] && prefs[subject] > highest )
+	    { preferred= subject; highest= prefs[subject]; }
 	}
 
     if  ( ai->aiCurrentSubject < 0				||
+	  choosePage						||
 	  ! ai->aiSubjects[ai->aiCurrentSubject].isEnabled	)
-	{
-	for ( subject= 0; subject < ai->aiSubjectCount; subject++ )
-	    {
-	    if  ( ai->aiSubjects[subject].isEnabled )
-		{
-		appInspectorSelectSubject( ai, subject );
-		break;
-		}
-	    }
-	}
+	{ appInspectorSelectSubject( ai, preferred );	}
     }
 

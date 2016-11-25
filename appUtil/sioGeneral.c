@@ -60,7 +60,6 @@ int sioInClose(	SimpleInputStream *		sis )
 
 SimpleInputStream * sioInOpen(	void *			specific,
 				SIOinREADBYTES		readBytes,
-				SIOinSEEK		seekTo,
 				SIOinCLOSE		closeIt )
     {
     SimpleInputStream *	sis;
@@ -75,7 +74,6 @@ SimpleInputStream * sioInOpen(	void *			specific,
     sis->sisPrivate= specific;
 
     sis->sisReadBytes= readBytes;
-    sis->sisSeek= seekTo;
     sis->sisClose= closeIt;
 
     return sis;
@@ -145,42 +143,6 @@ int sioInReadBytes(	SimpleInputStream *	sis,
 	}
 
     return done;
-    }
-
-/************************************************************************/
-/*									*/
-/*  Seek to a certain position.						*/
-/*									*/
-/*  1)  If the position is in the current buffer, just adapt the	*/
-/*	administration.							*/
-/*									*/
-/************************************************************************/
-
-int sioInSeek(		SimpleInputStream *		sis,
-			long				pos )
-    {
-    if  ( ! sis->sisSeek )
-	{ XDEB(sis->sisSeek); return -1;	}
-
-    /*  1  */
-    if  ( pos < sis->sisReadUpto		&&
-	  pos >= sis->sisReadUpto- sis->sisN	)
-	{
-	int	newN= sis->sisReadUpto- pos;
-
-	sis->sisP -= newN- sis->sisN;
-	sis->sisN= newN;
-
-	return 0;
-	}
-
-    if  ( (*sis->sisSeek)( sis->sisPrivate, pos ) )
-	{ XLDEB(sis->sisPrivate,pos); return -1;	}
-
-    sis->sisReadUpto= pos;
-    sis->sisN= 0;
-
-    return 0;
     }
 
 /************************************************************************/

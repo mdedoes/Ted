@@ -40,6 +40,7 @@ static void tedFormatToolRefreshTablePage(	TableTool *	tt )
 void tedFormatToolRefreshTableTool(
 			    TableTool *			tt,
 			    int *			pEnabled,
+			    int *			pPref,
 			    InspectorSubject *		is,
 			    const DocumentSelection *	ds )
     {

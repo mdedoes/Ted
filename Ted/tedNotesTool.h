@@ -18,6 +18,7 @@ typedef struct NotesPageResources
     char *		nprCurrentNoteText;
     char *		nprFootnoteText;
     char *		nprEndnoteText;
+    char *		nprFixedTextText;
     char *		nprToNoteRefText;
     char *		nprToNoteText;
     char *		nprRevertNoteText;
@@ -31,9 +32,9 @@ typedef struct NotesPageResources
     char *		nprRestartText;
     char *		nprStyleText;
 
-    char *		nprPositionMenuTexts[DPftnPOS__COUNT];
-    char *		nprRestartMenuTexts[DPftnRST__COUNT];
-    char *		nprNumberStyleMenuTexts[DPftn_NCOUNT];
+    char *		nprPositionMenuTexts[FTN_POS__COUNT];
+    char *		nprRestartMenuTexts[FTN_RST__COUNT];
+    char *		nprNumberStyleMenuTexts[FTNstyle_COUNT];
     } NotesPageResources;
 
 typedef struct NotePropertiesTool
@@ -44,14 +45,14 @@ typedef struct NotePropertiesTool
 
 				/*  Not all positions used!	*/
     AppOptionmenu		nptPositionOptionmenu;
-    APP_WIDGET			nptPositionOptions[DPftnPOS__COUNT];
+    APP_WIDGET			nptPositionOptions[FTN_POS__COUNT];
 
 				/*  Not all positions used!	*/
     AppOptionmenu		nptRestartOptionmenu;
-    APP_WIDGET			nptRestartOptions[DPftnRST__COUNT];
+    APP_WIDGET			nptRestartOptions[FTN_RST__COUNT];
 
     AppOptionmenu		nptStyleOptionmenu;
-    APP_WIDGET			nptStyleOptions[DPftn_NCOUNT];
+    APP_WIDGET			nptStyleOptions[FTNstyle_COUNT];
     } NotePropertiesTool;
 
 typedef struct NotesTool
@@ -60,9 +61,15 @@ typedef struct NotesTool
     AppInspector *		ntInspector;
     const NotesPageResources *	ntPageResources;
 
+    int				ntNoteNumber;
     int				ntNoteKindChosen;
     int				ntNoteKindSet;
+    int				ntFixedTextChosen;
+    int				ntFixedTextSet;
     int				ntInsideNote;
+
+    unsigned char		ntNoteTextSet[20+1];
+    unsigned char		ntNoteTextChosen[20+1];
 
     DocumentProperties		ntPropertiesChosen;
     DocumentProperties		ntPropertiesSet;
@@ -72,6 +79,8 @@ typedef struct NotesTool
     APP_WIDGET			ntCurrentNotePaned;
     APP_WIDGET			ntFootnoteToggle;
     APP_WIDGET			ntEndnoteToggle;
+    APP_WIDGET			ntFixedTextToggle;
+    APP_WIDGET			ntFixedTextText;
 
     APP_WIDGET			ntToNoteRefButton;
     APP_WIDGET			ntToNoteButton;
@@ -97,6 +106,7 @@ extern void tedFormatToolGetNotesResourceTable( EditApplication *	ea,
 extern void tedFormatToolRefreshNotesTool(
 				NotesTool *			nt,
 				int *				pEnabled,
+				int *				pPref,
 				InspectorSubject *		is,
 				const DocumentSelection *	ds,
 				BufferDocument *		bd );

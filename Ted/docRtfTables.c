@@ -86,7 +86,7 @@ static int docRtfInfoText(	RtfReadingContext *	rrc,
     to= saved;
 
     if  ( *pText )
-	{ strcpy( to, *pText ); to += oldLen;	}
+	{ strcpy( to, (const char *)*pText ); to += oldLen;	}
 
     while( len > 0 )
 	{ *(to++)= *(text++); len--;	}
@@ -98,6 +98,14 @@ static int docRtfInfoText(	RtfReadingContext *	rrc,
     *pText= (unsigned char *)saved;
 
     return 0;
+    }
+
+static int docRtfGeneratorText(	RtfReadingContext *	rrc,
+				const unsigned char *	text,
+				int			len )
+    {
+    return docRtfInfoText( rrc, &(rrc->rrcBd->bdProperties.dpGenerator),
+								text, len );
     }
 
 static int docRtfTitleText(	RtfReadingContext *	rrc,
@@ -113,6 +121,14 @@ static int docRtfAuthorText(	RtfReadingContext *	rrc,
 				int			len )
     {
     return docRtfInfoText( rrc, &(rrc->rrcBd->bdProperties.dpAuthor),
+								text, len );
+    }
+
+static int docRtfCompanyText(	RtfReadingContext *	rrc,
+				const unsigned char *	text,
+				int			len )
+    {
+    return docRtfInfoText( rrc, &(rrc->rrcBd->bdProperties.dpCompany),
 								text, len );
     }
 
@@ -148,7 +164,7 @@ static int docRtfHlinkbaseText(	RtfReadingContext *	rrc,
 								text, len );
     }
 
-static int docRtfDocInfoGroup(	SimpleInputStream *	sis,
+int docRtfDocInfoGroup(		SimpleInputStream *	sis,
 				const RtfControlWord *	rcw,
 				int			arg,
 				RtfReadingContext *	rrc )
@@ -165,6 +181,10 @@ static int docRtfDocInfoGroup(	SimpleInputStream *	sis,
 	    addTextParticule= docRtfAuthorText;
 	    break;
 
+	case DPpropCOMPANY:
+	    addTextParticule= docRtfCompanyText;
+	    break;
+
 	case DPpropSUBJECT:
 	    addTextParticule= docRtfSubjectText;
 	    break;
@@ -179,6 +199,10 @@ static int docRtfDocInfoGroup(	SimpleInputStream *	sis,
 
 	case DPpropHLINKBASE:
 	    addTextParticule= docRtfHlinkbaseText;
+	    break;
+
+	case DPpropGENERATOR:
+	    addTextParticule= docRtfGeneratorText;
 	    break;
 
 	default:
@@ -232,6 +256,7 @@ static RtfControlWord	docRtfInfoGroups[]=
     {
 	{ "title",	DPpropTITLE,	DOClevDOC, docRtfDocInfoGroup,	},
 	{ "author",	DPpropAUTHOR,	DOClevDOC, docRtfDocInfoGroup,	},
+	{ "company",	DPpropCOMPANY,	DOClevDOC, docRtfDocInfoGroup,	},
 	{ "subject",	DPpropSUBJECT,	DOClevDOC, docRtfDocInfoGroup,	},
 	{ "keywords",	DPpropKEYWORDS,	DOClevDOC, docRtfDocInfoGroup,	},
 	{ "comment",	DPpropDOCCOMM,	DOClevDOC, docRtfDocInfoGroup,	},

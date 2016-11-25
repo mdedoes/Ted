@@ -256,8 +256,6 @@ BufferDocument * docPlainReadFile(
 			int				ansiCodepage,
 			const DocumentGeometry *	dg )
     {
-    const int		fontSizeHalfPoints= 18;
-
     BufferDocument *	bd;
 
     PlainReadingContext	prc;
@@ -265,8 +263,9 @@ BufferDocument * docPlainReadFile(
     docPlainInitReadingContext( &prc );
 
     bd= docNewFile( &(prc.prcTextAttribute),
-				    "Courier", fontSizeHalfPoints,
-				    docCharset, ansiCodepage, dg );
+				    "Courier,,,9",
+				    docCharset, ansiCodepage,
+				    (PostScriptFontList *)0, dg );
     if  ( ! bd )
 	{ XDEB(bd); return bd;	}
 

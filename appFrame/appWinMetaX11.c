@@ -74,6 +74,7 @@ static void appMetaCleanDeviceContextX11(	DeviceContextX11 *	dcx )
     }
 
 static int appMetaInitDeviceContextX11(	DeviceContextX11 *	dcx,
+					const PostScriptFontList * psfl,
 					int			objectCount,
 					int			mapMode,
 					int			xWinExt,
@@ -85,13 +86,13 @@ static int appMetaInitDeviceContextX11(	DeviceContextX11 *	dcx,
     {
     DeviceContext *	dc= &(dcx->dcxDeviceContext);
 
-    if  ( appMetaInitDeviceContext( dc, objectCount, mapMode,
+    if  ( appMetaInitDeviceContext( dc, psfl, objectCount, mapMode,
 						    xWinExt, yWinExt,
 						    pixelsWide, pixelsHigh,
 						    twipsWide, twipsHigh ) )
 	{ LDEB(objectCount); return -1;	}
 
-    dcx->dcxPhysicalFont= (AppPhysicalFont *)0;
+    dcx->dcxPhysicalFont= (DrawScreenFont *)0;
 
     dcx->dcxPixelsWide= pixelsWide;
     dcx->dcxPixelsHigh= pixelsHigh;
@@ -316,15 +317,15 @@ static int appMetaSelectFontObjectX11(	DeviceContextX11 *	dcx,
 					AppColors *		ac,
 					int			ob )
     {
-    DeviceContext *	dc= &(dcx->dcxDeviceContext);
-    AppDrawingData *	add= &(dc->dcDrawingData);
-    LogicalFont *	lf= &(dc->dcObjects[ob].mfoLogicalFont);
+    DeviceContext *		dc= &(dcx->dcxDeviceContext);
+    AppDrawingData *		add= &(dc->dcDrawingData);
+    LogicalFont *		lf= &(dc->dcObjects[ob].mfoLogicalFont);
 
     if  ( lf->lfPrivateFont < 0 )
 	{
-	TextAttribute	ta= lf->lfTextAttribute;
+	const TextAttribute *	ta= &(lf->lfTextAttribute);
 
-	lf->lfPrivateFont= appOpenDocumentFont( add, &(dc->x_dcFontList), ta );
+	lf->lfPrivateFont= appOpenScreenFont( add, &(dc->x_dcFontList), ta );
 
 	if  ( lf->lfPrivateFont < 0 )
 	    { SLDEB(lf->lfFaceName,lf->lfPrivateFont); return 0;	}
@@ -333,48 +334,43 @@ static int appMetaSelectFontObjectX11(	DeviceContextX11 *	dcx,
     if  ( lf->lfPrivateFont >= 0 )
 	{
 	dcx->dcxPhysicalFont=
-			add->addPhysicalFontList.apflFonts+ lf->lfPrivateFont;
+			add->addScreenFontList.apflFonts+ lf->lfPrivateFont;
 
 	appDrawSetFont( add, dcx->dcxPhysicalFont->apfFontStruct );
 	}
-    else{ dcx->dcxPhysicalFont= (AppPhysicalFont *)0;	}
+    else{ dcx->dcxPhysicalFont= (DrawScreenFont *)0;	}
 
     dc->dcFont= *lf;
 
     return 0;
     }
 
-static int appMetaSelectPenObjectX11(	DeviceContextX11 *	dcx,
-					AppColors *		ac,
-					int			ob )
+void appMetaX11SetWindowsLineStyle(	AppDrawingData *	add,
+					int *			pDraw,
+					int			ps,
+					int			lpW,
+					int			width )
     {
-    DeviceContext *	dc= &(dcx->dcxDeviceContext);
-    AppDrawingData *	add= &(dc->dcDrawingData);
-    LogicalPen *	lp= &(dc->dcObjects[ob].mfoLogicalPen);
+    int		drawBorders= 0;
 
     static char	dash[]= { 3, 2 };
     static char	dot[]= { 1, 2 };
     static char	dashdot[]= { 2, 2, 1, 2 };
     static char	dashdotdot[]= { 2, 2, 1, 2, 1, 2 };
 
-    WMFDEB(appDebug( "SelectObject( ob= %d ) PEN Width= %d ",
-							ob, lp->lpWidth ));
-
-    switch( lp->lpStyle )
+    switch( ps )
 	{
 	case PS_SOLID:
 	    WMFDEB(appDebug( "SOLID\n" ));
 	  solid:
-	    dcx->dcxDeviceContext.dcDrawBorders= 1;
+	    drawBorders= 1;
 
 #	    ifdef USE_MOTIF
-	    XSetLineAttributes( add->addDisplay, add->addGc,
-					    DCX_wViewport( lp->lpWidth, dcx ),
-					    LineSolid, CapButt, JoinMiter );
+	    XSetLineAttributes( add->addDisplay, add->addGc, width,
+				    LineSolid, CapButt, JoinMiter );
 #	    endif
 #	    ifdef USE_GTK
-	    gdk_gc_set_line_attributes( add->addGc,
-			DCX_wViewport( lp->lpWidth, dcx ),
+	    gdk_gc_set_line_attributes( add->addGc, width,
 			GDK_LINE_SOLID, GDK_CAP_PROJECTING, GDK_JOIN_MITER );
 #	    endif
 
@@ -383,16 +379,14 @@ static int appMetaSelectPenObjectX11(	DeviceContextX11 *	dcx,
 	case PS_INSIDEFRAME:
 	    WMFDEB(appDebug( "INSIDEFRAME\n" ));
 
-	    dcx->dcxDeviceContext.dcDrawBorders= 1;
+	    drawBorders= 1;
 
 #	    ifdef USE_MOTIF
-	    XSetLineAttributes( add->addDisplay, add->addGc,
-					    DCX_wViewport( lp->lpWidth, dcx ),
+	    XSetLineAttributes( add->addDisplay, add->addGc, width,
 					    LineSolid, CapButt, JoinMiter );
 #	    endif
 #	    ifdef USE_GTK
-	    gdk_gc_set_line_attributes( add->addGc,
-			DCX_wViewport( lp->lpWidth, dcx ),
+	    gdk_gc_set_line_attributes( add->addGc, width,
 			GDK_LINE_SOLID, GDK_CAP_PROJECTING, GDK_JOIN_MITER );
 #	    endif
 
@@ -401,10 +395,10 @@ static int appMetaSelectPenObjectX11(	DeviceContextX11 *	dcx,
 	case PS_DASH:
 	    WMFDEB(appDebug( "DASH\n" ));
 
-	    if  ( lp->lpWidth > 1 )
+	    if  ( lpW > 1 )
 		{ goto solid;	}
 
-	    dcx->dcxDeviceContext.dcDrawBorders= 1;
+	    drawBorders= 1;
 
 #	    ifdef USE_MOTIF
 	    XSetLineAttributes( add->addDisplay, add->addGc,
@@ -423,10 +417,10 @@ static int appMetaSelectPenObjectX11(	DeviceContextX11 *	dcx,
 	case PS_DOT:
 	    WMFDEB(appDebug( "DOT\n" ));
 
-	    if  ( lp->lpWidth > 1 )
+	    if  ( lpW > 1 )
 		{ goto solid;	}
 
-	    dcx->dcxDeviceContext.dcDrawBorders= 1;
+	    drawBorders= 1;
 
 #	    ifdef USE_MOTIF
 	    XSetLineAttributes( add->addDisplay, add->addGc, 1,
@@ -445,10 +439,10 @@ static int appMetaSelectPenObjectX11(	DeviceContextX11 *	dcx,
 	case PS_DASHDOT:
 	    WMFDEB(appDebug( "DASHDOT\n" ));
 
-	    if  ( lp->lpWidth > 1 )
+	    if  ( lpW > 1 )
 		{ goto solid;	}
 
-	    dcx->dcxDeviceContext.dcDrawBorders= 1;
+	    drawBorders= 1;
 
 #	    ifdef USE_MOTIF
 	    XSetLineAttributes( add->addDisplay, add->addGc,
@@ -467,10 +461,10 @@ static int appMetaSelectPenObjectX11(	DeviceContextX11 *	dcx,
 	case PS_DASHDOTDOT:
 	    WMFDEB(appDebug( "DASHDOTDOT\n" ));
 
-	    if  ( lp->lpWidth > 1 )
+	    if  ( lpW > 1 )
 		{ goto solid;	}
 
-	    dcx->dcxDeviceContext.dcDrawBorders= 1;
+	    drawBorders= 1;
 
 #	    ifdef USE_MOTIF
 	    XSetLineAttributes( add->addDisplay, add->addGc,
@@ -489,14 +483,35 @@ static int appMetaSelectPenObjectX11(	DeviceContextX11 *	dcx,
 
 	case PS_NULL:
 	    WMFDEB(appDebug( "NULL\n" ));
-	    dcx->dcxDeviceContext.dcDrawBorders= 0;
+	    drawBorders= 0;
 	    break;
 
 	default:
 	    WMFDEB(appDebug( "????\n" ));
-	    dcx->dcxDeviceContext.dcDrawBorders= 0;
+	    drawBorders= 0;
 	    break;
 	}
+
+
+    *pDraw= drawBorders;
+    return;
+    }
+
+static int appMetaSelectPenObjectX11(	DeviceContextX11 *	dcx,
+					AppColors *		ac,
+					int			ob )
+    {
+    DeviceContext *	dc= &(dcx->dcxDeviceContext);
+    AppDrawingData *	add= &(dc->dcDrawingData);
+    LogicalPen *	lp= &(dc->dcObjects[ob].mfoLogicalPen);
+
+    WMFDEB(appDebug( "SelectObject( ob= %d ) PEN Width= %d ",
+							ob, lp->lpWidth ));
+
+    appMetaX11SetWindowsLineStyle( add,
+			    &(dcx->dcxDeviceContext.dcDrawBorders),
+			    lp->lpStyle, lp->lpWidth,
+			    DCX_wViewport( lp->lpWidth, dcx ) );
 
     if  ( dcx->dcxDeviceContext.dcDrawBorders )
 	{
@@ -514,34 +529,6 @@ static int appMetaSelectPenObjectX11(	DeviceContextX11 *	dcx,
     return 0;
     }
 
-static int appMetaGetPointsX11(	DeviceContextX11 *	dcx,
-				int			count,
-				SimpleInputStream *	sis )
-    {
-    DeviceContext *	dc= &(dcx->dcxDeviceContext);
-    APP_POINT *		xp;
-
-    int			done;
-
-    xp= (APP_POINT *)realloc( dc->dcPoints, (count+ 1)* sizeof(APP_POINT) );
-    if  ( ! xp )
-	{ LXDEB(count,xp); return -1;	}
-    dc->dcPoints= xp;
-
-    for ( done= 0; done < count; xp++, done++ )
-	{
-	int	x= sioEndianGetLeInt16( sis );
-	int	y= sioEndianGetLeInt16( sis );
-
-	xp->x= DCX_xViewport( x, dcx );
-	xp->y= DCX_yViewport( y, dcx );
-	}
-
-    *xp= dc->dcPoints[0];
-
-    return 0;
-    }
-
 static int appMetaGetCountAndPointsX11(	DeviceContextX11 *	dcx,
 					int *			pCount,
 					SimpleInputStream *	sis,
@@ -554,7 +541,7 @@ static int appMetaGetCountAndPointsX11(	DeviceContextX11 *	dcx,
     if  ( 2* count != recordSize- 4 )
 	{ LLDEB(2*count,recordSize-4); return -1;	}
 
-    if  ( appMetaGetPointsX11( dcx, count, sis ) )
+    if  ( appWinMetaGetPoints( &(dcx->dcxDeviceContext), count, sis ) )
 	{ LDEB(count); return -1;	}
 
     *pCount= count; return 0;
@@ -634,7 +621,7 @@ static int appMetaBitmapImageX11(	AppBitmapImage **	pAbi,
 	{
 	int	done= 0;
 
-	LDEB(expectBytes);
+	/* LDEB(expectBytes); */
 
 	while( done < expectBytes )
 	    { sioInGetCharacter( sis ); done++;	}
@@ -722,72 +709,6 @@ static int appMetaBitmapImageX11(	AppBitmapImage **	pAbi,
     return 0;
     }
 
-#   ifdef USE_GTK
-
-    typedef struct XArc
-	{
-	int	x;
-	int	y;
-	int	width;
-	int	height;
-	int	angle1;
-	int	angle2;
-	} XArc;
-
-static void appDrawDrawArcs(		AppDrawingData *	add,
-					const XArc *		arcs,
-					int			count )
-    {
-    int		i;
-
-    for ( i= 0; i < count; arcs++, i++ )
-	{
-	gdk_draw_arc( add->addDrawable, add->addGc, FALSE,
-					    arcs->x, arcs->y,
-					    arcs->width, arcs->height,
-					    arcs->angle1, arcs->angle2 );
-	}
-
-    return;
-    }
-
-static void appDrawFillArcs(		AppDrawingData *	add,
-					const XArc *		arcs,
-					int			count )
-    {
-    int		i;
-
-    for ( i= 0; i < count; arcs++, i++ )
-	{
-	gdk_draw_arc( add->addDrawable, add->addGc, TRUE,
-					    arcs->x, arcs->y,
-					    arcs->width, arcs->height,
-					    arcs->angle1, arcs->angle2 );
-	}
-
-    return;
-    }
-
-#   endif
-
-#   ifdef USE_MOTIF
-
-static void appDrawDrawArcs(		AppDrawingData *	add,
-					XArc *			arcs,
-					int			count )
-    {
-    XDrawArcs( add->addDisplay, add->addDrawable, add->addGc, arcs, count );
-    }
-
-static void appDrawFillArcs(		AppDrawingData *	add,
-					XArc *			arcs,
-					int			count )
-    {
-    XFillArcs( add->addDisplay, add->addDrawable, add->addGc, arcs, count );
-    }
-
-#   endif
-
 static int appMeta_RoundRectX11(	SimpleInputStream *	sis,
 					int			recordSize,
 					DeviceContextX11 *	dcx )
@@ -802,12 +723,6 @@ static int appMeta_RoundRectX11(	SimpleInputStream *	sis,
 
     int		h;
     int		w;
-
-    int		swap;
-
-    XArc	arcs[4];
-    APP_SEGMENT	segments[4];
-    APP_POINT	points[12];
 
     h= sioEndianGetLeInt16( sis );
     w= sioEndianGetLeInt16( sis );
@@ -828,111 +743,10 @@ static int appMeta_RoundRectX11(	SimpleInputStream *	sis,
     h= DCX_hViewport( h, dcx );
     w= DCX_wViewport( w, dcx );
 
-    if  ( x1 < x0 )
-	{ swap= x0; x0= x1; x1= swap; }
-    if  ( y1 < y0 )
-	{ swap= y0; y0= y1; y1= swap; }
-
-    if  ( h < 0 )
-	{ h= -h;	}
-    if  ( w < 0 )
-	{ w= -w;	}
-
-    points[0].x= x0;
-    points[0].y= y0+ h/ 2;
-
-    arcs[0].x= x0;
-    arcs[0].y= y0;
-    arcs[0].width= w;
-    arcs[0].height= h;
-    arcs[0].angle1= 64*  180;
-    arcs[0].angle2= 64*  -90;
-
-    points[1].x= x0+ w/ 2;
-    points[1].y= y0+ h/ 2;
-    points[2].x= x0+ w/ 2;
-    points[2].y= y0;
-
-    segments[0].x1= x0+ w/2;
-    segments[0].y1= y0;
-    segments[0].x2= x1- w/2;
-    segments[0].y2= y0;
-
-    points[3].x= x1- w/ 2;
-    points[3].y= y0;
-
-    arcs[1].x= x1- w;
-    arcs[1].y= y0;
-    arcs[1].width= w;
-    arcs[1].height= h;
-    arcs[1].angle1= 64*   90;
-    arcs[1].angle2= 64*  -90;
-
-    points[4].x= x1- w/ 2;
-    points[4].y= y0+ h/ 2;
-    points[5].x= x1;
-    points[5].y= y0+ w/ 2;
-
-    segments[1].x1= x1;
-    segments[1].y1= y0+ h/2;
-    segments[1].x2= x1;
-    segments[1].y2= y1- h/2;
-
-    points[6].x= x1;
-    points[6].y= y1- w/ 2;
-
-    arcs[2].x= x1- w;
-    arcs[2].y= y1- h;
-    arcs[2].width= w;
-    arcs[2].height= h;
-    arcs[2].angle1= 64*    0;
-    arcs[2].angle2= 64*  -90;
-
-    points[7].x= x1- w/ 2;
-    points[7].y= y1- h/ 2;
-    points[8].x= x1- w/ 2;
-    points[8].y= y1;
-
-    segments[2].x1= x1- w/2;
-    segments[2].y1= y1;
-    segments[2].x2= x0+ w/2;
-    segments[2].y2= y1;
-
-    points[9].x= x0+ w/ 2;
-    points[9].y= y1;
-
-    arcs[3].x= x0;
-    arcs[3].y= y1- h;
-    arcs[3].width= w;
-    arcs[3].height= h;
-    arcs[3].angle1= 64*  -90;
-    arcs[3].angle2= 64*  -90;
-
-    points[10].x= x0+ w/ 2;
-    points[10].y= y1- h/ 2;
-    points[11].x= x0;
-    points[11].y= y1- h/ 2;
-
-    segments[3].x1= x0;
-    segments[3].y1= y1- h/2;
-    segments[3].x2= x0;
-    segments[3].y2= y0+ h/2;
-
-    if  ( dc->dcFillInsides )
-	{
-	appDrawSetForegroundColor( add, &(dcx->dcxBrushColor) );
-
-	appDrawFillArcs( add, arcs, 4 );
-	appDrawFillPolygon( add, points, 12 );
-	}
-
-    if  ( dc->dcDrawBorders )
-	{
-	appDrawSetForegroundColor( add, &(dcx->dcxPenColor) );
-
-	appDrawDrawArcs( add, arcs, 4 );
-	appDrawDrawSegments( add, segments, 4 );
-	}
+    if  ( appMetafileDrawRoundRectX11( add, x0, y0, x1, y1, w, h,
+				dc->dcFillInsides, dc->dcDrawBorders,
+				&(dcx->dcxBrushColor), &(dcx->dcxPenColor) ) )
+	{ LDEB(1); return -1;	}
 
     return 0;
     }
@@ -1328,7 +1142,7 @@ static void appMetaDrawStringX11(	int			x0,
     {
     DeviceContext *	dc= &(dcx->dcxDeviceContext);
     AppDrawingData *	add= &(dc->dcDrawingData);
-    AppPhysicalFont *	apf= dcx->dcxPhysicalFont;
+    DrawScreenFont *	apf= dcx->dcxPhysicalFont;
 
     int			wide;
     int			fontAscent;
@@ -1621,7 +1435,7 @@ static int appMeta_PolyPolygonX11(	SimpleInputStream *	sis,
 
     for ( i= 0; i < count; i++ )
 	{
-	if  ( appMetaGetPointsX11( dcx, counts[i], sis ) )
+	if  ( appWinMetaGetPoints( dc, counts[i], sis ) )
 	    { LDEB(counts[i]); return -1;	}
 
 #	if 1
@@ -2143,7 +1957,8 @@ int appMetaPlayWmfX11(	SimpleInputStream *	sis,
     maxRecordSize= sioEndianGetLeInt32( sis );
     parameterCount= sioEndianGetLeInt16( sis );
 
-    appMetaInitDeviceContextX11( &dcx, objectCount, mapMode,
+    appMetaInitDeviceContextX11( &dcx, parent_add->addPostScriptFontList,
+						    objectCount, mapMode,
 						    xWinExt, yWinExt,
 						    twipsWide, twipsHigh,
 						    pixelsWide, pixelsHigh );

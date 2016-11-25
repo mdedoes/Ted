@@ -1,5 +1,8 @@
 #   include	"bitmapConfig.h"
 
+#   include	<utilAffineTransform.h>
+#   include	<geo2DInteger.h>
+
 #   include	"bmintern.h"
 
 #   include	<string.h>
@@ -368,9 +371,11 @@ int bmRotate90(	BitmapDescription *		bdOut,
 	    return 0;
 	case 180:
 	    return bmUpsideDown( bdOut, bdIn, pBufOut, bufIn, angle );
+
 	case 270:
 	case 90:
 	    break;
+
 	default:
 	    LDEB(angle); return -1;
 	}
@@ -522,6 +527,7 @@ int bmRotate90(	BitmapDescription *		bdOut,
 		    }
 		}
 	    break;
+
 	case 24:
 	    if  ( angle == 90 )
 		{
@@ -562,158 +568,300 @@ int bmRotate90(	BitmapDescription *		bdOut,
 
 /************************************************************************/
 /*									*/
-/*  Rotate a 1, 2, 4 bit scan line over a sharp angle.			*/
+/*  Shear operations.							*/
 /*									*/
 /************************************************************************/
 
-static void bmRotateScanline124( const unsigned char *	from,
-				int			pixelsWide,
-				unsigned char *		bufOut,
-				int			bytesPerRow,
-				int			trow,
-				int			tcol,
-				int			eRow,
-				int			eCol,
-				int			xRow,
-				int			xCol,
-				int			sRow,
-				int			d,
-				int			bitsPerPixel )
+typedef void (*ShearRow)(	unsigned char *			rowBufOut,
+				const unsigned char *		rowBufIn,
+				const BitmapDescription *	bdIn,
+				const BitmapDescription *	bdOut,
+				int				colShift,
+				int				fl );
+
+typedef void (*ShearCol)(	unsigned char *			imgBufOut,
+				const unsigned char *		imgBufIn,
+				const BitmapDescription *	bdIn,
+				const BitmapDescription *	bdOut,
+				int				col,
+				int				rowShift,
+				int				fl );
+
+static void bmShearRow8Bit(	unsigned char *			rowBufOut,
+				const unsigned char *		rowBufIn,
+				const BitmapDescription *	bdIn,
+				const BitmapDescription *	bdOut,
+				int				colShift,
+				int				fl )
     {
-    int			fcol;
-    int			step= 8/ bitsPerPixel;
-    unsigned char	tmask;
-    int			rshift= ( tcol % step ) * bitsPerPixel;
+    int		fr= 255- fl;
+    int		spp= bdIn->bdSamplesPerPixel;
+    int		i;
 
-    unsigned char *	to= bufOut+ trow* bytesPerRow+ tcol/step;
+    int		colIn0;
+    int		colIn1;
+    int		colIn;
+    int		colTo0;
 
-    tmask= 0xff << ( 8- bitsPerPixel );
-    tmask= tmask >> ( ( tcol % step )* bitsPerPixel );
+    int		prev[5];
 
-    for ( fcol= 0; fcol < pixelsWide; fcol += step )
+    /*  1  */
+    colIn0= 0;
+    colIn1= bdIn->bdPixelsWide- 1;
+
+    if  ( colShift < 0 )
+	{ colIn0= -colShift; }
+    colTo0= colIn0+ colShift;
+
+    if  ( colIn1+ colShift >= bdOut->bdPixelsWide )
+	{ colIn1= bdOut->bdPixelsWide- colShift- 1; }
+
+    rowBufOut += spp* colShift;
+
+    for ( i= 0; i < spp; i++ )
+	{ prev[i]= rowBufIn[i]; }
+
+    for ( colIn= colIn0; colIn <= colIn1; colIn++ )
 	{
-	int		s;
-	unsigned char	byteval= *(from++);
+	const unsigned char *	f= rowBufIn;
+	unsigned char *		t= rowBufOut;
 
-	for ( s= 0; s < step; s++ )
+	for ( i= 0; i < spp; i++ )
 	    {
-	    while( eCol >= 0 )
-		{
-		*to &= ~tmask; *to |=  tmask & ( byteval >> rshift );
+	    t[0]= ( ( fl* prev[i] )+ ( fr* f[0] ) )/ 255;
+	    prev[i]= f[0];
 
-		tcol++; eCol -= d;
-		tmask= ( 257 * tmask ) >> bitsPerPixel;
-		rshift= ( rshift+ bitsPerPixel )% 8;
-		if  ( tcol % step == 0 )
-		    { to++;	}
-		}
-	    eCol += xCol;
-	    while( eRow >= 0 )
-		{
-		*to &= ~tmask; *to |=  tmask & ( byteval >> rshift );
-
-		trow += sRow; eRow -= d;
-		to += sRow* bytesPerRow;
-		}
-	    eRow += xRow;
-
-	    byteval= byteval << bitsPerPixel;
+	    f++; t++;
 	    }
+
+	rowBufOut += spp; rowBufIn += spp;
 	}
+
+    return;
     }
 
 /************************************************************************/
 /*									*/
-/*  Rotate an 8 bit scan line over a sharp angle.			*/
+/*  Shear one column in a one byte per sample image.			*/
+/*									*/
+/*  1)  For all rows of the input image.				*/
 /*									*/
 /************************************************************************/
 
-static void bmRotateScanline8(	const unsigned char *	from,
-				int			pixelsWide,
-				unsigned char *		bufOut,
-				int			bytesPerRow,
-				int			trow,
-				int			tcol,
-				int			eRow,
-				int			eCol,
-				int			xRow,
-				int			xCol,
-				int			sRow,
-				int			d		)
+static void bmShearCol8Bit(	unsigned char *			imgBufOut,
+				const unsigned char *		imgBufIn,
+				const BitmapDescription *	bdIn,
+				const BitmapDescription *	bdOut,
+				int				col,
+				int				rowShift,
+				int				fl )
     {
-    int		fcol;
+    int				fr= 255- fl;
+    int				spp= bdIn->bdSamplesPerPixel;
+    int				i;
 
-    for ( fcol= 0; fcol < pixelsWide; fcol++ )
+    int				rowIn0;
+    int				rowIn1;
+    int				rowIn;
+    int				rowTo0;
+    int				prev[5];
+
+    const unsigned char *	from;
+    unsigned char *		to;
+
+    for ( i= 0; i < spp; i++ )
+	{ prev[i]= 0; }
+
+    /*  1  */
+    rowIn0= 0;
+    rowIn1= bdIn->bdPixelsHigh- 1;
+
+    if  ( rowShift < 0 )
+	{ rowIn0= -rowShift; }
+    rowTo0= rowIn0+ rowShift;
+
+    if  ( rowIn1+ rowShift >= bdOut->bdPixelsHigh )
+	{ rowIn1= bdOut->bdPixelsHigh- rowShift- 1; }
+
+    from= imgBufIn+ rowIn0* bdIn->bdBytesPerRow+ spp* col;
+    to= imgBufOut+ rowTo0* bdOut->bdBytesPerRow+ spp* col;
+
+    /*  1  */
+    for ( rowIn= rowIn0; rowIn <= rowIn1; rowIn++ )
 	{
-	int		pixval= *(from++);
+	const unsigned char *	f= from;
+	unsigned char *		t= to;
 
-	while( eCol >= 0 )
+	for ( i= 0; i < spp; i++ )
 	    {
-	    bufOut[ trow* bytesPerRow+ tcol ]= pixval;
-	    tcol++; eCol -= d;
+	    t[0]= ( ( fl* prev[i] )+ ( fr* f[0] ) )/ 255;
+	    prev[i]= f[0];
+
+	    f++; t++;
 	    }
-	eCol += xCol;
-	while( eRow >= 0 )
-	    {
-	    bufOut[ trow* bytesPerRow+ tcol ]= pixval;
-	    trow += sRow; eRow -= d;
-	    }
-	eRow += xRow;
+
+	from += bdIn->bdBytesPerRow;
+	to += bdOut->bdBytesPerRow;
 	}
+
+    return;
+    }
+
+static int bmShearRows(		unsigned char *			bufOut,
+				const BitmapDescription *	bdOut,
+				int				shear,
+				const DocumentRectangle *	drOut,
+				const BitmapDescription *	bdIn,
+				const unsigned char *		bufIn,
+				ShearRow			shearRow )
+    {
+    int				row;
+
+    int				fl;
+    int				colShift;
+
+    unsigned char *		rowBufOut;
+    const unsigned char *	rowBufIn;
+
+    if  ( bdOut->bdPixelsHigh != bdIn->bdPixelsHigh )
+	{ LLDEB(bdOut->bdPixelsHigh,bdIn->bdPixelsHigh); return -1; }
+
+    for ( row= 0; row < bdIn->bdPixelsHigh; row++ )
+	{
+	rowBufOut= bufOut+ row* bdOut->bdBytesPerRow;
+	rowBufIn= bufIn+ row* bdIn->bdBytesPerRow;
+
+	fl= ( 255* shear* row )/ (int)bdIn->bdPixelsHigh;
+	colShift= ( shear* row )/ (int)bdIn->bdPixelsHigh;
+
+	if  ( fl >= 0 )
+	    { fl -= 255* colShift;		}
+	else{ fl -= 255* colShift; fl += 255;	}
+
+	colShift -= drOut->drX0;
+
+	(*shearRow)( rowBufOut, rowBufIn, bdIn, bdOut, colShift, fl );
+	}
+
+    return 0;
+    }
+
+static int bmShearCols(		unsigned char *			bufOut,
+				const BitmapDescription *	bdOut,
+				int				shear,
+				const DocumentRectangle *	drOut,
+				const BitmapDescription *	bdIn,
+				const unsigned char *		bufIn,
+				ShearCol			shearCol )
+    {
+    int				col;
+
+    int				fl;
+    int				rowShift;
+
+    if  ( bdOut->bdPixelsWide != bdIn->bdPixelsWide )
+	{ LLDEB(bdOut->bdPixelsWide,bdIn->bdPixelsWide); return -1; }
+
+    for ( col= 0; col < bdIn->bdPixelsWide; col++ )
+	{
+	fl= ( 255* shear* col )/ (int)bdIn->bdPixelsWide;
+	rowShift= ( shear* col )/ (int)bdIn->bdPixelsWide;
+
+	if  ( fl >= 0 )
+	    { fl -= 255* rowShift;		}
+	else{ fl -= 255* rowShift; fl += 255;	}
+
+	rowShift -= drOut->drY0;
+
+	(*shearCol)( bufOut, bufIn, bdIn, bdOut, col, rowShift, fl );
+	}
+
+    return 0;
     }
 
 /************************************************************************/
 /*									*/
-/*  Rotate a 24 bit scan line over a sharp angle.			*/
+/*  Apply an affine transform to the rectangle from the original image.	*/
+/*									*/
+/*  The routine used to determine the smallest rectangle that encloses	*/
+/*  the result of an intermediate result in the rotation of an image.	*/
 /*									*/
 /************************************************************************/
 
-static void bmRotateScanline24(	const unsigned char *	from,
-				int			pixelsWide,
-				unsigned char *		bufOut,
-				int			bytesPerRow,
-				int			trow,
-				int			tcol,
-				int			eRow,
-				int			eCol,
-				int			xRow,
-				int			xCol,
-				int			sRow,
-				int			d )
+static void bmTransformRectangle(
+				BitmapDescription *		bd,
+				Point2DI			to[4],
+				DocumentRectangle *		drTo,
+				const AffineTransform2D *	at,
+				const Point2DI			from[4],
+				const DocumentRectangle *	drFrom )
     {
-    int		fcol;
-    int		tbyte= tcol* 3;
+    int		i;
 
-    for ( fcol= 0; fcol < pixelsWide; fcol++ )
+    for ( i= 0; i < 4; i++ )
 	{
-	int		r= *(from++);
-	int		g= *(from++);
-	int		b= *(from++);
-
-	while( eCol >= 0 )
-	    {
-	    bufOut[ trow* bytesPerRow+ tbyte    ]= r;
-	    bufOut[ trow* bytesPerRow+ tbyte+ 1 ]= g;
-	    bufOut[ trow* bytesPerRow+ tbyte+ 2 ]= b;
-	    tbyte += 3; eCol -= d;
-	    }
-	eCol += xCol;
-	while( eRow >= 0 )
-	    {
-	    bufOut[ trow* bytesPerRow+ tbyte    ]= r;
-	    bufOut[ trow* bytesPerRow+ tbyte+ 1 ]= g;
-	    bufOut[ trow* bytesPerRow+ tbyte+ 2 ]= b;
-	    trow += sRow; eRow -= d;
-	    }
-	eRow += xRow;
+	to[i].p2diX= AT2_X( from[i].p2diX- drFrom->drX0,
+					    from[i].p2diY- drFrom->drY0, at );
+	to[i].p2diY= AT2_Y( from[i].p2diX- drFrom->drX0,
+					    from[i].p2diY- drFrom->drY0, at );
 	}
+
+    drTo->drX0= drTo->drX1= to[0].p2diX;
+    drTo->drY0= drTo->drY1= to[0].p2diY;
+
+    for ( i= 1; i < 4; i++ )
+	{
+	if  ( drTo->drX0 > to[i].p2diX )
+	    { drTo->drX0=  to[i].p2diX;	}
+	if  ( drTo->drY0 > to[i].p2diY )
+	    { drTo->drY0=  to[i].p2diY;	}
+
+	if  ( drTo->drX1 < to[i].p2diX )
+	    { drTo->drX1=  to[i].p2diX;	}
+	if  ( drTo->drY1 < to[i].p2diY )
+	    { drTo->drY1=  to[i].p2diY;	}
+	}
+
+    bd->bdPixelsWide= drTo->drX1- drTo->drX0+ 1;
+    bd->bdPixelsHigh= drTo->drY1- drTo->drY0+ 1;
+
+    bmCalculateSizes( bd );
+
+    return;
     }
 
 /************************************************************************/
 /*									*/
-/*  Rotate a bitmap over an arbitrary angle.				*/
+/*  Rotate a pixmap image over an arbitrary angle.			*/
 /*									*/
-/*  1)  Sanity of the input.						*/
+/*  Use the algorithm outlined in:					*/
+/*  PAETH, Alan: "A Fast Algorithm for General Raster Rotation" pp 179-	*/
+/*  195 in: GLASSNER, Andrew S: "Graphics Gems", Academic Press,	*/
+/*  Boston, 1990.							*/
+/*									*/
+/*  The two main advantages of the algorithm are fast and easy anti-	*/
+/*  aliassing and the simple continuous loops that prevent holes in the	*/
+/*  rendering.								*/
+/*									*/
+/*  Counterclockwise rotation of (x,y) onto (x',y') by an angle theta	*/
+/*  is a multiplication of the vector my the matrix:			*/
+/*	[  cos(theta) -sin(theta) ]					*/
+/*	[  sin(theta)  cos(theta) ]					*/
+/*  The matrix is orhogonal: the inverse is the transpose:		*/
+/*	[  cos(theta)  sin(theta) ]					*/
+/*	[ -sin(theta)  cos(theta) ]					*/
+/*  It can be written as the product of three shears:			*/
+/*	[ 1 a ] [ 1 0 ] [ 1 c ]   [ cos(theta) -sin(theta) ]		*/
+/*	[ 0 1 ] [ b 1 ] [ 0 1 ] = [ sin(theta)  cos(theta) ]		*/
+/*  Where:								*/
+/*      a= -tan( theta/ 2 ).						*/
+/*      b= sin( theta ).						*/
+/*      c= -tan( theta/ 2 ).						*/
+/*									*/
+/*  1)  Find a theta <= 45 degrees.					*/
+/*  2)  Initial X Shear.						*/
+/*  3)  Subsequent Y Shear.						*/
+/*  4)  Final X Shear.							*/
 /*									*/
 /************************************************************************/
 
@@ -721,122 +869,217 @@ int bmRotate(	BitmapDescription *		bdOut,
 		const BitmapDescription *	bdIn,
 		unsigned char **		pBufOut,
 		const unsigned char *		bufIn,
-		double				angle )
+		double				theta )
     {
-    int				rotations;
+    int				rval= 0;
 
-    double			sinAngle;
-    double			cosAngle;
+    int				rot90;
 
-    int				frow, trow0;
-    int				tcol0;
+    double			a;
+    double			b;
+    double			c;
 
-    int				h1;
-    int				h2;
-    int				w1;
-    int				w2;
+    AffineTransform2D		C;
+    AffineTransform2D		B;
+    AffineTransform2D		A;
 
-    /****************************/
-    /*  Within the rows.	*/
-    /****************************/
-    int				d;
-    int				xRow, xCol;
-    int				sRow;
+    Point2DI			rectIn[4];
+    Point2DI			rectC[4];
+    Point2DI			rectB[4];
+    Point2DI			rectA[4];
 
-    /****************************/
-    /*  Beginning of rows.	*/
-    /****************************/
-    int				eRow0, eCol0;
-    int				d0;
-    int				xRow0, xCol0;
+    DocumentRectangle		drIn;
+    DocumentRectangle		drC;
+    DocumentRectangle		drB;
+    DocumentRectangle		drA;
 
-    BitmapDescription		bd;
-    unsigned char *		bufOut;
+    int				shearC;
+    int				shearB;
+    int				shearA;
 
-    /*  1  */
-    while( angle < -M_PI/4 )
-	{ angle += 2* M_PI;	}
-    for ( rotations= 0; angle > M_PI/4; rotations++ )
-	{ angle -= M_PI/2;	}
-    rotations= rotations % 4;
+    BitmapDescription		bdC;
+    BitmapDescription		bdB;
+    BitmapDescription		bdA;
 
-    sinAngle= sin( angle );
-    cosAngle= cos( angle );
+    unsigned char *		bufC= (unsigned char *)0;
+    unsigned char *		bufB= (unsigned char *)0;
+    unsigned char *		bufA= (unsigned char *)0;
 
-    h1= sinAngle* bdIn->bdPixelsWide;	/* neg for neg angle.	*/
-    h2= cosAngle* bdIn->bdPixelsHigh;
-    w1= sinAngle* bdIn->bdPixelsHigh;	/* neg for neg angle.	*/
-    w2= cosAngle* bdIn->bdPixelsWide;
+    ShearRow			shearRow= (ShearRow)0;
+    ShearCol			shearCol= (ShearCol)0;
 
-    bmCopyDescription( &bd, bdIn );
-
-    if  ( angle > 0 )
-	{ bd.bdPixelsWide=  w1+ w2; bd.bdPixelsHigh=  h1+ h2; }
-    else{ bd.bdPixelsWide= -w1+ w2; bd.bdPixelsHigh= -h1+ h2; }
-
-    bd.bdBytesPerRow= ( bd.bdPixelsWide* bdIn->bdBitsPerPixel+ 7 )/ 8;
-    bd.bdBufferLength= bd.bdPixelsHigh* bd.bdBytesPerRow;
-    bufOut= malloc( bd.bdBufferLength );
-    if  ( ! bufOut )
-	{ LLDEB(bd.bdBufferLength,bufOut);	}
-    memset( bufOut, 0, bd.bdBufferLength );
-
-    if  ( angle > 0 )
-	{ sRow= -1; xRow=  2* h1; trow0= h1; tcol0=   0; xCol0=  2* w1; }
-    else{ sRow=  1; xRow= -2* h1; trow0=  0; tcol0= -w1; xCol0= -2* w1; }
-
-    xRow0= 2* h2;
-    eRow0= xRow0- bdIn->bdPixelsHigh;
-    eCol0= xCol0- bdIn->bdPixelsHigh;
-    d0= 2* bdIn->bdPixelsHigh;
-
-    d= 2* bdIn->bdPixelsWide;
-    xCol= 2* w2;
-
-    for ( frow= 0; frow < bdIn->bdPixelsHigh; frow++ )
+    switch( bdIn->bdColorEncoding )
 	{
-	while( eRow0 >= 0 )
-	    {
+	case BMcoBLACKWHITE:
+	case BMcoWHITEBLACK:
 	    switch( bdIn->bdBitsPerPixel )
 		{
-		case 1:
-		case 2:
-		case 4:
-		    bmRotateScanline124( bufIn+ frow* bdIn->bdBytesPerRow,
-				bdIn->bdPixelsWide, bufOut,
-				bd.bdBytesPerRow, trow0, tcol0,
-				xRow- bdIn->bdPixelsWide,
-				xCol- bdIn->bdPixelsWide,
-				xRow, xCol, sRow, d, bdIn->bdBitsPerPixel );
-		    break;
 		case 8:
-		    bmRotateScanline8( bufIn+ frow* bdIn->bdBytesPerRow,
-				bdIn->bdPixelsWide, bufOut,
-				bd.bdBytesPerRow, trow0, tcol0,
-				xRow- bdIn->bdPixelsWide,
-				xCol- bdIn->bdPixelsWide,
-				xRow, xCol, sRow, d );
+		    shearRow= bmShearRow8Bit;
+		    shearCol= bmShearCol8Bit;
 		    break;
-		case 24:
-		    bmRotateScanline24( bufIn+ frow* bdIn->bdBytesPerRow,
-				bdIn->bdPixelsWide, bufOut,
-				bd.bdBytesPerRow, trow0, tcol0,
-				xRow- bdIn->bdPixelsWide,
-				xCol- bdIn->bdPixelsWide,
-				xRow, xCol, sRow, d );
-		    break;
-		default:
-		    LDEB(bdIn->bdBitsPerPixel); return -1;
-		}
 
-	    trow0++; eRow0 -= d0;
-	    }
-	eRow0 += xRow0;
-	while( eCol0 >= 0 )
-	    { tcol0 -= sRow; eCol0 -= d0; }
-	eCol0 += xCol0;
+		default:
+		    LLDEB(bdIn->bdColorEncoding,bdIn->bdBitsPerPixel);
+		    return -1;
+		}
+	    break;
+
+	case BMcoRGB:
+	    switch( bdIn->bdBitsPerSample )
+		{
+		case 8:
+		    shearRow= bmShearRow8Bit;
+		    shearCol= bmShearCol8Bit;
+		    break;
+
+		default:
+		    LLDEB(bdIn->bdColorEncoding,bdIn->bdBitsPerPixel);
+		    return -1;
+		}
+	    break;
+
+	case BMcoRGB8PALETTE:
+	    LDEB(bdIn->bdColorEncoding);
+	    return -1;
+	    break;
+
+	default:
+	    LDEB(bdIn->bdColorEncoding);
+	    return -1;
 	}
 
-    *bdOut= bd; *pBufOut= bufOut;
-    return 0;
+    bmInitDescription( &bdC );
+    bmInitDescription( &bdB );
+    bmInitDescription( &bdA );
+
+    utilIdentityAffineTransform2D( &C );
+    utilIdentityAffineTransform2D( &B );
+    utilIdentityAffineTransform2D( &A );
+
+    /*********/
+    /*  0 1  */
+    /*  3 2  */
+    /*********/
+    drIn.drX0= 0; drIn.drX1= bdIn->bdPixelsWide- 1;
+    drIn.drY0= 0; drIn.drY1= bdIn->bdPixelsHigh- 1;
+
+    rectIn[0].p2diX= 0;		rectIn[0].p2diY= 0;
+    rectIn[1].p2diX= drIn.drX1; rectIn[1].p2diY= 0;
+    rectIn[2].p2diX= drIn.drX1; rectIn[2].p2diY= drIn.drY1;
+    rectIn[3].p2diX= 0;		rectIn[3].p2diY= drIn.drY1;
+
+    /*  1  */
+    while( theta < -M_PI/4 )
+	{ theta += 2* M_PI;	}
+    for ( rot90= 0; theta > M_PI/4; rot90++ )
+	{ theta -= M_PI/2;	}
+    rot90= rot90 % 4;
+
+    c= -tan( theta/ 2.0 );
+    b= sin( theta );
+    a= -tan( theta/ 2.0 );
+
+    C.at2Ayx= c;
+    B.at2Axy= b;
+    A.at2Ayx= a;
+
+    /*  2  */
+    bmCopyDescription( &bdC, bdIn );
+    bmTransformRectangle( &bdC, rectC, &drC, &C, rectIn, &drIn );
+
+    shearC= c* bdIn->bdPixelsHigh;
+
+    bufC= malloc( bdC.bdBufferLength );
+    if  ( ! bufC )
+	{ LLDEB(bdC.bdBufferLength,bufC);	}
+    memset( bufC, 0, bdC.bdBufferLength );
+
+    if  ( bmShearRows( bufC, &bdC, shearC, &drC, bdIn, bufIn, shearRow ) )
+	{ LDEB(1); rval= -1; goto ready; }
+
+#   define	RET_C	0
+#   if		RET_C
+    bmCopyDescription( bdOut, &bdC );
+    *pBufOut= bufC;
+    bufC= (unsigned char *)0;
+    goto ready;
+#   endif
+#   define	NO_C	0
+#   if		NO_C
+    bmCopyDescription(&bdC,bdIn);
+    memcpy( bufC, bufIn, bdIn->bdBufferLength );
+#   endif
+
+    /*  3  */
+    bmCopyDescription( &bdB, &bdC );
+    bmTransformRectangle( &bdB, rectB, &drB, &B, rectC, &drC );
+
+    shearB= b* bdC.bdPixelsWide;
+
+    bufB= malloc( bdB.bdBufferLength );
+    if  ( ! bufB )
+	{ LLDEB(bdB.bdBufferLength,bufB);	}
+    memset( bufB, 0, bdB.bdBufferLength );
+
+    if  ( bmShearCols( bufB, &bdB, shearB, &drB, &bdC, bufC, shearCol ) )
+	{ LDEB(1); rval= -1; goto ready; }
+
+    free( bufC ); bufC= (unsigned char *)0;
+
+#   define	RET_B	0
+#   if		RET_B
+    bmCopyDescription( bdOut, &bdB );
+    *pBufOut= bufB;
+    bufB= (unsigned char *)0;
+    goto ready;
+#   endif
+#   define	NO_B	0
+#   if		NO_B
+    bmCopyDescription(&bdB,&bdC);
+    memcpy( bufB, bufC, bdC.bdBufferLength );
+#   endif
+
+    /*  4  */
+    bmCopyDescription( &bdA, &bdB );
+    bmTransformRectangle( &bdA, rectA, &drA, &A, rectB, &drB );
+
+    shearA= a* bdB.bdPixelsHigh;
+
+    bufA= malloc( bdA.bdBufferLength );
+    if  ( ! bufA )
+	{ LLDEB(bdA.bdBufferLength,bufA);	}
+    memset( bufA, 0, bdA.bdBufferLength );
+
+    if  ( bmShearRows( bufA, &bdA, shearA, &drA, &bdB, bufB, shearRow ) )
+	{ LDEB(1); rval= -1; goto ready; }
+
+    free( bufB ); bufB= (unsigned char *)0;
+
+    if  ( rot90 != 0 )
+	{
+	if  ( bmRotate90( bdOut, &bdA, pBufOut, bufA, 90* rot90 ) )
+	    { LDEB(rot90); rval= -1; goto ready; }
+	}
+    else{
+	/*  steal */
+	bmCopyDescription( bdOut, &bdA );
+	*pBufOut= bufA;
+	bufA= (unsigned char *)0;
+	}
+
+  ready:
+
+    if  ( bufC )
+	{ free( bufC );	}
+    if  ( bufB )
+	{ free( bufB );	}
+    if  ( bufA )
+	{ free( bufA );	}
+
+    bmCleanDescription( &bdC );
+    bmCleanDescription( &bdB );
+    bmCleanDescription( &bdA );
+
+    return rval;
     }

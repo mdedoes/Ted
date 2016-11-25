@@ -26,6 +26,7 @@ void docInitListOverride(	ListOverride *	lo )
 
     lo->loListID= -1;
     lo->loIndex= 0;
+    lo->loListIndex= -1;
     lo->loOverrideCount= 0;
 
     lo->loLevelCount= 0;
@@ -46,7 +47,9 @@ void docCleanListOverride(	ListOverride *	lo )
     }
 
 int docCopyListOverride(	ListOverride *		to,
-				const ListOverride *	from )
+				const ListOverride *	from,
+				const int *		fontMap,
+				const int *		colorMap )
     {
     int			rval= 0;
 
@@ -58,7 +61,8 @@ int docCopyListOverride(	ListOverride *		to,
 
     for ( i= 0; i < from->loLevelCount; i++ )
 	{
-	if  ( docCopyListOverrideLevel( &(levels[i]), &(from->loLevels[i]) ) )
+	if  ( docCopyListOverrideLevel( &(levels[i]), &(from->loLevels[i]),
+							fontMap, colorMap ) )
 	    { LDEB(i); rval= -1; goto ready;	}
 	}
 
@@ -86,13 +90,16 @@ int docCopyListOverride(	ListOverride *		to,
     return rval;
     }
 
-int docListOverrideAddLevel(		ListOverride *			lo,
-					const ListOverrideLevel *	lol )
+int docListOverrideAddLevel(	ListOverride *			lo,
+				const ListOverrideLevel *	lol,
+				const int *			fontMap,
+				const int *			colorMap )
     {
     if  ( lo->loLevelCount < 0 || lo->loLevelCount >= DLmaxLEVELS )
 	{ LLDEB(lo->loLevelCount,DLmaxLEVELS); return -1;	}
 
-    if  ( docCopyListOverrideLevel( &(lo->loLevels[lo->loLevelCount]), lol ) )
+    if  ( docCopyListOverrideLevel( &(lo->loLevels[lo->loLevelCount]), lol,
+							fontMap, colorMap ) )
 	{ LDEB(lo->loLevelCount); return -1;	}
 
     lo->loLevelCount++;

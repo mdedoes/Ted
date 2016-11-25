@@ -12,6 +12,7 @@
 #   include	<string.h>
 #   include	<time.h>
 
+#   include	<utilTree.h>
 #   include	<utilPostscriptFace.h>
 
 #   include	<appDebugon.h>
@@ -25,62 +26,107 @@
 /*									*/
 /************************************************************************/
 
-int utilRememberPostsciptFace(		PostScriptFaceList *	psfl,
+int utilRememberPostsciptFace(		PostScriptTypeList *	pstl,
 					int			encoding,
 					const AfmFontInfo *	afi,
-					TextAttribute		ta,
+					const TextAttribute *	ta,
 					const char *		prefix,
 					int			appearsInText )
     {
-    int			i;
-    PostScriptFace *	psf= psfl->psflFaces;
+    PostScriptFace *	psf;
+    const char *	fontName;
+    int			faceIndex;
 
-    for ( i= 0; i < psfl->psflFaceCount; psf++, i++ )
+    char		faceId[FACElenID+1];
+    char *		s;
+
+    int			ref;
+    FaceReference *	fr;
+
+    if  ( ! pstl->pstlFaceTree )
 	{
-	if  ( psf->psfAttributes.taFontNumber == ta.taFontNumber	&&
-	      psf->psfAttributes.taFontIsBold == ta.taFontIsBold	&&
-	      psf->psfAttributes.taFontIsSlanted == ta.taFontIsSlanted	&&
-	      psf->psfEncodingUsed == encoding				&&
-	      ! strcmp( psf->psfFontPrefix, prefix )			)
+	const int	ownKeys= 1;
+
+	pstl->pstlFaceTree= utilTreeMakeTree( ownKeys );
+	if  ( ! pstl->pstlFaceTree )
+	    { XDEB(pstl->pstlFaceTree); return -1;	}
+	}
+
+    psf= utilTreeGetEQ( pstl->pstlFaceTree, &fontName, afi->afiFontName );
+    if  ( ! psf )
+	{
+	int	enc;
+
+	psf= malloc( sizeof(PostScriptFace) );
+	if  ( ! psf )
+	    { XDEB(psf); return -1;	}
+
+	psf->psfAfi= afi;
+
+	for ( enc= 0; enc < ENCODINGps_COUNT; enc++ )
+	    { psf->psfEncodingUsed[enc]= 0; }
+
+	psf->psfReferences= (FaceReference *)0;
+	psf->psfReferenceCount= 0;
+	psf->psfAppearsInText= 0;
+	psf->psfEmbed= PSembedUNKNOWN;
+	psf->psfFontFileName= (char *)0;
+	psf->psfFontFileNameLength= 0;
+
+	if  ( utilTreeStoreValue( pstl->pstlFaceTree,
+					&fontName, afi->afiFontName,  psf ) )
+	    { SDEB(afi->afiFontName); free( psf ); return -1; }
+	}
+
+    faceIndex= FACE_INDEX( ta->taFontIsSlanted, ta->taFontIsBold );
+
+    s= faceId;
+    sprintf( s, "%s%d", prefix, ta->taFontNumber );
+    s += strlen( s );
+    if  ( ta->taFontIsBold )
+	{ strcpy( s, "b" ); s++;	}
+    if  ( ta->taFontIsSlanted )
+	{ strcpy( s, "i" ); s++;	}
+
+    fr= psf->psfReferences;
+    for ( ref= 0; ref < psf->psfReferenceCount; fr++, ref++ )
+	{
+	if  ( fr->frDocFontIndex == ta->taFontNumber	&&
+	      fr->frDocFaceIndex == faceIndex		&&
+	      ! strcmp( fr->frFaceId, faceId )		)
 	    { break;	}
 	}
 
-    if  ( i >= psfl->psflFaceCount )
+    if  ( ref >= psf->psfReferenceCount )
 	{
-	char *			s;
+	fr= (FaceReference *)realloc( psf->psfReferences,
+					    (ref+1)* sizeof(FaceReference) );
+	if  ( ! fr )
+	    { LXDEB(psf->psfReferenceCount,fr); return -1;	}
+	psf->psfReferences= fr;
+	fr += psf->psfReferenceCount++;
 
-	psf= (PostScriptFace *)
-		    realloc( psfl->psflFaces, (i+ 1)* sizeof(PostScriptFace) );
-	if  ( ! psf )
-	    { LXDEB(i,psf); return -1;	}
-	psfl->psflFaces= psf;
-	psfl->psflFaceCount= i+ 1;
-
-	psf += i;
-
-	psf->psfEncodingUsed= encoding;
-	psf->psfAfi= afi;
-	psf->psfAttributes= ta;
-	psf->psfAppearsInText= appearsInText;
-
-	strcpy( psf->psfFontPrefix, prefix );
-
-	s= psf->psfFontId;
-	sprintf( s, "%s%d", prefix, ta.taFontNumber );
-	s += strlen( s );
-	if  ( ta.taFontIsBold )
-	    { strcpy( s, "b" ); s++;	}
-	if  ( ta.taFontIsSlanted )
-	    { strcpy( s, "i" ); s++;	}
-
-	/*
-	appDebug( "%-5ss -> \"%s\" (%d)\n",
-			    psf->psfFontId, afi->afiFullName, encoding );
-	*/
+	fr->frDocFontIndex= ta->taFontNumber;
+	fr->frDocFaceIndex= faceIndex;
+	strcpy( fr->frFaceId, faceId );
+	fr->frEncoding= encoding;
+	fr->frAppearsInText= appearsInText;
 	}
-    else{
-	if  ( appearsInText )
-	    { psf->psfAppearsInText= 1;	}
+
+    if  ( fr->frEncoding != encoding )
+	{ LLDEB(fr->frEncoding,encoding);	}
+
+    if  ( appearsInText )
+	{
+	fr->frAppearsInText= appearsInText;
+	psf->psfAppearsInText= appearsInText;
+	}
+
+    if  ( encoding >= 0			&&
+	  encoding < ENCODINGps_COUNT	)
+	{
+	psf->psfEncodingUsed[encoding]= 1;
+	pstl->pstlEncodingUsed[encoding]= 1;
 	}
 
     return 0;
@@ -92,18 +138,46 @@ int utilRememberPostsciptFace(		PostScriptFaceList *	psfl,
 /*									*/
 /************************************************************************/
 
-void utilInitPostScriptFaceList( PostScriptFaceList *	psfl )
+void utilInitPostScriptFaceList( PostScriptTypeList *	pstl )
     {
-    psfl->psflFaces= (PostScriptFace *)0;
-    psfl->psflFaceCount= 0;
+    int		enc;
+
+    pstl->pstlFaceTree= (void *)0;
+
+    for ( enc= 0; enc < ENCODINGps_COUNT; enc++ )
+	{ pstl->pstlEncodingUsed[enc]= 0; }
+
+    pstl->pstlFontDirectory= (const char *)0;
 
     return;
     }
 
-void utilCleanPostScriptFaceList( PostScriptFaceList *	psfl )
+static int utilFreePostScriptFace(	const char *	key,
+					void *		vpsf,
+					void *		through )
     {
-    if  ( psfl->psflFaces )
-	{ free( psfl->psflFaces );	}
+    PostScriptFace *	psf= (PostScriptFace *)vpsf;
+
+    if  ( psf )
+	{
+	if  ( psf->psfReferences )
+	    { free( psf->psfReferences );	}
+	if  ( psf->psfFontFileName )
+	    { free( psf->psfFontFileName );	}
+
+	free( psf );
+	}
+
+    return 0;
+    }
+
+void utilCleanPostScriptFaceList( PostScriptTypeList *	pstl )
+    {
+    if  ( pstl->pstlFaceTree )
+	{
+	utilTreeFreeTree( pstl->pstlFaceTree,
+				    utilFreePostScriptFace, (void *)0 );
+	}
 
     return;
     }

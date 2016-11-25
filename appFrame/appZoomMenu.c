@@ -76,8 +76,7 @@ void appZoomChangeFactor(	APP_WIDGET		option,
 				int			optionCount,
 				int *			pLogSqrt2Magnification,
 				double *		pMagnification,
-				DocumentRectangle *	drSelected,
-				DocumentRectangle *	drCut )
+				DocumentRectangle *	drSelected )
 
     {
     short			num= -1;
@@ -111,18 +110,6 @@ void appZoomChangeFactor(	APP_WIDGET		option,
 	    { drSelected->drY0 *= magStep;	}
 	if  ( drSelected->drY1 >= 0 )
 	    { drSelected->drY1 *= magStep;	}
-	}
-
-    if  ( drCut )
-	{
-	if  ( drCut->drX0 >= 0 )
-	    { drCut->drX0 *= magStep;	}
-	if  ( drCut->drX1 >= 0 )
-	    { drCut->drX1 *= magStep;	}
-	if  ( drCut->drY0 >= 0 )
-	    { drCut->drY0 *= magStep;	}
-	if  ( drCut->drY1 >= 0 )
-	    { drCut->drY1 *= magStep;	}
 	}
 
     return;

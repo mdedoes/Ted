@@ -15,6 +15,8 @@
 #   undef	y0
 #   undef	y1
 
+#   include	<utilMatchFont.h>
+
 #   include	<appImage.h>
 #   include	"docLayout.h"
 #   include	<appWinMeta.h>
@@ -33,19 +35,22 @@ static int docLayoutSpecialExtents(
 				const BufferItem *		bi,
 				int *				pWordAscent,
 				int *				pWordDescent,
-				AppPhysicalFontList *		apfl,
+				const PostScriptFontList *	psfl,
 				const TextParticule *		tp )
     {
-    AfmFontInfo *	afi;
-    int			encoding;
-    TextAttribute	ta;
+    const DocumentProperties *	dp= &(bd->bdProperties);
+    const DocumentFontList *	dfl= &(dp->dpFontList);
 
-    int			sizeTwips;
+    AfmFontInfo *		afi;
+    int				encoding;
+    TextAttribute		ta;
+
+    int				sizeTwips;
 
     utilGetTextAttributeByNumber( &ta, &(bd->bdTextAttributeList),
 						tp->tpTextAttributeNumber );
 
-    afi= docPsPrintGetAfi( &encoding, apfl, tp->tpPhysicalFont );
+    afi= utilPsGetAfi( &encoding, dfl, psfl, &ta );
     if  ( ! afi )
 	{ XDEB(afi); return -1;	}
 
@@ -215,11 +220,14 @@ static int docLayoutWord(	const BufferDocument *		bd,
 				int *				pVisibleX1,
 				int *				pWordAscent,
 				int *				pWordDescent,
-				AppPhysicalFontList *		apfl,
+				const PostScriptFontList *	psfl,
 				ParticuleData *			pd,
 				int				particuleCount,
 				int				x0 )
     {
+    const DocumentProperties *	dp= &(bd->bdProperties);
+    const DocumentFontList *	dfl= &(dp->dpFontList);
+
     int				particuleAscent;
     int				particuleDescent;
     int				fontAscent;
@@ -238,7 +246,6 @@ static int docLayoutWord(	const BufferDocument *		bd,
     int				visibleX1= x0;
 
     const TextParticule *	tp= bi->biParaParticules+ part;
-    int				physicalFont= tp->tpPhysicalFont;
     const unsigned char *	from= bi->biParaString+ tp->tpStroff;
     int				textAttrNumber= tp->tpTextAttributeNumber;
 
@@ -255,9 +262,16 @@ static int docLayoutWord(	const BufferDocument *		bd,
 	utilGetTextAttributeByNumber( &ta, &(bd->bdTextAttributeList),
 						tp->tpTextAttributeNumber );
 
-	afi= docPsPrintGetAfi( &encoding, apfl, tp->tpPhysicalFont );
+	afi= utilPsGetAfi( &encoding, dfl, psfl, &ta );
 	if  ( ! afi )
-	    { XDEB(afi); return -1;	}
+	    {
+	    LDEB(psfl->psflFamilyCount);
+	    LDEB(docNumberOfParagraph(bi));
+	    LDEB(tp->tpTextAttributeNumber);
+	    SXDEB((char *)bi->biParaString+tp->tpStroff,afi);
+
+	    return -1;
+	    }
 
 	while( accepted < particuleCount			&&
 	       tp->tpTextAttributeNumber == textAttrNumber	&&
@@ -338,7 +352,6 @@ static int docLayoutWord(	const BufferDocument *		bd,
 	utilGetTextAttributeByNumber( &ta, &(bd->bdTextAttributeList),
 						tp->tpTextAttributeNumber );
 
-	physicalFont= tp->tpPhysicalFont;
 	textAttrNumber= tp->tpTextAttributeNumber;
 	from= bi->biParaString+ tp->tpStroff;
 	xFrom= x0;
@@ -354,21 +367,24 @@ static int docLayoutWord(	const BufferDocument *		bd,
 
 	if  ( accepted < particuleCount	&&
 	      ! taNx.taFontIsSlanted	&&
-	      taPr.taFontIsSlanted		)
+	      taPr.taFontIsSlanted	)
 	    {
-	    int			extra;
-	    AfmFontInfo *	afi;
-	    int			encoding;
+	    int				extra;
+	    AfmFontInfo *		afi;
+	    int				encoding;
+
+	    const TextAttribute *	taExtra;
 
 	    if  ( taPr.taFontSizeHalfPoints < taNx.taFontSizeHalfPoints )
-		{ extra= taPr.taFontSizeHalfPoints; }
-	    else{ extra= taNx.taFontSizeHalfPoints; }
+		{ taExtra= &taPr; }
+	    else{ taExtra= &taNx; }
 
-	    afi= docPsPrintGetAfi( &encoding, apfl, tp[-1].tpPhysicalFont );
+	    afi= utilPsGetAfi( &encoding, dfl, psfl, taExtra );
 	    if  ( ! afi )
 		{ XDEB(afi); return -1;	}
 
-	    extra= (int) ( -afi->afiTanItalicAngle* 10* extra );
+	    extra= (int) ( -afi->afiTanItalicAngle*
+					10* taExtra->taFontSizeHalfPoints );
 
 	    x1 += extra;
 	    }
@@ -403,7 +419,7 @@ static int docPsLayoutText(	const BufferDocument *		bd,
 				int *				pTextAscent,
 				int *				pTextDescent,
 				const ParagraphFrame *		pf,
-				AppPhysicalFontList *		apfl,
+				const PostScriptFontList *	psfl,
 				ParticuleData *			pd,
 				int				particuleCount,
 				int				acceptAtLeast,
@@ -437,7 +453,7 @@ static int docPsLayoutText(	const BufferDocument *		bd,
 	    textCase:
 		done= docLayoutWord( bd, bi, part, &x1, &visibleX1,
 						&wordAscent, &wordDescent,
-						apfl, pd,
+						psfl, pd,
 						particuleCount- accepted, x0 );
 		if  ( done < 1 )
 		    { LDEB(done); return -1;	}
@@ -557,6 +573,7 @@ static int docPsLayoutText(	const BufferDocument *		bd,
 		}
 
 	    case DOCkindCHFTNSEP:
+	    case DOCkindCHFTNSEPC:
 		{
 		int	width= 2880;
 
@@ -572,7 +589,7 @@ static int docPsLayoutText(	const BufferDocument *		bd,
 		    }
 
 		if  ( docLayoutSpecialExtents( bd, bi,
-				    &wordAscent, &wordDescent, apfl, tp ) )
+				    &wordAscent, &wordDescent, psfl, tp ) )
 		    { LDEB(1); return -1;	}
 
 		if  ( textAscent < wordAscent )
@@ -598,6 +615,7 @@ static int docPsLayoutText(	const BufferDocument *		bd,
 
 	    case DOCkindLINEBREAK:
 	    case DOCkindPAGEBREAK:
+	    case DOCkindCOLUMNBREAK:
 		pd->pdAfi= (AfmFontInfo *)0;
 		pd->pdX0= x0;
 		pd->pdWidth= 0;
@@ -610,7 +628,7 @@ static int docPsLayoutText(	const BufferDocument *		bd,
 		pd->pdWhiteUnits= 0;
 		pd->pdCorrectBy= 0;
 
-		if  ( tp->tpKind == DOCkindPAGEBREAK	&&
+		if  ( tp->tpKind != DOCkindLINEBREAK	&&
 		      ! bi->biParaInTable		)
 		    { found= PSfoundPAGEBREAK;	}
 		else{ found= PSfoundLINEBREAK;	}
@@ -652,13 +670,14 @@ static int docLayoutParticules( const BufferDocument *		bd,
 				int *				pLineAscent,
 				int *				pLineDescent,
 				const ParagraphFrame *		pf,
-				AppPhysicalFontList *		apfl,
+				const PostScriptFontList *	psfl,
 				ParticuleData *			pd,
 				int				particuleCount,
 				int				acceptAtLeast,
 				int				x0 )
     {
     const DocumentProperties *	dp= &(bd->bdProperties);
+    const DocumentFontList *	dfl= &(dp->dpFontList);
 
     int				lineAscent= 0;
     int				lineDescent= 0;
@@ -674,6 +693,8 @@ static int docLayoutParticules( const BufferDocument *		bd,
     const TextParticule *	tpp= bi->biParaParticules+ part;
     ParticuleData *		pdd= pd;
     TabStop			ts;
+
+    TextAttribute		ta;
 
     accepted= 0;
     while( accepted < particuleCount )
@@ -698,7 +719,7 @@ static int docLayoutParticules( const BufferDocument *		bd,
 
 	done= docPsLayoutText( bd, bi, part, &found, &textWordCount, &x1,
 				    &textAscent, &textDescent,
-				    pf, apfl, pdd,
+				    pf, psfl, pdd,
 				    particuleCount- accepted,
 				    acceptAtLeast, x0 );
 	if  ( done < 0 )
@@ -844,7 +865,10 @@ static int docLayoutParticules( const BufferDocument *		bd,
 		LDEB(found); return -1;
 	    }
 
-	afi= docPsPrintGetAfi( &encoding, apfl, tpp->tpPhysicalFont );
+	utilGetTextAttributeByNumber( &ta, &(bd->bdTextAttributeList),
+						tpp->tpTextAttributeNumber );
+
+	afi= utilPsGetAfi( &encoding, dfl, psfl, &ta );
 	if  ( ! afi )
 	    { XDEB(afi); return -1;	}
 
@@ -1048,7 +1072,7 @@ int docLayoutLineBox(	const BufferDocument *		bd,
 			TextLine *			tl,
 			const BufferItem *		bi,
 			int				part,
-			AppPhysicalFontList *		apfl,
+			const PostScriptFontList *	psfl,
 			ParticuleData *			pd,
 			const ParagraphFrame *		pf )
     {
@@ -1077,7 +1101,7 @@ int docLayoutLineBox(	const BufferDocument *		bd,
     /*  1  */
     accepted= docLayoutParticules( bd, bi, part, &found, &wordCount,
 				    &lineAscent, &lineDescent,
-				    pf, apfl, pd,
+				    pf, psfl, pd,
 				    bi->biParaParticuleCount- part, 1, x0 );
 
     if  ( accepted <= 0 )

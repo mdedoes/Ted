@@ -4,9 +4,13 @@
 /*									*/
 /************************************************************************/
 
-typedef enum ShapeProperty
+typedef enum ShapePropertyId
     {
     RTFSHP_Rotation,
+    RTFSHP_posv,
+    RTFSHP_posh,
+    RTFSHP_posrelv,
+    RTFSHP_posrelh,
     RTFSHP_fFlipV,
     RTFSHP_fFlipH,
     RTFSHP_shapeType,
@@ -63,7 +67,7 @@ typedef enum ShapeProperty
     RTFSHP_pibFlags,
     RTFSHP_pictureTransparent,
     RTFSHP_pictureContrast,
-    RTFSHP_PictureBrightness,
+    RTFSHP_pictureBrightness,
     RTFSHP_pictureGamma,
     RTFSHP_pictureGray,
     RTFSHP_pictureBiLevel,
@@ -267,5 +271,5 @@ typedef enum ShapeProperty
     RTFSHP_fLayoutInCell,
 
     RTFSHP__________Terminate_Enum
-    } ShapeProperty;
+    } ShapePropertyId;
 

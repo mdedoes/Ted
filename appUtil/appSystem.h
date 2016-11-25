@@ -46,6 +46,7 @@ typedef void (*APP_COMPLAIN)(		void *		through,
 
 extern int appHomeDirectory(	char *		home,
 				int		len );
+
 extern int appCurrentDirectory(	char *		pwd,
 				int		len );
 
@@ -64,7 +65,8 @@ extern int appMakeUniqueString(	char *		target,
 extern int appAbsoluteName(	char *		absolute,
 				int		len,
 				const char *	filename,
-				const char *	fileRelativeTo );
+				int		relativeIsFile,
+				const char *	nameRelativeTo );
 
 extern int appRemoveFile(	const char *	filename );
 

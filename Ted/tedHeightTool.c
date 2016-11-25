@@ -221,7 +221,7 @@ void tedInitHeightChooser(	HeightChooser *		hc )
     appInitOptionmenu( &(hc->hcOptionmenu) );
     hc->hcText= (APP_WIDGET)0;
 
-    for  ( i= 0; i < HC__COUNT; i++ )
+    for ( i= 0; i < HC__COUNT; i++ )
 	{ hc->hcMenuItems[i]= (APP_WIDGET)0;	}
 
     hc->hcHow= HC_FREE;

@@ -45,27 +45,18 @@ int bmPsOpenBitmapPrinter(	BitmapPrinter *			bp,
 
     if  ( useFilters )
 	{
-	bp->bpBase85= sioOutBase85Open( sos );
-
-#	define	USE_LZW	0
-#	if	USE_LZW
-	Does not work: Needs to be debugged.
-
-	bp->bpFlate= sioOutLzwPsOpen( bp->bpBase85 );
-	bp->bpOutput= bp->bpFlate;
-#	else
-	{
 	const int	gzipEmbedded= 0;
+
+	bp->bpBase85= sioOutBase85Open( sos );
 
 	bp->bpFlate= sioOutFlateOpen( bp->bpBase85, gzipEmbedded );
 	bp->bpOutput= bp->bpFlate;
 	}
-#	endif
-	}
     else{
 	const int	wide= 72;
+	const int	lastNL= 1;
 
-	bp->bpHexed= sioOutHexOpenFolded( sos, wide );
+	bp->bpHexed= sioOutHexOpenFolded( sos, wide, lastNL );
 	bp->bpOutput= bp->bpHexed;
 	}
 
@@ -347,6 +338,73 @@ static void bmPsWritePal4RowX(	SimpleOutputStream *		sos,
     return;
     }
 
+static void bmPsWritePal2Row0(	SimpleOutputStream *		sos,
+				const BitmapDescription *	bd,
+				int				selWidePix,
+				const unsigned char *		from )
+    {
+    int		col;
+    int		val;
+
+    for ( col= 0; col+ 3 < selWidePix; col += 4 )
+	{
+	val= ( *from >> 6 ) & 0x03;
+
+	sioOutPutCharacter( bd->bdRGB8Palette[val].rgb8Red, sos );
+	sioOutPutCharacter( bd->bdRGB8Palette[val].rgb8Green, sos );
+	sioOutPutCharacter( bd->bdRGB8Palette[val].rgb8Blue, sos );
+
+	val= ( *from >> 4 ) & 0x03;
+
+	sioOutPutCharacter( bd->bdRGB8Palette[val].rgb8Red, sos );
+	sioOutPutCharacter( bd->bdRGB8Palette[val].rgb8Green, sos );
+	sioOutPutCharacter( bd->bdRGB8Palette[val].rgb8Blue, sos );
+
+	val= ( *from >> 2 ) & 0x03;
+
+	sioOutPutCharacter( bd->bdRGB8Palette[val].rgb8Red, sos );
+	sioOutPutCharacter( bd->bdRGB8Palette[val].rgb8Green, sos );
+	sioOutPutCharacter( bd->bdRGB8Palette[val].rgb8Blue, sos );
+
+	val= ( *from >> 0 ) & 0x03;
+
+	sioOutPutCharacter( bd->bdRGB8Palette[val].rgb8Red, sos );
+	sioOutPutCharacter( bd->bdRGB8Palette[val].rgb8Green, sos );
+	sioOutPutCharacter( bd->bdRGB8Palette[val].rgb8Blue, sos );
+
+	from++;
+	}
+
+    if  ( selWidePix % 4 > 0 )
+	{
+	val= ( *from >> 6 ) & 0x03;
+
+	sioOutPutCharacter( bd->bdRGB8Palette[val].rgb8Red, sos );
+	sioOutPutCharacter( bd->bdRGB8Palette[val].rgb8Green, sos );
+	sioOutPutCharacter( bd->bdRGB8Palette[val].rgb8Blue, sos );
+	}
+
+    if  ( selWidePix % 4 > 1 )
+	{
+	val= ( *from >> 4 ) & 0x03;
+
+	sioOutPutCharacter( bd->bdRGB8Palette[val].rgb8Red, sos );
+	sioOutPutCharacter( bd->bdRGB8Palette[val].rgb8Green, sos );
+	sioOutPutCharacter( bd->bdRGB8Palette[val].rgb8Blue, sos );
+	}
+
+    if  ( selWidePix % 4 > 2 )
+	{
+	val= ( *from >> 2 ) & 0x03;
+
+	sioOutPutCharacter( bd->bdRGB8Palette[val].rgb8Red, sos );
+	sioOutPutCharacter( bd->bdRGB8Palette[val].rgb8Green, sos );
+	sioOutPutCharacter( bd->bdRGB8Palette[val].rgb8Blue, sos );
+	}
+
+    return;
+    }
+
 int bmPsWriteBitmapData(	    BitmapPrinter *		bp,
 				    int				selX0Pix,
 				    int				selY0Pix,
@@ -377,6 +435,8 @@ int bmPsWriteBitmapData(	    BitmapPrinter *		bp,
     if  ( bd->bdColorEncoding == BMcoRGB )
 	{ directPixels= 1;	}
     if  ( bd->bdColorEncoding == BMcoRGB8PALETTE && indexedImages )
+	{ directPixels= 1;	}
+    if  ( bd->bdColorEncoding == BMcoRGB8PALETTE && bd->bdBitsPerPixel == 1 )
 	{ directPixels= 1;	}
 
     if  ( bd->bdBitsPerSample == 16 && directPixels )
@@ -486,6 +546,22 @@ int bmPsWriteBitmapData(	    BitmapPrinter *		bp,
 	return 0;
 	}
 
+    if  ( bd->bdColorEncoding == BMcoRGB8PALETTE	&&
+	  ! directPixels				&&
+	  bd->bdBitsPerPixel == 2			&&
+	  originBit == 0				)
+	{
+	for ( row= 0; row < selHighPix; row++ )
+	    {
+	    from= inputBuffer+
+			( row+ selY0Pix )* bd->bdBytesPerRow+ originByte;
+
+	    bmPsWritePal2Row0( sos, bd, selWidePix, from );
+	    }
+
+	return 0;
+	}
+
     LDEB(directPixels);
     LDEB(bd->bdBitsPerPixel);
     LLDEB(originBit,bd->bdColorEncoding); return -1;
@@ -550,6 +626,9 @@ int bmPsRowStringSize(		const BitmapDescription *	bd,
 		}
 
 	case	BMcoRGB8PALETTE:
+
+	    if  ( bd->bdBitsPerPixel == 1 )
+		{ return ( pixelsWide+ 7 )/ 8;				}
 
 	    if  ( indexedImages )
 		{ return ( pixelsWide* bd->bdBitsPerPixel+ 7 )/ 8;	}
@@ -631,7 +710,27 @@ static void bmPsWriteMonoImageInstructions(
 				int				selHighPix,
 				const char *			source )
     {
-    sioOutPrintf( sos, "0 setgray\n" );
+    if  ( bd->bdColorEncoding == BMcoRGB8PALETTE	&&
+	  bd->bdColorCount == 2				)
+	{
+	const RGB8Color *	rgb8= &(bd->bdRGB8Palette[1]);
+
+	if  ( rgb8->rgb8Red == rgb8->rgb8Green	&&
+	      rgb8->rgb8Red == rgb8->rgb8Blue	)
+	    {
+	    sioOutPrintf( sos, "%g setgray\n",
+					rgb8->rgb8Red/255.0 );
+	    }
+	else{
+	    sioOutPrintf( sos, "%g %g %g setrgbcolor\n",
+					rgb8->rgb8Red/255.0,
+					rgb8->rgb8Green/255.0,
+					rgb8->rgb8Blue/255.0 );
+	    }
+	}
+    else{
+	sioOutPrintf( sos, "0 setgray\n" );
+	}
 
     sioOutPrintf( sos, "%u %u", selWidePix, selHighPix );
 
@@ -789,16 +888,22 @@ void bmPsWriteImageInstructions(
 
 	case BMcoRGB8PALETTE:
 
+	    if  ( bd->bdBitsPerPixel == 1 )
+		{
+		bmPsWriteMonoImageInstructions( sos, bd,
+					    selWidePix, selHighPix, source );
+		break;
+		}
+
 	    if  ( indexedImages )
 		{
 		bmPsWriteIndexedImageInstructions( sos, bd,
 					    selWidePix, selHighPix, source );
-		}
-	    else{
-		bmPsWriteRgbImageInstructions( sos, bd,
-					    selWidePix, selHighPix, source );
+		break;
 		}
 
+	    bmPsWriteRgbImageInstructions( sos, bd,
+					    selWidePix, selHighPix, source );
 	    break;
 
 	default:
@@ -876,8 +981,9 @@ int bmPsPrintBitmapImage(	SimpleOutputStream *		sos,
 
     bmPsOpenBitmapPrinter( &bp, sos, bd, useFilters, indexedImages );
 
-    bmPsWriteBitmapData( &bp, selX0Pix, selY0Pix, selWidePix, selHighPix,
-								bd, buffer );
+    if  ( bmPsWriteBitmapData( &bp,
+		selX0Pix, selY0Pix, selWidePix, selHighPix, bd, buffer ) )
+	{ LDEB(1); return -1;	}
 
     bmCloseBitmapPrinter( &bp );
 

@@ -46,12 +46,18 @@ int docSpellParaFindNext(	DocumentSelection *		ds,
     int				acceptedPos= stroff;
     const unsigned char *	str= paraBi->biParaString+ stroff;
 
-    int				part= dpFrom->dpParticule;
-    const TextParticule *	tp= paraBi->biParaParticules+ part;
+    const int			lastOne= 1;
+    int				part;
+    const TextParticule *	tp;
 
     int				stroffUpto;
 
     indInitSpellScanJob( &ssj );
+
+    if  ( docFindParticule( &part, paraBi, stroff, lastOne ) )
+	{ LDEB(stroff); return -1;	}
+
+    tp= paraBi->biParaParticules+ part;
 
     /*  1  */
     while( part < paraBi->biParaParticuleCount	&&

@@ -48,12 +48,12 @@ void appInitBitmapImage(	AppBitmapImage *	abi )
 int appImgMakeFileExtensions(	AppFileExtension **	pAfeList,
 				int *			pAfeCount )
     {
-    int			i;
-    AppFileExtension *	afe;
-    int			afeCount;
+    int				i;
+    AppFileExtension *		afe;
+    int				afeCount;
 
-    BitmapFileFormat *	bff;
-    BitmapFileType **	pbft;
+    const BitmapFileFormat *	bff;
+    BitmapFileType **		pbft;
 
     afeCount=  bmNumberOfFileTypes+ bmNumberOfFileFormats;
     afe= (AppFileExtension *)malloc( afeCount * sizeof(AppFileExtension) );

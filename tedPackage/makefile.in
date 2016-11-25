@@ -10,10 +10,14 @@ I_PREFIX=	@PREFIX@
 
 #
 #		Name of the binary arrchive
-BINDIST=	Ted_$(PLATFORM)
+BINDIST=	Ted_2.15_$(PLATFORM)
 #
 #
-CHOWN_CMD=	test x_$$RPM_BUILD_ROOT != x_ || chown @M_CHOWN_ARG@
+PKG_OWNER=	@M_PKG_OWNER@
+PKG_GROUP=	@M_PKG_GROUP@
+CHOWN_ARG=	@M_CHOWN_ARG@
+CHOWN_CMD=	@CHOWN_CMD@
+CHECK_ID_CMD=	@CHECK_ID_CMD@
 #
 #
 ########################################################################
@@ -24,8 +28,7 @@ package:	../Ted/Ted.static	\
 		installTed.sh		\
 		README
 	:
-	@test x_$$RPM_BUILD_ROOT != x_ || \
-			echo ========== NEEDS TO BE RUN AS ROOT ==========
+	@CHECK_ID_CMD@
 	:
 	rm -rf scratch
 	:
@@ -46,7 +49,7 @@ package:	../Ted/Ted.static	\
 	$(CHOWN_CMD) scratch/bin/Ted
 	chmod 755 scratch/bin/Ted
 	:
-	( cd scratch && tar cvf - * | gzip -9 > ../$(BINDIST).tar.gz )
+	( cd scratch && tar cvf - @TAR_CHOWN_ARGS@ * | gzip -9 > ../$(BINDIST).tar.gz )
 	:
 	$(CHOWN_CMD) README
 	$(CHOWN_CMD) TedDocument-en_US.rtf
@@ -67,6 +70,7 @@ package:	../Ted/Ted.static	\
 	test -s $(BINDIST).lsm
 	test -x installTed.sh
 	:
+	rm -rf scratch
 	@date >> package
 	@echo Distribution is complete
 
@@ -82,8 +86,7 @@ package.shared:	../Ted/Ted		\
 		installTed.sh		\
 		README
 	:
-	@test x_$$RPM_BUILD_ROOT != x_ || \
-			echo ========== NEEDS TO BE RUN AS ROOT ==========
+	@CHECK_ID_CMD@
 	:
 	rm -rf scratch
 	:
@@ -103,7 +106,7 @@ package.shared:	../Ted/Ted		\
 	$(CHOWN_CMD) scratch/bin/Ted
 	chmod 755 scratch/bin/Ted
 	:
-	( cd scratch && tar cvf - * | gzip -9 > ../$(BINDIST).tar.gz )
+	( cd scratch && tar cvf - @TAR_CHOWN_ARGS@ * | gzip -9 > ../$(BINDIST).tar.gz )
 	:
 	$(CHOWN_CMD) README
 	$(CHOWN_CMD) TedDocument-en_US.rtf
@@ -124,8 +127,23 @@ package.shared:	../Ted/Ted		\
 	test -s $(BINDIST).lsm
 	test -x installTed.sh
 	:
+	rm -rf scratch
 	@date > package.shared
 	@echo Distribution is complete
+
+########################################################################
+#
+#	Systen V (Solaris) type pkgadd package.
+#
+########################################################################
+
+sysvpkg:	../Ted/Ted.static	\
+		TedBindist.tar		\
+		Ted.pkginfo		\
+		Ted.prototype		\
+		pkg.sh			\
+		README
+	./pkg.sh
 
 ########################################################################
 #
@@ -134,24 +152,50 @@ package.shared:	../Ted/Ted		\
 ########################################################################
 
 $(BINDIST).lsm: TedBindist.lsm.in
-	sed	-e "s:@SYSTEM@:$(SYSTEM):g"	\
-		-e "s:@MACHINE@:$(MACHINE):g"	\
-		-e "s:@PLATFORM@:$(PLATFORM):g"	\
-		-e "s:@BINDIST@:$(BINDIST):g"	\
-		TedBindist.lsm.in			> $@
+	sed	-e "s:@SYSTEM@:$(SYSTEM):g"		\
+		-e "s:@MACHINE@:$(MACHINE):g"		\
+		-e "s:@PLATFORM@:$(PLATFORM):g"		\
+		-e "s:@BINDIST@:$(BINDIST):g"		\
+		TedBindist.lsm.in				> $@
 
 installTed.sh: installTed.sh.in
-	sed	-e "s:@SYSTEM@:$(SYSTEM):g"	\
-		-e "s:@MACHINE@:$(MACHINE):g"	\
-		-e "s:@PLATFORM@:$(PLATFORM):g"	\
-		-e "s:@BINDIST@:$(BINDIST):g"	\
-		-e "s:@I_PREFIX@:$(I_PREFIX):g"	\
-		installTed.sh.in			> $@
+	sed	-e "s:@SYSTEM@:$(SYSTEM):g"		\
+		-e "s:@MACHINE@:$(MACHINE):g"		\
+		-e "s:@PLATFORM@:$(PLATFORM):g"		\
+		-e "s:@BINDIST@:$(BINDIST):g"		\
+		-e "s:@I_PREFIX@:$(I_PREFIX):g"		\
+		-e "s!@CHOWN_ARG@!$(CHOWN_ARG)!g"	\
+		installTed.sh.in				> $@
 	chmod 755 $@ || ( rm $@ && false )
 
 README: README.in
-	sed	-e "s:@SYSTEM@:$(SYSTEM):g"	\
-		-e "s:@MACHINE@:$(MACHINE):g"	\
-		-e "s:@PLATFORM@:$(PLATFORM):g"	\
-		-e "s:@BINDIST@:$(BINDIST):g"	\
-		README.in				> $@
+	sed	-e "s:@SYSTEM@:$(SYSTEM):g"		\
+		-e "s:@MACHINE@:$(MACHINE):g"		\
+		-e "s:@PLATFORM@:$(PLATFORM):g"		\
+		-e "s:@BINDIST@:$(BINDIST):g"		\
+		README.in					> $@
+
+Ted.pkginfo: Ted.pkginfo.in
+	sed	-e "s:@SYSTEM@:$(SYSTEM):g"		\
+		-e "s:@MACHINE@:$(MACHINE):g"		\
+		-e "s:@PLATFORM@:$(PLATFORM):g"		\
+		-e "s:@I_PREFIX@:$(I_PREFIX):g"		\
+		Ted.pkginfo.in					> $@
+
+pkg.sh: pkg.sh.in
+	sed	-e "s:@SYSTEM@:$(SYSTEM):g"		\
+		-e "s:@MACHINE@:$(MACHINE):g"		\
+		-e "s:@PLATFORM@:$(PLATFORM):g"		\
+		-e "s:@I_PREFIX@:$(I_PREFIX):g"		\
+		pkg.sh.in					> $@
+	chmod 755 $@ || ( rm $@ && false )
+
+Ted.prototype: Ted.prototype.in
+	sed	-e "s:@SYSTEM@:$(SYSTEM):g"		\
+		-e "s:@MACHINE@:$(MACHINE):g"		\
+		-e "s:@PLATFORM@:$(PLATFORM):g"		\
+		-e "s:@I_PREFIX@:$(I_PREFIX):g"		\
+		-e "s:@PKG_OWNER@:$(PKG_OWNER):g"	\
+		-e "s:@PKG_GROUP@:$(PKG_GROUP):g"	\
+		Ted.prototype.in				> $@
+

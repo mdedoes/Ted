@@ -11,7 +11,7 @@
 #   include	<sioStdout.h>
 #   include	<appDebugon.h>
 
-static int sioStdoutClose(	void *	void0 )
+static int sioStdoutClose(	void *	void1 )
     { return 0;	}
 
 static int sioStdoutSeek(		void *			void0,

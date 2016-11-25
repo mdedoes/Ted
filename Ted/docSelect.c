@@ -30,8 +30,7 @@ void docInitSelectionScope(	SelectionScope *	ss )
 void docInitDocumentPosition(	DocumentPosition *	dp )
     {
     dp->dpBi= (BufferItem *)0;
-    dp->dpParticule= -1;
-    dp->dpStroff= -1;
+    dp->dpStroff= 0;
 
     return;
     }
@@ -121,6 +120,7 @@ int docIsParaSelection( const DocumentSelection *		ds )
 void docInitPositionGeometry(	PositionGeometry *		pg )
     {
     pg->pgLine= 0;
+    pg->pgAtLineHead= 0;
 
     pg->pgXPixels= -1;
     docInitLayoutPosition( &pg->pgTopPosition );
@@ -161,7 +161,6 @@ void docConstrainSelectionToOneParagraph( int *			pBeginMoved,
     if  ( lenEnd > lenBegin )
 	{
 	ds->dsBegin.dpBi= ds->dsEnd.dpBi;
-	ds->dsBegin.dpParticule= 0;
 	ds->dsBegin.dpStroff= 0;
 	ds->dsCol0= ds->dsCol1;
 
@@ -172,7 +171,6 @@ void docConstrainSelectionToOneParagraph( int *			pBeginMoved,
 	}
     else{
 	ds->dsEnd.dpBi= ds->dsBegin.dpBi;
-	ds->dsEnd.dpParticule= ds->dsEnd.dpBi->biParaParticuleCount -1;
 	ds->dsEnd.dpStroff= ds->dsEnd.dpBi->biParaStrlen;
 	ds->dsCol1= ds->dsCol0;
 
@@ -191,7 +189,7 @@ void docConstrainSelectionToOneParagraph( int *			pBeginMoved,
 /*									*/
 /************************************************************************/
 
-void docUnionParaSelections(		DocumentSelection *	ds,
+void docUnionParaSelections(		DocumentSelection *		ds,
 					const DocumentSelection *	ds1,
 					const DocumentSelection *	ds2 )
     {
@@ -210,19 +208,11 @@ void docUnionParaSelections(		DocumentSelection *	ds,
 	{ dsNew.dsBegin.dpStroff= ds2->dsBegin.dpStroff;	}
     else{ dsNew.dsBegin.dpStroff= ds1->dsBegin.dpStroff;	}
 
-    if  ( ds2->dsBegin.dpParticule < ds1->dsBegin.dpParticule )
-	{ dsNew.dsBegin.dpParticule= ds2->dsBegin.dpParticule;	}
-    else{ dsNew.dsBegin.dpParticule= ds1->dsBegin.dpParticule;	}
-
     /**/
 
     if  ( ds2->dsEnd.dpStroff > ds1->dsEnd.dpStroff )
 	{ dsNew.dsEnd.dpStroff= ds2->dsEnd.dpStroff;	}
     else{ dsNew.dsEnd.dpStroff= ds1->dsEnd.dpStroff;	}
-
-    if  ( ds2->dsEnd.dpParticule > ds1->dsEnd.dpParticule )
-	{ dsNew.dsEnd.dpParticule= ds2->dsEnd.dpParticule;	}
-    else{ dsNew.dsEnd.dpParticule= ds1->dsEnd.dpParticule;	}
 
     /**/
 
@@ -244,7 +234,6 @@ int docFirstPosition(	DocumentPosition *	dp,
 	    {
 	    dp->dpBi= bi;
 	    dp->dpStroff= 0;
-	    dp->dpParticule= 0;
 
 	    return 0;
 	    }
@@ -267,7 +256,6 @@ int docLastPosition(	DocumentPosition *	dp,
 	    {
 	    dp->dpBi= bi;
 	    dp->dpStroff= bi->biParaStrlen;
-	    dp->dpParticule= bi->biParaParticuleCount- 1;
 
 	    return 0;
 	    }
@@ -369,13 +357,11 @@ int docNextPosition(	DocumentPosition *	dp )
 
     int			stroff= dp->dpStroff+ 1;
 
-    int			lastOne= 1;
-
     while( bi )
 	{
 	if  ( stroff <= bi->biParaStrlen )
 	    {
-	    docSetDocumentPosition( dp, bi, stroff, lastOne );
+	    docSetDocumentPosition( dp, bi, stroff );
 	    return 0;
 	    }
 
@@ -384,7 +370,7 @@ int docNextPosition(	DocumentPosition *	dp )
 
 	if  ( bi && bi->biParaStrlen == 0 )
 	    {
-	    docSetDocumentPosition( dp, bi, stroff, lastOne );
+	    docSetDocumentPosition( dp, bi, stroff );
 	    return 0;
 	    }
 	}
@@ -392,8 +378,7 @@ int docNextPosition(	DocumentPosition *	dp )
     return -1;
     }
 
-int docPrevPosition(	DocumentPosition *	dp,
-			int			lastOne )
+int docPrevPosition(	DocumentPosition *	dp )
     {
     BufferItem *	bi= dp->dpBi;
 
@@ -404,7 +389,7 @@ int docPrevPosition(	DocumentPosition *	dp,
 	if  ( bi->biLevel == DOClevPARA		&&
 	      stroff >= 0			)
 	    {
-	    docSetDocumentPosition( dp, bi, stroff, lastOne );
+	    docSetDocumentPosition( dp, bi, stroff );
 	    return 0;
 	    }
 
@@ -416,22 +401,19 @@ int docPrevPosition(	DocumentPosition *	dp,
     return -1;
     }
 
-int docParaBegin(	DocumentPosition *	dp,
-			int			lastOne )
+int docParaBegin(	DocumentPosition *	dp )
     {
-    BufferItem *	bi= dp->dpBi;
     const int		stroff= 0;
 
-    docSetDocumentPosition( dp, bi, stroff, lastOne );
+    docSetDocumentPosition( dp, dp->dpBi, stroff );
+
     return 0;
     }
 
-int docParaEnd(		DocumentPosition *	dp,
-			int			lastOne )
+int docParaEnd(		DocumentPosition *	dp )
     {
-    BufferItem *	bi= dp->dpBi;
+    docSetDocumentPosition( dp, dp->dpBi, dp->dpBi->biParaStrlen );
 
-    docSetDocumentPosition( dp, bi, bi->biParaStrlen, lastOne );
     return 0;
     }
 
@@ -444,104 +426,56 @@ int docParaEnd(		DocumentPosition *	dp,
 /*									*/
 /************************************************************************/
 
-int docNextWord(	DocumentPosition *	dp,
-			int			lastOne )
+int docNextWord(	DocumentPosition *	dp )
     {
-    BufferItem *	bi= dp->dpBi;
-    int			stroff= dp->dpStroff;
+    BufferItem *		bi= dp->dpBi;
+    int				stroff= dp->dpStroff;
+    const unsigned char *	s;
 
-    if  ( stroff < bi->biParaStrlen )
+    if  ( stroff == bi->biParaStrlen )
 	{
-	int		part= dp->dpParticule;
-	TextParticule *	tp= bi->biParaParticules+ part;
-	unsigned char *	s= bi->biParaString;
-
-	if  ( stroff == tp->tpStroff+ tp->tpStrlen )
-	    { part++; tp++; }
-
-	while( part < bi->biParaParticuleCount )
-	    {
-	    /*  1  */
-	    if  ( tp->tpKind == DOCkindTEXT				&&
-		  tp->tpStrlen > 0					&&
-		  ( s[tp->tpStroff+ tp->tpStrlen- 1] == ' '	||
-		    tp->tpStroff+ tp->tpStrlen == bi->biParaStrlen )	)
-		{ stroff= tp->tpStroff+ tp->tpStrlen; break;	}
-
-	    part++; tp++;
-	    }
-
-	if  ( part == bi->biParaParticuleCount )
-	    { stroff= bi->biParaStrlen; }
-	}
-    else{
 	bi= docNextParagraph( bi );
-
 	if  ( ! bi )
-	    { return -1;	}
+	    { return 1;	}
 
 	stroff= 0;
 	}
 
-    docSetDocumentPosition( dp, bi, stroff, lastOne );
+    s= bi->biParaString;
+
+    while( stroff < bi->biParaStrlen && ! isspace( s[stroff] ) )
+	{ stroff++;	}
+    while( stroff < bi->biParaStrlen &&   isspace( s[stroff] ) )
+	{ stroff++;	}
+
+    docSetDocumentPosition( dp, bi, stroff );
 
     return 0;
     }
 
-int docPrevWord(	DocumentPosition *	dp,
-			int			lastOne )
+int docPrevWord(	DocumentPosition *	dp )
     {
-    BufferItem *	bi= dp->dpBi;
-    int			stroff= dp->dpStroff;
+    BufferItem *		bi= dp->dpBi;
+    int				stroff= dp->dpStroff;
+    const unsigned char *	s;
 
-    if  ( stroff > 0 )
+    if  ( stroff == 0 )
 	{
-	int		part= dp->dpParticule;
-	TextParticule *	tp= bi->biParaParticules+ part;
-	unsigned char *	s= bi->biParaString;
-
-	if  ( stroff == tp->tpStroff )
-	    { part--; tp--; }
-
-	while( part >= 0 )
-	    {
-	    /*  1  */
-	    if  ( tp->tpKind == DOCkindTEXT				&&
-		  tp->tpStrlen > 0					&&
-		  ( s[tp->tpStroff+ tp->tpStrlen- 1] == ' '	||
-		    tp->tpStroff+ tp->tpStrlen == bi->biParaStrlen )	)
-		{ break;	}
-
-	    part--; tp--;
-	    }
-
-	part--; tp--;
-
-	while( part >= 0 )
-	    {
-	    /*  1  */
-	    if  ( tp->tpKind == DOCkindTEXT				&&
-		  tp->tpStrlen > 0					&&
-		  ( s[tp->tpStroff+ tp->tpStrlen- 1] == ' '	||
-		    tp->tpStroff+ tp->tpStrlen == bi->biParaStrlen )	)
-		{ stroff= tp->tpStroff+ tp->tpStrlen; break;	}
-
-	    part--; tp--;
-	    }
-
-	if  ( part < 0 )
-	    { stroff= 0;	}
-	}
-    else{
 	bi= docPrevParagraph( bi );
-
 	if  ( ! bi )
-	    { return -1;	}
+	    { return 1;	}
 
 	stroff= bi->biParaStrlen;
 	}
 
-    docSetDocumentPosition( dp, bi, stroff, lastOne );
+    s= bi->biParaString;
+
+    while( stroff > 0 &&   isspace( s[stroff- 1] ) )
+	{ stroff--;	}
+    while( stroff > 0 && ! isspace( s[stroff- 1] ) )
+	{ stroff--;	}
+
+    docSetDocumentPosition( dp, bi, stroff );
 
     return 0;
     }
@@ -558,19 +492,12 @@ int docPrevWord(	DocumentPosition *	dp,
 /*									*/
 /************************************************************************/
 
-int docLineUp(		TextParticule **	pTp,
-			TextLine **		pTl,
-			DocumentPosition *	dp )
+int docLineUp(		TextLine **		pTl,
+			DocumentPosition *	dp,
+			int			line )
     {
     TextLine *		tl;
-    TextParticule *	tp;
     BufferItem *	bi= dp->dpBi;
-
-    int			part= dp->dpParticule;
-    int			line;
-
-    if  ( docFindLineOfParticule( &line, bi, part ) )
-	{ LDEB(part); return -1;	}
 
     line--;
 
@@ -585,21 +512,12 @@ int docLineUp(		TextParticule **	pTp,
 	      line >= 0				)
 	    {
 	    tl= bi->biParaLines+ line;
-	    tp= bi->biParaParticules+ part;
 
-	    while( part > tl->tlFirstParticule		&&
-		  part > 0				)
-		{ tp--; part--;	}
-	    
 	    dp->dpBi= bi;
 	    dp->dpStroff= tl->tlStroff;
-	    dp->dpParticule= part;
 
-	    if  ( pTp )
-		{ *pTp= tp;	}
 	    if  ( pTl )
 		{ *pTl= tl;	}
-
 	    return 0;
 	    }
 
@@ -608,40 +526,35 @@ int docLineUp(		TextParticule **	pTp,
 	      bi->biParaInTable			&&
 	      bi->biNumberInParent == 0		)
 	    {
-	    BufferItem *	cellBi= bi->biParent;
-	    BufferItem *	rowBi= cellBi->biParent;
-	    BufferItem *	sectBi= rowBi->biParent;
+	    int			col;
+	    int			row0;
+	    int			row;
+	    int			row1;
 
-	    if  ( rowBi->biNumberInParent > 0 )
+	    BufferItem *	sectBi;
+
+	    if  ( docDelimitTable( bi, &sectBi, &col, &row0, &row, &row1 ) )
+		{ LDEB(1); return -1;	}
+
+	    if  ( row > row0 )
 		{
-		rowBi= sectBi->biChildren[rowBi->biNumberInParent- 1];
+		BufferItem *	rowBi= sectBi->biChildren[row-1];
 
-		if  ( rowBi->biRowHasTableParagraphs		&&
-		      rowBi->biChildCount > 0			)
+		if  ( col < rowBi->biChildCount )
 		    {
-		    if  ( cellBi->biNumberInParent < rowBi->biChildCount )
-			{ cellBi= rowBi->biChildren[cellBi->biNumberInParent]; }
-		    else{ cellBi= rowBi->biChildren[rowBi->biChildCount- 1]; }
+		    BufferItem *	cellBi= rowBi->biChildren[col];
 
-		    while( cellBi->biChildCount > 0 )
-			{ cellBi= cellBi->biChildren[cellBi->biChildCount-1]; }
-		    if  ( cellBi->biLevel == DOClevPARA )
-			{
-			bi= cellBi;
-			part= bi->biParaParticuleCount- 1;
-			line= bi->biParaLineCount- 1;
-			continue;
-			}
+		    bi= cellBi->biChildren[cellBi->biChildCount-1];
+		    line= bi->biParaLineCount- 1;
+		    continue;
 		    }
 		}
 	    }
 
 	bi= docPrevParagraph( bi );
-	if  ( bi )
-	    {
-	    part= bi->biParaParticuleCount- 1;
-	    line= bi->biParaLineCount- 1;
-	    }
+	if  ( ! bi )
+	    { break;	}
+	line= bi->biParaLineCount- 1;
 	}
 
     return -1;
@@ -658,19 +571,12 @@ int docLineUp(		TextParticule **	pTp,
 /*									*/
 /************************************************************************/
 
-int docLineDown(	TextParticule **	pTp,
-			TextLine **		pTl,
-			DocumentPosition *	dp )
+int docLineDown(	TextLine **		pTl,
+			DocumentPosition *	dp,
+			int			line )
     {
     TextLine *		tl;
-    TextParticule *	tp;
     BufferItem *	bi= dp->dpBi;
-
-    int			part= dp->dpParticule;
-    int			line;
-
-    if  ( docFindLineOfParticule( &line, bi, part ) )
-	{ LDEB(part); return -1;	}
 
     line++;
 
@@ -682,18 +588,12 @@ int docLineDown(	TextParticule **	pTp,
 	      line >= 0				)   /*  against crashes  */
 	    {
 	    tl= bi->biParaLines+ line;
-	    tp= bi->biParaParticules+ part;
 
-	    while( part < tl->tlFirstParticule		&&
-		  part < bi->biParaParticuleCount	)
-		{ tp++; part++;	}
-	    
 	    dp->dpBi= bi;
 	    dp->dpStroff= tl->tlStroff;
-	    dp->dpParticule= part;
-	    *pTp= tp;
-	    *pTl= tl;
 
+	    if  ( pTl )
+		{ *pTl= tl;	}
 	    return 0;
 	    }
 
@@ -702,31 +602,33 @@ int docLineDown(	TextParticule **	pTp,
 	      bi->biParaInTable						&&
 	      bi->biNumberInParent == bi->biParent->biChildCount- 1	)
 	    {
-	    BufferItem *	cellBi= bi->biParent;
-	    BufferItem *	rowBi= cellBi->biParent;
-	    BufferItem *	sectBi= rowBi->biParent;
+	    int			col;
+	    int			row0;
+	    int			row;
+	    int			row1;
 
-	    if  ( rowBi->biNumberInParent < sectBi->biChildCount- 1 )
+	    BufferItem *	sectBi;
+
+	    if  ( docDelimitTable( bi, &sectBi, &col, &row0, &row, &row1 ) )
+		{ LDEB(1); return -1;	}
+
+	    if  ( row < row1 )
 		{
-		rowBi= sectBi->biChildren[rowBi->biNumberInParent+ 1];
+		BufferItem *	rowBi= sectBi->biChildren[row+1];
 
-		if  ( rowBi->biRowHasTableParagraphs		&&
-		      rowBi->biChildCount > 0			)
+		if  ( col < rowBi->biChildCount )
 		    {
-		    if  ( cellBi->biNumberInParent < rowBi->biChildCount )
-			{ cellBi= rowBi->biChildren[cellBi->biNumberInParent]; }
-		    else{ cellBi= rowBi->biChildren[rowBi->biChildCount- 1]; }
+		    BufferItem *	cellBi= rowBi->biChildren[col];
 
-		    while( cellBi->biChildCount > 0 )
-			{ cellBi= cellBi->biChildren[0]; }
-		    if  ( cellBi->biLevel == DOClevPARA )
-			{ bi= cellBi; part= 0; line= 0; continue; }
+		    bi= cellBi->biChildren[0];
+		    line= 0;
+		    continue;
 		    }
 		}
 	    }
 
 	bi= docNextParagraph( bi );
-	part= 0; line= 0;
+	line= 0;
 	}
 
     return -1;
@@ -738,24 +640,29 @@ int docLineDown(	TextParticule **	pTp,
 /*									*/
 /************************************************************************/
 
-int docBeginOfLine(	DocumentPosition *	dp )
+int docBeginOfLine(	DocumentPosition *	dp,
+			int			wasAtHead )
     {
     BufferItem *	bi= dp->dpBi;
 
     int			line;
     TextLine *		tl;
 
+    if  ( wasAtHead )
+	{ return 0;	}
+
     tl= bi->biParaLines;
     for ( line= 0; line < bi->biParaLineCount; tl++, line++ )
 	{
-	int			part= tl->tlFirstParticule;
-	TextParticule *		tp= bi->biParaParticules+ part;
+	int			stroff= tl->tlStroff;
 
-	if  ( part+ tl->tlParticuleCount > dp->dpParticule )
+	/*  1  */
+	if  ( stroff+ tl->tlStrlen > dp->dpStroff	||
+	      line == bi->biParaLineCount- 1		)
 	    {
 	    dp->dpBi= bi;
-	    dp->dpParticule= part;
-	    dp->dpStroff= tp->tpStroff;
+	    dp->dpStroff= stroff;
+
 	    return 0;
 	    }
 	}
@@ -763,7 +670,8 @@ int docBeginOfLine(	DocumentPosition *	dp )
     LDEB(1); return 1;
     }
 
-int docEndOfLine(	DocumentPosition *	dp )
+int docEndOfLine(	DocumentPosition *	dp,
+			int			wasAtHead )
     {
     BufferItem *	bi= dp->dpBi;
 
@@ -773,17 +681,18 @@ int docEndOfLine(	DocumentPosition *	dp )
     tl= bi->biParaLines;
     for ( line= 0; line < bi->biParaLineCount; tl++, line++ )
 	{
-	int			part= tl->tlFirstParticule;
-	TextParticule *		tp= bi->biParaParticules+ part;
+	int			stroff= tl->tlStroff;
 
-	if  ( part+ tl->tlParticuleCount > dp->dpParticule )
+	if  ( wasAtHead					&&
+	      stroff+ tl->tlStrlen == dp->dpStroff	&&
+	      line < bi->biParaLineCount- 1		)
+	    { wasAtHead= 0; continue;	}
+
+	if  ( stroff+ tl->tlStrlen >= dp->dpStroff )
 	    {
-	    part += tl->tlParticuleCount- 1;
-	    tp= bi->biParaParticules+ part;
-
 	    dp->dpBi= bi;
-	    dp->dpParticule= part;
-	    dp->dpStroff= tp->tpStroff+ tp->tpStrlen;
+	    dp->dpStroff= stroff+ tl->tlStrlen;
+
 	    return 0;
 	    }
 	}
@@ -833,8 +742,7 @@ int docCompareItemPositions(	const BufferItem *	bi1,
     }
 
 int docComparePositions(	const DocumentPosition *	dp1,
-				const DocumentPosition *	dp2,
-				int				mindParticule )
+				const DocumentPosition *	dp2 )
     {
     const BufferItem *	bi1= dp1->dpBi;
     const BufferItem *	bi2= dp2->dpBi;
@@ -847,15 +755,6 @@ int docComparePositions(	const DocumentPosition *	dp1,
 	if  ( dp1->dpStroff < dp2->dpStroff )
 	    { return -1;	}
 
-	if  ( mindParticule )
-	    {
-	    if  ( dp1->dpParticule > dp2->dpParticule )
-		{ return  1;	}
-
-	    if  ( dp1->dpParticule < dp2->dpParticule )
-		{ return -1;	}
-	    }
-
 	return 0;
 	}
 
@@ -866,21 +765,29 @@ int docComparePositions(	const DocumentPosition *	dp1,
 /*									*/
 /*  Go to the top/bottom of a certain page.				*/
 /*									*/
+/*  1)  Sections that start on an odd/even page may skip a page.	*/
+/*									*/
 /************************************************************************/
 
-int docGetTopOfColumn(	DocumentPosition *		dp,
-			BufferDocument *		bd,
+int docGetFirstInColumnForItem(
+			DocumentPosition *		dp,
+			int *				pLineTop,
+			int *				pPartTop,
+			BufferItem *			bi,
 			int				page,
 			int				column )
     {
-    BufferItem *	bi= &(bd->bdItem);
     int			i;
-    TextLine *		tl;
+    const TextLine *	tl;
 
     while( bi && bi->biLevel != DOClevPARA )
 	{
+	/*  1  */
 	if  ( bi->biTopPosition.lpPage > page )
-	    { LLDEB(bi->biBelowPosition.lpPage,page); return -1;	}
+	    {
+	    /* LLDEB(bi->biTopPosition.lpPage,page); */
+	    return 1;
+	    }
 	if  ( bi->biBelowPosition.lpPage < page )
 	    { LLDEB(bi->biBelowPosition.lpPage,page); return -1;	}
 
@@ -924,23 +831,42 @@ int docGetTopOfColumn(	DocumentPosition *		dp,
     if  ( i >= bi->biParaLineCount		||
 	  tl->tlTopPosition.lpPage != page	||
 	  tl->tlTopPosition.lpColumn != column	)
-	{ LLDEB(i,bi->biParaLineCount); return -1;	}
+	{
+	LDEB(docNumberOfParagraph(bi));
+	LLDEB(i,bi->biParaLineCount);
+	return -1;
+	}
 
     dp->dpBi= bi;
     dp->dpStroff= tl->tlStroff;
-    dp->dpParticule= tl->tlFirstParticule;
+
+    *pLineTop= tl- bi->biParaLines;
+    *pPartTop= tl->tlFirstParticule;
 
     return 0;
     }
 
-int docGetBottomOfColumn(	DocumentPosition *		dp,
-				BufferDocument *		bd,
+int docGetTopOfColumn(	DocumentPosition *		dp,
+			int *				pPartTop,
+			BufferDocument *		bd,
+			int				page,
+			int				column )
+    {
+    int		lineTop;
+
+    return docGetFirstInColumnForItem( dp, &lineTop, pPartTop, &(bd->bdItem),
+								page, column );
+    }
+
+int docGetLastInColumnForItem(	DocumentPosition *		dp,
+				int *				pLineBot,
+				int *				pPartBot,
+				BufferItem *			bi,
 				int				page,
 				int				column )
     {
-    BufferItem *	bi= &(bd->bdItem);
     int			i;
-    TextLine *		tl;
+    const TextLine *	tl;
 
     while( bi && bi->biLevel != DOClevPARA )
 	{
@@ -960,11 +886,11 @@ int docGetBottomOfColumn(	DocumentPosition *		dp,
 		}
 	    }
 
-	if  ( i >= bi->biChildCount )
+	if  ( i < 0 )
 	    {
 	    for ( i= 0; i < bi->biChildCount; i++ )
 		{ LLDEB(i,bi->biChildren[i]->biTopPosition.lpPage); }
-	    LLLDEB(bi->biTopPosition.lpPage,bi->biTopPosition.lpPage,page);
+	    LLLDEB(bi->biTopPosition.lpPage,bi->biBelowPosition.lpPage,page);
 	    return -1;
 	    }
 
@@ -993,9 +919,24 @@ int docGetBottomOfColumn(	DocumentPosition *		dp,
 
     dp->dpBi= bi;
     dp->dpStroff= tl->tlStroff+ tl->tlStrlen;
-    dp->dpParticule= tl->tlFirstParticule+ tl->tlParticuleCount- 1;
+
+    *pLineBot= tl- bi->biParaLines;
+    *pPartBot= tl->tlFirstParticule+ tl->tlParticuleCount- 1;
 
     return 0;
+    }
+
+int docGetBottomOfColumn(
+			DocumentPosition *		dp,
+			int *				pPartBot,
+			BufferDocument *		bd,
+			int				page,
+			int				column )
+    {
+    int		lineBot;
+
+    return docGetLastInColumnForItem( dp, &lineBot, pPartBot, &(bd->bdItem),
+								page, column );
     }
 
 /************************************************************************/
@@ -1005,16 +946,16 @@ int docGetBottomOfColumn(	DocumentPosition *		dp,
 /************************************************************************/
 
 void docSetParaSelection(	DocumentSelection *	ds,
-				BufferItem *		bi,
+				BufferItem *		paraBi,
 				int			direction,
 				int			stroff,
 				int			length )
     {
-    if  ( bi->biLevel != DOClevPARA )
-	{ LDEB(bi->biLevel);	}
+    if  ( paraBi->biLevel != DOClevPARA )
+	{ LDEB(paraBi->biLevel);	}
 
-    docSetDocumentPosition( &(ds->dsBegin), bi, stroff, 1 );
-    docSetDocumentPosition( &(ds->dsEnd), bi, stroff+ length, 0 );
+    docSetDocumentPosition( &(ds->dsBegin), paraBi, stroff );
+    docSetDocumentPosition( &(ds->dsEnd), paraBi, stroff+ length );
 
     ds->dsDirection= direction;
 
@@ -1024,7 +965,7 @@ void docSetParaSelection(	DocumentSelection *	ds,
 	{ ds->dsAnchor= ds->dsBegin;	}
     else{ ds->dsAnchor= ds->dsEnd;	}
 
-    docSetSelectionScope( ds, bi );
+    docSetSelectionScope( ds, paraBi );
 
     return;
     }
@@ -1050,38 +991,13 @@ void docSetSelectionScope(	DocumentSelection *	ds,
 
 /************************************************************************/
 /*									*/
-/*  Are we in a something.						*/
-/*									*/
-/************************************************************************/
-
-int docParticuleInField(	BufferItem *	bi,
-				int		part )
-    {
-    TextParticule *	tp;
-
-    part--;
-
-    tp= bi->biParaParticules+ part;
-    while( part >= 0 )
-	{
-	if  ( tp->tpKind == DOCkindFIELDEND )
-	    { return 0;	}
-	if  ( tp->tpKind == DOCkindFIELDSTART )
-	    { return 1;	}
-
-	tp--; part--;
-	}
-
-    return 0;
-    }
-
-/************************************************************************/
-/*									*/
 /*  Get buffer positions for a text line.				*/
 /*									*/
 /************************************************************************/
 
 void docLineSelection(	DocumentSelection *	dsLine,
+			int *			pPartLineBegin,
+			int *			pPartLineEnd,
 			const BufferItem *	bi,
 			int			line )
     {
@@ -1095,11 +1011,9 @@ void docLineSelection(	DocumentSelection *	dsLine,
     docInitDocumentSelection( dsLine );
 
     dsLine->dsBegin.dpBi= (BufferItem *)bi;
-    dsLine->dsBegin.dpParticule= tl->tlFirstParticule;
     dsLine->dsBegin.dpStroff= tl->tlStroff;
 
     dsLine->dsEnd.dpBi= (BufferItem *)bi;
-    dsLine->dsEnd.dpParticule= tl->tlFirstParticule+ tl->tlParticuleCount- 1;
     dsLine->dsEnd.dpStroff= tl->tlStroff+ tl->tlStrlen;
 
     dsLine->dsAnchor= dsLine->dsBegin;
@@ -1108,6 +1022,9 @@ void docLineSelection(	DocumentSelection *	dsLine,
     dsLine->dsCol0= dsLine->dsCol1= -1;
 
     docSetSelectionScope( dsLine, bi );
+
+    *pPartLineBegin= tl->tlFirstParticule;
+    *pPartLineEnd= tl->tlFirstParticule+ tl->tlParticuleCount- 1;
 
     return;
     }
@@ -1119,7 +1036,13 @@ void docWordSelection(	DocumentSelection *		dsWord,
     TextParticule *	tp;
 
     BufferItem *	bi= dpAround->dpBi;
-    int			part= dpAround->dpParticule;
+    int			part;
+
+    const int		lastOne= 1;
+
+    if  ( docFindParticule( &part, dpAround->dpBi,
+					    dpAround->dpStroff, lastOne ) )
+	{ LDEB(dpAround->dpStroff); return;	}
 
     if  ( bi->biLevel != DOClevPARA )
 	{ LLDEB(bi->biLevel,DOClevPARA); return;	}
@@ -1128,10 +1051,23 @@ void docWordSelection(	DocumentSelection *		dsWord,
 
     tp= bi->biParaParticules+ part;
 
+    if  ( tp->tpStroff == dpAround->dpStroff	&&
+	  part > 0				)
+	{
+	if  ( tp[-1].tpKind == DOCkindOBJECT )
+	    {
+	    docSetParaSelection( dsWord, bi, 1,
+					tp[-1].tpStroff, tp[-1].tpStrlen );
+	    *pIsObject= 1;
+	    return;
+	    }
+	}
+
     if  ( tp->tpKind == DOCkindOBJECT )
 	{
 	docSetParaSelection( dsWord, bi, 1, tp->tpStroff, tp->tpStrlen );
 	*pIsObject= 1;
+	return;
 	}
     else{
 	int	partBegin= part;
@@ -1405,11 +1341,9 @@ int docSelectWholeSection(	DocumentSelection *	ds,
 
     if  ( direction < 0 )
 	{
-	const int	lastOne= 1;
-
 	if  ( docFirstPosition( &(ds->dsBegin), selSectBi ) )
 	    { LDEB(1); return -1;	}
-	if  ( docPrevPosition( &(ds->dsBegin), lastOne ) )
+	if  ( docPrevPosition( &(ds->dsBegin) ) )
 	    { return 1;	}
 
 	ds->dsEnd= ds->dsBegin;
@@ -1424,9 +1358,6 @@ int docSelectWholeSection(	DocumentSelection *	ds,
     if  ( ! selSectBi )
 	{ XDEB(selSectBi); return -1;	}
 
-    if  ( direction == 0 )
-	{ direction= 1;	}
-
     if  ( docFirstPosition( &(ds->dsBegin), selSectBi ) )
 	{ LDEB(1); return -1;	}
     if  ( docLastPosition( &(ds->dsEnd), selSectBi ) )
@@ -1436,7 +1367,9 @@ int docSelectWholeSection(	DocumentSelection *	ds,
 	{ ds->dsAnchor= ds->dsBegin;	}
     else{ ds->dsAnchor= ds->dsEnd;	}
 
-    ds->dsDirection= direction;
+    if  ( direction >= 0 )
+	{ ds->dsDirection=  1;	}
+    else{ ds->dsDirection= -1;	}
 
     docSetSelectionScope( ds, ds->dsBegin.dpBi );
 
@@ -1445,11 +1378,12 @@ int docSelectWholeSection(	DocumentSelection *	ds,
 
 /************************************************************************/
 /*									*/
-/*  Is the selection exactly an object.					*/
+/*  Is the selection exactly an object?					*/
 /*									*/
 /************************************************************************/
 
 int docGetObjectSelection(	DocumentSelection *	ds,
+				int *			pPart,
 				DocumentPosition *	dpObject,
 				InsertedObject **	pIo )
     {
@@ -1457,13 +1391,22 @@ int docGetObjectSelection(	DocumentSelection *	ds,
 	  ds->dsEnd.dpBi == ds->dsBegin.dpBi	)
 	{
 	BufferItem *		bi= ds->dsBegin.dpBi;
-	int			part= ds->dsBegin.dpParticule;
-	TextParticule *		tp= bi->biParaParticules+ part;
+	int			part;
+	TextParticule *		tp;
+
+	const int		lastOne= 1;
+
+	if  ( docFindParticule( &part, ds->dsBegin.dpBi,
+					    ds->dsBegin.dpStroff, lastOne ) )
+	    { LDEB(ds->dsBegin.dpStroff); return -1;	}
+
+	tp= bi->biParaParticules+ part;
 
 	if  ( tp->tpKind == DOCkindOBJECT			&&
 	      ds->dsBegin.dpStroff == tp->tpStroff		&&
 	      ds->dsEnd.dpStroff == tp->tpStroff+ tp->tpStrlen	)
 	    {
+	    *pPart= part;
 	    *dpObject= ds->dsBegin;
 	    *pIo= bi->biParaObjects+ tp->tpObjectNumber;
 
@@ -1482,18 +1425,246 @@ int docGetObjectSelection(	DocumentSelection *	ds,
 
 int docSetDocumentPosition(	DocumentPosition *	dp,
 				BufferItem *		bi,
-				int			stroff,
-				int			lastOne )
+				int			stroff )
     {
-    int		part;
-
-    if  ( docFindParticule( &part, bi, stroff, lastOne ) )
-	{ LLDEB(stroff,bi->biParaStrlen); return -1; }
-
     dp->dpBi= bi;
-    dp->dpParticule= part;
     dp->dpStroff= stroff;
 
     return 0;
+    }
+
+/************************************************************************/
+/*									*/
+/*  Find the particule number for a certain string position.		*/
+/*									*/
+/*  NOTE: This does not expect the paragraph to be formatted.		*/
+/*									*/
+/************************************************************************/
+
+extern int docFindParticuleOfPosition(
+				int *				pPart,
+				const DocumentPosition *	dp,
+				int				lastOne )
+    {
+    return docFindParticule( pPart, dp->dpBi, dp->dpStroff, lastOne );
+    }
+
+int docFindParticule(		int *			pPart,
+				const BufferItem *	bi,
+				int			stroff,
+				int			lastOne )
+    {
+    int				part= 0;
+
+    const TextParticule *	tp;
+
+    part= 0; tp= bi->biParaParticules+ part;
+    while( part < bi->biParaParticuleCount	&&
+	   tp->tpStroff+ tp->tpStrlen < stroff	)
+	{ part++; tp++;	}
+
+    if  ( part >= bi->biParaParticuleCount )
+	{
+	LLDEB(stroff,bi->biParaStrlen);
+	LLDEB(part,bi->biParaParticuleCount);
+	docListItem( 0, bi );
+	return -1;
+	}
+
+    while( lastOne				&&
+	   part < bi->biParaParticuleCount -1	&&
+	   tp->tpStroff+ tp->tpStrlen == stroff	)
+	{ part++; tp++;	}
+
+    *pPart= part;
+
+    return 0;
+    }
+
+/************************************************************************/
+/*									*/
+/*  Find the line number for a certain string particule Number.		*/
+/*									*/
+/*  NOTE: This does not expect the paragraph to be formatted. We just	*/
+/*	fail because there are no lines. We do not crash however.	*/
+/*									*/
+/************************************************************************/
+
+int docFindLineOfPosition(	int *				pLine,
+				const DocumentPosition *	dp,
+				int				lastOne )
+    {
+    const BufferItem *	bi= dp->dpBi;
+    int			line= 0;
+
+    const TextLine *	tl;
+
+    line= 0; tl= bi->biParaLines+ line;
+    while( line < bi->biParaLineCount			&&
+	   tl->tlStroff+ tl->tlStrlen < dp->dpStroff	)
+	{ line++; tl++;	}
+
+    if  ( line >= bi->biParaLineCount )
+	{
+	LLDEB(line,bi->biParaLineCount);
+	LLDEB(dp->dpStroff,bi->biParaParticuleCount);
+	docListItem( 0, bi );
+	return -1;
+	}
+
+    while( lastOne					&&
+	   line < bi->biParaLineCount- 1		&&
+	   tl->tlStroff+ tl->tlStrlen == dp->dpStroff	)
+	{ line++; tl++;	}
+
+    *pLine= line;
+
+    return 0;
+    }
+
+/************************************************************************/
+/*									*/
+/*  Describe a selection and its relevance for application tools.	*/
+/*									*/
+/************************************************************************/
+
+void docDescribeSelection(	SelectionDescription *		sd,
+				const DocumentSelection *	ds,
+				const BufferDocument *		bd,
+				unsigned int			documentId,
+				int				documentRo )
+    {
+    const DocumentPosition *	dpBegin= &(ds->dsBegin);
+    const DocumentPosition *	dpEnd= &(ds->dsEnd);
+
+    int				i;
+
+    sd->sdDocumentId= documentId;
+    sd->sdIsSet= 1;
+    sd->sdDocumentReadonly= documentRo;
+    sd->sdIsIBarSelection= docIsIBarSelection( ds );
+    sd->sdIsSingleParagraph= docPositionsInsideParagraph( dpBegin, dpEnd );
+    sd->sdIsSingleCell= docPositionsInsideCell( dpBegin, dpEnd );
+
+    sd->sdBeginInTable= dpBegin->dpBi->biParaInTable;
+    sd->sdBeginInTableHeader= 0;
+    sd->sdIsColSlice= 0;
+    sd->sdIsRowSlice= 0;
+    sd->sdIsTableSlice= 0;
+    sd->sdIsTableRectangle= 0;
+
+    if  ( sd->sdBeginInTable )
+	{
+	const BufferItem *	rowBi= dpBegin->dpBi;
+
+	while( rowBi && rowBi->biLevel != DOClevROW )
+	    { rowBi= rowBi->biParent;	}
+
+	if  ( rowBi				&&
+	      rowBi->biRowHasTableParagraphs	&&
+	      rowBi->biRowIsTableHeader		)
+	    { sd->sdBeginInTableHeader= 1;	}
+	}
+
+    sd->sdInExternalItem= dpBegin->dpBi->biInExternalItem;
+    if  ( dpBegin->dpBi->biInExternalItem != dpEnd->dpBi->biInExternalItem )
+	{
+	LLDEB(dpBegin->dpBi->biInExternalItem,dpEnd->dpBi->biInExternalItem);
+	}
+
+    sd->sdInDocumentBody= ( sd->sdInExternalItem == DOCinBODY );
+    sd->sdInHeaderFooter= 0;
+
+    for ( i= 0; i < PAGES__COUNT; i++ )
+	{
+	if  ( sd->sdInExternalItem == DOC_HeaderScopes[i] )
+	    { sd->sdInHeaderFooter= 1; break;	}
+	if  ( sd->sdInExternalItem == DOC_FooterScopes[i] )
+	    { sd->sdInHeaderFooter= 1; break;	}
+	}
+
+    if  ( ! sd->sdIsIBarSelection )
+	{
+	TableRectangle		tr;
+
+	if  ( ! docGetTableRectangle( &tr, ds ) )
+	    {
+	    if  ( ! docGetTableSliceSelection( &(sd->sdIsRowSlice),
+					    &(sd->sdIsColSlice), &tr, ds ) )
+		{ sd->sdIsTableSlice= 1;	}
+
+	    sd->sdIsTableRectangle= 1;
+	    }
+	}
+
+    if  ( documentRo )
+	{
+	sd->sdCanReplace= 0;
+	}
+    else{
+	sd->sdCanReplace= ! sd->sdIsTableRectangle || sd->sdIsSingleCell;
+	}
+
+    sd->sdBeginInField= docPositionInField( dpBegin, bd );
+
+    sd->sdBeginInHyperlink= 0;
+    sd->sdBeginInBookmark= 0;
+
+    {
+    DocumentSelection	dsReference;
+    int			startPart;
+    int			endPart;
+
+    const char *	markName;
+    int			markSize;
+
+    const char *	fileName;
+    int			fileSize;
+
+    if  ( ! docGetHyperlinkForPosition( bd, dpBegin,
+				&dsReference, &startPart, &endPart,
+				&fileName, &fileSize, &markName, &markSize ) )
+	{ sd->sdBeginInHyperlink= 1;	}
+
+
+    if  ( ! docGetBookmarkForPosition( bd, dpBegin,
+				&dsReference, &startPart, &endPart,
+				&markName, &markSize ) )
+	{ sd->sdBeginInBookmark= 1;	}
+    }
+
+    sd->sdIsListBullet= 0;
+    if  ( sd->sdIsSingleParagraph		&&
+	  dpBegin->dpBi->biParaListOverride > 0	)
+	{
+	int		fieldNr= -1;
+	int		partBegin= -1;
+	int		partEnd= -1;
+	int		stroffBegin= -1;
+	int		stroffEnd= -1;
+
+	if  ( docDelimitParaHeadField( &fieldNr, &partBegin, &partEnd,
+				&stroffBegin, &stroffEnd, dpBegin->dpBi, bd ) )
+	    { LDEB(dpBegin->dpBi->biParaListOverride);	}
+	else{
+	    if  ( stroffBegin == dpBegin->dpStroff	&&
+		  stroffEnd == dpEnd->dpStroff		)
+		{ sd->sdIsListBullet= 1;	}
+	    }
+	}
+
+    sd->sdHasLists= 0;
+    sd->sdListOverride= -1;
+    sd->sdListLevel= -1;
+    sd->sdMultiList= 0;
+    sd->sdMultiLevel= 0;
+    sd->sdFirstListParaNr= -1;
+
+    sd->sdHasLists= ! docFindListOfSelection(
+				&(sd->sdListOverride), &(sd->sdListLevel),
+				&(sd->sdMultiList), &(sd->sdMultiLevel),
+				&(sd->sdFirstListParaNr), ds );
+
+    return;
     }
 

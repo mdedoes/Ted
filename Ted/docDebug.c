@@ -4,7 +4,7 @@
 #   include	<stdio.h>
 #   include	<appDebugon.h>
 
-#   define	LIST_PARA_STRING	1
+#   define	LIST_PARA_STRING	0
 #   define	LIST_PARTICULES		1
 #   define	LIST_FIRST_LINE		0
 #   define	LIST_LINES		0
@@ -95,6 +95,25 @@ static int docCheckChild(	const BufferItem *	parent,
 				    docLevelStr(parent->biLevel) );
 	LLDEB(child->biInExternalItem,parent->biInExternalItem);
 	rval= -1;
+	}
+
+    if  ( child->biLevel == DOClevPARA )
+	{
+	const BufferItem *	rowBi= child;
+
+	while( rowBi && rowBi->biLevel != DOClevROW )
+	    { rowBi= rowBi->biParent; }
+
+	if  ( ! rowBi )
+	    { SXDEB("#######",rowBi); rval= -1; }
+	else{
+	    if  ( child->biParaInTable != rowBi->biRowHasTableParagraphs )
+		{
+		SDEB("#######");
+		LLDEB(child->biParaInTable,rowBi->biRowHasTableParagraphs);
+		rval= -1;
+		}
+	    }
 	}
 
     if  ( lpBelow )
@@ -291,17 +310,19 @@ const char * docKindStr( int kind )
 
     switch( kind )
 	{
-	case DOCkindTEXT:	return "txt";
-	case DOCkindTAB:	return "TAB";
-	case DOCkindOBJECT:	return "OBJ";
-	case DOCkindFIELDSTART:	return "FLS";
-	case DOCkindFIELDEND:	return "FLE";
-	case DOCkindNOTE:	return "NOT";
-	case DOCkindXE:		return "XE ";
-	case DOCkindTC:		return "TC ";
-	case DOCkindLINEBREAK:	return "LIN";
-	case DOCkindPAGEBREAK:	return "PAG";
-	case DOCkindCHFTNSEP:	return "SEP";
+	case DOCkindTEXT:		return "txt";
+	case DOCkindTAB:		return "TAB";
+	case DOCkindOBJECT:		return "OBJ";
+	case DOCkindFIELDSTART:		return "FLS";
+	case DOCkindFIELDEND:		return "FLE";
+	case DOCkindNOTE:		return "NOT";
+	case DOCkindXE:			return "XE ";
+	case DOCkindTC:			return "TC ";
+	case DOCkindLINEBREAK:		return "LIN";
+	case DOCkindPAGEBREAK:		return "PAG";
+	case DOCkindCOLUMNBREAK:	return "COL";
+	case DOCkindCHFTNSEP:		return "SEP";
+	case DOCkindCHFTNSEPC:		return "SEC";
 
 	default:
 	    sprintf( scratch, "%3d", kind );

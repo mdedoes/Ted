@@ -13,7 +13,6 @@
 #   define	SIOsizBUF		1024
 
 typedef int	(*SIOinREADBYTES)( void *, unsigned char *, int );
-typedef int	(*SIOinSEEK)( void *, long );
 typedef int	(*SIOinCLOSE)( void * );
 
 typedef struct SimpleInputStream
@@ -26,7 +25,6 @@ typedef struct SimpleInputStream
     long		sisReadUpto;
 
     SIOinREADBYTES	sisReadBytes;
-    SIOinSEEK		sisSeek;
     SIOinCLOSE		sisClose;
     } SimpleInputStream;
 
@@ -69,7 +67,6 @@ extern int sioInUngetLastRead(	SimpleInputStream *	sis );
 
 extern SimpleInputStream * sioInOpen(	void *			specific,
 					SIOinREADBYTES		readBytes,
-					SIOinSEEK		seekTo,
 					SIOinCLOSE		closeIt );
 
 extern int sioInClose(	SimpleInputStream *		sis );
@@ -82,8 +79,6 @@ extern int sioInReadBytes(	SimpleInputStream *	sis,
 				unsigned char *		buf,
 				int			count );
 
-extern int sioInSeek(	SimpleInputStream *		sis,
-			long				pos );
 /*  out  */
 
 extern int sioOutFlushBuffer(	SimpleOutputStream *	sos );

@@ -34,7 +34,10 @@ typedef enum ListOverrideLevelProperty
 extern void docInitListOverrideLevel(	ListOverrideLevel *		lol );
 extern void docCleanListOverrideLevel(	ListOverrideLevel *		lol );
 
-extern int docCopyListOverrideLevel(	ListOverrideLevel *		to,
-					const ListOverrideLevel *	from );
+extern int docCopyListOverrideLevel(
+				ListOverrideLevel *		to,
+				const ListOverrideLevel *	from,
+				const int *			fontMap,
+				const int *			colorMap );
 
 #   endif

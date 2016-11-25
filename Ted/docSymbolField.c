@@ -131,7 +131,7 @@ int docRecalculateParaSymbolTextParticules(
 		{ SLDEB(allocated,fontNumber);	}
 	    else{
 		taSet.taFontNumber= fontNumber;
-		PROPmaskADD( &taSetMask, TApropFONTFAMILY );
+		PROPmaskADD( &taSetMask, TApropDOC_FONT_NUMBER );
 		}
 	    }
 

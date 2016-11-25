@@ -61,6 +61,7 @@ typedef struct ColumnTool
 extern void tedFormatToolRefreshColumnTool(
 				    ColumnTool *		ct,
 				    int *			pEnabled,
+				    int *			pPref,
 				    InspectorSubject *		is,
 				    const DocumentSelection *	bs );
 

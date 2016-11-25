@@ -13,6 +13,8 @@
 #   include	<appImage.h>
 #   include	<sioGeneral.h>
 
+#   include	<appMetafile.h>
+
 #   define	WINMETA_Arc			0x0817
 #   define	WINMETA_Chord			0x0830
 #   define	WINMETA_Ellipse			0x0418
@@ -292,6 +294,7 @@ typedef struct DeviceContext
     int				dcFillPattern;
 
     DocumentFontList		x_dcFontList;
+    const PostScriptFontList *	dcPostScriptFontList;
     AppDrawingData		dcDrawingData;
 
     LogicalPen			dcPen;
@@ -352,7 +355,7 @@ typedef struct DeviceContextX11
     int			dcxFillTiled;
     int			dcxFillHatched;
 
-    AppPhysicalFont *	dcxPhysicalFont;
+    DrawScreenFont *	dcxPhysicalFont;
     } DeviceContextX11;
 
 /************************************************************************/
@@ -387,13 +390,9 @@ extern int appMetaPlayEmfX11(	SimpleInputStream *	sis,
 				int			twipsWide,
 				int			twipsHigh );
 
-extern int appMetaSaveBitmapMetafile(	const BitmapDescription *	bd,
-					const unsigned char *		buffer,
-					SimpleOutputStream *		sos );
-
 extern int appMetaPlayFilePs(	SimpleOutputStream *		sos,
 				SimpleInputStream *		sis,
-				const char *			afmDirectory,
+				const PostScriptFontList *	psfl,
 				int				useFilters,
 				int				indexedImages,
 				int				mapMode,
@@ -404,15 +403,17 @@ extern int appMetaPlayFilePs(	SimpleOutputStream *		sos,
 
 extern void appMetaCleanDeviceContext(	DeviceContext *		dc );
 
-extern int appMetaInitDeviceContext(	DeviceContext *		dc,
-					int			objectCount,
-					int			mapMode,
-					int			xWinExt,
-					int			yWinExt,
-					int			xViewExt,
-					int			yViewExt,
-					int			twipsWide,
-					int			twipsHigh );
+extern int appMetaInitDeviceContext(
+				DeviceContext *			dc,
+				const PostScriptFontList *	psfl,
+				int				objectCount,
+				int				mapMode,
+				int				xWinExt,
+				int				yWinExt,
+				int				xViewExt,
+				int				yViewExt,
+				int				twipsWide,
+				int				twipsHigh );
 
 extern void appMetaCleanObject( MetaFileObject *	mfo );
 
@@ -464,9 +465,9 @@ extern int appMetaCreatePalette(	DeviceContext *		dc,
 extern int appMetaGetColor(		SimpleInputStream *	sis,
 					RGB8Color *		rgb8 );
 
-extern int appMetaListFontsPs(	PostScriptFaceList *	psfl,
+extern int appMetaListFontsPs(	PostScriptTypeList *	psfl,
 				SimpleInputStream *	sis,
-				const char *		afmDirectory,
+				const PostScriptFontList * x_psfl,
 				const char *		prefix,
 				int			mapMode,
 				int			xExt,
@@ -547,4 +548,15 @@ extern int appMetaSetBkColor(		DeviceContext *		dc,
 extern int appMetaSetTextColor(		DeviceContext *		dc,
 					int			recordSize,
 					SimpleInputStream *	sis );
+
+extern int appWinMetaGetPoints(		DeviceContext *		dc,
+					int			count,
+					SimpleInputStream *	sis );
+
+extern void appMetaX11SetWindowsLineStyle(
+					AppDrawingData *	add,
+					int *			pDraw,
+					int			ps,
+					int			lpW,
+					int			width );
 

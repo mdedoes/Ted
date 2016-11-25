@@ -254,7 +254,7 @@ void appRulerCalculateIncrements(	RulerData *	rd,
 
     switch( rd->rdUnit )
 	{
-	case UNITtyMM:		mmPerUnit= 1.0;	break;
+	case UNITtyMM:		mmPerUnit= 1.0;		break;
 	case UNITtyCM:		mmPerUnit= 10.0;	break;
 	case UNITtyINCH:	mmPerUnit= 24.4;	break;
 	case UNITtyPOINTS:	mmPerUnit= 25.4/ 72.0;	break;

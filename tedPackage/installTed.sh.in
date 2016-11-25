@@ -202,7 +202,7 @@ ask()
 if test ! -d ${I_PREFIX}
 then
     if  mkdir ${I_PREFIX}		&&
-        chown root:root ${I_PREFIX}	&&
+        chown @CHOWN_ARG@ ${I_PREFIX}	&&
         chmod 755 ${I_PREFIX}
     then
 	echo made `ls -ld ${I_PREFIX}`
@@ -259,6 +259,7 @@ for pkg in	@BINDIST@	\
 		Ted_en_GB	\
 		Ted_de_DE	\
 		Ted_es_ES	\
+		Ted_es_AR	\
 		Ted_pt_PT	\
 		Ted_pt_BR	\
 		Ted_fr_FR	\

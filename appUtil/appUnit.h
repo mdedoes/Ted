@@ -31,16 +31,11 @@ extern double appUnitFromTwips(	int	twips,
 extern double appUnitToTwips(	double	units,
 				int	unitTypeInt );
 
-extern int appRomanString(	char *		to,
-				int		maxlen,
-				int		n,
-				int		upper );
+extern int appWordFormatDate(	char *			target,
+				int			maxlen,
+				const struct tm *	tm,
+				const char *		wordPicture );
 
-int appWordFormatDate(			char *			target,
-					int			maxlen,
-					const struct tm *	tm,
-					const char *		wordPicture );
-
-extern void appInvalidateTime(		struct tm *		tm );
+extern void appInvalidateTime(	struct tm *		tm );
 
 #   endif	/*  APP_UNIT_H  */

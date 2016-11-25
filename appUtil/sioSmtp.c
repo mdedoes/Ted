@@ -302,15 +302,19 @@ SimpleOutputStream * sioOutSmtpOpen(	const char *	mailHost,
 	
     if  ( mimeBoundary )
 	{
+	const char *	mimeVersion= "MIME-Version";
+
 	const char *	name= "Content-Type";
 	int		len= strlen( name );
 	const char *	name2= " boundary=\"";
 
-	if  ( mmWrite( mc->mcFd, name, len, through, complain )		||
+	if  ( mmWriteHeader( mc->mcFd, mimeVersion, "1.0",
+						through, complain )	||
+	      mmWrite( mc->mcFd, name, len, through, complain )		||
 	      mmWrite( mc->mcFd, ": ", 2, through, complain )		||
 	      mmWrite( mc->mcFd, typeSlashSubtype,
-				strlen( typeSlashSubtype ),
-				through, complain )			||
+					strlen( typeSlashSubtype ),
+					through, complain )		||
 	      mmWriteCRLF( mc->mcFd, ";", through, complain )		)
 	    { LDEB(1); goto mmAbort;	}
 

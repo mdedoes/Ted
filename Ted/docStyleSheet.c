@@ -29,6 +29,7 @@ void docInitDocumentStyle(	DocumentStyle *	ds )
     ds->dsLevel= -1;
     ds->dsAutoupd= 0;
     ds->dsHidden= 0;
+    ds->dsSemiHidden= 0;
     ds->dsPersonal= 0;
     ds->dsBusy= 0;
 
@@ -41,6 +42,8 @@ void docInitDocumentStyle(	DocumentStyle *	ds )
     PROPmaskCLEAR( &(ds->dsTextMask ) );
 
     ds->dsName= (unsigned char *)0;
+
+    return;
     }
 
 void docCleanDocumentStyle(	DocumentStyle *	ds )
@@ -50,6 +53,8 @@ void docCleanDocumentStyle(	DocumentStyle *	ds )
 
     if  ( ds->dsName )
 	{ free( ds->dsName );	}
+
+    return;
     }
 
 int docCopyStyle(	DocumentStyle *		to,
@@ -57,6 +62,9 @@ int docCopyStyle(	DocumentStyle *		to,
     {
     DocumentStyle	ds;
     PropertyMask	ppChgMask;
+
+    const int * const	colorMap= (const int *)0;
+    const int * const	listStyleMap= (const int *)0;
 
     docInitDocumentStyle( &ds );
     ds= *from;
@@ -69,7 +77,7 @@ int docCopyStyle(	DocumentStyle *		to,
 
     if  ( docUpdParaProperties( &ppChgMask, &(ds.dsParagraphProperties),
 		    &(from->dsParaMask), &(from->dsParagraphProperties),
-		    (const int *)0 ) )
+		    colorMap, listStyleMap ) )
 	{ docCleanDocumentStyle( &ds ); return -1;	}
 
     if  ( docCopySectionProperties( &(ds.dsSectionProperties),

@@ -294,7 +294,7 @@ static int tedFindLine(	const BufferItem *	bi,
 int tedFindParticule(	TextLine *	tl,
 			TextParticule *	tp,
 			int		x,
-			int		y	)
+			int		y )
     {
     int				i;
 
@@ -322,21 +322,25 @@ static int tedCalculateX(	const BufferDocument *	bd,
 				const BufferItem *	bi,
 				const TextParticule *	tp,
 				const AppDrawingData *	add,
+				const ScreenFontList *	sfl,
 				int			stroff )
     {
-    const AppPhysicalFontList *	apfl= &(add->addPhysicalFontList);
-    AppPhysicalFont *		apf;
+    const DrawScreenFontList *	apfl= &(add->addScreenFontList);
     const unsigned char *	s;
     int				len;
     int				x;
 
     TextAttribute		ta;
+    int				textAttr;
+    int				screenFont;
+    DrawScreenFont *		dsf;
 
     switch( tp->tpKind )
 	{
 	case DOCkindOBJECT:
 	case DOCkindTAB:
 	case DOCkindCHFTNSEP:
+	case DOCkindCHFTNSEPC:
 	    len= stroff- tp->tpStroff;
 
 	    if  ( len == 0 )
@@ -355,19 +359,24 @@ static int tedCalculateX(	const BufferDocument *	bd,
 	    return x;
 
 	case DOCkindTEXT:
-	    if  ( tp->tpPhysicalFont < 0 )
-		{ LDEB(tp->tpPhysicalFont); return tp->tpX0;	}
+	    textAttr= tp->tpTextAttributeNumber;
+
+	    if  ( textAttr >= sfl->sflAttributeToScreenCount	||
+		  sfl->sflAttributeToScreen[textAttr] < 0	)
+		{ LDEB(textAttr); return tp->tpX0;	}
+
+	    screenFont= sfl->sflAttributeToScreen[textAttr];
+	    dsf= apfl->apflFonts+ screenFont;
 
 	    utilGetTextAttributeByNumber( &ta, &(bd->bdTextAttributeList),
-						tp->tpTextAttributeNumber );
+								textAttr );
 
 	    s= bi->biParaString+ tp->tpStroff;
-	    apf= apfl->apflFonts+ tp->tpPhysicalFont;
 	    len= stroff- tp->tpStroff;
 
 	    if  ( len == tp->tpStrlen )
 		{ x= tp->tpX0+ tp->tpPixelsWide;			}
-	    else{ x= tp->tpX0+ tedTextWidth( apf, &ta, bd, add, s, len ); }
+	    else{ x= tp->tpX0+ tedTextWidth( dsf, &ta, bd, add, s, len ); }
 	    return x;
 
 	case DOCkindNOTE:
@@ -377,6 +386,7 @@ static int tedCalculateX(	const BufferDocument *	bd,
 	case DOCkindTC:
 	case DOCkindLINEBREAK:
 	case DOCkindPAGEBREAK:
+	case DOCkindCOLUMNBREAK:
 	    x= tp->tpX0;
 	    return x;
 
@@ -404,18 +414,22 @@ int tedFindStringOffset(	const BufferDocument *	bd,
 				const BufferItem *	paraBi,
 				int			part,
 				const AppDrawingData *	add,
+				const ScreenFontList *	sfl,
 				int *			pBarX,
 				int			x,
 				int			y )
     {
     const TextParticule *	tp= paraBi->biParaParticules+ part;
-    const AppPhysicalFontList *	apfl= &(add->addPhysicalFontList);
+    const DrawScreenFontList *	apfl= &(add->addScreenFontList);
     int				len;
     int				stroff= tp->tpStroff+ 1;
     const unsigned char *	s= paraBi->biParaString+ tp->tpStroff;
-    AppPhysicalFont *		apf;
     int				before= tp->tpX0;
     int				past= tp->tpX0;
+
+    int				textAttr;
+    int				screenFont;
+    DrawScreenFont *		dsf;
 
     TextAttribute		ta;
 
@@ -423,10 +437,14 @@ int tedFindStringOffset(	const BufferDocument *	bd,
     if  ( x < before || tp->tpStrlen == 0 )
 	{ *pBarX= tp->tpX0; return tp->tpStroff; }
 
-    if  ( tp->tpPhysicalFont < 0 )
-	{ LDEB(tp->tpPhysicalFont); return tp->tpStroff;	}
+    textAttr= tp->tpTextAttributeNumber;
 
-    apf= apfl->apflFonts+ tp->tpPhysicalFont;
+    if  ( textAttr >= sfl->sflAttributeToScreenCount	||
+	  sfl->sflAttributeToScreen[textAttr] < 0	)
+	{ LDEB(textAttr); *pBarX= tp->tpX0; return tp->tpStroff;	}
+
+    screenFont= sfl->sflAttributeToScreen[textAttr];
+    dsf= apfl->apflFonts+ screenFont;
 
     utilGetTextAttributeByNumber( &ta, &(bd->bdTextAttributeList),
 						tp->tpTextAttributeNumber );
@@ -438,7 +456,7 @@ int tedFindStringOffset(	const BufferDocument *	bd,
 
 	if  ( len == tp->tpStrlen )
 	    { past= tp->tpX0+ tp->tpPixelsWide;				}
-	else{ past= tp->tpX0+ tedTextWidth( apf, &ta, bd, add, s, len ); }
+	else{ past= tp->tpX0+ tedTextWidth( dsf, &ta, bd, add, s, len ); }
 
 	between= ( before+ past )/ 2;
 
@@ -450,7 +468,8 @@ int tedFindStringOffset(	const BufferDocument *	bd,
 	before= past;
 	}
 
-    *pBarX= tp->tpX0+ tp->tpPixelsWide; return tp->tpStroff+ tp->tpStrlen;
+    *pBarX= tp->tpX0+ tp->tpPixelsWide;
+    return tp->tpStroff+ tp->tpStrlen;
     }
 
 /************************************************************************/
@@ -464,6 +483,7 @@ int tedFindPosition(	DocumentPosition *		dp,
 			const BufferDocument *		bd,
 			BufferItem *			rootBi,
 			const AppDrawingData *		add,
+			const ScreenFontList *		sfl,
 			int				x,
 			int				y )
     {
@@ -481,19 +501,23 @@ int tedFindPosition(	DocumentPosition *		dp,
 	{
 	if  ( y < BI_TOP_PIXELS( add, rootBi ) )
 	    {
+	    const int	lastOne= 0;
+
 	    if  ( docFirstPosition( dp, rootBi ) )
 		{ LDEB(y); return -1; }
 
-	    tedPositionGeometry( pg, dp, bd, add );
+	    tedPositionGeometry( pg, dp, lastOne, bd, add, sfl );
 	    return 0;
 	    }
 
 	if  ( y >= BI_BELOW_PIXELS( add, rootBi ) )
 	    {
+	    const int	lastOne= 0;
+
 	    if  ( docLastPosition( dp, rootBi ) )
 		{ LDEB(y); return -1; }
 
-	    tedPositionGeometry( pg, dp, bd, add );
+	    tedPositionGeometry( pg, dp, lastOne, bd, add, sfl );
 	    return 0;
 	    }
 
@@ -542,7 +566,7 @@ int tedFindPosition(	DocumentPosition *		dp,
 	    if  ( part < 0 )
 		{ LLDEB(x,part); return -1;			}
 
-	    stroff= tedFindStringOffset( bd, bi, part, add, &barX, x, y );
+	    stroff= tedFindStringOffset( bd, bi, part, add, sfl, &barX, x, y );
 	    if  ( stroff < 0 )
 		{ LDEB(stroff); return -1;	}
 	    }
@@ -562,10 +586,13 @@ int tedFindPosition(	DocumentPosition *		dp,
     tl= bi->biParaLines+ line;
 
     dp->dpBi= (BufferItem *)bi;	/*  Discards const */
-    dp->dpParticule= part;
     dp->dpStroff= stroff;
 
     pg->pgLine= line;
+    pg->pgAtLineHead= 0;
+    if  ( stroff == tl->tlStroff )
+	{ pg->pgAtLineHead= 1;	}
+
     pg->pgXPixels= barX;
     pg->pgTopPosition= tl->tlTopPosition;
     pg->pgY1Pixels= TL_BELOW_PIXELS( add, tl );
@@ -705,24 +732,40 @@ static void tedSelectionRectangle(
     return;
     }
 
+/************************************************************************/
+/*									*/
+/*  Determine the poition on paper/screen of a certain position in the	*/
+/*  document.								*/
+/*									*/
+/************************************************************************/
+
 void tedPositionGeometry(	PositionGeometry *		pg,
 				const DocumentPosition *	dp,
+				int				lastOne,
 				const BufferDocument *		bd,
-				const AppDrawingData *		add )
+				const AppDrawingData *		add,
+				const ScreenFontList *		sfl )
     {
+    int			part;
     int			line;
 
     TextLine *		tl;
     TextParticule *	tp;
 
-    if  ( docFindLineOfParticule( &line, dp->dpBi, dp->dpParticule ) )
-	{ LDEB(dp->dpParticule); return;	}
+    if  ( docFindParticuleOfPosition( &part, dp, lastOne ) )
+	{ LDEB(dp->dpStroff); return;	}
 
+    if  ( docFindLineOfPosition( &line, dp, lastOne ) )
+	{ LDEB(dp->dpStroff); return;	}
+
+    tp= dp->dpBi->biParaParticules+ part;
     tl= dp->dpBi->biParaLines+ line;
-    tp= dp->dpBi->biParaParticules+ dp->dpParticule;
 
     pg->pgLine= line;
-    pg->pgXPixels= tedCalculateX( bd, dp->dpBi, tp, add, dp->dpStroff );
+    pg->pgAtLineHead= 0;
+    if  ( dp->dpStroff == tl->tlStroff )
+	{ pg->pgAtLineHead= 1;	}
+    pg->pgXPixels= tedCalculateX( bd, dp->dpBi, tp, add, sfl, dp->dpStroff );
     pg->pgTopPosition= tl->tlTopPosition;
     pg->pgY1Pixels= TL_BELOW_PIXELS( add, tl );
     pg->pgBaselinePixels= TL_BASE_PIXELS( add, tl );
@@ -738,12 +781,22 @@ void tedPositionGeometry(	PositionGeometry *		pg,
 
 void tedSelectionGeometry(	SelectionGeometry *		sg,
 				const DocumentSelection *	ds,
+				int				lastLine,
 				const BufferDocument *		bd,
-				const AppDrawingData *		add )
+				const AppDrawingData *		add,
+				const ScreenFontList *		sfl )
     {
-    tedPositionGeometry( &(sg->sgBegin), &(ds->dsBegin), bd, add );
-    tedPositionGeometry( &(sg->sgAnchor), &(ds->dsAnchor), bd, add );
-    tedPositionGeometry( &(sg->sgEnd), &(ds->dsEnd), bd, add );
+    if  ( ds->dsDirection != 0 )
+	{ lastLine= 0;	}
+
+    tedPositionGeometry( &(sg->sgBegin), &(ds->dsBegin),
+					    ds->dsDirection > 0 || lastLine,
+					    bd, add, sfl );
+    tedPositionGeometry( &(sg->sgAnchor), &(ds->dsAnchor),
+					    ds->dsDirection > 0 || lastLine,
+					    bd, add, sfl );
+    tedPositionGeometry( &(sg->sgEnd), &(ds->dsEnd), lastLine,
+					    bd, add, sfl );
 
     tedSelectionRectangle( sg, add, bd, ds );
 
@@ -759,7 +812,8 @@ void tedSelectionGeometry(	SelectionGeometry *		sg,
 /*	For finding headers and footers this is sufficient. For finding	*/
 /*	the actual body section, it is not: Below a more precise	*/
 /*	attempt is made.						*/
-/*  3)  Oups: not found should have been impossible.			*/
+/*  3)  If no section can be found, the click might have been in a note	*/
+/*	protruding beyond the the last page with regular text.		*/
 /*  4)  Is the click in the header corresponding to this section?	*/
 /*  5)  Is the click in the footer corresponding to this section?	*/
 /*  6)  Is the click in a note on this page?				*/
@@ -833,7 +887,6 @@ int tedFindRootForPosition(		ExternalItem **		pEi,
     int				page;
     int				sectNr;
 
-    const DocumentGeometry *	dgSect;
     int				pageY;
 
     BufferItem *		bodySectBi= (BufferItem *)0;
@@ -862,52 +915,58 @@ int tedFindRootForPosition(		ExternalItem **		pEi,
 	    { break;	}
 	}
 
-    /*  3  */
+    /*  3
     if  ( sectNr >= bd->bdItem.biChildCount )
 	{ LLDEB(page,sectNr); return -1;	}
+    */
 
-    dgSect= &(bodySectBi->biSectDocumentGeometry);
-
-    /*  4  */
-    ei= (ExternalItem *)0;
-    inHeaderFooter= docWhatPageHeader( &ei, bodySectBi, page, dp );
-    if  ( ei && ei->eiItem )
+    if  ( sectNr < bd->bdItem.biChildCount )
 	{
-	if  ( docGetExternalItemBox( &drExtern, bodySectBi, ei, justUsed,
-							    page, bd, add ) )
-	    { LDEB(1);	}
-	else{
-	    if  ( docY >= drExtern.drY0 && docY <= drExtern.drY1 )
-		{
-		*pEi= ei;
-		*pRootBi= ei->eiItem;
-		*pBodySectBi= bodySectBi;
-		*pSectNr= sectNr;
-		*pPage= page;
+	const DocumentGeometry *	dgSect;
 
-		return 0;
+	dgSect= &(bodySectBi->biSectDocumentGeometry);
+
+	/*  4  */
+	ei= (ExternalItem *)0;
+	inHeaderFooter= docWhatPageHeader( &ei, bodySectBi, page, dp );
+	if  ( ei && ei->eiItem )
+	    {
+	    if  ( docGetExternalItemBox( &drExtern, bodySectBi, ei, justUsed,
+							    page, bd, add ) )
+		{ LDEB(1);	}
+	    else{
+		if  ( docY >= drExtern.drY0 && docY <= drExtern.drY1 )
+		    {
+		    *pEi= ei;
+		    *pRootBi= ei->eiItem;
+		    *pBodySectBi= bodySectBi;
+		    *pSectNr= sectNr;
+		    *pPage= page;
+
+		    return 0;
+		    }
 		}
 	    }
-	}
 
-    /*  5  */
-    ei= (ExternalItem *)0;
-    inHeaderFooter= docWhatPageFooter( &ei, bodySectBi, page, dp );
-    if  ( ei && ei->eiItem )
-	{
-	if  ( docGetExternalItemBox( &drExtern, bodySectBi, ei, justUsed,
+	/*  5  */
+	ei= (ExternalItem *)0;
+	inHeaderFooter= docWhatPageFooter( &ei, bodySectBi, page, dp );
+	if  ( ei && ei->eiItem )
+	    {
+	    if  ( docGetExternalItemBox( &drExtern, bodySectBi, ei, justUsed,
 							    page, bd, add ) )
-	    { LDEB(1);	}
-	else{
-	    if  ( docY >= drExtern.drY0 && docY <= drExtern.drY1 )
-		{
-		*pEi= ei;
-		*pRootBi= ei->eiItem;
-		*pBodySectBi= bodySectBi;
-		*pSectNr= sectNr;
-		*pPage= page;
+		{ LDEB(1);	}
+	    else{
+		if  ( docY >= drExtern.drY0 && docY <= drExtern.drY1 )
+		    {
+		    *pEi= ei;
+		    *pRootBi= ei->eiItem;
+		    *pBodySectBi= bodySectBi;
+		    *pSectNr= sectNr;
+		    *pPage= page;
 
-		return 0;
+		    return 0;
+		    }
 		}
 	    }
 	}
@@ -916,8 +975,7 @@ int tedFindRootForPosition(		ExternalItem **		pEi,
     dn= bd->bdNotes;
     for ( i= 0; i < bd->bdNoteCount; dn++, i++ )
 	{
-	int		topPixels;
-	int		belowPixels;
+	BufferItem *		noteBodySectBi;
 
 	ei= &(dn->dnExternalItem);
 
@@ -926,25 +984,33 @@ int tedFindRootForPosition(		ExternalItem **		pEi,
 	if  ( ! ei->eiItem )
 	    { XDEB(ei->eiItem); continue;	}
 
-	if  ( ei->eiItem->biTopPosition.lpPage < page )
+	noteBodySectBi= bd->bdItem.biChildren[dn->dnSectNr];
+
+	if  ( ei->eiItem->biBelowPosition.lpPage < page )
 	    { continue;	}
 	if  ( ei->eiItem->biTopPosition.lpPage > page )
 	    { continue;	}
 
-	topPixels= BI_TOP_PIXELS( add, ei->eiItem );
-	belowPixels= BI_BELOW_PIXELS( add, ei->eiItem );
+	if  ( docGetExternalItemBox( &drExtern, noteBodySectBi, ei, justUsed,
+							page, bd, add ) )
+	    { LDEB(1);	}
+	else{
+	    if  ( docY >= drExtern.drY0 && docY <= drExtern.drY1 )
+		{
+		*pEi= ei;
+		*pRootBi= ei->eiItem;
+		*pBodySectBi= noteBodySectBi;
+		*pSectNr= dn->dnSectNr;
+		*pPage= page;
 
-	if  ( docY >= topPixels && docY <= belowPixels )
-	    {
-	    *pEi= ei;
-	    *pRootBi= ei->eiItem;
-	    *pBodySectBi= bodySectBi;
-	    *pSectNr= sectNr;
-	    *pPage= page;
-
-	    return 0;
+		return 0;
+		}
 	    }
 	}
+
+    /*  3  */
+    if  ( sectNr >= bd->bdItem.biChildCount )
+	{ LLDEB(page,sectNr); return -1;	}
 
     /*  7  */
     ret= tedFindTryNoteSeparator( pEi, pRootBi, bd, add,

@@ -41,6 +41,7 @@ int docInsertTableRows(		BufferItem *		sectBi,
 	{
 	BufferItem *		rowBi= (BufferItem *)0;
 
+	const int		isSplit= 0;
 	const int		stroffFrom= 0;
 	const int		sectShift= 0;
 	const int		stroffShift= 0;
@@ -52,7 +53,7 @@ int docInsertTableRows(		BufferItem *		sectBi,
 
 	if  ( sectBi->biInExternalItem == DOCinBODY )
 	    {
-	    docShiftNoteReferences( eo->eoBd, paraNr, stroffFrom,
+	    docEditShiftReferences( eo->eoBd, paraNr, isSplit, stroffFrom,
 				    sectShift, paraShift, stroffShift );
 	    }
 
@@ -178,6 +179,7 @@ int docSplitColumnInRows(	BufferItem **		pNewParaBi,
 
 	if  ( sectBi->biInExternalItem == DOCinBODY )
 	    {
+	    const int	isSplit= 0;
 	    const int	stroffFrom= 0;
 	    const int	stroffShift= 0;
 	    const int	sectShift= 0;
@@ -185,7 +187,7 @@ int docSplitColumnInRows(	BufferItem **		pNewParaBi,
 	    const int	paraNr= docNumberOfParagraph( paraBi );
 	    const int	paraShift= 1;
 
-	    docShiftNoteReferences( eo->eoBd, paraNr, stroffFrom,
+	    docEditShiftReferences( eo->eoBd, paraNr, isSplit, stroffFrom,
 				    sectShift, paraShift, stroffShift );
 	    }
 
@@ -299,13 +301,14 @@ int docDeleteColumnsFromRows(	EditOperation *	eo,
 
 	if  ( rowBi->biInExternalItem == DOCinBODY )
 	    {
+	    const int		isSplit= 0;
 	    const int		sectShift= 0;
 	    const int		stroffFrom= 0;
 	    const int		stroffShift= 0;
 
-	    docShiftNoteReferences( eo->eoBd,
-			    firstParaDeleted+ paragraphsDeleted, stroffFrom,
-			    sectShift, -paragraphsDeleted, stroffShift );
+	    docEditShiftReferences( eo->eoBd,
+		    firstParaDeleted+ paragraphsDeleted, isSplit, stroffFrom,
+		    sectShift, -paragraphsDeleted, stroffShift );
 	    }
 
 

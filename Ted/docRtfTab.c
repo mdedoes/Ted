@@ -37,10 +37,19 @@
 #	define		docRtfRememberListOverrideProperty	0
 #	define		docRtfRememberListOverrideLevelProperty	0
 #	define		docRtfRememberTabStopProperty		0
-#	define		docRtfRememberTextFrameProperty		0
+#	define		docRtfRememberParaFrameProperty		0
+#	define		docRtfRememberRowFrameProperty		0
 #	define		docRtfFontProperty			0
 #	define		docRtfRememberPntextProperty		0
 #	define		docRtfObjectProperty			0
+#	define		docRtfTextSpecialChar			0
+#	define		docRtfTextSpecialParticule		0
+#	define		docRtfTextSpecialToField		0
+#	define		docRtfRememberTextShadingPattern	0
+#	define		docRtfDrawingObjectProperty		0
+#	define		docRtfDrawingObjectCoordinate		0
+#	define		docRtfShpProperty			0
+#	define		docRtfPnProperty			0
 
 #   endif
 
@@ -60,6 +69,7 @@ static RtfControlWord	docRtfBorderWords[]=
 	RTF_BORDER_PROP( "brdrw",		BRDRpropPEN_WIDE ),
 	RTF_BORDER_PROP( "brdrcf",		BRDRpropCOLOR ),
 	RTF_BORDER_PROP( "brsp",		BRDRpropSPACING ),
+	RTF_BORDER_PROP( "brdrart",		BRDRpropART ),
 
 	/**/
 
@@ -94,6 +104,9 @@ static RtfControlWord	docRtfBorderWords[]=
 	RTF_BORDER_STYLE( "brdrengrave",	DOCbsENGRAVE ),
 	RTF_BORDER_STYLE( "brdroutset",		DOCbsOUTSET ),
 
+	RTF_BORDER_STYLE( "brdrtbl",		DOCbsTBL ),
+	RTF_BORDER_STYLE( "brdrnil",		DOCbsNIL ),
+
 	/**/
 
 	{ 0, 0, 0 }
@@ -105,21 +118,8 @@ static RtfControlWord	docRtfBorderWords[]=
 /*									*/
 /************************************************************************/
 
-/* Not practical
-# define rrcBd do not use
-*/
-# define rrcBi do not use
-# define rrcInsertedObject do not use
-# define rrcFieldNumber do not use
-
 # define	RTF_REMEMBER(s,id) \
     { s,      id,         DOClevANY,  docRtfRememberProperty, }
-
-
-# define	RTF_DOC_VALUE(s,id) \
-		{ s, id, DOClevANY, docRtfRememberDocProperty, }
-# define	RTF_DOC_ENUM(s,id,v) \
-		{ s, id, DOClevANY, docRtfRememberDocProperty, v }
 
 
 # define	RTF_BORDER(s,id) \
@@ -172,12 +172,19 @@ static RtfControlWord	docRtfBorderWords[]=
 # define	RTF_SECT_FLAG(s,id) \
 		{ s, id, DOClevANY, docRtfRememberSectionProperty, }
 
-# define	RTF_FRAME_VALUE(s,id) \
-		{ s, id, DOClevANY, docRtfRememberTextFrameProperty, }
-# define	RTF_FRAME_ENUM(s,id,v) \
-		{ s, id, DOClevANY, docRtfRememberTextFrameProperty, v, }
-# define	RTF_FRAME_FLAG(s,id) \
-		{ s, id, DOClevANY, docRtfRememberTextFrameProperty, }
+# define	RTF_PARA_FRAME_VALUE(s,id) \
+		{ s, id, DOClevANY, docRtfRememberParaFrameProperty, }
+# define	RTF_PARA_FRAME_ENUM(s,id,v) \
+		{ s, id, DOClevANY, docRtfRememberParaFrameProperty, v, }
+# define	RTF_PARA_FRAME_FLAG(s,id) \
+		{ s, id, DOClevANY, docRtfRememberParaFrameProperty, }
+
+# define	RTF_ROW_FRAME_VALUE(s,id) \
+		{ s, id, DOClevANY, docRtfRememberRowFrameProperty, }
+# define	RTF_ROW_FRAME_ENUM(s,id,v) \
+		{ s, id, DOClevANY, docRtfRememberRowFrameProperty, v, }
+# define	RTF_ROW_FRAME_FLAG(s,id) \
+		{ s, id, DOClevANY, docRtfRememberRowFrameProperty, }
 
 # define	RTF_CELL_DEFAULT(s) \
 		{ s, CLprop_NONE, DOClevANY, docRtfRememberCellProperty, }
@@ -236,6 +243,25 @@ static RtfControlWord	docRtfBorderWords[]=
 # define	RTF_OBJ_FLAG(s,id) \
 		{ s, id, DOClevANY, docRtfObjectProperty, }
 
+# define	RTF_SPECIAL_CHAR(s,id) \
+		{ s, id, DOClevTEXT, docRtfTextSpecialChar, }
+# define	RTF_SPECIAL_PART(s,id) \
+		{ s, id, DOClevTEXT, docRtfTextSpecialParticule, }
+# define	RTF_SPECIAL_FIELD(s,id) \
+		{ s, id, DOClevTEXT, docRtfTextSpecialToField, }
+
+# define	RTF_TEXT_SHADING_ENUM(s,id,v) \
+		{ s, id, DOClevANY, docRtfRememberTextShadingPattern, v }
+
+# define	RTF_DO_FLAG(s,id) \
+		{ s, id, DOClevANY, docRtfDrawingObjectProperty }
+# define	RTF_DO_ENUM(s,id,v) \
+		{ s, id, DOClevANY, docRtfDrawingObjectProperty, v }
+# define	RTF_DO_VALUE(s,id) \
+		{ s, id, DOClevANY, docRtfDrawingObjectProperty }
+# define	RTF_DO_COORD(s,id) \
+		{ s, id, DOClevANY, docRtfDrawingObjectCoordinate }
+
 RtfControlWord	docRtfPropertyWords[]=
 {
 				/****************************************/
@@ -244,9 +270,10 @@ RtfControlWord	docRtfPropertyWords[]=
 				/****************************************/
     RTF_TEXT_DEFAULT( "plain" ),
 
-    RTF_TEXT_VALUE( "f",		TApropFONTFAMILY ),
+    RTF_TEXT_VALUE( "f",		TApropDOC_FONT_NUMBER ),
     RTF_TEXT_VALUE( "fs",		TApropFONTSIZE ),
     RTF_TEXT_VALUE( "cf",		TApropTEXT_COLOR ),
+    RTF_TEXT_VALUE( "cs",		TApropTEXT_STYLE ),
 
     RTF_TEXT_FLAG( "b",			TApropFONTBOLD ),
     RTF_TEXT_FLAG( "i",			TApropFONTSLANTED ),
@@ -262,9 +289,9 @@ RtfControlWord	docRtfPropertyWords[]=
 
     /**/
 
-    RTF_PNTEXT_VALUE( "pnf",		TApropFONTFAMILY ),
+    RTF_PNTEXT_VALUE( "pnf",		TApropDOC_FONT_NUMBER ),
     RTF_PNTEXT_VALUE( "pnfs",		TApropFONTSIZE ),
-    RTF_PNTEXT_VALUE( "pbcf",		TApropTEXT_COLOR ),
+    RTF_PNTEXT_VALUE( "pncf",		TApropTEXT_COLOR ),
 
     RTF_PNTEXT_FLAG( "pnb",		TApropFONTBOLD ),
     RTF_PNTEXT_FLAG( "pni",		TApropFONTSLANTED ),
@@ -280,6 +307,57 @@ RtfControlWord	docRtfPropertyWords[]=
     RTF_REMEMBER( "pnulnone",		RTFidPNULNONE ),
     */
 
+# define	RTF_PN_FLAG(s,id) \
+		{ s, id, DOClevANY, docRtfPnProperty }
+# define	RTF_PN_VALUE(s,id) \
+		{ s, id, DOClevANY, docRtfPnProperty }
+# define	RTF_PN_ENUM(s,id,v) \
+		{ s, id, DOClevANY, docRtfPnProperty, v }
+
+    RTF_PN_VALUE( "pnstart",	LLpropSTARTAT ),
+
+    RTF_PN_ENUM( "pndec",	LLpropSTYLE,	DOCpnDEC ),
+    RTF_PN_ENUM( "pnucrm",	LLpropSTYLE,	DOCpnUCRM ),
+    RTF_PN_ENUM( "pnlcrm",	LLpropSTYLE,	DOCpnLCRM ),
+    RTF_PN_ENUM( "pnucltr",	LLpropSTYLE,	DOCpnUCLTR ),
+    RTF_PN_ENUM( "pnlcltr",	LLpropSTYLE,	DOCpnLCLTR ),
+    RTF_PN_ENUM( "pnord",	LLpropSTYLE,	DOCpnORD ),
+    RTF_PN_ENUM( "pncard",	LLpropSTYLE,	DOCpnCARD ),
+    RTF_PN_ENUM( "pnordt",	LLpropSTYLE,	DOCpnORDT ),
+
+    RTF_PN_ENUM( "pndbnum",	LLpropSTYLE,	DOCpnDBNUM ),
+    RTF_PN_ENUM( "pndbnumd",	LLpropSTYLE,	DOCpnDBNUMD ),
+    RTF_PN_ENUM( "pnaiu",	LLpropSTYLE,	DOCpnAIU ),
+    RTF_PN_ENUM( "pniroha",	LLpropSTYLE,	DOCpnIROHA ),
+    RTF_PN_ENUM( "pndbnuml",	LLpropSTYLE,	DOCpnDBNUML ),
+    RTF_PN_ENUM( "pndbnumt",	LLpropSTYLE,	DOCpnDBNUMT ),
+    RTF_PN_ENUM( "pndbnumk",	LLpropSTYLE,	DOCpnDBNUMK ),
+    RTF_PN_ENUM( "pncnum",	LLpropSTYLE,	DOCpnCNUM ),
+    RTF_PN_ENUM( "pndecd",	LLpropSTYLE,	DOCpnDECD ),
+    RTF_PN_ENUM( "pnaiud",	LLpropSTYLE,	DOCpnAIUD ),
+    RTF_PN_ENUM( "pnirohad",	LLpropSTYLE,	DOCpnIROHAD ),
+    RTF_PN_ENUM( "pnganada",	LLpropSTYLE,	DOCpnGANADA ),
+    RTF_PN_ENUM( "pngbnum",	LLpropSTYLE,	DOCpnGBNUM ),
+    RTF_PN_ENUM( "pngbnumd",	LLpropSTYLE,	DOCpnGBNUMD ),
+    RTF_PN_ENUM( "pngbnuml",	LLpropSTYLE,	DOCpnGBNUML ),
+    RTF_PN_ENUM( "pngbnumk",	LLpropSTYLE,	DOCpnGBNUMK ),
+    RTF_PN_ENUM( "pnzodiac",	LLpropSTYLE,	DOCpnZODIAC ),
+    RTF_PN_ENUM( "pnzodiacd",	LLpropSTYLE,	DOCpnZODIACD ),
+    RTF_PN_ENUM( "pnzodiacl",	LLpropSTYLE,	DOCpnZODIACL ),
+    RTF_PN_ENUM( "pnchosung",	LLpropSTYLE,	DOCpnCHOSUNG ),
+    RTF_PN_ENUM( "pnaiueo",	LLpropSTYLE,	DOCpnAIUEO ),
+    RTF_PN_ENUM( "pnaiueod",	LLpropSTYLE,	DOCpnAIUEOD ),
+    RTF_PN_ENUM( "pnbidia",	LLpropSTYLE,	DOCpnBIDIA ),
+    RTF_PN_ENUM( "pnbidib",	LLpropSTYLE,	DOCpnBIDIB ),
+
+    RTF_PN_ENUM( "pnql",	LLpropJUSTIFY,	0 ),
+    RTF_PN_ENUM( "pnqc",	LLpropJUSTIFY,	1 ),
+    RTF_PN_ENUM( "pnqr",	LLpropJUSTIFY,	2 ),
+
+    RTF_PN_VALUE( "pnindent",	LLpropINDENT ),
+    RTF_PN_VALUE( "pnsp",	LLpropSPACE ),
+    RTF_PN_FLAG( "pnprev",	LLpropPREV ),
+
     /**/
 
     RTF_REMEMBER( "lang",		RTFidLANG ),
@@ -292,7 +370,6 @@ RtfControlWord	docRtfPropertyWords[]=
     RTF_REMEMBER( "cchs",		RTFidCCHS ),
     RTF_REMEMBER( "deleted",		RTFidDELETED ),
     RTF_REMEMBER( "dn",			RTFidDN ),
-    RTF_REMEMBER( "ltrch",		RTFidLTRCH ),
     RTF_REMEMBER( "outl",		RTFidOUTL ),
     RTF_REMEMBER( "revauth",		RTFidREVAUTH ),
     RTF_REMEMBER( "crauth",		RTFidREVAUTH ),
@@ -302,7 +379,10 @@ RtfControlWord	docRtfPropertyWords[]=
     RTF_REMEMBER( "revdttmdel",		RTFidREVDTTMDEL ),
     RTF_REMEMBER( "revised",		RTFidREVISED ),
     RTF_REMEMBER( "rtlch",		RTFidRTLCH ),
+    RTF_REMEMBER( "ltrch",		RTFidLTRCH ),
     RTF_REMEMBER( "shad",		RTFidSHAD ),
+
+    RTF_REMEMBER( "fcs",		RTFidFCS ),
 
     RTF_REMEMBER( "uld",		RTFidULD ),
     RTF_REMEMBER( "uldb",		RTFidULDB ),
@@ -315,18 +395,18 @@ RtfControlWord	docRtfPropertyWords[]=
     RTF_REMEMBER( "charscalex",		RTFidCHARSCALEX ),
     RTF_REMEMBER( "highlight",		RTFidHIGHLIGHT ),
 
-    RTF_REMEMBER( "chbghoriz",		RTFidCHBGHORIZ ),
-    RTF_REMEMBER( "chbgvert",		RTFidCHBGVERT ),
-    RTF_REMEMBER( "chbgfdiag",		RTFidCHBGFDIAG ),
-    RTF_REMEMBER( "chbgbdiag",		RTFidCHBGBDIAG ),
-    RTF_REMEMBER( "chbgcross",		RTFidCHBGCROSS ),
-    RTF_REMEMBER( "chbgdcross",		RTFidCHBGDCROSS ),
-    RTF_REMEMBER( "chbgdkhoriz",	RTFidCHBGDKHORIZ ),
-    RTF_REMEMBER( "chbgdkvert",		RTFidCHBGDKVERT ),
-    RTF_REMEMBER( "chbgdkfdiag",	RTFidCHBGDKFDIAG ),
-    RTF_REMEMBER( "chbgdkbdiag",	RTFidCHBGDKBDIAG ),
-    RTF_REMEMBER( "chbgdkcross",	RTFidCHBGDKCROSS ),
-    RTF_REMEMBER( "chbgdkdcross",	RTFidCHBGDKDCROSS ),
+    RTF_TEXT_SHADING_ENUM( "chbghoriz",		0, DOCspBGHORIZ ),
+    RTF_TEXT_SHADING_ENUM( "chbgvert",		0, DOCspBGVERT ),
+    RTF_TEXT_SHADING_ENUM( "chbgfdiag",		0, DOCspBGFDIAG ),
+    RTF_TEXT_SHADING_ENUM( "chbgbdiag",		0, DOCspBGBDIAG ),
+    RTF_TEXT_SHADING_ENUM( "chbgcross",		0, DOCspBGCROSS ),
+    RTF_TEXT_SHADING_ENUM( "chbgdcross",	0, DOCspBGDCROSS ),
+    RTF_TEXT_SHADING_ENUM( "chbgdkhoriz",	0, DOCspBGDKHORIZ ),
+    RTF_TEXT_SHADING_ENUM( "chbgdkvert",	0, DOCspBGDKVERT ),
+    RTF_TEXT_SHADING_ENUM( "chbgdkfdiag",	0, DOCspBGDKFDIAG ),
+    RTF_TEXT_SHADING_ENUM( "chbgdkbdiag",	0, DOCspBGDKBDIAG ),
+    RTF_TEXT_SHADING_ENUM( "chbgdkcross",	0, DOCspBGDKCROSS ),
+    RTF_TEXT_SHADING_ENUM( "chbgdkdcross",	0, DOCspBGDKDCROSS ),
 
     RTF_BORDER(   "chbrdr",		RTFidCHBRDR ),
 
@@ -373,8 +453,10 @@ RtfControlWord	docRtfPropertyWords[]=
     RTF_PARA_FLAG( "slmult",		PPpropLINE_SPACING_MULT ),
 
     RTF_PARA_VALUE( "outlinelevel",	PPpropOUTLINELEVEL ),
+    RTF_PARA_VALUE( "ilvl",		PPpropLISTLEVEL ),
 
     RTF_PARA_FLAG( "hyphpar",		PPpropHYPHPAR ),
+    RTF_PARA_FLAG( "intbl",		PPpropIN_TABLE ),
 
     RTF_PARA_VALUE( "shading",		PPpropSHADE_LEVEL ),
 
@@ -404,8 +486,6 @@ RtfControlWord	docRtfPropertyWords[]=
 
 					/**/
 
-    RTF_REMEMBER( "intbl",		RTFidINTBL ),
-
     RTF_REMEMBER( "adjustright",	RTFidADJUSTRIGHT ),
     RTF_REMEMBER( "adjustleft",		RTFidADJUSTLEFT ),
 
@@ -419,54 +499,108 @@ RtfControlWord	docRtfPropertyWords[]=
 
 				/****************************************/
 				/*  Positioned Objects and Frames:	*/
-				/*  ( Paragraph properties. )		*/
+				/*  (Row properties.)			*/
+				/****************************************/
+    /* no TFPpropABSW */
+    /* no TFPpropABSH */
+
+    /* no TFPpropLOCKED_TO_PARA */
+
+    /* no TFPpropWRAP_STYLE, FWSwrapNOWRAP */
+    /* no TFPpropWRAP_STYLE, FWSwrapOVERLAY */
+
+    RTF_ROW_FRAME_FLAG( "tabsnoovrlp",	TFPpropNO_OVERLAP ),
+
+    RTF_ROW_FRAME_ENUM( "tphmrg",	TFPpropHORIZONTAL_REF, HFRphMRG ),
+    RTF_ROW_FRAME_ENUM( "tphpg",	TFPpropHORIZONTAL_REF, HFRphPG ),
+    RTF_ROW_FRAME_ENUM( "tphcol",	TFPpropHORIZONTAL_REF, HFRphCOL ),
+
+    RTF_ROW_FRAME_VALUE( "tposx",	TFPpropHORIZONTAL_POS ),
+    RTF_ROW_FRAME_VALUE( "tposnegx",	TFPpropHORIZONTAL_POS ),
+
+    RTF_ROW_FRAME_ENUM( "tposxl",	TFPpropHORIZONTAL_ALIGN, HFAposXL ),
+    RTF_ROW_FRAME_ENUM( "tposxr",	TFPpropHORIZONTAL_ALIGN, HFAposXR ),
+    RTF_ROW_FRAME_ENUM( "tposxc",	TFPpropHORIZONTAL_ALIGN, HFAposXC ),
+    RTF_ROW_FRAME_ENUM( "tposxi",	TFPpropHORIZONTAL_ALIGN, HFAposXI ),
+    RTF_ROW_FRAME_ENUM( "tposxo",	TFPpropHORIZONTAL_ALIGN, HFAposXO ),
+
+    RTF_ROW_FRAME_ENUM( "tpvmrg",	TFPpropVERTICAL_REF, VFRpvMRG ),
+    RTF_ROW_FRAME_ENUM( "tpvpara",	TFPpropVERTICAL_REF, VFRpvPARA ),
+    RTF_ROW_FRAME_ENUM( "tpvpg",	TFPpropVERTICAL_REF, VFRpvPG ),
+
+    RTF_ROW_FRAME_VALUE( "tposy",	TFPpropVERTICAL_POS ),
+    RTF_ROW_FRAME_VALUE( "tposnegy",	TFPpropVERTICAL_POS ),
+
+    RTF_ROW_FRAME_ENUM( "tposyb",	TFPpropVERTICAL_ALIGN, VFAposYB ),
+    RTF_ROW_FRAME_ENUM( "tposyc",	TFPpropVERTICAL_ALIGN, VFAposYC ),
+    RTF_ROW_FRAME_ENUM( "tposyil",	TFPpropVERTICAL_ALIGN, VFAposYIL ),
+    RTF_ROW_FRAME_ENUM( "tposyin",	TFPpropVERTICAL_ALIGN, VFAposYIN ),
+    RTF_ROW_FRAME_ENUM( "tposyout",	TFPpropVERTICAL_ALIGN, VFAposYOUT ),
+    RTF_ROW_FRAME_ENUM( "tposyt",	TFPpropVERTICAL_ALIGN, VFAposYT ),
+
+    /*  no TFPpropDFRMTXT */
+    /*  no TFPpropDFRMTXTX */
+    /*  no TFPpropDFRMTXTY */
+
+    RTF_ROW_FRAME_VALUE( "tdfrmtxtLeft",	TFPpropDFRMTXTL ),
+    RTF_ROW_FRAME_VALUE( "tdfrmtxtRight",	TFPpropDFRMTXTR ),
+    RTF_ROW_FRAME_VALUE( "tdfrmtxtTop",		TFPpropDFRMTXTT ),
+    RTF_ROW_FRAME_VALUE( "tdfrmtxtBottom",	TFPpropDFRMTXTB ),
+
+				/****************************************/
+				/*  Positioned Objects and Frames:	*/
+				/*  (Paragraph properties.)		*/
 				/****************************************/
 
-    RTF_FRAME_VALUE( "absw",		TFPpropABSW ),
-    RTF_FRAME_VALUE( "absh",		TFPpropABSH ),
+    RTF_PARA_FRAME_VALUE( "absw",	TFPpropABSW ),
+    RTF_PARA_FRAME_VALUE( "absh",	TFPpropABSH ),
 
-    RTF_FRAME_ENUM( "phmrg",		TFPpropHORIZONTAL_REFERENCE, HFRphMRG ),
-    RTF_FRAME_ENUM( "phpg",		TFPpropHORIZONTAL_REFERENCE, HFRphPG ),
-    RTF_FRAME_ENUM( "phcol",		TFPpropHORIZONTAL_REFERENCE, HFRphCOL ),
+    RTF_PARA_FRAME_FLAG( "abslock",	TFPpropLOCKED_TO_PARA ),
 
-    RTF_FRAME_VALUE( "posx",		TFPpropHORIZONTAL_POSITION ),
-    RTF_FRAME_VALUE( "posnegx",		TFPpropHORIZONTAL_POSITION ),
+    RTF_PARA_FRAME_ENUM( "nowrap",	TFPpropWRAP_STYLE, FWSwrapNOWRAP ),
+    RTF_PARA_FRAME_ENUM( "overlay",	TFPpropWRAP_STYLE, FWSwrapOVERLAY ),
 
-    RTF_FRAME_ENUM( "posxl",		TFPpropHORIZONTAL_ALIGNMENT, HFAposXL ),
-    RTF_FRAME_ENUM( "posxr",		TFPpropHORIZONTAL_ALIGNMENT, HFAposXR ),
-    RTF_FRAME_ENUM( "posxc",		TFPpropHORIZONTAL_ALIGNMENT, HFAposXC ),
-    RTF_FRAME_ENUM( "posxi",		TFPpropHORIZONTAL_ALIGNMENT, HFAposXI ),
-    RTF_FRAME_ENUM( "posxo",		TFPpropHORIZONTAL_ALIGNMENT, HFAposXO ),
+    RTF_PARA_FRAME_FLAG( "absnoovrlp",	TFPpropNO_OVERLAP ),
 
-    RTF_FRAME_ENUM( "pvmrg",		TFPpropVERTICAL_REFERENCE, VFRpvMRG ),
-    RTF_FRAME_ENUM( "pvpara",		TFPpropVERTICAL_REFERENCE, VFRpvPARA ),
-    RTF_FRAME_ENUM( "pvpg",		TFPpropVERTICAL_REFERENCE, VFRpvPG ),
+    RTF_PARA_FRAME_ENUM( "phmrg",	TFPpropHORIZONTAL_REF, HFRphMRG ),
+    RTF_PARA_FRAME_ENUM( "phpg",	TFPpropHORIZONTAL_REF, HFRphPG ),
+    RTF_PARA_FRAME_ENUM( "phcol",	TFPpropHORIZONTAL_REF, HFRphCOL ),
 
-    RTF_FRAME_VALUE( "posy",		TFPpropVERTICAL_POSITION ),
-    RTF_FRAME_VALUE( "posnegy",		TFPpropVERTICAL_POSITION ),
+    RTF_PARA_FRAME_VALUE( "posx",	TFPpropHORIZONTAL_POS ),
+    RTF_PARA_FRAME_VALUE( "posnegx",	TFPpropHORIZONTAL_POS ),
 
-    RTF_FRAME_FLAG( "abslock",		TFPpropLOCKED_TO_PARA ),
+    RTF_PARA_FRAME_ENUM( "posxl",	TFPpropHORIZONTAL_ALIGN, HFAposXL ),
+    RTF_PARA_FRAME_ENUM( "posxr",	TFPpropHORIZONTAL_ALIGN, HFAposXR ),
+    RTF_PARA_FRAME_ENUM( "posxc",	TFPpropHORIZONTAL_ALIGN, HFAposXC ),
+    RTF_PARA_FRAME_ENUM( "posxi",	TFPpropHORIZONTAL_ALIGN, HFAposXI ),
+    RTF_PARA_FRAME_ENUM( "posxo",	TFPpropHORIZONTAL_ALIGN, HFAposXO ),
 
-    RTF_FRAME_ENUM( "posyb",		TFPpropVERTICAL_ALIGNMENT, VFAposYB ),
-    RTF_FRAME_ENUM( "posyc",		TFPpropVERTICAL_ALIGNMENT, VFAposYC ),
-    RTF_FRAME_ENUM( "posyil",		TFPpropVERTICAL_ALIGNMENT, VFAposYIL ),
-    RTF_FRAME_ENUM( "posyt",		TFPpropVERTICAL_ALIGNMENT, VFAposYT ),
+    RTF_PARA_FRAME_ENUM( "pvmrg",	TFPpropVERTICAL_REF, VFRpvMRG ),
+    RTF_PARA_FRAME_ENUM( "pvpara",	TFPpropVERTICAL_REF, VFRpvPARA ),
+    RTF_PARA_FRAME_ENUM( "pvpg",	TFPpropVERTICAL_REF, VFRpvPG ),
 
-    RTF_FRAME_ENUM( "nowrap",		TFPpropWRAP_STYLE, FWSwrapNOWRAP ),
-    RTF_FRAME_ENUM( "overlay",		TFPpropWRAP_STYLE, FWSwrapOVERLAY ),
+    RTF_PARA_FRAME_VALUE( "posy",	TFPpropVERTICAL_POS ),
+    RTF_PARA_FRAME_VALUE( "posnegy",	TFPpropVERTICAL_POS ),
 
-    RTF_FRAME_VALUE( "dxfrtext",	TFPpropDXFRTEXT ),
-    RTF_FRAME_VALUE( "dfrmtxtx",	TFPpropDFRMTXTX ),
-    RTF_FRAME_VALUE( "dfrmtxty",	TFPpropDFRMTXTY ),
+    RTF_PARA_FRAME_ENUM( "posyb",	TFPpropVERTICAL_ALIGN, VFAposYB ),
+    RTF_PARA_FRAME_ENUM( "posyc",	TFPpropVERTICAL_ALIGN, VFAposYC ),
+    RTF_PARA_FRAME_ENUM( "posyil",	TFPpropVERTICAL_ALIGN, VFAposYIL ),
+    RTF_PARA_FRAME_ENUM( "posyin",	TFPpropVERTICAL_ALIGN, VFAposYIN ),
+    RTF_PARA_FRAME_ENUM( "posyout",	TFPpropVERTICAL_ALIGN, VFAposYOUT ),
+    RTF_PARA_FRAME_ENUM( "posyt",	TFPpropVERTICAL_ALIGN, VFAposYT ),
+
+    RTF_PARA_FRAME_VALUE( "dxfrtext",	TFPpropDFRMTXT ),
+    RTF_PARA_FRAME_VALUE( "dfrmtxtx",	TFPpropDFRMTXTX ),
+    RTF_PARA_FRAME_VALUE( "dfrmtxty",	TFPpropDFRMTXTY ),
+
+    /*  no TFPpropDFRMTXTL */
+    /*  no TFPpropDFRMTXTR */
+    /*  no TFPpropDFRMTXTT */
+    /*  no TFPpropDFRMTXTB */
 
     /**/
     RTF_REMEMBER( "dropcapli",		RTFidDROPCAPLI ),
     RTF_REMEMBER( "dropcapt",		RTFidDROPCAPT ),
-				/****************************************/
-				/*  Bullets and Numbering.		*/
-				/*  (No destinations)			*/
-				/****************************************/
-    RTF_REMEMBER( "ilvl",		RTFidILVL ),
 				/****************************************/
 				/*  Revision marks for paragraph	*/
 				/*  numbers.				*/
@@ -480,6 +614,7 @@ RtfControlWord	docRtfPropertyWords[]=
     RTF_REMEMBER( "pnrstart",		RTFidPNRSTART ),
     RTF_REMEMBER( "pnrstop",		RTFidPNRSTOP ),
     RTF_REMEMBER( "pnrxst",		RTFidPNRXST ),
+
 				/****************************************/
 				/*  Tabs.				*/
 				/****************************************/
@@ -545,6 +680,10 @@ RtfControlWord	docRtfPropertyWords[]=
     RTF_CELL_VALUE( "clcbpat",		CLpropSHADE_BACK_COLOR ),
     RTF_CELL_VALUE( "clshdng",		CLpropSHADE_LEVEL ),
 
+    RTF_CELL_VALUE( "clcfpatraw",	CLpropSHADE_FORE_COLOR ), /*?*/
+    RTF_CELL_VALUE( "clcbpatraw",	CLpropSHADE_BACK_COLOR ), /*?*/
+    RTF_CELL_VALUE( "clshdngraw",	CLpropSHADE_LEVEL ), /*?*/
+
     RTF_CELL_ENUM( "clvertalt",		CLpropTEXT_VERT_ALIGN,
 							DOCtvaTOP ),
     RTF_CELL_ENUM( "clvertalc",		CLpropTEXT_VERT_ALIGN,
@@ -563,6 +702,8 @@ RtfControlWord	docRtfPropertyWords[]=
     RTF_CELL_FLAG( "clvmgf",		CLpropTOP_IN_MERGED ),
     RTF_CELL_FLAG( "clvmrg",		CLpropMERGED_WITH_ABOVE ),
     RTF_CELL_FLAG( "clNoWrap",		CLpropNO_WRAP ),
+
+    RTF_CELL_FLAG( "clshdrawnil",	CLpropNO_SHADING ),
 
     RTF_CELL_VALUE( "clwWidth",		CLpropCLW_WIDTH ),
     RTF_CELL_VALUE( "clftsWidth",	CLpropCLFTS_WIDTH ),
@@ -655,17 +796,36 @@ RtfControlWord	docRtfPropertyWords[]=
     RTF_ROW_VALUE( "trcbpat",		RPpropSHADE_BACK_COLOR ),
     RTF_ROW_VALUE( "trshdng",		RPpropSHADE_LEVEL ),
 
+    RTF_ROW_FLAG( "tbllkborder",	RPpropAUTOFORMAT_BORDERS ),
+    RTF_ROW_FLAG( "tbllkshading",	RPpropAUTOFORMAT_SHADING ),
+    RTF_ROW_FLAG( "tbllkfont",		RPpropAUTOFORMAT_FONT ),
+    RTF_ROW_FLAG( "tbllkcolor",		RPpropAUTOFORMAT_COLOR ),
+    RTF_ROW_FLAG( "tbllkbestfit",	RPpropAUTOFORMAT_APPLY_BEST_FIT ),
+    RTF_ROW_FLAG( "tbllkhdrrows",	RPpropAUTOFORMAT_FIRST_ROW ),
+    RTF_ROW_FLAG( "tbllklastrow",	RPpropAUTOFORMAT_LAST_ROW ),
+    RTF_ROW_FLAG( "tbllkhdrcols",	RPpropAUTOFORMAT_FIRST_COLUMN ),
+    RTF_ROW_FLAG( "tbllklastcol",	RPpropAUTOFORMAT_LAST_COLUMN ),
+
+    RTF_ROW_VALUE( "irow",		RPpropROW_NUMBER ),
+    RTF_ROW_VALUE( "irowband",		RPpropROW_BAND_NUMBER ),
+    RTF_ROW_VALUE( "ts",		RPpropROW_STYLE ),
+
+    RTF_ROW_FLAG( "lastrow",		RPpropIS_LAST_ROW ),
+
 				/****************************************/
 				/*  Document formatting.		*/
 				/****************************************/
 
-    RTF_REMEMBER( "pgbrdrhead",		RTFidPGBRDRHEAD ),
-    RTF_REMEMBER( "pgbrdrfoot",		RTFidPGBRDRFOOT ),
-    RTF_REMEMBER( "pgbrdrt",		RTFidPGBRDRT ),
-    RTF_REMEMBER( "pgbrdrb",		RTFidPGBRDRB ),
-    RTF_REMEMBER( "pgbrdrl",		RTFidPGBRDRL ),
-    RTF_REMEMBER( "pgbrdrr",		RTFidPGBRDRR ),
-    RTF_REMEMBER( "brdrart",		RTFidBRDRART ),
+# define	RTF_DOC_VALUE(s,id) \
+		{ s, id, DOClevANY, docRtfRememberDocProperty, }
+# define	RTF_DOC_FLAG(s,id) \
+		{ s, id, DOClevANY, docRtfRememberDocProperty, }
+# define	RTF_DOC_ENUM(s,id,v) \
+		{ s, id, DOClevANY, docRtfRememberDocProperty, v }
+# define	RTF_DOC_BORDER(s,id) \
+		{ s, id, DOClevANY, docRtfRememberDocProperty, 0, \
+				    docRtfBeginBorder, docRtfBorderWords, }
+
     RTF_REMEMBER( "pgbrdropt",		RTFidPGBRDROPT ),
     RTF_REMEMBER( "pgbrdrsnap",		RTFidPGBRDRSNAP ),
 
@@ -677,7 +837,9 @@ RtfControlWord	docRtfPropertyWords[]=
     RTF_DOC_VALUE( "paperw",		DGpropPAGE_WIDTH ),
     RTF_DOC_VALUE( "gutter",		DGpropGUTTER ),
 
-    RTF_DOC_VALUE( "widowctrl",		DPpropWIDOWCTRL ),
+    RTF_DOC_FLAG( "facingp",		DPpropFACING_PAGES ),
+    RTF_DOC_FLAG( "widowctrl",		DPpropWIDOWCTRL ),
+    RTF_DOC_FLAG( "twoonone",		DPpropTWO_ON_ONE ),
 
     RTF_REMEMBER( "psz",		RTFidPSZ ),
 
@@ -694,9 +856,20 @@ RtfControlWord	docRtfPropertyWords[]=
     RTF_REMEMBER( "dgmargin",		RTFidDGMARGIN),
 
     RTF_DOC_VALUE( "pgnstart",		DPpropSTART_PAGE ),
-    RTF_DOC_VALUE( "deff",		DPpropDEFF ),
-    RTF_DOC_VALUE( "facingp",		DPpropFACING_PAGES ),
     RTF_DOC_VALUE( "deftab",		DPpropDEFTAB ),
+
+    RTF_DOC_VALUE( "deff",		DPpropDEFF ),
+    RTF_DOC_VALUE( "stshfdbch",		DPpropSTSHFDBCH ),
+    RTF_DOC_VALUE( "stshfloch",		DPpropSTSHFLOCH ),
+    RTF_DOC_VALUE( "stshfhich",		DPpropSTSHFHICH ),
+    RTF_DOC_VALUE( "stshfbi",		DPpropSTSHFBI ),
+
+    RTF_DOC_BORDER( "pgbrdrt",		DPpropTOP_BORDER ),
+    RTF_DOC_BORDER( "pgbrdrb",		DPpropBOTTOM_BORDER ),
+    RTF_DOC_BORDER( "pgbrdrl",		DPpropLEFT_BORDER ),
+    RTF_DOC_BORDER( "pgbrdrr",		DPpropRIGHT_BORDER ),
+    RTF_DOC_BORDER( "pgbrdrhead",	DPpropHEAD_BORDER ),
+    RTF_DOC_BORDER( "pgbrdrfoot",	DPpropFOOT_BORDER ),
 
     RTF_REMEMBER( "truncex",		RTFidTRUNCEX ),
     RTF_REMEMBER( "nolead",		RTFidNOLEAD ),
@@ -727,17 +900,6 @@ RtfControlWord	docRtfPropertyWords[]=
 				/****************************************/
 				/*  Paragraph Numbering.		*/
 				/****************************************/
-    RTF_REMEMBER( "pncard",		RTFidPNCARD ),
-    RTF_REMEMBER( "pndec",		RTFidPNDEC ),
-    RTF_REMEMBER( "pnucltr",		RTFidPNUCLTR ),
-    RTF_REMEMBER( "pnucrm",		RTFidPNUCRM ),
-    RTF_REMEMBER( "pnlcltr",		RTFidPNLCLTR ),
-    RTF_REMEMBER( "pnlcrm",		RTFidPNLCRM ),
-    RTF_REMEMBER( "pnord",		RTFidPNORD ),
-    RTF_REMEMBER( "pnordt",		RTFidPNORDT ),
-
-    RTF_REMEMBER( "pnstart",		RTFidPNSTART ),
-    RTF_REMEMBER( "pnindent",		RTFidPNINDENT ),
     RTF_REMEMBER( "pnhang",		RTFidPNHANG ),
 
     RTF_REMEMBER( "pnuld",		RTFidPNULD ),
@@ -825,58 +987,95 @@ RtfControlWord	docRtfPropertyWords[]=
     RTF_REMEMBER( "sectunlocked",	RTFidSECTUNLOCKED ),
 
 				/****************************************/
-				/*  Document properties: (Footnotes)	*/
+				/*  Section properties: (Notes)		*/
 				/****************************************/
-    RTF_DOC_VALUE( "fet",			DPpropNOTETYPES ),
+
+    RTF_SECT_ENUM( "sftntj",		SPpropFOOTNOTE_POSITION,
+						    FTN_POS_BELOW_TEXT ),
+    RTF_SECT_ENUM( "sftnbj",		SPpropFOOTNOTE_POSITION,
+						    FTN_POS_PAGE_BOTTOM ),
+
+    RTF_SECT_VALUE( "sftnstart",		SPpropFOOTNOTE_STARTNR ),
+    RTF_SECT_VALUE( "saftnstart",	SPpropENDNOTE_STARTNR ),
+
+    RTF_SECT_ENUM( "sftnrstpg",		SPpropFOOTNOTE_RESTART,
+						    FTN_RST_PER_PAGE ),
+    RTF_SECT_ENUM( "sftnrestart",	SPpropFOOTNOTE_RESTART,
+						    FTN_RST_PER_SECTION ),
+    RTF_SECT_ENUM( "sftnrstcont",	SPpropFOOTNOTE_RESTART,
+						    FTN_RST_CONTINUOUS ),
+
+    RTF_SECT_ENUM( "saftnrstcont",	SPpropENDNOTE_RESTART,
+						    FTN_RST_CONTINUOUS ),
+    RTF_SECT_ENUM( "saftnrestart",	SPpropENDNOTE_RESTART,
+						    FTN_RST_PER_SECTION ),
+
+    RTF_SECT_ENUM( "sftnnar",		SPpropFOOTNOTE_STYLE, FTNstyleNAR ),
+    RTF_SECT_ENUM( "sftnnalc",		SPpropFOOTNOTE_STYLE, FTNstyleNALC ),
+    RTF_SECT_ENUM( "sftnnauc",		SPpropFOOTNOTE_STYLE, FTNstyleNAUC ),
+    RTF_SECT_ENUM( "sftnnrlc",		SPpropFOOTNOTE_STYLE, FTNstyleNRLC ),
+    RTF_SECT_ENUM( "sftnnruc",		SPpropFOOTNOTE_STYLE, FTNstyleNRUC ),
+    RTF_SECT_ENUM( "sftnnchi",		SPpropFOOTNOTE_STYLE, FTNstyleNCHI ),
+
+    RTF_SECT_ENUM( "saftnnar",		SPpropENDNOTE_STYLE, FTNstyleNAR ),
+    RTF_SECT_ENUM( "saftnnalc",		SPpropENDNOTE_STYLE, FTNstyleNALC ),
+    RTF_SECT_ENUM( "saftnnauc",		SPpropENDNOTE_STYLE, FTNstyleNAUC ),
+    RTF_SECT_ENUM( "saftnnrlc",		SPpropENDNOTE_STYLE, FTNstyleNRLC ),
+    RTF_SECT_ENUM( "saftnnruc",		SPpropENDNOTE_STYLE, FTNstyleNRUC ),
+    RTF_SECT_ENUM( "saftnnchi",		SPpropENDNOTE_STYLE, FTNstyleNCHI ),
+
+				/****************************************/
+				/*  Document properties: (Notes)	*/
+				/****************************************/
+
+    RTF_DOC_VALUE( "fet",		DPpropNOTETYPES ),
 
     RTF_DOC_ENUM( "endnotes",		DPpropFOOTNOTE_POSITION,
-						    DPftnPOS_SECT_END ),
+						    FTN_POS_SECT_END ),
     RTF_DOC_ENUM( "enddoc",		DPpropFOOTNOTE_POSITION,
-						    DPftnPOS_DOC_END ),
+						    FTN_POS_DOC_END ),
     RTF_DOC_ENUM( "ftntj",		DPpropFOOTNOTE_POSITION,
-						    DPftnPOS_BELOW_TEXT ),
+						    FTN_POS_BELOW_TEXT ),
     RTF_DOC_ENUM( "ftnbj",		DPpropFOOTNOTE_POSITION,
-						    DPftnPOS_PAGE_BOTTOM ),
+						    FTN_POS_PAGE_BOTTOM ),
 
     RTF_DOC_ENUM( "aendnotes",		DPpropENDNOTE_POSITION,
-						    DPftnPOS_SECT_END ),
+						    FTN_POS_SECT_END ),
     RTF_DOC_ENUM( "aenddoc",		DPpropENDNOTE_POSITION,
-						    DPftnPOS_DOC_END ),
+						    FTN_POS_DOC_END ),
     RTF_DOC_ENUM( "aftntj",		DPpropENDNOTE_POSITION,
-						    DPftnPOS_BELOW_TEXT ),
+						    FTN_POS_BELOW_TEXT ),
     RTF_DOC_ENUM( "aftnbj",		DPpropENDNOTE_POSITION,
-						    DPftnPOS_PAGE_BOTTOM ),
+						    FTN_POS_PAGE_BOTTOM ),
 
     RTF_DOC_VALUE( "ftnstart",		DPpropFOOTNOTE_STARTNR ),
     RTF_DOC_VALUE( "aftnstart",		DPpropENDNOTE_STARTNR ),
 
-    RTF_DOC_ENUM( "ftnrstcont",		DPpropFOOTNOTE_RESTART,
-						    DPftnRST_CONTINUOUS ),
-    RTF_DOC_ENUM( "ftnrestart",		DPpropFOOTNOTE_RESTART,
-						    DPftnRST_PER_SECTION ),
     RTF_DOC_ENUM( "ftnrstpg",		DPpropFOOTNOTE_RESTART,
-						    DPftnRST_PER_PAGE ),
+						    FTN_RST_PER_PAGE ),
+    RTF_DOC_ENUM( "ftnrestart",		DPpropFOOTNOTE_RESTART,
+						    FTN_RST_PER_SECTION ),
+    RTF_DOC_ENUM( "ftnrstcont",		DPpropFOOTNOTE_RESTART,
+						    FTN_RST_CONTINUOUS ),
 
     RTF_DOC_ENUM( "aftnrstcont",	DPpropENDNOTE_RESTART,
-						    DPftnRST_CONTINUOUS ),
+						    FTN_RST_CONTINUOUS ),
     RTF_DOC_ENUM( "aftnrestart",	DPpropENDNOTE_RESTART,
-						    DPftnRST_PER_SECTION ),
-    RTF_DOC_ENUM( "aftnrstpg",		DPpropENDNOTE_RESTART,
-						    DPftnRST_PER_PAGE ),
+						    FTN_RST_PER_SECTION ),
 
-    RTF_DOC_ENUM( "ftnnar",		DPpropFOOTNOTE_STYLE, DPftnNAR ),
-    RTF_DOC_ENUM( "ftnnalc",		DPpropFOOTNOTE_STYLE, DPftnNALC ),
-    RTF_DOC_ENUM( "ftnnauc",		DPpropFOOTNOTE_STYLE, DPftnNAUC ),
-    RTF_DOC_ENUM( "ftnnrlc",		DPpropFOOTNOTE_STYLE, DPftnNRLC ),
-    RTF_DOC_ENUM( "ftnnruc",		DPpropFOOTNOTE_STYLE, DPftnNRUC ),
-    RTF_DOC_ENUM( "ftnnchi",		DPpropFOOTNOTE_STYLE, DPftnNCHI ),
+    RTF_DOC_ENUM( "ftnnar",		DPpropFOOTNOTE_STYLE, FTNstyleNAR ),
+    RTF_DOC_ENUM( "ftnnalc",		DPpropFOOTNOTE_STYLE, FTNstyleNALC ),
+    RTF_DOC_ENUM( "ftnnauc",		DPpropFOOTNOTE_STYLE, FTNstyleNAUC ),
+    RTF_DOC_ENUM( "ftnnrlc",		DPpropFOOTNOTE_STYLE, FTNstyleNRLC ),
+    RTF_DOC_ENUM( "ftnnruc",		DPpropFOOTNOTE_STYLE, FTNstyleNRUC ),
+    RTF_DOC_ENUM( "ftnnchi",		DPpropFOOTNOTE_STYLE, FTNstyleNCHI ),
 
-    RTF_DOC_ENUM( "aftnnar",		DPpropENDNOTE_STYLE, DPftnNAR ),
-    RTF_DOC_ENUM( "aftnnalc",		DPpropENDNOTE_STYLE, DPftnNALC ),
-    RTF_DOC_ENUM( "aftnnauc",		DPpropENDNOTE_STYLE, DPftnNAUC ),
-    RTF_DOC_ENUM( "aftnnrlc",		DPpropENDNOTE_STYLE, DPftnNRLC ),
-    RTF_DOC_ENUM( "aftnnruc",		DPpropENDNOTE_STYLE, DPftnNRUC ),
-    RTF_DOC_ENUM( "aftnnchi",		DPpropENDNOTE_STYLE, DPftnNCHI ),
+    RTF_DOC_ENUM( "aftnnar",		DPpropENDNOTE_STYLE, FTNstyleNAR ),
+    RTF_DOC_ENUM( "aftnnalc",		DPpropENDNOTE_STYLE, FTNstyleNALC ),
+    RTF_DOC_ENUM( "aftnnauc",		DPpropENDNOTE_STYLE, FTNstyleNAUC ),
+    RTF_DOC_ENUM( "aftnnrlc",		DPpropENDNOTE_STYLE, FTNstyleNRLC ),
+    RTF_DOC_ENUM( "aftnnruc",		DPpropENDNOTE_STYLE, FTNstyleNRUC ),
+    RTF_DOC_ENUM( "aftnnchi",		DPpropENDNOTE_STYLE, FTNstyleNCHI ),
 
     RTF_REMEMBER( "ftnalt",		RTFidFTNALT ),
 
@@ -889,12 +1088,17 @@ RtfControlWord	docRtfPropertyWords[]=
 					/*  RTFidS	*/
 					/*  RTFidDS	*/
     /*
+
+    Handeled for the style where the reference to the style is handeled.
+
     RTF_STYLE_VAL_ENUM( "ds",		DSpropSTYLE_NUMBER, DOClevSECT ),
     RTF_STYLE_VAL_ENUM( "s",		DSpropSTYLE_NUMBER, DOClevPARA ),
-    */
     RTF_STYLE_VAL_ENUM( "cs",		DSpropSTYLE_NUMBER, DOClevTEXT ),
+    */
+
     RTF_STYLE_FLAG( "sautoupd",		DSpropAUTO_UPD ),
     RTF_STYLE_FLAG( "shidden",		DSpropHIDDEN ),
+    RTF_STYLE_FLAG( "ssemihidden",	DSpropSEMI_HIDDEN ),
     RTF_STYLE_FLAG( "spersonal",	DSpropPERSONAL ),
 
 				/****************************************/
@@ -967,6 +1171,7 @@ RtfControlWord	docRtfPropertyWords[]=
     RTF_REMEMBER( "viewscale",		RTFidVIEWSCALE ),
     RTF_REMEMBER( "lytprtmet",		RTFidLYTPRTMET ),
     RTF_REMEMBER( "ogutter",		RTFidOGUTTER ),
+    RTF_REMEMBER( "rtlgutter",		RTFidRTLGUTTER ),
     RTF_REMEMBER( "deflangfe",		RTFidDEFLANGFE ),
     RTF_REMEMBER( "uc",			RTFidUC ),
     RTF_REMEMBER( "level",		RTFidLEVEL ),
@@ -1078,7 +1283,6 @@ RtfControlWord	docRtfPropertyWords[]=
 				/*  Pictures/Objects			*/
 				/****************************************/
 
-    RTF_OBJ_ENUM( "objemb",	IOpropKIND,	DOCokOLEOBJECT ),
     RTF_OBJ_ENUM( "macpict",	IOpropKIND,	DOCokMACPICT ),
     RTF_OBJ_ENUM( "wmetafile",	IOpropKIND,	DOCokPICTWMETAFILE ),
     RTF_OBJ_ENUM( "pngblip",	IOpropKIND,	DOCokPICTPNGBLIP ),
@@ -1088,32 +1292,47 @@ RtfControlWord	docRtfPropertyWords[]=
     RTF_OBJ_ENUM( "wbitmap",	IOpropKIND,	DOCokWBITMAP ),
     RTF_OBJ_ENUM( "pmmetafile",	IOpropKIND,	DOCokPMMETAFILE ),
 
-    RTF_OBJ_VALUE( "objw",	IOpropOBJTWIPS_WIDE ),
-    RTF_OBJ_VALUE( "objh",	IOpropOBJTWIPS_HIGH ),
+    RTF_OBJ_ENUM( "rsltrtf",	IOpropRESULT_KIND,	RESULTkindRTF ),
+    RTF_OBJ_ENUM( "rslttxt",	IOpropRESULT_KIND,	RESULTkindTXT ),
+    RTF_OBJ_ENUM( "rsltpict",	IOpropRESULT_KIND,	RESULTkindPICT ),
+    RTF_OBJ_ENUM( "rsltbmp",	IOpropRESULT_KIND,	RESULTkindBMP ),
+    RTF_OBJ_ENUM( "rslthtml",	IOpropRESULT_KIND,	RESULTkindHTML ),
 
-    RTF_OBJ_VALUE( "picwgoal",	IOpropPICTWIPS_WIDE ),
-    RTF_OBJ_VALUE( "pichgoal",	IOpropPICTWIPS_HIGH ),
+    RTF_OBJ_ENUM( "objemb",	IOpropEMBED_KIND, EMBEDkindOBJEMB ),
+    RTF_OBJ_ENUM( "objlink",	IOpropEMBED_KIND, EMBEDkindOBJLINK ),
+    RTF_OBJ_ENUM( "objautlink",	IOpropEMBED_KIND, EMBEDkindOBJAUTLINK ),
+    RTF_OBJ_ENUM( "objsub",	IOpropEMBED_KIND, EMBEDkindOBJSUB ),
+    RTF_OBJ_ENUM( "objpub",	IOpropEMBED_KIND, EMBEDkindOBJPUB ),
+    RTF_OBJ_ENUM( "objicemb",	IOpropEMBED_KIND, EMBEDkindOBJICEMB ),
+    RTF_OBJ_ENUM( "objhtml",	IOpropEMBED_KIND, EMBEDkindOBJHTML ),
+    RTF_OBJ_ENUM( "objocx",	IOpropEMBED_KIND, EMBEDkindOBJOCX ),
 
-    RTF_OBJ_VALUE( "objscalex",	IOpropOBJSCALE_X ),
-    RTF_OBJ_VALUE( "objscaley",	IOpropOBJSCALE_Y ),
+    RTF_OBJ_VALUE( "objw",		IOpropOBJTWIPS_WIDE ),
+    RTF_OBJ_VALUE( "objh",		IOpropOBJTWIPS_HIGH ),
 
-    RTF_OBJ_VALUE( "picscalex",	IOpropPICSCALE_X ),
-    RTF_OBJ_VALUE( "picscaley",	IOpropPICSCALE_Y ),
+    RTF_OBJ_VALUE( "picwgoal",		IOpropPICTWIPS_WIDE ),
+    RTF_OBJ_VALUE( "pichgoal",		IOpropPICTWIPS_HIGH ),
 
-    RTF_OBJ_VALUE( "picw",	IOpropPICX_WIN_EXT ),
-    RTF_OBJ_VALUE( "pich",	IOpropPICY_WIN_EXT ),
+    RTF_OBJ_VALUE( "objscalex",		IOpropOBJSCALE_X ),
+    RTF_OBJ_VALUE( "objscaley",		IOpropOBJSCALE_Y ),
 
-    RTF_OBJ_VALUE( "objcropt",	IOpropOBJCROP_TOP ),
-    RTF_OBJ_VALUE( "objcropb",	IOpropOBJCROP_BOTTOM ),
-    RTF_OBJ_VALUE( "objcropl",	IOpropOBJCROP_LEFT ),
-    RTF_OBJ_VALUE( "objcropr",	IOpropOBJCROP_RIGHT ),
+    RTF_OBJ_VALUE( "picscalex",		IOpropPICSCALE_X ),
+    RTF_OBJ_VALUE( "picscaley",		IOpropPICSCALE_Y ),
 
-    RTF_OBJ_VALUE( "piccropt",	IOpropPICCROP_TOP ),
-    RTF_OBJ_VALUE( "piccropb",	IOpropPICCROP_BOTTOM ),
-    RTF_OBJ_VALUE( "piccropl",	IOpropPICCROP_LEFT ),
-    RTF_OBJ_VALUE( "piccropr",	IOpropPICCROP_RIGHT ),
+    RTF_OBJ_VALUE( "picw",		IOpropPICX_WIN_EXT ),
+    RTF_OBJ_VALUE( "pich",		IOpropPICY_WIN_EXT ),
 
-    RTF_OBJ_VALUE( "bliptag",	IOpropBLIPTAG ),
+    RTF_OBJ_VALUE( "objcropt",		IOpropOBJCROP_TOP ),
+    RTF_OBJ_VALUE( "objcropb",		IOpropOBJCROP_BOTTOM ),
+    RTF_OBJ_VALUE( "objcropl",		IOpropOBJCROP_LEFT ),
+    RTF_OBJ_VALUE( "objcropr",		IOpropOBJCROP_RIGHT ),
+
+    RTF_OBJ_VALUE( "piccropt",		IOpropPICCROP_TOP ),
+    RTF_OBJ_VALUE( "piccropb",		IOpropPICCROP_BOTTOM ),
+    RTF_OBJ_VALUE( "piccropl",		IOpropPICCROP_LEFT ),
+    RTF_OBJ_VALUE( "piccropr",		IOpropPICCROP_RIGHT ),
+
+    RTF_OBJ_VALUE( "bliptag",		IOpropBLIPTAG ),
 
     RTF_OBJ_VALUE( "wbmbitspixel",	IOpropWBMBITSPIXEL ),
     RTF_OBJ_VALUE( "wbmplanes",		IOpropWBMPLANES ),
@@ -1126,6 +1345,143 @@ RtfControlWord	docRtfPropertyWords[]=
     RTF_OBJ_VALUE( "blipupi",		IOprop_UNSUPPORTED ),
     RTF_OBJ_VALUE( "objsetsize",	IOprop_UNSUPPORTED ),
     RTF_OBJ_VALUE( "rsltmerge",		IOprop_UNSUPPORTED ),
+
+				/****************************************/
+				/*  Special characters (mostly ignored)	*/
+				/****************************************/
+    RTF_SPECIAL_CHAR( "bullet",		RTFidBULLET ),
+    RTF_SPECIAL_CHAR( "chatn",		RTFidCHATN ),
+    RTF_SPECIAL_CHAR( "emdash",		RTFidEMDASH ),
+    RTF_SPECIAL_CHAR( "emspace",	RTFidEMSPACE ),
+    RTF_SPECIAL_CHAR( "endash",		RTFidENDASH ),
+    RTF_SPECIAL_CHAR( "enspace",	RTFidENSPACE ),
+    RTF_SPECIAL_CHAR( "ldblquote",	RTFidLDBLQUOTE ),
+    RTF_SPECIAL_CHAR( "lquote",		RTFidLQUOTE ),
+    RTF_SPECIAL_CHAR( "ltrmark",	RTFidLTRMARK ),
+    RTF_SPECIAL_CHAR( "rdblquote",	RTFidRDBLQUOTE ),
+    RTF_SPECIAL_CHAR( "rquote",		RTFidRQUOTE ),
+    RTF_SPECIAL_CHAR( "rtlmark",	RTFidRTLMARK ),
+    RTF_SPECIAL_CHAR( "softcol",	RTFidSOFTCOL ),
+    RTF_SPECIAL_CHAR( "softlheight",	RTFidSOFTLHEIGHT ),
+    RTF_SPECIAL_CHAR( "softline",	RTFidSOFTLINE ),
+    RTF_SPECIAL_CHAR( "softpage",	RTFidSOFTPAGE ),
+    RTF_SPECIAL_CHAR( "zwj",		RTFidZWJ ),
+    RTF_SPECIAL_CHAR( "zwnj",		RTFidZWNJ ),
+
+    RTF_SPECIAL_PART( "tab",		DOCkindTAB ),
+    RTF_SPECIAL_PART( "line",		DOCkindLINEBREAK ),
+    RTF_SPECIAL_PART( "lbr",		DOCkindLINEBREAK ),
+    RTF_SPECIAL_PART( "page",		DOCkindPAGEBREAK ),
+    RTF_SPECIAL_PART( "column",		DOCkindCOLUMNBREAK ),
+    RTF_SPECIAL_PART( "chftnsep",	DOCkindCHFTNSEP ),
+    RTF_SPECIAL_PART( "chftnsepc",	DOCkindCHFTNSEPC ),
+
+    RTF_SPECIAL_FIELD( "chdate",	DOCfkDATE ),
+    RTF_SPECIAL_FIELD( "chpgn",		DOCfkPAGE ),
+    RTF_SPECIAL_FIELD( "chtime",	DOCfkTIME ),
+    RTF_SPECIAL_FIELD( "chftn",		DOCfkCHFTN ),
+    RTF_SPECIAL_FIELD( "sectnum",	DOCfkSECTION ),
+
+    RTF_SPECIAL_FIELD( "chdpa",		DOCfkDATE ),
+    RTF_SPECIAL_FIELD( "chdpl",		DOCfkDATE ),
+				/****************************************/
+				/*  Word 95 drawing objects.		*/
+				/****************************************/
+
+    RTF_DO_FLAG( "dolock",	DOpropANCHOR_LOCKED ),
+
+    RTF_DO_ENUM( "dobxpage",	DOpropX_ATTACH,		DOxaPAGE ),
+    RTF_DO_ENUM( "dobxcolumn",	DOpropX_ATTACH,		DOxaCOLUMN ),
+    RTF_DO_ENUM( "dobxmargin",	DOpropX_ATTACH,		DOxaMARGIN ),
+
+    RTF_DO_ENUM( "dobypage",	DOpropY_ATTACH,		DOyaPAGE ),
+    RTF_DO_ENUM( "dobypara",	DOpropY_ATTACH,		DOyaPARAGRAPH ),
+    RTF_DO_ENUM( "dobymargin",	DOpropY_ATTACH,		DOyaMARGIN ),
+
+    RTF_DO_ENUM( "dparc",	DOpropKIND,		DOkindARC ),
+    RTF_DO_ENUM( "dpcallout",	DOpropKIND,		DOkindCALLOUT ),
+    RTF_DO_ENUM( "dpellipse",	DOpropKIND,		DOkindELLIPSE ),
+    RTF_DO_ENUM( "dpline",	DOpropKIND,		DOkindLINE ),
+    RTF_DO_ENUM( "dppolygon",	DOpropKIND,		DOkindPOLYGON ),
+    RTF_DO_ENUM( "dppolyline",	DOpropKIND,		DOkindPOLYLINE ),
+    RTF_DO_ENUM( "dprect",	DOpropKIND,		DOkindRECT ),
+    RTF_DO_ENUM( "dptxbx",	DOpropKIND,		DOkindTXBX ),
+
+    RTF_DO_ENUM( "dplinesolid",	DOpropLINE_STYLE,	DOlineSOLID ),
+    RTF_DO_ENUM( "dplinehollow",DOpropLINE_STYLE,	DOlineHOLLOW ),
+    RTF_DO_ENUM( "dplinedash",	DOpropLINE_STYLE,	DOlineDASH ),
+    RTF_DO_ENUM( "dplinedot",	DOpropLINE_STYLE,	DOlineDOT ),
+    RTF_DO_ENUM( "dplinedado",	DOpropLINE_STYLE,	DOlineDADO ),
+    RTF_DO_ENUM( "dplinedadodo",DOpropLINE_STYLE,	DOlineDADODO ),
+
+    RTF_DO_VALUE( "dpfillpat",	DOpropFILL_PATTERN ),
+
+    RTF_DO_FLAG( "dparcflipx",	DOpropARC_FLIP_X ),
+    RTF_DO_FLAG( "dparcflipy",	DOpropARC_FLIP_Y ),
+
+    RTF_DO_VALUE( "dpx",	DOpropX ),
+    RTF_DO_VALUE( "dpy",	DOpropY ),
+    RTF_DO_VALUE( "dodhgt",	DOpropZ ),
+    RTF_DO_VALUE( "dpxsize",	DOpropWIDE ),
+    RTF_DO_VALUE( "dpysize",	DOpropHIGH ),
+
+    RTF_DO_VALUE( "dplinew",	DOpropLINE_WIDTH ),
+    RTF_DO_VALUE( "dppolycount",DOpropPOINT_COUNT ),
+
+    RTF_DO_VALUE( "dplinecor",	DOpropLINE_RED ),
+    RTF_DO_VALUE( "dplinecog",	DOpropLINE_GREEN ),
+    RTF_DO_VALUE( "dplinecob",	DOpropLINE_BLUE ),
+    RTF_DO_VALUE( "dplinegray",	DOpropLINE_GRAY ),
+
+    RTF_DO_VALUE( "dpfillfgcr",	DOpropFILL_FORE_RED ),
+    RTF_DO_VALUE( "dpfillfgcg",	DOpropFILL_FORE_GREEN ),
+    RTF_DO_VALUE( "dpfillfgcb",	DOpropFILL_FORE_BLUE ),
+    RTF_DO_VALUE( "dpfillfggray", DOpropFILL_FORE_GRAY ),
+
+    RTF_DO_VALUE( "dpfillbgcr",	DOpropFILL_BACK_RED ),
+    RTF_DO_VALUE( "dpfillbgcg",	DOpropFILL_BACK_GREEN ),
+    RTF_DO_VALUE( "dpfillbgcb",	DOpropFILL_BACK_BLUE ),
+    RTF_DO_VALUE( "dpfillbggray", DOpropFILL_BACK_GRAY ),
+
+    RTF_DO_COORD( "dpptx",	DOpropX ),
+    RTF_DO_COORD( "dppty",	DOpropY ),
+
+				/****************************************/
+				/*  Shapes.				*/
+				/****************************************/
+
+# define	RTF_SHAPE_VALUE(s,id) \
+		{ s, id, DOClevANY, docRtfShpProperty, }
+# define	RTF_SHAPE_FLAG(s,id) \
+		{ s, id, DOClevANY, docRtfShpProperty, }
+# define	RTF_SHAPE_ENUM(s,id,v) \
+		{ s, id, DOClevANY, docRtfShpProperty, v, }
+
+    RTF_SHAPE_VALUE( "shpleft",		SHPpropLEFT ),
+    RTF_SHAPE_VALUE( "shptop",		SHPpropTOP ),
+    RTF_SHAPE_VALUE( "shpbottom",	SHPpropBOTTOM ),
+    RTF_SHAPE_VALUE( "shpright",	SHPpropRIGHT ),
+
+    RTF_SHAPE_VALUE( "shplid",		SHPpropLID ),
+    RTF_SHAPE_VALUE( "shpz",		SHPpropZ ),
+
+    RTF_SHAPE_FLAG( "shpfhdr",		SHPpropFHDR ),
+
+    RTF_SHAPE_ENUM( "shpbxpage",	SHPpropBX,	SHPshaPAGE ),
+    RTF_SHAPE_ENUM( "shpbxmargin",	SHPpropBX,	SHPshaMARGIN ),
+    RTF_SHAPE_ENUM( "shpbxcolumn",	SHPpropBX,	SHPshaCOLUMN ),
+    RTF_SHAPE_ENUM( "shpbxignore",	SHPpropBX,	SHPshaIGNORE ),
+
+    RTF_SHAPE_ENUM( "shpbypage",	SHPpropBY,	SHPsvaPAGE ),
+    RTF_SHAPE_ENUM( "shpbymargin",	SHPpropBY,	SHPsvaMARGIN ),
+    RTF_SHAPE_ENUM( "shpbypara",	SHPpropBY,	SHPsvaPARAGRAPH ),
+    RTF_SHAPE_ENUM( "shpbyignore",	SHPpropBY,	SHPsvaIGNORE ),
+
+    RTF_SHAPE_VALUE( "shpwr",		SHPpropWR ),
+    RTF_SHAPE_VALUE( "shpwrk",		SHPpropWRK ),
+    RTF_SHAPE_VALUE( "shpfblwtxt",	SHPpropFBLWTXT ),
+
+    RTF_SHAPE_FLAG( "shplockanchor",	SHPpropLOCKANCHOR ),
 
 				/****************************************/
 				/*  End.				*/

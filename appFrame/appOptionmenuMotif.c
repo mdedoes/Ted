@@ -109,6 +109,8 @@ void appMakeOptionmenuInColumn(		AppOptionmenu *	aom,
     Arg				al[20];
     int				ac= 0;
 
+    appInitOptionmenu( aom );
+
     ac= 0;
     /*
     No! is counter productive..
@@ -167,6 +169,8 @@ void appMakeOptionmenuInRow(		AppOptionmenu *	aom,
 
     Arg				al[20];
     int				ac= 0;
+
+    appInitOptionmenu( aom );
 
     ac= 0;
     XtSetArg( al[ac], XmNtopAttachment,		XmATTACH_FORM ); ac++;
@@ -232,15 +236,42 @@ APP_WIDGET appAddItemToOptionmenu(	AppOptionmenu *		aom,
 					XtCallbackProc		callBack,
 					void *			target )
     {
-    Widget	fresh;
+    Widget		fresh;
 
-    fresh= XmCreatePushButtonGadget( aom->aomPulldown,
-						    (char *)label, NULL, 0 );
+    WidgetList		children;
+    Cardinal		childCount= 0;
+
+    XtVaGetValues( aom->aomPulldown,
+		    XmNchildren,	&children,
+		    XmNnumChildren,	&childCount,
+		    NULL );
+
+
+    if  ( aom->aomOptionsVisible >= childCount )
+	{
+	fresh= XmCreatePushButtonGadget( aom->aomPulldown, (char *)label,
+								    NULL, 0 );
+	}
+    else{
+	XmString	labelString;
+
+	fresh= children[aom->aomOptionsVisible];
+
+	labelString= XmStringCreateLocalized( (char *)label );
+
+	XtVaSetValues( fresh,
+			XmNlabelString,	labelString,
+			NULL );
+
+	XmStringFree( labelString );
+	}
 
     if  ( callBack )
 	{ XtAddCallback( fresh, XmNactivateCallback, callBack, target ); }
 
     XtManageChild( fresh );
+
+    aom->aomOptionsVisible++;
 
     return fresh;
     }
@@ -279,7 +310,58 @@ void appSetOptionmenu(	AppOptionmenu *	aom,
 
 void appEmptyOptionmenu(	AppOptionmenu *		aom )
     {
+    WidgetList		children;
+    Cardinal		childCount;
+    int			child;
+
+    XtVaSetValues( aom->aomInplace,
+		    XmNmenuHistory,	(Widget)0,
+		    NULL );
+
+    /*  Does not work!
     appEmptyParentWidget( aom->aomPulldown );
+    */
+
+    XtVaGetValues( aom->aomPulldown,
+			XmNchildren,		&children,
+			XmNnumChildren,		&childCount,
+			NULL );
+
+    if  ( childCount == 0 )
+	{ return;	}
+
+    if  ( aom->aomOptionsVisible > childCount )
+	{
+	LLDEB(aom->aomOptionsVisible,childCount);
+	aom->aomOptionsVisible= childCount;
+	}
+
+    for ( child= 0; child < aom->aomOptionsVisible; child++ )
+	{
+	XtRemoveAllCallbacks( children[child], XmNactivateCallback );
+
+#	if 0
+	Count callbacks to make sure that only one exists:
+
+	XtCallbackList	callBacks= (XtCallbackList)0;
+
+	XtVaGetValues( children[child],
+			XmNactivateCallback,	&callBacks,
+			NULL );
+	if  ( callBacks )
+	    {
+	    int		n= 0;
+
+	    while( callBacks[n].callback && callBacks[n].closure )
+		{ n++;	}
+	    LLDEB(child,n);
+	    }
+#	endif
+	}
+
+    /*  1  */
+    XtUnmanageChildren( children, childCount );
+    aom->aomOptionsVisible= 0;
     }
 
 void appGuiEnableOptionmenu(	AppOptionmenu *		aom,
@@ -292,6 +374,8 @@ void appInitOptionmenu(		AppOptionmenu *		aom )
     {
     aom->aomPulldown= (APP_WIDGET)0;
     aom->aomInplace= (APP_WIDGET)0;
+
+    aom->aomOptionsVisible= 0;
     }
 
 int appGuiGetOptionmenuItemIndexMotif(	AppOptionmenu *	aom,
@@ -301,7 +385,6 @@ int appGuiGetOptionmenuItemIndexMotif(	AppOptionmenu *	aom,
 
     XtVaGetValues( w,	XmNpositionIndex,	&pos,
 			NULL );
-
     return pos;
     }
 

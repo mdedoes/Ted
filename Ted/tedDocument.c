@@ -8,6 +8,7 @@
 
 #   include	<sioStdio.h>
 #   include	<appSystem.h>
+#   include	<utilMatchFont.h>
 
 #   include	<appSpellTool.h>
 
@@ -16,6 +17,7 @@
 
 #   include	"docLayout.h"
 #   include	"docEdit.h"
+#   include	"docFind.h"
 
 #   include	<appDebugon.h>
 
@@ -62,13 +64,15 @@ void tedMoveObjectWindows(	EditDocument *		ed )
 
     DocumentPosition		dp;
     PositionGeometry		pg;
+    int				part;
+    const int			lastOne= 1;
 
     docInitDocumentPosition( &dp );
 
-    if  ( tedGetObjectSelection( td, &dp, &io ) )
+    if  ( tedGetObjectSelection( td, &part, &dp, &io ) )
 	{ LDEB(1); return;	}
 
-    tedPositionGeometry( &pg, &dp, bd, add );
+    tedPositionGeometry( &pg, &dp, lastOne, bd, add, &(td->tdScreenFontList) );
 
     tedSetObjectWindows( ed, &pg, io, ox, oy );
     }
@@ -108,9 +112,9 @@ void tedDocVerticalScrollbarCallback(	APP_WIDGET	w,
 /*									*/
 /************************************************************************/
 
-int tedFinishDocumentSetup(	EditApplication *	ea,
-				EditDocument *		ed )
+int tedFinishDocumentSetup(	EditDocument *		ed )
     {
+    EditApplication *		ea= ed->edApplication;
     AppDrawingData *		add= &(ed->edDrawingData);
     AppColors *			ac= &(ed->edColors);
 
@@ -130,21 +134,53 @@ int tedFinishDocumentSetup(	EditApplication *	ea,
     /*  1  */
     if  ( ! docFirstDocumentPosition( &dp, bd ) )
 	{
+	const int			lastOne= 1;
+	const int			lastLine= 0;
+	int				part;
 	const TextParticule *		tp;
+	ScreenFontList *		sfl;
 
-	docSetIBarSelection( &(td->tdDocumentSelection), &dp );
+	sfl= &(td->tdScreenFontList);
+
+	if  ( tar->tarFindPattern					&&
+	      ! tedFindSetPattern( ed,
+			    tar->tarFindPattern, tar->tarFindRegex )	&&
+	      ! docFindFindNextInDocument( &(td->tdDocumentSelection),
+		    &dp, bd,
+		    docFindParaFindNext, (void *)td->tdFindProg )	)
+	    {
+	    dp= td->tdDocumentSelection.dsBegin;
+	    }
+	else{
+	    docSetIBarSelection( &(td->tdDocumentSelection), &dp );
+	    }
 
 	tedSelectionGeometry( &(td->tdSelectionGeometry),
-				     &(td->tdDocumentSelection), bd, add );
+			     &(td->tdDocumentSelection), lastLine,
+			     bd, add, &(td->tdScreenFontList) );
 
-	tp= dp.dpBi->biParaParticules+ dp.dpParticule;
+
+	if  ( docFindParticuleOfPosition( &part, &dp, lastOne ) )
+	    { LDEB(dp.dpStroff); return -1;	}
+
+	tp= dp.dpBi->biParaParticules+ part;
 
 	utilGetTextAttributeByNumber( &(td->tdCurrentTextAttribute),
 						&(bd->bdTextAttributeList),
 						tp->tpTextAttributeNumber );
 	td->tdCurrentTextAttributeNumber= tp->tpTextAttributeNumber;
 
-	td->tdCurrentPhysicalFont= tp->tpPhysicalFont;
+	td->tdCurrentScreenFont= -1;
+	if  ( td->tdCurrentTextAttributeNumber <
+	      sfl->sflAttributeToScreenCount )
+	    {
+	    td->tdCurrentScreenFont=
+		sfl->sflAttributeToScreen[td->tdCurrentTextAttributeNumber];
+	    }
+
+	docDescribeSelection( &(td->tdSelectionDescription),
+				    &(td->tdDocumentSelection),
+				    bd, ed->edDocumentId, ed->edIsReadonly );
 	}
     else{ docListItem( 0, &(bd->bdItem) );	}
 
@@ -185,13 +221,11 @@ int tedFinishDocumentSetup(	EditApplication *	ea,
 
 	if  ( appColorNamed( &acSel, &ed->edColors, selColorName ) )
 	    {
-	    if  ( appColorFindRgb( &acSel,
-					   &(ed->edColors), 176, 196, 222 ) )
+	    if  ( appColorFindRgb( &acSel, &(ed->edColors), 176, 196, 222 ) )
 		{ SDEB(selColorName); return -1;	}
 	    }
 
-	if  ( appColorNamed( &acCopiedSel,
-					    &(ed->edColors), xselColorName ) )
+	if  ( appColorNamed( &acCopiedSel, &(ed->edColors), xselColorName ) )
 	    {
 	    if  ( appColorFindRgb( &acCopiedSel,
 					    &(ed->edColors), 176, 176, 176 ) )
@@ -254,6 +288,41 @@ int tedFinishDocumentSetup(	EditApplication *	ea,
 
 /************************************************************************/
 /*									*/
+/*  Scroll to the selection the first time the document becomes visible	*/
+/*									*/
+/************************************************************************/
+
+void tedDocumentFirstVisible(	EditDocument *	ed )
+    {
+    TedDocument *		td= (TedDocument *)ed->edPrivateData;
+    DocumentRectangle		dr= ed->edVisibleRect;
+
+    int				pScrolledX= 0;
+    int				pScrolledY= 0;
+
+    if  ( td->tdSelectionGeometry.sgRectangle.drX1 > dr.drX1 )
+	{
+	int sh= td->tdSelectionGeometry.sgRectangle.drX1- dr.drX1;
+
+	dr.drX0 += sh;
+	dr.drX1 += sh;
+	}
+    if  ( td->tdSelectionGeometry.sgRectangle.drY1 > dr.drY1 )
+	{
+	int sh= td->tdSelectionGeometry.sgRectangle.drY1- dr.drY1;
+
+	dr.drY0 += sh;
+	dr.drY1 += sh;
+	}
+
+    appScrollToRectangle( ed, dr.drX0, dr.drY0, dr.drX1, dr.drY1,
+						    &pScrolledX, &pScrolledY );
+
+    return;
+    }
+
+/************************************************************************/
+/*									*/
 /*  Make the document widget and the rulers.				*/
 /*									*/
 /*  1)  Calculate the different width of the margins.			*/
@@ -278,20 +347,26 @@ void tedFreeDocument(		void *			voidtd,
 	{
 	BufferDocument *	bd= td->tdDocument;
 	int			noteCount= 0;
+	int			bulletsDeleted= 0;
 	int			paragraphCount= 0;
 
-	docCloseItemObjects( &noteCount, &paragraphCount,
+	docCleanItemObjects( &noteCount, &bulletsDeleted, &paragraphCount,
 					    bd, &(bd->bdItem),
 					    (void *)add, tedCloseObject );
 
 	docFreeDocument( bd );
 	}
 
+    docCleanScreenFontList( &(td->tdScreenFontList) );
+
     utilCleanMemoryBuffer( &(td->tdCopiedSelection) );
     utilCleanMemoryBuffer( &(td->tdCopiedFont) );
     utilCleanMemoryBuffer( &(td->tdCopiedRuler) );
 
     appCleanBitmapImage( &(td->tdCopiedImage) );
+
+    if  ( td->tdFindProg )
+	{ free( td->tdFindProg );	}
 
     free( td );
     }
@@ -327,48 +402,35 @@ int tedMakeDocumentWidget(	EditApplication *	ea,
 /*									*/
 /************************************************************************/
 
-static int tedDetermineCodepage(	BufferDocument *	bd,
-					const AppDrawingData *	add )
+static int tedDetermineCodepage(	BufferDocument *	bd )
     {
-    PostScriptFaceList		psfl;
-    PostScriptFace *		psf;
-    int				i;
+    const DocumentFontList *	dfl= &(bd->bdProperties.dpFontList);
+    const DocumentFont *	df;
+    int				font;
 
-    int				charset= -1;
-    int				charsetCount= 0;
+    int				encoding= -1;
+    int				encodingCount= 0;
 
-    utilInitPostScriptFaceList( &psfl );
-
-    if  ( docPsPrintGetDocumentFonts( bd, &psfl, &(add->addPhysicalFontList) ) )
-	{ LDEB(1); return -1;	}
-
-    psf= psfl.psflFaces;
-    for ( i= 0; i < psfl.psflFaceCount; psf++, i++ )
+    df= dfl->dflFonts;
+    for ( font= 0; font < dfl->dflFontCount; df++, font++ )
 	{
-	if  ( charset < 0 )
-	    { charset= psf->psfEncodingUsed; charsetCount= 1;	}
+	if  ( ! df->dfUsed )
+	    { continue;	}
+	if  ( df->dfEncodingSet < 0 )
+	    { LDEB(df->dfEncodingSet); continue;	}
+
+	if  ( encoding < 0 )
+	    { encoding= df->dfEncodingSet; encodingCount= 1;	}
 	else{
-	    if  ( charset != psf->psfEncodingUsed )
-		{ charsetCount++; }
+	    if  ( encoding != df->dfEncodingSet )
+		{ encodingCount++; }
 	    }
 	}
 
-    utilCleanPostScriptFaceList( &psfl );
-
-    if  ( charsetCount != 1 )
+    if  ( encodingCount != 1 )
 	{ return -1;	}
 
-    switch( charset )
-	{
-	case ENCODINGpsISO_8859_1:
-	    return 1252;
-
-	case ENCODINGpsISO_8859_2:
-	    return 1250;
-
-	default:
-	    LDEB(charset); return -1;
-	}
+    return utilWindowsCodepageFromEncoding( encoding );
     }
 
 /************************************************************************/
@@ -384,9 +446,6 @@ int tedNewDocument(	EditApplication *	ea,
     TedDocument *		td= (TedDocument *)ed->edPrivateData;
     BufferDocument *		bd;
     DocumentProperties *	dp;
-
-    PropertyMask		newMask;
-    ExpandedTextAttribute	etaNew;
     TextAttribute		ta;
 
     time_t			now;
@@ -396,24 +455,12 @@ int tedNewDocument(	EditApplication *	ea,
 
     tedDetermineDefaultSettings( tar );
 
-    PROPmaskCLEAR( &newMask );
-    docInitExpandedTextAttribute( &etaNew );
+    if  ( appPostScriptFontCatalog( ea ) )
+	{ SDEB(ea->eaAfmDirectory); return -1;	}
 
-    if  ( docExpandedAttributeFromString( ea->eaDefaultFont,
-							&newMask, &etaNew ) )
-	{ SDEB(ea->eaDefaultFont); rval= -1; goto ready;	}
-
-    if  ( ! PROPmaskISSET( &newMask, TApropFONTSIZE )	||
-	  etaNew.etaFontSizeHalfPoints < 6		)
-	{
-	LDEB(etaNew.etaFontSizeHalfPoints);
-	etaNew.etaFontSizeHalfPoints= 24;
-	PROPmaskADD( &newMask, TApropFONTSIZE );
-	}
-
-    bd= docNewFile( &ta, etaNew.etaFontFamilyName,
-				    etaNew.etaFontSizeHalfPoints,
+    bd= docNewFile( &ta, ea->eaDefaultFont,
 				    DOCcharsetANSI, tar->tarDefaultAnsicpgInt,
+				    &(ea->eaPostScriptFontList),
 				    &(ea->eaDefaultDocumentGeometry) );
     if  ( ! bd )
 	{ XDEB(bd); rval= -1; goto ready;	}
@@ -421,6 +468,28 @@ int tedNewDocument(	EditApplication *	ea,
     ed->edFormat= TEDdockindRTF; /* rtf */
     td->tdDocument= bd;
     dp= &(bd->bdProperties);
+
+    {
+    int		l= 0;
+
+    l += strlen( ea->eaNameAndVersion );
+    l += 2;
+    l += strlen( ea->eaReference );
+    l += 2;
+    l += 1;
+
+    dp->dpGenerator= malloc( l );
+    if  ( ! dp->dpGenerator )
+	{ LXDEB(l,dp->dpGenerator);	}
+    else{
+	sprintf( (char *)dp->dpGenerator, "%s (%s);",
+				ea->eaNameAndVersion, ea->eaReference );
+	}
+    }
+
+    /*  2  */
+    if  ( appPostScriptFontCatalog( ea ) )
+	{ SDEB(ea->eaAfmDirectory); return -1;	}
 
     if  ( filename )
 	{
@@ -439,8 +508,6 @@ int tedNewDocument(	EditApplication *	ea,
     dp->dpCreatim= *localtime( &now );
 
   ready:
-
-    docCleanExpandedTextAttribute( &etaNew );
 
     return rval;
     }
@@ -503,7 +570,7 @@ int tedLayoutDocument(		void *				privateData,
     /*  8  */
     if  ( bd->bdProperties.dpAnsiCodepage < 0 )
 	{
-	bd->bdProperties.dpAnsiCodepage= tedDetermineCodepage( bd, add );
+	bd->bdProperties.dpAnsiCodepage= tedDetermineCodepage( bd );
 
 	/*  9  */
 	if  ( bd->bdProperties.dpAnsiCodepage == 1252 )
@@ -602,7 +669,9 @@ void * tedMakePrivateData()
     td->tdDocument= (BufferDocument *)0;
     utilInitTextAttribute( &(td->tdCurrentTextAttribute) );
     td->tdCurrentTextAttributeNumber= -1;
-    td->tdCurrentPhysicalFont= -1;
+    td->tdCurrentScreenFont= -1;
+
+    docInitScreenFontList( &(td->tdScreenFontList) );
 
     td->tdFormatMenu= (APP_WIDGET)0;
     td->tdFormatMenuButton= (APP_WIDGET)0;
@@ -663,6 +732,8 @@ void * tedMakePrivateData()
 
     appInitBitmapImage( &(td->tdCopiedImage) );
 
+    td->tdFindProg= (void *)0;
+
 #   ifdef USE_MOTIF
     td->tdHideIBarId= (XtIntervalId)0;
     td->tdShowIBarId= (XtIntervalId)0;
@@ -707,14 +778,14 @@ APP_EVENT_HANDLER_H( tedObserveFocus, w, voided, event )
 	    appSetCurrentDocument( ea, ed );
 
 	    if  ( ea->eaFindTool && ed->edIsReadonly )
-		{ appFindToolDisableReplace( ea->eaFindTool ); }
+		{ appFindToolEnableReplace( ea->eaFindTool, 0 ); }
 
 	    if  ( ea->eaSpellTool )
 		{ appEnableSpellTool( ea->eaSpellTool, ! ed->edIsReadonly ); }
 
 	    tedAdaptPageToolToDocument( ea, ed );
 
-	    tedAdaptFormatToolToDocument( ed );
+	    tedAdaptFormatToolToDocument( ed, 0 );
 	    }
 
 	if  ( tedHasIBarSelection( td ) )
@@ -765,15 +836,34 @@ int tedPrintDocument(	SimpleOutputStream *		sos,
 	{ LDEB(1); return -1;	}
 
     if  ( docPsPrintDocument( sos, pj->pjTitle, ea->eaApplicationName,
-				ea->eaReference, pj->pjDrawingData,
+				ea->eaReference, ea->eaFontDirectory,
+				pj->pjDrawingData,
 				td->tdDocument, pg,
 				pj->pjUsePostScriptFilters,
 				pj->pjUsePostScriptIndexedImages,
 				firstPage, lastPage,
-				tedLayoutExternalItem, tedCloseObject ) )
+				tedCloseObject ) )
 	{ LDEB(1); return -1;	}
 
     return 0;
+    }
+
+void tedSuggestNup(	PrintGeometry *	pg,
+			void *		privateData )
+    {
+    TedDocument *		td= (TedDocument *)privateData;
+    BufferDocument *		bd= td->tdDocument;
+    DocumentProperties *	dp= &(bd->bdProperties);
+
+    if  ( dp->dpTwoOnOne )
+	{
+	pg->pgGridRows= 2;
+	pg->pgGridCols= 1;
+	pg->pgGridHorizontal= 1;
+	pg->pgScalePagesToFit= 1;
+	}
+
+    return;
     }
 
 /************************************************************************/

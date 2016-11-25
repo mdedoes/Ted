@@ -26,6 +26,7 @@ void utilInitTextAttribute(	TextAttribute *	ta	)
     ta->taFontNumber= -1;
     ta->taFontSizeHalfPoints= 0;
     ta->taTextColorNumber= 0;
+    ta->taTextStyleNumber= 0;
     ta->taFontIsBold= 0;
     ta->taFontIsSlanted= 0;
     ta->taTextIsUnderlined= 0;
@@ -53,9 +54,9 @@ void utilAttributeDifference(		PropertyMask *		pDoneMask,
 
     PROPmaskCLEAR( &doneMask );
 
-    if  ( PROPmaskISSET( setMask, TApropFONTFAMILY )			&&
+    if  ( PROPmaskISSET( setMask, TApropDOC_FONT_NUMBER )			&&
 	  taTo->taFontNumber != taFrom->taFontNumber			)
-	{ PROPmaskADD( &doneMask, TApropFONTFAMILY ); }
+	{ PROPmaskADD( &doneMask, TApropDOC_FONT_NUMBER ); }
 
     if  ( PROPmaskISSET( setMask, TApropFONTSIZE )			&&
 	  taTo->taFontSizeHalfPoints != taFrom->taFontSizeHalfPoints	)
@@ -64,6 +65,10 @@ void utilAttributeDifference(		PropertyMask *		pDoneMask,
     if  ( PROPmaskISSET( setMask, TApropTEXT_COLOR )			&&
 	  taTo->taTextColorNumber != taFrom->taTextColorNumber		)
 	{ PROPmaskADD( &doneMask, TApropTEXT_COLOR ); }
+
+    if  ( PROPmaskISSET( setMask, TApropTEXT_STYLE )			&&
+	  taTo->taTextStyleNumber != taFrom->taTextStyleNumber		)
+	{ PROPmaskADD( &doneMask, TApropTEXT_STYLE ); }
 
     if  ( PROPmaskISSET( setMask, TApropFONTBOLD )			&&
 	  taTo->taFontIsBold != taFrom->taFontIsBold			)
@@ -104,11 +109,11 @@ void utilUpdateTextAttribute(		PropertyMask *		pDoneMask,
     {
     PropertyMask	doneMask= *pDoneMask;
 
-    if  ( PROPmaskISSET( setMask, TApropFONTFAMILY )			&&
+    if  ( PROPmaskISSET( setMask, TApropDOC_FONT_NUMBER )			&&
 	  taTo->taFontNumber != taFrom->taFontNumber			)
 	{
 	taTo->taFontNumber= taFrom->taFontNumber;
-	PROPmaskADD( &doneMask, TApropFONTFAMILY );
+	PROPmaskADD( &doneMask, TApropDOC_FONT_NUMBER );
 	}
 
     if  ( PROPmaskISSET( setMask, TApropFONTSIZE )			&&
@@ -123,6 +128,13 @@ void utilUpdateTextAttribute(		PropertyMask *		pDoneMask,
 	{
 	taTo->taTextColorNumber= taFrom->taTextColorNumber;
 	PROPmaskADD( &doneMask, TApropTEXT_COLOR );
+	}
+
+    if  ( PROPmaskISSET( setMask, TApropTEXT_STYLE )			&&
+	  taTo->taTextStyleNumber != taFrom->taTextStyleNumber		)
+	{
+	taTo->taTextStyleNumber= taFrom->taTextStyleNumber;
+	PROPmaskADD( &doneMask, TApropTEXT_STYLE );
 	}
 
     if  ( PROPmaskISSET( setMask, TApropFONTBOLD )			&&

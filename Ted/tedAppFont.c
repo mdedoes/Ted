@@ -12,6 +12,7 @@
 #   include	<ctype.h>
 
 #   include	"tedApp.h"
+#   include	"tedLayout.h"
 #   include	<docExpandedTextAttribute.h>
 #   include	<appSymbolPicker.h>
 
@@ -23,32 +24,22 @@
 /*									*/
 /************************************************************************/
 
-static void tedSetCurrentAttribute(	TedDocument *		td,
-					AppDrawingData *	add,
-					const PropertyMask *	taSetMask,
-					const TextAttribute *	taSet )
+static void tedSetCurrentAttribute(
+				TedDocument *			td,
+				AppDrawingData *		add )
     {
     BufferDocument *		bd= td->tdDocument;
-    DocumentProperties *	dp= &(bd->bdProperties);
-    DocumentFontList *		dfl= &(dp->dpFontList);
-
-    PropertyMask		changeMask;
-
-    PROPmaskCLEAR( &changeMask );
-
-    utilUpdateTextAttribute( &changeMask,
-			    &(td->tdCurrentTextAttribute), taSet, taSetMask );
-
-    if  ( ! PROPmaskISEMPTY( &changeMask )	||
-	  td->tdCurrentPhysicalFont < 0		)
-	{
-	td->tdCurrentPhysicalFont= appOpenDocumentFont( add, dfl,
-						td->tdCurrentTextAttribute );
-	}
+    ScreenFontList *		sfl= &(td->tdScreenFontList);
 
     td->tdCurrentTextAttributeNumber= utilTextAttributeNumber(
 					    &(bd->bdTextAttributeList),
 					    &(td->tdCurrentTextAttribute) );
+
+    if  ( td->tdCurrentTextAttributeNumber < 0 )
+	{ LDEB(td->tdCurrentTextAttributeNumber); return;	}
+
+    td->tdCurrentScreenFont= tedOpenScreenFont( bd, add, sfl,
+					    td->tdCurrentTextAttributeNumber );
 
     return;
     }
@@ -63,11 +54,19 @@ static void tedDocChangeSelectionAttribute(
 
     PropertyMask		ppUpdMask;
     PropertyMask		spUpdMask;
+    PropertyMask		changeMask;
 
     PROPmaskCLEAR( &ppUpdMask );
     PROPmaskCLEAR( &spUpdMask );
 
-    tedSetCurrentAttribute( td, add, taSetMask, taSet );
+    PROPmaskCLEAR( &changeMask );
+
+    utilUpdateTextAttribute( &changeMask,
+			    &(td->tdCurrentTextAttribute), taSet, taSetMask );
+
+    if  ( ! PROPmaskISEMPTY( &changeMask )	||
+	  td->tdCurrentScreenFont < 0		)
+	{ tedSetCurrentAttribute( td, add );	}
 
     tedChangeSelectionProperties( ed,
 			    taSetMask, taSet,
@@ -96,24 +95,18 @@ static void tedAdaptSymbolPickerToDocument(	EditApplication *	ea,
 	PropertyMask			doneMask;
 	PropertyMask			taSetMask;
 	TextAttribute			taSet;
-	ExpandedTextAttribute		etaSet;
 
 	PROPmaskCLEAR( &doneMask );
 	PROPmaskCLEAR( &taSetMask );
 	utilInitTextAttribute( &taSet );
-	docInitExpandedTextAttribute( &etaSet );
 
 	if  ( tedGetDocumentAttributes( td, &taSetMask, &taSet ) )
 	    { return;	}
 
-	docExpandTextAttribute( &doneMask, &etaSet, &taSet, &taSetMask,
-					dfl, dp->dpColors, dp->dpColorCount );
-
 	if  ( appAdaptSymbolPickerToFontFamily( ea->eaSymbolPicker,
-						    &etaSet, &taSetMask ) )
+					    ed->edDocumentId,
+					    dfl, &taSet, &taSetMask ) )
 	    { LDEB(1);	}
-
-	docCleanExpandedTextAttribute( &etaSet );
 	}
 
     return;
@@ -130,37 +123,42 @@ static void tedAdaptSymbolPickerToDocument(	EditApplication *	ea,
 static void tedAdaptFontIndicatorsToValues(
 					EditDocument *		ed,
 					const PropertyMask *	taSetMask,
-					ExpandedTextAttribute *	etaSet )
+					TextAttribute *		taSet )
     {
     EditApplication *	ea= ed->edApplication;
     TedDocument *	td= (TedDocument *)ed->edPrivateData;
 
     if  ( ea->eaSymbolPicker )
 	{
+	BufferDocument *		bd= td->tdDocument;
+	const DocumentProperties *	dp= &(bd->bdProperties);
+	const DocumentFontList *	dfl= &(dp->dpFontList);
+
 	if  ( appAdaptSymbolPickerToFontFamily( ea->eaSymbolPicker,
-						    etaSet, taSetMask ) )
+						    ed->edDocumentId,
+						    dfl, taSet, taSetMask ) )
 	    { LDEB(1);	}
 	}
 
     appGuiSetToggleItemState( td->tdFontBoldOption,
 			    PROPmaskISSET( taSetMask, TApropFONTBOLD ) &&
-			    etaSet->etaFontIsBold );
+			    taSet->taFontIsBold );
 
     appGuiSetToggleItemState( td->tdFontItalicOption,
 			    PROPmaskISSET( taSetMask, TApropFONTSLANTED ) &&
-			    etaSet->etaFontIsSlanted );
+			    taSet->taFontIsSlanted );
 
     appGuiSetToggleItemState( td->tdFontUnderlinedOption,
 			    PROPmaskISSET( taSetMask, TApropTEXTUNDERLINED ) &&
-			    etaSet->etaTextIsUnderlined );
+			    taSet->taTextIsUnderlined );
 
     appGuiSetToggleItemState( td->tdFontSuperscriptOption,
 			    PROPmaskISSET( taSetMask, TApropSUPERSUB ) &&
-			    etaSet->etaSuperSub == DOCfontSUPERSCRIPT );
+			    taSet->taSuperSub == DOCfontSUPERSCRIPT );
 
     appGuiSetToggleItemState( td->tdFontSubscriptOption,
 			    PROPmaskISSET( taSetMask, TApropSUPERSUB ) &&
-			    etaSet->etaSuperSub == DOCfontSUBSCRIPT );
+			    taSet->taSuperSub == DOCfontSUBSCRIPT );
 
     return;
     }
@@ -170,31 +168,21 @@ void tedAdaptFontIndicatorsToSelection(	EditApplication *	ea,
 					EditDocument *		ed )
     {
     TedDocument *		td= (TedDocument *)ed->edPrivateData;
-    BufferDocument *		bd= td->tdDocument;
-    const DocumentProperties *	dp= &(bd->bdProperties);
-    const DocumentFontList *	dfl= &(dp->dpFontList);
 
     PropertyMask		doneMask;
     PropertyMask		taSetMask;
     TextAttribute		taSet;
-    ExpandedTextAttribute	etaSet;
 
     PROPmaskCLEAR( &doneMask );
     PROPmaskCLEAR( &taSetMask );
     utilInitTextAttribute( &taSet );
-    docInitExpandedTextAttribute( &etaSet );
 
     if  ( tedGetDocumentAttributes( td, &taSetMask, &taSet ) )
 	{ goto ready;	}
 
-    docExpandTextAttribute( &doneMask, &etaSet, &taSet, &taSetMask,
-					dfl, dp->dpColors, dp->dpColorCount );
-
-    tedAdaptFontIndicatorsToValues( ed, &taSetMask, &etaSet );
+    tedAdaptFontIndicatorsToValues( ed, &taSetMask, &taSet );
 
   ready:
-
-    docCleanExpandedTextAttribute( &etaSet );
 
     return;
     }
@@ -271,11 +259,12 @@ int tedAppChangeSelectionAttributeString(	EditDocument *	ed,
     docInitExpandedTextAttribute( &etaSet );
     utilInitTextAttribute( &taSet );
 
-    if  ( docExpandedAttributeFromString( attrString, &taSetMask, &etaSet ) )
+    if  ( docExpandedAttributeFromString( &taSetMask, &etaSet,
+							dfl, attrString ) )
 	{ SDEB( attrString ); rval= -1; goto ready;	}
 
     docIndirectTextAttribute( &doneMask, &taSet, &etaSet, &taSetMask,
-				dfl, &(dp->dpColors), &(dp->dpColorCount) );
+				    &(dp->dpColors), &(dp->dpColorCount) );
 
     tedDocChangeSelectionAttribute( ed, &taSetMask, &taSet );
 
@@ -349,7 +338,7 @@ void tedDocFontSupersub(	APP_WIDGET		option,
 
 /************************************************************************/
 /*									*/
-/*  Ted: The 'Set' button on the fonts tool was pushed.			*/
+/*  Ted: The 'Set' button on the font tool was pushed.			*/
 /*									*/
 /************************************************************************/
 
@@ -364,8 +353,8 @@ void tedFontToolSet(		void *				voidea,
     DocumentProperties *	dp;
     DocumentFontList *		dfl;
 
-    PropertyMask	doneMask;
-    TextAttribute	taSet;
+    PropertyMask		doneMask;
+    TextAttribute		taSet;
 
     if  ( ! ed )
 	{ XDEB(ed); return;	}
@@ -379,7 +368,7 @@ void tedFontToolSet(		void *				voidea,
     PROPmaskCLEAR( &doneMask );
 
     docIndirectTextAttribute( &doneMask, &taSet, etaSet, taSetMask,
-				dfl, &(dp->dpColors), &(dp->dpColorCount) );
+				&(dp->dpColors), &(dp->dpColorCount) );
 
     tedDocChangeSelectionAttribute( ed, taSetMask, &taSet );
 
@@ -392,20 +381,22 @@ void tedFontToolSet(		void *				voidea,
 /*									*/
 /*  Show or create a symbol picker.					*/
 /*									*/
+/*  1)  Counts the font as used, so no need to do so here.		*/
+/*									*/
 /************************************************************************/
 
 static void tedSymbolPickerInsert(
-				void *				voidea,
-				int				symbol,
-				const ExpandedTextAttribute *	etaSet,
-				const PropertyMask *		taSetMask )
+				void *			voidea,
+				int			symbol,
+				const TextAttribute *	taSet,
+				const PropertyMask *	taSetMask )
     {
-    unsigned char	fresh[2];
+    unsigned char		fresh[2];
 
-    EditApplication *	ea= (EditApplication *)voidea;
-    EditDocument *	ed= ea->eaCurrentDocument;
-    AppDrawingData *	add;
-    TedDocument *	td;
+    EditApplication *		ea= (EditApplication *)voidea;
+    EditDocument *		ed= ea->eaCurrentDocument;
+    AppDrawingData *		add;
+    TedDocument *		td;
 
     if  ( ! ed )
 	{ XDEB(ed); return;	}
@@ -419,32 +410,21 @@ static void tedSymbolPickerInsert(
     if  ( tedHasSelection( td )		&&
 	  td->tdCanReplaceSelection	)
 	{
-	BufferDocument *		bd= td->tdDocument;
-	DocumentProperties *		dp= &(bd->bdProperties);
-	DocumentFontList *		dfl= &(dp->dpFontList);
-
-	if  ( PROPmaskISSET( taSetMask, TApropFONTFAMILY ) )
+	if  ( PROPmaskISSET( taSetMask, TApropDOC_FONT_NUMBER ) )
 	    {
 	    PropertyMask	tadoneMask;
-	    TextAttribute	taSet;
 
 	    PROPmaskCLEAR( &tadoneMask );
 
-	    docIndirectTextAttribute( &tadoneMask, &taSet, etaSet, taSetMask,
-				    dfl, &(dp->dpColors), &(dp->dpColorCount) );
+	    if  ( taSet->taFontNumber < 0 )
+		{ LDEB(taSet->taFontNumber); return;	}
 
-	    if  ( taSet.taFontNumber < 0 )
-		{ LDEB(taSet.taFontNumber); return;	}
+	    td->tdCurrentTextAttribute.taFontNumber= taSet->taFontNumber;
 
-	    td->tdCurrentTextAttribute.taFontNumber= taSet.taFontNumber;
-	    td->tdCurrentPhysicalFont= appOpenDocumentFont( add, dfl,
-					    td->tdCurrentTextAttribute );
-
-	    td->tdCurrentTextAttributeNumber= utilTextAttributeNumber(
-					    &(bd->bdTextAttributeList),
-					    &(td->tdCurrentTextAttribute) );
+	    tedSetCurrentAttribute( td, add );
 	    }
 
+	/*  1  */
 	tedDocReplaceSelection( ed, fresh, 1 );
 	}
 

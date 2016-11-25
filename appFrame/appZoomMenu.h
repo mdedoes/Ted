@@ -12,8 +12,7 @@ extern void appZoomChangeFactor( APP_WIDGET		option,
 				int			optionCount,
 				int *			pLogSqrt2Magnification,
 				double *		pMagnification,
-				DocumentRectangle *	drSelected,
-				DocumentRectangle *	drCut );
+				DocumentRectangle *	drSelected );
 
 extern void appUpdateZoomMenu(	APP_WIDGET	menu,
 				APP_WIDGET *	options,

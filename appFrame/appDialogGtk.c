@@ -30,8 +30,10 @@ void appMakeVerticalDialog(	AppDialog *		ad,
     APP_WIDGET		shell;
     APP_WIDGET		column;
 
+#   if  GTK_MAJOR_VERSION < 2
     const gboolean	homogeneous= FALSE;
     const gint		spacing= COLUMN_SPACING_GTK;
+#   endif
 
 #   if GTK_MAJOR_VERSION < 2
     shell= gtk_window_new( GTK_WINDOW_DIALOG );

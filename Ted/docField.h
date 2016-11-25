@@ -19,7 +19,7 @@ struct DocumentField;
 /*									*/
 /*  Kind of field. Is an index in a descriptive array of field kinds.	*/
 /*									*/
-/*  Fields in the 'Ted' sense are not necessarily fileds in the 'Word'	*/
+/*  Fields in the 'Ted' sense are not necessarily fields in the 'Word'	*/
 /*  sense. Everything inside the text, that can possibly result in	*/
 /*  a piece of document, but is possibly under the control of the	*/
 /*  application is a field in the sense of 'Ted'.			*/
@@ -35,6 +35,11 @@ struct DocumentField;
 /*  e)  Tells whether this kind of field is a destination in the RTF	*/
 /*	file.								*/
 /*  f1) Recalculate a TEXT level field.					*/
+/*	The standard workhorse docRecalculateParaStringTextParticules()	*/
+/*	can be used for all substitutions that simply return a string.	*/
+/*	In its turn it uses fki->fkiCalculateTextString() to obtain	*/
+/*	the string. Other particule avluators might decide to do	*/
+/*	something similar.						*/
 /*  f2) Recalculate the string for a TEXT level field.			*/
 /*  g)  When to recalculate fields in the text.				*/
 /*  h)  Is the field result editable such as with a HYPERLINK or	*/
@@ -75,6 +80,7 @@ typedef int (*CALCULATE_TEXT_STRING)(
 #   define	FIELDdoDOC_INFO		(1<<2)
 #   define	FIELDdoDOC_COMPLETE	(1<<3)
 #   define	FIELDdoCHFTN		(1<<4)
+#   define	FIELDdoLISTTEXT		(1<<5)
 
 typedef struct FieldKindInformation
     {
@@ -108,6 +114,8 @@ typedef enum FieldKind
     DOCfkCREATEDATE,
     DOCfkSAVEDATE,
     DOCfkPRINTDATE,
+    DOCfkDATE,
+    DOCfkTIME,
 
     DOCfkAUTHOR,
     DOCfkCOMMENTS,
@@ -119,6 +127,8 @@ typedef enum FieldKind
 
     DOCfkSYMBOL,
     DOCfkCHFTN,
+
+    DOCfkLISTTEXT,
 
     DOCfkINCLUDEPICTURE,
 

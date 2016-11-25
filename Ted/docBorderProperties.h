@@ -49,14 +49,13 @@ typedef enum BorderStyle
     DOCbsENGRAVE,
     DOCbsOUTSET,
 
+    DOCbsTBL,
+    DOCbsNIL,
+
     DOCbs_COUNT
     } BorderStyle;
 
 #   define DOCbs_BITS	5
-
-#   if  (1<<DOCbs_BITS) < DOCbs_COUNT
-    This will crash: Increase DOCbs_BITS
-#   endif
 
 typedef struct BorderProperties
     {
@@ -64,7 +63,9 @@ typedef struct BorderProperties
     unsigned int	bpPenWideTwips:8;
     unsigned int	bpStyle:DOCbs_BITS;	/*  (enum)		*/
     unsigned int	bpSpacingTwips:16;	/*  Unused in recent	*/
-						/*  versions of Word	*/
+						/*  versions of Word ?	*/
+    unsigned int	bpArt:8;
+
     } BorderProperties;
 
 typedef struct ExpandedBorderProperties
@@ -75,6 +76,7 @@ typedef struct ExpandedBorderProperties
     int			ebpPenWideTwips;
     int			ebpStyle;
     int			ebpSpacingTwips;
+    int			ebpArt;
     } ExpandedBorderProperties;
 
 typedef enum BorderProperty
@@ -85,6 +87,7 @@ typedef enum BorderProperty
     BRDRpropSPACING,
     BRDRpropPEN_WIDE,
     BRDRpropSTYLE,
+    BRDRpropART,
 
     BRDRprop_COUNT
     } BorderProperty;

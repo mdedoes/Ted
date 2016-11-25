@@ -44,6 +44,9 @@ int tedEditReplaceSelection(	EditOperation *		eo,
 				int			addedLength )
     {
     TedDocument *		td= (TedDocument *)ed->edPrivateData;
+    BufferDocument *		bd= td->tdDocument;
+    DocumentProperties *	dp= &(bd->bdProperties);
+    DocumentFontList *		dfl= &(dp->dpFontList);
 
     int				stroffShift= 0;
     int				partShift= 0;
@@ -51,8 +54,6 @@ int tedEditReplaceSelection(	EditOperation *		eo,
     BufferItem *		bi;
 
     int				line;
-    int				part;
-
     int				stroff;
 
     TextLine *			tl;
@@ -62,16 +63,16 @@ int tedEditReplaceSelection(	EditOperation *		eo,
 
     DocumentSelection		ds;
     SelectionGeometry		sg;
+    SelectionDescription	sd;
     int				multiParagraph;
 
-    if  ( tedGetSelection( &ds, &sg, td ) )
+    if  ( tedGetSelection( &ds, &sg, &sd, td ) )
 	{ LDEB(1); return -1;	}
 
     docInitDocumentSelection( &dsRep );
 
     bi= ds.dsBegin.dpBi;
     stroff= ds.dsBegin.dpStroff;
-    part= ds.dsBegin.dpParticule;
     line= sg.sgBegin.pgLine;
 
     tl= bi->biParaLines+ line;
@@ -86,8 +87,13 @@ int tedEditReplaceSelection(	EditOperation *		eo,
 				    td->tdCurrentTextAttributeNumber ) )
 	{ LDEB(addedLength); return -1;	}
 
+    if  ( addedLength > 0						&&
+	  td->tdCurrentTextAttribute.taFontNumber >= 0			&&
+	  td->tdCurrentTextAttribute.taFontNumber < dfl->dflFontCount	)
+	{ dfl->dflFonts[td->tdCurrentTextAttribute.taFontNumber].dfUsed= 1; }
+
     /*  B  */
-    tedAdjustRedrawBegin( ed, eo, &line, part );
+    tedAdjustRedrawBegin( ed, eo, &line );
 
     /*  C  */
     if  ( multiParagraph )
@@ -143,17 +149,16 @@ static void tedMergeParagraphsInSelectionLow(	EditDocument *	ed,
 
     int				endMoved= 0;
 
-    unsigned int		fieldUpd= FIELDdoNOTHING;
-
     DocumentCopyJob		dcj;
 
     EditOperation		eo;
     DocumentSelection		ds;
     SelectionGeometry		sg;
+    SelectionDescription	sd;
 
     docInitDocumentCopyJob( &dcj );
 
-    tedStartEditOperation( &eo, &ds, &sg, ed, 1 );
+    tedStartEditOperation( &eo, &ds, &sg, &sd, ed, 1 );
 
     if  ( docSet1DocumentCopyJob( &dcj, bd ) )
 	{ LDEB(1); goto ready;	}
@@ -196,7 +201,7 @@ static void tedMergeParagraphsInSelectionLow(	EditDocument *	ed,
 		endMoved++;
 		}
 
-	    if  ( docCopyParticules( &dcj, &fieldUpd,
+	    if  ( docCopyParticules( &dcj, &eo,
 			biTo, biFrom,
 			biTo->biParaParticuleCount, partFrom,
 			biFrom->biParaParticuleCount- partFrom,
@@ -230,9 +235,9 @@ static void tedMergeParagraphsInSelectionLow(	EditDocument *	ed,
     docEditIncludeItemInReformatRange( &eo, biTo );
 
     eo.eoNotesAdded += dcj.dcjNotesCopied;
+    eo.eoBulletsChanged += dcj.dcjBulletsCopied;
 
     {
-    const int		lastOne= 0;
     const int		direction= 1;
     const int		col0= -1;
     const int		col1= -1;
@@ -241,8 +246,7 @@ static void tedMergeParagraphsInSelectionLow(	EditDocument *	ed,
 
     docInitDocumentSelection( &dsNew );
 
-    docSetDocumentPosition( &(ds.dsEnd), biTo,
-				    ds.dsEnd.dpStroff+ endMoved, lastOne );
+    docSetDocumentPosition( &(ds.dsEnd), biTo, ds.dsEnd.dpStroff+ endMoved );
 
     docSetRangeSelection( &dsNew, &(ds.dsBegin), &(ds.dsEnd),
 					    direction, col0, col1 );
@@ -267,8 +271,9 @@ void tedMergeParagraphsInSelection(	EditDocument *	ed )
 
     DocumentSelection		ds;
     SelectionGeometry		sg;
+    SelectionDescription	sd;
 
-    if  ( tedGetSelection( &ds, &sg, td ) )
+    if  ( tedGetSelection( &ds, &sg, &sd, td ) )
 	{ LDEB(1); return;	}
 
     if  ( docIsParaSelection( &ds ) )
@@ -342,6 +347,7 @@ static int tedIncludeParagraphs(	EditOperation *		eo,
 
 	    BufferItem *	biRowTo= biTo->biParent->biParent;
 	    BufferItem *	biRowFrom= biFrom->biParent->biParent;
+	    int			parasCopied;
 
 	    inTable= 1;
 
@@ -372,7 +378,7 @@ static int tedIncludeParagraphs(	EditOperation *		eo,
 		biRowTo= insBi;
 		}
 
-	    rowBi= docCopyRowItem( dcj, &(eo->eoFieldUpdate),
+	    rowBi= docCopyRowItem( dcj, eo, &parasCopied,
 			biRowTo->biParent, biRowTo->biNumberInParent+ 1,
 			biRowFrom, biFrom->biParaInTable );
 	    if  ( ! rowBi )
@@ -380,15 +386,16 @@ static int tedIncludeParagraphs(	EditOperation *		eo,
 
 	    if  ( rowBi->biInExternalItem == DOCinBODY )
 		{
-		if  ( docFirstPosition( &dp, rowBi ) )
+		if  ( docLastPosition( &dp, rowBi ) )
 		    { LDEB(1);	}
 		else{
 		    const int	paraNr= docNumberOfParagraph( dp.dpBi );
+		    const int	isSplit= 0;
 		    const int	stroff= 0;
 		    const int	sectShift= 0;
-		    const int	paraShift= rowBi->biRowCellCount;
+		    const int	paraShift= parasCopied;
 
-		    docShiftNoteReferences( bdTo, paraNr, stroff,
+		    docEditShiftReferences( bdTo, paraNr+ 1, isSplit, stroff,
 					    sectShift, paraShift, -stroff );
 		    }
 		}
@@ -429,7 +436,7 @@ static int tedIncludeParagraphs(	EditOperation *		eo,
 		if  ( ! childBi )
 		    { XDEB(childBi); return -1;	}
 
-		childBi= docCopyParaItem( dcj, &(eo->eoFieldUpdate),
+		childBi= docCopyParaItem( dcj, eo,
 						childBi, 0, biFrom, inTable );
 
 		if  ( ! childBi )
@@ -438,8 +445,7 @@ static int tedIncludeParagraphs(	EditOperation *		eo,
 		biTo= childBi;
 		}
 	    else{
-		insBi= docCopyParaItem( dcj, &(eo->eoFieldUpdate),
-			    biTo->biParent,
+		insBi= docCopyParaItem( dcj, eo, biTo->biParent,
 			    biTo->biNumberInParent+ 1, biFrom, inTable );
 
 		if  ( biTo->biParaInTable )
@@ -455,12 +461,13 @@ static int tedIncludeParagraphs(	EditOperation *		eo,
 
 	    if  ( insBi->biInExternalItem == DOCinBODY )
 		{
-		const int	paraNr= docNumberOfParagraph( biTo );
+		const int	paraNr= docNumberOfParagraph( biTo )+ 1;
+		const int	isSplit= 0;
 		const int	stroff= 0;
 		const int	sectShift= 0;
 		const int	paraShift= 1;
 
-		docShiftNoteReferences( bdTo, paraNr, stroff,
+		docEditShiftReferences( bdTo, paraNr, isSplit, stroff,
 					    sectShift, paraShift, -stroff );
 		}
 
@@ -538,7 +545,7 @@ static int tedIncludeTail(	EditOperation *		eo,
     particulesCopied= biFrom->biParaParticuleCount- partFrom- copyLastAsText;
     if  ( particulesCopied > 0 )
 	{
-	if  ( docCopyParticules( dcj, &(eo->eoFieldUpdate),
+	if  ( docCopyParticules( dcj, eo,
 				    biTo, biFrom, partTo, partFrom,
 				    particulesCopied,
 				    &particulesInserted,
@@ -565,8 +572,7 @@ static int tedIncludeTail(	EditOperation *		eo,
 	if  ( textAttributeNumberFrom < 0 )
 	    { LDEB(textAttributeNumberFrom); return -1;	}
 
-	if  ( docParaReplaceText( eo, biTo, partTo+ particulesCopied,
-		    tpTo->tpStroff,
+	if  ( docParaReplaceText( eo, biTo, tpTo->tpStroff,
 		    &particulesInserted, &charactersCopied,
 		    tpTo->tpStroff, biFrom->biParaString+ tpFrom->tpStroff,
 		    tpFrom->tpStrlen, textAttributeNumberFrom ) )
@@ -584,7 +590,6 @@ static int tedIncludeHead(
 			DocumentCopyJob *		dcj,
 			const DocumentSelection *	dsTo,
 			const BufferItem *		biFrom,
-			int *				pPartShift,
 			int *				pStroffShift,
 			int *				pCharactersCopied )
     {
@@ -593,15 +598,15 @@ static int tedIncludeHead(
 
     BufferItem *		biTo= dsTo->dsBegin.dpBi;
     unsigned int		stroffTo= dsTo->dsBegin.dpStroff;
-    int				partTo= dsTo->dsBegin.dpParticule;
 
+    int				partShift= 0;
     int				charactersCopied= 0;
     int				particulesCopied;
     int				particuleSplit= 0;
 
     int				attributeNumberTo;
 
-    tpTo= biTo->biParaParticules+ partTo;
+    tpTo= biTo->biParaParticules+ eo->eoParticule;
     tpFrom= biFrom->biParaParticules;
 
     attributeNumberTo= tpTo->tpTextAttributeNumber;
@@ -624,7 +629,7 @@ static int tedIncludeHead(
 
 	if  ( docUpdParaProperties( &ppChgMask, &(biTo->biParaProperties),
 				&ppUpdMask, &(biFrom->biParaProperties),
-				dcj->dcjColorMap ) )
+				dcj->dcjColorMap, dcj->dcjListStyleMap ) )
 	    { LDEB(1); }
 
 	biTo->biParaInTable= toInTable;
@@ -663,14 +668,14 @@ static int tedIncludeHead(
 	if  ( textAttributeNumberFrom < 0 )
 	    { LDEB(textAttributeNumberFrom); return -1;	}
 
-	if  ( docReplaceSelection( eo, dsTo, pPartShift, pStroffShift,
+	if  ( docReplaceSelection( eo, dsTo, &partShift, pStroffShift,
 		    biFrom->biParaString+ tpFrom->tpStroff, charactersCopied,
 		    textAttributeNumberFrom ) )
 	    { LDEB(tpFrom->tpStrlen); return -1;	}
 	}
     else{
 	if  ( ! eo->eoIBarSelectionOld					&&
-	      docReplaceSelection( eo, dsTo, pPartShift, pStroffShift,
+	      docReplaceSelection( eo, dsTo, &partShift, pStroffShift,
 			(unsigned char *)0, 0, attributeNumberTo )	)
 	    { LDEB(0); return -1;	}
 	}
@@ -678,11 +683,11 @@ static int tedIncludeHead(
     stroffTo += charactersCopied;
 
     if  ( stroffTo >= biTo->biParaStrlen )
-	{ partTo= biTo->biParaParticuleCount;	}
+	{ eo->eoParticule= biTo->biParaParticuleCount;	}
     else{
-	partTo= 0; tpTo= biTo->biParaParticules;
+	eo->eoParticule= 0; tpTo= biTo->biParaParticules;
 	while( tpTo->tpStroff+ tpTo->tpStrlen < stroffTo )
-	    { partTo++; tpTo++;	}
+	    { eo->eoParticule++; tpTo++;	}
 
 	if  ( tpTo->tpStroff != stroffTo				&&
 	      tpTo->tpStroff+ tpTo->tpStrlen != stroffTo		)
@@ -694,23 +699,23 @@ static int tedIncludeHead(
 	    TextParticule *	tpOld;
 
 	    if  ( docSplitTextParticule( &tpOld, &tpTo,
-						biTo, partTo, stroffTo ) )
-		{ LDEB(partTo); return -1;	}
+					    biTo, eo->eoParticule, stroffTo ) )
+		{ LDEB(eo->eoParticule); return -1;	}
 
-	    (*pPartShift)++; partTo++;
+	    partShift++; eo->eoParticule++;
 	    }
 
 	if  ( stroffTo == tpTo->tpStroff+ tpTo->tpStrlen )
-	    { partTo++; tpTo++;	}
+	    { eo->eoParticule++; tpTo++;	}
 	}
 
     if  ( particulesCopied < biFrom->biParaParticuleCount )
 	{
 	int	partFrom= particulesCopied;
 
-	if  ( tedIncludeTail( eo, dcj, biTo, biFrom, partTo, partFrom,
-						pPartShift, pStroffShift ) )
-	    { LLDEB(partTo,partFrom); return -1;	}
+	if  ( tedIncludeTail( eo, dcj, biTo, biFrom, eo->eoParticule, partFrom,
+						&partShift, pStroffShift ) )
+	    { LLDEB(eo->eoParticule,partFrom); return -1;	}
 
 	charactersCopied= biFrom->biParaStrlen;
 	}
@@ -757,15 +762,14 @@ static int tedIncludeDocument(	EditDocument *			edTo,
     biTo= dsTo->dsBegin.dpBi;
 
     stroff= dsTo->dsBegin.dpStroff;
-    part= dsTo->dsBegin.dpParticule;
     line= sgTo->sgBegin.pgLine;
 
     if  ( ! biFrom->biParaInTable )
 	{
-	tedAdjustRedrawBegin( edTo, eo, &line, dsTo->dsBegin.dpParticule );
+	tedAdjustRedrawBegin( edTo, eo, &line );
 
 	if  ( tedIncludeHead( eo, dcj, dsTo, biFrom,
-			    &partShift, &stroffShift, &charactersCopied ) )
+					&stroffShift, &charactersCopied ) )
 	    { LDEB(1); return -1;	}
 
 	}
@@ -778,17 +782,18 @@ static int tedIncludeDocument(	EditDocument *			edTo,
 	TextParticule *	tpFrom;
 
 	/*  4  */
-	if  ( docSplitParaItem( bdTo, &newBi, biTo, stroff+ charactersCopied ) )
-	    { LLDEB(part+ partShift,stroff+ charactersCopied); return -1; }
+	if  ( docSplitParaItem( eo, &newBi, biTo, stroff+ charactersCopied ) )
+	    { LDEB(stroff+ charactersCopied); return -1; }
 
 	if  ( newBi->biInExternalItem == DOCinBODY )
 	    {
 	    const int	paraNr= docNumberOfParagraph( biTo );
+	    const int	isSplit= 0;
 	    const int	stroffSh= stroff+ charactersCopied;
 	    const int	sectShift= 0;
 	    const int	paraShift= 1;
 
-	    docShiftNoteReferences( bdTo, paraNr, stroffSh,
+	    docEditShiftReferences( bdTo, paraNr, isSplit, stroffSh,
 					    sectShift, paraShift, -stroffSh );
 	    }
 
@@ -814,6 +819,24 @@ static int tedIncludeDocument(	EditDocument *			edTo,
 	    PropertyMask	ppChgMask;
 	    PropertyMask	ppUpdMask;
 
+	    if  ( biFrom->biParaListOverride > 0 )
+		{
+		int		bulletFieldNr= -1;
+		int		bulletPartBegin= -1;
+		int		bulletPartEnd= -1;
+		int		bulletStroffBegin= -1;
+		int		bulletStroffEnd= -1;
+
+		if  ( docDelimitParaHeadField( &bulletFieldNr,
+				&bulletPartBegin, &bulletPartEnd,
+				&bulletStroffBegin, &bulletStroffEnd,
+				biFrom, bdFrom ) )
+		    { LDEB(1);	}
+
+		if  ( partFrom <= bulletPartEnd )
+		    { partFrom= bulletPartEnd+ 1;	}
+		}
+
 	    if  ( tedIncludeTail( eo, dcj, newBi, biFrom, partTo, partFrom,
 						&partShift, &stroffShift ) )
 		{ LLDEB(partTo,partFrom); return -1;	}
@@ -825,10 +848,9 @@ static int tedIncludeDocument(	EditDocument *			edTo,
 	    PROPmaskUNSET( &ppUpdMask, PPpropIN_TABLE );
 
 	    if  ( wasEmpty &&
-		  docUpdParaProperties( &ppChgMask,
-				    &newBi->biParaProperties,
-				    &ppUpdMask, &biFrom->biParaProperties,
-				    dcj->dcjColorMap ) )
+		  docEditUpdParaProperties( eo, &ppChgMask, newBi,
+				    &ppUpdMask, &(biFrom->biParaProperties),
+				    dcj->dcjColorMap, dcj->dcjListStyleMap ) )
 		{ LDEB(wasEmpty);	}
 	    }
 
@@ -845,6 +867,7 @@ static int tedIncludeDocument(	EditDocument *			edTo,
 	}
 
     eo->eoNotesAdded += dcj->dcjNotesCopied;
+    eo->eoBulletsChanged += dcj->dcjBulletsCopied;
 
     tedEditFinishIBarSelection( edTo, eo, biTo, stroffEnd );
 
@@ -884,6 +907,9 @@ int tedIncludePlainDocument(	APP_WIDGET		w,
 				EditDocument *		ed,
 				BufferDocument *	bdFrom )
     {
+    EditApplication *		ea= ed->edApplication;
+    const PostScriptFontList *	psfl= &(ea->eaPostScriptFontList);
+
     TedDocument *		tdTo= (TedDocument *)ed->edPrivateData;
     BufferDocument *		bdTo= tdTo->tdDocument;
 
@@ -901,10 +927,11 @@ int tedIncludePlainDocument(	APP_WIDGET		w,
     EditOperation		eo;
     DocumentSelection		ds;
     SelectionGeometry		sg;
+    SelectionDescription	sd;
 
     docInitDocumentCopyJob( &dcj );
 
-    tedStartEditOperation( &eo, &ds, &sg, ed, 1 );
+    tedStartEditOperation( &eo, &ds, &sg, &sd, ed, 1 );
 
     dpBeginTo= ds.dsBegin;
     if  ( ! dpBeginTo.dpBi				||
@@ -913,7 +940,7 @@ int tedIncludePlainDocument(	APP_WIDGET		w,
 
     /*  1  */
     textAttributeNumber= dpBeginTo.dpBi->biParaParticules[
-				dpBeginTo.dpParticule].tpTextAttributeNumber;
+				eo.eoParticule].tpTextAttributeNumber;
 
     utilGetTextAttributeByNumber( &ta, &(bdTo->bdTextAttributeList),
 						    textAttributeNumber );
@@ -974,7 +1001,7 @@ int tedIncludePlainDocument(	APP_WIDGET		w,
 	}
 
     /*  5,6  */
-    if  ( docSet2DocumentCopyJob( &dcj, bdTo, bdFrom, ed->edFilename ) )
+    if  ( docSet2DocumentCopyJob( &dcj, bdTo, bdFrom, psfl, ed->edFilename ) )
 	{ LDEB(1); rval= -1; goto ready;	}
 
     /*  7  */
@@ -991,6 +1018,9 @@ int tedIncludeRtfDocument(	APP_WIDGET		w,
 				EditDocument *		ed,
 				BufferDocument *	bdFrom )
     {
+    EditApplication *		ea= ed->edApplication;
+    const PostScriptFontList *	psfl= &(ea->eaPostScriptFontList);
+
     int				rval= 0;
 
     TedDocument *		tdTo= (TedDocument *)ed->edPrivateData;
@@ -1001,10 +1031,11 @@ int tedIncludeRtfDocument(	APP_WIDGET		w,
     EditOperation		eo;
     DocumentSelection		ds;
     SelectionGeometry		sg;
+    SelectionDescription	sd;
 
     docInitDocumentCopyJob( &dcj );
 
-    tedStartEditOperation( &eo, &ds, &sg, ed, 1 );
+    tedStartEditOperation( &eo, &ds, &sg, &sd, ed, 1 );
 
     if  ( bdFrom->bdProperties.dpContainsTables )
 	{
@@ -1016,7 +1047,7 @@ int tedIncludeRtfDocument(	APP_WIDGET		w,
 	    { goto ready;	}
 	}
 
-    if  ( docSet2DocumentCopyJob( &dcj, bdTo, bdFrom, ed->edFilename ) )
+    if  ( docSet2DocumentCopyJob( &dcj, bdTo, bdFrom, psfl, ed->edFilename ) )
 	{ LDEB(1); rval= -1; goto ready;	}
 
     rval= tedIncludeDocument( ed, &eo, &dcj, &ds, &sg );
@@ -1038,7 +1069,10 @@ int tedIncludeRtfDocument(	APP_WIDGET		w,
 /*  2)  Recalculate the geometry from the start of the selection to the	*/
 /*	end of the paragraph.						*/
 /*  3)  Redraw the affected part of the paragraph.			*/
-/*  4)  Layout the new paragraph.					*/
+/*  4)  Cause the new paragraph to be reformatted in this edit		*/
+/*	operation.							*/
+/*  5)  If the new paragraph is part of a numbered/bulleted list,	*/
+/*	insert a list text field at the head.				*/
 /*									*/
 /************************************************************************/
 
@@ -1065,7 +1099,7 @@ int tedSplitParaContents(	EditOperation *		eo,
     paraNr= docNumberOfParagraph( bi );
 
     /*  1  */
-    if  ( docSplitParaItem( bd, &newBi, bi, stroff ) )
+    if  ( docSplitParaItem( eo, &newBi, bi, stroff ) )
 	{ LDEB(stroff); return -1;	}
 
     newBi->biParaStartsOnNewPage= ! newBi->biParaInTable && onNewPage;
@@ -1073,7 +1107,7 @@ int tedSplitParaContents(	EditOperation *		eo,
     docEditShiftReformatRangeParaNr( eo, paraNr+ 1, paraShift );
 
     /*  3  */
-    eo->eoChangedRectangle.drX0= add->addBackRect.drX0;
+    eo->eoChangedRect.drX0= add->addBackRect.drX0;
 
     if  ( bi->biParaBottomBorder.bpStyle != DOCbsNONE )
 	{ bi->biParaBottomBorder.bpStyle=   DOCbsNONE;	}
@@ -1100,7 +1134,9 @@ int tedSplitParaContents(	EditOperation *		eo,
 
 	if  ( bi->biInExternalItem == DOCinBODY )
 	    {
-	    docShiftNoteReferences( bd, paraNr, stroff,
+	    const int	isSplit= 1;
+
+	    docEditShiftReferences( bd, paraNr, isSplit, stroff,
 					    sectShift, paraShift, -stroff );
 	    }
 
@@ -1112,7 +1148,9 @@ int tedSplitParaContents(	EditOperation *		eo,
     else{
 	if  ( bi->biInExternalItem == DOCinBODY )
 	    {
-	    docShiftNoteReferences( bd, paraNr, stroff,
+	    const int	isSplit= 1;
+
+	    docEditShiftReferences( bd, paraNr, isSplit, stroff,
 					    sectShift, paraShift, -stroff );
 	    }
 
@@ -1121,6 +1159,16 @@ int tedSplitParaContents(	EditOperation *		eo,
 
 	/*  4  */
 	docEditIncludeItemInReformatRange( eo, newBi );
+	}
+
+    /*  5  */
+    if  ( newBi->biParaListOverride > 0 )
+	{
+	if  ( docInsertListtextField( newBi, bd ) )
+	    { LDEB(1); return -1;	}
+
+	eo->eoFieldUpdate |= FIELDdoLISTTEXT;
+	eo->eoBulletsChanged++;
 	}
 
     *pNewBi= newBi; return 0;
@@ -1136,15 +1184,15 @@ void tedSplitParagraph(		EditDocument *		ed,
     EditOperation		eo;
     DocumentSelection		ds;
     SelectionGeometry		sg;
+    SelectionDescription	sd;
 
-    tedStartEditOperation( &eo, &ds, &sg, ed, 1 );
+    tedStartEditOperation( &eo, &ds, &sg, &sd, ed, 1 );
 
     if  ( tedEditReplaceSelection( &eo, &dsRep, ed, (unsigned char *)0, 0 ) )
 	{ return;	}
 
     if  ( tedSplitParaContents( &eo, &newBi,
-			    dsRep.dsBegin.dpBi,
-			    dsRep.dsBegin.dpStroff,
+			    dsRep.dsBegin.dpBi, dsRep.dsBegin.dpStroff,
 			    ed, DOClevPARA, onNewPage ) )
 	{ LDEB(1); return;	}
 
@@ -1168,38 +1216,32 @@ int tedReplaceSelectionWithObject(	EditDocument *		ed,
     int				stroffShift;
     int				partShift;
 
-    int				part;
-
     EditOperation		eo;
     DocumentSelection		ds;
     SelectionGeometry		sg;
-
-    DocumentPosition *		dp;
+    SelectionDescription	sd;
 
     DocumentSelection		dsRep;
 
-    tedStartEditOperation( &eo, &ds, &sg, ed, 0 );
+    tedStartEditOperation( &eo, &ds, &sg, &sd, ed, 0 );
 
     if  ( tedEditReplaceSelection( &eo, &dsRep, ed,
 					    (const unsigned char *)0, 0 ) )
 	{ LDEB(1); return -1;	}
 
-    dp= &(dsRep.dsBegin);
-    part= dp->dpParticule;
-
-    tp= docParaSpecialParticule( eo.eoBd, dp->dpBi, DOCkindOBJECT,
-				part, dp->dpStroff, &partShift, &stroffShift );
+    tp= docParaSpecialParticule( eo.eoBd, eo.eoParaBi, DOCkindOBJECT,
+		    eo.eoParticule, eo.eoStroff, &partShift, &stroffShift );
     if  ( ! tp )
-	{ LXDEB(part,tp); return -1;	}
+	{ LXDEB(eo.eoParticule,tp); return -1;	}
 
-    tp->tpObjectNumber= dp->dpBi->biParaObjectCount++;
-    tp->tpPhysicalFont= 0;
+    tp->tpObjectNumber= eo.eoParaBi->biParaObjectCount++;
 
     /*  3,4,5  */
-    docExtendParagraphAdjust( &eo, dp->dpBi, stroffShift );
+    docExtendParagraphAdjust( &eo, eo.eoParaBi, stroffShift );
 
     /*  6,7  */
-    tedEditFinishIBarSelection( ed, &eo, dp->dpBi, dp->dpStroff+ stroffShift );
+    eo.eoStroff += stroffShift;
+    tedEditFinishIBarSelection( ed, &eo, eo.eoParaBi, eo.eoStroff );
 
     appDocumentChanged( ed, 1 );
 
@@ -1213,6 +1255,7 @@ int tedReplaceSelectionWithObject(	EditDocument *		ed,
 /************************************************************************/
 
 int tedResizeObject(		EditDocument *			ed,
+				int				part,
 				const DocumentPosition *	dpObj,
 				const PositionGeometry *	pgObj )
     {
@@ -1221,7 +1264,7 @@ int tedResizeObject(		EditDocument *			ed,
     AppDrawingData *		add= &(ed->edDrawingData);
 
     BufferItem *		bi= dpObj->dpBi;
-    TextParticule *		tp= bi->biParaParticules+ dpObj->dpParticule;
+    TextParticule *		tp= bi->biParaParticules+ part;
     int				line= pgObj->pgLine;
 
     const int			stroffShift= 0;
@@ -1229,19 +1272,22 @@ int tedResizeObject(		EditDocument *			ed,
     EditOperation		eo;
     DocumentSelection		ds;
     SelectionGeometry		sg;
+    SelectionDescription	sd;
 
-    tedStartEditOperation( &eo, &ds, &sg, ed, 0 );
+    tedStartEditOperation( &eo, &ds, &sg, &sd, ed, 0 );
 
-    tedAdjustRedrawBegin( ed, &eo, &line, dpObj->dpParticule );
+    tedAdjustRedrawBegin( ed, &eo, &line );
 
     if  ( tedReopenObject( bd, bi, tp, &(ed->edColors), add ) )
 	{ LDEB(1); return -1;	}
 
     docSetParagraphAdjust( &eo, bi, line, stroffShift,
-			    dpObj->dpStroff+ 1+ stroffShift );
+					dpObj->dpStroff+ 1+ stroffShift );
 
-    if  ( tedEditFinishSelection( ed, &eo, &ds ) )
+    if  ( tedEditFinishOldSelection( ed, &eo ) )
 	{ LDEB(1);	}
+
+    appDocumentChanged( ed, 1 );
 
     return 0;
     }
@@ -1267,12 +1313,13 @@ void tedDocReplaceSelection(	EditDocument *		ed,
     EditOperation		eo;
     DocumentSelection		ds;
     SelectionGeometry		sg;
+    SelectionDescription	sd;
 
     /*  1  */
     if  ( ! tedHasSelection( td ) )
 	{ LDEB(1); return; }
 
-    tedStartEditOperation( &eo, &ds, &sg, ed, 0 );
+    tedStartEditOperation( &eo, &ds, &sg, &sd, ed, 0 );
 
     /*  2  */
     if  ( eo.eoIBarSelectionOld && len == 0 )
@@ -1311,19 +1358,18 @@ int tedDeleteCurrentParagraph(	EditApplication *	ea )
     EditOperation		eo;
     DocumentSelection		ds;
     SelectionGeometry		sg;
+    SelectionDescription	sd;
 
-    tedStartEditOperation( &eo, &ds, &sg, ed, 1 );
+    tedStartEditOperation( &eo, &ds, &sg, &sd, ed, 1 );
     paraBi= ds.dsBegin.dpBi;
 
     docInitDocumentPosition( &dpNew );
     if  ( docLastPosition( &dpNew, paraBi ) 	||
 	  docNextPosition( &dpNew )		)
 	{
-	const int	lastOne= 0;
-
 	docInitDocumentPosition( &dpNew );
 	if  ( docFirstPosition( &dpNew, paraBi )	||
-	      docPrevPosition( &dpNew, lastOne )	)
+	      docPrevPosition( &dpNew )			)
 	    { docInitDocumentPosition( &dpNew ); }
 	}
 
@@ -1368,10 +1414,14 @@ int tedDeleteCurrentParagraph(	EditApplication *	ea )
 
 	if  ( parentBi->biInExternalItem == DOCinBODY )
 	    {
+	    const int		isSplit= 0;
 	    const int		sectShift= 0;
+	    const int		stroffFrom= 0;
+	    const int		stroffShift= 0;
 
-	    docShiftNoteReferences( bd, firstParaDeleted+ paragraphsDeleted, 0,
-					-sectShift, -paragraphsDeleted, 0 );
+	    docEditShiftReferences( bd, firstParaDeleted+ paragraphsDeleted,
+				isSplit, stroffFrom,
+				-sectShift, -paragraphsDeleted, stroffShift );
 	    }
 
 	/*  NO ! called by docEditDeleteItems()
@@ -1406,6 +1456,9 @@ static int tedSectionParagraph(
     PropertyMask	ppChgMask;
     PropertyMask	ppUpdMask;
 
+    const int * const	colorMap= (const int *)0;
+    const int * const	listStyleMap= (const int *)0;
+
     paraBi= docInsertEmptyParagraph( bd, sectBi, textAttributeNumber );
     if  ( ! paraBi )
 	{ XDEB(paraBi); return -1;	}
@@ -1417,7 +1470,7 @@ static int tedSectionParagraph(
     PROPmaskUNSET( &ppUpdMask, PPpropIN_TABLE );
 
     if  ( docUpdParaProperties( &ppChgMask, &(paraBi->biParaProperties),
-					    &ppUpdMask, pp, (const int *)0 ) )
+				    &ppUpdMask, pp, colorMap, listStyleMap ) )
 	{ LDEB(1);	}
 
     *pParaBi= paraBi; return 0;
@@ -1443,6 +1496,7 @@ int tedDeleteCurrentSection(	EditApplication *	ea )
     EditOperation		eo;
     DocumentSelection		ds;
     SelectionGeometry		sg;
+    SelectionDescription	sd;
 
     int				newPositionIsPast= 1;
 
@@ -1450,7 +1504,7 @@ int tedDeleteCurrentSection(	EditApplication *	ea )
     int				paraNrNew= -1;
     int				sectShift;
 
-    tedStartEditOperation( &eo, &ds, &sg, ed, 1 );
+    tedStartEditOperation( &eo, &ds, &sg, &sd, ed, 1 );
     paraBi= ds.dsBegin.dpBi;
 
     sectBi= paraBi->biParent->biParent->biParent;
@@ -1460,13 +1514,11 @@ int tedDeleteCurrentSection(	EditApplication *	ea )
     if  ( docLastPosition( &dpNew, sectBi ) 	||
 	  docNextPosition( &dpNew )		)
 	{
-	const int	lastOne= 0;
-
 	newPositionIsPast= 0;
 
 	docInitDocumentPosition( &dpNew );
 	if  ( docFirstPosition( &dpNew, sectBi )	||
-	      docPrevPosition( &dpNew, lastOne )	)
+	      docPrevPosition( &dpNew )			)
 	    { docInitDocumentPosition( &dpNew ); }
 	}
 
@@ -1487,6 +1539,9 @@ int tedDeleteCurrentSection(	EditApplication *	ea )
 	int			firstParaDeleted= -1;
 	int			paragraphsDeleted= 0;
 
+	const int * const	colorMap= (const int *)0;
+	const int * const	listStyleMap= (const int *)0;
+
 	docInitParagraphProperties( &pp );
 
 	PROPmaskCLEAR( &ppChgMask );
@@ -1497,7 +1552,7 @@ int tedDeleteCurrentSection(	EditApplication *	ea )
 
 	if  ( docUpdParaProperties( &ppChgMask, &pp,
 				&ppUpdMask, &(paraBi->biParaProperties),
-				(const int *)0 ) )
+				colorMap, listStyleMap ) )
 	    { LDEB(1); return -1;	}
 
 	tedEditIncludeItemInRedraw( &eo, ed, sectBi );
@@ -1522,8 +1577,12 @@ int tedDeleteCurrentSection(	EditApplication *	ea )
 
 	    if  ( parentBi->biInExternalItem == DOCinBODY )
 		{
-		docShiftNoteReferences( bd, paraNrOld+ 1, 0,
-					-sectShift, paraNrNew- paraNrOld, 0 );
+		const int	isSplit= 0;
+		const int	stroffFrom= 0;
+		const int	stroffShift= 0;
+
+		docEditShiftReferences( bd, paraNrOld+ 1, isSplit, stroffFrom,
+				-sectShift, paraNrNew- paraNrOld, stroffShift );
 		}
 
 	    /*  NO! Done by docEditDeleteItems()
@@ -1551,8 +1610,12 @@ int tedDeleteCurrentSection(	EditApplication *	ea )
 
 	    if  ( parentBi->biInExternalItem == DOCinBODY )
 		{
-		docShiftNoteReferences( bd, paraNrOld+ 1, 0,
-					-sectShift, paraNrNew- paraNrOld, 0 );
+		const int	isSplit= 0;
+		const int	stroffFrom= 0;
+		const int	stroffShift= 0;
+
+		docEditShiftReferences( bd, paraNrOld+ 1, isSplit, stroffFrom,
+			    -sectShift, paraNrNew- paraNrOld, stroffShift );
 		}
 
 	    /*  NO! Done by docEditDeleteItems()
@@ -1598,13 +1661,17 @@ int tedInsertParagraph(	EditApplication *	ea,
     EditOperation		eo;
     DocumentSelection		ds;
     SelectionGeometry		sg;
+    SelectionDescription	sd;
 
     DocumentPosition		dpRef;
 
     int				paraNr;
     const int			paraShift= 1;
 
-    tedStartEditOperation( &eo, &ds, &sg, ed, 1 );
+    const int * const		colorMap= (const int *)0;
+    const int * const		listStyleMap= (const int *)0;
+
+    tedStartEditOperation( &eo, &ds, &sg, &sd, ed, 1 );
 
     if  ( after )
 	{
@@ -1644,9 +1711,11 @@ int tedInsertParagraph(	EditApplication *	ea,
     if  ( parentBi->biInExternalItem == DOCinBODY )
 	{
 	const int	sectShift= 0;
+	const int	isSplit= 0;
+	const int	stroffFrom= 0;
 	const int	stroffShift= 0;
 
-	docShiftNoteReferences( bd, paraNr+ 1, 0,
+	docEditShiftReferences( bd, paraNr+ 1, isSplit, stroffFrom,
 					sectShift, paraShift, stroffShift );
 	}
 
@@ -1659,7 +1728,7 @@ int tedInsertParagraph(	EditApplication *	ea,
 
     if  ( docUpdParaProperties( &ppChgMask, &(newBi->biParaProperties),
 				    &ppUpdMask, &(paraBi->biParaProperties),
-				    (const int *)0 ) )
+				    colorMap, listStyleMap ) )
 	{ LDEB(1);	}
 
     if  ( ! docInsertTextParticule( newBi, 0, 0, 0,
@@ -1695,10 +1764,11 @@ int tedInsertSection(	EditApplication *	ea,
     EditOperation		eo;
     DocumentSelection		ds;
     SelectionGeometry		sg;
+    SelectionDescription	sd;
 
     DocumentPosition		dpRef;
 
-    tedStartEditOperation( &eo, &ds, &sg, ed, 1 );
+    tedStartEditOperation( &eo, &ds, &sg, &sd, ed, 1 );
 
     if  ( after )
 	{
@@ -1768,7 +1838,7 @@ int tedInsertSection(	EditApplication *	ea,
 /*  Insert a (line/page) break particule in the document.		*/
 /*									*/
 /*  TABs could have been inserted with this routine, but against	*/
-/*  flashing, a more subtle approach is ised for TABs.			*/
+/*  flashing, a more subtle approach is used for TABs.			*/
 /*									*/
 /************************************************************************/
 
@@ -1782,15 +1852,15 @@ static void tedEditInsertSpecialParticule(	EditDocument *	ed,
     int				partShift;
 
     DocumentPosition *		dp;
-    int				part;
 
     EditOperation		eo;
     DocumentSelection		ds;
     SelectionGeometry		sg;
+    SelectionDescription	sd;
 
     DocumentSelection		dsRep;
 
-    tedStartEditOperation( &eo, &ds, &sg, ed, 1 );
+    tedStartEditOperation( &eo, &ds, &sg, &sd, ed, 1 );
     dp= &(ds.dsBegin);
 
     if  ( tedEditReplaceSelection( &eo, &dsRep, ed,
@@ -1798,21 +1868,21 @@ static void tedEditInsertSpecialParticule(	EditDocument *	ed,
 	{ return;	}
 
     dp= &(dsRep.dsBegin);
-    part= dp->dpParticule;
 
-    tp= docParaSpecialParticule( eo.eoBd, dp->dpBi, kind,
-				    part, dp->dpStroff,
+    tp= docParaSpecialParticule( eo.eoBd, eo.eoParaBi, kind,
+				    eo.eoParticule, eo.eoStroff,
 				    &partShift, &stroffShift );
     if  ( ! tp )
-	{ LXDEB(part,tp); return;	}
+	{ LXDEB(eo.eoParticule,tp); return;	}
 
     /*  3,4,5  */
     if  ( redoLayout )
-	{ docEditIncludeItemInReformatRange( &eo, dp->dpBi );		}
-    else{ docExtendParagraphAdjust( &eo, dp->dpBi, stroffShift );	}
+	{ docEditIncludeItemInReformatRange( &eo, eo.eoParaBi );	}
+    else{ docExtendParagraphAdjust( &eo, eo.eoParaBi, stroffShift );	}
 
     /*  6,7  */
-    tedEditFinishIBarSelection( ed, &eo, dp->dpBi, dp->dpStroff+ stroffShift );
+    tedEditFinishIBarSelection( ed, &eo, eo.eoParaBi,
+						eo.eoStroff+ stroffShift );
 
     appDocumentChanged( ed, 1 );
 
@@ -1896,11 +1966,12 @@ void tedDocInsertSectBreak(	APP_WIDGET	option,
     EditOperation		eo;
     DocumentSelection		ds;
     SelectionGeometry		sg;
+    SelectionDescription	sd;
 
     DocumentPosition		dpSplit;
     const int			paraShift= 1;
 
-    tedStartEditOperation( &eo, &ds, &sg, ed, 1 );
+    tedStartEditOperation( &eo, &ds, &sg, &sd, ed, 1 );
 
     dpSplit= ds.dsBegin;
 
@@ -1910,8 +1981,7 @@ void tedDocInsertSectBreak(	APP_WIDGET	option,
     if  ( dpSplit.dpStroff > 0 )
 	{
 	if  ( tedSplitParaContents( &eo, &newBi, 
-				dpSplit.dpBi,
-				dpSplit.dpStroff,
+				dpSplit.dpBi, dpSplit.dpStroff,
 				ed, DOClevSECT, onNewPage ) )
 	    { LDEB(1); return;	}
 	}
@@ -1945,10 +2015,12 @@ void tedDocInsertSectBreak(	APP_WIDGET	option,
 
 	    if  ( dpSplit.dpBi->biInExternalItem == DOCinBODY )
 		{
+		const int	isSplit= 0;
+		const int	stroffFrom= 0;
 		const int	sectShift= 1;
 		const int	stroffShift= 0;
 
-		docShiftNoteReferences( bd, paraNr+ 1, 0,
+		docEditShiftReferences( bd, paraNr+ 1, isSplit, stroffFrom,
 					sectShift, paraShift, stroffShift );
 		}
 
@@ -1990,10 +2062,11 @@ int tedReplaceSelectionWithBitmapImage(	EditDocument *		ed,
 
     DocumentSelection		ds;
     SelectionGeometry		sg;
+    SelectionDescription	sd;
 
     DocumentPosition *		dp;
 
-    if  ( tedGetSelection( &ds, &sg, td ) )
+    if  ( tedGetSelection( &ds, &sg, &sd, td ) )
 	{ LDEB(1); return -1;	}
     dp= &(ds.dsBegin);
 
@@ -2003,77 +2076,6 @@ int tedReplaceSelectionWithBitmapImage(	EditDocument *		ed,
 
     if  ( tedReplaceSelectionWithObject( ed, io ) )
 	{ LDEB(1); return -1;	}
-
-    return 0;
-    }
-
-/************************************************************************/
-/*									*/
-/*  Change the kind of note for the current selection.			*/
-/*									*/
-/************************************************************************/
-
-int tedChangeCurrentNote(	EditApplication *	ea,
-				int			extItKind )
-    {
-    EditDocument *		ed= ea->eaCurrentDocument;
-    TedDocument *		td= (TedDocument *)ed->edPrivateData;
-    BufferDocument *		bd= td->tdDocument;
-
-    int				noteIndex;
-    DocumentNote *		dn= (DocumentNote *)0;
-    ExternalItem *		eiNote= (ExternalItem *)0;
-
-    EditOperation		eo;
-    DocumentSelection		ds;
-    SelectionGeometry		sg;
-
-    tedStartEditOperation( &eo, &ds, &sg, ed, 1 );
-
-    noteIndex= docGetSelectedNote( &dn, bd, &ds );
-    if  ( noteIndex < 0 )
-	{ LDEB(noteIndex); return -1;	}
-
-    if  ( dn->dnExternalItemKind == extItKind )
-	{ return 0;	}
-
-    switch( extItKind )
-	{
-	case DOCinFOOTNOTE:
-	    if  ( docCheckNoteSeparatorItem( bd, DOCinFTNSEP ) )
-		{ LLDEB(extItKind,DOCinFTNSEP); return -1;	}
-	    break;
-
-	case DOCinENDNOTE:
-	    if  ( docCheckNoteSeparatorItem( bd, DOCinAFTNSEP ) )
-		{ LLDEB(extItKind,DOCinAFTNSEP); return -1;	}
-	    break;
-
-	default:
-	    LDEB(extItKind); return -1;
-	}
-
-    eiNote= &(dn->dnExternalItem);
-
-    if  ( ds.dsSelectionScope.ssInExternalItem == dn->dnExternalItemKind )
-	{ ds.dsSelectionScope.ssInExternalItem= extItKind;	}
-
-    dn->dnExternalItemKind= extItKind;
-    dn->dnNoteNumber= 0;
-    eiNote->eiPageFormattedFor= -1;
-
-    if  ( ! eiNote->eiItem )
-	{ XDEB(eiNote->eiItem); return -1;	}
-
-    docSetExternalItemKind( eiNote->eiItem, dn->dnExternalItemKind );
-
-    eo.eoNotesDeleted++;
-    eo.eoNotesAdded++;
-
-    if  ( tedEditFinishSelection( ed, &eo, &ds ) )
-	{ LDEB(1);	}
-
-    appDocumentChanged( ed, 1 );
 
     return 0;
     }

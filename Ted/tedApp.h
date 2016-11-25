@@ -8,6 +8,7 @@
 #   include	<geo2DInteger.h>
 #   include	<appDraw.h>
 #   include	"docBuf.h"
+#   include	"docScreenFontList.h"
 
 #   ifndef	TED_APP_H
 #   define	TED_APP_H
@@ -22,92 +23,97 @@
 
 typedef struct TedDocument
     {
-    BufferDocument *	tdDocument;
-    TextAttribute	tdCurrentTextAttribute;
-    int			tdCurrentTextAttributeNumber;
-    int			tdCurrentPhysicalFont;
+    BufferDocument *		tdDocument;
+    TextAttribute		tdCurrentTextAttribute;
+    int				tdCurrentTextAttributeNumber;
+    int				tdCurrentScreenFont;
 
-    DocumentSelection	tdDocumentSelection;
-    SelectionGeometry	tdSelectionGeometry;
+    DocumentSelection		tdDocumentSelection;
+    SelectionGeometry		tdSelectionGeometry;
+    SelectionDescription	tdSelectionDescription;
 
-    APP_WIDGET		tdCopyWidget;
-    APP_WIDGET		tdCutWidget;
-    APP_WIDGET		tdPasteWidget;
+    ScreenFontList		tdScreenFontList;
 
-    APP_WIDGET		tdInsertMenu;
-    APP_WIDGET		tdInsertMenuButton;
-    APP_WIDGET		tdInsPictOption;
-    APP_WIDGET		tdInsFileOption;
-    APP_WIDGET		tdInsSymbolOption;
-    APP_WIDGET		tdInsHyperlinkOption;
-    APP_WIDGET		tdInsBookmarkOption;
-    APP_WIDGET		tdInsInsertFootnoteOption;
-    APP_WIDGET		tdInsInsertEndnoteOption;
-    APP_WIDGET		tdInsInsertChftnsepOption;
-    APP_WIDGET		tdInsInsertTableOption;
-    APP_WIDGET		tdInsInsertPageNumberOption;
-    APP_WIDGET		tdInsInsertLineBreakOption;
-    APP_WIDGET		tdInsInsertPageBreakOption;
-    APP_WIDGET		tdInsInsertSectBreakOption;
+    APP_WIDGET			tdCopyWidget;
+    APP_WIDGET			tdCutWidget;
+    APP_WIDGET			tdPasteWidget;
 
-    APP_WIDGET		tdTableMenu;
-    APP_WIDGET		tdTableMenuButton;
-    APP_WIDGET		tdTabInsertTableOption;
-    APP_WIDGET		tdTabAddRowOption;
-    APP_WIDGET		tdTabAddColumnOption;
+    APP_WIDGET			tdInsertMenu;
+    APP_WIDGET			tdInsertMenuButton;
+    APP_WIDGET			tdInsPictOption;
+    APP_WIDGET			tdInsFileOption;
+    APP_WIDGET			tdInsSymbolOption;
+    APP_WIDGET			tdInsHyperlinkOption;
+    APP_WIDGET			tdInsBookmarkOption;
+    APP_WIDGET			tdInsInsertFootnoteOption;
+    APP_WIDGET			tdInsInsertEndnoteOption;
+    APP_WIDGET			tdInsInsertChftnsepOption;
+    APP_WIDGET			tdInsInsertTableOption;
+    APP_WIDGET			tdInsInsertPageNumberOption;
+    APP_WIDGET			tdInsInsertLineBreakOption;
+    APP_WIDGET			tdInsInsertPageBreakOption;
+    APP_WIDGET			tdInsInsertSectBreakOption;
 
-    APP_WIDGET		tdFormatMenu;
-    APP_WIDGET		tdFormatMenuButton;
-    APP_WIDGET		tdFormatOneParaOption;
+    APP_WIDGET			tdTableMenu;
+    APP_WIDGET			tdTableMenuButton;
+    APP_WIDGET			tdTabInsertTableOption;
+    APP_WIDGET			tdTabAddRowOption;
+    APP_WIDGET			tdTabAddColumnOption;
 
-    APP_WIDGET		tdSelectTableWidget;
-    APP_WIDGET		tdSelectRowWidget;
-    APP_WIDGET		tdSelectColumnOption;
-    APP_WIDGET		tdDrawTableGridOption;
+    APP_WIDGET			tdFormatMenu;
+    APP_WIDGET			tdFormatMenuButton;
+    APP_WIDGET			tdFormatOneParaOption;
 
-    APP_WIDGET		tdFontMenu;
-    APP_WIDGET		tdFontMenuButton;
-    APP_WIDGET		tdFontBoldOption;
-    APP_WIDGET		tdFontItalicOption;
-    APP_WIDGET		tdFontUnderlinedOption;
-    APP_WIDGET		tdFontSuperscriptOption;
-    APP_WIDGET		tdFontSubscriptOption;
+    APP_WIDGET			tdSelectTableWidget;
+    APP_WIDGET			tdSelectRowWidget;
+    APP_WIDGET			tdSelectColumnOption;
+    APP_WIDGET			tdDrawTableGridOption;
 
-    APP_WIDGET		tdToolsMenu;
-    APP_WIDGET		tdToolsMenuButton;
-    APP_WIDGET		tdToolsFormatToolOption;
+    APP_WIDGET			tdFontMenu;
+    APP_WIDGET			tdFontMenuButton;
+    APP_WIDGET			tdFontBoldOption;
+    APP_WIDGET			tdFontItalicOption;
+    APP_WIDGET			tdFontUnderlinedOption;
+    APP_WIDGET			tdFontSuperscriptOption;
+    APP_WIDGET			tdFontSubscriptOption;
 
-    APP_COLOR_RGB	tdFieldColor;
+    APP_WIDGET			tdToolsMenu;
+    APP_WIDGET			tdToolsMenuButton;
+    APP_WIDGET			tdToolsFormatToolOption;
 
-    RGB8Color		tdTableColor;
-    RGB8Color		tdSelColor;
-    RGB8Color		tdCopiedSelColor;
+    APP_COLOR_RGB		tdFieldColor;
 
-    int			tdVisibleSelectionCopied;
-    int			tdCanReplaceSelection;
-    int			tdCopiedSelectionClosed;
-    MemoryBuffer	tdCopiedSelection;
-    MemoryBuffer	tdCopiedFont;
-    MemoryBuffer	tdCopiedRuler;
-    AppBitmapImage	tdCopiedImage;
+    RGB8Color			tdTableColor;
+    RGB8Color			tdSelColor;
+    RGB8Color			tdCopiedSelColor;
+
+    int				tdVisibleSelectionCopied;
+    int				tdCanReplaceSelection;
+    int				tdCopiedSelectionClosed;
+    MemoryBuffer		tdCopiedSelection;
+    MemoryBuffer		tdCopiedFont;
+    MemoryBuffer		tdCopiedRuler;
+    AppBitmapImage		tdCopiedImage;
+
+    void *			tdFindProg;
 
 #   ifdef USE_MOTIF
-    XtIntervalId	tdHideIBarId;
-    XtIntervalId	tdShowIBarId;
+    XtIntervalId		tdHideIBarId;
+    XtIntervalId		tdShowIBarId;
 #   endif
 
 #   ifdef USE_GTK
-    guint		tdHideIBarId;
-    guint		tdShowIBarId;
+    guint			tdHideIBarId;
+    guint			tdShowIBarId;
 #   endif
 
-    APP_WINDOW		tdObjectWindow;
-    APP_WINDOW		tdObjectBottomWindow;
-    APP_WINDOW		tdObjectRightWindow;
-    APP_WINDOW		tdObjectCornerWindow;
-    int			tdObjectSelected;
+    APP_WINDOW			tdObjectWindow;
+    APP_WINDOW			tdObjectBottomWindow;
+    APP_WINDOW			tdObjectRightWindow;
+    APP_WINDOW			tdObjectCornerWindow;
+    int				tdObjectSelected;
 
-    int			tdDrawTableGrid;
+    int				tdDrawTableGrid;
     } TedDocument;
 
 /************************************************************************/
@@ -158,6 +164,13 @@ typedef struct TedAppResources
 
     AppInspector *		tarInspector;
     EditDocument *		tarManualDocument;
+
+				/****************************************/
+				/*  For Ted --Find and Ted --RegFind	*/
+				/****************************************/
+
+    const unsigned char *	tarFindPattern;
+    int				tarFindRegex;
     } TedAppResources;
 
 /************************************************************************/
@@ -219,15 +232,7 @@ extern AppSelectionTargetType TedRulerTargets[];
 extern int tedLayoutItem(	BufferItem *			bi,
 				BufferDocument *		bd,
 				AppDrawingData *		add,
-				DocumentRectangle *		drChanged );
-
-extern int tedLayoutExternalItem(
-				int *				pY1Twips,
-				ExternalItem *			ei,
-				int				page,
-				int				y0Twips,
-				BufferDocument *		bd,
-				AppDrawingData *		add,
+				ScreenFontList *		sfl,
 				DocumentRectangle *		drChanged );
 
 extern int tedFindPosition(	DocumentPosition *		dp,
@@ -235,6 +240,7 @@ extern int tedFindPosition(	DocumentPosition *		dp,
 				const BufferDocument *		bd,
 				BufferItem *			rootBi,
 				const AppDrawingData *		add,
+				const ScreenFontList *		sfl,
 				int				x,
 				int				y );
 
@@ -247,6 +253,7 @@ extern int tedFindStringOffset(	const BufferDocument *		bd,
 				const BufferItem *		paraBi,
 				int				part,
 				const AppDrawingData *		add,
+				const ScreenFontList *		sfl,
 				int *				pBarX,
 				int				x,
 				int				y );
@@ -255,23 +262,16 @@ extern int tedHasSelection(	const TedDocument *		td );
 extern int tedHasIBarSelection(	const TedDocument *		td );
 
 extern int tedArrowDown(	DocumentPosition *		bp,
+				const PositionGeometry *	pg,
 				const BufferDocument *		bd,
-				const AppDrawingData *		add );
+				const AppDrawingData *		add,
+				const ScreenFontList *		sfl );
 
-extern int tedLineUp(		DocumentPosition *		bp,
+extern int tedArrowUp(		DocumentPosition *		bp,
+				const PositionGeometry *	pg,
 				const BufferDocument *		bd,
-				const AppDrawingData *		add );
-
-extern int tedPageUp(	DocumentPosition *			dp,
-			BufferDocument *			bd,
-			const AppDrawingData *			add,
-			int					pageHeight );
-
-extern int tedPageDown(	DocumentPosition *			dp,
-			BufferDocument *			bd,
-			const AppDrawingData *			add,
-			int					docHeight,
-			int					pageHeight );
+				const AppDrawingData *		add,
+				const ScreenFontList *		sfl );
 
 extern APP_EVENT_HANDLER_H( tedObserveFocus, w, voided, event );
 
@@ -291,7 +291,7 @@ extern int tedChangeSelectionProperties(
 
 extern void tedRedrawRectangle(	APP_WIDGET		w,
 				TedDocument *		td,
-				DocumentRectangle *	drClip,
+				const DocumentRectangle *	drClip,
 				AppDrawingData *	add,
 				AppColors *		ac,
 				int			ox,
@@ -301,6 +301,10 @@ extern void tedDelimitCurrentSelection(	TedDocument *		td,
 					AppDrawingData *	add );
 
 extern void tedDocToolFind(		APP_WIDGET	findOption,
+					void *		voided,
+					void *		voidcbs );
+
+extern void tedDocToolFindNext(		APP_WIDGET	findOption,
 					void *		voided,
 					void *		voidcbs );
 
@@ -324,12 +328,6 @@ extern int tedGetDocumentAttributes(
 				PropertyMask *			pUpdMask,
 				TextAttribute *			pTaNew );
 
-extern void tedGetSelectionAttributes(
-				BufferDocument *		bd,
-				const DocumentSelection *	ds,
-				PropertyMask *			pUpdMask,
-				TextAttribute *			pTaNew );
-
 extern void tedDocCopy(		EditDocument *	ed );
 extern void tedDocCut(		EditDocument *	ed );
 
@@ -337,6 +335,7 @@ extern void tedDocSelAll(	EditDocument *	ed );
 
 extern void tedSetSelection(	EditDocument *			ed,
 				const DocumentSelection *	dsSet,
+				int				lastLine,
 				int *				pScrolledX,
 				int *				pScrolledY );
 
@@ -353,6 +352,12 @@ extern int tedDeleteTableSliceSelection(	EditDocument *	ed );
 extern void tedSetSelectedPosition(
 				EditDocument *			ed,
 				const DocumentPosition *	dp,
+				int				lastLine,
+				int *				pScrolledX,
+				int *				pScrolledY );
+
+extern int tedSelectItemHome(	EditDocument *			ed,
+				BufferItem *			bi,
 				int *				pScrolledX,
 				int *				pScrolledY );
 
@@ -531,6 +536,7 @@ extern InsertedObject * tedObjectMakeBitmapObject(
 					AppBitmapImage *	abi );
 
 extern int tedGetObjectSelection(	TedDocument *   	td,
+					int *			pPart,
 					DocumentPosition *	dpObject,
 					InsertedObject **	pIo );
 
@@ -543,6 +549,7 @@ extern void tedSetObjectWindows(EditDocument *			ed,
 extern void tedMoveObjectWindows(	EditDocument *		ed );
 
 extern int tedResizeObject(		EditDocument *			ed,
+					int				part,
 					const DocumentPosition *	dpObj,
 					const PositionGeometry *	pgObj );
 
@@ -562,13 +569,18 @@ extern void tedExposeSelection(	const EditDocument *		ed,
 
 extern void tedPositionGeometry(	PositionGeometry *		pg,
 					const DocumentPosition *	dp,
+					int				lastOne,
 					const BufferDocument *		bd,
-					const AppDrawingData *		add );
+					const AppDrawingData *		add,
+					const ScreenFontList *		sfl );
 
-extern void tedSelectionGeometry(	SelectionGeometry *		sg,
-					const DocumentSelection *	ds,
-					const BufferDocument *		bd,
-					const AppDrawingData *		add );
+extern void tedSelectionGeometry(
+			SelectionGeometry *		sg,
+			const DocumentSelection *	ds,
+			int				lastLine,
+			const BufferDocument *		bd,
+			const AppDrawingData *		add,
+			const ScreenFontList *		sfl );
 
 extern void tedDrawRectangle(	APP_WIDGET		w,
 				EditDocument *		ed,
@@ -584,8 +596,8 @@ extern void tedDocVerticalScrollbarCallback(	APP_WIDGET	w,
 						void *		voided,
 						void *		voidscbs );
 
-extern int tedFinishDocumentSetup(	EditApplication *	ea,
-					EditDocument *		ed );
+extern int tedFinishDocumentSetup(	EditDocument *		ed );
+extern void tedDocumentFirstVisible(	EditDocument *		ed );
 
 extern void tedDocFormatCopyRul(	APP_WIDGET	fontsOption,
 					void *		voided,
@@ -640,7 +652,8 @@ extern void tedAppSetTableProperties(	EditApplication *	ea,
 					const PropertyMask *	cpSetMask,
 					const RowProperties *	rp );
 
-extern void tedAdaptFormatToolToDocument(	EditDocument *	ed );
+extern void tedAdaptFormatToolToDocument(	EditDocument *	ed,
+						int		choosePage );
 
 extern void tedAppSetTableSelection(	EditDocument *		ed,
 					const TableRectangle *	tr );
@@ -680,7 +693,13 @@ extern int tedRunPropertyDialog( EditDocument *			ed,
 				APP_WIDGET			option,
 				const char *			pixmapName );
 
-extern int tedSetHyperlink(	EditDocument *		ed,
+extern int tedDocSetHyperlink(	EditDocument *		ed,
+				const char *		file,
+				const char *		mark,
+				int			asRef,
+				int			asPageref );
+
+extern int tedAppSetHyperlink(	EditApplication *	ea,
 				const char *		file,
 				const char *		mark,
 				int			asRef,
@@ -689,7 +708,8 @@ extern int tedSetHyperlink(	EditDocument *		ed,
 extern int tedSetBookmark(	EditDocument *		ed,
 				const char *		mark );
 
-extern int tedRemoveHyperlink(	EditDocument *		ed );
+extern int tedDocRemoveHyperlink(	EditDocument *		ed );
+extern int tedAppRemoveHyperlink(	EditApplication *	ea );
 
 extern int tedRemoveBookmark(	EditDocument *		ed );
 
@@ -697,14 +717,6 @@ extern int tedCopyBookmarkAsLink(	EditDocument *	ed,
 					int		asRef,
 					int		asPageref,
 					const char *	link );
-
-extern void tedRunLinkDialog(	EditApplication *	ea,
-				EditDocument *		ed,
-				APP_WIDGET		option,
-				const char *		fileName,
-				int			fileSize,
-				const char *		markName,
-				int			markSize );
 
 extern void tedRunBookmarkDialog(	EditApplication *	ea,
 					EditDocument *		ed,
@@ -727,9 +739,15 @@ extern void * tedMakePrivateData( void );
 
 extern void tedMakeDocumentReadonly(	EditDocument *	ed );
 
-extern int tedFollowLink(	APP_WIDGET		relative,
-				APP_WIDGET		option,
+extern int tedDocFollowLink(	APP_WIDGET		option,
 				EditDocument *		edFrom,
+				const char *		fileName,
+				int			fileSize,
+				const char *		markName,
+				int			markSize );
+
+extern int tedAppFollowLink(	APP_WIDGET		option,
+				EditApplication *	ea,
 				const char *		fileName,
 				int			fileSize,
 				const char *		markName,
@@ -754,15 +772,14 @@ extern int tedGetParaLineHeight(	int *			pLineHeight,
 					EditDocument *		ed );
 
 extern void tedShowFormatTool(	APP_WIDGET		toolOption,
-				EditApplication *	ea,
-				const char *		widgetName,
-				const char *		pixmapName );
+				EditApplication *	ea );
 
 extern void tedFormatToolAdaptToSelection( AppInspector *	ai,
-				BufferDocument *		bd,
+				EditDocument *			ed,
+				int				choosePage,
 				const DocumentSelection *	ds,
 				const SelectionGeometry *	sg,
-				int				fileReadonly );
+				const SelectionDescription *	sd );
 
 extern int tedNewDocument(	EditApplication *	ea,
 				EditDocument *		ed,
@@ -774,6 +791,9 @@ extern int tedPrintDocument(	SimpleOutputStream *		sos,
 				int				firstPage,
 				int				lastPage );
 
+extern void tedSuggestNup(	PrintGeometry *			pg,
+				void *				privateData );
+
 extern void tedFreeDocument(		void *			voidtd,
 					int			format,
 					AppDrawingData *	add );
@@ -782,19 +802,21 @@ extern void tedRedoDocumentLayout(	EditDocument *		ed );
 
 extern void tedFormatShowPagePage( EditApplication *		ea );
 extern void tedFormatShowFontPage( EditApplication *		ea );
+extern void tedFormatShowLinkPage( EditApplication *		ea );
 
 extern void tedSetPageLayout(	EditApplication *		ea,
 				const DocumentGeometry *	dg,
 				const PropertyMask *		setMask,
 				int				whileDocument );
 
-extern int tedSetDocumentProperties(
+extern int tedAppSetDocumentProperties(
 				EditApplication *		ea,
 				const DocumentProperties *	dpNew,
 				const PropertyMask *		updMask );
 
-extern int tedChangeCurrentNote(
-				EditApplication *		ea,
+extern int tedChangeCurrentNote( EditApplication *		ea,
+				int				autoNumber,
+				const unsigned char *		fixedText,
 				int				extItKind );
 
 extern APP_EVENT_HANDLER_H( tedKeyPressed, w, voided, keyEvent );
@@ -807,10 +829,19 @@ extern int tedAppChangeSectionProperties(
 				const PropertyMask *		spUpdMask,
 				const SectionProperties *	spNew );
 
+extern int tedAppChangeAllSectionProperties(
+				EditApplication *		ea,
+				const PropertyMask *		spUpdMask,
+				const SectionProperties *	spNew );
+
 extern int tedAppChangeParagraphProperties(
 				EditApplication *		ea,
 				const PropertyMask *		ppUpdMask,
 				const ParagraphProperties *	ppNew );
+
+extern int tedAppChangeCurrentList(
+				EditApplication *		ea,
+				const DocumentList *		dlNew );
 
 extern int tedDocChangeParagraphProperties(
 				EditDocument *			ed,
@@ -827,17 +858,11 @@ extern void tedAppEditHeaderFooter(	EditApplication *	ea,
 
 extern int tedGetSelection(	DocumentSelection *	ds,
 				SelectionGeometry *	sg,
+				SelectionDescription *	sd,
 				TedDocument *		td );
 
 extern void tedFillBookmarkList(	APP_WIDGET		list,
 					DocumentFieldList *	dfl );
-
-extern int tedTextWidth(		const AppPhysicalFont *		apf,
-					const TextAttribute *		ta,
-					const BufferDocument *		bd,
-					const AppDrawingData *		add,
-					const unsigned char *		s,
-					int				len );
 
 extern int tedFindRootForPosition(	ExternalItem **		pEi,
 					BufferItem **		pRootBi,
@@ -888,11 +913,27 @@ extern void tedFontToolSet(	void *				voidea,
 				const ExpandedTextAttribute *	etaSet,
 				const PropertyMask *		taSetMask );
 
+extern void tedListFontToolSet(	void *				voidea,
+				const ExpandedTextAttribute *	etaSet,
+				const PropertyMask *		taSetMask );
+
 extern int tedOpenDocumentFile(	EditApplication *	ea,
 				int *			pFormat,
 				BufferDocument **	pBd,
 				const char *		filename,
 				APP_WIDGET		relative,
 				APP_WIDGET		option );
+
+extern int tedDocFindNext(	EditDocument *		ed );
+extern int tedDocFindPrev(	EditDocument *		ed );
+
+extern int tedFindSetPattern(	EditDocument *		ed,
+				const unsigned char *	pattern,
+				int			useRegex );
+
+extern int tedDrawDrawingPixmap( APP_BITMAP_IMAGE		pixmap,
+				const InsertedObject *		io,
+				AppColors *			ac,
+				AppDrawingData *		parentAdd );
 
 #   endif	/*  TED_APP_H	*/

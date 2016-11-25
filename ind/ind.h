@@ -190,6 +190,7 @@ extern void indCleanSpellCheckContext(  SpellCheckContext *     scc );
 extern void indSpellIso1CharacterKinds(	SpellCheckContext *	scc );
 extern void indSpellIso2CharacterKinds(	SpellCheckContext *	scc );
 extern void indSpellIso7CharacterKinds(	SpellCheckContext *	scc );
+extern void indSpellIso5CharacterKinds(	SpellCheckContext *	scc );
 extern void indSpellKoi8rCharacterKinds( SpellCheckContext *	scc );
 
 #   endif /*	IND_H						    }}	*/

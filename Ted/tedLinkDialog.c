@@ -1,6 +1,6 @@
 /************************************************************************/
 /*									*/
-/*  Ted: Link dialog.							*/
+/*  Ted: Link page on format tool.					*/
 /*									*/
 /************************************************************************/
 
@@ -12,150 +12,10 @@
 #   include	<string.h>
 
 #   include	"tedApp.h"
+#   include	"tedLinkTool.h"
+#   include	"appInspector.h"
 
 #   include	<appDebugon.h>
-
-/************************************************************************/
-/*									*/
-/*  User data for a link dialog.					*/
-/*									*/
-/************************************************************************/
-
-typedef struct LinkContext
-    {
-    AppDialog		lcDialog;
-    APP_WIDGET		lcPaned;
-
-    APP_WIDGET		lcFileTextWidget;
-    APP_WIDGET		lcMarkTextWidget;
-    APP_WIDGET		lcMarkListWidget;
-
-    APP_WIDGET		lcButtonRow;
-    APP_WIDGET		lcSetLinkButton;
-    APP_WIDGET		lcFollowLinkButton;
-    APP_WIDGET		lcRemoveLinkButton;
-    APP_WIDGET		lcCancelButton;
-
-    APP_WIDGET		lcLinkAsFrame;
-    APP_WIDGET		lcLinkAsPaned;
-    AppOptionmenu	lcLinkAsOptionmenu;
-    APP_WIDGET		lcLinkAsItems[LINKkind_COUNT];
-
-    char *		lcFileText;
-    char *		lcMarkText;
-
-    char *		lcLinkAsText;
-    char *		lcLinkAsItemTexts[LINKkind_COUNT];
-
-    char *		lcSetLinkText;
-    char *		lcFollowLinkText;
-    char *		lcRemoveLinkText;
-    char *		lcCancelText;
-
-    char *		lcSavedFile;
-    char *		lcSavedMark;
-
-    int			lcLinkKind;
-
-    EditDocument *	lcDocument;
-    } LinkContext;
-
-/************************************************************************/
-/*									*/
-/*  Resource table for various texts.					*/
-/*									*/
-/************************************************************************/
-
-static AppConfigurableResource TED_LinkResourceTable[]=
-{
-    APP_RESOURCE( "hyperlinkDocument",
-		offsetof(LinkContext,lcFileText),
-		"Document" ),
-    APP_RESOURCE( "hyperlinkBookmark",
-		offsetof(LinkContext,lcMarkText),
-		"Bookmark" ),
-
-    APP_RESOURCE( "hyperlinkLinkAs",
-		offsetof(LinkContext,lcLinkAsText),
-		"Link as" ),
-
-    APP_RESOURCE( "hyperlinkLinkAsHyperlink",
-		offsetof(LinkContext,lcLinkAsItemTexts[LINKkindHYPERLINK]),
-		"Hyperlink" ),
-    APP_RESOURCE( "hyperlinkLinkAsPageNumber",
-		offsetof(LinkContext,lcLinkAsItemTexts[LINKkindPAGE_NUMBER]),
-		"Page Number" ),
-    APP_RESOURCE( "hyperlinkLinkAsBookmarkText",
-		offsetof(LinkContext,lcLinkAsItemTexts[LINKkindBOOKMARK_TEXT]),
-		"Bookmark Text" ),
-    APP_RESOURCE( "hyperlinkLinkAsTextPlusPage",
-		offsetof(LinkContext,lcLinkAsItemTexts[LINKkindTEXT_PLUS_PAGE]),
-		"Text and Page Number" ),
-
-    APP_RESOURCE( "hyperlinkSetLink",
-		offsetof(LinkContext,lcSetLinkText),
-		"Set Link" ),
-    APP_RESOURCE( "hyperlinkRemoveLink",
-		offsetof(LinkContext,lcRemoveLinkText),
-		"Remove Link" ),
-    APP_RESOURCE( "hyperlinkFollowLink",
-		offsetof(LinkContext,lcFollowLinkText),
-		"Follow Link" ),
-    APP_RESOURCE( "hyperlinkCancel",
-		offsetof(LinkContext,lcCancelText),
-		"Cancel" ),
-};
-
-/************************************************************************/
-/*									*/
-/*  Button callbacks.							*/
-/*									*/
-/*  NOTE that the NO,YES responses are abused for 'Remove,Set Link'.	*/
-/*									*/
-/************************************************************************/
-
-static APP_CLOSE_CALLBACK_H( tedLinkDialogClosed, w, voidlc )
-    {
-    LinkContext *		lc= (LinkContext *)voidlc;
-
-    appGuiBreakDialog( &(lc->lcDialog), AQDrespCANCEL );
-    }
-
-static APP_BUTTON_CALLBACK_H( tedLinkSetButtonPushed, w, voidlc )
-    {
-    LinkContext *		lc= (LinkContext *)voidlc;
-
-    appGuiBreakDialog( &(lc->lcDialog), AQDrespYES );
-
-    return;
-    }
-
-static APP_BUTTON_CALLBACK_H( tedLinkFollowButtonPushed, w, voidlc )
-    {
-    LinkContext *		lc= (LinkContext *)voidlc;
-
-    appGuiBreakDialog( &(lc->lcDialog), AQDrespOK );
-
-    return;
-    }
-
-static APP_BUTTON_CALLBACK_H( tedLinkRemoveButtonPushed, w, voidlc )
-    {
-    LinkContext *		lc= (LinkContext *)voidlc;
-
-    appGuiBreakDialog( &(lc->lcDialog), AQDrespNO );
-
-    return;
-    }
-
-static APP_BUTTON_CALLBACK_H( tedLinkCancelButtonPushed, w, voidlc )
-    {
-    LinkContext *		lc= (LinkContext *)voidlc;
-
-    appGuiBreakDialog( &(lc->lcDialog), AQDrespCANCEL );
-
-    return;
-    }
 
 /************************************************************************/
 /*									*/
@@ -164,45 +24,50 @@ static APP_BUTTON_CALLBACK_H( tedLinkCancelButtonPushed, w, voidlc )
 /*									*/
 /************************************************************************/
 
-static void tedLinkAdaptToText(	LinkContext *		lc,
+static void tedLinkAdaptToText(	LinkTool *		lt,
 				const char *		fileName,
 				const char *		markName )
     {
-    EditDocument *		ed= lc->lcDocument;
     int				gotSomething;
-    int				isLocal= fileName[0] == '\0';
-
-    const char *		savedFile= lc->lcSavedFile;
-    const char *		savedMark= lc->lcSavedMark;
-
+    int				isLocal;
     int				changed;
 
-    if  ( ! savedFile )
-	{ savedFile= "";	}
-    if  ( ! savedMark )
-	{ savedMark= "";	}
+    const char *		fileSaved= lt->ltFileSet;
+    const char *		markSaved= lt->ltMarkSet;
+
+    if  ( ! fileSaved )
+	{ fileSaved= "";	}
+    if  ( ! markSaved )
+	{ markSaved= "";	}
+
+    if  ( ! fileName )
+	{ fileName= "";	}
+    if  ( ! markName )
+	{ markName= "";	}
+
+    isLocal= fileName[0] == '\0';
 
     gotSomething= markName[0] != '\0' || fileName[0] != '\0';
-    changed= strcmp( fileName, savedFile ) || strcmp( markName, savedMark );
+    changed= strcmp( fileName, fileSaved ) || strcmp( markName, markSaved );
 
-    appGuiEnableWidget( lc->lcSetLinkButton,
-			! ed->edIsReadonly && changed && gotSomething );
-    appGuiEnableWidget( lc->lcRemoveLinkButton, gotSomething && ! changed );
+    appGuiEnableWidget( lt->ltSetLinkButton,
+			! lt->ltDocumentReadonly && changed && gotSomething );
+    appGuiEnableWidget( lt->ltRemoveLinkButton, gotSomething && ! changed );
 
-    appGuiEnableWidget( lc->lcFollowLinkButton, gotSomething );
+    appGuiEnableWidget( lt->ltFollowLinkButton, gotSomething );
 
-    appGuiEnableWidget( lc->lcMarkListWidget, isLocal );
+    appGuiEnableWidget( lt->ltMarkListWidget, isLocal );
 
-    if  ( lc->lcLinkAsItems[LINKkindHYPERLINK] )
+    if  ( lt->ltLinkAsItems[LINKkindHYPERLINK] )
 	{
-	appGuiEnableWidget( lc->lcLinkAsItems[LINKkindPAGE_NUMBER], isLocal );
-	appGuiEnableWidget( lc->lcLinkAsItems[LINKkindBOOKMARK_TEXT], isLocal );
-	appGuiEnableWidget( lc->lcLinkAsItems[LINKkindTEXT_PLUS_PAGE], isLocal);
+	appGuiEnableWidget( lt->ltLinkAsItems[LINKkindPAGE_NUMBER], isLocal );
+	appGuiEnableWidget( lt->ltLinkAsItems[LINKkindBOOKMARK_TEXT], isLocal );
+	appGuiEnableWidget( lt->ltLinkAsItems[LINKkindTEXT_PLUS_PAGE], isLocal);
 
-	if  ( lc->lcLinkKind != LINKkindHYPERLINK && ! isLocal )
+	if  ( lt->ltLinkKind != LINKkindHYPERLINK && ! isLocal )
 	    {
-	    lc->lcLinkKind= LINKkindHYPERLINK;
-	    appSetOptionmenu( &(lc->lcLinkAsOptionmenu), LINKkindHYPERLINK );
+	    lt->ltLinkKind= LINKkindHYPERLINK;
+	    appSetOptionmenu( &(lt->ltLinkAsOptionmenu), LINKkindHYPERLINK );
 	    }
 	}
 
@@ -210,9 +75,9 @@ static void tedLinkAdaptToText(	LinkContext *		lc,
     }
 
 /*  A  */
-static APP_LIST_CALLBACK_H( tedLinkBookmarkChosen, w, voidlc, voidlcs )
+static APP_LIST_CALLBACK_H( tedLinkBookmarkChosen, w, voidlt, voidlcs )
     {
-    LinkContext *		lc= (LinkContext *)voidlc;
+    LinkTool *		lt= (LinkTool *)voidlt;
 
     char *			fileName;
     char *			markName;
@@ -220,13 +85,13 @@ static APP_LIST_CALLBACK_H( tedLinkBookmarkChosen, w, voidlc, voidlcs )
     markName= appGuiGetStringFromListCallback( w, voidlcs );
     if  ( ! markName )
 	{ XDEB(markName); return;	}
-    fileName= appGetStringFromTextWidget( lc->lcFileTextWidget );
+    fileName= appGetStringFromTextWidget( lt->ltFileTextWidget );
     if  ( ! fileName )
 	{ XDEB(fileName); return;	}
 
-    appStringToTextWidget( lc->lcMarkTextWidget, markName );
+    appStringToTextWidget( lt->ltMarkTextWidget, markName );
 
-    tedLinkAdaptToText( lc, fileName, markName );
+    tedLinkAdaptToText( lt, fileName, markName );
 
     appFreeStringFromListCallback( markName );
     appFreeStringFromTextWidget( fileName );
@@ -235,20 +100,20 @@ static APP_LIST_CALLBACK_H( tedLinkBookmarkChosen, w, voidlc, voidlcs )
     }
 
 /*  B  */
-static APP_TXTYPING_CALLBACK_H( tedLinkDestinationChanged, w, voidlc )
+static APP_TXTYPING_CALLBACK_H( tedLinkDestinationChanged, w, voidlt )
     {
-    LinkContext *		lc= (LinkContext *)voidlc;
+    LinkTool *		lt= (LinkTool *)voidlt;
     char *			fileName;
     char *			markName;
 
-    fileName= appGetStringFromTextWidget( lc->lcFileTextWidget );
+    fileName= appGetStringFromTextWidget( lt->ltFileTextWidget );
     if  ( ! fileName )
 	{ XDEB(fileName); return;	}
-    markName= appGetStringFromTextWidget( lc->lcMarkTextWidget );
+    markName= appGetStringFromTextWidget( lt->ltMarkTextWidget );
     if  ( ! markName )
 	{ XDEB(markName); return;	}
 
-    tedLinkAdaptToText( lc, fileName, markName );
+    tedLinkAdaptToText( lt, fileName, markName );
 
     appFreeStringFromTextWidget( fileName );
     appFreeStringFromTextWidget( markName );
@@ -262,203 +127,383 @@ static APP_TXTYPING_CALLBACK_H( tedLinkDestinationChanged, w, voidlc )
 /*									*/
 /************************************************************************/
 
-static APP_OITEM_CALLBACK_H( tedLinkKindChosen, w, voidlc )
+static APP_OITEM_CALLBACK_H( tedLinkKindChosen, w, voidlt )
     {
-    LinkContext *		lc= (LinkContext *)voidlc;
+    LinkTool *		lt= (LinkTool *)voidlt;
+    int			linkKind;
 
-    int				linkKind;
-
-    linkKind= appGuiGetOptionmenuItemIndex( &(lc->lcLinkAsOptionmenu), w );
+    linkKind= appGuiGetOptionmenuItemIndex( &(lt->ltLinkAsOptionmenu), w );
     if  ( linkKind < 0 || linkKind >= LINKkind_COUNT )
 	{ LLDEB(linkKind,LINKkind_COUNT); return;	}
 
-    lc->lcLinkKind= linkKind;
+    lt->ltLinkKind= linkKind;
 
     return;
     }
 
 /************************************************************************/
 /*									*/
-/*  Make the strip with the buttons.					*/
+/*  'Revert' was pushed.						*/
 /*									*/
 /************************************************************************/
 
-static void tedLinkMakeButtonForm(	LinkContext *	lc )
+static APP_BUTTON_CALLBACK_H( tedLinkRevertPushed, w, voidlt )
     {
-    const int		heightResizable= 0;
+    LinkTool *		lt= (LinkTool *)voidlt;
 
-    lc->lcButtonRow= appMakeRowInColumn( lc->lcPaned, 4, heightResizable );
+    if  ( lt->ltFileChosen )
+	{
+	free( lt->ltFileChosen );
+	lt->ltFileChosen= (char *)0;
+	}
 
+    if  ( lt->ltMarkChosen )
+	{
+	free( lt->ltMarkChosen );
+	lt->ltMarkChosen= (char *)0;
+	}
 
-    appMakeButtonInRow( &(lc->lcSetLinkButton), lc->lcButtonRow,
-				lc->lcSetLinkText,
-				tedLinkSetButtonPushed, (void *)lc, 0, 1 );
+    if  ( lt->ltFileSet )
+	{
+	lt->ltFileChosen= strdup( lt->ltFileSet );
+	if  ( ! lt->ltFileChosen )
+	    { XDEB(lt->ltFileChosen);	}
+	}
 
-    appMakeButtonInRow( &(lc->lcFollowLinkButton), lc->lcButtonRow,
-				lc->lcFollowLinkText,
-				tedLinkFollowButtonPushed, (void *)lc, 1, 0 );
+    if  ( lt->ltMarkSet )
+	{
+	lt->ltMarkChosen= strdup( lt->ltMarkSet );
+	if  ( ! lt->ltMarkChosen )
+	    { XDEB(lt->ltMarkChosen);	}
+	}
 
-    appMakeButtonInRow( &(lc->lcRemoveLinkButton), lc->lcButtonRow,
-				lc->lcRemoveLinkText,
-				tedLinkRemoveButtonPushed, (void *)lc, 2, 0 );
+    if  ( lt->ltFileChosen )
+	{ appStringToTextWidget( lt->ltFileTextWidget, lt->ltFileChosen ); }
+    else{ appStringToTextWidget( lt->ltFileTextWidget, "" );		   }
 
-    appMakeButtonInRow( &(lc->lcCancelButton), lc->lcButtonRow,
-				lc->lcCancelText,
-				tedLinkCancelButtonPushed, (void *)lc, 3, 0 );
+    if  ( lt->ltMarkChosen )
+	{ appStringToTextWidget( lt->ltMarkTextWidget, lt->ltMarkChosen ); }
+    else{ appStringToTextWidget( lt->ltMarkTextWidget, "" );		   }
 
-    appGuiSetDefaultButtonForDialog( &(lc->lcDialog), lc->lcSetLinkButton );
-    appGuiSetCancelButtonForDialog( &(lc->lcDialog), lc->lcCancelButton );
+    tedLinkAdaptToText( lt, lt->ltFileChosen, lt->ltMarkChosen );
 
     return;
     }
 
-static void tedLinkMakeList(	LinkContext *	lc )
+/************************************************************************/
+/*									*/
+/*  'Revert' was pushed.						*/
+/*									*/
+/************************************************************************/
+
+static APP_BUTTON_CALLBACK_H( tedLinkChangePushed, w, voidlt )
     {
-    APP_WIDGET		list;
-    const int		visibleItems= 9;
+    LinkTool *		lt= (LinkTool *)voidlt;
+    EditApplication *	ea= lt->ltApplication;
 
-    appGuiMakeListInColumn( &list, lc->lcPaned, visibleItems,
-					tedLinkBookmarkChosen, (void *)lc );
+    char *		file= (char *)0;
+    char *		mark= (char *)0;
 
-    lc->lcMarkListWidget= list;
-    
+    int			asRef;
+    int			asPageref;
+
+    file= appGetStringFromTextWidget( lt->ltFileTextWidget );
+    if  ( ! file )
+	{ XDEB(file); goto ready;	}
+    mark= appGetStringFromTextWidget( lt->ltMarkTextWidget );
+    if  ( ! mark )
+	{ XDEB(mark); goto ready;	}
+
+    switch( lt->ltLinkKind )
+	{
+	case LINKkindHYPERLINK:
+	    asRef= asPageref= 0;
+	    break;
+
+	case LINKkindPAGE_NUMBER:
+	    asRef= 0; asPageref= 1;
+	    break;
+
+	case LINKkindBOOKMARK_TEXT:
+	    asRef= 1; asPageref= 0;
+	    break;
+
+	case LINKkindTEXT_PLUS_PAGE:
+	    asRef= asPageref= 1;
+	    break;
+
+	default:
+	    LDEB(lt->ltLinkKind);
+	    asRef= asPageref= 0;
+	    break;
+	}
+
+    if  ( tedAppSetHyperlink( ea, file, mark, asRef, asPageref ) )
+	{ SSDEB(file,mark);	}
+
+  ready:
+    if  ( file )
+	{ appFreeStringFromTextWidget( file );	}
+    if  ( mark )
+	{ appFreeStringFromTextWidget( mark );	}
+
     return;
     }
 
 /************************************************************************/
 /*									*/
-/*  Make the 'link' dialog.						*/
+/*  'Follow Link' was pushed.						*/
 /*									*/
 /************************************************************************/
 
-static APP_DESTROY_CALLBACK_H( tedFreeLinkContext, w, voidlc )
-    { free( voidlc ); return;	}
+static APP_BUTTON_CALLBACK_H( tedLinkFollowPushed, w, voidlt )
+    {
+    LinkTool *		lt= (LinkTool *)voidlt;
+    EditApplication *	ea= lt->ltApplication;
 
-static int tedMakeLinkDialog(		LinkContext **		pLc,
-					EditApplication *	ea,
-					APP_WIDGET		relative )
+    char *		file= (char *)0;
+    char *		mark= (char *)0;
+
+    int			fileSize;
+    int			markSize;
+
+    file= appGetStringFromTextWidget( lt->ltFileTextWidget );
+    if  ( ! file )
+	{ XDEB(file); goto ready;	}
+    mark= appGetStringFromTextWidget( lt->ltMarkTextWidget );
+    if  ( ! mark )
+	{ XDEB(mark); goto ready;	}
+
+    fileSize= strlen( file );
+    markSize= strlen( mark );
+
+    if  ( tedAppFollowLink( (APP_WIDGET)w, ea, file, fileSize, mark, markSize ) )
+	{ SSDEB(file,mark);	}
+
+  ready:
+    if  ( file )
+	{ appFreeStringFromTextWidget( file );	}
+    if  ( mark )
+	{ appFreeStringFromTextWidget( mark );	}
+
+    return;
+    }
+
+/************************************************************************/
+/*									*/
+/*  'Remove Link' was pushed.						*/
+/*									*/
+/************************************************************************/
+
+static APP_BUTTON_CALLBACK_H( tedLinkRemovePushed, w, voidlt )
+    {
+    LinkTool *		lt= (LinkTool *)voidlt;
+    EditApplication *	ea= lt->ltApplication;
+
+    if  ( tedAppRemoveHyperlink( ea ) )
+	{ LDEB(1);	}
+
+    return;
+    }
+
+/************************************************************************/
+/*									*/
+/*  Make a link tool. I.E. the 'Link' page on the format tool to manage	*/
+/*  Hyperlinks.								*/
+/*									*/
+/************************************************************************/
+
+void tedFormatFillLinkPage(	LinkTool *			lt,
+				const LinkToolResources *	lpr,
+				InspectorSubject *		is,
+				APP_WIDGET			pageWidget,
+				const InspectorSubjectResources * isr )
     {
     APP_WIDGET		label;
-    int			i;
+    APP_WIDGET		row;
 
-    LinkContext *	lc= (LinkContext *)malloc( sizeof(LinkContext) );
+    const int		listVisibleItems= 9;
 
-    if  ( ! lc )
-	{ XDEB(lc); return -1;	}
+    lt->ltPageResources= lpr;
 
-    appGuiGetResourceValues( ea, (void *)lc, TED_LinkResourceTable,
-					sizeof(TED_LinkResourceTable)/
-					sizeof(AppConfigurableResource) );
+    /* FULL WIDTH */
+    appMakeLabelInColumn( &label, pageWidget, lpr->lprFileText );
+    appMakeTextInColumn( &(lt->ltFileTextWidget), pageWidget, 0, 1 );
+    appMakeLabelInColumn( &label, pageWidget, lpr->lprMarkText );
+    appMakeTextInColumn( &(lt->ltMarkTextWidget), pageWidget, 0, 1 );
 
-    for ( i= 0; i < LINKkind_COUNT; i++ )
-	{ lc->lcLinkAsItems[i]= (APP_WIDGET)0; }
+    appGuiSetTypingCallbackForText( lt->ltFileTextWidget,
+				tedLinkDestinationChanged, (void *)lt );
+    appGuiSetTypingCallbackForText( lt->ltMarkTextWidget,
+				tedLinkDestinationChanged, (void *)lt );
 
-    lc->lcFileTextWidget= (APP_WIDGET)0;
-    lc->lcMarkTextWidget= (APP_WIDGET)0;
+    appGuiMakeListInColumn( &(lt->ltMarkListWidget), pageWidget,
+			listVisibleItems, tedLinkBookmarkChosen, (void *)lt );
 
-    lc->lcSetLinkButton= (APP_WIDGET)0;
-    lc->lcFollowLinkButton= (APP_WIDGET)0;
-    lc->lcRemoveLinkButton= (APP_WIDGET)0;
-    lc->lcCancelButton= (APP_WIDGET)0;
+    appMakeColumnFrameInColumn( &(lt->ltLinkAsFrame), &(lt->ltLinkAsPaned),
+						    pageWidget,
+						    lpr->lprLinkAsText );
 
-    lc->lcSavedFile= (char *)0;
-    lc->lcSavedMark= (char *)0;
+    appMakeOptionmenuInColumn( &(lt->ltLinkAsOptionmenu),
+						    lt->ltLinkAsPaned );
 
-    appInitOptionmenu( &(lc->lcLinkAsOptionmenu) );
+    appInspectorMakeButtonRow( &row, pageWidget,
+	    &(lt->ltFollowLinkButton), &(lt->ltRemoveLinkButton),
+	    lpr->lprFollowLinkText, lpr->lprRemoveLinkText,
+	    tedLinkFollowPushed, tedLinkRemovePushed, (void *)lt );
 
-    appMakeVerticalDialog( &(lc->lcDialog), &(lc->lcPaned), ea,
-						tedLinkDialogClosed,
-						tedFreeLinkContext,
-						(void *)lc,
-						"tedHyperlink" );
+    appInspectorMakeButtonRow( &row, pageWidget,
+	    &(is->isRevertButton), &(is->isApplyButton),
+	    isr->isrRevert, isr->isrApplyToSubject,
+	    tedLinkRevertPushed, tedLinkChangePushed, (void *)lt );
 
-    appMakeLabelInColumn( &label, lc->lcPaned, lc->lcFileText );
-    appMakeTextInColumn( &(lc->lcFileTextWidget), lc->lcPaned, 0, 1 );
-    appMakeLabelInColumn( &label, lc->lcPaned, lc->lcMarkText );
-    appMakeTextInColumn( &(lc->lcMarkTextWidget), lc->lcPaned, 0, 1 );
+    lt->ltSetLinkButton= is->isApplyButton;
 
-    appGuiSetTypingCallbackForText( lc->lcFileTextWidget,
-				tedLinkDestinationChanged, (void *)lc );
-    appGuiSetTypingCallbackForText( lc->lcMarkTextWidget,
-				tedLinkDestinationChanged, (void *)lc );
-
-    tedLinkMakeList( lc );
-
-    appMakeColumnFrameInColumn( &(lc->lcLinkAsFrame), &(lc->lcLinkAsPaned),
-						    lc->lcPaned,
-						    lc->lcLinkAsText );
-
-    appMakeOptionmenuInColumn( &(lc->lcLinkAsOptionmenu),
-						    lc->lcLinkAsPaned );
-
-    tedLinkMakeButtonForm( lc );
-
-    *pLc= lc;
-
-    return 0;
+    return;
     }
 
 /************************************************************************/
 /*									*/
-/*  Make the 'Destination' half of the link dialog.			*/
+/*  Initialize/Clean a link tool					*/
 /*									*/
 /************************************************************************/
 
-/************************************************************************/
-/*									*/
-/*  Run the 'Link Dialog' for a certain document.			*/
-/*									*/
-/************************************************************************/
-
-void tedRunLinkDialog(	EditApplication *	ea,
-			EditDocument *		ed,
-			APP_WIDGET		option,
-			const char *		fileName,
-			int			fileSize,
-			const char *		markName,
-			int			markSize )
+void tedFormatInitLinkTool(		LinkTool *		lt )
     {
-    TedDocument *		td= (TedDocument *)ed->edPrivateData;
-    BufferDocument *		bd= td->tdDocument;
+    int		i;
+
+    lt->ltCurrentDocumentId= 0;
+
+    for ( i= 0; i < LINKkind_COUNT; i++ )
+	{ lt->ltLinkAsItems[i]= (APP_WIDGET)0; }
+
+    lt->ltFileTextWidget= (APP_WIDGET)0;
+    lt->ltMarkTextWidget= (APP_WIDGET)0;
+
+    lt->ltSetLinkButton= (APP_WIDGET)0;
+    lt->ltFollowLinkButton= (APP_WIDGET)0;
+    lt->ltRemoveLinkButton= (APP_WIDGET)0;
+    lt->ltCancelButton= (APP_WIDGET)0;
+
+    lt->ltFileSet= (char *)0;
+    lt->ltMarkSet= (char *)0;
+    lt->ltFileChosen= (char *)0;
+    lt->ltMarkChosen= (char *)0;
+
+    appInitOptionmenu( &(lt->ltLinkAsOptionmenu) );
+
+    return;
+    }
+
+void tedFormatCleanLinkTool(		LinkTool *		lt )
+    {
+    if  ( lt->ltFileSet )
+	{ free( lt->ltFileSet );	}
+    if  ( lt->ltMarkSet )
+	{ free( lt->ltMarkSet );	}
+
+    if  ( lt->ltFileChosen )
+	{ free( lt->ltFileChosen );	}
+    if  ( lt->ltMarkChosen )
+	{ free( lt->ltMarkChosen );	}
+
+    return;
+    }
+
+/************************************************************************/
+/*									*/
+/*  Finish the tabs page.						*/
+/*									*/
+/************************************************************************/
+
+void tedLinkToolFillChoosers(	LinkTool *			lt,
+				const LinkToolResources *	ltr )
+    {
+    const LinkToolResources *	lpr= lt->ltPageResources;
+
+    appFillInspectorMenu( LINKkind_COUNT, LINKkindHYPERLINK,
+			lt->ltLinkAsItems, lpr->lprLinkAsItemTexts,
+			&(lt->ltLinkAsOptionmenu),
+			tedLinkKindChosen, (void *)lt );
+
+    return;
+    }
+
+void tedFinishLinkTool(		LinkTool *			lt,
+				const LinkToolResources *	ltr )
+    {
+    appOptionmenuRefreshWidth( &(lt->ltLinkAsOptionmenu) );
+
+    return;
+    }
+
+/************************************************************************/
+/*									*/
+/*  Refresh the link tool.						*/
+/*									*/
+/************************************************************************/
+
+void tedRefreshLinkTool(	LinkTool *			lt,
+				int *				pEnabled,
+				int *				pPref,
+				InspectorSubject *		is,
+				const DocumentSelection *	ds,
+				const SelectionDescription *	sd,
+				BufferDocument *		bd )
+    {
     DocumentFieldList *		dfl= &(bd->bdFieldList);
 
-    APP_WIDGET			relative= ed->edToplevel.atTopWidget;
-    static LinkContext *	linkContext;
-    LinkContext *		lc;
+    DocumentSelection		dsHyperlink;
+    int				startPart;
+    int				endPart;
 
-    int				justMade= 0;
+    const char *		fileName= (const char *)0;
+    int				fileSize= 0;
+    const char *		markName= (const char *)0;
+    int				markSize= 0;
 
-    if  ( fileSize == 0 )
-	{ fileName= "";	}
-    if  ( markSize == 0 )
-	{ markName= "";	}
+    *pEnabled= ( sd->sdIsSingleParagraph	&&
+	    ( sd->sdBeginInHyperlink	||
+	      ! sd->sdIsIBarSelection	)	);
 
-    if  ( ! linkContext )
+    if  ( ! *pEnabled )
+	{ return;	}
+
+    if  ( lt->ltCurrentDocumentId != sd->sdDocumentId )
 	{
-	if  ( tedMakeLinkDialog( &linkContext, ea, relative ) )
-	    { LDEB(1); return;	}
+	tedFillBookmarkList( lt->ltMarkListWidget, dfl );
 
-	justMade= 1;
+	lt->ltCurrentDocumentId= sd->sdDocumentId;
 	}
 
-    lc= linkContext;
+    if  ( ! docGetHyperlinkForPosition( bd, &(ds->dsBegin),
+				&dsHyperlink, &startPart, &endPart,
+				&fileName, &fileSize, &markName, &markSize ) )
+	{ *pPref= 8;	}
 
-    /*******************************/
-
-    lc->lcDocument= ed;
-
-    if  ( lc->lcSavedFile )
+    if  ( lt->ltFileSet )
 	{
-	free( lc->lcSavedFile );
-	lc->lcSavedFile= (char *)0;
+	free( lt->ltFileSet );
+	lt->ltFileSet= (char *)0;
 	}
-    if  ( lc->lcSavedMark )
+    if  ( lt->ltMarkSet )
 	{
-	free( lc->lcSavedMark );
-	lc->lcSavedMark= (char *)0;
+	free( lt->ltMarkSet );
+	lt->ltMarkSet= (char *)0;
 	}
 
-    tedFillBookmarkList( lc->lcMarkListWidget, dfl );
+    if  ( lt->ltFileSet )
+	{
+	free( lt->ltFileSet );
+	lt->ltFileSet= (char *)0;
+	}
+    if  ( lt->ltMarkSet )
+	{
+	free( lt->ltMarkSet );
+	lt->ltMarkChosen= (char *)0;
+	}
+
+    lt->ltDocumentReadonly= sd->sdDocumentReadonly;
 
     if  ( fileSize+ markSize > 0 )
 	{
@@ -472,12 +517,16 @@ void tedRunLinkDialog(	EditApplication *	ea,
 		{ XDEB(saved);	}
 	    else{
 		strncpy( saved, fileName, fileSize )[fileSize]= '\0';
-		appStringToTextWidget( lc->lcFileTextWidget, saved );
-		lc->lcSavedFile= saved;
-		fileName= lc->lcSavedFile;
+		appStringToTextWidget( lt->ltFileTextWidget, saved );
+		lt->ltFileSet= saved;
+		fileName= lt->ltFileSet;
+
+		lt->ltFileChosen= strdup( lt->ltFileSet );
+		if  ( ! lt->ltFileChosen )
+		    { XDEB(lt->ltFileChosen);	}
 		}
 	    }
-	else{ appStringToTextWidget( lc->lcFileTextWidget, "" ); }
+	else{ appStringToTextWidget( lt->ltFileTextWidget, "" ); }
 
 	if  ( markSize > 0 )
 	    {
@@ -487,136 +536,123 @@ void tedRunLinkDialog(	EditApplication *	ea,
 		{ XDEB(saved);	}
 	    else{
 		strncpy( saved, markName, markSize )[markSize]= '\0';
-		appStringToTextWidget( lc->lcMarkTextWidget, saved );
-		lc->lcSavedMark= saved;
-		markName= lc->lcSavedMark;
+		appStringToTextWidget( lt->ltMarkTextWidget, saved );
+		lt->ltMarkSet= saved;
+		markName= lt->ltMarkSet;
+
+		lt->ltMarkChosen= strdup( lt->ltMarkSet );
+		if  ( ! lt->ltMarkChosen )
+		    { XDEB(lt->ltMarkChosen);	}
 		}
 	    }
-	else{ appStringToTextWidget( lc->lcMarkTextWidget, "" ); }
+	else{ appStringToTextWidget( lt->ltMarkTextWidget, "" ); }
 
-	appGuiEnableWidget( lc->lcRemoveLinkButton, ! ed->edIsReadonly );
-	appGuiEnableWidget( lc->lcFollowLinkButton, 1 );
+	appGuiEnableWidget( lt->ltRemoveLinkButton, ! lt->ltDocumentReadonly );
+	appGuiEnableWidget( lt->ltFollowLinkButton, 1 );
 	}
     else{
-	appGuiEnableWidget( lc->lcRemoveLinkButton, 0 );
-	appGuiEnableWidget( lc->lcFollowLinkButton, 0 );
+	appGuiEnableWidget( lt->ltRemoveLinkButton, 0 );
+	appGuiEnableWidget( lt->ltFollowLinkButton, 0 );
 
-	appStringToTextWidget( lc->lcFileTextWidget, "" );
-	appStringToTextWidget( lc->lcMarkTextWidget, "" );
+	appStringToTextWidget( lt->ltFileTextWidget, "" );
+	appStringToTextWidget( lt->ltMarkTextWidget, "" );
 	}
 
-    appGuiEnableWidget( lc->lcMarkListWidget, fileName[0] == '\0' );
+    appGuiEnableWidget( lt->ltMarkListWidget, fileSize > 0 );
 
-    appGuiEnableWidget( lc->lcSetLinkButton, 0 );
+    appGuiEnableWidget( lt->ltSetLinkButton, 0 );
 
-    if  ( justMade )
-	{
-	appFillInspectorMenu( LINKkind_COUNT, LINKkindHYPERLINK,
-				lc->lcLinkAsItems,
-				lc->lcLinkAsItemTexts,
-				&(lc->lcLinkAsOptionmenu),
-				tedLinkKindChosen, (void *)lc );
-	}
+    lt->ltLinkKind= LINKkindHYPERLINK;
+    appSetOptionmenu( &(lt->ltLinkAsOptionmenu), LINKkindHYPERLINK );
 
-    lc->lcLinkKind= LINKkindHYPERLINK;
-    appSetOptionmenu( &(lc->lcLinkAsOptionmenu), LINKkindHYPERLINK );
-
-    appGuiEnableOptionmenu( &(lc->lcLinkAsOptionmenu),
+    appGuiEnableOptionmenu( &(lt->ltLinkAsOptionmenu),
 					    fileSize+ markSize == 0 );
 
-    tedLinkAdaptToText( lc, fileName, markName );
+    tedLinkAdaptToText( lt, fileName, markName );
 
-    appGuiShowDialog( &(lc->lcDialog), ed->edToplevel.atTopWidget );
+    *pEnabled= 1;
 
-    appSetShellTitle( lc->lcDialog.adTopWidget, 
-					    option, ea->eaApplicationName );
+    return;
+    }
 
-    appOptionmenuRefreshWidth( &(lc->lcLinkAsOptionmenu) );
+/************************************************************************/
+/*									*/
+/*  Get link tool resources.						*/
+/*  Resource table for various texts.					*/
+/*									*/
+/************************************************************************/
 
-#   ifdef USE_MOTIF
-    XmProcessTraversal( lc->lcFileTextWidget, XmTRAVERSE_CURRENT );
-#   endif
+static AppConfigurableResource TED_TedLinkSubjectResourceTable[]=
+    {
+    APP_RESOURCE( "tableToolLink",
+		offsetof(InspectorSubjectResources,isrSubjectName),
+		"Hyperlink" ),
+    APP_RESOURCE( "hyperlinkSetLink",
+		offsetof(InspectorSubjectResources,isrApplyToSubject),
+		"Set Link" ),
 
-    appGuiRunDialog( &(lc->lcDialog), AQDrespNONE, ea );
+    APP_RESOURCE( "tableToolRevert",
+		offsetof(InspectorSubjectResources,isrRevert),
+		"Revert" ),
+    APP_RESOURCE( "hyperlinkRemoveLink",
+		offsetof(InspectorSubjectResources,isrDeleteButtonText),
+		"hyperlinkRemoveLink Link" ),
+    };
 
-    appGuiHideDialog( &(lc->lcDialog) );
+static AppConfigurableResource TED_TedLinkToolResourceTable[]=
+{
+    APP_RESOURCE( "hyperlinkDocument",
+		offsetof(LinkToolResources,lprFileText),
+		"Document" ),
+    APP_RESOURCE( "hyperlinkBookmark",
+		offsetof(LinkToolResources,lprMarkText),
+		"Bookmark" ),
 
-    switch( lc->lcDialog.adResponse )
-	{
-	char *		file;
-	char *		mark;
+    APP_RESOURCE( "hyperlinkLinkAs",
+		offsetof(LinkToolResources,lprLinkAsText),
+		"Link as" ),
 
-	case AQDrespYES:
-	    {
-	    int		asRef;
-	    int		asPageref;
+    APP_RESOURCE( "hyperlinkLinkAsHyperlink",
+		offsetof(LinkToolResources,
+		lprLinkAsItemTexts[LINKkindHYPERLINK]),
+		"Hyperlink" ),
+    APP_RESOURCE( "hyperlinkLinkAsPageNumber",
+		offsetof(LinkToolResources,
+		lprLinkAsItemTexts[LINKkindPAGE_NUMBER]),
+		"Page Number" ),
+    APP_RESOURCE( "hyperlinkLinkAsBookmarkText",
+		offsetof(LinkToolResources,
+		lprLinkAsItemTexts[LINKkindBOOKMARK_TEXT]),
+		"Bookmark Text" ),
+    APP_RESOURCE( "hyperlinkLinkAsTextPlusPage",
+		offsetof(LinkToolResources,
+		lprLinkAsItemTexts[LINKkindTEXT_PLUS_PAGE]),
+		"Text and Page Number" ),
 
-	    file= appGetStringFromTextWidget( lc->lcFileTextWidget );
-	    if  ( ! file )
-		{ XDEB(file); return;	}
-	    mark= appGetStringFromTextWidget( lc->lcMarkTextWidget );
-	    if  ( ! mark )
-		{ XDEB(mark); return;	}
+    APP_RESOURCE( "hyperlinkRemoveLink",
+		offsetof(LinkToolResources,lprRemoveLinkText),
+		"Remove Link" ),
+    APP_RESOURCE( "hyperlinkFollowLink",
+		offsetof(LinkToolResources,lprFollowLinkText),
+		"Follow Link" ),
+    APP_RESOURCE( "hyperlinkCancel",
+		offsetof(LinkToolResources,lprCancelText),
+		"Cancel" ),
+};
 
-	    switch( lc->lcLinkKind )
-		{
-		case LINKkindHYPERLINK:
-		    asRef= asPageref= 0;
-		    break;
+void tedLinkToolGetResourceTable(	EditApplication *		ea,
+					LinkToolResources *		lpr,
+					InspectorSubjectResources *	isr )
+    {
+    appGuiGetResourceValues( ea, (void *)lpr,
+				TED_TedLinkToolResourceTable,
+				sizeof(TED_TedLinkToolResourceTable)/
+				sizeof(AppConfigurableResource) );
 
-		case LINKkindPAGE_NUMBER:
-		    asRef= 0; asPageref= 1;
-		    break;
+    appGuiGetResourceValues( ea, (void *)isr,
+				TED_TedLinkSubjectResourceTable,
+				sizeof(TED_TedLinkSubjectResourceTable)/
+				sizeof(AppConfigurableResource) );
 
-		case LINKkindBOOKMARK_TEXT:
-		    asRef= 1; asPageref= 0;
-		    break;
-
-		case LINKkindTEXT_PLUS_PAGE:
-		    asRef= asPageref= 1;
-		    break;
-
-		default:
-		    LDEB(lc->lcLinkKind);
-		    asRef= asPageref= 0;
-		    break;
-		}
-
-	    if  ( tedSetHyperlink( ed, file, mark, asRef, asPageref ) )
-		{ SSDEB(file,mark);	}
-
-	    appFreeStringFromTextWidget( file );
-	    appFreeStringFromTextWidget( mark );
-	    }
-	    return;
-
-	case AQDrespOK: /* follow */
-	    {
-	    file= appGetStringFromTextWidget( lc->lcFileTextWidget );
-	    if  ( ! file )
-		{ XDEB(file); return;	}
-	    mark= appGetStringFromTextWidget( lc->lcMarkTextWidget );
-	    if  ( ! mark )
-		{ XDEB(mark); return;	}
-
-	    fileSize= strlen( file );
-	    markSize= strlen( mark );
-
-	    tedFollowLink( relative, option, ed,
-				    file, fileSize, mark, markSize );
-
-	    appFreeStringFromTextWidget( file );
-	    appFreeStringFromTextWidget( mark );
-	    }
-	    return;
-
-	case AQDrespNO:
-	    if  ( tedRemoveHyperlink( ed ) )
-		{ LDEB(1);	}
-	    return;
-	case AQDrespCANCEL:
-	    return;
-	default:
-	    LDEB(lc->lcDialog.adResponse); return;
-	}
+    return;
     }

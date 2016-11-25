@@ -11,6 +11,8 @@
 #   include	<stdio.h>
 
 #   include	<utilFontEncoding.h>
+#   include	<utilMatchFont.h>
+#   include	<docExpandedTextAttribute.h>
 
 #   include	<appDebugon.h>
 
@@ -61,6 +63,8 @@ void docFreeDocument( BufferDocument *	bd )
     if  ( bd->bdNotes )
 	{ free( bd->bdNotes );	}
 
+    docFreeListNumberNodes( bd->bdListNumberTrees, bd->bdListNumberTreeCount );
+
     utilCleanTextAttributeList( &(bd->bdTextAttributeList) );
 
     free( bd );
@@ -89,6 +93,9 @@ void docInitDocument(	BufferDocument *	bd )
     bd->bdNotes= (DocumentNote *)0;
     bd->bdNoteCount= 0;
 
+    bd->bdListNumberTrees= (ListNumberTreeNode *)0;
+    bd->bdListNumberTreeCount= 0;
+
     docInitExternalItem( &(bd->bdEiFtnsep) );
     docInitExternalItem( &(bd->bdEiFtnsepc) );
     docInitExternalItem( &(bd->bdEiFtncn) );
@@ -107,94 +114,91 @@ void docInitDocument(	BufferDocument *	bd )
 /*									*/
 /************************************************************************/
 
-static int docSetupNewDocument(	TextAttribute *			ta,
-				BufferDocument *		bd,
-				int				fontNumber,
-				int				fontSizeHalfpt,
-				const DocumentGeometry *	dg )
-    {
-    TextAttribute	taFirst;
-    int			textAttributeNumber;
-
-    BufferItem *	bi;
-
-    utilInitTextAttribute( &taFirst );
-    taFirst.taFontNumber= fontNumber;
-    taFirst.taFontSizeHalfPoints= fontSizeHalfpt;
-
-    bd->bdProperties.dpGeometry= *dg;
-
-    textAttributeNumber= utilTextAttributeNumber(
-					&(bd->bdTextAttributeList), &taFirst );
-    if  ( textAttributeNumber < 0 )
-	{ LDEB(textAttributeNumber); return -1;	}
-
-    bi= docInsertItem( bd, &(bd->bdItem), -1, DOClevSECT );
-    if  ( ! bi )
-	{ XDEB(bi); return -1;	}
-    bi->biSectDocumentGeometry= *dg;
-
-    bi= docInsertEmptyParagraph( bd, bi, textAttributeNumber );
-    if  ( ! bi )
-	{ XDEB(bi); return -1;	}
-
-    *ta= taFirst;
-    return 0;
-    }
-
-BufferDocument * docNewFile(	TextAttribute *			ta,
-				const char *			fontFamilyName,
-				int				fontSizeHalfpt,
+BufferDocument * docNewFile(	TextAttribute *			taDefault,
+				const char *			defaultFont,
 				int				docCharset,
 				int				ansiCodepage,
+				const PostScriptFontList *	psfl,
 				const DocumentGeometry *	dg )
     {
-    const int		fontNumber= 0;
-    DocumentFont	df;
+    BufferDocument *		bd;
+    DocumentProperties *	dp;
 
-    int			fontFamilyStyle= utilFontFamilyStyle( fontFamilyName );
+    PropertyMask		taNewMask;
+    PropertyMask		doneMask;
+    ExpandedTextAttribute	etaNew;
+    TextAttribute		taNew;
+    int				textAttributeNumber;
 
-    BufferDocument *	bd;
+    BufferItem *		bi;
+
+    PROPmaskCLEAR( &taNewMask );
+    docInitExpandedTextAttribute( &etaNew );
 
     bd= (BufferDocument *)malloc( sizeof(BufferDocument) );
     if  ( ! bd )
 	{ XDEB(bd); return bd;	}
+    dp= &(bd->bdProperties);
 
     docInitDocument( bd );
-    bd->bdProperties.dpDocumentCharset= docCharset;
-    bd->bdProperties.dpAnsiCodepage= ansiCodepage;
+    dp->dpDocumentCharset= docCharset;
+    dp->dpAnsiCodepage= ansiCodepage;
+    dp->dpGeometry= *dg;
 
-    docInitDocumentFont( &df );
+    /*  3  */
+    if  ( psfl && utilAddPsFontsToDocList( &(dp->dpFontList), psfl ) )
+	{ LDEB(psfl->psflFamilyCount); goto failed;	}
 
-    if  ( docFontSetFamilyName( &df, fontFamilyName ) )
-	{ LDEB(1); goto failed;	}
-    if  ( docFontSetFamilyStyle( &df, fontFamilyStyle ) )
-	{ LDEB(1); goto failed;	}
+    if  ( docExpandedAttributeFromString( &taNewMask, &etaNew,
+					    &(dp->dpFontList), defaultFont ) )
+	{ SDEB(defaultFont); goto failed;	}
 
-    /*  No! word does not do this. Will cause the 'cpg' tag to be saved.
-    df.dfCodepage= ansiCodepage;
-    */
-    df.dfCharset= utilWindowsCharsetFromCodepage( ansiCodepage );
-    if  ( df.dfCharset < 0 )
+    if  ( ! PROPmaskISSET( &taNewMask, TApropDOC_FONT_NUMBER ) )
+	{ SDEB(defaultFont); goto failed;	}
+
+    if  ( ! PROPmaskISSET( &taNewMask, TApropFONTSIZE )	||
+	  etaNew.etaFontSizeHalfPoints < 6		||
+	  etaNew.etaFontSizeHalfPoints > 100		)
 	{
-	LLDEB(ansiCodepage,df.dfCharset);
-	df.dfCharset= FONTcharsetDEFAULT;
+	SLDEB(defaultFont,etaNew.etaFontSizeHalfPoints);
+	etaNew.etaFontSizeHalfPoints= 24;
+	PROPmaskADD( &taNewMask, TApropFONTSIZE );
 	}
 
-    if  ( ! docInsertFont( &(bd->bdProperties.dpFontList), fontNumber, &df ) )
-	{ LDEB(1); goto failed;	}
+    utilInitTextAttribute( &taNew );
 
-    if  ( docSetupNewDocument( ta, bd, fontNumber, fontSizeHalfpt, dg ) )
-	{ LDEB(1); goto failed;	}
+    docIndirectTextAttribute( &doneMask, &taNew, &etaNew, &taNewMask,
+				    &(dp->dpColors), &(dp->dpColorCount) );
 
-    docCleanDocumentFont( &df );
+    if  ( taNew.taFontNumber >= 0				&&
+	  taNew.taFontNumber < dp->dpFontList.dflFontCount	)
+	{ dp->dpFontList.dflFonts[taNew.taFontNumber].dfUsed= 1; }
 
+    textAttributeNumber= utilTextAttributeNumber(
+				    &(bd->bdTextAttributeList), &taNew );
+    if  ( textAttributeNumber < 0 )
+	{ SLDEB(defaultFont,textAttributeNumber); goto failed;	}
+
+    bi= docInsertItem( bd, &(bd->bdItem), -1, DOClevSECT );
+    if  ( ! bi )
+	{ XDEB(bi); goto failed;	}
+
+    bi->biSectDocumentGeometry= dp->dpGeometry;
+
+    bi= docInsertEmptyParagraph( bd, bi, textAttributeNumber );
+    if  ( ! bi )
+	{ XDEB(bi); goto failed;	}
+
+    docCleanExpandedTextAttribute( &etaNew );
+
+    *taDefault= taNew;
     return bd;
 
   failed:
 
+    docCleanExpandedTextAttribute( &etaNew );
+
     docFreeDocument( bd );
-    docCleanDocumentFont( &df );
 
     return (BufferDocument *)0;
     }
@@ -297,79 +301,6 @@ TextLine * docInsertTextLine(	BufferItem *	bi,
 
     bi->biParaLineCount++;
     return tl;
-    }
-
-/************************************************************************/
-/*									*/
-/*  Find the particule number for a certain string position.		*/
-/*									*/
-/*  NOTE: This does not expect the paragraph to be formatted.		*/
-/*									*/
-/************************************************************************/
-
-int docFindParticule(		int *			pPart,
-				const BufferItem *	bi,
-				int			stroff,
-				int			lastOne )
-    {
-    int				part= 0;
-
-    const TextParticule *	tp;
-
-    part= 0; tp= bi->biParaParticules+ part;
-    while( part < bi->biParaParticuleCount	&&
-	   tp->tpStroff+ tp->tpStrlen < stroff	)
-	{ part++; tp++;	}
-
-    if  ( part >= bi->biParaParticuleCount )
-	{
-	LLDEB(stroff,bi->biParaStrlen);
-	LLDEB(part,bi->biParaParticuleCount);
-	docListItem( 0, bi );
-	return -1;
-	}
-
-    while( lastOne				&&
-	   part < bi->biParaParticuleCount -1	&&
-	   tp->tpStroff+ tp->tpStrlen == stroff	)
-	{ part++; tp++;	}
-
-    *pPart= part;
-
-    return 0;
-    }
-
-/************************************************************************/
-/*									*/
-/*  Find the line number for a certain string particule Number.		*/
-/*									*/
-/*  NOTE: This does not expect the paragraph to be formatted.		*/
-/*									*/
-/************************************************************************/
-
-int docFindLineOfParticule(	int *			pLine,
-				const BufferItem *	bi,
-				int			part )
-    {
-    int			line= 0;
-
-    const TextLine *	tl;
-
-    line= 0; tl= bi->biParaLines+ line;
-    while( tl->tlFirstParticule+ tl->tlParticuleCount <= part	&&
-	   line < bi->biParaLineCount				)
-	{ line++; tl++;	}
-
-    if  ( line >= bi->biParaLineCount )
-	{
-	LLDEB(part,bi->biParaParticuleCount);
-	docListItem( 0, bi );
-	return -1;
-	}
-
-    *pLine= line;
-
-    return 0;
     }
 
 /************************************************************************/

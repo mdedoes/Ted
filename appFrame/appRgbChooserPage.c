@@ -154,7 +154,7 @@ static APP_BUTTON_CALLBACK_H( appRgbChooserRevertRGB, w, voidrcp )
 
 /************************************************************************/
 /*									*/
-/*  Draw a schematic view of the page.					*/
+/*  Draw the color cube.						*/
 /*									*/
 /************************************************************************/
 

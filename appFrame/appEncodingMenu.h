@@ -31,8 +31,13 @@ extern void appEncodingMenuUnsetEncoding(
 
 extern void appEncodingMenuSetEncoding(
 				AppEncodingMenu *		aem,
-				const AppFontFamily *		aff,
+				const DocumentFontFamily *	dff,
 				int				enc );
+
+extern void appEncodingMenuSetDocEncoding(
+				AppEncodingMenu *	aem,
+				const int *		fontForEncoding,
+				int			enc );
 
 extern void appEncodingMenuFillOptionmenu(
 				char * const *			opts,
@@ -46,5 +51,5 @@ extern void appEncodingMenuGetOptionTexts(
 
 extern void appEncodingMenuAdaptToFamilyEncodings(
 				AppEncodingMenu *		aem,
-				const AppFontFamily *		aff );
+				const DocumentFontFamily *	dff );
 

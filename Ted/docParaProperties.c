@@ -26,7 +26,7 @@
 /*  1  */
 int docParaAddTab(		ParagraphProperties *	pp,
 				const TabStop *		tsNew )
-    { return docAddTabToList( &(pp->ppTabStopList), tsNew );	}
+    { return docAddTabToList( &(pp->ppTabStopList), tsNew ); }
 
 /*  2  */
 void docParaDeleteTab(	ParagraphProperties *		pp,
@@ -70,6 +70,7 @@ void docInitParagraphProperties(	ParagraphProperties *	pp )
     docInitItemShading( &(pp->ppShading) );
 
     pp->ppOutlineLevel= 9;
+    pp->ppListLevel= 0;
 
     pp->ppAlignment= DOCiaLEFT;
 
@@ -94,7 +95,8 @@ void docInitParagraphProperties(	ParagraphProperties *	pp )
 int docCopyParagraphProperties(	ParagraphProperties *		ppTo,
 				const ParagraphProperties *	ppFrom )
     {
-    const int * const colorMap= (const int *)0;
+    const int * const	colorMap= (const int *)0;
+    const int * const	listStyleMap= (const int *)0;
 
     PropertyMask	ppDoneMask;
     PropertyMask	ppSetMask;
@@ -103,14 +105,15 @@ int docCopyParagraphProperties(	ParagraphProperties *		ppTo,
     PROPmaskFILL( &ppSetMask, PPprop_COUNT );
 
     return docUpdParaProperties( &ppDoneMask, ppTo,
-						&ppSetMask, ppFrom, colorMap );
+				&ppSetMask, ppFrom, colorMap, listStyleMap );
     }
 
 int docUpdParaProperties(	PropertyMask *			pDoneMask,
 				ParagraphProperties *		ppTo,
 				const PropertyMask *		ppUpdMask,
 				const ParagraphProperties *	ppFrom,
-				const int *			colorMap )
+				const int *			colorMap,
+				const int *			listStyleMap )
     {
     PropertyMask		doneMask;
     PropertyMask		isUpdMask;
@@ -128,9 +131,14 @@ int docUpdParaProperties(	PropertyMask *			pDoneMask,
 
     if  ( PROPmaskISSET( ppUpdMask, PPpropLISTOVERRIDE ) )
 	{
-	if  ( ppTo->ppListOverride != ppFrom->ppListOverride )
+	int		listStyle= ppFrom->ppListOverride;
+
+	if  ( listStyleMap )
+	    { listStyle= listStyleMap[listStyle];	}
+
+	if  ( ppTo->ppListOverride != listStyle )
 	    {
-	    ppTo->ppListOverride= ppFrom->ppListOverride;
+	    ppTo->ppListOverride= listStyle;
 	    PROPmaskADD( &doneMask, PPpropLISTOVERRIDE );
 	    }
 	}
@@ -182,10 +190,11 @@ int docUpdParaProperties(	PropertyMask *			pDoneMask,
 
     if  ( PROPmaskISSET( ppUpdMask, PPpropTAB_STOPS ) )
 	{
-	int	changed= 0;
+	const int	pixels= 0;
+	int		changed= 0;
 
 	if  ( docCopyTabStopList( &changed, &(ppTo->ppTabStopList),
-						&(ppFrom->ppTabStopList) ) )
+					&(ppFrom->ppTabStopList), pixels ) )
 	    { LDEB(1); return -1;	}
 
 	if  ( changed )
@@ -347,6 +356,15 @@ int docUpdParaProperties(	PropertyMask *			pDoneMask,
 	    {
 	    ppTo->ppOutlineLevel= ppFrom->ppOutlineLevel;
 	    PROPmaskADD( &doneMask, PPpropOUTLINELEVEL );
+	    }
+	}
+
+    if  ( PROPmaskISSET( ppUpdMask, PPpropLISTLEVEL ) )
+	{
+	if  ( ppTo->ppListLevel != ppFrom->ppListLevel )
+	    {
+	    ppTo->ppListLevel= ppFrom->ppListLevel;
+	    PROPmaskADD( &doneMask, PPpropLISTLEVEL );
 	    }
 	}
 
@@ -538,6 +556,12 @@ void docParaPropertyDifference(	PropertyMask *			pChgMask,
 	{
 	if  ( ppTo->ppOutlineLevel != ppFrom->ppOutlineLevel )
 	    { PROPmaskADD( &diffMask, PPpropOUTLINELEVEL );	}
+	}
+
+    if  ( PROPmaskISSET( ppUpdMask, PPpropLISTLEVEL ) )
+	{
+	if  ( ppTo->ppListLevel != ppFrom->ppListLevel )
+	    { PROPmaskADD( &diffMask, PPpropLISTLEVEL );	}
 	}
 
     docShadingMaskFromParagraphMask( &isUpdMask, ppUpdMask );

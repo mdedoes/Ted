@@ -14,7 +14,6 @@ AC_DEFUN(AC_PATH_XPM,
     XPM_SHARED_REF=
 
     XPM_FOUND=0
-    AC_DEFINE(XPM_FOUND,0)
 
     ac_xpm_includes=${ac_xpm_includes:-NO}
     ac_xpm_libraries=${ac_xpm_libraries:-NO}
@@ -90,8 +89,11 @@ AC_DEFUN(AC_PATH_XPM,
     #echo Includes : $ac_xpm_includes
     #echo Libraries: $ac_xpm_libraries
 
-    if  test $ac_xpm_includes != NO
+    if  test $ac_xpm_includes = NO
     then
+	XPM_FOUND=0
+	AC_DEFINE(XPM_FOUND,0)
+    else
 	XPM_FOUND=1
 	AC_DEFINE(XPM_FOUND,1)
 
@@ -149,8 +151,6 @@ AC_DEFUN(AC_PATH_PNG,
     PNG_FOUND=0
     PNG_STATIC_REF=
     PNG_SHARED_REF=
-
-    AC_DEFINE(PNG_FOUND,0)
 
     ac_png_includes=${ac_png_includes:-NO}
     ac_png_libraries=${ac_png_libraries:-NO}
@@ -230,8 +230,11 @@ AC_DEFUN(AC_PATH_PNG,
     #echo Includes : $ac_png_includes
     #echo Libraries: $ac_png_libraries
 
-    if  test $ac_png_includes != NO
+    if  test $ac_png_includes = NO
     then
+	PNG_FOUND=0
+	AC_DEFINE(PNG_FOUND,0)
+    else
 	PNG_FOUND=1
 	AC_DEFINE(PNG_FOUND,1)
 
@@ -280,7 +283,6 @@ AC_DEFUN(AC_PATH_ZLIB,
     ZLIB_SHARED_REF=
 
     ZLIB_FOUND=0
-    AC_DEFINE(ZLIB_FOUND,0)
 
     ac_zlib_includes=${ac_zlib_includes:-NO}
     ac_zlib_libraries=${ac_zlib_libraries:-NO}
@@ -354,8 +356,11 @@ AC_DEFUN(AC_PATH_ZLIB,
     #echo Includes : $ac_zlib_includes
     #echo Libraries: $ac_zlib_libraries
 
-    if  test $ac_zlib_includes != NO
+    if  test $ac_zlib_includes = NO
     then
+	ZLIB_FOUND=0
+	AC_DEFINE(ZLIB_FOUND,0)
+    else
 	ZLIB_FOUND=1
 	AC_DEFINE(ZLIB_FOUND,1)
 	ZLIB_CFLAGS=-I$ac_zlib_includes
@@ -402,7 +407,6 @@ AC_DEFUN(AC_PATH_JPEG,
     JPEG_SHARED_REF=
 
     JPEG_FOUND=0
-    AC_DEFINE(JPEG_FOUND,0)
 
     ac_jpeg_includes=${ac_jpeg_includes:-NO}
     ac_jpeg_libraries=${ac_jpeg_libraries:-NO}
@@ -477,8 +481,11 @@ AC_DEFUN(AC_PATH_JPEG,
     #echo Includes : $ac_jpeg_includes
     #echo Libraries: $ac_jpeg_libraries
 
-    if  test $ac_jpeg_includes != NO
+    if  test $ac_jpeg_includes = NO
     then
+	JPEG_FOUND=0
+	AC_DEFINE(JPEG_FOUND,0)
+    else
 	JPEG_FOUND=1
 	AC_DEFINE(JPEG_FOUND,1)
 
@@ -527,7 +534,6 @@ AC_DEFUN(AC_PATH_TIFF,
     TIFF_SHARED_REF=
 
     TIFF_FOUND=0
-    AC_DEFINE(TIFF_FOUND,0)
 
     ac_tiff_includes=${ac_tiff_includes:-NO}
     ac_tiff_libraries=${ac_tiff_libraries:-NO}
@@ -605,8 +611,11 @@ AC_DEFUN(AC_PATH_TIFF,
     #echo Includes : $ac_tiff_includes
     #echo Libraries: $ac_tiff_libraries
 
-    if  test $ac_tiff_includes != NO
+    if  test $ac_tiff_includes = NO
     then
+	TIFF_FOUND=0
+	AC_DEFINE(TIFF_FOUND,0)
+    else
 	TIFF_FOUND=1
 	AC_DEFINE(TIFF_FOUND,1)
 

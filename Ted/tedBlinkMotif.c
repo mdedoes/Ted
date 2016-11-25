@@ -43,10 +43,11 @@ static void tedShowIBar(	void *		voided,
 
     DocumentSelection		ds;
     SelectionGeometry		sg;
+    SelectionDescription	sd;
 
     td->tdShowIBarId= (XtIntervalId)0;
 
-    if  ( tedGetSelection( &ds, &sg, td ) )
+    if  ( tedGetSelection( &ds, &sg, &sd, td ) )
 	{ LDEB(1); return;	}
 
     tedDrawIBar( &(sg.sgBegin), ox, oy, add );
@@ -97,10 +98,11 @@ void tedStopCursorBlink(	EditDocument *	ed )
 
 	DocumentSelection	ds;
 	SelectionGeometry	sg;
+	SelectionDescription	sd;
 
 	XtRemoveTimeOut( td->tdShowIBarId );
 
-	if  ( ! tedGetSelection( &ds, &sg, td ) )
+	if  ( ! tedGetSelection( &ds, &sg, &sd, td ) )
 	    {
 	    tedDrawIBar( &(sg.sgBegin), ox, oy, add );
 	    }

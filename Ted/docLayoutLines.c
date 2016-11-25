@@ -156,6 +156,7 @@ static int docPlace_Line(	TextLine *			resTl,
     {
     BufferDocument *		bd= plc->plcBd;
     AppDrawingData *		add= plc->plcAdd;
+    ScreenFontList *		sfl= plc->plcScreenFontList;
 
     int				accepted;
     int				res;
@@ -210,7 +211,7 @@ static int docPlace_Line(	TextLine *			resTl,
 	{ *lpBottom= lp; return 0; }
 
     if  ( sl && sl->slLayoutLine					&&
-	  (*sl->slLayoutLine)( tl, paraBi, bd, part, accepted, add,
+	  (*sl->slLayoutLine)( tl, paraBi, bd, part, accepted, add, sfl,
 							pf, pd ) < 0	)
 	{ LDEB(accepted); return -1;	}
 
@@ -260,6 +261,7 @@ int docLayout_Line(		TextLine *			resTl,
     {
     BufferDocument *		bd= plc->plcBd;
     AppDrawingData *		add= plc->plcAdd;
+    ScreenFontList *		sfl= plc->plcScreenFontList;
 
     int				accepted;
     int				res;
@@ -291,7 +293,7 @@ int docLayout_Line(		TextLine *			resTl,
 
     tl->tlTopPosition= lp;
     accepted= docLayoutLineBox( bd, tl, paraBi, part,
-					&(add->addPhysicalFontList), pd, pf );
+					add->addPostScriptFontList, pd, pf );
 
     if  ( accepted < 1 )
 	{ LDEB(accepted); return -1;	}
@@ -320,7 +322,7 @@ int docLayout_Line(		TextLine *			resTl,
     tl->tlColumnWidthTwips= bf->bfColumnWidthTwips;
 
     if  ( sl && sl->slLayoutLine					&&
-	  (*sl->slLayoutLine)( tl, paraBi, bd, part, accepted, add,
+	  (*sl->slLayoutLine)( tl, paraBi, bd, part, accepted, add, sfl,
 							pf, pd ) < 0	)
 	{ LDEB(accepted); return -1;	}
 

@@ -51,6 +51,7 @@ determined a perfect hash for the whole set of keys.
 #   include	<stddef.h>
 #   include	<stdio.h>
 #   include	<stdlib.h>
+#   include	<string.h>
 
 #   include	"appUtilConfig.h"
 #   include	"utilJenkinsHash.h"
@@ -440,7 +441,7 @@ static int apply(	bstuff *tabb,
       else if (tabh[hash].key_h)
       {
 	/* very rare: roll back any changes */
-	(void *)apply(tabb, tabh, tabq, blen, scramble, tail, TRUE);
+	(void)apply(tabb, tabh, tabq, blen, scramble, tail, TRUE);
 	return FALSE;                                  /* failure, collision */
       }
       tabh[hash].key_h = mykey;

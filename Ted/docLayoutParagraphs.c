@@ -70,7 +70,8 @@ static int docPsLayoutStartParagraph(
 	{ LDEB(1); return -1;	}
 
     if  ( sl && sl->slStartParagraph					&&
-	  (*sl->slStartParagraph)( paraBi, plc->plcAdd, plc->plcBd )	)
+	  (*sl->slStartParagraph)( paraBi, plc->plcAdd,
+				plc->plcScreenFontList, plc->plcBd )	)
 	{ LDEB(1); return -1;	}
 
     *pToNextPage= 0;

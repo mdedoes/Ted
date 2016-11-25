@@ -26,24 +26,30 @@ void docInitDocumentProperties(	DocumentProperties *	dp )
     dp->dpContainsTables= 0;
     dp->dpTabIntervalTwips= 720;
     dp->dpDefaultColor= 0;
-    dp->dpDefaultFont= -1;
     dp->dpAnsiCodepage= -1;
+
+    dp->dpDefaultFont= -1;
+    dp->dpDefaultFontDbch= -1;
+    dp->dpDefaultFontLoch= -1;
+    dp->dpDefaultFontHich= -1;
+    dp->dpDefaultFontBi= -1;
 
     dp->dpStartPageNumber= 1;
     dp->dpFootEndNoteType= DPfetFOOT_ONLY;
 
     dp->dpFootnoteProperties.npStartNumber= 1;
-    dp->dpFootnoteProperties.npPosition= DPftnPOS_PAGE_BOTTOM;
-    dp->dpFootnoteProperties.npRestart= DPftnRST_CONTINUOUS;
-    dp->dpFootnoteProperties.npNumberStyle= DPftnNAR;
+    dp->dpFootnoteProperties.npPosition= FTN_POS_PAGE_BOTTOM;
+    dp->dpFootnoteProperties.npRestart= FTN_RST_CONTINUOUS;
+    dp->dpFootnoteProperties.npNumberStyle= FTNstyleNAR;
 
     dp->dpEndnoteProperties.npStartNumber= 1;
-    dp->dpEndnoteProperties.npPosition= DPftnPOS_DOC_END;
-    dp->dpEndnoteProperties.npRestart= DPftnRST_CONTINUOUS;
-    dp->dpEndnoteProperties.npNumberStyle= DPftnNRLC;
+    dp->dpEndnoteProperties.npPosition= FTN_POS_DOC_END;
+    dp->dpEndnoteProperties.npRestart= FTN_RST_CONTINUOUS;
+    dp->dpEndnoteProperties.npNumberStyle= FTNstyleNRLC;
 
     dp->dpHasFacingPages= 0;
     dp->dpWidowControl= 0;
+    dp->dpTwoOnOne= 0;
 
     appInitDocumentGeometry( &(dp->dpGeometry) );
 
@@ -57,13 +63,22 @@ void docInitDocumentProperties(	DocumentProperties *	dp )
     dp->dpAuthors= (unsigned char **)0;
     dp->dpAuthorCount= 0;
 
+    dp->dpGenerator= (unsigned char *)0;
     dp->dpTitle= (unsigned char *)0;
     dp->dpSubject= (unsigned char *)0;
     dp->dpKeywords= (unsigned char *)0;
     dp->dpDoccomm= (unsigned char *)0;
     dp->dpAuthor= (unsigned char *)0;
+    dp->dpCompany= (unsigned char *)0;
     dp->dpHlinkbase= (unsigned char *)0;
     dp->dpFilename= (unsigned char *)0;
+
+    docInitBorderProperties( &(dp->dpTopBorder) );
+    docInitBorderProperties( &(dp->dpLeftBorder) );
+    docInitBorderProperties( &(dp->dpRightBorder) );
+    docInitBorderProperties( &(dp->dpBottomBorder) );
+    docInitBorderProperties( &(dp->dpHeadBorder) );
+    docInitBorderProperties( &(dp->dpFootBorder) );
 
     appInvalidateTime( &(dp->dpCreatim) );
     appInvalidateTime( &(dp->dpRevtim) );
@@ -90,6 +105,8 @@ void docCleanDocumentProperties(	DocumentProperties *	dp )
     appInvalidateTime( &(dp->dpRevtim) );
     appInvalidateTime( &(dp->dpPrintim) );
 
+    if  ( dp->dpGenerator )
+	{ free( dp->dpGenerator );	}
     if  ( dp->dpTitle )
 	{ free( dp->dpTitle );	}
     if  ( dp->dpSubject )
@@ -100,6 +117,8 @@ void docCleanDocumentProperties(	DocumentProperties *	dp )
 	{ free( dp->dpDoccomm );	}
     if  ( dp->dpAuthor )
 	{ free( dp->dpAuthor );	}
+    if  ( dp->dpCompany )
+	{ free( dp->dpCompany );	}
     if  ( dp->dpHlinkbase )
 	{ free( dp->dpHlinkbase );	}
     if  ( dp->dpFilename )
@@ -125,11 +144,13 @@ int docCopyDocumentProperties(	DocumentProperties *		to,
     copy.dpAuthorCount= 0;
     copy.dpAuthors= (unsigned char **)0;
 
+    copy.dpGenerator= (unsigned char *)0;
     copy.dpTitle= (unsigned char *)0;
     copy.dpSubject= (unsigned char *)0;
     copy.dpKeywords= (unsigned char *)0;
     copy.dpDoccomm= (unsigned char *)0;
     copy.dpAuthor= (unsigned char *)0;
+    copy.dpCompany= (unsigned char *)0;
     copy.dpHlinkbase= (unsigned char *)0;
     copy.dpFilename= (unsigned char *)0;
 
@@ -173,6 +194,16 @@ int docCopyDocumentProperties(	DocumentProperties *		to,
 	if  ( ! copy.dpAuthors[i] )
 	    {
 	    XDEB(copy.dpAuthors[i]);
+	    docCleanDocumentProperties( &copy ); return -1;
+	    }
+	}
+
+    if  ( from->dpGenerator )
+	{
+	copy.dpGenerator= (unsigned char *)strdup( (char *)from->dpGenerator );
+	if  ( ! copy.dpGenerator )
+	    {
+	    XDEB(copy.dpGenerator);
 	    docCleanDocumentProperties( &copy ); return -1;
 	    }
 	}
@@ -223,6 +254,16 @@ int docCopyDocumentProperties(	DocumentProperties *		to,
 	if  ( ! copy.dpAuthor )
 	    {
 	    XDEB(copy.dpAuthor);
+	    docCleanDocumentProperties( &copy ); return -1;
+	    }
+	}
+
+    if  ( from->dpCompany )
+	{
+	copy.dpCompany= (unsigned char *)strdup( (char *)from->dpCompany );
+	if  ( ! copy.dpCompany )
+	    {
+	    XDEB(copy.dpCompany);
 	    docCleanDocumentProperties( &copy ); return -1;
 	    }
 	}
@@ -284,99 +325,52 @@ int docPropertiesSetFilename(	DocumentProperties *	dp,
 /*									*/
 /************************************************************************/
 
-static void docUpdNotesProperties(
-			PropertyMask *			pChgMask,
-			NotesProperties *		np,
-			const PropertyMask *		updMask,
-			const NotesProperties *		npNew,
-			int				propStartNr,
-			int				propPosition,
-			int				propRestart,
-			int				propStyle )
-    {
-    if  ( PROPmaskISSET( updMask, propStartNr ) )
-	{
-	if  ( np->npStartNumber != npNew->npStartNumber )
-	    {
-	    np->npStartNumber= npNew->npStartNumber;
-	    PROPmaskADD( pChgMask, propStartNr );
-	    }
-	}
-
-    if  ( PROPmaskISSET( updMask, propPosition ) )
-	{
-	if  ( np->npPosition != npNew->npPosition )
-	    {
-	    np->npPosition= npNew->npPosition;
-	    PROPmaskADD( pChgMask, propPosition );
-	    }
-	}
-
-    if  ( PROPmaskISSET( updMask, propRestart ) )
-	{
-	if  ( np->npRestart != npNew->npRestart )
-	    {
-	    np->npRestart= npNew->npRestart;
-	    PROPmaskADD( pChgMask, propRestart );
-	    }
-	}
-
-    if  ( PROPmaskISSET( updMask, propStyle ) )
-	{
-	if  ( np->npNumberStyle != npNew->npNumberStyle )
-	    {
-	    np->npNumberStyle= npNew->npNumberStyle;
-	    PROPmaskADD( pChgMask, propStyle );
-	    }
-	}
-
-    return;
-    }
-
-int docUpdDocumentProperties(	PropertyMask *			pChgMask,
-				DocumentProperties *		dp,
+int docUpdDocumentProperties(	PropertyMask *			pDoneMask,
+				DocumentProperties *		dpTo,
 				const PropertyMask *		updMask,
-				const DocumentProperties *	dpNew )
+				const DocumentProperties *	dpFrom )
     {
-    PropertyMask	chgMask;
+    PropertyMask	doneMask;
     PropertyMask	dgMask;
 
-    PROPmaskCLEAR( &chgMask );
+    const int * const	colorMap= (const int *)0;
+
+    PROPmaskCLEAR( &doneMask );
 
     PROPmaskCLEAR( &dgMask );
     PROPmaskFILL( &dgMask, DGprop_COUNT );
     utilPropMaskAnd( &dgMask, &dgMask, updMask );
 
-    appSetDocumentGeometry( &(dp->dpGeometry), &(dpNew->dpGeometry),
-							&chgMask, &dgMask );
+    appSetDocumentGeometry( &(dpTo->dpGeometry), &(dpFrom->dpGeometry),
+							&doneMask, &dgMask );
 
     if  ( PROPmaskISSET( updMask, DPpropSTART_PAGE ) )
 	{
-	if  ( dp->dpStartPageNumber != dpNew->dpStartPageNumber )
+	if  ( dpTo->dpStartPageNumber != dpFrom->dpStartPageNumber )
 	    {
-	    dp->dpStartPageNumber= dpNew->dpStartPageNumber;
-	    PROPmaskADD( &chgMask, DPpropSTART_PAGE );
+	    dpTo->dpStartPageNumber= dpFrom->dpStartPageNumber;
+	    PROPmaskADD( &doneMask, DPpropSTART_PAGE );
 	    }
 	}
 
     if  ( PROPmaskISSET( updMask, DPpropFACING_PAGES ) )
 	{
-	if  ( dp->dpHasFacingPages != dpNew->dpHasFacingPages )
+	if  ( dpTo->dpHasFacingPages != dpFrom->dpHasFacingPages )
 	    {
-	    dp->dpHasFacingPages= dpNew->dpHasFacingPages;
-	    PROPmaskADD( &chgMask, DPpropFACING_PAGES );
+	    dpTo->dpHasFacingPages= dpFrom->dpHasFacingPages;
+	    PROPmaskADD( &doneMask, DPpropFACING_PAGES );
 	    }
 	}
 
-    docUpdNotesProperties( &chgMask, &(dp->dpFootnoteProperties),
-				updMask, &(dpNew->dpFootnoteProperties),
+    docUpdNotesProperties( &doneMask, &(dpTo->dpFootnoteProperties),
+				updMask, &(dpFrom->dpFootnoteProperties),
 				DPpropFOOTNOTE_STARTNR,
 				DPpropFOOTNOTE_POSITION,
 				DPpropFOOTNOTE_RESTART,
 				DPpropFOOTNOTE_STYLE );
 
-    docUpdNotesProperties( &chgMask, &(dp->dpEndnoteProperties),
-				updMask, &(dpNew->dpEndnoteProperties),
+    docUpdNotesProperties( &doneMask, &(dpTo->dpEndnoteProperties),
+				updMask, &(dpFrom->dpEndnoteProperties),
 				DPpropENDNOTE_STARTNR,
 				DPpropENDNOTE_POSITION,
 				DPpropENDNOTE_RESTART,
@@ -384,23 +378,90 @@ int docUpdDocumentProperties(	PropertyMask *			pChgMask,
 
     if  ( PROPmaskISSET( updMask, DPpropDEFTAB ) )
 	{
-	if  ( dp->dpTabIntervalTwips != dpNew->dpTabIntervalTwips )
+	if  ( dpTo->dpTabIntervalTwips != dpFrom->dpTabIntervalTwips )
 	    {
-	    dp->dpTabIntervalTwips= dpNew->dpTabIntervalTwips;
-	    PROPmaskADD( &chgMask, DPpropDEFTAB );
+	    dpTo->dpTabIntervalTwips= dpFrom->dpTabIntervalTwips;
+	    PROPmaskADD( &doneMask, DPpropDEFTAB );
 	    }
 	}
 
     if  ( PROPmaskISSET( updMask, DPpropANSICPG ) )
 	{
-	if  ( dp->dpAnsiCodepage != dpNew->dpAnsiCodepage )
+	if  ( dpTo->dpAnsiCodepage != dpFrom->dpAnsiCodepage )
 	    {
-	    dp->dpAnsiCodepage= dpNew->dpAnsiCodepage;
-	    PROPmaskADD( &chgMask, DPpropANSICPG );
+	    dpTo->dpAnsiCodepage= dpFrom->dpAnsiCodepage;
+	    PROPmaskADD( &doneMask, DPpropANSICPG );
 	    }
 	}
 
-    *pChgMask= chgMask;
+    if  ( PROPmaskISSET( updMask, DPpropTOP_BORDER ) )
+	{
+	if  ( docBordersDiffer( &(dpTo->dpTopBorder),
+					&(dpFrom->dpTopBorder), colorMap ) )
+	    {
+	    docCopyBorderProperties( &(dpTo->dpTopBorder),
+					&(dpFrom->dpTopBorder), colorMap );
+	    PROPmaskADD( &doneMask, DPpropTOP_BORDER );
+	    }
+	}
+
+    if  ( PROPmaskISSET( updMask, DPpropBOTTOM_BORDER ) )
+	{
+	if  ( docBordersDiffer( &(dpTo->dpBottomBorder),
+					&(dpFrom->dpBottomBorder), colorMap ) )
+	    {
+	    docCopyBorderProperties( &(dpTo->dpBottomBorder),
+					&(dpFrom->dpBottomBorder), colorMap );
+	    PROPmaskADD( &doneMask, DPpropBOTTOM_BORDER );
+	    }
+	}
+
+    if  ( PROPmaskISSET( updMask, DPpropLEFT_BORDER ) )
+	{
+	if  ( docBordersDiffer( &(dpTo->dpLeftBorder),
+					&(dpFrom->dpLeftBorder), colorMap ) )
+	    {
+	    docCopyBorderProperties( &(dpTo->dpLeftBorder),
+					&(dpFrom->dpLeftBorder), colorMap );
+	    PROPmaskADD( &doneMask, DPpropLEFT_BORDER );
+	    }
+	}
+
+    if  ( PROPmaskISSET( updMask, DPpropRIGHT_BORDER ) )
+	{
+	if  ( docBordersDiffer( &(dpTo->dpRightBorder),
+					&(dpFrom->dpRightBorder), colorMap ) )
+	    {
+	    docCopyBorderProperties( &(dpTo->dpRightBorder),
+					&(dpFrom->dpRightBorder), colorMap );
+	    PROPmaskADD( &doneMask, DPpropRIGHT_BORDER );
+	    }
+	}
+
+    if  ( PROPmaskISSET( updMask, DPpropHEAD_BORDER ) )
+	{
+	if  ( docBordersDiffer( &(dpTo->dpHeadBorder),
+					&(dpFrom->dpHeadBorder), colorMap ) )
+	    {
+	    docCopyBorderProperties( &(dpTo->dpHeadBorder),
+					&(dpFrom->dpHeadBorder), colorMap );
+	    PROPmaskADD( &doneMask, DPpropHEAD_BORDER );
+	    }
+	}
+
+    if  ( PROPmaskISSET( updMask, DPpropFOOT_BORDER ) )
+	{
+	if  ( docBordersDiffer( &(dpTo->dpFootBorder),
+					&(dpFrom->dpFootBorder), colorMap ) )
+	    {
+	    docCopyBorderProperties( &(dpTo->dpFootBorder),
+					&(dpFrom->dpFootBorder), colorMap );
+	    PROPmaskADD( &doneMask, DPpropFOOT_BORDER );
+	    }
+	}
+
+
+    *pDoneMask= doneMask;
     return 0;
     }
 
@@ -425,3 +486,67 @@ int docAllocateDocumentColor(		DocumentProperties *	dp,
     return color;
     }
 
+/************************************************************************/
+/*									*/
+/*  As at least MS-Word 2000 crashes on lists without an oveeride,	*/
+/*  and on the other hand staroffice/openoffice creates them under	*/
+/*  certain circumstances: Make an empty override for lists without	*/
+/*  overrides.								*/
+/*									*/
+/************************************************************************/
+
+int docMakeOverrideForEveryList(	DocumentProperties *	dp )
+    {
+    const DocumentListTable *	dlt= &(dp->dpListTable);
+    const DocumentList *	dl;
+
+    int				li;
+
+    ListOverrideTable *		lot= &(dp->dpListOverrideTable);
+
+    dl= dlt->dltLists;
+    for ( li= 0; li < dlt->dltListCount; dl++, li++ )
+	{
+	int			ov;
+	const ListOverride *	lo;
+
+	lo= lot->lotOverrides;
+	for ( ov= 0; ov < lot->lotOverrideCount; lo++, ov++ )
+	    {
+	    if  ( lo->loIndex < 1 )
+		{ continue;	}
+
+	    if  ( lo->loListID == dl->dlListID )
+		{ break; }
+	    }
+
+	if  ( ov >= lot->lotOverrideCount )
+	    {
+	    int			ret;
+	    ListOverride	loNew;
+	    int			idx;
+
+	    const int * const	fontMap= (const int *)0;
+	    const int * const	colorMap= (const int *)0;
+
+	    docInitListOverride( &loNew );
+
+	    loNew.loListID= dl->dlListID;
+	    loNew.loListIndex= li;
+
+	    idx= lot->lotOverrideCount;
+	    if  ( idx < 1 )
+		{ idx=  1;	}
+
+	    ret= docListOverrideTableAddOverride( lot, &loNew, idx,
+							fontMap, colorMap );
+
+	    docCleanListOverride( &loNew );
+
+	    if  ( ret < 0 )
+		{ LDEB(ret); return -1;	}
+	    }
+	}
+
+    return 0;
+    }

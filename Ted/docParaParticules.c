@@ -64,8 +64,6 @@ int docSplitTextParticule(	TextParticule **		pTpPart,
 
     tpNext= tpPart+ 1;
 
-    tpPart->tpPhysicalFont= tpScratch.tpPhysicalFont;
-
     tpNext->tpStroff= stroff;
     tpNext->tpStrlen= ( tpScratch.tpStroff+ tpScratch.tpStrlen )- stroff;
 
@@ -113,7 +111,6 @@ static TextParticule *	docInsertParticules(	BufferItem *	paraBi,
 	tp->tpStroff= 0;
 	tp->tpStrlen= 0;
 	tp->tpKind= DOCkindTEXT;
-	tp->tpPhysicalFont= -1;
 	tp->tpObjectNumber= -1;
 
 	tp->tpX0= 0;
@@ -214,7 +211,7 @@ void docDeleteParticules(	BufferItem *	bi,
 /************************************************************************/
 
 int docCopyParticules(	DocumentCopyJob *		dcj,
-			unsigned int *			pFieldUpd,
+			EditOperation *			eo,
 			BufferItem *			biTo,
 			const BufferItem *		biFrom,
 			int				partTo,
@@ -306,12 +303,12 @@ int docCopyParticules(	DocumentCopyJob *		dcj,
 	if  ( tpFrom->tpKind == DOCkindFIELDSTART	&&
 	      dcj->dcjRefFileName			)
 	    {
-	    if  ( docCopyFieldRelative( dcj, pFieldUpd,
+	    if  ( docCopyFieldRelative( dcj, eo,
 					    biTo, biFrom, tpTo, tpFrom ) )
 		{ LLDEB(partTo,i); return -1;	}
 	    }
 	else{
-	    if  ( docCopyParticuleData( dcj, pFieldUpd,
+	    if  ( docCopyParticuleData( dcj, eo,
 					    biTo, biFrom, tpTo, tpFrom ) )
 		{ LLDEB(partTo,i); return -1;	}
 	    }
@@ -331,7 +328,7 @@ int docCopyParticules(	DocumentCopyJob *		dcj,
 
 int docCopyParticuleAndData(		TextParticule **	pTpTo,
 					DocumentCopyJob *	dcj,
-					unsigned int *		pFieldUpd,
+					EditOperation *		eo,
 					BufferItem *		paraBiTo,
 					int			partTo,
 					int			stroffTo,
@@ -362,7 +359,7 @@ int docCopyParticuleAndData(		TextParticule **	pTpTo,
     if  ( ! tpTo )
 	{ LXDEB(partTo,tpTo); return -1;	}
 
-    if  ( docCopyParticuleData( dcj, pFieldUpd,
+    if  ( docCopyParticuleData( dcj, eo,
 				    paraBiTo, paraBiFrom, tpTo, &tpSaved ) )
 	{
 	docDeleteParticules( paraBiTo, partTo, 1 );
@@ -382,6 +379,7 @@ int docCopyParticuleAndData(		TextParticule **	pTpTo,
 int docSaveParticules(	BufferDocument *		bd,
 			BufferItem *			bi,
 			const TextAttribute *		ta,
+			const unsigned char *		map,
 			const unsigned char *		text,
 			int				len )
     {
@@ -414,8 +412,15 @@ int docSaveParticules(	BufferDocument *		bd,
 	*/
 
 	to= bi->biParaString+ off;
-	for ( i= 0; i < particuleLength; i++ )
-	    { *(to++)= *(particuleText++);	}
+	if  ( map )
+	    {
+	    for ( i= 0; i < particuleLength; i++ )
+		{ *(to++)= map[*(particuleText++)];	}
+	    }
+	else{
+	    for ( i= 0; i < particuleLength; i++ )
+		{ *(to++)= *(particuleText++);	}
+	    }
 	*to= '\0';
 
 	bi->biParaStrlen += particuleLength;
@@ -447,6 +452,9 @@ int docSaveSpecialParticule(	BufferDocument *		bd,
 
     int			stroffShift= 0;
     int			stroff= paraBi->biParaStrlen;
+
+    if  ( paraBi->biLevel != DOClevPARA )
+	{ LLDEB(paraBi->biLevel,DOClevPARA); return -1;	}
 
     if  ( atBegin )
 	{ n= 0; stroff= 0;	}
@@ -555,7 +563,6 @@ int docRedivideStringInParticules(	BufferItem *	bi,
 	    tp->tpKind= DOCkindTEXT;
 	    tp->tpTextAttributeNumber= textAttributeNumber;
 
-	    tp->tpPhysicalFont= -1;
 	    tp->tpX0= -1;
 	    tp->tpPixelsWide= 0;
 
@@ -661,18 +668,19 @@ int docTextAttributeNumber(	BufferDocument *	bd,
 
     TextAttribute		taCopy= *ta;
 
-    if  ( taCopy.taFontNumber < 0 || taCopy.taFontNumber >= dfl->dflCount )
+    if  ( taCopy.taFontNumber < 0			||
+	  taCopy.taFontNumber >= dfl->dflFontCount	)
 	{
-	if  ( taCopy.taFontNumber >= dfl->dflCount )
-	    { LLDEB(taCopy.taFontNumber,dfl->dflCount);	}
+	if  ( taCopy.taFontNumber >= dfl->dflFontCount )
+	    { LLDEB(taCopy.taFontNumber,dfl->dflFontCount);	}
 
 	taCopy.taFontNumber= dp->dpDefaultFont;
 
 	if  ( taCopy.taFontNumber < 0 )
 	    { taCopy.taFontNumber= 0;	}
 
-	if  ( taCopy.taFontNumber >= dfl->dflCount )
-	    { LLDEB(taCopy.taFontNumber,dfl->dflCount);	}
+	if  ( taCopy.taFontNumber >= dfl->dflFontCount )
+	    { LLDEB(taCopy.taFontNumber,dfl->dflFontCount);	}
 	}
 
     textAttributeNumber= utilTextAttributeNumber(
@@ -682,3 +690,4 @@ int docTextAttributeNumber(	BufferDocument *	bd,
 
     return textAttributeNumber;
     }
+

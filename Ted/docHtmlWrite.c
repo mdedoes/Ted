@@ -991,6 +991,7 @@ static int docHtmlSaveParticules( const BufferItem *		bi,
 
 	    case DOCkindLINEBREAK:
 	    case DOCkindPAGEBREAK:
+	    case DOCkindCOLUMNBREAK:
 		docHtmlPutString( "<BR>", hwc );
 		docHtmlNewLine( hwc );
 		afterSpace= 0;
@@ -1143,22 +1144,25 @@ static int docHtmlUseTableForIndent(	int *			pTabParticule,
 static int docHtmlSaveParaItem(	const BufferItem *		bi,
 				HtmlWritingContext *		hwc )
     {
-    TextParticule *			tp;
-    unsigned char *			s;
+    TextParticule *		tp;
+    unsigned char *		s;
 
-    int					useTABLE= 0;
+    int				useTABLE= 0;
 
-    int					part= 0;
-    int					stroff= 0;
-    int					tabParticule;
+    int				part= 0;
+    int				stroff= 0;
+    int				tabParticule;
 
-    TextAttribute			ta;
-    int					fontHeight;
+    TextAttribute		ta;
+    int				fontHeight;
 
-    PropertyMask			ppChgMask;
-    PropertyMask			ppUpdMask;
+    PropertyMask		ppChgMask;
+    PropertyMask		ppUpdMask;
 
-    const BufferDocument *		bd= hwc->hwcBd;
+    const int * const		colorMap= (const int *)0;
+    const int * const		listStyleMap= (const int *)0;
+
+    const BufferDocument *	bd= hwc->hwcBd;
 
     if  ( bi->biParaParticuleCount == 0		||
 	  bi->biParaStrlen == 0			)
@@ -1280,7 +1284,8 @@ static int docHtmlSaveParaItem(	const BufferItem *		bi,
     PROPmaskFILL( &ppUpdMask, PPprop_COUNT );
 
     if  ( docUpdParaProperties( &ppChgMask, &(hwc->hwcParagraphProperties),
-			&ppUpdMask, &(bi->biParaProperties), (const int *)0 ) )
+			&ppUpdMask, &(bi->biParaProperties),
+			colorMap, listStyleMap ) )
 	{ LDEB(1);	}
 
     return 0;

@@ -63,6 +63,7 @@ extern void tedFormatToolGetTableResourceTable(
 extern void tedFormatToolRefreshTableTool(
 				TableTool *			tt,
 				int *				pEnabled,
+				int *				pPref,
 				InspectorSubject *		is,
 				const DocumentSelection *	bs );
 

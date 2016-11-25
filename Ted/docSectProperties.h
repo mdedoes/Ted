@@ -8,6 +8,7 @@
 #   define	DOC_SECT_PROP_H
 
 #   include	<utilDocumentGeometry.h>
+#   include	"docNotesProperties.h"
 #   include	"docParaNumber.h"
 
 typedef enum SectionBreak
@@ -49,6 +50,9 @@ typedef struct SectionProperties
 
     int			spStartPageNumber;
 
+    NotesProperties	spFootnoteProperties;
+    NotesProperties	spEndnoteProperties;
+
     ParagraphNumber *	spParagraphNumbers;
     int			spParagraphNumberCount;
     } SectionProperties;
@@ -68,6 +72,16 @@ typedef enum SectionProperty
     SPpropCOLUMN_COUNT,
     SPpropCOLUMN_SPACING,
     SPpropCOLUMN_WIDTH,
+
+    SPpropFOOTNOTE_STARTNR,
+    SPpropFOOTNOTE_POSITION,
+    SPpropFOOTNOTE_RESTART,
+    SPpropFOOTNOTE_STYLE,
+
+    SPpropENDNOTE_STARTNR,
+    SPpropENDNOTE_POSITION,
+    SPpropENDNOTE_RESTART,
+    SPpropENDNOTE_STYLE,
 
     SPprop_COUNT
     } SectionProperty;

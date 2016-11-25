@@ -38,10 +38,9 @@ Numbers of the paragraphs and the value of bi->biLeftParagraphs:
     |     |     |     |     |     |     |     |     |     |     |     |
     4-----+-----+-----+     9-----+-----+-----+-----+     12----+-----+
     |                       |                             |
-    4-----------------------9-----------------------------12
+    12----------------------+-----------------------------+
     |
-    12
-    |
+    *
 
 Deleting 8 yeilds:
 
@@ -51,10 +50,9 @@ Deleting 8 yeilds:
     |     |     |     |     |     |     |           |     |     |     |
     4-----+-----+-----+     8-----+-----+-----+-----+     11----+-----+
     |                       |                             |
-    4-----------------------8-----------------------------11
+    11----------------------+-----------------------------+
     |
-    11
-    |
+    *
 
 So after deleting/inserting paragraphs: Descend to the root of the 
 tree. In every parent adapt bi->biLeftParagraphs of all direct 
@@ -588,6 +586,10 @@ BufferItem * docInsertEmptyParagraph(
 				    DOCkindTEXT, textAttributeNumber ) )
 	{ LDEB(1); return (BufferItem *)0;	}
 
+    if  ( docInflateTextString( bi, 0 ) )
+	{ LDEB(1); return (BufferItem *)0;	}
+    bi->biParaString[bi->biParaStrlen]= '\0';
+
     return bi;
     }
 
@@ -598,7 +600,7 @@ BufferItem * docInsertEmptyParagraph(
 /************************************************************************/
 
 BufferItem * docCopyParaItem(	DocumentCopyJob *	dcj,
-				unsigned int *		pFieldUpd,
+				EditOperation *		eo,
 				BufferItem *		biCellTo,
 				int			n,
 				BufferItem *		biParaFrom,
@@ -607,7 +609,7 @@ BufferItem * docCopyParaItem(	DocumentCopyJob *	dcj,
     BufferItem *	biParaTo;
 
     const int		partTo= 0;
-    const int		partFrom= 0;
+    int			partFrom= 0;
 
     int			particulesInserted= 0;
     int			charactersCopied= 0;
@@ -627,25 +629,69 @@ BufferItem * docCopyParaItem(	DocumentCopyJob *	dcj,
     PROPmaskFILL( &ppUpdMask, PPprop_COUNT );
     PROPmaskUNSET( &ppUpdMask, PPpropIN_TABLE );
 
-    if  ( docUpdParaProperties( &ppChgMask, &biParaTo->biParaProperties,
-				&ppUpdMask, &biParaFrom->biParaProperties,
-				dcj->dcjColorMap ) )
+    if  ( biParaFrom->biParaListOverride > 0 )
+	{
+	int		bulletFieldNr= -1;
+	int		bulletPartBegin= -1;
+	int		bulletPartEnd= -1;
+	int		bulletStroffBegin= -1;
+	int		bulletStroffEnd= -1;
+
+	if  ( docDelimitParaHeadField( &bulletFieldNr,
+			&bulletPartBegin, &bulletPartEnd,
+			&bulletStroffBegin, &bulletStroffEnd,
+			biParaFrom, dcj->dcjBdFrom ) )
+	    { LDEB(1);	}
+
+	if  ( partFrom <= bulletPartEnd )
+	    { partFrom= bulletPartEnd+ 1;	}
+	}
+
+    if  ( partFrom < biParaFrom->biParaParticuleCount )
+	{
+	if  ( docCopyParticules( dcj, eo, biParaTo, biParaFrom, partTo,
+			partFrom, biParaFrom->biParaParticuleCount- partFrom,
+			&particulesInserted, &charactersCopied ) )
+	    {
+	    LDEB(biParaFrom->biParaParticuleCount);
+	    docDeleteItem( dcj->dcjBdTo, biParaTo ); return (BufferItem *)0;
+	    }
+	}
+    else{
+	int			textAttributeNumberTo;
+	const TextParticule *	tpFrom;
+
+	tpFrom= biParaFrom->biParaParticules+
+				    biParaFrom->biParaParticuleCount- 1;
+
+	textAttributeNumberTo= docMapTextAttributeNumber( dcj,
+					    tpFrom->tpTextAttributeNumber );
+	if  ( textAttributeNumberTo < 0 )
+	    { LDEB(textAttributeNumberTo); return (BufferItem *)0;	}
+
+	if  ( ! docInsertTextParticule( biParaTo, 0, 0, 0,
+					DOCkindTEXT, textAttributeNumberTo ) )
+	    { LDEB(1); return (BufferItem *)0;	}
+
+	if  ( docInflateTextString( biParaTo, 0 ) )
+	    { LDEB(1); return (BufferItem *)0;	}
+	biParaTo->biParaString[biParaTo->biParaStrlen]= '\0';
+	}
+
+    if  ( docEditUpdParaProperties( eo, &ppChgMask, biParaTo,
+				&ppUpdMask, &(biParaFrom->biParaProperties),
+				dcj->dcjColorMap, dcj->dcjListStyleMap ) )
 	{ LDEB(1); return (BufferItem *)0;	}
 
-    if  ( docCopyParticules( dcj, pFieldUpd,
-			biParaTo, biParaFrom,
-			partTo, partFrom, biParaFrom->biParaParticuleCount,
-			&particulesInserted, &charactersCopied ) )
-	{
-	LDEB(biParaFrom->biParaParticuleCount);
-	docDeleteItem( dcj->dcjBdTo, biParaTo ); return (BufferItem *)0;
-	}
+    if  ( biParaTo->biParaListOverride > 0 )
+	{ dcj->dcjBulletsCopied++;	}
 
     return biParaTo;
     }
 
 BufferItem * docCopyRowItem(	DocumentCopyJob *	dcj,
-				unsigned int *		pFieldUpd,
+				EditOperation *		eo,
+				int *			pParasCopied,
 				BufferItem *		sectBiTo,
 				int			n,
 				BufferItem *		rowBiFrom,
@@ -653,6 +699,7 @@ BufferItem * docCopyRowItem(	DocumentCopyJob *	dcj,
     {
     BufferItem *	biRowTo;
     int			col;
+    int			parasCopied= 0;
 
     biRowTo= docInsertItem( dcj->dcjBdTo, sectBiTo, n, DOClevROW );
     if  ( ! biRowTo )
@@ -678,17 +725,20 @@ BufferItem * docCopyRowItem(	DocumentCopyJob *	dcj,
 	    {
 	    BufferItem *	biParaFrom= biCellFrom->biChildren[para];
 
-	    if  ( ! docCopyParaItem( dcj, pFieldUpd,
+	    if  ( ! docCopyParaItem( dcj, eo,
 				    biCellTo, para, biParaFrom, inTable ) )
 		{ LDEB(para); return (BufferItem *)0;	}
+
+	    parasCopied++;
 	    }
 	}
 
+    *pParasCopied= parasCopied;
     return biRowTo;
     }
 
 BufferItem * docCopySectItem(	DocumentCopyJob *	dcj,
-				unsigned int *		pFieldUpd,
+				EditOperation *		eo,
 				BufferItem *		parentBiTo,
 				int			n,
 				BufferItem *		biSectFrom,
@@ -735,8 +785,9 @@ BufferItem * docCopySectItem(	DocumentCopyJob *	dcj,
 	{
 	BufferItem *	rowBiFrom= biSectFrom->biChildren[row];
 	BufferItem *	rowBiTo;
+	int		parasCopied;
 
-	rowBiTo= docCopyRowItem( dcj, pFieldUpd,
+	rowBiTo= docCopyRowItem( dcj, eo, &parasCopied,
 					sectBiTo, row, rowBiFrom,
 					rowBiFrom->biRowHasTableParagraphs );
 	if  ( ! rowBiTo )
@@ -828,6 +879,9 @@ int docCopyRowColumnAttributes(	BufferItem *		rowBi,
 	PropertyMask		ppChgMask;
 	PropertyMask		ppUpdMask;
 
+	const int * const	colorMap= (const int *)0;
+	const int * const	listStyleMap= (const int *)0;
+
 	if  ( docFirstPosition( &dp, rowBi->biChildren[col] ) )
 	    { continue;	}
 	if  ( docFirstPosition( &dpRef, refRowBi->biChildren[col] ) )
@@ -840,7 +894,7 @@ int docCopyRowColumnAttributes(	BufferItem *		rowBi,
 
 	if  ( docUpdParaProperties( &ppChgMask, &(dp.dpBi->biParaProperties),
 				&ppUpdMask, &(dpRef.dpBi->biParaProperties),
-				(const int *)0 ) )
+				colorMap, listStyleMap ) )
 	    { LDEB(1); return -1;	}
 
 	tp= dp.dpBi->biParaParticules;

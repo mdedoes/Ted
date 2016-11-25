@@ -25,10 +25,6 @@ typedef enum TableAutoFormatUnit
 
 #   define TRauto_BITS	2
 
-#   if  (1<<TRauto_BITS) < TRauto_COUNT
-    This will crash: Increase TRauto_BITS
-#   endif
-
 typedef enum CellTextFlow
     {
     CLflowTXLRTB= 0,	/*  left to right,  top to bottom (default).	*/
@@ -63,10 +59,10 @@ typedef struct CellProperties
 
     int			cpPreferredWidth;
 
-    int			cpTopPadding;
-    int			cpBottomPadding;
-    int			cpLeftPadding;
-    int			cpRightPadding;
+    short int		cpTopPadding;
+    short int		cpBottomPadding;
+    short int		cpLeftPadding;
+    short int		cpRightPadding;
 
 			/* TableAutoFormatUnit */
     unsigned int	cpPreferredWidthUnit:TRauto_BITS;
@@ -81,6 +77,8 @@ typedef struct CellProperties
     unsigned int	cpTopInMergedColumn:1;
     unsigned int	cpMergedWithAbove:1;
     unsigned int	cpNoWrap:1;
+
+    unsigned int	cpNoShading:1; /* clshdrawnil */
 
     unsigned int	cpTextVerticalAlignment:3;	/*  (enum)	*/
     unsigned int	cpTextFlow:3;			/*  (enum)	*/
@@ -126,6 +124,8 @@ typedef enum CellProperty
     CLpropLEFT_PADDING_UNIT,
     CLpropRIGHT_PADDING_UNIT,
 
+    CLpropNO_SHADING,
+
     CLprop_ROWSPAN,			/*  9  */
     CLprop_COLSPAN,			/*  9  */
 
@@ -150,6 +150,10 @@ typedef struct RowProperties
     int			rpLeftIndentPixels;
 
     int			rpHeightTwips;
+
+    int			rpRowNumber;
+    int			rpRowBandNumber;
+    int			rpRowStyle;
 
 			/************************************************/
 			/*  Row borders are not stored in the word	*/
@@ -206,6 +210,18 @@ typedef struct RowProperties
 			/* TableAutoFormatUnit */
     unsigned int	rpCellWidthBeforeUnit:TRauto_BITS;
     unsigned int	rpCellWidthAfterUnit:TRauto_BITS;
+
+    unsigned int	rpAutoformatBorders:1;
+    unsigned int	rpAutoformatShading:1;
+    unsigned int	rpAutoformatFont:1;
+    unsigned int	rpAutoformatColor:1;
+    unsigned int	rpAutoformatApplyBestFit:1;
+    unsigned int	rpAutoformatFirstRow:1;
+    unsigned int	rpAutoformatLastRow:1;
+    unsigned int	rpAutoformatFirstColumn:1;
+    unsigned int	rpAutoformatLastColumn:1;
+
+    unsigned int	rpIsLastRow:1;
     } RowProperties;
 
 typedef enum RowProperty
@@ -268,6 +284,23 @@ typedef enum RowProperty
 
     RPpropTRFTS_WIDTHB,
     RPpropTRFTS_WIDTHA,
+
+    /**/
+    RPpropAUTOFORMAT_BORDERS,
+    RPpropAUTOFORMAT_SHADING,
+    RPpropAUTOFORMAT_FONT,
+    RPpropAUTOFORMAT_COLOR,
+    RPpropAUTOFORMAT_APPLY_BEST_FIT,
+    RPpropAUTOFORMAT_FIRST_ROW,
+    RPpropAUTOFORMAT_LAST_ROW,
+    RPpropAUTOFORMAT_FIRST_COLUMN,
+    RPpropAUTOFORMAT_LAST_COLUMN,
+
+    RPpropROW_NUMBER,
+    RPpropROW_BAND_NUMBER,
+    RPpropROW_STYLE,
+
+    RPpropIS_LAST_ROW,
 
     RPprop_COUNT
     } RowProperty;

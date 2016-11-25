@@ -12,7 +12,6 @@
 
 #   include	<appDebugon.h>
 
-#   include	<appUnit.h>
 #   include	"docBuf.h"
 
 /************************************************************************/
@@ -52,6 +51,7 @@ void docInitCellProperties(	CellProperties *	cp )
     cp->cpTopInMergedColumn= 0;
     cp->cpMergedWithAbove= 0;
     cp->cpNoWrap= 0;
+    cp->cpNoShading= 0;
 
     cp->cpTextVerticalAlignment= DOCtvaTOP;
     cp->cpTextFlow= CLflowTXLRTB;

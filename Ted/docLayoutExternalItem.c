@@ -88,9 +88,6 @@ int docGetExternalItemBox(	DocumentRectangle *		dr,
 	case DOCinFOOTNOTE:
 	case DOCinENDNOTE:
 
-	    if  ( page != ei->eiPageFormattedFor )
-		{ LLDEB(page,ei->eiPageFormattedFor);	}
-
 	    sp= &(bodySectBi->biSectProperties);
 	    dgRef= &(sp->spDocumentGeometry);
 
@@ -98,10 +95,35 @@ int docGetExternalItemBox(	DocumentRectangle *		dr,
 	    drBox.drX1= TWIPStoPIXELS( xfac, dgRef->dgPageWideTwips-
 						dgRef->dgRightMarginTwips );
 
-	    drBox.drY0= pageTopPixels+
-				TWIPStoPIXELS( xfac, ei->eiY0UsedTwips );
-	    drBox.drY1= pageTopPixels+
-				TWIPStoPIXELS( xfac, ei->eiY1UsedTwips );
+	    {
+	    DocumentPosition	dpTop;
+	    DocumentPosition	dpBot;
+
+	    int			lineTop;
+	    int			lineBot;
+
+	    int			partTop;
+	    int			partBot;
+
+	    const TextLine *	tlTop;
+	    const TextLine *	tlBot;
+
+	    const int		column= 0;
+
+	    if  ( docGetFirstInColumnForItem( &dpTop, &lineTop, &partTop,
+						ei->eiItem, page, column ) )
+		{ LDEB(page); return -1;	}
+
+	    if  ( docGetLastInColumnForItem( &dpBot, &lineBot, &partBot,
+						ei->eiItem, page, column ) )
+		{ LDEB(page); return -1;	}
+
+	    tlTop= dpTop.dpBi->biParaLines+ lineTop;
+	    tlBot= dpBot.dpBi->biParaLines+ lineBot;
+
+	    drBox.drY0= TL_TOP_PIXELS( add, tlTop );
+	    drBox.drY1= TL_BELOW_PIXELS( add, tlBot );
+	    }
 
 	    *dr= drBox; return 0;
 
@@ -183,6 +205,7 @@ int docExternalItemPrelayout(		ExternalItem *			ei,
     headerLj.ljChangedRectanglePixels= (DocumentRectangle *)0;
     headerLj.ljAdd= lj->ljAdd;
     headerLj.ljBd= lj->ljBd;
+    headerLj.ljScreenFontList= lj->ljScreenFontList;
     headerLj.ljChangedItem= lj->ljChangedItem;
     headerLj.ljPosition= headerLp;
 
@@ -332,3 +355,41 @@ int docSectHeaderFooterPrelayout(	BufferItem *	sectBi,
 
     return 0;
     }
+
+/************************************************************************/
+/*									*/
+/*  Reset page dependent layout administration of headers/footers etc	*/
+/*  fo force a subsequent recalculation.				*/
+/*									*/
+/************************************************************************/
+
+void docResetExternalItemLayout(	BufferDocument *	bd )
+    {
+    int		i;
+
+    bd->bdEiFtnsep.eiPageFormattedFor= -1;
+    bd->bdEiFtnsepc.eiPageFormattedFor= -1;
+    bd->bdEiFtncn.eiPageFormattedFor= -1;
+
+    bd->bdEiAftnsep.eiPageFormattedFor= -1;
+    bd->bdEiAftnsepc.eiPageFormattedFor= -1;
+    bd->bdEiAftncn.eiPageFormattedFor= -1;
+
+    for ( i= 0; i < bd->bdItem.biChildCount; i++ )
+	{
+	BufferItem *	sectBi=  bd->bdItem.biChildren[i];
+
+	sectBi->biSectHeader.eiPageFormattedFor= -1;
+	sectBi->biSectFirstPageHeader.eiPageFormattedFor= -1;
+	sectBi->biSectLeftPageHeader.eiPageFormattedFor= -1;
+	sectBi->biSectRightPageHeader.eiPageFormattedFor= -1;
+
+	sectBi->biSectFooter.eiPageFormattedFor= -1;
+	sectBi->biSectFirstPageFooter.eiPageFormattedFor= -1;
+	sectBi->biSectLeftPageFooter.eiPageFormattedFor= -1;
+	sectBi->biSectRightPageFooter.eiPageFormattedFor= -1;
+	}
+
+    return;
+    }
+

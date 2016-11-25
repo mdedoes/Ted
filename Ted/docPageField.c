@@ -12,7 +12,8 @@
 
 #   include	<appDebugon.h>
 
-#   include	<appUnit.h>
+#   include	<utilBase26.h>
+#   include	<utilRoman.h>
 #   include	"docBuf.h"
 #   include	"docEvalField.h"
 
@@ -74,24 +75,22 @@ static void docFormatPageNumber(	char *			target,
 	    break;
 
 	case DOCpgnUCLTR:
-	    if  ( pageNumber >= 0 && pageNumber <= 26 )
-		{ target[0]= 'A'+ pageNumber; target[1]= '\0';	}
-	    else{ sprintf( target, "UCLTR:%d", pageNumber+ 1 );	}
+	    if  ( utilBase26String( target, targetSize, pageNumber+ 1, 1 ) )
+		{ LDEB(pageNumber); return ;	}
 	    break;
 
 	case DOCpgnLCLTR:
-	    if  ( pageNumber >= 0 && pageNumber <= 26 )
-		{ target[0]= 'a'+ pageNumber; target[1]= '\0';	}
-	    else{ sprintf( target, "lcltr:%d", pageNumber+ 1 );	}
+	    if  ( utilBase26String( target, targetSize, pageNumber+ 1, 0 ) )
+		{ LDEB(pageNumber); return ;	}
 	    break;
 
 	case DOCpgnUCRM:
-	    if  ( appRomanString( target, targetSize, pageNumber+ 1, 1 ) )
+	    if  ( utilRomanString( target, targetSize, pageNumber+ 1, 1 ) )
 		{ sprintf( target, "UCRM:%d", pageNumber+ 1 );	}
 	    break;
 
 	case DOCpgnLCRM:
-	    if  ( appRomanString( target, targetSize, pageNumber+ 1, 0 ) )
+	    if  ( utilRomanString( target, targetSize, pageNumber+ 1, 0 ) )
 		{ sprintf( target, "lcrm:%d", pageNumber+ 1 );	}
 	    break;
 	}

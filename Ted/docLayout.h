@@ -9,6 +9,7 @@
 
 #   include	<psFont.h>
 #   include	"docBuf.h"
+#   include	"docScreenFontList.h"
 #   include	"utilPs.h"
 
 #   include	<appDraw.h>
@@ -178,6 +179,7 @@ typedef int (*LAYOUT_SCREEN_LINE)( TextLine *			tl,
 				int				part,
 				int				accepted,
 				AppDrawingData *		add,
+				const ScreenFontList *		sfl,
 				const ParagraphFrame *		ffPixels,
 				ParticuleData *			pd );
 
@@ -192,6 +194,7 @@ typedef void (*SCREEN_FRAME)(	ParagraphFrame *		pf,
 typedef int (*START_SCREEN_PARAGRAPH)(
 				BufferItem *			bi,
 				AppDrawingData *		add,
+				ScreenFontList *		sfl,
 				BufferDocument *		bd );
 
 typedef int (*START_ROW)(	BufferItem *			rowBi,
@@ -234,6 +237,7 @@ typedef struct LayoutJob
     AppDrawingData *		ljAdd;				/*  B	*/
     BufferDocument *		ljBd;				/*  C	*/
     BufferItem *		ljChangedItem;			/*  D	*/
+    ScreenFontList *		ljScreenFontList;
 
     LayoutPosition		ljPosition;			/*  E	*/
 
@@ -293,19 +297,17 @@ typedef struct ParagraphLayoutContext
     DocumentRectangle *		plcChangedRectanglePixels;
     AppDrawingData *		plcAdd;
     BufferDocument *		plcBd;
+    ScreenFontList *		plcScreenFontList;
 
     ScreenLayout		plcScreenLayout;
     START_PARAGRAPH		plcStartParagraph;
     ADJUST_BOTTOM		plcAdjustBottom;
     } ParagraphLayoutContext;
 
-typedef int (*LAYOUT_EXTERNAL)( int *				pY1Twips,
+typedef int (*INIT_LAYOUT_EXTERNAL)(
+				LayoutJob *			lj,
 				ExternalItem *			ei,
-				int				page,
-				int				y0Twips,
-				BufferDocument *		bd,
-				AppDrawingData *		add,
-				DocumentRectangle *		drChanged );
+				int				page );
 
 /************************************************************************/
 /*									*/
@@ -320,31 +322,28 @@ extern int docLayoutLineBox(	const BufferDocument *		bd,
 				TextLine *			tl,
 				const BufferItem *		bi,
 				int				part,
-				AppPhysicalFontList *		apfl,
+				const PostScriptFontList *	apfl,
 				ParticuleData *			pd,
 				const ParagraphFrame *		pf );
-
-extern AfmFontInfo * docPsPrintGetAfi(
-				int *				pEncoding,
-				const AppPhysicalFontList *	apfl,
-				int				physf );
 
 extern int docPsClaimParticuleData(	const BufferItem *	bi,
 					ParticuleData **	pData );
 
-extern int docPsParagraphLineExtents(	const AppPhysicalFontList *	apfl,
+extern int docPsParagraphLineExtents(	const BufferDocument *		bd,
+					const PostScriptFontList *	psfl,
 					BufferItem *			bi );
 
 extern int docPsPrintGetDocumentFonts(
 				BufferDocument *		bd,
-				PostScriptFaceList *		psfl,
-				const AppPhysicalFontList *	apfl );
+				PostScriptTypeList *		pstl,
+				const PostScriptFontList *	x_psfl );
 
 extern int docPsPrintDocument(
 			SimpleOutputStream *		sos,
 			const char *			title,
 			const char *			applicationName,
 			const char *			applicationReference,
+			const char *			fontDirectory,
 			AppDrawingData *		add,
 			BufferDocument *		bd,
 			const PrintGeometry *		pg,
@@ -352,7 +351,6 @@ extern int docPsPrintDocument(
 			int				indexedImages,
 			int				firstPage,
 			int				lastPage,
-			LAYOUT_EXTERNAL			layoutExternal,
 			DOC_CLOSE_OBJECT		closeObject );
 
 extern int docLayoutItemAndParents(	BufferItem *		bi,
@@ -370,20 +368,21 @@ extern void docLayoutSectColumnTop(
 				LayoutPosition *		lpTop,
 				BlockFrame *			bf );
 
-extern int docPsListObjectFonts(	PostScriptFaceList *	psfl,
+extern int docPsListObjectFonts(	PostScriptTypeList *	pstl,
 					const InsertedObject *	io,
-					const char *		afmDirectory,
+					const PostScriptFontList * psfl,
 					const char *		prefix );
 
-extern int docLayoutExternalItem( ExternalItem *		ei,
-				DocumentRectangle *		drChanged,
-				int				pageNumber,
-				int				y0Twips,
-				BufferDocument *		bd,
-				const BufferItem *		sectBi,
-				AppDrawingData *		add,
-				LAYOUT_EXTERNAL			layoutExternal,
-				DOC_CLOSE_OBJECT		closeObject );
+extern int docLayoutExternalItem( ExternalItem *	ei,
+				DocumentRectangle *	drChanged,
+				int			pageNumber,
+				int			y0Twips,
+				BufferDocument *	bd,
+				const BufferItem *	sectBi,
+				AppDrawingData *	add,
+				ScreenFontList *	sfl,
+				INIT_LAYOUT_EXTERNAL	initLayoutExternal,
+				DOC_CLOSE_OBJECT	closeObject );
 
 extern int docLayoutParagraphsInStrip(
 				ParagraphLayoutJob *		plj,
@@ -482,6 +481,7 @@ extern int docLayoutCollectParaFootnoteHeight(
 extern int docCollectFootnotesForColumn(
 				BlockFrame *			bf,
 				const DocumentPosition *	dpHere,
+				int				partHere,
 				const LayoutJob *		refLj );
 
 extern int docNoteSeparatorRectangle(	DocumentRectangle *	drExtern,
@@ -563,5 +563,7 @@ extern int docMakeCapsString(	unsigned char **	pUpperString,
 				const TextAttribute *	ta,
 				const unsigned char *	printString,
 				int			len );
+
+extern void docResetExternalItemLayout(	BufferDocument *	bd );
 
 #   endif	/*  DOC_LAYOUT_H  */

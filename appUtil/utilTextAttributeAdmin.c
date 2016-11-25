@@ -156,7 +156,7 @@ int utilTextAttributeNumber(	TextAttributeList *		tal,
 
 	switch( prop )
 	    {
-	    case TApropFONTFAMILY:
+	    case TApropDOC_FONT_NUMBER:
 		propval= ta->taFontNumber;
 		break;
 	    case TApropFONTSIZE:
@@ -185,6 +185,9 @@ int utilTextAttributeNumber(	TextAttributeList *		tal,
 		break;
 	    case TApropTEXT_COLOR:
 		propval= ta->taTextColorNumber;
+		break;
+	    case TApropTEXT_STYLE:
+		propval= ta->taTextStyleNumber;
 		break;
 
 	    default:

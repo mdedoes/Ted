@@ -230,58 +230,49 @@ static char * docRtfShapeTypeString(	int	shapeType )
 /*									*/
 /************************************************************************/
 
-static int docRtfShpProperty(	SimpleInputStream *	sis,
-				const RtfControlWord *	rcw,
-				int			arg,
-				RtfReadingContext *	rrc	)
+int docRtfShpProperty(	SimpleInputStream *	sis,
+			const RtfControlWord *	rcw,
+			int			arg,
+			RtfReadingContext *	rrc )
     {
     switch( rcw->rcwID )
 	{
-	case	RTFidSHPLEFT:
+	case	SHPpropLEFT:
 	    rrc->rrcShapeProperties.spTwipsLeftOfAnchor= arg;
 	    break;
-	case	RTFidSHPRIGHT:
+	case	SHPpropRIGHT:
 	    rrc->rrcShapeProperties.spTwipsRightOfAnchor= arg;
 	    break;
-	case	RTFidSHPTOP:
+	case	SHPpropTOP:
 	    rrc->rrcShapeProperties.spTwipsAboveAnchor= arg;
 	    break;
-	case	RTFidSHPBOTTOM:
+	case	SHPpropBOTTOM:
 	    rrc->rrcShapeProperties.spTwipsBelowAnchor= arg;
 	    break;
-	case	RTFidSHPFHDR:
+	case	SHPpropFHDR:
 	    break;
-	case	RTFidSHPBXCOLUMN:
-	    rrc->rrcShapeProperties.spHorizontalAttachment= SHPshaCOLUMN;
+
+	case	SHPpropBX:
+	    rrc->rrcShapeProperties.spHorizontalAttachment= rcw->rcwEnumValue;
 	    break;
-	case	RTFidSHPBXPAGE:
-	    rrc->rrcShapeProperties.spHorizontalAttachment= SHPshaPAGE;
+
+	case	SHPpropBY:
+	    rrc->rrcShapeProperties.spVerticalAttachment= rcw->rcwEnumValue;
 	    break;
-	case	RTFidSHPBXMARGIN:
-	    rrc->rrcShapeProperties.spHorizontalAttachment= SHPshaMARGIN;
-	    break;
-	case	RTFidSHPBYPARA:
-	    rrc->rrcShapeProperties.spVerticalAttachment= SHPsvaPARAGRAPH;
-	    break;
-	case	RTFidSHPBYPAGE:
-	    rrc->rrcShapeProperties.spVerticalAttachment= SHPsvaPAGE;
-	    break;
-	case	RTFidSHPBYMARGIN:
-	    rrc->rrcShapeProperties.spVerticalAttachment= SHPsvaMARGIN;
-	    break;
-	case	RTFidSHPWR:
+
+	case	SHPpropWR:
 	    rrc->rrcShapeProperties.spWrapStyle= arg;
 	    break;
-	case	RTFidSHPWRK:
+	case	SHPpropWRK:
 	    rrc->rrcShapeProperties.spWrapSide= arg;
 	    break;
-	case	RTFidSHPZ:
-	case	RTFidSHPFBLWTXT:
+	case	SHPpropZ:
+	case	SHPpropFBLWTXT:
 	    break;
-	case	RTFidSHPLOCKANCHOR:
+	case	SHPpropLOCKANCHOR:
 	    rrc->rrcShapeProperties.spLockAnchor= ( arg != 0 );
 	    break;
-	case	RTFidSHPLID:
+	case	SHPpropLID:
 	    break;
 	default:
 	    /* SLDEB(rcw->rcwWord,arg); */
@@ -290,34 +281,6 @@ static int docRtfShpProperty(	SimpleInputStream *	sis,
 
     return 0;
     }
-
-static RtfControlWord	docRtfShapeWords[]=
-    {
-	{ "shpleft",	RTFidSHPLEFT,	DOClevPARA, docRtfShpProperty, },
-	{ "shptop",	RTFidSHPTOP,	DOClevPARA, docRtfShpProperty, },
-	{ "shpbottom",	RTFidSHPBOTTOM,	DOClevPARA, docRtfShpProperty, },
-	{ "shpright",	RTFidSHPRIGHT,	DOClevPARA, docRtfShpProperty, },
-	{ "shplid",	RTFidSHPLID,	DOClevPARA, docRtfShpProperty, },
-	{ "shpz",	RTFidSHPZ,	DOClevPARA, docRtfShpProperty, },
-	{ "shpfhdr",	RTFidSHPFHDR,	DOClevPARA, docRtfShpProperty, },
-	{ "shpbxpage",	RTFidSHPBXPAGE,	DOClevPARA, docRtfShpProperty, },
-	{ "shpbxmargin",RTFidSHPBXMARGIN,DOClevPARA,docRtfShpProperty, },
-	{ "shpbxcolumn",RTFidSHPBXCOLUMN,DOClevPARA,docRtfShpProperty, },
-	{ "shpbxignore",RTFidSHPBXIGNORE,DOClevPARA,docRtfShpProperty, },
-	{ "shpbypage",	RTFidSHPBYPAGE,	DOClevPARA, docRtfShpProperty, },
-	{ "shpbymargin",RTFidSHPBYMARGIN,DOClevPARA,docRtfShpProperty, },
-	{ "shpbycolumn",RTFidSHPBYCOLUMN,DOClevPARA,docRtfShpProperty, },
-	{ "shpbyignore",RTFidSHPBYIGNORE,DOClevPARA,docRtfShpProperty, },
-	{ "shpbypara",	RTFidSHPBYPARA,	DOClevPARA, docRtfShpProperty, },
-	{ "shpwr",	RTFidSHPWR,	DOClevPARA, docRtfShpProperty, },
-	{ "shpwrk",	RTFidSHPWRK,	DOClevPARA, docRtfShpProperty, },
-	{ "shpfblwtxt",	RTFidSHPFBLWTXT, DOClevPARA,docRtfShpProperty, },
-	{ "shplockanchor",
-			RTFidSHPLOCKANCHOR,
-					DOClevPARA, docRtfShpProperty, },
-
-	{ 0, 0, 0, }
-    };
 
 /************************************************************************/
 /*									*/
@@ -643,6 +606,14 @@ static int docRtfShapeColor(	SimpleInputStream *	sis,
 
 static RtfControlWord	docRtfShapeProperties[]=
 {
+    { "posv",			RTFSHP_posv,
+				DOClevPARA, docRtfShapeNumber, },
+    { "posh",			RTFSHP_posh,
+				DOClevPARA, docRtfShapeNumber, },
+    { "posrelv",		RTFSHP_posrelv,
+				DOClevPARA, docRtfShapeNumber, },
+    { "posrelh",		RTFSHP_posrelh,
+				DOClevPARA, docRtfShapeNumber, },
     { "fFlipV",			RTFSHP_fFlipV,
 				DOClevPARA, docRtfShapeNumber, },
     { "fFlipH",			RTFSHP_fFlipH,
@@ -951,6 +922,10 @@ static RtfControlWord	docRtfShapeProperties[]=
     { "fRelFlipV", 		RTFSHP_fRelFlipV,
 				DOClevPARA, docRtfShapeNumber, }, /* ? */
 
+    { "pictureContrast", 	RTFSHP_pictureContrast,
+				DOClevPARA, docRtfShapeNumber, }, /* ? */
+    { "pictureBrightness", 	RTFSHP_pictureBrightness,
+				DOClevPARA, docRtfShapeNumber, }, /* ? */
     { "pictureDblCrMod", 	RTFSHP_pictureDblCrMod,
 				DOClevPARA, docRtfShapeNumber, }, /* ? */
     { "pictureFillCrMod", 	RTFSHP_pictureFillCrMod,
@@ -1027,6 +1002,14 @@ static RtfControlWord	docRtfShapeProperties[]=
     { "rotation",	 	RTFSHP_rotation,
 				DOClevPARA, docRtfShapeNumber, }, /* ? */
     { "cdirFont",	 	RTFSHP_cdirFont,
+				DOClevPARA, docRtfShapeNumber, }, /* ? */
+    { "cropFromLeft",	 	RTFSHP_cropFromLeft,
+				DOClevPARA, docRtfShapeNumber, }, /* ? */
+    { "cropFromRight",	 	RTFSHP_cropFromRight,
+				DOClevPARA, docRtfShapeNumber, }, /* ? */
+    { "cropFromTop",	 	RTFSHP_cropFromTop,
+				DOClevPARA, docRtfShapeNumber, }, /* ? */
+    { "cropFromBottom",	 	RTFSHP_cropFromBottom,
 				DOClevPARA, docRtfShapeNumber, }, /* ? */
 
     { "fillAngle", 		RTFSHP_fillAngle,
@@ -1224,7 +1207,7 @@ static int docRtfShpinst(	SimpleInputStream *	sis,
 
     res= docRtfReadGroup( sis, DOClevPARA,
 				(RtfControlWord *)0, 0, 0, rrc,
-				docRtfShapeWords, docRtfShpinstGroups,
+				(RtfControlWord *)0, docRtfShpinstGroups,
 				docRtfIgnoreText, (RtfCommitGroup)0 );
     if  ( res )
 	{ SLDEB(rcw->rcwWord,res);	}
@@ -1280,7 +1263,7 @@ int docRtfReadShape(	SimpleInputStream *	sis,
 
     res= docRtfReadGroup( sis, DOClevTEXT,
 				(RtfControlWord *)0, 0, 0, rrc,
-				docRtfShapeWords, docRtfShapeGroups,
+				(RtfControlWord *)0, docRtfShapeGroups,
 				docRtfIgnoreText, (RtfCommitGroup)0 );
 
     if  ( res )

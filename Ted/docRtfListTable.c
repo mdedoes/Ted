@@ -289,7 +289,9 @@ RtfControlWord	docRtfListLevelGroups[]=
 
 int docRtfCommitListLevelStyle(	RtfReadingContext *	rrc )
     {
-    RtfReadingState *	rrs= rrc->rrcState;
+    BufferDocument *		bd= rrc->rrcBd;
+    DocumentProperties *	dp= &(bd->bdProperties);
+    RtfReadingState *		rrs= rrc->rrcState;
 
     if  ( documentListLevelSetStyle( &(rrc->rrcDocumentListLevel),
 					&(rrc->rrcDocumentStyle.dsParaMask),
@@ -304,6 +306,9 @@ int docRtfCommitListLevelStyle(	RtfReadingContext *	rrc )
     rrs->rrsTextAttribute.taFontSizeHalfPoints= 24;
     rrc->rrcInDeletedText= 0;
 
+    if  ( dp->dpDefaultFont >= 0 )
+	{ rrs->rrsTextAttribute.taFontNumber= dp->dpDefaultFont;	}
+
     PROPmaskCLEAR( &(rrc->rrcDocumentStyle.dsParaMask) );
     PROPmaskCLEAR( &(rrc->rrcDocumentStyle.dsTextMask) );
 
@@ -315,7 +320,8 @@ static int docRtfListLevel(	SimpleInputStream *	sis,
 				int			arg,
 				RtfReadingContext *	rrc )
     {
-    RtfReadingState *	rrs= rrc->rrcState;
+    DocumentProperties *	dp= &(rrc->rrcBd->bdProperties);
+    RtfReadingState *		rrs= rrc->rrcState;
 
     docCleanDocumentListLevel( &(rrc->rrcDocumentListLevel) );
     docInitDocumentListLevel( &(rrc->rrcDocumentListLevel) );
@@ -325,6 +331,9 @@ static int docRtfListLevel(	SimpleInputStream *	sis,
     utilInitTextAttribute( &(rrs->rrsTextAttribute) );
     rrs->rrsTextAttribute.taFontSizeHalfPoints= 24;
     rrc->rrcInDeletedText= 0;
+
+    if  ( dp->dpDefaultFont >= 0 )
+	{ rrs->rrsTextAttribute.taFontNumber= dp->dpDefaultFont;	}
 
     PROPmaskCLEAR( &(rrc->rrcDocumentStyle.dsParaMask) );
     PROPmaskCLEAR( &(rrc->rrcDocumentStyle.dsTextMask) );
@@ -336,7 +345,7 @@ static int docRtfListLevel(	SimpleInputStream *	sis,
 	{ SLDEB(rcw->rcwWord,arg); return -1;	}
 
     if  ( docDocumentListAddLevel( &(rrc->rrcDocumentList),
-					&(rrc->rrcDocumentListLevel) ) )
+			&(rrc->rrcDocumentListLevel), (int *)0, (int *)0 ) )
 	{ LDEB(1); return -1;	}
 
     docCleanDocumentListLevel( &(rrc->rrcDocumentListLevel) );
@@ -373,7 +382,7 @@ static int docRtfList(		SimpleInputStream *	sis,
 	{ SLDEB(rcw->rcwWord,arg); return -1;	}
 
     if  ( docDocumentListTableAddList( &(dp->dpListTable),
-						&(rrc->rrcDocumentList) ) )
+				&(rrc->rrcDocumentList), (int *)0, (int *)0 ) )
 	{ LDEB(1); return -1;	}
 
     docCleanDocumentList( &(rrc->rrcDocumentList) );
@@ -485,8 +494,8 @@ void docRtfWriteListLevel(	SimpleOutputStream *		sos,
 	docInitParagraphProperties( &pp );
 
 	pp.ppTabStopList= dll->dllTabStopList; /* HACK */
-	pp.ppLeftIndentTwips= dll->dllLeftIndent;
-	pp.ppFirstIndentTwips= dll->dllFirstIndent;
+	pp.ppLeftIndentTwips= dll->dllLeftIndentTwips;
+	pp.ppFirstIndentTwips= dll->dllFirstIndentTwips;
 
 	docRtfSaveParagraphProperties( sos, pCol,
 					&(dll->dllParaPropertyMask), &pp );
@@ -544,6 +553,23 @@ void docRtfWriteListTable(	SimpleOutputStream *		sos,
 	if  ( dl->dlListID != -1 )
 	    { docRtfWriteArgTag( "\\listid", pCol, dl->dlListID, sos );	}
 
+	{
+	const int	addSemicolon= 1;
+	const char *	listname= "";
+
+	if  ( dl->dlListName )
+	    { listname= dl->dlListName;	}
+
+	docRtfWriteStringDestination( "\\listname", pCol,
+			(unsigned char *)listname, strlen( listname ),
+			addSemicolon, sos );
+	}
+
+	if  ( dl->dlListStyleID != -1 )
+	    {
+	    docRtfWriteArgTag( "\\liststyleid", pCol, dl->dlListStyleID, sos );
+	    }
+
 	docRtfWriteDestinationEnd( pCol, sos );
 	if  ( i+ 1 < dlt->dltListCount )
 	    { docRtfWriteNextLine( pCol, sos );	}
@@ -554,4 +580,52 @@ void docRtfWriteListTable(	SimpleOutputStream *		sos,
 
     return;
     }
+
+/************************************************************************/
+/*									*/
+/*  Word 95 type paragraph numbers: Just remember the properties.	*/
+/*									*/
+/************************************************************************/
+
+int docRtfPnProperty(		SimpleInputStream *	sis,
+				const RtfControlWord *	rcw,
+				int			arg,
+				RtfReadingContext *	rrc )
+    {
+    ParagraphNumber *		pn= &(rrc->rrcParagraphNumber);
+
+    switch( rcw->rcwID )
+	{
+	case LLpropSTARTAT:
+	    pn->pnStartAt= arg;
+	    break;
+
+	case LLpropSTYLE:
+	    pn->pnNumberStyle= rcw->rcwEnumValue;
+	    break;
+
+	case LLpropJUSTIFY:
+	    pn->pnJustification= rcw->rcwEnumValue;
+	    break;
+
+	case LLpropINDENT:
+	    pn->pnIndent= arg;
+	    break;
+
+	case LLpropPREV:
+	    pn->pnUsePrevText= arg != 0;
+	    break;
+
+	case LLpropSPACE:
+	    pn->pnSpace= arg;
+	    break;
+
+	default:
+	    SDEB(rcw->rcwWord);
+	    break;
+	}
+
+    return 0;
+    }
+
 

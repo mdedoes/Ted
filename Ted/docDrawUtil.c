@@ -30,6 +30,7 @@ void docInitDrawingContext(	DrawingContext *	dc )
     dc->dcCurrentColor.rgb8Alpha= 0;
 
     dc->dcDrawingData= (AppDrawingData *)0;
+    dc->dcScreenFontList= (ScreenFontList *)0;
     dc->dcDocument= (BufferDocument *)0;
     dc->dcClipRect= (DocumentRectangle *)0;
     dc->dcDocumentSelection= (DocumentSelection *)0;
@@ -56,7 +57,7 @@ void docInitDrawingContext(	DrawingContext *	dc )
     dc->dcStartPage= (START_PAGE)0;
     dc->dcParaFramePixels= (PARA_SIDES_PIXELS)0;
 
-    dc->dcLayoutExternal= (LAYOUT_EXTERNAL)0;
+    dc->dcInitLayoutExternal= (INIT_LAYOUT_EXTERNAL)0;
     dc->dcCloseObject= (DOC_CLOSE_OBJECT)0;
 
     return;
@@ -125,8 +126,8 @@ void docDrawSetColorNumber(	DrawingContext *	dc,
 
 void docDrawSetFont(		DrawingContext *	dc,
 				void *			through,
-				const TextAttribute *	newTa,
-				int			physicalFont )
+				int			textAttr,
+				const TextAttribute *	newTa )
     {
     TextAttribute *	curTa= &(dc->dcCurrentTextAttribute);
 
@@ -138,8 +139,8 @@ void docDrawSetFont(		DrawingContext *	dc,
 	  curTa->taSmallCaps != newTa->taSmallCaps			||
 	  curTa->taSuperSub != newTa->taSuperSub			)
 	{
-	if  ( ! dc->dcSetFont						||
-	      (*dc->dcSetFont)( dc, through, newTa, physicalFont )	)
+	if  ( ! dc->dcSetFont					||
+	      (*dc->dcSetFont)( dc, through, textAttr, newTa )	)
 	    { LDEB(1); return;	}
 
 	dc->dcCurrentTextAttributeSet= 1;

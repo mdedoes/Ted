@@ -20,8 +20,6 @@
 #   include	<sioEndian.h>
 #   include	<appDebugon.h>
 
-#define COMMENT_EXT_FUNC_CODE	0xfe /* Extension function code for comment. */
-
 /************************************************************************/
 /*									*/
 /*  Read a palette from the input file.					*/
@@ -240,7 +238,7 @@ GifFileType *DGifOpenFileHandle(	SimpleInputStream *	sis )
 *   This routine should be called before any attemp to read an image.         *
 ******************************************************************************/
 
-int DGifGetRecordType(GifFileType *gft, GifRecordType *Type)
+int bmGifGetRecordType(GifFileType *gft, GifRecordType *Type)
 {
     unsigned char		c;
 

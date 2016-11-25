@@ -29,6 +29,11 @@ void docRtfSaveParagraphProperties( SimpleOutputStream *	sos,
     if  ( PROPmaskISSET( updMask, PPpropSTYLE ) )
 	{ docRtfWriteArgTag( "\\s", pCol, pp->ppStyle, sos ); }
 
+    if  ( PROPmaskISSET( updMask, PPpropLISTOVERRIDE ) )
+	{ docRtfWriteArgTag( "\\ls", pCol, pp->ppListOverride, sos ); }
+    if  ( PROPmaskISSET( updMask, PPpropLISTLEVEL ) )
+	{ docRtfWriteArgTag( "\\ilvl", pCol, pp->ppListLevel, sos ); }
+
     if  ( PROPmaskISSET( updMask, PPpropHYPHPAR ) )
 	{
 	if  ( pp->ppHyphenateParagraph )
@@ -204,9 +209,6 @@ void docRtfSaveParagraphProperties( SimpleOutputStream *	sos,
 	docRtfWriteArgTag( "\\cbpat", pCol, pp->ppShading.isBackColor, sos );
 	}
 
-    if  ( PROPmaskISSET( updMask, PPpropLISTOVERRIDE ) )
-	{ docRtfWriteArgTag( "\\ls", pCol, pp->ppListOverride, sos ); }
-
     return;
     }
 
@@ -239,6 +241,13 @@ int docRtfRememberParagraphProperty(	SimpleInputStream *	sis,
 	case PPpropLISTOVERRIDE:
 	    rrc->rrcListOverride.loIndex= arg;
 	    pp->ppListOverride= arg;
+	    break;
+
+	case PPpropIN_TABLE:
+	    pp->ppInTable= arg != 0;
+	    if  ( rrc->rrcBd )
+		{ rrc->rrcBd->bdProperties.dpContainsTables= 1;	}
+	    else{ XDEB(rrc->rrcBd);				}
 	    break;
 
 	case PPpropLEFT_INDENT:
@@ -332,6 +341,12 @@ int docRtfRememberParagraphProperty(	SimpleInputStream *	sis,
 	    if  ( arg >= 0 && arg < 10 )
 		{ pp->ppOutlineLevel= arg;	}
 	    else{ pp->ppOutlineLevel= 9;	}
+	    break;
+
+	case PPpropLISTLEVEL:
+	    if  ( arg > 0 && arg < 10 )
+		{ pp->ppListLevel= arg;	}
+	    else{ pp->ppListLevel= 0;	}
 	    break;
 
 	case PPpropSHADE_LEVEL:

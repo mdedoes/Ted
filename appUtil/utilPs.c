@@ -13,7 +13,13 @@
 #   include	<time.h>
 
 #   include	<utilPs.h>
+#   include	<utilTree.h>
 #   include	<geo2DInteger.h>
+#   include	<utilFontmap.h>
+#   include	<utilPostscriptFace.h>
+#   include	<appSystem.h>
+#   include	<sioStdio.h>
+#   include	<sioPfb.h>
 
 #   include	<appDebugon.h>
 
@@ -49,34 +55,141 @@ static void utilPsBoundingBoxComment(
 /*									*/
 /************************************************************************/
 
-static void appPsListFontNames(	SimpleOutputStream *		sos,
-				const PostScriptFaceList *	psfl )
+static void utilPsGetEnbed(		PostScriptFace *	psf,
+					const char *		fontDirectory )
     {
-    if  ( psfl->psflFaceCount > 0 )
+    const char *	fontFile;
+
+    fontFile= utilFontmapGetEntry( psf->psfAfi->afiFontName );
+    if  ( fontFile )
 	{
-	int			i;
-	const PostScriptFace *	psf= psfl->psflFaces;
+	int		relativeIsFile= 0;
+	char		absolute[1000+1];
+	int		l;
 
-	sioOutPrintf( sos, "%%%%DocumentFonts: %s\n",
-						psf->psfAfi->afiFontName );
-	psf++;
-
-	for ( i= 1; i < psfl->psflFaceCount; psf++, i++ )
+	l= appAbsoluteName( absolute, sizeof(absolute)-1, fontFile,
+					    relativeIsFile, fontDirectory );
+	if  ( l >= 0 )
 	    {
-	    int		done;
-
-	    for ( done= 0; done < i; done++ )
+	    if  ( ! appTestFileExists( absolute ) )
 		{
-		if  ( ! strcmp( psfl->psflFaces[done].psfAfi->afiFontName,
-						psf->psfAfi->afiFontName ) )
-		    { break;	}
+		const char *	extension;
+
+		if  ( psf->psfFontFileName )
+		    { free( psf->psfFontFileName );	}
+
+		psf->psfFontFileName= strdup( absolute );
+		if  ( ! psf->psfFontFileName )
+		    { XDEB(psf->psfFontFileName); return;	}
+
+		extension= appFileExtensionOfName( psf->psfFontFileName );
+
+		psf->psfEmbed= PSembedNO;
+
+		if  ( extension &&
+		      ( ! strcmp( extension, "pfb" ) 	||
+			! strcmp( extension, "PFB" ) 	)	)
+		    { psf->psfEmbed= PSembedBTOA;	}
+
+		if  ( extension &&
+		      ( ! strcmp( extension, "pfa" ) 	||
+			! strcmp( extension, "PFA" ) 	)	)
+		    { psf->psfEmbed= PSembedCOPY;	}
+
+		if  ( extension &&
+		      ( ! strcmp( extension, "ttf" ) 	||
+			! strcmp( extension, "TTF" ) 	)	)
+		    { psf->psfEmbed= PSembedTTFTO42;	}
+
+		psf->psfFontFileNameLength= l;
+		}
+	    else{ psf->psfEmbed= PSembedNO;	}
+	    }
+	}
+    else{ psf->psfEmbed= PSembedNO;	}
+
+    return;
+    }
+
+static void utilPsListFontNames(	SimpleOutputStream *		sos,
+					const PostScriptTypeList *	pstl )
+    {
+    PostScriptFace *	psf;
+    const char *	fontName;
+    int			done;
+
+    if  ( ! pstl->pstlFaceTree )
+	{ return;	}
+
+    done= 0;
+    psf= (PostScriptFace *)utilTreeGetFirst( pstl->pstlFaceTree,
+								&fontName );
+    while( psf )
+	{
+	if  ( done > 0 )
+	    {
+	    sioOutPrintf( sos, "%%%%+ %s\n", psf->psfAfi->afiFontName );
+	    }
+	else{
+	    sioOutPrintf( sos, "%%%%DocumentFonts: %s\n",
+					    psf->psfAfi->afiFontName );
+	    }
+
+	done++;
+	psf= (PostScriptFace *)utilTreeGetNext( pstl->pstlFaceTree,
+							    &fontName );
+	}
+
+    if  ( pstl->pstlFontDirectory )
+	{
+	done= 0;
+	psf= (PostScriptFace *)utilTreeGetFirst( pstl->pstlFaceTree,
+								&fontName );
+	while( psf )
+	    {
+	    if  ( psf->psfEmbed == PSembedUNKNOWN )
+		{ utilPsGetEnbed( psf, pstl->pstlFontDirectory );	}
+
+	    if  ( psf->psfEmbed > 0 )
+		{
+		if  ( done > 0 )
+		    {
+		    sioOutPrintf( sos, "%%%%+ %s\n", psf->psfAfi->afiFontName );
+		    }
+		else{
+		    sioOutPrintf( sos, "%%%%DocumentSuppliedFonts: %s\n",
+						    psf->psfAfi->afiFontName );
+		    }
+
+		done++;
 		}
 
-	    if  ( done >= i )
+	    psf= (PostScriptFace *)utilTreeGetNext( pstl->pstlFaceTree,
+								&fontName );
+	    }
+	}
+
+    done= 0;
+    psf= (PostScriptFace *)utilTreeGetFirst( pstl->pstlFaceTree,
+							    &fontName );
+    while( psf )
+	{
+	if  ( psf->psfEmbed <= 0 )
+	    {
+	    if  ( done > 0 )
 		{
 		sioOutPrintf( sos, "%%%%+ %s\n", psf->psfAfi->afiFontName );
 		}
+	    else{
+		sioOutPrintf( sos, "%%%%DocumentNeededFonts: %s\n",
+						psf->psfAfi->afiFontName );
+		}
+
+	    done++;
 	    }
+
+	psf= (PostScriptFace *)utilTreeGetNext( pstl->pstlFaceTree,
+							    &fontName );
 	}
 
     return;
@@ -146,7 +259,7 @@ static void utilPsFoldComment(	SimpleOutputStream *	sos,
 
 void utilPsStartDSCDocument(
 			const PrintingState *		ps,
-			const PostScriptFaceList *	psfl,
+			const PostScriptTypeList *	pstl,
 			const char *			title,
 			const char *			creatorName,
 			const char *			creatorReference )
@@ -164,8 +277,8 @@ void utilPsStartDSCDocument(
     sioOutPrintf( sos, "%%%%Pages: (atend)\n" );
     sioOutPrintf( sos, "%%%%PageOrder: Ascend\n" );
 
-    if  ( psfl )
-	{ appPsListFontNames( sos, psfl );	}
+    if  ( pstl )
+	{ utilPsListFontNames( sos, pstl );	}
 
     sioOutPrintf( sos, "%%%%EndComments\n" );
 
@@ -321,8 +434,6 @@ void utilPsSetFont(	SimpleOutputStream *		sos,
 
 void appPsInitPrintingState(	PrintingState *	ps )
     {
-    int			i;
-
     ps->psSos= (SimpleOutputStream *)0;
     ps->psPagesPrinted= 0;
     ps->psSheetsPrinted= 0;
@@ -348,9 +459,6 @@ void appPsInitPrintingState(	PrintingState *	ps )
 
     ps->psUsePostScriptFilters= 1;
     ps->psUsePostScriptIndexedImages= 1;
-
-    for ( i= 0; i < ENCODINGps_COUNT; i++ )
-	{ ps->psEncodingDefined[i]= 0;	}
 
     return;
     }
@@ -503,7 +611,7 @@ void utilPsFinishPage(	PrintingState *		ps,
 /*									*/
 /************************************************************************/
 
-static void appPsDefineFontEncoding(
+static void utilPsDefineFontEncoding(
 				SimpleOutputStream *	sos,
 				const char *		name,
 				const char * const *	glyphNames )
@@ -514,18 +622,17 @@ static void appPsDefineFontEncoding(
     sioOutPrintf( sos, "/%s 256 array def\n", name );
 
     /*  2  */
-    sioOutPrintf( sos, "0 1 255 { %s exch /.notdef put } for\n", name );
+    sioOutPrintf( sos, "0 1 255 { %s exch /.notdef put } for %s\n",
+							    name, name );
 
     /*  3  */
-    sioOutPrintf( sos, "%s\n", name );
-
     for ( i= 0; i < 256; i++ )
 	{
 	if  ( glyphNames[i] )
 	    { sioOutPrintf( sos, "  dup %3d /%s put\n", i, glyphNames[i] ); }
 	}
 
-    sioOutPrintf( sos, "pop\n\n" );
+    sioOutPrintf( sos, "readonly\n\n" );
 
     return;
     }
@@ -534,104 +641,267 @@ static void appPsDefineFontEncoding(
 /*									*/
 /*  Make function names for setting the fonts in a list.		*/
 /*									*/
+/*  1)  Define all standard encodings.					*/
+/*  2)  Define all encoded fonts.					*/
+/*									*/
 /************************************************************************/
 
+static void utilPsDefineEncodedFont(
+				SimpleOutputStream *	sos,
+				const AfmFontInfo *	afi,
+				const char *		encodingSuffix,
+				const char *		encodingArrayName,
+				const char *		exceptionSuffix )
+    {
+    sioOutPrintf( sos, "/%s findfont dup length dict begin\n",
+							afi->afiFontName );
+    sioOutPrintf( sos, "  {\n" );
+    sioOutPrintf( sos, "    1 index /FID ne\n" );
+    sioOutPrintf( sos, "      { def } { pop pop } ifelse\n" );
+    sioOutPrintf( sos, "  } forall\n");
+    sioOutPrintf( sos, "  /Encoding %s%s def currentdict\n",
+					encodingArrayName, exceptionSuffix );
+    sioOutPrintf( sos, "end " );
+
+    sioOutPrintf( sos, "/%s%s%s exch definefont pop\n\n",
+				afi->afiFontName,
+				encodingSuffix?encodingSuffix:"",
+				exceptionSuffix );
+
+    return;
+    }
+
+int appPsIncludeFonts(	PrintingState *			ps,
+			const PostScriptTypeList *	pstl )
+    {
+    const char *		fontName;
+    PostScriptFace *		psf;
+
+    SimpleOutputStream *	sos= ps->psSos;
+
+    psf= (PostScriptFace *)utilTreeGetFirst( pstl->pstlFaceTree,
+								&fontName );
+    while( psf )
+	{
+	if  ( psf->psfEmbed == PSembedUNKNOWN )
+	    { utilPsGetEnbed( psf, pstl->pstlFontDirectory );	}
+
+	if  ( psf->psfEmbed > 0 )
+	    {
+	    SimpleInputStream *	sisFile= (SimpleInputStream *)0;
+	    SimpleInputStream *	sisPfb= (SimpleInputStream *)0;
+	    SimpleInputStream *	sis= (SimpleInputStream *)0;
+
+	    sisFile= sioInStdioOpen( psf->psfFontFileName );
+	    if  ( ! sisFile )
+		{ SXDEB(psf->psfFontFileName,sisFile); return -1;	}
+	    sis= sisFile;
+
+	    sioOutPrintf( sos, "\n" );
+	    sioOutPrintf( sos, "%%%%%%%%\n" );
+	    sioOutPrintf( sos, "%%%%%%%%    %s\n", psf->psfAfi->afiFullName );
+	    sioOutPrintf( sos, "%%%%%%%% :: %s\n", psf->psfFontFileName );
+	    sioOutPrintf( sos, "%%%%%%%%\n" );
+
+	    sioOutPrintf( sos, "%%%%BeginFont %s\n",
+					    psf->psfAfi->afiFontName );
+
+	    switch( psf->psfEmbed )
+		{
+		int		c;
+		int		atBol;
+
+		case PSembedBTOA:
+		    sisPfb= sioInPfbOpen( sisFile );
+		    if  ( ! sisPfb )
+			{
+			SXDEB(psf->psfFontFileName,sisPfb);
+			sioInClose( sisFile );
+			return -1;
+			}
+
+		    sis= sisPfb;
+
+		    /*FALLTHROUGH*/
+		case PSembedCOPY:
+		    atBol= 1;
+		    while( ( c= sioInGetCharacter( sis ) ) != EOF )
+			{
+			sioOutPutCharacter( c, sos );
+			atBol= c == '\n';
+			}
+
+		    if  ( ! atBol )
+			{ sioOutPutCharacter( '\n', sos );	}
+
+		    break;
+
+		case PSembedTTFTO42:
+		    if  ( psTtfToPf42( sos, sisFile ) )
+			{
+			SDEB(psf->psfFontFileName);
+			sioInClose( sisFile );
+			return -1;
+			}
+
+		    break;
+
+		default:
+		    LDEB(psf->psfEmbed);
+		    sioInClose( sisFile );
+		    return -1;
+		}
+
+	    sioOutPrintf( sos, "%%%%EndFont %s\n",
+					    psf->psfAfi->afiFontName );
+
+	    if  ( sisPfb )
+		{ sioInClose( sisPfb );	}
+	    if  ( sisFile )
+		{ sioInClose( sisFile );	}
+	    }
+
+	psf= (PostScriptFace *)utilTreeGetNext( pstl->pstlFaceTree,
+								&fontName );
+	}
+
+    return 0;
+    }
+
 void appPsFontNames(	PrintingState *			ps,
-			const PostScriptFaceList *	psfl,
-			int *				encodingDefined,
+			const PostScriptTypeList *	pstl,
 			int				allFonts )
     {
     SimpleOutputStream *	sos= ps->psSos;
 
-    const PostScriptFace *	psf;
+    const char *		fontName;
+    PostScriptFace *		psf;
 
-    int				i;
-    int				started= 0;
+    int				enc;
+    const FontCharset *		fc;
 
-    const char *		encodingSuffix= (const char *)0;
-    const char *		encodingArray= (const char *)0;
+    int				faceNumber= 1;
 
-    psf= psfl->psflFaces;
-    for ( i= 0; i < psfl->psflFaceCount; psf++, i++ )
+    /*  1  */
+    fc= PS_Encodings;
+    for ( enc= 0; enc < ENCODINGps_COUNT; fc++, enc++ )
 	{
-	if  ( psf->psfEncodingUsed >= 0			&&
-	      psf->psfEncodingUsed < ENCODINGps_COUNT	&&
-	      ! encodingDefined[psf->psfEncodingUsed]	)
+	if  ( pstl->pstlEncodingUsed[enc] )
 	    {
-	    appPsDefineFontEncoding( sos,
-			PS_Encodings[psf->psfEncodingUsed].fcEncodingArray,
-			PS_Encodings[psf->psfEncodingUsed].fcGlyphNames );
-
-	    encodingDefined[psf->psfEncodingUsed]= 1;
+	    sioOutPrintf( sos, "\n" );
+	    utilPsDefineFontEncoding( sos,
+				fc->fcEncodingArrayName, fc->fcGlyphNames );
 	    }
 	}
 
-    psf= psfl->psflFaces;
-    for ( i= 0; i < psfl->psflFaceCount; psf++, i++ )
+    /*  2  */
+    psf= (PostScriptFace *)utilTreeGetFirst( pstl->pstlFaceTree, &fontName );
+    while( psf )
 	{
 	const AfmFontInfo *	afi= psf->psfAfi;
-	int			done;
-	PostScriptFace *	psd;
+	char			exceptionSuffix[22];
 
-	if  ( ! psf->psfAppearsInText && ! allFonts )
-	    { continue;	}
+	sioOutPrintf( sos, "\n" );
+	sioOutPrintf( sos, "%%%%%%%%\n" );
+	sioOutPrintf( sos, "%%%%%%%%    %s\n", afi->afiFullName );
+	sioOutPrintf( sos, "%%%%%%%% -> %s\n", afi->afiFontName );
+	sioOutPrintf( sos, "%%%%%%%%\n\n" );
 
-	if  ( ! started )
-	    { sioOutPrintf( sos, "\n" ); started= 1;	}
-
-	psd= psfl->psflFaces;
-	for ( done= 0; done < i; psd++, done++ )
+	if  ( psf->psfAppearsInText || allFonts )
 	    {
-	    if  ( ! psd->psfAppearsInText && ! allFonts )
-		{ continue;	}
+	    const FaceReference *	fr;
+	    int				ref;
+	    const SupportedCharset *	sc;
 
-	    if  ( psd->psfEncodingUsed == psf->psfEncodingUsed	&&
-		  ! strcmp( afi->afiFontName, psd->psfAfi->afiFontName ) )
-		{ break;	}
+	    fc= PS_Encodings;
+	    sc= afi->afiSupportedCharsets;
+	    for ( enc= 0; enc < ENCODINGps_COUNT; sc++, fc++, enc++ )
+		{
+		if  ( ! psf->psfEncodingUsed[enc] )
+		    { continue;	}
+
+		exceptionSuffix[0]= '\0';
+
+		if  ( sc->scNonStandardGlyphNames )
+		    {
+		    int				i;
+		    const char * const *	glyphNames= fc->fcGlyphNames;
+
+		    sprintf( exceptionSuffix, "-x%d", faceNumber );
+
+		    sioOutPrintf( sos, "/%s%s 256 array def\n",
+						fc->fcEncodingArrayName,
+						exceptionSuffix );
+		    sioOutPrintf( sos, "%s %s%s copy\n",
+						fc->fcEncodingArrayName,
+						fc->fcEncodingArrayName,
+						exceptionSuffix );
+
+		    for ( i= 0; i < fc->fcGlyphCount; i++ )
+			{
+			int			glyphno;
+			const AfmCharMetric *	acm;
+
+			if  ( i >= 256 )
+			    { LDEB(i); break;	}
+			if  ( ! glyphNames[i] )
+			    { continue;	}
+
+			glyphno= sc->scCodeToGlyphMapping[i];
+			if  ( glyphno < 0 )
+			    { continue;	}
+			if  ( glyphno >= afi->afiMetricCount )
+			    { LLDEB(glyphno,afi->afiMetricCount); continue; }
+
+			acm= afi->afiMetrics+ glyphno;
+			if  ( strcmp( acm->acmN, glyphNames[i] ) )
+			    {
+			    sioOutPrintf( sos, "  dup %d /%s put\n",
+							i,  acm->acmN );
+			    }
+			}
+
+		    sioOutPrintf( sos, "readonly\n" );
+		    }
+
+		utilPsDefineEncodedFont( sos, afi,
+			    fc->fcEncodingSuffix,
+			    fc->fcEncodingArrayName,
+			    exceptionSuffix );
+		}
+
+	    fr= psf->psfReferences;
+	    for ( ref= 0; ref < psf->psfReferenceCount; fr++, ref++ )
+		{
+		const char *	encodingSuffix= "";
+
+		if  ( ! fr->frAppearsInText && ! allFonts )
+		    { continue;	}
+
+		exceptionSuffix[0]= '\0';
+
+		if  ( fr->frEncoding >= 0		&&
+		      fr->frEncoding < ENCODINGps_COUNT	)
+		    {
+		    fc= PS_Encodings+ fr->frEncoding;
+		    sc= afi->afiSupportedCharsets+ fr->frEncoding;
+
+		    encodingSuffix= fc->fcEncodingSuffix;
+		    if  ( sc->scNonStandardGlyphNames )
+			{ sprintf( exceptionSuffix, "-x%d", faceNumber ); }
+		    }
+
+		sioOutPrintf( sos, "/%s\t{ /%s%s%s exch selectfont } def\n",
+				fr->frFaceId,
+				afi->afiFontName,
+				encodingSuffix,
+				exceptionSuffix );
+		}
 	    }
 
-	if  ( psf->psfEncodingUsed >= 0			&&
-	      psf->psfEncodingUsed < ENCODINGps_COUNT	)
-	    {
-	    encodingSuffix= PS_Encodings[psf->psfEncodingUsed].fcEncodingSuffix;
-	    encodingArray= PS_Encodings[psf->psfEncodingUsed].fcEncodingArray;
-	    }
-
-	if  ( encodingSuffix && done >= i )
-	    {
-	    sioOutPrintf( sos, "/%s findfont dup length dict begin\n",
-						    afi->afiFontName );
-	    sioOutPrintf( sos, "  {\n" );
-	    sioOutPrintf( sos, "    1 index /FID ne\n" );
-	    sioOutPrintf( sos, "      { def } { pop pop } ifelse\n" );
-	    sioOutPrintf( sos, "  } forall\n");
-	    sioOutPrintf( sos, "  /Encoding %s def currentdict\n", encodingArray );
-	    sioOutPrintf( sos, "end " );
-
-	    sioOutPrintf( sos, "/%s%s exch definefont pop\n\n",
-					afi->afiFontName,
-					encodingSuffix?encodingSuffix:"" );
-	    }
-	}
-
-    psf= psfl->psflFaces;
-    for ( i= 0; i < psfl->psflFaceCount; psf++, i++ )
-	{
-	if  ( ! psf->psfAppearsInText && ! allFonts )
-	    { continue;	}
-
-	encodingSuffix= (const char *)0;
-
-	if  ( psf->psfEncodingUsed >= 0			&&
-	      psf->psfEncodingUsed < ENCODINGps_COUNT	)
-	    {
-	    encodingSuffix= PS_Encodings[psf->psfEncodingUsed].fcEncodingSuffix;
-	    }
-
-	sioOutPrintf( sos, "/%s\t{ /%s%s exch selectfont } def\n",
-				psf->psfFontId,
-				psf->psfAfi->afiFontName,
-				encodingSuffix?encodingSuffix:"" );
+	psf= (PostScriptFace *)utilTreeGetNext( pstl->pstlFaceTree,
+								&fontName );
+	faceNumber++;
 	}
 
     sioOutPrintf( sos, "\n" );
@@ -882,10 +1152,31 @@ int utilPsDestPdfmark(		PrintingState *		ps,
     int			x= 0;
     int			y= lineTop;
 
+    const char *	s;
+    int			i;
+
     top= AT2_Y( x, y, at );
 
-    sioOutPrintf( ps->psSos, "[ /Dest" );
-    sioOutPrintf( ps->psSos, "  /%.*s\n", refSize, refName );
+    sioOutPrintf( ps->psSos, "[ /Dest /" );
+
+    s= refName;
+    for ( i= 0; i < refSize; s++, i++ )
+	{
+	if  ( *s == '('	|| *s == ')'		||
+	      *s == '<'	|| *s == '>'		||
+	      *s == '['	|| *s == ']'		||
+	      *s == '{'	|| *s == '}'		||
+	      *s == '/'	|| *s == '%'		||
+	      isspace( *s ) || ! isascii( *s )	)
+	    {
+	    sioOutPutCharacter( '_', ps->psSos );
+	    continue;
+	    }
+
+	sioOutPutCharacter( *s, ps->psSos );
+	}
+
+    sioOutPrintf( ps->psSos, "\n" );
 
     sioOutPrintf( ps->psSos, "  /View [ /XYZ null %d null ]\n", top );
 

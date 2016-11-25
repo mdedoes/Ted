@@ -20,26 +20,44 @@
 #   include	<docFont.h>
 #   include	<psFont.h>
 
+#   define	FACElenID	24
+
+typedef struct FaceReference
+    {
+		/*  KEY  */
+    int		frDocFontIndex;
+    int		frDocFaceIndex;
+    char	frFaceId[FACElenID+1];
+
+		/*  DEP  */
+    int		frEncoding;
+    int		frAppearsInText;
+    } FaceReference;
+
 typedef struct PostScriptFace
     {
-#   if 0
-    int			psfFamilyNumber;		/*  1		*/
-    int			psfFaceNumber;			/*  2		*/
-#   endif
     const AfmFontInfo *	psfAfi;				/*  3		*/
-    TextAttribute	psfAttributes;			/*  4		*/
-    int			psfEncodingUsed;		/*  5		*/
+    unsigned char	psfEncodingUsed[ENCODINGps_COUNT];
 
-    char		psfFontPrefix[10];
-    char		psfFontId[25];
+    FaceReference *	psfReferences;
+    int			psfReferenceCount;
     int			psfAppearsInText;
+    int			psfEmbed;
+#			define	PSembedNO	-1
+#			define	PSembedUNKNOWN	0
+#			define	PSembedCOPY	1
+#			define	PSembedBTOA	2
+#			define	PSembedTTFTO42	3
+    char *		psfFontFileName;
+    int			psfFontFileNameLength;
     } PostScriptFace;
 
-typedef struct PostScriptFaceList
+typedef struct PostScriptTypeList
     {
-    PostScriptFace *	psflFaces;
-    int			psflFaceCount;
-    } PostScriptFaceList;
+    void *		pstlFaceTree;
+    int			pstlEncodingUsed[ENCODINGps_COUNT];
+    const char *	pstlFontDirectory;
+    } PostScriptTypeList;
 
 /************************************************************************/
 /*									*/
@@ -47,18 +65,14 @@ typedef struct PostScriptFaceList
 /*									*/
 /************************************************************************/
 
-extern int utilRememberPostsciptFace(	PostScriptFaceList *	psfl,
-					/*
-					int			familyNumber,
-					int			faceNumber,
-					*/
+extern int utilRememberPostsciptFace(	PostScriptTypeList *	pstl,
 					int			encoding,
 					const AfmFontInfo *	afi,
-					TextAttribute		ta,
+					const TextAttribute *	ta,
 					const char *		prefix,
 					int			appearsInText );
 
-extern void utilInitPostScriptFaceList( PostScriptFaceList *	psfl );
-extern void utilCleanPostScriptFaceList( PostScriptFaceList *	psfl );
+extern void utilInitPostScriptFaceList( PostScriptTypeList *	pstl );
+extern void utilCleanPostScriptFaceList( PostScriptTypeList *	pstl );
 
 #   endif	/*  UTIL_POSTSCRIPT_FACE_H	*/

@@ -25,10 +25,10 @@
 
 void docInitExpandedTextAttribute(	ExpandedTextAttribute *	eta )
     {
-    eta->etaFontFamilyName= (char *)0;
-    eta->etaFontEncoding= 0;
+    eta->etaFontNumber= -1;
 
     eta->etaFontSizeHalfPoints= 0;
+    eta->etaTextStyleNumber= 0;
 
     bmInitRGB8Color( &(eta->etaTextColor) );
     eta->etaTextColorExplicit= 0;
@@ -52,121 +52,7 @@ void docInitExpandedTextAttribute(	ExpandedTextAttribute *	eta )
 
 void docCleanExpandedTextAttribute(	ExpandedTextAttribute *	eta )
     {
-    if  ( eta->etaFontFamilyName )
-	{ free( eta->etaFontFamilyName );	}
-
     return;
-    }
-
-/************************************************************************/
-/*									*/
-/*  Set the family name of an ExpandedTextAttribute.			*/
-/*									*/
-/************************************************************************/
-
-int docExpandedTextAttributeSetFamilyName(
-			    ExpandedTextAttribute *		etaTo,
-			    int *				pChanged,
-			    const char *			familyName )
-    {
-    int		changed= 0;
-
-    if  ( familyName )
-	{
-	if  ( ! etaTo->etaFontFamilyName				||
-	      strcmp( familyName,
-					etaTo->etaFontFamilyName )	)
-	    {
-	    char *	fresh= strdup( familyName );
-
-	    if  ( ! fresh )
-		{ XDEB(fresh); return -1;	}
-	    else{
-		if  ( etaTo->etaFontFamilyName )
-		    { free( etaTo->etaFontFamilyName );	}
-
-		etaTo->etaFontFamilyName= fresh;
-		changed= 1;
-		}
-	    }
-	}
-    else{
-	if  ( etaTo->etaFontFamilyName )
-	    {
-	    free( etaTo->etaFontFamilyName );
-	    etaTo->etaFontFamilyName= (char *)0;
-	    changed= 1;
-	    }
-	}
-
-    *pChanged= changed;
-    return 0;
-    }
-
-void docExpandedTextAttributeSetFace(
-			    ExpandedTextAttribute *		etaTo,
-			    int *				pChanged,
-			    const AppFontTypeface *		aft )
-    {
-    int		changed= 0;
-
-    if  ( etaTo->etaFontIsBold != aft->aftIsBold )
-	{
-	etaTo->etaFontIsBold= aft->aftIsBold;
-	changed= 1;
-	}
-
-    if  ( etaTo->etaFontIsSlanted != aft->aftIsSlanted )
-	{
-	etaTo->etaFontIsSlanted= aft->aftIsSlanted;
-	changed= 1;
-	}
-
-    *pChanged= changed;
-    return;
-    }
-
-int docExpandedTextAttributeSetFamilyAndEncoding(
-			    ExpandedTextAttribute *		etaTo,
-			    int *				pChanged,
-			    const AppFontFamily *		aff,
-			    int					encoding )
-    {
-    int		changed= 0;
-
-    if  ( aff )
-	{
-	if  ( docExpandedTextAttributeSetFamilyName( etaTo, &changed,
-						    aff->affFontFamilyName ) )
-	    { LDEB(1); return -1;	}
-
-	if  ( encoding < 0					||
-	      encoding >= ENCODINGps_COUNT			||
-	      ! aff->affSupportedCharsets[encoding].scSupported	)
-	    { encoding= aff->affDefaultEncoding;	}
-
-	/*  avoid inconsistencies  */
-	if  ( encoding < 0					||
-	      encoding >= ENCODINGps_COUNT			||
-	      ! aff->affSupportedCharsets[encoding].scSupported	)
-	    { LDEB(encoding); encoding= 0;	}
-
-	if  ( etaTo->etaFontEncoding != encoding )
-	    {
-	    etaTo->etaFontEncoding= encoding;
-	    changed= 1;
-	    }
-	}
-    else{
-	if  ( docExpandedTextAttributeSetFamilyName( etaTo, &changed,
-							(const char *)0 ) )
-	    { LDEB(1); return -1;	}
-
-	etaTo->etaFontEncoding= 0;
-	}
-
-    *pChanged= changed;
-    return 0;
     }
 
 /************************************************************************/
@@ -179,15 +65,10 @@ int docCopyExpandedTextAttribute(
 				ExpandedTextAttribute *		etaTo,
 				const ExpandedTextAttribute *	etaFrom )
     {
-    int		changed= 0;
-
-    if  ( docExpandedTextAttributeSetFamilyName( etaTo, &changed,
-					    etaFrom->etaFontFamilyName ) )
-	{ LDEB(1);	}
-
-    etaTo->etaFontEncoding= etaFrom->etaFontEncoding;
+    etaTo->etaFontNumber= etaFrom->etaFontNumber;
 
     etaTo->etaFontSizeHalfPoints= etaFrom->etaFontSizeHalfPoints;
+    etaTo->etaTextStyleNumber= etaFrom->etaTextStyleNumber;
 
     if  ( etaTo->etaTextColorExplicit )
 	{
@@ -236,20 +117,12 @@ void docUpdateExpandedTextAttribute(
     {
     PropertyMask	doneMask= *pDoneMask;
 
-    if  ( PROPmaskISSET( setMask, TApropFONTFAMILY ) )
+    if  ( PROPmaskISSET( setMask, TApropDOC_FONT_NUMBER ) )
 	{
-	int		changed= 0;
-
-	if  ( docExpandedTextAttributeSetFamilyName( etaTo, &changed,
-						etaFrom->etaFontFamilyName ) )
-	    { LDEB(1);	}
-	if  ( changed )
-	    { PROPmaskADD( &doneMask, TApropFONTFAMILY );	}
-
-	if  ( etaTo->etaFontEncoding != etaFrom->etaFontEncoding )
+	if  ( etaTo->etaFontNumber != etaFrom->etaFontNumber )
 	    {
-	    etaTo->etaFontEncoding= etaFrom->etaFontEncoding;
-	    PROPmaskADD( &doneMask, TApropFONTFAMILY );
+	    etaTo->etaFontNumber= etaFrom->etaFontNumber;
+	    PROPmaskADD( &doneMask, TApropDOC_FONT_NUMBER );
 	    }
 	}
 
@@ -258,6 +131,13 @@ void docUpdateExpandedTextAttribute(
 	{
 	etaTo->etaFontSizeHalfPoints= etaFrom->etaFontSizeHalfPoints;
 	PROPmaskADD( &doneMask, TApropFONTSIZE );
+	}
+
+    if  ( PROPmaskISSET( setMask, TApropTEXT_STYLE )			&&
+	  etaTo->etaTextStyleNumber != etaFrom->etaTextStyleNumber )
+	{
+	etaTo->etaTextStyleNumber= etaFrom->etaTextStyleNumber;
+	PROPmaskADD( &doneMask, TApropTEXT_STYLE );
 	}
 
     if  ( PROPmaskISSET( setMask, TApropTEXT_COLOR ) )
@@ -358,41 +238,11 @@ void docExpandTextAttribute(	PropertyMask *			pDoneMask,
     {
     PropertyMask	doneMask= *pDoneMask;
 
-    if  ( PROPmaskISSET( setMask, TApropFONTFAMILY ) )
+    if  ( PROPmaskISSET( setMask, TApropDOC_FONT_NUMBER )	&&
+	  etaTo->etaFontNumber != taFrom->taFontNumber		)
 	{
-	if  ( taFrom->taFontNumber >= 0			&&
-	      taFrom->taFontNumber < dfl->dflCount	)
-	    {
-	    const DocumentFont *	df= dfl->dflFonts+ taFrom->taFontNumber;
-
-	    int				changed= 0;
-
-	    if  ( docExpandedTextAttributeSetFamilyName( etaTo, &changed,
-								df->dfName ) )
-		{ LDEB(1);	}
-	    if  ( changed )
-		{ PROPmaskADD( &doneMask, TApropFONTFAMILY );	}
-
-
-	    if  ( etaTo->etaFontEncoding != df->dfEncodingUsed )
-		{
-		etaTo->etaFontEncoding= df->dfEncodingUsed;
-		PROPmaskADD( &doneMask, TApropFONTFAMILY );
-		}
-	    }
-	else{
-	    int				changed= 0;
-
-	    LLDEB(taFrom->taFontNumber,dfl->dflCount);
-
-	    if  ( docExpandedTextAttributeSetFamilyName( etaTo, &changed,
-							    (const char *)0 ) )
-		{ LDEB(1);	}
-	    if  ( changed )
-		{ PROPmaskADD( &doneMask, TApropFONTFAMILY );	}
-
-	    etaTo->etaFontEncoding= 0;
-	    }
+	etaTo->etaFontNumber= taFrom->taFontNumber;
+	PROPmaskADD( &doneMask, TApropDOC_FONT_NUMBER );
 	}
 
     if  ( PROPmaskISSET( setMask, TApropFONTSIZE )			&&
@@ -400,6 +250,13 @@ void docExpandTextAttribute(	PropertyMask *			pDoneMask,
 	{
 	etaTo->etaFontSizeHalfPoints= taFrom->taFontSizeHalfPoints;
 	PROPmaskADD( &doneMask, TApropFONTSIZE );
+	}
+
+    if  ( PROPmaskISSET( setMask, TApropTEXT_STYLE )			&&
+	  etaTo->etaTextStyleNumber != taFrom->taTextStyleNumber )
+	{
+	etaTo->etaTextStyleNumber= taFrom->taTextStyleNumber;
+	PROPmaskADD( &doneMask, TApropTEXT_STYLE );
 	}
 
     if  ( PROPmaskISSET( setMask, TApropTEXT_COLOR ) )
@@ -492,32 +349,16 @@ void docIndirectTextAttribute(	PropertyMask *			pDoneMask,
 				TextAttribute *			taTo,
 				const ExpandedTextAttribute *	etaFrom,
 				const PropertyMask *		setMask,
-				DocumentFontList *		dfl,
 				RGB8Color **			pColors,
 				int *				pColorCount )
     {
     PropertyMask	doneMask= *pDoneMask;
 
-    if  ( PROPmaskISSET( setMask, TApropFONTFAMILY ) )
+    if  ( PROPmaskISSET( setMask, TApropDOC_FONT_NUMBER )	&&
+	  taTo->taFontNumber != etaFrom->etaFontNumber		)
 	{
-	if  ( etaFrom->etaFontFamilyName )
-	    {
-	    int		fontNumber;
-
-	    fontNumber= docGetFontByName( dfl, 
-				    etaFrom->etaFontFamilyName,
-						etaFrom->etaFontEncoding );
-	    if  ( fontNumber < 0 )
-		{ LDEB(fontNumber);	}
-	    else{
-		if  ( taTo->taFontNumber != fontNumber )
-		    {
-		    taTo->taFontNumber= fontNumber;
-		    PROPmaskADD( &doneMask, TApropFONTFAMILY );
-		    }
-		}
-	    }
-	else{ XDEB(etaFrom->etaFontFamilyName);	}
+	taTo->taFontNumber= etaFrom->etaFontNumber;
+	PROPmaskADD( &doneMask, TApropDOC_FONT_NUMBER );
 	}
 
     if  ( PROPmaskISSET( setMask, TApropFONTSIZE )			&&
@@ -525,6 +366,13 @@ void docIndirectTextAttribute(	PropertyMask *			pDoneMask,
 	{
 	taTo->taFontSizeHalfPoints= etaFrom->etaFontSizeHalfPoints;
 	PROPmaskADD( &doneMask, TApropFONTSIZE );
+	}
+
+    if  ( PROPmaskISSET( setMask, TApropTEXT_STYLE )			&&
+	  taTo->taTextStyleNumber != etaFrom->etaTextStyleNumber )
+	{
+	taTo->taTextStyleNumber= etaFrom->etaTextStyleNumber;
+	PROPmaskADD( &doneMask, TApropTEXT_STYLE );
 	}
 
     if  ( PROPmaskISSET( setMask, TApropTEXT_COLOR ) )
@@ -612,6 +460,7 @@ void docIndirectTextAttribute(	PropertyMask *			pDoneMask,
 void docExpandedAttributeToString(
 			char *				target,
 			const PropertyMask *		updMask,
+			const DocumentFontList *	dfl,
 			const ExpandedTextAttribute *	etaNew )
     {
     char		sizeStr[40];
@@ -627,8 +476,9 @@ void docExpandedAttributeToString(
 
     strcpy( sizeStr, star );
 
-    if  ( PROPmaskISSET( updMask, TApropFONTFAMILY ) )
-	{ familyName= etaNew->etaFontFamilyName;	}
+    if  ( PROPmaskISSET( updMask, TApropDOC_FONT_NUMBER )	&&
+	  etaNew->etaFontNumber >= 0				)
+	{ familyName= dfl->dflFonts[etaNew->etaFontNumber].dfName;	}
 
     if  ( ! familyName )
 	{ familyName= star;	}
@@ -682,9 +532,10 @@ void docExpandedAttributeToString(
 /************************************************************************/
 
 int docExpandedAttributeFromString(	
-				const char *			attributeString,
-				PropertyMask *			pSetMask,
-				ExpandedTextAttribute *		pEtaSet )
+			PropertyMask *			pSetMask,
+			ExpandedTextAttribute *		pEtaSet,
+			DocumentFontList *		dfl,
+			const char *			attributeString )
     {
     PropertyMask		setMask;
     ExpandedTextAttribute	etaSet;
@@ -701,7 +552,8 @@ int docExpandedAttributeFromString(
     else{
 	const char *	familyName= s;
 	char *		tmp;
-	int		changed= 0;
+	const int	encoding= -1;
+	int		fontNumber;
 
 	familyName= s;
 
@@ -714,12 +566,19 @@ int docExpandedAttributeFromString(
 
 	strncpy( tmp, familyName, s- familyName )[s- familyName]= '\0';
 
-	if  ( docExpandedTextAttributeSetFamilyName( &etaSet, &changed, tmp ) )
-	    { LDEB(1); rval= -1; goto ready;	}
+
+	fontNumber= docGetFontByName( dfl, tmp, encoding );
+	if  ( fontNumber < 0 )
+	    {
+	    SLLDEB(tmp,encoding,fontNumber);
+	    free( tmp );
+	    return -1;
+	    }
 
 	free( tmp );
 
-	PROPmaskADD( &setMask, TApropFONTFAMILY );
+	etaSet.etaFontNumber= fontNumber;
+	PROPmaskADD( &setMask, TApropDOC_FONT_NUMBER );
 	}
 
     if  ( *s )

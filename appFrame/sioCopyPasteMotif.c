@@ -21,16 +21,6 @@ static Atom	XA_XV_CLIPBOARD= None;
 
 /************************************************************************/
 /*									*/
-/*  Refuse to seek on copy/paste streams.				*/
-/*									*/
-/************************************************************************/
-
-static int sioXpropSeek(	void *			voidp,
-				long			pos )
-    { LDEB(pos); return -1;	}
-
-/************************************************************************/
-/*									*/
 /*  Input.. Paste.							*/
 /*									*/
 /************************************************************************/
@@ -119,8 +109,7 @@ SimpleInputStream * sioInOpenPaste(	APP_WIDGET	w,
     xps->xpsExhausted= 0;
     xps->xpsDeleteOnClose= 1;
 
-    sis= sioInOpen( (void *)xps,
-		sioInXpropReadBytes, sioXpropSeek, sioXpropPasteClose );
+    sis= sioInOpen( (void *)xps, sioInXpropReadBytes, sioXpropPasteClose );
 
     if  ( ! sis )
 	{ XDEB(sis); free( xps ); return (SimpleInputStream *)0; }
@@ -154,8 +143,7 @@ SimpleInputStream * sioInOpenXvPaste(	APP_WIDGET	w )
     xps->xpsExhausted= 0;
     xps->xpsDeleteOnClose= 0;
 
-    sis= sioInOpen( (void *)xps,
-		sioInXpropReadBytes, sioXpropSeek, sioXpropPasteClose );
+    sis= sioInOpen( (void *)xps, sioInXpropReadBytes, sioXpropPasteClose );
 
     if  ( ! sis )
 	{ XDEB(sis); free( xps ); return (SimpleInputStream *)0; }
@@ -218,7 +206,7 @@ SimpleOutputStream * sioOutOpenCopy(	APP_WIDGET		w,
     xcs->xcsPropMode= PropModeReplace;
 
     sos= sioOutOpen( (void *)xcs, sioOutCopyWriteBytes,
-					    sioXpropSeek, sioXpropCopyClose );
+					    (SIOoutSEEK)0, sioXpropCopyClose );
 
     if  ( ! sos )
 	{ XDEB(sos); free( xcs ); return (SimpleOutputStream *)0; }
@@ -252,7 +240,7 @@ SimpleOutputStream * sioOutOpenXvCopy(	APP_WIDGET		w )
     xcs->xcsPropMode= PropModeReplace;
 
     sos= sioOutOpen( (void *)xcs, sioOutCopyWriteBytes,
-					    sioXpropSeek, sioXpropCopyClose );
+					    (SIOoutSEEK)0, sioXpropCopyClose );
 
     if  ( ! sos )
 	{ XDEB(sos); free( xcs ); return (SimpleOutputStream *)0; }

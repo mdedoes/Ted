@@ -38,10 +38,20 @@ static int docBookmarkParaFindNext(
     {
     FindBookmark *	fb= (FindBookmark *)through;
 
-    int			partFrom= dpFrom->dpParticule;
+    int			partFrom;
 
     int			part;
     TextParticule *	tp;
+
+    const int		lastOne= 1;
+
+    partFrom= 0;
+    if  ( dpFrom->dpStroff != 0						&&
+	  docFindParticule( &partFrom, bi, dpFrom->dpStroff, lastOne )	)
+	{ LDEB(dpFrom->dpStroff); return -1;	}
+
+    if  ( partFrom < 0 || partFrom >= bi->biParaParticuleCount )
+	{ LLDEB(partFrom,bi->biParaParticuleCount); return -1;	}
 
     tp= bi->biParaParticules+ partFrom;
     for ( part= partFrom; part < bi->biParaParticuleCount; tp++, part++ )
@@ -66,7 +76,6 @@ static int docBookmarkParaFindNext(
 
 		ds->dsBegin.dpBi= bi;
 		ds->dsBegin.dpStroff= tp->tpStroff;
-		ds->dsBegin.dpParticule= part;
 		}
 	    }
 
@@ -75,7 +84,6 @@ static int docBookmarkParaFindNext(
 	    {
 	    ds->dsEnd.dpBi= bi;
 	    ds->dsEnd.dpStroff= tp->tpStroff;
-	    ds->dsEnd.dpParticule= part;
 
 	    return 0;
 	    }
@@ -118,11 +126,6 @@ int docFindBookmarkInDocument(	DocumentSelection *	ds,
 
 	if  ( dsNew.dsBegin.dpBi != dsNew.dsEnd.dpBi )
 	    { XXDEB(dsNew.dsBegin.dpBi,dsNew.dsEnd.dpBi); return 1; }
-	if  ( dsNew.dsBegin.dpParticule >= dsNew.dsEnd.dpParticule )
-	    {
-	    LLDEB(dsNew.dsBegin.dpParticule,dsNew.dsEnd.dpParticule);
-	    return 1;
-	    }
 
 	docSetRangeSelection( ds, &(dsNew.dsBegin), &(dsNew.dsEnd),
 							direction, col0, col1 );

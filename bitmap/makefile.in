@@ -31,12 +31,14 @@ CFLAGS=	\
 
 #CFLAGS= -g -O2 $(WFLAGS) $(X_CFLAGS) $(INCLUDES)
 
-# 46 lines
+# 50 lines
 OBS	=	\
 		bmxwd.o\
 		bmxv.o\
 		bmxpm.o\
 		bmxbm.o\
+		bmwmf.o\
+		bmwbmp.o\
 		bmtogray.o\
 		bmtiff.o\
 		bmthreshold.o\
@@ -72,10 +74,12 @@ OBS	=	\
 		bmTextureMap.o\
 		bmSegments.o\
 		bmMakeImage.o\
+		bmGrayHisto.o\
 		bmForAll.o\
 		bmFindLineSegments.o\
 		bmFillJob.o\
 		bmDrawImage.o\
+		bmCountLine.o\
 		bmClusterSegments.o
 
 ../lib/bitmap.a:	$(OBS)
@@ -100,6 +104,16 @@ aclocal.m4:	$(ACLOCAL)
 
 bmClusterSegments.o: \
     bmClusterSegments.c \
+    ../include/appDebugon.h \
+    ../include/appDebug.h
+
+bmCountLine.o: \
+    bmCountLine.c \
+    bitmapConfig.h \
+    bmintern.h \
+    bitmap.h \
+    ../appUtil/sioGeneral.h \
+    bmcolor.h \
     ../include/appDebugon.h \
     ../include/appDebug.h
 
@@ -142,6 +156,13 @@ bmForAll.o: \
     bitmap.h \
     ../appUtil/sioGeneral.h \
     bmcolor.h \
+    ../include/appDebugon.h \
+    ../include/appDebug.h
+
+bmGrayHisto.o: \
+    bmGrayHisto.c \
+    bitmapConfig.h \
+    bmGrayHisto.h \
     ../include/appDebugon.h \
     ../include/appDebug.h
 
@@ -509,6 +530,7 @@ bmsqueeze.o: \
 bmthreshold.o: \
     bmthreshold.c \
     bitmapConfig.h \
+    bmGrayHisto.h \
     bmintern.h \
     bitmap.h \
     ../appUtil/sioGeneral.h \
@@ -533,6 +555,17 @@ bmtogray.o: \
     bitmap.h \
     ../appUtil/sioGeneral.h \
     bmcolor.h \
+    ../include/appDebugon.h \
+    ../include/appDebug.h
+
+bmwbmp.o: \
+    bmwbmp.c \
+    bitmapConfig.h \
+    bmintern.h \
+    bitmap.h \
+    ../appUtil/sioGeneral.h \
+    bmcolor.h \
+    ../appUtil/sioStdio.h \
     ../include/appDebugon.h \
     ../include/appDebug.h
 

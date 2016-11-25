@@ -18,7 +18,9 @@
 #   include	"tedColumnTool.h"
 #   include	"tedCellTool.h"
 #   include	"tedTabsTool.h"
-#   include	"appFontTool.h"
+#   include	"tedListTool.h"
+#   include	"tedFontTool.h"
+#   include	"tedLinkTool.h"
 
 #   include	<appRgbChooserPage.h>
 
@@ -37,11 +39,14 @@ typedef enum ToolSubjectIndex
     TEDtsiPARA_LAY,
     TEDtsiTABS,
     TEDtsiPARA_ORN,
+    TEDtsiLISTS,
     TEDtsiSECT,
     TEDtsiPAGE,
     TEDtsiHEADFOOT,
     TEDtsiNOTES,
     TEDtsiFONT,
+    TEDtsiLISTFONT,
+    TEDtsiLINK,
 
     TEDtsiRGB,
 
@@ -67,11 +72,14 @@ typedef struct TedFormatTool
     ParagraphLayoutTool		tftParagraphLayoutTool;
     TabsTool			tftTabsTool;
     ParagraphOrnamentsTool	tftParagraphOrnamentsTool;
+    ListTool			tftListsTool;
     SectionTool			tftSectionTool;
     PageLayoutTool		tftPageLayoutTool;
     HeaderFooterTool		tftHeaderFooterTool;
     NotesTool			tftNotesTool;
     AppFontChooser		tftFontTool;
+    AppFontChooser		tftListFontTool;
+    LinkTool			tftLinkTool;
 
     RgbChooserPage		tftRgbPage;
     } TedFormatTool;
@@ -153,7 +161,7 @@ extern void tedFormatFinishColumnPage(	ColumnTool *			ct,
 					TedFormatTool *			tft,
 					const ColumnPageResources *	cpr );
 
-extern void tedFormatFillColumnChoosers( ColumnTool *			ct,
+extern void tedColumnToolFillChoosers( ColumnTool *			ct,
 					const ColumnPageResources *	cpr );
 
 extern void tedFormatFinishCellPage(	CellTool *			ct,

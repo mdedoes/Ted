@@ -29,8 +29,10 @@ typedef struct PropertyDialog
     char *			dpdOkText;
     char *			dpdCancelText;
 
+    char *			dpdGeneratorText;
     char *			dpdTitleText;
     char *			dpdAuthorText;
+    char *			dpdCompanyText;
     char *			dpdSubjectText;
     char *			dpdKeywordsText;
     char *			dpdDoccommText;
@@ -46,8 +48,10 @@ typedef struct PropertyDialog
     char *			dpdWordCountText;
     char *			dpdCharCountText;
 
+    APP_WIDGET			dpdGeneratorWidget;
     APP_WIDGET			dpdTitleWidget;
     APP_WIDGET			dpdAuthorWidget;
+    APP_WIDGET			dpdCompanyWidget;
     APP_WIDGET			dpdSubjectWidget;
     APP_WIDGET			dpdKeywordsWidget;
     APP_WIDGET			dpdDoccommWidget;
@@ -68,12 +72,18 @@ static PropertyDialog *	TED_PropertyDialog;
 
 static AppConfigurableResource TED_PropertyDialogResourceTable[]=
     {
+	APP_RESOURCE( "propDialogGenerator",
+		    offsetof(PropertyDialog,dpdGeneratorText),
+		    "Generator" ),
 	APP_RESOURCE( "propDialogTitle",
 		    offsetof(PropertyDialog,dpdTitleText),
 		    "Title" ),
 	APP_RESOURCE( "propDialogAuthor",
 		    offsetof(PropertyDialog,dpdAuthorText),
 		    "Author" ),
+	APP_RESOURCE( "propDialogCompany",
+		    offsetof(PropertyDialog,dpdCompanyText),
+		    "Company" ),
 	APP_RESOURCE( "propDialogSubject",
 		    offsetof(PropertyDialog,dpdSubjectText),
 		    "Subject" ),
@@ -229,6 +239,9 @@ static void tedPropsDialogMakeTextForm( APP_WIDGET		parent,
     tedPropsDialogMakePropertyRow( &row, &label, &(dpd->dpdAuthorWidget),
 			    parent, dpd, dpd->dpdAuthorText, changeable );
 
+    tedPropsDialogMakePropertyRow( &row, &label, &(dpd->dpdCompanyWidget),
+			    parent, dpd, dpd->dpdCompanyText, changeable );
+
     tedPropsDialogMakePropertyRow( &row, &label, &(dpd->dpdSubjectWidget),
 			    parent, dpd, dpd->dpdSubjectText, changeable );
 
@@ -240,6 +253,10 @@ static void tedPropsDialogMakeTextForm( APP_WIDGET		parent,
 
     tedPropsDialogMakePropertyRow( &row, &label, &(dpd->dpdHlinkbaseWidget),
 			    parent, dpd, dpd->dpdHlinkbaseText, changeable );
+
+    /**/
+    tedPropsDialogMakePropertyRow( &row, &label, &(dpd->dpdGeneratorWidget),
+			    parent, dpd, dpd->dpdGeneratorText, derived );
 
     /**/
 
@@ -458,8 +475,10 @@ int tedRunPropertyDialog(	EditDocument *			ed,
 	appGuiShowDialog( &(dpd->dpdDialog), ed->edToplevel.atTopWidget );
 	}
 
+    tedPropToWidget( dpd->dpdGeneratorWidget, dp->dpGenerator );
     tedPropToWidget( dpd->dpdTitleWidget, dp->dpTitle );
     tedPropToWidget( dpd->dpdAuthorWidget, dp->dpAuthor );
+    tedPropToWidget( dpd->dpdCompanyWidget, dp->dpCompany );
     tedPropToWidget( dpd->dpdSubjectWidget, dp->dpSubject );
     tedPropToWidget( dpd->dpdKeywordsWidget, dp->dpKeywords );
     tedPropToWidget( dpd->dpdDoccommWidget, dp->dpDoccomm );
@@ -499,6 +518,10 @@ int tedRunPropertyDialog(	EditDocument *			ed,
 
     if  ( tedPropChangeProperty( &changed, &(dp->dpAuthor),
 						dpd->dpdAuthorWidget ) )
+	{ LDEB(1); return -1;	}
+
+    if  ( tedPropChangeProperty( &changed, &(dp->dpCompany),
+						dpd->dpdCompanyWidget ) )
 	{ LDEB(1); return -1;	}
 
     if  ( tedPropChangeProperty( &changed, &(dp->dpSubject),

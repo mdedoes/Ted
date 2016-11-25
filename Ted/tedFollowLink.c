@@ -21,6 +21,44 @@
 /*									*/
 /************************************************************************/
 
+static int tedSetBrowserCall(	char *			target,
+				const char *		remote,
+				const char *		endremote,
+				const char *		direct,
+				const char *		enddirect,
+				const char *		fileName,
+				int			fileSize,
+				const char *		markName,
+				int			markSize )
+    {
+    char *	to= target;
+
+    strcpy( to, remote );
+    to += strlen( to );
+    memcpy( to, fileName, fileSize ); to += fileSize;
+    if  ( markSize > 0 )
+	{
+	*(to++)= '#';
+	memcpy( to, markName, markSize ); to += markSize;
+	}
+    strcpy( to, endremote ); to += strlen( to );
+
+    strcpy( to, " || " ); to += strlen( to );
+
+    strcpy( to, direct ); to += strlen( to );
+
+    memcpy( to, fileName, fileSize ); to += fileSize;
+    if  ( markSize > 0 )
+	{
+	*(to++)= '#';
+	memcpy( to, markName, markSize ); to += markSize;
+	}
+
+    strcpy( to, enddirect ); to += strlen( to );
+
+    return to- target;
+    }
+
 /*  1  */
 static int tedCallNetscape(	const char *		fileName,
 				int			fileSize,
@@ -32,38 +70,60 @@ static int tedCallNetscape(	const char *		fileName,
     int		size;
     char *	to;
 
+    const char	remote1[]= "( mozilla -remote 'openUrl(";
+    const char	direct1[]= "( mozilla '";
+
+    const char	endremote[]= ",new-window)' ) 2>/dev/null";
+    const char	enddirect[]= "' ) 2>/dev/null";
+
+    const char	remote2[]= "( netscape -noraise -remote 'openUrl(";
+    const char	direct2[]= "( netscape '";
+
+    /**** Prevent tricks to run arbitrary commands! */
+    int		i;
+    for ( i= 0; i < fileSize; i++ )
+	{
+	if  ( fileName[i] == '\'' )
+	    { SDEB(fileName); return -1;	}
+	}
+    for ( i= 0; i < markSize; i++ )
+	{
+	if  ( markName[i] == '\'' )
+	    { SDEB(markName); return -1;	}
+	}
+    /****/
+
     size= 0;
-    size += 60+ fileSize+ 1+ markSize;
+
+    size += sizeof(remote1)+ fileSize+ 1+ markSize;
+    size += sizeof(endremote);
     size += 4;
-    size += 11+ fileSize+ 1+ markSize;
+    size += sizeof(direct1)+ fileSize+ 1+ markSize;
+    size += sizeof(enddirect);
+
+    size += 4;
+
+    size += sizeof(remote2)+ fileSize+ 1+ markSize;
+    size += sizeof(endremote);
+    size += 4;
+    size += sizeof(direct2)+ fileSize+ 1+ markSize;
+    size += sizeof(enddirect);
+
     size += 2+ 1;
 
     to= scratch= malloc( size );
     if  ( ! scratch )
 	{ XDEB(scratch); return -1;	}
 
-    strcpy( to, "netscape -noraise -remote 'openUrl(" );
-    to += strlen( to );
-    memcpy( to, fileName, fileSize ); to += fileSize;
-    if  ( markSize > 0 )
-	{
-	*(to++)= '#';
-	memcpy( to, markName, markSize ); to += markSize;
-	}
-    strcpy( to, ",new-window)' 2>/dev/null" ); to += strlen( to );
+    to += tedSetBrowserCall( to, remote1, endremote, direct1, enddirect,
+				    fileName, fileSize, markName, markSize );
 
     strcpy( to, " || " ); to += strlen( to );
 
-    strcpy( to, "netscape '" ); to += strlen( to );
+    to += tedSetBrowserCall( to, remote2, endremote, direct2, enddirect,
+				    fileName, fileSize, markName, markSize );
 
-    memcpy( to, fileName, fileSize ); to += fileSize;
-    if  ( markSize > 0 )
-	{
-	*(to++)= '#';
-	memcpy( to, markName, markSize ); to += markSize;
-	}
-
-    strcpy( to, "' &" ); to += strlen( to );
+    strcpy( to, " &" ); to += strlen( to );
 
     if  ( system( scratch ) )
 	{ SDEB(scratch); rval= -1;	}
@@ -115,8 +175,7 @@ static void tedAnalyseFileNamePart(	int *		pIsFile,
     return;
     }
 
-int tedFollowLink(	APP_WIDGET		relative,
-			APP_WIDGET		option,
+int tedDocFollowLink(	APP_WIDGET		option,
 			EditDocument *		edFrom,
 			const char *		fileName,
 			int			fileSize,
@@ -137,6 +196,8 @@ int tedFollowLink(	APP_WIDGET		relative,
 
     const char *		baseName= (const char *)dpFrom->dpHlinkbase;
     int				baseSize= 0;
+
+    APP_WIDGET			relative= edFrom->edToplevel.atTopWidget;
 
     if  ( ! baseName )
 	{ baseName= edFrom->edFilename;	}
@@ -202,5 +263,21 @@ int tedFollowLink(	APP_WIDGET		relative,
 	{ free( scratch );	}
 
     return rval;
+    }
+
+int tedAppFollowLink(	APP_WIDGET		option,
+			EditApplication *	ea,
+			const char *		fileName,
+			int			fileSize,
+			const char *		markName,
+			int			markSize )
+    {
+    EditDocument *	ed= ea->eaCurrentDocument;
+
+    if  ( ! ed )
+	{ XDEB(ed); return -1;	}
+
+    return tedDocFollowLink( option, ed,
+				fileName, fileSize, markName, markSize );
     }
 

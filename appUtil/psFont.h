@@ -7,8 +7,8 @@
 #   ifndef	PS_FONT_H
 #   define	PS_FONT_H
 
-#   include	<docFont.h>
 #   include	<utilFontEncoding.h>
+#   include	<sioGeneral.h>
 
 /************************************************************************/
 /*									*/
@@ -18,13 +18,14 @@
 
 typedef struct SupportedCharset
     {
-    int		scSupported;
-    int		scCodeToGlyphMapping[256];
+    unsigned char	scSupported;
+    unsigned char	scNonStandardGlyphNames;
+    short int		scCodeToGlyphMapping[256];
     } SupportedCharset;
 
 /************************************************************************/
 /*									*/
-/*  Information extracted fron an AFM file.				*/
+/*  Information extracted from an AFM file.				*/
 /*									*/
 /************************************************************************/
 
@@ -56,8 +57,11 @@ typedef struct AfmFontInfo
     {
     char *		afiFontName;
     char *		afiFullName;
+    char *		afiNotice;
+    char *		afiVersion;
     char *		afiFamilyName;
     char *		afiWeight;
+    char *		afiWidth;
     double		afiItalicAngle;
     double		afiTanItalicAngle;
     unsigned char	afiIsFixedPitch;
@@ -71,6 +75,7 @@ typedef struct AfmFontInfo
 
     char *		afiEncodingScheme;
     char *		afiCharacterSet;
+    char *		afiVendor;
 
     int			afiMetricCount;
     AfmCharMetric *	afiMetrics;
@@ -129,43 +134,34 @@ typedef struct AfmFontInfo
 typedef struct AppFontTypeface
     {
     char *			aftFaceName;
-    int *			aftSizes;
-    int				aftSizeCount;
     unsigned int		aftIsBold:1;
     unsigned int		aftIsSlanted:1;
-    unsigned int		aftIsScalable:1;
     unsigned int		aftIsFixedWidth:1;
     void *			aftPrintingData;
-    char *			aftXQueryFormat;
     int				aftWidth;
     int				aftWeight;
     int				aftDefaultEncoding;
+    char *			aftXQueryFormats[ENCODINGps_COUNT];
     } AppFontTypeface;
 
 typedef struct AppFontFamily
     {
     char *			affFontFamilyName;
-    char *			affFontFamilyText;
+    char *			affFontFamilyName_Orig;
     AppFontTypeface *		affFaces;
     int				affFaceCount;
-    unsigned int		affHasFixedWidth:1;
-    unsigned int		affHasProportionalWidth:1;
-
-    int				affDefaultEncoding;
+    unsigned char		affHasFixedWidth;
+    unsigned char		affHasProportionalWidth;
+    short int			affDefaultEncoding;
+    short int			affWidth;
     SupportedCharset		affSupportedCharsets[ENCODINGps_COUNT];
     } AppFontFamily;
 
-/************************************************************************/
-/*									*/
-/*  Permissible aliasses for glyph names.				*/
-/*									*/
-/************************************************************************/
-
-typedef struct AlternateGlyphName
+typedef struct PostScriptFontList
     {
-    const char *	agnStandardName;
-    const char *	agnAlternateName;
-    } AlternateGlyphName;
+    AppFontFamily *	psflFamilies;
+    int			psflFamilyCount;
+    } PostScriptFontList;
 
 /************************************************************************/
 /*									*/
@@ -175,8 +171,7 @@ typedef struct AlternateGlyphName
 
 extern void docInitFontFamily(		AppFontFamily *		aff );
 extern void docInitFontTypeface(	AppFontTypeface *	aft );
-
-extern const AlternateGlyphName	PS_AlternateNames[];
+extern void psInitPostScriptFontList(	PostScriptFontList *	psfl );
 
 extern int psCalculateStringExtents(	AfmBBox *		abb,
 					const unsigned char *	s,
@@ -186,25 +181,39 @@ extern int psCalculateStringExtents(	AfmBBox *		abb,
 					int			encoding,
 					const AfmFontInfo *	afi );
 
-extern int psFontCatalog(	const char *		afmDirectory,
-				AppFontFamily **	pFamilies,
-				int *			pCount );
-
+extern int psFontCatalog(	PostScriptFontList *	psfl,
+				const char *		afmDirectory );
 
 extern int psGetFontEncodings(	AfmFontInfo *	afi );
 
 extern void utilFontFaceDistance(	int *			pDifCount,
 					double *		pDistance,
 					const AppFontTypeface *	aft1,
-					const AppFontTypeface *	aft2 );
+					int			isSlanted,
+					int			weight );
 
-extern int utilFontGetPsFont(	int *			pFamily,
-				int *			pFace,
-				AppFontFamily **	pAff,
-				AppFontTypeface **	pAft,
-				int *			pFontEncoding,
-				const char *		afmDirectory,
-				const DocumentFont *	df,
-				const TextAttribute *	ta );
+extern void psInitAfmBBox(		AfmBBox *	abb );
+extern void psInitAfmCharMetric(	AfmCharMetric *	acm );
+extern void psCleanAfmCharMetric(	AfmCharMetric *	acm );
+extern void psInitAfmFontInfo(		AfmFontInfo *	afi );
+extern void psCleanAfmFontInfo(		AfmFontInfo *	afi );
+
+extern void psWriteAfmFile(	SimpleOutputStream *	sos,
+				const AfmFontInfo *	afi );
+
+extern void psWriteFontInfoDict(	SimpleOutputStream *	sos,
+					const AfmFontInfo *	afi );
+
+extern int psTtfToPf42(		SimpleOutputStream *	sosPf42,
+				SimpleInputStream *	sisTtf );
+
+extern int psTtfToPt1(		SimpleOutputStream *	sosPt1,
+				SimpleInputStream *	sisTtf );
+
+extern int psTtfToAfm(		SimpleOutputStream *	sosAfm,
+				SimpleInputStream *	sisTtf );
+
+extern int psFindAlternate(	const AfmFontInfo *	afi,
+				const char *		glyphName );
 
 #   endif

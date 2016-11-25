@@ -25,7 +25,7 @@
 /************************************************************************/
 
 int docInflateTextString(	BufferItem *    bi,
-				int		by	)
+				int		by )
     {
     unsigned char *	freshString;
     int			newSize;

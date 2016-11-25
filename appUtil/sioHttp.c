@@ -51,16 +51,6 @@ typedef struct HttpConnection
 
 /************************************************************************/
 /*									*/
-/*  Just refuse to seek:						*/
-/*									*/
-/************************************************************************/
-
-static int siohttpSeek(		void *			voidhc,
-				long			pos )
-    { LDEB(pos); return -1;	}
-
-/************************************************************************/
-/*									*/
 /*  The output stream. (PUT,POST)					*/
 /*									*/
 /************************************************************************/
@@ -504,7 +494,7 @@ int sioHttpOpen(	SimpleInputStream **	pSisBody,
     if  ( pSisHeader )
 	{
 	sisHeader= sioInOpen( (void *)hc, sioInHttpReadHeaderBytes,
-					siohttpSeek, sioHttpCloseHeaderInput );
+						sioHttpCloseHeaderInput );
 	if  ( ! sisHeader )
 	    { XDEB(sisHeader); goto failure;	}
 
@@ -516,7 +506,7 @@ int sioHttpOpen(	SimpleInputStream **	pSisBody,
     if  ( openBodyIn )
 	{
 	sisBody= sioInOpen( (void *)hc, sioInHttpReadBodyBytes,
-					siohttpSeek, sioHttpCloseBodyInput );
+						    sioHttpCloseBodyInput );
 	if  ( ! sisBody )
 	    { XDEB(sisBody); goto failure;	}
 
@@ -528,7 +518,7 @@ int sioHttpOpen(	SimpleInputStream **	pSisBody,
     if  ( pSosHeader )
 	{
 	sosHeader= sioOutOpen( (void *)hc, sioOutHttpWriteHeaderBytes,
-				    siohttpSeek, sioHttpCloseHeaderOutput );
+				    (SIOoutSEEK)0, sioHttpCloseHeaderOutput );
 	if  ( ! sosHeader )
 	    { XDEB(sosHeader); goto failure;	}
 
@@ -540,7 +530,7 @@ int sioHttpOpen(	SimpleInputStream **	pSisBody,
     if  ( openBodyOut )
 	{
 	sosBody= sioOutOpen( (void *)hc, sioOutHttpWriteBodyBytes,
-					siohttpSeek, sioHttpCloseBodyOutput );
+					(SIOoutSEEK)0, sioHttpCloseBodyOutput );
 	if  ( ! sosBody )
 	    { XDEB(sosBody); goto failure;	}
 

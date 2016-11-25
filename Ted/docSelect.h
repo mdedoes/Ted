@@ -51,8 +51,7 @@ typedef struct LayoutPosition
 typedef struct DocumentPosition
     {
     struct BufferItem *	dpBi;
-    int			dpParticule;
-    int			dpStroff;
+    unsigned int	dpStroff;
     } DocumentPosition;
 
 typedef struct SelectionScope
@@ -79,6 +78,7 @@ typedef struct DocumentSelection
 typedef struct PositionGeometry
     {
     int			pgLine;
+    int			pgAtLineHead;
 
     int			pgXPixels;
     LayoutPosition	pgTopPosition;
@@ -110,15 +110,59 @@ typedef struct TableRectangle
     int		trCellRowspan;
     } TableRectangle;
 
+#   define	docPositionsInsideParagraph(b,e) \
+		((b)->dpBi == (e)->dpBi)
 #   define	docPositionsInsideCell(b,e) \
 		((b)->dpBi->biParent == (e)->dpBi->biParent)
 #   define	docPositionsInsideRow(b,e) \
 		((b)->dpBi->biParent->biParent == (e)->dpBi->biParent->biParent)
 
+#   define	docSelectionInsideParagraph(ds) \
+		docPositionsInsideParagraph(&(ds)->dsBegin,&(ds)->dsEnd)
 #   define	docSelectionInsideCell(ds) \
 		docPositionsInsideCell(&(ds)->dsBegin,&(ds)->dsEnd)
 #   define	docSelectionInsideRow(ds) \
 		docPositionsInsideRow(&(ds)->dsBegin,&(ds)->dsEnd)
+
+/************************************************************************/
+/*									*/
+/*  Describe a selection and its relevance for application tools.	*/
+/*									*/
+/************************************************************************/
+
+typedef struct SelectionDescription
+    {
+    unsigned int	sdDocumentId;
+    int			sdIsSet;
+    int			sdDocumentReadonly;
+    int			sdIsIBarSelection;
+    int			sdIsSingleParagraph;
+    int			sdIsSingleCell;
+    int			sdBeginInTable;
+    int			sdBeginInTableHeader;
+    int			sdIsColSlice;
+    int			sdIsRowSlice;
+    int			sdIsTableSlice;
+    int			sdIsTableRectangle;
+
+    int			sdCanReplace;
+    int			sdInExternalItem;
+    int			sdInDocumentBody;
+    int			sdInHeaderFooter;
+
+    int			sdBeginInField;
+    int			sdBeginInHyperlink;
+    int			sdBeginInBookmark;
+
+    int			sdIsListBullet;
+
+    int			sdHasLists;
+    int			sdFirstListParaNr;
+    int			sdListOverride;
+    int			sdListLevel;
+    int			sdMultiList;
+    int			sdMultiLevel;
+    } SelectionDescription;
 
 /************************************************************************/
 /*									*/
@@ -138,6 +182,7 @@ extern int docIsIBarSelection( const DocumentSelection *		ds );
 extern int docIsParaSelection( const DocumentSelection *		ds );
 
 extern int docGetObjectSelection(	DocumentSelection *	ds,
+					int *			pPart,
 					DocumentPosition *	dpObject,
 					InsertedObject **	pIo );
 
@@ -149,8 +194,10 @@ extern void docSetRangeSelection(
 				int				col0,
 				int				col1 );
 
-extern int docBeginOfLine(	DocumentPosition *		dp );
-extern int docEndOfLine(	DocumentPosition *		dp );
+extern int docBeginOfLine(	DocumentPosition *		dp,
+				int				wasAtHead );
+extern int docEndOfLine(	DocumentPosition *		dp,
+				int				wasAtHead );
 
 extern int docGetTableRectangle(	TableRectangle *		tr,
 					const DocumentSelection *	ds );
@@ -160,5 +207,12 @@ extern int docGetTableSliceSelection(
 				int *				pIsColSlice,
 				TableRectangle *		tr,
 				const DocumentSelection *	ds );
+
+extern void docDescribeSelection(
+			    SelectionDescription *		sd,
+			    const DocumentSelection *		ds,
+			    const struct BufferDocument *	bd,
+			    unsigned int			documentId,
+			    int					documentRo );
 
 #   endif	/*	DOC_SELECT_H	*/

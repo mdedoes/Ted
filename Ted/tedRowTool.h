@@ -77,6 +77,7 @@ extern void tedFormatToolGetRowResourceTable(
 extern void tedFormatToolRefreshRowTool(
 				RowTool *			rt,
 				int *				pEnabled,
+				int *				pPref,
 				InspectorSubject *		is,
 				const DocumentSelection *	bs );
 

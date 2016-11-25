@@ -32,11 +32,6 @@ typedef enum ShadingPattern
 
 #   define DOCsp_BITS	4
 
-#   if  (1<<DOCsp_BITS) < DOCsp_COUNT
-    This will crash: Increase DOCsp_BITS
-#   endif
-
-
 /************************************************************************/
 /*									*/
 /*  1)  The shading of a BufferItem such as a table cell or a		*/

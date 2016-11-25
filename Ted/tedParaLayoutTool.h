@@ -19,9 +19,10 @@
 
 typedef struct ParagraphLayoutPageResources
     {
-    char *			pprParaFirstIndent;
-    char *			pprParaLeftIndent;
-    char *			pprParaRightIndent;
+    char *			plprParaListLevel;
+    char *			plprParaFirstIndent;
+    char *			plprParaLeftIndent;
+    char *			plprParaRightIndent;
 
     char *			pprParaSpaceAbove;
     char *			pprParaSpaceBelow;
@@ -55,9 +56,10 @@ typedef struct ParagraphLayoutTool
     ParagraphProperties				ptPropertiesSet;
     ParagraphProperties				ptPropertiesChosen;
 
+    APP_WIDGET					ptListLevelText;
     APP_WIDGET					ptFirstIndentText;
-    APP_WIDGET					ptRightIndentText;
     APP_WIDGET					ptLeftIndentText;
+    APP_WIDGET					ptRightIndentText;
 
     APP_WIDGET					ptOnNewPageToggle;
     APP_WIDGET					ptKeepOnPageToggle;
@@ -102,6 +104,7 @@ extern void tedFormatFillParagraphLayoutPage(
 extern void tedFormatToolRefreshParaLayoutTool(
 				ParagraphLayoutTool *		plt,
 				int *				pEnabled,
+				int *				pPref,
 				InspectorSubject *		is,
 				const DocumentSelection *	bs );
 

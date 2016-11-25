@@ -62,6 +62,8 @@ void docInitRowProperties(	RowProperties *	rp )
 
     docInitItemShading( &(rp->rpShading) );
 
+    rp->rpAlignment= DOCiaLEFT;
+
     /**/
     rp->rpPreferredWidth= 0;
     rp->rpPreferredWidthUnit= TRautoNONE;
@@ -94,6 +96,13 @@ void docInitRowProperties(	RowProperties *	rp )
 
     rp->rpCellWidthBeforeUnit= TRautoNONE;
     rp->rpCellWidthAfterUnit= TRautoNONE;
+
+    /**/
+    rp->rpRowNumber= -1;
+    rp->rpRowBandNumber= -1;
+    rp->rpRowStyle= -1;
+
+    rp->rpIsLastRow= 0;
 
     return;
     }
@@ -722,6 +731,44 @@ int docUpdRowProperties(	PropertyMask *			pRpDonePask,
 	    {
 	    rpTo->rpCellWidthAfterUnit= rpFrom->rpCellWidthAfterUnit;
 	    PROPmaskADD( &rpDoneMask, RPpropTRFTS_WIDTHA );
+	    }
+	}
+
+    /**/
+    if  ( PROPmaskISSET( rpUpdMask, RPpropROW_NUMBER ) )
+	{
+	if  ( rpTo->rpRowNumber != rpFrom->rpRowNumber )
+	    {
+	    rpTo->rpRowNumber= rpFrom->rpRowNumber;
+	    PROPmaskADD( &rpDoneMask, RPpropROW_NUMBER );
+	    }
+	}
+
+    if  ( PROPmaskISSET( rpUpdMask, RPpropROW_BAND_NUMBER ) )
+	{
+	if  ( rpTo->rpRowBandNumber != rpFrom->rpRowBandNumber )
+	    {
+	    rpTo->rpRowBandNumber= rpFrom->rpRowBandNumber;
+	    PROPmaskADD( &rpDoneMask, RPpropROW_BAND_NUMBER );
+	    }
+	}
+
+    if  ( PROPmaskISSET( rpUpdMask, RPpropROW_STYLE ) )
+	{
+	if  ( rpTo->rpRowStyle != rpFrom->rpRowStyle )
+	    {
+	    rpTo->rpRowStyle= rpFrom->rpRowStyle;
+	    PROPmaskADD( &rpDoneMask, RPpropROW_STYLE );
+	    }
+	}
+
+    /**/
+    if  ( PROPmaskISSET( rpUpdMask, RPpropIS_LAST_ROW ) )
+	{
+	if  ( rpTo->rpIsLastRow != rpFrom->rpIsLastRow )
+	    {
+	    rpTo->rpIsLastRow= rpFrom->rpIsLastRow;
+	    PROPmaskADD( &rpDoneMask, RPpropIS_LAST_ROW );
 	    }
 	}
 

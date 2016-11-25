@@ -1,6 +1,8 @@
 /************************************************************************/
+/*									*/
 /*  Management of X11 fonts: Translation of understandable fonts to	*/
 /*  X11 structures.							*/
+/*									*/
 /************************************************************************/
 
 #   include	"appFrameConfig.h"
@@ -14,7 +16,7 @@
 
 #   include	<utilPropMask.h>
 
-#   include	<utilFontmap.h>
+#   include	<utilMatchFont.h>
 
 #   include	"appDraw.h"
 #   include	<bitmap.h>
@@ -47,46 +49,118 @@ static const char *	EditFontAnyTemplate= "*";
 # define	EditFontFamilyTemplate \
 			    "-%s-%s-%s-%s-%s-%s-%s-%s-%s-%s-%s-%s-%s-%s"
 
+typedef struct XFontFaceSize
+    {
+    short int	xffsPixelSize;
+    short int	xffsListIndex;
+    } XFontFaceSize;
+
+static void appInitXFontFaceSize(	XFontFaceSize *	xffs )
+    {
+    xffs->xffsPixelSize= 0;
+    xffs->xffsListIndex= -1;
+    }
+
+# define appCleanXFontFaceSize( xffs ) /* nothing */
+
+typedef struct XFontTypeface
+    {
+    char *		xftWeightStr;
+    char *		xftSlantStr;
+    unsigned char	xftWeight;
+    unsigned char	xftIsBold;
+    unsigned char	xftIsSlanted;
+    unsigned char	xftIsScalable;
+    unsigned char	xftIsFixedWidth;
+
+    XFontFaceSize *	xftFaceSizes;
+    int			xftFaceSizeCount;
+    int			xftScalableListIndex;
+    } XFontTypeface;
+
+static void appInitXFontTypeface(	XFontTypeface *	xft )
+    {
+    xft->xftWeightStr= (char *)0;
+    xft->xftSlantStr= (char *)0;
+    xft->xftWeight= FONTweightMEDIUM;
+    xft->xftIsBold= 0;
+    xft->xftIsSlanted= 0;
+    xft->xftIsScalable= 0;
+    xft->xftIsFixedWidth= 0;
+
+    xft->xftFaceSizes= (XFontFaceSize *)0;
+    xft->xftFaceSizeCount= 0;
+
+    xft->xftScalableListIndex= -1;
+
+    return;
+    }
+
+static void appCleanXFontTypeface(	XFontTypeface *	xft )
+    {
+    int		i;
+
+    if  ( xft->xftWeightStr )
+	{ free( xft->xftWeightStr );	}
+    if  ( xft->xftSlantStr )
+	{ free( xft->xftSlantStr );	}
+
+    for ( i= 0; i < xft->xftFaceSizeCount; i++ )
+	{ appCleanXFontFaceSize( &(xft->xftFaceSizes[i]) );	}
+
+    if  ( xft->xftFaceSizes )
+	{ free( xft->xftFaceSizes );	}
+
+    return;
+    }
+
+typedef struct XFontFamily
+    {
+    char *		xffFamily;
+    char *		xffFoundry;
+    int			xffSwdth;
+
+    XFontTypeface *	xffFaces;
+    int			xffFaceCount;
+    } XFontFamily;
+
+static void appInitXFontFamily(	XFontFamily *	xff )
+    {
+    xff->xffFamily= (char *)0;
+    xff->xffFoundry= (char *)0;
+    xff->xffSwdth= 0;
+
+    xff->xffFaces= (XFontTypeface *)0;
+    xff->xffFaceCount= 0;
+    }
+
+static void appCleanXFontFamily(	XFontFamily *	xff )
+    {
+    int		i;
+
+    if  ( xff->xffFamily )
+	{ free( xff->xffFamily );	}
+
+    if  ( xff->xffFoundry )
+	{ free( xff->xffFoundry );	}
+
+    for ( i= 0; i < xff->xffFaceCount; i++ )
+	{ appCleanXFontTypeface( &(xff->xffFaces[i]) ); }
+
+    if  ( xff->xffFaces )
+	{ free( xff->xffFaces );	}
+    }
+
 /*  3  */
 typedef struct AppFontEncoding
     {
-			/*  4  */
-    int			afeCharsetEncoding;
-
-    const char *	afeRegistry;
-    const char *	afeEncoding;
-    AppFontFamily *	afeXfontFamilies;
+    XFontFamily *	afeXfontFamilies;
     int			afeXfontFamilyCount;
+    char **		afeXFontList;	/* from XListFonts()		*/
+    int			afeXFontCount;	/* from XListFonts()		*/
     } AppFontEncoding;
 
-static AppFontEncoding	AppFontXEncodings[]=
-    {
-	{
-	    ENCODINGpsISO_8859_1,
-	    "iso8859", "1",
-	},
-
-	{
-	    ENCODINGpsISO_8859_2,
-	    "iso8859", "2",
-	},
-
-	{
-	    ENCODINGpsADOBE_SYMBOL,
-	    "adobe", "fontspecific",
-	},
-
-	{
-	    ENCODINGpsADOBE_DINGBATS,
-	    "adobe", "fontspecific",
-	},
-
-	{
-	    ENCODINGpsISO_8859_7,
-	    "iso8859", "7",
-	},
-
-    };
+static AppFontEncoding	AppFontXEncodings[ENCODINGps_COUNT];
 
 /************************************************************************/
 /*									*/
@@ -225,9 +299,13 @@ static int appFontSplitXFont(	const char *	fontname,
 /*									*/
 /************************************************************************/
 
-static int appFontGetWeight(	int *			pWeight,
+static int appFontGetWeight(	unsigned char *		pWeight,
 				const char *		weight )
     {
+    if  ( ! strcmp( weight, "extralight" ) )
+	{ *pWeight= FONTweightEXTRA_LIGHT; return 0;	}
+    if  ( ! strcmp( weight, "ultralight" ) )
+	{ *pWeight= FONTweightEXTRA_LIGHT; return 0;	}
     if  ( ! strcmp( weight, "thin" ) )
 	{ *pWeight= FONTweightEXTRA_LIGHT; return 0;	}
 
@@ -328,19 +406,33 @@ static int appFontGetWidth(	int *			pWidth,
     SDEB(swdth); return -1;
     }
 
+static int appCmpFacePixelSizes(	const void *	vxffs1,
+					const void *	vxffs2 )
+    {
+    const XFontFaceSize *	xffs1= (const XFontFaceSize *)vxffs1;
+    const XFontFaceSize *	xffs2= (const XFontFaceSize *)vxffs2;
+
+    if  ( xffs1->xffsPixelSize > xffs2->xffsPixelSize )
+	{ return  1; }
+
+    if  ( xffs1->xffsPixelSize < xffs2->xffsPixelSize )
+	{ return -1; }
+
+    return 0;
+    }
+
 static int appFontXCatalog(	AppDrawingData *	add,
+				int			encoding,
 				AppFontEncoding *	afe )
     {
     char			familyFormat[120];
 	
-    char **			fontList;
-    int				fontCount;
+    int				idx;
 
-    int				i;
-    int				j;
-
-    AppFontFamily *		aff;
-    AppFontTypeface *		aft;
+    XFontFamily *		xff;
+    XFontTypeface *		xft;
+    int				fam;
+    int				face;
 
 #   ifdef USE_MOTIF
     Display *			display= add->addDisplay;
@@ -350,7 +442,7 @@ static int appFontXCatalog(	AppDrawingData *	add,
     Display *			display= GDK_DISPLAY();
 #   endif
 
-    if  ( afe->afeXfontFamilyCount > 0 )
+    if  ( afe->afeXFontList )
 	{ return 0;	}
 
     appFontQueryString( familyFormat,
@@ -360,45 +452,44 @@ static int appFontXCatalog(	AppDrawingData *	add,
 		EditFontAnyTemplate,	/* slant,		*/
 		EditFontAnyTemplate,	/* swdth,		*/
 		EditFontAnyTemplate,	/* pxlsz,		*/
-		afe->afeRegistry,
-		afe->afeEncoding );
+		PS_Encodings[encoding].fcX11Registry,
+		PS_Encodings[encoding].fcX11Encoding );
 
-    fontList= XListFonts( display, familyFormat, 4000, &fontCount );
+    afe->afeXFontList= XListFonts( display, familyFormat,
+						4000, &(afe->afeXFontCount) );
 
-    if  ( fontCount == 4000 )
-	{ LLDEB(fontCount,4000);	}
+    if  ( afe->afeXFontCount == 4000 )
+	{ LLDEB(afe->afeXFontCount,4000);	}
 
-    for ( i= 0; i < fontCount; i++ )
+    for ( idx= 0; idx < afe->afeXFontCount; idx++ )
 	{
 	char			foundry[40];
 	char			family[40];
-	char			familyName[60];
 
-	char			weight[40];
-	char			slant[40];
-	char			swdth[40];
-	char			faceName[60];
+	char			weightStr[40];
+	char			slantStr[40];
+	char			swdthStr[40];
 
 	char			ignore[40];
 	char			spacing[40];
 	char			avgwdth[40];
 
 	char			pxlszStr[40];
-	int *			sizes;
-	int				pxlsz;
+	int			pxlsz;
+	int			swdth;
 
-	if  ( appFontSplitXFont( fontList[i],
+	if  ( appFontSplitXFont( afe->afeXFontList[idx],
 					foundry,
 					family,
-					weight,
-					slant,
-					swdth,
+					weightStr,
+					slantStr,
+					swdthStr,
 					pxlszStr,
 					spacing,
 					avgwdth,
 					ignore,		/*  registry  */
 					ignore ) )	/*  encoding  */
-	    { LSDEB(i,fontList[i]); continue;	}
+	    { LSDEB(idx,afe->afeXFontList[idx]); continue;	}
 
 	if  ( strcmp( spacing, "m" ) && strcmp( spacing, "p" ) )
 	    {
@@ -408,127 +499,154 @@ static int appFontXCatalog(	AppDrawingData *	add,
 	    continue;
 	    }
 
-	sprintf( familyName, "%s-%s", foundry, family );
-	sprintf( faceName, "%s-%s-%s", weight, slant, swdth );
+	if  ( strcmp( pxlszStr, "0" ) && ! strcmp( avgwdth, "0" ) )
+	    { /*SSDEB(pxlszStr,avgwdth);*/ continue;	}
 
-	aff= afe->afeXfontFamilies;
-	for ( j= 0; j < afe->afeXfontFamilyCount; aff++, j++ )
+	if  ( appFontGetWidth( &swdth, swdthStr ) )
+	    { SSSDEB(foundry,family,swdthStr); continue;	}
+
+	xff= afe->afeXfontFamilies;
+	for ( fam= 0; fam < afe->afeXfontFamilyCount; xff++, fam++ )
 	    {
-	    if  ( ! strcmp( aff->affFontFamilyName, familyName ) )
+	    if  ( ! strcmp( xff->xffFamily, family )	&&
+		  ! strcmp( xff->xffFoundry, foundry )	&&
+		  xff->xffSwdth == swdth		)
 		{ break;	}
 	    }
 
-	if  ( j >= afe->afeXfontFamilyCount )
+	if  ( fam >= afe->afeXfontFamilyCount )
 	    {
-	    aff= (AppFontFamily *)realloc( afe->afeXfontFamilies,
-					(j+1)* sizeof(AppFontFamily) );
-	    if  ( ! aff )
-		{ LXDEB(j,aff); return -1;	}
-	    afe->afeXfontFamilies= aff;
+	    xff= (XFontFamily *)realloc( afe->afeXfontFamilies,
+			(afe->afeXfontFamilyCount+1)* sizeof(XFontFamily) );
+	    if  ( ! xff )
+		{ LXDEB(afe->afeXfontFamilyCount,xff); return -1;	}
+	    afe->afeXfontFamilies= xff;
 
-	    aff += j;
+	    xff += afe->afeXfontFamilyCount;
 
-	    docInitFontFamily( aff );
+	    appInitXFontFamily( xff );
 
-	    aff->affFontFamilyName= strdup( familyName );
-	    if  ( ! aff->affFontFamilyName )
-		{ XDEB(aff->affFontFamilyName); return -1;	}
+	    xff->xffFamily= strdup( family );
+	    xff->xffFoundry= strdup( foundry );
+	    xff->xffSwdth= swdth;
 
-	    afe->afeXfontFamilyCount= j+ 1;
+	    if  ( ! xff->xffFamily || ! xff->xffFoundry )
+		{
+		XXDEB(xff->xffFamily,xff->xffFoundry);
+		appCleanXFontFamily( xff );
+		return -1;
+		}
+
+	    afe->afeXfontFamilyCount++;
 	    }
 
-	aft= aff->affFaces;
-	for ( j= 0; j < aff->affFaceCount; aft++, j++ )
+	xft= xff->xffFaces;
+	for ( face= 0; face < xff->xffFaceCount; xft++, face++ )
 	    {
-	    if  ( ! strcmp( aft->aftFaceName, faceName )	)
+	    if  ( ! strcmp( xft->xftWeightStr, weightStr )	&&
+		  ! strcmp( xft->xftSlantStr, slantStr )	)
 		{ break;	}
 	    }
 
-	if  ( j >= aff->affFaceCount )
+	if  ( face >= xff->xffFaceCount )
 	    {
-	    aft= (AppFontTypeface *)realloc( aff->affFaces,
-					(j+1)* sizeof(AppFontTypeface) );
-	    if  ( ! aft )
-		{ LXDEB(j,aft); return -1;	}
-	    aff->affFaces= aft;
+	    xft= (XFontTypeface *)realloc( xff->xffFaces,
+				(xff->xffFaceCount+1)* sizeof(XFontTypeface) );
+	    if  ( ! xft )
+		{ LXDEB(xff->xffFaceCount,xft); return -1;	}
+	    xff->xffFaces= xft;
 
-	    aft += j;
+	    xft += xff->xffFaceCount;
 
-	    docInitFontTypeface( aft );
+	    appInitXFontTypeface( xft );
 
-	    aft->aftFaceName= strdup( faceName );
-	    if  ( ! aft->aftFaceName )
-		{ XDEB(aft->aftFaceName); return -1;	}
+	    if  ( appFontGetWeight( &(xft->xftWeight), weightStr ) )
+		{ SSDEB(afe->afeXFontList[idx],weightStr); continue;	}
 
-	    if  ( appFontGetWeight( &(aft->aftWeight), weight ) )
-		{ SSDEB(aff->affFontFamilyName,weight);	}
+	    if  ( xft->xftWeight > FONTweightMEDIUM )
+		{ xft->xftIsBold= 1;	}
+	    else{ xft->xftIsBold= 0;	}
 
-	    if  ( appFontGetWidth( &(aft->aftWidth), swdth ) )
-		{ SSDEB(aff->affFontFamilyName,swdth);	}
-
-	    if  ( aft->aftWeight > FONTweightMEDIUM )
-		{ aft->aftIsBold= 1;	}
-	    else{ aft->aftIsBold= 0;	}
-
-	    aft->aftIsSlanted= 0;
-	    if  ( strcmp( slant, "r" )	)
+	    if  ( strcmp( slantStr, "r" )	)
 		{
-		if  ( ! strcmp( slant, "i" )	||
-		      ! strcmp( slant, "o" )	)
-		    { aft->aftIsSlanted= 1;	}
-		else{ SDEB(slant);		}
+		if  ( ! strcmp( slantStr, "i" )	||
+		      ! strcmp( slantStr, "o" )	)
+		    { xft->xftIsSlanted= 1;	}
+		else{ SDEB(slantStr); continue;		}
 		}
 
-	    aft->aftIsScalable= 0;
-	    aft->aftIsFixedWidth= ! strcmp( spacing, "m" );
+	    xft->xftIsScalable= 0;
+	    xft->xftIsFixedWidth= ! strcmp( spacing, "m" );
 
-	    if  ( aft->aftIsFixedWidth )
+	    xft->xftWeightStr= strdup( weightStr );
+	    xft->xftSlantStr= strdup( slantStr );
+	    if  ( ! xft->xftWeightStr || ! xft->xftSlantStr )
 		{
-		if  ( aff->affHasProportionalWidth )
-		    { SDEB(fontList[i]);	}
-		aff->affHasFixedWidth= 1;
-		}
-	    else{
-		if  ( aff->affHasFixedWidth )
-		    { SDEB(fontList[i]);	}
-		aff->affHasProportionalWidth= 1;
+		XXDEB(xft->xftWeightStr,xft->xftSlantStr);
+		appCleanXFontTypeface( xft );
+		return -1;
 		}
 
-	    aff->affFaceCount= j+ 1;
+	    xff->xffFaceCount++;
 	    }
 
 	pxlsz= atoi( pxlszStr );
 	if  ( pxlsz == 0 )
-	    { aft->aftIsScalable= 1;	}
+	    {
+	    xft->xftIsScalable= 1;
+	    xft->xftScalableListIndex= idx;
+	    }
 	else{
-	    if  ( strcmp( avgwdth, "0" ) )
+	    XFontFaceSize *	xffs= xft->xftFaceSizes;
+	    int			sz;
+
+	    for ( sz= 0; sz < xft->xftFaceSizeCount; xffs++, sz++ )
 		{
-		sizes= aft->aftSizes;
-		for ( j= 0; j < aft->aftSizeCount; sizes++, j++ )
-		    {
-		    if  ( *sizes == pxlsz )
-			{ break;	}
-		    }
+		if  ( xffs->xffsPixelSize == pxlsz )
+		    { break;	}
+		}
 
-		if  ( j == aft->aftSizeCount )
-		    {
-		    sizes= (int *)realloc(
-				    aft->aftSizes, (j+1)* sizeof(int) );
-		    if  ( ! sizes )
-			{ LXDEB(j,sizes); return -1;	}
-		    aft->aftSizes= sizes;
+	    /* duplicate? */
+	    if  ( sz < xft->xftFaceSizeCount )
+		{
+		SLLSDEB("DUPLICATE",idx,sz,afe->afeXFontList[idx]);
+		LSDEB(xffs->xffsListIndex,
+				afe->afeXFontList[xffs->xffsListIndex]);
+		continue;
+		}
 
-		    sizes += j;
+	    xffs= (XFontFaceSize *)realloc( xft->xftFaceSizes,
+			( xft->xftFaceSizeCount+ 1 )* sizeof( XFontFaceSize ) );
+	    if  ( ! xffs )
+		{ LXDEB(xft->xftFaceSizeCount,xffs); return -1;	}
+	    xft->xftFaceSizes= xffs;
 
-		    *sizes= pxlsz;
+	    xffs += xft->xftFaceSizeCount;
 
-		    aft->aftSizeCount= j+ 1;
-		    }
+	    appInitXFontFaceSize( xffs );
+
+	    xffs->xffsPixelSize= pxlsz;
+	    xffs->xffsListIndex= idx;
+
+	    xft->xftFaceSizeCount++;
+	    }
+	}
+
+    xff= afe->afeXfontFamilies;
+    for ( fam= 0; fam < afe->afeXfontFamilyCount; xff++, fam++ )
+	{
+	xft= xff->xffFaces;
+	for ( face= 0; face < xff->xffFaceCount; xft++, face++ )
+	    {
+	    if  ( xft->xftFaceSizeCount > 1 )
+		{
+		qsort( xft->xftFaceSizes, xft->xftFaceSizeCount,
+				sizeof(XFontFaceSize), appCmpFacePixelSizes );
 		}
 	    }
 	}
 
-    XFreeFontNames( fontList );
+    /* NO! XFreeFontNames( afe->afeXFontList ); */
 
     return 0;
     }
@@ -539,98 +657,38 @@ static int appFontXCatalog(	AppDrawingData *	add,
 /*									*/
 /************************************************************************/
 
-static void appXFontProperties(	AppPhysicalFont *	apf )
+static void appXFontProperties(	DrawScreenFont *	dsf )
     {
     XFontStruct *	xfs;
+    unsigned long	prop;
 
 #   ifdef USE_MOTIF
-    xfs= apf->apfFontStruct;
+    xfs= dsf->apfFontStruct;
 #   endif
 
 #   ifdef USE_GTK
-    xfs= GDK_FONT_XFONT( apf->apfFontStruct );
+    xfs= GDK_FONT_XFONT( dsf->apfFontStruct );
 #   endif
 
-    if  ( ! XGetFontProperty( xfs,
-		XA_UNDERLINE_THICKNESS, &apf->apfUnderlineThicknessPixels ) )
-	{
-	apf->apfUnderlineThicknessPixels= ( xfs->ascent+ xfs->descent )/12;
+    if  ( XGetFontProperty( xfs, XA_UNDERLINE_THICKNESS, &prop ) )
+	{ dsf->apfUnderlineThicknessPixels= prop;	}
+    else{
+	dsf->apfUnderlineThicknessPixels= ( xfs->ascent+ xfs->descent )/12;
 
-	if  ( apf->apfUnderlineThicknessPixels == 0 )
-	    { apf->apfUnderlineThicknessPixels= 1;	}
+	if  ( dsf->apfUnderlineThicknessPixels == 0 )
+	    { dsf->apfUnderlineThicknessPixels= 1;	}
 	}
 
-    if  ( ! XGetFontProperty( xfs,
-		XA_UNDERLINE_POSITION, &apf->apfUnderLinePositionPixels ) )
-	{
-	apf->apfUnderLinePositionPixels= ( xfs->descent/ 2 );
-	}
+    if  ( XGetFontProperty( xfs, XA_UNDERLINE_POSITION, &prop ) )
+	{ dsf->apfUnderLinePositionPixels= prop;		}
+    else{ dsf->apfUnderLinePositionPixels= ( xfs->descent/ 2 );	}
 
-    if  ( ! XGetFontProperty( xfs, XA_X_HEIGHT, &apf->apfXHeightPixels ) )
-	{ apf->apfXHeightPixels= ( xfs->ascent+ xfs->descent )/2;	}
+    if  ( XGetFontProperty( xfs, XA_X_HEIGHT, &prop ) )
+	{ dsf->apfXHeightPixels= prop;					}
+    else{ dsf->apfXHeightPixels= ( xfs->ascent+ xfs->descent )/2;	}
 
-    apf->apfAscentPixels= apf->apfFontStruct->ascent;
-    apf->apfDescentPixels= apf->apfFontStruct->descent;
-    }
-
-/************************************************************************/
-/*									*/
-/*  Format the current font name in X11 terms.				*/
-/*									*/
-/************************************************************************/
-
-static void appFontXFormatCurrent(	char *			target,
-					const AppFontEncoding *	afe,
-					const AppFontFamily *	aff,
-					const AppFontTypeface *	aft,
-					int			pxlsz )
-    {
-    char		family[40];
-    char		foundry[40];
-    char		weight[40];
-    char		slant[40];
-    char		swdth[40];
-
-    const char *	registry= EditFontAnyTemplate;
-    const char *	encoding= EditFontAnyTemplate;
-
-    char		pxlszStr[40];
-
-    strcpy( family, EditFontAnyTemplate );
-    strcpy( foundry, EditFontAnyTemplate );
-    strcpy( weight, EditFontAnyTemplate );
-    strcpy( slant, EditFontAnyTemplate );
-    strcpy( swdth, EditFontAnyTemplate );
-    strcpy( pxlszStr, EditFontAnyTemplate );
-
-    if  ( afe )
-	{
-	registry= afe->afeRegistry;
-	encoding= afe->afeEncoding;
-	}
-
-    if  ( aff )
-	{
-	if  ( sscanf( aff->affFontFamilyName, "%[^-]-%[^-]",
-						    foundry, family ) != 2 )
-	    { SDEB(aff->affFontFamilyName); }
-	}
-
-    if  ( aft )
-	{
-	if  ( sscanf( aft->aftFaceName, "%[^-]-%[^-]-%[^-]",
-						weight, slant, swdth ) != 3 )
-	    { SDEB(aft->aftFaceName); }
-	}
-
-    if  ( pxlsz > 0 )
-	{ sprintf( pxlszStr, "%d", pxlsz ); }
-
-    appFontQueryString( target,
-			    foundry, family, weight, slant, swdth,
-			    pxlszStr, registry, encoding );
-
-    return;
+    dsf->apfAscentPixels= dsf->apfFontStruct->ascent;
+    dsf->apfDescentPixels= dsf->apfFontStruct->descent;
     }
 
 /************************************************************************/
@@ -646,31 +704,31 @@ static void appFontXFormatCurrent(	char *			target,
 /************************************************************************/
 
 static int appFontXFontUsingQuery(	char *			target,
-					const AppFontTypeface *	aft,
+					const char *		queryFormat,
 					int			pixelSize )
     {
-    char *	before= aft->aftXQueryFormat;
-    char *	after;
-    int		size;
-    int		i;
+    const char *	before= queryFormat;
+    const char *	after;
+    int			size;
+    int			i;
 
     if  ( *before != '-' )
-	{ SDEB(aft->aftXQueryFormat); return -1; }
+	{ SDEB(queryFormat); return -1; }
 
     for ( i= 0; i < 6; i++ )
 	{
 	before= strchr( before+ 1, '-' );
 	if  ( ! before )
-	    { SDEB(aft->aftXQueryFormat); return -1;	}
+	    { SDEB(queryFormat); return -1;	}
 	}
 
     after= strchr( before+ 1, '-' );
     if  ( ! after )
-	{ SDEB(aft->aftXQueryFormat); return -1;	}
+	{ SDEB(queryFormat); return -1;	}
 
-    size= before- aft->aftXQueryFormat+ 1;
+    size= before- queryFormat+ 1;
 
-    memcpy( target, aft->aftXQueryFormat, size );
+    memcpy( target, queryFormat, size );
     sprintf( target+ size, "%d", pixelSize );
     strcpy( target+ strlen( target ), after );
 
@@ -681,91 +739,55 @@ int appFontXFont(	char *			target,
 			AppDrawingData *	add,
 			const AppFontFamily *	aff,
 			int			encoding,
-			AppFontTypeface *	aft,
-			int			twipsSize,
-			int			variant )
+			const AppFontTypeface *	aft,
+			int			pixelSize )
     {
-    const AppFontFamily *	xaf;
-    const AppFontTypeface *	xt;
+    const XFontFamily *		xff;
+    const XFontTypeface *	xft;
 
     int				fam;
     int				face;
 
-    int				pixelSize;
     int				turn;
 
-    int				enc;
     AppFontEncoding *		afe;
 
-    AppPhysicalFontList *	apfl= &(add->addPhysicalFontList);
+    AfmFontInfo *		afi= (AfmFontInfo *)aft->aftPrintingData;
+    const char *		t1Entry= (const char *)0;
+    const char *		scalableEntry= (const char *)0;
 
     if  ( ! aff || ! aft )
 	{ XXDEB(aff,aft); return -1;	}
 
-    if  ( variant == DOCfontSUPERSCRIPT		||
-	  variant == DOCfontSUBSCRIPT		)
-	{
-	pixelSize= TWIPStoPIXELS( add->addMagnifiedPixelsPerTwip,
-						SUPERSUB_SIZE( twipsSize ) );
-	}
-    else{
-	pixelSize= TWIPStoPIXELS( add->addMagnifiedPixelsPerTwip, twipsSize );
-	}
+    afi= (AfmFontInfo *)aft->aftPrintingData;
+    if  ( ! afi )
+	{ SXDEB(aft->aftFaceName,aft->aftPrintingData); return -1;	}
 
-    if  ( apfl->apflGhostscriptFontmap )
+    t1Entry= aft->aftXQueryFormats[encoding];
+    /*  No.. prefer screen fonts
+    if  ( t1Entry )
 	{
-	if  ( utilFontmapReadMap( apfl->apflGhostscriptFontmap ) )
-	    { SDEB(apfl->apflGhostscriptFontmap);	}
-	}
-
-    if  ( apfl->apflGhostscriptFontToXmapping )
-	{
-	if  ( utilFontmapReadT1Map( apfl->apflGhostscriptFontToXmapping ) )
-	    { SDEB(apfl->apflGhostscriptFontToXmapping);	}
-	}
-
-    if  ( aft->aftXQueryFormat )
-	{
-	if  ( appFontXFontUsingQuery( target, aft, pixelSize ) )
-	    { SDEB(aft->aftXQueryFormat); return -1;	}
+	if  ( appFontXFontUsingQuery( target, t1Entry, pixelSize ) )
+	    { SDEB(aft->aftXQueryFormats[encoding]); return -1;	}
 
 	return 0;
 	}
+    */
 
-    afe= AppFontXEncodings;
-    for ( enc= 0;
-	  enc < sizeof(AppFontXEncodings)/sizeof(AppFontEncoding);
-	  afe++, enc++ )
-	{
-	if  ( afe->afeCharsetEncoding == encoding )
-	    { break;	}
-	}
-
-    if  ( enc >= sizeof(AppFontXEncodings)/sizeof(AppFontEncoding) )
-	{
-	SLDEB(aff->affFontFamilyName,enc);
-	LLDEB(enc,sizeof(AppFontXEncodings)/sizeof(AppFontEncoding));
-	return -1;
-	}
+    afe= AppFontXEncodings+ encoding;
 
     /*  1  */
-    appFontXCatalog( add, afe );
+    appFontXCatalog( add, encoding, afe );
 
     /*  2  */
     for ( turn= 0; turn < 2; turn++ )
 	{
-	xaf= afe->afeXfontFamilies;
-	for ( fam= 0; fam < afe->afeXfontFamilyCount; xaf++, fam++ )
+	xff= afe->afeXfontFamilies;
+
+	for ( fam= 0; fam < afe->afeXfontFamilyCount; xff++, fam++ )
 	    {
-	    char *	xf= strchr( xaf->affFontFamilyName, '-' );
+	    char *	xf= xff->xffFamily;
 	    char *	psf= aff->affFontFamilyName;
-
-	    if  ( turn == 0 && xf == xaf->affFontFamilyName )
-		{ continue;	}
-
-	    if  ( ! xf )
-		{ SDEB(xaf->affFontFamilyName); continue;	}
-	    xf++;
 
 	    if  ( ! strcmp( xf, aff->affFontFamilyName ) )
 		{ break;	}
@@ -775,7 +797,7 @@ int appFontXFont(	char *			target,
 		     ( isupper( *psf ) && tolower( *psf ) == *xf )	)    )
 		{ xf++; psf++;	}
 
-	    if  ( ! *xf && ! * psf )
+	    if  ( ! * xf && ! * psf )
 		{ break;	}
 	    }
 
@@ -785,44 +807,31 @@ int appFontXFont(	char *			target,
     
     if  ( fam >= afe->afeXfontFamilyCount )
 	{
-	AfmFontInfo *	afi= (AfmFontInfo *)aft->aftPrintingData;
-	const char *	entry;
-
-	entry= utilFontmapGetEntry( afi->afiFontName );
-	if  ( entry )
+	if  ( t1Entry )
 	    {
-	    const char *	t1entry;
+	    if  ( appFontXFontUsingQuery( target, t1Entry, pixelSize ) )
+		{ SDEB(t1Entry); return -1;	}
 
-	    t1entry= utilFontmapGetT1Entry( entry );
-
-	    if  ( t1entry )
-		{
-		aft->aftXQueryFormat= strdup( t1entry );
-		if  ( ! aft->aftXQueryFormat )
-		    { XDEB(aft->aftXQueryFormat); return -1;	}
-
-		if  ( appFontXFontUsingQuery( target, aft, pixelSize ) )
-		    { SDEB(aft->aftXQueryFormat); return -1;	}
-
-		return 0;
-		}
+	    return 0;
 	    }
 
-	SLDEB(aff->affFontFamilyName,enc); return -1;
+	SLDEB(aff->affFontFamilyName,encoding);
+	fam= 0; xff= afe->afeXfontFamilies;
 	}
 
     {
-    int		faceFound= xaf->affFaceCount;
+    int		faceFound= xff->xffFaceCount;
     int		difCountFound= 999;
     double	distanceFound= 999;
 
-    xt= xaf->affFaces;
-    for ( face= 0; face < xaf->affFaceCount; xt++, face++ )
+    xft= xff->xffFaces;
+    for ( face= 0; face < xff->xffFaceCount; xft++, face++ )
 	{
 	int		difCount;
 	double		distance;
 
-	utilFontFaceDistance( &difCount, &distance, xt, aft );
+	utilFontFaceDistance( &difCount, &distance, aft,
+					xft->xftIsSlanted, xft->xftWeight );
 
 	if  ( difCount < difCountFound		&&
 	      difCount < 2			&&
@@ -835,59 +844,72 @@ int appFontXFont(	char *			target,
 	    }
 	}
 
-    face= faceFound;
-    xt= xaf->affFaces+ face;
-
-    if  ( face >= xaf->affFaceCount )
+    if  ( faceFound >= xff->xffFaceCount )
 	{ SDEB(aft->aftFaceName); return -1;	}
+
+    face= faceFound;
+    xft= xff->xffFaces+ face;
     }
 
     /*  8  */
-    if  ( /* ! xt->aftIsScalable && */ xt->aftSizeCount > 0 )
+    if  ( xft->xftFaceSizeCount > 0 )
 	{
 	int		i;
+	int		s;
+	int		dv;
 
-	for ( i= 0; i < xt->aftSizeCount; i++ )
+	for ( i= 0; i < xft->xftFaceSizeCount; i++ )
 	    {
-	    if  ( xt->aftSizes[i] >= pixelSize )
+	    if  ( xft->xftFaceSizes[i].xffsPixelSize >= pixelSize )
 		{ break;	}
 	    }
 
-	if  ( i >= xt->aftSizeCount )
-	    { i= xt->aftSizeCount-1;	}
+	if  ( i >= xft->xftFaceSizeCount )
+	    { i= xft->xftFaceSizeCount-1;	}
 
-	if  ( i > 0				&&
-	      xt->aftSizes[i] > pixelSize	)
+	if  ( i > 0						&&
+	      xft->xftFaceSizes[i].xffsPixelSize > pixelSize	)
 	    {
-	    int		bigger= 0;
+	    int		d0;
+	    int		d1;
 
-	    if  ( pixelSize < 8 )
-		{ bigger= 1;	}
+	    d0= ( 100* pixelSize )/ xft->xftFaceSizes[i-1].xffsPixelSize;
+	    d1= ( 100* xft->xftFaceSizes[i].xffsPixelSize )/ pixelSize;
 
-	    if  ( xt->aftSizes[i]- ( pixelSize+ bigger )	>=
-		  ( pixelSize+ bigger )- xt->aftSizes[i- 1]	)
-		{ i--; }
+	    if  ( d1 > 105 || d0 < d1 )
+		{ i--;	}
 	    }
 
-	if  ( ! xt->aftIsScalable )
-	    { pixelSize= xt->aftSizes[i];	}
-	else{
-	    if  ( xt->aftSizes[i] > pixelSize				&&
-		  10* ( xt->aftSizes[i]- pixelSize ) <= pixelSize	)
-		{ pixelSize= xt->aftSizes[i];	}
-	    else{
-		if  ( xt->aftSizes[i] < pixelSize			&&
-		      10* ( pixelSize- xt->aftSizes[i] ) <= pixelSize	)
-		    { pixelSize= xt->aftSizes[i];	}
-		}
+	s= xft->xftFaceSizes[i].xffsPixelSize;
+	if  ( s >= pixelSize )
+	    { dv= ( 100* s )/ pixelSize;	}
+	else{ dv= ( 100* pixelSize )/ s;	}
+
+	if  ( dv <= 115					||
+	      ( ! t1Entry			&&
+	        xft->xftScalableListIndex < 0	)	)
+	    {
+	    strcpy( target,
+		    afe->afeXFontList[xft->xftFaceSizes[i].xffsListIndex] );
+
+	    return 0;
 	    }
 	}
 
-    appFontXFormatCurrent( target, afe, xaf, xt, pixelSize );
+    if  ( t1Entry )
+	{ scalableEntry= t1Entry;	}
+    else{
+	if  ( xft->xftScalableListIndex < 0 )
+	    { LDEB(xft->xftScalableListIndex); return -1;	}
+
+	scalableEntry= afe->afeXFontList[xft->xftScalableListIndex];
+	}
+
+    if  ( appFontXFontUsingQuery( target, scalableEntry, pixelSize ) )
+	{ SLDEB(scalableEntry,pixelSize); return -1;	}
 
     return 0;
     }
-	    
 
 /************************************************************************/
 /*									*/
@@ -906,289 +928,221 @@ int appFontXFont(	char *			target,
 /*									*/
 /************************************************************************/
 
-static int appGetPhysicalFont(	AppPhysicalFont **	pAsf,
-				AppFontFamily **	pAff,
-				AppFontTypeface **	pAft,
-				AppPhysicalFontList *	apfl,
-				DocumentFont *		df,
-				const TextAttribute *	ta )
+static int appGetScreenFont(	DrawScreenFont **		pApf,
+				AppDrawingData *		add,
+				const DocumentFont *		df,
+				const TextAttribute *		ta )
     {
-    int			fam;
-    int			face;
-    int			i;
+    DrawScreenFontList *	apfl= &(add->addScreenFontList);
 
-    AppPhysicalFont *	apf;
+    int				i;
+    DrawScreenFont *		dsf;
 
-    AppFontFamily *	psf;
-    AppFontTypeface *	pst;
+    int				faceIndex;
+    int				fullSizePixels;
+
+    const int			twipsSize= 10* ta->taFontSizeHalfPoints;
+
+    if  ( df->dfPsFamilyNumber < 0 )
+	{ SLDEB(df->dfName,df->dfPsFamilyNumber); return -1;	}
+
+    faceIndex= FACE_INDEX( ta->taFontIsSlanted, ta->taFontIsBold );
+    faceIndex= df->dfPsFaceNumber[faceIndex];
+
+    if  ( faceIndex < 0 )
+	{
+	SLLDEB(df->dfName,ta->taFontIsSlanted,ta->taFontIsBold);
+	LDEB(FACE_INDEX( ta->taFontIsSlanted, ta->taFontIsBold ));
+	LDEB(faceIndex);
+	faceIndex= 0;
+	}
+
+    if  ( ta->taSuperSub == DOCfontSUPERSCRIPT		||
+	  ta->taSuperSub == DOCfontSUBSCRIPT		)
+	{
+	fullSizePixels= TWIPStoPIXELS( add->addMagnifiedPixelsPerTwip,
+						SUPERSUB_SIZE( twipsSize ) );
+	}
+    else{
+	fullSizePixels= TWIPStoPIXELS( add->addMagnifiedPixelsPerTwip,
+								twipsSize );
+	}
+
+    if  ( fullSizePixels < 2 )
+	{
+	/* LFLDEB(twipsSize,add->addMagnifiedPixelsPerTwip,fullSizePixels); */
+	fullSizePixels= 2;
+	}
 
     /*  1  */
-    apf= apfl->apflFonts;
-    for ( i= 0; i < apfl->apflCount; apf++, i++ )
+    dsf= apfl->apflFonts;
+    for ( i= 0; i < apfl->apflFontCount; dsf++, i++ )
 	{
-	TextAttribute	taAsf= apf->apfAttribute;
-
-	if  ( docEqualFont( &taAsf, ta ) )
-	    { *pAsf= apf; return i; }
+	if  ( df->dfPsFamilyNumber == dsf->apfPsFamilyNumber	&&
+	      df->dfEncodingSet == dsf->apfFontEncoding		&&
+	      faceIndex == dsf->apfFaceIndex			&&
+	      fullSizePixels == dsf->apfFullSizePixels		)
+	    { *pApf= dsf; return i; }
 	}
 
     /*  2  */
-    apf= (AppPhysicalFont *)realloc( apfl->apflFonts,
-				(apfl->apflCount+ 1)* sizeof(AppPhysicalFont) );
-    if  ( ! apf )
-	{ XDEB(apf); return -1;	}
-    apfl->apflFonts= apf;
-    apf += apfl->apflCount;
+    dsf= (DrawScreenFont *)realloc( apfl->apflFonts,
+			(apfl->apflFontCount+ 1)* sizeof(DrawScreenFont) );
+    if  ( ! dsf )
+	{ XDEB(dsf); return -1;	}
+    apfl->apflFonts= dsf;
+    dsf += apfl->apflFontCount;
 
-    apf->apfAttribute= *ta;
-    apf->apfDocFamilyNumber= -1;
+    /*  KEY  */
+    dsf->apfPsFamilyNumber= df->dfPsFamilyNumber;
+    dsf->apfFontEncoding= df->dfEncodingSet;
+    dsf->apfFaceIndex= faceIndex;
+    dsf->apfFullSizePixels= fullSizePixels;
 
-    apf->apfPsFamilyNumber= -1;
-    apf->apfFontEncoding= -1;
-    apf->apfPsFaceNumber= -1;
-    apf->apfFontStruct= (APP_FONT *)0;
-    apf->apfScapsFontStruct= (APP_FONT *)0;
-    apf->apfUnderLinePositionPixels= 0;
-    apf->apfUnderlineThicknessPixels= 0;
-    apf->apfAscentPixels= 0;
-    apf->apfDescentPixels= 0;
-    apf->apfFullSizePixels= 0;
-    apf->apfXHeightPixels= 0;
+    /*  DEP  */
+    dsf->apfUnderLinePositionPixels= 0;
+    dsf->apfUnderlineThicknessPixels= 0;
+    dsf->apfAscentPixels= 0;
+    dsf->apfDescentPixels= 0;
+    dsf->apfXHeightPixels= 0;
+    dsf->apfScapsSizePixels= 0;
+    dsf->apfFontStruct= (APP_FONT *)0;
+    dsf->apfScapsFontStruct= (APP_FONT *)0;
 
-    if  ( utilFontGetPsFont( &fam, &face, &psf, &pst, &(apf->apfFontEncoding),
-					    apfl->apflAfmDirectory, df, ta ) )
-	{ LDEB(1); return -1;	}
-
-    apf->apfPsFamilyNumber= fam;
-    apf->apfPsFaceNumber= face;
-
-    if  ( df->dfEncodingUsed < 0 )
-	{ df->dfEncodingUsed= apf->apfFontEncoding;	}
+    if  ( ta->taSuperSub == DOCfontSUPERSCRIPT		||
+	  ta->taSuperSub == DOCfontSUBSCRIPT		)
+	{
+	dsf->apfScapsSizePixels= TWIPStoPIXELS( add->addMagnifiedPixelsPerTwip,
+						SUPERSUB_SIZE( twipsSize ) );
+	}
     else{
-	if  ( df->dfEncodingUsed != apf->apfFontEncoding )
-	    { LLDEB(df->dfEncodingUsed,apf->apfFontEncoding);	}
+	dsf->apfScapsSizePixels= TWIPStoPIXELS( add->addMagnifiedPixelsPerTwip,
+						8* ta->taFontSizeHalfPoints );
 	}
 
-    *pAsf= apf;
-    *pAff= psf;
-    *pAft= pst;
+    if  ( dsf->apfScapsSizePixels < 2 )
+	{ /* LDEB(dsf->apfScapsSizePixels); */ dsf->apfScapsSizePixels= 2; }
 
-    return 0;
+    *pApf= dsf;
+
+    return apfl->apflFontCount++;
     }
 
-static int appFontOpenXFont(	AppDrawingData *	add,
-				AppPhysicalFont *	apf,
-				const AppFontFamily *	psf,
-				AppFontTypeface *	pst,
-				const TextAttribute	ta )
+/************************************************************************/
+/*									*/
+/*  Get the X font with a font.						*/
+/*									*/
+/*  1)  Determine the full font height in pixels.			*/
+/*  2)  Open the font for normal use.					*/
+/*  3)  Obtain some font properties.					*/
+/*  4)  Try to obtain a slightly smaller font for smallcaps.		*/
+/*									*/
+/************************************************************************/
+
+static int appFontOpenXFont(	AppDrawingData *		add,
+				const PostScriptFontList *	psfl,
+				DrawScreenFont *		dsf )
     {
-    char		scratch[120];
+    char			scratch[120];
 
-    apf->apfFullSizePixels= TWIPStoPIXELS( add->addMagnifiedPixelsPerTwip,
-					    10* ta.taFontSizeHalfPoints );
+    const AppFontFamily *	psf;
+    const AppFontTypeface *	pst;
 
-    if  ( appFontXFont( scratch, add, psf, apf->apfFontEncoding, pst,
-				10* ta.taFontSizeHalfPoints, ta.taSuperSub ) )
+    if  ( dsf->apfPsFamilyNumber < 0				||
+	  dsf->apfPsFamilyNumber >= psfl->psflFamilyCount	)
+	{ LLDEB(dsf->apfPsFamilyNumber,psfl->psflFamilyCount); return -1; }
+
+    psf= psfl->psflFamilies+ dsf->apfPsFamilyNumber;
+
+    if  ( dsf->apfFaceIndex < 0 || dsf->apfFaceIndex >= psf->affFaceCount )
+	{ LLDEB(dsf->apfFaceIndex,psf->affFaceCount); return -1;	}
+
+    pst= psf->affFaces+ dsf->apfFaceIndex;
+
+    /*  2  */
+    if  ( appFontXFont( scratch, add, psf, dsf->apfFontEncoding, pst,
+						    dsf->apfFullSizePixels ) )
 	{ LDEB(1); return -1;	}
 
 #   ifdef USE_MOTIF
-    apf->apfFontStruct= XLoadQueryFont( add->addDisplay, scratch );
-    if  ( ! apf->apfFontStruct )
+    dsf->apfFontStruct= XLoadQueryFont( add->addDisplay, scratch );
+    if  ( ! dsf->apfFontStruct )
 	{ SDEB(scratch); return -1;	}
 #   endif
 
 #   ifdef USE_GTK
-    apf->apfFontStruct= gdk_font_load( scratch );
-    if  ( ! apf->apfFontStruct )
+    dsf->apfFontStruct= gdk_font_load( scratch );
+    if  ( ! dsf->apfFontStruct )
 	{ SDEB(scratch); return -1;	}
 #   endif
 
-    appXFontProperties( apf );
+    /*  3  */
+    appXFontProperties( dsf );
 
-    if  ( appFontXFont( scratch, add, psf, apf->apfFontEncoding, pst,
-				8* ta.taFontSizeHalfPoints, ta.taSuperSub ) )
+    /*  4  */
+    if  ( appFontXFont( scratch, add, psf, dsf->apfFontEncoding, pst,
+						    dsf->apfScapsSizePixels ) )
 	{ LDEB(1); return -1;	}
 
 #   ifdef USE_MOTIF
-    apf->apfScapsFontStruct= XLoadQueryFont( add->addDisplay, scratch );
-    if  ( ! apf->apfScapsFontStruct )
+    dsf->apfScapsFontStruct= XLoadQueryFont( add->addDisplay, scratch );
+    if  ( ! dsf->apfScapsFontStruct )
 	{ SDEB(scratch); return -1;	}
 #   endif
 
 #   ifdef USE_GTK
-    apf->apfScapsFontStruct= gdk_font_load( scratch );
-    if  ( ! apf->apfScapsFontStruct )
+    dsf->apfScapsFontStruct= gdk_font_load( scratch );
+    if  ( ! dsf->apfScapsFontStruct )
 	{ SDEB(scratch); return -1;	}
 #   endif
 
     return 0;
     }
 
-/************************************************************************/
-/*									*/
-/*  Open an instance of a font for a document.				*/
-/*									*/
-/*  1)  Was a sensible font set in the document? If not just take the	*/
-/*	first one that is available.					*/
-/*  2)  To make users of SGML tools not too unhappy, just complain once.*/
-/*									*/
-/************************************************************************/
-
-static int appGetFontInstance(	DocumentFont **			pDf,
-				DocumentFontInstance **		pDfi,
+int appOpenScreenFont(		AppDrawingData *		add,
 				const DocumentFontList *	dfl,
-				TextAttribute			ta )
+				const TextAttribute *		ta )
     {
-    int				i;
-    DocumentFont *		df;
-    DocumentFontInstance *	dfi;
+    const DocumentFont *	df= dfl->dflFonts+ ta->taFontNumber;
+    const PostScriptFontList *	psfl= add->addPostScriptFontList;
+    DrawScreenFont *		dsf;
+    int				physicalFont;
 
-    /*  1  */
-    if  ( ta.taFontNumber < 0 || ta.taFontNumber >= dfl->dflCount )
-	{
-	static int	complained;
+    if  ( ta->taFontNumber < 0			||
+	  ta->taFontNumber >= dfl->dflFontCount	)
+	{ LLDEB(ta->taFontNumber,dfl->dflFontCount); return -1; }
 
-	/*  2  */
-	if  ( ! complained )
-	    { LLDEB(ta.taFontNumber,dfl->dflCount); complained= 1;	}
+    physicalFont= appGetScreenFont( &dsf, add, df, ta );
+    if  ( physicalFont < 0 )
+	{ SLDEB(df->dfName,df->dfDocFontNumber); return -1;	}
 
-	for ( i= 0; i < dfl->dflCount; i++ )
-	    {
-	    if  ( dfl->dflFonts[i].dfDocFamilyNumber >= 0 )
-		{ ta.taFontNumber= i; break;	}
-	    }
-
-	if  ( ta.taFontNumber < 0 || ta.taFontNumber >= dfl->dflCount )
-	    { LLDEB(ta.taFontNumber,dfl->dflCount); return -1; }
-	}
-
-    df= dfl->dflFonts+ ta.taFontNumber;
-
-    dfi= df->dfInstances;
-    for ( i= 0; i < df->dfInstanceCount; dfi++, i++ )
-	{
-	if  ( docEqualFont( &(dfi->dfiAttribute), &ta ) )
-	    { break;	}
-	}
-
-    if  ( i == df->dfInstanceCount )
-	{
-	dfi= (DocumentFontInstance *)realloc( df->dfInstances,
-		( df->dfInstanceCount+ 1 )* sizeof(DocumentFontInstance) );
-	if  ( ! dfi )
-	    { LXDEB(df->dfInstanceCount+ 1,dfi); return -1; }
-
-	df->dfInstances= dfi;
-
-	dfi += df->dfInstanceCount++;
-
-	dfi->dfiAttribute= ta;
-	dfi->dfiPhysicalFont= -1;
-	dfi->dfiPsFaceNumber= -1;
-	}
-
-    *pDf= df; *pDfi= dfi; return 0;
-    }
-
-int appOpenDocumentFont(	AppDrawingData *		add,
-				const DocumentFontList *	dfl,
-				TextAttribute			ta )
-    {
-    DocumentFont *		df;
-    DocumentFontInstance *	dfi;
-
-    if  ( appGetFontInstance( &df, &dfi, dfl, ta ) )
+#   ifdef USE_MOTIF
+    if  ( add->addDisplay && appFontOpenXFont( add, psfl, dsf ) )
 	{ LDEB(1); return -1;	}
+#   endif
 
-    if  ( dfi->dfiPhysicalFont < 0 )
-	{
-	AppPhysicalFont *	apf;
+#   ifdef USE_GTK
+    if  ( add->addForScreenDrawing && appFontOpenXFont( add, psfl, dsf ) )
+	{ LDEB(1); return -1;	}
+#   endif
 
-	AppFontFamily *		psf;
-	AppFontTypeface *	pst;
-
-	if  ( appGetPhysicalFont( &apf, &psf, &pst,
-		    &(add->addPhysicalFontList), df, &(dfi->dfiAttribute) ) )
-	    { SLDEB(df->dfName,df->dfDocFamilyNumber); return -1;	}
-
-	dfi->dfiPsFaceNumber= apf->apfPsFaceNumber;
-	df->dfPsFamilyNumber= apf->apfPsFamilyNumber;
-
-	dfi->dfiPhysicalFont= add->addPhysicalFontList.apflCount++;
-
-#	ifdef USE_MOTIF
-	if  ( add->addDisplay && appFontOpenXFont( add, apf, psf, pst, ta ) )
-	    { LDEB(1); return -1;	}
-#	endif
-
-#	ifdef USE_GTK
-	if  ( add->addForScreenDrawing				&&
-	      appFontOpenXFont( add, apf, psf, pst, ta )	)
-	    { LDEB(1); return -1;	}
-#	endif
-	}
-
-    return dfi->dfiPhysicalFont;
+    return physicalFont;
     }
 
-/************************************************************************/
-/*									*/
-/*  Format the current font name.					*/
-/*									*/
-/************************************************************************/
-
-void appFontFormatCurrent(	char *			target,
-				AppFontFamily *		aff,
-				AppFontTypeface *	aft,
-				int			sizeHalfPoints )
+void appInitFontList(	DrawScreenFontList *	apfl )
     {
-    const char *	familyText= "*";
-    const char *	faceName= "*";
-    char		sizeStr[40];
-
-    sizeStr[0]= '*';
-    sizeStr[1]= '\0';
-
-    if  ( aff )
-	{
-	if  ( aff->affFontFamilyText )
-	    { familyText= aff->affFontFamilyText;	}
-	else{ familyText= aff->affFontFamilyName;	}
-	}
-
-    if  ( aft )
-	{ faceName= aft->aftFaceName;	}
-
-    if  ( sizeHalfPoints > 0 )
-	{
-	if  ( sizeHalfPoints % 2 )
-	    { sprintf( sizeStr, "%d.5", sizeHalfPoints/ 2 );	}
-	else{ sprintf( sizeStr, "%d", sizeHalfPoints/ 2 );	}
-	}
-
-    sprintf( target, "%s,%s,%s", familyText, faceName, sizeStr );
-
-    return;
-    }
-
-void appInitFontList(	AppPhysicalFontList *	apfl )
-    {
-    apfl->apflAfmDirectory= (char *)0;
-    apfl->apflGhostscriptFontmap= (char *)0;
-    apfl->apflGhostscriptFontToXmapping= (char *)0;
-
-    apfl->apflCount= 0;
-    apfl->apflFonts= (AppPhysicalFont *)0;
+    apfl->apflFontCount= 0;
+    apfl->apflFonts= (DrawScreenFont *)0;
 
     return;
     }
 
 void appCleanFontList(	AppDrawingData *	add,
-			AppPhysicalFontList *	apfl )
+			DrawScreenFontList *	apfl )
     {
     int		i;
 
-    for ( i= 0; i < apfl->apflCount; i++ )
+    for ( i= 0; i < apfl->apflFontCount; i++ )
 	{
 	if  ( apfl->apflFonts[i].apfFontStruct )
 	    {

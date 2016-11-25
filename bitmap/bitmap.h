@@ -39,7 +39,6 @@ extern const char *	bmcoStrings[];
 
 #   define	BMunILLEGALVALUE	4
 
-#   define	x_POINTS_PER_CM		28.3465
 #   define	POINTS_PER_M		2834.65
 #   define	TWIPS_PER_M		(20*POINTS_PER_M)
 
@@ -286,6 +285,10 @@ extern int bmPsWriteBitmapData(	BitmapPrinter *			bp,
 extern int bmPsRowStringSize(	const BitmapDescription *	bd,
 				int				pixelsWide,
 				int				indexedImages );
+
+extern int bmWmfWriteWmf(	const BitmapDescription *	bd,
+				const unsigned char *		buffer,
+				SimpleOutputStream *		sos );
 
 extern int bmPngWritePng(	const BitmapDescription *	bd,
 				const unsigned char *		buffer,
@@ -697,5 +700,28 @@ extern int bmTextureMapInverse(	ColorAllocator *		ca,
 
 extern int bmSetColorAllocatorForImage(	ColorAllocator *		ca,
 					const BitmapDescription *	bd );
+
+extern int bmCountLinePixels(	const unsigned char *		buffer,
+				const BitmapDescription *	bd,
+				int				x0,
+				int				y0,
+				int				x1,
+				int				y1 );
+
+extern int bmDrawLine(		unsigned char *			buffer,
+				const BitmapDescription *	bd,
+				int				x0,
+				int				y0,
+				int				x1,
+				int				y1,
+				int				wide );
+
+extern int bmDrawBox(		unsigned char *			buffer,
+				const BitmapDescription *	bd,
+				int				x0,
+				int				y0,
+				int				x1,
+				int				y1,
+				int				wide );
 
 #   endif

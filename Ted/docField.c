@@ -18,6 +18,56 @@
 
 /************************************************************************/
 /*									*/
+/*  Delete the previous contents of a field.				*/
+/*									*/
+/************************************************************************/
+
+int docFieldReplaceContents(	int *			pStroff,
+				int *			pStroffShift,
+				int *			pTextAttrNr,
+				BufferDocument *	bd,
+				BufferItem *		paraBi,
+				int			part,
+				int			partCount,
+				int			stroffShift,
+				const unsigned char *	addedString,
+				int			addedStrlen,
+				void *			voidadd,
+				DOC_CLOSE_OBJECT	closeObject )
+    {
+    int			i;
+    TextParticule *	tp= paraBi->biParaParticules+ part;
+
+    int			textAttributeNumber= tp[1].tpTextAttributeNumber;
+    int			past= tp[1+partCount].tpStroff+ stroffShift;
+    int			stroff= tp[1].tpStroff+ stroffShift;
+
+    int			d= 0;
+
+    if  ( docParaStringReplace( &d, paraBi, stroff, past,
+						addedString, addedStrlen ) )
+	{ LDEB(addedStrlen); return -1;	}
+
+    if  ( partCount > 0 )
+	{
+	tp= paraBi->biParaParticules+ part+ 1;
+	for ( i= 0; i < partCount; tp++, i++ )
+	    {
+	    (*closeObject)( bd, paraBi, tp, voidadd );
+	    docCleanParticuleObject( paraBi, tp );
+	    }
+
+	docDeleteParticules( paraBi, part+ 1, partCount );
+	}
+
+    *pStroff= stroff;
+    *pStroffShift= d;
+    *pTextAttrNr= textAttributeNumber;
+    return 0;
+    }
+
+/************************************************************************/
+/*									*/
 /*  Substitute an individual text field in a paragraph.			*/
 /*									*/
 /*  NOTE: This routine is not recursive. Nested fields are handeled	*/
@@ -113,12 +163,12 @@ int docRecalculateParaStringTextParticules(
 /*  1)  For all fields in range...					*/
 /*	NOTE that the end of the range may have been shifted by the	*/
 /*	calculation of field results.					*/
-/*  2)  Shift the particule by what previous calculations have changed	*/
+/*  2)  Shift this particule by what previous calculations have changed	*/
 /*	in size.							*/
-/*  3)  Not the beginning of a field.. Irrelevant (+sanity chaeck)	*/
+/*  3)  Not the beginning of a field.. Irrelevant.			*/
 /*  4)  Retrieve the field. Do some sanity checks: Only text level	*/
 /*	fields are really supported.					*/
-/*  5)  Count the number of paricules in the field.			*/
+/*  5)  Count the number of paricules currently in the field.		*/
 /*  6)  When the field is to be recalculated.. do so.			*/
 /*	NOTE that this may shift both the array of particules and the	*/
 /*	paragraph text.							*/
@@ -161,13 +211,7 @@ static int docRecalculateParaTextFields(
 
 	/*  3  */
 	if  ( tp->tpKind != DOCkindFIELDSTART )
-	    {
-	    /*
-	    if  ( tp->tpKind == DOCkindFIELDEND )
-		{ LDEB(tp->tpKind);	}
-	    */
-	    continue;
-	    }
+	    { continue;	}
 
 	/*  4  */
 	if  ( tp->tpObjectNumber < 0				||
@@ -183,13 +227,7 @@ static int docRecalculateParaTextFields(
 
 	fki= DOC_FieldKinds+ df->dfKind;
 	if  ( fki->fkiLevel != DOClevTEXT )
-	    {
-	    /*
-	    SLDEB(fki->fkiLabel,fki->fkiLevel);
-	    SDEB(df->dfInstructions.odBytes);
-	    */
-	    continue;
-	    }
+	    { continue;	}
 
 	/*  5  */
 	partCount= docCountParticulesInField( bi, part, partUpto+ *pPartShift );
@@ -211,6 +249,11 @@ static int docRecalculateParaTextFields(
 
 	    if  ( calculated )
 		{ rf->rfFieldsUpdated++; }
+	    else{
+		if  ( docShiftParticuleOffsets( bd, bi,
+					part+ 1, endPart, *pStroffShift ) )
+		    { LDEB(*pStroffShift);	}
+		}
 
 	    endPart += partShift;
 	    *pPartShift += partShift;
@@ -598,6 +641,26 @@ const FieldKindInformation DOC_FieldKinds[]=
 		RESULT_READONLY,
     },
     {
+	"DATE", (char *)0,
+		DOClevTEXT,
+		FIELD_IN_RTF,
+		NO_DEST,
+		docRecalculateParaStringTextParticules,
+		docCalculateDocDateFieldString,
+		FIELDdoDOC_COMPLETE,
+		RESULT_READONLY,
+    },
+    {
+	"TIME", (char *)0,
+		DOClevTEXT,
+		FIELD_IN_RTF,
+		NO_DEST,
+		docRecalculateParaStringTextParticules,
+		docCalculateDocDateFieldString,
+		FIELDdoDOC_COMPLETE,
+		RESULT_READONLY,
+    },
+    {
 	"AUTHOR", (char *)0,
 		DOClevTEXT,
 		FIELD_IN_RTF,
@@ -685,6 +748,16 @@ const FieldKindInformation DOC_FieldKinds[]=
 		docRecalculateParaChftnTextParticules,
 		docCalculateChftnFieldString,
 		FIELDdoDOC_COMPLETE|FIELDdoCHFTN,
+		RESULT_READONLY,
+    },
+    {
+	"-LISTTEXT", (char *)0,
+		DOClevTEXT,
+		NOT_IN_RTF,
+		NO_DEST,
+		docRecalculateParaListtextTextParticules,
+		docCalculateDocStringFieldString, /* as dummy */
+		FIELDdoDOC_COMPLETE|FIELDdoLISTTEXT,
 		RESULT_READONLY,
     },
     {

@@ -76,8 +76,7 @@ SimpleInputStream * sioInForkOpen(	SimpleInputStream *	sisIn,
     fis->fisSosFork= sosFork;
     fis->fisExhausted= 0;
 
-    sis= sioInOpen( (void *)fis,
-			    sioInForkReadBytes, (SIOinSEEK)0, sioForkClose );
+    sis= sioInOpen( (void *)fis, sioInForkReadBytes, sioForkClose );
 
     if  ( ! sis )
 	{ XDEB(sis); free( fis ); return (SimpleInputStream *)0; }

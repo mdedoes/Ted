@@ -35,7 +35,7 @@ int appImgMakeImage(	AppDrawingData *		add,
 			int				toWide,
 			int				toHigh,
 			AppColors *			ac,
-			AppBitmapImage *		abi )
+			const AppBitmapImage *		abi )
     {
     GdkVisual *			vis= gdk_visual_get_system();
     int				depth= vis->depth;
@@ -184,7 +184,7 @@ int appImgMakePixmap(	AppDrawingData *		add,
 			int				toWide,
 			int				toHigh,
 			AppColors *			ac,
-			AppBitmapImage *		abi )
+			const AppBitmapImage *		abi )
     {
     APP_IMAGE *		xim;
 

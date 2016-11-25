@@ -38,7 +38,10 @@ void docCleanListTable(		DocumentListTable *		dlt )
 int docCopyListTable(		DocumentListTable *		to,
 				const DocumentListTable *	from )
     {
-    int		i;
+    int			i;
+
+    const int * const	fontMap= (const int *)0;
+    const int * const	colorMap= (const int *)0;
 
     if  ( to->dltListCount > from->dltListCount )
 	{
@@ -65,8 +68,8 @@ int docCopyListTable(		DocumentListTable *		to,
 
     for ( i= 0; i < from->dltListCount; i++ )
 	{
-	if  ( docCopyDocumentList(
-			&(to->dltLists[i]), &(from->dltLists[i]) ) )
+	if  ( docCopyDocumentList( &(to->dltLists[i]), &(from->dltLists[i]),
+							fontMap, colorMap ) )
 	    { LDEB(i); return -1;	}
 	}
 
@@ -79,8 +82,10 @@ int docCopyListTable(		DocumentListTable *		to,
 /*									*/
 /************************************************************************/
 
-int docDocumentListTableAddList(	DocumentListTable *		dlt,
-					const DocumentList *		dl )
+int docDocumentListTableAddList( DocumentListTable *		dlt,
+				const DocumentList *		dl,
+				const int *			fontMap,
+				const int *			colorMap )
     {
     DocumentList *	fresh;
 
@@ -93,9 +98,47 @@ int docDocumentListTableAddList(	DocumentListTable *		dlt,
     fresh += dlt->dltListCount;
 
     docInitDocumentList( fresh );
-    if  ( docCopyDocumentList( fresh, dl ) )
+    if  ( docCopyDocumentList( fresh, dl, fontMap, colorMap ) )
 	{ LDEB(dlt->dltListCount); return -1;	}
 
     dlt->dltListCount++;
     return 0;
+    }
+
+int docMergeListIntoTable(	DocumentListTable *		dlt,
+				const DocumentList *		dlNew,
+				const int *			fontMap,
+				const int *			colorMap )
+    {
+    int			oldCount= dlt->dltListCount;
+    DocumentList *	dl;
+
+    int		i;
+
+    dl= dlt->dltLists;
+    for ( i= 0; i < dlt->dltListCount; dl++, i++ )
+	{
+	int		level;
+
+	if  ( dl->dlListID != dlNew->dlListID )
+	    { continue;	}
+	if  ( dl->dlListTemplateID != dlNew->dlListTemplateID )
+	    { LLDEB(dl->dlListTemplateID,dlNew->dlListTemplateID);	}
+	if  ( dl->dlListStyleID != dlNew->dlListStyleID )
+	    { LLDEB(dl->dlListTemplateID,dlNew->dlListTemplateID);	}
+
+	for ( level= dl->dlLevelCount; level < dlNew->dlLevelCount; level++ )
+	    {
+	    if  ( docDocumentListAddLevel( dl, dlNew->dlLevels+ level,
+							fontMap, colorMap ) )
+		{ LDEB(level); return -1;	}
+	    }
+
+	return i;
+	}
+
+    if  ( docDocumentListTableAddList( dlt, dlNew, fontMap, colorMap ) )
+	{ LDEB(dlt->dltListCount); return -1;	}
+
+    return oldCount;
     }

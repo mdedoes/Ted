@@ -21,20 +21,20 @@
 /*									*/
 /************************************************************************/
 
-void docRtfSaveTextFrameProperties( SimpleOutputStream *	sos,
+void docRtfSaveParaFrameProperties( SimpleOutputStream *	sos,
 				int *				pCol,
 				const PropertyMask *		updMask,
-				const TextFrameProperties *	tfp )
+				const FramePosition *		fp )
     {
     if  ( PROPmaskISSET( updMask, TFPpropABSW ) )
-	{ docRtfWriteArgTag( "\\absw", pCol, tfp->tfpFrameWidthTwips, sos ); }
+	{ docRtfWriteArgTag( "\\absw", pCol, fp->fpFrameWidthTwips, sos ); }
 
     if  ( PROPmaskISSET( updMask, TFPpropABSH ) )
-	{ docRtfWriteArgTag( "\\absh", pCol, tfp->tfpFrameHeightTwips, sos ); }
+	{ docRtfWriteArgTag( "\\absh", pCol, fp->fpFrameHeightTwips, sos ); }
 
-    if  ( PROPmaskISSET( updMask, TFPpropHORIZONTAL_REFERENCE ) )
+    if  ( PROPmaskISSET( updMask, TFPpropHORIZONTAL_REF ) )
 	{
-	switch( tfp->tfpHorizontalFrameReference )
+	switch( fp->fpHorizontalFrameReference )
 	    {
 	    case HFRphCOL:
 		docRtfWriteTag( "\\phcol", pCol, sos );
@@ -49,22 +49,22 @@ void docRtfSaveTextFrameProperties( SimpleOutputStream *	sos,
 		break;
 
 	    default:
-		LDEB(tfp->tfpHorizontalFrameReference);
+		LDEB(fp->fpHorizontalFrameReference);
 	    }
 	}
 
-    if  ( PROPmaskISSET( updMask, TFPpropHORIZONTAL_POSITION ) )
+    if  ( PROPmaskISSET( updMask, TFPpropHORIZONTAL_POS ) )
 	{
-	if  ( tfp->tfpFrameXTwips >= 0 )
-	    { docRtfWriteArgTag( "\\posx", pCol, tfp->tfpFrameXTwips, sos ); }
+	if  ( fp->fpFrameXTwips >= 0 )
+	    { docRtfWriteArgTag( "\\posx", pCol, fp->fpFrameXTwips, sos ); }
 	else{
-	    docRtfWriteArgTag( "\\posxneg", pCol, -tfp->tfpFrameXTwips, sos );
+	    docRtfWriteArgTag( "\\posxneg", pCol, -fp->fpFrameXTwips, sos );
 	    }
 	}
 
-    if  ( PROPmaskISSET( updMask, TFPpropHORIZONTAL_ALIGNMENT ) )
+    if  ( PROPmaskISSET( updMask, TFPpropHORIZONTAL_ALIGN ) )
 	{
-	switch( tfp->tfpHorizontalFrameAlignment )
+	switch( fp->fpHorizontalFrameAlignment )
 	    {
 	    case HFAposXL:
 		docRtfWriteTag( "\\posxl", pCol, sos );
@@ -87,13 +87,13 @@ void docRtfSaveTextFrameProperties( SimpleOutputStream *	sos,
 		break;
 
 	    default:
-		LDEB(tfp->tfpHorizontalFrameAlignment);
+		LDEB(fp->fpHorizontalFrameAlignment);
 	    }
 	}
 
-    if  ( PROPmaskISSET( updMask, TFPpropVERTICAL_REFERENCE ) )
+    if  ( PROPmaskISSET( updMask, TFPpropVERTICAL_REF ) )
 	{
-	switch( tfp->tfpVerticalFrameReference )
+	switch( fp->fpVerticalFrameReference )
 	    {
 	    case VFRpvMRG:
 		docRtfWriteTag( "\\pvmrg", pCol, sos );
@@ -108,61 +108,63 @@ void docRtfSaveTextFrameProperties( SimpleOutputStream *	sos,
 		break;
 
 	    default:
-		LDEB(tfp->tfpVerticalFrameReference);
+		LDEB(fp->fpVerticalFrameReference);
 	    }
 	}
 
-    if  ( PROPmaskISSET( updMask, TFPpropVERTICAL_POSITION ) )
+    if  ( PROPmaskISSET( updMask, TFPpropVERTICAL_POS ) )
 	{
-	if  ( tfp->tfpFrameXTwips >= 0 )
-	    { docRtfWriteArgTag( "\\posy", pCol, tfp->tfpFrameYTwips, sos ); }
+	if  ( fp->fpFrameXTwips >= 0 )
+	    { docRtfWriteArgTag( "\\posy", pCol, fp->fpFrameYTwips, sos ); }
 	else{
-	    docRtfWriteArgTag( "\\posyneg", pCol, -tfp->tfpFrameYTwips, sos );
+	    docRtfWriteArgTag( "\\posyneg", pCol, -fp->fpFrameYTwips, sos );
 	    }
 	}
 
-    if  ( PROPmaskISSET( updMask, TFPpropVERTICAL_ALIGNMENT ) )
+    if  ( PROPmaskISSET( updMask, TFPpropVERTICAL_ALIGN ) )
 	{
-	switch( tfp->tfpVerticalFrameAlignment )
+	switch( fp->fpVerticalFrameAlignment )
 	    {
 	    case VFAposYIL:
 		docRtfWriteTag( "\\posyil", pCol, sos );
 		break;
-
+	    case VFAposYIN:
+		docRtfWriteTag( "\\posyin", pCol, sos );
+		break;
+	    case VFAposYOUT:
+		docRtfWriteTag( "\\posyout", pCol, sos );
+		break;
 	    case VFAposYT:
 		docRtfWriteTag( "\\posyt", pCol, sos );
 		break;
-
 	    case VFAposYC:
 		docRtfWriteTag( "\\posyc", pCol, sos );
 		break;
-
 	    case VFAposYB:
 		docRtfWriteTag( "\\posyb", pCol, sos );
 		break;
 
-
 	    default:
-		LDEB(tfp->tfpVerticalFrameAlignment);
+		LDEB(fp->fpVerticalFrameAlignment);
 	    }
 	}
 
     if  ( PROPmaskISSET( updMask, TFPpropLOCKED_TO_PARA ) )
 	{
-	if  ( tfp->tfpFrameLockedToParagraph )
+	if  ( fp->fpFrameLockedToParagraph )
 	    { docRtfWriteTag( "\\abslock", pCol, sos );		 }
 	else{
 	    docRtfWriteArgTag( "\\abslock", pCol,
-					tfp->tfpFrameLockedToParagraph, sos );
+					fp->fpFrameLockedToParagraph, sos );
 	    }
 	}
 
     if  ( PROPmaskISSET( updMask, TFPpropWRAP_STYLE ) )
 	{
-	switch( tfp->tfpFrameWrapStyle )
+	switch( fp->fpFrameWrapStyle )
 	    {
 	    case FWSwrapWRAP:
-		LDEB(tfp->tfpFrameWrapStyle);
+		LDEB(fp->fpFrameWrapStyle);
 		break;
 
 	    case FWSwrapNOWRAP:
@@ -174,26 +176,29 @@ void docRtfSaveTextFrameProperties( SimpleOutputStream *	sos,
 		break;
 
 	    default:
-		LDEB(tfp->tfpFrameWrapStyle);
+		LDEB(fp->fpFrameWrapStyle);
 	    }
 	}
 
-    if  ( PROPmaskISSET( updMask, TFPpropDXFRTEXT ) )
+    if  ( PROPmaskISSET( updMask, TFPpropDFRMTXT ) )
 	{
-	docRtfWriteArgTag( "\\dxfrtext", pCol,
-				    tfp->tfpDistanceFromTextTwips, sos );
+	int	val= fp->fpDistanceFromTextTwipsLeft;
+
+	docRtfWriteArgTag( "\\dxfrtext", pCol, val, sos );
 	}
 
     if  ( PROPmaskISSET( updMask, TFPpropDFRMTXTX ) )
 	{
-	docRtfWriteArgTag( "\\dfrmtxtx", pCol,
-				    tfp->tfpHorDistanceFromTextTwips, sos );
+	int	val= fp->fpDistanceFromTextTwipsLeft;
+
+	docRtfWriteArgTag( "\\dfrmtxtx", pCol, val, sos );
 	}
 
     if  ( PROPmaskISSET( updMask, TFPpropDFRMTXTY ) )
 	{
-	docRtfWriteArgTag( "\\dfrmtxty", pCol,
-				    tfp->tfpVerDistanceFromTextTwips, sos );
+	int	val= fp->fpDistanceFromTextTwipsTop;
+
+	docRtfWriteArgTag( "\\dfrmtxty", pCol, val, sos );
 	}
 
     return;
@@ -201,75 +206,148 @@ void docRtfSaveTextFrameProperties( SimpleOutputStream *	sos,
 
 /************************************************************************/
 /*									*/
-/*  Handle a text frame property when reading RTF.			*/
+/*  Handle a frame property when reading RTF.				*/
 /*									*/
 /************************************************************************/
 
-int docRtfRememberTextFrameProperty(	SimpleInputStream *	sis,
+static int docRtfRememberFrameProperty(	SimpleInputStream *	sis,
 					const RtfControlWord *	rcw,
 					int			arg,
-					RtfReadingContext *	rrc )
+					FramePosition *		fp )
     {
-    TextFrameProperties *	tfp= &(rrc->rrcTextFrameProperties);
-
     switch( rcw->rcwID )
 	{
 	case TFPpropABSW:
-	    tfp->tfpFrameWidthTwips= arg;
+	    fp->fpFrameWidthTwips= arg;
 	    break;
 
 	case TFPpropABSH:
-	    tfp->tfpFrameHeightTwips= arg;
+	    fp->fpFrameHeightTwips= arg;
 	    break;
 
-	case TFPpropHORIZONTAL_REFERENCE:
-	    tfp->tfpHorizontalFrameReference= rcw->rcwEnumValue;
+	case TFPpropHORIZONTAL_REF:
+	    fp->fpHorizontalFrameReference= rcw->rcwEnumValue;
 	    break;
 
-	case TFPpropHORIZONTAL_POSITION:
-	    tfp->tfpFrameXTwips= arg;
+	case TFPpropHORIZONTAL_POS:
+	    fp->fpFrameXTwips= arg;
 	    break;
 
-	case TFPpropHORIZONTAL_ALIGNMENT:
-	    tfp->tfpHorizontalFrameAlignment= rcw->rcwEnumValue;
+	case TFPpropHORIZONTAL_ALIGN:
+	    fp->fpHorizontalFrameAlignment= rcw->rcwEnumValue;
 	    break;
 
-	case TFPpropVERTICAL_REFERENCE:
-	    tfp->tfpVerticalFrameReference= rcw->rcwEnumValue;
+	case TFPpropVERTICAL_REF:
+	    fp->fpVerticalFrameReference= rcw->rcwEnumValue;
 	    break;
 
-	case TFPpropVERTICAL_POSITION:
-	    tfp->tfpFrameYTwips= arg;
+	case TFPpropVERTICAL_POS:
+	    fp->fpFrameYTwips= arg;
 	    break;
 
-	case TFPpropVERTICAL_ALIGNMENT:
-	    tfp->tfpVerticalFrameAlignment= rcw->rcwEnumValue;
+	case TFPpropVERTICAL_ALIGN:
+	    fp->fpVerticalFrameAlignment= rcw->rcwEnumValue;
 	    break;
 
 	case TFPpropLOCKED_TO_PARA:
-	    tfp->tfpFrameLockedToParagraph= arg != 0;
+	    fp->fpFrameLockedToParagraph= arg != 0;
 	    break;
 
 	case TFPpropWRAP_STYLE:
-	    tfp->tfpFrameWrapStyle= rcw->rcwEnumValue;
+	    fp->fpFrameWrapStyle= rcw->rcwEnumValue;
 	    break;
 
-	case TFPpropDXFRTEXT:
-	    tfp->tfpDistanceFromTextTwips= arg;
+	case TFPpropNO_OVERLAP:
+	    fp->fpNoOverlap= arg != 0;
+	    break;
+
+	case TFPpropDFRMTXT:
+	    fp->fpDistanceFromTextTwipsLeft= arg;
+	    fp->fpDistanceFromTextTwipsRight= arg;
+	    fp->fpDistanceFromTextTwipsTop= arg;
+	    fp->fpDistanceFromTextTwipsBottom= arg;
+	    fp->fpDistanceFromTextSet |=
+			(DISTsetLEFT|DISTsetRIGHT|DISTsetTOP|DISTsetBOTTOM);
 	    break;
 
 	case TFPpropDFRMTXTX:
-	    tfp->tfpHorDistanceFromTextTwips= arg;
+	    fp->fpDistanceFromTextTwipsLeft= arg;
+	    fp->fpDistanceFromTextTwipsRight= arg;
+	    fp->fpDistanceFromTextSet |= (DISTsetLEFT|DISTsetRIGHT);
 	    break;
 
 	case TFPpropDFRMTXTY:
-	    tfp->tfpVerDistanceFromTextTwips= arg;
+	    fp->fpDistanceFromTextTwipsTop= arg;
+	    fp->fpDistanceFromTextTwipsBottom= arg;
+	    fp->fpDistanceFromTextSet |= (DISTsetTOP|DISTsetBOTTOM);
+	    break;
+
+	case TFPpropDFRMTXTL:
+	    fp->fpDistanceFromTextTwipsLeft= arg;
+	    fp->fpDistanceFromTextSet |= DISTsetLEFT;
+	    break;
+
+	case TFPpropDFRMTXTR:
+	    fp->fpDistanceFromTextTwipsRight= arg;
+	    fp->fpDistanceFromTextSet |= DISTsetRIGHT;
+	    break;
+
+	case TFPpropDFRMTXTT:
+	    fp->fpDistanceFromTextTwipsTop= arg;
+	    fp->fpDistanceFromTextSet |= DISTsetTOP;
+	    break;
+
+	case TFPpropDFRMTXTB:
+	    fp->fpDistanceFromTextTwipsBottom= arg;
+	    fp->fpDistanceFromTextSet |= DISTsetBOTTOM;
 	    break;
 
 	default:
 	    SDEB(rcw->rcwWord);
 	    return 0;
 	}
+
+    /*
+    PROPmaskADD( &(rrc->rrcStyle.dsParaMask), rcw->rcwID );
+    */
+
+    return 0;
+    }
+
+/************************************************************************/
+/*									*/
+/*  Handle a paragraph frame property when reading RTF.			*/
+/*									*/
+/************************************************************************/
+
+int docRtfRememberParaFrameProperty(	SimpleInputStream *	sis,
+					const RtfControlWord *	rcw,
+					int			arg,
+					RtfReadingContext *	rrc )
+    {
+    FramePosition *	fp= &(rrc->rrcParaFramePosition);
+
+    if  ( docRtfRememberFrameProperty( sis, rcw, arg, fp ) )
+	{ LSLDEB(rcw->rcwID,rcw->rcwWord,arg); return -1;	}
+
+
+    /*
+    PROPmaskADD( &(rrc->rrcStyle.dsParaMask), rcw->rcwID );
+    */
+
+    return 0;
+    }
+
+int docRtfRememberRowFrameProperty(	SimpleInputStream *	sis,
+					const RtfControlWord *	rcw,
+					int			arg,
+					RtfReadingContext *	rrc )
+    {
+    FramePosition *	fp= &(rrc->rrcRowFramePosition);
+
+    if  ( docRtfRememberFrameProperty( sis, rcw, arg, fp ) )
+	{ LSLDEB(rcw->rcwID,rcw->rcwWord,arg); return -1;	}
+
 
     /*
     PROPmaskADD( &(rrc->rrcStyle.dsParaMask), rcw->rcwID );

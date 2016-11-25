@@ -14,7 +14,6 @@ AC_DEFUN(AC_PATH_ZLIB,
     ZLIB_SHARED_REF=
 
     ZLIB_FOUND=0
-    AC_DEFINE(ZLIB_FOUND,0)
 
     ac_zlib_includes=${ac_zlib_includes:-NO}
     ac_zlib_libraries=${ac_zlib_libraries:-NO}
@@ -69,6 +68,14 @@ AC_DEFUN(AC_PATH_ZLIB,
 		break
 	    fi
 
+	if  test -r "$ac_dir/libz.dylib"
+	    then
+		ac_zlib_libraries=$ac_dir
+		ac_zlib_shared_lib=$ac_dir/libz.dylib
+		found=yes
+		break
+	    fi
+
 	if  test $found = yes
 	    then
 		break
@@ -80,8 +87,11 @@ AC_DEFUN(AC_PATH_ZLIB,
     #echo Includes : $ac_zlib_includes
     #echo Libraries: $ac_zlib_libraries
 
-    if  test $ac_zlib_includes != NO
+    if  test $ac_zlib_includes = NO
     then
+	ZLIB_FOUND=0
+	AC_DEFINE(ZLIB_FOUND,0)
+    else
 	ZLIB_FOUND=1
 	AC_DEFINE(ZLIB_FOUND,1)
 	ZLIB_CFLAGS=-I$ac_zlib_includes

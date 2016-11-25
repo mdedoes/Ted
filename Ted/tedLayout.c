@@ -24,12 +24,12 @@
 
 /************************************************************************/
 /*									*/
-/*  Calculate the width of a string.					*/
+/*  Calculate the width of a string on screen.				*/
 /*									*/
 /************************************************************************/
 
 static int tedSegmentedWidth(	const AppDrawingData *		add,
-				const AppPhysicalFont *		apf,
+				const DrawScreenFont *		dsf,
 				const unsigned char *		s,
 				const int *			segments,
 				int				segmentCount )
@@ -47,7 +47,7 @@ static int tedSegmentedWidth(	const AppDrawingData *		add,
 	if  ( segments[2* seg+ 0] > 0 )
 	    {
 	    appDrawTextExtents( &wide, &fontAscent, &fontDescent,
-				    add, apf->apfFontStruct,
+				    add, dsf->apfFontStruct,
 				    (const char *)s, segments[2* seg+ 0] );
 
 	    s += segments[2* seg+ 0];
@@ -57,7 +57,7 @@ static int tedSegmentedWidth(	const AppDrawingData *		add,
 	if  ( segments[2* seg+ 1] > 0 )
 	    {
 	    appDrawTextExtents( &wide, &fontAscent, &fontDescent,
-				    add, apf->apfScapsFontStruct,
+				    add, dsf->apfScapsFontStruct,
 				    (const char *)s, segments[2* seg+ 1] );
 
 	    s += segments[2* seg+ 1];
@@ -68,7 +68,7 @@ static int tedSegmentedWidth(	const AppDrawingData *		add,
     return x;
     }
 
-int tedTextWidth(		const AppPhysicalFont *		apf,
+int tedTextWidth(		const DrawScreenFont *		dsf,
 				const TextAttribute *		ta,
 				const BufferDocument *		bd,
 				const AppDrawingData *		add,
@@ -91,7 +91,7 @@ int tedTextWidth(		const AppPhysicalFont *		apf,
 
     if  ( ta->taSmallCaps && ! ta->taCapitals )
 	{
-	wide= tedSegmentedWidth( add, apf,
+	wide= tedSegmentedWidth( add, dsf,
 				    printString, segments, segmentCount );
 	}
     else{
@@ -99,7 +99,7 @@ int tedTextWidth(		const AppPhysicalFont *		apf,
 	int		fontDescent;
 
 	appDrawTextExtents( &wide, &fontAscent, &fontDescent,
-		    add, apf->apfFontStruct, (const char *)printString, len );
+		    add, dsf->apfFontStruct, (const char *)printString, len );
 	}
 
     if  ( upperString )
@@ -110,7 +110,7 @@ int tedTextWidth(		const AppPhysicalFont *		apf,
     return wide;
     }
 
-static int tedVisibleTextWidth(	const AppPhysicalFont *		apf,
+static int tedVisibleTextWidth(	const DrawScreenFont *		dsf,
 				const TextAttribute *		ta,
 				const BufferDocument *		bd,
 				const AppDrawingData *		add,
@@ -123,7 +123,7 @@ static int tedVisibleTextWidth(	const AppPhysicalFont *		apf,
     if  ( len == 0 )
 	{ return 0;	}
 
-    return tedTextWidth( apf, ta, bd, add, printString, len );
+    return tedTextWidth( dsf, ta, bd, add, printString, len );
     }
 
 /************************************************************************/
@@ -138,6 +138,7 @@ static int tedVisibleTextWidth(	const AppPhysicalFont *		apf,
 static int tedLayoutParticules(	const BufferItem *		bi,
 				const BufferDocument *		bd,
 				AppDrawingData *		add,
+				const ScreenFontList *		sfl,
 				const ParagraphFrame *		ffPixels,
 				TextParticule *			tp,
 				ParticuleData *			pd,
@@ -151,11 +152,17 @@ static int tedLayoutParticules(	const BufferItem *		bi,
     int				xFrom= x0;
     const unsigned char *	from= bi->biParaString+ tp->tpStroff;
 
-    int				physicalFont= tp->tpPhysicalFont;
+    DrawScreenFontList *	apfl= &(add->addScreenFontList);
     int				textAttr= tp->tpTextAttributeNumber;
-    AppPhysicalFontList *	apfl= &(add->addPhysicalFontList);
-    AppPhysicalFont *		apf= apfl->apflFonts+ physicalFont;
+    int				screenFont;
+    DrawScreenFont *		dsf;
 
+    if  ( textAttr >= sfl->sflAttributeToScreenCount	||
+	  sfl->sflAttributeToScreen[textAttr] < 0	)
+	{ LDEB(textAttr); return -1;	}
+
+    screenFont= sfl->sflAttributeToScreen[textAttr];
+    dsf= apfl->apflFonts+ screenFont;
 
     accepted= 0;
     while( accepted < particuleCount )
@@ -176,10 +183,10 @@ static int tedLayoutParticules(	const BufferItem *		bi,
 						tp->tpTextAttributeNumber );
 
 		    len += tp->tpStrlen;
-		    wide= tedTextWidth( apf, &ta, bd, add, from, len );
+		    wide= tedTextWidth( dsf, &ta, bd, add, from, len );
 
 		    pd->pdVisiblePixels= tedVisibleTextWidth(
-						apf, &ta, bd, add,
+						dsf, &ta, bd, add,
 						bi->biParaString+ tp->tpStroff,
 						tp->tpStrlen );
 		    pd->pdWhiteUnits= xFrom+ wide- x0- pd->pdVisiblePixels;
@@ -220,6 +227,7 @@ static int tedLayoutParticules(	const BufferItem *		bi,
 		accepted++; tp++; pd++; break;
 
 	    case DOCkindCHFTNSEP:
+	    case DOCkindCHFTNSEPC:
 		wide= TWIPStoPIXELS( add->addMagnifiedPixelsPerTwip, 2880 );
 
 		pd->pdVisiblePixels= wide;
@@ -238,6 +246,7 @@ static int tedLayoutParticules(	const BufferItem *		bi,
 	    case DOCkindTC:
 	    case DOCkindLINEBREAK:
 	    case DOCkindPAGEBREAK:
+	    case DOCkindCOLUMNBREAK:
 
 		pd->pdVisiblePixels= 0; pd->pdWhiteUnits= 0;
 
@@ -253,9 +262,15 @@ static int tedLayoutParticules(	const BufferItem *		bi,
 	if  ( accepted >= particuleCount )
 	    { return accepted;	}
 
-	physicalFont= tp->tpPhysicalFont;
 	textAttr= tp->tpTextAttributeNumber;
-	apf= apfl->apflFonts+ physicalFont;
+
+	if  ( textAttr >= sfl->sflAttributeToScreenCount	||
+	      sfl->sflAttributeToScreen[textAttr] < 0		)
+	    { LDEB(textAttr); return -1;	}
+
+	screenFont= sfl->sflAttributeToScreen[textAttr];
+	dsf= apfl->apflFonts+ screenFont;
+
 	from= bi->biParaString+ tp->tpStroff;
 	xFrom= x0;
 	len= 0;
@@ -273,13 +288,15 @@ static int tedLayoutParticules(	const BufferItem *		bi,
 static void tedLineHeight(	const BufferItem *	bi,
 				const TextParticule *	tp,
 				const AppDrawingData *	add,
+				const ScreenFontList *	sfl,
 				int			particuleCount,
 				int *			pAscent,
 				int *			pDescent )
     {
-    const AppPhysicalFontList *	apfl= &(add->addPhysicalFontList);
-    int				physicalFont= -1;
-    AppPhysicalFont *		apf;
+    const DrawScreenFontList *	apfl= &(add->addScreenFontList);
+    int				textAttr= -1;
+    int				screenFont= -1;
+    DrawScreenFont *		dsf;
     int				ascent= 0;
     int				descent= 0;
     int				objectHeight= 0;
@@ -296,23 +313,34 @@ static void tedLineHeight(	const BufferItem *	bi,
 	    case DOCkindTEXT:
 	    case DOCkindTAB:
 	    case DOCkindCHFTNSEP:
-		physicalFont= tp->tpPhysicalFont;
-		apf= apfl->apflFonts+ physicalFont;
+	    case DOCkindCHFTNSEPC:
+		textAttr= tp->tpTextAttributeNumber;
+		if  ( textAttr >= sfl->sflAttributeToScreenCount	||
+		      sfl->sflAttributeToScreen[textAttr] < 0		)
+		    { LDEB(textAttr); return;	}
 
-		if  ( ascent < apf->apfAscentPixels )
-		    { ascent=  apf->apfAscentPixels;	}
-		if  ( descent < apf->apfDescentPixels )
-		    { descent=  apf->apfDescentPixels; }
+		screenFont= sfl->sflAttributeToScreen[textAttr];
+		dsf= apfl->apflFonts+ screenFont;
+
+		if  ( ascent < dsf->apfAscentPixels )
+		    { ascent=  dsf->apfAscentPixels;	}
+		if  ( descent < dsf->apfDescentPixels )
+		    { descent=  dsf->apfDescentPixels; }
 		break;
 
 	    case DOCkindOBJECT:
-		physicalFont= tp->tpPhysicalFont;
-		apf= apfl->apflFonts+ physicalFont;
+		textAttr= tp->tpTextAttributeNumber;
+		if  ( textAttr >= sfl->sflAttributeToScreenCount	||
+		      sfl->sflAttributeToScreen[textAttr] < 0		)
+		    { LDEB(textAttr); return;	}
 
-		if  ( ascent < apf->apfAscentPixels )
-		    { ascent=  apf->apfAscentPixels;	}
-		if  ( descent < apf->apfDescentPixels )
-		    { descent=  apf->apfDescentPixels; }
+		screenFont= sfl->sflAttributeToScreen[textAttr];
+		dsf= apfl->apflFonts+ screenFont;
+
+		if  ( ascent < dsf->apfAscentPixels )
+		    { ascent=  dsf->apfAscentPixels;	}
+		if  ( descent < dsf->apfDescentPixels )
+		    { descent=  dsf->apfDescentPixels; }
 
 		io= bi->biParaObjects+ tp->tpObjectNumber;
 
@@ -327,6 +355,7 @@ static void tedLineHeight(	const BufferItem *	bi,
 	    case DOCkindTC:
 	    case DOCkindLINEBREAK:
 	    case DOCkindPAGEBREAK:
+	    case DOCkindCOLUMNBREAK:
 		break;
 
 	    default:
@@ -467,6 +496,14 @@ static void tedJustifyLine(	const BufferItem *	bi,
 /*									*/
 /*  'part'	is known to be the first particule of the line.		*/
 /*									*/
+/*  1)  Count the amount of white space on the line.			*/
+/*  2)  Enough to squeeze white space?					*/
+/*  3)  Remove white space in proportion to the amount of white space.	*/
+/*  4)  (3) rounded down: Remove some more pixels.			*/
+/*  5)  Actually move and shorten the particules.			*/
+/*  6)  The last particule must not be squeezed: It can have white 	*/
+/*	space that protrudes beyound the right margin.			*/
+/*									*/
 /************************************************************************/
 
 static void tedSqueezeParticules(	TextParticule *		tp,
@@ -483,6 +520,7 @@ static void tedSqueezeParticules(	TextParticule *		tp,
     int			xx0;
     int			done;
 
+    /*  1  */
     for ( i= 0; i < accepted- 1; i++ )
 	{
 	if  ( pd[i].pdWhiteUnits > 0 )
@@ -491,6 +529,7 @@ static void tedSqueezeParticules(	TextParticule *		tp,
 	pd[i].pdCorrectBy= 0;
 	}
 
+    /*  2  */
     if  ( whitePixels < shortage )
 	{
 	/*
@@ -504,6 +543,7 @@ static void tedSqueezeParticules(	TextParticule *		tp,
 	shortage= whitePixels;
 	}
 
+    /*  3  */
     done= 0;
 
     for ( i= 0; i < accepted- 1; i++ )
@@ -525,6 +565,7 @@ static void tedSqueezeParticules(	TextParticule *		tp,
 	    }
 	}
 
+    /*  4  */
     for ( i= 0; i < accepted- 1 && done < shortage; i++ )
 	{
 	if  ( pd[i].pdWhiteUnits > pd[i].pdCorrectBy )
@@ -534,6 +575,7 @@ static void tedSqueezeParticules(	TextParticule *		tp,
     if  ( done != shortage )
 	{ LLDEB(done,shortage);	}
 
+    /*  5  */
     xx0= x0; whitePixels= 0;
     for ( i= 0; i < accepted- 1; i++ )
 	{
@@ -546,8 +588,9 @@ static void tedSqueezeParticules(	TextParticule *		tp,
 	    }
 	}
 
+    /*  6  */
     tp[i].tpX0 -= whitePixels;
-    tp[i].tpPixelsWide= x1- tp[i].tpX0;
+    /* No: tp[i].tpPixelsWide= x1- tp[i].tpX0; */
 
     return;
     }
@@ -561,6 +604,7 @@ static void tedSqueezeParticules(	TextParticule *		tp,
 static int tedLayoutLine(	const BufferItem *	bi,
 				const BufferDocument *	bd,
 				AppDrawingData *	add,
+				const ScreenFontList *	sfl,
 				const ParagraphFrame *	pf,
 				TextParticule *		tp,
 				ParticuleData *		pd,
@@ -590,7 +634,7 @@ static int tedLayoutLine(	const BufferItem *	bi,
 	    { includeTab= 1; past++;	}
 
 	accepted= tedLayoutParticules( bi, bd,
-					add, pf, tp, pd, past- part, x0 );
+					add, sfl, pf, tp, pd, past- part, x0 );
 
 	if  ( accepted != past- part )
 	    { LLDEB(accepted,past- part); return -1;	}
@@ -659,6 +703,7 @@ static int tedLayoutScreenLine(	TextLine *			tl,
 				int				part,
 				int				accepted,
 				AppDrawingData *		add,
+				const ScreenFontList *		sfl,
 				const ParagraphFrame *		pf,
 				ParticuleData *			pd )
     {
@@ -675,7 +720,7 @@ static int tedLayoutScreenLine(	TextLine *			tl,
 	{ x0Pixels= pf->pfX0FirstLinePixels;	}
     else{ x0Pixels= pf->pfX0TextLinesPixels;	}
 
-    if  ( tedLayoutLine( bi, bd, add, pf, tp, pd, accepted, x0Pixels ) )
+    if  ( tedLayoutLine( bi, bd, add, sfl, pf, tp, pd, accepted, x0Pixels ) )
 	{ LDEB(1); return -1;	}
 
     switch( bi->biParaAlignment )
@@ -710,7 +755,7 @@ static int tedLayoutScreenLine(	TextLine *			tl,
 	    { tp[i].tpX0 += xShift; }
 	}
 
-    tedLineHeight( bi, bi->biParaParticules+ part, add, accepted,
+    tedLineHeight( bi, bi->biParaParticules+ part, add, sfl, accepted,
 					    &ascentPixels, &descentPixels );
 
     return tl->tlParticuleCount;
@@ -745,8 +790,9 @@ void tedParagraphFramePixels( 	ParagraphFrame *	pf,
     return;
     }
 
-static int tedLayoutStartScreenPara(	BufferItem *		bi,
+static int tedLayoutStartScreenPara(	BufferItem *		paraBi,
 					AppDrawingData *	add,
+					ScreenFontList *	sfl,
 					BufferDocument *	bd )
     {
     int			part;
@@ -754,20 +800,24 @@ static int tedLayoutStartScreenPara(	BufferItem *		bi,
 
     double		xfac= add->addMagnifiedPixelsPerTwip;
 
-    tp= bi->biParaParticules;
-    for ( part= 0; part < bi->biParaParticuleCount; tp++, part++ )
+    if  ( tedOpenParaScreenFonts( bd, add, sfl,
+				    paraBi, 0, paraBi->biParaParticuleCount ) )
+	{ LDEB(1); return -1;	}
+
+    tp= paraBi->biParaParticules;
+    for ( part= 0; part < paraBi->biParaParticuleCount; tp++, part++ )
 	{
 	if  ( tp->tpKind != DOCkindOBJECT )
 	    { continue;	}
 
-	if  ( 1 || tp->tpPhysicalFont < 0 )
+	if  ( 1 )
 	    {
-	    InsertedObject *	io= bi->biParaObjects+ tp->tpObjectNumber;
+	    InsertedObject *	io= paraBi->biParaObjects+ tp->tpObjectNumber;
 
 	    if  ( tp->tpObjectNumber < 0			||
-		  tp->tpObjectNumber >= bi->biParaObjectCount	)
+		  tp->tpObjectNumber >= paraBi->biParaObjectCount	)
 		{
-		LLDEB(tp->tpObjectNumber,bi->biParaObjectCount);
+		LLDEB(tp->tpObjectNumber,paraBi->biParaObjectCount);
 		return -1;
 		}
 
@@ -783,15 +833,20 @@ static int tedLayoutStartScreenPara(	BufferItem *		bi,
 				( io->ioScaleX* io->ioTwipsWide )/ 100 );
 	    io->ioPixelsHigh= TWIPStoPIXELS( xfac,
 				(  io->ioScaleY* io->ioTwipsHigh )/ 100 );
+	    if  ( io->ioPixelsWide < 1 )
+		{ io->ioPixelsWide=  1;	}
+	    if  ( io->ioPixelsHigh < 1 )
+		{ io->ioPixelsHigh=  1;	}
 	    }
 	}
 
     return 0;
     }
 
-static int tedPlaceStartScreenPara( BufferItem *		bi,
-				    AppDrawingData *		add,
-				    BufferDocument *		bd )
+static int tedPlaceStartScreenPara(	BufferItem *		paraBi,
+					AppDrawingData *	add,
+					ScreenFontList *	sfl,
+					BufferDocument *	bd )
     { return 0;	}
 
 static int tedLayoutStartScreenRow(	BufferItem *		rowBi,
@@ -813,6 +868,80 @@ static int tedLayoutStartScreenRow(	BufferItem *		rowBi,
 	{
 	cp->cpRightBoundaryPixels=
 			    TWIPStoPIXELS( xfac, cp->cpRightBoundaryTwips );
+	}
+
+    return 0;
+    }
+
+/************************************************************************/
+/*									*/
+/*  Find/Open the screen font belonging to an attribute number.		*/
+/*									*/
+/************************************************************************/
+
+int tedOpenScreenFont(	BufferDocument *		bd,
+			AppDrawingData *		add,
+			ScreenFontList *		sfl,
+			int				attributeNumber )
+    {
+    if  ( attributeNumber >= sfl->sflAttributeToScreenCount )
+	{
+	int *	fresh;
+
+	fresh= (int *)realloc( sfl->sflAttributeToScreen,
+				    (attributeNumber+ 1)* sizeof(int) );
+	if  ( ! fresh )
+	    { LXDEB(attributeNumber,fresh); return -1;	}
+	sfl->sflAttributeToScreen= fresh;
+
+	fresh += sfl->sflAttributeToScreenCount;
+	while( sfl->sflAttributeToScreenCount < attributeNumber )
+	    { sfl->sflAttributeToScreen[sfl->sflAttributeToScreenCount++]= -1; }
+
+	sfl->sflAttributeToScreen[sfl->sflAttributeToScreenCount++]= -1;
+	}
+
+    if  ( sfl->sflAttributeToScreen[attributeNumber] < 0 )
+	{
+	const DocumentFontList *	dfl= &(bd->bdProperties.dpFontList);
+	TextAttribute			ta;
+
+	utilGetTextAttributeByNumber( &ta, &(bd->bdTextAttributeList),
+							    attributeNumber );
+
+	sfl->sflAttributeToScreen[attributeNumber]=
+					appOpenScreenFont( add, dfl, &ta );
+
+	if  ( sfl->sflAttributeToScreen[attributeNumber] < 0 )
+	    {
+	    LLDEB(attributeNumber,sfl->sflAttributeToScreen[attributeNumber]);
+	    }
+	}
+
+    return sfl->sflAttributeToScreen[attributeNumber];
+    }
+
+int tedOpenParaScreenFonts(	BufferDocument *		bd,
+				AppDrawingData *		add,
+				ScreenFontList *		sfl,
+				BufferItem *			paraBi,
+				int				partFrom,
+				int				partUpto )
+    {
+    int			part;
+    TextParticule *	tp;
+
+    tp= paraBi->biParaParticules+ partFrom;
+    for ( part= partFrom; part < partUpto; tp++, part++ )
+	{
+	int	textAttr= tp->tpTextAttributeNumber;
+
+	if  ( textAttr < sfl->sflAttributeToScreenCount &&
+	      sfl->sflAttributeToScreen[textAttr] >= 0	)
+	    { continue;	}
+
+	if  ( tedOpenScreenFont( bd, add, sfl, textAttr ) < 0 )
+	    { LLDEB(part,textAttr); return -1;	}
 	}
 
     return 0;
@@ -842,6 +971,7 @@ static void tedSetScreenLayoutFunctions(	LayoutJob *	lj )
 int tedLayoutItem(	BufferItem *		bi,
 			BufferDocument *	bd,
 			AppDrawingData *	add,
+			ScreenFontList *	sfl,
 			DocumentRectangle *	drChanged )
     {
     LayoutJob		lj;
@@ -872,6 +1002,7 @@ int tedLayoutItem(	BufferItem *		bi,
     lj.ljChangedRectanglePixels= drChanged;
     lj.ljAdd= add;
     lj.ljBd= bd;
+    lj.ljScreenFontList= sfl;
     lj.ljChangedItem= bi;
 
     if  ( docLayoutItemAndParents( bi, &lj ) )
@@ -888,36 +1019,14 @@ int tedLayoutItem(	BufferItem *		bi,
 /*									*/
 /************************************************************************/
 
-int tedLayoutExternalItem(	int *				pY1Twips,
+int tedInitLayoutExternalItem(	LayoutJob *			lj,
 				ExternalItem *			ei,
-				int				page,
-				int				y0Twips,
-				BufferDocument *		bd,
-				AppDrawingData *		add,
-				DocumentRectangle *		drChanged )
+				int				page )
     {
-    LayoutJob			lj;
-
-    docPsInitLayoutJob( &lj );
+    AppDrawingData *	add= lj->ljAdd;
 
     if  ( add->addForScreenDrawing )
-	{ tedSetScreenLayoutFunctions( &lj );	}
-
-    lj.ljPosition.lpPage= page;
-    lj.ljPosition.lpPageYTwips= y0Twips;
-    lj.ljPosition.lpAtTopOfColumn= 1; /* not really */
-
-    lj.ljChangedRectanglePixels= drChanged;
-    lj.ljAdd= add;
-    lj.ljBd= bd;
-    lj.ljChangedItem= &(bd->bdItem);
-
-    if  ( docLayoutItemAndParents( ei->eiItem, &lj ) )
-	{ LDEB(1); return -1;	}
-
-    *pY1Twips= lj.ljPosition.lpPageYTwips;
-
-    docPsCleanLayoutJob( &lj );
+	{ tedSetScreenLayoutFunctions( lj );	}
 
     return 0;
     }
@@ -945,9 +1054,13 @@ int tedAdjustParagraphLayout(	EditOperation *			eo,
     lj.ljPosition.lpPage= 0;
     lj.ljPosition.lpPageYTwips= 0;
 
-    lj.ljChangedRectanglePixels= &(eo->eoChangedRectangle);
+    if  ( ! eo->eoChangedRectSet )
+	{ LDEB(eo->eoChangedRectSet);	}
+
+    lj.ljChangedRectanglePixels= &(eo->eoChangedRect);
     lj.ljAdd= add;
     lj.ljBd= eo->eoBd;
+    lj.ljScreenFontList= eo->eoScreenFontList;
     lj.ljChangedItem= bi;
 
     if  ( docAdjustParaLayout( bi, line, stroffShift, upto, &lj ) )
@@ -997,7 +1110,8 @@ int tedCheckPageOfSelectedExtItem(
 				DocumentRectangle *		drChanged,
 				BufferDocument *		bd,
 				ExternalItem *			selRootEi,
-				AppDrawingData *		add )
+				AppDrawingData *		add,
+				ScreenFontList *		sfl )
     {
     int				y0Twips;
     BufferItem *		selRootBodySectBi= (BufferItem *)0;
@@ -1094,8 +1208,8 @@ int tedCheckPageOfSelectedExtItem(
 
     if  ( docLayoutExternalItem( selRootEi, drChanged,
 		selRootEi->eiPageSelectedUpon, y0Twips,
-		bd, selRootBodySectBi, add,
-		tedLayoutExternalItem, tedCloseObject ) )
+		bd, selRootBodySectBi, add, sfl,
+		tedInitLayoutExternalItem, tedCloseObject ) )
 	{ LDEB(selRootEi->eiPageSelectedUpon); return -1; }
 
     *pChanged= 1; return 0;

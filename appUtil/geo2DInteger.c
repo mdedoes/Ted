@@ -233,6 +233,45 @@ double geo2DIDistanceToLine(	const Point2DI *	ab,
 
 /************************************************************************/
 /*									*/
+/*  Calculate the distance of the projection of point 'c' on the line	*/
+/*  through points 'a'  and 'b' to point A.				*/
+/*  and 'b'.								*/
+/*									*/
+/*  Distances in the direction of B are positive.			*/
+/*									*/
+/************************************************************************/
+
+double geo2DIProjectionOnLine(	const Point2DI *	ab,
+				const Point2DI *	c )
+    {
+    double	Ax= ab[0].p2diX;
+    double	Ay= ab[0].p2diY;
+    double	Bx= ab[1].p2diX;
+    double	By= ab[1].p2diY;
+
+    double	Cx= c[0].p2diX;
+    double	Cy= c[0].p2diY;
+
+    double	L2= ( Bx- Ax )* ( Bx- Ax )+ ( By- Ay )* ( By- Ay );
+
+    double	Dr= ( Cx- Ax )* ( Bx- Ax )+ ( Cy- Ay )* ( By- Ay );
+    double	r;
+    /*
+    double	Ds= ( Ay- Cy )* ( Bx- Ax )+ ( Ax- Cx )* ( By- Ay );
+    double	s;
+    */
+
+    if  ( Ax == Bx  && Ay == By )
+	{ FFDEB(Ax,Bx); FFDEB(Ay,By); return 0;	}
+
+    r= Dr/ L2;
+
+    return r* sqrt( L2 );
+    }
+
+
+/************************************************************************/
+/*									*/
 /*  See whether a point is in a polygon.				*/
 /*									*/
 /*  The number of intersections of the line to a point very far away is	*/
@@ -390,7 +429,7 @@ static int geo2DIFirstBorderIntersection(
 	{ p= pa; xp= xpa;	}
 
     if  ( xp > 1 )
-	{ return -1;	}
+	{ return 1;	}
 
     *pP= p; *pXp= xp; return 0;
     }
@@ -442,7 +481,7 @@ static int geo2DILastBorderIntersection( Point2DI *			pP,
 	{ p= pa; xp= xpa;	}
 
     if  ( xp < 0 )
-	{ return -1;	}
+	{ return 1;	}
 
     *pP= p; *pXp= xp; return 0;
     }
@@ -463,13 +502,13 @@ int geo2DIClipSegmentToRectangle(
     if  ( ! geo2DIPointInBox( &(vp[0]), dr ) )
 	{
 	if  ( geo2DIFirstBorderIntersection( &p0, &xp0, vp[0], vp[1], dr ) )
-	    { return -1;	}
+	    { return 1;	}
 	}
 
     if  ( ! geo2DIPointInBox( &(vp[1]), dr ) )
 	{
 	if  ( geo2DILastBorderIntersection( &p1, &xp1, vp[0], vp[1], dr ) )
-	    { return -1;	}
+	    { return 1;	}
 	}
 
     vpChanged[0]= p0; *pXp0= xp0;

@@ -77,8 +77,10 @@ int docRecalculateHyperlinkField(
 	{ *pCalculated= 0;	}
     else{ *pCalculated= 1;	}
 
-    *pPartShift= 0;
-    *pStroffShift= 0;
+    /*
+    *pPartShift += 0;
+    *pStroffShift += 0;
+    */
 
     return 0;
     }

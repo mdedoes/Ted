@@ -37,7 +37,7 @@ int appImgMakeImage(	AppDrawingData *		add,
 			int				toWide,
 			int				toHigh,
 			AppColors *			ac,
-			AppBitmapImage *		abi )
+			const AppBitmapImage *		abi )
     {
     Display *			display= add->addDisplay;
     int				screen= add->addScreen;
@@ -248,7 +248,7 @@ int appImgMakePixmap(	AppDrawingData *		add,
 			int				toWide,
 			int				toHigh,
 			AppColors *			ac,
-			AppBitmapImage *		abi )
+			const AppBitmapImage *		abi )
     {
     APP_IMAGE *		xim= (APP_IMAGE *)0;
 

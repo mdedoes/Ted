@@ -30,10 +30,6 @@ static int docRtfSkipPn(	SimpleInputStream *	sis,
 				const RtfControlWord *	rcw,
 				int			arg,
 				RtfReadingContext *	rrc );
-static int docRtfReadListtext(	SimpleInputStream *	sis,
-				const RtfControlWord *	rcw,
-				int			arg,
-				RtfReadingContext *	rrc );
 static int docRtfReadUpr(	SimpleInputStream *	sis,
 				const RtfControlWord *	rcw,
 				int			arg,
@@ -49,13 +45,84 @@ static int docRtfReadPnseclvl(	SimpleInputStream *	sis,
 /*									*/
 /************************************************************************/
 
-static int docRtfTextSpecial(	SimpleInputStream *	sis,
+int docRtfTextSpecialChar(	SimpleInputStream *	sis,
 				const RtfControlWord *	rcw,
 				int			arg,
-				RtfReadingContext *	rrc	)
+				RtfReadingContext *	rrc )
     {
     switch( rcw->rcwID )
 	{
+	default:
+	    SLDEB(rcw->rcwWord,rcw->rcwID);
+	    break;
+	}
+
+    return 0;
+    }
+
+int docRtfTextSpecialParticule(	SimpleInputStream *	sis,
+				const RtfControlWord *	rcw,
+				int			arg,
+				RtfReadingContext *	rrc )
+    {
+    RtfReadingState *	rrs= rrc->rrcState;
+
+    if  ( rrc->rrcInIgnoredGroup > 0 )
+	{ return 0;	}
+
+    switch( rcw->rcwID )
+	{
+	case DOCkindTAB:
+	    if  ( docSaveSpecialParticule( rrc->rrcBd, rrc->rrcBi, 0,
+				&(rrs->rrsTextAttribute), DOCkindTAB ) )
+		{ LDEB(1); return -1;	}
+
+	    rrc->rrcAfterNoteref= 0;
+
+	    break;
+
+	case DOCkindLINEBREAK:
+	    if  ( docSaveSpecialParticule( rrc->rrcBd, rrc->rrcBi, 0,
+				&(rrs->rrsTextAttribute), DOCkindLINEBREAK ) )
+		{ LDEB(1); return -1;	}
+
+	    rrc->rrcAfterNoteref= 0;
+
+	    break;
+
+	case DOCkindPAGEBREAK:
+	case DOCkindCOLUMNBREAK:
+	    {
+	    int	atBegin= 0;
+
+	    if  ( rrc->rrcJustAfterPntext )
+		{ atBegin= 1; }
+
+	    if  ( docSaveSpecialParticule( rrc->rrcBd, rrc->rrcBi, atBegin,
+				&(rrs->rrsTextAttribute), rcw->rcwID ) )
+		{ LDEB(1); return -1;	}
+
+	    rrc->rrcAfterNoteref= 0;
+
+	    break;
+	    }
+
+	case DOCkindCHFTNSEP:
+	    if  ( docSaveSpecialParticule( rrc->rrcBd, rrc->rrcBi, 0,
+				&(rrs->rrsTextAttribute), DOCkindCHFTNSEP ) )
+		{ LDEB(1); return -1;	}
+
+	    rrc->rrcAfterNoteref= 0;
+	    break;
+
+	case DOCkindCHFTNSEPC:
+	    if  ( docSaveSpecialParticule( rrc->rrcBd, rrc->rrcBi, 0,
+				&(rrs->rrsTextAttribute), DOCkindCHFTNSEPC ) )
+		{ LDEB(1); return -1;	}
+
+	    rrc->rrcAfterNoteref= 0;
+	    break;
+
 	default:
 	    SLDEB(rcw->rcwWord,rcw->rcwID);
 	    break;
@@ -69,8 +136,6 @@ static int docRtfHierarchy(	SimpleInputStream *	sis,
 				int			arg,
 				RtfReadingContext *	rrc )
     {
-    RtfReadingState *	rrs= rrc->rrcState;
-
     switch( rcw->rcwID )
 	{
 	case RTFidSECT:
@@ -118,50 +183,6 @@ static int docRtfHierarchy(	SimpleInputStream *	sis,
 		{ SDEB(rcw->rcwWord); return -1; }
 	    break;
 
-	case RTFidTAB:
-	    if  ( docSaveSpecialParticule( rrc->rrcBd, rrc->rrcBi, 0,
-				&(rrs->rrsTextAttribute), DOCkindTAB ) )
-		{ LDEB(1); return -1;	}
-
-	    rrc->rrcAfterNoteref= 0;
-
-	    break;
-
-	case RTFidLINE:
-	case RTFidLBR:
-	    if  ( docSaveSpecialParticule( rrc->rrcBd, rrc->rrcBi, 0,
-				&(rrs->rrsTextAttribute), DOCkindLINEBREAK ) )
-		{ LDEB(1); return -1;	}
-
-	    rrc->rrcAfterNoteref= 0;
-
-	    break;
-
-	case RTFidPAGE:
-	    {
-	    int	atBegin= 0;
-
-	    if  ( rrc->rrcJustAfterPntext )
-		{ atBegin= 1; }
-
-	    if  ( docSaveSpecialParticule( rrc->rrcBd, rrc->rrcBi, atBegin,
-				&(rrs->rrsTextAttribute), DOCkindPAGEBREAK ) )
-		{ LDEB(1); return -1;	}
-
-	    rrc->rrcAfterNoteref= 0;
-
-	    break;
-	    }
-
-	case RTFidCHFTNSEP:
-	    if  ( docSaveSpecialParticule( rrc->rrcBd, rrc->rrcBi, 0,
-				&(rrs->rrsTextAttribute), DOCkindCHFTNSEP ) )
-		{ LDEB(1); return -1;	}
-
-	    rrc->rrcAfterNoteref= 0;
-
-	    break;
-
 	case RTFidNONESTTABLES:
 	    /* should be a destination */
 	    break;
@@ -180,45 +201,8 @@ RtfControlWord	docRtfDocumentWords[]=
     {
 	{ "fc",		RTFidFC,	DOClevANY,  docRtfRememberProperty, },
 				/****************************************/
-				/*  Special characters.			*/
-				/****************************************/
-	{ "bullet",	RTFidBULLET,	DOClevTEXT, docRtfTextSpecial,	},
-	{ "chatn",	RTFidCHATN,	DOClevTEXT, docRtfTextSpecial,	},
-	{ "chdate",	RTFidCHDATE,	DOClevTEXT, docRtfTextSpecial,	},
-	{ "chdpa",	RTFidCHDPA,	DOClevTEXT, docRtfTextSpecial,	},
-	{ "chdpl",	RTFidCHDPL,	DOClevTEXT, docRtfTextSpecial,	},
-	{ "chftn",	RTFidCHFTN,	DOClevTEXT, docRtfChftn,	},
-	{ "chftnsepc",	RTFidCHFTNSEPC,	DOClevTEXT, docRtfTextSpecial,	},
-	{ "chpgn",	RTFidCHPGN,	DOClevTEXT, docRtfSpecialToField, },
-	{ "chtime",	RTFidCHTIME,	DOClevTEXT, docRtfTextSpecial,	},
-	{ "column",	RTFidCOLUMN,	DOClevTEXT, docRtfTextSpecial,	},
-	{ "emdash",	RTFidEMDASH,	DOClevTEXT, docRtfTextSpecial,	},
-	{ "emspace",	RTFidEMSPACE,	DOClevTEXT, docRtfTextSpecial,	},
-	{ "endash",	RTFidENDASH,	DOClevTEXT, docRtfTextSpecial,	},
-	{ "enspace",	RTFidENSPACE,	DOClevTEXT, docRtfTextSpecial,	},
-	{ "ldblquote",	RTFidLDBLQUOTE,	DOClevTEXT, docRtfTextSpecial,	},
-	{ "lquote",	RTFidLQUOTE,	DOClevTEXT, docRtfTextSpecial,	},
-	{ "ltrmark",	RTFidLTRMARK,	DOClevTEXT, docRtfTextSpecial,	},
-	{ "rdblquote",	RTFidRDBLQUOTE,	DOClevTEXT, docRtfTextSpecial,	},
-	{ "rquote",	RTFidRQUOTE,	DOClevTEXT, docRtfTextSpecial,	},
-	{ "rtlmark",	RTFidRTLMARK,	DOClevTEXT, docRtfTextSpecial,	},
-	{ "sectnum",	RTFidSECTNUM,	DOClevTEXT, docRtfTextSpecial,	},
-	{ "softcol",	RTFidSOFTCOL,	DOClevTEXT, docRtfTextSpecial,	},
-	{ "softlheight",RTFidSOFTLHEIGHT, DOClevTEXT, docRtfTextSpecial, },
-	{ "softline",	RTFidSOFTLINE,	DOClevTEXT, docRtfTextSpecial,	},
-	{ "softpage",	RTFidSOFTPAGE,	DOClevTEXT, docRtfTextSpecial,	},
-	{ "zwj",	RTFidZWJ,	DOClevTEXT, docRtfTextSpecial,	},
-	{ "zwnj",	RTFidZWNJ,	DOClevTEXT, docRtfTextSpecial,	},
-
-				/****************************************/
 				/*  Hierarchy/Structure tags.		*/
 				/****************************************/
-	{ "chftnsep",	RTFidCHFTNSEP,	DOClevTEXT, docRtfHierarchy, },
-	{ "tab",	RTFidTAB,	DOClevTEXT, docRtfHierarchy, },
-	{ "line",	RTFidLINE,	DOClevTEXT, docRtfHierarchy, },
-	{ "lbr",	RTFidLBR,	DOClevTEXT, docRtfHierarchy, },
-	{ "page",	RTFidPAGE,	DOClevTEXT, docRtfHierarchy, },
-
 	{ "par",	RTFidPAR,	DOClevANY,  docRtfHierarchy, },
 	{ "cell",	RTFidCELL,	DOClevANY,  docRtfHierarchy, },
 	{ "row",	RTFidROW,	DOClevANY,  docRtfHierarchy, },
@@ -244,20 +228,23 @@ RtfControlWord	docRtfDocumentGroups[]=
 	{ "listoverridetable",
 			DPpropLISTOVERRIDETABLE,
 					DOClevANY,  docRtfListOverrideTable, },
+	{ "generator",	DPpropGENERATOR, DOClevDOC, docRtfDocInfoGroup,	},
 	{ "info",	RTFidINFO,	DOClevDOC,  docRtfReadInfo,  },
 	{ "revtbl",	RTFidREVTBL,	DOClevDOC,  docRtfRevisionTable,  },
 	{ "pn",		RTFidPN,	DOClevANY,  docRtfSkipPn,   },
-	{ "pntext",	RTFidPNTEXT,	DOClevPARA, docRtfReadPntext, },
+	{ "pntext",	DOCfkLISTTEXT,	DOClevPARA, docRtfReadPntext, },
 	{ "pict",	RTFidPICT,	DOClevPARA, docRtfReadPict, },
+	{ "do",		RTFidDO,	DOClevPARA, docRtfReadDrawingObject, },
 	{ "nonshppict",	RTFidNONSHPPICT,DOClevPARA, docRtfReadNonshppict, },
 	{ "shppict",	RTFidSHPPICT,	DOClevPARA, docRtfReadShppict, },
 	{ "object",	RTFidOBJECT,	DOClevPARA, docRtfReadObject, },
 	{ "field",	RTFidFIELD,	DOClevPARA, docRtfReadField, },
 	{ "shp",	RTFidSHP,	DOClevPARA, docRtfReadShape, },
 	{ "shpgrp",	RTFidSHPGRP,	DOClevPARA, docRtfReadShape, },
-	{ "xe",		RTFidXE,	DOClevPARA, docRtfReadLookupEntry, },
-	{ "tc",		RTFidTC,	DOClevPARA, docRtfReadLookupEntry, },
-	{ "tcn",	RTFidTCN,	DOClevPARA, docRtfReadLookupEntry, },
+
+	{ "xe",		DOCfkXE,	DOClevPARA, docRtfLookupEntry, },
+	{ "tc",		DOCfkTC,	DOClevPARA, docRtfLookupEntry, },
+	{ "tcn",	DOCfkTCN,	DOClevPARA, docRtfLookupEntry, },
 
 				/****************************************/
 				/*  Headers and Footers.		*/
@@ -289,7 +276,7 @@ RtfControlWord	docRtfDocumentGroups[]=
 				/****************************************/
 				/*  Lists.				*/
 				/****************************************/
-	{ "listtext",	RTFidLISTTEXT,	DOClevPARA, docRtfReadListtext, },
+	{ "listtext",	DOCfkLISTTEXT,	DOClevPARA, docRtfReadTextField, },
 				/****************************************/
 				/*  Annotation.				*/
 				/****************************************/
@@ -313,15 +300,24 @@ int docRtfTextParticule(	RtfReadingContext *	rrc,
 				const unsigned char *	text,
 				int			len )
     {
-    RtfReadingState *	rrs= rrc->rrcState;
+    RtfReadingState *		rrs= rrc->rrcState;
+
+    const BufferDocument *	bd= rrc->rrcBd;
+    const DocumentProperties *	dp= &(bd->bdProperties);
+    const DocumentFontList *	dfl= &(dp->dpFontList);
+
+    const unsigned char *	inputMapping= rrc->rrcDefaultInputMapping;
 
     if  ( rrc->rrcInDeletedText )
 	{ return 0;	}
 
     if  ( rrc->rrcJustAfterPntext )
 	{
-	PropertyMask	ppChgMask;
-	PropertyMask	ppUpdMask;
+	PropertyMask		ppChgMask;
+	PropertyMask		ppUpdMask;
+
+	const int * const	colorMap= (const int *)0;
+	const int * const	listStyleMap= (const int *)0;
 
 	PROPmaskCLEAR( &ppChgMask );
 
@@ -330,14 +326,47 @@ int docRtfTextParticule(	RtfReadingContext *	rrc,
 
 	if  ( docUpdParaProperties( &ppChgMask, &(rrc->rrcBi->biParaProperties),
 				&ppUpdMask, &(rrs->rrsParagraphProperties),
-				(const int *)0 ) )
+				colorMap, listStyleMap ) )
 	    { LDEB(1); return -1;	}
 
 	rrc->rrcJustAfterPntext= 0;
 	}
 
-    if  ( docSaveParticules( rrc->rrcBd, rrc->rrcBi,
-				    &(rrs->rrsTextAttribute), text, len ) )
+    if  ( rrs->rrsTextAttribute.taFontNumber >= 0			&&
+	  rrs->rrsTextAttribute.taFontNumber < dfl->dflFontCount	)
+	{
+	const DocumentFont *	df;
+
+	df= dfl->dflFonts+ rrs->rrsTextAttribute.taFontNumber;
+
+	switch( df->dfCharset )
+	    {
+	    case FONTcharsetANSI:
+		inputMapping= rrc->rrcDefaultInputMapping;
+		break;
+	    case FONTcharsetGREEK:
+		inputMapping= docWIN1253_to_ISO7;
+		break;
+	    case FONTcharsetTURKISH:
+		inputMapping= docWIN1254_to_ISO9;
+		break;
+	    case FONTcharsetBALTIC:
+		inputMapping= docWIN1257_to_ISO13;
+		break;
+	    case FONTcharsetRUSSIAN:
+		inputMapping= docWIN1251_to_ISO5;
+		break;
+	    case FONTcharsetEE:
+		inputMapping= docWIN1250_to_ISO2;
+		break;
+
+	    default:
+		inputMapping= rrc->rrcDefaultInputMapping;
+	    }
+	}
+
+    if  ( docSaveParticules( rrc->rrcBd, rrc->rrcBi, &(rrs->rrsTextAttribute),
+						    inputMapping, text, len ) )
 	{ LDEB(1); return -1;	}
 
     rrc->rrcAfterNoteref= 0;
@@ -375,27 +404,6 @@ static int docRtfReadUpr(	SimpleInputStream *	sis,
 				docRtfTextParticule, (RtfCommitGroup)0 );
     if  ( res )
 	{ SLDEB(rcw->rcwWord,res);	}
-
-    return res;
-    }
-
-static int docRtfReadListtext(	SimpleInputStream *	sis,
-				const RtfControlWord *	rcw,
-				int			arg,
-				RtfReadingContext *	rrc )
-    {
-    int		res;
-
-# if 0
-    res= docRtfReadGroup( sis, DOClevPARA,
-				(RtfControlWord *)0, 0, 0, rrc,
-				docRtfDocumentWords, docRtfDocumentGroups,
-				docRtfTextParticule, (RtfCommitGroup)0 );
-    if  ( res )
-	{ SLDEB(rcw->rcwWord,res);	}
-# else
-    res= docRtfReadPntext( sis, rcw, arg, rrc );
-# endif
 
     return res;
     }
@@ -525,14 +533,8 @@ static RtfControlWord	docRtfPnWords[]=
 	{ "pnlvlbody",	RTFidPNLVLBODY,	DOClevANY, docRtfIgnoreWord, },
 	{ "pnlvlcont",	RTFidPNLVLCONT,	DOClevANY, docRtfIgnoreWord, },
 	{ "pnnumonce",	RTFidPNNUMONCE,	DOClevANY, docRtfIgnoreWord, },
-	{ "pnprev",	RTFidPNPREV,	DOClevANY, docRtfIgnoreWord, },
-	{ "pnqc",	RTFidPNQC,	DOClevANY, docRtfIgnoreWord, },
-	{ "pnql",	RTFidPNQL,	DOClevANY, docRtfIgnoreWord, },
-	{ "pnqr",	RTFidPNQR,	DOClevANY, docRtfIgnoreWord, },
 	{ "pnrestart",	RTFidPNRESTART,	DOClevANY, docRtfIgnoreWord, },
-	{ "pnsp",	RTFidPNSP,	DOClevANY, docRtfIgnoreWord, },
 
-	{ "ilvl",	RTFidILVL,	DOClevANY, docRtfIgnoreWord, },
 	{ "pnrnot",	RTFidPNRNOT,	DOClevANY, docRtfIgnoreWord, },
 
 	{ 0, 0, 0 }
@@ -572,6 +574,8 @@ static int docRtfReadPntext(	SimpleInputStream *	sis,
 				RtfReadingContext *	rrc )
     {
     int				res;
+
+#   if  0
     ParagraphProperties		pp;
 
     PropertyMask		ppChgMask;
@@ -599,6 +603,10 @@ static int docRtfReadPntext(	SimpleInputStream *	sis,
     docUpdParaProperties( &ppChgMask, &(rrc->rrcBi->biParaProperties),
 					    &ppUpdMask, &pp, (const int *)0 );
     docCleanParagraphProperties( &pp );
+#   else
+#   endif
+
+    res= docRtfReadTextField( sis, rcw, arg, rrc );
 
     rrc->rrcJustAfterPntext= 1;
 
@@ -611,6 +619,11 @@ static int docRtfReadPntext(	SimpleInputStream *	sis,
 /************************************************************************/
 /*									*/
 /*  Read a whole document.						*/
+/*									*/
+/*  As at least MS-Word 2000 crashes on lists without an override,	*/
+/*  and on the other hand staroffice/openoffice creates them under	*/
+/*  certain circumstances: Make an empty override for lists without	*/
+/*  overrides.								*/
 /*									*/
 /************************************************************************/
 
@@ -690,6 +703,12 @@ BufferDocument * docRtfReadFile(	SimpleInputStream *	sis,
 	    }
 	}
 
+    if  ( docMakeOverrideForEveryList( &(bd->bdProperties) ) )
+	{
+	LDEB(1);
+	docFreeDocument( bd ); return (BufferDocument *)0;
+	}
+
     return bd;
     }
 
@@ -741,6 +760,9 @@ int docRtfReadRuler(	SimpleInputStream *	sis,
     PropertyMask		ppChgMask;
     PropertyMask		ppUpdMask;
 
+    const int * const		colorMap= (const int *)0;
+    const int * const		listStyleMap= (const int *)0;
+
     docInitItem( &bi, (BufferItem *)0, (BufferDocument *)0, 0,
 						    DOClevCELL, DOCinBODY );
     docRtfInitReadingContext( &rrc );
@@ -769,7 +791,8 @@ int docRtfReadRuler(	SimpleInputStream *	sis,
     PROPmaskFILL( &ppUpdMask, PPprop_COUNT );
 
     docUpdParaProperties( &ppChgMask, pp, &ppUpdMask,
-			    &(rrs.rrsParagraphProperties), (const int *)0 );
+			    &(rrs.rrsParagraphProperties),
+			    colorMap, listStyleMap );
 
     docCleanItem( (BufferDocument *)0, &bi );
     docRtfPopReadingState( &rrc );
@@ -782,20 +805,12 @@ int docRtfReadRuler(	SimpleInputStream *	sis,
 /*									*/
 /*  Remember properties to be used subsequently.			*/
 /*									*/
-/*  The level should be DOClevANY.					*/
+/*  The level must be DOClevANY.					*/
 /*									*/
-/*  As this is the way Word parses RTF, and this makes an RTF reader	*/
-/*  insensitive to dubious RTF, this is the way to go in further	*/
-/*  extensions.								*/
+/*  References are to be replaced with feature specific routine		*/
+/*  refrerences.							*/
 /*									*/
 /************************************************************************/
-
-/* Not practical
-# define rrcBd do not use
-*/
-# define rrcBi do not use
-# define rrcInsertedObject do not use
-# define rrcFieldNumber do not use
 
 int docRtfRememberProperty(	SimpleInputStream *	sis,
 				const RtfControlWord *	rcw,
@@ -816,7 +831,6 @@ int docRtfRememberProperty(	SimpleInputStream *	sis,
 	    break;
 
 	case RTFidFTNALT:
-
 	    if  ( rrc->rrcExternalItemKind != DOCinFOOTNOTE )
 		{ LLDEB(rrc->rrcExternalItemKind,DOCinFOOTNOTE);	}
 	    else{ rrc->rrcExternalItemKind= DOCinENDNOTE;		}
@@ -832,13 +846,6 @@ int docRtfRememberProperty(	SimpleInputStream *	sis,
 
 	    PROPmaskADD( &(rrc->rrcDocumentStyle.dsParaMask),
 							PPpropTAB_STOPS );
-	    break;
-
-	case RTFidINTBL:
-	    rrs->rrsParagraphProperties.ppInTable= arg != 0;
-	    if  ( rrc->rrcBd )
-		{ rrc->rrcBd->bdProperties.dpContainsTables= 1;	}
-	    else{ XDEB(rrc->rrcBd);				}
 	    break;
 
 	case RTFidADJUSTRIGHT:
@@ -877,43 +884,6 @@ int docRtfRememberProperty(	SimpleInputStream *	sis,
 	    rrc->rrcTextShadingLevel= arg;
 	    break;
 
-	case RTFidCHBGHORIZ:
-	    rrc->rrcTextShadingPattern= DOCspBGHORIZ;
-	    break;
-	case RTFidCHBGVERT:
-	    rrc->rrcTextShadingPattern= DOCspBGVERT;
-	    break;
-	case RTFidCHBGFDIAG:
-	    rrc->rrcTextShadingPattern= DOCspBGFDIAG;
-	    break;
-	case RTFidCHBGBDIAG:
-	    rrc->rrcTextShadingPattern= DOCspBGBDIAG;
-	    break;
-	case RTFidCHBGCROSS:
-	    rrc->rrcTextShadingPattern= DOCspBGCROSS;
-	    break;
-	case RTFidCHBGDCROSS:
-	    rrc->rrcTextShadingPattern= DOCspBGDCROSS;
-	    break;
-	case RTFidCHBGDKHORIZ:
-	    rrc->rrcTextShadingPattern= DOCspBGDKHORIZ;
-	    break;
-	case RTFidCHBGDKVERT:
-	    rrc->rrcTextShadingPattern= DOCspBGDKVERT;
-	    break;
-	case RTFidCHBGDKFDIAG:
-	    rrc->rrcTextShadingPattern= DOCspBGDKFDIAG;
-	    break;
-	case RTFidCHBGDKBDIAG:
-	    rrc->rrcTextShadingPattern= DOCspBGDKBDIAG;
-	    break;
-	case RTFidCHBGDKCROSS:
-	    rrc->rrcTextShadingPattern= DOCspBGDKCROSS;
-	    break;
-	case RTFidCHBGDKDCROSS:
-	    rrc->rrcTextShadingPattern= DOCspBGDKDCROSS;
-	    break;
-
 	case RTFidCHBRDR:
 	    rrc->rrcTextBorderProperties= rrc->rrcBorderProperties;
 	    docInitBorderProperties( &(rrc->rrcBorderProperties) );
@@ -933,36 +903,6 @@ int docRtfRememberProperty(	SimpleInputStream *	sis,
 				/****************************************/
 				/*  Paragraph Numbering.		*/
 				/****************************************/
-	case RTFidPNCARD:
-	    rrc->rrcParagraphNumber.pnStyle= DOCpnCARD;
-	    break;
-	case RTFidPNDEC:
-	    rrc->rrcParagraphNumber.pnStyle= DOCpnDEC;
-	    break;
-	case RTFidPNUCLTR:
-	    rrc->rrcParagraphNumber.pnStyle= DOCpnUCLTR;
-	    break;
-	case RTFidPNUCRM:
-	    rrc->rrcParagraphNumber.pnStyle= DOCpnUCRM;
-	    break;
-	case RTFidPNLCLTR:
-	    rrc->rrcParagraphNumber.pnStyle= DOCpnLCLTR;
-	    break;
-	case RTFidPNLCRM:
-	    rrc->rrcParagraphNumber.pnStyle= DOCpnLCRM;
-	    break;
-	case RTFidPNORD:
-	    rrc->rrcParagraphNumber.pnStyle= DOCpnORD;
-	    break;
-	case RTFidPNORDT:
-	    rrc->rrcParagraphNumber.pnStyle= DOCpnORDT;
-	    break;
-	case RTFidPNSTART:
-	    rrc->rrcParagraphNumber.pnStartNumber= arg- 1;
-	    break;
-	case RTFidPNINDENT:
-	    rrc->rrcParagraphNumber.pnIndentTwips= arg;
-	    break;
 	case RTFidPNHANG:
 	    rrc->rrcParagraphNumber.pnUseHangingIndent= 1;
 	    break;

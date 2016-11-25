@@ -99,6 +99,9 @@ static int appDocMakeMainWindow(	EditDocument *		ed,
     appSetCloseCallback( ed->edToplevel.atTopWidget, ea,
 					appDocFileCloseCallback, (void *)ed );
 
+    appSetDestroyCallback( ed->edToplevel.atTopWidget,
+					appDestroyEditDocument, (void *)ed );
+
     ed->edMainWindow= gtk_vbox_new( FALSE, spacing );
     gtk_container_add( GTK_CONTAINER( ed->edToplevel.atTopWidget ),
 							ed->edMainWindow );

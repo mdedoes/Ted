@@ -6,6 +6,7 @@
 
 #   include	<appWinMeta.h>
 #   include	<utilPs.h>
+#   include	<utilMatchFont.h>
 #   include	<sioEndian.h>
 
 #   define	y0	math_y0
@@ -128,15 +129,16 @@ static void appWinMetaSetTransform(	DeviceContext *		dc,
     return;
     }
 
-int appMetaInitDeviceContext(	DeviceContext *		dc,
-				int			objectCount,
-				int			mapMode,
-				int			xWinExt,
-				int			yWinExt,
-				int			xViewExt,
-				int			yViewExt,
-				int			twipsWide,
-				int			twipsHigh )
+int appMetaInitDeviceContext(	DeviceContext *			dc,
+				const PostScriptFontList *	psfl,
+				int				objectCount,
+				int				mapMode,
+				int				xWinExt,
+				int				yWinExt,
+				int				xViewExt,
+				int				yViewExt,
+				int				twipsWide,
+				int				twipsHigh )
     {
     dc->dcDrawBorders= 1;
     dc->dcFillInsides= 1;
@@ -146,6 +148,7 @@ int appMetaInitDeviceContext(	DeviceContext *		dc,
     dc->dcFillPattern= 0;
 
     docInitFontList( &(dc->x_dcFontList) );
+    dc->dcPostScriptFontList= psfl;
     appInitDrawingData( &(dc->dcDrawingData) );
 
     dc->dcPen.lpStyle= PS_SOLID;
@@ -497,18 +500,21 @@ int appMetaCreateFontIndirect(	DeviceContext *		dc,
 				int			recordSize,
 				SimpleInputStream *	sis )
     {
-    int			rval= 0;
+    int				rval= 0;
 
-    LogicalFont *	lf;
+    LogicalFont *		lf;
 
-    int			familyStyle= DFstyleFNIL;
+    int				familyStyle= DFstyleFNIL;
 
-    int			count;
-    int			done;
-    int			ob;
+    int				count;
+    int				done;
+    int				ob;
 
-    int			fontNum;
-    DocumentFont	dfNew;
+    int				fontNum;
+    DocumentFont		dfNew;
+    DocumentFont *		df;
+    DocumentFontList *		dfl= &(dc->x_dcFontList);
+    const PostScriptFontList *	psfl= dc->dcPostScriptFontList;
 
     docInitDocumentFont( &dfNew );
 
@@ -556,6 +562,8 @@ int appMetaCreateFontIndirect(	DeviceContext *		dc,
 	{ done= -done;	}
     }
 
+    utilInitTextAttribute( &(lf->lfTextAttribute) );
+
     lf->lfTextAttribute.taFontNumber= 0;
     lf->lfTextAttribute.taFontSizeHalfPoints= ( done+ 5 )/ 10;
     lf->lfTextAttribute.taFontIsBold= lf->lfWeight > 500;
@@ -577,14 +585,19 @@ int appMetaCreateFontIndirect(	DeviceContext *		dc,
 	    break;
 	}
 
+    dfNew.dfCharset= lf->lfCharSet;
     if  ( docFontSetFamilyName( &dfNew, lf->lfFaceName ) )
 	{ LDEB(1); rval= -1; goto ready;	}
     if  ( docFontSetFamilyStyle( &dfNew, familyStyle ) )
 	{ LDEB(1); rval= -1; goto ready;	}
 
-    fontNum= docMergeFontIntoFontlist( &(dc->x_dcFontList), &dfNew );
+    fontNum= docMergeFontIntoFontlist( dfl, &dfNew );
     if  ( fontNum < 0 )
 	{ SLDEB(lf->lfFaceName,fontNum); goto ready;	}
+
+    df= dfl->dflFonts+ fontNum;
+    if  ( utilFindPsFontForDocFont( df, dfl, psfl ) )
+	{ SDEB(df->dfName);	}
 
     lf->lfTextAttribute.taFontNumber= fontNum;
 
@@ -938,6 +951,40 @@ int appMetaRestoreDC(		DeviceContext *		dc,
 
 /************************************************************************/
 /*									*/
+/*  Collect a series of points.						*/
+/*									*/
+/************************************************************************/
+
+int appWinMetaGetPoints(	DeviceContext *		dc,
+				int			count,
+				SimpleInputStream *	sis )
+    {
+    APP_POINT *		xp;
+
+    int			done;
+
+    xp= (APP_POINT *)realloc( dc->dcPoints, (count+ 1)* sizeof(APP_POINT) );
+    if  ( ! xp )
+	{ LXDEB(count,xp); return -1;	}
+    dc->dcPoints= xp;
+
+    for ( done= 0; done < count; xp++, done++ )
+	{
+	int	x= sioEndianGetLeInt16( sis );
+	int	y= sioEndianGetLeInt16( sis );
+
+	xp->x= DC_xViewport( x, dc );
+	xp->y= DC_yViewport( y, dc );
+	}
+
+    *xp= dc->dcPoints[0];
+
+    return 0;
+    }
+
+
+/************************************************************************/
+/*									*/
 /*  Handle Clipping by ignoring it.					*/
 /*									*/
 /************************************************************************/
@@ -1147,129 +1194,3 @@ int appMeta_GetCounts(	SimpleInputStream *	sis,
     *pCount= count; *pCounts= counts; return 0;
     }
 
-int appMetaSaveBitmapMetafile(	const BitmapDescription *	bd,
-				const unsigned char *		buffer,
-				SimpleOutputStream *		sos )
-    {
-    int			done;
-    int			bytesWritten= 0;
-    long		bltArgCountPos= -1L;
-    long		bltArgCount;
-
-    long		fileSize= 0L;
-    long		headerOffset= 0L;
-    long		recordSize;
-    long		maxRecordSize= 0L;
-
-    sioEndianPutLeInt16( 1, sos );		/*  fileType		*/
-    sioEndianPutLeInt16( 9, sos );		/*  headerSize		*/
-    sioEndianPutLeInt16( 768, sos );		/*  windowsVersion	*/
-    sioEndianPutLeInt32( fileSize, sos );	/*  fileSize		*/
-    sioEndianPutLeInt16( 0, sos );		/*  objectCount		*/
-    sioEndianPutLeInt32( maxRecordSize, sos );	/*  maxRecordSize	*/
-    sioEndianPutLeInt16( 0, sos );		/*  parameterCount	*/
-
-    bytesWritten += 2+ 2+ 2+ 4+ 2+ 4+ 2;
-
-    recordSize= 2+ 1;
-    sioEndianPutLeInt32( recordSize, sos );
-    sioEndianPutLeInt16( WINMETA_SaveDC, sos );
-
-    bytesWritten += 2* recordSize;
-    if  ( maxRecordSize < recordSize )
-	{ maxRecordSize=  recordSize;	}
-
-    recordSize= 2+ 1+ 1;
-    sioEndianPutLeInt32( recordSize, sos );
-    sioEndianPutLeInt16( WINMETA_SetMapMode, sos );
-    sioEndianPutLeInt16( MM_ANISOTROPIC, sos );
-
-    bytesWritten += 2* recordSize;
-    if  ( maxRecordSize < recordSize )
-	{ maxRecordSize=  recordSize;	}
-
-    recordSize= 2+ 1+ 1+ 1;
-    sioEndianPutLeInt32( recordSize, sos );
-    sioEndianPutLeInt16( WINMETA_SetWindowOrg, sos );
-    sioEndianPutLeInt16( 0, sos );
-    sioEndianPutLeInt16( 0, sos );
-
-    bytesWritten += 2* recordSize;
-    if  ( maxRecordSize < recordSize )
-	{ maxRecordSize=  recordSize;	}
-
-    recordSize= 2+ 1+ 1+ 1;
-    sioEndianPutLeInt32( recordSize, sos );
-    sioEndianPutLeInt16( WINMETA_SetWindowExt, sos );
-    sioEndianPutLeInt16( bd->bdPixelsHigh, sos );
-    sioEndianPutLeInt16( bd->bdPixelsWide, sos );
-
-    bytesWritten += 2* recordSize;
-    if  ( maxRecordSize < recordSize )
-	{ maxRecordSize=  recordSize;	}
-
-    bltArgCountPos= bytesWritten;
-    recordSize= 2+ 1+ 2+ ( 1+ 1+ 1+ 1 )+ ( 1+ 1+ 1+ 1 );
-    sioEndianPutLeInt32( recordSize, sos );
-    sioEndianPutLeInt16( WINMETA_StretchBlt, sos );
-    sioEndianPutLeInt32( 0xcc0020, sos );
-    sioEndianPutLeInt16( bd->bdPixelsHigh, sos );
-    sioEndianPutLeInt16( bd->bdPixelsWide, sos );
-    sioEndianPutLeInt16( 0, sos );
-    sioEndianPutLeInt16( 0, sos );
-    sioEndianPutLeInt16( bd->bdPixelsHigh, sos );
-    sioEndianPutLeInt16( bd->bdPixelsWide, sos );
-    sioEndianPutLeInt16( 0, sos );
-    sioEndianPutLeInt16( 0, sos );
-
-    done= bmBmpSaveDib( bd, buffer, bytesWritten+ 2* recordSize, (void *)sos );
-    if  ( done < 0 || done % 2 )
-	{ LDEB(done); return -1;	}
-
-    recordSize += done/ 2;
-    bltArgCount= recordSize;
-
-    bytesWritten += 2* recordSize;
-    if  ( maxRecordSize < recordSize )
-	{ maxRecordSize=  recordSize;	}
-
-    recordSize= 2+ 1+ 1;
-    sioEndianPutLeInt32( recordSize, sos );
-    sioEndianPutLeInt16( WINMETA_RestoreDC, sos );
-    sioEndianPutLeInt16( -1, sos );
-
-    bytesWritten += 2* recordSize;
-    if  ( maxRecordSize < recordSize )
-	{ maxRecordSize=  recordSize;	}
-
-    recordSize= 2+ 1;
-    sioEndianPutLeInt32( recordSize, sos );
-    sioEndianPutLeInt16( 0, sos );
-
-    bytesWritten += 2* recordSize;
-    if  ( maxRecordSize < recordSize )
-	{ maxRecordSize=  recordSize;	}
-
-    fileSize= bytesWritten;
-
-    if  ( sioOutSeek( sos, headerOffset ) )
-	{ LDEB(headerOffset); return -1; }
-
-    sioEndianPutLeInt16( 1, sos );		/*  fileType		*/
-    sioEndianPutLeInt16( 9, sos );		/*  headerSize		*/
-    sioEndianPutLeInt16( 768, sos );		/*  windowsVersion	*/
-    sioEndianPutLeInt32( fileSize, sos );	/*  fileSize		*/
-    sioEndianPutLeInt16( 0, sos );		/*  objectCount		*/
-    sioEndianPutLeInt32( maxRecordSize, sos );	/*  maxRecordSize	*/
-    sioEndianPutLeInt16( 0, sos );		/*  parameterCount	*/
-
-    if  ( sioOutSeek( sos, bltArgCountPos ) )
-	{ LDEB(headerOffset); return -1; }
-
-    sioEndianPutLeInt32( bltArgCount, sos );
-
-    if  ( sioOutSeek( sos, fileSize ) )
-	{ LDEB(headerOffset); return -1; }
-
-    return 0;
-    }

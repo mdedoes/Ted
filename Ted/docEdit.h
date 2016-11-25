@@ -7,6 +7,7 @@
 #   ifndef		DOC_EDIT_H
 #   define		DOC_EDIT_H
 
+#   include		"docScreenFontList.h"
 #   include		"docBuf.h"
 
 /************************************************************************/
@@ -34,7 +35,8 @@ typedef struct EditOperation
     {
     SelectionScope	eoSelectionScope;
 
-    DocumentRectangle	eoChangedRectangle;
+    DocumentRectangle	eoChangedRect;
+    int			eoChangedRectSet;
     int			eoOldBackY1;
 
     int			eoIBarSelectionOld;
@@ -48,18 +50,26 @@ typedef struct EditOperation
 
     /**/
     EditRange		eoReformatRange;
+    EditRange		eoSelectedRange;
 
     /**/
     int			eoNotesDeleted;
     int			eoNotesAdded;
+    int			eoBulletsChanged;
     int			eoParagraphsInserted;
 
     unsigned int	eoFieldUpdate;
 
     /**/
     BufferDocument *	eoBd;
+    ScreenFontList *	eoScreenFontList;
     void *		eoVoidadd;
     DOC_CLOSE_OBJECT	eoCloseObject;
+
+    /**/
+    BufferItem *	eoParaBi;
+    int			eoParticule;
+    int			eoStroff;
     } EditOperation;
 
 /************************************************************************/
@@ -76,6 +86,7 @@ typedef struct DocumentCopyJob
     int *		dcjFieldMap;
     int *		dcjFontMap;
     int *		dcjColorMap;
+    int *		dcjListStyleMap;
     char *		dcjRefFileName;
     int			dcjRefFileSize;
 
@@ -83,6 +94,7 @@ typedef struct DocumentCopyJob
     int			dcjCurrentTextAttributeNumberTo;
 
     int			dcjNotesCopied;
+    int			dcjBulletsCopied;
     } DocumentCopyJob;
 
 /************************************************************************/
@@ -93,7 +105,6 @@ typedef struct DocumentCopyJob
 
 extern int docParaReplaceText(	EditOperation *		eo,
 				BufferItem *		bi,
-				int			part,
 				unsigned int		stroffBegin,
 				int *			pPartShift,
 				int *			pStroffShift,
@@ -102,7 +113,7 @@ extern int docParaReplaceText(	EditOperation *		eo,
 				unsigned int		addedLength,
 				int			addedAttributeNumber );
 
-extern int docSplitParaItem(	BufferDocument *	bd,
+extern int docSplitParaItem(	EditOperation *		eo,
 				BufferItem **		pNewBi,
 				BufferItem *		oldBi,
 				int			stroff );
@@ -118,7 +129,8 @@ extern void docEditDeleteItems(	EditOperation *		eo,
 				int			first,
 				int			count );
 
-extern void docCloseItemObjects(	int *			pNoteCount,
+extern void docCleanItemObjects(	int *			pNoteCount,
+					int *			pBulletsDeleted,
 					int *			pParagraphCount,
 					BufferDocument *	bd,
 					BufferItem *		bi,
@@ -192,28 +204,29 @@ extern int docMapTextAttributeNumber(
 				int			attributeNumberFrom );
 
 extern BufferItem * docCopyParaItem(	DocumentCopyJob *	dcj,
-					unsigned int *		pFieldUpd,
+					EditOperation *		eo,
 					BufferItem *		biCellTo,
 					int			n,
 					BufferItem *		biParaFrom,
 					int			inTable );
 
 extern BufferItem * docCopyRowItem(	DocumentCopyJob *	dcj,
-					unsigned int *		pFieldUpd,
+					EditOperation *		eo,
+					int *			pParasCopied,
 					BufferItem *		biSectTo,
 					int			n,
 					BufferItem *		biRowFrom,
 					int			inTable );
 
 extern BufferItem * docCopySectItem(	DocumentCopyJob *	dcj,
-					unsigned int *		pFieldUpd,
+					EditOperation *		eo,
 					BufferItem *		biParentTo,
 					int			n,
 					BufferItem *		biSectFrom,
 					const SelectionScope *	ss );
 
 extern int docCopyParticules(	DocumentCopyJob *	dcj,
-				unsigned int *		pFieldUpd,
+				EditOperation *		eo,
 				BufferItem *		biTo,
 				const BufferItem *	biFrom,
 				int			partTo,
@@ -223,7 +236,7 @@ extern int docCopyParticules(	DocumentCopyJob *	dcj,
 				int *			pCharactersCopied );
 
 extern int docCopyParticuleData(	DocumentCopyJob *	dcj,
-					unsigned int *		pFieldUpd,
+					EditOperation *		eo,
 					BufferItem *		biTo,
 					const BufferItem *	biFrom,
 					TextParticule *		tpTo,
@@ -235,13 +248,15 @@ extern void docCleanDocumentCopyJob(	DocumentCopyJob *	dcj );
 extern int docSet1DocumentCopyJob(	DocumentCopyJob *	dcj,
 					BufferDocument *	bd );
 
-extern int docSet2DocumentCopyJob(	DocumentCopyJob *	dcj,
-					BufferDocument *	bdTo,
-					BufferDocument *	bdFrom,
-					const char *		refFileName );
+extern int docSet2DocumentCopyJob(
+				DocumentCopyJob *		dcj,
+				BufferDocument *		bdTo,
+				BufferDocument *		bdFrom,
+				const PostScriptFontList *	psfl,
+				const char *			refFileName );
 
 extern int docCopyFieldRelative(	DocumentCopyJob *	dcj,
-					unsigned int *		pFieldUpd,
+					EditOperation *		eo,
 					BufferItem *		biTo,
 					const BufferItem *	biFrom,
 					TextParticule *		tpTo,
@@ -249,7 +264,7 @@ extern int docCopyFieldRelative(	DocumentCopyJob *	dcj,
 
 extern int docCopyParticuleAndData(	TextParticule **	pTpTo,
 					DocumentCopyJob *	dcj,
-					unsigned int *		pFieldUpd,
+					EditOperation *		eo,
 					BufferItem *		paraBiTo,
 					int			partTo,
 					int			stroffTo,
@@ -299,5 +314,25 @@ extern int docChangeCellSpans(	int *			pRowChanged1,
 				int			col0,
 				int			rowspan,
 				int			colspan );
+
+extern void docEditShiftReferences(	BufferDocument *	bd,
+					int			paraFrom,
+					int			isSplit,
+					int			stroffFrom,
+					int			sectShift,
+					int			paraShift,
+					int			stroffShift );
+
+extern void docIncludeRectangleInChange( EditOperation *		eo,
+					const DocumentRectangle *	dr );
+
+extern int docEditUpdParaProperties(
+				EditOperation *			eo,
+				PropertyMask *			pPpChgPask,
+				BufferItem *			paraBi,
+				const PropertyMask *		ppUpdMask,
+				const ParagraphProperties *	ppNew,
+				const int *			colorMap,
+				const int *			listStyleMap );
 
 #   endif	/*	DOC_EDIT_H	*/

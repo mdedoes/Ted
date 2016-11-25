@@ -59,12 +59,13 @@ typedef enum PlacementSpecificationNumber
 
 static PlacementSpecification	APP_Placements[PSnum__COUNT]=
     {
-	{ 1, 1, 0, 0, "1x1 As Is"	},
-	{ 1, 1, 1, 1, "1x1 Scale"	},
-	{ 2, 1, 1, 1, "2x1 Hor"		},
-	{ 1, 2, 1, 1, "1x2 Hor"		},
-	{ 2, 2, 1, 1, "2x2 Hor"		},
-	{ 2, 2, 0, 1, "2x2 Ver"		},
+	/* R  C  H  F  "text"		*/
+	{  1, 1, 0, 0, "1x1 As Is"	},
+	{  1, 1, 1, 1, "1x1 Scale"	},
+	{  2, 1, 1, 1, "2x1 Hor"	},
+	{  1, 2, 1, 1, "1x2 Hor"	},
+	{  2, 2, 1, 1, "2x2 Hor"	},
+	{  2, 2, 0, 1, "2x2 Ver"	},
     };
 
 typedef struct AppPrintDialog
@@ -1200,12 +1201,8 @@ static AppPrintDialog * appMakePrintDialog( EditApplication *	ea,
     if  ( appGetImagePixmap( ea, pixmapName, &iconPixmap, &iconMask )  )
 	{ SDEB(pixmapName); return (AppPrintDialog *)0;	}
 
-    if  ( ea->eaPrintDestinationCount == 0				&&
-	  utilPrinterGetPrinters( &(ea->eaPrintDestinationCount),
-				    &(ea->eaDefaultPrintDestination),
-				    &(ea->eaPrintDestinations),
-				    ea->eaCustomPrintCommand,
-				    ea->eaCustomPrinterName )		)
+    if  ( ! ea->eaPrintDestinationsCollected	&&
+	  appGetPrintDestinations( ea )		)
 	{ LDEB(1); return (AppPrintDialog *)0;	}
 
     apd= (AppPrintDialog *)malloc(
@@ -1216,6 +1213,10 @@ static AppPrintDialog * appMakePrintDialog( EditApplication *	ea,
 	LXDEB(ea->eaPrintDestinationCount,apd);
 	return (AppPrintDialog *)0;
 	}
+
+    appInitOptionmenu( &(apd->apdPrinterOptionmenu) );
+    appInitOptionmenu( &(apd->apdPlacementOptionmenu) );
+    appInitOptionmenu( &(apd->apdSelectionOptionmenu) );
 
     apd->apdCustomTransformRow= (APP_WIDGET)0;
     apd->apdRotate90Toggle= (APP_WIDGET)0;
@@ -1386,6 +1387,8 @@ void appRunPrintDialog(			EditDocument *		ed,
     PrintJob			pj;
     PrintGeometry		pg;
 
+    int				i;
+
     appPrintJobForEditDocument( &pj, ed );
 
     /*  1  */
@@ -1427,6 +1430,26 @@ void appRunPrintDialog(			EditDocument *		ed,
     apd->apdLastSelectedPage= lastSelected;
     apd->apdFirstPageChosen= 0;
     apd->apdLastPageChosen= apd->apdPageCount- 1;
+
+    utilInitPrintGeometry( &pg );
+    pg.pgSheetGeometry= apd->apdPrinterGeometry;
+
+    if  ( ea->eaSuggestNup )
+	{ (*ea->eaSuggestNup)( &pg, ed->edPrivateData );	}
+
+    for ( i= 0; i < PSnum__COUNT; i++ )
+	{
+	if  ( apd->apdPlacements[i].psGridRows == pg.pgGridRows	&&
+	      apd->apdPlacements[i].psGridCols == pg.pgGridCols	&&
+	      apd->apdPlacements[i].psGridHorizontal ==
+					pg.pgGridHorizontal	&&
+	      apd->apdPlacements[i].psScalePagesToFit ==
+					pg.pgScalePagesToFit	)
+	    { apd->apdPlacementChosen= i; break; }
+	}
+
+    appSetOptionmenu( &(apd->apdPlacementOptionmenu),
+						apd->apdPlacementChosen );
 
     apd->apdSelectionChosen= PRINTselAll_PAGES;
     appSetOptionmenu( &(apd->apdSelectionOptionmenu),

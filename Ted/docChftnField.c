@@ -12,7 +12,8 @@
 
 #   include	<appDebugon.h>
 
-#   include	<appUnit.h>
+#   include	<utilBase26.h>
+#   include	<utilRoman.h>
 #   include	"docBuf.h"
 #   include	"docEvalField.h"
 #   include	"docEdit.h"
@@ -26,9 +27,8 @@
 /*									*/
 /************************************************************************/
 
-static int docFormatChftnField( unsigned char *			target,
+int docFormatChftnField(	unsigned char *			target,
 				int				targetSize,
-				const DocumentField *		df,
 				const DocumentProperties *	dp,
 				int				noteNumber,
 				int				extItKind )
@@ -49,40 +49,40 @@ static int docFormatChftnField( unsigned char *			target,
 	    SDEB(docExternalKindStr(extItKind)); return -1;
 	}
 
-    if  ( np->npRestart == DPftnRST_CONTINUOUS )
+    if  ( np->npRestart == FTN_RST_CONTINUOUS )
 	{ noteNumber += np->npStartNumber- 1;	}
 
     switch( np->npNumberStyle )
 	{
-	case DPftnNAR:
+	case FTNstyleNAR:
 	    sprintf( (char *)target, "%d", noteNumber+ 1 );
 	    break;
 
-	case DPftnNALC:
-	    if  ( noteNumber >= 0 && noteNumber <= 26 )
-		{ target[0]= 'a'+ noteNumber; target[1]= '\0';	}
-	    else{ sprintf( (char *)target, "lcltr:%d", noteNumber+ 1 );	}
+	case FTNstyleNALC:
+	    if  ( utilBase26String( (char *)target, targetSize,
+							noteNumber+ 1, 0 ) )
+		{ LDEB(noteNumber); return -1;	}
 	    break;
 
-	case DPftnNAUC:
-	    if  ( noteNumber >= 0 && noteNumber <= 26 )
-		{ target[0]= 'A'+ noteNumber; target[1]= '\0';	}
-	    else{ sprintf( (char *)target, "lcltr:%d", noteNumber+ 1 );	}
+	case FTNstyleNAUC:
+	    if  ( utilBase26String( (char *)target, targetSize,
+							noteNumber+ 1, 1 ) )
+		{ LDEB(noteNumber); return -1;	}
 	    break;
 
-	case DPftnNRLC:
-	    if  ( appRomanString( (char *)target, targetSize,
+	case FTNstyleNRLC:
+	    if  ( utilRomanString( (char *)target, targetSize,
 							noteNumber+ 1, 0 ) )
 		{ sprintf( (char *)target, "NRLC:%d", noteNumber+ 1 );	}
 	    break;
 
-	case DPftnNRUC:
-	    if  ( appRomanString( (char *)target, targetSize,
+	case FTNstyleNRUC:
+	    if  ( utilRomanString( (char *)target, targetSize,
 							noteNumber+ 1, 1 ) )
 		{ sprintf( (char *)target, "NRUC:%d", noteNumber+ 1 );	}
 	    break;
 
-	case DPftnNCHI:
+	case FTNstyleNCHI:
 	default:
 	    LDEB(np->npNumberStyle);
 	    sprintf( (char *)target, "(%d)", noteNumber+ 1 );
@@ -129,7 +129,7 @@ int docCalculateChftnFieldString(	int *			pCalculated,
 	    { LDEB(tp->tpStroff); *pCalculated= 0; return 0; }
 
 	if  ( docFormatChftnField( target, targetSize,
-					    dfChftn, &(bd->bdProperties),
+					    &(bd->bdProperties),
 					    dn->dnNoteNumber,
 					    dn->dnExternalItemKind ) )
 	    { LDEB(dn->dnExternalItemKind); *pCalculated= 0; return 0; }
@@ -148,7 +148,7 @@ int docCalculateChftnFieldString(	int *			pCalculated,
 	    { LDEB(tp->tpStroff); *pCalculated= 0; return 0; }
 
 	if  ( docFormatChftnField( target, targetSize,
-					    dfChftn, &(bd->bdProperties),
+					    &(bd->bdProperties),
 					    dn->dnNoteNumber,
 					    dn->dnExternalItemKind ) )
 	    { LDEB(dn->dnExternalItemKind); *pCalculated= 0; return 0; }

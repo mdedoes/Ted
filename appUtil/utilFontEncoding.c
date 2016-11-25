@@ -21,33 +21,123 @@ FontCharset PS_Encodings[ENCODINGps_COUNT]=
 			    "-iso1", "Enc-iso1",
 			    "encodingLatin1", "Latin 1",
 			    FONTcharsetANSI, FONTcodepageANSI, (const char *)0,
+			    "iso8859", "1",
 			    },
     { psIsoLatin2GlyphNames,	256,
 			    "-iso2", "Enc-iso2",
 			    "encodingLatin2", "Latin 2",
 			    FONTcharsetEE, FONTcodepageEE, " CE",
+			    "iso8859", "2",
 			    },
     { psSymbolGlyphNames,	256,
 			    "-symb", "Enc-symb",
 			    "encodingSymbol", "Symbol",
 			    FONTcharsetSYMBOL, -1, (const char *)0,
+			    "adobe", "fontspecific",
 			    },
-    { psCyrillicGlyphNames,	256,
+    { psIsoLatin5GlyphNames,	256,
 			    "-cyr", "Enc-cyr",
 			    "encodingCyrillic", "Cyrillic",
 			    FONTcharsetRUSSIAN, FONTcodepageRUSSIAN, " Cyr",
+			    "iso8859", "5",
 			    },
     { psDingbatGlyphNames,	256,
 			    "-ding", "Enc-ding",
 			    "encodingDingbats", "Dingbats",
-			    -1, -1, (const char *)0,
+			    FONTcharsetDEFAULT, -1, (const char *)0,
+			    "urw", "fontspecific",
 			    },
     { psIsoLatin7GlyphNames,	256,
 			    "-iso7", "Enc-iso7",
-			    "encodingLatin7", "Latin 7",
+			    "encodingLatin7", "Greek",
 			    FONTcharsetGREEK, FONTcodepageGREEK, " Greek",
+			    "iso8859", "7",
+			    },
+    { psIsoLatin9GlyphNames,	256,
+			    "-iso9", "Enc-iso9",
+			    "encodingLatin9", "Turkish",
+			    FONTcharsetTURKISH, FONTcodepageTURKISH, " Tur",
+			    "iso8859", "9",
+			    },
+    { psIsoLatin13GlyphNames,	256,
+			    "-iso13", "Enc-iso13",
+			    "encodingLatin13", "Baltic",
+			    FONTcharsetBALTIC, FONTcodepageBALTIC, " Baltic",
+			    "iso8859", "13",
 			    },
 };
+
+/************************************************************************/
+/*									*/
+/*  Return our style encoding from X11 registry, encoding combination.	*/
+/*									*/
+/*  1)  Hacks for known fonts.						*/
+/*  2)  Find registry and encoding in name.				*/
+/*  3)  Nothing can be done about the fact that the fontspecific X11	*/
+/*	encodings return silly results.					*/
+/*  4)  Table lookup.							*/
+/*									*/
+/************************************************************************/
+
+int utilEncodingFromX11FontName(	const char *	x11name )
+    {
+    int			reg_enc= -1;
+    int			enc= -1;
+    int			rl;
+    int			j;
+    int			d;
+    int			encoding;
+
+    /*  1  */
+
+    /*  2  */
+    j= 0; d= 0;
+    while( x11name[j] )
+	{
+	if  ( x11name[j] == '-' )
+	    {
+	    if  ( d == 12 )
+		{ reg_enc= j+ 1;	}
+	    if  ( d == 13 )
+		{ enc= j+ 1;	}
+
+	    d++;
+	    }
+
+	j++;
+	}
+
+    if  ( reg_enc < 0 || enc < 0 )
+	{ SDEB(x11name); return -1;	}
+
+    /*  3 
+    if  ( ! strcmp( x11name+ enc, "fontspecific" ) )
+	{ return -1;	}
+    */
+
+    rl= enc- reg_enc- 1;
+
+    /*  4  */
+    for ( encoding= 0; encoding < ENCODINGps_COUNT; encoding++ )
+	{
+	if  ( ! PS_Encodings[encoding].fcX11Encoding )
+	    { continue;	}
+	if  ( ! PS_Encodings[encoding].fcX11Registry )
+	    { continue;	}
+
+	if  ( strcmp( PS_Encodings[encoding].fcX11Encoding, x11name+ enc ) )
+	    { continue;	}
+	if  ( strncmp( PS_Encodings[encoding].fcX11Registry,
+						    x11name+ reg_enc, rl ) )
+	    { continue;	}
+	if  ( PS_Encodings[encoding].fcX11Registry[rl] )
+	    { continue;	}
+
+	return encoding;
+	}
+
+    return -1;
+    }
 
 /************************************************************************/
 /*									*/
@@ -69,7 +159,7 @@ int utilEncodingFromWindowsCodepage(	int	codepage )
 	case FONTcodepageRUSSIAN:	return ENCODINGpsADOBE_CYRILLIC;
 	case FONTcodepageANSI:		return ENCODINGpsISO_8859_1;
 	case FONTcodepageGREEK:		return ENCODINGpsISO_8859_7;
-	case FONTcodepageTURKISH:	return ENCODINGpsFONTSPECIFIC; /*!*/
+	case FONTcodepageTURKISH:	return ENCODINGpsISO_8859_9;
 	case FONTcodepageHEBREW:	return ENCODINGpsFONTSPECIFIC; /*!*/
 	case FONTcodepageARABIC:	return ENCODINGpsFONTSPECIFIC; /*!*/
 	case FONTcodepageBALTIC:	return ENCODINGpsFONTSPECIFIC; /*!*/
@@ -79,6 +169,14 @@ int utilEncodingFromWindowsCodepage(	int	codepage )
 	}
 
     LDEB(codepage); return -1;
+    }
+
+int utilWindowsCodepageFromEncoding(	int	encoding )
+    {
+    if  ( encoding >= 0 && encoding < ENCODINGps_COUNT )
+	{ return PS_Encodings[encoding].fcOfficeCodepage; }
+
+    LLDEB(encoding,ENCODINGps_COUNT); return -1;
     }
 
 /************************************************************************/
@@ -176,6 +274,34 @@ void utilSetLatin2CharacterKinds(	unsigned char	charKinds[256],
     return;
     }
 
+void utilSetLatin5CharacterKinds(	unsigned char	charKinds[256],
+					unsigned char	charShifts[256] )
+    {
+    int		i;
+
+    for ( i= 0; i < 256; i++ )
+	{
+	if  ( ISO5_islower( i ) )
+	    {
+	    charKinds[i] |= CHARisLOWER;
+	    if  ( ! ISO5_isupper( i ) )
+		{ charShifts[i]= ISO5_toupper( i );	}
+	    }
+
+	if  ( ISO5_isupper( i ) )
+	    {
+	    charKinds[i] |= CHARisUPPER;
+	    if  ( ! ISO5_islower( i ) )
+		{ charShifts[i]= ISO5_tolower( i );	}
+	    }
+
+	if  ( ISO5_isdigit( i ) )
+	    { charKinds[i] |= CHARisDIGIT;	}
+	}
+
+    return;
+    }
+
 void utilSetLatin7CharacterKinds(	unsigned char	charKinds[256],
 					unsigned char	charShifts[256] )
     {
@@ -198,6 +324,62 @@ void utilSetLatin7CharacterKinds(	unsigned char	charKinds[256],
 	    }
 
 	if  ( ISO7_isdigit( i ) )
+	    { charKinds[i] |= CHARisDIGIT;	}
+	}
+
+    return;
+    }
+
+void utilSetLatin9CharacterKinds(	unsigned char	charKinds[256],
+					unsigned char	charShifts[256] )
+    {
+    int		i;
+
+    for ( i= 0; i < 256; i++ )
+	{
+	if  ( ISO9_islower( i ) )
+	    {
+	    charKinds[i] |= CHARisLOWER;
+	    if  ( ! ISO9_isupper( i ) )
+		{ charShifts[i]= ISO9_toupper( i );	}
+	    }
+
+	if  ( ISO9_isupper( i ) )
+	    {
+	    charKinds[i] |= CHARisUPPER;
+	    if  ( ! ISO9_islower( i ) )
+		{ charShifts[i]= ISO9_tolower( i );	}
+	    }
+
+	if  ( ISO9_isdigit( i ) )
+	    { charKinds[i] |= CHARisDIGIT;	}
+	}
+
+    return;
+    }
+
+void utilSetLatin13CharacterKinds(	unsigned char	charKinds[256],
+					unsigned char	charShifts[256] )
+    {
+    int		i;
+
+    for ( i= 0; i < 256; i++ )
+	{
+	if  ( ISO13_islower( i ) )
+	    {
+	    charKinds[i] |= CHARisLOWER;
+	    if  ( ! ISO13_isupper( i ) )
+		{ charShifts[i]= ISO13_toupper( i );	}
+	    }
+
+	if  ( ISO13_isupper( i ) )
+	    {
+	    charKinds[i] |= CHARisUPPER;
+	    if  ( ! ISO13_islower( i ) )
+		{ charShifts[i]= ISO13_tolower( i );	}
+	    }
+
+	if  ( ISO13_isdigit( i ) )
 	    { charKinds[i] |= CHARisDIGIT;	}
 	}
 
@@ -298,6 +480,14 @@ void utilSetEncodingCharacterKinds(	unsigned char	charKinds[256],
 
 	case ENCODINGpsISO_8859_7:
 	    utilSetLatin7CharacterKinds( charKinds, charShifts );
+	    break;
+
+	case ENCODINGpsISO_8859_9:
+	    utilSetLatin9CharacterKinds( charKinds, charShifts );
+	    break;
+
+	case ENCODINGpsISO_8859_13:
+	    utilSetLatin13CharacterKinds( charKinds, charShifts );
 	    break;
 
 	default:

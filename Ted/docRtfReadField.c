@@ -212,7 +212,7 @@ static int docRtfFinishField(	BufferItem *		bi,
 int docRtfReadField(	SimpleInputStream *	sis,
 			const RtfControlWord *	rcw,
 			int			arg,
-			RtfReadingContext *	rrc	)
+			RtfReadingContext *	rrc )
     {
     int			res;
     BufferItem *	bi= rrc->rrcBi;
@@ -256,10 +256,10 @@ static RtfControlWord	docRtfTC_Words[]=
 	{ 0, 0, 0 }
     };
 
-int docRtfReadLookupEntry(	SimpleInputStream *	sis,
+int docRtfLookupEntry(		SimpleInputStream *	sis,
 				const RtfControlWord *	rcw,
 				int			arg,
-				RtfReadingContext *	rrc	)
+				RtfReadingContext *	rrc )
     {
     int			res;
     BufferItem *	bi= rrc->rrcBi;
@@ -274,21 +274,23 @@ int docRtfReadLookupEntry(	SimpleInputStream *	sis,
     RtfControlWord *	contolWords= (RtfControlWord *)0;
     RtfControlWord *	groupWords= (RtfControlWord *)0;
 
+    TextParticule *	tp;
+
     switch( rcw->rcwID )
 	{
-	case RTFidXE:
+	case DOCfkXE:
 	    particuleKind= DOCkindXE;
 	    fieldKind= DOCfkXE;
 	    contolWords= docRtfXE_Words;
 	    break;
 
-	case RTFidTC:
+	case DOCfkTC:
 	    particuleKind= DOCkindTC;
 	    fieldKind= DOCfkTC;
 	    contolWords= docRtfTC_Words;
 	    break;
 
-	case RTFidTCN:
+	case DOCfkTCN:
 	    particuleKind= DOCkindTC;
 	    fieldKind= DOCfkTCN;
 	    contolWords= docRtfTC_Words;
@@ -300,6 +302,9 @@ int docRtfReadLookupEntry(	SimpleInputStream *	sis,
 
     if  ( docRtfReadStartField( &startParticule, &fieldNumber, rrc ) )
 	{ LDEB(bi->biParaParticuleCount); return -1;	}
+
+    tp= bi->biParaParticules+ startParticule;
+    tp->tpKind= particuleKind;
 
     res= docRtfReadGroup( sis, DOClevPARA,
 				firstApply, 0, 0, rrc,
@@ -495,22 +500,50 @@ int docRtfBkmkEnd(	SimpleInputStream *	sis,
     return res;
     }
 
-int docRtfSpecialToField(	SimpleInputStream *	sis,
+int docRtfTextSpecialToField(	SimpleInputStream *	sis,
 				const RtfControlWord *	rcw,
 				int			arg,
 				RtfReadingContext *	rrc )
     {
-    BufferItem *	bi= rrc->rrcBi;
-    BufferDocument *	bd= rrc->rrcBd;
-    DocumentField *	df;
+    BufferItem *		bi= rrc->rrcBi;
+    BufferDocument *		bd= rrc->rrcBd;
+    DocumentField *		df;
 
-    int			startParticule;
-    int			fieldNumber;
+    int				startParticule;
+    int				fieldNumber;
+
+    const unsigned char *	fieldinst= (const unsigned char *)"?";
+    int				fieldsize= 1;
+    const unsigned char *	fieldRslt= (const unsigned char *)"?";
+
+    int				afterNoteref= 0;
 
     switch( rcw->rcwID )
 	{
-	case RTFidCHPGN:
+	case DOCfkPAGE:
+	    fieldinst= (const unsigned char *)" PAGE ";
+	    fieldsize= 6;
 	    break;
+	case DOCfkDATE:
+	    fieldinst= (const unsigned char *)" DATE \\* MERGEFORMAT ";
+	    fieldsize= 21;
+	    break;
+	case DOCfkTIME:
+	    fieldinst= (const unsigned char *)" TIME \\* MERGEFORMAT ";
+	    fieldsize= 21;
+	    break;
+	case DOCfkSECTION:
+	    fieldinst= (const unsigned char *)" SECTION ";
+	    fieldsize= 9;
+	    break;
+
+	case DOCfkCHFTN:
+	    fieldinst= (const unsigned char *)" -CHFTN ";
+	    fieldsize= 8;
+	    fieldRslt= (const unsigned char *)"1";
+	    afterNoteref= 1;
+	    break;
+
 	default:
 	    SDEB(rcw->rcwWord); return -1;
 	}
@@ -520,17 +553,20 @@ int docRtfSpecialToField(	SimpleInputStream *	sis,
 
     df= bd->bdFieldList.dflFields+ fieldNumber;
 
-    if  ( docRtfTextParticule( rrc, (unsigned char *)"?", 1 ) )
+    if  ( docRtfTextParticule( rrc, fieldRslt, 1 ) )
 	{ LDEB(2); return -1;	}
 
-    if  ( docSetFieldInst( df, (unsigned char *)" PAGE ", 6 ) )
+    if  ( docSetFieldInst( df, fieldinst, fieldsize ) )
 	{ LDEB(6); return -1;	}
 
     if  ( docRtfFlushBookmarks( -1, bi, rrc ) )
 	{ LDEB(1); return -1;	}
 
-    if  ( docRtfFinishField( bi, fieldNumber, rrc ) )
+    if  ( docRtfTerminateField( bi, fieldNumber, rrc ) )
 	{ LDEB(bi->biParaParticuleCount); return -1;	}
+
+    rrc->rrcAfterNoteref= afterNoteref;
+    df->dfKind= rcw->rcwID;
 
     return 0;
     }
@@ -761,33 +797,44 @@ int docRtfReadFootnote(		SimpleInputStream *	sis,
     return 0;
     }
 
-int docRtfChftn(		SimpleInputStream *	sis,
+/************************************************************************/
+/*									*/
+/*  Read a group that results in a text field.				*/
+/*									*/
+/************************************************************************/
+
+int docRtfReadTextField(	SimpleInputStream *	sis,
 				const RtfControlWord *	rcw,
 				int			arg,
 				RtfReadingContext *	rrc )
     {
-    RtfReadingState *	rrs= rrc->rrcState;
-    BufferDocument *	bd= rrc->rrcBd;
+    int			res;
+    BufferItem *	bi= rrc->rrcBi;
 
     int			startParticule;
     int			fieldNumber= -1;
+
     DocumentField *	df;
 
     if  ( docRtfReadStartField( &startParticule, &fieldNumber, rrc ) )
+	{ LDEB(bi->biParaParticuleCount); return -1;	}
+
+    df= rrc->rrcBd->bdFieldList.dflFields+ fieldNumber;
+    df->dfKind= rcw->rcwID;
+
+    res= docRtfReadGroup( sis, DOClevPARA,
+				(RtfControlWord *)0, 0, 0, rrc,
+				docRtfDocumentWords, docRtfDocumentGroups,
+				docRtfTextParticule, (RtfCommitGroup)0 );
+    if  ( res )
+	{ SLDEB(rcw->rcwWord,res);	}
+
+    if  ( docRtfFlushBookmarks( -1, bi, rrc ) )
 	{ LDEB(1); return -1;	}
 
-    df= bd->bdFieldList.dflFields+ fieldNumber;
-    df->dfKind= DOCfkCHFTN;
+    if  ( docRtfFinishField( bi, fieldNumber, rrc ) )
+	{ LDEB(bi->biParaParticuleCount); return -1;	}
 
-    if  ( docSaveParticules( rrc->rrcBd, rrc->rrcBi,
-				    &(rrs->rrsTextAttribute),
-				    (const unsigned char *)"1", 1 ) )
-	{ LDEB(1);	}
-
-    if  ( docRtfTerminateField( rrc->rrcBi, fieldNumber, rrc ) )
-	{ LDEB(1); return -1;	}
-
-    rrc->rrcAfterNoteref= 1;
-
-    return 0;
+    return res;
     }
+

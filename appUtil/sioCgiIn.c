@@ -23,10 +23,6 @@ typedef struct CgiInputStream
 static int sioInCgiClose(	void *	voidcis )
     { free( voidcis ); return 0;	}
 
-static int sioInCgiSeek(		void *			voidcis,
-					long			pos )
-    { LDEB(pos); return -1;	}
-
 static int sioInCgiReadBytes(	void *		voidcis,
 				unsigned char *	buffer,
 				int		count )
@@ -87,8 +83,7 @@ extern SimpleInputStream * sioInCgiOpen(	CGIRequest *	cgir )
     cis->cisConsumed= 0;
     cis->cisExhausted= 0;
 
-    sis= sioInOpen( (void *)cis,
-		    sioInCgiReadBytes, sioInCgiSeek, sioInCgiClose );
+    sis= sioInOpen( (void *)cis, sioInCgiReadBytes, sioInCgiClose );
 
     if  ( ! sis )
 	{ XDEB(sis); free( cis ); return (SimpleInputStream *)0; }

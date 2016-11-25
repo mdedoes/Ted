@@ -16,6 +16,8 @@
 #   undef	y0
 #   undef	y1
 
+#   include	<utilMatchFont.h>
+
 #   include	<appImage.h>
 #   include	"docLayout.h"
 #   include	"docFind.h"
@@ -25,53 +27,6 @@
 #   include	<appMacPict.h>
 
 #   include	<appDebugon.h>
-
-/************************************************************************/
-/*									*/
-/*  Translate text attributes to AfmFontInfo.				*/
-/*									*/
-/************************************************************************/
-
-AfmFontInfo * docPsPrintGetAfi( int *				pEncoding,
-				const AppPhysicalFontList *	apfl,
-				int				physf )
-    {
-    AppFontFamily *			aff;
-    int					affCount;
-    AppFontTypeface *			aft;
-
-    AppPhysicalFont *			apf;
-
-    if  ( psFontCatalog( apfl->apflAfmDirectory, &aff, &affCount ) )
-	{ SDEB(apfl->apflAfmDirectory); return (AfmFontInfo *)0;	}
-
-    if  ( physf < 0 || physf >= apfl->apflCount )
-	{ LLDEB(physf,apfl->apflCount); return (AfmFontInfo *)0;	}
-
-    apf= apfl->apflFonts+ physf;
-
-    if  ( apf->apfPsFamilyNumber < 0		||
-	  apf->apfPsFamilyNumber >= affCount	)
-	{ LLDEB(apf->apfPsFamilyNumber,affCount); return (AfmFontInfo *)0; }
-
-    aff += apf->apfPsFamilyNumber;
-    aft= aff->affFaces;
-
-    if  ( apf->apfPsFaceNumber < 0			||
-	  apf->apfPsFaceNumber >=  aff->affFaceCount	)
-	{
-	LLDEB(apf->apfPsFaceNumber,aff->affFaceCount);
-	return (AfmFontInfo *)0;
-	}
-
-    aft += apf->apfPsFaceNumber;
-
-    if  ( ! aft->aftPrintingData )
-	{ XDEB(aft->aftPrintingData);	}
-
-    *pEncoding= apf->apfFontEncoding;
-    return (AfmFontInfo *)aft->aftPrintingData;
-    }
 
 int docPsClaimParticuleData(	const BufferItem *	bi,
 				ParticuleData **	pParticuleData )
@@ -103,9 +58,9 @@ int docPsClaimParticuleData(	const BufferItem *	bi,
 /*									*/
 /************************************************************************/
 
-typedef int (*LIST_FONTS_PS)(	PostScriptFaceList *	psfl,
+typedef int (*LIST_FONTS_PS)(	PostScriptTypeList *	pstl,
 				SimpleInputStream *	sis,
-				const char *		afmDirectory,
+				const PostScriptFontList * psfl,
 				const char *		prefix,
 				int			mapMode,
 				int			xWinExt,
@@ -113,10 +68,10 @@ typedef int (*LIST_FONTS_PS)(	PostScriptFaceList *	psfl,
 				int			twipsWide,
 				int			twipsHigh );
 
-int docPsListObjectFonts(	PostScriptFaceList *	psfl,
-				const InsertedObject *	io,
-				const char *		afmDirectory,
-				const char *		prefix )
+int docPsListObjectFonts(	PostScriptTypeList *		pstl,
+				const InsertedObject *		io,
+				const PostScriptFontList *	psfl,
+				const char *			prefix )
     {
     LIST_FONTS_PS		listFontsPs;
 
@@ -168,10 +123,10 @@ int docPsListObjectFonts(	PostScriptFaceList *	psfl,
     if  ( ! sisMeta )
 	{ XDEB(sisMem); return -1;	}
 
-    if  ( (*listFontsPs)( psfl, sisMeta, afmDirectory, prefix, mapMode,
+    if  ( (*listFontsPs)( pstl, sisMeta, psfl, prefix, mapMode,
 					io->io_xWinExt, io->io_yWinExt,
 					io->ioTwipsWide, io->ioTwipsHigh ) )
-	{ SDEB(afmDirectory); return -1;	}
+	{ LDEB(1); return -1;	}
 
     sioInClose( sisMeta );
     sioInClose( sisMem );
@@ -189,8 +144,9 @@ int docPsListObjectFonts(	PostScriptFaceList *	psfl,
 
 typedef struct GetDocumentFonts
     {
-    const AppPhysicalFontList *		gdfPhysicalFontList;
-    PostScriptFaceList *		gdfPostScriptFaceList;
+    const DocumentFontList *		gdfDocumentFontList;
+    const PostScriptFontList *		gdfPostScriptFontList;
+    PostScriptTypeList *		gdfPostScriptTypeList;
     } GetDocumentFonts;
 
 /*  a  */
@@ -202,10 +158,11 @@ static int docPsPrintGetParaFonts(
 				void *				through )
     {
     GetDocumentFonts *		gdf= (GetDocumentFonts *)through;
-    const AppPhysicalFontList *	apfl= gdf->gdfPhysicalFontList;
-    PostScriptFaceList *	psfl= gdf->gdfPostScriptFaceList;
+    const DocumentFontList *	dfl= gdf->gdfDocumentFontList;
+    const PostScriptFontList *	psfl= gdf->gdfPostScriptFontList;
+    PostScriptTypeList *	pstl= gdf->gdfPostScriptTypeList;
 
-    int				privateFont;
+    int				attributeNumber= -1;
 
     AfmFontInfo *		afi;
     int				encoding;
@@ -225,23 +182,24 @@ static int docPsPrintGetParaFonts(
 	    {
 	    case DOCkindTEXT:
 	    case DOCkindTAB:
-		privateFont= tp->tpPhysicalFont;
-		if  ( tp->tpPhysicalFont >= 0 )
+		if  ( tp->tpTextAttributeNumber >= 0			&&
+		      tp->tpTextAttributeNumber != attributeNumber	)
 		    {
 		    TextAttribute	ta;
-
-		    afi= docPsPrintGetAfi( &encoding, apfl,
-							tp->tpPhysicalFont );
-		    if  ( ! afi )
-			{ XDEB(afi); return -1;	}
 
 		    utilGetTextAttributeByNumber( &ta,
 					    &(bd->bdTextAttributeList),
 					    tp->tpTextAttributeNumber );
 
-		    if  ( utilRememberPostsciptFace( psfl,
-				    encoding, afi, ta, "f", appearsInText ) )
+		    afi= utilPsGetAfi( &encoding, dfl, psfl, &ta );
+		    if  ( ! afi )
+			{ XDEB(afi); return -1;	}
+
+		    if  ( utilRememberPostsciptFace( pstl,
+				    encoding, afi, &ta, "f", appearsInText ) )
 			{ LDEB(1); return -1;	}
+
+		    attributeNumber= tp->tpTextAttributeNumber;
 		    }
 
 		while( part+ 1 < bi->biParaParticuleCount )
@@ -249,7 +207,7 @@ static int docPsPrintGetParaFonts(
 		    if  ( tp[1].tpKind != DOCkindTEXT	&&
 			  tp[1].tpKind != DOCkindTAB	)
 			{ break;	}
-		    if  ( tp[1].tpPhysicalFont != privateFont	)
+		    if  ( tp[1].tpTextAttributeNumber != attributeNumber )
 			{ break;	}
 
 		    part++; tp++;
@@ -259,8 +217,7 @@ static int docPsPrintGetParaFonts(
 	    case DOCkindOBJECT:
 		io= bi->biParaObjects+ tp->tpObjectNumber;
 
-		if  ( docPsListObjectFonts( psfl, io,
-					apfl->apflAfmDirectory, "f" ) )
+		if  ( docPsListObjectFonts( pstl, io, psfl, "f" ) )
 		    { LDEB(tp->tpKind); return -1;	}
 
 		part++; tp++; break;
@@ -272,7 +229,9 @@ static int docPsPrintGetParaFonts(
 	    case DOCkindTC:
 	    case DOCkindLINEBREAK:
 	    case DOCkindPAGEBREAK:
+	    case DOCkindCOLUMNBREAK:
 	    case DOCkindCHFTNSEP:
+	    case DOCkindCHFTNSEPC:
 		part++; tp++; break;
 
 	    default:
@@ -285,17 +244,20 @@ static int docPsPrintGetParaFonts(
 
 
 int docPsPrintGetDocumentFonts(	BufferDocument *		bd,
-				PostScriptFaceList *		psfl,
-				const AppPhysicalFontList *	apfl )
+				PostScriptTypeList *		pstl,
+				const PostScriptFontList *	psfl )
     {
+    const DocumentFontList *	dfl= &(bd->bdProperties.dpFontList);
+
     GetDocumentFonts		gdf;
 
     DocumentPosition		dpBeginFrom;
     DocumentSelection		dsIgnored;
     int				res;
 
-    gdf.gdfPhysicalFontList= apfl;
-    gdf.gdfPostScriptFaceList= psfl;
+    gdf.gdfDocumentFontList= dfl;
+    gdf.gdfPostScriptFontList= psfl;
+    gdf.gdfPostScriptTypeList= pstl;
 
     /*  a  */
     if  ( docFirstPosition( &dpBeginFrom, &(bd->bdItem) ) )

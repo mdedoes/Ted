@@ -188,7 +188,62 @@ static int docRtfSaveObject(	SimpleOutputStream *		sos,
 
 	case DOCokOLEOBJECT:
 	    docRtfWriteDestinationBegin( "\\object", pCol, sos );
-	    docRtfWriteTag( "\\objemb", pCol, sos );
+
+
+	    switch( io->ioRtfEmbedKind )
+		{
+		case EMBEDkindOBJEMB:
+		    docRtfWriteTag( "\\objemb", pCol, sos );
+		    break;
+		case EMBEDkindOBJLINK:
+		    docRtfWriteTag( "\\objlink", pCol, sos );
+		    break;
+		case EMBEDkindOBJAUTLINK:
+		    docRtfWriteTag( "\\objautlink", pCol, sos );
+		    break;
+		case EMBEDkindOBJSUB:
+		    docRtfWriteTag( "\\objsub", pCol, sos );
+		    break;
+		case EMBEDkindOBJPUB:
+		    docRtfWriteTag( "\\objpub", pCol, sos );
+		    break;
+		case EMBEDkindOBJICEMB:
+		    docRtfWriteTag( "\\objicemb", pCol, sos );
+		    break;
+		case EMBEDkindOBJHTML:
+		    docRtfWriteTag( "\\objhtml", pCol, sos );
+		    break;
+		case EMBEDkindOBJOCX:
+		    docRtfWriteTag( "\\objocx", pCol, sos );
+		    break;
+		default:
+		    LDEB(io->ioRtfEmbedKind);
+		    break;
+		}
+
+	    switch( io->ioRtfResultKind )
+		{
+		case RESULTkindUNKNOWN:
+		    break;
+		case RESULTkindRTF:
+		    docRtfWriteTag( "\\rsltrtf", pCol, sos );
+		    break;
+		case RESULTkindTXT:
+		    docRtfWriteTag( "\\rslttxt", pCol, sos );
+		    break;
+		case RESULTkindPICT:
+		    docRtfWriteTag( "\\rsltpict", pCol, sos );
+		    break;
+		case RESULTkindBMP:
+		    docRtfWriteTag( "\\rsltbmp", pCol, sos );
+		    break;
+		case RESULTkindHTML:
+		    docRtfWriteTag( "\\rslthtml", pCol, sos );
+		    break;
+		default:
+		    LDEB(io->ioRtfResultKind);
+		    break;
+		}
 
 	    if  ( io->ioObjectClass )
 		{
@@ -401,6 +456,9 @@ static int docRtfPushTable(	RtfWritingContext *		rwc,
     int			col0= -1;
     int			col1= -1;
 
+    const int * const	colorMap= (const int *)0;
+    const int * const	listStyleMap= (const int *)0;
+
     docRtfWriteNextLine( pCol, sos );
     docRtfWriteDestinationBegin( "", pCol, sos );
 
@@ -416,7 +474,7 @@ static int docRtfPushTable(	RtfWritingContext *		rwc,
     if  ( docUpdParaProperties( &ppChgMask,
 			    &(rwc->rwcOutsideTableParagraphProperties),
 			    &ppUpdMask, &(rwc->rwcParagraphProperties),
-			    (const int *)0 ) )
+			    colorMap, listStyleMap ) )
 	{ LDEB(1); return -1;	}
 
     if  ( ds )
@@ -438,6 +496,9 @@ static int docRtfPopTable(	RtfWritingContext *	rwc,
     PropertyMask	ppChgMask;
     PropertyMask	ppUpdMask;
 
+    const int * const	colorMap= (const int *)0;
+    const int * const	listStyleMap= (const int *)0;
+
     docRtfWriteDestinationEnd( pCol, sos );
     docRtfWriteNextLine( pCol, sos );
 
@@ -456,7 +517,7 @@ static int docRtfPopTable(	RtfWritingContext *	rwc,
     if  ( docUpdParaProperties( &ppChgMask,
 			    &(rwc->rwcParagraphProperties), &ppUpdMask,
 			    &(rwc->rwcOutsideTableParagraphProperties),
-			    (const int *)0 ) )
+			    colorMap, listStyleMap ) )
 	{ LDEB(1); return -1;	}
 
     return 0;
@@ -562,8 +623,39 @@ static void docRtfSwitchTextAttributes(	SimpleOutputStream *	sos,
 							    &ta, &chgMask );
 	if  ( ! PROPmaskISEMPTY( &updMask ) )
 	    {
+	    const DocumentProperties *	dp= &(bd->bdProperties);
+	    const DocumentFontList *	dfl= &(dp->dpFontList);
+	    const DocumentFont *	df;
+
 	    docRtfSaveTextAttribute( sos, pCol, &updMask, &ta );
 	    rwc->rwcHasPrecedingTags= 1;
+
+	    df= dfl->dflFonts+ ta.taFontNumber;
+
+	    switch( df->dfCharset )
+		{
+		case FONTcharsetANSI:
+		    rwc->rwcTextOutputMapping= rwc->rwcDefaultOutputMapping;
+		    break;
+		case FONTcharsetGREEK:
+		    rwc->rwcTextOutputMapping= docISO7_to_WIN1253;
+		    break;
+		case FONTcharsetTURKISH:
+		    rwc->rwcTextOutputMapping= docISO9_to_WIN1254;
+		    break;
+		case FONTcharsetBALTIC:
+		    rwc->rwcTextOutputMapping= docISO13_to_WIN1257;
+		    break;
+		case FONTcharsetRUSSIAN:
+		    rwc->rwcTextOutputMapping= docISO5_to_WIN1251;
+		    break;
+		case FONTcharsetEE:
+		    rwc->rwcTextOutputMapping= docISO2_to_WIN1250;
+		    break;
+
+		default:
+		    rwc->rwcTextOutputMapping= rwc->rwcDefaultOutputMapping;
+		}
 	    }
 	}
 
@@ -594,6 +686,9 @@ static int docRtfSaveParaItem(	SimpleOutputStream *		sos,
 
     PropertyMask			ppChgMask;
     PropertyMask			ppUpdMask;
+
+    const int * const			colorMap= (const int *)0;
+    const int * const			listStyleMap= (const int *)0;
 
     saveIntbl= ! ds || ! docSelectionInsideCell( ds );
 
@@ -631,8 +726,12 @@ static int docRtfSaveParaItem(	SimpleOutputStream *		sos,
 
     if  ( ds && ds->dsBegin.dpBi == bi )
 	{
-	part= ds->dsBegin.dpParticule;
+	const int	lastOne= 1;
+
 	stroff= ds->dsBegin.dpStroff;
+
+	if  ( docFindParticuleOfPosition( &part, &(ds->dsBegin), lastOne ) )
+	    { LDEB(stroff); return -1;	}
 	}
 
     tp= bi->biParaParticules+ part;
@@ -644,7 +743,9 @@ static int docRtfSaveParaItem(	SimpleOutputStream *		sos,
 
     for ( ; part < bi->biParaParticuleCount; part++, tp++ )
 	{
-	docRtfSwitchTextAttributes( sos, pCol, bd, tp, rwc );
+	if  ( tp->tpKind == DOCkindTEXT		||
+	      tp->tpStrlen > 0			)
+	    { docRtfSwitchTextAttributes( sos, pCol, bd, tp, rwc ); }
 
 	if  ( rwc->rwcSaveAsLink )
 	    {
@@ -679,6 +780,14 @@ static int docRtfSaveParaItem(	SimpleOutputStream *		sos,
 		rwc->rwcHasPrecedingTags= 1;
 		continue;
 
+	    case DOCkindCHFTNSEPC:
+		if  ( stroffUpto >= 0 && stroff >= stroffUpto )
+		    { break;	}
+
+		docRtfWriteTag( "\\chftnsepc", pCol, sos ); s++; stroff++;
+		rwc->rwcHasPrecedingTags= 1;
+		continue;
+
 	    case DOCkindTAB:
 		if  ( stroffUpto >= 0 && stroff >= stroffUpto )
 		    { break;	}
@@ -707,6 +816,16 @@ static int docRtfSaveParaItem(	SimpleOutputStream *		sos,
 		rwc->rwcHasPrecedingTags= 0;
 		continue;
 
+	    case DOCkindCOLUMNBREAK:
+		if  ( stroffUpto >= 0 && stroff >= stroffUpto )
+		    { break;	}
+
+		docRtfWriteTag( "\\column", pCol, sos );
+		docRtfWriteNextLine( pCol, sos );
+		s += tp->tpStrlen; stroff += tp->tpStrlen; /* += 1 */
+		rwc->rwcHasPrecedingTags= 0;
+		continue;
+
 	    case DOCkindTEXT:
 		if  ( stroffUpto >= 0 && stroff >= stroffUpto )
 		    { break;	}
@@ -728,7 +847,7 @@ static int docRtfSaveParaItem(	SimpleOutputStream *		sos,
 		    rwc->rwcHasPrecedingTags= 0;
 		    }
 
-		docRtfEscapeString( s, rwc->rwcOutputMapping, pCol, n, sos );
+		docRtfEscapeString( s, rwc->rwcTextOutputMapping, pCol, n, sos );
 		stroff += n; s += n;
 
 		continue;
@@ -815,6 +934,13 @@ static int docRtfSaveParaItem(	SimpleOutputStream *		sos,
 		    continue;
 		    }
 
+		if  ( df->dfKind == DOCfkLISTTEXT	&&
+		      bi->biParaListOverride > 0	)
+		    {
+		    docRtfWriteDestinationBegin( "\\listtext", pCol, sos );
+		    rwc->rwcHasPrecedingTags= 1;
+		    }
+
 		s += tp->tpStrlen; stroff += tp->tpStrlen; /* += 0 */
 		continue;
 
@@ -838,6 +964,13 @@ static int docRtfSaveParaItem(	SimpleOutputStream *		sos,
 
 		if  ( df->dfKind == DOCfkCHFTN )
 		    { /* nothing */	}
+
+		if  ( df->dfKind == DOCfkLISTTEXT	&&
+		      bi->biParaListOverride > 0	)
+		    {
+		    docRtfWriteDestinationEnd( pCol, sos );
+		    rwc->rwcHasPrecedingTags= 0;
+		    }
 
 		s += tp->tpStrlen; stroff += tp->tpStrlen; /* += 0 */
 		rwc->rwcHasPrecedingTags= 0;
@@ -929,7 +1062,8 @@ static int docRtfSaveParaItem(	SimpleOutputStream *		sos,
     PROPmaskFILL( &ppUpdMask, PPprop_COUNT );
 
     if  ( docUpdParaProperties( &ppChgMask, &(rwc->rwcParagraphProperties),
-			&ppUpdMask, &(bi->biParaProperties), (const int *)0 ) )
+			&ppUpdMask, &(bi->biParaProperties),
+			colorMap, listStyleMap ) )
 	{ LDEB(1); return -1;	}
 
     return 0;
@@ -1041,7 +1175,7 @@ static int docSaveSectionProperties(	SimpleOutputStream *		sos,
     docRtfWriteTag( "\\sectd", pCol, sos );
 
     docRtfSaveSectionProperties( sos,
-				rwc->rwcOutputMapping, pCol, &updMask, sp );
+			rwc->rwcDefaultOutputMapping, pCol, &updMask, sp );
 
     return 0;
     }
@@ -1176,7 +1310,9 @@ static void docRtfInitWritingContext(	RtfWritingContext *	rwc )
     docInitField( &(rwc->rwcSaveAsPagerefField) );
 
     for ( i= 0; i < 256; i++ )
-	{ rwc->rwcOutputMapping[i]= i;	}
+	{ rwc->rwcDefaultOutputMapping[i]= i;	}
+
+    rwc->rwcTextOutputMapping= rwc->rwcDefaultOutputMapping;
     }
 
 static void docRtfCleanWritingContext(	RtfWritingContext *	rwc )
@@ -1214,7 +1350,7 @@ int docRtfSaveDocument(	SimpleOutputStream *		sos,
     docRtfInitWritingContext( &rwc );
     rwc.rwcSaveBookmarks= saveBookmarks;
 
-    docRtfWriteDestinationBegin( "\\rtf0\\ansi", &col, sos );
+    docRtfWriteDestinationBegin( "\\rtf1\\ansi", &col, sos );
     docRtfWriteNextLine( &col, sos );
 
     if  ( docRtfSaveDocumentProperties( sos, &col, &rwc, bd ) )

@@ -118,6 +118,19 @@ static int docDrawOneTextLine(	void *				through,
     return accepted;
     }
 
+/************************************************************************/
+/*									*/
+/*  Draw a series of text lines in a paragraph.				*/
+/*									*/
+/*  1)  For all lines that apply...					*/
+/*  2)  If the line is on a page after the pages to draw -> stop.	*/
+/*  3)  Is line is on a page before the pages to draw?			*/
+/*  4)  Is the line in the rectangle to redraw?				*/
+/*  5)  Printing a page range.. and not in range?			*/
+/*  6)  Drawing a selection? E.G. To highlight it?			*/
+/*									*/
+/************************************************************************/
+
 static int docDrawTextLines(	void *				through,
 				const BufferItem *		bi,
 				const LayoutPosition *		lpHere,
@@ -134,17 +147,21 @@ static int docDrawTextLines(	void *				through,
     int				line= *pLinesDone;
     const TextLine *		tl= bi->biParaLines+ line;
 
+    /*  1  */
     while( line < bi->biParaLineCount )
 	{
 	int	accepted;
 	int	beforeSelectionBegin= 0;
 
+	/*  2  */
 	if  ( tl->tlTopPosition.lpPage+ pShift > lpHere->lpPage )
 	    { break;	}
 
+	/*  3  */
 	if  ( tl->tlTopPosition.lpPage+ pShift < lpHere->lpPage )
 	    { beforeSelectionBegin= 1;	}
 
+	/*  4  */
 	if  ( dc->dcClipRect )
 	    {
 	    AppDrawingData *		add= dc->dcDrawingData;
@@ -158,10 +175,12 @@ static int docDrawTextLines(	void *				through,
 		{ beforeSelectionBegin= 1;	}
 	    }
 
+	/*  5  */
 	if  ( dc->dcFirstPage >= 0		&&
 	      lpHere->lpPage < dc->dcFirstPage	)
 	    { beforeSelectionBegin= 1;	}
 
+	/*  6  */
 	if  ( dc->dcDocumentSelection					&&
 	      ! beforeSelectionBegin					&&
 	      ! pastSelectionEnd					&&
@@ -171,18 +190,20 @@ static int docDrawTextLines(	void *				through,
 	    const DocumentSelection *	ds= dc->dcDocumentSelection;
 
 	    DocumentSelection		dsLine;
-	    const int			mindPart= 1;
 
-	    docLineSelection( &dsLine, bi, line );
+	    int				partLineBegin;
+	    int				partLineEnd;
+
+	    docLineSelection( &dsLine, &partLineBegin, &partLineEnd, bi, line );
 
 	    if  ( bi == ds->dsEnd.dpBi					&&
 		  docComparePositions( &(dsLine.dsBegin),
-				    &(ds->dsEnd), mindPart ) > 0	)
+						&(ds->dsEnd) ) > 0	)
 		{ pastSelectionEnd= 1;	}
 
 	    if  ( bi == ds->dsBegin.dpBi				&&
 		  docComparePositions( &(dsLine.dsEnd),
-				    &(ds->dsBegin), mindPart ) < 0	)
+					    &(ds->dsBegin) ) < 0	)
 		{ beforeSelectionBegin= 1;	}
 	    }
 
@@ -190,7 +211,7 @@ static int docDrawTextLines(	void *				through,
 	    { accepted= tl->tlParticuleCount;		}
 	else{
 	    accepted= docDrawOneTextLine( through, bi, tl->tlFirstParticule,
-					pf, line, dc, pShift, xShift, yShift );
+				pf, line, dc, pShift, xShift, yShift );
 	    }
 
 	if  ( accepted < 1 )
@@ -1054,6 +1075,9 @@ static int docDrawTableHeader(	const BufferItem *		rowBi,
 /*	footers can contain tables can lead to recursion of the row	*/
 /*	drawing routine.						*/
 /*									*/
+/*  2)  Do not draw table headers if the subsequent row appears on the	*/
+/*	next page.							*/
+/*									*/
 /************************************************************************/
 
 static int docDrawRowItem(	BufferItem *			rowBi,
@@ -1085,6 +1109,15 @@ static int docDrawRowItem(	BufferItem *			rowBi,
 	LLDEB(rp->rpCellCount,rowBi->biChildCount);
 	docListItem( 0, rowBi );
 	rval= -1; goto ready;
+	}
+
+    /*  2  */
+    if  ( nextRowBi			&&
+	  rowBi->biRowIsTableHeader	&&
+	  pShift == 0			)
+	{
+	if  ( nextRowBi->biTopPosition.lpPage > rowBi->biBelowPosition.lpPage )
+	    { goto ready;	}
 	}
 
     cdp= (CellDrawingProgress *)malloc(
@@ -1247,7 +1280,7 @@ static int docDrawDocItem(	const BufferItem *		docBi,
 				DrawingContext *		dc )
     {
     BufferDocument *		bd= dc->dcDocument;
-    DocumentProperties *	dp= &(bd->bdProperties);
+    const DocumentProperties *	dp= &(bd->bdProperties);
 
     const int			pShift= 0;
     const int			xShift= 0;
@@ -1257,7 +1290,7 @@ static int docDrawDocItem(	const BufferItem *		docBi,
 	{ LDEB(1); return -1;	}
 
     if  ( docBi->biInExternalItem == DOCinBODY				&&
-	  dp->dpEndnoteProperties.npPosition == DPftnPOS_DOC_END	)
+	  dp->dpEndnoteProperties.npPosition == FTN_POS_DOC_END	)
 	{
 	if  ( docDrawEndnotesForDocument( through, dc ) )
 	    { LDEB(1); return -1;	}
@@ -1277,7 +1310,7 @@ static int docDrawSectItem(	const BufferItem *		sectBi,
 				DrawingContext *		dc )
     {
     BufferDocument *		bd= dc->dcDocument;
-    DocumentProperties *	dp= &(bd->bdProperties);
+    const DocumentProperties *	dp= &(bd->bdProperties);
 
     const int			pShift= 0;
     const int			xShift= 0;
@@ -1287,7 +1320,7 @@ static int docDrawSectItem(	const BufferItem *		sectBi,
 	{ LDEB(1); return -1;	}
 
     if  ( sectBi->biInExternalItem == DOCinBODY				&&
-	  dp->dpEndnoteProperties.npPosition == DPftnPOS_SECT_END	)
+	  dp->dpEndnoteProperties.npPosition == FTN_POS_SECT_END	)
 	{
 	if  ( docDrawEndnotesForSection( sectBi->biNumberInParent,
 							    through, dc ) )
@@ -1323,12 +1356,11 @@ int docDrawItem(	BufferItem *			bi,
     lpBelow= bi->biBelowPosition;
     if  ( bi->biLevel == DOClevROW		&&
 	  bi->biRowHasTableParagraphs		)
-	{ lpBelow= bi->biRowBelowAllPosition; }
+	{ lpBelow= bi->biRowBelowAllPosition;	}
 
     /*  2  */
     if  ( dc->dcClipRect )
 	{
-
 	if  ( BI_TOP_PIXELS( add, bi ) > dc->dcClipRect->drY1 )
 	    { return 0;	}
 

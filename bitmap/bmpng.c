@@ -68,6 +68,9 @@ static int bpPngiToBitmap(	const png_info *		pngi,
 	    break;
 
 	case PNG_COLOR_TYPE_RGB_ALPHA:
+	    bd->bdHasAlpha= 1;
+	    LDEB(pngi->color_type); return -1;
+
 	case PNG_COLOR_TYPE_GRAY_ALPHA:
 	    bd->bdHasAlpha= 1;
 	    LDEB(pngi->color_type); return -1;
@@ -233,7 +236,7 @@ int bmPngReadPng(	BitmapDescription *	bd,
 
     if  ( bpPngiToBitmap( pngip, bd ) )
 	{
-	LLDEB(bd->bdColorCount,bd->bdRGB8Palette); 
+	LLLDEB(pngip->color_type,bd->bdColorCount,bd->bdRGB8Palette); 
 	png_destroy_read_struct( &pngp, &pngip, (png_infop *)0 );
 	return -1;
 	}

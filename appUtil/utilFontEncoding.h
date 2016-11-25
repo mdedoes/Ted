@@ -32,14 +32,16 @@
 #   define	ENCODINGpsADOBE_CYRILLIC	3
 #   define	ENCODINGpsADOBE_DINGBATS	4
 #   define	ENCODINGpsISO_8859_7		5
-#   define	ENCODINGps_COUNT		6
+#   define	ENCODINGpsISO_8859_9		6
+#   define	ENCODINGpsISO_8859_13		7
+#   define	ENCODINGps_COUNT		8
 
 typedef struct FontCharset
     {
     const char * const *	fcGlyphNames;
     int				fcGlyphCount;
     const char *		fcEncodingSuffix;
-    const char *		fcEncodingArray;
+    const char *		fcEncodingArrayName;
 
     char *			fcId;
     char *			fcLabel;
@@ -47,6 +49,9 @@ typedef struct FontCharset
     int				fcOfficeCharset;
     int				fcOfficeCodepage;
     const char *		fcOfficeFontnameSuffix;
+
+    const char *		fcX11Registry;
+    const char *		fcX11Encoding;
 
     unsigned char		fcCharKinds[256];
     unsigned char		fcCharShifts[256];
@@ -122,16 +127,28 @@ extern FontCharset PS_Encodings[ENCODINGps_COUNT];
 
 extern const char * const	psIsoLatin1GlyphNames[256];
 extern const char * const	psIsoLatin2GlyphNames[256];
+extern const char * const	psIsoLatin5GlyphNames[256];
 extern const char * const	psIsoLatin7GlyphNames[256];
+extern const char * const	psIsoLatin9GlyphNames[256];
+extern const char * const	psIsoLatin10GlyphNames[256];
+extern const char * const	psIsoLatin13GlyphNames[256];
+extern const char * const	psIsoLatin15GlyphNames[256];
 extern const char * const	psSymbolGlyphNames[256];
 extern const char * const	psCyrillicGlyphNames[256];
 extern const char * const	psDingbatGlyphNames[256];
+extern const char * const	psAppleTtfGlyphNames[258];	/*  258 !  */
 
 extern const unsigned char	docWIN1250_to_ISO2[256];
 extern const unsigned char	docISO2_to_WIN1250[256];
 
 extern const unsigned char	docWIN1253_to_ISO7[256];
 extern const unsigned char	docISO7_to_WIN1253[256];
+
+extern const unsigned char	docWIN1254_to_ISO9[256];
+extern const unsigned char	docISO9_to_WIN1254[256];
+
+extern const unsigned char	docWIN1257_to_ISO13[256];
+extern const unsigned char	docISO13_to_WIN1257[256];
 
 extern const unsigned char	docWIN1251_to_KOI8R[256];
 extern const unsigned char	docKOI8R_to_WIN1251[256];
@@ -156,7 +173,19 @@ extern void utilSetLatin2CharacterKinds(
 				unsigned char		charKinds[256],
 				unsigned char		charShifts[256] );
 
+extern void utilSetLatin5CharacterKinds(
+				unsigned char		charKinds[256],
+				unsigned char		charShifts[256] );
+
 extern void utilSetLatin7CharacterKinds(
+				unsigned char		charKinds[256],
+				unsigned char		charShifts[256] );
+
+extern void utilSetLatin9CharacterKinds(
+				unsigned char		charKinds[256],
+				unsigned char		charShifts[256] );
+
+extern void utilSetLatin13CharacterKinds(
 				unsigned char		charKinds[256],
 				unsigned char		charShifts[256] );
 
@@ -170,7 +199,11 @@ extern void utilSetKoi8rCharacterKinds(
 
 extern void utilInitializeFontEncodings( void );
 
-extern int utilWindowsCharsetFromCodepage(	int	codepage );
-extern int utilEncodingFromWindowsCodepage(	int	codepage );
+extern int utilWindowsCharsetFromCodepage(	int		codepage );
+extern int utilEncodingFromWindowsCodepage(	int		codepage );
+extern int utilWindowsCodepageFromEncoding(	int		encoding );
+extern int utilEncodingFromX11FontName(		const char *	x11name );
+
+extern const char * psUnicodeToGlyphName(	int	unicode );
 
 #   endif

@@ -15,11 +15,6 @@
 #   include	<appDebugon.h>
 
 
-static int sioBlockedSeek(	void *			voidsos,
-				long			pos )
-    { LDEB(1); return -1; return 0; }
-
-
 typedef struct BlockedInputStream
     {
     SimpleInputStream *		bisBlocked;
@@ -134,8 +129,7 @@ SimpleInputStream * sioInBlockedOpen(	SimpleInputStream *	sisBlocked )
     bis->bisOffset= 1;
     bis->bisExhausted= 0;
 
-    sis= sioInOpen( (void *)bis, sioInBlockedReadBytes,
-					sioBlockedSeek, sioInBlockedClose );
+    sis= sioInOpen( (void *)bis, sioInBlockedReadBytes, sioInBlockedClose );
 
     if  ( ! sis )
 	{ XDEB(sis); free( bis ); return (SimpleInputStream *)0; }
@@ -240,7 +234,7 @@ SimpleOutputStream * sioOutBlockedOpen(	SimpleOutputStream *	sosBlocked )
     bos->bosBytes[0]= 0;
 
     sos= sioOutOpen( (void *)bos, sioOutBlockedWriteBytes,
-					sioBlockedSeek, sioOutBlockedClose );
+					(SIOoutSEEK)0, sioOutBlockedClose );
 
     if  ( ! sos )
 	{ XDEB(sos); free( bos ); return (SimpleOutputStream *)0; }

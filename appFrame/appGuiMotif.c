@@ -87,6 +87,9 @@ void appEmptyParentWidget(	Widget		parent )
     if  ( childCount == 0 )
 	{ return;	}
 
+    /*  1  */
+    XtUnmanageChildren( children, childCount );
+
     save= (WidgetList)malloc( childCount* sizeof(Widget) );
     if  ( save )
 	{
@@ -96,11 +99,7 @@ void appEmptyParentWidget(	Widget		parent )
 	    { save[i]= children[i];	}
 
 	for ( i= childCount- 1; i >= 0; i-- )
-	    {
-	    /*  1  */
-	    XtUnmanageChild( save[i] );
-	    XtDestroyWidget( save[i] );
-	    }
+	    { XtDestroyWidget( save[i] );	}
 
 	free( save );
 	}
@@ -1663,76 +1662,6 @@ void appGuiMakeDrawingAreaInColumn( APP_WIDGET *		pDrawing,
     XtManageChild( drawing );
 
     *pDrawing= drawing;
-    }
-
-void appGuiGetStringFromKeyboardEvent(	APP_INPUT_CONTEXT	ic,
-					APP_WIDGET		w,
-					APP_EVENT *		event,
-					int *			pGotString,
-					int *			pGotKey,
-					unsigned int *		pState,
-					char *			buf,
-					int			capacity,
-					APP_KEY_VALUE *		pKey )
-    {
-    int			gotString;
-    XKeyPressedEvent *	keyEvent= &(event->xkey);
-
-    if  ( event->type != KeyPress )
-	{ LLDEB(event->type,KeyPress); *pGotString= 0; return;	}
-
-    if  ( ic )
-	{
-	Status	status;
-
-	gotString= XmbLookupString( ic, keyEvent, buf, capacity- 1,
-							    pKey, &status );
-	switch( status )
-	    {
-	    case XBufferOverflow:
-		LDEB(status);
-		*pGotString= 0;
-		*pGotKey= 0;
-		return;
-
-	    case XLookupNone:
-		*pGotString= 0;
-		*pGotKey= 0;
-		return;
-
-	    case XLookupBoth:
-		buf[gotString]= '\0';
-		*pGotString= gotString;
-		*pGotKey= 1;
-		*pState= keyEvent->state;
-		return;
-
-	    case XLookupChars:
-		buf[gotString]= '\0';
-		*pGotString= gotString;
-		*pGotKey= 0;
-		*pState= keyEvent->state;
-		return;
-
-	    case XLookupKeySym:
-		*pGotString= 0;
-		*pGotKey= 1;
-		*pState= keyEvent->state;
-		return;
-	    }
-	}
-    else{
-	gotString= XLookupString( keyEvent, buf, capacity- 1,
-					    pKey, (XComposeStatus *)0 );
-
-	if  ( gotString > 0 )
-	    { buf[gotString]= '\0';	}
-	*pGotString= gotString;
-	*pGotKey= 1;
-	*pState= keyEvent->state;
-	return;
-	}
-
     }
 
 /************************************************************************/

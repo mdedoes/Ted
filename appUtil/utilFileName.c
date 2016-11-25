@@ -70,6 +70,7 @@ const char * appFileExtensionOfName(	const char *	filename )
 /*  a  */
 static int utilFileNameCatenate(	char *		path,
 					int		pathLen,
+					int		addSlash,
 					const char *	relative,
 					int		relLen )
     {
@@ -109,6 +110,13 @@ static int utilFileNameCatenate(	char *		path,
 	}
 #   endif
 
+    /*
+    if  ( pathLen > 0 && path[pathLen- 1] != '/' )
+	{ path[pathLen++]= '/';	}
+    */
+    if  ( addSlash )
+	{ path[pathLen++]= '/';	}
+
     memcpy( path+ pathLen, relative, relLen );
     path[pathLen+ relLen]= '\0';
 
@@ -118,12 +126,14 @@ static int utilFileNameCatenate(	char *		path,
 int appAbsoluteName(	char *		absolute,
 			int		len,
 			const char *	filename,
-			const char *	fileRelativeTo )
+			int		relativeIsFile,
+			const char *	nameRelativeTo )
     {
     int			fileLen= 0;
     int			rootLen= 0;
     int			relLen= 0;
     int			absLen;
+    int			addSlash= 0;
 
     const char *	slash;
 
@@ -140,23 +150,31 @@ int appAbsoluteName(	char *		absolute,
 	}
 
     /*  2  */
-    if  ( fileRelativeTo )
+    if  ( nameRelativeTo )
 	{
-	slash= strrchr( fileRelativeTo, '/' );
+	if  ( relativeIsFile )
+	    {
+	    slash= strrchr( nameRelativeTo, '/' );
 
-	if  ( slash )
-	    { relLen= slash- fileRelativeTo+ 1;	}
+	    if  ( slash )
+		{ relLen= slash- nameRelativeTo+ 1;	}
+	    }
+	else{
+	    addSlash= 1;
+	    relLen= strlen( nameRelativeTo );
+	    }
 	}
 
     /*  3  */
-    if  ( relLen > 0 && fileRelativeTo[0] == '/' )
+    if  ( relLen > 0 && nameRelativeTo[0] == '/' )
 	{
-	if  ( relLen+ fileLen > len )
+	if  ( relLen+ addSlash+ fileLen > len )
 	    { LLLDEB(relLen,fileLen,len); return -1;	}
 
-	strncpy( absolute, fileRelativeTo, relLen );
+	strncpy( absolute, nameRelativeTo, relLen );
 	absLen= relLen;
-	absLen= utilFileNameCatenate( absolute, absLen, filename, fileLen );
+	absLen= utilFileNameCatenate( absolute, absLen, addSlash,
+							filename, fileLen );
 	return absLen;
 	}
 
@@ -184,11 +202,12 @@ int appAbsoluteName(	char *		absolute,
     absLen= rootLen;
     if  ( relLen > 0 )
 	{
-	absLen= utilFileNameCatenate( absolute, absLen,
-						    fileRelativeTo, relLen );
+	absLen= utilFileNameCatenate( absolute, absLen, 0,
+						    nameRelativeTo, relLen );
 	}
 
-    absLen= utilFileNameCatenate( absolute, absLen, filename, fileLen );
+    absLen= utilFileNameCatenate( absolute, absLen, 0,
+						    filename, fileLen );
     return absLen;
     }
 

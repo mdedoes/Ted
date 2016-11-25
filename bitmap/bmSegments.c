@@ -16,7 +16,8 @@
 
 typedef struct LookUp
     {
-    int				lu_x0, lu_x1;
+    int				luX0;
+    int				luXp;
     SegmentEdge *		lu_edge;
     SegmentNode *		lu_node;
     int				lu_use;
@@ -58,10 +59,10 @@ static int bmRememberSegmentNode(	BitmapSegment *		bs,
     if  ( bs->bsNodeCount <= 1 )
 	{ bs->bsY0= bs->bsY1= row; }
     else{
-	if  ( bs->bsY0 >  row	)
-	    { bs->bsY0 =  row;	}
-	if  ( bs->bsY1 <= row		)
-	    { bs->bsY1 =  row+ 1;	}
+	if  ( bs->bsY0 > row	)
+	    { bs->bsY0 = row;	}
+	if  ( bs->bsY1 < row	)
+	    { bs->bsY1 = row;	}
 	}
 
     return 0;
@@ -91,15 +92,24 @@ static int bmRememberSegmentEdge(	BitmapSegment *		bs,
 
     dr= se->seRuns;
     if  ( bs->bsEdgeCount <= 1 )
-	{ bs->bsX0= dr->drX0; bs->bsX1= dr->drX1; }
+	{
+	bs->bsX0= dr->drX0;
+	bs->bsX1= dr->drXp- 1;
+	}
 
     for ( i= 0; i < se->seRunCount; dr++, i++ )
 	{
 	if  ( bs->bsX0 >  dr->drX0	)
 	    { bs->bsX0 =  dr->drX0;	}
-	if  ( bs->bsX1 <  dr->drX1	)
-	    { bs->bsX1 =  dr->drX1;	}
+	if  ( bs->bsX1 <  dr->drXp- 1	)
+	    { bs->bsX1 =  dr->drXp- 1;	}
 	}
+
+    /*
+    appDebug( "........ [%4d..%4d x %4d..%4d]\n",
+					bs->bsX0, bs->bsX1,
+					bs->bsY0, bs->bsY1 );
+    */
 
     return 0;
     }
@@ -145,7 +155,7 @@ static int bmConnectSegmentEdgeToNode(	SegmentNode *	sn,
     short int *		pcount;
     SegmentEdge ***	pold;
 
-    unsigned	sz;
+    unsigned int	sz;
     SegmentEdge **	nw;
 
     if  ( up )
@@ -168,15 +178,18 @@ static int bmConnectSegmentEdgeToNode(	SegmentNode *	sn,
     }
 
 /************************************************************************/
+/*									*/
 /*  Allocate an edge. Insert the first run.				*/
+/*									*/
 /*  1)  To help subsequent realloc()s a little, more space than needed	*/
 /*	is claimed for the runs.					*/
+/*									*/
 /************************************************************************/
 
 static SegmentEdge * bmSegmentEdge(	BitmapSegment *	bs,
 					SegmentNode *	from,
 					int		x0,
-					int		x1 )
+					int		xp )
     {
     SegmentEdge *	se;
 
@@ -190,7 +203,7 @@ static SegmentEdge * bmSegmentEdge(	BitmapSegment *	bs,
 	{ free( se ); return (SegmentEdge *)0;	}
 
     se->seRuns->drX0= x0;
-    se->seRuns->drX1= x1;
+    se->seRuns->drXp= xp;
     se->seRuns->drRepeatCount= 1;
 
     se->seRunCount= 1;
@@ -230,7 +243,7 @@ static SegmentEdge * bmSegmentEdge(	BitmapSegment *	bs,
 static int bmAddRunToSegmentEdge(	BitmapSegment *		bs,
 					SegmentEdge *		se,
 					int			x0,
-					int			x1 )
+					int			xp )
     {
     DataRun *	dr;
     int		nrun;
@@ -240,7 +253,7 @@ static int bmAddRunToSegmentEdge(	BitmapSegment *		bs,
 	{
 	dr= se->seRuns+ se->seRunCount- 1;
 
-	if  ( dr->drX0 == x0 && dr->drX1 == x1 )
+	if  ( dr->drX0 == x0 && dr->drXp == xp )
 	    { dr->drRepeatCount++; return 0;	}
 	}
 
@@ -258,13 +271,19 @@ static int bmAddRunToSegmentEdge(	BitmapSegment *		bs,
     dr += se->seRunCount++;
 
     dr->drX0= x0;
-    dr->drX1= x1;
+    dr->drXp= xp;
     dr->drRepeatCount= 1;
 
     if  ( bs->bsX0 >  x0	)
 	{ bs->bsX0 =  x0;	}
-    if  ( bs->bsX1 <  x1	)
-	{ bs->bsX1 =  x1;	}
+    if  ( bs->bsX1 <  xp- 1	)
+	{ bs->bsX1 =  xp- 1;	}
+
+    /*
+    appDebug( "........ [%4d..%4d x %4d..%4d]\n",
+					bs->bsX0, bs->bsX1,
+					bs->bsY0, bs->bsY1 );
+    */
 
     return 0;
     }
@@ -293,7 +312,7 @@ static void bmFreeNode(		SegmentNode *	sn )
     free( sn );
     }
 
-static void bmFreeSegment(	BitmapSegment * bs )
+void bmFreeSegment(	BitmapSegment * bs )
     {
     int		i;
 
@@ -321,8 +340,11 @@ static void bmFreeSegment(	BitmapSegment * bs )
     }
 
 /************************************************************************/
+/*									*/
 /*  Construct a new component.						*/
+/*									*/
 /************************************************************************/
+
 static BitmapSegment * bmNewSegment( void )
     {
     BitmapSegment *	bs;
@@ -382,15 +404,17 @@ static int bmMoveComponentContents(	BitmapSegment *	to,
     }
 
 /************************************************************************/
+/*									*/
 /*  1)  Find the first '0' pixel on of after position 'col' in a row	*/
 /*  2)  Find the first '1' pixel on of after position 'col' in a row	*/
+/*									*/
 /************************************************************************/
 
 /*  1  */
 static int bmc0Run( const unsigned char *	buf,
 		    int				bytesPerRow,
 		    int				xsz,
-		    int				col,
+		    const int			col,
 		    int				nfret )
     {
     int		colbyte= col/ 8;
@@ -406,6 +430,7 @@ static int bmc0Run( const unsigned char *	buf,
 		if  ( ! ( c & Bmc1Masks[bit] ) )
 		    {
 		    int	rval= 8* colbyte+ bit;
+
 		    if  ( rval >= xsz )
 			{ return nfret;	}
 		    else{ return rval;	}
@@ -424,7 +449,7 @@ static int bmc0Run( const unsigned char *	buf,
 static int bmc1Run( const unsigned char *	buf,
 		    int				bytesPerRow,
 		    int				xsz,
-		    int				col,
+		    const int			col,
 		    int				nfret )
     {
     int		colbyte= col/ 8;
@@ -439,7 +464,8 @@ static int bmc1Run( const unsigned char *	buf,
 		{
 		if  ( c & Bmc1Masks[bit] )
 		    {
-		    int	rval= 8* colbyte+ bit+ 1;
+		    int	rval= 8* colbyte+ bit;
+
 		    if  ( rval >= xsz )
 			{ return nfret;	}
 		    else{ return rval;	}
@@ -452,49 +478,6 @@ static int bmc1Run( const unsigned char *	buf,
 	}
 
     return nfret;
-    }
-
-static int bmGetDataRun(	int *				pX0,
-				int *				pX1,
-				const unsigned char *		buffer,
-				const BitmapDescription *	bd,
-				int				row,
-				int				x0 )
-    {
-    int		x1;
-
-    switch( bd->bdColorEncoding )
-	{
-	case BMcoBLACKWHITE:
-	    x0= bmc1Run( buffer+ row* bd->bdBytesPerRow,
-			    bd->bdBytesPerRow, bd->bdPixelsWide, x0, -1 );
-
-	    if  ( x0 < 0 )
-		{ return 1;	}
-
-	    x1= bmc0Run( buffer+ row* bd->bdBytesPerRow,
-				    bd->bdBytesPerRow, bd->bdPixelsWide,
-				    x0+ 1, bd->bdPixelsWide );
-	    break;
-
-	case BMcoWHITEBLACK:
-	    x0= bmc0Run( buffer+ row* bd->bdBytesPerRow,
-			    bd->bdBytesPerRow, bd->bdPixelsWide, x0, -1 );
-
-	    if  ( x0 < 0 )
-		{ return 1;	}
-
-	    x1= bmc1Run( buffer+ row* bd->bdBytesPerRow,
-				    bd->bdBytesPerRow, bd->bdPixelsWide,
-				    x0+ 1, bd->bdPixelsWide );
-	    break;
-
-	default:
-	    LDEB(bd->bdColorEncoding);
-	    return -1;
-	}
-
-    *pX0= x0; *pX1= x1; return 0;
     }
 
 /************************************************************************/
@@ -517,7 +500,7 @@ static int bcBranch(	CompIndex *		ci,
     DataRun *		dr;
 
     /*  1  */
-    se= bmSegmentEdge( ci->ci_compo, sn, lu->lu_x0, lu->lu_x1 );
+    se= bmSegmentEdge( ci->ci_compo, sn, lu->luX0, lu->luXp );
     if  ( ! se )
 	{ XDEB(se); return -1;	}
 
@@ -554,7 +537,7 @@ static int bmStartNewSegment(	int *			pnco,
 				CompIndex **		pcomps,
 				SegmentEdge **		pse,
 				int			x0,
-				int			x1,
+				int			xp,
 				int			row )
     {
     int			nco= *pnco;
@@ -583,7 +566,7 @@ static int bmStartNewSegment(	int *			pnco,
     sn= bmSegmentNode( bs, row );
     if  ( ! sn )
 	{ XDEB(sn); return -1;	}
-    se= bmSegmentEdge( bs, sn, x0, x1 );
+    se= bmSegmentEdge( bs, sn, x0, xp );
     if  ( ! se )
 	{ XDEB(se); return -1;	}
 
@@ -608,9 +591,9 @@ static int bcMergeComp(	CompIndex *	comps,
 			int		newcomp,
 			int		oldcomp,
 			LookUp *	olu,
-			int		onlu,
+			int		oLuCount,
 			LookUp *	nlu,
-			int		nnlu )
+			int		nLuCount )
     {
     int		nco= *pnco;
 
@@ -631,13 +614,13 @@ static int bcMergeComp(	CompIndex *	comps,
 
 	*pnco= nco;
 
-	while( --onlu >= 0 )
+	while( --oLuCount >= 0 )
 	    {
 	    if  ( olu->lu_compid == oldcomp	)
 		{ olu->lu_compid= newcomp; }
 	    olu++;
 	    }
-	while( --nnlu >= 0 )
+	while( --nLuCount >= 0 )
 	    {
 	    if  ( nlu->lu_compid == oldcomp	)
 		{ nlu->lu_compid= newcomp; }
@@ -657,13 +640,13 @@ static int bcMergeComp(	CompIndex *	comps,
 static void bcCountComp(	CompIndex *	comps,
 				int		newcomp,
 				LookUp *	olu,
-				int		onlu,
+				int		oLuCount,
 				LookUp *	nlu,
-				int		nnlu )
+				int		nLuCount )
     {
     comps[newcomp].ci_count= 0;
 
-    while( --onlu >= 0 )
+    while( --oLuCount >= 0 )
 	{
 	if  ( olu->lu_use != LU_ENDED	&&
 	      olu->lu_compid == newcomp	)
@@ -671,7 +654,7 @@ static void bcCountComp(	CompIndex *	comps,
 	olu++;
 	}
 
-    while( --nnlu >= 0 )
+    while( --nLuCount >= 0 )
 	{
 	if  ( nlu->lu_compid == newcomp	)
 	    { comps[newcomp].ci_count++; }
@@ -715,9 +698,147 @@ static int bcTerminate(	CompIndex *	ci,
 
 /************************************************************************/
 /*									*/
+/*  If any segments from the previous row are found, continue/merge	*/
+/*  them.								*/
+/*									*/
+/*  1)  If more than one run touch the current run, merge them in a	*/
+/*	node.								*/
+/*  2)  If the last one was already continued.. It is a split.		*/
+/*									*/
+/************************************************************************/
+
+static int bcContinueSegments(	int *		pNLuCount,
+				int *		pNCo,
+				LookUp *	olu,
+				const int	oLuCount,
+				LookUp *	nlu,
+				int		nLuCount,
+				int		nco,
+				CompIndex *	comps,
+				const int	row,
+				const int	x0,
+				const int	xp,
+				int		beg,
+				int		end )
+    {
+    int		compid;
+
+    compid= olu[beg].lu_compid;
+
+    /*  1  */
+    if  ( beg < end- 1 )
+	{
+	SegmentNode *	sn;
+	SegmentEdge *	se;
+
+	sn= bmSegmentNode( comps[compid].ci_compo, row );
+	if  ( ! sn )
+	    { XDEB(sn); return -1;	}
+
+	while( beg < end- 1 )
+	    {
+	    /* appDebug( "-- %4d: MERGE\n", beg ); */
+
+	    if  ( bcMergeComp( comps, &nco, compid, olu[beg+1].lu_compid,
+			       olu+ beg, oLuCount- beg, nlu, nLuCount ) )
+		{ LDEB(1); return -1;	}
+
+	    if  ( bmConnectSegmentEdgeToNode( sn, olu[beg].lu_edge, 1 ) )
+		{ LDEB(1); return -1;	}
+
+	    olu[beg].lu_use= LU_MERGED;
+	    olu[beg].lu_node= sn;
+	    olu[beg].lu_compid= compid;
+	    beg++;
+	    }
+
+	bcCountComp( comps, compid, olu+beg, oLuCount-beg, nlu, nLuCount );
+
+	if  ( bmConnectSegmentEdgeToNode( sn, olu[beg].lu_edge, 1 ) )
+	    { LDEB(1); return -1;	}
+	se= bmSegmentEdge( comps[compid].ci_compo, sn, x0, xp );
+	if  ( ! se )
+	    { XDEB(se); return -1;	}
+	se->seRunCount= 0;	/* Oups, against an extra row	*/
+	olu[beg].lu_node= sn;
+	olu[beg].lu_edge= se;
+	olu[beg].lu_compid= compid;
+
+	/* appDebug( "-- %4d: BELOW\n", beg ); */
+	}
+
+    /*  2  */
+    if  ( olu[beg].lu_use != LU_UNSPEC )
+	{
+	SegmentNode *	sn;
+	SegmentEdge *	se;
+
+	/* appDebug( "-- %4d: SPLIT\n", beg ); */
+
+	sn= nlu[nLuCount-1].lu_node;
+	if  ( ! sn )
+	    {
+	    sn= bmSegmentNode( comps[compid].ci_compo, row );
+	    if  ( ! sn )
+		{ XDEB(sn); return -1;	}
+	    if  ( bcBranch( comps+compid, nlu+ nLuCount- 1, sn ) )
+		{ LDEB(1); return -1;	}
+	    nlu[nLuCount-1].lu_node= sn;
+	    }
+	else{ comps[compid].ci_count++; }
+
+	se= bmSegmentEdge( comps[compid].ci_compo, sn, x0, xp );
+	if  ( ! se )
+	    { XDEB(se); return -1;	}
+
+	/* olu[beg].lu_use= LU_EXTENDED; see above */
+	nlu[nLuCount].luX0= x0;
+	nlu[nLuCount].luXp= xp;
+	nlu[nLuCount].lu_edge= se;
+	nlu[nLuCount].lu_compid= compid;
+	nlu[nLuCount].lu_use= LU_UNSPEC;
+	nlu[nLuCount].lu_node= sn;
+	nLuCount++;
+	}
+    else{
+	/*  3  */
+
+	/* appDebug( "-- %4d: CONT \n", beg ); */
+
+	compid= olu[beg].lu_compid;
+
+	if  ( bmAddRunToSegmentEdge( comps[compid].ci_compo,
+				    olu[beg].lu_edge, x0, xp ) )
+	    { LDEB(1); return -1;	}
+
+	olu[beg].lu_use= LU_EXTENDED;
+	nlu[nLuCount].luX0= x0;
+	nlu[nLuCount].luXp= xp;
+	nlu[nLuCount].lu_edge= olu[beg].lu_edge;
+	nlu[nLuCount].lu_compid= compid;
+	nlu[nLuCount].lu_use= LU_UNSPEC;
+	nlu[nLuCount].lu_node= (SegmentNode *)0;
+	nLuCount++;
+	}
+
+    *pNLuCount= nLuCount;
+    *pNCo= nco;
+    return 0;
+    }
+
+/************************************************************************/
+/*									*/
 /*  Find the different black connected components on a page.		*/
 /*  For every successive scanline, the relationships of the runs of	*/
 /*  black with those on the previous one are determined.		*/
+/*									*/
+/*  3)  For all rows in the image.					*/
+/*  4)  Loop over all runs of 'black' pixels.				*/
+/*  5)  Skip all segments from the previous row that end before the	*/
+/*	black run. Terminate them if necessary.				*/
+/*  6)  Find the first segment that begins after the black run.		*/
+/*  7)  If any segments from the previous row are found, continue/merge	*/
+/*	them.								*/
 /*									*/
 /************************************************************************/
 
@@ -730,248 +851,199 @@ int bcComponents(	BitmapSegment ***		pSegments,
 
     int			pixelsWide= bd->bdPixelsWide;
 
-    int			nnlu, onlu, beg, end;
+    int			oLuCount;
+    int			nLuCount;
+
+    int			beg, end;
     LookUp *		lu1= (LookUp *)malloc( pixelsWide* sizeof(LookUp) );
     LookUp *		lu2= (LookUp *)malloc( pixelsWide* sizeof(LookUp) );
     LookUp *		olu= lu1;
     LookUp *		nlu= lu2;
     LookUp *		swap;
 
-    SegmentNode *	sn;
-    SegmentEdge *	se;
-
-    int			x0, x1;
+    int			x0, xp;
 
     int			nco= 0, mco= 30;
     CompIndex *		comps= (CompIndex *)malloc( mco* sizeof(CompIndex) );
     int			compid;
     BitmapSegment **	retcomps= (BitmapSegment **)0;
 
+    int			diagonals= 1;
+
+    int		(*whiteRun)(	const unsigned char *	_buf,
+				int			bytesPerRow,
+				int			xsz,
+				const int		col,
+				int			nfret );
+    int		(*blackRun)(	const unsigned char *	_buf,
+				int			bytesPerRow,
+				int			xsz,
+				const int		col,
+				int			nfret );
+
     if  ( ! lu1 || ! lu2 || ! comps )
 	{ XXDEB(lu1,lu2); XDEB(comps); goto failure; }
 
-    onlu= 0;
+    switch( bd->bdColorEncoding )
+	{
+	case BMcoBLACKWHITE:
+	    if  ( bd->bdBitsPerPixel != 1 )
+		{
+		LLDEB(bd->bdColorEncoding,bd->bdBitsPerPixel);
+		goto failure;
+		}
 
+	    whiteRun= bmc1Run;
+	    blackRun= bmc0Run;
+	    break;
+
+	case BMcoWHITEBLACK:
+	    if  ( bd->bdBitsPerPixel != 1 )
+		{
+		LLDEB(bd->bdColorEncoding,bd->bdBitsPerPixel);
+		goto failure;
+		}
+
+	    whiteRun= bmc0Run;
+	    blackRun= bmc1Run;
+	    break;
+
+	default:
+	    LDEB(bd->bdColorEncoding);
+	    goto failure;
+	}
+
+
+    oLuCount= 0;
+
+    /*  3  */
     for ( row= 0; row < bd->bdPixelsHigh; row++ )
 	{
-	x0= 0; nnlu= 0; beg= end= 0;
+	x0= 0; nLuCount= 0; beg= end= 0;
 
+	/* appDebug( "======== ROW    %4d\n", row ); */
+
+	/*  4  */
 	for (;;)
 	    {
-	    int		ret= bmGetDataRun( &x0, &x1, buffer, bd, row, x0 );
+	    x0= (*whiteRun)( buffer+ row* bd->bdBytesPerRow,
+			    bd->bdBytesPerRow, bd->bdPixelsWide, x0, -1 );
 
-	    if  ( ret < 0 )
-		{ LDEB(ret); goto failure;	}
-	    if  ( ret > 0 )
-		{ break;			}
+	    if  ( x0 < 0 )
+		{ break;	}
 
-	    /*
-	    APP_DEB(appDebug( "++ RUN %5d .. %5d AT %3d\n", x0, x1, nnlu ));
-	    */
+	    xp= (*blackRun)( buffer+ row* bd->bdBytesPerRow,
+				    bd->bdBytesPerRow, bd->bdPixelsWide,
+				    x0+ 1, bd->bdPixelsWide );
+
+	    /* appDebug( "++ %4d: FOUND %5d -| %5d\n", nLuCount, x0, xp ); */
 
 	    /************************************************************/
 	    /*  Identify what kind of a run we found.			*/
-	    /*  1)  First one that does not end before x0.		*/ 
 	    /*  2)  First one that does begin after x1.			*/ 
 	    /************************************************************/
-	    /*  1  */
-	    while( beg < onlu )
+	    /*  5  */
+	    while( beg < oLuCount )
 		{
 		compid= olu[beg].lu_compid;
-		if  ( olu[beg].lu_x1 >  x0 )
+
+		if  ( olu[beg].luXp > x0- diagonals )
 		    { break;	}
 		if  ( olu[beg].lu_use == LU_UNSPEC )
 		    {
-		    /*
-		    APP_DEB(bcPrint( olu[beg].lu_x0, olu[beg].lu_x1, beg,
-				"ENDED", comps, olu, beg, beg+1 ));
-		    */
-		    if  ( bcTerminate( comps+ compid, olu+ beg, row ) )
+		    if  ( bcTerminate( comps+ compid, olu+ beg, row- 1 ) )
 			{ goto failure;	}
+
+		    /* appDebug( "-- %4d: TERM \n", beg ); */
 		    }
 		else{
-		    /*
-		    APP_DEB(bcPrint( olu[beg].lu_x0, olu[beg].lu_x1, beg,
-				"READY", comps, olu, beg, beg+1 ));
-		    */
+		    /* appDebug( "-- %4d: CONT \n", beg ); */
 		    }
 		beg++;
 		}
 	    end= beg;
 
-	    /*  2  */
-	    while( end < onlu )
+	    /*  6  */
+	    while( end < oLuCount )
 		{
-		if  ( olu[end].lu_x0 >= x1 )
+		if  ( olu[end].luX0 >= xp+ diagonals )
 		    { break;	}
-		/*
-		APP_DEB(bcPrint( olu[end].lu_x0, olu[end].lu_x1, end,
-			    "PREVIOUS", comps, olu, end, end+1 ));
-		*/
+
+		/* appDebug( "-- %4d: PREV \n", end ); */
 		end++;
 		}
 
+	    /*  7  */
 	    if  ( end > beg )
 		{
-		compid= olu[beg].lu_compid;
+		if  ( bcContinueSegments( &nLuCount, &nco,
+						olu, oLuCount,
+						nlu, nLuCount,
+						nco, comps,
+						row, x0, xp,
+						beg, end ) )
+		    { LDEB(1); goto failure;	}
 
-		if  ( beg < end- 1 )
-		    {
-		    /*
-		    APP_DEB(bcPrint( x0, x1, nnlu,
-				"MERGE", comps, olu, beg, end ));
-		    */
-		    sn= bmSegmentNode( comps[compid].ci_compo, row );
-		    if  ( ! sn )
-			{ XDEB(sn); goto failure;	}
-
-		    while( beg < end- 1 )
-			{
-			if  ( bcMergeComp( comps, &nco,
-					   compid, olu[beg+1].lu_compid,
-					   olu+ beg, onlu- beg,
-					   nlu, nnlu ) )
-			    { goto failure;	}
-			if  ( bmConnectSegmentEdgeToNode( sn,
-						    olu[beg].lu_edge, 1 ) )
-			    { LDEB(1); goto failure;	}
-			/*
-			APP_DEB(bcPrintEdge(beg,olu[beg].lu_edge));
-			*/
-			olu[beg].lu_use= LU_MERGED;
-			olu[beg].lu_node= sn;
-			olu[beg].lu_compid= compid;
-			beg++;
-			}
-
-		    bcCountComp( comps, compid, olu+beg, onlu-beg, nlu, nnlu );
-		    if  ( bmConnectSegmentEdgeToNode( sn,
-							olu[beg].lu_edge, 1 ) )
-			{ goto failure;	}
-		    se= bmSegmentEdge( comps[compid].ci_compo, sn, x0, x1 );
-		    if  ( ! se )
-			{ XDEB(se); goto failure;	}
-		    se->seRunCount= 0;	/* Oups, against an extra row	*/
-		    olu[beg].lu_node= sn;
-		    olu[beg].lu_edge= se;
-		    olu[beg].lu_compid= compid;
-		    /*
-		    APP_DEB(bcPrint( x0, x1, nnlu,
-				"-----", comps, olu, beg, end ));
-		    */
-		    }
-
-		if  ( olu[beg].lu_use != LU_UNSPEC )
-		    {
-		    /*
-		    APP_DEB(bcPrint( olu[beg].lu_x0, olu[beg].lu_x1, beg,
-				"SPLIT", comps, olu, beg, beg+1 ));
-		    */
-		    sn= nlu[nnlu-1].lu_node;
-		    if  ( ! sn )
-			{
-			sn= bmSegmentNode( comps[compid].ci_compo, row );
-			if  ( ! sn )
-			    { XDEB(sn); goto failure;	}
-			if  ( bcBranch( comps+compid, nlu+ nnlu- 1, sn ) )
-			    { LDEB(1); goto failure;	}
-			nlu[nnlu-1].lu_node= sn;
-			}
-		    else{ comps[compid].ci_count++; }
-		    se= bmSegmentEdge( comps[compid].ci_compo, sn, x0, x1 );
-		    if  ( ! se )
-			{ XDEB(se); goto failure;	}
-		    /* olu[beg].lu_use= LU_EXTENDED; see above */
-		    nlu[nnlu].lu_x0= x0; nlu[nnlu].lu_x1= x1;
-		    nlu[nnlu].lu_edge= se;
-		    nlu[nnlu].lu_compid= compid;
-		    nlu[nnlu].lu_use= LU_UNSPEC;
-		    nlu[nnlu].lu_node= sn;
-		    nnlu++;
-		    }
-		else{
-		    compid= olu[beg].lu_compid;
-		    /*
-		    APP_DEB(bcPrint( olu[beg].lu_x0, olu[beg].lu_x1, beg,
-				"EXTENDED", comps, olu, beg, beg+1 ));
-		    */
-		    if  ( bmAddRunToSegmentEdge( comps[compid].ci_compo,
-						olu[beg].lu_edge, x0, x1 ) )
-			{ LDEB(1); goto failure;	}
-		    olu[beg].lu_use= LU_EXTENDED;
-		    nlu[nnlu].lu_x0= x0; nlu[nnlu].lu_x1= x1;
-		    nlu[nnlu].lu_edge= olu[beg].lu_edge;
-		    nlu[nnlu].lu_compid= compid;
-		    nlu[nnlu].lu_use= LU_UNSPEC;
-		    nlu[nnlu].lu_node= (SegmentNode *)0;
-		    nnlu++;
-		    }
+		beg= end- 1;
 		}
 	    else{
+		SegmentEdge *	se;
+
 		compid= bmStartNewSegment( &nco, &mco, &comps, &se,
-								x0, x1, row );
+								x0, xp, row );
 		if  ( compid < 0 )
 		    { LDEB(compid); goto failure;	}
-		nlu[nnlu].lu_compid= compid;
-		nlu[nnlu].lu_x0= x0; nlu[nnlu].lu_x1= x1;
-		nlu[nnlu].lu_edge= se;
-		nlu[nnlu].lu_node= (SegmentNode *)0;
-		nlu[nnlu].lu_use= LU_UNSPEC;
-		nnlu++;
-		/*
-		APP_DEB(bcPrint( x0, x1, nnlu,
-			    "NEW", comps, nlu, nnlu-1, nnlu ));
-		*/
+		nlu[nLuCount].lu_compid= compid;
+		nlu[nLuCount].luX0= x0;
+		nlu[nLuCount].luXp= xp;
+		nlu[nLuCount].lu_edge= se;
+		nlu[nLuCount].lu_node= (SegmentNode *)0;
+		nlu[nLuCount].lu_use= LU_UNSPEC;
+		nLuCount++;
+
+		/* appDebug( "-- %4d: NEW  \n", nLuCount- 1 ); */
 		}
-	    x0= x1+ 1;
+
+	    x0= xp+ 1;
 	    }
 
-	while( beg < onlu )
+	while( beg < oLuCount )
 	    {
 	    compid= olu[beg].lu_compid;
+
 	    if  ( olu[beg].lu_use == LU_UNSPEC )
 		{
-		/*
-		APP_DEB(bcPrint( olu[beg].lu_x0, olu[beg].lu_x1, beg,
-			    "ENDED", comps, olu, beg, beg+1 ));
-		*/
-		if  ( bcTerminate( comps+ compid, olu+ beg, row ) )
+		if  ( bcTerminate( comps+ compid, olu+ beg, row- 1 ) )
 		    { goto failure;	}
+
+		/* appDebug( "-- %4d: TERM \n", beg ); */
 		}
 	    else{
-		/*
-		APP_DEB(bcPrint( olu[beg].lu_x0, olu[beg].lu_x1, beg,
-			    "READY", comps, olu, beg, beg+1 ));
-		*/
+		/* appDebug( "-- %4d: READY\n", beg ); */
 		}
 	    beg++;
 	    }
 
 	swap= nlu; nlu= olu; olu= swap;
-	onlu= nnlu;
+	oLuCount= nLuCount;
 	}
 
     /*
     APP_DEB(appDebug( "%-5d ROWS:\n", row ));
     */
     beg= 0;
-    while( beg < onlu )
+    while( beg < oLuCount )
 	{
 	compid= olu[beg].lu_compid;
 	if  ( olu[beg].lu_use == LU_UNSPEC )
 	    {
-	    /*
-	    APP_DEB(bcPrint( olu[beg].lu_x0, olu[beg].lu_x1, beg,
-			"BOTTOM", comps, olu, beg, beg+1 ));
-	    */
-	    if  ( bcTerminate( comps+ compid, olu+ beg, row ) )
+	    if  ( bcTerminate( comps+ compid, olu+ beg, row- 1 ) )
 		{ goto failure;	}
+
+	    /* appDebug( "-- %4d: BOTTM\n", beg ); */
 	    }
 	else{
-	    /*
-	    APP_DEB(bcPrint( olu[beg].lu_x0, olu[beg].lu_x1, beg,
-			"ERROR", comps, olu, beg, beg+1 ));
-	    */
+	    /* appDebug( "-- %4d: ERROR\n", beg ); */
 	    goto failure;
 	    }
 	beg++;
@@ -983,8 +1055,30 @@ int bcComponents(	BitmapSegment ***		pSegments,
     end= nco; nco= 0;
     for ( beg= 0; beg < end; beg++ )
 	{
-	if  ( comps[beg].ci_compo )
-	    { retcomps[nco++]= comps[beg].ci_compo; }
+	double		wide;
+	double		high;
+	int		rejected= 0;
+
+	if  ( ! comps[beg].ci_compo )
+	    { continue;	}
+
+	wide= comps[beg].ci_compo->bsX1- comps[beg].ci_compo->bsX0+ 1;
+	high= comps[beg].ci_compo->bsY1- comps[beg].ci_compo->bsY0+ 1;
+
+	if  ( wide < 5 && high < 5 )
+	    { rejected= 1;	}
+
+	if  ( wide >= bd->bdPixelsWide/ 10	||
+	      high >= bd->bdPixelsHigh/ 10	)
+	    { rejected= 1;	}
+
+	if  ( wide > 15* high || high > 15* wide )
+	    { rejected= 1;	}
+
+	if  ( rejected )
+	    { bmFreeSegment( comps[beg].ci_compo ); continue; }
+
+	retcomps[nco++]= comps[beg].ci_compo;
 	}
 
     if  ( lu1 )
@@ -1018,24 +1112,24 @@ int bmcDrawComponent(	const BitmapSegment *	bs,
 			int			col0,
 			int			row0,
 			int			bytesPerRow,
-			int			colorEncoding	)
+			int			colorEncoding )
     {
     SegmentEdge **	se;
     int			i, j;
 
 #   if 0
-    bmDrawBox( buffer,
+    bmDrawBox( buffer, bd,
 	bs->bsX0- col0, row0,
 	bs->bsX1- col0, row0+ bs->bsY1- bs->bsY0,
-	1, bytesPerRow, colorEncoding );
-    bmDrawLine( buffer,
+	1, colorEncoding );
+    bmDrawLine( buffer, bd,
 	bs->bsX0- col0, row0,
 	bs->bsX1- col0, row0+ bs->bsY1- bs->bsY0,
-	2, bytesPerRow );
-    bmDrawLine( buffer,
+	2 );
+    bmDrawLine( buffer, bd,
 	bs->bsX0- col0, row0+ bs->bsY1- bs->bsY0,
 	bs->bsX1- col0, row0,
-	2, bytesPerRow );
+	2 );
 
     return 0;
 #   endif
@@ -1050,7 +1144,7 @@ int bmcDrawComponent(	const BitmapSegment *	bs,
 	    {
 	    bmFillBlock( buffer,
 			    dr->drX0- col0, row,
-			    dr->drX1- col0+ 1, row+ dr->drRepeatCount,
+			    dr->drXp- col0, row+ dr->drRepeatCount,
 			    bytesPerRow );
 
 	    row += dr->drRepeatCount;
@@ -1061,9 +1155,12 @@ int bmcDrawComponent(	const BitmapSegment *	bs,
     }
 
 /************************************************************************/
+/*									*/
 /*  Return information on a component. If a buffer pointer is given,	*/
 /*  a bitmap for the component is returned.				*/
+/*									*/
 /************************************************************************/
+
 int bmComponentBitmap(	unsigned char **		pBuffer,
 			BitmapDescription *		bdout,
 			BitmapSelection *		bsel,
@@ -1077,9 +1174,9 @@ int bmComponentBitmap(	unsigned char **		pBuffer,
 
     int				colorEncoding= bdin->bdColorEncoding;
 
-    resbd.bdPixelsWide= bs->bsX1- bs->bsX0;
+    resbd.bdPixelsWide= bs->bsX1- bs->bsX0+ 1;
     resbd.bdPixelsWide= ( ( resbd.bdPixelsWide+ byte- 1 )/ byte ) * byte;
-    resbd.bdPixelsHigh= bs->bsY1- bs->bsY0;
+    resbd.bdPixelsHigh= bs->bsY1- bs->bsY0+ 1;
 
     resbd.bdBytesPerRow= resbd.bdPixelsWide/ byte;
 
@@ -1095,7 +1192,7 @@ int bmComponentBitmap(	unsigned char **		pBuffer,
 				buffer,
 				bs->bsX0, 0,
 				resbd.bdBytesPerRow,
-				colorEncoding		) )
+				colorEncoding ) )
 	    { free( buffer ); return -1;	}
 
 	*pBuffer= buffer;
@@ -1112,15 +1209,18 @@ int bmComponentBitmap(	unsigned char **		pBuffer,
     }
 
 /************************************************************************/
+/*									*/
 /*  Return information on the geometry of a component.			*/
+/*									*/
 /************************************************************************/
+
 void bmcStatistics(	const BitmapSegment *		bs,
 			int *				pN,
 			float *				pSx,
 			float *				pSy,
 			float *				pSxx,
 			float *				pSyy,
-			float *				pSxy	)
+			float *				pSxy )
     {
     SegmentEdge **	se;
     int			i, j;
@@ -1143,26 +1243,26 @@ void bmcStatistics(	const BitmapSegment *		bs,
 	for ( j= 0; j < se[0]->seRunCount; j++, dr++ )
 	    {
 	    int		x0= dr->drX0;
-	    int		x1= dr->drX1+ 1;
+	    int		x1= dr->drXp+ 1;
 	    int		xx0= x0* ( x0+ 1 );
 	    int		xx1= x1* ( x1+ 1 );
-	    int		sx= xx1/2- xx0/2;
+	    int		sxx= xx1/2- xx0/2;
 	    double	xxx0= xx0* ( 2.0* x0+ 1.0 );
 	    double	xxx1= xx1* ( 2.0* x1+ 1.0 );
 
 	    int		y1= y0+ dr->drRepeatCount;
 	    int		yy0= y0* ( y0+ 1 );
 	    int		yy1= y1* ( y1+ 1 );
-	    int		sy= yy1/2- yy0/2;
+	    int		syy= yy1/2- yy0/2;
 	    double	yyy0= yy0* ( 2.0* y0+ 1.0 );
 	    double	yyy1= yy1* ( 2.0* y1+ 1.0 );
 
 	    *pN += dr->drRepeatCount* ( x1- x0 );
-	    *pSx += dr->drRepeatCount* sx;
-	    *pSy += ( x1- x0 )* sy;
+	    *pSx += dr->drRepeatCount* sxx;
+	    *pSy += ( x1- x0 )* syy;
 	    *pSxx += dr->drRepeatCount* ( xxx1/6- xxx0/6 );
 	    *pSyy += ( x1- x0 )* ( yyy1/6- yyy0/6 );
-	    *pSxy += sx* sy;
+	    *pSxy += sxx* syy;
 
 	    y0 += dr->drRepeatCount;
 	    }
@@ -1171,22 +1271,3 @@ void bmcStatistics(	const BitmapSegment *		bs,
     return;
     }
 
-/************************************************************************/
-/*									*/
-/*  Fit a line segment to a collection of dots.				*/
-/*									*/
-/*  The line segment is from A= ( a1, a2 ) to B= ( b1, b2 ).		*/
-/*  Its length l: l= sqrt( (b1-a1)^2 + (b2-a2)^2 ).			*/
-/*									*/
-/*  For a point C= ( c1, c2 ) be:					*/
-/*  r= { (a2-c2)*(a2-b2)- (a1-c1)*(b1-a1) }/ l^2.			*/
-/*  s= { (a2-c2)*(b1-a1)- (a1-c1)*(b2-a2) }/ l^2.			*/
-/*									*/
-/*  The distance of A to the projection p of C on the line segment is:	*/
-/*	r* l.								*/
-/*  The distance of B to the projection p of C on the line segment is:	*/
-/*	(1-r)* l.							*/
-/*  The distance of C to the projection p of C on the line segment is:	*/
-/*	s* l.								*/
-/*									*/
-/************************************************************************/

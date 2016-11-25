@@ -939,27 +939,83 @@ EOF
 #define BINDIR $BINDIR
 EOF
 
-M_SYSTEM=`uname -s | tr :/ __`
-M_MACHINE=`uname -m | tr :/ __`
+M_SYSTEM=`uname -s  | tr ':/ ' ___`
+M_MACHINE=`uname -m | tr ':/ ' ___`
 
-case $M_SYSTEM in
-    OpenBSD|FreeBSD|NetBSD)
-	M_CHOWN_ARG=root:wheel
-	;;
-    *)
-	if  `id -u` = 0
-	then
-	    if  id -gn > /dev/null
+M_PKG_OWNER=NO
+M_PKG_GROUP=NO
+
+########################################################################
+
+if  ls -l /bin/ls > $$-scratch
+then
+    read modes links owner group size month day year_time name < $$-scratch
+
+    if  test $name = "/bin/ls"
+    then
+	M_PKG_OWNER=$owner
+	M_PKG_GROUP=$group
+	M_CHOWN_ARG=$M_PKG_OWNER:$M_PKG_GROUP
+    fi
+fi
+
+rm -f $$-scratch
+
+########################################################################
+
+if  test $M_PKG_OWNER = NO
+then
+    case $M_SYSTEM in
+	OpenBSD|FreeBSD|NetBSD|Darwin)
+	    M_PKG_OWNER=root
+	    M_PKG_GROUP=wheel
+	    M_CHOWN_ARG=root:wheel
+	    ;;
+	*)
+	    if  test `id -u` = 0
 	    then
-		M_CHOWN_ARG=root:`id -gn`
+		if  id -gn > /dev/null
+		then
+		    M_PKG_GROUP=`id -gn`
+		else
+		    M_PKG_GROUP=root
+		fi
+		M_PKG_OWNER=root
+		M_CHOWN_ARG=$M_PKG_OWNER:$M_PKG_GROUP
 	    else
+		M_PKG_OWNER=root
+		M_PKG_GROUP=root
 		M_CHOWN_ARG=root:root
 	    fi
-	else
-	    M_CHOWN_ARG=root:root
-	fi
-	;;
-esac
+	    ;;
+    esac
+fi
+
+########################################################################
+
+if  tar cf scratch.tar \
+           --owner=$M_PKG_OWNER --group=$M_PKG_GROUP configure 2>/dev/null
+then
+    TAR_CHOWN_ARGS="--owner=$M_PKG_OWNER --group=$M_PKG_GROUP"
+    rm -f scratch.tar
+
+    CHECK_ID_CMD=": ok"
+    CHOWN_CMD=":"
+else
+    TAR_CHOWN_ARGS=""
+    CHECK_ID_CMD='@( test `id -u` = 0 || ( echo YOU MUST BE ROOT && false ) )'
+    CHOWN_CMD="chown $M_CHOWN_ARG"
+fi
+
+########################################################################
+
+if  test x_$RPM_BUILD_ROOT != x_
+then
+    CHECK_ID_CMD=": ok"
+    CHOWN_CMD=":"
+fi
+
+########################################################################
 
 ########################################################################
 
@@ -1073,7 +1129,7 @@ rm -f confdef2opt.sed
 : ${CONFIG_STATUS=./config.status}
 ac_clean_files_save=$ac_clean_files
 ac_clean_files="$ac_clean_files $CONFIG_STATUS"
-{ echo "$as_me:1076: creating $CONFIG_STATUS" >&5
+{ echo "$as_me:1132: creating $CONFIG_STATUS" >&5
 echo "$as_me: creating $CONFIG_STATUS" >&6;}
 cat >$CONFIG_STATUS <<_ACEOF
 #! $SHELL
@@ -1240,7 +1296,7 @@ cat >>$CONFIG_STATUS <<\EOF
     echo "$ac_cs_version"; exit 0 ;;
   --he | --h)
     # Conflict between --help and --header
-    { { echo "$as_me:1243: error: ambiguous option: $1
+    { { echo "$as_me:1299: error: ambiguous option: $1
 Try \`$0 --help' for more information." >&5
 echo "$as_me: error: ambiguous option: $1
 Try \`$0 --help' for more information." >&2;}
@@ -1259,7 +1315,7 @@ Try \`$0 --help' for more information." >&2;}
     ac_need_defaults=false;;
 
   # This is an error.
-  -*) { { echo "$as_me:1262: error: unrecognized option: $1
+  -*) { { echo "$as_me:1318: error: unrecognized option: $1
 Try \`$0 --help' for more information." >&5
 echo "$as_me: error: unrecognized option: $1
 Try \`$0 --help' for more information." >&2;}
@@ -1295,7 +1351,7 @@ do
   case "$ac_config_target" in
   # Handling of arguments.
   "makefile" ) CONFIG_FILES="$CONFIG_FILES makefile" ;;
-  *) { { echo "$as_me:1298: error: invalid argument: $ac_config_target" >&5
+  *) { { echo "$as_me:1354: error: invalid argument: $ac_config_target" >&5
 echo "$as_me: error: invalid argument: $ac_config_target" >&2;}
    { (exit 1); exit 1; }; };;
   esac
@@ -1380,7 +1436,12 @@ s,@EXEC_PREFIX@,$EXEC_PREFIX,;t t
 s,@BINDIR@,$BINDIR,;t t
 s,@M_SYSTEM@,$M_SYSTEM,;t t
 s,@M_MACHINE@,$M_MACHINE,;t t
+s,@M_PKG_OWNER@,$M_PKG_OWNER,;t t
+s,@M_PKG_GROUP@,$M_PKG_GROUP,;t t
 s,@M_CHOWN_ARG@,$M_CHOWN_ARG,;t t
+s,@TAR_CHOWN_ARGS@,$TAR_CHOWN_ARGS,;t t
+s,@CHECK_ID_CMD@,$CHECK_ID_CMD,;t t
+s,@CHOWN_CMD@,$CHOWN_CMD,;t t
 CEOF
 
 EOF
@@ -1490,7 +1551,7 @@ done; }
   esac
 
   if test x"$ac_file" != x-; then
-    { echo "$as_me:1493: creating $ac_file" >&5
+    { echo "$as_me:1554: creating $ac_file" >&5
 echo "$as_me: creating $ac_file" >&6;}
     rm -f "$ac_file"
   fi
@@ -1508,7 +1569,7 @@ echo "$as_me: creating $ac_file" >&6;}
       -) echo $tmp/stdin ;;
       [\\/$]*)
          # Absolute (can't be DOS-style, as IFS=:)
-         test -f "$f" || { { echo "$as_me:1511: error: cannot find input file: $f" >&5
+         test -f "$f" || { { echo "$as_me:1572: error: cannot find input file: $f" >&5
 echo "$as_me: error: cannot find input file: $f" >&2;}
    { (exit 1); exit 1; }; }
          echo $f;;
@@ -1521,7 +1582,7 @@ echo "$as_me: error: cannot find input file: $f" >&2;}
            echo $srcdir/$f
          else
            # /dev/null tree
-           { { echo "$as_me:1524: error: cannot find input file: $f" >&5
+           { { echo "$as_me:1585: error: cannot find input file: $f" >&5
 echo "$as_me: error: cannot find input file: $f" >&2;}
    { (exit 1); exit 1; }; }
          fi;;

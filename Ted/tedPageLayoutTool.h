@@ -18,6 +18,7 @@
 extern void tedFormatToolRefreshPageLayoutTool(
 				PageLayoutTool *		plt,
 				int *				pEnabled,
+				int *				pPref,
 				InspectorSubject *		is,
 				const DocumentSelection *	ds,
 				const DocumentProperties *	dp );

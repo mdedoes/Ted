@@ -25,46 +25,12 @@
 
 /************************************************************************/
 /*									*/
-/*  Set the encoding of an afi according to glyph names.		*/
-/*									*/
-/************************************************************************/
-
-static int psFindAlternate(	const AfmFontInfo *	afi,
-				const char *		glyphName )
-    {
-    const AlternateGlyphName *	agn= PS_AlternateNames;
-
-    while( agn->agnStandardName )
-	{
-	if  ( ! strcmp( glyphName, agn->agnStandardName ) )
-	    {
-	    int			j;
-	    AfmCharMetric *	acm;
-
-	    acm= afi->afiMetrics;
-	    for ( j= 0; j < afi->afiMetricCount; acm++, j++ )
-		{
-		if  ( ! strcmp( acm->acmN, agn->agnAlternateName ) )
-		    { break;	}
-		}
-
-	    if  ( j < afi->afiMetricCount )
-		{ return j;	}
-	    }
-
-	agn++;
-	}
-
-    return -1;
-    }
-
-/************************************************************************/
-/*									*/
 /*  Set an encoding array for a PostScript font.			*/
 /*									*/
 /************************************************************************/
 
-static int psSetEncoding(	int *			codeToGlyph,
+static int psSetEncoding(	unsigned char *		pNonStdNames,
+				short int *		codeToGlyph,
 				const AfmFontInfo *	afi,
 				const char * const *	glyphNames,
 				int			nameCount,
@@ -72,6 +38,8 @@ static int psSetEncoding(	int *			codeToGlyph,
     {
     int		i;
     int		rval= 0;
+    int		missing= 0;
+    int		nonStdNameCount= 0;
 
     if  ( nameCount > 256 )
 	{ LLDEB(nameCount,256); return -1;	}
@@ -87,27 +55,41 @@ static int psSetEncoding(	int *			codeToGlyph,
 	acm= afi->afiMetrics;
 	for ( j= 0; j < afi->afiMetricCount; acm++, j++ )
 	    {
-	    if  ( ! strcmp( acm->acmN, glyphNames[i] ) )
+	    if  ( acm->acmN && ! strcmp( acm->acmN, glyphNames[i] ) )
 		{ break;	}
 	    }
 
 	if  ( j >= afi->afiMetricCount )
-	    { j= psFindAlternate( afi, glyphNames[i] );	}
+	    {
+	    nonStdNameCount++;
+	    j= psFindAlternate( afi, glyphNames[i] );
+	    }
 
 	if  ( j < 0 )
 	    {
-	    if  ( complain )
-		{ LSDEB(i,glyphNames[i]);	}
-
+	    missing++;
 	    codeToGlyph[i]= -1;
 	    rval= 1;
 	    }
 	else{ codeToGlyph[i]= j;	}
 	}
 
+    if  ( complain && missing > 0 && missing <= 10 )
+	{
+	for ( i= 0; i < nameCount; i++ )
+	    {
+	    if  ( ! glyphNames[i] )
+		{ codeToGlyph[i]= -1; continue;	}
+
+	    if  ( codeToGlyph[i] < 0 )
+		{ LXSDEB(i,i,glyphNames[i]);	}
+	    }
+	}
+
     while( i < 256 )
 	{ codeToGlyph[i++]= -1;	}
 
+    *pNonStdNames= ( nonStdNameCount > 0 );
     return rval;
     }
 
@@ -126,7 +108,8 @@ static int psTryEncoding(	SupportedCharset *	sc,
 				const FontCharset *	fc,
 				int			complain )
     {
-    if  ( ! psSetEncoding( sc->scCodeToGlyphMapping, afi,
+    if  ( ! psSetEncoding( &(sc->scNonStandardGlyphNames),
+			    sc->scCodeToGlyphMapping, afi,
 			    fc->fcGlyphNames, fc->fcGlyphCount, complain ) )
 	{ sc->scSupported= 1; return 0; }
 
@@ -158,6 +141,7 @@ int psGetFontEncodings(	AfmFontInfo *	afi )
     if  ( hasSupportedCharset )
 	{ return 0;	}
 
+#   if 0
     fc= PS_Encodings;
     sc= afi->afiSupportedCharsets;
     for ( i= 0; i < ENCODINGps_COUNT; sc++, fc++, i++ )
@@ -166,6 +150,7 @@ int psGetFontEncodings(	AfmFontInfo *	afi )
 
 	psTryEncoding( sc, afi, fc, complain );
 	}
+#   endif
 
     return -1;
     }
@@ -188,14 +173,14 @@ int psCalculateStringExtents(	AfmBBox *		abb,
 				int			encoding,
 				const AfmFontInfo *	afi )
     {
-    long	right= 0L;
-    long	unitsWide= 0L;
+    long		right= 0L;
+    long		unitsWide= 0L;
 
-    long	top= 0;
-    long	bottom= 0;
-    long	prevRight= 0;
+    long		top= 0;
+    long		bottom= 0;
+    long		prevRight= 0;
 
-    const int *	codeToGlyph;
+    const short int *	codeToGlyph;
 
     if  ( encoding < 0			||
 	  encoding >= ENCODINGps_COUNT	)
@@ -282,8 +267,8 @@ int psCalculateStringExtents(	AfmBBox *		abb,
 
 void docInitFontFamily(	AppFontFamily *	aff )
     {
+    aff->affFontFamilyName_Orig= (char *)0;
     aff->affFontFamilyName= (char *)0;
-    aff->affFontFamilyText= (char *)0;
     aff->affFaces= (AppFontTypeface *)0;
     aff->affFaceCount= 0;
     aff->affHasFixedWidth= 0;
@@ -295,15 +280,17 @@ void docInitFontFamily(	AppFontFamily *	aff )
 
 void docInitFontTypeface(	AppFontTypeface *	aft )
     {
+    int		enc;
+
     aft->aftFaceName= (char *)0;
-    aft->aftSizes= (int *)0;
-    aft->aftSizeCount= 0;
     aft->aftIsBold= 0;
     aft->aftIsSlanted= 0;
-    aft->aftIsScalable= 0;
     aft->aftIsFixedWidth= 0;
     aft->aftPrintingData= (void *)0;
-    aft->aftXQueryFormat= (char *)0;
+
+    for ( enc= 0; enc < ENCODINGps_COUNT; enc++ )
+	{ aft->aftXQueryFormats[enc]= (char *)0;	}
+
     aft->aftWidth= FONTwidthMEDIUM;
     aft->aftWeight= FONTweightMEDIUM;
     aft->aftDefaultEncoding= -1;
