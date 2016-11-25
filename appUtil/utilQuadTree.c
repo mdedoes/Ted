@@ -606,7 +606,7 @@ int qtForAllInRectangle(	const QuadTree *		qt,
     int		rval= 0;
 
     if  ( qt->qtRootNode						&&
-	  docIntersectRectangle( (DocumentRectangle *)0,
+	  geoIntersectRectangle( (DocumentRectangle *)0,
 					    &(qt->qtRectangle), dr )	)
 	{ rval= qnForAllInRectangle( qt->qtRootNode, dr, fun, through ); }
 

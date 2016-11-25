@@ -50,7 +50,11 @@ typedef struct AppConfigurableResource
 
 #   ifdef USE_MOTIF
 
-typedef XtResource AppConfigurableResource;
+    typedef XtResource AppConfigurableResource;
+
+#   define	acrResourceName	resource_name
+#   define	acrStructOffset	resource_offset
+#   define	acrDefaultValue	default_addr
 
 #   define	APP_RESOURCE( x, o, d )					\
 				{					\

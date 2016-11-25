@@ -57,12 +57,12 @@ static void docRtfParaSaveProperties( SimpleOutputStream *	sos,
     if  ( ! fromDefault )
 	{
 	PROPmaskCLEAR( &updMask );
-	PROPmaskFILL( &updMask, PPprop_COUNT );
+	utilPropMaskFill( &updMask, PPprop_COUNT );
 	PROPmaskUNSET( &updMask, PPpropIN_TABLE );
 
 	docParaPropertyDifference( &updMask, newPP, prevPP, &updMask );
 
-	if  ( PROPmaskISEMPTY( &updMask ) )
+	if  ( utilPropMaskIsEmpty( &updMask ) )
 	    { return;	}
 	}
 
@@ -76,7 +76,7 @@ static void docRtfParaSaveProperties( SimpleOutputStream *	sos,
 	{ docRtfWriteTag( "\\intbl", pCol, sos );	}
 
     PROPmaskCLEAR( &updMask );
-    PROPmaskFILL( &updMask, PPprop_COUNT );
+    utilPropMaskFill( &updMask, PPprop_COUNT );
     PROPmaskUNSET( &updMask, PPpropIN_TABLE );
 
     docParaPropertyDifference( &updMask, newPP, &ppp, &updMask );
@@ -92,38 +92,13 @@ static void docRtfParaSaveProperties( SimpleOutputStream *	sos,
     return;
     }
 
-int docRtfSaveRuler(	SimpleOutputStream *		sos,
-			const ParagraphProperties *	pp )
-    {
-    int				col= 0;
-    int				propChange= 1;
-    int				tabsSaved= 0;
-    int				saveIntbl= 0;
-    int				noRestart= 0;
-
-    ParagraphProperties		refPP;
-
-    docInitParagraphProperties( &refPP );
-
-    docRtfWriteDestinationBegin( "\\ruler", &col, sos );
-    docRtfWriteTag( "\\pard", &col, sos );
-
-    docRtfParaSaveProperties( sos, noRestart, saveIntbl,
-				&propChange, &tabsSaved, &col, pp, &refPP );
-
-    docRtfWriteDestinationEnd( &col, sos );
-
-    docCleanParagraphProperties( &refPP );
-
-    return 0;
-    }
-
 static int docRtfSaveObject(	SimpleOutputStream *		sos,
 				int *				pCol,
 				const BufferItem *		bi,
 				const TextParticule *		tp )
     {
     InsertedObject *	io= bi->biParaObjects+ tp->tpObjectNumber;
+    PictureProperties *	pip= &(io->ioPictureProperties);
 
     docRtfWriteNextLine( pCol, sos );
 
@@ -131,20 +106,20 @@ static int docRtfSaveObject(	SimpleOutputStream *		sos,
 	{
 	case DOCokPICTWMETAFILE:
 	    docRtfWriteDestinationBegin( "\\pict", pCol, sos );
-	    docRtfWriteArgTag( "\\wmetafile", pCol, io->ioMapMode, sos );
+	    docRtfWriteArgTag( "\\wmetafile", pCol, pip->pipMapMode, sos );
 
-	    if  ( io->ioMetafileIsBitmap )
+	    if  ( pip->pipMetafileIsBitmap )
 		{
 		docRtfWriteTag( "\\picbmp", pCol, sos );
 
-		if  ( io->ioMetafileBitmapBpp > 0 )
+		if  ( pip->pipMetafileBitmapBpp > 0 )
 		    {
 		    docRtfWriteArgTag( "\\picbpp",
-					pCol, io->ioMetafileBitmapBpp, sos );
+					pCol, pip->pipMetafileBitmapBpp, sos );
 		    }
 		}
 
-	    docRtfSavePictureTags( io, pCol, sos );
+	    docRtfSavePictureTags( &(io->ioPictureProperties), pCol, sos );
 
 	    docRtfWriteMemoryBuffer( &(io->ioObjectData), pCol, sos );
 	    return 0;
@@ -153,7 +128,7 @@ static int docRtfSaveObject(	SimpleOutputStream *		sos,
 	    docRtfWriteDestinationBegin( "\\pict", pCol, sos );
 	    docRtfWriteTag( "\\macpict", pCol, sos );
 
-	    docRtfSavePictureTags( io, pCol, sos );
+	    docRtfSavePictureTags( &(io->ioPictureProperties), pCol, sos );
 
 	    docRtfWriteMemoryBuffer( &(io->ioObjectData), pCol, sos );
 
@@ -163,7 +138,7 @@ static int docRtfSaveObject(	SimpleOutputStream *		sos,
 	    docRtfWriteDestinationBegin( "\\pict", pCol, sos );
 	    docRtfWriteTag( "\\pngblip", pCol, sos );
 
-	    docRtfSavePictureTags( io, pCol, sos );
+	    docRtfSavePictureTags( &(io->ioPictureProperties), pCol, sos );
 
 	    docRtfWriteMemoryBuffer( &(io->ioObjectData), pCol, sos );
 	    return 0;
@@ -172,7 +147,7 @@ static int docRtfSaveObject(	SimpleOutputStream *		sos,
 	    docRtfWriteDestinationBegin( "\\pict", pCol, sos );
 	    docRtfWriteTag( "\\jpegblip", pCol, sos );
 
-	    docRtfSavePictureTags( io, pCol, sos );
+	    docRtfSavePictureTags( &(io->ioPictureProperties), pCol, sos );
 
 	    docRtfWriteMemoryBuffer( &(io->ioObjectData), pCol, sos );
 	    return 0;
@@ -181,7 +156,7 @@ static int docRtfSaveObject(	SimpleOutputStream *		sos,
 	    docRtfWriteDestinationBegin( "\\pict", pCol, sos );
 	    docRtfWriteTag( "\\emfblip", pCol, sos );
 
-	    docRtfSavePictureTags( io, pCol, sos );
+	    docRtfSavePictureTags( &(io->ioPictureProperties), pCol, sos );
 
 	    docRtfWriteMemoryBuffer( &(io->ioObjectData), pCol, sos );
 	    return 0;
@@ -261,10 +236,16 @@ static int docRtfSaveObject(	SimpleOutputStream *		sos,
 
 	    docRtfWriteArgTag( "\\objw", pCol, io->ioTwipsWide, sos );
 	    docRtfWriteArgTag( "\\objh", pCol, io->ioTwipsHigh, sos );
-	    if  ( io->ioScaleX != 100 )
-		{ docRtfWriteArgTag( "\\objscalex", pCol, io->ioScaleX, sos ); }
-	    if  ( io->ioScaleY != 100 )
-		{ docRtfWriteArgTag( "\\objscaley", pCol, io->ioScaleY, sos ); }
+	    if  ( io->ioScaleXSet != 100 )
+		{
+		docRtfWriteArgTag( "\\objscalex", pCol,
+						    io->ioScaleXSet, sos );
+		}
+	    if  ( io->ioScaleYSet != 100 )
+		{
+		docRtfWriteArgTag( "\\objscaley", pCol,
+						    io->ioScaleYSet, sos );
+		}
 
 	    docRtfWriteDestinationBegin( "\\*\\objdata ", pCol, sos );
 	    docRtfWriteMemoryBuffer( &io->ioObjectData, pCol, sos );
@@ -275,9 +256,9 @@ static int docRtfSaveObject(	SimpleOutputStream *		sos,
 			    "\\result {\\pict", pCol, sos );
 
 		docRtfWriteArgTag( "\\wmetafile",
-					    pCol, io->ioResultMapMode, sos );
+					    pCol, pip->pipMapMode, sos );
 
-		docRtfSavePictureTags( io, pCol, sos );
+		docRtfSavePictureTags( &(io->ioPictureProperties), pCol, sos );
 
 		docRtfWriteMemoryBuffer( &io->ioResultData, pCol, sos );
 
@@ -287,11 +268,16 @@ static int docRtfSaveObject(	SimpleOutputStream *		sos,
 	    docRtfWriteDestinationEnd( pCol, sos );
 	    return 0;
 
-	case DOCokINCLUDEPICTURE:
+	case DOCokEPS_FILE:
+	    return 0;
+
+	case DOCokDRAWING_SHAPE:
+	    LSDEB(io->ioKind,docObjectKindStr(io->ioKind));
 	    return 0;
 
 	default:
-	    LDEB(io->ioKind); return -1;
+	    LSDEB(io->ioKind,docObjectKindStr(io->ioKind));
+	    return -1;
 	}
 
     /*  Not reached ..
@@ -327,12 +313,26 @@ static void docRtfReserveColumns(	SimpleOutputStream *	sos,
 /*									*/
 /************************************************************************/
 
+static int docRtfPopAttribute(		RtfWritingContext *	rwc )
+    {
+    PushedAttribute *	pa;
+
+    pa= rwc->rwcOutsideFldrsltAttribute;
+    if  ( ! pa )
+	{ XDEB(pa); return -1;	}
+
+    rwc->rwcTextAttribute= pa->paTextAttribute;
+    rwc->rwcOutsideFldrsltAttribute= pa->paNext;
+
+    free( pa );
+
+    return 0;
+    }
+
 static void docRtfFinishFldrslt(	SimpleOutputStream *	sos,
 					int *			pCol,
 					RtfWritingContext *	rwc )
     {
-    PushedAttribute *	pa;
-
     docRtfWriteDestinationEnd( pCol, sos );
     docRtfWriteDestinationEnd( pCol, sos );
     docRtfWriteDestinationEnd( pCol, sos );
@@ -340,16 +340,24 @@ static void docRtfFinishFldrslt(	SimpleOutputStream *	sos,
     rwc->rwcHasPrecedingTags= 0;
     rwc->rwcInFldrslt--;
 
-    pa= rwc->rwcOutsideFldrsltAttribute;
-    if  ( ! pa )
-	{ XDEB(pa); return;	}
-
-    rwc->rwcTextAttribute= pa->paTextAttribute;
-    rwc->rwcOutsideFldrsltAttribute= pa->paNext;
-
-    free( pa );
+    if  ( docRtfPopAttribute( rwc ) )
+	{ LDEB(1);	}
 
     return;
+    }
+
+static int docRtfPushAttribute(		RtfWritingContext *	rwc )
+    {
+    PushedAttribute *		pa;
+
+    pa= malloc( sizeof( PushedAttribute ) );
+    if  ( ! pa )
+	{ XDEB(pa); return- 1;	}
+    pa->paNext= rwc->rwcOutsideFldrsltAttribute;
+    rwc->rwcOutsideFldrsltAttribute= pa;
+    pa->paTextAttribute= rwc->rwcTextAttribute;
+
+    return 0;
     }
 
 static void docRtfWriteStartField(	SimpleOutputStream *	sos,
@@ -357,7 +365,6 @@ static void docRtfWriteStartField(	SimpleOutputStream *	sos,
 					int *			pCol,
 					RtfWritingContext *	rwc )
     {
-    PushedAttribute *		pa;
     const unsigned char *	bytes= df->dfInstructions.mbBytes;
     int				byteCount= df->dfInstructions.mbSize;
 
@@ -382,12 +389,8 @@ static void docRtfWriteStartField(	SimpleOutputStream *	sos,
     rwc->rwcHasPrecedingTags= 0;
     rwc->rwcInFldrslt++;
 
-    pa= malloc( sizeof( PushedAttribute ) );
-    if  ( ! pa )
-	{ XDEB(pa); return;	}
-    pa->paNext= rwc->rwcOutsideFldrsltAttribute;
-    rwc->rwcOutsideFldrsltAttribute= pa;
-    pa->paTextAttribute= rwc->rwcTextAttribute;
+    if  ( docRtfPushAttribute( rwc ) )
+	{ LDEB(1);	}
 
     return;
     }
@@ -469,7 +472,7 @@ static int docRtfPushTable(	RtfWritingContext *		rwc,
     PROPmaskCLEAR( &ppChgMask );
 
     PROPmaskCLEAR( &ppUpdMask );
-    PROPmaskFILL( &ppUpdMask, PPprop_COUNT );
+    utilPropMaskFill( &ppUpdMask, PPprop_COUNT );
 
     if  ( docUpdParaProperties( &ppChgMask,
 			    &(rwc->rwcOutsideTableParagraphProperties),
@@ -512,7 +515,7 @@ static int docRtfPopTable(	RtfWritingContext *	rwc,
     PROPmaskCLEAR( &ppChgMask );
 
     PROPmaskCLEAR( &ppUpdMask );
-    PROPmaskFILL( &ppUpdMask, PPprop_COUNT );
+    utilPropMaskFill( &ppUpdMask, PPprop_COUNT );
 
     if  ( docUpdParaProperties( &ppChgMask,
 			    &(rwc->rwcParagraphProperties), &ppUpdMask,
@@ -615,52 +618,54 @@ static void docRtfSwitchTextAttributes(	SimpleOutputStream *	sos,
 	PropertyMask	updMask;
 
 	PROPmaskCLEAR( &chgMask );
-	PROPmaskFILL( &chgMask, TAprop_COUNT );
+	utilPropMaskFill( &chgMask, TAprop_COUNT );
 
 	PROPmaskCLEAR( &updMask );
 
 	utilUpdateTextAttribute( &updMask, &(rwc->rwcTextAttribute),
 							    &ta, &chgMask );
-	if  ( ! PROPmaskISEMPTY( &updMask ) )
+	if  ( ! utilPropMaskIsEmpty( &updMask ) )
 	    {
-	    const DocumentProperties *	dp= &(bd->bdProperties);
-	    const DocumentFontList *	dfl= &(dp->dpFontList);
-	    const DocumentFont *	df;
+	    const DocumentProperties *		dp= &(bd->bdProperties);
+	    const DocumentFontList *		dfl= &(dp->dpFontList);
+	    const DocumentFont *		df;
+	    const OfficeCharsetMapping *	ocm;
 
 	    docRtfSaveTextAttribute( sos, pCol, &updMask, &ta );
 	    rwc->rwcHasPrecedingTags= 1;
 
+	    rwc->rwcTextOutputMapping= rwc->rwcDefaultOutputMapping;
+
 	    df= dfl->dflFonts+ ta.taFontNumber;
+	    ocm= df->dfOfficeCharsetMapping;
 
-	    switch( df->dfCharset )
+	    if  ( ! ocm )
 		{
-		case FONTcharsetANSI:
-		    rwc->rwcTextOutputMapping= rwc->rwcDefaultOutputMapping;
-		    break;
-		case FONTcharsetGREEK:
-		    rwc->rwcTextOutputMapping= docISO7_to_WIN1253;
-		    break;
-		case FONTcharsetTURKISH:
-		    rwc->rwcTextOutputMapping= docISO9_to_WIN1254;
-		    break;
-		case FONTcharsetBALTIC:
-		    rwc->rwcTextOutputMapping= docISO13_to_WIN1257;
-		    break;
-		case FONTcharsetRUSSIAN:
-		    rwc->rwcTextOutputMapping= docISO5_to_WIN1251;
-		    break;
-		case FONTcharsetEE:
-		    rwc->rwcTextOutputMapping= docISO2_to_WIN1250;
-		    break;
-
-		default:
-		    rwc->rwcTextOutputMapping= rwc->rwcDefaultOutputMapping;
+		/* SXDEB(df->dfName,ocm); */
+		rwc->rwcTextOutputMapping= (const unsigned char *)0;
+		}
+	    else{
+		if  ( ocm->ocmFromX11ToOffice )
+		    { rwc->rwcTextOutputMapping= ocm->ocmFromX11ToOffice; }
 		}
 	    }
 	}
 
     return;
     }
+
+/************************************************************************/
+/*									*/
+/*  Save a paragraph to rtf.						*/
+/*									*/
+/*  8)  MS-Word has a tendency to only pick up certain paragraph	*/
+/*	properties, such as the tabs, at the paragraph mark. On the	*/
+/*	other do superfluous paragraph marks result in empty paragraphs.*/
+/*	Try to find a compromise: The \cell or \row count as a paragraph*/
+/*	mark, so no need to save a paragraph mark in a table. This	*/
+/*	construct was necessary to activate tabs in headers and footers.*/
+/*									*/
+/************************************************************************/
 
 static int docRtfSaveParaItem(	SimpleOutputStream *		sos,
 				int *				pCol,
@@ -923,6 +928,14 @@ static int docRtfSaveParaItem(	SimpleOutputStream *		sos,
 		    count= docCountParticulesInField( bi, part,
 						bi->biParaParticuleCount );
 
+		    if  ( count > 0 && tp[1].tpKind == DOCkindTEXT )
+			{
+			docRtfSwitchTextAttributes( sos, pCol, bd, tp+ 1, rwc );
+			}
+		    else{
+			docRtfSwitchTextAttributes( sos, pCol, bd, tp, rwc );
+			}
+
 		    docRtfWriteTag( "\\chftn", pCol, sos );
 		    rwc->rwcHasPrecedingTags= 1;
 
@@ -937,6 +950,9 @@ static int docRtfSaveParaItem(	SimpleOutputStream *		sos,
 		if  ( df->dfKind == DOCfkLISTTEXT	&&
 		      bi->biParaListOverride > 0	)
 		    {
+		    if  ( docRtfPushAttribute( rwc ) )
+			{ LDEB(1);	}
+
 		    docRtfWriteDestinationBegin( "\\listtext", pCol, sos );
 		    rwc->rwcHasPrecedingTags= 1;
 		    }
@@ -945,31 +961,38 @@ static int docRtfSaveParaItem(	SimpleOutputStream *		sos,
 		continue;
 
 	    case DOCkindFIELDEND:
-		df= bd->bdFieldList.dflFields+ tp->tpObjectNumber;
-		fki= DOC_FieldKinds+ df->dfKind;
+		if  ( tp->tpObjectNumber < 0 )
+		    { LDEB(tp->tpObjectNumber); }
+		else{
+		    df= bd->bdFieldList.dflFields+ tp->tpObjectNumber;
+		    fki= DOC_FieldKinds+ df->dfKind;
 
-		if  ( df->dfKind == DOCfkBOOKMARK	&&
-		      rwc->rwcSaveBookmarks		)
-		    {
-		    docRtfFinishBookmark( sos, df, pCol, rwc );
-		    rwc->rwcHasPrecedingTags= 0;
-		    }
+		    if  ( df->dfKind == DOCfkBOOKMARK	&&
+			  rwc->rwcSaveBookmarks		)
+			{
+			docRtfFinishBookmark( sos, df, pCol, rwc );
+			rwc->rwcHasPrecedingTags= 0;
+			}
 
-		if  ( fki->fkiIsFieldInRtf		&&
-		      fki->fkiLevel == DOClevTEXT	)
-		    {
-		    if  ( rwc->rwcInFldrslt )
-			{ docRtfFinishFldrslt( sos, pCol, rwc );	}
-		    }
+		    if  ( fki->fkiIsFieldInRtf		&&
+			  fki->fkiLevel == DOClevTEXT	)
+			{
+			if  ( rwc->rwcInFldrslt )
+			    { docRtfFinishFldrslt( sos, pCol, rwc );	}
+			}
 
-		if  ( df->dfKind == DOCfkCHFTN )
-		    { /* nothing */	}
+		    if  ( df->dfKind == DOCfkCHFTN )
+			{ /* nothing */	}
 
-		if  ( df->dfKind == DOCfkLISTTEXT	&&
-		      bi->biParaListOverride > 0	)
-		    {
-		    docRtfWriteDestinationEnd( pCol, sos );
-		    rwc->rwcHasPrecedingTags= 0;
+		    if  ( df->dfKind == DOCfkLISTTEXT	&&
+			  bi->biParaListOverride > 0	)
+			{
+			docRtfWriteDestinationEnd( pCol, sos );
+			rwc->rwcHasPrecedingTags= 0;
+
+			if  ( docRtfPopAttribute( rwc ) )
+			    { LDEB(1);	}
+			}
 		    }
 
 		s += tp->tpStrlen; stroff += tp->tpStrlen; /* += 0 */
@@ -1045,9 +1068,10 @@ static int docRtfSaveParaItem(	SimpleOutputStream *		sos,
 	while( rwc->rwcInFldrslt > 0 )
 	    { docRtfFinishFldrslt( sos, pCol, rwc ); }
 
+	/*  8  */
 	if  ( ( ! bi->biParaInTable				&&
 	        bi->biInExternalItem == DOCinBODY		)	||
-	      tabsSaved							||
+	      ( tabsSaved && ! bi->biParaInTable )			||
 	      bi->biNumberInParent < bi->biParent->biChildCount- 1	)
 	    {
 	    docRtfWriteTag( "\\par", pCol, sos );
@@ -1059,7 +1083,7 @@ static int docRtfSaveParaItem(	SimpleOutputStream *		sos,
     PROPmaskCLEAR( &ppChgMask );
 
     PROPmaskCLEAR( &ppUpdMask );
-    PROPmaskFILL( &ppUpdMask, PPprop_COUNT );
+    utilPropMaskFill( &ppUpdMask, PPprop_COUNT );
 
     if  ( docUpdParaProperties( &ppChgMask, &(rwc->rwcParagraphProperties),
 			&ppUpdMask, &(bi->biParaProperties),
@@ -1155,15 +1179,15 @@ static int docSaveSectionProperties(	SimpleOutputStream *		sos,
     docInitSectionProperties( &spDef );
 
     PROPmaskCLEAR( &updMask );
-    PROPmaskFILL( &updMask, DGprop_COUNT );
+    utilPropMaskFill( &updMask, DGprop_COUNT );
     PROPmaskUNSET( &updMask, DGpropHEADER_POSITION );
     PROPmaskUNSET( &updMask, DGpropFOOTER_POSITION );
 
-    appSetDocumentGeometry( &(spDef.spDocumentGeometry),
+    utilUpdDocumentGeometry( &(spDef.spDocumentGeometry),
 				    &(dp->dpGeometry), &updMask, &updMask );
 
     PROPmaskCLEAR( &updMask );
-    PROPmaskFILL( &updMask, SPprop_COUNT );
+    utilPropMaskFill( &updMask, SPprop_COUNT );
 
     docSectPropertyDifference( &updMask, &spDef, sp, &updMask );
 

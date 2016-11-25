@@ -39,12 +39,36 @@ void docLayoutPlaceSectTop(		BufferItem *		sectBi,
 	    {
 	    lj->ljPosition.lpPage= 0;
 	    lj->ljPosition.lpColumn= 0;
+	    lj->ljPosition.lpAtTopOfColumn= 1;
 
 	    docLayoutSectColumnTop( sectBi, lj->ljBd, &(lj->ljPosition), bf );
 	    }
 	else{
+	    const int		belowText= 0;
+	    LayoutPosition	lpBelowNotes;
+
+#	    if 0
+	    /*
+	    Though this would place the section at the correct position, 
+	    giving the initial position is the responsibility of the caller. 
+	    The same applies for the then branch. As I did not want to 
+	    retest that branch, I have not changed it. (MdD Oct 2004)
+	    */
+
+	    const BufferItem *	docBi;
+	    const BufferItem *	prevSectBi;
+
+	    docBi= sectBi->biParent;
+	    prevSectBi= docBi->biChildren[sectBi->biNumberInParent- 1];
+
+	    lj->ljPosition.lpPage= prevSectBi->biBelowPosition.lpPage;
+	    lj->ljPosition.lpColumn= 0;
+	    lj->ljPosition.lpAtTopOfColumn= 0;
+#	    endif
+
 	    if  ( BF_HAS_FOOTNOTES( bf )				&&
-		  docLayoutFootnotesForColumn( bf, &(lj->ljPosition), lj ) )
+		  docLayoutFootnotesForColumn( &lpBelowNotes, bf,
+				  belowText, &(lj->ljPosition), lj )	)
 		{ LDEB(1); return;	}
 
 	    docLayoutToNextColumn( sectBi, lj->ljBd, &(lj->ljPosition), bf );
@@ -123,6 +147,9 @@ int docLayoutSectItem(			BufferItem *		sectBi,
 	if  ( docLayoutItemImplementation( sectBi->biChildren[i], bf, lj ) )
 	    { LDEB(i); return -1;	}
 	}
+
+    if  ( sectBi->biChildCount > 0 )
+	{ sectBi->biTopPosition=  sectBi->biChildren[0]->biTopPosition; }
 
     /**/
 

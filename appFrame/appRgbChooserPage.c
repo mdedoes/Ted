@@ -532,15 +532,24 @@ void appRgbChooserPageGetResourceTable(	EditApplication *		ea,
 					RgbChooserPageResources *	rcpr,
 					InspectorSubjectResources *	isr )
     {
-    appGuiGetResourceValues( ea, (void *)rcpr,
+    static int	gotToolResources;
+    static int	gotSubjectResources;
+
+    if  ( ! gotToolResources )
+	{
+	appGuiGetResourceValues( &gotToolResources, ea, (void *)rcpr,
 				APP_RGBToolResourceTable,
 				sizeof(APP_RGBToolResourceTable)/
 				sizeof(AppConfigurableResource) );
+	}
 
-    appGuiGetResourceValues( ea, (void *)isr,
+    if  ( ! gotSubjectResources )
+	{
+	appGuiGetResourceValues( &gotSubjectResources, ea, (void *)isr,
 				APP_RGBSubjectResourceTable,
 				sizeof(APP_RGBSubjectResourceTable)/
 				sizeof(AppConfigurableResource) );
+	}
 
     return;
     }

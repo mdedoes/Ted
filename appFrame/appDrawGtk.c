@@ -87,7 +87,7 @@ void appCollectExposures(	DocumentRectangle *	drClip,
 			drMore.drY1- drMore.drY0+ 1 );
 #	endif
 
-	docUnionRectangle( drClip, drClip, &drMore );
+	geoUnionRectangle( drClip, drClip, &drMore );
 
 #	if LOG_EXPOSES
 	appDebug( "......: [%4d+%4d]x[%4d+%4d]\n",
@@ -473,21 +473,22 @@ extern void appDrawSetClipRect(	AppDrawingData *		add,
     }
 
 void appDrawFillPolygon(		AppDrawingData *	add,
-					APP_POINT *		points,
+					const APP_POINT *	points,
 					int			count )
     {
-    gdk_draw_polygon( add->addDrawable, add->addGc, TRUE, points, count );
+    gdk_draw_polygon( add->addDrawable, add->addGc, TRUE,
+						(APP_POINT *)points, count );
     }
 
 void appDrawDrawLines(			AppDrawingData *	add,
-					APP_POINT *		points,
+					const APP_POINT *	points,
 					int			count )
     {
     int		i;
 
     /*
     XDrawLines( add->addDisplay, add->addDrawable, add->addGc,
-					points, count, CoordModeOrigin );
+				(APP_POINT *)points, count, CoordModeOrigin );
     */
 
     count--;
@@ -548,9 +549,20 @@ APP_BITMAP_IMAGE appMakePixmap(	AppDrawingData *	add,
 				int			wide,
 				int			high )
     {
-    int		depth= gdk_visual_get_system()->depth;
+    int			depth= gdk_visual_get_system()->depth;
+    APP_BITMAP_IMAGE	rval;
+    APP_COLOR_RGB	xc;
 
-    return gdk_pixmap_new( add->addDrawable, wide, high, depth );
+    rval= gdk_pixmap_new( add->addDrawable, wide, high, depth );
+
+    if  ( ! rval || ! gdk_color_white( add->addColorMap, &xc ) )
+	{ XDEB(rval);	}
+    else{
+	gdk_gc_set_foreground( add->addGc, &xc );
+	gdk_draw_rectangle( rval, add->addGc, TRUE, 0, 0, wide, high );
+	}
+
+    return rval;
     }
 
 void appDrawDrawSegments(	AppDrawingData *	add,
@@ -592,6 +604,64 @@ void appDrawFillArc(		AppDrawingData *	add,
     {
     gdk_draw_arc( add->addDrawable, add->addGc, TRUE,
 					x, y, wide, high, alpha0, alpha_step );
+    }
+
+void appDrawDrawArcs(		AppDrawingData *	add,
+				const XArc *		arcs,
+				int			count )
+    {
+    int		i;
+
+    for ( i= 0; i < count; arcs++, i++ )
+	{
+	gdk_draw_arc( add->addDrawable, add->addGc, FALSE,
+					    arcs->x, arcs->y,
+					    arcs->width, arcs->height,
+					    arcs->angle1, arcs->angle2 );
+	}
+
+    return;
+    }
+
+void appDrawFillArcs(		AppDrawingData *	add,
+				const XArc *		arcs,
+				int			count )
+    {
+    int		i;
+
+    for ( i= 0; i < count; arcs++, i++ )
+	{
+	gdk_draw_arc( add->addDrawable, add->addGc, TRUE,
+					    arcs->x, arcs->y,
+					    arcs->width, arcs->height,
+					    arcs->angle1, arcs->angle2 );
+	}
+
+    return;
+    }
+
+int appDrawSetLineAttributes(	AppDrawingData *	add,
+				int			lineWidth,
+				int			lineStyle,
+				int			capStyle,
+				int			joinStyle,
+				const unsigned char *	dashList,
+				int			dashCount )
+    {
+    gdk_gc_set_line_attributes( add->addGc,
+				lineWidth, lineStyle, capStyle, joinStyle );
+
+    if  ( lineStyle != LINEstyleSOLID )
+	{
+	if  ( ! dashList || dashCount == 0 )
+	    { XLDEB(dashList,dashCount);	}
+	else{
+	    gdk_gc_set_dashes( add->addGc, 0,
+				    (unsigned char *)dashList, dashCount );
+	    }
+	}
+
+    return 0;
     }
 
 #   endif

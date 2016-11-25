@@ -77,10 +77,14 @@ typedef struct AfmFontInfo
     char *		afiCharacterSet;
     char *		afiVendor;
 
+    char *		afiFontFileName;
+
     int			afiMetricCount;
     AfmCharMetric *	afiMetrics;
 
+    int			afiUseFontspecificEncoding;
     SupportedCharset	afiSupportedCharsets[ENCODINGps_COUNT];
+    short int		afiDefaultCodeToGlyph[256];
     } AfmFontInfo;
 
 /************************************************************************/
@@ -136,24 +140,41 @@ typedef struct AppFontTypeface
     char *			aftFaceName;
     unsigned int		aftIsBold:1;
     unsigned int		aftIsSlanted:1;
-    unsigned int		aftIsFixedWidth:1;
-    void *			aftPrintingData;
-    int				aftWidth;
-    int				aftWeight;
-    int				aftDefaultEncoding;
+    AfmFontInfo *		aftFontInfo;
+    unsigned char		aftWidth;
+    unsigned char		aftWeight;
+    short int			aftDefaultEncoding;
+    char *			aftFontSpecificQueryFormat;
     char *			aftXQueryFormats[ENCODINGps_COUNT];
     } AppFontTypeface;
 
+/************************************************************************/
+/*									*/
+/*  A family of PostScript fonts as harvested from AFM files.		*/
+/*									*/
+/*  1)  The name of the family.						*/
+/*  2)  The URW++ fonts that are similar to the Adobe base 35 fonts are	*/
+/*	mapped to the Adobe fonts. If this is done, affFontFamilyName	*/
+/*	set to the Adobe base 35 name, affFontFamilyName_Orig is the	*/
+/*	name of the font that comes from the afm file.			*/
+/*  3)  A list of faces (Bold, Italic &c) that belong to this family.	*/
+/*  4)  Possibly conflicting statements about the fixed/variable width	*/
+/*	of the fonts in the family: If the AFM files are strange, both	*/
+/*	can be set.							*/
+/*									*/
+/************************************************************************/
+
 typedef struct AppFontFamily
     {
-    char *			affFontFamilyName;
-    char *			affFontFamilyName_Orig;
-    AppFontTypeface *		affFaces;
-    int				affFaceCount;
-    unsigned char		affHasFixedWidth;
-    unsigned char		affHasProportionalWidth;
+    char *			affFontFamilyName;		/*  1	*/
+    char *			affFontFamilyName_Orig;		/*  2	*/
+    AppFontTypeface *		affFaces;			/*  3	*/
+    short int			affFaceCount;
+    unsigned char		affHasFixedWidth;		/*  4	*/
+    unsigned char		affHasProportionalWidth;	/*  4	*/
+    unsigned char		affUseFontspecificEncoding;
     short int			affDefaultEncoding;
-    short int			affWidth;
+    unsigned char		affWidth;
     SupportedCharset		affSupportedCharsets[ENCODINGps_COUNT];
     } AppFontFamily;
 
@@ -184,7 +205,8 @@ extern int psCalculateStringExtents(	AfmBBox *		abb,
 extern int psFontCatalog(	PostScriptFontList *	psfl,
 				const char *		afmDirectory );
 
-extern int psGetFontEncodings(	AfmFontInfo *	afi );
+extern int psGetFontEncodings(		AfmFontInfo *		afi,
+					int			complain );
 
 extern void utilFontFaceDistance(	int *			pDifCount,
 					double *		pDistance,
@@ -205,15 +227,30 @@ extern void psWriteFontInfoDict(	SimpleOutputStream *	sos,
 					const AfmFontInfo *	afi );
 
 extern int psTtfToPf42(		SimpleOutputStream *	sosPf42,
+				const char *		fontFileName,
 				SimpleInputStream *	sisTtf );
 
 extern int psTtfToPt1(		SimpleOutputStream *	sosPt1,
+				const char *		fontFileName,
 				SimpleInputStream *	sisTtf );
 
 extern int psTtfToAfm(		SimpleOutputStream *	sosAfm,
+				const char *		fontFileName,
 				SimpleInputStream *	sisTtf );
+
+extern int psAfmToXFontsDir(	SimpleOutputStream *	sosFontDir,
+				const char *		afmFileName,
+				SimpleInputStream *	sisAfm );
+
+extern int psAfmToGSFontmap(	SimpleOutputStream *	sosFontDir,
+				const char *		afmFileName,
+				SimpleInputStream *	sisAfm );
 
 extern int psFindAlternate(	const AfmFontInfo *	afi,
 				const char *		glyphName );
 
+extern int psAfmReadAfm(	SimpleInputStream *	sisAfm,
+				AfmFontInfo *		afi );
+
+extern void psInitSupportedCharset(	SupportedCharset *	sc );
 #   endif

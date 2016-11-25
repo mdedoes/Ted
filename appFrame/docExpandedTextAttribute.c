@@ -552,7 +552,7 @@ int docExpandedAttributeFromString(
     else{
 	const char *	familyName= s;
 	char *		tmp;
-	const int	encoding= -1;
+	const int	charset= FONTcharsetDEFAULT;
 	int		fontNumber;
 
 	familyName= s;
@@ -567,13 +567,9 @@ int docExpandedAttributeFromString(
 	strncpy( tmp, familyName, s- familyName )[s- familyName]= '\0';
 
 
-	fontNumber= docGetFontByName( dfl, tmp, encoding );
+	fontNumber= docGetFontByNameAndCharset( dfl, tmp, charset );
 	if  ( fontNumber < 0 )
-	    {
-	    SLLDEB(tmp,encoding,fontNumber);
-	    free( tmp );
-	    return -1;
-	    }
+	    { SLLDEB(tmp,charset,fontNumber); free( tmp ); return -1; }
 
 	free( tmp );
 

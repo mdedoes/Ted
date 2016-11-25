@@ -18,6 +18,8 @@
 
 #   include	<appDebugon.h>
 
+#   define	SHOW_NOTE_LAYOUT	0
+
 /************************************************************************/
 /*									*/
 /*  Commit the space allocated for footnotes and the footnote separator	*/
@@ -100,6 +102,9 @@ int docLayoutCollectParaFootnoteHeight(	NotesReservation *	nrTotal,
 
     docInitNotesReservation( &nrLocal );
 
+    if  ( partUpto > paraBi->biParaParticuleCount )
+	{ LLDEB(partUpto,paraBi->biParaParticuleCount); return -1;	}
+
     tp= paraBi->biParaParticules+ partFrom;
     for ( part= partFrom; part < partUpto; tp++, part++ )
 	{
@@ -112,7 +117,10 @@ int docLayoutCollectParaFootnoteHeight(	NotesReservation *	nrTotal,
 
 	noteIndex= docGetNote( &dn, bd, paraBi, tp->tpStroff );
 	if  ( noteIndex < 0 )
-	    { LLLDEB(part,tp->tpStroff,noteIndex); return -1;	}
+	    {
+	    int	paraNr= docNumberOfParagraph( paraBi );
+	    LLLDEB(paraNr,tp->tpStroff,noteIndex); return -1;
+	    }
 
 	dn->dnReferringPage= referringPage;
 	dn->dnReferringColumn= referringColumn;
@@ -124,21 +132,24 @@ int docLayoutCollectParaFootnoteHeight(	NotesReservation *	nrTotal,
 						    bd, dn, noteIndex ) )
 	    { LDEB(noteIndex); return -1;	}
 
-	/*
+#	if SHOW_NOTE_LAYOUT
 	appDebug( "PAGE %3d FOOTNOTE      --%5d note %d (Reserve)\n",
 					    referringPage,
 					    high, noteIndex );
-	*/
+#	endif
 	}
 
     docLayoutCommitNotesReservation( nrTotal, &nrLocal );
 
-    /*
-    appDebug( "PAGE %3d FOOTNOTES     --%5d %d notes\n",
+#   if SHOW_NOTE_LAYOUT
+    if  ( nrTotal->nrFootnoteCount > 0 )
+	{
+	appDebug( "PAGE %3d FOOTNOTES     --%5d %d notes\n",
 					    referringPage,
 					    nrTotal->nrFootnoteHeight,
 					    nrTotal->nrFootnoteCount );
-    */
+	}
+#   endif
 
     return 0;
     }
@@ -215,10 +226,11 @@ int docCollectFootnotesForColumn(
     NotesReservation		nr;
 
     int				partPageTop;
+    int				linePageTop;
 
     docInitNotesReservation( &nr );
 
-    if  ( docGetTopOfColumn( &dpPageTop, &partPageTop, bd,
+    if  ( docGetTopOfColumn( &dpPageTop, &linePageTop, &partPageTop, bd,
 					refLj->ljPosition.lpPage,
 					refLj->ljPosition.lpColumn ) )
 	{ LDEB(refLj->ljPosition.lpPage); return -1; }
@@ -253,7 +265,9 @@ int docCollectFootnotesForColumn(
 /*									*/
 /************************************************************************/
 
-int docLayoutFootnotesForColumn(	const BlockFrame *	refBf,
+int docLayoutFootnotesForColumn(	LayoutPosition *	lpBelowNotes,
+					const BlockFrame *	refBf,
+					int			belowText,
 					const LayoutPosition *	lpBelowText,
 					const LayoutJob *	refLj )
     {
@@ -272,6 +286,9 @@ int docLayoutFootnotesForColumn(	const BlockFrame *	refBf,
 
     int				sepHigh= 0;
 
+    if  ( refBf->bfFootnotesPlaced )
+	{ LDEB(refBf->bfFootnotesPlaced); return 0;	}
+
     /*  2  */
     eiNoteSep= docDocumentNoteSeparator( bd, DOCinFTNSEP );
     if  ( ! eiNoteSep )
@@ -288,7 +305,7 @@ int docLayoutFootnotesForColumn(	const BlockFrame *	refBf,
     notesLj.ljPosition.lpAtTopOfColumn= 1; /* not really */
 
     /*  4  */
-    if  ( npFootnotes->npPosition == FTN_POS_PAGE_BOTTOM )
+    if  ( ! belowText && npFootnotes->npPosition == FTN_POS_PAGE_BOTTOM )
 	{
 	int		high= sepHigh;
 
@@ -342,21 +359,31 @@ int docLayoutFootnotesForColumn(	const BlockFrame *	refBf,
 	if  ( ! ei->eiItem )
 	    { XDEB(ei->eiItem); continue;	}
 
-	if  ( docLayoutItemAndParents( ei->eiItem, &notesLj ) )
-	    { LDEB(1); return -1;	}
+	if  ( ei->eiPageFormattedFor != lpBelowText->lpPage	||
+	      ei->eiY0UsedTwips != y0Twips			)
+	    {
+	    if  ( docLayoutItemAndParents( ei->eiItem, &notesLj ) )
+		{ LDEB(1); return -1;	}
 
-	ei->eiPageFormattedFor= lpBelowText->lpPage;
-	ei->eiY0UsedTwips= y0Twips;
-	ei->eiY1UsedTwips= notesLj.ljPosition.lpPageYTwips;
+	    ei->eiPageFormattedFor= lpBelowText->lpPage;
+	    ei->eiY0UsedTwips= y0Twips;
+	    ei->eiY1UsedTwips= notesLj.ljPosition.lpPageYTwips;
+	    }
+	else{
+	    notesLj.ljPosition.lpPageYTwips= ei->eiY1UsedTwips;
+	    }
 
 	notesDone++;
 
-	/*
+#	if SHOW_NOTE_LAYOUT
 	appDebug( "PAGE %3d NOTE          --%5d note %d (Layout)\n",
 			    lpBelowText->lpPage,
 			    ei->eiY1UsedTwips- ei->eiY0UsedTwips, noteIndex );
-	*/
+#       endif
 	}
+
+    *lpBelowNotes= notesLj.ljPosition;
+    lpBelowNotes->lpAtTopOfColumn= lpBelowText->lpAtTopOfColumn;
 
     return 0;
     }
@@ -367,6 +394,8 @@ int docLayoutFootnotesForColumn(	const BlockFrame *	refBf,
 /*									*/
 /*  1)  Are there any?							*/
 /*  2)  Get separator.							*/
+/*  2a) If there are footnotes on the same page, the footnotes come	*/
+/*	first.								*/
 /*  3)  Layout of separator.						*/
 /*  4)  Layout of the endnotes of this section.				*/
 /*  7)  Force the footnote separator to be reformatted later on.	*/
@@ -403,6 +432,18 @@ int docLayoutEndnotesForSection(	int			sect,
 	{ LXDEB(DOCinAFTNSEP,eiNoteSep); return -1;	}
     if  ( ! eiNoteSep->eiItem )
 	{ LXDEB(DOCinAFTNSEP,eiNoteSep->eiItem);	}
+
+    /*  2a  */
+    if  ( BF_HAS_FOOTNOTES( bf ) )
+	{
+	const int	belowText= 1;
+
+	if  ( docLayoutFootnotesForColumn( &(lj->ljPosition), bf,
+					belowText, &(lj->ljPosition), lj ) )
+	    { LDEB(1); return -1;	}
+
+	bf->bfFootnotesPlaced= 1;
+	}
 
     for ( attempt= 0; attempt < 2; attempt++ )
 	{
@@ -491,7 +532,6 @@ int docNoteSeparatorRectangle(	DocumentRectangle *	drExtern,
     {
     const ExternalItem *	eiFirstNote= &(dnFirstNote->dnExternalItem);
     ExternalItem *		eiNoteSep;
-    double			xfac= add->addMagnifiedPixelsPerTwip;
 
     int				page;
     int				pageY0;
@@ -516,8 +556,8 @@ int docNoteSeparatorRectangle(	DocumentRectangle *	drExtern,
     drExtern->drX1= add->addBackRect.drX1;
 
     pageY0= page* add->addPageStepPixels;
-    drExtern->drY0= pageY0+ TWIPStoPIXELS( xfac, y0Twips );
-    drExtern->drY1= pageY0+ TWIPStoPIXELS( xfac, y1Twips );
+    drExtern->drY0= pageY0+ Y_PIXELS( add, y0Twips );
+    drExtern->drY1= pageY0+ Y_PIXELS( add, y1Twips );
 
     *pEiNoteSep= eiNoteSep;
     *pY0Twips= y0Twips;
@@ -543,13 +583,21 @@ void docLayoutReserveNoteHeight(	ParagraphFrame *		pf,
     footnoteHeight= nrBf->nrFtnsepHeight+ nrBf->nrFootnoteHeight;
 
     if  ( pf->pfPageY1Twips > bf->bfY1Twips- footnoteHeight )
-	{ pf->pfPageY1Twips=  bf->bfY1Twips- footnoteHeight;	}
+	{
+	pf->pfPageY1Twips=  bf->bfY1Twips- footnoteHeight;
 
-    /*
-    appDebug( "         NOTES         ,,%5d %d notes\n",
+	if  ( pf->pfFrameY1Twips > pf->pfPageY1Twips )
+	    { pf->pfFrameY1Twips=  pf->pfPageY1Twips;	}
+	}
+
+#   if SHOW_NOTE_LAYOUT
+    if  ( nrBf->nrFootnoteCount > 0 )
+	{
+	appDebug( "         NOTES         ,,%5d %d notes\n",
 						    footnoteHeight,
-						    nrBf->nrNotesReserved );
-    */
+						    nrBf->nrFootnoteCount );
+	}
+#   endif
 
     return;
     }

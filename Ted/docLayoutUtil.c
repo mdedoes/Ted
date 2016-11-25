@@ -29,7 +29,7 @@
 /*									*/
 /************************************************************************/
 
-#   define LINEDISTFAC	6
+#   define LINEDISTFAC	7
 
 /************************************************************************/
 /*									*/
@@ -72,8 +72,11 @@ void docLayoutInitBlockFrame(	BlockFrame *	bf )
     bf->bfY0Twips= 0;
     bf->bfY1Twips= 0;
 
+    bf->bfYBelowShapes= 0;
+
     bf->bfColumnWidthTwips= 0;
 
+    bf->bfFootnotesPlaced= 0;
     docInitNotesReservation( &(bf->bfNotesReservation) );
     }
 
@@ -133,7 +136,7 @@ void docLayoutToNextColumn(	BufferItem *		bi,
 void docLayoutAddBorderToInset(	int *				pInset,
 				const BorderProperties *	bp )
     {
-    if  ( bp->bpStyle == DOCbsNONE )
+    if  ( ! DOCisBORDER( bp ) )
 	{ return;	}
 
     (*pInset) += bp->bpSpacingTwips;
@@ -167,36 +170,64 @@ static void docLayoutCalculateParaTopInset(	BufferItem *	paraBi )
     {
     int				topInset= 0;
     const BorderProperties *	bp= (const BorderProperties *)0;
+    const BufferItem *		cellBi= paraBi->biParent;
     const BufferItem *		prevBi= (const BufferItem *)0;
 
+    int				cellMargin= 0;
+
     if  ( paraBi->biNumberInParent > 0 )
-	{ prevBi= paraBi->biParent->biChildren[paraBi->biNumberInParent- 1]; }
+	{ prevBi= cellBi->biChildren[paraBi->biNumberInParent- 1]; }
 
     topInset= paraBi->biParaSpaceBeforeTwips;
 
-    if  ( paraBi->biParaTopBorder.bpStyle != DOCbsNONE )
+    if  ( paraBi->biParaInTable			&&
+	  paraBi->biNumberInParent == 0		)
+	{
+	const BufferItem *	rowBi= cellBi->biParent;
+
+	const RowProperties *	rp= &(rowBi->biRowProperties);
+	const CellProperties *	cp= rp->rpCells+ cellBi->biNumberInParent;
+
+	switch( rp->rpTopCellPaddingUnit )
+	    {
+	    case TRautoNONE:
+		break;
+
+	    case TRautoTWIPS:
+		cellMargin= rp->rpTopCellPadding;
+		break;
+
+	    default:
+		LDEB(rp->rpTopCellPaddingUnit);
+		break;
+	    }
+
+	switch( cp->cpTopPaddingUnit )
+	    {
+	    case TRautoNONE:
+		break;
+
+	    case TRautoTWIPS:
+		cellMargin= cp->cpTopPadding;
+		break;
+
+	    default:
+		LDEB(cp->cpTopPaddingUnit);
+		break;
+	    }
+	}
+
+    if  ( DOCisBORDER( &(paraBi->biParaTopBorder) ) )
 	{
 	if  ( ! prevBi						||
-	      prevBi->biParaTopBorder.bpStyle == DOCbsNONE	)
+	      ! DOCisBORDER( &(prevBi->biParaBottomBorder) )	)
 	    {
 	    docLayoutAddBorderToInset( &topInset, &(paraBi->biParaTopBorder) );
 	    bp= &(paraBi->biParaTopBorder);
 	    }
 	}
-    else{
-	if  ( paraBi->biParaBoxBorder.bpStyle != DOCbsNONE )
-	    {
-	    if  ( ! prevBi					||
-		  prevBi->biParaBoxBorder.bpStyle == DOCbsNONE	)
-		{
-		docLayoutAddBorderToInset( &topInset,
-						&(paraBi->biParaBoxBorder) );
-		bp= &(paraBi->biParaBoxBorder);
-		}
-	    }
-	}
 
-    paraBi->biTopInsetTwips= topInset;
+    paraBi->biTopInsetTwips= cellMargin+ topInset;
     paraBi->biParaBorderAboveParagraph= bp;
 
     return;
@@ -219,37 +250,65 @@ static void docLayoutCalculateParaBottomInset(	BufferItem *	paraBi )
     {
     int				bottomInset= 0;
     const BorderProperties *	bp= (const BorderProperties *)0;
+    const BufferItem *		cellBi= paraBi->biParent;
     const BufferItem *		nextBi= (const BufferItem *)0;
 
-    if  ( paraBi->biNumberInParent < paraBi->biParent->biChildCount- 1 )
-	{ nextBi= paraBi->biParent->biChildren[paraBi->biNumberInParent+ 1]; }
+    int				cellMargin= 0;
 
-    if  ( paraBi->biParaBottomBorder.bpStyle != DOCbsNONE )
+    if  ( paraBi->biNumberInParent < paraBi->biParent->biChildCount- 1 )
+	{ nextBi= cellBi->biChildren[paraBi->biNumberInParent+ 1]; }
+
+    if  ( paraBi->biParaInTable					&&
+	  paraBi->biNumberInParent == cellBi->biChildCount- 1	)
+	{
+	const BufferItem *	rowBi= cellBi->biParent;
+
+	const RowProperties *	rp= &(rowBi->biRowProperties);
+	const CellProperties *	cp= rp->rpCells+ cellBi->biNumberInParent;
+
+	switch( rp->rpBottomCellPaddingUnit )
+	    {
+	    case TRautoNONE:
+		break;
+
+	    case TRautoTWIPS:
+		cellMargin= rp->rpBottomCellPadding;
+		break;
+
+	    default:
+		LDEB(rp->rpBottomCellPaddingUnit);
+		break;
+	    }
+
+	switch( cp->cpBottomPaddingUnit )
+	    {
+	    case TRautoNONE:
+		break;
+
+	    case TRautoTWIPS:
+		cellMargin= cp->cpBottomPadding;
+		break;
+
+	    default:
+		LDEB(cp->cpTopPaddingUnit);
+		break;
+	    }
+	}
+
+    if  ( DOCisBORDER( &(paraBi->biParaBottomBorder) ) )
 	{
 	if  ( ! nextBi						||
-	      nextBi->biParaBottomBorder.bpStyle == DOCbsNONE	)
+	      ! DOCisBORDER( &(nextBi->biParaTopBorder) )	)
 	    {
 	    docParaSpaceForBottomBorder( &bottomInset,
 				    &(paraBi->biParaBottomBorder), paraBi );
 	    bp= &(paraBi->biParaBottomBorder);
 	    }
 	}
-    else{
-	if  ( paraBi->biParaBoxBorder.bpStyle != DOCbsNONE )
-	    {
-	    if  ( ! nextBi					||
-		  nextBi->biParaBoxBorder.bpStyle == DOCbsNONE	)
-		{
-		docParaSpaceForBottomBorder( &bottomInset,
-					&(paraBi->biParaBoxBorder), paraBi );
-		bp= &(paraBi->biParaBoxBorder);
-		}
-	    }
-	}
 
     bottomInset += paraBi->biParaSpaceAfterTwips;
 
-    paraBi->biBottomInsetTwips= bottomInset;
+    paraBi->biBottomInsetTwips= bottomInset+ cellMargin;
     paraBi->biParaBorderBelowParagraph= bp;
 
     return;
@@ -470,6 +529,8 @@ void docBlockFrameTwips(	BlockFrame *		bf,
 
     switch( bi->biInExternalItem )
 	{
+	int		isEmpty;
+
 	case DOCinBODY:
 
 	case DOCinFOOTNOTE:
@@ -482,19 +543,26 @@ void docBlockFrameTwips(	BlockFrame *		bf,
 	case DOCinAFTNSEPC:
 	case DOCinAFTNCN:
 
-	    inHeaderFooter= docWhatPageHeader( &ei, bi, page, dp );
+	    inHeaderFooter= docWhatPageHeader( &ei, &isEmpty, bi, page, dp );
 
 	    /*  1 Reserved!!  */
 	    if  ( ei && ei->eiItem )
 		{ bf->bfY0Twips= ei->eiY1ReservedTwips;		}
 	    else{ bf->bfY0Twips= dg->dgTopMarginTwips;		}
 
-	    inHeaderFooter= docWhatPageFooter( &ei, bi, page, dp );
+	    bf->bfYBelowShapes= bf->bfY0Twips;
+
+	    inHeaderFooter= docWhatPageFooter( &ei, &isEmpty, bi, page, dp );
 
 	    /*  2 Reserved!!  */
 	    if  ( ei && ei->eiItem )
-		{ bf->bfY1Twips= ei->eiY0ReservedTwips; }
-	    else{ bf->bfY1Twips= dg->dgPageHighTwips- dg->dgBottomMarginTwips; }
+		{
+		bf->bfY1Twips= ei->eiY0ReservedTwips;
+		}
+	    else{
+		bf->bfY1Twips=
+			    dg->dgPageHighTwips- dg->dgBottomMarginTwips;
+		}
 
 	    /*
 	    appDebug( "PAGE %3d BLOCK Y: %5d..%5d %s\n",
@@ -521,6 +589,13 @@ void docBlockFrameTwips(	BlockFrame *		bf,
 	    ei= docSectionHeaderFooter( sectBi, bi->biInExternalItem );
 	    bf->bfY0Twips= ei->eiY0ReservedTwips;
 	    bf->bfY1Twips= ei->eiY1ReservedTwips;
+	    bf->bfYBelowShapes= bf->bfY0Twips;
+	    break;
+
+	case DOCinSHPTXT:
+	    bf->bfY0Twips= dg->dgTopMarginTwips;
+	    bf->bfY1Twips= dg->dgPageHighTwips- dg->dgBottomMarginTwips;
+	    bf->bfYBelowShapes= bf->bfY0Twips;
 	    break;
 
 	default:
@@ -534,12 +609,20 @@ void docParagraphFrameTwips(	ParagraphFrame *	pf,
 				const BlockFrame *	bf,
 				int			bottom,
 				int			stripHigh,
-				BufferItem *		paraBi )
+				const BufferItem *	paraBi )
     {
     const NotesReservation *	nrBf= &(bf->bfNotesReservation);
     int				footnoteHeight;
 
     footnoteHeight= nrBf->nrFtnsepHeight+ nrBf->nrFootnoteHeight;
+
+    pf->pfBlockX0Twips= bf->bfX0Twips;
+    pf->pfBlockX1Twips= bf->bfX1Twips;
+    pf->pfBlockY0Twips= bf->bfY0Twips;
+    pf->pfBlockY1Twips= bf->bfY1Twips;
+
+    pf->pfRedrawX0Twips= bf->bfX0Twips;
+    pf->pfRedrawX1Twips= bf->bfX1Twips;
 
     pf->pfX0GeometryTwips= bf->bfX0Twips;
     pf->pfX1GeometryTwips= bf->bfX1Twips;
@@ -548,10 +631,11 @@ void docParagraphFrameTwips(	ParagraphFrame *	pf,
 
     pf->pfStripHigh= stripHigh;
     pf->pfPageY1Twips= bf->bfY1Twips- footnoteHeight;
+    pf->pfFrameY1Twips= pf->pfPageY1Twips;
 
     if  ( bottom > 0			&&
-	  bottom <= pf->pfPageY1Twips	)
-	{ pf->pfPageY1Twips= bottom;	}
+	  bottom <= pf->pfFrameY1Twips	)
+	{ pf->pfFrameY1Twips= bottom;	}
 
     if  ( paraBi->biParaInTable )
 	{
@@ -560,8 +644,61 @@ void docParagraphFrameTwips(	ParagraphFrame *	pf,
 	const BufferItem *	cellBi= paraBi->biParent;
 	const BufferItem *	rowBi= cellBi->biParent;
 	const RowProperties *	rp= &(rowBi->biRowProperties);
+	const CellProperties *	cp0;
+
+	int			leftMargin= rowBi->biRowHalfGapWidthTwips;
+	int			rightMargin= rowBi->biRowHalfGapWidthTwips;
 
 	col0= col1= cellBi->biNumberInParent;
+	cp0= rp->rpCells+ col0;
+
+	switch( rp->rpLeftCellPaddingUnit )
+	    {
+	    case TRautoNONE:
+		break;
+	    case TRautoTWIPS:
+		leftMargin= rp->rpLeftCellPadding;
+		break;
+	    default:
+		LDEB(rp->rpLeftCellPaddingUnit);
+		break;
+	    }
+
+	switch( cp0->cpLeftPaddingUnit )
+	    {
+	    case TRautoNONE:
+		break;
+	    case TRautoTWIPS:
+		leftMargin= cp0->cpLeftPadding;
+		break;
+	    default:
+		LDEB(cp0->cpLeftPaddingUnit);
+		break;
+	    }
+
+	switch( rp->rpRightCellPaddingUnit )
+	    {
+	    case TRautoNONE:
+		break;
+	    case TRautoTWIPS:
+		rightMargin= rp->rpRightCellPadding;
+		break;
+	    default:
+		LDEB(rp->rpRightCellPaddingUnit);
+		break;
+	    }
+
+	switch( cp0->cpRightPaddingUnit )
+	    {
+	    case TRautoNONE:
+		break;
+	    case TRautoTWIPS:
+		rightMargin= cp0->cpRightPadding;
+		break;
+	    default:
+		LDEB(cp0->cpRightPaddingUnit);
+		break;
+	    }
 
 	if  ( col1 >= rowBi->biRowCellCount )
 	    { LLDEB(col1,rowBi->biRowCellCount);	}
@@ -587,8 +724,16 @@ void docParagraphFrameTwips(	ParagraphFrame *	pf,
 		}
 	    }
 
-	pf->pfX0GeometryTwips += rowBi->biRowHalfGapWidthTwips;
-	pf->pfX1GeometryTwips -= rowBi->biRowHalfGapWidthTwips;
+	pf->pfX0GeometryTwips += leftMargin;
+	pf->pfX1GeometryTwips -= rightMargin;
+
+	if  ( rowBi->biRowCellCount < 1 )
+	    { LDEB(rowBi->biRowCellCount);	}
+	else{
+	    pf->pfRedrawX0Twips= -rowBi->biRowLeftIndentTwips;
+	    pf->pfRedrawX1Twips=
+		    rp->rpCells[rowBi->biRowCellCount-1].cpRightBoundaryTwips;
+	    }
 	}
 
     pf->pfX0TextLinesTwips= pf->pfX0GeometryTwips+
@@ -624,14 +769,18 @@ void docLayoutScaleObjectToFitParagraphFrame(	InsertedObject *	io,
     {
     int		textWideTwips= pf->pfX1TextLinesTwips- pf->pfX0TextLinesTwips;
 
-    int		objectWideTwips= ( io->ioScaleX* io->ioTwipsWide )/ 100.0;
-    int		objectHighTwips= ( io->ioScaleY* io->ioTwipsHigh )/ 100.0;
+    int		objectWideTwips= ( io->ioScaleXSet* io->ioTwipsWide )/ 100.0;
+    int		objectHighTwips= ( io->ioScaleYSet* io->ioTwipsHigh )/ 100.0;
 
     double	scaleX;
     double	scaleY;
 
+    PictureProperties *	pip= &(io->ioPictureProperties);
+
     /*  1  */
-    if  ( objectWideTwips <= textWideTwips	&&
+    if  ( io->ioScaleXUsed == io->ioScaleXSet	&&
+	  io->ioScaleYUsed == io->ioScaleYSet	&&
+	  objectWideTwips <= textWideTwips	&&
 	  objectHighTwips <= pf->pfPageHigh	)
 	{ return;	}
 
@@ -642,10 +791,28 @@ void docLayoutScaleObjectToFitParagraphFrame(	InsertedObject *	io,
     if  ( scaleY > scaleX )
 	{ scaleY=  scaleX;	}
 
+    io->ioScaleXUsed= io->ioScaleXSet;
+    io->ioScaleYUsed= io->ioScaleYSet;
+
+    pip->pipScaleXUsed= io->ioScaleXUsed;
+    pip->pipScaleYUsed= io->ioScaleYUsed;
+
     if  ( scaleY < 0.99 )
 	{
-	io->ioScaleX= (int)( 99* scaleY );
-	io->ioScaleY= (int)( 99* scaleY );
+	int	scaleMax= (int)( 99* scaleY );
+
+	if  ( io->ioScaleXUsed > scaleMax )
+	    { io->ioScaleXUsed= scaleMax;	}
+	if  ( io->ioScaleYUsed > scaleMax )
+	    { io->ioScaleYUsed= scaleMax;	}
+
+	if  ( io->ioScaleXUsed < 1 )
+	    { io->ioScaleXUsed=  1;	}
+	if  ( io->ioScaleYUsed < 1 )
+	    { io->ioScaleYUsed=  1;	}
+
+	pip->pipScaleXUsed= io->ioScaleXUsed;
+	pip->pipScaleYUsed= io->ioScaleYUsed;
 	}
 
     return;
@@ -727,8 +894,13 @@ int docMakeCapsString(		unsigned char **	pUpperString,
     unsigned char *		upperString= (unsigned char *)0;
     int *			segments= (int *)0;
 
-    if  ( df->dfEncodingSet >= 0		&&
-	  df->dfEncodingSet < ENCODINGps_COUNT	)
+    int				encoding= -1;
+
+    if  ( df->dfOfficeCharsetMapping )
+	{ encoding= df->dfOfficeCharsetMapping->ocmPsFontEncoding; }
+
+    if  ( encoding >= 0		&&
+	  encoding < ENCODINGps_COUNT	)
 	{
 	const unsigned char *	charKinds;
 	const unsigned char *	charShifts;
@@ -736,8 +908,8 @@ int docMakeCapsString(		unsigned char **	pUpperString,
 	const unsigned char *	from;
 	unsigned char *		to;
 
-	charKinds= PS_Encodings[df->dfEncodingSet].fcCharKinds;
-	charShifts= PS_Encodings[df->dfEncodingSet].fcCharShifts;
+	charKinds= PS_Encodings[encoding].fcCharKinds;
+	charShifts= PS_Encodings[encoding].fcCharShifts;
 
 	upperString= malloc( len+ 1 );
 	if  ( ! upperString )
@@ -798,3 +970,89 @@ int docMakeCapsString(		unsigned char **	pUpperString,
 
     return rval;
     }
+
+/************************************************************************/
+/*									*/
+/*  Invalidate the layout of all paragraphs in the modified range.	*/
+/*									*/
+/************************************************************************/
+
+void docInvalidateParagraphLayout(	BufferItem *	paraBi )
+    {
+    paraBi->biParaLineCount= 0;
+    }
+
+static void docInvalidateChangedLayout(	BufferItem *	biParaStart,
+					BufferItem *	biParaEnd )
+    {
+    BufferItem *	bi= biParaStart;
+
+    while( bi )
+	{
+	bi->biParaLineCount= 0;
+
+	if  ( bi == biParaEnd )
+	    { break;	}
+
+	bi= docNextParagraph( bi );
+	if  ( ! bi )
+	    { XDEB(bi); }
+	}
+
+    return;
+    }
+
+/************************************************************************/
+/*									*/
+/*  Redo layout of the relevant part of the document after editing.	*/
+/*									*/
+/************************************************************************/
+
+int docLayoutInvalidateRange(	DocumentSelection *	dsLayout,
+				BufferItem *		selRootBi,
+				EditRange *		er )
+    {
+    DocumentPosition	dp;
+    BufferItem *	startBi;
+    BufferItem *	endBi;
+
+    if  ( er->erStart.epParaNr == 0 )
+	{
+	LDEB(er->erStart.epParaNr);
+	er->erStart.epParaNr= 1;
+	}
+
+    startBi= docGetParagraphByNumber( selRootBi,
+				    er->erStart.epParaNr );
+    endBi= docGetParagraphByNumber( selRootBi,
+				    er->erEnd.epParaNr );
+
+    if  ( ! startBi )
+	{
+	/*LXDEB(er->erStart.epParaNr,startBi);*/
+	if  ( docFirstPosition( &dp, selRootBi ) )
+	    { LDEB(er->erStart.epParaNr); return -1;	}
+
+	startBi= dp.dpBi;
+	}
+    if  ( ! endBi )
+	{
+	/* LXDEB(er->erEnd.epParaNr,endBi); */
+	if  ( docLastPosition( &dp, selRootBi ) )
+	    { LDEB(er->erEnd.epParaNr); return -1;		}
+
+	endBi= dp.dpBi;
+	}
+
+    docInvalidateChangedLayout( startBi, endBi );
+
+    docInitDocumentSelection( dsLayout );
+    dsLayout->dsBegin.dpBi= startBi;
+    dsLayout->dsBegin.dpStroff= 0;
+
+    dsLayout->dsEnd.dpBi= endBi;
+    dsLayout->dsEnd.dpStroff= endBi->biParaStrlen;
+
+    return 0;
+    }
+

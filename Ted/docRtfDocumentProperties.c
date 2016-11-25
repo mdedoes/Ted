@@ -28,47 +28,29 @@ void docRtfReadSetAnsicpg(	RtfReadingContext *	rrc,
     {
     int				i;
     DocumentProperties *	dp= &(rrc->rrcBd->bdProperties);
+    int				encoding;
 
-    switch( arg )
+    for ( i= 0; i < 256; i++ )
+	{ rrc->rrcDefaultInputMapping[i]= i;	}
+
+    encoding= utilEncodingFromWindowsCodepage( arg );
+
+    if  ( encoding >= 0 )
 	{
-	case 1250:
-	    memcpy( rrc->rrcDefaultInputMapping, docWIN1250_to_ISO2, 256 );
-	    dp->dpAnsiCodepage= arg;
-	    break;
+	const FontCharset *	fc= PS_Encodings+ encoding;
 
-	case 1251:
-	    memcpy( rrc->rrcDefaultInputMapping, docWIN1251_to_ISO5, 256 );
-	    dp->dpAnsiCodepage= arg;
-	    break;
+	dp->dpAnsiCodepage= arg;
 
-	case 1252:
-	    for ( i= 0; i < 256; i++ )
-		{ rrc->rrcDefaultInputMapping[i]= i;	}
-	    dp->dpAnsiCodepage= arg;
-	    break;
+	if  ( fc->fcFromOfficeToX11 )
+	    {
+	    memcpy( rrc->rrcDefaultInputMapping, fc->fcFromOfficeToX11, 256 );
+	    }
+	}
 
-	case 1253:
-	    memcpy( rrc->rrcDefaultInputMapping, docWIN1253_to_ISO7, 256 );
-	    dp->dpAnsiCodepage= arg;
-	    break;
-
-	case 1254:
-	    memcpy( rrc->rrcDefaultInputMapping, docWIN1254_to_ISO9, 256 );
-	    dp->dpAnsiCodepage= arg;
-	    break;
-
-	case 1257:
-	    memcpy( rrc->rrcDefaultInputMapping, docWIN1257_to_ISO13, 256 );
-	    dp->dpAnsiCodepage= arg;
-	    break;
-
-	case 10000:
-	    memcpy( rrc->rrcDefaultInputMapping, docMAC_to_ISO1, 256 );
-	    dp->dpAnsiCodepage= arg;
-	    break;
-
-	default:
-	    LDEB(arg); break;
+    if  ( arg == 10000 )
+	{
+	memcpy( rrc->rrcDefaultInputMapping, docMAC_ROMAN_to_ISO1, 256 );
+	dp->dpAnsiCodepage= arg;
 	}
 
     return;
@@ -100,7 +82,7 @@ static void docRtfReadSetDocumentCharset(
 	    break;
 
 	case DOCcharsetMAC:
-	    memcpy( rrc->rrcDefaultInputMapping, docMAC_to_ISO1, 256 );
+	    memcpy( rrc->rrcDefaultInputMapping, docMAC_ROMAN_to_ISO1, 256 );
 	    dp->dpDocumentCharset= arg;
 	    break;
 
@@ -124,14 +106,17 @@ int docRtfRememberDocProperty(	SimpleInputStream *	sis,
 	case DGpropLEFT_MARGIN:
 	    dp->dpGeometry.dgLeftMarginTwips= arg;
 	    sp->spDocumentGeometry.dgLeftMarginTwips= arg;
+	    rrc->rrcGotDocGeometry= 1;
 	    break;
 	case DGpropTOP_MARGIN:
 	    dp->dpGeometry.dgTopMarginTwips= arg;
 	    sp->spDocumentGeometry.dgTopMarginTwips= arg;
+	    rrc->rrcGotDocGeometry= 1;
 	    break;
 	case DGpropRIGHT_MARGIN:
 	    dp->dpGeometry.dgRightMarginTwips= arg;
 	    sp->spDocumentGeometry.dgRightMarginTwips= arg;
+	    rrc->rrcGotDocGeometry= 1;
 	    break;
 	case DGpropBOTTOM_MARGIN:
 	    dp->dpGeometry.dgBottomMarginTwips= arg;
@@ -140,14 +125,17 @@ int docRtfRememberDocProperty(	SimpleInputStream *	sis,
 	case DGpropPAGE_WIDTH:
 	    dp->dpGeometry.dgPageWideTwips= arg;
 	    sp->spDocumentGeometry.dgPageWideTwips= arg;
+	    rrc->rrcGotDocGeometry= 1;
 	    break;
 	case DGpropPAGE_HEIGHT:
 	    dp->dpGeometry.dgPageHighTwips= arg;
 	    sp->spDocumentGeometry.dgPageHighTwips= arg;
+	    rrc->rrcGotDocGeometry= 1;
 	    break;
 	case DGpropGUTTER:
 	    dp->dpGeometry.dgGutterTwips= arg;
 	    sp->spDocumentGeometry.dgGutterTwips= arg;
+	    rrc->rrcGotDocGeometry= 1;
 	    break;
 
 	case DPpropFACING_PAGES:
@@ -158,6 +146,9 @@ int docRtfRememberDocProperty(	SimpleInputStream *	sis,
 	    break;
 	case DPpropTWO_ON_ONE:
 	    dp->dpTwoOnOne= arg != 0;
+	    break;
+	case DPpropDOCTEMP:
+	    dp->dpIsDocumentTemplate= arg != 0;
 	    break;
 
 	case DPpropSTART_PAGE:
@@ -328,6 +319,7 @@ int docRtfSaveDocumentProperties(	SimpleOutputStream *	sos,
 
     if  ( codePage >= 0 )
 	{
+	int		encoding;
 	defaultCharset= utilWindowsCharsetFromCodepage( codePage );
 
 	if  ( defaultCharset < 0 )
@@ -336,39 +328,16 @@ int docRtfSaveDocumentProperties(	SimpleOutputStream *	sos,
 	    defaultCharset= FONTcharsetDEFAULT;
 	    }
 
-	switch( codePage )
+	encoding= utilEncodingFromWindowsCodepage( codePage );
+	if  ( encoding >= 0 )
 	    {
-	    case 1250:
-		docRtfWriteArgTag( "\\ansicpg", pCol, codePage, sos );
-		memcpy( rwc->rwcDefaultOutputMapping, docISO2_to_WIN1250, 256 );
-		break;
+	    const FontCharset *	fc= PS_Encodings+ encoding;
 
-	    case 1251:
-		docRtfWriteArgTag( "\\ansicpg", pCol, codePage, sos );
-		memcpy( rwc->rwcDefaultOutputMapping, docISO5_to_WIN1251, 256 );
-		break;
-
-	    case 1252:
-		docRtfWriteArgTag( "\\ansicpg", pCol, codePage, sos );
-		break;
-
-	    case 1253:
-		docRtfWriteArgTag( "\\ansicpg", pCol, codePage, sos );
-		memcpy( rwc->rwcDefaultOutputMapping, docISO7_to_WIN1253, 256 );
-		break;
-
-	    case 1254:
-		docRtfWriteArgTag( "\\ansicpg", pCol, codePage, sos );
-		memcpy( rwc->rwcDefaultOutputMapping, docISO9_to_WIN1254, 256 );
-		break;
-
-	    case 1257:
-		docRtfWriteArgTag( "\\ansicpg", pCol, codePage, sos );
-		memcpy( rwc->rwcDefaultOutputMapping, docISO13_to_WIN1257, 256 );
-		break;
-
-	    default:
-		LDEB(codePage); break;
+	    if  ( fc->fcFromX11ToOffice )
+		{
+		memcpy( rwc->rwcDefaultOutputMapping,
+					    fc->fcFromX11ToOffice, 256 );
+		}
 	    }
 	}
 
@@ -437,7 +406,7 @@ int docRtfSaveDocumentProperties(	SimpleOutputStream *	sos,
 	docRtfWriteRevisorTable( sos, rwc->rwcDefaultOutputMapping, pCol, dp );
 	}
 
-    docRtfSaveInfo( "\\generator ",	dp->dpGenerator, rwc, pCol, sos );
+    docRtfSaveInfo( "\\*\\generator ",	dp->dpGenerator, rwc, pCol, sos );
 
     if  ( docHasDocumentInfo( dp ) )
 	{
@@ -481,6 +450,8 @@ int docRtfSaveDocumentProperties(	SimpleOutputStream *	sos,
 
     if  ( dp->dpTwoOnOne )
 	{ docRtfWriteTag( "\\twoonone", pCol, sos );	}
+    if  ( dp->dpIsDocumentTemplate )
+	{ docRtfWriteTag( "\\doctemp", pCol, sos );	}
 
     if  ( dp->dpTabIntervalTwips > 0 && dp->dpTabIntervalTwips != 720 )
 	{ docRtfWriteArgTag( "\\deftab", pCol, dp->dpTabIntervalTwips, sos ); }

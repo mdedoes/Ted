@@ -24,6 +24,8 @@ typedef struct ParagraphOrnamentsPageResources
 
     char *			poprTopBorder;
     char *			poprBottomBorder;
+    char *			poprLeftBorder;
+    char *			poprRightBorder;
     } ParagraphOrnamentsPageResources;
 
 /************************************************************************/
@@ -43,6 +45,8 @@ typedef struct ParagraphOrnamentsTool
 
     BorderTool					potTopBorderTool;
     BorderTool					potBottomBorderTool;
+    BorderTool					potLeftBorderTool;
+    BorderTool					potRightBorderTool;
 
     ShadingTool					potShadingTool;
     } ParagraphOrnamentsTool;

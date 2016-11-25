@@ -21,7 +21,8 @@
 /*									*/
 /************************************************************************/
 
-void docCleanObject(	InsertedObject *	io )
+void docCleanObject(	BufferDocument *	bd,
+			InsertedObject *	io )
     {
     utilCleanMemoryBuffer( &io->ioObjectData );
     utilCleanMemoryBuffer( &io->ioResultData );
@@ -31,58 +32,70 @@ void docCleanObject(	InsertedObject *	io )
     if  ( io->ioObjectClass )
 	{ free( io->ioObjectClass );	}
     
-    docCleanDrawingObject( &(io->ioDrawingObject) );
+    if  ( io->ioDrawingShape )
+	{ docFreeDrawingShape( bd, io->ioDrawingShape );	}
 
     return;
     }
 
-static void docInitObject(	InsertedObject *	io )
+void docInitObject(	InsertedObject *	io )
     {
     io->ioKind= DOCokUNKNOWN;
     io->ioResultKind= DOCokUNKNOWN;
     io->ioRtfResultKind= RESULTkindUNKNOWN;
     io->ioRtfEmbedKind= EMBEDkindOBJEMB;
 
+    docInitPictureProperties( &(io->ioPictureProperties) );
+
+    io->ioInline= 1;
+
     io->ioTwipsWide= 0;
     io->ioTwipsHigh= 0;
 
-    io->io_xWinExt= 0;
-    io->io_yWinExt= 0;
-
     io->ioPixelsWide= 0;
     io->ioPixelsHigh= 0;
-    io->ioScaleX= 100;
-    io->ioScaleY= 100;
+    io->ioScaleXSet= 100;
+    io->ioScaleYSet= 100;
+    io->ioScaleXUsed= 100;
+    io->ioScaleYUsed= 100;
+
+    io->ioX0Twips= 0;
+    docInitLayoutPosition( &(io->ioY0Position) );
 
     io->ioTopCropTwips= 0;
     io->ioBottomCropTwips= 0;
     io->ioLeftCropTwips= 0;
     io->ioRightCropTwips= 0;
 
-    io->ioBmBitsPerPixel= 0;
-    io->ioBmPlanes= 0;
-    io->ioBmBytessPerRow= 0;
-
-    io->ioMetafileIsBitmap= 0;
-    io->ioMetafileBitmapBpp= 0;
-
-    io->ioDragWide= 0;
-    io->ioDragHigh= 0;
-
-    io->ioMapMode= -1;
-    io->ioResultMapMode= -1;
-
     utilInitMemoryBuffer( &io->ioObjectData );
     utilInitMemoryBuffer( &io->ioResultData );
     
     io->ioObjectName= (unsigned char *)0;
     io->ioObjectClass= (unsigned char *)0;
-    io->ioBliptag= 0;
 
-    docInitDrawingObject( &(io->ioDrawingObject) );
+    io->ioDrawingShape= (DrawingShape *)0;
 
-    io->ioPixmap= 0L;
+    io->ioPixmap= (APP_BITMAP_IMAGE)0;
     io->ioPrivate= (void *)0;
+
+    return;
+    }
+
+void docObjectAdaptToPictureGeometry(	InsertedObject *		io,
+					const PictureProperties *	pip )
+    {
+    io->ioTwipsWide= pip->pipTwipsWide;
+    io->ioTwipsHigh= pip->pipTwipsHigh;
+
+    io->ioScaleXSet= pip->pipScaleXSet;
+    io->ioScaleYSet= pip->pipScaleYSet;
+    io->ioScaleXUsed= pip->pipScaleXUsed;
+    io->ioScaleYUsed= pip->pipScaleYUsed;
+
+    io->ioTopCropTwips= pip->pipTopCropTwips;
+    io->ioBottomCropTwips= pip->pipBottomCropTwips;
+    io->ioLeftCropTwips= pip->pipLeftCropTwips;
+    io->ioRightCropTwips= pip->pipRightCropTwips;
 
     return;
     }
@@ -127,7 +140,8 @@ int docSetObjectClass(	InsertedObject *	io,
     return 0;
     }
 
-InsertedObject * docClaimObjectCopy(	BufferItem *		bi,
+InsertedObject * docClaimObjectCopy(	BufferDocument *	bd,
+					BufferItem *		bi,
 					int *			pNr,
 					const InsertedObject *	ioFrom )
     {
@@ -141,18 +155,18 @@ InsertedObject * docClaimObjectCopy(	BufferItem *		bi,
     if  ( ioFrom->ioObjectName						&&
 	  docSetObjectName( ioTo, ioFrom->ioObjectName,
 			    strlen( (char *)ioFrom->ioObjectName ) )	)
-	{ LDEB(1); docCleanObject( ioTo ); return (InsertedObject *)0; }
+	{ LDEB(1); docCleanObject( bd, ioTo ); return (InsertedObject *)0; }
 
     if  ( ioFrom->ioObjectClass						&&
 	  docSetObjectClass( ioTo, ioFrom->ioObjectClass,
 			    strlen( (char *)ioFrom->ioObjectClass ) )	)
-	{ LDEB(1); docCleanObject( ioTo ); return (InsertedObject *)0; }
+	{ LDEB(1); docCleanObject( bd, ioTo ); return (InsertedObject *)0; }
 
     if  ( utilCopyMemoryBuffer( &ioTo->ioObjectData, &ioFrom->ioObjectData ) ||
 	  utilCopyMemoryBuffer( &ioTo->ioResultData, &ioFrom->ioResultData ) )
 	{
 	LDEB(1);
-	docCleanObject( ioTo ); docInitObject( ioTo );
+	docCleanObject( bd, ioTo ); docInitObject( ioTo );
 	return (InsertedObject *)0;
 	}
 
@@ -162,32 +176,19 @@ InsertedObject * docClaimObjectCopy(	BufferItem *		bi,
     ioTo->ioRtfEmbedKind= ioFrom->ioRtfEmbedKind;
     ioTo->ioTwipsWide= ioFrom->ioTwipsWide;
     ioTo->ioTwipsHigh= ioFrom->ioTwipsHigh;
-    ioTo->ioScaleX= ioFrom->ioScaleX;
-    ioTo->ioScaleY= ioFrom->ioScaleY;
+    ioTo->ioScaleXSet= ioFrom->ioScaleXSet;
+    ioTo->ioScaleYSet= ioFrom->ioScaleYSet;
+    ioTo->ioScaleXUsed= ioFrom->ioScaleXUsed;
+    ioTo->ioScaleYUsed= ioFrom->ioScaleYUsed;
     ioTo->ioPixelsWide= ioFrom->ioPixelsWide;
     ioTo->ioPixelsHigh= ioFrom->ioPixelsHigh;
-    ioTo->io_xWinExt= ioFrom->io_xWinExt;
-    ioTo->io_yWinExt= ioFrom->io_yWinExt;
+
+    ioTo->ioPictureProperties= ioFrom->ioPictureProperties;
 
     ioTo->ioTopCropTwips= ioFrom->ioTopCropTwips;
     ioTo->ioBottomCropTwips= ioFrom->ioBottomCropTwips;
     ioTo->ioLeftCropTwips= ioFrom->ioLeftCropTwips;
     ioTo->ioRightCropTwips= ioFrom->ioRightCropTwips;
-
-    ioTo->ioMetafileIsBitmap= ioFrom->ioMetafileIsBitmap;
-    ioTo->ioMetafileBitmapBpp= ioFrom->ioMetafileBitmapBpp;
-
-    ioTo->ioBmBitsPerPixel= ioFrom->ioBmBitsPerPixel;
-    ioTo->ioBmPlanes= ioFrom->ioBmPlanes;
-    ioTo->ioBmBytessPerRow= ioFrom->ioBmBytessPerRow;
-
-    ioTo->ioBliptag= ioFrom->ioBliptag; /*?*/
-
-    ioTo->ioDragWide= 0;
-    ioTo->ioDragHigh= 0;
-
-    ioTo->ioMapMode= ioFrom->ioMapMode;
-    ioTo->ioResultMapMode= ioFrom->ioResultMapMode;
 
     return ioTo;
     }
@@ -198,8 +199,9 @@ InsertedObject * docClaimObjectCopy(	BufferItem *		bi,
 /*									*/
 /************************************************************************/
 
-void docCleanParticuleObject(	BufferItem *	bi,
-				TextParticule *	tp )
+void docCleanParticuleObject(	BufferDocument *	bd,
+				BufferItem *		bi,
+				TextParticule *		tp )
     {
     InsertedObject *	io;
 
@@ -208,57 +210,10 @@ void docCleanParticuleObject(	BufferItem *	bi,
 
     io= bi->biParaObjects+ tp->tpObjectNumber;
 
-    docCleanObject( io );
+    docCleanObject( bd, io );
     docInitObject( io );
 
     return;
-    }
-
-/************************************************************************/
-/*									*/
-/*  Management of shapes.						*/
-/*									*/
-/************************************************************************/
-
-void docCleanShape(	DrawingShape *	ds )
-    {
-    return;
-    }
-
-void docInitShape(	DrawingShape *	ds )
-    {
-    ds->ds_shapeType= SHPtyFREE;
-
-    return;
-    }
-
-DrawingShape * docClaimShape(	int *			pNr,
-				BufferItem *		bi )
-    {
-    int			n;
-    DrawingShape *	ds;
-
-    if  ( bi->biLevel != DOClevPARA )
-	{ LLDEB(bi->biLevel,DOClevPARA); return (DrawingShape *)0;	}
-
-    ds= (DrawingShape *)realloc( bi->biParaShapes,
-			    (bi->biParaShapeCount+ 1)* sizeof(DrawingShape) );
-    if  ( ! ds )
-	{ XDEB(ds); return (DrawingShape *)0;	}
-    bi->biParaShapes= ds;
-
-    for ( n= 0; n < bi->biParaShapeCount; ds++, n++ )
-	{
-	if  ( ds->ds_shapeType == SHPtyFREE )
-	    { break;	}
-	}
-
-    docInitShape( ds );
-
-    if  ( n == bi->biParaShapeCount )
-	{ bi->biParaShapeCount++;	}
-
-    *pNr= n; return ds;
     }
 
 /************************************************************************/
@@ -342,7 +297,6 @@ int docCopyParticuleData(	DocumentCopyJob *	dcj,
     int				nr;
     const DocumentFieldList *	dflFrom= &(dcj->dcjBdFrom->bdFieldList);
 
-    const BufferDocument *	bdFrom= dcj->dcjBdFrom;
     BufferDocument *		bdTo= dcj->dcjBdTo;
 
     switch( tpFrom->tpKind )
@@ -356,18 +310,33 @@ int docCopyParticuleData(	DocumentCopyJob *	dcj,
 
 	case DOCkindOBJECT:
 	    {
-	    InsertedObject *	io;
+	    const InsertedObject *	ioFrom;
+	    InsertedObject *		ioTo;
 
-	    io= docClaimObjectCopy( biTo, &nr,
+	    ioTo= docClaimObjectCopy( bdTo, biTo, &nr,
 			biFrom->biParaObjects+ tpFrom->tpObjectNumber );
-	    if  ( ! io )
-		{ XDEB(io); return -1;	}
+	    if  ( ! ioTo )
+		{ XDEB(ioTo); return -1;	}
 
 	    tpTo->tpObjectNumber= biTo->biParaObjectCount++;
 
+	    ioFrom= biFrom->biParaObjects+ tpFrom->tpObjectNumber;
+
+	    if  ( ioFrom->ioKind == DOCokDRAWING_SHAPE )
+		{
+		if  ( ! ioFrom->ioDrawingShape )
+		    { XDEB(ioFrom->ioDrawingShape);	}
+		else{
+		    ioTo->ioDrawingShape= docCopyDrawingShape( dcj, eo,
+						    ioFrom->ioDrawingShape );
+		    if  ( ! ioTo->ioDrawingShape )
+			{ XDEB(ioTo->ioDrawingShape);	}
+		    }
+		}
+
 	    /*  9
-	    if  ( io->ioBliptag == 0 )
-		{ io->ioBliptag= appGetTimestamp();	}
+	    if  ( ioTo->ioBliptag == 0 )
+		{ ioTo->ioBliptag= appGetTimestamp();	}
 	    */
 	    }
 	    break;
@@ -417,72 +386,8 @@ int docCopyParticuleData(	DocumentCopyJob *	dcj,
 	    break;
 
 	case DOCkindNOTE:
-	    {
-	    DocumentNote *	dnTo;
-	    DocumentNote *	dnFrom;
-	    BufferItem *	sectBiTo;
-	    int			noteIndex;
-
-	    if  ( biTo->biInExternalItem != DOCinBODY )
-		{
-		LDEB(biTo->biInExternalItem);
-		tpTo->tpKind= DOCkindTAB;
-		break;
-		}
-
-	    sectBiTo= biTo;
-	    while( sectBiTo && sectBiTo->biLevel != DOClevSECT )
-		{ sectBiTo= sectBiTo->biParent;	}
-	    if  ( ! sectBiTo )
-		{ XDEB(sectBiTo); return -1;	}
-
-	    if  ( docGetNote( &dnFrom, bdFrom, biFrom, tpFrom->tpStroff ) < 0 )
-		{ LDEB(tpFrom->tpStroff); return -1;	}
-
-	    noteIndex= docInsertNote( &dnTo, bdTo, biTo,
-					tpTo->tpStroff, dnFrom->dnAutoNumber );
-	    if  ( noteIndex < 0 )
-		{ LLDEB(tpTo->tpStroff,noteIndex); return -1;	}
-
-	    if  ( docGetNote( &dnFrom, bdFrom, biFrom, tpFrom->tpStroff ) < 0 )
-		{ LDEB(tpFrom->tpStroff); return -1;	}
-
-	    if  ( dnFrom->dnExternalItem.eiItem )
-		{
-		SelectionScope	ss;
-
-		docInitSelectionScope( &ss );
-
-		ss.ssInExternalItem= dnFrom->dnExternalItemKind;
-		ss.ssSectNrExternalTo= sectBiTo->biNumberInParent;
-		ss.ssNoteArrayIndex= noteIndex;
-
-		dnTo->dnExternalItem.eiItem= docCopySectItem( dcj, eo,
-				    (BufferItem *)0, 0,
-				    dnFrom->dnExternalItem.eiItem, &ss );
-
-		if  ( ! dnTo->dnExternalItem.eiItem )
-		    { XDEB(dnTo->dnExternalItem.eiItem); return -1;	}
-		}
-
-	    dnTo->dnExternalItemKind= dnFrom->dnExternalItemKind;
-
-	    switch( dnTo->dnExternalItemKind )
-		{
-		case DOCinFOOTNOTE:
-		    if  ( docCheckNoteSeparatorItem( bdTo, DOCinFTNSEP ) )
-			{ LDEB(dnTo->dnExternalItemKind); return -1;	}
-		    break;
-
-		case DOCinENDNOTE:
-		    if  ( docCheckNoteSeparatorItem( bdTo, DOCinAFTNSEP ) )
-			{ LDEB(dnTo->dnExternalItemKind); return -1;	}
-		    break;
-
-		default:
-		    LDEB(dnFrom->dnExternalItemKind);
-		}
-	    }
+	    if  ( docCopyNote( dcj, eo, biTo, tpTo, biFrom, tpFrom ) )
+		{ LDEB(1); return -1;	}
 	    break;
 
 	default:
@@ -582,3 +487,82 @@ int *	docAllocateFieldMap(	const BufferDocument *	bdFrom )
 
     return fieldMap;
     }
+
+/************************************************************************/
+/*									*/
+/*  Close the objects in a buffer item.					*/
+/*									*/
+/************************************************************************/
+
+static void docCleanParaObjects(	int *			pNoteCount,
+					int *			pBulletsDeleted,
+					BufferDocument *	bd,
+					BufferItem *		paraBi,
+					void *			voidadd,
+					DOC_CLOSE_OBJECT	closeObject )
+    {
+    int			part;
+    TextParticule *	tp;
+
+    int			noteCount= 0;
+
+    tp= paraBi->biParaParticules;
+    for ( part= 0; part < paraBi->biParaParticuleCount; tp++, part++ )
+	{
+	if  ( tp->tpKind == DOCkindNOTE )
+	    { noteCount++;	}
+
+	if  ( tp->tpKind == DOCkindOBJECT )
+	    { (*closeObject)( bd, paraBi, tp, voidadd );	}
+	}
+
+    if  ( paraBi->biParaListOverride > 0 )
+	{
+	if  ( docRemoveParagraphFromList( paraBi, bd ) )
+	    { LDEB(1);	}
+
+	(*pBulletsDeleted)++;
+	}
+
+    *pNoteCount += noteCount;
+    return;
+    }
+
+void docCleanItemObjects(	int *			pNoteCount,
+				int *			pBulletsDeleted,
+				int *			pParagraphCount,
+				BufferDocument *	bd,
+				BufferItem *		bi,
+				void *			voidadd,
+				DOC_CLOSE_OBJECT	closeObject )
+    {
+    int		i;
+
+    switch( bi->biLevel )
+	{
+	case DOClevDOC:
+	case DOClevSECT:
+	case DOClevROW:
+	case DOClevCELL:
+	    for ( i= 0; i < bi->biChildCount; i++ )
+		{
+		docCleanItemObjects( pNoteCount, pBulletsDeleted,
+						    pParagraphCount,
+						    bd, bi->biChildren[i],
+						    voidadd, closeObject );
+		}
+	    break;
+
+	case DOClevPARA:
+	    docCleanParaObjects( pNoteCount, pBulletsDeleted,
+						bd, bi, voidadd, closeObject );
+	    (*pParagraphCount)++;
+	    break;
+
+	default:
+	    LDEB(bi->biLevel); return;
+	}
+
+    return;
+    }
+

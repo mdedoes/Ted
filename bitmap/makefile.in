@@ -31,7 +31,7 @@ CFLAGS=	\
 
 #CFLAGS= -g -O2 $(WFLAGS) $(X_CFLAGS) $(INCLUDES)
 
-# 50 lines
+# 51 lines
 OBS	=	\
 		bmxwd.o\
 		bmxv.o\
@@ -48,6 +48,7 @@ OBS	=	\
 		bmreduce.o\
 		bmputrow.o\
 		bmpng.o\
+		bmplanar.o\
 		bmpgm.o\
 		bmpcx.o\
 		bmpalette.o\

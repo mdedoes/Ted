@@ -162,7 +162,7 @@ static void appDrawHorizontalRuler(	APP_WIDGET		w,
 	drSel.drY0= 0;
 	drSel.drY1= sizeAcross;
 
-	if  ( docIntersectRectangle( &drSel, &drSel, drClip ) )
+	if  ( geoIntersectRectangle( &drSel, &drSel, drClip ) )
 	    {
 	    appDrawSetForegroundColor( add, &(add->addBottomColor) );
 
@@ -333,7 +333,7 @@ static void appDrawVerticalRuler(	APP_WIDGET		w,
 	if  ( mr->mrV1Pixels >= 0 )
 	    { drSel.drY1= mr->mrV1Pixels;	}
 
-	if  ( docIntersectRectangle( &drSel, &drSel, drClip ) )
+	if  ( geoIntersectRectangle( &drSel, &drSel, drClip ) )
 	    {
 	    appDrawSetForegroundColor( add, &(add->addBottomColor) );
 

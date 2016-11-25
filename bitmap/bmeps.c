@@ -432,7 +432,7 @@ int bmPsWriteBitmapData(	    BitmapPrinter *		bp,
 	{ directPixels= 1;	}
     if  ( bd->bdColorEncoding == BMcoBLACKWHITE )
 	{ directPixels= 1;	}
-    if  ( bd->bdColorEncoding == BMcoRGB )
+    if  ( bd->bdColorEncoding == BMcoRGB && ! bd->bdHasAlpha )
 	{ directPixels= 1;	}
     if  ( bd->bdColorEncoding == BMcoRGB8PALETTE && indexedImages )
 	{ directPixels= 1;	}
@@ -482,10 +482,58 @@ int bmPsWriteBitmapData(	    BitmapPrinter *		bp,
 	return 0;
 	}
 
+    if  ( bd->bdColorEncoding == BMcoRGB	&&
+	  bd->bdHasAlpha			)
+	{
+	const int	invert= 0;
+	unsigned char *	scratch;
+
+	scratch= malloc( bd->bdBytesPerRow );
+	if  ( ! scratch )
+	    { LXDEB(bd->bdBytesPerRow,scratch); return -1;	}
+
+	if  ( bd->bdBitsPerSample == 8 )
+	    {
+	    for ( row= 0; row < selHighPix; row++ )
+		{
+		int		col;
+		unsigned char *	to= scratch;
+
+		from= inputBuffer+
+			    ( row+ selY0Pix )* bd->bdBytesPerRow+ originByte;
+
+		for ( col= 0; col < selWidePix; col++ )
+		    {
+		    if  ( from[3] < 127 )
+			{
+			*(to++)= 0xff;
+			*(to++)= 0xff;
+			*(to++)= 0xff;
+			from += 4;
+			}
+		    else{
+			*(to++)= *(from++);
+			*(to++)= *(from++);
+			*(to++)= *(from++);
+			from++;
+			}
+		    }
+
+		bmPsWriteByteRow0( sos, invert, 3* selWidePix, scratch );
+		}
+	    }
+	else{
+	    LDEB(bd->bdBitsPerSample); free( scratch ); return -1;
+	    }
+
+	free( scratch );
+	return 0;
+	}
+
     if  ( bd->bdColorEncoding == BMcoWHITEBLACK	||
 	  bd->bdColorEncoding == BMcoBLACKWHITE )
 	{
-	int	invert= bd->bdColorEncoding == BMcoBLACKWHITE;
+	const int	invert= bd->bdColorEncoding == BMcoBLACKWHITE;
 
 	for ( row= 0; row < selHighPix; row++ )
 	    {
@@ -947,16 +995,6 @@ int bmPsPrintBitmapImage(	SimpleOutputStream *		sos,
 
     if  ( useFilters )
 	{
-	/*
-	bmPsWriteImageInstructions( sos, bd, selWidePix, selHighPix,
-					"currentfile /ASCIIHexDecode filter",
-					indexedImages );
-
-	bmPsWriteImageInstructions( sos, bd, selWidePix, selHighPix,
-					"currentfile /ASCII85Decode filter",
-					indexedImages );
-	*/
-
 #	if	USE_LZW
 	bmPsWriteImageInstructions( sos, bd, selWidePix, selHighPix,
 		"currentfile /ASCII85Decode filter /LZWDecode filter",
@@ -1063,8 +1101,11 @@ int bmWriteEpsFile(	const char *			filename,
     float			pointsWide;
     float			pointsHigh;
 
-    const int			useFilters= 1;
-    const int			indexedImages= 1;
+    int				useFilters= 1;
+    int				indexedImages= 1;
+
+    if  ( privateFormat < 2 )
+	{ useFilters= indexedImages= 0;	}
 
     /*  1  */
     switch( bd->bdBitsPerSample )

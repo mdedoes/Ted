@@ -57,8 +57,10 @@ int docListGetFormatPath(	int *				startPath,
 	if  ( lol && lol->lolOverrideFormat )
 	    { dll= &(lol->lolListLevel);	}
 
-	startPath[level]= startAt;
-	formatPath[level]= dll->dllNumberStyle;
+	if  ( startPath )
+	    { startPath[level]= startAt;		}
+	if  ( formatPath )
+	    { formatPath[level]= dll->dllNumberStyle;	}
 
 	if  ( level == ilvl )
 	    { dllFound= dll;	}
@@ -108,11 +110,11 @@ int docGetListOfParagraph(	ListOverride **			pLo,
 				ListNumberTreeNode **		pRoot,
 				DocumentList **			pDl,
 				int				ls,
-				BufferDocument *		bd )
+				const BufferDocument *		bd )
     {
-    DocumentProperties *	dp= &(bd->bdProperties);
-    ListOverrideTable *		lot= &(dp->dpListOverrideTable);
-    DocumentListTable *		dlt= &(dp->dpListTable);
+    const DocumentProperties *	dp= &(bd->bdProperties);
+    const ListOverrideTable *	lot= &(dp->dpListOverrideTable);
+    const DocumentListTable *	dlt= &(dp->dpListTable);
 
     ListOverride *		lo;
     DocumentList *		dl= (DocumentList *)0;
@@ -148,16 +150,29 @@ int docGetListOfParagraph(	ListOverride **			pLo,
 /*									*/
 /************************************************************************/
 
-int docInsertListtextField(		BufferItem *		paraBi,
-					BufferDocument *	bd )
+int docInsertListtextField(	int *			pFieldNr,
+				int *			pPartBegin,
+				int *			pPartEnd,
+				int *			pStroffBegin,
+				int *			pStroffEnd,
+				BufferItem *		paraBi,
+				BufferDocument *	bd )
     {
-    TextParticule *		tp= paraBi->biParaParticules;
-
     ListNumberTreeNode *	root;
     int				paraNr= docNumberOfParagraph( paraBi );
 
-    if  ( docInsertParaHeadField( paraBi, bd,
-				    DOCfkLISTTEXT, tp->tpTextAttributeNumber ) )
+    int				textAttributeNumber= 0;
+
+    if  ( paraBi->biParaParticuleCount > 0 )
+	{
+	const TextParticule *		tp= paraBi->biParaParticules;
+
+	textAttributeNumber= tp->tpTextAttributeNumber;
+	}
+
+    if  ( docInsertParaHeadField( pFieldNr,
+			    pPartBegin, pPartEnd, pStroffBegin, pStroffEnd,
+			    paraBi, bd, DOCfkLISTTEXT, textAttributeNumber ) )
 	{ LDEB(1); return -1;	}
 
     if  ( paraBi->biParaListOverride >= bd->bdListNumberTreeCount )
@@ -284,6 +299,71 @@ int docFindListOfSelection(	int *				pLs,
 /*									*/
 /************************************************************************/
 
+static int docAdaptParagraphPropsToListLevel(
+				int *				pChanged,
+				ParagraphProperties *		pp,
+				const DocumentListLevel *	dll )
+    {
+    int		tabsChanged= 0;
+    int		changed= 0;
+
+    const int	pixels= 0;
+
+    if  ( pp->ppFirstIndentTwips != dll->dllFirstIndentTwips )
+	{
+	pp->ppFirstIndentTwips= dll->dllFirstIndentTwips;
+	changed= 1;
+	}
+
+    if  ( pp->ppLeftIndentTwips != dll->dllLeftIndentTwips )
+	{
+	pp->ppLeftIndentTwips= dll->dllLeftIndentTwips;
+	changed= 1;
+	}
+
+    if  ( docCopyTabStopList( &tabsChanged, &(pp->ppTabStopList),
+					&(dll->dllTabStopList), pixels ) )
+	{ LDEB(1); return -1;	}
+
+    if  ( tabsChanged )
+	{ changed= 1;	}
+
+    *pChanged= changed;
+    return 0;
+    }
+
+int docAdaptParagraphToListLevel(
+				int *			pChanged,
+				BufferItem *		paraBi,
+				const BufferDocument *	bd )
+    {
+    int					indentChanged= 0;
+
+    ListOverride *		lo;
+    DocumentList *		dl;
+    ListNumberTreeNode *	root;
+    const DocumentListLevel *	dll;
+
+    int * const			startPath= (int *)0;
+    int * const			formatPath= (int *)0;
+
+    if  ( docGetListOfParagraph( &lo, &root, &dl,
+					paraBi->biParaListOverride, bd ) )
+	{ LDEB(paraBi->biParaListOverride);	}
+    else{
+	if  ( docListGetFormatPath( startPath, formatPath, &dll,
+				    paraBi->biParaListLevel, dl, lo ) )
+	    { LDEB(paraBi->biParaListLevel);	}
+	else{
+	    if  ( docAdaptParagraphPropsToListLevel( &indentChanged,
+					&(paraBi->biParaProperties), dll ) )
+		{ LDEB(1);		}
+	    }
+	}
+
+    return 0;
+    }
+
 static int docApplyListRulerLevel(
 				const ListNumberTreeNode *	lntn,
 				int				level,
@@ -312,9 +392,6 @@ static int docApplyListRulerLevel(
 	{
 	BufferItem *	paraBi;
 	int		changed= 0;
-	int		tabsChanged= 0;
-
-	const int	pixels= 0;
 
 	if  ( docApplyListRulerLevel( child, level+ 1, dl, lo, rootBi ) )
 	    { LLDEB(level,i); rval= -1;	}
@@ -335,28 +412,12 @@ static int docApplyListRulerLevel(
 	if  ( ! dll )
 	    { XDEB(dll); continue;		}
 
-	if  ( paraBi->biParaFirstIndentTwips != dll->dllFirstIndentTwips )
-	    {
-	    paraBi->biParaFirstIndentTwips= dll->dllFirstIndentTwips;
-	    changed= 1;
-	    }
-
-	if  ( paraBi->biParaLeftIndentTwips != dll->dllLeftIndentTwips )
-	    {
-	    paraBi->biParaLeftIndentTwips= dll->dllLeftIndentTwips;
-	    changed= 1;
-	    }
-
-	if  ( docCopyTabStopList( &tabsChanged, &(paraBi->biParaTabStopList),
-					    &(dll->dllTabStopList), pixels ) )
+	if  ( docAdaptParagraphPropsToListLevel( &changed,
+					&(paraBi->biParaProperties), dll ) )
 	    { LDEB(1); return -1;	}
 
-	if  ( tabsChanged )
-	    { changed= 1;	}
-
 	if  ( changed )
-	    { paraBi->biParaLineCount= 0; }
-
+	    { docInvalidateParagraphLayout( paraBi ); }
 	}
 
     return rval;

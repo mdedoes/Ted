@@ -390,7 +390,7 @@ extern int appMetaPlayEmfX11(	SimpleInputStream *	sis,
 				int			twipsWide,
 				int			twipsHigh );
 
-extern int appMetaPlayFilePs(	SimpleOutputStream *		sos,
+extern int appMetaPlayFilePs(	PrintingState *			ps,
 				SimpleInputStream *		sis,
 				const PostScriptFontList *	psfl,
 				int				useFilters,
@@ -534,6 +534,10 @@ extern int appMetaOffsetClipRgn(	DeviceContext *		dc,
 					SimpleInputStream *	sis );
 
 extern int appMetaExcludeClipRect(	DeviceContext *		dc,
+					int			recordSize,
+					SimpleInputStream *	sis );
+
+extern int appMetaSelectClipRgn(	DeviceContext *		dc,
 					int			recordSize,
 					SimpleInputStream *	sis );
 

@@ -45,7 +45,7 @@ void tedRefreshFontTool(	AppFontChooser *		afc,
     if  ( sd->sdIsListBullet )
 	{ *pEnabled= 0; return; }
 
-    *pPref= 6;
+    (*pPref)++;
 
     PROPmaskCLEAR( &updMask );
 
@@ -54,7 +54,7 @@ void tedRefreshFontTool(	AppFontChooser *		afc,
     if  ( sd->sdIsIBarSelection )
 	{
 	ta= td->tdCurrentTextAttribute;
-	PROPmaskFILL( &updMask, TAprop_COUNT );
+	utilPropMaskFill( &updMask, TAprop_COUNT );
 	}
     else{
 	docGetSelectionAttributes( bd, ds, &updMask, &ta );
@@ -113,10 +113,8 @@ void tedRefreshListFontTool(	AppFontChooser *		afc,
 				    dp->dpColors, dp->dpColorCount ) )
 	{ LDEB(1);	}
 
-    *pPref= 7;
+    (*pPref)--;
     *pEnabled= 1;
-
-*pEnabled= 0;
 
     return;
     }
@@ -158,12 +156,17 @@ void tedFontToolGetResourceTable(	EditApplication *		ea,
 					AppFontToolResources *		aftr,
 					InspectorSubjectResources *	isr )
     {
+    static int	gotSubjectResources= 0;
+
     appFontToolGetResourceTable( ea, aftr );
 
-    appGuiGetResourceValues( ea, (void *)isr,
+    if  ( ! gotSubjectResources )
+	{
+	appGuiGetResourceValues( &gotSubjectResources, ea, (void *)isr,
 				TED_FontToolSubjectResourceTable,
 				sizeof(TED_FontToolSubjectResourceTable)/
 				sizeof(AppConfigurableResource) );
+	}
 
     return;
     }
@@ -184,10 +187,15 @@ static AppConfigurableResource TED_ListFontToolSubjectResourceTable[]=
 void tedListFontToolGetResourceTable(	EditApplication *		ea,
 					InspectorSubjectResources *	isr )
     {
-    appGuiGetResourceValues( ea, (void *)isr,
+    static int	gotSubjectResources= 0;
+
+    if  ( ! gotSubjectResources )
+	{
+	appGuiGetResourceValues( &gotSubjectResources, ea, (void *)isr,
 				TED_ListFontToolSubjectResourceTable,
 				sizeof(TED_ListFontToolSubjectResourceTable)/
 				sizeof(AppConfigurableResource) );
+	}
 
     return;
     }

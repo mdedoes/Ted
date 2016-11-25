@@ -60,7 +60,6 @@ static int tedGetColumns(	BufferItem *			bi,
 				ColumnSeparator **		pCs,
 				int *				pCsCount )
     {
-    double			xfac= add->addMagnifiedPixelsPerTwip;
     const DocumentGeometry *	dg;
 
     static ColumnSeparator *	cs;
@@ -74,7 +73,7 @@ static int tedGetColumns(	BufferItem *			bi,
 
     dg= &(sectBi->biSectDocumentGeometry);
 
-    x00Pixels= TWIPStoPIXELS( xfac, dg->dgLeftMarginTwips );
+    x00Pixels= X_PIXELS( add, dg->dgLeftMarginTwips );
 
     rowBi= bi->biParent->biParent;
 
@@ -233,13 +232,12 @@ static int tedGetRulerTwips(
 
     for ( tab= 0; tab < tsl->tslTabStopCount; ts++, tab++ )
 	{
-	ts->tsPixels= TWIPStoPIXELS( xfac,
-				    pf.pfX0GeometryTwips+ ts->tsTwips );
+	ts->tsPixels= X_PIXELS( add, pf.pfX0GeometryTwips+ ts->tsTwips );
 	}
     }
 
-    x0GeometryPixels= TWIPStoPIXELS( xfac, pf.pfX0GeometryTwips );
-    x1GeometryPixels= TWIPStoPIXELS( xfac, pf.pfX1GeometryTwips );
+    x0GeometryPixels= X_PIXELS( add, pf.pfX0GeometryTwips );
+    x1GeometryPixels= X_PIXELS( add, pf.pfX1GeometryTwips );
 
     leftIndentPixels -= x0GeometryPixels;
     pp->ppLeftIndentTwips= PIXELStoTWIPS( leftIndentPixels, xfac );
@@ -396,7 +394,6 @@ void tedDocAdaptHorizontalRuler(	EditDocument *		ed,
 	BufferDocument *	bd= td->tdDocument;
 
 	AppDrawingData *	add= &(ed->edDrawingData);
-	double			xfac= add->addMagnifiedPixelsPerTwip;
 
 	int			leftIndent;
 	int			firstIndent;
@@ -425,13 +422,13 @@ void tedDocAdaptHorizontalRuler(	EditDocument *		ed,
 
 	for ( tab= 0; tab < tsl->tslTabStopCount; ts++, tab++ )
 	    {
-	    ts->tsPixels= TWIPStoPIXELS( xfac,
+	    ts->tsPixels= X_PIXELS( add,
 					pf.pfX0GeometryTwips+ ts->tsTwips );
 	    }
 	}
 
-	x0GeometryPixels= TWIPStoPIXELS( xfac, pf.pfX0GeometryTwips );
-	x1GeometryPixels= TWIPStoPIXELS( xfac, pf.pfX1GeometryTwips );
+	x0GeometryPixels= X_PIXELS( add, pf.pfX0GeometryTwips );
+	x1GeometryPixels= X_PIXELS( add, pf.pfX1GeometryTwips );
 
 	leftIndent= pf.pfX0TextLinesPixels;
 	firstIndent= pf.pfX0FirstLinePixels;
@@ -564,49 +561,62 @@ int tedDocSetLeftRuler(	EditDocument *	ed )
 /*									*/
 /*  Callbacks for the Copy/Paste ruler menu options.			*/
 /*									*/
+/*  1)  The ruler paste is a selection paste with the selection		*/
+/*	constrained to the last position of the first paragraph in the	*/
+/*	selection.							*/
+/*  2)  Remember the bytes expecting that someone will ask for them.	*/
+/*  3)  Tell that we have a ruler paste available.			*/
+/*									*/
 /************************************************************************/
 
-void tedDocFormatCopyRul(	APP_WIDGET	fontsOption,
-				void *		voided,
-				void *		voidpbcbs )
+APP_MENU_CALLBACK_H( tedDocFormatCopyRul, fontsOption, voided, e )
     {
     EditDocument *		ed= (EditDocument *)voided;
     TedDocument *		td= (TedDocument *)ed->edPrivateData;
     SimpleOutputStream *	sos;
 
-    BufferItem *		bi;
+    const int			saveBookmarks= 0;
 
     DocumentSelection		ds;
     SelectionGeometry		sg;
     SelectionDescription	sd;
 
+    DocumentSelection		dsPara;
+
     if  ( tedGetSelection( &ds, &sg, &sd, td ) )
 	{ LDEB(1); return;	}
-    bi= ds.dsBegin.dpBi;
 
-    if  ( ! bi )
-	{ XDEB(bi); return;	}
+    /*  1  */
+    dsPara= ds;
+    docLastPosition( &(dsPara.dsBegin), dsPara.dsBegin.dpBi );
+    docSetIBarSelection( &dsPara, &(dsPara.dsBegin) );
 
+    /*  2  */
     sos= sioOutMemoryOpen( &(td->tdCopiedRuler) );
     if  ( ! sos )
 	{ XDEB(sos); return;	}
 
-    if  ( docRtfSaveRuler( sos, &(bi->biParaProperties) ) )
+    if  ( docRtfSaveDocument( sos, td->tdDocument, &dsPara, saveBookmarks ) )
 	{ LDEB(1); sioOutClose( sos ); return;	}
 
     if  ( sioOutClose( sos ) )
 	{ LDEB(1); return;	}
 
-    appDocOwnSelection( ed, "RULER", TedRulerTargets, TedRulerTargetCount );
+    /*
+    sos= sioOutStdioOpen( "/tmp/ruler.rtf" );
+    docRtfSaveDocument( sos, td->tdDocument, &dsPara, saveBookmarks );
+    sioOutClose( sos );
+    */
+
+    /*  2  */
+    appDocOwnSelection( ed, "RTFRULER", TedRulerTargets, TedRulerTargetCount );
     }
 
-void tedDocFormatPasteRul(	APP_WIDGET	fontsOption,
-				void *		voided,
-				void *		voidpbcbs )
+APP_MENU_CALLBACK_H( tedDocFormatPasteRul, fontsOption, voided, e )
     {
     EditDocument *			ed= (EditDocument *)voided;
 
-    appDocAskForPaste( ed, "RULER" );
+    appDocAskForPaste( ed, "RTFRULER" );
     }
 
 /************************************************************************/

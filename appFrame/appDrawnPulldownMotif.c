@@ -63,7 +63,7 @@ static APP_EVENT_HANDLER_H( appDrawnPulldownPulldown, w, voidadp, mouseEvent )
     if  ( appGetCoordinatesFromMouseButtonEvent( &mouseX, &mouseY,
 					    &button, &upDown, &seq, &keyState,
 					    w, mouseEvent ) )
-	{ XtPopdown( w ); return;	}
+	{ return;	}
 
     XtTranslateCoords( adp->adpInplaceDrawing,
 				mouseX, mouseY,
@@ -87,8 +87,30 @@ static APP_EVENT_HANDLER_H( appDrawnPulldownPulldown, w, voidadp, mouseEvent )
 
     XtPopupSpringLoaded( adp->adpPulldownShell );
 
+    {
+    Window	win=  XtWindow( adp->adpPulldownShell );
+    Display *	display= XtDisplay( adp->adpPulldownShell );
+
+    XSetInputFocus( display, win, RevertToParent, CurrentTime );
+    }
+
     return;
     }
+
+/************************************************************************/
+/*									*/
+/*  Handle mouse events on the pulldown part.				*/
+/*									*/
+/*  1)  Get the mouse coordinates and translate to pulldown widow	*/
+/*	coordinates.							*/
+/*  2)  Not the click that popped up the pulldown? (sic)		*/
+/*  3)  Not a mouse release at the location where we just clicked to	*/
+/*	pop up the pulldown.						*/
+/*  4)  Not outside the window?						*/
+/*  5)  Hide pulldown window.						*/
+/*  6)  Pass event to application handler.				*/
+/*									*/
+/************************************************************************/
 
 static APP_EVENT_HANDLER_H( appDrawnPulldownMouseUpDown, w, voidadp, mouseEvent )
     {
@@ -108,7 +130,7 @@ static APP_EVENT_HANDLER_H( appDrawnPulldownMouseUpDown, w, voidadp, mouseEvent 
     int			seq;
     unsigned int	keyState= 0;
 
-    /**/
+    /*  1  */
     if  ( appGetCoordinatesFromMouseButtonEvent( &mouseX, &mouseY,
 					    &button, &upDown, &seq, &keyState,
 					    w, mouseEvent ) )
@@ -118,32 +140,47 @@ static APP_EVENT_HANDLER_H( appDrawnPulldownMouseUpDown, w, voidadp, mouseEvent 
 				mouseX, mouseY,
 				&screenX, &screenY );
 
+    /*  2  */
     if  ( mouseEvent->xbutton.time == adp->adpFirstDownTime )
 	{ return;	}
 
+    /*  3  */
     if  ( upDown < 0			&&
 	  adp->adpMouseX == screenX	&&
 	  adp->adpMouseY == screenY	)
 	{ return;	}
 
+    /*  4  */
     XtVaGetValues( w,
 			    XmNwidth,		&wide,
 			    XmNheight,		&high,
 			    NULL );
 
-    /**/
+    /*  5  */
     XtPopdown( w );
 
+    /*  4  */
     if  ( mouseX < 0		||
 	  mouseY < 0		||
 	  mouseX >= wide	||
 	  mouseY >= high	)
 	{ return;	}
 
+    /*  6  */
     if  ( adp->adpClickHandler )
 	{
 	(*adp->adpClickHandler)( w, adp->adpThrough, mouseEvent, pRefused );
 	}
+
+    return;
+    }
+
+static APP_EVENT_HANDLER_H( appDrawnPulldownFocusChange, w, voidadp, focusEvent )
+    {
+    XFocusChangeEvent *	xfocus= &(focusEvent->xfocus);
+
+    if  ( xfocus->type == FocusOut )
+	{ XtPopdown( w );	}
 
     return;
     }
@@ -210,6 +247,10 @@ static void appFinishDrawnPulldown(	AppDrawnPulldown *	adp,
     XtAddEventHandler( adp->adpPulldownShell,
 			ButtonReleaseMask|ButtonPressMask,
 			False, appDrawnPulldownMouseUpDown, (void *)adp );
+
+    XtAddEventHandler( adp->adpPulldownShell,
+			FocusChangeMask,
+			False, appDrawnPulldownFocusChange, (void *)adp );
 
     XtAddEventHandler( adp->adpInplaceDrawing, ButtonPressMask,
 				False, appDrawnPulldownPulldown, (void *)adp );

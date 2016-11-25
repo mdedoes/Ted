@@ -107,7 +107,7 @@ int docRecalculateParaSymbolTextParticules(
 
     if  ( *pCalculated )
 	{
-	const int		encoding= -1;
+	const int		charset= FONTcharsetDEFAULT;
 
 	TextAttribute		taSet;
 	PropertyMask		taSetMask;
@@ -125,8 +125,8 @@ int docRecalculateParaSymbolTextParticules(
 
 	    strncpy( allocated, fontName, fontSize )[fontSize]= '\0';
 
-	    fontNumber= docGetFontByName( &(dp->dpFontList), allocated, 
-								encoding );
+	    fontNumber= docGetFontByNameAndCharset(
+				&(dp->dpFontList), allocated, charset );
 	    if  ( fontNumber < 0 )
 		{ SLDEB(allocated,fontNumber);	}
 	    else{
@@ -149,14 +149,8 @@ int docRecalculateParaSymbolTextParticules(
 	    PROPmaskADD( &taSetMask, TApropFONTSIZE );
 	    }
 
-	if  ( ! PROPmaskISEMPTY( &taSetMask ) )
+	if  ( ! utilPropMaskIsEmpty( &taSetMask ) )
 	    {
-	    /*
-	    tp= bi->biParaParticules+ part+ 1;
-	    for ( i= 0; i < partCount+ *pPartShift; tp++, i++ )
-		{..}
-	    */
-
 	    if  ( docChangeParticuleAttributes( (PropertyMask *)0, bd,
 					bi, part+ 1,
 					part+ 1+ partCount+ *pPartShift,

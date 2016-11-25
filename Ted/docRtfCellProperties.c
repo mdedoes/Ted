@@ -67,6 +67,20 @@ void docRtfSaveCellProperties(		const CellProperties *	cp,
     if  ( cp->cpBottomBorder.bpStyle != DOCbsNONE )
 	{ docRtfSaveBorder( "\\clbrdrb", pCol, &(cp->cpBottomBorder), sos ); }
 
+    /*  NOTE: Word 2003 swaps left and top  */
+    docRtfSaveAutoSpace(  pCol, sos,
+			    "\\clpadft", cp->cpLeftPaddingUnit,
+			    "\\clpadt", cp->cpLeftPadding );  /* !!!  */
+    docRtfSaveAutoSpace(  pCol, sos,
+			    "\\clpadfl", cp->cpTopPaddingUnit,
+			    "\\clpadl", cp->cpTopPadding );  /* !!!  */
+    docRtfSaveAutoSpace(  pCol, sos,
+			    "\\clpadfr", cp->cpRightPaddingUnit,
+			    "\\clpadr", cp->cpRightPadding );
+    docRtfSaveAutoSpace(  pCol, sos,
+			    "\\clpadfb", cp->cpBottomPaddingUnit,
+			    "\\clpadb", cp->cpBottomPadding );
+
     switch( cp->cpShading.isPattern )
 	{
 	case DOCspSOLID:
@@ -158,6 +172,7 @@ void docRtfSaveCellProperties(		const CellProperties *	cp,
 	    break;
 	}
 
+    /*  LAST! */
     docRtfWriteArgTag( "\\cellx", pCol,
 				cp->cpRightBoundaryTwips- shiftLeft, sos );
 

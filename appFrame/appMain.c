@@ -27,9 +27,7 @@
 /*									*/
 /************************************************************************/
 
-void appAppFileHide(	APP_WIDGET	option,
-			void *		voidea,
-			void *		call_data )
+APP_MENU_CALLBACK_H( appAppFileHide, option, voidea, call_data )
     {
     EditApplication *		ea= (EditApplication *)voidea;
 
@@ -47,9 +45,7 @@ void appAppFileHide(	APP_WIDGET	option,
 /*									*/
 /************************************************************************/
 
-void appAppFileMini(	APP_WIDGET	option,
-			void *		voidea,
-			void *		call_data )
+APP_MENU_CALLBACK_H( appAppFileMini, option, voidea, call_data )
     {
     EditApplication *		ea= (EditApplication *)voidea;
 
@@ -176,13 +172,12 @@ void appQuitApplication(	APP_WIDGET		option,
     return;
     }
 
-void appAppFileQuit(	APP_WIDGET		option,
-			void *			voidea,
-			void *			call_data )
+APP_MENU_CALLBACK_H( appAppFileQuit, option, voidea, call_data )
     {
     EditApplication *	ea= (EditApplication *)voidea;
+    APP_WIDGET		woption= (APP_WIDGET)option;
 
-    appQuitApplication( option, ea->eaToplevel.atTopWidget, ea );
+    appQuitApplication( woption, ea->eaToplevel.atTopWidget, ea );
     }
 
 /************************************************************************/
@@ -191,9 +186,7 @@ void appAppFileQuit(	APP_WIDGET		option,
 /*									*/
 /************************************************************************/
 
-void appAppFileNew(	APP_WIDGET		option,
-			void *			voidea,
-			void *			call_data )
+APP_MENU_CALLBACK_H( appAppFileNew, option, voidea, call_data )
     {
     EditApplication *		ea= (EditApplication *)voidea;
     const char *		filename= (const char *)0;
@@ -276,6 +269,12 @@ void appDocVisible(	EditApplication *	ea,
     if  ( visible )
 	{ from= ea->eaVisibleDocumentCount++;	}
     else{ from= ea->eaVisibleDocumentCount--;	}
+
+    if  ( ea->eaAppFileHideOption )
+	{
+	appGuiEnableWidget( ea->eaAppFileHideOption,
+					ea->eaVisibleDocumentCount > 0 );
+	}
 
     if  ( ea->eaVisibleDocumentCount == 0 )
 	{ appShowShellWidget( ea->eaToplevel.atTopWidget ); }
@@ -368,7 +367,7 @@ static void appAppSetWindowsOption(	APP_WIDGET		menu,
     ami.amiItemText= label;
     ami.amiKey= (char *)0;
     ami.amiKeyText= (char *)0;
-    ami.amiCallback= (APP_MENU_CALLBACK)appDocToFront;
+    ami.amiCallback= (APP_MENU_CALLBACK_T)appDocToFront;
 
     windowsOption= appSetToggleMenuItem( menu, &(ed->edToplevel),
 							&ami, (void *)ed );
@@ -438,7 +437,7 @@ static AppConfigurableResource	APP_ApplicationResourceTable[]=
 		"72pt" ),
     APP_RESOURCE( "magnification",
 		offsetof(EditApplication,eaMagnificationString),
-		"1.2" ),
+		"120%" ),
 
     APP_RESOURCE( "supportXvCopyPaste",
 		offsetof(EditApplication,eaSupportXvCopyPasteString),
@@ -451,9 +450,18 @@ static AppConfigurableResource	APP_ApplicationResourceTable[]=
     APP_RESOURCE( "usePostScriptFilters",
 		offsetof(EditApplication,eaUsePostScriptFiltersString),
 		(char *)0 ),
-
     APP_RESOURCE( "usePostScriptIndexedImages",
 		offsetof(EditApplication,eaUsePostScriptIndexedImagesString),
+		(char *)0 ),
+
+    APP_RESOURCE( "skipEmptyPages",
+		offsetof(EditApplication,eaSkipEmptyPagesString),
+		(char *)0 ),
+    APP_RESOURCE( "skipBlankPages",
+		offsetof(EditApplication,eaSkipBlankPagesString),
+		(char *)0 ),
+    APP_RESOURCE( "omitHeadersOnEmptyPages",
+		offsetof(EditApplication,eaOmitHeadersOnEmptyPagesString),
 		(char *)0 ),
 
     APP_RESOURCE( "author",
@@ -520,10 +528,21 @@ static void appInitializeGeometrySettings(	EditApplication *	ea )
     ea->eaMagnification= 1.2;
     if  ( ea->eaMagnificationString )
 	{
-	ea->eaMagnification= atof( ea->eaMagnificationString );
-	if  ( ea->eaMagnification < 0.1 )
+	double	mag= 0.0;
+	char	c;
+	int	res;
+
+	res= sscanf( ea->eaMagnificationString, "%lg%c", &mag, &c );
+	if  ( res == 1 )
+	    { ea->eaMagnification= mag;		}
+	if  ( res == 2 && c == '%' )
+	    { ea->eaMagnification= mag/100.0;	}
+
+	if  ( mag < 0.1				||
+	      ea->eaMagnification < 0.1		||
+	      ea->eaMagnification > 10.0	)
 	    {
-	    SFDEB(ea->eaMagnificationString,ea->eaMagnification);
+	    SFDEB(ea->eaMagnificationString,mag);
 	    ea->eaMagnification= 1.2;
 	    }
 	}
@@ -582,6 +601,21 @@ static void appInitializeGeometrySettings(	EditApplication *	ea )
 	  ! strcmp( ea->eaUsePostScriptIndexedImagesString, "1" )	)
 	{ ea->eaUsePostScriptIndexedImages= 1;	}
 
+    ea->eaSkipEmptyPages= 0;
+    if  ( ea->eaSkipEmptyPagesString			&&
+	  ! strcmp( ea->eaSkipEmptyPagesString, "1" )	)
+	{ ea->eaSkipEmptyPages= 1;	}
+
+    ea->eaSkipBlankPages= 0;
+    if  ( ea->eaSkipBlankPagesString			&&
+	  ! strcmp( ea->eaSkipBlankPagesString, "1" )	)
+	{ ea->eaSkipBlankPages= 1;	}
+
+    ea->eaOmitHeadersOnEmptyPages= 0;
+    if  ( ea->eaOmitHeadersOnEmptyPagesString			&&
+	  ! strcmp( ea->eaOmitHeadersOnEmptyPagesString, "1" )	)
+	{ ea->eaOmitHeadersOnEmptyPages= 1;	}
+
     if  ( ea->eaToplevel.atTopWidget )
 	{
 	double			horPixPerMM;
@@ -619,6 +653,19 @@ static int appFinishApplicationWindow(	EditApplication *	ea )
 			*(ea->eaAppFileMenuText), 0,
 			ea->eaAppFileMenuItems, ea->eaAppFileMenuItemCount,
 			(void *)ea );
+
+    if  ( ea->eaAppFileHideOption == (APP_WIDGET)0 )
+	{
+	int			i;
+	const AppMenuItem *	ami= ea->eaAppFileMenuItems;
+
+	for ( i= 0; i < ea->eaAppFileMenuItemCount; ami++, i++ )
+	    {
+	    if  ( ami->amiCallback == appAppFileHide )
+		{ ea->eaAppFileHideOption= ami->amiOptionWidget;	}
+	    }
+	}
+
 
     ea->eaWinMenu= appMakeMenu( &(ea->eaWinMenuButton),
 			&(ea->eaToplevel), ea, ea->eaMenuBar,
@@ -675,8 +722,31 @@ static int appFinishApplicationWindow(	EditApplication *	ea )
 
     if  ( ea->eaNameAndVersion )
 	{
-	appMakeLabelInColumn( &label, ea->eaMainWindow,
-						    ea->eaNameAndVersion );
+	char *		ident= (char *)0;
+
+
+	if  ( ea->eaPlatformCompiled )
+	    {
+	    ident= malloc( strlen( ea->eaNameAndVersion )+ 3+
+					strlen( ea->eaPlatformCompiled )+ 1 );
+	    if  ( ! ident )
+		{ XDEB(ident); }
+	    else{
+		sprintf( ident, "%s - %s",
+				ea->eaNameAndVersion, ea->eaPlatformCompiled );
+		}
+	    }
+	else{
+	    ident= strdup( ea->eaNameAndVersion );
+	    }
+
+	if  ( ! ident )
+	    { XDEB(ident);	}
+	else{
+	    appMakeLabelInColumn( &label, ea->eaMainWindow, ident );
+
+	    free( ident );
+	    }
 	}
 
     if  ( ea->eaReference )
@@ -710,22 +780,41 @@ static int appFinishApplicationWindow(	EditApplication *	ea )
 /*									*/
 /*  Resolve application resources.					*/
 /*									*/
+/*  9)  Theoretically a program could have more than one application	*/
+/*	object. This has never beem tested. The use of a single		*/
+/*	table and different flags to check for reuse here is one of the	*/
+/*	things to fix.							*/
+/*									*/
 /************************************************************************/
 
 void appGetApplicationResourceValues(	EditApplication *	ea )
     {
     /*  b  */
-    appGuiGetResourceValues( ea, ea->eaResourceData,
-				ea->eaResourceTable, ea->eaResourceCount );
+    if  ( ! ea->eaGotResourceTable )
+	{
+	appGuiGetResourceValues( &(ea->eaGotResourceTable), ea,
+					    ea->eaResourceData,
+					    ea->eaResourceTable,
+					    ea->eaResourceCount );
+	}
 
-    appGuiGetResourceValues( ea, &(ea->eaFileMessageResources),
-				ea->eaFileMessageResourceTable,
-				ea->eaFileMessageResourceCount );
+    if  ( ! ea->eaGotFileMessageResourceTable )
+	{
+	appGuiGetResourceValues( &(ea->eaGotFileMessageResourceTable), ea,
+					&(ea->eaFileMessageResources),
+					ea->eaFileMessageResourceTable,
+					ea->eaFileMessageResourceCount );
+	}
 
-    appGuiGetResourceValues( ea, (void *)ea,
+    /*  9  */
+    if  ( ! ea->eaGotApplicationResources )
+	{
+	appGuiGetResourceValues( &(ea->eaGotApplicationResources), ea,
+				(void *)ea,
 				APP_ApplicationResourceTable,
 				sizeof(APP_ApplicationResourceTable)/
 				sizeof(AppConfigurableResource) );
+	}
 
     appInitializeGeometrySettings( ea );
 
@@ -763,7 +852,7 @@ int appGetPrintDestinations(		EditApplication *	ea )
 /*									*/
 /*  1)  It is not necessary to initialize TedApplication to convert	*/
 /*	files. Intercept conversion calls to prevent the program from	*/
-/*	becoming interactive. NOTE that the calls differfrom the calls	*/
+/*	becoming interactive. NOTE that the calls differ from the calls	*/
 /*	that initialize the application: They begin with -- instead of	*/
 /*	++ . To override configurable options, the ++Something calls	*/
 /*	should be used.							*/
@@ -788,6 +877,38 @@ static int appMainHandleSpecialCall(	EditApplication *	ea,
     command= argv[1]+ prefixLength;
 
     /*  1  */
+    if  ( argc == 2				&&
+	  ! strcmp( command, "version" )	)
+	{
+	printf( "%s\n", ea->eaNameAndVersion );
+	return 2;
+	}
+
+    if  ( argc == 2			&&
+	  ! strcmp( command, "platform" )	)
+	{
+	printf( "%s\n", ea->eaPlatformCompiled );
+	return 2;
+	}
+
+    if  ( argc == 2			&&
+	  ! strcmp( command, "build" )	)
+	{
+	printf( "%s\n", ea->eaHostDateCompiled );
+	return 2;
+	}
+
+    if  ( argc == 2				&&
+	  ! strcmp( command, "fullVersion" )	)
+	{
+	printf( "%s %s %s\n",
+		    ea->eaNameAndVersion,
+		    ea->eaPlatformCompiled,
+		    ea->eaHostDateCompiled );
+
+	return 2;
+	}
+
     if  ( argc == 4				&&
 	  ! strcmp( command, "saveTo" )	)
 	{
@@ -884,12 +1005,55 @@ static int appMainHandleSpecialCall(	EditApplication *	ea,
 
 /************************************************************************/
 /*									*/
+/*  Use the contents of /etc/papersize as the default papersize.	*/
+/*									*/
+/************************************************************************/
+
+static void appDefaultPapersize(	EditApplication *	ea )
+    {
+    const char *	sizeFile= "/etc/papersize";
+
+    if  ( ! appTestFileExists( sizeFile ) )
+	{
+	FILE *	f;
+
+	f= fopen( sizeFile, "r" );
+	if  ( ! f )
+	    { SXDEB(sizeFile,f);	}
+	else{
+	    char	buf[50];
+
+	    if  ( fgets( buf, sizeof(buf)-1, f ) )
+		{
+		int		l;
+
+		buf[sizeof(buf)-1]= '\0';
+		l= strlen( buf );
+		if  ( l > 0 && buf[l-1] == '\n' )
+		    { buf[l-1]= '\0'; l--; }
+
+		if  ( l > 0 )
+		    {
+		    if  ( appSetSystemProperty( ea, "paper", buf ) )
+			{ SDEB(buf);	}
+		    }
+		}
+	    }
+	}
+
+    return;
+    }
+
+/************************************************************************/
+/*									*/
 /*  Generic main() procedure.						*/
 /*									*/
 /*  1)  Connect to the GUI system.					*/
 /*  2)  Retrieve resource values and derive some application wide	*/
 /*	settings from them.						*/
 /*  3)  Do not die too easily.						*/
+/*	And try to be immune for shells that make you sensitive for	*/
+/*	signals that an X11 application does not want to know about.	*/
 /*									*/
 /************************************************************************/
 
@@ -897,10 +1061,40 @@ int appMain(	EditApplication *	ea,
 		int			argc,
 		char *			argv[] )
     {
+    int			argTo;
     int			arg;
     int			res;
 
     setlocale( LC_ALL, "" );
+
+    appDefaultPapersize( ea );
+
+    res= appReadUserProperties( ea );
+    if  ( res )
+	{ LDEB(res); return 1;	}
+
+    res= appReadSystemProperties( ea );
+    if  ( res )
+	{ LDEB(res); return 1;	}
+
+    argTo= 1;
+    for ( arg= 1; arg < argc; arg++ )
+	{
+	if  ( arg+ 3 <= argc				&&
+	      ! strcmp( argv[arg], "--setProperty" )	)
+	    {
+	    if  ( appSetUserProperty( ea, argv[arg+ 1], argv[arg+ 2] ) )
+		{
+		SSDEB(argv[arg+ 1], argv[arg+ 2]);
+		return 1;
+		}
+
+	    arg += 2;
+	    continue;
+	    }
+	argv[argTo++]= argv[arg];
+	}
+    argc= argTo;
 
     res= appMainHandleSpecialCall( ea, "--", 1, argc, argv );
     if  ( res < 0 )
@@ -912,7 +1106,7 @@ int appMain(	EditApplication *	ea,
     if  ( appGuiInitApplication( ea, &argc, &argv ) )
 	{ LDEB(1); return 1;	}
 
-    appInitDocumentGeometry( &(ea->eaDefaultDocumentGeometry) );
+    utilInitDocumentGeometry( &(ea->eaDefaultDocumentGeometry) );
 
     /*  b  */
     appGetApplicationResourceValues( ea );
@@ -939,6 +1133,9 @@ int appMain(	EditApplication *	ea,
     /*  3  */
     (void) signal( SIGHUP, SIG_IGN );
     (void) signal( SIGINT, SIG_IGN );
+#   ifdef SIGWINCH
+    (void) signal( SIGWINCH, SIG_IGN );
+#   endif
 
     for ( arg= 1; arg < argc; arg++ )
 	{

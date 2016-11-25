@@ -56,12 +56,19 @@ typedef struct InspectorSubject
 
 typedef struct AppInspector
     {
+    struct EditApplication *	aiApplication;
+
     APP_WIDGET			aiTopWidget;
     APP_WIDGET			aiPaned;
-    APP_WIDGET			aiSeparator;
-    APP_WIDGET			aiPageParent;
 
     AppOptionmenu		aiSubjectOptionmenu;
+
+    APP_WIDGET			aiSeparator;
+    APP_WIDGET			aiPageParent;
+    APP_WIDGET			aiSeparator2;
+
+    APP_WIDGET			aiLowerButton;
+    APP_WIDGET			aiCloseButton;
 
     InspectorNotifySubject	aiNotifySubject;
 
@@ -76,6 +83,12 @@ typedef struct AppInspector
 
     InspectorSubject		aiSubjects[1];		/*  LAST !!	*/
     } AppInspector;
+
+typedef struct AppInspectorResources
+    {
+    char *	airLowerText;
+    char *	airCloseText;
+    } AppInspectorResources;
 
 typedef struct InspectorSubjectResources
     {

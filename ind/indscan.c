@@ -1,6 +1,8 @@
 /****************************************************************/
+/*								*/
 /*  Utility functions for scanning documents for typographical	*/
 /*  errors.							*/
+/*								*/
 /****************************************************************/
 
 #   include	"indConfig.h"

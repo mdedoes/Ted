@@ -185,7 +185,12 @@ int docRecalculateParaChftnTextParticules(
 				void *				voidadd,
 				DOC_CLOSE_OBJECT		closeObject )
     {
-    int		ret;
+    int			ret;
+
+    TextAttribute	taSet;
+    PropertyMask	taSetMask;
+    PropertyMask	taDoneMask;
+
 
     ret= docRecalculateParaStringTextParticules( pCalculated, bd,
 			    pPartShift, pStroffShift, paraBi, part, partCount,
@@ -194,23 +199,21 @@ int docRecalculateParaChftnTextParticules(
     if  ( ret )
 	{ LDEB(ret); return ret;	}
 
-    if  ( *pCalculated )
-	{
-	TextAttribute	taSet;
-	PropertyMask	taSetMask;
+    utilInitTextAttribute( &taSet );
+    PROPmaskCLEAR( &taSetMask );
+    PROPmaskCLEAR( &taDoneMask );
 
-	utilInitTextAttribute( &taSet );
-	PROPmaskCLEAR( &taSetMask );
+    taSet.taSuperSub= DOCfontSUPERSCRIPT;
+    PROPmaskADD( &taSetMask, TApropSUPERSUB );
 
-	taSet.taSuperSub= DOCfontSUPERSCRIPT;
-	PROPmaskADD( &taSetMask, TApropSUPERSUB );
+    if  ( docChangeParticuleAttributes( &taDoneMask, bd,
+					paraBi, part+ 1,
+					part+ 1+ partCount+ *pPartShift,
+					&taSet, &taSetMask ) )
+	{ LDEB(1);	}
 
-	if  ( docChangeParticuleAttributes( (PropertyMask *)0, bd,
-					    paraBi, part+ 1,
-					    part+ 1+ partCount+ *pPartShift,
-					    &taSet, &taSetMask ) )
-	    { LDEB(1);	}
-	}
+    if  ( ! utilPropMaskIsEmpty( &taDoneMask ) )
+	{ *pCalculated= 1;	}
 
     return ret;
     }

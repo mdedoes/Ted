@@ -30,6 +30,9 @@ static void tedFormatToolRefreshHeadFootPage(	HeaderFooterTool *	hft )
 
     int				i;
 
+    appIntegerToTextWidget( hft->hftSectionNumberText,
+						hft->hftSectionNumber+ 1 );
+
     appGuiSetToggleState( hft->hftTitlepgToggle, sp->spHasTitlePage );
 
     appGuiSetToggleState( hft->hftFacingpToggle, dp->dpHasFacingPages );
@@ -96,9 +99,11 @@ void tedFormatToolRefreshHeaderFooterTool(
     if  ( whatHeaderFooter == DOCinBODY )
 	{
 	ExternalItem *	ei;
+	int		isEmpty;
 	int		page= sg->sgBegin.pgTopPosition.lpPage;
 
-	whatHeaderFooter= docWhatPageHeader( &ei, selSectBi, page, dpSet );
+	whatHeaderFooter= docWhatPageHeader( &ei, &isEmpty,
+						    selSectBi, page, dpSet );
 
 	hft->hftSectionNumber= selSectBi->biNumberInParent;
 	spSet= &(selSectBi->biSectProperties);
@@ -116,7 +121,7 @@ void tedFormatToolRefreshHeaderFooterTool(
 	hft->hftSectionNumber= bodySectBi->biNumberInParent;
 	spSet= &(bodySectBi->biSectProperties);
 
-	*pPref= 7;
+	(*pPref) += 2;
 	}
 
     /**********/
@@ -449,6 +454,7 @@ void tedFormatFillHeaderFooterPage( HeaderFooterTool *		hft,
     APP_WIDGET	row= (APP_WIDGET )0;
 
     const int	heightResizable= 0;
+    const int	textColumns= 5;
 
     /**/
     hft->hftPageResources= hfpr;
@@ -464,6 +470,11 @@ void tedFormatFillHeaderFooterPage( HeaderFooterTool *		hft,
     appMakeColumnFrameInColumn( &(hft->hftSectionFrame),
 			    &(hft->hftSectionPaned),
 			    pageWidget, hfpr->hfprSectionHeaderText );
+
+    appMakeLabelAndTextRow( &row, &(hft->hftSectionNumberLabel),
+			    &(hft->hftSectionNumberText),
+			    hft->hftSectionPaned, hfpr->hfprSectionNumberText,
+			    textColumns, 0 );
 
     row= appMakeRowInColumn( hft->hftSectionPaned, 1, heightResizable );
     hft->hftTitlepgToggle= appMakeToggleInRow( row, hfpr->hfprTitlepgText,
@@ -586,6 +597,9 @@ static AppConfigurableResource TED_TedHeaderFooterToolResourceTable[]=
     APP_RESOURCE( "formatToolHeadFootSectionHeader",
 		offsetof(HeaderFooterPageResources,hfprSectionHeaderText),
 		"Section Properties" ),
+    APP_RESOURCE( "formatToolHeadFootSectionNumber",
+		offsetof(HeaderFooterPageResources,hfprSectionNumberText),
+		"Section" ),
     APP_RESOURCE( "formatToolHeadFootTitlepgText",
 		offsetof(HeaderFooterPageResources,hfprTitlepgText),
 		"Different first Page" ),
@@ -646,15 +660,24 @@ void tedFormatToolGetHeaderFooterResourceTable( EditApplication *	ea,
 					HeaderFooterPageResources *	hfpr,
 					InspectorSubjectResources *	isr )
     {
-    appGuiGetResourceValues( ea, (void *)hfpr,
+    static int	gotToolResources= 0;
+    static int	gotSubjectResources= 0;
+
+    if  ( ! gotToolResources )
+	{
+	appGuiGetResourceValues( &gotToolResources, ea, (void *)hfpr,
 				TED_TedHeaderFooterToolResourceTable,
 				sizeof(TED_TedHeaderFooterToolResourceTable)/
 				sizeof(AppConfigurableResource) );
+	}
 
-    appGuiGetResourceValues( ea, (void *)isr,
+    if  ( ! gotSubjectResources )
+	{
+	appGuiGetResourceValues( &gotSubjectResources, ea, (void *)isr,
 				TED_TedHeaderFooterSubjectResourceTable,
 				sizeof(TED_TedHeaderFooterSubjectResourceTable)/
 				sizeof(AppConfigurableResource) );
+	}
 
     return;
     }

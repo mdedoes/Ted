@@ -32,14 +32,16 @@ extern AfmFontInfo * utilPsGetAfi(	int *				pEnc,
 					const PostScriptFontList *	psfl,
 					const TextAttribute *		ta );
 
-int utilFontWeightFromString(		int *		pWieght,
+extern int utilFontWeightFromString(	int *		pWieght,
 					int *		pStart,
 					int *		pLength,
 					const char *	name );
 
-int utilFontWidthFromString(		int *		pWidth,
+extern int utilFontWidthFromString(	int *		pWidth,
 					int *		pStart,
 					int *		pLength,
 					const char *	name );
+
+extern int utilFontlistSetPreferredEncodings(	DocumentFontList *	dfl );
 
 #   endif

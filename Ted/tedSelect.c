@@ -560,13 +560,14 @@ int tedExtendSelectionToXY(	EditDocument *			ed,
 
     DocumentPosition		dpTo;
     PositionGeometry		pgTo;
+    int				partTo;
 
     int				ox= ed->edVisibleRect.drX0;
     int				oy= ed->edVisibleRect.drY0;
 
     dpTo= *dpAnchor;
 
-    if  ( tedFindPosition( &dpTo, &pgTo, bd, rootBi,
+    if  ( tedFindPosition( &dpTo, &pgTo, &partTo, bd, rootBi,
 					add, sfl, mouseX+ ox, mouseY+ oy ) )
 	{ /*LLDEB(mouseX,mouseY);*/ return 0; }
 
@@ -787,18 +788,18 @@ void tedSetSelection(	EditDocument *			ed,
 
     const int			justUsed= 0;
 
-    /*  0  */
-    if  ( td->tdObjectSelected )
-	{ tedHideObjectWindows( ed );	}
-
     if  ( tedGetSelection( &dsOld, &sgOld, &sdOld, td ) )
 	{ LDEB(1); return;	}
+
+    /*  0  */
+    if  ( sdOld.sdIsObjectSelection )
+	{ tedHideObjectWindows( ed );	}
 
     rootBiSet= docGetSelectionRoot( &eiSet, &bodySectBiSet, bd, dsSet );
     if  ( ! rootBiSet )
 	{ XDEB(rootBiSet); return;	}
 
-    otherRoot= docSelectionDifferentRoot( &dsOld, rootBiSet );
+    otherRoot= ! docSelectionSameRoot( &dsOld, rootBiSet );
 
     /******/
     switch( dsOld.dsSelectionScope.ssInExternalItem )
@@ -910,7 +911,8 @@ void tedSetSelection(	EditDocument *			ed,
 		if  ( docGetExternalItemBox( &drExternalSet, bodySectBiSet,
 					    eiSet, justUsed, page, bd, add ) )
 		    {
-		    LDEB(rootBiSet->biInExternalItem);
+		    LSDEB(rootBiSet->biInExternalItem,
+			docExternalKindStr(rootBiSet->biInExternalItem));
 		    redrawExternalItemSet= 0;
 		    }
 		}
@@ -963,7 +965,7 @@ void tedSetSelection(	EditDocument *			ed,
 	drExpose= sgOld.sgRectangle;
 
 	if  ( redrawExternalItemOld )
-	    { docUnionRectangle( &drExpose, &drExpose, &(add->addBackRect) ); }
+	    { geoUnionRectangle( &drExpose, &drExpose, &(add->addBackRect) ); }
 
 	/*  2  */
 	if  ( sdOld.sdIsIBarSelection )
@@ -997,7 +999,7 @@ void tedSetSelection(	EditDocument *			ed,
 	drExpose= sgOld.sgRectangle;
 
 	if  ( redrawExternalItemOld )
-	    { docUnionRectangle( &drExpose, &drExpose, &(add->addBackRect) ); }
+	    { geoUnionRectangle( &drExpose, &drExpose, &(add->addBackRect) ); }
 
 	appDocExposeRectangle( ed, &drExpose, *pScrolledX, *pScrolledY );
 	}
@@ -1006,7 +1008,7 @@ void tedSetSelection(	EditDocument *			ed,
     drExpose= sgNew.sgRectangle;
 
     if  ( redrawExternalItemSet )
-	{ docUnionRectangle( &drExpose, &drExpose, &drExternalSet ); }
+	{ geoUnionRectangle( &drExpose, &drExpose, &drExternalSet ); }
 
     appDocExposeRectangle( ed, &drExpose, *pScrolledX, *pScrolledY );
 
@@ -1020,6 +1022,9 @@ void tedSetSelection(	EditDocument *			ed,
     docDescribeSelection( &(td->tdSelectionDescription),
 				&(td->tdDocumentSelection),
 				bd, ed->edDocumentId, ed->edIsReadonly );
+
+    if  ( td->tdSelectionDescription.sdIsObjectSelection )
+	{ tedMoveObjectWindows( ed );	}
 
     return;
     }
@@ -1085,6 +1090,7 @@ int tedSelectItemHome(		EditDocument *			ed,
 int tedSetIBarSelection(		EditDocument *		ed,
 					BufferItem *		bi,
 					int			stroff,
+					int			lastLine,
 					int *			pScrolledX,
 					int *			pScrolledY )
     {
@@ -1092,11 +1098,9 @@ int tedSetIBarSelection(		EditDocument *		ed,
 
     DocumentPosition	dp;
 
-    const int		lastLine= 0;
-
     td->tdVisibleSelectionCopied= 0;
 
-    if  ( td->tdObjectSelected )
+    if  ( td->tdSelectionDescription.sdIsObjectSelection )
 	{ tedHideObjectWindows( ed );	}
 
     if  ( docSetDocumentPosition( &dp, bi, stroff ) )
@@ -1246,120 +1250,6 @@ int tedSelectWholeSection(	EditApplication *	ea,
 
 /************************************************************************/
 /*									*/
-/*  Table related menu option callbacks.				*/
-/*									*/
-/************************************************************************/
-
-void tedDocTableSelectTableRectangle(	EditDocument *		ed,
-					const TableRectangle *	tr )
-    {
-    TedDocument *	td= (TedDocument *)ed->edPrivateData;
-    BufferDocument *	bd= td->tdDocument;
-
-    DocumentSelection	dsNew;
-    SelectionGeometry	sg;
-    SelectionDescription	sd;
-
-    BufferItem *	selSectBi;
-
-    int			scrolledX= 0;
-    int			scrolledY= 0;
-
-    const int		lastLine= 0;
-
-    if  ( tedGetSelection( &dsNew, &sg, &sd, td  ) )
-	{ LDEB(1); return;	}
-
-    if  ( docTableRectangleSelection( &dsNew, &selSectBi, bd, tr ) )
-	{ LDEB(1); return;	}
-
-    tedSetSelection( ed, &dsNew, lastLine, &scrolledX, &scrolledY );
-
-    tedAdaptToolsToSelection( ed );
-
-    return;
-    }
-
-void tedDocTableSelectTable(	APP_WIDGET	option,
-				void *		voided,
-				void *		voidpbcbs )
-    {
-    EditDocument *	ed= (EditDocument *)voided;
-    TedDocument *	td= (TedDocument *)ed->edPrivateData;
-
-    DocumentSelection	ds;
-    SelectionGeometry	sg;
-    SelectionDescription	sd;
-
-    TableRectangle	tr;
-
-    if  ( tedGetSelection( &ds, &sg, &sd, td  ) )
-	{ LDEB(1); return;	}
-
-    if  ( docGetTableRectangle( &tr, &ds ) )
-	{ LDEB(1); return;	}
-
-    docExpandTableRectangleToWholeTable( &tr );
-
-    tedDocTableSelectTableRectangle( ed, &tr );
-
-    return;
-    }
-
-void tedDocTableSelectRow(	APP_WIDGET	option,
-				void *		voided,
-				void *		voidpbcbs )
-    {
-    EditDocument *	ed= (EditDocument *)voided;
-    TedDocument *	td= (TedDocument *)ed->edPrivateData;
-
-    DocumentSelection	ds;
-    SelectionGeometry	sg;
-    SelectionDescription	sd;
-
-    TableRectangle	tr;
-
-    if  ( tedGetSelection( &ds, &sg, &sd, td  ) )
-	{ LDEB(1); return;	}
-
-    if  ( docGetTableRectangle( &tr, &ds ) )
-	{ LDEB(1); return;	}
-
-    docExpandTableRectangleToWholeRows( &tr );
-
-    tedDocTableSelectTableRectangle( ed, &tr );
-
-    return;
-    }
-
-void tedDocTableSelectColumn(	APP_WIDGET	option,
-				void *		voided,
-				void *		voidpbcbs )
-    {
-    EditDocument *	ed= (EditDocument *)voided;
-    TedDocument *	td= (TedDocument *)ed->edPrivateData;
-
-    DocumentSelection	ds;
-    SelectionGeometry	sg;
-    SelectionDescription	sd;
-
-    TableRectangle	tr;
-
-    if  ( tedGetSelection( &ds, &sg, &sd, td  ) )
-	{ LDEB(1); return;	}
-
-    if  ( docGetTableRectangle( &tr, &ds ) )
-	{ LDEB(1); return;	}
-
-    docExpandTableRectangleToWholeColumns( &tr );
-
-    tedDocTableSelectTableRectangle( ed, &tr );
-
-    return;
-    }
-
-/************************************************************************/
-/*									*/
 /*  Adapt tools and rulers to the current position.			*/
 /*									*/
 /************************************************************************/
@@ -1452,6 +1342,17 @@ static void tedAdaptOptions(	TedDocument *			td,
     appGuiEnableWidget( td->tdSelectTableWidget, sd->sdBeginInTable );
     appGuiEnableWidget( td->tdSelectRowWidget, sd->sdBeginInTable );
     appGuiEnableWidget( td->tdSelectColumnOption, sd->sdBeginInTable );
+
+    appGuiEnableWidget( td->tdDeleteTableWidget,
+				    ! sd->sdDocumentReadonly	&&
+				    sd->sdBeginInTable		);
+    appGuiEnableWidget( td->tdDeleteRowWidget,
+				    ! sd->sdDocumentReadonly	&&
+				    sd->sdBeginInTable		);
+    appGuiEnableWidget( td->tdDeleteColumnOption,
+				    ! sd->sdIsRowSlice		&&
+				    ! sd->sdDocumentReadonly	&&
+				    sd->sdBeginInTable		);
 
     return;
     }

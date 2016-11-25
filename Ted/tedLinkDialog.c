@@ -644,15 +644,24 @@ void tedLinkToolGetResourceTable(	EditApplication *		ea,
 					LinkToolResources *		lpr,
 					InspectorSubjectResources *	isr )
     {
-    appGuiGetResourceValues( ea, (void *)lpr,
+    static int	gotToolResources= 0;
+    static int	gotSubjectResources= 0;
+
+    if  ( ! gotToolResources )
+	{
+	appGuiGetResourceValues( &gotToolResources, ea, (void *)lpr,
 				TED_TedLinkToolResourceTable,
 				sizeof(TED_TedLinkToolResourceTable)/
 				sizeof(AppConfigurableResource) );
+	}
 
-    appGuiGetResourceValues( ea, (void *)isr,
+    if  ( ! gotSubjectResources )
+	{
+	appGuiGetResourceValues( &gotSubjectResources, ea, (void *)isr,
 				TED_TedLinkSubjectResourceTable,
 				sizeof(TED_TedLinkSubjectResourceTable)/
 				sizeof(AppConfigurableResource) );
+	}
 
     return;
     }

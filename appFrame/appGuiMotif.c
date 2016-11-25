@@ -16,7 +16,6 @@
 #   include	<Xm/Form.h>
 #   include	<Xm/Label.h>
 #   include	<Xm/ToggleB.h>
-#   include	<Xm/Frame.h>
 #   include	<Xm/PanedW.h>
 #   include	<Xm/MwmUtil.h>
 #   include	<Xm/Protocols.h>
@@ -114,7 +113,7 @@ void appEmptyParentWidget(	Widget		parent )
 /*									*/
 /************************************************************************/
 
-void appSetShellTitle(	Widget			shell,
+void appSetShellTitle(	APP_WIDGET		shell,
 			Widget			option,
 			const char *		applicationName )
     {
@@ -138,6 +137,13 @@ void appSetShellTitle(	Widget			shell,
 		    NULL );
 
     free( title );
+    }
+
+void appGuiLowerShellWidget(	APP_WIDGET	shell )
+    {
+    XLowerWindow( XtDisplay( shell ), XtWindow( shell ) );
+
+    return;
     }
 
 /************************************************************************/
@@ -353,130 +359,6 @@ APP_WIDGET appMakeRowInColumn(	APP_WIDGET	column,
     appMotifTurnOfSashTraversal( column );
 
     return row;
-    }
-
-/************************************************************************/
-/*									*/
-/*  Make a frame, possibly with a title.				*/
-/*									*/
-/************************************************************************/
-
-static void appMakeFrame(	Widget *	pFrame,
-				Widget		parent,
-				const char *	title )
-    {
-    Arg			al[20];
-    int			ac= 0;
-
-    Widget		frame;
-
-    ac= 0;
-    XtSetArg( al[ac],	XmNskipAdjust,		True ); ac++;
-    XtSetArg( al[ac],	XmNallowResize,		True ); ac++;
-    frame= XmCreateFrame( parent, WIDGET_NAME, al, ac );
-
-    if  ( title )
-	{
-	XmString	labelString;
-	Widget		titleWidget;
-
-	labelString= XmStringCreateLocalized( (char *)title );
-
-	ac= 0;
-	XtSetArg( al[ac], XmNchildType,		XmFRAME_TITLE_CHILD ); ac++;
-	XtSetArg( al[ac], XmNlabelString,	labelString ); ac++;
-	XtSetArg( al[ac], XmNchildHorizontalAlignment,
-						XmALIGNMENT_CENTER ); ac++;
-
-	titleWidget= XmCreateLabel( frame, WIDGET_NAME, al, ac );
-
-	XmStringFree( labelString );
-
-	XtManageChild( titleWidget );
-	}
-
-    XtManageChild( frame );
-
-    *pFrame= frame; return;
-    }
-
-/************************************************************************/
-/*									*/
-/*  Insert a frame in a column. The frame is to be a column itself.	*/
-/*									*/
-/************************************************************************/
-
-void appMakeColumnFrameInColumn(	APP_WIDGET *		pFrame,
-					APP_WIDGET *		pPaned,
-					APP_WIDGET		parent,
-					const char *		title )
-    {
-    Widget		frame;
-    Widget		bboard;
-    Widget		paned;
-
-    Arg			al[20];
-    int			ac= 0;
-
-    appMakeFrame( &frame, parent, title );
-
-    ac= 0;
-    XtSetArg( al[ac], XmNmarginWidth,		0 ); ac++;
-    XtSetArg( al[ac], XmNmarginHeight,	0 ); ac++;
-    bboard= XmCreateForm( frame, WIDGET_NAME, al, ac );
-
-    ac= 0;
-    XtSetArg( al[ac], XmNleftAttachment,	XmATTACH_FORM ); ac++;
-    XtSetArg( al[ac], XmNrightAttachment,	XmATTACH_FORM ); ac++;
-    XtSetArg( al[ac], XmNtopAttachment,		XmATTACH_FORM ); ac++;
-    XtSetArg( al[ac], XmNbottomAttachment,	XmATTACH_FORM ); ac++;
-
-    XtSetArg( al[ac], XmNsashWidth,		1 ); ac++;
-    XtSetArg( al[ac], XmNsashHeight,		1 ); ac++;
-    XtSetArg( al[ac], XmNseparatorOn,		False ); ac++;
-    XtSetArg( al[ac], XmNmarginWidth,		PWmargW ); ac++;
-    XtSetArg( al[ac], XmNmarginHeight,		PWmargH ); ac++;
-    XtSetArg( al[ac], XmNspacing,		PWspacing ); ac++;
-    paned= XmCreatePanedWindow( bboard, WIDGET_NAME, al, ac );
-
-    XtManageChild( paned );
-    XtManageChild( bboard );
-    XtManageChild( frame );
-
-    *pFrame= frame, *pPaned= paned; return;
-    }
-
-/************************************************************************/
-/*									*/
-/*  Insert a frame in a column. The frame is to be a row itself.	*/
-/*									*/
-/************************************************************************/
-
-void appMakeRowFrameInColumn(	APP_WIDGET *		pFrame,
-				APP_WIDGET *		pRow,
-				APP_WIDGET		parent,
-				int			columnCount,
-				const char *		title )
-    {
-    Arg			al[20];
-    int			ac= 0;
-
-    Widget		frame;
-    Widget		row;
-
-    appMakeFrame( &frame, parent, title );
-
-    ac= 0;
-    XtSetArg( al[ac],	XmNfractionBase,	columnCount ); ac++;
-    XtSetArg( al[ac],	XmNallowResize,		True ); ac++;
-    XtSetArg( al[ac],	XmNskipAdjust,		True ); ac++;
-
-    row= XmCreateForm( frame, WIDGET_NAME, al, ac );
-
-    XtManageChild( row );
-    XtManageChild( frame );
-
-    *pFrame= frame; *pRow= row; return;
     }
 
 /************************************************************************/
@@ -771,11 +653,18 @@ char * appWidgetName(	char *	file,
 /*									*/
 /************************************************************************/
 
-void appGuiGetResourceValues(	EditApplication *		ea,
+void appGuiGetResourceValues(	int *				pGotResources,
+				EditApplication *		ea,
 				void *				pValues,
 				AppConfigurableResource *	acr,
 				int				acrCount )
     {
+    if  ( *pGotResources )
+	{ LDEB(*pGotResources); }
+
+    if  ( ! *pGotResources )
+	{ appSetResourceDefaults( ea, acr, acrCount );	}
+
     if  ( ea->eaToplevel.atTopWidget )
 	{
 	XtGetApplicationResources( ea->eaToplevel.atTopWidget, pValues,
@@ -787,14 +676,12 @@ void appGuiGetResourceValues(	EditApplication *		ea,
 
 	for ( i= 0; i < acrCount; acr++, i++ )
 	    {
-#	    define	acrStructOffset	resource_offset
-#	    define	acrDefaultValue	default_addr
-
 	    *((const char **)(values+acr->acrStructOffset))=
 						    acr->acrDefaultValue;
 	    }
 	}
 
+    *pGotResources= 1;
     return;
     }
 
@@ -1278,6 +1165,21 @@ static void appSessionSaveCompleteCallBack( Widget		w,
 /*									*/
 /************************************************************************/
 
+static int appXErrorHandler( Display * display, XErrorEvent * ev )
+    {
+    char	text[250+1];
+    static int	count= 0;
+
+    XGetErrorText( display, ev->error_code, text, sizeof(text)- 1 );
+
+    appDebug( "%3d: %s\n", count, text );
+
+    if  ( count++ >= 100 )
+	{ exit( 1 ); }
+
+    return 0;
+    }
+
 int appGuiInitApplication(	EditApplication *	ea,
 				int *			pArgc,
 				char ***		pArgv )
@@ -1378,6 +1280,9 @@ int appGuiInitApplication(	EditApplication *	ea,
 
     *pArgc= argc;
     *pArgv= argv;
+
+    if  ( getenv( "CATCH_X_ERRORS" ) )
+	{ XSetErrorHandler( appXErrorHandler );	}
 
     return 0;
     }
@@ -1508,6 +1413,13 @@ void appGuiEnableWidget(	APP_WIDGET		w,
 				int			on_off )
     {
     XtSetSensitive( w, on_off != 0 );
+    }
+
+void appGuiSetWidgetVisible(	APP_WIDGET		w,
+				int			on_off )
+    {
+    XtVaSetValues( w,	XmNmappedWhenManaged,	on_off != 0,
+			NULL );
     }
 
 void appShowShellWidget(		APP_WIDGET		shell )

@@ -1329,13 +1329,20 @@ int bmReadIcoFile(	const char *		filename,
 			int *			pPrivateFormat,
 			double *		pCompressionFactor	)
     {
-    SimpleInputStream *	sis;
-    BmpFileHeader	bfh;
-    IcoFileHeader	ifh;
-    IcoDirectoryEntry	ide;
-    int			scanLine;
-    RGB8Color *		palette= (RGB8Color *)0;
-    unsigned char *	buffer;
+    int				rval= 0;
+    SimpleInputStream *		sis= (SimpleInputStream *)0;
+    unsigned char *		buffer= (unsigned char *)0;
+    RGB8Color *			palette= (RGB8Color *)0;
+
+    BmpFileHeader		bfh;
+    IcoFileHeader		ifh;
+    IcoDirectoryEntry		ide;
+
+    int				alphaByteCount;
+    unsigned char *		ab= (unsigned char *)0;
+    unsigned char *		rb= (unsigned char *)0;
+
+    int				row;
 
     unsigned char *	to;
     int			done;
@@ -1344,15 +1351,15 @@ int bmReadIcoFile(	const char *		filename,
 
     sis= sioInStdioOpen( filename );
     if  ( ! sis )
-	{ SDEB(filename); return -1;	}
+	{ SDEB(filename); rval= -1; goto ready;	}
 
     ifh.ifhReserved= sioEndianGetLeInt16( sis );
     if  ( ifh.ifhReserved != 0 )
-	{ LDEB(ifh.ifhReserved); return -1;	}
+	{ LDEB(ifh.ifhReserved); rval= -1; goto ready;	}
 
     ifh.ifhType= sioEndianGetLeInt16( sis );
     if  ( ifh.ifhType != 1 )
-	{ LDEB(ifh.ifhType); return -1;	}
+	{ LDEB(ifh.ifhType); rval= -1; goto ready;	}
 
     ifh.ifhCount= sioEndianGetLeInt16( sis );
     if  ( ifh.ifhCount != 1 )
@@ -1364,7 +1371,7 @@ int bmReadIcoFile(	const char *		filename,
 
     ide.ideReserved= sioInGetCharacter( sis );
     if  ( ide.ideReserved != 0 )
-	{ LDEB(ide.ideReserved); return -1;	}
+	{ LDEB(ide.ideReserved); rval= -1; goto ready;	}
 
     ide.idePlanes= sioEndianGetLeInt16( sis );
     ide.ideBitCount= sioEndianGetLeInt16( sis );
@@ -1376,7 +1383,7 @@ int bmReadIcoFile(	const char *		filename,
     while( bytesRead < ide.ideImageOffset )
 	{
 	if  ( sioInGetCharacter( sis ) < 0 )
-	    { LDEB(ide.ideImageOffset); return -1;	}
+	    { LDEB(ide.ideImageOffset); rval= -1; goto ready;	}
 
 	bytesRead++;
 	}
@@ -1384,12 +1391,12 @@ int bmReadIcoFile(	const char *		filename,
     /*  1  */
     done= bmpReadImageHeader( &bfh, sis, &palette );
     if  ( done < 0 )
-	{ SLDEB(filename,done); sioInClose( sis ); return -1;	}
+	{ SLDEB(filename,done); rval= -1; goto ready;	}
 
     /*  2  */
     if  ( bmpHeaderToDescription( bd, &bytesPerDataRow, pPrivateFormat,
 								&bfh, 1 ) )
-	{ LDEB(1); return -1;	}
+	{ LDEB(1); rval= -1; goto ready;	}
     /*  2a  */
     bd->bdPixelsHigh /= 2;
 
@@ -1397,49 +1404,55 @@ int bmReadIcoFile(	const char *		filename,
 
     buffer= malloc( bd->bdBufferLength+ 3 );
     if  ( ! buffer )
-	{
-	LLDEB(bd->bdBufferLength,buffer);
-
-	if  ( palette )
-	    { free( palette );	}
-
-	sioInClose( sis ); return -1;
-	}
+	{ LLDEB(bd->bdBufferLength,buffer); rval= -1; goto ready; }
 
     /*  4  */
-    for ( scanLine= 0; scanLine < bd->bdPixelsHigh; scanLine++ )
+    for ( row= 0; row < bd->bdPixelsHigh; row++ )
 	{
-	to= buffer+ ( bd->bdPixelsHigh- scanLine- 1 )* bd->bdBytesPerRow;
+	to= buffer+ ( bd->bdPixelsHigh- row- 1 )* bd->bdBytesPerRow;
 
 	done= sioInReadBytes( sis, to, bytesPerDataRow );
 	if  ( done != bytesPerDataRow )
 	    {
 	    LLDEB(done,bytesPerDataRow);
-	    LLDEB(scanLine,bd->bdPixelsHigh); LLDEB(bfh.bfhCompression,done);
-	    sioInClose( sis ); return -1;
+	    LLDEB(row,bd->bdPixelsHigh); LLDEB(bfh.bfhCompression,done);
+	    rval= -1; goto ready;
 	    }
 	}
 
-    /*  5  */
-    for ( scanLine= 0; scanLine < bd->bdPixelsHigh; scanLine++ )
+    alphaByteCount= ( bd->bdPixelsWide+ 7 )/8;
+    ab= malloc( alphaByteCount );
+    if  ( ! ab )
+	{ LXDEB(alphaByteCount,ab); rval= -1; goto ready; }
+    rb= malloc( bd->bdBytesPerRow );
+    if  ( ! rb )
+	{ LXDEB(rb,bd->bdBytesPerRow); rval= -1; goto ready; }
+
+    if  ( bytesPerDataRow > bd->bdBytesPerRow )
 	{
-	unsigned char	a[8];
-	unsigned char	b[32];
-	int		byteCount= ( bd->bdPixelsWide+ 7 )/8;
+	LLDEB(bytesPerDataRow,bd->bdBytesPerRow);
+	rval= -1; goto ready;
+	}
+
+    /*  5  */
+    for ( row= 0; row < bd->bdPixelsHigh; row++ )
+	{
 	int		i;
+	int		got;
 
-	to= buffer+ ( bd->bdPixelsHigh- scanLine- 1 )* bd->bdBytesPerRow;
+	to= buffer+ ( bd->bdPixelsHigh- row- 1 )* bd->bdBytesPerRow;
 
-	if  ( sioInReadBytes( sis, a, byteCount ) != byteCount )
+	got= sioInReadBytes( sis, ab, alphaByteCount );
+	if  ( got != alphaByteCount )
 	    {
-	    LLDEB(scanLine,bd->bdPixelsWide);
-	    sioInClose( sis ); return -1;
+	    LLLDEB(row,got,bd->bdPixelsWide);
+	    rval= -1; goto ready;
 	    }
 
-	memcpy( b, to, bytesPerDataRow );
+	memcpy( rb, to, bytesPerDataRow );
 
-	for ( i= 0; i < byteCount; i++ )
-	    { a[i]= ~a[i];	}
+	for ( i= 0; i < alphaByteCount; i++ )
+	    { ab[i]= ~ab[i];	}
 
 	switch( bd->bdColorCount )
 	    {
@@ -1447,50 +1460,88 @@ int bmReadIcoFile(	const char *		filename,
 		for ( i= 0; i < bytesPerDataRow; i++ )
 		    {
 		    *to= 0;
-		    *to |= ( b[i] & 0x80 )      | ( a[i] & 0x80 ) >> 1;
-		    *to |= ( b[i] & 0x40 ) >> 1 | ( a[i] & 0x40 ) >> 2;
-		    *to |= ( b[i] & 0x20 ) >> 2 | ( a[i] & 0x20 ) >> 3;
-		    *to |= ( b[i] & 0x10 ) >> 3 | ( a[i] & 0x10 ) >> 4;
+		    *to |= ( rb[i] & 0x80 )      | ( ab[i] & 0x80 ) >> 1;
+		    *to |= ( rb[i] & 0x40 ) >> 1 | ( ab[i] & 0x40 ) >> 2;
+		    *to |= ( rb[i] & 0x20 ) >> 2 | ( ab[i] & 0x20 ) >> 3;
+		    *to |= ( rb[i] & 0x10 ) >> 3 | ( ab[i] & 0x10 ) >> 4;
 		    *(++to)= 0;
-		    *to |= ( b[i] & 0x08 ) << 4 | ( a[i] & 0x08 ) << 3;
-		    *to |= ( b[i] & 0x04 ) << 3 | ( a[i] & 0x04 ) << 2;
-		    *to |= ( b[i] & 0x02 ) << 2 | ( a[i] & 0x02 ) << 1;
-		    *to |= ( b[i] & 0x01 ) << 1 | ( a[i] & 0x01 )     ;
+		    *to |= ( rb[i] & 0x08 ) << 4 | ( ab[i] & 0x08 ) << 3;
+		    *to |= ( rb[i] & 0x04 ) << 3 | ( ab[i] & 0x04 ) << 2;
+		    *to |= ( rb[i] & 0x02 ) << 2 | ( ab[i] & 0x02 ) << 1;
+		    *to |= ( rb[i] & 0x01 ) << 1 | ( ab[i] & 0x01 )     ;
 		    to++;
 		    }
 		break;
+
 	    case 16:
 		for ( i= 0; i < bd->bdPixelsWide; i += 2 )
 		    {
-		    if  ( ( a[i/8] << (i%8) ) & 0x80 )
-			{ *(to++)= ( b[i/2] & 0xf0 ) | 0x0f;	}
+		    if  ( ( ab[i/8] << (i%8) ) & 0x80 )
+			{ *(to++)= ( rb[i/2] & 0xf0 ) | 0x0f;	}
 		    else{ *(to++)= 0x00;		}
 
-		    if  ( ( a[i/8] << (i%8) ) & 0x40 )
-			{ *(to++)=   ( b[i/2] << 4 ) | 0x0f;	}
+		    if  ( ( ab[i/8] << (i%8) ) & 0x40 )
+			{ *(to++)=   ( rb[i/2] << 4 ) | 0x0f;	}
 		    else{ *(to++)= 0x00;			}
 		    }
 		break;
+
+	    case 256:
+		for ( i= 0; i < bd->bdPixelsWide; i++ )
+		    {
+		    *(to++)= rb[i];
+		    if  ( ( ab[i/8] << (i%8) ) & 0x80 )
+			{ *(to++)= 255;	}
+		    else{ *(to++)= 0;	}
+		    }
+		break;
+
+	    case 0:
+		for ( i= 0; i < bd->bdPixelsWide; i++ )
+		    {
+		    *(to++)= rb[3* i+ 0];
+		    *(to++)= rb[3* i+ 1];
+		    *(to++)= rb[3* i+ 2];
+		    if  ( ( ab[i/8] << (i%8) ) & 0x80 )
+			{ *(to++)= 255;	}
+		    else{ *(to++)= 0;	}
+		    }
+		break;
+
 	    case 4:
 	    case 8:
 	    default:
-		LDEB(bd->bdColorCount); sioInClose( sis ); return -1;
+		LDEB(bd->bdColorCount); rval= -1; goto ready;
 	    }
 	}
 
-    sioInClose( sis );
-
-    *pBuffer= buffer;
+    *pBuffer= buffer; buffer= (unsigned char *)0; /* steal */
     *pPrivateFormat= bfh.bfhSizeOfRestOfHeader;
 
     if  ( bfh.bfhColorCount > 0				&&
 	  ! bmMakeMonochrome( bd, palette, buffer )	)
-	{ return 0;	}
+	{ palette= (RGB8Color *)0; /* freed */	}
+    else{
+	if  ( bfh.bfhBitsPerPixel != 24 || bfh.bfhColorCount != 0 )
+	    {
+	    bd->bdRGB8Palette= palette; palette= (RGB8Color *)0; /* steal */
+	    }
+	}
 
-    if  ( bfh.bfhBitsPerPixel != 24 || bfh.bfhColorCount != 0 )
-	{ bd->bdRGB8Palette= palette;	}
+  ready:
 
-    return 0;
+    if  ( palette )
+	{ free( palette );	}
+    if  ( rb )
+	{ free( rb );	}
+    if  ( ab )
+	{ free( ab );	}
+    if  ( buffer )
+	{ free( buffer );	}
+    if  ( sis )
+	{ sioInClose( sis );	}
+
+    return rval;
     }
 
 /************************************************************************/

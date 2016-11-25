@@ -21,6 +21,11 @@
 static int appGuiKeysymCludge(		unsigned char *		buf,
 					APP_KEY_VALUE		key )
     {
+#   ifdef XK_EuroSign
+    if  ( key == XK_EuroSign )
+	{ buf[0]= ISO15_Euro; buf[1]= '\0'; return 1; }
+#   endif
+
     /*  Latin 2  */
     if  ( ( key & 0xffffff00 ) == 0x100 )
 	{ buf[0]= key & 0xff; buf[1]= '\0'; return 1; }

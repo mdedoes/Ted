@@ -37,16 +37,22 @@ void docInitDrawingContext(	DrawingContext *	dc )
     dc->dcSelectionGeometry= (SelectionGeometry *)0;
     dc->dcFirstPage= -1;
     dc->dcLastPage= -1;
-    dc->dcDrawHeadersFooters= 0;
+    dc->dcDrawExternalItems= 0;
+    dc->dcPostponeHeadersFooters= 0;
+    dc->dcDocHasPageHeaders= 0;
+    dc->dcDocHasPageFooters= 0;
 
     dc->dcDrawTableGrid= 0;
 
     dc->dcSetColorRgb= (SET_COLOR_RGB)0;
     dc->dcSetFont= (SET_FONT)0;
+    dc->dcDrawShape= (DRAW_SHAPE)0;
 
     dc->dcDrawTextLine= (DRAW_TEXT_LINE)0;
     dc->dcDrawParaTop= (DRAW_PARA_TOP)0;
     dc->dcDrawParaBottom= (DRAW_PARA_BOTTOM)0;
+    dc->dcDrawParaLeft= (DRAW_PARA_LEFT)0;
+    dc->dcDrawParaRight= (DRAW_PARA_RIGHT)0;
     dc->dcDrawParaShade= (DRAW_PARA_SHADE)0;
     dc->dcDrawCellTop= (DRAW_CELL_TOP)0;
     dc->dcDrawCellBottom= (DRAW_CELL_BOTTOM)0;

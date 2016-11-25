@@ -48,8 +48,7 @@ static int docCheckChild(	const BufferItem *	parent,
 #   if  CHECK_GEOMETRY
     if  ( lpTop )
 	{
-	if  ( child->biTopPosition.lpPage != lpTop->lpPage		||
-	      child->biTopPosition.lpPageYTwips != lpTop->lpPageYTwips	)
+	if  ( ! DOC_SAME_POSITION( &(child->biTopPosition), lpTop ) )
 	    {
 	    appDebug( "############## %s %d in %s:\n",
 					docLevelStr(child->biLevel), i,
@@ -130,6 +129,9 @@ int docCheckItem(	const BufferItem *	bi )
     if  ( bi->biLevel == DOClevPARA )
 	{
 	const BufferItem *	rowBi;
+	int			part;
+	const TextParticule *	tp;
+	int			stroff;
 
 	if  ( bi->biLeftParagraphs != bi->biNumberInParent+ 1 )
 	    {
@@ -155,6 +157,38 @@ int docCheckItem(	const BufferItem *	bi )
 					docLevelStr(bi->biLevel) );
 		LLDEB(rowBi->biRowHasTableParagraphs,bi->biParaInTable);
 		}
+	    }
+
+	stroff= 0;
+	tp= bi->biParaParticules;
+	for ( part= 0; part < bi->biParaParticuleCount; tp++, part++ )
+	    {
+	    if  ( tp->tpStroff > bi->biParaStrlen	||
+		  tp->tpStroff != stroff		)
+		{
+		appDebug( "############## %s:\n",
+					docLevelStr(bi->biLevel) );
+		LLLLDEB(part,tp->tpStroff,stroff,bi->biParaStrlen);
+		rval= -1;
+		}
+
+	    stroff= tp->tpStroff+ tp->tpStrlen;
+	    if  ( stroff < 0			||
+		  tp->tpStrlen < 0		||
+		  stroff >  bi->biParaStrlen	)
+		{
+		appDebug( "############## %s:\n",
+					docLevelStr(bi->biLevel) );
+		LLLLDEB(part,stroff,tp->tpStrlen,bi->biParaStrlen);
+		rval= -1;
+		}
+	    }
+	if  ( stroff != bi->biParaStrlen )
+	    {
+	    appDebug( "############## %s:\n",
+					docLevelStr(bi->biLevel) );
+	    LLDEB(stroff,bi->biParaStrlen);
+	    rval= -1;
 	    }
 	}
 
@@ -227,6 +261,14 @@ int docCheckItem(	const BufferItem *	bi )
     return rval;
     }
 
+int docCheckRootItem(	const BufferItem *	bi )
+    {
+    while( bi->biParent )
+	{ bi= bi->biParent;	}
+
+    return docCheckItem( bi );
+    }
+
 static void docListChildren(	int			indent,
 				const BufferItem *	bi )
     {
@@ -247,8 +289,7 @@ static void docListChildren(	int			indent,
 	{ docCheckGroupLeft( bi );	}
 
 #   if CHECK_GEOMETRY
-    if  ( bi->biBelowPosition.lpPage != lp.lpPage		||
-	  bi->biBelowPosition.lpPageYTwips != lp.lpPageYTwips	)
+    if  ( ! DOC_SAME_POSITION( &(bi->biBelowPosition), &lp ) )
 	{
 	appDebug( "############## %s :\n", docLevelStr(bi->biLevel) );
 
@@ -354,6 +395,17 @@ void docListItem(	int			indent,
     return;
     }
 
+void docListRootItem(	int			indent,
+			const BufferItem *	bi )
+    {
+    while( bi->biParent )
+	{ bi= bi->biParent;	}
+
+    docListItem( indent, bi );
+
+    return;
+    }
+
 const char * docKindStr( int kind )
     {
     static char	scratch[12];
@@ -429,8 +481,35 @@ const char * docExternalKindStr( int inExternalItem )
 	case DOCinAFTNSEPC:		return "AFTNSEPC";
 	case DOCinAFTNCN:		return "AFTNCN";
 
+	case DOCinSHPTXT:		return "SHPTXT";
+
 	default:
 	    sprintf( scratch, "%d", inExternalItem );
+	    return scratch;
+	}
+    }
+
+const char * docObjectKindStr(	int	objectKind )
+    {
+    static char	scratch[12];
+
+    switch( objectKind )
+	{
+	case DOCokUNKNOWN:		return "UNKNOWN";
+	case DOCokPICTWMETAFILE:	return "PICTWMETAFILE";
+	case DOCokPICTPNGBLIP:		return "PICTPNGBLIP";
+	case DOCokPICTJPEGBLIP:		return "PICTJPEGBLIP";
+	case DOCokPICTEMFBLIP:		return "PICTEMFBLIP";
+	case DOCokMACPICT:		return "MACPICT";
+	case DOCokPMMETAFILE:		return "PMMETAFILE";
+	case DOCokDIBITMAP:		return "DIBITMAP";
+	case DOCokWBITMAP:		return "WBITMAP";
+	case DOCokOLEOBJECT:		return "OLEOBJECT";
+	case DOCokEPS_FILE:		return "EPS_FILE";
+	case DOCokDRAWING_SHAPE:	return "DRAWING_SHAPE";
+
+	default:
+	    sprintf( scratch, "%d", objectKind );
 	    return scratch;
 	}
     }
@@ -472,10 +551,9 @@ void docListParticule(	int			indent,
 			const BufferItem *	bi,
 			const TextParticule *	tp )
     {
-    appDebug( "%*s%s %3d: [S %4d..%4d] [X %3d..%3d] %s",
+    appDebug( "%*s%s %3d: [S %4d..%4d] %s",
 		    indent, "", label, n,
 		    tp->tpStroff, tp->tpStroff+ tp->tpStrlen,
-		    tp->tpX0, tp->tpX0+ tp->tpPixelsWide,
 		    docKindStr( tp->tpKind ) );
 
     if  ( tp->tpStrlen > 0 )
@@ -568,10 +646,13 @@ void docListNotes(	const BufferDocument *	bd )
     for ( i= 0; i < bd->bdNoteCount; dn++, i++ )
 	{
 	if  ( dn->dnParaNr < 0 )
-	    { appDebug( "deleted\n" ); continue; }
+	    {
+	    appDebug( "%4d DELETED\n", i );
+	    continue;
+	    }
 
-	appDebug( "%-8s %3d: NR=%3d PG=%3d SECT=%2d PARA=%3d STROFF=%3d\n",
-	    docExternalKindStr( dn->dnExternalItemKind ),
+	appDebug( "%4d %-8s %3d: NR=%3d PG=%3d SECT=%2d PARA=%3d STROFF=%3d\n",
+	    i, docExternalKindStr( dn->dnExternalItemKind ),
 	    i, dn->dnNoteNumber,
 	    dn->dnReferringPage,
 	    dn->dnSectNr, dn->dnParaNr, dn->dnStroff );

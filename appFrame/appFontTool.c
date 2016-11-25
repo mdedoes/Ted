@@ -405,7 +405,7 @@ static void appFontShowExampleOfCurrent(	AppFontChooser *	afc )
 			dsf->apfFontEncoding, pst, dsf->apfFullSizePixels ) )
 	    { LDEB(1);	}
 	else{
-	    AfmFontInfo *	afi= (AfmFontInfo *)pst->aftPrintingData;
+	    AfmFontInfo *	afi= pst->aftFontInfo;
 
 	    appGuiChangeLabelText( afc->afcX11Name, afc->afcX11ChoiceText );
 	    appGuiChangeLabelText( afc->afcPsName, afi->afiFontName );
@@ -415,7 +415,7 @@ static void appFontShowExampleOfCurrent(	AppFontChooser *	afc )
     appExposeRectangle( add, 0, 0, 0, 0 );
 
     appGuiEnableWidget( afc->afcSetButton,
-				! PROPmaskISEMPTY( &(afc->afcChosenMask) ) );
+				! utilPropMaskIsEmpty( &(afc->afcChosenMask) ) );
 
     return;
     }
@@ -442,7 +442,7 @@ static int appFontToolGetFaceNumber(	AppFontChooser *	afc )
     }
 
 static void appFontReflectFamily(	AppFontChooser *	afc,
-					int			encoding )
+					int			charsetIdx )
     {
     AppEncodingMenu *			aem= &(afc->afcEncodingMenu);
     const ExpandedTextAttribute *	etaC= &(afc->afcTextAttributeChosen);
@@ -457,7 +457,7 @@ static void appFontReflectFamily(	AppFontChooser *	afc,
 
     dff= dfl->dflFamilies+ afc->afcFontFamilyChosen;
 
-    appEncodingMenuSetEncoding( aem, dff, encoding );
+    appEncodingMenuSetEncoding( aem, dff, charsetIdx );
 
     if  ( PROPmaskISSET( chosenMask, TApropDOC_FONT_NUMBER )	&&
 	  etaC->etaFontNumber >= 0				)
@@ -523,7 +523,7 @@ static void appFontReflectFamily(	AppFontChooser *	afc,
 static void appFontReflectProperties(	AppFontChooser *	afc )
     {
     int					family;
-    int					encoding;
+    int					charsetIdx= -1;
     int					face;
 
     AppEncodingMenu *			aem= &(afc->afcEncodingMenu);
@@ -536,14 +536,14 @@ static void appFontReflectProperties(	AppFontChooser *	afc )
 
     /*  1  */
     family= -1;
-    encoding= -1;
 
     if  ( PROPmaskISSET( chosenMask, TApropDOC_FONT_NUMBER )	&&
 	  etaC->etaFontNumber >= 0				)
 	{
 	df= dfl->dflFonts+ etaC->etaFontNumber;
 	family= df->dfDocFamilyIndex;
-	encoding= df->dfEncodingSet;
+
+	charsetIdx= df->dfCharsetIndex;
 	}
 
     /*  2  */
@@ -560,7 +560,7 @@ static void appFontReflectProperties(	AppFontChooser *	afc )
 	    appGuiRemoveSelectionFromListWidget( afc->afcFamilyList );
 	    }
 
-	appFontReflectFamily( afc, encoding );
+	appFontReflectFamily( afc, charsetIdx );
 	}
 
     /*  3  */
@@ -571,7 +571,7 @@ static void appFontReflectProperties(	AppFontChooser *	afc )
 
 	dff= dfl->dflFamilies+ afc->afcFontFamilyChosen;
 
-	appEncodingMenuSetEncoding( aem, dff, encoding );
+	appEncodingMenuSetEncoding( aem, dff, charsetIdx );
 	}
 
     /*  4  */
@@ -678,7 +678,7 @@ static APP_TOGGLE_CALLBACK_H( appFontUnderlinedToggled, w, voidafc, voidtbcs )
     etaC->etaTextIsUnderlined= ( set != 0 );
 
     appGuiEnableWidget( afc->afcSetButton,
-				! PROPmaskISEMPTY( &(afc->afcChosenMask) ) );
+				! utilPropMaskIsEmpty( &(afc->afcChosenMask) ) );
 
     return;
     }
@@ -699,7 +699,7 @@ static APP_TOGGLE_CALLBACK_H( appFontStrikethroughToggled, w, voidafc, voidtbcs 
     etaC->etaHasStrikethrough= ( set != 0 );
 
     appGuiEnableWidget( afc->afcSetButton,
-				! PROPmaskISEMPTY( &(afc->afcChosenMask) ) );
+				! utilPropMaskIsEmpty( &(afc->afcChosenMask) ) );
 
     return;
     }
@@ -736,7 +736,7 @@ static APP_TOGGLE_CALLBACK_H( appFontSuperscriptToggled, w, voidafc, voidtbcs )
 	}
 
     appGuiEnableWidget( afc->afcSetButton,
-				! PROPmaskISEMPTY( &(afc->afcChosenMask) ) );
+				! utilPropMaskIsEmpty( &(afc->afcChosenMask) ) );
 
     return;
     }
@@ -773,7 +773,7 @@ static APP_TOGGLE_CALLBACK_H( appFontSubscriptToggled, w, voidafc, voidtbcs )
 	}
 
     appGuiEnableWidget( afc->afcSetButton,
-				! PROPmaskISEMPTY( &(afc->afcChosenMask) ) );
+				! utilPropMaskIsEmpty( &(afc->afcChosenMask) ) );
 
     return;
     }
@@ -813,7 +813,7 @@ static APP_TOGGLE_CALLBACK_H( appFontSmallcapsToggled, w, voidafc, voidtbcs )
 	}
 
     appGuiEnableWidget( afc->afcSetButton,
-				! PROPmaskISEMPTY( &(afc->afcChosenMask) ) );
+				! utilPropMaskIsEmpty( &(afc->afcChosenMask) ) );
 
     return;
     }
@@ -853,7 +853,7 @@ static APP_TOGGLE_CALLBACK_H( appFontCapitalsToggled, w, voidafc, voidtbcs )
 	}
 
     appGuiEnableWidget( afc->afcSetButton,
-				! PROPmaskISEMPTY( &(afc->afcChosenMask) ) );
+				! utilPropMaskIsEmpty( &(afc->afcChosenMask) ) );
 
     return;
     }
@@ -872,10 +872,8 @@ static APP_LIST_CALLBACK_H( appFontFamilyChosen, w, voidafc, voidlcs )
     const DocumentFontList *	dfl= &(afc->afcDocumentFontList);
     AppEncodingMenu *		aem= &(afc->afcEncodingMenu);
 
-    int				enc;
     int				family;
-    int				font= -1;
-    int				encoding;
+    int				fontNumber= etaC->etaFontNumber;
     int				changed= 0;
 
     const DocumentFontFamily *	dff;
@@ -887,42 +885,12 @@ static APP_LIST_CALLBACK_H( appFontFamilyChosen, w, voidafc, voidlcs )
 
     dff= dfl->dflFamilies+ family;
 
-    encoding= -1;
-    if  ( PROPmaskISSET( &(afc->afcChosenMask), TApropDOC_FONT_NUMBER )	&&
-	  dff->dffFontForEncoding[aem->aemFontEncoding] >= 0		)
-	{
-	font= dff->dffFontForEncoding[aem->aemFontEncoding];
-	encoding= aem->aemFontEncoding;
-	}
+    fontNumber= etaC->etaFontNumber;
+    if  ( appEncodingMenuAdaptToFamily( &fontNumber, aem, dff ) )
+	{ return;	}
 
-    if  ( encoding < 0 )
-	{
-	for ( enc= 0; enc < ENCODINGps_COUNT; enc++ )
-	    {
-	    if  ( dff->dffFontForEncoding[enc] >= 0 )
-		{
-		font= dff->dffFontForEncoding[enc];
-		encoding= enc;
-		break;
-		}
-	    }
-	}
-
-    if  ( font < 0 || encoding < 0 )
-	{
-	SLLDEB(dff->dffFamilyName,font,encoding);
-
-	for ( enc= 0; enc < ENCODINGps_COUNT; enc++ )
-	    { LLDEB(enc,dff->dffFontForEncoding[enc]); }
-
-	return;
-	}
-
-    if  ( etaC->etaFontNumber != font )
-	{
-	etaC->etaFontNumber= font;
-	changed= 1;
-	}
+    if  ( etaC->etaFontNumber != fontNumber )
+	{ etaC->etaFontNumber= fontNumber; changed= 1;	}
 
     if  ( ! PROPmaskISSET( &(afc->afcChosenMask), TApropDOC_FONT_NUMBER ) )
 	{ changed= 1;	}
@@ -930,7 +898,7 @@ static APP_LIST_CALLBACK_H( appFontFamilyChosen, w, voidafc, voidlcs )
     afc->afcFontFamilyChosen= family;
     PROPmaskADD( &(afc->afcChosenMask), TApropDOC_FONT_NUMBER );
 
-    df= dfl->dflFonts+ font;
+    df= dfl->dflFonts+ fontNumber;
     if  ( afc->afcFaceChosen >= 0			&&
 	  df->dfPsFaceNumber[afc->afcFaceChosen] < 0	)
 	{
@@ -950,7 +918,7 @@ static APP_LIST_CALLBACK_H( appFontFamilyChosen, w, voidafc, voidlcs )
 
     if  ( changed )
 	{
-	appFontReflectFamily( afc, encoding );
+	appFontReflectFamily( afc, df->dfCharsetIndex );
 
 	appFontShowExampleOfCurrent( afc );
 	}
@@ -966,41 +934,37 @@ static APP_LIST_CALLBACK_H( appFontFamilyChosen, w, voidafc, voidlcs )
 
 static APP_OITEM_CALLBACK_H( appFontEncodingChosen, w, voidafc )
     {
-    int				encoding;
+    int				charsetIdx;
     AppFontChooser *		afc= (AppFontChooser *)voidafc;
     int				changed= 0;
 
-    encoding= appGuiGetOptionmenuItemIndex(
+    charsetIdx= appGuiGetOptionmenuItemIndex(
 			&(afc->afcEncodingMenu.aemEncodingOptionmenu), w );
-    if  ( encoding < 0 || encoding >= ENCODINGps_COUNT )
-	{ LLDEB(encoding,ENCODINGps_COUNT); return;	}
+    if  ( charsetIdx < 0 || charsetIdx >= CHARSETidxCOUNT )
+	{ LLDEB(charsetIdx,CHARSETidxCOUNT); return;	}
 
     if  ( afc->afcFontFamilyChosen >= 0 )
 	{
+	AppEncodingMenu *		aem= &(afc->afcEncodingMenu);
+	ExpandedTextAttribute *		etaC= &(afc->afcTextAttributeChosen);
 	const DocumentFontList *	dfl= &(afc->afcDocumentFontList);
 	const DocumentFontFamily *	dff;
-	int				font;
+	int				fontNumber= etaC->etaFontNumber;
 
 	dff= dfl->dflFamilies+ afc->afcFontFamilyChosen;
 
-	font= dff->dffFontForEncoding[encoding];
-	if  ( font >= 0 )
-	    {
-	    if  ( afc->afcTextAttributeChosen.etaFontNumber != font )
-		{
-		afc->afcTextAttributeChosen.etaFontNumber= font;
-		PROPmaskADD( &(afc->afcChosenMask), TApropDOC_FONT_NUMBER );
-		changed= 1;
-		}
-	    }
+	if  ( appEncodingMenuAdaptToCharsetIndex( &fontNumber, aem,
+							    dff, charsetIdx ) )
+	    { return;	}
+
+	if  ( etaC->etaFontNumber != fontNumber )
+	    { etaC->etaFontNumber= fontNumber; changed= 1; }
 
 	if  ( changed )
 	    {
-	    AppEncodingMenu *		aem= &(afc->afcEncodingMenu);
 
+	    PROPmaskADD( &(afc->afcChosenMask), TApropDOC_FONT_NUMBER );
 	    appFontShowExampleOfCurrent( afc );
-
-	    appEncodingMenuSetEncoding( aem, dff, encoding );
 	    }
 	}
 
@@ -1188,7 +1152,7 @@ static void appFontTextColorChosen(
 							explicit, rgb8Set );
 
 	appGuiEnableWidget( afc->afcSetButton,
-				! PROPmaskISEMPTY( &(afc->afcChosenMask) ) );
+				! utilPropMaskIsEmpty( &(afc->afcChosenMask) ) );
 
 	return;
 	}
@@ -1228,7 +1192,7 @@ static void appFontGotExplicitColor(	void *			voidafc,
 	PROPmaskADD( &(afc->afcChosenMask), TApropTEXT_COLOR );
 
 	appGuiEnableWidget( afc->afcSetButton,
-				! PROPmaskISEMPTY( &(afc->afcChosenMask) ) );
+				! utilPropMaskIsEmpty( &(afc->afcChosenMask) ) );
 
 	return;
 	}
@@ -1279,11 +1243,11 @@ static void appFontMakeChooseForm(	APP_WIDGET			parent,
     const int		heightResizable= 1;
 
     const int		familyPosition= 0;
-    const int		familyColspan= 3;
+    const int		familyColspan= 5;
     const int		facePosition= familyPosition+ familyColspan;
-    const int		faceColspan= 2;
+    const int		faceColspan= 3;
     const int		sizePosition= facePosition+ faceColspan;
-    const int		sizeColspan= 1;
+    const int		sizeColspan= 2;
     const int		colcount= sizePosition+ sizeColspan;
 
     chooseRow= appMakeRowInColumn( parent, colcount, heightResizable );
@@ -1730,10 +1694,15 @@ static AppConfigurableResource APP_FontToolResourceTable[]=
 void appFontToolGetResourceTable(	EditApplication *		ea,
 					AppFontToolResources *		aftr )
     {
-    appGuiGetResourceValues( ea, (void *)aftr,
+    static int	gotResources= 0;
+
+    if  ( ! gotResources )
+	{
+	appGuiGetResourceValues( &gotResources, ea, (void *)aftr,
 				APP_FontToolResourceTable,
 				sizeof(APP_FontToolResourceTable)/
 				sizeof(AppConfigurableResource) );
+	}
 
     appEncodingMenuGetOptionTexts( aftr->aftrEncodings, ea );
 

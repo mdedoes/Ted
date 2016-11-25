@@ -73,7 +73,7 @@ int docRecalculateHyperlinkField(
 						&taSet, &taSetMask ) )
 	{ LDEB(1); return -1;	}
 
-    if  ( PROPmaskISEMPTY( &taDoneMask ) )
+    if  ( utilPropMaskIsEmpty( &taDoneMask ) )
 	{ *pCalculated= 0;	}
     else{ *pCalculated= 1;	}
 

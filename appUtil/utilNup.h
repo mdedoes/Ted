@@ -36,6 +36,19 @@ typedef struct PrintGeometry
     int			pgGridCols;
     int			pgGridHorizontal;
     int			pgScalePagesToFit;
+
+    int			pgPrintOddSides;
+    int			pgPrintEvenSides;
+    int			pgPrintSheetsReverse;
+    int			pgPrintBookletOrder;
+
+    int			pgFirstPage;
+    int			pgLastPage;
+    int			pgUsePostScriptFilters;
+    int			pgUsePostScriptIndexedImages;
+    int			pgSkipEmptyPages;
+    int			pgSkipBlankPages;
+    int			pgOmitHeadersOnEmptyPages;
     } PrintGeometry;
 
 /************************************************************************/
@@ -45,9 +58,16 @@ typedef struct PrintGeometry
 /************************************************************************/
 
 extern void utilInitPrintGeometry(	PrintGeometry *	pg );
+extern void utilCleanPrintGeometry(	PrintGeometry *	pg );
 
 extern void utilInitNupSchema(	NupSchema *		ns );
 extern void utilCleanNupSchema(	NupSchema *		ns );
+
+extern int utilNupFitPagesToSheet(
+			int *				pFitWithoutRot,
+			int *				pFitWithRot,
+			const PrintGeometry *		pg,
+			const DocumentGeometry *	dgPage );
 
 extern int utilNupGetBaseTranform(
 			AffineTransform2D *		pAt1Page,

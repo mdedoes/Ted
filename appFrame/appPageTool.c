@@ -228,10 +228,10 @@ static APP_BUTTON_CALLBACK_H( appPageToolSetPushed, w, voidapt )
     PropertyMask	sizeChgMask;
 
     PROPmaskCLEAR( &margUpdMask );
-    PROPmaskFILL( &margUpdMask, DGprop_COUNT );
+    utilPropMaskFill( &margUpdMask, DGprop_COUNT );
 
     PROPmaskCLEAR( &setMask );
-    PROPmaskFILL( &setMask, DGprop_COUNT );
+    utilPropMaskFill( &setMask, DGprop_COUNT );
     PROPmaskUNSET( &setMask, DGpropHEADER_POSITION );
     PROPmaskUNSET( &setMask, DGpropFOOTER_POSITION );
 
@@ -301,7 +301,7 @@ static APP_TXACTIVATE_CALLBACK_H( appPageToolMarginChanged, w, voidapt )
     PROPmaskCLEAR( &dgChgMask );
 
     PROPmaskCLEAR( &dgUpdMask );
-    PROPmaskFILL( &dgUpdMask, DGprop_COUNT );
+    utilPropMaskFill( &dgUpdMask, DGprop_COUNT );
 
     dg= apt->aptGeometryChosen;
 
@@ -309,7 +309,7 @@ static APP_TXACTIVATE_CALLBACK_H( appPageToolMarginChanged, w, voidapt )
 			    apt->aptUnitType, &(apt->aptMarginTool), &dg ) )
 	{ return;	}
 
-    if  ( PROPmaskISEMPTY( &dgChgMask) )
+    if  ( utilPropMaskIsEmpty( &dgChgMask) )
 	{ return;	}
 
     if  ( appMarginToolCheckMargins( &dg ) )
@@ -419,12 +419,10 @@ void * appMakePageTool(	EditApplication *	ea,
 
     if  ( ! gotResources )
 	{
-	appGuiGetResourceValues( ea, &aptr,
+	appGuiGetResourceValues( &gotResources, ea, &aptr,
 				    APP_PageToolresourceTable,
 				    sizeof(APP_PageToolresourceTable)/
 				    sizeof(AppConfigurableResource) );
-
-	gotResources= 1;
 	}
 
     if  ( appGetImagePixmap( ea, pixmapName, &iconPixmap, &iconMask )  )

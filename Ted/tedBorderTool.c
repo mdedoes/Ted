@@ -183,7 +183,7 @@ static APP_EVENT_HANDLER_H( tedBorderToolRedrawPulldown, w, voidbt, exposeEvent 
 	drI.drY0= ( i+ 0 )* inplaceHigh+ 3;
 	drI.drY1= ( i+ 1 )* inplaceHigh- 3;
 
-	if  ( ! docIntersectRectangle( &drX, &drI, &drClip ) )
+	if  ( ! geoIntersectRectangle( &drX, &drI, &drClip ) )
 	    { continue;	}
 
 	tedDrawBorderStyle( add, bt, i, &drI );

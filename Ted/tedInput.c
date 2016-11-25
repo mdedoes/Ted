@@ -15,120 +15,9 @@
 #   include	"tedApp.h"
 #   include	"tedRuler.h"
 
+#   include	"appGuiKeys.h"
+
 #   include	<appDebugon.h>
-
-/************************************************************************/
-/*									*/
-/*  Defines for the key names. This keeps #ifdef's out of the actual	*/
-/*  code.								*/
-/*									*/
-/************************************************************************/
-
-# ifdef USE_MOTIF
-
-#   include	<X11/keysym.h>
-
-#  ifdef XK_ISO_Left_Tab
-#   define KEY_ISO_Left_Tab	XK_ISO_Left_Tab
-#  endif
-#   define KEY_i		XK_i
-#   define KEY_Tab		XK_Tab
-#   define KEY_j		XK_j
-#   define KEY_m		XK_m
-#   define KEY_KP_Enter		XK_KP_Enter
-#   define KEY_Return		XK_Return
-#   define KEY_KP_Delete	XK_KP_Delete
-
-#   ifdef __VMS
-	/* VMS normally has only a "Delete" configured which is on the same
-	 * location on the keyboard and serves the same purposes as the
-	 * BackSpace on Unix. To simulate a BackSpace on VMS normally
-	 * <CTRL>H is used.
-	 */
-#	define KEY_Delete	XK_BackSpace
-#	define KEY_BackSpace	XK_Delete
-#   else
-#	define KEY_Delete	XK_Delete
-#	define KEY_BackSpace	XK_BackSpace
-#   endif
-
-#   define KEY_KP_Home		XK_KP_Home
-#   define KEY_Home		XK_Home
-#   define KEY_KP_End		XK_KP_End
-#   define KEY_End		XK_End
-#   define KEY_KP_Left		XK_KP_Left
-#   define KEY_Left		XK_Left
-#   define KEY_KP_Right		XK_KP_Right
-#   define KEY_Right		XK_Right
-#   define KEY_KP_Up		XK_KP_Up
-#   define KEY_Up		XK_Up
-#   define KEY_KP_Down		XK_KP_Down
-#   define KEY_Down		XK_Down
-#   define KEY_KP_Prior		XK_KP_Prior
-#   define KEY_Prior		XK_Prior
-#   define KEY_KP_Next		XK_KP_Next
-#   define KEY_Next		XK_Next
-#   define KEY_c		XK_c
-#   define KEY_x		XK_x
-#   define KEY_v		XK_v
-#   define KEY_y		XK_y
-#   define KEY_Shift_L		XK_Shift_L
-#   define KEY_Shift_R		XK_Shift_R
-#   define KEY_Alt_L		XK_Alt_L
-#   define KEY_Alt_R		XK_Alt_R
-#   define KEY_Control_L	XK_Control_L
-#   define KEY_Control_R	XK_Control_R
-#   define KEY_Caps_Lock	XK_Caps_Lock
-#   define KEY_Insert		XK_Insert
-#   define KEY_KP_Insert	XK_KP_Insert
-#   define KEY_Num_Lock		XK_Num_Lock
-# endif
-
-# ifdef USE_GTK
-
-#   include	<gdk/gdkkeysyms.h>
-
-#   define KEY_ISO_Left_Tab	GDK_ISO_Left_Tab
-#   define KEY_i		GDK_i
-#   define KEY_Tab		GDK_Tab
-#   define KEY_j		GDK_j
-#   define KEY_m		GDK_m
-#   define KEY_KP_Enter		GDK_KP_Enter
-#   define KEY_Return		GDK_Return
-#   define KEY_KP_Delete	GDK_KP_Delete
-#   define KEY_Delete		GDK_Delete
-#   define KEY_BackSpace	GDK_BackSpace
-#   define KEY_KP_Home		GDK_KP_Home
-#   define KEY_Home		GDK_Home
-#   define KEY_KP_End		GDK_KP_End
-#   define KEY_End		GDK_End
-#   define KEY_KP_Left		GDK_KP_Left
-#   define KEY_Left		GDK_Left
-#   define KEY_KP_Right		GDK_KP_Right
-#   define KEY_Right		GDK_Right
-#   define KEY_KP_Up		GDK_KP_Up
-#   define KEY_Up		GDK_Up
-#   define KEY_KP_Down		GDK_KP_Down
-#   define KEY_Down		GDK_Down
-#   define KEY_KP_Prior		GDK_KP_Prior
-#   define KEY_Prior		GDK_Prior
-#   define KEY_KP_Next		GDK_KP_Next
-#   define KEY_Next		GDK_Next
-#   define KEY_c		GDK_c
-#   define KEY_x		GDK_x
-#   define KEY_v		GDK_v
-#   define KEY_y		GDK_y
-#   define KEY_Shift_L		GDK_Shift_L
-#   define KEY_Shift_R		GDK_Shift_R
-#   define KEY_Alt_L		GDK_Alt_L
-#   define KEY_Alt_R		GDK_Alt_R
-#   define KEY_Control_L	GDK_Control_L
-#   define KEY_Control_R	GDK_Control_R
-#   define KEY_Caps_Lock	GDK_Caps_Lock
-#   define KEY_Insert		GDK_Insert
-#   define KEY_KP_Insert	GDK_KP_Insert
-#   define KEY_Num_Lock		GDK_Num_Lock
-# endif
 
 /************************************************************************/
 /*									*/
@@ -178,6 +67,97 @@ typedef struct DraggingContext
     EditDocument *		dcEd;
     } DraggingContext;
 
+/************************************************************************/
+/*									*/
+/*  Supposing te click is in a diffrent document tree, reformat that	*/
+/*  tree for the context of the click to determine where the location	*/
+/*  of the click in the document hierarchy.				*/
+/*									*/
+/************************************************************************/
+
+static int tedLayoutSelectedRoot(	BufferDocument *	bd,
+					AppDrawingData *	add,
+					ScreenFontList *	sfl,
+					ExternalItem *		eiSet,
+					BufferItem *		rootBiSet,
+					BufferItem *		bodySectBiSet,
+					int			page )
+    {
+    DocumentPosition		dp;
+    int				inHeadFoot;
+    DocumentRectangle		drChanged;
+
+    docInitDocumentPosition( &dp );
+
+    inHeadFoot= rootBiSet->biInExternalItem;
+
+    switch( inHeadFoot )
+	{
+	case DOCinBODY:
+	case DOCinFOOTNOTE:
+	case DOCinENDNOTE:
+	    break;
+
+	case DOCinSECT_HEADER:
+	case DOCinFIRST_HEADER:
+	case DOCinLEFT_HEADER:
+	case DOCinRIGHT_HEADER:
+	case DOCinSECT_FOOTER:
+	case DOCinFIRST_FOOTER:
+	case DOCinLEFT_FOOTER:
+	case DOCinRIGHT_FOOTER:
+
+	    if  ( ! eiSet )
+		{ XDEB(eiSet); return 1;	}
+	    if  ( eiSet->eiPageFormattedFor != page )
+		{
+		if  ( docLayoutExternalItem( eiSet, &drChanged,
+			    page, eiSet->eiY0UsedTwips,
+			    bd, bodySectBiSet, add, sfl,
+			    tedInitLayoutExternalItem, tedCloseObject ) )
+		    { LDEB(page); return 1; }
+
+		eiSet->eiPageSelectedUpon= page;
+		}
+	    break;
+
+	case DOCinFTNSEP:
+	case DOCinFTNSEPC:
+	case DOCinFTNCN:
+	case DOCinAFTNSEP:
+	case DOCinAFTNSEPC:
+	case DOCinAFTNCN:
+
+	    if  ( ! eiSet )
+		{ XDEB(eiSet); return 1;	}
+	    if  ( eiSet->eiPageFormattedFor != page )
+		{
+		LLDEB(eiSet->eiPageFormattedFor,page);
+
+		if  ( docLayoutExternalItem( eiSet, &drChanged,
+			    page, eiSet->eiY0UsedTwips,
+			    bd, bodySectBiSet, add, sfl,
+			    tedInitLayoutExternalItem, tedCloseObject ) )
+		    { LDEB(page); return 1; }
+		}
+	    break;
+
+	default:
+	    LDEB(rootBiSet->biInExternalItem);
+	}
+
+    if  ( eiSet )
+	{ eiSet->eiPageSelectedUpon= page;	}
+
+    return 0;
+    }
+
+/************************************************************************/
+/*									*/
+/*  Select the current position of the mouse.				*/
+/*									*/
+/************************************************************************/
+
 static int tedSelectMousePosition(
 				unsigned int *			pKeyState,
 				APP_WIDGET			w,
@@ -198,9 +178,6 @@ static int tedSelectMousePosition(
     int				docX;
     int				docY;
 
-    int				page;
-    int				sectNr;
-
     int				otherRoot= 0;
 
     int				scrolledX= 0;
@@ -216,7 +193,12 @@ static int tedSelectMousePosition(
     SelectionDescription	sd;
 
     PositionGeometry		pgClick;
+    int				partClick;
+    DocumentSelection		dsWord;
+    int				wordIsObject= 0;
 
+    int				page;
+    int				sectNr;
     ExternalItem *		eiSet= (ExternalItem *)0;
     BufferItem *		bodySectBiSet;
     BufferItem *		rootBiSet;
@@ -248,118 +230,50 @@ static int tedSelectMousePosition(
 
     dc->dcRootItem= rootBiSet;
 
-    otherRoot= docSelectionDifferentRoot( &dsOld, rootBiSet );
+    otherRoot= ! docSelectionSameRoot( &dsOld, rootBiSet );
 
     if  ( otherRoot )
 	{
-	DocumentPosition		dp;
-	int				inHeadFoot;
-	DocumentRectangle		drChanged;
-
 #	if  CLICK2_TO_CHANGE_ROOT
 	if  ( seq < 2 )
 	    { return 1;	}
 #	endif
 
-	docInitDocumentPosition( &dp );
-
-	inHeadFoot= dc->dcRootItem->biInExternalItem;
-
-	switch( inHeadFoot )
-	    {
-	    case DOCinBODY:
-	    case DOCinFOOTNOTE:
-	    case DOCinENDNOTE:
-		break;
-
-	    case DOCinSECT_HEADER:
-	    case DOCinFIRST_HEADER:
-	    case DOCinLEFT_HEADER:
-	    case DOCinRIGHT_HEADER:
-	    case DOCinSECT_FOOTER:
-	    case DOCinFIRST_FOOTER:
-	    case DOCinLEFT_FOOTER:
-	    case DOCinRIGHT_FOOTER:
-
-		if  ( ! eiSet )
-		    { XDEB(eiSet); return 1;	}
-		if  ( eiSet->eiPageFormattedFor != page )
-		    {
-		    if  ( docLayoutExternalItem( eiSet, &drChanged,
-				page, eiSet->eiY0UsedTwips,
-				bd, bodySectBiSet, add, sfl,
-				tedInitLayoutExternalItem, tedCloseObject ) )
-			{ LDEB(page); return 1; }
-
-		    eiSet->eiPageSelectedUpon= page;
-		    }
-		break;
-
-	    case DOCinFTNSEP:
-	    case DOCinFTNSEPC:
-	    case DOCinFTNCN:
-	    case DOCinAFTNSEP:
-	    case DOCinAFTNSEPC:
-	    case DOCinAFTNCN:
-
-		if  ( ! eiSet )
-		    { XDEB(eiSet); return 1;	}
-		if  ( eiSet->eiPageFormattedFor != page )
-		    {
-		    LLDEB(eiSet->eiPageFormattedFor,page);
-
-		    if  ( docLayoutExternalItem( eiSet, &drChanged,
-				page, eiSet->eiY0UsedTwips,
-				bd, bodySectBiSet, add, sfl,
-				tedInitLayoutExternalItem, tedCloseObject ) )
-			{ LDEB(page); return 1; }
-		    }
-		break;
-
-	    default:
-		LDEB(dc->dcRootItem->biInExternalItem);
-	    }
-
-	if  ( eiSet )
-	    { eiSet->eiPageSelectedUpon= page;	}
+	if  ( tedLayoutSelectedRoot( bd, add, sfl,
+				    eiSet, rootBiSet, bodySectBiSet, page ) )
+	    { LDEB(page); return 1;	}
 
 #	if CLICK2_TO_CHANGE_ROOT
 	{
+	DocumentPosition	dp;
 	PositionGeometry	pg;
 
-	if  ( tedFindPosition( &dp, &pg, dc->dcRootItem, add, docX, docY ) )
+	if  ( tedFindPosition( &dp, &pg, &part,
+				bd, dc->dcRootItem, add, sfl, docX, docY ) )
 	    { LLDEB(docX,docY); return 1;	}
 
-xxx
-	tedSetSelectedPosition( ed, &dp, &scrolledX, &scrolledY );
+	tedSetSelectedPosition( ed, &dp, pg.pgAtLineHead,
+						    &scrolledX, &scrolledY );
 
-	tedAdaptToolsToSelection( ed );
-
-	appExposeRectangle( add, 0, 0, 0, 0 );
-
-	dc->dcEd= ed;
-	dc->dcMouseX= mouseX;
-	dc->dcMouseY= mouseY;
-
-	*pKeyState= keyState;
-	return 0;
+	goto ready;
 	}
 #	endif
 
 	appExposeRectangle( add, 0, 0, 0, 0 );
 	}
 
+    if  ( tedFindPosition( &(dc->dcAnchorPosition), &pgClick, &partClick,
+				bd, dc->dcRootItem, add, sfl, docX, docY ) )
+	{ LLDEB(docX,docY); return 1;	}
+
+    docWordSelection( &dsWord, &wordIsObject,
+					&(dc->dcAnchorPosition), partClick );
+
     if  ( seq > 1 )
 	{
-	int			wasObject= 0;
-
 	DocumentSelection	dsNew;
 
 	docInitDocumentSelection( &dsNew );
-
-	if  ( tedFindPosition( &(dc->dcAnchorPosition), &pgClick,
-				bd, dc->dcRootItem, add, sfl, docX, docY ) )
-	    { LLDEB(docX,docY); return 1; }
 
 	docSetIBarSelection( &dsNew, &(dc->dcAnchorPosition) );
 
@@ -371,29 +285,13 @@ xxx
 	    docLineSelection( &dsNew, &partLineBegin, &partLineEnd,
 				dc->dcAnchorPosition.dpBi, pgClick.pgLine );
 	    }
-	else{
-	    docWordSelection( &dsNew, &wasObject, &(dc->dcAnchorPosition) );
-	    }
+	else{ dsNew= dsWord;	}
 
 	tedSetSelection( ed, &dsNew, pgClick.pgAtLineHead,
 						    &scrolledX, &scrolledY );
 
-	tedAdaptToolsToSelection( ed );
-
-	if  ( wasObject )
-	    { tedMoveObjectWindows( ed );	}
-
-	dc->dcEd= ed;
-	dc->dcMouseX= mouseX;
-	dc->dcMouseY= mouseY;
-
-	*pKeyState= keyState;
-	return 0;
+	goto ready;
 	}
-
-    if  ( tedFindPosition( &(dc->dcAnchorPosition), &pgClick,
-				bd, dc->dcRootItem, add, sfl, docX, docY ) )
-	{ LLDEB(docX,docY); return 1;	}
 
     if  ( ! otherRoot && ( keyState & KEY_SHIFT_MASK ) )
 	{
@@ -403,14 +301,7 @@ xxx
 			&(dc->dcAnchorPosition), dc->dcMouseX, dc->dcMouseY ) )
 	    { LDEB(1); return 1;	}
 
-	tedAdaptToolsToSelection( ed );
-
-	dc->dcEd= ed;
-	dc->dcMouseX= mouseX;
-	dc->dcMouseY= mouseY;
-
-	*pKeyState= keyState;
-	return 0;
+	goto ready;
 	}
 
     if  ( docParaHeadFieldKind( dc->dcAnchorPosition.dpBi, bd ) >= 0 )
@@ -430,9 +321,51 @@ xxx
 	    }
 	}
 
-    tedSetSelectedPosition( ed, &(dc->dcAnchorPosition), pgClick.pgAtLineHead,
-						    &scrolledX, &scrolledY );
+    if  ( wordIsObject )
+	{
+	int			partObject;
+	DocumentPosition	dpObject;
+	InsertedObject *	io;
 
+	if  ( ! docGetObjectSelection( &dsWord, &partObject, &dpObject, &io ) )
+	    {
+	    DocumentRectangle	drObject;
+	    PositionGeometry	pgObject;
+	    const int		lastOne= 1;
+	    int			marg= 0;
+	    int			wide;
+
+	    tedPositionGeometry( &pgObject, &dpObject, lastOne, bd, add, sfl );
+
+	    tedGetObjectRectangle( &drObject, (APP_POINT *)0,
+							io, &pgObject, td );
+
+	    wide= drObject.drX1- drObject.drX0+ 1;
+	    if  ( wide > 10 )
+		{ marg++;	}
+	    if  ( wide > 20 )
+		{ marg++;	}
+
+	    if  ( mouseX >= drObject.drX0+ marg	&&
+		  mouseX <= drObject.drX1- marg	)
+		{
+		tedSetSelection( ed, &dsWord, pgObject.pgAtLineHead,
+						    &scrolledX, &scrolledY );
+		goto ready;
+		}
+	    }
+	}
+
+    if  ( ! docIsIBarSelection( &dsOld )				||
+	  ! docSamePosition( &(dsOld.dsBegin),
+					&(dc->dcAnchorPosition) )	)
+	{
+	tedSetSelectedPosition( ed, &(dc->dcAnchorPosition),
+						    pgClick.pgAtLineHead,
+						    &scrolledX, &scrolledY );
+	}
+
+  ready:
     tedAdaptToolsToSelection( ed );
 
     dc->dcEd= ed;
@@ -893,13 +826,21 @@ static void tedProcessKeyEvent(	EditDocument *		ed,
 
 	    if  ( sd.sdIsIBarSelection )
 		{
-		dpNew= ds.dsBegin;
+		dpNew= ds.dsEnd;
 
 		if  ( tedMoveRightOnKey( &dpNew, bd, state, add ) )
 		    { return;	}
 
-		if  ( ! docPositionsInsideParagraph( &(ds.dsBegin), &dpNew ) )
-		    { return;	}
+		if  ( ( ds.dsBegin.dpBi->biParaInTable	||
+		        dpNew.dpBi->biParaInTable	)		&&
+		      ! docPositionsInsideCell( &(ds.dsBegin), &dpNew ) )
+		    {
+		    const int		keyState= 0;
+		    const int		lastLine= 1;
+
+		    tedInputChangeSelection( ed, keyState, &dpNew, lastLine );
+		    return;
+		    }
 
 		if  ( tedMoveRightOnKey( &(ds.dsEnd), bd, state, add ) )
 		    { return;	}
@@ -935,7 +876,9 @@ static void tedProcessKeyEvent(	EditDocument *		ed,
 		if  ( tedMoveLeftOnKey( &dpNew, bd, state, add ) )
 		    { return;	}
 
-		if  ( ! docPositionsInsideCell( &dpNew, &(ds.dsBegin) ) )
+		if  ( ( dpNew.dpBi->biParaInTable	||
+		        ds.dsEnd.dpBi->biParaInTable	)		&&
+		      ! docPositionsInsideCell( &dpNew, &(ds.dsEnd) )	)
 		    {
 		    const int		keyState= 0;
 		    const int		lastLine= 1;
@@ -1023,6 +966,18 @@ static void tedProcessKeyEvent(	EditDocument *		ed,
 
 	case KEY_KP_Left:
 	case KEY_Left:
+	    if  ( ! state			&&
+		  sd.sdIsIBarSelection		&&
+		  ds.dsBegin.dpStroff > 0	&&
+		  sg.sgBegin.pgAtLineHead	&&
+		  ! sg.sgBegin.pgAtLineEnd	)
+		{
+		const int	lastLine= 0;
+
+		tedInputChangeSelection( ed, state, &(ds.dsBegin), lastLine );
+		return;
+		}
+
 	    if  ( ( state & KEY_SHIFT_MASK ) && ds.dsDirection >= 0 )
 		{ dpNew= ds.dsEnd;	}
 	    else{ dpNew= ds.dsBegin;	}
@@ -1042,6 +997,18 @@ static void tedProcessKeyEvent(	EditDocument *		ed,
 
 	case KEY_KP_Right:
 	case KEY_Right:
+	    if  ( ! state						&&
+		  sd.sdIsIBarSelection					&&
+		  ds.dsBegin.dpStroff < ds.dsBegin.dpBi->biParaStrlen	&&
+		  sg.sgBegin.pgAtLineEnd				&&
+		  ! sg.sgBegin.pgAtLineHead				)
+		{
+		const int	lastLine= 1;
+
+		tedInputChangeSelection( ed, state, &ds.dsBegin, lastLine );
+		return;
+		}
+
 	    if  ( ! ( state & KEY_SHIFT_MASK ) || ds.dsDirection >= 0 )
 		{ dpNew= ds.dsEnd;	}
 	    else{ dpNew= ds.dsBegin;	}
@@ -1136,9 +1103,22 @@ static void tedProcessKeyEvent(	EditDocument *		ed,
 
 	    if  ( dpNew.dpBi->biInExternalItem != DOCinBODY )
 		{
-		if  ( ! docPrevSimilarRoot( &dpNew, bd ) )
+		int		page= -1;
+
+		if  ( ! docPrevSimilarRoot( &dpNew, &page, bd ) )
 		    {
-		    const int	lastLine= 0;
+		    const int		lastLine= 0;
+		    ExternalItem *	ei= (ExternalItem *)0;
+		    BufferItem *	bodySectBi;
+
+		    if  ( docGetExternalItem( &ei, &bodySectBi,
+							bd, dpNew.dpBi ) )
+			{ LDEB(1); return;	}
+
+		    if  ( ei && ei->eiPageSelectedUpon < 0 && page >= 0 )
+			{ ei->eiPageSelectedUpon= page;	}
+
+		    tedInputAvoidHeadField( &dpNew, bd );
 
 		    tedInputSetSelectedPosition( ed, &dpNew, lastLine );
 		    }
@@ -1152,22 +1132,21 @@ static void tedProcessKeyEvent(	EditDocument *		ed,
 
 	    {
 		PositionGeometry	pg;
-		TextLine *		tl;
 		const int		lastLine= 1;
 		int			partNew;
+		int			lineNew;
 
 		int			page;
 
 		tedPositionGeometry( &pg, &dpNew, 0, bd, add, sfl );
 
-		tl= dpNew.dpBi->biParaLines+ pg.pgLine;
-
-		page= tl->tlTopPosition.lpPage;
+		page= pg.pgTopPosition.lpPage;
 		while( page >= 0 )
 		    {
 		    int		res;
 
-		    res= docGetTopOfColumn( &dpNew, &partNew, bd, page, 0 );
+		    res= docGetTopOfColumn( &dpNew, &lineNew, &partNew,
+								bd, page, 0 );
 		    if  ( res < 0 )
 			{ LDEB(res); return;	}
 		    if  ( res == 0 )
@@ -1189,9 +1168,20 @@ static void tedProcessKeyEvent(	EditDocument *		ed,
 
 	    if  ( dpNew.dpBi->biInExternalItem != DOCinBODY )
 		{
-		if  ( ! docNextSimilarRoot( &dpNew, bd ) )
+		int		page= -1;
+
+		if  ( ! docNextSimilarRoot( &dpNew, &page, bd ) )
 		    {
-		    const int	lastLine= 0;
+		    const int		lastLine= 0;
+		    ExternalItem *	ei= (ExternalItem *)0;
+		    BufferItem *	bodySectBi;
+
+		    if  ( docGetExternalItem( &ei, &bodySectBi,
+							bd, dpNew.dpBi ) )
+			{ LDEB(1); return;	}
+
+		    if  ( ei && ei->eiPageSelectedUpon < 0 && page >= 0 )
+			{ ei->eiPageSelectedUpon= page;	}
 
 		    tedInputAvoidHeadField( &dpNew, bd );
 
@@ -1203,22 +1193,21 @@ static void tedProcessKeyEvent(	EditDocument *		ed,
 
 	    {
 		PositionGeometry	pg;
-		TextLine *		tl;
 		const int		lastLine= 1;
 		int			partNew;
+		int			lineNew;
 
 		int			page;
 
 		tedPositionGeometry( &pg, &dpNew, lastLine, bd, add, sfl );
 
-		tl= dpNew.dpBi->biParaLines+ pg.pgLine;
-
-		page= tl->tlTopPosition.lpPage+ 1;
+		page= pg.pgTopPosition.lpPage+ 1;
 		while( page < bd->bdItem.biBelowPosition.lpPage )
 		    {
 		    int		res;
 
-		    res= docGetTopOfColumn( &dpNew, &partNew, bd, page, 0 );
+		    res= docGetTopOfColumn( &dpNew, &lineNew, &partNew,
+								bd, page, 0 );
 		    if  ( res < 0 )
 			{ LDEB(res); return;	}
 		    if  ( res == 0 )
@@ -1278,6 +1267,10 @@ static void tedProcessKeyEvent(	EditDocument *		ed,
 	case KEY_Insert:
 	case KEY_KP_Insert:
 	case KEY_Num_Lock:
+#	ifdef XK_ISO_Level3_Shift
+	case XK_ISO_Level3_Shift:
+#	endif
+
 	    return;
 
 	default: unknown:
@@ -1358,245 +1351,6 @@ APP_EVENT_HANDLER_H( tedKeyPressed, w, voided, keyEvent )
 
 /************************************************************************/
 /*									*/
-/*  Drag routine for inserted objects.					*/
-/*									*/
-/************************************************************************/
-
-typedef struct TedObjectDrag
-    {
-    EditDocument *	todEd;
-
-    InsertedObject *	todIo;
-    DocumentPosition	todDp;
-    PositionGeometry	todPg;
-    int			todParticule;
-
-    int			todMouseX;
-    int			todMouseY;
-
-    int			todRight;
-    int			todBottom;
-    } TedObjectDrag;
-
-static void tedObjectHandleMove(	TedObjectDrag *		tod,
-					int			mouseX,
-					int			mouseY )
-    {
-    EditDocument *		ed= tod->todEd;
-    AppDrawingData *		add= &(ed->edDrawingData);
-    int				ox= ed->edVisibleRect.drX0;
-    int				oy= ed->edVisibleRect.drY0;
-
-    const BufferItem *		bi;
-    const TextParticule *	tp;
-    const TextLine *		tl;
-
-    int				moved= 0;
-
-    int				wide= tod->todIo->ioDragWide;
-    int				high= tod->todIo->ioDragHigh;
-
-    bi= tod->todDp.dpBi;
-    tp= bi->biParaParticules+ tod->todParticule;
-    tl= bi->biParaLines+ tod->todPg.pgLine;
-
-    if  ( tod->todRight && tod->todMouseX != mouseX )
-	{ tod->todIo->ioDragWide += mouseX- tod->todMouseX; moved= 1; }
-
-    if  ( tod->todBottom && tod->todMouseY != mouseY )
-	{ tod->todIo->ioDragHigh += mouseY- tod->todMouseY; moved= 1; }
-
-    if  ( wide < tod->todIo->ioDragWide )
-	{ wide=  tod->todIo->ioDragWide;	}
-    if  ( high < tod->todIo->ioDragHigh )
-	{ high=  tod->todIo->ioDragHigh;	}
-
-    if  ( moved )
-	{
-	int		baseline= TL_BASE_PIXELS( add, tl );
-	int		x= tp->tpX0- ox;
-	int		y= baseline- tod->todIo->ioPixelsHigh- oy;
-
-	baseline= TL_BASE_PIXELS( add, tl );
-
-	appExposeRectangle( add, x, y, wide, high );
-	}
-
-    tod->todMouseX= mouseX;
-    tod->todMouseY= mouseY;
-    }
-
-static APP_EVENT_HANDLER_H( tedObjectDragMouseMove, w, vtod, event )
-    {
-    TedObjectDrag *		tod= (TedObjectDrag *)vtod;
-
-    int				x;
-    int				y;
-
-    if  ( appGetCoordinatesFromMouseMoveEvent( &x, &y, w, event ) )
-	{ return;	}
-
-    tedObjectHandleMove( tod, x, y );
-
-    return;
-    }
-
-static APP_EVENT_HANDLER_H( tedObjectDragMouseUp, w, vtod, event )
-    {
-    TedObjectDrag *		tod= (TedObjectDrag *)vtod;
-
-    int				x;
-    int				y;
-
-    int				button;
-    int				upDown;
-    int				seq;
-    unsigned int		keyState;
-
-    if  ( appGetCoordinatesFromMouseButtonEvent( &x, &y,
-			    &button, &upDown, &seq, &keyState, w, event ) )
-	{ return;	}
-
-    tedObjectHandleMove( tod, x, y );
-
-    return;
-    }
-
-static int tedObjectDrag(	APP_WIDGET	w,
-				EditDocument *	ed,
-				APP_EVENT *	downEvent )
-    {
-    EditApplication *		ea= ed->edApplication;
-    TedDocument *		td= (TedDocument *)ed->edPrivateData;
-    BufferDocument *		bd= td->tdDocument;
-    const ScreenFontList *	sfl= &(td->tdScreenFontList);
-    AppDrawingData *		add= &(ed->edDrawingData);
-
-    int				ox= ed->edVisibleRect.drX0;
-    int				oy= ed->edVisibleRect.drY0;
-
-    int				wide;
-    int				high;
-
-    int				button;
-    int				upDown;
-    int				seq;
-    unsigned int		keyState;
-
-    int				x;
-    int				y;
-
-    const int			lastOne= 1;
-    TedObjectDrag		tod;
-
-    tod.todEd= ed;
-
-    tod.todBottom= tod.todRight= 0;
-
-    if  ( appGetCoordinatesFromMouseButtonEvent(
-				    &(tod.todMouseX), &(tod.todMouseY),
-				    &button, &upDown, &seq, &keyState,
-				    w, downEvent ) )
-	{ LDEB(1); return -1;	}
-
-    docInitDocumentPosition( &(tod.todDp) );
-    if  ( tedGetObjectSelection( td,
-			&(tod.todParticule), &(tod.todDp), &(tod.todIo) ) )
-	{ return 2;	}
-
-    tedPositionGeometry( &(tod.todPg), &(tod.todDp), lastOne, bd, add, sfl );
-
-    wide= tod.todIo->ioPixelsWide;
-    high= tod.todIo->ioPixelsHigh;
-    x= tod.todPg.pgXPixels;
-    y= tod.todPg.pgBaselinePixels;
-
-    if  ( seq > 1					||
-	  upDown < 1					||
-	  tod.todMouseX+ ox < x				||
-	  tod.todMouseX+ ox > x+ wide			||
-	  tod.todMouseY+ oy > y				||
-	  tod.todMouseY+ oy < y- high			)
-	{ return 2;	}
-
-    if  ( tod.todMouseX+ ox >= x + wide/ 2- RESIZE_BLOCK/ 2	&&
-	  tod.todMouseX+ ox <  x + wide/ 2+ RESIZE_BLOCK/ 2	&&
-	  tod.todMouseY+ oy >= y- RESIZE_BLOCK		)
-	{ tod.todBottom= 1;	}
-
-    if  ( tod.todMouseX+ ox >= x + wide- RESIZE_BLOCK		&&
-	  tod.todMouseY+ oy >= y - high/ 2- RESIZE_BLOCK/ 2 	&&
-	  tod.todMouseY+ oy <  y - high/ 2+ RESIZE_BLOCK/ 2	)
-	{ tod.todRight= 1;	}
-
-    if  ( tod.todMouseX+ ox >= x + wide- RESIZE_BLOCK		&&
-	  tod.todMouseY+ oy >= y- RESIZE_BLOCK			)
-	{ tod.todRight= 1; tod.todBottom= 1;	}
-
-    if  ( ! tod.todRight && ! tod.todBottom )
-	{ return 1;	}
-
-    tod.todIo->ioDragWide= tod.todIo->ioPixelsWide;
-    tod.todIo->ioDragHigh= tod.todIo->ioPixelsHigh;
-
-    appRunDragLoop( w, ea, downEvent,
-				tedObjectDragMouseUp,
-				tedObjectDragMouseMove,
-				0, (APP_TIMER_CALLBACK)0,
-				(void *)&tod );
-
-    if  ( tod.todIo->ioDragWide != tod.todIo->ioPixelsWide	||
-	  tod.todIo->ioDragHigh != tod.todIo->ioPixelsHigh	)
-	{
-	double			xfac= add->addMagnifiedPixelsPerTwip;
-
-	if  ( tod.todIo->ioDragWide != tod.todIo->ioPixelsWide )
-	    {
-	    TextParticule *	tp;
-
-	    tod.todIo->ioScaleX= ( 100.0* tod.todIo->ioDragWide )/
-			    TWIPStoPIXELS( xfac, tod.todIo->ioTwipsWide );
-
-	    tod.todIo->ioPixelsWide= TWIPStoPIXELS( xfac,
-		    ( tod.todIo->ioScaleX* tod.todIo->ioTwipsWide )/ 100 );
-
-	    tp= tod.todDp.dpBi->biParaParticules+ tod.todParticule;
-
-	    tp->tpPixelsWide= tod.todIo->ioPixelsWide;
-	    }
-
-	if  ( tod.todIo->ioDragHigh != tod.todIo->ioPixelsHigh )
-	    {
-	    tod.todIo->ioScaleY= ( 100.0* tod.todIo->ioDragHigh )/
-			    TWIPStoPIXELS( xfac, tod.todIo->ioTwipsHigh );
-
-	    tod.todIo->ioPixelsHigh= TWIPStoPIXELS( xfac,
-		    ( tod.todIo->ioScaleY* tod.todIo->ioTwipsHigh )/ 100 );
-	    }
-
-	if  ( tedResizeObject( ed, tod.todParticule,
-					    &(tod.todDp), &(tod.todPg) ) )
-	    { LDEB(1);	}
-
-	tedPositionGeometry( &(tod.todPg), &(tod.todDp), lastOne,
-							    bd, add, sfl );
-
-	appDocumentChanged( ed, 1 );
-	}
-
-    tod.todIo->ioDragWide= 0;
-    tod.todIo->ioDragHigh= 0;
-
-    ox= ed->edVisibleRect.drX0;
-    oy= ed->edVisibleRect.drY0;
-
-    tedSetObjectWindows( ed, &(tod.todPg), tod.todIo, ox, oy );
-
-    return 0;
-    }
-
-/************************************************************************/
-/*									*/
 /*  Handle mouse button down events for the document widget.		*/
 /*									*/
 /************************************************************************/
@@ -1605,12 +1359,88 @@ static void tedButton3Pressed(	APP_WIDGET			w,
 				EditDocument *			ed,
 				APP_EVENT *			downEvent )
     {
-    TedDocument *	td= (TedDocument *)ed->edPrivateData;
-    DraggingContext	dc;
-    unsigned int	keyState;
+    TedDocument *		td= (TedDocument *)ed->edPrivateData;
+    BufferDocument *		bd= td->tdDocument;
+    const ScreenFontList *	sfl= &(td->tdScreenFontList);
+    const AppDrawingData *	add= &(ed->edDrawingData);
 
-    if  ( tedSelectMousePosition( &keyState, w, ed, &dc, downEvent ) )
-	{ return;	}
+    int				ox= ed->edVisibleRect.drX0;
+    int				oy= ed->edVisibleRect.drY0;
+
+    int				mouseX;
+    int				mouseY;
+    int				docX;
+    int				docY;
+
+    int				otherRoot= 0;
+
+    int				button;
+    int				upDown;
+    int				seq;
+    unsigned int		keyState= 0;
+
+    DraggingContext		dc;
+
+    int				selectMousePosition= 0;
+
+    DocumentSelection		dsOld;
+    SelectionGeometry		sg;
+    SelectionDescription	sd;
+
+    int				page;
+    int				sectNr;
+    ExternalItem *		eiSet= (ExternalItem *)0;
+    BufferItem *		bodySectBiSet;
+    BufferItem *		rootBiSet;
+
+    if  ( tedGetSelection( &dsOld, &sg, &sd, td ) )
+	{ LDEB(1); return;	}
+
+    if  ( appGetCoordinatesFromMouseButtonEvent( &mouseX, &mouseY,
+					    &button, &upDown, &seq, &keyState,
+					    w, downEvent ) )
+	{ LDEB(1); return;	}
+
+    if  ( mouseX < -ox )
+	{ mouseX=  -ox;	}
+    if  ( mouseY < -oy )
+	{ mouseY=  -oy;	}
+
+    docX= mouseX+ ox;
+    docY= mouseY+ oy;
+
+    if  ( tedFindRootForPosition( &eiSet, &rootBiSet, &bodySectBiSet,
+					    &sectNr, &page, ed, docX, docY ) )
+	{ LLDEB(docX,docY); return;	}
+
+    otherRoot= ! docSelectionSameRoot( &dsOld, rootBiSet );
+
+    if  ( otherRoot )
+	{ selectMousePosition= 1;	}
+    else{
+	DocumentPosition	dpClick;
+	PositionGeometry	pgClick;
+	int			partClick;
+
+	int			cmp1;
+	int			cmp2;
+
+	if  ( tedFindPosition( &dpClick, &pgClick, &partClick,
+					bd, rootBiSet, add, sfl, docX, docY ) )
+	    { LLDEB(docX,docY); return;	}
+
+	cmp1= docComparePositions( &dpClick, &(dsOld.dsBegin) );
+	cmp2= docComparePositions( &dpClick, &(dsOld.dsEnd) );
+
+	if  ( cmp1 < 0 || cmp2 > 0 )
+	    { selectMousePosition= 1;	}
+	}
+
+    if  ( selectMousePosition )
+	{
+	if  ( tedSelectMousePosition( &keyState, w, ed, &dc, downEvent ) )
+	    { return;	}
+	}
 
     tedShowFormatTool( td->tdToolsFormatToolOption, ed->edApplication );
 

@@ -207,9 +207,18 @@ static void bmGetPaletteSourceRowAlpha(	ColorValue *			cv,
 
 	    for ( col= col0In; col < colPIn; from += 2, cv++, col++ )
 		{
-		cv->cvR += bdIn->bdRGB8Palette[*from].rgb8Red;
-		cv->cvG += bdIn->bdRGB8Palette[*from].rgb8Green;
-		cv->cvB += bdIn->bdRGB8Palette[*from].rgb8Blue;
+		if  ( from[1] )
+		    {
+		    cv->cvR += bdIn->bdRGB8Palette[*from].rgb8Red;
+		    cv->cvG += bdIn->bdRGB8Palette[*from].rgb8Green;
+		    cv->cvB += bdIn->bdRGB8Palette[*from].rgb8Blue;
+		    }
+		else{
+		    /* why not white?*/
+		    cv->cvR += 255;
+		    cv->cvG += 255;
+		    cv->cvB += 255;
+		    }
 		cv->cvN++;
 		}
 	    return;
@@ -221,11 +230,20 @@ static void bmGetPaletteSourceRowAlpha(	ColorValue *			cv,
 
 	    for ( col= col0In; col < colPIn; from++, cv++, col++ )
 		{
-		int		val= ( *from >> 4 ) & mask;
+		if  ( *from & 0x0f )
+		    {
+		    int		val= ( *from >> 4 ) & mask;
 
-		cv->cvR += bdIn->bdRGB8Palette[val].rgb8Red;
-		cv->cvG += bdIn->bdRGB8Palette[val].rgb8Green;
-		cv->cvB += bdIn->bdRGB8Palette[val].rgb8Blue;
+		    cv->cvR += bdIn->bdRGB8Palette[val].rgb8Red;
+		    cv->cvG += bdIn->bdRGB8Palette[val].rgb8Green;
+		    cv->cvB += bdIn->bdRGB8Palette[val].rgb8Blue;
+		    }
+		else{
+		    /* why not white?*/
+		    cv->cvR += 255;
+		    cv->cvG += 255;
+		    cv->cvB += 255;
+		    }
 		cv->cvN++;
 		}
 	    return;
@@ -462,6 +480,27 @@ static void bmGetWhiteBlack8SourceRow(	ColorValue *			cv,
 	}
     }
 
+static void bmGetWhiteBlack16ASourceRow(ColorValue *			cv,
+					int				col0Out,
+					const unsigned char *		from,
+					int				col0In,
+					int				colPIn,
+					const BitmapDescription *	bdIn )
+    {
+    int			col;
+
+    cv += col0Out;
+    from += col0In;
+
+    for ( col= col0In; col < colPIn; cv++, from += 2, col++ )
+	{
+	cv->cvR += *from;
+	cv->cvG += *from;
+	cv->cvB += *from;
+	cv->cvN++;
+	}
+    }
+
 /************************************************************************/
 /*									*/
 /*  Add data from one row of a 24 bits image to an acumulator array.	*/
@@ -485,6 +524,40 @@ static void bmGetRGB24SourceRow(	ColorValue *			cv,
 	cv->cvR += *(from++);
 	cv->cvG += *(from++);
 	cv->cvB += *(from++);
+	cv->cvN++;
+	}
+
+    return;
+    }
+
+static void bmGetRGBA32SourceRow(	ColorValue *			cv,
+					int				col0Out,
+					const unsigned char *		from,
+					int				col0In,
+					int				colPIn,
+					const BitmapDescription *	bdIn )
+    {
+    int		col;
+
+    cv += col0Out;
+    from += 3* col0In;
+
+    for ( col= col0In; col < colPIn; cv++, col++ )
+	{
+	if  ( from[3] )
+	    {
+	    cv->cvR += *(from++);
+	    cv->cvG += *(from++);
+	    cv->cvB += *(from++);
+	    from++;
+	    }
+	else{
+	    /*why not white*/
+	    cv->cvR += 255;
+	    cv->cvG += 255;
+	    cv->cvB += 255;
+	    from += 4;
+	    }
 	cv->cvN++;
 	}
 
@@ -515,6 +588,31 @@ static void bmGetRGB48SourceRow(	ColorValue *			cv,
 	cv->cvR += *(from++)/ 256;
 	cv->cvG += *(from++)/ 256;
 	cv->cvB += *(from++)/ 256;
+	cv->cvN++;
+	}
+
+    return;
+    }
+
+static void bmGetRGBA64SourceRow(	ColorValue *			cv,
+					int				col0Out,
+					const unsigned char *		ucFrom,
+					int				col0In,
+					int				colPIn,
+					const BitmapDescription *	bdIn )
+    {
+    int			col;
+    const BmUint16 *	from= (const BmUint16 *)ucFrom;
+
+    cv += col0Out;
+    from += 3* col0In;
+
+    for ( col= col0In; col < colPIn; cv++, col++ )
+	{
+	cv->cvR += *(from++)/ 256;
+	cv->cvG += *(from++)/ 256;
+	cv->cvB += *(from++)/ 256;
+	from++;
 	cv->cvN++;
 	}
 
@@ -599,8 +697,18 @@ int bmGetGetRow(	GetSourceRow *			pGetRow,
 		    getRow= bmGetWhiteBlack8SourceRow;
 		    break;
 
+		case 16:
+		    if  ( bdIn->bdHasAlpha )
+			{ getRow= bmGetWhiteBlack16ASourceRow;	}
+		    else{
+			LLDEB(bdIn->bdBitsPerPixel,bdIn->bdHasAlpha);
+			return -1;
+			}
+		    break;
+
 		default:
 		    LLDEB(bdIn->bdColorEncoding,bdIn->bdBitsPerPixel);
+		    return -1;
 		}
 	    break;
 
@@ -608,11 +716,15 @@ int bmGetGetRow(	GetSourceRow *			pGetRow,
 	    switch( bdIn->bdBitsPerSample )
 		{
 		case 8:
-		    getRow= bmGetRGB24SourceRow;
+		    if  ( bdIn->bdHasAlpha )
+			{ getRow= bmGetRGBA32SourceRow;	}
+		    else{ getRow= bmGetRGB24SourceRow;	}
 		    break;
 
 		case 16:
-		    getRow= bmGetRGB48SourceRow;
+		    if  ( bdIn->bdHasAlpha )
+			{ getRow= bmGetRGBA64SourceRow;	}
+		    else{ getRow= bmGetRGB48SourceRow;	}
 		    break;
 
 		default:

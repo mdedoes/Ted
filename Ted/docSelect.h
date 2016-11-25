@@ -1,6 +1,8 @@
 #   ifndef		DOC_SELECT_H
 #   define		DOC_SELECT_H
 
+#   include		"docLayoutPosition.h"
+
 /************************************************************************/
 /*									*/
 /*  Forward declarations of structs.					*/
@@ -10,23 +12,6 @@
 struct BufferDocument;
 struct BufferItem;
 struct DocumentField;
-
-/************************************************************************/
-/*									*/
-/*  Used to layout lines of text.					*/
-/*									*/
-/*  A0 paper is 4* 30 cm high: 28.3465* 120* 20= 68031.6 Twips.		*/
-/*  So an unsigned short limits us to A1 paper.				*/
-/*									*/
-/************************************************************************/
-
-typedef struct LayoutPosition
-    {
-    unsigned short	lpPageYTwips;
-    unsigned short	lpPage;
-    unsigned char	lpColumn;
-    unsigned char	lpAtTopOfColumn;
-    } LayoutPosition;
 
 /************************************************************************/
 /*									*/
@@ -42,7 +27,7 @@ typedef struct LayoutPosition
 /*	array of notes in the section.					*/
 /*									*/
 /*  E)  The beginning, end and anchor of the selection. The order is in	*/
-/*	the reding direction. NOT in the order that the selection was	*/
+/*	the reading direction. NOT in the order that the selection was	*/
 /*	made. USE EXTREME CARE WHEN YOU REFER TO THE OLD POSITION IN	*/
 /*	EDITING CODE.							*/
 /*									*/
@@ -79,6 +64,7 @@ typedef struct PositionGeometry
     {
     int			pgLine;
     int			pgAtLineHead;
+    int			pgAtLineEnd;
 
     int			pgXPixels;
     LayoutPosition	pgTopPosition;
@@ -109,6 +95,9 @@ typedef struct TableRectangle
     int		trCellColspan;
     int		trCellRowspan;
     } TableRectangle;
+
+#   define	docSamePosition(b,e) \
+		((b)->dpBi == (e)->dpBi && (b)->dpStroff == (e)->dpStroff)
 
 #   define	docPositionsInsideParagraph(b,e) \
 		((b)->dpBi == (e)->dpBi)
@@ -144,6 +133,7 @@ typedef struct SelectionDescription
     int			sdIsRowSlice;
     int			sdIsTableSlice;
     int			sdIsTableRectangle;
+    int			sdIsObjectSelection;
 
     int			sdCanReplace;
     int			sdInExternalItem;
@@ -181,10 +171,11 @@ extern void docSetIBarSelection(	DocumentSelection *		ds,
 extern int docIsIBarSelection( const DocumentSelection *		ds );
 extern int docIsParaSelection( const DocumentSelection *		ds );
 
-extern int docGetObjectSelection(	DocumentSelection *	ds,
-					int *			pPart,
-					DocumentPosition *	dpObject,
-					InsertedObject **	pIo );
+extern int docGetObjectSelection(
+				const DocumentSelection *	ds,
+				int *				pPart,
+				DocumentPosition *		dpObject,
+				InsertedObject **		pIo );
 
 extern void docSetRangeSelection(
 				DocumentSelection *		ds,
@@ -214,5 +205,7 @@ extern void docDescribeSelection(
 			    const struct BufferDocument *	bd,
 			    unsigned int			documentId,
 			    int					documentRo );
+
+extern void docInitSelectionDescription(	SelectionDescription *	sd );
 
 #   endif	/*	DOC_SELECT_H	*/

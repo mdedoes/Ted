@@ -20,33 +20,36 @@
 /************************************************************************/
 #   define	FILEL	400
 
+typedef struct DocumentPropertyPageResources
+    {
+    const char *		dpprOkText;
+    const char *		dpprCancelText;
+
+    const char *		dpprGeneratorText;
+    const char *		dpprTitleText;
+    const char *		dpprAuthorText;
+    const char *		dpprCompanyText;
+    const char *		dpprSubjectText;
+    const char *		dpprKeywordsText;
+    const char *		dpprDoccommText;
+    const char *		dpprHlinkbaseText;
+
+    const char *		dpprCreatimText;
+    const char *		dpprRevtimText;
+    const char *		dpprPrintimText;
+
+    const char *		dpprPageCountText;
+    const char *		dpprParaCountText;
+    const char *		dpprLineCountText;
+    const char *		dpprWordCountText;
+    const char *		dpprCharCountText;
+    } DocumentPropertyPageResources;
+
 typedef struct PropertyDialog
     {
     AppDialog			dpdDialog;
 
     APP_WIDGET			dpdOkButton;
-
-    char *			dpdOkText;
-    char *			dpdCancelText;
-
-    char *			dpdGeneratorText;
-    char *			dpdTitleText;
-    char *			dpdAuthorText;
-    char *			dpdCompanyText;
-    char *			dpdSubjectText;
-    char *			dpdKeywordsText;
-    char *			dpdDoccommText;
-    char *			dpdHlinkbaseText;
-
-    char *			dpdCreatimText;
-    char *			dpdRevtimText;
-    char *			dpdPrintimText;
-
-    char *			dpdPageCountText;
-    char *			dpdParaCountText;
-    char *			dpdLineCountText;
-    char *			dpdWordCountText;
-    char *			dpdCharCountText;
 
     APP_WIDGET			dpdGeneratorWidget;
     APP_WIDGET			dpdTitleWidget;
@@ -73,61 +76,61 @@ static PropertyDialog *	TED_PropertyDialog;
 static AppConfigurableResource TED_PropertyDialogResourceTable[]=
     {
 	APP_RESOURCE( "propDialogGenerator",
-		    offsetof(PropertyDialog,dpdGeneratorText),
+		    offsetof(DocumentPropertyPageResources,dpprGeneratorText),
 		    "Generator" ),
 	APP_RESOURCE( "propDialogTitle",
-		    offsetof(PropertyDialog,dpdTitleText),
+		    offsetof(DocumentPropertyPageResources,dpprTitleText),
 		    "Title" ),
 	APP_RESOURCE( "propDialogAuthor",
-		    offsetof(PropertyDialog,dpdAuthorText),
+		    offsetof(DocumentPropertyPageResources,dpprAuthorText),
 		    "Author" ),
 	APP_RESOURCE( "propDialogCompany",
-		    offsetof(PropertyDialog,dpdCompanyText),
+		    offsetof(DocumentPropertyPageResources,dpprCompanyText),
 		    "Company" ),
 	APP_RESOURCE( "propDialogSubject",
-		    offsetof(PropertyDialog,dpdSubjectText),
+		    offsetof(DocumentPropertyPageResources,dpprSubjectText),
 		    "Subject" ),
 	APP_RESOURCE( "propDialogKeywords",
-		    offsetof(PropertyDialog,dpdKeywordsText),
+		    offsetof(DocumentPropertyPageResources,dpprKeywordsText),
 		    "Keywords" ),
 	APP_RESOURCE( "propDialogDoccom",
-		    offsetof(PropertyDialog,dpdDoccommText),
+		    offsetof(DocumentPropertyPageResources,dpprDoccommText),
 		    "Comment" ),
 	APP_RESOURCE( "propDialogHlinkbase",
-		    offsetof(PropertyDialog,dpdHlinkbaseText),
+		    offsetof(DocumentPropertyPageResources,dpprHlinkbaseText),
 		    "Links Relative to" ),
 
 	APP_RESOURCE( "propDialogCreatim",
-		    offsetof(PropertyDialog,dpdCreatimText),
+		    offsetof(DocumentPropertyPageResources,dpprCreatimText),
 		    "Created" ),
 	APP_RESOURCE( "propDialogRevtim",
-		    offsetof(PropertyDialog,dpdRevtimText),
+		    offsetof(DocumentPropertyPageResources,dpprRevtimText),
 		    "Last Changed" ),
 	APP_RESOURCE( "propDialogPrintim",
-		    offsetof(PropertyDialog,dpdPrintimText),
+		    offsetof(DocumentPropertyPageResources,dpprPrintimText),
 		    "Last Printed" ),
 
 	APP_RESOURCE( "propDialogPages",
-		    offsetof(PropertyDialog,dpdPageCountText),
+		    offsetof(DocumentPropertyPageResources,dpprPageCountText),
 		    "Pages" ),
 	APP_RESOURCE( "propDialogParagraphs",
-		    offsetof(PropertyDialog,dpdParaCountText),
+		    offsetof(DocumentPropertyPageResources,dpprParaCountText),
 		    "Paragraphs" ),
 	APP_RESOURCE( "propDialogLines",
-		    offsetof(PropertyDialog,dpdLineCountText),
+		    offsetof(DocumentPropertyPageResources,dpprLineCountText),
 		    "Lines" ),
 	APP_RESOURCE( "propDialogWords",
-		    offsetof(PropertyDialog,dpdWordCountText),
+		    offsetof(DocumentPropertyPageResources,dpprWordCountText),
 		    "Words" ),
 	APP_RESOURCE( "propDialogCharacters",
-		    offsetof(PropertyDialog,dpdCharCountText),
+		    offsetof(DocumentPropertyPageResources,dpprCharCountText),
 		    "Characters" ),
 
 	APP_RESOURCE( "propDialogCancel",
-		    offsetof(PropertyDialog,dpdCancelText),
+		    offsetof(DocumentPropertyPageResources,dpprCancelText),
 		    "Cancel" ),
 	APP_RESOURCE( "propDialogOk",
-		    offsetof(PropertyDialog,dpdOkText),
+		    offsetof(DocumentPropertyPageResources,dpprOkText),
 		    "Ok" ),
     };
 
@@ -224,8 +227,10 @@ static void tedPropsDialogMakePropertyRow(	APP_WIDGET*	pRow,
     return;
     }
 
-static void tedPropsDialogMakeTextForm( APP_WIDGET		parent,
-					PropertyDialog *	dpd )
+static void tedPropsDialogMakeTextForm(
+				APP_WIDGET				parent,
+				PropertyDialog *			dpd,
+				const DocumentPropertyPageResources *	dppr )
     {
     APP_WIDGET		row;
     APP_WIDGET		label;
@@ -234,57 +239,57 @@ static void tedPropsDialogMakeTextForm( APP_WIDGET		parent,
     const int		derived= 0;
 
     tedPropsDialogMakePropertyRow( &row, &label, &(dpd->dpdTitleWidget),
-			    parent, dpd, dpd->dpdTitleText, changeable );
+			    parent, dpd, dppr->dpprTitleText, changeable );
 
     tedPropsDialogMakePropertyRow( &row, &label, &(dpd->dpdAuthorWidget),
-			    parent, dpd, dpd->dpdAuthorText, changeable );
+			    parent, dpd, dppr->dpprAuthorText, changeable );
 
     tedPropsDialogMakePropertyRow( &row, &label, &(dpd->dpdCompanyWidget),
-			    parent, dpd, dpd->dpdCompanyText, changeable );
+			    parent, dpd, dppr->dpprCompanyText, changeable );
 
     tedPropsDialogMakePropertyRow( &row, &label, &(dpd->dpdSubjectWidget),
-			    parent, dpd, dpd->dpdSubjectText, changeable );
+			    parent, dpd, dppr->dpprSubjectText, changeable );
 
     tedPropsDialogMakePropertyRow( &row, &label, &(dpd->dpdKeywordsWidget),
-			    parent, dpd, dpd->dpdKeywordsText, changeable );
+			    parent, dpd, dppr->dpprKeywordsText, changeable );
 
     tedPropsDialogMakePropertyRow( &row, &label, &(dpd->dpdDoccommWidget),
-			    parent, dpd, dpd->dpdDoccommText, changeable );
+			    parent, dpd, dppr->dpprDoccommText, changeable );
 
     tedPropsDialogMakePropertyRow( &row, &label, &(dpd->dpdHlinkbaseWidget),
-			    parent, dpd, dpd->dpdHlinkbaseText, changeable );
+			    parent, dpd, dppr->dpprHlinkbaseText, changeable );
 
     /**/
     tedPropsDialogMakePropertyRow( &row, &label, &(dpd->dpdGeneratorWidget),
-			    parent, dpd, dpd->dpdGeneratorText, derived );
+			    parent, dpd, dppr->dpprGeneratorText, derived );
 
     /**/
 
     tedPropsDialogMakePropertyRow( &row, &label, &(dpd->dpdCreatimWidget),
-			    parent, dpd, dpd->dpdCreatimText, derived );
+			    parent, dpd, dppr->dpprCreatimText, derived );
 
     tedPropsDialogMakePropertyRow( &row, &label, &(dpd->dpdRevtimWidget),
-			    parent, dpd, dpd->dpdRevtimText, derived );
+			    parent, dpd, dppr->dpprRevtimText, derived );
 
     tedPropsDialogMakePropertyRow( &row, &label, &(dpd->dpdPrintimWidget),
-			    parent, dpd, dpd->dpdPrintimText, derived );
+			    parent, dpd, dppr->dpprPrintimText, derived );
 
     /**/
 
     tedPropsDialogMakePropertyRow( &row, &label, &(dpd->dpdPageCountWidget),
-			    parent, dpd, dpd->dpdPageCountText, derived );
+			    parent, dpd, dppr->dpprPageCountText, derived );
 
     tedPropsDialogMakePropertyRow( &row, &label, &(dpd->dpdParaCountWidget),
-			    parent, dpd, dpd->dpdParaCountText, derived );
+			    parent, dpd, dppr->dpprParaCountText, derived );
 
     tedPropsDialogMakePropertyRow( &row, &label, &(dpd->dpdLineCountWidget),
-			    parent, dpd, dpd->dpdLineCountText, derived );
+			    parent, dpd, dppr->dpprLineCountText, derived );
 
     tedPropsDialogMakePropertyRow( &row, &label, &(dpd->dpdWordCountWidget),
-			    parent, dpd, dpd->dpdWordCountText, derived );
+			    parent, dpd, dppr->dpprWordCountText, derived );
 
     tedPropsDialogMakePropertyRow( &row, &label, &(dpd->dpdCharCountWidget),
-			    parent, dpd, dpd->dpdCharCountText, derived );
+			    parent, dpd, dppr->dpprCharCountText, derived );
 
     return;
     }
@@ -295,8 +300,10 @@ static void tedPropsDialogMakeTextForm( APP_WIDGET		parent,
 /*									*/
 /************************************************************************/
 
-static APP_WIDGET tedPropsDialogMakeButtonRow( APP_WIDGET	parent,
-					PropertyDialog *	dpd )
+static APP_WIDGET tedPropsDialogMakeButtonRow(
+				APP_WIDGET				parent,
+				PropertyDialog *			dpd,
+				const DocumentPropertyPageResources *	dppr )
     {
     APP_WIDGET	row;
     APP_WIDGET	cancelButton;
@@ -304,10 +311,10 @@ static APP_WIDGET tedPropsDialogMakeButtonRow( APP_WIDGET	parent,
 
     row= appMakeRowInColumn( parent, 2, heightResizable );
 
-    appMakeButtonInRow( &(dpd->dpdOkButton), row, dpd->dpdOkText,
+    appMakeButtonInRow( &(dpd->dpdOkButton), row, dppr->dpprOkText,
 				tedPropertiesOkPushed, (void *)dpd, 0, 1 );
 
-    appMakeButtonInRow( &(cancelButton), row, dpd->dpdCancelText, 
+    appMakeButtonInRow( &(cancelButton), row, dppr->dpprCancelText, 
 			    tedPropertiesCancelPushed, (void *)dpd, 1, 0 );
 
     appGuiSetCancelButtonForDialog( &(dpd->dpdDialog), cancelButton );
@@ -335,6 +342,9 @@ static PropertyDialog * tedMakePropertyDialog( EditDocument *	ed,
     APP_BITMAP_IMAGE	iconPixmap= (APP_BITMAP_IMAGE)0;
     APP_BITMAP_MASK	iconMask= (APP_BITMAP_MASK)0;
 
+    static DocumentPropertyPageResources	dppr;
+    static int					gotResources;
+
     if  ( appGetImagePixmap( ea, pixmapName, &iconPixmap, &iconMask )  )
 	{ SDEB(pixmapName); return (PropertyDialog *)0;	}
 
@@ -342,9 +352,13 @@ static PropertyDialog * tedMakePropertyDialog( EditDocument *	ed,
     if  ( ! dpd )
 	{ XDEB(dpd); return (PropertyDialog *)0;	}
 
-    appGuiGetResourceValues( ea, dpd, TED_PropertyDialogResourceTable,
+    if  ( ! gotResources )
+	{
+	appGuiGetResourceValues( &gotResources, ea, (void *)&dppr,
+				    TED_PropertyDialogResourceTable,
 				    sizeof(TED_PropertyDialogResourceTable)/
 				    sizeof(AppConfigurableResource) );
+	}
 
     appMakeVerticalDialog( &(dpd->dpdDialog), &paned, ea,
 						tedClosePropertyDialog,
@@ -356,11 +370,11 @@ static PropertyDialog * tedMakePropertyDialog( EditDocument *	ed,
 				    printOption, ea->eaApplicationName );
 
 
-    tedPropsDialogMakeTextForm( paned, dpd );
+    tedPropsDialogMakeTextForm( paned, dpd, &dppr );
 
     appGuiInsertSeparatorInColumn( &separator, paned );
 
-    buttonForm= tedPropsDialogMakeButtonRow( paned, dpd );
+    buttonForm= tedPropsDialogMakeButtonRow( paned, dpd, &dppr );
 
     appGuiShowDialog( &(dpd->dpdDialog), ed->edToplevel.atTopWidget );
 

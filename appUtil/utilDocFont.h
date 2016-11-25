@@ -16,7 +16,7 @@
 /*  Font Administration in terms of 'Document Fonts'			*/
 /*									*/
 /*  1)  A document font is characterized by an item in the font list	*/
-/*	in an offce document. The main key is the name of the font.	*/
+/*	in an office document. The main key is the name of the font.	*/
 /*	It is possible that two fonts with the same name exist. In that	*/
 /*	case, the character set helps to distinguish between them.	*/
 /*									*/
@@ -28,6 +28,14 @@
 /*	fonts that count as used consistes of the fonts that were in	*/
 /*	the font list of a document when it was opened plus the ones	*/
 /*	that have been assigned to a stretch of text during editing.	*/
+/*									*/
+/*  3)	fnil, fswiss ..							*/
+/*  4)	Helvetica, Times..						*/
+/*  5)	\\falt in rtf							*/
+/*  6)	f0, f1 ...							*/
+/*  7)	fcharsetN							*/
+/*  8)	cpgN								*/
+/*  9)	fprqN								*/
 /*									*/
 /************************************************************************/
 
@@ -50,23 +58,25 @@ typedef enum FontFaceIndex
 
 typedef struct DocumentFont
     {
-    char *			dfFamilyStyle;	/*  fnil, fswiss ..	*/
-    char *			dfName;		/*  Helvetica,		*/
-    char *			dfAltName;	/*  \\falt in rtf	*/
-    short int			dfDocFontNumber;/*  f0, f1 ...	*/
+    char *				dfFamilyStyle;	/*  3	*/
+    char *				dfName;		/*  4	*/
+    char *				dfAltName;	/*  5	*/
+    short int				dfDocFontNumber;/*  6	*/
 
-    short int			dfDocFamilyIndex;
-    short int			dfEncodingSet;
+    short int				dfDocFamilyIndex;
 
-    short int			dfCharset;	/*  fcharsetN		*/
-    short int			dfCodepage;	/*  cpgN		*/
+    short int				dfCharset;	/*  7	*/
+    short int				dfCharsetIndex;	/*  7	*/
+    short int				dfCodepage;	/*  8	*/
 
-    short int			dfPsFamilyNumber;
-    short int			dfPsFaceNumber[FONTface_COUNT];
+    short int				dfPsFamilyNumber;
+    short int				dfPsFaceNumber[FONTface_COUNT];
 
-    unsigned char		dfPitch;	/*  fprqN		*/
-    unsigned char		dfUsed;		/*  2			*/
-    char			dfPanose[FONTlenPANOSE+1];
+    unsigned char			dfPitch;	/*  9	*/
+    unsigned char			dfUsed;		/*  2	*/
+    char				dfPanose[FONTlenPANOSE+1];
+
+    const OfficeCharsetMapping *	dfOfficeCharsetMapping;
     } DocumentFont;
 
 typedef enum DocumentFontProperty
@@ -85,7 +95,7 @@ typedef enum DocumentFontProperty
 typedef struct DocumentFontFamily
     {
     char *		dffFamilyName;
-    int			dffFontForEncoding[ENCODINGps_COUNT];
+    int			dffFontForCharsetIndex[CHARSETidxCOUNT];
     } DocumentFontFamily;
 
 typedef struct DocumentFontList
@@ -142,13 +152,15 @@ extern DocumentFont *	docInsertFont(	DocumentFontList *		dfl,
 extern int utilFontCompareFaces(	const void *	veft1,
 					const void *	veft2 );
 
-extern int docGetFontByName(	DocumentFontList *	dfl,
-				const char *		fontFamilyName,
-				int			encoding );
+extern int docGetFontByNameAndCharset(	DocumentFontList *	dfl,
+					const char *		fontFamilyName,
+					int			charset );
 
 extern int docMergeFontIntoFontlist(
 				DocumentFontList *	dflTo,
 				const DocumentFont *	dfFrom );
+
+extern const char * docFontFamilyStyleString(	int style );
 
 extern int docFontSetFamilyStyle(	DocumentFont *	df,
 					int		style );
@@ -158,5 +170,12 @@ extern int docFontSetFamilyName(	DocumentFont *	df,
 
 extern int docFontSetAltName(		DocumentFont *	df,
 					const char *	name );
+
+extern int docRememberFontNameAndFamily(DocumentFontList *	dfl,
+					DocumentFont *		df,
+					int			charset );
+
+extern int docCopyDocumentFontFamily(	DocumentFontFamily *		to,
+					const DocumentFontFamily *	from );
 
 #   endif	/*  DOC_FONT_H	*/

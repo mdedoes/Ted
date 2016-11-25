@@ -20,6 +20,12 @@
 #   define	TWIPStoPIXELS(xmag,t) ((xmag)*(t))
 #   define	PIXELStoTWIPS(p,xmag) ((p)/(xmag))
 
+# define X_PIXELS( add, x ) \
+	    ( TWIPStoPIXELS( (add)->addMagnifiedPixelsPerTwip, (x) ) )
+/*Deprecated:*/
+# define Y_PIXELS( add, y ) \
+	    ( TWIPStoPIXELS( (add)->addMagnifiedPixelsPerTwip, (y) ) )
+
 /************************************************************************/
 /*									*/
 /*  An attempt to define a more or less device independent graphics	*/
@@ -149,6 +155,22 @@ typedef struct AppColors
 #   ifdef USE_MOTIF
 
 extern const char * const APP_VisualClasses[];
+
+#   endif
+
+#   if defined(USE_GTK) && ! defined(GTK_AND_X11_INCLUDES)
+
+/*  Needed with some versions of GTK */
+
+typedef struct XArc
+    {
+    short		x;
+    short		y;
+    unsigned short	width;
+    unsigned short	height;
+    short		angle1;
+    short		angle2;
+    } XArc;
 
 #   endif
 
@@ -312,11 +334,11 @@ extern void appDrawFreePixmap(	AppDrawingData *	add,
 				APP_BITMAP_IMAGE	pixmap );
 
 extern void appDrawFillPolygon(		AppDrawingData *	add,
-					APP_POINT *		points,
+					const APP_POINT *	points,
 					int			count );
 
 extern void appDrawDrawLines(		AppDrawingData *	add,
-					APP_POINT *		points,
+					const APP_POINT *	points,
 					int			count );
 
 extern int appDrawGetSizeOfWidget(		int *		pWide,
@@ -398,6 +420,14 @@ extern void appDrawFillArc(	AppDrawingData *	add,
 				int			angle1,
 				int			angle2 );
 
+extern void appDrawDrawArcs(		AppDrawingData *	add,
+					const XArc *		arcs,
+					int			count );
+
+extern void appDrawFillArcs(		AppDrawingData *	add,
+					const XArc *		arcs,
+					int			count );
+
 extern void appDrawSetRedrawHandler(	APP_WIDGET		w,
 					APP_EVENT_HANDLER_T	handler,
 					void *			through );
@@ -421,5 +451,39 @@ extern int appDrawGetInoutFromFocusEvent(	int *		pInOut,
 extern APP_BITMAP_IMAGE appMakePixmap(	AppDrawingData *	add,
 					int			wide,
 					int			high );
+
+extern int appDrawPrepareRoundRect(	XArc			arcs[4],
+					APP_SEGMENT		segments[4],
+					APP_POINT		points[12],
+					int			x0,
+					int			y0,
+					int			x1,
+					int			y1,
+					int			w,
+					int			h );
+
+extern int appDrawFillRoundRectX11(	AppDrawingData *	add,
+					int			x0,
+					int			y0,
+					int			x1,
+					int			y1,
+					int			w,
+					int			h );
+
+extern int appDrawDrawRoundRectX11(	AppDrawingData *	add,
+					int			x0,
+					int			y0,
+					int			x1,
+					int			y1,
+					int			w,
+					int			h );
+
+extern int appDrawSetLineAttributes(	AppDrawingData *	add,
+					int			lineWidth,
+					int			lineStyle,
+					int			capStyle,
+					int			joinStyle,
+					const unsigned char *	dashList,
+					int			dashCount );
 
 #   endif

@@ -160,7 +160,7 @@ static int docLayoutStringExtents(	int *			pWidth,
     int				width;
     int				decWidth;
 
-    if  ( ta->taSmallCaps || ta->taCapitals )
+    if  ( len > 0 && ( ta->taSmallCaps || ta->taCapitals ) )
 	{
 	if  ( docMakeCapsString( &upperString, &segments, &segmentCount,
 						bd, ta, printString, len ) )
@@ -169,7 +169,7 @@ static int docLayoutStringExtents(	int *			pWidth,
 	printString= upperString;
 	}
 
-    if  ( ta->taSmallCaps && ! ta->taCapitals )
+    if  ( len > 0 && ta->taSmallCaps && ! ta->taCapitals )
 	{
 	width= docLayoutSegmentedStringExtents( abb, printString,
 				    segments, segmentCount,
@@ -230,8 +230,6 @@ static int docLayoutWord(	const BufferDocument *		bd,
 
     int				particuleAscent;
     int				particuleDescent;
-    int				fontAscent;
-    int				fontDescent;
     int				wordAscent= 0;
     int				wordDescent= 0;
 
@@ -310,16 +308,16 @@ static int docLayoutWord(	const BufferDocument *		bd,
 
 	    particuleAscent= abb.abbTop;
 	    particuleDescent= abb.abbBottom;
+
+	    /*
 	    fontAscent= ( sizeTwips* afi->afiFontBBox.abbTop+ 500 ) / 1000;
 	    fontDescent= fontAscent- sizeTwips;
+	    */
 
-	    if  ( wordAscent < particuleAscent	&& 
-		  wordAscent < fontAscent	)
-		{ wordAscent=  fontAscent;	}
-
-	    if  ( wordDescent > particuleDescent	&&
-		  wordDescent > fontDescent		)
-		{ wordDescent=  fontDescent; }
+	    if  ( wordAscent < particuleAscent )
+		{ wordAscent=  particuleAscent;	}
+	    if  ( wordDescent > particuleDescent )
+		{ wordDescent=  particuleDescent; }
 
 	    accepted++; part++; tp++; pd++;
 
@@ -409,6 +407,7 @@ static int docLayoutWord(	const BufferDocument *		bd,
 #   define	PSfoundLINEFULL		2
 #   define	PSfoundLINEBREAK	3
 #   define	PSfoundPAGEBREAK	4
+#   define	PSfoundBULLET_END	5
 
 static int docPsLayoutText(	const BufferDocument *		bd,
 				const BufferItem *		bi,
@@ -418,6 +417,7 @@ static int docPsLayoutText(	const BufferDocument *		bd,
 				int *				pX1,
 				int *				pTextAscent,
 				int *				pTextDescent,
+				int *				pHasInline,
 				const ParagraphFrame *		pf,
 				const PostScriptFontList *	psfl,
 				ParticuleData *			pd,
@@ -433,6 +433,7 @@ static int docPsLayoutText(	const BufferDocument *		bd,
     int				accepted;
     int				found= PSfoundNOTHING;
     int				wordCount= 0;
+    int				hasInline= 0;
 
     const TextParticule *	tp= bi->biParaParticules+ part;
 
@@ -475,6 +476,7 @@ static int docPsLayoutText(	const BufferDocument *		bd,
 		    { textDescent=  wordDescent;	}
 
 		wordCount++;
+		hasInline= 1;
 		accepted += done; part += done; tp += done; pd += done;
 		x0= x1;
 		break;
@@ -509,6 +511,7 @@ static int docPsLayoutText(	const BufferDocument *		bd,
 		break;
 
 	    case DOCkindTAB:
+		hasInline= 1;
 		found= PSfoundTAB;
 		break;
 
@@ -533,28 +536,32 @@ static int docPsLayoutText(	const BufferDocument *		bd,
 	    case DOCkindOBJECT:
 		{
 		InsertedObject *	io;
-		int			width;
+		int			width= 0;
 
 		io= bi->biParaObjects+ tp->tpObjectNumber;
 
-		docLayoutScaleObjectToFitParagraphFrame( io, pf );
-
-		width= ( io->ioScaleX* io->ioTwipsWide )/ 100.0;
-
-		if  ( x0+ width >= x1TextLines		&&
-		      accepted >= acceptAtLeast		)
+		if  ( io->ioInline )
 		    {
-		    *pFound= PSfoundLINEFULL;
-		    *pWordCount= wordCount;
-		    *pX1= x0;
-		    *pTextAscent= textAscent;
-		    *pTextDescent= textDescent;
-		    return accepted;
-		    }
+		    docLayoutScaleObjectToFitParagraphFrame( io, pf );
 
-		wordAscent= ( io->ioScaleY* io->ioTwipsHigh )/ 100.0;
-		if  ( textAscent < wordAscent )
-		    { textAscent=  wordAscent;	}
+		    width= ( io->ioScaleXUsed* io->ioTwipsWide )/ 100.0;
+
+		    if  ( x0+ width >= x1TextLines		&&
+			  accepted >= acceptAtLeast		)
+			{
+			*pFound= PSfoundLINEFULL;
+			*pWordCount= wordCount;
+			*pX1= x0;
+			*pTextAscent= textAscent;
+			*pTextDescent= textDescent;
+			return accepted;
+			}
+
+		    wordAscent= ( io->ioScaleYUsed* io->ioTwipsHigh )/ 100.0;
+		    if  ( textAscent < wordAscent )
+			{ textAscent=  wordAscent;	}
+		    hasInline= 1;
+		    }
 
 		pd->pdAfi= (AfmFontInfo *)0;
 		pd->pdX0= x0;
@@ -610,6 +617,7 @@ static int docPsLayoutText(	const BufferDocument *		bd,
 		pd->pdCorrectBy= 0;
 		x0 += width;
 
+		hasInline= 1;
 		accepted++; part++; tp++; pd++; break;
 		}
 
@@ -645,8 +653,237 @@ static int docPsLayoutText(	const BufferDocument *		bd,
     *pX1= x0;
     *pTextAscent= textAscent;
     *pTextDescent= textDescent;
+    *pHasInline= hasInline;
 
     return accepted;
+    }
+
+/************************************************************************/
+/*									*/
+/*  Align a strech of text to the tab before it.			*/
+/*									*/
+/************************************************************************/
+
+static int docLayoutAlignTextToTab(
+				ParticuleData *		pdd,
+				int			done,
+				ParticuleData *		pdTab,
+				int			tabKind,
+				int *			pX1,
+				const int		tabX0,
+				const int		tabX1 )
+    {
+    int		visibleSinceTab= 0;
+    int		shift= 0;
+
+    int		x1= *pX1;
+
+    if  ( done > 0 )
+	{
+	visibleSinceTab=
+		    pdd[done-1].pdX0+ pdd[done-1].pdVisibleWidth- tabX0;
+	}
+
+    switch( tabKind )
+	{
+	case DOCtaLEFT:
+	    shift= 0; return 0;
+
+	case DOCtaDECIMAL:
+	    if  ( done > 0 && pdTab )
+		{
+		int		d;
+
+		for ( d= done- 1; d >= 0; d-- )
+		    {
+		    if  ( pdd[d].pdDecWidth <  pdd[d].pdWidth )
+			{
+			visibleSinceTab=
+				    pdd[d].pdX0+ pdd[d].pdDecWidth- tabX0;
+			break;
+			}
+		    }
+
+		shift= tabX1- visibleSinceTab- tabX0;
+		if  ( shift < 0 )
+		    { LDEB(shift); shift= 0;	}
+		else{ x1= tabX1;			}
+		pdTab->pdWidth= shift;
+		pdTab->pdVisibleWidth= 0;
+		}
+	    else{
+		if  ( ! pdTab )
+		    { LXDEB(done,pdTab);	}
+		else{
+		    x1= tabX1;
+		    pdTab->pdWidth= tabX1- tabX0;
+		    pdTab->pdVisibleWidth= 0;
+		    }
+		}
+	    break;
+
+	case DOCtaRIGHT:
+	    if  ( done > 0 && pdTab )
+		{
+		/*  6  */
+		shift= tabX1- visibleSinceTab- tabX0;
+		if  ( shift < 0 )
+		    { shift= 0;	}
+		else{ x1= tabX1;			}
+		if  ( pdTab )
+		    {
+		    pdTab->pdWidth= shift;
+		    pdTab->pdVisibleWidth= 0;
+		    }
+		}
+	    else{
+		if  ( ! pdTab )
+		    { LXDEB(done,pdTab);	}
+		else{
+		    x1= tabX1;
+		    pdTab->pdWidth= tabX1- tabX0;
+		    pdTab->pdVisibleWidth= 0;
+		    }
+		}
+	    break;
+
+	case DOCtaCENTER:
+	    if  ( done > 0 && pdTab )
+		{
+		/*  6  */
+		shift= tabX1- visibleSinceTab/ 2- tabX0;
+		if  ( shift < 0 )
+		    { shift= 0;	}
+		else{ x1 += shift;			}
+		pdTab->pdWidth= shift;
+		pdTab->pdVisibleWidth= 0;
+		}
+	    else{
+		if  ( pdTab )
+		    {
+		    x1= tabX1;
+		    pdTab->pdWidth= tabX1- tabX0;
+		    pdTab->pdVisibleWidth= 0;
+		    }
+		}
+	    break;
+
+	default:
+	    LDEB(tabKind);
+	    shift= 0; break;
+	}
+
+    if  ( shift > 0 )
+	{
+	int		i;
+
+	for ( i= 0; i < done; i++ )
+	    { pdd[i].pdX0 += shift; }
+	}
+
+    *pX1= x1;
+    return 0;
+    }
+
+/************************************************************************/
+/*									*/
+/*  Handle the bullet of a list as if it were aligned to a tab.		*/
+/*									*/
+/*  Do two things:							*/
+/*  1)  Report the alignment of the bullet as the settings of a tab	*/
+/*	before any text in the paragraph.				*/
+/*  2)  Report the end of the bullet as a temporary limit for the text	*/
+/*	formatter to alow for shifting the bullet text as a piece of	*/
+/*	text between bullets.						*/
+/*									*/
+/************************************************************************/
+
+static int docLayoutBulletAsTab(	int *			pParticuleUpto,
+					int *			pX0,
+					int *			pTabX0,
+					int *			pTabX1,
+					int *			pTabParticule,
+					int *			pTabKind,
+					const ParagraphFrame *	pf,
+					const BufferItem *	paraBi,
+					const BufferDocument *	bd )
+    {
+    ListOverride *		lo;
+    DocumentList *		dl;
+    ListNumberTreeNode *	root;
+    const DocumentListLevel *	dll;
+
+    int * const			startPath= (int *)0;
+    int * const			formatPath= (int *)0;
+
+    int				particuleUpto= *pParticuleUpto;
+    int				x0= *pX0;
+    int				tabX0= *pTabX0;
+    int				tabX1= *pTabX1;
+    int				tabParticule= *pTabParticule;
+    int				tabKind= *pTabKind;
+
+    if  ( docGetListOfParagraph( &lo, &root, &dl,
+					paraBi->biParaListOverride, bd ) )
+	{ LDEB(paraBi->biParaListOverride);	}
+    else{
+	if  ( docListGetFormatPath( startPath, formatPath, &dll,
+				    paraBi->biParaListLevel, dl, lo ) )
+	    { LDEB(paraBi->biParaListLevel);	}
+	else{
+	    switch( dll->dllJustification )
+		{
+		case DOCllaLEFT:
+		    /*  b  */
+		    tabKind= DOCtaLEFT;
+		    break;
+
+		case DOCllaRIGHT:
+		    tabKind= DOCtaRIGHT;
+		    tabParticule= 0;
+		    tabX0= x0= pf->pfX0GeometryTwips;
+		    tabX1= pf->pfX0FirstLineTwips;
+		    break;
+
+		case DOCllaCENTER:
+		    tabKind= DOCtaCENTER;
+		    tabParticule= 0;
+		    tabX0= x0= pf->pfX0GeometryTwips;
+		    tabX1= pf->pfX0FirstLineTwips;
+		    break;
+
+		default:
+		    LDEB(dll->dllJustification);
+		    break;
+		}
+
+	    if  ( dll->dllFollow != DOCllfTAB	&&
+		  tabKind != DOCtaLEFT		)
+		{
+		int			fieldNr;
+		int			partBegin;
+		int			partEnd;
+		int			stroffBegin;
+		int			stroffEnd;
+
+		if  ( docDelimitParaHeadField( &fieldNr,
+					    &partBegin, &partEnd,
+					    &stroffBegin, &stroffEnd,
+					    paraBi, bd ) )
+		    { LDEB(1);			}
+		else{ particuleUpto= partEnd+ 1;	}
+		}
+	    }
+	}
+
+    *pParticuleUpto= particuleUpto;
+    *pX0= x0;
+    *pTabX0= tabX0;
+    *pTabX1= tabX1;
+    *pTabParticule= tabParticule;
+    *pTabKind= tabKind;
+
+    return 0;
     }
 
 /************************************************************************/
@@ -657,18 +894,26 @@ static int docPsLayoutText(	const BufferDocument *		bd,
 /*  typically wants to be sure that at least one particule is accepted,	*/
 /*  such that it can know that it actually advances.			*/
 /*									*/
+/*  a)  Paragraph numbers are aligned as if there is a tab at the	*/
+/*	first line indent position. The kind of tab depends on the	*/
+/*	alignment of the list level.					*/
+/*  b)  As formatting starts at that position anyway, there is no need	*/
+/*	to do anything special for left aligned bullets or paragraph	*/
+/*	numbers.							*/
+/*									*/
 /*  1)  Negative shifts occur when the text to the right of the tab	*/
 /*	does not fit.							*/
 /*									*/
 /************************************************************************/
 
 static int docLayoutParticules( const BufferDocument *		bd,
-				const BufferItem *		bi,
+				const BufferItem *		paraBi,
 				int				part,
 				int *				pFound,
 				int *				pWordCount,
 				int *				pLineAscent,
 				int *				pLineDescent,
+				int *				pHasInline,
 				const ParagraphFrame *		pf,
 				const PostScriptFontList *	psfl,
 				ParticuleData *			pd,
@@ -684,17 +929,29 @@ static int docLayoutParticules( const BufferDocument *		bd,
 
     int				accepted;
     int				wordCount= 0;
+    int				hasInline= 0;
 
     int				tabKind= DOCtaLEFT;
     int				tabX0= 0;
     int				tabX1= 0;
     int				tabParticule= -1;
+    int				particuleUpto= particuleCount;
 
-    const TextParticule *	tpp= bi->biParaParticules+ part;
+    const TextParticule *	tpp= paraBi->biParaParticules+ part;
     ParticuleData *		pdd= pd;
     TabStop			ts;
 
     TextAttribute		ta;
+
+    /*  a  */
+    if  ( part == 0 && paraBi->biParaListOverride > 0 )
+	{
+	if  ( docLayoutBulletAsTab( &particuleUpto,
+					&x0, &tabX0, &tabX1,
+					&tabParticule, &tabKind,
+					pf, paraBi, bd ) )
+	    { LDEB(1);	}
+	}
 
     accepted= 0;
     while( accepted < particuleCount )
@@ -711,16 +968,17 @@ static int docLayoutParticules( const BufferDocument *		bd,
 	int		encoding;
 	int		tab;
 
-	int		visibleSinceTab;
-	int		shift= 0;
+	ParticuleData *	pdTab= (ParticuleData *)0;
+	if  ( tabParticule >= 0 )
+	    { pdTab= pd+ tabParticule;	}
 
 	if  ( accepted >= acceptAtLeast )
 	    { acceptAtLeast= 0;	}
 
-	done= docPsLayoutText( bd, bi, part, &found, &textWordCount, &x1,
-				    &textAscent, &textDescent,
+	done= docPsLayoutText( bd, paraBi, part, &found, &textWordCount, &x1,
+				    &textAscent, &textDescent, &hasInline,
 				    pf, psfl, pdd,
-				    particuleCount- accepted,
+				    particuleUpto- accepted,
 				    acceptAtLeast, x0 );
 	if  ( done < 0 )
 	    { LDEB(done); return -1;	}
@@ -730,135 +988,37 @@ static int docLayoutParticules( const BufferDocument *		bd,
 	if  ( lineDescent > textDescent )
 	    { lineDescent=  textDescent;	}
 
-	switch( tabKind )
-	    {
-	    case DOCtaLEFT:
-		shift= 0; break;
-
-	    case DOCtaDECIMAL:
-		if  ( done > 0 && tabParticule >= 0 )
-		    {
-		    int		d;
-
-		    visibleSinceTab=
-			pdd[done-1].pdX0+ pdd[done-1].pdVisibleWidth- tabX0;
-
-		    for ( d= done+ accepted- 1; d >= accepted; d-- )
-			{
-			if  ( pd[d].pdDecWidth <  pd[d].pdWidth )
-			    {
-			    visibleSinceTab=
-					pd[d].pdX0+ pd[d].pdDecWidth- tabX0;
-			    break;
-			    }
-			}
-
-		    shift= tabX1- visibleSinceTab- tabX0;
-		    if  ( shift < 0 )
-			{ LDEB(shift); shift= 0;	}
-		    else{ x1= tabX1;			}
-		    pd[tabParticule].pdWidth= shift;
-		    pd[tabParticule].pdVisibleWidth= 0;
-		    }
-		else{
-		    if  ( tabParticule < 0 )
-			{ LLDEB(done,tabParticule);	}
-		    else{
-			x1= tabX1;
-			pd[tabParticule].pdWidth= tabX1- tabX0;
-			pd[tabParticule].pdVisibleWidth= 0;
-			}
-		    }
-		break;
-
-	    case DOCtaRIGHT:
-		if  ( done > 0 && tabParticule >= 0 )
-		    {
-		    visibleSinceTab=
-			pdd[done-1].pdX0+ pdd[done-1].pdVisibleWidth- tabX0;
-
-		    /*  6  */
-		    shift= tabX1- visibleSinceTab- tabX0;
-		    if  ( shift < 0 )
-			{ shift= 0;	}
-		    else{ x1= tabX1;			}
-		    pd[tabParticule].pdWidth= shift;
-		    pd[tabParticule].pdVisibleWidth= 0;
-		    }
-		else{
-		    if  ( tabParticule < 0 )
-			{ LLDEB(done,tabParticule);	}
-		    else{
-			x1= tabX1;
-			pd[tabParticule].pdWidth= tabX1- tabX0;
-			pd[tabParticule].pdVisibleWidth= 0;
-			}
-		    }
-		break;
-
-	    case DOCtaCENTRE:
-		if  ( done > 0 && tabParticule >= 0 )
-		    {
-		    visibleSinceTab=
-			pdd[done-1].pdX0+ pdd[done-1].pdVisibleWidth- tabX0;
-
-		    /*  6  */
-		    shift= tabX1- visibleSinceTab/ 2- tabX0;
-		    if  ( shift < 0 )
-			{ shift= 0;	}
-		    else{ x1 += shift;			}
-		    pd[tabParticule].pdWidth= shift;
-		    pd[tabParticule].pdVisibleWidth= 0;
-		    }
-		else{
-		    if  ( tabParticule >= 0 )
-			{
-			x1= tabX1;
-			pd[tabParticule].pdWidth= tabX1- tabX0;
-			pd[tabParticule].pdVisibleWidth= 0;
-			}
-		    }
-		break;
-
-	    default:
-		LDEB(tabKind);
-		shift= 0; break;
-	    }
-
-	if  ( shift > 0 )
-	    {
-	    int		i;
-
-	    for ( i= 0; i < done; i++ )
-		{ pdd[i].pdX0 += shift; }
-	    }
+	if  ( docLayoutAlignTextToTab( pdd, done, pdTab, tabKind,
+							&x1, tabX0, tabX1 ) )
+	    { LDEB(done);	}
 
 	wordCount += textWordCount;
 	accepted += done; part += done; tpp += done; pdd += done;
 	x0= x1;
 
+	if  ( particuleUpto != particuleCount	&&
+	      found == PSfoundNOTHING		)
+	    {
+	    particuleUpto= particuleCount;
+	    found= PSfoundBULLET_END;
+	    }
+
 	switch( found )
 	    {
 	    case PSfoundTAB:
+	    case PSfoundBULLET_END:
 		break;
 
 	    case PSfoundNOTHING:
 	    case PSfoundLINEFULL:
-		*pFound= found;
-		*pWordCount= wordCount;
-		*pLineAscent= lineAscent; *pLineDescent= lineDescent;
-		return accepted;
 
 	    case PSfoundLINEBREAK:
-		*pFound= found;
-		*pWordCount= wordCount;
-		*pLineAscent= lineAscent; *pLineDescent= lineDescent;
-		return accepted;
 
 	    case PSfoundPAGEBREAK:
 		*pFound= found;
 		*pWordCount= wordCount;
 		*pLineAscent= lineAscent; *pLineDescent= lineDescent;
+		*pHasInline= hasInline;
 		return accepted;
 
 	    default:
@@ -873,9 +1033,12 @@ static int docLayoutParticules( const BufferDocument *		bd,
 	    { XDEB(afi); return -1;	}
 
 	tab= -1;
-	if  ( docNextTabStop( &ts, &x1, &tab, &(bi->biParaTabStopList),
+	if  ( docNextTabStop( &ts, &x1, &tab, &(paraBi->biParaTabStopList),
 				pf->pfX0GeometryTwips, pf->pfX0TextLinesTwips,
 				dp->dpTabIntervalTwips, x0 ) )
+	    { LDEB(dp->dpTabIntervalTwips); x1= x0+ 720;	}
+
+	if  ( x1 > pf->pfX1TextLinesTwips && accepted >= acceptAtLeast )
 	    {
 	    if  ( accepted < 1 )
 		{ LLDEB(particuleCount,accepted);	}
@@ -883,6 +1046,7 @@ static int docLayoutParticules( const BufferDocument *		bd,
 	    *pFound= PSfoundLINEFULL;
 	    *pWordCount= wordCount;
 	    *pLineAscent= lineAscent; *pLineDescent= lineDescent;
+	    *pHasInline= hasInline;
 	    return accepted;
 	    }
 
@@ -909,7 +1073,6 @@ static int docLayoutParticules( const BufferDocument *		bd,
 	    { x0= x1;	}
 
 	accepted++; part++; tpp++; pdd++;
-
 	}
 
     if  ( accepted < 1 )
@@ -918,6 +1081,7 @@ static int docLayoutParticules( const BufferDocument *		bd,
     *pFound= PSfoundNOTHING;
     *pWordCount= wordCount;
     *pLineAscent= lineAscent; *pLineDescent= lineDescent;
+    *pHasInline= hasInline;
 
     return accepted;
     }
@@ -1080,7 +1244,9 @@ int docLayoutLineBox(	const BufferDocument *		bd,
     int				lineDescent;
     int				ascent;
     int				descent;
+    int				below;
     int				xShift;
+    int				hasInlineContent= 1;
 
     int				accepted;
     int				found;
@@ -1101,6 +1267,7 @@ int docLayoutLineBox(	const BufferDocument *		bd,
     /*  1  */
     accepted= docLayoutParticules( bd, bi, part, &found, &wordCount,
 				    &lineAscent, &lineDescent,
+				    &hasInlineContent,
 				    pf, psfl, pd,
 				    bi->biParaParticuleCount- part, 1, x0 );
 
@@ -1110,22 +1277,25 @@ int docLayoutLineBox(	const BufferDocument *		bd,
     /*  A  */
     while( accepted > 1							&&
 	   bi->biParaParticules[part+accepted-1].tpKind
-					    == DOCkindFIELDSTART	)
+						== DOCkindFIELDSTART	)
 	{ accepted--;	}
 
     tl->tlWordCount= wordCount;
 
     ascent= bi->biParaAscentTwips;
     descent= -bi->biParaDescentTwips;
+    below= -bi->biParaDescentTwips+ bi->biParaLeadingTwips;
 
     if  ( lineAscent > bi->biParaAscentTwips )
 	{ ascent= lineAscent;	}
-    if  ( lineDescent < bi->biParaDescentTwips )
+    if  ( descent < -lineDescent )
 	{ descent= -lineDescent; }
+    if  ( below < -lineDescent )
+	{ below= -lineDescent; }
 
     tl->tlLineAscentTwips= ascent;
     tl->tlLineHeightTwips= ascent+ descent;
-    tl->tlLineSpacingTwips= ascent+ descent+ bi->biParaLeadingTwips;
+    tl->tlLineSpacingTwips= ascent+ below;
 
     if  ( bi->biParaLineSpacingTwips != 0			&&
 	  ( part+ accepted < bi->biParaParticuleCount	||
@@ -1133,8 +1303,8 @@ int docLayoutLineBox(	const BufferDocument *		bd,
 	{
 	if  ( bi->biParaLineSpacingTwips > 0 )
 	    {
-	    if  ( bi->biParaLineSpacingTwips > tl->tlLineSpacingTwips )
-		{ tl->tlLineSpacingTwips= bi->biParaLineSpacingTwips; }
+	    if  ( tl->tlLineSpacingTwips < bi->biParaLineSpacingTwips )
+		{ tl->tlLineSpacingTwips=  bi->biParaLineSpacingTwips; }
 	    }
 	else{ tl->tlLineSpacingTwips= -bi->biParaLineSpacingTwips; }
 	}
@@ -1185,6 +1355,8 @@ int docLayoutLineBox(	const BufferDocument *		bd,
 	  ! bi->biParaInTable			)
 	{ tl->tlHasPageBreak= 1;	}
     else{ tl->tlHasPageBreak= 0;	}
+
+    tl->tlHasInlineContent= hasInlineContent;
 
     return accepted;
     }

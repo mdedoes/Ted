@@ -1,6 +1,6 @@
 /************************************************************************/
 /*									*/
-/*  Simple io streams using PUT or POST input of a CGI request.		*/
+/*  Simple io streams consuming PUT or POST input of a CGI request.	*/
 /*									*/
 /************************************************************************/
 

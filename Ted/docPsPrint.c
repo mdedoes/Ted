@@ -18,14 +18,12 @@
 #   include	<stdlib.h>
 #   include	<string.h>
 
-#   include	<appImage.h>
+#   include	<sioGeneral.h>
 #   include	<appWinMeta.h>
-#   include	<appMacPict.h>
-#   include	<sioMemory.h>
-#   include	<sioHex.h>
 
 #   include	"docDraw.h"
 #   include	"docLayout.h"
+#   include	"docPsPrint.h"
 
 #   include	<appDebugon.h>
 
@@ -58,7 +56,7 @@ static int docPsSetFont(	DrawingContext *	dc,
     {
     PrintingState *		ps= (PrintingState *)vps;
 
-    utilPsSetFont( ps->psSos, "f", ta );
+    utilPsSetFont( ps, "f", ta );
 
     return 0;
     }
@@ -70,46 +68,48 @@ static int docPsSetFont(	DrawingContext *	dc,
 /************************************************************************/
 
 static void psPrintHorizontalBorder(
-				const BorderProperties *	bp,
+				const BorderProperties *	bpHor,
 				const BorderProperties *	bpLeft,
 				const BorderProperties *	bpRight,
 				DrawingContext *		dc,
 				void *				vps,
-				int				x0,
-				int				x1,
+				int				x0Twips,
+				int				x1Twips,
 				int				above,
 				int				y )
     {
     PrintingState *	ps= (PrintingState *)vps;
 
-    int			wide;
+    int			space;
     int			thick;
 
-    if  ( bp->bpStyle == DOCbsNONE )
+    if  ( ! DOCisBORDER( bpHor ) )
 	{ return;	}
 
-    if  ( bpLeft && bpLeft->bpStyle != DOCbsNONE )
+    if  ( bpLeft && DOCisBORDER( bpLeft ) )
 	{
-	thick= docBorderThick( &wide, bpLeft );
+	thick= docBorderThick( &space, bpLeft );
 
-	x0 -= thick/ 2;
+	x0Twips -= space;
+	x0Twips -= thick/ 2;
 	}
 
-    if  ( bpRight && bpRight->bpStyle != DOCbsNONE )
+    if  ( bpRight && DOCisBORDER( bpRight ) )
 	{
-	thick= docBorderThick( &wide, bpRight );
+	thick= docBorderThick( &space, bpRight );
 
-	x1 += ( thick+ 1 )/ 2;
+	x1Twips += space;
+	x1Twips -= ( thick+ 1 )/ 2;
 	}
 
-    thick= docBorderThick( &wide, bp );
+    thick= docBorderThick( &space, bpHor );
 
     if  ( above )
-	{ y -= thick;	}
+	{ y -= space+ thick;	}
 
-    docDrawSetColorNumber( dc, (void *)ps, bp->bpColor );
+    docDrawSetColorNumber( dc, (void *)ps, bpHor->bpColor );
 
-    sioOutPrintf( ps->psSos, "%d %d %d %d rectfill\n", x0, y, x1- x0, thick );
+    utilPsFillRectangle( ps, x0Twips, y, x1Twips- x0Twips+ 1, thick );
 
     return;
     }
@@ -139,200 +139,37 @@ static void psPrintVerticalBorder(
     {
     PrintingState *	ps= (PrintingState *)vps;
 
-    int			wide;
+    int			space;
     int			thick;
 
-    if  ( bp->bpStyle == DOCbsNONE )
+    if  ( ! DOCisBORDER( bp ) )
 	{ return;	}
 
     /*  1  */
-    if  ( bpTop && bpTop->bpStyle != DOCbsNONE )
+    if  ( bpTop && DOCisBORDER( bpTop ) )
 	{
-	thick= docBorderThick( &wide, bpTop );
+	thick= docBorderThick( &space, bpTop );
 
-	y0 += thick;
+	y0 += -space+ thick;
 	}
 
     /*  2
-    if  ( bpBottom && bpBottom->bpStyle != DOCbsNONE )
+    if  ( bpBottom && DOCisBORDER( bpBottom ) )
 	{
 	thick= docBorderThick( &wide, bpBottom );
 
-	y1 -= thick;
+	y1 -= -space+ thick;
 	}
     */
 
-    thick= docBorderThick( &wide, bp );
+    thick= docBorderThick( &space, bp );
 
     x -= thick/ 2;
 
     docDrawSetColorNumber( dc, (void *)ps, bp->bpColor );
-
-    sioOutPrintf( ps->psSos, "%d %d %d %d rectfill\n", x, y0, thick, y1- y0 );
+    utilPsFillRectangle( ps, x, y0, thick, y1- y0 );
 
     return;
-    }
-
-/************************************************************************/
-/*									*/
-/*  Print a series of particules with the same attributes.		*/
-/*									*/
-/************************************************************************/
-
-typedef int (*PLAY_METAFILE)(	SimpleOutputStream *		sos,
-				SimpleInputStream *		sis,
-				const PostScriptFontList *	psfl,
-				int				useFilters,
-				int				indexedImages,
-				int				mapMode,
-				int				xWinExt,
-				int				yWinExt,
-				int				twipsWide,
-				int				twipsHigh );
-
-static int psPrintMetafile(	PrintingState *			ps,
-				const InsertedObject *		io,
-				const PostScriptFontList *	psfl,
-				int				x0,
-				int				baseline,
-				int				scaleX,
-				int				scaleY,
-				int				xWinExt,
-				int				yWinExt,
-				int				twipsWide,
-				int				twipsHigh )
-    {
-    SimpleInputStream *		sisMem;
-    SimpleInputStream *		sisMeta;
-    const MemoryBuffer *	mb;
-
-    PostScriptTypeList		pstl;
-
-    int				y0;
-
-    PLAY_METAFILE		playMetafile;
-    int				mapMode= 0;
-
-    utilInitPostScriptFaceList( &pstl );
-
-    if  ( docPsListObjectFonts( &pstl, io, psfl, "pf" ) )
-	{ LDEB(1); return -1;	}
-
-    switch( io->ioKind )
-	{
-	case DOCokPICTWMETAFILE:
-	    mb= &(io->ioObjectData);
-	    mapMode= io->ioMapMode;
-	    playMetafile= appMetaPlayFilePs;
-	    break;
-
-	case DOCokMACPICT:
-	    mb= &(io->ioObjectData);
-	    playMetafile= appMacPictPlayFilePs;
-	    break;
-
-	case DOCokOLEOBJECT:
-	    mb= &(io->ioResultData);
-	    playMetafile= appMetaPlayFilePs;
-	    mapMode= io->ioResultMapMode;
-	    break;
-
-	case DOCokPICTJPEGBLIP:
-	case DOCokPICTPNGBLIP:
-	default:
-	    LDEB(io->ioKind); return 0;
-	}
-
-    sisMem= sioInMemoryOpen( mb );
-    if  ( ! sisMem )
-	{ XDEB(sisMem); return -1;	}
-
-    sisMeta= sioInHexOpen( sisMem );
-    if  ( ! sisMeta )
-	{ XDEB(sisMem); sioInClose( sisMem ); return -1;	}
-
-    y0= baseline- ( ( scaleY/100.0 )* twipsHigh );
-
-    sioOutPrintf( ps->psSos, "100 dict begin\n" );
-
-    appPsFontNames( ps, &pstl, /*allFonts=*/ 1 );
-
-    sioOutPrintf( ps->psSos, "gsave %d %d translate %%{IMG\n", x0, y0 );
-
-    if  ( scaleX != 100 || scaleY != 100 )
-	{
-	sioOutPrintf( ps->psSos, "%f %f scale\n", scaleX/100.0, scaleY/100.0 );
-	}
-
-    if  ( (*playMetafile)( ps->psSos, sisMeta, psfl,
-				    ps->psUsePostScriptFilters,
-				    ps->psUsePostScriptIndexedImages,
-				    mapMode,
-				    xWinExt, yWinExt, twipsWide, twipsHigh ) )
-	{ LDEB(1);	}
-
-    sioOutPrintf( ps->psSos, "grestore end %%}IMG\n" );
-
-    sioInClose( sisMeta );
-    sioInClose( sisMem );
-
-    utilCleanPostScriptFaceList( &pstl );
-
-    return 0;
-    }
-
-static int psPrintIncludeEpsObject(	PrintingState *		ps,
-					InsertedObject *	io,
-					int			x0,
-					int			baseLine )
-    {
-    SimpleInputStream *		sisMem;
-    SimpleInputStream *		sisHex;
-
-    char			line[512+2];
-
-    sisMem= sioInMemoryOpen( &(io->ioResultData) );
-    if  ( ! sisMem )
-	{ XDEB(sisMem); return -1;	}
-
-    sisHex= sioInHexOpen( sisMem );
-    if  ( ! sisHex )
-	{ XDEB(sisHex); sioInClose( sisMem ); return -1;	}
-
-    appPsBeginEpsObject( ps, x0, baseLine,
-				0, 0, io->ioTwipsWide, io->ioTwipsHigh,
-				io->ioObjectData.mbBytes );
-
-    while( sioInGetString( line, 512+1, sisHex ) )
-	{
-	int		emit= 1;
-	const char *	s= line;
-
-	while( isspace( *s ) )
-	    { s++;	}
-
-	if  ( ! *s || *s == '%' )
-	    { emit= 0;	}
-
-	if  ( emit )
-	    { sioOutPutString( line, ps->psSos ); }
-
-	while( ! strchr( line, '\n' ) )
-	    {
-	    if  ( ! sioInGetString( line, 512+1, sisHex ) )
-		{ break;	}
-
-	    if  ( emit )
-		{ sioOutPutString( line, ps->psSos ); }
-	    }
-	}
-
-    sioInClose( sisHex );
-    sioInClose( sisMem );
-
-    appPsEndEpsObject( ps );
-
-    return 0;
     }
 
 /************************************************************************/
@@ -340,263 +177,6 @@ static int psPrintIncludeEpsObject(	PrintingState *		ps,
 /*  Write links to be picked up by the distiller.			*/
 /*									*/
 /************************************************************************/
-
-static void psUriLinkDestination(	PrintingState *	ps )
-    {
-    appPsPrintString( ps->psSos,
-	(const unsigned char *)ps->psLinkFile, ps->psLinkFileSize );
-
-    if  ( ps->psLinkMarkSize > 0 )
-	{
-	sioOutPutCharacter( '#', ps->psSos );
-	appPsPrintString( ps->psSos,
-			    (const unsigned char *)ps->psLinkMark,
-			    ps->psLinkMarkSize );
-	}
-    }
-
-static void psWebLinkDestination(	PrintingState *	ps )
-    {
-    sioOutPrintf( ps->psSos, "  /Action << /Subtype /URI /URI (" );
-
-    psUriLinkDestination( ps );
-
-    sioOutPrintf( ps->psSos, ") >>\n" );
-
-    return;
-    }
-
-static void psFileLinkDestination(	PrintingState *		ps )
-    {
-    const unsigned char *	file;
-    int				size;
-
-    file= (const unsigned char *)ps->psLinkFile;
-    size= ps->psLinkFileSize;
-
-    if  ( size > 5 && ! strncmp( (const char *)file, "file:", 5 ) )
-	{ file += 5; size -= 5; }
-    else{
-	while( size > 0 && isalpha( *file ) )
-	    { file++; size--;	}
-
-	if  ( size > 0 && *file == ':' )
-	    { psWebLinkDestination( ps ); return; }
-
-	file= (const unsigned char *)ps->psLinkFile;
-	size= ps->psLinkFileSize;
-	}
-
-    sioOutPrintf( ps->psSos, "  /Action /Launch /File (" );
-
-    appPsPrintString( ps->psSos, file, size );
-
-    sioOutPrintf( ps->psSos, ")\n" );
-
-    if  ( ps->psLinkMarkSize )
-	{
-	sioOutPrintf( ps->psSos, "  /URI (" );
-	psUriLinkDestination( ps );
-	sioOutPrintf( ps->psSos, ")\n" );
-	}
-
-    return;
-    }
-
-static void psFlushLink(	PrintingState *		ps,
-				const ParticuleData *	pd,
-				int			lineTop,
-				int			lineHeight )
-    {
-    if  ( ps->psLinkParticulesDone > 0 )
-	{
-	sioOutPrintf( ps->psSos, "[ /Rect [ %d %d %d %d ]\n",
-				    ps->psLinkRectLeft, lineTop+ lineHeight, 
-				    pd->pdX0+ pd->pdVisibleWidth,
-				    lineTop );
-
-	sioOutPrintf( ps->psSos, "  /Border [ 0 0 0 ]\n" );
-
-	if  ( ps->psLinkFileSize == 0 )
-	    {
-	    if  ( ! ps->psLinkMark )
-		{ XDEB(ps->psLinkMark);	}
-	    else{
-		int		i;
-		const char *	s;
-
-		sioOutPrintf( ps->psSos, "  /Dest /" );
-
-		s= ps->psLinkMark;
-		for ( i= 0; i < ps->psLinkMarkSize; s++, i++ )
-		    {
-		    if  ( *s == '('	|| *s == ')'		||
-			  *s == '<'	|| *s == '>'		||
-			  *s == '['	|| *s == ']'		||
-			  *s == '{'	|| *s == '}'		||
-			  *s == '/'	|| *s == '%'		||
-			  isspace( *s ) || ! isascii( *s )	)
-			{
-			sioOutPutCharacter( '_', ps->psSos );
-			continue;
-			}
-
-		    sioOutPutCharacter( *s, ps->psSos );
-		    }
-
-		sioOutPrintf( ps->psSos, "\n" );
-		}
-	    }
-	else{
-	    psFileLinkDestination( ps );
-	    }
-
-
-	sioOutPrintf( ps->psSos, "  /Subtype /Link\n" );
-	sioOutPrintf( ps->psSos, "/ANN pdfmark\n" );
-
-	ps->psLinkParticulesDone= 0;
-	ps->psLinkRectLeft= pd->pdX0;
-	}
-
-    return;
-    }
-
-static int psPrintDrawTab(	DrawingContext *	dc,
-				int			xShift,
-				int			yShift,
-				PrintingState *		ps,
-				const TextAttribute *	ta,
-				int			x0,
-				int			x1,
-				int			baseLine,
-				int			step,
-				const char *		tabProc )
-    {
-    x0= step* ( ( x0+ step- 1 )/ step );
-    if  ( x1 <= x0 )
-	{ return 0;	}
-
-    docDrawSetColorNumber( dc, (void *)ps, ta->taTextColorNumber );
-
-    sioOutPrintf( ps->psSos, "%d %d %d %s\n",
-		    x1- x0+ xShift, x0+ xShift, baseLine+ yShift, tabProc );
-
-    return 0;
-    }
-
-static int psPrintTab(	PrintingState *			ps,
-			DrawingContext *		dc,
-			int				xShift,
-			int				yShift,
-			const BufferItem *		bi,
-			const TextParticule *		tp,
-			ParticuleData *			pd,
-			int				baseLine,
-			int				lineHeight )
-    {
-    BufferDocument *	bd= dc->dcDocument;
-    const TabStopList *	tsl= &(bi->biParaTabStopList);
-    const TabStop *	ts= tsl->tslTabStops+ pd->pdTabNumber;
-
-    int			x0= pd->pdX0+ lineHeight/ 4;
-    int			x1= pd->pdX0+ pd->pdWidth- lineHeight/2;
-
-    TextAttribute	ta;
-
-    utilGetTextAttributeByNumber( &ta, &(bd->bdTextAttributeList),
-						tp->tpTextAttributeNumber );
-
-    switch( ts->tsLeader )
-	{
-	case DOCtlNONE:
-	    break;
-
-	case DOCtlDOTS:
-
-	    if  ( ta.taFontIsBold )
-		{
-		psPrintDrawTab( dc, xShift, yShift, ps, &ta, x0, x1, baseLine,
-							60, "dot-tab-bold" );
-		}
-	    else{
-		psPrintDrawTab( dc, xShift, yShift, ps, &ta, x0, x1, baseLine,
-							60, "dot-tab" );
-		}
-
-	    break;
-
-	case DOCtlUNDERLINE:
-
-	    if  ( ta.taFontIsBold )
-		{
-		psPrintDrawTab( dc, xShift, yShift, ps, &ta, x0, x1, baseLine,
-							20, "ul-tab-bold" );
-		}
-	    else{
-		psPrintDrawTab( dc, xShift, yShift, ps, &ta, x0, x1, baseLine,
-							20, "ul-tab" );
-		}
-
-	    break;
-
-	case DOCtlHYPH:
-
-	    if  ( ta.taFontIsBold )
-		{
-		psPrintDrawTab( dc, xShift, yShift, ps, &ta, x0, x1, baseLine,
-							140, "dash-tab-bold" );
-		}
-	    else{
-		psPrintDrawTab( dc, xShift, yShift, ps, &ta, x0, x1, baseLine,
-							140, "dash-tab" );
-		}
-
-	    break;
-
-	case DOCtlTHICK:
-	    LDEB(ts->tsLeader);
-	    break;
-
-	case DOCtlEQUAL:
-	    LDEB(ts->tsLeader);
-	    break;
-
-	default:
-	    LDEB(ts->tsLeader);
-	    break;
-	}
-
-    return 0;
-    }
-
-static void psPrintObjectBox(	DrawingContext *	dc,
-				int			xShift,
-				int			yShift,
-				PrintingState *		ps,
-				const InsertedObject *	io,
-				const ParticuleData *	pd,
-				int			baseLine )
-    {
-    int		high;
-
-    int		x0= pd->pdX0+ xShift;
-    int		y0= baseLine+ yShift;
-
-    docDrawSetColorRgb( dc, (void *)ps, 0, 0, 0 );
-
-    high= ( io->ioScaleY* io->ioTwipsHigh )/ 100;
-    sioOutPrintf( ps->psSos, "%d %d moveto ",
-			    x0, y0- high );
-    sioOutPrintf( ps->psSos, "%d %d lineto ",
-			    x0+ pd->pdWidth, y0- high );
-    sioOutPrintf( ps->psSos, "%d %d lineto ",
-			    x0+ pd->pdWidth, y0 );
-    sioOutPrintf( ps->psSos, "%d %d lineto ", x0, y0 );
-    sioOutPrintf( ps->psSos, "closepath stroke\n" );
-
-    return;
-    }
 
 static void psPrintString(	PrintingState *			ps,
 				DrawingContext *		dc,
@@ -622,9 +202,7 @@ static void psPrintString(	PrintingState *			ps,
 	docDrawSetFont( dc, (void *)ps, textAttr, ta );
 	docDrawSetColorNumber( dc, (void *)ps, ta->taTextColorNumber );
 
-	sioOutPutCharacter( '(', ps->psSos );
-	appPsPrintString( ps->psSos, s, len );
-	sioOutPutCharacter( ')', ps->psSos );
+	utilPsPrintStringValue( ps, s, len );
 
 	capHeight= ( fontSizeTwips* pd->pdAfi->afiCapHeight+ 500 )/ 1000;
 	if  ( capHeight == 0 )
@@ -637,12 +215,29 @@ static void psPrintString(	PrintingState *			ps,
 	y= baseLine;
 
 	if  ( ta->taSuperSub == DOCfontSUPERSCRIPT )
-	    { y -= xHeight; }
+	    {
+	    int suprSizeTwips= SUPERSUB_SIZE( fontSizeTwips );
+
+	    int	ascYF= ( fontSizeTwips* pd->pdAfi->afiAscender+ 500 )/ 1000;
+	    int	ascYS= ( suprSizeTwips* pd->pdAfi->afiAscender+ 500 )/ 1000;
+
+	    y -= ascYF- ascYS;
+	    /* was y -= xHeight; */
+	    }
 
 	if  ( ta->taSuperSub == DOCfontSUBSCRIPT )
-	    { y += ( 4* capHeight )/ 10; }
+	    {
+	    int subsSizeTwips= SUPERSUB_SIZE( fontSizeTwips );
+
+	    int	descYF= ( fontSizeTwips* pd->pdAfi->afiDescender+ 500 )/ 1000;
+	    int	descYS= ( subsSizeTwips* pd->pdAfi->afiDescender+ 500 )/ 1000;
+
+	    y += descYS- descYF;
+	    /* was y += ( 4* capHeight )/ 10; */
+	    }
 
 	sioOutPrintf( ps->psSos, " %d %d mvs\n", pd->pdX0+ xShift, y+ yShift );
+	ps->psLastPageMarked= ps->psPagesPrinted;
 	}
 
     return;
@@ -657,10 +252,10 @@ static void psPrintSegment(	PrintingState *			ps,
     {
     docDrawSetFont( dc, (void *)ps, textAttr, ta );
 
-    sioOutPutCharacter( '(', ps->psSos );
-    appPsPrintString( ps->psSos, s, len );
-    sioOutPutCharacter( ')', ps->psSos );
+    utilPsPrintStringValue( ps, s, len );
+
     sioOutPutString( "show ", ps->psSos );
+    ps->psLastPageMarked= ps->psPagesPrinted;
 
     return;
     }
@@ -715,55 +310,6 @@ static void psPrintSegments(	PrintingState *			ps,
     return;
     }
 
-/************************************************************************/
-/*									*/
-/*  Print a bitmap image included in the document.			*/
-/*									*/
-/************************************************************************/
-
-static int psPrintBitmapObject(	PrintingState *			ps,
-				DrawingContext *		dc,
-				int				xShift,
-				int				yShift,
-				const ParticuleData *		pd,
-				int				baseLine,
-				const InsertedObject *		io )
-    {
-    AppBitmapImage *	abi;
-    BitmapDescription *	bd;
-
-    double		scaleX= io->ioScaleX/ 100.0;
-    double		scaleY= io->ioScaleY/ 100.0;
-
-    int			imageWideTwips;
-    int			imageHighTwips;
-
-    abi= (AppBitmapImage *)io->ioPrivate;
-    bd= &abi->abiBitmap;
-
-    bmImageSizeTwips( &imageWideTwips, &imageHighTwips, bd );
-
-    if  ( imageWideTwips > 20 )
-	{
-	scaleX= ( scaleX* io->ioTwipsWide )/ imageWideTwips;
-	}
-    if  ( imageHighTwips > 20 )
-	{
-	scaleY= ( scaleY* io->ioTwipsHigh )/ imageHighTwips;
-	}
-
-    if  ( bmPsPrintBitmap( ps->psSos, 1,
-			    20.0* scaleX, -20.0* scaleY,
-			    pd->pdX0+ xShift, baseLine+ yShift, 0, 0,
-			    bd->bdPixelsWide, bd->bdPixelsHigh,
-			    ps->psUsePostScriptFilters,
-			    ps->psUsePostScriptIndexedImages,
-			    bd, abi->abiBuffer ) )
-	{ LDEB(1); return -1; }
-
-    return 0;
-    }
-
 static void psPrintParticuleUnderlines(	DrawingContext *	dc,
 					int			xShift,
 					int			yShift,
@@ -811,9 +357,7 @@ static void psPrintParticuleUnderlines(	DrawingContext *	dc,
 	    }
 
 	docDrawSetColorNumber( dc, (void *)ps, ta.taTextColorNumber );
-
-	sioOutPrintf( ps->psSos, "%d %d %d %d rectfill\n",
-					x0+ xShift, y0+ yShift, x1- x0, h );
+	utilPsFillRectangle( ps,  x0+ xShift, y0+ yShift, x1- x0, h );
 	}
 
     return;
@@ -874,9 +418,7 @@ static void psPrintParticuleStrikethrough(
 	    }
 
 	docDrawSetColorNumber( dc, (void *)ps, ta.taTextColorNumber );
-
-	sioOutPrintf( ps->psSos, "%d %d %d %d rectfill\n",
-					x0+ xShift, y0+ yShift, x1- x0, h );
+	utilPsFillRectangle( ps, x0+ xShift, y0+ yShift, x1- x0, h );
 	}
 
     return;
@@ -915,12 +457,16 @@ static void psPrintChftnsep(	DrawingContext *	dc,
     h= 15;
 
     docDrawSetColorNumber( dc, (void *)ps, ta.taTextColorNumber );
-
-    sioOutPrintf( ps->psSos, "%d %d %d %d rectfill\n",
-					x0+ xShift, y0+ yShift, x1- x0, h );
+    utilPsFillRectangle( ps, x0+ xShift, y0+ yShift, x1- x0, h );
 
     return;
     }
+
+/************************************************************************/
+/*									*/
+/*  Print a series of particules with the same attributes.		*/
+/*									*/
+/************************************************************************/
 
 static int psPrintParticules(	PrintingState *			ps,
 				DrawingContext *		dc,
@@ -942,7 +488,6 @@ static int psPrintParticules(	PrintingState *			ps,
 
     int				drawn;
     int				len;
-    InsertedObject *		io;
 
     DocumentField *		df;
 
@@ -956,7 +501,7 @@ static int psPrintParticules(	PrintingState *			ps,
 	    if  ( pd->pdTabNumber >= 0				&&
 		  pd->pdTabNumber < tsl->tslTabStopCount	)
 		{
-		if  ( psPrintTab( ps, dc, xShift, yShift, bi, tp, pd,
+		if  ( docPsPrintTab( ps, dc, xShift, yShift, bi, tp, pd,
 						    baseLine, lineHeight ) )
 		    { LDEB(1);	}
 		}
@@ -1067,7 +612,8 @@ static int psPrintParticules(	PrintingState *			ps,
 	case DOCkindFIELDEND:
 	    if  ( ps->psInsideLink )
 		{
-		psFlushLink( ps, pd, lineTop, lineHeight );
+		utilPsFlushLink( ps, pd->pdX0, pd->pdVisibleWidth,
+						    lineTop, lineHeight );
 		ps->psInsideLink= 0;
 		}
 
@@ -1082,97 +628,13 @@ static int psPrintParticules(	PrintingState *			ps,
 	    return drawn= 1;
 
 	case DOCkindOBJECT:
-	    io= bi->biParaObjects+ tp->tpObjectNumber;
+	    drawn= docPsPrintObject( ps, dc, xShift, yShift,
+					bi->biParaObjects+ tp->tpObjectNumber,
+					psfl, pd, baseLine );
 
-	    switch( io->ioKind )
-		{
-		case DOCokPICTWMETAFILE:
-		case DOCokMACPICT:
-		    if  ( psPrintMetafile( ps, io,
-				    psfl,
-				    pd->pdX0+ xShift, baseLine+ yShift,
-				    io->ioScaleX, io->ioScaleY,
-				    io->io_xWinExt, io->io_yWinExt,
-				    io->ioTwipsWide, io->ioTwipsHigh ) )
-			{ LDEB(1); break;	}
-
-		    dc->dcCurrentTextAttributeSet= 0;
-		    dc->dcCurrentColorSet= 0;
-		    ps->psLinkParticulesDone++;
-		    return 1;
-
-		case DOCokPICTJPEGBLIP:
-		case DOCokPICTPNGBLIP:
-
-		    if  ( ! io->ioPrivate )
-			{
-			if  ( docGetBitmapForObject( io ) )
-			    { XDEB(io->ioPrivate);	}
-			}
-
-		    if  ( io->ioPrivate )
-			{
-			if  ( psPrintBitmapObject( ps, dc, xShift, yShift,
-							pd, baseLine, io ) )
-			    { LDEB(1); return -1;	}
-
-			ps->psLinkParticulesDone++;
-			return 1;
-			}
-		    break;
-
-		case DOCokOLEOBJECT:
-		    if  ( io->ioResultKind == DOCokPICTWMETAFILE )
-			{
-			if  ( psPrintMetafile( ps, io,
-				    psfl,
-				    pd->pdX0+ xShift, baseLine+ yShift,
-				    io->ioScaleX, io->ioScaleY,
-				    io->io_xWinExt, io->io_yWinExt,
-				    io->ioTwipsWide, io->ioTwipsHigh ) )
-			    { LDEB(1); break;	}
-
-			dc->dcCurrentTextAttributeSet= 0;
-			dc->dcCurrentColorSet= 0;
-			ps->psLinkParticulesDone++;
-			return 1;
-			}
-		    break;
-
-		case DOCokINCLUDEPICTURE:
-
-		    if  ( io->ioResultKind == DOCokEPS_FILE )
-			{
-			if  ( psPrintIncludeEpsObject( ps, io,
-					pd->pdX0+ xShift, baseLine+ yShift ) )
-			    { LDEB(1); break;	}
-
-			dc->dcCurrentTextAttributeSet= 0;
-			dc->dcCurrentColorSet= 0;
-			ps->psLinkParticulesDone++;
-			return 1;
-			}
-
-		    if  ( io->ioResultKind == DOCokBITMAP_FILE	&&
-			  io->ioPrivate				)
-			{
-			if  ( psPrintBitmapObject( ps, dc, xShift, yShift,
-							pd, baseLine, io ) )
-			    { LDEB(1); return -1;	}
-
-			ps->psLinkParticulesDone++;
-			return 1;
-			}
-
-		    LLDEB(io->ioKind,io->ioResultKind); break;
-
-		default:
-		    LDEB(io->ioKind); return 0;
-		}
-
-	    psPrintObjectBox( dc, xShift, yShift, ps, io, pd, baseLine );
-	    ps->psLinkParticulesDone++;
-	    return 1;
+	    if  ( drawn < 1 )
+		{ LDEB(drawn);	}
+	    return drawn;
 
 	case DOCkindCHFTNSEP:
 	case DOCkindCHFTNSEPC:
@@ -1272,7 +734,12 @@ static int psPrintTextLine(	PrintingState *			ps,
 	}
 
     if  ( done > 0 && ps->psInsideLink )
-	{ psFlushLink( ps, pd- 1, lineTop, lineHeight ); }
+	{
+	const ParticuleData *	ppd= pd- 1;
+
+	utilPsFlushLink( ps, ppd->pdX0, ppd->pdVisibleWidth,
+						    lineTop, lineHeight );
+	}
 
     return 0;
     }
@@ -1356,35 +823,37 @@ static int docPsPrintItemShade(	const ItemShading *		is,
 	if  ( isSolid )
 	    {
 	    int		thick;
-	    int		wide;
+	    int		space;
 
 	    int		y0Twips= lpTop->lpPageYTwips;
 
 	    /*  1  */
-	    if  ( bpTop && bpTop->bpStyle != DOCbsNONE )
+	    if  ( bpTop && DOCisBORDER( bpTop ) )
 		{
-		thick= docBorderThick( &wide, bpTop );
+		thick= docBorderThick( &space, bpTop );
 
+		y0Twips -= -space;
 		y0Twips += thick;
 		}
 
-	    if  ( bpLeft && bpLeft->bpStyle != DOCbsNONE )
+	    if  ( bpLeft && DOCisBORDER( bpLeft ) )
 		{
-		thick= docBorderThick( &wide, bpLeft );
+		thick= docBorderThick( &space, bpLeft );
 
+		x0Twips -= space;
 		x0Twips += thick/ 2+ 1;
 		}
 
-	    if  ( bpRight && bpRight->bpStyle != DOCbsNONE )
+	    if  ( bpRight && DOCisBORDER( bpRight ) )
 		{
-		thick= docBorderThick( &wide, bpRight );
+		thick= docBorderThick( &space, bpRight );
 
+		x1Twips += space;
 		x1Twips -= thick/ 2;
 		}
 
 	    docDrawSetColorRgb( dc, (void *)ps, r, g, b );
-
-	    sioOutPrintf( ps->psSos, "%d %d %d %d rectfill\n",
+	    utilPsFillRectangle( ps, 
 				x0Twips, y0Twips,
 				x1Twips- x0Twips,
 				lpBelow->lpPageYTwips- y0Twips );
@@ -1404,14 +873,14 @@ static int docPsPrintParaTop(	const BorderProperties *	bp,
 				void *				vps,
 				DrawingContext *		dc )
     {
-    int			x0= pf->pfX0TextLinesTwips;
+    int			x0Twips= pf->pfX0TextLinesTwips;
     const int		above= 0;
 
-    if  ( pf->pfX0FirstLineTwips < x0 )
-	{ x0= pf->pfX0FirstLineTwips;	}
+    if  ( x0Twips > pf->pfX0FirstLineTwips )
+	{ x0Twips=  pf->pfX0FirstLineTwips;	}
 
     psPrintHorizontalBorder( bp, bpLeft, bpRight, dc,
-					vps, x0, pf->pfX1TextLinesTwips,
+					vps, x0Twips, pf->pfX1TextLinesTwips,
 					above, lpTop->lpPageYTwips );
 
     return 0;
@@ -1425,34 +894,86 @@ static int docPsPrintParaBottom( const BorderProperties *	bp,
 				void *				vps,
 				DrawingContext *		dc )
     {
-    int			x0= pf->pfX0TextLinesTwips;
+    int			x0Twips= pf->pfX0TextLinesTwips;
     const int		above= 1;
 
-    if  ( pf->pfX0FirstLineTwips < x0 )
-	{ x0= pf->pfX0FirstLineTwips;	}
+    if  ( x0Twips > pf->pfX0FirstLineTwips )
+	{ x0Twips=  pf->pfX0FirstLineTwips;	}
 
     psPrintHorizontalBorder( bp, bpLeft, bpRight, dc,
-					vps, x0, pf->pfX1TextLinesTwips,
+					vps, x0Twips, pf->pfX1TextLinesTwips,
 					above, lpBelow->lpPageYTwips );
 
     return 0;
     }
 
+static int docPsPrintParaLeft(	const BorderProperties *	bpLeft,
+				const BorderProperties *	bpTop,
+				const BorderProperties *	bpBottom,
+				const ParagraphFrame *		pf,
+				const LayoutPosition *		lpTop,
+				const LayoutPosition *		lpBelow,
+				void *				vps,
+				DrawingContext *		dc )
+    {
+    int				x0Twips= pf->pfX0TextLinesTwips;
+
+    if  ( x0Twips > pf->pfX0FirstLineTwips )
+	{ x0Twips=  pf->pfX0FirstLineTwips;	}
+
+    x0Twips -= bpLeft->bpSpacingTwips;
+
+    psPrintVerticalBorder( bpLeft, bpTop, bpBottom, dc, vps, x0Twips,
+			    lpTop->lpPageYTwips, lpBelow->lpPageYTwips );
+
+    return 0;
+    }
+
+static int docPsPrintParaRight(	const BorderProperties *	bpRight,
+				const BorderProperties *	bpTop,
+				const BorderProperties *	bpBottom,
+				const ParagraphFrame *		pf,
+				const LayoutPosition *		lpTop,
+				const LayoutPosition *		lpBelow,
+				void *				vps,
+				DrawingContext *		dc )
+    {
+    int				x1Twips= pf->pfX1TextLinesTwips;
+
+    int				thick;
+    int				space;
+
+    thick= docBorderThick( &space, bpRight );
+
+    x1Twips += bpRight->bpSpacingTwips;
+    x1Twips -= thick;
+
+    psPrintVerticalBorder( bpRight, bpTop, bpBottom, dc, vps, x1Twips,
+			    lpTop->lpPageYTwips, lpBelow->lpPageYTwips );
+
+    return 0;
+    }
+
 static int docPsPrintParaShade(	const ParagraphProperties *	pp,
+				const BorderProperties *	bpTop,
 				void *				vps,
 				struct DrawingContext *		dc,
-				int				x0Twips,
-				int				x1Twips,
+				const ParagraphFrame *		pf,
 				const LayoutPosition *		lpTop,
 				const LayoutPosition *		lpBelow )
     {
-    const BorderProperties * const	bpTop= (const BorderProperties *)0;
-    const BorderProperties * const	bpLeft= (const BorderProperties *)0;
-    const BorderProperties * const	bpRight= (const BorderProperties *)0;
+    const BorderProperties * const	bpLeft= &(pp->ppLeftBorder);
+    const BorderProperties * const	bpRight= &(pp->ppRightBorder);
+
+    int					x0Twips= pf->pfX0TextLinesTwips;
+
+    if  ( x0Twips > pf->pfX0FirstLineTwips )
+	{ x0Twips=  pf->pfX0FirstLineTwips;	}
 
     return docPsPrintItemShade( &(pp->ppShading), vps, dc,
 					bpTop, bpLeft, bpRight,
-					x0Twips, x1Twips, lpTop, lpBelow );
+					x0Twips, pf->pfX1TextLinesTwips,
+					lpTop, lpBelow );
 
     return 0;
     }
@@ -1467,7 +988,7 @@ static int docPsPrintCellTop(	const BorderProperties *	bp,
 				DrawingContext *		dc,
 				const LayoutPosition *		lpTop )
     {
-    if  ( ! asGrid && bp->bpStyle != DOCbsNONE )
+    if  ( ! asGrid && DOCisBORDER( bp ) )
 	{
 	const int		above= 0;
 
@@ -1498,7 +1019,7 @@ static int docPsPrintCellBottom( const BorderProperties *	bp,
 				DrawingContext *		dc,
 				const LayoutPosition *		lpBottom )
     {
-    if  ( ! asGrid && bp->bpStyle != DOCbsNONE )
+    if  ( ! asGrid && DOCisBORDER( bp ) )
 	{
 	/*  1  */
 	const int		above= 0;
@@ -1520,7 +1041,7 @@ static int docPsPrintCellLeft(	const BorderProperties *	bp,
 				const LayoutPosition *		lpTop,
 				const LayoutPosition *		lpBelow )
     {
-    if  ( ! asGrid && bp->bpStyle != DOCbsNONE )
+    if  ( ! asGrid && DOCisBORDER( bp ) )
 	{
 	psPrintVerticalBorder( bp, bpTop, bpBottom, dc, vps, x0Twips,
 			    lpTop->lpPageYTwips, lpBelow->lpPageYTwips );
@@ -1539,7 +1060,7 @@ static int docPsPrintCellRight(	const BorderProperties *	bp,
 				const LayoutPosition *		lpTop,
 				const LayoutPosition *		lpBelow )
     {
-    if  ( ! asGrid && bp->bpStyle != DOCbsNONE )
+    if  ( ! asGrid && DOCisBORDER( bp ) )
 	{
 	psPrintVerticalBorder( bp, bpTop, bpBottom, dc, vps, x1Twips,
 			    lpTop->lpPageYTwips, lpBelow->lpPageYTwips );
@@ -1570,16 +1091,115 @@ static int docPsPrintCellShade(	const CellProperties *		cp,
 /*									*/
 /*  Skip to the next page.						*/
 /*									*/
+/*  1)  If anything is printed on the page, and header/footer printing	*/
+/*      is postponed, print headers and footers for this page.		*/
+/*  2)  If omitHeadersOnEmptyPages is set, dc->dcPostponeHeadersFooters	*/
+/*	is derived from it. So any header printing is covered by (1)	*/
+/*  3)  If the page is completely empty, skip it.			*/
+/*  4)  if the page is empty, but not have been so if headers and	*/
+/*	footers were printed, emit it. Otherwise skip it. This sounds a	*/
+/*	bit strange, but the customer is always right. Actually, it has	*/
+/*	a purpose: In simple documents, you do not want to waste paper.	*/
+/*	So you should not print empty pages. In more complicated	*/
+/*	documents, you do not want to print pages with only a header	*/
+/*	and a footer to prevent fraud. For pagination purposes, you do	*/
+/*	want to emit the page however. Now in stead of make the user	*/
+/*	say what she wants with a multitude of parameters, we		*/
+/*	distinguish between simple and complicated documents by		*/
+/*	assuming that a complicated document has headers and footers.	*/
+/*									*/
 /************************************************************************/
 
 static int docPsFinishPage(	void *				vps,
 				DrawingContext *		dc,
+				BufferItem *			bodySectBi,
 				int				page,
 				int				asLast )
     {
     PrintingState *	ps= (PrintingState *)vps;
 
-    utilPsFinishPage( ps, page, asLast );
+    int			pageWasMarked;
+    int			pageIsMarked;
+    int			pageHasHeader= dc->dcDocHasPageHeaders;
+    int			pageHasFooter= dc->dcDocHasPageFooters;
+    int			skip= 0;
+
+    pageWasMarked= ps->psLastPageMarked >= ps->psPagesPrinted;
+
+    /*
+    sioOutPrintf( ps->psSos, "%% pageWasMarked= %d\n", pageWasMarked );
+    sioOutPrintf( ps->psSos, "%% dcDocHasPageHeaders= %d\n",
+					    dc->dcDocHasPageHeaders );
+    sioOutPrintf( ps->psSos, "%% dcDocHasPageFooters= %d\n",
+					    dc->dcDocHasPageFooters );
+    */
+
+    /*  1  */
+    if  ( pageWasMarked			&&
+	  dc->dcPostponeHeadersFooters	)
+	{
+	if  ( dc->dcDocHasPageHeaders				&&
+	      docDrawPageHeader( bodySectBi, vps, dc, page )	)
+	    { LLDEB(dc->dcDocHasPageHeaders,page);	}
+
+	if  ( dc->dcDocHasPageFooters				&&
+	      docDrawPageFooter( bodySectBi, vps, dc, page )	)
+	    { LLDEB(dc->dcDocHasPageFooters,page);	}
+	}
+
+    /*  2  */
+
+    pageIsMarked= ps->psLastPageMarked >= ps->psPagesPrinted;
+    /*
+    sioOutPrintf( ps->psSos, "%% pageIsMarked= %d\n", pageIsMarked );
+    */
+
+    /*  3  */
+    if  ( ! pageIsMarked && ps->psPrintGeometry.pgSkipBlankPages )
+	{ skip= 1;	}
+
+    /*  4  */
+    if  ( ! pageIsMarked )
+	{
+	const BufferDocument *		bd= dc->dcDocument;
+	const DocumentProperties *	dp= &(bd->bdProperties);
+
+	int				inExternalItem;
+	ExternalItem *			ei;
+	int				isEmpty;
+
+	if  ( dc->dcDocHasPageHeaders )
+	    {
+	    inExternalItem= docWhatPageHeader( &ei, &isEmpty,
+							bodySectBi, page, dp );
+	    if  ( ! ei || ! ei->eiItem || isEmpty )
+		{ pageHasHeader= 0;	}
+	    }
+
+	if  ( dc->dcDocHasPageFooters )
+	    {
+	    inExternalItem= docWhatPageFooter( &ei, &isEmpty,
+							bodySectBi, page, dp );
+	    if  ( ! ei || ! ei->eiItem || isEmpty )
+		{ pageHasFooter= 0;	}
+	    }
+	}
+
+    /*
+    sioOutPrintf( ps->psSos, "%% pageHasHeader= %d\n", pageHasHeader );
+    sioOutPrintf( ps->psSos, "%% pageHasFooter= %d\n", pageHasFooter );
+    */
+
+    if  ( ! pageIsMarked			&&
+	  ps->psPrintGeometry.pgSkipEmptyPages	&&
+	  ! pageHasHeader			&&
+	  ! pageHasFooter			)
+	{ skip= 1;	}
+
+
+    if  ( skip )
+	{ utilPsAbortPage( ps, page, asLast );	}
+    else{ utilPsFinishPage( ps, page, asLast );	}
 
     return 0;
     }
@@ -1609,19 +1229,19 @@ static int docPsPrintStartPage(	void *				vps,
 
 static void psSaveInfo(		const char *		tag,
 				const unsigned char *	info,
-				SimpleOutputStream *	sos )
+				PrintingState *		ps )
     {
     if  ( ! info )
 	{ return;	}
 
-    sioOutPrintf( sos, "  %s (", tag );
-    appPsPrintString( sos, info, strlen( (const char *)info ) );
-    sioOutPrintf( sos, ")\n" );
+    sioOutPrintf( ps->psSos, "  %s (", tag );
+    utilPsPrintString( ps, info, strlen( (const char *)info ) );
+    sioOutPrintf( ps->psSos, ")\n" );
     }
 
 static void psSaveDate(		const char *		tag,
 				const struct tm *	tm,
-				SimpleOutputStream *	sos )
+				PrintingState *		ps )
     {
     char	scratch[40+1];
 
@@ -1631,104 +1251,71 @@ static void psSaveDate(		const char *		tag,
     if  ( strftime( scratch, sizeof(scratch)- 1, "D:%Y%m%d%H%M", tm ) < 1 )
 	{ LDEB(1); return;	}
 
-    psSaveInfo( tag, (const unsigned char *)scratch, sos );
+    psSaveInfo( tag, (const unsigned char *)scratch, ps );
 
     return;
     }
 
 /************************************************************************/
 /*									*/
-/*  Save procedures to use implement tab leades in PostScript.		*/
+/*  Print a range of pages in a document.				*/
 /*									*/
 /************************************************************************/
 
-static const char *	DOC_PS_dot_tab[]=
+static int docPsPrintPageRange(	PrintingState *		ps,
+				DrawingContext *	dc,
+				BufferItem *		docBi,
+				int			firstPage,
+				int			lastPage,
+				int			asLast )
     {
-    "/dot-tab",
-    "  {",
-    "  gsave",
-    "  10 setlinewidth [ 1 59 ] 0 setdash 1 setlinecap",
-    "  newpath moveto 0 rlineto stroke",
-    "  grestore",
-    "  } bind def",
-    };
+    int			i;
 
-static const char *	DOC_PS_dot_tab_bold[]=
-    {
-    "/dot-tab-bold",
-    "  {",
-    "  gsave",
-    "  16 setlinewidth [ 1 59 ] 0 setdash 1 setlinecap",
-    "  newpath moveto 0 rlineto stroke",
-    "  grestore",
-    "  } bind def",
-    };
+    for ( i= 0; i < docBi->biChildCount; i++ )
+	{
+	if  ( docBi->biChildren[i]->biBelowPosition.lpPage >= firstPage )
+	    { break;	}
+	}
 
-static const char *	DOC_PS_dash_tab[]=
-    {
-    "/dash-tab",
-    "  {",
-    "  gsave",
-    "  10 setlinewidth [ 40 100 ] 0 setdash 1 setlinecap",
-    "  newpath moveto 0 rlineto stroke",
-    "  grestore",
-    "  } bind def",
-    };
+    if  ( i >= docBi->biChildCount )
+	{ LDEB(i); return -1; }
 
-static const char *	DOC_PS_dash_tab_bold[]=
-    {
-    "/dash-tab-bold",
-    "  {",
-    "  gsave",
-    "  16 setlinewidth [ 40 100 ] 0 setdash 1 setlinecap",
-    "  newpath moveto 0 rlineto stroke",
-    "  grestore",
-    "  } bind def",
-    };
+    docPsPrintStartPage( (void *)ps,
+	    &(docBi->biChildren[i]->biSectDocumentGeometry), dc, firstPage );
 
-static const char *	DOC_PS_ul_tab[]=
-    {
-    "/ul-tab",
-    "  {",
-    "  gsave",
-    "  10 setlinewidth",
-    "  newpath moveto 0 rlineto stroke",
-    "  grestore",
-    "  } bind def",
-    };
+    if  ( ! dc->dcPostponeHeadersFooters )
+	{
+	docDrawPageHeader( docBi->biChildren[i], (void *)ps, dc, firstPage );
+	}
 
-static const char *	DOC_PS_ul_tab_bold[]=
-    {
-    "/ul-tab-bold",
-    "  {",
-    "  gsave",
-    "  16 setlinewidth",
-    "  newpath moveto 0 rlineto stroke",
-    "  grestore",
-    "  } bind def",
-    };
+    docDrawItem( docBi, (void *)ps, dc );
 
-static void docPsSaveTabLeaderProcedures(	SimpleOutputStream *	sos )
-    {
-    utilPsDefineProcedure( sos, DOC_PS_dot_tab,
-				sizeof(DOC_PS_dot_tab)/sizeof(char *) );
+    if  ( lastPage < 0 )
+	{ lastPage= docBi->biBelowPosition.lpPage;	}
 
-    utilPsDefineProcedure( sos, DOC_PS_dot_tab_bold,
-				sizeof(DOC_PS_dot_tab_bold)/sizeof(char *) );
+    for ( i= docBi->biChildCount- 1; i >= 0; i-- )
+	{
+	if  ( docBi->biChildren[i]->biTopPosition.lpPage <= lastPage )
+	    { break;	}
+	}
 
-    utilPsDefineProcedure( sos, DOC_PS_dash_tab,
-				sizeof(DOC_PS_dash_tab)/sizeof(char *) );
+    if  ( i < 0 )
+	{ LDEB(i); return -1;	}
 
-    utilPsDefineProcedure( sos, DOC_PS_dash_tab_bold,
-				sizeof(DOC_PS_dash_tab_bold)/sizeof(char *) );
+    docDrawFootnotesForColumn( lastPage, (void *)ps, dc );
 
-    utilPsDefineProcedure( sos, DOC_PS_ul_tab,
-				sizeof(DOC_PS_ul_tab)/sizeof(char *) );
+    if  ( docDrawShapesForPage( docBi, (void *)ps, dc, lastPage ) )
+	{ LDEB(1);	}
 
-    utilPsDefineProcedure( sos, DOC_PS_ul_tab_bold,
-				sizeof(DOC_PS_ul_tab_bold)/sizeof(char *) );
+    if  ( ! dc->dcPostponeHeadersFooters )
+	{
+	docDrawPageFooter( docBi->biChildren[i], (void *)ps, dc, lastPage );
+	}
 
-    return;
+    docPsFinishPage( (void *)ps, dc, docBi->biChildren[i],
+						    lastPage, asLast );
+
+    return 0;
     }
 
 /************************************************************************/
@@ -1745,10 +1332,6 @@ int docPsPrintDocument(	SimpleOutputStream *		sos,
 			AppDrawingData *		add,
 			BufferDocument *		bd,
 			const PrintGeometry *		pg,
-			int				useFilters,
-			int				indexedImages,
-			int				firstPage,
-			int				lastPage,
 			DOC_CLOSE_OBJECT		closeObject )
     {
     DocumentProperties *	dp= &(bd->bdProperties);
@@ -1756,13 +1339,12 @@ int docPsPrintDocument(	SimpleOutputStream *		sos,
     BufferItem *		docBi= &(bd->bdItem);
 
     PostScriptTypeList		pstl;
-    int				i;
 
     DrawingContext		dc;
     PrintingState		ps;
 
-    int				hasPageHeader= 0;
-    int				hasPageFooter= 0;
+    int				firstPage= pg->pgFirstPage;
+    int				lastPage= pg->pgLastPage;
 
     INIT_LAYOUT_EXTERNAL	initLayoutExternal= (INIT_LAYOUT_EXTERNAL)0;
 
@@ -1777,10 +1359,13 @@ int docPsPrintDocument(	SimpleOutputStream *		sos,
 
     dc.dcSetColorRgb= docPsSetColorRgb;
     dc.dcSetFont= docPsSetFont;
+    dc.dcDrawShape= docPsPrintDrawDrawingShape;
 
     dc.dcDrawTextLine= docPsPrintTextLine;
     dc.dcDrawParaTop= docPsPrintParaTop;
     dc.dcDrawParaBottom= docPsPrintParaBottom;
+    dc.dcDrawParaLeft= docPsPrintParaLeft;
+    dc.dcDrawParaRight= docPsPrintParaRight;
     dc.dcDrawParaShade= docPsPrintParaShade;
     dc.dcDrawCellTop= docPsPrintCellTop;
     dc.dcDrawCellBottom= docPsPrintCellBottom;
@@ -1796,38 +1381,32 @@ int docPsPrintDocument(	SimpleOutputStream *		sos,
     dc.dcScreenFontList= (ScreenFontList *)0;
     dc.dcDocument= bd;
 
-    dc.dcFirstPage= firstPage;
-    dc.dcLastPage= lastPage;
-    dc.dcDrawHeadersFooters= 1;
+    dc.dcFirstPage= pg->pgFirstPage;
+    dc.dcLastPage= pg->pgLastPage;
+    dc.dcDrawExternalItems= 1;
+    dc.dcPostponeHeadersFooters= 0;
+
+    if  ( pg->pgOmitHeadersOnEmptyPages )
+	{ dc.dcPostponeHeadersFooters= 1;	}
 
     appPsInitPrintingState( &ps );
     ps.psSos= sos;
-    ps.psUsePostScriptFilters= useFilters;
-    ps.psUsePostScriptIndexedImages= indexedImages;
+    ps.psUsePostScriptFilters= pg->pgUsePostScriptFilters;
+    ps.psUsePostScriptIndexedImages= pg->pgUsePostScriptIndexedImages;
 
-    for ( i= 0; i < docBi->biChildCount; i++ )
-	{
-	int			j;
-	BufferItem *		sectBi= docBi->biChildren[i];
+    ps.psPrintGeometry.pgSkipEmptyPages= pg->pgSkipEmptyPages;
+    ps.psPrintGeometry.pgSkipBlankPages= pg->pgSkipBlankPages;
+    ps.psPrintGeometry.pgOmitHeadersOnEmptyPages=
+					    pg->pgOmitHeadersOnEmptyPages;
 
-	for ( j= 0; j < PAGES__COUNT; j++ )
-	    {
-	    ExternalItem *	ei;
-
-	    ei= docSectionHeaderFooter( sectBi, DOC_HeaderScopes[j] );
-	    if  ( ei && ei->eiItem )
-		{ hasPageHeader= 1;	}
-
-	    ei= docSectionHeaderFooter( sectBi, DOC_FooterScopes[j] );
-	    if  ( ei && ei->eiItem )
-		{ hasPageFooter= 1;	}
-	    }
-	}
+    docInquireHeadersFooters( &(dc.dcDocHasPageHeaders),
+				    &(dc.dcDocHasPageFooters), docBi );
 
     if  ( dp->dpTitle && dp->dpTitle[0] )
 	{ title= (char *)dp->dpTitle;	}
 
-    if  ( utilPsSetNupSchema( &ps, dg, pg, hasPageHeader, hasPageFooter ) )
+    if  ( utilPsSetNupSchema( &ps, dg, pg, dc.dcDocHasPageHeaders,
+						    dc.dcDocHasPageFooters ) )
 	{ LDEB(1); return -1;	}
 
     if  ( docPsPrintGetDocumentFonts( bd, &pstl, psfl ) )
@@ -1853,6 +1432,7 @@ int docPsPrintDocument(	SimpleOutputStream *		sos,
     appPsFontNames( &ps, &pstl, /*allFonts=*/ 0 );
 
     appMetaDefineProcsetPs( sos );
+    docPsPrintShapeDefineProcsetPs( sos );
 
     sioOutPrintf( sos, "%%%%EndProlog\n" );
     sioOutPrintf( sos, "%%%%BeginSetup\n" );
@@ -1870,15 +1450,15 @@ int docPsPrintDocument(	SimpleOutputStream *		sos,
 
 	sioOutPrintf( sos, "[\n" );
 
-	psSaveInfo( "/Title",		dp->dpTitle, sos );
-	psSaveInfo( "/Author",		dp->dpAuthor, sos );
-	psSaveInfo( "/Subject",		dp->dpSubject, sos );
-	psSaveInfo( "/Keywords",	dp->dpKeywords, sos );
-	psSaveInfo( "/Creator",		scratch, sos );
-	psSaveInfo( "/Producer",	scratch, sos );
+	psSaveInfo( "/Title",		dp->dpTitle, &ps );
+	psSaveInfo( "/Author",		dp->dpAuthor, &ps );
+	psSaveInfo( "/Subject",		dp->dpSubject, &ps );
+	psSaveInfo( "/Keywords",	dp->dpKeywords, &ps );
+	psSaveInfo( "/Creator",		scratch, &ps );
+	psSaveInfo( "/Producer",	scratch, &ps );
 
-	psSaveDate( "/ModDate",		&(dp->dpRevtim), sos );
-	psSaveDate( "/CreationDate",	&(dp->dpCreatim), sos );
+	psSaveDate( "/ModDate",		&(dp->dpRevtim), &ps );
+	psSaveDate( "/CreationDate",	&(dp->dpCreatim), &ps );
 
 	sioOutPrintf( sos, "/DOCINFO pdfmark\n\n" );
 
@@ -1890,38 +1470,23 @@ int docPsPrintDocument(	SimpleOutputStream *		sos,
     if  ( firstPage < 0 )
 	{ firstPage= 0;	}
 
-    for ( i= 0; i < docBi->biChildCount; i++ )
+    if  ( pg->pgPrintOddSides		&&
+	  pg->pgPrintEvenSides		&&
+	  ! pg->pgPrintSheetsReverse	&&
+	  ! pg->pgPrintBookletOrder	)
 	{
-	if  ( docBi->biChildren[i]->biBelowPosition.lpPage >= firstPage )
-	    { break;	}
+	if  ( docPsPrintPageRange( &ps, &dc, docBi,
+				    firstPage, lastPage, /* asLast */ 1 ) )
+	    { LDEB(firstPage); return -1;	}
 	}
+    else{
+	if  ( pg->pgPrintBookletOrder )
+	    { LDEB(pg->pgPrintBookletOrder); }
 
-    if  ( i >= docBi->biChildCount )
-	{ LDEB(i); return -1; }
-
-    docPsPrintStartPage( (void *)&ps,
-	    &(docBi->biChildren[i]->biSectDocumentGeometry), &dc, firstPage );
-    docDrawPageHeader( docBi->biChildren[i], (void *)&ps, &dc, firstPage );
-
-    docDrawItem( docBi, (void *)&ps, &dc );
-
-    if  ( lastPage < 0 )
-	{ lastPage= docBi->biBelowPosition.lpPage;	}
-
-    for ( i= docBi->biChildCount- 1; i >= 0; i-- )
-	{
-	if  ( docBi->biChildren[i]->biTopPosition.lpPage <= lastPage )
-	    { break;	}
+	if  ( docPsPrintPageRange( &ps, &dc, docBi,
+				    firstPage, lastPage, /* asLast */ 1 ) )
+	    { LDEB(firstPage); return -1;	}
 	}
-
-    if  ( i < 0 )
-	{ LDEB(i); return -1;	}
-
-    docDrawFootnotesForColumn( lastPage, (void *)&ps, &dc );
-
-    docDrawPageFooter( docBi->biChildren[i], (void *)&ps, &dc, lastPage );
-
-    utilPsFinishPage( &ps, lastPage, /*asLast*/ 1 );
 
     appPsCleanPrintingState( &ps );
 
@@ -1931,3 +1496,14 @@ int docPsPrintDocument(	SimpleOutputStream *		sos,
 
     return 0;
     }
+
+/************************************************************************/
+/*									*/
+/*  Booklet printing.							*/
+/*									*/
+/*  Document has n pages.						*/
+/*  On the front (odd side) of sheet s left,right: page n-2s-1, 2s	*/
+/*  On the back (even side) of sheet s left,right: page 2s-1, n-2s-2	*/
+/*									*/
+/************************************************************************/
+

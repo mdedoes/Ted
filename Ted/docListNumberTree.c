@@ -17,6 +17,8 @@
 #   include	"docListNumberTree.h"
 #   include	"docListLevel.h"
 
+#   define	LOG_TRANSACTIONS	0
+
 /************************************************************************/
 /*									*/
 /*  Initialise a node.							*/
@@ -70,6 +72,9 @@ static void docDebugListNumberTreeNode(	int				indent,
 				    lntn->lntnLeafCount,
 				    lntn->lntnParagraphNumber, bb, aa,
 				    lntn->lntnIsLeaf?"*":"" );
+
+    if  ( lntn->lntnChildCount > 0 && ! lntn->lntnChildren )
+	{ LXDEB(lntn->lntnChildCount,lntn->lntnChildren); }
 
     if  ( lntn->lntnParagraphNumber >= 0 )
 	{ before= lntn->lntnParagraphNumber;	}
@@ -158,6 +163,9 @@ int docClaimListNumberTreeNodes(	ListNumberTreeNode **	pLntn,
     {
     ListNumberTreeNode *	fresh;
     int				i;
+
+    if  ( *pCount >= count )
+	{ LLDEB(*pCount,count); return 0;	}
 
     fresh= (ListNumberTreeNode *)realloc( *pLntn,
 				    count* sizeof( ListNumberTreeNode ) );
@@ -390,12 +398,14 @@ static int docListNumberTreeMoveChildren(	ListNumberTreeNode *	to,
     int		i;
 
     /*
+    */
+#   if LOG_TRANSACTIONS
     appDebug( "MOVE %d CHILDREN FROM %d[%d] TO %d[%d]\n", cnt,
 			    fr->lntnParagraphNumber,
 			    fr->lntnChildCount,
 			    to->lntnParagraphNumber,
 			    to->lntnChildCount );
-    */
+#   endif
 
     /*  1  */
     if  ( docClaimListNumberTreeNodes( &(to->lntnChildren),
@@ -413,11 +423,13 @@ static int docListNumberTreeMoveChildren(	ListNumberTreeNode *	to,
     for ( i= 0; i < cnt; i++ )
 	{
 	/*
+	*/
+#	if LOG_TRANSACTIONS
 	appDebug( "    MOVE %d FROM %d[%d] TO %d[%d]\n",
 			fr->lntnChildren[frpos+ i].lntnParagraphNumber,
 			fr->lntnParagraphNumber, frpos+ i,
 			to->lntnParagraphNumber, topos+ i );
-	*/
+#	endif
 
 	to->lntnChildren[topos+ i]= fr->lntnChildren[frpos+ i];
 	leavesMoved += to->lntnChildren[topos+ i].lntnLeafCount;
@@ -496,7 +508,9 @@ int docListNumberTreeInsertParagraph(	ListNumberTreeNode *	root,
     int				pos;
     int				res;
 
-    /* SLLDEB("ADD",ilvl,paraNr);docLogListNumberTreeNode(0,root); */
+#   if LOG_TRANSACTIONS
+    SLLDEB("ADD",ilvl,paraNr);docLogListNumberTreeNode(0,root);
+#   endif
 
     if  ( ilvl < 0 || ilvl >= DLmaxLEVELS )
 	{ LLDEB(ilvl,DLmaxLEVELS); return -1;	}
@@ -510,7 +524,9 @@ int docListNumberTreeInsertParagraph(	ListNumberTreeNode *	root,
     if  ( level < 0 )
 	{ LDEB(level); return -1;	}
 
-    /* SDEB("@@"); docListNumberTreeLogPath( path, nums, level ); */
+#   if LOG_TRANSACTIONS
+    SDEB("@@"); docListNumberTreeLogPath( path, nums, level );
+#   endif
 
     /*  2  */
     if  ( level < ilvl )
@@ -540,6 +556,7 @@ int docListNumberTreeInsertParagraph(	ListNumberTreeNode *	root,
 
     if  ( pos == 0						&&
 	  after							&&
+	  node->lntnChildCount > 0				&&
 	  node->lntnChildren[pos].lntnParagraphNumber == -1	)
 	{
 	node->lntnChildren[pos].lntnParagraphNumber= paraNr;
@@ -602,7 +619,9 @@ int docListNumberTreeInsertParagraph(	ListNumberTreeNode *	root,
 	    }
 	}
 
-    /* SLLDEB("ADDDED",ilvl,paraNr);docLogListNumberTreeNode(0,root); */
+#   if LOG_TRANSACTIONS
+    SLLDEB("ADDDED",ilvl,paraNr);docLogListNumberTreeNode(0,root);
+#   endif
     return 0;
     }
 
@@ -636,14 +655,18 @@ int docListNumberTreeDeleteParagraph(	ListNumberTreeNode *	root,
 
     int				i;
 
-    /* SLDEB("DEL",paraNr);docLogListNumberTreeNode(0,root); */
+#   if LOG_TRANSACTIONS
+    SLDEB("DEL",paraNr);docLogListNumberTreeNode(0,root);
+#   endif
 
     /*  1  */
     if  ( docListNumberTreeFindParagraph( &level, &after,
 						path, nums, root, paraNr ) )
-	{ LDEB(paraNr); return -1;	}
+	{ /*LDEB(paraNr);*/ return -1;	}
 
-    /* SDEB("@@"); docListNumberTreeLogPath( path, nums, level ); */
+#   if LOG_TRANSACTIONS
+    SDEB("@@"); docListNumberTreeLogPath( path, nums, level );
+#   endif
 
     node= path[level];
     pos= nums[level];
@@ -762,7 +785,10 @@ int docListNumberTreeDeleteParagraph(	ListNumberTreeNode *	root,
 	    }
 	}
 
-    /* SLDEB("DELETED",paraNr);docLogListNumberTreeNode(0,root); */
+#   if LOG_TRANSACTIONS
+    SLDEB("DELETED",paraNr);docLogListNumberTreeNode(0,root);
+#   endif
+
     return 0;
     }
 
@@ -778,7 +804,7 @@ int docListNumberTreeDeleteParagraph(	ListNumberTreeNode *	root,
 /*									*/
 /************************************************************************/
 
-void docShiftBulletReferences(		ListNumberTreeNode *	root,
+void docShiftListTreeReferences(	ListNumberTreeNode *	root,
 					int			paraFrom,
 					int			paraShift )
     {
@@ -790,7 +816,15 @@ void docShiftBulletReferences(		ListNumberTreeNode *	root,
 	int		pos;
 
 	if  ( node->lntnParagraphNumber >= paraFrom )
-	    { node->lntnParagraphNumber += paraShift;	}
+	    {
+#	    if LOG_TRANSACTIONS
+	    appDebug( "SHIFT %2d+ %d -> %2d\n",
+			node->lntnParagraphNumber, paraShift,
+			node->lntnParagraphNumber+ paraShift );
+#	    endif
+
+	    node->lntnParagraphNumber += paraShift;
+	    }
 
 	if  ( node->lntnChildCount == 0 )
 	    { break;	}
@@ -802,7 +836,7 @@ void docShiftBulletReferences(		ListNumberTreeNode *	root,
 	    if  ( node->lntnChildren[pos+ 1].lntnParagraphNumber <= paraFrom )
 		{ continue;	}
 
-	    docShiftBulletReferences( &(node->lntnChildren[pos]),
+	    docShiftListTreeReferences( &(node->lntnChildren[pos]),
 							paraFrom, paraShift );
 	    }
 

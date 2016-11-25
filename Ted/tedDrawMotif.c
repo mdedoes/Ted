@@ -36,88 +36,94 @@ void tedSetObjectWindows(	EditDocument *			ed,
     Window			win= add->addDrawable;
 
     TedDocument *		td= (TedDocument *)ed->edPrivateData;
-    int				wide= io->ioPixelsWide;
-    int				high= io->ioPixelsHigh;
-
-    int				x= pg->pgXPixels- ox;
-    int				y= pg->pgBaselinePixels- high- oy;
 
     XSetWindowAttributes	xswa;
+    int				i;
+
+    DocumentRectangle		drObj;
+    APP_POINT			xp[RESIZE_COUNT];
+
+    static const int		font_cursors[RESIZE_COUNT]=
+				    {
+				    XC_bottom_left_corner,
+				    XC_bottom_side,
+				    XC_bottom_right_corner,
+
+				    XC_left_side,
+				    XC_right_side,
+
+				    XC_top_left_corner,
+				    XC_top_side,
+				    XC_top_right_corner,
+				    };
 
     static Cursor		moveCursor;
-    static Cursor		bottomCursor;
-    static Cursor		rightCursor;
-    static Cursor		cornerCursor;
-
-    if  ( ed->edFileReadOnly )
-	{ td->tdObjectSelected= 1; return; }
+    static Cursor		cursors[RESIZE_COUNT];
 
     if  ( ! moveCursor )
 	{
 	moveCursor= XCreateFontCursor( display, XC_fleur );
-	bottomCursor= XCreateFontCursor( display, XC_bottom_side );
-	rightCursor= XCreateFontCursor( display, XC_right_side );
-	cornerCursor= XCreateFontCursor( display, XC_bottom_right_corner );
+
+	for ( i= 0; i < RESIZE_COUNT; i++ )
+	    { cursors[i]= XCreateFontCursor( display, font_cursors[i] ); }
+	}
+
+    tedGetObjectRectangle( &drObj, xp, io, pg, td );
+    for ( i= 0; i < RESIZE_COUNT; i++ )
+	{
+	xp[i].x -= drObj.drX0;
+	xp[i].y -= drObj.drY0;
 	}
 
     if  ( ! td->tdObjectWindow )
 	{
 	xswa.cursor= moveCursor;
 	td->tdObjectWindow= XCreateWindow( display, win,
-			    x, y, wide, high,
-			    0, CopyFromParent, InputOnly, CopyFromParent,
-			    0L, &xswa );
+				drObj.drX0- ox, drObj.drY0- oy,
+				drObj.drX1- drObj.drX0+ 1,
+				drObj.drY1- drObj.drY0+ 1,
+				0, CopyFromParent, InputOnly, CopyFromParent,
+				0L, &xswa );
 
-	xswa.cursor= bottomCursor;
-	td->tdObjectBottomWindow= XCreateWindow( display, td->tdObjectWindow,
-			    wide/ 2- RESIZE_BLOCK/ 2, high- RESIZE_BLOCK,
+	for ( i= 0; i < RESIZE_COUNT; i++ )
+	    {
+	    xswa.cursor= cursors[i];
+
+	    td->tdObjectResizeWindows[i]=
+			XCreateWindow( display, td->tdObjectWindow,
+			    xp[i].x, xp[i].y,
 			    RESIZE_BLOCK, RESIZE_BLOCK,
 			    0, CopyFromParent, CopyFromParent, CopyFromParent,
 			    CWCursor, &xswa );
+	    }
 
-	xswa.cursor= rightCursor;
-	td->tdObjectRightWindow= XCreateWindow( display, td->tdObjectWindow,
-			    wide- RESIZE_BLOCK, high/ 2- RESIZE_BLOCK/ 2,
-			    RESIZE_BLOCK, RESIZE_BLOCK,
-			    0, CopyFromParent, CopyFromParent, CopyFromParent,
-			    CWCursor, &xswa );
-
-	xswa.cursor= cornerCursor;
-	td->tdObjectCornerWindow= XCreateWindow( display, td->tdObjectWindow,
-			    wide- RESIZE_BLOCK, high- RESIZE_BLOCK,
-			    RESIZE_BLOCK, RESIZE_BLOCK,
-			    0, CopyFromParent, CopyFromParent, CopyFromParent,
-			    CWCursor, &xswa );
-
-	XMapRaised( display, td->tdObjectBottomWindow );
-	XMapRaised( display, td->tdObjectRightWindow );
-	XMapRaised( display, td->tdObjectCornerWindow );
+	for ( i= 0; i < RESIZE_COUNT; i++ )
+	    { XMapRaised( display, td->tdObjectResizeWindows[i] ); }
 	}
     else{
-	XMoveResizeWindow( display, td->tdObjectWindow, x, y, wide, high );
+	XMoveResizeWindow( display, td->tdObjectWindow,
+				drObj.drX0- ox, drObj.drY0- oy,
+				drObj.drX1- drObj.drX0+ 1,
+				drObj.drY1- drObj.drY0+ 1 );
 
-	XMoveWindow( display, td->tdObjectBottomWindow,
-				wide/ 2- RESIZE_BLOCK/ 2, high- RESIZE_BLOCK );
-	XMoveWindow( display, td->tdObjectRightWindow,
-				wide- RESIZE_BLOCK, high/ 2- RESIZE_BLOCK/ 2 );
-	XMoveWindow( display, td->tdObjectCornerWindow,
-				wide- RESIZE_BLOCK, high- RESIZE_BLOCK );
+	for ( i= 0; i < RESIZE_COUNT; i++ )
+	    {
+	    XMoveWindow( display, td->tdObjectResizeWindows[i],
+							xp[i].x, xp[i].y );
+	    }
 	}
 
     XMapRaised( display, td->tdObjectWindow );
-
-    td->tdObjectSelected= 1;
     }
 
 void tedHideObjectWindows(	EditDocument *	ed )
     {
     TedDocument *		td= (TedDocument *)ed->edPrivateData;
 
-    if  ( ed->edFileReadOnly )
-	{ td->tdObjectSelected= 0; return; }
+    if  ( ! td->tdObjectWindow )
+	{ XDEB(td->tdObjectWindow); return;	}
 
     XUnmapWindow( XtDisplay( ed->edDocumentWidget ), td->tdObjectWindow );
-    td->tdObjectSelected= 0;
     }
 
 #   endif

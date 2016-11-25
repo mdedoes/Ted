@@ -98,7 +98,7 @@ int docDocumentListTableAddList( DocumentListTable *		dlt,
     fresh += dlt->dltListCount;
 
     docInitDocumentList( fresh );
-    if  ( docCopyDocumentList( fresh, dl, fontMap, colorMap ) )
+    if  ( dl && docCopyDocumentList( fresh, dl, fontMap, colorMap ) )
 	{ LDEB(dlt->dltListCount); return -1;	}
 
     dlt->dltListCount++;

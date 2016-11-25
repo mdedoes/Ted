@@ -53,6 +53,8 @@ typedef struct AppSpellToolResources
     char *	astrNoSuchDir;
     char *	astrDirNoDicts;
     char *	astrNoDicts;
+    char *	astrLower;
+    char *	astrClose;
     char *	astrSysDictNoAccess;
     char *	astrPrivDictDirNotMade;
     char *	astrPrivDictNoAccess;
@@ -91,6 +93,13 @@ static AppConfigurableResource APP_SpellToolResourceTable[]=
     APP_RESOURCE( "spellToolNoDicts",
 		offsetof(AppSpellToolResources,astrNoDicts),
 		"None" ),
+
+    APP_RESOURCE( "spellToolLower",
+		offsetof(AppSpellToolResources,astrLower),
+		"Lower" ),
+    APP_RESOURCE( "spellToolClose",
+		offsetof(AppSpellToolResources,astrClose),
+		"Close" ),
 
 #   ifdef __VMS
     APP_RESOURCE( "spellToolPrivateDicts",
@@ -159,6 +168,8 @@ typedef struct AppSpellTool
     APP_WIDGET			astCorrectButton;
     APP_WIDGET			astGuessButton;
     APP_WIDGET			astIgnoreButton;
+    APP_WIDGET			astLowerButton;
+    APP_WIDGET			astCloseButton;
 
     AppToolDestroy		astDestroy;
     SpellToolFindNext		astFindNext;
@@ -546,15 +557,14 @@ static APP_LIST_CALLBACK_H( appSpellGuessChosen, w, voidast, voidlcs )
 /************************************************************************/
 
 static void appSpellToolMakeButtonRow(	APP_WIDGET *		pRow,
+					APP_WIDGET		parent,
 					APP_WIDGET *		pLeftButton,
 					APP_WIDGET *		pRightButton,
 					char *			leftLabel,
 					char *			rightLabel,
 					APP_BUTTON_CALLBACK_T	leftCallback,
 					APP_BUTTON_CALLBACK_T	rightCallback,
-					AppSpellTool *		ast,
-					APP_WIDGET		parent )
-
+					AppSpellTool *		ast )
     {
     APP_WIDGET		row;
 
@@ -596,42 +606,13 @@ static APP_WIDGET appSpellMakeDictionaryFrame( APP_WIDGET	parent,
 
     appMakeOptionmenuInColumn( &(ast->astDictionaryOptionmenu), paned );
 
-    appSpellToolMakeButtonRow( &buttonRow,
+    appSpellToolMakeButtonRow( &buttonRow, paned,
 		&(ast->astLearnButton), &(ast->astForgetButton),
 		astr->astrLearn, astr->astrForget,
 		appSpellToolLearnPushed, appSpellToolForgetPushed,
-		ast, paned );
+		ast );
 
     return frame;
-    }
-
-/************************************************************************/
-/*									*/
-/*  Make the button part of the spelling Tool.				*/
-/*									*/
-/************************************************************************/
-
-static void appSpellMakeButtonRows(	APP_WIDGET		spellForm,
-					AppSpellToolResources * astr,
-					AppSpellTool *		ast )
-    {
-    APP_WIDGET		buttonRow;
-
-    APP_WIDGET		findNextButton;
-
-    appSpellToolMakeButtonRow( &buttonRow,
-		&(ast->astIgnoreButton), &(findNextButton),
-		astr->astrIgnore, astr->astrFindNext,
-		appSpellToolIgnorePushed, appSpellToolFindNextPushed,
-		ast, spellForm );
-
-    appSpellToolMakeButtonRow( &buttonRow,
-		&(ast->astGuessButton), &(ast->astCorrectButton),
-		astr->astrGuess, astr->astrCorrect,
-		appSpellGuessButtonPushed, appSpellToolCorrect,
-		ast, spellForm );
-
-    return;
     }
 
 /************************************************************************/
@@ -664,6 +645,25 @@ static void appDestroySpellTool(	AppSpellTool *	ast )
     }
 
 static APP_CLOSE_CALLBACK_H( appCloseSpellTool, w, voidast )
+    {
+    AppSpellTool *	ast= (AppSpellTool *)voidast;
+
+    appDestroySpellTool( ast );
+
+    return;
+    }
+
+static APP_BUTTON_CALLBACK_H( appLowerSpellTool, w, voidast )
+    {
+    AppSpellTool *	ast= (AppSpellTool *)voidast;
+    APP_WIDGET		shell= ast->astTopWidget;
+
+    appGuiLowerShellWidget( shell );
+
+    return;
+    }
+
+static APP_BUTTON_CALLBACK_H( appSpellToolCloseButtonPushed, w, voidast )
     {
     AppSpellTool *	ast= (AppSpellTool *)voidast;
 
@@ -899,6 +899,41 @@ static APP_WIDGET appSpellGuessList(	APP_WIDGET		parent,
 
 /************************************************************************/
 /*									*/
+/*  Make the button part of the spelling Tool.				*/
+/*									*/
+/************************************************************************/
+
+static void appSpellMakeButtonRows(	APP_WIDGET		spellForm,
+					AppSpellToolResources * astr,
+					AppSpellTool *		ast )
+    {
+    APP_WIDGET		buttonRow;
+
+    APP_WIDGET		findNextButton;
+
+    appSpellToolMakeButtonRow( &buttonRow, spellForm,
+		&(ast->astIgnoreButton), &(findNextButton),
+		astr->astrIgnore, astr->astrFindNext,
+		appSpellToolIgnorePushed, appSpellToolFindNextPushed,
+		ast );
+
+    appSpellToolMakeButtonRow( &buttonRow, spellForm,
+		&(ast->astGuessButton), &(ast->astCorrectButton),
+		astr->astrGuess, astr->astrCorrect,
+		appSpellGuessButtonPushed, appSpellToolCorrect,
+		ast );
+
+    appSpellToolMakeButtonRow( &buttonRow, spellForm,
+		&(ast->astLowerButton), &(ast->astCloseButton),
+		astr->astrLower, astr->astrClose,
+		appLowerSpellTool, appSpellToolCloseButtonPushed,
+		ast );
+
+    return;
+    }
+
+/************************************************************************/
+/*									*/
 /*  make a spell tool.							*/
 /*									*/
 /************************************************************************/
@@ -922,12 +957,10 @@ void * appMakeSpellTool(	APP_WIDGET		spellOption,
 
     if  ( ! gotResources )
 	{
-	appGuiGetResourceValues( ea, (void *)&astr,
+	appGuiGetResourceValues( &gotResources, ea, (void *)&astr,
 					APP_SpellToolResourceTable,
 					sizeof(APP_SpellToolResourceTable)/
 					sizeof(AppConfigurableResource) );
-
-	gotResources= 1;
 	}
 
     ast= (AppSpellTool *)malloc( sizeof(AppSpellTool) );

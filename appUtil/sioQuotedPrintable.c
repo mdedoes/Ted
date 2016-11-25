@@ -283,7 +283,7 @@ static int sioOutQuotedWriteBytes(	void *			voidqos,
 	if  ( *buffer == '='				||
 	      *buffer < 32				||	/* ' '	*/
 	      *buffer > 126				||	/* '~'	*/
-	      ( qos->qosColumn == 0 && *buffer == '-' )	)
+	      ( *buffer == '-' && qos->qosColumn == 0 )	)
 	    {
 	    if  ( qos->qosColumn > 72 )
 		{ sioOutQuotedBreakLine( qos );	}

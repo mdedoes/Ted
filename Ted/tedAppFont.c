@@ -64,7 +64,7 @@ static void tedDocChangeSelectionAttribute(
     utilUpdateTextAttribute( &changeMask,
 			    &(td->tdCurrentTextAttribute), taSet, taSetMask );
 
-    if  ( ! PROPmaskISEMPTY( &changeMask )	||
+    if  ( ! utilPropMaskIsEmpty( &changeMask )	||
 	  td->tdCurrentScreenFont < 0		)
 	{ tedSetCurrentAttribute( td, add );	}
 
@@ -451,7 +451,7 @@ void tedDocToolInsertSymbol(	APP_WIDGET	symbolOption,
 
     if  ( ! ea->eaSymbolPicker )
 	{
-	char *			pixmapName= "tedsymbol";
+	const char *		pixmapName= "tedsymbol";
 	APP_BITMAP_IMAGE	iconPixmap= (APP_BITMAP_IMAGE)0;
 	APP_BITMAP_MASK		iconMask= (APP_BITMAP_MASK)0;
 

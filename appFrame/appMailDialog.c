@@ -292,7 +292,9 @@ static APP_BUTTON_CALLBACK_H( appMailDialogSendPushed, w, voidamd )
     }
 
 /************************************************************************/
-/*  Fill the list of contents.						*/
+/*									*/
+/*  Fill the list of content types.					*/
+/*									*/
 /************************************************************************/
 
 static void appMailDialogFillContentMenu(	AppMailDialog *		amd,
@@ -303,6 +305,7 @@ static void appMailDialogFillContentMenu(	AppMailDialog *		amd,
 
     MailContent *		mc;
     AppConfigurableResource *	acr;
+    int				ignored= 0;
 
     acr= (AppConfigurableResource *)malloc(
 		    ea->eaMailContentCount* sizeof(AppConfigurableResource) );
@@ -322,7 +325,8 @@ static void appMailDialogFillContentMenu(	AppMailDialog *		amd,
 		{ defaultContent= i;	}
 	    }
 
-	appGuiGetResourceValues( ea, mc, acr, ea->eaMailContentCount );
+	appGuiGetResourceValues( &ignored,
+				    ea, mc, acr, ea->eaMailContentCount );
 
 	free( acr );
 	}
@@ -510,6 +514,9 @@ static AppMailDialog * appMakeMailDialog( EditApplication *	ea,
     APP_BITMAP_IMAGE	iconPixmap= (APP_BITMAP_IMAGE)0;
     APP_BITMAP_MASK	iconMask= (APP_BITMAP_MASK)0;
 
+    static int		gotMailDialogResources= 0;
+    static int		gotMailErrorResources= 0;
+
     if  ( appGetImagePixmap( ea, pixmapName, &iconPixmap, &iconMask )  )
 	{ SDEB(pixmapName); return (AppMailDialog *)0;	}
 
@@ -518,14 +525,18 @@ static AppMailDialog * appMakeMailDialog( EditApplication *	ea,
     if  ( ! amd )
 	{ XDEB(amd); return (AppMailDialog *)0;	}
 
-    appGuiGetResourceValues( ea, amd,
+    if  ( ! gotMailDialogResources )
+	{
+	appGuiGetResourceValues( &gotMailDialogResources, ea, amd,
 				    APP_MailDialogresourceTable,
 				    sizeof(APP_MailDialogresourceTable)/
 				    sizeof(AppConfigurableResource) );
+	}
 
-    if  ( ! APP_MailErrorMessages[0] )
+    if  ( gotMailErrorResources )
 	{
-	appGuiGetResourceValues( ea, APP_MailErrorMessages,
+	appGuiGetResourceValues( &gotMailErrorResources, ea,
+				    APP_MailErrorMessages,
 				    APP_MailErrorMessageresourceTable,
 				    sizeof(APP_MailErrorMessageresourceTable)/
 				    sizeof(AppConfigurableResource) );
@@ -584,6 +595,9 @@ int appRunMailDialog(			EditApplication *	ea,
     char *			bcc;
 
     char *			s;
+
+    const char * const		userName= (const char *)0;
+    const char * const		password= (const char *)0;
 
     MailContent *		mc;
     SimpleOutputStream *	sos;
@@ -707,6 +721,7 @@ int appRunMailDialog(			EditApplication *	ea,
 	}
 
     sos= sioOutSmtpOpen( amd->amdMailHost, amd->amdMailPort,
+			userName, password,
 			from, to, cc, bcc, mailSubject,
 			mc->mcTypeSlashSubtype,
 			mc->mcNeedsBoundary?mimeBoundary:(const char *)0,

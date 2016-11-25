@@ -47,12 +47,11 @@ int appDocSaveDocumentByName(		EditDocument *		ed,
     return 0;
     }
 
-void appDocFileSave(	APP_WIDGET	option,
-			void *		voided,
-			void *		call_data )
+APP_MENU_CALLBACK_H( appDocFileSave, option, voided, call_data )
     {
     EditDocument *		ed= (EditDocument *)voided;
     EditApplication *		ea= ed->edApplication;
+    APP_WIDGET			woption= (APP_WIDGET)option;
 
     int				interactive= 1;
 
@@ -62,12 +61,20 @@ void appDocFileSave(	APP_WIDGET	option,
     if  ( ! ed->edFilename		||
 	  ed->edFileReadOnly		||
 	  ed->edFormat < 0		)
-	{ appDocFileSaveAs( option, voided, (void *)0 ); return; }
+	{
+#	ifdef USE_MOTIF
+	appDocFileSaveAs( option, voided, (void *)0 ); return;
+#	endif
+#	ifdef USE_GTK
+	appDocFileSaveAs( option, voided ); return;
+#	endif
+	XDEB(ed->edFilename); return;
+	}
 
-    if  ( appDocSaveDocumentByName( ed, option, interactive,
+    if  ( appDocSaveDocumentByName( ed, woption, interactive,
 					    ed->edFormat, ed->edFilename ) )
 	{
-	appReportSaveFailure( ea, option,
+	appReportSaveFailure( ea, woption,
 				ed->edToplevel.atTopWidget, ed->edFilename );
 	}
     else{ appDocumentChanged( ed, 0 ); }
@@ -86,15 +93,14 @@ void appDocFileSave(	APP_WIDGET	option,
 /*									*/
 /************************************************************************/
 
-void appDocFileClose(	APP_WIDGET	option,
-			void *		voided,
-			void *		call_data )
+APP_MENU_CALLBACK_H( appDocFileClose, option, voided, call_data )
     {
     EditDocument *	ed= (EditDocument *)voided;
     EditApplication *	ea= ed->edApplication;
+    APP_WIDGET		woption= (APP_WIDGET)option;
 
     if  ( ed->edHasBeenChanged )
-	{ appRunReallyCloseDialog( option, ed ); return; }
+	{ appRunReallyCloseDialog( woption, ed ); return; }
 
     appCloseDocument( ea, ed );
 
@@ -112,31 +118,30 @@ APP_CLOSE_CALLBACK_H( appDocFileCloseCallback, w, voided )
     appCloseDocument( ea, ed );
     }
 
-void appDocFileNew(	APP_WIDGET	option,
-			void *		voided,
-			void *		call_data	 )
+APP_MENU_CALLBACK_H( appDocFileNew, option, voided, call_data )
     {
     EditDocument *	ed= (EditDocument *)voided;
     EditApplication *	ea= ed->edApplication;
+    const char * const	filename= (const char *)0;
 
-    appAppFileNew( option, (void *)ea, call_data );
-    }
-
-void appDocFileQuit(	APP_WIDGET	option,
-			void *		voided,
-			void *		call_data )
-    {
-    EditDocument *	ed= (EditDocument *)voided;
-    EditApplication *	ea= ed->edApplication;
-
-    appQuitApplication( option, ed->edToplevel.atTopWidget, ea );
+    if  ( appNewDocument( ea, filename ) )
+	{ SDEB(filename); }
 
     return;
     }
 
-void appDocFileMini(	APP_WIDGET	option,
-			void *		voided,
-			void *		call_data )
+APP_MENU_CALLBACK_H( appDocFileQuit, option, voided, call_data )
+    {
+    EditDocument *	ed= (EditDocument *)voided;
+    EditApplication *	ea= ed->edApplication;
+    APP_WIDGET		woption= (APP_WIDGET)option;
+
+    appQuitApplication( woption, ed->edToplevel.atTopWidget, ea );
+
+    return;
+    }
+
+APP_MENU_CALLBACK_H( appDocFileMini, option, voided, call_data )
     {
     EditDocument *		ed= (EditDocument *)voided;
 
@@ -145,9 +150,7 @@ void appDocFileMini(	APP_WIDGET	option,
     return;
     }
 
-void appDocFileHide(	APP_WIDGET	option,
-			void *		voided,
-			void *		call_data	 )
+APP_MENU_CALLBACK_H( appDocFileHide, option, voided, call_data )
     {
     EditDocument *		ed= (EditDocument *)voided;
     EditApplication *		ea= ed->edApplication;
@@ -241,9 +244,7 @@ void appDocToFront(	APP_WIDGET	option,
 /*									*/
 /************************************************************************/
 
-void appDocEditCopy(	APP_WIDGET	option,
-			void *		voided,
-			void *		voidpbcs )
+APP_MENU_CALLBACK_H( appDocEditCopy, option, voided, call_data )
     {
     EditDocument *			ed= (EditDocument *)voided;
     EditApplication *			ea= ed->edApplication;
@@ -254,9 +255,7 @@ void appDocEditCopy(	APP_WIDGET	option,
     (*ea->eaDocCopy)( ed ); return;
     }
 
-void appDocEditCut(	APP_WIDGET	option,
-			void *		voided,
-			void *		voidpbcs )
+APP_MENU_CALLBACK_H( appDocEditCut, option, voided, call_data )
     {
     EditDocument *			ed= (EditDocument *)voided;
     EditApplication *			ea= ed->edApplication;
@@ -267,18 +266,14 @@ void appDocEditCut(	APP_WIDGET	option,
     (*ea->eaDocCut)( ed ); return;
     }
 
-void appDocEditPaste(	APP_WIDGET	option,
-			void *		voided,
-			void *		voidpbcs )
+APP_MENU_CALLBACK_H( appDocEditPaste, option, voided, call_data )
     {
     EditDocument *			ed= (EditDocument *)voided;
 
     appDocAskForPaste( ed, "PRIMARY" );
     }
 
-void appDocEditSelAll(	APP_WIDGET	option,
-			void *		voided,
-			void *		voidpbcs )
+APP_MENU_CALLBACK_H( appDocEditSelAll, option, voided, call_data )
     {
     EditDocument *			ed= (EditDocument *)voided;
     EditApplication *			ea= ed->edApplication;
@@ -1008,14 +1003,14 @@ void appDocExposeRectangle(	const EditDocument *		ed,
 	drScrolled.drX1= drVisible->drX1;
 	}
 
-    docUnionRectangle( &drScrolled, &drScrolled, drChanged );
+    geoUnionRectangle( &drScrolled, &drScrolled, drChanged );
 
     drExpose.drX0= drVisible->drX0;
     drExpose.drY0= drVisible->drY0;
     drExpose.drX1= drVisible->drX1;
     drExpose.drY1= drVisible->drY1;
 
-    if  ( docIntersectRectangle( &drExpose, &drExpose, &drScrolled ) )
+    if  ( geoIntersectRectangle( &drExpose, &drExpose, &drScrolled ) )
 	{
 	int	ox= drVisible->drX0;
 	int	oy= drVisible->drY0;

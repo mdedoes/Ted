@@ -56,7 +56,7 @@ const unsigned char docISO7_to_WIN1253[256]=
     WIN1253_asterisk,		/*  ISO7_asterisk		 42	*/
     WIN1253_plus,		/*  ISO7_plus			 43	*/
     WIN1253_comma,		/*  ISO7_comma			 44	*/
-    WIN1253_hyphen,		/*  ISO7_hyphen			 45	*/
+    WIN1253_minus,		/*  ISO7_minus			 45	*/
     WIN1253_period,		/*  ISO7_period			 46	*/
     WIN1253_slash,		/*  ISO7_slash			 47	*/
     WIN1253_zero,		/*  ISO7_zero			 48	*/
@@ -107,7 +107,7 @@ const unsigned char docISO7_to_WIN1253[256]=
     WIN1253_bracketright,	/*  ISO7_bracketright		 93	*/
     WIN1253_asciicircum,	/*  ISO7_asciicircum		 94	*/
     WIN1253_underscore,		/*  ISO7_underscore		 95	*/
-    WIN1253_grave,		/*  ISO7_grave			 96	*/
+    WIN1253_quoteleft,		/*  ISO7_quoteleft		 96	*/
     WIN1253_a,			/*  ISO7_a			 97	*/
     WIN1253_b,			/*  ISO7_b			 98	*/
     WIN1253_c,			/*  ISO7_c			 99	*/
@@ -172,7 +172,7 @@ const unsigned char docISO7_to_WIN1253[256]=
     WIN1251_currency,		/*  .NOTDEF_158			158	*//**/
     WIN1251_currency,		/*  .NOTDEF_159			159	*//**/
     WIN1253_nobreakspace,	/*  ISO7_space			160	*/
-    WIN1253_grave,		/*  ISO7_afii64937		161	*//**/
+    WIN1253_quoteleft,		/*  ISO7_afii64937		161	*//**/
     WIN1253_quotesingle,	/*  ISO7_afii57929		162	*//**/
     WIN1253_sterling,		/*  ISO7_sterling		163	*/
     WIN1251_currency,		/*  .NOTDEF_164			164	*//**/
@@ -316,7 +316,7 @@ const unsigned char docWIN1253_to_ISO7[256]=
     ISO7_asterisk,		/*  WIN1253_asterisk		 42	*/
     ISO7_plus,			/*  WIN1253_plus		 43	*/
     ISO7_comma,			/*  WIN1253_comma		 44	*/
-    ISO7_hyphen,		/*  WIN1253_hyphen		 45	*/
+    ISO7_minus,			/*  WIN1253_minus		 45	*/
     ISO7_period,		/*  WIN1253_period		 46	*/
     ISO7_slash,			/*  WIN1253_slash		 47	*/
     ISO7_zero,			/*  WIN1253_zero		 48	*/
@@ -416,7 +416,7 @@ const unsigned char docWIN1253_to_ISO7[256]=
     ISO7_copyright,		/*  WIN1253__0x8E		142	*//**/
     ISO7_copyright,		/*  WIN1253__0x8F		143	*//**/
     ISO7_copyright,		/*  WIN1253__0x90		144	*//**/
-    ISO7_quotesingle,		/*  WIN1253_quoteleft		145	*//**/
+    ISO7_quotesingle,		/*  WIN1253_quotesingle		145	*//**/
     ISO7_quotesingle,		/*  WIN1253_quoteright		146	*//**/
     ISO7_quotedbl,		/*  WIN1253_quotedblleft	147	*//**/
     ISO7_quotedbl,		/*  WIN1253_quotedblright	148	*//**/

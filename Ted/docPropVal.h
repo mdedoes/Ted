@@ -18,6 +18,8 @@ typedef enum ItemAlignment
     DOCia_COUNT
     } ItemAlignment;
 
+# define DOCia_BITS	3
+
 typedef enum TextVerticalAlignment
     {
     DOCtvaTOP= 0,

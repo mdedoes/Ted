@@ -20,7 +20,7 @@
 typedef enum ListLevelAlignment
     {
     DOCllaLEFT= 0,
-    DOCllaCENTERED,
+    DOCllaCENTER,
     DOCllaRIGHT,
 
     DOClla_COUNT
@@ -112,5 +112,39 @@ extern int documentListLevelSetStyle(
 				const ParagraphProperties *	pp,
 				const PropertyMask *		textMask,
 				const TextAttribute *		ta );
+
+extern int docListLevelSetText(	int *				pChanged,
+				DocumentListLevel *		dll,
+				const unsigned char *		text,
+				int				idx );
+
+extern int docListLevelSetNumber(	int *			pChanged,
+					DocumentListLevel *	dll,
+					int			number,
+					int			idx );
+
+extern int docListLevelInsertNumber(	DocumentListLevel *		dll,
+					int				number,
+					int				idx );
+
+extern int docListLevelDeleteNumber(	DocumentListLevel *		dll,
+					int				idx );
+
+extern int docListLevelFormatParagraphNumber(	
+				unsigned char *			target,
+				int				maxsize,
+				int *				offsets,
+				int				maxoffsets,
+				int				ilvl,
+				const int *			numberPath,
+				const int *			startPath,
+				const int *			formatPath,
+				const DocumentListLevel *	dll );
+
+extern int docListLevelFormatLevelNumber(
+				unsigned char *			target,
+				int				maxsize,
+				int				val,
+				int				format );
 
 #   endif

@@ -44,7 +44,7 @@ static void docGetPositionAttributes(
     *pTaNew= ta;
 
     PROPmaskCLEAR( pUpdMask );
-    PROPmaskFILL( pUpdMask, TAprop_COUNT );
+    utilPropMaskFill( pUpdMask, TAprop_COUNT );
 
     return;
     }
@@ -92,11 +92,15 @@ void docGetSelectionAttributes(	BufferDocument *		bd,
     const int			lastOne= 1;
 
     if  ( docFindParticuleOfPosition( &part, &(ds->dsBegin), lastOne ) )
-	{ LDEB(ds->dsBegin.dpStroff);	}
+	{
+	LDEB(ds->dsBegin.dpStroff);
+	PROPmaskCLEAR( pUpdMask );
+	return;
+	}
     }
 
     /*  2  */
-    if  ( paraBi->biParaProperties.ppListOverride > 0 )
+    if  ( paraBi->biParaListOverride > 0 )
 	{
 	if  ( docDelimitParaHeadField( &bulletFieldNr,
 			&bulletPartBegin, &bulletPartEnd,
@@ -155,7 +159,7 @@ void docGetSelectionAttributes(	BufferDocument *		bd,
 		PROPmaskCLEAR( &pm );
 
 		PROPmaskCLEAR( &pmAll );
-		PROPmaskFILL( &pmAll, TAprop_COUNT );
+		utilPropMaskFill( &pmAll, TAprop_COUNT );
 
 		utilAttributeDifference( &pm, &taNew, &ta, &pmAll );
 
@@ -176,7 +180,7 @@ void docGetSelectionAttributes(	BufferDocument *		bd,
 	tp= paraBi->biParaParticules+ part;
 
 	/*  2  */
-	if  ( paraBi->biParaProperties.ppListOverride > 0 )
+	if  ( paraBi->biParaListOverride > 0 )
 	    {
 	    if  ( docDelimitParaHeadField( &bulletFieldNr,
 			&bulletPartBegin, &bulletPartEnd,

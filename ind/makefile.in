@@ -17,7 +17,7 @@ CFLAGS=				\
 
 #CFLAGS	= $(WFLAGS) -g -O2 -I. -I../appUtil -I../include
 
-# 16 lines
+# 17 lines
 OBS	=	\
 		indword.o\
 		indutil.o\
@@ -32,6 +32,7 @@ OBS	=	\
 		indguess.o\
 		indfront.o\
 		inddeb.o\
+		indScanStream.o\
 		indAffix.o
 
 LIB=	../lib/ind.a
@@ -48,6 +49,16 @@ indAffix.o: \
     ../include/appDebugon.h \
     ../include/appDebug.h \
     indAffix.h
+
+indScanStream.o: \
+    indScanStream.c \
+    indConfig.h \
+    indScanStream.h \
+    ../appUtil/sioGeneral.h \
+    ind.h \
+    ../include/charnames.h \
+    ../include/appDebugon.h \
+    ../include/appDebug.h
 
 inddeb.o: \
     inddeb.c \

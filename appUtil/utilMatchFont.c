@@ -241,16 +241,30 @@ static int utilGetPsFamilyByName( int *				pFamily,
 
     if  ( ! strncmp( name, "Times New Roman", 15 ) )
 	{ name= "Times";	}
+
     if  ( ! strncmp( name, "Courier New", 11 ) )
 	{ name= "Courier";	}
+
     if  ( ! strcmp( name, "Arial" ) )
 	{ name= "Helvetica";	}
+    if  ( ! strcmp( name, "Arial Narrow" ) )
+	{ name= "Helvetica Narrow";	}
+
     if  ( ! strcmp( name, "Apple Chancery" ) )
 	{ name= "ITC Zapf Chancery";	}
+
     if  ( ! strncmp( name, "Wingdings", 9 ) )
 	{ name= "ITC Zapf Dingbats";	}
     if  ( ! strncmp( name, "Webdings", 8 ) )
 	{ name= "ITC Zapf Dingbats";	}
+    if  ( ! strcmp( name, "ZapfDingbats" ) )
+	{ name= "ITC Zapf Dingbats";	}
+
+    if  ( ! strcmp( name, "Lucida Console" ) )
+	{ name= "Lucida Sans Typewriter";	}
+
+    if  ( ! strcmp( name, "Bookman Old Style" ) )
+	{ name= "ITC Bookman";	}
 
     psf= psfl->psflFamilies;
     for ( fam= 0; fam < psfl->psflFamilyCount; psf++, fam++ )
@@ -263,9 +277,7 @@ static int utilGetPsFamilyByName( int *				pFamily,
 	    { *pFamily= fam; return 0;	}
 	}
 
-    if  ( ! strncmp( name, "Wingdings", 9 ) )
-	{ name= "Dingbats";	}
-    if  ( ! strncmp( name, "Webdings", 8 ) )
+    if  ( ! strncmp( name, "ITC Zapf Dingbats", 17 ) )
 	{ name= "Dingbats";	}
 
     psf= psfl->psflFamilies;
@@ -284,7 +296,7 @@ static int utilGetPsFamilyByName( int *				pFamily,
 
 static int utilGetPsFamilyByStyle(
 				int *				pFamily,
-				const DocumentFont *		df,
+				const char *			familyStyle,
 				int				encoding,
 				const PostScriptFontList *	psfl )
     {
@@ -292,8 +304,8 @@ static int utilGetPsFamilyByStyle(
     const AppFontFamily *	psf;
 
     /*  5  */
-    if  ( ! df->dfFamilyStyle			||
-	  ! strcmp( df->dfFamilyStyle, "fnil" ) )
+    if  ( ! familyStyle			||
+	  ! strcmp( familyStyle, "fnil" ) )
 	{
 	psf= psfl->psflFamilies;
 	for ( fam= 0; fam < psfl->psflFamilyCount; psf++, fam++ )
@@ -308,7 +320,7 @@ static int utilGetPsFamilyByStyle(
 	}
 
     /*  6  */
-    if  ( ! strcmp( df->dfFamilyStyle, "fswiss" ) )
+    if  ( ! strcmp( familyStyle, "fswiss" ) )
 	{
 	psf= psfl->psflFamilies;
 	for ( fam= 0; fam < psfl->psflFamilyCount; psf++, fam++ )
@@ -323,7 +335,7 @@ static int utilGetPsFamilyByStyle(
 	}
 
     /*  7  */
-    if  ( ! strcmp( df->dfFamilyStyle, "froman" ) )
+    if  ( ! strcmp( familyStyle, "froman" ) )
 	{
 	psf= psfl->psflFamilies;
 	for ( fam= 0; fam < psfl->psflFamilyCount; psf++, fam++ )
@@ -338,7 +350,7 @@ static int utilGetPsFamilyByStyle(
 	}
 
     /*  8  */
-    if  ( ! strcmp( df->dfFamilyStyle, "fmodern" ) )
+    if  ( ! strcmp( familyStyle, "fmodern" ) )
 	{
 	psf= psfl->psflFamilies;
 	for ( fam= 0; fam < psfl->psflFamilyCount; psf++, fam++ )
@@ -353,7 +365,7 @@ static int utilGetPsFamilyByStyle(
 	}
 
     /*  9  */
-    if  ( ! strcmp( df->dfFamilyStyle, "fscript" ) )
+    if  ( ! strcmp( familyStyle, "fscript" ) )
 	{
 	psf= psfl->psflFamilies;
 	for ( fam= 0; fam < psfl->psflFamilyCount; psf++, fam++ )
@@ -368,7 +380,7 @@ static int utilGetPsFamilyByStyle(
 	}
 
     /*  10  */
-    if  ( ! strcmp( df->dfFamilyStyle, "fdecor" ) )
+    if  ( ! strcmp( familyStyle, "fdecor" ) )
 	{
 	psf= psfl->psflFamilies;
 	for ( fam= 0; fam < psfl->psflFamilyCount; psf++, fam++ )
@@ -383,7 +395,7 @@ static int utilGetPsFamilyByStyle(
 	}
 
     /*  10  */
-    if  ( ! strcmp( df->dfFamilyStyle, "ftech" ) )
+    if  ( ! strcmp( familyStyle, "ftech" ) )
 	{
 	psf= psfl->psflFamilies;
 	for ( fam= 0; fam < psfl->psflFamilyCount; psf++, fam++ )
@@ -400,6 +412,27 @@ static int utilGetPsFamilyByStyle(
     return -1;
     }
 
+static int utilGetPsFamilyByStyleFromName( int *		pFamily,
+				const char *			name,
+				int				encoding,
+				const PostScriptFontList *	psfl )
+    {
+    int			styleInt= utilFontFamilyStyle( name );
+    const char *	styleStr;
+
+    if  ( styleInt < 0 )
+	{ SLDEB(name,styleInt); return -1; }
+
+    styleStr= docFontFamilyStyleString( styleInt );
+    if  ( ! styleStr )
+	{ SLXDEB(name,styleInt,styleStr); return -1;	}
+
+    if  ( utilGetPsFamilyByStyle( pFamily, styleStr, encoding, psfl ) )
+	{ /*SSDEB(name,styleStr);*/ return -1;	}
+
+    return 0;
+    }
+
 /************************************************************************/
 /*									*/
 /*  Find the PostScript font family that best matches a document font	*/
@@ -408,93 +441,55 @@ static int utilGetPsFamilyByStyle(
 
 static int utilGetPsFamilyForFont(
 				int *				pFamily,
-				int *				pFontEncoding,
+				int *				pCharsetIdx,
+				const OfficeCharset **		pOc,
+				const OfficeCharsetMapping **	pOcm,
 				const DocumentFont *		df,
 				const PostScriptFontList *	psfl )
     {
-    int		encoding;
+    const OfficeCharset *		oc;
+    const OfficeCharsetMapping *	ocm;
+    int					charsetIdx= -1;
 
-    switch( df->dfCharset )
+    int					i;
+
+    if  ( df->dfCharsetIndex < 0 )
 	{
-	case FONTcharsetDEFAULT:
-	    encoding= ENCODINGpsFONTSPECIFIC;
-	    break;
+	oc= utilGetOfficeCharsetByCharset( &charsetIdx, df->dfCharset );
+	if  ( ! oc )
+	    { /*LXDEB(df->dfCharset,oc);*/ return -1;	}
+	}
+    else{
+	oc= utilGetOfficeCharsetByIndex( df->dfCharsetIndex );
+	if  ( ! oc )
+	    { LXDEB(df->dfCharsetIndex,oc); return -1;	}
 
-	case FONTcharsetSYMBOL:
-	    encoding= ENCODINGpsADOBE_SYMBOL;
-	    break;
-
-	case FONTcharsetOEM:
-	    LDEB(df->dfCharset);
-	    return -1;
-
-	case FONTcharsetANSI:
-	    encoding= ENCODINGpsISO_8859_1;
-	    break;
-
-	case FONTcharsetRUSSIAN:
-	    encoding= ENCODINGpsADOBE_CYRILLIC;
-	    break;
-
-	case FONTcharsetEE:
-	    encoding= ENCODINGpsISO_8859_2;
-	    break;
-
-	case FONTcharsetGREEK:
-	    encoding= ENCODINGpsISO_8859_7;
-	    break;
-
-	case FONTcharsetTURKISH:
-	    encoding= ENCODINGpsISO_8859_9;
-	    break;
-
-	case FONTcharsetBALTIC:
-	    encoding= ENCODINGpsISO_8859_13;
-	    break;
-
-	case FONTcharsetHEBREW:
-	case FONTcharsetARABIC:
-	case FONTcharsetSHIFTJIS:
-	case FONTcharsetHANGEUL:
-	case FONTcharsetGB2313:
-	case FONTcharsetCHINESEBIG5:
-	default:
-	    /*LDEB(df->dfCharset);*/
-	    encoding= ENCODINGpsFONTSPECIFIC;
-	    break;
+	charsetIdx= df->dfCharsetIndex;
 	}
 
-    /*  4  */
-    if  ( utilGetPsFamilyByText(  pFamily, df->dfName, encoding, psfl )	&&
-	  utilGetPsFamilyByName(  pFamily, df->dfName, encoding, psfl )	&&
-	  utilGetPsFamilyByStyle( pFamily, df, encoding, psfl )		)
+    ocm= oc->ocMappings;
+    for ( i= 0; i < oc->ocMappingCount; ocm++, i++ )
 	{
-	/* SSLLDEB(df->dfName,df->dfFamilyStyle,df->dfCharset,encoding);*/
-	encoding= ENCODINGpsFONTSPECIFIC;
+	if  ( ! utilGetPsFamilyByText(  pFamily, df->dfName,
+					ocm->ocmPsFontEncoding, psfl )	||
+	      ! utilGetPsFamilyByName(  pFamily, df->dfName,
+					ocm->ocmPsFontEncoding, psfl )	||
+	      ! utilGetPsFamilyByStyle( pFamily, df->dfFamilyStyle,
+					ocm->ocmPsFontEncoding, psfl )	||
+	      ! utilGetPsFamilyByStyleFromName( pFamily, df->dfName,
+					ocm->ocmPsFontEncoding, psfl )	)
+	    {
+	    *pCharsetIdx= charsetIdx;
+	    *pOc= oc;
+	    *pOcm= ocm;
+	    return 0;
+	    }
 	}
 
-    if  ( utilGetPsFamilyByText(  pFamily, df->dfName, encoding, psfl )	&&
-	  utilGetPsFamilyByName(  pFamily, df->dfName, encoding, psfl )	&&
-	  utilGetPsFamilyByStyle( pFamily, df, encoding, psfl )		)
-	{
-	SSLLDEB(df->dfName,df->dfFamilyStyle,df->dfCharset,encoding);
-	/*
-	{
-	int		fam;
-
-	for ( fam= 0; fam < psfl->psflFamilyCount; fam++ )
-	    { LSDEB(fam,psfl->psflFamilies[fam].affFontFamilyName);	}
-	}
-	*/
-
-	return -1;
-	}
-
-    if  ( encoding == ENCODINGpsFONTSPECIFIC )
-	{ encoding= psfl->psflFamilies[*pFamily].affDefaultEncoding;	}
-
-    *pFontEncoding= encoding;
-    return 0;
+    /*
+    SLLDEB(df->dfName,df->dfCharset,psfl->psflFamilyCount);
+    */
+    return -1;
     }
 
 /************************************************************************/
@@ -503,6 +498,49 @@ static int utilGetPsFamilyForFont(
 /*  document.								*/
 /*									*/
 /************************************************************************/
+
+static int utilAddFontToDocList(
+				DocumentFontList *		dfl,
+				const char *			name,
+				int				charset,
+				int				charsetIdx,
+				int				fam,
+				const int *			psFaceNumber,
+				const OfficeCharsetMapping *	ocm )
+    {
+    int				fontNumber;
+    DocumentFont *		df;
+    DocumentFontFamily *	dff;
+    int				fac;
+
+    fontNumber= docGetFontByNameAndCharset( dfl, name, charset );
+    if  ( fontNumber < 0 )
+	{ SLDEB(name,fontNumber); return -1; }
+
+    df= dfl->dflFonts+ fontNumber;
+    if  ( df->dfPsFamilyNumber < 0 )
+	{ df->dfPsFamilyNumber= fam;	}
+
+    dff= dfl->dflFamilies+ df->dfDocFamilyIndex;
+
+    df->dfCharset= charset;
+    df->dfCharsetIndex= charsetIdx;
+    df->dfOfficeCharsetMapping= ocm;
+
+    if  ( dff->dffFontForCharsetIndex[df->dfCharsetIndex] < 0 )
+	{ dff->dffFontForCharsetIndex[df->dfCharsetIndex]= fontNumber;	}
+
+    if  ( df->dfCharsetIndex < 0 )
+	{ LDEB(df->dfCharsetIndex);	}
+
+    for ( fac= 0; fac < FONTface_COUNT; fac++ )
+	{
+	if  ( psFaceNumber[fac] >= 0 )
+	    { df->dfPsFaceNumber[fac]= psFaceNumber[fac];	}
+	}
+
+    return 0;
+    }
 
 int utilAddPsFontsToDocList(	DocumentFontList *		dfl,
 				const PostScriptFontList *	psfl )
@@ -513,10 +551,16 @@ int utilAddPsFontsToDocList(	DocumentFontList *		dfl,
     psf= psfl->psflFamilies;
     for ( fam= 0; fam < psfl->psflFamilyCount; psf++, fam++ )
 	{
-	int			enc;
+	const char *		name= psf->affFontFamilyName;
+	int			charsetIdx;
 	int			fac;
 	const AppFontTypeface *	aft= psf->affFaces;
-	short int		psFaceNumber[FONTface_COUNT];
+	int			psFaceNumber[FONTface_COUNT];
+
+	int			enc;
+	int			encCount;
+
+	int			added= 0;
 
 	for ( fac= 0; fac < FONTface_COUNT; fac++ )
 	    { psFaceNumber[fac]= -1; }
@@ -540,37 +584,101 @@ int utilAddPsFontsToDocList(	DocumentFontList *		dfl,
 		{ psFaceNumber[fac]= psFaceNumber[0]; }
 	    }
 
+	encCount= 0;
 	for ( enc= 0; enc < ENCODINGps_COUNT; enc++ )
 	    {
-	    int				fontNumber;
-	    DocumentFont *		df;
-	    const char *		name= psf->affFontFamilyName;
-	    DocumentFontFamily *	dff;
+	    if  ( psf->affSupportedCharsets[enc].scSupported )
+		{ encCount++;	}
+	    }
 
-	    if  ( ! psf->affSupportedCharsets[enc].scSupported )
+	for ( charsetIdx= 0; charsetIdx < CHARSETidxCOUNT; charsetIdx++ )
+	    {
+	    int				map;
+
+	    const OfficeCharset *	oc= (const OfficeCharset *)0;
+	    const OfficeCharsetMapping * ocm;
+
+	    oc= utilGetOfficeCharsetByIndex( charsetIdx );
+	    if  ( ! oc )
+		{ LXDEB(charsetIdx,oc); return -1;	}
+
+	    ocm= oc->ocMappings;
+	    for ( map= 0; map < oc->ocMappingCount; ocm++, map++ )
+		{
+		if  ( ocm->ocmPsFontEncoding == ENCODINGpsFONTSPECIFIC )
+		    { continue;	}
+
+		if  ( psf->affSupportedCharsets[ocm->ocmPsFontEncoding].
+								scSupported )
+		    { break;	}
+		}
+
+	    if  ( map >= oc->ocMappingCount )
 		{ continue;	}
 
-	    fontNumber= docGetFontByName( dfl, name, enc );
-	    if  ( fontNumber < 0 )
-		{ SLDEB(name,fontNumber); return -1; }
+	    if  ( utilAddFontToDocList( dfl, name, oc->ocOfficeCharset,
+					charsetIdx, fam, psFaceNumber, ocm ) )
+		{ SDEB(name); return -1;	}
 
-	    df= dfl->dflFonts+ fontNumber;
-	    if  ( df->dfPsFamilyNumber < 0 )
-		{ df->dfPsFamilyNumber= fam;	}
+	    added++;
+	    }
 
-	    dff= dfl->dflFamilies+ df->dfDocFamilyIndex;
+	if  ( psf->affDefaultEncoding >= 0 )
+	    {
+	    const FontCharset *			fc;
+	    const OfficeCharsetMapping *	ocm;
 
-	    if  ( df->dfEncodingSet < 0 )
-		{ df->dfEncodingSet= enc; }
-	    if  ( dff->dffFontForEncoding[enc] < 0 )
-		{ dff->dffFontForEncoding[enc]= fontNumber;	}
+	    fc= &(PS_Encodings[psf->affDefaultEncoding]);
+	    ocm= fc->fcDefaultMapping;
 
-	    for ( fac= 0; fac < FONTface_COUNT; fac++ )
+	    if  ( ocm )
 		{
-		if  ( psFaceNumber[fac] >= 0 )
-		    { df->dfPsFaceNumber[fac]= psFaceNumber[fac];	}
+		const OfficeCharset *	oc= (const OfficeCharset *)0;
+
+		oc= utilGetOfficeCharsetByCharset( &charsetIdx,
+							FONTcharsetDEFAULT );
+		if  ( ! oc )
+		    { LXDEB(charsetIdx,oc); return -1;	}
+
+		if  ( utilAddFontToDocList( dfl, name, oc->ocOfficeCharset,
+					charsetIdx, fam, psFaceNumber, ocm ) )
+		    { SDEB(name); return -1;	}
+
+		added++;
 		}
 	    }
+
+	if  ( ! added				&&
+	      psf->affUseFontspecificEncoding	)
+	    {
+	    static const OfficeCharsetMapping PS_FontSpecificMapping=
+		{
+		ENCODINGpsFONTSPECIFIC,
+		(const unsigned char *)0,
+		(const unsigned char *)0,
+		};
+
+	    const OfficeCharsetMapping * ocm= &PS_FontSpecificMapping;
+
+	    if  ( ocm )
+		{
+		const OfficeCharset *	oc= (const OfficeCharset *)0;
+
+		oc= utilGetOfficeCharsetByCharset( &charsetIdx,
+							FONTcharsetDEFAULT );
+		if  ( ! oc )
+		    { LXDEB(charsetIdx,oc); return -1;	}
+
+		if  ( utilAddFontToDocList( dfl, name, oc->ocOfficeCharset,
+					charsetIdx, fam, psFaceNumber, ocm ) )
+		    { SDEB(name); return -1;	}
+
+		added++;
+		}
+	    }
+
+	if  ( ! added )
+	    { SLDEB(psf->affFontFamilyName,added); }
 	}
 
     return 0;
@@ -616,7 +724,7 @@ int utilFindPsFontsForDocFonts(	DocumentFontList *		dfl,
 	    { continue;	}
 
 	if  ( utilFindPsFontForDocFont( df, dfl, psfl ) )
-	    { SDEB(df->dfName); continue;	}
+	    { /*SDEB(df->dfName);*/ continue;	}
 	}
 
     return 0;
@@ -626,26 +734,34 @@ int utilFindPsFontForDocFont(	DocumentFont *			df,
 				DocumentFontList *		dfl,
 				const PostScriptFontList *	psfl )
     {
-    int				fam;
-    int				fac;
-    int				encoding;
+    int					fam;
+    int					fac;
 
-    const AppFontFamily *	psf;
-    const AppFontTypeface *	aft;
+    const AppFontFamily *		psf;
+    const AppFontTypeface *		aft;
+
+    const OfficeCharset *		oc;
+    const OfficeCharsetMapping *	ocm;
+    int					charsetIdx= -1;
 
     /*  3  */
-    if  ( utilGetPsFamilyForFont( &fam, &encoding, df, psfl ) )
-	{ SDEB(df->dfName); return -1; }
+    if  ( utilGetPsFamilyForFont( &fam, &charsetIdx, &oc, &ocm, df, psfl ) )
+	{ /*SDEB(df->dfName);*/ return -1; }
 
     df->dfPsFamilyNumber= fam;
+    df->dfOfficeCharsetMapping= ocm;
+
     psf= psfl->psflFamilies+ fam;
 
     /*  4  */
-    if  ( df->dfEncodingSet < 0 )
+    if  ( df->dfCharset == FONTcharsetDEFAULT )
 	{
+	int		encoding= -1;
+	int		charset;
+
 	/*  4a  */
 	if  ( psf->affDefaultEncoding >= 0 )
-	    { df->dfEncodingSet= psf->affDefaultEncoding;	}
+	    { encoding= psf->affDefaultEncoding;	}
 	else{
 	    int		enc;
 
@@ -653,29 +769,61 @@ int utilFindPsFontForDocFont(	DocumentFont *			df,
 	    for ( enc= 0; enc < ENCODINGps_COUNT; enc++ )
 		{
 		if  ( psf->affSupportedCharsets[enc].scSupported )
-		    { df->dfEncodingSet= enc; break;	}
+		    { encoding= enc; break;	}
 		}
 	    }
 
-	if  ( df->dfEncodingSet < 0 )
-	    { SLDEB(df->dfName,df->dfEncodingSet);	}
+	if  ( encoding >= 0 )
+	    {
+	    charset= PS_Encodings[encoding].fcOfficeCharset;
+
+	    if  ( charset != FONTcharsetDEFAULT )
+		{
+		int		map;
+
+		oc= utilGetOfficeCharsetByCharset( &charsetIdx, charset );
+		if  ( ! oc )
+		    { LXDEB(df->dfCharset,oc); return -1;	}
+
+		ocm= oc->ocMappings;
+		for ( map= 0; map < oc->ocMappingCount; ocm++, map++ )
+		    {
+		    if  ( ocm->ocmPsFontEncoding == ENCODINGpsFONTSPECIFIC )
+			{ continue;	}
+
+		    if  ( psf->affSupportedCharsets[ocm->ocmPsFontEncoding].
+								scSupported )
+			{ break;	}
+		    }
+
+		if  ( map >= oc->ocMappingCount )
+		    { LLDEB(map,oc->ocMappingCount); return -1; }
+
+		df->dfOfficeCharsetMapping= ocm;
+		df->dfCharsetIndex= charsetIdx;
+
+		if  ( docRememberFontNameAndFamily( dfl, df, charset ) )
+		    { SLDEB(df->dfName,charset); return -1;	}
+		}
+	    }
 	}
     else{
-	if  ( encoding != df->dfEncodingSet )
-	    { df->dfEncodingSet= encoding;	}
+	if  ( df->dfCharsetIndex != charsetIdx )
+	    { df->dfCharsetIndex= charsetIdx;	}
 	}
 
 
     /*  5  */
-    if  ( df->dfEncodingSet >= 0 )
+    if  ( df->dfCharsetIndex >= 0 )
 	{
 	DocumentFontFamily *	dff;
 
 	dff= dfl->dflFamilies+ df->dfDocFamilyIndex;
 
-	if  ( dff->dffFontForEncoding[df->dfEncodingSet] < 0 )
+	if  ( dff->dffFontForCharsetIndex[df->dfCharsetIndex] < 0 )
 	    {
-	    dff->dffFontForEncoding[df->dfEncodingSet]= df->dfDocFontNumber;
+	    dff->dffFontForCharsetIndex[df->dfCharsetIndex]=
+							df->dfDocFontNumber;
 	    }
 	}
 
@@ -728,6 +876,12 @@ AfmFontInfo * utilPsGetAfi(	int *				pEncoding,
 
     df= dfl->dflFonts+ ta->taFontNumber;
 
+    if  ( ! df->dfOfficeCharsetMapping )
+	{
+	SLLXDEB(df->dfName,df->dfCharset,df->dfCodepage,df->dfOfficeCharsetMapping);
+	return (AfmFontInfo *)0;
+	}
+
     if  ( df->dfPsFamilyNumber < 0			||
 	  df->dfPsFamilyNumber >= psfl->psflFamilyCount	)
 	{
@@ -748,11 +902,11 @@ AfmFontInfo * utilPsGetAfi(	int *				pEncoding,
 
     aft= aff->affFaces+ fac;
 
-    if  ( ! aft->aftPrintingData )
-	{ XDEB(aft->aftPrintingData);	}
+    if  ( ! aft->aftFontInfo )
+	{ XDEB(aft->aftFontInfo);	}
 
-    *pEncoding= df->dfEncodingSet;
-    return (AfmFontInfo *)aft->aftPrintingData;
+    *pEncoding= df->dfOfficeCharsetMapping->ocmPsFontEncoding;
+    return aft->aftFontInfo;
     }
 
 /************************************************************************/
@@ -968,6 +1122,68 @@ int utilFontWidthFromString(		int *		pWidth,
 	    { s++;	}
 	while( s[0] == ' ' )
 	    { s++;	}
+	}
+
+    return 0;
+    }
+
+/************************************************************************/
+/*									*/
+/*  Boldly swith from compatibility encodings to preferred encodings.	*/
+/*  E.G: From Mac Roman to Latin1.					*/
+/*									*/
+/*  As the text in the document is in an encoding given by		*/
+/*  df->dfOfficeCharsetMapping->ocmPsFontEncoding, that one must be	*/
+/*  respected.								*/
+/*									*/
+/************************************************************************/
+
+int utilFontlistSetPreferredEncodings(	DocumentFontList *	dfl )
+    {
+    int			i;
+    DocumentFont *	df;
+
+    df= dfl->dflFonts;
+    for ( i= 0; i < dfl->dflFontCount; df++, i++ )
+	{
+	const OfficeCharset *		oc;
+	const OfficeCharset *		ocx;
+	int				charsetIdx= -1;
+	const OfficeCharsetMapping *	ocm;
+	int				m;
+
+	if  ( ! df->dfName )
+	    { continue;	}
+
+	if  ( df->dfCharsetIndex < 0 || ! df->dfOfficeCharsetMapping )
+	    { continue;		}
+
+	oc= utilGetOfficeCharsetByIndex( df->dfCharsetIndex );
+	if  ( ! oc )
+	    { LXDEB(df->dfCharsetIndex,oc); continue;	}
+
+	if  ( oc->ocOfficeCharsetPreferred < 0 )
+	    { continue;	}
+
+	ocx= utilGetOfficeCharsetByCharset( &charsetIdx,
+					    oc->ocOfficeCharsetPreferred );
+
+	ocm= ocx->ocMappings;
+	for ( m= 0; m < ocx->ocMappingCount; ocm++, m++ )
+	    {
+	    if  ( ocm->ocmPsFontEncoding ==
+			    df->dfOfficeCharsetMapping->ocmPsFontEncoding )
+		{
+		df->dfCharset= ocx->ocOfficeCharset;
+		df->dfCharsetIndex= charsetIdx;
+		df->dfOfficeCharsetMapping= ocm;
+		df->dfCodepage= -1;
+		break;
+		}
+	    }
+
+	if  ( m >= ocx->ocMappingCount )
+	    { SLDEB(df->dfName,m);	}
 	}
 
     return 0;

@@ -9,14 +9,17 @@
 
 #   include	<appDebugon.h>
 
-void appMetafilePolygonPathPs(		SimpleOutputStream *	sos,
+void appMetafilePolygonPathPs(		PrintingState *		ps,
 					const APP_POINT *	points,
-					int			count )
+					int			count,
+					const char *		operator )
     {
-    int		done;
-    char *	command;
-    int		x0;
-    int		y0;
+    SimpleOutputStream *	sos= ps->psSos;
+
+    int				done;
+    char *			command;
+    int				x0;
+    int				y0;
 
 
     command= "bp"; x0= 0; y0= 0;
@@ -35,22 +38,28 @@ void appMetafilePolygonPathPs(		SimpleOutputStream *	sos,
 	command= "rl"; x0= points[done].x; y0= points[done].y;
 	}
 
+    if  ( operator )
+	{ sioOutPrintf( sos, "%s", operator );	}
+
     return;
     }
 
-void appMetafileRoundRectPathPs(	SimpleOutputStream *	sos,
+void appMetafileRoundRectPathPs(	PrintingState *		ps,
 					int			x0,
 					int			y0,
 					int			x1,
 					int			y1,
 					int			w,
-					int			h )
+					int			h,
+					const char *		operator )
     {
-    int		top;
-    int		bottom;
-    int		radius;
+    SimpleOutputStream *	sos= ps->psSos;
 
-    int		swap;
+    int				top;
+    int				bottom;
+    int				radius;
+
+    int				swap;
 
     if  ( x1 < x0 )
 	{ swap= x0; x0= x1; x1= swap; }
@@ -76,10 +85,13 @@ void appMetafileRoundRectPathPs(	SimpleOutputStream *	sos,
     sioOutPrintf( sos, "%d %d %d %d %d arct\n",
 				    x0, bottom, x0, bottom+ radius, radius );
 
+    if  ( operator )
+	{ sioOutPrintf( sos, "%s", operator );	}
+
     return;
     }
 
-void appMetafileRectPathPs(		SimpleOutputStream *	sos,
+void appMetafileRectPathPs(		PrintingState *		ps,
 					int			x0,
 					int			y0,
 					int			x1,
@@ -88,12 +100,12 @@ void appMetafileRectPathPs(		SimpleOutputStream *	sos,
     int		dx= x1- x0;
     int		dy= y1- y0;
 
-    sioOutPrintf( sos, "%d %d bp ",  x0,  y0 );
-    sioOutPrintf( sos, "%d %d rl ",  dx,   0 );
-    sioOutPrintf( sos, "%d %d rl ",   0,  dy );
-    sioOutPrintf( sos, "%d %d rl ", -dx,   0 );
+    sioOutPrintf( ps->psSos, "%d %d bp ",  x0,  y0 );
+    sioOutPrintf( ps->psSos, "%d %d rl ",  dx,   0 );
+    sioOutPrintf( ps->psSos, "%d %d rl ",   0,  dy );
+    sioOutPrintf( ps->psSos, "%d %d rl ", -dx,   0 );
 
-    sioOutPrintf( sos, "closepath\n" );
+    sioOutPrintf( ps->psSos, "closepath\n" );
 
     return;
     }
@@ -104,14 +116,16 @@ void appMetafileRectPathPs(		SimpleOutputStream *	sos,
 /*									*/
 /************************************************************************/
 
-int appMetafileStartPatternFillPs(	SimpleOutputStream *	sos,
+int appMetafileStartPatternFillPs(	PrintingState *		ps,
 					const AppBitmapImage *	abi )
     {
-    int			bytesPerRow;
+    SimpleOutputStream *	sos= ps->psSos;
 
-    const int		useFilters= 0;
-    const int		indexedImages= 0;
-    BitmapPrinter	bp;
+    int				bytesPerRow;
+
+    const int			useFilters= 0;
+    const int			indexedImages= 0;
+    BitmapPrinter		bp;
 
     bytesPerRow= bmPsRowStringSize( &(abi->abiBitmap),
 						abi->abiBitmap.bdPixelsWide,

@@ -57,6 +57,11 @@ typedef enum BorderStyle
 
 #   define DOCbs_BITS	5
 
+#   define	DOCisBORDER(bp) ( \
+		    (bp)->bpStyle != DOCbsNONE && \
+		    (bp)->bpStyle != DOCbsTBL && \
+		    (bp)->bpStyle != DOCbsNIL )
+
 typedef struct BorderProperties
     {
     unsigned int	bpColor:8;

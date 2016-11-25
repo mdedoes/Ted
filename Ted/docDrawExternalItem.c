@@ -39,7 +39,7 @@ static int docDrawHeaderFooter(	BufferItem *		bodySectBi,
 							    page, bd, add ) )
 	    { LDEB(1); return -1;	}
 
-	if  ( ! docIntersectRectangle( &drExtern, &drExtern, dc->dcClipRect ) )
+	if  ( ! geoIntersectRectangle( &drExtern, &drExtern, dc->dcClipRect ) )
 	    { return 0;	}
 	}
 
@@ -63,16 +63,20 @@ int docDrawPageHeader(	BufferItem *			bodySectBi,
     {
     ExternalItem *		ei= (ExternalItem *)0;
     int				inExternalItem;
+    int				isEmpty;
     BufferDocument *		bd= dc->dcDocument;
     DocumentProperties *	dp= &(bd->bdProperties);
 
-    inExternalItem= docWhatPageHeader( &ei, bodySectBi, page, dp );
+    inExternalItem= docWhatPageHeader( &ei, &isEmpty, bodySectBi, page, dp );
 
     if  ( ! ei || ! ei->eiItem )
 	{ return 0;	}
 
     if  ( docDrawHeaderFooter( bodySectBi, through, ei, dc, page ) )
 	{ LDEB(page); return 1;	}
+
+    if  ( docDrawShapesForPage( ei->eiItem, through, dc, page ) )
+	{ LDEB(page);	}
 
     return 0;
     }
@@ -84,16 +88,20 @@ int docDrawPageFooter(	BufferItem *			bodySectBi,
     {
     ExternalItem *		ei= (ExternalItem *)0;
     int				inHeaderFooter;
+    int				isEmpty;
     BufferDocument *		bd= dc->dcDocument;
     DocumentProperties *	dp= &(bd->bdProperties);
 
-    inHeaderFooter= docWhatPageFooter( &ei, bodySectBi, page, dp );
+    inHeaderFooter= docWhatPageFooter( &ei, &isEmpty, bodySectBi, page, dp );
 
     if  ( ! ei || ! ei->eiItem )
 	{ return 0;	}
 
     if  ( docDrawHeaderFooter( bodySectBi, through, ei, dc, page ) )
 	{ LDEB(page); return 1;	}
+
+    if  ( docDrawShapesForPage( ei->eiItem, through, dc, page ) )
+	{ LDEB(page);	}
 
     return 0;
     }
@@ -138,7 +146,7 @@ static int docDrawNoteSeparator(void *			through,
 
     /*  2  */
     if  ( dc->dcClipRect						&&
-	  ! docIntersectRectangle( &drExtern, &drExtern, dc->dcClipRect ) )
+	  ! geoIntersectRectangle( &drExtern, &drExtern, dc->dcClipRect ) )
 	{ return 0;	}
 
     /*  3  */

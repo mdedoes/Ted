@@ -62,7 +62,8 @@ int appGetCoordinatesFromMouseButtonEvent(
 
 	    if  ( w == prevWidget )
 		{
-		if  ( bevent->time- lastTime < multiClickInterval )
+		if  ( bevent->time != lastTime				&&
+		      bevent->time- lastTime < multiClickInterval	)
 		    {
 		    seq++;
 		    if  ( bevent->time- prevTime < 2* multiClickInterval )

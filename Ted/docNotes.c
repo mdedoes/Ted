@@ -1,6 +1,6 @@
 /************************************************************************/
 /*									*/
-/*  Manage fields.							*/
+/*  Manage notes.							*/
 /*									*/
 /************************************************************************/
 
@@ -9,13 +9,11 @@
 #   include	<stdlib.h>
 #   include	<string.h>
 #   include	<stdio.h>
-#   include	<limits.h>
 
 #   include	<appDebugon.h>
 
 #   include	<appUnit.h>
 #   include	"docBuf.h"
-#   include	"docEdit.h"
 
 /************************************************************************/
 /*									*/
@@ -94,12 +92,34 @@ static int docGetNoteIndex(		int *			pFound,
     *pFound= 0; return note;
     }
 
+static void docSetNote(		DocumentNote *	fresh,
+				int		autoNumber,
+				int		sectNr,
+				int		paraNr,
+				int		stroff )
+    {
+    docInitNote( fresh );
+
+    /*  3  */
+    if  ( autoNumber )
+	{ fresh->dnNoteNumber= autoNumber;	}
+    else{ fresh->dnNoteNumber= 0;		}
+
+    fresh->dnSectNr= sectNr;
+    fresh->dnParaNr= paraNr;
+    fresh->dnStroff= stroff;
+    fresh->dnAutoNumber= autoNumber;
+
+    return;
+    }
+
 int docInsertNote(			DocumentNote **		pDn,
 					BufferDocument *	bd,
 					BufferItem *		paraBi,
 					int			stroff,
 					int			autoNumber )
     {
+    int			sectNr;
     int			paraNr;
     int			noteIndex;
     int			found;
@@ -123,6 +143,7 @@ int docInsertNote(			DocumentNote **		pDn,
     sectBi= paraBi;
     while( sectBi && sectBi->biLevel != DOClevSECT )
 	{ sectBi= sectBi->biParent;	}
+    sectNr= sectBi->biNumberInParent;
 
     if  ( ! sectBi )
 	{ XDEB(sectBi); return -1;	}
@@ -138,7 +159,12 @@ int docInsertNote(			DocumentNote **		pDn,
 
     /*  2  */
     if  ( noteIndex > 0 && fresh[noteIndex-1].dnParaNr < 0 )
-	{ noteIndex--;	}
+	{
+	while( noteIndex > 0 && fresh[noteIndex-1].dnParaNr < 0 )
+	    { noteIndex--;	}
+
+	docSetNote( fresh+ noteIndex, autoNumber, sectNr, paraNr, stroff );
+	}
     else{
 	for ( i= bd->bdNoteCount; i > noteIndex; i-- )
 	    {
@@ -150,21 +176,11 @@ int docInsertNote(			DocumentNote **		pDn,
 				    biSectSelectionScope.ssNoteArrayIndex= i;
 		}
 	    }
+
+	docSetNote( fresh+ noteIndex, autoNumber, sectNr, paraNr, stroff );
+
+	bd->bdNoteCount++;
 	}
-
-    docInitNote( fresh+ noteIndex );
-
-    /*  3  */
-    if  ( autoNumber )
-	{ fresh[noteIndex].dnNoteNumber= noteIndex;	}
-    else{ fresh[noteIndex].dnNoteNumber= 0;		}
-
-    fresh[noteIndex].dnSectNr= sectBi->biNumberInParent;
-    fresh[noteIndex].dnParaNr= paraNr;
-    fresh[noteIndex].dnStroff= stroff;
-    fresh[noteIndex].dnAutoNumber= autoNumber;
-
-    bd->bdNoteCount++;
 
     *pDn= fresh+ noteIndex; return noteIndex;
     }
@@ -465,6 +481,12 @@ void docShiftNoteReferences(		BufferDocument *	bd,
     DocumentNote *	dn;
     int			i;
 
+    /*
+    appDebug( "docShiftNoteReferences( ..,"
+		" para:%d+%d, stroff:%d+%d )\n",
+	    paraFrom, paraShift, stroffFrom, stroffShift );
+    */
+
     /*  1  */
     if  ( paraFrom < 1 )
 	{ LDEB(paraFrom); return;	}
@@ -552,6 +574,12 @@ int docMakeNote(	DocumentNote **			pDn,
 
     BufferItem *	noteParaBi;
 
+    int			fieldNr= -1;
+    int			partBegin= -1;
+    int			partEnd= -1;
+    int			stroffBegin= -1;
+    int			stroffEnd= -1;
+
     if  ( paraBi->biInExternalItem != DOCinBODY )
 	{ LDEB(paraBi->biInExternalItem); return -1;	}
 
@@ -581,7 +609,7 @@ int docMakeNote(	DocumentNote **			pDn,
     /*  4  */
     noteParaBi= docMakeExternalparagraph( bd, &(dn->dnExternalItem),
 					paraBi, textAttributeNumberPlain,
-					noteIndex, DOCinFOOTNOTE );
+					noteIndex, extItKind );
     if  ( ! noteParaBi )
 	{ XDEB(noteParaBi); return -1;	}
 
@@ -597,14 +625,16 @@ int docMakeNote(	DocumentNote **			pDn,
     }
 
     /*  5  */
-    if  ( docInsertParaHeadField( noteParaBi, bd,
+    if  ( docInsertParaHeadField( &fieldNr, &partBegin, &partEnd,
+				    &stroffBegin, &stroffEnd,
+				    noteParaBi, bd,
 				    DOCfkCHFTN, textAttributeNumberSuper ) )
 	{ LDEB(1); return -1;	}
 
     /*  6  */
     if  ( docParaStringReplace( &stroffShift, noteParaBi,
-			    noteParaBi->biParaStrlen, noteParaBi->biParaStrlen,
-			    (const unsigned char *)" ", 1 ) )
+					    stroffEnd, stroffEnd,
+					    (const unsigned char *)" ", 1 ) )
 	{ LDEB(noteParaBi->biParaStrlen); return -1; }
 
     tp= docInsertTextParticule( noteParaBi, noteParaBi->biParaParticuleCount,
@@ -633,6 +663,10 @@ int docDeleteNoteOfParticule(		BufferDocument *	bd,
 
     docCleanNote( bd, dn );
     docInitNote( dn );
+
+    while( bd->bdNoteCount > 0					&&
+	   bd->bdNotes[ bd->bdNoteCount- 1].dnParaNr < 0	)
+	{ bd->bdNoteCount--;	}
 
     return 0;
     }
@@ -667,11 +701,19 @@ void docNoteGetTextBefore(	unsigned char *		fixedText,
 				int			stroff )
     {
     int				part;
-    const TextParticule *	tp= paraBi->biParaParticules+ part;
+    const TextParticule *	tp;
+    const int			lastOne= 1;
 
-    if  ( docFindParticule( &part, paraBi, stroff, 1 ) )
+    if  ( docFindParticule( &part, paraBi, stroff, lastOne ) )
 	{ LDEB(stroff); fixedText[0]= '\0'; return;	}
 
+    if  ( part >= paraBi->biParaParticuleCount )
+	{
+	LLDEB(part,paraBi->biParaParticuleCount);
+	part= paraBi->biParaParticuleCount- 1;
+	}
+
+    tp= paraBi->biParaParticules+ part;
     while( part >= 0 )
 	{
 	if  ( tp->tpStroff+ tp->tpStrlen < stroff )
@@ -875,7 +917,7 @@ int docGetSelectedNote(		DocumentNote **			pDn,
 	    {
 	    if  ( ! docIsIBarSelection( ds )		&&
 		  ds->dsBegin.dpStroff != stroffBegin	)
-		{ return 1;	}
+		{ return -1;	}
 	    }
 
 	if  ( fixedTextSize > 0 )
@@ -992,3 +1034,4 @@ int docGetNotePosition(		DocumentPosition *		dp,
 
     return 0;
     }
+

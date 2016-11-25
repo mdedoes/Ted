@@ -41,6 +41,16 @@ const char * appFileExtensionOfName(	const char *	filename )
     else{ return dot+ 1;	}
     }
 
+const char * appRelativeName(	const char *	filename )
+    {
+    const char *	slash;
+
+    slash= strrchr( filename, '/' );
+    if  ( slash )
+	{ return slash+ 1;	}
+    else{ return filename;	}
+    }
+
 /************************************************************************/
 /*									*/
 /*  Translate a file name to an absolute name.				*/

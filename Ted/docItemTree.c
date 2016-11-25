@@ -16,7 +16,7 @@
 #   include	"docBuf.h"
 #   include	"docEdit.h"
 
-#   define	CHECK_ITEMS	0
+#   define	VALIDATE_TREE	0
 
 #if 0
 
@@ -140,7 +140,7 @@ void docCleanItem(	BufferDocument *	bd,
 		}
 
 	    for ( i= 0; i < bi->biParaObjectCount; i++ )
-		{ docCleanObject( bi->biParaObjects+ i ); }
+		{ docCleanObject( bd, bi->biParaObjects+ i ); }
 
 	    if  ( bi->biParaString )
 		{ free( bi->biParaString );	}
@@ -150,8 +150,6 @@ void docCleanItem(	BufferDocument *	bd,
 		{ free( bi->biParaObjects );	}
 	    if  ( bi->biParaLines )
 		{ free( bi->biParaLines );	}
-	    if  ( bi->biParaShapes )
-		{ free( bi->biParaShapes );	}
 
 	    docCleanParagraphProperties( &(bi->biParaProperties) );
 
@@ -225,9 +223,9 @@ void docInitItem(	BufferItem *		bi,
 	    break;
 
 	case DOClevROW:
+	    bi->biRowTableHeaderRow= -1;
 	    bi->biRowTableFirst= -1;
 	    bi->biRowTablePast= -1;
-	    bi->biRowTableFirstIsHeader= 0;
 	    bi->biRowPrecededByHeader= 0;
 
 	    docInitRowProperties( &(bi->biRowProperties) );
@@ -248,9 +246,6 @@ void docInitItem(	BufferItem *		bi,
 
 	    bi->biParaObjectCount= 0;
 	    bi->biParaObjects= (InsertedObject *)0;
-
-	    bi->biParaShapeCount= 0;
-	    bi->biParaShapes= (DrawingShape *)0;
 
 	    bi->biParaAscentTwips= 0;
 	    bi->biParaDescentTwips= 0;
@@ -339,6 +334,34 @@ static void docSetSectHeadFootScopes(		BufferItem *	sectBi )
     return;
     }
 
+/************************************************************************/
+/*									*/
+/*  Paragraphs have been deleted from a group item.			*/
+/*  Administration in the child array has been done. Fix		*/
+/*  biLeftParagraphs in the item itself and its parents.		*/
+/*									*/
+/************************************************************************/
+
+static void docParagraphsDeleted(	BufferItem *	bi,
+					int		paragraphsDeleted )
+    {
+    while( bi->biParent )
+	{
+	int		first;
+	int		f;
+
+	first= bi->biNumberInParent;
+	bi= bi->biParent;
+
+	for ( f= first; f < bi->biChildCount; f++ )
+	    { bi->biChildren[f]->biLeftParagraphs -= paragraphsDeleted;	}
+	}
+
+    bi->biLeftParagraphs -= paragraphsDeleted;
+
+    return;
+    }
+
 /*  1  */
 void docDeleteItems(	BufferDocument *	bd,
 			BufferItem *		bi,
@@ -350,7 +373,7 @@ void docDeleteItems(	BufferDocument *	bd,
     int		c;
     int		paragraphsDeleted= 0;
 
-#   if CHECK_ITEMS
+#   if VALIDATE_TREE
     if  ( docCheckItem( &(bd->bdItem) ) )
 	{ LDEB(2); docListItem( 0, &(bd->bdItem) ); abort(); }
 #   endif
@@ -400,18 +423,9 @@ void docDeleteItems(	BufferDocument *	bd,
 	f++;
 	}
 
-    while( bi->biParent )
-	{
-	first= bi->biNumberInParent;
-	bi= bi->biParent;
+    docParagraphsDeleted( bi, paragraphsDeleted );
 
-	for ( f= first; f < bi->biChildCount; f++ )
-	    { bi->biChildren[f]->biLeftParagraphs -= paragraphsDeleted;	}
-	}
-
-    bi->biLeftParagraphs -= paragraphsDeleted;
-
-#   if CHECK_ITEMS
+#   if VALIDATE_TREE
     if  ( docCheckItem( &(bd->bdItem) ) )
 	{ LDEB(2); docListItem( 0, &(bd->bdItem) ); abort(); }
 #   endif
@@ -430,6 +444,34 @@ void docDeleteItem(	BufferDocument *	bd,
 
 /************************************************************************/
 /*									*/
+/*  Paragraphs have been inserted into a group item.			*/
+/*  Administration in the child array has been done. Fix		*/
+/*  biLeftParagraphs in the item itself and its parents.		*/
+/*									*/
+/************************************************************************/
+
+static void docParagraphsInserted(	BufferItem *	bi,
+					int		paragraphsInserted )
+    {
+    while( bi->biParent )
+	{
+	int		first;
+	int		f;
+
+	first= bi->biNumberInParent;
+	bi= bi->biParent;
+
+	for ( f= first; f < bi->biChildCount; f++ )
+	    { bi->biChildren[f]->biLeftParagraphs += paragraphsInserted; }
+	}
+
+    bi->biLeftParagraphs += paragraphsInserted;
+
+    return;
+    }
+
+/************************************************************************/
+/*									*/
 /*  Add a new child to a parent.					*/
 /*									*/
 /************************************************************************/
@@ -437,7 +479,7 @@ void docDeleteItem(	BufferDocument *	bd,
 BufferItem * docInsertItem(	const BufferDocument *	bd,
 				BufferItem *		parent,
 				int			n,
-				ItemLevel		level	)
+				ItemLevel		level )
     {
     int			i;
 
@@ -445,8 +487,11 @@ BufferItem * docInsertItem(	const BufferDocument *	bd,
 
     BufferItem **	freshChildren;
     BufferItem *	bi;
+    BufferItem *	rowBi;
 
-#   if CHECK_ITEMS
+    int			paragraphsInserted;
+
+#   if VALIDATE_TREE
     if  ( docCheckItem( &(bd->bdItem) ) )
 	{ LDEB(2); docListItem( 0, &(bd->bdItem) ); abort(); }
 #   endif
@@ -468,6 +513,9 @@ BufferItem * docInsertItem(	const BufferDocument *	bd,
 	default:
 	    LDEB(parent->biLevel); return (BufferItem *)0;
 	}
+
+    if  ( n == -1 )
+	{ n= parent->biChildCount;	}
 
     newSize= parent->biChildCount;
 
@@ -516,24 +564,24 @@ BufferItem * docInsertItem(	const BufferDocument *	bd,
 	return bi;
 	}
 
+    paragraphsInserted= 1;
+
+    rowBi= bi;
+    while( rowBi && rowBi->biLevel != DOClevROW )
+	{ rowBi= rowBi->biParent;	}
+    if  ( ! rowBi )
+	{ XDEB(rowBi);						}
+    else{ bi->biParaInTable= rowBi->biRowHasTableParagraphs;	}
+
     if  ( n > 0 )
 	{ bi->biLeftParagraphs= freshChildren[n-1]->biLeftParagraphs; }
 
     for ( i= n; i < parent->biChildCount; i++ )
-	{ parent->biChildren[i]->biLeftParagraphs++;	}
+	{ parent->biChildren[i]->biLeftParagraphs += paragraphsInserted; }
 
-    while( parent->biParent )
-	{
-	n= parent->biNumberInParent;
-	parent= parent->biParent;
+    docParagraphsInserted( parent, paragraphsInserted );
 
-	for ( i= n; i < parent->biChildCount; i++ )
-	    { parent->biChildren[i]->biLeftParagraphs++;	}
-	}
-
-    parent->biLeftParagraphs++;
-
-#   if CHECK_ITEMS
+#   if VALIDATE_TREE
     if  ( docCheckItem( &(bd->bdItem) ) )
 	{ LDEB(2); docListItem( 0, &(bd->bdItem) ); abort(); }
 #   endif
@@ -596,10 +644,19 @@ BufferItem * docInsertEmptyParagraph(
 /*									*/
 /*  Copy a paragraph to make a new one.					*/
 /*									*/
+/*  1)  Copy paragraph item.						*/
+/*  2)  Open a hole in references to the item to possibly receive some	*/
+/*	to the fresh item.						*/
+/*  3)  Do not copy a possible list text field from the original.	*/
+/*  4)  Copy the contents of the original or insert a dummy particule.	*/
+/*  5)  Finally adapt the properties of the target paragraph to those	*/
+/*	of the original.						*/
+/*									*/
 /************************************************************************/
 
 BufferItem * docCopyParaItem(	DocumentCopyJob *	dcj,
 				EditOperation *		eo,
+				const SelectionScope *	ssRoot,
 				BufferItem *		biCellTo,
 				int			n,
 				BufferItem *		biParaFrom,
@@ -616,18 +673,27 @@ BufferItem * docCopyParaItem(	DocumentCopyJob *	dcj,
     PropertyMask	ppChgMask;
     PropertyMask	ppUpdMask;
 
+    /*  1  */
     biParaTo= docInsertItem( dcj->dcjBdTo, biCellTo, n, DOClevPARA );
     if  ( ! biParaTo )
 	{ XDEB(biParaTo); return biParaTo;	}
 
     biParaTo->biParaInTable= inTable;
 
-    PROPmaskCLEAR( &ppChgMask );
+    /*  2  */
+    {
+    int		paraNr;
+    const int	stroff= 0;
+    const int	sectShift= 0;
+    const int	paraShift= 1;
 
-    PROPmaskCLEAR( &ppUpdMask );
-    PROPmaskFILL( &ppUpdMask, PPprop_COUNT );
-    PROPmaskUNSET( &ppUpdMask, PPpropIN_TABLE );
+    paraNr= docNumberOfParagraph( biParaTo );
 
+    docEditShiftReferences( eo, ssRoot, paraNr, stroff,
+				sectShift, paraShift, -stroff );
+    }
+
+    /*  3  */
     if  ( biParaFrom->biParaListOverride > 0 )
 	{
 	int		bulletFieldNr= -1;
@@ -646,6 +712,7 @@ BufferItem * docCopyParaItem(	DocumentCopyJob *	dcj,
 	    { partFrom= bulletPartEnd+ 1;	}
 	}
 
+    /*  4  */
     if  ( partFrom < biParaFrom->biParaParticuleCount )
 	{
 	if  ( docCopyParticules( dcj, eo, biParaTo, biParaFrom, partTo,
@@ -677,6 +744,13 @@ BufferItem * docCopyParaItem(	DocumentCopyJob *	dcj,
 	biParaTo->biParaString[biParaTo->biParaStrlen]= '\0';
 	}
 
+    /*  5  */
+    PROPmaskCLEAR( &ppChgMask );
+
+    PROPmaskCLEAR( &ppUpdMask );
+    utilPropMaskFill( &ppUpdMask, PPprop_COUNT );
+    PROPmaskUNSET( &ppUpdMask, PPpropIN_TABLE );
+
     if  ( docEditUpdParaProperties( eo, &ppChgMask, biParaTo,
 				&ppUpdMask, &(biParaFrom->biParaProperties),
 				dcj->dcjColorMap, dcj->dcjListStyleMap ) )
@@ -690,7 +764,7 @@ BufferItem * docCopyParaItem(	DocumentCopyJob *	dcj,
 
 BufferItem * docCopyRowItem(	DocumentCopyJob *	dcj,
 				EditOperation *		eo,
-				int *			pParasCopied,
+				const SelectionScope *	ssRoot,
 				BufferItem *		sectBiTo,
 				int			n,
 				BufferItem *		rowBiFrom,
@@ -698,7 +772,6 @@ BufferItem * docCopyRowItem(	DocumentCopyJob *	dcj,
     {
     BufferItem *	biRowTo;
     int			col;
-    int			parasCopied= 0;
 
     biRowTo= docInsertItem( dcj->dcjBdTo, sectBiTo, n, DOClevROW );
     if  ( ! biRowTo )
@@ -724,34 +797,33 @@ BufferItem * docCopyRowItem(	DocumentCopyJob *	dcj,
 	    {
 	    BufferItem *	biParaFrom= biCellFrom->biChildren[para];
 
-	    if  ( ! docCopyParaItem( dcj, eo,
+	    if  ( ! docCopyParaItem( dcj, eo, ssRoot,
 				    biCellTo, para, biParaFrom, inTable ) )
 		{ LDEB(para); return (BufferItem *)0;	}
-
-	    parasCopied++;
 	    }
 	}
 
-    *pParasCopied= parasCopied;
     return biRowTo;
     }
 
 BufferItem * docCopySectItem(	DocumentCopyJob *	dcj,
 				EditOperation *		eo,
+				const SelectionScope *	ssRoot,
 				BufferItem *		parentBiTo,
 				int			n,
-				BufferItem *		biSectFrom,
-				const SelectionScope *	ss )
+				BufferItem *		biSectFrom )
     {
     BufferItem *		sectBiTo;
     int				row;
 
+    DocumentPosition		dp;
+
     if  ( parentBiTo )
 	{
-	if  ( parentBiTo->biInExternalItem != ss->ssInExternalItem )
+	if  ( parentBiTo->biInExternalItem != ssRoot->ssInExternalItem )
 	    {
 	    LDEB(parentBiTo->biInExternalItem);
-	    LDEB(ss->ssInExternalItem);
+	    LDEB(ssRoot->ssInExternalItem);
 	    return (BufferItem *)0;
 	    }
 
@@ -767,10 +839,10 @@ BufferItem * docCopySectItem(	DocumentCopyJob *	dcj,
 	    { XDEB(sectBiTo); return (BufferItem *)0;	}
 
 	docInitItem( sectBiTo, (BufferItem *)0, dcj->dcjBdTo, n,
-				DOClevSECT, ss->ssInExternalItem );
+				DOClevSECT, ssRoot->ssInExternalItem );
 	}
 
-    sectBiTo->biSectSelectionScope= *ss;
+    sectBiTo->biSectSelectionScope= *ssRoot;
 
     if  ( docCopySectionProperties( &(sectBiTo->biSectProperties),
 					&(biSectFrom->biSectProperties) ) )
@@ -784,9 +856,8 @@ BufferItem * docCopySectItem(	DocumentCopyJob *	dcj,
 	{
 	BufferItem *	rowBiFrom= biSectFrom->biChildren[row];
 	BufferItem *	rowBiTo;
-	int		parasCopied;
 
-	rowBiTo= docCopyRowItem( dcj, eo, &parasCopied,
+	rowBiTo= docCopyRowItem( dcj, eo, ssRoot,
 					sectBiTo, row, rowBiFrom,
 					rowBiFrom->biRowHasTableParagraphs );
 	if  ( ! rowBiTo )
@@ -795,6 +866,20 @@ BufferItem * docCopySectItem(	DocumentCopyJob *	dcj,
 	    docDeleteItem( dcj->dcjBdTo, sectBiTo );
 	    return (BufferItem *)0;
 	    }
+	}
+
+    if  ( docLastPosition( &dp, sectBiTo ) )
+	{ LDEB(1);	}
+    else{
+	int		paraNr;
+	const int	stroff= 0;
+	const int	sectShift= 1;
+	const int	paraShift= 0;
+
+	paraNr= docNumberOfParagraph( dp.dpBi )+ 1;
+
+	docEditShiftReferences( eo, ssRoot, paraNr, stroff,
+				    sectShift, paraShift, -stroff );
 	}
 
     return sectBiTo;
@@ -889,7 +974,11 @@ int docCopyRowColumnAttributes(	BufferItem *		rowBi,
 	PROPmaskCLEAR( &ppChgMask );
 
 	PROPmaskCLEAR( &ppUpdMask );
-	PROPmaskFILL( &ppUpdMask, PPprop_COUNT );
+	utilPropMaskFill( &ppUpdMask, PPprop_COUNT );
+
+	PROPmaskUNSET( &ppUpdMask, PPpropLISTOVERRIDE );
+	PROPmaskUNSET( &ppUpdMask, PPpropOUTLINELEVEL );
+	PROPmaskUNSET( &ppUpdMask, PPpropLISTLEVEL );
 
 	if  ( docUpdParaProperties( &ppChgMask, &(dp.dpBi->biParaProperties),
 				&ppUpdMask, &(dpRef.dpBi->biParaProperties),
@@ -984,7 +1073,7 @@ static int docSplitGroupItemLow(	const BufferDocument *	bd,
     prev= 0;
     for ( i= 0; i < oldBi->biChildCount; i++ )
 	{
-	BufferItem *	child= oldBi->biChildren[i+ n];;
+	BufferItem *	child= oldBi->biChildren[i+ n];
 
 	oldBi->biChildren[i]= child;
 	child->biNumberInParent -= n;
@@ -1015,7 +1104,7 @@ int docSplitGroupItem(	const BufferDocument *	bd,
     BufferItem *	newBi= (BufferItem *)0;
     BufferItem *	splitBi;
 
-#   if CHECK_ITEMS
+#   if VALIDATE_TREE
     SDEB(docLevelStr(parentBi->biLevel));
     if  ( docCheckItem( &(bd->bdItem) ) )
 	{ LDEB(2); docListItem( 0, &(bd->bdItem) ); abort(); }
@@ -1035,24 +1124,20 @@ int docSplitGroupItem(	const BufferDocument *	bd,
 
     for (;;)
 	{
-	/*
-	oldBi= parentBi->biChildren[n];
-	*/
-
 	if  ( n > 0 || parentBi->biLevel == level )
 	    {
 	    if  ( docSplitGroupItemLow( bd, &newBi, parentBi, n ) )
 		{ LDEB(n); return -1;	}
-	    }
 
-	if  ( parentBi->biLevel == level )
-	    { break;	}
+	    if  ( parentBi->biLevel == level )
+		{ break;	}
+	    }
 
 	n= parentBi->biNumberInParent;
 	parentBi= parentBi->biParent;
 	}
 
-#   if CHECK_ITEMS
+#   if VALIDATE_TREE
     SDEB(docLevelStr(parentBi->biLevel));
     if  ( docCheckItem( &(bd->bdItem) ) )
 	{ LDEB(2); docListItem( 0, &(bd->bdItem) ); abort(); }
@@ -1060,6 +1145,88 @@ int docSplitGroupItem(	const BufferDocument *	bd,
 
     *pNewBi= newBi;
     *pParentBi= parentBi;
+    return 0;
+    }
+
+int docMergeGroupItems(		BufferItem *	to,
+				BufferItem *	from )
+    {
+    BufferItem **	freshChildren;
+    int			f;
+    int			t;
+    int			left;
+    int			prev;
+    int			paragraphsMoved;
+
+    if  ( to == from )
+	{ XXDEB(to,from); return -1;	}
+    if  ( to->biLevel != from->biLevel )
+	{ LLDEB(to->biLevel,from->biLevel); return -1;	}
+
+    if  ( from->biChildCount == 0 )
+	{ return 0;	}
+
+#   if VALIDATE_TREE
+    SSDEB(docLevelStr(to->biLevel),docLevelStr(from->biLevel));
+    if  ( docCheckRootItem( to ) )
+	{ LDEB(2); docListRootItem( 0, to ); abort(); }
+    if  ( docCheckRootItem( from ) )
+	{ LDEB(2); docListRootItem( 0, from ); abort(); }
+#   endif
+
+    freshChildren= realloc( to->biChildren,
+	    ( to->biChildCount+ from->biChildCount )* sizeof(BufferItem *) );
+    if  ( ! freshChildren )
+	{
+	LLXDEB(to->biChildCount,from->biChildCount,freshChildren);
+	return -1;
+	}
+    to->biChildren= freshChildren;
+
+    if  ( from->biParent && from->biNumberInParent > 0 )
+	{
+	BufferItem *	prevBi;
+
+	prevBi= from->biParent->biChildren[from->biNumberInParent- 1];
+	paragraphsMoved= from->biLeftParagraphs- prevBi->biLeftParagraphs;
+	}
+    else{
+	paragraphsMoved= from->biLeftParagraphs;
+	}
+
+    t= to->biChildCount;
+    left= to->biLeftParagraphs; prev= 0;
+    for ( f= 0; f < from->biChildCount; t++, f++ )
+	{
+	int	count;
+
+	freshChildren[t]= from->biChildren[f];
+	freshChildren[t]->biParent= to;
+	freshChildren[t]->biNumberInParent= t;
+
+	count= freshChildren[t]->biLeftParagraphs- prev;
+	prev= freshChildren[t]->biLeftParagraphs;
+	left += count;
+	freshChildren[t]->biLeftParagraphs= left;
+
+	if  ( freshChildren[t]->biLevel == DOClevSECT )
+	    { docSetSectHeadFootScopes( freshChildren[t] ); }
+	}
+
+    to->biChildCount += from->biChildCount;
+    from->biChildCount= 0;
+
+    docParagraphsInserted( to, paragraphsMoved );
+    docParagraphsDeleted( from, paragraphsMoved );
+
+#   if VALIDATE_TREE
+    SSDEB(docLevelStr(to->biLevel),docLevelStr(from->biLevel));
+    if  ( docCheckRootItem( to ) )
+	{ LDEB(2); docListRootItem( 0, to ); abort(); }
+    if  ( docCheckRootItem( from ) )
+	{ LDEB(2); docListRootItem( 0, from ); abort(); }
+#   endif
+
     return 0;
     }
 
@@ -1096,7 +1263,7 @@ int docNumberOfParagraph(	const BufferItem *	bi )
     }
 
 BufferItem * docGetParagraphByNumber(	BufferItem *	bi,
-					int		n )
+					int		paraNr )
     {
     if  ( bi->biParent )
 	{ XDEB(bi->biParent); return (BufferItem *)0;	}
@@ -1107,18 +1274,18 @@ BufferItem * docGetParagraphByNumber(	BufferItem *	bi,
 
 	for ( i= 0; i < bi->biChildCount; i++ )
 	    {
-	    if  ( bi->biChildren[i]->biLeftParagraphs >= n )
+	    if  ( bi->biChildren[i]->biLeftParagraphs >= paraNr )
 		{ break;	}
 	    }
 
 	if  ( i >= bi->biChildCount )
 	    {
-	    LLSDEB(n,bi->biChildCount,docLevelStr(bi->biLevel));
+	    /* LLSDEB(paraNr,bi->biChildCount,docLevelStr(bi->biLevel)); */
 	    return (BufferItem *)0;
 	    }
 
 	if  ( i > 0 )
-	    { n -= bi->biChildren[i-1]->biLeftParagraphs;	}
+	    { paraNr -= bi->biChildren[i-1]->biLeftParagraphs;	}
 
 	bi= bi->biChildren[i];
 	}
@@ -1126,8 +1293,8 @@ BufferItem * docGetParagraphByNumber(	BufferItem *	bi,
     if  ( bi->biLevel != DOClevPARA )
 	{ SDEB(docLevelStr(bi->biLevel)); return (BufferItem *)0;	}
 
-    if  ( n != 1 )
-	{ LDEB(n); return (BufferItem *)0; }
+    if  ( paraNr != 1 )
+	{ LDEB(paraNr); return (BufferItem *)0; }
 
     return bi;
     }

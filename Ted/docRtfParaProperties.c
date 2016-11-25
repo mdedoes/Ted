@@ -138,9 +138,6 @@ void docRtfSaveParagraphProperties( SimpleOutputStream *	sos,
     if  ( PROPmaskISSET( updMask, PPpropRIGHT_BORDER ) )
 	{ docRtfSaveBorder( "\\brdrr", pCol, &(pp->ppRightBorder), sos ); }
 
-    if  ( PROPmaskISSET( updMask, PPpropBOX_BORDER ) )
-	{ docRtfSaveBorder( "\\box", pCol, &(pp->ppBoxBorder), sos ); }
-
     if  ( PROPmaskISSET( updMask, PPpropBETWEEN_BORDER ) )
 	{ docRtfSaveBorder( "\\brdrbtw", pCol, &(pp->ppBetweenBorder), sos ); }
 
@@ -330,7 +327,10 @@ int docRtfRememberParagraphProperty(	SimpleInputStream *	sis,
 	    break;
 
 	case PPpropBOX_BORDER:
-	    pp->ppBoxBorder= rrc->rrcBorderProperties;
+	    pp->ppTopBorder= rrc->rrcBorderProperties;
+	    pp->ppBottomBorder= rrc->rrcBorderProperties;
+	    pp->ppLeftBorder= rrc->rrcBorderProperties;
+	    pp->ppRightBorder= rrc->rrcBorderProperties;
 	    docInitBorderProperties( &(rrc->rrcBorderProperties) );
 	    break;
 

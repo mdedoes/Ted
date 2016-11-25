@@ -49,6 +49,11 @@ extern int tedEditFinishOldSelection(
 				EditDocument *			ed,
 				EditOperation *			eo );
 
+extern int tedEditFinishEndOfInsert(
+				EditDocument *			ed,
+				EditOperation *			eo,
+				int				lastLine );
+
 extern void tedAdjustRedrawBegin(	EditDocument *		ed,
 					EditOperation *		eo,
 					int *			pLine );
@@ -59,13 +64,12 @@ extern int tedEditReplaceSelection(	EditOperation *		eo,
 					const unsigned char *	addedText,
 					int			addedLength );
 
-extern int tedSplitParaContents(	EditOperation *		eo,
-					BufferItem **		pNewBi,
-					BufferItem *		bi,
-					int			stroff,
-					EditDocument *		ed,
-					int			splitLevel,
-					int			onNewPage );
+extern int tedSplitParaContents(EditOperation *			eo,
+				BufferItem **			pNewBi,
+				const DocumentPosition *	dp,
+				EditDocument *			ed,
+				int				splitLevel,
+				int				onNewPage );
 
 extern int tedEditIncludeItemInRedraw(	EditOperation *		eo,
 					EditDocument *		ed,
@@ -94,5 +98,13 @@ extern int tedOpenParaScreenFonts( BufferDocument *		bd,
 				BufferItem *			paraBi,
 				int				partFrom,
 				int				partUpto );
+
+extern int tedSectionParagraph(
+			EditOperation *			eo,
+			BufferItem **			pParaBi,
+			BufferItem *			sectBi,
+			int				sectShift,
+			const ParagraphProperties *	pp,
+			int				textAttributeNumber );
 
 #   endif	/*	TED_EDIT_H	*/

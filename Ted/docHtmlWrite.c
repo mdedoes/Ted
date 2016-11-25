@@ -55,7 +55,6 @@ typedef struct HtmlWritingContext
 
     int				hwcBaselength;
     int				hwcRelativeOffset;
-    int				hwcUseTableForFirstIndent;
     int				hwcInHyperlink;
     int				hwcInBookmark;
     int				hwcInPageref;
@@ -65,15 +64,15 @@ typedef struct HtmlWritingContext
 
     int				hwcColumn;
 
-    int				hwcMakeTransparentGif;
     int				hwcImageCount;
     int				hwcNoteRefCount;
     int				hwcNoteDefCount;
 
     char *			hwcNameScratch;
+    int				hwcWriteImageFromObjectData;
     bmWriteBitmap		hwcWriteThisBitmap;
 
-    char			hwcImageEncoding[40+1];
+    char			hwcImageMimeType[40+1];
     char			hwcContentIdTail[IDlenTAIL+1];
 
     int				hwcCurrentAttributeNumber;
@@ -91,7 +90,6 @@ static void docInitHtmlWritingContext(	HtmlWritingContext *	hwc )
 
     hwc->hwcBaselength= 0;
     hwc->hwcRelativeOffset= 0;
-    hwc->hwcUseTableForFirstIndent= 0;
     hwc->hwcInHyperlink= 0;
     hwc->hwcInBookmark= 0;
     hwc->hwcInPageref= 0;
@@ -105,15 +103,15 @@ static void docInitHtmlWritingContext(	HtmlWritingContext *	hwc )
 
     hwc->hwcColumn= 0;
 
-    hwc->hwcMakeTransparentGif= 0;
     hwc->hwcImageCount= 0;
     hwc->hwcNoteRefCount= 0;
     hwc->hwcNoteDefCount= 0;
 
     hwc->hwcNameScratch= (char *)0;
+    hwc->hwcWriteImageFromObjectData= 0;
     hwc->hwcWriteThisBitmap= (bmWriteBitmap)0;
 
-    hwc->hwcImageEncoding[0]= '\0';
+    hwc->hwcImageMimeType[0]= '\0';
     hwc->hwcContentIdTail[0]= '\0';
 
     hwc->hwcCurrentAttributeNumber= -1;
@@ -137,45 +135,21 @@ static void docCleanHtmlWritingContext(	HtmlWritingContext *	hwc )
 /*									*/
 /************************************************************************/
 
-static int	docHtmlMakeNameForIndent(	HtmlWritingContext *	hwc )
+static void docHtmlSetImageNameAndType(	HtmlWritingContext *		hwc,
+					const PictureProperties *	pip,
+					const char *			ext,
+					const char *			mime )
     {
-    char *		fresh;
-
-    fresh= (char *)realloc( hwc->hwcNameScratch, hwc->hwcBaselength+ 50 );
-    if  ( ! fresh )
-	{ XDEB(fresh); return -1;  }
-    hwc->hwcNameScratch= fresh;
-
-#   if  USE_PNG
     if  ( hwc->hwcAsMimeAggregate || hwc->hwcBaselength == 0 )
-	{ sprintf( hwc->hwcNameScratch, "transp.png" );	}
+	{ sprintf( hwc->hwcNameScratch, "%08lx.%s", pip->pipBliptag, ext ); }
     else{
-	sprintf( hwc->hwcNameScratch, "%.*s.img/transp.png",
-				    hwc->hwcBaselength, hwc->hwcFilename );
+	sprintf( hwc->hwcNameScratch, "%.*s.img/%08lx.%s",
+		hwc->hwcBaselength, hwc->hwcFilename, pip->pipBliptag, ext );
 	}
 
-    strcpy( hwc->hwcImageEncoding, "image/png" );
-    hwc->hwcWriteThisBitmap= bmPngWritePng;
+    strcpy( hwc->hwcImageMimeType, mime );
 
-    return 0;
-#   endif
-
-#   if  USE_GIF
-    if  ( hwc->hwcAsMimeAggregate || hwc->hwcBaselength == 0 )
-	{ sprintf( hwc->hwcNameScratch, "transp.gif" );	}
-    else{
-	sprintf( hwc->hwcNameScratch, "%.*s.img/transp.gif",
-				    hwc->hwcBaselength, hwc->hwcFilename );
-	}
-
-    strcpy( hwc->hwcImageEncoding, "image/gif" );
-    hwc->hwcWriteThisBitmap= bmGifWriteGif;
-    return 0;
-#   endif
-
-#   if ! USE_PNG && ! USE_GIF
-    LDEB(1); return -1;
-#   endif
+    return;
     }
 
 static int docHtmlMakeNameForImage(	HtmlWritingContext *	hwc,
@@ -185,13 +159,7 @@ static int docHtmlMakeNameForImage(	HtmlWritingContext *	hwc,
     AppBitmapImage *	abi;
     int			siz;
 
-    abi= (AppBitmapImage *)io->ioPrivate;
-    if  ( ! abi )
-	{ return 1;	}
-
-    if  ( bmCanWriteGifFile( &abi->abiBitmap, 89, 10.0 )	&&
-	  bmCanWriteJpegFile( &abi->abiBitmap, 0, 10.0 )	)
-	{ return 1;	}
+    PictureProperties *	pip= &(io->ioPictureProperties);
 
     siz= hwc->hwcBaselength+ 50;
     fresh= (char *)realloc( hwc->hwcNameScratch, siz+ 1 );
@@ -199,51 +167,57 @@ static int docHtmlMakeNameForImage(	HtmlWritingContext *	hwc,
 	{ LXDEB(siz,fresh); return -1;  }
     hwc->hwcNameScratch= fresh;
 
-    if  ( io->ioBliptag == 0 )
-	{ io->ioBliptag= appGetTimestamp();	}
+    if  ( pip->pipBliptag == 0 )
+	{ pip->pipBliptag= appGetTimestamp();	}
+
+    abi= (AppBitmapImage *)io->ioPrivate;
+    if  ( ! abi )
+	{ return 1;	}
+
+    if  ( io->ioKind == DOCokPICTJPEGBLIP )
+	{
+	docHtmlSetImageNameAndType( hwc, pip, "jpg", "image/jpeg" );
+	hwc->hwcWriteImageFromObjectData= 1;
+	hwc->hwcWriteThisBitmap= bmJpegWriteJfif; /* ignored */
+	return 0;
+	}
+
+    if  ( io->ioKind == DOCokPICTPNGBLIP )
+	{
+	docHtmlSetImageNameAndType( hwc, pip, "png", "image/png" );
+	hwc->hwcWriteImageFromObjectData= 1;
+	hwc->hwcWriteThisBitmap= bmPngWritePng; /* ignored */
+	return 0;
+	}
+
+    if  ( bmCanWriteGifFile( &(abi->abiBitmap), 89, 10.0 )	&&
+	  bmCanWriteJpegFile( &(abi->abiBitmap), 0, 10.0 )	)
+	{ return 1;	}
 
 #   if  USE_PNG
     if  ( abi->abiBitmap.bdColorEncoding == BMcoRGB8PALETTE )
 	{
-	if  ( hwc->hwcAsMimeAggregate || hwc->hwcBaselength == 0 )
-	    { sprintf( hwc->hwcNameScratch, "%08x.png", io->ioBliptag ); }
-	else{
-	    sprintf( hwc->hwcNameScratch, "%.*s.img/%08x.png",
-			hwc->hwcBaselength, hwc->hwcFilename, io->ioBliptag );
-	    }
-
-	strcpy( hwc->hwcImageEncoding, "image/png" );
+	docHtmlSetImageNameAndType( hwc, pip, "png", "image/png" );
+	hwc->hwcWriteImageFromObjectData= 0;
 	hwc->hwcWriteThisBitmap= bmPngWritePng;
 	return 0;
 	}
 #   endif
 
 #   if  USE_GIF
-    if  ( ! bmCanWriteGifFile( &abi->abiBitmap, 89, 10.0 ) )
+    if  ( ! bmCanWriteGifFile( &(abi->abiBitmap), 89, 10.0 ) )
 	{
-	if  ( hwc->hwcAsMimeAggregate || hwc->hwcBaselength == 0 )
-	    { sprintf( hwc->hwcNameScratch, "%08x.gif", io->ioBliptag ); }
-	else{
-	    sprintf( hwc->hwcNameScratch, "%.*s.img/%08x.gif",
-			hwc->hwcBaselength, hwc->hwcFilename, io->ioBliptag );
-	    }
-
-	strcpy( hwc->hwcImageEncoding, "image/gif" );
+	docHtmlSetImageNameAndType( hwc, pip, "gif", "image/gif" );
+	hwc->hwcWriteImageFromObjectData= 0;
 	hwc->hwcWriteThisBitmap= bmGifWriteGif;
 	return 0;
 	}
 #   endif
 
-    if  ( ! bmCanWriteJpegFile( &abi->abiBitmap, 89, 10.0 ) )
+    if  ( ! bmCanWriteJpegFile( &(abi->abiBitmap), 0, 10.0 ) )
 	{
-	if  ( hwc->hwcAsMimeAggregate || hwc->hwcBaselength == 0 )
-	    { sprintf( hwc->hwcNameScratch, "%08x.jpg", io->ioBliptag ); }
-	else{
-	    sprintf( hwc->hwcNameScratch, "%.*s.img/%08x.jpg",
-			hwc->hwcBaselength, hwc->hwcFilename, io->ioBliptag );
-	    }
-
-	strcpy( hwc->hwcImageEncoding, "image/jpeg" );
+	docHtmlSetImageNameAndType( hwc, pip, "jpg", "image/jpeg" );
+	hwc->hwcWriteImageFromObjectData= 0;
 	hwc->hwcWriteThisBitmap= bmJpegWriteJfif;
 	return 0;
 	}
@@ -380,17 +354,6 @@ static int docHtmlFontSize(	int	halfPoints )
     }
 # endif
 
-static void docHtmlFinishGroup(		HtmlWritingContext *	hwc )
-    {
-    if  ( hwc->hwcUseTableForFirstIndent )
-	{
-	docHtmlPutString( "</TABLE>", hwc );
-	docHtmlNewLine( hwc );
-
-	hwc->hwcUseTableForFirstIndent= 0;
-	}
-    }
-
 /************************************************************************/
 /*									*/
 /*  Translate an RTF font designation to an HTML/CSS1 style one.	*/
@@ -499,7 +462,7 @@ static void docHtmlChangeAttributes(	HtmlWritingContext *		hwc,
 
     if  ( hwc->hwcCurrentAttributeNumber >= 0 )
 	{
-	docHtmlPutString( "</FONT>", hwc );
+	docHtmlPutString( "</SPAN>", hwc );
 	}
 
     if  ( taNr >= 0 )
@@ -508,7 +471,7 @@ static void docHtmlChangeAttributes(	HtmlWritingContext *		hwc,
 
 	sprintf( scratch, "t%d", taNr );
 
-	docHtmlPutString( "<FONT", hwc );
+	docHtmlPutString( "<SPAN", hwc );
 	docHtmlWriteTagStringArg( "CLASS", scratch, hwc );
 	docHtmlPutString( ">", hwc );
 	}
@@ -584,8 +547,8 @@ static int docHtmlSavePicture(	InsertedObject *	io,
     if  ( res > 0 )
 	{ return 0;	}
 
-    w= TWIPS_TO_SIZE( ( io->ioScaleX* io->ioTwipsWide )/100 );
-    h= TWIPS_TO_SIZE( ( io->ioScaleY* io->ioTwipsHigh )/100 );
+    w= TWIPS_TO_SIZE( ( io->ioScaleXSet* io->ioTwipsWide )/100 );
+    h= TWIPS_TO_SIZE( ( io->ioScaleYSet* io->ioTwipsHigh )/100 );
 
     d= ( 100* bd->bdPixelsWide- 100* w )/ bd->bdPixelsWide;
     if  ( d < 0 )
@@ -909,9 +872,7 @@ static int docHtmlSaveParticules( const BufferItem *		bi,
 			io->ioKind == DOCokPICTJPEGBLIP			||
 			io->ioKind == DOCokMACPICT			||
 		      ( io->ioKind == DOCokOLEOBJECT 		&&
-		        io->ioResultKind == DOCokPICTWMETAFILE	)	||
-		      ( io->ioKind == DOCokINCLUDEPICTURE 	&&
-		        io->ioResultKind == DOCokBITMAP_FILE	)	)
+		        io->ioResultKind == DOCokPICTWMETAFILE	)	)
 		    {
 		    if  ( docHtmlSavePicture( io, &pictureDone, hwc ) )
 			{ XDEB(io);	}
@@ -1027,17 +988,156 @@ static int docHtmlSaveParticules( const BufferItem *		bi,
 /*									*/
 /************************************************************************/
 
-static void docHtmlStartParagraphBody(	const BufferItem *	bi,
+static void docHtmlEmitBorderStyle(
+			    const char *		whatBorder,
+			    const BorderProperties *	bp,
+			    HtmlWritingContext *	hwc )
+    {
+    SimpleOutputStream *	sos= hwc->hwcSos;
+
+    docHtmlPutString( whatBorder, hwc );
+    sioOutPutCharacter( ':', sos ); hwc->hwcColumn++;
+
+    /* width */
+    sioOutPrintf( sos, " %dpt", ( bp->bpPenWideTwips+ 10 )/ 20 );
+    hwc->hwcColumn += 5;
+
+    /* style */
+    docHtmlPutString( " solid", hwc );
+
+    /* color */
+    if  ( bp->bpColor == 0 )
+	{
+	docHtmlPutString( " inherit", hwc );
+	}
+    else{
+	const BufferDocument *		bd= hwc->hwcBd;
+	const DocumentProperties *	dp= &(bd->bdProperties);
+
+	const RGB8Color *		rgb8= dp->dpColors+ bp->bpColor;
+
+	char				scratch[30];
+
+	sprintf( scratch, " #%02x%02x%02x",
+					rgb8->rgb8Red,
+					rgb8->rgb8Green,
+					rgb8->rgb8Blue );
+
+	docHtmlPutString( scratch, hwc );
+	}
+
+    sioOutPutCharacter( ';', sos ); hwc->hwcColumn++;
+
+    return;
+    }
+
+static void docHtmlEmitBackgroundProperty(
+				const ItemShading *		is,
+				HtmlWritingContext *		hwc )
+    {
+    const BufferDocument *	bd= hwc->hwcBd;
+
+    int				isSolid= 0;
+    int				r= 0;
+    int				g= 0;
+    int				b= 0;
+
+    char			scratch[39];
+
+    if  ( docGetSolidRgbShadeOfItem( &isSolid, &r, &g, &b, bd, is ) )
+	{ LDEB(1);	}
+
+    if  ( isSolid )
+	{
+	sprintf( scratch, "\"#%02x%02x%02x\"", r, g, b );
+
+	docHtmlWriteTagStringArg( "BGCOLOR", scratch, hwc );
+	}
+
+    return;
+    }
+
+static int docHtmlUseBackgroundStyle( 
+				const ItemShading *		is,
+				HtmlWritingContext *		hwc )
+    {
+    const BufferDocument *	bd= hwc->hwcBd;
+
+    int				isSolid= 0;
+    int				r= 0;
+    int				g= 0;
+    int				b= 0;
+
+    if  ( docGetSolidRgbShadeOfItem( &isSolid, &r, &g, &b, bd, is ) )
+	{ LDEB(1);	}
+
+    if  ( isSolid )
+	{ return 1;	}
+
+    return 0;
+    }
+
+static void docHtmlEmitBackgroundStyle(
+				const ItemShading *		is,
+				HtmlWritingContext *		hwc )
+    {
+    const BufferDocument *	bd= hwc->hwcBd;
+
+    int				isSolid= 0;
+    int				r= 0;
+    int				g= 0;
+    int				b= 0;
+
+    char			scratch[50];
+
+    if  ( docGetSolidRgbShadeOfItem( &isSolid, &r, &g, &b, bd, is ) )
+	{ LDEB(1);	}
+
+    if  ( isSolid )
+	{
+	sprintf( scratch, "background-color: #%02x%02x%02x;", r, g, b );
+
+	docHtmlPutString( scratch, hwc );
+	}
+
+    return;
+    }
+
+
+static void docHtmlStartParagraphBody(	const BufferItem *	paraBi,
 					const char *		tag,
 					int			fontHeight,
+					int			isBulleted,
 					HtmlWritingContext *	hwc )
     {
     SimpleOutputStream *	sos= hwc->hwcSos;
+    int				useStyle= 0;
+
+    if  ( paraBi->biParaLeftIndentTwips <= -100	||
+	  paraBi->biParaLeftIndentTwips >=  100	)
+	{ useStyle++;	}
+
+    if  ( ! isBulleted						&&
+	  ( paraBi->biParaFirstIndentTwips <= -100	||
+	    paraBi->biParaFirstIndentTwips >=  100	)	)
+	{ useStyle++;	}
+
+    if  ( DOCisBORDER( &(paraBi->biParaTopBorder) ) )
+	{ useStyle++;	}
+    if  ( DOCisBORDER( &(paraBi->biParaLeftBorder) ) )
+	{ useStyle++;	}
+    if  ( DOCisBORDER( &(paraBi->biParaRightBorder) ) )
+	{ useStyle++;	}
+    if  ( DOCisBORDER( &(paraBi->biParaBottomBorder) ) )
+	{ useStyle++;	}
+
+    if  ( docHtmlUseBackgroundStyle( &(paraBi->biParaShading), hwc ) )
+	{ useStyle++;	}
 
     sioOutPutCharacter( '<', sos ); hwc->hwcColumn++;
     docHtmlPutString( tag, hwc );
 
-    switch( bi->biParaAlignment )
+    switch( paraBi->biParaAlignment )
 	{
 	case DOCiaLEFT:
 	    break;
@@ -1054,13 +1154,66 @@ static void docHtmlStartParagraphBody(	const BufferItem *	bi,
 	    break;
 
 	default:
-	    LDEB(bi->biParaAlignment);
+	    LDEB(paraBi->biParaAlignment);
 	    break;
+	}
+
+    /* No!
+    if  ( ! useStyle && paraBi->biParaShading.isPattern == DOCspSOLID )
+	{ docHtmlEmitBackgroundProperty( &(paraBi->biParaShading), hwc ); }
+    */
+
+    if  ( useStyle > 0 )
+	{
+	docHtmlPutString( " STYLE=\"", hwc );
+
+	if  ( paraBi->biParaLeftIndentTwips <= -100	||
+	      paraBi->biParaLeftIndentTwips >=  100	)
+	    {
+	    docHtmlPutString( "padding-left:", hwc );
+	    sioOutPrintf( sos, "%dpt;", paraBi->biParaLeftIndentTwips/ 20 );
+	    hwc->hwcColumn += 6;
+	    }
+
+	if  ( ! isBulleted					&&
+	      ( paraBi->biParaFirstIndentTwips <= -100	||
+		paraBi->biParaFirstIndentTwips >=  100	)	)
+	    {
+	    docHtmlPutString( "text-indent:", hwc );
+	    sioOutPrintf( sos, "%dpt;", paraBi->biParaFirstIndentTwips/ 20 );
+	    hwc->hwcColumn += 6;
+	    }
+
+	if  ( paraBi->biParaShading.isPattern == DOCspSOLID )
+	    { docHtmlEmitBackgroundStyle( &(paraBi->biParaShading), hwc ); }
+
+	if  ( DOCisBORDER( &(paraBi->biParaTopBorder) ) )
+	    {
+	    docHtmlEmitBorderStyle( "border-top",
+					&(paraBi->biParaTopBorder), hwc );
+	    }
+	if  ( DOCisBORDER( &(paraBi->biParaLeftBorder) ) )
+	    {
+	    docHtmlEmitBorderStyle( "border-left",
+					&(paraBi->biParaLeftBorder), hwc );
+	    }
+	if  ( DOCisBORDER( &(paraBi->biParaRightBorder) ) )
+	    {
+	    docHtmlEmitBorderStyle( "border-right",
+					&(paraBi->biParaRightBorder), hwc );
+	    }
+	if  ( DOCisBORDER( &(paraBi->biParaBottomBorder) ) )
+	    {
+	    docHtmlEmitBorderStyle( "border-bottom",
+					&(paraBi->biParaBottomBorder), hwc );
+	    }
+
+	docHtmlPutString( "\"", hwc );
 	}
 
     docHtmlPutString( ">", hwc );
 
-    if  ( bi->biParaSpaceBeforeTwips > fontHeight/ 2 )
+    if  ( paraBi->biParaSpaceBeforeTwips > fontHeight/ 2 )
 	{
 	docHtmlPutString( "&nbsp;<BR>", hwc );
 	docHtmlNewLine( hwc );
@@ -1071,21 +1224,27 @@ static void docHtmlStartParagraphBody(	const BufferItem *	bi,
 
 /************************************************************************/
 /*									*/
-/*  Use a HTML table for the implementation of the 'First Indent' of an	*/
-/*  RTF paragraph?							*/
+/*  Decide whether the beginning of the paragraph is a bullet.		*/
 /*									*/
 /************************************************************************/
 
-static int docHtmlUseTableForIndent(	int *			pTabParticule,
+static int docHtmlParagraphIsBulleted(	int *			pTabParticule,
+					int *			pBulletAttr,
 					const BufferDocument *	bd,
 					const BufferItem *	bi )
     {
     int			stroff;
     int			part;
     TextParticule *	tp;
+    int			contentCount= 0;
+    int			bulletAttribute= -1;
 
     if  ( bi->biParaAlignment != DOCiaLEFT	&&
 	  bi->biParaAlignment != DOCiaJUSTIFIED	)
+	{ return 0;	}
+
+    if  ( bi->biInExternalItem == DOCinFOOTNOTE	||
+	  bi->biInExternalItem == DOCinENDNOTE	)
 	{ return 0;	}
 
     if  ( bi->biParaLeftIndentTwips <= 0 )
@@ -1104,8 +1263,19 @@ static int docHtmlUseTableForIndent(	int *			pTabParticule,
 	    const FieldKindInformation *	fki;
 
 	    case DOCkindTAB:
+		if  ( bulletAttribute < 0 )
+		    { bulletAttribute= tp->tpTextAttributeNumber;	}
 		*pTabParticule= part;
+		*pBulletAttr= bulletAttribute;
 		return 1;
+
+	    case DOCkindOBJECT:
+	    case DOCkindTEXT:
+		if  ( contentCount > 0 )
+		    { return 0;	}
+		bulletAttribute= tp->tpTextAttributeNumber;
+		contentCount++;
+		break;
 
 	    case DOCkindFIELDSTART:
 	    case DOCkindFIELDEND:
@@ -1141,17 +1311,17 @@ static int docHtmlUseTableForIndent(	int *			pTabParticule,
 /*									*/
 /************************************************************************/
 
-static int docHtmlSaveParaItem(	const BufferItem *		bi,
+static int docHtmlSaveParaItem(	const BufferItem *		paraBi,
 				HtmlWritingContext *		hwc )
     {
     TextParticule *		tp;
     unsigned char *		s;
 
-    int				useTABLE= 0;
+    int				isBulleted= 0;
+    int				tabParticule= 0;
 
     int				part= 0;
     int				stroff= 0;
-    int				tabParticule;
 
     TextAttribute		ta;
     int				fontHeight;
@@ -1159,132 +1329,116 @@ static int docHtmlSaveParaItem(	const BufferItem *		bi,
     PropertyMask		ppChgMask;
     PropertyMask		ppUpdMask;
 
+    int				bulletAttribute= -1;
+
     const int * const		colorMap= (const int *)0;
     const int * const		listStyleMap= (const int *)0;
 
     const BufferDocument *	bd= hwc->hwcBd;
 
-    if  ( bi->biParaParticuleCount == 0		||
-	  bi->biParaStrlen == 0			)
+    if  ( paraBi->biParaParticuleCount == 0		||
+	  paraBi->biParaStrlen == 0			)
 	{
-	if  ( hwc->hwcUseTableForFirstIndent )
-	    {
-	    docHtmlPutString( "</TABLE>&nbsp;<BR>", hwc );
-	    hwc->hwcUseTableForFirstIndent= 0;
-	    }
-	else{ docHtmlPutString( "<DIV>&nbsp;</DIV>", hwc ); }
-
+	docHtmlPutString( "<DIV>&nbsp;</DIV>", hwc );
 	docHtmlNewLine( hwc );
-
 	return 0;
 	}
 
-    useTABLE= docHtmlUseTableForIndent( &tabParticule, bd, bi );
+    isBulleted= docHtmlParagraphIsBulleted( &tabParticule, &bulletAttribute,
+								bd, paraBi );
 
     part= 0;
     stroff= 0;
-    tp= bi->biParaParticules+ part;
-    s= bi->biParaString+ stroff;
+    tp= paraBi->biParaParticules+ part;
+    s= paraBi->biParaString+ stroff;
 
     utilGetTextAttributeByNumber( &ta, &(bd->bdTextAttributeList),
 						tp->tpTextAttributeNumber );
 
     fontHeight= 10* ta.taFontSizeHalfPoints;
 
-    if  ( ! useTABLE && hwc->hwcUseTableForFirstIndent )
+    if  ( isBulleted )
 	{
-	hwc->hwcUseTableForFirstIndent= useTABLE;
-	docHtmlPutString( "</TABLE>", hwc );
-	docHtmlNewLine( hwc );
-	}
+	SimpleOutputStream *	sos= hwc->hwcSos;
 
-    if  ( useTABLE )
-	{
-	int	left= TWIPS_TO_SIZE( bi->biParaLeftIndentTwips );
+	int			left= paraBi->biParaLeftIndentTwips;
+	int			first= left+ paraBi->biParaFirstIndentTwips;
 
-	if  ( ! hwc->hwcUseTableForFirstIndent )
+	if  ( first > 100 )
 	    {
-	    docHtmlPutString(
-		"<TABLE CELLPADDING=0 CELLSPACING=0><TR VALIGN=\"TOP\">",
-								hwc );
-	    }
-	else{
-	    docHtmlPutString( "<TR VALIGN=\"TOP\">", hwc );
+	    docHtmlPutString( "<SPAN STYLE=\"float:left; width: ", hwc );
+	    sioOutPrintf( sos, "%dpt;\"", first/ 20 );
+	    hwc->hwcColumn += 6;
+
+	    if  ( bulletAttribute >= 0 )
+		{
+		char	scratch[20];
+
+		sprintf( scratch, "t%d", bulletAttribute );
+		docHtmlWriteTagStringArg( "CLASS", scratch, hwc );
+		hwc->hwcCurrentAttributeNumber= bulletAttribute;
+		}
+
+	    docHtmlPutString( ">&nbsp;</SPAN>", hwc );
+	    docHtmlNewLine( hwc );
+
+	    left -= first;
 	    }
 
-	docHtmlPutString( "<TD", hwc );
-	docHtmlWriteTagIntArg( "WIDTH", left, hwc );
+	docHtmlPutString( "<SPAN STYLE=\"float:left; width: ", hwc );
+	sioOutPrintf( sos, "%dpt;\"", left/ 20 );
+	hwc->hwcColumn += 6;
+
+	if  ( bulletAttribute >= 0 )
+	    {
+	    char	scratch[20];
+
+	    sprintf( scratch, "t%d", bulletAttribute );
+	    docHtmlWriteTagStringArg( "CLASS", scratch, hwc );
+	    hwc->hwcCurrentAttributeNumber= bulletAttribute;
+	    }
 
 	docHtmlPutString( ">", hwc );
-	if  ( ! hwc->hwcUseTableForFirstIndent )
-	    { docHtmlNewLine( hwc );	}
 
-	if  ( bi->biParaSpaceBeforeTwips > fontHeight/ 2 )
-	    {
-	    docHtmlPutString( "&nbsp;<BR>", hwc );
-	    docHtmlNewLine( hwc );
-	    }
+	if  ( docHtmlSaveParticules( paraBi, part, tabParticule, hwc ) < 0 )
+	    { LDEB(part); return -1; }
 
-	if  ( docHtmlSaveParticules( bi, part, tabParticule, hwc ) < 0 )
-	    { LDEB(part); return -1;	}
+	if  ( bulletAttribute < 0 )
+	    { docHtmlPutString( "</SPAN>", hwc );	}
 
-	docHtmlPutString( "</TD>", hwc );
-
-	hwc->hwcUseTableForFirstIndent= useTABLE;
-
-	docHtmlStartParagraphBody( bi, "TD", fontHeight, hwc );
+	docHtmlNewLine( hwc );
 
 	part= tabParticule+ 1;
 	}
-    else{
-	docHtmlStartParagraphBody( bi, "DIV", fontHeight, hwc );
-	}
 
-    if  ( bi->biParaTopBorder.bpStyle != DOCbsNONE )
-	{
-	docHtmlPutString( "<HR NOSHADE WIDTH=100%>", hwc );
-	docHtmlNewLine( hwc );
-	}
+    docHtmlStartParagraphBody( paraBi, "DIV", fontHeight, isBulleted, hwc );
 
-    if  ( ! useTABLE							&&
-	  bi->biParaFirstIndentTwips- bi->biParaLeftIndentTwips > 80	)
-	{
-	hwc->hwcMakeTransparentGif= 1;
-
-	docHtmlMakeNameForIndent( hwc );
-
-	docHtmlSaveImgTag( TWIPS_TO_SIZE( bi->biParaFirstIndentTwips ), 1,
-								    hwc );
-	}
-
-    if  ( docHtmlSaveParticules( bi, part, bi->biParaParticuleCount, hwc ) < 0 )
+    if  ( docHtmlSaveParticules( paraBi, part,
+				paraBi->biParaParticuleCount, hwc ) < 0 )
 	{ LDEB(part); return -1;	}
 
-    if  ( bi->biParaBottomBorder.bpStyle != DOCbsNONE )
-	{
-	docHtmlPutString( "<HR NOSHADE WIDTH=100%>", hwc );
-	docHtmlNewLine( hwc );
-	}
-
-    if  ( hwc->hwcUseTableForFirstIndent )
-	{
-	docHtmlPutString( "</TD></TR>", hwc );
-	docHtmlNewLine( hwc );
-	}
+    if  ( paraBi->biParaSpaceAfterTwips > fontHeight/ 2 )
+	{ docHtmlPutString( "<BR>&nbsp;</DIV>", hwc );	}
     else{
-	if  ( bi->biParaSpaceAfterTwips > fontHeight/ 2 )
-	    { docHtmlPutString( "<BR>&nbsp;</DIV>", hwc );	}
-	else{ docHtmlPutString( "</DIV>", hwc );			}
-	docHtmlNewLine( hwc );
+	/* BUG in IE6 ! */
+	if  ( isBulleted && bulletAttribute >= 0  )
+	    {
+	    sioOutPrintf( hwc->hwcSos,
+			    "<!-- IE --><SPAN CLASS=t%d>&nbsp;</SPAN>",
+			    bulletAttribute );
+	    }
+
+	docHtmlPutString( "</DIV>", hwc );		
 	}
+    docHtmlNewLine( hwc );
 
     PROPmaskCLEAR( &ppChgMask );
 
     PROPmaskCLEAR( &ppUpdMask );
-    PROPmaskFILL( &ppUpdMask, PPprop_COUNT );
+    utilPropMaskFill( &ppUpdMask, PPprop_COUNT );
 
     if  ( docUpdParaProperties( &ppChgMask, &(hwc->hwcParagraphProperties),
-			&ppUpdMask, &(bi->biParaProperties),
+			&ppUpdMask, &(paraBi->biParaProperties),
 			colorMap, listStyleMap ) )
 	{ LDEB(1);	}
 
@@ -1305,10 +1459,10 @@ static int docHtmlSaveRowItem(	const BufferItem *		rowBi,
 	cp= rowBi->biRowCells;
 	for ( i= 0; i < rowBi->biChildCount; cp++, i++ )
 	    {
-	    if  ( cp->cpTopBorder.bpStyle != DOCbsNONE		||
-		  cp->cpLeftBorder.bpStyle != DOCbsNONE		||
-		  cp->cpRightBorder.bpStyle != DOCbsNONE	||
-		  cp->cpBottomBorder.bpStyle != DOCbsNONE	)
+	    if  ( DOCisBORDER( &(cp->cpTopBorder) )	||
+		  DOCisBORDER( &(cp->cpLeftBorder) )	||
+		  DOCisBORDER( &(cp->cpRightBorder) )	||
+		  DOCisBORDER( &(cp->cpBottomBorder) )	)
 		{ useBorder= 1; break;	}
 	    }
 
@@ -1347,6 +1501,8 @@ static int docHtmlSaveRowItem(	const BufferItem *		rowBi,
 	BlockFrame			bf;
 	ParagraphFrame			pf;
 
+	int				useStyle= 0;
+
 	int				rowspan= 1;
 	int				colspan= 1;
 
@@ -1361,6 +1517,15 @@ static int docHtmlSaveRowItem(	const BufferItem *		rowBi,
 						    cellBi->biChildren[0] );
 	wide= TWIPS_TO_SIZE( pf.pfX1GeometryTwips- pf.pfX0GeometryTwips );
 
+	if  ( DOCisBORDER( &(cp->cpTopBorder) ) )
+	    { useStyle++;	}
+	if  ( DOCisBORDER( &(cp->cpLeftBorder) ) )
+	    { useStyle++;	}
+	if  ( DOCisBORDER( &(cp->cpRightBorder) ) )
+	    { useStyle++;	}
+	if  ( DOCisBORDER( &(cp->cpBottomBorder) ) )
+	    { useStyle++;	}
+
 	docHtmlPutString( "<TD", hwc );
 	docHtmlWriteTagIntArg( "WIDTH", wide, hwc );
 
@@ -1369,25 +1534,38 @@ static int docHtmlSaveRowItem(	const BufferItem *		rowBi,
 	if  ( rowspan > 1 )
 	    { docHtmlWriteTagIntArg( "ROWSPAN", rowspan, hwc );	}
 
-	if  ( cp->cpShading.isPattern == DOCspSOLID )
+	if  ( ! useStyle && cp->cpShading.isPattern == DOCspSOLID )
+	    { docHtmlEmitBackgroundProperty( &(cp->cpShading), hwc );	}
+
+	if  ( useStyle )
 	    {
-	    int		isSolid= 0;
-	    int		r= 0;
-	    int		g= 0;
-	    int		b= 0;
+	    docHtmlPutString( " STYLE=\"", hwc );
 
-	    char	scratch[20];
+	    if  ( cp->cpShading.isPattern == DOCspSOLID )
+		{ docHtmlEmitBackgroundStyle( &(cp->cpShading), hwc );	}
 
-	    if  ( docGetSolidRgbShadeOfItem( &isSolid, &r, &g, &b, bd,
-							&(cp->cpShading) ) )
-		{ LDEB(1);	}
-
-	    if  ( isSolid )
+	    if  ( DOCisBORDER( &(cp->cpTopBorder) ) )
 		{
-		sprintf( scratch, "#%02x%02x%02x", r, g, b );
-
-		docHtmlWriteTagStringArg( "BGCOLOR", scratch, hwc );
+		docHtmlEmitBorderStyle( "border-top",
+					    &(cp->cpTopBorder), hwc );
 		}
+	    if  ( DOCisBORDER( &(cp->cpLeftBorder) ) )
+		{
+		docHtmlEmitBorderStyle( "border-left",
+					    &(cp->cpLeftBorder), hwc );
+		}
+	    if  ( DOCisBORDER( &(cp->cpRightBorder) ) )
+		{
+		docHtmlEmitBorderStyle( "border-right",
+					    &(cp->cpRightBorder), hwc );
+		}
+	    if  ( DOCisBORDER( &(cp->cpBottomBorder) ) )
+		{
+		docHtmlEmitBorderStyle( "border-bottom",
+					    &(cp->cpBottomBorder), hwc );
+		}
+
+	    docHtmlPutString( "\"", hwc );
 	    }
 
 	docHtmlPutString( ">", hwc );
@@ -1400,8 +1578,6 @@ static int docHtmlSaveRowItem(	const BufferItem *		rowBi,
 	    if  ( docHtmlSaveParaItem( para, hwc ) )
 		{ LDEB(1); return -1;	}
 	    }
-
-	docHtmlFinishGroup( hwc );
 
 	docHtmlPutString( "</TD>", hwc );
 	if  ( i < rowBi->biChildCount- 1 )
@@ -1429,6 +1605,14 @@ static int docHtmlSaveItem(	const BufferItem *		bi,
 		{
 		if  ( docHtmlSaveItem( bi->biChildren[i], hwc ) )
 		    { LDEB(i); return -1;	}
+		}
+
+	    if  ( bi->biLevel == DOClevSECT		&&
+		  hwc->hwcParagraphProperties.ppInTable	)
+		{
+		docHtmlPutString( "</TABLE>", hwc );
+		docHtmlNewLine( hwc );
+		hwc->hwcParagraphProperties.ppInTable= 0;
 		}
 	    break;
 
@@ -1479,7 +1663,7 @@ static SimpleOutputStream * docHtmlStartImage(	HtmlWritingContext *	hwc )
 	sioOutPutCharacter( '\r', sos ); sioOutPutCharacter( '\n', sos );
 
 	sioOutPutString( "Content-Type: ", sos );
-	sioOutPutString( hwc->hwcImageEncoding, sos );
+	sioOutPutString( hwc->hwcImageMimeType, sos );
 	sioOutPutCharacter( '\r', sos ); sioOutPutCharacter( '\n', sos );
 
 	sioOutPutString( "Content-Id: <", sos );
@@ -1517,46 +1701,6 @@ static SimpleOutputStream * docHtmlStartImage(	HtmlWritingContext *	hwc )
 
 /************************************************************************/
 /*									*/
-/*  Save a completely transparent gif to use for positive First Indents	*/
-/*									*/
-/************************************************************************/
-
-static int docHtmlSaveTransparentGif(	HtmlWritingContext *	hwc )
-    {
-    SimpleOutputStream *	sosImage;
-    AppBitmapImage *		abi;
-
-    docHtmlMakeNameForIndent( hwc );
-
-    abi= (AppBitmapImage *)malloc( sizeof(AppBitmapImage) );
-    if  ( ! abi )
-	{ XDEB(abi); return -1;	}
-    appInitBitmapImage( abi );
-
-    if  ( bmTransparentImage( &(abi->abiBitmap), &(abi->abiBuffer),
-						    BMcoRGB8PALETTE, 1, 1 ) )
-	{ free(abi); return -1;	}
-
-    sosImage= docHtmlStartImage( hwc );
-    if  ( ! sosImage )
-	{ XDEB(sosImage); return -1; }
-
-    if  ( (*hwc->hwcWriteThisBitmap)( &(abi->abiBitmap), abi->abiBuffer,
-								sosImage ) )
-	{
-	LDEB(1);
-	sioOutClose( sosImage );
-	appCleanBitmapImage( abi ); free( abi );
-	return -1;
-	}
-
-    sioOutClose( sosImage );
-
-    appCleanBitmapImage( abi ); free( abi ); return 0;
-    }
-
-/************************************************************************/
-/*									*/
 /*  Save the images in the document.					*/
 /*									*/
 /************************************************************************/
@@ -1564,29 +1708,65 @@ static int docHtmlSaveTransparentGif(	HtmlWritingContext *	hwc )
 static int docHtmlSaveImageBytes(	HtmlWritingContext *	hwc,
 					InsertedObject *	io )
     {
+    int				rval= 0;
+
     int				res;
-    SimpleOutputStream *	sosImage;
+    SimpleOutputStream *	sosImage= (SimpleOutputStream *)0;
+    SimpleInputStream *		sisMem= (SimpleInputStream *)0;
+    SimpleInputStream *		sisHex= (SimpleInputStream *)0;
     AppBitmapImage *		abi;
 
     res= docHtmlMakeNameForImage( hwc, io );
     if  ( res < 0 )
-	{ LDEB(res); return -1;	}
+	{ LDEB(res); rval= -1; goto ready;	}
     if  ( res > 0 )
-	{ return 0;	}
+	{ rval= 0; goto ready;	}
 
     abi= (AppBitmapImage *)io->ioPrivate;
 
     sosImage= docHtmlStartImage( hwc );
     if  ( ! sosImage )
-	{ XDEB(sosImage); return -1; }
+	{ XDEB(sosImage); rval= -1; goto ready; }
 
-    if  ( (*hwc->hwcWriteThisBitmap)( &(abi->abiBitmap), abi->abiBuffer,
+    if  ( hwc->hwcWriteImageFromObjectData )
+	{
+	int		done;
+	unsigned char	buf[1024];
+
+	sisMem= sioInMemoryOpen( &(io->ioObjectData) );
+	if  ( ! sisMem )
+	    { XDEB(sisMem); rval= -1; goto ready;	}
+
+	sisMem= sioInMemoryOpen( &(io->ioObjectData) );
+	if  ( ! sisMem )
+	    { XDEB(sisMem); rval= -1; goto ready;	}
+	sisHex= sioInHexOpen( sisMem );
+	if  ( ! sisHex )
+	    { XDEB(sisHex); rval= -1; goto ready;	}
+
+	while( ( done= sioInReadBytes( sisHex, buf, sizeof(buf) ) ) > 0 )
+	    {
+	    if  ( sioOutWriteBytes( sosImage, buf, done ) != done )
+		{ LDEB(done);	}
+	    }
+	}
+    else{
+	if  ( (*hwc->hwcWriteThisBitmap)( &(abi->abiBitmap), abi->abiBuffer,
 								sosImage ) )
-	{ LDEB(1); sioOutClose( sosImage ); return -1;	}
+	    { LDEB(1); rval= -1; goto ready;	}
+	}
 
-    sioOutClose( sosImage );
+  ready:
 
-    return 0;
+    if  ( sisHex )
+	{ sioInClose( sisHex );	}
+    if  ( sisMem )
+	{ sioInClose( sisMem );	}
+
+    if  ( sosImage )
+	{ sioOutClose( sosImage );	}
+
+    return rval;
     }
 
 static int docHtmlSaveImages(	const BufferItem *		bi,
@@ -1631,9 +1811,7 @@ static int docHtmlSaveImages(	const BufferItem *		bi,
 		io->ioKind == DOCokPICTJPEGBLIP			||
 		io->ioKind == DOCokMACPICT			||
 	      ( io->ioKind == DOCokOLEOBJECT 		&&
-		io->ioResultKind == DOCokPICTWMETAFILE	)	||
-	      ( io->ioKind == DOCokINCLUDEPICTURE 	&&
-		io->ioResultKind == DOCokBITMAP_FILE	)	)
+		io->ioResultKind == DOCokPICTWMETAFILE	)	)
 	    {
 	    if  ( docHtmlSaveImageBytes( hwc, io ) )
 		{ LDEB(1); return -1;	}
@@ -1675,7 +1853,7 @@ static void docHtmlSaveTextAttributeStyle(
 
     sprintf( scratch, "%d", n );
 
-    docHtmlPutString( "FONT.t", hwc );
+    docHtmlPutString( "SPAN.t", hwc );
     docHtmlPutString( scratch, hwc );
     docHtmlNewLine( hwc );
     docHtmlPutString( "  {", hwc );
@@ -1916,48 +2094,53 @@ int docHtmlSaveDocument(	SimpleOutputStream *	sos,
     docHtmlPutString( "</HEAD>", &hwc );
     docHtmlNewLine( &hwc );
 
-    docHtmlPutString( "<BODY BGCOLOR=\"#ffffff\" TEXT=\"#000000\">",
-								&hwc );
-    docHtmlNewLine( &hwc );
+    docHtmlPutString( "<BODY BGCOLOR=\"#ffffff\" TEXT=\"#000000\"", &hwc );
 
     if  ( dg->dgLeftMarginTwips > 300		||
 	  dg->dgRightMarginTwips > 300		||
 	  dg->dgTopMarginTwips > 300		||
 	  dg->dgBottomMarginTwips > 300		)
 	{
-	docHtmlPutString( "<TABLE>", &hwc );
-	docHtmlNewLine( &hwc );
+	char	scratch[40];
+
+	docHtmlPutString( " STYLE=\"", &hwc );
 
 	if  ( dg->dgTopMarginTwips > 300 )
 	    {
-	    docHtmlPutString( "<TR><TD", &hwc );
-
-	    docHtmlWriteTagIntArg( "HEIGHT",
-		TWIPS_TO_SIZE( dg->dgTopMarginTwips ), &hwc );
-
-	    docHtmlPutString( ">&nbsp;</TD></TR>", &hwc );
+	    sprintf( scratch, "margin-top: %dpt;",
+						dg->dgTopMarginTwips/ 30 );
+	    docHtmlPutString( scratch, &hwc );
 	    }
-
-	docHtmlPutString( "<TR>", &hwc );
 
 	if  ( dg->dgLeftMarginTwips > 300 )
 	    {
-	    docHtmlPutString( "<TD", &hwc );
-
-	    docHtmlWriteTagIntArg( "WIDTH",
-		TWIPS_TO_SIZE( dg->dgLeftMarginTwips ), &hwc );
-
-	    docHtmlPutString( ">&nbsp;</TD>", &hwc );
+	    sprintf( scratch, "margin-left: %dpt;",
+						dg->dgLeftMarginTwips/ 30 );
+	    docHtmlPutString( scratch, &hwc );
 	    }
 
-	docHtmlPutString( "<TD>", &hwc );
-	docHtmlNewLine( &hwc );
+	if  ( dg->dgRightMarginTwips > 300 )
+	    {
+	    sprintf( scratch, "margin-right: %dpt;",
+						dg->dgRightMarginTwips/ 30 );
+	    docHtmlPutString( scratch, &hwc );
+	    }
+
+	if  ( dg->dgBottomMarginTwips > 300 )
+	    {
+	    sprintf( scratch, "margin-bottom: %dpt;",
+						dg->dgBottomMarginTwips/ 30 );
+	    docHtmlPutString( scratch, &hwc );
+	    }
+
+	docHtmlPutString( "\"", &hwc );
 	}
+
+    docHtmlPutString( ">", &hwc );
+    docHtmlNewLine( &hwc );
 
     if  ( docHtmlSaveItem( bi, &hwc ) )
 	{ LDEB(bi->biLevel); return -1; }
-
-    docHtmlFinishGroup( &hwc );
 
     if  ( hwc.hwcNoteRefCount > 0 )
 	{
@@ -1974,59 +2157,23 @@ int docHtmlSaveDocument(	SimpleOutputStream *	sos,
 	    if  ( dn->dnParaNr < 0 )
 		{ continue;	}
 
-	    ei= &(dn->dnExternalItem);;
+	    ei= &(dn->dnExternalItem);
 	    if  ( ! ei->eiItem )
 		{ XDEB(ei->eiItem); continue;	}
 
 	    if  ( docHtmlSaveItem( ei->eiItem, &hwc ) )
 		{ LDEB(bi->biLevel); return -1; }
-
-	    docHtmlFinishGroup( &hwc );
 	    }
 
 	if  ( hwc.hwcNoteDefCount != hwc.hwcNoteRefCount )
 	    { LLDEB(hwc.hwcNoteDefCount,hwc.hwcNoteRefCount);	}
 	}
 
-    if  ( dg->dgLeftMarginTwips > 300		||
-	  dg->dgRightMarginTwips > 300		||
-	  dg->dgTopMarginTwips > 300		||
-	  dg->dgBottomMarginTwips > 300		)
-	{
-	docHtmlPutString( "</TD>", &hwc );
-
-	if  ( dg->dgRightMarginTwips > 300 )
-	    {
-	    docHtmlPutString( "<TD", &hwc );
-
-	    docHtmlWriteTagIntArg( "WIDTH",
-		TWIPS_TO_SIZE( dg->dgRightMarginTwips ), &hwc );
-
-	    docHtmlPutString( ">&nbsp;</TD>", &hwc );
-	    }
-
-	docHtmlPutString( "</TR>", &hwc );
-
-	if  ( dg->dgBottomMarginTwips > 300 )
-	    {
-	    docHtmlPutString( "<TR><TD", &hwc );
-
-	    docHtmlWriteTagIntArg( "HEIGHT",
-		TWIPS_TO_SIZE( dg->dgBottomMarginTwips ), &hwc );
-
-	    docHtmlPutString( ">&nbsp;</TD></TR>", &hwc );
-	    }
-
-	docHtmlPutString( "</TABLE>", &hwc );
-	docHtmlNewLine( &hwc );
-	}
-
     docHtmlPutString( "</BODY></HTML>", &hwc );
     docHtmlNewLine( &hwc );
 
-    if  ( ! hwc.hwcAsMimeAggregate		&&
-	  ( hwc.hwcMakeTransparentGif	||
-	    hwc.hwcImageCount > 0	)	)
+    if  ( ! hwc.hwcAsMimeAggregate	&&
+	    hwc.hwcImageCount > 0	)
 	{
 	strncpy( hwc.hwcNameScratch, hwc.hwcFilename, hwc.hwcBaselength );
 	strcpy( hwc.hwcNameScratch+ hwc.hwcBaselength, ".img" );
@@ -2035,10 +2182,6 @@ int docHtmlSaveDocument(	SimpleOutputStream *	sos,
 	      appMakeDirectory( hwc.hwcNameScratch )	)
 	    { SDEB(hwc.hwcNameScratch); return -1;	}
 	}
-
-    if  ( hwc.hwcMakeTransparentGif			&&
-	  docHtmlSaveTransparentGif( &hwc )	)
-	{ LDEB(hwc.hwcMakeTransparentGif); return -1;	}
 
     if  ( hwc.hwcImageCount > 0			&&
 	  docHtmlSaveImages( bi, &hwc )		)

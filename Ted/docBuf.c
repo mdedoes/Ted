@@ -172,7 +172,10 @@ BufferDocument * docNewFile(	TextAttribute *			taDefault,
 
     if  ( taNew.taFontNumber >= 0				&&
 	  taNew.taFontNumber < dp->dpFontList.dflFontCount	)
-	{ dp->dpFontList.dflFonts[taNew.taFontNumber].dfUsed= 1; }
+	{
+	dp->dpDefaultFont= taNew.taFontNumber;
+	dp->dpFontList.dflFonts[taNew.taFontNumber].dfUsed= 1;
+	}
 
     textAttributeNumber= utilTextAttributeNumber(
 				    &(bd->bdTextAttributeList), &taNew );
@@ -264,7 +267,8 @@ void docInitTextLine(		TextLine *	tl )
 
     tl->tlHasPageBreak= 0;
 
-    tl->tlColumnWidthTwips= 0;
+    tl->tlFrameWidthTwips= 0;
+    tl->tlFrameX0Twips= 0;
 
     return;
     }

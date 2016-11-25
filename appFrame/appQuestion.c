@@ -14,23 +14,28 @@
 
 #   include	<appDebugon.h>
 
+typedef struct QuestionContextResources
+    {
+    char *	qcrYesText;
+    char *	qcrNoText;
+    char *	qcrCancelText;
+    char *	qcrOkText;
+    } QuestionContextResources;
+
 typedef struct QuestionContext
     {
-    AppDialog	qcDialog;
-    APP_WIDGET	qcPaned;
+    AppDialog				qcDialog;
+    APP_WIDGET				qcPaned;
 
-    APP_WIDGET	qcQuestionWidget;
-    APP_WIDGET	qcSubjectWidget;
+    APP_WIDGET				qcQuestionWidget;
+    APP_WIDGET				qcSubjectWidget;
 
-    APP_WIDGET	qcYesButton;
-    APP_WIDGET	qcNoButton;
-    APP_WIDGET	qcCancelButton;
-    APP_WIDGET	qcOkButton;
+    APP_WIDGET				qcYesButton;
+    APP_WIDGET				qcNoButton;
+    APP_WIDGET				qcCancelButton;
+    APP_WIDGET				qcOkButton;
 
-    char *	qcYesText;
-    char *	qcNoText;
-    char *	qcCancelText;
-    char *	qcOkText;
+    const QuestionContextResources *	qcResources;
     } QuestionContext;
 
 /************************************************************************/
@@ -40,16 +45,16 @@ typedef struct QuestionContext
 /************************************************************************/
 
 static AppConfigurableResource APP_QuestionResourceTable[]=
-    {
-	APP_RESOURCE( "messageYesText",
-		    offsetof(QuestionContext,qcYesText),	"Yes" ),
-	APP_RESOURCE( "messageNoText",
-		    offsetof(QuestionContext,qcNoText),		"No" ),
-	APP_RESOURCE( "messageCancelText",
-		    offsetof(QuestionContext,qcCancelText),	"Cancel" ),
-	APP_RESOURCE( "messageOkText",
-		    offsetof(QuestionContext,qcOkText),		"Ok" ),
-    };
+{
+    APP_RESOURCE( "messageYesText",
+		offsetof(QuestionContextResources,qcrYesText),	"Yes" ),
+    APP_RESOURCE( "messageNoText",
+		offsetof(QuestionContextResources,qcrNoText),	"No" ),
+    APP_RESOURCE( "messageCancelText",
+		offsetof(QuestionContextResources,qcrCancelText),"Cancel" ),
+    APP_RESOURCE( "messageOkText",
+		offsetof(QuestionContextResources,qcrOkText),	"Ok" ),
+};
 
 /************************************************************************/
 /*									*/
@@ -213,6 +218,9 @@ static int appMakeQuestionDialog( 	EditApplication *	ea,
 
     QuestionContext *	qc;
 
+    static int				gotResources= 0;
+    static QuestionContextResources	qcr;
+
     qc= (QuestionContext *)malloc( sizeof(QuestionContext) );
     if  ( ! qc )
 	{ XDEB(qc); return -1;	}
@@ -223,11 +231,15 @@ static int appMakeQuestionDialog( 	EditApplication *	ea,
     qc->qcNoButton= (APP_WIDGET)0;
     qc->qcCancelButton= (APP_WIDGET)0;
     qc->qcOkButton= (APP_WIDGET)0;
+    qc->qcResources= &qcr;
 
-    appGuiGetResourceValues( ea, (void *)qc,
+    if  ( ! gotResources )
+	{
+	appGuiGetResourceValues( &gotResources, ea, (void *)&qcr,
 				    APP_QuestionResourceTable,
 				    sizeof(APP_QuestionResourceTable)/
 				    sizeof(AppConfigurableResource) );
+	}
 
     appMakeVerticalDialog( &(qc->qcDialog), &paned, ea,
 						(APP_CLOSE_CALLBACK_T)0,
@@ -352,9 +364,11 @@ static int appQuestionRunAnyYesNoCancelDialog(	EditApplication *	ea,
 						const char *	noText,
 						const char *	cancelText )
     {
-    appQuestionChangeYesText( qc, yesText?yesText:qc->qcYesText );
-    appQuestionChangeNoText( qc, noText?noText:qc->qcNoText );
-    appQuestionChangeCancelText( qc, cancelText?cancelText:qc->qcCancelText );
+    const QuestionContextResources *	qcr= qc->qcResources;
+
+    appQuestionChangeYesText( qc, yesText?yesText:qcr->qcrYesText );
+    appQuestionChangeNoText( qc, noText?noText:qcr->qcrNoText );
+    appQuestionChangeCancelText( qc, cancelText?cancelText:qcr->qcrCancelText );
 
     appQuestionRunDialog( ea, qc, relative, option );
 
@@ -368,8 +382,10 @@ static int appQuestionRunAnyOkCancelDialog(	EditApplication *	ea,
 						const char *	okText,
 						const char *	cancelText )
     {
-    appQuestionChangeOkText( qc, okText?okText:qc->qcOkText );
-    appQuestionChangeCancelText( qc, cancelText?cancelText:qc->qcCancelText );
+    const QuestionContextResources *	qcr= qc->qcResources;
+
+    appQuestionChangeOkText( qc, okText?okText:qcr->qcrOkText );
+    appQuestionChangeCancelText( qc, cancelText?cancelText:qcr->qcrCancelText );
 
     appQuestionRunDialog( ea, qc, relative, option );
 
@@ -383,8 +399,10 @@ static int appQuestionRunAnyYesNoDialog(	EditApplication *	ea,
 						const char *	yesText,
 						const char *	noText )
     {
-    appQuestionChangeYesText( qc, yesText?yesText:qc->qcYesText );
-    appQuestionChangeNoText( qc, noText?noText:qc->qcNoText );
+    const QuestionContextResources *	qcr= qc->qcResources;
+
+    appQuestionChangeYesText( qc, yesText?yesText:qcr->qcrYesText );
+    appQuestionChangeNoText( qc, noText?noText:qcr->qcrNoText );
 
     appQuestionRunDialog( ea, qc, relative, option );
 
@@ -412,12 +430,15 @@ int appQuestionRunSubjectYesNoCancelDialog(	EditApplication *	ea,
 
     if  ( ! subjectYesNoCancelContext )
 	{
-	APP_WIDGET			paned;
-	APP_WIDGET			sep;
-	APP_WIDGET			buttonRow;
+	APP_WIDGET				paned;
+	APP_WIDGET				sep;
+	APP_WIDGET				buttonRow;
+	const QuestionContextResources *	qcr;
 
 	if  ( appMakeQuestionDialog( ea, &subjectYesNoCancelContext, &paned ) )
 	    { LDEB(1); return AQDrespFAILURE;	}
+
+	qcr= subjectYesNoCancelContext->qcResources;
 
 	appQuestionMakeSubjectQuestion( subjectYesNoCancelContext, paned,
 							subject, question );
@@ -426,9 +447,9 @@ int appQuestionRunSubjectYesNoCancelDialog(	EditApplication *	ea,
 
 	buttonRow= appQuestionMakeYesNoCancelRow( paned,
 				    subjectYesNoCancelContext,
-				    subjectYesNoCancelContext->qcYesText,
-				    subjectYesNoCancelContext->qcNoText,
-				    subjectYesNoCancelContext->qcCancelText );
+				    qcr->qcrYesText,
+				    qcr->qcrNoText,
+				    qcr->qcrCancelText );
 	}
     else{
 	appQuestionChangeSubject( subjectYesNoCancelContext, subject );
@@ -465,12 +486,15 @@ int appQuestionRunYesNoCancelDialog(	EditApplication *	ea,
 
     if  ( ! yesNoCancelContext )
 	{
-	APP_WIDGET			paned;
-	APP_WIDGET			sep;
-	APP_WIDGET			buttonRow;
+	APP_WIDGET				paned;
+	APP_WIDGET				sep;
+	APP_WIDGET				buttonRow;
+	const QuestionContextResources *	qcr;
 
 	if  ( appMakeQuestionDialog( ea, &yesNoCancelContext, &paned ) )
 	    { LDEB(1); return AQDrespFAILURE;	}
+
+	qcr= yesNoCancelContext->qcResources;
 
 	appQuestionMakeQuestion( yesNoCancelContext, paned, question );
 
@@ -478,9 +502,9 @@ int appQuestionRunYesNoCancelDialog(	EditApplication *	ea,
 
 	buttonRow= appQuestionMakeYesNoCancelRow( paned,
 					yesNoCancelContext,
-					yesNoCancelContext->qcYesText,
-					yesNoCancelContext->qcNoText,
-					yesNoCancelContext->qcCancelText );
+					qcr->qcrYesText,
+					qcr->qcrNoText,
+					qcr->qcrCancelText );
 	}
     else{
 	appQuestionChangeQuestion( yesNoCancelContext, question );
@@ -512,12 +536,15 @@ void appQuestionRunSubjectErrorDialog(	EditApplication *	ea,
 
     if  ( ! subjectErrorContext )
 	{
-	APP_WIDGET			paned;
-	APP_WIDGET			sep;
-	APP_WIDGET			buttonRow;
+	APP_WIDGET				paned;
+	APP_WIDGET				sep;
+	APP_WIDGET				buttonRow;
+	const QuestionContextResources *	qcr;
 
 	if  ( appMakeQuestionDialog( ea, &subjectErrorContext, &paned ) )
 	    { LDEB(1); return;	}
+
+	qcr= subjectErrorContext->qcResources;
 
 	appQuestionMakeSubjectQuestion( subjectErrorContext, paned,
 							subject, message );
@@ -525,13 +552,15 @@ void appQuestionRunSubjectErrorDialog(	EditApplication *	ea,
 	appGuiInsertSeparatorInColumn( &sep, paned );
 
 	buttonRow= appQuestionMakeOkRow( paned, subjectErrorContext,
-					    subjectErrorContext->qcOkText );
+							qcr->qcrOkText );
 	}
     else{
+	const QuestionContextResources *	qcr= subjectErrorContext->qcResources;
+
 	appQuestionChangeSubject( subjectErrorContext, subject );
 	appQuestionChangeQuestion( subjectErrorContext, message );
 	appQuestionChangeOkText( subjectErrorContext,
-					    subjectErrorContext->qcOkText );
+					    qcr->qcrOkText );
 	}
 
     appQuestionRunOkDialog( ea, relative, option, subjectErrorContext );
@@ -559,12 +588,15 @@ int appQuestionRunOkCancelDialog(	EditApplication *	ea,
 
     if  ( ! okCancelContext )
 	{
-	APP_WIDGET			paned;
-	APP_WIDGET			sep;
-	APP_WIDGET			buttonRow;
+	APP_WIDGET				paned;
+	APP_WIDGET				sep;
+	APP_WIDGET				buttonRow;
+	const QuestionContextResources *	qcr;
 
 	if  ( appMakeQuestionDialog( ea, &okCancelContext, &paned ) )
 	    { LDEB(1); return AQDrespFAILURE;	}
+
+	qcr= okCancelContext->qcResources;
 
 	appQuestionMakeQuestion( okCancelContext, paned, question );
 
@@ -572,8 +604,8 @@ int appQuestionRunOkCancelDialog(	EditApplication *	ea,
 
 	buttonRow= appQuestionMakeOkCancelRow( paned,
 					okCancelContext,
-					okCancelContext->qcOkText,
-					okCancelContext->qcCancelText );
+					qcr->qcrOkText,
+					qcr->qcrCancelText );
 	}
     else{
 	appQuestionChangeQuestion( okCancelContext, question );
@@ -608,12 +640,15 @@ int appQuestionRunSubjectOkCancelDialog( EditApplication *	ea,
 
     if  ( ! subjectOkCancelContext )
 	{
-	APP_WIDGET			paned;
-	APP_WIDGET			sep;
-	APP_WIDGET			buttonRow;
+	APP_WIDGET				paned;
+	APP_WIDGET				sep;
+	APP_WIDGET				buttonRow;
+	const QuestionContextResources *	qcr;
 
 	if  ( appMakeQuestionDialog( ea, &subjectOkCancelContext, &paned ) )
 	    { LDEB(1); return AQDrespFAILURE;	}
+
+	qcr= subjectOkCancelContext->qcResources;
 
 	appQuestionMakeSubjectQuestion( subjectOkCancelContext, paned,
 							subject, message );
@@ -622,8 +657,8 @@ int appQuestionRunSubjectOkCancelDialog( EditApplication *	ea,
 
 	buttonRow= appQuestionMakeOkCancelRow( paned,
 					subjectOkCancelContext,
-					subjectOkCancelContext->qcOkText,
-					subjectOkCancelContext->qcCancelText );
+					qcr->qcrOkText,
+					qcr->qcrCancelText );
 	}
     else{
 	appQuestionChangeQuestion( subjectOkCancelContext, message );
@@ -659,12 +694,15 @@ int appQuestionRunSubjectYesNoDialog(	EditApplication *	ea,
 
     if  ( ! subjectYesNoContext )
 	{
-	APP_WIDGET			paned;
-	APP_WIDGET			sep;
-	APP_WIDGET			buttonRow;
+	APP_WIDGET				paned;
+	APP_WIDGET				sep;
+	APP_WIDGET				buttonRow;
+	const QuestionContextResources *	qcr;
 
 	if  ( appMakeQuestionDialog( ea, &subjectYesNoContext, &paned ) )
 	    { LDEB(1); return AQDrespFAILURE;	}
+
+	qcr= subjectYesNoContext->qcResources;
 
 	appQuestionMakeSubjectQuestion( subjectYesNoContext, paned,
 							subject, message );
@@ -673,8 +711,8 @@ int appQuestionRunSubjectYesNoDialog(	EditApplication *	ea,
 
 	buttonRow= appQuestionMakeYesNoRow( paned,
 					subjectYesNoContext,
-					subjectYesNoContext->qcYesText,
-					subjectYesNoContext->qcNoText );
+					qcr->qcrYesText,
+					qcr->qcrNoText );
 	}
     else{
 	appQuestionChangeQuestion( subjectYesNoContext, message );
@@ -705,23 +743,28 @@ void appQuestionRunErrorDialog(	EditApplication *	ea,
 
     if  ( ! errorContext )
 	{
-	APP_WIDGET			paned;
-	APP_WIDGET			sep;
-	APP_WIDGET			buttonRow;
+	APP_WIDGET				paned;
+	APP_WIDGET				sep;
+	APP_WIDGET				buttonRow;
+	const QuestionContextResources *	qcr;
 
 	if  ( appMakeQuestionDialog( ea, &errorContext, &paned ) )
 	    { LDEB(1); return;	}
+
+	qcr= errorContext->qcResources;
 
 	appQuestionMakeQuestion( errorContext, paned, message );
 
 	appGuiInsertSeparatorInColumn( &sep, paned );
 
 	buttonRow= appQuestionMakeOkRow( paned,
-				    errorContext, errorContext->qcOkText );
+				    errorContext, qcr->qcrOkText );
 	}
     else{
+	const QuestionContextResources *	qcr= errorContext->qcResources;
+
 	appQuestionChangeQuestion( errorContext, message );
-	appQuestionChangeOkText( errorContext, errorContext->qcOkText );
+	appQuestionChangeOkText( errorContext, qcr->qcrOkText );
 	}
 
     appQuestionRunOkDialog( ea, relative, option, errorContext );

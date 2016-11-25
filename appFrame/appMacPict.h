@@ -4,7 +4,6 @@
 /*									*/
 /************************************************************************/
 
-#   include	<X11/Xlib.h>
 #   include	<bitmap.h>
 #   include	<utilDocFont.h>
 #   include	<utilPostscriptFace.h>
@@ -391,7 +390,7 @@ extern int appMacPictPlayFileX11( SimpleInputStream *	sis,
 				int			twipsWide,
 				int			twipsHigh );
 
-extern int appMacPictPlayFilePs( SimpleOutputStream *		sos,
+extern int appMacPictPlayFilePs( PrintingState *		ps,
 				SimpleInputStream *		sis,
 				const PostScriptFontList *	psfl,
 				int				useFilters,

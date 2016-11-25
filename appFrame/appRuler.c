@@ -111,15 +111,9 @@ void appRulerAllocateDrawingData(	RulerData *		rd,
     if  ( appSetDrawingDataForWidget( w, magnification, add ) )
 	{ LDEB(1);	}
 
-#   ifdef USE_MOTIF
-    XSetLineAttributes( add->addDisplay, add->addGc,
-				    1, LineSolid, CapProjecting, JoinMiter );
-#   endif
-
-#   ifdef USE_GTK
-    gdk_gc_set_line_attributes( add->addGc,
-		    1, GDK_LINE_SOLID, GDK_CAP_PROJECTING, GDK_JOIN_MITER );
-#   endif
+    appDrawSetLineAttributes( add,
+			1, LINEstyleSOLID, LINEcapPROJECTING, LINEjoinMITER,
+			(const unsigned char *)0, 0 );
 
     if  ( rd->rdFontName )
 	{

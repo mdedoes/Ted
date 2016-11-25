@@ -427,7 +427,8 @@ int appMetaCreatePatternBrush(	DeviceContext *		dc,
 	LLDEB(pb->pbType,pb->pbUsage);
 	for ( done= done; done < recordSize; done++ )
 	    { (void) sioEndianGetLeInt16( sis ); }
-	WMFDEB(appDebug("CreatePatternBrush(...) ob=%d???? \n", ob ));
+	WMFDEB(appDebug("CreatePatternBrush(...) ob=%d???? recordSize=%d\n",
+							    ob, recordSize ));
 	return 0;
 	}
 
@@ -444,20 +445,24 @@ int appMetaCreatePatternBrush(	DeviceContext *		dc,
 		appInitBitmapImage( abi );
 		return -1;
 		}
-	    done += got;
+	    if  ( got % 2 )
+		{ sioInGetCharacter( sis ); got++;	}
+	    done += got/ 2;
 	    break;
 	default:
 	    LLDEB(pb->pbType,pb->pbUsage);
 	    for ( done= done; done < recordSize; done++ )
 		{ (void) sioEndianGetLeInt16( sis ); }
-	    WMFDEB(appDebug("CreatePatternBrush(...) ob=%d???? \n", ob ));
+	    WMFDEB(appDebug("CreatePatternBrush(...) ob=%d???? recordSize=%d\n",
+							    ob, recordSize ));
 	    return 0;
 	}
 
     while( done < recordSize )
 	{ (void) sioEndianGetLeInt16( sis ); done++;	}
 
-    WMFDEB(appDebug("CreatePatternBrush(...) ob=%d\n", ob ));
+    WMFDEB(appDebug("CreatePatternBrush(...) ob=%d recordSize=%d\n",
+							    ob, recordSize ));
 
     return 0;
     }
@@ -597,7 +602,7 @@ int appMetaCreateFontIndirect(	DeviceContext *		dc,
 
     df= dfl->dflFonts+ fontNum;
     if  ( utilFindPsFontForDocFont( df, dfl, psfl ) )
-	{ SDEB(df->dfName);	}
+	{ SLDEB(df->dfName,fontNum);	}
 
     lf->lfTextAttribute.taFontNumber= fontNum;
 
@@ -1024,6 +1029,29 @@ int appMetaExcludeClipRect(	DeviceContext *		dc,
     x0= sioEndianGetLeInt16( sis );
 
     WMFDEB(appDebug("ExcludeClipRect(%d..%d,%d..%d)\n", x0,x1,y0,y1));
+
+    return 0;
+    }
+
+int appMetaSelectClipRgn(	DeviceContext *		dc,
+				int			recordSize,
+				SimpleInputStream *	sis )
+    {
+    long		region;
+
+    switch( recordSize )
+	{
+	case 4:
+	    region= sioEndianGetLeInt16( sis );
+	    break;
+	case 5:
+	    region= sioEndianGetLeInt32( sis );
+	    break;
+	default:
+	    LDEB(recordSize); return -1;
+	}
+
+    WMFDEB(appDebug("SelectClipRgn(%ld)\n", region));
 
     return 0;
     }

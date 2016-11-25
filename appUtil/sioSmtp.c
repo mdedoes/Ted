@@ -1,6 +1,9 @@
 #   include	"appUtilConfig.h"
 
 #   include	<sioSmtp.h>
+#   include	<sioMemory.h>
+#   include	<sioBase64.h>
+#   include	<utilMemoryBuffer.h>
 
 #   include	<stdlib.h>
 #   include	<stdarg.h>
@@ -114,12 +117,60 @@ static void sioOutSmtpAbortMessage(	MailContext *		mc,
 
 /************************************************************************/
 /*									*/
+/*  respond to a challenge from the mail server.			*/
+/*									*/
+/************************************************************************/
+
+static int sioOutSmtpChallengeResponse(	MailContext *		mc,
+					const char *		response,
+					int			responseLen,
+					void *			through,
+					APP_COMPLAIN		complain )
+    {
+    int				rval= 0;
+
+    SimpleOutputStream *	sosmb= (SimpleOutputStream *)0;
+    SimpleOutputStream *	sosb64= (SimpleOutputStream *)0;
+    MemoryBuffer		mb64;
+
+    utilInitMemoryBuffer( &mb64 );
+
+    sosmb= sioOutMemoryOpen( &mb64 );
+    if  ( ! sosmb )
+	{ XDEB(sosmb); rval= -1; goto ready; }
+    sosb64= sioOutBase64Open( sosmb );
+    if  ( ! sosb64 )
+	{ XDEB(sosb64); rval= -1; goto ready; }
+
+    sioOutWriteBytes( sosb64, (const unsigned char *)response, responseLen );
+
+    sioOutClose( sosb64 ); sosb64= (SimpleOutputStream *)0;
+    sioOutClose( sosmb ); sosmb= (SimpleOutputStream *)0;
+
+    if  ( mmWriteCRLF( mc->mcFd, (char *)mb64.mbBytes, through, complain ) )
+	{ LDEB(1); rval= -1;	}
+
+  ready:
+    if  ( sosb64 )
+	{ sioOutClose( sosb64 );	}
+    if  ( sosmb )
+	{ sioOutClose( sosmb );		}
+
+    utilCleanMemoryBuffer( &mb64 );
+
+    return rval;
+    }
+
+/************************************************************************/
+/*									*/
 /*  Open a connection to an SMTP server and send the mail headers	*/
 /*									*/
 /************************************************************************/
 
 SimpleOutputStream * sioOutSmtpOpen(	const char *	mailHost,
 					const char *	mailPort,
+					const char *	user,
+					const char *	pass,
 					const char *	from,
 					const char *	to,
 					const char *	cc,
@@ -134,6 +185,11 @@ SimpleOutputStream * sioOutSmtpOpen(	const char *	mailHost,
     const char *		past;
     const char *		start;
     const char *		nodename= (const char *)0;
+
+    int				haveEsmtp= 1;
+    int				haveAuth= 0;
+    int				haveAuthLogin= 0;
+    int				haveAuthPlain= 0;
 
     SimpleOutputStream *	sos;
 
@@ -216,21 +272,135 @@ SimpleOutputStream * sioOutSmtpOpen(	const char *	mailHost,
     if  ( ! nodename )
 	{ XDEB(nodename); goto mmError;	}
 
-    sprintf( MMscratch, "HELO %s", nodename );
+    sprintf( MMscratch, "EHLO %s", nodename );
     if  ( mmWriteCRLF( mc->mcFd, MMscratch, through, complain ) )
 	{ LDEB(1); goto mmError;				}
 
     do  {
+	char *	head;
+	char *	tail;
+
 	if  ( mmReadCRLF( mc->mcFd, MMscratch, through, complain ) )
 	    { LDEB(1); goto mmError;				}
 
 	if  ( strncmp( MMscratch, "250", 3 ) )
 	    {
-	    SDEB(MMscratch);
-	    (void) (*complain)( through, APP_SYSTEMeSMTP, MMscratch );
-	    goto mmError;
+	    if  ( strncmp( MMscratch, "500", 3 )	&&
+		  strncmp( MMscratch, "502", 3 )	&&
+		  strncmp( MMscratch, "554", 3 )	)
+		{
+		SDEB(MMscratch);
+		(void) (*complain)( through, APP_SYSTEMeSMTP, MMscratch );
+		goto mmError;
+		}
+	    else{ haveEsmtp= 0;	}
 	    }
+
+	head= tail= MMscratch+ 4;
+	while( *tail && ! isspace( *tail ) )
+	    {
+	    if  ( islower( *tail ) )
+		{ *tail= toupper( *tail );	}
+	    tail++;
+	    }
+
+	if  ( tail- head == 4 && ! strncmp( head, "AUTH", 4 ) )
+	    {
+	    haveAuth= 1;
+
+	    while( *tail && isspace( *tail ) )
+		{ tail++;	}
+	    head= tail;
+	    while( *head )
+		{
+		while( *tail && ! isspace( *tail ) )
+		    {
+		    if  ( islower( *tail ) )
+			{ *tail= toupper( *tail );	}
+		    tail++;
+		    }
+
+		if  ( tail- head == 5 && ! strncmp( head, "LOGIN", 5 ) )
+		    { haveAuthLogin= 1;	}
+		if  ( tail- head == 5 && ! strncmp( head, "PLAIN", 5 ) )
+		    { haveAuthPlain= 1;	}
+
+		while( *tail && isspace( *tail ) )
+		    { tail++;	}
+		head= tail;
+		}
+	    }
+
 	} while( MMscratch[3] != ' ' );
+
+    if  ( ! haveEsmtp )
+	{
+	sprintf( MMscratch, "HELO %s", nodename );
+	if  ( mmWriteCRLF( mc->mcFd, MMscratch, through, complain ) )
+	    { LDEB(1); goto mmError;				}
+
+	do  {
+	    if  ( mmReadCRLF( mc->mcFd, MMscratch, through, complain ) )
+		{ LDEB(1); goto mmError;				}
+
+	    if  ( strncmp( MMscratch, "250", 3 ) )
+		{
+		SDEB(MMscratch);
+		(void) (*complain)( through, APP_SYSTEMeSMTP, MMscratch );
+		goto mmError;
+		}
+	    } while( MMscratch[3] != ' ' );
+	}
+
+    /********************************************************************/
+    /*  Login into the server.						*/
+    /********************************************************************/
+    if  ( user && pass && haveAuthLogin )
+	{
+	sprintf( MMscratch, "AUTH LOGIN" );
+	if  ( mmWriteCRLF( mc->mcFd, MMscratch, through, complain ) )
+	    { LDEB(1); goto mmError;				}
+
+	for (;;)
+	    {
+	    if  ( mmReadCRLF( mc->mcFd, MMscratch, through, complain ) )
+		{ LDEB(1); goto mmError;				}
+
+	    if  ( ! strncmp( MMscratch, "235", 3 ) )
+		{ break;	}
+
+	    if  ( strncmp( MMscratch, "334", 3 ) )
+		{
+		SDEB(MMscratch);
+		(void) (*complain)( through, APP_SYSTEMeSMTP, MMscratch );
+		goto mmAbort;
+		}
+
+	    /*  Username: */
+	    if  ( ! strcmp( MMscratch+ 4, "VXNlcm5hbWU6" ) )
+		{
+		if  ( sioOutSmtpChallengeResponse( mc,
+						user, strlen( user ),
+						through, complain ) )
+		    { LDEB(1);  goto mmAbort;	}
+
+		continue;
+		}
+
+	    /*  Password: */
+	    if  ( ! strcmp( MMscratch+ 4, "UGFzc3dvcmQ6" ) )
+		{
+		if  ( sioOutSmtpChallengeResponse( mc,
+						pass, strlen( pass ),
+						through, complain ) )
+		    { LDEB(1);  goto mmAbort;	}
+
+		continue;
+		}
+
+	    SDEB(MMscratch); goto mmAbort;
+	    }
+	}
 
     /********************************************************************/
     /*  Say sender							*/
@@ -347,6 +517,7 @@ SimpleOutputStream * sioOutSmtpOpen(	const char *	mailHost,
     sioOutSmtpAbortMessage( mc, through, complain );
 
   mmError:
+
     if  ( mc )
 	{
 	if  ( mc->mcFd != -1 )
@@ -541,7 +712,7 @@ static int mmReadCRLF(	int			fd,
 	*buf= *smallbuf;
 
 	if  ( nbytes >= 2 && *buf == 10 && *(buf-1) == 13 )
-	    { *(buf-1)= 0; return 0;				}
+	    { *(buf-1)= 0; return 0;	}
 
 	buf++;
 	}

@@ -25,6 +25,8 @@
 #	include	<X11/cursorfont.h>
 #   endif
 
+#   define VALIDATE_TREE	0
+
 /************************************************************************/
 /*									*/
 /*  Ted, callbacks for the DrawingArea.					*/
@@ -62,17 +64,18 @@ void tedMoveObjectWindows(	EditDocument *		ed )
     int				ox= ed->edVisibleRect.drX0;
     int				oy= ed->edVisibleRect.drY0;
 
-    DocumentPosition		dp;
+    DocumentPosition		dpObject;
     PositionGeometry		pg;
     int				part;
     const int			lastOne= 1;
 
-    docInitDocumentPosition( &dp );
+    docInitDocumentPosition( &dpObject );
 
-    if  ( tedGetObjectSelection( td, &part, &dp, &io ) )
+    if  ( tedGetObjectSelection( td, &part, &dpObject, &io ) )
 	{ LDEB(1); return;	}
 
-    tedPositionGeometry( &pg, &dp, lastOne, bd, add, &(td->tdScreenFontList) );
+    tedPositionGeometry( &pg, &dpObject,
+				lastOne, bd, add, &(td->tdScreenFontList) );
 
     tedSetObjectWindows( ed, &pg, io, ox, oy );
     }
@@ -86,7 +89,7 @@ void tedDocHorizontalScrollbarCallback(	APP_WIDGET	w,
 
     appDocHorizontalScrollbarCallback( w, voided, voidscbs );
 
-    if  ( td->tdObjectSelected )
+    if  ( td->tdSelectionDescription.sdIsObjectSelection )
 	{ tedMoveObjectWindows( ed );	}
     }
 
@@ -99,7 +102,7 @@ void tedDocVerticalScrollbarCallback(	APP_WIDGET	w,
 
     appDocVerticalScrollbarCallback( w, voided, voidscbs );
 
-    if  ( td->tdObjectSelected )
+    if  ( td->tdSelectionDescription.sdIsObjectSelection )
 	{ tedMoveObjectWindows( ed );	}
     }
 
@@ -109,6 +112,9 @@ void tedDocVerticalScrollbarCallback(	APP_WIDGET	w,
 /*									*/
 /*  1)  Set the position by hand, because the regular routine sends an	*/
 /*	expose to a window that does not exist yet.			*/
+/*  2)  Forget the name of document templates to force a save-as.	*/
+/*	Also forget it is a template, to make sure that it is saved as	*/
+/*	an ordinary document.						*/
 /*									*/
 /************************************************************************/
 
@@ -120,6 +126,7 @@ int tedFinishDocumentSetup(	EditDocument *		ed )
 
     TedDocument *		td= (TedDocument *)ed->edPrivateData;
     BufferDocument *		bd= td->tdDocument;
+    DocumentProperties *	dp= &(bd->bdProperties);
 
     const TedAppResources *	tar= (TedAppResources *)ea->eaResourceData;
     const char *		selColorName= tar->tarSelectionColor;
@@ -129,10 +136,10 @@ int tedFinishDocumentSetup(	EditDocument *		ed )
     */
 
     {
-    DocumentPosition	dp;
+    DocumentPosition		dpFirst;
 
     /*  1  */
-    if  ( ! docFirstDocumentPosition( &dp, bd ) )
+    if  ( ! docFirstDocumentPosition( &dpFirst, bd ) )
 	{
 	const int			lastOne= 1;
 	const int			lastLine= 0;
@@ -146,13 +153,13 @@ int tedFinishDocumentSetup(	EditDocument *		ed )
 	      ! tedFindSetPattern( ed,
 			    tar->tarFindPattern, tar->tarFindRegex )	&&
 	      ! docFindFindNextInDocument( &(td->tdDocumentSelection),
-		    &dp, bd,
+		    &dpFirst, bd,
 		    docFindParaFindNext, (void *)td->tdFindProg )	)
 	    {
-	    dp= td->tdDocumentSelection.dsBegin;
+	    dpFirst= td->tdDocumentSelection.dsBegin;
 	    }
 	else{
-	    docSetIBarSelection( &(td->tdDocumentSelection), &dp );
+	    docSetIBarSelection( &(td->tdDocumentSelection), &dpFirst );
 	    }
 
 	tedSelectionGeometry( &(td->tdSelectionGeometry),
@@ -160,10 +167,10 @@ int tedFinishDocumentSetup(	EditDocument *		ed )
 			     bd, add, &(td->tdScreenFontList) );
 
 
-	if  ( docFindParticuleOfPosition( &part, &dp, lastOne ) )
-	    { LDEB(dp.dpStroff); return -1;	}
+	if  ( docFindParticuleOfPosition( &part, &dpFirst, lastOne ) )
+	    { LDEB(dpFirst.dpStroff); return -1;	}
 
-	tp= dp.dpBi->biParaParticules+ part;
+	tp= dpFirst.dpBi->biParaParticules+ part;
 
 	utilGetTextAttributeByNumber( &(td->tdCurrentTextAttribute),
 						&(bd->bdTextAttributeList),
@@ -184,11 +191,18 @@ int tedFinishDocumentSetup(	EditDocument *		ed )
 	}
     else{ docListItem( 0, &(bd->bdItem) );	}
 
-    /*
+    /*  2  */
+    if  ( dp->dpIsDocumentTemplate )
+	{
+	appSetDocumentFilename( ed, (const char *)0 );
+	dp->dpIsDocumentTemplate= 0;
+	}
+
+#   if VALIDATE_TREE
     LDEB(1);
     if  ( docCheckItem( &(bd->bdItem) ) )
 	{ LDEB(2); docListItem( 0, &(bd->bdItem) ); abort();	}
-    */
+#   endif
 
     }
 
@@ -268,7 +282,7 @@ int tedFinishDocumentSetup(	EditDocument *		ed )
 #	endif
 	}
 
-    if  ( tedOpenItemObjects( &(bd->bdItem), &(ed->edColors),
+    if  ( tedOpenItemObjects( &(bd->bdItem), bd, &(ed->edColors),
 						    &(ed->edDrawingData) ) )
 	{ LDEB(1);	}
 
@@ -416,13 +430,16 @@ static int tedDetermineCodepage(	BufferDocument *	bd )
 	{
 	if  ( ! df->dfUsed )
 	    { continue;	}
-	if  ( df->dfEncodingSet < 0 )
-	    { LDEB(df->dfEncodingSet); continue;	}
+	if  ( ! df->dfOfficeCharsetMapping )
+	    { XDEB(df->dfOfficeCharsetMapping); continue;	}
 
 	if  ( encoding < 0 )
-	    { encoding= df->dfEncodingSet; encodingCount= 1;	}
+	    {
+	    encoding= df->dfOfficeCharsetMapping->ocmPsFontEncoding;
+	    encodingCount= 1;
+	    }
 	else{
-	    if  ( encoding != df->dfEncodingSet )
+	    if  ( encoding != df->dfOfficeCharsetMapping->ocmPsFontEncoding )
 		{ encodingCount++; }
 	    }
 	}
@@ -660,11 +677,14 @@ int tedSaveDocument(	const void *		privateData,
 
 void * tedMakePrivateData()
     {
+    int			i;
     TedDocument *	td;
 
     td= (TedDocument *)malloc( sizeof(TedDocument) );
     if  ( ! td )
 	{ XDEB(td); return (void *)0;	}
+
+    docInitSelectionDescription( &(td->tdSelectionDescription) );
 
     td->tdDocument= (BufferDocument *)0;
     utilInitTextAttribute( &(td->tdCurrentTextAttribute) );
@@ -699,6 +719,7 @@ void * tedMakePrivateData()
 
     td->tdTableMenu= (APP_WIDGET)0;
     td->tdTableMenuButton= (APP_WIDGET)0;
+
     td->tdTabInsertTableOption= (APP_WIDGET)0;
     td->tdTabAddRowOption= (APP_WIDGET)0;
     td->tdTabAddColumnOption= (APP_WIDGET)0;
@@ -706,6 +727,11 @@ void * tedMakePrivateData()
     td->tdSelectTableWidget= (APP_WIDGET)0;
     td->tdSelectRowWidget= (APP_WIDGET)0;
     td->tdSelectColumnOption= (APP_WIDGET)0;
+
+    td->tdDeleteTableWidget= (APP_WIDGET)0;
+    td->tdDeleteRowWidget= (APP_WIDGET)0;
+    td->tdDeleteColumnOption= (APP_WIDGET)0;
+
     td->tdDrawTableGridOption= (APP_WIDGET)0;
 
     td->tdFontMenu= (APP_WIDGET)0;
@@ -744,10 +770,13 @@ void * tedMakePrivateData()
 #   endif
 
     td->tdObjectWindow= (APP_WINDOW)0;
-    td->tdObjectBottomWindow= (APP_WINDOW)0;
-    td->tdObjectRightWindow= (APP_WINDOW)0;
-    td->tdObjectCornerWindow= (APP_WINDOW)0;
-    td->tdObjectSelected= 0;
+    for ( i= 0; i < RESIZE_COUNT; i++ )
+	{ td->tdObjectResizeWindows[i]= (APP_WINDOW)0;	}
+    td->tdObjectResizeCorner= -1;
+    td->tdObjectCornerMovedX= 0;
+    td->tdObjectCornerMovedY= 0;
+    td->tdScaleChangedX= 0;
+    td->tdScaleChangedY= 0;
 
     td->tdDrawTableGrid= 1;
 
@@ -804,9 +833,7 @@ APP_EVENT_HANDLER_H( tedObserveFocus, w, voided, event )
 
 int tedPrintDocument(	SimpleOutputStream *		sos,
 			const PrintJob *		pj,
-			const PrintGeometry *		pg,
-			int				firstPage,
-			int				lastPage )
+			const PrintGeometry *		pg )
     {
     EditApplication *		ea= pj->pjApplication;
     TedDocument *		td= (TedDocument *)pj->pjPrivateData;
@@ -839,9 +866,6 @@ int tedPrintDocument(	SimpleOutputStream *		sos,
 				ea->eaReference, ea->eaFontDirectory,
 				pj->pjDrawingData,
 				td->tdDocument, pg,
-				pj->pjUsePostScriptFilters,
-				pj->pjUsePostScriptIndexedImages,
-				firstPage, lastPage,
 				tedCloseObject ) )
 	{ LDEB(1); return -1;	}
 
@@ -897,6 +921,9 @@ int tedOpenDocumentFile(	EditApplication *	ea,
 
     tedDetermineDefaultSettings( tar );
 
+    if  ( appPostScriptFontCatalog( ea ) )
+	{ SDEB(ea->eaAfmDirectory); return -1;	}
+
     ext= appFileExtensionOfName( filename );
 
     /*  1  */
@@ -912,13 +939,16 @@ int tedOpenDocumentFile(	EditApplication *	ea,
     if  ( ext && ! strcmp( ext, "rtf" ) )
 	{
 	/*  2  */
-	bd= docRtfReadFile( sis, tar->tarDefaultAnsicpgInt );
+	bd= docRtfReadFile( sis, &(ea->eaPostScriptFontList),
+						tar->tarDefaultAnsicpgInt );
 
 	sioInClose( sis );
 	
 	if  ( bd )
 	    {
 	    *pFormat= TEDdockindRTF; *pBd= bd;
+
+	    utilFontlistSetPreferredEncodings( &(bd->bdProperties.dpFontList) );
 
 	    if  ( docPropertiesSetFilename( &(bd->bdProperties), filename ) )
 		{ LDEB(1);	}
@@ -965,11 +995,14 @@ int tedOpenDocumentFile(	EditApplication *	ea,
     /*  2  */
     if  ( ! triedRtf )
 	{
-	bd= docRtfReadFile( sis, tar->tarDefaultAnsicpgInt );
+	bd= docRtfReadFile( sis, &(ea->eaPostScriptFontList),
+						tar->tarDefaultAnsicpgInt );
 	if  ( bd )
 	    {
 	    *pFormat= TEDdockindRTF; *pBd= bd;
 	    
+	    utilFontlistSetPreferredEncodings( &(bd->bdProperties.dpFontList) );
+
 	    if  ( docPropertiesSetFilename( &(bd->bdProperties), filename ) )
 		{ LDEB(1);	}
 

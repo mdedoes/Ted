@@ -56,6 +56,7 @@ int utilRememberPostsciptFace(		PostScriptTypeList *	pstl,
     if  ( ! psf )
 	{
 	int	enc;
+	void *	prevPsf= (void *)0;
 
 	psf= malloc( sizeof(PostScriptFace) );
 	if  ( ! psf )
@@ -73,7 +74,7 @@ int utilRememberPostsciptFace(		PostScriptTypeList *	pstl,
 	psf->psfFontFileName= (char *)0;
 	psf->psfFontFileNameLength= 0;
 
-	if  ( utilTreeStoreValue( pstl->pstlFaceTree,
+	if  ( utilTreeStoreValue( pstl->pstlFaceTree, &prevPsf,
 					&fontName, afi->afiFontName,  psf ) )
 	    { SDEB(afi->afiFontName); free( psf ); return -1; }
 	}

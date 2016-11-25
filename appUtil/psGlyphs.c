@@ -1238,8 +1238,8 @@ const char *	const psIsoLatin1GlyphNames[256]=
     GLYPH_circumflex,		/*  147			*/
     GLYPH_tilde,		/*  148			*/
     GLYPH_macron,		/*  149			*/
-    GLYPH_breve,		/*  150			*/
-    GLYPH_dotaccent,		/*  151			*/
+    (char *)0,			/*  150			*/
+    (char *)0,			/*  151			*/
     GLYPH_dieresis,		/*  152			*/
     (char *)0,			/*  153			*/
     GLYPH_ring,			/*  154			*/
@@ -1444,7 +1444,7 @@ const char *	const psIsoLatin15GlyphNames[256]=
     GLYPH_bracketright,		/*   93		*/
     GLYPH_asciicircum,		/*   94		*/
     GLYPH_underscore,		/*   95		*/
-    GLYPH_grave,		/*   96		*/
+    GLYPH_quoteleft,		/*   96		*/
     GLYPH_a,			/*   97		*/
     GLYPH_b,			/*   98		*/
     GLYPH_c,			/*   99		*/
@@ -3026,15 +3026,15 @@ const char * const	psIsoLatin10GlyphNames[256]=
     GLYPH_O,			/*   79		*/
     GLYPH_P,			/*   80		*/
     GLYPH_Q,			/*   81		*/
-    GLYPH_R,		/*   82		*/
-    GLYPH_S,		/*   83		*/
-    GLYPH_T,		/*   84		*/
-    GLYPH_U,		/*   85		*/
-    GLYPH_V,		/*   86		*/
-    GLYPH_W,		/*   87		*/
-    GLYPH_X,		/*   88		*/
-    GLYPH_Y,		/*   89		*/
-    GLYPH_Z,		/*   90		*/
+    GLYPH_R,			/*   82		*/
+    GLYPH_S,			/*   83		*/
+    GLYPH_T,			/*   84		*/
+    GLYPH_U,			/*   85		*/
+    GLYPH_V,			/*   86		*/
+    GLYPH_W,			/*   87		*/
+    GLYPH_X,			/*   88		*/
+    GLYPH_Y,			/*   89		*/
+    GLYPH_Z,			/*   90		*/
     GLYPH_bracketleft,		/*   91		*/
     GLYPH_backslash,		/*   92		*/
     GLYPH_bracketright,		/*   93		*/
@@ -4641,6 +4641,7 @@ const AlternateGlyphName PS_AlternateNames[]=
 	{ GLYPH_Dcroat, GLYPH_Dmacron },
 	{ GLYPH_Dcroat, GLYPH_Dslash },
 	{ GLYPH_Dcroat, GLYPH_Dstroke },
+	{ GLYPH_Dcroat, GLYPH_Eth },
 	{ GLYPH_Delta, GLYPH_afii9797 },
 	{ GLYPH_Delta, GLYPH_increment },
 	{ GLYPH_Edieresis, GLYPH_Ediaeresis },
@@ -4649,6 +4650,7 @@ const AlternateGlyphName PS_AlternateNames[]=
 	{ GLYPH_Epsilontonos, GLYPH_afii9937 },
 	{ GLYPH_Eta, GLYPH_afii9802 },
 	{ GLYPH_Etatonos, GLYPH_afii9938 },
+	{ GLYPH_Eth, GLYPH_Dcroat },
 	{ GLYPH_Euro, GLYPH_euro },
 	{ GLYPH_Gamma, GLYPH_afii9796 },
 	{ GLYPH_Gcommaaccent, GLYPH_Gcedilla },
@@ -5081,6 +5083,7 @@ const AlternateGlyphName PS_AlternateNames[]=
 	{ GLYPH_asciitilde, GLYPH_tilde },
 	{ GLYPH_bar, GLYPH_verticalbar },
 	{ GLYPH_beta, GLYPH_afii9826 },
+	{ GLYPH_brokenbar, GLYPH_bar },
 	{ GLYPH_cdotaccent, GLYPH_cdot },
 	{ GLYPH_cedilla, GLYPH_commaaccent },
 	{ GLYPH_chi, GLYPH_afii9851 },
@@ -5182,6 +5185,7 @@ const AlternateGlyphName PS_AlternateNames[]=
 	{ GLYPH_reflexsuperset, GLYPH_supersetorequal },
 	{ GLYPH_revlogicalnot, GLYPH_logicalnotreversed },
 	{ GLYPH_rho, GLYPH_afii9845 },
+	{ GLYPH_ring, GLYPH_degree },
 	{ GLYPH_scedilla, GLYPH_scedilla1 },
 	{ GLYPH_scedilla, GLYPH_scommaaccent },
 	{ GLYPH_semicolon, GLYPH_uni037e },

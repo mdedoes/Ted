@@ -61,7 +61,8 @@ static int bmXpmPaletteColor(	const char *	c_color,
     FILE *	f;
 
     /*  1  */
-    if  ( ! strcmp( c_color, "None" )		||
+    if  ( ! c_color				||
+	  ! strcmp( c_color, "None" )		||
 	  ! strcmp( c_color, "none" )		||
 	  ! strcmp( c_color, "Transparent" )	||
 	  ! strcmp( c_color, "transparent" )	)
@@ -169,7 +170,7 @@ int bmReadXpmFile(	const char *		filename,
 			unsigned char **	pBuffer,
 			BitmapDescription *	bd,
 			int *			pPrivateFormat,
-			double *		pCompressionFactor	)
+			double *		pCompressionFactor )
     {
     int			ret;
     unsigned int	row;
@@ -217,7 +218,7 @@ int bmReadXpmFile(	const char *		filename,
 
 	    for ( col= 0; col < image.ncolors; col++ )
 		{
-		int		transparent;
+		int		transparent= 0;
 
 		if  ( bmXpmPaletteColor( image.colorTable[col].c_color,
 						&transparent,
@@ -288,37 +289,70 @@ int bmReadXpmFile(	const char *		filename,
 
 	case 16:
 	    if  ( ! bd->bdHasAlpha )
-		{ memcpy( buffer, image.data, bd->bdBufferLength ); break; }
+		{
+		const unsigned int *	from;
+		BmUint16 *		to;
+
+		from= image.data;
+		to= (BmUint16 *)buffer;
+
+		for ( col= 0; col < bd->bdBufferLength; col++ )
+		    { *(to++)= *(from++);	}
+		}
 	    else{
-		const unsigned char *	from;
+		const unsigned int *	from;
 		unsigned char *		to;
 
-		from= (const unsigned char *)image.data;
+		from= image.data;
 		to= buffer;
 
 		for ( col= 0; col < bd->bdBufferLength; col += 2 )
 		    {
-		    *(to++)= *(from++);
-		    *(to++)= bd->bdRGB8Palette[*from].rgb8Alpha;
+		    int	c= *(from++);
+
+		    *(to++)= c;
+		    *(to++)= bd->bdRGB8Palette[c].rgb8Alpha;
 		    }
 		}
 	    break;
 
 	case 32:
 	    if  ( ! bd->bdHasAlpha )
-		{ memcpy( buffer, image.data, bd->bdBufferLength ); break; }
+		{
+		LDEB(bd->bdHasAlpha);
+		free( buffer );
+		XpmFreeXpmImage( &image );
+		return -1;
+		}
 	    else{
-		const BmUint16 *	from;
-		BmUint16 *		to;
+		const unsigned int *	from;
+		unsigned char *		to;
 
-		from= (const BmUint16 *)image.data;
-		to= (BmUint16 *)buffer;
+		/* expand palette and alpha */
+		from= image.data;
+		to= buffer;
 
-		for ( col= 0; col < bd->bdBufferLength; col += 2 )
+		for ( col= 0; col < bd->bdBufferLength; col += 4 )
 		    {
-		    *(to++)= *(from++);
-		    *(to++)= bd->bdRGB8Palette[*from].rgb8Alpha;
+		    int	c= *(from++);
+
+		    *(to++)= bd->bdRGB8Palette[c].rgb8Red;
+		    *(to++)= bd->bdRGB8Palette[c].rgb8Green;
+		    *(to++)= bd->bdRGB8Palette[c].rgb8Blue;
+		    *(to++)= bd->bdRGB8Palette[c].rgb8Alpha;
 		    }
+
+		if  ( bd->bdRGB8Palette )
+		    {
+		    free( bd->bdRGB8Palette );
+		    bd->bdRGB8Palette= (RGB8Color *)0;
+		    }
+
+		bd->bdColorEncoding= BMcoRGB;
+		bd->bdHasAlpha= 1;
+		bd->bdBitsPerSample= 8;
+		bd->bdSamplesPerPixel= 4;
+		bd->bdBitsPerPixel= 32;
 		}
 	    break;
 
@@ -338,7 +372,7 @@ int bmReadXpmFile(	const char *		filename,
 
 /************************************************************************/
 /*									*/
-/*  Write an XBM file.							*/
+/*  Write an XPM file.							*/
 /*									*/
 /************************************************************************/
 

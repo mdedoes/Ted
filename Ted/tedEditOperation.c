@@ -35,7 +35,8 @@ static int tedEditFinishIBarSelection2(
 			    EditDocument *		ed,
 			    EditOperation *		eo,
 			    BufferItem *		paraBi,
-			    int				stroff )
+			    int				stroff,
+			    int				lastLine )
     {
     AppDrawingData *		add= &(ed->edDrawingData);
 
@@ -69,7 +70,8 @@ static int tedEditFinishIBarSelection2(
 		}
 	    }
 
-	tedSetIBarSelection( ed, paraBi, stroff, &scrolledX, &scrolledY );
+	tedSetIBarSelection( ed, paraBi, stroff, lastLine,
+						    &scrolledX, &scrolledY );
 	}
     else{ XDEB(paraBi);	}
 
@@ -81,8 +83,7 @@ static int tedEditFinishIBarSelection2(
 	appSetShellConstraints( ed );
 	}
 
-    appDocExposeRectangle( ed, &(eo->eoChangedRect),
-						    scrolledX, scrolledY );
+    appDocExposeRectangle( ed, &(eo->eoChangedRect), scrolledX, scrolledY );
 
     tedStartCursorBlink( ed );
 
@@ -94,10 +95,12 @@ int tedEditFinishIBarSelection(	EditDocument *			ed,
 				BufferItem *			bi,
 				int				stroff )
     {
+    const int		lastLine= 0;
+
     if  ( tedEditRefreshLayout( eo, ed ) )
 	{ LDEB(1); /* return -1; */	}
 
-    return tedEditFinishIBarSelection2( ed, eo, bi, stroff );
+    return tedEditFinishIBarSelection2( ed, eo, bi, stroff, lastLine );
     }
 
 /************************************************************************/
@@ -119,8 +122,10 @@ static int tedEditFinishSelection2(	EditDocument *			ed,
 
     if  ( docIsIBarSelection( dsNew ) )
 	{
+	const int	lastLine= 0;
+
 	return tedEditFinishIBarSelection2( ed, eo,
-				dsNew->dsBegin.dpBi, dsNew->dsBegin.dpStroff );
+		    dsNew->dsBegin.dpBi, dsNew->dsBegin.dpStroff, lastLine );
 	}
 
     if  ( add->addBackRect.drY1 > eo->eoOldBackY1 )
@@ -156,8 +161,90 @@ int tedEditFinishSelection(		EditDocument *			ed,
 int tedEditFinishOldSelection(		EditDocument *			ed,
 					EditOperation *			eo )
     {
+    int				rval;
+
+    TedDocument *		td= (TedDocument *)ed->edPrivateData;
+    BufferDocument *		bd= td->tdDocument;
+
     DocumentSelection		dsNew;
     DocumentPosition		dpBegin;
+    DocumentPosition		dpEnd;
+
+    ExternalItem *		ei;
+    BufferItem *		selRootBi;
+    BufferItem *		bodySectBi;
+    BufferItem *		bi;
+
+    TableRectangle		tr;
+
+    if  ( tedEditRefreshLayout( eo, ed ) )
+	{ LDEB(1); return -1;	}
+
+    if  ( docGetRootOfSelectionScope( &ei, &selRootBi, &bodySectBi,
+					eo->eoBd, &(eo->eoSelectionScope) ) )
+	{ LDEB(1); return -1;	}
+
+    bi= docGetParagraphByNumber( selRootBi,
+		    eo->eoSelectedRange.erStart.epParaNr );
+    if  ( ! bi )
+	{
+	LXDEB(eo->eoSelectedRange.erStart.epParaNr,bi);
+	return -1;
+	}
+    if  ( eo->eoSelectedRange.erStart.epStroff > bi->biParaStrlen )
+	{
+	LLDEB(eo->eoSelectedRange.erStart.epStroff,bi->biParaStrlen);
+	if  ( docLastPosition( &dpBegin, bi ) )
+	    { LDEB(1); return -1;	}
+	}
+    else{
+	docSetDocumentPosition( &dpBegin, bi,
+			    eo->eoSelectedRange.erStart.epStroff );
+	}
+
+    bi= docGetParagraphByNumber( selRootBi,
+		    eo->eoSelectedRange.erEnd.epParaNr );
+    if  ( ! bi )
+	{
+	LXDEB(eo->eoSelectedRange.erEnd.epParaNr,bi);
+	return -1;
+	}
+    if  ( eo->eoSelectedRange.erEnd.epStroff > bi->biParaStrlen )
+	{
+	LLDEB(eo->eoSelectedRange.erEnd.epStroff,bi->biParaStrlen);
+	if  ( docLastPosition( &dpEnd, bi ) )
+	    { LDEB(1); return -1;	}
+	}
+    else{
+	docSetDocumentPosition( &dpEnd, bi,
+			    eo->eoSelectedRange.erEnd.epStroff );
+	}
+
+    docInitDocumentSelection( &dsNew );
+
+    docSetRangeSelection( &dsNew, &dpBegin, &dpEnd, 1, -1, -1 );
+
+    if  ( ! docSelectionInsideCell( &dsNew )	&&
+	  ! docGetTableRectangle( &tr, &dsNew ) )
+	{
+	BufferItem *	selSectBi;
+
+	if  ( docTableRectangleSelection( &dsNew, &selSectBi, bd, &tr ) )
+	    { LDEB(1);	}
+	}
+
+    rval= tedEditFinishSelection2( ed, eo, &dsNew );
+
+    td->tdCurrentTextAttribute= eo->eoSavedTextAttribute;
+    td->tdCurrentTextAttributeNumber= eo->eoSavedTextAttributeNumber;
+
+    return rval;
+    }
+
+int tedEditFinishEndOfInsert(	EditDocument *			ed,
+				EditOperation *			eo,
+				int				lastLine)
+    {
     DocumentPosition		dpEnd;
 
     ExternalItem *		ei;
@@ -173,49 +260,25 @@ int tedEditFinishOldSelection(		EditDocument *			ed,
 	{ LDEB(1); return -1;	}
 
     bi= docGetParagraphByNumber( selRootBi,
-		    eo->eoSelectedRange.erStartPosition.epParagraphNumber );
+		    eo->eoSelectedRange.erEnd.epParaNr );
     if  ( ! bi )
 	{
-	LXDEB(eo->eoSelectedRange.erStartPosition.epParagraphNumber,bi);
+	LXDEB(eo->eoSelectedRange.erEnd.epParaNr,bi);
 	return -1;
 	}
-    if  ( eo->eoSelectedRange.erStartPosition.epStroff > bi->biParaStrlen )
+    if  ( eo->eoSelectedRange.erEnd.epStroff > bi->biParaStrlen )
 	{
-	LLDEB(eo->eoSelectedRange.erStartPosition.epStroff,bi->biParaStrlen);
-	if  ( docLastPosition( &dpBegin, bi ) )
-	    { LDEB(1); return -1;	}
-	}
-    else{
-	docSetDocumentPosition( &dpBegin, bi,
-			    eo->eoSelectedRange.erStartPosition.epStroff );
-	}
-
-    bi= docGetParagraphByNumber( selRootBi,
-		    eo->eoSelectedRange.erEndPosition.epParagraphNumber );
-    if  ( ! bi )
-	{
-	LXDEB(eo->eoSelectedRange.erEndPosition.epParagraphNumber,bi);
-	return -1;
-	}
-    if  ( eo->eoSelectedRange.erEndPosition.epStroff > bi->biParaStrlen )
-	{
-	LLDEB(eo->eoSelectedRange.erEndPosition.epStroff,bi->biParaStrlen);
+	LLDEB(eo->eoSelectedRange.erEnd.epStroff,bi->biParaStrlen);
 	if  ( docLastPosition( &dpEnd, bi ) )
 	    { LDEB(1); return -1;	}
 	}
     else{
 	docSetDocumentPosition( &dpEnd, bi,
-			    eo->eoSelectedRange.erEndPosition.epStroff );
+			    eo->eoSelectedRange.erEnd.epStroff );
 	}
 
-    docInitDocumentSelection( &dsNew );
-
-    docSetRangeSelection( &dsNew, &dpBegin, &dpEnd, 1, -1, -1 );
-				    /*
-				    ds.dsDirection, ds.dsCol0, ds.dsCol1 );
-				    */
-
-    return tedEditFinishSelection2( ed, eo, &dsNew );
+    return tedEditFinishIBarSelection2( ed, eo,
+				    dpEnd.dpBi, dpEnd.dpStroff, lastLine );
     }
 
 /************************************************************************/
@@ -315,12 +378,10 @@ int tedStartEditOperation(	EditOperation *		eo,
     TedDocument *		td= (TedDocument *)ed->edPrivateData;
     BufferDocument *		bd= td->tdDocument;
     AppDrawingData *		add= &(ed->edDrawingData);
-    EditRange *			er= &(eo->eoReformatRange);
 
     ExternalItem *		ei;
     BufferItem *		selRootBi;
     BufferItem *		bodySectBi;
-    DocumentPosition		dp;
 
     const int			lastOne= 1;
 
@@ -340,12 +401,12 @@ int tedStartEditOperation(	EditOperation *		eo,
 
     eo->eoSelectionScope= ds->dsSelectionScope;
 
+    eo->eoSavedTextAttribute= td->tdCurrentTextAttribute;
+    eo->eoSavedTextAttributeNumber= td->tdCurrentTextAttributeNumber;
+
     if  ( docGetRootOfSelectionScope( &ei, &selRootBi,
 				&bodySectBi, bd, &(eo->eoSelectionScope) ) )
 	{ LDEB(1); return -1;	}
-    if  ( docLastPosition( &dp, selRootBi ) )
-	{ LDEB(1); return -1;	}
-    er->erParagraphCount= docNumberOfParagraph( dp.dpBi );
 
     docIncludePositionInReformat( eo, ds->dsBegin.dpBi, ds->dsBegin.dpStroff );
     docIncludePositionInReformat( eo, ds->dsEnd.dpBi, ds->dsEnd.dpStroff );
@@ -370,11 +431,16 @@ int tedStartEditOperation(	EditOperation *		eo,
     eo->eoCloseObject= tedCloseObject;
 
     /**/
-    eo->eoParaBi= ds->dsEnd.dpBi;
-    eo->eoStroff= ds->dsEnd.dpStroff;
-    if  ( docFindParticule( &(eo->eoParticule),
-					eo->eoParaBi, eo->eoStroff, lastOne ) )
-	{ LLDEB(eo->eoStroff,eo->eoParaBi->biParaStrlen); return -1;	}
+    eo->eoInsParaBi= ds->dsEnd.dpBi;
+    eo->eoInsStroff= ds->dsEnd.dpStroff;
+    if  ( docFindParticule( &(eo->eoInsParticule),
+				eo->eoInsParaBi, eo->eoInsStroff, lastOne ) )
+	{ LLDEB(eo->eoInsStroff,eo->eoInsParaBi->biParaStrlen); return -1; }
+
+    if  ( eo->eoInsStroff ==
+		eo->eoInsParaBi->biParaParticules[eo->eoInsParticule].tpStroff )
+	{ eo->eoInsAtPartHead= 1;	}
+    else{ eo->eoInsAtPartHead= 0;	}
 
     return 0;
     }
@@ -432,12 +498,6 @@ int tedEditIncludeRowsInRedraw(	EditOperation *		eo,
     return 0;
     }
 
-/************************************************************************/
-/*									*/
-/*  Redo layout of the relevant part of the document after editing.	*/
-/*									*/
-/************************************************************************/
-
 int tedEditRefreshLayout(	EditOperation *		eo,
 				EditDocument *		ed )
     {
@@ -450,6 +510,15 @@ int tedEditRefreshLayout(	EditOperation *		eo,
 
     RecalculateFields		rf;
 
+    ExternalItem *		ei;
+    BufferItem *		selRootBi;
+    BufferItem *		bodySectBi;
+
+    const SelectionScope *	ss= &(eo->eoSelectionScope);
+
+    if  ( docGetRootOfSelectionScope( &ei, &selRootBi, &bodySectBi, bd, ss ) )
+	{ LDEB(1); return -1;	}
+
     docInitRecalculateFields( &rf );
 
     rf.rfBd= bd;
@@ -461,7 +530,10 @@ int tedEditRefreshLayout(	EditOperation *		eo,
     if  ( eo->eoBulletsChanged > 0 )
 	{ rf.rfUpdateFlags |= FIELDdoLISTTEXT; }
 
-    if  ( eo->eoNotesDeleted > 0 || eo->eoNotesAdded > 0 )
+    if  ( eo->eoNotesDeleted > 0	||
+	  eo->eoNotesAdded > 0		||
+	  eo->eoSectionsDeleted > 0	||
+	  eo->eoSectionsAdded > 0	)
 	{
 	int			changed= 0;
 
@@ -473,37 +545,43 @@ int tedEditRefreshLayout(	EditOperation *		eo,
 
     if  ( rf.rfUpdateFlags )
 	{
+	rf.rfSelBegin= eo->eoSelectedRange.erStart;
+	rf.rfSelEnd= eo->eoSelectedRange.erEnd;
+
 	if  ( docRecalculateTextLevelFields( &rf, &(bd->bdItem) ) )
 	    { LDEB(1);	}
+
+	eo->eoSelectedRange.erStart= rf.rfSelBegin;
+	eo->eoSelectedRange.erEnd= rf.rfSelEnd;
 	}
 
     if  ( rf.rfFieldsUpdated > 0 )
 	{
+	DocumentSelection	dsLayout;
+
+	if  ( docLayoutInvalidateRange( &dsLayout, selRootBi, er ) )
+	    { LDEB(1); return -1;	}
+
 	if  ( tedLayoutDocumentTree( td, add ) )
+	    { LDEB(1); return -1;	}
+
+	if  ( tedOpenItemObjects( &(bd->bdItem), bd, &(ed->edColors), add ) )
 	    { LDEB(1); return -1;	}
 
 	docIncludeRectangleInChange( eo, &(add->addBackRect) );
 	}
     else{
-	ExternalItem *		ei;
-	BufferItem *		selRootBi;
-	BufferItem *		bodySectBi;
-
-	const SelectionScope *	ss;
-
-	ss= &(eo->eoSelectionScope);
-
-	if  ( docGetRootOfSelectionScope( &ei, &selRootBi,
-						    &bodySectBi, bd, ss ) )
-	    { LDEB(1); return -1;	}
-
-	if  ( eo->eoNotesDeleted > 0 || eo->eoNotesAdded > 0 )
+	if  ( eo->eoNotesDeleted > 0	||
+	      eo->eoNotesAdded > 0	||
+	      eo->eoSectionsDeleted > 0	||
+	      eo->eoSectionsAdded > 0	)
 	    {
 	    if  ( tedLayoutItem( &(bd->bdItem), bd, add, eo->eoScreenFontList,
 						    &(eo->eoChangedRect) ) )
 		{ LDEB(eo->eoNotesDeleted); return -1;	}
 
-	    if  ( tedOpenItemObjects( &(bd->bdItem), &(ed->edColors), add ) )
+	    if  ( tedOpenItemObjects( &(bd->bdItem), bd,
+						    &(ed->edColors), add ) )
 		{ LDEB(1); return -1;	}
 	    }
 	else{
@@ -512,11 +590,11 @@ int tedEditRefreshLayout(	EditOperation *		eo,
 		int		paraNr= eo->eoParaAdjustParagraphNumber;
 		BufferItem *	paraBi;
 
-		if  ( er->erStartPosition.epParagraphNumber != paraNr )
-		    { LLDEB(er->erStartPosition.epParagraphNumber,paraNr); }
+		if  ( er->erStart.epParaNr != paraNr )
+		    { LLDEB(er->erStart.epParaNr,paraNr); }
 
-		if  ( er->erEndPosition.epParagraphNumber != paraNr )
-		    { LLDEB(er->erEndPosition.epParagraphNumber,paraNr); }
+		if  ( er->erEnd.epParaNr != paraNr )
+		    { LLDEB(er->erEnd.epParaNr,paraNr); }
 
 		paraBi= docGetParagraphByNumber( selRootBi, paraNr );
 
@@ -526,38 +604,15 @@ int tedEditRefreshLayout(	EditOperation *		eo,
 					    eo->eoParaAdjustStroffUpto ) )
 		    { LDEB(eo->eoParaAdjustFromLine); }
 
-		if  ( tedOpenItemObjects( paraBi, &(ed->edColors), add ) )
+		if  ( tedOpenItemObjects( paraBi, bd, &(ed->edColors), add ) )
 		    { LDEB(1); return -1;	}
 		}
 	    else{
 		DocumentSelection	dsLayout;
-		BufferItem *		startBi;
-		BufferItem *		endBi;
 
-		if  ( er->erStartPosition.epParagraphNumber == 0 )
-		    {
-		    LDEB(er->erStartPosition.epParagraphNumber);
-		    er->erStartPosition.epParagraphNumber= 1;
-		    }
-
-		startBi= docGetParagraphByNumber( selRootBi,
-				er->erStartPosition.epParagraphNumber );
-		endBi= docGetParagraphByNumber( selRootBi,
-				er->erEndPosition.epParagraphNumber );
-
-		if  ( ! startBi || ! endBi )
-		    {
-		    LXDEB(er->erStartPosition.epParagraphNumber,startBi);
-		    LXDEB(er->erEndPosition.epParagraphNumber,endBi);
-		    return -1;
-		    }
-
-		docInitDocumentSelection( &dsLayout );
-		dsLayout.dsBegin.dpBi= startBi;
-		dsLayout.dsBegin.dpStroff= 0;
-
-		dsLayout.dsEnd.dpBi= endBi;
-		dsLayout.dsEnd.dpStroff= endBi->biParaStrlen;
+		if  ( docLayoutInvalidateRange( &dsLayout,
+							    selRootBi, er ) )
+		    { LDEB(1); return -1;	}
 
 		selRootBi= docGetSelectionRoot( &ei, &bodySectBi,
 							    bd, &dsLayout );
@@ -583,25 +638,6 @@ int tedEditRefreshLayout(	EditOperation *		eo,
 		    page= selRootBi->biSectHeaderFooterUseForPage;
 		    ei->eiPageFormattedFor= -1;
 
-		    /* Is this good for anything?  */
-		    /* Turned off, but check that the return values */
-		    /* are the values that we already have. MdD Mar 26, 2004 */
-		    /* If no messages come out, remove after Ted 2.15 */
-		    /* Did not dare to remove the day before a release */
-		    {
-		    BufferItem *	x_bodySectBi= (BufferItem *)0;
-		    ExternalItem *	x_ei;
-
-		    if  ( docGetExternalItem( &x_ei, &x_bodySectBi, bd,
-								selRootBi ) )
-			{ LDEB(selRootBi->biInExternalItem); return -1;	}
-
-		    if  ( x_ei != ei )
-			{ XXDEB(x_ei,ei);	}
-		    if  ( x_bodySectBi != bodySectBi )
-			{ XXDEB(x_bodySectBi,bodySectBi);	}
-		    }
-
 		    docLayoutExternalItem( ei, &(eo->eoChangedRect),
 					    page, ei->eiY0UsedTwips,
 					    bd, bodySectBi, add,
@@ -609,7 +645,7 @@ int tedEditRefreshLayout(	EditOperation *		eo,
 					    tedInitLayoutExternalItem,
 					    tedCloseObject );
 
-		    if  ( tedOpenItemObjects( ei->eiItem,
+		    if  ( tedOpenItemObjects( ei->eiItem, bd,
 						    &(ed->edColors), add ) )
 			{ LDEB(1); return -1;	}
 		    }
@@ -619,7 +655,7 @@ int tedEditRefreshLayout(	EditOperation *		eo,
 					    &(eo->eoChangedRect) ) )
 			{ LDEB(1);	}
 
-		    if  ( tedOpenItemObjects( selRootBi,
+		    if  ( tedOpenItemObjects( selRootBi, bd,
 						    &(ed->edColors), add ) )
 			{ LDEB(1); return -1;	}
 		    }

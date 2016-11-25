@@ -152,6 +152,28 @@ static void appTryRgbColorFace(		RgbCube *		rc,
 /*									*/
 /************************************************************************/
 
+static int appRgbCubeAllocateBlockColor(	RgbCube *	rc,
+						RgbColorBlock *	rcb )
+    {
+    const RGB8Color *	col= &(rcb->rcbRgbColor);
+
+    if  ( appColorRgb( &(rcb->rcbAllocatorColor), &(rc->rcColors),
+					    col->rgb8Red,
+					    col->rgb8Green,
+					    col->rgb8Blue ) )
+	{ LDEB(1); return- 1;	}
+
+    if  ( appColorRgb( &(rcb->rcbAllocatorColorX), &(rc->rcColors),
+					    255- col->rgb8Red,
+					    255- col->rgb8Green,
+					    255- col->rgb8Blue ) )
+	{ LDEB(1); return- 1;	}
+
+    rcb->rcbColorAllocated= 1;
+
+    return 0;
+    }
+
 static void appDrawRgbColorFace(	RgbCube *		rc,
 					RgbColorBlock *		rcb,
 					void *			through,
@@ -163,6 +185,7 @@ static void appDrawRgbColorFace(	RgbCube *		rc,
 					const int		nodes[4] )
     {
     AppDrawingData *	add= (AppDrawingData *)through;
+    int			linewidth;
 
     APP_POINT		points[5];
 
@@ -170,31 +193,33 @@ static void appDrawRgbColorFace(	RgbCube *		rc,
     points[1].x= scale* xo[nodes[1]]+ square/ 2;
     points[2].x= scale* xo[nodes[2]]+ square/ 2;
     points[3].x= scale* xo[nodes[3]]+ square/ 2;
-    points[4].x= scale* xo[nodes[0]]+ square/ 2;
 
     points[0].y= square/ 2- scale* yo[nodes[0]];
     points[1].y= square/ 2- scale* yo[nodes[1]];
     points[2].y= square/ 2- scale* yo[nodes[2]];
     points[3].y= square/ 2- scale* yo[nodes[3]];
-    points[4].y= square/ 2- scale* yo[nodes[0]];
+
+    points[4]= points[0];
 
     if  ( ! rcb->rcbColorAllocated )
 	{
-	if  ( appColorRgb( &(rcb->rcbAllocatorColor), &(rc->rcColors),
-						rcb->rcbRgbColor.rgb8Red,
-						rcb->rcbRgbColor.rgb8Green,
-						rcb->rcbRgbColor.rgb8Blue ) )
+	if  ( appRgbCubeAllocateBlockColor( rc, rcb ) )
 	    { LDEB(1); return;	}
-
-	rcb->rcbColorAllocated= 1;
 	}
 
     appDrawSetForegroundColor( add, &(rcb->rcbAllocatorColor) );
 
     appDrawFillPolygon( add, points, 4 );
 
-    appDrawSetForegroundBlack( add );
+    if  ( rcb->rcbSelected )
+	{ linewidth= 3; }
+    else{ linewidth= 1;	}
 
+    appDrawSetForegroundColor( add, &(rcb->rcbAllocatorColorX) );
+
+    appDrawSetLineAttributes( add, linewidth,
+				LINEstyleSOLID, LINEcapBUTT, LINEjoinMITER,
+				(const unsigned char *)0, 0 );
     appDrawDrawLines( add, points, 4 );
 
     return;
@@ -234,6 +259,8 @@ static void appHandleRgbColorBlock(	double			k,
     static const int bottom[4]=	{ 2, 3, 1, 0 };
     static const int top   [4]=	{ 4, 5, 7, 6 };
 
+    typedef enum fc { fr, ba, le, ri, bo, to } fc;
+
     BlockFace	faces[6]=
 		    {
 		       { front,		},
@@ -267,12 +294,13 @@ static void appHandleRgbColorBlock(	double			k,
 	yi[top   [i]]= rcb->rcbY1;
 	}
 
-    faces[0].bfOnOutside= rcb->rcbRgbColor.rgb8Blue == 0;	/*  front */
-    faces[1].bfOnOutside= rcb->rcbRgbColor.rgb8Blue == 255;	/*  back */
-    faces[2].bfOnOutside= rcb->rcbRgbColor.rgb8Red == 0;	/*  left */
-    faces[3].bfOnOutside= rcb->rcbRgbColor.rgb8Red == 255;	/*  right */
-    faces[4].bfOnOutside= rcb->rcbRgbColor.rgb8Green == 0;	/*  bottom */
-    faces[5].bfOnOutside= rcb->rcbRgbColor.rgb8Green == 255;	/*  top */
+    faces[fr].bfOnOutside= rcb->rcbRgbColor.rgb8Blue == 0;	/*  front */
+    faces[ba].bfOnOutside= rcb->rcbRgbColor.rgb8Blue == 255;	/*  back */
+    faces[le].bfOnOutside= rcb->rcbRgbColor.rgb8Red == 0;	/*  left */
+    faces[ri].bfOnOutside= rcb->rcbRgbColor.rgb8Red == 255;	/*  right */
+    faces[bo].bfOnOutside= rcb->rcbRgbColor.rgb8Green == 0;	/*  bottom */
+    faces[to].bfOnOutside= rcb->rcbRgbColor.rgb8Green == 255;	/*  top */
+
 
     for ( i= 0; i < 6; i++ )
 	{
@@ -286,51 +314,51 @@ static void appHandleRgbColorBlock(	double			k,
 	{
 	/*  left  */
 	if  ( rcb->rcbRgbColor.rgb8Red == rc->rcSplitValues.rgb8Red )
-	    { faces[2].bfDrawCandidate= 1;	}
+	    { faces[le].bfDrawCandidate= 1;	}
 
 	if  ( rcb->rcbRgbColor.rgb8Red == 0	)
-	    { faces[2].bfSplitCandidate= 0;	}
+	    { faces[le].bfSplitCandidate= 0;	}
 
 	/*  right  */
 	if  ( rcb->rcbRgbColor.rgb8Red == rc->rcBSplitValues.rgb8Red )
-	    { faces[3].bfDrawCandidate= 1;	}
+	    { faces[ri].bfDrawCandidate= 1; }
 
 	if  ( rcb->rcbRgbColor.rgb8Red == 255	)
-	    { faces[3].bfSplitCandidate= 0;	}
+	    { faces[ri].bfSplitCandidate= 0;	}
 	}
 
     if  ( rc->rcSplitColor == RCsplitGREEN )
 	{
 	/*  bottom  */
 	if  ( rcb->rcbRgbColor.rgb8Green == rc->rcSplitValues.rgb8Green )
-	    { faces[4].bfDrawCandidate= 1;	}
+	    { faces[bo].bfDrawCandidate= 1;	}
 
 	if  ( rcb->rcbRgbColor.rgb8Green == 0	)
-	    { faces[4].bfSplitCandidate= 0;	}
+	    { faces[bo].bfSplitCandidate= 0;	}
 
 	/*  top  */
 	if  ( rcb->rcbRgbColor.rgb8Green == rc->rcBSplitValues.rgb8Green )
-	    { faces[5].bfDrawCandidate= 1;	}
+	    { faces[to].bfDrawCandidate= 1;	}
 
 	if  ( rcb->rcbRgbColor.rgb8Green == 255	)
-	    { faces[5].bfSplitCandidate= 0;	}
+	    { faces[to].bfSplitCandidate= 0;	}
 	}
 
     if  ( rc->rcSplitColor == RCsplitBLUE )
 	{
 	/*  front  */
 	if  ( rcb->rcbRgbColor.rgb8Blue == rc->rcSplitValues.rgb8Blue )
-	    { faces[0].bfDrawCandidate= 1;	}
+	    { faces[fr].bfDrawCandidate= 1;	}
 
 	if  ( rcb->rcbRgbColor.rgb8Blue == 0	)
-	    { faces[0].bfSplitCandidate= 0;	}
+	    { faces[fr].bfSplitCandidate= 0;	}
 
 	/*  back  */
 	if  ( rcb->rcbRgbColor.rgb8Blue == rc->rcBSplitValues.rgb8Blue )
-	    { faces[1].bfDrawCandidate= 1;	}
+	    { faces[ba].bfDrawCandidate= 1;	}
 
 	if  ( rcb->rcbRgbColor.rgb8Blue == 255	)
-	    { faces[1].bfSplitCandidate= 0;	}
+	    { faces[ba].bfSplitCandidate= 0;	}
 	}
 
     for ( i= 0; i < 8; i++ )
@@ -342,10 +370,6 @@ static void appHandleRgbColorBlock(	double			k,
 
     for ( i= 0; i < 8; i++ )
 	{
-	/*
-	xo[i]= xp[i]/ ( zp[i]/ k+ 1.0 );
-	yo[i]= yp[i]/ ( zp[i]/ k+ 1.0 );
-	*/
 	xo[i]= xp[i]/ ( ( k- zp[i] )/ k+ 1.0 );
 	yo[i]= yp[i]/ ( ( k- zp[i] )/ k+ 1.0 );
 	}
@@ -354,30 +378,33 @@ static void appHandleRgbColorBlock(	double			k,
 	{
 	const int *	nodes= faces[i].bfNodes;
 
-	double		ax, bx, nx;
-	double		ay, by, ny;
-	double		az, bz, nz;
+	double		ax, bx;
+	double		ay, by;
+	double		nz;
 
 	if  ( ! faces[i].bfDrawCandidate )
 	    { continue;	}
 
 	ax= xp[nodes[3]]- xp[nodes[0]];
 	ay= yp[nodes[3]]- yp[nodes[0]];
-	az= zp[nodes[3]]- zp[nodes[0]];
+	/* az= zp[nodes[3]]- zp[nodes[0]]; */
 
 	bx= xp[nodes[1]]- xp[nodes[0]];
 	by= yp[nodes[1]]- yp[nodes[0]];
-	bz= zp[nodes[1]]- zp[nodes[0]];
+	/* bz= zp[nodes[1]]- zp[nodes[0]]; */
 
+	/*
 	nx= ax* bz- az* bx;
 	ny= az* bx- ax* bz;
+	*/
 	nz= ax* by- ay* bx;
 
 	if  ( nz > 0 )
 	    {
 	    (*handleFace)( rc, rcb,
 			    through, square, scale, xo, yo,
-			    faces[i].bfSplitCandidate, nodes );
+			    faces[i].bfSplitCandidate,
+			    nodes );
 	    }
 	}
 
@@ -412,7 +439,7 @@ void appRedrawRgbCube(	RgbCube *			rc,
 					    drClip->drX1- drClip->drX0+ 1,
 					    drClip->drY1- drClip->drY0+ 1 );
 
-    if  ( rc->rcColorSelected )
+    if  ( rc->rcColorSelected >= 0 )
 	{
 	DocumentRectangle	drSel;
 
@@ -425,7 +452,7 @@ void appRedrawRgbCube(	RgbCube *			rc,
 	    { drSel.drY0= 6;	}
 	else{ drSel.drX0= 6;	}
 
-	if  ( docIntersectRectangle( &drSel, &drSel, drClip ) )
+	if  ( geoIntersectRectangle( &drSel, &drSel, drClip ) )
 	    {
 	    if  ( ! rc->rcColorAllocated )
 		{
@@ -608,6 +635,29 @@ static void appRgbCubeCalculateBlocks(	RgbCube *	rc )
     qsort( rc->rcColorBlocks, rc->rcColorBlockCount,
 				    sizeof(RgbColorBlock), appRgbCubeZCmp );
 
+    rc->rcColorSelected= -1;
+    rcb= rc->rcColorBlocks;
+    for ( i= 0; i < rc->rcColorBlockCount; rcb++, i++ )
+	{
+	const RGB8Color *	rgb8= &(rcb->rcbRgbColor);
+
+	int		rr= rgb8->rgb8Red/ rc->rcRedStep;
+	int		gg= rgb8->rgb8Green/ rc->rcGreenStep;
+	int		bb= rgb8->rgb8Blue/ rc->rcBlueStep;
+
+	int		n;
+
+	n= 0;
+	n += rc->rcGreenSteps* rc->rcBlueSteps* rr;
+	n += rc->rcBlueSteps* gg;
+	n += bb;
+
+	rc->rcColorBlocks[n].rcbMappedIndex= i;
+
+	if  ( rcb->rcbSelected )
+	    { rc->rcColorSelected= i;	}
+	}
+
     return;
     }
 
@@ -759,8 +809,26 @@ void appRgbCubeRefreshSplit(	RgbCube *		rc,
 void appRgbCubeSelectColor(	RgbCube *		rc,
 				const RGB8Color *	rgb8 )
     {
+    int		rr= rgb8->rgb8Red/ rc->rcRedStep;
+    int		gg= rgb8->rgb8Green/ rc->rcGreenStep;
+    int		bb= rgb8->rgb8Blue/ rc->rcBlueStep;
+
+    int		n;
+
+    n= 0;
+    n += rc->rcGreenSteps* rc->rcBlueSteps* rr;
+    n += rc->rcBlueSteps* gg;
+    n += bb;
+
+    n= rc->rcColorBlocks[n].rcbMappedIndex;
+
+    if  ( rc->rcColorSelected >= 0 )
+	{ rc->rcColorBlocks[rc->rcColorSelected].rcbSelected= 0;	}
+
+    rc->rcColorBlocks[n].rcbSelected= 1;
+
     rc->rcSelectedColor= *rgb8;
-    rc->rcColorSelected= 1;
+    rc->rcColorSelected= n;
     rc->rcColorAllocated= 0;
 
     return;
@@ -797,7 +865,7 @@ int appPrepareRgbCube(	RgbCube *			rc,
     if  ( appColorRgb( &(rc->rcBackColor), &(rc->rcColors), r, g, b ) )
 	{ LLLDEB(r,g,b); return -1;	}
 
-    rc->rcColorSelected= 0;
+    rc->rcColorSelected= -1;
     rc->rcColorAllocated= 0;
 
     count= redSteps* greenSteps* blueSteps;
@@ -848,6 +916,7 @@ int appPrepareRgbCube(	RgbCube *			rc,
 		fresh->rcbRgbColor.rgb8Alpha= 255;
 
 		fresh->rcbColorAllocated= 0;
+		fresh->rcbSelected= 0;
 
 		fresh++; i++;
 		}

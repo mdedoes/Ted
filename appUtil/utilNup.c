@@ -66,6 +66,38 @@ void utilCleanNupSchema(	NupSchema *	ns )
 /*									*/
 /************************************************************************/
 
+int utilNupFitPagesToSheet(
+			int *				pFitWithoutRot,
+			int *				pFitWithRot,
+			const PrintGeometry *		pg,
+			const DocumentGeometry *	dgPage )
+    {
+    int				fitsWithoutRot= 0;
+    int				fitsWithRot= 0;
+
+    const DocumentGeometry *	dgSheet= &(pg->pgSheetGeometry);
+    int				cols= pg->pgGridCols;
+    int				rows= pg->pgGridRows;
+    double			cellWideTwips= dgSheet->dgPageWideTwips/ cols;
+    double			cellHighTwips= dgSheet->dgPageHighTwips/ rows;
+
+    if  ( dgPage->dgPageWideTwips <= cellWideTwips	&&
+	  dgPage->dgPageHighTwips <= cellHighTwips	)
+	{ fitsWithoutRot= 1;	}
+
+    if  ( dgPage->dgPageWideTwips <= cellHighTwips	&&
+	  dgPage->dgPageHighTwips <= cellWideTwips	)
+	{ fitsWithRot= 1;	}
+
+    *pFitWithoutRot= fitsWithoutRot;
+    *pFitWithRot= fitsWithRot;
+
+    if  ( ! fitsWithoutRot && ! fitsWithRot )
+	{ return 1;	}
+
+    return 0;
+    }
+
 int utilNupGetBaseTranform(
 			AffineTransform2D *		pAt1Page,
 			int *				pRotatePages,
@@ -91,13 +123,7 @@ int utilNupGetBaseTranform(
     double			cellWideTwips= dgSheet->dgPageWideTwips/ cols;
     double			cellHighTwips= dgSheet->dgPageHighTwips/ rows;
 
-    if  ( dgPage->dgPageWideTwips <= cellWideTwips	&&
-	  dgPage->dgPageHighTwips <= cellHighTwips	)
-	{ fitsWithoutRot= 1;	}
-
-    if  ( dgPage->dgPageWideTwips <= cellHighTwips	&&
-	  dgPage->dgPageHighTwips <= cellWideTwips	)
-	{ fitsWithRot= 1;	}
+    utilNupFitPagesToSheet( &fitsWithoutRot, &fitsWithRot, pg, dgPage );
 
     /*  0  */
     if  ( rows == 1		&&
@@ -246,7 +272,7 @@ void utilNupSheetBoundingBox(
 
 	if  ( i == 0 )
 	    { *sheetBBox= dr;					}
-	else{ docUnionRectangle( sheetBBox, sheetBBox, &dr );	}
+	else{ geoUnionRectangle( sheetBBox, sheetBBox, &dr );	}
 	}
 
     return;
@@ -433,12 +459,13 @@ int utilNupSetSchema(	NupSchema *			ns,
 /************************************************************************/
 /*									*/
 /*  Initialize printing geometry.					*/
+/*  (Not quite a geometry, now that the page ranges are added)		*/
 /*									*/
 /************************************************************************/
 
 void utilInitPrintGeometry(	PrintGeometry *	pg )
     {
-    appInitDocumentGeometry( &(pg->pgSheetGeometry) );
+    utilInitDocumentGeometry( &(pg->pgSheetGeometry) );
 
     pg->pgRotatePage90= 0;
     pg->pgCenterPageHorizontally= 0;
@@ -448,6 +475,23 @@ void utilInitPrintGeometry(	PrintGeometry *	pg )
 
     pg->pgScalePagesToFit= 0;
 
+    pg->pgPrintOddSides= 1;
+    pg->pgPrintEvenSides= 1;
+    pg->pgPrintSheetsReverse= 0;
+    pg->pgPrintBookletOrder= 0;
+
+    pg->pgFirstPage= -1;
+    pg->pgLastPage= -1;
+    pg->pgUsePostScriptFilters= 1;
+    pg->pgUsePostScriptIndexedImages= 1;
+    pg->pgSkipEmptyPages= 0;
+    pg->pgSkipBlankPages= 0;
+    pg->pgOmitHeadersOnEmptyPages= 0;
+
     return;
     }
 
+void utilCleanPrintGeometry(	PrintGeometry *	pg )
+    {
+    return;
+    }

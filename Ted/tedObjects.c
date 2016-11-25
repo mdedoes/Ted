@@ -12,9 +12,8 @@
 #   include	<string.h>
 
 #   include	<sioMemory.h>
-#   include	<sioEndian.h>
-#   include	<sioStdio.h>
 #   include	<sioHex.h>
+#   include	<sioPipe.h>
 #   include	<appSystem.h>
 
 #   include	<appDraw.h>
@@ -36,18 +35,28 @@ int tedDrawObject(		const BufferItem *	bi,
     {
     InsertedObject *	io= bi->biParaObjects+ tp->tpObjectNumber;
 
+    int			x0= tp->tpX0;
+    int			y0= baseline- io->ioPixelsHigh;
+
+    if  ( ! io->ioInline )
+	{
+	x0= X_PIXELS( add, io->ioX0Twips );
+	y0= LP_YPIXELS( add, &(io->ioY0Position) );
+	}
+
+    if  ( io->ioKind == DOCokDRAWING_SHAPE )
+	{ return 0;	}
+
     if  ( ( io->ioKind == DOCokPICTWMETAFILE	||
 	    io->ioKind == DOCokMACPICT		||
 	    io->ioKind == DOCokPICTPNGBLIP	||
-	    io->ioKind == DOCokPICTJPEGBLIP	||
-	    io->ioKind == DOCokINCLUDEPICTURE	||
-	    io->ioKind == DOCokDRAWING_OBJECT	)	&&
+	    io->ioKind == DOCokPICTJPEGBLIP	)	&&
 	  io->ioPixmap					)
 	{
 	appDrawDrawPixmap( add, io->ioPixmap,
-	    0, 0, /* src: x,y */
-	    io->ioPixelsWide, io->ioPixelsHigh, /* wide, high */
-	    tp->tpX0- ox, baseline- io->ioPixelsHigh- oy ); /* dest: x,y */
+			0, 0, /* src: x,y */
+			io->ioPixelsWide, io->ioPixelsHigh, /* wide, high */
+			x0- ox, y0- oy ); /* dest: x,y */
 		    
 	return 0;
 	}
@@ -57,22 +66,27 @@ int tedDrawObject(		const BufferItem *	bi,
 	  io->ioPixmap					)
 	{
 	appDrawDrawPixmap( add, io->ioPixmap,
-	    0, 0, /* src: x,y */
-	    io->ioPixelsWide, io->ioPixelsHigh, /* wide, high */
-	    tp->tpX0- ox, baseline- io->ioPixelsHigh- oy ); /* dest: x,y */
+			0, 0, /* src: x,y */
+			io->ioPixelsWide, io->ioPixelsHigh, /* wide, high */
+			x0- ox, y0- oy ); /* dest: x,y */
 		    
 	return 0;
 	}
 
-#   ifdef USE_MOTIF
-    XSetLineAttributes( add->addDisplay, add->addGc,
-					1, LineSolid, CapButt, JoinMiter );
-#   endif
+    if  ( io->ioKind == DOCokEPS_FILE			&&
+	  io->ioPixmap					)
+	{
+	appDrawDrawPixmap( add, io->ioPixmap,
+			0, 0, /* src: x,y */
+			io->ioPixelsWide, io->ioPixelsHigh, /* wide, high */
+			x0- ox, y0- oy ); /* dest: x,y */
+		    
+	return 0;
+	}
 
-#   ifdef USE_GTK
-    gdk_gc_set_line_attributes( add->addGc,
-		    1, GDK_LINE_SOLID, GDK_CAP_BUTT, GDK_JOIN_MITER );
-#   endif
+    appDrawSetLineAttributes( add,
+			    1, LINEstyleSOLID, LINEcapBUTT, LINEjoinMITER,
+			    (const unsigned char *)0, 0 );
 
     appDrawDrawRectangle( add,
 		tp->tpX0- ox, baseline- io->ioPixelsHigh- oy,
@@ -84,7 +98,7 @@ typedef int (*PLAY_META_X11)(	SimpleInputStream *	sis,
 				void **			pPrivate,
 				AppColors *		ac,
 				AppDrawingData *	add,
-				APP_WINDOW		pixmap,
+				APP_BITMAP_IMAGE	pixmap,
 				int			mapMode,
 				int			xExt,
 				int			yExt,
@@ -93,15 +107,22 @@ typedef int (*PLAY_META_X11)(	SimpleInputStream *	sis,
 				int			twipsWide,
 				int			twipsHigh );
 
-static int tedOpenMetafileObject(	InsertedObject *	io,
-					PLAY_META_X11		playMetaX11,
-					AppColors *		ac,
-					AppDrawingData *	add,
-					int			mapMode,
-					const MemoryBuffer *	mb )
+static int tedOpenMetafileObject(
+				void **				pPrivate,
+				APP_BITMAP_IMAGE *		pPixmap,
+				const PictureProperties *	pip,
+				int				pixelsWide,
+				int				pixelsHigh,
+				PLAY_META_X11			playMetaX11,
+				AppColors *			ac,
+				AppDrawingData *		add,
+				const MemoryBuffer *		mb )
     {
     SimpleInputStream *	sisMem;
     SimpleInputStream *	sisMeta;
+
+    void *		private= (void *)0;
+    APP_BITMAP_IMAGE	pixmap= (APP_BITMAP_IMAGE)0;
 
     sisMem= sioInMemoryOpen( mb );
     if  ( ! sisMem )
@@ -111,29 +132,33 @@ static int tedOpenMetafileObject(	InsertedObject *	io,
     if  ( ! sisMeta )
 	{ XDEB(sisMem); return -1;	}
 
-    io->ioPixmap= appMakePixmap( add, io->ioPixelsWide, io->ioPixelsHigh );
-    if  ( ! io->ioPixmap )
-	{ XDEB(io->ioPixmap); return -1;	}
+    pixmap= appMakePixmap( add, pixelsWide, pixelsHigh );
+    if  ( ! pixmap )
+	{ XDEB(pixmap); return -1;	}
 
-    if  ( (*playMetaX11)( sisMeta, &(io->ioPrivate), ac, add,
-					io->ioPixmap, mapMode,
-					io->io_xWinExt, io->io_yWinExt,
-					io->ioPixelsWide, io->ioPixelsHigh,
-					io->ioTwipsWide, io->ioTwipsHigh ) )
+    if  ( (*playMetaX11)( sisMeta, &private, ac, add,
+				    pixmap, pip->pipMapMode,
+				    pip->pip_xWinExt, pip->pip_yWinExt,
+				    pixelsWide, pixelsHigh,
+				    pip->pipTwipsWide, pip->pipTwipsHigh ) )
 	{ LDEB(1);	}
 
     sioInClose( sisMeta );
     sioInClose( sisMem );
 
+    *pPrivate= private;
+    *pPixmap= pixmap;
     return 0;
     }
 
-static int tedOpenBitmapObject(	bmReadBitmap		readBitmap,
-				InsertedObject *	io,
-				double			pixelsPerTwip,
-				AppColors *		ac,
-				AppDrawingData *	add,
-				const MemoryBuffer *	mb )
+static int tedOpenBitmapObject(	void **				pPrivate,
+				APP_BITMAP_IMAGE *		pPixmap,
+				int				pixelsWide,
+				int				pixelsHigh,
+				bmReadBitmap			readBitmap,
+				AppColors *			ac,
+				AppDrawingData *		add,
+				const MemoryBuffer *		mb )
     {
     AppBitmapImage *	abi= (AppBitmapImage *)malloc( sizeof(AppBitmapImage) );
 
@@ -160,16 +185,15 @@ static int tedOpenBitmapObject(	bmReadBitmap		readBitmap,
     sioInClose( sisBitmap );
     sioInClose( sisMem );
 
-    if  ( appImgMakePixmap( add, &pixmap,
-			    io->ioPixelsWide, io->ioPixelsHigh, ac, abi ) )
+    if  ( appImgMakePixmap( add, &pixmap, pixelsWide, pixelsHigh, ac, abi ) )
 	{
 	LDEB(1);
 	appCleanBitmapImage( abi ); free( abi );
 	return -1;
 	}
 
-    io->ioPixmap= pixmap;
-    io->ioPrivate= (void *)abi;
+    *pPrivate= (void *)abi;
+    *pPixmap= pixmap;
 
     return 0;
     }
@@ -180,87 +204,245 @@ static int tedOpenEpsfObject(		InsertedObject *	io,
 					const MemoryBuffer *	mb )
     {
 #   if 0
-    SimpleInputStream *	sisMem;
-    SimpleInputStream *	sisMeta;
+    SimpleInputStream *		sisMem;
+    SimpleInputStream *		sisEps;
+    SimpleOutputStream *	sosGs;
+
+    char			command[1000];
+
+    static Atom			XA_GHOSTVIEW= None;
+
+    if  ( XA_GHOSTVIEW == None )
+	{
+	XA_GHOSTVIEW= XInternAtom( add->addDisplay, "GHOSTVIEW", False );
+	if  ( XA_GHOSTVIEW == None )
+	    { XDEB(XA_GHOSTVIEW); return -1;	}
+	}
+
+    io->ioPixmap= appMakePixmap( add, io->ioPixelsWide, io->ioPixelsHigh );
+    if  ( ! io->ioPixmap )
+	{ XDEB(io->ioPixmap); return -1;	}
+
+    sprintf( command, "0 0 %d %d %d %d %f %f",
+				/* llx	*/ 0,
+				/* lly	*/ 0,
+				/* urx	*/ io->ioTwipsWide/ 20,
+				/* ury	*/ io->ioTwipsHigh/ 20,
+				/* xdpi	*/ 72.0,
+				/* ydpi	*/ 72.0 );
+
+    XChangeProperty( add->addDisplay, add->addDrawable,
+			XA_GHOSTVIEW, XA_STRING, 8,
+			PropModeReplace,
+			(unsigned char *)command,
+			sizeof(command) );
+
+    XSync( add->addDisplay, False );
+
+    sprintf( command,
+	    "GHOSTVIEW='%ld %ld' gs -dQUIET -sDEVICE=x11 -dNOPAUSE -c quit -",
+	    add->addDrawable, io->ioPixmap );
+    sosGs= sioOutPipeOpen( command );
 
     sisMem= sioInMemoryOpen( mb );
     if  ( ! sisMem )
 	{ XDEB(sisMem); return -1;	}
 
-    sisMeta= sioInHexOpen( sisMem );
-    if  ( ! sisMeta )
+    sisEps= sioInHexOpen( sisMem );
+    if  ( ! sisEps )
 	{ XDEB(sisMem); return -1;	}
 
-    io->ioPixmap= appMakePixmap( add, io->ioPixelsWide, io->ioPixelsHigh );
-    if  ( ! io->ioPixmap )
-	{ XDEB(io->ioPixmap); return -1;	}
+    for (;;)
+	{
+	int		got;
 
-    sioInClose( sisMeta );
+	got= sioInReadBytes( sisEps, command, sizeof( command ) );
+	if  ( got < 1 )
+	    { break;	}
+	if  ( sioOutWriteBytes( sosGs, command, got ) != got )
+	    { LDEB(got); break;	}
+	}
+
+    sioInClose( sisEps );
     sioInClose( sisMem );
+
+    sioOutPrintf( sosGs, " showpage\n" );
+    sioOutClose( sosGs );
 
 #   endif
     return 0;
     }
 
-static int tedOpenDrawingObject(	InsertedObject *	io,
-					AppColors *		ac,
-					AppDrawingData *	add )
+static int tedOpenShapePixmaps(	DrawingShape *			ds,
+				const DocumentRectangle *	twipsRect,
+				AppColors *			ac,
+				AppDrawingData *		add )
     {
-    io->ioPixmap= appMakePixmap( add, io->ioPixelsWide, io->ioPixelsHigh );
-    if  ( ! io->ioPixmap )
-	{ XDEB(io->ioPixmap); return -1;	}
+    int				rval= 0;
+    const PictureProperties *	pip= &(ds->dsPictureProperties);
+    int				pixelsWide;
+    int				pixelsHigh;
 
-    if  ( tedDrawDrawingPixmap( io->ioPixmap, io, ac, add ) )
-	{ LDEB(1); return -1;	}
+    pixelsWide= X_PIXELS( add, twipsRect->drX1 )-
+		X_PIXELS( add, twipsRect->drX0 )+ 1;
+    pixelsHigh= Y_PIXELS( add, twipsRect->drY1 )-
+		Y_PIXELS( add, twipsRect->drY0 )+ 1;
 
-    return 0;
+    if  ( ds->dsChildCount > 0 )
+	{
+	int			child;
+	double			xfac;
+	double			yfac;
+
+	DocumentRectangle	drHere= *twipsRect;
+
+	if  ( DSflipHORIZONTAL( ds ) )
+	    { int sw= drHere.drX0; drHere.drX0= drHere.drX1; drHere.drX1= sw; }
+
+	if  ( DSflipVERTICAL( ds ) )
+	    { int sw= drHere.drY0; drHere.drY0= drHere.drY1; drHere.drY1= sw; }
+
+	xfac= ( 1.0* ( drHere.drX1- drHere.drX0 ) )/
+			    ( ds->dsGroupRect.drX1- ds->dsGroupRect.drX0 );
+	yfac= ( 1.0* ( drHere.drY1- drHere.drY0 ) )/
+			    ( ds->dsGroupRect.drY1- ds->dsGroupRect.drY0 );
+
+	for ( child= 0; child < ds->dsChildCount; child++ )
+	    {
+	    DrawingShape *	dsChild= ds->dsChildren[child];
+	    DocumentRectangle	drChild;
+
+	    drChild.drX0= drHere.drX0+ xfac* 
+			( dsChild->dsRelRect.drX0- ds->dsGroupRect.drX0 );
+	    drChild.drY0= drHere.drY0+ yfac*
+			( dsChild->dsRelRect.drY0- ds->dsGroupRect.drY0 );
+	    drChild.drX1= drHere.drX0+ xfac* 
+			( dsChild->dsRelRect.drX1- ds->dsGroupRect.drX0 );
+	    drChild.drY1= drHere.drY0+ yfac*
+			( dsChild->dsRelRect.drY1- ds->dsGroupRect.drY0 );
+
+	    if  ( tedOpenShapePixmaps( dsChild, &drChild, ac, add ) )
+		{ LDEB(child); rval= -1;	}
+	    }
+	}
+
+    switch( pip->pipType )
+	{
+	case DOCokUNKNOWN:
+	    break;
+
+	case DOCokPICTWMETAFILE:
+	    if  ( ! ds->dsPrivate					&&
+		  tedOpenMetafileObject( &(ds->dsPrivate), &(ds->dsPixmap), pip,
+					pixelsWide, pixelsHigh,
+					appMetaPlayWmfX11,
+					ac, add, &(ds->dsPictureData) )	)
+		{ LDEB(1); rval= -1; break;	}
+	    break;
+
+	case DOCokPICTEMFBLIP:
+	    if  ( ! ds->dsPrivate					&&
+		  tedOpenMetafileObject( &(ds->dsPrivate), &(ds->dsPixmap), pip,
+					pixelsWide, pixelsHigh,
+					appMetaPlayEmfX11,
+					ac, add, &(ds->dsPictureData) )	)
+		{ LDEB(1); rval= -1; break;	}
+	    break;
+
+	case DOCokMACPICT:
+	    if  ( ! ds->dsPrivate					&&
+		  tedOpenMetafileObject( &(ds->dsPrivate), &(ds->dsPixmap), pip,
+					pixelsWide, pixelsHigh,
+					appMacPictPlayFileX11,
+					ac, add, &(ds->dsPictureData) )	)
+		{ LDEB(1); rval= -1; break;	}
+	    break;
+
+	case DOCokPICTPNGBLIP:
+	    if  ( ! ds->dsPrivate					&&
+		  tedOpenBitmapObject( &(ds->dsPrivate), &(ds->dsPixmap),
+				    pixelsWide, pixelsHigh,
+				    bmPngReadPng,
+				    ac, add, &(ds->dsPictureData) )	)
+		{ LDEB(1); rval= -1; break;	}
+	    break;
+
+	case DOCokPICTJPEGBLIP:
+	    if  ( ! ds->dsPrivate					&&
+		  tedOpenBitmapObject( &(ds->dsPrivate), &(ds->dsPixmap),
+					pixelsWide, pixelsHigh,
+					bmJpegReadJfif,
+					ac, add, &(ds->dsPictureData) )	)
+		{ LDEB(1); rval= -1; break;	}
+	    break;
+
+	default:
+	    LDEB(pip->pipType); rval= -1; break;
+	}
+
+    return rval;
     }
 
 static int tedOpenObject(	InsertedObject *	io,
+				BufferDocument *	bd,
 				AppColors *		ac,
 				AppDrawingData *	add )
     {
-    if  ( io->ioTwipsWide < 1 || io->ioTwipsHigh < 1 )
-	{ LLDEB(io->ioTwipsWide,io->ioTwipsHigh); return -1; }
+    PictureProperties *	pip= &(io->ioPictureProperties);
+
+    if  ( io->ioKind != DOCokDRAWING_SHAPE )
+	{
+	if  ( io->ioTwipsWide < 1 || io->ioTwipsHigh < 1 )
+	    { LLLDEB(io->ioKind,io->ioTwipsWide,io->ioTwipsHigh); return -1; }
+	}
 
     switch( io->ioKind )
 	{
 	case DOCokPICTWMETAFILE:
 	    if  ( ! io->ioPrivate					&&
-		  tedOpenMetafileObject( io, appMetaPlayWmfX11,
-						ac, add, io->ioMapMode,
-						&(io->ioObjectData) )	)
+		  tedOpenMetafileObject( &(io->ioPrivate), &(io->ioPixmap), pip,
+					io->ioPixelsWide, io->ioPixelsHigh,
+					appMetaPlayWmfX11,
+					ac, add, &(io->ioObjectData) )	)
 		{ LDEB(1); return 0;	}
+
+	    if  ( io->ioPrivate )
+		{ io->ioPictureProperties.pipMetafileIsBitmap= 1;	}
+
 	    return 0;
 
 	case DOCokPICTEMFBLIP:
 	    if  ( ! io->ioPrivate					&&
-		  tedOpenMetafileObject( io, appMetaPlayEmfX11,
-						ac, add, io->ioMapMode,
-						&(io->ioObjectData) )	)
+		  tedOpenMetafileObject( &(io->ioPrivate), &(io->ioPixmap), pip,
+					io->ioPixelsWide, io->ioPixelsHigh,
+					appMetaPlayEmfX11,
+					ac, add, &(io->ioObjectData) )	)
 		{ LDEB(1); return 0;	}
 	    return 0;
 
 	case DOCokMACPICT:
 	    if  ( ! io->ioPrivate					&&
-		  tedOpenMetafileObject( io, appMacPictPlayFileX11,
-						ac, add, io->ioMapMode,
-						&(io->ioObjectData) )	)
+		  tedOpenMetafileObject( &(io->ioPrivate), &(io->ioPixmap), pip,
+					io->ioPixelsWide, io->ioPixelsHigh,
+					appMacPictPlayFileX11,
+					ac, add, &(io->ioObjectData) )	)
 		{ LDEB(1); return 0;	}
 	    return 0;
 
 	case DOCokPICTPNGBLIP:
 	    if  ( ! io->ioPrivate					&&
-		  tedOpenBitmapObject( bmPngReadPng, io,
-				    add->addMagnifiedPixelsPerTwip,
-					ac, add, &(io->ioObjectData) )	)
+		  tedOpenBitmapObject( &(io->ioPrivate), &(io->ioPixmap),
+				    io->ioPixelsWide, io->ioPixelsHigh,
+				    bmPngReadPng,
+				    ac, add, &(io->ioObjectData) )	)
 		{ LDEB(1); return 0;	}
 	    return 0;
 
 	case DOCokPICTJPEGBLIP:
 	    if  ( ! io->ioPrivate					&&
-		  tedOpenBitmapObject( bmJpegReadJfif, io,
-				    add->addMagnifiedPixelsPerTwip,
+		  tedOpenBitmapObject( &(io->ioPrivate), &(io->ioPixmap),
+					io->ioPixelsWide, io->ioPixelsHigh,
+					bmJpegReadJfif,
 					ac, add, &(io->ioObjectData) )	)
 		{ LDEB(1); return 0;	}
 	    return 0;
@@ -269,47 +451,39 @@ static int tedOpenObject(	InsertedObject *	io,
 	    if  ( io->ioResultKind == DOCokPICTWMETAFILE )
 		{
 		if  ( ! io->ioPrivate					&&
-		      tedOpenMetafileObject( io, appMetaPlayWmfX11,
-					ac, add, io->ioResultMapMode,
-					&(io->ioResultData) )	)
+		      tedOpenMetafileObject(
+					&(io->ioPrivate), &(io->ioPixmap), pip,
+					io->ioPixelsWide, io->ioPixelsHigh,
+					appMetaPlayWmfX11,
+					ac, add, &(io->ioResultData) )	)
 		    { LDEB(1); return 0;	}
+
+		if  ( io->ioPrivate )
+		    { io->ioPictureProperties.pipMetafileIsBitmap= 1;	}
 
 		return 0;
 		}
 	    return 0;
 
-	case DOCokINCLUDEPICTURE:
-
-	    if  ( io->ioResultKind == DOCokEPS_FILE )
-		{
-		if  ( ! io->ioPixmap					&&
-		      tedOpenEpsfObject( io,
-					ac, add, &io->ioResultData )	)
-		    { LDEB(1); return 0;	}
-
-		return 0;
-		}
-
-	    if  ( io->ioResultKind == DOCokBITMAP_FILE	&&
-		  io->ioPrivate				)
-		{
-		APP_BITMAP_IMAGE	pixmap;
-		AppBitmapImage *	abi= (AppBitmapImage *)io->ioPrivate;
-
-		if  ( appImgMakePixmap( add, &pixmap,
-			    io->ioPixelsWide, io->ioPixelsHigh, ac, abi ) )
-		    { LLDEB(io->ioKind,io->ioResultKind); return 0;	}
-
-		io->ioPixmap= pixmap;
-		return 0;
-		}
-
-	    LLDEB(io->ioKind,io->ioResultKind); return 0;
-
-	case DOCokDRAWING_OBJECT:
-	    if  ( ! io->ioPixmap			&&
-		  tedOpenDrawingObject( io, ac, add )	)
+	case DOCokEPS_FILE:
+	    if  ( ! io->ioPixmap					&&
+		  tedOpenEpsfObject( io,
+				    ac, add, &io->ioResultData )	)
 		{ LDEB(1); return 0;	}
+
+	    return 0;
+
+	case DOCokDRAWING_SHAPE:
+	    {
+	    DrawingShape *		ds= io->ioDrawingShape;
+	    const ShapeProperties *	sp= &(ds->dsShapeProperties);
+
+	    if  ( ! ds )
+		{ XDEB(ds); return 0;	}
+
+	    if  ( tedOpenShapePixmaps( ds, &(sp->spRect), ac, add ) )
+		{ LDEB(1); return 0;	}
+	    }
 	    return 0;
 
 	default:
@@ -320,6 +494,7 @@ static int tedOpenObject(	InsertedObject *	io,
     }
 
 static int tedOpenParaObjects(	BufferItem *		bi,
+				BufferDocument *	bd,
 				AppColors *		ac,
 				AppDrawingData *	add )
     {
@@ -336,7 +511,7 @@ static int tedOpenParaObjects(	BufferItem *		bi,
 
 	io= bi->biParaObjects+ tp->tpObjectNumber;
 
-	if  ( tedOpenObject( io, ac, add )	)
+	if  ( tedOpenObject( io, bd, ac, add )	)
 	    { LDEB(part); continue;	}
 	}
 
@@ -344,6 +519,7 @@ static int tedOpenParaObjects(	BufferItem *		bi,
     }
 
 int tedOpenItemObjects(	BufferItem *		bi,
+			BufferDocument *	bd,
 			AppColors *		ac,
 			AppDrawingData *	add )
     {
@@ -354,42 +530,42 @@ int tedOpenItemObjects(	BufferItem *		bi,
 	case DOClevSECT:
 	    for ( i= 0; i < bi->biChildCount; i++ )
 		{
-		if  ( tedOpenItemObjects( bi->biChildren[i], ac, add ) )
+		if  ( tedOpenItemObjects( bi->biChildren[i], bd, ac, add ) )
 		    { LDEB(i); return -1;	}
 		}
 
 	    if  ( bi->biSectHeader.eiItem				&&
 		  tedOpenItemObjects( bi->biSectHeader.eiItem,
-							ac, add )	)
+							bd, ac, add )	)
 		{ LDEB(1); return -1;	}
 	    if  ( bi->biSectFirstPageHeader.eiItem			&&
 		  tedOpenItemObjects( bi->biSectFirstPageHeader.eiItem,
-							ac, add )	)
+							bd, ac, add )	)
 		{ LDEB(1); return -1;	}
 	    if  ( bi->biSectLeftPageHeader.eiItem			&&
 		  tedOpenItemObjects( bi->biSectLeftPageHeader.eiItem,
-							ac, add )	)
+							bd, ac, add )	)
 		{ LDEB(1); return -1;	}
 	    if  ( bi->biSectRightPageHeader.eiItem			&&
 		  tedOpenItemObjects( bi->biSectRightPageHeader.eiItem,
-							ac, add )	)
+							bd, ac, add )	)
 		{ LDEB(1); return -1;	}
 
 	    if  ( bi->biSectFooter.eiItem				&&
 		  tedOpenItemObjects( bi->biSectFooter.eiItem,
-							ac, add )	)
+							bd, ac, add )	)
 		{ LDEB(1); return -1;	}
 	    if  ( bi->biSectFirstPageFooter.eiItem			&&
 		  tedOpenItemObjects( bi->biSectFirstPageFooter.eiItem,
-							ac, add )	)
+							bd, ac, add )	)
 		{ LDEB(1); return -1;	}
 	    if  ( bi->biSectLeftPageFooter.eiItem			&&
 		  tedOpenItemObjects( bi->biSectLeftPageFooter.eiItem,
-							ac, add )	)
+							bd, ac, add )	)
 		{ LDEB(1); return -1;	}
 	    if  ( bi->biSectRightPageFooter.eiItem			&&
 		  tedOpenItemObjects( bi->biSectRightPageFooter.eiItem,
-							ac, add )	)
+							bd, ac, add )	)
 		{ LDEB(1); return -1;	}
 
 	    break;
@@ -399,13 +575,13 @@ int tedOpenItemObjects(	BufferItem *		bi,
 	case DOClevCELL:
 	    for ( i= 0; i < bi->biChildCount; i++ )
 		{
-		if  ( tedOpenItemObjects( bi->biChildren[i], ac, add ) )
+		if  ( tedOpenItemObjects( bi->biChildren[i], bd, ac, add ) )
 		    { LDEB(i); return -1;	}
 		}
 	    break;
 
 	case DOClevPARA:
-	    if  ( tedOpenParaObjects( bi, ac, add ) )
+	    if  ( tedOpenParaObjects( bi, bd, ac, add ) )
 		{ LDEB(0); return -1;	}
 	    break;
 
@@ -417,12 +593,44 @@ int tedOpenItemObjects(	BufferItem *		bi,
     return 0;
     }
 
+static void tedCloseDrawingShape(	DrawingShape *		ds,
+					AppDrawingData *	add )
+    {
+    int		child;
+
+    for ( child= 0; child < ds->dsChildCount; child++ )
+	{
+	DrawingShape *	dsChild= ds->dsChildren[child];
+
+	tedCloseDrawingShape( dsChild, add );
+	}
+
+    if  ( ds->dsPrivate )
+	{
+	AppBitmapImage *	abi= (AppBitmapImage *)ds->dsPrivate;
+
+	if  ( ds->dsPixmap )
+	    {
+	    appDrawFreePixmap( add, ds->dsPixmap );
+	    ds->dsPixmap= (APP_BITMAP_IMAGE)0;
+	    }
+
+	if  ( abi )
+	    { appCleanBitmapImage( abi ); free( abi );	}
+
+	ds->dsPrivate= (void *)0;
+	}
+
+    return;
+    }
+
 void tedCloseObject(		BufferDocument *	bd,
 				BufferItem *		bi,
 				TextParticule *		tp,
 				void *			voidadd )
     {
     InsertedObject *	io;
+    AppDrawingData *	add= (AppDrawingData *)voidadd;
 
     if  ( tp->tpKind != DOCkindOBJECT )
 	{ return;	}
@@ -442,10 +650,8 @@ void tedCloseObject(		BufferDocument *	bd,
 
 		if  ( io->ioPixmap )
 		    {
-		    AppDrawingData *	add= (AppDrawingData *)voidadd;
-
 		    appDrawFreePixmap( add, io->ioPixmap );
-		    io->ioPixmap= (APP_WINDOW)0;
+		    io->ioPixmap= (APP_BITMAP_IMAGE)0;
 		    }
 
 		if  ( abi )
@@ -455,37 +661,17 @@ void tedCloseObject(		BufferDocument *	bd,
 		}
 	    break;
 
-	case DOCokINCLUDEPICTURE:
+	case DOCokEPS_FILE:
 	    if  ( io->ioPixmap )
 		{
-		AppDrawingData *	add= (AppDrawingData *)voidadd;
-
 		appDrawFreePixmap( add, io->ioPixmap );
-		io->ioPixmap= (APP_WINDOW)0;
-		}
-
-	    if  ( io->ioResultKind == DOCokBITMAP_FILE )
-		{
-		AppBitmapImage *	abi= (AppBitmapImage *)io->ioPrivate;
-
-		if  ( abi )
-		    { appCleanBitmapImage( abi ); free( abi );	}
-
-		io->ioPrivate= (void *)0;
+		io->ioPixmap= (APP_BITMAP_IMAGE)0;
 		}
 
 	    break;
 
-	case DOCokDRAWING_OBJECT:
-
-	    if  ( io->ioPixmap )
-		{
-		AppDrawingData *	add= (AppDrawingData *)voidadd;
-
-		appDrawFreePixmap( add, io->ioPixmap );
-		io->ioPixmap= (APP_WINDOW)0;
-		}
-
+	case DOCokDRAWING_SHAPE:
+	    tedCloseDrawingShape( io->ioDrawingShape, add );
 	    break;
 
 	default:
@@ -511,38 +697,72 @@ int tedReopenObject(	BufferDocument *	bd,
 
     tedCloseObject( bd, bi, tp, (void *)add );
 
-    if  ( tedOpenObject( io, ac, add ) )
+    if  ( tedOpenObject( io, bd, ac, add ) )
 	{ LDEB(1); return -1;	}
 
     return 0;
     }
 
-static void tedScaleObjectToParagraph(	EditDocument *		ed,
+static void tedScaleObjectToParagraph(	const BufferDocument *	bd,
+					BufferItem *		paraBi,
+					double			xfac,
 					InsertedObject *	io )
     {
+    ParagraphFrame		pf;
+
+    const int			bottom= -1;
+    const int			stripHigh= -1;
+
+    PictureProperties *		pip= &(io->ioPictureProperties);
+
+    BlockFrame			bf;
+
+    docBlockFrameTwips( &bf, paraBi, bd,
+				    paraBi->biTopPosition.lpPage,
+				    paraBi->biTopPosition.lpColumn );
+
+    docParagraphFrameTwips( &pf, &bf, bottom, stripHigh, paraBi );
+
+    docLayoutScaleObjectToFitParagraphFrame( io, &pf );
+
+    pip->pipScaleXUsed= io->ioScaleXUsed;
+    pip->pipScaleYUsed= io->ioScaleYUsed;
+
+    io->ioPixelsWide= TWIPStoPIXELS( xfac,
+				( io->ioScaleXUsed* pip->pipTwipsWide )/ 100 );
+    io->ioPixelsHigh= TWIPStoPIXELS( xfac,
+				( io->ioScaleYUsed* pip->pipTwipsHigh )/ 100 );
+    if  ( io->ioPixelsWide < 1 )
+	{ io->ioPixelsWide=  1;	}
+    if  ( io->ioPixelsHigh < 1 )
+	{ io->ioPixelsHigh=  1;	}
+
+    pip->pip_xWinExt= (int) ( ( 100000.0* pip->pipTwipsWide )/
+						    ( 20* POINTS_PER_M ) );
+    pip->pip_yWinExt= (int) ( ( 100000.0* pip->pipTwipsHigh )/
+						    ( 20* POINTS_PER_M ) );
+
+    return;
+    }
+
+static void tedScaleObjectToSelectedParagraph(
+					EditDocument *		ed,
+					InsertedObject *	io )
+    {
+    AppDrawingData *		add= &(ed->edDrawingData);
+    double			xfac= add->addMagnifiedPixelsPerTwip;
+
     TedDocument *		td= (TedDocument *)ed->edPrivateData;
     BufferDocument *		bd= td->tdDocument;
-    ParagraphFrame		pf;
 
     DocumentSelection		ds;
     SelectionGeometry		sg;
     SelectionDescription	sd;
 
-    const int			bottom= -1;
-    const int			stripHigh= -1;
-
-    BlockFrame			bf;
-
     if  ( tedGetSelection( &ds, &sg, &sd, td ) )
 	{ LDEB(1); return;	}
 
-    docBlockFrameTwips( &bf, ds.dsBegin.dpBi, bd,
-				    ds.dsBegin.dpBi->biTopPosition.lpPage,
-				    ds.dsBegin.dpBi->biTopPosition.lpColumn );
-
-    docParagraphFrameTwips( &pf, &bf, bottom, stripHigh, ds.dsBegin.dpBi );
-
-    docLayoutScaleObjectToFitParagraphFrame( io, &pf );
+    tedScaleObjectToParagraph( bd, ds.dsBegin.dpBi, xfac, io );
 
     return;
     }
@@ -589,7 +809,7 @@ int tedSaveObjectPicture(	AppBitmapImage *	abiTo,
 
 /************************************************************************/
 /*									*/
-/*  Callback of the 'Insert Picture' menu option.			*/
+/*  Used from the 'Paste' for images.					*/
 /*									*/
 /*  9)  Not needed as the document is marked as changed anyway.		*/
 /*									*/
@@ -602,21 +822,24 @@ InsertedObject * tedObjectMakeBitmapObject(
     {
     AppDrawingData *		add= &(ed->edDrawingData);
 
-    APP_WINDOW			pixmap;
+    APP_BITMAP_IMAGE		pixmap;
 
     InsertedObject *		io;
+    PictureProperties *		pip;
 
     MemoryBuffer		mb;
     SimpleOutputStream *	sosMem;
     SimpleOutputStream *	sosHex;
 
     int				objectNumber;
+    int				includedAsBitmap= 0;
 
-    double			xfac= add->addMagnifiedPixelsPerTwip;
+    const char *		typeId="";
 
     io= docClaimObject( &objectNumber, bi );
     if  ( ! io )
 	{ XDEB(io); return (InsertedObject *)0;	}
+    pip= &(io->ioPictureProperties);
 
     utilInitMemoryBuffer( &mb );
 
@@ -628,24 +851,45 @@ InsertedObject * tedObjectMakeBitmapObject(
     if  ( ! sosHex )
 	{ XDEB(sosHex); return (InsertedObject *)0;	}
 
-    if  ( abi->abiFormat >= 0						&&
-	  ! strcmp( bmFileFormats[abi->abiFormat].bffFileType->bftTypeId,
-								"pngFile" ) )
+    if  ( abi->abiFormat >= 0 )
+	{ typeId= bmFileFormats[abi->abiFormat].bffFileType->bftTypeId; }
+
+    if  ( abi->abiFormat >= 0			&&
+	  ! includedAsBitmap			&&
+	  ! strcmp( typeId, "pngFile" )		)
 	{
-	if  ( bmPngWritePng( &abi->abiBitmap, abi->abiBuffer, sosHex ) )
+	if  ( bmPngWritePng( &(abi->abiBitmap), abi->abiBuffer, sosHex ) )
 	    { LDEB(1); return (InsertedObject *)0;	}
 
 	io->ioKind= DOCokPICTPNGBLIP;
+	pip->pipType= DOCokPICTPNGBLIP;
+	includedAsBitmap= 1;
 	}
-    else{
+
+    if  ( abi->abiFormat >= 0				&&
+	  ! includedAsBitmap				&&
+	  ( ! strcmp( typeId, "jpgFile" )	||
+	    ! strcmp( typeId, "jpegFile" )	)	)
+	{
+	if  ( bmJpegWriteJfif( &abi->abiBitmap, abi->abiBuffer, sosHex ) )
+	    { LDEB(1); return (InsertedObject *)0;	}
+
+	io->ioKind= DOCokPICTJPEGBLIP;
+	pip->pipType= DOCokPICTJPEGBLIP;
+	includedAsBitmap= 1;
+	}
+
+    if  ( ! includedAsBitmap )
+	{
 	if  ( bmWmfWriteWmf( &(abi->abiBitmap), abi->abiBuffer, sosHex ) )
 	    { LDEB(1); return (InsertedObject *)0;	}
 
-	io->ioMetafileIsBitmap= 1;
-	io->ioMetafileBitmapBpp= abi->abiBitmap.bdBitsPerPixel;
+	pip->pipMetafileIsBitmap= 1;
+	pip->pipMetafileBitmapBpp= abi->abiBitmap.bdBitsPerPixel;
 
 	io->ioKind= DOCokPICTWMETAFILE;
-	io->ioMapMode= 8;
+	pip->pipType= DOCokPICTWMETAFILE;
+	pip->pipMapMode= 8;
 	}
 
     sioOutClose( sosHex );
@@ -653,30 +897,18 @@ InsertedObject * tedObjectMakeBitmapObject(
 
     io->ioObjectData= mb;
 
-    bmImageSizeTwips( &(io->ioTwipsWide), &(io->ioTwipsHigh),
+    bmImageSizeTwips( &(pip->pipTwipsWide), &(pip->pipTwipsHigh),
 							&(abi->abiBitmap) );
-
-    tedScaleObjectToParagraph( ed, io );
-
-    io->ioPixelsWide= TWIPStoPIXELS( xfac,
-				( io->ioScaleX* io->ioTwipsWide )/ 100 );
-    io->ioPixelsHigh= TWIPStoPIXELS( xfac,
-				( io->ioScaleY* io->ioTwipsHigh )/ 100 );
-    if  ( io->ioPixelsWide < 1 )
-	{ io->ioPixelsWide=  1;	}
-    if  ( io->ioPixelsHigh < 1 )
-	{ io->ioPixelsHigh=  1;	}
+    io->ioTwipsWide= pip->pipTwipsWide;
+    io->ioTwipsHigh= pip->pipTwipsHigh;
 
     io->ioPrivate= abi;
 
-    io->io_xWinExt= (int) ( ( 100000.0* io->ioTwipsWide )/
-						    ( 20* POINTS_PER_M ) );
-    io->io_yWinExt= (int) ( ( 100000.0* io->ioTwipsHigh )/
-						    ( 20* POINTS_PER_M ) );
+    tedScaleObjectToSelectedParagraph( ed, io );
 
     if  ( appImgMakePixmap( add, &pixmap,
 				    io->ioPixelsWide, io->ioPixelsHigh,
-				    &ed->edColors, abi ) )
+				    &(ed->edColors), abi ) )
 	{ LDEB(1); return (InsertedObject *)0; }
     io->ioPixmap= pixmap;
 
@@ -693,145 +925,6 @@ InsertedObject * tedObjectMakeBitmapObject(
 /*									*/
 /************************************************************************/
 
-static InsertedObject * tedMakeMetafileObject(
-					EditDocument *		ed,
-					BufferItem *		bi,
-					const char *		filename )
-    {
-    AppDrawingData *		add= &(ed->edDrawingData);
-
-    InsertedObject *		io;
-
-    MemoryBuffer		mb;
-    SimpleInputStream *		sisIn;
-    SimpleOutputStream *	sosMem;
-    SimpleOutputStream *	sosMeta;
-
-    int				objectNumber;
-
-    double			xfac= add->addMagnifiedPixelsPerTwip;
-
-    sisIn= sioInStdioOpen( filename );
-    if  ( ! sisIn )
-	{ SXDEB(filename,sisIn); return (InsertedObject *)0;	}
-
-    io= docClaimObject( &objectNumber, bi );
-    if  ( ! io )
-	{ XDEB(io); return (InsertedObject *)0;	}
-
-    utilInitMemoryBuffer( &mb );
-
-    sosMem= sioOutMemoryOpen( &mb );
-    if  ( ! sosMem )
-	{ XDEB(sosMem); return (InsertedObject *)0;	}
-
-    sosMeta= sioOutHexOpen( sosMem );
-    if  ( ! sosMeta )
-	{ XDEB(sosMeta); return (InsertedObject *)0;	}
-
-    {
-    unsigned long		key;
-    unsigned int		handle;
-    int				left;
-    int				top;
-    int				right;
-    int				bottom;
-    unsigned int		inch;
-
-    unsigned long		reserved;
-    unsigned int		checksum;
-
-    key= sioEndianGetLeUint32( sisIn );
-
-    if  ( key == 0x9ac6cdd7 )
-	{
-	handle= sioEndianGetLeUint16( sisIn );
-	left= sioEndianGetLeInt16( sisIn );
-	top= sioEndianGetLeInt16( sisIn );
-	right= sioEndianGetLeInt16( sisIn );
-	bottom= sioEndianGetLeInt16( sisIn );
-	inch= sioEndianGetLeUint16( sisIn );
-
-	reserved= sioEndianGetLeUint32( sisIn );
-	checksum= sioEndianGetLeUint16( sisIn );
-
-	if  ( right > left )
-	    { io->ioTwipsWide= ( 20* 72* ( right- left ) )/ inch;	}
-	else{ io->ioTwipsWide= ( 20* 72* ( left- right ) )/ inch;	}
-
-	if  ( bottom > top )
-	    { io->ioTwipsHigh= ( 20* 72* ( bottom- top ) )/ inch;	}
-	else{ io->ioTwipsHigh= ( 20* 72* ( top- bottom ) )/ inch;	}
-
-	io->io_xWinExt= right- left;
-	io->io_yWinExt= top- bottom;
-	}
-    else{
-	if  ( key == 0x90001 )
-	    {
-	    io->ioTwipsWide= 20* 72* 4;		/*  10 cm	*/
-	    io->ioTwipsHigh= 20* 72* 4;		/*  10 cm	*/
-	    io->io_xWinExt= 72* 4;
-	    io->io_yWinExt= 72* 4;
-	    sioEndianPutLeUint32( key, sosMeta );
-	    }
-	else{
-	    XDEB(key);
-	    sioOutClose( sosMeta );
-	    sioOutClose( sosMem );
-	    sioInClose( sisIn );
-	    return (InsertedObject *)0;
-	    }
-	}
-    }
-
-    for (;;)
-	{
-	unsigned char		buf[512];
-	int			done;
-
-	done= sioInReadBytes( sisIn, buf, 512 );
-	if  ( done < 1 )
-	    { break;	}
-
-	if  ( sioOutWriteBytes( sosMeta, buf, done ) != done )
-	    { LDEB(done); return (InsertedObject *)0;	}
-	}
-
-    sioOutClose( sosMeta );
-    sioOutClose( sosMem );
-    sioInClose( sisIn );
-
-    io->ioObjectData= mb;
-    io->ioKind= DOCokPICTWMETAFILE;
-    io->ioMapMode= 8;
-
-    tedScaleObjectToParagraph( ed, io );
-
-    io->ioPixelsWide= TWIPStoPIXELS( xfac,
-				( io->ioScaleX* io->ioTwipsWide )/ 100 );
-    io->ioPixelsHigh= TWIPStoPIXELS( xfac,
-				( io->ioScaleY* io->ioTwipsHigh )/ 100 );
-    if  ( io->ioPixelsWide < 1 )
-	{ io->ioPixelsWide=  1;	}
-    if  ( io->ioPixelsHigh < 1 )
-	{ io->ioPixelsHigh=  1;	}
-
-    io->io_xWinExt= (int) ( ( 100000.0* io->ioTwipsWide )/
-						    ( 20* POINTS_PER_M ) );
-    io->io_yWinExt= (int) ( ( 100000.0* io->ioTwipsHigh )/
-						    ( 20* POINTS_PER_M ) );
-
-    /*  9
-    io->ioBliptag= appGetTimestamp();
-    */
-
-    if  ( tedOpenObject( io, &ed->edColors, &(ed->edDrawingData) ) )
-	{ LDEB(1);	}
-
-    return io;
-    }
-
 static int tedObjectOpenPicture(	void *		voided,
 					APP_WIDGET	relative,
 					APP_WIDGET	option,
@@ -839,48 +932,48 @@ static int tedObjectOpenPicture(	void *		voided,
     {
     EditDocument *		ed= (EditDocument *)voided;
     TedDocument *		td= (TedDocument *)ed->edPrivateData;
+    BufferDocument *		bd= td->tdDocument;
     const char *		ext;
 
     DocumentSelection		ds;
     SelectionGeometry		sg;
     SelectionDescription	sd;
 
+    int				objectNumber;
+    InsertedObject *		io;
+
     if  ( tedGetSelection( &ds, &sg, &sd, td ) )
 	{ LDEB(1); return -1;	}
 
     ext= appFileExtensionOfName( filename );
 
+    io= docClaimObject( &objectNumber, ds.dsBegin.dpBi );
+    if  ( ! io )
+	{ XDEB(io); return -1;	}
+
     if  ( ! ext || strcmp( ext, "wmf" ) )
 	{
-	double			factor;
-	AppBitmapImage *	abi;
-
-	abi= (AppBitmapImage *)malloc( sizeof(AppBitmapImage) );
-	if  ( ! abi )
-	    { XDEB(abi); return -1;	}
-	appInitBitmapImage( abi );
-
-	if  ( bmRead( filename, &abi->abiBuffer, &abi->abiBitmap,
-						&abi->abiFormat, &factor ) )
-	    { SDEB(filename); return -1;	}
-
-	if  ( tedReplaceSelectionWithBitmapImage( ed, abi ) )
-	    { SDEB(filename); return -1; }
-
-	return 0;
+	if  ( docReadBitmapObject( io, filename ) )
+	    { SDEB(filename); return -1;;	}
 	}
     else{
-	InsertedObject *	io;
-
-	io= tedMakeMetafileObject( ed, ds.dsBegin.dpBi, filename );
-	if  ( ! io )
-	    { SXDEB(filename,io); return -1; }
-
-	if  ( tedReplaceSelectionWithObject( ed, io ) )
-	    { SDEB(filename); return -1;	}
-
-	return 0;
+	if  ( docReadMetafileObject( io, filename ) )
+	    { SDEB(filename); return -1;;	}
 	}
+
+    tedScaleObjectToSelectedParagraph( ed, io );
+
+    /*  9
+    io->ioBliptag= appGetTimestamp();
+    */
+
+    if  ( tedOpenObject( io, bd, &(ed->edColors), &(ed->edDrawingData) ) )
+	{ LDEB(1);	}
+
+    if  ( tedReplaceSelectionWithObject( ed, io ) )
+	{ SDEB(filename); return -1;	}
+
+    return 0;
     }
 
 void tedDocInsertPicture(	APP_WIDGET	option,
@@ -928,3 +1021,216 @@ void tedDocInsertPicture(	APP_WIDGET	option,
 
     return;
     }
+
+/************************************************************************/
+/*									*/
+/*  Adapt (scale) the current image.					*/
+/*									*/
+/************************************************************************/
+
+void tedObjectSetImageProperties(
+				PropertyMask *			pipDoneMask,
+				EditDocument *			ed,
+				InsertedObject *		io,
+				const DocumentPosition *	dpObject,
+				int				partObject,
+				const PositionGeometry *	pgObject,
+				const PropertyMask *		pipSetMask,
+				const PictureProperties *	pipFrom )
+    {
+    AppDrawingData *		add= &(ed->edDrawingData);
+    double			xfac= add->addMagnifiedPixelsPerTwip;
+
+    TedDocument *		td= (TedDocument *)ed->edPrivateData;
+    BufferDocument *		bd= td->tdDocument;
+
+    PictureProperties *		pipTo= &(io->ioPictureProperties);
+
+    if  ( docUpdPictureProperties( pipDoneMask, pipTo, pipSetMask, pipFrom ) )
+	{ LDEB(1); return;	}
+
+    if  ( utilPropMaskIsEmpty( pipDoneMask ) )
+	{ return;	}
+
+    if  ( PROPmaskISSET( pipDoneMask, PIPpropPICSCALE_X ) )
+	{
+	io->ioScaleXSet= io->ioScaleXUsed=
+			    pipTo->pipScaleXUsed= pipTo->pipScaleXSet;
+	}
+    if  ( PROPmaskISSET( pipDoneMask, PIPpropPICSCALE_Y ) )
+	{
+	io->ioScaleYSet= io->ioScaleYUsed=
+			    pipTo->pipScaleYUsed= pipTo->pipScaleYSet;
+	}
+
+    docObjectAdaptToPictureGeometry( io, pipTo );
+
+    tedScaleObjectToParagraph( bd, dpObject->dpBi, xfac, io );
+
+    if  ( tedEditReopenObject( ed, partObject, dpObject, pgObject ) )
+	{ LDEB(1);	}
+
+    return;
+    }
+
+static void tedDocSetImageProperties(
+				EditDocument *			ed,
+				const PropertyMask *		pipSetMask,
+				const PictureProperties *	pipFrom )
+    {
+    TedDocument *		td= (TedDocument *)ed->edPrivateData;
+
+    InsertedObject *		io;
+    DocumentPosition		dpObject;
+    int				part;
+
+    PropertyMask		pipDoneMask;
+
+    PROPmaskCLEAR( &pipDoneMask );
+
+    if  ( tedGetObjectSelection( td, &part, &dpObject, &io ) )
+	{ LDEB(1); return;	}
+
+    tedObjectSetImageProperties( &pipDoneMask, ed, io, &dpObject, part,
+		    &(td->tdSelectionGeometry.sgBegin), pipSetMask, pipFrom );
+
+    if  ( utilPropMaskIsEmpty( &pipDoneMask ) )
+	{ return;	}
+
+    tedAdaptToolsToSelection( ed );
+
+    appDocumentChanged( ed, 1 );
+
+    return;
+    }
+
+void tedAppSetImageProperties(	EditApplication *		ea,
+				const PropertyMask *		pipSetMask,
+				const PictureProperties *	pip )
+    {
+    EditDocument *	ed= ea->eaCurrentDocument;
+
+    if  ( ! ed )
+	{ XDEB(ed); return;	}
+
+    tedDocSetImageProperties( ed, pipSetMask, pip );
+
+    return;
+    }
+
+/************************************************************************/
+/*									*/
+/*  Draw the eight blocks around a selected object.			*/
+/*									*/
+/************************************************************************/
+
+void tedGetObjectRectangle(	DocumentRectangle *		drObject,
+				APP_POINT *			xp,
+				const InsertedObject *		io,
+				const PositionGeometry *	pg,
+				const TedDocument *		td )
+    {
+    drObject->drX0= pg->pgXPixels;
+    drObject->drX1= drObject->drX0+ io->ioPixelsWide- 1;
+    drObject->drY1= pg->pgBaselinePixels;
+    drObject->drY0= drObject->drY1- io->ioPixelsHigh+ 1;
+
+    switch( td->tdObjectResizeCorner )
+	{
+	case -1:
+	    break;
+
+	case RESIZE_BOTTOM_LEFT:
+	case RESIZE_MIDDLE_LEFT:
+	case RESIZE_TOP_LEFT:
+	    drObject->drX0 += td->tdObjectCornerMovedX;
+	    break;
+
+	case RESIZE_BOTTOM_RIGHT:
+	case RESIZE_MIDDLE_RIGHT:
+	case RESIZE_TOP_RIGHT:
+	    drObject->drX1 += td->tdObjectCornerMovedX;
+	    break;
+
+	case RESIZE_BOTTOM_MIDDLE:
+	case RESIZE_TOP_MIDDLE:
+	    break;
+
+	default:
+	    LDEB(td->tdObjectResizeCorner);
+	    break;
+	}
+
+    if  ( drObject->drX1 <= drObject->drX0 )
+	{ drObject->drX1= drObject->drX0+ 1;	}
+
+    switch( td->tdObjectResizeCorner )
+	{
+	case -1:
+	    break;
+
+	case RESIZE_TOP_LEFT:
+	case RESIZE_TOP_MIDDLE:
+	case RESIZE_TOP_RIGHT:
+	    drObject->drY0 += td->tdObjectCornerMovedY;
+	    break;
+
+	case RESIZE_BOTTOM_LEFT:
+	case RESIZE_BOTTOM_MIDDLE:
+	case RESIZE_BOTTOM_RIGHT:
+	    drObject->drY1 += td->tdObjectCornerMovedY;
+	    break;
+
+	case RESIZE_MIDDLE_LEFT:
+	case RESIZE_MIDDLE_RIGHT:
+	    break;
+
+	default:
+	    LDEB(td->tdObjectResizeCorner);
+	    break;
+	}
+
+    if  ( drObject->drY1 <= drObject->drY0 )
+	{ drObject->drY1= drObject->drY0+ 1;	}
+
+    if  ( xp )
+	{
+	int		xl, xm, xr;
+	int		yb, ym, yt;
+
+	xl= drObject->drX0;
+	xm= ( drObject->drX0+ drObject->drX1 )/ 2- RESIZE_BLOCK/2;
+	xr= drObject->drX1- RESIZE_BLOCK;
+
+	yt= drObject->drY0;
+	ym= ( drObject->drY0+ drObject->drY1 )/ 2- RESIZE_BLOCK/2;
+	yb= drObject->drY1- RESIZE_BLOCK;
+
+	xp[RESIZE_BOTTOM_LEFT].x= xl;
+	xp[RESIZE_BOTTOM_LEFT].y= yb;
+
+	xp[RESIZE_BOTTOM_MIDDLE].x= xm;
+	xp[RESIZE_BOTTOM_MIDDLE].y= yb;
+
+	xp[RESIZE_BOTTOM_RIGHT].x= xr;
+	xp[RESIZE_BOTTOM_RIGHT].y= yb;
+
+	xp[RESIZE_MIDDLE_LEFT].x= xl;
+	xp[RESIZE_MIDDLE_LEFT].y= ym;
+
+	xp[RESIZE_MIDDLE_RIGHT].x= xr;
+	xp[RESIZE_MIDDLE_RIGHT].y= ym;
+
+	xp[RESIZE_TOP_LEFT].x= xl;
+	xp[RESIZE_TOP_LEFT].y= yt;
+
+	xp[RESIZE_TOP_MIDDLE].x= xm;
+	xp[RESIZE_TOP_MIDDLE].y= yt;
+
+	xp[RESIZE_TOP_RIGHT].x= xr;
+	xp[RESIZE_TOP_RIGHT].y= yt;
+	}
+
+    return;
+    }
+

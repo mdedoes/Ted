@@ -21,8 +21,11 @@ typedef struct PrintingState
     {
     SimpleOutputStream *	psSos;
 
+    int				psLastPageMarked;
+    int				psLastSheetMarked;
     int				psPagesPrinted;
     int				psSheetsPrinted;
+    int				psSheetsStarted;
 
     PrintGeometry		psPrintGeometry;
     NupSchema			psNupSchema;
@@ -70,11 +73,21 @@ extern int utilPsSetNupSchema(
 			int				hasPageHeader,
 			int				hasPageFooter );
 
-extern void appPsPrintString(	SimpleOutputStream *	sos,
+extern void utilPsPrintString(	PrintingState *		ps,
 				const unsigned char *	s,
 				int			len );
 
-extern void utilPsSetFont(	SimpleOutputStream *	sos,
+extern void utilPsPrintStringValue(	PrintingState *		ps,
+					const unsigned char *	s,
+					int			len );
+
+extern void utilPsMovePrintStringValue(	PrintingState *		ps,
+					const unsigned char *	s,
+					int			len,
+					int			x,
+					int			y );
+
+extern void utilPsSetFont(	PrintingState *		ps,
 				const char *		prefix,
 				const TextAttribute *	ta );
 
@@ -90,6 +103,10 @@ extern void utilPsStartPage(	PrintingState *			ps,
 				int				documentPage );
 
 extern void utilPsFinishPage(	PrintingState *		ps,
+				int			documentPage,
+				int			asLast );
+
+extern void utilPsAbortPage(	PrintingState *		ps,
 				int			documentPage,
 				int			asLast );
 
@@ -124,6 +141,8 @@ extern void appPsDefineEpsProcs(	SimpleOutputStream *	sos );
 extern void appPsBeginEpsObject(	PrintingState *		ps,
 					int			x0Twips,
 					int			y0Twips,
+					double			xScale,
+					double			yScale,
 					int			llxTwips,
 					int			llyTwips,
 					int			urxTwips,
@@ -136,5 +155,20 @@ extern int utilPsDestPdfmark(		PrintingState *		ps,
 					int			lineTop,
 					const char *		refName,
 					int			refSize );
+
+extern void utilPsTransformMatrix(	SimpleOutputStream *		sos,
+					const AffineTransform2D *	at );
+
+extern void utilPsFillRectangle(	PrintingState *		ps,
+					int			x,
+					int			y,
+					int			wide,
+					int			high );
+
+extern void utilPsFlushLink(		PrintingState *		ps,
+					int			x0,
+					int			wide,
+					int			lineTop,
+					int			lineHeight );
 
 #   endif	/*  UTIL_PS_H  */

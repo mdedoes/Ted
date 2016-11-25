@@ -21,6 +21,7 @@ extern void * utilTreeMakeTree(		int			ownKeys );
 
 /**/
 extern int utilTreeStoreValue(		void *			tree,
+					void **			pPreviousValue,
 					const char **		pStoredKey,
 					const char *		key,
 					void *			val );

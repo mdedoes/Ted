@@ -289,5 +289,8 @@ extern void docInitRecalculateFields(   RecalculateFields *     rf )
     rf->rfFieldsUpdated= 0;
     rf->rfUpdateFlags= 0;
 
+    docInitEditPosition( &(rf->rfSelBegin) );
+    docInitEditPosition( &(rf->rfSelEnd) );
+
     return;
     }

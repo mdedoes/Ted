@@ -166,6 +166,7 @@ AC_DEFUN(AC_PATH_PNG,
 	    /usr/pkg/include		\
 	    /usr/X11R6/include		\
 	    /usr/local/include/png	\
+	    /usr/local/include/libpng	\
 	    /usr/apps/include		\
 	    /usr/sfw/include		\
 	    /opt/sfw/include		\
@@ -188,6 +189,7 @@ AC_DEFUN(AC_PATH_PNG,
 	    /usr/pkg/lib		\
 	    /usr/X11R6/lib		\
 	    /usr/local/lib/png		\
+	    /usr/local/lib/libpng	\
 	    /usr/apps/lib		\
 	    /usr/sfw/lib		\
 	    /opt/sfw/lib		\

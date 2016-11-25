@@ -38,7 +38,7 @@ typedef struct AppFontToolResources
 
     ColorChooserResources	aftrTextColorChooserResources;
 
-    char *			aftrEncodings[ENCODINGps_COUNT];
+    char *			aftrEncodings[CHARSETidxCOUNT];
     char *			aftrFaces[FONTface_COUNT];
     } AppFontToolResources;
 
@@ -52,6 +52,7 @@ typedef struct AppFontChooser
     EditApplication *		afcApplication;
     AppInspector *		afcInspector;
     int				afcSubjectPage;
+    int				afcCurrentDocumentId;
 
     APP_WIDGET			afcFamilyList;
     APP_WIDGET			afcFaceList;
@@ -93,7 +94,6 @@ typedef struct AppFontChooser
 
     FontChooserSetFont		afcSetFont;
     
-    unsigned int		afcCurrentDocumentId;
     DocumentFontList		afcDocumentFontList;
 
     AppDrawingData		afcDrawingData;

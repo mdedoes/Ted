@@ -183,7 +183,7 @@ int tedFormatToolGetShading(	PropertyMask *		cpSetMask,
     if  ( tedShadingToolGetShading( &eis, &isSetMask, st ) )
 	{ LDEB(1); return -1;	}
 
-    if  ( ! PROPmaskISEMPTY( &isSetMask ) )
+    if  ( ! utilPropMaskIsEmpty( &isSetMask ) )
 	{
 	PropertyMask		isDoneMask;
 

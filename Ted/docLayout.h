@@ -9,6 +9,7 @@
 
 #   include	<psFont.h>
 #   include	"docBuf.h"
+#   include	"docEditRange.h"
 #   include	"docScreenFontList.h"
 #   include	"utilPs.h"
 
@@ -62,6 +63,13 @@
 	  TWIPStoPIXELS( (add)->addMagnifiedPixelsPerTwip, \
 	    (tl)->tlTopPosition.lpPageYTwips+ (yS) ) )
 
+# define TL_ASC_PIXELS_SH( add, tl, pS, yS ) \
+	( (add)->addPageStepPixels* ( (tl)->tlTopPosition.lpPage+ (pS) )+ \
+	  TWIPStoPIXELS( (add)->addMagnifiedPixelsPerTwip, \
+	    (tl)->tlTopPosition.lpPageYTwips+ \
+	    (tl)->tlLineHeightTwips- \
+	    (tl)->tlLineAscentTwips+ (yS) ) )
+
 # define TL_BASE_PIXELS_SH( add, tl, pS, yS ) \
 	( (add)->addPageStepPixels* ( (tl)->tlTopPosition.lpPage+ (pS) )+ \
 	  TWIPStoPIXELS( (add)->addMagnifiedPixelsPerTwip, \
@@ -95,6 +103,7 @@ typedef struct ParagraphFrame
     int		pfX1TextLinesTwips;
 
     int		pfPageY1Twips;
+    int		pfFrameY1Twips;
 
     int		pfX0TextLinesPixels;
     int		pfX0FirstLinePixels;
@@ -106,6 +115,16 @@ typedef struct ParagraphFrame
     int		pfPageHigh;
     int		pfStripHigh;
     int		pfHasBottom;
+
+    int		pfBlockX0Twips;
+    int		pfBlockX1Twips;
+    int		pfBlockY0Twips;
+    int		pfBlockY1Twips;
+
+    int		pfRedrawX0Twips;
+    int		pfRedrawX1Twips;
+    int		pfRedrawX0Pixels;
+    int		pfRedrawX1Pixels;
     } ParagraphFrame;
 
 /************************************************************************/
@@ -136,8 +155,11 @@ typedef struct BlockFrame
     int			bfY0Twips;
     int			bfY1Twips;
 
+    int			bfYBelowShapes;
+
     int			bfColumnWidthTwips;
 
+    int			bfFootnotesPlaced;
     NotesReservation	bfNotesReservation;
     } BlockFrame;
 
@@ -157,8 +179,8 @@ typedef struct ParticuleData
     int			pdWidth;
     int			pdDecWidth;
     int			pdVisibleWidth;
-    int			pdTabNumber;
     int			pdTabKind;
+    int			pdTabNumber;
     int			pdTabPosition;
     const AfmFontInfo *	pdAfi;
 
@@ -193,6 +215,7 @@ typedef void (*SCREEN_FRAME)(	ParagraphFrame *		pf,
 
 typedef int (*START_SCREEN_PARAGRAPH)(
 				BufferItem *			bi,
+				const ParagraphFrame *		pf,
 				AppDrawingData *		add,
 				ScreenFontList *		sfl,
 				BufferDocument *		bd );
@@ -272,10 +295,6 @@ typedef struct ParagraphLayoutJob
 
     ParagraphLayoutPosition	pljPos;
     ParagraphLayoutPosition	pljPos0;
-
-    int				pljStopWhenSame;
-    int				pljPageToFinish;
-    int				pljColumnToFinish;
     } ParagraphLayoutJob;
 
 struct ParagraphLayoutContext;
@@ -347,10 +366,6 @@ extern int docPsPrintDocument(
 			AppDrawingData *		add,
 			BufferDocument *		bd,
 			const PrintGeometry *		pg,
-			int				useFilters,
-			int				indexedImages,
-			int				firstPage,
-			int				lastPage,
 			DOC_CLOSE_OBJECT		closeObject );
 
 extern int docLayoutItemAndParents(	BufferItem *		bi,
@@ -368,10 +383,11 @@ extern void docLayoutSectColumnTop(
 				LayoutPosition *		lpTop,
 				BlockFrame *			bf );
 
-extern int docPsListObjectFonts(	PostScriptTypeList *	pstl,
-					const InsertedObject *	io,
-					const PostScriptFontList * psfl,
-					const char *		prefix );
+extern int docPsListImageFonts( PostScriptTypeList *		pstl,
+				const PictureProperties *	pip,
+				const MemoryBuffer *		mb,
+				const PostScriptFontList *	psfl,
+				const char *			prefix );
 
 extern int docLayoutExternalItem( ExternalItem *	ei,
 				DocumentRectangle *	drChanged,
@@ -432,7 +448,7 @@ extern void docParagraphFrameTwips(
 				const BlockFrame *		bf,
 				int				bottom,
 				int				stripHigh,
-				BufferItem *			bi );
+				const BufferItem *		paraBi );
 
 extern void docPsAdvanceParagraphLayout(
 				int *				pAdvanced,
@@ -465,7 +481,9 @@ extern void docLayoutReserveNoteHeight(
 				BlockFrame *			bf,
 				const NotesReservation *	nrLine );
 
-extern int docLayoutFootnotesForColumn(	const BlockFrame *	refBf,
+extern int docLayoutFootnotesForColumn(	LayoutPosition *	lpBelowNotes,
+					const BlockFrame *	refBf,
+					int			belowText,
 					const LayoutPosition *	lpBelowText,
 					const LayoutJob *	refLj );
 
@@ -531,19 +549,6 @@ extern int docLayoutLines(	ParagraphLayoutPosition *	plp,
 				const ParagraphLayoutContext *	plc,
 				BufferItem *			paraBi );
 
-extern int docLayout_Line(	TextLine *			resTl,
-				NotesReservation *		pNrLine,
-				const BlockFrame *		bf,
-				int				fromLinePos,
-				const BufferItem *		paraBi,
-				int				part,
-				ParticuleData *			pd,
-				const ParagraphLayoutContext *	plc,
-				const ParagraphFrame *		pf,
-				const LayoutPosition *		lpTop,
-				LayoutPosition *		lpBottom,
-				const ScreenLayout *		sl );
-
 extern void docLayoutScaleObjectToFitParagraphFrame(
 				InsertedObject *		io,
 				const ParagraphFrame *		pf );
@@ -565,5 +570,43 @@ extern int docMakeCapsString(	unsigned char **	pUpperString,
 				int			len );
 
 extern void docResetExternalItemLayout(	BufferDocument *	bd );
+
+extern void docDrawingShapeInvalidateTextLayout(	DrawingShape *	ds );
+
+extern void docShapePageY(	LayoutPosition *	lpShapeTop,
+				LayoutPosition *	lpBelowShape,
+				const DrawingShape *	ds,
+				const BufferItem *	paraBi,
+				const LayoutPosition *	lpLineTop,
+				const ParagraphFrame *	pf );
+
+extern void docShapePageRectangle(
+				LayoutPosition *	lpShapeTop,
+				LayoutPosition *	lpBelowShape,
+				int *			pX0,
+				int *			pX1,
+				const DrawingShape *	ds,
+				const BufferItem *	paraBi,
+				const LayoutPosition *	lpLineTop,
+				const ParagraphFrame *	pf,
+				int			x0Twips );
+
+extern int docShapeCheckTextLayout(
+			DrawingShape *			ds,
+			const DocumentRectangle *	twipsRect,
+			DocumentRectangle *		drChanged,
+			int				pageNumber,
+			BufferDocument *		bd,
+			AppDrawingData *		add,
+			ScreenFontList *		sfl,
+			INIT_LAYOUT_EXTERNAL		initLayoutExternal,
+			DOC_CLOSE_OBJECT		closeObject );
+
+extern int docItemLayoutStartPosition(	LayoutPosition *	lp,
+					const BufferItem *	bi );
+
+extern int docLayoutInvalidateRange(	DocumentSelection *	dsLayout,
+					BufferItem *		selRootBi,
+					EditRange *		er );
 
 #   endif	/*  DOC_LAYOUT_H  */

@@ -52,6 +52,8 @@ typedef struct ItemShading
     unsigned int	isPattern:DOCsp_BITS;
     } ItemShading;
 
+# define DOCisSHADING(is) ((is)->isBackColor!=0||(is)->isForeColor!=0)
+
 /*  2  */
 typedef enum ShadingProperty
     {

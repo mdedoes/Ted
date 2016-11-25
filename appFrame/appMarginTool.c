@@ -69,7 +69,7 @@ int appMarginToolGetMargins(	PropertyMask *		pUpdMask,
     if  ( PROPmaskISSET( chgMask, DGpropLEFT_MARGIN ) )
 	{
 	if  ( appGetLengthFromTextWidget( amt->amtLeftMarginText,
-				&dg->dgLeftMarginTwips, &changed, unitType,
+				&(dg->dgLeftMarginTwips), &changed, unitType,
 				minValue, adaptToMin, maxValue, adaptToMax ) )
 	    { return -1;	}
 	if  ( changed )
@@ -79,7 +79,7 @@ int appMarginToolGetMargins(	PropertyMask *		pUpdMask,
     if  ( PROPmaskISSET( chgMask, DGpropTOP_MARGIN ) )
 	{
 	if  ( appGetLengthFromTextWidget( amt->amtTopMarginText,
-				&dg->dgTopMarginTwips, &changed, unitType,
+				&(dg->dgTopMarginTwips), &changed, unitType,
 				minValue, adaptToMin, maxValue, adaptToMax ) )
 	    { return -1;	}
 	if  ( changed )
@@ -89,7 +89,7 @@ int appMarginToolGetMargins(	PropertyMask *		pUpdMask,
     if  ( PROPmaskISSET( chgMask, DGpropRIGHT_MARGIN ) )
 	{
 	if  ( appGetLengthFromTextWidget( amt->amtRightMarginText,
-				&dg->dgRightMarginTwips, &changed, unitType,
+				&(dg->dgRightMarginTwips), &changed, unitType,
 				minValue, adaptToMin, maxValue, adaptToMax ) )
 	    { return -1;	}
 	if  ( changed )
@@ -99,7 +99,7 @@ int appMarginToolGetMargins(	PropertyMask *		pUpdMask,
     if  ( PROPmaskISSET( chgMask, DGpropBOTTOM_MARGIN ) )
 	{
 	if  ( appGetLengthFromTextWidget( amt->amtBottomMarginText,
-				&dg->dgBottomMarginTwips, &changed, unitType,
+				&(dg->dgBottomMarginTwips), &changed, unitType,
 				minValue, adaptToMin, maxValue, adaptToMax ) )
 	    { return -1;	}
 	if  ( changed )
@@ -117,11 +117,11 @@ int appMarginToolGetMargins(	PropertyMask *		pUpdMask,
 
 int appMarginToolCheckMargins(	const DocumentGeometry * dg )
     {
-    if  ( dg->dgLeftMarginTwips+ dg->dgRightMarginTwips >= 
+    if  ( 1.2* ( dg->dgLeftMarginTwips+ dg->dgRightMarginTwips ) >= 
 						    dg->dgPageWideTwips )
 	{ return -1;	}
 
-    if  ( dg->dgTopMarginTwips+ dg->dgBottomMarginTwips >= 
+    if  ( 1.2* ( dg->dgTopMarginTwips+ dg->dgBottomMarginTwips ) >= 
 						    dg->dgPageWideTwips )
 	{ return -1;	}
 
@@ -143,7 +143,7 @@ void appMakeMarginToolWidgets(	APP_WIDGET			parent,
     APP_WIDGET	label;
     APP_WIDGET	row;
 
-    const int	textWidth= 7;
+    const int	textWidth= 6;
     const int	textEnabled= 1;
     const int	colspan= 1;
 

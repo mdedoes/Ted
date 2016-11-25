@@ -67,7 +67,7 @@ typedef enum TextProperty
 		(ta1)->taCapitals == (ta2)->taCapitals && \
 		(ta1)->taTextColorNumber == (ta2)->taTextColorNumber )
 
-#   define	SUPERSUB_SIZE( sz )	( 7*(sz)/10 )
+#   define	SUPERSUB_SIZE( sz )	( 6*(sz)/10 )
 
 /************************************************************************/
 /*									*/

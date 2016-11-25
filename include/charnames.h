@@ -23,6 +23,10 @@
 /*	    Unicode Consortium: Unicode Standard, Version 1.0, Volume 1,*/
 /*		Addidon & Wesley, Reading MA., 1991, ISBN 0-201-56788-1	*/
 /*									*/
+/*  Attempt to standardize naming of quotes:				*/
+/*	quotesingle= u:0027= 39 (ascii quote)				*/
+/*	quotedbl= u:0022= 34 (ascii double quote)			*/
+/*									*/
 /************************************************************************/
 
 #   define	CHARisUPPER	0x1
@@ -77,7 +81,7 @@
 #   define	ASCII_dollar		0x24	/*  36			*/
 #   define	ASCII_percent		0x25	/*  37			*/
 #   define	ASCII_ampersand		0x26	/*  38			*/
-#   define	ASCII_quoteright	0x27	/*  39			*/
+#   define	ASCII_quotesingle	0x27	/*  39			*/
 #   define	ASCII_parenleft		0x28	/*  40			*/
 #   define	ASCII_parenright	0x29	/*  41			*/
 #   define	ASCII_asterisk		0x2a	/*  42			*/
@@ -222,7 +226,7 @@
 #   define ISO1_dollar		ASCII_dollar	/*  36		*/
 #   define ISO1_percent		ASCII_percent	/*  37		*/
 #   define ISO1_ampersand	ASCII_ampersand	/*  38		*/
-#   define ISO1_quoteright	ASCII_quoteright /*  39		*/
+#   define ISO1_quotesingle	ASCII_quotesingle /*  39		*/
 #   define ISO1_parenleft	ASCII_parenleft	/*  40		*/
 #   define ISO1_parenright	ASCII_parenright /*  41		*/
 #   define ISO1_asterisk	ASCII_asterisk	/*  42		*/
@@ -354,12 +358,12 @@
 #   define	ISO1_exclamdown		161
 #   define	ISO1_cent		162
 #   define	ISO1_sterling		163
-#   define	ISO1_currency		164
+#   define	ISO1_currency		164	/*  15 -> Euro		*/
 #   define	ISO1_yen		165
-#   define	ISO1_brokenbar		166
+#   define	ISO1_brokenbar		166	/*  15 -> Scaron	*/
 #   define	ISO1_section		167
 
-#   define	ISO1_dieresis		168
+#   define	ISO1_dieresis		168	/*  15 -> scaron	*/
 #   define	ISO1_copyright		169
 #   define	ISO1_ordfeminine	170
 #   define	ISO1_guillemotleft	171
@@ -372,18 +376,18 @@
 #   define	ISO1_plusminus		177
 #   define	ISO1_twosuperior	178
 #   define	ISO1_threesuperior	179
-#   define	ISO1_acute		180
+#   define	ISO1_acute		180	/*  15 -> Zcaron	*/
 #   define	ISO1_mu			181
 #   define	ISO1_paragraph		182
 #   define	ISO1_periodcentered	183
 
-#   define	ISO1_cedilla		184
+#   define	ISO1_cedilla		184	/*  15 -> zcaron	*/
 #   define	ISO1_onesuperior	185
 #   define	ISO1_ordmasculine	186
 #   define	ISO1_guillemotright	187
-#   define	ISO1_onequarter		188
-#   define	ISO1_onehalf		189
-#   define	ISO1_threequarters	190
+#   define	ISO1_onequarter		188	/*  15 -> OE		*/
+#   define	ISO1_onehalf		189	/*  15 -> oe		*/
+#   define	ISO1_threequarters	190	/*  15 -> Ydieresis	*/
 #   define	ISO1_questiondown	191
 
 #   define	ISO1_Agrave		192	/*  0xc0	*/
@@ -473,6 +477,51 @@
 #   define	ISO1_toupper(c)	(((ISO1_islower(c)&&(c)!=ISO1_germandbls))?\
 				    ((c)-0x20):(c))
 
+/*15*/
+#   define	ISO15_Euro		164	/*  1 -> currency	*/
+#   define	ISO15_Scaron		166	/*  1 -> brokenbar	*/
+#   define	ISO15_scaron		168	/*  1 -> dieresis	*/
+#   define	ISO15_Zcaron		180	/*  1 -> acute		*/
+#   define	ISO15_zcaron		184	/*  1 -> cedilla	*/
+#   define	ISO15_OE		188	/*  1 -> onequarter	*/
+#   define	ISO15_oe		189	/*  1 -> onehalf	*/
+#   define	ISO15_Ydieresis		190	/*  1 -> threequarters	*/
+
+#   define	ISO15_isupper(c) ((ASCII_isupper((c)))||\
+				  ((c)>=ISO1_Agrave&&(c)<=ISO1_Odieresis)||\
+				  ((c)>=ISO1_Oslash&&(c)<=ISO1_germandbls)||\
+				  ((c)==ISO15_Scaron)||\
+				  ((c)==ISO15_Zcaron)||\
+				  ((c)==ISO15_OE)||\
+				  ((c)==ISO15_Ydieresis))
+#   define	ISO15_islower(c) ((ASCII_islower((c)))||\
+				  ((c)>=ISO1_germandbls&&(c)<=ISO1_odieresis)||\
+				  ((c)>=ISO1_oslash&&(c)<=ISO1_ydieresis)||\
+				  ((c)==ISO15_scaron)||\
+				  ((c)==ISO15_zcaron)||\
+				  ((c)==ISO15_oe))
+
+#   define	ISO15_isalpha(c) (ISO15_isupper((c))||ISO15_islower((c)))
+#   define	ISO15_isdigit(c) (ASCII_isdigit((c)))
+#   define	ISO15_isalnum(c) (ISO15_isupper((c))||ISO15_islower((c))||\
+				  ISO15_isdigit((c)))
+
+#   define	ISO15_tolower(c) ((!ISO15_isupper(c)?(c):\
+				    ((c)==ISO1_germandbls?(ISO1_germandbls):\
+				    ((c)==ISO15_Scaron?(ISO15_scaron):\
+				    ((c)==ISO15_Zcaron?(ISO15_zcaron):\
+				    ((c)==ISO15_OE?(ISO15_oe):\
+				    ((c)==ISO15_Ydieresis?(ISO1_ydieresis):\
+				    ((c)+0x20))))))))
+
+#   define	ISO15_toupper(c) ((!ISO15_islower(c)?(c):\
+				    ((c)==ISO1_germandbls?(ISO1_germandbls):\
+				    ((c)==ISO15_scaron?(ISO15_Scaron):\
+				    ((c)==ISO15_zcaron?(ISO15_Zcaron):\
+				    ((c)==ISO15_oe?(ISO15_OE):\
+				    ((c)==ISO1_ydieresis?(ISO15_Ydieresis):\
+				    ((c)-0x20))))))))
+
 /************************************************************************/
 /*									*/
 /*  ISO Latin2 (ISO 8859-2)						*/
@@ -519,7 +568,7 @@
 #   define ISO2_dollar		ASCII_dollar	/*  36		*/
 #   define ISO2_percent		ASCII_percent	/*  37		*/
 #   define ISO2_ampersand	ASCII_ampersand	/*  38		*/
-#   define ISO2_quoteright	ASCII_quoteright /*  39		*/
+#   define ISO2_quotesingle	ASCII_quotesingle /*  39		*/
 #   define ISO2_parenleft	ASCII_parenleft	/*  40		*/
 #   define ISO2_parenright	ASCII_parenright /*  41		*/
 #   define ISO2_asterisk	ASCII_asterisk	/*  42		*/
@@ -1046,7 +1095,7 @@
 #   define	PS_dollar		ASCII_dollar
 #   define	PS_percent		ASCII_percent
 #   define	PS_ampersand		ASCII_ampersand
-#   define	PS_quoteright		ASCII_quoteright
+#   define	PS_quoteright		ASCII_quotesingle
 
 #   define	PS_parenleft		ASCII_parenleft
 #   define	PS_parenright		ASCII_parenright
@@ -1826,7 +1875,7 @@
 #   define	DOS437_dollar		0x24	/*   36		*/
 #   define	DOS437_percent		0x25	/*   37		*/
 #   define	DOS437_ampersand	0x26	/*   38		*/
-#   define	DOS437_quoteright	0x27	/*   39		*/
+#   define	DOS437_quotesingle	0x27	/*   39		*/
 #   define	DOS437_parenleft	0x28	/*   40		*/
 #   define	DOS437_parenright	0x29	/*   41		*/
 #   define	DOS437_asterisk		0x2a	/*   42		*/
@@ -2089,7 +2138,7 @@
 #   define	DOS850_dollar		0x24	/*   36		*/
 #   define	DOS850_percent		0x25	/*   37		*/
 #   define	DOS850_ampersand	0x26	/*   38		*/
-#   define	DOS850_quoteright	0x27	/*   39		*/
+#   define	DOS850_quotesingle	0x27	/*   39		*/
 #   define	DOS850_parenleft	0x28	/*   40		*/
 #   define	DOS850_parenright	0x29	/*   41		*/
 #   define	DOS850_asterisk		0x2a	/*   42		*/
@@ -2313,262 +2362,229 @@
 /*									*/
 /************************************************************************/
 
-#   define	MAC__0x00		0x00	/*    0		*/
-#   define	MAC__0x01		0x01	/*    1		*/
-#   define	MAC__0x02		0x02	/*    2		*/
-#   define	MAC__0x03		0x03	/*    3		*/
-#   define	MAC__0x04		0x04	/*    4		*/
-#   define	MAC__0x05		0x05	/*    5		*/
-#   define	MAC__0x06		0x06	/*    6		*/
-#   define	MAC__0x07		0x07	/*    7		*/
-#   define	MAC__0x08		0x08	/*    8		*/
-#   define	MAC__0x09		0x09	/*    9		*/
-#   define	MAC__0x0a		0x0a	/*   10		*/
-#   define	MAC__0x0b		0x0b	/*   11		*/
-#   define	MAC__0x0c		0x0c	/*   12		*/
-#   define	MAC__0x0d		0x0d	/*   13		*/
-#   define	MAC__0x0e		0x0e	/*   14		*/
-#   define	MAC__0x0f		0x0f	/*   15		*/
-#   define	MAC__0x10		0x10	/*   16		*/
-#   define	MAC__0x11		0x11	/*   17		*/
-#   define	MAC__0x12		0x12	/*   18		*/
-#   define	MAC__0x13		0x13	/*   19		*/
-#   define	MAC__0x14		0x14	/*   20		*/
-#   define	MAC__0x15		0x15	/*   21		*/
-#   define	MAC__0x16		0x16	/*   22		*/
-#   define	MAC__0x17		0x17	/*   23		*/
-#   define	MAC__0x18		0x18	/*   24		*/
-#   define	MAC__0x19		0x19	/*   25		*/
-#   define	MAC__0x1a		0x1a	/*   26		*/
-#   define	MAC__0x1b		0x1b	/*   27		*/
-#   define	MAC__0x1c		0x1c	/*   28		*/
-#   define	MAC__0x1d		0x1d	/*   29		*/
-#   define	MAC__0x1e		0x1e	/*   30		*/
-#   define	MAC__0x1f		0x1f	/*   31		*/
-#   define	MAC_space		0x20	/*   32		*/
-#   define	MAC_exclam		0x21	/*   33		*/
-#   define	MAC_quotedbl		0x22	/*   34		*/
-#   define	MAC_numbersign		0x23	/*   35		*/
-#   define	MAC_dollar		0x24	/*   36		*/
-#   define	MAC_percent		0x25	/*   37		*/
-#   define	MAC_ampersand		0x26	/*   38		*/
-#   define	MAC_quoteright		0x27	/*   39		*/
-#   define	MAC_parenleft		0x28	/*   40		*/
-#   define	MAC_parenright		0x29	/*   41		*/
-#   define	MAC_asterisk		0x2a	/*   42		*/
-#   define	MAC_plus		0x2b	/*   43		*/
-#   define	MAC_comma		0x2c	/*   44		*/
-#   define	MAC_minus		0x2d	/*   45		*/
-#   define	MAC_period		0x2e	/*   46		*/
-#   define	MAC_slash		0x2f	/*   47		*/
-#   define	MAC_zero		0x30	/*   48		*/
-#   define	MAC_one			0x31	/*   49		*/
-#   define	MAC_two			0x32	/*   50		*/
-#   define	MAC_three		0x33	/*   51		*/
-#   define	MAC_four		0x34	/*   52		*/
-#   define	MAC_five		0x35	/*   53		*/
-#   define	MAC_six			0x36	/*   54		*/
-#   define	MAC_seven		0x37	/*   55		*/
-#   define	MAC_eight		0x38	/*   56		*/
-#   define	MAC_nine		0x39	/*   57		*/
-#   define	MAC_colon		0x3a	/*   58		*/
-#   define	MAC_semicolon		0x3b	/*   59		*/
-#   define	MAC_less		0x3c	/*   60		*/
-#   define	MAC_equal		0x3d	/*   61		*/
-#   define	MAC_greater		0x3e	/*   62		*/
-#   define	MAC_question		0x3f	/*   63		*/
-#   define	MAC_at			0x40	/*   64		*/
-#   define	MAC_A			0x41	/*   65		*/
-#   define	MAC_B			0x42	/*   66		*/
-#   define	MAC_C			0x43	/*   67		*/
-#   define	MAC_D			0x44	/*   68		*/
-#   define	MAC_E			0x45	/*   69		*/
-#   define	MAC_F			0x46	/*   70		*/
-#   define	MAC_G			0x47	/*   71		*/
-#   define	MAC_H			0x48	/*   72		*/
-#   define	MAC_I			0x49	/*   73		*/
-#   define	MAC_J			0x4a	/*   74		*/
-#   define	MAC_K			0x4b	/*   75		*/
-#   define	MAC_L			0x4c	/*   76		*/
-#   define	MAC_M			0x4d	/*   77		*/
-#   define	MAC_N			0x4e	/*   78		*/
-#   define	MAC_O			0x4f	/*   79		*/
-#   define	MAC_P			0x50	/*   80		*/
-#   define	MAC_Q			0x51	/*   81		*/
-#   define	MAC_R			0x52	/*   82		*/
-#   define	MAC_S			0x53	/*   83		*/
-#   define	MAC_T			0x54	/*   84		*/
-#   define	MAC_U			0x55	/*   85		*/
-#   define	MAC_V			0x56	/*   86		*/
-#   define	MAC_W			0x57	/*   87		*/
-#   define	MAC_X			0x58	/*   88		*/
-#   define	MAC_Y			0x59	/*   89		*/
-#   define	MAC_Z			0x5a	/*   90		*/
-#   define	MAC_bracketleft		0x5b	/*   91		*/
-#   define	MAC_backslash		0x5c	/*   92		*/
-#   define	MAC_bracketright	0x5d	/*   93		*/
-#   define	MAC_circumflex		0x5e	/*   94		*/
-#   define	MAC_underscore		0x5f	/*   95		*/
-#   define	MAC_quoteleft		0x60	/*   96		*/
-#   define	MAC_a			0x61	/*   97		*/
-#   define	MAC_b			0x62	/*   98		*/
-#   define	MAC_c			0x63	/*   99		*/
-#   define	MAC_d			0x64	/*  100		*/
-#   define	MAC_e			0x65	/*  101		*/
-#   define	MAC_f			0x66	/*  102		*/
-#   define	MAC_g			0x67	/*  103		*/
-#   define	MAC_h			0x68	/*  104		*/
-#   define	MAC_i			0x69	/*  105		*/
-#   define	MAC_j			0x6a	/*  106		*/
-#   define	MAC_k			0x6b	/*  107		*/
-#   define	MAC_l			0x6c	/*  108		*/
-#   define	MAC_m			0x6d	/*  109		*/
-#   define	MAC_n			0x6e	/*  110		*/
-#   define	MAC_o			0x6f	/*  111		*/
-#   define	MAC_p			0x70	/*  112		*/
-#   define	MAC_q			0x71	/*  113		*/
-#   define	MAC_r			0x72	/*  114		*/
-#   define	MAC_s			0x73	/*  115		*/
-#   define	MAC_t			0x74	/*  116		*/
-#   define	MAC_u			0x75	/*  117		*/
-#   define	MAC_v			0x76	/*  118		*/
-#   define	MAC_w			0x77	/*  119		*/
-#   define	MAC_x			0x78	/*  120		*/
-#   define	MAC_y			0x79	/*  121		*/
-#   define	MAC_z			0x7a	/*  122		*/
-#   define	MAC_braceleft		0x7b	/*  123		*/
-#   define	MAC_bar			0x7c	/*  124		*/
-#   define	MAC_braceright		0x7d	/*  125		*/
-#   define	MAC_tilde		0x7e	/*  126		*/
-#   define	MAC__0x7e		0x7e	/*  126		*/
-#   define	MAC_Adieresis		0x80	/*  128		*/
-#   define	MAC_Aring		0x81	/*  129		*/
-#   define	MAC_Ccedilla		0x82	/*  130		*/
-#   define	MAC_Eacute		0x83	/*  131		*/
-#   define	MAC_Ntilde		0x84	/*  132		*/
-#   define	MAC_Odieresis		0x85	/*  133		*/
-#   define	MAC_Udieresis		0x86	/*  134		*/
-#   define	MAC_aacute		0x87	/*  135		*/
-#   define	MAC_agrave		0x88	/*  136		*/
-#   define	MAC_acircumflex		0x89	/*  137		*/
-#   define	MAC_adieresis		0x8a	/*  138		*/
-#   define	MAC_atilde		0x8b	/*  139		*/
-#   define	MAC_aring		0x8c	/*  140		*/
-#   define	MAC_ccedilla		0x8d	/*  141		*/
-#   define	MAC_eacute		0x8e	/*  142		*/
-#   define	MAC_egrave		0x8f	/*  143		*/
-#   define	MAC_ecircumflex		0x90	/*  144		*/
-#   define	MAC_edieresis		0x91	/*  145		*/
-#   define	MAC_iacute		0x92	/*  146		*/
-#   define	MAC_igrave		0x93	/*  147		*/
-#   define	MAC_icircumflex		0x94	/*  148		*/
-#   define	MAC_idieresis		0x95	/*  149		*/
-#   define	MAC_ntilde		0x96	/*  150		*/
-#   define	MAC_oacute		0x97	/*  151		*/
-#   define	MAC_ograve		0x98	/*  152		*/
-#   define	MAC_ocircumflex		0x99	/*  153		*/
-#   define	MAC_odieresis		0x9a	/*  154		*/
-#   define	MAC_otilde		0x9b	/*  155		*/
-#   define	MAC_uacute		0x9c	/*  156		*/
-#   define	MAC_ugrave		0x9d	/*  157		*/
-#   define	MAC_ucircumflex		0x9e	/*  158		*/
-#   define	MAC_udieresis		0x9f	/*  159		*/
-#   define	MAC_dagger		0xa0	/*  160		*/
-#   define	MAC_degree		0xa1	/*  161		*/
-#   define	MAC_cent		0xa2	/*  162		*/
-#   define	MAC_sterling		0xa3	/*  163		*/
-#   define	MAC_section		0xa4	/*  164		*/
-#   define	MAC_bullet		0xa5	/*  165		*/
-#   define	MAC_paragraph		0xa6	/*  166		*/
-#   define	MAC_germandbls		0xa7	/*  167		*/
-#   define	MAC_registered		0xa8	/*  168		*/
-#   define	MAC_copyright		0xa9	/*  169		*/
-#   define	MAC_trademark		0xaa	/*  170		*/
-#   define	MAC_acute		0xab	/*  171		*/
-#   define	MAC_dieresis		0xac	/*  172		*/
-#   define	MAC_notequal		0xad	/*  173		*/
-#   define	MAC_AE			0xae	/*  174		*/
-#   define	MAC_Oslash		0xaf	/*  175		*/
-#   define	MAC_infinity		0xb0	/*  176		*/
-#   define	MAC_plusminus		0xb1	/*  177		*/
-#   define	MAC_lessequal		0xb2	/*  178		*/
-#   define	MAC_greaterequal	0xb3	/*  179		*/
-#   define	MAC_yen			0xb4	/*  180		*/
-#   define	MAC_mu			0xb5	/*  181		*/
-#   define	MAC_partialdiff		0xb6	/*  182		*/
-#   define	MAC_summation		0xb7	/*  183		*/
-#   define	MAC_product		0xb8	/*  184		*/
-#   define	MAC_pi			0xb9	/*  185		*/
-#   define	MAC_integral		0xba	/*  186		*/
-#   define	MAC_ordfeminine		0xbb	/*  187		*/
-#   define	MAC_ordmasculine	0xbc	/*  188		*/
-#   define	MAC_Omega		0xbd	/*  189		*/
-#   define	MAC_ae			0xbe	/*  190		*/
-#   define	MAC_oslash		0xbf	/*  191		*/
-#   define	MAC_questiondown	0xc0	/*  192		*/
-#   define	MAC_exclamdown		0xc1	/*  193		*/
-#   define	MAC_logicalnot		0xc2	/*  194		*/
-#   define	MAC_radical		0xc3	/*  195		*/
-#   define	MAC_florin		0xc4	/*  196		*/
-#   define	MAC_approxequal		0xc5	/*  197		*/
-#   define	MAC_Delta		0xc6	/*  198		*/
-#   define	MAC_guillemotleft	0xc7	/*  199		*/
-#   define	MAC_guillemotright	0xc8	/*  200		*/
-#   define	MAC_ellipsis		0xc9	/*  201		*/
-#   define	MAC_nobreakspace	0xca	/*  202		*/
-#   define	MAC_Agrave		0xcb	/*  203		*/
-#   define	MAC_Atilde		0xcc	/*  204		*/
-#   define	MAC_Otilde		0xcd	/*  205		*/
-#   define	MAC_OE			0xce	/*  206		*/
-#   define	MAC_oe			0xcf	/*  207		*/
-#   define	MAC_endash		0xd0	/*  208		*/
-#   define	MAC_emdash		0xd1	/*  209		*/
-#   define	MAC_quotedblleft	0xd2	/*  210		*/
-#   define	MAC_quotedblright	0xd3	/*  211		*/
-#   define	MAC_quotesingle		0xd4	/*  212		*/
-#   define	MAC_quotereversed	0xd5	/*  213		*/
-#   define	MAC_divide		0xd6	/*  214		*/
-#   define	MAC_lozenge		0xd7	/*  215		*/
-#   define	MAC_ydieresis		0xd8	/*  216		*/
-#   define	MAC_Ydieresis		0xd9	/*  217		*/
-#   define	MAC_fraction		0xda	/*  218		*/
-#   define	MAC_currency		0xdb	/*  219		*/
-#   define	MAC_guilsinglleft	0xdc	/*  220		*/
-#   define	MAC_guilsinglright	0xdd	/*  221		*/
-#   define	MAC_fi			0xde	/*  222		*/
-#   define	MAC_fl			0xdf	/*  223		*/
-#   define	MAC_daggerdbl		0xe0	/*  224		*/
-#   define	MAC_periodcentered	0xe1	/*  225		*/
-#   define	MAC_quotesinglbase	0xe2	/*  226		*/
-#   define	MAC_quotedblbase	0xe3	/*  227		*/
-#   define	MAC_perthousand		0xe4	/*  228		*/
-#   define	MAC_Acircumflex		0xe5	/*  229		*/
-#   define	MAC_Ecircumflex		0xe6	/*  230		*/
-#   define	MAC_Aacute		0xe7	/*  231		*/
-#   define	MAC_Edieresis		0xe8	/*  232		*/
-#   define	MAC_Egrave		0xe9	/*  233		*/
-#   define	MAC_Iacute		0xea	/*  234		*/
-#   define	MAC_Icircumflex		0xeb	/*  235		*/
-#   define	MAC_Idieresis		0xec	/*  236		*/
-#   define	MAC_Igrave		0xed	/*  237		*/
-#   define	MAC_Oacute		0xee	/*  238		*/
-#   define	MAC_Ocircumflex		0xef	/*  239		*/
-#   define	MAC__apple_logo		0xf0	/*  240		*/
-#   define	MAC_Ograve		0xf1	/*  241		*/
-#   define	MAC_Uacute		0xf2	/*  242		*/
-#   define	MAC_Ucircumflex		0xf3	/*  243		*/
-#   define	MAC_Ugrave		0xf4	/*  244		*/
-#   define	MAC_dotlessi		0xf5	/*  245		*/
-#   define	MAC_circumflex_0xf6	0xf6	/*  246		*/
-#   define	MAC_tilde_0xf7		0xf7	/*  247		*/
-#   define	MAC_macron		0xf8	/*  248		*/
-#   define	MAC_breve		0xf9	/*  249		*/
-#   define	MAC_dotaccent		0xfa	/*  250		*/
-#   define	MAC_ring		0xfb	/*  251		*/
-#   define	MAC_cedilla		0xfc	/*  252		*/
-#   define	MAC_hungarumlaut	0xfd	/*  253		*/
-#   define	MAC_ogonek		0xfe	/*  254		*/
-#   define	MAC_caron		0xff	/*  255		*/
+#   define	MAC_ROMAN_space			0x20	/*   32		*/
+#   define	MAC_ROMAN_exclam		0x21	/*   33		*/
+#   define	MAC_ROMAN_quotedbl		0x22	/*   34		*/
+#   define	MAC_ROMAN_numbersign		0x23	/*   35		*/
+#   define	MAC_ROMAN_dollar		0x24	/*   36		*/
+#   define	MAC_ROMAN_percent		0x25	/*   37		*/
+#   define	MAC_ROMAN_ampersand		0x26	/*   38		*/
+#   define	MAC_ROMAN_quotesingle		0x27	/*   39		*/
+#   define	MAC_ROMAN_parenleft		0x28	/*   40		*/
+#   define	MAC_ROMAN_parenright		0x29	/*   41		*/
+#   define	MAC_ROMAN_asterisk		0x2a	/*   42		*/
+#   define	MAC_ROMAN_plus			0x2b	/*   43		*/
+#   define	MAC_ROMAN_comma			0x2c	/*   44		*/
+#   define	MAC_ROMAN_minus			0x2d	/*   45		*/
+#   define	MAC_ROMAN_period		0x2e	/*   46		*/
+#   define	MAC_ROMAN_slash			0x2f	/*   47		*/
+#   define	MAC_ROMAN_zero			0x30	/*   48		*/
+#   define	MAC_ROMAN_one			0x31	/*   49		*/
+#   define	MAC_ROMAN_two			0x32	/*   50		*/
+#   define	MAC_ROMAN_three			0x33	/*   51		*/
+#   define	MAC_ROMAN_four			0x34	/*   52		*/
+#   define	MAC_ROMAN_five			0x35	/*   53		*/
+#   define	MAC_ROMAN_six			0x36	/*   54		*/
+#   define	MAC_ROMAN_seven			0x37	/*   55		*/
+#   define	MAC_ROMAN_eight			0x38	/*   56		*/
+#   define	MAC_ROMAN_nine			0x39	/*   57		*/
+#   define	MAC_ROMAN_colon			0x3a	/*   58		*/
+#   define	MAC_ROMAN_semicolon		0x3b	/*   59		*/
+#   define	MAC_ROMAN_less			0x3c	/*   60		*/
+#   define	MAC_ROMAN_equal			0x3d	/*   61		*/
+#   define	MAC_ROMAN_greater		0x3e	/*   62		*/
+#   define	MAC_ROMAN_question		0x3f	/*   63		*/
+#   define	MAC_ROMAN_at			0x40	/*   64		*/
+#   define	MAC_ROMAN_A			0x41	/*   65		*/
+#   define	MAC_ROMAN_B			0x42	/*   66		*/
+#   define	MAC_ROMAN_C			0x43	/*   67		*/
+#   define	MAC_ROMAN_D			0x44	/*   68		*/
+#   define	MAC_ROMAN_E			0x45	/*   69		*/
+#   define	MAC_ROMAN_F			0x46	/*   70		*/
+#   define	MAC_ROMAN_G			0x47	/*   71		*/
+#   define	MAC_ROMAN_H			0x48	/*   72		*/
+#   define	MAC_ROMAN_I			0x49	/*   73		*/
+#   define	MAC_ROMAN_J			0x4a	/*   74		*/
+#   define	MAC_ROMAN_K			0x4b	/*   75		*/
+#   define	MAC_ROMAN_L			0x4c	/*   76		*/
+#   define	MAC_ROMAN_M			0x4d	/*   77		*/
+#   define	MAC_ROMAN_N			0x4e	/*   78		*/
+#   define	MAC_ROMAN_O			0x4f	/*   79		*/
+#   define	MAC_ROMAN_P			0x50	/*   80		*/
+#   define	MAC_ROMAN_Q			0x51	/*   81		*/
+#   define	MAC_ROMAN_R			0x52	/*   82		*/
+#   define	MAC_ROMAN_S			0x53	/*   83		*/
+#   define	MAC_ROMAN_T			0x54	/*   84		*/
+#   define	MAC_ROMAN_U			0x55	/*   85		*/
+#   define	MAC_ROMAN_V			0x56	/*   86		*/
+#   define	MAC_ROMAN_W			0x57	/*   87		*/
+#   define	MAC_ROMAN_X			0x58	/*   88		*/
+#   define	MAC_ROMAN_Y			0x59	/*   89		*/
+#   define	MAC_ROMAN_Z			0x5a	/*   90		*/
+#   define	MAC_ROMAN_bracketleft		0x5b	/*   91		*/
+#   define	MAC_ROMAN_backslash		0x5c	/*   92		*/
+#   define	MAC_ROMAN_bracketright		0x5d	/*   93		*/
+#   define	MAC_ROMAN_asciicircum		0x5e	/*   94		*/
+#   define	MAC_ROMAN_underscore		0x5f	/*   95		*/
+#   define	MAC_ROMAN_grave			0x60	/*   96		*/
+#   define	MAC_ROMAN_a			0x61	/*   97		*/
+#   define	MAC_ROMAN_b			0x62	/*   98		*/
+#   define	MAC_ROMAN_c			0x63	/*   99		*/
+#   define	MAC_ROMAN_d			0x64	/*  100		*/
+#   define	MAC_ROMAN_e			0x65	/*  101		*/
+#   define	MAC_ROMAN_f			0x66	/*  102		*/
+#   define	MAC_ROMAN_g			0x67	/*  103		*/
+#   define	MAC_ROMAN_h			0x68	/*  104		*/
+#   define	MAC_ROMAN_i			0x69	/*  105		*/
+#   define	MAC_ROMAN_j			0x6a	/*  106		*/
+#   define	MAC_ROMAN_k			0x6b	/*  107		*/
+#   define	MAC_ROMAN_l			0x6c	/*  108		*/
+#   define	MAC_ROMAN_m			0x6d	/*  109		*/
+#   define	MAC_ROMAN_n			0x6e	/*  110		*/
+#   define	MAC_ROMAN_o			0x6f	/*  111		*/
+#   define	MAC_ROMAN_p			0x70	/*  112		*/
+#   define	MAC_ROMAN_q			0x71	/*  113		*/
+#   define	MAC_ROMAN_r			0x72	/*  114		*/
+#   define	MAC_ROMAN_s			0x73	/*  115		*/
+#   define	MAC_ROMAN_t			0x74	/*  116		*/
+#   define	MAC_ROMAN_u			0x75	/*  117		*/
+#   define	MAC_ROMAN_v			0x76	/*  118		*/
+#   define	MAC_ROMAN_w			0x77	/*  119		*/
+#   define	MAC_ROMAN_x			0x78	/*  120		*/
+#   define	MAC_ROMAN_y			0x79	/*  121		*/
+#   define	MAC_ROMAN_z			0x7a	/*  122		*/
+#   define	MAC_ROMAN_braceleft		0x7b	/*  123		*/
+#   define	MAC_ROMAN_bar			0x7c	/*  124		*/
+#   define	MAC_ROMAN_braceright		0x7d	/*  125		*/
+#   define	MAC_ROMAN_asciitilde		0x7e	/*  126		*/
+#   define	MAC_ROMAN_Adieresis		0x80	/*  128		*/
+#   define	MAC_ROMAN_Aring			0x81	/*  129		*/
+#   define	MAC_ROMAN_Ccedilla		0x82	/*  130		*/
+#   define	MAC_ROMAN_Eacute		0x83	/*  131		*/
+#   define	MAC_ROMAN_Ntilde		0x84	/*  132		*/
+#   define	MAC_ROMAN_Odieresis		0x85	/*  133		*/
+#   define	MAC_ROMAN_Udieresis		0x86	/*  134		*/
+#   define	MAC_ROMAN_aacute		0x87	/*  135		*/
+#   define	MAC_ROMAN_agrave		0x88	/*  136		*/
+#   define	MAC_ROMAN_acircumflex		0x89	/*  137		*/
+#   define	MAC_ROMAN_adieresis		0x8a	/*  138		*/
+#   define	MAC_ROMAN_atilde		0x8b	/*  139		*/
+#   define	MAC_ROMAN_aring			0x8c	/*  140		*/
+#   define	MAC_ROMAN_ccedilla		0x8d	/*  141		*/
+#   define	MAC_ROMAN_eacute		0x8e	/*  142		*/
+#   define	MAC_ROMAN_egrave		0x8f	/*  143		*/
+#   define	MAC_ROMAN_ecircumflex		0x90	/*  144		*/
+#   define	MAC_ROMAN_edieresis		0x91	/*  145		*/
+#   define	MAC_ROMAN_iacute		0x92	/*  146		*/
+#   define	MAC_ROMAN_igrave		0x93	/*  147		*/
+#   define	MAC_ROMAN_icircumflex		0x94	/*  148		*/
+#   define	MAC_ROMAN_idieresis		0x95	/*  149		*/
+#   define	MAC_ROMAN_ntilde		0x96	/*  150		*/
+#   define	MAC_ROMAN_oacute		0x97	/*  151		*/
+#   define	MAC_ROMAN_ograve		0x98	/*  152		*/
+#   define	MAC_ROMAN_ocircumflex		0x99	/*  153		*/
+#   define	MAC_ROMAN_odieresis		0x9a	/*  154		*/
+#   define	MAC_ROMAN_otilde		0x9b	/*  155		*/
+#   define	MAC_ROMAN_uacute		0x9c	/*  156		*/
+#   define	MAC_ROMAN_ugrave		0x9d	/*  157		*/
+#   define	MAC_ROMAN_ucircumflex		0x9e	/*  158		*/
+#   define	MAC_ROMAN_udieresis		0x9f	/*  159		*/
+#   define	MAC_ROMAN_dagger		0xa0	/*  160		*/
+#   define	MAC_ROMAN_degree		0xa1	/*  161		*/
+#   define	MAC_ROMAN_cent			0xa2	/*  162		*/
+#   define	MAC_ROMAN_sterling		0xa3	/*  163		*/
+#   define	MAC_ROMAN_section		0xa4	/*  164		*/
+#   define	MAC_ROMAN_bullet		0xa5	/*  165		*/
+#   define	MAC_ROMAN_paragraph		0xa6	/*  166		*/
+#   define	MAC_ROMAN_germandbls		0xa7	/*  167		*/
+#   define	MAC_ROMAN_registered		0xa8	/*  168		*/
+#   define	MAC_ROMAN_copyright		0xa9	/*  169		*/
+#   define	MAC_ROMAN_trademark		0xaa	/*  170		*/
+#   define	MAC_ROMAN_acute			0xab	/*  171		*/
+#   define	MAC_ROMAN_dieresis		0xac	/*  172		*/
+#   define	MAC_ROMAN_notequal		0xad	/*  173		*/
+#   define	MAC_ROMAN_AE			0xae	/*  174		*/
+#   define	MAC_ROMAN_Oslash		0xaf	/*  175		*/
+#   define	MAC_ROMAN_infinity		0xb0	/*  176		*/
+#   define	MAC_ROMAN_plusminus		0xb1	/*  177		*/
+#   define	MAC_ROMAN_lessequal		0xb2	/*  178		*/
+#   define	MAC_ROMAN_greaterequal		0xb3	/*  179		*/
+#   define	MAC_ROMAN_yen			0xb4	/*  180		*/
+#   define	MAC_ROMAN_mu			0xb5	/*  181		*/
+#   define	MAC_ROMAN_partialdiff		0xb6	/*  182		*/
+#   define	MAC_ROMAN_summation		0xb7	/*  183		*/
+#   define	MAC_ROMAN_product		0xb8	/*  184		*/
+#   define	MAC_ROMAN_pi			0xb9	/*  185		*/
+#   define	MAC_ROMAN_integral		0xba	/*  186		*/
+#   define	MAC_ROMAN_ordfeminine		0xbb	/*  187		*/
+#   define	MAC_ROMAN_ordmasculine		0xbc	/*  188		*/
+#   define	MAC_ROMAN__Omega		0xbd	/*  189		*/
+#   define	MAC_ROMAN_ae			0xbe	/*  190		*/
+#   define	MAC_ROMAN_oslash		0xbf	/*  191		*/
+#   define	MAC_ROMAN_questiondown		0xc0	/*  192		*/
+#   define	MAC_ROMAN_exclamdown		0xc1	/*  193		*/
+#   define	MAC_ROMAN_logicalnot		0xc2	/*  194		*/
+#   define	MAC_ROMAN_radical		0xc3	/*  195		*/
+#   define	MAC_ROMAN_florin		0xc4	/*  196		*/
+#   define	MAC_ROMAN_approxequal		0xc5	/*  197		*/
+#   define	MAC_ROMAN_Delta			0xc6	/*  198		*/
+#   define	MAC_ROMAN_guillemotleft		0xc7	/*  199		*/
+#   define	MAC_ROMAN_guillemotright	0xc8	/*  200		*/
+#   define	MAC_ROMAN_ellipsis		0xc9	/*  201		*/
+#   define	MAC_ROMAN_nobreakspace		0xca	/*  202		*/
+#   define	MAC_ROMAN_Agrave		0xcb	/*  203		*/
+#   define	MAC_ROMAN_Atilde		0xcc	/*  204		*/
+#   define	MAC_ROMAN_Otilde		0xcd	/*  205		*/
+#   define	MAC_ROMAN_OE			0xce	/*  206		*/
+#   define	MAC_ROMAN_oe			0xcf	/*  207		*/
+#   define	MAC_ROMAN_endash		0xd0	/*  208		*/
+#   define	MAC_ROMAN_emdash		0xd1	/*  209		*/
+#   define	MAC_ROMAN_quotedblleft		0xd2	/*  210		*/
+#   define	MAC_ROMAN_quotedblright		0xd3	/*  211		*/
+#   define	MAC_ROMAN_quoteleft		0xd4	/*  212		*/
+#   define	MAC_ROMAN_quoteright		0xd5	/*  213		*/
+#   define	MAC_ROMAN_divide		0xd6	/*  214		*/
+#   define	MAC_ROMAN_lozenge		0xd7	/*  215		*/
+#   define	MAC_ROMAN_ydieresis		0xd8	/*  216		*/
+#   define	MAC_ROMAN_Ydieresis		0xd9	/*  217		*/
+#   define	MAC_ROMAN_fraction		0xda	/*  218		*/
+#   define	MAC_ROMAN_Euro			0xdb	/*  219		*/
+#   define	MAC_ROMAN_guilsinglleft		0xdc	/*  220		*/
+#   define	MAC_ROMAN_guilsinglright	0xdd	/*  221		*/
+#   define	MAC_ROMAN__fi			0xde	/*  222		*/
+#   define	MAC_ROMAN__fl			0xdf	/*  223		*/
+#   define	MAC_ROMAN_daggerdbl		0xe0	/*  224		*/
+#   define	MAC_ROMAN_periodcentered	0xe1	/*  225		*/
+#   define	MAC_ROMAN_quotesinglbase	0xe2	/*  226		*/
+#   define	MAC_ROMAN_quotedblbase		0xe3	/*  227		*/
+#   define	MAC_ROMAN_perthousand		0xe4	/*  228		*/
+#   define	MAC_ROMAN_Acircumflex		0xe5	/*  229		*/
+#   define	MAC_ROMAN_Ecircumflex		0xe6	/*  230		*/
+#   define	MAC_ROMAN_Aacute		0xe7	/*  231		*/
+#   define	MAC_ROMAN_Edieresis		0xe8	/*  232		*/
+#   define	MAC_ROMAN_Egrave		0xe9	/*  233		*/
+#   define	MAC_ROMAN_Iacute		0xea	/*  234		*/
+#   define	MAC_ROMAN_Icircumflex		0xeb	/*  235		*/
+#   define	MAC_ROMAN_Idieresis		0xec	/*  236		*/
+#   define	MAC_ROMAN_Igrave		0xed	/*  237		*/
+#   define	MAC_ROMAN_Oacute		0xee	/*  238		*/
+#   define	MAC_ROMAN_Ocircumflex		0xef	/*  239		*/
+#   define	MAC_ROMAN__apple		0xf0	/*  240		*/
+#   define	MAC_ROMAN_Ograve		0xf1	/*  241		*/
+#   define	MAC_ROMAN_Uacute		0xf2	/*  242		*/
+#   define	MAC_ROMAN_Ucircumflex		0xf3	/*  243		*/
+#   define	MAC_ROMAN_Ugrave		0xf4	/*  244		*/
+#   define	MAC_ROMAN_dotlessi		0xf5	/*  245		*/
+#   define	MAC_ROMAN_circumflex		0xf6	/*  246		*/
+#   define	MAC_ROMAN_tilde			0xf7	/*  247		*/
+#   define	MAC_ROMAN_macron		0xf8	/*  248		*/
+#   define	MAC_ROMAN_breve			0xf9	/*  249		*/
+#   define	MAC_ROMAN_dotaccent		0xfa	/*  250		*/
+#   define	MAC_ROMAN_ring			0xfb	/*  251		*/
+#   define	MAC_ROMAN_cedilla		0xfc	/*  252		*/
+#   define	MAC_ROMAN_hungarumlaut		0xfd	/*  253		*/
+#   define	MAC_ROMAN_ogonek		0xfe	/*  254		*/
+#   define	MAC_ROMAN_caron			0xff	/*  255		*/
 
 /************************************************************************/
 /*									*/
@@ -2916,7 +2932,7 @@
 #   define	PSCYR_dollar		0x24	/*  36  */
 #   define	PSCYR_percent		0x25	/*  37  */
 #   define	PSCYR_ampersand		0x26	/*  38  */
-#   define	PSCYR_quoteright	0x27	/*  39  */
+#   define	PSCYR_quotesingle	0x27	/*  39  */
 #   define	PSCYR_parenleft		0x28	/*  40  */
 #   define	PSCYR_parenright	0x29	/*  41  */
 #   define	PSCYR_asterisk		0x2a	/*  42  */
@@ -3023,7 +3039,7 @@
 #   define	PSCYR_afii10145		0x8f	/* 143  */
 #   define	PSCYR_afii10099		0x90	/* 144  */
 #   define	PSCYR_grave		0x91	/* 145  */
-#   define	PSCYR_quotesingle	0x92	/* 146  */
+#   define	PSCYR_quoteright	0x92	/* 146  */
 #   define	PSCYR_quotedblleft	0x93	/* 147  */
 #   define	PSCYR_quotedblright	0x94	/* 148  */
 #   define	PSCYR_bullet		0x95	/* 149  */
@@ -3965,7 +3981,7 @@
 #   define WIN1250_dollar	ASCII_dollar	/*  36		*/
 #   define WIN1250_percent	ASCII_percent	/*  37		*/
 #   define WIN1250_ampersand	ASCII_ampersand	/*  38		*/
-#   define WIN1250_quoteright	ASCII_quoteright /*  39		*/
+#   define WIN1250_quotesingle	ASCII_quotesingle /*  39	*/
 #   define WIN1250_parenleft	ASCII_parenleft	/*  40		*/
 #   define WIN1250_parenright	ASCII_parenright /*  41		*/
 #   define WIN1250_asterisk	ASCII_asterisk	/*  42		*/
@@ -4089,7 +4105,7 @@
 #   define WIN1250_tcaron	0x9d		/*  157		*/
 #   define WIN1250_zcaron	0x9e		/*  158		*/
 #   define WIN1250_zacute	0x9f		/*  159		*/
-#   define WIN1250__0xa0	0xa0		/*  160		*//**/
+#   define WIN1250_nobreakspace	0xa0		/*  160		*/
 #   define WIN1250_caron	0xa1		/*  161		*/
 #   define WIN1250_breve	0xa2		/*  162		*/
 #   define WIN1250_Lslash	0xa3		/*  163		*/
@@ -4289,7 +4305,7 @@
 #   define	WIN1253_bracketright		0x5d	/*   93		*/
 #   define	WIN1253_asciicircum		0x5e	/*   94		*/
 #   define	WIN1253_underscore		0x5f	/*   95		*/
-#   define	WIN1253_grave			0x60	/*   96		*/
+#   define	WIN1253_quoteleft		0x60	/*   96		*/
 #   define	WIN1253_a			0x61	/*   97		*/
 #   define	WIN1253_b			0x62	/*   98		*/
 #   define	WIN1253_c			0x63	/*   99		*/
@@ -4338,7 +4354,7 @@
 #   define	WIN1253__0x8E			0x8e	/*  142		*/
 #   define	WIN1253__0x8F			0x8f	/*  143		*/
 #   define	WIN1253__0x90			0x90	/*  144		*/
-#   define	WIN1253_quoteleft		0x91	/*  145		*/
+#   define	WIN1253__quoteleft		0x91	/*  145		*/
 #   define	WIN1253_quoteright		0x92	/*  146		*/
 #   define	WIN1253_quotedblleft		0x93	/*  147		*/
 #   define	WIN1253_quotedblright		0x94	/*  148		*/
@@ -5040,7 +5056,7 @@
 #   define	WIN1254_bracketright	0x5d	/*   93		*/
 #   define	WIN1254_asciicircum	0x5e	/*   94		*/
 #   define	WIN1254_underscore	0x5f	/*   95		*/
-#   define	WIN1254_grave		0x60	/*   96		*/
+#   define	WIN1254_quoteleft	0x60	/*   96		*/
 #   define	WIN1254_a		0x61	/*   97		*/
 #   define	WIN1254_b		0x62	/*   98		*/
 #   define	WIN1254_c		0x63	/*   99		*/
@@ -5089,7 +5105,7 @@
 #   define	WIN1254__0x8E		0x8e	/*  142		*/
 #   define	WIN1254__0x8F		0x8f	/*  143		*/
 #   define	WIN1254__0x90		0x90	/*  144		*/
-#   define	WIN1254_quoteleft	0x91	/*  145		*/
+#   define	WIN1254__quoteleft	0x91	/*  145		*/
 #   define	WIN1254_quoteright	0x92	/*  146		*/
 #   define	WIN1254_quotedblleft	0x93	/*  147		*/
 #   define	WIN1254_quotedblright	0x94	/*  148		*/
@@ -5554,7 +5570,7 @@
 #   define	WIN1257_bracketright	0x5d	/*   93		*/
 #   define	WIN1257_asciicircum	0x5e	/*   94		*/
 #   define	WIN1257_underscore	0x5f	/*   95		*/
-#   define	WIN1257_grave		0x60	/*   96		*/
+#   define	WIN1257_quoteleft	0x60	/*   96		*/
 #   define	WIN1257_a		0x61	/*   97		*/
 #   define	WIN1257_b		0x62	/*   98		*/
 #   define	WIN1257_c		0x63	/*   99		*/
@@ -5603,7 +5619,7 @@
 #   define	WIN1257_caron		0x8e	/*  142		*/
 #   define	WIN1257_cedilla		0x8f	/*  143		*/
 #   define	WIN1257__0x90		0x90	/*  144		*/
-#   define	WIN1257_quoteleft	0x91	/*  145		*/
+#   define	WIN1257__quoteleft	0x91	/*  145		*/
 #   define	WIN1257_quoteright	0x92	/*  146		*/
 #   define	WIN1257_quotedblleft	0x93	/*  147		*/
 #   define	WIN1257_quotedblright	0x94	/*  148		*/
@@ -5981,3 +5997,225 @@
 		((c)>=ISO13_uogonek&&(c)<=ISO13_zcaron)?((c)-0x20): (\
 		(c) )))))
 
+/************************************************************************/
+/*									*/
+/*  Names for the characters in the Windows 1252 code page.		*/
+/*  (Western European Latin1)						*/
+/*									*/
+/************************************************************************/
+
+#   define	WIN1252_space			0x20	/*   32		*/
+#   define	WIN1252_exclam			0x21	/*   33		*/
+#   define	WIN1252_quotedbl		0x22	/*   34		*/
+#   define	WIN1252_numbersign		0x23	/*   35		*/
+#   define	WIN1252_dollar			0x24	/*   36		*/
+#   define	WIN1252_percent			0x25	/*   37		*/
+#   define	WIN1252_ampersand		0x26	/*   38		*/
+#   define	WIN1252_quotesingle		0x27	/*   39		*/
+#   define	WIN1252_parenleft		0x28	/*   40		*/
+#   define	WIN1252_parenright		0x29	/*   41		*/
+#   define	WIN1252_asterisk		0x2a	/*   42		*/
+#   define	WIN1252_plus			0x2b	/*   43		*/
+#   define	WIN1252_comma			0x2c	/*   44		*/
+#   define	WIN1252_minus			0x2d	/*   45		*/
+#   define	WIN1252_period			0x2e	/*   46		*/
+#   define	WIN1252_slash			0x2f	/*   47		*/
+#   define	WIN1252_zero			0x30	/*   48		*/
+#   define	WIN1252_one			0x31	/*   49		*/
+#   define	WIN1252_two			0x32	/*   50		*/
+#   define	WIN1252_three			0x33	/*   51		*/
+#   define	WIN1252_four			0x34	/*   52		*/
+#   define	WIN1252_five			0x35	/*   53		*/
+#   define	WIN1252_six			0x36	/*   54		*/
+#   define	WIN1252_seven			0x37	/*   55		*/
+#   define	WIN1252_eight			0x38	/*   56		*/
+#   define	WIN1252_nine			0x39	/*   57		*/
+#   define	WIN1252_colon			0x3a	/*   58		*/
+#   define	WIN1252_semicolon		0x3b	/*   59		*/
+#   define	WIN1252_less			0x3c	/*   60		*/
+#   define	WIN1252_equal			0x3d	/*   61		*/
+#   define	WIN1252_greater			0x3e	/*   62		*/
+#   define	WIN1252_question		0x3f	/*   63		*/
+#   define	WIN1252_at			0x40	/*   64		*/
+#   define	WIN1252_A			0x41	/*   65		*/
+#   define	WIN1252_B			0x42	/*   66		*/
+#   define	WIN1252_C			0x43	/*   67		*/
+#   define	WIN1252_D			0x44	/*   68		*/
+#   define	WIN1252_E			0x45	/*   69		*/
+#   define	WIN1252_F			0x46	/*   70		*/
+#   define	WIN1252_G			0x47	/*   71		*/
+#   define	WIN1252_H			0x48	/*   72		*/
+#   define	WIN1252_I			0x49	/*   73		*/
+#   define	WIN1252_J			0x4a	/*   74		*/
+#   define	WIN1252_K			0x4b	/*   75		*/
+#   define	WIN1252_L			0x4c	/*   76		*/
+#   define	WIN1252_M			0x4d	/*   77		*/
+#   define	WIN1252_N			0x4e	/*   78		*/
+#   define	WIN1252_O			0x4f	/*   79		*/
+#   define	WIN1252_P			0x50	/*   80		*/
+#   define	WIN1252_Q			0x51	/*   81		*/
+#   define	WIN1252_R			0x52	/*   82		*/
+#   define	WIN1252_S			0x53	/*   83		*/
+#   define	WIN1252_T			0x54	/*   84		*/
+#   define	WIN1252_U			0x55	/*   85		*/
+#   define	WIN1252_V			0x56	/*   86		*/
+#   define	WIN1252_W			0x57	/*   87		*/
+#   define	WIN1252_X			0x58	/*   88		*/
+#   define	WIN1252_Y			0x59	/*   89		*/
+#   define	WIN1252_Z			0x5a	/*   90		*/
+#   define	WIN1252_bracketleft		0x5b	/*   91		*/
+#   define	WIN1252_backslash		0x5c	/*   92		*/
+#   define	WIN1252_bracketright		0x5d	/*   93		*/
+#   define	WIN1252_asciicircum		0x5e	/*   94		*/
+#   define	WIN1252_underscore		0x5f	/*   95		*/
+#   define	WIN1252_quoteleft		0x60	/*   96		*/
+#   define	WIN1252_a			0x61	/*   97		*/
+#   define	WIN1252_b			0x62	/*   98		*/
+#   define	WIN1252_c			0x63	/*   99		*/
+#   define	WIN1252_d			0x64	/*  100		*/
+#   define	WIN1252_e			0x65	/*  101		*/
+#   define	WIN1252_f			0x66	/*  102		*/
+#   define	WIN1252_g			0x67	/*  103		*/
+#   define	WIN1252_h			0x68	/*  104		*/
+#   define	WIN1252_i			0x69	/*  105		*/
+#   define	WIN1252_j			0x6a	/*  106		*/
+#   define	WIN1252_k			0x6b	/*  107		*/
+#   define	WIN1252_l			0x6c	/*  108		*/
+#   define	WIN1252_m			0x6d	/*  109		*/
+#   define	WIN1252_n			0x6e	/*  110		*/
+#   define	WIN1252_o			0x6f	/*  111		*/
+#   define	WIN1252_p			0x70	/*  112		*/
+#   define	WIN1252_q			0x71	/*  113		*/
+#   define	WIN1252_r			0x72	/*  114		*/
+#   define	WIN1252_s			0x73	/*  115		*/
+#   define	WIN1252_t			0x74	/*  116		*/
+#   define	WIN1252_u			0x75	/*  117		*/
+#   define	WIN1252_v			0x76	/*  118		*/
+#   define	WIN1252_w			0x77	/*  119		*/
+#   define	WIN1252_x			0x78	/*  120		*/
+#   define	WIN1252_y			0x79	/*  121		*/
+#   define	WIN1252_z			0x7a	/*  122		*/
+#   define	WIN1252_braceleft		0x7b	/*  123		*/
+#   define	WIN1252_bar			0x7c	/*  124		*/
+#   define	WIN1252_braceright		0x7d	/*  125		*/
+#   define	WIN1252_asciitilde		0x7e	/*  126		*/
+#   define	WIN1252_Euro			0x80	/*  128		*/
+#   define	WIN1252_quotesinglbase		0x82	/*  130		*/
+#   define	WIN1252_florin			0x83	/*  131		*/
+#   define	WIN1252_quotedblbase		0x84	/*  132		*/
+#   define	WIN1252_ellipsis		0x85	/*  133		*/
+#   define	WIN1252_dagger			0x86	/*  134		*/
+#   define	WIN1252_daggerdbl		0x87	/*  135		*/
+#   define	WIN1252_circumflex		0x88	/*  136		*/
+#   define	WIN1252_perthousand		0x89	/*  137		*/
+#   define	WIN1252_Scaron			0x8a	/*  138		*/
+#   define	WIN1252_guilsinglleft		0x8b	/*  139		*/
+#   define	WIN1252_OE			0x8c	/*  140		*/
+#   define	WIN1252__quoteleft		0x91	/*  145		*/
+#   define	WIN1252_quoteright		0x92	/*  146		*/
+#   define	WIN1252_quotedblleft		0x93	/*  147		*/
+#   define	WIN1252_quotedblright		0x94	/*  148		*/
+#   define	WIN1252_bullet			0x95	/*  149		*/
+#   define	WIN1252_endash			0x96	/*  150		*/
+#   define	WIN1252_emdash			0x97	/*  151		*/
+#   define	WIN1252_tilde			0x98	/*  152		*/
+#   define	WIN1252_trademark		0x99	/*  153		*/
+#   define	WIN1252_scaron			0x9a	/*  154		*/
+#   define	WIN1252_guilsinglright		0x9b	/*  155		*/
+#   define	WIN1252_oe			0x9c	/*  156		*/
+#   define	WIN1252_Ydieresis		0x9f	/*  159		*/
+#   define	WIN1252_nobreakspace		0xa0	/*  160		*/
+#   define	WIN1252_exclamdown		0xa1	/*  161		*/
+#   define	WIN1252_cent			0xa2	/*  162		*/
+#   define	WIN1252_sterling		0xa3	/*  163		*/
+#   define	WIN1252_currency		0xa4	/*  164		*/
+#   define	WIN1252_yen			0xa5	/*  165		*/
+#   define	WIN1252_brokenbar		0xa6	/*  166		*/
+#   define	WIN1252_section			0xa7	/*  167		*/
+#   define	WIN1252_dieresis		0xa8	/*  168		*/
+#   define	WIN1252_copyright		0xa9	/*  169		*/
+#   define	WIN1252_ordfeminine		0xaa	/*  170		*/
+#   define	WIN1252_guillemotleft		0xab	/*  171		*/
+#   define	WIN1252_logicalnot		0xac	/*  172		*/
+#   define	WIN1252_registered		0xae	/*  174		*/
+#   define	WIN1252_macron			0xaf	/*  175		*/
+#   define	WIN1252_degree			0xb0	/*  176		*/
+#   define	WIN1252_plusminus		0xb1	/*  177		*/
+#   define	WIN1252_twosuperior		0xb2	/*  178		*/
+#   define	WIN1252_threesuperior		0xb3	/*  179		*/
+#   define	WIN1252_acute			0xb4	/*  180		*/
+#   define	WIN1252_mu			0xb5	/*  181		*/
+#   define	WIN1252_paragraph		0xb6	/*  182		*/
+#   define	WIN1252_periodcentered		0xb7	/*  183		*/
+#   define	WIN1252_cedilla			0xb8	/*  184		*/
+#   define	WIN1252_onesuperior		0xb9	/*  185		*/
+#   define	WIN1252_ordmasculine		0xba	/*  186		*/
+#   define	WIN1252_guillemotright		0xbb	/*  187		*/
+#   define	WIN1252_onequarter		0xbc	/*  188		*/
+#   define	WIN1252_onehalf			0xbd	/*  189		*/
+#   define	WIN1252_threequarters		0xbe	/*  190		*/
+#   define	WIN1252_questiondown		0xbf	/*  191		*/
+#   define	WIN1252_Agrave			0xc0	/*  192		*/
+#   define	WIN1252_Aacute			0xc1	/*  193		*/
+#   define	WIN1252_Acircumflex		0xc2	/*  194		*/
+#   define	WIN1252_Atilde			0xc3	/*  195		*/
+#   define	WIN1252_Adieresis		0xc4	/*  196		*/
+#   define	WIN1252_Aring			0xc5	/*  197		*/
+#   define	WIN1252_AE			0xc6	/*  198		*/
+#   define	WIN1252_Ccedilla		0xc7	/*  199		*/
+#   define	WIN1252_Egrave			0xc8	/*  200		*/
+#   define	WIN1252_Eacute			0xc9	/*  201		*/
+#   define	WIN1252_Ecircumflex		0xca	/*  202		*/
+#   define	WIN1252_Edieresis		0xcb	/*  203		*/
+#   define	WIN1252_Igrave			0xcc	/*  204		*/
+#   define	WIN1252_Iacute			0xcd	/*  205		*/
+#   define	WIN1252_Icircumflex		0xce	/*  206		*/
+#   define	WIN1252_Idieresis		0xcf	/*  207		*/
+#   define	WIN1252_Eth			0xd0	/*  208		*/
+#   define	WIN1252_Ntilde			0xd1	/*  209		*/
+#   define	WIN1252_Ograve			0xd2	/*  210		*/
+#   define	WIN1252_Oacute			0xd3	/*  211		*/
+#   define	WIN1252_Ocircumflex		0xd4	/*  212		*/
+#   define	WIN1252_Otilde			0xd5	/*  213		*/
+#   define	WIN1252_Odieresis		0xd6	/*  214		*/
+#   define	WIN1252_multiply		0xd7	/*  215		*/
+#   define	WIN1252_Oslash			0xd8	/*  216		*/
+#   define	WIN1252_Ugrave			0xd9	/*  217		*/
+#   define	WIN1252_Uacute			0xda	/*  218		*/
+#   define	WIN1252_Ucircumflex		0xdb	/*  219		*/
+#   define	WIN1252_Udieresis		0xdc	/*  220		*/
+#   define	WIN1252_Yacute			0xdd	/*  221		*/
+#   define	WIN1252_Thorn			0xde	/*  222		*/
+#   define	WIN1252_germandbls		0xdf	/*  223		*/
+#   define	WIN1252_agrave			0xe0	/*  224		*/
+#   define	WIN1252_aacute			0xe1	/*  225		*/
+#   define	WIN1252_acircumflex		0xe2	/*  226		*/
+#   define	WIN1252_atilde			0xe3	/*  227		*/
+#   define	WIN1252_adieresis		0xe4	/*  228		*/
+#   define	WIN1252_aring			0xe5	/*  229		*/
+#   define	WIN1252_ae			0xe6	/*  230		*/
+#   define	WIN1252_ccedilla		0xe7	/*  231		*/
+#   define	WIN1252_egrave			0xe8	/*  232		*/
+#   define	WIN1252_eacute			0xe9	/*  233		*/
+#   define	WIN1252_ecircumflex		0xea	/*  234		*/
+#   define	WIN1252_edieresis		0xeb	/*  235		*/
+#   define	WIN1252_igrave			0xec	/*  236		*/
+#   define	WIN1252_iacute			0xed	/*  237		*/
+#   define	WIN1252_icircumflex		0xee	/*  238		*/
+#   define	WIN1252_idieresis		0xef	/*  239		*/
+#   define	WIN1252_eth			0xf0	/*  240		*/
+#   define	WIN1252_ntilde			0xf1	/*  241		*/
+#   define	WIN1252_ograve			0xf2	/*  242		*/
+#   define	WIN1252_oacute			0xf3	/*  243		*/
+#   define	WIN1252_ocircumflex		0xf4	/*  244		*/
+#   define	WIN1252_otilde			0xf5	/*  245		*/
+#   define	WIN1252_odieresis		0xf6	/*  246		*/
+#   define	WIN1252_divide			0xf7	/*  247		*/
+#   define	WIN1252_oslash			0xf8	/*  248		*/
+#   define	WIN1252_ugrave			0xf9	/*  249		*/
+#   define	WIN1252_uacute			0xfa	/*  250		*/
+#   define	WIN1252_ucircumflex		0xfb	/*  251		*/
+#   define	WIN1252_udieresis		0xfc	/*  252		*/
+#   define	WIN1252_yacute			0xfd	/*  253		*/
+#   define	WIN1252_thorn			0xfe	/*  254		*/
+#   define	WIN1252_ydieresis		0xff	/*  255		*/

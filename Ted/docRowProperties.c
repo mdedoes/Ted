@@ -80,15 +80,15 @@ void docInitRowProperties(	RowProperties *	rp )
     rp->rpBottomDefaultCellSpacingUnit= TRautoNONE;
 
     /**/
-    rp->rpLeftDefaultCellMargin= 0;
-    rp->rpRightDefaultCellMargin= 0;
-    rp->rpTopDefaultCellMargin= 0;
-    rp->rpBottomDefaultCellMargin= 0;
+    rp->rpLeftCellPadding= 0;
+    rp->rpRightCellPadding= 0;
+    rp->rpTopCellPadding= 0;
+    rp->rpBottomCellPadding= 0;
 
-    rp->rpLeftDefaultCellMarginUnit= TRautoNONE;
-    rp->rpRightDefaultCellMarginUnit= TRautoNONE;
-    rp->rpTopDefaultCellMarginUnit= TRautoNONE;
-    rp->rpBottomDefaultCellMarginUnit= TRautoNONE;
+    rp->rpLeftCellPaddingUnit= TRautoNONE;
+    rp->rpRightCellPaddingUnit= TRautoNONE;
+    rp->rpTopCellPaddingUnit= TRautoNONE;
+    rp->rpBottomCellPaddingUnit= TRautoNONE;
 
     /**/
     rp->rpCellWidthBefore= 0;
@@ -103,6 +103,7 @@ void docInitRowProperties(	RowProperties *	rp )
     rp->rpRowStyle= -1;
 
     rp->rpIsLastRow= 0;
+    rp->rpAuthor= -1;
 
     return;
     }
@@ -190,7 +191,7 @@ int docCopyRowProperties(	RowProperties *		rpTo,
     PROPmaskCLEAR( &rpDoneMask );
     PROPmaskCLEAR( &rpSetMask );
 
-    PROPmaskFILL( &rpSetMask, RPprop_COUNT );
+    utilPropMaskFill( &rpSetMask, RPprop_COUNT );
 
     if  ( docUpdRowProperties( &rpDoneMask, rpTo,
 					    &rpSetMask, rpFrom, colorMap ) )
@@ -282,7 +283,7 @@ int docEqualRows(	const RowProperties *	rp1,
 
     const int * const	colorMap= (const int *)0;
 
-    PROPmaskFILL( &rpUpdMask, RPprop_COUNT );
+    utilPropMaskFill( &rpUpdMask, RPprop_COUNT );
     PROPmaskCLEAR( &rpChgMask );
 
     docRowPropertyDifference( &rpChgMask, rp1, rp2, &rpUpdMask, colorMap );
@@ -330,7 +331,7 @@ int docUpdRowProperties(	PropertyMask *			pRpDonePask,
 	    PropertyMask	cpDoneMask;
 	    PropertyMask	cpUpdMask;
 
-	    PROPmaskFILL( &cpUpdMask, CLprop_COUNT );
+	    utilPropMaskFill( &cpUpdMask, CLprop_COUNT );
 	    PROPmaskCLEAR( &cpDoneMask );
 
 	    if  ( docUpdCellProperties( &cpDoneMask, cpTo,
@@ -612,40 +613,40 @@ int docUpdRowProperties(	PropertyMask *			pRpDonePask,
     /**/
     if  ( PROPmaskISSET( rpUpdMask, RPpropTRPADDL ) )
 	{
-	if  ( rpTo->rpLeftDefaultCellMargin !=
-				      rpFrom->rpLeftDefaultCellMargin )
+	if  ( rpTo->rpLeftCellPadding !=
+				      rpFrom->rpLeftCellPadding )
 	    {
-	    rpTo->rpLeftDefaultCellMargin= rpFrom->rpLeftDefaultCellMargin;
+	    rpTo->rpLeftCellPadding= rpFrom->rpLeftCellPadding;
 	    PROPmaskADD( &rpDoneMask, RPpropTRPADDL );
 	    }
 	}
 
     if  ( PROPmaskISSET( rpUpdMask, RPpropTRPADDR ) )
 	{
-	if  ( rpTo->rpRightDefaultCellMargin !=
-				    rpFrom->rpRightDefaultCellMargin )
+	if  ( rpTo->rpRightCellPadding !=
+				    rpFrom->rpRightCellPadding )
 	    {
-	    rpTo->rpRightDefaultCellMargin= rpFrom->rpRightDefaultCellMargin;
+	    rpTo->rpRightCellPadding= rpFrom->rpRightCellPadding;
 	    PROPmaskADD( &rpDoneMask, RPpropTRPADDR );
 	    }
 	}
 
     if  ( PROPmaskISSET( rpUpdMask, RPpropTRPADDT ) )
 	{
-	if  ( rpTo->rpTopDefaultCellMargin !=
-				    rpFrom->rpTopDefaultCellMargin )
+	if  ( rpTo->rpTopCellPadding !=
+				    rpFrom->rpTopCellPadding )
 	    {
-	    rpTo->rpTopDefaultCellMargin= rpFrom->rpTopDefaultCellMargin;
+	    rpTo->rpTopCellPadding= rpFrom->rpTopCellPadding;
 	    PROPmaskADD( &rpDoneMask, RPpropTRPADDT );
 	    }
 	}
 
     if  ( PROPmaskISSET( rpUpdMask, RPpropTRPADDB ) )
 	{
-	if  ( rpTo->rpBottomDefaultCellMargin !=
-				    rpFrom->rpBottomDefaultCellMargin )
+	if  ( rpTo->rpBottomCellPadding !=
+				    rpFrom->rpBottomCellPadding )
 	    {
-	    rpTo->rpBottomDefaultCellMargin= rpFrom->rpBottomDefaultCellMargin;
+	    rpTo->rpBottomCellPadding= rpFrom->rpBottomCellPadding;
 	    PROPmaskADD( &rpDoneMask, RPpropTRPADDB );
 	    }
 	}
@@ -653,44 +654,44 @@ int docUpdRowProperties(	PropertyMask *			pRpDonePask,
     /**/
     if  ( PROPmaskISSET( rpUpdMask, RPpropTRPADDFL ) )
 	{
-	if  ( rpTo->rpLeftDefaultCellMarginUnit !=
-				      rpFrom->rpLeftDefaultCellMarginUnit )
+	if  ( rpTo->rpLeftCellPaddingUnit !=
+				      rpFrom->rpLeftCellPaddingUnit )
 	    {
-	    rpTo->rpLeftDefaultCellMarginUnit=
-				    rpFrom->rpLeftDefaultCellMarginUnit;
+	    rpTo->rpLeftCellPaddingUnit=
+				    rpFrom->rpLeftCellPaddingUnit;
 	    PROPmaskADD( &rpDoneMask, RPpropTRPADDFL );
 	    }
 	}
 
     if  ( PROPmaskISSET( rpUpdMask, RPpropTRPADDFR ) )
 	{
-	if  ( rpTo->rpRightDefaultCellMarginUnit !=
-				    rpFrom->rpRightDefaultCellMarginUnit )
+	if  ( rpTo->rpRightCellPaddingUnit !=
+				    rpFrom->rpRightCellPaddingUnit )
 	    {
-	    rpTo->rpRightDefaultCellMarginUnit=
-				    rpFrom->rpRightDefaultCellMarginUnit;
+	    rpTo->rpRightCellPaddingUnit=
+				    rpFrom->rpRightCellPaddingUnit;
 	    PROPmaskADD( &rpDoneMask, RPpropTRPADDFR );
 	    }
 	}
 
     if  ( PROPmaskISSET( rpUpdMask, RPpropTRPADDFT ) )
 	{
-	if  ( rpTo->rpTopDefaultCellMarginUnit !=
-				    rpFrom->rpTopDefaultCellMarginUnit )
+	if  ( rpTo->rpTopCellPaddingUnit !=
+				    rpFrom->rpTopCellPaddingUnit )
 	    {
-	    rpTo->rpTopDefaultCellMarginUnit=
-				    rpFrom->rpTopDefaultCellMarginUnit;
+	    rpTo->rpTopCellPaddingUnit=
+				    rpFrom->rpTopCellPaddingUnit;
 	    PROPmaskADD( &rpDoneMask, RPpropTRPADDFT );
 	    }
 	}
 
     if  ( PROPmaskISSET( rpUpdMask, RPpropTRPADDFB ) )
 	{
-	if  ( rpTo->rpBottomDefaultCellMarginUnit !=
-				    rpFrom->rpBottomDefaultCellMarginUnit )
+	if  ( rpTo->rpBottomCellPaddingUnit !=
+				    rpFrom->rpBottomCellPaddingUnit )
 	    {
-	    rpTo->rpBottomDefaultCellMarginUnit=
-				    rpFrom->rpBottomDefaultCellMarginUnit;
+	    rpTo->rpBottomCellPaddingUnit=
+				    rpFrom->rpBottomCellPaddingUnit;
 	    PROPmaskADD( &rpDoneMask, RPpropTRPADDFB );
 	    }
 	}
@@ -772,6 +773,16 @@ int docUpdRowProperties(	PropertyMask *			pRpDonePask,
 	}
 
     /**/
+    if  ( PROPmaskISSET( rpUpdMask, RPpropTRAUTH ) )
+	{
+	if  ( rpTo->rpAuthor != rpFrom->rpAuthor )
+	    {
+	    rpTo->rpAuthor= rpFrom->rpAuthor;
+	    PROPmaskADD( &rpDoneMask, RPpropTRAUTH );
+	    }
+	}
+
+    /**/
 
     *pRpDonePask= rpDoneMask; return 0;
     }
@@ -809,7 +820,7 @@ void docRowPropertyDifference(	PropertyMask *			pRpDiffPask,
 		PropertyMask	cpDiffMask;
 		PropertyMask	cpUpdMask;
 
-		PROPmaskFILL( &cpUpdMask, CLprop_COUNT );
+		utilPropMaskFill( &cpUpdMask, CLprop_COUNT );
 		PROPmaskCLEAR( &cpDiffMask );
 
 		docCellPropertyDifference( &cpDiffMask, cp1,
@@ -1003,58 +1014,58 @@ void docRowPropertyDifference(	PropertyMask *			pRpDiffPask,
     /**/
     if  ( PROPmaskISSET( rpUpdMask, RPpropTRPADDL ) )
 	{
-	if  ( rp1->rpLeftDefaultCellMargin !=
-				      rp2->rpLeftDefaultCellMargin )
+	if  ( rp1->rpLeftCellPadding !=
+				      rp2->rpLeftCellPadding )
 	    { PROPmaskADD( &rpDiffMask, RPpropTRPADDL ); }
 	}
 
     if  ( PROPmaskISSET( rpUpdMask, RPpropTRPADDR ) )
 	{
-	if  ( rp1->rpRightDefaultCellMargin !=
-				    rp2->rpRightDefaultCellMargin )
+	if  ( rp1->rpRightCellPadding !=
+				    rp2->rpRightCellPadding )
 	    { PROPmaskADD( &rpDiffMask, RPpropTRPADDR ); }
 	}
 
     if  ( PROPmaskISSET( rpUpdMask, RPpropTRPADDT ) )
 	{
-	if  ( rp1->rpTopDefaultCellMargin !=
-				    rp2->rpTopDefaultCellMargin )
+	if  ( rp1->rpTopCellPadding !=
+				    rp2->rpTopCellPadding )
 	    { PROPmaskADD( &rpDiffMask, RPpropTRPADDT ); }
 	}
 
     if  ( PROPmaskISSET( rpUpdMask, RPpropTRPADDB ) )
 	{
-	if  ( rp1->rpBottomDefaultCellMargin !=
-				    rp2->rpBottomDefaultCellMargin )
+	if  ( rp1->rpBottomCellPadding !=
+				    rp2->rpBottomCellPadding )
 	    { PROPmaskADD( &rpDiffMask, RPpropTRPADDB ); }
 	}
 
     /**/
     if  ( PROPmaskISSET( rpUpdMask, RPpropTRPADDFL ) )
 	{
-	if  ( rp1->rpLeftDefaultCellMarginUnit !=
-				      rp2->rpLeftDefaultCellMarginUnit )
+	if  ( rp1->rpLeftCellPaddingUnit !=
+				      rp2->rpLeftCellPaddingUnit )
 	    { PROPmaskADD( &rpDiffMask, RPpropTRPADDFL ); }
 	}
 
     if  ( PROPmaskISSET( rpUpdMask, RPpropTRPADDFR ) )
 	{
-	if  ( rp1->rpRightDefaultCellMarginUnit !=
-				    rp2->rpRightDefaultCellMarginUnit )
+	if  ( rp1->rpRightCellPaddingUnit !=
+				    rp2->rpRightCellPaddingUnit )
 	    { PROPmaskADD( &rpDiffMask, RPpropTRPADDFR ); }
 	}
 
     if  ( PROPmaskISSET( rpUpdMask, RPpropTRPADDFT ) )
 	{
-	if  ( rp1->rpTopDefaultCellMarginUnit !=
-				    rp2->rpTopDefaultCellMarginUnit )
+	if  ( rp1->rpTopCellPaddingUnit !=
+				    rp2->rpTopCellPaddingUnit )
 	    { PROPmaskADD( &rpDiffMask, RPpropTRPADDFT ); }
 	}
 
     if  ( PROPmaskISSET( rpUpdMask, RPpropTRPADDFB ) )
 	{
-	if  ( rp1->rpBottomDefaultCellMarginUnit !=
-				    rp2->rpBottomDefaultCellMarginUnit )
+	if  ( rp1->rpBottomCellPaddingUnit !=
+				    rp2->rpBottomCellPaddingUnit )
 	    { PROPmaskADD( &rpDiffMask, RPpropTRPADDFB ); }
 	}
 

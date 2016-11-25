@@ -1,5 +1,41 @@
 #####################################################################
 ##
+##   Determine the platform. Use config.guess or if that does 
+##   not work our own approximation.
+##
+#####################################################################
+
+AC_DEFUN(AC_GUESS_PLATFORM,
+[
+    echo Guessing platform...
+
+    MY_PLATFORM=
+    MY_HOST=`(hostname||uname -n)`
+    MY_DATE=`date`
+    MY_HOST_DATE="$MY_HOST $MY_DATE"
+
+    MY_SYSTEM=`uname -s  | tr ':/ ' ___`
+    MY_MACHINE=`uname -m | tr ':/ ' ___`
+
+    if  ( config.guess ) >/dev/null 2>&1
+    then
+	MY_PLATFORM=`config.guess`
+    else
+	MY_PLATFORM=${MY_SYSTEM}_${MY_MACHINE}
+    fi
+
+    AC_SUBST(MY_SYSTEM)dnl
+    AC_SUBST(MY_MACHINE)dnl
+    AC_SUBST(MY_PLATFORM)dnl
+    AC_SUBST(MY_HOST_DATE)dnl
+
+    AC_DEFINE_UNQUOTED(MY_SYSTEM,"$MY_SYSTEM")dnl
+    AC_DEFINE_UNQUOTED(MY_MACHINE,"$MY_MACHINE")dnl
+    AC_DEFINE_UNQUOTED(MY_PLATFORM,"$MY_PLATFORM")dnl
+    AC_DEFINE_UNQUOTED(MY_HOST_DATE,"$MY_HOST_DATE")dnl
+])
+#####################################################################
+##
 ##   Find out how to link statically
 ##
 ##   1: From utter stupidity, we only know this for gcc. and very
@@ -438,6 +474,7 @@ AC_DEFUN(AC_PATH_PNG,
 	    /usr/pkg/include		\
 	    /usr/X11R6/include		\
 	    /usr/local/include/png	\
+	    /usr/local/include/libpng	\
 	    /usr/apps/include		\
 	    /usr/sfw/include		\
 	    /opt/sfw/include		\
@@ -460,6 +497,7 @@ AC_DEFUN(AC_PATH_PNG,
 	    /usr/pkg/lib		\
 	    /usr/X11R6/lib		\
 	    /usr/local/lib/png		\
+	    /usr/local/lib/libpng	\
 	    /usr/apps/lib		\
 	    /usr/sfw/lib		\
 	    /opt/sfw/lib		\

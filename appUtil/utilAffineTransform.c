@@ -383,6 +383,82 @@ void utilRotationAffineTransform2D(	AffineTransform2D *	at2,
     return;
     }
 
+void utilTranslationAffineTransform2D(	AffineTransform2D *	at2,
+					double			x,
+					double			y )
+    {
+    utilInitAffineTransform2D( at2 );
+
+    at2->at2Axx= 1.0;
+    at2->at2Ayy= 1.0;
+    at2->at2Tx= x;
+    at2->at2Ty= y;
+
+    return;
+    }
+
+void utilScaleAffineTransform2D(	AffineTransform2D *	at2,
+					double			xs,
+					double			ys )
+    {
+    utilInitAffineTransform2D( at2 );
+
+    at2->at2Axx= xs;
+    at2->at2Ayy= ys;
+
+    return;
+    }
+
+int utilInvertAffineTransform2D(	AffineTransform2D *		atR,
+					const AffineTransform2D *	atF )
+    {
+    AffineTransform2D	at;
+    double		det= utilAffineTransformDeterminant2D( atF );
+
+    double		x, xx;
+    double		y, yy;
+
+    if  ( det == 0 )
+	{ /*FDEB(det);*/ return -1;	}
+
+    utilInitAffineTransform2D( &at );
+
+    at.at2Axx= +atF->at2Ayy/ det;
+    at.at2Axy= -atF->at2Ayx/ det;
+    at.at2Ayx= -atF->at2Axy/ det;
+    at.at2Ayy= +atF->at2Axx/ det;
+
+    x= AT2_X( 0, 0, atF );
+    y= AT2_Y( 0, 0, atF );
+
+    xx= AT2_X( x, y, &at );
+    yy= AT2_Y( x, y, &at );
+
+    at.at2Tx= -xx;
+    at.at2Ty= -yy;
+
+    *atR= at;
+    return 0;
+    }
+
+void utilRotationAffineTransform2DAtan(	AffineTransform2D *	at2,
+					double			y,
+					double			x )
+    {
+    double	a= atan2( y, x );
+    double	cosa= cos( a );
+    double	sina= sin( a );
+
+    utilInitAffineTransform2D( at2 );
+
+    at2->at2Axx= +cosa;
+    at2->at2Axy= +sina;
+    at2->at2Ayx= -sina;
+    at2->at2Ayy= +cosa;
+
+    return;
+    }
+
 double utilAffineTransformDeterminant2D(
 				    const AffineTransform2D *	at2 )
     {

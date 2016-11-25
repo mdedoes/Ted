@@ -335,15 +335,24 @@ void tedFormatToolGetTableResourceTable( EditApplication *		ea,
 					TablePageResources *		tpr,
 					InspectorSubjectResources *	isr )
     {
-    appGuiGetResourceValues( ea, (void *)tpr,
+    static int	gotToolResources= 0;
+    static int	gotSubjectResources= 0;
+
+    if  ( ! gotToolResources )
+	{
+	appGuiGetResourceValues( &gotToolResources, ea, (void *)tpr,
 				TED_TedTableToolResourceTable,
 				sizeof(TED_TedTableToolResourceTable)/
 				sizeof(AppConfigurableResource) );
+	}
 
-    appGuiGetResourceValues( ea, (void *)isr,
+    if  ( ! gotSubjectResources )
+	{
+	appGuiGetResourceValues( &gotSubjectResources, ea, (void *)isr,
 				TED_TedTableSubjectResourceTable,
 				sizeof(TED_TedTableSubjectResourceTable)/
 				sizeof(AppConfigurableResource) );
+	}
 
     return;
     }

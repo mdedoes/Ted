@@ -56,7 +56,6 @@ typedef struct ParagraphProperties
     BorderProperties	ppBottomBorder;
     BorderProperties	ppLeftBorder;
     BorderProperties	ppRightBorder;
-    BorderProperties	ppBoxBorder;
     BorderProperties	ppBetweenBorder;
     BorderProperties	ppBar;
 
@@ -109,7 +108,6 @@ typedef enum ParagraphProperty
     PPpropBOTTOM_BORDER,
     PPpropLEFT_BORDER,
     PPpropRIGHT_BORDER,
-    PPpropBOX_BORDER,
     PPpropBETWEEN_BORDER,
     PPpropBAR_BORDER,
 
@@ -125,6 +123,9 @@ typedef enum ParagraphProperty
     PPpropCOLUMNS,			/*  Not a real property.	*/
 					/*  But used for managing the	*/
 					/*  ruler of a document window.	*/
+    PPpropBOX_BORDER,			/*  Not a real property.	*/
+					/*  But used to support the	*/
+					/*  obsolete \\box tag.		*/
 
     PPprop_COUNT
     } ParagraphProperty;

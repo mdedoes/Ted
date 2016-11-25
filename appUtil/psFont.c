@@ -5,23 +5,11 @@
 #   include	<string.h>
 #   include	<ctype.h>
 
-#   define	y0	math_y0
-#   define	y1	math_y1
-#   include	<math.h>
-#   undef	y0
-#   undef	y1
-
-#   include	<locale.h>
-
 #   include	"utilDocFont.h"
 #   include	"psFont.h"
 #   include	"appSystem.h"
 
 #   include	<appDebugon.h>
-
-#   ifndef	M_PI
-#	define	M_PI	3.14159265358979323846
-#   endif
 
 /************************************************************************/
 /*									*/
@@ -32,14 +20,16 @@
 static int psSetEncoding(	unsigned char *		pNonStdNames,
 				short int *		codeToGlyph,
 				const AfmFontInfo *	afi,
-				const char * const *	glyphNames,
-				int			nameCount,
+				const FontCharset *	fc,
 				int			complain )
     {
-    int		i;
-    int		rval= 0;
-    int		missing= 0;
-    int		nonStdNameCount= 0;
+    int				i;
+    int				rval= 0;
+    int				missing= 0;
+    int				nonStdNameCount= 0;
+
+    const char * const *	glyphNames= fc->fcGlyphNames;
+    int				nameCount= fc->fcGlyphCount;
 
     if  ( nameCount > 256 )
 	{ LLDEB(nameCount,256); return -1;	}
@@ -74,15 +64,27 @@ static int psSetEncoding(	unsigned char *		pNonStdNames,
 	else{ codeToGlyph[i]= j;	}
 	}
 
-    if  ( complain && missing > 0 && missing <= 10 )
+    if  ( complain && missing > 0 )
 	{
-	for ( i= 0; i < nameCount; i++ )
-	    {
-	    if  ( ! glyphNames[i] )
-		{ codeToGlyph[i]= -1; continue;	}
+	appDebug( "FONT %s encoding %s-%s %3d glyphs miss.\n",
+				afi->afiFontName,
+				fc->fcX11Registry, fc->fcX11Encoding,
+				missing );
 
-	    if  ( codeToGlyph[i] < 0 )
-		{ LXSDEB(i,i,glyphNames[i]);	}
+	if  ( missing <= 20 )
+	    {
+	    for ( i= 0; i < nameCount; i++ )
+		{
+		if  ( ! glyphNames[i] )
+		    { continue;	}
+
+		if  ( codeToGlyph[i] < 0 )
+		    {
+		    appDebug( "    %s-%s @%4d=0x%02x NO %s\n",
+				    fc->fcX11Registry, fc->fcX11Encoding,
+				    i, i ,glyphNames[i] );
+		    }
+		}
 	    }
 	}
 
@@ -109,19 +111,15 @@ static int psTryEncoding(	SupportedCharset *	sc,
 				int			complain )
     {
     if  ( ! psSetEncoding( &(sc->scNonStandardGlyphNames),
-			    sc->scCodeToGlyphMapping, afi,
-			    fc->fcGlyphNames, fc->fcGlyphCount, complain ) )
+			    sc->scCodeToGlyphMapping, afi, fc, complain ) )
 	{ sc->scSupported= 1; return 0; }
 
     sc->scSupported= 0;
-
-    if  ( complain )
-	{ SSSDEB(fc->fcId,fc->fcLabel,afi->afiFullName);	}
-
     return -1;
     }
 
-int psGetFontEncodings(	AfmFontInfo *	afi )
+int psGetFontEncodings(	AfmFontInfo *	afi,
+			int		complain )
     {
     int				i;
     const FontCharset *		fc;
@@ -132,27 +130,22 @@ int psGetFontEncodings(	AfmFontInfo *	afi )
     sc= afi->afiSupportedCharsets;
     for ( i= 0; i < ENCODINGps_COUNT; sc++, fc++, i++ )
 	{
-	const int	complain= 0;
-
-	if  ( ! psTryEncoding( sc, afi, fc, complain ) )
+	if  ( ! psTryEncoding( sc, afi, fc, 0 ) )
 	    { hasSupportedCharset= 1;	}
 	}
 
     if  ( hasSupportedCharset )
 	{ return 0;	}
 
-#   if 0
-    fc= PS_Encodings;
-    sc= afi->afiSupportedCharsets;
-    for ( i= 0; i < ENCODINGps_COUNT; sc++, fc++, i++ )
+    if  ( complain )
 	{
-	const int	complain= 1;
-
-	psTryEncoding( sc, afi, fc, complain );
+	fc= PS_Encodings;
+	sc= afi->afiSupportedCharsets;
+	for ( i= 0; i < ENCODINGps_COUNT; sc++, fc++, i++ )
+	    { psTryEncoding( sc, afi, fc, 1 ); }
 	}
-#   endif
 
-    return -1;
+    return 1;
     }
 
 /************************************************************************/
@@ -180,40 +173,47 @@ int psCalculateStringExtents(	AfmBBox *		abb,
     long		bottom= 0;
     long		prevRight= 0;
 
-    const short int *	codeToGlyph;
+    const short int *	codeToGlyph= afi->afiDefaultCodeToGlyph;
 
-    if  ( encoding < 0			||
-	  encoding >= ENCODINGps_COUNT	)
+    if  ( encoding >= 0 )
 	{
-	SLLDEB(afi->afiFullName,encoding,ENCODINGps_COUNT);
-	return -1;
-	}
-
-    if  ( ! afi->afiSupportedCharsets[encoding].scSupported )
-	{
-	const int supported= afi->afiSupportedCharsets[encoding].scSupported;
-	SLLDEB(afi->afiFullName,encoding,supported);
-
-	for ( encoding= 0; encoding < ENCODINGps_COUNT; encoding++ )
+	if  ( encoding >= ENCODINGps_COUNT	)
 	    {
-	    if  ( afi->afiSupportedCharsets[encoding].scSupported )
-		{ break;	}
+	    SLLDEB(afi->afiFullName,encoding,ENCODINGps_COUNT);
+	    return -1;
 	    }
 
-	if  ( encoding >= ENCODINGps_COUNT )
-	    { LDEB(ENCODINGps_COUNT); return -1;	}
-	}
+	if  ( ! afi->afiSupportedCharsets[encoding].scSupported )
+	    {
+	    const int supported=
+			afi->afiSupportedCharsets[encoding].scSupported;
 
-    codeToGlyph= afi->afiSupportedCharsets[encoding].scCodeToGlyphMapping;
+	    SLLDEB(afi->afiFullName,encoding,supported);
+
+	    for ( encoding= 0; encoding < ENCODINGps_COUNT; encoding++ )
+		{
+		if  ( afi->afiSupportedCharsets[encoding].scSupported )
+		    { break;	}
+		}
+
+	    if  ( encoding >= ENCODINGps_COUNT )
+		{ LDEB(ENCODINGps_COUNT); return -1;	}
+	    }
+
+	codeToGlyph= afi->afiSupportedCharsets[encoding].scCodeToGlyphMapping;
+	}
 
     while( len > 0 )
 	{
-	int		c= codeToGlyph[*(s++)];
+	int		c= *(s++);
 	AfmCharMetric *	acm;
 
+	c= codeToGlyph[c];
 	if  ( c < 0 )
 	    {
-	    c= codeToGlyph[' '];
+	    c= ' ';
+	    c= codeToGlyph[c];
+
 	    if  ( c < 0 )
 		{ LDEB(c); return -1;	}
 	    }
@@ -221,7 +221,7 @@ int psCalculateStringExtents(	AfmBBox *		abb,
 	acm= afi->afiMetrics+ c;
 	if  ( top < acm->acmBBox.abbTop )
 	    { top= acm->acmBBox.abbTop;	}
-	if  ( bottom < acm->acmBBox.abbBottom )
+	if  ( bottom > acm->acmBBox.abbBottom )
 	    { bottom= acm->acmBBox.abbBottom;	}
 
 	prevRight= unitsWide;
@@ -230,7 +230,9 @@ int psCalculateStringExtents(	AfmBBox *		abb,
 	/*  2  */
 	if  ( withKerning && len > 1 )
 	    {
-	    int			cc= codeToGlyph[*s];
+	    int			cc= *s;
+
+	    cc= codeToGlyph[cc];
 
 	    if  ( c >= 0 )
 		{
@@ -285,9 +287,9 @@ void docInitFontTypeface(	AppFontTypeface *	aft )
     aft->aftFaceName= (char *)0;
     aft->aftIsBold= 0;
     aft->aftIsSlanted= 0;
-    aft->aftIsFixedWidth= 0;
-    aft->aftPrintingData= (void *)0;
+    aft->aftFontInfo= (AfmFontInfo *)0;
 
+    aft->aftFontSpecificQueryFormat= (char *)0;
     for ( enc= 0; enc < ENCODINGps_COUNT; enc++ )
 	{ aft->aftXQueryFormats[enc]= (char *)0;	}
 

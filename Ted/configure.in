@@ -23,6 +23,7 @@ AC_C_CONST
 AC_C_BIGENDIAN
 
 AC_LD_FLAGS_STATIC
+AC_GUESS_PLATFORM
 AC_PATH_GTK
 
 dnl Checks for library functions.

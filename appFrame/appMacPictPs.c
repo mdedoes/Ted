@@ -826,23 +826,14 @@ int appMacPictListFontsPs( PostScriptTypeList *	pstl,
 /************************************************************************/
 
 static int appMacPictSetColorPs(	MacpictDevice *		md,
-					SimpleOutputStream *	sos,
+					PrintingState *		ps,
 					RGB8Color *		rgb8 )
     {
     if  ( bmRGB8ColorsDiffer( &(md->mdColorSet), rgb8 ) )
 	{
-	if  ( rgb8->rgb8Red == rgb8->rgb8Green	&&
-	      rgb8->rgb8Red == rgb8->rgb8Blue		)
-	    {
-	    sioOutPrintf( sos, "%g setgray\n", rgb8->rgb8Red/255.0 );
-	    }
-	else{
-	    sioOutPrintf( sos, "%g %g %g setrgbcolor\n",
-				    rgb8->rgb8Red/255.0,
-				    rgb8->rgb8Green/255.0,
-				    rgb8->rgb8Blue/255.0 );
-	    }
-
+	utilPsSetRgbColor( ps, rgb8->rgb8Red/ 255.0,
+					    rgb8->rgb8Green/ 255.0,
+					    rgb8->rgb8Blue/ 255.0 );
 	md->mdColorSet= *rgb8;
 	}
 
@@ -856,7 +847,7 @@ static int appMacPictSetColorPs(	MacpictDevice *		md,
 /************************************************************************/
 
 static int appMacPictSetStipplePs(	MacpictDevice *		md,
-					SimpleOutputStream *	sos,
+					PrintingState *		ps,
 					unsigned char		pattern[8],
 					int			which )
     {
@@ -870,11 +861,11 @@ static int appMacPictSetStipplePs(	MacpictDevice *		md,
 	/*  4  */
 	if  ( pattern[0] )
 	    {
-	    if  ( appMacPictSetColorPs( md, sos, &(md->mdForeColor) ) )
+	    if  ( appMacPictSetColorPs( md, ps, &(md->mdForeColor) ) )
 		{ LDEB(1); return -1;	}
 	    }
 	else{
-	    if  ( appMacPictSetColorPs( md, sos, &(md->mdBackColor) ) )
+	    if  ( appMacPictSetColorPs( md, ps, &(md->mdBackColor) ) )
 		{ LDEB(1); return -1;	}
 	    }
 
@@ -907,7 +898,7 @@ static int appMacPictSetStipplePs(	MacpictDevice *		md,
 
     bmCalculateSizes( &(abi.abiBitmap) );
 
-    if  ( appMetafileStartPatternFillPs( sos, &abi ) )
+    if  ( appMetafileStartPatternFillPs( ps, &abi ) )
 	{ LDEB(1); return -1;	}
 
     abi.abiBuffer= (unsigned char *)0;
@@ -919,12 +910,12 @@ static int appMacPictSetStipplePs(	MacpictDevice *		md,
     return 0;
     }
 
-static int appMacPict_FillPath(	SimpleOutputStream *	sos,
+static int appMacPict_FillPath(	PrintingState *		ps,
 				MacpictDevice *		md )
     {
     if  ( md->mdFillStippled )
-	{ sioOutPrintf( sos, "fill-pattern\n" );	}
-    else{ sioOutPrintf( sos, "fill\n" );		}
+	{ sioOutPrintf( ps->psSos, "fill-pattern\n" );	}
+    else{ sioOutPrintf( ps->psSos, "fill\n" );		}
 
     return 0;
     }
@@ -936,16 +927,16 @@ static int appMacPict_FillPath(	SimpleOutputStream *	sos,
 /************************************************************************/
 
 static int appMacPictSetPenPs(		MacpictDevice *		md,
-					SimpleOutputStream *	sos )
+					PrintingState *		ps )
     {
     if  ( md->mdPenIsSolid )
 	{
-	if  ( appMacPictSetStipplePs( md, sos,
+	if  ( appMacPictSetStipplePs( md, ps,
 				md->mdPenPattern, STIPPLE_SOLID ) )
 	    { LDEB(STIPPLE_SOLID); return -1;	}
 	}
     else{
-	if  ( appMacPictSetStipplePs( md, sos,
+	if  ( appMacPictSetStipplePs( md, ps,
 				md->mdPenPattern, STIPPLE_PEN ) )
 	    { LDEB(STIPPLE_PEN); return -1;	}
 	}
@@ -954,16 +945,16 @@ static int appMacPictSetPenPs(		MacpictDevice *		md,
     }
 
 static int appMacPictSetFillPs(	MacpictDevice *		md,
-				SimpleOutputStream *	sos )
+				PrintingState *		ps )
     {
     if  ( md->mdFillIsSolid )
 	{
-	if  ( appMacPictSetStipplePs( md, sos,
+	if  ( appMacPictSetStipplePs( md, ps,
 				md->mdFillPattern, STIPPLE_SOLID ) )
 	    { LDEB(STIPPLE_SOLID); return -1;	}
 	}
     else{
-	if  ( appMacPictSetStipplePs( md, sos,
+	if  ( appMacPictSetStipplePs( md, ps,
 				md->mdFillPattern, STIPPLE_FILL ) )
 	    { LDEB(STIPPLE_FILL); return -1;	}
 	}
@@ -972,16 +963,16 @@ static int appMacPictSetFillPs(	MacpictDevice *		md,
     }
 
 static int appMacPictSetBackPs(	MacpictDevice *		md,
-				SimpleOutputStream *	sos )
+				PrintingState *		ps )
     {
     if  ( md->mdBackIsSolid )
 	{
-	if  ( appMacPictSetStipplePs( md, sos,
+	if  ( appMacPictSetStipplePs( md, ps,
 				md->mdBackPattern, STIPPLE_SOLID ) )
 	    { LDEB(STIPPLE_SOLID); return -1;	}
 	}
     else{
-	if  ( appMacPictSetStipplePs( md, sos,
+	if  ( appMacPictSetStipplePs( md, ps,
 				md->mdBackPattern, STIPPLE_BACK ) )
 	    { LDEB(STIPPLE_BACK); return -1;	}
 	}
@@ -996,7 +987,7 @@ static int appMacPictSetBackPs(	MacpictDevice *		md,
 /************************************************************************/
 
 static int appMacPictDrawLinePs(	MacpictDevice *		md,
-					SimpleOutputStream *	sos,
+					PrintingState *		ps,
 					int			x0,
 					int			y0,
 					int			x1,
@@ -1005,7 +996,7 @@ static int appMacPictDrawLinePs(	MacpictDevice *		md,
     if  ( x1 == x0 && y1 == y0 )
 	{ return 0;	}
 
-    if  ( appMacPictSetPenPs( md, sos ) )
+    if  ( appMacPictSetPenPs( md, ps ) )
 	{ LDEB(1); return -1;	}
 
     x0= MD_X( x0, md );
@@ -1013,8 +1004,8 @@ static int appMacPictDrawLinePs(	MacpictDevice *		md,
     x1= MD_X( x1, md );
     y1= MD_Y( y1, md );
 
-    sioOutPrintf( sos, "%d %d bp ", x0, y0 );
-    sioOutPrintf( sos, "%d %d rl stroke\n", x1- x0, y1- y0 );
+    sioOutPrintf( ps->psSos, "%d %d bp ", x0, y0 );
+    sioOutPrintf( ps->psSos, "%d %d rl stroke\n", x1- x0, y1- y0 );
 
     return 0;
     }
@@ -1027,7 +1018,7 @@ static int appMacPictDrawLinePs(	MacpictDevice *		md,
 
 static int appMacPictDrawStringPs(	MacpictDevice *		md,
 					const PostScriptFontList * pstl,
-					SimpleOutputStream *	sos,
+					PrintingState *		ps,
 					int			x,
 					int			y,
 					int			count )
@@ -1043,7 +1034,7 @@ static int appMacPictDrawStringPs(	MacpictDevice *		md,
     if  ( count == 0 )
 	{ return 0;	}
 
-    if  ( appMacPictSetPenPs( md, sos ) )
+    if  ( appMacPictSetPenPs( md, ps ) )
 	{ LDEB(1); return -1;	}
 
     x= MD_X( x, md );
@@ -1056,7 +1047,7 @@ static int appMacPictDrawStringPs(	MacpictDevice *		md,
 	else{
 	    if  ( appMacPictGetAfi( md, pstl ) )
 		{ LDEB(1);						}
-	    else{ utilPsSetFont( sos, "pf", &(md->mdTextAttribute) );	}
+	    else{ utilPsSetFont( ps, "pf", &(md->mdTextAttribute) );	}
 	    }
 	}
 
@@ -1069,9 +1060,7 @@ static int appMacPictDrawStringPs(	MacpictDevice *		md,
 				    fontSizeTwips, withKerning,
 				    md->mdFontEncoding, md->mdAfi );
 
-    sioOutPrintf( sos, "(" );
-    appPsPrintString( sos, md->mdTextString, count );
-    sioOutPrintf( sos, ") %d %d mvs\n", x, y );
+    utilPsMovePrintStringValue( ps, md->mdTextString, count, x, y );
 
     return 0;
     }
@@ -1084,72 +1073,72 @@ static int appMacPictDrawStringPs(	MacpictDevice *		md,
 /************************************************************************/
 
 static int appMacPictFrameRectPs(	MacpictDevice *		md,
-					SimpleOutputStream *	sos )
+					PrintingState *		ps )
     {
     int x0= MD_X( md->mdRectX0, md );
     int y0= MD_Y( md->mdRectY0, md );
     int x1= MD_X( md->mdRectX1, md );
     int y1= MD_Y( md->mdRectY1, md );
 
-    if  ( appMacPictSetPenPs( md, sos ) )
+    if  ( appMacPictSetPenPs( md, ps ) )
 	{ LDEB(1); return -1;	}
 
-    appMetafileRectPathPs( sos, x0, y0, x1, y1 );
-    sioOutPrintf( sos, "stroke\n" );
+    appMetafileRectPathPs( ps, x0, y0, x1, y1 );
+    sioOutPrintf( ps->psSos, "stroke\n" );
 
     return 0;
     }
 
 static int appMacPictPaintRectPs(	MacpictDevice *		md,
-					SimpleOutputStream *	sos )
+					PrintingState *		ps )
     {
     int x0= MD_X( md->mdRectX0, md );
     int y0= MD_Y( md->mdRectY0, md );
     int x1= MD_X( md->mdRectX1, md );
     int y1= MD_Y( md->mdRectY1, md );
 
-    if  ( appMacPictSetPenPs( md, sos ) )
+    if  ( appMacPictSetPenPs( md, ps ) )
 	{ LDEB(1); return -1;	}
 
-    appMetafileRectPathPs( sos, x0, y0, x1, y1 );
+    appMetafileRectPathPs( ps, x0, y0, x1, y1 );
 
-    appMacPict_FillPath( sos, md );
+    appMacPict_FillPath( ps, md );
 
     return 0;
     }
 
 static int appMacPictFillRectPs(	MacpictDevice *		md,
-					SimpleOutputStream *	sos )
+					PrintingState *		ps )
     {
     int x0= MD_X( md->mdRectX0, md );
     int y0= MD_Y( md->mdRectY0, md );
     int x1= MD_X( md->mdRectX1, md );
     int y1= MD_Y( md->mdRectY1, md );
 
-    if  ( appMacPictSetFillPs( md, sos ) )
+    if  ( appMacPictSetFillPs( md, ps ) )
 	{ LDEB(1); return -1;	}
 
-    appMetafileRectPathPs( sos, x0, y0, x1, y1 );
+    appMetafileRectPathPs( ps, x0, y0, x1, y1 );
 
-    appMacPict_FillPath( sos, md );
+    appMacPict_FillPath( ps, md );
 
     return 0;
     }
 
 static int appMacPictEraseRectPs(	MacpictDevice *		md,
-					SimpleOutputStream *	sos )
+					PrintingState *		ps )
     {
     int x0= MD_X( md->mdRectX0, md );
     int y0= MD_Y( md->mdRectY0, md );
     int x1= MD_X( md->mdRectX1, md );
     int y1= MD_Y( md->mdRectY1, md );
 
-    if  ( appMacPictSetBackPs( md, sos ) )
+    if  ( appMacPictSetBackPs( md, ps ) )
 	{ LDEB(1); return -1;	}
 
-    appMetafileRectPathPs( sos, x0, y0, x1, y1 );
+    appMetafileRectPathPs( ps, x0, y0, x1, y1 );
 
-    appMacPict_FillPath( sos, md );
+    appMacPict_FillPath( ps, md );
 
     return 0;
     }
@@ -1161,7 +1150,7 @@ static int appMacPictEraseRectPs(	MacpictDevice *		md,
 /************************************************************************/
 
 static int appMacPictFrameRRectPs(	MacpictDevice *		md,
-					SimpleOutputStream *	sos )
+					PrintingState *		ps )
     {
     int		x0= MD_X( md->mdRRectX0, md );
     int		y0= MD_Y( md->mdRRectY0, md );
@@ -1171,7 +1160,7 @@ static int appMacPictFrameRRectPs(	MacpictDevice *		md,
     int		h= MD_H( md->mdRRectOvalHigh, md );
     int		w= MD_W( md->mdRRectOvalWide, md );
 
-    if  ( appMacPictSetPenPs( md, sos ) )
+    if  ( appMacPictSetPenPs( md, ps ) )
 	{ LDEB(1); return -1;	}
 
     if  ( h < 0 )
@@ -1179,19 +1168,18 @@ static int appMacPictFrameRRectPs(	MacpictDevice *		md,
     if  ( w < 0 )
 	{ w= -w;	}
 
-    sioOutPrintf( sos, "gsave [1 0 0 %g 0 %d] concat\n",
+    sioOutPrintf( ps->psSos, "gsave [1 0 0 %g 0 %d] concat\n",
 					    (double)h/ w, ( y0+ y1 )/ 2 );
 
-    appMetafileRoundRectPathPs( sos, x0, y0, x1, y1, w, h );
-    sioOutPrintf( sos, "stroke\n" );
+    appMetafileRoundRectPathPs( ps, x0, y0, x1, y1, w, h, "stroke\n" );
 
-    sioOutPrintf( sos, "grestore\n" );
+    sioOutPrintf( ps->psSos, "grestore\n" );
 
     return 0;
     }
 
 static int appMacPictPaintRRectPs(	MacpictDevice *		md,
-					SimpleOutputStream *	sos )
+					PrintingState *		ps )
     {
     int		x0= MD_X( md->mdRRectX0, md );
     int		y0= MD_Y( md->mdRRectY0, md );
@@ -1201,7 +1189,7 @@ static int appMacPictPaintRRectPs(	MacpictDevice *		md,
     int		h= MD_H( md->mdRRectOvalHigh, md );
     int		w= MD_W( md->mdRRectOvalWide, md );
 
-    if  ( appMacPictSetPenPs( md, sos ) )
+    if  ( appMacPictSetPenPs( md, ps ) )
 	{ LDEB(1); return -1;	}
 
     if  ( h < 0 )
@@ -1209,21 +1197,20 @@ static int appMacPictPaintRRectPs(	MacpictDevice *		md,
     if  ( w < 0 )
 	{ w= -w;	}
 
-    sioOutPrintf( sos, "gsave [1 0 0 %g 0 %d] concat\n",
+    sioOutPrintf( ps->psSos, "gsave [1 0 0 %g 0 %d] concat\n",
 					    (double)h/ w, ( y0+ y1 )/ 2 );
 
-    appMetafileRoundRectPathPs( sos, x0, y0, x1, y1, w, h );
-    sioOutPrintf( sos, "closepath\n" );
+    appMetafileRoundRectPathPs( ps, x0, y0, x1, y1, w, h, "closepath\n" );
 
-    appMacPict_FillPath( sos, md );
+    appMacPict_FillPath( ps, md );
 
-    sioOutPrintf( sos, "grestore\n" );
+    sioOutPrintf( ps->psSos, "grestore\n" );
 
     return 0;
     }
 
 static int appMacPictFillRRectPs(	MacpictDevice *		md,
-					SimpleOutputStream *	sos )
+					PrintingState *		ps )
     {
     int		x0= MD_X( md->mdRRectX0, md );
     int		y0= MD_Y( md->mdRRectY0, md );
@@ -1233,7 +1220,7 @@ static int appMacPictFillRRectPs(	MacpictDevice *		md,
     int		h= MD_H( md->mdRRectOvalHigh, md );
     int		w= MD_W( md->mdRRectOvalWide, md );
 
-    if  ( appMacPictSetPenPs( md, sos ) )
+    if  ( appMacPictSetPenPs( md, ps ) )
 	{ LDEB(1); return -1;	}
 
     if  ( h < 0 )
@@ -1241,21 +1228,20 @@ static int appMacPictFillRRectPs(	MacpictDevice *		md,
     if  ( w < 0 )
 	{ w= -w;	}
 
-    sioOutPrintf( sos, "gsave [1 0 0 %g 0 %d] concat\n",
+    sioOutPrintf( ps->psSos, "gsave [1 0 0 %g 0 %d] concat\n",
 					    (double)h/ w, ( y0+ y1 )/ 2 );
 
-    appMetafileRoundRectPathPs( sos, x0, y0, x1, y1, w, h );
-    sioOutPrintf( sos, "closepath\n" );
+    appMetafileRoundRectPathPs( ps, x0, y0, x1, y1, w, h, "closepath\n" );
 
-    appMacPict_FillPath( sos, md );
+    appMacPict_FillPath( ps, md );
 
-    sioOutPrintf( sos, "grestore\n" );
+    sioOutPrintf( ps->psSos, "grestore\n" );
 
     return 0;
     }
 
 static int appMacPictEraseRRectPs(	MacpictDevice *		md,
-					SimpleOutputStream *	sos )
+					PrintingState *		ps )
     {
     int		x0= MD_X( md->mdRRectX0, md );
     int		y0= MD_Y( md->mdRRectY0, md );
@@ -1265,7 +1251,7 @@ static int appMacPictEraseRRectPs(	MacpictDevice *		md,
     int		h= MD_H( md->mdRRectOvalHigh, md );
     int		w= MD_W( md->mdRRectOvalWide, md );
 
-    if  ( appMacPictSetBackPs( md, sos ) )
+    if  ( appMacPictSetBackPs( md, ps ) )
 	{ LDEB(1); return -1;	}
 
     if  ( h < 0 )
@@ -1273,15 +1259,14 @@ static int appMacPictEraseRRectPs(	MacpictDevice *		md,
     if  ( w < 0 )
 	{ w= -w;	}
 
-    sioOutPrintf( sos, "gsave [1 0 0 %g 0 %d] concat\n",
+    sioOutPrintf( ps->psSos, "gsave [1 0 0 %g 0 %d] concat\n",
 					    (double)h/ w, ( y0+ y1 )/ 2 );
 
-    appMetafileRoundRectPathPs( sos, x0, y0, x1, y1, w, h );
-    sioOutPrintf( sos, "closepath\n" );
+    appMetafileRoundRectPathPs( ps, x0, y0, x1, y1, w, h, "closepath\n" );
 
-    appMacPict_FillPath( sos, md );
+    appMacPict_FillPath( ps, md );
 
-    sioOutPrintf( sos, "grestore\n" );
+    sioOutPrintf( ps->psSos, "grestore\n" );
 
     return 0;
     }
@@ -1293,29 +1278,29 @@ static int appMacPictEraseRRectPs(	MacpictDevice *		md,
 /************************************************************************/
 
 static int appMacPictPaintPolyPs(	MacpictDevice *		md,
-					SimpleOutputStream *	sos )
+					PrintingState *		ps )
     {
-    if  ( appMacPictSetPenPs( md, sos ) )
+    if  ( appMacPictSetPenPs( md, ps ) )
 	{ LDEB(1); return -1;	}
 
-    appMetafilePolygonPathPs( sos, md->mdPolyPoints, md->mdPolyPointCount );
+    appMetafilePolygonPathPs( ps,
+			md->mdPolyPoints, md->mdPolyPointCount,
+			"closepath\n" );
 
-    sioOutPrintf( sos, "closepath\n" );
-
-    appMacPict_FillPath( sos, md );
+    appMacPict_FillPath( ps, md );
 
     return 0;
     }
 
 static int appMacPictFramePolyPs(	MacpictDevice *		md,
-					SimpleOutputStream *	sos )
+					PrintingState *		ps )
     {
-    if  ( appMacPictSetPenPs( md, sos ) )
+    if  ( appMacPictSetPenPs( md, ps ) )
 	{ LDEB(1); return -1;	}
 
-    appMetafilePolygonPathPs( sos, md->mdPolyPoints, md->mdPolyPointCount );
-
-    sioOutPrintf( sos, "stroke\n" );
+    appMetafilePolygonPathPs( ps,
+			md->mdPolyPoints, md->mdPolyPointCount,
+			"stroke\n" );
 
     return 0;
     }
@@ -1327,7 +1312,7 @@ static int appMacPictFramePolyPs(	MacpictDevice *		md,
 /************************************************************************/
 
 static int appMacPictPaintOvalPs(	MacpictDevice *		md,
-					SimpleOutputStream *	sos )
+					PrintingState *		ps )
     {
     int		swap;
 
@@ -1347,28 +1332,28 @@ static int appMacPictPaintOvalPs(	MacpictDevice *		md,
     if  ( y1 < y0 )
 	{ swap= y0; y0= y1; y1= swap; }
 
-    if  ( appMacPictSetPenPs( md, sos ) )
+    if  ( appMacPictSetPenPs( md, ps ) )
 	{ LDEB(1); return -1;	}
 
     xs= x1;
 
-    sioOutPrintf( sos, "gsave [1 0 0 %g 0 %d] concat\n",
+    sioOutPrintf( ps->psSos, "gsave [1 0 0 %g 0 %d] concat\n",
 			(double)(y0- y1)/(double)(x1- x0), ( y0+ y1 )/ 2 );
 
-    sioOutPrintf( sos, "%d %d bp ", xs, ys );
+    sioOutPrintf( ps->psSos, "%d %d bp ", xs, ys );
 
-    sioOutPrintf( sos, "%d 0 %d %f %f arc stroke\n",
+    sioOutPrintf( ps->psSos, "%d 0 %d %f %f arc stroke\n",
 				    ( x0+ x1 )/ 2, (x1- x0)/2, as, ae );
 
-    appMacPict_FillPath( sos, md );
+    appMacPict_FillPath( ps, md );
 
-    sioOutPrintf( sos, "grestore\n" );
+    sioOutPrintf( ps->psSos, "grestore\n" );
 
     return 0;
     }
 
 static int appMacPictFrameOvalPs(	MacpictDevice *		md,
-					SimpleOutputStream *	sos )
+					PrintingState *		ps )
     {
     int		swap;
 
@@ -1388,26 +1373,26 @@ static int appMacPictFrameOvalPs(	MacpictDevice *		md,
     if  ( y1 < y0 )
 	{ swap= y0; y0= y1; y1= swap; }
 
-    if  ( appMacPictSetPenPs( md, sos ) )
+    if  ( appMacPictSetPenPs( md, ps ) )
 	{ LDEB(1); return -1;	}
 
     xs= x1;
 
-    sioOutPrintf( sos, "gsave [1 0 0 %g 0 %d] concat\n",
+    sioOutPrintf( ps->psSos, "gsave [1 0 0 %g 0 %d] concat\n",
 			(double)(y0- y1)/(double)(x1- x0), ( y0+ y1 )/ 2 );
 
-    sioOutPrintf( sos, "%d %d bp ", xs, ys );
+    sioOutPrintf( ps->psSos, "%d %d bp ", xs, ys );
 
-    sioOutPrintf( sos, "%d 0 %d %f %f arc stroke\n",
+    sioOutPrintf( ps->psSos, "%d 0 %d %f %f arc stroke\n",
 				    ( x0+ x1 )/ 2, (x1- x0)/2, as, ae );
 
-    sioOutPrintf( sos, "grestore\n" );
+    sioOutPrintf( ps->psSos, "grestore\n" );
 
     return 0;
     }
 
 static int appMacPictFrameArcPs(	MacpictDevice *		md,
-					SimpleOutputStream *	sos )
+					PrintingState *		ps )
     {
     int		swap;
 
@@ -1428,28 +1413,28 @@ static int appMacPictFrameArcPs(	MacpictDevice *		md,
     if  ( y1 < y0 )
 	{ swap= y0; y0= y1; y1= swap; }
 
-    if  ( appMacPictSetPenPs( md, sos ) )
+    if  ( appMacPictSetPenPs( md, ps ) )
 	{ LDEB(1); return -1;	}
 
     aer= ( M_PI* ae )/ 180.0;
     xs= (x0+ x1)/ 2+ 0.5* (x1- x0)* cos( aer );
     ys=              0.5* (x1- x0)* sin( aer );
 
-    sioOutPrintf( sos, "gsave [1 0 0 %g 0 %d] concat\n",
+    sioOutPrintf( ps->psSos, "gsave [1 0 0 %g 0 %d] concat\n",
 			(double)(y0- y1)/(double)(x1- x0), ( y0+ y1 )/ 2 );
 
-    sioOutPrintf( sos, "%d %d bp ", xs, ys );
+    sioOutPrintf( ps->psSos, "%d %d bp ", xs, ys );
 
-    sioOutPrintf( sos, "%d 0 %d %f %f arc stroke\n",
+    sioOutPrintf( ps->psSos, "%d 0 %d %f %f arc stroke\n",
 				    ( x0+ x1 )/ 2, (x1- x0)/2, ae, as );
 
-    sioOutPrintf( sos, "grestore\n" );
+    sioOutPrintf( ps->psSos, "grestore\n" );
 
     return 0;
     }
 
 static int appMacPictPaintArcPs(	MacpictDevice *		md,
-					SimpleOutputStream *	sos )
+					PrintingState *		ps )
     {
     int		swap;
 
@@ -1470,24 +1455,24 @@ static int appMacPictPaintArcPs(	MacpictDevice *		md,
     if  ( y1 < y0 )
 	{ swap= y0; y0= y1; y1= swap; }
 
-    if  ( appMacPictSetPenPs( md, sos ) )
+    if  ( appMacPictSetPenPs( md, ps ) )
 	{ LDEB(1); return -1;	}
 
     aer= ( M_PI* ae )/ 180.0;
     xs= (x0+ x1)/ 2+ 0.5* (x1- x0)* cos( aer );
     ys=              0.5* (x1- x0)* sin( aer );
 
-    sioOutPrintf( sos, "gsave [1 0 0 %g 0 %d] concat\n",
+    sioOutPrintf( ps->psSos, "gsave [1 0 0 %g 0 %d] concat\n",
 			(double)(y0- y1)/(double)(x1- x0), ( y0+ y1 )/ 2 );
 
-    sioOutPrintf( sos, "%d %d bp ", xs, ys );
+    sioOutPrintf( ps->psSos, "%d %d bp ", xs, ys );
 
-    sioOutPrintf( sos, "%d 0 %d %f %f arc\n",
+    sioOutPrintf( ps->psSos, "%d 0 %d %f %f arc\n",
 				    ( x0+ x1 )/ 2, (x1- x0)/2, ae, as );
 
-    appMacPict_FillPath( sos, md );
+    appMacPict_FillPath( ps, md );
 
-    sioOutPrintf( sos, "grestore\n" );
+    sioOutPrintf( ps->psSos, "grestore\n" );
 
     return 0;
     }
@@ -1504,7 +1489,7 @@ static int appMacPictPaintArcPs(	MacpictDevice *		md,
 /************************************************************************/
 
 static int appMacPictDrawImagePs(	MacpictDevice *		md,
-					SimpleOutputStream *	sos,
+					PrintingState *		ps,
 					SimpleInputStream *	sis,
 					int			useFilters,
 					int			indexedImages,
@@ -1559,12 +1544,11 @@ static int appMacPictDrawImagePs(	MacpictDevice *		md,
     twipsWide= MD_W( pixelsWide, md );
     twipsHigh= MD_H( pixelsHigh, md );
 
-    sioOutPrintf( sos, "gsave 1 setgray\n" );
-    sioOutPrintf( sos, "%d %d %g %g rectfill\n", dstX, dstY,
-						    twipsWide, twipsHigh );
-    sioOutPrintf( sos, "grestore\n" );
+    sioOutPrintf( ps->psSos, "gsave 1 setgray\n" );
+    utilPsFillRectangle( ps, dstX, dstY, twipsWide, twipsHigh );
+    sioOutPrintf( ps->psSos, "grestore\n" );
 
-    if  ( bmPsPrintBitmapImage( sos, 1,
+    if  ( bmPsPrintBitmapImage( ps->psSos, 1,
 			    twipsWide, -twipsHigh,
 			    dstX, ( dstY+ twipsHigh ), 0, 0,
 			    bd->bdPixelsWide, bd->bdPixelsHigh,
@@ -1587,7 +1571,7 @@ static int appMacPictDrawImagePs(	MacpictDevice *		md,
 /*									*/
 /************************************************************************/
 
-int appMacPictPlayFilePs( SimpleOutputStream *		sos,
+int appMacPictPlayFilePs( PrintingState *		ps,
 			SimpleInputStream *		sis,
 			const PostScriptFontList *	psfl,
 			int				useFilters,
@@ -1622,7 +1606,7 @@ int appMacPictPlayFilePs( SimpleOutputStream *		sos,
     md.mdColorSet.rgb8Blue= 0;
     md.mdPostScriptFontList= psfl;
 
-    sioOutPrintf( sos, "0 setgray\n" );
+    sioOutPrintf( ps->psSos, "0 setgray\n" );
 
     for (;;)
 	{
@@ -1799,7 +1783,7 @@ int appMacPictPlayFilePs( SimpleOutputStream *		sos,
 						md.mdOvalX0, md.mdOvalY0,
 						md.mdOvalX1, md.mdOvalY1 ));
 
-		if  ( appMacPictFrameOvalPs( &md, sos ) )
+		if  ( appMacPictFrameOvalPs( &md, ps ) )
 		    { LDEB(1); rval= -1; goto ready;	}
 		}
 		continue;
@@ -1808,7 +1792,7 @@ int appMacPictPlayFilePs( SimpleOutputStream *		sos,
 		{
 		PICTDEB(appDebug( "FrameSameOval()\n" ));
 
-		if  ( appMacPictFrameOvalPs( &md, sos ) )
+		if  ( appMacPictFrameOvalPs( &md, ps ) )
 		    { LDEB(1); rval= -1; goto ready;	}
 		}
 		continue;
@@ -1822,7 +1806,7 @@ int appMacPictPlayFilePs( SimpleOutputStream *		sos,
 						md.mdOvalX0, md.mdOvalY0,
 						md.mdOvalX1, md.mdOvalY1 ));
 
-		if  ( appMacPictPaintOvalPs( &md, sos ) )
+		if  ( appMacPictPaintOvalPs( &md, ps ) )
 		    { LDEB(1); rval= -1; goto ready;	}
 		}
 		continue;
@@ -1831,7 +1815,7 @@ int appMacPictPlayFilePs( SimpleOutputStream *		sos,
 		{
 		PICTDEB(appDebug( "PaintSameOval()\n" ));
 
-		if  ( appMacPictPaintOvalPs( &md, sos ) )
+		if  ( appMacPictPaintOvalPs( &md, ps ) )
 		    { LDEB(1); rval= -1; goto ready;	}
 		}
 		continue;
@@ -1843,7 +1827,7 @@ int appMacPictPlayFilePs( SimpleOutputStream *		sos,
 
 		PICTDEB(appDebug( "PaintPoly(,%d)\n", md.mdPolyPointCount ));
 
-		if  ( appMacPictPaintPolyPs( &md, sos ) )
+		if  ( appMacPictPaintPolyPs( &md, ps ) )
 		    { LDEB(1); return -1;	}
 		}
 		continue;
@@ -1855,7 +1839,7 @@ int appMacPictPlayFilePs( SimpleOutputStream *		sos,
 
 		PICTDEB(appDebug( "FramePoly(,%d)\n", md.mdPolyPointCount ));
 
-		if  ( appMacPictFramePolyPs( &md, sos ) )
+		if  ( appMacPictFramePolyPs( &md, ps ) )
 		    { LDEB(1); return -1;	}
 		}
 		continue;
@@ -1881,7 +1865,7 @@ int appMacPictPlayFilePs( SimpleOutputStream *		sos,
 		if  ( appMacPictGetShortLine( &x0, &y0, &x1, &y1, &md, sis ) )
 		    { LDEB(1); rval= -1; goto ready;	}
 
-		if  ( appMacPictDrawLinePs( &md, sos, x0, y0, x1, y1 ) )
+		if  ( appMacPictDrawLinePs( &md, ps, x0, y0, x1, y1 ) )
 		    { LDEB(1); rval= -1; goto ready;	}
 		}
 		continue;
@@ -1897,7 +1881,7 @@ int appMacPictPlayFilePs( SimpleOutputStream *		sos,
 								&md, sis ) )
 		    { LDEB(1); rval= -1; goto ready;	}
 
-		if  ( appMacPictDrawLinePs( &md, sos, x0, y0, x1, y1 ) )
+		if  ( appMacPictDrawLinePs( &md, ps, x0, y0, x1, y1 ) )
 		    { LDEB(1); rval= -1; goto ready;	}
 		}
 		continue;
@@ -1912,7 +1896,7 @@ int appMacPictPlayFilePs( SimpleOutputStream *		sos,
 		if  ( appMacPictGetLineFrom( &x0, &y0, &x1, &y1, &md, sis ) )
 		    { LDEB(1); rval= -1; goto ready;	}
 
-		if  ( appMacPictDrawLinePs( &md, sos, x0, y0, x1, y1 ) )
+		if  ( appMacPictDrawLinePs( &md, ps, x0, y0, x1, y1 ) )
 		    { LDEB(1); rval= -1; goto ready;	}
 		}
 		continue;
@@ -1927,7 +1911,7 @@ int appMacPictPlayFilePs( SimpleOutputStream *		sos,
 		if  ( appMacPictGetLine( &x0, &y0, &x1, &y1, &md, sis ) )
 		    { LDEB(1); rval= -1; goto ready;	}
 
-		if  ( appMacPictDrawLinePs( &md, sos, x0, y0, x1, y1 ) )
+		if  ( appMacPictDrawLinePs( &md, ps, x0, y0, x1, y1 ) )
 		    { LDEB(1); rval= -1; goto ready;	}
 		}
 		continue;
@@ -1943,7 +1927,7 @@ int appMacPictPlayFilePs( SimpleOutputStream *		sos,
 						md.mdRRectX0, md.mdRRectY0,
 						md.mdRRectX1, md.mdRRectY1 ));
 
-		if  ( appMacPictFrameRRectPs( &md, sos ) )
+		if  ( appMacPictFrameRRectPs( &md, ps ) )
 		    { LDEB(1); rval= -1; goto ready;	}
 		}
 		continue;
@@ -1952,7 +1936,7 @@ int appMacPictPlayFilePs( SimpleOutputStream *		sos,
 		{
 		PICTDEB(appDebug( "FrameSameRRect()\n" ));
 
-		if  ( appMacPictFrameRRectPs( &md, sos ) )
+		if  ( appMacPictFrameRRectPs( &md, ps ) )
 		    { LDEB(1); rval= -1; goto ready;	}
 		}
 		continue;
@@ -1968,7 +1952,7 @@ int appMacPictPlayFilePs( SimpleOutputStream *		sos,
 						md.mdRRectX0, md.mdRRectY0,
 						md.mdRRectX1, md.mdRRectY1 ));
 
-		if  ( appMacPictPaintRRectPs( &md, sos ) )
+		if  ( appMacPictPaintRRectPs( &md, ps ) )
 		    { LDEB(1); rval= -1; goto ready;	}
 		}
 		continue;
@@ -1977,7 +1961,7 @@ int appMacPictPlayFilePs( SimpleOutputStream *		sos,
 		{
 		PICTDEB(appDebug( "PaintSameRRect()\n" ));
 
-		if  ( appMacPictPaintRRectPs( &md, sos ) )
+		if  ( appMacPictPaintRRectPs( &md, ps ) )
 		    { LDEB(1); rval= -1; goto ready;	}
 		}
 		continue;
@@ -1993,7 +1977,7 @@ int appMacPictPlayFilePs( SimpleOutputStream *		sos,
 						md.mdRRectX0, md.mdRRectY0,
 						md.mdRRectX1, md.mdRRectY1 ));
 
-		if  ( appMacPictFillRRectPs( &md, sos ) )
+		if  ( appMacPictFillRRectPs( &md, ps ) )
 		    { LDEB(1); rval= -1; goto ready;	}
 		}
 		continue;
@@ -2002,7 +1986,7 @@ int appMacPictPlayFilePs( SimpleOutputStream *		sos,
 		{
 		PICTDEB(appDebug( "FillSameRRect()\n" ));
 
-		if  ( appMacPictFillRRectPs( &md, sos ) )
+		if  ( appMacPictFillRRectPs( &md, ps ) )
 		    { LDEB(1); rval= -1; goto ready;	}
 		}
 		continue;
@@ -2018,7 +2002,7 @@ int appMacPictPlayFilePs( SimpleOutputStream *		sos,
 						md.mdRRectX0, md.mdRRectY0,
 						md.mdRRectX1, md.mdRRectY1 ));
 
-		if  ( appMacPictEraseRRectPs( &md, sos ) )
+		if  ( appMacPictEraseRRectPs( &md, ps ) )
 		    { LDEB(1); rval= -1; goto ready;	}
 		}
 		continue;
@@ -2027,7 +2011,7 @@ int appMacPictPlayFilePs( SimpleOutputStream *		sos,
 		{
 		PICTDEB(appDebug( "EraseSameRRect()\n" ));
 
-		if  ( appMacPictEraseRRectPs( &md, sos ) )
+		if  ( appMacPictEraseRRectPs( &md, ps ) )
 		    { LDEB(1); rval= -1; goto ready;	}
 		}
 		continue;
@@ -2043,7 +2027,7 @@ int appMacPictPlayFilePs( SimpleOutputStream *		sos,
 						md.mdRectX0, md.mdRectY0,
 						md.mdRectX1, md.mdRectY1 ));
 
-		if  ( appMacPictFrameRectPs( &md, sos ) )
+		if  ( appMacPictFrameRectPs( &md, ps ) )
 		    { LDEB(1); rval= -1; goto ready;	}
 		}
 		continue;
@@ -2052,7 +2036,7 @@ int appMacPictPlayFilePs( SimpleOutputStream *		sos,
 		{
 		PICTDEB(appDebug( "FrameSameRect()\n" ));
 
-		if  ( appMacPictFrameRectPs( &md, sos ) )
+		if  ( appMacPictFrameRectPs( &md, ps ) )
 		    { LDEB(1); rval= -1; goto ready;	}
 		}
 		continue;
@@ -2068,7 +2052,7 @@ int appMacPictPlayFilePs( SimpleOutputStream *		sos,
 						md.mdRectX0, md.mdRectY0,
 						md.mdRectX1, md.mdRectY1 ));
 
-		if  ( appMacPictPaintRectPs( &md, sos ) )
+		if  ( appMacPictPaintRectPs( &md, ps ) )
 		    { LDEB(1); rval= -1; goto ready;	}
 		}
 		continue;
@@ -2077,7 +2061,7 @@ int appMacPictPlayFilePs( SimpleOutputStream *		sos,
 		{
 		PICTDEB(appDebug( "PaintSameRect()\n" ));
 
-		if  ( appMacPictPaintRectPs( &md, sos ) )
+		if  ( appMacPictPaintRectPs( &md, ps ) )
 		    { LDEB(1); rval= -1; goto ready;	}
 		}
 		continue;
@@ -2093,7 +2077,7 @@ int appMacPictPlayFilePs( SimpleOutputStream *		sos,
 						md.mdRectX0, md.mdRectY0,
 						md.mdRectX1, md.mdRectY1 ));
 
-		if  ( appMacPictFillRectPs( &md, sos ) )
+		if  ( appMacPictFillRectPs( &md, ps ) )
 		    { LDEB(1); rval= -1; goto ready;	}
 		}
 		continue;
@@ -2102,7 +2086,7 @@ int appMacPictPlayFilePs( SimpleOutputStream *		sos,
 		{
 		PICTDEB(appDebug( "FillSameRect()\n" ));
 
-		if  ( appMacPictFillRectPs( &md, sos ) )
+		if  ( appMacPictFillRectPs( &md, ps ) )
 		    { LDEB(1); rval= -1; goto ready;	}
 		}
 		continue;
@@ -2118,7 +2102,7 @@ int appMacPictPlayFilePs( SimpleOutputStream *		sos,
 						md.mdRectX0, md.mdRectY0,
 						md.mdRectX1, md.mdRectY1 ));
 
-		if  ( appMacPictEraseRectPs( &md, sos ) )
+		if  ( appMacPictEraseRectPs( &md, ps ) )
 		    { LDEB(1); rval= -1; goto ready;	}
 		}
 		continue;
@@ -2127,7 +2111,7 @@ int appMacPictPlayFilePs( SimpleOutputStream *		sos,
 		{
 		PICTDEB(appDebug( "EraseSameRect()\n" ));
 
-		if  ( appMacPictEraseRectPs( &md, sos ) )
+		if  ( appMacPictEraseRectPs( &md, ps ) )
 		    { LDEB(1); rval= -1; goto ready;	}
 		}
 		continue;
@@ -2142,7 +2126,7 @@ int appMacPictPlayFilePs( SimpleOutputStream *		sos,
 						    md.mdArcX1, md.mdArcY1,
 						    md.mdArcA0, md.mdArcA1 ));
 
-		if  ( appMacPictFrameArcPs( &md, sos ) )
+		if  ( appMacPictFrameArcPs( &md, ps ) )
 		    { LDEB(1); rval= -1; goto ready;	}
 		}
 		continue;
@@ -2157,7 +2141,7 @@ int appMacPictPlayFilePs( SimpleOutputStream *		sos,
 						    md.mdArcX1, md.mdArcY1,
 						    md.mdArcA0, md.mdArcA1 ));
 
-		if  ( appMacPictPaintArcPs( &md, sos ) )
+		if  ( appMacPictPaintArcPs( &md, ps ) )
 		    { LDEB(1); rval= -1; goto ready;	}
 		}
 		continue;
@@ -2194,7 +2178,7 @@ int appMacPictPlayFilePs( SimpleOutputStream *		sos,
 		if  ( appMacPictGetDHText( &count, &md, sis ) )
 		    { LDEB(1); rval= -1; goto ready;	}
 
-		if  ( appMacPictDrawStringPs( &md, psfl, sos,
+		if  ( appMacPictDrawStringPs( &md, psfl, ps,
 					    md.mdPenX, md.mdPenY, count ) )
 		    { LDEB(count); rval= -1; goto ready;	}
 		}
@@ -2207,7 +2191,7 @@ int appMacPictPlayFilePs( SimpleOutputStream *		sos,
 		if  ( appMacPictGetDVText( &count, &md, sis ) )
 		    { LDEB(1); rval= -1; goto ready;	}
 
-		if  ( appMacPictDrawStringPs( &md, psfl, sos,
+		if  ( appMacPictDrawStringPs( &md, psfl, ps,
 					    md.mdPenX, md.mdPenY, count ) )
 		    { LDEB(count); rval= -1; goto ready;	}
 		}
@@ -2220,7 +2204,7 @@ int appMacPictPlayFilePs( SimpleOutputStream *		sos,
 		if  ( appMacPictGetDHDVText( &count, &md, sis ) )
 		    { LDEB(1); rval= -1; goto ready;	}
 
-		if  ( appMacPictDrawStringPs( &md, psfl, sos,
+		if  ( appMacPictDrawStringPs( &md, psfl, ps,
 					    md.mdPenX, md.mdPenY, count ) )
 		    { LDEB(count); rval= -1; goto ready;	}
 		}
@@ -2233,7 +2217,7 @@ int appMacPictPlayFilePs( SimpleOutputStream *		sos,
 		if  ( appMacPictGetLongText( &count, &md, sis ) )
 		    { LDEB(1); rval= -1; goto ready;	}
 
-		if  ( appMacPictDrawStringPs( &md, psfl, sos,
+		if  ( appMacPictDrawStringPs( &md, psfl, ps,
 					    md.mdPenX, md.mdPenY, count ) )
 		    { LDEB(count); rval= -1; goto ready;	}
 		}
@@ -2338,9 +2322,9 @@ int appMacPictPlayFilePs( SimpleOutputStream *		sos,
 		const int	clipRegion= 0;
 
 		PICTDEB(appDebug( "BitsRect( .. )\n" ));
-		PICTLOG(sioOutPrintf( sos, "%%%%BitsRect( .. )\n" ));
+		PICTLOG(sioOutPrintf( ps->psSos, "%%%%BitsRect( .. )\n" ));
 
-		if  ( appMacPictDrawImagePs( &md, sos, sis,
+		if  ( appMacPictDrawImagePs( &md, ps, sis,
 						useFilters, indexedImages,
 						packed, direct, clipRegion ) )
 		    { LDEB(1); rval= -1; goto ready;	}
@@ -2354,9 +2338,9 @@ int appMacPictPlayFilePs( SimpleOutputStream *		sos,
 		const int	clipRegion= 0;
 
 		PICTDEB(appDebug( "PackBitsRect( .. )\n" ));
-		PICTLOG(sioOutPrintf( sos, "%%%%PackBitsRect( .. )\n" ));
+		PICTLOG(sioOutPrintf( ps->psSos, "%%%%PackBitsRect( .. )\n" ));
 
-		if  ( appMacPictDrawImagePs( &md, sos, sis,
+		if  ( appMacPictDrawImagePs( &md, ps, sis,
 						useFilters, indexedImages,
 						packed, direct, clipRegion ) )
 		    { LDEB(1); rval= -1; goto ready;	}
@@ -2370,9 +2354,9 @@ int appMacPictPlayFilePs( SimpleOutputStream *		sos,
 		const int	clipRegion= 1;
 
 		PICTDEB(appDebug( "PackBitsRgn( .. )\n" ));
-		PICTLOG(sioOutPrintf( sos, "%%%%PackBitsRgn( .. )\n" ));
+		PICTLOG(sioOutPrintf( ps->psSos, "%%%%PackBitsRgn( .. )\n" ));
 
-		if  ( appMacPictDrawImagePs( &md, sos, sis,
+		if  ( appMacPictDrawImagePs( &md, ps, sis,
 						useFilters, indexedImages,
 						packed, direct, clipRegion ) )
 		    { LDEB(1); rval= -1; goto ready;	}
@@ -2386,9 +2370,9 @@ int appMacPictPlayFilePs( SimpleOutputStream *		sos,
 		const int	clipRegion= 0;
 
 		PICTDEB(appDebug( "DirectBitsRect( .. )\n" ));
-		PICTLOG(sioOutPrintf( sos, "%%%%DirectBitsRect( .. )\n" ));
+		PICTLOG(sioOutPrintf( ps->psSos, "%%%%DirectBitsRect( .. )\n" ));
 
-		if  ( appMacPictDrawImagePs( &md, sos, sis,
+		if  ( appMacPictDrawImagePs( &md, ps, sis,
 						useFilters, indexedImages,
 						packed, direct, clipRegion ) )
 		    { LDEB(1); rval= -1; goto ready;	}
@@ -2402,9 +2386,9 @@ int appMacPictPlayFilePs( SimpleOutputStream *		sos,
 		const int	clipRegion= 1;
 
 		PICTDEB(appDebug( "DirectBitsRgn( .. )\n" ));
-		PICTLOG(sioOutPrintf( sos, "%%%%DirectBitsRgn( .. )\n" ));
+		PICTLOG(sioOutPrintf( ps->psSos, "%%%%DirectBitsRgn( .. )\n" ));
 
-		if  ( appMacPictDrawImagePs( &md, sos, sis,
+		if  ( appMacPictDrawImagePs( &md, ps, sis,
 						useFilters, indexedImages,
 						packed, direct, clipRegion ) )
 		    { LDEB(1); rval= -1; goto ready;	}

@@ -83,8 +83,8 @@ void docRtfInitReadingContext(	RtfReadingContext *	rrc	)
     docInitListOverrideLevel( &(rrc->rrcListOverrideLevel) );
 
     docInitBorderProperties( &(rrc->rrcBorderProperties) );
-    /*docInitShapeProperties( &(rrc->rrcShapeProperties) );*/
-    docInitShape( &(rrc->rrcShape) );
+    rrc->rrcDrawingShape= (DrawingShape *)0;
+    rrc->rrcNextObjectVertex= 0;
     docInitTabStop( &(rrc->rrcTabStop) );
 
     docInitParagraphNumber( &(rrc->rrcParagraphNumber) );
@@ -115,6 +115,7 @@ void docRtfInitReadingContext(	RtfReadingContext *	rrc	)
 				/*  For reading 'fields'.		*/
 				/****************************************/
     rrc->rrcJustAfterPntext= 0;
+    rrc->rrcGotDocGeometry= 0;
 				/****************************************/
 				/*  For coping with the way word saves	*/
 				/*  {\pntext ... }			*/
@@ -123,6 +124,8 @@ void docRtfInitReadingContext(	RtfReadingContext *	rrc	)
     for ( i= 0; i < 256; i++ )
 	{ rrc->rrcDefaultInputMapping[i]= i;	}
     rrc->rrcTextInputMapping= rrc->rrcDefaultInputMapping;
+
+    rrc->rrcPostScriptFontList= (const PostScriptFontList *)0;
     }
 
 void docRtfCleanReadingContext(	RtfReadingContext *	rrc )
@@ -136,7 +139,10 @@ void docRtfCleanReadingContext(	RtfReadingContext *	rrc )
     /*docCleanCellProperties( &(rrc->rrcRowProperties) );*/
     docCleanRowProperties( &(rrc->rrcRowProperties) );
     /*docCleanShapeProperties( &(rrc->rrcShapeProperties) );*/
-    docCleanShape( &(rrc->rrcShape) );
+
+    if  ( rrc->rrcDrawingShape )
+	{ docFreeDrawingShape( rrc->rrcBd, rrc->rrcDrawingShape );	}
+
     docCleanDocumentFont( &(rrc->rrcCurrentFont) );
 
     docCleanDocumentList( &(rrc->rrcDocumentList) );
@@ -177,7 +183,7 @@ int docRtfCopyReadingContext(	RtfReadingContext *		to,
     PROPmaskCLEAR( &ppChgMask );
 
     PROPmaskCLEAR( &ppUpdMask );
-    PROPmaskFILL( &ppUpdMask, PPprop_COUNT );
+    utilPropMaskFill( &ppUpdMask, PPprop_COUNT );
 
     docInitRowProperties( &rpCopy );
     if  ( docCopyRowProperties( &rpCopy,
@@ -234,7 +240,7 @@ void docRtfCopyReadingContextBack(	RtfReadingContext *	to,
     to->rrcFieldNumber= from->rrcFieldNumber;
     to->rrcJustAfterPntext= from->rrcJustAfterPntext;
 
-    memcpy( to->rrcBookmarkName, from->rrcBookmarkName, DOCmaxBOOKMARK+1 );
+    memcpy( to->rrcBookmarkName, from->rrcBookmarkName, DOCmaxBOOKMARK+ 1 );
     to->rrcBookmarkSize= from->rrcBookmarkSize;
     to->rrcTopBookmark= from->rrcTopBookmark;
     from->rrcTopBookmark= (RtfBookmarkLevel *)0;
@@ -373,6 +379,8 @@ static int docRtfReadControlWord(	SimpleInputStream *	sis,
 		strcpy( controlWord, "tab" );
 		*pGotArg= 0;
 		return 0;
+	    case '_':
+		*pC= '-'; return 1;
 	    default:
 		*pC= c; return 1;
 	    }
@@ -401,7 +409,7 @@ static int docRtfReadControlWord(	SimpleInputStream *	sis,
 
     if  ( ! strcmp( controlWord, "rquote" )	)
 	{
-	*pC= ISO1_quoteright;
+	*pC= ISO1_quotesingle;
 	if  ( c != ' ' )
 	    { sioInUngetLastRead( sis );	}
 	return 2;
@@ -582,6 +590,10 @@ int docRtfFindControl(		SimpleInputStream *	sis,
 			    c= ISO1_nobreakspace;
 			    *pC= c; return RTFfiCHAR;
 
+			case '_':
+			    c= '-';
+			    *pC= c; return RTFfiCHAR;
+
 			case '\'':
 			    if  ( res == 1 )
 				{
@@ -693,6 +705,47 @@ int docRtfFindControl(		SimpleInputStream *	sis,
 /*									*/
 /************************************************************************/
 
+static int docRtfFinishParagraph(	RtfReadingContext *	rrc,
+					BufferItem *		paraBi )
+    {
+    int			addEmptyParticule= 0;
+
+    if  ( paraBi->biParaParticuleCount == 0 )
+	{ addEmptyParticule= 1;	}
+    else{
+	const TextParticule *	tp;
+
+	tp= paraBi->biParaParticules+ paraBi->biParaParticuleCount- 1;
+
+	if  ( tp->tpKind == DOCkindLINEBREAK	||
+	      tp->tpKind == DOCkindPAGEBREAK	||
+	      tp->tpKind == DOCkindCOLUMNBREAK	)
+	    { addEmptyParticule= 1;	}
+	}
+
+    if  ( addEmptyParticule )
+	{
+	RtfReadingState *	rrs= rrc->rrcState;
+
+	const int		part= paraBi->biParaParticuleCount;
+	const int		stroff= paraBi->biParaStrlen;
+	const int		objectNumber= -1;
+
+	if  ( docInflateTextString( paraBi, 0 ) )
+	    { LDEB(paraBi->biParaStrlen); return -1;	}
+	paraBi->biParaString[paraBi->biParaStrlen]= '\0';
+
+	if  ( docInsertAdminParticule( rrc->rrcBd, paraBi,
+			    stroff, part, objectNumber,
+			    &(rrs->rrsTextAttribute), DOCkindTEXT ) )
+	    { LDEB(1); return -1;	}
+
+	rrc->rrcAfterNoteref= 0;
+	}
+
+    return 0;
+    }
+
 int docRtfAdjustLevel(	RtfReadingContext *	rrc,
 			int			toLevel,
 			int			textLevel )
@@ -709,25 +762,10 @@ int docRtfAdjustLevel(	RtfReadingContext *	rrc,
 	{ XDEB(bi); return -1;	}
 
     /*  1  */
-    if  ( toLevel < rrc->rrcLevel	&&
-	  bi->biLevel == DOClevPARA	&&
-	  bi->biParaParticuleCount == 0	)
-	{
-	const int	part= 0;
-	const int	stroff= 0;
-	const int	objectNumber= -1;
-
-	if  ( docInflateTextString( bi, 0 ) )
-	    { LDEB(bi->biParaStrlen); return -1;	}
-	bi->biParaString[bi->biParaStrlen]= '\0';
-
-	if  ( docInsertAdminParticule( rrc->rrcBd, bi,
-			    stroff, part, objectNumber,
-			    &(rrs->rrsTextAttribute), DOCkindTEXT ) )
-	    { LDEB(1); return -1;	}
-
-	rrc->rrcAfterNoteref= 0;
-	}
+    if  ( toLevel < rrc->rrcLevel		&&
+	  bi->biLevel == DOClevPARA		&&
+	  docRtfFinishParagraph( rrc, bi )	)
+	{ LDEB(1); return -1;	}
 
     while( toLevel < rrc->rrcLevel )
 	{
@@ -755,7 +793,7 @@ int docRtfAdjustLevel(	RtfReadingContext *	rrc,
 	    PROPmaskCLEAR( &ppChgMask );
 
 	    PROPmaskCLEAR( &ppUpdMask );
-	    PROPmaskFILL( &ppUpdMask, PPprop_COUNT );
+	    utilPropMaskFill( &ppUpdMask, PPprop_COUNT );
 	    PROPmaskUNSET( &ppUpdMask, PPpropIN_TABLE );
 
 	    /*  3  */
@@ -785,8 +823,9 @@ int docRtfAdjustLevel(	RtfReadingContext *	rrc,
 		if  ( docDelimitParaHeadField( &fieldNr, &partBegin, &partEnd,
 					&stroffBegin, &stroffEnd, bi, bd ) )
 		    {
-		    if  ( docInsertParaHeadField( bi, bd,
-					DOCfkLISTTEXT, textAttributeNumber ) )
+		    if  ( docInsertParaHeadField( &fieldNr,
+				&partBegin, &partEnd, &stroffBegin, &stroffEnd,
+				bi, bd, DOCfkLISTTEXT, textAttributeNumber ) )
 			{
 			LDEB(bi->biParaListOverride); return -1;
 			}
@@ -844,7 +883,7 @@ int docRtfAdjustLevel(	RtfReadingContext *	rrc,
 	    PROPmaskCLEAR( &ppChgMask );
 
 	    PROPmaskCLEAR( &ppUpdMask );
-	    PROPmaskFILL( &ppUpdMask, PPprop_COUNT );
+	    utilPropMaskFill( &ppUpdMask, PPprop_COUNT );
 
 	    if  ( docUpdParaProperties( &ppChgMask, &(bi->biParaProperties),
 				&ppUpdMask, &(rrs->rrsParagraphProperties),
@@ -1089,9 +1128,9 @@ int docRtfSkipGroup(	SimpleInputStream *	sis,
     rrc->rrcComplainUnknown= 0;
 
     if  ( docRtfReadGroup( sis, rcw->rcwLevel,
-		(RtfControlWord *)0, 0, 0, rrc,
-		docRtfEmptyTable, docRtfEmptyTable,
-		docRtfIgnoreText, (RtfCommitGroup)0 ) )
+				    (RtfControlWord *)0, 0, 0, rrc,
+				    docRtfEmptyTable, docRtfEmptyTable,
+				    docRtfIgnoreText, (RtfCommitGroup)0 ) )
 	{ SDEB(rcw->rcwWord); return -1;	}
 
     rrc->rrcComplainUnknown= complainUnknown;

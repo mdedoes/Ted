@@ -250,7 +250,7 @@ static APP_BUTTON_CALLBACK_H( tedTableChangeCellPushed, w, voidct )
 						&(ct->ctTopBorderTool), dp ) )
 	{ goto ready;	}
 
-    if  ( ! PROPmaskISEMPTY( &bpSetMask ) )
+    if  ( ! utilPropMaskIsEmpty( &bpSetMask ) )
 	{
 	docRowSetTopBorderInCols( rp, tr->trCol0, tr->trCol1, &bpSetMask, &bp );
 	PROPmaskADD( &cpSetMask, CLpropTOP_BORDER );
@@ -262,7 +262,7 @@ static APP_BUTTON_CALLBACK_H( tedTableChangeCellPushed, w, voidct )
 					    &(ct->ctBottomBorderTool), dp ) )
 	{ goto ready;	}
 
-    if  ( ! PROPmaskISEMPTY( &bpSetMask ) )
+    if  ( ! utilPropMaskIsEmpty( &bpSetMask ) )
 	{
 	docRowSetBottomBorderInCols( rp, tr->trCol0, tr->trCol1,
 							    &bpSetMask, &bp );
@@ -275,7 +275,7 @@ static APP_BUTTON_CALLBACK_H( tedTableChangeCellPushed, w, voidct )
 						&(ct->ctLeftBorderTool), dp ) )
 	{ goto ready;	}
 
-    if  ( ! PROPmaskISEMPTY( &bpSetMask ) )
+    if  ( ! utilPropMaskIsEmpty( &bpSetMask ) )
 	{
 	docRowSetLeftBorderInCols( rp, tr->trCol0, tr->trCol1,
 							    &bpSetMask, &bp );
@@ -288,7 +288,7 @@ static APP_BUTTON_CALLBACK_H( tedTableChangeCellPushed, w, voidct )
 					    &(ct->ctRightBorderTool), dp ) )
 	{ goto ready;	}
 
-    if  ( ! PROPmaskISEMPTY( &bpSetMask ) )
+    if  ( ! utilPropMaskIsEmpty( &bpSetMask ) )
 	{
 	docRowSetRightBorderInCols( rp, tr->trCol0, tr->trCol1,
 							    &bpSetMask, &bp );
@@ -714,15 +714,24 @@ void tedFormatToolGetCellResourceTable(	EditApplication *		ea,
 					CellPageResources *		cpr,
 					InspectorSubjectResources *	isr )
     {
-    appGuiGetResourceValues( ea, (void *)cpr,
+    static int	gotToolResources= 0;
+    static int	gotSubjectResources= 0;
+
+    if  ( ! gotToolResources )
+	{
+	appGuiGetResourceValues( &gotToolResources, ea, (void *)cpr,
 				TED_TedCellToolResourceTable,
 				sizeof(TED_TedCellToolResourceTable)/
 				sizeof(AppConfigurableResource) );
+	}
 
-    appGuiGetResourceValues( ea, (void *)isr,
+    if  ( ! gotSubjectResources )
+	{
+	appGuiGetResourceValues( &gotSubjectResources, ea, (void *)isr,
 				TED_TedCellSubjectResourceTable,
 				sizeof(TED_TedCellSubjectResourceTable)/
 				sizeof(AppConfigurableResource) );
+	}
 
     return;
     }

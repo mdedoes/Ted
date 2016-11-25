@@ -20,7 +20,53 @@
 /*									*/
 /************************************************************************/
 
+static int docCheckItemIsEmpty(	int *			pIsEmpty,
+				const ExternalItem *	ei )
+    {
+    int		isEmpty= 1;
+
+    if  ( ei && ei->eiItem )
+	{
+	DocumentPosition		dpBegin;
+	DocumentPosition		dpEnd;
+
+	if  ( docFirstPosition( &dpBegin, ei->eiItem ) )
+	    { LDEB(1); docInitDocumentPosition( &dpBegin );	}
+	if  ( docLastPosition( &dpEnd, ei->eiItem ) )
+	    { LDEB(1); docInitDocumentPosition( &dpEnd );	}
+
+	if  ( ! docSamePosition( &dpBegin, &dpEnd ) )
+	    { isEmpty= 0;	}
+	else{
+	    const ParagraphProperties *	pp= &(dpBegin.dpBi->biParaProperties);
+
+	    if  ( pp->ppInTable )
+		{ isEmpty= 0;	}
+
+	    if  ( DOCisBORDER( &(pp->ppTopBorder) ) )
+		{ isEmpty= 0;	}
+	    if  ( DOCisBORDER( &(pp->ppBottomBorder) ) )
+		{ isEmpty= 0;	}
+	    if  ( DOCisBORDER( &(pp->ppLeftBorder) ) )
+		{ isEmpty= 0;	}
+	    if  ( DOCisBORDER( &(pp->ppRightBorder) ) )
+		{ isEmpty= 0;	}
+	    if  ( DOCisBORDER( &(pp->ppBetweenBorder) ) )
+		{ isEmpty= 0;	}
+	    if  ( DOCisBORDER( &(pp->ppBar) ) )
+		{ isEmpty= 0;	}
+
+	    if  ( DOCisSHADING( &(pp->ppShading) ) )
+		{ isEmpty= 0;	}
+	    }
+	}
+
+    *pIsEmpty= isEmpty;
+    return 0;
+    }
+
 int docWhatPageHeader(	ExternalItem **			pEi,
+			int *				pIsEmpty,
 			BufferItem *			bodySectBi,
 			int				page,
 			const DocumentProperties *	dp )
@@ -30,27 +76,32 @@ int docWhatPageHeader(	ExternalItem **			pEi,
     if  ( page == bodySectBi->biTopPosition.lpPage && sp->spHasTitlePage )
 	{
 	*pEi= &(bodySectBi->biSectFirstPageHeader);
+	docCheckItemIsEmpty( pIsEmpty, *pEi );
 	return DOCinFIRST_HEADER;
 	}
 
     if  ( ! dp->dpHasFacingPages )
 	{
 	*pEi= &(bodySectBi->biSectHeader);
+	docCheckItemIsEmpty( pIsEmpty, *pEi );
 	return DOCinSECT_HEADER;
 	}
 
     if  ( page % 2 )
 	{
 	*pEi= &(bodySectBi->biSectLeftPageHeader);
+	docCheckItemIsEmpty( pIsEmpty, *pEi );
 	return DOCinLEFT_HEADER;
 	}
     else{
 	*pEi= &(bodySectBi->biSectRightPageHeader);
+	docCheckItemIsEmpty( pIsEmpty, *pEi );
 	return DOCinRIGHT_HEADER;
 	}
     }
 
 int docWhatPageFooter(	ExternalItem **			pEi,
+			int *				pIsEmpty,
 			BufferItem *			bodySectBi,
 			int				page,
 			const DocumentProperties *	dp )
@@ -60,22 +111,26 @@ int docWhatPageFooter(	ExternalItem **			pEi,
     if  ( page == bodySectBi->biTopPosition.lpPage && sp->spHasTitlePage )
 	{
 	*pEi= &(bodySectBi->biSectFirstPageFooter);
+	docCheckItemIsEmpty( pIsEmpty, *pEi );
 	return DOCinFIRST_FOOTER;
 	}
 
     if  ( ! dp->dpHasFacingPages )
 	{
 	*pEi= &(bodySectBi->biSectFooter);
+	docCheckItemIsEmpty( pIsEmpty, *pEi );
 	return DOCinSECT_FOOTER;
 	}
 
     if  ( page % 2 )
 	{
 	*pEi= &(bodySectBi->biSectLeftPageFooter);
+	docCheckItemIsEmpty( pIsEmpty, *pEi );
 	return DOCinLEFT_FOOTER;
 	}
     else{
 	*pEi= &(bodySectBi->biSectRightPageFooter);
+	docCheckItemIsEmpty( pIsEmpty, *pEi );
 	return DOCinRIGHT_FOOTER;
 	}
     }
@@ -457,3 +512,40 @@ int docGetHeaderFooter(		ExternalItem **			pEi,
     *pEi= ei; *pBodySectBi= bodySectBi; return 0;
     }
 
+/************************************************************************/
+/*									*/
+/*  Determine whether that document has headers and footers at all.	*/
+/*									*/
+/************************************************************************/
+
+int docInquireHeadersFooters(	int *			pDocHasHeaders,
+				int *			pDocHasFooters,
+				const BufferItem *	docBi )
+    {
+    int			i;
+    int			hasPageHeader= 0;
+    int			hasPageFooter= 0;
+
+    for ( i= 0; i < docBi->biChildCount; i++ )
+	{
+	int			j;
+	BufferItem *		sectBi= docBi->biChildren[i];
+
+	for ( j= 0; j < PAGES__COUNT; j++ )
+	    {
+	    ExternalItem *	ei;
+
+	    ei= docSectionHeaderFooter( sectBi, DOC_HeaderScopes[j] );
+	    if  ( ei && ei->eiItem )
+		{ hasPageHeader= 1;	}
+
+	    ei= docSectionHeaderFooter( sectBi, DOC_FooterScopes[j] );
+	    if  ( ei && ei->eiItem )
+		{ hasPageFooter= 1;	}
+	    }
+	}
+
+    *pDocHasHeaders= hasPageHeader;
+    *pDocHasFooters= hasPageFooter;
+    return 0;
+    }

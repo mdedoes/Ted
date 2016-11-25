@@ -416,7 +416,7 @@ const unsigned char docWIN1251_to_KOI8R[256]=
     KOI8R_copyright,		/*  WIN1251_afii10060		142	*//**/
     KOI8R_copyright,		/*  WIN1251_afii10145		143	*//**/
     KOI8R_copyright,		/*  WIN1251_afii10099		144	*//**/
-    KOI8R_quotesingle,		/*  WIN1251_quoteleft		145	*//**/
+    KOI8R_quotesingle,		/*  WIN1251_quotesingle		145	*//**/
     KOI8R_quotesingle,		/*  WIN1251_quoteright		146	*//**/
     KOI8R_quotedbl,		/*  WIN1251_quotedblleft	147	*//**/
     KOI8R_quotedbl,		/*  WIN1251_quotedblright	148	*//**/
@@ -676,7 +676,7 @@ const unsigned char docWIN1251_to_ISO5[256]=
     ISO5_afii10060,		/*  WIN1251_afii10060		142	*/
     ISO5_afii10145,		/*  WIN1251_afii10145		143	*/
     ISO5_afii10099,		/*  WIN1251_afii10099		144	*/
-    ISO5_quoteleft,		/*  WIN1251_quoteleft		145	*/
+    ISO5_quotesingle,		/*  WIN1251_quotesingle		145	*/
     ISO5_quoteleft,		/*  WIN1251_quoteright		146	*//**/
     ISO5_quotedbl,		/*  WIN1251_quotedblleft	147	*//**/
     ISO5_quotedbl,		/*  WIN1251_quotedblright	148	*//**/

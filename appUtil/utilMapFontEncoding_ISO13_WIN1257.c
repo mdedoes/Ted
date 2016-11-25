@@ -56,7 +56,7 @@ const unsigned char docWIN1257_to_ISO13[256]=
     ISO13_asterisk,		/*  WIN1257_asterisk	 42	*/
     ISO13_plus,			/*  WIN1257_plus	 43	*/
     ISO13_comma,		/*  WIN1257_comma	 44	*/
-    ISO13_hyphen,		/*  WIN1257_hyphen	 45	*/
+    ISO13_minus,		/*  WIN1257_minus	 45	*/
     ISO13_period,		/*  WIN1257_period	 46	*/
     ISO13_slash,		/*  WIN1257_slash	 47	*/
     ISO13_zero,			/*  WIN1257_zero	 48	*/
@@ -156,13 +156,13 @@ const unsigned char docWIN1257_to_ISO13[256]=
     ISO13_currency,		/*  WIN1257_caron	142	*//**/
     ISO13_currency,		/*  WIN1257_cedilla	143	*//**/
     ISO13__0x90,		/*  WIN1257__0x90	144	*/
-    ISO13_quotesingle,		/*  WIN1257_quoteleft	145	*//**/
+    ISO13_quotesingle,		/*  WIN1257_quotesingle	145	*//**/
     ISO13_quoteright,		/*  WIN1257_quoteright	146	*/
     ISO13_quotedblleft,		/*  WIN1257_quotedblleft 147	*/
     ISO13_quotedblright,	/*  WIN1257_quotedblright 148	*/
     ISO13_currency,		/*  WIN1257_bullet	149	*//**/
-    ISO13_hyphen,		/*  WIN1257_endash	150	*//**/
-    ISO13_hyphen,		/*  WIN1257_emdash	151	*//**/
+    ISO13_minus,		/*  WIN1257_endash	150	*//**/
+    ISO13_minus,		/*  WIN1257_emdash	151	*//**/
     ISO13__0x98,		/*  WIN1257__0x98	152	*/
     ISO13_currency,		/*  WIN1257_trademark	153	*//**/
     ISO13__0x9A,		/*  WIN1257__0x9A	154	*/
@@ -171,7 +171,7 @@ const unsigned char docWIN1257_to_ISO13[256]=
     ISO13_currency,		/*  WIN1257_macron	157	*//**/
     ISO13_currency,		/*  WIN1257_ogonek	158	*//**/
     ISO13__0x9F,		/*  WIN1257__0x9F	159	*/
-    ISO13_space,		/*  WIN1257_space	160	*/
+    ISO13_nobreakspace,		/*  WIN1257_space	160	*/
     ISO13_currency,		/*  WIN1257__0xA1	161	*//**/
     ISO13_cent,			/*  WIN1257_cent	162	*/
     ISO13_sterling,		/*  WIN1257_sterling	163	*/
@@ -316,7 +316,7 @@ const unsigned char docISO13_to_WIN1257[256]=
     WIN1257_asterisk,		/*  ISO13_asterisk	 42	*/
     WIN1257_plus,		/*  ISO13_plus		 43	*/
     WIN1257_comma,		/*  ISO13_comma		 44	*/
-    WIN1257_hyphen,		/*  ISO13_hyphen	 45	*/
+    WIN1257_minus,		/*  ISO13_minus		 45	*/
     WIN1257_period,		/*  ISO13_period	 46	*/
     WIN1257_slash,		/*  ISO13_slash		 47	*/
     WIN1257_zero,		/*  ISO13_zero		 48	*/
@@ -367,7 +367,7 @@ const unsigned char docISO13_to_WIN1257[256]=
     WIN1257_bracketright,	/*  ISO13_bracketright	 93	*/
     WIN1257_asciicircum,	/*  ISO13_asciicircum	 94	*/
     WIN1257_underscore,		/*  ISO13_underscore	 95	*/
-    WIN1257_grave,		/*  ISO13_grave		 96	*/
+    WIN1257_quoteleft,		/*  ISO13_quoteleft	 96	*/
     WIN1257_a,			/*  ISO13_a		 97	*/
     WIN1257_b,			/*  ISO13_b		 98	*/
     WIN1257_c,			/*  ISO13_c		 99	*/
@@ -414,7 +414,7 @@ const unsigned char docISO13_to_WIN1257[256]=
     WIN1257__0x8C,		/*  ISO13__0x8C		140	*/
     WIN1257_asterisk,		/*  ISO13__0x8D		141	*//**/
     WIN1257_asterisk,		/*  ISO13__0x8E		142	*//**/
-    WIN1257_asterisk,		/*  ISO13__0x8F		143	*///*/
+    WIN1257_asterisk,		/*  ISO13__0x8F		143	*//**/
     WIN1257__0x90,		/*  ISO13__0x90		144	*/
     WIN1257_asterisk,		/*  ISO13__0x91		145	*//**/
     WIN1257_asterisk,		/*  ISO13__0x92		146	*//**/
@@ -431,7 +431,7 @@ const unsigned char docISO13_to_WIN1257[256]=
     WIN1257_asterisk,		/*  ISO13__0x9D		157	*//**/
     WIN1257_asterisk,		/*  ISO13__0x9E		158	*//**/
     WIN1257__0x9F,		/*  ISO13__0x9F		159	*/
-    WIN1257_space,		/*  ISO13_space		160	*/
+    WIN1257_nobreakspace,	/*  ISO13_space		160	*/
     WIN1257_quotedblright,	/*  ISO13_quotedblright	161	*/
     WIN1257_cent,		/*  ISO13_cent		162	*/
     WIN1257_sterling,		/*  ISO13_sterling	163	*/

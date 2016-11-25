@@ -79,7 +79,7 @@ const char * utilFontmapGetEntry(	const char *	from )
 /*	As usual, people do not follow their own file format.		*/
 /*  2)  The standard GhostScript distribution comes with a reference	*/
 /*	to Fontmap.greek in Fontmap. As this file does not exist and	*/
-/*	GhostScript seems to enjoy this kind of mess, only include	*/
+/*	GhostScript seems to enjoy this kind of a mess, only include	*/
 /*	existing files.	(This is an aspect of Macho culture.. tidiness	*/
 /*	seems to be for girls and weaklings.)				*/
 /*									*/

@@ -10,7 +10,10 @@
 
 #   include	<utilMemoryBuffer.h>
 
+#   include	"docLayoutPosition.h"
 #   include	"docDrawingObject.h"
+#   include	"docObjectProperties.h"
+#   include	"docPictureProperties.h"
 
 struct BufferDocument;
 struct BufferItem;
@@ -22,163 +25,50 @@ struct TextParticule;
 /*									*/
 /************************************************************************/
 
-typedef enum ObjectKind
-    {
-    DOCokUNKNOWN= 0,
-
-    DOCokPICTWMETAFILE,
-    DOCokPICTPNGBLIP,
-    DOCokPICTJPEGBLIP,
-    DOCokPICTEMFBLIP,
-    DOCokMACPICT,
-    DOCokPMMETAFILE,
-    DOCokDIBITMAP,
-    DOCokWBITMAP,
-    DOCokOLEOBJECT,
-
-    DOCokINCLUDEPICTURE,
-    DOCokEPS_FILE,
-    DOCokBITMAP_FILE,
-
-    DOCokDRAWING_OBJECT,
-
-	    /************************************************************/
-	    /*  To include pictures. In Particular EPS pictures. As	*/
-	    /*  this is different from what 'Word' does when you	*/
-	    /*  include a picture: they are not	saved in the RTF file.	*/
-	    /************************************************************/
-
-    DOCok__COUNT
-    } ObjectKind;
-
-typedef enum ResultKind
-    {
-    RESULTkindUNKNOWN= 0,
-
-    RESULTkindRTF,
-    RESULTkindTXT,
-    RESULTkindPICT,
-    RESULTkindBMP,
-    RESULTkindHTML,
-
-    RESULTkind_COUNT
-    } ResultKind;
-
-typedef enum EmbeddedKind
-    {
-    EMBEDkindOBJEMB= 0,
-    EMBEDkindOBJLINK,
-    EMBEDkindOBJAUTLINK,
-    EMBEDkindOBJSUB,
-    EMBEDkindOBJPUB,
-    EMBEDkindOBJICEMB,
-    EMBEDkindOBJHTML,
-    EMBEDkindOBJOCX,
-
-    EMBEDkind_COUNT
-    } EmbeddedKind;
-
 typedef struct InsertedObject
     {
     int			ioKind;		/*  Kind of object.		*/
     int			ioResultKind;	/*  Kind of object.		*/
-    int			ioTwipsWide;	/*  Width of object.		*/
-    int			ioTwipsHigh;	/*  Height of object.		*/
-    int			ioScaleX;	/*  In %.			*/
-    int			ioScaleY;	/*  In %.			*/
+    int			ioTwipsWide;	/*  objw			*/
+    int			ioTwipsHigh;	/*  objh			*/
+					/*  NOTE: this is a property of	*/
+					/*  the object. Not of the way	*/
+					/*  in which it is included.	*/
+					/*  That is controlled by the	*/
+					/*  scale.			*/
+    short int		ioScaleXSet;	/*  In %.			*/
+    short int		ioScaleYSet;	/*  In %.			*/
+    short int		ioScaleXUsed;	/*  In %.			*/
+    short int		ioScaleYUsed;	/*  In %.			*/
     int			ioPixelsWide;	/*  Width of object on screen	*/
     int			ioPixelsHigh;	/*  Height of object on screen	*/
-    int			io_xWinExt;	/*  Of metafile picture.	*/
-    int			io_yWinExt;	/*  Of metafile picture.	*/
+
+    PictureProperties	ioPictureProperties;
+
+    LayoutPosition	ioY0Position;
+    int			ioX0Twips;
 
     unsigned int	ioRtfResultKind:4; /*  From rslt* tags.		*/
     unsigned int	ioRtfEmbedKind:4;  /*  From objemb.. tags.	*/
+
+    unsigned int	ioInline:8;  	/*  Part of the text flow?	*/
 
     int			ioTopCropTwips;
     int			ioBottomCropTwips;
     int			ioLeftCropTwips;
     int			ioRightCropTwips;
 
-    int			ioMetafileIsBitmap;
-    int			ioMetafileBitmapBpp;
-
-    int			ioBmBitsPerPixel;
-    int			ioBmPlanes;
-    int			ioBmBytessPerRow;
-
-    int			ioDragWide;	/*  PixelsWide during resize.	*/
-    int			ioDragHigh;	/*  PixelsHigh during resize.	*/
-
-    int			ioMapMode;
-    int			ioResultMapMode;
-					/*  Used for metafile pictures	*/
-					/*  or objects with a result	*/
-					/*  that is a metafile picture.	*/
     MemoryBuffer	ioObjectData;
     MemoryBuffer	ioResultData;
 
     unsigned char *	ioObjectName;
     unsigned char *	ioObjectClass;
-    int			ioBliptag;
 
-    DrawingObject	ioDrawingObject;
+    DrawingShape *	ioDrawingShape;
 
-#   ifdef USE_MOTIF
-    unsigned long	ioPixmap;
-#   endif
-
-#   ifdef USE_GTK
-    void *		ioPixmap;
-#   endif
-
+    APP_BITMAP_IMAGE	ioPixmap;
     void *		ioPrivate;
     } InsertedObject;
-
-typedef enum InsertedObjectProperty
-    {
-    IOpropKIND= 0,
-    IOpropRESULT_KIND,
-    IOpropEMBED_KIND,
-    IOpropPICT_RESULT_KIND,
-
-    IOpropOBJTWIPS_WIDE,
-    IOpropOBJTWIPS_HIGH,
-
-    IOpropPICTWIPS_WIDE,
-    IOpropPICTWIPS_HIGH,
-
-    IOpropOBJSCALE_X,
-    IOpropOBJSCALE_Y,
-
-    IOpropPICSCALE_X,
-    IOpropPICSCALE_Y,
-
-    IOpropPICX_WIN_EXT,
-    IOpropPICY_WIN_EXT,
-
-    IOpropOBJCROP_TOP,
-    IOpropOBJCROP_BOTTOM,
-    IOpropOBJCROP_LEFT,
-    IOpropOBJCROP_RIGHT,
-
-    IOpropPICCROP_TOP,
-    IOpropPICCROP_BOTTOM,
-    IOpropPICCROP_LEFT,
-    IOpropPICCROP_RIGHT,
-
-    IOpropWBMBITSPIXEL,
-    IOpropWBMPLANES,
-    IOpropWBMWIDTHBYTES,
-
-    IOpropBLIPTAG,
-
-    IOpropPICBMP,
-    IOpropPICBPP,
-
-    IOprop_UNSUPPORTED,
-
-    IOprop_COUNT
-    } InsertedObjectProperty;
 
 typedef void (*DOC_CLOSE_OBJECT)(	struct BufferDocument *	bd,
 					struct BufferItem *	bi,
@@ -193,30 +83,43 @@ typedef void (*DOC_CLOSE_OBJECT)(	struct BufferDocument *	bd,
 
 extern int docGetBitmapForObject(	InsertedObject *	io );
 
-extern int docObjectSetData(	InsertedObject *	io,
-				const unsigned char *	bytes,
-				int			size );
+extern int docObjectSetData(	InsertedObject *		io,
+				const unsigned char *		bytes,
+				int				size );
 
-extern int docSetResultData(	InsertedObject *	io,
-				const unsigned char *	bytes,
-				int			size );
+extern int docSetResultData(	InsertedObject *		io,
+				const unsigned char *		bytes,
+				int				size );
 
-extern int docSaveObjectTag(	InsertedObject *	io,
-				const char *		tag,
-				int			arg );
+extern int docSaveObjectTag(	InsertedObject *		io,
+				const char *			tag,
+				int				arg );
 
-extern int docSaveResultTag(	InsertedObject *	io,
-				const char *		tag,
-				int			arg );
+extern int docSaveResultTag(	InsertedObject *		io,
+				const char *			tag,
+				int				arg );
 
-extern int docSetObjectName(	InsertedObject *	io,
-				const unsigned char *	name,
-				int			len );
+extern int docSetObjectName(	InsertedObject *		io,
+				const unsigned char *		name,
+				int				len );
 
-extern int docSetObjectClass(	InsertedObject *	io,
-				const unsigned char *	name,
-				int			len );
+extern int docSetObjectClass(	InsertedObject *		io,
+				const unsigned char *		name,
+				int				len );
 
-extern void docCleanObject(	InsertedObject *	io );
+extern void docInitObject(	InsertedObject *		io );
+
+extern void docCleanObject(	struct BufferDocument *		bd,
+				InsertedObject *		io );
+
+extern void docObjectAdaptToPictureGeometry(
+				InsertedObject *		io,
+				const PictureProperties *	pip );
+
+extern int docReadMetafileObject(	InsertedObject *	io,
+					const char *		filename );
+
+extern int docReadBitmapObject(		InsertedObject *	io,
+					const char *		filename );
 
 #   endif	/*  DOC_OBJECT_H	*/

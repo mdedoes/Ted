@@ -27,6 +27,8 @@ APP_WIDGET appMakeMenu(	APP_WIDGET *		pButton,
     APP_WIDGET			menu;
     APP_WIDGET			button;
 
+    int				ignored= 0;
+
     int				i;
 
     acr= (AppConfigurableResource *)malloc(
@@ -62,7 +64,7 @@ APP_WIDGET appMakeMenu(	APP_WIDGET *		pButton,
 	acri++;
 	}
 
-    appGuiGetResourceValues( ea, ami, acr, acri- acr );
+    appGuiGetResourceValues( &ignored, ea, ami, acr, acri- acr );
 
     free( acr );
 

@@ -285,4 +285,8 @@ extern int bmSetColorAllocatorForWBImage(
 					ColorAllocator *		ca,
 					const BitmapDescription *	bd );
 
+extern int bmPlanarToChunky(		unsigned char *			to,
+					const unsigned char *		from,
+					const BitmapDescription *	bd );
+
 #   endif /*  BM_INTERN_H	*/

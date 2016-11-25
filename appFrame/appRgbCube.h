@@ -15,7 +15,15 @@ typedef struct RgbColorBlock
     {
     RGB8Color		rcbRgbColor;
     APP_COLOR_RGB	rcbAllocatorColor;
+    APP_COLOR_RGB	rcbAllocatorColorX;
     int			rcbColorAllocated;
+
+    int			rcbSelected;
+    int			rcbMappedIndex;
+			    /*  Calculated index, based on color values	*/
+			    /*  does not work: blocks are sorted.	*/
+			    /*  At the calculated position, remember	*/
+			    /*  where the color now is.			*/
 
     double		rcbX0;
     double		rcbY0;

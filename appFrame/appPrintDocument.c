@@ -45,9 +45,7 @@
 
 int appCallPrintFunction(	SimpleOutputStream *		sos,
 				const PrintJob *		pj,
-				const PrintGeometry *		pg,
-				int				firstPage,
-				int				lastPage )
+				const PrintGeometry *		pg )
     {
     EditApplication *	ea= pj->pjApplication;
     int			rval= 0;
@@ -55,7 +53,7 @@ int appCallPrintFunction(	SimpleOutputStream *		sos,
     /*  1  */
     setlocale( LC_NUMERIC, "C" );
 
-    if  ( (*ea->eaPrintDocument)( sos, pj, pg, firstPage, lastPage ) )
+    if  ( (*ea->eaPrintDocument)( sos, pj, pg ) )
 	{ LDEB(1); rval= -1;	}
 
     /*  1  */
@@ -184,9 +182,7 @@ static char * appDocBuildTmpfileCommand(	const char *	command,
 
 int appPrintDocument(	int				printer,
 			const PrintJob *		pj,
-			const PrintGeometry *		pg,
-			int				firstPage,
-			int				lastPage )
+			const PrintGeometry *		pg )
     {
     EditApplication *		ea= pj->pjApplication;
     PrintDestination *		pd= ea->eaPrintDestinations+ printer;
@@ -205,7 +201,7 @@ int appPrintDocument(	int				printer,
 	    if  ( ! sos )
 		{ SXDEB(pd->pdCommand,sos); return -1;	}
 
-	    appCallPrintFunction( sos, pj, pg, firstPage, lastPage );
+	    appCallPrintFunction( sos, pj, pg );
 
 	    if  ( sioOutClose( sos ) )
 		{ SDEB(pd->pdCommand); return -1;	}
@@ -236,7 +232,7 @@ int appPrintDocument(	int				printer,
 		return -1;
 		}
 
-	    appCallPrintFunction( sos, pj, pg, firstPage, lastPage );
+	    appCallPrintFunction( sos, pj, pg );
 
 	    if  ( appPrintCloseTempfile( fd, sos ) )
 		{
@@ -328,11 +324,23 @@ void appPrintJobForEditDocument(	PrintJob *		pj,
 
     pj->pjPrivateData= ed->edPrivateData;
     pj->pjFormat= ed->edFormat;
-    pj->pjUsePostScriptFilters= ea->eaUsePostScriptFilters;
-    pj->pjUsePostScriptIndexedImages= ea->eaUsePostScriptIndexedImages;
     pj->pjDrawingData= &(ed->edDrawingData);
     pj->pjApplication= ea;
     pj->pjTitle= ed->edTitle;
+
+    return;
+    }
+
+void appApplicationSettingsToPrintGeometry(
+					PrintGeometry *		pg,
+					EditApplication *	ea )
+    {
+    pg->pgUsePostScriptFilters= ea->eaUsePostScriptFilters;
+    pg->pgUsePostScriptIndexedImages= ea->eaUsePostScriptIndexedImages;
+
+    pg->pgSkipEmptyPages= ea->eaSkipEmptyPages;
+    pg->pgSkipBlankPages= ea->eaSkipBlankPages;
+    pg->pgOmitHeadersOnEmptyPages= ea->eaOmitHeadersOnEmptyPages;
 
     return;
     }
@@ -345,9 +353,7 @@ void appPrintJobForEditDocument(	PrintJob *		pj,
 
 int appFaxDocument(	EditDocument *			ed,
 			const char *			faxNumber,
-			const PrintGeometry *		pg,
-			int				firstPage,
-			int				lastPage )
+			const PrintGeometry *		pg )
     {
     EditApplication *		ea= ed->edApplication;
     int				fileCount= 0;
@@ -417,7 +423,7 @@ int appFaxDocument(	EditDocument *			ed,
 	    return -1;
 	    }
 
-	appCallPrintFunction( sos, &pj, pg, firstPage, lastPage );
+	appCallPrintFunction( sos, &pj, pg );
 
 	if  ( appPrintCloseTempfile( fd, sos ) )
 	    {
@@ -439,7 +445,7 @@ int appFaxDocument(	EditDocument *			ed,
 	if  ( ! sos )
 	    { SXDEB(command,sos); free( command ); return -1;	}
 
-	appCallPrintFunction( sos, &pj, pg, firstPage, lastPage );
+	appCallPrintFunction( sos, &pj, pg );
 
 	if  ( sioOutClose( sos ) )
 	    { SDEB(command); return -1;	}
@@ -496,9 +502,6 @@ static int appPrintJobForCommand(	PrintJob *		pj,
     pj->pjDrawingData= add;
     pj->pjApplication= ea;
     pj->pjTitle= fromName;
-
-    pj->pjUsePostScriptFilters= ea->eaUsePostScriptFilters;
-    pj->pjUsePostScriptIndexedImages= ea->eaUsePostScriptIndexedImages;
 
     return 0;
     }
@@ -578,13 +581,14 @@ int appPrintToFile(	EditApplication *	ea,
     PrintJob			pj;
 
     utilInitPrintGeometry( &pg );
+    appApplicationSettingsToPrintGeometry( &pg, ea );
     appInitDrawingData( &add );
 
     if  ( ! strcmp( fromName, toName ) )
-	{ SSDEB(fromName,toName); return -1;	}
+	{ SSDEB(fromName,toName); rval= -1; goto ready;	}
 
     if  ( appPrintStartCommandRun( ea, &pj, &pg, &add, paperString, fromName ) )
-	{ SDEB(fromName); return -1;	}
+	{ SDEB(fromName); rval= -1; goto ready;	}
 
     if  ( ! strcmp( toName, "-" ) )
 	{ sos= sioOutStdoutOpen();		}
@@ -594,21 +598,18 @@ int appPrintToFile(	EditApplication *	ea,
 	{
 	SXDEB(toName,sos);
 	appPrintFinishCommandRun( ea, &pj, &add );
-	return -1;
+	rval= -1; goto ready;
 	}
 
-    {
-    const int	firstPage= -1;
-    const int	lastPage= -1;
-
-    if  ( appCallPrintFunction( sos, &pj, &pg, firstPage, lastPage ) )
+    if  ( appCallPrintFunction( sos, &pj, &pg ) )
 	{ SDEB(fromName); rval= -1;	}
-    }
 
     sioOutClose( sos );
 
     appPrintFinishCommandRun( ea, &pj, &add );
 
+  ready:
+    utilCleanPrintGeometry( &pg );
     return rval;
     }
 
@@ -632,11 +633,12 @@ int appPrintToPrinter(	EditApplication *	ea,
     PrintJob		pj;
 
     utilInitPrintGeometry( &pg );
+    appApplicationSettingsToPrintGeometry( &pg, ea );
     appInitDrawingData( &add );
 
     if  ( ! ea->eaPrintDestinationsCollected	&&
 	  appGetPrintDestinations( ea )		)
-	{ LDEB(1); return -1;	}
+	{ LDEB(1); rval= -1; goto ready;	}
 
     printer= ea->eaDefaultPrintDestination;
 
@@ -653,25 +655,22 @@ int appPrintToPrinter(	EditApplication *	ea,
 	    }
 
 	if  ( i >= ea->eaPrintDestinationCount )
-	    { SDEB(toName); return -1;	}
+	    { SDEB(toName); rval= -1; goto ready;	}
 	}
 
     if  ( printer < 0 )
-	{ LDEB(printer); return -1;	}
+	{ LDEB(printer); rval= -1; goto ready;	}
 
     if  ( appPrintStartCommandRun( ea, &pj, &pg, &add, paperString, fromName ) )
-	{ SDEB(fromName); return -1;	}
+	{ SDEB(fromName); rval= -1; goto ready;	}
 
-    {
-    const int	firstPage= -1;
-    const int	lastPage= -1;
-
-    if  ( appPrintDocument( printer, &pj, &pg, firstPage, lastPage ) )
+    if  ( appPrintDocument( printer, &pj, &pg ) )
 	{ SDEB(fromName); rval= -1;	}
-    }
 
     appPrintFinishCommandRun( ea, &pj, &add );
 
+  ready:
+    utilCleanPrintGeometry( &pg );
     return rval;
     }
 

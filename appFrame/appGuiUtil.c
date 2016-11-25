@@ -72,4 +72,3 @@ void appMakeToggleAndTextRow(	APP_WIDGET *		pRow,
 
     *pRow= row; *pToggle= toggle; *pText= text; return;
     }
-

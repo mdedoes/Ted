@@ -16,6 +16,7 @@
 
 #   include	<appUnit.h>
 #   include	<psFont.h>
+#   include	<utilMatchFont.h>
 #   include	"docRtf.h"
 
 /************************************************************************/
@@ -91,12 +92,15 @@ static int docRtfAddCurrentFontToList(	RtfReadingContext *	rrc )
 	{
 	DocumentFont *		df;
 	DocumentProperties *	dp= &(rrc->rrcBd->bdProperties);
+	DocumentFontList *	dfl= &(dp->dpFontList);
+
+	if  ( ! strcmp( rrc->rrcCurrentFont.dfName, "ZapfDingbats" ) )
+	    { rrc->rrcCurrentFont.dfName= strdup( "ITC Zapf Dingbats" ); }
 
 	rrc->rrcCurrentFont.dfUsed= 1;
 
-	df= docInsertFont( &(dp->dpFontList),
-					rrc->rrcCurrentFont.dfDocFontNumber,
-					&(rrc->rrcCurrentFont) );
+	df= docInsertFont( dfl, rrc->rrcCurrentFont.dfDocFontNumber,
+						    &(rrc->rrcCurrentFont) );
 	if  ( ! df )
 	    { SDEB(rrc->rrcCurrentFont.dfName); return -1; }
 	}
@@ -242,11 +246,21 @@ int docRtfFontTable(	SimpleInputStream *	sis,
 			int			arg,
 			RtfReadingContext *	rrc	)
     {
+    DocumentProperties *	dp= &(rrc->rrcBd->bdProperties);
+    DocumentFontList *		dfl= &(dp->dpFontList);
+    const PostScriptFontList *	psfl= rrc->rrcPostScriptFontList;
+
     if  ( docRtfReadGroup( sis, rcw->rcwLevel,
 				(RtfControlWord *)0, 0, 0, rrc,
 				docRtfFontTableWords, docRtfFontTableGroups,
 				docRtfFontName, (RtfCommitGroup)0 ) )
 	{ SLDEB(rcw->rcwWord,arg); return -1;	}
+
+    if  ( ! psfl )
+	{ XDEB(psfl); return -1;	}
+
+    if  ( utilFindPsFontsForDocFonts( dfl, psfl ) )
+	{ LDEB(1);	}
 
     return 0;
     }
@@ -322,11 +336,16 @@ void docRtfWriteFontTable(	SimpleOutputStream *		sos,
 
 	if  ( df->dfName )
 	    {
+	    const char *	name= df->dfName;
+
+	    if  ( ! strcmp( name, "ITC Zapf Dingbats" ) )
+		{ name= "ZapfDingbats";	}
+
 	    if  ( afterTag )
 		{ sioOutPutCharacter( ' ', sos ); *pCol += 1;	}
 
-	    sioOutPutString( df->dfName, sos );
-	    *pCol += strlen( df->dfName );
+	    sioOutPutString( name, sos );
+	    *pCol += strlen( name );
 	    }
 
 	if  ( df->dfAltName )

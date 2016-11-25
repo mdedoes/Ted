@@ -25,37 +25,64 @@
 /*									*/
 /************************************************************************/
 
-#   define	ENCODINGpsFONTSPECIFIC		-1
-#   define	ENCODINGpsISO_8859_1		0
-#   define	ENCODINGpsISO_8859_2		1
-#   define	ENCODINGpsADOBE_SYMBOL		2
-#   define	ENCODINGpsADOBE_CYRILLIC	3
-#   define	ENCODINGpsADOBE_DINGBATS	4
-#   define	ENCODINGpsISO_8859_7		5
-#   define	ENCODINGpsISO_8859_9		6
-#   define	ENCODINGpsISO_8859_13		7
-#   define	ENCODINGps_COUNT		8
+typedef struct OfficeCharsetMapping
+    {
+    int				ocmPsFontEncoding;
+    const unsigned char *	ocmFromOfficeToX11;
+    const unsigned char *	ocmFromX11ToOffice;
+    } OfficeCharsetMapping;
+
+typedef enum ENCODINGps
+    {
+    ENCODINGpsFONTSPECIFIC= -1,
+    ENCODINGpsISO_8859_1= 0,
+    ENCODINGpsISO_8859_2,
+    ENCODINGpsADOBE_SYMBOL,
+    ENCODINGpsADOBE_CYRILLIC,
+    ENCODINGpsADOBE_DINGBATS,
+    ENCODINGpsISO_8859_7,
+    ENCODINGpsISO_8859_9,
+    ENCODINGpsISO_8859_13,
+    ENCODINGpsISO_8859_15,
+
+    ENCODINGps_COUNT
+    } ENCODINGps;
 
 typedef struct FontCharset
     {
-    const char * const *	fcGlyphNames;
-    int				fcGlyphCount;
-    const char *		fcEncodingSuffix;
-    const char *		fcEncodingArrayName;
+    const char * const *		fcGlyphNames;
+    int					fcGlyphCount;
+    const char *			fcPsEncodingSuffix;
+    const char *			fcPsEncodingArrayName;
 
-    char *			fcId;
-    char *			fcLabel;
+    int					fcOfficeCharset;
+    int					fcOfficeCodepage;
 
-    int				fcOfficeCharset;
-    int				fcOfficeCodepage;
-    const char *		fcOfficeFontnameSuffix;
+    const char *			fcX11Registry;
+    const char *			fcX11Encoding;
 
-    const char *		fcX11Registry;
-    const char *		fcX11Encoding;
+    const unsigned char *		fcFromOfficeToX11;
+    const unsigned char *		fcFromX11ToOffice;
 
-    unsigned char		fcCharKinds[256];
-    unsigned char		fcCharShifts[256];
+    const OfficeCharsetMapping *	fcDefaultMapping;
+
+    unsigned char			fcCharKinds[256];
+    unsigned char			fcCharShifts[256];
     } FontCharset;
+
+typedef struct OfficeCharset
+    {
+    short int				ocOfficeCharset;
+    short int				ocOfficeCharsetPreferred;
+    short int				ocWindowsCodepage;
+    const char *			ocOfficeFontnameSuffix;
+
+    char *				ocId;
+    char *				ocLabel;
+
+    short int				ocMappingCount;
+    const OfficeCharsetMapping *	ocMappings;
+    } OfficeCharset;
 
 /************************************************************************/
 /*									*/
@@ -63,12 +90,15 @@ typedef struct FontCharset
 /*									*/
 /************************************************************************/
 
+#   define CHARSETidxCOUNT		10
+
 #   define FONTcharsetANSI		0	/*  cpg 1252		*/
 #   define FONTcharsetDEFAULT		1	/*  i.e. font specific	*/
 #   define FONTcharsetSYMBOL		2
 #   define FONTcharsetINVALID		3
 
-#   define FONTcharsetMAC		77
+#   define FONTcharsetMAC_ROMAN		77
+#   define FONTcharsetMAC_256		256
 
 #   define FONTcharsetSHIFTJIS		128	/*  cpg 932		*/
 #   define FONTcharsetHANGEUL		129	/*  cpg 949		*/
@@ -91,11 +121,9 @@ typedef struct FontCharset
 #   define FONTcharsetPC_437		254	/*  cpg 437		*/
 #   define FONTcharsetOEM		255
 
-#   define FONTcharsetMAC_X		256 	/* ?			*/
-
 /************************************************************************/
 /*									*/
-/*  Font codepages sets as used by windows programs.			*/
+/*  Font codepages as used by windows programs.				*/
 /*									*/
 /************************************************************************/
 
@@ -115,7 +143,8 @@ typedef struct FontCharset
 #   define FONTcodepageBALTIC		1257
 #   define FONTcodepageVIETNAMESE	1258
 #   define FONTcodepageJOHAB		1361
-#   define FONTcodepageMAC_X		10000
+
+#   define FONTcodepageMAC_ROMAN	10000
 
 /************************************************************************/
 /*									*/
@@ -150,6 +179,18 @@ extern const unsigned char	docISO9_to_WIN1254[256];
 extern const unsigned char	docWIN1257_to_ISO13[256];
 extern const unsigned char	docISO13_to_WIN1257[256];
 
+extern const unsigned char	docWIN1252_to_ISO1[256];
+extern const unsigned char	docISO1_to_WIN1252[256];
+
+extern const unsigned char	docWIN1252_to_ISO15[256];
+extern const unsigned char	docISO15_to_WIN1252[256];
+
+extern const unsigned char	docMAC_ROMAN_to_ISO15[256];
+extern const unsigned char	docISO15_to_MAC_ROMAN[256];
+
+extern const unsigned char	docMAC_ROMAN_to_ISO1[256];
+extern const unsigned char	docISO1_to_MAC_ROMAN[256];
+
 extern const unsigned char	docWIN1251_to_KOI8R[256];
 extern const unsigned char	docKOI8R_to_WIN1251[256];
 
@@ -158,7 +199,6 @@ extern const unsigned char	docISO5_to_WIN1251[256];
 
 extern const unsigned char	docDOS437_to_ISO1[256];
 extern const unsigned char	docDOS850_to_ISO1[256];
-extern const unsigned char	docMAC_to_ISO1[256];
 
 extern void utilSetEncodingCharacterKinds(
 				unsigned char		charKinds[256],
@@ -166,6 +206,10 @@ extern void utilSetEncodingCharacterKinds(
 				int			encoding );
 
 extern void utilSetLatin1CharacterKinds(
+				unsigned char		charKinds[256],
+				unsigned char		charShifts[256] );
+
+extern void utilSetLatin15CharacterKinds(
 				unsigned char		charKinds[256],
 				unsigned char		charShifts[256] );
 
@@ -205,5 +249,16 @@ extern int utilWindowsCodepageFromEncoding(	int		encoding );
 extern int utilEncodingFromX11FontName(		const char *	x11name );
 
 extern const char * psUnicodeToGlyphName(	int	unicode );
+
+extern const OfficeCharset * utilGetOfficeCharsetByCharset(
+						int *		pIdx,
+						int		charset );
+
+extern const OfficeCharset * utilGetOfficeCharsetByIndex(
+						int		charsetIdx );
+
+extern const OfficeCharset * utilGetOfficeCharsetBySuffix(
+						int *		pIdx,
+						const char *	fontname );
 
 #   endif

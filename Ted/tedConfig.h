@@ -31,6 +31,9 @@
 #define HAVE_UNISTD_H 1
 
 
+#   define	MY_PLATFORM "Linux_i686"
+#   define	MY_HOST_DATE "mdedoes Sun Jan 23 13:49:05 CET 2005"
+
 /************************************************************************/
 /*									*/
 /*  Locations of application related files				*/

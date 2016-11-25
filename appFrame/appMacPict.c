@@ -327,7 +327,7 @@ int appMacPictGetCountAndString(	MacpictDevice *		md,
 
 	if  ( *fresh == '\r' )
 	    { *fresh= '\n';	}
-	else{ *fresh= docMAC_to_ISO1[*fresh];	}
+	else{ *fresh= docMAC_ROMAN_to_ISO1[*fresh];	}
 	}
     *fresh= '\0';
 

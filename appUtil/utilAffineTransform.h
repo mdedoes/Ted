@@ -78,11 +78,22 @@ extern void utilInitAffineTransform2D(		AffineTransform2D *	at2 );
 extern void utilIdentityAffineTransform2D(	AffineTransform2D *	at2 );
 extern void utilRotationAffineTransform2D(	AffineTransform2D *	at2,
 						double			a );
+extern void utilRotationAffineTransform2DAtan(	AffineTransform2D *	at2,
+						double			y,
+						double			x );
+extern void utilTranslationAffineTransform2D(	AffineTransform2D *	at2,
+						double			x,
+						double			y );
+extern void utilScaleAffineTransform2D(		AffineTransform2D *	at2,
+						double			xs,
+						double			ys );
 
 extern void utilAffineTransform2DProduct(
 					AffineTransform2D *		ba,
 					const AffineTransform2D *	b,
 					const AffineTransform2D *	a );
+extern int utilInvertAffineTransform2D(	AffineTransform2D *		atR,
+					const AffineTransform2D *	atF );
 
 extern double utilAffineTransformDeterminant2D(
 					const AffineTransform2D *	at2 );

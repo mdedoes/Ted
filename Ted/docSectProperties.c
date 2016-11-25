@@ -34,10 +34,10 @@ int docUpdSectProperties(	PropertyMask *			pSpDoneMask,
     PROPmaskCLEAR( &doneMask );
 
     PROPmaskCLEAR( &dgMask );
-    PROPmaskFILL( &dgMask, DGprop_COUNT );
+    utilPropMaskFill( &dgMask, DGprop_COUNT );
     utilPropMaskAnd( &dgMask, &dgMask, setMask );
 
-    appSetDocumentGeometry( &(to->spDocumentGeometry),
+    utilUpdDocumentGeometry( &(to->spDocumentGeometry),
 					&(from->spDocumentGeometry),
 					&doneMask, &dgMask );
 
@@ -153,11 +153,11 @@ void docSectPropertyDifference( PropertyMask *			pDiffMask,
     PROPmaskCLEAR( &diffMask );
 
     PROPmaskCLEAR( &dgMask );
-    PROPmaskFILL( &dgMask, DGprop_COUNT );
+    utilPropMaskFill( &dgMask, DGprop_COUNT );
     utilPropMaskAnd( &dgMask, &dgMask, cmpMask );
 
     dg= sp1->spDocumentGeometry;
-    appSetDocumentGeometry( &dg, &(sp2->spDocumentGeometry),
+    utilUpdDocumentGeometry( &dg, &(sp2->spDocumentGeometry),
 							&diffMask, &dgMask );
 
     if  ( PROPmaskISSET( cmpMask, SPpropSTYLE ) )
@@ -248,7 +248,7 @@ void docCleanSectionProperties(	SectionProperties *	sp )
 
 void docInitSectionProperties(	SectionProperties *	sp )
     {
-    appInitDocumentGeometry( &(sp->spDocumentGeometry) );
+    utilInitDocumentGeometry( &(sp->spDocumentGeometry) );
 
     sp->spStyle= 0;
 

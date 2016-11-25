@@ -43,18 +43,21 @@ static int tedSetBrowserCall(	char *			target,
 	}
     strcpy( to, endremote ); to += strlen( to );
 
-    strcpy( to, " || " ); to += strlen( to );
-
-    strcpy( to, direct ); to += strlen( to );
-
-    memcpy( to, fileName, fileSize ); to += fileSize;
-    if  ( markSize > 0 )
+    if  ( direct )
 	{
-	*(to++)= '#';
-	memcpy( to, markName, markSize ); to += markSize;
-	}
+	strcpy( to, " || " ); to += strlen( to );
 
-    strcpy( to, enddirect ); to += strlen( to );
+	strcpy( to, direct ); to += strlen( to );
+
+	memcpy( to, fileName, fileSize ); to += fileSize;
+	if  ( markSize > 0 )
+	    {
+	    *(to++)= '#';
+	    memcpy( to, markName, markSize ); to += markSize;
+	    }
+
+	strcpy( to, enddirect ); to += strlen( to );
+	}
 
     return to- target;
     }
@@ -70,14 +73,20 @@ static int tedCallNetscape(	const char *		fileName,
     int		size;
     char *	to;
 
-    const char	remote1[]= "( mozilla -remote 'openUrl(";
-    const char	direct1[]= "( mozilla '";
+    const char	remote1[]= "( firefox -remote 'openUrl(";
+    const char	direct1[]= "( firefox '";
+
+    const char	remote2[]= "( mozilla -noraise -remote 'openUrl(";
+    const char	direct2[]= "( mozilla '";
+
+    const char	remote3[]= "( netscape -noraise -remote 'openUrl(";
+    const char	direct3[]= "( netscape '";
+
+    const char	remote4[]= "( kfmclient  openURL '";
+    const char	endrem4[]= "' ) 2>/dev/null";
 
     const char	endremote[]= ",new-window)' ) 2>/dev/null";
     const char	enddirect[]= "' ) 2>/dev/null";
-
-    const char	remote2[]= "( netscape -noraise -remote 'openUrl(";
-    const char	direct2[]= "( netscape '";
 
     /**** Prevent tricks to run arbitrary commands! */
     int		i;
@@ -109,6 +118,19 @@ static int tedCallNetscape(	const char *		fileName,
     size += sizeof(direct2)+ fileSize+ 1+ markSize;
     size += sizeof(enddirect);
 
+    size += 4;
+
+    size += sizeof(remote3)+ fileSize+ 1+ markSize;
+    size += sizeof(endremote);
+    size += 4;
+    size += sizeof(direct3)+ fileSize+ 1+ markSize;
+    size += sizeof(enddirect);
+
+    size += 4;
+
+    size += sizeof(remote4)+ fileSize+ 1+ markSize;
+    size += sizeof(endrem4);
+
     size += 2+ 1;
 
     to= scratch= malloc( size );
@@ -121,6 +143,16 @@ static int tedCallNetscape(	const char *		fileName,
     strcpy( to, " || " ); to += strlen( to );
 
     to += tedSetBrowserCall( to, remote2, endremote, direct2, enddirect,
+				    fileName, fileSize, markName, markSize );
+
+    strcpy( to, " || " ); to += strlen( to );
+
+    to += tedSetBrowserCall( to, remote3, endremote, direct3, enddirect,
+				    fileName, fileSize, markName, markSize );
+
+    strcpy( to, " || " ); to += strlen( to );
+
+    to += tedSetBrowserCall( to, remote4, endrem4, (char *)0, (char *)0,
 				    fileName, fileSize, markName, markSize );
 
     strcpy( to, " &" ); to += strlen( to );

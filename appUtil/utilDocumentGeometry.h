@@ -58,9 +58,9 @@ typedef enum GeometryProperty
 /*									*/
 /************************************************************************/
 
-extern void appInitDocumentGeometry(	DocumentGeometry *	dg );
+extern void utilInitDocumentGeometry(	DocumentGeometry *	dg );
 
-extern void appSetDocumentGeometry(
+extern void utilUpdDocumentGeometry(
 				DocumentGeometry *		dgTo,
 				const DocumentGeometry *	dgFrom,
 				PropertyMask *			doneMask,

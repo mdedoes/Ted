@@ -212,7 +212,7 @@ static APP_BUTTON_CALLBACK_H( tedFormatChangeRowPushed, w, voidrt )
 						&(rt->rtTopBorderTool), dp ) )
 	{ goto ready;	}
 
-    if  ( ! PROPmaskISEMPTY( &bpSetMask ) )
+    if  ( ! utilPropMaskIsEmpty( &bpSetMask ) )
 	{
 	docRowSetTopBorderInCols( rp, tr.trCol0, tr.trCol1, &bpSetMask, &bp );
 	PROPmaskADD( &cpSetMask, CLpropTOP_BORDER );
@@ -224,7 +224,7 @@ static APP_BUTTON_CALLBACK_H( tedFormatChangeRowPushed, w, voidrt )
 					    &(rt->rtBottomBorderTool), dp ) )
 	{ goto ready;	}
 
-    if  ( ! PROPmaskISEMPTY( &bpSetMask ) )
+    if  ( ! utilPropMaskIsEmpty( &bpSetMask ) )
 	{
 	docRowSetBottomBorderInCols( rp, tr.trCol0, tr.trCol1,
 							&bpSetMask, &bp );
@@ -770,15 +770,24 @@ void tedFormatToolGetRowResourceTable(	EditApplication *		ea,
 					RowPageResources *		rpr,
 					InspectorSubjectResources *	isr )
     {
-    appGuiGetResourceValues( ea, (void *)rpr,
+    static int	gotToolResources= 0;
+    static int	gotSubjectResources= 0;
+
+    if  ( ! gotToolResources )
+	{
+	appGuiGetResourceValues( &gotToolResources, ea, (void *)rpr,
 				TED_TedRowToolResourceTable,
 				sizeof(TED_TedRowToolResourceTable)/
 				sizeof(AppConfigurableResource) );
+	}
 
-    appGuiGetResourceValues( ea, (void *)isr,
+    if  ( ! gotSubjectResources )
+	{
+	appGuiGetResourceValues( &gotSubjectResources, ea, (void *)isr,
 				TED_TedRowSubjectResourceTable,
 				sizeof(TED_TedRowSubjectResourceTable)/
 				sizeof(AppConfigurableResource) );
+	}
 
     return;
     }

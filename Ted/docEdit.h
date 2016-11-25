@@ -7,6 +7,8 @@
 #   ifndef		DOC_EDIT_H
 #   define		DOC_EDIT_H
 
+#   include		"docEditPosition.h"
+#   include		"docEditRange.h"
 #   include		"docScreenFontList.h"
 #   include		"docBuf.h"
 
@@ -15,21 +17,12 @@
 /*  Describes an edit operation. Part is only used for interactive edit	*/
 /*  operations.								*/
 /*									*/
+/*  A)  Indentation level of the bottom item that contains all items	*/
+/*	in the selection.						*/
+/*									*/
+/*  1)  Current insertion position.					*/
+/*									*/
 /************************************************************************/
-
-typedef struct EditPosition
-    {
-    int		epParagraphNumber;
-    int		epStroff;
-    } EditPosition;
-
-typedef struct EditRange
-    {
-    int			erParagraphCount;
-    int			erBottomLevel;
-    EditPosition	erStartPosition;
-    EditPosition	erEndPosition;
-    } EditRange;
 
 typedef struct EditOperation
     {
@@ -53,8 +46,14 @@ typedef struct EditOperation
     EditRange		eoSelectedRange;
 
     /**/
+    TextAttribute	eoSavedTextAttribute;
+    int			eoSavedTextAttributeNumber;
+
+    /**/
     int			eoNotesDeleted;
     int			eoNotesAdded;
+    int			eoSectionsDeleted;
+    int			eoSectionsAdded;
     int			eoBulletsChanged;
     int			eoParagraphsInserted;
 
@@ -66,10 +65,11 @@ typedef struct EditOperation
     void *		eoVoidadd;
     DOC_CLOSE_OBJECT	eoCloseObject;
 
-    /**/
-    BufferItem *	eoParaBi;
-    int			eoParticule;
-    int			eoStroff;
+    /*  1  */
+    BufferItem *	eoInsParaBi;
+    int			eoInsParticule;
+    int			eoInsAtPartHead;
+    int			eoInsStroff;
     } EditOperation;
 
 /************************************************************************/
@@ -104,7 +104,8 @@ typedef struct DocumentCopyJob
 /************************************************************************/
 
 extern int docParaReplaceText(	EditOperation *		eo,
-				BufferItem *		bi,
+				BufferItem *		paraBi,
+				int			paraNr,
 				unsigned int		stroffBegin,
 				int *			pPartShift,
 				int *			pStroffShift,
@@ -113,10 +114,17 @@ extern int docParaReplaceText(	EditOperation *		eo,
 				unsigned int		addedLength,
 				int			addedAttributeNumber );
 
-extern int docSplitParaItem(	EditOperation *		eo,
+extern int docSplitParaItemAtStroff(
+				EditOperation *			eo,
+				BufferItem **			pNewBi,
+				const DocumentPosition *	dp,
+				int				splitLevel );
+
+extern int docSplitParaItemAtPart(
+				EditOperation *		eo,
 				BufferItem **		pNewBi,
 				BufferItem *		oldBi,
-				int			stroff,
+				int			part,
 				int			splitLevel );
 
 extern int docRemoveSelectionTail(
@@ -140,7 +148,7 @@ extern void docCleanItemObjects(	int *			pNoteCount,
 					DOC_CLOSE_OBJECT	closeObject );
 
 extern TextParticule * docParaSpecialParticule(
-					BufferDocument *	bd,
+					EditOperation *		eo,
 					BufferItem *		bi,
 					int			kind,
 					int			part,
@@ -158,7 +166,6 @@ extern int docReplaceSelection(
 			int				addedAttributeNumber );
 
 extern void docInitEditOperation(	EditOperation *	eo );
-extern void docInitEditPosition(	EditPosition *	ep );
 extern void docInitEditRange(		EditRange *	er );
 
 extern void docIncludePositionInReformat(
@@ -174,11 +181,6 @@ extern void docEditIncludeRowsInReformatRange(
 					BufferItem *		sectBi,
 					int			row0,
 					int			row1 );
-
-extern void docEditShiftReformatRangeParaNr(
-					EditOperation *		eo,
-					int			from,
-					int			by );
 
 extern void docSetParagraphAdjust(	EditOperation *		eo,
 					BufferItem *		paraBi,
@@ -207,6 +209,7 @@ extern int docMapTextAttributeNumber(
 
 extern BufferItem * docCopyParaItem(	DocumentCopyJob *	dcj,
 					EditOperation *		eo,
+					const SelectionScope *	ssRoot,
 					BufferItem *		biCellTo,
 					int			n,
 					BufferItem *		biParaFrom,
@@ -214,7 +217,7 @@ extern BufferItem * docCopyParaItem(	DocumentCopyJob *	dcj,
 
 extern BufferItem * docCopyRowItem(	DocumentCopyJob *	dcj,
 					EditOperation *		eo,
-					int *			pParasCopied,
+					const SelectionScope *	ssRoot,
 					BufferItem *		biSectTo,
 					int			n,
 					BufferItem *		biRowFrom,
@@ -222,10 +225,10 @@ extern BufferItem * docCopyRowItem(	DocumentCopyJob *	dcj,
 
 extern BufferItem * docCopySectItem(	DocumentCopyJob *	dcj,
 					EditOperation *		eo,
+					const SelectionScope *	ssRoot,
 					BufferItem *		biParentTo,
 					int			n,
-					BufferItem *		biSectFrom,
-					const SelectionScope *	ss );
+					BufferItem *		biSectFrom );
 
 extern int docCopyParticules(	DocumentCopyJob *	dcj,
 				EditOperation *		eo,
@@ -317,9 +320,9 @@ extern int docChangeCellSpans(	int *			pRowChanged1,
 				int			rowspan,
 				int			colspan );
 
-extern void docEditShiftReferences(	BufferDocument *	bd,
+extern void docEditShiftReferences(	EditOperation *		eo,
+					const SelectionScope *	ssRoot,
 					int			paraFrom,
-					int			isSplit,
 					int			stroffFrom,
 					int			sectShift,
 					int			paraShift,
@@ -336,5 +339,28 @@ extern int docEditUpdParaProperties(
 				const ParagraphProperties *	ppNew,
 				const int *			colorMap,
 				const int *			listStyleMap );
+
+extern int docEditShiftParticuleOffsets( EditOperation *	eo,
+					BufferItem *		paraBi,
+					int			paraNr,
+					int			partFrom,
+					int			partUpto,
+					int			stroffFrom,
+					int			stroffShift );
+
+extern int docCopyNote(			DocumentCopyJob *	dcj,
+					EditOperation *		eo,
+					BufferItem *		biTo,
+					TextParticule *		tpTo,
+					const BufferItem *	biFrom,
+					const TextParticule *	tpFrom );
+
+extern DrawingShape * docCopyDrawingShape(
+					DocumentCopyJob *	dcj,
+					EditOperation *		eo,
+					const DrawingShape *	from );
+
+extern int docCheckNoBreakAsLast(	EditOperation *		eo,
+					BufferItem *		paraBi );
 
 #   endif	/*	DOC_EDIT_H	*/

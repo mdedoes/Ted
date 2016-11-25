@@ -1,7 +1,6 @@
 #   include	<stdio.h>
 #   include	<string.h>
 #   include	<stdlib.h>
-#   include	<malloc.h>
 
 #   define	y0	math_y0
 #   define	y1	math_y1
@@ -27,14 +26,30 @@
 /*  documentation made me change a lot.					*/
 /*									*/
 /*  SEE: http://developer.apple.com/fonts/TTRefMan/			*/
+/*  SEE ALSO: http://www.microsoft.com/OpenType/OTSpec/default.htm	*/
 /*									*/
 /*  A substantial part of this code is experimental: E.G. it contains	*/
 /*  code that can be used to convert from true type fonts to postscript	*/
 /*  type1 that was adapted from 'ttf2pt1' but it is never called.	*/
 /*									*/
 /*  1)  Platform: 0=Unicode, 1= Mac, 3= Windows.			*/
+/*  2)  Encoding: 0=Default, 1= Version 1.1, 2) ISO 10646-1993		*/
+/*	deprecated, 3) Unicode 2.0 semantics.				*/
+/*  3)  Platform,Encoding->bytes					*/
+/*	0,*->2								*/
+/*	1,0->1								*/
 /*									*/
 /************************************************************************/
+
+static int utilTtfStringBytes( int p, int e )
+    {
+    if  ( p == 0 )		{ return 2;	}
+    if  ( p == 1 && e == 0 )	{ return 1;	}
+    if  ( p == 3 && e == 0 )	{ return 2;	}
+    if  ( p == 3 && e == 1 )	{ return 2;	}
+
+    LLDEB(p,e); return 1;
+    }
 
 typedef struct TrueTypeTableEntry
     {
@@ -50,7 +65,7 @@ typedef struct TrueTypeTableEntry
 typedef struct TrueTypeNameRecord
     {
     unsigned int	ttnrPlatformID;		/*  1  */
-    unsigned int	ttnrEncodingID;
+    unsigned int	ttnrEncodingID;		/*  2  */
     unsigned int	ttnrLanguageID;
     unsigned int	ttnrNameID;
     unsigned int	ttnrLength;
@@ -189,8 +204,12 @@ typedef struct TrueTypeCmapRecord
     unsigned int		ttcr4SearchRange;
     unsigned int		ttcr4EntrySelector;
     unsigned int		ttcr4RangeShift;
-
     const unsigned char *	ttcr4Data;
+
+				/*  If format == 6  */
+    unsigned int		ttcr6FirstCode;
+    unsigned int		ttcr6EntryCount;
+    unsigned short *		ttcr6GlyphIndices;
     } TrueTypeCmapRecord;
 
 typedef struct TrueTypeCmapTable
@@ -204,7 +223,7 @@ typedef struct TrueTypeKernPair
     {
     unsigned int	ttkpLeft;
     unsigned int	ttkpRight;
-    unsigned int	ttkpValue;
+    int			ttkpValue;
     } TrueTypeKernPair;
 
 typedef struct TrueTypeKernSub
@@ -376,6 +395,17 @@ static void utilCleanTrueTypeKernTable(	TrueTypeKernTable *	ttkt )
     return;
     }
 
+static void utilInitTrueTypeCmapRecord(	TrueTypeCmapRecord * ttcr )
+    {
+    ttcr->ttcr6GlyphIndices= (unsigned short *)0;
+    }
+
+static void utilCleanTrueTypeCmapRecord(	TrueTypeCmapRecord * ttcr )
+    {
+    if  ( ttcr->ttcr6GlyphIndices )
+	{ free( ttcr->ttcr6GlyphIndices );	}
+    }
+
 static void utilInitTrueTypeCmapTable(	TrueTypeCmapTable *	ttct )
     {
     ttct->ttctVersion= 0;
@@ -385,6 +415,13 @@ static void utilInitTrueTypeCmapTable(	TrueTypeCmapTable *	ttct )
 
 static void utilCleanTrueTypeCmapTable(	TrueTypeCmapTable *	ttct )
     {
+    int		i;
+
+    for ( i= 0; i < ttct->ttctEncodingRecordCount; i++ )
+	{
+	utilCleanTrueTypeCmapRecord( &(ttct->ttctEncodingRecords[i]) );
+	}
+
     if  ( ttct->ttctEncodingRecords )
 	{ free( ttct->ttctEncodingRecords );	}
     }
@@ -728,6 +765,10 @@ static int utilTtfExtractPostTable(	TrueTypeFont *	ttf )
 
 	    break;
 
+	case 3:
+	    /* dummy post table: No glyph names */
+	    break;
+
 	default:
 	    LLDEB(ttpt->ttptFormatUpper,ttpt->ttptFormatLower);
 	    break;
@@ -786,6 +827,9 @@ static int utilTtfExtractOS_2Table(	TrueTypeFont *	ttf )
     for ( i= 0; i < 4; i++ )
 	{ ttot->ttotVendID[i]= sioInGetCharacter( sisOS_2 );	}
     ttot->ttotVendID[i]= '\0';
+    i= 3;
+    while( i > 0 && ttot->ttotVendID[i] == ' ' )
+	{ ttot->ttotVendID[i]= '\0'; i--; }
 
     ttot->ttotSelection= sioEndianGetBeUint16( sisOS_2 );
     ttot->ttotFirstCharIndex= sioEndianGetBeUint16( sisOS_2 );
@@ -996,7 +1040,11 @@ static int utilTtfExtractHmtxTable(	TrueTypeFont *	ttf )
     SimpleInputStream *		sisHmtx= (SimpleInputStream *)0;
     const TrueTypeTableEntry *	ttte;
 
+    const TrueTypeHheaTable *	hhea= &(ttf->ttfHheaTable);
+
     int				i;
+    int				partialCount;
+    int				advanceWidth= 0;
 
     utilInitMemoryBuffer( &mb );
 
@@ -1004,10 +1052,15 @@ static int utilTtfExtractHmtxTable(	TrueTypeFont *	ttf )
     if  ( ! sisHmtx )
 	{ XDEB(sisHmtx); rval= -1; goto ready;	}
 
+    if  ( ttte->ttteLength % 2 )
+	{
+	LLDEB(ttte->ttteLength,2);
+	LLDEB(hhea->hheaMetricDataFormat,hhea->hheaMetricCount);
+	/*rval= -1; goto ready;*/
+	}
+    partialCount= ( ttte->ttteLength- 4 * hhea->hheaMetricCount )/ 2;
 
-    if  ( ttte->ttteLength % 4 )
-	{ LLDEB(ttte->ttteLength,4); rval= -1; goto ready; }
-    ttf->ttfHorizontalMetricCount= ttte->ttteLength/ 4;
+    ttf->ttfHorizontalMetricCount= hhea->hheaMetricCount+ partialCount;
 
     ttf->ttfHorizontalMetrics= malloc( ttf->ttfHorizontalMetricCount*
 						    sizeof(HorizontalMetric) );
@@ -1017,10 +1070,16 @@ static int utilTtfExtractHmtxTable(	TrueTypeFont *	ttf )
 	rval= -1; goto ready;
 	}
 
-    for ( i= 0; i < ttf->ttfHorizontalMetricCount; i++ )
+    for ( i= 0; i < hhea->hheaMetricCount; i++ )
 	{
-	ttf->ttfHorizontalMetrics[i].hmAdvanceWidth=
+	ttf->ttfHorizontalMetrics[i].hmAdvanceWidth= advanceWidth=
 					    sioEndianGetBeUint16( sisHmtx );
+	ttf->ttfHorizontalMetrics[i].hmLsb= sioEndianGetBeInt16( sisHmtx );
+	}
+
+    for ( i= hhea->hheaMetricCount; i < ttf->ttfHorizontalMetricCount; i++ )
+	{
+	ttf->ttfHorizontalMetrics[i].hmAdvanceWidth= advanceWidth;
 	ttf->ttfHorizontalMetrics[i].hmLsb= sioEndianGetBeInt16( sisHmtx );
 	}
 
@@ -1505,8 +1564,13 @@ static int utilTtfExtractCmapTable(	TrueTypeFont *	ttf )
 
     ttcr= ttct->ttctEncodingRecords;
     for ( i= 0; i < ttct->ttctEncodingRecordCount; ttcr++, i++ )
+	{ utilInitTrueTypeCmapRecord( ttcr );	}
+
+    ttcr= ttct->ttctEncodingRecords;
+    for ( i= 0; i < ttct->ttctEncodingRecordCount; ttcr++, i++ )
 	{
 	const unsigned char *	p;
+	int			ent;
 
 	ttcr->ttcrPlatformID= sioEndianGetBeUint16( sisCmap );
 	ttcr->ttcrEncodingID= sioEndianGetBeUint16( sisCmap );
@@ -1529,6 +1593,24 @@ static int utilTtfExtractCmapTable(	TrueTypeFont *	ttf )
 		ttcr->ttcr4EntrySelector= utilEndianExtractBeUint16( p ); p += 2;
 		ttcr->ttcr4RangeShift= utilEndianExtractBeUint16( p ); p += 2;
 		ttcr->ttcr4Data= p;
+		break;
+
+	    case 6:
+		ttcr->ttcr6FirstCode= utilEndianExtractBeUint16( p ); p += 2;
+		ttcr->ttcr6EntryCount= utilEndianExtractBeUint16( p ); p += 2;
+
+		ttcr->ttcr6GlyphIndices=
+			malloc( ttcr->ttcr6EntryCount* sizeof(unsigned int) );
+		if  ( ! ttcr->ttcr6GlyphIndices )
+		    {
+		    LXDEB(ttcr->ttcr6EntryCount,ttcr->ttcr6GlyphIndices);
+		    rval= -1; goto ready;
+		    }
+		for ( ent= 0; ent < ttcr->ttcr6EntryCount; ent++ )
+		    {
+		    ttcr->ttcr6GlyphIndices[ent]=
+					utilEndianExtractBeUint16( p ); p += 2;
+		    }
 		break;
 
 	    default:
@@ -1565,7 +1647,7 @@ static int ttfExtractFormat0KernPairs(	const TrueTypeKernSub *	ttks,
 	{
 	ttkp->ttkpLeft= utilEndianExtractBeUint16( p ); p += 2;
 	ttkp->ttkpRight= utilEndianExtractBeUint16( p ); p += 2;
-	ttkp->ttkpValue= utilEndianExtractBeUint16( p ); p += 2;
+	ttkp->ttkpValue= utilEndianExtractBeInt16( p ); p += 2;
 	}
 
     return 0;
@@ -1620,31 +1702,69 @@ static int utilTtfExtractKernTable(	TrueTypeFont *	ttf )
 	ttks->ttksLength= utilEndianExtractBeUint16( p ); p += 2;
 	ttks->ttksCoverage= utilEndianExtractBeUint16( p ); p += 2;
 	ttks->ttksPairCount= utilEndianExtractBeUint16( p ); p += 2;
-	ttks->ttksSearchRange= utilEndianExtractBeUint16( p ); p += 2;
-	ttks->ttksEntrySelector= utilEndianExtractBeUint16( p ); p += 2;
-	ttks->ttksRangeShift= utilEndianExtractBeUint16( p ); p += 2;
 
-	ttks->ttksPairs= malloc( ttks->ttksPairCount*
+	if  ( ttks->ttksPairCount > 0 )
+	    {
+	    ttks->ttksPairs= malloc( ttks->ttksPairCount*
 						sizeof(TrueTypeKernPair) );
-	if  ( ! ttks->ttksPairs )
-	    {
-	    LXDEB(ttks->ttksPairCount,ttks->ttksPairs);
-	    ttks->ttksPairCount= 0;
-	    rval= -1; goto ready;
-	    }
-
-	format= ttks->ttksCoverage & 0x00ff;
-	switch( format )
-	    {
-	    case 0:
-		if  ( ttfExtractFormat0KernPairs( ttks, data ) )
-		    { LDEB(1); ttks->ttksPairCount= 0; rval= -1; goto ready; }
-		break;
-
-	    default:
-		XDEB(ttks->ttksCoverage);
+	    if  ( ! ttks->ttksPairs )
+		{
+		LXDEB(ttks->ttksPairCount,ttks->ttksPairs);
 		ttks->ttksPairCount= 0;
-		break;
+		rval= -1; goto ready;
+		}
+
+	    format= ttks->ttksCoverage & 0x00ff;
+	    switch( format )
+		{
+		case 0:
+		case 1: /* against doc, as in FreeType library */
+		    ttks->ttksSearchRange=
+				utilEndianExtractBeUint16( p ); p += 2;
+		    ttks->ttksEntrySelector=
+				utilEndianExtractBeUint16( p ); p += 2;
+		    ttks->ttksRangeShift=
+				utilEndianExtractBeUint16( p ); p += 2;
+
+		    if  ( ttfExtractFormat0KernPairs( ttks, p ) )
+			{
+			ttks->ttksPairCount= 0;
+			LDEB(format); rval= -1; goto ready;
+			}
+		    break;
+
+#		if 0
+		case 1:
+		LLDEB(sub,subCount);
+		    {
+		    const unsigned char *	stateTable= p;
+		    const unsigned char *	classTable;
+
+		    int stateClassCount;
+		    int stateClassOffset;
+		    int stateArrayOffset;
+		    int entryTableOffset;
+		    int valueOffset;
+
+		    stateClassCount=
+				utilEndianExtractBeUint16( p ); p += 2;
+		    stateClassOffset=
+				utilEndianExtractBeUint16( p ); p += 2;
+		    stateArrayOffset=
+				utilEndianExtractBeUint16( p ); p += 2;
+		    entryTableOffset=
+				utilEndianExtractBeUint16( p ); p += 2;
+		    valueOffset=
+				utilEndianExtractBeUint16( p ); p += 2;
+		    }
+		    break;
+#		endif
+
+		default:
+		    XLDEB(ttks->ttksCoverage,ttks->ttksPairCount);
+		    ttks->ttksPairCount= 0;
+		    break;
+		}
 	    }
 
 	data += ttks->ttksLength;
@@ -1659,6 +1779,7 @@ static int utilTtfExtractKernTable(	TrueTypeFont *	ttf )
     }
 
 
+
 /************************************************************************/
 /*									*/
 /*  Try to find names for a format4 unicode cmap.			*/
@@ -1668,7 +1789,7 @@ static int utilTtfExtractKernTable(	TrueTypeFont *	ttf )
 static int utilTtfSetUnicodeCmapFormat4Names(
 				const TrueTypeFont *		ttf,
 				const TrueTypeCmapRecord *	ttcr,
-				AfmCharMetric *			acm )
+				AfmFontInfo *			afi )
     {
     const unsigned char *	p= ttcr->ttcr4Data;
 
@@ -1716,8 +1837,8 @@ static int utilTtfSetUnicodeCmapFormat4Names(
 	    if  ( g < 0 || g >= ttf->ttfGlyphCount )
 		{ LLDEB(g,ttf->ttfGlyphCount); return -1; }
 
-	    if  ( acm[g].acmN )
-		{ /*SDEB(acm[g].acmN);*/ continue;	}
+	    if  ( afi->afiMetrics[g].acmN )
+		{ /*SDEB(afi->afiMetrics[g].acmN);*/ continue;	}
 
 	    name= psUnicodeToGlyphName( v );
 	    if  ( ! name )
@@ -1725,7 +1846,84 @@ static int utilTtfSetUnicodeCmapFormat4Names(
 	    saved= strdup( name );
 	    if  ( ! saved )
 		{ XDEB(saved); return -1;	}
-	    acm[g].acmN= saved;
+	    afi->afiMetrics[g].acmN= saved;
+	    }
+	}
+
+    return 0;
+    }
+
+static int utilTtfSetWindowsCmapFormat4Names(
+				const TrueTypeFont *		ttf,
+				const TrueTypeCmapRecord *	ttcr,
+				AfmFontInfo *			afi )
+    {
+    const unsigned char *	p= ttcr->ttcr4Data;
+
+    int				n= ttcr->ttcr4SegCountX2;
+    const unsigned char *	e= p+ 0;
+    const unsigned char *	s= p+ 1* n+ 2;
+    const unsigned char *	d= p+ 2* n+ 2;
+    const unsigned char *	r= p+ 3* n+ 2;
+
+    int				seg;
+    int				segCount= n/ 2- 1;
+
+    if  ( ! p )
+	{ XDEB(p); return -1; }
+
+    for ( seg= 0; seg < segCount; seg++ )
+	{
+	int	ss;
+	int	ee;
+	int	dd;
+	int	rr;
+
+	int	v;
+
+	ss= utilEndianExtractBeUint16( s ); s += 2;
+	ee= utilEndianExtractBeUint16( e ); e += 2;
+	dd= utilEndianExtractBeInt16( d ); d += 2;
+	rr= utilEndianExtractBeUint16( r ); r += 2;
+
+	for ( v= ss; v <= ee; v++ )
+	    {
+	    int			c;
+	    int			g;
+	    char *		saved;
+	    char		name[25];
+
+	    if  ( rr > 0 )
+		{
+		int o= rr/ 2+ ( v- ss );
+		g= utilEndianExtractBeUint16( r+ 2* o- 2 );
+		}
+	    else{
+		g= ( v+ dd ) % 65536;
+		}
+
+	    c= v % 256;
+
+	    if  ( g < 0 || g >= ttf->ttfGlyphCount )
+		{ LLDEB(g,ttf->ttfGlyphCount); return -1; }
+
+	    if  ( afi->afiMetrics[g].acmN )
+		{
+		/* NO!
+		if  ( strcmp( afi->afiMetrics[g].acmN, ".null" )	&&
+		      strcmp( afi->afiMetrics[g].acmN, ".notdef" )	)
+		    { LLSDEB(c,g,afi->afiMetrics[g].acmN); continue;	}
+		*/
+		continue;
+		}
+
+	    sprintf( name, "win%04x", v );
+	    saved= strdup( name );
+	    if  ( ! saved )
+		{ XDEB(saved); return -1;	}
+	    afi->afiMetrics[g].acmN= saved;
+	    afi->afiMetrics[g].acmC= c;
+	    afi->afiDefaultCodeToGlyph[c]= g;
 	    }
 	}
 
@@ -1774,13 +1972,17 @@ static int utilTtfSetPostGlyphNames(
 	    if  ( idx >= ttpt->ttptStringCount )
 		{ LLDEB(idx,ttpt->ttptStringCount); return -1; }
 
-	    acm->acmN= strdup( ttpt->ttptStrings[idx] );
+	    acm->acmN= strdup( (char *)ttpt->ttptStrings[idx] );
 	    if  ( ! acm->acmN )
 		{ XDEB(acm->acmN); return -1; }
 	    }
 
 	return 0;
 	}
+
+    /*  post table has no glyph names */
+    if  ( ttpt->ttptFormatUpper == 3 && ttpt->ttptFormatLower == 0 )
+	{ return 0;	}
 
     LLDEB(ttpt->ttptFormatUpper,ttpt->ttptFormatLower);
     return 0;
@@ -1797,7 +1999,7 @@ static int utilTtfSetPostGlyphNames(
 /************************************************************************/
 
 static int utilTtfSetCharNames(	const TrueTypeFont *	ttf,
-				AfmCharMetric *		acm )
+				AfmFontInfo *		afi )
     {
     const TrueTypeCmapTable *	ttct= &(ttf->ttfCmapTable);
     const TrueTypeCmapRecord *	ttcr;
@@ -1805,13 +2007,13 @@ static int utilTtfSetCharNames(	const TrueTypeFont *	ttf,
     int				i;
 
     /*  2  */
-    acm[0].acmN= strdup( ".notdef" );
-    if  ( ! acm[0].acmN )
-	{ XDEB(acm[0].acmN); return -1;	}
+    afi->afiMetrics[0].acmN= strdup( ".notdef" );
+    if  ( ! afi->afiMetrics[0].acmN )
+	{ XDEB(afi->afiMetrics[0].acmN); return -1;	}
     /*  3  */
-    acm[1].acmN= strdup( ".null" );
-    if  ( ! acm[1].acmN )
-	{ XDEB(acm[1].acmN); return -1;	}
+    afi->afiMetrics[1].acmN= strdup( ".null" );
+    if  ( ! afi->afiMetrics[1].acmN )
+	{ XDEB(afi->afiMetrics[1].acmN); return -1;	}
 
     /*  1  */
     ttcr= ttct->ttctEncodingRecords;
@@ -1828,11 +2030,31 @@ static int utilTtfSetCharNames(	const TrueTypeFont *	ttf,
 
     if  ( i < ttct->ttctEncodingRecordCount )
 	{
-	if  ( utilTtfSetUnicodeCmapFormat4Names( ttf, ttcr, acm ) )
+	if  ( utilTtfSetUnicodeCmapFormat4Names( ttf, ttcr, afi ) )
 	    { LDEB(1); return -1;	}
 
 	return 0;
 	}
+
+    ttcr= ttct->ttctEncodingRecords;
+    for ( i= 0; i < ttct->ttctEncodingRecordCount; ttcr++, i++ )
+	{
+	if  ( ttcr->ttcrPlatformID == 3		&&
+	      ttcr->ttcrFormat == 4		)
+	    { break;	}
+	}
+
+    if  ( i < ttct->ttctEncodingRecordCount )
+	{
+	if  ( utilTtfSetWindowsCmapFormat4Names( ttf, ttcr, afi ) )
+	    { LDEB(1); return -1;	}
+
+	return 0;
+	}
+
+    ttcr= ttct->ttctEncodingRecords;
+    for ( i= 0; i < ttct->ttctEncodingRecordCount; ttcr++, i++ )
+	{ LLLDEB(ttcr->ttcrPlatformID,ttcr->ttcrEncodingID,ttcr->ttcrFormat); }
 
     LDEB(ttct->ttctEncodingRecordCount); return -1;
     }
@@ -1896,9 +2118,13 @@ static void utilTtfSetCharMetrics(	const TrueTypeFont *	ttf,
 					    acm++, ttg++, hm++, glyphno++ )
 	{
 	if  ( glyphno >= ttf->ttfHorizontalMetricCount )
-	    { LLDEB(glyphno,ttf->ttfHorizontalMetricCount); return;	}
-
-	acm->acmWX= utilTtfScaledInteger( ttf, hm->hmAdvanceWidth );
+	    {
+	    LLDEB(glyphno,ttf->ttfHorizontalMetricCount);
+	    acm->acmWX= utilTtfScaledInteger( ttf, ttg->ttgXMax );
+	    }
+	else{
+	    acm->acmWX= utilTtfScaledInteger( ttf, hm->hmAdvanceWidth );
+	    }
 
 	acm->acmBBox.abbLeft= utilTtfScaledInteger( ttf, ttg->ttgXMin );
 	acm->acmBBox.abbBottom= utilTtfScaledInteger( ttf, ttg->ttgYMin );
@@ -1927,36 +2153,121 @@ static int utilTtfSaveName(	char **				pName,
     if  ( ! name )
 	{ LXDEB(ttnr->ttnrLength,name);	}
 
-    memcpy( name, ttnr->ttnrSavedBytes, ttnr->ttnrLength );
-    name[ttnr->ttnrLength]= '\0';
+    if  ( utilTtfStringBytes( ttnr->ttnrPlatformID, ttnr->ttnrEncodingID )
+									== 2 )
+	{
+	int		i;
+
+	for ( i= 0; i < ttnr->ttnrLength/ 2; i++ )
+	    { name[i]= ttnr->ttnrSavedBytes[2*i+ 1]; }
+	name[i]= '\0';
+	}
+    else{
+	memcpy( name, ttnr->ttnrSavedBytes, ttnr->ttnrLength );
+	name[ttnr->ttnrLength]= '\0';
+	}
 
     if  ( *pName )
 	{ free( *pName );	}
 
     *pName= name;
+
+    while( *name )
+	{
+	if  ( *name == '\n' )
+	    { *name= ' ';	}
+
+	name++;
+	}
+
     return 0;
     }
 
-static int utilTtfFontInfo(	AfmFontInfo *		afi,
-				const TrueTypeFont *	ttf )
+/************************************************************************/
+/*									*/
+/*  Extract kerning pairs from the true type font.			*/
+/*									*/
+/************************************************************************/
+
+static int utilTtfGetKernPairs(		AfmFontInfo *		afi,
+					const TrueTypeFont *	ttf )
     {
-    const TrueTypeNameTable *	ttnt= &(ttf->ttfNameTable);
-    const TrueTypePostTable *	ttpt= &(ttf->ttfPostTable);
-    const TrueTypeHheaTable *	hhea= &(ttf->ttfHheaTable);
-    const TrueTypeHeadTable *	ttht= &(ttf->ttfHeadTable);
+    AfmCharMetric *		acm;
 
+    int				k0;
     int				glyphno;
-    int				recFound;
 
+    const TrueTypeKernTable *	ttkt= &(ttf->ttfKernTable);
+
+    int				sub;
+    const TrueTypeKernSub *	ttks;
+
+    const TrueTypeKernPair *	ttkp;
+
+    ttks= ttkt->ttktKernSubs;
+    for ( sub= 0; sub < ttkt->ttktKernSubCount; ttks++, sub++ )
+	{
+	if  ( ttks->ttksPairCount > 0 )
+	    { break;	}
+	}
+
+    if  ( sub >= ttkt->ttktKernSubCount )
+	{ return 0;	}
+
+    k0= 0; ttkp= ttks->ttksPairs;
+    acm= afi->afiMetrics;
+    for ( glyphno= 0; glyphno < afi->afiMetricCount; acm++, glyphno++ )
+	{
+	int		n;
+	int		i;
+
+	while( k0 < ttks->ttksPairCount		&&
+	       ttkp->ttkpLeft < glyphno		)
+	    { ttkp++; k0++;	}
+
+	if  ( k0 >= ttks->ttksPairCount )
+	    { break;	}
+	if  ( ttkp->ttkpLeft > glyphno )
+	    { continue;	}
+
+	n= 1;
+	while( k0+ n < ttks->ttksPairCount	&&
+	       ttkp[n].ttkpLeft == glyphno	)
+	    { n++;	}
+
+	acm->acmKernPairs= malloc( n* sizeof( AfmKerningPair ) );
+	if  ( ! acm->acmKernPairs )
+	    { LXDEB(n,acm->acmKernPairs); return -1;	}
+
+	for ( i= 0; i < n; i++ )
+	    {
+	    acm->acmKernPairs[i].akpPosition= ttkp[i].ttkpRight;
+	    acm->acmKernPairs[i].akpXVec=
+			    utilTtfScaledInteger( ttf, ttkp[i].ttkpValue );
+	    }
+
+	acm->acmKernPairCount= n;
+	}
+
+    return 0;
+    }
+
+/************************************************************************/
+/*									*/
+/*  Extract character metrics from the true type font.			*/
+/*									*/
+/************************************************************************/
+
+static int utilTtfGetCharMetricsAndEncoding(
+					AfmFontInfo *		afi,
+					const TrueTypeFont *	ttf )
+    {
     AfmCharMetric *		acm;
     int				enc;
-    int				code;
 
-    char *			str;
-    int				start;
-    int				length;
-    int				weight;
-    int				width;
+    int				glyphno;
+
+    const int			complain= 0;
 
     afi->afiMetrics= malloc( ttf->ttfGlyphCount* sizeof(AfmCharMetric) );
     if  ( ! afi->afiMetrics )
@@ -1967,10 +2278,10 @@ static int utilTtfFontInfo(	AfmFontInfo *		afi,
     afi->afiMetricCount= ttf->ttfGlyphCount;
 
     utilTtfSetCharMetrics( ttf, afi->afiMetrics );
-    utilTtfSetCharNames( ttf, afi->afiMetrics );
+    utilTtfSetCharNames( ttf, afi );
     utilTtfSetPostGlyphNames( ttf, afi->afiMetrics );
 
-    if  ( psGetFontEncodings( afi ) )
+    if  ( psGetFontEncodings( afi, complain ) < 0 )
 	{ LDEB(1); return -1;	}
 
     for ( enc= 0; enc < ENCODINGps_COUNT; enc++ )
@@ -1978,21 +2289,43 @@ static int utilTtfFontInfo(	AfmFontInfo *		afi,
 	if  ( afi->afiSupportedCharsets[enc].scSupported )
 	    { break;	}
 	}
+
     if  ( enc >= ENCODINGps_COUNT )
 	{
-	acm= afi->afiMetrics;
-	for ( code= 0; code < 256; acm++, code++ )
-	    {
-	    if  ( code >= afi->afiMetricCount )
-		{ break;	}
+	int		encodedGlyphs= 0;
 
-	    afi->afiMetrics[code].acmC= code;
+	acm= afi->afiMetrics;
+	for ( glyphno= 0; glyphno < afi->afiMetricCount; acm++, glyphno++ )
+	    {
+	    int		code= afi->afiMetrics[glyphno].acmC;
+
+	    if  ( code >= 0 && code < 256 )
+		{
+		encodedGlyphs++;
+		afi->afiDefaultCodeToGlyph[code]= glyphno;
+		}
+	    }
+
+	if  ( encodedGlyphs < 3 )
+	    {
+	    acm= afi->afiMetrics;
+	    for ( glyphno= 0; glyphno < afi->afiMetricCount; acm++, glyphno++ )
+		{
+		if  ( glyphno >= 256 )
+		    { break;	}
+
+		afi->afiMetrics[glyphno].acmC= glyphno;
+		}
 	    }
 	}
     else{
+	int	code;
+
 	for ( code= 0; code < 256; code++ )
 	    {
 	    glyphno= afi->afiSupportedCharsets[enc].scCodeToGlyphMapping[code];
+
+	    afi->afiDefaultCodeToGlyph[code]= glyphno;
 
 	    if  ( glyphno >= 0 )
 		{
@@ -2002,6 +2335,7 @@ static int utilTtfFontInfo(	AfmFontInfo *		afi,
 		}
 	    }
 	}
+
     if  ( enc == ENCODINGpsISO_8859_1 )
 	{ afi->afiEncodingScheme= strdup( "ISOLatin1Encoding" );	}
     else{ afi->afiEncodingScheme= strdup( "FontSpecific" );	}
@@ -2018,6 +2352,37 @@ static int utilTtfFontInfo(	AfmFontInfo *		afi,
 	if  ( ! strcmp( acm->acmN, "H" ) )
 	    { afi->afiCapHeight= acm->acmBBox.abbTop;	}
 	}
+
+    return 0;
+    }
+
+/************************************************************************/
+/*									*/
+/*  Try to derive complete font information from a true type font.	*/
+/*									*/
+/************************************************************************/
+
+static int utilTtfFontInfo(	AfmFontInfo *		afi,
+				const TrueTypeFont *	ttf )
+    {
+    const TrueTypeNameTable *	ttnt= &(ttf->ttfNameTable);
+    const TrueTypePostTable *	ttpt= &(ttf->ttfPostTable);
+    const TrueTypeHheaTable *	hhea= &(ttf->ttfHheaTable);
+    const TrueTypeHeadTable *	ttht= &(ttf->ttfHeadTable);
+
+    int				recFound;
+
+    char *			str;
+    int				start;
+    int				length;
+    int				weight;
+    int				width;
+
+    if  ( utilTtfGetCharMetricsAndEncoding( afi, ttf ) )
+	{ LDEB(1); return -1;	}
+
+    if  ( utilTtfGetKernPairs( afi, ttf ) )
+	{ LDEB(1); return -1;	}
 
     if  ( utilTtfSaveName( &(afi->afiFontName), ttnt, 6 ) )
 	{ LDEB(6); return -1;	}
@@ -2111,7 +2476,7 @@ static int utilTtfFontInfo(	AfmFontInfo *		afi,
 
     if  ( ttf->ttfOS_2Table.ttotVendID[0] )
 	{
-	afi->afiVendor= strdup( ttf->ttfOS_2Table.ttotVendID );
+	afi->afiVendor= strdup( (char *)ttf->ttfOS_2Table.ttotVendID );
 	if  ( ! afi->afiVendor )
 	    { XDEB(afi->afiVendor); return -1;	}
 	}
@@ -2654,6 +3019,7 @@ static int utilTtfLoadFile(	TrueTypeFont *		ttf,
 /************************************************************************/
 
 int psTtfToPt1(		SimpleOutputStream *	sosPt1,
+			const char *		fontFileName,
 			SimpleInputStream *	sisTtf )
     {
     int				rval= 0;
@@ -2682,6 +3048,7 @@ int psTtfToPt1(		SimpleOutputStream *	sosPt1,
 /************************************************************************/
 
 int psTtfToPf42(		SimpleOutputStream *	sosPf42,
+				const char *		fontFileName,
 				SimpleInputStream *	sisTtf )
     {
     int				rval= 0;
@@ -2708,6 +3075,7 @@ int psTtfToPf42(		SimpleOutputStream *	sosPf42,
 /************************************************************************/
 
 int psTtfToAfm(		SimpleOutputStream *	sosAfm,
+			const char *		fontFileName,
 			SimpleInputStream *	sisTtf )
     {
     int				rval= 0;
@@ -2717,6 +3085,9 @@ int psTtfToAfm(		SimpleOutputStream *	sosAfm,
 
     utilInitTrueTypeFont( &ttf );
     psInitAfmFontInfo( &afi );
+
+    if  ( fontFileName )
+	{ afi.afiFontFileName= strdup( fontFileName );	}
 
     if  ( utilTtfLoadFile( &ttf, sisTtf ) )
 	{ LDEB(1); rval= -1; goto ready;	}

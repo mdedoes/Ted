@@ -5,6 +5,10 @@ f none Ted/TedDocument-en_US.rtf 0644 @PKG_OWNER@ @PKG_GROUP@
 f none Ted/rtf2pdf.sh 0755 @PKG_OWNER@ @PKG_GROUP@
 f none Ted/rtf2ps.sh 0755 @PKG_OWNER@ @PKG_GROUP@
 f none Ted/gsafm.sh 0755 @PKG_OWNER@ @PKG_GROUP@
+f none Ted/ttfdir.sh 0755 @PKG_OWNER@ @PKG_GROUP@
+f none Ted/ttfdirpfb.sh 0755 @PKG_OWNER@ @PKG_GROUP@
+f none Ted/pfadir.sh 0755 @PKG_OWNER@ @PKG_GROUP@
+f none Ted/pfbdir.sh 0755 @PKG_OWNER@ @PKG_GROUP@
 f none Ted/fixOpenOfficeRtf.sh 0755 @PKG_OWNER@ @PKG_GROUP@
 f none Ted/Ted.1 0644 @PKG_OWNER@ @PKG_GROUP@
 f none Ted/rtf2ps.1 0644 @PKG_OWNER@ @PKG_GROUP@

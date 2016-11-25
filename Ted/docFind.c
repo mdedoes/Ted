@@ -764,8 +764,7 @@ static int docFindPrevPrevTree(		DocumentPosition *	dp,
 /*									*/
 /************************************************************************/
 
-static int docFindFindNextInTree(
-				DocumentSelection *		ds,
+int docFindFindNextInTree(	DocumentSelection *		ds,
 				const BufferDocument *		bd,
 				const DocumentPosition *	dpFrom,
 				PARA_FIND_STRING		findNext,
@@ -889,7 +888,7 @@ int docFindFindNextInDocument(	DocumentSelection *		ds,
 	    return 0;
 	    }
 
-	if  ( ! docSelectionDifferentRoot( &(dfj.dfjStartSelection),
+	if  ( docSelectionSameRoot( &(dfj.dfjStartSelection),
 					    dfj.dfjCurrentPosition.dpBi ) )
 	    {
 	    if  ( dfj.dfjWrapCount > 0 )
@@ -957,7 +956,7 @@ int docFindFindPrevInDocument(	DocumentSelection *		ds,
 	    return 0;
 	    }
 
-	if  ( ! docSelectionDifferentRoot( &(dfj.dfjStartSelection),
+	if  ( docSelectionSameRoot( &(dfj.dfjStartSelection),
 					    dfj.dfjCurrentPosition.dpBi ) )
 	    {
 	    if  ( dfj.dfjWrapCount > 0 )
@@ -984,6 +983,7 @@ int docFindFindPrevInDocument(	DocumentSelection *		ds,
 /************************************************************************/
 
 int docNextSimilarRoot(		DocumentPosition *	dp,
+				int *			pPage,
 				BufferDocument *	bd )
     {
     int		page= dp->dpBi->biTopPosition.lpPage;
@@ -994,10 +994,12 @@ int docNextSimilarRoot(		DocumentPosition *	dp,
     if  ( ret < 0 )
 	{ LDEB(ret); return -1;	}
 
+    *pPage= page;
     return ret;
     }
 
 int docPrevSimilarRoot(		DocumentPosition *	dp,
+				int *			pPage,
 				BufferDocument *	bd )
     {
     int		page= dp->dpBi->biTopPosition.lpPage;
@@ -1008,5 +1010,6 @@ int docPrevSimilarRoot(		DocumentPosition *	dp,
     if  ( ret < 0 )
 	{ LDEB(ret); return -1;	}
 
+    *pPage= page;
     return ret;
     }

@@ -41,7 +41,6 @@ int docInsertTableRows(		BufferItem *		sectBi,
 	{
 	BufferItem *		rowBi= (BufferItem *)0;
 
-	const int		isSplit= 0;
 	const int		stroffFrom= 0;
 	const int		sectShift= 0;
 	const int		stroffShift= 0;
@@ -51,13 +50,9 @@ int docInsertTableRows(		BufferItem *		sectBi,
 	if  ( ! rowBi )
 	    { XDEB(rowBi); return -1;	}
 
-	if  ( sectBi->biInExternalItem == DOCinBODY )
-	    {
-	    docEditShiftReferences( eo->eoBd, paraNr, isSplit, stroffFrom,
+	docEditShiftReferences( eo, &(eo->eoSelectionScope),
+				    paraNr, stroffFrom,
 				    sectShift, paraShift, stroffShift );
-	    }
-
-	docEditShiftReformatRangeParaNr( eo, paraNr+ 1, paraShift );
 
 	paraNr += rp->rpCellCount;
 
@@ -177,19 +172,18 @@ int docSplitColumnInRows(	BufferItem **		pNewParaBi,
 	if  ( row0 == row )
 	    { newParaBi= paraBi;	}
 
-	if  ( sectBi->biInExternalItem == DOCinBODY )
-	    {
-	    const int	isSplit= 0;
-	    const int	stroffFrom= 0;
-	    const int	stroffShift= 0;
-	    const int	sectShift= 0;
+	{
+	const int	stroffFrom= 0;
+	const int	stroffShift= 0;
+	const int	sectShift= 0;
 
-	    const int	paraNr= docNumberOfParagraph( paraBi );
-	    const int	paraShift= 1;
+	const int	paraNr= docNumberOfParagraph( paraBi );
+	const int	paraShift= 1;
 
-	    docEditShiftReferences( eo->eoBd, paraNr, isSplit, stroffFrom,
-				    sectShift, paraShift, stroffShift );
-	    }
+	docEditShiftReferences( eo, &(eo->eoSelectionScope),
+					paraNr, stroffFrom,
+					sectShift, paraShift, stroffShift );
+	}
 
 	docEditIncludeItemInReformatRange( eo, rowBi );
 
@@ -241,7 +235,7 @@ void docChangeTableLayout(	EditOperation *		eo,
 						rpSetMask, rpSet, colorMap ) )
 	    { LDEB(row0);	}
 
-	if  ( ! PROPmaskISEMPTY( cpSetMask ) )
+	if  ( ! utilPropMaskIsEmpty( cpSetMask ) )
 	    {
 	    const CellProperties *	cpSet;
 	    CellProperties *		cpTo;
@@ -300,19 +294,6 @@ int docDeleteColumnsFromRows(	EditOperation *	eo,
 	docEditDeleteItems( eo, &sectionsDeleted,
 					&firstParaDeleted, &paragraphsDeleted,
 					rowBi, delCol0, count );
-
-	if  ( rowBi->biInExternalItem == DOCinBODY )
-	    {
-	    const int		isSplit= 0;
-	    const int		sectShift= -sectionsDeleted;
-	    const int		stroffFrom= 0;
-	    const int		stroffShift= 0;
-
-	    docEditShiftReferences( eo->eoBd,
-		    firstParaDeleted+ paragraphsDeleted, isSplit, stroffFrom,
-		    sectShift, -paragraphsDeleted, stroffShift );
-	    }
-
 
 	docEditIncludeItemInReformatRange( eo, rowBi );
 	}

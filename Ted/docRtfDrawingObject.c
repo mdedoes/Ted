@@ -16,22 +16,22 @@
 
 #   include	"docRtf.h"
 
-static int docRtfDrawingObjectAllocatePoints(	DrawingObject *	wdo,
+static int docRtfDrawingObjectAllocatePoints(	DrawingShape *	ds,
 						int		n )
     {
-    APP_POINT *	fresh;
+    ShapeVertex *	fresh;
 
-    fresh= (APP_POINT *)realloc( wdo->doPoints, n* sizeof(APP_POINT) );
+    fresh= (ShapeVertex *)realloc( ds->dsVertices, n* sizeof(ShapeVertex) );
     if  ( ! fresh )
 	{ LXDEB(n,fresh); return -1;	}
 
-    wdo->doPoints= fresh;
-    fresh += wdo->doPointCount;
+    ds->dsVertices= fresh;
+    fresh += ds->dsVertexCount;
 
-    while( wdo->doPointCount < n )
+    while( ds->dsVertexCount < n )
 	{
-	fresh->x= fresh->y= 0;
-	fresh++; wdo->doPointCount++;
+	fresh->svX= fresh->svY= 0;
+	fresh++; ds->dsVertexCount++;
 	}
 
     return 0;
@@ -42,141 +42,185 @@ int docRtfDrawingObjectProperty(	SimpleInputStream *	sis,
 					int			arg,
 					RtfReadingContext *	rrc )
     {
-    InsertedObject *	io= rrc->rrcInsertedObject;
-    DrawingObject *	wdo;
+    DrawingShape *	ds= ds= rrc->rrcDrawingShape;
+    ShapeProperties *	sp;
 
     if  ( rrc->rrcInIgnoredGroup > 0 )
 	{ return 0;	}
 
-    if  ( ! io )
-	{
-	LSXDEB(rrc->rrcCurrentLine,rcw->rcwWord,rrc->rrcInsertedObject);
-	return 0;
-	}
+    if  ( ! ds )
+	{ SLLXDEB(rcw->rcwWord,arg,rrc->rrcCurrentLine,ds); return 0;	}
 
-    wdo= &(io->ioDrawingObject);
+    sp= &(ds->dsShapeProperties);
 
     switch( rcw->rcwID )
 	{
 	case DOpropANCHOR_LOCKED:
-	    wdo->doAnchorLocked= arg != 0;
+	    sp->spLockAnchor= arg != 0;
 	    break;
 
 	case DOpropX_ATTACH:
-	    wdo->doXAttach= rcw->rcwEnumValue;
+	    ds->dsHorizontalRelativeTo= rcw->rcwEnumValue;
+	    sp->spHorizontalAttachment= rcw->rcwEnumValue;
 	    break;
 
 	case DOpropY_ATTACH:
-	    wdo->doYAttach= rcw->rcwEnumValue;
+	    ds->dsVerticalRelativeTo= rcw->rcwEnumValue;
+	    sp->spVerticalAttachment= rcw->rcwEnumValue;
 	    break;
 
 	case DOpropKIND:
-	    wdo->doKind= rcw->rcwEnumValue;
-	    if  ( wdo->doKind == DOkindLINE	&&
-		  wdo->doPointCount < 2		)
+	    ds->dsShapeType= rcw->rcwEnumValue;
+
+	    if  ( ds->dsShapeType == SHPtyLINE )
 		{
-		if  ( docRtfDrawingObjectAllocatePoints( wdo, 2 ) )
+		rrc->rrcNextObjectVertex= ds->dsVertexCount;
+		if  ( docRtfDrawingObjectAllocatePoints( ds, 2 ) )
 		    { LDEB(arg); return -1;	}
 		}
 	    break;
 
 	case DOpropLINE_STYLE:
-	    wdo->doLineStyle= rcw->rcwEnumValue;
+	    if  ( rcw->rcwEnumValue == DSdashHOLLOW )
+		{
+		ds->dsLineDashing= DSdashSOLID;
+		ds->ds_fLine= 0;
+		}
+	    else{
+		ds->dsLineDashing= rcw->rcwEnumValue;
+		ds->ds_fLine= 1;
+		}
 	    break;
 
 	case DOpropFILL_PATTERN:
-	    wdo->doFillPattern= arg;
+	    switch( arg )
+		{
+		static int op[]= { 100,5,10,20,30,40,50,60,70,75,80,90 };
+
+		case 0:
+		    ds->ds_fFilled= 0;
+		    ds->dsFillType= DSfillSOLID;
+		    break;
+		case  1: case  2: case  3: case  4: case  5: case  6: case  7:
+		case  8: case  9: case 10: case 11: case 12: case 13:
+		    ds->ds_fFilled= 1;
+		    ds->dsFillType= DSfillSOLID;
+		    ds->dsFillOpacity= ( op[arg-1]* 65536 )/ 100;
+		    break;
+
+		default:
+		    LDEB(arg); break;
+		}
 	    break;
 
 	case DOpropARC_FLIP_X:
-	    wdo->doArcFlipX= arg != 0;
+	    ds->ds_fFlipH= arg != 0;
+	    ds->ds_fRelFlipH= arg != 0;
 	    break;
 	case DOpropARC_FLIP_Y:
-	    wdo->doArcFlipY= arg != 0;
+	    ds->ds_fFlipV= arg != 0;
+	    ds->ds_fRelFlipV= arg != 0;
 	    break;
 
 	case DOpropX:
-	    wdo->doX= arg;
+	    sp->spRect.drX0= arg;
+	    ds->dsGeoRect.drX0= arg;
 	    break;
 	case DOpropY:
-	    wdo->doY= arg;
+	    sp->spRect.drY0= arg;
+	    ds->dsGeoRect.drY0= arg;
 	    break;
 	case DOpropZ:
-	    wdo->doZ= arg;
+	    sp->spZ= arg;
 	    break;
 	case DOpropWIDE:
-	    wdo->doWide= arg;
-	    io->ioTwipsWide= arg;
+	    sp->spRect.drX1= sp->spRect.drX0+ arg;
+	    ds->dsGeoRect.drX1= ds->dsGeoRect.drX0+ arg;
 	    break;
 	case DOpropHIGH:
-	    wdo->doHigh= arg;
-	    io->ioTwipsHigh= arg;
+	    sp->spRect.drY1= sp->spRect.drY0+ arg;
+	    ds->dsGeoRect.drY1= ds->dsGeoRect.drY0+ arg;
+	    break;
+
+	case DOpropTEXT_BOX_MARGIN:
+	    ds->ds_dxTextLeft= TWIPStoEMU( arg );
+	    ds->ds_dyTextTop= TWIPStoEMU( arg );
+	    ds->ds_dxTextRight= TWIPStoEMU( arg );
+	    ds->ds_dyTextBottom= TWIPStoEMU( arg );
 	    break;
 
 	case DOpropLINE_WIDTH:
-	    wdo->doLineWidth= arg;
+	    ds->dsLineWidthEmu= TWIPStoEMU( arg );
 	    break;
 
 	case DOpropPOINT_COUNT:
-	    if  ( docRtfDrawingObjectAllocatePoints( wdo, arg ) )
+	    rrc->rrcNextObjectVertex= ds->dsVertexCount;
+	    if  ( docRtfDrawingObjectAllocatePoints( ds, arg ) )
 		{ LDEB(arg); return -1;	}
 	    break;
 
+	case DOpropSTART_ARROW_HEAD:
+	    ds->dsLineStartArrow.saArrowHead= rcw->rcwEnumValue;
+	    break;
+	case DOpropEND_ARROW_HEAD:
+	    ds->dsLineEndArrow.saArrowHead= rcw->rcwEnumValue;
+	    break;
+	case DOpropSTART_ARROW_WIDTH:
+	    ds->dsLineStartArrow.saArrowWidth= rcw->rcwEnumValue;
+	    break;
+	case DOpropEND_ARROW_WIDTH:
+	    ds->dsLineEndArrow.saArrowWidth= rcw->rcwEnumValue;
+	    break;
+	case DOpropSTART_ARROW_LENGTH:
+	    ds->dsLineStartArrow.saArrowLength= rcw->rcwEnumValue;
+	    break;
+	case DOpropEND_ARROW_LENGTH:
+	    ds->dsLineEndArrow.saArrowLength= rcw->rcwEnumValue;
+	    break;
+
 	case DOpropLINE_RED:
-	    wdo->doLineColor.rgb8Red= arg;
-	    wdo->doLineColorGray= 0;
+	    ds->dsLineColor.rgb8Red= arg;
 	    break;
 	case DOpropLINE_GREEN:
-	    wdo->doLineColor.rgb8Green= arg;
-	    wdo->doLineColorGray= 0;
+	    ds->dsLineColor.rgb8Green= arg;
 	    break;
 	case DOpropLINE_BLUE:
-	    wdo->doLineColor.rgb8Blue= arg;
-	    wdo->doLineColorGray= 0;
+	    ds->dsLineColor.rgb8Blue= arg;
 	    break;
 	case DOpropLINE_GRAY:
-	    wdo->doLineColor.rgb8Red= arg;
-	    wdo->doLineColor.rgb8Green= arg;
-	    wdo->doLineColor.rgb8Blue= arg;
-	    wdo->doLineColorGray= 1;
+	    ds->dsLineColor.rgb8Red= arg;
+	    ds->dsLineColor.rgb8Green= arg;
+	    ds->dsLineColor.rgb8Blue= arg;
 	    break;
 
 	case DOpropFILL_FORE_RED:
-	    wdo->doFillForeColor.rgb8Red= arg;
-	    wdo->doFillForeColorGray= 0;
+	    ds->dsFillColor.rgb8Red= arg;
 	    break;
 	case DOpropFILL_FORE_GREEN:
-	    wdo->doFillForeColor.rgb8Green= arg;
-	    wdo->doFillForeColorGray= 0;
+	    ds->dsFillColor.rgb8Green= arg;
 	    break;
 	case DOpropFILL_FORE_BLUE:
-	    wdo->doFillForeColor.rgb8Blue= arg;
-	    wdo->doFillForeColorGray= 0;
+	    ds->dsFillColor.rgb8Blue= arg;
 	    break;
 	case DOpropFILL_FORE_GRAY:
-	    wdo->doFillForeColor.rgb8Red= arg;
-	    wdo->doFillForeColor.rgb8Green= arg;
-	    wdo->doFillForeColor.rgb8Blue= arg;
-	    wdo->doFillForeColorGray= 1;
+	    ds->dsFillColor.rgb8Red= arg;
+	    ds->dsFillColor.rgb8Green= arg;
+	    ds->dsFillColor.rgb8Blue= arg;
 	    break;
 
 	case DOpropFILL_BACK_RED:
-	    wdo->doFillBackColor.rgb8Red= arg;
-	    wdo->doFillBackColorGray= 0;
+	    ds->dsFillBackColor.rgb8Red= arg;
 	    break;
 	case DOpropFILL_BACK_GREEN:
-	    wdo->doFillBackColor.rgb8Green= arg;
-	    wdo->doFillBackColorGray= 0;
+	    ds->dsFillBackColor.rgb8Green= arg;
 	    break;
 	case DOpropFILL_BACK_BLUE:
-	    wdo->doFillBackColor.rgb8Blue= arg;
-	    wdo->doFillBackColorGray= 0;
+	    ds->dsFillBackColor.rgb8Blue= arg;
 	    break;
 	case DOpropFILL_BACK_GRAY:
-	    wdo->doFillBackColor.rgb8Red= arg;
-	    wdo->doFillBackColor.rgb8Green= arg;
-	    wdo->doFillBackColor.rgb8Blue= arg;
-	    wdo->doFillBackColorGray= 1;
+	    ds->dsFillBackColor.rgb8Red= arg;
+	    ds->dsFillBackColor.rgb8Green= arg;
+	    ds->dsFillBackColor.rgb8Blue= arg;
 	    break;
 
 	default:
@@ -193,33 +237,31 @@ int docRtfDrawingObjectCoordinate(	SimpleInputStream *	sis,
 					int			arg,
 					RtfReadingContext *	rrc )
     {
-    InsertedObject *	io= rrc->rrcInsertedObject;
-    DrawingObject *	wdo;
+    DrawingShape *	ds= ds= rrc->rrcDrawingShape;
+    ShapeProperties *	sp;
 
     if  ( rrc->rrcInIgnoredGroup > 0 )
 	{ return 0;	}
 
-    if  ( ! io )
-	{
-	LSXDEB(rrc->rrcCurrentLine,rcw->rcwWord,rrc->rrcInsertedObject);
-	return 0;
-	}
+    if  ( ! ds )
+	{ SLLXDEB(rcw->rcwWord,arg,rrc->rrcCurrentLine,ds); return 0;	}
 
-    wdo= &(io->ioDrawingObject);
+    sp= &(ds->dsShapeProperties);
 
-    if  ( wdo->doNextPoint >= wdo->doPointCount )
+    if  ( rrc->rrcNextObjectVertex >= ds->dsVertexCount	||
+	  rrc->rrcNextObjectVertex < 0			)
 	{
-	LLLDEB(wdo->doKind,wdo->doNextPoint,wdo->doPointCount);
+	LLLDEB(ds->dsShapeType,rrc->rrcNextObjectVertex,ds->dsVertexCount);
 	return 0;
 	}
 
     switch( rcw->rcwID )
 	{
 	case DOpropX:
-	    wdo->doPoints[wdo->doNextPoint  ].x= arg;
+	    ds->dsVertices[rrc->rrcNextObjectVertex  ].svX= arg;
 	    break;
 	case DOpropY:
-	    wdo->doPoints[wdo->doNextPoint++].y= arg;
+	    ds->dsVertices[rrc->rrcNextObjectVertex++].svY= arg;
 	    break;
 
 	default:
@@ -228,57 +270,5 @@ int docRtfDrawingObjectCoordinate(	SimpleInputStream *	sis,
 	}
 
     return 0;
-    }
-
-int docRtfReadDrawingObject(
-			SimpleInputStream *	sis,
-			const RtfControlWord *	rcw,
-			int			arg,
-			RtfReadingContext *	rrc )
-    {
-    RtfReadingState *		externRrs= rrc->rrcState;
-    RtfReadingState		internRrs;
-
-    int				rval;
-    TextParticule *		tp;
-
-    BufferItem *		bi= rrc->rrcBi;
-    int				off= bi->biParaStrlen;
-    InsertedObject *		ioSave= rrc->rrcInsertedObject;
-
-    /*
-    LSLDEB(rrc->rrcCurrentLine,rcw->rcwWord,rrc->rrcInIgnoredGroup);
-    */
-
-    if  ( rrc->rrcInIgnoredGroup == 0 )
-	{
-	if  ( docInflateTextString( bi, 1 ) )
-	    { LLDEB(bi->biParaStrlen,1); return -1; }
-
-	bi->biParaString[off]= ' ';
-	bi->biParaStrlen++;
-	bi->biParaString[bi->biParaStrlen]= '\0';
-
-	tp= docInsertObject( rrc->rrcBd, bi, &(rrc->rrcInsertedObject),
-				    -1, off, &(externRrs->rrsTextAttribute) );
-	if  ( ! tp )
-	    { LDEB(bi->biParaParticuleCount); return -1;	}
-	}
-
-    docRtfPushReadingState( rrc, &internRrs );
-
-    rval= docRtfConsumeGroup( sis, DOClevPARA, rrc,
-				(const RtfControlWord *)0, docRtfEmptyTable,
-				(RtfAddTextParticule)0 );
-
-    if  ( rval )
-	{ SLDEB(rcw->rcwWord,rval);	}
-
-    rrc->rrcInsertedObject->ioKind= DOCokDRAWING_OBJECT;
-
-    rrc->rrcInsertedObject= ioSave;
-    docRtfPopReadingState( rrc );
-
-    return rval;
     }
 

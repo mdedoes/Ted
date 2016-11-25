@@ -28,22 +28,12 @@
 /*									*/
 /************************************************************************/
 
-static int docLayoutOpenParaFonts(	const BufferDocument *		bd,
-					BufferItem *			paraBi,
-					AppDrawingData *		add )
-    { return 0;	}
-
 static int docLayoutParaInit(	const BufferDocument *		bd,
 				BufferItem *			paraBi,
 				AppDrawingData *		add )
     {
-    if  ( docLayoutOpenParaFonts( bd, paraBi, add ) )
-	{ LDEB(1); return -1;	}
-
     if  ( docPsParagraphLineExtents( bd, add->addPostScriptFontList, paraBi ) )
 	{ LDEB(1); return -1;	}
-
-    paraBi->biParaLineCount= 0;
 
     return 0;
     }
@@ -61,9 +51,11 @@ static int docLayoutParaItem(	BufferItem *			paraBi,
 				const ParagraphLayoutContext *	plc )
     {
     ParagraphLayoutJob		plj;
+    const int			line= 0;
+    const int			part= 0;
 
     docPsBeginParagraphLayoutProgress( &plj,
-			paraBi->biNumberInParent, 0, 0,
+			paraBi->biNumberInParent, line, part,
 			paraBi->biNumberInParent+ 1,
 			&(lj->ljPosition) );
 
@@ -97,8 +89,7 @@ static void docPsPlaceAdjustBottom(	int *			pChanged,
 
     oldY1Pixels= BI_BELOW_PIXELS( add, bi );
 
-    if  ( bi->biBelowPosition.lpPage != lp->lpPage		||
-	  bi->biBelowPosition.lpPageYTwips != lp->lpPageYTwips	)
+    if  ( ! DOC_SAME_POSITION( &(bi->biBelowPosition), lp ) )
 	{ bi->biBelowPosition= *lp; changed= 1; }
 
     newY1Pixels= LP_YPIXELS( add, lp );
@@ -196,12 +187,15 @@ static int docLayoutPlaceChildren(
 	    case DOClevCELL:
 		{
 		ParagraphLayoutJob	plj;
+		const int		para= 0;
+		const int		line= 0;
+		const int		part= 0;
 
 		docInitParagraphLayoutJob( &plj );
 
 		docPsBeginParagraphLayoutProgress( &plj,
-						0, 0, 0, child->biChildCount,
-						&(lj->ljPosition) );
+				    para, line, part, child->biChildCount,
+				    &(lj->ljPosition) );
 
 		if  ( docLayoutParagraphs( plc, child, bf, lj, &plj ) )
 		    { LDEB(1); return -1;	}
@@ -246,6 +240,30 @@ static int docLayoutPlaceChildren(
 /*									*/
 /************************************************************************/
 
+int docItemLayoutStartPosition(	LayoutPosition *	lp,
+				const BufferItem *	bi )
+    {
+    if  ( bi->biNumberInParent == 0 )
+	{
+	if  ( bi->biParent )
+	    { *lp= bi->biParent->biTopPosition;	}
+	else{
+	    if  ( bi->biInExternalItem == DOCinBODY )
+		{ docInitLayoutPosition( lp );		}
+	    else{ *lp= bi->biTopPosition;		}
+	    }
+	}
+    else{
+	const BufferItem *	prevBi;
+
+	prevBi= bi->biParent->biChildren[bi->biNumberInParent- 1];
+
+	*lp= prevBi->biBelowPosition;
+	}
+
+    return 0;
+    }
+
 static int docRedoBodyLayout(		BufferItem *		bodyBi,
 					const LayoutJob *	ljRef )
     {
@@ -259,7 +277,8 @@ static int docRedoBodyLayout(		BufferItem *		bodyBi,
     bodyLj.ljBd= ljRef->ljBd;
     bodyLj.ljScreenFontList= ljRef->ljScreenFontList;
     bodyLj.ljChangedItem= bodyBi;
-    bodyLj.ljPosition= bodyBi->biTopPosition;
+
+    docItemLayoutStartPosition( &(bodyLj.ljPosition), bodyBi );
 
     if  ( docLayoutItemAndParents( bodyBi, &bodyLj ) )
 	{ LDEB(1); return -1;	}
@@ -351,11 +370,10 @@ static int docPsFixupParentGeometry(	BufferItem *		bi,
 
     lpBi.lpPageYTwips -= biParent->biTopInsetTwips;
 
-    if  ( lpPa.lpPage != lpBi.lpPage			||
-	  lpPa.lpPageYTwips != lpBi.lpPageYTwips	)
+    if  ( ! DOC_SAME_POSITION( &lpPa, &lpBi ) )
 	{
 #	if 0
-	if  ( bi->biLevel ==DOClevPARA)
+	if  ( bi->biLevel == DOClevPARA)
 	    { SDEB((char *)bi->biParaString);	}
 
 	SSDEB(docLevelStr(biParent->biLevel),docLevelStr(bi->biLevel));
@@ -376,9 +394,9 @@ static int docPsFixupParentGeometry(	BufferItem *		bi,
 /*  Adjust the geometry of a parent item to changes in a child.		*/
 /*									*/
 /*  This actually is a full layout action of everything below the	*/
-/*  actually reformatted part. There are two differences:		*/
+/*  recently reformatted part. There are two differences:		*/
 /*  a)  Reformatting stops when a buffer item lands in the same		*/
-/*	position where it was before the change that forces us to redo	*/
+/*	position where it was before the change that forced us to redo	*/
 /*	part of the layout.						*/
 /*  b)  We try not to recalculate the layout of the text inside the	*/
 /*	individual text lines.						*/
@@ -414,11 +432,13 @@ static int docAdjustParentGeometry(	BufferItem *		bi,
 	{
 	ParagraphLayoutJob	plj;
 	int			advanced= 0;
+	const int		line= 0;
+	const int		part= 0;
 
 	docInitParagraphLayoutJob( &plj );
 
 	docPsBeginParagraphLayoutProgress( &plj,
-				    bi->biNumberInParent+ 1, 0, 0,
+				    bi->biNumberInParent+ 1, line, part,
 				    parentBi->biChildCount,
 				    &(lj->ljPosition) );
 
@@ -483,7 +503,7 @@ static int docAdjustParentGeometry(	BufferItem *		bi,
 		    }
 		else{ lj->ljPosition= bi->biBelowPosition;		}
 
-		if  ( parentBi->biInExternalItem == DOCinBODY		&&
+		if  ( parentBi->biInExternalItem == DOCinBODY	&&
 		      npEndnotes->npPosition == FTN_POS_DOC_END	)
 		    {
 		    if  ( docLayoutEndnotesForDocument( bf, lj ) )
@@ -534,12 +554,15 @@ static int docAdjustParentGeometry(	BufferItem *		bi,
 		if  ( from <= parentBi->biChildCount- 1 )
 		    {
 		    ParagraphLayoutJob	plj;
+		    const int		line= 0;
+		    const int		part= 0;
 
 		    docInitParagraphLayoutJob( &plj );
 
 		    docPsBeginParagraphLayoutProgress( &plj,
-					    from, 0, 0, parentBi->biChildCount,
-					    &(lj->ljPosition) );
+						    from, line, part,
+						    parentBi->biChildCount,
+						    &(lj->ljPosition) );
 
 		    if  ( docLayoutParagraphs( &plc, parentBi, bf, lj, &plj ) )
 			{ LDEB(1); return -1;	}
@@ -594,7 +617,11 @@ static int docAdjustParentGeometry(	BufferItem *		bi,
     if  ( bi->biInExternalItem == DOCinBODY	&&
 	  BF_HAS_FOOTNOTES( bf )		)
 	{
-	if  ( docLayoutFootnotesForColumn( bf, &(lj->ljPosition), lj ) )
+	const int		belowText= 0;
+	LayoutPosition		lpBelowNotes;
+
+	if  ( docLayoutFootnotesForColumn( &lpBelowNotes, bf,
+					belowText, &(lj->ljPosition), lj ) )
 	    { LDEB(1); return -1;	}
 	}
 
@@ -653,6 +680,10 @@ static int docAdjustParentGeometry(	BufferItem *		bi,
 		if  ( docRedoBodyItemLayout( bi, lj ) )
 		    { LDEB(1); return -1;	}
 
+		break;
+
+	    case DOCinSHPTXT:
+		/*nothing*/
 		break;
 
 	    default:
@@ -773,17 +804,22 @@ int docLayoutItemImplementation(	BufferItem *		bi,
 		if  ( docLayoutItemImplementation( bi->biChildren[i], bf, lj ) )
 		    { LDEB(1); return -1;	}
 		}
+	    if  ( bi->biChildCount > 0 )
+		{ bi->biTopPosition= bi->biChildren[0]->biTopPosition;	}
 	    break;
 
 	case DOClevCELL:
 	    {
-	    ParagraphLayoutJob	plj;
+	    ParagraphLayoutJob		plj;
+	    const int			para= 0;
+	    const int			line= 0;
+	    const int			part= 0;
 
 	    docInitParagraphLayoutJob( &plj );
 
 	    docPsBeginParagraphLayoutProgress( &plj,
-					    0, 0, 0, bi->biChildCount,
-					    &(lj->ljPosition) );
+					para, line, part, bi->biChildCount,
+					&(lj->ljPosition) );
 
 	    if  ( docLayoutParagraphs( &plc, bi, bf, lj, &plj ) )
 		{ LDEB(1); return -1;	}
@@ -829,207 +865,77 @@ int docLayoutItemImplementation(	BufferItem *		bi,
     return 0;
     }
 
-int docLayoutItemAndParents(	BufferItem *		bi,
-				LayoutJob *		lj )
+/************************************************************************/
+/*									*/
+/*  Recalculate the layout for a block in the document hierarchy.	*/
+/*									*/
+/*  1)  If we do not have to recalculate the layout of the document as	*/
+/*	a whole..							*/
+/*  2)  Calculate the frame in which the text is to be laid out.	*/
+/*  3)  If the preceding paragraph ends on the same page where this	*/
+/*	nodes begins, reserve space for the footnotes upto the		*/
+/*	beginning of this block and subtract the height from the buttom	*/
+/*	of the frame.							*/
+/*  4)  Perform the actual layout operation.				*/
+/*  5)  Adjust the positions of the parent nodes and any children of	*/
+/*	the parent below this node.					*/
+/*									*/
+/************************************************************************/
+
+static int docLayoutGetInitialFrame(	BlockFrame *		bf,
+					const LayoutJob *	lj,
+					BufferItem *		bi )
     {
-    BufferDocument *		bd= lj->ljBd;
-    BlockFrame			bf;
+    BufferDocument *	bd= lj->ljBd;
+    const BufferItem *	prevParaBi= (const BufferItem *)0;
 
-    docLayoutInitBlockFrame( &bf );
+    /*  2  */
+    docBlockFrameTwips( bf, bi, bd,
+			lj->ljPosition.lpPage, lj->ljPosition.lpColumn );
 
-    if  ( bi->biLevel != DOClevDOC )
+    /*  3  */
+    if  ( bi->biInExternalItem == DOCinBODY )
+	{ prevParaBi= docPrevParagraph( bi );	}
+
+    if  ( prevParaBi						&&
+	  prevParaBi->biBelowPosition.lpPage >=
+					lj->ljPosition.lpPage	)
 	{
-	const BufferItem *	prevParaBi= (const BufferItem *)0;
+	DocumentPosition		dpHere;
+	int				partHere;
 
-	docBlockFrameTwips( &bf, bi, bd,
-			    lj->ljPosition.lpPage, lj->ljPosition.lpColumn );
+	if  ( docFirstPosition( &dpHere, bi ) )
+	    { LDEB(1); return -1;	}
+	partHere= 0;
 
-	if  ( bi->biInExternalItem == DOCinBODY )
-	    { prevParaBi= docPrevParagraph( bi );	}
-
-	if  ( prevParaBi						&&
-	      prevParaBi->biBelowPosition.lpPage >=
-						lj->ljPosition.lpPage	)
-	    {
-	    DocumentPosition		dpHere;
-	    int				partHere;
-
-	    if  ( docFirstPosition( &dpHere, bi ) )
-		{ LDEB(1); return -1;	}
-	    partHere= 0;
-
-	    if  ( docCollectFootnotesForColumn( &bf, &dpHere, partHere, lj ) )
-		{ LDEB(lj->ljPosition.lpPage); return -1;	}
-	    }
+	if  ( docCollectFootnotesForColumn( bf, &dpHere, partHere, lj ) )
+	    { LDEB(lj->ljPosition.lpPage); return -1;	}
 	}
-
-    if  ( docLayoutItemImplementation( bi, &bf, lj ) )
-	{ LDEB(1); return -1;	}
-
-    if  ( docAdjustParentGeometry( bi, &bf, lj ) )
-	{ LDEB(1); return -1;	}
 
     return 0;
     }
 
-/************************************************************************/
-/*									*/
-/*  Finish formatting a paragraph, either because additional lines are	*/
-/*  to be added to the paragraph, or because its tail is to be shifted	*/
-/*  (up or) down after some lines have been reformatted.		*/
-/*									*/
-/************************************************************************/
-
-static int docLayoutFinishParaAdjust(
-				ParagraphLayoutPosition *	plp,
-				BlockFrame *			bf,
-				const ParagraphLayoutContext *	plc,
-				const LayoutJob *		lj,
-				BufferItem *			paraBi )
+int docLayoutItemAndParents(	BufferItem *		bi,
+				LayoutJob *		lj )
     {
-    int				done= 0;
-    ParagraphStripPosition *	psp= &(plp->plpProgress);
+    BlockFrame			bf;
 
-    while( psp->pspPart < paraBi->biParaParticuleCount )
-	{
-	int	accepted;
+    docLayoutInitBlockFrame( &bf );
 
-	accepted= docLayoutLines( plp, bf, plc, paraBi );
+    /*  1  */
+    if  ( bi->biLevel != DOClevDOC			&&
+	  docLayoutGetInitialFrame( &bf, lj, bi )	)
+	{ LDEB(1); return -1;	}
 
-	if  ( accepted < 0 )
-	    { LDEB(accepted); return -1;	}
+    /*  4  */
+    if  ( docLayoutItemImplementation( bi, &bf, lj ) )
+	{ LDEB(1); return -1;	}
 
-	plp->plpProgress.pspPart += accepted;
-	done += accepted;
+    /*  5  */
+    if  ( docAdjustParentGeometry( bi, &bf, lj ) )
+	{ LDEB(1); return -1;	}
 
-	/*  1  */
-	if  ( psp->pspPart < paraBi->biParaParticuleCount		&&
-	      ( accepted > 0 || ! plp->plpPos.lpAtTopOfColumn )		)
-	    {
-	    if  ( BF_HAS_FOOTNOTES( bf )				&&
-		  docLayoutFootnotesForColumn( bf, &(plp->plpPos), lj )	)
-		{ LDEB(1); return -1;	}
-
-	    docLayoutToNextColumn( paraBi, plc->plcBd, &(plp->plpPos), bf );
-
-	    if  ( psp->pspPart == 0 )
-		{ paraBi->biTopPosition= plp->plpPos;	}
-	    }
-	}
-
-    return done;
-    }
-
-/************************************************************************/
-/*									*/
-/*  Adjust the layout of a paragraph after a modification.		*/
-/*									*/
-/*  0)  Do not start with the first line of the page.			*/
-/*  1)  Initialisation for paragraph formatting.			*/
-/*  2)  Recalculate the layout of the first line that was changed.	*/
-/*  3)  Did not fit on this page.. Try the next one.			*/
-/*  4)  Layout subsequent lines of the paragraph, until the layout	*/
-/*	process reaches the point outside the modified region where it	*/
-/*	starts to cut lines at the same point where they were		*/
-/*	originally cut.							*/
-/*  5)  More lines than the paragraph originally contained are needed.	*/
-/*	Just layout the rest.						*/
-/*  6)  We are beyond the end of the modified region, and the new line	*/
-/*	is to start where the old line starts. Just place the		*/
-/*	subsequent lines from here.					*/
-/*  7)  Recalculate the layout of a subsequent line that was changed.	*/
-/*  8)  Remove superfluous lines from the administration.		*/
-/*  9)  If the paragraph has changed height.. Adjust the redraw region.	*/
-/*  10) Adjust the geometry of the rest of the document to the changes.	*/
-/*									*/
-/************************************************************************/
-
-/*  3  */
-static int docPsLayoutOneLine(	TextLine *			tl,
-				BufferItem *			paraBi,
-				ParagraphLayoutPosition *	plp,
-				ParticuleData *			pd,
-				const ParagraphLayoutContext *	plc,
-				LayoutJob *			lj,
-				DocumentRectangle *		drChanged,
-				BlockFrame *			bf )
-    {
-    AppDrawingData *		add= plc->plcAdd;
-    BufferDocument *		bd= plc->plcBd;
-
-    ParagraphStripPosition *	psp= &(plp->plpProgress);
-
-    const int			fromLinePos= 1;
-    int				accepted;
-
-    NotesReservation		nrLine;
-
-    TextLine			boxLine;
-
-    if  ( drChanged )
-	{
-	int	x0Pixels= TL_TOP_PIXELS( add, tl );
-	int	x1Pixels= TL_BELOW_PIXELS( add, tl );
-
-	if  ( drChanged->drY0 > x0Pixels	)
-	    { drChanged->drY0=  x0Pixels;	}
-
-	if  ( drChanged->drY1 < x1Pixels	)
-	    { drChanged->drY1=  x1Pixels;	}
-	}
-
-    docInitNotesReservation( &nrLine );
-
-    /*  2,7  */
-    accepted= docLayout_Line( &boxLine, &nrLine, bf, fromLinePos,
-				paraBi, psp->pspPart, pd, plc,
-				&(plp->plpFormattingFrame),
-				&(plp->plpPos), &(plp->plpPos),
-				&(lj->ljLayoutScreen) );
-
-    if  ( accepted < 0 )
-	{ LDEB(accepted); return -1;	}
-
-    /*  3  */
-    if  ( accepted == 0 )
-	{
-	if  ( paraBi->biInExternalItem != DOCinBODY	&&
-	      paraBi->biInExternalItem != DOCinENDNOTE	&&
-	      paraBi->biInExternalItem != DOCinAFTNSEP	)
-	    { LDEB(paraBi->biInExternalItem);	}
-
-	if  ( BF_HAS_FOOTNOTES( bf )					&&
-	      docLayoutFootnotesForColumn( bf, &(plp->plpPos), lj )	)
-	    { LDEB(1); return -1;	}
-
-	docLayoutToNextColumn( paraBi, bd, &(plp->plpPos), bf );
-
-	docInitNotesReservation( &nrLine );
-
-	accepted= docLayout_Line(
-			    &boxLine, &nrLine, bf, fromLinePos,
-			    paraBi, psp->pspPart, pd, plc,
-			    &(plp->plpFormattingFrame),
-			    &(plp->plpPos), &(plp->plpPos),
-			    &(lj->ljLayoutScreen) );
-
-	if  ( accepted < 1 )
-	    { LDEB(accepted); return -1;	}
-	}
-
-    docLayoutReserveNoteHeight( &(plp->plpFormattingFrame), bf, &nrLine );
-
-    if  ( drChanged )
-	{
-	int	x1= LP_YPIXELS( add, &(plp->plpPos) );
-
-	if  ( drChanged->drY1 < x1	)
-	    { drChanged->drY1=  x1;	}
-	}
-
-    *tl= boxLine;
-
-    return accepted;
+    return 0;
     }
 
 /************************************************************************/
@@ -1041,6 +947,27 @@ static int docPsLayoutOneLine(	TextLine *			tl,
 /*  what has been changed, in order to redraw a minimal screen		*/
 /*  rectangle.								*/
 /*									*/
+/*  a)  Shift the offsets of the lines in the rest of the paragraph.	*/
+/*	This means that we optimistically assume that the change in the	*/
+/*	text of the paragraph only affected the current line, and that	*/
+/*	the lines below are unchanged. This assumption is verified by	*/
+/*	docLayoutLines() so out naive optimism does no harm.		*/
+/*  b)  Invalidate the column with of the lines that are to be		*/
+/*	reformatted anyway to force a reformat by docLayoutLines().	*/
+/*	[stroffUpto is in terms of the new line and particule offsets.]	*/
+/*	Below, fromLine can change value. This forced invalidation	*/
+/*	refers to the original value however: The beginning of the	*/
+/*	edited stretch of text.						*/
+/*  c)  Remember the end of the reformatting range.			*/
+/*  d)  With widow/orphan control enabled, and at the top of a page,	*/
+/*	start a little earlier to make sure that all special cases are	*/
+/*	covered by the regular formatter algorithm.			*/
+/*  2)  Calculate the frame in which the text is to be laid out.	*/
+/*  3)  Reserve space for the footnotes upto the beginning of this line	*/
+/*	and subtract the height from the buttom of the frame.		*/
+/*  6)  Set the start position for the layout operation to the current	*/
+/*	line. Try only to redo the layout of the current paragraph.	*/
+/*									*/
 /************************************************************************/
 
 int docAdjustParaLayout(	BufferItem *		paraBi,
@@ -1049,270 +976,184 @@ int docAdjustParaLayout(	BufferItem *		paraBi,
 				int			stroffUpto,
 				LayoutJob *		lj )
     {
-    BufferDocument *		bd= lj->ljBd;
-    DocumentRectangle *		drChanged= lj->ljChangedRectanglePixels;
     AppDrawingData *		add= lj->ljAdd;
+    ScreenFontList *		sfl= lj->ljScreenFontList;
+    BufferDocument *		bd= lj->ljBd;
 
-    TextLine			boxLine;
-    TextLine *			tl;
-    int				oneMore;
-
-    TextParticule *		tp;
-
-    ParticuleData *		pd;
-
-    int				accepted;
-    int				off;
+    BlockFrame			bf;
+    int				fromPart;
+    int				line;
+    int				advanced= 0;
 
     const int			bottomTwips= -1;
     const int			stripHigh= -1;
 
-    int				paragraphHeightChanged;
-    int				firstLineHeightChanged;
+    ParagraphLayoutJob		plj;
+    ParagraphLayoutContext	plc;
 
-    ParagraphLayoutContext	plcL;
-    ParagraphLayoutContext	plcP;
+    LayoutPosition		oldLpBelow;
+    int				paraUpto;
+    const BufferItem *		prevParaBi= (const BufferItem *)0;
+    BufferItem *		cellBi= paraBi->biParent;
 
-    ParagraphLayoutPosition	plp;
+    int				fromPara;
+    BufferItem *		biParaFrom;
 
-    BlockFrame			bf;
+    if  ( paraBi->biLevel != DOClevPARA )
+	{ LLDEB(paraBi->biLevel,DOClevPARA); return -1; }
+    if  ( fromLine < 0 || fromLine >= paraBi->biParaLineCount )
+	{ LLDEB(fromLine, paraBi->biParaLineCount); return -1;	}
 
-    ScreenFontList *		sfl= lj->ljScreenFontList;
+    /*  a,b  */
+    {
+    TextLine *	tlShift;
 
-#   if 0
-    LDEB(444);
-    lj->ljPosition= paraBi->biTopPosition;
-    if  ( docLayoutItemAndParents( paraBi, lj ) )
-	{ LDEB(1); return -1;	}
-    return 0;
-#   endif
-
-    plcL.plcChangedRectanglePixels= lj->ljChangedRectanglePixels;
-    plcL.plcAdd= lj->ljAdd;
-    plcL.plcBd= lj->ljBd;
-    plcL.plcScreenFontList= sfl;
-
-    plcP.plcChangedRectanglePixels= lj->ljChangedRectanglePixels;
-    plcP.plcAdd= lj->ljAdd;
-    plcP.plcBd= lj->ljBd;
-    plcP.plcScreenFontList= sfl;
-
-    plcL.plcScreenLayout= lj->ljLayoutScreen;
-    plcL.plcStartParagraph= docLayoutParaInit;
-    plcL.plcAdjustBottom= docPsLayoutAdjustBottom;
-
-    plcP.plcScreenLayout= lj->ljPlaceScreen;
-    plcP.plcStartParagraph= docPlaceParaInit;
-    plcP.plcAdjustBottom= docPsPlaceAdjustBottom;
-
-    if  ( docPsClaimParticuleData( paraBi, &pd ) )
-	{ LDEB(paraBi->biParaParticuleCount); return -1;	}
-
-    /*  1  */
-    if  ( docLayoutOpenParaFonts( bd, paraBi, add ) )
-	{ LDEB(1); return -1;	}
-
-    /*  0  */
-    tl= paraBi->biParaLines+ fromLine;
-    oneMore= 0;
-    if  ( fromLine > 0							&&
-	  tl[-1].tlTopPosition.lpPage != tl[ 0].tlTopPosition.lpPage	)
-	{ fromLine--; tl--; oneMore= 1;	}
-    tp= paraBi->biParaParticules+ tl->tlFirstParticule;
-
-    plp.plpProgress.pspPara= paraBi->biNumberInParent;
-    plp.plpProgress.pspLine= fromLine;
-    plp.plpProgress.pspPart= tl->tlFirstParticule;
-    plp.plpPos= tl->tlTopPosition;
-
-    lj->ljPosition= tl->tlTopPosition;
-
-    docBlockFrameTwips( &bf, paraBi, bd,
-					tl[ 0].tlTopPosition.lpPage,
-					tl[ 0].tlTopPosition.lpColumn );
-
-    if  ( paraBi->biInExternalItem == DOCinBODY	)
+    tlShift= paraBi->biParaLines+ fromLine;
+    tlShift->tlFrameWidthTwips= 0;
+    tlShift->tlFrameX0Twips= 0;
+    tlShift++;
+    for ( line= fromLine+ 1; line < paraBi->biParaLineCount; tlShift++, line++ )
 	{
-	DocumentSelection	dsLine;
-	int			partLineBegin;
-	int			partLineEnd;
+	tlShift->tlStroff += stroffShift;
 
-	docLineSelection( &dsLine, &partLineBegin, &partLineEnd,
-							paraBi, fromLine );
+	if  ( tlShift->tlStroff < stroffUpto )
+	    {
+	    tlShift->tlFrameWidthTwips= 0;
+	    tlShift->tlFrameX0Twips= 0;
+	    }
+	}
+    }
 
-	if  ( docCollectFootnotesForColumn( &bf, &(dsLine.dsBegin),
-							partLineBegin, lj ) )
+    /*  c  */
+    oldLpBelow= paraBi->biBelowPosition;
+    paraUpto= paraBi->biNumberInParent+ 1;
+
+    plc.plcChangedRectanglePixels= lj->ljChangedRectanglePixels;
+    plc.plcAdd= lj->ljAdd;
+    plc.plcBd= lj->ljBd;
+    plc.plcScreenFontList= lj->ljScreenFontList;
+
+    plc.plcScreenLayout= lj->ljLayoutScreen;
+    plc.plcStartParagraph= docLayoutParaInit;
+    plc.plcAdjustBottom= docPsLayoutAdjustBottom;
+
+    docLayoutInitBlockFrame( &bf );
+
+    if  ( paraBi->biNumberInParent > 0 )
+	{ prevParaBi= cellBi->biChildren[paraBi->biNumberInParent- 1]; }
+
+    /*  d  */
+    biParaFrom= paraBi;
+    fromPara= biParaFrom->biNumberInParent;
+    if  ( paraBi->biParaWidowControl	&&
+	  fromLine < 3			&&
+	  paraBi->biNumberInParent > 0	)
+	{
+	fromLine= 0;
+	fromPart= 0;
+
+	while( prevParaBi->biNumberInParent > 0 )
+	    {
+	    prevParaBi= cellBi->biChildren[prevParaBi->biNumberInParent- 1];
+
+	    fromPara--;
+	    biParaFrom= cellBi->biChildren[fromPara];
+
+	    if  ( ! prevParaBi->biParaKeepWithNext )
+		{ break;	}
+	    }
+
+	lj->ljPosition= prevParaBi->biBelowPosition;
+	}
+    else{
+	const TextLine *	tl;
+
+	tl= paraBi->biParaLines+ fromLine;
+	fromPart= tl->tlFirstParticule;
+	if  ( fromPart == 0 )
+	    {
+	    if  ( paraBi->biNumberInParent == 0 )
+		{ lj->ljPosition= paraBi->biTopPosition;	}
+	    else{ lj->ljPosition= prevParaBi->biBelowPosition;	}
+	    }
+	else{ lj->ljPosition= tl->tlTopPosition;		}
+	}
+
+    /*  2  */
+    docBlockFrameTwips( &bf, biParaFrom, bd,
+			lj->ljPosition.lpPage, lj->ljPosition.lpColumn );
+
+    /*  3  */
+    if  ( biParaFrom->biInExternalItem == DOCinBODY )
+	{
+	TextLine *			tlHere;
+	DocumentPosition		dpHere;
+
+	tlHere= biParaFrom->biParaLines+ fromLine;
+	dpHere.dpBi= biParaFrom;
+	dpHere.dpStroff= tlHere->tlStroff;
+
+	if  ( docCollectFootnotesForColumn( &bf, &dpHere, fromPart, lj ) )
 	    { LDEB(lj->ljPosition.lpPage); return -1;	}
 	}
 
-    docParagraphFrameTwips( &(plp.plpFormattingFrame), &bf,
-					bottomTwips, stripHigh, paraBi );
+    docInitParagraphLayoutJob( &plj );
 
-    if  ( docPsParagraphLineExtents( bd, add->addPostScriptFontList, paraBi ) )
+    docParagraphFrameTwips( &(plj.pljPos.plpFormattingFrame), &bf,
+					bottomTwips, stripHigh, biParaFrom );
+
+    if  ( docPsParagraphLineExtents( bd, add->addPostScriptFontList,
+								biParaFrom ) )
 	{ LDEB(1); return -1;	}
 
     if  ( lj->ljLayoutScreen.slScreenFrame )
 	{
-	(*lj->ljLayoutScreen.slScreenFrame)( &(plp.plpFormattingFrame),
-								add, paraBi );
+	(*lj->ljLayoutScreen.slScreenFrame)( &(plj.pljPos.plpFormattingFrame),
+							    add, biParaFrom );
 	}
 
     if  ( lj->ljLayoutScreen.slStartParagraph				&&
-	  (*lj->ljLayoutScreen.slStartParagraph)(
-						paraBi, add, sfl, bd )	)
+	  (*lj->ljLayoutScreen.slStartParagraph)( biParaFrom,
+		    &(plj.pljPos.plpFormattingFrame), add, sfl, bd )	)
 	{ LDEB(1); return -1;	}
 
-    if  ( drChanged )
+    /*  6  */
+    {
+    docPsBeginParagraphLayoutProgress( &plj,
+			biParaFrom->biNumberInParent, fromLine, fromPart,
+			paraUpto, &(lj->ljPosition) );
+    }
+
+    docPsAdvanceParagraphLayout( &advanced,
+				    &(plj.pljPos0.plpProgress),
+				    &(plj.pljPos0.plpProgress),
+				    &(plj.pljPos.plpProgress),
+				    lj->ljPosition.lpPage, cellBi );
+
+    if  ( docLayoutParagraphs( &plc, cellBi, &bf, lj, &plj ) )
+	{ LDEB(1); return -1;	}
+
+    lj->ljPosition= plj.pljPos.plpPos;
+
+    if  ( paraBi->biParaLineCount < 1 )
+	{ LDEB(paraBi->biParaLineCount); docListItem(0,paraBi); return -1; }
+
+    if  ( ! DOC_SAME_POSITION( &(paraBi->biBelowPosition),
+						    &(lj->ljPosition) ) )
 	{
-	int	y0= TL_TOP_PIXELS( add, tl );
+	LLDEB(paraBi->biBelowPosition.lpPage,lj->ljPosition.lpPage);
+	LDEB(paraBi->biBelowPosition.lpPageYTwips);
+	LDEB(lj->ljPosition.lpPageYTwips);
 
-	if  ( drChanged->drX0 > add->addBackRect.drX0 )
-	    { drChanged->drX0=  add->addBackRect.drX0;	}
-	if  ( drChanged->drX1 < add->addBackRect.drX1 )
-	    { drChanged->drX1=  add->addBackRect.drX1;	}
-
-	if  ( drChanged->drY0 > y0 )
-	    { drChanged->drY0=  y0;	}
+	paraBi->biBelowPosition= lj->ljPosition;
 	}
 
-    /*  2,3  */
-    boxLine= *tl;
-    accepted= docPsLayoutOneLine( &boxLine, paraBi, &plp, pd, &plcL,
-							lj, drChanged, &bf );
-
-    if  ( accepted < 1 )
-	{ LDEB(accepted); return -1;	}
-
-    firstLineHeightChanged= 0;
-    if  ( boxLine.tlTopPosition.lpPage != tl->tlTopPosition.lpPage	||
-	  boxLine.tlTopPosition.lpPageYTwips !=
-				    tl->tlTopPosition.lpPageYTwips	||
-	  boxLine.tlLineHeightTwips != tl->tlLineHeightTwips		)
-	{ firstLineHeightChanged= 1;	}
-
-    *tl= boxLine;
-
-    if  ( tl->tlHasPageBreak )
-	{
-	if  ( paraBi->biInExternalItem != DOCinBODY )
-	    { LDEB(paraBi->biInExternalItem);			}
-	else{
-	    if  ( BF_HAS_FOOTNOTES( &bf )				&&
-		  docLayoutFootnotesForColumn( &bf, &(plp.plpPos), lj )	)
-		{ LDEB(1); return -1;	}
-
-	    docLayoutToNextColumn( paraBi, bd, &(plp.plpPos), &bf );
-	    }
-	}
-
-    off= tl->tlStroff+ tl->tlStrlen;
-    plp.plpProgress.pspLine++; tl++;
-    plp.plpProgress.pspPart += accepted; tp += accepted; pd += accepted;
-
-    /*  4  */
-    while( plp.plpProgress.pspPart < paraBi->biParaParticuleCount )
+    if  ( ! DOC_SAME_POSITION( &(paraBi->biBelowPosition), &oldLpBelow ) )
 	{
 	/*  5  */
-	if  ( plp.plpProgress.pspLine >= paraBi->biParaLineCount )
-	    {
-	    accepted= docLayoutFinishParaAdjust( &plp, &bf, &plcL, lj, paraBi );
-
-	    if  ( accepted < 1 )
-		{ LDEB(accepted); return -1;	}
-
-	    break;
-	    }
-
-	/*  6  */
-	if  ( ! oneMore							&&
-	      tl->tlStroff + stroffShift == off && off >= stroffUpto	)
-	    {
-	    int		ll;
-	    int		partShift;
-
-	    partShift= plp.plpProgress.pspPart- tl->tlFirstParticule;
-
-	    for ( ll= plp.plpProgress.pspLine;
-					ll < paraBi->biParaLineCount; ll++ )
-		{
-		paraBi->biParaLines[ll].tlFirstParticule += partShift;
-		paraBi->biParaLines[ll].tlStroff += stroffShift;
-		}
-
-	    accepted= docLayoutFinishParaAdjust( &plp, &bf, &plcP, lj, paraBi );
-	    if  ( accepted < 1 )
-		{ LDEB(accepted); return -1;	}
-
-	    break;
-	    }
-
-	/*  7,3  */
-	boxLine= *tl;
-	accepted= docPsLayoutOneLine( &boxLine, paraBi, &plp, pd, 
-						&plcL, lj, drChanged, &bf );
-	if  ( accepted < 1 )
-	    { LDEB(accepted); return -1;	}
-
-	*tl= boxLine;
-
-	if  ( tl->tlHasPageBreak )
-	    {
-	    if  ( paraBi->biInExternalItem != DOCinBODY )
-		{ LDEB(paraBi->biInExternalItem);		}
-	    else{
-		if  ( BF_HAS_FOOTNOTES( &bf )				&&
-		      docLayoutFootnotesForColumn( &bf, &(plp.plpPos), lj ) )
-		    { LDEB(1); return -1;	}
-
-		docLayoutToNextColumn( paraBi, lj->ljBd, &(plp.plpPos), &bf );
-		}
-	    }
-
-	off= tl->tlStroff+ tl->tlStrlen;
-	plp.plpProgress.pspLine++; tl++; oneMore= 0;
-	plp.plpProgress.pspPart += accepted; tp += accepted; pd += accepted;
-	}
-
-    /*  8  */
-    if  ( plp.plpProgress.pspLine < paraBi->biParaLineCount )
-	{
-	docDeleteLines( paraBi, plp.plpProgress.pspLine,
-			    paraBi->biParaLineCount- plp.plpProgress.pspLine );
-	}
-
-    if  ( plp.plpProgress.pspPart != paraBi->biParaParticuleCount )
-	{
-	LLDEB(plp.plpProgress.pspPart,paraBi->biParaParticuleCount);
-	return -1;
-	}
-    if  ( plp.plpProgress.pspLine !=  paraBi->biParaLineCount )
-	{
-	LLDEB(plp.plpProgress.pspLine,paraBi->biParaLineCount);
-	return -1;
-	}
-
-    /*  9  */
-    paragraphHeightChanged= 0;
-
-    docPsPlaceAdjustBottom( &paragraphHeightChanged, paraBi,
-					&(plp.plpPos), lj->ljAdd, drChanged );
-
-    lj->ljPosition= plp.plpPos;
-
-    if  ( firstLineHeightChanged || paragraphHeightChanged )
-	{
-	if  ( firstLineHeightChanged		&&
-	      paraBi->biNumberInParent > 0	)
-	    {
-	    paraBi= paraBi->biParent->biChildren[paraBi->biNumberInParent- 1];
-	    lj->ljPosition= paraBi->biBelowPosition;
-	    }
-
-	/*  10  */
 	if  ( docAdjustParentGeometry( paraBi, &bf, lj ) )
 	    { LDEB(1); return -1;	}
 	}
 
     return 0;
     }
-

@@ -64,19 +64,42 @@ void appPageLayoutPageRefresh(	PageLayoutTool *		plt,
 				const DocumentGeometry *	dgSect,
 				const DocumentGeometry *	dgDoc )
     {
+    int				changed= 0;
+    const DocumentGeometry *	dgSelection;
+
+    PropertyMask		setMask;
+    PropertyMask		doneMask;
+
+    PROPmaskCLEAR( &setMask );
+    utilPropMaskFill( &setMask, DGprop_COUNT );
+
     if  ( plt->pltManageSelection )
-	{
-	plt->pltGeometryChosen= *dgSect;
-	plt->pltGeometrySetSelection= *dgSect;
-	}
-    else{
-	plt->pltGeometryChosen= *dgDoc;
-	plt->pltGeometrySetSelection= *dgDoc;
-	}
+	{ dgSelection= dgSect;	}
+    else{ dgSelection= dgDoc;	}
 
-    plt->pltGeometrySetDocument= *dgDoc;
+    /**/
+    PROPmaskCLEAR( &doneMask );
+    utilUpdDocumentGeometry( &(plt->pltGeometryChosen), dgSelection,
+						    &doneMask, &setMask );
+    if  ( ! utilPropMaskIsEmpty( &doneMask ) )
+	{ changed= 1;	}
 
-    appPageLayoutRefreshPageLayoutPage( plt );
+    /**/
+    PROPmaskCLEAR( &doneMask );
+    utilUpdDocumentGeometry( &(plt->pltGeometrySetSelection), dgSelection,
+						    &doneMask, &setMask );
+    if  ( ! utilPropMaskIsEmpty( &doneMask ) )
+	{ changed= 1;	}
+
+    /**/
+    PROPmaskCLEAR( &doneMask );
+    utilUpdDocumentGeometry( &(plt->pltGeometrySetDocument), dgDoc,
+						    &doneMask, &setMask );
+    if  ( ! utilPropMaskIsEmpty( &doneMask ) )
+	{ changed= 1;	}
+
+    if  ( changed )
+	{ appPageLayoutRefreshPageLayoutPage( plt );	}
 
     *pEnabled= 1;
 
@@ -112,9 +135,9 @@ static void appPageLayoutChangeLayout(	PageLayoutTool *	plt,
     PROPmaskCLEAR( &margUpdMask );
 
     PROPmaskCLEAR( &setMask );
-    PROPmaskFILL( &setMask, DGprop_COUNT );
+    utilPropMaskFill( &setMask, DGprop_COUNT );
 
-    appInitDocumentGeometry( &dgNew );
+    utilInitDocumentGeometry( &dgNew );
 
     dgNew= plt->pltGeometryChosen;
 
@@ -123,10 +146,11 @@ static void appPageLayoutChangeLayout(	PageLayoutTool *	plt,
 	{ LDEB(1); return;	}
 
     PROPmaskCLEAR( &margChgMask );
-    PROPmaskFILL( &margChgMask, DGprop_COUNT );
+    utilPropMaskFill( &margChgMask, DGprop_COUNT );
 
     if  ( appMarginToolGetMargins( &margUpdMask, &margChgMask, plt->pltUnitType,
 					     &(plt->pltMarginTool), &dgNew ) )
+	{ return;	}
 
     if  ( appMarginToolCheckMargins( &dgNew ) )
 	{ return;	}
@@ -240,13 +264,13 @@ static APP_TXACTIVATE_CALLBACK_H( appPaperMarginChanged, w, voidplt )
 
     dg= *dgSect;
 
-    PROPmaskFILL( &dgChgMask, DGprop_COUNT );
+    utilPropMaskFill( &dgChgMask, DGprop_COUNT );
 
     if  ( appMarginToolGetMargins( &dgUpdMask, &dgChgMask,
 			    plt->pltUnitType, &(plt->pltMarginTool), &dg ) )
 	{ return;	}
 
-    if  ( PROPmaskISEMPTY( &dgUpdMask ) )
+    if  ( utilPropMaskIsEmpty( &dgUpdMask ) )
 	{ return;	}
 
     if  ( appMarginToolCheckMargins( &dg ) )
@@ -410,9 +434,13 @@ void appPageLayoutPageFillPage(	PageLayoutTool *		plt,
 
     appInitDrawingData( &(plt->pltDrawingData) );
 
-    appInitDocumentGeometry( &(plt->pltGeometrySetDocument) );
-    appInitDocumentGeometry( &(plt->pltGeometrySetSelection) );
-    appInitDocumentGeometry( &(plt->pltGeometryChosen) );
+    utilInitDocumentGeometry( &(plt->pltGeometrySetDocument) );
+    utilInitDocumentGeometry( &(plt->pltGeometrySetSelection) );
+    utilInitDocumentGeometry( &(plt->pltGeometryChosen) );
+
+    plt->pltGeometrySetDocument.dgPageWideTwips= 0;
+    plt->pltGeometrySetSelection.dgPageWideTwips= 0;
+    plt->pltGeometryChosen.dgPageWideTwips= 0;
 
     appInitPaperChooser( &(plt->pltPaperChooser) );
 
@@ -566,7 +594,6 @@ static AppConfigurableResource APP_PageToolResourceTable[]=
 				plprMarginToolResources.mtrBottomMarginText),
 		"Bottom" ),
     /**/
-/*!*/
     APP_RESOURCE( "formatToolSectHeaderFooterPositions",
 		offsetof(PageLayoutPageResources,plprPositionsText),
 		"Positions" ),
@@ -582,15 +609,24 @@ void appPageLayoutPageGetResourceTable(	EditApplication *		ea,
 					PageLayoutPageResources *	plpr,
 					InspectorSubjectResources *	isr )
     {
-    appGuiGetResourceValues( ea, (void *)plpr,
+    static int	gotToolResources;
+    static int	gotSubjectResources;
+
+    if  ( ! gotToolResources )
+	{
+	appGuiGetResourceValues( &gotToolResources, ea, (void *)plpr,
 				APP_PageToolResourceTable,
 				sizeof(APP_PageToolResourceTable)/
 				sizeof(AppConfigurableResource) );
+	}
 
-    appGuiGetResourceValues( ea, (void *)isr,
+    if  ( ! gotSubjectResources )
+	{
+	appGuiGetResourceValues( &gotSubjectResources, ea, (void *)isr,
 				APP_PageSubjectResourceTable,
 				sizeof(APP_PageSubjectResourceTable)/
 				sizeof(AppConfigurableResource) );
+	}
 
     return;
     }

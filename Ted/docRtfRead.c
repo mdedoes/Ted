@@ -239,8 +239,8 @@ RtfControlWord	docRtfDocumentGroups[]=
 	{ "shppict",	RTFidSHPPICT,	DOClevPARA, docRtfReadShppict, },
 	{ "object",	RTFidOBJECT,	DOClevPARA, docRtfReadObject, },
 	{ "field",	RTFidFIELD,	DOClevPARA, docRtfReadField, },
-	{ "shp",	RTFidSHP,	DOClevPARA, docRtfReadShape, },
-	{ "shpgrp",	RTFidSHPGRP,	DOClevPARA, docRtfReadShape, },
+	{ "shp",	SHPtyUNKNOWN,	DOClevTEXT, docRtfReadShape, },
+	{ "shpgrp",	SHPtyGROUP,	DOClevTEXT, docRtfReadShape, },
 
 	{ "xe",		DOCfkXE,	DOClevPARA, docRtfLookupEntry, },
 	{ "tc",		DOCfkTC,	DOClevPARA, docRtfLookupEntry, },
@@ -286,6 +286,10 @@ RtfControlWord	docRtfDocumentGroups[]=
 				/****************************************/
 	{ "bkmkstart",	RTFidBKMKSTART,	DOClevPARA, docRtfBkmkStart,	},
 	{ "bkmkend",	RTFidBKMKEND,	DOClevPARA, docRtfBkmkEnd,	},
+				/****************************************/
+				/*  To deal with faulty documents.	*/
+				/****************************************/
+	{ "sp",		RTFidSP,	DOClevPARA, docRtfShapeProperty, },
 
 	{ 0, 0, 0 }
     };
@@ -322,7 +326,7 @@ int docRtfTextParticule(	RtfReadingContext *	rrc,
 	PROPmaskCLEAR( &ppChgMask );
 
 	PROPmaskCLEAR( &ppUpdMask );
-	PROPmaskFILL( &ppUpdMask, PPprop_COUNT );
+	utilPropMaskFill( &ppUpdMask, PPprop_COUNT );
 
 	if  ( docUpdParaProperties( &ppChgMask, &(rrc->rrcBi->biParaProperties),
 				&ppUpdMask, &(rrs->rrsParagraphProperties),
@@ -335,33 +339,19 @@ int docRtfTextParticule(	RtfReadingContext *	rrc,
     if  ( rrs->rrsTextAttribute.taFontNumber >= 0			&&
 	  rrs->rrsTextAttribute.taFontNumber < dfl->dflFontCount	)
 	{
-	const DocumentFont *	df;
+	const DocumentFont *		df;
+	const OfficeCharsetMapping *	ocm;
 
 	df= dfl->dflFonts+ rrs->rrsTextAttribute.taFontNumber;
+	ocm= df->dfOfficeCharsetMapping;
 
-	switch( df->dfCharset )
-	    {
-	    case FONTcharsetANSI:
-		inputMapping= rrc->rrcDefaultInputMapping;
-		break;
-	    case FONTcharsetGREEK:
-		inputMapping= docWIN1253_to_ISO7;
-		break;
-	    case FONTcharsetTURKISH:
-		inputMapping= docWIN1254_to_ISO9;
-		break;
-	    case FONTcharsetBALTIC:
-		inputMapping= docWIN1257_to_ISO13;
-		break;
-	    case FONTcharsetRUSSIAN:
-		inputMapping= docWIN1251_to_ISO5;
-		break;
-	    case FONTcharsetEE:
-		inputMapping= docWIN1250_to_ISO2;
-		break;
+	inputMapping= rrc->rrcDefaultInputMapping;
 
-	    default:
-		inputMapping= rrc->rrcDefaultInputMapping;
+	if  ( ! ocm )
+	    { inputMapping= (const unsigned char *)0; }
+	else{
+	    if  ( ocm->ocmFromOfficeToX11 )
+		{ inputMapping= ocm->ocmFromOfficeToX11;	}
 	    }
 	}
 
@@ -584,7 +574,7 @@ static int docRtfReadPntext(	SimpleInputStream *	sis,
     PROPmaskCLEAR( &ppChgMask );
 
     PROPmaskCLEAR( &ppUpdMask );
-    PROPmaskFILL( &ppUpdMask, PPprop_COUNT );
+    utilPropMaskFill( &ppUpdMask, PPprop_COUNT );
 
     docInitParagraphProperties( &pp );
     docUpdParaProperties( &ppChgMask, &pp, &ppUpdMask,
@@ -598,7 +588,7 @@ static int docRtfReadPntext(	SimpleInputStream *	sis,
     PROPmaskCLEAR( &ppChgMask );
 
     PROPmaskCLEAR( &ppUpdMask );
-    PROPmaskFILL( &ppUpdMask, PPprop_COUNT );
+    utilPropMaskFill( &ppUpdMask, PPprop_COUNT );
 
     docUpdParaProperties( &ppChgMask, &(rrc->rrcBi->biParaProperties),
 					    &ppUpdMask, &pp, (const int *)0 );
@@ -633,8 +623,9 @@ static RtfControlWord	docRtfOutsideGroups[]=
 	{ 0, 0, 0 }
     };
 
-BufferDocument * docRtfReadFile(	SimpleInputStream *	sis,
-					int			defAnsigpg )
+BufferDocument * docRtfReadFile(SimpleInputStream *		sis,
+				const PostScriptFontList *	psfl,
+				int				defAnsigpg )
     {
     BufferDocument *		bd;
     RtfReadingContext		rrc;
@@ -659,6 +650,7 @@ BufferDocument * docRtfReadFile(	SimpleInputStream *	sis,
     docInitDocument( bd );
 
     docRtfInitReadingContext( &rrc );
+    rrc.rrcPostScriptFontList= psfl;
 
     rrc.rrcBd= bd;
     rrc.rrcBi= &(bd->bdItem);
@@ -680,6 +672,13 @@ BufferDocument * docRtfReadFile(	SimpleInputStream *	sis,
     res= docRtfApplyControlWord( sis, rcw, gotArg, arg, &rrc );
     if  ( res )
 	{ LDEB(1); docFreeDocument( bd ); return (BufferDocument *)0; }
+
+    if  ( ! rrc.rrcGotDocGeometry	&&
+	  bd->bdItem.biChildCount > 0	)
+	{
+	bd->bdProperties.dpGeometry=
+			    bd->bdItem.biChildren[0]->biSectDocumentGeometry;
+	}
 
     docRtfCleanReadingContext( &rrc );
 
@@ -710,95 +709,6 @@ BufferDocument * docRtfReadFile(	SimpleInputStream *	sis,
 	}
 
     return bd;
-    }
-
-/************************************************************************/
-/*									*/
-/*  Just read a ruler from RTF.						*/
-/*									*/
-/************************************************************************/
-
-static int docRtfReadRulerGroup(	SimpleInputStream *	sis,
-					const RtfControlWord *	rcw,
-					int			arg,
-					RtfReadingContext *	rrc	)
-    {
-    int		res;
-
-    res= docRtfConsumeGroup( sis, DOClevPARA, rrc,
-					    docRtfEmptyTable, NULL, NULL );
-
-    if  ( res )
-	{ SLDEB(rcw->rcwWord,res);	}
-
-    return res;
-    }
-
-static RtfControlWord	docRtfRulerOutsideGroups[]=
-    {
-	{ "ruler",	RTFidRULER,	DOClevSECT, docRtfReadRulerGroup, },
-	{ 0, 0, 0 }
-    };
-
-int docRtfReadRuler(	SimpleInputStream *	sis,
-			ParagraphProperties *	pp )
-    {
-    BufferItem			bi;
-    RtfReadingContext		rrc;
-    RtfReadingState		rrs;
-
-    int				res;
-    const RtfControlWord *	rcw;
-
-    char			controlWord[TEDszRTFCONTROL+1];
-    int				gotArg;
-    int				arg= -1;
-    int				c;
-
-    const int			listOnly= 1;
-
-    PropertyMask		ppChgMask;
-    PropertyMask		ppUpdMask;
-
-    const int * const		colorMap= (const int *)0;
-    const int * const		listStyleMap= (const int *)0;
-
-    docInitItem( &bi, (BufferItem *)0, (BufferDocument *)0, 0,
-						    DOClevCELL, DOCinBODY );
-    docRtfInitReadingContext( &rrc );
-    docRtfPushReadingState( &rrc, &rrs );
-
-    rrc.rrcBi= &bi;
-    rrc.rrcLevel= bi.biLevel;
-    rrc.rrcSplitLevel= bi.biLevel;
-
-    res= docRtfFindControl( sis, &rrc, &c, controlWord, &gotArg, &arg );
-
-    if  ( res != RTFfiCTRLGROUP )
-	{ LDEB(1); docCleanItem( (BufferDocument *)0, &bi ); return -1; }
-
-    rcw= docRtfFindWord( controlWord, docRtfRulerOutsideGroups, listOnly );
-    if  ( ! rcw )
-	{ LDEB(1); docCleanItem( (BufferDocument *)0, &bi ); return -1; }
-
-    res= docRtfApplyControlWord( sis, rcw, gotArg, arg, &rrc );
-    if  ( res )
-	{ LDEB(1); docCleanItem( (BufferDocument *)0, &bi ); return -1; }
-
-    PROPmaskCLEAR( &ppChgMask );
-
-    PROPmaskCLEAR( &ppUpdMask );
-    PROPmaskFILL( &ppUpdMask, PPprop_COUNT );
-
-    docUpdParaProperties( &ppChgMask, pp, &ppUpdMask,
-			    &(rrs.rrsParagraphProperties),
-			    colorMap, listStyleMap );
-
-    docCleanItem( (BufferDocument *)0, &bi );
-    docRtfPopReadingState( &rrc );
-    docRtfCleanReadingContext( &rrc );
-
-    return 0;
     }
 
 /************************************************************************/

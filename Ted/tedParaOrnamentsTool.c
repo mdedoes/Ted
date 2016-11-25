@@ -47,6 +47,10 @@ static void tedFormatToolRefreshParaOrnamentsPage(
 						&(pp->ppTopBorder) );
     tedBorderToolSetProperties( &(pot->potBottomBorderTool), dp,
 						&(pp->ppBottomBorder) );
+    tedBorderToolSetProperties( &(pot->potLeftBorderTool), dp,
+						&(pp->ppLeftBorder) );
+    tedBorderToolSetProperties( &(pot->potRightBorderTool), dp,
+						&(pp->ppRightBorder) );
 
     tedSetShadingTool( &(pot->potShadingTool), dp, &(pp->ppShading) );
 
@@ -74,7 +78,7 @@ void tedFormatToolRefreshParaOrnamentsTool(
     pp= &(bi->biParaProperties);
 
     PROPmaskCLEAR( &ppUpdMask );
-    PROPmaskFILL( &ppUpdMask, PPprop_COUNT );
+    utilPropMaskFill( &ppUpdMask, PPprop_COUNT );
     PROPmaskUNSET( &ppUpdMask, PPpropIN_TABLE );
     PROPmaskUNSET( &ppUpdMask, PPpropTAB_STOPS );
 
@@ -122,7 +126,7 @@ static APP_BUTTON_CALLBACK_H( tedFormatParaRevertPushed, w, voidpot )
     PROPmaskCLEAR( &ppChgMask );
 
     PROPmaskCLEAR( &ppUpdMask );
-    PROPmaskFILL( &ppUpdMask, PPprop_COUNT );
+    utilPropMaskFill( &ppUpdMask, PPprop_COUNT );
 
     docUpdParaProperties( &ppChgMask, &(pot->potPropertiesChosen),
 			&ppUpdMask, &(pot->potPropertiesSet),
@@ -231,6 +235,8 @@ static APP_BUTTON_CALLBACK_H( tedFormatChangePara, w, voidpot )
     PROPmaskCLEAR( &ppSetMask );
     PROPmaskADD( &ppSetMask, PPpropTOP_BORDER );
     PROPmaskADD( &ppSetMask, PPpropBOTTOM_BORDER );
+    PROPmaskADD( &ppSetMask, PPpropLEFT_BORDER );
+    PROPmaskADD( &ppSetMask, PPpropRIGHT_BORDER );
 
     PROPmaskADD( &ppSetMask, PPpropSHADE_FORE_COLOR );
     PROPmaskADD( &ppSetMask, PPpropSHADE_BACK_COLOR );
@@ -242,10 +248,17 @@ static APP_BUTTON_CALLBACK_H( tedFormatChangePara, w, voidpot )
     if  ( tedBorderToolGetProperties( &(pp->ppTopBorder), &xxSetMask,
 					    &(pot->potTopBorderTool), dp ) )
 	{ return;	}
-
     PROPmaskCLEAR( &xxSetMask );
     if  ( tedBorderToolGetProperties( &(pp->ppBottomBorder), &xxSetMask,
 					    &(pot->potBottomBorderTool), dp ) )
+	{ return;	}
+    PROPmaskCLEAR( &xxSetMask );
+    if  ( tedBorderToolGetProperties( &(pp->ppLeftBorder), &xxSetMask,
+					    &(pot->potLeftBorderTool), dp ) )
+	{ return;	}
+    PROPmaskCLEAR( &xxSetMask );
+    if  ( tedBorderToolGetProperties( &(pp->ppRightBorder), &xxSetMask,
+					    &(pot->potRightBorderTool), dp ) )
 	{ return;	}
 
     {
@@ -261,7 +274,7 @@ static APP_BUTTON_CALLBACK_H( tedFormatChangePara, w, voidpot )
 						    &(pot->potShadingTool) ) )
 	{ return;	}
 
-    if  ( ! PROPmaskISEMPTY( &isSetMask ) )
+    if  ( ! utilPropMaskIsEmpty( &isSetMask ) )
 	{
 	PropertyMask	isDoneMask;
 
@@ -303,18 +316,19 @@ static void tedParaOrnamentsGotColor(	void *			voidpot,
 	    tedBorderSetExplicitColorChoice(
 					&(pot->potTopBorderTool), rgb8 );
 	    break;
-
 	case PPpropBOTTOM_BORDER:
 	    tedBorderSetExplicitColorChoice(
 					&(pot->potBottomBorderTool), rgb8 );
 	    break;
-
 	case PPpropLEFT_BORDER:
-	    LDEB(which); return;
+	    tedBorderSetExplicitColorChoice(
+					&(pot->potLeftBorderTool), rgb8 );
 	    break;
 	case PPpropRIGHT_BORDER:
-	    LDEB(which); return;
+	    tedBorderSetExplicitColorChoice(
+					&(pot->potRightBorderTool), rgb8 );
 	    break;
+
 	case PPpropBOX_BORDER:
 	    LDEB(which); return;
 	    break;
@@ -366,10 +380,15 @@ void tedFormatFillParagraphOrnamentsPage(
     tedMakeBorderTool( &(pot->potTopBorderTool), ai, pageWidget,
 	    popr->poprTopBorder, &(popr->poprBorderToolResources),
 	    subjectPage, PPpropTOP_BORDER );
-
     tedMakeBorderTool( &(pot->potBottomBorderTool), ai, pageWidget,
 	    popr->poprBottomBorder, &(popr->poprBorderToolResources),
 	    subjectPage, PPpropBOTTOM_BORDER );
+    tedMakeBorderTool( &(pot->potLeftBorderTool), ai, pageWidget,
+	    popr->poprLeftBorder, &(popr->poprBorderToolResources),
+	    subjectPage, PPpropLEFT_BORDER );
+    tedMakeBorderTool( &(pot->potRightBorderTool), ai, pageWidget,
+	    popr->poprRightBorder, &(popr->poprBorderToolResources),
+	    subjectPage, PPpropRIGHT_BORDER );
 
     /**/
     tedFormatMakeShadingTool( &(pot->potShadingTool), ai, pageWidget,
@@ -422,6 +441,8 @@ void tedFormatFinishParaOrnamentsPage(
     {
     tedFinishBorderTool( &(pot->potTopBorderTool) );
     tedFinishBorderTool( &(pot->potBottomBorderTool) );
+    tedFinishBorderTool( &(pot->potLeftBorderTool) );
+    tedFinishBorderTool( &(pot->potRightBorderTool) );
 
     tedFinishShadingTool( &(pot->potShadingTool) );
 
@@ -445,6 +466,8 @@ void tedInitParaOrnamentsTool(	ParagraphOrnamentsTool *	pot )
 
     tedInitBorderTool( &(pot->potTopBorderTool) );
     tedInitBorderTool( &(pot->potBottomBorderTool) );
+    tedInitBorderTool( &(pot->potLeftBorderTool) );
+    tedInitBorderTool( &(pot->potRightBorderTool) );
     
     tedInitShadingTool( &(pot->potShadingTool) );
 
@@ -458,6 +481,8 @@ void tedCleanParaOrnamentsTool(	ParagraphOrnamentsTool *	pot )
 
     tedCleanBorderTool( &(pot->potTopBorderTool) );
     tedCleanBorderTool( &(pot->potBottomBorderTool) );
+    tedCleanBorderTool( &(pot->potLeftBorderTool) );
+    tedCleanBorderTool( &(pot->potRightBorderTool) );
     
     tedCleanShadingTool( &(pot->potShadingTool) );
 
@@ -510,6 +535,12 @@ static AppConfigurableResource TED_TedParagraphToolResourceTable[]=
     APP_RESOURCE( "formatToolParaBottomBorder",
 	offsetof(ParagraphOrnamentsPageResources,poprBottomBorder),
 	"Bottom Border" ),
+    APP_RESOURCE( "formatToolParaLeftBorder",
+	offsetof(ParagraphOrnamentsPageResources,poprLeftBorder),
+	"Left Border" ),
+    APP_RESOURCE( "formatToolParaRightBorder",
+	offsetof(ParagraphOrnamentsPageResources,poprRightBorder),
+	"Right Border" ),
 
     /**/
     APP_RESOURCE( "formatToolParaBorderWidth",
@@ -580,15 +611,24 @@ void tedFormatToolGetParaOrnamentsResourceTable(
 			    ParagraphOrnamentsPageResources *	popr,
 			    InspectorSubjectResources *		isr )
     {
-    appGuiGetResourceValues( ea, (void *)popr,
+    static int	gotToolResources= 0;
+    static int	gotSubjectResources= 0;
+
+    if  ( ! gotToolResources )
+	{
+	appGuiGetResourceValues( &gotToolResources, ea, (void *)popr,
 				TED_TedParagraphToolResourceTable,
 				sizeof(TED_TedParagraphToolResourceTable)/
 				sizeof(AppConfigurableResource) );
+	}
 
-    appGuiGetResourceValues( ea, (void *)isr,
+    if  ( ! gotSubjectResources )
+	{
+	appGuiGetResourceValues( &gotSubjectResources, ea, (void *)isr,
 				TED_TedParagraphSubjectResourceTable,
 				sizeof(TED_TedParagraphSubjectResourceTable)/
 				sizeof(AppConfigurableResource) );
+	}
 
     return;
     }

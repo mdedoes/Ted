@@ -33,6 +33,7 @@
 /************************************************************************/
 
 static int docCollectIncludedEpsFile(	const char *		fullName,
+					int			fullNameLen,
 					InsertedObject *	io )
     {
     int				gotBBox= 0;
@@ -60,7 +61,7 @@ static int docCollectIncludedEpsFile(	const char *		fullName,
     n= sscanf( line, "%%!PS-Adobe-%d.%d EPSF-%d.%d", &i1, &i2, &i3, &i4 );
     if  ( n == 4 )
 	{ gotEpsHeader= 1;	}
-    else{ SDEB(line);		}
+    else{ SLDEB(line,n);	}
 
     sosBuffer= sioOutMemoryOpen( &(io->ioResultData) );
     if  ( ! sosBuffer )
@@ -121,6 +122,11 @@ static int docCollectIncludedEpsFile(	const char *		fullName,
 	}
     else{ LLDEB(gotEpsHeader,gotBBox); return -1;	}
 
+    if  ( docObjectSetData( io, (unsigned char *)fullName, fullNameLen+ 1 ) )
+	{ return -1;	}
+
+    io->ioKind= DOCokEPS_FILE;
+
     return 0;
     }
 
@@ -128,37 +134,19 @@ static int docCollectIncludedEpsFile(	const char *		fullName,
 /************************************************************************/
 /*									*/
 /*  Read a bitmap/pixmap image file.					*/
+/*  Read a windows metafile.						*/
 /*									*/
 /************************************************************************/
 
 static int docReadIncludedBitmapFile(	const char *		fullName,
+					int			fullNameLen,
 					InsertedObject *	io )
-    {
-    int			res;
-    AppBitmapImage *	abi;
+    { return docReadBitmapObject( io, fullName );	}
 
-    int			fileFormat;
-    double		compressionFactor;
-
-
-    abi= (AppBitmapImage *)malloc( sizeof(AppBitmapImage) );
-    if  ( ! abi )
-	{ XDEB(abi); return -1;	}
-    appInitBitmapImage( abi );
-
-    res= bmRead( fullName, &(abi->abiBuffer), &(abi->abiBitmap),
-					    &fileFormat, &compressionFactor );
-    if  ( res )
-	{ SLDEB(fullName,res); return -1;	}
-
-    io->ioPrivate= (void *)abi;
-    io->ioResultKind= DOCokBITMAP_FILE;
-
-    bmImageSizeTwips( &(io->ioTwipsWide), &(io->ioTwipsHigh),
-							&(abi->abiBitmap) );
-
-    return 0;
-    }
+static int docCollectIncludedWmfFile(	const char *		fullName,
+					int			fullNameLen,
+					InsertedObject *	io )
+    { return docReadMetafileObject( io, fullName );	}
 
 /************************************************************************/
 /*									*/
@@ -179,7 +167,6 @@ int docRecalculateIncludePictureField(
 				DOC_CLOSE_OBJECT		closeObject )
     {
     const DocumentProperties *		dp= &(bd->bdProperties);
-    int					i;
 
     TextParticule *			tp;
 
@@ -195,20 +182,19 @@ int docRecalculateIncludePictureField(
     const char *			fileName;
     int					fileSize;
 
+    int					fullNameLen= 0;
     char				fullName[1000+1];
     int					textAttributeNumber;
     const char *			extension;
+    int					res= -1;
+
+    int					included= 0;
 
     tp= paraBi->biParaParticules+ part+ 1;
 
     if  ( partCount == 1		&&
 	  tp->tpKind == DOCkindOBJECT	)
-	{
-	io= paraBi->biParaObjects+ tp->tpObjectNumber;
-
-	if  ( io->ioKind == DOCokINCLUDEPICTURE )
-	    { *pCalculated= 0; return 0; }
-	}
+	{ *pCalculated= 0; return 0; }
 
     if  ( docFieldGetIncludePicture( df, &fileName, &fileSize ) )
 	{ LDEB(1); return -1;	}
@@ -220,62 +206,94 @@ int docRecalculateIncludePictureField(
     char *	scratch= malloc( fileSize+ 1 );
 
     if  ( ! scratch )
-	{ XDEB(scratch); i= -1;	}
+	{ XDEB(scratch); fullNameLen= -1;	}
     else{
 	const int	relativeIsFile= 1;
 
 	strncpy( scratch, fileName, fileSize )[fileSize]= '\0';
 
-	i= appAbsoluteName( fullName, 1000, scratch,
+	fullNameLen= appAbsoluteName( fullName, 1000, scratch,
 				relativeIsFile, (const char *)dp->dpFilename );
 	free( scratch );
 	}
 
-    if  ( i < 0 )
-	{ LDEB(i); *pCalculated= 0; return 0; }
+    if  ( fullNameLen < 0 )
+	{ LDEB(fullNameLen); *pCalculated= 0; return 0; }
     }
 
     io= docClaimObject( &objectNumber, paraBi );
     if  ( ! io )
 	{ XDEB(io); return -1;	}
     
-    if  ( docObjectSetData( io, (unsigned char *)fullName, i+ 1 ) )
-	{ return -1;	}
-    io->ioKind= DOCokINCLUDEPICTURE;
-
-
-    if  ( docFieldReplaceContents( &stroff,
-			    &stroffShift, &textAttributeNumber,
-			    bd, paraBi, part, partCount,
-			    *pStroffShift, (unsigned char *)" ", 1,
-			    voidadd, closeObject ) )
-	{ LDEB(1); return -1;	}
-
-    tp= docInsertTextParticule( paraBi, part+ 1, stroff, 1,
-				DOCkindOBJECT, textAttributeNumber );
-    if  ( ! tp )
-	{ XDEB(tp); return -1;	}
-
-    tp->tpObjectNumber= paraBi->biParaObjectCount++;
-
     extension= appFileExtensionOfName( fullName );
 
-    if  ( extension					&&
+    if  ( ! included					&&
+	  extension					&&
 	  ( ! strcmp( extension, "ps" )		||
 	    ! strcmp( extension, "eps" )	||
 	    ! strcmp( extension, "PS" )		||
 	    ! strcmp( extension, "EPS" )	)	)
 	{
-	if  ( docCollectIncludedEpsFile( fullName, io ) )
+	res= docCollectIncludedEpsFile( fullName, fullNameLen, io );
+	if  ( res )
 	    { SDEB(fullName);	}
 
-	goto ready;
+	included= 1;
 	}
 
-    if  ( docReadIncludedBitmapFile( fullName, io ) )
-	{ SDEB(fullName);	}
+    if  ( ! included					&&
+	  extension					&&
+	  ( ! strcmp( extension, "wmf" )		||
+	    ! strcmp( extension, "WMF" )	)	)
+	{
+	res= docCollectIncludedWmfFile( fullName, fullNameLen, io );
+	if  ( res )
+	    { SDEB(fullName);	}
 
-  ready:
+	included= 1;
+	}
+
+    if  ( ! included )
+	{
+	res= docReadIncludedBitmapFile( fullName, fullNameLen, io );
+	if  ( res )
+	    { SDEB(fullName);	}
+	}
+
+    if  ( res )
+	{
+	docCleanObject( bd, io );
+	docInitObject( io );
+
+	if  ( docFieldReplaceContents( &stroff,
+			&stroffShift, &textAttributeNumber,
+			bd, paraBi, part, partCount,
+			*pStroffShift, (unsigned char *)fullName, fullNameLen,
+			voidadd, closeObject ) )
+	    { LDEB(1); return -1;	}
+
+	tp= docInsertTextParticule( paraBi, part+ 1, stroff, fullNameLen,
+				    DOCkindTEXT, textAttributeNumber );
+	if  ( ! tp )
+	    { XDEB(tp); return -1;	}
+	}
+    else{
+	if  ( docFieldReplaceContents( &stroff,
+			&stroffShift, &textAttributeNumber,
+			bd, paraBi, part, partCount,
+			*pStroffShift, (unsigned char *)" ", 1,
+			voidadd, closeObject ) )
+	    { LDEB(1); return -1;	}
+
+	tp= docInsertTextParticule( paraBi, part+ 1, stroff, 1,
+				    DOCkindOBJECT, textAttributeNumber );
+	if  ( ! tp )
+	    { XDEB(tp); return -1;	}
+
+	tp->tpObjectNumber= paraBi->biParaObjectCount++;
+	}
+
+  /*ready:*/
 
     *pCalculated= 1;
     *pPartShift= paraBi->biParaParticuleCount- oldPartCount;

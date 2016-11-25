@@ -12,7 +12,7 @@
 typedef struct IntegerValueNode
     {
     unsigned int			ivnIsLeaf:1;
-    int					ivnChildCount:31;
+    unsigned int			ivnChildCount:31;
 
     union
 	{

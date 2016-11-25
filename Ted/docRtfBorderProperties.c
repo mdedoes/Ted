@@ -21,7 +21,7 @@
 /*									*/
 /************************************************************************/
 
-void docRtfSaveBorder(		char *				tag,
+void docRtfSaveBorder(		const char *			tag,
 				int *				pCol,
 				const BorderProperties *	bp,
 				SimpleOutputStream *		sos )

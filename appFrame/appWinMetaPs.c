@@ -38,7 +38,7 @@
 /*									*/
 /************************************************************************/
 
-static void appMetaSetColorPs(		SimpleOutputStream *	sos,
+static void appMetaSetColorPs(		PrintingState *		ps,
 					DeviceContext *		dc,
 					RGB8Color *		rgb )
     {
@@ -47,17 +47,9 @@ static void appMetaSetColorPs(		SimpleOutputStream *	sos,
 	  dc->dcBlueSet == rgb->rgb8Blue	)
 	{ return;	}
 
-    if  ( rgb->rgb8Red == rgb->rgb8Green	&&
-	  rgb->rgb8Red == rgb->rgb8Blue		)
-	{
-	sioOutPrintf( sos, "%g setgray\n", rgb->rgb8Red/255.0 );
-	}
-    else{
-	sioOutPrintf( sos, "%g %g %g setrgbcolor\n",
-				    rgb->rgb8Red/255.0,
+    utilPsSetRgbColor( ps, rgb->rgb8Red/255.0,
 				    rgb->rgb8Green/255.0,
 				    rgb->rgb8Blue/255.0 );
-	}
 
     dc->dcRedSet= rgb->rgb8Red;
     dc->dcGreenSet= rgb->rgb8Green;
@@ -66,22 +58,24 @@ static void appMetaSetColorPs(		SimpleOutputStream *	sos,
     return;
     }
 
-static void appMetaSetFontPs(		SimpleOutputStream *	sos,
+static void appMetaSetFontPs(		PrintingState *		ps,
 					DeviceContext *		dc,
 					TextAttribute		ta )
     {
     if  ( docEqualTextAttributes( &ta, &(dc->dcTextAttributeSet) ) )
 	{ return;	}
 
-    utilPsSetFont( sos, "pf", &ta );
+    utilPsSetFont( ps, "pf", &ta );
 
     dc->dcTextAttributeSet= ta;
     }
 
-static void appMetaSetPenPs(		SimpleOutputStream *	sos,
+static void appMetaSetPenPs(		PrintingState *		ps,
 					DeviceContext *		dc,
 					const LogicalPen *	lp )
     {
+    SimpleOutputStream *	sos= ps->psSos;
+
     if  ( dc->dcPenSet.lpStyle == lp->lpStyle		&&
 	  dc->dcPenSet.lpWidth == lp->lpWidth		)
 	{ return;	}
@@ -155,7 +149,7 @@ static void appMetaSetPenPs(		SimpleOutputStream *	sos,
 /************************************************************************/
 
 static int appMetaBitmapImagePs(	SimpleInputStream *	sis,
-					SimpleOutputStream *	sos,
+					PrintingState *		ps,
 					int			expectBytes,
 					int			useFilters,
 					int			indexedImages,
@@ -169,6 +163,7 @@ static int appMetaBitmapImagePs(	SimpleInputStream *	sis,
 					int			dstXExt,
 					int			dstYExt )
     {
+    SimpleOutputStream *	sos= ps->psSos;
     int				rval= 0;
 
     AppBitmapImage *		abi;
@@ -222,7 +217,7 @@ static int appMetaBitmapImagePs(	SimpleInputStream *	sis,
     }
 
 static int appMetaSelectPenObjectPs(	DeviceContext *		dc,
-					SimpleOutputStream *	sos,
+					PrintingState *		ps,
 					int			ob )
     {
     LogicalPen *	lp= &(dc->dcObjects[ob].mfoLogicalPen);
@@ -308,12 +303,12 @@ static int appMetaSelectPenObjectPs(	DeviceContext *		dc,
     }
 
 static int appMetaSelectPatternBrushObjectPs(	DeviceContext *		dc,
-						SimpleOutputStream *	sos,
+						PrintingState *		ps,
 						int			ob )
     {
     PatternBrush *	pb= &(dc->dcObjects[ob].mfoPatternBrush);
 
-    if  ( appMetafileStartPatternFillPs( sos, &(pb->pbAbi) ) )
+    if  ( appMetafileStartPatternFillPs( ps, &(pb->pbAbi) ) )
 	{ LDEB(1); return -1;	}
 
     dc->dcFillHatched= 0;
@@ -324,7 +319,7 @@ static int appMetaSelectPatternBrushObjectPs(	DeviceContext *		dc,
     }
 
 static int appMetaSelectBrushObjectPs(	DeviceContext *		dc,
-					SimpleOutputStream *	sos,
+					PrintingState *		ps,
 					int			ob )
     {
     LogicalBrush *		lb= &(dc->dcObjects[ob].mfoLogicalBrush);
@@ -368,7 +363,6 @@ static int appMetaSelectBrushObjectPs(	DeviceContext *		dc,
 
 static int appMetaSelectFontObjectPs( DeviceContext *		dc,
 				const PostScriptFontList *	psfl,
-				SimpleOutputStream *		sos,
 				int				ob )
     {
     LogicalFont *		lf= &(dc->dcObjects[ob].mfoLogicalFont);
@@ -398,7 +392,7 @@ static int appMetaSelectFontObjectPs( DeviceContext *		dc,
 
 static int appMetaSelectObjectPs( DeviceContext *		dc,
 				const PostScriptFontList *	psfl,
-				SimpleOutputStream *		sos,
+				PrintingState *			ps,
 				int				recordSize,
 				SimpleInputStream *		sis )
     {
@@ -412,24 +406,24 @@ static int appMetaSelectObjectPs( DeviceContext *		dc,
     switch( dc->dcObjects[ob].mfoType )
 	{
 	case MFtypePEN:
-	    if  ( appMetaSelectPenObjectPs( dc, sos, ob ) )
+	    if  ( appMetaSelectPenObjectPs( dc, ps, ob ) )
 		{ LDEB(ob); return -1;	}
 	    break;
 
 	case MFtypeBRUSH:
-	    if  ( appMetaSelectBrushObjectPs( dc, sos, ob ) )
+	    if  ( appMetaSelectBrushObjectPs( dc, ps, ob ) )
 		{ LDEB(ob); return -1;	}
 	    break;
 
 	case MFtypePATTERNBRUSH:
-	    if  ( appMetaSelectPatternBrushObjectPs( dc, sos, ob ) )
+	    if  ( appMetaSelectPatternBrushObjectPs( dc, ps, ob ) )
 		{ LDEB(ob); return -1;	}
 	    break;
 
 	case MFtypeFONT:
 	    WMFDEB(appDebug( "SelectObject( ob= %d ) ", ob ));
 	    WMFDEB(appDebug( "FONT\n" ));
-	    if  ( appMetaSelectFontObjectPs( dc, psfl, sos, ob ) )
+	    if  ( appMetaSelectFontObjectPs( dc, psfl, ob ) )
 		{ LDEB(ob); return -1;	}
 	    break;
 
@@ -442,16 +436,18 @@ static int appMetaSelectObjectPs( DeviceContext *		dc,
     return 0;
     }
 
-static int appWinMeta_FillPath(	SimpleOutputStream *	sos,
+static int appWinMeta_FillPath(	PrintingState *		ps,
 				DeviceContext *		dc )
     {
+    SimpleOutputStream *	sos= ps->psSos;
+
     if  ( dc->dcFillPattern )
 	{
 	sioOutPrintf( sos, "fill-pattern\n" );
 	return 0;
 	}
 
-    appMetaSetColorPs( sos, dc, &(dc->dcBrush.lbColor) );
+    appMetaSetColorPs( ps, dc, &(dc->dcBrush.lbColor) );
 
     if  ( dc->dcFillHatched )
 	{
@@ -488,20 +484,22 @@ static int appWinMeta_FillPath(	SimpleOutputStream *	sos,
 
 
 static int appMeta_PolyLinePs(	SimpleInputStream *	sis,
-				SimpleOutputStream *	sos,
+				PrintingState *		ps,
 				int			recordSize,
 				DeviceContext *		dc )
     {
-    int		count;
-    int		done;
+    SimpleOutputStream *	sos= ps->psSos;
 
-    int		x0;
-    int		y0;
+    int				count;
+    int				done;
 
-    char *	command;
+    int				x0;
+    int				y0;
 
-    appMetaSetColorPs( sos, dc, &(dc->dcPen.lpColor) );
-    appMetaSetPenPs( sos, dc, &(dc->dcPen) );
+    const char *		command;
+
+    appMetaSetColorPs( ps, dc, &(dc->dcPen.lpColor) );
+    appMetaSetPenPs( ps, dc, &(dc->dcPen) );
 
     count= sioEndianGetLeInt16( sis );
 
@@ -534,7 +532,7 @@ static int appMeta_PolyLinePs(	SimpleInputStream *	sis,
     return 0;
     }
 
-static void appMetaDrawPolygonPs(	SimpleOutputStream *	sos,
+static void appMetaDrawPolygonPs(	PrintingState *		ps,
 					DeviceContext *		dc,
 					int			count )
     {
@@ -545,30 +543,26 @@ static void appMetaDrawPolygonPs(	SimpleOutputStream *	sos,
 
     if  ( dc->dcFillInsides )
 	{
-	appMetafilePolygonPathPs( sos, dc->dcPoints, count );
+	appMetafilePolygonPathPs( ps, dc->dcPoints, count, "closepath\n" );
 
-	sioOutPrintf( sos, "closepath\n" );
-
-	appWinMeta_FillPath( sos, dc );
+	appWinMeta_FillPath( ps, dc );
 	}
 
     if  ( dc->dcDrawBorders )
 	{
 	command= "bp"; x0= 0; y0= 0;
 
-	appMetaSetColorPs( sos, dc, &(dc->dcPen.lpColor) );
-	appMetaSetPenPs( sos, dc, &(dc->dcPen) );
+	appMetaSetColorPs( ps, dc, &(dc->dcPen.lpColor) );
+	appMetaSetPenPs( ps, dc, &(dc->dcPen) );
 
-	appMetafilePolygonPathPs( sos, dc->dcPoints, count );
-
-	sioOutPrintf( sos, "stroke\n" );
+	appMetafilePolygonPathPs( ps, dc->dcPoints, count, "stroke\n" );
 	}
 
     return;
     }
 
 static int appMeta_PolygonPs(	SimpleInputStream *	sis,
-				SimpleOutputStream *	sos,
+				PrintingState *		ps,
 				int			recordSize,
 				DeviceContext *		dc )
     {
@@ -577,18 +571,18 @@ static int appMeta_PolygonPs(	SimpleInputStream *	sis,
     count= sioEndianGetLeInt16( sis );
 
     WMFDEB(appDebug("Polygon( count=%d, ... )\n", count ));
-    WMFLOG(sioOutPrintf( sos, "%% Polygon( count=%d, ... )\n", count ));
+    WMFLOG(sioOutPrintf( ps->psSos, "%% Polygon( count=%d, ... )\n", count ));
 
     if  ( appWinMetaGetPoints( dc, count, sis ) )
 	{ LDEB(count); return -1;	}
 
-    appMetaDrawPolygonPs( sos, dc, count );
+    appMetaDrawPolygonPs( ps, dc, count );
 
     return 0;
     }
 
 static int appMeta_RectanglePs(	SimpleInputStream *	sis,
-				SimpleOutputStream *	sos,
+				PrintingState *		ps,
 				int			recordSize,
 				DeviceContext *		dc )
     {
@@ -607,7 +601,7 @@ static int appMeta_RectanglePs(	SimpleInputStream *	sis,
     x0= sioEndianGetLeInt16( sis );
 
     WMFDEB(appDebug("Rectangle(%d..%d,%d..%d)\n", x0,x1,y0,y1));
-    WMFLOG(sioOutPrintf( sos, "%% Rectangle(%d..%d,%d..%d)\n", x0,x1,y0,y1));
+    WMFLOG(sioOutPrintf( ps->psSos, "%% Rectangle(%d..%d,%d..%d)\n", x0,x1,y0,y1));
 
     x0= DC_xViewport( x0, dc );
     y0= DC_yViewport( y0, dc );
@@ -631,24 +625,24 @@ static int appMeta_RectanglePs(	SimpleInputStream *	sis,
 
     if  ( dc->dcFillInsides )
 	{
-	appMetafileRectPathPs( sos, x0, y0, x1, y1 );
-	appWinMeta_FillPath( sos, dc );
+	appMetafileRectPathPs( ps, x0, y0, x1, y1 );
+	appWinMeta_FillPath( ps, dc );
 	}
 
     if  ( dc->dcDrawBorders )
 	{
-	appMetaSetColorPs( sos, dc, &(dc->dcPen.lpColor) );
-	appMetaSetPenPs( sos, dc, &(dc->dcPen) );
+	appMetaSetColorPs( ps, dc, &(dc->dcPen.lpColor) );
+	appMetaSetPenPs( ps, dc, &(dc->dcPen) );
 
-	appMetafileRectPathPs( sos, x0, y0, x1, y1 );
-	sioOutPrintf( sos, "stroke\n" );
+	appMetafileRectPathPs( ps, x0, y0, x1, y1 );
+	sioOutPrintf( ps->psSos, "stroke\n" );
 	}
 
     return 0;
     }
 
 static int appMeta_LineToPs(	SimpleInputStream *	sis,
-				SimpleOutputStream *	sos,
+				PrintingState *		ps,
 				int			recordSize,
 				DeviceContext *		dc )
     {
@@ -661,7 +655,7 @@ static int appMeta_LineToPs(	SimpleInputStream *	sis,
     x1= sioEndianGetLeInt16( sis );
 
     WMFDEB(appDebug("LineTo( x:%d-> %d, y:%d-> %d )\n", x0, x1, y0, y1 ));
-    WMFLOG(sioOutPrintf( sos, "%% LineTo( x:%d-> %d, y:%d-> %d )\n", x0, x1, y0, y1 ));
+    WMFLOG(sioOutPrintf( ps->psSos, "%% LineTo( x:%d-> %d, y:%d-> %d )\n", x0, x1, y0, y1 ));
 
     dc->dcX= x1;
     dc->dcY= y1;
@@ -673,17 +667,17 @@ static int appMeta_LineToPs(	SimpleInputStream *	sis,
 
     if  ( dc->dcDrawBorders )
 	{
-	appMetaSetColorPs( sos, dc, &(dc->dcPen.lpColor) );
-	appMetaSetPenPs( sos, dc, &(dc->dcPen) );
+	appMetaSetColorPs( ps, dc, &(dc->dcPen.lpColor) );
+	appMetaSetPenPs( ps, dc, &(dc->dcPen) );
 
-	sioOutPrintf( sos, "%d %d bp ", x0, y0 );
-	sioOutPrintf( sos, "%d %d rl stroke\n", x1- x0, y1- y0 );
+	sioOutPrintf( ps->psSos, "%d %d bp ", x0, y0 );
+	sioOutPrintf( ps->psSos, "%d %d rl stroke\n", x1- x0, y1- y0 );
 	}
 
     return 0;
     }
 
-static void appMetaShowStringPs(	SimpleOutputStream *	sos,
+static void appMetaShowStringPs(	PrintingState *		ps,
 					int			x0,
 					int			y0,
 					int			count,
@@ -756,20 +750,18 @@ static void appMetaShowStringPs(	SimpleOutputStream *	sos,
 	    break;
 	}
 
-    appMetaSetFontPs( sos, dc, dc->dcFont.lfTextAttribute );
-    appMetaSetColorPs( sos, dc, &(dc->dcTextColor) );
+    appMetaSetFontPs( ps, dc, dc->dcFont.lfTextAttribute );
+    appMetaSetColorPs( ps, dc, &(dc->dcTextColor) );
 
     if  ( dc->dcFont.lfOrientation != 0 )
 	{
-	sioOutPrintf( sos, "gsave %d %d translate %g rotate\n",
+	sioOutPrintf( ps->psSos, "gsave %d %d translate %g rotate\n",
 				x0, y0, -0.1* dc->dcFont.lfOrientation );
 
 	x0= y0= 0;
 	}
 
-    sioOutPrintf( sos, "(" );
-    appPsPrintString( sos, dc->dcString, count );
-    sioOutPrintf( sos, ") %d %d mvs\n", x0, y0 );
+    utilPsMovePrintStringValue( ps, dc->dcString, count, x0, y0 );
 
     if  ( dc->dcFont.lfTextAttribute.taTextIsUnderlined )
 	{
@@ -778,17 +770,17 @@ static void appMetaShowStringPs(	SimpleOutputStream *	sos,
 	y0 -= (int)( ( fontSizeTwips* afi->afiUnderlinePosition+ 500 )/ 1000 );
 	h= (int)( ( fontSizeTwips* afi->afiUnderlineThickness+ 500 )/ 1000 );
 
-	sioOutPrintf( sos, "%d %d %d %d rectfill\n", x0, y0, width, h );
+	utilPsFillRectangle( ps, x0, y0, width, h );
 	}
 
     if  ( dc->dcFont.lfOrientation != 0 )
-	{ sioOutPrintf( sos, "grestore\n" );	}
+	{ sioOutPrintf( ps->psSos, "grestore\n" );	}
 
     return;
     }
 
 static int appMeta_ExtTextOutPs(	SimpleInputStream *	sis,
-					SimpleOutputStream *	sos,
+					PrintingState *		ps,
 					int			recordSize,
 					DeviceContext *		dc )
     {
@@ -815,13 +807,13 @@ static int appMeta_ExtTextOutPs(	SimpleInputStream *	sis,
     w1= DC_wViewport( w1, dc );
     h1= DC_hViewport( h1, dc );
 
-    appMetaShowStringPs( sos, x0, y0, count, dc );
+    appMetaShowStringPs( ps, x0, y0, count, dc );
 
     return 0;
     }
 
 static int appMeta_TextOutPs(	SimpleInputStream *	sis,
-				SimpleOutputStream *	sos,
+				PrintingState *		ps,
 				int			recordSize,
 				DeviceContext *		dc )
     {
@@ -835,13 +827,13 @@ static int appMeta_TextOutPs(	SimpleInputStream *	sis,
     x0= DC_xViewport( x0, dc );
     y0= DC_yViewport( y0, dc );
 
-    appMetaShowStringPs( sos, x0, y0, count, dc );
+    appMetaShowStringPs( ps, x0, y0, count, dc );
 
     return 0;
     }
 
 static int appMeta_PatBltPs(	SimpleInputStream *	sis,
-				SimpleOutputStream *	sos,
+				PrintingState *		ps,
 				int			recordSize,
 				DeviceContext *		dc )
     {
@@ -881,8 +873,8 @@ static int appMeta_PatBltPs(	SimpleInputStream *	sis,
 
     if  ( dc->dcFillInsides )
 	{
-	appMetafileRectPathPs( sos, x0, y0, x1, y1 );
-	appWinMeta_FillPath( sos, dc );
+	appMetafileRectPathPs( ps, x0, y0, x1, y1 );
+	appWinMeta_FillPath( ps, dc );
 	}
 
     return 0;
@@ -984,7 +976,7 @@ static void appMetaGetArcPs(	SimpleInputStream *	sis,
     }
 
 static int appMeta_ArcPs(	SimpleInputStream *	sis,
-				SimpleOutputStream *	sos,
+				PrintingState *		ps,
 				int			recordSize,
 				DeviceContext *		dc )
     {
@@ -1004,25 +996,25 @@ static int appMeta_ArcPs(	SimpleInputStream *	sis,
 
     if  ( dc->dcDrawBorders )
 	{
-	appMetaSetColorPs( sos, dc, &(dc->dcPen.lpColor) );
-	appMetaSetPenPs( sos, dc, &(dc->dcPen) );
+	appMetaSetColorPs( ps, dc, &(dc->dcPen.lpColor) );
+	appMetaSetPenPs( ps, dc, &(dc->dcPen) );
 
-	sioOutPrintf( sos, "gsave [1 0 0 %g 0 %d] concat\n",
+	sioOutPrintf( ps->psSos, "gsave [1 0 0 %g 0 %d] concat\n",
 			    (double)(y0- y1)/(double)(x1- x0), ( y0+ y1 )/ 2 );
 
-	sioOutPrintf( sos, "%d %d bp ", xs, ys );
+	sioOutPrintf( ps->psSos, "%d %d bp ", xs, ys );
 
-	sioOutPrintf( sos, "%d 0 %d %f %f arc stroke\n",
+	sioOutPrintf( ps->psSos, "%d 0 %d %f %f arc stroke\n",
 					( x0+ x1 )/ 2, (x1- x0)/2, as, ae );
 
-	sioOutPrintf( sos, "grestore\n" );
+	sioOutPrintf( ps->psSos, "grestore\n" );
 	}
 
     return 0;
     }
 
 static int appMeta_PiePs(	SimpleInputStream *	sis,
-				SimpleOutputStream *	sos,
+				PrintingState *		ps,
 				int			recordSize,
 				DeviceContext *		dc )
     {
@@ -1040,41 +1032,41 @@ static int appMeta_PiePs(	SimpleInputStream *	sis,
     appMetaGetArcPs( sis, dc, "Pie", 
 			    &y0, &x0, &y1, &x1, &ys, &xs, &as, &ae );
 
-    sioOutPrintf( sos, "gsave [1 0 0 %g 0 %d] concat\n",
+    sioOutPrintf( ps->psSos, "gsave [1 0 0 %g 0 %d] concat\n",
 			    (double)(y0- y1)/(double)(x1- x0), ( y0+ y1 )/ 2 );
 
     if  ( dc->dcFillInsides )
 	{
-	sioOutPrintf( sos, "%d %d bp ", xs, ys );
+	sioOutPrintf( ps->psSos, "%d %d bp ", xs, ys );
 
-	sioOutPrintf( sos, "%d 0 %d %f %f arc\n",
+	sioOutPrintf( ps->psSos, "%d 0 %d %f %f arc\n",
 					( x0+ x1 )/ 2, (x1- x0)/2, as, ae );
-	sioOutPrintf( sos, "%d  0 lineto ", ( x0+ x1 )/ 2 );
-	sioOutPrintf( sos, "%d %d lineto closepath\n", xs, ys );
+	sioOutPrintf( ps->psSos, "%d  0 lineto ", ( x0+ x1 )/ 2 );
+	sioOutPrintf( ps->psSos, "%d %d lineto closepath\n", xs, ys );
 
-	appWinMeta_FillPath( sos, dc );
+	appWinMeta_FillPath( ps, dc );
 	}
 
     if  ( dc->dcDrawBorders )
 	{
-	appMetaSetColorPs( sos, dc, &(dc->dcPen.lpColor) );
-	appMetaSetPenPs( sos, dc, &(dc->dcPen) );
+	appMetaSetColorPs( ps, dc, &(dc->dcPen.lpColor) );
+	appMetaSetPenPs( ps, dc, &(dc->dcPen) );
 
-	sioOutPrintf( sos, "%d %d bp ", xs, ys );
+	sioOutPrintf( ps->psSos, "%d %d bp ", xs, ys );
 
-	sioOutPrintf( sos, "%d 0 %d %f %f arc ",
+	sioOutPrintf( ps->psSos, "%d 0 %d %f %f arc ",
 					( x0+ x1 )/ 2, (x1- x0)/2, as, ae );
-	sioOutPrintf( sos, "%d  0 lineto ", ( x0+ x1 )/ 2 );
-	sioOutPrintf( sos, "%d %d lineto stroke\n", xs, ys );
+	sioOutPrintf( ps->psSos, "%d  0 lineto ", ( x0+ x1 )/ 2 );
+	sioOutPrintf( ps->psSos, "%d %d lineto stroke\n", xs, ys );
 	}
 
-    sioOutPrintf( sos, "grestore\n" );
+    sioOutPrintf( ps->psSos, "grestore\n" );
 
     return 0;
     }
 
 static int appMeta_ChordPs(	SimpleInputStream *	sis,
-				SimpleOutputStream *	sos,
+				PrintingState *		ps,
 				int			recordSize,
 				DeviceContext *		dc )
     {
@@ -1093,28 +1085,28 @@ static int appMeta_ChordPs(	SimpleInputStream *	sis,
 			    &y0, &x0, &y1, &x1,
 			    &ys, &xs, &as, &ae );
 
-    sioOutPrintf( sos, "gsave [1 0 0 %g 0 %d] concat\n",
+    sioOutPrintf( ps->psSos, "gsave [1 0 0 %g 0 %d] concat\n",
 			    (double)(y0- y1)/(double)(x1- x0), ( y0+ y1 )/ 2 );
 
     if  ( dc->dcDrawBorders )
 	{
-	appMetaSetColorPs( sos, dc, &(dc->dcPen.lpColor) );
-	appMetaSetPenPs( sos, dc, &(dc->dcPen) );
+	appMetaSetColorPs( ps, dc, &(dc->dcPen.lpColor) );
+	appMetaSetPenPs( ps, dc, &(dc->dcPen) );
 
-	sioOutPrintf( sos, "%d %d bp ", xs, ys );
+	sioOutPrintf( ps->psSos, "%d %d bp ", xs, ys );
 
-	sioOutPrintf( sos, "%d 0 %d %f %f arc %d %d lineto stroke\n",
+	sioOutPrintf( ps->psSos, "%d 0 %d %f %f arc %d %d lineto stroke\n",
 					( x0+ x1 )/ 2, (x1- x0)/2,
 					as, ae, xs, ys );
 	}
 
-    sioOutPrintf( sos, "grestore\n" );
+    sioOutPrintf( ps->psSos, "grestore\n" );
 
     return 0;
     }
 
 static int appMeta_EllipsePs(	SimpleInputStream *	sis,
-				SimpleOutputStream *	sos,
+				PrintingState *		ps,
 				DeviceContext *		dc )
     {
     int		y0;
@@ -1141,35 +1133,35 @@ static int appMeta_EllipsePs(	SimpleInputStream *	sis,
     if  ( y1 < y0 )
 	{ swap= y0; y0= y1; y1= swap; }
 
-    sioOutPrintf( sos, "gsave [1 0 0 %g 0 %d] concat\n",
+    sioOutPrintf( ps->psSos, "gsave [1 0 0 %g 0 %d] concat\n",
 			    (double)(y1- y0)/(double)(x1- x0), ( y0+ y1 )/ 2 );
 
     if  ( dc->dcFillInsides )
 	{
-	sioOutPrintf( sos, "%d 0 bp ", x1 );
-	sioOutPrintf( sos, "%d 0 %d 0 360 arc closepath\n",
+	sioOutPrintf( ps->psSos, "%d 0 bp ", x1 );
+	sioOutPrintf( ps->psSos, "%d 0 %d 0 360 arc closepath\n",
 					    ( x0+ x1 )/ 2, (x1- x0)/2 );
 
-	appWinMeta_FillPath( sos, dc );
+	appWinMeta_FillPath( ps, dc );
 	}
 
     if  ( dc->dcDrawBorders )
 	{
-	appMetaSetColorPs( sos, dc, &(dc->dcPen.lpColor) );
-	appMetaSetPenPs( sos, dc, &(dc->dcPen) );
+	appMetaSetColorPs( ps, dc, &(dc->dcPen.lpColor) );
+	appMetaSetPenPs( ps, dc, &(dc->dcPen) );
 
-	sioOutPrintf( sos, "%d 0 bp ", x1 );
-	sioOutPrintf( sos, "%d 0 %d 0 360 arc stroke\n",
+	sioOutPrintf( ps->psSos, "%d 0 bp ", x1 );
+	sioOutPrintf( ps->psSos, "%d 0 %d 0 360 arc stroke\n",
 					    ( x0+ x1 )/ 2, (x1- x0)/2 );
 	}
 
-    sioOutPrintf( sos, "grestore\n" );
+    sioOutPrintf( ps->psSos, "grestore\n" );
 
     return 0;
     }
 
 static int appMeta_RoundRectPs(	SimpleInputStream *	sis,
-				SimpleOutputStream *	sos,
+				PrintingState *		ps,
 				int			recordSize,
 				DeviceContext *		dc )
     {
@@ -1220,34 +1212,31 @@ static int appMeta_RoundRectPs(	SimpleInputStream *	sis,
     bottom= w* ( y0- y1 )/ ( 2* h );
     radius= w/ 2;
 
-    sioOutPrintf( sos, "gsave [1 0 0 %g 0 %d] concat\n",
+    sioOutPrintf( ps->psSos, "gsave [1 0 0 %g 0 %d] concat\n",
 					    (double)h/ w, ( y0+ y1 )/ 2 );
 
     if  ( dc->dcFillInsides )
 	{
-	appMetafileRoundRectPathPs( sos, x0, y0, x1, y1, w, h );
+	appMetafileRoundRectPathPs( ps, x0, y0, x1, y1, w, h, "closepath\n" );
 
-	sioOutPrintf( sos, "closepath\n" );
-
-	appWinMeta_FillPath( sos, dc );
+	appWinMeta_FillPath( ps, dc );
 	}
 
     if  ( dc->dcDrawBorders )
 	{
-	appMetaSetColorPs( sos, dc, &(dc->dcPen.lpColor) );
-	appMetaSetPenPs( sos, dc, &(dc->dcPen) );
+	appMetaSetColorPs( ps, dc, &(dc->dcPen.lpColor) );
+	appMetaSetPenPs( ps, dc, &(dc->dcPen) );
 
-	appMetafileRoundRectPathPs( sos, x0, y0, x1, y1, w, h );
-	sioOutPrintf( sos, "stroke\n" );
+	appMetafileRoundRectPathPs( ps, x0, y0, x1, y1, w, h, "stroke\n" );
 	}
 
-    sioOutPrintf( sos, "grestore\n" );
+    sioOutPrintf( ps->psSos, "grestore\n" );
 
     return 0;
     }
 
 static int appMeta_PolyPolygonPs(	SimpleInputStream *	sis,
-					SimpleOutputStream *	sos,
+					PrintingState *		ps,
 					int			recordSize,
 					DeviceContext *		dc )
     {
@@ -1266,13 +1255,13 @@ static int appMeta_PolyPolygonPs(	SimpleInputStream *	sis,
 	if  ( appWinMetaGetPoints( dc, counts[i], sis ) )
 	    { LDEB(counts[i]); return -1;	}
 
-	appMetaDrawPolygonPs( sos, dc, counts[i] );
+	appMetaDrawPolygonPs( ps, dc, counts[i] );
 	}
 
     return 0;
     }
 
-int appMetaPlayFilePs(	SimpleOutputStream *		sos,
+int appMetaPlayFilePs(	PrintingState *			ps,
 			SimpleInputStream *		sis,
 			const PostScriptFontList *	psfl,
 			int				useFilters,
@@ -1384,6 +1373,11 @@ int appMetaPlayFilePs(	SimpleOutputStream *		sos,
 		    { LDEB(1); return -1;	}
 		continue;
 
+	    case WINMETA_SelectClipRgn:
+		if  ( appMetaSelectClipRgn( &dc, recordSize, sis ) )
+		    { LDEB(1); return -1;	}
+		continue;
+
 	    case WINMETA_ExcludeClipRect:
 		if  ( appMetaExcludeClipRect( &dc, recordSize, sis ) )
 		    { LDEB(1); return -1;	}
@@ -1413,7 +1407,7 @@ int appMetaPlayFilePs(	SimpleOutputStream *		sos,
 		WMFDEB(appDebug("StretchBlt([%d+%d,%d+%d]->[%d+%d,%d+%d],..)\n",
 				x0,w0,y0,h0, x1,w1,y1,h1 ));
 
-		if  ( appMetaBitmapImagePs( sis, sos, 2*(recordSize-3-2-8*1),
+		if  ( appMetaBitmapImagePs( sis, ps, 2*(recordSize-3-2-8*1),
 					useFilters, indexedImages, &dc,
 					x0, y0, w0, h0, x1, y1, w1, h1 ) )
 		    { LDEB(1); return -1; }
@@ -1437,14 +1431,14 @@ int appMetaPlayFilePs(	SimpleOutputStream *		sos,
 			"StretchDIBits([%d+%d,%d+%d]->[%d+%d,%d+%d],..)\n",
 			x0,w0,y0,h0, x1,w1,y1,h1 ));
 
-		if  ( appMetaBitmapImagePs( sis, sos, 2*(recordSize-3-2-9*1),
+		if  ( appMetaBitmapImagePs( sis, ps, 2*(recordSize-3-2-9*1),
 					    useFilters, indexedImages, &dc,
 					    x0, y0, w0, h0, x1, y1, w1, h1 ) )
 		    { LDEB(1); return -1; }
 		continue;
 
 	    case WINMETA_SelectObject:
-		if  ( appMetaSelectObjectPs( &dc, psfl, sos,
+		if  ( appMetaSelectObjectPs( &dc, psfl, ps,
 							recordSize, sis ) )
 		    { LDEB(recordSize); return -1;	}
 		continue;
@@ -1547,22 +1541,22 @@ int appMetaPlayFilePs(	SimpleOutputStream *		sos,
 		continue;
 
 	    case WINMETA_PolyLine:
-		if  ( appMeta_PolyLinePs( sis, sos, recordSize, &dc ) )
+		if  ( appMeta_PolyLinePs( sis, ps, recordSize, &dc ) )
 		    { LDEB(1); return -1;	}
 		continue;
 
 	    case WINMETA_Polygon:
-		if  ( appMeta_PolygonPs( sis, sos, recordSize, &dc ) )
+		if  ( appMeta_PolygonPs( sis, ps, recordSize, &dc ) )
 		    { LDEB(1); return -1;	}
 		continue;
 
 	    case WINMETA_Rectangle:
-		if  ( appMeta_RectanglePs( sis, sos, recordSize, &dc ) )
+		if  ( appMeta_RectanglePs( sis, ps, recordSize, &dc ) )
 		    { LDEB(1); return -1;	}
 		continue;
 
 	    case WINMETA_LineTo:
-		if  ( appMeta_LineToPs( sis, sos, recordSize, &dc ) )
+		if  ( appMeta_LineToPs( sis, ps, recordSize, &dc ) )
 		    { LDEB(1); return -1;	}
 		continue;
 
@@ -1578,12 +1572,12 @@ int appMetaPlayFilePs(	SimpleOutputStream *		sos,
 		continue;
 
 	    case WINMETA_ExtTextOut:
-		if  ( appMeta_ExtTextOutPs( sis, sos, recordSize, &dc ) )
+		if  ( appMeta_ExtTextOutPs( sis, ps, recordSize, &dc ) )
 		    { LDEB(recordSize); return -1;	}
 		continue;
 
 	    case WINMETA_TextOut:
-		if  ( appMeta_TextOutPs( sis, sos, recordSize, &dc ) )
+		if  ( appMeta_TextOutPs( sis, ps, recordSize, &dc ) )
 		    { LDEB(recordSize); return -1;	}
 		continue;
 
@@ -1592,7 +1586,7 @@ int appMetaPlayFilePs(	SimpleOutputStream *		sos,
 		goto skipArguments;
 
 	    case WINMETA_PatBlt:
-		if  ( appMeta_PatBltPs( sis, sos, recordSize, &dc ) )
+		if  ( appMeta_PatBltPs( sis, ps, recordSize, &dc ) )
 		    { LDEB(recordSize); return -1;	}
 		continue;
 
@@ -1601,27 +1595,27 @@ int appMetaPlayFilePs(	SimpleOutputStream *		sos,
 		goto skipArguments;
 
 	    case WINMETA_Pie:
-		if  ( appMeta_PiePs( sis, sos, recordSize, &dc ) )
+		if  ( appMeta_PiePs( sis, ps, recordSize, &dc ) )
 		    { LDEB(1); return -1;	}
 		continue;
 
 	    case WINMETA_Arc:
-		if  ( appMeta_ArcPs( sis, sos, recordSize, &dc ) )
+		if  ( appMeta_ArcPs( sis, ps, recordSize, &dc ) )
 		    { LDEB(1); return -1;	}
 		continue;
 
 	    case WINMETA_Chord:
-		if  ( appMeta_ChordPs( sis, sos, recordSize, &dc ) )
+		if  ( appMeta_ChordPs( sis, ps, recordSize, &dc ) )
 		    { LDEB(1); return -1;	}
 		continue;
 
 	    case WINMETA_Ellipse:
-		if  ( appMeta_EllipsePs( sis, sos, &dc ) )
+		if  ( appMeta_EllipsePs( sis, ps, &dc ) )
 		    { LDEB(1); return -1;	}
 		continue;
 
 	    case WINMETA_RoundRect:
-		if  ( appMeta_RoundRectPs( sis, sos, recordSize, &dc ) )
+		if  ( appMeta_RoundRectPs( sis, ps, recordSize, &dc ) )
 		    { LDEB(1); return -1;	}
 		continue;
 
@@ -1654,7 +1648,7 @@ int appMetaPlayFilePs(	SimpleOutputStream *		sos,
 		continue;
 
 	    case WINMETA_PolyPolygon:
-		if  ( appMeta_PolyPolygonPs( sis, sos, recordSize, &dc ) )
+		if  ( appMeta_PolyPolygonPs( sis, ps, recordSize, &dc ) )
 		    { LDEB(1); return -1;	}
 		continue;
 
@@ -2159,7 +2153,7 @@ static const char *	APPMETAPS_Bp[]=
 "",
 };
 
-int appMetaDefineProcsetPs(	SimpleOutputStream *	sos )
+int appMetaDefineProcsetPs(	SimpleOutputStream *		sos )
     {
     sioOutPrintf( sos, "%%%%BeginProcSet AppWmfToPs 1.0 1\n\n" );
 

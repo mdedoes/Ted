@@ -19,29 +19,29 @@
 /*									*/
 /*  Make sure there is enough space in the string of a paragraph.	*/
 /*									*/
-/*  NOTE that bi->biParaStrlen is not updated. We just make sure that	*/
-/*	there is enough memory.						*/
+/*  NOTE that paraBi->biParaStrlen is not updated. We just make sure	*/
+/*	that there is enough memory.					*/
 /*									*/
 /************************************************************************/
 
-int docInflateTextString(	BufferItem *    bi,
+int docInflateTextString(	BufferItem *    paraBi,
 				int		by )
     {
     unsigned char *	freshString;
     int			newSize;
 
-    if  ( bi->biLevel != DOClevPARA )
-	{ LLDEB(bi->biLevel,DOClevPARA); return -1;	}
+    if  ( paraBi->biLevel != DOClevPARA )
+	{ LLDEB(paraBi->biLevel,DOClevPARA); return -1;	}
 
-    if  ( bi->biParaStrlen % 50 )
-	{ newSize= bi->biParaStrlen+ by+  1; }
-    else{ newSize= bi->biParaStrlen+ by+ 51; }
+    if  ( paraBi->biParaStrlen % 50 )
+	{ newSize= paraBi->biParaStrlen+ by+  1; }
+    else{ newSize= paraBi->biParaStrlen+ by+ 51; }
 
-    freshString= (unsigned char *)realloc( bi->biParaString, newSize );
+    freshString= (unsigned char *)realloc( paraBi->biParaString, newSize );
     if  ( ! freshString )
-	{ LXDEB(bi->biParaStrlen,freshString); return -1; }
+	{ LXDEB(paraBi->biParaStrlen,freshString); return -1; }
 
-    bi->biParaString= freshString;
+    paraBi->biParaString= freshString;
 
     return 0;
     }
@@ -53,7 +53,7 @@ int docInflateTextString(	BufferItem *    bi,
 /************************************************************************/
 
 int docParaStringReplace(		int *			pStroffShift,
-					BufferItem *		bi,
+					BufferItem *		paraBi,
 					int			stroffBegin,
 					int			stroffEnd,
 					const unsigned char *	addedString,
@@ -63,22 +63,31 @@ int docParaStringReplace(		int *			pStroffShift,
 
     stroffShift= addedStrlen- stroffEnd+ stroffBegin;
 
-    if  ( stroffShift > 0				&&
-	  docInflateTextString( bi, stroffShift )	)
-	{ LLDEB(bi->biParaStrlen,stroffShift); return -1;	}
+    if  ( paraBi->biLevel != DOClevPARA )
+	{ LLDEB(paraBi->biLevel,DOClevPARA); return -1;	}
 
-    if  ( bi->biParaStrlen > 0 )
+    if  ( stroffShift > 0				&&
+	  docInflateTextString( paraBi, stroffShift )	)
+	{ LLDEB(paraBi->biParaStrlen,stroffShift); return -1;	}
+
+    if  ( paraBi->biParaStrlen > 0 )
 	{
-	memmove( bi->biParaString+ stroffEnd+ stroffShift,
-		bi->biParaString+ stroffEnd, bi->biParaStrlen- stroffEnd+ 1 );
+	int		n= paraBi->biParaStrlen- stroffEnd+ 1;
+
+	if  ( n < 0 )
+	    { LDEB(n);	}
+	else{
+	    memmove( paraBi->biParaString+ stroffEnd+ stroffShift,
+				    paraBi->biParaString+ stroffEnd, n );
+	    }
 	}
 
-    memcpy( bi->biParaString+ stroffBegin, addedString, addedStrlen );
+    memcpy( paraBi->biParaString+ stroffBegin, addedString, addedStrlen );
 
     if  ( stroffShift != 0 )
 	{
-	bi->biParaStrlen += stroffShift;
-	bi->biParaString[bi->biParaStrlen]= '\0';
+	paraBi->biParaStrlen += stroffShift;
+	paraBi->biParaString[paraBi->biParaStrlen]= '\0';
 	}
 
     *pStroffShift= stroffShift;

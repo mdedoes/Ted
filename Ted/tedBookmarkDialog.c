@@ -16,8 +16,23 @@
 #   include	<appDebugon.h>
 
 /************************************************************************/
+/*									*/
 /*  User data for a link dialog.					*/
+/*									*/
 /************************************************************************/
+
+typedef struct BookmarkPageResources
+    {
+    char *		bprMarkText;
+    char *		bprSetBookmarkText;
+    char *		bprGoToBookmarkText;
+    char *		bprRemoveBookmarkText;
+    char *		bprCancelText;
+
+    char *		bprCopyHeaderText;
+    char *		bprCopyButtonText;
+    char *		bprCopyAsItemTexts[LINKkind_COUNT];
+    } BookmarkPageResources;
 
 typedef struct BookmarkContext
     {
@@ -43,20 +58,12 @@ typedef struct BookmarkContext
 
     APP_WIDGET		bcCopyBookmarkButton;
 
-    char *		bcMarkText;
-    char *		bcSetBookmarkText;
-    char *		bcGoToBookmarkText;
-    char *		bcRemoveBookmarkText;
-    char *		bcCancelText;
-
-    char *		bcCopyHeaderText;
-    char *		bcCopyButtonText;
-    char *		bcCopyAsItemTexts[LINKkind_COUNT];
-
     char *		bcSavedMark;
     int			bcCopyKind;
 	
     EditDocument *	bcDocument;
+
+    const BookmarkPageResources *	bcResources;
     } BookmarkContext;
 
 /************************************************************************/
@@ -68,42 +75,46 @@ typedef struct BookmarkContext
 static AppConfigurableResource TED_BookmarkResourceTable[]=
     {
     APP_RESOURCE( "bookmarkBookmark",
-	    offsetof(BookmarkContext,bcMarkText),
+	    offsetof(BookmarkPageResources,bprMarkText),
 	    "Bookmark" ),
 
     APP_RESOURCE( "bookmarkCopyHeader",
-	    offsetof(BookmarkContext,bcCopyHeaderText),
+	    offsetof(BookmarkPageResources,bprCopyHeaderText),
 	    "Copy Bookmark" ),
 
     APP_RESOURCE( "bookmarkCopyButtom",
-	    offsetof(BookmarkContext,bcCopyButtonText),
+	    offsetof(BookmarkPageResources,bprCopyButtonText),
 	    "Copy" ),
 
     APP_RESOURCE( "bookmarkCopyAsHyperlink",
-	    offsetof(BookmarkContext,bcCopyAsItemTexts[LINKkindHYPERLINK]),
+	    offsetof(BookmarkPageResources,
+			    bprCopyAsItemTexts[LINKkindHYPERLINK]),
 	    "As Hyperlink" ),
     APP_RESOURCE( "bookmarkCopyAsPageNumber",
-	    offsetof(BookmarkContext,bcCopyAsItemTexts[LINKkindPAGE_NUMBER]),
+	    offsetof(BookmarkPageResources,
+			    bprCopyAsItemTexts[LINKkindPAGE_NUMBER]),
 	    "As Page Number" ),
     APP_RESOURCE( "bookmarkCopyAsBookmarkText",
-	    offsetof(BookmarkContext,bcCopyAsItemTexts[LINKkindBOOKMARK_TEXT]),
+	    offsetof(BookmarkPageResources,
+			    bprCopyAsItemTexts[LINKkindBOOKMARK_TEXT]),
 	    "As Bookmark Text" ),
     APP_RESOURCE( "bookmarkCopyAsTextPlusPage",
-	    offsetof(BookmarkContext,bcCopyAsItemTexts[LINKkindTEXT_PLUS_PAGE]),
+	    offsetof(BookmarkPageResources,
+			    bprCopyAsItemTexts[LINKkindTEXT_PLUS_PAGE]),
 	    "As Text and Page Number" ),
 
 
     APP_RESOURCE( "bookmarkSetBookmark",
-	    offsetof(BookmarkContext,bcSetBookmarkText),
+	    offsetof(BookmarkPageResources,bprSetBookmarkText),
 	    "Set Bookmark" ),
     APP_RESOURCE( "bookmarkGoToBookmark",
-	    offsetof(BookmarkContext,bcGoToBookmarkText),
+	    offsetof(BookmarkPageResources,bprGoToBookmarkText),
 	    "Go To Bookmark" ),
     APP_RESOURCE( "bookmarkRemoveBookmark",
-	    offsetof(BookmarkContext,bcRemoveBookmarkText),
+	    offsetof(BookmarkPageResources,bprRemoveBookmarkText),
 	    "Remove Bookmark" ),
     APP_RESOURCE( "bookmarkCancel",
-	    offsetof(BookmarkContext,bcCancelText),
+	    offsetof(BookmarkPageResources,bprCancelText),
 	    "Cancel" ),
     };
 
@@ -353,26 +364,27 @@ static void tedBookmarkMakeDestination(	BookmarkContext *	bc,
 /*									*/
 /************************************************************************/
 
-static void tedBookmarkMakeButtonForm(	BookmarkContext *	bc )
+static void tedBookmarkMakeButtonForm(	BookmarkContext *		bc,
+					const BookmarkPageResources *	bpr )
     {
     const int		heightResizable= 0;
 
     bc->bcButtonRow= appMakeRowInColumn( bc->bcPaned, 4, heightResizable );
 
     appMakeButtonInRow( &(bc->bcSetBookmarkButton), bc->bcButtonRow,
-			    bc->bcSetBookmarkText, tedBookmarkSetPushed,
+			    bpr->bprSetBookmarkText, tedBookmarkSetPushed,
 			    (void *)bc, 0, 1 );
 
     appMakeButtonInRow( &(bc->bcGoToBookmarkButton), bc->bcButtonRow,
-			    bc->bcGoToBookmarkText, tedBookmarkGotoPushed,
+			    bpr->bprGoToBookmarkText, tedBookmarkGotoPushed,
 			    (void *)bc, 1, 0 );
 
     appMakeButtonInRow( &(bc->bcRemoveBookmarkButton), bc->bcButtonRow,
-			    bc->bcRemoveBookmarkText, tedBookmarkRemovePushed,
+			    bpr->bprRemoveBookmarkText, tedBookmarkRemovePushed,
 			    (void *)bc, 2, 0 );
 
     appMakeButtonInRow( &(bc->bcCancelButton), bc->bcButtonRow,
-			    bc->bcCancelText, tedBookmarkCancelPushed,
+			    bpr->bprCancelText, tedBookmarkCancelPushed,
 			    (void *)bc, 3, 0 );
 
     appGuiSetDefaultButtonForDialog( &(bc->bcDialog),
@@ -407,15 +419,24 @@ static int tedMakeBookmarkDialog(	BookmarkContext **	pBc,
 					EditApplication *	ea,
 					APP_WIDGET		relative )
     {
-    BookmarkContext *	bc;
+    BookmarkContext *		bc;
+
+    static BookmarkPageResources	bpr;
+    static int				gotResources= 0;
 
     bc= (BookmarkContext *)malloc( sizeof(BookmarkContext) );
     if  ( ! bc )
 	{ XDEB(bc); return -1;	}
 
-    appGuiGetResourceValues( ea, (void *)bc, TED_BookmarkResourceTable,
+    if  ( ! gotResources )
+	{
+	appGuiGetResourceValues( &gotResources, ea, (void *)&bpr,
+					TED_BookmarkResourceTable,
 					sizeof(TED_BookmarkResourceTable)/
 					sizeof(AppConfigurableResource) );
+	}
+
+    bc->bcResources= &bpr;
 
     bc->bcDestinationText= (APP_WIDGET)0;
     bc->bcMarkListWidget= (APP_WIDGET)0;
@@ -434,22 +455,22 @@ static int tedMakeBookmarkDialog(	BookmarkContext **	pBc,
 			    (void *)bc,
 			    "tedBookmark" );
 
-    tedBookmarkMakeDestination( bc, bc->bcMarkText );
+    tedBookmarkMakeDestination( bc, bpr.bprMarkText );
 
     tedBookmarkMakeList( bc );
 
     appMakeRowFrameInColumn( &(bc->bcCopyAsFrame), &(bc->bcCopyAsRow),
-				    bc->bcPaned, 4, bc->bcCopyHeaderText );
+				    bc->bcPaned, 4, bpr.bprCopyHeaderText );
 
     appMakeButtonInRow( &(bc->bcCopyBookmarkButton), bc->bcCopyAsRow,
-			    bc->bcCopyButtonText, tedBookmarkCopyPushed,
+			    bpr.bprCopyButtonText, tedBookmarkCopyPushed,
 			    (void *)bc, 0, 0 );
 
     appMakeOptionmenuInRow( &(bc->bcCopyAsOptionmenu),
 						    bc->bcCopyAsRow, 1, 3 );
 
 
-    tedBookmarkMakeButtonForm( bc );
+    tedBookmarkMakeButtonForm( bc, &bpr );
 
     *pBc= bc;
     
@@ -480,6 +501,8 @@ void tedRunBookmarkDialog(	EditApplication *	ea,
 
     int				justMade= 0;
 
+    const BookmarkPageResources *	bpr;
+
     if  ( ! bookmarkContext )
 	{
 	if  ( tedMakeBookmarkDialog( &bookmarkContext, ea, relative ) )
@@ -489,6 +512,7 @@ void tedRunBookmarkDialog(	EditApplication *	ea,
 	}
 
     bc= bookmarkContext;
+    bpr= bc->bcResources;
 
     bc->bcDocument= ed;
 
@@ -543,7 +567,7 @@ void tedRunBookmarkDialog(	EditApplication *	ea,
 	{
 	appFillInspectorMenu( LINKkind_COUNT, LINKkindHYPERLINK,
 				bc->bcCopyAsItems,
-				bc->bcCopyAsItemTexts,
+				bpr->bprCopyAsItemTexts,
 				&(bc->bcCopyAsOptionmenu),
 				tedBookmarkCopyKindKindChosen, (void *)bc );
 	}
@@ -621,7 +645,7 @@ void tedFillBookmarkList(	APP_WIDGET		list,
 
 	if  ( size == 0			||
 	      name[0] == '_'		||
-	      size >= DOCmaxBOOKMARK	)
+	      size > DOCmaxBOOKMARK	)
 	    { continue;	}
 
 	bookmarks[bookmarkCount]= malloc( size+ 1 );

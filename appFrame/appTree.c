@@ -268,24 +268,14 @@ int appLayoutTree(		TreeDocument *		td,
 static void appTreeSetLineMode(		TreeDocument *			td,
 					AppDrawingData *		add )
     {
-    static char	dot[]= { 1, 1 };
+    static unsigned char	dot[]= { 1, 1 };
 
     appDrawSetForegroundColor( add, &(td->tdLineColor) );
     td->tdCurrentColor= &(td->tdLineColor);
 
-#   ifdef USE_MOTIF
-    XSetLineAttributes( add->addDisplay, add->addGc,
-				    1, LineOnOffDash, CapButt, JoinMiter );
-
-    XSetDashes( add->addDisplay, add->addGc, 0, dot, sizeof( dot ) );
-#   endif
-
-#   ifdef USE_GTK
-    gdk_gc_set_line_attributes( add->addGc,
-		    1, GDK_LINE_ON_OFF_DASH, GDK_CAP_BUTT, GDK_JOIN_MITER );
-
-    gdk_gc_set_dashes( add->addGc, 0, dot, sizeof( dot ) );
-#   endif
+    appDrawSetLineAttributes( add,
+			1, LINEstyleON_OFF_DASH, LINEcapBUTT, LINEjoinMITER,
+			dot, sizeof( dot ) );
     }
 
 static void appTreeUnsetLineMode(	TreeDocument *			td,
@@ -294,15 +284,9 @@ static void appTreeUnsetLineMode(	TreeDocument *			td,
     appDrawSetForegroundColor( add, &(td->tdBlackColor) );
     td->tdCurrentColor= &(td->tdBlackColor);
 
-#   ifdef USE_MOTIF
-    XSetLineAttributes( add->addDisplay, add->addGc,
-				    1, LineSolid, CapButt, JoinMiter );
-#   endif
-
-#   ifdef USE_GTK
-    gdk_gc_set_line_attributes( add->addGc,
-			1, GDK_LINE_SOLID, GDK_CAP_BUTT, GDK_JOIN_MITER );
-#   endif
+    appDrawSetLineAttributes( add,
+			1, LINEstyleSOLID, LINEcapBUTT, LINEjoinMITER,
+			(const unsigned char *)0, 0 );
     }
 
 static void appTreeOpenRect(		TreeDocument *			td,
@@ -682,7 +666,7 @@ void appDrawTreeRectangle(	TreeDocument *		td,
     drRedraw= *drVisible;
 
     if  ( ! drClip							||
-	  docIntersectRectangle( &drRedraw, &drRedraw, drClip )		)
+	  geoIntersectRectangle( &drRedraw, &drRedraw, drClip )		)
 	{
 	appDrawFillRectangle( add,
 			    drRedraw.drX0- ox, drRedraw.drY0- oy,

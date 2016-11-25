@@ -10,6 +10,7 @@
 
 #   include	<utilMemoryBuffer.h>
 #   include	"docObject.h"
+#   include	"docEditPosition.h"
 
 struct BufferItem;
 struct BufferDocument;
@@ -179,6 +180,8 @@ typedef struct RecalculateFields
     DOC_CLOSE_OBJECT		rfCloseObject;
     unsigned int		rfFieldsUpdated;
     unsigned int		rfUpdateFlags;
+    EditPosition		rfSelBegin;
+    EditPosition		rfSelEnd;
     } RecalculateFields;
 
 /************************************************************************/

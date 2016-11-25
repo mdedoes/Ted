@@ -41,7 +41,7 @@ void docRtfSaveTabStopList( 	SimpleOutputStream *		sos,
 	    case DOCtaRIGHT:
 		docRtfWriteTag( "\\tqr", pCol, sos );
 		break;
-	    case DOCtaCENTRE:
+	    case DOCtaCENTER:
 		docRtfWriteTag( "\\tqc", pCol, sos );
 		break;
 	    case DOCtaDECIMAL:

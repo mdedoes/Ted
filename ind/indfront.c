@@ -5,16 +5,22 @@
 #   include	<appDebugon.h>
 
 /************************************************************************/
+/*									*/
 /*  Make an empty finite automaton.					*/
+/*									*/
 /************************************************************************/
+
 void *	indMake( void )
     { return (void *)indINDmake( 0 );	}
 
 /************************************************************************/
+/*									*/
 /*  Read a finite automaton from file. If the read_only flag is set,	*/
 /*  the file is memory mapped. This han an advantage on some operating	*/
 /*  systems.								*/
+/*									*/
 /************************************************************************/
+
 void *	indRead( filename, read_only )
 const char *	filename;
 int		read_only;

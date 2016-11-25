@@ -6,6 +6,7 @@
 #   include	<ctype.h>
 
 #   include	"psFont.h"
+#   include	"appSystem.h"
 
 #   include	<appDebugon.h>
 
@@ -47,8 +48,21 @@ void psCleanAfmCharMetric(	AfmCharMetric *	acm )
 /*									*/
 /************************************************************************/
 
+void psInitSupportedCharset(	SupportedCharset *	sc )
+    {
+    int		i;
+
+    sc->scSupported= 0;
+    sc->scNonStandardGlyphNames= 0;
+
+    for ( i= 0; i < 256; i++ )
+	{ sc->scCodeToGlyphMapping[i]= 0;	}
+    }
+
 void psInitAfmFontInfo(	AfmFontInfo *	afi )
     {
+    int		i;
+
     afi->afiFontName= (char *)0;
     afi->afiFullName= (char *)0;
     afi->afiNotice= (char *)0;
@@ -72,8 +86,17 @@ void psInitAfmFontInfo(	AfmFontInfo *	afi )
     afi->afiCharacterSet= (char *)0;
     afi->afiVendor= (char *)0;
 
+    afi->afiFontFileName= (char *)0;
+
     afi->afiMetricCount= 0;
     afi->afiMetrics= (AfmCharMetric *)0;
+
+    for ( i= 0; i < ENCODINGps_COUNT; i++ )
+	{ psInitSupportedCharset( &(afi->afiSupportedCharsets[i]) );	}
+    for ( i= 0; i < 256; i++ )
+	{ afi->afiDefaultCodeToGlyph[i]= -1; }
+
+    afi->afiUseFontspecificEncoding= 0;
 
     return;
     }
@@ -102,6 +125,8 @@ void psCleanAfmFontInfo(	AfmFontInfo *	afi )
 	{ free( afi->afiCharacterSet );}
     if  ( afi->afiVendor )
 	{ free( afi->afiVendor );}
+    if  ( afi->afiFontFileName )
+	{ free( afi->afiFontFileName );}
 
     for ( i= 0; i < afi->afiMetricCount; i++ )
 	{ psCleanAfmCharMetric( &(afi->afiMetrics[i]) ); }
@@ -112,6 +137,135 @@ void psCleanAfmFontInfo(	AfmFontInfo *	afi )
     return;
     }
 
+static void psAfmWriteXFontsDir(
+			SimpleOutputStream *	sos,
+			const char *		prefix,
+			const AfmFontInfo *	afi )
+    {
+    int				i;
+
+    const char *		vendor= "unknown";
+    const char *		weight= "medium";
+    const char *		slant= "r";
+    const char *		width= "normal";
+    const char *		fixed= "p";
+
+    char *			weightX= (char *)0;
+    char *			widthX= (char *)0;
+    char *			s;
+
+    const FontCharset *		fc;
+
+    const char *		filename= "FontFileName";
+    int				xWritten= 0;
+
+    if  ( afi->afiFontFileName )
+	{ filename= appRelativeName( afi->afiFontFileName );	}
+    if  ( afi->afiVendor )
+	{ vendor= afi->afiVendor;	}
+
+
+    if  ( afi->afiItalicAngle < -1.0 )
+	{ slant= "i";	}
+    if  ( afi->afiIsFixedPitch )
+	{ fixed= "m";	}
+
+    if  ( afi->afiWeight && afi->afiWeight[0] )
+	{ weight= afi->afiWeight; }
+    if  ( afi->afiWidth && afi->afiWidth[0] )
+	{ width= afi->afiWidth; }
+
+    if  ( ! strcmp( weight, "Regular" ) )
+	{ weight= "medium";	}
+    if  ( ! strcmp( weight, "regular" ) )
+	{ weight= "medium";	}
+
+    weightX= strdup( weight );
+    if  ( weightX )
+	{
+	s= weightX;
+	while( *s )
+	    {
+	    if  ( isupper( *s ) )
+		{ *s= tolower( *s );	}
+	    s++;
+	    }
+	}
+
+    widthX= strdup( width );
+    if  ( widthX )
+	{
+	s= widthX;
+	while( *s )
+	    {
+	    if  ( isupper( *s ) )
+		{ *s= tolower( *s );	}
+	    s++;
+	    }
+	}
+
+    fc= PS_Encodings;
+    for ( i= 0; i < ENCODINGps_COUNT; fc++, i++ )
+	{
+	if  ( ! afi->afiSupportedCharsets[i].scSupported )
+	    { continue;	}
+	if  ( ! fc->fcX11Registry || ! fc->fcX11Encoding )
+	    { continue;	}
+
+	sioOutPrintf( sos,
+	    "%s%s -%s-%s-%s-%s-%s--0-0-0-0-%s-0-%s-%s\n",
+					prefix,
+					filename,
+					vendor,
+					afi->afiFamilyName,
+					weightX?weightX:weight,
+					slant,
+					widthX?widthX:width,
+					fixed,
+					fc->fcX11Registry,
+					fc->fcX11Encoding );
+
+	xWritten++;
+	}
+
+    if  ( ! xWritten )
+	{
+	sioOutPrintf( sos,
+	    "%s%s -%s-%s-%s-%s-%s--0-0-0-0-%s-0-%s-%s\n",
+					prefix,
+					filename,
+					vendor,
+					afi->afiFamilyName,
+					weightX?weightX:weight,
+					slant,
+					widthX?widthX:width,
+					fixed,
+					vendor, "fontspecific" );
+	}
+
+    if  ( weightX )
+	{ free( weightX ); }
+    if  ( widthX )
+	{ free( widthX ); }
+
+    return;
+    }
+
+static void psAfmWriteGSFontmap(
+			SimpleOutputStream *	sos,
+			const char *		prefix,
+			const AfmFontInfo *	afi )
+    {
+    const char *		filename= "FontFileName";
+
+    if  ( afi->afiFontFileName )
+	{ filename= appRelativeName( afi->afiFontFileName );	}
+
+    sioOutPrintf( sos, "%s/%s (%s) ;\n",
+			    prefix, afi->afiFontName, filename );
+
+    }
+
 void psWriteAfmFile(	SimpleOutputStream *	sos,
 			const AfmFontInfo *	afi )
     {
@@ -119,6 +273,7 @@ void psWriteAfmFile(	SimpleOutputStream *	sos,
     const AfmCharMetric *	acm= afi->afiMetrics;
     int				nchars;
     int				map[256];
+    int				kernPairCount;
 
     sioOutPrintf( sos, "StartFontMetrics 4.1\n" );
 
@@ -210,14 +365,17 @@ void psWriteAfmFile(	SimpleOutputStream *	sos,
 	    }
 	}
 
+    kernPairCount= 0;
     acm= afi->afiMetrics;
     for ( i= 0; i < afi->afiMetricCount; acm++, i++ )
 	{
-	if  ( acm->acmC >= 0 && acm->acmC < 256 )
-	    { continue; }
-
 	if  ( ! acm->acmN )
 	    { /*LXDEB(i,acm->acmN);*/ continue;	}
+
+	kernPairCount += acm->acmKernPairCount;
+
+	if  ( acm->acmC >= 0 && acm->acmC < 256 )
+	    { continue; }
 
 	sioOutPrintf( sos, "C %d ; WX %d ; N %s ; B %d %d %d %d ;\n",
 			acm->acmC,
@@ -229,91 +387,52 @@ void psWriteAfmFile(	SimpleOutputStream *	sos,
 			acm->acmBBox.abbTop );
 	}
 
+    if  ( kernPairCount > 0 )
+	{
+	sioOutPrintf( sos, "StartKernData\n" );
+	sioOutPrintf( sos, "StartKernPairs %d\n", kernPairCount );
+
+	acm= afi->afiMetrics;
+	for ( i= 0; i < afi->afiMetricCount; acm++, i++ )
+	    {
+	    int		k;
+
+	    if  ( ! acm->acmN )
+		{ continue;	}
+
+	    for ( k= 0; k < acm->acmKernPairCount; k++ )
+		{
+		const AfmCharMetric *	acmK;
+
+		if  ( acm->acmKernPairs[k].akpPosition < 0	||
+		      acm->acmKernPairs[k].akpPosition >=
+					    afi->afiMetricCount	)
+		    {
+		    LLDEB(acm->acmKernPairs[k].akpPosition,afi->afiMetricCount);
+		    continue;
+		    }
+
+		acmK= afi->afiMetrics+ acm->acmKernPairs[k].akpPosition;
+		if  ( ! acmK->acmN )
+		    { XDEB(acmK->acmN); continue;	}
+
+		sioOutPrintf( sos, "KPX %s %s %d\n",
+					    acm->acmN, acmK->acmN,
+					    acm->acmKernPairs[k].akpXVec );
+		}
+	    }
+
+	sioOutPrintf( sos, "EndKernPairs\n" );
+	sioOutPrintf( sos, "EndKernData\n" );
+	}
+
     sioOutPrintf( sos, "EndCharMetrics\n" );
 
     if  ( afi->afiVendor )
 	{ sioOutPrintf( sos, "Comment Vendor %s\n", afi->afiVendor );	}
 
-    {
-    const char *		vendor= afi->afiVendor;
-    const char *		weight= "medium";
-    const char *		slant= "r";
-    const char *		width= "normal";
-    const char *		fixed= "p";
-
-    char *			weightX= (char *)0;
-    char *			widthX= (char *)0;
-    char *			s;
-
-    const FontCharset *		fc;
-
-    if  ( afi->afiItalicAngle < -1.0 )
-	{ slant= "i";	}
-    if  ( afi->afiIsFixedPitch )
-	{ fixed= "m";	}
-
-    if  ( afi->afiWeight && afi->afiWeight[0] )
-	{ weight= afi->afiWeight; }
-    if  ( afi->afiWidth && afi->afiWidth[0] )
-	{ width= afi->afiWidth; }
-
-    if  ( ! strcmp( weight, "Regular" ) )
-	{ weight= "medium";	}
-    if  ( ! strcmp( weight, "regular" ) )
-	{ weight= "medium";	}
-
-    weightX= strdup( weight );
-    if  ( weightX )
-	{
-	s= weightX;
-	while( *s )
-	    {
-	    if  ( isupper( *s ) )
-		{ *s= tolower( *s );	}
-	    s++;
-	    }
-	}
-
-    widthX= strdup( width );
-    if  ( widthX )
-	{
-	s= widthX;
-	while( *s )
-	    {
-	    if  ( isupper( *s ) )
-		{ *s= tolower( *s );	}
-	    s++;
-	    }
-	}
-
-    fc= PS_Encodings;
-    for ( i= 0; i < ENCODINGps_COUNT; fc++, i++ )
-	{
-	if  ( ! afi->afiSupportedCharsets[i].scSupported )
-	    { continue;	}
-	if  ( ! fc->fcX11Registry || ! fc->fcX11Encoding )
-	    { continue;	}
-
-	if  ( ! vendor )
-	    { vendor= "unknown";	}
-
-	sioOutPrintf( sos,
-	    "Comment fonts.dir -%s-%s-%s-%s-%s--0-0-0-0-%s-0-%s-%s\n",
-					vendor,
-					afi->afiFamilyName,
-					weightX?weightX:weight,
-					slant,
-					widthX?widthX:width,
-					fixed,
-					fc->fcX11Registry,
-					fc->fcX11Encoding );
-	}
-
-    if  ( weightX )
-	{ free( weightX ); }
-    if  ( widthX )
-	{ free( widthX ); }
-    }
+    psAfmWriteXFontsDir( sos, "Comment fonts.dir ", afi );
+    psAfmWriteGSFontmap( sos, "Comment Fontmap ", afi );
 
     sioOutPrintf( sos, "EndFontMetrics\n" );
 
@@ -370,3 +489,50 @@ void psWriteFontInfoDict(	SimpleOutputStream *	sos,
     return;
     }
 
+int psAfmToXFontsDir(	SimpleOutputStream *	sosFontDir,
+			const char *		afmFileName,
+			SimpleInputStream *	sisAfm )
+    {
+    int			rval= 0;
+    AfmFontInfo		afi;
+    const char *	prefix= "";
+    const int		complain= 1;
+
+    psInitAfmFontInfo( &afi );
+
+    if  ( psAfmReadAfm( sisAfm, &afi ) )
+	{ SDEB(afmFileName); rval= -1; goto ready;	}
+
+    if  ( psGetFontEncodings( &afi, complain ) )
+	{ SDEB(afmFileName); rval= -1; goto ready;	}
+
+    psAfmWriteXFontsDir( sosFontDir, prefix, &afi );
+
+  ready:
+
+    psCleanAfmFontInfo( &afi );
+
+    return rval;
+    }
+
+int psAfmToGSFontmap(	SimpleOutputStream *	sosFontDir,
+			const char *		afmFileName,
+			SimpleInputStream *	sisAfm )
+    {
+    int			rval= 0;
+    AfmFontInfo		afi;
+    const char *	prefix= "";
+
+    psInitAfmFontInfo( &afi );
+
+    if  ( psAfmReadAfm( sisAfm, &afi ) )
+	{ SDEB(afmFileName); rval= -1; goto ready;	}
+
+    psAfmWriteGSFontmap( sosFontDir, prefix, &afi );
+
+  ready:
+
+    psCleanAfmFontInfo( &afi );
+
+    return rval;
+    }

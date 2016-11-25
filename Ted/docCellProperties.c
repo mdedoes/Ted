@@ -218,6 +218,78 @@ int docUpdCellProperties(	PropertyMask *			pCpChgPask,
 	    }
 	}
 
+    if  ( PROPmaskISSET( cpUpdMask, CLpropTOP_PADDING ) )
+	{
+	if  ( cpTo->cpTopPadding != cpFrom->cpTopPadding )
+	    {
+	    cpTo->cpTopPadding= cpFrom->cpTopPadding;
+	    PROPmaskADD( &cpChgMask, CLpropTOP_PADDING );
+	    }
+	}
+
+    if  ( PROPmaskISSET( cpUpdMask, CLpropBOTTOM_PADDING ) )
+	{
+	if  ( cpTo->cpBottomPadding != cpFrom->cpBottomPadding )
+	    {
+	    cpTo->cpBottomPadding= cpFrom->cpBottomPadding;
+	    PROPmaskADD( &cpChgMask, CLpropBOTTOM_PADDING );
+	    }
+	}
+
+    if  ( PROPmaskISSET( cpUpdMask, CLpropLEFT_PADDING ) )
+	{
+	if  ( cpTo->cpLeftPadding != cpFrom->cpLeftPadding )
+	    {
+	    cpTo->cpLeftPadding= cpFrom->cpLeftPadding;
+	    PROPmaskADD( &cpChgMask, CLpropLEFT_PADDING );
+	    }
+	}
+
+    if  ( PROPmaskISSET( cpUpdMask, CLpropRIGHT_PADDING ) )
+	{
+	if  ( cpTo->cpRightPadding != cpFrom->cpRightPadding )
+	    {
+	    cpTo->cpRightPadding= cpFrom->cpRightPadding;
+	    PROPmaskADD( &cpChgMask, CLpropRIGHT_PADDING );
+	    }
+	}
+
+    if  ( PROPmaskISSET( cpUpdMask, CLpropTOP_PADDING_UNIT ) )
+	{
+	if  ( cpTo->cpTopPaddingUnit != cpFrom->cpTopPaddingUnit )
+	    {
+	    cpTo->cpTopPaddingUnit= cpFrom->cpTopPaddingUnit;
+	    PROPmaskADD( &cpChgMask, CLpropTOP_PADDING_UNIT );
+	    }
+	}
+
+    if  ( PROPmaskISSET( cpUpdMask, CLpropBOTTOM_PADDING_UNIT ) )
+	{
+	if  ( cpTo->cpBottomPaddingUnit != cpFrom->cpBottomPaddingUnit )
+	    {
+	    cpTo->cpBottomPaddingUnit= cpFrom->cpBottomPaddingUnit;
+	    PROPmaskADD( &cpChgMask, CLpropBOTTOM_PADDING_UNIT );
+	    }
+	}
+
+    if  ( PROPmaskISSET( cpUpdMask, CLpropLEFT_PADDING_UNIT ) )
+	{
+	if  ( cpTo->cpLeftPaddingUnit != cpFrom->cpLeftPaddingUnit )
+	    {
+	    cpTo->cpLeftPaddingUnit= cpFrom->cpLeftPaddingUnit;
+	    PROPmaskADD( &cpChgMask, CLpropLEFT_PADDING_UNIT );
+	    }
+	}
+
+    if  ( PROPmaskISSET( cpUpdMask, CLpropRIGHT_PADDING_UNIT ) )
+	{
+	if  ( cpTo->cpRightPaddingUnit != cpFrom->cpRightPaddingUnit )
+	    {
+	    cpTo->cpRightPaddingUnit= cpFrom->cpRightPaddingUnit;
+	    PROPmaskADD( &cpChgMask, CLpropRIGHT_PADDING_UNIT );
+	    }
+	}
+
     *pCpChgPask= cpChgMask; return 0;
     }
 
@@ -341,6 +413,54 @@ void docCellPropertyDifference(	PropertyMask *			pCpChgPask,
 	    { PROPmaskADD( &cpChgMask, CLpropTEXT_FLOW ); }
 	}
 
+    if  ( PROPmaskISSET( cpUpdMask, CLpropTOP_PADDING ) )
+	{
+	if  ( cpTo->cpTopPadding != cpFrom->cpTopPadding )
+	    { PROPmaskADD( &cpChgMask, CLpropTOP_PADDING ); }
+	}
+
+    if  ( PROPmaskISSET( cpUpdMask, CLpropBOTTOM_PADDING ) )
+	{
+	if  ( cpTo->cpBottomPadding != cpFrom->cpBottomPadding )
+	    { PROPmaskADD( &cpChgMask, CLpropBOTTOM_PADDING ); }
+	}
+
+    if  ( PROPmaskISSET( cpUpdMask, CLpropLEFT_PADDING ) )
+	{
+	if  ( cpTo->cpLeftPadding != cpFrom->cpLeftPadding )
+	    { PROPmaskADD( &cpChgMask, CLpropLEFT_PADDING ); }
+	}
+
+    if  ( PROPmaskISSET( cpUpdMask, CLpropRIGHT_PADDING ) )
+	{
+	if  ( cpTo->cpRightPadding != cpFrom->cpRightPadding )
+	    { PROPmaskADD( &cpChgMask, CLpropRIGHT_PADDING ); }
+	}
+
+    if  ( PROPmaskISSET( cpUpdMask, CLpropTOP_PADDING_UNIT ) )
+	{
+	if  ( cpTo->cpTopPaddingUnit != cpFrom->cpTopPaddingUnit )
+	    { PROPmaskADD( &cpChgMask, CLpropTOP_PADDING_UNIT ); }
+	}
+
+    if  ( PROPmaskISSET( cpUpdMask, CLpropBOTTOM_PADDING_UNIT ) )
+	{
+	if  ( cpTo->cpBottomPaddingUnit != cpFrom->cpBottomPaddingUnit )
+	    { PROPmaskADD( &cpChgMask, CLpropBOTTOM_PADDING_UNIT ); }
+	}
+
+    if  ( PROPmaskISSET( cpUpdMask, CLpropLEFT_PADDING_UNIT ) )
+	{
+	if  ( cpTo->cpLeftPaddingUnit != cpFrom->cpLeftPaddingUnit )
+	    { PROPmaskADD( &cpChgMask, CLpropLEFT_PADDING_UNIT ); }
+	}
+
+    if  ( PROPmaskISSET( cpUpdMask, CLpropRIGHT_PADDING_UNIT ) )
+	{
+	if  ( cpTo->cpRightPaddingUnit != cpFrom->cpRightPaddingUnit )
+	    { PROPmaskADD( &cpChgMask, CLpropRIGHT_PADDING_UNIT ); }
+	}
+
     *pCpChgPask= cpChgMask; return;
     }
 
@@ -354,7 +474,7 @@ void docCopyCellProperties(	CellProperties *	cpTo,
     PROPmaskCLEAR( &cpDoneMask );
     PROPmaskCLEAR( &cpSetMask );
 
-    PROPmaskFILL( &cpSetMask, CLprop_COUNT );
+    utilPropMaskFill( &cpSetMask, CLprop_COUNT );
 
     docUpdCellProperties( &cpDoneMask, cpTo, &cpSetMask, cpFrom, colorMap );
 

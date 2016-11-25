@@ -54,7 +54,7 @@ int docFieldReplaceContents(	int *			pStroff,
 	for ( i= 0; i < partCount; tp++, i++ )
 	    {
 	    (*closeObject)( bd, paraBi, tp, voidadd );
-	    docCleanParticuleObject( paraBi, tp );
+	    docCleanParticuleObject( bd, paraBi, tp );
 	    }
 
 	docDeleteParticules( paraBi, part+ 1, partCount );
@@ -80,7 +80,7 @@ int docRecalculateParaStringTextParticules(
 				BufferDocument *		bd,
 				int *				pPartShift,
 				int *				pStroffShift,
-				BufferItem *			bi,
+				BufferItem *			paraBi,
 				int				part,
 				int				partCount,
 				DocumentField *			df,
@@ -94,7 +94,7 @@ int docRecalculateParaStringTextParticules(
     int					newSize;
     int					d;
 
-    TextParticule *			tp= bi->biParaParticules+ part;
+    TextParticule *			tp= paraBi->biParaParticules+ part;
 
     int					textAttributeNumber;
 
@@ -107,24 +107,24 @@ int docRecalculateParaStringTextParticules(
     const FieldKindInformation *	fki= DOC_FieldKinds+ df->dfKind;
 
     if  ( (*fki->fkiCalculateTextString)( &calculated, &newSize, scratch,
-			    sizeof(scratch)- 1, bd, bi, part, partCount, df ) )
+			sizeof(scratch)- 1, bd, paraBi, part, partCount, df ) )
 	{ SDEB(fki->fkiLabel); return -1;	}
 
     if  ( ! calculated )
 	{
 	*pCalculated= 0;
 	*pPartShift= 0;
-	*pStroffShift= 0;
+	/* NO! *pStroffShift= 0; */
 	return 0;
 	}
 
-    if  ( tp->tpStrlen == newSize					&&
-	  ! memcmp( bi->biParaString+ tp->tpStroff+ *pStroffShift,
+    if  ( tp[1].tpStrlen == newSize					&&
+	  ! memcmp( paraBi->biParaString+ tp[1].tpStroff+ *pStroffShift,
 						    scratch, newSize )	)
 	{
 	*pCalculated= 0;
 	*pPartShift= 0;
-	*pStroffShift= 0;
+	/* NO! *pStroffShift= 0; */
 	return 0;
 	}
 
@@ -132,21 +132,21 @@ int docRecalculateParaStringTextParticules(
     past= tp[1+partCount].tpStroff+ *pStroffShift;
     stroff= tp[1].tpStroff+ *pStroffShift;
 
-    if  ( docParaStringReplace( &d, bi, stroff, past, scratch, newSize ) )
+    if  ( docParaStringReplace( &d, paraBi, stroff, past, scratch, newSize ) )
 	{ LDEB(newSize); return -1;	}
 
-    tp= bi->biParaParticules+ part+ 1;
+    tp= paraBi->biParaParticules+ part+ 1;
     for ( i= 0; i < partCount; tp++, i++ )
 	{
-	(*closeObject)( bd, bi, tp, voidadd );
-	docCleanParticuleObject( bi, tp );
+	(*closeObject)( bd, paraBi, tp, voidadd );
+	docCleanParticuleObject( bd, paraBi, tp );
 	}
 
-    partsMade= docRedivideStringInParticules( bi, stroff, newSize,
+    partsMade= docRedivideStringInParticules( paraBi, stroff, newSize,
 				    part+ 1, partCount, textAttributeNumber );
     if  ( partsMade < partCount )
 	{
-	docDeleteParticules( bi, part+ 1+ partsMade, partCount- partsMade );
+	docDeleteParticules( paraBi, part+ 1+ partsMade, partCount- partsMade );
 	}
 
     *pCalculated= 1;
@@ -168,7 +168,7 @@ int docRecalculateParaStringTextParticules(
 /*  3)  Not the beginning of a field.. Irrelevant.			*/
 /*  4)  Retrieve the field. Do some sanity checks: Only text level	*/
 /*	fields are really supported.					*/
-/*  5)  Count the number of paricules currently in the field.		*/
+/*  5)  Count the number of particules currently in the field.		*/
 /*  6)  When the field is to be recalculated.. do so.			*/
 /*	NOTE that this may shift both the array of particules and the	*/
 /*	paragraph text.							*/
@@ -184,34 +184,54 @@ int docRecalculateParaStringTextParticules(
 /*									*/
 /************************************************************************/
 
+static int docFieldShiftStringOffsets(
+				RecalculateFields *	rf,
+				BufferItem *		paraBi,
+				int			partFrom,
+				int			partUpto,
+				int			stroffShift )
+    {
+    return docShiftParticuleOffsets( rf->rfBd, paraBi,
+					    partFrom, partUpto, stroffShift );
+    }
+
 static int docRecalculateParaTextFields(
 				RecalculateFields *	rf,
 				int *			pPartShift,
 				int *			pStroffShift,
-				BufferItem *		bi,
+				BufferItem *		paraBi,
 				int			part,
 				int			partUpto )
     {
     BufferDocument *	bd= rf->rfBd;
+    int			fieldsUpdated= 0;
+    int			paraNr= -1;
 
     /*  1  */
     for ( part= part; part < partUpto+ *pPartShift; part++ )
 	{
-	TextParticule *			tp= bi->biParaParticules+ part;
+	TextParticule *			tp= paraBi->biParaParticules+ part;
 
 	DocumentField *			df;
 	const FieldKindInformation *	fki;
 
 	int				endPart;
 	int				partCount;
+	int				stroffEnd;
 
 	/*  2  */
-	if  ( docShiftParticuleOffsets( bd, bi, part, part+ 1, *pStroffShift ) )
+	if  ( docFieldShiftStringOffsets( rf, paraBi, part, part+ 1,
+							    *pStroffShift ) )
 	    { LDEB(*pStroffShift);	}
 
 	/*  3  */
 	if  ( tp->tpKind != DOCkindFIELDSTART )
 	    { continue;	}
+
+	if  ( paraNr <= 0					&&
+	      ( rf->rfSelBegin.epParaNr > 0	||
+	        rf->rfSelEnd.epParaNr > 0	)	)
+	    { paraNr= docNumberOfParagraph( paraBi );	}
 
 	/*  4  */
 	if  ( tp->tpObjectNumber < 0				||
@@ -230,10 +250,12 @@ static int docRecalculateParaTextFields(
 	    { continue;	}
 
 	/*  5  */
-	partCount= docCountParticulesInField( bi, part, partUpto+ *pPartShift );
+	partCount= docCountParticulesInField( paraBi, part,
+						    partUpto+ *pPartShift );
 	if  ( partCount < 0 )
 	    { SLDEB(docFieldKindStr(df->dfKind),partCount); continue;	}
 	endPart= part+ 1+ partCount;
+	stroffEnd= tp[partCount+1].tpStroff;
 
 	/*  6  */
 	if  ( ( fki->fkiCalculateWhen & rf->rfUpdateFlags )	&&
@@ -241,16 +263,26 @@ static int docRecalculateParaTextFields(
 	    {
 	    int			partShift= 0;
 	    int			calculated= 0;
+	    int			oldStroffShift= *pStroffShift;
 
 	    if  ( (*fki->fkiCalculateTextParticules)( &calculated, bd,
-			&partShift, pStroffShift, bi, part, partCount, df,
+			&partShift, pStroffShift, paraBi, part, partCount, df,
 			rf->rfVoidadd, rf->rfCloseObject ) )
 		{ LDEB(1); return -1;	}
 
 	    if  ( calculated )
-		{ rf->rfFieldsUpdated++; }
+		{
+		int	stroffShift= *pStroffShift- oldStroffShift;
+
+		docAdjustEditPositionOffsetB( &(rf->rfSelBegin),
+					paraNr, stroffEnd, stroffShift );
+		docAdjustEditPositionOffsetE( &(rf->rfSelEnd),
+					paraNr, stroffEnd, stroffShift );
+
+		fieldsUpdated++; rf->rfFieldsUpdated++;
+		}
 	    else{
-		if  ( docShiftParticuleOffsets( bd, bi,
+		if  ( docFieldShiftStringOffsets( rf, paraBi,
 					part+ 1, endPart, *pStroffShift ) )
 		    { LDEB(*pStroffShift);	}
 		}
@@ -259,7 +291,7 @@ static int docRecalculateParaTextFields(
 	    *pPartShift += partShift;
 	    }
 	else{
-	    if  ( docShiftParticuleOffsets( bd, bi,
+	    if  ( docFieldShiftStringOffsets( rf, paraBi,
 					part+ 1, endPart, *pStroffShift ) )
 		{ LDEB(*pStroffShift);	}
 	    }
@@ -271,7 +303,7 @@ static int docRecalculateParaTextFields(
 	    int			stroffShift= 0;
 
 	    if  ( docRecalculateParaTextFields( rf,
-			    &partShift, &stroffShift, bi, part+ 1, endPart ) )
+			&partShift, &stroffShift, paraBi, part+ 1, endPart ) )
 		{ LDEB(1); return -1;	}
 
 	    endPart += partShift;
@@ -280,7 +312,7 @@ static int docRecalculateParaTextFields(
 	    }
 
 	/*  8  */
-	tp= bi->biParaParticules+ endPart;
+	tp= paraBi->biParaParticules+ endPart;
 	if  ( tp->tpKind != DOCkindFIELDEND )
 	    { LDEB(tp->tpKind);	}
 
@@ -289,6 +321,9 @@ static int docRecalculateParaTextFields(
 	/*  9  */
 	part= endPart;
 	}
+
+    if  ( fieldsUpdated )
+	{ docInvalidateParagraphLayout( paraBi );	}
 
     return 0;
     }
@@ -339,9 +374,6 @@ int docRecalculateTextLevelFields(	RecalculateFields *	rf,
     {
     BufferDocument *	bd= rf->rfBd;
     int			i;
-
-    int			partShift;
-    int			stroffShift;
 
     switch( bi->biLevel )
 	{
@@ -457,12 +489,14 @@ int docRecalculateTextLevelFields(	RecalculateFields *	rf,
 
 	case DOClevPARA:
 
-	    partShift= 0;
-	    stroffShift= 0;
+	    {
+	    int		partShift= 0;
+	    int		stroffShift= 0;
 
 	    if  ( docRecalculateParaTextFields( rf, &partShift, &stroffShift,
 					bi, 0, bi->biParaParticuleCount ) )
 		{ LDEB(1); return -1;	}
+	    }
 
 	    return 0;
 

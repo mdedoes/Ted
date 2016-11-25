@@ -118,7 +118,7 @@ void tedFormatToolRefreshParaLayoutTool(
     pp= &(bi->biParaProperties);
 
     PROPmaskCLEAR( &ppUpdMask );
-    PROPmaskFILL( &ppUpdMask, PPprop_COUNT );
+    utilPropMaskFill( &ppUpdMask, PPprop_COUNT );
     PROPmaskUNSET( &ppUpdMask, PPpropIN_TABLE );
 
     PROPmaskCLEAR( &ppChgMask );
@@ -167,7 +167,7 @@ static APP_BUTTON_CALLBACK_H( tedFormatParaRevertPushed, w, voidplt )
     PROPmaskCLEAR( &ppChgMask );
 
     PROPmaskCLEAR( &ppUpdMask );
-    PROPmaskFILL( &ppUpdMask, PPprop_COUNT );
+    utilPropMaskFill( &ppUpdMask, PPprop_COUNT );
 
     docUpdParaProperties( &ppChgMask, &(plt->ptPropertiesChosen),
 					&ppUpdMask, &(plt->ptPropertiesSet),
@@ -389,7 +389,7 @@ static APP_BUTTON_CALLBACK_H( tedFormatChangePara, w, voidplt )
     const int			adaptToMax= 0;
 
     PROPmaskCLEAR( &ppUpdMask );
-    PROPmaskFILL( &ppUpdMask, PPprop_COUNT );
+    utilPropMaskFill( &ppUpdMask, PPprop_COUNT );
     PROPmaskUNSET( &ppUpdMask, PPpropIN_TABLE );
     PROPmaskUNSET( &ppUpdMask, PPpropTAB_STOPS );
     PROPmaskUNSET( &ppUpdMask, PPpropTOP_BORDER );
@@ -896,15 +896,24 @@ void tedFormatToolGetParaLayoutResourceTable(
 					ParagraphLayoutPageResources *	plpr,
 					InspectorSubjectResources *	isr )
     {
-    appGuiGetResourceValues( ea, (void *)plpr,
+    static int	gotToolResources= 0;
+    static int	gotSubjectResources= 0;
+
+    if  ( ! gotToolResources )
+	{
+	appGuiGetResourceValues( &gotToolResources, ea, (void *)plpr,
 				TED_TedParagraphToolResourceTable,
 				sizeof(TED_TedParagraphToolResourceTable)/
 				sizeof(AppConfigurableResource) );
+	}
 
-    appGuiGetResourceValues( ea, (void *)isr,
+    if  ( ! gotSubjectResources )
+	{
+	appGuiGetResourceValues( &gotSubjectResources, ea, (void *)isr,
 				TED_TedParagraphSubjectResourceTable,
 				sizeof(TED_TedParagraphSubjectResourceTable)/
 				sizeof(AppConfigurableResource) );
+	}
 
     return;
     }

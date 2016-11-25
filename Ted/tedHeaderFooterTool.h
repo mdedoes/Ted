@@ -17,6 +17,7 @@
 typedef struct HeaderFooterPageResources
     {
     char *		hfprSectionHeaderText;
+    char *		hfprSectionNumberText;
     char *		hfprTitlepgText;
 
     char *		hfprDocumentHeaderText;
@@ -51,6 +52,8 @@ typedef struct HeaderFooterTool
 
     APP_WIDGET				hftSectionFrame;
     APP_WIDGET				hftSectionPaned;
+    APP_WIDGET				hftSectionNumberLabel;
+    APP_WIDGET				hftSectionNumberText;
     APP_WIDGET				hftTitlepgToggle;
 
     APP_WIDGET				hftDocumentFrame;

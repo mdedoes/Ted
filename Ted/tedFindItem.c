@@ -480,6 +480,7 @@ int tedFindStringOffset(	const BufferDocument *	bd,
 
 int tedFindPosition(	DocumentPosition *		dp,
 			PositionGeometry *		pg,
+			int *				pPart,
 			const BufferDocument *		bd,
 			BufferItem *			rootBi,
 			const AppDrawingData *		add,
@@ -588,10 +589,15 @@ int tedFindPosition(	DocumentPosition *		dp,
     dp->dpBi= (BufferItem *)bi;	/*  Discards const */
     dp->dpStroff= stroff;
 
+    *pPart= part;
+
     pg->pgLine= line;
     pg->pgAtLineHead= 0;
+    pg->pgAtLineEnd= 0;
     if  ( stroff == tl->tlStroff )
 	{ pg->pgAtLineHead= 1;	}
+    if  ( stroff == tl->tlStroff+ tl->tlStrlen )
+	{ pg->pgAtLineEnd= 1;	}
 
     pg->pgXPixels= barX;
     pg->pgTopPosition= tl->tlTopPosition;
@@ -698,7 +704,7 @@ static void tedSelectionRectangle(
 	    dr.drY1= BI_BELOW_PIXELS( add, rowBi );
 	    }
 
-	docUnionRectangle( drSel, drSel, &dr );
+	geoUnionRectangle( drSel, drSel, &dr );
 	}
 
     /*  3  */
@@ -726,7 +732,7 @@ static void tedSelectionRectangle(
 	    dr.drY1= BI_BELOW_PIXELS( add, rowBi );
 	    }
 
-	docUnionRectangle( drSel, drSel, &dr );
+	geoUnionRectangle( drSel, drSel, &dr );
 	}
 
     return;
@@ -761,10 +767,24 @@ void tedPositionGeometry(	PositionGeometry *		pg,
     tp= dp->dpBi->biParaParticules+ part;
     tl= dp->dpBi->biParaLines+ line;
 
+    if  ( dp->dpStroff == tl->tlStroff+ tl->tlStrlen	&&
+	  part < dp->dpBi->biParaParticuleCount		&&
+	  line < dp->dpBi->biParaLineCount- 1		)
+	{
+	if  ( tp->tpKind == DOCkindLINEBREAK	||
+	      tp->tpKind == DOCkindPAGEBREAK	||
+	      tp->tpKind == DOCkindCOLUMNBREAK	)
+	    { line++; tl++; part++; tp++;	}
+	}
+
     pg->pgLine= line;
     pg->pgAtLineHead= 0;
+    pg->pgAtLineEnd= 0;
     if  ( dp->dpStroff == tl->tlStroff )
 	{ pg->pgAtLineHead= 1;	}
+    if  ( dp->dpStroff == tl->tlStroff+ tl->tlStrlen )
+	{ pg->pgAtLineEnd= 1;	}
+
     pg->pgXPixels= tedCalculateX( bd, dp->dpBi, tp, add, sfl, dp->dpStroff );
     pg->pgTopPosition= tl->tlTopPosition;
     pg->pgY1Pixels= TL_BELOW_PIXELS( add, tl );
@@ -923,12 +943,14 @@ int tedFindRootForPosition(		ExternalItem **		pEi,
     if  ( sectNr < bd->bdItem.biChildCount )
 	{
 	const DocumentGeometry *	dgSect;
+	int				isEmpty;
 
 	dgSect= &(bodySectBi->biSectDocumentGeometry);
 
 	/*  4  */
 	ei= (ExternalItem *)0;
-	inHeaderFooter= docWhatPageHeader( &ei, bodySectBi, page, dp );
+	inHeaderFooter= docWhatPageHeader( &ei, &isEmpty,
+						    bodySectBi, page, dp );
 	if  ( ei && ei->eiItem )
 	    {
 	    if  ( docGetExternalItemBox( &drExtern, bodySectBi, ei, justUsed,
@@ -950,7 +972,8 @@ int tedFindRootForPosition(		ExternalItem **		pEi,
 
 	/*  5  */
 	ei= (ExternalItem *)0;
-	inHeaderFooter= docWhatPageFooter( &ei, bodySectBi, page, dp );
+	inHeaderFooter= docWhatPageFooter( &ei, &isEmpty,
+						    bodySectBi, page, dp );
 	if  ( ei && ei->eiItem )
 	    {
 	    if  ( docGetExternalItemBox( &drExtern, bodySectBi, ei, justUsed,

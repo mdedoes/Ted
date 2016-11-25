@@ -42,7 +42,15 @@ void appRunReallyCloseDialog(	APP_WIDGET			option,
 		{ XDEB(ea->eaSaveDocument); return;	}
 
 	    if  ( ! ed->edFilename )
-		{ appDocFileSaveAs( option, (void *)ed, (void *)0 ); }
+		{
+#		ifdef USE_MOTIF
+		appDocFileSaveAs( option, (void *)ed, (void *)0 ); return;
+#		endif
+#		ifdef USE_GTK
+		appDocFileSaveAs( (GtkMenuItem *)option, (void *)ed ); return;
+#		endif
+		XDEB(ed->edFilename); return;
+		}
 	    else{
 		const int	interactive= 1;
 

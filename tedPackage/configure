@@ -942,6 +942,13 @@ EOF
 M_SYSTEM=`uname -s  | tr ':/ ' ___`
 M_MACHINE=`uname -m | tr ':/ ' ___`
 
+if  ( config.guess ) >/dev/null 2>&1
+then
+    M_PLATFORM=`config.guess`
+else
+    M_PLATFORM=${M_SYSTEM}_${M_MACHINE}
+fi
+
 M_PKG_OWNER=NO
 M_PKG_GROUP=NO
 
@@ -1129,7 +1136,7 @@ rm -f confdef2opt.sed
 : ${CONFIG_STATUS=./config.status}
 ac_clean_files_save=$ac_clean_files
 ac_clean_files="$ac_clean_files $CONFIG_STATUS"
-{ echo "$as_me:1132: creating $CONFIG_STATUS" >&5
+{ echo "$as_me:1139: creating $CONFIG_STATUS" >&5
 echo "$as_me: creating $CONFIG_STATUS" >&6;}
 cat >$CONFIG_STATUS <<_ACEOF
 #! $SHELL
@@ -1296,7 +1303,7 @@ cat >>$CONFIG_STATUS <<\EOF
     echo "$ac_cs_version"; exit 0 ;;
   --he | --h)
     # Conflict between --help and --header
-    { { echo "$as_me:1299: error: ambiguous option: $1
+    { { echo "$as_me:1306: error: ambiguous option: $1
 Try \`$0 --help' for more information." >&5
 echo "$as_me: error: ambiguous option: $1
 Try \`$0 --help' for more information." >&2;}
@@ -1315,7 +1322,7 @@ Try \`$0 --help' for more information." >&2;}
     ac_need_defaults=false;;
 
   # This is an error.
-  -*) { { echo "$as_me:1318: error: unrecognized option: $1
+  -*) { { echo "$as_me:1325: error: unrecognized option: $1
 Try \`$0 --help' for more information." >&5
 echo "$as_me: error: unrecognized option: $1
 Try \`$0 --help' for more information." >&2;}
@@ -1351,7 +1358,7 @@ do
   case "$ac_config_target" in
   # Handling of arguments.
   "makefile" ) CONFIG_FILES="$CONFIG_FILES makefile" ;;
-  *) { { echo "$as_me:1354: error: invalid argument: $ac_config_target" >&5
+  *) { { echo "$as_me:1361: error: invalid argument: $ac_config_target" >&5
 echo "$as_me: error: invalid argument: $ac_config_target" >&2;}
    { (exit 1); exit 1; }; };;
   esac
@@ -1436,6 +1443,7 @@ s,@EXEC_PREFIX@,$EXEC_PREFIX,;t t
 s,@BINDIR@,$BINDIR,;t t
 s,@M_SYSTEM@,$M_SYSTEM,;t t
 s,@M_MACHINE@,$M_MACHINE,;t t
+s,@M_PLATFORM@,$M_PLATFORM,;t t
 s,@M_PKG_OWNER@,$M_PKG_OWNER,;t t
 s,@M_PKG_GROUP@,$M_PKG_GROUP,;t t
 s,@M_CHOWN_ARG@,$M_CHOWN_ARG,;t t
@@ -1551,7 +1559,7 @@ done; }
   esac
 
   if test x"$ac_file" != x-; then
-    { echo "$as_me:1554: creating $ac_file" >&5
+    { echo "$as_me:1562: creating $ac_file" >&5
 echo "$as_me: creating $ac_file" >&6;}
     rm -f "$ac_file"
   fi
@@ -1569,7 +1577,7 @@ echo "$as_me: creating $ac_file" >&6;}
       -) echo $tmp/stdin ;;
       [\\/$]*)
          # Absolute (can't be DOS-style, as IFS=:)
-         test -f "$f" || { { echo "$as_me:1572: error: cannot find input file: $f" >&5
+         test -f "$f" || { { echo "$as_me:1580: error: cannot find input file: $f" >&5
 echo "$as_me: error: cannot find input file: $f" >&2;}
    { (exit 1); exit 1; }; }
          echo $f;;
@@ -1582,7 +1590,7 @@ echo "$as_me: error: cannot find input file: $f" >&2;}
            echo $srcdir/$f
          else
            # /dev/null tree
-           { { echo "$as_me:1585: error: cannot find input file: $f" >&5
+           { { echo "$as_me:1593: error: cannot find input file: $f" >&5
 echo "$as_me: error: cannot find input file: $f" >&2;}
    { (exit 1); exit 1; }; }
          fi;;

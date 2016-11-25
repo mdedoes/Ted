@@ -169,8 +169,9 @@ static int bmJpegGetReadParameters( struct jpeg_decompress_struct * cinfo )
 	{
 	case 0:
 	    /* LDEB(cinfo->density_unit); */
-	    if  ( cinfo->X_density < 5 && cinfo->Y_density < 5 )
+	    if  ( cinfo->X_density < 5 || cinfo->Y_density < 5 )
 		{
+	      pixel_density:
 		bjis->bjisBd.bdUnit= BMunPIXEL;
 		bjis->bjisBd.bdXResolution= 1;
 		bjis->bjisBd.bdYResolution= 1;
@@ -183,12 +184,24 @@ static int bmJpegGetReadParameters( struct jpeg_decompress_struct * cinfo )
 	    break;
 
 	case 1:
+	    if  (  cinfo->X_density < 5 || cinfo->Y_density < 5 )
+		{
+		LLLDEB(cinfo->density_unit,cinfo->X_density,cinfo->Y_density);
+		goto pixel_density;
+		}
+
 	    bjis->bjisBd.bdUnit= BMunINCH;
 	    bjis->bjisBd.bdXResolution= cinfo->X_density;
 	    bjis->bjisBd.bdYResolution= cinfo->Y_density;
 	    break;
 
 	case 2:
+	    if  (  cinfo->X_density < 2 || cinfo->Y_density < 2 )
+		{
+		LLLDEB(cinfo->density_unit,cinfo->X_density,cinfo->Y_density);
+		goto pixel_density;
+		}
+
 	    bjis->bjisBd.bdUnit= BMunM;
 	    bjis->bjisBd.bdXResolution= 100* cinfo->X_density;
 	    bjis->bjisBd.bdYResolution= 100* cinfo->Y_density;
@@ -572,8 +585,16 @@ static int bmJpegCompressRow(	struct jpeg_compress_struct *	cinfo,
 	{
 	case BMcoBLACKWHITE:
 	    to= bjod->bjodScratchBuffer;
-	    for ( i= 0; i < bd->bdBytesPerRow; to++, from++, i++ )
-		{ *to= 255- *from; }
+
+	    if  ( bd->bdHasAlpha )
+		{
+		for ( i= 0; i < bd->bdPixelsWide; to++, from += 2, i++ )
+		    { *to= 255- *from; }
+		}
+	    else{
+		for ( i= 0; i < bd->bdPixelsWide; to++, from++, i++ )
+		    { *to= 255- *from; }
+		}
 
 	    row_pointer[0]= (JSAMPROW)bjod->bjodScratchBuffer;
 	    res= jpeg_write_scanlines( cinfo, row_pointer, 1 );
@@ -588,10 +609,59 @@ static int bmJpegCompressRow(	struct jpeg_compress_struct *	cinfo,
 	    res= jpeg_write_scanlines( cinfo, row_pointer, 1 );
 	    break;
 
-	default:
-	    row_pointer[0]= (JSAMPROW)from;
-	    res= jpeg_write_scanlines( cinfo, row_pointer, 1 );
+	case BMcoWHITEBLACK:
+	    if  ( bd->bdHasAlpha )
+		{
+		to= bjod->bjodScratchBuffer;
+
+		for ( i= 0; i < bd->bdPixelsWide; i++ )
+		    {
+		    *(to++)= *(from++);
+		    from++;
+		    }
+
+		row_pointer[0]= (JSAMPROW)bjod->bjodScratchBuffer;
+		res= jpeg_write_scanlines( cinfo, row_pointer, 1 );
+		}
+	    else{
+		row_pointer[0]= (JSAMPROW)from;
+		res= jpeg_write_scanlines( cinfo, row_pointer, 1 );
+		}
 	    break;
+
+	case BMcoRGB:
+	    if  ( bd->bdHasAlpha )
+		{
+		to= bjod->bjodScratchBuffer;
+
+		for ( i= 0; i < bd->bdPixelsWide; i++ )
+		    {
+		    if  ( from[3] >= 128 )
+			{
+			*(to++)= *(from++);
+			*(to++)= *(from++);
+			*(to++)= *(from++);
+			from++;
+			}
+		    else{
+			*(to++)= 255;
+			*(to++)= 255;
+			*(to++)= 255;
+			from += 4;
+			}
+		    }
+
+		row_pointer[0]= (JSAMPROW)bjod->bjodScratchBuffer;
+		res= jpeg_write_scanlines( cinfo, row_pointer, 1 );
+		}
+	    else{
+		row_pointer[0]= (JSAMPROW)from;
+		res= jpeg_write_scanlines( cinfo, row_pointer, 1 );
+		}
+	    break;
+
+	default:
+	    LDEB(bd->bdColorEncoding); return -1;
 	}
 
     if  ( res != 1 )

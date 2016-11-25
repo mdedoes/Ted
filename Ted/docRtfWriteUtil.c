@@ -213,45 +213,48 @@ void docRtfWriteStringDestination(	const char *		tag,
 /*									*/
 /************************************************************************/
 
-int docRtfSavePictureTags(		InsertedObject *		io,
+int docRtfSavePictureTags(		const PictureProperties *	pip,
 					int *				pCol,
 					SimpleOutputStream *		sos )
     {
-    int		xExt= io->io_xWinExt;
-    int		yExt= io->io_yWinExt;
+    int		xExt= pip->pip_xWinExt;
+    int		yExt= pip->pip_yWinExt;
 
     if  ( xExt == 0 )
-	{ xExt= (int)( 100000.0* io->ioTwipsWide )/ ( 20* POINTS_PER_M ); }
+	{ xExt= (int)( 100000.0* pip->pipTwipsWide )/ ( 20* POINTS_PER_M ); }
     if  ( yExt == 0 )
-	{ yExt= (int)( 100000.0* io->ioTwipsHigh )/ ( 20* POINTS_PER_M ); }
+	{ yExt= (int)( 100000.0* pip->pipTwipsHigh )/ ( 20* POINTS_PER_M ); }
 
     docRtfWriteArgTag( "\\picw", pCol, xExt, sos );
     docRtfWriteArgTag( "\\pich", pCol, yExt, sos );
 
-    if  ( io->ioScaleX != 100 )
-	{ docRtfWriteArgTag( "\\picscalex", pCol, io->ioScaleX, sos ); }
-    if  ( io->ioScaleY != 100 )
-	{ docRtfWriteArgTag( "\\picscaley", pCol, io->ioScaleY, sos ); }
+    if  ( pip->pipScaleXSet != 100 )
+	{ docRtfWriteArgTag( "\\picscalex", pCol, pip->pipScaleXSet, sos ); }
+    if  ( pip->pipScaleYSet != 100 )
+	{ docRtfWriteArgTag( "\\picscaley", pCol, pip->pipScaleYSet, sos ); }
 
-    docRtfWriteArgTag( "\\picwgoal", pCol, io->ioTwipsWide, sos );
-    docRtfWriteArgTag( "\\pichgoal", pCol, io->ioTwipsHigh, sos );
+    docRtfWriteArgTag( "\\picwgoal", pCol, pip->pipTwipsWide, sos );
+    docRtfWriteArgTag( "\\pichgoal", pCol, pip->pipTwipsHigh, sos );
 
-    if  ( io->ioTopCropTwips != 0 )
-	{ docRtfWriteArgTag( "\\piccropt", pCol, io->ioTopCropTwips, sos ); }
-    if  ( io->ioBottomCropTwips != 0 )
-	{ docRtfWriteArgTag( "\\piccropb", pCol, io->ioBottomCropTwips, sos ); }
-    if  ( io->ioLeftCropTwips != 0 )
-	{ docRtfWriteArgTag( "\\piccropl", pCol, io->ioLeftCropTwips, sos ); }
-    if  ( io->ioRightCropTwips != 0 )
-	{ docRtfWriteArgTag( "\\piccropr", pCol, io->ioRightCropTwips, sos ); }
+    if  ( pip->pipTopCropTwips != 0 )
+	{ docRtfWriteArgTag( "\\piccropt", pCol, pip->pipTopCropTwips, sos ); }
+    if  ( pip->pipBottomCropTwips != 0 )
+	{ docRtfWriteArgTag( "\\piccropb", pCol, pip->pipBottomCropTwips, sos ); }
+    if  ( pip->pipLeftCropTwips != 0 )
+	{ docRtfWriteArgTag( "\\piccropl", pCol, pip->pipLeftCropTwips, sos ); }
+    if  ( pip->pipRightCropTwips != 0 )
+	{ docRtfWriteArgTag( "\\piccropr", pCol, pip->pipRightCropTwips, sos ); }
 
     /*  Not Necessary..
-    if  ( io->ioBliptag == 0 )
-	{ io->ioBliptag= appGetTimestamp(); 	}
+    if  ( pip->pipBliptag == 0 )
+	{ pip->pipBliptag= appGetTimestamp(); 	}
     */
 
-    if  ( io->ioBliptag != 0 )
-	{ docRtfWriteArgTag( "\\bliptag", pCol, io->ioBliptag, sos ); }
+    if  ( pip->pipBliptag != 0 )
+	{ docRtfWriteArgTag( "\\bliptag", pCol, pip->pipBliptag, sos ); }
+
+    if  ( pip->pipBmUnitsPerInch > 0 )
+	{ docRtfWriteArgTag( "\\blipupi", pCol, pip->pipBmUnitsPerInch, sos ); }
 
     return 0;
     }

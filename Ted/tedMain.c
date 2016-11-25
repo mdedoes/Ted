@@ -199,6 +199,9 @@ static TedAppResources			TEDResources;
 /*  Open a document.							*/
 /*									*/
 /*  1)  Read the file.							*/
+/*  1b) Forget the name of document templates to force a save-as.	*/
+/*	Also forget it is a template, to make sure that it is saved as	*/
+/*	an ordinary document.						*/
 /*  2)  Get the list of fonts that are available on the machine.	*/
 /*  3)  Add them to the font list of the document.			*/
 /*									*/
@@ -942,7 +945,31 @@ static AppMenuItem TED_DocTableMenuItems[]=
 
     { "",	"", "", (char *)0, "", (char *)0, ITEMtySEPARATOR, },
 
-#   define	TEDmiDocTableDrawGrid		8
+#   define	TEDmiDocTableDeleteTable	8
+    {
+    "docTableDeleteTableText",		"Delete Table",
+    "docTableDeleteTableKey",		(char *)0,
+    "docTableDeleteTableKeyText",	(char *)0,
+					ITEMtyOPTION, tedDocTableDeleteTable,
+    },
+#   define	TEDmiDocTableDeleteRow		9
+    {
+    "docTableDeleteRowText",		"Delete Row",
+    "docTableDeleteRowKey",		(char *)0,
+    "docTableDeleteRowKeyText",	(char *)0,
+					ITEMtyOPTION, tedDocTableDeleteRow,
+    },
+#   define	TEDmiDocTableDeleteColumn	10
+    {
+    "docTableDeleteColumnText",		"Delete Column",
+    "docTableDeleteColumnKey",		(char *)0,
+    "docTableDeleteColumnKeyText",	(char *)0,
+					ITEMtyOPTION, tedDocTableDeleteColumn,
+    },
+
+    { "",	"", "", (char *)0, "", (char *)0, ITEMtySEPARATOR, },
+
+#   define	TEDmiDocTableDrawGrid		12
     {
     "docTableDrawGridText",		"Draw Table Grid",
     "docTableDrawGridKey",		(char *)0,
@@ -972,23 +999,39 @@ static AppMenuItem TED_DocFormatMenuItems[]=
 
     /*  2  */
     {
-    "docFormatMenuCopyRulText",		"Copy ruler",
+    "docFormatMenuCopyRulText",		"Copy Ruler",
     "docFormatMenuCopyRulKey",		(char *)0,
     "docFormatMenuCopyRulKeyText",	(char *)0,
 					ITEMtyOPTION, tedDocFormatCopyRul,
     },
     /*  3  */
     {
-    "docFormatMenuPasteRulText",	"Paste ruler",
+    "docFormatMenuPasteRulText",	"Paste Ruler",
     "docFormatMenuPasteRulKey",		(char *)0,
     "docFormatMenuPasteRulKeyText",	(char *)0,
 					ITEMtyOPTION, tedDocFormatPasteRul,
     },
 
     /*  4  */
+    {
+    "docFormatMenuIncreaseIndentText",	"Increase Indent",
+    "docFormatMenuIncreaseIndentKey",		(char *)0,
+    "docFormatMenuIncreaseIndentKeyText",	(char *)0,
+				    ITEMtyOPTION, tedDocFormatIncreaseIndent,
+    },
+
+    /*  5  */
+    {
+    "docFormatMenuDecreaseIndentText",	"Decrease Indent",
+    "docFormatMenuDecreaseIndentKey",		(char *)0,
+    "docFormatMenuDecreaseIndentKeyText",	(char *)0,
+				    ITEMtyOPTION, tedDocFormatDecreaseIndent,
+    },
+
+    /*  6  */
     { "",	"", "", (char *)0, "", (char *)0, ITEMtySEPARATOR, },
 
-#   define	TEDmiDocFormatTool		5
+#   define	TEDmiDocFormatTool		6
     {
     "docToolMenuFormatText",		"Format Tool",
     "docToolMenuFormatKey",		(char *)0,
@@ -1246,6 +1289,14 @@ static void tedMakePrivateDocumentMenus( EditApplication *	ea,
 	    TED_DocTableMenuItems[TEDmiDocTableSelectRow].amiOptionWidget;
     td->tdSelectColumnOption=
 	    TED_DocTableMenuItems[TEDmiDocTableSelectColumn].amiOptionWidget;
+
+    td->tdDeleteTableWidget=
+	    TED_DocTableMenuItems[TEDmiDocTableDeleteTable].amiOptionWidget;
+    td->tdDeleteRowWidget=
+	    TED_DocTableMenuItems[TEDmiDocTableDeleteRow].amiOptionWidget;
+    td->tdDeleteColumnOption=
+	    TED_DocTableMenuItems[TEDmiDocTableDeleteColumn].amiOptionWidget;
+
     td->tdDrawTableGridOption=
 	    TED_DocTableMenuItems[TEDmiDocTableDrawGrid].amiOptionWidget;
 
@@ -1516,6 +1567,9 @@ static AppSelectionTargetType TedPrimaryTargets[]=
 					tedCopyPrimaryRtf		},
 	{ "STRING",	(APP_ATOM)0,	tedPastePrimaryString,
 					tedCopyPrimaryString		},
+	/*HACK*/
+	{ "UTF8_STRING", (APP_ATOM)0,	tedPastePrimaryString,
+					tedCopyPrimaryString		},
 	{ "image/png",	(APP_ATOM)0,	tedPastePrimaryPng,
 					tedCopyPrimaryPng		},
 	{ "PIXMAP",	(APP_ATOM)0,	tedPastePrimaryPixmap,
@@ -1530,6 +1584,9 @@ AppSelectionTargetType TedPrimaryTextTargets[]=
 			(APP_ATOM)0,	tedPastePrimaryRtf,
 					tedCopyPrimaryRtf		},
 	{ "STRING",	(APP_ATOM)0,	tedPastePrimaryString,
+					tedCopyPrimaryString		},
+	/*HACK*/
+	{ "UTF8_STRING", (APP_ATOM)0,	tedPastePrimaryString,
 					tedCopyPrimaryString		},
     };
 
@@ -1554,7 +1611,7 @@ const int TedPrimaryPictureTargetCount=
 
 AppSelectionTargetType TedRulerTargets[]=
     {
-	{ "TED",	(APP_ATOM)0,	tedPasteRulerTed,
+	{ "application/rtf",	(APP_ATOM)0,	tedPasteRulerTed,
 					tedCopyRulerTed		},
     };
 
@@ -1576,7 +1633,7 @@ static AppSelectionType TedDocSelectionTypes[]=
 	{ "FONT", (APP_ATOM)0,
 		TedFontTargets,
 		sizeof(TedFontTargets)/sizeof(AppSelectionTargetType), },
-	{ "RULER", (APP_ATOM)0,
+	{ "RTFRULER", (APP_ATOM)0,
 		TedRulerTargets,
 		sizeof(TedRulerTargets)/sizeof(AppSelectionTargetType), },
     };
@@ -1632,8 +1689,10 @@ static EditApplication	TedApplication=
 		    /*  Name of the picture for the application window.	*/
 		    /****************************************************/
     "Ted",
-    "Ted, Version 2.16, April 18, 2004",
+    "Ted, Version 2.17, Jan 28, 2005",
     "http://www.nllgg.nl/Ted",
+    MY_PLATFORM,
+    MY_HOST_DATE,
 
 
     "tedDocument",
@@ -1811,21 +1870,38 @@ static int tedFileConvert(
 		    const char *	nameOut,
 		    const char *	nameIn,
 		    int (*cvf)(	SimpleOutputStream *	_sosOut,
+				const char *		_nameIn,
 				SimpleInputStream *	_sisIn ) )
     {
     int				rval= 0;
     SimpleOutputStream *	sosOut= (SimpleOutputStream *)0;
     SimpleInputStream *		sisIn= (SimpleInputStream *)0;
 
-    sisIn= sioInStdioOpen( nameIn );
-    if  ( ! sisIn )
-	{ SXDEB(nameIn,sisIn); rval= -1; goto ready;	}
+    if  ( ! strcmp( nameIn, "-" ) )
+	{
+	sisIn= sioInStdinOpen();
+	if  ( ! sisIn )
+	    { SXDEB(nameIn,sisIn); rval= -1; goto ready;	}
+	}
+    else{
+	sisIn= sioInStdioOpen( nameIn );
+	if  ( ! sisIn )
+	    { SXDEB(nameIn,sisIn); rval= -1; goto ready;	}
+	}
 
-    sosOut= sioOutStdioOpen( nameOut );
-    if  ( ! sosOut )
-	{ SXDEB(nameOut,sosOut); rval= -1; goto ready;	}
+    if  ( ! strcmp( nameOut, "-" ) )
+	{
+	sosOut= sioOutStdoutOpen();
+	if  ( ! sosOut )
+	    { SXDEB(nameOut,sosOut); rval= -1; goto ready;	}
+	}
+    else{
+	sosOut= sioOutStdioOpen( nameOut );
+	if  ( ! sosOut )
+	    { SXDEB(nameOut,sosOut); rval= -1; goto ready;	}
+	}
 
-    if  ( (*cvf)( sosOut, sisIn ) )
+    if  ( (*cvf)( sosOut, nameIn, sisIn ) )
 	{ SSDEB(nameOut,nameIn); rval= -1; goto ready;	}
 
   ready:
@@ -1854,15 +1930,13 @@ static int tedRtfToPsPaper(	EditApplication *	ea,
     LayoutJob			lj;
     RecalculateFields		rf;
 
-    const int			firstPage= -1;
-    const int			lastPage= -1;
-
     int				noteNumbersChanged= 0;
 
     setlocale( LC_NUMERIC, "" );
 
     appInitDrawingData( &add );
     utilInitPrintGeometry( &pg );
+    appApplicationSettingsToPrintGeometry( &pg, ea );
     docPsInitLayoutJob( &lj );
     docInitRecalculateFields( &rf );
 
@@ -1890,9 +1964,12 @@ static int tedRtfToPsPaper(	EditApplication *	ea,
     if  ( ! sosOut )
 	{ XDEB(sosOut); rval= -1; goto ready;	}
 
-    bd= docRtfReadFile( sisIn, tar->tarDefaultAnsicpgInt );
+    bd= docRtfReadFile( sisIn, &(ea->eaPostScriptFontList),
+						tar->tarDefaultAnsicpgInt );
     if  ( ! bd )
 	{ XDEB(bd); rval= -1; goto ready;	}
+
+    utilFontlistSetPreferredEncodings( &(bd->bdProperties.dpFontList) );
 
     if  ( utilFindPsFontsForDocFonts( &(bd->bdProperties.dpFontList),
 					&(ea->eaPostScriptFontList) ) )
@@ -1948,8 +2025,7 @@ static int tedRtfToPsPaper(	EditApplication *	ea,
     if  ( docPsPrintDocument( sosOut, "<stdin>",
 		ea->eaApplicationName, ea->eaReference, ea->eaFontDirectory,
 		&add, bd, &pg,
-		ea->eaUsePostScriptFilters, ea->eaUsePostScriptIndexedImages,
-		firstPage, lastPage, tedCloseObject ) )
+		tedCloseObject ) )
 	{ LDEB(1); rval= -1; goto ready;	}
 
   ready:
@@ -1958,6 +2034,7 @@ static int tedRtfToPsPaper(	EditApplication *	ea,
 
     docPsCleanLayoutJob( &lj );
     appCleanDrawingData( &add );
+    utilCleanPrintGeometry( &pg );
 
     if  ( bd )
 	{ docFreeDocument( bd );	}
@@ -2006,16 +2083,8 @@ int main(	int		argc,
     if  ( TRauto_COUNT > (1<<TRauto_BITS) )
 	{ LLDEB(TRauto_COUNT,(1<<TRauto_BITS)); return 1;	}
 
-    if  ( DOxa_COUNT > (1<<DOxa_BITS) )
-	{ LLDEB(DOxa_COUNT,(1<<DOxa_BITS)); return 1;		}
-    if  ( DOya_COUNT > (1<<DOya_BITS) )
-	{ LLDEB(DOya_COUNT,(1<<DOya_BITS)); return 1;		}
-    if  ( DOkind_COUNT > (1<<DOkind_BITS) )
-	{ LLDEB(DOkind_COUNT,(1<<DOkind_BITS)); return 1;	}
-    if  ( DOline_COUNT > (1<<DOline_BITS) )
-	{ LLDEB(DOline_COUNT,(1<<DOline_BITS)); return 1;	}
-    if  ( DOfill_COUNT > (1<<DOfill_BITS) )
-	{ LLDEB(DOfill_COUNT,(1<<DOfill_BITS)); return 1;	}
+    if  ( DOCia_COUNT > (1<<DOCia_BITS) )
+	{ LLDEB(DOCia_COUNT,(1<<DOCia_BITS)); return 1;		}
 
     /*  2  */
     TEDResources.tarDefaultAnsicpgInt= -1;
@@ -2058,6 +2127,28 @@ int main(	int		argc,
 	    { SSLDEB(argv[0],argv[1],argc); return 1;	}
 
 	if  ( tedFileConvert( argv[3], argv[2], psTtfToPf42 ) )
+	    { SSSDEB(argv[1],argv[2],argv[3]); return 1;	}
+
+	return 0;
+	}
+
+    if  ( argc >= 2 && !  strcmp( argv[1], "--AfmToXFontsDir" ) )
+	{
+	if  ( argc != 4 )
+	    { SSLDEB(argv[0],argv[1],argc); return 1;	}
+
+	if  ( tedFileConvert( argv[3], argv[2], psAfmToXFontsDir ) )
+	    { SSSDEB(argv[1],argv[2],argv[3]); return 1;	}
+
+	return 0;
+	}
+
+    if  ( argc >= 2 && !  strcmp( argv[1], "--AfmToGSFontmap" ) )
+	{
+	if  ( argc != 4 )
+	    { SSLDEB(argv[0],argv[1],argc); return 1;	}
+
+	if  ( tedFileConvert( argv[3], argv[2], psAfmToGSFontmap ) )
 	    { SSSDEB(argv[1],argv[2],argv[3]); return 1;	}
 
 	return 0;

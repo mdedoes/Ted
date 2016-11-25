@@ -16,6 +16,115 @@
 
 #   include	<appDebugon.h>
 
+
+/************************************************************************/
+/*									*/
+/*  Table related menu option callbacks.				*/
+/*									*/
+/************************************************************************/
+
+static void tedDocTableSelectTableRectangle(	EditDocument *		ed,
+						const TableRectangle *	tr )
+    {
+    TedDocument *		td= (TedDocument *)ed->edPrivateData;
+    BufferDocument *		bd= td->tdDocument;
+
+    DocumentSelection		dsNew;
+    SelectionGeometry		sg;
+    SelectionDescription	sd;
+
+    BufferItem *		selSectBi;
+
+    int				scrolledX= 0;
+    int				scrolledY= 0;
+
+    const int			lastLine= 0;
+
+    if  ( tedGetSelection( &dsNew, &sg, &sd, td  ) )
+	{ LDEB(1); return;	}
+
+    if  ( docTableRectangleSelection( &dsNew, &selSectBi, bd, tr ) )
+	{ LDEB(1); return;	}
+
+    tedSetSelection( ed, &dsNew, lastLine, &scrolledX, &scrolledY );
+
+    tedAdaptToolsToSelection( ed );
+
+    return;
+    }
+
+APP_MENU_CALLBACK_H( tedDocTableSelectTable, option, voided, e )
+    {
+    EditDocument *		ed= (EditDocument *)voided;
+    TedDocument *		td= (TedDocument *)ed->edPrivateData;
+
+    DocumentSelection		ds;
+    SelectionGeometry		sg;
+    SelectionDescription	sd;
+
+    TableRectangle		tr;
+
+    if  ( tedGetSelection( &ds, &sg, &sd, td  ) )
+	{ LDEB(1); return;	}
+
+    if  ( docGetTableRectangle( &tr, &ds ) )
+	{ LDEB(1); return;	}
+
+    docExpandTableRectangleToWholeTable( &tr );
+
+    tedDocTableSelectTableRectangle( ed, &tr );
+
+    return;
+    }
+
+APP_MENU_CALLBACK_H( tedDocTableSelectRow, option, voided, e )
+    {
+    EditDocument *		ed= (EditDocument *)voided;
+    TedDocument *		td= (TedDocument *)ed->edPrivateData;
+
+    DocumentSelection		ds;
+    SelectionGeometry		sg;
+    SelectionDescription	sd;
+
+    TableRectangle	tr;
+
+    if  ( tedGetSelection( &ds, &sg, &sd, td  ) )
+	{ LDEB(1); return;	}
+
+    if  ( docGetTableRectangle( &tr, &ds ) )
+	{ LDEB(1); return;	}
+
+    docExpandTableRectangleToWholeRows( &tr );
+
+    tedDocTableSelectTableRectangle( ed, &tr );
+
+    return;
+    }
+
+APP_MENU_CALLBACK_H( tedDocTableSelectColumn, option, voided, e )
+    {
+    EditDocument *		ed= (EditDocument *)voided;
+    TedDocument *		td= (TedDocument *)ed->edPrivateData;
+
+    DocumentSelection		ds;
+    SelectionGeometry		sg;
+    SelectionDescription	sd;
+
+    TableRectangle		tr;
+
+    if  ( tedGetSelection( &ds, &sg, &sd, td  ) )
+	{ LDEB(1); return;	}
+
+    if  ( docGetTableRectangle( &tr, &ds ) )
+	{ LDEB(1); return;	}
+
+    docExpandTableRectangleToWholeColumns( &tr );
+
+    tedDocTableSelectTableRectangle( ed, &tr );
+
+    return;
+    }
+
 /************************************************************************/
 /*									*/
 /*  Insert a table in the document.					*/
@@ -63,7 +172,6 @@ int tedInsertTable(		EditDocument *		ed,
     DocumentSelection		dsRep;
 
     tedStartEditOperation( &eo, &dsOld, &sg, &sd, ed, 1 );
-    bi= dsOld.dsBegin.dpBi;
 
     /*  0  */
     eo.eoChangedRect.drY0--;
@@ -76,10 +184,19 @@ int tedInsertTable(		EditDocument *		ed,
 
     /*  2  */
     bi= dsRep.dsBegin.dpBi;
-    if  ( dsRep.dsBegin.dpStroff == bi->biParaStrlen )
+    if  ( dsRep.dsBegin.dpStroff > 0			&&
+	  dsRep.dsBegin.dpStroff == bi->biParaStrlen	)
 	{
-	docNextPosition( &(dsRep.dsBegin) );
-	bi= dsRep.dsBegin.dpBi;
+	DocumentPosition	dpNext;
+
+	dpNext= dsRep.dsBegin;
+	docNextPosition( &dpNext );
+
+	if  ( docPositionsInsideCell( &dpNext, &(dsRep.dsBegin) ) )
+	    {
+	    dsRep.dsBegin= dpNext;
+	    bi= dsRep.dsBegin.dpBi;
+	    }
 	}
 
     /*  3  */
@@ -87,7 +204,7 @@ int tedInsertTable(		EditDocument *		ed,
 	{
 	int		onNewPage= 0;
 
-	if  ( tedSplitParaContents( &eo, &newBi, bi, dsRep.dsBegin.dpStroff,
+	if  ( tedSplitParaContents( &eo, &newBi, &(dsRep.dsBegin),
 						ed, DOClevROW, onNewPage ) )
 	    { LDEB(1); return -1;	}
 
@@ -367,8 +484,8 @@ static int tedDeleteRowsFromTableOperation(
 					int			delRow0,
 					int			delRow1 )
     {
+    int				rval= 0;
     TedDocument *		td= (TedDocument *)ed->edPrivateData;
-    BufferDocument *		bd= td->tdDocument;
 
     BufferItem *		selSectBi;
 
@@ -384,25 +501,41 @@ static int tedDeleteRowsFromTableOperation(
     int				firstParaDeleted= -1;
     int				paragraphsDeleted= 0;
 
-    const int			stroffFrom= 0;
-    const int			stroffShift= 0;
+    PropertyMask		ppDoneMask;
+    PropertyMask		ppSetMask;
+    const int * const		colorMap= (const int *)0;
+    const int * const		listStyleMap= (const int *)0;
+
+    ParagraphProperties		pp;
+
+    docInitParagraphProperties( &pp );
 
     if  ( docDelimitTable( ds->dsBegin.dpBi, &selSectBi,
 						&col, &row0, &row, &row1 ) )
-	{ LDEB(1); return -1;	}
+	{ LDEB(1); rval= -1; goto ready;	}
 
     if  ( delRow0 > delRow1 )
-	{ LLDEB(delRow0,delRow1); return -1;	}
+	{ LLDEB(delRow0,delRow1); rval= -1; goto ready;	}
     if  ( delRow0 < row0 || delRow0 > row1 )
-	{ LLLDEB(row0,delRow0,row1); return -1;	}
+	{ LLLDEB(row0,delRow0,row1); rval= -1; goto ready;	}
     if  ( delRow1 < row0 || delRow1 > row1 )
-	{ LLLDEB(row0,delRow1,row1); return -1;	}
+	{ LLLDEB(row0,delRow1,row1); rval= -1; goto ready;	}
 
     docInitDocumentPosition( &dpNew );
     if  ( docLastPosition( &dpNew, selSectBi->biChildren[delRow1] ) )
-	{ LLDEB(delRow0,delRow1); return -1;	}
+	{ LLDEB(delRow0,delRow1); rval= -1; goto ready;	}
 
     paraNr= docNumberOfParagraph( dpNew.dpBi )+ 1;
+
+    PROPmaskCLEAR( &ppDoneMask );
+    PROPmaskCLEAR( &ppSetMask );
+    utilPropMaskFill( &ppSetMask, PPprop_COUNT );
+    PROPmaskUNSET( &ppSetMask, PPpropIN_TABLE );
+
+    if  ( docUpdParaProperties( &ppDoneMask, &pp,
+				&ppSetMask, &(dpNew.dpBi->biParaProperties),
+				colorMap, listStyleMap ) )
+	{ LDEB(1); rval= -1; goto ready;	}
 
     docInitDocumentPosition( &dpNew );
     if  ( docLastPosition( &dpNew, selSectBi->biChildren[delRow1] )	||
@@ -419,29 +552,20 @@ static int tedDeleteRowsFromTableOperation(
 
     tedEditIncludeRowsInRedraw( eo, ed, selSectBi, delRow0, delRow1 );
 
-    docEditIncludeItemInReformatRange( eo, selSectBi );
-
     docEditDeleteItems( eo, &sectionsDeleted,
 				&firstParaDeleted, &paragraphsDeleted,
 				selSectBi, delRow0, delRow1- delRow0+ 1 );
 
-    /* NO! done by docEditDeleteItems()
-    docEditShiftReformatRangeParaNr( eo, paraNr+ 1, -paragraphsDeleted );
-    */
-
-    if  ( selSectBi->biInExternalItem == DOCinBODY )
-	{
-	const int	isSplit= 0;
-
-	docEditShiftReferences( eo->eoBd, paraNr, isSplit, stroffFrom,
-				    -sectionsDeleted, -paragraphsDeleted,
-				    stroffShift );
-	}
+    docEditIncludeItemInReformatRange( eo, selSectBi );
 
     if  ( ! dpNew.dpBi )
 	{
-	dpNew.dpBi= docInsertEmptyParagraph( bd, selSectBi,
-					td->tdCurrentTextAttributeNumber );
+	const int	sectShift= 0;
+
+	if  ( tedSectionParagraph( eo, &(dpNew.dpBi),
+				    selSectBi, sectShift,
+				    &pp, td->tdCurrentTextAttributeNumber ) )
+	    { LDEB(1); rval= -1; goto ready;	}
 
 	docEditIncludeItemInReformatRange( eo, selSectBi );
 
@@ -453,7 +577,11 @@ static int tedDeleteRowsFromTableOperation(
 
     tedEditFinishIBarSelection( ed, eo, dpNew.dpBi, dpNew.dpStroff );
 
-    return 0;
+  ready:
+
+    docCleanParagraphProperties( &pp );
+
+    return rval;
     }
 
 int tedDeleteRowsFromTable(	EditDocument *		ed,
@@ -609,6 +737,8 @@ int tedDeleteColumnsFromRows(	EditDocument *	ed,
 				int		delCol0,
 				int		delCol1 )
     {
+    int				rval;
+
     EditOperation		eo;
     DocumentSelection		ds;
     SelectionGeometry		sg;
@@ -616,8 +746,12 @@ int tedDeleteColumnsFromRows(	EditDocument *	ed,
 
     tedStartEditOperation( &eo, &ds, &sg, &sd, ed, 1 );
 
-    return tedDeleteColumnsFromRowsOperation( ed, &eo, &ds,
+    rval= tedDeleteColumnsFromRowsOperation( ed, &eo, &ds,
 					delRow0, delRow1, delCol0, delCol1 );
+
+    appDocumentChanged( ed, 1 );
+
+    return rval;
     }
 
 /************************************************************************/
@@ -924,3 +1058,74 @@ int tedDeleteTableSliceSelection(	EditDocument *		ed )
     /*  4  */
     LLDEB(isRowSlice,isColSlice); return -1;
     }
+
+APP_MENU_CALLBACK_H( tedDocTableDeleteTable, option, voided, e )
+    {
+    EditDocument *		ed= (EditDocument *)voided;
+    TedDocument *		td= (TedDocument *)ed->edPrivateData;
+
+    DocumentSelection		ds;
+    SelectionGeometry		sg;
+    SelectionDescription	sd;
+
+    TableRectangle		tr;
+
+    if  ( tedGetSelection( &ds, &sg, &sd, td  ) )
+	{ LDEB(1); return;	}
+
+    if  ( docGetTableRectangle( &tr, &ds ) )
+	{ LDEB(1); return;	}
+
+    if  ( tedDeleteRowsFromTable( ed, tr.trRow00, tr.trRow11 ) )
+	{ LLDEB(tr.trRow00,tr.trRow11); return;	}
+
+    return;
+    }
+
+APP_MENU_CALLBACK_H( tedDocTableDeleteRow, option, voided, e )
+    {
+    EditDocument *		ed= (EditDocument *)voided;
+    TedDocument *		td= (TedDocument *)ed->edPrivateData;
+
+    DocumentSelection		ds;
+    SelectionGeometry		sg;
+    SelectionDescription	sd;
+
+    TableRectangle		tr;
+
+    if  ( tedGetSelection( &ds, &sg, &sd, td  ) )
+	{ LDEB(1); return;	}
+
+    if  ( docGetTableRectangle( &tr, &ds ) )
+	{ LDEB(1); return;	}
+
+    if  ( tedDeleteRowsFromTable( ed, tr.trRow0, tr.trRow1 ) )
+	{ LLDEB(tr.trRow00,tr.trRow11); return;	}
+
+    return;
+    }
+
+APP_MENU_CALLBACK_H( tedDocTableDeleteColumn, option, voided, e )
+    {
+    EditDocument *		ed= (EditDocument *)voided;
+    TedDocument *		td= (TedDocument *)ed->edPrivateData;
+
+    DocumentSelection		ds;
+    SelectionGeometry		sg;
+    SelectionDescription	sd;
+
+    TableRectangle		tr;
+
+    if  ( tedGetSelection( &ds, &sg, &sd, td  ) )
+	{ LDEB(1); return;	}
+
+    if  ( docGetTableRectangle( &tr, &ds ) )
+	{ LDEB(1); return;	}
+
+    if  ( tedDeleteColumnsFromRows( ed,
+		tr.trRow00, tr.trRow11, tr.trCol0, tr.trCol1 ) )
+	{ LLDEB(tr.trRow00,tr.trRow11); return;	}
+
+    return;
+    }
+

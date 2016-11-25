@@ -50,8 +50,9 @@ void docInitDocumentProperties(	DocumentProperties *	dp )
     dp->dpHasFacingPages= 0;
     dp->dpWidowControl= 0;
     dp->dpTwoOnOne= 0;
+    dp->dpIsDocumentTemplate= 0;
 
-    appInitDocumentGeometry( &(dp->dpGeometry) );
+    utilInitDocumentGeometry( &(dp->dpGeometry) );
 
     docInitFontList( &(dp->dpFontList) );
     docInitListTable( &(dp->dpListTable) );
@@ -338,10 +339,10 @@ int docUpdDocumentProperties(	PropertyMask *			pDoneMask,
     PROPmaskCLEAR( &doneMask );
 
     PROPmaskCLEAR( &dgMask );
-    PROPmaskFILL( &dgMask, DGprop_COUNT );
+    utilPropMaskFill( &dgMask, DGprop_COUNT );
     utilPropMaskAnd( &dgMask, &dgMask, updMask );
 
-    appSetDocumentGeometry( &(dpTo->dpGeometry), &(dpFrom->dpGeometry),
+    utilUpdDocumentGeometry( &(dpTo->dpGeometry), &(dpFrom->dpGeometry),
 							&doneMask, &dgMask );
 
     if  ( PROPmaskISSET( updMask, DPpropSTART_PAGE ) )

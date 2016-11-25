@@ -50,7 +50,7 @@ void tedRedoDocumentLayout(	EditDocument *		ed )
 
 	tedScrollToSelection( ed, &scrolledX, &scrolledY );
 
-	if  ( td->tdObjectSelected )
+	if  ( td->tdSelectionDescription.sdIsObjectSelection )
 	    { tedMoveObjectWindows( ed );	}
 	}
 
@@ -99,12 +99,12 @@ void tedSetPageLayout(	EditApplication *		ea,
     dp= &(bd->bdProperties);
 
     PROPmaskCLEAR( &dgUpdMask );
-    PROPmaskFILL( &dgUpdMask, DGprop_COUNT );
+    utilPropMaskFill( &dgUpdMask, DGprop_COUNT );
     utilPropMaskAnd( &dgUpdMask, &dgUpdMask, setMask );
 
     if  ( wholeDocument )
 	{
-	appSetDocumentGeometry( &(dp->dpGeometry), dg, &changed, &dgUpdMask );
+	utilUpdDocumentGeometry( &(dp->dpGeometry), dg, &changed, &dgUpdMask );
 
 	for ( i= 0; i < bd->bdItem.biChildCount; i++ )
 	    {
@@ -113,13 +113,13 @@ void tedSetPageLayout(	EditApplication *		ea,
 
 	    PROPmaskCLEAR( &sectChanged );
 
-	    appSetDocumentGeometry( &(sectBi->biSectDocumentGeometry),
+	    utilUpdDocumentGeometry( &(sectBi->biSectDocumentGeometry),
 						    dg, &sectChanged, setMask );
 
 	    utilPropMaskOr( &changed, &changed, &sectChanged );
 	    }
 
-	if  ( ! PROPmaskISEMPTY( &changed ) )
+	if  ( ! utilPropMaskIsEmpty( &changed ) )
 	    {
 	    appDocumentChanged( ed, 1 );
 
@@ -137,7 +137,7 @@ void tedSetPageLayout(	EditApplication *		ea,
 	docInitSectionProperties( &spNew );
 	PROPmaskCLEAR( &doneMask );
 
-	appSetDocumentGeometry( &(spNew.spDocumentGeometry), dg,
+	utilUpdDocumentGeometry( &(spNew.spDocumentGeometry), dg,
 							&doneMask, setMask );
 
 	if  ( tedAppChangeSectionProperties( ea, setMask, &spNew ) )
@@ -184,7 +184,7 @@ int tedAppSetDocumentProperties( EditApplication *		ea,
     if  ( docUpdDocumentProperties( &changed, dp, updMask, dpNew ) )
 	{ LDEB(1); return -1;	}
 
-    if  ( ! PROPmaskISEMPTY( &changed ) )
+    if  ( ! utilPropMaskIsEmpty( &changed ) )
 	{
 	int		noteNumbersChanged= 0;
 

@@ -15,9 +15,9 @@
 typedef struct AppEncodingMenu
     {
     AppOptionmenu	aemEncodingOptionmenu;
-    APP_WIDGET		aemFontEncodingOptions[ENCODINGps_COUNT];
+    APP_WIDGET		aemFontEncodingOptions[CHARSETidxCOUNT];
 
-    int			aemFontEncoding;
+    int			aemCharsetIndex;
     } AppEncodingMenu;
 
 /************************************************************************/
@@ -52,4 +52,15 @@ extern void appEncodingMenuGetOptionTexts(
 extern void appEncodingMenuAdaptToFamilyEncodings(
 				AppEncodingMenu *		aem,
 				const DocumentFontFamily *	dff );
+
+extern int appEncodingMenuAdaptToFamily(
+				int *				pFontNumber,
+				AppEncodingMenu *		aem,
+				const DocumentFontFamily *	dff );
+
+extern int appEncodingMenuAdaptToCharsetIndex(
+				int *				pFontNumber,
+				AppEncodingMenu *		aem,
+				const DocumentFontFamily *	dff,
+				int				charsetIdx );
 

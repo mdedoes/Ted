@@ -20,13 +20,12 @@ int bmReadTiffFile(	const char *		filename,
 			int *			pPrivateFormat,
 			double *		pCompressionFactor	)
     {
-    TIFF *			t;
-    unsigned int		col;
-    /*
-    int				row;
-    */
+    int				rval= 0;
 
-    unsigned char *		buffer;
+    TIFF *			t= (TIFF *)0;
+    unsigned int		col;
+
+    unsigned char *		buffer= (unsigned char *)0;
     int				fileFormat;
 
     unsigned short		photometric;
@@ -41,28 +40,32 @@ int bmReadTiffFile(	const char *		filename,
     unsigned short *		greenMap= (unsigned short *)0;
     unsigned short *		blueMap= (unsigned short *)0;
 
+    unsigned short		planarConfig= 1;
+
     t= TIFFOpen( (char *)filename, "r" );
     if  ( ! t )
-	{ SDEB(filename); return -1;	}
+	{ SXDEB(filename,t); rval= -1; goto ready;	}
 
     if  ( TIFFGetField( t, TIFFTAG_COMPRESSION, &unsignedShort ) != 1 )
-	{ SLDEB(filename,TIFFTAG_COMPRESSION); TIFFClose(t); return -1;	}
+	{ SLDEB(filename,TIFFTAG_COMPRESSION); rval= -1; goto ready;	}
     fileFormat= unsignedShort;
 
     if  ( TIFFGetField( t, TIFFTAG_IMAGEWIDTH, &unsignedLong ) != 1 )
-	{ SLDEB(filename,TIFFTAG_IMAGEWIDTH); TIFFClose(t); return -1;	}
+	{ SLDEB(filename,TIFFTAG_IMAGEWIDTH); rval= -1; goto ready;	}
     bd->bdPixelsWide= unsignedLong;
 
     if  ( TIFFGetField( t, TIFFTAG_IMAGELENGTH, &unsignedLong ) != 1 )
-	{ SLDEB(filename,TIFFTAG_IMAGELENGTH); TIFFClose(t); return -1;	}
+	{ SLDEB(filename,TIFFTAG_IMAGELENGTH); rval= -1; goto ready;	}
     bd->bdPixelsHigh= unsignedLong;
 
     if  ( TIFFGetField( t, TIFFTAG_BITSPERSAMPLE, &bitsPerSample ) != 1 )
-	{ SLDEB(filename,TIFFTAG_BITSPERSAMPLE); TIFFClose(t); return -1; }
+	{ SLDEB(filename,TIFFTAG_BITSPERSAMPLE); rval= -1; goto ready; }
+    if  ( bitsPerSample > 8 )
+	{ LDEB(bitsPerSample); return -1;	}
     bd->bdBitsPerSample= bitsPerSample;
 
     if  ( TIFFGetField( t, TIFFTAG_SAMPLESPERPIXEL, &unsignedShort ) != 1 )
-	{ SLDEB(filename,TIFFTAG_SAMPLESPERPIXEL); TIFFClose(t); return -1; }
+	{ SLDEB(filename,TIFFTAG_SAMPLESPERPIXEL); rval= -1; goto ready; }
     bd->bdSamplesPerPixel= unsignedShort;
 
     if  ( TIFFGetField( t, TIFFTAG_EXTRASAMPLES, &unsignedShort,
@@ -89,7 +92,7 @@ int bmReadTiffFile(	const char *		filename,
 	}
 
     if  ( TIFFGetField( t, TIFFTAG_PHOTOMETRIC, &photometric ) != 1 )
-	{ SLDEB(filename,TIFFTAG_PHOTOMETRIC); TIFFClose(t); return -1;	}
+	{ SLDEB(filename,TIFFTAG_PHOTOMETRIC); rval= -1; goto ready;	}
 
     switch( photometric )
 	{
@@ -111,16 +114,16 @@ int bmReadTiffFile(	const char *		filename,
 	case PHOTOMETRIC_PALETTE:
 	    if  ( TIFFGetField( t, TIFFTAG_COLORMAP,
 					&redMap, &greenMap, &blueMap ) != 1 )
-		{ SLDEB(filename,TIFFTAG_COLORMAP); TIFFClose(t); return -1; }
+		{ SLDEB(filename,TIFFTAG_COLORMAP); rval= -1; goto ready; }
 
 	    if  ( bd->bdHasAlpha )
 		{
 		if  ( bd->bdSamplesPerPixel != 2 )
-		    { LDEB(bd->bdSamplesPerPixel); TIFFClose(t); return -1; }
+		    { LDEB(bd->bdSamplesPerPixel); rval= -1; goto ready; }
 		}
 	    else{
 		if  ( bd->bdSamplesPerPixel != 1 )
-		    { LDEB(bd->bdSamplesPerPixel); TIFFClose(t); return -1; }
+		    { LDEB(bd->bdSamplesPerPixel); rval= -1; goto ready; }
 		}
 
 	    bd->bdColorCount= 1 << bitsPerSample;
@@ -130,7 +133,7 @@ int bmReadTiffFile(	const char *		filename,
 	    if  ( ! bd->bdRGB8Palette )
 		{
 		LLDEB(bitsPerSample,bd->bdRGB8Palette); 
-		TIFFClose(t); return -1;
+		rval= -1; goto ready;
 		}
 	    for ( col= 0; col < bd->bdColorCount; col++ )
 		{
@@ -154,7 +157,7 @@ int bmReadTiffFile(	const char *		filename,
 
 	    break;
 	default:
-	    LDEB(photometric); TIFFClose(t); return -1;
+	    LDEB(photometric); rval= -1; goto ready;
 	}
 
     bd->bdBytesPerRow= ( bd->bdBitsPerPixel* bd->bdPixelsWide + 7 )/ 8;
@@ -162,10 +165,13 @@ int bmReadTiffFile(	const char *		filename,
 
     if  ( bd->bdSamplesPerPixel != 1 )
 	{
-	if  ( TIFFGetField( t, TIFFTAG_PLANARCONFIG, &unsignedShort ) != 1 )
-	    { LDEB(TIFFTAG_PLANARCONFIG); TIFFClose(t); return -1;	}
-	if  ( unsignedShort != 1 )
-	    { LDEB(unsignedShort); TIFFClose(t); return -1;	}
+	if  ( TIFFGetField( t, TIFFTAG_PLANARCONFIG, &planarConfig ) != 1 )
+	    { LDEB(TIFFTAG_PLANARCONFIG); rval= -1; goto ready;	}
+	if  ( planarConfig != 1 )
+	    {
+	    SLLDEB(filename,bd->bdSamplesPerPixel,planarConfig);
+	    LLDEB(bd->bdBitsPerSample,bd->bdBitsPerPixel);
+	    }
 	}
 
     if  ( TIFFGetField( t, TIFFTAG_RESOLUTIONUNIT, &unsignedShort ) != 1 )
@@ -181,19 +187,19 @@ int bmReadTiffFile(	const char *		filename,
 	    case	RESUNIT_INCH:
 		bd->bdUnit= BMunINCH;
 		if  ( TIFFGetField( t, TIFFTAG_XRESOLUTION, &resolution ) != 1 )
-		    { LDEB(TIFFTAG_XRESOLUTION); TIFFClose(t); return -1; }
+		    { LDEB(TIFFTAG_XRESOLUTION); rval= -1; goto ready; }
 		bd->bdXResolution= (int)resolution;
 		if  ( TIFFGetField( t, TIFFTAG_YRESOLUTION, &resolution ) != 1 )
-		    { LDEB(TIFFTAG_YRESOLUTION); TIFFClose(t); return -1; }
+		    { LDEB(TIFFTAG_YRESOLUTION); rval= -1; goto ready; }
 		bd->bdYResolution= (int)resolution;
 		break;
 	    case	RESUNIT_CENTIMETER:
 		bd->bdUnit= BMunM;
 		if  ( TIFFGetField( t, TIFFTAG_XRESOLUTION, &resolution ) != 1 )
-		    { LDEB(TIFFTAG_XRESOLUTION); TIFFClose(t); return -1; }
+		    { LDEB(TIFFTAG_XRESOLUTION); rval= -1; goto ready; }
 		bd->bdXResolution= (int)100* resolution;
 		if  ( TIFFGetField( t, TIFFTAG_YRESOLUTION, &resolution ) != 1 )
-		    { LDEB(TIFFTAG_YRESOLUTION); TIFFClose(t); return -1; }
+		    { LDEB(TIFFTAG_YRESOLUTION); rval= -1; goto ready; }
 		bd->bdYResolution= 100* (int)resolution;
 		break;
 	    case	RESUNIT_NONE:
@@ -206,7 +212,7 @@ int bmReadTiffFile(	const char *		filename,
 		bd->bdYResolution= (int)resolution;
 		break;
 	    default:
-		LDEB(unsignedShort); TIFFClose(t); return -1;
+		LDEB(unsignedShort); rval= -1; goto ready;
 	    }
 
 	if  ( bd->bdXResolution == 0	||
@@ -222,7 +228,7 @@ int bmReadTiffFile(	const char *		filename,
     /*  9  */
     buffer= (unsigned char *)malloc( bd->bdBufferLength+ 1 );
     if  ( ! buffer )
-	{ XDEB(buffer); TIFFClose(t); return -1;	}
+	{ XDEB(buffer); rval= -1; goto ready;	}
 
     if  ( bd->bdBitsPerPixel % 8 == 0 )
 	{
@@ -252,12 +258,30 @@ int bmReadTiffFile(	const char *		filename,
 	    }
 	}
 
-    TIFFClose( t );
+    if  ( planarConfig != 1 )
+	{
+	unsigned char *		scratch;
 
-    *pBuffer= buffer;
+	scratch= (unsigned char *)malloc( bd->bdBufferLength+ 1 );
+	if  ( ! scratch )
+	    { XDEB(scratch); rval= -1; goto ready;	}
+
+	if  ( bmPlanarToChunky( scratch, buffer, bd ) )
+	    { LDEB(1); free( scratch ); rval= -1; goto ready;	}
+
+	free( buffer ); buffer= scratch;
+	}
+
+    *pBuffer= buffer; buffer= (unsigned char *)0; /* steal */
     *pPrivateFormat= fileFormat;
 
-    return 0;
+  ready:
+    if  ( t )
+	{ TIFFClose( t );	}
+    if  ( buffer )
+	{ free( buffer );	}
+
+    return rval;
     }
 
 
@@ -313,8 +337,11 @@ int bmCanWriteTiffFile( const BitmapDescription *	bd,
     }
 
 /************************************************************************/
+/*									*/
 /*  Write a bitmap to a TIFF file.					*/
+/*									*/
 /************************************************************************/
+
 int bmWriteTiffFile(	const char *			filename,
 			const unsigned char *		buffer,
 			const BitmapDescription *	bd,

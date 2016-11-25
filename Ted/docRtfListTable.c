@@ -445,8 +445,10 @@ void docRtfWriteListLevel(	SimpleOutputStream *		sos,
     if  ( dll->dllUsePrevSpace )
 	{ docRtfWriteTag( "\\levelprevspace", pCol, sos );	}
 
-    docRtfWriteArgTag( "\\levelindent", pCol, dll->dllIndent, sos );
-    docRtfWriteArgTag( "\\levelspace", pCol, dll->dllSpace, sos );
+    if  ( dll->dllIndent != 0 )
+	{ docRtfWriteArgTag( "\\levelindent", pCol, dll->dllIndent, sos ); }
+    if  ( dll->dllSpace != 0 )
+	{ docRtfWriteArgTag( "\\levelspace", pCol, dll->dllSpace, sos ); }
 
     if  ( dll->dllText )
 	{

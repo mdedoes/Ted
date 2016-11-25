@@ -45,7 +45,7 @@ static int docRtfStyleName(	RtfReadingContext *	rrc,
 	case DOClevTEXT:
 	    break;
 
-	case -1:
+	case 0: case -1:
 	    LDEB(rrc->rrcDocumentStyle.dsLevel);
 	    ds->dsStyleNumber= 0;
 	    ds->dsLevel= DOClevPARA;
@@ -74,7 +74,7 @@ static int docRtfStyleName(	RtfReadingContext *	rrc,
     if  ( docCopyStyle( ds, &(rrc->rrcDocumentStyle) ) )
 	{ LDEB(1); return -1;	}
 
-    if  ( len > 0 );
+    if  ( len > 0 )
 	{
 	unsigned char *	s;
 
@@ -93,7 +93,7 @@ static int docRtfStyleName(	RtfReadingContext *	rrc,
     PROPmaskCLEAR( &ppChgMask );
 
     PROPmaskCLEAR( &ppUpdMask );
-    PROPmaskFILL( &ppUpdMask, PPprop_COUNT );
+    utilPropMaskFill( &ppUpdMask, PPprop_COUNT );
 
     docUpdParaProperties( &ppChgMask, &(ds->dsParagraphProperties),
 				&ppUpdMask, &(rrs->rrsParagraphProperties),
@@ -350,10 +350,14 @@ void docRtfWriteStyleSheet(	SimpleOutputStream *		sos,
 	    { docRtfWriteTag( "\\sautoupd", pCol, sos ); }
 	if  ( ds->dsHidden )
 	    { docRtfWriteTag( "\\shidden", pCol, sos ); }
+	if  ( ds->dsLocked )
+	    { docRtfWriteTag( "\\slocked", pCol, sos ); }
 	if  ( ds->dsSemiHidden )
 	    { docRtfWriteTag( "\\ssemihidden", pCol, sos ); }
 	if  ( ds->dsPersonal )
 	    { docRtfWriteTag( "\\spersonal", pCol, sos ); }
+	if  ( ds->dsLink >= 0 )
+	    { docRtfWriteTag( "\\slink", pCol, sos ); }
 
 	sioOutPutCharacter( ' ', sos ); *pCol += 1;
 	docRtfEscapeString( ds->dsName, outputMapping,
@@ -400,11 +404,17 @@ int docRtfRememberStyleProperty(	SimpleInputStream *	sis,
 	case DSpropNEXT:
 	    ds->dsNext= arg;
 	    break;
+	case DSpropLINK:
+	    ds->dsLink= arg;
+	    break;
 	case DSpropAUTO_UPD:
 	    ds->dsAutoupd= arg != 0;
 	    break;
 	case DSpropHIDDEN:
 	    ds->dsHidden= arg != 0;
+	    break;
+	case DSpropLOCKED:
+	    ds->dsLocked= arg != 0;
 	    break;
 	case DSpropSEMI_HIDDEN:
 	    ds->dsSemiHidden= arg != 0;

@@ -15,27 +15,28 @@
 /*									*/
 /************************************************************************/
 
-void appEncodingMenuSetEncoding(	AppEncodingMenu *		aem,
-					const DocumentFontFamily *	dff,
-					int				enc )
+void appEncodingMenuSetEncoding(
+				AppEncodingMenu *		aem,
+				const DocumentFontFamily *	dff,
+				int				charsetIdx )
     {
     int				i;
 
-    if  ( enc < 0 || enc >= ENCODINGps_COUNT )
+    if  ( charsetIdx < 0 || charsetIdx >= CHARSETidxCOUNT )
 	{ appEncodingMenuUnsetEncoding( aem );	}
     else{
-	if  ( aem->aemFontEncoding != enc )
+	if  ( aem->aemCharsetIndex != charsetIdx )
 	    {
-	    aem->aemFontEncoding= enc;
+	    aem->aemCharsetIndex= charsetIdx;
 
-	    appSetOptionmenu( &(aem->aemEncodingOptionmenu), enc );
+	    appSetOptionmenu( &(aem->aemEncodingOptionmenu), charsetIdx );
 	    }
 	}
 
-    for ( i= 0; i < ENCODINGps_COUNT; i++ )
+    for ( i= 0; i < CHARSETidxCOUNT; i++ )
 	{
 	appGuiEnableWidget( aem->aemFontEncodingOptions[i],
-					    dff->dffFontForEncoding[i] >= 0 );
+					dff->dffFontForCharsetIndex[i] >= 0 );
 	}
 
     return;
@@ -43,25 +44,25 @@ void appEncodingMenuSetEncoding(	AppEncodingMenu *		aem,
 
 void appEncodingMenuSetDocEncoding(	AppEncodingMenu *	aem,
 					const int *		fontForEncoding,
-					int			enc )
+					int			charsetIdx )
     {
     int				i;
 
-    if  ( enc < 0 || enc >= ENCODINGps_COUNT )
-	{ LLDEB(enc,ENCODINGps_COUNT);		}
+    if  ( charsetIdx < 0 || charsetIdx >= CHARSETidxCOUNT )
+	{ LLDEB(charsetIdx,CHARSETidxCOUNT);		}
     else{
-	if  ( fontForEncoding[enc] < 0 )
-	    { LLDEB(enc,fontForEncoding[enc]);	}
+	if  ( fontForEncoding[charsetIdx] < 0 )
+	    { LLDEB(charsetIdx,fontForEncoding[charsetIdx]);	}
 
-	if  ( aem->aemFontEncoding != enc )
+	if  ( aem->aemCharsetIndex != charsetIdx )
 	    {
-	    aem->aemFontEncoding= enc;
+	    aem->aemCharsetIndex= charsetIdx;
 
-	    appSetOptionmenu( &(aem->aemEncodingOptionmenu), enc );
+	    appSetOptionmenu( &(aem->aemEncodingOptionmenu), charsetIdx );
 	    }
 	}
 
-    for ( i= 0; i < ENCODINGps_COUNT; i++ )
+    for ( i= 0; i < CHARSETidxCOUNT; i++ )
 	{
 	appGuiEnableWidget( aem->aemFontEncodingOptions[i],
 						fontForEncoding[i] >= 0 );
@@ -72,7 +73,7 @@ void appEncodingMenuSetDocEncoding(	AppEncodingMenu *	aem,
 
 void appEncodingMenuUnsetEncoding(	AppEncodingMenu *	aem )
     {
-    aem->aemFontEncoding= -1;
+    aem->aemCharsetIndex= -1;
     appSetOptionmenu( &(aem->aemEncodingOptionmenu), -1 );
 
     return;
@@ -88,14 +89,14 @@ void appEncodingMenuAdaptToFamilyEncodings(
 					AppEncodingMenu *		aem,
 					const DocumentFontFamily *	dff )
     {
-    int			enc= -1;
+    int			charsetIdx= -1;
 
-    if  ( aem->aemFontEncoding >= 0				&&
-	  aem->aemFontEncoding < ENCODINGps_COUNT		&&
-	  dff->dffFontForEncoding[aem->aemFontEncoding] >= 0	)
-	{ enc= aem->aemFontEncoding; }
+    if  ( aem->aemCharsetIndex >= 0				&&
+	  aem->aemCharsetIndex < CHARSETidxCOUNT		&&
+	  dff->dffFontForCharsetIndex[aem->aemCharsetIndex] >= 0	)
+	{ charsetIdx= aem->aemCharsetIndex; }
 
-    appEncodingMenuSetEncoding( aem, dff, enc );
+    appEncodingMenuSetEncoding( aem, dff, charsetIdx );
 
     return;
     }
@@ -115,15 +116,27 @@ void appEncodingMenuFillOptionmenu(	char * const *		opts,
 
     appEmptyOptionmenu( &(aem->aemEncodingOptionmenu) );
 
-    for ( i= 0; i < ENCODINGps_COUNT; i++ )
+    for ( i= 0; i < CHARSETidxCOUNT; i++ )
 	{
+	const OfficeCharset *	oc;
+
+	oc= utilGetOfficeCharsetByIndex( i );
+
 	aem->aemFontEncodingOptions[i]= appAddItemToOptionmenu(
 				    &(aem->aemEncodingOptionmenu),
 				    opts[i], callBack, through );
+
+	if  ( ! oc )
+	    { XDEB(oc); continue;	}
+	if  ( oc->ocOfficeCharsetPreferred >= 0 )
+	    {
+	    appOptionmenuItemSetVisibility(
+				    aem->aemFontEncodingOptions[i], 0 );
+	    }
 	}
 
     appSetOptionmenu( &(aem->aemEncodingOptionmenu), 0 );
-    aem->aemFontEncoding= 0;
+    aem->aemCharsetIndex= 0;
 
     appOptionmenuRefreshWidth( &(aem->aemEncodingOptionmenu) );
     
@@ -140,19 +153,78 @@ void appEncodingMenuGetOptionTexts(	char **			opts,
 					EditApplication *	ea )
     {
     int				i;
-    AppConfigurableResource	acr[ENCODINGps_COUNT];
+    AppConfigurableResource	acr[CHARSETidxCOUNT];
     AppConfigurableResource *	acri;
-    const FontCharset *		fc;
 
-    fc= PS_Encodings;
+    int				ignored= 0;
+
     acri= acr;
-    for ( i= 0; i < ENCODINGps_COUNT; fc++, acri++, i++ )
+    for ( i= 0; i < CHARSETidxCOUNT; acri++, i++ )
 	{
-	APP_SET_RESOURCE( acri, fc->fcId, i* sizeof(char *), fc->fcLabel );
+	const OfficeCharset *	oc;
+
+	oc= utilGetOfficeCharsetByIndex( i );
+	if  ( ! oc )
+	    { break;	}
+
+	APP_SET_RESOURCE( acri, oc->ocId, i* sizeof(char *), oc->ocLabel );
 	}
 
-    appGuiGetResourceValues( ea, opts, acr, ENCODINGps_COUNT );
+    appGuiGetResourceValues( &ignored, ea, opts, acr, i );
 
     return;
     }
 
+/************************************************************************/
+/*									*/
+/*  Adapt to a changed family by choosing the first accessible charset.	*/
+/*									*/
+/************************************************************************/
+
+int appEncodingMenuAdaptToFamily(
+				int *				pFontNumber,
+				AppEncodingMenu *		aem,
+				const DocumentFontFamily *	dff )
+    {
+    int				charsetIdx= aem->aemCharsetIndex;
+
+    if  ( charsetIdx < 0				||
+	  dff->dffFontForCharsetIndex[charsetIdx] < 0	)
+	{
+	int	idx;
+
+	charsetIdx= -1;
+
+	for ( idx= 0; idx < CHARSETidxCOUNT; idx++ )
+	    {
+	    if  ( dff->dffFontForCharsetIndex[idx] >= 0 )
+		{ charsetIdx= idx; break;	}
+	    }
+	}
+
+    if  ( charsetIdx < 0 )
+	{ return 1;	}
+
+    if  ( aem->aemCharsetIndex != charsetIdx )
+	{ appEncodingMenuSetEncoding( aem, dff, charsetIdx ); }
+
+    *pFontNumber= dff->dffFontForCharsetIndex[charsetIdx];
+    return 0;
+    }
+
+int appEncodingMenuAdaptToCharsetIndex(
+				int *				pFontNumber,
+				AppEncodingMenu *		aem,
+				const DocumentFontFamily *	dff,
+				int				charsetIdx )
+    {
+    if  ( charsetIdx < 0				||
+	  dff->dffFontForCharsetIndex[charsetIdx] < 0	)
+	{ return 1;	}
+
+    if  ( aem->aemCharsetIndex != charsetIdx )
+	{ appEncodingMenuSetEncoding( aem, dff, charsetIdx ); }
+
+    *pFontNumber= dff->dffFontForCharsetIndex[charsetIdx];
+    return 0;
+    }

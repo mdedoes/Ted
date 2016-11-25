@@ -81,7 +81,7 @@ void appCollectExposures(	DocumentRectangle *	drClip,
 			drMore.drY1- drMore.drY0+ 1 );
 #	endif
 
-	docUnionRectangle( drClip, drClip, &drMore );
+	geoUnionRectangle( drClip, drClip, &drMore );
 
 #	if LOG_EXPOSES
 	appDebug( "E.....: [%4d+%4d]x[%4d+%4d]\n",
@@ -444,22 +444,22 @@ extern void appDrawSetClipRect(	AppDrawingData *		add,
     }
 
 void appDrawFillPolygon(		AppDrawingData *	add,
-					APP_POINT *		points,
+					const APP_POINT *	points,
 					int			count )
     {
     XFillPolygon( add->addDisplay, add->addDrawable, add->addGc,
-				    points, count, Complex, CoordModeOrigin );
+			(APP_POINT *)points, count, Complex, CoordModeOrigin );
     }
 
 void appDrawDrawLines(			AppDrawingData *	add,
-					APP_POINT *		points,
+					const APP_POINT *	points,
 					int			count )
     {
     int		i;
 
     /*
     XDrawLines( add->addDisplay, add->addDrawable, add->addGc,
-					points, count, CoordModeOrigin );
+				(APP_POINT *)points, count, CoordModeOrigin );
     */
 
     count--;
@@ -521,10 +521,20 @@ APP_BITMAP_IMAGE appMakePixmap(	AppDrawingData *	add,
 				int			wide,
 				int			high )
     {
-    int		depth= DefaultDepth( add->addDisplay, add->addScreen );
+    int			depth= DefaultDepth( add->addDisplay, add->addScreen );
+    APP_BITMAP_IMAGE	rval;
 
-    return XCreatePixmap( add->addDisplay, add->addDrawable,
+    rval= XCreatePixmap( add->addDisplay, add->addDrawable,
 						    wide, high, depth );
+    if  ( ! rval )
+	{ XDEB(rval);	}
+
+    XSetForeground( add->addDisplay, add->addGc,
+			    WhitePixel( add->addDisplay, add->addScreen ) );
+
+    XFillRectangle( add->addDisplay, rval, add->addGc, 0, 0, wide, high );
+
+    return rval;
     }
 
 void appDrawDrawSegments(	AppDrawingData *	add,
@@ -567,6 +577,44 @@ void appDrawFillArc(		AppDrawingData *	add,
     {
     XFillArc( add->addDisplay, add->addDrawable, add->addGc,
 					x, y, wide, high, alpha0, alpha_step );
+    }
+
+void appDrawDrawArcs(		AppDrawingData *	add,
+				const XArc *		arcs,
+				int			count )
+    {
+    XDrawArcs( add->addDisplay, add->addDrawable, add->addGc, (XArc *)arcs, count );
+    }
+
+void appDrawFillArcs(		AppDrawingData *	add,
+				const XArc *		arcs,
+				int			count )
+    {
+    XFillArcs( add->addDisplay, add->addDrawable, add->addGc, (XArc *)arcs, count );
+    }
+
+int appDrawSetLineAttributes(	AppDrawingData *	add,
+				int			lineWidth,
+				int			lineStyle,
+				int			capStyle,
+				int			joinStyle,
+				const unsigned char *	dashList,
+				int			dashCount )
+    {
+    XSetLineAttributes( add->addDisplay, add->addGc,
+				lineWidth, lineStyle, capStyle, joinStyle );
+
+    if  ( lineStyle != LINEstyleSOLID )
+	{
+	if  ( ! dashList || dashCount == 0 )
+	    { XLDEB(dashList,dashCount);	}
+	else{
+	    XSetDashes( add->addDisplay, add->addGc, 0,
+						(char *)dashList, dashCount );
+	    }
+	}
+
+    return 0;
     }
 
 #   endif

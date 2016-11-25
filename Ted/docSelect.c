@@ -121,6 +121,7 @@ void docInitPositionGeometry(	PositionGeometry *		pg )
     {
     pg->pgLine= 0;
     pg->pgAtLineHead= 0;
+    pg->pgAtLineEnd= 0;
 
     pg->pgXPixels= -1;
     docInitLayoutPosition( &pg->pgTopPosition );
@@ -789,7 +790,10 @@ int docGetFirstInColumnForItem(
 	    return 1;
 	    }
 	if  ( bi->biBelowPosition.lpPage < page )
-	    { LLDEB(bi->biBelowPosition.lpPage,page); return -1;	}
+	    {
+	    /* LLDEB(bi->biTopPosition.lpPage,page); */
+	    return 1;
+	    }
 
 	for ( i= 0; i < bi->biChildCount; i++ )
 	    {
@@ -804,10 +808,14 @@ int docGetFirstInColumnForItem(
 
 	if  ( i >= bi->biChildCount )
 	    {
+	    /*  NO! is possible e.g. when endnotes continue beyond the 
+	        last page with body content.
 	    for ( i= 0; i < bi->biChildCount; i++ )
 		{ LLDEB(i,bi->biChildren[i]->biBelowPosition.lpPage); }
 	    LLLDEB(bi->biTopPosition.lpPage,bi->biBelowPosition.lpPage,page);
 	    return -1;
+	    */
+	    return 1;
 	    }
 
 	bi= bi->biChildren[i];
@@ -847,14 +855,13 @@ int docGetFirstInColumnForItem(
     }
 
 int docGetTopOfColumn(	DocumentPosition *		dp,
+			int *				pLineTop,
 			int *				pPartTop,
 			BufferDocument *		bd,
 			int				page,
 			int				column )
     {
-    int		lineTop;
-
-    return docGetFirstInColumnForItem( dp, &lineTop, pPartTop, &(bd->bdItem),
+    return docGetFirstInColumnForItem( dp, pLineTop, pPartTop, &(bd->bdItem),
 								page, column );
     }
 
@@ -979,6 +986,9 @@ void docSetParaSelection(	DocumentSelection *	ds,
 void docSetSelectionScope(	DocumentSelection *	ds,
 				const BufferItem *	sectBi )
     {
+    if  ( ! sectBi )
+	{ XDEB(sectBi);	}
+
     while( sectBi && sectBi->biLevel != DOClevSECT )
 	{ sectBi= sectBi->biParent;	}
 
@@ -1031,41 +1041,41 @@ void docLineSelection(	DocumentSelection *	dsLine,
 
 void docWordSelection(	DocumentSelection *		dsWord,
 			int *				pIsObject,
-			const DocumentPosition *	dpAround )
+			const DocumentPosition *	dpAround,
+			int				partAround )
     {
     TextParticule *	tp;
 
-    BufferItem *	bi= dpAround->dpBi;
+    BufferItem *	paraBi= dpAround->dpBi;
     int			part;
 
-    const int		lastOne= 1;
+    part= partAround;
+    tp= paraBi->biParaParticules+ part;
 
-    if  ( docFindParticule( &part, dpAround->dpBi,
-					    dpAround->dpStroff, lastOne ) )
-	{ LDEB(dpAround->dpStroff); return;	}
+    if  ( paraBi->biLevel != DOClevPARA )
+	{ LLDEB(paraBi->biLevel,DOClevPARA); return;	}
+    if  ( part < 0 || part >= paraBi->biParaParticuleCount )
+	{ LLDEB(part,paraBi->biParaParticuleCount); return;	}
 
-    if  ( bi->biLevel != DOClevPARA )
-	{ LLDEB(bi->biLevel,DOClevPARA); return;	}
-    if  ( part < 0 || part >= bi->biParaParticuleCount )
-	{ LLDEB(part,bi->biParaParticuleCount); return;	}
+    while( part < paraBi->biParaParticuleCount- 1		&&
+	   tp->tpStroff+ tp->tpStrlen <= dpAround->dpStroff	)
+	{ tp++; part++;	}
 
-    tp= bi->biParaParticules+ part;
+    tp= paraBi->biParaParticules+ part;
 
     if  ( tp->tpStroff == dpAround->dpStroff	&&
-	  part > 0				)
+	  part > 0				&&
+	  tp[-1].tpKind == DOCkindOBJECT	)
 	{
-	if  ( tp[-1].tpKind == DOCkindOBJECT )
-	    {
-	    docSetParaSelection( dsWord, bi, 1,
+	docSetParaSelection( dsWord, paraBi, 1,
 					tp[-1].tpStroff, tp[-1].tpStrlen );
-	    *pIsObject= 1;
-	    return;
-	    }
+	*pIsObject= 1;
+	return;
 	}
 
     if  ( tp->tpKind == DOCkindOBJECT )
 	{
-	docSetParaSelection( dsWord, bi, 1, tp->tpStroff, tp->tpStrlen );
+	docSetParaSelection( dsWord, paraBi, 1, tp->tpStroff, tp->tpStrlen );
 	*pIsObject= 1;
 	return;
 	}
@@ -1078,26 +1088,26 @@ void docWordSelection(	DocumentSelection *		dsWord,
 
 	while( partBegin > 0				&&
 	       tp[-1].tpKind == DOCkindTEXT		&&
-	       bi->biParaString[tp->tpStroff- 1] != ' '	)
+	       paraBi->biParaString[tp->tpStroff- 1] != ' '	)
 	    {
 	    tp--; partBegin--;
 	    stroffBegin= tp->tpStroff;
 	    }
 
-	tp= bi->biParaParticules+ part;
-	while( partEnd < bi->biParaParticuleCount- 1	&&
+	tp= paraBi->biParaParticules+ part;
+	while( partEnd < paraBi->biParaParticuleCount- 1	&&
 	       tp[1].tpKind == DOCkindTEXT		&&
-	       bi->biParaString[stroffEnd- 1] != ' '	)
+	       paraBi->biParaString[stroffEnd- 1] != ' '	)
 	    {
 	    tp++; partEnd++;
 	    stroffEnd= tp->tpStroff+ tp->tpStrlen;
 	    }
 
 	while( stroffEnd > tp->tpStroff			&&
-	       bi->biParaString[stroffEnd- 1] == ' '	)
+	       paraBi->biParaString[stroffEnd- 1] == ' '	)
 	    { stroffEnd--; }
 
-	docSetParaSelection( dsWord, bi, 1,
+	docSetParaSelection( dsWord, paraBi, 1,
 				    stroffBegin, stroffEnd- stroffBegin );
 	}
 
@@ -1195,24 +1205,13 @@ int docTableRectangleSelection(	DocumentSelection *	ds,
 /*									*/
 /************************************************************************/
 
-int docSelectionDifferentRoot(
-			const DocumentSelection *	dsOld,
-			const BufferItem *		biSet )
+int docSelectionSameScope(	const SelectionScope *	ssFrom,
+				const SelectionScope *	ssTo )
     {
-    const SelectionScope *	ssOld= &(dsOld->dsSelectionScope);
-    const SelectionScope *	ssSet;
+    if  ( ssTo->ssInExternalItem != ssFrom->ssInExternalItem )
+	{ return 0;	}
 
-    while( biSet && biSet->biLevel != DOClevSECT )
-	{ biSet= biSet->biParent;	}
-
-    if  ( ! biSet )
-	{ XDEB(biSet); return -1;	}
-    ssSet= &(biSet->biSectSelectionScope);
-
-    if  ( ssSet->ssInExternalItem != ssOld->ssInExternalItem )
-	{ return 1;	}
-
-    switch( ssSet->ssInExternalItem )
+    switch( ssTo->ssInExternalItem )
 	{
 	case DOCinBODY:
 
@@ -1223,7 +1222,7 @@ int docSelectionDifferentRoot(
 	case DOCinAFTNSEPC:
 	case DOCinAFTNCN:
 
-	    return 0;
+	    return 1;
 
 	case DOCinSECT_HEADER:
 	case DOCinFIRST_HEADER:
@@ -1234,30 +1233,44 @@ int docSelectionDifferentRoot(
 	case DOCinLEFT_FOOTER:
 	case DOCinRIGHT_FOOTER:
 
-	    if  ( ssSet->ssSectNrExternalTo != ssOld->ssSectNrExternalTo )
-		{ return 1;	}
+	    if  ( ssTo->ssSectNrExternalTo != ssFrom->ssSectNrExternalTo )
+		{ return 0;	}
 
-	    return 0;
+	    return 1;
 
 	case DOCinFOOTNOTE:
 	case DOCinENDNOTE:
 
 	    /*  Implied by ssNoteArrayIndex test:
-	    if  ( ssSet->ssSectNrExternalTo != ssOld->ssSectNrExternalTo )
-		{ return 1;	}
+	    if  ( ssTo->ssSectNrExternalTo != ssFrom->ssSectNrExternalTo )
+		{ return 0;	}
 	    */
-	    if  ( ssSet->ssNoteArrayIndex != ssOld->ssNoteArrayIndex )
-		{ return 1;	}
+	    if  ( ssTo->ssNoteArrayIndex != ssFrom->ssNoteArrayIndex )
+		{ return 0;	}
 
-	    return 0;
+	    return 1;
 
 	default:
-	    LDEB(biSet->biInExternalItem);
-	    LDEB(ssSet->ssInExternalItem);
+	    LLDEB(ssTo->ssInExternalItem,ssFrom->ssInExternalItem);
 	    return -1;
 	}
+    }
 
-    return 0;
+int docSelectionSameRoot(
+			const DocumentSelection *	dsFrom,
+			const BufferItem *		biTo )
+    {
+    const SelectionScope *	ssFrom= &(dsFrom->dsSelectionScope);
+    const SelectionScope *	ssTo;
+
+    while( biTo && biTo->biLevel != DOClevSECT )
+	{ biTo= biTo->biParent;	}
+
+    if  ( ! biTo )
+	{ XDEB(biTo); return -1;	}
+    ssTo= &(biTo->biSectSelectionScope);
+
+    return docSelectionSameScope( ssFrom, ssTo );
     }
 
 /************************************************************************/
@@ -1382,15 +1395,15 @@ int docSelectWholeSection(	DocumentSelection *	ds,
 /*									*/
 /************************************************************************/
 
-int docGetObjectSelection(	DocumentSelection *	ds,
-				int *			pPart,
-				DocumentPosition *	dpObject,
-				InsertedObject **	pIo )
+int docGetObjectSelection(	const DocumentSelection *	ds,
+				int *				pPart,
+				DocumentPosition *		dpObject,
+				InsertedObject **		pIo )
     {
     if  ( ds->dsBegin.dpBi			&&
 	  ds->dsEnd.dpBi == ds->dsBegin.dpBi	)
 	{
-	BufferItem *		bi= ds->dsBegin.dpBi;
+	BufferItem *		paraBi= ds->dsBegin.dpBi;
 	int			part;
 	TextParticule *		tp;
 
@@ -1400,7 +1413,7 @@ int docGetObjectSelection(	DocumentSelection *	ds,
 					    ds->dsBegin.dpStroff, lastOne ) )
 	    { LDEB(ds->dsBegin.dpStroff); return -1;	}
 
-	tp= bi->biParaParticules+ part;
+	tp= paraBi->biParaParticules+ part;
 
 	if  ( tp->tpKind == DOCkindOBJECT			&&
 	      ds->dsBegin.dpStroff == tp->tpStroff		&&
@@ -1408,13 +1421,13 @@ int docGetObjectSelection(	DocumentSelection *	ds,
 	    {
 	    *pPart= part;
 	    *dpObject= ds->dsBegin;
-	    *pIo= bi->biParaObjects+ tp->tpObjectNumber;
+	    *pIo= paraBi->biParaObjects+ tp->tpObjectNumber;
 
 	    return 0;
 	    }
 	}
 
-    return -1;
+    return 1;
     }
 
 /************************************************************************/
@@ -1441,8 +1454,7 @@ int docSetDocumentPosition(	DocumentPosition *	dp,
 /*									*/
 /************************************************************************/
 
-extern int docFindParticuleOfPosition(
-				int *				pPart,
+int docFindParticuleOfPosition(	int *				pPart,
 				const DocumentPosition *	dp,
 				int				lastOne )
     {
@@ -1538,6 +1550,7 @@ void docDescribeSelection(	SelectionDescription *		sd,
     const DocumentPosition *	dpEnd= &(ds->dsEnd);
 
     int				i;
+    int				part;
 
     sd->sdDocumentId= documentId;
     sd->sdIsSet= 1;
@@ -1552,6 +1565,7 @@ void docDescribeSelection(	SelectionDescription *		sd,
     sd->sdIsRowSlice= 0;
     sd->sdIsTableSlice= 0;
     sd->sdIsTableRectangle= 0;
+    sd->sdIsObjectSelection= 0;
 
     if  ( sd->sdBeginInTable )
 	{
@@ -1605,7 +1619,7 @@ void docDescribeSelection(	SelectionDescription *		sd,
 	sd->sdCanReplace= ! sd->sdIsTableRectangle || sd->sdIsSingleCell;
 	}
 
-    sd->sdBeginInField= docPositionInField( dpBegin, bd );
+    sd->sdBeginInField= docPositionInField( &part, dpBegin, bd );
 
     sd->sdBeginInHyperlink= 0;
     sd->sdBeginInBookmark= 0;
@@ -1665,6 +1679,51 @@ void docDescribeSelection(	SelectionDescription *		sd,
 				&(sd->sdMultiList), &(sd->sdMultiLevel),
 				&(sd->sdFirstListParaNr), ds );
 
+    {
+    DocumentPosition	dpObject;
+    InsertedObject *	io;
+
+    if  ( ! docGetObjectSelection( ds, &part, &dpObject, &io ) )
+	{ sd->sdIsObjectSelection= 1; }
+    }
+
     return;
     }
 
+void docInitSelectionDescription(	SelectionDescription *	sd )
+    {
+    sd->sdDocumentId= 0;
+
+    sd->sdIsSet= 0;
+    sd->sdDocumentReadonly= 0;
+    sd->sdIsIBarSelection= 0;
+    sd->sdIsSingleParagraph= 0;
+    sd->sdIsSingleCell= 0;
+    sd->sdBeginInTable= 0;
+    sd->sdBeginInTableHeader= 0;
+    sd->sdIsColSlice= 0;
+    sd->sdIsRowSlice= 0;
+    sd->sdIsTableSlice= 0;
+    sd->sdIsTableRectangle= 0;
+    sd->sdIsObjectSelection= 0;
+
+    sd->sdCanReplace= 0;
+    sd->sdInExternalItem= 0;
+    sd->sdInDocumentBody= 0;
+    sd->sdInHeaderFooter= 0;
+
+    sd->sdBeginInField= 0;
+    sd->sdBeginInHyperlink= 0;
+    sd->sdBeginInBookmark= 0;
+
+    sd->sdIsListBullet= 0;
+
+    sd->sdHasLists= 0;
+    sd->sdFirstListParaNr= 0;
+    sd->sdListOverride= 0;
+    sd->sdListLevel= 0;
+    sd->sdMultiList= 0;
+    sd->sdMultiLevel= 0;
+
+    return;
+    }

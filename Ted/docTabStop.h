@@ -12,7 +12,7 @@ typedef enum TabAlignment
     DOCtaLEFT= 0,
 
     DOCtaRIGHT,
-    DOCtaCENTRE,
+    DOCtaCENTER,
     DOCtaDECIMAL,
 
     DOCtaBAR,

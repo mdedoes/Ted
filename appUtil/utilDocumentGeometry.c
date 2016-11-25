@@ -11,7 +11,7 @@
 /*									*/
 /************************************************************************/
 
-void appInitDocumentGeometry(	DocumentGeometry *	dg )
+void utilInitDocumentGeometry(	DocumentGeometry *	dg )
     {
     dg->dgPageWideTwips= 12240;
     dg->dgPageHighTwips= 15840;
@@ -33,7 +33,7 @@ void appInitDocumentGeometry(	DocumentGeometry *	dg )
 /*									*/
 /************************************************************************/
 
-void appSetDocumentGeometry(	DocumentGeometry *		dgTo,
+void utilUpdDocumentGeometry(	DocumentGeometry *		dgTo,
 				const DocumentGeometry *	dgFr,
 				PropertyMask *			pChanged,
 				const PropertyMask *		updMask )

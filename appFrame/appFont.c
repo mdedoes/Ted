@@ -18,14 +18,15 @@
 
 #   include	<utilMatchFont.h>
 
+#   ifdef USE_GTK
+#	include	<gdk/gdkx.h>
+#	define	GTK_AND_X11_INCLUDES	1
+#   endif
+
 #   include	"appDraw.h"
 #   include	<bitmap.h>
 
 #   include	<X11/Xatom.h>
-
-#   ifdef USE_GTK
-#	include	<gdk/gdkx.h>
-#   endif
 
 /************************************************************************/
 /*									*/
@@ -422,8 +423,9 @@ static int appCmpFacePixelSizes(	const void *	vxffs1,
     }
 
 static int appFontXCatalog(	AppDrawingData *	add,
-				int			encoding,
-				AppFontEncoding *	afe )
+				AppFontEncoding *	afe,
+				const char *		registryStr,
+				const char *		encodingStr )
     {
     char			familyFormat[120];
 	
@@ -452,8 +454,8 @@ static int appFontXCatalog(	AppDrawingData *	add,
 		EditFontAnyTemplate,	/* slant,		*/
 		EditFontAnyTemplate,	/* swdth,		*/
 		EditFontAnyTemplate,	/* pxlsz,		*/
-		PS_Encodings[encoding].fcX11Registry,
-		PS_Encodings[encoding].fcX11Encoding );
+		registryStr,		/* registry		*/
+		encodingStr );		/* encoding		*/
 
     afe->afeXFontList= XListFonts( display, familyFormat,
 						4000, &(afe->afeXFontCount) );
@@ -609,9 +611,11 @@ static int appFontXCatalog(	AppDrawingData *	add,
 	    /* duplicate? */
 	    if  ( sz < xft->xftFaceSizeCount )
 		{
+		/*
 		SLLSDEB("DUPLICATE",idx,sz,afe->afeXFontList[idx]);
 		LSDEB(xffs->xffsListIndex,
 				afe->afeXFontList[xffs->xffsListIndex]);
+		*/
 		continue;
 		}
 
@@ -701,6 +705,9 @@ static void appXFontProperties(	DrawScreenFont *	dsf )
 /*  3)  Do not rely too much on scalable fonts. They look ugly and do	*/
 /*	not always work transparently with remote displays.		*/
 /*									*/
+/*  a)  Scalable fonts tend to be a little wider than the corresponding	*/
+/*	PostScript fonts. Just subtract a pixel.			*/
+/*									*/
 /************************************************************************/
 
 static int appFontXFontUsingQuery(	char *			target,
@@ -711,6 +718,10 @@ static int appFontXFontUsingQuery(	char *			target,
     const char *	after;
     int			size;
     int			i;
+
+    /*  a  */
+    if  ( 0 && pixelSize > 10 )
+	{ pixelSize--;	}
 
     if  ( *before != '-' )
 	{ SDEB(queryFormat); return -1; }
@@ -752,16 +763,31 @@ int appFontXFont(	char *			target,
 
     AppFontEncoding *		afe;
 
-    AfmFontInfo *		afi= (AfmFontInfo *)aft->aftPrintingData;
+    AfmFontInfo *		afi= aft->aftFontInfo;
     const char *		t1Entry= (const char *)0;
     const char *		scalableEntry= (const char *)0;
 
     if  ( ! aff || ! aft )
 	{ XXDEB(aff,aft); return -1;	}
 
-    afi= (AfmFontInfo *)aft->aftPrintingData;
+    afi= aft->aftFontInfo;
     if  ( ! afi )
-	{ SXDEB(aft->aftFaceName,aft->aftPrintingData); return -1;	}
+	{ SXDEB(aft->aftFaceName,aft->aftFontInfo); return -1;	}
+
+    if  ( encoding < 0 )
+	{
+	t1Entry= aft->aftFontSpecificQueryFormat;
+
+	if  ( t1Entry )
+	    {
+	    if  ( appFontXFontUsingQuery( target, t1Entry, pixelSize ) )
+		{ SDEB(aft->aftFontSpecificQueryFormat); return -1;	}
+
+	    return 0;
+	    }
+
+	LXDEB(encoding,t1Entry); return -1;
+	}
 
     t1Entry= aft->aftXQueryFormats[encoding];
     /*  No.. prefer screen fonts
@@ -777,7 +803,17 @@ int appFontXFont(	char *			target,
     afe= AppFontXEncodings+ encoding;
 
     /*  1  */
-    appFontXCatalog( add, encoding, afe );
+    appFontXCatalog( add, afe,
+		PS_Encodings[encoding].fcX11Registry,
+		PS_Encodings[encoding].fcX11Encoding );
+
+    if  ( ! afe->afeXfontFamilies )
+	{
+	SXDEB(aff->affFontFamilyName,afe->afeXfontFamilies);
+	LSDEB(encoding,PS_Encodings[encoding].fcX11Registry);
+	LSDEB(encoding,PS_Encodings[encoding].fcX11Encoding);
+	return -1;
+	}
 
     /*  2  */
     for ( turn= 0; turn < 2; turn++ )
@@ -802,7 +838,8 @@ int appFontXFont(	char *			target,
 	    }
 
 	if  ( fam < afe->afeXfontFamilyCount )
-	    { break;	}
+	    {
+	    break;	}
 	}
     
     if  ( fam >= afe->afeXfontFamilyCount )
@@ -933,18 +970,27 @@ static int appGetScreenFont(	DrawScreenFont **		pApf,
 				const DocumentFont *		df,
 				const TextAttribute *		ta )
     {
-    DrawScreenFontList *	apfl= &(add->addScreenFontList);
+    DrawScreenFontList *		apfl= &(add->addScreenFontList);
 
-    int				i;
-    DrawScreenFont *		dsf;
+    int					i;
+    DrawScreenFont *			dsf;
 
-    int				faceIndex;
-    int				fullSizePixels;
+    int					faceIndex;
+    int					fullSizePixels;
+    const OfficeCharsetMapping *	ocm;
 
-    const int			twipsSize= 10* ta->taFontSizeHalfPoints;
+    const int				twipsSize= 10* ta->taFontSizeHalfPoints;
 
     if  ( df->dfPsFamilyNumber < 0 )
 	{ SLDEB(df->dfName,df->dfPsFamilyNumber); return -1;	}
+
+    ocm= df->dfOfficeCharsetMapping;
+    if  ( ! ocm )
+	{ SXDEB(df->dfName,ocm); return -1;			}
+/*
+    if  ( ocm->ocmPsFontEncoding < 0 )
+	{ SLDEB(df->dfName,ocm->ocmPsFontEncoding); return -1;	}
+*/
 
     faceIndex= FACE_INDEX( ta->taFontIsSlanted, ta->taFontIsBold );
     faceIndex= df->dfPsFaceNumber[faceIndex];
@@ -979,7 +1025,7 @@ static int appGetScreenFont(	DrawScreenFont **		pApf,
     for ( i= 0; i < apfl->apflFontCount; dsf++, i++ )
 	{
 	if  ( df->dfPsFamilyNumber == dsf->apfPsFamilyNumber	&&
-	      df->dfEncodingSet == dsf->apfFontEncoding		&&
+	      ocm->ocmPsFontEncoding == dsf->apfFontEncoding	&&
 	      faceIndex == dsf->apfFaceIndex			&&
 	      fullSizePixels == dsf->apfFullSizePixels		)
 	    { *pApf= dsf; return i; }
@@ -995,7 +1041,7 @@ static int appGetScreenFont(	DrawScreenFont **		pApf,
 
     /*  KEY  */
     dsf->apfPsFamilyNumber= df->dfPsFamilyNumber;
-    dsf->apfFontEncoding= df->dfEncodingSet;
+    dsf->apfFontEncoding= ocm->ocmPsFontEncoding;
     dsf->apfFaceIndex= faceIndex;
     dsf->apfFullSizePixels= fullSizePixels;
 
@@ -1062,7 +1108,7 @@ static int appFontOpenXFont(	AppDrawingData *		add,
     /*  2  */
     if  ( appFontXFont( scratch, add, psf, dsf->apfFontEncoding, pst,
 						    dsf->apfFullSizePixels ) )
-	{ LDEB(1); return -1;	}
+	{ SLDEB(psf->affFontFamilyName,dsf->apfFontEncoding); return -1; }
 
 #   ifdef USE_MOTIF
     dsf->apfFontStruct= XLoadQueryFont( add->addDisplay, scratch );

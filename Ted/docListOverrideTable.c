@@ -109,7 +109,9 @@ int docListOverrideTableAddOverride(	ListOverrideTable *	lot,
 	    }
 	}
 
-    if  ( docCopyListOverride( lot->lotOverrides+ idx, lo, fontMap, colorMap ) )
+    if  ( lo							&&
+	  docCopyListOverride( lot->lotOverrides+ idx, lo,
+					    fontMap, colorMap )	)
 	{ LDEB(lot->lotOverrideCount); return -1;	}
     lot->lotOverrides[idx].loIndex= idx;
     lot->lotOverrides[idx].loListIndex= -1;
@@ -128,7 +130,7 @@ extern int docMergeListOverrideIntoTable(
     if  ( idx < 1 )
 	{ idx=  1;	}
 
-    if  ( loNew->loIndex >= 0					&&
+    if  ( loNew->loIndex > 0					&&
 	  loNew->loIndex < lot->lotOverrideCount		&&
 	  lot->lotOverrides[loNew->loIndex].loIndex ==
 					    loNew->loIndex	&&

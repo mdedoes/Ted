@@ -7,6 +7,8 @@
 #   ifndef	DOC_SHAPE_PROPERTIES_H
 #   define	DOC_SHAPE_PROPERTIES_H
 
+#   include	<geo2DInteger.h>
+
 /************************************************************************/
 /*									*/
 /*  Primitives for shapes.						*/
@@ -15,22 +17,24 @@
 
 typedef enum ShapeHorizontalAttachment
     {
-    SHPshaPAGE= 0,
-    SHPshaMARGIN,
-    SHPshaCOLUMN,
-    SHPshaIGNORE,
+    SHPbxMARGIN= 0,
+    SHPbxPAGE,
+    SHPbxCOLUMN,
+    SHPbxCHARACTER,		/*  For posrelh	*/
+    SHPbxIGNORE,
 
-    SHPsha_COUNT
+    SHPbx_COUNT
     } ShapeHorizontalAttachment;
 
 typedef enum ShapeVerticalAttachment
     {
-    SHPsvaPAGE= 0,
-    SHPsvaMARGIN,
-    SHPsvaPARAGRAPH,
-    SHPsvaIGNORE,
+    SHPbyMARGIN= 0,
+    SHPbyPAGE,
+    SHPbyPARA,
+    SHPbyLINE,			/* For posrelv	*/
+    SHPbyIGNORE,
 
-    SHPsva_COUNT
+    SHPby_COUNT
     } ShapeVerticalAttachment;
 
 typedef enum ShapeWrapStyle
@@ -52,15 +56,17 @@ typedef enum ShapeWrapSide
 
 typedef struct ShapeProperties
     {
-    int			spTwipsLeftOfAnchor;
-    int			spTwipsAboveAnchor;
-    int			spTwipsBelowAnchor;
-    int			spTwipsRightOfAnchor;
+    DocumentRectangle	spRect;
+    long		spID;
+    int			spZ;
 
-    unsigned int	spHorizontalAttachment:2;	/*  (enum)	*/
-    unsigned int	spVerticalAttachment:2;		/*  (enum)	*/
+    unsigned int	spHorizontalAttachment:4;	/*  (enum)	*/
+    unsigned int	spVerticalAttachment:4;		/*  (enum)	*/
     unsigned int	spWrapStyle:3;			/*  (enum)	*/
     unsigned int	spWrapSide:2;			/*  (enum)	*/
+
+    unsigned int	spShapeBelowText:1;
+    unsigned int	spInHeader:1;
     unsigned int	spLockAnchor:1;
     } ShapeProperties;
 

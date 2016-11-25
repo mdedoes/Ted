@@ -52,11 +52,7 @@ static void appInitAci(		AppChooserInformation *	aci )
     aci->aciFormat= -1;
     aci->aciExtension= (char *)0;
 
-    aci->aciIsDirecoryMessage= (char *)0;
-    aci->aciNotWritableMessage= (char *)0;
-    aci->aciNotReadableMessage= (char *)0;
-    aci->aciOverwriteMessage= (char *)0;
-    aci->aciNoSuchDirMessage= (char *)0;
+    aci->aciResources= (const AppFileChooserResources *)0;
     }
 
 /************************************************************************/
@@ -363,29 +359,9 @@ static void appFileFilterChosen(	Widget		w,
 /*									*/
 /************************************************************************/
 
-static void appMenuConfigure(	Widget		w,
-				void *		through,
-				XEvent *	event,
-				Boolean *	pRefused )
-    {
-    XConfigureEvent *		cevent= &(event->xconfigure);
-
-    if  ( cevent->type != ConfigureNotify )
-	{ return;	}
-
-    appOptionmenuSetWidthMotif( w, cevent->width );
-
-    *pRefused= 1;
-
-    return;
-    }
-
 static void appChooserMakeOptionmenu(	AppOptionmenu *	aom,
 					Widget		parentForm )
     {
-    Widget			labelGadget;
-    Widget			buttonGadget;
-
     Arg				al[20];
     int				ac= 0;
 
@@ -416,18 +392,8 @@ static void appChooserMakeOptionmenu(	AppOptionmenu *	aom,
     XtSetArg( al[ac], XmNrightOffset,		5 ); ac++;
 
     aom->aomInplace= XmCreateOptionMenu( parentForm, WIDGET_NAME, al, ac );
-    XtAddEventHandler( aom->aomInplace, StructureNotifyMask, False,
-					appMenuConfigure, (void *)0 );
 
-    labelGadget= XmOptionLabelGadget( aom->aomInplace );
-    buttonGadget= XmOptionButtonGadget( aom->aomInplace );
-
-    XtUnmanageChild( labelGadget );
-    XtManageChild( buttonGadget );
-
-    XtVaSetValues( buttonGadget,
-			XmNalignment,		XmALIGNMENT_BEGINNING,
-			NULL );
+    appFinishOptionmenuMotif( aom->aomInplace, aom->aomPulldown );
 
     XtVaSetValues( aom->aomPulldown,
 			    XmNresizeWidth,	False,
@@ -473,6 +439,7 @@ static void appFileFillFilter(	EditApplication *	ea,
 
     int				selected= -1;
     char *			child0Filter= (char *)0;
+    int				ignored= 0;
 
     acr= (AppConfigurableResource *)
 		    malloc( extensionCount* sizeof(AppConfigurableResource) );
@@ -489,7 +456,7 @@ static void appFileFillFilter(	EditApplication *	ea,
 			afe->afeDescription );
 	}
 
-    appGuiGetResourceValues( ea, extensions, acr, extensionCount );
+    appGuiGetResourceValues( &ignored, ea, extensions, acr, extensionCount );
 
     free( acr );
 
@@ -783,9 +750,7 @@ static int appChooserOpenDocument(	void *		through,
     return 0;
     }
 
-void appAppFileOpen(	APP_WIDGET	option,
-			void *		voidea,
-			void *		call_data )
+APP_MENU_CALLBACK_H( appAppFileOpen, option, voidea, call_data )
     {
     EditApplication *	ea= (EditApplication *)voidea;
 

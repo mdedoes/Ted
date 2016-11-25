@@ -204,12 +204,13 @@ $(PRIVATE_FILES):
 	h=`pwd` && cd && tar xvf $$h/tedPackage/TedBindist.tar
 
 private: $(HOME)/bin/Ted $(PRIVATE_FILES)
-	@echo ========= Include the following in $(HOME)/.Xdefaults,
-	@echo ========= $(HOME)/.Xresources and/or enter them directly
-	@echo ========= into xrdb -merge.
-	@echo Ted.documentFileName: $(HOME)/Ted/TedDocument-en_US.rtf
-	@echo Ted.afmDirectory: $(HOME)/afm
-	@echo Ted.spellToolSystemDicts: $(HOME)/ind
+	@echo ========= Updating $(HOME)/.Ted.properties:
+	@echo Ted.documentFileName: $(HOME)/Ted/TedDocument-en_US.rtf | \
+					    tee -a $(HOME)/.Ted.properties
+	@echo Ted.afmDirectory: $(HOME)/afm | \
+					    tee -a $(HOME)/.Ted.properties
+	@echo Ted.spellToolSystemDicts: $(HOME)/ind | \
+					    tee -a $(HOME)/.Ted.properties
 
 ####
 ####	Cleanup

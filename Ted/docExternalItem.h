@@ -61,6 +61,8 @@ typedef enum DOC_ItemRoot
     DOCinAFTNSEPC,
     DOCinAFTNCN,
 
+    DOCinSHPTXT,
+
     DOCin_COUNT
     } DOC_ItemRoot;
 
@@ -69,7 +71,7 @@ extern const int DOC_FooterScopes[PAGES__COUNT];
 
 /************************************************************************/
 /*									*/
-/*  A structure describing an external iem.				*/
+/*  A structure describing an external item.				*/
 /*									*/
 /************************************************************************/
 

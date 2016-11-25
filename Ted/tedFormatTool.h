@@ -21,6 +21,7 @@
 #   include	"tedListTool.h"
 #   include	"tedFontTool.h"
 #   include	"tedLinkTool.h"
+#   include	"tedImageTool.h"
 
 #   include	<appRgbChooserPage.h>
 
@@ -47,6 +48,7 @@ typedef enum ToolSubjectIndex
     TEDtsiFONT,
     TEDtsiLISTFONT,
     TEDtsiLINK,
+    TEDtsiIMAGE,
 
     TEDtsiRGB,
 
@@ -80,6 +82,7 @@ typedef struct TedFormatTool
     AppFontChooser		tftFontTool;
     AppFontChooser		tftListFontTool;
     LinkTool			tftLinkTool;
+    ImageTool			tftImageTool;
 
     RgbChooserPage		tftRgbPage;
     } TedFormatTool;

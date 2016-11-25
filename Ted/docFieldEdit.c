@@ -151,14 +151,9 @@ static int docBottomParticuleForPosition(
     const int			step= 1;
 
     if  ( docFindParticuleOfPosition( &part0, dp, 0 ) )
-	{ LDEB(dp->dpStroff); return -1;	}
+	{ LLDEB(dp->dpStroff,dp->dpBi->biParaStrlen); return -1;	}
     if  ( docFindParticuleOfPosition( &part1, dp, 1 ) )
-	{ LDEB(dp->dpStroff); return -1;	}
-
-if(part0>=dp->dpBi->biParaParticuleCount)
-{ SLLDEB("##",part0,dp->dpBi->biParaParticuleCount); }
-if(part1>=dp->dpBi->biParaParticuleCount)
-{ SLLDEB("##",part1,dp->dpBi->biParaParticuleCount); }
+	{ LLDEB(dp->dpStroff,dp->dpBi->biParaStrlen); return -1;	}
 
     part= part0;
     tp= paraBi->biParaParticules+ part;
@@ -393,7 +388,15 @@ static void docFieldBalanceEnd(	const FieldLevelPosition *	flpBegin,
 	}
 
     if  ( part >= paraBi->biParaParticuleCount )
-	{ LLDEB(part,paraBi->biParaParticuleCount); return;	}
+	{
+	flpEnd->flpParticule= paraBi->biParaParticuleCount;
+	flpEnd->flpStroff= paraBi->biParaStrlen;
+
+	if  ( part > paraBi->biParaParticuleCount )
+	    {LLLDEB(part,flpBegin->flpParticule,paraBi->biParaParticuleCount);}
+
+	return;
+	}
 
     tp= paraBi->biParaParticules+ part;
 
@@ -493,7 +496,10 @@ int docBalanceFieldSelection(	int *			pBeginMoved,
 	flpPara.flpParticule= 0;
 	flpPara.flpLevel= 0;
 	flpPara.flpRoLevel= 0;
-	docFieldBalanceEnd( &flpPara, &flpEnd, dpEnd->dpBi, dfl );
+	if  ( flpEnd.flpStroff < dpEnd->dpBi->biParaStrlen )
+	    {
+	    docFieldBalanceEnd( &flpPara, &flpEnd, dpEnd->dpBi, dfl );
+	    }
 	}
 
     if  ( dpBegin->dpStroff != flpBegin.flpStroff )
@@ -512,27 +518,36 @@ int docBalanceFieldSelection(	int *			pBeginMoved,
 /*									*/
 /*  Are we in a field?.							*/
 /*									*/
+/*  1)  Return the particule number of the particule that was checked.	*/
+/*									*/
 /************************************************************************/
 
-int docPositionInField(		const DocumentPosition *	dp,
+int docPositionInField(		int *				pPart,
+				const DocumentPosition *	dp,
 				const BufferDocument *		bd )
     {
     FieldLevelPosition		flp;
+    const int			startLevel= 0;
+    const int			last= 0;
+    const int			part0= 0;
 
     const DocumentFieldList *	dfl= &(bd->bdFieldList);
 
     /*  A  */
     docInitFieldLevelPosition( &flp );
 
-    if  ( docBottomParticuleForPosition( &flp, dfl, dp, 0, 0 ) )
+    if  ( docBottomParticuleForPosition( &flp, dfl, dp, startLevel, last ) )
 	{ LDEB(1); return 0;	}
 
     flp.flpRoLevel= 0;
     flp.flpLevel= docFieldCalculateTextFieldLevel( &(flp.flpRoLevel),
-					dp->dpBi, dfl,
-					0, 0, flp.flpParticule- 1 );
+		    dp->dpBi, dfl, startLevel, part0, flp.flpParticule- 1 );
     if  ( flp.flpLevel < 0 || flp.flpRoLevel < 0 )
 	{ LLDEB(flp.flpLevel,flp.flpRoLevel);	}
+
+    /*  1  */
+    if  ( pPart )
+	{ *pPart= flp.flpParticule;	}
 
     return flp.flpLevel > 0;
     }
@@ -597,7 +612,7 @@ static int docFieldInsertEndParticule(
     tp->tpObjectNumber= fieldNumber;
 
     /*  4  */
-    if  ( taSetMask && ! PROPmaskISEMPTY( taSetMask ) )
+    if  ( taSetMask && ! utilPropMaskIsEmpty( taSetMask ) )
 	{
 	if  ( docChangeParticuleAttributes( (PropertyMask *)0,
 						bd, bi, part1, part1+ 1,
@@ -677,7 +692,7 @@ static int docFieldInsertStartParticule(
     tp->tpObjectNumber= fieldNumber;
 
     /*  4  */
-    if  ( taSetMask && ! PROPmaskISEMPTY( taSetMask ) )
+    if  ( taSetMask && ! utilPropMaskIsEmpty( taSetMask ) )
 	{
 	if  ( docChangeParticuleAttributes( (PropertyMask *)0, bd,
 						bi, part0, part0+ 1,
@@ -749,7 +764,7 @@ int docSurroundTextSelectionByField(
 					    fieldNumber, taSetMask, taSet ) )
 	{ LDEB(1); return -1;	}
 
-    if  ( ! PROPmaskISEMPTY( taSetMask ) )
+    if  ( ! utilPropMaskIsEmpty( taSetMask ) )
 	{
 	PropertyMask	taDoneMask;
 
@@ -927,15 +942,21 @@ int docDelimitParaHeadField(	int *			pFieldNr,
 /*  Insert the special field at the head of a numbered paragraph.	*/
 /*  (buller), or of a foot/endnote.					*/
 /*									*/
+/*  0)  Insert a text particule at the head of the paragraph as a	*/
+/*	temporary field value.						*/
 /*  1)  Allocate a field.						*/
 /*  2)  Insert start particule.						*/
 /*  3)  Insert end particule.						*/
-/*  4)  Insert a text particule at the head of the paragraph as a	*/
-/*	temporary field value.						*/
+/*  4)  Make sure there is at least one particule after the field.	*/
 /*									*/
 /************************************************************************/
 
-int docInsertParaHeadField(	BufferItem *		paraBi,
+int docInsertParaHeadField(	int *			pFieldNr,
+				int *			pPartBegin,
+				int *			pPartEnd,
+				int *			pStroffBegin,
+				int *			pStroffEnd,
+				BufferItem *		paraBi,
 				BufferDocument *	bd,
 				int			fieldKind,
 				int			textAttributeNumber )
@@ -958,13 +979,17 @@ int docInsertParaHeadField(	BufferItem *		paraBi,
 		    stroffHead, stroffHead, (const unsigned char *)"?", 1 ) )
 	{ LDEB(paraBi->biParaStrlen); return -1; }
 
-    if  ( wasEmpty )
+    if  ( paraBi->biParaParticuleCount > 0 && wasEmpty )
 	{
 	tpText= paraBi->biParaParticules;
 	if  ( tpText->tpKind != DOCkindTEXT )
 	    { SDEB(docKindStr(tpText->tpKind)); return -1;	}
 
 	tpText->tpStrlen= 1;
+
+	if  ( docShiftParticuleOffsets( bd, paraBi, head+ 1,
+				paraBi->biParaParticuleCount, stroffShift ) )
+	    { LDEB(stroffShift); }
 	}
     else{
 	tpText= docInsertTextParticule( paraBi, head,
@@ -985,19 +1010,34 @@ int docInsertParaHeadField(	BufferItem *		paraBi,
 
     /*  2  */
     tpField= docInsertTextParticule( paraBi, head, stroffHead, len,
-				DOCkindFIELDSTART, textAttributeNumber );
+				    DOCkindFIELDSTART, textAttributeNumber );
     if  ( ! tpField )
 	{ XDEB(tpField); return -1;	}
     tpField->tpObjectNumber= fieldNumber;
 
     /*  3  */
     tpField= docInsertTextParticule( paraBi, head+ 2, stroffHead+ 1, len,
-				DOCkindFIELDEND, textAttributeNumber );
+				    DOCkindFIELDEND, textAttributeNumber );
     if  ( ! tpField )
 	{ XDEB(tpField); return -1;	}
     tpField->tpObjectNumber= fieldNumber;
 
     df->dfKind= fieldKind;
+
+    /*  4  */
+    if  ( paraBi->biParaParticuleCount == head+ 3 )
+	{
+	tpText= docInsertTextParticule( paraBi, head+ 3,
+		    paraBi->biParaStrlen, 0, DOCkindTEXT, textAttributeNumber );
+	if  ( ! tpText )
+	    { LXDEB(paraBi->biParaParticuleCount,tpText); return -1; }
+	}
+
+    *pFieldNr= fieldNumber;
+    *pPartBegin= head;
+    *pPartEnd= head+ 2;
+    *pStroffBegin= stroffHead;
+    *pStroffEnd= stroffHead+ 1;
 
     return 0;
     }

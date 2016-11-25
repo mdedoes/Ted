@@ -11,8 +11,11 @@
 #   define	INDhIJTAILUP	6	/*  IJMUIDEN -> IJmuiden	*/
 
 /************************************************************************/
+/*									*/
 /*  A list of Guesses.							*/
+/*									*/
 /************************************************************************/
+
 typedef struct IndGuessScore
     {
     unsigned char *	igsWord;
@@ -26,8 +29,11 @@ typedef struct IndGuessList
     } IndGuessList;
 
 /************************************************************************/
+/*									*/
 /*  Scores for frequent substitutions: Helps making guesses.		*/
+/*									*/
 /************************************************************************/
+
 typedef struct GuessSubstitution
     {
     unsigned char *	gsFrom;
@@ -82,8 +88,11 @@ typedef struct SpellGuessContext
     } SpellGuessContext;
 
 /************************************************************************/
+/*									*/
 /*  Routine declarations.						*/
+/*									*/
 /************************************************************************/
+
 extern void *	indMake( void );
 extern void *	indRead( const char * filename, int read_only );
 extern int		indPut( void * ind, const unsigned char * key );

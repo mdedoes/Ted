@@ -73,7 +73,7 @@ Find the mapping that will produce a perfect hash
 */
 
 /* return the ceiling of the log (base 2) of val */
-static ub4 log2( ub4 val )
+static ub4 ilog2( ub4 val )
 {
   ub4 i;
   for (i=0; ((ub4)1<<i) < val; ++i)
@@ -127,7 +127,7 @@ static void scrambleinit(	ub4      *scramble,
   /* fill scramble[] with distinct random integers in 0..smax-1 */
   for (i=0; i<SCRAMBLE_LEN; ++i)
   {
-    scramble[i] = permute(i, log2(smax));
+    scramble[i] = permute(i, ilog2(smax));
   }
 }
 
@@ -263,10 +263,10 @@ static void initnorm(	key      *keys,
     key *	mykey;
     int		ki;
 
-    ub4		logalen= log2( alen );
+    ub4		logalen= ilog2( alen );
 
     /*  1  */
-    if  ( logalen+ log2( blen ) > UB4BITS )
+    if  ( logalen+ ilog2( blen ) > UB4BITS )
 	{
 	final->genUseHash2= 1;
 	/*  2  */
@@ -683,7 +683,7 @@ static void initalen(	ub4      *alen,
       *smax = *smax * 2;
 
     *alen = (0 && *smax>131072) ? 
-      ((ub4)1<<(UB4BITS-log2(*blen))) :   /* distinct keys => distinct (A,B) */
+      ((ub4)1<<(UB4BITS-ilog2(*blen))) :   /* distinct keys => distinct (A,B) */
       *smax;                         /* no reason to restrict alen to smax/2 */
     if (0 && *smax < 32)
       *blen = *smax;                      /* go for function speed not space */
@@ -702,7 +702,7 @@ static void initalen(	ub4      *alen,
   }
   else
   {
-    switch(log2(*smax))
+    switch(ilog2(*smax))
     {
     case 0:
       *alen = 1;
@@ -827,7 +827,7 @@ static int findhash(	bstuff  **tabb,
     qstuff *tabq;  /* table of stuff indexed by queue value, used by augment */
 
     /*  1  */
-    *smax = ((ub4)1<<log2(nkeys));
+    *smax = ((ub4)1<<ilog2(nkeys));
     initalen(alen, blen, smax, nkeys, form);
 
     /*  2  */
@@ -1145,7 +1145,7 @@ static int make_c(	const char *		cOutput,
     FILE *		f;
 
 			/*  1  */
-    int			valshift= UB4BITS- log2( alen );
+    int			valshift= UB4BITS- ilog2( alen );
     unsigned int	bMask= blen- 1;
     ub4			tabMask= 0;
 

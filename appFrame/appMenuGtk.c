@@ -120,7 +120,7 @@ APP_WIDGET appSetMenuItem(	APP_WIDGET		menu,
     if  ( ami->amiCallback )
 	{
 	gtk_signal_connect( GTK_OBJECT( rval ),
-				    "activate", ami->amiCallback, target );
+			"activate", (GtkSignalFunc)ami->amiCallback, target );
 	}
 
     gtk_menu_append( GTK_MENU( menu ), rval );
@@ -175,7 +175,7 @@ APP_WIDGET appSetToggleMenuItem(	APP_WIDGET		menu,
     if  ( ami->amiCallback )
 	{
 	gtk_signal_connect( GTK_OBJECT( rval ),
-				    "toggled", ami->amiCallback, target );
+			"toggled", (GtkSignalFunc)ami->amiCallback, target );
 	}
 
     if  ( target )

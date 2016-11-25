@@ -48,6 +48,8 @@ APP_WIDGET appSetMenuItem(	APP_WIDGET		menu,
 	XtSetArg( al[ac], XmNacceleratorText, acceleratorString ); ac++;
 	}
 
+    XtSetArg( al[ac], XmNmarginHeight, 1 ); ac++;
+
     rval= XmCreatePushButton( menu, WIDGET_NAME, al, ac );
 
     XmStringFree( labelString );
@@ -117,6 +119,8 @@ APP_WIDGET appSetToggleMenuItem(	APP_WIDGET		menu,
 
 	XtSetArg( al[ac], XmNacceleratorText, acceleratorString ); ac++;
 	}
+
+    XtSetArg( al[ac], XmNmarginHeight, 1 ); ac++;
 
     rval= XmCreateToggleButton( menu, WIDGET_NAME, al, ac );
 

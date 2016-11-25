@@ -80,7 +80,8 @@ typedef struct CellProperties
 
     unsigned int	cpNoShading:1; /* clshdrawnil */
 
-    unsigned int	cpTextVerticalAlignment:3;	/*  (enum)	*/
+    unsigned int	cpTextVerticalAlignment:DOCia_BITS;
+							/*  (enum)	*/
     unsigned int	cpTextFlow:3;			/*  (enum)	*/
     } CellProperties;
 
@@ -168,7 +169,7 @@ typedef struct RowProperties
 
     ItemShading		rpShading;
 
-    ItemAlignment	rpAlignment:3;
+    unsigned int	rpAlignment:3;
 
     unsigned int	rpIsTableHeader:1;
     unsigned int	rpKeepOnOnePage:1;
@@ -184,13 +185,15 @@ typedef struct RowProperties
     int			rpTopDefaultCellSpacing;
     int			rpBottomDefaultCellSpacing;
 
-    int			rpLeftDefaultCellMargin;
-    int			rpRightDefaultCellMargin;
-    int			rpTopDefaultCellMargin;
-    int			rpBottomDefaultCellMargin;
+    int			rpLeftCellPadding;
+    int			rpRightCellPadding;
+    int			rpTopCellPadding;
+    int			rpBottomCellPadding;
 
     int			rpCellWidthBefore;
     int			rpCellWidthAfter;
+
+    int			rpAuthor;
 
 			/* TableAutoFormatUnit */
     unsigned int	rpPreferredWidthUnit:TRauto_BITS;
@@ -202,10 +205,10 @@ typedef struct RowProperties
     unsigned int	rpBottomDefaultCellSpacingUnit:TRauto_BITS;
 
 			/* TableAutoFormatUnit */
-    unsigned int	rpLeftDefaultCellMarginUnit:TRauto_BITS;
-    unsigned int	rpRightDefaultCellMarginUnit:TRauto_BITS;
-    unsigned int	rpTopDefaultCellMarginUnit:TRauto_BITS;
-    unsigned int	rpBottomDefaultCellMarginUnit:TRauto_BITS;
+    unsigned int	rpLeftCellPaddingUnit:TRauto_BITS;
+    unsigned int	rpRightCellPaddingUnit:TRauto_BITS;
+    unsigned int	rpTopCellPaddingUnit:TRauto_BITS;
+    unsigned int	rpBottomCellPaddingUnit:TRauto_BITS;
 
 			/* TableAutoFormatUnit */
     unsigned int	rpCellWidthBeforeUnit:TRauto_BITS;
@@ -301,6 +304,7 @@ typedef enum RowProperty
     RPpropROW_STYLE,
 
     RPpropIS_LAST_ROW,
+    RPpropTRAUTH,
 
     RPprop_COUNT
     } RowProperty;

@@ -3,14 +3,14 @@
 #		Platform for distribution
 SYSTEM=		@M_SYSTEM@
 MACHINE=	@M_MACHINE@
-PLATFORM=	$(SYSTEM)_$(MACHINE)
+PLATFORM=	@M_PLATFORM@
 #
 #		Location for distribution
 I_PREFIX=	@PREFIX@
 
 #
 #		Name of the binary arrchive
-BINDIST=	Ted_2.16_$(PLATFORM)
+BINDIST=	Ted_2.17_$(PLATFORM)
 #
 #
 PKG_OWNER=	@M_PKG_OWNER@

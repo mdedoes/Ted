@@ -88,5 +88,6 @@ extern int appAcceptSocket(	int			lfd,
 				APP_COMPLAIN		complain );
 
 extern const char * appFileExtensionOfName(	const char *	filename );
+extern const char * appRelativeName(		const char *	filename );
 
 #   endif	/*  APP_SYSTEM_H	*/

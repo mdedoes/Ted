@@ -15,19 +15,12 @@
 #   include	"docBuf.h"
 #   include	"docEdit.h"
 
-void docInitEditPosition(	EditPosition *	ep )
-    {
-    ep->epParagraphNumber= -1;
-    ep->epStroff= -1;
-    }
-
 void docInitEditRange(	EditRange *	er )
     {
-    er->erParagraphCount= 0;
     er->erBottomLevel= DOClevOUT;
 
-    docInitEditPosition( &(er->erStartPosition) );
-    docInitEditPosition( &(er->erEndPosition) );
+    docInitEditPosition( &(er->erStart) );
+    docInitEditPosition( &(er->erEnd) );
     }
 
 void docInitEditOperation(	EditOperation *	eo )
@@ -51,6 +44,8 @@ void docInitEditOperation(	EditOperation *	eo )
 
     eo->eoNotesDeleted= 0;
     eo->eoNotesAdded= 0;
+    eo->eoSectionsDeleted= 0;
+    eo->eoSectionsAdded= 0;
     eo->eoBulletsChanged= 0;
     eo->eoParagraphsInserted= 0;
     eo->eoFieldUpdate= FIELDdoNOTHING;
@@ -60,9 +55,10 @@ void docInitEditOperation(	EditOperation *	eo )
     eo->eoVoidadd= (void *)0;
     eo->eoCloseObject= (DOC_CLOSE_OBJECT)0;
 
-    eo->eoParaBi= (BufferItem *)0;
-    eo->eoParticule= -1;
-    eo->eoStroff= -1;
+    eo->eoInsParaBi= (BufferItem *)0;
+    eo->eoInsParticule= -1;
+    eo->eoInsAtPartHead= 0;
+    eo->eoInsStroff= -1;
 
     return;
     }
@@ -220,38 +216,38 @@ void docIncludePositionInReformat(	EditOperation *		eo,
     paraNr= docNumberOfParagraph( paraBi );
 
     /*  1  */
-    if  ( er->erStartPosition.epParagraphNumber == 0	)
+    if  ( er->erStart.epParaNr == 0	)
 	{
-	er->erStartPosition.epParagraphNumber= 1;
-	er->erStartPosition.epStroff= 0;
+	er->erStart.epParaNr= 1;
+	er->erStart.epStroff= 0;
 	}
 
     /*  2  */
-    if  ( er->erStartPosition.epParagraphNumber < 0		||
-	  paraNr < er->erStartPosition.epParagraphNumber	)
+    if  ( er->erStart.epParaNr < 0		||
+	  paraNr < er->erStart.epParaNr	)
 	{
-	er->erStartPosition.epParagraphNumber= paraNr;
-	er->erStartPosition.epStroff= stroff;
+	er->erStart.epParaNr= paraNr;
+	er->erStart.epStroff= stroff;
 	}
 
-    if  ( paraNr == er->erStartPosition.epParagraphNumber	&&
-	  stroff < er->erStartPosition.epStroff			)
+    if  ( paraNr == er->erStart.epParaNr	&&
+	  stroff < er->erStart.epStroff		)
 	{
-	er->erStartPosition.epStroff= stroff;
+	er->erStart.epStroff= stroff;
 	}
 
     /*  3  */
-    if  ( er->erEndPosition.epParagraphNumber < 0		||
-	  paraNr > er->erEndPosition.epParagraphNumber		)
+    if  ( er->erEnd.epParaNr < 0		||
+	  paraNr > er->erEnd.epParaNr		)
 	{
-	er->erEndPosition.epParagraphNumber= paraNr;
-	er->erEndPosition.epStroff= stroff;
+	er->erEnd.epParaNr= paraNr;
+	er->erEnd.epStroff= stroff;
 	}
 
-    if  ( paraNr == er->erEndPosition.epParagraphNumber	&&
-	  stroff > er->erEndPosition.epStroff			)
+    if  ( paraNr == er->erEnd.epParaNr		&&
+	  stroff > er->erEnd.epStroff		)
 	{
-	er->erEndPosition.epStroff= stroff;
+	er->erEnd.epStroff= stroff;
 	}
 
     return;
@@ -314,8 +310,8 @@ void docSetParagraphAdjust(	EditOperation *		eo,
 
     paraNr= docNumberOfParagraph( paraBi );
 
-    if  ( er->erStartPosition.epParagraphNumber == paraNr	&&
-	  er->erEndPosition.epParagraphNumber == paraNr		)
+    if  ( er->erStart.epParaNr == paraNr	&&
+	  er->erEnd.epParaNr == paraNr		)
 	{
 	eo->eoParaAdjustParagraphNumber= paraNr;
 	eo->eoParaAdjustFromLine= fromLine;
@@ -349,62 +345,12 @@ void docExtendParagraphAdjust(	EditOperation *		eo,
     return;
     }
 
-static void docEditShiftEditRangeParaNr(	EditRange *	er,
-						int		from,
-						int		by )
-    {
-    if  ( er->erStartPosition.epParagraphNumber >= 0	&&
-	  er->erStartPosition.epParagraphNumber >= from	)
-	{ er->erStartPosition.epParagraphNumber += by;	}
-
-    if  ( er->erEndPosition.epParagraphNumber >= 0	&&
-	  er->erEndPosition.epParagraphNumber >= from	)
-	{ er->erEndPosition.epParagraphNumber += by;	}
-
-    er->erParagraphCount += by;
-
-    if  ( er->erStartPosition.epParagraphNumber >= 0			&&
-	  er->erStartPosition.epParagraphNumber > er->erParagraphCount	)
-	{ er->erStartPosition.epParagraphNumber=  er->erParagraphCount; }
-
-    if  ( er->erEndPosition.epParagraphNumber >= 0			&&
-	  er->erEndPosition.epParagraphNumber > er->erParagraphCount	)
-	{ er->erEndPosition.epParagraphNumber=  er->erParagraphCount; }
-
-    if  ( er->erStartPosition.epParagraphNumber == 0	&&
-	  er->erParagraphCount > 0			)
-	{ er->erStartPosition.epParagraphNumber= 1;	}
-
-    if  ( er->erEndPosition.epParagraphNumber == 0	&&
-	  er->erParagraphCount > 0			)
-	{ er->erEndPosition.epParagraphNumber= 1;	}
-
-    return;
-    }
-
-void docEditShiftReformatRangeParaNr(	EditOperation *		eo,
-					int			from,
-					int			by )
-    {
-    if  ( from < by )
-	{ LLDEB(from,by);	}
-
-    if  ( eo->eoParaAdjustParagraphNumber >= 0	&&
-	  eo->eoParaAdjustParagraphNumber >= from	)
-	{ eo->eoParaAdjustParagraphNumber += by;	}
-
-    docEditShiftEditRangeParaNr( &(eo->eoReformatRange), from, by );
-    docEditShiftEditRangeParaNr( &(eo->eoSelectedRange), from, by );
-
-    return;
-    }
-
 void docIncludeRectangleInChange(	EditOperation *			eo,
 					const DocumentRectangle *	dr )
     {
     if  ( eo->eoChangedRectSet )
 	{
-	docUnionRectangle( &(eo->eoChangedRect), &(eo->eoChangedRect), dr );
+	geoUnionRectangle( &(eo->eoChangedRect), &(eo->eoChangedRect), dr );
 	return;
 	}
     else{

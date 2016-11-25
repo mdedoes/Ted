@@ -20,7 +20,7 @@ WFLAGS=	-Wall			\
 
 #CFLAGS	= $(WFLAGS) -g -O2 $(INCLUDES)
 
-# 74 lines
+# 81 lines
 OBS	=	\
 		utilX11FontNames.o\
 		utilTree.o\
@@ -30,6 +30,7 @@ OBS	=	\
 		utilRoman.o\
 		utilQuadTree.o\
 		utilPs.o\
+		utilProperties.o\
 		utilPropMask.o\
 		utilPrinter.o\
 		utilPostscriptFontCatalog.o\
@@ -39,6 +40,11 @@ OBS	=	\
 		utilMatchFont.o\
 		utilMapFontEncoding_ISO9_WIN1254.o\
 		utilMapFontEncoding_ISO7_WIN1253.o\
+		utilMapFontEncoding_ISO2_WIN1250.o\
+		utilMapFontEncoding_ISO1_WIN1252.o\
+		utilMapFontEncoding_ISO1_MACROMAN.o\
+		utilMapFontEncoding_ISO15_WIN1252.o\
+		utilMapFontEncoding_ISO15_MACROMAN.o\
 		utilMapFontEncoding_ISO13_WIN1257.o\
 		utilMapFontEncodingCyrillic.o\
 		utilMapFontEncoding.o\
@@ -81,6 +87,7 @@ OBS	=	\
 		sioBase85.o\
 		sioBase64.o\
 		psTtf.o\
+		psReadAfm.o\
 		psGlyphs.o\
 		psFont.o\
 		psAfm.o\
@@ -188,6 +195,7 @@ psAfm.o: \
     psFont.h \
     ../appUtil/utilFontEncoding.h \
     ../appUtil/sioGeneral.h \
+    appSystem.h \
     ../include/appDebugon.h \
     ../include/appDebug.h
 
@@ -211,6 +219,22 @@ psGlyphs.o: \
     ../appUtil/utilFontEncoding.h \
     ../appUtil/sioGeneral.h \
     ../include/charnames.h \
+    ../include/appDebugon.h \
+    ../include/appDebug.h
+
+psReadAfm.o: \
+    psReadAfm.c \
+    appUtilConfig.h \
+    sioGeneral.h \
+    utilDocFont.h \
+    ../appUtil/utilPropMask.h \
+    ../appUtil/utilTextAttribute.h \
+    ../appUtil/utilFontEncoding.h \
+    psFont.h \
+    ../appUtil/sioGeneral.h \
+    utilMatchFont.h \
+    ../appUtil/utilDocFont.h \
+    ../appUtil/psFont.h \
     ../include/appDebugon.h \
     ../include/appDebug.h
 
@@ -401,6 +425,9 @@ sioSmtp.o: \
     ../appUtil/sioSmtp.h \
     ../appUtil/appSystem.h \
     ../appUtil/sioGeneral.h \
+    ../appUtil/sioMemory.h \
+    ../appUtil/utilMemoryBuffer.h \
+    ../appUtil/sioBase64.h \
     ../include/appDebugon.h \
     ../include/appDebug.h
 
@@ -558,6 +585,46 @@ utilMapFontEncoding_ISO13_WIN1257.o: \
     ../appUtil/sioGeneral.h \
     ../include/charnames.h
 
+utilMapFontEncoding_ISO15_MACROMAN.o: \
+    utilMapFontEncoding_ISO15_MACROMAN.c \
+    appUtilConfig.h \
+    psFont.h \
+    ../appUtil/utilFontEncoding.h \
+    ../appUtil/sioGeneral.h \
+    ../include/charnames.h
+
+utilMapFontEncoding_ISO15_WIN1252.o: \
+    utilMapFontEncoding_ISO15_WIN1252.c \
+    appUtilConfig.h \
+    psFont.h \
+    ../appUtil/utilFontEncoding.h \
+    ../appUtil/sioGeneral.h \
+    ../include/charnames.h
+
+utilMapFontEncoding_ISO1_MACROMAN.o: \
+    utilMapFontEncoding_ISO1_MACROMAN.c \
+    appUtilConfig.h \
+    psFont.h \
+    ../appUtil/utilFontEncoding.h \
+    ../appUtil/sioGeneral.h \
+    ../include/charnames.h
+
+utilMapFontEncoding_ISO1_WIN1252.o: \
+    utilMapFontEncoding_ISO1_WIN1252.c \
+    appUtilConfig.h \
+    psFont.h \
+    ../appUtil/utilFontEncoding.h \
+    ../appUtil/sioGeneral.h \
+    ../include/charnames.h
+
+utilMapFontEncoding_ISO2_WIN1250.o: \
+    utilMapFontEncoding_ISO2_WIN1250.c \
+    appUtilConfig.h \
+    psFont.h \
+    ../appUtil/utilFontEncoding.h \
+    ../appUtil/sioGeneral.h \
+    ../include/charnames.h
+
 utilMapFontEncoding_ISO7_WIN1253.o: \
     utilMapFontEncoding_ISO7_WIN1253.c \
     appUtilConfig.h \
@@ -625,12 +692,13 @@ utilPostscriptFace.o: \
 utilPostscriptFontCatalog.o: \
     utilPostscriptFontCatalog.c \
     appUtilConfig.h \
+    sioStdio.h \
+    ../appUtil/sioGeneral.h \
     utilDocFont.h \
     ../appUtil/utilPropMask.h \
     ../appUtil/utilTextAttribute.h \
     ../appUtil/utilFontEncoding.h \
     psFont.h \
-    ../appUtil/sioGeneral.h \
     utilMatchFont.h \
     ../appUtil/utilDocFont.h \
     ../appUtil/psFont.h \
@@ -649,6 +717,16 @@ utilPrinter.o: \
 utilPropMask.o: \
     utilPropMask.c \
     ../appUtil/utilPropMask.h \
+    ../include/appDebugon.h \
+    ../include/appDebug.h
+
+utilProperties.o: \
+    utilProperties.c \
+    ../appUtil/appUtilConfig.h \
+    ../appUtil/sioStdio.h \
+    ../appUtil/sioGeneral.h \
+    ../appUtil/utilTree.h \
+    ../appUtil/utilProperties.h \
     ../include/appDebugon.h \
     ../include/appDebug.h
 

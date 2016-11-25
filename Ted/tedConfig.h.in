@@ -30,6 +30,9 @@
 #undef HAVE_UNISTD_H
 
 
+#   undef	MY_PLATFORM
+#   undef	MY_HOST_DATE
+
 /************************************************************************/
 /*									*/
 /*  Locations of application related files				*/

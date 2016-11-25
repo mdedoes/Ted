@@ -82,7 +82,7 @@ typedef struct AppMenuItem
     char *		amiKeyText;
 
     MenuItemType	amiItemType;
-    APP_MENU_CALLBACK	amiCallback;
+    APP_MENU_CALLBACK_T	amiCallback;
     APP_WIDGET		amiOptionWidget;
     } AppMenuItem;
 
@@ -116,8 +116,6 @@ typedef struct PrintJob
     {
     void *			pjPrivateData;
     int				pjFormat;
-    int				pjUsePostScriptFilters;
-    int				pjUsePostScriptIndexedImages;
     const char *		pjTitle;
     AppDrawingData *		pjDrawingData;
     struct EditApplication *	pjApplication;
@@ -217,6 +215,8 @@ typedef struct EditApplication
     char *		eaApplicationName;
     char *		eaNameAndVersion;
     char *		eaReference;
+    char *		eaPlatformCompiled;
+    char *		eaHostDateCompiled;
 
     char *		eaDocumentWidgetName;
     char *		eaPageToolName;
@@ -332,9 +332,7 @@ typedef struct EditApplication
     int			(*eaPrintDocument)(
 				SimpleOutputStream *		sos,
 				const PrintJob *		pj,
-				const PrintGeometry *		pg,
-				int				firstPage,
-				int				lastPage );
+				const PrintGeometry *		pg );
     void		(*eaDrawRectangle)(
 				APP_WIDGET			w,
 				EditDocument *			ed,
@@ -479,6 +477,9 @@ typedef struct EditApplication
     int				eaHideSaveToOption;
     int				eaUsePostScriptFilters;
     int				eaUsePostScriptIndexedImages;
+    int				eaSkipEmptyPages;
+    int				eaSkipBlankPages;
+    int				eaOmitHeadersOnEmptyPages;
 
     int				eaGotPaste;
     AppFileMessageResources	eaFileMessageResources;
@@ -487,8 +488,20 @@ typedef struct EditApplication
     char *			eaHideSaveToOptionString;
     char *			eaUsePostScriptFiltersString;
     char *			eaUsePostScriptIndexedImagesString;
+    char *			eaSkipEmptyPagesString;
+    char *			eaSkipBlankPagesString;
+    char *			eaOmitHeadersOnEmptyPagesString;
 
     PostScriptFontList		eaPostScriptFontList;
+
+    void *			eaSystemProperties;
+    void *			eaUserProperties;
+
+    int				eaGotResourceTable;
+    int				eaGotFileMessageResourceTable;
+    int				eaGotApplicationResources;
+
+    APP_WIDGET			eaAppFileHideOption;
     } EditApplication;
 
 typedef int (*APP_OPEN_DOCUMENT)(	void *		through,
@@ -610,84 +623,37 @@ void appQuitApplication(	APP_WIDGET		option,
 				APP_WIDGET		relative,
 				EditApplication *	ea );
 
-extern void appAppFileQuit(	APP_WIDGET	option,
-				void *		voidea,
-				void *		call_data );
+extern APP_MENU_CALLBACK_H( appAppFileQuit, option, voidea, e );
 
 extern void appDocVisible(	EditApplication *	ea,
 				EditDocument *		ed,
 				int			visible );
 
-extern void appAppFileOpen(	APP_WIDGET	option,
-				void *		voidea,
-				void *		call_data );
-
-extern void appAppFileNew(	APP_WIDGET	option,
-				void *		voidea,
-				void *		call_data );
+extern APP_MENU_CALLBACK_H( appAppFileOpen, option, voidea, e );
+extern APP_MENU_CALLBACK_H( appAppFileNew, option, voidea, e );
 
 extern void appDocSetScrollbarValues(	EditDocument *	ed );
 
 extern void appMouseWheelUp(		EditDocument *	ed );
 extern void appMouseWheelDown(		EditDocument *	ed );
 
-extern void appDocFileSaveAs(	APP_WIDGET	option,
-				void *		voided,
-				void *		call_data );
+extern APP_MENU_CALLBACK_H( appDocFileSaveAs, option, voided, call_data );
 
 extern void appSetShellConstraints(	EditDocument *		ed );
 
-extern void appAppFileMini(	APP_WIDGET	option,
-				void *		voidea,
-				void *		call_data );
-
-extern void appAppFileHide(	APP_WIDGET	option,
-				void *		voidea,
-				void *		call_data );
-
-extern void appDocFileNew(	APP_WIDGET	option,
-				void *		voided,
-				void *		call_data );
-
-extern void appDocFileOpen(	APP_WIDGET	option,
-				void *		voided,
-				void *		call_data );
-
-extern void appDocFileSave(	APP_WIDGET	option,
-				void *		voided,
-				void *		call_data );
-
-extern void appDocFileMini(	APP_WIDGET	option,
-				void *		voided,
-				void *		call_data );
-
-extern void appDocFileHide(	APP_WIDGET	option,
-				void *		voided,
-				void *		call_data );
-
-extern void appDocFileClose(	APP_WIDGET	option,
-				void *		voided,
-				void *		call_data );
-
-extern void appDocFileQuit(	APP_WIDGET	option,
-				void *		voided,
-				void *		call_data );
-
-extern void appDocEditCopy(	APP_WIDGET	option,
-				void *		voided,
-				void *		voidpbcs );
-
-extern void appDocEditCut(	APP_WIDGET	option,
-				void *		voided,
-				void *		voidpbcs );
-
-extern void appDocEditPaste(	APP_WIDGET	option,
-				void *		voided,
-				void *		voidpbcs );
-
-extern void appDocEditSelAll(	APP_WIDGET	option,
-				void *		voided,
-				void *		voidpbcs );
+extern APP_MENU_CALLBACK_H( appAppFileMini, option, voided, call_data );
+extern APP_MENU_CALLBACK_H( appAppFileHide, option, voided, call_data );
+extern APP_MENU_CALLBACK_H( appDocFileNew, option, voided, call_data );
+extern APP_MENU_CALLBACK_H( appDocFileOpen, option, voided, call_data );
+extern APP_MENU_CALLBACK_H( appDocFileSave, option, voided, call_data );
+extern APP_MENU_CALLBACK_H( appDocFileMini, option, voided, call_data );
+extern APP_MENU_CALLBACK_H( appDocFileHide, option, voided, call_data );
+extern APP_MENU_CALLBACK_H( appDocFileClose, option, voided, call_data );
+extern APP_MENU_CALLBACK_H( appDocFileQuit, option, voided, call_data );
+extern APP_MENU_CALLBACK_H( appDocEditCopy, option, voided, call_data );
+extern APP_MENU_CALLBACK_H( appDocEditCut, option, voided, call_data );
+extern APP_MENU_CALLBACK_H( appDocEditPaste, option, voided, call_data );
+extern APP_MENU_CALLBACK_H( appDocEditSelAll, option, voided, call_data );
 
 extern APP_CLOSE_CALLBACK_H( appDocFileCloseCallback, w, voided );
 extern APP_CLOSE_CALLBACK_H( appAppWmClose, w, voidea );
@@ -823,22 +789,16 @@ extern int appRunMailDialog(		EditApplication *	ea,
 
 extern int appPrintDocument(	int				printer,
 				const PrintJob *		pj,
-				const PrintGeometry *		pg,
-				int				firstPage,
-				int				lastPage );
+				const PrintGeometry *		pg );
 
 extern int appFaxDocument(	EditDocument *			ed,
 				const char *			faxNumber,
-				const PrintGeometry *		pg,
-				int				firstPage,
-				int				lastPage );
+				const PrintGeometry *		pg );
 
 extern void appDocPrintToFile(	APP_WIDGET			option,
 				APP_WIDGET			panel,
 				EditDocument *			ed,
-				const PrintGeometry *		pg,
-				int				firstPage,
-				int				lastPage );
+				const PrintGeometry *		pg );
 
 extern void appDocAbout(	APP_WIDGET	option,
 				void *		voided,
@@ -1005,9 +965,7 @@ extern void appDrawNupDiagram(	APP_WIDGET			w,
 
 extern int appCallPrintFunction( SimpleOutputStream *		sos,
 				const PrintJob *		pj,
-				const PrintGeometry *		pg,
-				int				firstPage,
-				int				lastPage );
+				const PrintGeometry *		pg );
 
 extern void appStringToTextWidget(	APP_WIDGET		w,
 					const char *		s );
@@ -1170,8 +1128,15 @@ extern void	appFreeStringFromTextWidget(	char *		s );
 extern char *	appGetTextFromMenuOption(	APP_WIDGET	w );
 extern void	appFreeTextFromMenuOption(	char *		s );
 
-extern void appGuiGetResourceValues(	EditApplication *	ea,
+extern void appGuiGetResourceValues(
+				int *				pGotResources,
+				EditApplication *		ea,
 				void *				pValues,
+				AppConfigurableResource *	acr,
+				int				acrCount );
+
+extern void appSetResourceDefaults(
+				EditApplication *		ea,
 				AppConfigurableResource *	acr,
 				int				acrCount );
 
@@ -1211,6 +1176,9 @@ extern void appSetOptionmenu(		AppOptionmenu *		aom,
 extern void appGuiEnableWidget(		APP_WIDGET		w,
 					int			on_off );
 
+extern void appGuiSetWidgetVisible(	APP_WIDGET		w,
+					int			on_off );
+
 extern void appShowShellWidget(		APP_WIDGET		shell );
 extern void appHideShellWidget(		APP_WIDGET		shell );
 extern void appDestroyShellWidget(	APP_WIDGET		shell );
@@ -1237,17 +1205,24 @@ extern APP_WIDGET appAddItemToOptionmenu( AppOptionmenu *	aom,
 
 extern void appSetShellTitle(		APP_WIDGET		shell,
 					APP_WIDGET		option,
-					const char *		appName );
+					const char *		title );
+
+extern void appGuiLowerShellWidget(	APP_WIDGET		shell );
 
 /************************************************************************/
+/*									*/
 /*  Event handler to set minimum size.					*/
+/*									*/
 /************************************************************************/
 
 extern APP_EVENT_HANDLER_H( appSetSizeAsMinimum, w, through, event );
 
 /************************************************************************/
+/*									*/
 /*  Names of the X11 events.						*/
+/*									*/
 /************************************************************************/
+
 extern char * APP_X11EventNames[];
 
 extern void appGuiChangeLabelText(	APP_WIDGET	labelWidget,
@@ -1485,6 +1460,10 @@ extern void appDocExposeRectangle(
 extern void appPrintJobForEditDocument(	PrintJob *		pj,
 					EditDocument *		ed );
 
+extern void appApplicationSettingsToPrintGeometry(
+					PrintGeometry *		pg,
+					EditApplication *	ea );
+
 extern int appRunPrintToFileChooser(	APP_WIDGET		option,
 					APP_WIDGET		panel,
 					EditApplication *	ea,
@@ -1558,5 +1537,18 @@ extern void appOptionmenuItemSetVisibility(	APP_WIDGET	w,
 extern int appPostScriptFontCatalog(		EditApplication *	ea );
 
 extern int appGetPrintDestinations(		EditApplication *	ea );
+
+extern int appReadSystemProperties(	EditApplication *	ea );
+extern int appReadUserProperties(	EditApplication *	ea );
+extern int appSetUserProperty(		EditApplication *	ea,
+					const char *		name,
+					const char *		value );
+
+extern int appSetSystemProperty(	EditApplication *	ea,
+					const char *		name,
+					const char *		value );
+
+extern int appGuiSetFrameTitle(		APP_WIDGET		w,
+					const unsigned char *	title );
 
 #   endif

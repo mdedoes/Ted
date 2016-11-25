@@ -63,7 +63,6 @@ void docInitParagraphProperties(	ParagraphProperties *	pp )
     docInitBorderProperties( &(pp->ppLeftBorder) );
     docInitBorderProperties( &(pp->ppRightBorder) );
     docInitBorderProperties( &(pp->ppBottomBorder) );
-    docInitBorderProperties( &(pp->ppBoxBorder) );
     docInitBorderProperties( &(pp->ppBetweenBorder) );
     docInitBorderProperties( &(pp->ppBar) );
 
@@ -102,7 +101,7 @@ int docCopyParagraphProperties(	ParagraphProperties *		ppTo,
     PropertyMask	ppSetMask;
 
     PROPmaskCLEAR( &ppDoneMask );
-    PROPmaskFILL( &ppSetMask, PPprop_COUNT );
+    utilPropMaskFill( &ppSetMask, PPprop_COUNT );
 
     return docUpdParaProperties( &ppDoneMask, ppTo,
 				&ppSetMask, ppFrom, colorMap, listStyleMap );
@@ -317,17 +316,6 @@ int docUpdParaProperties(	PropertyMask *			pDoneMask,
 	    }
 	}
 
-    if  ( PROPmaskISSET( ppUpdMask, PPpropBOX_BORDER ) )
-	{
-	if  ( docBordersDiffer( &(ppTo->ppBoxBorder),
-					&(ppFrom->ppBoxBorder), colorMap ) )
-	    {
-	    docCopyBorderProperties( &(ppTo->ppBoxBorder),
-					&(ppFrom->ppBoxBorder), colorMap );
-	    PROPmaskADD( &doneMask, PPpropBOX_BORDER );
-	    }
-	}
-
     if  ( PROPmaskISSET( ppUpdMask, PPpropBETWEEN_BORDER ) )
 	{
 	if  ( docBordersDiffer( &(ppTo->ppBetweenBorder),
@@ -530,13 +518,6 @@ void docParaPropertyDifference(	PropertyMask *			pChgMask,
 	if  ( docBordersDiffer( &(ppTo->ppRightBorder),
 					&(ppFrom->ppRightBorder), colorMap ) )
 	    { PROPmaskADD( &diffMask, PPpropRIGHT_BORDER ); }
-	}
-
-    if  ( PROPmaskISSET( ppUpdMask, PPpropBOX_BORDER ) )
-	{
-	if  ( docBordersDiffer( &(ppTo->ppBoxBorder),
-					&(ppFrom->ppBoxBorder), colorMap ) )
-	    { PROPmaskADD( &diffMask, PPpropBOX_BORDER ); }
 	}
 
     if  ( PROPmaskISSET( ppUpdMask, PPpropBETWEEN_BORDER ) )

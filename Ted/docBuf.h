@@ -110,6 +110,8 @@ typedef struct TextParticule
 /*	contents during a reformat of the document. When the column	*/
 /*	width is diffrerent, the line must be reformatted. (and most	*/
 /*	probably subsequent lines as well).				*/
+/*  6-) Before (6) is really used, we have to do away with the pixel	*/
+/*	coordinates.							*/
 /*									*/
 /************************************************************************/
 
@@ -128,12 +130,14 @@ typedef struct TextLine
     short int		tlLineHeightTwips;
     short int		tlLineSpacingTwips;
 								/*  5  */
-    short int		tlHasPageBreak;
+    unsigned char	tlHasPageBreak;
+    unsigned char	tlHasInlineContent;
 
     short int		tlX0Pixels;
     short int		tlX1Pixels;
 
-    short int		tlColumnWidthTwips;			/*  6  */
+    short int		tlFrameWidthTwips;			/*  6  */
+    short int		tlFrameX0Twips;				/*  6- */
     } TextLine;
 
 /************************************************************************/
@@ -243,6 +247,8 @@ typedef struct BufferSect
 /*									*/
 /*  1)  The rtf file format does not really support tables. Keep an	*/
 /*	administration of the set of rows that looks like a table.	*/
+/*	First and past refer to similar rows. The header can come	*/
+/*	before 'first'.							*/
 /*  2)  Properties of the row.						*/
 /*  3)  Cells with a rowspan can protrude below the actual row: To	*/
 /*	optimize position lookups and to delimit areas to redraw	*/
@@ -265,9 +271,9 @@ typedef struct BufferSect
 typedef struct BufferRow
     {
 				/*  1  */
+    int				brTableHeaderRow;
     int				brTableFirst;
     int				brTablePast;
-    int				brTableFirstIsHeader;
 
 				/*  2  */
     RowProperties		brRowProperties;
@@ -356,9 +362,9 @@ typedef enum ItemLevel
 			/*  * biGroupChildCount			*/
 			/****************************************/
 
+#	define	biRowTableHeaderRow	BIU.biuRow.brTableHeaderRow
 #	define	biRowTableFirst		BIU.biuRow.brTableFirst
 #	define	biRowTablePast		BIU.biuRow.brTablePast
-#	define	biRowTableFirstIsHeader	BIU.biuRow.brTableFirstIsHeader
 #	define	biRowPrecededByHeader	BIU.biuRow.brPrecededByHeader
 #	define	biRowBelowAllPosition	BIU.biuRow.brBelowAllPosition
 #	define	biRowAboveHeaderPosition \
@@ -409,8 +415,6 @@ typedef enum ItemLevel
 #	define	biParaObjects		BIU.biuPara.btObjects
 #	define	biParaLineCount		BIU.biuPara.btLineCount
 #	define	biParaLines		BIU.biuPara.btLines
-#	define	biParaShapeCount	BIU.biuPara.btShapeCount
-#	define	biParaShapes		BIU.biuPara.btShapes
 
 #	define	biParaAscentTwips	BIU.biuPara.btAscentTwips
 #	define	biParaDescentTwips	BIU.biuPara.btDescentTwips
@@ -437,15 +441,13 @@ typedef enum ItemLevel
 #	define	biParaTabStopList	biParaProperties.ppTabStopList
 #	define	biParaKeepOnPage	biParaProperties.ppKeepOnPage
 #	define	biParaKeepWithNext	biParaProperties.ppKeepWithNext
-#	define	biParaShadingLevel	biParaProperties.ppShadingLevel
-#	define	biParaShadingPattern	biParaProperties.ppShadingPattern
+#	define	biParaShading		biParaProperties.ppShading
 #	define	biParaOutlineLevel	biParaProperties.ppOutlineLevel
 #	define	biParaListLevel		biParaProperties.ppListLevel
 #	define	biParaTopBorder		biParaProperties.ppTopBorder
 #	define	biParaBottomBorder	biParaProperties.ppBottomBorder
 #	define	biParaLeftBorder	biParaProperties.ppLeftBorder
 #	define	biParaRightBorder	biParaProperties.ppRightBorder
-#	define	biParaBoxBorder		biParaProperties.ppBoxBorder
 #	define	biParaBetweenBorder	biParaProperties.ppBetweenBorder
 #	define	biParaBar		biParaProperties.ppBar
 #	define	biParaStyle		biParaProperties.ppStyle
@@ -563,11 +565,10 @@ extern BufferDocument *	docPlainReadFile( SimpleInputStream *	sis,
 				    int				ansiCodepage,
 				    const DocumentGeometry *	dg );
 
-extern BufferDocument *	docRtfReadFile(	SimpleInputStream *	sis,
-					int			defAnsigpg );
-
-extern BufferDocument *	docLeafReadFile(	SimpleInputStream *	sis );
-extern BufferDocument *	docWordReadFile(	SimpleInputStream *	sis );
+extern BufferDocument *	docRtfReadFile(
+				SimpleInputStream *		sis,
+				const PostScriptFontList *	psfl,
+				int				defAnsigpg );
 
 extern BufferDocument * docNewFile(
 				TextAttribute *			taDefault,
@@ -605,14 +606,8 @@ extern int docPlainSaveDocument(SimpleOutputStream *		sos,
 				int				fold,
 				int				closed );
 
-extern int docRtfSaveRuler(	SimpleOutputStream *		sos,
-				const ParagraphProperties *	pp );
-
-extern int docRtfReadRuler(	SimpleInputStream *	sis,
-				ParagraphProperties *	pp );
-
-extern int docInflateTextString(	BufferItem *    bi,
-					int		by	);
+extern int docInflateTextString(	BufferItem *    paraBi,
+					int		by );
 
 extern void docInitTextLine(		TextLine *	tl );
 
@@ -677,6 +672,9 @@ extern int docSplitGroupItem(	const BufferDocument *	bd,
 				BufferItem *		oldBi,
 				int			n,
 				int			level );
+
+extern int docMergeGroupItems(		BufferItem *	to,
+					BufferItem *	from );
 
 extern BufferItem * docNextParagraph(	BufferItem *	bi );
 extern BufferItem * docPrevParagraph(	BufferItem *	bi );
@@ -750,8 +748,11 @@ extern void docDeleteItem(		BufferDocument *	bd,
 
 extern void docListItem(	int			indent,
 				const BufferItem *	bi );
+extern void docListRootItem(	int			indent,
+				const BufferItem *	bi );
 
 extern int docCheckItem(	const BufferItem *	bi );
+extern int docCheckRootItem(	const BufferItem *	bi );
 
 extern void docListParticule(	int			indent,
 				const char *		label,
@@ -776,6 +777,7 @@ extern const char * docKindStr(		int			kind );
 extern const char * docLevelStr(	int			level );
 extern const char * docExternalKindStr(	int			level );
 extern const char * docFieldKindStr(	int			kind );
+extern const char * docObjectKindStr(	int			kind );
 extern const char * docAttributeStr(	const TextAttribute *	ta );
 
 extern void docListNotes(	const BufferDocument *	bd );
@@ -787,13 +789,16 @@ extern TextParticule *	docInsertObject(	BufferDocument *	bd,
 						int			off,
 						const TextAttribute *	ta );
 
-extern void docCleanParticuleObject(	BufferItem *	bi,
-					TextParticule *	tp );
+extern void docCleanParticuleObject(	BufferDocument *	bd,
+					BufferItem *		bi,
+					TextParticule *		tp );
 
 extern InsertedObject *	docClaimObject(	int *			pNr,
 					BufferItem *		bi );
 
-extern InsertedObject * docClaimObjectCopy( BufferItem *	bi,
+extern InsertedObject * docClaimObjectCopy(
+					BufferDocument *	bd,
+					BufferItem *		bi,
 					int *			pNr,
 					const InsertedObject *	ioFrom );
 
@@ -840,13 +845,8 @@ extern int docGetHyperlinkForPosition(
 				const char **			pMarkName,
 				int *				pMarkSize );
 
-extern void docInitShape(	DrawingShape *	ds );
-extern void docCleanShape(	DrawingShape *	ds );
-
-extern DrawingShape * docClaimShape(	int *			pNr,
-					BufferItem *		bi );
-
-extern int docPositionInField(		const DocumentPosition *	dp,
+extern int docPositionInField(		int *				pPart,
+					const DocumentPosition *	dp,
 					const BufferDocument *		bd );
 
 extern int docSaveParticules(	BufferDocument *	bd,
@@ -870,8 +870,6 @@ extern void docLogRectangles(	const char *			label1,
 				const char *			label2,
 				const DocumentRectangle *	dr2 );
 
-extern void docInitLayoutPosition(	LayoutPosition *	lp );
-
 extern void docLineSelection(	DocumentSelection *	dsLine,
 				int *			pPartLineBegin,
 				int *			pPartLineEnd,
@@ -881,19 +879,22 @@ extern void docLineSelection(	DocumentSelection *	dsLine,
 extern void docWordSelection(
 			DocumentSelection *		dsWord,
 			int *				pIsObject,
-			const DocumentPosition *	dpAround );
+			const DocumentPosition *	dpAround,
+			int				partAround );
 
 extern void docInitDocumentStatistics(		DocumentStatistics *	ds );
 
 extern void docCollectDocumentStatistics(	DocumentStatistics *	ds,
 						const BufferDocument *	bd );
 
-extern int docWhatPageHeader(	ExternalItem **			pHf,
+extern int docWhatPageHeader(	ExternalItem **			pEi,
+				int *				pIsEmpty,
 				BufferItem *			sectBi,
 				int				page,
 				const DocumentProperties *	dp );
 
-extern int docWhatPageFooter(	ExternalItem **			pHf,
+extern int docWhatPageFooter(	ExternalItem **			pEi,
+				int *				pIsEmpty,
 				BufferItem *			sectBi,
 				int				page,
 				const DocumentProperties *	dp );
@@ -927,11 +928,16 @@ extern int docSplitFieldInstructions(	const MemoryBuffer *	mb,
 				FieldInstructionsComponent *	fic,
 				int				count );
 
-extern int docGetHeaderFooter(	ExternalItem **			pHf,
+extern int docGetHeaderFooter(	ExternalItem **			pEi,
 				BufferItem **			pBodySectBi,
 				const DocumentSelection *	ds,
 				BufferDocument *		bd,
 				int				which );
+
+extern int docInquireHeadersFooters(
+				int *				pDocHasHeaders,
+				int *				pDocHasFooters,
+				const BufferItem *		docBi );
 
 extern BufferItem * docMakeExternalItem(
 				BufferDocument *		bd,
@@ -1077,6 +1083,7 @@ extern int docGetRootOfSelectionScope(	ExternalItem **		pEi,
 					const SelectionScope *	ss );
 
 extern int docGetTopOfColumn(	DocumentPosition *		dp,
+				int *				pLineTop,
 				int *				pPartTop,
 				BufferDocument *		bd,
 				int				page,
@@ -1117,9 +1124,13 @@ extern int docCopyRowColumnAttributes(	BufferItem *		rowBi,
 extern void docSetSelectionScope(	DocumentSelection *	ds,
 					const BufferItem *	bi );
 
-extern int docSelectionDifferentRoot(
-				const DocumentSelection *	dsOld,
-				const BufferItem *		biSet );
+extern int docSelectionSameRoot(
+				const DocumentSelection *	dsFrom,
+				const BufferItem *		biTo );
+
+extern int docSelectionSameScope(
+				const SelectionScope *		ssFrom,
+				const SelectionScope *		ssTo );
 
 extern int docSectionHeaderFooterFirstPage(
 				int *				pExists,
@@ -1236,7 +1247,7 @@ extern int docGetListOfParagraph(	ListOverride **		pLo,
 					ListNumberTreeNode **	pRoot,
 					DocumentList **		pDl,
 					int			ls,
-					BufferDocument *	bd );
+					const BufferDocument *	bd );
 
 extern int docGetListOfOverride(	ListOverride *			lo,
 					const DocumentListTable *	dlt );
@@ -1248,8 +1259,14 @@ extern int docListGetFormatPath(int *				startPath,
 				const DocumentList *		dl,
 				const ListOverride *		lo );
 
-extern int docInsertListtextField(	BufferItem *		paraBi,
-					BufferDocument *	bd );
+extern int docInsertListtextField(
+				int *			pFieldNr,
+				int *			pPartBegin,
+				int *			pPartEnd,
+				int *			pStroffBegin,
+				int *			pStroffEnd,
+				BufferItem *		paraBi,
+				BufferDocument *	bd );
 
 extern int docRemoveParagraphFromList(	BufferItem *		paraBi,
 					BufferDocument *	bd );
@@ -1286,19 +1303,42 @@ extern void docGetSelectionAttributes(
 				TextAttribute *			pTaNew );
 
 extern int docInsertParaHeadField(
-				BufferItem *			paraBi,
-				BufferDocument *		bd,
-				int				fieldKind,
-				int				textAttrNr );
+				int *			pFieldNr,
+				int *			pPartBegin,
+				int *			pPartEnd,
+				int *			pStroffBegin,
+				int *			pStroffEnd,
+				BufferItem *		paraBi,
+				BufferDocument *	bd,
+				int			fieldKind,
+				int			textAttrNr );
 
 extern int docGetNotePosition(	DocumentPosition *		dp,
 				BufferDocument *		bd,
 				const DocumentNote *		dn );
 
 extern int docNextSimilarRoot(	DocumentPosition *		dp,
+				int *				pPage,
 				BufferDocument *		bd );
 
 extern int docPrevSimilarRoot(	DocumentPosition *		dp,
+				int *				pPage,
 				BufferDocument *		bd );
+
+extern int docNewList(		int *				pLs,
+				BufferDocument *		bd,
+				const PropertyMask *		taSetMask,
+				const TextAttribute *		taSet );
+
+extern int docGetBitmap(	bmReadBitmap			readBitmap,
+				void **				pPrivate,
+				const MemoryBuffer *		mb );
+
+extern int docAdaptParagraphToListLevel(
+				int *				pChanged,
+				BufferItem *			paraBi,
+				const BufferDocument *		bd );
+
+extern void docInvalidateParagraphLayout(	BufferItem *	paraBi );
 
 #   endif

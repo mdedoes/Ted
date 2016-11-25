@@ -1,5 +1,7 @@
 /************************************************************************/
+/*									*/
 /*  Description of a bitmap.						*/
+/*									*/
 /************************************************************************/
 
 #   ifndef	BITMAP_H
@@ -15,12 +17,17 @@
 /*									*/
 /************************************************************************/
 
-#   define	BMcoBLACKWHITE		0
-#   define	BMcoWHITEBLACK		1
-#   define	BMcoRGB			2
-#   define	BMcoRGB8PALETTE		3
+typedef enum BitmapColorEncoding
+    {
+    BMcoBLACKWHITE= 0,
+    BMcoWHITEBLACK,
+    BMcoRGB,
+    BMcoRGB8PALETTE,
 
-#   define	BMcoILLEGALVALUE	4
+    BMco_COUNT
+    } BitmapColorEncoding;
+
+#   define	BMcoILLEGALVALUE	BMco_COUNT
 
 extern const char *	bmcoIntToString( int colorEncodingInt );
 extern int		bmcoStringToInt( const char * colorEncodingString );
@@ -32,12 +39,17 @@ extern const char *	bmcoStrings[];
 /*									*/
 /************************************************************************/
 
-#   define	BMunM			0
-#   define	BMunINCH		1
-#   define	BMunPOINT		2
-#   define	BMunPIXEL		3
+typedef enum BitmapResolution
+    {
+    BMunM= 0,
+    BMunINCH,
+    BMunPOINT,
+    BMunPIXEL,
 
-#   define	BMunILLEGALVALUE	4
+    BMun_COUNT
+    } BitmapResolution;
+
+#   define	BMunILLEGALVALUE	BMun_COUNT
 
 #   define	POINTS_PER_M		2834.65
 #   define	TWIPS_PER_M		(20*POINTS_PER_M)
@@ -293,6 +305,10 @@ extern int bmWmfWriteWmf(	const BitmapDescription *	bd,
 extern int bmPngWritePng(	const BitmapDescription *	bd,
 				const unsigned char *		buffer,
 				SimpleOutputStream *		sos );
+
+extern int bmCanWritePngFile(	const BitmapDescription *	bd,
+				int				privateFormat,
+				double				fac );
 
 extern int bmJpegWriteJfif(	const BitmapDescription *	bd,
 				const unsigned char *		buffer,

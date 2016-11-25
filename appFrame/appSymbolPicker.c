@@ -25,9 +25,11 @@
 typedef struct AppSymbolPickerResources
     {
     char *	asprInsert;
+    char *	asprLower;
+    char *	asprClose;
     char *	asprFont;
     char *	asprNone;
-    char *	asprEncodings[ENCODINGps_COUNT];
+    char *	asprEncodings[CHARSETidxCOUNT];
     } AppSymbolPickerResources;
 
 static AppConfigurableResource APP_SymbolPickerResourceTable[]=
@@ -41,6 +43,12 @@ static AppConfigurableResource APP_SymbolPickerResourceTable[]=
     APP_RESOURCE( "symbolPickerInsert",
 		offsetof(AppSymbolPickerResources,asprInsert),
 		"Insert" ),
+    APP_RESOURCE( "symbolPickerLower",
+		offsetof(AppSymbolPickerResources,asprLower),
+		"Lower" ),
+    APP_RESOURCE( "symbolPickerClose",
+		offsetof(AppSymbolPickerResources,asprClose),
+		"Close" ),
     };
 
 /************************************************************************/
@@ -65,6 +73,8 @@ typedef struct AppSymbolPicker
 
     APP_WIDGET			aspSymbolDrawing;
     APP_WIDGET			aspInsertButton;
+    APP_WIDGET			aspLowerButton;
+    APP_WIDGET			aspCloseButton;
 
     AppToolDestroy		aspDestroy;
     SymbolPickerInsert		aspInsert;
@@ -82,7 +92,8 @@ typedef struct AppSymbolPicker
     int				aspCellsWide;
     int				aspCellsHigh;
 
-    APP_WIDGET			aspFontFamilyOptions[1]; /* LAST! */
+    APP_WIDGET *		aspFontFamilyOpts;
+    int				aspFontFamilyOptCount;
     } AppSymbolPicker;
 
 /************************************************************************/
@@ -151,6 +162,46 @@ static int appSymbolAdaptToFamily(  AppSymbolPicker *	asp )
 
 /************************************************************************/
 /*									*/
+/*  A symbol picker must be destroyed.					*/
+/*									*/
+/************************************************************************/
+
+static void appDestroySymbolPicker(	AppSymbolPicker *	asp )
+    {
+
+    if  ( asp->aspDestroy )
+	{ (*asp->aspDestroy)( asp->aspTarget );	}
+
+    /* No! managed by the drawing data
+    if  ( asp->aspFont )
+	{ appDrawFreeFont( &(asp->aspDrawingData), asp->aspFont );	}
+    */
+
+    docCleanFontList( &(asp->aspDocumentFontList) );
+
+    appCleanDrawingData( &(asp->aspDrawingData) );
+
+    if  ( asp->aspFontFamilyOpts )
+	{ free( asp->aspFontFamilyOpts );	}
+
+    appDestroyShellWidget( asp->aspTopWidget );
+
+    free( (void *)asp );
+
+    return;
+    }
+
+static APP_CLOSE_CALLBACK_H( appCloseSymbolPicker, w, voidasp )
+    {
+    AppSymbolPicker *	asp= (AppSymbolPicker *)voidasp;
+
+    appDestroySymbolPicker( asp );
+
+    return;
+    }
+
+/************************************************************************/
+/*									*/
 /*  'Insert' button has been pushed.					*/
 /*									*/
 /************************************************************************/
@@ -178,6 +229,24 @@ static APP_BUTTON_CALLBACK_H( appSymbolInsertPushed, w, voidasp )
     AppSymbolPicker *	asp= (AppSymbolPicker *)voidasp;
 
     appSymbolPickerInsertSymbol( asp );
+    
+    return;
+    }
+
+static APP_BUTTON_CALLBACK_H( appSymbolLowerPushed, w, voidasp )
+    {
+    AppSymbolPicker *	asp= (AppSymbolPicker *)voidasp;
+
+    appGuiLowerShellWidget( asp->aspTopWidget );
+    
+    return;
+    }
+
+static APP_BUTTON_CALLBACK_H( appSymbolClosePushed, w, voidasp )
+    {
+    AppSymbolPicker *	asp= (AppSymbolPicker *)voidasp;
+
+    appDestroySymbolPicker( asp );
     
     return;
     }
@@ -298,7 +367,7 @@ static APP_EVENT_HANDLER_H( appSymbolRedraw, w, voidasp, exposeEvent )
 
 	    sym= row* asp->aspCellsWide+ col;
 
-	    if  ( ! docIntersectRectangle( &drSym, &drSym, &drClip )	||
+	    if  ( ! geoIntersectRectangle( &drSym, &drSym, &drClip )	||
 		  ! appCharExistsInFont( asp->aspFont, sym )		||
 		  sym == asp->aspSymbolSelected				)
 		{ continue;	}
@@ -320,7 +389,7 @@ static APP_EVENT_HANDLER_H( appSymbolRedraw, w, voidasp, exposeEvent )
 
 	    sym= row* asp->aspCellsWide+ col;
 
-	    if  ( ! docIntersectRectangle( &drIgn, &drSym, &drClip )	||
+	    if  ( ! geoIntersectRectangle( &drIgn, &drSym, &drClip )	||
 		  ! appCharExistsInFont( asp->aspFont, sym )		||
 		  sym == asp->aspSymbolSelected				)
 		{ continue;	}
@@ -338,7 +407,7 @@ static APP_EVENT_HANDLER_H( appSymbolRedraw, w, voidasp, exposeEvent )
 
 	appSymbolRectangle( &drSym, asp, row, col );
 
-	if  ( docIntersectRectangle( &drIgn, &drSym, &drClip ) )
+	if  ( geoIntersectRectangle( &drIgn, &drSym, &drClip ) )
 	    {
 	    appDrawSetForegroundBlack( add );
 
@@ -450,44 +519,26 @@ static APP_OITEM_CALLBACK_H( appSymbolFontFamilyChosen, w, voidasp )
     AppEncodingMenu *		aem= &(asp->aspEncodingMenu);
     const DocumentFontList *	dfl= &(asp->aspDocumentFontList);
     const DocumentFontFamily *	dff;
-    int				encoding= aem->aemFontEncoding;
     int				changed= 0;
+
+    TextAttribute *		ta= &(asp->aspTextAttribute);
+    int				fontNumber= ta->taFontNumber;
 
     fam= appGuiGetOptionmenuItemIndex( &(asp->aspFontOptionmenu), w );
     if  ( fam < 0 || fam >= dfl->dflFamilyCount )
 	{ LLDEB(fam,dfl->dflFamilyCount); return;	}
 
     dff= dfl->dflFamilies+ fam;
-    if  ( encoding < 0				||
-	  dff->dffFontForEncoding[encoding] < 0	)
-	{
-	int	enc;
 
-	encoding= -1;
+    if  ( appEncodingMenuAdaptToFamily( &fontNumber, aem, dff ) )
+	{ return;	}
 
-	for ( enc= 0; enc < ENCODINGps_COUNT; enc++ )
-	    {
-	    if  ( dff->dffFontForEncoding[enc] >= 0 )
-		{ encoding= enc; break;	}
-	    }
-	}
-
-    if  ( encoding >= 0 )
-	{
-	TextAttribute *		ta= &(asp->aspTextAttribute);
-
-	if  ( ta->taFontNumber != dff->dffFontForEncoding[encoding] )
-	    {
-	    ta->taFontNumber= dff->dffFontForEncoding[encoding];
-	    changed= 1;
-	    }
-	}
+    if  ( ta->taFontNumber != fontNumber )
+	{ ta->taFontNumber= fontNumber; changed= 1;	}
 
     if  ( changed )
 	{
 	asp->aspFontFamilyChosen= fam;
-
-	appEncodingMenuSetEncoding( aem, dff, encoding );
 
 	if  ( appSymbolAdaptToFamily( asp ) )
 	    { LDEB(fam);	}
@@ -499,40 +550,37 @@ static APP_OITEM_CALLBACK_H( appSymbolFontFamilyChosen, w, voidasp )
 /*  2  */
 static APP_OITEM_CALLBACK_H( appSymbolFontEncodingChosen, w, voidasp )
     {
-    int				enc;
+    int				charsetIdx;
     AppSymbolPicker *		asp= (AppSymbolPicker *)voidasp;
     int				changed= 0;
 
-    enc= appGuiGetOptionmenuItemIndex(
+    charsetIdx= appGuiGetOptionmenuItemIndex(
 			&(asp->aspEncodingMenu.aemEncodingOptionmenu), w );
-    if  ( enc < 0 || enc >= ENCODINGps_COUNT )
-	{ LLDEB(enc,ENCODINGps_COUNT); return;	}
+    if  ( charsetIdx < 0 || charsetIdx >= CHARSETidxCOUNT )
+	{ LLDEB(charsetIdx,CHARSETidxCOUNT); return;	}
 
     if  ( asp->aspFontFamilyChosen >= 0 )
 	{
+	AppEncodingMenu *		aem= &(asp->aspEncodingMenu);
 	const DocumentFontList *	dfl= &(asp->aspDocumentFontList);
 	const DocumentFontFamily *	dff;
+
 	TextAttribute *			ta= &(asp->aspTextAttribute);
+	int				fontNumber= ta->taFontNumber;
 
 	dff= dfl->dflFamilies+ asp->aspFontFamilyChosen;
 
-	if  ( dff->dffFontForEncoding[enc] < 0 )
-	    { LLDEB(enc,dff->dffFontForEncoding[enc]); return;	}
+	if  ( appEncodingMenuAdaptToCharsetIndex( &fontNumber, aem, dff,
+								charsetIdx ) )
+	    { return;	}
 
-	if  ( ta->taFontNumber != dff->dffFontForEncoding[enc] )
-	    {
-	    ta->taFontNumber= dff->dffFontForEncoding[enc];
-	    changed= 1;
-	    }
+	if  ( ta->taFontNumber != fontNumber )
+	    { ta->taFontNumber= fontNumber; changed= 1; }
 
 	if  ( changed )
 	    {
-	    AppEncodingMenu *		aem= &(asp->aspEncodingMenu);
-
 	    if  ( appSymbolAdaptDrawingToFont( asp ) )
 		{ LDEB(asp->aspFontFamilyChosen);	}
-
-	    appEncodingMenuSetEncoding( aem, dff, enc );
 	    }
 	}
 
@@ -609,19 +657,28 @@ static void appSymbolMakeSymbolPart(	APP_WIDGET		parent,
 /*									*/
 /************************************************************************/
 
-static APP_WIDGET appSymbolMakeButtonRow( APP_WIDGET		parent,
-					    AppSymbolPickerResources * aspr,
-					    AppSymbolPicker *	asp )
+static APP_WIDGET appSymbolMakeButtonRow(
+				    APP_WIDGET			parent,
+				    AppSymbolPickerResources *	aspr,
+				    AppSymbolPicker *		asp )
     {
     APP_WIDGET		row;
     const int		heightResizable= 0;
     const int		showAsDefault= 0;
 
-    row= appMakeRowInColumn( parent, 1, heightResizable );
+    row= appMakeRowInColumn( parent, 3, heightResizable );
 
     appMakeButtonInRow( &(asp->aspInsertButton), row,
 			    aspr->asprInsert, appSymbolInsertPushed,
 			    (void *)asp, 0, showAsDefault );
+
+    appMakeButtonInRow( &(asp->aspLowerButton), row,
+			    aspr->asprLower, appSymbolLowerPushed,
+			    (void *)asp, 1, showAsDefault );
+
+    appMakeButtonInRow( &(asp->aspCloseButton), row,
+			    aspr->asprClose, appSymbolClosePushed,
+			    (void *)asp, 2, showAsDefault );
 
     return row;
     }
@@ -642,10 +699,23 @@ static void appSymbolFillFontMenu(	AppSymbolPickerResources *	aspr,
 
     appEmptyOptionmenu( &(asp->aspFontOptionmenu) );
 
+    if  ( asp->aspFontFamilyOptCount < dfl->dflFamilyCount+ 1 )
+	{
+	APP_WIDGET *	opts;
+
+	opts= realloc( asp->aspFontFamilyOpts,
+				(dfl->dflFamilyCount+ 1)* sizeof(APP_WIDGET) );
+	if  ( ! opts )
+	    { XDEB(opts); return;	}
+
+	asp->aspFontFamilyOpts= opts;
+	asp->aspFontFamilyOptCount= dfl->dflFamilyCount;
+	}
+
     dff= dfl->dflFamilies;
     for ( fam= 0; fam < dfl->dflFamilyCount; dff++, fam++ )
 	{
-	asp->aspFontFamilyOptions[fam]= appAddItemToOptionmenu(
+	asp->aspFontFamilyOpts[fam]= appAddItemToOptionmenu(
 				    &(asp->aspFontOptionmenu),
 				    dff->dffFamilyName,
 				    appSymbolFontFamilyChosen, (void *)asp );
@@ -653,7 +723,7 @@ static void appSymbolFillFontMenu(	AppSymbolPickerResources *	aspr,
 
     if  ( dfl->dflFamilyCount == 0 )
 	{
-	asp->aspFontFamilyOptions[0]= appAddItemToOptionmenu(
+	asp->aspFontFamilyOpts[0]= appAddItemToOptionmenu(
 				&(asp->aspFontOptionmenu), aspr->asprNone,
 				appSymbolFontFamilyChosen, (void *)asp );
 
@@ -669,35 +739,6 @@ static void appSymbolFillFontMenu(	AppSymbolPickerResources *	aspr,
     return;
     }
 
-
-/************************************************************************/
-/*									*/
-/*  A symbol picker must be destroyed.					*/
-/*									*/
-/************************************************************************/
-
-static APP_CLOSE_CALLBACK_H( appCloseSymbolPicker, w, voidasp )
-    {
-    AppSymbolPicker *	asp= (AppSymbolPicker *)voidasp;
-
-    if  ( asp->aspDestroy )
-	{ (*asp->aspDestroy)( asp->aspTarget );	}
-
-    /* No! managed by the drawing data
-    if  ( asp->aspFont )
-	{ appDrawFreeFont( &(asp->aspDrawingData), asp->aspFont );	}
-    */
-
-    docCleanFontList( &(asp->aspDocumentFontList) );
-
-    appCleanDrawingData( &(asp->aspDrawingData) );
-
-    free( voidasp );
-
-    appDestroyShellWidget( w );
-
-    return;
-    }
 
 /************************************************************************/
 /*									*/
@@ -732,12 +773,10 @@ void * appMakeSymbolPicker(	APP_WIDGET		symbolOption,
 	{
 	appEncodingMenuGetOptionTexts( aspr.asprEncodings, ea );
 
-	appGuiGetResourceValues( ea, (void *)&aspr,
+	appGuiGetResourceValues( &gotResources, ea, (void *)&aspr,
 					APP_SymbolPickerResourceTable,
 					sizeof(APP_SymbolPickerResourceTable)/
 					sizeof(AppConfigurableResource) );
-
-	gotResources= 1;
 	}
 
     if  ( appPostScriptFontCatalog( ea ) )
@@ -745,8 +784,7 @@ void * appMakeSymbolPicker(	APP_WIDGET		symbolOption,
 
     appGetFactors( ea, &horPixPerMM, &verPixPerMM, &xfac, &yfac );
 
-    asp= (AppSymbolPicker *)malloc( sizeof(AppSymbolPicker)+
-		ea->eaPostScriptFontList.psflFamilyCount* sizeof(APP_WIDGET) );
+    asp= (AppSymbolPicker *)malloc( sizeof(AppSymbolPicker) );
     if  ( ! asp )
 	{ XDEB(asp); return (void *)0;	}
 
@@ -768,6 +806,8 @@ void * appMakeSymbolPicker(	APP_WIDGET		symbolOption,
 
     asp->aspSymbolSelected= -1;
     asp->aspFontFamilyChosen= -1;
+    asp->aspFontFamilyOpts= (APP_WIDGET *)0;
+    asp->aspFontFamilyOptCount= 0;
 
     asp->aspFont= (APP_FONT *)0;
     appInitDrawingData( &(asp->aspDrawingData) );
@@ -883,7 +923,7 @@ int appAdaptSymbolPickerToFontFamily(
 
     appEncodingMenuSetEncoding( aem,
 			    dfl->dflFamilies+ asp->aspFontFamilyChosen,
-			    df->dfEncodingSet );
+			    df->dfCharsetIndex );
 
     return rval;
     }

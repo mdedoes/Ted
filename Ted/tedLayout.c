@@ -209,13 +209,23 @@ static int tedLayoutParticules(	const BufferItem *		bi,
 		tp->tpObjectNumber= pd->pdTabNumber;
 
 		tp->tpX0= x0;
-		tp->tpPixelsWide= x1- x0;
+		if  ( x1 > x0 )
+		    { tp->tpPixelsWide= x1- x0;	}
+		else{ tp->tpPixelsWide= 0;	}
 		x0= x1;
 
 		accepted++; tp++; pd++; break;
 
 	    case DOCkindOBJECT:
-		wide= bi->biParaObjects[tp->tpObjectNumber].ioPixelsWide;
+		{
+		const InsertedObject *	io;
+
+		io= &(bi->biParaObjects[tp->tpObjectNumber]);
+
+		if  ( io->ioInline )
+		    { wide= io->ioPixelsWide;	}
+		else{ wide= 0;			}
+		}
 
 		pd->pdVisiblePixels= wide;
 		pd->pdWhiteUnits= 0;
@@ -344,8 +354,11 @@ static void tedLineHeight(	const BufferItem *	bi,
 
 		io= bi->biParaObjects+ tp->tpObjectNumber;
 
-		if  ( objectHeight < io->ioPixelsHigh )
-		    { objectHeight=  io->ioPixelsHigh;	}
+		if  ( io->ioInline )
+		    {
+		    if  ( objectHeight < io->ioPixelsHigh )
+			{ objectHeight=  io->ioPixelsHigh;	}
+		    }
 		break;
 
 	    case DOCkindNOTE:
@@ -411,7 +424,7 @@ static void tedJustifyLine(	const BufferItem *	bi,
     if  ( left > 0 )
 	{
 	if  ( pd[left-1].pdTabKind != DOCtaLEFT )
-	    { LDEB(pd[left-1].pdTabKind); return;	}
+	    { LLLDEB(left,accepted,pd[left-1].pdTabKind); return;	}
 
 	tp += left; pd += left; accepted -= left;
 	}
@@ -611,6 +624,8 @@ static int tedLayoutLine(	const BufferItem *	bi,
 				int			particuleCount,
 				int			x0 )
     {
+    int			rval= 0;
+
     int			past= 0;
     int			part= 0;
     int			x1;
@@ -637,7 +652,7 @@ static int tedLayoutLine(	const BufferItem *	bi,
 					add, sfl, pf, tp, pd, past- part, x0 );
 
 	if  ( accepted != past- part )
-	    { LLDEB(accepted,past- part); return -1;	}
+	    { LLDEB(accepted,past- part); rval= -1; goto ready;	}
 
 	tpp= tp+ accepted- 1;
 	pdd= pd+ accepted- 1;
@@ -673,14 +688,24 @@ static int tedLayoutLine(	const BufferItem *	bi,
 		}
 	    }
 	else{
+	    int x1p= tpp->tpX0+ pdd->pdVisiblePixels;
+
 	    x1= pf->pfX1TextLinesPixels;
 
-	    if  ( tpp->tpX0+ pdd->pdVisiblePixels > x1	)
+	    if  ( x1p > x1 )
 		{
 		/*
 		LLDEB(tpp->tpX0+ tpp->tpPixelsWide,x1);
 		LLDEB(tpp->tpX0+ pdd->pdVisiblePixels,x1);
 		docListParticule( 0, "WIDE", part, bi, tpp );
+		*/
+
+		/*
+		int w= x1- x0;
+		int wp= x1p- x0;
+
+		if  ( w > 50 && wp > ( 115* w )/ 100 )
+		    { LLDEB(wp,w);	}
 		*/
 
 		squeeze= 1;
@@ -694,7 +719,9 @@ static int tedLayoutLine(	const BufferItem *	bi,
 	x0= x1; past= part;
 	}
 
-    return 0;
+  ready:
+
+    return rval;
     }
 
 static int tedLayoutScreenLine(	TextLine *			tl,
@@ -715,10 +742,18 @@ static int tedLayoutScreenLine(	TextLine *			tl,
     int			descentPixels;
 
     TextParticule *	tp= bi->biParaParticules+ part;
+    double		xfac= add->addMagnifiedPixelsPerTwip;
 
+    /*  Does not work for right aligned paragraph numbers where 
+        the number is on the left hand side of the first line 
+	indent. For cetered numbers, half of the number is 
+	on the left.
     if  ( part == 0 )
 	{ x0Pixels= pf->pfX0FirstLinePixels;	}
     else{ x0Pixels= pf->pfX0TextLinesPixels;	}
+    */
+
+    x0Pixels= TWIPStoPIXELS( xfac, pd->pdX0 );
 
     if  ( tedLayoutLine( bi, bd, add, sfl, pf, tp, pd, accepted, x0Pixels ) )
 	{ LDEB(1); return -1;	}
@@ -726,15 +761,23 @@ static int tedLayoutScreenLine(	TextLine *			tl,
     switch( bi->biParaAlignment )
 	{
 	case DOCiaLEFT:
-	    xShift= 0; break;
+	    xShift= 0;
+	    break;
+
 	case DOCiaRIGHT:
 	    x1= tp[accepted-1].tpX0+ pd[accepted-1].pdVisiblePixels;
 	    xShift= pf->pfX1TextLinesPixels- x1;
 	    break;
+
 	case DOCiaCENTERED:
+	    /*
+	    ( x1+ x0Pixels )/ 2+ xShift ==
+					( pf->pfX1Pixels+ pf->pfX0Pixels )/ 2
+	    */
 	    x1= tp[accepted-1].tpX0+ pd[accepted-1].pdVisiblePixels;
-	    xShift= ( pf->pfX1TextLinesPixels- x1 )/ 2;
+	    xShift= ( pf->pfX1Pixels+ pf->pfX0Pixels- x1- x0Pixels )/ 2;
 	    break;
+
 	case DOCiaJUSTIFIED:
 	    xShift= 0;
 	    if  ( part+ accepted < bi->biParaParticuleCount )
@@ -773,7 +816,7 @@ static int tedLayoutScreenLine(	TextLine *			tl,
 
 void tedParagraphFramePixels( 	ParagraphFrame *	pf,
 				const AppDrawingData *	add,
-				const BufferItem *	bi )
+				const BufferItem *	paraBi )
     {
     double		xfac= add->addMagnifiedPixelsPerTwip;
 
@@ -787,10 +830,14 @@ void tedParagraphFramePixels( 	ParagraphFrame *	pf,
 
     pf->pfX1Pixels= pf->pfX1TextLinesPixels;
 
+    pf->pfRedrawX0Pixels= TWIPStoPIXELS( xfac, pf->pfRedrawX0Twips );
+    pf->pfRedrawX1Pixels= TWIPStoPIXELS( xfac, pf->pfRedrawX1Twips );
+
     return;
     }
 
 static int tedLayoutStartScreenPara(	BufferItem *		paraBi,
+					const ParagraphFrame *	pf,
 					AppDrawingData *	add,
 					ScreenFontList *	sfl,
 					BufferDocument *	bd )
@@ -813,6 +860,7 @@ static int tedLayoutStartScreenPara(	BufferItem *		paraBi,
 	if  ( 1 )
 	    {
 	    InsertedObject *	io= paraBi->biParaObjects+ tp->tpObjectNumber;
+	    PictureProperties *	pip= &(io->ioPictureProperties);
 
 	    if  ( tp->tpObjectNumber < 0			||
 		  tp->tpObjectNumber >= paraBi->biParaObjectCount	)
@@ -824,15 +872,44 @@ static int tedLayoutStartScreenPara(	BufferItem *		paraBi,
 	    if  ( io->ioKind == DOCokMACPICT )
 		{
 		if  ( io->ioTwipsWide == 0 )
-		    { io->ioTwipsWide= 20* io->io_xWinExt;	}
+		    { io->ioTwipsWide= 20* pip->pip_xWinExt;	}
 		if  ( io->ioTwipsHigh == 0 )
-		    { io->ioTwipsHigh= 20* io->io_yWinExt;	}
+		    { io->ioTwipsHigh= 20* pip->pip_yWinExt;	}
 		}
 
+	    if  ( io->ioKind == DOCokDRAWING_SHAPE )
+		{
+		const DrawingShape *	ds= io->ioDrawingShape;
+
+		if  ( ! ds )
+		    { LXDEB(io->ioKind,io->ioDrawingShape);	}
+		else{
+		    const ShapeProperties *	sp= &(ds->dsShapeProperties);
+
+		    if  ( io->ioTwipsWide == 0 )
+			{
+			io->ioTwipsWide= sp->spRect.drX1-
+						    sp->spRect.drX0;
+			}
+		    if  ( io->ioTwipsHigh == 0 )
+			{
+			io->ioTwipsHigh= sp->spRect.drY1-
+						    sp->spRect.drY0;
+			}
+		    }
+		}
+
+	    if  ( io->ioTwipsWide == 0 )
+		{ io->ioTwipsWide= pip->pipTwipsWide;	}
+	    if  ( io->ioTwipsHigh == 0 )
+		{ io->ioTwipsHigh= pip->pipTwipsHigh;	}
+
+	    docLayoutScaleObjectToFitParagraphFrame( io, pf );
+
 	    io->ioPixelsWide= TWIPStoPIXELS( xfac,
-				( io->ioScaleX* io->ioTwipsWide )/ 100 );
+				( io->ioScaleXUsed* io->ioTwipsWide )/ 100 );
 	    io->ioPixelsHigh= TWIPStoPIXELS( xfac,
-				(  io->ioScaleY* io->ioTwipsHigh )/ 100 );
+				(  io->ioScaleYUsed* io->ioTwipsHigh )/ 100 );
 	    if  ( io->ioPixelsWide < 1 )
 		{ io->ioPixelsWide=  1;	}
 	    if  ( io->ioPixelsHigh < 1 )
@@ -844,6 +921,7 @@ static int tedLayoutStartScreenPara(	BufferItem *		paraBi,
     }
 
 static int tedPlaceStartScreenPara(	BufferItem *		paraBi,
+					const ParagraphFrame *	pf,
 					AppDrawingData *	add,
 					ScreenFontList *	sfl,
 					BufferDocument *	bd )
@@ -981,23 +1059,7 @@ int tedLayoutItem(	BufferItem *		bi,
     if  ( add->addForScreenDrawing )
 	{ tedSetScreenLayoutFunctions( &lj );	}
 
-    if  ( bi->biNumberInParent == 0 )
-	{
-	if  ( bi->biParent )
-	    { lj.ljPosition= bi->biParent->biTopPosition;	}
-	else{
-	    if  ( bi->biInExternalItem == DOCinBODY )
-		{ docInitLayoutPosition( &(lj.ljPosition) );	}
-	    else{ lj.ljPosition= bi->biTopPosition;		}
-	    }
-	}
-    else{
-	BufferItem *	prevBi;
-
-	prevBi= bi->biParent->biChildren[bi->biNumberInParent- 1];
-
-	lj.ljPosition= prevBi->biBelowPosition;
-	}
+    docItemLayoutStartPosition( &(lj.ljPosition), bi );
 
     lj.ljChangedRectanglePixels= drChanged;
     lj.ljAdd= add;

@@ -45,7 +45,7 @@ void tedAppEditHeaderFooter(		EditApplication *	ea,
     const DocumentProperties *	docp;
 
     ExternalItem *		ei;
-    ExternalItem *		hfTry;
+    ExternalItem *		eiTry;
     BufferItem *		bodySectBi;
 
     DocumentSelection		ds;
@@ -103,6 +103,8 @@ void tedAppEditHeaderFooter(		EditApplication *	ea,
 
     switch( which )
 	{
+	int		isEmpty;
+
 	case DOCinFIRST_HEADER:
 	case DOCinFIRST_FOOTER:
 	    page= bodySectBi->biTopPosition.lpPage;
@@ -119,8 +121,8 @@ void tedAppEditHeaderFooter(		EditApplication *	ea,
 		      pg > bodySectBi->biBelowPosition.lpPage	)
 		    { continue;	}
 
-		if  ( docWhatPageHeader( &hfTry, bodySectBi, pg, docp )
-								    == which )
+		if  ( docWhatPageHeader( &eiTry, &isEmpty,
+					    bodySectBi, pg, docp ) == which )
 		    { page= pg; break;	}
 		}
 	    break;
@@ -136,8 +138,8 @@ void tedAppEditHeaderFooter(		EditApplication *	ea,
 		      pg > bodySectBi->biBelowPosition.lpPage	)
 		    { continue;	}
 
-		if  ( docWhatPageFooter( &hfTry, bodySectBi, pg, docp )
-								    == which )
+		if  ( docWhatPageFooter( &eiTry, &isEmpty,
+					    bodySectBi, pg, docp ) == which )
 		    { page= pg; break;	}
 		}
 	    break;
@@ -221,6 +223,7 @@ void tedAppDeleteHeaderFooter(		EditApplication *	ea,
 	    {
 	    int			docX;
 	    int			docY;
+	    int			part;
 	    const int		lastLine= 0;
 
 	    DocumentPosition	dp;
@@ -229,7 +232,7 @@ void tedAppDeleteHeaderFooter(		EditApplication *	ea,
 	    docX= sg.sgBegin.pgXPixels;
 	    docY= sg.sgBegin.pgBaselinePixels;
 
-	    if  ( tedFindPosition( &dp, &pg, bd, &(bd->bdItem),
+	    if  ( tedFindPosition( &dp, &pg, &part, bd, &(bd->bdItem),
 						    add, sfl, docX, docY ) )
 		{ LLDEB(docX,docY); return;	}
 
@@ -334,6 +337,7 @@ void tedAppGotoNoteRef(		EditApplication *	ea )
     const int			fixedTextSize= 0;
 
     DocumentPosition		dpNoteref;
+    const int			lastLine= 0;
 
     if  ( ! ed )
 	{ XDEB(ed); return;	}
@@ -356,7 +360,7 @@ void tedAppGotoNoteRef(		EditApplication *	ea )
     if  ( docGetNotePosition( &dpNoteref, bd, dn ) )
 	{ LDEB(1); return;	}
 
-    tedSetIBarSelection( ed, dpNoteref.dpBi, dpNoteref.dpStroff,
+    tedSetIBarSelection( ed, dpNoteref.dpBi, dpNoteref.dpStroff, lastLine,
 						    &scrolledX, &scrolledY );
 
     return;

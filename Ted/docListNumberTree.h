@@ -49,7 +49,7 @@ extern int docClaimListNumberTreeNodes(	ListNumberTreeNode **	pLntn,
 					int *			pCount,
 					int			count );
 
-extern void docShiftBulletReferences(	ListNumberTreeNode *	root,
+extern void docShiftListTreeReferences(	ListNumberTreeNode *	root,
 					int			paraFrom,
 					int			paraShift );
 

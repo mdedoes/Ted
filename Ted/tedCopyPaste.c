@@ -13,6 +13,7 @@
 #   include	<ctype.h>
 
 #   include	"tedApp.h"
+#   include	"tedEdit.h"
 
 #   include	<sioMemory.h>
 #   include	<sioXprop.h>
@@ -93,7 +94,8 @@ static int tedDocCopySelection(	EditDocument *	ed )
     docInitDocumentPosition( &dpObject );
 
     if  ( ea->eaSupportXvCopyPaste					&&
-	  ! tedGetObjectSelection( td, &partObject, &dpObject, &io )	&&
+	  sd.sdIsObjectSelection					&&
+	  ! docGetObjectSelection( &ds, &partObject, &dpObject, &io )	&&
 	  ! tedSaveObjectPicture( &(td->tdCopiedImage), io )	)
 	{
 	/*  8  */
@@ -287,6 +289,7 @@ APP_GIVE_COPY( tedCopyPrimaryString, w, event, voided )
     {
     EditDocument *		ed= (EditDocument *)voided;
     TedDocument *		td= (TedDocument *)ed->edPrivateData;
+    EditApplication *		ea= ed->edApplication;
 
     SimpleOutputStream *	sos;
 
@@ -305,7 +308,8 @@ APP_GIVE_COPY( tedCopyPrimaryString, w, event, voided )
     if  ( ! sis )
 	{ XDEB(sis); sioOutClose( sos ); return;	}
 
-    bd= docRtfReadFile( sis, td->tdDocument->bdProperties.dpAnsiCodepage );
+    bd= docRtfReadFile( sis, &(ea->eaPostScriptFontList),
+				td->tdDocument->bdProperties.dpAnsiCodepage );
 
     sioInClose( sis );
 
@@ -397,6 +401,13 @@ APP_GIVE_COPY( tedCopyFontTed, w, event, voided )
     return;
     }
 
+/************************************************************************/
+/*									*/
+/*  Copy the ruler as it was saved on the document struct when the	*/
+/*  menu option was clicked.						*/
+/*									*/
+/************************************************************************/
+
 APP_GIVE_COPY( tedCopyRulerTed, w, event, voided )
     {
     EditDocument *		ed= (EditDocument *)voided;
@@ -428,21 +439,25 @@ APP_GIVE_COPY( tedCopyRulerTed, w, event, voided )
 
 typedef BufferDocument * (*TED_READ) (
 				SimpleInputStream *		sis,
+				EditApplication *		ea,
 				int				ansiCodepage,
 				const DocumentGeometry *	dg );
 
-typedef int	(*TED_INCLUDE) (	APP_WIDGET		w,
-					EditDocument *		ed,
+typedef int	(*TED_INCLUDE) (	EditDocument *		ed,
 					BufferDocument *	bd );
 
 static BufferDocument * tedPasteRtfReadFile(
 				SimpleInputStream *		sis,
+				EditApplication *		ea,
 				int				ansiCodepage,
 				const DocumentGeometry *	dg )
-    { return docRtfReadFile( sis, ansiCodepage );	}
+    {
+    return docRtfReadFile( sis, &(ea->eaPostScriptFontList), ansiCodepage );
+    }
 
 static BufferDocument * tedPastePlainReadFile(
 				SimpleInputStream *		sis,
+				EditApplication *		ea,
 				int				ansiCodepage,
 				const DocumentGeometry *	dg )
     {
@@ -472,7 +487,7 @@ static void tedPastePrimaryGeneric(	APP_WIDGET		w,
     if  ( ! sis )
 	{ XDEB(sis); return;	}
 
-    bd= (*readDoc)( sis, tar->tarDefaultAnsicpgInt,
+    bd= (*readDoc)( sis, ea, tar->tarDefaultAnsicpgInt,
 					&(ea->eaDefaultDocumentGeometry) );
 
     sioInClose( sis );
@@ -480,7 +495,7 @@ static void tedPastePrimaryGeneric(	APP_WIDGET		w,
     if  ( ! bd )
 	{ XDEB( bd ); return; }
 
-    if  ( (*includeDoc)( w, ed, bd ) )
+    if  ( (*includeDoc)( ed, bd ) )
 	{ LDEB(1); docFreeDocument( bd ); return;	}
 
     docFreeDocument( bd );
@@ -598,32 +613,43 @@ APP_PASTE_REPLY( tedPasteFontTed, w, event, voided )
     return;
     }
 
-APP_PASTE_REPLY( tedPasteRulerTed, w, event, voided )
+static int tedApplyPastedRuler(		EditDocument *		ed,
+					BufferDocument *	bdFrom )
     {
-    EditDocument *		ed= (EditDocument *)voided;
-    SimpleInputStream *		sis;
+    EditApplication *		ea= ed->edApplication;
+    const PostScriptFontList *	psfl= &(ea->eaPostScriptFontList);
 
-    ParagraphProperties		ppNew;
+    int				rval= 0;
+
+    TedDocument *		tdTo= (TedDocument *)ed->edPrivateData;
+    BufferDocument *		bdTo= tdTo->tdDocument;
+
+    DocumentPosition		dp;
+
     TextAttribute		taSet;
+    ParagraphProperties		ppSetMapped;
 
     PropertyMask		taSetMask;
     PropertyMask		ppUpdMask;
     PropertyMask		spUpdMask;
+    PropertyMask		ppMappedMask;
+
+    DocumentCopyJob		dcj;
+
+    docInitDocumentCopyJob( &dcj );
+    docInitParagraphProperties( &ppSetMapped );
+
+    if  ( docSet2DocumentCopyJob( &dcj, bdTo, bdFrom, psfl, ed->edFilename ) )
+	{ LDEB(1); rval= -1; goto ready;	}
+
+    if  ( docFirstPosition( &dp, &(bdFrom->bdItem) ) )
+	{ LDEB(1); rval= -1; goto ready;	}
 
     PROPmaskCLEAR( &taSetMask );
     PROPmaskCLEAR( &spUpdMask );
+    PROPmaskCLEAR( &ppMappedMask );
 
-    docInitParagraphProperties( &ppNew );
     utilInitTextAttribute( &taSet );
-
-    sis= sioInOpenPaste( w, event );
-    if  ( ! sis )
-	{ XDEB(sis); return;	}
-
-    if  ( docRtfReadRuler( sis, &ppNew ) )
-	{ LDEB(1); sioInClose( sis ); return; }
-
-    sioInClose( sis );
 
     PROPmaskCLEAR( &ppUpdMask );
     PROPmaskADD( &ppUpdMask, PPpropLEFT_INDENT );
@@ -632,14 +658,35 @@ APP_PASTE_REPLY( tedPasteRulerTed, w, event, voided )
     PROPmaskADD( &ppUpdMask, PPpropALIGNMENT );
     PROPmaskADD( &ppUpdMask, PPpropTAB_STOPS );
 
+    PROPmaskADD( &ppUpdMask, PPpropLISTOVERRIDE );
+    PROPmaskADD( &ppUpdMask, PPpropOUTLINELEVEL );
+    PROPmaskADD( &ppUpdMask, PPpropLISTLEVEL );
+
+    if  ( docUpdParaProperties( &ppMappedMask, &ppSetMapped,
+				    &ppUpdMask, &(dp.dpBi->biParaProperties),
+				    dcj.dcjColorMap, dcj.dcjListStyleMap ) )
+	{ LDEB(1); rval= -1; goto ready; }
+
     if  ( tedChangeSelectionProperties( ed,
 				    &taSetMask, &taSet,
-				    &ppUpdMask, &ppNew,
+				    &ppUpdMask, &ppSetMapped,
 				    &spUpdMask, (SectionProperties *)0 ) )
-	{ LDEB(1); docCleanParagraphProperties( &ppNew ); return; }
+	{ LDEB(1); rval= -1; goto ready; }
 
-    docCleanParagraphProperties( &ppNew );
+  ready:
 
+    docCleanParagraphProperties( &ppSetMapped );
+    docCleanDocumentCopyJob( &dcj );
+
+    return rval;
+    }
+
+APP_PASTE_REPLY( tedPasteRulerTed, w, event, voided )
+    {
+    EditDocument *	ed= (EditDocument *)voided;
+
+    tedPastePrimaryGeneric( w, ed, event,
+			    tedPasteRtfReadFile, tedApplyPastedRuler );
     return;
     }
 

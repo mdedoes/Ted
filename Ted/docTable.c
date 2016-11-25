@@ -256,6 +256,7 @@ int docGetTableSliceSelection(	int *				pIsRowSlice,
 void docSectDelimitTables(	BufferItem *		sectBi )
     {
     int		n;
+    int		headerRow= -1;
 
     if  ( sectBi->biLevel != DOClevSECT )
 	{ LDEB(sectBi->biLevel); return;	}
@@ -272,10 +273,11 @@ void docSectDelimitTables(	BufferItem *		sectBi )
 	rowBiFirst= sectBi->biChildren[n];
 	if  ( ! rowBiFirst->biRowHasTableParagraphs )
 	    {
+	    rowBiFirst->biRowTableHeaderRow= -1;
 	    rowBiFirst->biRowTableFirst= -1;
 	    rowBiFirst->biRowTablePast= -1;
-	    rowBiFirst->biRowTableFirstIsHeader= 0;
 
+	    headerRow= -1;
 	    n++; continue;
 	    }
 
@@ -305,9 +307,12 @@ void docSectDelimitTables(	BufferItem *		sectBi )
 	    {
 	    rowBi= sectBi->biChildren[n];
 
+	    if  ( rowBi->biRowIsTableHeader )
+		{ headerRow= n;	}
+
+	    rowBi->biRowTableHeaderRow= headerRow;
 	    rowBi->biRowTableFirst= first;
 	    rowBi->biRowTablePast= past;
-	    rowBi->biRowTableFirstIsHeader= rowBiFirst->biRowIsTableHeader;
 
 	    n++;
 	    }
@@ -360,7 +365,7 @@ void docGetCellTopBorder(	const BorderProperties **	pBpTop,
 	{ aboveCpC= aboveCpR+ col;				}
 
     /*  2  */
-    if  ( aboveCpC && aboveCpC->cpBottomBorder.bpStyle != DOCbsNONE )
+    if  ( aboveCpC && DOCisBORDER( &(aboveCpC->cpBottomBorder) ) )
 	{ useAbove= 1;	}
 
     /*  3  */
@@ -435,9 +440,9 @@ void docGetCellBottomBorder(	const BorderProperties **	pBpBottom,
     bpBottom= &(cp->cpBottomBorder);
 
     /*  3  */
-    if  ( cp->cpBottomBorder.bpStyle == DOCbsNONE	&&
+    if  ( ! DOCisBORDER( &(cp->cpBottomBorder) )	&&
 	  belowCpC					&&
-	  belowCpC->cpTopBorder.bpStyle != DOCbsNONE	)
+	  DOCisBORDER( &(belowCpC->cpBottomBorder) )	)
 	{ useBelow= 1;	}
 
     /*  4  */

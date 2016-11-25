@@ -79,7 +79,7 @@ int appPaperChooserGetSize(	PropertyMask *		pChgMask,
 
     appFreeStringFromTextWidget( s );
 
-    appSetDocumentGeometry( dg, &dgHere, &chgMask, &updMask );
+    utilUpdDocumentGeometry( dg, &dgHere, &chgMask, &updMask );
 
     *pChgMask= chgMask;
 
@@ -325,7 +325,7 @@ static APP_TXACTIVATE_CALLBACK_H( appPaperChooserGotValueCallback, w, voidpc )
     if  ( appPaperChooserGetSize( &updMask, pc, &(pc->pcGeometryChosen) ) )
 	{ LDEB(1); return;	}
 
-    if  ( ! PROPmaskISEMPTY( &updMask ) )
+    if  ( ! utilPropMaskIsEmpty( &updMask ) )
 	{
 	appPaperChooserAdaptToGeometry( pc, &(pc->pcGeometryChosen) );
 
@@ -599,7 +599,7 @@ void appInitPaperChooser(	PaperChooser *	pc )
     pc->pcSizeChosen= -1;
     pc->pcLandscapeChosen= -1;
 
-    appInitDocumentGeometry( &(pc->pcGeometryChosen) );
+    utilInitDocumentGeometry( &(pc->pcGeometryChosen) );
 
     pc->pcSizeOptions= (APP_WIDGET *)0;
     pc->pcSizeOptionCount= 0;

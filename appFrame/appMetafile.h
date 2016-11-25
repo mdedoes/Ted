@@ -11,6 +11,7 @@
 #   include	<utilPostscriptFace.h>
 #   include	<appDraw.h>
 #   include	<appImage.h>
+#   include	<utilPs.h>
 
 /************************************************************************/
 /*									*/
@@ -30,24 +31,26 @@ extern int appMetafileDrawRoundRectX11(	AppDrawingData *	add,
 					APP_COLOR_RGB *		fillColor,
 					APP_COLOR_RGB *		borderColor );
 
-extern void appMetafilePolygonPathPs(	SimpleOutputStream *	sos,
+extern void appMetafilePolygonPathPs(	PrintingState *		ps,
 					const APP_POINT *	points,
-					int			count );
+					int			count,
+					const char *		operator );
 
-extern void appMetafileRoundRectPathPs(	SimpleOutputStream *	sos,
+extern void appMetafileRoundRectPathPs(	PrintingState *		ps,
 					int			x0,
 					int			y0,
 					int			x1,
 					int			y1,
 					int			w,
-					int			h );
+					int			h,
+					const char *		operator );
 
-extern void appMetafileRectPathPs(	SimpleOutputStream *	sos,
+extern void appMetafileRectPathPs(	PrintingState *		ps,
 					int			x0,
 					int			y0,
 					int			x1,
 					int			y1 );
 
-extern int appMetafileStartPatternFillPs(	SimpleOutputStream *	sos,
+extern int appMetafileStartPatternFillPs(	PrintingState *		ps,
 						const AppBitmapImage *	abi );
 

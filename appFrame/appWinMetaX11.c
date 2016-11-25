@@ -353,10 +353,10 @@ void appMetaX11SetWindowsLineStyle(	AppDrawingData *	add,
     {
     int		drawBorders= 0;
 
-    static char	dash[]= { 3, 2 };
-    static char	dot[]= { 1, 2 };
-    static char	dashdot[]= { 2, 2, 1, 2 };
-    static char	dashdotdot[]= { 2, 2, 1, 2, 1, 2 };
+    static unsigned char	dash[]= { 3, 2 };
+    static unsigned char	dot[]= { 1, 2 };
+    static unsigned char	dashdot[]= { 2, 2, 1, 2 };
+    static unsigned char	dashdotdot[]= { 2, 2, 1, 2, 1, 2 };
 
     switch( ps )
 	{
@@ -365,15 +365,9 @@ void appMetaX11SetWindowsLineStyle(	AppDrawingData *	add,
 	  solid:
 	    drawBorders= 1;
 
-#	    ifdef USE_MOTIF
-	    XSetLineAttributes( add->addDisplay, add->addGc, width,
-				    LineSolid, CapButt, JoinMiter );
-#	    endif
-#	    ifdef USE_GTK
-	    gdk_gc_set_line_attributes( add->addGc, width,
-			GDK_LINE_SOLID, GDK_CAP_PROJECTING, GDK_JOIN_MITER );
-#	    endif
-
+	    appDrawSetLineAttributes( add,
+			width, LINEstyleSOLID, LINEcapBUTT, LINEjoinMITER,
+			(const unsigned char *)0, 0 );
 	    break;
 
 	case PS_INSIDEFRAME:
@@ -381,15 +375,9 @@ void appMetaX11SetWindowsLineStyle(	AppDrawingData *	add,
 
 	    drawBorders= 1;
 
-#	    ifdef USE_MOTIF
-	    XSetLineAttributes( add->addDisplay, add->addGc, width,
-					    LineSolid, CapButt, JoinMiter );
-#	    endif
-#	    ifdef USE_GTK
-	    gdk_gc_set_line_attributes( add->addGc, width,
-			GDK_LINE_SOLID, GDK_CAP_PROJECTING, GDK_JOIN_MITER );
-#	    endif
-
+	    appDrawSetLineAttributes( add,
+			width, LINEstyleSOLID, LINEcapBUTT, LINEjoinMITER,
+			(const unsigned char *)0, 0 );
 	    break;
 
 	case PS_DASH:
@@ -400,18 +388,9 @@ void appMetaX11SetWindowsLineStyle(	AppDrawingData *	add,
 
 	    drawBorders= 1;
 
-#	    ifdef USE_MOTIF
-	    XSetLineAttributes( add->addDisplay, add->addGc,
-					1, LineOnOffDash, CapButt, JoinMiter );
-	    XSetDashes( add->addDisplay, add->addGc, 0,
-						dash, sizeof( dash ) );
-#	    endif
-#	    ifdef USE_GTK
-	    gdk_gc_set_line_attributes( add->addGc, 1,
-			GDK_LINE_ON_OFF_DASH, GDK_CAP_BUTT, GDK_JOIN_MITER );
-	    gdk_gc_set_dashes( add->addGc, 0, dash, sizeof( dash ) );
-#	    endif
-
+	    appDrawSetLineAttributes( add,
+			1, LINEstyleON_OFF_DASH, LINEcapBUTT, LINEjoinMITER,
+			dash, sizeof( dash ) );
 	    break;
 
 	case PS_DOT:
@@ -422,18 +401,9 @@ void appMetaX11SetWindowsLineStyle(	AppDrawingData *	add,
 
 	    drawBorders= 1;
 
-#	    ifdef USE_MOTIF
-	    XSetLineAttributes( add->addDisplay, add->addGc, 1,
-				    LineOnOffDash, CapButt, JoinMiter );
-	    XSetDashes( add->addDisplay, add->addGc, 0,
-						dot, sizeof( dot ) );
-#	    endif
-#	    ifdef USE_GTK
-	    gdk_gc_set_line_attributes( add->addGc, 1,
-			GDK_LINE_ON_OFF_DASH, GDK_CAP_BUTT, GDK_JOIN_MITER );
-	    gdk_gc_set_dashes( add->addGc, 0, dot, sizeof( dot ) );
-#	    endif
-
+	    appDrawSetLineAttributes( add,
+			1, LINEstyleON_OFF_DASH, LINEcapBUTT, LINEjoinMITER,
+			dot, sizeof( dot ) );
 	    break;
 
 	case PS_DASHDOT:
@@ -444,18 +414,9 @@ void appMetaX11SetWindowsLineStyle(	AppDrawingData *	add,
 
 	    drawBorders= 1;
 
-#	    ifdef USE_MOTIF
-	    XSetLineAttributes( add->addDisplay, add->addGc,
-				    1, LineOnOffDash, CapButt, JoinMiter );
-	    XSetDashes( add->addDisplay, add->addGc, 0,
-						dashdot, sizeof( dashdot ) );
-#	    endif
-#	    ifdef USE_GTK
-	    gdk_gc_set_line_attributes( add->addGc, 1,
-			GDK_LINE_ON_OFF_DASH, GDK_CAP_BUTT, GDK_JOIN_MITER );
-	    gdk_gc_set_dashes( add->addGc, 0, dashdot, sizeof( dashdot ) );
-#	    endif
-
+	    appDrawSetLineAttributes( add,
+			1, LINEstyleON_OFF_DASH, LINEcapBUTT, LINEjoinMITER,
+			dashdot, sizeof( dashdot ) );
 	    break;
 
 	case PS_DASHDOTDOT:
@@ -466,19 +427,9 @@ void appMetaX11SetWindowsLineStyle(	AppDrawingData *	add,
 
 	    drawBorders= 1;
 
-#	    ifdef USE_MOTIF
-	    XSetLineAttributes( add->addDisplay, add->addGc,
-				    1, LineOnOffDash, CapButt, JoinMiter );
-	    XSetDashes( add->addDisplay, add->addGc, 0,
-					    dashdotdot, sizeof( dashdotdot ) );
-#	    endif
-#	    ifdef USE_GTK
-	    gdk_gc_set_line_attributes( add->addGc, 1,
-			GDK_LINE_ON_OFF_DASH, GDK_CAP_BUTT, GDK_JOIN_MITER );
-	    gdk_gc_set_dashes( add->addGc, 0,
-					    dashdotdot, sizeof( dashdotdot ) );
-#	    endif
-
+	    appDrawSetLineAttributes( add,
+			1, LINEstyleON_OFF_DASH, LINEcapBUTT, LINEjoinMITER,
+			dashdotdot, sizeof( dashdotdot ) );
 	    break;
 
 	case PS_NULL:
@@ -1556,6 +1507,11 @@ static int appWinMetaPlayRecords(	SimpleInputStream *	sis,
 
 	    case WINMETA_OffsetClipRgn:
 		if  ( appMetaOffsetClipRgn( dc, recordSize, sis ) )
+		    { LDEB(1); return -1;	}
+		continue;
+
+	    case WINMETA_SelectClipRgn:
+		if  ( appMetaSelectClipRgn( dc, recordSize, sis ) )
 		    { LDEB(1); return -1;	}
 		continue;
 

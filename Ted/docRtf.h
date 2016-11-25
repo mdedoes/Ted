@@ -18,8 +18,8 @@
 #   include	"docBuf.h"
 #   include	<sioGeneral.h>
 
+#   include	"docRtfTagHash.h"
 #   include	"docRtfTagEnum.h"
-#   include	"docRtfShapeEnum.h"
 
 /************************************************************************/
 /*									*/
@@ -92,8 +92,8 @@ typedef struct RtfReadingContext
     CellProperties		rrcCellProperties;
     RowProperties		rrcRowProperties;
     BorderProperties		rrcBorderProperties;
-    ShapeProperties		rrcShapeProperties;
-    DrawingShape		rrcShape;
+    DrawingShape *		rrcDrawingShape;
+    int				rrcNextObjectVertex;
     DocumentStyle		rrcDocumentStyle;
     TabStop			rrcTabStop;
     RGB8Color			rrcColor;
@@ -123,6 +123,7 @@ typedef struct RtfReadingContext
 				/*  Style sheet.			*/
 				/****************************************/
     InsertedObject *		rrcInsertedObject;
+    PictureProperties		rrcPictureProperties;
     int				rrcFieldNumber;
     unsigned char		rrcBookmarkName[DOCmaxBOOKMARK+1];
     unsigned char		rrcBookmarkSize;
@@ -132,12 +133,14 @@ typedef struct RtfReadingContext
 				/*  For reading 'fields'.		*/
 				/****************************************/
     int				rrcJustAfterPntext;
+    int				rrcGotDocGeometry;
 				/****************************************/
 				/*  For coping with the way word saves	*/
 				/*  {\pntext ... }			*/
 				/****************************************/
     unsigned char		rrcDefaultInputMapping[256];
     const unsigned char *	rrcTextInputMapping;
+    const PostScriptFontList *	rrcPostScriptFontList;
     } RtfReadingContext;
 
 
@@ -195,13 +198,18 @@ typedef struct RtfWritingContext
     } RtfWritingContext;
 
 /************************************************************************/
+/*									*/
 /*  Map control words to functions that handle them.			*/
+/*									*/
+/*  This structure will be gradually extended to also cover the		*/
+/*  Microsoft WordProcessingML markup language.				*/
+/*									*/
 /************************************************************************/
 
 typedef struct RtfControlWord
     {
-    char *		rcwWord;
-    RtfTag		rcwID;
+    const char *	rcwWord;
+    int			rcwID;
     ItemLevel		rcwLevel;
     int			(*rcwApply)( SimpleInputStream *		sis,
 				    const struct RtfControlWord *	rcw,
@@ -213,6 +221,8 @@ typedef struct RtfControlWord
 				    int					arg,
 				    RtfReadingContext *			rrc );
     struct RtfControlWord *	rcwDetailWords;
+
+    const char *	rcwXmlName;
     } RtfControlWord;
 
 #   define	TEDszRTFCONTROL		32
@@ -465,7 +475,7 @@ extern void docRtfWriteStringDestination(
 extern void docRtfWriteNextLine(	int *			pCol,
 					SimpleOutputStream *	sos );
 
-extern void docRtfSaveBorder(		char *				tag,
+extern void docRtfSaveBorder(		const char *			tag,
 					int *				pCol,
 					const BorderProperties *	bp,
 					SimpleOutputStream *		sos );
@@ -487,7 +497,7 @@ extern void docRtfWriteDestinationBegin( const char *		tag,
 extern void docRtfWriteDestinationEnd(	int *			pCol,
 					SimpleOutputStream *	sos );
 
-extern int docRtfSavePictureTags(	InsertedObject *		io,
+extern int docRtfSavePictureTags(	const PictureProperties *	pip,
 					int *				pCol,
 					SimpleOutputStream *		sos );
 
@@ -717,16 +727,18 @@ extern int docRtfFontProperty(	SimpleInputStream *		sis,
 				int				arg,
 				RtfReadingContext *		rrc );
 
-extern unsigned long docRtfTagHash(	const unsigned char *	key,
-					int			len );
-
-extern int docRtfTagIndex(		const unsigned char *	key,
-					int			len );
-
 extern const RtfControlWord * docRtfFindPropertyWord(
 					const char *		controlWord );
 
+extern const RtfControlWord * docRtfFindShapePropertyWord(
+					const char *		controlWord );
+
 extern int docRtfObjectProperty(	SimpleInputStream *	sis,
+					const RtfControlWord *	rcw,
+					int			arg,
+					RtfReadingContext *	rrc );
+
+extern int docRtfPictureProperty(	SimpleInputStream *	sis,
 					const RtfControlWord *	rcw,
 					int			arg,
 					RtfReadingContext *	rrc );
@@ -765,6 +777,92 @@ extern int docRtfShpProperty(		SimpleInputStream *	sis,
 					RtfReadingContext *	rrc );
 
 extern int docRtfPnProperty(		SimpleInputStream *	sis,
+					const RtfControlWord *	rcw,
+					int			arg,
+					RtfReadingContext *	rrc );
+
+extern int docRtfShpArray(		SimpleInputStream *	sis,
+					const RtfControlWord *	rcw,
+					int			arg,
+					RtfReadingContext *	rrc );
+
+extern int docRtfShpString(		SimpleInputStream *	sis,
+					const RtfControlWord *	rcw,
+					int			arg,
+					RtfReadingContext *	rrc );
+
+extern int docRtfShpPicture(		SimpleInputStream *	sis,
+					const RtfControlWord *	rcw,
+					int			arg,
+					RtfReadingContext *	rrc );
+
+extern int docRtfShpNumber(		SimpleInputStream *	sis,
+					const RtfControlWord *	rcw,
+					int			arg,
+					RtfReadingContext *	rrc );
+
+extern int docRtfShpPositionNumber(	SimpleInputStream *	sis,
+					const RtfControlWord *	rcw,
+					int			arg,
+					RtfReadingContext *	rrc );
+
+extern int docRtfShpTypeNumber(		SimpleInputStream *	sis,
+					const RtfControlWord *	rcw,
+					int			arg,
+					RtfReadingContext *	rrc );
+
+extern int docRtfShpLockNumber(		SimpleInputStream *	sis,
+					const RtfControlWord *	rcw,
+					int			arg,
+					RtfReadingContext *	rrc );
+
+extern int docRtfShpFillNumber(		SimpleInputStream *	sis,
+					const RtfControlWord *	rcw,
+					int			arg,
+					RtfReadingContext *	rrc );
+
+extern int docRtfShpLineNumber(		SimpleInputStream *	sis,
+					const RtfControlWord *	rcw,
+					int			arg,
+					RtfReadingContext *	rrc );
+
+extern int docRtfShpGroupedNumber(	SimpleInputStream *	sis,
+					const RtfControlWord *	rcw,
+					int			arg,
+					RtfReadingContext *	rrc );
+
+extern int docRtfShpConnectNumber(	SimpleInputStream *	sis,
+					const RtfControlWord *	rcw,
+					int			arg,
+					RtfReadingContext *	rrc );
+
+extern int docRtfShpTxboxNumber(	SimpleInputStream *	sis,
+					const RtfControlWord *	rcw,
+					int			arg,
+					RtfReadingContext *	rrc );
+
+extern int docRtfShpShadowNumber(	SimpleInputStream *	sis,
+					const RtfControlWord *	rcw,
+					int			arg,
+					RtfReadingContext *	rrc );
+
+extern int docRtfShpColor(		SimpleInputStream *	sis,
+					const RtfControlWord *	rcw,
+					int			arg,
+					RtfReadingContext *	rrc );
+
+extern int docRtfReadExternalItem(	BufferItem **		pBi,
+					int *			pExtItKind,
+					SimpleInputStream *	sis,
+					RtfReadingContext *	rrc,
+					const SelectionScope *	ss );
+
+extern int docRtfShapeProperty(		SimpleInputStream *	sis,
+					const RtfControlWord *	rcw,
+					int			arg,
+					RtfReadingContext *	rrc );
+
+extern int docRtfShpGeometryNumber(	SimpleInputStream *	sis,
 					const RtfControlWord *	rcw,
 					int			arg,
 					RtfReadingContext *	rrc );

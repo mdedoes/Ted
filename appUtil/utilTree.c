@@ -183,11 +183,11 @@ static TreeNode * treeGetLeaf(	TreeNode *	tn,
 
 /************************************************************************/
 /*									*/
-/*  suppose no is a leaf, return next leaf				*/
+/*  suppose tn is a leaf, return next leaf				*/
 /*									*/
 /************************************************************************/
 
-static TreeNode *	treeGetNextLeaf(	TreeNode *	tn )
+static TreeNode * treeGetNextLeaf(	TreeNode *	tn )
     {
     TreeNode *		dn;
 
@@ -219,11 +219,11 @@ static TreeNode *	treeGetNextLeaf(	TreeNode *	tn )
 
 /************************************************************************/
 /*									*/
-/*  suppose no is a leaf, return previous leaf				*/
+/*  suppose tn is a leaf, return previous leaf				*/
 /*									*/
 /************************************************************************/
 
-static TreeNode *	treeGetPrevLeaf(	TreeNode *	tn )
+static TreeNode * treeGetPrevLeaf(	TreeNode *	tn )
     {
     TreeNode *		dn;
 
@@ -267,6 +267,7 @@ static TreeNode *	treeGetPrevLeaf(	TreeNode *	tn )
 /************************************************************************/
 
 int utilTreeStoreValue(	void *		tree,
+			void **		pPrevVal,
 			const char **	pStoredKey,
 			const char *	key,
 			void *		val )
@@ -280,6 +281,7 @@ int utilTreeStoreValue(	void *		tree,
     int			where;
     int			nwkey;
 
+    void *		prevVal= (void *)0;
     char *		savedKey= (char *)0;
     char *		childKey;
 
@@ -310,8 +312,11 @@ int utilTreeStoreValue(	void *		tree,
 	tm->tr_root= no;
 	tm->tr_curr= no;
 	tm->trCurrentDeleted= 0;
+	tm->tr_lfcu= savedKey;
 	if  ( pStoredKey )
-	    { *pStoredKey= tm->tr_lfcu= savedKey;	}
+	    { *pStoredKey= tm->tr_lfcu;	}
+	if  ( pPrevVal )
+	    { *pPrevVal= prevVal;	}
 
 	return 0;
 	}
@@ -418,11 +423,16 @@ int utilTreeStoreValue(	void *		tree,
 
 	case 1:
 	    /*  in L	*/
+	    if  ( ! nwkey )
+		{ prevVal= no->no_L.sl_val;	}
 	    no->no_L.sl_val= val;
 	    tm->tr_curr= no;
 	    tm->trCurrentDeleted= 0;
+	    tm->tr_lfcu= no->no_L.nsKey;
 	    if  ( pStoredKey )
-		{ *pStoredKey= tm->tr_lfcu= no->no_L.nsKey;	}
+		{ *pStoredKey= tm->tr_lfcu;	}
+	    if  ( pPrevVal )
+		{ *pPrevVal= prevVal;	}
 	    break;
 
 	case 2:
@@ -441,11 +451,15 @@ int utilTreeStoreValue(	void *		tree,
 	    /*  in M	*/
 	    if  ( nwkey )
 		{ no->no_M.nsKey= savedKey;	}
+	    else{ prevVal= no->no_M.sl_val;	}
 	    no->no_M.sl_val= val;
 	    tm->tr_curr= no;
 	    tm->trCurrentDeleted= 0;
+	    tm->tr_lfcu= no->no_M.nsKey;
 	    if  ( pStoredKey )
-		{ *pStoredKey= tm->tr_lfcu= no->no_M.nsKey;	}
+		{ *pStoredKey= tm->tr_lfcu;	}
+	    if  ( pPrevVal )
+		{ *pPrevVal= prevVal;	}
 	    break;
 
 	case 4:
@@ -456,19 +470,26 @@ int utilTreeStoreValue(	void *		tree,
 	    no->no_R.nsKey= (char *)0;
 	    tm->tr_curr= nw;
 	    tm->trCurrentDeleted= 0;
+	    tm->tr_lfcu= savedKey;
 	    if  ( pStoredKey )
-		{ *pStoredKey= tm->tr_lfcu= savedKey;	}
+		{ *pStoredKey= tm->tr_lfcu;	}
+	    if  ( pPrevVal )
+		{ *pPrevVal= prevVal;	}
 	    break;
 
 	case 5:
 	    /*  in R	*/
 	    if  ( nwkey )
 		{ no->no_R.nsKey= savedKey;	}
+	    else{ prevVal= no->no_R.sl_val;	}
 	    no->no_R.sl_val= val;
 	    tm->tr_curr= no;
 	    tm->trCurrentDeleted= 0;
+	    tm->tr_lfcu= no->no_R.nsKey;
 	    if  ( pStoredKey )
-		{ *pStoredKey= tm->tr_lfcu= no->no_R.nsKey;	}
+		{ *pStoredKey= tm->tr_lfcu;	}
+	    if  ( pPrevVal )
+		{ *pPrevVal= prevVal;	}
 	    break;
 
 	case 6:
@@ -479,8 +500,11 @@ int utilTreeStoreValue(	void *		tree,
 	    no->no_R.nsKey= (char *)0;
 	    tm->tr_curr= nw;
 	    tm->trCurrentDeleted= 0;
+	    tm->tr_lfcu= savedKey;
 	    if  ( pStoredKey )
-		{ *pStoredKey= tm->tr_lfcu= savedKey;	}
+		{ *pStoredKey= tm->tr_lfcu;	}
+	    if  ( pPrevVal )
+		{ *pPrevVal= prevVal;	}
 	    break;
 
 	default:

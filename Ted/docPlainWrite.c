@@ -102,6 +102,7 @@ static int docPlainSaveParaItem(	SimpleOutputStream *		sos,
 
 		while( stroff < upto && stroff < tp->tpStroff+ tp->tpStrlen )
 		    {
+#		    if 0
 		    if  ( ! paragraphUnderlined && ta.taTextIsUnderlined )
 			{
 			sioOutPutCharacter( '_', sos );
@@ -113,6 +114,7 @@ static int docPlainSaveParaItem(	SimpleOutputStream *		sos,
 			sioOutPutCharacter( *s, sos );
 			sioOutPutCharacter( '\b', sos );
 			}
+#		    endif
 
 		    sioOutPutCharacter( *s, sos );
 		    s++; stroff++; pos++;
@@ -196,6 +198,7 @@ static int docPlainSaveParaItem(	SimpleOutputStream *		sos,
     if  ( pwc->pwcEndClosed && stroff == bi->biParaStrlen )
 	{ sioOutPutCharacter( '\n', sos ); lineCount++;	}
 
+#   if 0
     if  ( lineCount == 1	&&
 	  pos > 0		&&
 	  paragraphUnderlined	)
@@ -209,6 +212,7 @@ static int docPlainSaveParaItem(	SimpleOutputStream *		sos,
 
 	sioOutPutCharacter( '\n', sos );
 	}
+#   endif
 
     return 0;
     }

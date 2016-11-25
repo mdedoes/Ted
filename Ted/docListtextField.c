@@ -12,22 +12,22 @@
 
 #   include	<appDebugon.h>
 
-#   include	<utilBase26.h>
-#   include	<utilRoman.h>
 #   include	"docBuf.h"
 #   include	"docEvalField.h"
 #   include	"docEdit.h"
 
 /************************************************************************/
 /*									*/
-/*  Format the value of a 'listtext' field.				*/
+/*  Calculate the string for a listtext field.				*/
+/*  The caller (below) makes the particules.				*/
 /*									*/
-/*  I.E. the text of the bullet or paragraph number at the beginning	*/
-/*	of a paragraph that gets one because it has a list reference.	*/
+/*  1)  The actual number						*/
+/*  2)  The space for the separator.					*/
 /*									*/
 /************************************************************************/
 
-int docCalculateListtextString(	unsigned char *			target,
+static int docCalculateListtextParaString(
+				unsigned char *			target,
 				int				maxsize,
 				int				ilvl,
 				const int *			numberPath,
@@ -35,128 +35,17 @@ int docCalculateListtextString(	unsigned char *			target,
 				const int *			formatPath,
 				const DocumentListLevel *	dll )
     {
-    int		done= 0;
-    int		textSize= 1;
-    int		textUsed= 1;
+    int		done;
 
-    int		off;
+    /*  1  */
+    done= docListLevelFormatParagraphNumber( target, maxsize, (int *)0, 0,
+			    ilvl, numberPath, startPath, formatPath, dll );
+    if  ( done < 0 )
+	{ LDEB(done); return done;	}
 
-    if  ( ! dll->dllText )
-	{ XDEB(dll->dllText); return -1; }
+    target += done;
 
-    if  ( dll->dllTextSize > 0 )
-	{ textSize= dll->dllText[0]+ 1;	}
-
-    for ( off= 0; off < dll->dllNumberSize; off++ )
-	{
-	int	level;
-	int	step;
-	int	upto= dll->dllNumbers[off];
-	int	val;
-
-	if  ( upto >= textSize	||
-	      upto < textUsed	)
-	    { LLLDEB(upto,textSize,textUsed); return -1;	}
-	if  ( done+ ( upto- textUsed ) >= maxsize )
-	    { LLLDEB(done,upto- textUsed,maxsize); return -1;		}
-
-	if  ( textUsed < upto )
-	    {
-	    memcpy( target, dll->dllText+ textUsed, upto- textUsed );
-	    target += upto- textUsed; done += upto- textUsed; textUsed= upto;
-	    }
-
-	target[0]= '\0';
-
-	level= dll->dllText[textUsed++];
-	if  ( level > ilvl )
-	    { LLDEB(ilvl,level); return -1;	}
-
-	val= startPath[level]+ numberPath[level];
-
-	switch( formatPath[level] )
-	    {
-	    case DOCpnDEC:
-		if  ( done+ 11 > maxsize )
-		    { LLDEB(done,maxsize); return -1;	}
-		sprintf( (char *)target, "%d", val );
-		step= strlen( (char *)target );
-		target += step; done += step;
-		break;
-
-	    case DOCpnUCRM:
-		if  ( utilRomanString( (char *)target, maxsize, val, 1 ) )
-		    { LDEB(val); return -1;	}
-		step= strlen( (char *)target );
-		target += step; done += step;
-		break;
-
-	    case DOCpnLCRM:
-		if  ( utilRomanString( (char *)target, maxsize, val, 0 ) )
-		    { LDEB(val); return -1;	}
-		step= strlen( (char *)target );
-		target += step; done += step;
-		break;
-
-	    case DOCpnUCLTR:
-		if  ( val == 0 )
-		    { strcpy( (char *)target, "+" ); }
-		else{
-		    if  ( utilBase26String( (char *)target, maxsize, val, 1 ) )
-			{ LDEB(val); return -1;	}
-		    }
-		step= strlen( (char *)target );
-		target += step; done += step;
-		break;
-
-	    case DOCpnLCLTR:
-		if  ( val == 0 )
-		    { strcpy( (char *)target, "+" ); }
-		else{
-		    if  ( utilBase26String( (char *)target, maxsize, val, 0 ) )
-			{ LDEB(val); return -1;	}
-		    }
-		step= strlen( (char *)target );
-		target += step; done += step;
-		break;
-
-	    case 22:
-		if  ( done+ 11 > maxsize )
-		    { LLDEB(done,maxsize); return -1;	}
-		sprintf( (char *)target, "%02d", val );
-		step= strlen( (char *)target );
-		target += step; done += step;
-		break;
-
-	    case 23:
-		*(target++)= 0xb7; done++;
-		target[0]= '\0';
-		break;
-
-	    case 255:
-		break;
-
-	    default:
-		LLLDEB(level,formatPath[level],val);
-		if  ( done+ 11 > maxsize )
-		    { LLDEB(done,maxsize); return -1;	}
-		sprintf( (char *)target, "(%d)", val );
-		break;
-	    }
-	}
-
-    if  ( textUsed < textSize )
-	{
-	int	upto= textSize;
-
-	if  ( done+ ( upto- textUsed ) >= maxsize )
-	    { LLLDEB(done,upto- textUsed,maxsize); return -1;	}
-
-	memcpy( target, dll->dllText+ textUsed, upto- textUsed );
-	target += upto- textUsed; done += upto- textUsed;
-	target[0]= '\0';
-	}
-
+    /*  2  */
     if  ( dll->dllFollow == DOCllfTAB || dll->dllFollow == DOCllfSPACE )
 	{
 	if  ( done+ 1 >= maxsize )
@@ -177,11 +66,11 @@ int docCalculateListtextString(	unsigned char *			target,
 /*  2)  Get override and number tree.					*/
 /*  3)  Link override to list if nexessary.				*/
 /*  4)  Paranoia again: Is it an existing list?				*/
-/*  5)  Obtain the path in the number tree. ( E.G: 1.4.7.8 )		*/
+/*  5)  Obtain the path in the number tree. ( E.G: 13.1.18.11 )		*/
 /*  6)  Calculate number or bullet text.				*/
 /*  7)  Replace old field contents with the new string.			*/
 /*  8)  Calculate attribute number for added text.			*/
-/*  9)  Insert text paricule.						*/
+/*  9)  Insert text particule.						*/
 /*  10) Insert tab.							*/
 /*									*/
 /************************************************************************/
@@ -247,7 +136,7 @@ int docRecalculateParaListtextTextParticules(
 	{ LLDEB(pp->ppListOverride,ilvl); *pCalculated= 0; return 0; }
 
     /*  6  */
-    addedStrlen= docCalculateListtextString(
+    addedStrlen= docCalculateListtextParaString(
 				    addedString, sizeof(addedString)- 1, ilvl,
 				    numberPath, startPath, formatPath, dll );
     if  ( addedStrlen < 0 )

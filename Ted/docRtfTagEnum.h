@@ -56,7 +56,6 @@ typedef enum RtfTag
     RTFidCVMME,
     RTFidDEFFORMAT,
     RTFidDEFLANG,
-    RTFidDOCTEMP,
 
     RTFidFLDALT,
     RTFidFORMDISP,
@@ -122,7 +121,6 @@ typedef enum RtfTag
     RTFidDGMARGIN,
 
     RTFidNOLEAD,
-    RTFidSPRSTSM,
     RTFidTRUNCEX,
     RTFidMSMCAP,
     RTFidSPLYTWNINE,
@@ -412,12 +410,9 @@ typedef enum RtfTag
 				/****************************************/
 				/*  Shapes.				*/
 				/****************************************/
-    RTFidSHP,
-
     RTFidSHPTXT,
     RTFidSHPRSLT,
     RTFidSHPINST,
-    RTFidSHPGRP,
 
     RTFidSP,
     RTFidSV,

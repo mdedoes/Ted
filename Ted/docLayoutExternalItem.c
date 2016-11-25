@@ -38,8 +38,6 @@ int docGetExternalItemBox(	DocumentRectangle *		dr,
     const SectionProperties *	sp;
     const DocumentGeometry *	dgRef;
 
-    double			xfac= add->addMagnifiedPixelsPerTwip;
-
     const BufferItem *		externSectBi= ei->eiItem;
 
     DocumentRectangle		drBox;
@@ -65,22 +63,22 @@ int docGetExternalItemBox(	DocumentRectangle *		dr,
 	    sp= &(bodySectBi->biSectProperties);
 	    dgRef= &(sp->spDocumentGeometry);
 
-	    drBox.drX0= TWIPStoPIXELS( xfac, dgRef->dgLeftMarginTwips );
-	    drBox.drX1= TWIPStoPIXELS( xfac, dgRef->dgPageWideTwips-
+	    drBox.drX0= X_PIXELS( add, dgRef->dgLeftMarginTwips );
+	    drBox.drX1= X_PIXELS( add, dgRef->dgPageWideTwips-
 						dgRef->dgRightMarginTwips );
 
 	    if  ( justUsed )
 		{
 		drBox.drY0= pageTopPixels+
-				TWIPStoPIXELS( xfac, ei->eiY0UsedTwips );
+				Y_PIXELS( add, ei->eiY0UsedTwips );
 		drBox.drY1= pageTopPixels+
-				TWIPStoPIXELS( xfac, ei->eiY1UsedTwips );
+				Y_PIXELS( add, ei->eiY1UsedTwips );
 		}
 	    else{
 		drBox.drY0= pageTopPixels+
-				TWIPStoPIXELS( xfac, ei->eiY0ReservedTwips );
+				Y_PIXELS( add, ei->eiY0ReservedTwips );
 		drBox.drY1= pageTopPixels+
-				TWIPStoPIXELS( xfac, ei->eiY1ReservedTwips );
+				Y_PIXELS( add, ei->eiY1ReservedTwips );
 		}
 
 	    *dr= drBox; return 0;
@@ -91,8 +89,8 @@ int docGetExternalItemBox(	DocumentRectangle *		dr,
 	    sp= &(bodySectBi->biSectProperties);
 	    dgRef= &(sp->spDocumentGeometry);
 
-	    drBox.drX0= TWIPStoPIXELS( xfac, dgRef->dgLeftMarginTwips );
-	    drBox.drX1= TWIPStoPIXELS( xfac, dgRef->dgPageWideTwips-
+	    drBox.drX0= X_PIXELS( add, dgRef->dgLeftMarginTwips );
+	    drBox.drX1= X_PIXELS( add, dgRef->dgPageWideTwips-
 						dgRef->dgRightMarginTwips );
 
 	    {
@@ -140,14 +138,14 @@ int docGetExternalItemBox(	DocumentRectangle *		dr,
 	    dp= &(bd->bdProperties);
 	    dgRef= &(dp->dpGeometry);
 
-	    drBox.drX0= TWIPStoPIXELS( xfac, dgRef->dgLeftMarginTwips );
-	    drBox.drX1= TWIPStoPIXELS( xfac, dgRef->dgPageWideTwips-
+	    drBox.drX0= X_PIXELS( add, dgRef->dgLeftMarginTwips );
+	    drBox.drX1= X_PIXELS( add, dgRef->dgPageWideTwips-
 						dgRef->dgRightMarginTwips );
 
 	    drBox.drY0= pageTopPixels+
-				TWIPStoPIXELS( xfac, ei->eiY0UsedTwips );
+				Y_PIXELS( add, ei->eiY0UsedTwips );
 	    drBox.drY1= pageTopPixels+
-				TWIPStoPIXELS( xfac, ei->eiY1UsedTwips );
+				Y_PIXELS( add, ei->eiY1UsedTwips );
 
 	    *dr= drBox; return 0;
 
@@ -211,6 +209,9 @@ int docExternalItemPrelayout(		ExternalItem *			ei,
 
     docBlockFrameTwips( &bf, ei->eiItem, lj->ljBd,
 					headerLp.lpPage, headerLp.lpColumn );
+    bf.bfY0Twips= headerLp.lpPageYTwips;
+    bf.bfYBelowShapes= headerLp.lpPageYTwips;
+
     /*  1  */
     bf.bfY1Twips= dgRef->dgPageHighTwips;
 

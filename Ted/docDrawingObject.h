@@ -11,58 +11,7 @@
 
 #   include	<bmcolor.h>
 #   include	<appGuiBase.h>
-
-typedef enum DrawingObjectXAttach
-    {
-    DOxaPAGE= 0,
-    DOxaCOLUMN,
-    DOxaMARGIN,
-
-    DOxa_COUNT
-    } DrawingObjectXAttach;
-
-# define DOxa_BITS	2
-
-typedef enum DrawingObjectYAttach
-    {
-    DOyaPAGE= 0,
-    DOyaPARAGRAPH,
-    DOyaMARGIN,
-
-    DOya_COUNT
-    } DrawingObjectYAttach;
-
-# define DOya_BITS	2
-
-typedef enum DrawingObjectKind
-    {
-    DOkindARC= 0,
-    DOkindCALLOUT,
-    DOkindELLIPSE,
-    DOkindLINE,
-    DOkindPOLYGON,
-    DOkindPOLYLINE,
-    DOkindRECT,
-    DOkindTXBX,
-
-    DOkind_COUNT
-    } DrawingObjectKind;
-
-# define DOkind_BITS	3
-
-typedef enum DrawingObjectLineStyle
-    {
-    DOlineSOLID= 0,
-    DOlineHOLLOW,
-    DOlineDASH,
-    DOlineDOT,
-    DOlineDADO,
-    DOlineDADODO,
-
-    DOline_COUNT
-    } DrawingObjectLineStyle;
-
-# define DOline_BITS	3
+#   include	"docShape.h"
 
 typedef enum DrawingObjectFillPattern
     {
@@ -99,40 +48,6 @@ typedef enum DrawingObjectFillPattern
     DOfill_COUNT
     } DrawingObjectFillPattern;
 
-# define DOfill_BITS	5
-
-typedef struct DrawingObject
-    {
-    unsigned int	doAnchorLocked:1;
-    unsigned int	doXAttach:DOxa_BITS;
-    unsigned int	doYAttach:DOya_BITS;
-    unsigned int	doKind:DOkind_BITS;
-    unsigned int	doLineStyle:DOline_BITS;
-    unsigned int	doFillPattern:DOfill_BITS;
-    unsigned int	doArcFlipX:1;
-    unsigned int	doArcFlipY:1;
-
-    unsigned int	doLineColorGray:1;
-    unsigned int	doFillForeColorGray:1;
-    unsigned int	doFillBackColorGray:1;
-
-    short		doX;
-    short		doY;
-    short		doZ;
-    short		doWide;
-    short		doHigh;
-
-    short		doLineWidth;
-
-    RGB8Color		doLineColor;
-    RGB8Color		doFillForeColor;
-    RGB8Color		doFillBackColor;
-
-    APP_POINT *		doPoints;
-    int			doPointCount;
-    int			doNextPoint;
-    } DrawingObject;
-
 typedef enum DrawingObjectProperty
     {
     DOpropANCHOR_LOCKED= 0,
@@ -151,9 +66,17 @@ typedef enum DrawingObjectProperty
     DOpropY,
     DOpropWIDE,
     DOpropHIGH,
+    DOpropTEXT_BOX_MARGIN,
 
     DOpropLINE_WIDTH,
     DOpropPOINT_COUNT,
+
+    DOpropSTART_ARROW_HEAD,
+    DOpropEND_ARROW_HEAD,
+    DOpropSTART_ARROW_WIDTH,
+    DOpropSTART_ARROW_LENGTH,
+    DOpropEND_ARROW_WIDTH,
+    DOpropEND_ARROW_LENGTH,
 
     DOpropLINE_RED,
     DOpropLINE_GREEN,
@@ -172,14 +95,5 @@ typedef enum DrawingObjectProperty
 
     DOprop_COUNT
     } DrawingObjectProperty;
-
-/************************************************************************/
-/*									*/
-/*  Function prototypes.						*/
-/*									*/
-/************************************************************************/
-
-void docInitDrawingObject(		DrawingObject *		wdo );
-void docCleanDrawingObject(		DrawingObject *		wdo );
 
 #   endif /*  DOC_DRAWING_OBJECT_H  */

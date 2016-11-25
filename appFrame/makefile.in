@@ -36,7 +36,7 @@ CFLAGS=			\
 #XM_CFLAGS=-I/home/gaai/mark/gnu/lesstif-0.88.0/include/Motif-1.2
 #CFLAGS	= @CFLAGS@ $(WFLAGS) $(INCLUDES)
 
-# 87 lines
+# 90 lines
 OBS	=	\
 		sioCopyPasteMotif.o\
 		sioCopyPasteGtk.o\
@@ -57,6 +57,7 @@ OBS	=	\
 		appRuler.o\
 		appRgbCube.o\
 		appRgbChooserPage.o\
+		appResource.o\
 		appReally.o\
 		appQuestion.o\
 		appPutImageMotif.o\
@@ -97,6 +98,7 @@ OBS	=	\
 		appGuiGtk.o\
 		appGetImageMotif.o\
 		appGetImageGtk.o\
+		appFrameMotif.o\
 		appFontTool.o\
 		appFont.o\
 		appFindTool.o\
@@ -109,6 +111,7 @@ OBS	=	\
 		appDrawnPulldownMotif.o\
 		appDrawnPulldownGtk.o\
 		appDrawnPulldown.o\
+		appDrawX11.o\
 		appDrawPage.o\
 		appDrawMotif.o\
 		appDrawGtk.o\
@@ -149,6 +152,8 @@ appColorChooser.o: \
     appFrameConfig.h \
     ../appFrame/appColorChooser.h \
     ../appFrame/appGuiBase.h \
+    ../appFrame/appGuiBaseMotif.h \
+    ../appFrame/appGuiBaseGtk.h \
     ../appFrame/appDraw.h \
     ../appUtil/utilPropMask.h \
     ../appUtil/geo2DInteger.h \
@@ -178,6 +183,8 @@ appColorGtk.o: \
     appFrameConfig.h \
     appDraw.h \
     ../appFrame/appGuiBase.h \
+    ../appFrame/appGuiBaseMotif.h \
+    ../appFrame/appGuiBaseGtk.h \
     ../appUtil/utilPropMask.h \
     ../appUtil/geo2DInteger.h \
     ../appUtil/utilDocFont.h \
@@ -194,6 +201,8 @@ appColorMotif.o: \
     appFrameConfig.h \
     appDraw.h \
     ../appFrame/appGuiBase.h \
+    ../appFrame/appGuiBaseMotif.h \
+    ../appFrame/appGuiBaseGtk.h \
     ../appUtil/utilPropMask.h \
     ../appUtil/geo2DInteger.h \
     ../appUtil/utilDocFont.h \
@@ -210,6 +219,8 @@ appCopyPasteGtk.o: \
     appFrameConfig.h \
     ../appFrame/appFrame.h \
     ../appFrame/appGuiBase.h \
+    ../appFrame/appGuiBaseMotif.h \
+    ../appFrame/appGuiBaseGtk.h \
     ../appFrame/appGuiResource.h \
     ../appUtil/geo2DInteger.h \
     ../appUtil/utilPs.h \
@@ -238,6 +249,8 @@ appCopyPasteMotif.o: \
     appFrameConfig.h \
     ../appFrame/appFrame.h \
     ../appFrame/appGuiBase.h \
+    ../appFrame/appGuiBaseMotif.h \
+    ../appFrame/appGuiBaseGtk.h \
     ../appFrame/appGuiResource.h \
     ../appUtil/geo2DInteger.h \
     ../appUtil/utilPs.h \
@@ -266,6 +279,8 @@ appDialogGtk.o: \
     appFrameConfig.h \
     appFrame.h \
     ../appFrame/appGuiBase.h \
+    ../appFrame/appGuiBaseMotif.h \
+    ../appFrame/appGuiBaseGtk.h \
     ../appFrame/appGuiResource.h \
     ../appUtil/geo2DInteger.h \
     ../appUtil/utilPs.h \
@@ -294,6 +309,8 @@ appDialogMotif.o: \
     appFrameConfig.h \
     appFrame.h \
     ../appFrame/appGuiBase.h \
+    ../appFrame/appGuiBaseMotif.h \
+    ../appFrame/appGuiBaseGtk.h \
     ../appFrame/appGuiResource.h \
     ../appUtil/geo2DInteger.h \
     ../appUtil/utilPs.h \
@@ -324,6 +341,8 @@ appDocMetricRuler.o: \
     appFrameConfig.h \
     ../appFrame/appFrame.h \
     ../appFrame/appGuiBase.h \
+    ../appFrame/appGuiBaseMotif.h \
+    ../appFrame/appGuiBaseGtk.h \
     ../appFrame/appGuiResource.h \
     ../appUtil/geo2DInteger.h \
     ../appUtil/utilPs.h \
@@ -361,6 +380,8 @@ appDocument.o: \
     ../appUtil/sioGeneral.h \
     appFrame.h \
     ../appFrame/appGuiBase.h \
+    ../appFrame/appGuiBaseMotif.h \
+    ../appFrame/appGuiBaseGtk.h \
     ../appFrame/appGuiResource.h \
     ../appUtil/geo2DInteger.h \
     ../appUtil/utilPs.h \
@@ -386,6 +407,8 @@ appDocumentGtk.o: \
     appFrameConfig.h \
     appFrame.h \
     ../appFrame/appGuiBase.h \
+    ../appFrame/appGuiBaseMotif.h \
+    ../appFrame/appGuiBaseGtk.h \
     ../appFrame/appGuiResource.h \
     ../appUtil/geo2DInteger.h \
     ../appUtil/utilPs.h \
@@ -414,6 +437,8 @@ appDocumentMotif.o: \
     appFrameConfig.h \
     appFrame.h \
     ../appFrame/appGuiBase.h \
+    ../appFrame/appGuiBaseMotif.h \
+    ../appFrame/appGuiBaseGtk.h \
     ../appFrame/appGuiResource.h \
     ../appUtil/geo2DInteger.h \
     ../appUtil/utilPs.h \
@@ -443,6 +468,8 @@ appDrawGtk.o: \
     ../appUtil/geo2DInteger.h \
     appDraw.h \
     ../appFrame/appGuiBase.h \
+    ../appFrame/appGuiBaseMotif.h \
+    ../appFrame/appGuiBaseGtk.h \
     ../appUtil/utilPropMask.h \
     ../appUtil/utilDocFont.h \
     ../appUtil/utilTextAttribute.h \
@@ -459,6 +486,8 @@ appDrawMotif.o: \
     ../appUtil/geo2DInteger.h \
     appDraw.h \
     ../appFrame/appGuiBase.h \
+    ../appFrame/appGuiBaseMotif.h \
+    ../appFrame/appGuiBaseGtk.h \
     ../appUtil/utilPropMask.h \
     ../appUtil/utilDocFont.h \
     ../appUtil/utilTextAttribute.h \
@@ -476,6 +505,8 @@ appDrawPage.o: \
     ../include/appDebug.h \
     ../appFrame/appFrame.h \
     ../appFrame/appGuiBase.h \
+    ../appFrame/appGuiBaseMotif.h \
+    ../appFrame/appGuiBaseGtk.h \
     ../appFrame/appGuiResource.h \
     ../appUtil/geo2DInteger.h \
     ../appUtil/utilPs.h \
@@ -499,11 +530,31 @@ appDrawPage.o: \
     ../appUtil/appUnit.h \
     ../appUtil/appGeoString.h
 
+appDrawX11.o: \
+    appDrawX11.c \
+    appFrameConfig.h \
+    ../appFrame/appDraw.h \
+    ../appFrame/appGuiBase.h \
+    ../appFrame/appGuiBaseMotif.h \
+    ../appFrame/appGuiBaseGtk.h \
+    ../appUtil/utilPropMask.h \
+    ../appUtil/geo2DInteger.h \
+    ../appUtil/utilDocFont.h \
+    ../appUtil/utilTextAttribute.h \
+    ../appUtil/utilFontEncoding.h \
+    ../appUtil/psFont.h \
+    ../appUtil/sioGeneral.h \
+    ../bitmap/bmcolor.h \
+    ../include/appDebugon.h \
+    ../include/appDebug.h
+
 appDrawnPulldown.o: \
     appDrawnPulldown.c \
     appFrameConfig.h \
     appFrame.h \
     ../appFrame/appGuiBase.h \
+    ../appFrame/appGuiBaseMotif.h \
+    ../appFrame/appGuiBaseGtk.h \
     ../appFrame/appGuiResource.h \
     ../appUtil/geo2DInteger.h \
     ../appUtil/utilPs.h \
@@ -534,6 +585,8 @@ appDrawnPulldownGtk.o: \
     appFrameConfig.h \
     appFrame.h \
     ../appFrame/appGuiBase.h \
+    ../appFrame/appGuiBaseMotif.h \
+    ../appFrame/appGuiBaseGtk.h \
     ../appFrame/appGuiResource.h \
     ../appUtil/geo2DInteger.h \
     ../appUtil/utilPs.h \
@@ -562,6 +615,8 @@ appDrawnPulldownMotif.o: \
     appFrameConfig.h \
     appFrame.h \
     ../appFrame/appGuiBase.h \
+    ../appFrame/appGuiBaseMotif.h \
+    ../appFrame/appGuiBaseGtk.h \
     ../appFrame/appGuiResource.h \
     ../appUtil/geo2DInteger.h \
     ../appUtil/utilPs.h \
@@ -595,6 +650,8 @@ appEncodingMenu.o: \
     ../appUtil/utilFontEncoding.h \
     ../appUtil/sioGeneral.h \
     ../appFrame/appGuiBase.h \
+    ../appFrame/appGuiBaseMotif.h \
+    ../appFrame/appGuiBaseGtk.h \
     ../appFrame/appFrame.h \
     ../appFrame/appGuiResource.h \
     ../appUtil/geo2DInteger.h \
@@ -622,6 +679,8 @@ appEventGtk.o: \
     ../appUtil/geo2DInteger.h \
     appDraw.h \
     ../appFrame/appGuiBase.h \
+    ../appFrame/appGuiBaseMotif.h \
+    ../appFrame/appGuiBaseGtk.h \
     ../appUtil/utilPropMask.h \
     ../appUtil/utilDocFont.h \
     ../appUtil/utilTextAttribute.h \
@@ -638,6 +697,8 @@ appEventMotif.o: \
     ../appUtil/geo2DInteger.h \
     appDraw.h \
     ../appFrame/appGuiBase.h \
+    ../appFrame/appGuiBaseMotif.h \
+    ../appFrame/appGuiBaseGtk.h \
     ../appUtil/utilPropMask.h \
     ../appUtil/utilDocFont.h \
     ../appUtil/utilTextAttribute.h \
@@ -656,6 +717,8 @@ appFileChooser.o: \
     ../appUtil/sioGeneral.h \
     ../appFrame/appFrame.h \
     ../appFrame/appGuiBase.h \
+    ../appFrame/appGuiBaseMotif.h \
+    ../appFrame/appGuiBaseGtk.h \
     ../appFrame/appGuiResource.h \
     ../appUtil/geo2DInteger.h \
     ../appUtil/utilPs.h \
@@ -685,6 +748,8 @@ appFileChooserGtk.o: \
     ../appUtil/appSystem.h \
     ../appFrame/appFrame.h \
     ../appFrame/appGuiBase.h \
+    ../appFrame/appGuiBaseMotif.h \
+    ../appFrame/appGuiBaseGtk.h \
     ../appFrame/appGuiResource.h \
     ../appUtil/geo2DInteger.h \
     ../appUtil/utilPs.h \
@@ -715,6 +780,8 @@ appFileChooserMotif.o: \
     ../appUtil/appSystem.h \
     ../appFrame/appFrame.h \
     ../appFrame/appGuiBase.h \
+    ../appFrame/appGuiBaseMotif.h \
+    ../appFrame/appGuiBaseGtk.h \
     ../appFrame/appGuiResource.h \
     ../appUtil/geo2DInteger.h \
     ../appUtil/utilPs.h \
@@ -744,6 +811,8 @@ appFindTool.o: \
     appFrameConfig.h \
     appFrame.h \
     ../appFrame/appGuiBase.h \
+    ../appFrame/appGuiBaseMotif.h \
+    ../appFrame/appGuiBaseGtk.h \
     ../appFrame/appGuiResource.h \
     ../appUtil/geo2DInteger.h \
     ../appUtil/utilPs.h \
@@ -781,6 +850,8 @@ appFont.o: \
     ../appUtil/sioGeneral.h \
     appDraw.h \
     ../appFrame/appGuiBase.h \
+    ../appFrame/appGuiBaseMotif.h \
+    ../appFrame/appGuiBaseGtk.h \
     ../appUtil/geo2DInteger.h \
     ../bitmap/bmcolor.h \
     ../bitmap/bitmap.h
@@ -796,6 +867,8 @@ appFontTool.o: \
     ../appUtil/utilTree.h \
     ../appFrame/appFrame.h \
     ../appFrame/appGuiBase.h \
+    ../appFrame/appGuiBaseMotif.h \
+    ../appFrame/appGuiBaseGtk.h \
     ../appFrame/appGuiResource.h \
     ../appUtil/geo2DInteger.h \
     ../appUtil/utilPs.h \
@@ -822,6 +895,38 @@ appFontTool.o: \
     ../appFrame/appColorChooser.h \
     appDraw.h
 
+appFrameMotif.o: \
+    appFrameMotif.c \
+    appFrameConfig.h \
+    appFrame.h \
+    ../appFrame/appGuiBase.h \
+    ../appFrame/appGuiBaseMotif.h \
+    ../appFrame/appGuiBaseGtk.h \
+    ../appFrame/appGuiResource.h \
+    ../appUtil/geo2DInteger.h \
+    ../appUtil/utilPs.h \
+    ../appUtil/sioGeneral.h \
+    ../appUtil/utilDocumentGeometry.h \
+    ../appUtil/utilPropMask.h \
+    ../appUtil/psFont.h \
+    ../appUtil/utilFontEncoding.h \
+    ../appUtil/utilPostscriptFace.h \
+    ../appUtil/utilDocFont.h \
+    ../appUtil/utilTextAttribute.h \
+    ../appUtil/utilAffineTransform.h \
+    ../appUtil/utilNup.h \
+    ../appUtil/utilPrinter.h \
+    ../appUtil/utilMailContent.h \
+    ../appFrame/appIcons.h \
+    ../appFrame/appTool.h \
+    ../appFrame/appDraw.h \
+    ../bitmap/bmcolor.h \
+    ../appFrame/appInspector.h \
+    ../appUtil/appSystem.h \
+    ../appUtil/appGeoString.h \
+    ../include/appDebugon.h \
+    ../include/appDebug.h
+
 appGetImageGtk.o: \
     appGetImageGtk.c \
     appFrameConfig.h \
@@ -831,6 +936,8 @@ appGetImageGtk.o: \
     ../appUtil/sioGeneral.h \
     ../bitmap/bmcolor.h \
     ../appFrame/appGuiBase.h \
+    ../appFrame/appGuiBaseMotif.h \
+    ../appFrame/appGuiBaseGtk.h \
     ../appFrame/appDraw.h \
     ../appUtil/utilPropMask.h \
     ../appUtil/geo2DInteger.h \
@@ -850,6 +957,8 @@ appGetImageMotif.o: \
     ../appUtil/sioGeneral.h \
     ../bitmap/bmcolor.h \
     ../appFrame/appGuiBase.h \
+    ../appFrame/appGuiBaseMotif.h \
+    ../appFrame/appGuiBaseGtk.h \
     ../appFrame/appDraw.h \
     ../appUtil/utilPropMask.h \
     ../appUtil/geo2DInteger.h \
@@ -878,6 +987,8 @@ appGuiMotif.o: \
     appFrameConfig.h \
     appFrame.h \
     ../appFrame/appGuiBase.h \
+    ../appFrame/appGuiBaseMotif.h \
+    ../appFrame/appGuiBaseGtk.h \
     ../appFrame/appGuiResource.h \
     ../appUtil/geo2DInteger.h \
     ../appUtil/utilPs.h \
@@ -908,6 +1019,8 @@ appGuiUtil.o: \
     appFrameConfig.h \
     appFrame.h \
     ../appFrame/appGuiBase.h \
+    ../appFrame/appGuiBaseMotif.h \
+    ../appFrame/appGuiBaseGtk.h \
     ../appFrame/appGuiResource.h \
     ../appUtil/geo2DInteger.h \
     ../appUtil/utilPs.h \
@@ -938,6 +1051,8 @@ appIconsGtk.o: \
     appFrameConfig.h \
     appFrame.h \
     ../appFrame/appGuiBase.h \
+    ../appFrame/appGuiBaseMotif.h \
+    ../appFrame/appGuiBaseGtk.h \
     ../appFrame/appGuiResource.h \
     ../appUtil/geo2DInteger.h \
     ../appUtil/utilPs.h \
@@ -967,6 +1082,8 @@ appIconsMotif.o: \
     appFrameConfig.h \
     appFrame.h \
     ../appFrame/appGuiBase.h \
+    ../appFrame/appGuiBaseMotif.h \
+    ../appFrame/appGuiBaseGtk.h \
     ../appFrame/appGuiResource.h \
     ../appUtil/geo2DInteger.h \
     ../appUtil/utilPs.h \
@@ -999,6 +1116,8 @@ appImage.o: \
     ../appUtil/sioGeneral.h \
     ../bitmap/bmcolor.h \
     ../appFrame/appGuiBase.h \
+    ../appFrame/appGuiBaseMotif.h \
+    ../appFrame/appGuiBaseGtk.h \
     ../appFrame/appDraw.h \
     ../appUtil/utilPropMask.h \
     ../appUtil/geo2DInteger.h \
@@ -1026,6 +1145,8 @@ appInspector.o: \
     appFrameConfig.h \
     ../appFrame/appFrame.h \
     ../appFrame/appGuiBase.h \
+    ../appFrame/appGuiBaseMotif.h \
+    ../appFrame/appGuiBaseGtk.h \
     ../appFrame/appGuiResource.h \
     ../appUtil/geo2DInteger.h \
     ../appUtil/utilPs.h \
@@ -1056,6 +1177,8 @@ appInspectorGtk.o: \
     appFrameConfig.h \
     appFrame.h \
     ../appFrame/appGuiBase.h \
+    ../appFrame/appGuiBaseMotif.h \
+    ../appFrame/appGuiBaseGtk.h \
     ../appFrame/appGuiResource.h \
     ../appUtil/geo2DInteger.h \
     ../appUtil/utilPs.h \
@@ -1084,6 +1207,8 @@ appInspectorMotif.o: \
     appFrameConfig.h \
     appFrame.h \
     ../appFrame/appGuiBase.h \
+    ../appFrame/appGuiBaseMotif.h \
+    ../appFrame/appGuiBaseGtk.h \
     ../appFrame/appGuiResource.h \
     ../appUtil/geo2DInteger.h \
     ../appUtil/utilPs.h \
@@ -1114,6 +1239,8 @@ appKeystrokeMotif.o: \
     appFrameConfig.h \
     appFrame.h \
     ../appFrame/appGuiBase.h \
+    ../appFrame/appGuiBaseMotif.h \
+    ../appFrame/appGuiBaseGtk.h \
     ../appFrame/appGuiResource.h \
     ../appUtil/geo2DInteger.h \
     ../appUtil/utilPs.h \
@@ -1143,6 +1270,8 @@ appLabelGtk.o: \
     appFrameConfig.h \
     appFrame.h \
     ../appFrame/appGuiBase.h \
+    ../appFrame/appGuiBaseMotif.h \
+    ../appFrame/appGuiBaseGtk.h \
     ../appFrame/appGuiResource.h \
     ../appUtil/geo2DInteger.h \
     ../appUtil/utilPs.h \
@@ -1171,6 +1300,8 @@ appLabelMotif.o: \
     appFrameConfig.h \
     appFrame.h \
     ../appFrame/appGuiBase.h \
+    ../appFrame/appGuiBaseMotif.h \
+    ../appFrame/appGuiBaseGtk.h \
     ../appFrame/appGuiResource.h \
     ../appUtil/geo2DInteger.h \
     ../appUtil/utilPs.h \
@@ -1201,6 +1332,8 @@ appListGtk.o: \
     appFrameConfig.h \
     appFrame.h \
     ../appFrame/appGuiBase.h \
+    ../appFrame/appGuiBaseMotif.h \
+    ../appFrame/appGuiBaseGtk.h \
     ../appFrame/appGuiResource.h \
     ../appUtil/geo2DInteger.h \
     ../appUtil/utilPs.h \
@@ -1229,6 +1362,8 @@ appListMotif.o: \
     appFrameConfig.h \
     appFrame.h \
     ../appFrame/appGuiBase.h \
+    ../appFrame/appGuiBaseMotif.h \
+    ../appFrame/appGuiBaseGtk.h \
     ../appFrame/appGuiResource.h \
     ../appUtil/geo2DInteger.h \
     ../appUtil/utilPs.h \
@@ -1269,6 +1404,8 @@ appMacPict.o: \
     ../appUtil/psFont.h \
     ../appFrame/appDraw.h \
     ../appFrame/appGuiBase.h \
+    ../appFrame/appGuiBaseMotif.h \
+    ../appFrame/appGuiBaseGtk.h \
     ../appUtil/geo2DInteger.h \
     ../appFrame/appImage.h \
     ../appFrame/appMetafile.h \
@@ -1296,6 +1433,8 @@ appMacPictPs.o: \
     ../appUtil/psFont.h \
     ../appFrame/appDraw.h \
     ../appFrame/appGuiBase.h \
+    ../appFrame/appGuiBaseMotif.h \
+    ../appFrame/appGuiBaseGtk.h \
     ../appUtil/geo2DInteger.h \
     ../appFrame/appImage.h \
     ../appFrame/appMetafile.h \
@@ -1324,6 +1463,8 @@ appMacPictX11.o: \
     ../appUtil/psFont.h \
     ../appFrame/appDraw.h \
     ../appFrame/appGuiBase.h \
+    ../appFrame/appGuiBaseMotif.h \
+    ../appFrame/appGuiBaseGtk.h \
     ../appUtil/geo2DInteger.h \
     ../appFrame/appImage.h \
     ../appFrame/appMetafile.h \
@@ -1343,6 +1484,8 @@ appMailDialog.o: \
     ../include/appDebug.h \
     ../appFrame/appFrame.h \
     ../appFrame/appGuiBase.h \
+    ../appFrame/appGuiBaseMotif.h \
+    ../appFrame/appGuiBaseGtk.h \
     ../appFrame/appGuiResource.h \
     ../appUtil/geo2DInteger.h \
     ../appUtil/utilPs.h \
@@ -1372,6 +1515,8 @@ appMain.o: \
     ../appUtil/appSystem.h \
     ../appFrame/appFrame.h \
     ../appFrame/appGuiBase.h \
+    ../appFrame/appGuiBaseMotif.h \
+    ../appFrame/appGuiBaseGtk.h \
     ../appFrame/appGuiResource.h \
     ../appUtil/geo2DInteger.h \
     ../appUtil/utilPs.h \
@@ -1404,6 +1549,8 @@ appMarginTool.o: \
     ../appUtil/utilPropMask.h \
     ../appFrame/appFrame.h \
     ../appFrame/appGuiBase.h \
+    ../appFrame/appGuiBaseMotif.h \
+    ../appFrame/appGuiBaseGtk.h \
     ../appFrame/appGuiResource.h \
     ../appUtil/geo2DInteger.h \
     ../appUtil/utilPs.h \
@@ -1434,6 +1581,8 @@ appMenu.o: \
     appFrameConfig.h \
     appFrame.h \
     ../appFrame/appGuiBase.h \
+    ../appFrame/appGuiBaseMotif.h \
+    ../appFrame/appGuiBaseGtk.h \
     ../appFrame/appGuiResource.h \
     ../appUtil/geo2DInteger.h \
     ../appUtil/utilPs.h \
@@ -1462,6 +1611,8 @@ appMenuGtk.o: \
     appFrameConfig.h \
     appFrame.h \
     ../appFrame/appGuiBase.h \
+    ../appFrame/appGuiBaseMotif.h \
+    ../appFrame/appGuiBaseGtk.h \
     ../appFrame/appGuiResource.h \
     ../appUtil/geo2DInteger.h \
     ../appUtil/utilPs.h \
@@ -1490,6 +1641,8 @@ appMenuMotif.o: \
     appFrameConfig.h \
     appFrame.h \
     ../appFrame/appGuiBase.h \
+    ../appFrame/appGuiBaseMotif.h \
+    ../appFrame/appGuiBaseGtk.h \
     ../appFrame/appGuiResource.h \
     ../appUtil/geo2DInteger.h \
     ../appUtil/utilPs.h \
@@ -1518,6 +1671,8 @@ appMetafilePs.o: \
     appFrameConfig.h \
     ../appFrame/appMetafile.h \
     ../appFrame/appGuiBase.h \
+    ../appFrame/appGuiBaseMotif.h \
+    ../appFrame/appGuiBaseGtk.h \
     ../bitmap/bitmap.h \
     ../appUtil/sioGeneral.h \
     ../bitmap/bmcolor.h \
@@ -1544,6 +1699,8 @@ appMetafileX11.o: \
     appFrameConfig.h \
     ../appFrame/appMetafile.h \
     ../appFrame/appGuiBase.h \
+    ../appFrame/appGuiBaseMotif.h \
+    ../appFrame/appGuiBaseGtk.h \
     ../bitmap/bitmap.h \
     ../appUtil/sioGeneral.h \
     ../bitmap/bmcolor.h \
@@ -1570,6 +1727,8 @@ appMetricRuler.o: \
     appFrameConfig.h \
     ../appFrame/appFrame.h \
     ../appFrame/appGuiBase.h \
+    ../appFrame/appGuiBaseMotif.h \
+    ../appFrame/appGuiBaseGtk.h \
     ../appFrame/appGuiResource.h \
     ../appUtil/geo2DInteger.h \
     ../appUtil/utilPs.h \
@@ -1601,6 +1760,8 @@ appOptionmenuGtk.o: \
     appFrameConfig.h \
     appFrame.h \
     ../appFrame/appGuiBase.h \
+    ../appFrame/appGuiBaseMotif.h \
+    ../appFrame/appGuiBaseGtk.h \
     ../appFrame/appGuiResource.h \
     ../appUtil/geo2DInteger.h \
     ../appUtil/utilPs.h \
@@ -1629,6 +1790,8 @@ appOptionmenuMotif.o: \
     appFrameConfig.h \
     appFrame.h \
     ../appFrame/appGuiBase.h \
+    ../appFrame/appGuiBaseMotif.h \
+    ../appFrame/appGuiBaseGtk.h \
     ../appFrame/appGuiResource.h \
     ../appUtil/geo2DInteger.h \
     ../appUtil/utilPs.h \
@@ -1661,6 +1824,8 @@ appPageLayoutTool.o: \
     ../appUtil/appUnit.h \
     appFrame.h \
     ../appFrame/appGuiBase.h \
+    ../appFrame/appGuiBaseMotif.h \
+    ../appFrame/appGuiBaseGtk.h \
     ../appFrame/appGuiResource.h \
     ../appUtil/geo2DInteger.h \
     ../appUtil/utilPs.h \
@@ -1696,6 +1861,8 @@ appPageTool.o: \
     ../include/appDebug.h \
     ../appFrame/appFrame.h \
     ../appFrame/appGuiBase.h \
+    ../appFrame/appGuiBaseMotif.h \
+    ../appFrame/appGuiBaseGtk.h \
     ../appFrame/appGuiResource.h \
     ../appUtil/geo2DInteger.h \
     ../appUtil/utilPs.h \
@@ -1730,6 +1897,8 @@ appPaperChooser.o: \
     appPaperChooser.h \
     ../appFrame/appFrame.h \
     ../appFrame/appGuiBase.h \
+    ../appFrame/appGuiBaseMotif.h \
+    ../appFrame/appGuiBaseGtk.h \
     ../appFrame/appGuiResource.h \
     ../appUtil/geo2DInteger.h \
     ../appUtil/utilPs.h \
@@ -1760,6 +1929,8 @@ appPrintDialog.o: \
     ../include/appDebug.h \
     ../appFrame/appFrame.h \
     ../appFrame/appGuiBase.h \
+    ../appFrame/appGuiBaseMotif.h \
+    ../appFrame/appGuiBaseGtk.h \
     ../appFrame/appGuiResource.h \
     ../appUtil/geo2DInteger.h \
     ../appUtil/utilPs.h \
@@ -1797,6 +1968,8 @@ appPrintDocument.o: \
     ../appUtil/appPaper.h \
     appFrame.h \
     ../appFrame/appGuiBase.h \
+    ../appFrame/appGuiBaseMotif.h \
+    ../appFrame/appGuiBaseGtk.h \
     ../appFrame/appGuiResource.h \
     ../appUtil/geo2DInteger.h \
     ../appUtil/utilPs.h \
@@ -1827,6 +2000,8 @@ appPutImageGtk.o: \
     ../appUtil/sioGeneral.h \
     ../bitmap/bmcolor.h \
     ../appFrame/appGuiBase.h \
+    ../appFrame/appGuiBaseMotif.h \
+    ../appFrame/appGuiBaseGtk.h \
     ../appFrame/appDraw.h \
     ../appUtil/utilPropMask.h \
     ../appUtil/geo2DInteger.h \
@@ -1845,6 +2020,8 @@ appPutImageMotif.o: \
     ../appUtil/sioGeneral.h \
     ../bitmap/bmcolor.h \
     ../appFrame/appGuiBase.h \
+    ../appFrame/appGuiBaseMotif.h \
+    ../appFrame/appGuiBaseGtk.h \
     ../appFrame/appDraw.h \
     ../appUtil/utilPropMask.h \
     ../appUtil/geo2DInteger.h \
@@ -1860,6 +2037,8 @@ appQuestion.o: \
     appFrameConfig.h \
     ../appFrame/appFrame.h \
     ../appFrame/appGuiBase.h \
+    ../appFrame/appGuiBaseMotif.h \
+    ../appFrame/appGuiBaseGtk.h \
     ../appFrame/appGuiResource.h \
     ../appUtil/geo2DInteger.h \
     ../appUtil/utilPs.h \
@@ -1888,6 +2067,41 @@ appReally.o: \
     appFrameConfig.h \
     ../appFrame/appFrame.h \
     ../appFrame/appGuiBase.h \
+    ../appFrame/appGuiBaseMotif.h \
+    ../appFrame/appGuiBaseGtk.h \
+    ../appFrame/appGuiResource.h \
+    ../appUtil/geo2DInteger.h \
+    ../appUtil/utilPs.h \
+    ../appUtil/sioGeneral.h \
+    ../appUtil/utilDocumentGeometry.h \
+    ../appUtil/utilPropMask.h \
+    ../appUtil/psFont.h \
+    ../appUtil/utilFontEncoding.h \
+    ../appUtil/utilPostscriptFace.h \
+    ../appUtil/utilDocFont.h \
+    ../appUtil/utilTextAttribute.h \
+    ../appUtil/utilAffineTransform.h \
+    ../appUtil/utilNup.h \
+    ../appUtil/utilPrinter.h \
+    ../appUtil/utilMailContent.h \
+    ../appFrame/appIcons.h \
+    ../appFrame/appTool.h \
+    ../appFrame/appDraw.h \
+    ../bitmap/bmcolor.h \
+    ../appFrame/appInspector.h \
+    ../include/appDebugon.h \
+    ../include/appDebug.h
+
+appResource.o: \
+    appResource.c \
+    appFrameConfig.h \
+    ../appUtil/appSystem.h \
+    ../appUtil/utilTree.h \
+    ../appUtil/utilProperties.h \
+    ../appFrame/appFrame.h \
+    ../appFrame/appGuiBase.h \
+    ../appFrame/appGuiBaseMotif.h \
+    ../appFrame/appGuiBaseGtk.h \
     ../appFrame/appGuiResource.h \
     ../appUtil/geo2DInteger.h \
     ../appUtil/utilPs.h \
@@ -1916,6 +2130,8 @@ appRgbChooserPage.o: \
     appFrameConfig.h \
     appFrame.h \
     ../appFrame/appGuiBase.h \
+    ../appFrame/appGuiBaseMotif.h \
+    ../appFrame/appGuiBaseGtk.h \
     ../appFrame/appGuiResource.h \
     ../appUtil/geo2DInteger.h \
     ../appUtil/utilPs.h \
@@ -1949,6 +2165,8 @@ appRgbCube.o: \
     ../bitmap/bmcolor.h \
     ../appFrame/appDraw.h \
     ../appFrame/appGuiBase.h \
+    ../appFrame/appGuiBaseMotif.h \
+    ../appFrame/appGuiBaseGtk.h \
     ../appUtil/utilPropMask.h \
     ../appUtil/geo2DInteger.h \
     ../appUtil/utilDocFont.h \
@@ -1967,6 +2185,8 @@ appRuler.o: \
     ../appFrame/appRuler.h \
     ../appFrame/appDraw.h \
     ../appFrame/appGuiBase.h \
+    ../appFrame/appGuiBaseMotif.h \
+    ../appFrame/appGuiBaseGtk.h \
     ../appUtil/utilPropMask.h \
     ../appUtil/geo2DInteger.h \
     ../appUtil/utilDocFont.h \
@@ -1984,6 +2204,8 @@ appScrollDocument.o: \
     ../appUtil/appSystem.h \
     appFrame.h \
     ../appFrame/appGuiBase.h \
+    ../appFrame/appGuiBaseMotif.h \
+    ../appFrame/appGuiBaseGtk.h \
     ../appFrame/appGuiResource.h \
     ../appUtil/geo2DInteger.h \
     ../appUtil/utilPs.h \
@@ -2016,6 +2238,8 @@ appSpellTool.o: \
     ../ind/ind.h \
     ../appFrame/appFrame.h \
     ../appFrame/appGuiBase.h \
+    ../appFrame/appGuiBaseMotif.h \
+    ../appFrame/appGuiBaseGtk.h \
     ../appFrame/appGuiResource.h \
     ../appUtil/geo2DInteger.h \
     ../appUtil/utilPs.h \
@@ -2045,6 +2269,8 @@ appSymbolPicker.o: \
     ../appFrame/appSymbolPicker.h \
     ../appFrame/appFrame.h \
     ../appFrame/appGuiBase.h \
+    ../appFrame/appGuiBaseMotif.h \
+    ../appFrame/appGuiBaseGtk.h \
     ../appFrame/appGuiResource.h \
     ../appUtil/geo2DInteger.h \
     ../appUtil/utilPs.h \
@@ -2078,6 +2304,8 @@ appTextGtk.o: \
     ../include/appDebug.h \
     appFrame.h \
     ../appFrame/appGuiBase.h \
+    ../appFrame/appGuiBaseMotif.h \
+    ../appFrame/appGuiBaseGtk.h \
     ../appFrame/appGuiResource.h \
     ../appUtil/geo2DInteger.h \
     ../appUtil/utilPs.h \
@@ -2106,6 +2334,8 @@ appTextMotif.o: \
     appFrameConfig.h \
     appFrame.h \
     ../appFrame/appGuiBase.h \
+    ../appFrame/appGuiBaseMotif.h \
+    ../appFrame/appGuiBaseGtk.h \
     ../appFrame/appGuiResource.h \
     ../appUtil/geo2DInteger.h \
     ../appUtil/utilPs.h \
@@ -2138,6 +2368,8 @@ appTextUtil.o: \
     ../include/appDebug.h \
     appFrame.h \
     ../appFrame/appGuiBase.h \
+    ../appFrame/appGuiBaseMotif.h \
+    ../appFrame/appGuiBaseGtk.h \
     ../appFrame/appGuiResource.h \
     ../appUtil/geo2DInteger.h \
     ../appUtil/utilPs.h \
@@ -2167,6 +2399,8 @@ appTree.o: \
     appTree.h \
     ../appFrame/appFrame.h \
     ../appFrame/appGuiBase.h \
+    ../appFrame/appGuiBaseMotif.h \
+    ../appFrame/appGuiBaseGtk.h \
     ../appFrame/appGuiResource.h \
     ../appUtil/geo2DInteger.h \
     ../appUtil/utilPs.h \
@@ -2195,6 +2429,8 @@ appWinMeta.o: \
     appFrameConfig.h \
     ../appFrame/appWinMeta.h \
     ../appFrame/appGuiBase.h \
+    ../appFrame/appGuiBaseMotif.h \
+    ../appFrame/appGuiBaseGtk.h \
     ../bitmap/bitmap.h \
     ../appUtil/sioGeneral.h \
     ../bitmap/bmcolor.h \
@@ -2223,6 +2459,8 @@ appWinMetaImg.o: \
     appFrameConfig.h \
     ../appFrame/appWinMeta.h \
     ../appFrame/appGuiBase.h \
+    ../appFrame/appGuiBaseMotif.h \
+    ../appFrame/appGuiBaseGtk.h \
     ../bitmap/bitmap.h \
     ../appUtil/sioGeneral.h \
     ../bitmap/bmcolor.h \
@@ -2236,6 +2474,10 @@ appWinMetaImg.o: \
     ../appUtil/geo2DInteger.h \
     ../appFrame/appImage.h \
     ../appFrame/appMetafile.h \
+    ../appUtil/utilPs.h \
+    ../appUtil/utilDocumentGeometry.h \
+    ../appUtil/utilAffineTransform.h \
+    ../appUtil/utilNup.h \
     ../appUtil/sioEndian.h \
     ../appUtil/utilEndian.h \
     ../include/appDebugon.h \
@@ -2246,6 +2488,8 @@ appWinMetaPs.o: \
     appFrameConfig.h \
     ../appFrame/appWinMeta.h \
     ../appFrame/appGuiBase.h \
+    ../appFrame/appGuiBaseMotif.h \
+    ../appFrame/appGuiBaseGtk.h \
     ../bitmap/bitmap.h \
     ../appUtil/sioGeneral.h \
     ../bitmap/bmcolor.h \
@@ -2274,6 +2518,8 @@ appWinMetaX11.o: \
     appFrameConfig.h \
     ../appFrame/appWinMeta.h \
     ../appFrame/appGuiBase.h \
+    ../appFrame/appGuiBaseMotif.h \
+    ../appFrame/appGuiBaseGtk.h \
     ../bitmap/bitmap.h \
     ../appUtil/sioGeneral.h \
     ../bitmap/bmcolor.h \
@@ -2301,6 +2547,8 @@ appXvCopyPaste.o: \
     appFrameConfig.h \
     ../appFrame/sioXprop.h \
     ../appFrame/appGuiBase.h \
+    ../appFrame/appGuiBaseMotif.h \
+    ../appFrame/appGuiBaseGtk.h \
     ../appUtil/sioGeneral.h \
     ../appFrame/appImage.h \
     ../bitmap/bitmap.h \
@@ -2320,6 +2568,8 @@ appZoomMenu.o: \
     appFrameConfig.h \
     ../appFrame/appFrame.h \
     ../appFrame/appGuiBase.h \
+    ../appFrame/appGuiBaseMotif.h \
+    ../appFrame/appGuiBaseGtk.h \
     ../appFrame/appGuiResource.h \
     ../appUtil/geo2DInteger.h \
     ../appUtil/utilPs.h \
@@ -2363,6 +2613,8 @@ sioCopyPasteGtk.o: \
     appFrameConfig.h \
     ../appFrame/sioXprop.h \
     ../appFrame/appGuiBase.h \
+    ../appFrame/appGuiBaseMotif.h \
+    ../appFrame/appGuiBaseGtk.h \
     ../appUtil/sioGeneral.h \
     ../appUtil/sioMemory.h \
     ../appUtil/utilMemoryBuffer.h \
@@ -2374,6 +2626,8 @@ sioCopyPasteMotif.o: \
     appFrameConfig.h \
     ../appFrame/sioXprop.h \
     ../appFrame/appGuiBase.h \
+    ../appFrame/appGuiBaseMotif.h \
+    ../appFrame/appGuiBaseGtk.h \
     ../appUtil/sioGeneral.h \
     ../include/appDebugon.h \
     ../include/appDebug.h

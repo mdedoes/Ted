@@ -169,7 +169,7 @@ static APP_EVENT_HANDLER_H( appColorChooserRedrawInplace, w, voidcc, exposeEvent
 /*									*/
 /************************************************************************/
 
-static APP_EVENT_HANDLER_H( tedColorChooserRedrawPulldown, w, voidcc, exposeEvent )
+static APP_EVENT_HANDLER_H( appColorChooserRedrawPulldown, w, voidcc, exposeEvent )
     {
     ColorChooser *	cc= (ColorChooser *)voidcc;
     AppDrawingData *	add= &(cc->ccPulldownDrawingData);
@@ -185,6 +185,9 @@ static APP_EVENT_HANDLER_H( tedColorChooserRedrawPulldown, w, voidcc, exposeEven
 
     int			row;
     int			col;
+
+    int			currCol= -1;
+    int			currRow= -1;
 
     if  ( ! cc->ccPulldownDrawingDataSet )
 	{
@@ -240,6 +243,7 @@ static APP_EVENT_HANDLER_H( tedColorChooserRedrawPulldown, w, voidcc, exposeEven
 	    {
 	    int				color;
 	    ColorChooserPaletteColor *	ccpc;
+	    const RGB8Color *		rgb8;
 
 	    color= ( row- 1 )* cc->ccColumns+ col;
 	    if  ( color < 0 || color >= cc->ccColorCount )
@@ -248,14 +252,15 @@ static APP_EVENT_HANDLER_H( tedColorChooserRedrawPulldown, w, voidcc, exposeEven
 	    ccpc= cc->ccColors+ color;
 	    if  ( ccpc->ccpcStatus == CCstatusFREE )
 		{ /*LDEB(ccpc->ccpcStatus);*/ continue;	}
+	    rgb8= &(ccpc->ccpcRGB8Color);
 
 	    if  ( ! ccpc->ccpcColorAllocated )
 		{
 		if  ( appColorRgb( &(ccpc->ccpcAllocatedColor),
 					    &(cc->ccPulldownColors),
-					    ccpc->ccpcRGB8Color.rgb8Red,
-					    ccpc->ccpcRGB8Color.rgb8Green,
-					    ccpc->ccpcRGB8Color.rgb8Blue ) )
+					    rgb8->rgb8Red,
+					    rgb8->rgb8Green,
+					    rgb8->rgb8Blue ) )
 		    { LDEB(1); continue;	}
 
 		ccpc->ccpcColorAllocated= 1;
@@ -268,11 +273,22 @@ static APP_EVENT_HANDLER_H( tedColorChooserRedrawPulldown, w, voidcc, exposeEven
 				    row* cc->ccStripHigh+ 3,
 				    cc->ccColumnWide- 6,
 				    cc->ccStripHigh- 6 );
+
+	    if  ( cc->ccColorExplicit					&&
+		  cc->ccColorSet					&&
+		  rgb8->rgb8Red == cc->ccColorChosen.rgb8Red		&&
+		  rgb8->rgb8Green == cc->ccColorChosen.rgb8Green	&&
+		  rgb8->rgb8Blue == cc->ccColorChosen.rgb8Blue		)
+		{ currCol= col; currRow= row;	}
 	    }
 	}
 
     /**/
     appDrawSetForegroundBlack( add );
+
+    appDrawSetLineAttributes( add, 1,
+				LINEstyleSOLID, LINEcapBUTT, LINEjoinMITER, 
+				(const unsigned char *)0, 0 );
 
     for ( row= 1; row < cc->ccStrips- 1; row++ )
 	{
@@ -284,6 +300,30 @@ static APP_EVENT_HANDLER_H( tedColorChooserRedrawPulldown, w, voidcc, exposeEven
 				    cc->ccColumnWide- 6,
 				    cc->ccStripHigh- 6 );
 	    }
+	}
+
+    if  ( currRow >= 0 && currCol >= 0 )
+	{
+	appDrawSetLineAttributes( add, 3,
+				LINEstyleSOLID, LINEcapBUTT, LINEjoinMITER, 
+				(const unsigned char *)0, 0 );
+
+	appDrawDrawRectangle( add, cc->ccXShift+ currCol* cc->ccColumnWide+ 3,
+				    currRow* cc->ccStripHigh+ 3,
+				    cc->ccColumnWide- 6,
+				    cc->ccStripHigh- 6 );
+
+	appDrawSetForegroundWhite( add );
+
+	appDrawSetLineAttributes( add, 1,
+				LINEstyleSOLID, LINEcapBUTT, LINEjoinMITER, 
+				(const unsigned char *)0, 0 );
+
+	appDrawDrawRectangle( add, cc->ccXShift+ currCol* cc->ccColumnWide+ 2,
+				    currRow* cc->ccStripHigh+ 2,
+				    cc->ccColumnWide- 4,
+				    cc->ccStripHigh- 4 );
+
 	}
 
     return;
@@ -883,7 +923,7 @@ void appMakeColorChooserInRow(	ColorChooser *			cc,
 
     appMakeDrawnPulldownInRow( &(cc->ccPulldown),
 					    appColorChooserRedrawInplace,
-					    tedColorChooserRedrawPulldown,
+					    appColorChooserRedrawPulldown,
 					    appColorChooserClickedPulldown,
 					    row, valueColumn, valueColspan,
 					    (void *)cc );

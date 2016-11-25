@@ -16,6 +16,8 @@
 
 #   include	<appDebugon.h>
 
+#   define	RECLAIM_FOCUS	0
+
 /************************************************************************/
 /*									*/
 /*  Get around Motif's ridiculous resize behavior.			*/
@@ -76,14 +78,39 @@ void appOptionmenuRefreshWidth(	AppOptionmenu *		aom )
 
 /************************************************************************/
 /*									*/
+/*  Reclaim focus that drifted away.					*/
+/*  This is to work around a bug in the Xfce window manager (Oct 2004).	*/
+/*									*/
+/************************************************************************/
+
+# if RECLAIM_FOCUS
+
+static void appRefocusOptionmenuMotif(	Widget			w,
+					void *			voidaom,
+					void *			pbcs )
+    {
+    AppOptionmenu *	aom= (AppOptionmenu *)voidaom;
+
+    if  ( XtDisplay( aom->aomInplace ) )
+	{
+	XSetInputFocus( XtDisplay( aom->aomInplace ),
+						XtWindow( aom->aomInplace ),
+						RevertToNone, CurrentTime );
+	}
+    }
+
+# endif
+
+/************************************************************************/
+/*									*/
 /*  Make a pulldown that is usable as a child of a form.		*/
 /*									*/
 /************************************************************************/
 
-static void appMenuConfigure(	Widget		w,
-				void *		through,
-				XEvent *	event,
-				Boolean *	pRefused )
+static void appOptionMenuConfigureMotif(	Widget		w,
+						void *		through,
+						XEvent *	event,
+						Boolean *	pRefused )
     {
     XConfigureEvent *		cevent= &(event->xconfigure);
 
@@ -97,14 +124,34 @@ static void appMenuConfigure(	Widget		w,
     return;
     }
 
+void appFinishOptionmenuMotif(	Widget		menu,
+				Widget		pulldown )
+    {
+    Widget			labelGadget;
+    Widget			buttonGadget;
+
+    XtAddEventHandler( menu, StructureNotifyMask, False,
+				    appOptionMenuConfigureMotif, (void *)0 );
+
+    labelGadget= XmOptionLabelGadget( menu );
+    buttonGadget= XmOptionButtonGadget( menu );
+
+    XtUnmanageChild( labelGadget );
+    XtManageChild( buttonGadget );
+
+    XtVaSetValues( buttonGadget,
+			XmNalignment,		XmALIGNMENT_BEGINNING,
+			XmNmarginHeight,	1,
+			NULL );
+
+    return;
+    }
+
 void appMakeOptionmenuInColumn(		AppOptionmenu *	aom,
 					Widget		column )
     {
     Widget			pulldown;
     Widget			menu;
-
-    Widget			labelGadget;
-    Widget			buttonGadget;
 
     Arg				al[20];
     int				ac= 0;
@@ -136,18 +183,8 @@ void appMakeOptionmenuInColumn(		AppOptionmenu *	aom,
     XtSetArg( al[ac], XmNresizeHeight,		True ); ac++;
 
     menu= XmCreateOptionMenu( column, WIDGET_NAME, al, ac );
-    XtAddEventHandler( menu, StructureNotifyMask, False,
-					appMenuConfigure, (void *)0 );
 
-    labelGadget= XmOptionLabelGadget( menu );
-    buttonGadget= XmOptionButtonGadget( menu );
-
-    XtUnmanageChild( labelGadget );
-    XtManageChild( buttonGadget );
-
-    XtVaSetValues( buttonGadget,
-			XmNalignment,		XmALIGNMENT_BEGINNING,
-			NULL );
+    appFinishOptionmenuMotif( menu, pulldown );
 
     XtManageChild( menu );
 
@@ -163,9 +200,6 @@ void appMakeOptionmenuInRow(		AppOptionmenu *	aom,
     {
     Widget			pulldown;
     Widget			menu;
-
-    Widget			labelGadget;
-    Widget			buttonGadget;
 
     Arg				al[20];
     int				ac= 0;
@@ -207,18 +241,8 @@ void appMakeOptionmenuInRow(		AppOptionmenu *	aom,
     XtSetArg( al[ac], XmNentryBorder,		0 ); ac++;
 
     menu= XmCreateOptionMenu( row, WIDGET_NAME, al, ac );
-    XtAddEventHandler( menu, StructureNotifyMask, False,
-					appMenuConfigure, (void *)0 );
 
-    labelGadget= XmOptionLabelGadget( menu );
-    buttonGadget= XmOptionButtonGadget( menu );
-
-    XtUnmanageChild( labelGadget );
-    XtManageChild( buttonGadget );
-
-    XtVaSetValues( buttonGadget,
-			XmNalignment,		XmALIGNMENT_BEGINNING,
-			NULL );
+    appFinishOptionmenuMotif( menu, pulldown );
 
     XtManageChild( menu );
 
@@ -241,16 +265,20 @@ APP_WIDGET appAddItemToOptionmenu(	AppOptionmenu *		aom,
     WidgetList		children;
     Cardinal		childCount= 0;
 
+    Arg			al[20];
+    int			ac= 0;
+
     XtVaGetValues( aom->aomPulldown,
 		    XmNchildren,	&children,
 		    XmNnumChildren,	&childCount,
 		    NULL );
 
+    XtSetArg( al[ac], XmNmarginHeight,		1 ); ac++;
 
     if  ( aom->aomOptionsVisible >= childCount )
 	{
 	fresh= XmCreatePushButtonGadget( aom->aomPulldown, (char *)label,
-								    NULL, 0 );
+						    al,	ac );
 	}
     else{
 	XmString	labelString;
@@ -268,6 +296,11 @@ APP_WIDGET appAddItemToOptionmenu(	AppOptionmenu *		aom,
 
     if  ( callBack )
 	{ XtAddCallback( fresh, XmNactivateCallback, callBack, target ); }
+
+#   if RECLAIM_FOCUS
+    XtAddCallback( fresh, XmNactivateCallback,
+				    appRefocusOptionmenuMotif, (void *)aom );
+#   endif
 
     XtManageChild( fresh );
 

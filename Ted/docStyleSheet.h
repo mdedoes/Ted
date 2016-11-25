@@ -27,9 +27,11 @@ typedef struct DocumentStyle
     int			dsBasedOn;
     int			dsAdditive;
     int			dsNext;
+    int			dsLink;
     int			dsLevel;
     int			dsAutoupd;
     int			dsHidden;
+    int			dsLocked;
     int			dsSemiHidden;
     int			dsPersonal;
     int			dsBusy;
@@ -50,9 +52,11 @@ typedef enum DocumentStyleProperty
     DSpropBASED_ON,
     DSpropADDITIVE,
     DSpropNEXT,
+    DSpropLINK,
     DSpropLEVEL,
     DSpropAUTO_UPD,
     DSpropHIDDEN,
+    DSpropLOCKED,
     DSpropSEMI_HIDDEN,
     DSpropPERSONAL,
     DSpropNAME,

@@ -55,7 +55,7 @@ static void utilPsBoundingBoxComment(
 /*									*/
 /************************************************************************/
 
-static void utilPsGetEnbed(		PostScriptFace *	psf,
+static void utilPsGetEmbed(		PostScriptFace *	psf,
 					const char *		fontDirectory )
     {
     const char *	fontFile;
@@ -148,7 +148,7 @@ static void utilPsListFontNames(	SimpleOutputStream *		sos,
 	while( psf )
 	    {
 	    if  ( psf->psfEmbed == PSembedUNKNOWN )
-		{ utilPsGetEnbed( psf, pstl->pstlFontDirectory );	}
+		{ utilPsGetEmbed( psf, pstl->pstlFontDirectory );	}
 
 	    if  ( psf->psfEmbed > 0 )
 		{
@@ -353,11 +353,12 @@ void utilPsRefreshNupSchema(
 /*									*/
 /************************************************************************/
 
-void appPsPrintString(	SimpleOutputStream *	sos,
+void utilPsPrintString(	PrintingState *		ps,
 			const unsigned char *	s,
 			int			len )
     {
-    int		i;
+    SimpleOutputStream *	sos= ps->psSos;
+    int				i;
 
     for ( i= 0; i < len; s++, i++ )
 	{
@@ -388,6 +389,36 @@ void appPsPrintString(	SimpleOutputStream *	sos,
     return;
     }
 
+void utilPsPrintStringValue(	PrintingState *		ps,
+				const unsigned char *	s,
+				int			len )
+    {
+    SimpleOutputStream *	sos= ps->psSos;
+
+    sioOutPutCharacter( '(', sos );
+    utilPsPrintString( ps, s, len );
+    sioOutPutCharacter( ')', sos );
+
+    return;
+    }
+
+void utilPsMovePrintStringValue(	PrintingState *		ps,
+					const unsigned char *	s,
+					int			len,
+					int			x,
+					int			y )
+    {
+    SimpleOutputStream *	sos= ps->psSos;
+
+    sioOutPutCharacter( '(', sos );
+    utilPsPrintString( ps, s, len );
+    sioOutPrintf( sos, ") %d %d mvs\n", x, y );
+
+    ps->psLastPageMarked= ps->psPagesPrinted;
+
+    return;
+    }
+
 /************************************************************************/
 /*									*/
 /*  Set the font, this depends on the assumption that fonts have been	*/
@@ -398,11 +429,12 @@ void appPsPrintString(	SimpleOutputStream *	sos,
 /*									*/
 /************************************************************************/
 
-void utilPsSetFont(	SimpleOutputStream *		sos,
+void utilPsSetFont(	PrintingState *			ps,
 			const char *			prefix,
 			const TextAttribute *		ta )
     {
-    int		fontSizeTwips= 10* ta->taFontSizeHalfPoints;
+    SimpleOutputStream *	sos= ps->psSos;
+    int				fontSizeTwips= 10* ta->taFontSizeHalfPoints;
 
     if  ( ta->taSuperSub == DOCfontSUPERSCRIPT	||
 	  ta->taSuperSub == DOCfontSUBSCRIPT	)
@@ -423,6 +455,8 @@ void utilPsSetFont(	SimpleOutputStream *		sos,
 	{ sioOutPutCharacter( 'i', sos );	}
     sioOutPutCharacter( '\n', sos );
 
+    ps->psLastPageMarked= ps->psPagesPrinted;
+
     return;
     }
 
@@ -435,8 +469,12 @@ void utilPsSetFont(	SimpleOutputStream *		sos,
 void appPsInitPrintingState(	PrintingState *	ps )
     {
     ps->psSos= (SimpleOutputStream *)0;
+
+    ps->psLastPageMarked= -1;
+    ps->psLastSheetMarked= -1;
     ps->psPagesPrinted= 0;
     ps->psSheetsPrinted= 0;
+    ps->psSheetsStarted= 0;
 
     utilInitPrintGeometry( &(ps->psPrintGeometry) );
 
@@ -459,6 +497,8 @@ void appPsInitPrintingState(	PrintingState *	ps )
 
     ps->psUsePostScriptFilters= 1;
     ps->psUsePostScriptIndexedImages= 1;
+
+    utilCleanPrintGeometry( &(ps->psPrintGeometry) );
 
     return;
     }
@@ -485,6 +525,8 @@ void utilPsSetRgbColor(	PrintingState *		ps,
 	{ sioOutPrintf( ps->psSos, "%g setgray\n", r );			}
     else{ sioOutPrintf( ps->psSos, "%g %g %g setrgbcolor\n", r, g, b );	}
 
+    ps->psLastPageMarked= ps->psPagesPrinted;
+
     return;
     }
 
@@ -494,11 +536,12 @@ void utilPsSetRgbColor(	PrintingState *		ps,
 /*									*/
 /************************************************************************/
 
-static void appPsPageOperator(		const char *		operator,
+static void utilPsPageOperator(		const char *		operator,
 					const PrintingState *	ps,
 					int			documentPage )
     {
-    sioOutPrintf( ps->psSos, "%s %% Page %d # %d Sheet %d\n", operator,
+    sioOutPrintf( ps->psSos, "%s %% Page doc:%d -> print:%d Sheet %d\n",
+				    operator,
 				    documentPage+ 1,
 				    ps->psPagesPrinted+ 1,
 				    ps->psSheetsPrinted+ 1 );
@@ -507,13 +550,15 @@ static void appPsPageOperator(		const char *		operator,
 void utilPsStartPage(	PrintingState *			ps,
 			int				documentPage )
     {
-    const AffineTransform2D *	at;
     int				nup= ps->psNupSchema.nsNup;
     int				firstOnSheet= 0;
 
     if  ( nup == 1			||
 	  ps->psPagesPrinted % nup == 0	)
 	{ firstOnSheet= 1;	}
+
+    if  ( ps->psSheetsStarted > ps->psSheetsPrinted )
+	{ firstOnSheet= 0;	}
 
     if  ( firstOnSheet )
 	{
@@ -530,12 +575,13 @@ void utilPsStartPage(	PrintingState *			ps,
 	utilPsBoundingBoxComment( ps, "PageBoundingBox", "PageOrientation" );
 
 	sioOutPrintf( ps->psSos, "%%%%BeginPageSetup\n" );
+	ps->psSheetsStarted= ps->psSheetsPrinted+ 1;
 	}
 
     utilNupGetPageTranform( &(ps->psCurrentTransform),
 				    &(ps->psNupSchema), ps->psPagesPrinted );
 
-    appPsPageOperator( "gsave", ps, documentPage );
+    utilPsPageOperator( "gsave", ps, documentPage );
 
 #   if 0
     if  ( firstOnSheet )
@@ -553,14 +599,8 @@ void utilPsStartPage(	PrintingState *			ps,
 	}
 #   endif
 
-    at= &(ps->psCurrentTransform);
-    sioOutPrintf( ps->psSos, "[ %g %g %g %g %g %g ] concat\n",
-							at->at2Axx,
-							at->at2Axy,
-							at->at2Ayx,
-							at->at2Ayy,
-							at->at2Tx,
-							at->at2Ty );
+    utilPsTransformMatrix( ps->psSos, &(ps->psCurrentTransform) );
+    sioOutPrintf( ps->psSos, " concat\n" );
 
     if  ( firstOnSheet )
 	{ sioOutPrintf( ps->psSos, "%%%%EndPageSetup\n" );	}
@@ -568,17 +608,60 @@ void utilPsStartPage(	PrintingState *			ps,
     return;
     }
 
+void utilPsTransformMatrix(	SimpleOutputStream *		sos,
+				const AffineTransform2D *	at )
+    {
+    sioOutPrintf( sos, "[ %g %g %g %g %g %g ]",
+				    at->at2Axx, at->at2Axy,
+				    at->at2Ayx, at->at2Ayy,
+				    at->at2Tx, at->at2Ty );
+    return;
+    }
+
+/************************************************************************/
+/*									*/
+/*  Finish the page.							*/
+/*									*/
+/*  1)  Print something invisible on absolutely empty pages: Some	*/
+/*	versions of acroread (5 for windows) do not like the pdf that	*/
+/*	ghostscript generates for an absolutely empty page.		*/
+/*									*/
+/************************************************************************/
+
+/*  1  */
+static void utilPsDrawSometingInvisible(	PrintingState *	ps )
+    {
+    sioOutPrintf( ps->psSos,
+	    "1 setgray 0 0 moveto 1 0 rlineto stroke"
+	    "  %% Avoid an empty page\n" );
+    }
+
 void utilPsFinishPage(	PrintingState *		ps,
 			int			documentPage,
 			int			asLast )
     {
-    int				nup= ps->psNupSchema.nsNup;
+    int			nup= ps->psNupSchema.nsNup;
+    int			pageIsEmpty;
+    int			sheetIsEmpty;
+
+    pageIsEmpty= ps->psLastPageMarked < ps->psPagesPrinted;
+    sheetIsEmpty= ps->psLastSheetMarked < ps->psSheetsPrinted;
+
+    if  ( ! pageIsEmpty )
+	{
+	ps->psLastSheetMarked= ps->psSheetsPrinted;
+	sheetIsEmpty= 0;
+	}
 
     if  ( asLast				||
 	  nup == 1				||
 	  ( ps->psPagesPrinted+ 1 ) % nup == 0	)
 	{
-	appPsPageOperator( "showpage grestore", ps, documentPage );
+	/*  1  */
+	if  ( sheetIsEmpty )
+	    { utilPsDrawSometingInvisible( ps );	}
+
+	utilPsPageOperator( "showpage grestore", ps, documentPage );
 
 	sioOutPrintf( ps->psSos, "%%%%PageTrailer\n" );
 
@@ -586,10 +669,36 @@ void utilPsFinishPage(	PrintingState *		ps,
 	ps->psSheetsPrinted++;
 	}
     else{
-	appPsPageOperator( "grestore", ps, documentPage );
+	utilPsPageOperator( "grestore", ps, documentPage );
 
 	ps->psPagesPrinted++;
 	}
+
+    if  ( asLast )
+	{
+	sioOutPrintf( ps->psSos, "%%%%Trailer\n" );
+	sioOutPrintf( ps->psSos, "%%%%Pages: %d\n", ps->psSheetsPrinted );
+	sioOutPrintf( ps->psSos, "%%%%EOF\n" );
+	}
+
+    return;
+    }
+
+/************************************************************************/
+/*									*/
+/*  Abort a page as there is a reason not to print it. Usually, this is	*/
+/*  because it is empty.						*/
+/*									*/
+/************************************************************************/
+
+void utilPsAbortPage(	PrintingState *		ps,
+			int			documentPage,
+			int			asLast )
+    {
+    if  ( asLast					&&
+	  ps->psLastSheetMarked == ps->psSheetsPrinted	)
+	{ utilPsPageOperator( "showpage grestore", ps, documentPage );	}
+    else{ utilPsPageOperator( "grestore", ps, documentPage );		}
 
     if  ( asLast )
 	{
@@ -684,7 +793,7 @@ int appPsIncludeFonts(	PrintingState *			ps,
     while( psf )
 	{
 	if  ( psf->psfEmbed == PSembedUNKNOWN )
-	    { utilPsGetEnbed( psf, pstl->pstlFontDirectory );	}
+	    { utilPsGetEmbed( psf, pstl->pstlFontDirectory );	}
 
 	if  ( psf->psfEmbed > 0 )
 	    {
@@ -737,7 +846,7 @@ int appPsIncludeFonts(	PrintingState *			ps,
 		    break;
 
 		case PSembedTTFTO42:
-		    if  ( psTtfToPf42( sos, sisFile ) )
+		    if  ( psTtfToPf42( sos,  psf->psfFontFileName, sisFile ) )
 			{
 			SDEB(psf->psfFontFileName);
 			sioInClose( sisFile );
@@ -790,7 +899,7 @@ void appPsFontNames(	PrintingState *			ps,
 	    {
 	    sioOutPrintf( sos, "\n" );
 	    utilPsDefineFontEncoding( sos,
-				fc->fcEncodingArrayName, fc->fcGlyphNames );
+				fc->fcPsEncodingArrayName, fc->fcGlyphNames );
 	    }
 	}
 
@@ -830,11 +939,11 @@ void appPsFontNames(	PrintingState *			ps,
 		    sprintf( exceptionSuffix, "-x%d", faceNumber );
 
 		    sioOutPrintf( sos, "/%s%s 256 array def\n",
-						fc->fcEncodingArrayName,
+						fc->fcPsEncodingArrayName,
 						exceptionSuffix );
 		    sioOutPrintf( sos, "%s %s%s copy\n",
-						fc->fcEncodingArrayName,
-						fc->fcEncodingArrayName,
+						fc->fcPsEncodingArrayName,
+						fc->fcPsEncodingArrayName,
 						exceptionSuffix );
 
 		    for ( i= 0; i < fc->fcGlyphCount; i++ )
@@ -865,8 +974,8 @@ void appPsFontNames(	PrintingState *			ps,
 		    }
 
 		utilPsDefineEncodedFont( sos, afi,
-			    fc->fcEncodingSuffix,
-			    fc->fcEncodingArrayName,
+			    fc->fcPsEncodingSuffix,
+			    fc->fcPsEncodingArrayName,
 			    exceptionSuffix );
 		}
 
@@ -886,7 +995,7 @@ void appPsFontNames(	PrintingState *			ps,
 		    fc= PS_Encodings+ fr->frEncoding;
 		    sc= afi->afiSupportedCharsets+ fr->frEncoding;
 
-		    encodingSuffix= fc->fcEncodingSuffix;
+		    encodingSuffix= fc->fcPsEncodingSuffix;
 		    if  ( sc->scNonStandardGlyphNames )
 			{ sprintf( exceptionSuffix, "-x%d", faceNumber ); }
 		    }
@@ -1096,6 +1205,8 @@ void appPsDefineEpsProcs(	SimpleOutputStream *		sos )
 void appPsBeginEpsObject(	PrintingState *		ps,
 				int			x0Twips,
 				int			y0Twips,
+				double			xScale,
+				double			yScale,
 				int			llxTwips,
 				int			llyTwips,
 				int			urxTwips,
@@ -1107,8 +1218,8 @@ void appPsBeginEpsObject(	PrintingState *		ps,
 
     sioOutPrintf( ps->psSos, "BeginEPSF\n" );
 
-    sioOutPrintf( ps->psSos, "[ %d %d %d %d %d %d ] concat\n",
-				    20, 0, 0, -20, x0Twips, y0Twips );
+    sioOutPrintf( ps->psSos, "[ %g %d %d %g %d %d ] concat\n",
+			20* xScale, 0, 0, -20* yScale, x0Twips, y0Twips );
 
     sioOutPrintf( ps->psSos, "newpath %d %d moveto ",
 					    llxTwips/20, llyTwips/20 );
@@ -1121,7 +1232,7 @@ void appPsBeginEpsObject(	PrintingState *		ps,
     sioOutPrintf( ps->psSos, "closepath clip\n" );
 
     sioOutPrintf( ps->psSos, "%%%%BeginDocument: (" );
-    appPsPrintString( ps->psSos, file, strlen( (char *)file ) );
+    utilPsPrintString( ps, file, strlen( (char *)file ) );
     sioOutPrintf( ps->psSos, ")\n" );
 
     return;
@@ -1132,6 +1243,25 @@ void appPsEndEpsObject(	PrintingState *		ps )
     {
     sioOutPrintf( ps->psSos, "%%%%EndDocument\n" );
     sioOutPrintf( ps->psSos, "EndEPSF\n" );
+
+    return;
+    }
+
+/************************************************************************/
+/*									*/
+/*  Fill a rectangle							*/
+/*									*/
+/************************************************************************/
+
+void utilPsFillRectangle(	PrintingState *		ps,
+				int			x,
+				int			y,
+				int			wide,
+				int			high )
+    {
+    sioOutPrintf( ps->psSos, "%d %d %d %d rectfill\n", x, y, wide, high );
+
+    ps->psLastPageMarked= ps->psPagesPrinted;
 
     return;
     }
@@ -1183,5 +1313,133 @@ int utilPsDestPdfmark(		PrintingState *		ps,
     sioOutPrintf( ps->psSos, "/DEST pdfmark\n" );
 
     return 0;
+    }
+
+/************************************************************************/
+/*									*/
+/*  Write links to be picked up by the distiller.			*/
+/*									*/
+/************************************************************************/
+
+static void utilPsUriLinkDestination(	PrintingState *	ps )
+    {
+    utilPsPrintString( ps,
+	(const unsigned char *)ps->psLinkFile, ps->psLinkFileSize );
+
+    if  ( ps->psLinkMarkSize > 0 )
+	{
+	sioOutPutCharacter( '#', ps->psSos );
+	utilPsPrintString( ps,
+			    (const unsigned char *)ps->psLinkMark,
+			    ps->psLinkMarkSize );
+	}
+    }
+
+static void utilPsWebLinkDestination(	PrintingState *	ps )
+    {
+    sioOutPrintf( ps->psSos, "  /Action << /Subtype /URI /URI (" );
+
+    utilPsUriLinkDestination( ps );
+
+    sioOutPrintf( ps->psSos, ") >>\n" );
+
+    return;
+    }
+
+static void utilPsFileLinkDestMark(	PrintingState *		ps )
+    {
+    const unsigned char *	file;
+    int				size;
+
+    file= (const unsigned char *)ps->psLinkFile;
+    size= ps->psLinkFileSize;
+
+    if  ( size > 5 && ! strncmp( (const char *)file, "file:", 5 ) )
+	{ file += 5; size -= 5; }
+    else{
+	while( size > 0 && isalpha( *file ) )
+	    { file++; size--;	}
+
+	if  ( size > 0 && *file == ':' )
+	    { utilPsWebLinkDestination( ps ); return; }
+
+	file= (const unsigned char *)ps->psLinkFile;
+	size= ps->psLinkFileSize;
+	}
+
+    sioOutPrintf( ps->psSos, "  /Action /Launch /File (" );
+
+    utilPsPrintString( ps, file, size );
+
+    sioOutPrintf( ps->psSos, ")\n" );
+
+    if  ( ps->psLinkMarkSize )
+	{
+	sioOutPrintf( ps->psSos, "  /URI (" );
+	utilPsUriLinkDestination( ps );
+	sioOutPrintf( ps->psSos, ")\n" );
+	}
+
+    return;
+    }
+
+void utilPsFlushLink(		PrintingState *		ps,
+				int			x0,
+				int			wide,
+				int			lineTop,
+				int			lineHeight )
+    {
+    if  ( ps->psLinkParticulesDone > 0 )
+	{
+	sioOutPrintf( ps->psSos, "[ /Rect [ %d %d %d %d ]\n",
+				    ps->psLinkRectLeft, lineTop+ lineHeight, 
+				    x0+ wide,
+				    lineTop );
+
+	sioOutPrintf( ps->psSos, "  /Border [ 0 0 0 ]\n" );
+
+	if  ( ps->psLinkFileSize == 0 )
+	    {
+	    if  ( ! ps->psLinkMark )
+		{ XDEB(ps->psLinkMark);	}
+	    else{
+		int		i;
+		const char *	s;
+
+		sioOutPrintf( ps->psSos, "  /Dest /" );
+
+		s= ps->psLinkMark;
+		for ( i= 0; i < ps->psLinkMarkSize; s++, i++ )
+		    {
+		    if  ( *s == '('	|| *s == ')'		||
+			  *s == '<'	|| *s == '>'		||
+			  *s == '['	|| *s == ']'		||
+			  *s == '{'	|| *s == '}'		||
+			  *s == '/'	|| *s == '%'		||
+			  isspace( *s ) || ! isascii( *s )	)
+			{
+			sioOutPutCharacter( '_', ps->psSos );
+			continue;
+			}
+
+		    sioOutPutCharacter( *s, ps->psSos );
+		    }
+
+		sioOutPrintf( ps->psSos, "\n" );
+		}
+	    }
+	else{
+	    utilPsFileLinkDestMark( ps );
+	    }
+
+
+	sioOutPrintf( ps->psSos, "  /Subtype /Link\n" );
+	sioOutPrintf( ps->psSos, "/ANN pdfmark\n" );
+
+	ps->psLinkParticulesDone= 0;
+	ps->psLinkRectLeft= x0;
+	}
+
+    return;
     }
 

@@ -37,16 +37,22 @@ static int docPsLayoutStartParagraph(
 				const BlockFrame *		bf,
 				ParagraphLayoutPosition *	plp )
     {
+    const BufferDocument *	bd= plc->plcBd;
     const DocumentGeometry *	dg;
     const BufferItem *		sectBi= paraBi;
 
     const ScreenLayout *	sl= &(plc->plcScreenLayout);
+    int				indentChanged= 0;
 
     while( sectBi && sectBi->biLevel != DOClevSECT )
 	{ sectBi= sectBi->biParent;	}
 
     if  ( ! sectBi )
 	{ XDEB(sectBi); return -1;	}
+
+    if  ( paraBi->biParaListOverride > 0				&&
+	  docAdaptParagraphToListLevel( &indentChanged, paraBi, bd )	)
+	{ LDEB(1);		}
 
     dg= &(sectBi->biSectDocumentGeometry);
 
@@ -70,8 +76,9 @@ static int docPsLayoutStartParagraph(
 	{ LDEB(1); return -1;	}
 
     if  ( sl && sl->slStartParagraph					&&
-	  (*sl->slStartParagraph)( paraBi, plc->plcAdd,
-				plc->plcScreenFontList, plc->plcBd )	)
+	  (*sl->slStartParagraph)( paraBi,
+		    &(plp->plpFormattingFrame),
+		    plc->plcAdd, plc->plcScreenFontList, plc->plcBd )	)
 	{ LDEB(1); return -1;	}
 
     *pToNextPage= 0;
@@ -94,6 +101,8 @@ static int docPsLayoutStartParagraph(
 /*  4)  When Widow/Orphan control is active and we finish the paragraph	*/
 /*	by placing its last line on this page, skip back to the		*/
 /*	penulimate line.						*/
+/*  5)	NOTE the special case for 3 line paragraphs: The whole		*/
+/*	paragraph is moved to the next page.				*/
 /*									*/
 /************************************************************************/
 
@@ -141,7 +150,6 @@ int docLayoutParagraphsInStrip(	ParagraphLayoutJob *		plj,
 	prevLine= psp->pspLine;
 
 	accepted= docLayoutLines( plp, bf, plc, paraBi );
-
 	if  ( accepted < 0 )
 	    { LDEB(accepted); return -1;	}
 
@@ -188,9 +196,30 @@ int docLayoutParagraphsInStrip(	ParagraphLayoutJob *		plj,
 		  ! tl[0].tlTopPosition.lpAtTopOfColumn			&&
 		  tl[0].tlTopPosition.lpPage < tl[1].tlTopPosition.lpPage )
 		{
-		psp->pspLine= prevLine- 1;
-		psp->pspPart= tl->tlFirstParticule;
-		plp->plpPos= tl[1].tlTopPosition;
+		/*  5  */
+		if  ( paraBi->biParaLineCount == 3 )
+		    {
+		    BufferItem *	bi= paraBi;
+
+		    psp->pspLine= 0;
+		    psp->pspPart= 0;
+		    plp->plpPos= tl[1].tlTopPosition;
+
+		    while( bi->biNumberInParent > 0 )
+			{
+			bi= bi->biParent->biChildren[bi->biNumberInParent-1];
+			if  ( ! bi->biParaKeepWithNext )
+			    { break;	}
+
+			psp->pspPara--;
+			}
+		    }
+		else{
+		    psp->pspLine= prevLine- 1;
+		    psp->pspPart= tl->tlFirstParticule;
+		    plp->plpPos= tl[1].tlTopPosition;
+		    }
+
 		continue;
 		}
 	    }
@@ -236,9 +265,15 @@ int docLayoutParagraphsInStrip(	ParagraphLayoutJob *		plj,
 /*  if docPsAdvanceParagraphLayout() moved 'plp0' onto 'plp1'. (As it	*/
 /*  often does).							*/
 /*									*/
-/*  0)  Avoid superfluous work and the handling of this exception	*/
+/*  REGULAR APPROACH							*/
+/*  ================							*/
+/*  a)  Avoid superfluous work and the handling of this exception	*/
 /*	below: Commit an explit page break.				*/
+/*  b)	If the current position is a legal position for a page break..	*/
+/*	break here.							*/
 /*									*/
+/*  'Keep With Next' and 'Widow/Orphan Contol'				*/
+/*  ==========================================				*/
 /*  1)  Find the place to begin. Anything on a previous page is final:	*/
 /*	It will not be shifted to the next page. (Paragraph)		*/
 /*  2)	Idem: Line. The line found here might very well be irrelevant	*/
@@ -255,9 +290,11 @@ int docLayoutParagraphsInStrip(	ParagraphLayoutJob *		plj,
 /*	beginning.							*/
 /*  6)	When Widow/Orphan control is active.. Do not commit the first	*/
 /*	line before the whole paragraph is committed.			*/
-/*  7)	When Widow/Orphan control is active.. Do not commit the last	*/
-/*	line that has been formatted unless the paragraph is complete.	*/
-/*	Do not leave a single line on the previous page either.		*/
+/*  7)	The special cases of the last line of a paragraph with widow	*/
+/*	orphan control and a paragraph with three lines are covered	*/
+/*	in docLayoutParagraphsInStrip() at the end of a paragraph.	*/
+/*	So no exceptions have to be made here. Also note the		*/
+/*	preparations in docAdjustParaLayout().				*/
 /*									*/
 /*  8)	And finally when no exception applies, start from where we are	*/
 /*	now.								*/
@@ -270,23 +307,30 @@ static void docPsAdvanceParagraphLayout_x(
 				int				page,
 				const BufferItem *		cellBi )
     {
-    const BufferItem *		paraBi;
+    const BufferItem *		paraBi0;
+    const BufferItem *		paraBi1;
     const TextLine *		tl;
 
     int				para;
 
-    int				line1;
+    int				line0;
 
-    /*  0  */
+    paraBi0= cellBi->biChildren[psp0->pspPara];
+    paraBi1= (const BufferItem *)0;
+
+    /*  a  */
     if  ( psp1->pspPara < cellBi->biChildCount )
 	{
-	paraBi= cellBi->biChildren[psp1->pspPara];
+	int		line1;
+
+	paraBi1= cellBi->biChildren[psp1->pspPara];
+
 	line1= psp1->pspLine;
 
 	if  ( line1- 1 >= 0				&&
-	      line1- 1 < paraBi->biParaLineCount	)
+	      line1- 1 < paraBi1->biParaLineCount	)
 	    {
-	    const TextLine *	tl= paraBi->biParaLines+ line1- 1;
+	    const TextLine *	tl= paraBi1->biParaLines+ line1- 1;
 
 	    if  ( tl->tlHasPageBreak )
 		{
@@ -296,27 +340,43 @@ static void docPsAdvanceParagraphLayout_x(
 	    }
 	}
 
+    /*  b  */
+    if  ( paraBi1			&&
+	  paraBi1->biParaKeepOnPage	&&
+	  ! paraBi1->biParaKeepWithNext	&&
+	  psp1->pspLine > 0		)
+	{
+	int		line= 1;
+
+	if  ( paraBi1->biParaWidowControl )
+	    { line++;	}
+
+	if  ( psp1->pspLine >= line )
+	    {
+	    *psp0= *psp1;
+	    return;
+	    }
+	}
+
     /*  1  */
-    paraBi= cellBi->biChildren[psp0->pspPara];
     while( psp0->pspPara < psp1->pspPara )
 	{
-	paraBi= cellBi->biChildren[psp0->pspPara];
-
-	if  ( paraBi->biBelowPosition.lpPage >= page )
+	if  ( paraBi0->biBelowPosition.lpPage >= page )
 	    { break;	}
 
 	psp0->pspPara++;
 	psp0->pspLine= 0;
 	psp0->pspPart= 0;
+	paraBi0= cellBi->biChildren[psp0->pspPara];
 	}
 
     /*  2  */
     if  ( psp0->pspPara < psp1->pspPara )
-	{ line1= paraBi->biParaLineCount;	}
-    else{ line1= psp1->pspLine;			}
+	{ line0= paraBi0->biParaLineCount;	}
+    else{ line0= psp1->pspLine;			}
 
-    tl= paraBi->biParaLines+ psp0->pspLine;
-    while( psp0->pspLine < line1 )
+    tl= paraBi0->biParaLines+ psp0->pspLine;
+    while( psp0->pspLine < line0 )
 	{
 	if  ( tl->tlTopPosition.lpPage >= page )
 	    { break;	}
@@ -327,13 +387,14 @@ static void docPsAdvanceParagraphLayout_x(
     /*  3  */
     for ( para= psp0->pspPara; para < psp1->pspPara; para++ )
 	{
-	paraBi= cellBi->biChildren[para];
+	const BufferItem *	paraBi= cellBi->biChildren[para];
 
 	if  ( ! paraBi->biParaKeepWithNext )
 	    {
 	    psp0->pspPara= para+ 1;
 	    psp0->pspLine= 0;
 	    psp0->pspPart= 0;
+	    paraBi0= cellBi->biChildren[psp0->pspPara];
 	    }
 	}
 
@@ -348,9 +409,8 @@ static void docPsAdvanceParagraphLayout_x(
 	{ return;	}
 
     /*  5  */
-    paraBi= cellBi->biChildren[psp0->pspPara];
-    if  ( paraBi->biParaKeepOnPage	||
-	  paraBi->biParaKeepWithNext	)
+    if  ( paraBi0->biParaKeepOnPage	||
+	  paraBi0->biParaKeepWithNext	)
 	{
 	psp0->pspLine= 0;
 	psp0->pspPart= 0;
@@ -359,14 +419,15 @@ static void docPsAdvanceParagraphLayout_x(
 	}
 
     /*  6  */
-    if  ( paraBi->biParaWidowControl	&&
+    if  ( paraBi1			&&
+	  paraBi1->biParaWidowControl	&&
 	  psp1->pspLine == 1		&&
-	  paraBi->biParaLineCount >= 1	)
+	  paraBi1->biParaLineCount >= 1	)
 	{
-	tl= paraBi->biParaLines+ 0;
+	tl= paraBi1->biParaLines+ 0;
 
 	if  ( tl->tlFirstParticule+ tl->tlParticuleCount <
-					paraBi->biParaParticuleCount	)
+					paraBi1->biParaParticuleCount	)
 	    {
 	    psp0->pspLine= 0;
 	    psp0->pspPart= 0;
@@ -376,31 +437,12 @@ static void docPsAdvanceParagraphLayout_x(
 	}
 
     /*  7  */
-    if  ( paraBi->biParaWidowControl	&&
-	  psp1->pspLine > 0		)
-	{
-	if  ( psp1->pspLine == 2 )
-	    { tl= paraBi->biParaLines+ psp1->pspLine- 2;	}
-	else{ tl= paraBi->biParaLines+ psp1->pspLine- 1;	}
-
-	if  ( tl->tlFirstParticule+ tl->tlParticuleCount <
-					paraBi->biParaParticuleCount	)
-	    {
-	    if  ( psp1->pspLine == 2 )
-		{ psp0->pspLine= psp1->pspLine- 2;	}
-	    else{ psp0->pspLine= psp1->pspLine- 1;	}
-	    psp0->pspPart= tl->tlFirstParticule;
-
-	    return;
-	    }
-	}
 
     /*  8  */
     *psp0= *psp1;
 
     return;
     }
-
 
 void docPsAdvanceParagraphLayout(
 				int *				pAdvanced,
@@ -457,9 +499,13 @@ int docLayoutParagraphs(	const ParagraphLayoutContext *	plc,
 	{
 	int				advanced;
 	ParagraphStripPosition		psp0;
+	const int			belowText= 0;
+	LayoutPosition			lpBelowNotes;
 
 	if  ( BF_HAS_FOOTNOTES( bf )					&&
-	      docLayoutFootnotesForColumn( bf, &(plj->pljPos.plpPos), lj ) )
+	      ! bf->bfFootnotesPlaced					&&
+	      docLayoutFootnotesForColumn( &lpBelowNotes, bf,
+			    belowText, &(plj->pljPos.plpPos), lj )	)
 	    { LDEB(1); return -1;	}
 
 	psp0= plj->pljPos0.plpProgress;
@@ -493,6 +539,9 @@ int docLayoutParagraphs(	const ParagraphLayoutContext *	plc,
 
 	toNextPage= plj->pljPos.plpProgress.pspPara < plj->pljParaUpto;
 	}
+
+    if  ( cellBi->biChildCount > 0 )
+	{ cellBi->biTopPosition= cellBi->biChildren[0]->biTopPosition; }
 
     return 0;
     }
@@ -551,10 +600,6 @@ void docInitParagraphLayoutJob(	ParagraphLayoutJob *	plj )
 
     docPsInitParagraphLayoutPosition( &(plj->pljPos) );
     docPsInitParagraphLayoutPosition( &(plj->pljPos0) );
-
-    plj->pljStopWhenSame= 0;
-    plj->pljPageToFinish= -1;
-    plj->pljColumnToFinish= -1;
 
     return;
     }

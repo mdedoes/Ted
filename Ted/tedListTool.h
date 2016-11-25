@@ -20,10 +20,11 @@
 typedef struct ListsPageResources
     {
     char *		lprListLevel;
-    char *		lprLevel;
+    char *		lprNumberStyle;
+    char *		lprNumberFormat;
+
     char *		lprStartAt;
     char *		lprNoRestart;
-    char *		lprStyle;
     char *		lprJustify;
     char *		lprFollowedBy;
     char *		lprStyleOptionTexts[LISTTOOLcountSTYLES];
@@ -38,6 +39,10 @@ typedef struct ListsPageResources
     char *		lprNewList;
     char *		lprSetLevel;
     char *		lprRemoveFromList;
+
+    char *		lprDeleteLevelNumber;
+    char *		lprInsertLevelNumber;
+    char *		lprEditLevelText;
     } ListsPageResources;
 
 /************************************************************************/
@@ -61,14 +66,17 @@ typedef struct ListTool
     ListOverride		ltListOverrideChosen;
     int				ltCurrentLevel;
     int				ltCurrentParagraphNumber;
+    int				ltTabIntervalTwips;
 
     int				ltHerePath[DLmaxLEVELS];
     int				ltPrevPath[DLmaxLEVELS];
+    int				ltCurrPath[DLmaxLEVELS];
     int				ltFormatPath[DLmaxLEVELS];
     int				ltStartPath[DLmaxLEVELS];
 
     int				ltHereLevel;
     int				ltPrevLevel;
+    int				ltFormatIndex;
 
     /**/
     APP_WIDGET			ltListLevelList;
@@ -79,14 +87,23 @@ typedef struct ListTool
     APP_WIDGET			ltListLevelFrame;
     APP_WIDGET			ltListLevelPaned;
 
-    APP_WIDGET			ltLevelText;
+    AppOptionmenu		ltNumberStyleOptionmenu;
+    APP_WIDGET			ltNumberStyleItems[LISTTOOLcountSTYLES];
+
+    APP_WIDGET			ltFormatLabel;
+    APP_WIDGET			ltNumberFormatHBox;
+    APP_WIDGET			ltNumberFormatHead;
+    APP_WIDGET			ltNumberFormatCurrentLabel;
+    APP_WIDGET			ltNumberFormatCurrentText;
+    APP_WIDGET			ltNumberFormatLabelTail;
+    APP_WIDGET			ltNumberFormatTextTail;
+    APP_WIDGET			ltNumberFormatMenu;
+    int				ltFormatEditable;
+
     APP_WIDGET			ltFirstIndentText;
     APP_WIDGET			ltLeftIndentText;
     APP_WIDGET			ltStartAtText;
     APP_WIDGET			ltNoRestartToggle;
-
-    AppOptionmenu		ltNumberStyleOptionmenu;
-    APP_WIDGET			ltNumberStyleItems[LISTTOOLcountSTYLES];
 
     AppOptionmenu		ltJustifyOptionmenu;
     APP_WIDGET			ltJustifyItems[DOClla_COUNT];

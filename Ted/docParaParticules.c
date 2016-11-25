@@ -235,6 +235,8 @@ int docCopyParticules(	DocumentCopyJob *		dcj,
 
     int				notesCopied= 0;
 
+    int				paraNrTo= docNumberOfParagraph( biTo );
+
     /*  1  */
     if  ( partTo > biTo->biParaParticuleCount )
 	{
@@ -278,9 +280,10 @@ int docCopyParticules(	DocumentCopyJob *		dcj,
 	}
 
     /*  6  */
-    if  ( docShiftParticuleOffsets( dcj->dcjBdTo, biTo,
-				    partTo+ countFrom,
-				    biTo->biParaParticuleCount, stroffShift ) )
+    if  ( docEditShiftParticuleOffsets( eo, biTo, paraNrTo,
+						partTo+ countFrom,
+						biTo->biParaParticuleCount,
+						stroffFrom, stroffShift ) )
 	{ LDEB(stroffShift);	}
 
     /*  7  */
@@ -519,6 +522,36 @@ int docInsertAdminParticule(		BufferDocument *	bd,
 	{ XDEB(tp); return -1;	}
 
     tp->tpObjectNumber= objectNumber;
+
+    return 0;
+    }
+
+/************************************************************************/
+/*									*/
+/*  Make sure the a paragraph does not end in an explicit break.	*/
+/*									*/
+/************************************************************************/
+
+int docCheckNoBreakAsLast(	EditOperation *		eo,
+				BufferItem *		paraBi )
+    {
+    const int			part= paraBi->biParaParticuleCount;
+    const int			stroff= paraBi->biParaStrlen;
+    const int			len= 0;
+
+    const TextParticule *	tp= paraBi->biParaParticules+ part- 1;
+
+    if  ( tp->tpKind != DOCkindLINEBREAK	&&
+	  tp->tpKind != DOCkindPAGEBREAK	&&
+	  tp->tpKind != DOCkindCOLUMNBREAK	)
+	{ return 0;	}
+
+    tp= docInsertTextParticule( paraBi, part, stroff, len,
+				    DOCkindTEXT, tp->tpTextAttributeNumber );
+    if  ( ! tp )
+	{ XDEB(tp); return -1;	}
+
+    docEditIncludeItemInReformatRange( eo, paraBi );
 
     return 0;
     }

@@ -26,9 +26,11 @@ void docInitDocumentStyle(	DocumentStyle *	ds )
     ds->dsBasedOn= -1;
     ds->dsAdditive= 0;
     ds->dsNext= -1;
+    ds->dsLink= -1;
     ds->dsLevel= -1;
     ds->dsAutoupd= 0;
     ds->dsHidden= 0;
+    ds->dsLocked= 0;
     ds->dsSemiHidden= 0;
     ds->dsPersonal= 0;
     ds->dsBusy= 0;

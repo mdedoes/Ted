@@ -879,7 +879,7 @@ static AppConfigurableResource TED_TedTabsToolResourceTable[]=
 	offsetof(TabsPageResources,tprAlignmentOptionTexts[DOCtaRIGHT]),
 	"Right" ),
     APP_RESOURCE( "formatToolTabAlignmentCenter",
-	offsetof(TabsPageResources,tprAlignmentOptionTexts[DOCtaCENTRE]),
+	offsetof(TabsPageResources,tprAlignmentOptionTexts[DOCtaCENTER]),
 	"Center" ),
     APP_RESOURCE( "formatToolTabAlignmentDecimal",
 	offsetof(TabsPageResources,tprAlignmentOptionTexts[DOCtaDECIMAL]),
@@ -922,15 +922,24 @@ void tedFormatToolGetTabsResourceTable(	EditApplication *		ea,
 					TabsPageResources *		tpr,
 					InspectorSubjectResources *	isr )
     {
-    appGuiGetResourceValues( ea, (void *)tpr,
+    static int	gotToolResources= 0;
+    static int	gotSubjectResources= 0;
+
+    if  ( ! gotToolResources )
+	{
+	appGuiGetResourceValues( &gotToolResources, ea, (void *)tpr,
 				TED_TedTabsToolResourceTable,
 				sizeof(TED_TedTabsToolResourceTable)/
 				sizeof(AppConfigurableResource) );
+	}
 
-    appGuiGetResourceValues( ea, (void *)isr,
+    if  ( ! gotSubjectResources )
+	{
+	appGuiGetResourceValues( &gotSubjectResources, ea, (void *)isr,
 				TED_TedTabsSubjectResourceTable,
 				sizeof(TED_TedTabsSubjectResourceTable)/
 				sizeof(AppConfigurableResource) );
+	}
 
     return;
     }

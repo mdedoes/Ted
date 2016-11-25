@@ -32,7 +32,7 @@ void docNormalizeRectangle(	DocumentRectangle *		drTo,
     return;
     }
 
-void docUnionRectangle(	DocumentRectangle *		dr,
+void geoUnionRectangle(	DocumentRectangle *		dr,
 			const DocumentRectangle *	dr1,
 			const DocumentRectangle *	dr2 )
     {
@@ -53,7 +53,7 @@ void docUnionRectangle(	DocumentRectangle *		dr,
     else{ dr->drY1= dr1->drY1;	}
     }
 
-int docIntersectRectangle(	DocumentRectangle *		dr,
+int geoIntersectRectangle(	DocumentRectangle *		dr,
 				const DocumentRectangle *	dr1,
 				const DocumentRectangle *	dr2 )
     {

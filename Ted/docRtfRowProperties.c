@@ -164,20 +164,20 @@ void docRtfSaveRowProperties(		const RowProperties *	rp,
 
     /**/
     docRtfSaveAutoSpace( pCol, sos,
-			"\\trpaddfl", rp->rpLeftDefaultCellMarginUnit,
-			"\\trpaddl", rp->rpLeftDefaultCellMargin );
+			"\\trpaddfl", rp->rpLeftCellPaddingUnit,
+			"\\trpaddl", rp->rpLeftCellPadding );
 
     docRtfSaveAutoSpace( pCol, sos,
-			"\\trpaddfr", rp->rpRightDefaultCellMarginUnit,
-			"\\trpaddr", rp->rpRightDefaultCellMargin );
+			"\\trpaddfr", rp->rpRightCellPaddingUnit,
+			"\\trpaddr", rp->rpRightCellPadding );
 
     docRtfSaveAutoSpace( pCol, sos,
-			"\\trpaddft", rp->rpTopDefaultCellMarginUnit,
-			"\\trpaddt", rp->rpTopDefaultCellMargin );
+			"\\trpaddft", rp->rpTopCellPaddingUnit,
+			"\\trpaddt", rp->rpTopCellPadding );
 
     docRtfSaveAutoSpace( pCol, sos,
-			"\\trpaddfb", rp->rpBottomDefaultCellMarginUnit,
-			"\\trpaddb", rp->rpBottomDefaultCellMargin );
+			"\\trpaddfb", rp->rpBottomCellPaddingUnit,
+			"\\trpaddb", rp->rpBottomCellPadding );
 
     /**/
     docRtfSaveAutoSpace( pCol, sos,
@@ -331,29 +331,29 @@ int docRtfRememberRowProperty(		SimpleInputStream *	sis,
 
 	/**/
 	case RPpropTRPADDL:
-	    rp->rpLeftDefaultCellMargin= arg;
+	    rp->rpLeftCellPadding= arg;
 	    break;
 	case RPpropTRPADDR:
-	    rp->rpRightDefaultCellMargin= arg;
+	    rp->rpRightCellPadding= arg;
 	    break;
 	case RPpropTRPADDT:
-	    rp->rpTopDefaultCellMargin= arg;
+	    rp->rpTopCellPadding= arg;
 	    break;
 	case RPpropTRPADDB:
-	    rp->rpBottomDefaultCellMargin= arg;
+	    rp->rpBottomCellPadding= arg;
 	    break;
 
 	case RPpropTRPADDFL:
-	    rp->rpLeftDefaultCellMarginUnit= arg;
+	    rp->rpLeftCellPaddingUnit= arg;
 	    break;
 	case RPpropTRPADDFR:
-	    rp->rpRightDefaultCellMarginUnit= arg;
+	    rp->rpRightCellPaddingUnit= arg;
 	    break;
 	case RPpropTRPADDFT:
-	    rp->rpTopDefaultCellMarginUnit= arg;
+	    rp->rpTopCellPaddingUnit= arg;
 	    break;
 	case RPpropTRPADDFB:
-	    rp->rpBottomDefaultCellMarginUnit= arg;
+	    rp->rpBottomCellPaddingUnit= arg;
 	    break;
 
 	/**/
@@ -411,6 +411,10 @@ int docRtfRememberRowProperty(		SimpleInputStream *	sis,
 
 	case RPpropIS_LAST_ROW:
 	    rp->rpIsLastRow= ( arg != 0 );
+	    break;
+
+	case RPpropTRAUTH:
+	    rp->rpAuthor= arg;
 	    break;
 
 	default:

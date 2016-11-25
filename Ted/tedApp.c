@@ -111,13 +111,13 @@ static int tedInsertFile(	void *		voided,
     switch( format )
 	{
 	case 0:
-	    if  ( tedIncludeRtfDocument( ed->edDocumentWidget, ed, bd ) )
+	    if  ( tedIncludeRtfDocument( ed, bd ) )
 		{ LDEB(1); docFreeDocument( bd ); return -1;	}
 	    break;
 
 	case 1:
 	case 2:
-	    if  ( tedIncludePlainDocument( ed->edDocumentWidget, ed, bd ) )
+	    if  ( tedIncludePlainDocument( ed, bd ) )
 		{ LDEB(1); docFreeDocument( bd ); return -1;	}
 	    break;
 

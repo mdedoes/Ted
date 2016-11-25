@@ -223,13 +223,4 @@ extern int docFieldReplaceContents(	int *			pStroff,
 					void *			voidadd,
 					DOC_CLOSE_OBJECT	closeObject );
 
-extern int docCalculateListtextString(	
-				unsigned char *			target,
-				int				maxsize,
-				int				ilvl,
-				const int *			numberPath,
-				const int *			startPath,
-				const int *			formatPath,
-				const DocumentListLevel *	dll );
-
 #   endif	/*  DOC_EVAL_FIELD_H  */

@@ -175,6 +175,15 @@ unsigned long utilEndianExtractLeUint32(	const unsigned char *	b )
     return ul;
     }
 
+unsigned long utilEndianExtractBeUint32(	const unsigned char *	b )
+    {
+    unsigned long	ul;
+
+    POSVALUE32(b[0],b[1],b[2],b[3],ul,unsigned long)
+
+    return ul;
+    }
+
 int utilEndianExtractLeInt16(	const unsigned char *	b )
     {
     int		i;

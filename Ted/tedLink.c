@@ -342,7 +342,7 @@ int tedDocSetHyperlink(	EditDocument *		ed,
 		int			partShift= 0;
 		int			stroffShift= 0;
 
-		tp= docParaSpecialParticule( bd, dsRep.dsEnd.dpBi, DOCkindTAB,
+		tp= docParaSpecialParticule( &eo, dsRep.dsEnd.dpBi, DOCkindTAB,
 				    innerEndPart+ 1,
 				    dsRep.dsEnd.dpStroff,
 				    &partShift, &stroffShift );
@@ -489,7 +489,51 @@ int tedDocRemoveHyperlink(	EditDocument *		ed )
 				&fileName, &fileSize, &markName, &markSize ) )
 	{ LDEB(1); return -1;	}
     else{
-	BufferItem *	paraBi= ds.dsBegin.dpBi;
+	DocumentProperties *	dp= &(bd->bdProperties);
+	BufferItem *		paraBi= ds.dsBegin.dpBi;
+
+	int			part;
+	TextParticule *		tp;
+
+	RGB8Color		blueColor;
+	int			blueIndex;
+
+	const int		avoidZero= 1;
+	const int		maxColors= 255;
+
+	bmInitRGB8Color( &blueColor );
+	blueColor.rgb8Red= 0;
+	blueColor.rgb8Green= 0;
+	blueColor.rgb8Blue= 255;
+
+	blueIndex= bmInsertColor( &(dp->dpColors), &(dp->dpColorCount),
+					avoidZero, maxColors, &blueColor );
+	if  ( blueIndex < 0 )
+	    { LDEB(blueIndex); blueIndex= 0;			}
+
+	tp= paraBi->biParaParticules+ startPart+ 1;
+	for ( part= startPart+ 1; part < endPart; tp++, part++ )
+	    {
+	    TextAttribute	taHere;
+
+	    utilGetTextAttributeByNumber( &taHere, &(bd->bdTextAttributeList),
+						    tp->tpTextAttributeNumber );
+
+	    if  ( taHere.taTextColorNumber == blueIndex		&&
+		  taHere.taTextIsUnderlined == 1		)
+		{
+		int	num;
+
+		taHere.taTextColorNumber= 0;
+		taHere.taTextIsUnderlined= 0;
+
+		num= utilTextAttributeNumber( &(bd->bdTextAttributeList),
+								    &taHere );
+		if  ( num < 0 )
+		    { LDEB(num);			}
+		else{ tp->tpTextAttributeNumber= num;	}
+		}
+	    }
 
 	tedDeleteField( ed, paraBi, startPart, endPart );
 
@@ -1052,8 +1096,6 @@ static void tedDocInsertNote(	APP_WIDGET	option,
     /*  6  */
     tedEditFinishIBarSelection( ed, &eo, dpEnd.dpBi, dpEnd.dpStroff );
 
-    tedAdaptToolsToSelection( ed );
-
     appDocumentChanged( ed, 1 );
 
     return;
@@ -1115,16 +1157,19 @@ static int tedEditSetNoteItemAuto(	EditOperation *		eo,
 	int		stroffShift= 0;
 
 	const int	stroffHead= 0;
+	int		paraNr= docNumberOfParagraph( dpHead.dpBi );
 
 	docNoteGetTextAtHead( fixedText, &fixedLen,
 					sizeof(fixedText)- 1, dpHead.dpBi );
 
-	if  ( docParaReplaceText( eo, dpHead.dpBi, stroffHead,
+	if  ( docParaReplaceText( eo, dpHead.dpBi, paraNr, stroffHead,
 					&partShift, &stroffShift, fixedLen,
 					(const unsigned char *)0, 0, -1 ) )
 	    { LDEB(1); return -1;	}
 
-	if  ( docInsertParaHeadField( dpHead.dpBi, bd, DOCfkCHFTN, txtAttrNr ) )
+	if  ( docInsertParaHeadField( &fieldNr, &partBegin, &partEnd,
+				    &stroffBegin, &stroffEnd,
+				    dpHead.dpBi, bd, DOCfkCHFTN, txtAttrNr ) )
 	    { LDEB(1);	}
 
 	eo->eoNotesAdded++;
@@ -1145,10 +1190,6 @@ static int tedEditSetNoteReferenceAuto(	EditOperation *		eo,
 					DocumentNote *		dn,
 					BufferDocument *	bd )
     {
-    /*
-    AppDrawingData *	add= &(ed->edDrawingData);
-    */
-
     DocumentPosition	dpNoteref;
 
     int			fieldNr= -1;
@@ -1235,9 +1276,12 @@ static int tedEditSetNoteItemFixed(	EditOperation *		eo,
 
     int			fixedLenSet= strlen( (const char *)fixedTextSet );
 
+    int			paraNr;
+
     if  ( docFirstPosition( &dpHead, dn->dnExternalItem.eiItem ) )
 	{ LDEB(1); return -1;	}
 
+    paraNr= docNumberOfParagraph( dpHead.dpBi );
     txtAttrNr= dpHead.dpBi->biParaParticules->tpTextAttributeNumber;
 
     if  ( docDelimitParaHeadField( &fieldNr, &partBegin, &partEnd,
@@ -1257,11 +1301,10 @@ static int tedEditSetNoteItemFixed(	EditOperation *		eo,
 							fixedLen )	)
 	    { return 0;	}
 
-	if  ( docParaReplaceText( eo, dpHead.dpBi, stroffHead,
+	if  ( docParaReplaceText( eo, dpHead.dpBi, paraNr, stroffHead,
 				    &partShift, &stroffShift, fixedLen,
 				    fixedTextSet, fixedLenSet, txtAttrNr ) )
 	    { LDEB(1); return -1;	}
-
 
 	changed= 1;
 	}
@@ -1277,7 +1320,7 @@ static int tedEditSetNoteItemFixed(	EditOperation *		eo,
 	docDeleteParticules( dpHead.dpBi, partEnd, 1 );
 	docDeleteParticules( dpHead.dpBi, partBegin, 1 );
 
-	if  ( docParaReplaceText( eo, dpHead.dpBi, stroffBegin,
+	if  ( docParaReplaceText( eo, dpHead.dpBi, paraNr, stroffBegin,
 				    &partShift, &stroffShift, 
 				    stroffEnd- stroffBegin,
 				    fixedTextSet, fixedLenSet, txtAttrNr ) )
@@ -1287,7 +1330,10 @@ static int tedEditSetNoteItemFixed(	EditOperation *		eo,
 	}
 
     if  ( changed )
-	{ *pChanged= 1;	}
+	{
+	docInvalidateParagraphLayout( dpHead.dpBi );
+	*pChanged= 1;
+	}
 
     return 0;
     }
@@ -1315,9 +1361,12 @@ static int tedEditSetNoteReferenceFixed( EditOperation *	eo,
     int			fixedLenSet= strlen( (const char *)fixedTextSet );
 
     int			txtAttrNr;
+    int			paraNr;
 
     if  ( docGetNotePosition( &dpNoteref, bd, dn ) )
 	{ LDEB(1); return -1;	}
+
+    paraNr= docNumberOfParagraph( dpNoteref.dpBi );
 
     if  ( docDelimitNoteReference( &fieldNr, &partBegin, &partEnd,
 				    &stroffBegin, &stroffEnd,
@@ -1334,7 +1383,7 @@ static int tedEditSetNoteReferenceFixed( EditOperation *	eo,
 							fixedLen )	)
 	    { return 0;	}
 
-	if  ( docParaReplaceText( eo, dpNoteref.dpBi,
+	if  ( docParaReplaceText( eo, dpNoteref.dpBi, paraNr,
 				dpNoteref.dpStroff- fixedLen,
 				&partShift, &stroffShift, dpNoteref.dpStroff,
 				fixedTextSet, fixedLenSet, txtAttrNr ) )
@@ -1357,7 +1406,7 @@ static int tedEditSetNoteReferenceFixed( EditOperation *	eo,
 	docDeleteParticules( dpNoteref.dpBi, partEnd, 1 );
 	docDeleteParticules( dpNoteref.dpBi, partBegin, 1 );
 
-	if  ( docParaReplaceText( eo, dpNoteref.dpBi, stroffBegin,
+	if  ( docParaReplaceText( eo, dpNoteref.dpBi, paraNr, stroffBegin,
 				    &partShift, &stroffShift, stroffEnd,
 				    fixedTextSet, fixedLenSet, txtAttrNr ) )
 	    { LDEB(1); return -1;	}
@@ -1366,7 +1415,10 @@ static int tedEditSetNoteReferenceFixed( EditOperation *	eo,
 	}
 
     if  ( changed )
-	{ *pChanged= 1;	}
+	{
+	docInvalidateParagraphLayout( dpNoteref.dpBi );
+	*pChanged= 1;
+	}
 
     return 0;
     }
@@ -1459,6 +1511,7 @@ int tedChangeCurrentNote(	EditApplication *	ea,
 
     if  ( changed )
 	{
+	eo.eoFieldUpdate |= FIELDdoCHFTN;
 	eo.eoNotesDeleted++;
 	eo.eoNotesAdded++;
 

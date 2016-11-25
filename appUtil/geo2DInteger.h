@@ -40,7 +40,7 @@ typedef struct Point2DI
 
 extern void docInitRectangle(	DocumentRectangle *		dr );
 
-extern void docUnionRectangle(	DocumentRectangle *		dr,
+extern void geoUnionRectangle(	DocumentRectangle *		dr,
 				const DocumentRectangle *	dr1,
 				const DocumentRectangle *	dr2	);
 
@@ -48,7 +48,7 @@ extern void docNormalizeRectangle(
 				DocumentRectangle *		drTo,
 				const DocumentRectangle *	drFrom );
 
-extern int docIntersectRectangle(	DocumentRectangle *		dr,
+extern int geoIntersectRectangle(	DocumentRectangle *		dr,
 					const DocumentRectangle *	dr1,
 					const DocumentRectangle *	dr2 );
 

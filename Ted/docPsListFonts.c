@@ -68,8 +68,9 @@ typedef int (*LIST_FONTS_PS)(	PostScriptTypeList *	pstl,
 				int			twipsWide,
 				int			twipsHigh );
 
-int docPsListObjectFonts(	PostScriptTypeList *		pstl,
-				const InsertedObject *		io,
+int docPsListImageFonts(	PostScriptTypeList *		pstl,
+				const PictureProperties *	pip,
+				const MemoryBuffer *		mb,
 				const PostScriptFontList *	psfl,
 				const char *			prefix )
     {
@@ -78,41 +79,18 @@ int docPsListObjectFonts(	PostScriptTypeList *		pstl,
     SimpleInputStream *		sisMem;
     SimpleInputStream *		sisMeta;
 
-    const MemoryBuffer *	mb;
-    int				mapMode= 0;
-
-    switch( io->ioKind )
+    switch( pip->pipType )
 	{
 	case DOCokPICTWMETAFILE:
-	    mb= &(io->ioObjectData);
-	    mapMode= io->ioMapMode;
 	    listFontsPs= appMetaListFontsPs;
 	    break;
 
 	case DOCokMACPICT:
-	    mb= &(io->ioObjectData);
 	    listFontsPs= appMacPictListFontsPs;
 	    break;
 
-	case DOCokPICTJPEGBLIP:
-	case DOCokPICTPNGBLIP:
-	    return 0;
-
-	case DOCokOLEOBJECT:
-	    if  ( io->ioResultKind == DOCokPICTWMETAFILE )
-		{
-		mb= &(io->ioResultData);
-		mapMode= io->ioResultMapMode;
-		listFontsPs= appMetaListFontsPs;
-		break;
-		}
-	    else{ LDEB(io->ioResultKind); return 0;	}
-
-	case DOCokINCLUDEPICTURE:
-	    return 0;
-
 	default:
-	    LDEB(io->ioKind); return 0;
+	    LDEB(pip->pipType); return 0;
 	}
 
     sisMem= sioInMemoryOpen( mb );
@@ -123,9 +101,9 @@ int docPsListObjectFonts(	PostScriptTypeList *		pstl,
     if  ( ! sisMeta )
 	{ XDEB(sisMem); return -1;	}
 
-    if  ( (*listFontsPs)( pstl, sisMeta, psfl, prefix, mapMode,
-					io->io_xWinExt, io->io_yWinExt,
-					io->ioTwipsWide, io->ioTwipsHigh ) )
+    if  ( (*listFontsPs)( pstl, sisMeta, psfl, prefix, pip->pipMapMode,
+				    pip->pip_xWinExt, pip->pip_yWinExt,
+				    pip->pipTwipsWide, pip->pipTwipsHigh ) )
 	{ LDEB(1); return -1;	}
 
     sioInClose( sisMeta );
@@ -134,6 +112,46 @@ int docPsListObjectFonts(	PostScriptTypeList *		pstl,
     return 0;
     }
 
+static int docPsListObjectFonts( PostScriptTypeList *		pstl,
+				const InsertedObject *		io,
+				const PostScriptFontList *	psfl,
+				const char *			prefix )
+    {
+    switch( io->ioKind )
+	{
+	case DOCokMACPICT:
+	case DOCokPICTWMETAFILE:
+	    return docPsListImageFonts( pstl,
+				&(io->ioPictureProperties),
+				&(io->ioObjectData), psfl, prefix );
+	    break;
+
+	case DOCokPICTJPEGBLIP:
+	case DOCokPICTPNGBLIP:
+	    return 0;
+
+	case DOCokOLEOBJECT:
+	    if  ( io->ioResultKind == DOCokPICTWMETAFILE )
+		{
+		return docPsListImageFonts( pstl,
+				&(io->ioPictureProperties),
+				&(io->ioResultData), psfl, prefix );
+		}
+	    else{ LDEB(io->ioResultKind); return 0;	}
+
+	case DOCokEPS_FILE:
+	    LDEB(io->ioKind);
+	    return 0;
+
+	case DOCokDRAWING_SHAPE:
+	    return 0;
+
+	default:
+	    LDEB(io->ioKind); return 0;
+	}
+
+    return 0;
+    }
 
 /************************************************************************/
 /*									*/
@@ -148,6 +166,46 @@ typedef struct GetDocumentFonts
     const PostScriptFontList *		gdfPostScriptFontList;
     PostScriptTypeList *		gdfPostScriptTypeList;
     } GetDocumentFonts;
+
+static int docPsPrintGetParaFonts(
+				DocumentSelection *		ds,
+				BufferItem *			bi,
+				const BufferDocument *		bd,
+				const DocumentPosition *	dpFrom,
+				void *				through );
+
+static int docPsPrintGetShapeFonts(
+				const DrawingShape *		ds,
+				const BufferDocument *		bd,
+				void *				through )
+    {
+    int		rval= 0;
+    int		i;
+
+    if  ( ds->dsExternalItem.eiItem )
+	{
+	DocumentPosition	dp;
+
+	if  ( ! docFirstPosition( &dp, ds->dsExternalItem.eiItem ) )
+	    {
+	    DocumentSelection	dsIgnored;
+
+	    docInitDocumentSelection( &dsIgnored );
+
+	    if  ( docFindFindNextInTree( &dsIgnored, bd, &dp,
+				    docPsPrintGetParaFonts, through ) != 1 )
+		{ LDEB(1); rval= -1;	}
+	    }
+	}
+
+    for ( i= 0; i < ds->dsChildCount; i++ )
+	{
+	if  ( docPsPrintGetShapeFonts( ds->dsChildren[i], bd, through ) )
+	    { LDEB(1); rval= -1;	}
+	}
+
+    return rval;
+    }
 
 /*  a  */
 static int docPsPrintGetParaFonts(
@@ -219,6 +277,12 @@ static int docPsPrintGetParaFonts(
 
 		if  ( docPsListObjectFonts( pstl, io, psfl, "f" ) )
 		    { LDEB(tp->tpKind); return -1;	}
+
+		if  ( io->ioKind == DOCokDRAWING_SHAPE			&&
+		      io->ioDrawingShape				&&
+		      docPsPrintGetShapeFonts( io->ioDrawingShape,
+							bd, through )	)
+		    { LDEB(1);	}
 
 		part++; tp++; break;
 

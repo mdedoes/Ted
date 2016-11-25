@@ -67,7 +67,7 @@ static int tedChangeParaProperties( EditOperation *		eo,
 	int		bulletStroffBegin= -1;
 	int		bulletStroffEnd= -1;
 
-	override= paraBi->biParaProperties.ppListOverride;
+	override= paraBi->biParaListOverride;
 
 	if  ( docDelimitParaHeadField( &bulletFieldNr,
 			&bulletPartBegin, &bulletPartEnd,
@@ -81,7 +81,7 @@ static int tedChangeParaProperties( EditOperation *		eo,
 	PROPmaskUNSET( &ppSetMaskThisPara, PPpropFIRST_INDENT );
 	}
 
-    if  ( ! PROPmaskISEMPTY( taSetMask ) )
+    if  ( ! utilPropMaskIsEmpty( taSetMask ) )
 	{
 	if  ( tedChangeParticuleAttributes( &taDoneMask, add, sfl, bd,
 						paraBi, partFrom, partUpto,
@@ -89,7 +89,7 @@ static int tedChangeParaProperties( EditOperation *		eo,
 	    { LLDEB(partFrom,partUpto); return -1;	}
 	}
 
-    if  ( ! PROPmaskISEMPTY( &ppSetMaskThisPara ) )
+    if  ( ! utilPropMaskIsEmpty( &ppSetMaskThisPara ) )
 	{
 	const int * const	colorMap= (const int *)0;
 	const int * const	listStyleMap= (const int *)0;
@@ -246,6 +246,8 @@ int tedChangeSelectionProperties( EditDocument *		ed,
 
     EditOperation		eo;
 
+    int				redoParaLayout= 1;
+
     tedStartEditOperation( &eo, &ds, &sg, &sd, ed, 1 );
 
     taSetMask= *taSetMaskCall;
@@ -259,6 +261,21 @@ int tedChangeSelectionProperties( EditDocument *		ed,
 
     if  ( docIsIBarSelection( &ds ) )
 	{ PROPmaskCLEAR( &taSetMask );	}
+
+    if  ( sd.sdIsSingleParagraph		&&
+	  utilPropMaskIsEmpty( ppSetMask )	&&
+	  utilPropMaskIsEmpty( spSetMask )	)
+	{
+	int		fromLine= 0;
+	const int	stroffShift= 0;
+
+	redoParaLayout= 0;
+
+	tedAdjustRedrawBegin( ed, &eo, &fromLine );
+
+	docSetParagraphAdjust( &eo, ds.dsBegin.dpBi, fromLine, stroffShift,
+							    ds.dsEnd.dpStroff );
+	}
 
     paraBi= ds.dsBegin.dpBi;
     if  ( docFindParticuleOfPosition( &part, &(ds.dsBegin), 1 ) )
@@ -295,7 +312,7 @@ int tedChangeSelectionProperties( EditDocument *		ed,
 	utilAttributeDifference( &pmSplit, &ta, taSet, &taSetMask );
 	}
 
-    if  ( ! PROPmaskISEMPTY( &pmSplit ) )
+    if  ( ! utilPropMaskIsEmpty( &pmSplit ) )
 	{
 	int		stroff= ds.dsBegin.dpStroff;
 
@@ -317,7 +334,7 @@ int tedChangeSelectionProperties( EditDocument *		ed,
     PROPmaskCLEAR( &sectSpChgMask );
 
     sectBi= paraBi->biParent->biParent->biParent;
-    if  ( ! PROPmaskISEMPTY( spSetMask ) )
+    if  ( ! utilPropMaskIsEmpty( spSetMask ) )
 	{
 	int	redraw= 0;
 
@@ -351,11 +368,11 @@ int tedChangeSelectionProperties( EditDocument *		ed,
 
 	    if  ( sectBi != paraBi->biParent->biParent->biParent )
 		{
-		if  ( ! PROPmaskISEMPTY( &sectSpChgMask ) )
+		if  ( ! utilPropMaskIsEmpty( &sectSpChgMask ) )
 		    { tedApplyItemFormat( &eo, sectBi, add );	}
 
 		sectBi= paraBi->biParent->biParent->biParent;
-		if  ( ! PROPmaskISEMPTY( spSetMask ) )
+		if  ( ! utilPropMaskIsEmpty( spSetMask ) )
 		    {
 		    int		redraw= 0;
 
@@ -374,12 +391,13 @@ int tedChangeSelectionProperties( EditDocument *		ed,
 		    }
 		}
 
-	    if  ( ! PROPmaskISEMPTY( &paraPpChgMask )	||
-		  ! PROPmaskISEMPTY( &paraTaChgMask )	)
+	    if  ( ! utilPropMaskIsEmpty( &paraPpChgMask )	||
+		  ! utilPropMaskIsEmpty( &paraTaChgMask )	)
 		{
-		tedApplyItemFormat( &eo, paraBi, add );
+		if  ( redoParaLayout )
+		    { tedApplyItemFormat( &eo, paraBi, add );	}
 
-		if  ( ! PROPmaskISEMPTY( &paraPpChgMask )	&&
+		if  ( ! utilPropMaskIsEmpty( &paraPpChgMask )	&&
 		      paraBi == ds.dsBegin.dpBi		)
 		    { tedDocAdaptHorizontalRuler( ed, paraBi );	}
 
@@ -406,11 +424,11 @@ int tedChangeSelectionProperties( EditDocument *		ed,
 
     if  ( sectBi != paraBi->biParent->biParent->biParent )
 	{
-	if  ( ! PROPmaskISEMPTY( &sectSpChgMask ) )
+	if  ( ! utilPropMaskIsEmpty( &sectSpChgMask ) )
 	    { tedApplyItemFormat( &eo, sectBi, add ); }
 
 	sectBi= paraBi->biParent->biParent->biParent;
-	if  ( ! PROPmaskISEMPTY( spSetMask ) )
+	if  ( ! utilPropMaskIsEmpty( spSetMask ) )
 	    {
 	    int		redraw= 0;
 
@@ -425,7 +443,7 @@ int tedChangeSelectionProperties( EditDocument *		ed,
 	    }
 	}
 
-    if  ( ! PROPmaskISEMPTY( &sectSpChgMask ) )
+    if  ( ! utilPropMaskIsEmpty( &sectSpChgMask ) )
 	{ tedApplyItemFormat( &eo, sectBi, add ); }
 
     PROPmaskCLEAR( &pmSplit );
@@ -439,7 +457,7 @@ int tedChangeSelectionProperties( EditDocument *		ed,
 	utilAttributeDifference( &pmSplit, &ta, taSet, &taSetMask );
 	}
 
-    if  ( ! PROPmaskISEMPTY( &pmSplit ) )
+    if  ( ! utilPropMaskIsEmpty( &pmSplit ) )
 	{
 	int	strend= tp->tpStroff+ tp->tpStrlen;
 
@@ -463,12 +481,13 @@ int tedChangeSelectionProperties( EditDocument *		ed,
 	utilPropMaskOr( &paraTaChgMask, &paraTaChgMask, &pmSplit );
 	}
 
-    if  ( ! PROPmaskISEMPTY( &paraPpChgMask )	||
-	  ! PROPmaskISEMPTY( &paraTaChgMask )	)
+    if  ( ! utilPropMaskIsEmpty( &paraPpChgMask )	||
+	  ! utilPropMaskIsEmpty( &paraTaChgMask )	)
 	{
-	tedApplyItemFormat( &eo, paraBi, add );
+	if  ( redoParaLayout )
+	    { tedApplyItemFormat( &eo, paraBi, add );	}
 
-	if  ( ! PROPmaskISEMPTY( &paraPpChgMask )	&&
+	if  ( ! utilPropMaskIsEmpty( &paraPpChgMask )	&&
 	      paraBi == ds.dsBegin.dpBi		)
 	    { tedDocAdaptHorizontalRuler( ed, paraBi );	}
 
@@ -476,16 +495,30 @@ int tedChangeSelectionProperties( EditDocument *		ed,
 	utilPropMaskOr( &selTaChgMask, &selTaChgMask, &paraTaChgMask );
 	}
 
-    if  ( ! PROPmaskISEMPTY( &selPpChgMask )	||
-	  ! PROPmaskISEMPTY( &selTaChgMask )	||
-	  ! PROPmaskISEMPTY( &selSpChgMask )	)
+    if  ( ! utilPropMaskIsEmpty( &selPpChgMask )	||
+	  ! utilPropMaskIsEmpty( &selTaChgMask )	||
+	  ! utilPropMaskIsEmpty( &selSpChgMask )	)
+	{
+	PropertyMask	taDoneMask;
 
-    if  ( tedEditFinishOldSelection( ed, &eo ) )
-	{ LDEB(1);	}
+	PROPmaskCLEAR( &taDoneMask );
 
-    tedAdaptToolsToSelection( ed );
+	utilUpdateTextAttribute( &taDoneMask, &(eo.eoSavedTextAttribute),
+							taSet, taSetMaskCall );
+	if  ( ! utilPropMaskIsEmpty( &taDoneMask ) )
+	    {
+	    eo.eoSavedTextAttributeNumber=
+		    utilTextAttributeNumber( &(bd->bdTextAttributeList),
+						&(eo.eoSavedTextAttribute) );
+	    }
 
-    appDocumentChanged( ed, 1 );
+	if  ( tedEditFinishOldSelection( ed, &eo ) )
+	    { LDEB(1);	}
+
+	tedAdaptToolsToSelection( ed );
+
+	appDocumentChanged( ed, 1 );
+	}
 
     return 0;
     }
@@ -559,6 +592,76 @@ int tedAppChangeParagraphProperties(
 	{ XDEB(ed); return -1;	}
 
     return tedDocChangeParagraphProperties( ed, ppSetMask, ppNew );
+    }
+
+/************************************************************************/
+/*									*/
+/*  Make a new list and set it as the list of the current selection.	*/
+/*									*/
+/************************************************************************/
+
+static int tedDocSetNewList(	EditDocument *	ed )
+    {
+    int				rval= 0;
+    PropertyMask		ppSetMask;
+    ParagraphProperties		ppNew;
+    int				ls;
+
+    TedDocument *		td= (TedDocument *)ed->edPrivateData;
+    BufferDocument *		bd= td->tdDocument;
+
+    PropertyMask		taSetMask;
+    TextAttribute		taNew;
+
+    DocumentSelection		ds;
+    SelectionGeometry		sg;
+    SelectionDescription	sd;
+
+    PROPmaskCLEAR( &ppSetMask );
+    utilInitTextAttribute( &taNew );
+
+    PROPmaskCLEAR( &ppSetMask );
+    docInitParagraphProperties( &ppNew );
+
+    PROPmaskADD( &ppSetMask, PPpropLISTOVERRIDE );
+
+    if  ( tedGetSelection( &ds, &sg, &sd, td ) )
+	{ LDEB(1); rval= -1; goto ready;	}
+
+    utilPropMaskFill( &taSetMask, TAprop_COUNT );
+    taNew= td->tdCurrentTextAttribute;
+
+    PROPmaskUNSET( &taSetMask, TApropSUPERSUB );
+    PROPmaskUNSET( &taSetMask, TApropSMALLCAPS );
+    PROPmaskUNSET( &taSetMask, TApropCAPITALS );
+    PROPmaskUNSET( &taSetMask, TApropSTRIKETHROUGH );
+    PROPmaskUNSET( &taSetMask, TApropTEXT_COLOR );
+    PROPmaskUNSET( &taSetMask, TApropTEXT_STYLE );
+
+    if  ( docNewList( &ls, bd, &taSetMask, &taNew ) )
+	{ LDEB(1); rval= -1; goto ready;	}
+
+    ppNew.ppListOverride= ls;
+
+    rval= tedDocChangeParagraphProperties( ed, &ppSetMask, &ppNew );
+    if  ( rval )
+	{ LLDEB(ls,rval);	}
+
+  ready:
+
+    docCleanParagraphProperties( &ppNew );
+
+    return rval;
+    }
+
+int tedAppSetNewList(	EditApplication *		ea )
+    {
+    EditDocument *		ed= ea->eaCurrentDocument;
+
+    if  ( ! ed )
+	{ XDEB(ed); return -1;	}
+
+    return tedDocSetNewList( ed );
     }
 
 /************************************************************************/
@@ -685,4 +788,151 @@ int tedAppChangeAllSectionProperties(
 
     return 0;
     }
+
+/************************************************************************/
+/*									*/
+/*  Increase/Decrease the indentation level of the paragraphs in the	*/
+/*  selection.								*/
+/*									*/
+/************************************************************************/
+
+static int tedFormatShiftIndent(	EditDocument *	ed,
+					int		step )
+    {
+    int				rval= 0;
+
+    TedDocument *		td= (TedDocument *)ed->edPrivateData;
+    BufferDocument *		bd= td->tdDocument;
+
+    BufferItem *		paraBi;
+
+    DocumentSelection		ds;
+    SelectionGeometry		sg;
+    SelectionDescription	sd;
+
+    EditOperation		eo;
+    int				changed= 0;
+
+    ParagraphProperties		ppNew;
+
+    docInitParagraphProperties( &ppNew );
+
+    tedStartEditOperation( &eo, &ds, &sg, &sd, ed, 1 );
+
+    paraBi= ds.dsBegin.dpBi;
+    while( paraBi )
+	{
+	PropertyMask	ppDoneMask;
+	PropertyMask	ppSetMask;
+	int		apply= 0;
+
+	PROPmaskCLEAR( &ppDoneMask );
+	PROPmaskCLEAR( &ppSetMask );
+
+	if  ( paraBi->biParaListOverride >= 1 )
+	    {
+	    ListOverride *		lo;
+	    ListNumberTreeNode *	root;
+	    DocumentList *		dl;
+	    int				ilvl;
+
+	    ilvl= paraBi->biParaListLevel;
+	    ilvl += step;
+
+	    if  ( docGetListOfParagraph( &lo, &root, &dl,
+					    paraBi->biParaListOverride, bd ) )
+		{ LDEB(paraBi->biParaListOverride); rval= -1; goto ready; }
+
+	    if  ( ilvl >= 0 )
+		{
+		if  ( ilvl < dl->dlLevelCount )
+		    {
+		    PROPmaskADD( &ppSetMask, PPpropLISTLEVEL );
+
+		    ppNew.ppListLevel= ilvl;
+		    apply= 1;
+		    }
+		}
+#	    if 0
+	    No!
+	    * Is difficult to understand.
+	    * Has no natural reverse operation.
+	    * Does not work this way in MS-Word
+	    else{
+		ppNew.ppLeftIndentTwips= 0;
+		ppNew.ppFirstIndentTwips= 0;
+		ppNew.ppListOverride= 0;
+		ppNew.ppListLevel= 0;
+
+		PROPmaskADD( &ppSetMask, PPpropLISTOVERRIDE );
+		PROPmaskADD( &ppSetMask, PPpropLISTLEVEL );
+		PROPmaskADD( &ppSetMask, PPpropLEFT_INDENT );
+		PROPmaskADD( &ppSetMask, PPpropFIRST_INDENT );
+		apply= 1;
+		}
+#	    endif
+	    }
+	else{
+	    const DocumentProperties *	dp= &(bd->bdProperties);
+
+	    ppNew.ppLeftIndentTwips= paraBi->biParaLeftIndentTwips+
+						step* dp->dpTabIntervalTwips;
+
+	    if  ( ppNew.ppLeftIndentTwips >= 0 )
+		{
+		PROPmaskADD( &ppSetMask, PPpropLEFT_INDENT );
+		apply= 1;
+
+		if  ( ppNew.ppLeftIndentTwips+ ppNew.ppFirstIndentTwips < 0 )
+		    {
+		    ppNew.ppFirstIndentTwips= -ppNew.ppLeftIndentTwips;
+		    PROPmaskADD( &ppSetMask, PPpropFIRST_INDENT );
+		    }
+		}
+	    }
+
+	if  ( apply )
+	    {
+	    if  ( docEditUpdParaProperties( &eo, &ppDoneMask, paraBi,
+				    &ppSetMask, &ppNew,
+				    (const int *)0, (const int *)0 ) )
+		{ LDEB(1); rval= -1; goto ready; }
+
+	    if  ( ! utilPropMaskIsEmpty( &ppDoneMask ) )
+		{
+		docEditIncludeItemInReformatRange( &eo, paraBi );
+
+		changed= 1;
+		}
+	    }
+
+	if  ( paraBi == ds.dsEnd.dpBi )
+	    { break;	}
+
+	paraBi= docNextParagraph( paraBi );
+	if  ( ! paraBi )
+	    { XDEB(paraBi);	}
+	}
+
+    if  ( changed )
+	{
+	if  ( tedEditFinishOldSelection( ed, &eo ) )
+	    { LDEB(1);	}
+
+	tedAdaptToolsToSelection( ed );
+
+	appDocumentChanged( ed, 1 );
+	}
+
+  ready:
+    docCleanParagraphProperties( &ppNew );
+
+    return rval;
+    }
+
+APP_MENU_CALLBACK_H( tedDocFormatIncreaseIndent, w, voided, e )
+    { tedFormatShiftIndent( (EditDocument *)voided,  1 ); }
+
+APP_MENU_CALLBACK_H( tedDocFormatDecreaseIndent, w, voided, e )
+    { tedFormatShiftIndent( (EditDocument *)voided, -1 ); }
 

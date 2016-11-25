@@ -508,7 +508,7 @@ static void tedDrawTabSymbol(	AppDrawingData *	add,
     appDrawFillRectangle( add, xx, y- tabHeight, thick, tabHeight );
 
     if  ( kind == DOCtaLEFT		||
-	  kind == DOCtaCENTRE		||
+	  kind == DOCtaCENTER		||
 	  kind == DOCtaDECIMAL		)
 	{
 	xx= x- thick/2;
@@ -518,7 +518,7 @@ static void tedDrawTabSymbol(	AppDrawingData *	add,
 	}
 
     if  ( kind == DOCtaRIGHT		||
-	  kind == DOCtaCENTRE		||
+	  kind == DOCtaCENTER		||
 	  kind == DOCtaDECIMAL		)
 	{
 	xx= x+ (thick+1)/2- tabWidth;
@@ -656,7 +656,7 @@ static void tedDrawTopRuler(	APP_WIDGET		w,
     drWhite.drY0= whiteY;
     drWhite.drY1= whiteY+ whiteH;
 
-    if  ( docIntersectRectangle( &drWhite, &drWhite, drClip ) )
+    if  ( geoIntersectRectangle( &drWhite, &drWhite, drClip ) )
 	{
 	int			x0= drWhite.drX0- ox;
 	int			x1= drWhite.drX1- ox;
@@ -731,7 +731,7 @@ static void tedDrawTopRuler(	APP_WIDGET		w,
 
 	tedRulerColumnControlRect( &drButton, cs->csX0, cs->csX1, sizeAcross );
 
-	if  ( ! docIntersectRectangle( &drButton, &drButton, drClip ) )
+	if  ( ! geoIntersectRectangle( &drButton, &drButton, drClip ) )
 	    { continue;	}
 
 	tedRulerDrawColumnControl( cs->csX0, cs->csX1, ox, sizeAcross,
@@ -744,7 +744,7 @@ static void tedDrawTopRuler(	APP_WIDGET		w,
 	{
 	tedHangingButtonRect( &drButton, ttr->ttrFirstIndent, sizeAcross );
 
-	if  ( docIntersectRectangle( &drButton, &drButton, drClip ) )
+	if  ( geoIntersectRectangle( &drButton, &drButton, drClip ) )
 	    {
 	    tedRulerDrawHangingButton( ttr->ttrFirstIndent, ox, sizeAcross,
 				rd->rdBackStipple, add );
@@ -757,7 +757,7 @@ static void tedDrawTopRuler(	APP_WIDGET		w,
 	{
 	tedStandingButtonRect( &drButton, ttr->ttrLeftIndent, sizeAcross );
 
-	if  ( docIntersectRectangle( &drButton, &drButton, drClip ) )
+	if  ( geoIntersectRectangle( &drButton, &drButton, drClip ) )
 	    {
 	    tedRulerDrawStandingButton( ttr->ttrLeftIndent, ox, sizeAcross,
 				rd->rdBackStipple, add );
@@ -770,7 +770,7 @@ static void tedDrawTopRuler(	APP_WIDGET		w,
 	{
 	tedStandingButtonRect( &drButton, ttr->ttrRightIndent, sizeAcross );
 
-	if  ( docIntersectRectangle( &drButton, &drButton, drClip ) )
+	if  ( geoIntersectRectangle( &drButton, &drButton, drClip ) )
 	    {
 	    tedRulerDrawStandingButton( ttr->ttrRightIndent, ox, sizeAcross,
 				rd->rdBackStipple, add );
@@ -788,7 +788,7 @@ static void tedDrawTopRuler(	APP_WIDGET		w,
 
 	tedTabSymbolRect( &drButton, ts->tsPixels, whiteY+ whiteH, sizeAcross );
 
-	if  ( ! docIntersectRectangle( &drButton, &drButton, drClip ) )
+	if  ( ! geoIntersectRectangle( &drButton, &drButton, drClip ) )
 	    { continue;	}
 
 	tedDrawTabSymbol( add, ts->tsPixels, ox, whiteY+ whiteH,
@@ -873,27 +873,27 @@ static void tedRulerChangeRect(	int *				pChanged,
 
     tedHangingButtonRect( &drButMore, ttr->ttrFirstIndent+ d, sizeAcross );
     tedHangingButtonRect( &drButLess, ttr->ttrFirstIndent- d, sizeAcross );
-    docUnionRectangle( &drButMore, &drButMore, &drButLess );
-    if  ( docIntersectRectangle( &drScratch, drClip, &drButMore ) )
-	{ docUnionRectangle( drRedraw, drRedraw, &drButMore ); changed= 1; }
+    geoUnionRectangle( &drButMore, &drButMore, &drButLess );
+    if  ( geoIntersectRectangle( &drScratch, drClip, &drButMore ) )
+	{ geoUnionRectangle( drRedraw, drRedraw, &drButMore ); changed= 1; }
 
     tedStandingButtonRect( &drButMore, ttr->ttrLeftIndent+ d, sizeAcross );
     tedStandingButtonRect( &drButLess, ttr->ttrLeftIndent- d, sizeAcross );
-    docUnionRectangle( &drButMore, &drButMore, &drButLess );
-    if  ( docIntersectRectangle( &drScratch, drClip, &drButMore ) )
-	{ docUnionRectangle( drRedraw, drRedraw, &drButMore ); changed= 1; }
+    geoUnionRectangle( &drButMore, &drButMore, &drButLess );
+    if  ( geoIntersectRectangle( &drScratch, drClip, &drButMore ) )
+	{ geoUnionRectangle( drRedraw, drRedraw, &drButMore ); changed= 1; }
 
     tedStandingButtonRect( &drButMore, ttr->ttrRightIndent+ d, sizeAcross );
     tedStandingButtonRect( &drButLess, ttr->ttrRightIndent- d, sizeAcross );
-    docUnionRectangle( &drButMore, &drButMore, &drButLess );
-    if  ( docIntersectRectangle( &drScratch, drClip, &drButMore ) )
-	{ docUnionRectangle( drRedraw, drRedraw, &drButMore ); changed= 1; }
+    geoUnionRectangle( &drButMore, &drButMore, &drButLess );
+    if  ( geoIntersectRectangle( &drScratch, drClip, &drButMore ) )
+	{ geoUnionRectangle( drRedraw, drRedraw, &drButMore ); changed= 1; }
 
     tedTabButtonRectangle( &drButMore, rd->rdVisibleC0+ d, whY, sizeAcross );
     tedTabButtonRectangle( &drButLess, rd->rdVisibleC0- d, whY, sizeAcross );
-    docUnionRectangle( &drButMore, &drButMore, &drButLess );
-    if  ( docIntersectRectangle( &drScratch, drClip, &drButMore ) )
-	{ docUnionRectangle( drRedraw, drRedraw, &drButMore ); changed= 1; }
+    geoUnionRectangle( &drButMore, &drButMore, &drButLess );
+    if  ( geoIntersectRectangle( &drScratch, drClip, &drButMore ) )
+	{ geoUnionRectangle( drRedraw, drRedraw, &drButMore ); changed= 1; }
 
     cs= ttr->ttrColumns;
     for ( tab= 0; tab < ttr->ttrColumnCount; cs++, tab++ )
@@ -903,9 +903,9 @@ static void tedRulerChangeRect(	int *				pChanged,
 	tedRulerColumnControlRect( &drButLess,
 					cs->csX0- d, cs->csX1- d, sizeAcross );
 
-	docUnionRectangle( &drButMore, &drButMore, &drButLess );
-	if  ( docIntersectRectangle( &drScratch, drClip, &drButMore ) )
-	    { docUnionRectangle( drRedraw, drRedraw, &drButMore ); changed= 1; }
+	geoUnionRectangle( &drButMore, &drButMore, &drButLess );
+	if  ( geoIntersectRectangle( &drScratch, drClip, &drButMore ) )
+	    { geoUnionRectangle( drRedraw, drRedraw, &drButMore ); changed= 1; }
 	}
 
     ts= ttr->ttrTabStopList.tslTabStops;
@@ -916,9 +916,9 @@ static void tedRulerChangeRect(	int *				pChanged,
 	tedTabSymbolRect( &drButMore, ts->tsPixels+ d, y, sizeAcross );
 	tedTabSymbolRect( &drButLess, ts->tsPixels- d, y, sizeAcross );
 
-	docUnionRectangle( &drButMore, &drButMore, &drButLess );
-	if  ( docIntersectRectangle( &drScratch, drClip, &drButMore ) )
-	    { docUnionRectangle( drRedraw, drRedraw, &drButMore ); changed= 1; }
+	geoUnionRectangle( &drButMore, &drButMore, &drButLess );
+	if  ( geoIntersectRectangle( &drScratch, drClip, &drButMore ) )
+	    { geoUnionRectangle( drRedraw, drRedraw, &drButMore ); changed= 1; }
 	}
 
     *pChanged= changed;
@@ -982,6 +982,9 @@ void tedSetHorizontalRulerRange(	void *			voidttr,
 /*									*/
 /*  Let the user drag one of the controls on the top ruler.		*/
 /*									*/
+/*  0)  Refuse to move outside the permitted range, but do not jump	*/
+/*	back into it: Some documents do have strange settings and a	*/
+/*	forced correction confuses the user.				*/
 /*  1)  Draw a 'hair' over the document that corresponds to the		*/
 /*	position of the control.					*/
 /*  2)  Until the mouse button is released, observe events.		*/
@@ -1027,9 +1030,10 @@ static void tedHorizontalRulerSetValue(	TopRulerDrag *		trd,
 	nv1= *(trd->trdV1Pointer)+ newValue- oldValue;
 	}
 
-    if  ( nv0 < trd->trdX0 )
+    /*  0  */
+    if  ( v0 >= trd->trdX0 && nv0 < trd->trdX0 )
 	{ nv1 += trd->trdX0- nv0; nv0 += trd->trdX0- nv0; }
-    if  ( nv1 > trd->trdX1 )
+    if  ( v1 <= trd->trdX1 && nv1 > trd->trdX1 )
 	{ nv0 -= nv1- trd->trdX1; nv1 -= nv1- trd->trdX1; }
 
     *(trd->trdV0Pointer)= nv0;
@@ -1091,7 +1095,7 @@ static APP_EVENT_HANDLER_H( tedHorizontalRulerMouseUp, w, vtrd, event )
     unsigned int		keyState;
 
     if  ( appGetCoordinatesFromMouseButtonEvent(
-			    &x, &y, &button, &upDown, &seq, &keyState, w, event ) )
+			&x, &y, &button, &upDown, &seq, &keyState, w, event ) )
 	{ return;	}
 
     tedHorizontalRulerSetValue( trd, x+ trd->trdOc );
@@ -1454,8 +1458,8 @@ void tedHorizontalRulerTrackMouse(	int *			pFirstIndent,
 	switch( ttr->ttrTabKind )
 	    {
 	    case DOCtaLEFT:	ttr->ttrTabKind= DOCtaRIGHT;	break;
-	    case DOCtaRIGHT:	ttr->ttrTabKind= DOCtaCENTRE;	break;
-	    case DOCtaCENTRE:	ttr->ttrTabKind= DOCtaDECIMAL;	break;
+	    case DOCtaRIGHT:	ttr->ttrTabKind= DOCtaCENTER;	break;
+	    case DOCtaCENTER:	ttr->ttrTabKind= DOCtaDECIMAL;	break;
 	    case DOCtaDECIMAL:	ttr->ttrTabKind= DOCtaLEFT;	break;
 	    default:
 		LDEB(ttr->ttrTabKind);

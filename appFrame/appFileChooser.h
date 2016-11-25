@@ -16,27 +16,32 @@
 #   define	ACIrespOPEN	3
 #   define	ACIrespFAILURE	4
 
+typedef struct AppFileChooserResources
+    {
+    char *			acrNoFilenameMessage;
+    char *			acrIsDirecoryMessage;
+    char *			acrNotWritableMessage;
+    char *			acrNotReadableMessage;
+    char *			acrOverwriteMessage;
+    char *			acrNoSuchDirMessage;
+    } AppFileChooserResources;
+
 typedef struct AppChooserInformation
     {
-    AppDialog			aciDialog;
+    AppDialog				aciDialog;
 
-    char *			aciFilename;
-    void *			aciThrough;
-    APP_OPEN_DOCUMENT		aciOpenDocument;
-    const AppFileExtension *	aciExtensions;
-    int				aciExtensionCount;
-    AppOptionmenu		aciFilterOptionmenu;
-    EditApplication *		aciApplication;
-    APP_WIDGET			aciOption;
-    int				aciFormat;
-    char *			aciExtension;
+    char *				aciFilename;
+    void *				aciThrough;
+    APP_OPEN_DOCUMENT			aciOpenDocument;
+    const AppFileExtension *		aciExtensions;
+    int					aciExtensionCount;
+    AppOptionmenu			aciFilterOptionmenu;
+    EditApplication *			aciApplication;
+    APP_WIDGET				aciOption;
+    int					aciFormat;
+    char *				aciExtension;
 
-    char *			aciNoFilenameMessage;
-    char *			aciIsDirecoryMessage;
-    char *			aciNotWritableMessage;
-    char *			aciNotReadableMessage;
-    char *			aciOverwriteMessage;
-    char *			aciNoSuchDirMessage;
+    const AppFileChooserResources *	aciResources;
     } AppChooserInformation;
 
 /************************************************************************/

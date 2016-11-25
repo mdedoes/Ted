@@ -166,7 +166,7 @@ static APP_BUTTON_CALLBACK_H( tedFormatChangeSectPushed, w, voidst )
 	}
 
     PROPmaskCLEAR( &updMask );
-    PROPmaskFILL( &updMask, SPprop_COUNT );
+    utilPropMaskFill( &updMask, SPprop_COUNT );
 
     if  ( tedAppChangeSectionProperties( st->stApplication, &updMask, spNew ) )
 	{ LDEB(1);	}
@@ -581,15 +581,24 @@ void tedFormatToolGetSectResourceTable(	EditApplication *		ea,
 					SectionPageResources *		spr,
 					InspectorSubjectResources *	isr )
     {
-    appGuiGetResourceValues( ea, (void *)spr,
+    static int	gotToolResources= 0;
+    static int	gotSubjectResources= 0;
+
+    if  ( ! gotToolResources )
+	{
+	appGuiGetResourceValues( &gotToolResources, ea, (void *)spr,
 				TED_TedSectionToolResourceTable,
 				sizeof(TED_TedSectionToolResourceTable)/
 				sizeof(AppConfigurableResource) );
+	}
 
-    appGuiGetResourceValues( ea, (void *)isr,
+    if  ( ! gotSubjectResources )
+	{
+	appGuiGetResourceValues( &gotSubjectResources, ea, (void *)isr,
 				TED_TedSectionSubjectResourceTable,
 				sizeof(TED_TedSectionSubjectResourceTable)/
 				sizeof(AppConfigurableResource) );
+	}
 
     return;
     }

@@ -35,16 +35,16 @@ void docInitBorderProperties(	BorderProperties *	bp )
 /*									*/
 /************************************************************************/
 
-int docBorderThick(		int *				pWide,
+int docBorderThick(		int *				pSpace,
 				const BorderProperties *	bp )
     {
-    int			wide;
+    int			space;
     int			thick;
 
-    if  ( bp->bpStyle == DOCbsNONE )
+    if  ( ! DOCisBORDER( bp ) )
 	{
 	thick= 0;
-	wide= 0;
+	space= 0;
 	}
     else{
 	thick= bp->bpPenWideTwips;
@@ -52,10 +52,10 @@ int docBorderThick(		int *				pWide,
 	if  ( bp->bpStyle == DOCbsTH )
 	    { thick *= 2;	}
 
-	wide= thick+ bp->bpSpacingTwips;
+	space= bp->bpSpacingTwips;
 	}
 
-    *pWide= wide;
+    *pSpace= space;
     return thick;
     }
 
@@ -184,12 +184,12 @@ int docBordersDiffer(		const BorderProperties *	bpTo,
 
     PROPmaskCLEAR( &bpChgMask );
     PROPmaskCLEAR( &bpSetMask );
-    PROPmaskFILL( &bpSetMask, BRDRprop_COUNT );
+    utilPropMaskFill( &bpSetMask, BRDRprop_COUNT );
 
     docBorderPropertyDifference( &bpChgMask, bpTo,
 					    bpFrom, &bpSetMask, colorMap );
 
-    if  ( ! PROPmaskISEMPTY( &bpChgMask ) )
+    if  ( ! utilPropMaskIsEmpty( &bpChgMask ) )
 	{ return 1;	}
 
     return 0;
@@ -201,7 +201,7 @@ void docCopyBorderProperties(	BorderProperties *		bpTo,
     {
     *bpTo= *bpFrom;
 
-    if  ( bpTo->bpStyle == DOCbsNONE )
+    if  ( ! DOCisBORDER( bpTo ) )
 	{ bpTo->bpColor= 0;	}
     else{
 	if  ( bpTo->bpColor > 0 && colorMap )

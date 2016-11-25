@@ -49,7 +49,7 @@ int docChangeParticuleAttributes(	PropertyMask *		pTaAllMask,
 
 	utilUpdateTextAttribute( &doneMask, &ta, taSet, taSetMask );
 
-	if  ( ! PROPmaskISEMPTY( &doneMask )	||
+	if  ( ! utilPropMaskIsEmpty( &doneMask )	||
 	      attributeNumber < 0		)
 	    {
 	    if  ( pTaAllMask )
@@ -80,6 +80,9 @@ int docMapTextAttributeNumber(	DocumentCopyJob *	dcj,
     TextAttribute		taFrom;
 
     int			attributeNumberTo;
+
+    if  ( attributeNumberFrom < 0 )
+	{ LDEB(attributeNumberFrom); return attributeNumberFrom;	}
 
     if  ( dcj->dcjBdTo == dcj->dcjBdFrom )
 	{ return attributeNumberFrom;	}

@@ -252,7 +252,7 @@ static APP_BUTTON_CALLBACK_H( tedTableChangeColumnPushed, w, voidct )
 					    &(ct->ctLeftBorderTool), dp ) )
 	{ goto ready;	}
 
-    if  ( ! PROPmaskISEMPTY( &bpSetMask ) )
+    if  ( ! utilPropMaskIsEmpty( &bpSetMask ) )
 	{
 	docRowSetLeftBorderInCols( rp, tr->trCol0, tr->trCol1,
 							    &bpSetMask, &bp );
@@ -265,7 +265,7 @@ static APP_BUTTON_CALLBACK_H( tedTableChangeColumnPushed, w, voidct )
 					    &(ct->ctRightBorderTool), dp ) )
 	{ goto ready;	}
 
-    if  ( ! PROPmaskISEMPTY( &bpSetMask ) )
+    if  ( ! utilPropMaskIsEmpty( &bpSetMask ) )
 	{
 	docRowSetRightBorderInCols( rp, tr->trCol0, tr->trCol1,
 							    &bpSetMask, &bp );
@@ -427,8 +427,6 @@ static APP_BUTTON_CALLBACK_H( tedTableDeleteColumn, w, voidct )
     if  ( tedDeleteColumnsFromRows( ed,
 		tr->trRow00, tr->trRow11, tr->trCol0, tr->trCol1 ) )
 	{ LLDEB(tr->trRow00,tr->trRow11); return;	}
-
-    appDocumentChanged( ed, 1 );
 
     return;
     }
@@ -694,15 +692,24 @@ void tedFormatToolGetColumnResourceTable(EditApplication *		ea,
 					ColumnPageResources *		cpr,
 					InspectorSubjectResources *	isr )
     {
-    appGuiGetResourceValues( ea, (void *)cpr,
+    static int	gotToolResources= 0;
+    static int	gotSubjectResources= 0;
+
+    if  ( ! gotToolResources )
+	{
+	appGuiGetResourceValues( &gotToolResources, ea, (void *)cpr,
 				TED_TedColumnToolResourceTable,
 				sizeof(TED_TedColumnToolResourceTable)/
 				sizeof(AppConfigurableResource) );
+	}
 
-    appGuiGetResourceValues( ea, (void *)isr,
+    if  ( ! gotSubjectResources )
+	{
+	appGuiGetResourceValues( &gotSubjectResources, ea, (void *)isr,
 				TED_TedColumnSubjectResourceTable,
 				sizeof(TED_TedColumnSubjectResourceTable)/
 				sizeof(AppConfigurableResource) );
+	}
 
     return;
     }

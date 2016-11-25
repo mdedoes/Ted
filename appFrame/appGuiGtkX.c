@@ -20,12 +20,14 @@
 
 #   ifdef USE_GTK
 
-#   include	"appFrame.h"
-#   include	<appGeoString.h>
 
 #   include	<gdk/gdkx.h>
+#   define	GTK_AND_X11_INCLUDES	1
 
 #   include	<X11/Xresource.h>
+
+#   include	"appFrame.h"
+#   include	<appGeoString.h>
 
 void appIconifyShellWidget(		APP_WIDGET		shell )
     {

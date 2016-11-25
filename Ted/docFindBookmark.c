@@ -80,6 +80,7 @@ static int docBookmarkParaFindNext(
 	    }
 
 	if  ( tp->tpKind == DOCkindFIELDEND		&&
+	      tp->tpObjectNumber >= 0			&&
 	      tp->tpObjectNumber == fb->fbObjectNumber	)
 	    {
 	    ds->dsEnd.dpBi= bi;
@@ -89,6 +90,7 @@ static int docBookmarkParaFindNext(
 	    }
 	}
 
+    fb->fbObjectNumber= -1;
     return 1;
     }
 

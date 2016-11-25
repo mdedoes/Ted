@@ -220,12 +220,15 @@ static void docLayoutStartRow(	BufferItem *			rowBi,
     for ( col= 0; col < rowBi->biChildCount; cp++, clj++, col++ )
 	{
 	BufferItem *	cellBi= rowBi->biChildren[col];
+	const int	para= 0;
+	const int	line= 0;
+	const int	part= 0;
 
 	docInitColumnLayoutJob( clj );
 
 	clj->cljPlj.pljParaUpto= cellBi->biChildCount;
 
-	docPsBeginParagraphLayoutProgress( &(clj->cljPlj), 0, 0, 0,
+	docPsBeginParagraphLayoutProgress( &(clj->cljPlj), para, line, part,
 						cellBi->biChildCount, lp );
 
 	cellBi->biTopPosition= *lp;
@@ -294,12 +297,12 @@ static void docLayoutRowSkipHeaderHeight( LayoutPosition *	lp,
     const BufferItem *	headerBi;
     int			headerHeight;
 
-    if  ( ! rowBi->biRowTableFirstIsHeader )
-	{ LDEB(rowBi->biRowTableFirstIsHeader); return;	}
+    if  ( rowBi->biRowTableHeaderRow < 0 )
+	{ LDEB(rowBi->biRowTableHeaderRow); return;	}
     if  ( rowBi->biRowIsTableHeader )
 	{ LDEB(rowBi->biRowIsTableHeader); return;	}
 
-    headerBi= rowBi->biParent->biChildren[rowBi->biRowTableFirst];
+    headerBi= rowBi->biParent->biChildren[rowBi->biRowTableHeaderRow];
     if  ( ! headerBi->biRowIsTableHeader )
 	{ LDEB(headerBi->biRowIsTableHeader);	}
 
@@ -356,12 +359,15 @@ static int docRowToNextPage(	BufferItem *			rowBi,
 
     const int			atTopOfPage= 1;
     int				inset= 0;
+    const int			belowText= 0;
+    LayoutPosition		lpBelowNotes;
 
     lpBefore= lj->ljPosition;
 
     /*  1  */
     if  ( BF_HAS_FOOTNOTES( bf )					&&
-	  docLayoutFootnotesForColumn( bf, &(lj->ljPosition), lj )	)
+	  docLayoutFootnotesForColumn( &lpBelowNotes, bf,
+				    belowText, &(lj->ljPosition), lj )	)
 	{ LDEB(1); return -1;	}
 
     /*  2  */
@@ -369,7 +375,7 @@ static int docRowToNextPage(	BufferItem *			rowBi,
 
     /*  3  */
     if  ( ! rowBi->biRowIsTableHeader		&&
-	  rowBi->biRowTableFirstIsHeader	)
+	  rowBi->biRowTableHeaderRow >= 0	)
 	{
 	docLayoutRowSkipHeaderHeight( &(lj->ljPosition), rowBi, atTopOfRow );
 	}
@@ -636,7 +642,7 @@ int docLayoutRowItem(		BufferItem *			rowBi,
 	    rowBi->biTopPosition= lj->ljPosition;
 
 	    if  ( rowBi->biRowIsTableHeader		||
-		  ! rowBi->biRowTableFirstIsHeader	)
+		  rowBi->biRowTableHeaderRow <= 0	)
 		{ rowBi->biRowAboveHeaderPosition= rowBi->biTopPosition; }
 
 	    docLayoutCalculateRowTopInset( rowBi,

@@ -587,11 +587,11 @@ int docRtfTextSpecialToField(	SimpleInputStream *	sis,
 /*									*/
 /************************************************************************/
 
-static int docRtfReadExternalItem(	BufferItem **		pBi,
-					int *			pExtItKind,
-					SimpleInputStream *	sis,
-					RtfReadingContext *	rrc,
-					const SelectionScope *	ss )
+int docRtfReadExternalItem(	BufferItem **		pBi,
+				int *			pExtItKind,
+				SimpleInputStream *	sis,
+				RtfReadingContext *	rrc,
+				const SelectionScope *	ss )
     {
     RtfReadingState *	rrs= rrc->rrcState;
     BufferItem *	bi;
@@ -628,6 +628,8 @@ static int docRtfReadExternalItem(	BufferItem **		pBi,
     rrc->rrcLevel= DOClevSECT;
     rrc->rrcExternalItemKind= ss->ssInExternalItem;
 
+    rrs->rrsParagraphProperties.ppInTable= 0;
+
     res= docRtfReadGroup( sis, DOClevPARA,
 				(RtfControlWord *)0, 0, 0, rrc,
 				docRtfDocumentWords, docRtfDocumentGroups,
@@ -637,7 +639,7 @@ static int docRtfReadExternalItem(	BufferItem **		pBi,
 
     /*  4  */
     if  ( docRtfFlushBookmarks( -1, bi, rrc ) )
-	{ LDEB(1); return -1;	}
+	{ LDEB(1); res= -1; goto ready;	}
 
     /*  5  */
     {
@@ -655,6 +657,7 @@ static int docRtfReadExternalItem(	BufferItem **		pBi,
 
     *pExtItKind= rrc->rrcExternalItemKind;
 
+  ready:
     /*  6  */
     rrc->rrcExternalItemKind= savedExternalItemKind;
     rrs->rrsParagraphProperties.ppInTable= savedInTable;
@@ -675,6 +678,8 @@ int docRtfReadExtIt(		SimpleInputStream *	sis,
 
     SelectionScope	ss;
     int			extItKind;
+
+    int			savedSplitLevel= rrc->rrcSplitLevel;
 
     docInitSelectionScope( &ss );
 
@@ -729,6 +734,7 @@ int docRtfReadExtIt(		SimpleInputStream *	sis,
     if  ( docRtfReadExternalItem( &(ei->eiItem), &extItKind, sis, rrc, &ss ) )
 	{ SDEB(rcw->rcwWord); return -1;	}
 
+    rrc->rrcSplitLevel= savedSplitLevel;
     return 0;
     }
 

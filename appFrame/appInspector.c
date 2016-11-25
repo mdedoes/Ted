@@ -49,11 +49,11 @@ static void appDestroyInspector(	AppInspector *	ai )
     return;
     }
 
-static APP_CLOSE_CALLBACK_H( appCloseInspector, w, voidast )
+static APP_CLOSE_CALLBACK_H( appInspectorCloseCall, w, voidai )
     {
-    AppInspector *	ast= (AppInspector *)voidast;
+    AppInspector *	ai= (AppInspector *)voidai;
 
-    appDestroyInspector( ast );
+    appDestroyInspector( ai );
 
     return;
     }
@@ -250,6 +250,25 @@ static void appInitInspectorSubject(	InspectorSubject *	is )
 /*									*/
 /************************************************************************/
 
+static APP_BUTTON_CALLBACK_H( appLowerInspector, w, voidai )
+    {
+    AppInspector *	ai= (AppInspector *)voidai;
+    APP_WIDGET		shell= ai->aiTopWidget;
+
+    appGuiLowerShellWidget( shell );
+
+    return;
+    }
+
+static APP_BUTTON_CALLBACK_H( appCloseInspector, w, voidai )
+    {
+    AppInspector *	ai= (AppInspector *)voidai;
+
+    appDestroyInspector( ai );
+
+    return;
+    }
+
 void appEnableInspector(	AppInspector *	ai,
 				int		enabled )
     {
@@ -299,6 +318,17 @@ void appFillInspectorMenu(	int			count,
     return;
     }
 
+static AppConfigurableResource APP_InspectorResourceTable[]=
+{
+    APP_RESOURCE( "inspectorLowerInspector",
+		offsetof(AppInspectorResources,airLowerText),
+		"Lower" ),
+
+    APP_RESOURCE( "inspectorCloseInspector",
+		offsetof(AppInspectorResources,airCloseText),
+		"Close" ),
+};
+
 AppInspector * appMakeInspector(    EditApplication *		ea,
 				    APP_WIDGET			option,
 				    const char *		pixmapName,
@@ -317,6 +347,21 @@ AppInspector * appMakeInspector(    EditApplication *		ea,
 
     const int			userResizable= 0;
 
+    APP_WIDGET			row;
+
+    static AppInspectorResources	air;
+    static int				gotResources;
+
+    if  ( ! gotResources )
+	{
+	appGuiGetResourceValues( &gotResources, ea, (void *)&air,
+					APP_InspectorResourceTable,
+					sizeof(APP_InspectorResourceTable)/
+					sizeof(AppConfigurableResource) );
+
+	gotResources= 1;
+	}
+
     if  ( appGetImagePixmap( ea, pixmapName, &iconPixmap, &iconMask )  )
 	{ SDEB(pixmapName); return (AppInspector *)0; }
 
@@ -325,6 +370,7 @@ AppInspector * appMakeInspector(    EditApplication *		ea,
     if  ( ! ai )
 	{ LXDEB(subjectCount,ai); return ai;	}
 
+    ai->aiApplication= ea;
     ai->aiCurrentSubject= -1;
     ai->aiSubjectCount= subjectCount;
 
@@ -342,7 +388,7 @@ AppInspector * appMakeInspector(    EditApplication *		ea,
     appMakeVerticalTool( &(ai->aiTopWidget), &(ai->aiPaned), ea,
 				iconPixmap, iconMask,
 				widgetName, userResizable,
-				option, appCloseInspector, (void *)ai );
+				option, appInspectorCloseCall, (void *)ai );
 
     appMakeOptionmenuInColumn( &(ai->aiSubjectOptionmenu), ai->aiPaned );
 
@@ -351,6 +397,13 @@ AppInspector * appMakeInspector(    EditApplication *		ea,
     appInspectorMakePageParent( ai );
 
     appInspectorFillSubjects( isr, ai );
+
+    appGuiInsertSeparatorInColumn( &(ai->aiSeparator2), ai->aiPaned );
+
+    appInspectorMakeButtonRow( &row, ai->aiPaned,
+		    &(ai->aiLowerButton), &(ai->aiCloseButton),
+		    air.airLowerText, air.airCloseText,
+		    appLowerInspector, appCloseInspector, (void *)ai );
 
     return ai;
     }

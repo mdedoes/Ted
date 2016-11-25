@@ -49,11 +49,7 @@ static void appInitAci(		AppChooserInformation *	aci )
     aci->aciFormat= -1;
     aci->aciExtension= (char *)0;
 
-    aci->aciIsDirecoryMessage= (char *)0;
-    aci->aciNotWritableMessage= (char *)0;
-    aci->aciNotReadableMessage= (char *)0;
-    aci->aciOverwriteMessage= (char *)0;
-    aci->aciNoSuchDirMessage= (char *)0;
+    aci->aciResources= (const AppFileChooserResources *)0;
     }
 
 /************************************************************************/
@@ -259,26 +255,22 @@ static int appChooserOpenDocument(	void *		through,
     return 0;
     }
 
-void appAppFileOpen(	APP_WIDGET	option,
-			void *		voidea,
-			void *		call_data )
+APP_MENU_CALLBACK_H( appAppFileOpen, option, voidea, call_data )
     {
     EditApplication *	ea= (EditApplication *)voidea;
 
-    appRunOpenChooser( option, ea->eaToplevel.atTopWidget,
+    appRunOpenChooser( GTK_WIDGET( option ), ea->eaToplevel.atTopWidget,
 			ea->eaFileExtensionCount, ea->eaFileExtensions,
 			ea->eaDefaultFileFilter,
 			(void *)ea, appChooserOpenDocument, ea );
     }
 
-void appDocFileOpen(	APP_WIDGET	option,
-			void *		voided,
-			void *		call_data )
+APP_MENU_CALLBACK_H( appDocFileOpen, option, voided, call_data )
     {
     EditDocument *	ed= (EditDocument *)voided;
     EditApplication *	ea= ed->edApplication;
 
-    appRunOpenChooser( option, ed->edToplevel.atTopWidget,
+    appRunOpenChooser( GTK_WIDGET( option ), ed->edToplevel.atTopWidget,
 			ea->eaFileExtensionCount, ea->eaFileExtensions,
 			ea->eaDefaultFileFilter,
 			(void *)ea, appChooserOpenDocument, ea );

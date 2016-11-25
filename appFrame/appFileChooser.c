@@ -29,22 +29,22 @@
 static AppConfigurableResource APP_ChooserResourceTable[]=
     {
 	APP_RESOURCE( "chooserNoFilename",
-		    offsetof(AppChooserInformation,aciNoFilenameMessage),
+		    offsetof(AppFileChooserResources,acrNoFilenameMessage),
 		    "Please Give a Name" ),
 	APP_RESOURCE( "chooserIsDirectory",
-		    offsetof(AppChooserInformation,aciIsDirecoryMessage),
+		    offsetof(AppFileChooserResources,acrIsDirecoryMessage),
 		    "Is a directory" ),
 	APP_RESOURCE( "chooserNotWritable",
-		    offsetof(AppChooserInformation,aciNotWritableMessage),
+		    offsetof(AppFileChooserResources,acrNotWritableMessage),
 		    "You have no permission to write this file." ),
 	APP_RESOURCE( "chooserNotReadable",
-		    offsetof(AppChooserInformation,aciNotReadableMessage),
+		    offsetof(AppFileChooserResources,acrNotReadableMessage),
 		    "You have no permission to read this file." ),
 	APP_RESOURCE( "chooserOverwrite",
-		    offsetof(AppChooserInformation,aciOverwriteMessage),
+		    offsetof(AppFileChooserResources,acrOverwriteMessage),
 		    "Do you want to overwrite this file?" ),
 	APP_RESOURCE( "chooserNoSuchDir",
-		    offsetof(AppChooserInformation,aciNoSuchDirMessage),
+		    offsetof(AppFileChooserResources,acrNoSuchDirMessage),
 		    "This directory does not exist." ),
     };
 
@@ -57,9 +57,19 @@ static AppConfigurableResource APP_ChooserResourceTable[]=
 void appFileChooserGetTexts(	EditApplication *		ea,
 				AppChooserInformation *		aci )
     {
-    appGuiGetResourceValues( ea, (void *)aci, APP_ChooserResourceTable,
+    static int				gotResources= 0;
+    static AppFileChooserResources	APP_ChooserResourceValues;
+
+    if  ( ! gotResources )
+	{
+	appGuiGetResourceValues( &gotResources, ea,
+				    (void *)&APP_ChooserResourceValues,
+				    APP_ChooserResourceTable,
 				    sizeof(APP_ChooserResourceTable)/
 				    sizeof(AppConfigurableResource) );
+	}
+
+    aci->aciResources= &APP_ChooserResourceValues;
 
     return;
     }
@@ -81,6 +91,8 @@ int appFileChooserTestNameForOpen(
     int				fileReadable= 0;
     int				isDir= 0;
 
+    const AppFileChooserResources *	acr= aci->aciResources;
+
     fileExists= appTestFileExists( filename ) == 0;
 
     if  ( fileExists )
@@ -90,7 +102,7 @@ int appFileChooserTestNameForOpen(
     if  ( isDir )
 	{
 	appQuestionRunSubjectErrorDialog( ea, aci->aciDialog.adTopWidget,
-				option, filename, aci->aciIsDirecoryMessage );
+				option, filename, acr->acrIsDirecoryMessage );
 	return -1;
 	}
 
@@ -107,7 +119,7 @@ int appFileChooserTestNameForOpen(
     if  ( ! fileReadable )
 	{
 	appQuestionRunSubjectErrorDialog( ea, aci->aciDialog.adTopWidget,
-			    option, filename, aci->aciNotReadableMessage );
+			    option, filename, acr->acrNotReadableMessage );
 	return -1;
 	}
 
@@ -133,6 +145,8 @@ int appChooserSaveFilename(		AppChooserInformation *	aci,
     int					fileNameLength;
 
     char *				fresh;
+
+    const AppFileChooserResources *	acr= aci->aciResources;
 
     fileNameLength= strlen( filename );
     fresh= malloc( fileNameLength+ 11 );
@@ -167,7 +181,7 @@ int appChooserSaveFilename(		AppChooserInformation *	aci,
     if  ( ! relative[0] )
 	{
 	appQuestionRunErrorDialog( ea, aci->aciDialog.adTopWidget, option,
-						aci->aciNoFilenameMessage );
+						acr->acrNoFilenameMessage );
 
 	free( aci->aciFilename ); aci->aciFilename= (char *)0;
 	/* NO: just stay in the loop.
@@ -235,6 +249,8 @@ int appFileChooserTestNameForSave(
     int				dirExists= 0;
     int				fileWritable= 0;
 
+    const AppFileChooserResources *	acr= aci->aciResources;
+
     fileExists= appTestFileExists( filename ) == 0;
 
     if  ( fileExists )
@@ -264,7 +280,7 @@ int appFileChooserTestNameForSave(
     if  ( isDir )
 	{
 	appQuestionRunSubjectErrorDialog( ea, aci->aciDialog.adTopWidget,
-				option, filename, aci->aciIsDirecoryMessage );
+				option, filename, acr->acrIsDirecoryMessage );
 	return ACIrespNONE;
 	}
 
@@ -274,7 +290,7 @@ int appFileChooserTestNameForSave(
 	    {
 	    appQuestionRunSubjectErrorDialog(
 			ea, aci->aciDialog.adTopWidget, option,
-			filename, aci->aciNotWritableMessage );
+			filename, acr->acrNotWritableMessage );
 	    return ACIrespNONE;
 	    }
 	else{
@@ -282,7 +298,7 @@ int appFileChooserTestNameForSave(
 
 	    rcc= appQuestionRunSubjectYesNoCancelDialog(
 			ea, aci->aciDialog.adTopWidget, option,
-			filename, aci->aciOverwriteMessage,
+			filename, acr->acrOverwriteMessage,
 			(char *)0, (char *)0, (char *)0 );
 
 	    switch( rcc )
@@ -310,7 +326,7 @@ int appFileChooserTestNameForSave(
 
 		appQuestionRunSubjectErrorDialog(
 			    ea, aci->aciDialog.adTopWidget, option,
-			    filename, aci->aciNoSuchDirMessage );
+			    filename, acr->acrNoSuchDirMessage );
 		return ACIrespNONE;
 		}
 	    }
@@ -322,9 +338,7 @@ int appFileChooserTestNameForSave(
 void appDocPrintToFile(	APP_WIDGET			option,
 			APP_WIDGET			panel,
 			EditDocument *			ed,
-			const PrintGeometry *		pg,
-			int				firstPage,
-			int				lastPage )
+			const PrintGeometry *		pg )
     {
     EditApplication *		ea= ed->edApplication;
     int				response;
@@ -352,7 +366,7 @@ void appDocPrintToFile(	APP_WIDGET			option,
 	    if  ( ! sos )
 		{ SXDEB(filename,sos); free( filename ); return;	}
 
-	    appCallPrintFunction( sos, &pj, pg, firstPage, lastPage );
+	    appCallPrintFunction( sos, &pj, pg );
 
 	    sioOutClose( sos );
 
@@ -371,9 +385,7 @@ void appDocPrintToFile(	APP_WIDGET			option,
 /*									*/
 /************************************************************************/
 
-void appDocFileSaveAs(	APP_WIDGET	option,
-			void *		voided,
-			void *		call_data )
+extern APP_MENU_CALLBACK_H( appDocFileSaveAs, option, voided, call_data )
     {
     EditDocument *	ed= (EditDocument *)voided;
     EditApplication *	ea= ed->edApplication;

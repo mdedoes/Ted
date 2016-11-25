@@ -269,7 +269,13 @@ int bmPngReadPng(	BitmapDescription *	bd,
 int bmCanWritePngFile( const BitmapDescription *	bd,
 			int				privateFormat,
 			double				compressionFactor )
-    { return 0; }
+    {
+    if  ( bd->bdColorEncoding == BMcoRGB8PALETTE	&&
+	  bd->bdBitsPerPixel > 8			)
+	{ return -1;	}
+
+    return 0;
+    }
 
 /************************************************************************/
 /*									*/
@@ -326,13 +332,17 @@ static int bpPngiFromBitmap(	png_info *			pngi,
 	case BMcoBLACKWHITE:
 	case BMcoWHITEBLACK:
 	    pngi->bit_depth= bd->bdBitsPerPixel;
-	    pngi->color_type= PNG_COLOR_TYPE_GRAY;
+	    if  ( bd->bdHasAlpha )
+		{ pngi->color_type= PNG_COLOR_TYPE_GRAY_ALPHA;	}
+	    else{ pngi->color_type= PNG_COLOR_TYPE_GRAY;	}
 	    pngi->sig_bit.gray= bd->bdBitsPerSample;
 	    break;
 
 	case BMcoRGB:
 	    pngi->bit_depth= bd->bdBitsPerSample;
-	    pngi->color_type= PNG_COLOR_TYPE_RGB;
+	    if  ( bd->bdHasAlpha )
+		{ pngi->color_type= PNG_COLOR_TYPE_RGB_ALPHA;	}
+	    else{ pngi->color_type= PNG_COLOR_TYPE_RGB;		}
 	    pngi->sig_bit.red= bd->bdBitsPerSample;
 	    pngi->sig_bit.green= bd->bdBitsPerSample;
 	    pngi->sig_bit.blue= bd->bdBitsPerSample;

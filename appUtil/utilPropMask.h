@@ -27,10 +27,6 @@ typedef struct PropertyMask
 #   define	PROPmaskISSET( pm, v ) \
 			( (pm)->pmBits[(v)/8] & (1<<((v)%8)) ) != 0
 
-#   define	PROPmaskFILL( pm, c )	utilPropMaskFill( pm, c )
-
-#   define	PROPmaskISEMPTY( pm )		utilPropMaskIsEmpty( pm )
-
 extern void utilPropMaskFill(		PropertyMask *		pm,
 					int			c );
 

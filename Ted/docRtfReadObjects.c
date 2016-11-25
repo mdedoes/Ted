@@ -35,14 +35,6 @@ int docRtfObjectProperty(	SimpleInputStream *	sis,
 
     switch( rcw->rcwID )
 	{
-	case IOpropKIND:
-	    io->ioKind= rcw->rcwEnumValue;
-
-	    if  ( io->ioKind == DOCokPICTWMETAFILE )
-		{ io->ioMapMode= arg;	}
-
-	    break;
-
 	case IOpropRESULT_KIND:
 	    io->ioRtfResultKind= rcw->rcwEnumValue;
 	    break;
@@ -51,67 +43,20 @@ int docRtfObjectProperty(	SimpleInputStream *	sis,
 	    io->ioRtfEmbedKind= rcw->rcwEnumValue;
 	    break;
 
-	case IOpropPICT_RESULT_KIND:
-	    io->ioResultKind= rcw->rcwEnumValue;
-
-	    if  ( io->ioResultKind == DOCokPICTWMETAFILE )
-		{ io->ioResultMapMode= arg;	}
-
+	case IOpropOBJTWIPS_WIDE:
+	    io->ioTwipsWide= arg;
 	    break;
-
-	case IOpropPICTWIPS_WIDE:
-	    if  ( io->ioTwipsWide == 0 )
-		{ io->ioTwipsWide= arg; }
-	    else{
-		if  ( io->ioTwipsWide- arg >  1	||
-		      io->ioTwipsWide- arg < -1	)
-		    { LLDEB(io->ioTwipsWide,arg);	}
-
-		io->ioTwipsWide= arg;
-		}
-	    break;
-
-	case IOpropPICTWIPS_HIGH:
-	    if  ( io->ioTwipsHigh == 0 )
-		{ io->ioTwipsHigh= arg; }
-	    else{
-		if  ( io->ioTwipsHigh- arg >  1	||
-		      io->ioTwipsHigh- arg < -1	)
-		    { LLDEB(io->ioTwipsHigh,arg);	}
-
-		io->ioTwipsHigh= arg;
-		}
+	case IOpropOBJTWIPS_HIGH:
+	    io->ioTwipsHigh= arg;
 	    break;
 
 	case IOpropOBJSCALE_X:
-	case IOpropPICSCALE_X:
-	    if  ( io->ioScaleX == 100 )
-		{ io->ioScaleX= arg; }
-	    else{
-		if  ( io->ioScaleX != arg )
-		    { LLDEB(io->ioScaleX,arg);	}
-
-		io->ioScaleX= arg;
-		}
+	    io->ioScaleXSet= arg;
+	    io->ioScaleXUsed= io->ioScaleXSet;
 	    break;
-
 	case IOpropOBJSCALE_Y:
-	case IOpropPICSCALE_Y:
-	    if  ( io->ioScaleY == 100 )
-		{ io->ioScaleY= arg; }
-	    else{
-		if  ( io->ioScaleY != arg )
-		    { LLDEB(io->ioScaleY,arg);	}
-
-		io->ioScaleY= arg;
-		}
-	    break;
-
-	case IOpropPICX_WIN_EXT:
-	    io->io_xWinExt= arg;
-	    break;
-	case IOpropPICY_WIN_EXT:
-	    io->io_yWinExt= arg;
+	    io->ioScaleYSet= arg;
+	    io->ioScaleYUsed= io->ioScaleYSet;
 	    break;
 
 	case IOpropOBJCROP_TOP:
@@ -127,57 +72,158 @@ int docRtfObjectProperty(	SimpleInputStream *	sis,
 	    io->ioRightCropTwips= arg;
 	    break;
 
-	case IOpropPICCROP_TOP:
-	    io->ioTopCropTwips= arg;
-	    break;
-	case IOpropPICCROP_BOTTOM:
-	    io->ioBottomCropTwips= arg;
-	    break;
-	case IOpropPICCROP_LEFT:
-	    io->ioLeftCropTwips= arg;
-	    break;
-	case IOpropPICCROP_RIGHT:
-	    io->ioRightCropTwips= arg;
-	    break;
-
-	case IOpropBLIPTAG:
-	    io->ioBliptag= arg;
-	    break;
-
-	case IOpropWBMBITSPIXEL:
-	    io->ioBmBitsPerPixel= arg;
-	    break;
-	case IOpropWBMPLANES:
-	    io->ioBmPlanes= arg;
-	    break;
-	case IOpropWBMWIDTHBYTES:
-	    io->ioBmBytessPerRow= arg;
-	    break;
-
-	case IOpropPICBMP:
-	    io->ioMetafileIsBitmap= arg != 0;
-	    break;
-	case IOpropPICBPP:
-	    io->ioMetafileBitmapBpp= arg;
-	    break;
-
 	case IOprop_UNSUPPORTED:
 	    break;
 
 	default:
-	    /* SLDEB(rcw->rcwWord,rcw->rcwID); */
+	    SLDEB(rcw->rcwWord,rcw->rcwID);
 	    break;
 	}
 
     return 0;
     }
 
-static RtfControlWord	docRtfResultPictWords[]=
+int docRtfPictureProperty(	SimpleInputStream *	sis,
+				const RtfControlWord *	rcw,
+				int			arg,
+				RtfReadingContext *	rrc )
     {
-	{ "wmetafile",	IOpropPICT_RESULT_KIND,	DOClevANY, docRtfObjectProperty,
-							DOCokPICTWMETAFILE },
+    PictureProperties *	pip= &(rrc->rrcPictureProperties);
 
-	{ 0, 0, 0 }
+    if  ( rrc->rrcInIgnoredGroup > 0 )
+	{ return 0;	}
+
+    switch( rcw->rcwID )
+	{
+	case PIPpropTYPE:
+	    pip->pipType= rcw->rcwEnumValue;
+
+	    if  ( pip->pipType == DOCokPICTWMETAFILE )
+		{ pip->pipMapMode= arg;	}
+
+	    break;
+
+	case PIPpropPICX_WIN_EXT:
+	    pip->pip_xWinExt= arg;
+	    break;
+	case PIPpropPICY_WIN_EXT:
+	    pip->pip_yWinExt= arg;
+	    break;
+
+	case PIPpropPICTWIPS_WIDE:
+	    pip->pipTwipsWide= arg;
+	    break;
+	case PIPpropPICTWIPS_HIGH:
+	    pip->pipTwipsHigh= arg;
+	    break;
+
+	case PIPpropPICSCALE_X:
+	    pip->pipScaleXSet= arg;
+	    pip->pipScaleXUsed= pip->pipScaleXSet;
+	    break;
+	case PIPpropPICSCALE_Y:
+	    pip->pipScaleYSet= arg;
+	    pip->pipScaleYUsed= pip->pipScaleYSet;
+	    break;
+
+	case PIPpropPICCROP_TOP:
+	    pip->pipTopCropTwips= arg;
+	    break;
+	case PIPpropPICCROP_BOTTOM:
+	    pip->pipBottomCropTwips= arg;
+	    break;
+	case PIPpropPICCROP_LEFT:
+	    pip->pipLeftCropTwips= arg;
+	    break;
+	case PIPpropPICCROP_RIGHT:
+	    pip->pipRightCropTwips= arg;
+	    break;
+
+	case PIPpropBLIPTAG:
+	    pip->pipBliptag= arg;
+	    break;
+
+	case PIPpropPICBPP:
+	    pip->pipMetafileBitmapBpp= arg;
+	    break;
+	case PIPpropBLIPUPI:
+	    pip->pipBmUnitsPerInch= arg;
+	    break;
+	case PIPpropWBMBITSPIXEL:
+	    pip->pipBmBitsPerPixel= arg;
+	    break;
+	case PIPpropWBMPLANES:
+	    pip->pipBmPlanes= arg;
+	    break;
+	case PIPpropWBMWIDTHBYTES:
+	    pip->pipBmBytesPerRow= arg;
+	    break;
+
+	case PIPpropDEFSHP:
+	    pip->pipPictureIsWordArt= arg != 0;
+	    break;
+	case PIPpropPICBMP:
+	    pip->pipMetafileIsBitmap= arg != 0;
+	    break;
+	case PIPpropPICSCALED:
+	    pip->pipPictIsScaled= arg != 0;
+	    break;
+
+	default:
+	    SLDEB(rcw->rcwWord,rcw->rcwID);
+	    break;
+	}
+
+    return 0;
+    }
+
+/************************************************************************/
+/*									*/
+/*  Consume picture property tags.					*/
+/*									*/
+/*  In particular:							*/
+/*	shplid:	The identification of the shape of the picture.		*/
+/*	sp:	Various shape properties for the picture.		*/
+/*  We make a drawing shape to receive the properties.			*/
+/*									*/
+/************************************************************************/
+
+static RtfControlWord	docRtfPicpropGroups[]=
+    {
+	{ "sp",		RTFidSP,	DOClevPARA, docRtfShapeProperty, },
+    };
+
+static int docRtfReadPicprop(	SimpleInputStream *	sis,
+				const RtfControlWord *	rcw,
+				int			arg,
+				RtfReadingContext *	rrc )
+    {
+    int			rval;
+    DrawingShape *	parent= rrc->rrcDrawingShape;
+    DrawingShape *	ds;
+
+    ds= malloc( sizeof(DrawingShape) );
+    if  ( ! ds )
+	{ XDEB(ds); return -1;	}
+
+    docInitDrawingShape( ds );
+    ds->dsShapeType= rcw->rcwID;
+
+    rrc->rrcDrawingShape= ds;
+
+    rval= docRtfConsumeGroup( sis, DOClevPARA, rrc,
+			(const RtfControlWord *)0, docRtfPicpropGroups,
+			docRtfIgnoreText );
+    if  ( rval )
+	{ SLDEB(rcw->rcwWord,rval);	}
+
+    rrc->rrcDrawingShape= parent;
+    return rval;
+    }
+
+static RtfControlWord	docRtfPictGroups[]=
+    {
+	{ "picprop",	SHPtyPICPROP,	DOClevPARA, docRtfReadPicprop, },
     };
 
 static int docRtfSaveObjectData(	RtfReadingContext *	rrc,
@@ -218,11 +264,13 @@ int docRtfReadPict(	SimpleInputStream *	sis,
     int				off= bi->biParaStrlen;
     InsertedObject *		ioSave= rrc->rrcInsertedObject;
 
+    docInitPictureProperties( &(rrc->rrcPictureProperties) );
+
     /*
     LSLDEB(rrc->rrcCurrentLine,rcw->rcwWord,rrc->rrcInIgnoredGroup);
     */
 
-    if  ( rrc->rrcInIgnoredGroup == 0 )
+    if  ( ! rrc->rrcInIgnoredGroup )
 	{
 	if  ( docInflateTextString( bi, 1 ) )
 	    { LLDEB(bi->biParaStrlen,1); return -1; }
@@ -240,11 +288,27 @@ int docRtfReadPict(	SimpleInputStream *	sis,
     docRtfPushReadingState( rrc, &internRrs );
 
     rval= docRtfConsumeGroup( sis, DOClevPARA, rrc,
-				(const RtfControlWord *)0, docRtfEmptyTable,
+				(const RtfControlWord *)0, docRtfPictGroups,
 				docRtfSaveObjectData );
 
     if  ( rval )
 	{ SLDEB(rcw->rcwWord,rval);	}
+
+    if  ( rrc->rrcInsertedObject )
+	{
+	InsertedObject *	io= rrc->rrcInsertedObject;
+	PictureProperties *	pip= &(rrc->rrcPictureProperties);
+
+	io->ioKind= pip->pipType;
+	io->ioPictureProperties= rrc->rrcPictureProperties;
+
+	io->ioTwipsWide= pip->pipTwipsWide;
+	io->ioTwipsHigh= pip->pipTwipsHigh;
+	io->ioScaleXSet= pip->pipScaleXSet;
+	io->ioScaleYSet= pip->pipScaleYSet;
+	io->ioScaleXUsed= pip->pipScaleXUsed;
+	io->ioScaleYUsed= pip->pipScaleYUsed;
+	}
 
     rrc->rrcInsertedObject= ioSave;
     docRtfPopReadingState( rrc );
@@ -302,11 +366,35 @@ static int docRtfReadResultPict(	SimpleInputStream *	sis,
     int				rval;
 
     rval= docRtfConsumeGroup( sis, DOClevPARA, rrc,
-				docRtfResultPictWords, docRtfEmptyTable,
-				docRtfSaveResultData );
+			(const RtfControlWord *)0, docRtfPictGroups,
+			docRtfSaveResultData );
 
     if  ( rval )
 	{ SLDEB(rcw->rcwWord,rval);	}
+
+    if  ( rrc->rrcInsertedObject )
+	{
+	InsertedObject *	io= rrc->rrcInsertedObject;
+	PictureProperties *	pip= &(rrc->rrcPictureProperties);
+
+	io->ioResultKind= pip->pipType;
+	io->ioPictureProperties= rrc->rrcPictureProperties;
+
+	if  ( io->ioTwipsWide < 2 )
+	    { io->ioTwipsWide= pip->pipTwipsWide;	}
+	if  ( io->ioTwipsHigh < 2 )
+	    { io->ioTwipsHigh= pip->pipTwipsHigh;	}
+	if  ( io->ioScaleXSet == 100 )
+	    {
+	    io->ioScaleXSet= pip->pipScaleXSet;
+	    io->ioScaleXUsed= pip->pipScaleXUsed;
+	    }
+	if  ( io->ioScaleYSet == 100 )
+	    {
+	    io->ioScaleYSet= pip->pipScaleYSet;
+	    io->ioScaleYUsed= pip->pipScaleYUsed;
+	    }
+	}
 
     return rval;
     }
@@ -445,6 +533,8 @@ int docRtfReadObject(	SimpleInputStream *	sis,
     BufferItem *		bi= rrc->rrcBi;
     int				off= bi->biParaStrlen;
     InsertedObject *		ioSave= rrc->rrcInsertedObject;
+
+    docInitPictureProperties( &(rrc->rrcPictureProperties) );
 
     if  ( docInflateTextString( bi, 1 ) )
 	{ LLDEB(bi->biParaStrlen,1); return -1; }

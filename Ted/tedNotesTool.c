@@ -176,7 +176,7 @@ void tedFormatToolRefreshNotesTool(
 
     if  ( ds )
 	{
-	DocumentNote *		dn;
+	DocumentNote *		dn= (DocumentNote *)0;
 
 	noteIndex= docGetSelectedNote( &dn, &noteFieldNr,
 						nt->ntNoteTextSet,
@@ -194,7 +194,7 @@ void tedFormatToolRefreshNotesTool(
 	    if  ( noteFieldNr < 0 )
 		{ nt->ntFixedTextSet= 1;	}
 
-	    *pPref= 9;
+	    (*pPref) += 4;
 	    }
 	}
 
@@ -1097,15 +1097,24 @@ void tedFormatToolGetNotesResourceTable( EditApplication *		ea,
 					NotesPageResources *		npr,
 					InspectorSubjectResources *	isr )
     {
-    appGuiGetResourceValues( ea, (void *)npr,
+    static int	gotToolResources= 0;
+    static int	gotSubjectResources= 0;
+
+    if  ( ! gotToolResources )
+	{
+	appGuiGetResourceValues( &gotToolResources, ea, (void *)npr,
 				TED_TedNotesToolResourceTable,
 				sizeof(TED_TedNotesToolResourceTable)/
 				sizeof(AppConfigurableResource) );
+	}
 
-    appGuiGetResourceValues( ea, (void *)isr,
+    if  ( ! gotSubjectResources )
+	{
+	appGuiGetResourceValues( &gotSubjectResources, ea, (void *)isr,
 				TED_TedNotesSubjectResourceTable,
 				sizeof(TED_TedNotesSubjectResourceTable)/
 				sizeof(AppConfigurableResource) );
+	}
 
     return;
     }

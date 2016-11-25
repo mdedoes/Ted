@@ -58,4 +58,10 @@ extern int docFindFindPrevInDocument(
 				PARA_FIND_STRING		findPrev,
 				void *				through );
 
+extern int docFindFindNextInTree( DocumentSelection *		ds,
+				const BufferDocument *		bd,
+				const DocumentPosition *	dpFrom,
+				PARA_FIND_STRING		findNext,
+				void *				through );
+
 #   endif

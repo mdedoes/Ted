@@ -47,6 +47,7 @@ typedef struct TedFormatToolResources
     AppFontToolResources		tttrFontToolResources;
     RgbChooserPageResources		tttrRgbChooserPageResources;
     LinkToolResources			tttrLinkToolResources;
+    ImagePageResources			tttrImagePageResources;
     } TedFormatToolResources;
 
 static void tedFormatFillPages(	const TedFormatToolResources *	tftr,
@@ -149,6 +150,12 @@ static void tedFormatFillPages(	const TedFormatToolResources *	tftr,
 			    ai->aiSubjects[TEDtsiLINK].isPage,
 			    &(tftr->tttrSubjectResources[TEDtsiLINK]) );
 
+    tedFormatFillImagePage( &(tft->tftImageTool),
+			    &(tftr->tttrImagePageResources),
+			    &(ai->aiSubjects[TEDtsiIMAGE]),
+			    ai->aiSubjects[TEDtsiIMAGE].isPage,
+			    &(tftr->tttrSubjectResources[TEDtsiIMAGE]) );
+
     /**/
     appRgbChooserPageFillPage( &(tft->tftRgbPage),
 			    &(tftr->tttrRgbChooserPageResources),
@@ -190,6 +197,7 @@ static void tedDestroyFormatTool(	void *	voidtft )
     appFontChooserCleanPage( &(tft->tftFontTool) );
     appFontChooserCleanPage( &(tft->tftListFontTool) );
     tedFormatCleanLinkTool( &(tft->tftLinkTool) );
+    tedFormatCleanImageTool( &(tft->tftImageTool) );
 
     appRgbChooserPageCleanPage( &(tft->tftRgbPage) );
 
@@ -312,6 +320,10 @@ void tedShowFormatTool(	APP_WIDGET		option,
 				&(tftr.tttrLinkToolResources),
 				&(tftr.tttrSubjectResources[TEDtsiLINK]) );
 
+	tedImageToolGetResourceTable( ea,
+				&(tftr.tttrImagePageResources),
+				&(tftr.tttrSubjectResources[TEDtsiIMAGE]) );
+
 	appRgbChooserPageGetResourceTable( ea,
 				&(tftr.tttrRgbChooserPageResources),
 				&(tftr.tttrSubjectResources[TEDtsiRGB]) );
@@ -331,6 +343,7 @@ void tedShowFormatTool(	APP_WIDGET		option,
     tedInitParaOrnamentsTool( &(tft->tftParagraphOrnamentsTool) );
     tedInitRowTool( &(tft->tftRowTool) );
     tedFormatInitLinkTool( &(tft->tftLinkTool) );
+    tedFormatInitImageTool( &(tft->tftImageTool) );
 
     /******/
     tft->tftTableTool.ttApplication= ea;
@@ -348,6 +361,7 @@ void tedShowFormatTool(	APP_WIDGET		option,
     tft->tftFontTool.afcApplication= ea;
     tft->tftListFontTool.afcApplication= ea;
     tft->tftLinkTool.ltApplication= ea;
+    tft->tftImageTool.itApplication= ea;
     tft->tftRgbPage.rcpApplication= ea;
 
     ai= appMakeInspector( ea, option, pixmapName, widgetName,
@@ -373,6 +387,7 @@ void tedShowFormatTool(	APP_WIDGET		option,
     tft->tftFontTool.afcInspector= ai;
     tft->tftListFontTool.afcInspector= ai;
     tft->tftLinkTool.ltInspector= ai;
+    tft->tftImageTool.itInspector= ai;
     tft->tftRgbPage.rcpInspector= ai;
 
     /******/
@@ -577,6 +592,12 @@ static void tedFormatRefreshToolPages(	int *				enabled,
 				    enabled+ TEDtsiLINK,
 				    prefs+ TEDtsiLINK,
 				    ai->aiSubjects+ TEDtsiLINK,
+				    ds, sd, bd );
+
+    tedRefreshImageTool( &(tft->tftImageTool),
+				    enabled+ TEDtsiIMAGE,
+				    prefs+ TEDtsiIMAGE,
+				    ai->aiSubjects+ TEDtsiIMAGE,
 				    ds, sd, bd );
 
     /*  no refresh  */

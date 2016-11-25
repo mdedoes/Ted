@@ -38,6 +38,9 @@ typedef struct AppFindToolResources
     char *	aftrReplaceTitle;
     char *	aftrReplaceFound;
     char *	aftrReplaceNext;
+
+    char *	aftrLower;
+    char *	aftrClose;
     } AppFindToolResources;
 
 typedef struct AppFindTool
@@ -55,6 +58,9 @@ typedef struct AppFindTool
     APP_WIDGET			aftFindPrevButton;
 
     APP_WIDGET			aftRegexToggle;
+
+    APP_WIDGET			aftLowerButton;
+    APP_WIDGET			aftCloseButton;
 
     AppToolDestroy		aftDestroy;
     FindToolFind		aftFindNext;
@@ -286,15 +292,15 @@ static APP_TOGGLE_CALLBACK_H( appFindRegexToggled, w, voidaft, voidtbcs )
 /*									*/
 /************************************************************************/
 
-static void appFindToolMakeButtonRow(	APP_WIDGET *		pLeftButton,
+static void appFindToolMakeButtonRow(	APP_WIDGET *		pRow,
+					APP_WIDGET		parent,
+					APP_WIDGET *		pLeftButton,
 					APP_WIDGET *		pRightButton,
 					char *			leftLabel,
 					char *			rightLabel,
 					APP_BUTTON_CALLBACK_T	leftCallback,
 					APP_BUTTON_CALLBACK_T	rightCallback,
-					AppFindTool *		aft,
-					APP_WIDGET		parent )
-
+					AppFindTool *		aft )
     {
     APP_WIDGET		row;
 
@@ -360,11 +366,11 @@ static APP_WIDGET appFindMakeFindFrame(	APP_WIDGET		parent,
 
     /***************/
 
-    appFindToolMakeButtonRow(
+    appFindToolMakeButtonRow( &row, paned,
 		&(aft->aftFindNextButton), &(aft->aftFindPrevButton),
 		aftr->aftrFindNext, aftr->aftrFindPrevious,
 		appFindToolFindNextPushed, appFindToolFindPrev,
-		aft, paned );
+		aft );
 
     /***************/
 
@@ -381,6 +387,7 @@ static APP_WIDGET appFindMakeReplaceFrame( APP_WIDGET		parent,
 					AppFindToolResources *	aftr,
 					AppFindTool *		aft )
     {
+    APP_WIDGET		row;
     APP_WIDGET		frame;
     APP_WIDGET		paned;
 
@@ -403,11 +410,11 @@ static APP_WIDGET appFindMakeReplaceFrame( APP_WIDGET		parent,
 
     /***************/
 
-    appFindToolMakeButtonRow(
+    appFindToolMakeButtonRow( &row, paned,
 		&(aft->aftReplaceButton), &(aft->aftReplaceNextButton),
 		aftr->aftrReplaceFound, aftr->aftrReplaceNext,
 		appFindToolReplaceSelectionPushed, appFindToolReplaceNext,
-		aft, paned );
+		aft );
 
     /***************/
 
@@ -428,7 +435,26 @@ static void appDestroyFindTool(	AppFindTool *	aft )
     free( aft );
     }
 
-static APP_CLOSE_CALLBACK_H( appCloseFindTool, w, voidaft )
+static APP_CLOSE_CALLBACK_H( appFindToolCloseCallback, w, voidaft )
+    {
+    AppFindTool *	aft= (AppFindTool *)voidaft;
+
+    appDestroyFindTool( aft );
+
+    return;
+    }
+
+static APP_BUTTON_CALLBACK_H( appLowerFindTool, w, voidaft )
+    {
+    AppFindTool *	aft= (AppFindTool *)voidaft;
+    APP_WIDGET		shell= aft->aftTopWidget;
+
+    appGuiLowerShellWidget( shell );
+
+    return;
+    }
+
+static APP_BUTTON_CALLBACK_H( appCloseFindTool, w, voidaft )
     {
     AppFindTool *	aft= (AppFindTool *)voidaft;
 
@@ -539,6 +565,13 @@ static AppConfigurableResource APP_FindToolResourceTable[]=
 	APP_RESOURCE( "findToolReplaceNext",
 		    offsetof(AppFindToolResources,aftrReplaceNext),
 		    "Replace, Next" ),
+
+	APP_RESOURCE( "findToolLower",
+		    offsetof(AppFindToolResources,aftrLower),
+		    "Lower" ),
+	APP_RESOURCE( "findToolClose",
+		    offsetof(AppFindToolResources,aftrClose),
+		    "Close" ),
     };
 
 void * appMakeFindTool(		APP_WIDGET		findOption,
@@ -557,6 +590,7 @@ void * appMakeFindTool(		APP_WIDGET		findOption,
     
     APP_WIDGET		findFrame;
     APP_WIDGET		replaceFrame;
+    APP_WIDGET		buttonRow;
 
     const int		userResizable= 1;
     
@@ -565,7 +599,8 @@ void * appMakeFindTool(		APP_WIDGET		findOption,
 
     if  ( ! gotResources )
 	{
-	appGuiGetResourceValues( ea, (void *)&aftr, APP_FindToolResourceTable,
+	appGuiGetResourceValues( &gotResources, ea, (void *)&aftr,
+					APP_FindToolResourceTable,
 					sizeof(APP_FindToolResourceTable)/
 					sizeof(AppConfigurableResource) );
 
@@ -588,7 +623,7 @@ void * appMakeFindTool(		APP_WIDGET		findOption,
     appMakeVerticalTool( &(aft->aftTopWidget), &(aft->aftMainWidget), ea,
 			    iconPixmap, iconMask,
 			    widgetName, userResizable, findOption,
-			    appCloseFindTool, (void *)aft );
+			    appFindToolCloseCallback, (void *)aft );
 
 #   ifdef USE_MOTIF
     XtVaSetValues(	aft->aftTopWidget,
@@ -605,6 +640,12 @@ void * appMakeFindTool(		APP_WIDGET		findOption,
 
     replaceFrame= appFindMakeReplaceFrame( aft->aftMainWidget,
 							&aftr, aft );
+
+    appFindToolMakeButtonRow( &buttonRow, aft->aftMainWidget,
+		&(aft->aftLowerButton), &(aft->aftCloseButton),
+		aftr.aftrLower, aftr.aftrClose,
+		appLowerFindTool, appCloseFindTool,
+		aft );
 
 #   ifdef USE_MOTIF
     XtInsertEventHandler( aft->aftPatternText, KeyReleaseMask, False,

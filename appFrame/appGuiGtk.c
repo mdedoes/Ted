@@ -19,7 +19,8 @@
 /*									*/
 /************************************************************************/
 
-void appGuiGetResourceValues(	EditApplication *		ea,
+void appGuiGetResourceValues(	int *				pGotResources,
+				EditApplication *		ea,
 				void *				pValues,
 				AppConfigurableResource *	acrList,
 				int				acrCount )
@@ -27,6 +28,12 @@ void appGuiGetResourceValues(	EditApplication *		ea,
     AppConfigurableResource *	acr;
     char *			values= (char *)pValues;
     int				i;
+
+    if  ( *pGotResources )
+	{ LDEB(*pGotResources); return;	}
+
+    if  ( ! *pGotResources )
+	{ appSetResourceDefaults( ea, acrList, acrCount );	}
 
     acr= acrList;
     for ( i= 0; i < acrCount; acr++, i++ )
@@ -37,6 +44,7 @@ void appGuiGetResourceValues(	EditApplication *		ea,
     if  ( ea->eaToplevel.atTopWidget )
 	{ appGuiGetResourceValuesGtkX( ea, pValues, acrList, acrCount ); }
 
+    *pGotResources= 1;
     return;
     }
 
@@ -193,6 +201,15 @@ void appGuiEnableWidget(	APP_WIDGET		w,
     gtk_widget_set_sensitive( w, on_off != 0 );
     }
 
+
+void appGuiSetWidgetVisible(	APP_WIDGET		w,
+				int			on_off )
+    {
+    if  ( on_off )
+	{ gtk_widget_show( w );	}
+    else{ gtk_widget_hide( w );	}
+    }
+
 /************************************************************************/
 /*									*/
 /*  Use the text of an option and the name of the application as a	*/
@@ -224,18 +241,25 @@ void appSetShellTitle(	APP_WIDGET		shell,
     free( title );
     }
 
-void appGuiSetShellTitle(		APP_WIDGET		shell,
-					const char *		fullTitle )
+void appGuiSetShellTitle(	APP_WIDGET		shell,
+				const char *		fullTitle )
     {
     gtk_window_set_title( GTK_WINDOW( shell ), fullTitle );
 
     return;
     }
 
-void appGuiSetIconTitle(		APP_WIDGET		shell,
-					const char *		fullIconName )
+void appGuiSetIconTitle(	APP_WIDGET		shell,
+				const char *		fullIconName )
     {
     gdk_window_set_icon_name( shell->window, fullIconName );
+    return;
+    }
+
+void appGuiLowerShellWidget(	APP_WIDGET	shell )
+    {
+    gdk_window_lower( shell->window );
+
     return;
     }
 
@@ -564,6 +588,18 @@ void appMakeColumnFrameInColumn(	APP_WIDGET *		pFrame,
     appGuiGtkMakeFrameInColumn( &frame, &table, parent, paned, title );
 
     *pFrame= frame; *pPaned= paned; return;
+    }
+
+/************************************************************************/
+/*									*/
+/*  Set the title of a frame.						*/
+/*									*/
+/************************************************************************/
+
+int appGuiSetFrameTitle(		APP_WIDGET		frame,
+					const unsigned char *	title )
+    {
+    gtk_frame_set_label( GTK_FRAME( frame ), title );
     }
 
 /************************************************************************/

@@ -56,7 +56,7 @@ const unsigned char docWIN1254_to_ISO9[256]=
     ISO9_asterisk,		/*  WIN1254_asterisk		 42	*/
     ISO9_plus,			/*  WIN1254_plus		 43	*/
     ISO9_comma,			/*  WIN1254_comma		 44	*/
-    ISO9_hyphen,		/*  WIN1254_hyphen		 45	*/
+    ISO9_minus,			/*  WIN1254_minus		 45	*/
     ISO9_period,		/*  WIN1254_period		 46	*/
     ISO9_slash,			/*  WIN1254_slash		 47	*/
     ISO9_zero,			/*  WIN1254_zero		 48	*/
@@ -156,13 +156,13 @@ const unsigned char docWIN1254_to_ISO9[256]=
     0x8E,			/*  WIN1254__0x8E		142	*//**/
     0x8F,			/*  WIN1254__0x8F		143	*//**/
     0x90,			/*  WIN1254__0x90		144	*//**/
-    ISO9_quotesingle,		/*  WIN1254_quoteleft		145	*//**/
+    ISO9_quotesingle,		/*  WIN1254_quotesingle		145	*//**/
     ISO9_quotesingle,		/*  WIN1254_quoteright		146	*//**/
     ISO9_quotedbl,		/*  WIN1254_quotedbllefti	147	*//**/
     ISO9_quotedbl,		/*  WIN1254_quotedblright	148	*//**/
     ISO9_currency,		/*  WIN1254_bullet		149	*//**/
-    ISO9_hyphen,		/*  WIN1254_endash		150	*//**/
-    ISO9_hyphen,		/*  WIN1254_emdash		151	*//**/
+    ISO9_minus,			/*  WIN1254_endash		150	*//**/
+    ISO9_minus,			/*  WIN1254_emdash		151	*//**/
     ISO9_asciitilde,		/*  WIN1254_tilde		152	*//**/
     ISO9_currency,		/*  WIN1254_trademark		153	*//**/
     ISO9_currency,		/*  WIN1254_scaron		154	*//**/
@@ -171,7 +171,7 @@ const unsigned char docWIN1254_to_ISO9[256]=
     0x9D,			/*  WIN1254__0x9D		157	*//**/
     0x9E,			/*  WIN1254__0x9E		158	*//**/
     ISO9_ydieresis,		/*  WIN1254_Ydieresis		159	*//**/
-    ISO9_space,			/*  WIN1254_space		160	*/
+    ISO9_nobreakspace,		/*  WIN1254_space		160	*/
     ISO9_exclamdown,		/*  WIN1254_exclamdown		161	*/
     ISO9_cent,			/*  WIN1254_cent		162	*/
     ISO9_sterling,		/*  WIN1254_sterling		163	*/
@@ -316,7 +316,7 @@ const unsigned char docISO9_to_WIN1254[256]=
     WIN1254_asterisk,		/*  ISO9_asterisk	 42	*/
     WIN1254_plus,		/*  ISO9_plus		 43	*/
     WIN1254_comma,		/*  ISO9_comma		 44	*/
-    WIN1254_hyphen,		/*  ISO9_hyphen		 45	*/
+    WIN1254_minus,		/*  ISO9_minus		 45	*/
     WIN1254_period,		/*  ISO9_period		 46	*/
     WIN1254_slash,		/*  ISO9_slash		 47	*/
     WIN1254_zero,		/*  ISO9_zero		 48	*/
@@ -367,7 +367,7 @@ const unsigned char docISO9_to_WIN1254[256]=
     WIN1254_bracketright,	/*  ISO9_bracketright	 93	*/
     WIN1254_asciicircum,	/*  ISO9_asciicircum	 94	*/
     WIN1254_underscore,		/*  ISO9_underscore	 95	*/
-    WIN1254_grave,		/*  ISO9_grave		 96	*/
+    WIN1254_quoteleft,		/*  ISO9_quoteleft	 96	*/
     WIN1254_a,			/*  ISO9_a		 97	*/
     WIN1254_b,			/*  ISO9_b		 98	*/
     WIN1254_c,			/*  ISO9_c		 99	*/
@@ -431,7 +431,7 @@ const unsigned char docISO9_to_WIN1254[256]=
     WIN1254_currency,		/*  .NOTDEF_157		157	*//**/
     WIN1254_currency,		/*  .NOTDEF_158		158	*//**/
     WIN1254_currency,		/*  .NOTDEF_159		159	*//**/
-    WIN1254_space,		/*  ISO9_space		160	*/
+    WIN1254_nobreakspace,	/*  ISO9_space		160	*/
     WIN1254_exclamdown,		/*  ISO9_exclamdown	161	*/
     WIN1254_cent,		/*  ISO9_cent		162	*/
     WIN1254_sterling,		/*  ISO9_sterling	163	*/

@@ -42,11 +42,29 @@ typedef int (*DRAW_PARA_BOTTOM)( const BorderProperties *	bpBottom,
 				void *				through,
 				struct DrawingContext *		dc );
 
+typedef int (*DRAW_PARA_LEFT)(	const BorderProperties *	bpLeft,
+				const BorderProperties *	bpTop,
+				const BorderProperties *	bpBottom,
+				const struct ParagraphFrame *	pf,
+				const LayoutPosition *		lpTop,
+				const LayoutPosition *		lpBelow,
+				void *				through,
+				struct DrawingContext *		dc );
+
+typedef int (*DRAW_PARA_RIGHT)( const BorderProperties *	bpRight,
+				const BorderProperties *	bpTop,
+				const BorderProperties *	bpBottom,
+				const struct ParagraphFrame *	pf,
+				const LayoutPosition *		lpTop,
+				const LayoutPosition *		lpBelow,
+				void *				through,
+				struct DrawingContext *		dc );
+
 typedef int (*DRAW_PARA_SHADE)(	const ParagraphProperties *	pp,
+				const BorderProperties *	bpTop,
 				void *				through,
 				struct DrawingContext *		dc,
-				int				x0Twips,
-				int				x1Twips,
+				const struct ParagraphFrame *	pf,
 				const LayoutPosition *		lpTop,
 				const LayoutPosition *		lpBelow );
 
@@ -103,6 +121,7 @@ typedef int (*DRAW_CELL_SHADE)(	const CellProperties *		cp,
 
 typedef int (*FINISH_PAGE)(	void *				through,
 				struct DrawingContext *		dc,
+				BufferItem *			bodySectBi,
 				int				page,
 				int				asLast );
 
@@ -122,6 +141,12 @@ typedef int (*SET_FONT)(	struct DrawingContext *		dc,
 				int				textAttr,
 				const TextAttribute *		ta );
 
+typedef int (*DRAW_SHAPE)(	const DocumentRectangle *	twipsRect,
+				int				page,
+				DrawingShape *			ds,
+				struct DrawingContext *		dc,
+				void *				through );
+
 typedef struct DrawingContext
     {
     int				dcCurrentTextAttributeSet;
@@ -139,17 +164,23 @@ typedef struct DrawingContext
     const SelectionGeometry *	dcSelectionGeometry;
     int				dcFirstPage;
     int				dcLastPage;
-    int				dcDrawHeadersFooters;
+    int				dcDrawExternalItems;
+    int				dcPostponeHeadersFooters;
+    int				dcDocHasPageHeaders;
+    int				dcDocHasPageFooters;
 
     int				dcDrawTableGrid;
 
     SET_COLOR_RGB		dcSetColorRgb;
     SET_FONT			dcSetFont;
+    DRAW_SHAPE			dcDrawShape;
 
     DRAW_TEXT_LINE		dcDrawTextLine;
 
     DRAW_PARA_TOP		dcDrawParaTop;
     DRAW_PARA_BOTTOM		dcDrawParaBottom;
+    DRAW_PARA_LEFT		dcDrawParaLeft;
+    DRAW_PARA_RIGHT		dcDrawParaRight;
     DRAW_PARA_SHADE		dcDrawParaShade;
     DRAW_CELL_TOP 		dcDrawCellTop;
     DRAW_CELL_BOTTOM 		dcDrawCellBottom;
@@ -184,6 +215,11 @@ extern int docDrawPageFooter(	BufferItem *			sectBi,
 				void *				through,
 				DrawingContext *		dc,
 				int				page );
+
+extern int docDrawShapesForPage(	BufferItem *		shapeRootBi,
+					void *			through,
+					DrawingContext *	dc,
+					int			page );
 
 extern int docDrawFootnotesForColumn(
 				int				page,
@@ -228,5 +264,25 @@ extern void docDrawSetFont(	DrawingContext *	dc,
 				void *			through,
 				int			textAttr,
 				const TextAttribute *	ta );
+
+extern int docShapeGetFill(	int *			pFill,
+				const DrawingShape *	ds,
+				DrawingContext *	dc,
+				void *			through );
+
+extern int docShapeGetLine(	int *			pFill,
+				const DrawingShape *	ds,
+				DrawingContext *	dc,
+				void *			through );
+
+extern int docDrawShape(	DrawingContext *		dc,
+				void *				through,
+				const InsertedObject *		io );
+
+extern void docShapeGetPixelRect(
+				DocumentRectangle *		pixelRect,
+				const DrawingContext *		dc,
+				const DocumentRectangle *	twipsRect,
+				int				page );
 
 #   endif

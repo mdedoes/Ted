@@ -29,6 +29,7 @@ typedef enum DocumentProperty
     DPpropFACING_PAGES,
     DPpropWIDOWCTRL,
     DPpropTWO_ON_ONE,
+    DPpropDOCTEMP,
 
     DPpropNOTETYPES,	/*  \fetN	*/
 
@@ -75,6 +76,12 @@ typedef enum DocumentProperty
     DPpropLISTTABLE,
     DPpropLISTOVERRIDETABLE,
 
+				/****************************************/
+    DPpropIGNORED,		/*  Various document properties that	*/
+				/*  are ignored, but accepted to avoid	*/
+				/*  warnings.				*/
+				/****************************************/
+
     DPprop_COUNT
     } DocumentProperty;
 
@@ -97,6 +104,7 @@ typedef struct DocumentProperties
     unsigned int	dpHasFacingPages:1;
     unsigned int	dpWidowControl:1;
     unsigned int	dpTwoOnOne:1;
+    unsigned int	dpIsDocumentTemplate:1;
 
     unsigned int	dpFootEndNoteType:2;
     NotesProperties	dpFootnoteProperties;

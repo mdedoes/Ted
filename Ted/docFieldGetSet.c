@@ -265,6 +265,8 @@ int docFieldGetRef(		const DocumentField *	df,
 	    { comp++; continue;	}
 	if  ( ! memcmp( bytes+ fic[comp].ficOffset, "\\h", 2 )	)
 	    { comp++; continue;	}
+	if  ( ! memcmp( bytes+ fic[comp].ficOffset, "\\r", 2 )	)
+	    { comp++; continue;	}
 
 	break;
 	}
