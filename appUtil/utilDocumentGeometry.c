@@ -194,3 +194,18 @@ void utilDocumentGeometryGetPageBoundingBox(
 	}
     }
 
+void utilOverridePaperSize(	DocumentGeometry *		dgTo,
+				const DocumentGeometry *	dgFrom )
+    {
+    if  ( dgTo->dgPageWideTwips > dgTo->dgPageHighTwips		&&
+	  dgFrom->dgPageHighTwips > dgFrom->dgPageWideTwips	)
+	{
+	dgTo->dgPageWideTwips= dgFrom->dgPageHighTwips;
+	dgTo->dgPageHighTwips= dgFrom->dgPageWideTwips;
+	}
+    else{
+	dgTo->dgPageWideTwips= dgFrom->dgPageWideTwips;
+	dgTo->dgPageHighTwips= dgFrom->dgPageHighTwips;
+	}
+    }
+

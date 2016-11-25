@@ -76,20 +76,20 @@ static int docReLayoutStackedChildren(
 /*									*/
 /************************************************************************/
 
-static int docRedoBodyLayout(		BufferItem *		bodyBi,
+static int docRedoBodyLayout(		BufferItem *		bodyNode,
 					const LayoutJob *	ljRef )
     {
     LayoutJob			bodyLj;
 
-    if  ( bodyBi->biTreeType != DOCinBODY )
-	{ LDEB(bodyBi->biTreeType);	}
+    if  ( bodyNode->biTreeType != DOCinBODY )
+	{ LDEB(bodyNode->biTreeType);	}
 
     bodyLj= *ljRef;
     /* bodyLj.ljContext= ljRef->ljContext; */
 
-    bodyLj.ljChangedNode= bodyBi;
+    bodyLj.ljChangedNode= bodyNode;
 
-    if  ( docLayoutNodeAndParents( bodyBi, &bodyLj ) )
+    if  ( docLayoutNodeAndParents( bodyNode, &bodyLj ) )
 	{ LDEB(1); return -1;	}
 
     return 0;
@@ -103,8 +103,8 @@ static int docRedoBodyNodeLayout(	BufferItem *		node,
     const LayoutContext *	lc= &(lj->ljContext);
     BufferDocument *		bd= lc->lcDocument;
 
-    DocumentTree *		ei;
-    BufferItem *		bodyBi;
+    DocumentTree *		tree;
+    BufferItem *		bodyNode;
 
     if  ( lj->ljChangedNode->biTreeType != node->biTreeType )
 	{
@@ -113,15 +113,15 @@ static int docRedoBodyNodeLayout(	BufferItem *		node,
 	return 0;
 	}
 
-    if  ( docGetTreeOfNode( &ei, &bodyBi, bd, node ) )
+    if  ( docGetTreeOfNode( &tree, &bodyNode, bd, node ) )
 	{ LDEB(node->biTreeType); return -1; }
-    if  ( ! bodyBi )
-	{ bodyBi= bd->bdBody.dtRoot;	}
+    if  ( ! bodyNode )
+	{ bodyNode= bd->bdBody.dtRoot;	}
 
-    if  ( lpHere->lpPageYTwips == ei->dtY1UsedTwips )
+    if  ( lpHere->lpPageYTwips == tree->dtY1UsedTwips )
 	{ return 0;	}
 
-    if  ( docRedoBodyLayout( bodyBi, lj ) )
+    if  ( docRedoBodyLayout( bodyNode, lj ) )
 	{ LDEB(node->biTreeType); return -1;	}
 
     return 0;
@@ -256,7 +256,7 @@ static int docAdjustParaParentLayout(	LayoutPosition *	lpHere,
 
 	if  ( from == 0 )
 	    { *lpHere= parentNode->biChildren[from]->biTopPosition;	}
-	else{ *lpHere= parentNode->biChildren[from- 1]->biBelowPosition;	}
+	else{ *lpHere= parentNode->biChildren[from- 1]->biBelowPosition; }
 	}
 
     docCleanParagraphLayoutJob( &plj );
@@ -266,7 +266,85 @@ static int docAdjustParaParentLayout(	LayoutPosition *	lpHere,
 
 /************************************************************************/
 /*									*/
-/*  Adjust the geometry of a parent item to changes in a child.		*/
+/*  The height of an external tree changed: This possibly makes it	*/
+/*  necessary to recalculate the layout of the document.		*/
+/*									*/
+/*  Do so if necessary.							*/
+/*									*/
+/************************************************************************/
+
+int docAdjustLayoutToChangedTree(	LayoutPosition *	lpHere,
+					BufferItem *		node,
+					LayoutJob *		lj )
+    {
+    switch( node->biTreeType )
+	{
+	case DOCinBODY:
+	    lj->ljReachedDocumentBottom= 1;
+	    break;
+
+	case DOCinFIRST_HEADER:
+	case DOCinLEFT_HEADER:
+	case DOCinRIGHT_HEADER:
+	case DOCinFIRST_FOOTER:
+	case DOCinLEFT_FOOTER:
+	case DOCinRIGHT_FOOTER:
+
+	    if  ( node->biLevel != DOClevSECT )
+		{ LLDEB(node->biLevel,DOClevSECT); return -1;	}
+	    if  ( lj->ljChangedNode->biTreeType == DOCinBODY )
+		{ break; }
+
+	    if  ( docRedoBodyNodeLayout( node, lpHere, lj ) )
+		{ LDEB(1); return -1;	}
+
+	    break;
+
+	case DOCinFOOTNOTE:
+	case DOCinENDNOTE:
+
+	    if  ( node->biLevel != DOClevSECT )
+		{ LLDEB(node->biLevel,DOClevSECT); return -1;	}
+	    if  ( lj->ljChangedNode->biTreeType == DOCinBODY )
+		{ break; }
+
+	    if  ( docRedoBodyNodeLayout( node, lpHere, lj ) )
+		{ LDEB(1); return -1;	}
+
+	    break;
+
+	case DOCinFTNSEP:
+	case DOCinFTNSEPC:
+	case DOCinFTNCN:
+	case DOCinAFTNSEP:
+	case DOCinAFTNSEPC:
+	case DOCinAFTNCN:
+
+	    if  ( node->biLevel != DOClevSECT )
+		{ LLDEB(node->biLevel,DOClevSECT); return -1;	}
+	    if  ( lj->ljChangedNode->biTreeType == DOCinBODY )
+		{ break; }
+
+	    if  ( docRedoBodyNodeLayout( node, lpHere, lj ) )
+		{ LDEB(1); return -1;	}
+
+	    break;
+
+	case DOCinSHPTXT:
+	    /*nothing*/
+	    break;
+
+	default:
+	    LDEB(node->biTreeType);
+	    break;
+	}
+
+    return 0;
+    }
+
+/************************************************************************/
+/*									*/
+/*  Adjust the geometry of a parent node to changes in a child.		*/
 /*									*/
 /*  This actually is a full layout action of everything below the	*/
 /*  recently reformatted part. There are two differences:		*/
@@ -434,70 +512,9 @@ if(bf->bfPage!=lpHere.lpPage||
 	    { LDEB(1); return -1;	}
 	}
 
-    if  ( ! parentNode )
-	{
-	switch( node->biTreeType )
-	    {
-	    case DOCinBODY:
-		lj->ljReachedDocumentBottom= 1;
-		break;
-
-	    case DOCinFIRST_HEADER:
-	    case DOCinLEFT_HEADER:
-	    case DOCinRIGHT_HEADER:
-	    case DOCinFIRST_FOOTER:
-	    case DOCinLEFT_FOOTER:
-	    case DOCinRIGHT_FOOTER:
-
-		if  ( node->biLevel != DOClevSECT )
-		    { LLDEB(node->biLevel,DOClevSECT); return -1;	}
-		if  ( lj->ljChangedNode->biTreeType == DOCinBODY )
-		    { break; }
-
-		if  ( docRedoBodyNodeLayout( node, &lpHere, lj ) )
-		    { LDEB(1); return -1;	}
-
-		break;
-
-	    case DOCinFOOTNOTE:
-	    case DOCinENDNOTE:
-
-		if  ( node->biLevel != DOClevSECT )
-		    { LLDEB(node->biLevel,DOClevSECT); return -1;	}
-		if  ( lj->ljChangedNode->biTreeType == DOCinBODY )
-		    { break; }
-
-		if  ( docRedoBodyNodeLayout( node, &lpHere, lj ) )
-		    { LDEB(1); return -1;	}
-
-		break;
-
-	    case DOCinFTNSEP:
-	    case DOCinFTNSEPC:
-	    case DOCinFTNCN:
-	    case DOCinAFTNSEP:
-	    case DOCinAFTNSEPC:
-	    case DOCinAFTNCN:
-
-		if  ( node->biLevel != DOClevSECT )
-		    { LLDEB(node->biLevel,DOClevSECT); return -1;	}
-		if  ( lj->ljChangedNode->biTreeType == DOCinBODY )
-		    { break; }
-
-		if  ( docRedoBodyNodeLayout( node, &lpHere, lj ) )
-		    { LDEB(1); return -1;	}
-
-		break;
-
-	    case DOCinSHPTXT:
-		/*nothing*/
-		break;
-
-	    default:
-		LDEB(node->biTreeType);
-		break;
-	    }
-	}
+    if  ( ! parentNode						&&
+	  docAdjustLayoutToChangedTree( &lpHere, node, lj )	)
+	{ LDEB(1); return -1;	}
 
     return 0;
     }

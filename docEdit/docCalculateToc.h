@@ -6,6 +6,7 @@
 
 #   include	<docTocField.h>
 #   include	<docBlockFrame.h>
+#   include	<docListDepth.h>
 
 #   ifndef	DOC_CALCULATE_TOC_H
 #   define	DOC_CALCULATE_TOC_H
@@ -26,9 +27,22 @@ typedef struct TocEntry
 
 typedef struct CalculateToc
     {
+				/**
+				 *  The intermediate document holding the 
+				 *  table of contents. Finally we will 
+				 *  insert it in the document.
+				 */
     BufferDocument *		ctBdToc;
+				/**
+				 *  The document that we index and that will 
+				 *  recieve the table of contents.
+				 */
     BufferDocument *		ctBdDoc;
-    struct BufferItem *		ctSectBi;
+				/**
+				 *  The section that will hold the table of 
+				 *  contents.
+				 */
+    struct BufferItem *		ctSectNode;
     DocumentField *		ctDfTocTo;
     TocField			ctTocField;
     BlockFrame			ctBlockFrame;
@@ -37,6 +51,11 @@ typedef struct CalculateToc
     int				ctDefaultTextAttributeNumber;
     const DocumentStyle *	ctLevelStyles[PPoutline_COUNT];
     int				ctLevelAttributeNumbers[PPoutline_COUNT];
+				/**
+				 *  The numbers of the styles that are 
+				 *  listed in the table of contents.
+				 */
+    IndexSet			ctStyleNumbers;
 
     TocEntry *			ctEntries;
     int				ctEntryCount;

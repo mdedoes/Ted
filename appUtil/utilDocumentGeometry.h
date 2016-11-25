@@ -87,5 +87,8 @@ extern void utilDocumentGeometryGetPageBoundingBox(
 				int				hasHeader,
 				int				hasFooter );
 
+extern void utilOverridePaperSize(
+				DocumentGeometry *		dgTo,
+				const DocumentGeometry *	dgFrom );
 
 #   endif

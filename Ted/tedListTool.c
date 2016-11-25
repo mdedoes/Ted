@@ -1035,7 +1035,7 @@ static void tedListEnableListLevel(	ListTool *	lt,
 
 /************************************************************************/
 /*									*/
-/*  Adapt the tabs tool to the current selection in the document.	*/
+/*  Adapt the lists tool to the current selection in the document.	*/
 /*									*/
 /************************************************************************/
 
@@ -1154,6 +1154,8 @@ void tedRefreshListTool(
 
     int					i;
 
+    lt->ltInProgrammaticChange++;
+
     for ( i= 0; i < DLmaxLEVELS; i++ )
 	{
 	lt->ltPrevPath[i]= 0;
@@ -1180,14 +1182,14 @@ void tedRefreshListTool(
     else{
 	ListNumberTreeNode *		root;
 
-	root= docGetListNumberTree( &(bd->bdBody.eiListNumberTrees),
+	root= docGetListNumberTree( &(bd->bdBody.dtListNumberTrees),
 							sd->sdListOverride );
 	if  ( ! root )
-	    { LXDEB(sd->sdListOverride,root); *pEnabled= 0; return;	}
+	    { LXDEB(sd->sdListOverride,root); *pEnabled= 0; goto ready;	}
 
 	if  ( tedFormatToolSetList( lt, is, sd->sdFirstListParaNr,
 			sd->sdListOverride, sd->sdListLevel, lo, dl, root ) )
-	    { LDEB(sd->sdFirstListParaNr); return;	}
+	    { LDEB(sd->sdFirstListParaNr); goto ready;	}
 
 	lt->ltTabIntervalTwips= dp->dpTabIntervalTwips;
 	}
@@ -1222,6 +1224,10 @@ void tedRefreshListTool(
     tedFormatToolRefreshListPage( lt );
 
     *pEnabled= ( sd->sdInTreeType == DOCinBODY );
+
+  ready:
+
+    lt->ltInProgrammaticChange--;
 
     return;
     }
@@ -1408,6 +1414,9 @@ static APP_LIST_CALLBACK_H( tedListToolLevelChosen, w, voidlt, voidlcs )
     DocumentList *	dl= &(lt->ltListPropertiesChosen);
 
     int			level;
+
+    if  ( lt->ltInProgrammaticChange )
+	{ return;	}
 
     level= appGuiGetPositionFromListCallback( w, voidlcs );
 
@@ -1924,6 +1933,8 @@ void tedFormatFillListsPage(	ListTool *			lt,
 
     /**/
     lt->ltPageResources= lpr;
+
+    lt->ltInProgrammaticChange= 0;
 
     /**/
     docInitDocumentList( &(lt->ltListPropertiesSet) );

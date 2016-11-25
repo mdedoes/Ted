@@ -11,7 +11,7 @@
 
 #   include	<appDebugon.h>
 
-#   include	<utilOfficeCharset.h>
+#   include	<textOfficeCharset.h>
 #   include	"docRtfWriterImpl.h"
 #   include	"docRtfTags.h"
 
@@ -59,6 +59,7 @@ int docRtfSaveDate(	RtfWriter *		rw,
     }
 
 int docRtfSaveDocumentProperties(	RtfWriter *			rw,
+					int				fet,
 					const PropertyMask *		dpMask,
 					const DocumentProperties *	dp )
     {
@@ -70,8 +71,7 @@ int docRtfSaveDocumentProperties(	RtfWriter *			rw,
 
     if  ( ansicpg >= 0 )
 	{
-	if  ( docRtfSetAnsicpg( &(rw->rwcTextConverters.rtcRtfConverter),
-								    ansicpg ) )
+	if  ( docRtfSetAnsicpg( rw->rwRtfTextConverter, ansicpg ) )
 	    { LDEB(ansicpg);	}
 	}
     */
@@ -80,11 +80,17 @@ int docRtfSaveDocumentProperties(	RtfWriter *			rw,
 	{
 	int	deff= docRtfWriteGetDefaultFont( rw, dp->dpDefaultFont );
 
-	docRtfWriteArgTag( rw, "deff", deff );
+	if  ( deff >= 0 )
+	    { docRtfWriteArgTag( rw, "deff", deff );	}
 	}
 
     if  ( PROPmaskISSET( dpMask, DPpropDEFLANG ) )
 	{ docRtfWriteArgTag( rw, "deflang", dp->dpDefaultLanguage );	}
+
+    if  ( PROPmaskISSET( dpMask, DPpropRTOL ) )
+	{
+	docRtfWriteAltTag( rw, "rtldoc", "ltrdoc", dp->dpRToL );
+	}
 
     /* Strictly spoken, this is not a document property */
     docRtfWriteArgTag( rw, "uc", 1 );
@@ -110,14 +116,14 @@ int docRtfSaveDocumentProperties(	RtfWriter *			rw,
     if  ( PROPmaskISSET( dpMask, DPpropLISTTABLE ) )
 	{
 	docRtfWriteNextLine( rw );
-	docRtfWriteListTable( rw, &(dp->dpListAdmin.laListTable) );
+	docRtfWriteListTable( rw, &(dp->dpListAdmin->laListTable) );
 	}
 
     if  ( PROPmaskISSET( dpMask, DPpropLISTOVERRIDETABLE ) )
 	{
 	docRtfWriteNextLine( rw );
 	docRtfWriteListOverrideTable( rw,
-				    &(dp->dpListAdmin.laListOverrideTable) );
+				    &(dp->dpListAdmin->laListOverrideTable) );
 	}
 
     if  ( PROPmaskISSET( dpMask, DPpropGENERATOR ) )
@@ -201,6 +207,9 @@ int docRtfSaveDocumentProperties(	RtfWriter *			rw,
 	{ docRtfWriteArgTag( rw, "deftab", dp->dpTabIntervalTwips ); }
 
     docRtfWriteNextLine( rw );
+
+    if  ( fet >= 0 )
+	{ docRtfWriteArgTag( rw, RTFtag_fet, fet );	}
 
     docRtfSaveNotesProperties( rw, dpMask,
 			    &(dp->dpNotesProps.fepFootnotesProps),

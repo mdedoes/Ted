@@ -9,7 +9,6 @@
 #   include	<stddef.h>
 #   include	<stdlib.h>
 #   include	<stdio.h>
-#   include	<string.h>
 #   include	<ctype.h>
 #   include	<sioGeneral.h>
 #   include	<utilArgToX.h>
@@ -34,35 +33,17 @@
 /*									*/
 /************************************************************************/
 
-static int tedDetermineBoolean(	int *			pIval,
-				const char *		sVal )
-    {
-    if  ( sVal		&&
-	  *pIval == 0	)
-	{
-	if  ( ! strcmp( sVal, "0" ) )
-	    { *pIval= -1;	}
-	if  ( ! strcmp( sVal, "1" ) )
-	    { *pIval=  1;	}
-
-	if  ( *pIval == 0 )
-	    { SDEB(sVal);	}
-	}
-
-    return 0;
-    }
-
 void tedDetermineDefaultSettings(	TedAppResources *	tar )
     {
     char *	past;
 
     /*  2  */
-    if  ( tedDetermineBoolean( &(tar->tarShowTableGridInt),
+    if  ( appDetermineBoolean( &(tar->tarShowTableGridInt),
 					    tar->tarShowTableGridString ) )
 	{ SDEB(tar->tarShowTableGridString);	}
 
     /*  3  */
-    if  ( tedDetermineBoolean( &(tar->tarAutoHyphenateInt),
+    if  ( appDetermineBoolean( &(tar->tarAutoHyphenateInt),
 					    tar->tarAutoHyphenateString ) )
 	{ SDEB(tar->tarAutoHyphenateString);	}
 
@@ -82,13 +63,21 @@ void tedDetermineDefaultSettings(	TedAppResources *	tar )
     if  ( tar->tarPageGapMMString )
 	{ utilArgToInt( &(tar->tarPageGapMM), tar->tarPageGapMMString ); }
 
-    if  ( tedDetermineBoolean( &(tar->tarLenientRtfInt),
+    if  ( appDetermineBoolean( &(tar->tarLenientRtfInt),
 					    tar->tarLenientRtfString ) )
 	{ SDEB(tar->tarLenientRtfString);	}
 
-    if  ( tedDetermineBoolean( &(tar->tarTraceEditsInt),
+    if  ( appDetermineBoolean( &(tar->tarTraceEditsInt),
 					    tar->tarTraceEditsString ) )
 	{ SDEB(tar->tarTraceEditsString);	}
+
+    if  ( appDetermineBoolean( &(tar->tarPdfOutlineInt),
+					    tar->tarPdfOutlineString ) )
+	{ SDEB(tar->tarPdfOutlineString);	}
+
+    if  ( appDetermineBoolean( &(tar->tarOverridePaperSizeInt),
+					    tar->tarOverridePaperSizeString ) )
+	{ SDEB(tar->tarOverridePaperSizeString);	}
 
     return;
     }
@@ -150,7 +139,7 @@ static int tedInsertFile(	EditApplication *	ea,
     TedAppResources *		tar= (TedAppResources *)ea->eaResourceData;
 
     /*  1  */
-    format= appDocumentGetOpenFormat(
+    format= appDocumentGetOpenFormat( (int *)0,
 			tar->tarOpenImageExtensions,
 			tar->tarOpenImageExtensionCount, filename, -1 );
 
@@ -163,9 +152,16 @@ static int tedInsertFile(	EditApplication *	ea,
 	}
     else{
 	const int	complain= 1;
+	const int	suggestStdin= 0;
+	int		formatHint= -1;
 
-	if  ( tedOpenDocumentFile( (unsigned char *)0, &format, &bd,
-				ea, filename, complain, relative, option ) )
+	formatHint= appDocumentGetOpenFormat( (int *)0,
+			ea->eaFileExtensions, ea->eaFileExtensionCount,
+			filename, formatHint );
+
+	if  ( tedOpenDocumentFile( (unsigned char *)0, &format, &bd, ea,
+					suggestStdin, formatHint, filename,
+					complain, relative, option ) )
 	    { LDEB(1); rval= -1; goto ready;	}
 
 	switch( format )

@@ -10,11 +10,10 @@
 
 #   include	"docBuf.h"
 
-
 typedef int (*PARA_FIND_STRING)(
 			    DocumentSelection *		ds,
-			    struct BufferItem *		paraBi,
-			    const BufferDocument *	bd,
+			    struct BufferItem *		paraNode,
+			    BufferDocument *		bd,
 			    const DocumentPosition *	dpFrom,
 			    void *			through );
 
@@ -25,35 +24,35 @@ typedef int (*PARA_FIND_STRING)(
 /************************************************************************/
 
 extern int docFindParaFindNext(	DocumentSelection *		ds,
-				struct BufferItem *		paraBi,
-				const BufferDocument *		bd,
+				struct BufferItem *		paraNode,
+				BufferDocument *		bd,
 				const DocumentPosition *	dpFrom,
 				void *				through );
 
 extern int docFindParaFindPrev(	DocumentSelection *		ds,
-				struct BufferItem *		paraBi,
-				const BufferDocument *		bd,
+				struct BufferItem *		paraNode,
+				BufferDocument *		bd,
 				const DocumentPosition *	dpFrom,
 				void *				through );
 
 extern int docFindFindNextInDocument(
 				DocumentSelection *		ds,
 				const DocumentPosition *	dpFrom,
-				const BufferDocument *		bd,
+				BufferDocument *		bd,
 				PARA_FIND_STRING		findNext,
 				void *				through );
 
 extern int docFindFindPrevInDocument(
 				DocumentSelection *		ds,
 				const DocumentPosition *	dpFrom,
-				const BufferDocument *		bd,
+				BufferDocument *		bd,
 				PARA_FIND_STRING		findPrev,
 				void *				through );
 
 extern int docFindFindNextInCurrentTree(
 				DocumentSelection *		ds,
 				const DocumentPosition *	dpFrom,
-				const BufferDocument *		bd,
+				BufferDocument *		bd,
 				PARA_FIND_STRING		findNext,
 				void *				through );
 

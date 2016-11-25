@@ -59,13 +59,19 @@ typedef struct DocumentTree
     int				dtColumnFormattedFor;
     int				dtY0UsedTwips;
     int				dtY1UsedTwips;
-    int				eiY0ReservedTwips;
-    int				eiY1ReservedTwips;
+				/**
+				 *  The top position that is reserved for the 
+				 *  tree. For the page footers, this also 
+				 *  determines the page bottom for the body 
+				 *  text and the notes.
+				 */
+    int				dtY0ReservedTwips;
+    int				dtY1ReservedTwips;
 
     int				dtPageSelectedUpon;
     int				dtColumnSelectedIn;
 
-    ListNumberTrees		eiListNumberTrees;
+    ListNumberTrees		dtListNumberTrees;
     ListNumberTreeNode		dtOutlineTree;
 
     ChildFields			dtRootFields;

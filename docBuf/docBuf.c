@@ -14,9 +14,9 @@
 
 #   include	"docBuf.h"
 #   include	"docNotes.h"
+#   include	"docShape.h"
 #   include	"docTreeNode.h"
 #   include	<docTreeType.h>
-#   include	<docTextLine.h>
 #   include	<textAttributeAdmin.h>
 #   include	<docBorderPropertyAdmin.h>
 #   include	<docItemShadingAdmin.h>
@@ -24,6 +24,7 @@
 #   include	"docNodeTree.h"
 #   include	<utilMatchFont.h>
 #   include	<docDocumentNote.h>
+#   include	<docPropertiesAdmin.h>
 
 /************************************************************************/
 
@@ -80,11 +81,8 @@ void docFreeDocument( BufferDocument *	bd )
 					    utilTreeFreeValue, (void *)0 );
 	}
 
-    utilCleanNumberedPropertiesList( &(bd->bdTextAttributeList) );
-    utilCleanNumberedPropertiesList( &(bd->bdBorderPropertyList) );
-    utilCleanNumberedPropertiesList( &(bd->bdItemShadingList) );
-    utilCleanNumberedPropertiesList( &(bd->bdFramePropertyList) );
-    utilCleanNumberedPropertiesList( &(bd->bdTabStopListList) );
+    if  ( bd->bdPropertyLists )
+	{ docFreeDocumentPropertyLists( bd->bdPropertyLists );	}
 
     free( bd );
     }
@@ -94,9 +92,10 @@ void docFreeDocument( BufferDocument *	bd )
 int docGetDefaultFont(		BufferDocument *	bd )
     {
     int				i;
-    const DocumentFontList *	dfl= &(bd->bdProperties.dpFontList);
+    const DocumentFontList *	dfl= bd->bdProperties.dpFontList;
 
-    if  ( bd->bdProperties.dpDefaultFont >= 0 )
+    if  ( bd->bdProperties.dpDefaultFont >= 0			&&
+	  bd->bdProperties.dpDefaultFont < dfl->dflFontCount	)
 	{ return bd->bdProperties.dpDefaultFont;	}
 
     for ( i= 0; i < dfl->dflFontCount; i++ )
@@ -120,11 +119,7 @@ int docGetDefaultFont(		BufferDocument *	bd )
 
 static void docInitDocument(	BufferDocument *	bd )
     {
-    utilInitTextAttributeList( &(bd->bdTextAttributeList) );
-    docInitBorderPropertyList( &(bd->bdBorderPropertyList) );
-    docInitItemShadingList( &(bd->bdItemShadingList) );
-    docInitFramePropertyList( &(bd->bdFramePropertyList) );
-    docInitTabStopListList( &(bd->bdTabStopListList) );
+    bd->bdPropertyLists= (DocumentPropertyLists *)0;
 
     docInitObjectList( &(bd->bdObjectList) );
 
@@ -161,7 +156,7 @@ void docGetColorByNumber(	RGB8Color *		rgb8,
 				int			colorNumber )
     {
     const DocumentProperties *	dp= &(bd->bdProperties);
-    const ColorPalette *	cp= &(dp->dpColorPalette);
+    const ColorPalette *	cp= dp->dpColorPalette;
 
     rgb8->rgb8Red= 0;
     rgb8->rgb8Green= 0;
@@ -203,18 +198,47 @@ static int docSetupDocumentBody(	BufferDocument *	bd )
 /*									*/
 /************************************************************************/
 
-BufferDocument * docNewDocument( void )
+BufferDocument * docNewDocument( const BufferDocument *	bdRef )
     {
-    BufferDocument *	bd= (BufferDocument *)malloc( sizeof(BufferDocument) );
+    BufferDocument *	rval= (BufferDocument *)0;
+    BufferDocument *	bd= (BufferDocument *)0;
+
+    bd= (BufferDocument *)malloc( sizeof(BufferDocument) );
     if  ( ! bd )
-	{ XDEB(bd); return bd;	}
+	{ XDEB(bd); goto ready;	}
 
     docInitDocument( bd );
 
-    if  ( docSetupDocumentBody( bd ) )
-	{ LDEB(1); docFreeDocument( bd ); return (BufferDocument *)0;	}
+    if  ( bdRef )
+	{ bd->bdPropertyLists= bdRef->bdPropertyLists;	}
+    else{
+	bd->bdPropertyLists= docMakeDocumentPropertyLists();
+	if  ( ! bd->bdPropertyLists )
+	    { XDEB(bd->bdPropertyLists); goto ready;	}
+	}
 
-    return bd;
+    bd->bdProperties.dpFontList= &(bd->bdPropertyLists->dplFontList);
+    bd->bdProperties.dpListAdmin= &(bd->bdPropertyLists->dplListAdmin);
+    bd->bdProperties.dpColorPalette= &(bd->bdPropertyLists->dplColorPalette);
+
+    docDefaultFootEndNotesProperties( &(bd->bdProperties.dpNotesProps) );
+
+    if  ( docSetupDocumentBody( bd ) )
+	{ LDEB(1); goto ready;	}
+
+    rval= bd; bd= (BufferDocument *)0; /* steal */
+
+  ready:
+
+    if  ( bd )
+	{
+	if  ( bdRef )
+	    { bd->bdPropertyLists= (DocumentPropertyLists *)0;	}
+
+	docFreeDocument( bd );
+	}
+
+    return rval;
     }
 
 /************************************************************************/
@@ -231,6 +255,7 @@ BufferDocument * docNewFile(	TextAttribute *			taDefault,
 				const PostScriptFontList *	psfl,
 				const DocumentGeometry *	dg )
     {
+    NumberedPropertiesList *	taList;
     BufferDocument *		bd;
     DocumentProperties *	dp;
 
@@ -242,26 +267,27 @@ BufferDocument * docNewFile(	TextAttribute *			taDefault,
 
     utilPropMaskClear( &taNewMask );
 
-    bd= docNewDocument();
+    bd= docNewDocument( (BufferDocument *)0 );
     if  ( ! bd )
 	{ XDEB(bd); return (BufferDocument *)0;	}
 
     dp= &(bd->bdProperties);
     dp->dpGeometry= *dg;
+    taList= &(bd->bdPropertyLists->dplTextAttributeList);
 
     /*  3  */
     if  ( psfl )
 	{
-	if  ( utilAddPsFontsToDocList( &(dp->dpFontList), psfl ) )
+	if  ( utilAddPsFontsToDocList( dp->dpFontList, psfl ) )
 	    { LDEB(psfl->psflFamilyCount); goto failed;	}
 	}
     else{
-	if  ( utilAddBase35FontsToDocList( &(dp->dpFontList) ) )
+	if  ( utilAddBase35FontsToDocList( dp->dpFontList ) )
 	    { LDEB(35); goto failed;	}
 	}
 
     utilInitTextAttribute( &taNew );
-    taNew.taFontNumber= docGetFontByName( &(dp->dpFontList), defaultFontName );
+    taNew.taFontNumber= docGetFontByName( dp->dpFontList, defaultFontName );
     if  ( taNew.taFontNumber < 0 )
 	{ LDEB(taNew.taFontNumber); goto failed;	}
     PROPmaskADD( &taNewMask, TApropFONT_NUMBER );
@@ -273,8 +299,7 @@ BufferDocument * docNewFile(	TextAttribute *			taDefault,
 
     dp->dpDefaultFont= taNew.taFontNumber;
 
-    textAttributeNumber= utilTextAttributeNumber(
-				    &(bd->bdTextAttributeList), &taNew );
+    textAttributeNumber= utilTextAttributeNumber( taList, &taNew );
     if  ( textAttributeNumber < 0 )
 	{ SLDEB(defaultFontName,textAttributeNumber); goto failed;	}
 
@@ -300,57 +325,6 @@ BufferDocument * docNewFile(	TextAttribute *			taDefault,
 
 /************************************************************************/
 /*									*/
-/*  Statistics about a document. Used in the 'Document Properties'	*/
-/*  dialog.								*/
-/*									*/
-/************************************************************************/
-
-static void docCollectItemStatistics(	DocumentStatistics *	ds,
-					const BufferItem *	bi )
-    {
-    int		i;
-
-    switch( bi->biLevel )
-	{
-	case DOClevSECT:
-	case DOClevBODY:
-	case DOClevCELL:
-	case DOClevROW:
-	    for ( i= 0; i < bi->biChildCount; i++ )
-		{ docCollectItemStatistics( ds, bi->biChildren[i] ); }
-	    break;
-
-	case DOClevPARA:
-	    ds->dsParagraphCount++;
-	    ds->dsCharacterCount += docParaStrlen( bi );
-	    ds->dsLineCount += bi->biParaLineCount;
-
-	    for ( i= 0; i < bi->biParaLineCount; i++ )
-		{ ds->dsWordCount += bi->biParaLines[i].tlWordCount;	}
-
-	    break;
-
-	default:
-	    LDEB(bi->biLevel); return;
-	}
-
-    return;
-    }
-
-void docCollectDocumentStatistics(	DocumentStatistics *	ds,
-					const BufferDocument *	bd )
-    {
-    docInitDocumentStatistics( ds );
-
-    docCollectItemStatistics( ds, bd->bdBody.dtRoot );
-
-    ds->dsPageCount= bd->bdBody.dtRoot->biBelowPosition.lpPage+ 1;
-
-    return;
-    }
-
-/************************************************************************/
-/*									*/
 /*  Determine a text attribute number for a particule.			*/
 /*									*/
 /************************************************************************/
@@ -358,8 +332,9 @@ void docCollectDocumentStatistics(	DocumentStatistics *	ds,
 int docTextAttributeNumber(	BufferDocument *	bd,
 				const TextAttribute *	ta )
     {
+    NumberedPropertiesList *	taList= &(bd->bdPropertyLists->dplTextAttributeList);
     const DocumentProperties *	dp= &(bd->bdProperties);
-    const DocumentFontList *	dfl= &(dp->dpFontList);
+    const DocumentFontList *	dfl= dp->dpFontList;
 
     int				textAttributeNumber;
 
@@ -380,13 +355,115 @@ int docTextAttributeNumber(	BufferDocument *	bd,
 	    { LLDEB(taCopy.taFontNumber,dfl->dflFontCount);	}
 	}
 
-    textAttributeNumber= utilTextAttributeNumber(
-				    &(bd->bdTextAttributeList), &taCopy );
+    textAttributeNumber= utilTextAttributeNumber( taList, &taCopy );
     if  ( textAttributeNumber < 0 )
 	{ LDEB(textAttributeNumber); return -1;	}
 
     return textAttributeNumber;
     }
+
+void docGetTextAttributeByNumber(	TextAttribute *			ta,
+					const BufferDocument *		bd,
+					int				n )
+    {
+    NumberedPropertiesList *	taList= &(bd->bdPropertyLists->dplTextAttributeList);
+
+    utilGetTextAttributeByNumber( ta, taList, n );
+    }
+
+/************************************************************************/
+
+int docItemShadingNumber(	BufferDocument *	bd,
+				const ItemShading *	is )
+    {
+    NumberedPropertiesList *	isList= &(bd->bdPropertyLists->dplItemShadingList);
+
+    return docItemShadingNumberImpl( isList, is );
+    }
+
+void docGetItemShadingByNumber(	ItemShading *			is,
+				const BufferDocument *		bd,
+				int				n )
+    {
+    NumberedPropertiesList *	isList= &(bd->bdPropertyLists->dplItemShadingList);
+
+    docGetItemShadingByNumberImpl( is, isList, n );
+    }
+
+int docShadingNumberIsShading(	const BufferDocument *		bd,
+				int				n )
+    {
+    NumberedPropertiesList *	isList= &(bd->bdPropertyLists->dplItemShadingList);
+
+    return docShadingNumberIsShadingImpl( isList, n );
+    }
+
+/************************************************************************/
+
+int docBorderPropertiesNumber(	BufferDocument *		bd,
+				const BorderProperties *	bp )
+    {
+    NumberedPropertiesList *	bpList= &(bd->bdPropertyLists->dplBorderPropertyList);
+
+    return docBorderPropertiesNumberImpl( bpList, bp );
+    }
+
+void docGetBorderPropertiesByNumber(	BorderProperties *	bp,
+				const BufferDocument *		bd,
+				int				n )
+    {
+    NumberedPropertiesList *	bpList= &(bd->bdPropertyLists->dplBorderPropertyList);
+
+    docGetBorderPropertiesByNumberImpl( bp, bpList, n );
+    }
+
+int docBorderNumberIsBorder(	const BufferDocument *		bd,
+				int				n )
+    {
+    NumberedPropertiesList *	bpList= &(bd->bdPropertyLists->dplBorderPropertyList);
+
+    return docBorderNumberIsBorderImpl( bpList, n );
+    }
+
+/************************************************************************/
+
+int docFramePropertiesNumber(	BufferDocument *	bd,
+				const FrameProperties *	fp )
+    {
+    NumberedPropertiesList *	fpList= &(bd->bdPropertyLists->dplFramePropertyList);
+
+    return docFramePropertiesNumberImpl( fpList, fp );
+    }
+
+void docGetFramePropertiesByNumber( FrameProperties *		fp,
+				const BufferDocument *		bd,
+				int				n )
+    {
+    NumberedPropertiesList *	fpList= &(bd->bdPropertyLists->dplFramePropertyList);
+
+    docGetFramePropertiesByNumberImpl( fp, fpList, n );
+    }
+
+/************************************************************************/
+
+int docTabStopListNumber(	BufferDocument *	bd,
+				const TabStopList *	tsl )
+    {
+    NumberedPropertiesList *	tslList= &(bd->bdPropertyLists->dplTabStopListList);
+
+    return docTabStopListNumberImpl( tslList, tsl );
+    }
+
+void docGetTabStopListByNumber(	TabStopList *			tsl,
+				const BufferDocument *		bd,
+				int				n )
+    {
+    NumberedPropertiesList *	tslList= &(bd->bdPropertyLists->dplTabStopListList);
+
+    docGetTabStopListByNumberImpl( tsl, tslList, n );
+    }
+
+/************************************************************************/
 
 const char * docGetEncodingName(
 				BufferDocument *		bd,
@@ -428,7 +505,7 @@ const DocumentFont * docRtfGetCurrentFont(
 				TextAttribute *			ta )
     {
     DocumentProperties *	dp= &(bd->bdProperties);
-    DocumentFontList *		dfl= &(dp->dpFontList);
+    DocumentFontList *		dfl= dp->dpFontList;
     const DocumentFont *	df;
 
     if  ( ta->taFontNumber < 0 )
@@ -462,12 +539,13 @@ const DocumentFont * docRtfGetCurrentFont(
 int docScapsAttributeNumber(		BufferDocument *	bd,
 					const TextAttribute *	ta )
     {
+    NumberedPropertiesList *	taList= &(bd->bdPropertyLists->dplTextAttributeList);
     TextAttribute	taScaps= *ta;
 
     taScaps.taFontSizeHalfPoints= SCAPS_SIZE( ta->taFontSizeHalfPoints );
     taScaps.taSmallCaps= 0;
 
-    return utilTextAttributeNumber( &(bd->bdTextAttributeList), &taScaps );
+    return utilTextAttributeNumber( taList, &taScaps );
     }
 
 /************************************************************************/
@@ -492,3 +570,22 @@ void docDeleteDrawingShape(	struct BufferDocument *	bd,
     docDeleteShapeFromList( &(bd->bdShapeList), ds );
     }
 
+/************************************************************************/
+
+void docOverridePaperSize(	struct BufferDocument *		bd,
+				const DocumentGeometry *	dgFrom )
+    {
+    DocumentProperties *	dp= &(bd->bdProperties);
+    int			sect;
+
+    utilOverridePaperSize( &(dp->dpGeometry), dgFrom );
+
+    for ( sect= 0; sect < bd->bdBody.dtRoot->biChildCount; sect++ )
+	{
+	BufferItem *	sectNode= bd->bdBody.dtRoot->biChildren[sect];
+
+	utilOverridePaperSize( &(sectNode->biSectDocumentGeometry), dgFrom );
+	}
+
+    return;
+    }

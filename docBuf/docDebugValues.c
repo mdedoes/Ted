@@ -27,6 +27,8 @@ const char * docKindStr( int kind )
 	case DOCkindCHFTNSEP:		return "SEP ";
 	case DOCkindCHFTNSEPC:		return "SEPC";
 	case DOCkindOPT_HYPH:		return "HYPH";
+	case DOCkindLTR_MARK:		return "LTR ";
+	case DOCkindRTL_MARK:		return "RTL ";
 
 	default:
 	    sprintf( scratch, "%-4d", kind );
@@ -206,11 +208,11 @@ const char * docBreakKindStr( int kind )
 
     switch( kind )
 	{
-	case DOCibkNONE:	return "DOCibkNONE";
-	case DOCibkCOL:		return "DOCibkCOL";
-	case DOCibkPAGE:	return "DOCibkPAGE";
-	case DOCibkEVEN:	return "DOCibkEVEN";
-	case DOCibkODD:		return "DOCibkODD";
+	case DOCibkNONE:	return "NONE";
+	case DOCibkCOL:		return "COL";
+	case DOCibkPAGE:	return "PAGE";
+	case DOCibkEVEN:	return "EVEN";
+	case DOCibkODD:		return "ODD";
 
 	default:
 	    sprintf( scratch, "%d", kind );

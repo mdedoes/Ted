@@ -39,7 +39,7 @@ void tedRefreshFontTool(	AppFontChooser *		afc,
 				const unsigned char *		cmdEnabled )
     {
     const DocumentProperties *	dp= &(bd->bdProperties);
-    const DocumentFontList *	dfl= &(dp->dpFontList);
+    const DocumentFontList *	dfl= dp->dpFontList;
 
     if  ( sd->sdIsObjectSelection )
 	{ *pEnabled= 0; return;	}
@@ -59,7 +59,7 @@ void tedRefreshFontTool(	AppFontChooser *		afc,
 	if  ( appFontToolShowCurrentFont( afc, &(ll->llTextAttributeMask),
 				    &(ll->llTextAttribute), documentId,
 				    cmdEnabled[EDITcmdUPD_LIST],
-				    dfl, &(dp->dpColorPalette) ) )
+				    dfl, dp->dpColorPalette ) )
 	    { LDEB(1);	}
 
 	*pEnabled= 1;
@@ -71,7 +71,7 @@ void tedRefreshFontTool(	AppFontChooser *		afc,
 	if  ( appFontToolShowCurrentFont( afc, &(sd->sdTextAttributeMask),
 				    &(sd->sdTextAttribute), documentId,
 				    cmdEnabled[EDITcmdUPD_SPAN_PROPS],
-				    dfl, &(dp->dpColorPalette) ) )
+				    dfl, dp->dpColorPalette ) )
 	    { LDEB(1);	}
 
 	*pEnabled= 1;

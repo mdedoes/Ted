@@ -12,6 +12,7 @@
 #   include	<appDebugon.h>
 
 #   include	"docStyle.h"
+#   include	"docListDepth.h"
 
 /************************************************************************/
 /*									*/

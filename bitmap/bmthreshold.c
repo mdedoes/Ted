@@ -23,8 +23,8 @@ static int bmToThresholdAllocateColor(	AllocatorColor *	ac,
     long			i;
 
     if  ( r > th->thThreshold )
-	{ i= 1;	}
-    else{ i= 0;	}
+	{ i= 0;	}
+    else{ i= 1;	}
 
     ac->acRed= 257* r;
     ac->acGreen= 257* g;
@@ -153,14 +153,13 @@ int bmThreshold(	RasterImage *			riOut,
     ri.riDescription.bdBitsPerSample= 1;
     ri.riDescription.bdSamplesPerPixel= 1;
     ri.riDescription.bdBitsPerPixel= 1;
-    ri.riDescription.bdColorEncoding= BMcoWHITEBLACK;
+    ri.riDescription.bdColorEncoding= BMcoBLACKWHITE;
 
     if  ( bmCalculateSizes( &(ri.riDescription) ) )
 	{ LDEB(1); rval= -1; goto ready;	}
 
     /*  6  */
-    ri.riBytes= (unsigned char *)malloc( ri.riDescription.bdBufferLength );
-    if  ( ! ri.riBytes )
+    if  ( bmAllocateBuffer( &ri ) )
 	{ LLDEB(ri.riDescription.bdBufferLength,ri.riBytes); rval= -1; goto ready; }
 
     /*  7  */

@@ -33,8 +33,7 @@ int docGetListOfParagraph(	ListOverride **		pLo,
 				int			ls,
 				const BufferDocument *	bd )
     {
-    return docGetListForStyle( pLo, pDl, ls,
-				    &(bd->bdProperties.dpListAdmin) );
+    return docGetListForStyle( pLo, pDl, ls, bd->bdProperties.dpListAdmin );
     }
 
 int docGetListLevelOfParagraph(	int *				startPath,
@@ -50,7 +49,7 @@ int docGetListLevelOfParagraph(	int *				startPath,
     const ListLevel *	ll;
 
     if  ( docGetListForStyle( &lo, &dl, pp->ppListOverride,
-					&(bd->bdProperties.dpListAdmin) ) )
+					    bd->bdProperties.dpListAdmin ) )
 	{ LDEB(pp->ppListOverride); return -1;	}
 
     if  ( docListGetFormatPath( startPath, formatPath, &ll,
@@ -82,7 +81,7 @@ int docRemoveParagraphFromList(		BufferItem *		paraNode,
 
     if  ( paraNode->biParaListOverride > 0 )
 	{
-	if  ( docListNumberTreesDeleteParagraph( &(dt->eiListNumberTrees),
+	if  ( docListNumberTreesDeleteParagraph( &(dt->dtListNumberTrees),
 					paraNode->biParaListOverride, paraNr ) )
 	    { LDEB(paraNr); rval= -1;	}
 
@@ -280,7 +279,6 @@ static int docApplyListRulerLevel(
     int				rval= 0;
 
     int				i;
-    const ListNumberTreeNode *	child;
 
     if  ( level < lo->loLevelCount )
 	{ lol= &(lo->loLevels[level]);	}
@@ -290,11 +288,11 @@ static int docApplyListRulerLevel(
     if  ( lol && lol->lolOverrideFormat )
 	{ ll= &(lol->lolListLevel);	}
 
-    child= lntn->lntnChildren;
-    for ( i= 0; i < lntn->lntnChildCount; child++, i++ )
+    for ( i= 0; i < lntn->lntnChildCount; i++ )
 	{
-	BufferItem *	paraNode;
-	int		changed= 0;
+	BufferItem *		paraNode;
+	int			changed= 0;
+	ListNumberTreeNode *	child= lntn->lntnChildren[i];
 
 	if  ( docApplyListRulerLevel( child, level+ 1, dl, lo, dt ) )
 	    { LLDEB(level,i); rval= -1;	}
@@ -339,10 +337,10 @@ static int docApplyListRulerToTree(	const DocumentList *		dl,
 					const DocumentTree *		dt )
     {
     if  ( ! dt->dtRoot						||
-	  dt->eiListNumberTrees.lntTreeCount <= lo->loIndex	)
+	  dt->dtListNumberTrees.lntTreeCount <= lo->loIndex	)
 	{ return 0;	}
 
-    return docApplyListRulerLevel( dt->eiListNumberTrees.lntTrees+ lo->loIndex,
+    return docApplyListRulerLevel( dt->dtListNumberTrees.lntTrees+ lo->loIndex,
 								0, dl, lo, dt );
     }
 

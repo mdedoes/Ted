@@ -69,17 +69,21 @@ typedef struct ParagraphProperties
 
     unsigned char	ppAlignment;			/*  (enum)	*/
 
-    unsigned char	ppLineSpacingIsMultiple;
+    unsigned char	ppLineSpacingIsMultiple;	/*  boolean	*/
 
-    unsigned char	ppKeepOnPage;
-    unsigned char	ppKeepWithNext;
-    unsigned char	ppWidowControl;
-    unsigned char	ppHyphenateParagraph;
+    unsigned char	ppKeepOnPage;			/*  boolean	*/
+    unsigned char	ppKeepWithNext;			/*  boolean	*/
+    unsigned char	ppWidowControl;			/*  boolean	*/
+    unsigned char	ppHyphenateParagraph;		/*  boolean	*/
+
+			/**
+			 * 0: Text in this paragraph will display with
+			 *	left-to-right precedence (the default)
+			 * 1: Text in this paragraph will display with
+			 *	right-to-left precedence
+			 */
+    unsigned char	ppRToL;
     } ParagraphProperties;
-
-#   define	PPoutlineBODYTEXT	9
-#   define	PPoutlineDEEPEST	(PPoutlineBODYTEXT-1)
-#   define	PPoutline_COUNT		10
 
 /************************************************************************/
 /*									*/
@@ -121,6 +125,7 @@ typedef enum ParagraphProperty
     PPpropOUTLINELEVEL,
     PPpropLISTLEVEL,
     PPpropHYPHPAR,
+    PPpropRTOL,
 
     PPprop_COUNT,
 

@@ -13,6 +13,7 @@
 #   include	<docNodeTree.h>
 #   include	"docCalculateToc.h"
 #   include	"docTocBookmarks.h"
+#   include	"docIntermediaryDocument.h"
 #   include	<docTocField.h>
 #   include	<docTreeType.h>
 #   include	<docSeqField.h>
@@ -43,7 +44,7 @@ void docInitCalculateToc(	CalculateToc *	ct )
 
     ct->ctBdToc= (BufferDocument *)0;
     ct->ctBdDoc= (BufferDocument *)0;
-    ct->ctSectBi= (BufferItem *)0;
+    ct->ctSectNode= (BufferItem *)0;
     ct->ctDfTocTo= (DocumentField *)0;
 
     docInitTocField( &(ct->ctTocField) );
@@ -56,6 +57,7 @@ void docInitCalculateToc(	CalculateToc *	ct )
 	ct->ctLevelStyles[i]= (const DocumentStyle *)0;
 	ct->ctLevelAttributeNumbers[i]= -1;
 	}
+    utilInitIndexSet( &(ct->ctStyleNumbers) );
 
     ct->ctEntries= (TocEntry *)0;
     ct->ctEntryCount= 0;
@@ -69,11 +71,13 @@ void docInitCalculateToc(	CalculateToc *	ct )
 void docCleanCalculateToc(	CalculateToc *	ct )
     {
     if  ( ct->ctBdToc )
-	{ docFreeDocument( ct->ctBdToc );	}
+	{ docFreeIntermediaryDocument( ct->ctBdToc );	}
 
     docCleanTocField( &(ct->ctTocField) );
     docLayoutCleanBlockFrame( &(ct->ctBlockFrame) );
     docCleanParagraphProperties( &(ct->ctRefPP) );
+
+    utilInitIndexSet( &(ct->ctStyleNumbers) );
 
     if  ( ct->ctEntries )
 	{ free( ct->ctEntries );	}
@@ -178,7 +182,7 @@ static int docGetTocEntry(	TocEntry *		te,
 	    { LDEB(te->teField->dfFieldNumber); return -1;	}
 
 	if  ( tf->tfType == TOCtypeTOC				&&
-	      ( tf->tfUseStyleNames || tf->tfUseStyleLevels )	&&
+	      tf->tfUseStyleLevels				&&
 	      paraNode->biParaStyle > 0				&&
 	      paraNode->biParaStyle < ct->ctStyleLevelCount	)
 	    {
@@ -191,6 +195,15 @@ static int docGetTocEntry(	TocEntry *		te,
 				te->teLevel > tf->tfNLevel1	;
 		return 0;
 		}
+	    }
+
+	if  ( tf->tfType == TOCtypeTOC				&&
+	      tf->tfUseStyleNames				&&
+	      utilIndexSetContains( &(ct->ctStyleNumbers),
+				      paraNode->biParaStyle )	)
+	    {
+	    te->teNumbered= 1;
+	    return 0;
 	    }
 
 	if  ( tf->tfType == TOCtypeTOC				&&
@@ -396,7 +409,12 @@ static int docTocCollectTocStyles(	CalculateToc *		ct )
 
 	    ds= docGetStyleByName( &(bd->bdStyleSheet), snl->snlStyleName );
 	    if  ( ds )
-		{ ct->ctStyleLevels[ds->dsStyleNumber]= snl->snlLevel;	}
+		{
+		ct->ctStyleLevels[ds->dsStyleNumber]= snl->snlLevel;
+		}
+
+	    if  ( utilIndexSetAdd( &(ct->ctStyleNumbers), ds->dsStyleNumber ) )
+		{ LDEB(ds->dsStyleNumber); return -1;	}
 	    }
 	}
 

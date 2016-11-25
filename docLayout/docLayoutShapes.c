@@ -10,6 +10,7 @@
 
 #   include	<docPageGrid.h>
 #   include	<docTreeNode.h>
+#   include	<docShape.h>
 #   include	"docLayout.h"
 
 #   include	<appDebugon.h>
@@ -171,9 +172,12 @@ int docShapeCheckTextLayout(
     if  ( page != ds->dsDocumentTree.dtPageFormattedFor		||
 	  column != ds->dsDocumentTree.dtColumnFormattedFor	)
 	{
+	/*  We do not expect the tree to change height here	*/
+	const int	adjustDocument= 0;
+
 	if  ( docLayoutDocumentTree( &(ds->dsDocumentTree),
 		drChanged, page, column, dgBox.dgTopMarginTwips,
-		bodySectNode, lc, initLayoutExternal ) )
+		bodySectNode, lc, initLayoutExternal, adjustDocument ) )
 	    { LLDEB(page,column); return -1;	}
 	}
 

@@ -170,7 +170,7 @@ int docFootEndNotesPropertyDifference(
     return 0;
     }
 
-void docInitFootNotesProperties(	NotesProperties *	np )
+void docInitNotesProperties(	NotesProperties *	np )
     {
     np->npStartNumber= 1;
     np->npJustification= FTNjustifyPAGE_BOTTOM;
@@ -181,7 +181,18 @@ void docInitFootNotesProperties(	NotesProperties *	np )
     return;
     }
 
-void docInitEndNotesProperties(	NotesProperties *	np )
+void docDefaultFootNotesProperties(	NotesProperties *	np )
+    {
+    np->npStartNumber= 1;
+    np->npJustification= FTNjustifyPAGE_BOTTOM;
+    np->npPlacement= FTNplacePAGE_END;
+    np->npRestart= FTN_RST_CONTINUOUS;
+    np->npNumberStyle= FTNstyleNAR;
+
+    return;
+    }
+
+void docDefaultEndNotesProperties(	NotesProperties *	np )
     {
     np->npStartNumber= 1;
     np->npJustification= FTNjustifyBELOW_TEXT;
@@ -194,8 +205,14 @@ void docInitEndNotesProperties(	NotesProperties *	np )
 
 void docInitFootEndNotesProperties(	FootEndNotesProperties *	fep )
     {
-    docInitFootNotesProperties( &(fep->fepFootnotesProps) );
-    docInitEndNotesProperties( &(fep->fepEndnotesProps) );
+    docInitNotesProperties( &(fep->fepFootnotesProps) );
+    docInitNotesProperties( &(fep->fepEndnotesProps) );
+    }
+
+void docDefaultFootEndNotesProperties(	FootEndNotesProperties *	fep )
+    {
+    docDefaultFootNotesProperties( &(fep->fepFootnotesProps) );
+    docDefaultEndNotesProperties( &(fep->fepEndnotesProps) );
     }
 
 const char * docNotesJustificationStr( int pos )

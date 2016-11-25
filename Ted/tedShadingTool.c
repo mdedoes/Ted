@@ -10,7 +10,6 @@
 #   include	<stddef.h>
 
 #   include	"tedShadingTool.h"
-#   include	<docItemShadingAdmin.h>
 #   include	<appDebugon.h>
 #   include	<guiToolUtil.h>
 #   include	<guiTextUtil.h>
@@ -71,11 +70,11 @@ static void tedSetShadingTool(		ShadingTool *			st,
     tedShadingToolShowLevel( st, is );
 
     /**/
-    docExpandItemShading( eis, is, &(dp->dpColorPalette) );
+    docExpandItemShading( eis, is, dp->dpColorPalette );
 
     /**/
     appColorChooserSuggestPalette( &(st->stBackColorChooser),
-					    avoidZero, &(dp->dpColorPalette) );
+					    avoidZero, dp->dpColorPalette );
     appColorChooserSetColor( &(st->stBackColorChooser),
 				    eis->eisBackColorExplicit,
 				    &(eis->eisBackColor) );
@@ -87,7 +86,7 @@ static void tedSetShadingTool(		ShadingTool *			st,
     if  ( st->stForeColorChooser.ccFilled )
 	{
 	appColorChooserSuggestPalette( &(st->stForeColorChooser),
-					    avoidZero, &(dp->dpColorPalette) );
+					    avoidZero, dp->dpColorPalette );
 
 	appColorChooserSetColor( &(st->stForeColorChooser),
 				eis->eisForeColorExplicit,
@@ -110,11 +109,10 @@ void tedSetShadingToolByNumber(		ShadingTool *			st,
 					int				num )
     {
     const DocumentProperties *		dp= &(bd->bdProperties);
-    const NumberedPropertiesList *	isl= &(bd->bdItemShadingList);
 
     ItemShading			is;
 
-    docGetItemShadingByNumber( &is, isl, num );
+    docGetItemShadingByNumber( &is, bd, num );
 
     tedSetShadingTool( st, dp, &is );
 
@@ -697,7 +695,7 @@ int tedShadingToolGetShadingNumber(	int *			pNum,
     if  ( tedShadingToolGetShading( &eis, isSetMask, st ) )
 	{ LDEB(1); return -1;	}
 
-    docGetItemShadingByNumber( &is, &(bd->bdItemShadingList), *pNum );
+    docGetItemShadingByNumber( &is, bd, *pNum );
 
     if  ( ! utilPropMaskIsEmpty( isSetMask ) )
 	{
@@ -706,11 +704,11 @@ int tedShadingToolGetShadingNumber(	int *			pNum,
 	utilPropMaskClear( &isDoneMask );
 
 	if  ( docIndirectItemShading( &isDoneMask, &is, isSetMask, &eis,
-						    &(dp->dpColorPalette) ) )
+							dp->dpColorPalette ) )
 	    { LDEB(1); return -1;	}
 	}
 
-    num= docItemShadingNumber( &(bd->bdItemShadingList), &is );
+    num= docItemShadingNumber( bd, &is );
     if  ( num < 0 )
 	{ LDEB(num); return -1;	}
 

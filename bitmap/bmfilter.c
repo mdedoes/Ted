@@ -418,8 +418,7 @@ static int bmStartFilterOperation(
 	{ LDEB(1); return -1;	}
 
     /*  3  */
-    riOut->riBytes= (unsigned char *)malloc(riOut->riDescription.bdBufferLength );
-    if  ( ! riOut->riBytes )
+    if  ( bmAllocateBuffer( riOut ) )
 	{ LXDEB(riOut->riDescription.bdBufferLength,riOut->riBytes); return -1;	}
 
     /*  4  */

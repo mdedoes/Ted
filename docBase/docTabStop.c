@@ -7,9 +7,11 @@
 #   include	"docBaseConfig.h"
 
 #   include	<stdlib.h>
+#   include	<stdio.h>
 
 #   include	<geoGrid.h>
 #   include	"docTabStop.h"
+#   include	"docTabStopList.h"
 
 #   include	<appDebugon.h>
 
@@ -410,5 +412,41 @@ int docRulerMergeTabs(		TabStopList *		tslOld,
 	{ free( fresh );	}
 
     return rval;
+    }
+
+const char * docTabAlignmentStr(	int	alignment )
+    {
+    static char	scratch[20];
+
+    switch( alignment )
+	{
+	case DOCtaLEFT:		return "LEFT";
+	case DOCtaRIGHT:	return "RIGHT";
+	case DOCtaCENTER:	return "CENTER";
+	case DOCtaDECIMAL:	return "DECIMAL";
+
+	default:
+	    sprintf( scratch, "%d", alignment );
+	    return scratch;
+	}
+    }
+
+const char * docTabLeaderStr(	int	leader )
+    {
+    static char	scratch[20];
+
+    switch( leader )
+	{
+	case DOCtlNONE:		return "NONE";
+	case DOCtlDOTS:		return "DOTS";
+	case DOCtlUNDERLINE:	return "UNDERLINE";
+	case DOCtlHYPH:		return "HYPH";
+	case DOCtlTHICK:	return "THICK";
+	case DOCtlEQUAL:	return "EQUAL";
+
+	default:
+	    sprintf( scratch, "%d", leader );
+	    return scratch;
+	}
     }
 

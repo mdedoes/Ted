@@ -248,7 +248,7 @@ void docEditShiftReferences(		EditOperation *		eo,
 		  ( stroffFrom > 0 || eo->eoSplitAtHead )	)
 		{ listParaFrom++;	}
 
-	    docShiftListTreeReferences( &(dt->eiListNumberTrees),
+	    docShiftListTreeReferences( &(dt->dtListNumberTrees),
 						    listParaFrom, paraShift );
 	    docShiftListNodeReferences( &(dt->dtOutlineTree),
 						    listParaFrom, paraShift );

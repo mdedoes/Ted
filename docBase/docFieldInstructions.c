@@ -151,6 +151,8 @@ static int docSplitFieldInstructions(
 	int		quoted= 0;
 	int		flag= 0;
 
+	int		unmatchedQuote= 0;
+
 	while( offset < count && *from == ' ' )
 	    { offset++; from++;	}
 
@@ -190,9 +192,8 @@ static int docSplitFieldInstructions(
 		{ size++; offset++; from++;	}
 
 	    if  ( offset >= count )
-		{ SLLDEB(bytes,offset,count); return -1;	}
-
-	    offset++; from++;
+		{ SLLDEB(bytes,offset,count); unmatchedQuote= 1;	}
+	    else{ offset++; from++;					}
 	    }
 	else{
 	    head= from;
@@ -207,6 +208,10 @@ static int docSplitFieldInstructions(
 	    if  ( utilMemoryBufferSetBytes( &(ic->icBuffer),
 					(const unsigned char *)head, size ) )
 		{ LDEB(1); return -1;	}
+
+	    if  ( unmatchedQuote					&&
+		  utilMemoryBufferAppendString( &(ic->icBuffer), "\"" )	)
+		{ LDEB(unmatchedQuote); return -1;	}
 
 	    ic->icIsFlag= flag;
 	    ic->icIsQuoted= quoted;

@@ -11,6 +11,7 @@
 #   include	<stdlib.h>
 
 #   include	<sioGeneral.h>
+#   include	<textUtf8Util.h>
 
 #   include	<psFontMetrics.h>
 #   include	"docPsPrintImpl.h"
@@ -54,10 +55,10 @@ static void docPsPrintString(	const DrawTextLine *		dtl,
 
 	y= baseline;
 
-	if  ( ta->taSuperSub == DOCfontSUPERSCRIPT )
+	if  ( ta->taSuperSub == TEXTvaSUPERSCRIPT )
 	    { psGetSuperBaseline( &y, baseline, fontSizeTwips, pd->pdAfi ); }
 
-	if  ( ta->taSuperSub == DOCfontSUBSCRIPT )
+	if  ( ta->taSuperSub == TEXTvaSUBSCRIPT )
 	    { psGetSubBaseline( &y, baseline, fontSizeTwips, pd->pdAfi ); }
 
 	psMoveShowString( ps, s, len,
@@ -196,7 +197,7 @@ int docPsPrintSpan(		const DrawTextLine *	dtl,
     PrintingState *		ps= (PrintingState *)dtl->dtlThrough;
     int				rval= 0;
 
-    char *			upperString= (char *)0;
+    char *			scratchString= (char *)0;
     int *			segments= (int *)0;
     int				segmentCount= 0;
 
@@ -206,11 +207,23 @@ int docPsPrintSpan(		const DrawTextLine *	dtl,
 
     if  ( ta->taSmallCaps || ta->taCapitals )
 	{
-	if  ( docMakeCapsString( &upperString, &segments, &segmentCount,
+	if  ( docMakeCapsString( &scratchString, &segments, &segmentCount,
 						ta, printString, nbLen ) )
 	    { LDEB(nbLen); rval= -1; goto ready;	}
 
-	printString= upperString;
+	printString= scratchString;
+	}
+
+    if  ( 0 )
+	{
+	scratchString= malloc( nbLen+ 1 );
+	if  ( ! scratchString )
+	    { XDEB(scratchString); rval= -1; goto ready;	}
+
+	if  ( textMirrorUtf8String( scratchString, printString, nbLen ) )
+	    { LDEB(nbLen); rval= -1; goto ready;	}
+
+	printString= scratchString;
 	}
 
     if  (  ta->taSmallCaps && ! ta->taCapitals )
@@ -227,10 +240,10 @@ int docPsPrintSpan(		const DrawTextLine *	dtl,
 
   ready:
 
-    if  ( upperString )
-	{ free( upperString );	}
+    if  ( scratchString )
+	{ free( scratchString );	}
     if  ( segments )
-	{ free( segments );	}
+	{ free( segments );		}
 
     return rval;
     }

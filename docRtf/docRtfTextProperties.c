@@ -10,7 +10,6 @@
 #   include	<ctype.h>
 
 #   include	<appDebugon.h>
-#   include	<docItemShadingAdmin.h>
 
 #   include	"docRtfReaderImpl.h"
 #   include	"docRtfFlags.h"
@@ -29,12 +28,12 @@ static int docRtfRememberTextPropertyImpl(	TextAttribute *		ta,
     switch( rcw->rcwID )
 	{
 	case TAprop_NONE:
-	    docPlainTextAttribute( ta, rrc->rrcDocument );
+	    docPlainTextAttribute( ta, rrc->rrDocument );
 	    return 0;
 
 	case TApropFONTSIZE:
 	    if  ( arg < 1 || arg > 2000 )
-		{ LSLDEB(rrc->rrcCurrentLine,rcw->rcwWord,arg); arg= 20; }
+		{ LSLDEB(rrc->rrCurrentLine,rcw->rcwWord,arg); arg= 20; }
 	    break;
 
 	case TApropBORDER:
@@ -76,7 +75,7 @@ int docRtfRememberTextProperty(		const RtfControlWord *	rcw,
 
     if  ( rcw->rcwID == TApropTEXT_STYLE )
 	{
-	const	DocumentStyleSheet *	dss= &(rrc->rrcDocument->bdStyleSheet);
+	const	DocumentStyleSheet *	dss= &(rrc->rrDocument->bdStyleSheet);
 
 	rrc->rrcStyle.dsLevel= DOClevSPAN;
 
@@ -104,7 +103,7 @@ int docRtfRememberTextProperty(		const RtfControlWord *	rcw,
 
 	rrc->rrcCurrentEncodedFont.ecFileFontNumber= arg;
 
-	if  ( ! ( rrc->rrcReadFlags & RTFflagUNENCODED ) )
+	if  ( ! ( rrc->rrReadFlags & RTFflagUNENCODED ) )
 	    {
 	    if  ( ! docRtfReadMapFont( rrc,
 			    &(rrc->rrcCurrentEncodedFont.ecBufFontNumber),
@@ -188,8 +187,7 @@ void docRtfRefreshTextShading(	RtfReader *		rrc,
 				RtfReadingState *	rrs )
     {
     rrs->rrsTextAttribute.taShadingNumber= docItemShadingNumber(
-					&(rrc->rrcDocument->bdItemShadingList),
-					&(rrs->rrsTextShading) );
+				    rrc->rrDocument, &(rrs->rrsTextShading) );
     rrs->rrsTextShadingChanged= 0;
 
     return;

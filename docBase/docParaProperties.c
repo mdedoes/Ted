@@ -10,6 +10,7 @@
 
 #   include	"docParaProperties.h"
 #   include	"docPropVal.h"
+#   include	"docListDepth.h"
 
 /************************************************************************/
 /*									*/
@@ -59,9 +60,50 @@ void docInitParagraphProperties(	ParagraphProperties *	pp )
     pp->ppKeepWithNext= 0;
     pp->ppWidowControl= 0;
     pp->ppHyphenateParagraph= 0;
+    pp->ppRToL= 0;
 
     return;
     }
+
+/************************************************************************/
+
+static const int DocParaIntProps[]=
+{
+    PPpropSTYLE,
+    PPpropTABLE_NESTING,
+    PPpropFIRST_INDENT,
+    PPpropLEFT_INDENT,
+    PPpropRIGHT_INDENT,
+    PPpropALIGNMENT,
+
+    PPpropBREAK_KIND,
+    PPpropWIDCTLPAR,
+    PPpropKEEPN,
+    PPpropKEEP,
+    PPpropSPACE_BEFORE,
+    PPpropSPACE_AFTER,
+    PPpropLINE_SPACING_DIST,
+    PPpropLINE_SPACING_MULT,
+
+    PPpropOUTLINELEVEL,
+    PPpropLISTLEVEL,
+    PPpropHYPHPAR,
+    PPpropRTOL,
+};
+
+static const int DocParaIntPropCount= sizeof(DocParaIntProps)/sizeof(int);
+
+static const int DocParaBorderProps[]=
+{
+    PPpropTOP_BORDER,
+    PPpropBOTTOM_BORDER,
+    PPpropLEFT_BORDER,
+    PPpropRIGHT_BORDER,
+    PPpropBETWEEN_BORDER,
+    PPpropBAR_BORDER,
+};
+
+static const int DocParaBorderPropCount= sizeof(DocParaBorderProps)/sizeof(int);
 
 /************************************************************************/
 /*									*/
@@ -87,15 +129,25 @@ int docUpdParaProperties(	PropertyMask *			pDoneMask,
 				const DocumentAttributeMap *	dam )
     {
     PropertyMask		ppDoneMask;
+    int				p;
 
     utilPropMaskClear( &ppDoneMask );
 
-    if  ( PROPmaskISSET( ppSetMask, PPpropSTYLE ) )
+    for ( p= 0; p < DocParaIntPropCount; p++ )
 	{
-	if  ( ppTo->ppStyle != ppFrom->ppStyle )
+	const int	prop= DocParaIntProps[p];
+
+	if  ( PROPmaskISSET( ppSetMask, prop ) )
 	    {
-	    ppTo->ppStyle= ppFrom->ppStyle;
-	    PROPmaskADD( &ppDoneMask, PPpropSTYLE );
+	    int		from= docGetParaProperty( ppFrom, prop );
+	    int		to= docGetParaProperty( ppTo, prop );
+
+	    if  ( to != from )
+		{
+		if  ( docSetParaProperty( ppTo, prop, from ) )
+		    { LLDEB(prop,from);	}
+		else{ PROPmaskADD( &ppDoneMask, prop );	}
+		}
 	    }
 	}
 
@@ -113,51 +165,6 @@ int docUpdParaProperties(	PropertyMask *			pDoneMask,
 	    }
 	}
 
-    if  ( PROPmaskISSET( ppSetMask, PPpropTABLE_NESTING ) )
-	{
-	if  ( ppTo->ppTableNesting != ppFrom->ppTableNesting )
-	    {
-	    ppTo->ppTableNesting= ppFrom->ppTableNesting;
-	    PROPmaskADD( &ppDoneMask, PPpropTABLE_NESTING );
-	    }
-	}
-
-    if  ( PROPmaskISSET( ppSetMask, PPpropFIRST_INDENT ) )
-	{
-	if  ( ppTo->ppFirstIndentTwips != ppFrom->ppFirstIndentTwips )
-	    {
-	    ppTo->ppFirstIndentTwips= ppFrom->ppFirstIndentTwips;
-	    PROPmaskADD( &ppDoneMask, PPpropFIRST_INDENT );
-	    }
-	}
-
-    if  ( PROPmaskISSET( ppSetMask, PPpropLEFT_INDENT ) )
-	{
-	if  ( ppTo->ppLeftIndentTwips != ppFrom->ppLeftIndentTwips )
-	    {
-	    ppTo->ppLeftIndentTwips= ppFrom->ppLeftIndentTwips;
-	    PROPmaskADD( &ppDoneMask, PPpropLEFT_INDENT );
-	    }
-	}
-
-    if  ( PROPmaskISSET( ppSetMask, PPpropRIGHT_INDENT ) )
-	{
-	if  ( ppTo->ppRightIndentTwips != ppFrom->ppRightIndentTwips )
-	    {
-	    ppTo->ppRightIndentTwips= ppFrom->ppRightIndentTwips;
-	    PROPmaskADD( &ppDoneMask, PPpropRIGHT_INDENT );
-	    }
-	}
-
-    if  ( PROPmaskISSET( ppSetMask, PPpropALIGNMENT ) )
-	{
-	if  ( ppTo->ppAlignment != ppFrom->ppAlignment )
-	    {
-	    ppTo->ppAlignment= ppFrom->ppAlignment;
-	    PROPmaskADD( &ppDoneMask, PPpropALIGNMENT );
-	    }
-	}
-
     if  ( PROPmaskISSET( ppSetMask, PPpropTAB_STOPS ) )
 	{
 	int	fromNumber= ppFrom->ppTabStopListNumber;
@@ -172,177 +179,24 @@ int docUpdParaProperties(	PropertyMask *			pDoneMask,
 	    }
 	}
 
-    if  ( PROPmaskISSET( ppSetMask, PPpropBREAK_KIND ) )
+    for ( p= 0; p < DocParaBorderPropCount; p++ )
 	{
-	if  ( ppTo->ppBreakKind != ppFrom->ppBreakKind )
+	const int	prop= DocParaBorderProps[p];
+
+	if  ( PROPmaskISSET( ppSetMask, prop ) )
 	    {
-	    ppTo->ppBreakKind= ppFrom->ppBreakKind;
-	    PROPmaskADD( &ppDoneMask, PPpropBREAK_KIND );
-	    }
-	}
+	    int		from= docGetParaProperty( ppFrom, prop );
+	    int		to= docGetParaProperty( ppTo, prop );
 
-    if  ( PROPmaskISSET( ppSetMask, PPpropWIDCTLPAR ) )
-	{
-	if  ( ppTo->ppWidowControl != ppFrom->ppWidowControl )
-	    {
-	    ppTo->ppWidowControl= ppFrom->ppWidowControl;
-	    PROPmaskADD( &ppDoneMask, PPpropWIDCTLPAR );
-	    }
-	}
+	    if  ( from >= 0 && dam && dam->damBorderMap )
+		{ from= dam->damBorderMap[from];	}
 
-    if  ( PROPmaskISSET( ppSetMask, PPpropKEEPN ) )
-	{
-	if  ( ppTo->ppKeepWithNext != ppFrom->ppKeepWithNext )
-	    {
-	    ppTo->ppKeepWithNext= ppFrom->ppKeepWithNext;
-	    PROPmaskADD( &ppDoneMask, PPpropKEEPN );
-	    }
-	}
-
-    if  ( PROPmaskISSET( ppSetMask, PPpropKEEP ) )
-	{
-	if  ( ppTo->ppKeepOnPage != ppFrom->ppKeepOnPage )
-	    {
-	    ppTo->ppKeepOnPage= ppFrom->ppKeepOnPage;
-	    PROPmaskADD( &ppDoneMask, PPpropKEEP );
-	    }
-	}
-
-    if  ( PROPmaskISSET( ppSetMask, PPpropSPACE_BEFORE ) )
-	{
-	if  ( ppTo->ppSpaceBeforeTwips != ppFrom->ppSpaceBeforeTwips )
-	    {
-	    ppTo->ppSpaceBeforeTwips= ppFrom->ppSpaceBeforeTwips;
-	    PROPmaskADD( &ppDoneMask, PPpropSPACE_BEFORE );
-	    }
-	}
-
-    if  ( PROPmaskISSET( ppSetMask, PPpropSPACE_AFTER ) )
-	{
-	if  ( ppTo->ppSpaceAfterTwips != ppFrom->ppSpaceAfterTwips )
-	    {
-	    ppTo->ppSpaceAfterTwips= ppFrom->ppSpaceAfterTwips;
-	    PROPmaskADD( &ppDoneMask, PPpropSPACE_AFTER );
-	    }
-	}
-
-    if  ( PROPmaskISSET( ppSetMask, PPpropLINE_SPACING_DIST ) )
-	{
-	if  ( ppTo->ppLineSpacingTwips != ppFrom->ppLineSpacingTwips )
-	    {
-	    ppTo->ppLineSpacingTwips= ppFrom->ppLineSpacingTwips;
-	    PROPmaskADD( &ppDoneMask, PPpropLINE_SPACING_DIST );
-	    }
-	}
-
-    if  ( PROPmaskISSET( ppSetMask, PPpropLINE_SPACING_MULT ) )
-	{
-	if  ( ppTo->ppLineSpacingIsMultiple != ppFrom->ppLineSpacingIsMultiple )
-	    {
-	    ppTo->ppLineSpacingIsMultiple= ppFrom->ppLineSpacingIsMultiple;
-	    PROPmaskADD( &ppDoneMask, PPpropLINE_SPACING_MULT );
-	    }
-	}
-
-    if  ( PROPmaskISSET( ppSetMask, PPpropTOP_BORDER ) )
-	{
-	int	fromNumber= ppFrom->ppTopBorderNumber;
-
-	if  ( fromNumber >= 0 && dam && dam->damBorderMap )
-	    { fromNumber= dam->damBorderMap[fromNumber];	}
-
-	if  ( ppTo->ppTopBorderNumber != fromNumber )
-	    {
-	    ppTo->ppTopBorderNumber= fromNumber;
-	    PROPmaskADD( &ppDoneMask, PPpropTOP_BORDER );
-	    }
-	}
-
-    if  ( PROPmaskISSET( ppSetMask, PPpropBOTTOM_BORDER ) )
-	{
-	int	fromNumber= ppFrom->ppBottomBorderNumber;
-
-	if  ( fromNumber >= 0 && dam && dam->damBorderMap )
-	    { fromNumber= dam->damBorderMap[fromNumber];	}
-
-	if  ( ppTo->ppBottomBorderNumber != fromNumber )
-	    {
-	    ppTo->ppBottomBorderNumber= fromNumber;
-	    PROPmaskADD( &ppDoneMask, PPpropBOTTOM_BORDER );
-	    }
-	}
-
-    if  ( PROPmaskISSET( ppSetMask, PPpropLEFT_BORDER ) )
-	{
-	int	fromNumber= ppFrom->ppLeftBorderNumber;
-
-	if  ( fromNumber >= 0 && dam && dam->damBorderMap )
-	    { fromNumber= dam->damBorderMap[fromNumber];	}
-
-	if  ( ppTo->ppLeftBorderNumber != fromNumber )
-	    {
-	    ppTo->ppLeftBorderNumber= fromNumber;
-	    PROPmaskADD( &ppDoneMask, PPpropLEFT_BORDER );
-	    }
-	}
-
-    if  ( PROPmaskISSET( ppSetMask, PPpropRIGHT_BORDER ) )
-	{
-	int	fromNumber= ppFrom->ppRightBorderNumber;
-
-	if  ( fromNumber >= 0 && dam && dam->damBorderMap )
-	    { fromNumber= dam->damBorderMap[fromNumber];	}
-
-	if  ( ppTo->ppRightBorderNumber != fromNumber )
-	    {
-	    ppTo->ppRightBorderNumber= fromNumber;
-	    PROPmaskADD( &ppDoneMask, PPpropRIGHT_BORDER );
-	    }
-	}
-
-    if  ( PROPmaskISSET( ppSetMask, PPpropBETWEEN_BORDER ) )
-	{
-	int	fromNumber= ppFrom->ppBetweenBorderNumber;
-
-	if  ( fromNumber >= 0 && dam && dam->damBorderMap )
-	    { fromNumber= dam->damBorderMap[fromNumber];	}
-
-	if  ( ppTo->ppBetweenBorderNumber != fromNumber )
-	    {
-	    ppTo->ppBetweenBorderNumber= fromNumber;
-	    PROPmaskADD( &ppDoneMask, PPpropBETWEEN_BORDER );
-	    }
-	}
-
-    if  ( PROPmaskISSET( ppSetMask, PPpropBAR_BORDER ) )
-	{
-	int	fromNumber= ppFrom->ppBarNumber;
-
-	if  ( fromNumber >= 0 && dam && dam->damBorderMap )
-	    { fromNumber= dam->damBorderMap[fromNumber];	}
-
-	if  ( ppTo->ppBarNumber != fromNumber )
-	    {
-	    ppTo->ppBarNumber= fromNumber;
-	    PROPmaskADD( &ppDoneMask, PPpropBAR_BORDER );
-	    }
-	}
-
-    if  ( PROPmaskISSET( ppSetMask, PPpropOUTLINELEVEL ) )
-	{
-	if  ( ppTo->ppOutlineLevel != ppFrom->ppOutlineLevel )
-	    {
-	    ppTo->ppOutlineLevel= ppFrom->ppOutlineLevel;
-	    PROPmaskADD( &ppDoneMask, PPpropOUTLINELEVEL );
-	    }
-	}
-
-    if  ( PROPmaskISSET( ppSetMask, PPpropLISTLEVEL ) )
-	{
-	if  ( ppTo->ppListLevel != ppFrom->ppListLevel )
-	    {
-	    ppTo->ppListLevel= ppFrom->ppListLevel;
-	    PROPmaskADD( &ppDoneMask, PPpropLISTLEVEL );
+	    if  ( to != from )
+		{
+		if  ( docSetParaProperty( ppTo, prop, from ) )
+		    { LLDEB(prop,from);	}
+		else{ PROPmaskADD( &ppDoneMask, prop );	}
+		}
 	    }
 	}
 
@@ -374,15 +228,6 @@ int docUpdParaProperties(	PropertyMask *			pDoneMask,
 	    }
 	}
 
-    if  ( PROPmaskISSET( ppSetMask, PPpropHYPHPAR ) )
-	{
-	if  ( ppTo->ppHyphenateParagraph != ppFrom->ppHyphenateParagraph )
-	    {
-	    ppTo->ppHyphenateParagraph= ppFrom->ppHyphenateParagraph;
-	    PROPmaskADD( &ppDoneMask, PPpropHYPHPAR );
-	    }
-	}
-
     if  ( pDoneMask )
 	{ utilPropMaskOr( pDoneMask, pDoneMask, &ppDoneMask );	}
 
@@ -401,183 +246,63 @@ void docParaPropertyDifference(	PropertyMask *			pDifMask,
 				const ParagraphProperties *	ppFrom )
     {
     PropertyMask		ppDifMask;
+    int				p;
 
     const DocumentAttributeMap *	dam= (const DocumentAttributeMap *)0;
 
     utilPropMaskClear( &ppDifMask );
 
-    if  ( PROPmaskISSET( ppCmpMask, PPpropSTYLE ) )
+    for ( p= 0; p < DocParaIntPropCount; p++ )
 	{
-	if  ( ppTo->ppStyle != ppFrom->ppStyle )
-	    { PROPmaskADD( &ppDifMask, PPpropSTYLE ); }
+	const int	prop= DocParaIntProps[p];
+
+	if  ( PROPmaskISSET( ppCmpMask, prop ) )
+	    {
+	    int		from= docGetParaProperty( ppFrom, prop );
+	    int		to= docGetParaProperty( ppTo, prop );
+
+	    if  ( to != from )
+		{ PROPmaskADD( &ppDifMask, prop );	}
+	    }
 	}
 
     if  ( PROPmaskISSET( ppCmpMask, PPpropLISTOVERRIDE ) )
 	{
-	if  ( ppTo->ppListOverride != ppFrom->ppListOverride )
-	    { PROPmaskADD( &ppDifMask, PPpropLISTOVERRIDE ); }
-	}
+	int		listStyle= ppFrom->ppListOverride;
 
-    if  ( PROPmaskISSET( ppCmpMask, PPpropTABLE_NESTING ) )
-	{
-	if  ( ppTo->ppTableNesting != ppFrom->ppTableNesting )
-	    { PROPmaskADD( &ppDifMask, PPpropTABLE_NESTING );	}
-	}
+	if  ( dam && dam->damListStyleMap )
+	    { listStyle= dam->damListStyleMap[listStyle];	}
 
-    if  ( PROPmaskISSET( ppCmpMask, PPpropFIRST_INDENT ) )
-	{
-	if  ( ppTo->ppFirstIndentTwips != ppFrom->ppFirstIndentTwips )
-	    { PROPmaskADD( &ppDifMask, PPpropFIRST_INDENT ); }
-	}
-
-    if  ( PROPmaskISSET( ppCmpMask, PPpropLEFT_INDENT ) )
-	{
-	if  ( ppTo->ppLeftIndentTwips != ppFrom->ppLeftIndentTwips )
-	    { PROPmaskADD( &ppDifMask, PPpropLEFT_INDENT ); }
-	}
-
-    if  ( PROPmaskISSET( ppCmpMask, PPpropRIGHT_INDENT ) )
-	{
-	if  ( ppTo->ppRightIndentTwips != ppFrom->ppRightIndentTwips )
-	    { PROPmaskADD( &ppDifMask, PPpropRIGHT_INDENT ); }
-	}
-
-    if  ( PROPmaskISSET( ppCmpMask, PPpropALIGNMENT ) )
-	{
-	if  ( ppTo->ppAlignment != ppFrom->ppAlignment )
-	    { PROPmaskADD( &ppDifMask, PPpropALIGNMENT ); }
+	if  ( ppTo->ppListOverride != listStyle )
+	    { PROPmaskADD( &ppDifMask, PPpropLISTOVERRIDE );	}
 	}
 
     if  ( PROPmaskISSET( ppCmpMask, PPpropTAB_STOPS ) )
 	{
-	if  ( ppTo->ppTabStopListNumber != ppFrom->ppTabStopListNumber )
+	int	fromNumber= ppFrom->ppTabStopListNumber;
+
+	if  ( fromNumber >= 0 && dam && dam->damRulerMap )
+	    { fromNumber= dam->damRulerMap[fromNumber];	}
+
+	if  ( ppTo->ppTabStopListNumber != fromNumber )
 	    { PROPmaskADD( &ppDifMask, PPpropTAB_STOPS );	}
 	}
 
-    if  ( PROPmaskISSET( ppCmpMask, PPpropBREAK_KIND ) )
+    for ( p= 0; p < DocParaBorderPropCount; p++ )
 	{
-	if  ( ppTo->ppBreakKind != ppFrom->ppBreakKind )
-	    { PROPmaskADD( &ppDifMask, PPpropBREAK_KIND ); }
-	}
+	const int	prop= DocParaBorderProps[p];
 
-    if  ( PROPmaskISSET( ppCmpMask, PPpropWIDCTLPAR ) )
-	{
-	if  ( ppTo->ppWidowControl != ppFrom->ppWidowControl )
-	    { PROPmaskADD( &ppDifMask, PPpropWIDCTLPAR ); }
-	}
+	if  ( PROPmaskISSET( ppCmpMask, prop ) )
+	    {
+	    int		from= docGetParaProperty( ppFrom, prop );
+	    int		to= docGetParaProperty( ppTo, prop );
 
-    if  ( PROPmaskISSET( ppCmpMask, PPpropKEEPN ) )
-	{
-	if  ( ppTo->ppKeepWithNext != ppFrom->ppKeepWithNext )
-	    { PROPmaskADD( &ppDifMask, PPpropKEEPN ); }
-	}
+	    if  ( from >= 0 && dam && dam->damBorderMap )
+		{ from= dam->damBorderMap[from];	}
 
-    if  ( PROPmaskISSET( ppCmpMask, PPpropKEEP ) )
-	{
-	if  ( ppTo->ppKeepOnPage != ppFrom->ppKeepOnPage )
-	    { PROPmaskADD( &ppDifMask, PPpropKEEP ); }
-	}
-
-    if  ( PROPmaskISSET( ppCmpMask, PPpropSPACE_BEFORE ) )
-	{
-	if  ( ppTo->ppSpaceBeforeTwips != ppFrom->ppSpaceBeforeTwips )
-	    { PROPmaskADD( &ppDifMask, PPpropSPACE_BEFORE ); }
-	}
-
-    if  ( PROPmaskISSET( ppCmpMask, PPpropSPACE_AFTER ) )
-	{
-	if  ( ppTo->ppSpaceAfterTwips != ppFrom->ppSpaceAfterTwips )
-	    { PROPmaskADD( &ppDifMask, PPpropSPACE_AFTER ); }
-	}
-
-    if  ( PROPmaskISSET( ppCmpMask, PPpropLINE_SPACING_DIST ) )
-	{
-	if  ( ppTo->ppLineSpacingTwips != ppFrom->ppLineSpacingTwips )
-	    { PROPmaskADD( &ppDifMask, PPpropLINE_SPACING_DIST ); }
-	}
-    if  ( PROPmaskISSET( ppCmpMask, PPpropLINE_SPACING_MULT ) )
-	{
-	if  ( ppTo->ppLineSpacingIsMultiple != ppFrom->ppLineSpacingIsMultiple )
-	    { PROPmaskADD( &ppDifMask, PPpropLINE_SPACING_MULT ); }
-	}
-
-    if  ( PROPmaskISSET( ppCmpMask, PPpropTOP_BORDER ) )
-	{
-	int	fromNumber= ppFrom->ppTopBorderNumber;
-
-	if  ( fromNumber >= 0 && dam && dam->damBorderMap )
-	    { fromNumber= dam->damBorderMap[fromNumber];	}
-
-	if  ( ppTo->ppTopBorderNumber != fromNumber )
-	    { PROPmaskADD( &ppDifMask, PPpropTOP_BORDER ); }
-	}
-
-    if  ( PROPmaskISSET( ppCmpMask, PPpropBOTTOM_BORDER ) )
-	{
-	int	fromNumber= ppFrom->ppBottomBorderNumber;
-
-	if  ( fromNumber >= 0 && dam && dam->damBorderMap )
-	    { fromNumber= dam->damBorderMap[fromNumber];	}
-
-	if  ( ppTo->ppBottomBorderNumber != fromNumber )
-	    { PROPmaskADD( &ppDifMask, PPpropBOTTOM_BORDER ); }
-	}
-
-    if  ( PROPmaskISSET( ppCmpMask, PPpropLEFT_BORDER ) )
-	{
-	int	fromNumber= ppFrom->ppLeftBorderNumber;
-
-	if  ( fromNumber >= 0 && dam && dam->damBorderMap )
-	    { fromNumber= dam->damBorderMap[fromNumber];	}
-
-	if  ( ppTo->ppLeftBorderNumber != fromNumber )
-	    { PROPmaskADD( &ppDifMask, PPpropLEFT_BORDER ); }
-	}
-
-    if  ( PROPmaskISSET( ppCmpMask, PPpropRIGHT_BORDER ) )
-	{
-	int	fromNumber= ppFrom->ppRightBorderNumber;
-
-	if  ( fromNumber >= 0 && dam && dam->damBorderMap )
-	    { fromNumber= dam->damBorderMap[fromNumber];	}
-
-	if  ( ppTo->ppRightBorderNumber != fromNumber )
-	    { PROPmaskADD( &ppDifMask, PPpropRIGHT_BORDER ); }
-	}
-
-    if  ( PROPmaskISSET( ppCmpMask, PPpropBETWEEN_BORDER ) )
-	{
-	int	fromNumber= ppFrom->ppBetweenBorderNumber;
-
-	if  ( fromNumber >= 0 && dam && dam->damBorderMap )
-	    { fromNumber= dam->damBorderMap[fromNumber];	}
-
-	if  ( ppTo->ppBetweenBorderNumber != fromNumber )
-	    { PROPmaskADD( &ppDifMask, PPpropBETWEEN_BORDER ); }
-	}
-
-    if  ( PROPmaskISSET( ppCmpMask, PPpropBAR_BORDER ) )
-	{
-	int	fromNumber= ppFrom->ppBarNumber;
-
-	if  ( fromNumber >= 0 && dam && dam->damBorderMap )
-	    { fromNumber= dam->damBorderMap[fromNumber];	}
-
-	if  ( ppTo->ppBarNumber != fromNumber )
-	    { PROPmaskADD( &ppDifMask, PPpropBAR_BORDER ); }
-	}
-
-
-    if  ( PROPmaskISSET( ppCmpMask, PPpropOUTLINELEVEL ) )
-	{
-	if  ( ppTo->ppOutlineLevel != ppFrom->ppOutlineLevel )
-	    { PROPmaskADD( &ppDifMask, PPpropOUTLINELEVEL );	}
-	}
-
-    if  ( PROPmaskISSET( ppCmpMask, PPpropLISTLEVEL ) )
-	{
-	if  ( ppTo->ppListLevel != ppFrom->ppListLevel )
-	    { PROPmaskADD( &ppDifMask, PPpropLISTLEVEL );	}
+	    if  ( to != from )
+		{ PROPmaskADD( &ppDifMask, prop );	}
+	    }
 	}
 
     if  ( PROPmaskISSET( ppCmpMask, PPpropSHADING ) )
@@ -600,12 +325,6 @@ void docParaPropertyDifference(	PropertyMask *			pDifMask,
 
 	if  ( ppTo->ppFrameNumber != fromNumber )
 	    { PROPmaskADD( &ppDifMask, PPpropFRAME );	}
-	}
-
-    if  ( PROPmaskISSET( ppCmpMask, PPpropHYPHPAR ) )
-	{
-	if  ( ppTo->ppHyphenateParagraph != ppFrom->ppHyphenateParagraph )
-	    { PROPmaskADD( &ppDifMask, PPpropHYPHPAR ); }
 	}
 
     *pDifMask= ppDifMask;
@@ -738,6 +457,10 @@ int docSetParaProperty(		ParagraphProperties *	pp,
 	    pp->ppHyphenateParagraph= arg != 0;
 	    break;
 
+	case PPpropRTOL:
+	    pp->ppRToL= arg != 0;
+	    break;
+
 	case PPprop_LISB:
 	case PPprop_LISA:
 	    break;
@@ -837,6 +560,9 @@ int docGetParaProperty(		const ParagraphProperties *	pp,
 
 	case PPpropHYPHPAR:
 	    return pp->ppHyphenateParagraph;
+
+	case PPpropRTOL:
+	    return pp->ppRToL;
 
 	case PPprop_LISB:
 	case PPprop_LISA:

@@ -62,6 +62,7 @@ static const int DocSectIntProps[]=
     SPpropNUMBER_STYLE,
     SPpropNUMBER_HYPHEN,
     SPpropPAGE_RESTART,
+    SPpropRTOL,
     SPpropSTART_PAGE,
     SPpropCOLUMN_COUNT,
     SPpropCOLUMN_SPACING,
@@ -314,6 +315,7 @@ void docInitSectionProperties(	SectionProperties *	sp )
     sp->spColumnCount= 1;
     sp->spColumns= (SectionColumn *)0;
 
+    sp->spRToL= 0;
     sp->spStartPageNumber= 0;
 
     docInitFootEndNotesProperties( &(sp->spNotesProperties) );
@@ -598,6 +600,10 @@ int docSetSectionProperty(	SectionProperties *	sp,
 	    sp->spRestartPageNumbers= arg;
 	    break;
 
+	case SPpropRTOL:
+	    sp->spRToL= arg != 0;
+	    break;
+
 	case SPpropSTART_PAGE:
 	    sp->spStartPageNumber= arg;
 	    break;
@@ -726,6 +732,9 @@ int docGetSectionProperty(	const SectionProperties *	sp,
 
 	case SPpropPAGE_RESTART:
 	    return sp->spRestartPageNumbers;
+
+	case SPpropRTOL:
+	    return sp->spRToL;
 
 	case SPpropSTART_PAGE:
 	    return sp->spStartPageNumber;
@@ -912,7 +921,9 @@ static void docSectGetEqualWidths(
     maxColWide= ( pageWide- ngap* MIN_GAP_WIDE )/ ncol;
 
     gapWide= sp->spColumnSpacingTwips;
-    maxGapWide= ( pageWide- ncol* MIN_COL_WIDE )/ ngap;
+    if  ( ngap == 0 )
+	{ maxGapWide= 0;					}
+    else{ maxGapWide= ( pageWide- ncol* MIN_COL_WIDE )/ ngap;	}
 
     if  ( pColWide )
 	{ *pColWide= colWide;	}

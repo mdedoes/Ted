@@ -12,6 +12,7 @@
 #   include	<bitmap.h>
 
 #   include	<docDrawingObject.h>
+#   include	<docShape.h>
 #   include	<appDebugon.h>
 
 #   include	"docRtfReaderImpl.h"
@@ -20,9 +21,9 @@ static int docRtfDrawingObjectAllocatePoints(	DrawingShape *	ds,
 						int		n )
     {
     ShapeDrawing *	sd= &(ds->dsDrawing);
-    ShapeVertex *	fresh;
+    Point2DI *		fresh;
 
-    fresh= (ShapeVertex *)realloc( sd->sdVertices, n* sizeof(ShapeVertex) );
+    fresh= (Point2DI *)realloc( sd->sdVertices, n* sizeof(Point2DI) );
     if  ( ! fresh )
 	{ LXDEB(n,fresh); return -1;	}
 
@@ -31,7 +32,7 @@ static int docRtfDrawingObjectAllocatePoints(	DrawingShape *	ds,
 
     while( sd->sdVertexCount < n )
 	{
-	fresh->svX= fresh->svY= 0;
+	fresh->x= fresh->y= 0;
 	fresh++; sd->sdVertexCount++;
 	}
 
@@ -42,12 +43,12 @@ int docRtfDrawingObjectProperty(	const RtfControlWord *	rcw,
 					int			arg,
 					RtfReader *		rrc )
     {
-    DrawingShape *	ds= rrc->rrcDrawingShape;
+    DrawingShape *	ds= rrc->rrDrawingShape;
     ShapeDrawing *	sd;
     ShapeProperties *	sp;
 
     if  ( ! ds )
-	{ SLLXDEB(rcw->rcwWord,arg,rrc->rrcCurrentLine,ds); return 0;	}
+	{ SLLXDEB(rcw->rcwWord,arg,rrc->rrCurrentLine,ds); return 0;	}
 
     sd= &(ds->dsDrawing);
     sp= &(ds->dsShapeProperties);
@@ -160,22 +161,22 @@ int docRtfDrawingObjectProperty(	const RtfControlWord *	rcw,
 	    break;
 
 	case DOpropSTART_ARROW_HEAD:
-	    sd->sdLineStartArrow.saArrowHead= arg;
+	    sd->sdLineHeadArrow.saArrowHead= arg;
 	    break;
 	case DOpropEND_ARROW_HEAD:
-	    sd->sdLineEndArrow.saArrowHead= arg;
+	    sd->sdLineTailArrow.saArrowHead= arg;
 	    break;
 	case DOpropSTART_ARROW_WIDTH:
-	    sd->sdLineStartArrow.saArrowWidth= arg;
+	    sd->sdLineHeadArrow.saArrowWidth= arg;
 	    break;
 	case DOpropEND_ARROW_WIDTH:
-	    sd->sdLineEndArrow.saArrowWidth= arg;
+	    sd->sdLineTailArrow.saArrowWidth= arg;
 	    break;
 	case DOpropSTART_ARROW_LENGTH:
-	    sd->sdLineStartArrow.saArrowLength= arg;
+	    sd->sdLineHeadArrow.saArrowLength= arg;
 	    break;
 	case DOpropEND_ARROW_LENGTH:
-	    sd->sdLineEndArrow.saArrowLength= arg;
+	    sd->sdLineTailArrow.saArrowLength= arg;
 	    break;
 
 	case DOpropLINE_RED:
@@ -241,11 +242,11 @@ int docRtfDrawingObjectCoordinate(	const RtfControlWord *	rcw,
 					int			arg,
 					RtfReader *	rrc )
     {
-    DrawingShape *	ds= rrc->rrcDrawingShape;
+    DrawingShape *	ds= rrc->rrDrawingShape;
     ShapeDrawing *	sd;
 
     if  ( ! ds )
-	{ SLLXDEB(rcw->rcwWord,arg,rrc->rrcCurrentLine,ds); return 0;	}
+	{ SLLXDEB(rcw->rcwWord,arg,rrc->rrCurrentLine,ds); return 0;	}
 
     sd= &(ds->dsDrawing);
 
@@ -259,10 +260,10 @@ int docRtfDrawingObjectCoordinate(	const RtfControlWord *	rcw,
     switch( rcw->rcwID )
 	{
 	case DOpropX:
-	    sd->sdVertices[rrc->rrcNextObjectVertex  ].svX= arg;
+	    sd->sdVertices[rrc->rrcNextObjectVertex  ].x= arg;
 	    break;
 	case DOpropY:
-	    sd->sdVertices[rrc->rrcNextObjectVertex++].svY= arg;
+	    sd->sdVertices[rrc->rrcNextObjectVertex++].y= arg;
 	    break;
 
 	default:

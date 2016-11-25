@@ -52,7 +52,11 @@ typedef struct PrintGeometry
     int			pgOmitHeadersOnEmptyPages;
     int			pgEmbedFonts;
 
-    char *		pgCustomPsSetupFilename;
+			/**
+			 *  Filename of a file to initialize PS 
+			 *  printing: Owned by the caller.
+			 */
+    const char *	pgCustomPsSetupFilename;
     } PrintGeometry;
 
 /************************************************************************/

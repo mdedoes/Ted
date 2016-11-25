@@ -12,7 +12,6 @@
 #   include	"docBuf.h"
 #   include	"docNodeTree.h"
 #   include	"docParaParticules.h"
-#   include	<textAttributeAdmin.h>
 #   include	<docListLevel.h>
 
 #   include	<appDebugon.h>
@@ -31,8 +30,7 @@ static int docGetPositionAttributes(
     {
     TextAttribute		ta;
 
-    utilGetTextAttributeByNumber( &ta, &(bd->bdTextAttributeList),
-							    tp->tpTextAttrNr );
+    docGetTextAttributeByNumber( &ta, bd, tp->tpTextAttrNr );
 
     *pTaNew= ta;
 
@@ -61,8 +59,7 @@ int docGetEffectiveTextAttributes(
     const TextParticule *	tp= paraNode->biParaParticules+ part;
     int				textAttrNr= tp->tpTextAttrNr;
 
-    utilGetTextAttributeByNumber( ta, &(bd->bdTextAttributeList),
-							    tp->tpTextAttrNr );
+    docGetTextAttributeByNumber( ta, bd, tp->tpTextAttrNr );
 
     if  ( paraNode->biParaListOverride > 0 )
 	{
@@ -100,8 +97,7 @@ int docGetEffectiveTextAttributes(
 		utilUpdateTextAttribute( (PropertyMask *)0, ta,
 					&taSetMask, &(ll->llTextAttribute) );
 
-		textAttrNr= utilTextAttributeNumber(
-					    &(bd->bdTextAttributeList), ta );
+		textAttrNr= docTextAttributeNumber( bd, ta );
 		}
 	    }
 	}
@@ -131,7 +127,7 @@ int docGetSelectionAttributes(	BufferDocument *		bd,
 				PropertyMask *			pUpdMask,
 				TextAttribute *			ta )
     {
-    BufferItem *		paraBi;
+    BufferItem *		paraNode;
     int				part;
     const TextParticule *	tp;
     int				textAttrNr;
@@ -146,7 +142,7 @@ int docGetSelectionAttributes(	BufferDocument *		bd,
     int				IBar= docIsIBarSelection( ds );
     int				flags;
 
-    paraBi= ds->dsHead.dpNode;
+    paraNode= ds->dsHead.dpNode;
 
     /*  1  */
     if  ( docFindParticuleOfPosition( &part, &flags,
@@ -158,7 +154,7 @@ int docGetSelectionAttributes(	BufferDocument *		bd,
 	}
 
     /*  2  */
-    if  ( paraBi->biParaListOverride > 0 )
+    if  ( paraNode->biParaListOverride > 0 )
 	{
 	DocumentField *		dfBullet= (DocumentField *)0;
 	DocumentSelection	dsInsideBullet;
@@ -167,7 +163,7 @@ int docGetSelectionAttributes(	BufferDocument *		bd,
 	if  ( docDelimitParaHeadField( &dfBullet,
 					&dsInsideBullet, &dsAroundBullet,
 					&bulletPartBegin, &bulletPartEnd,
-					paraBi, bd ) )
+					paraNode, bd ) )
 	    { LDEB(1);	}
 
 	if  ( part <= bulletPartEnd )
@@ -179,7 +175,7 @@ int docGetSelectionAttributes(	BufferDocument *		bd,
 	    }
 	}
 
-    tp= paraBi->biParaParticules+ part;
+    tp= paraNode->biParaParticules+ part;
 
     if  ( IBar				&&
 	  part > 0			&&
@@ -202,26 +198,24 @@ int docGetSelectionAttributes(	BufferDocument *		bd,
 	{
 	int	col;
 
-	col= paraBi->biParent->biNumberInParent;
+	col= paraNode->biParent->biNumberInParent;
 
 	if  ( ds->dsCol0 < 0					||
 	      ds->dsCol1 < 0					||
 	      ( col >= ds->dsCol0 && col <= ds->dsCol1 )	)
 	    {
-	    while( part < paraBi->biParaParticuleCount )
+	    while( part < paraNode->biParaParticuleCount )
 		{
 		PropertyMask	pm;
 		PropertyMask	pmAll;
 
 		TextAttribute	ta;
 
-		if  ( paraBi == ds->dsTail.dpNode			&&
+		if  ( paraNode == ds->dsTail.dpNode			&&
 		      tp->tpStroff >= ds->dsTail.dpStroff	)
 		    { break;	}
 
-		utilGetTextAttributeByNumber( &ta,
-						&(bd->bdTextAttributeList),
-						tp->tpTextAttrNr );
+		docGetTextAttributeByNumber( &ta, bd, tp->tpTextAttrNr );
 
 		utilPropMaskClear( &pm );
 
@@ -236,18 +230,18 @@ int docGetSelectionAttributes(	BufferDocument *		bd,
 		}
 	    }
 
-	if  ( paraBi == ds->dsTail.dpNode )
+	if  ( paraNode == ds->dsTail.dpNode )
 	    { break;	}
 
-	paraBi= docNextParagraph( paraBi );
-	if  ( ! paraBi )
+	paraNode= docNextParagraph( paraNode );
+	if  ( ! paraNode )
 	    { break;	}
 
 	part= 0;
-	tp= paraBi->biParaParticules+ part;
+	tp= paraNode->biParaParticules+ part;
 
 	/*  2  */
-	if  ( paraBi->biParaListOverride > 0 )
+	if  ( paraNode->biParaListOverride > 0 )
 	    {
 	    DocumentField *	dfBullet= (DocumentField *)0;
 	    DocumentSelection	dsInsideBullet;
@@ -256,11 +250,11 @@ int docGetSelectionAttributes(	BufferDocument *		bd,
 	    if  ( docDelimitParaHeadField( &dfBullet,
 					&dsInsideBullet, &dsAroundBullet,
 					&bulletPartBegin, &bulletPartEnd,
-					paraBi, bd ) )
+					paraNode, bd ) )
 		{ LDEB(1);	}
 
 	    part= bulletPartEnd+ 1;
-	    tp= paraBi->biParaParticules+ part;
+	    tp= paraNode->biParaParticules+ part;
 	    }
 	}
 

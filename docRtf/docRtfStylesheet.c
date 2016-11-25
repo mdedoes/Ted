@@ -12,7 +12,6 @@
 
 #   include	<appDebugon.h>
 
-#   include	<docItemShadingAdmin.h>
 #   include	"docRtfReaderImpl.h"
 
 /************************************************************************/
@@ -75,7 +74,7 @@ static int docRtfStyleName(	RtfReader *	rrc,
 					    &size, rrc, removeSemicolon ) )
 	{ LDEB(len); return -1;	}
 
-    ds= docInsertStyle( &(rrc->rrcDocument->bdStyleSheet),
+    ds= docInsertStyle( &(rrc->rrDocument->bdStyleSheet),
 					rrc->rrcStyle.dsStyleNumber,
 					&(rrc->rrcStyle), dam0 );
     if  ( ! ds )
@@ -85,7 +84,7 @@ static int docRtfStyleName(	RtfReader *	rrc,
     docInitDocumentStyle( &(rrc->rrcStyle) );
 
     docRtfResetParagraphProperties( rrs );
-    docRtfResetTextAttribute( rrs, rrc->rrcDocument );
+    docRtfResetTextAttribute( rrs, rrc->rrDocument );
 
     return 0;
     }
@@ -176,10 +175,10 @@ static int docRtfReadWordGroup(	RtfReader *	rrc,
 	}
     else{
 	if  ( rrc->rrcComplainUnknown )
-	    { LSDEB(rrc->rrcCurrentLine,controlWord);	}
+	    { LSDEB(rrc->rrCurrentLine,controlWord);	}
 
 	if  ( docRtfReadUnknownGroup( rrc ) )
-	    { LSDEB(rrc->rrcCurrentLine,controlWord); return -1;	}
+	    { LSDEB(rrc->rrCurrentLine,controlWord); return -1;	}
 	}
 
     return 0;
@@ -326,7 +325,7 @@ int docRtfRememberStyleProperty(	const RtfControlWord *	rcw,
 int docRtfStoreStyleProperties(		RtfReader *		rrc )
     {
     RtfReadingState *		rrs= rrc->rrcState;
-    BufferDocument *		bd= rrc->rrcDocument;
+    BufferDocument *		bd= rrc->rrDocument;
     int				mindTable= 1;
 
     DocumentStyle *		ds= &(rrc->rrcStyle);
@@ -339,13 +338,13 @@ int docRtfStoreStyleProperties(		RtfReader *		rrc )
 
     /*  CELL	*/
     ds->dsCellProps.cpShadingNumber= docItemShadingNumber(
-				&(rrc->rrcDocument->bdItemShadingList),
-				&(rrc->rrcCellShading) );
+				    rrc->rrDocument, &(rrc->rrcCellShading) );
     if  ( ds->dsCellProps.cpShadingNumber < 0 )
 	{ LDEB(ds->dsCellProps.cpShadingNumber);	}
 
     /*  PARA	*/
-    if  ( docRtfSetParaProperties( &(ds->dsParaProps), bd, mindTable, rrs ) )
+    if  ( docRtfSetParaProperties( &(ds->dsParaProps), bd,
+						    mindTable, rrs, -1 ) )
 	{ LDEB(1);	}
 
     /*  SPAN	*/

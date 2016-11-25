@@ -8,6 +8,7 @@
 #   define	DOC_LIST_OVERRIDE_H
 
 #   include	"docListOverrideLevel.h"
+#   include	"docListDepth.h"
 
 typedef struct ListOverride
     {

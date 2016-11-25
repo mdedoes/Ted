@@ -331,8 +331,8 @@ int docPsPrintOrnaments(	const BlockOrnaments *		bo,
 	    cf.rgb8Red= cf.rgb8Green= cf.rgb8Blue= 0;
 
 	    if  ( bo->boShading.isForeColor > 0			&&
-		  bo->boShading.isForeColor < dp->dpColorPalette.cpColorCount )
-		{ cf= dp->dpColorPalette.cpColors[bo->boShading.isForeColor]; }
+		  bo->boShading.isForeColor < dp->dpColorPalette->cpColorCount )
+		{ cf= dp->dpColorPalette->cpColors[bo->boShading.isForeColor]; }
 
 	    docDrawSetColorRgb( dc, (void *)ps, &cf );
 
@@ -389,6 +389,23 @@ int docPsPrintOrnaments(	const BlockOrnaments *		bo,
 	docPsPrintHorizontalBorder( &(bo->boBottomBorder), &drBorder, ps, dc );
 	done= 1;
 	}
+
+#   if 0
+    if  ( ! utilPropMaskIsEmpty( &(bo->boPropMask) ) )
+	{
+	sioOutPrintf( ps->psSos, " gsave 1 0 0 setrgbcolor " );
+	sioOutPrintf( ps->psSos, " newpath %d %d moveto ",
+					drInside->drX0, drInside->drY0 );
+	sioOutPrintf( ps->psSos, " %d %d lineto stroke grestore ",
+					drInside->drX1, drInside->drY1 );
+
+	sioOutPrintf( ps->psSos, " gsave 0 0 1 setrgbcolor " );
+	sioOutPrintf( ps->psSos, " newpath %d %d moveto ",
+					drInside->drX0, drInside->drY1 );
+	sioOutPrintf( ps->psSos, " %d %d lineto stroke grestore ",
+					drInside->drX1, drInside->drY0 );
+	}
+#   endif
 
     if  ( done )
 	{ sioOutPrintf( ps->psSos, "\n" ); }

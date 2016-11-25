@@ -335,21 +335,9 @@ int bmGifWriteGif(		const BitmapDescription *	bd,
 	{
 	case BMcoWHITEBLACK:
 	case BMcoBLACKWHITE:
-	    if  ( bmMakeGrayPalette( bd, &(gcm.gcmColorCount), gcm.gcmColors ) )
+	    if  ( bmMakeGrayPalette( bd, &(gcm.gcmColorCount),
+				    &transparentColor, gcm.gcmColors, 256 ) )
 		{ LDEB(bd->bdBitsPerPixel); return -1;	}
-
-	    if  ( bd->bdHasAlpha )
-		{
-		if  ( gcm.gcmColorCount >= 256 )
-		    { LDEB(gcm.gcmColorCount); return -1;	}
-
-		gcm.gcmColors[gcm.gcmColorCount].rgb8Red= 255;
-		gcm.gcmColors[gcm.gcmColorCount].rgb8Green= 255;
-		gcm.gcmColors[gcm.gcmColorCount].rgb8Blue= 255;
-		gcm.gcmColors[gcm.gcmColorCount].rgb8Alpha= 0;
-
-		transparentColor= gcm.gcmColorCount++;
-		}
 
 	    gcm.gcmBitsPerPixel= bd->bdBitsPerPixel;
 

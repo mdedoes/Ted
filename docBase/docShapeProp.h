@@ -390,6 +390,7 @@ typedef enum DrawingShapeProperty
     DSHPprop_dzColMargin,
     DSHPprop_fScriptAnchor,
     DSHPprop_fFakeMaster,
+    DSHPprop_fCameFromImgDummy,
 			    /****************************/
     DSHPprop_c3DAmbientIntensity,
     DSHPprop_c3DDiffuseAmt,
@@ -584,6 +585,11 @@ typedef enum DrawingShapeProperty
     DSHPprop_fNoshadeHR,
     DSHPprop_fHorizRule,
     DSHPprop_fUserDrawn,
+
+    DSHPprop_dhgt,
+    DSHPprop_sizerelh,
+    DSHPprop_sizerelv,
+    DSHPprop_pctHoriz,
 
     DSHPprop_COUNT
     } DrawingShapeProperty;

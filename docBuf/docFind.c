@@ -65,7 +65,7 @@ typedef struct DocumentFindJob
     START_PARA			dfjStartPara;
     PARA_FIND_STRING		dfjFindString;
 
-    const BufferDocument *	dfjDocument;
+    BufferDocument *		dfjDocument;
     void *			dfjThrough;
     } DocumentFindJob;
 
@@ -872,7 +872,7 @@ static int docFindStepInDocument(
 
 int docFindFindNextInDocument(	DocumentSelection *		ds,
 				const DocumentPosition *	dpFrom,
-				const BufferDocument *		bd,
+				BufferDocument *		bd,
 				PARA_FIND_STRING		findNext,
 				void *				through )
     {
@@ -894,7 +894,7 @@ int docFindFindNextInDocument(	DocumentSelection *		ds,
 
 int docFindFindPrevInDocument(	DocumentSelection *		ds,
 				const DocumentPosition *	dpFrom,
-				const BufferDocument *		bd,
+				BufferDocument *		bd,
 				PARA_FIND_STRING		findPrev,
 				void *				through )
     {
@@ -925,7 +925,7 @@ int docFindFindPrevInDocument(	DocumentSelection *		ds,
 int docFindFindNextInCurrentTree(
 				DocumentSelection *		ds,
 				const DocumentPosition *	dpFrom,
-				const BufferDocument *		bd,
+				BufferDocument *		bd,
 				PARA_FIND_STRING		findNext,
 				void *				through )
     {

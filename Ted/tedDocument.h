@@ -64,9 +64,6 @@ typedef enum TedDocumentKind
 typedef struct TedDocument
     {
     struct BufferDocument *	tdDocument;
-    TextAttribute		tdCurrentTextAttribute;
-    int				tdCurrentTextAttributeNumber;
-    int				tdCurrentScreenFont;
 
     unsigned char		tdTraced;
     unsigned char		tdOverstrike;
@@ -82,6 +79,12 @@ typedef struct TedDocument
     SelectionGeometry		tdSelectionGeometry;
     SelectionDescription	tdSelectionDescription;
     int				tdBodySectionNumber;
+				    /**
+				     *  The screen font number corresponding 
+				     *  to the text attribute in
+				     *  tdSelectionDescription
+				     */
+    int				tdCurrentScreenFont;
 
     IndexMapping		tdAttributeToScreenFont;
 				    /**

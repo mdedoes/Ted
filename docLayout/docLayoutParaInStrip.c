@@ -100,7 +100,7 @@ int docLayoutParagraphInStrip(	int *				pStopCode,
 
     /*  3  */
     if  ( ( paraNode->biParaKeepOnPage	||
-	    paraNode->biParaKeepWithNext	)				&&
+	    paraNode->biParaKeepWithNext	)			&&
 	  ! lpBefore.lpAtTopOfColumn					&&
 	  stopCode == FORMATstopBLOCK_FULL				&&
 	  paraNode->biParaLineCount >= plp->pspLine			&&

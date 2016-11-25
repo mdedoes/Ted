@@ -39,7 +39,13 @@ extern int utilPaletteColorIndex(	ColorPalette *		cp,
 
 extern int utilPaletteInsertColor(	ColorPalette *		cp,
 					int			avoidZero,
-					int			maxSize,
+					int			maxColors,
 					const RGB8Color *	rgb8 );
+
+extern int utilMergeColorPalettes( int **			pColorMap,
+				ColorPalette *			cpTo,
+				const ColorPalette *		cpFrom,
+				int				avoidZero,
+				int				maxColors );
 
 #   endif	/*  UTIL_PALETTE_H  */

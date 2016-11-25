@@ -9,7 +9,6 @@
 #   include	<stdio.h>
 #   include	<ctype.h>
 
-#   include	<docItemShadingAdmin.h>
 #   include	<psShading.h>
 #   include	<appDebugon.h>
 
@@ -53,12 +52,9 @@ void docRtfSaveShadingByNumber(	RtfWriter *			rwc,
 				const char *			backTag,
 				const char *			levelTag )
     {
-    const BufferDocument *		bd= rwc->rwDocument;
-    const NumberedPropertiesList *	isl= &(bd->bdItemShadingList);
-
     ItemShading				is;
 
-    docGetItemShadingByNumber( &is, isl, num );
+    docGetItemShadingByNumber( &is, rwc->rwDocument, num );
 
     docRtfSaveShading( rwc, &is, patTags, patTagCount,
 					    foreTag, backTag, levelTag );

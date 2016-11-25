@@ -106,7 +106,7 @@ int docHtmlSaveDocument(	SimpleOutputStream *	sos,
     hwc.hwcGetCssName= docHtmlGetCssName;
     hwc.hwcPrivate= (void *)&hw;
     hwc.hwcDocument= bd;
-    hwc.hwcInlineCss= ( bd->bdObjectList.iolPagedList.plItemCount == 0 );
+    hwc.hwcInlineCss= ( bd->bdObjectList.iolPagedList.plItemCount == 0 || ! filename );
     hwc.hwcInlineNotes= 0;
 
     hw.hwFilename= filename;
@@ -179,6 +179,30 @@ int docHtmlSaveDocument(	SimpleOutputStream *	sos,
     }
 
 /************************************************************************/
+
+static int docHtmlGetNameX(		MemoryBuffer *		target,
+					const HtmlWriter *	hw,
+					int			relative,
+					const char *		slashName )
+    {
+    if  ( relative )
+	{
+	if  ( utilCopyMemoryBuffer( target, &(hw->hwFilesDirectoryRel) ) )
+	    { LDEB(1); return -1;	}
+	}
+    else{
+	if  ( utilCopyMemoryBuffer( target, &(hw->hwFilesDirectoryAbs) ) )
+	    { LDEB(1); return -1;	}
+	}
+
+    if  ( utilMemoryBufferAppendBytes( target,
+		(const unsigned char *)slashName, strlen( slashName ) ) )
+	{ LDEB(1); return -1;	}
+
+    return 0;
+    }
+
+/************************************************************************/
 /*									*/
 /*  Get the 'src' value for an embedded image.				*/
 /*									*/
@@ -194,25 +218,12 @@ static int docHtmlGetImageSrcX(		MemoryBuffer *		target,
     const PictureProperties *	pip= &(io->ioPictureProperties);
     char			scratch[50];
 
-    if  ( relative )
-	{
-	if  ( utilMemoryBufferSetString( target, DocHtmlDirectorySuffix ) )
-	    { LDEB(1); return -1;	}
-	if  ( utilCopyMemoryBuffer( target, &(hw->hwFilesDirectoryRel) ) )
-	    { LDEB(1); return -1;	}
-	}
-    else{
-	if  ( utilCopyMemoryBuffer( target, &(hw->hwFilesDirectoryAbs) ) )
-	    { LDEB(1); return -1;	}
-	}
-
     if  ( 1 || pip->pipBliptag == 0 )
 	{ sprintf( scratch, "/i%d.%s", n, ext );			}
     else{ sprintf( scratch, "/b%08lx.%s", pip->pipBliptag, ext );	}
 
-    if  ( utilMemoryBufferAppendBytes( target,
-			(const unsigned char *)scratch, strlen( scratch ) ) )
-	{ LDEB(1); return -1;	}
+    if  ( docHtmlGetNameX( target, hw, relative, scratch ) )
+	{ SDEB(scratch); return -1;	}
 
     return 0;
     }
@@ -275,22 +286,9 @@ static int docHtmlGetCssNameX(		MemoryBuffer *		target,
 					HtmlWriter *		hw )
     {
     const char DocHtmlCssName[]= "/document.css";
-    const int  DocHtmlCssNameLength= sizeof(DocHtmlCssName)- 1;
 
-    if  ( relative )
-	{
-	if  ( utilCopyMemoryBuffer( target, &(hw->hwFilesDirectoryRel) ) )
-	    { LDEB(1); return -1;	}
-	}
-    else{
-	if  ( utilCopyMemoryBuffer( target, &(hw->hwFilesDirectoryAbs) ) )
-	    { LDEB(1); return -1;	}
-	}
-
-    if  ( utilMemoryBufferAppendBytes( target,
-			(const unsigned char *)DocHtmlCssName,
-			DocHtmlCssNameLength ) )
-	{ LDEB(1); return -1;	}
+    if  ( docHtmlGetNameX( target, hw, relative, DocHtmlCssName ) )
+	{ SDEB(DocHtmlCssName); return -1;	}
 
     return 0;
     }

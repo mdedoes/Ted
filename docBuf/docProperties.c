@@ -11,7 +11,6 @@
 #   include	<docTextParticule.h>
 #   include	<docDocumentList.h>
 #   include	<docListOverride.h>
-#   include	<textAttributeAdmin.h>
 
 #   include	"docBuf.h"
 #   include	"docDebug.h"
@@ -19,24 +18,6 @@
 #   include	"docTreeNode.h"
 
 #   include	<appDebugon.h>
-
-/************************************************************************/
-/*									*/
-/*  Statistics about a document. Used in the 'Document Properties'	*/
-/*  dialog.								*/
-/*									*/
-/************************************************************************/
-
-void docInitDocumentStatistics(		DocumentStatistics *	ds )
-    {
-    ds->dsPageCount= 0;
-    ds->dsParagraphCount= 0;
-    ds->dsLineCount= 0;
-    ds->dsWordCount= 0;
-    ds->dsCharacterCount= 0;
-
-    return;
-    }
 
 /************************************************************************/
 /*									*/
@@ -61,8 +42,8 @@ typedef struct ResourceUsed
 /*  a  */
 static int docMergeScanParaAttributes(
 				DocumentSelection *		ds,
-				BufferItem *			paraBi,
-				const BufferDocument *		bd,
+				BufferItem *			paraNode,
+				BufferDocument *		bd,
 				const DocumentPosition *	dpFrom,
 				void *				through )
     {
@@ -72,16 +53,15 @@ static int docMergeScanParaAttributes(
     int				part;
     int				errors= 0;
 
-    tp= paraBi->biParaParticules;
-    for ( part= 0; part < paraBi->biParaParticuleCount; part++, tp++ )
+    tp= paraNode->biParaParticules;
+    for ( part= 0; part < paraNode->biParaParticuleCount; part++, tp++ )
 	{
 	TextAttribute	ta;
 
 	if  ( tp->tpTextAttrNr < 0 )
 	    { errors++; tp->tpTextAttrNr= 0;	}
 
-	utilGetTextAttributeByNumber( &ta, &(bd->bdTextAttributeList),
-							    tp->tpTextAttrNr );
+	docGetTextAttributeByNumber( &ta, bd, tp->tpTextAttrNr );
 
 	ru->ruFontsUsed[ta.taFontNumber]= 1;
 	}
@@ -89,11 +69,11 @@ static int docMergeScanParaAttributes(
     if  ( errors > 0 )
 	{
 	LDEB(errors);
-	docListNode(0,paraBi,0);
+	docListNode(0,paraNode,0);
 	}
 
-    if  ( paraBi->biParaListOverride > 0 )
-	{ ru->ruListStyleUsed[paraBi->biParaListOverride]= 1;	}
+    if  ( paraNode->biParaListOverride > 0 )
+	{ ru->ruListStyleUsed[paraNode->biParaListOverride]= 1;	}
 
     return 1;
     }
@@ -109,8 +89,8 @@ static int docMergeListTables(	BufferDocument *		bdTo,
     {
     DocumentProperties *	dpTo= &(bdTo->bdProperties);
     const DocumentProperties *	dpFrom= &(bdFrom->bdProperties);
-    ListAdmin *			laTo= &(dpTo->dpListAdmin);
-    const ListAdmin *		laFrom= &(dpFrom->dpListAdmin);
+    ListAdmin *			laTo= dpTo->dpListAdmin;
+    const ListAdmin *		laFrom= dpFrom->dpListAdmin;
 
     int				listStylesAdded;
 
@@ -121,7 +101,7 @@ static int docMergeListTables(	BufferDocument *		bdTo,
 	{ LDEB(listStylesAdded); return -1;	}
 
     if  ( listStylesAdded > 0						&&
-	  docClaimListNumberTrees( &(bdTo->bdBody.eiListNumberTrees),
+	  docClaimListNumberTrees( &(bdTo->bdBody.dtListNumberTrees),
 			   laTo->laListOverrideTable.lotOverrideCount )	)
 	{ LDEB(listStylesAdded); return -1;	}
 
@@ -134,7 +114,7 @@ static void docCountListFontsUsed(	BufferDocument *	bdFrom,
 					int *			fontUsed )
     {
     const DocumentProperties *	dpFrom= &(bdFrom->bdProperties);
-    const ListAdmin *		laFrom= &(dpFrom->dpListAdmin);
+    const ListAdmin *		laFrom= dpFrom->dpListAdmin;
     const DocumentListTable *	dltFrom= &(laFrom->laListTable);
     const ListOverrideTable *	lotFrom= &(laFrom->laListOverrideTable);
 
@@ -206,12 +186,12 @@ int docMergeDocumentLists(	int **				pFontMap,
     int				rval= 0;
 
     DocumentProperties *	dpTo= &(bdTo->bdProperties);
-    DocumentFontList *		dflTo= &(dpTo->dpFontList);
+    DocumentFontList *		dflTo= dpTo->dpFontList;
 
     const DocumentProperties *	dpFrom= &(bdFrom->bdProperties);
-    const DocumentFontList *	dflFrom= &(dpFrom->dpFontList);
+    const DocumentFontList *	dflFrom= dpFrom->dpFontList;
 
-    const ListAdmin *		laFrom= &(dpFrom->dpListAdmin);
+    const ListAdmin *		laFrom= dpFrom->dpListAdmin;
     const DocumentListTable *	dltFrom= &(laFrom->laListTable);
     const ListOverrideTable *	lotFrom= &(laFrom->laListOverrideTable);
 
@@ -344,54 +324,16 @@ int docMergeColorTables(	int **				pColorMap,
 				BufferDocument *		bdTo,
 				const BufferDocument *		bdFrom )
     {
-    int				rval= 0;
+    const int			avoidZero= 1;
+    const int			maxColors= 256;
 
     DocumentProperties *	dpTo= &(bdTo->bdProperties);
+    ColorPalette *		cpTo= dpTo->dpColorPalette;
 
     const DocumentProperties *	dpFrom= &(bdFrom->bdProperties);
-    const ColorPalette *	cpFrom= &(dpFrom->dpColorPalette);
-    const RGB8Color *		rgb8From;
+    const ColorPalette *	cpFrom= dpFrom->dpColorPalette;
 
-    int *			colorMap= (int *)0;
-
-    int				from;
-    int				to;
-
-    /*****/
-
-    /*  1  */
-    if  ( cpFrom->cpColorCount > 1 )
-	{
-	colorMap= (int *)malloc( cpFrom->cpColorCount* sizeof( int ) );
-	if  ( ! colorMap )
-	    { LXDEB(cpFrom->cpColorCount,colorMap); rval= -1; goto ready; }
-
-	colorMap[0]= 0;
-	}
-
-    /*****/
-
-    /*  1  */
-    rgb8From= cpFrom->cpColors+ 1;
-    for ( from= 1; from < cpFrom->cpColorCount; rgb8From++, from++ )
-	{
-	/*  2  */
-
-	to= docAllocateDocumentColor( dpTo, rgb8From );
-	if  ( to < 0 )
-	    { LDEB(to); rval= -1; goto ready;	}
-
-	colorMap[from]= to;
-	}
-
-    /*  steal */
-    *pColorMap= colorMap; colorMap= (int *)0;
-
-  ready:
-
-    if  ( colorMap )
-	{ free( colorMap );	}
-
-    return rval;
+    return utilMergeColorPalettes( pColorMap, cpTo, cpFrom,
+							avoidZero, maxColors );
     }
 

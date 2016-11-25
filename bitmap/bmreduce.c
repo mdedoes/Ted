@@ -1123,8 +1123,7 @@ int bmColorReduce(	RasterImage *			riOut,
     if  ( bmCalculateSizes( &(ri.riDescription) ) )
 	{ LDEB(1); rval= -1; goto ready;	}
 
-    ri.riBytes= (unsigned char *)malloc( ri.riDescription.bdBufferLength );
-    if  ( ! ri.riBytes )
+    if  ( bmAllocateBuffer( &ri ) )
 	{ LLDEB(ri.riDescription.bdBufferLength,ri.riBytes); rval= -1; goto ready; }
 
     /*  7  */
@@ -1165,6 +1164,8 @@ int bmSetColorAllocatorForPaletteImage(	ColorAllocator *		ca,
     int *			map= (int *)0;
     int				boxCount;
 
+    const ColorPalette *	cp= &(bd->bdPalette);
+
     if  ( bd->bdColorEncoding != BMcoRGB8PALETTE )
 	{ LLDEB(bd->bdColorEncoding,BMcoRGB8PALETTE); rval= -1; goto ready; }
 
@@ -1180,55 +1181,55 @@ int bmSetColorAllocatorForPaletteImage(	ColorAllocator *		ca,
 
     cr->crPalette= &(bd->bdPalette);
 
-    if  ( bmAllocateCutNodes( cr, bd->bdPalette.cpColorCount ) )
-	{ LDEB(bd->bdPalette.cpColorCount); rval= -1; goto ready;	}
+    if  ( bmAllocateCutNodes( cr, cp->cpColorCount ) )
+	{ LDEB(cp->cpColorCount); rval= -1; goto ready;	}
 
-    if  ( bmAllocateHistogram( cr, bd->bdPalette.cpColorCount ) )
-	{ LDEB(bd->bdPalette.cpColorCount); rval= -1; goto ready;	}
+    if  ( bmAllocateHistogram( cr, cp->cpColorCount ) )
+	{ LDEB(cp->cpColorCount); rval= -1; goto ready;	}
 
-    boxes= (ColorBox *)malloc( bd->bdPalette.cpColorCount* sizeof(ColorBox) );
+    boxes= (ColorBox *)malloc( cp->cpColorCount* sizeof(ColorBox) );
     if  ( ! boxes )
-	{ LLDEB(bd->bdPalette.cpColorCount,boxes); return -1; }
+	{ LLDEB(cp->cpColorCount,boxes); return -1; }
 
-    map= (int *)malloc( bd->bdPalette.cpColorCount* sizeof(int) );
+    map= (int *)malloc( cp->cpColorCount* sizeof(int) );
     if  ( ! map )
-	{ LLDEB(bd->bdPalette.cpColorCount,map); return -1; }
+	{ LLDEB(cp->cpColorCount,map); return -1; }
 
-    for ( i= 0; i < bd->bdPalette.cpColorCount; i++ )
+    for ( i= 0; i < cp->cpColorCount; i++ )
 	{
-	cr->crHistogram[i].heColor= bd->bdPalette.cpColors[i];
+	cr->crHistogram[i].heColor= cp->cpColors[i];
 	cr->crHistogram[i].heCount= 1;
 
 	map[i]= -1;
 	}
 
     boxCount= bmFindCuts( boxes, cr->crCutNodes, cr->crHistogram,
-						bd->bdPalette.cpColorCount,
-						bd->bdPalette.cpColorCount,
-						bd->bdPalette.cpColorCount );
+						cp->cpColorCount,
+						cp->cpColorCount,
+						cp->cpColorCount );
 
-    if  ( boxCount != bd->bdPalette.cpColorCount )
-	{ LLDEB(boxCount,bd->bdPalette.cpColorCount); rval= -1; goto ready; }
+    if  ( boxCount != cp->cpColorCount )
+	{ LLDEB(boxCount,cp->cpColorCount); rval= -1; goto ready; }
 
     ca->caSystemAllocator= bmReduceAllocateColorCut;
 
-    for ( i= 0; i < bd->bdPalette.cpColorCount; i++ )
+    for ( i= 0; i < cp->cpColorCount; i++ )
 	{
 	AllocatorColor	ac;
 
 	bmReduceAllocateColorCut( &ac, ca,
-				    bd->bdPalette.cpColors[i].rgb8Red,
-				    bd->bdPalette.cpColors[i].rgb8Green,
-				    bd->bdPalette.cpColors[i].rgb8Blue );
+				    cp->cpColors[i].rgb8Red,
+				    cp->cpColors[i].rgb8Green,
+				    cp->cpColors[i].rgb8Blue );
 
 	if  ( /*ac.acColorNumber < 0				||*/
-	      ac.acColorNumber >= bd->bdPalette.cpColorCount	)
+	      ac.acColorNumber >= cp->cpColorCount	)
 	    { LLDEB(i,ac.acColorNumber);	}
 
 	map[ac.acColorNumber]= i;
 	}
 
-    for ( i= 0; i < 2* bd->bdPalette.cpColorCount; i++ )
+    for ( i= 0; i < 2* cp->cpColorCount; i++ )
 	{
 	if  ( cr->crCutNodes[i].cnComponent != CN_LEAF )
 	    { continue;	}
@@ -1237,21 +1238,21 @@ int bmSetColorAllocatorForPaletteImage(	ColorAllocator *		ca,
 	}
 
 #   if 0
-    for ( i= 0; i < bd->bdPalette.cpColorCount; i++ )
+    for ( i= 0; i < cp->cpColorCount; i++ )
 	{
 	AllocatorColor	ac;
 
 	bmReduceAllocateColorCut( &ac, ca,
-				    bd->bdPalette.cpColors[i].rgb8Red,
-				    bd->bdPalette.cpColors[i].rgb8Green,
-				    bd->bdPalette.cpColors[i].rgb8Blue );
+				    cp->cpColors[i].rgb8Red,
+				    cp->cpColors[i].rgb8Green,
+				    cp->cpColors[i].rgb8Blue );
 
 	if  ( ac.acColorNumber != i )
 	    {
 	    LLDEB(i,ac.acColorNumber);
-	    LDEB(bd->bdPalette.cpColors[i].rgb8Red);
-	    LDEB(bd->bdPalette.cpColors[i].rgb8Green);
-	    LDEB(bd->bdPalette.cpColors[i].rgb8Blue);
+	    LDEB(cp->cpColors[i].rgb8Red);
+	    LDEB(cp->cpColors[i].rgb8Green);
+	    LDEB(cp->cpColors[i].rgb8Blue);
 	    }
 	}
 #   endif

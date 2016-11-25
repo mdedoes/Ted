@@ -57,11 +57,13 @@ typedef struct RowNode
 
 				/*  4,6  */
     LayoutPosition		brAboveHeaderPosition;
-				/*  4,7  */
-    int				brPrecededByHeader;
 
 				/*  8  */
-    int				brTopInset;
+    short int			brTopInset;
+
+				/*  4,7  */
+    unsigned char		brPrecededByHeader;
+
 				/*  9  */
     unsigned char		brForTable;
     } RowNode;

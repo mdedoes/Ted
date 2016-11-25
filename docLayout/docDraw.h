@@ -90,7 +90,7 @@ typedef int (*SET_FONT)(	struct DrawingContext *		dc,
 
 typedef int (*DRAW_SHAPE)(	const DocumentRectangle *	drTwips,
 				int				page,
-				DrawingShape *			ds,
+				struct DrawingShape *		ds,
 				struct DrawingContext *		dc,
 				void *				through );
 
@@ -264,13 +264,13 @@ extern void docDrawSetFont(	DrawingContext *	dc,
 
 extern int docDrawShapeGetFill(	int *			pFill,
 				RGB8Color *		rgb8Fill,
-				const DrawingShape *	ds,
+				const struct DrawingShape *	ds,
 				DrawingContext *	dc,
 				void *			through );
 
 extern int docDrawShapeGetLine(	int *			pLine,
 				RGB8Color *		rgb8Stroke,
-				const DrawingShape *	ds,
+				const struct DrawingShape *	ds,
 				DrawingContext *	dc,
 				void *			through );
 
@@ -340,7 +340,7 @@ extern int docDrawShapeText(	const DocumentRectangle *	drHere,
 				const struct BufferItem *	bodySectNode,
 				int				page,
 				int				column,
-				DrawingShape *			ds,
+				struct DrawingShape *		ds,
 				DrawingContext *		dc,
 				void *				through );
 

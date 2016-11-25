@@ -163,11 +163,13 @@ static int tedLayoutSelectedRoot(	const LayoutContext *	lc,
 		if  ( treeFound->dtPageFormattedFor != page )
 		    {
 		    const int	column0= 0;
+		    const int	adjustDocument= 0;
 
+		    /*  We do not expect the tree to change height here	*/
 		    if  ( docLayoutDocumentTree( treeFound, &drChanged,
 				page, column0, treeFound->dtY0UsedTwips,
 				bodySectBiSet, lc,
-				docStartScreenLayoutForTree ) )
+				docStartScreenLayoutForTree, adjustDocument ) )
 			{ LDEB(page); return 1; }
 		    }
 		}
@@ -383,7 +385,9 @@ static int tedFindMousePosition( APP_WIDGET			w,
 
     sameRoot= docSelectionSameRoot( dsOld, rootNodeFound );
     if  ( sameRoot )
-	{ sameInstance= docSelectionSameInstance( rootNodeFound, page, column ); }
+	{
+	sameInstance= docSelectionSameInstance( dc->dcTree, page, column );
+	}
 
     if  ( ! sameRoot || ! sameInstance )
 	{
@@ -537,7 +541,8 @@ static int tedSelectMousePosition(
 	{ goto ready;	}
 
     if  ( ! docIsIBarSelection( &dsOld )				||
-	  ! docSamePosition( &(dsOld.dsHead), &(dc->dcAnchorPosition) )	)
+	  ! docSamePosition( &(dsOld.dsHead), &(dc->dcAnchorPosition) )	||
+	  ! sameInstance						)
 	{
 	tedSetSelectedPosition( ed, &(dc->dcAnchorPosition),
 				    pgClick.pgPositionFlags & POSflagLINE_HEAD,

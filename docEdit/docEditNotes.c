@@ -8,7 +8,6 @@
 
 #   include	<appDebugon.h>
 
-#   include	<textAttributeAdmin.h>
 #   include	<docBuf.h>
 #   include	<docNotes.h>
 #   include	<docParaString.h>
@@ -71,8 +70,7 @@ int docEditMakeNote(	DocumentNote **			pDn,
     docPlainTextAttribute( &ta, bd );
     ta.taFontSizeHalfPoints= 20;
 
-    textAttributeNumberPlain=
-		utilTextAttributeNumber( &(bd->bdTextAttributeList), &ta );
+    textAttributeNumberPlain= docTextAttributeNumber( bd, &ta );
 
     /*  4  */
     noteParaNode= docMakeExternalParagraph( bd, &(dn->dnDocumentTree), treeType,
@@ -86,10 +84,9 @@ int docEditMakeNote(	DocumentNote **			pDn,
 
     taSet= ta;
 
-    taSet.taSuperSub= DOCfontSUPERSCRIPT;
+    taSet.taSuperSub= TEXTvaSUPERSCRIPT;
 
-    textAttributeNumberSuper=
-		utilTextAttributeNumber( &(bd->bdTextAttributeList), &taSet );
+    textAttributeNumberSuper= docTextAttributeNumber( bd, &taSet );
     }
 
     /*  5  */

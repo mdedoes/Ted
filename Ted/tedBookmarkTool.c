@@ -95,7 +95,11 @@ static APP_BUTTON_CALLBACK_H( tedBookmarkRevertPushed, w, voidbt )
 
     utilCopyMemoryBuffer( &(bt->btMarkChosen), &(bt->btMarkSet) );
 
+    bt->btInProgrammaticChange++;
+
     tedBookmarkAdaptToBookmark( bt, adaptString, select );
+
+    bt->btInProgrammaticChange--;
 
     return;
     }
@@ -357,6 +361,8 @@ void tedRefreshBookmarkTool(	BookmarkTool *			bt,
     {
     const int			adaptString= 1;
 
+    bt->btInProgrammaticChange++;
+
     if  ( bt->btCurrentDocumentId != sd->sdDocumentId )
 	{
 	const BookmarkPageResources *	bpr= bt->btResources;
@@ -386,12 +392,12 @@ void tedRefreshBookmarkTool(	BookmarkTool *			bt,
 	dfBookmark= docFindTypedFieldForPosition( bd, &(ds->dsHead),
 							    DOCfkBOOKMARK, 0 );
 	if  ( docFieldGetBookmark( &markName, dfBookmark ) )
-	    { LDEB(1); *pEnabled= 0; return;	}
+	    { LDEB(1); *pEnabled= 0; goto ready;	}
 
 	if  ( utilCopyMemoryBuffer( &(bt->btMarkSet), markName ) )
-	    { LDEB(1); *pEnabled= 0; return;	}
+	    { LDEB(1); *pEnabled= 0; goto ready;	}
 	if  ( utilCopyMemoryBuffer( &(bt->btMarkChosen), &(bt->btMarkSet) ) )
-	    { LDEB(1); *pEnabled= 0; return;	}
+	    { LDEB(1); *pEnabled= 0; goto ready;	}
 
 	bt->btBookmarkList.blMarkChosenExists= 1;
 	tedBookmarkAdaptToText( bt, adaptString );
@@ -412,6 +418,10 @@ void tedRefreshBookmarkTool(	BookmarkTool *			bt,
 
 	tedBookmarkAdaptToBookmark( bt, adaptString, select );
 	}
+
+  ready:
+
+    bt->btInProgrammaticChange--;
 
     return;
     }

@@ -1,5 +1,4 @@
 CC=@CC@
-ICONV_CFLAGS=@ICONV_CFLAGS@
 
 WFLAGS=	-Wall			\
 	-Wextra			\
@@ -21,7 +20,6 @@ WFLAGS=	-Wall			\
 	-Wno-sign-compare
 
 INCLUDES=			\
-	$(ICONV_CFLAGS)		\
 	-I. -I../include	\
 	-I../docBase		\
 	-I../docBuf		\
@@ -37,10 +35,9 @@ CFLAGS=	\
 
 #CFLAGS= -g -O2 $(WFLAGS) $(INCLUDES)
 
-# 54!!obs
+# 55!!obs
 OBS	=	\
 		docRtfWriteText.o\
-		docRtfWriteStylesheet.o\
 		docRtfWriterImpl.o\
 		docRtfWritePictureTags.o\
 		docRtfWriteNode.o\
@@ -57,8 +54,8 @@ OBS	=	\
 		docRtfShpTab.o\
 		docRtfShapePropHash.o\
 		docRtfShading.o\
-		docRtfSectProperties.o\
 		docRtfSaveTextAttribute.o\
+		docRtfSaveStylesheet.o\
 		docRtfSaveSectProperties.o\
 		docRtfSaveRowProperties.o\
 		docRtfSaveParaProperties.o\
@@ -69,25 +66,27 @@ OBS	=	\
 		docRtfSaveDocumentProperties.o\
 		docRtfSaveDocument.o\
 		docRtfSaveCellProperties.o\
-		docRtfRowProperties.o\
 		docRtfReadText.o\
 		docRtfReadShape.o\
+		docRtfReadSectProperties.o\
+		docRtfReadRtf.o\
+		docRtfReadRowProperties.o\
 		docRtfReadParaProperties.o\
 		docRtfReadObjects.o\
 		docRtfReadNodeTree.o\
+		docRtfReadListTable.o\
+		docRtfReadFontTable.o\
 		docRtfReadField.o\
-		docRtfReadExternalItem.o\
 		docRtfReaderImpl.o\
+		docRtfReadDocumentTree.o\
+		docRtfReadDocumentProperties.o\
 		docRtfReadColorTable.o\
+		docRtfReadCellProperties.o\
 		docRtfRead.o\
 		docRtfParaNumber.o\
-		docRtfListTable.o\
 		docRtfListOverrideTable.o\
 		docRtfFrameProperties.o\
-		docRtfFontTable.o\
 		docRtfDrawingObject.o\
-		docRtfDocumentProperties.o\
-		docRtfCellProperties.o\
 		docRtfBorderProperties.o\
 		docPlainWrite.o\
 		docPlainRead.o
@@ -104,11 +103,6 @@ PROPERTYLIBS=	../lib/appUtil.a		\
 		../lib/docBuf.a			\
 		../lib/docBase.a
 
-ACLOCAL=	../configure/iconv.m4
-
-aclocal.m4:	$(ACLOCAL)
-	cat $(ACLOCAL) > $@
-
 doctaghash: doctaghash.o $(PROPERTYLIBS)
 	$(CC) $(LDFLAGS) -o $@ doctaghash.o $(PROPERTYLIBS) -lm
 
@@ -121,7 +115,7 @@ docRtfTagHash.c : docRtfTab.c
 docshpprophash: docshpprophash.o $(PROPERTYLIBS)
 	$(CC) $(LDFLAGS) -o $@ docshpprophash.o $(PROPERTYLIBS) -lm
 
-DocRtfShapePropHash.c : docRtfShpTab.c
+docRtfShapePropHash.c : docRtfShpTab.c
 	sed -e 's/BUILD_NO_HASH/BUILD_HASH/' docRtfShpTab.c > docshpprophash.c
 	make docshpprophash
 	./docshpprophash
@@ -152,27 +146,11 @@ docPlainRead.o: \
     ../appUtil/utilColor.h \
     ../appUtil/utilMemoryBuffer.h \
     ../appUtil/geo2DInteger.h \
-    ../docFont/utilDocFont.h \
-    ../utilPs/psFontInfo.h \
-    ../appUtil/utilIndexSet.h \
-    ../appUtil/utilIndexMapping.h \
-    ../textEncoding/utilOfficeCharset.h \
     ../utilPs/psPostScriptFontList.h \
     ../utilPs/psFontFamily.h \
     ../utilPs/psFontInfo.h \
-    ../docBuf/docShape.h \
-    ../appUtil/geoAffineTransform.h \
-    ../docBase/docShapeProperties.h \
-    ../docBase/docPictureProperties.h \
-    ../appUtil/utilPropMask.h \
-    ../docBuf/docDocumentTree.h \
-    ../docBase/docDocumentField.h \
-    ../docBase/docFieldInstructions.h \
-    ../docBase/docSelectionScope.h \
-    ../docBase/docEditRange.h \
-    ../docBase/docEditPosition.h \
-    ../docBase/docListNumberTree.h \
-    ../docBase/docShapeDrawing.h \
+    ../appUtil/utilIndexSet.h \
+    ../appUtil/utilIndexMapping.h \
     ../docBase/docFramePropertiesAdmin.h \
     ../docBase/docFrameProperties.h \
     ../docBase/docPropVal.h \
@@ -183,6 +161,7 @@ docPlainRead.o: \
     ../appUtil/utilIndexSet.h \
     ../docBase/docStyleSheet.h \
     ../docBase/docStyle.h \
+    ../appUtil/utilPropMask.h \
     ../docBase/docSectProperties.h \
     ../appUtil/utilDocumentGeometry.h \
     ../appUtil/utilPropMask.h \
@@ -198,6 +177,8 @@ docPlainRead.o: \
     ../docBase/docDocumentProperties.h \
     ../docFont/utilDocFontList.h \
     ../docFont/utilDocFont.h \
+    ../utilPs/psFontInfo.h \
+    ../textEncoding/textOfficeCharset.h \
     ../docBase/docListAdmin.h \
     ../docBase/docListTable.h \
     ../docBase/docListOverrideTable.h \
@@ -213,7 +194,14 @@ docPlainRead.o: \
     ../docBase/docSelectionScope.h \
     ../docBase/docEditPosition.h \
     ../docBase/docEditRange.h \
+    ../docBase/docEditPosition.h \
     ../docBuf/docTableRectangle.h \
+    ../docBuf/docDocumentTree.h \
+    ../docBase/docDocumentField.h \
+    ../docBase/docFieldInstructions.h \
+    ../docBase/docSelectionScope.h \
+    ../docBase/docEditRange.h \
+    ../docBase/docListNumberTree.h \
     ../docBase/docListTable.h \
     ../docBuf/docNodeTree.h \
     ../docBuf/docParaString.h \
@@ -226,13 +214,15 @@ docPlainRead.o: \
     ../docBase/docRowProperties.h \
     ../docBuf/docSectNode.h \
     ../docBase/docSectProperties.h \
-    ../textEncoding/textConverter.h \
     ../docBuf/docParaParticules.h \
     ../docBase/docTextParticule.h \
     ../docBase/docTextLine.h \
+    ../textEncoding/textConverter.h \
     ../textEncoding/textConverterImpl.h \
-    docPlainReadWrite.h \
-    ../appUtil/sioGeneral.h
+    ../textEncoding/textConverter.h \
+    ../textEncoding/sioUtf8.h \
+    ../appUtil/sioGeneral.h \
+    docPlainReadWrite.h
 
 docPlainWrite.o: \
     docPlainWrite.c \
@@ -244,27 +234,11 @@ docPlainWrite.o: \
     ../appUtil/utilColor.h \
     ../appUtil/utilMemoryBuffer.h \
     ../appUtil/geo2DInteger.h \
-    ../docFont/utilDocFont.h \
-    ../utilPs/psFontInfo.h \
-    ../appUtil/utilIndexSet.h \
-    ../appUtil/utilIndexMapping.h \
-    ../textEncoding/utilOfficeCharset.h \
     ../utilPs/psPostScriptFontList.h \
     ../utilPs/psFontFamily.h \
     ../utilPs/psFontInfo.h \
-    ../docBuf/docShape.h \
-    ../appUtil/geoAffineTransform.h \
-    ../docBase/docShapeProperties.h \
-    ../docBase/docPictureProperties.h \
-    ../appUtil/utilPropMask.h \
-    ../docBuf/docDocumentTree.h \
-    ../docBase/docDocumentField.h \
-    ../docBase/docFieldInstructions.h \
-    ../docBase/docSelectionScope.h \
-    ../docBase/docEditRange.h \
-    ../docBase/docEditPosition.h \
-    ../docBase/docListNumberTree.h \
-    ../docBase/docShapeDrawing.h \
+    ../appUtil/utilIndexSet.h \
+    ../appUtil/utilIndexMapping.h \
     ../docBase/docFramePropertiesAdmin.h \
     ../docBase/docFrameProperties.h \
     ../docBase/docPropVal.h \
@@ -275,6 +249,7 @@ docPlainWrite.o: \
     ../appUtil/utilIndexSet.h \
     ../docBase/docStyleSheet.h \
     ../docBase/docStyle.h \
+    ../appUtil/utilPropMask.h \
     ../docBase/docSectProperties.h \
     ../appUtil/utilDocumentGeometry.h \
     ../appUtil/utilPropMask.h \
@@ -290,6 +265,8 @@ docPlainWrite.o: \
     ../docBase/docDocumentProperties.h \
     ../docFont/utilDocFontList.h \
     ../docFont/utilDocFont.h \
+    ../utilPs/psFontInfo.h \
+    ../textEncoding/textOfficeCharset.h \
     ../docBase/docListAdmin.h \
     ../docBase/docListTable.h \
     ../docBase/docListOverrideTable.h \
@@ -305,7 +282,14 @@ docPlainWrite.o: \
     ../docBase/docSelectionScope.h \
     ../docBase/docEditPosition.h \
     ../docBase/docEditRange.h \
+    ../docBase/docEditPosition.h \
     ../docBuf/docTableRectangle.h \
+    ../docBuf/docDocumentTree.h \
+    ../docBase/docDocumentField.h \
+    ../docBase/docFieldInstructions.h \
+    ../docBase/docSelectionScope.h \
+    ../docBase/docEditRange.h \
+    ../docBase/docListNumberTree.h \
     ../docBase/docListTable.h \
     ../docBuf/docNotes.h \
     ../docBuf/docTreeNode.h \
@@ -317,8 +301,6 @@ docPlainWrite.o: \
     ../docBuf/docSectNode.h \
     ../docBase/docSectProperties.h \
     ../docBuf/docNodeTree.h \
-    ../utilPs/textAttributeAdmin.h \
-    ../utilPs/textAttribute.h \
     ../docBase/docTreeType.h \
     ../docBuf/docTreeScanner.h \
     ../docBuf/docBuf.h \
@@ -336,49 +318,32 @@ docPlainWrite.o: \
 docRtfBorderProperties.o: \
     docRtfBorderProperties.c \
     docRtfConfig.h \
-    ../docBase/docBorderPropertyAdmin.h \
-    ../docBase/docBorderProperties.h \
-    ../appUtil/utilPropMask.h \
-    ../appUtil/utilColor.h \
-    ../appUtil/utilPalette.h \
-    ../appUtil/utilColor.h \
-    ../appUtil/utilIntegerValueNode.h \
-    ../appUtil/utilNumberedPropertiesAdmin.h \
-    ../appUtil/utilIntegerValueNode.h \
-    ../appUtil/utilPagedList.h \
-    ../appUtil/utilIndexSet.h \
     ../include/appDebugon.h \
     ../include/appDebug.h \
     docRtfWriterImpl.h \
     ../docBuf/docBuf.h \
     ../bitmap/bitmap.h \
+    ../appUtil/utilColor.h \
+    ../appUtil/utilPalette.h \
+    ../appUtil/utilColor.h \
     ../appUtil/utilMemoryBuffer.h \
     ../appUtil/geo2DInteger.h \
-    ../docFont/utilDocFont.h \
-    ../utilPs/psFontInfo.h \
-    ../appUtil/utilIndexSet.h \
-    ../appUtil/utilIndexMapping.h \
-    ../textEncoding/utilOfficeCharset.h \
     ../utilPs/psPostScriptFontList.h \
     ../utilPs/psFontFamily.h \
     ../utilPs/psFontInfo.h \
-    ../docBuf/docShape.h \
-    ../appUtil/geoAffineTransform.h \
-    ../docBase/docShapeProperties.h \
-    ../docBase/docPictureProperties.h \
-    ../docBuf/docDocumentTree.h \
-    ../docBase/docDocumentField.h \
-    ../docBase/docFieldInstructions.h \
-    ../docBase/docSelectionScope.h \
-    ../docBase/docEditRange.h \
-    ../docBase/docEditPosition.h \
-    ../docBase/docListNumberTree.h \
-    ../docBase/docShapeDrawing.h \
+    ../appUtil/utilIndexSet.h \
+    ../appUtil/utilIndexMapping.h \
     ../docBase/docFramePropertiesAdmin.h \
     ../docBase/docFrameProperties.h \
     ../docBase/docPropVal.h \
+    ../appUtil/utilIntegerValueNode.h \
+    ../appUtil/utilNumberedPropertiesAdmin.h \
+    ../appUtil/utilIntegerValueNode.h \
+    ../appUtil/utilPagedList.h \
+    ../appUtil/utilIndexSet.h \
     ../docBase/docStyleSheet.h \
     ../docBase/docStyle.h \
+    ../appUtil/utilPropMask.h \
     ../docBase/docSectProperties.h \
     ../appUtil/utilDocumentGeometry.h \
     ../appUtil/utilPropMask.h \
@@ -394,6 +359,8 @@ docRtfBorderProperties.o: \
     ../docBase/docDocumentProperties.h \
     ../docFont/utilDocFontList.h \
     ../docFont/utilDocFont.h \
+    ../utilPs/psFontInfo.h \
+    ../textEncoding/textOfficeCharset.h \
     ../docBase/docListAdmin.h \
     ../docBase/docListTable.h \
     ../docBase/docListOverrideTable.h \
@@ -409,203 +376,31 @@ docRtfBorderProperties.o: \
     ../docBase/docSelectionScope.h \
     ../docBase/docEditPosition.h \
     ../docBase/docEditRange.h \
+    ../docBase/docEditPosition.h \
     ../docBuf/docTableRectangle.h \
+    ../docBuf/docDocumentTree.h \
+    ../docBase/docDocumentField.h \
+    ../docBase/docFieldInstructions.h \
+    ../docBase/docSelectionScope.h \
+    ../docBase/docEditRange.h \
+    ../docBase/docListNumberTree.h \
     ../docBase/docListTable.h \
     ../appUtil/sioGeneral.h \
     docRtfWriter.h \
-    docRtfTextConverter.h \
-    ../textEncoding/textConverterImpl.h \
-    ../docBase/docTabStop.h \
     docRtfReaderImpl.h \
     ../docBase/docNoteProperties.h \
+    ../docBase/docTabStop.h \
+    ../docBase/docTabStopList.h \
+    ../docBase/docTabStop.h \
     ../docBase/docListOverride.h \
     ../docBase/docListOverrideLevel.h \
     ../docBase/docListLevel.h \
+    ../docBase/docListDepth.h \
     ../docBase/docDocumentList.h \
     ../docBase/docBorderProperties.h \
+    docRtfTextConverter.h \
     docRtfControlWord.h \
     docRtfTags.h
-
-docRtfCellProperties.o: \
-    docRtfCellProperties.c \
-    docRtfConfig.h \
-    ../include/appDebugon.h \
-    ../include/appDebug.h \
-    ../docBase/docItemShadingAdmin.h \
-    ../docBase/docItemShading.h \
-    ../appUtil/utilPropMask.h \
-    ../appUtil/utilColor.h \
-    ../appUtil/utilPalette.h \
-    ../appUtil/utilColor.h \
-    ../appUtil/utilIntegerValueNode.h \
-    ../appUtil/utilNumberedPropertiesAdmin.h \
-    ../appUtil/utilIntegerValueNode.h \
-    ../appUtil/utilPagedList.h \
-    ../appUtil/utilIndexSet.h \
-    docRtfReaderImpl.h \
-    ../docBuf/docBuf.h \
-    ../bitmap/bitmap.h \
-    ../appUtil/utilMemoryBuffer.h \
-    ../appUtil/geo2DInteger.h \
-    ../docFont/utilDocFont.h \
-    ../utilPs/psFontInfo.h \
-    ../appUtil/utilIndexSet.h \
-    ../appUtil/utilIndexMapping.h \
-    ../textEncoding/utilOfficeCharset.h \
-    ../utilPs/psPostScriptFontList.h \
-    ../utilPs/psFontFamily.h \
-    ../utilPs/psFontInfo.h \
-    ../docBuf/docShape.h \
-    ../appUtil/geoAffineTransform.h \
-    ../docBase/docShapeProperties.h \
-    ../docBase/docPictureProperties.h \
-    ../docBuf/docDocumentTree.h \
-    ../docBase/docDocumentField.h \
-    ../docBase/docFieldInstructions.h \
-    ../docBase/docSelectionScope.h \
-    ../docBase/docEditRange.h \
-    ../docBase/docEditPosition.h \
-    ../docBase/docListNumberTree.h \
-    ../docBase/docShapeDrawing.h \
-    ../docBase/docFramePropertiesAdmin.h \
-    ../docBase/docFrameProperties.h \
-    ../docBase/docPropVal.h \
-    ../docBase/docStyleSheet.h \
-    ../docBase/docStyle.h \
-    ../docBase/docSectProperties.h \
-    ../appUtil/utilDocumentGeometry.h \
-    ../appUtil/utilPropMask.h \
-    ../appUtil/geo2DInteger.h \
-    ../docBase/docNotesProperties.h \
-    ../docBase/docRowProperties.h \
-    ../docBase/docCellProperties.h \
-    ../docBase/docDocumentAttributeMap.h \
-    ../docBase/docParaProperties.h \
-    ../docBase/docParaNumber.h \
-    ../utilPs/textAttribute.h \
-    ../docBase/docDocumentProperties.h \
-    ../docFont/utilDocFontList.h \
-    ../docFont/utilDocFont.h \
-    ../docBase/docListAdmin.h \
-    ../docBase/docListTable.h \
-    ../docBase/docListOverrideTable.h \
-    ../docBase/docDocumentFieldList.h \
-    ../appUtil/utilPagedList.h \
-    ../docBuf/docDrawingShapeList.h \
-    ../docBase/docInsertedObjectList.h \
-    ../docBase/docObject.h \
-    ../docBase/docLayoutPosition.h \
-    ../docBase/docPictureProperties.h \
-    ../docBuf/docSelect.h \
-    ../docBase/docLayoutPosition.h \
-    ../docBase/docSelectionScope.h \
-    ../docBase/docEditPosition.h \
-    ../docBase/docEditRange.h \
-    ../docBuf/docTableRectangle.h \
-    ../docBase/docListTable.h \
-    ../docBase/docNoteProperties.h \
-    ../appUtil/sioGeneral.h \
-    ../docBase/docTabStop.h \
-    ../docBase/docListOverride.h \
-    ../docBase/docListOverrideLevel.h \
-    ../docBase/docListLevel.h \
-    ../docBase/docDocumentList.h \
-    ../docBase/docBorderProperties.h \
-    docRtfTextConverter.h \
-    ../textEncoding/textConverterImpl.h \
-    docRtfControlWord.h \
-    docRtfTagEnum.h
-
-docRtfDocumentProperties.o: \
-    docRtfDocumentProperties.c \
-    docRtfConfig.h \
-    ../include/appDebugon.h \
-    ../include/appDebug.h \
-    ../appUtil/appUnit.h \
-    ../textEncoding/utilOfficeCharset.h \
-    ../appUtil/utilIndexMapping.h \
-    ../appUtil/utilIndexSet.h \
-    ../textEncoding/textConverter.h \
-    docRtfReaderImpl.h \
-    ../docBuf/docBuf.h \
-    ../bitmap/bitmap.h \
-    ../appUtil/utilColor.h \
-    ../appUtil/utilPalette.h \
-    ../appUtil/utilColor.h \
-    ../appUtil/utilMemoryBuffer.h \
-    ../appUtil/geo2DInteger.h \
-    ../docFont/utilDocFont.h \
-    ../utilPs/psFontInfo.h \
-    ../utilPs/psPostScriptFontList.h \
-    ../utilPs/psFontFamily.h \
-    ../utilPs/psFontInfo.h \
-    ../docBuf/docShape.h \
-    ../appUtil/geoAffineTransform.h \
-    ../docBase/docShapeProperties.h \
-    ../docBase/docPictureProperties.h \
-    ../appUtil/utilPropMask.h \
-    ../docBuf/docDocumentTree.h \
-    ../docBase/docDocumentField.h \
-    ../docBase/docFieldInstructions.h \
-    ../docBase/docSelectionScope.h \
-    ../docBase/docEditRange.h \
-    ../docBase/docEditPosition.h \
-    ../docBase/docListNumberTree.h \
-    ../docBase/docShapeDrawing.h \
-    ../docBase/docFramePropertiesAdmin.h \
-    ../docBase/docFrameProperties.h \
-    ../docBase/docPropVal.h \
-    ../appUtil/utilIntegerValueNode.h \
-    ../appUtil/utilNumberedPropertiesAdmin.h \
-    ../appUtil/utilIntegerValueNode.h \
-    ../appUtil/utilPagedList.h \
-    ../appUtil/utilIndexSet.h \
-    ../docBase/docStyleSheet.h \
-    ../docBase/docStyle.h \
-    ../docBase/docSectProperties.h \
-    ../appUtil/utilDocumentGeometry.h \
-    ../appUtil/utilPropMask.h \
-    ../appUtil/geo2DInteger.h \
-    ../docBase/docNotesProperties.h \
-    ../docBase/docRowProperties.h \
-    ../docBase/docCellProperties.h \
-    ../docBase/docItemShading.h \
-    ../docBase/docDocumentAttributeMap.h \
-    ../docBase/docParaProperties.h \
-    ../docBase/docParaNumber.h \
-    ../utilPs/textAttribute.h \
-    ../docBase/docDocumentProperties.h \
-    ../docFont/utilDocFontList.h \
-    ../docFont/utilDocFont.h \
-    ../docBase/docListAdmin.h \
-    ../docBase/docListTable.h \
-    ../docBase/docListOverrideTable.h \
-    ../docBase/docDocumentFieldList.h \
-    ../appUtil/utilPagedList.h \
-    ../docBuf/docDrawingShapeList.h \
-    ../docBase/docInsertedObjectList.h \
-    ../docBase/docObject.h \
-    ../docBase/docLayoutPosition.h \
-    ../docBase/docPictureProperties.h \
-    ../docBuf/docSelect.h \
-    ../docBase/docLayoutPosition.h \
-    ../docBase/docSelectionScope.h \
-    ../docBase/docEditPosition.h \
-    ../docBase/docEditRange.h \
-    ../docBuf/docTableRectangle.h \
-    ../docBase/docListTable.h \
-    ../docBase/docNoteProperties.h \
-    ../appUtil/sioGeneral.h \
-    ../docBase/docTabStop.h \
-    ../docBase/docListOverride.h \
-    ../docBase/docListOverrideLevel.h \
-    ../docBase/docListLevel.h \
-    ../docBase/docDocumentList.h \
-    ../docBase/docBorderProperties.h \
-    docRtfTextConverter.h \
-    ../textEncoding/textConverterImpl.h \
-    docRtfControlWord.h \
-    docRtfTagEnum.h
 
 docRtfDrawingObject.o: \
     docRtfDrawingObject.c \
@@ -617,18 +412,6 @@ docRtfDrawingObject.o: \
     ../appUtil/utilMemoryBuffer.h \
     ../appUtil/geo2DInteger.h \
     ../docBase/docDrawingObject.h \
-    ../include/appDebugon.h \
-    ../include/appDebug.h \
-    docRtfReaderImpl.h \
-    ../docBuf/docBuf.h \
-    ../docFont/utilDocFont.h \
-    ../utilPs/psFontInfo.h \
-    ../appUtil/utilIndexSet.h \
-    ../appUtil/utilIndexMapping.h \
-    ../textEncoding/utilOfficeCharset.h \
-    ../utilPs/psPostScriptFontList.h \
-    ../utilPs/psFontFamily.h \
-    ../utilPs/psFontInfo.h \
     ../docBuf/docShape.h \
     ../appUtil/geoAffineTransform.h \
     ../docBase/docShapeProperties.h \
@@ -642,6 +425,15 @@ docRtfDrawingObject.o: \
     ../docBase/docEditPosition.h \
     ../docBase/docListNumberTree.h \
     ../docBase/docShapeDrawing.h \
+    ../include/appDebugon.h \
+    ../include/appDebug.h \
+    docRtfReaderImpl.h \
+    ../docBuf/docBuf.h \
+    ../utilPs/psPostScriptFontList.h \
+    ../utilPs/psFontFamily.h \
+    ../utilPs/psFontInfo.h \
+    ../appUtil/utilIndexSet.h \
+    ../appUtil/utilIndexMapping.h \
     ../docBase/docFramePropertiesAdmin.h \
     ../docBase/docFrameProperties.h \
     ../docBase/docPropVal.h \
@@ -667,6 +459,8 @@ docRtfDrawingObject.o: \
     ../docBase/docDocumentProperties.h \
     ../docFont/utilDocFontList.h \
     ../docFont/utilDocFont.h \
+    ../utilPs/psFontInfo.h \
+    ../textEncoding/textOfficeCharset.h \
     ../docBase/docListAdmin.h \
     ../docBase/docListTable.h \
     ../docBase/docListOverrideTable.h \
@@ -687,103 +481,16 @@ docRtfDrawingObject.o: \
     ../docBase/docNoteProperties.h \
     ../appUtil/sioGeneral.h \
     ../docBase/docTabStop.h \
+    ../docBase/docTabStopList.h \
+    ../docBase/docTabStop.h \
     ../docBase/docListOverride.h \
     ../docBase/docListOverrideLevel.h \
     ../docBase/docListLevel.h \
+    ../docBase/docListDepth.h \
     ../docBase/docDocumentList.h \
     ../docBase/docBorderProperties.h \
     docRtfTextConverter.h \
-    ../textEncoding/textConverterImpl.h \
     docRtfControlWord.h
-
-docRtfFontTable.o: \
-    docRtfFontTable.c \
-    docRtfConfig.h \
-    ../include/appDebugon.h \
-    ../include/appDebug.h \
-    ../textEncoding/utilOfficeCharset.h \
-    ../appUtil/utilIndexMapping.h \
-    ../appUtil/utilIndexSet.h \
-    docRtfReaderImpl.h \
-    ../docBuf/docBuf.h \
-    ../bitmap/bitmap.h \
-    ../appUtil/utilColor.h \
-    ../appUtil/utilPalette.h \
-    ../appUtil/utilColor.h \
-    ../appUtil/utilMemoryBuffer.h \
-    ../appUtil/geo2DInteger.h \
-    ../docFont/utilDocFont.h \
-    ../utilPs/psFontInfo.h \
-    ../utilPs/psPostScriptFontList.h \
-    ../utilPs/psFontFamily.h \
-    ../utilPs/psFontInfo.h \
-    ../docBuf/docShape.h \
-    ../appUtil/geoAffineTransform.h \
-    ../docBase/docShapeProperties.h \
-    ../docBase/docPictureProperties.h \
-    ../appUtil/utilPropMask.h \
-    ../docBuf/docDocumentTree.h \
-    ../docBase/docDocumentField.h \
-    ../docBase/docFieldInstructions.h \
-    ../docBase/docSelectionScope.h \
-    ../docBase/docEditRange.h \
-    ../docBase/docEditPosition.h \
-    ../docBase/docListNumberTree.h \
-    ../docBase/docShapeDrawing.h \
-    ../docBase/docFramePropertiesAdmin.h \
-    ../docBase/docFrameProperties.h \
-    ../docBase/docPropVal.h \
-    ../appUtil/utilIntegerValueNode.h \
-    ../appUtil/utilNumberedPropertiesAdmin.h \
-    ../appUtil/utilIntegerValueNode.h \
-    ../appUtil/utilPagedList.h \
-    ../appUtil/utilIndexSet.h \
-    ../docBase/docStyleSheet.h \
-    ../docBase/docStyle.h \
-    ../docBase/docSectProperties.h \
-    ../appUtil/utilDocumentGeometry.h \
-    ../appUtil/utilPropMask.h \
-    ../appUtil/geo2DInteger.h \
-    ../docBase/docNotesProperties.h \
-    ../docBase/docRowProperties.h \
-    ../docBase/docCellProperties.h \
-    ../docBase/docItemShading.h \
-    ../docBase/docDocumentAttributeMap.h \
-    ../docBase/docParaProperties.h \
-    ../docBase/docParaNumber.h \
-    ../utilPs/textAttribute.h \
-    ../docBase/docDocumentProperties.h \
-    ../docFont/utilDocFontList.h \
-    ../docFont/utilDocFont.h \
-    ../docBase/docListAdmin.h \
-    ../docBase/docListTable.h \
-    ../docBase/docListOverrideTable.h \
-    ../docBase/docDocumentFieldList.h \
-    ../appUtil/utilPagedList.h \
-    ../docBuf/docDrawingShapeList.h \
-    ../docBase/docInsertedObjectList.h \
-    ../docBase/docObject.h \
-    ../docBase/docLayoutPosition.h \
-    ../docBase/docPictureProperties.h \
-    ../docBuf/docSelect.h \
-    ../docBase/docLayoutPosition.h \
-    ../docBase/docSelectionScope.h \
-    ../docBase/docEditPosition.h \
-    ../docBase/docEditRange.h \
-    ../docBuf/docTableRectangle.h \
-    ../docBase/docListTable.h \
-    ../docBase/docNoteProperties.h \
-    ../appUtil/sioGeneral.h \
-    ../docBase/docTabStop.h \
-    ../docBase/docListOverride.h \
-    ../docBase/docListOverrideLevel.h \
-    ../docBase/docListLevel.h \
-    ../docBase/docDocumentList.h \
-    ../docBase/docBorderProperties.h \
-    docRtfTextConverter.h \
-    ../textEncoding/textConverterImpl.h \
-    docRtfControlWord.h \
-    docRtfTagEnum.h
 
 docRtfFrameProperties.o: \
     docRtfFrameProperties.c \
@@ -798,27 +505,11 @@ docRtfFrameProperties.o: \
     ../appUtil/utilColor.h \
     ../appUtil/utilMemoryBuffer.h \
     ../appUtil/geo2DInteger.h \
-    ../docFont/utilDocFont.h \
-    ../utilPs/psFontInfo.h \
-    ../appUtil/utilIndexSet.h \
-    ../appUtil/utilIndexMapping.h \
-    ../textEncoding/utilOfficeCharset.h \
     ../utilPs/psPostScriptFontList.h \
     ../utilPs/psFontFamily.h \
     ../utilPs/psFontInfo.h \
-    ../docBuf/docShape.h \
-    ../appUtil/geoAffineTransform.h \
-    ../docBase/docShapeProperties.h \
-    ../docBase/docPictureProperties.h \
-    ../appUtil/utilPropMask.h \
-    ../docBuf/docDocumentTree.h \
-    ../docBase/docDocumentField.h \
-    ../docBase/docFieldInstructions.h \
-    ../docBase/docSelectionScope.h \
-    ../docBase/docEditRange.h \
-    ../docBase/docEditPosition.h \
-    ../docBase/docListNumberTree.h \
-    ../docBase/docShapeDrawing.h \
+    ../appUtil/utilIndexSet.h \
+    ../appUtil/utilIndexMapping.h \
     ../docBase/docFramePropertiesAdmin.h \
     ../docBase/docFrameProperties.h \
     ../docBase/docPropVal.h \
@@ -829,6 +520,7 @@ docRtfFrameProperties.o: \
     ../appUtil/utilIndexSet.h \
     ../docBase/docStyleSheet.h \
     ../docBase/docStyle.h \
+    ../appUtil/utilPropMask.h \
     ../docBase/docSectProperties.h \
     ../appUtil/utilDocumentGeometry.h \
     ../appUtil/utilPropMask.h \
@@ -844,6 +536,8 @@ docRtfFrameProperties.o: \
     ../docBase/docDocumentProperties.h \
     ../docFont/utilDocFontList.h \
     ../docFont/utilDocFont.h \
+    ../utilPs/psFontInfo.h \
+    ../textEncoding/textOfficeCharset.h \
     ../docBase/docListAdmin.h \
     ../docBase/docListTable.h \
     ../docBase/docListOverrideTable.h \
@@ -859,27 +553,34 @@ docRtfFrameProperties.o: \
     ../docBase/docSelectionScope.h \
     ../docBase/docEditPosition.h \
     ../docBase/docEditRange.h \
+    ../docBase/docEditPosition.h \
     ../docBuf/docTableRectangle.h \
+    ../docBuf/docDocumentTree.h \
+    ../docBase/docDocumentField.h \
+    ../docBase/docFieldInstructions.h \
+    ../docBase/docSelectionScope.h \
+    ../docBase/docEditRange.h \
+    ../docBase/docListNumberTree.h \
     ../docBase/docListTable.h \
     ../appUtil/sioGeneral.h \
     docRtfWriter.h \
-    docRtfTextConverter.h \
-    ../textEncoding/textConverterImpl.h \
-    ../docBase/docTabStop.h \
     docRtfReaderImpl.h \
     ../docBase/docNoteProperties.h \
+    ../docBase/docTabStop.h \
+    ../docBase/docTabStopList.h \
+    ../docBase/docTabStop.h \
     ../docBase/docListOverride.h \
     ../docBase/docListOverrideLevel.h \
     ../docBase/docListLevel.h \
+    ../docBase/docListDepth.h \
     ../docBase/docDocumentList.h \
     ../docBase/docBorderProperties.h \
+    docRtfTextConverter.h \
     docRtfControlWord.h
 
 docRtfListOverrideTable.o: \
     docRtfListOverrideTable.c \
     docRtfConfig.h \
-    ../include/appDebugon.h \
-    ../include/appDebug.h \
     docRtfWriterImpl.h \
     ../docBuf/docBuf.h \
     ../bitmap/bitmap.h \
@@ -888,27 +589,11 @@ docRtfListOverrideTable.o: \
     ../appUtil/utilColor.h \
     ../appUtil/utilMemoryBuffer.h \
     ../appUtil/geo2DInteger.h \
-    ../docFont/utilDocFont.h \
-    ../utilPs/psFontInfo.h \
-    ../appUtil/utilIndexSet.h \
-    ../appUtil/utilIndexMapping.h \
-    ../textEncoding/utilOfficeCharset.h \
     ../utilPs/psPostScriptFontList.h \
     ../utilPs/psFontFamily.h \
     ../utilPs/psFontInfo.h \
-    ../docBuf/docShape.h \
-    ../appUtil/geoAffineTransform.h \
-    ../docBase/docShapeProperties.h \
-    ../docBase/docPictureProperties.h \
-    ../appUtil/utilPropMask.h \
-    ../docBuf/docDocumentTree.h \
-    ../docBase/docDocumentField.h \
-    ../docBase/docFieldInstructions.h \
-    ../docBase/docSelectionScope.h \
-    ../docBase/docEditRange.h \
-    ../docBase/docEditPosition.h \
-    ../docBase/docListNumberTree.h \
-    ../docBase/docShapeDrawing.h \
+    ../appUtil/utilIndexSet.h \
+    ../appUtil/utilIndexMapping.h \
     ../docBase/docFramePropertiesAdmin.h \
     ../docBase/docFrameProperties.h \
     ../docBase/docPropVal.h \
@@ -919,6 +604,7 @@ docRtfListOverrideTable.o: \
     ../appUtil/utilIndexSet.h \
     ../docBase/docStyleSheet.h \
     ../docBase/docStyle.h \
+    ../appUtil/utilPropMask.h \
     ../docBase/docSectProperties.h \
     ../appUtil/utilDocumentGeometry.h \
     ../appUtil/utilPropMask.h \
@@ -934,6 +620,8 @@ docRtfListOverrideTable.o: \
     ../docBase/docDocumentProperties.h \
     ../docFont/utilDocFontList.h \
     ../docFont/utilDocFont.h \
+    ../utilPs/psFontInfo.h \
+    ../textEncoding/textOfficeCharset.h \
     ../docBase/docListAdmin.h \
     ../docBase/docListTable.h \
     ../docBase/docListOverrideTable.h \
@@ -949,110 +637,33 @@ docRtfListOverrideTable.o: \
     ../docBase/docSelectionScope.h \
     ../docBase/docEditPosition.h \
     ../docBase/docEditRange.h \
+    ../docBase/docEditPosition.h \
     ../docBuf/docTableRectangle.h \
+    ../docBuf/docDocumentTree.h \
+    ../docBase/docDocumentField.h \
+    ../docBase/docFieldInstructions.h \
+    ../docBase/docSelectionScope.h \
+    ../docBase/docEditRange.h \
+    ../docBase/docListNumberTree.h \
     ../docBase/docListTable.h \
     ../appUtil/sioGeneral.h \
     docRtfWriter.h \
-    docRtfTextConverter.h \
-    ../textEncoding/textConverterImpl.h \
+    docRtfReaderImpl.h \
+    ../docBase/docNoteProperties.h \
     ../docBase/docTabStop.h \
-    docRtfReaderImpl.h \
-    ../docBase/docNoteProperties.h \
-    ../docBase/docListOverride.h \
-    ../docBase/docListOverrideLevel.h \
-    ../docBase/docListLevel.h \
-    ../docBase/docDocumentList.h \
-    ../docBase/docBorderProperties.h \
-    docRtfControlWord.h
-
-docRtfListTable.o: \
-    docRtfListTable.c \
-    docRtfConfig.h \
-    ../include/appDebugon.h \
-    ../include/appDebug.h \
-    docRtfReaderImpl.h \
-    ../docBuf/docBuf.h \
-    ../bitmap/bitmap.h \
-    ../appUtil/utilColor.h \
-    ../appUtil/utilPalette.h \
-    ../appUtil/utilColor.h \
-    ../appUtil/utilMemoryBuffer.h \
-    ../appUtil/geo2DInteger.h \
-    ../docFont/utilDocFont.h \
-    ../utilPs/psFontInfo.h \
-    ../appUtil/utilIndexSet.h \
-    ../appUtil/utilIndexMapping.h \
-    ../textEncoding/utilOfficeCharset.h \
-    ../utilPs/psPostScriptFontList.h \
-    ../utilPs/psFontFamily.h \
-    ../utilPs/psFontInfo.h \
-    ../docBuf/docShape.h \
-    ../appUtil/geoAffineTransform.h \
-    ../docBase/docShapeProperties.h \
-    ../docBase/docPictureProperties.h \
-    ../appUtil/utilPropMask.h \
-    ../docBuf/docDocumentTree.h \
-    ../docBase/docDocumentField.h \
-    ../docBase/docFieldInstructions.h \
-    ../docBase/docSelectionScope.h \
-    ../docBase/docEditRange.h \
-    ../docBase/docEditPosition.h \
-    ../docBase/docListNumberTree.h \
-    ../docBase/docShapeDrawing.h \
-    ../docBase/docFramePropertiesAdmin.h \
-    ../docBase/docFrameProperties.h \
-    ../docBase/docPropVal.h \
-    ../appUtil/utilIntegerValueNode.h \
-    ../appUtil/utilNumberedPropertiesAdmin.h \
-    ../appUtil/utilIntegerValueNode.h \
-    ../appUtil/utilPagedList.h \
-    ../appUtil/utilIndexSet.h \
-    ../docBase/docStyleSheet.h \
-    ../docBase/docStyle.h \
-    ../docBase/docSectProperties.h \
-    ../appUtil/utilDocumentGeometry.h \
-    ../appUtil/utilPropMask.h \
-    ../appUtil/geo2DInteger.h \
-    ../docBase/docNotesProperties.h \
-    ../docBase/docRowProperties.h \
-    ../docBase/docCellProperties.h \
-    ../docBase/docItemShading.h \
-    ../docBase/docDocumentAttributeMap.h \
-    ../docBase/docParaProperties.h \
-    ../docBase/docParaNumber.h \
-    ../utilPs/textAttribute.h \
-    ../docBase/docDocumentProperties.h \
-    ../docFont/utilDocFontList.h \
-    ../docFont/utilDocFont.h \
-    ../docBase/docListAdmin.h \
-    ../docBase/docListTable.h \
-    ../docBase/docListOverrideTable.h \
-    ../docBase/docDocumentFieldList.h \
-    ../appUtil/utilPagedList.h \
-    ../docBuf/docDrawingShapeList.h \
-    ../docBase/docInsertedObjectList.h \
-    ../docBase/docObject.h \
-    ../docBase/docLayoutPosition.h \
-    ../docBase/docPictureProperties.h \
-    ../docBuf/docSelect.h \
-    ../docBase/docLayoutPosition.h \
-    ../docBase/docSelectionScope.h \
-    ../docBase/docEditPosition.h \
-    ../docBase/docEditRange.h \
-    ../docBuf/docTableRectangle.h \
-    ../docBase/docListTable.h \
-    ../docBase/docNoteProperties.h \
-    ../appUtil/sioGeneral.h \
+    ../docBase/docTabStopList.h \
     ../docBase/docTabStop.h \
     ../docBase/docListOverride.h \
     ../docBase/docListOverrideLevel.h \
     ../docBase/docListLevel.h \
+    ../docBase/docListDepth.h \
     ../docBase/docDocumentList.h \
     ../docBase/docBorderProperties.h \
     docRtfTextConverter.h \
-    ../textEncoding/textConverterImpl.h \
     docRtfControlWord.h \
-    docRtfTagEnum.h
+    ../docBase/docListAdmin.h \
+    ../include/appDebugon.h \
+    ../include/appDebug.h
 
 docRtfParaNumber.o: \
     docRtfParaNumber.c \
@@ -1067,27 +678,11 @@ docRtfParaNumber.o: \
     ../appUtil/utilColor.h \
     ../appUtil/utilMemoryBuffer.h \
     ../appUtil/geo2DInteger.h \
-    ../docFont/utilDocFont.h \
-    ../utilPs/psFontInfo.h \
-    ../appUtil/utilIndexSet.h \
-    ../appUtil/utilIndexMapping.h \
-    ../textEncoding/utilOfficeCharset.h \
     ../utilPs/psPostScriptFontList.h \
     ../utilPs/psFontFamily.h \
     ../utilPs/psFontInfo.h \
-    ../docBuf/docShape.h \
-    ../appUtil/geoAffineTransform.h \
-    ../docBase/docShapeProperties.h \
-    ../docBase/docPictureProperties.h \
-    ../appUtil/utilPropMask.h \
-    ../docBuf/docDocumentTree.h \
-    ../docBase/docDocumentField.h \
-    ../docBase/docFieldInstructions.h \
-    ../docBase/docSelectionScope.h \
-    ../docBase/docEditRange.h \
-    ../docBase/docEditPosition.h \
-    ../docBase/docListNumberTree.h \
-    ../docBase/docShapeDrawing.h \
+    ../appUtil/utilIndexSet.h \
+    ../appUtil/utilIndexMapping.h \
     ../docBase/docFramePropertiesAdmin.h \
     ../docBase/docFrameProperties.h \
     ../docBase/docPropVal.h \
@@ -1098,6 +693,7 @@ docRtfParaNumber.o: \
     ../appUtil/utilIndexSet.h \
     ../docBase/docStyleSheet.h \
     ../docBase/docStyle.h \
+    ../appUtil/utilPropMask.h \
     ../docBase/docSectProperties.h \
     ../appUtil/utilDocumentGeometry.h \
     ../appUtil/utilPropMask.h \
@@ -1113,6 +709,8 @@ docRtfParaNumber.o: \
     ../docBase/docDocumentProperties.h \
     ../docFont/utilDocFontList.h \
     ../docFont/utilDocFont.h \
+    ../utilPs/psFontInfo.h \
+    ../textEncoding/textOfficeCharset.h \
     ../docBase/docListAdmin.h \
     ../docBase/docListTable.h \
     ../docBase/docListOverrideTable.h \
@@ -1128,18 +726,27 @@ docRtfParaNumber.o: \
     ../docBase/docSelectionScope.h \
     ../docBase/docEditPosition.h \
     ../docBase/docEditRange.h \
+    ../docBase/docEditPosition.h \
     ../docBuf/docTableRectangle.h \
+    ../docBuf/docDocumentTree.h \
+    ../docBase/docDocumentField.h \
+    ../docBase/docFieldInstructions.h \
+    ../docBase/docSelectionScope.h \
+    ../docBase/docEditRange.h \
+    ../docBase/docListNumberTree.h \
     ../docBase/docListTable.h \
     ../docBase/docNoteProperties.h \
     ../appUtil/sioGeneral.h \
     ../docBase/docTabStop.h \
+    ../docBase/docTabStopList.h \
+    ../docBase/docTabStop.h \
     ../docBase/docListOverride.h \
     ../docBase/docListOverrideLevel.h \
     ../docBase/docListLevel.h \
+    ../docBase/docListDepth.h \
     ../docBase/docDocumentList.h \
     ../docBase/docBorderProperties.h \
     docRtfTextConverter.h \
-    ../textEncoding/textConverterImpl.h \
     docRtfControlWord.h \
     docRtfTagEnum.h
 
@@ -1156,27 +763,11 @@ docRtfRead.o: \
     ../appUtil/utilColor.h \
     ../appUtil/utilMemoryBuffer.h \
     ../appUtil/geo2DInteger.h \
-    ../docFont/utilDocFont.h \
-    ../utilPs/psFontInfo.h \
-    ../appUtil/utilIndexSet.h \
-    ../appUtil/utilIndexMapping.h \
-    ../textEncoding/utilOfficeCharset.h \
     ../utilPs/psPostScriptFontList.h \
     ../utilPs/psFontFamily.h \
     ../utilPs/psFontInfo.h \
-    ../docBuf/docShape.h \
-    ../appUtil/geoAffineTransform.h \
-    ../docBase/docShapeProperties.h \
-    ../docBase/docPictureProperties.h \
-    ../appUtil/utilPropMask.h \
-    ../docBuf/docDocumentTree.h \
-    ../docBase/docDocumentField.h \
-    ../docBase/docFieldInstructions.h \
-    ../docBase/docSelectionScope.h \
-    ../docBase/docEditRange.h \
-    ../docBase/docEditPosition.h \
-    ../docBase/docListNumberTree.h \
-    ../docBase/docShapeDrawing.h \
+    ../appUtil/utilIndexSet.h \
+    ../appUtil/utilIndexMapping.h \
     ../docBase/docFramePropertiesAdmin.h \
     ../docBase/docFrameProperties.h \
     ../docBase/docPropVal.h \
@@ -1187,6 +778,7 @@ docRtfRead.o: \
     ../appUtil/utilIndexSet.h \
     ../docBase/docStyleSheet.h \
     ../docBase/docStyle.h \
+    ../appUtil/utilPropMask.h \
     ../docBase/docSectProperties.h \
     ../appUtil/utilDocumentGeometry.h \
     ../appUtil/utilPropMask.h \
@@ -1202,6 +794,8 @@ docRtfRead.o: \
     ../docBase/docDocumentProperties.h \
     ../docFont/utilDocFontList.h \
     ../docFont/utilDocFont.h \
+    ../utilPs/psFontInfo.h \
+    ../textEncoding/textOfficeCharset.h \
     ../docBase/docListAdmin.h \
     ../docBase/docListTable.h \
     ../docBase/docListOverrideTable.h \
@@ -1217,18 +811,27 @@ docRtfRead.o: \
     ../docBase/docSelectionScope.h \
     ../docBase/docEditPosition.h \
     ../docBase/docEditRange.h \
+    ../docBase/docEditPosition.h \
     ../docBuf/docTableRectangle.h \
+    ../docBuf/docDocumentTree.h \
+    ../docBase/docDocumentField.h \
+    ../docBase/docFieldInstructions.h \
+    ../docBase/docSelectionScope.h \
+    ../docBase/docEditRange.h \
+    ../docBase/docListNumberTree.h \
     ../docBase/docListTable.h \
     ../docBase/docNoteProperties.h \
     ../appUtil/sioGeneral.h \
     ../docBase/docTabStop.h \
+    ../docBase/docTabStopList.h \
+    ../docBase/docTabStop.h \
     ../docBase/docListOverride.h \
     ../docBase/docListOverrideLevel.h \
     ../docBase/docListLevel.h \
+    ../docBase/docListDepth.h \
     ../docBase/docDocumentList.h \
     ../docBase/docBorderProperties.h \
     docRtfTextConverter.h \
-    ../textEncoding/textConverterImpl.h \
     docRtfControlWord.h \
     docRtfReadWrite.h \
     docRtfTagEnum.h \
@@ -1244,7 +847,93 @@ docRtfRead.o: \
     ../docBase/docRowProperties.h \
     ../docBuf/docSectNode.h \
     ../docBase/docSectProperties.h \
-    ../docBuf/docNotes.h
+    ../docBuf/docNotes.h \
+    ../docBuf/docDebug.h
+
+docRtfReadCellProperties.o: \
+    docRtfReadCellProperties.c \
+    docRtfConfig.h \
+    ../include/appDebugon.h \
+    ../include/appDebug.h \
+    docRtfReaderImpl.h \
+    ../docBuf/docBuf.h \
+    ../bitmap/bitmap.h \
+    ../appUtil/utilColor.h \
+    ../appUtil/utilPalette.h \
+    ../appUtil/utilColor.h \
+    ../appUtil/utilMemoryBuffer.h \
+    ../appUtil/geo2DInteger.h \
+    ../utilPs/psPostScriptFontList.h \
+    ../utilPs/psFontFamily.h \
+    ../utilPs/psFontInfo.h \
+    ../appUtil/utilIndexSet.h \
+    ../appUtil/utilIndexMapping.h \
+    ../docBase/docFramePropertiesAdmin.h \
+    ../docBase/docFrameProperties.h \
+    ../docBase/docPropVal.h \
+    ../appUtil/utilIntegerValueNode.h \
+    ../appUtil/utilNumberedPropertiesAdmin.h \
+    ../appUtil/utilIntegerValueNode.h \
+    ../appUtil/utilPagedList.h \
+    ../appUtil/utilIndexSet.h \
+    ../docBase/docStyleSheet.h \
+    ../docBase/docStyle.h \
+    ../appUtil/utilPropMask.h \
+    ../docBase/docSectProperties.h \
+    ../appUtil/utilDocumentGeometry.h \
+    ../appUtil/utilPropMask.h \
+    ../appUtil/geo2DInteger.h \
+    ../docBase/docNotesProperties.h \
+    ../docBase/docRowProperties.h \
+    ../docBase/docCellProperties.h \
+    ../docBase/docItemShading.h \
+    ../docBase/docDocumentAttributeMap.h \
+    ../docBase/docParaProperties.h \
+    ../docBase/docParaNumber.h \
+    ../utilPs/textAttribute.h \
+    ../docBase/docDocumentProperties.h \
+    ../docFont/utilDocFontList.h \
+    ../docFont/utilDocFont.h \
+    ../utilPs/psFontInfo.h \
+    ../textEncoding/textOfficeCharset.h \
+    ../docBase/docListAdmin.h \
+    ../docBase/docListTable.h \
+    ../docBase/docListOverrideTable.h \
+    ../docBase/docDocumentFieldList.h \
+    ../appUtil/utilPagedList.h \
+    ../docBuf/docDrawingShapeList.h \
+    ../docBase/docInsertedObjectList.h \
+    ../docBase/docObject.h \
+    ../docBase/docLayoutPosition.h \
+    ../docBase/docPictureProperties.h \
+    ../docBuf/docSelect.h \
+    ../docBase/docLayoutPosition.h \
+    ../docBase/docSelectionScope.h \
+    ../docBase/docEditPosition.h \
+    ../docBase/docEditRange.h \
+    ../docBase/docEditPosition.h \
+    ../docBuf/docTableRectangle.h \
+    ../docBuf/docDocumentTree.h \
+    ../docBase/docDocumentField.h \
+    ../docBase/docFieldInstructions.h \
+    ../docBase/docSelectionScope.h \
+    ../docBase/docEditRange.h \
+    ../docBase/docListNumberTree.h \
+    ../docBase/docListTable.h \
+    ../docBase/docNoteProperties.h \
+    ../appUtil/sioGeneral.h \
+    ../docBase/docTabStop.h \
+    ../docBase/docTabStopList.h \
+    ../docBase/docTabStop.h \
+    ../docBase/docListOverride.h \
+    ../docBase/docListOverrideLevel.h \
+    ../docBase/docListLevel.h \
+    ../docBase/docListDepth.h \
+    ../docBase/docDocumentList.h \
+    ../docBase/docBorderProperties.h \
+    docRtfTextConverter.h \
+    docRtfControlWord.h \
+    docRtfTagEnum.h
 
 docRtfReadColorTable.o: \
     docRtfReadColorTable.c \
@@ -1259,27 +948,11 @@ docRtfReadColorTable.o: \
     ../appUtil/utilColor.h \
     ../appUtil/utilMemoryBuffer.h \
     ../appUtil/geo2DInteger.h \
-    ../docFont/utilDocFont.h \
-    ../utilPs/psFontInfo.h \
-    ../appUtil/utilIndexSet.h \
-    ../appUtil/utilIndexMapping.h \
-    ../textEncoding/utilOfficeCharset.h \
     ../utilPs/psPostScriptFontList.h \
     ../utilPs/psFontFamily.h \
     ../utilPs/psFontInfo.h \
-    ../docBuf/docShape.h \
-    ../appUtil/geoAffineTransform.h \
-    ../docBase/docShapeProperties.h \
-    ../docBase/docPictureProperties.h \
-    ../appUtil/utilPropMask.h \
-    ../docBuf/docDocumentTree.h \
-    ../docBase/docDocumentField.h \
-    ../docBase/docFieldInstructions.h \
-    ../docBase/docSelectionScope.h \
-    ../docBase/docEditRange.h \
-    ../docBase/docEditPosition.h \
-    ../docBase/docListNumberTree.h \
-    ../docBase/docShapeDrawing.h \
+    ../appUtil/utilIndexSet.h \
+    ../appUtil/utilIndexMapping.h \
     ../docBase/docFramePropertiesAdmin.h \
     ../docBase/docFrameProperties.h \
     ../docBase/docPropVal.h \
@@ -1290,6 +963,7 @@ docRtfReadColorTable.o: \
     ../appUtil/utilIndexSet.h \
     ../docBase/docStyleSheet.h \
     ../docBase/docStyle.h \
+    ../appUtil/utilPropMask.h \
     ../docBase/docSectProperties.h \
     ../appUtil/utilDocumentGeometry.h \
     ../appUtil/utilPropMask.h \
@@ -1305,6 +979,8 @@ docRtfReadColorTable.o: \
     ../docBase/docDocumentProperties.h \
     ../docFont/utilDocFontList.h \
     ../docFont/utilDocFont.h \
+    ../utilPs/psFontInfo.h \
+    ../textEncoding/textOfficeCharset.h \
     ../docBase/docListAdmin.h \
     ../docBase/docListTable.h \
     ../docBase/docListOverrideTable.h \
@@ -1320,22 +996,118 @@ docRtfReadColorTable.o: \
     ../docBase/docSelectionScope.h \
     ../docBase/docEditPosition.h \
     ../docBase/docEditRange.h \
+    ../docBase/docEditPosition.h \
     ../docBuf/docTableRectangle.h \
+    ../docBuf/docDocumentTree.h \
+    ../docBase/docDocumentField.h \
+    ../docBase/docFieldInstructions.h \
+    ../docBase/docSelectionScope.h \
+    ../docBase/docEditRange.h \
+    ../docBase/docListNumberTree.h \
     ../docBase/docListTable.h \
     ../docBase/docNoteProperties.h \
     ../appUtil/sioGeneral.h \
     ../docBase/docTabStop.h \
+    ../docBase/docTabStopList.h \
+    ../docBase/docTabStop.h \
     ../docBase/docListOverride.h \
     ../docBase/docListOverrideLevel.h \
     ../docBase/docListLevel.h \
+    ../docBase/docListDepth.h \
     ../docBase/docDocumentList.h \
     ../docBase/docBorderProperties.h \
     docRtfTextConverter.h \
-    ../textEncoding/textConverterImpl.h \
     docRtfControlWord.h
 
-docRtfReadExternalItem.o: \
-    docRtfReadExternalItem.c \
+docRtfReadDocumentProperties.o: \
+    docRtfReadDocumentProperties.c \
+    docRtfConfig.h \
+    ../include/appDebugon.h \
+    ../include/appDebug.h \
+    ../appUtil/appUnit.h \
+    ../textEncoding/textOfficeCharset.h \
+    ../appUtil/utilIndexMapping.h \
+    ../appUtil/utilIndexSet.h \
+    ../textEncoding/textConverter.h \
+    docRtfReaderImpl.h \
+    ../docBuf/docBuf.h \
+    ../bitmap/bitmap.h \
+    ../appUtil/utilColor.h \
+    ../appUtil/utilPalette.h \
+    ../appUtil/utilColor.h \
+    ../appUtil/utilMemoryBuffer.h \
+    ../appUtil/geo2DInteger.h \
+    ../utilPs/psPostScriptFontList.h \
+    ../utilPs/psFontFamily.h \
+    ../utilPs/psFontInfo.h \
+    ../docBase/docFramePropertiesAdmin.h \
+    ../docBase/docFrameProperties.h \
+    ../docBase/docPropVal.h \
+    ../appUtil/utilIntegerValueNode.h \
+    ../appUtil/utilNumberedPropertiesAdmin.h \
+    ../appUtil/utilIntegerValueNode.h \
+    ../appUtil/utilPagedList.h \
+    ../appUtil/utilIndexSet.h \
+    ../docBase/docStyleSheet.h \
+    ../docBase/docStyle.h \
+    ../appUtil/utilPropMask.h \
+    ../docBase/docSectProperties.h \
+    ../appUtil/utilDocumentGeometry.h \
+    ../appUtil/utilPropMask.h \
+    ../appUtil/geo2DInteger.h \
+    ../docBase/docNotesProperties.h \
+    ../docBase/docRowProperties.h \
+    ../docBase/docCellProperties.h \
+    ../docBase/docItemShading.h \
+    ../docBase/docDocumentAttributeMap.h \
+    ../docBase/docParaProperties.h \
+    ../docBase/docParaNumber.h \
+    ../utilPs/textAttribute.h \
+    ../docBase/docDocumentProperties.h \
+    ../docFont/utilDocFontList.h \
+    ../docFont/utilDocFont.h \
+    ../utilPs/psFontInfo.h \
+    ../docBase/docListAdmin.h \
+    ../docBase/docListTable.h \
+    ../docBase/docListOverrideTable.h \
+    ../docBase/docDocumentFieldList.h \
+    ../appUtil/utilPagedList.h \
+    ../docBuf/docDrawingShapeList.h \
+    ../docBase/docInsertedObjectList.h \
+    ../docBase/docObject.h \
+    ../docBase/docLayoutPosition.h \
+    ../docBase/docPictureProperties.h \
+    ../docBuf/docSelect.h \
+    ../docBase/docLayoutPosition.h \
+    ../docBase/docSelectionScope.h \
+    ../docBase/docEditPosition.h \
+    ../docBase/docEditRange.h \
+    ../docBase/docEditPosition.h \
+    ../docBuf/docTableRectangle.h \
+    ../docBuf/docDocumentTree.h \
+    ../docBase/docDocumentField.h \
+    ../docBase/docFieldInstructions.h \
+    ../docBase/docSelectionScope.h \
+    ../docBase/docEditRange.h \
+    ../docBase/docListNumberTree.h \
+    ../docBase/docListTable.h \
+    ../docBase/docNoteProperties.h \
+    ../appUtil/sioGeneral.h \
+    ../docBase/docTabStop.h \
+    ../docBase/docTabStopList.h \
+    ../docBase/docTabStop.h \
+    ../docBase/docListOverride.h \
+    ../docBase/docListOverrideLevel.h \
+    ../docBase/docListLevel.h \
+    ../docBase/docListDepth.h \
+    ../docBase/docDocumentList.h \
+    ../docBase/docBorderProperties.h \
+    docRtfTextConverter.h \
+    docRtfControlWord.h \
+    docRtfTagEnum.h
+
+docRtfReadDocumentTree.o: \
+    docRtfReadDocumentTree.c \
     docRtfConfig.h \
     ../include/appDebugon.h \
     ../include/appDebug.h \
@@ -1347,27 +1119,11 @@ docRtfReadExternalItem.o: \
     ../appUtil/utilColor.h \
     ../appUtil/utilMemoryBuffer.h \
     ../appUtil/geo2DInteger.h \
-    ../docFont/utilDocFont.h \
-    ../utilPs/psFontInfo.h \
-    ../appUtil/utilIndexSet.h \
-    ../appUtil/utilIndexMapping.h \
-    ../textEncoding/utilOfficeCharset.h \
     ../utilPs/psPostScriptFontList.h \
     ../utilPs/psFontFamily.h \
     ../utilPs/psFontInfo.h \
-    ../docBuf/docShape.h \
-    ../appUtil/geoAffineTransform.h \
-    ../docBase/docShapeProperties.h \
-    ../docBase/docPictureProperties.h \
-    ../appUtil/utilPropMask.h \
-    ../docBuf/docDocumentTree.h \
-    ../docBase/docDocumentField.h \
-    ../docBase/docFieldInstructions.h \
-    ../docBase/docSelectionScope.h \
-    ../docBase/docEditRange.h \
-    ../docBase/docEditPosition.h \
-    ../docBase/docListNumberTree.h \
-    ../docBase/docShapeDrawing.h \
+    ../appUtil/utilIndexSet.h \
+    ../appUtil/utilIndexMapping.h \
     ../docBase/docFramePropertiesAdmin.h \
     ../docBase/docFrameProperties.h \
     ../docBase/docPropVal.h \
@@ -1378,6 +1134,7 @@ docRtfReadExternalItem.o: \
     ../appUtil/utilIndexSet.h \
     ../docBase/docStyleSheet.h \
     ../docBase/docStyle.h \
+    ../appUtil/utilPropMask.h \
     ../docBase/docSectProperties.h \
     ../appUtil/utilDocumentGeometry.h \
     ../appUtil/utilPropMask.h \
@@ -1393,6 +1150,8 @@ docRtfReadExternalItem.o: \
     ../docBase/docDocumentProperties.h \
     ../docFont/utilDocFontList.h \
     ../docFont/utilDocFont.h \
+    ../utilPs/psFontInfo.h \
+    ../textEncoding/textOfficeCharset.h \
     ../docBase/docListAdmin.h \
     ../docBase/docListTable.h \
     ../docBase/docListOverrideTable.h \
@@ -1408,18 +1167,27 @@ docRtfReadExternalItem.o: \
     ../docBase/docSelectionScope.h \
     ../docBase/docEditPosition.h \
     ../docBase/docEditRange.h \
+    ../docBase/docEditPosition.h \
     ../docBuf/docTableRectangle.h \
+    ../docBuf/docDocumentTree.h \
+    ../docBase/docDocumentField.h \
+    ../docBase/docFieldInstructions.h \
+    ../docBase/docSelectionScope.h \
+    ../docBase/docEditRange.h \
+    ../docBase/docListNumberTree.h \
     ../docBase/docListTable.h \
     ../docBase/docNoteProperties.h \
     ../appUtil/sioGeneral.h \
     ../docBase/docTabStop.h \
+    ../docBase/docTabStopList.h \
+    ../docBase/docTabStop.h \
     ../docBase/docListOverride.h \
     ../docBase/docListOverrideLevel.h \
     ../docBase/docListLevel.h \
+    ../docBase/docListDepth.h \
     ../docBase/docDocumentList.h \
     ../docBase/docBorderProperties.h \
     docRtfTextConverter.h \
-    ../textEncoding/textConverterImpl.h \
     docRtfControlWord.h \
     ../docBuf/docParaParticules.h \
     ../docBuf/docBuf.h \
@@ -1452,27 +1220,11 @@ docRtfReadField.o: \
     ../appUtil/utilColor.h \
     ../appUtil/utilMemoryBuffer.h \
     ../appUtil/geo2DInteger.h \
-    ../docFont/utilDocFont.h \
-    ../utilPs/psFontInfo.h \
-    ../appUtil/utilIndexSet.h \
-    ../appUtil/utilIndexMapping.h \
-    ../textEncoding/utilOfficeCharset.h \
     ../utilPs/psPostScriptFontList.h \
     ../utilPs/psFontFamily.h \
     ../utilPs/psFontInfo.h \
-    ../docBuf/docShape.h \
-    ../appUtil/geoAffineTransform.h \
-    ../docBase/docShapeProperties.h \
-    ../docBase/docPictureProperties.h \
-    ../appUtil/utilPropMask.h \
-    ../docBuf/docDocumentTree.h \
-    ../docBase/docDocumentField.h \
-    ../docBase/docFieldInstructions.h \
-    ../docBase/docSelectionScope.h \
-    ../docBase/docEditRange.h \
-    ../docBase/docEditPosition.h \
-    ../docBase/docListNumberTree.h \
-    ../docBase/docShapeDrawing.h \
+    ../appUtil/utilIndexSet.h \
+    ../appUtil/utilIndexMapping.h \
     ../docBase/docFramePropertiesAdmin.h \
     ../docBase/docFrameProperties.h \
     ../docBase/docPropVal.h \
@@ -1483,6 +1235,7 @@ docRtfReadField.o: \
     ../appUtil/utilIndexSet.h \
     ../docBase/docStyleSheet.h \
     ../docBase/docStyle.h \
+    ../appUtil/utilPropMask.h \
     ../docBase/docSectProperties.h \
     ../appUtil/utilDocumentGeometry.h \
     ../appUtil/utilPropMask.h \
@@ -1498,6 +1251,8 @@ docRtfReadField.o: \
     ../docBase/docDocumentProperties.h \
     ../docFont/utilDocFontList.h \
     ../docFont/utilDocFont.h \
+    ../utilPs/psFontInfo.h \
+    ../textEncoding/textOfficeCharset.h \
     ../docBase/docListAdmin.h \
     ../docBase/docListTable.h \
     ../docBase/docListOverrideTable.h \
@@ -1513,18 +1268,27 @@ docRtfReadField.o: \
     ../docBase/docSelectionScope.h \
     ../docBase/docEditPosition.h \
     ../docBase/docEditRange.h \
+    ../docBase/docEditPosition.h \
     ../docBuf/docTableRectangle.h \
+    ../docBuf/docDocumentTree.h \
+    ../docBase/docDocumentField.h \
+    ../docBase/docFieldInstructions.h \
+    ../docBase/docSelectionScope.h \
+    ../docBase/docEditRange.h \
+    ../docBase/docListNumberTree.h \
     ../docBase/docListTable.h \
     ../docBase/docNoteProperties.h \
     ../appUtil/sioGeneral.h \
     ../docBase/docTabStop.h \
+    ../docBase/docTabStopList.h \
+    ../docBase/docTabStop.h \
     ../docBase/docListOverride.h \
     ../docBase/docListOverrideLevel.h \
     ../docBase/docListLevel.h \
+    ../docBase/docListDepth.h \
     ../docBase/docDocumentList.h \
     ../docBase/docBorderProperties.h \
     docRtfTextConverter.h \
-    ../textEncoding/textConverterImpl.h \
     docRtfControlWord.h \
     ../docBuf/docField.h \
     ../docBuf/docParaParticules.h \
@@ -1542,11 +1306,14 @@ docRtfReadField.o: \
     ../docBase/docTreeType.h \
     ../docBase/docBookmarkField.h
 
-docRtfReadNodeTree.o: \
-    docRtfReadNodeTree.c \
+docRtfReadFontTable.o: \
+    docRtfReadFontTable.c \
     docRtfConfig.h \
     ../include/appDebugon.h \
     ../include/appDebug.h \
+    ../textEncoding/textOfficeCharset.h \
+    ../appUtil/utilIndexMapping.h \
+    ../appUtil/utilIndexSet.h \
     docRtfReaderImpl.h \
     ../docBuf/docBuf.h \
     ../bitmap/bitmap.h \
@@ -1555,27 +1322,9 @@ docRtfReadNodeTree.o: \
     ../appUtil/utilColor.h \
     ../appUtil/utilMemoryBuffer.h \
     ../appUtil/geo2DInteger.h \
-    ../docFont/utilDocFont.h \
-    ../utilPs/psFontInfo.h \
-    ../appUtil/utilIndexSet.h \
-    ../appUtil/utilIndexMapping.h \
-    ../textEncoding/utilOfficeCharset.h \
     ../utilPs/psPostScriptFontList.h \
     ../utilPs/psFontFamily.h \
     ../utilPs/psFontInfo.h \
-    ../docBuf/docShape.h \
-    ../appUtil/geoAffineTransform.h \
-    ../docBase/docShapeProperties.h \
-    ../docBase/docPictureProperties.h \
-    ../appUtil/utilPropMask.h \
-    ../docBuf/docDocumentTree.h \
-    ../docBase/docDocumentField.h \
-    ../docBase/docFieldInstructions.h \
-    ../docBase/docSelectionScope.h \
-    ../docBase/docEditRange.h \
-    ../docBase/docEditPosition.h \
-    ../docBase/docListNumberTree.h \
-    ../docBase/docShapeDrawing.h \
     ../docBase/docFramePropertiesAdmin.h \
     ../docBase/docFrameProperties.h \
     ../docBase/docPropVal.h \
@@ -1586,6 +1335,7 @@ docRtfReadNodeTree.o: \
     ../appUtil/utilIndexSet.h \
     ../docBase/docStyleSheet.h \
     ../docBase/docStyle.h \
+    ../appUtil/utilPropMask.h \
     ../docBase/docSectProperties.h \
     ../appUtil/utilDocumentGeometry.h \
     ../appUtil/utilPropMask.h \
@@ -1601,6 +1351,7 @@ docRtfReadNodeTree.o: \
     ../docBase/docDocumentProperties.h \
     ../docFont/utilDocFontList.h \
     ../docFont/utilDocFont.h \
+    ../utilPs/psFontInfo.h \
     ../docBase/docListAdmin.h \
     ../docBase/docListTable.h \
     ../docBase/docListOverrideTable.h \
@@ -1616,22 +1367,200 @@ docRtfReadNodeTree.o: \
     ../docBase/docSelectionScope.h \
     ../docBase/docEditPosition.h \
     ../docBase/docEditRange.h \
+    ../docBase/docEditPosition.h \
     ../docBuf/docTableRectangle.h \
+    ../docBuf/docDocumentTree.h \
+    ../docBase/docDocumentField.h \
+    ../docBase/docFieldInstructions.h \
+    ../docBase/docSelectionScope.h \
+    ../docBase/docEditRange.h \
+    ../docBase/docListNumberTree.h \
     ../docBase/docListTable.h \
     ../docBase/docNoteProperties.h \
     ../appUtil/sioGeneral.h \
     ../docBase/docTabStop.h \
+    ../docBase/docTabStopList.h \
+    ../docBase/docTabStop.h \
     ../docBase/docListOverride.h \
     ../docBase/docListOverrideLevel.h \
     ../docBase/docListLevel.h \
+    ../docBase/docListDepth.h \
     ../docBase/docDocumentList.h \
     ../docBase/docBorderProperties.h \
     docRtfTextConverter.h \
-    ../textEncoding/textConverterImpl.h \
+    docRtfControlWord.h \
+    docRtfTagEnum.h
+
+docRtfReadListTable.o: \
+    docRtfReadListTable.c \
+    docRtfConfig.h \
+    ../include/appDebugon.h \
+    ../include/appDebug.h \
+    docRtfReaderImpl.h \
+    ../docBuf/docBuf.h \
+    ../bitmap/bitmap.h \
+    ../appUtil/utilColor.h \
+    ../appUtil/utilPalette.h \
+    ../appUtil/utilColor.h \
+    ../appUtil/utilMemoryBuffer.h \
+    ../appUtil/geo2DInteger.h \
+    ../utilPs/psPostScriptFontList.h \
+    ../utilPs/psFontFamily.h \
+    ../utilPs/psFontInfo.h \
+    ../appUtil/utilIndexSet.h \
+    ../appUtil/utilIndexMapping.h \
+    ../docBase/docFramePropertiesAdmin.h \
+    ../docBase/docFrameProperties.h \
+    ../docBase/docPropVal.h \
+    ../appUtil/utilIntegerValueNode.h \
+    ../appUtil/utilNumberedPropertiesAdmin.h \
+    ../appUtil/utilIntegerValueNode.h \
+    ../appUtil/utilPagedList.h \
+    ../appUtil/utilIndexSet.h \
+    ../docBase/docStyleSheet.h \
+    ../docBase/docStyle.h \
+    ../appUtil/utilPropMask.h \
+    ../docBase/docSectProperties.h \
+    ../appUtil/utilDocumentGeometry.h \
+    ../appUtil/utilPropMask.h \
+    ../appUtil/geo2DInteger.h \
+    ../docBase/docNotesProperties.h \
+    ../docBase/docRowProperties.h \
+    ../docBase/docCellProperties.h \
+    ../docBase/docItemShading.h \
+    ../docBase/docDocumentAttributeMap.h \
+    ../docBase/docParaProperties.h \
+    ../docBase/docParaNumber.h \
+    ../utilPs/textAttribute.h \
+    ../docBase/docDocumentProperties.h \
+    ../docFont/utilDocFontList.h \
+    ../docFont/utilDocFont.h \
+    ../utilPs/psFontInfo.h \
+    ../textEncoding/textOfficeCharset.h \
+    ../docBase/docListAdmin.h \
+    ../docBase/docListTable.h \
+    ../docBase/docListOverrideTable.h \
+    ../docBase/docDocumentFieldList.h \
+    ../appUtil/utilPagedList.h \
+    ../docBuf/docDrawingShapeList.h \
+    ../docBase/docInsertedObjectList.h \
+    ../docBase/docObject.h \
+    ../docBase/docLayoutPosition.h \
+    ../docBase/docPictureProperties.h \
+    ../docBuf/docSelect.h \
+    ../docBase/docLayoutPosition.h \
+    ../docBase/docSelectionScope.h \
+    ../docBase/docEditPosition.h \
+    ../docBase/docEditRange.h \
+    ../docBase/docEditPosition.h \
+    ../docBuf/docTableRectangle.h \
+    ../docBuf/docDocumentTree.h \
+    ../docBase/docDocumentField.h \
+    ../docBase/docFieldInstructions.h \
+    ../docBase/docSelectionScope.h \
+    ../docBase/docEditRange.h \
+    ../docBase/docListNumberTree.h \
+    ../docBase/docListTable.h \
+    ../docBase/docNoteProperties.h \
+    ../appUtil/sioGeneral.h \
+    ../docBase/docTabStop.h \
+    ../docBase/docTabStopList.h \
+    ../docBase/docTabStop.h \
+    ../docBase/docListOverride.h \
+    ../docBase/docListOverrideLevel.h \
+    ../docBase/docListLevel.h \
+    ../docBase/docListDepth.h \
+    ../docBase/docDocumentList.h \
+    ../docBase/docBorderProperties.h \
+    docRtfTextConverter.h \
+    docRtfControlWord.h \
+    docRtfTagEnum.h
+
+docRtfReadNodeTree.o: \
+    docRtfReadNodeTree.c \
+    docRtfConfig.h \
+    ../include/appDebugon.h \
+    ../include/appDebug.h \
+    docRtfReaderImpl.h \
+    ../docBuf/docBuf.h \
+    ../bitmap/bitmap.h \
+    ../appUtil/utilColor.h \
+    ../appUtil/utilPalette.h \
+    ../appUtil/utilColor.h \
+    ../appUtil/utilMemoryBuffer.h \
+    ../appUtil/geo2DInteger.h \
+    ../utilPs/psPostScriptFontList.h \
+    ../utilPs/psFontFamily.h \
+    ../utilPs/psFontInfo.h \
+    ../appUtil/utilIndexSet.h \
+    ../appUtil/utilIndexMapping.h \
+    ../docBase/docFramePropertiesAdmin.h \
+    ../docBase/docFrameProperties.h \
+    ../docBase/docPropVal.h \
+    ../appUtil/utilIntegerValueNode.h \
+    ../appUtil/utilNumberedPropertiesAdmin.h \
+    ../appUtil/utilIntegerValueNode.h \
+    ../appUtil/utilPagedList.h \
+    ../appUtil/utilIndexSet.h \
+    ../docBase/docStyleSheet.h \
+    ../docBase/docStyle.h \
+    ../appUtil/utilPropMask.h \
+    ../docBase/docSectProperties.h \
+    ../appUtil/utilDocumentGeometry.h \
+    ../appUtil/utilPropMask.h \
+    ../appUtil/geo2DInteger.h \
+    ../docBase/docNotesProperties.h \
+    ../docBase/docRowProperties.h \
+    ../docBase/docCellProperties.h \
+    ../docBase/docItemShading.h \
+    ../docBase/docDocumentAttributeMap.h \
+    ../docBase/docParaProperties.h \
+    ../docBase/docParaNumber.h \
+    ../utilPs/textAttribute.h \
+    ../docBase/docDocumentProperties.h \
+    ../docFont/utilDocFontList.h \
+    ../docFont/utilDocFont.h \
+    ../utilPs/psFontInfo.h \
+    ../textEncoding/textOfficeCharset.h \
+    ../docBase/docListAdmin.h \
+    ../docBase/docListTable.h \
+    ../docBase/docListOverrideTable.h \
+    ../docBase/docDocumentFieldList.h \
+    ../appUtil/utilPagedList.h \
+    ../docBuf/docDrawingShapeList.h \
+    ../docBase/docInsertedObjectList.h \
+    ../docBase/docObject.h \
+    ../docBase/docLayoutPosition.h \
+    ../docBase/docPictureProperties.h \
+    ../docBuf/docSelect.h \
+    ../docBase/docLayoutPosition.h \
+    ../docBase/docSelectionScope.h \
+    ../docBase/docEditPosition.h \
+    ../docBase/docEditRange.h \
+    ../docBase/docEditPosition.h \
+    ../docBuf/docTableRectangle.h \
+    ../docBuf/docDocumentTree.h \
+    ../docBase/docDocumentField.h \
+    ../docBase/docFieldInstructions.h \
+    ../docBase/docSelectionScope.h \
+    ../docBase/docEditRange.h \
+    ../docBase/docListNumberTree.h \
+    ../docBase/docListTable.h \
+    ../docBase/docNoteProperties.h \
+    ../appUtil/sioGeneral.h \
+    ../docBase/docTabStop.h \
+    ../docBase/docTabStopList.h \
+    ../docBase/docTabStop.h \
+    ../docBase/docListOverride.h \
+    ../docBase/docListOverrideLevel.h \
+    ../docBase/docListLevel.h \
+    ../docBase/docListDepth.h \
+    ../docBase/docDocumentList.h \
+    ../docBase/docBorderProperties.h \
+    docRtfTextConverter.h \
     docRtfControlWord.h \
     ../docBase/docTreeType.h \
     ../docBuf/docNodeTree.h \
-    ../docBase/docItemShadingAdmin.h \
     ../docBuf/docParaParticules.h \
     ../docBuf/docBuf.h \
     ../docBase/docTextParticule.h \
@@ -1657,27 +1586,11 @@ docRtfReadObjects.o: \
     ../docBase/docObjectProperties.h \
     ../docBuf/docParaParticules.h \
     ../docBuf/docBuf.h \
-    ../docFont/utilDocFont.h \
-    ../utilPs/psFontInfo.h \
-    ../appUtil/utilIndexSet.h \
-    ../appUtil/utilIndexMapping.h \
-    ../textEncoding/utilOfficeCharset.h \
     ../utilPs/psPostScriptFontList.h \
     ../utilPs/psFontFamily.h \
     ../utilPs/psFontInfo.h \
-    ../docBuf/docShape.h \
-    ../appUtil/geoAffineTransform.h \
-    ../docBase/docShapeProperties.h \
-    ../docBase/docPictureProperties.h \
-    ../appUtil/utilPropMask.h \
-    ../docBuf/docDocumentTree.h \
-    ../docBase/docDocumentField.h \
-    ../docBase/docFieldInstructions.h \
-    ../docBase/docSelectionScope.h \
-    ../docBase/docEditRange.h \
-    ../docBase/docEditPosition.h \
-    ../docBase/docListNumberTree.h \
-    ../docBase/docShapeDrawing.h \
+    ../appUtil/utilIndexSet.h \
+    ../appUtil/utilIndexMapping.h \
     ../docBase/docFramePropertiesAdmin.h \
     ../docBase/docFrameProperties.h \
     ../docBase/docPropVal.h \
@@ -1688,6 +1601,7 @@ docRtfReadObjects.o: \
     ../appUtil/utilIndexSet.h \
     ../docBase/docStyleSheet.h \
     ../docBase/docStyle.h \
+    ../appUtil/utilPropMask.h \
     ../docBase/docSectProperties.h \
     ../appUtil/utilDocumentGeometry.h \
     ../appUtil/utilPropMask.h \
@@ -1703,6 +1617,8 @@ docRtfReadObjects.o: \
     ../docBase/docDocumentProperties.h \
     ../docFont/utilDocFontList.h \
     ../docFont/utilDocFont.h \
+    ../utilPs/psFontInfo.h \
+    ../textEncoding/textOfficeCharset.h \
     ../docBase/docListAdmin.h \
     ../docBase/docListTable.h \
     ../docBase/docListOverrideTable.h \
@@ -1718,7 +1634,14 @@ docRtfReadObjects.o: \
     ../docBase/docSelectionScope.h \
     ../docBase/docEditPosition.h \
     ../docBase/docEditRange.h \
+    ../docBase/docEditPosition.h \
     ../docBuf/docTableRectangle.h \
+    ../docBuf/docDocumentTree.h \
+    ../docBase/docDocumentField.h \
+    ../docBase/docFieldInstructions.h \
+    ../docBase/docSelectionScope.h \
+    ../docBase/docEditRange.h \
+    ../docBase/docListNumberTree.h \
     ../docBase/docListTable.h \
     ../docBase/docTextParticule.h \
     ../docBase/docTextLine.h \
@@ -1730,6 +1653,11 @@ docRtfReadObjects.o: \
     ../docBase/docRowProperties.h \
     ../docBuf/docSectNode.h \
     ../docBase/docSectProperties.h \
+    ../docBuf/docShape.h \
+    ../appUtil/geoAffineTransform.h \
+    ../docBase/docShapeProperties.h \
+    ../docBase/docPictureProperties.h \
+    ../docBase/docShapeDrawing.h \
     ../include/appDebugon.h \
     ../include/appDebug.h \
     docRtfReaderImpl.h \
@@ -1737,13 +1665,15 @@ docRtfReadObjects.o: \
     ../docBase/docNoteProperties.h \
     ../appUtil/sioGeneral.h \
     ../docBase/docTabStop.h \
+    ../docBase/docTabStopList.h \
+    ../docBase/docTabStop.h \
     ../docBase/docListOverride.h \
     ../docBase/docListOverrideLevel.h \
     ../docBase/docListLevel.h \
+    ../docBase/docListDepth.h \
     ../docBase/docDocumentList.h \
     ../docBase/docBorderProperties.h \
     docRtfTextConverter.h \
-    ../textEncoding/textConverterImpl.h \
     docRtfControlWord.h \
     docRtfTagEnum.h \
     docRtfTags.h
@@ -1761,27 +1691,11 @@ docRtfReadParaProperties.o: \
     ../appUtil/utilColor.h \
     ../appUtil/utilMemoryBuffer.h \
     ../appUtil/geo2DInteger.h \
-    ../docFont/utilDocFont.h \
-    ../utilPs/psFontInfo.h \
-    ../appUtil/utilIndexSet.h \
-    ../appUtil/utilIndexMapping.h \
-    ../textEncoding/utilOfficeCharset.h \
     ../utilPs/psPostScriptFontList.h \
     ../utilPs/psFontFamily.h \
     ../utilPs/psFontInfo.h \
-    ../docBuf/docShape.h \
-    ../appUtil/geoAffineTransform.h \
-    ../docBase/docShapeProperties.h \
-    ../docBase/docPictureProperties.h \
-    ../appUtil/utilPropMask.h \
-    ../docBuf/docDocumentTree.h \
-    ../docBase/docDocumentField.h \
-    ../docBase/docFieldInstructions.h \
-    ../docBase/docSelectionScope.h \
-    ../docBase/docEditRange.h \
-    ../docBase/docEditPosition.h \
-    ../docBase/docListNumberTree.h \
-    ../docBase/docShapeDrawing.h \
+    ../appUtil/utilIndexSet.h \
+    ../appUtil/utilIndexMapping.h \
     ../docBase/docFramePropertiesAdmin.h \
     ../docBase/docFrameProperties.h \
     ../docBase/docPropVal.h \
@@ -1792,6 +1706,7 @@ docRtfReadParaProperties.o: \
     ../appUtil/utilIndexSet.h \
     ../docBase/docStyleSheet.h \
     ../docBase/docStyle.h \
+    ../appUtil/utilPropMask.h \
     ../docBase/docSectProperties.h \
     ../appUtil/utilDocumentGeometry.h \
     ../appUtil/utilPropMask.h \
@@ -1807,6 +1722,8 @@ docRtfReadParaProperties.o: \
     ../docBase/docDocumentProperties.h \
     ../docFont/utilDocFontList.h \
     ../docFont/utilDocFont.h \
+    ../utilPs/psFontInfo.h \
+    ../textEncoding/textOfficeCharset.h \
     ../docBase/docListAdmin.h \
     ../docBase/docListTable.h \
     ../docBase/docListOverrideTable.h \
@@ -1822,22 +1739,301 @@ docRtfReadParaProperties.o: \
     ../docBase/docSelectionScope.h \
     ../docBase/docEditPosition.h \
     ../docBase/docEditRange.h \
+    ../docBase/docEditPosition.h \
     ../docBuf/docTableRectangle.h \
+    ../docBuf/docDocumentTree.h \
+    ../docBase/docDocumentField.h \
+    ../docBase/docFieldInstructions.h \
+    ../docBase/docSelectionScope.h \
+    ../docBase/docEditRange.h \
+    ../docBase/docListNumberTree.h \
     ../docBase/docListTable.h \
     ../docBase/docNoteProperties.h \
     ../appUtil/sioGeneral.h \
     ../docBase/docTabStop.h \
+    ../docBase/docTabStopList.h \
+    ../docBase/docTabStop.h \
     ../docBase/docListOverride.h \
     ../docBase/docListOverrideLevel.h \
     ../docBase/docListLevel.h \
+    ../docBase/docListDepth.h \
     ../docBase/docDocumentList.h \
     ../docBase/docBorderProperties.h \
     docRtfTextConverter.h \
-    ../textEncoding/textConverterImpl.h \
     docRtfControlWord.h \
-    ../docBase/docParaRulerAdmin.h \
+    ../docBuf/docTreeNode.h \
+    ../docBuf/docParaNode.h \
+    ../docBase/docParaProperties.h \
+    ../docBuf/docCellNode.h \
+    ../docBuf/docRowNode.h \
+    ../docBase/docRowProperties.h \
+    ../docBuf/docSectNode.h \
+    ../docBase/docSectProperties.h \
+    ../docBuf/docNodeTree.h
+
+docRtfReadRowProperties.o: \
+    docRtfReadRowProperties.c \
+    docRtfConfig.h \
+    ../include/appDebugon.h \
+    ../include/appDebug.h \
+    docRtfReaderImpl.h \
+    ../docBuf/docBuf.h \
+    ../bitmap/bitmap.h \
+    ../appUtil/utilColor.h \
+    ../appUtil/utilPalette.h \
+    ../appUtil/utilColor.h \
+    ../appUtil/utilMemoryBuffer.h \
+    ../appUtil/geo2DInteger.h \
+    ../utilPs/psPostScriptFontList.h \
+    ../utilPs/psFontFamily.h \
+    ../utilPs/psFontInfo.h \
+    ../appUtil/utilIndexSet.h \
+    ../appUtil/utilIndexMapping.h \
+    ../docBase/docFramePropertiesAdmin.h \
+    ../docBase/docFrameProperties.h \
+    ../docBase/docPropVal.h \
+    ../appUtil/utilIntegerValueNode.h \
+    ../appUtil/utilNumberedPropertiesAdmin.h \
+    ../appUtil/utilIntegerValueNode.h \
+    ../appUtil/utilPagedList.h \
+    ../appUtil/utilIndexSet.h \
+    ../docBase/docStyleSheet.h \
+    ../docBase/docStyle.h \
+    ../appUtil/utilPropMask.h \
+    ../docBase/docSectProperties.h \
+    ../appUtil/utilDocumentGeometry.h \
+    ../appUtil/utilPropMask.h \
+    ../appUtil/geo2DInteger.h \
+    ../docBase/docNotesProperties.h \
+    ../docBase/docRowProperties.h \
+    ../docBase/docCellProperties.h \
+    ../docBase/docItemShading.h \
+    ../docBase/docDocumentAttributeMap.h \
+    ../docBase/docParaProperties.h \
+    ../docBase/docParaNumber.h \
+    ../utilPs/textAttribute.h \
+    ../docBase/docDocumentProperties.h \
+    ../docFont/utilDocFontList.h \
+    ../docFont/utilDocFont.h \
+    ../utilPs/psFontInfo.h \
+    ../textEncoding/textOfficeCharset.h \
+    ../docBase/docListAdmin.h \
+    ../docBase/docListTable.h \
+    ../docBase/docListOverrideTable.h \
+    ../docBase/docDocumentFieldList.h \
+    ../appUtil/utilPagedList.h \
+    ../docBuf/docDrawingShapeList.h \
+    ../docBase/docInsertedObjectList.h \
+    ../docBase/docObject.h \
+    ../docBase/docLayoutPosition.h \
+    ../docBase/docPictureProperties.h \
+    ../docBuf/docSelect.h \
+    ../docBase/docLayoutPosition.h \
+    ../docBase/docSelectionScope.h \
+    ../docBase/docEditPosition.h \
+    ../docBase/docEditRange.h \
+    ../docBase/docEditPosition.h \
+    ../docBuf/docTableRectangle.h \
+    ../docBuf/docDocumentTree.h \
+    ../docBase/docDocumentField.h \
+    ../docBase/docFieldInstructions.h \
+    ../docBase/docSelectionScope.h \
+    ../docBase/docEditRange.h \
+    ../docBase/docListNumberTree.h \
+    ../docBase/docListTable.h \
+    ../docBase/docNoteProperties.h \
+    ../appUtil/sioGeneral.h \
     ../docBase/docTabStop.h \
-    ../docBase/docItemShadingAdmin.h
+    ../docBase/docTabStopList.h \
+    ../docBase/docTabStop.h \
+    ../docBase/docListOverride.h \
+    ../docBase/docListOverrideLevel.h \
+    ../docBase/docListLevel.h \
+    ../docBase/docListDepth.h \
+    ../docBase/docDocumentList.h \
+    ../docBase/docBorderProperties.h \
+    docRtfTextConverter.h \
+    docRtfControlWord.h
+
+docRtfReadRtf.o: \
+    docRtfReadRtf.c \
+    docRtfConfig.h \
+    ../include/charnames.h \
+    ../include/appDebugon.h \
+    ../include/appDebug.h \
+    ../textEncoding/textOfficeCharset.h \
+    ../appUtil/utilIndexMapping.h \
+    ../appUtil/utilIndexSet.h \
+    docRtfReaderImpl.h \
+    ../docBuf/docBuf.h \
+    ../bitmap/bitmap.h \
+    ../appUtil/utilColor.h \
+    ../appUtil/utilPalette.h \
+    ../appUtil/utilColor.h \
+    ../appUtil/utilMemoryBuffer.h \
+    ../appUtil/geo2DInteger.h \
+    ../utilPs/psPostScriptFontList.h \
+    ../utilPs/psFontFamily.h \
+    ../utilPs/psFontInfo.h \
+    ../docBase/docFramePropertiesAdmin.h \
+    ../docBase/docFrameProperties.h \
+    ../docBase/docPropVal.h \
+    ../appUtil/utilIntegerValueNode.h \
+    ../appUtil/utilNumberedPropertiesAdmin.h \
+    ../appUtil/utilIntegerValueNode.h \
+    ../appUtil/utilPagedList.h \
+    ../appUtil/utilIndexSet.h \
+    ../docBase/docStyleSheet.h \
+    ../docBase/docStyle.h \
+    ../appUtil/utilPropMask.h \
+    ../docBase/docSectProperties.h \
+    ../appUtil/utilDocumentGeometry.h \
+    ../appUtil/utilPropMask.h \
+    ../appUtil/geo2DInteger.h \
+    ../docBase/docNotesProperties.h \
+    ../docBase/docRowProperties.h \
+    ../docBase/docCellProperties.h \
+    ../docBase/docItemShading.h \
+    ../docBase/docDocumentAttributeMap.h \
+    ../docBase/docParaProperties.h \
+    ../docBase/docParaNumber.h \
+    ../utilPs/textAttribute.h \
+    ../docBase/docDocumentProperties.h \
+    ../docFont/utilDocFontList.h \
+    ../docFont/utilDocFont.h \
+    ../utilPs/psFontInfo.h \
+    ../docBase/docListAdmin.h \
+    ../docBase/docListTable.h \
+    ../docBase/docListOverrideTable.h \
+    ../docBase/docDocumentFieldList.h \
+    ../appUtil/utilPagedList.h \
+    ../docBuf/docDrawingShapeList.h \
+    ../docBase/docInsertedObjectList.h \
+    ../docBase/docObject.h \
+    ../docBase/docLayoutPosition.h \
+    ../docBase/docPictureProperties.h \
+    ../docBuf/docSelect.h \
+    ../docBase/docLayoutPosition.h \
+    ../docBase/docSelectionScope.h \
+    ../docBase/docEditPosition.h \
+    ../docBase/docEditRange.h \
+    ../docBase/docEditPosition.h \
+    ../docBuf/docTableRectangle.h \
+    ../docBuf/docDocumentTree.h \
+    ../docBase/docDocumentField.h \
+    ../docBase/docFieldInstructions.h \
+    ../docBase/docSelectionScope.h \
+    ../docBase/docEditRange.h \
+    ../docBase/docListNumberTree.h \
+    ../docBase/docListTable.h \
+    ../docBase/docNoteProperties.h \
+    ../appUtil/sioGeneral.h \
+    ../docBase/docTabStop.h \
+    ../docBase/docTabStopList.h \
+    ../docBase/docTabStop.h \
+    ../docBase/docListOverride.h \
+    ../docBase/docListOverrideLevel.h \
+    ../docBase/docListLevel.h \
+    ../docBase/docListDepth.h \
+    ../docBase/docDocumentList.h \
+    ../docBase/docBorderProperties.h \
+    docRtfTextConverter.h \
+    docRtfControlWord.h \
+    docRtfTags.h \
+    docRtfFlags.h
+
+docRtfReadSectProperties.o: \
+    docRtfReadSectProperties.c \
+    docRtfConfig.h \
+    ../include/appDebugon.h \
+    ../include/appDebug.h \
+    docRtfReaderImpl.h \
+    ../docBuf/docBuf.h \
+    ../bitmap/bitmap.h \
+    ../appUtil/utilColor.h \
+    ../appUtil/utilPalette.h \
+    ../appUtil/utilColor.h \
+    ../appUtil/utilMemoryBuffer.h \
+    ../appUtil/geo2DInteger.h \
+    ../utilPs/psPostScriptFontList.h \
+    ../utilPs/psFontFamily.h \
+    ../utilPs/psFontInfo.h \
+    ../appUtil/utilIndexSet.h \
+    ../appUtil/utilIndexMapping.h \
+    ../docBase/docFramePropertiesAdmin.h \
+    ../docBase/docFrameProperties.h \
+    ../docBase/docPropVal.h \
+    ../appUtil/utilIntegerValueNode.h \
+    ../appUtil/utilNumberedPropertiesAdmin.h \
+    ../appUtil/utilIntegerValueNode.h \
+    ../appUtil/utilPagedList.h \
+    ../appUtil/utilIndexSet.h \
+    ../docBase/docStyleSheet.h \
+    ../docBase/docStyle.h \
+    ../appUtil/utilPropMask.h \
+    ../docBase/docSectProperties.h \
+    ../appUtil/utilDocumentGeometry.h \
+    ../appUtil/utilPropMask.h \
+    ../appUtil/geo2DInteger.h \
+    ../docBase/docNotesProperties.h \
+    ../docBase/docRowProperties.h \
+    ../docBase/docCellProperties.h \
+    ../docBase/docItemShading.h \
+    ../docBase/docDocumentAttributeMap.h \
+    ../docBase/docParaProperties.h \
+    ../docBase/docParaNumber.h \
+    ../utilPs/textAttribute.h \
+    ../docBase/docDocumentProperties.h \
+    ../docFont/utilDocFontList.h \
+    ../docFont/utilDocFont.h \
+    ../utilPs/psFontInfo.h \
+    ../textEncoding/textOfficeCharset.h \
+    ../docBase/docListAdmin.h \
+    ../docBase/docListTable.h \
+    ../docBase/docListOverrideTable.h \
+    ../docBase/docDocumentFieldList.h \
+    ../appUtil/utilPagedList.h \
+    ../docBuf/docDrawingShapeList.h \
+    ../docBase/docInsertedObjectList.h \
+    ../docBase/docObject.h \
+    ../docBase/docLayoutPosition.h \
+    ../docBase/docPictureProperties.h \
+    ../docBuf/docSelect.h \
+    ../docBase/docLayoutPosition.h \
+    ../docBase/docSelectionScope.h \
+    ../docBase/docEditPosition.h \
+    ../docBase/docEditRange.h \
+    ../docBase/docEditPosition.h \
+    ../docBuf/docTableRectangle.h \
+    ../docBuf/docDocumentTree.h \
+    ../docBase/docDocumentField.h \
+    ../docBase/docFieldInstructions.h \
+    ../docBase/docSelectionScope.h \
+    ../docBase/docEditRange.h \
+    ../docBase/docListNumberTree.h \
+    ../docBase/docListTable.h \
+    ../docBase/docNoteProperties.h \
+    ../appUtil/sioGeneral.h \
+    ../docBase/docTabStop.h \
+    ../docBase/docTabStopList.h \
+    ../docBase/docTabStop.h \
+    ../docBase/docListOverride.h \
+    ../docBase/docListOverrideLevel.h \
+    ../docBase/docListLevel.h \
+    ../docBase/docListDepth.h \
+    ../docBase/docDocumentList.h \
+    ../docBase/docBorderProperties.h \
+    docRtfTextConverter.h \
+    docRtfControlWord.h \
+    ../docBase/docTreeType.h \
+    ../docBuf/docTreeNode.h \
+    ../docBuf/docParaNode.h \
+    ../docBase/docParaProperties.h \
+    ../docBuf/docCellNode.h \
+    ../docBuf/docRowNode.h \
+    ../docBase/docRowProperties.h \
+    ../docBuf/docSectNode.h \
+    ../docBase/docSectProperties.h
 
 docRtfReadShape.o: \
     docRtfReadShape.c \
@@ -1852,27 +2048,11 @@ docRtfReadShape.o: \
     ../appUtil/utilColor.h \
     ../appUtil/utilMemoryBuffer.h \
     ../appUtil/geo2DInteger.h \
-    ../docFont/utilDocFont.h \
-    ../utilPs/psFontInfo.h \
-    ../appUtil/utilIndexSet.h \
-    ../appUtil/utilIndexMapping.h \
-    ../textEncoding/utilOfficeCharset.h \
     ../utilPs/psPostScriptFontList.h \
     ../utilPs/psFontFamily.h \
     ../utilPs/psFontInfo.h \
-    ../docBuf/docShape.h \
-    ../appUtil/geoAffineTransform.h \
-    ../docBase/docShapeProperties.h \
-    ../docBase/docPictureProperties.h \
-    ../appUtil/utilPropMask.h \
-    ../docBuf/docDocumentTree.h \
-    ../docBase/docDocumentField.h \
-    ../docBase/docFieldInstructions.h \
-    ../docBase/docSelectionScope.h \
-    ../docBase/docEditRange.h \
-    ../docBase/docEditPosition.h \
-    ../docBase/docListNumberTree.h \
-    ../docBase/docShapeDrawing.h \
+    ../appUtil/utilIndexSet.h \
+    ../appUtil/utilIndexMapping.h \
     ../docBase/docFramePropertiesAdmin.h \
     ../docBase/docFrameProperties.h \
     ../docBase/docPropVal.h \
@@ -1883,6 +2063,7 @@ docRtfReadShape.o: \
     ../appUtil/utilIndexSet.h \
     ../docBase/docStyleSheet.h \
     ../docBase/docStyle.h \
+    ../appUtil/utilPropMask.h \
     ../docBase/docSectProperties.h \
     ../appUtil/utilDocumentGeometry.h \
     ../appUtil/utilPropMask.h \
@@ -1898,6 +2079,8 @@ docRtfReadShape.o: \
     ../docBase/docDocumentProperties.h \
     ../docFont/utilDocFontList.h \
     ../docFont/utilDocFont.h \
+    ../utilPs/psFontInfo.h \
+    ../textEncoding/textOfficeCharset.h \
     ../docBase/docListAdmin.h \
     ../docBase/docListTable.h \
     ../docBase/docListOverrideTable.h \
@@ -1913,20 +2096,36 @@ docRtfReadShape.o: \
     ../docBase/docSelectionScope.h \
     ../docBase/docEditPosition.h \
     ../docBase/docEditRange.h \
+    ../docBase/docEditPosition.h \
     ../docBuf/docTableRectangle.h \
+    ../docBuf/docDocumentTree.h \
+    ../docBase/docDocumentField.h \
+    ../docBase/docFieldInstructions.h \
+    ../docBase/docSelectionScope.h \
+    ../docBase/docEditRange.h \
+    ../docBase/docListNumberTree.h \
     ../docBase/docListTable.h \
     ../docBase/docNoteProperties.h \
     ../appUtil/sioGeneral.h \
     ../docBase/docTabStop.h \
+    ../docBase/docTabStopList.h \
+    ../docBase/docTabStop.h \
     ../docBase/docListOverride.h \
     ../docBase/docListOverrideLevel.h \
     ../docBase/docListLevel.h \
+    ../docBase/docListDepth.h \
     ../docBase/docDocumentList.h \
     ../docBase/docBorderProperties.h \
     docRtfTextConverter.h \
-    ../textEncoding/textConverterImpl.h \
     docRtfControlWord.h \
     docRtfTags.h \
+    docRtfShpTab.h \
+    docRtfReaderImpl.h \
+    ../docBuf/docShape.h \
+    ../appUtil/geoAffineTransform.h \
+    ../docBase/docShapeProperties.h \
+    ../docBase/docPictureProperties.h \
+    ../docBase/docShapeDrawing.h \
     ../docBase/docShapeProp.h \
     ../docBase/docObjectProperties.h \
     ../docBase/docTreeType.h \
@@ -1950,7 +2149,6 @@ docRtfReadText.o: \
     ../include/appDebugon.h \
     ../include/appDebug.h \
     ../textEncoding/uniUtf8.h \
-    ../textEncoding/ucd.h \
     docRtfReaderImpl.h \
     ../docBuf/docBuf.h \
     ../bitmap/bitmap.h \
@@ -1959,27 +2157,11 @@ docRtfReadText.o: \
     ../appUtil/utilColor.h \
     ../appUtil/utilMemoryBuffer.h \
     ../appUtil/geo2DInteger.h \
-    ../docFont/utilDocFont.h \
-    ../utilPs/psFontInfo.h \
-    ../appUtil/utilIndexSet.h \
-    ../appUtil/utilIndexMapping.h \
-    ../textEncoding/utilOfficeCharset.h \
     ../utilPs/psPostScriptFontList.h \
     ../utilPs/psFontFamily.h \
     ../utilPs/psFontInfo.h \
-    ../docBuf/docShape.h \
-    ../appUtil/geoAffineTransform.h \
-    ../docBase/docShapeProperties.h \
-    ../docBase/docPictureProperties.h \
-    ../appUtil/utilPropMask.h \
-    ../docBuf/docDocumentTree.h \
-    ../docBase/docDocumentField.h \
-    ../docBase/docFieldInstructions.h \
-    ../docBase/docSelectionScope.h \
-    ../docBase/docEditRange.h \
-    ../docBase/docEditPosition.h \
-    ../docBase/docListNumberTree.h \
-    ../docBase/docShapeDrawing.h \
+    ../appUtil/utilIndexSet.h \
+    ../appUtil/utilIndexMapping.h \
     ../docBase/docFramePropertiesAdmin.h \
     ../docBase/docFrameProperties.h \
     ../docBase/docPropVal.h \
@@ -1990,6 +2172,7 @@ docRtfReadText.o: \
     ../appUtil/utilIndexSet.h \
     ../docBase/docStyleSheet.h \
     ../docBase/docStyle.h \
+    ../appUtil/utilPropMask.h \
     ../docBase/docSectProperties.h \
     ../appUtil/utilDocumentGeometry.h \
     ../appUtil/utilPropMask.h \
@@ -2005,6 +2188,8 @@ docRtfReadText.o: \
     ../docBase/docDocumentProperties.h \
     ../docFont/utilDocFontList.h \
     ../docFont/utilDocFont.h \
+    ../utilPs/psFontInfo.h \
+    ../textEncoding/textOfficeCharset.h \
     ../docBase/docListAdmin.h \
     ../docBase/docListTable.h \
     ../docBase/docListOverrideTable.h \
@@ -2020,18 +2205,27 @@ docRtfReadText.o: \
     ../docBase/docSelectionScope.h \
     ../docBase/docEditPosition.h \
     ../docBase/docEditRange.h \
+    ../docBase/docEditPosition.h \
     ../docBuf/docTableRectangle.h \
+    ../docBuf/docDocumentTree.h \
+    ../docBase/docDocumentField.h \
+    ../docBase/docFieldInstructions.h \
+    ../docBase/docSelectionScope.h \
+    ../docBase/docEditRange.h \
+    ../docBase/docListNumberTree.h \
     ../docBase/docListTable.h \
     ../docBase/docNoteProperties.h \
     ../appUtil/sioGeneral.h \
     ../docBase/docTabStop.h \
+    ../docBase/docTabStopList.h \
+    ../docBase/docTabStop.h \
     ../docBase/docListOverride.h \
     ../docBase/docListOverrideLevel.h \
     ../docBase/docListLevel.h \
+    ../docBase/docListDepth.h \
     ../docBase/docDocumentList.h \
     ../docBase/docBorderProperties.h \
     docRtfTextConverter.h \
-    ../textEncoding/textConverterImpl.h \
     docRtfControlWord.h \
     ../docBuf/docParaString.h \
     ../docBuf/docBuf.h \
@@ -2044,6 +2238,8 @@ docRtfReadText.o: \
     ../docBuf/docSectNode.h \
     ../docBase/docSectProperties.h \
     ../textEncoding/textConverter.h \
+    ../textEncoding/textConverterImpl.h \
+    ../textEncoding/textConverter.h \
     ../docBuf/docParaParticules.h \
     ../docBase/docTextParticule.h \
     ../docBase/docTextLine.h
@@ -2051,28 +2247,19 @@ docRtfReadText.o: \
 docRtfReaderImpl.o: \
     docRtfReaderImpl.c \
     docRtfConfig.h \
-    ../include/charnames.h \
     ../include/appDebugon.h \
     ../include/appDebug.h \
     ../appUtil/appUnit.h \
-    ../textEncoding/utilOfficeCharset.h \
+    ../textEncoding/textOfficeCharset.h \
     ../appUtil/utilIndexMapping.h \
     ../appUtil/utilIndexSet.h \
     ../textEncoding/textConverter.h \
-    docRtfReaderImpl.h \
-    ../docBuf/docBuf.h \
-    ../bitmap/bitmap.h \
-    ../appUtil/utilColor.h \
-    ../appUtil/utilPalette.h \
-    ../appUtil/utilColor.h \
-    ../appUtil/utilMemoryBuffer.h \
-    ../appUtil/geo2DInteger.h \
-    ../docFont/utilDocFont.h \
-    ../utilPs/psFontInfo.h \
-    ../utilPs/psPostScriptFontList.h \
-    ../utilPs/psFontFamily.h \
-    ../utilPs/psFontInfo.h \
+    ../textEncoding/textConverterImpl.h \
+    ../textEncoding/textConverter.h \
     ../docBuf/docShape.h \
+    ../appUtil/utilColor.h \
+    ../appUtil/geo2DInteger.h \
+    ../appUtil/utilMemoryBuffer.h \
     ../appUtil/geoAffineTransform.h \
     ../docBase/docShapeProperties.h \
     ../docBase/docPictureProperties.h \
@@ -2085,6 +2272,14 @@ docRtfReaderImpl.o: \
     ../docBase/docEditPosition.h \
     ../docBase/docListNumberTree.h \
     ../docBase/docShapeDrawing.h \
+    ../bitmap/bitmap.h \
+    ../appUtil/utilPalette.h \
+    ../appUtil/utilColor.h \
+    docRtfReaderImpl.h \
+    ../docBuf/docBuf.h \
+    ../utilPs/psPostScriptFontList.h \
+    ../utilPs/psFontFamily.h \
+    ../utilPs/psFontInfo.h \
     ../docBase/docFramePropertiesAdmin.h \
     ../docBase/docFrameProperties.h \
     ../docBase/docPropVal.h \
@@ -2110,6 +2305,7 @@ docRtfReaderImpl.o: \
     ../docBase/docDocumentProperties.h \
     ../docFont/utilDocFontList.h \
     ../docFont/utilDocFont.h \
+    ../utilPs/psFontInfo.h \
     ../docBase/docListAdmin.h \
     ../docBase/docListTable.h \
     ../docBase/docListOverrideTable.h \
@@ -2130,103 +2326,15 @@ docRtfReaderImpl.o: \
     ../docBase/docNoteProperties.h \
     ../appUtil/sioGeneral.h \
     ../docBase/docTabStop.h \
-    ../docBase/docListOverride.h \
-    ../docBase/docListOverrideLevel.h \
-    ../docBase/docListLevel.h \
-    ../docBase/docDocumentList.h \
-    ../docBase/docBorderProperties.h \
-    docRtfTextConverter.h \
-    ../textEncoding/textConverterImpl.h \
-    docRtfControlWord.h \
-    docRtfTags.h \
-    docRtfFlags.h
-
-docRtfRowProperties.o: \
-    docRtfRowProperties.c \
-    docRtfConfig.h \
-    ../include/appDebugon.h \
-    ../include/appDebug.h \
-    docRtfReaderImpl.h \
-    ../docBuf/docBuf.h \
-    ../bitmap/bitmap.h \
-    ../appUtil/utilColor.h \
-    ../appUtil/utilPalette.h \
-    ../appUtil/utilColor.h \
-    ../appUtil/utilMemoryBuffer.h \
-    ../appUtil/geo2DInteger.h \
-    ../docFont/utilDocFont.h \
-    ../utilPs/psFontInfo.h \
-    ../appUtil/utilIndexSet.h \
-    ../appUtil/utilIndexMapping.h \
-    ../textEncoding/utilOfficeCharset.h \
-    ../utilPs/psPostScriptFontList.h \
-    ../utilPs/psFontFamily.h \
-    ../utilPs/psFontInfo.h \
-    ../docBuf/docShape.h \
-    ../appUtil/geoAffineTransform.h \
-    ../docBase/docShapeProperties.h \
-    ../docBase/docPictureProperties.h \
-    ../appUtil/utilPropMask.h \
-    ../docBuf/docDocumentTree.h \
-    ../docBase/docDocumentField.h \
-    ../docBase/docFieldInstructions.h \
-    ../docBase/docSelectionScope.h \
-    ../docBase/docEditRange.h \
-    ../docBase/docEditPosition.h \
-    ../docBase/docListNumberTree.h \
-    ../docBase/docShapeDrawing.h \
-    ../docBase/docFramePropertiesAdmin.h \
-    ../docBase/docFrameProperties.h \
-    ../docBase/docPropVal.h \
-    ../appUtil/utilIntegerValueNode.h \
-    ../appUtil/utilNumberedPropertiesAdmin.h \
-    ../appUtil/utilIntegerValueNode.h \
-    ../appUtil/utilPagedList.h \
-    ../appUtil/utilIndexSet.h \
-    ../docBase/docStyleSheet.h \
-    ../docBase/docStyle.h \
-    ../docBase/docSectProperties.h \
-    ../appUtil/utilDocumentGeometry.h \
-    ../appUtil/utilPropMask.h \
-    ../appUtil/geo2DInteger.h \
-    ../docBase/docNotesProperties.h \
-    ../docBase/docRowProperties.h \
-    ../docBase/docCellProperties.h \
-    ../docBase/docItemShading.h \
-    ../docBase/docDocumentAttributeMap.h \
-    ../docBase/docParaProperties.h \
-    ../docBase/docParaNumber.h \
-    ../utilPs/textAttribute.h \
-    ../docBase/docDocumentProperties.h \
-    ../docFont/utilDocFontList.h \
-    ../docFont/utilDocFont.h \
-    ../docBase/docListAdmin.h \
-    ../docBase/docListTable.h \
-    ../docBase/docListOverrideTable.h \
-    ../docBase/docDocumentFieldList.h \
-    ../appUtil/utilPagedList.h \
-    ../docBuf/docDrawingShapeList.h \
-    ../docBase/docInsertedObjectList.h \
-    ../docBase/docObject.h \
-    ../docBase/docLayoutPosition.h \
-    ../docBase/docPictureProperties.h \
-    ../docBuf/docSelect.h \
-    ../docBase/docLayoutPosition.h \
-    ../docBase/docSelectionScope.h \
-    ../docBase/docEditPosition.h \
-    ../docBase/docEditRange.h \
-    ../docBuf/docTableRectangle.h \
-    ../docBase/docListTable.h \
-    ../docBase/docNoteProperties.h \
-    ../appUtil/sioGeneral.h \
+    ../docBase/docTabStopList.h \
     ../docBase/docTabStop.h \
     ../docBase/docListOverride.h \
     ../docBase/docListOverrideLevel.h \
     ../docBase/docListLevel.h \
+    ../docBase/docListDepth.h \
     ../docBase/docDocumentList.h \
     ../docBase/docBorderProperties.h \
     docRtfTextConverter.h \
-    ../textEncoding/textConverterImpl.h \
     docRtfControlWord.h
 
 docRtfSaveCellProperties.o: \
@@ -2242,27 +2350,11 @@ docRtfSaveCellProperties.o: \
     ../appUtil/utilColor.h \
     ../appUtil/utilMemoryBuffer.h \
     ../appUtil/geo2DInteger.h \
-    ../docFont/utilDocFont.h \
-    ../utilPs/psFontInfo.h \
-    ../appUtil/utilIndexSet.h \
-    ../appUtil/utilIndexMapping.h \
-    ../textEncoding/utilOfficeCharset.h \
     ../utilPs/psPostScriptFontList.h \
     ../utilPs/psFontFamily.h \
     ../utilPs/psFontInfo.h \
-    ../docBuf/docShape.h \
-    ../appUtil/geoAffineTransform.h \
-    ../docBase/docShapeProperties.h \
-    ../docBase/docPictureProperties.h \
-    ../appUtil/utilPropMask.h \
-    ../docBuf/docDocumentTree.h \
-    ../docBase/docDocumentField.h \
-    ../docBase/docFieldInstructions.h \
-    ../docBase/docSelectionScope.h \
-    ../docBase/docEditRange.h \
-    ../docBase/docEditPosition.h \
-    ../docBase/docListNumberTree.h \
-    ../docBase/docShapeDrawing.h \
+    ../appUtil/utilIndexSet.h \
+    ../appUtil/utilIndexMapping.h \
     ../docBase/docFramePropertiesAdmin.h \
     ../docBase/docFrameProperties.h \
     ../docBase/docPropVal.h \
@@ -2273,6 +2365,7 @@ docRtfSaveCellProperties.o: \
     ../appUtil/utilIndexSet.h \
     ../docBase/docStyleSheet.h \
     ../docBase/docStyle.h \
+    ../appUtil/utilPropMask.h \
     ../docBase/docSectProperties.h \
     ../appUtil/utilDocumentGeometry.h \
     ../appUtil/utilPropMask.h \
@@ -2288,6 +2381,8 @@ docRtfSaveCellProperties.o: \
     ../docBase/docDocumentProperties.h \
     ../docFont/utilDocFontList.h \
     ../docFont/utilDocFont.h \
+    ../utilPs/psFontInfo.h \
+    ../textEncoding/textOfficeCharset.h \
     ../docBase/docListAdmin.h \
     ../docBase/docListTable.h \
     ../docBase/docListOverrideTable.h \
@@ -2303,13 +2398,17 @@ docRtfSaveCellProperties.o: \
     ../docBase/docSelectionScope.h \
     ../docBase/docEditPosition.h \
     ../docBase/docEditRange.h \
+    ../docBase/docEditPosition.h \
     ../docBuf/docTableRectangle.h \
+    ../docBuf/docDocumentTree.h \
+    ../docBase/docDocumentField.h \
+    ../docBase/docFieldInstructions.h \
+    ../docBase/docSelectionScope.h \
+    ../docBase/docEditRange.h \
+    ../docBase/docListNumberTree.h \
     ../docBase/docListTable.h \
     ../appUtil/sioGeneral.h \
     docRtfWriter.h \
-    docRtfTextConverter.h \
-    ../textEncoding/textConverterImpl.h \
-    ../docBase/docTabStop.h \
     docRtfTags.h
 
 docRtfSaveDocument.o: \
@@ -2325,27 +2424,11 @@ docRtfSaveDocument.o: \
     ../appUtil/utilColor.h \
     ../appUtil/utilMemoryBuffer.h \
     ../appUtil/geo2DInteger.h \
-    ../docFont/utilDocFont.h \
-    ../utilPs/psFontInfo.h \
-    ../appUtil/utilIndexSet.h \
-    ../appUtil/utilIndexMapping.h \
-    ../textEncoding/utilOfficeCharset.h \
     ../utilPs/psPostScriptFontList.h \
     ../utilPs/psFontFamily.h \
     ../utilPs/psFontInfo.h \
-    ../docBuf/docShape.h \
-    ../appUtil/geoAffineTransform.h \
-    ../docBase/docShapeProperties.h \
-    ../docBase/docPictureProperties.h \
-    ../appUtil/utilPropMask.h \
-    ../docBuf/docDocumentTree.h \
-    ../docBase/docDocumentField.h \
-    ../docBase/docFieldInstructions.h \
-    ../docBase/docSelectionScope.h \
-    ../docBase/docEditRange.h \
-    ../docBase/docEditPosition.h \
-    ../docBase/docListNumberTree.h \
-    ../docBase/docShapeDrawing.h \
+    ../appUtil/utilIndexSet.h \
+    ../appUtil/utilIndexMapping.h \
     ../docBase/docFramePropertiesAdmin.h \
     ../docBase/docFrameProperties.h \
     ../docBase/docPropVal.h \
@@ -2356,6 +2439,7 @@ docRtfSaveDocument.o: \
     ../appUtil/utilIndexSet.h \
     ../docBase/docStyleSheet.h \
     ../docBase/docStyle.h \
+    ../appUtil/utilPropMask.h \
     ../docBase/docSectProperties.h \
     ../appUtil/utilDocumentGeometry.h \
     ../appUtil/utilPropMask.h \
@@ -2371,6 +2455,8 @@ docRtfSaveDocument.o: \
     ../docBase/docDocumentProperties.h \
     ../docFont/utilDocFontList.h \
     ../docFont/utilDocFont.h \
+    ../utilPs/psFontInfo.h \
+    ../textEncoding/textOfficeCharset.h \
     ../docBase/docListAdmin.h \
     ../docBase/docListTable.h \
     ../docBase/docListOverrideTable.h \
@@ -2386,22 +2472,28 @@ docRtfSaveDocument.o: \
     ../docBase/docSelectionScope.h \
     ../docBase/docEditPosition.h \
     ../docBase/docEditRange.h \
+    ../docBase/docEditPosition.h \
     ../docBuf/docTableRectangle.h \
+    ../docBuf/docDocumentTree.h \
+    ../docBase/docDocumentField.h \
+    ../docBase/docFieldInstructions.h \
+    ../docBase/docSelectionScope.h \
+    ../docBase/docEditRange.h \
+    ../docBase/docListNumberTree.h \
     ../docBase/docListTable.h \
     ../appUtil/sioGeneral.h \
     docRtfWriterImpl.h \
     docRtfWriter.h \
-    docRtfTextConverter.h \
-    ../textEncoding/textConverterImpl.h \
-    ../docBase/docTabStop.h \
-    docRtfTags.h
+    docRtfTags.h \
+    ../docBuf/docNotes.h \
+    ../docBase/docTreeType.h
 
 docRtfSaveDocumentProperties.o: \
     docRtfSaveDocumentProperties.c \
     docRtfConfig.h \
     ../include/appDebugon.h \
     ../include/appDebug.h \
-    ../textEncoding/utilOfficeCharset.h \
+    ../textEncoding/textOfficeCharset.h \
     ../appUtil/utilIndexMapping.h \
     ../appUtil/utilIndexSet.h \
     docRtfWriterImpl.h \
@@ -2412,24 +2504,9 @@ docRtfSaveDocumentProperties.o: \
     ../appUtil/utilColor.h \
     ../appUtil/utilMemoryBuffer.h \
     ../appUtil/geo2DInteger.h \
-    ../docFont/utilDocFont.h \
-    ../utilPs/psFontInfo.h \
     ../utilPs/psPostScriptFontList.h \
     ../utilPs/psFontFamily.h \
     ../utilPs/psFontInfo.h \
-    ../docBuf/docShape.h \
-    ../appUtil/geoAffineTransform.h \
-    ../docBase/docShapeProperties.h \
-    ../docBase/docPictureProperties.h \
-    ../appUtil/utilPropMask.h \
-    ../docBuf/docDocumentTree.h \
-    ../docBase/docDocumentField.h \
-    ../docBase/docFieldInstructions.h \
-    ../docBase/docSelectionScope.h \
-    ../docBase/docEditRange.h \
-    ../docBase/docEditPosition.h \
-    ../docBase/docListNumberTree.h \
-    ../docBase/docShapeDrawing.h \
     ../docBase/docFramePropertiesAdmin.h \
     ../docBase/docFrameProperties.h \
     ../docBase/docPropVal.h \
@@ -2440,6 +2517,7 @@ docRtfSaveDocumentProperties.o: \
     ../appUtil/utilIndexSet.h \
     ../docBase/docStyleSheet.h \
     ../docBase/docStyle.h \
+    ../appUtil/utilPropMask.h \
     ../docBase/docSectProperties.h \
     ../appUtil/utilDocumentGeometry.h \
     ../appUtil/utilPropMask.h \
@@ -2455,6 +2533,7 @@ docRtfSaveDocumentProperties.o: \
     ../docBase/docDocumentProperties.h \
     ../docFont/utilDocFontList.h \
     ../docFont/utilDocFont.h \
+    ../utilPs/psFontInfo.h \
     ../docBase/docListAdmin.h \
     ../docBase/docListTable.h \
     ../docBase/docListOverrideTable.h \
@@ -2470,13 +2549,17 @@ docRtfSaveDocumentProperties.o: \
     ../docBase/docSelectionScope.h \
     ../docBase/docEditPosition.h \
     ../docBase/docEditRange.h \
+    ../docBase/docEditPosition.h \
     ../docBuf/docTableRectangle.h \
+    ../docBuf/docDocumentTree.h \
+    ../docBase/docDocumentField.h \
+    ../docBase/docFieldInstructions.h \
+    ../docBase/docSelectionScope.h \
+    ../docBase/docEditRange.h \
+    ../docBase/docListNumberTree.h \
     ../docBase/docListTable.h \
     ../appUtil/sioGeneral.h \
     docRtfWriter.h \
-    docRtfTextConverter.h \
-    ../textEncoding/textConverterImpl.h \
-    ../docBase/docTabStop.h \
     docRtfTags.h
 
 docRtfSaveField.o: \
@@ -2526,19 +2609,11 @@ docRtfSaveField.o: \
     ../docBuf/docNotes.h \
     docRtfWriterImpl.h \
     ../docBuf/docBuf.h \
-    ../docFont/utilDocFont.h \
-    ../utilPs/psFontInfo.h \
-    ../appUtil/utilIndexSet.h \
-    ../appUtil/utilIndexMapping.h \
-    ../textEncoding/utilOfficeCharset.h \
     ../utilPs/psPostScriptFontList.h \
     ../utilPs/psFontFamily.h \
     ../utilPs/psFontInfo.h \
-    ../docBuf/docShape.h \
-    ../appUtil/geoAffineTransform.h \
-    ../docBase/docShapeProperties.h \
-    ../docBase/docPictureProperties.h \
-    ../docBase/docShapeDrawing.h \
+    ../appUtil/utilIndexSet.h \
+    ../appUtil/utilIndexMapping.h \
     ../docBase/docFramePropertiesAdmin.h \
     ../docBase/docFrameProperties.h \
     ../docBase/docPropVal.h \
@@ -2556,6 +2631,8 @@ docRtfSaveField.o: \
     ../docBase/docDocumentProperties.h \
     ../docFont/utilDocFontList.h \
     ../docFont/utilDocFont.h \
+    ../utilPs/psFontInfo.h \
+    ../textEncoding/textOfficeCharset.h \
     ../docBase/docListAdmin.h \
     ../docBase/docListTable.h \
     ../docBase/docListOverrideTable.h \
@@ -2570,9 +2647,6 @@ docRtfSaveField.o: \
     ../docBase/docListTable.h \
     ../appUtil/sioGeneral.h \
     docRtfWriter.h \
-    docRtfTextConverter.h \
-    ../textEncoding/textConverterImpl.h \
-    ../docBase/docTabStop.h \
     ../docBase/docBookmarkField.h \
     ../docBase/docTextParticule.h \
     ../docBuf/docDocumentNote.h \
@@ -2583,7 +2657,7 @@ docRtfSaveFontTable.o: \
     docRtfConfig.h \
     ../include/appDebugon.h \
     ../include/appDebug.h \
-    ../textEncoding/utilOfficeCharset.h \
+    ../textEncoding/textOfficeCharset.h \
     ../appUtil/utilIndexMapping.h \
     ../appUtil/utilIndexSet.h \
     ../utilPs/psDocumentFontStyle.h \
@@ -2595,24 +2669,9 @@ docRtfSaveFontTable.o: \
     ../appUtil/utilColor.h \
     ../appUtil/utilMemoryBuffer.h \
     ../appUtil/geo2DInteger.h \
-    ../docFont/utilDocFont.h \
-    ../utilPs/psFontInfo.h \
     ../utilPs/psPostScriptFontList.h \
     ../utilPs/psFontFamily.h \
     ../utilPs/psFontInfo.h \
-    ../docBuf/docShape.h \
-    ../appUtil/geoAffineTransform.h \
-    ../docBase/docShapeProperties.h \
-    ../docBase/docPictureProperties.h \
-    ../appUtil/utilPropMask.h \
-    ../docBuf/docDocumentTree.h \
-    ../docBase/docDocumentField.h \
-    ../docBase/docFieldInstructions.h \
-    ../docBase/docSelectionScope.h \
-    ../docBase/docEditRange.h \
-    ../docBase/docEditPosition.h \
-    ../docBase/docListNumberTree.h \
-    ../docBase/docShapeDrawing.h \
     ../docBase/docFramePropertiesAdmin.h \
     ../docBase/docFrameProperties.h \
     ../docBase/docPropVal.h \
@@ -2623,6 +2682,7 @@ docRtfSaveFontTable.o: \
     ../appUtil/utilIndexSet.h \
     ../docBase/docStyleSheet.h \
     ../docBase/docStyle.h \
+    ../appUtil/utilPropMask.h \
     ../docBase/docSectProperties.h \
     ../appUtil/utilDocumentGeometry.h \
     ../appUtil/utilPropMask.h \
@@ -2638,6 +2698,7 @@ docRtfSaveFontTable.o: \
     ../docBase/docDocumentProperties.h \
     ../docFont/utilDocFontList.h \
     ../docFont/utilDocFont.h \
+    ../utilPs/psFontInfo.h \
     ../docBase/docListAdmin.h \
     ../docBase/docListTable.h \
     ../docBase/docListOverrideTable.h \
@@ -2653,13 +2714,18 @@ docRtfSaveFontTable.o: \
     ../docBase/docSelectionScope.h \
     ../docBase/docEditPosition.h \
     ../docBase/docEditRange.h \
+    ../docBase/docEditPosition.h \
     ../docBuf/docTableRectangle.h \
+    ../docBuf/docDocumentTree.h \
+    ../docBase/docDocumentField.h \
+    ../docBase/docFieldInstructions.h \
+    ../docBase/docSelectionScope.h \
+    ../docBase/docEditRange.h \
+    ../docBase/docListNumberTree.h \
     ../docBase/docListTable.h \
     ../appUtil/sioGeneral.h \
     docRtfWriter.h \
     docRtfTextConverter.h \
-    ../textEncoding/textConverterImpl.h \
-    ../docBase/docTabStop.h \
     docRtfFlags.h
 
 docRtfSaveNotesProperties.o: \
@@ -2675,27 +2741,11 @@ docRtfSaveNotesProperties.o: \
     ../appUtil/utilColor.h \
     ../appUtil/utilMemoryBuffer.h \
     ../appUtil/geo2DInteger.h \
-    ../docFont/utilDocFont.h \
-    ../utilPs/psFontInfo.h \
-    ../appUtil/utilIndexSet.h \
-    ../appUtil/utilIndexMapping.h \
-    ../textEncoding/utilOfficeCharset.h \
     ../utilPs/psPostScriptFontList.h \
     ../utilPs/psFontFamily.h \
     ../utilPs/psFontInfo.h \
-    ../docBuf/docShape.h \
-    ../appUtil/geoAffineTransform.h \
-    ../docBase/docShapeProperties.h \
-    ../docBase/docPictureProperties.h \
-    ../appUtil/utilPropMask.h \
-    ../docBuf/docDocumentTree.h \
-    ../docBase/docDocumentField.h \
-    ../docBase/docFieldInstructions.h \
-    ../docBase/docSelectionScope.h \
-    ../docBase/docEditRange.h \
-    ../docBase/docEditPosition.h \
-    ../docBase/docListNumberTree.h \
-    ../docBase/docShapeDrawing.h \
+    ../appUtil/utilIndexSet.h \
+    ../appUtil/utilIndexMapping.h \
     ../docBase/docFramePropertiesAdmin.h \
     ../docBase/docFrameProperties.h \
     ../docBase/docPropVal.h \
@@ -2706,6 +2756,7 @@ docRtfSaveNotesProperties.o: \
     ../appUtil/utilIndexSet.h \
     ../docBase/docStyleSheet.h \
     ../docBase/docStyle.h \
+    ../appUtil/utilPropMask.h \
     ../docBase/docSectProperties.h \
     ../appUtil/utilDocumentGeometry.h \
     ../appUtil/utilPropMask.h \
@@ -2721,6 +2772,8 @@ docRtfSaveNotesProperties.o: \
     ../docBase/docDocumentProperties.h \
     ../docFont/utilDocFontList.h \
     ../docFont/utilDocFont.h \
+    ../utilPs/psFontInfo.h \
+    ../textEncoding/textOfficeCharset.h \
     ../docBase/docListAdmin.h \
     ../docBase/docListTable.h \
     ../docBase/docListOverrideTable.h \
@@ -2736,13 +2789,17 @@ docRtfSaveNotesProperties.o: \
     ../docBase/docSelectionScope.h \
     ../docBase/docEditPosition.h \
     ../docBase/docEditRange.h \
+    ../docBase/docEditPosition.h \
     ../docBuf/docTableRectangle.h \
+    ../docBuf/docDocumentTree.h \
+    ../docBase/docDocumentField.h \
+    ../docBase/docFieldInstructions.h \
+    ../docBase/docSelectionScope.h \
+    ../docBase/docEditRange.h \
+    ../docBase/docListNumberTree.h \
     ../docBase/docListTable.h \
     ../appUtil/sioGeneral.h \
-    docRtfWriter.h \
-    docRtfTextConverter.h \
-    ../textEncoding/textConverterImpl.h \
-    ../docBase/docTabStop.h
+    docRtfWriter.h
 
 docRtfSaveParaProperties.o: \
     docRtfSaveParaProperties.c \
@@ -2757,27 +2814,11 @@ docRtfSaveParaProperties.o: \
     ../appUtil/utilColor.h \
     ../appUtil/utilMemoryBuffer.h \
     ../appUtil/geo2DInteger.h \
-    ../docFont/utilDocFont.h \
-    ../utilPs/psFontInfo.h \
-    ../appUtil/utilIndexSet.h \
-    ../appUtil/utilIndexMapping.h \
-    ../textEncoding/utilOfficeCharset.h \
     ../utilPs/psPostScriptFontList.h \
     ../utilPs/psFontFamily.h \
     ../utilPs/psFontInfo.h \
-    ../docBuf/docShape.h \
-    ../appUtil/geoAffineTransform.h \
-    ../docBase/docShapeProperties.h \
-    ../docBase/docPictureProperties.h \
-    ../appUtil/utilPropMask.h \
-    ../docBuf/docDocumentTree.h \
-    ../docBase/docDocumentField.h \
-    ../docBase/docFieldInstructions.h \
-    ../docBase/docSelectionScope.h \
-    ../docBase/docEditRange.h \
-    ../docBase/docEditPosition.h \
-    ../docBase/docListNumberTree.h \
-    ../docBase/docShapeDrawing.h \
+    ../appUtil/utilIndexSet.h \
+    ../appUtil/utilIndexMapping.h \
     ../docBase/docFramePropertiesAdmin.h \
     ../docBase/docFrameProperties.h \
     ../docBase/docPropVal.h \
@@ -2788,6 +2829,7 @@ docRtfSaveParaProperties.o: \
     ../appUtil/utilIndexSet.h \
     ../docBase/docStyleSheet.h \
     ../docBase/docStyle.h \
+    ../appUtil/utilPropMask.h \
     ../docBase/docSectProperties.h \
     ../appUtil/utilDocumentGeometry.h \
     ../appUtil/utilPropMask.h \
@@ -2803,6 +2845,8 @@ docRtfSaveParaProperties.o: \
     ../docBase/docDocumentProperties.h \
     ../docFont/utilDocFontList.h \
     ../docFont/utilDocFont.h \
+    ../utilPs/psFontInfo.h \
+    ../textEncoding/textOfficeCharset.h \
     ../docBase/docListAdmin.h \
     ../docBase/docListTable.h \
     ../docBase/docListOverrideTable.h \
@@ -2818,15 +2862,20 @@ docRtfSaveParaProperties.o: \
     ../docBase/docSelectionScope.h \
     ../docBase/docEditPosition.h \
     ../docBase/docEditRange.h \
+    ../docBase/docEditPosition.h \
     ../docBuf/docTableRectangle.h \
+    ../docBuf/docDocumentTree.h \
+    ../docBase/docDocumentField.h \
+    ../docBase/docFieldInstructions.h \
+    ../docBase/docSelectionScope.h \
+    ../docBase/docEditRange.h \
+    ../docBase/docListNumberTree.h \
     ../docBase/docListTable.h \
     ../appUtil/sioGeneral.h \
     docRtfWriter.h \
-    docRtfTextConverter.h \
-    ../textEncoding/textConverterImpl.h \
-    ../docBase/docTabStop.h \
     ../docBase/docParaRulerAdmin.h \
     ../docBase/docTabStop.h \
+    ../docBase/docTabStopList.h \
     docRtfTags.h
 
 docRtfSaveParagraph.o: \
@@ -2846,27 +2895,11 @@ docRtfSaveParagraph.o: \
     ../docBase/docObjectProperties.h \
     ../docBuf/docParaParticules.h \
     ../docBuf/docBuf.h \
-    ../docFont/utilDocFont.h \
-    ../utilPs/psFontInfo.h \
-    ../appUtil/utilIndexSet.h \
-    ../appUtil/utilIndexMapping.h \
-    ../textEncoding/utilOfficeCharset.h \
     ../utilPs/psPostScriptFontList.h \
     ../utilPs/psFontFamily.h \
     ../utilPs/psFontInfo.h \
-    ../docBuf/docShape.h \
-    ../appUtil/geoAffineTransform.h \
-    ../docBase/docShapeProperties.h \
-    ../docBase/docPictureProperties.h \
-    ../appUtil/utilPropMask.h \
-    ../docBuf/docDocumentTree.h \
-    ../docBase/docDocumentField.h \
-    ../docBase/docFieldInstructions.h \
-    ../docBase/docSelectionScope.h \
-    ../docBase/docEditRange.h \
-    ../docBase/docEditPosition.h \
-    ../docBase/docListNumberTree.h \
-    ../docBase/docShapeDrawing.h \
+    ../appUtil/utilIndexSet.h \
+    ../appUtil/utilIndexMapping.h \
     ../docBase/docFramePropertiesAdmin.h \
     ../docBase/docFrameProperties.h \
     ../docBase/docPropVal.h \
@@ -2877,6 +2910,7 @@ docRtfSaveParagraph.o: \
     ../appUtil/utilIndexSet.h \
     ../docBase/docStyleSheet.h \
     ../docBase/docStyle.h \
+    ../appUtil/utilPropMask.h \
     ../docBase/docSectProperties.h \
     ../appUtil/utilDocumentGeometry.h \
     ../appUtil/utilPropMask.h \
@@ -2892,6 +2926,8 @@ docRtfSaveParagraph.o: \
     ../docBase/docDocumentProperties.h \
     ../docFont/utilDocFontList.h \
     ../docFont/utilDocFont.h \
+    ../utilPs/psFontInfo.h \
+    ../textEncoding/textOfficeCharset.h \
     ../docBase/docListAdmin.h \
     ../docBase/docListTable.h \
     ../docBase/docListOverrideTable.h \
@@ -2907,7 +2943,14 @@ docRtfSaveParagraph.o: \
     ../docBase/docSelectionScope.h \
     ../docBase/docEditPosition.h \
     ../docBase/docEditRange.h \
+    ../docBase/docEditPosition.h \
     ../docBuf/docTableRectangle.h \
+    ../docBuf/docDocumentTree.h \
+    ../docBase/docDocumentField.h \
+    ../docBase/docFieldInstructions.h \
+    ../docBase/docSelectionScope.h \
+    ../docBase/docEditRange.h \
+    ../docBase/docListNumberTree.h \
     ../docBase/docListTable.h \
     ../docBase/docTextParticule.h \
     ../docBase/docTextLine.h \
@@ -2922,10 +2965,7 @@ docRtfSaveParagraph.o: \
     docRtfWriterImpl.h \
     ../docBuf/docBuf.h \
     ../appUtil/sioGeneral.h \
-    docRtfWriter.h \
-    docRtfTextConverter.h \
-    ../textEncoding/textConverterImpl.h \
-    ../docBase/docTabStop.h
+    docRtfWriter.h
 
 docRtfSaveRowProperties.o: \
     docRtfSaveRowProperties.c \
@@ -2940,27 +2980,11 @@ docRtfSaveRowProperties.o: \
     ../appUtil/utilColor.h \
     ../appUtil/utilMemoryBuffer.h \
     ../appUtil/geo2DInteger.h \
-    ../docFont/utilDocFont.h \
-    ../utilPs/psFontInfo.h \
-    ../appUtil/utilIndexSet.h \
-    ../appUtil/utilIndexMapping.h \
-    ../textEncoding/utilOfficeCharset.h \
     ../utilPs/psPostScriptFontList.h \
     ../utilPs/psFontFamily.h \
     ../utilPs/psFontInfo.h \
-    ../docBuf/docShape.h \
-    ../appUtil/geoAffineTransform.h \
-    ../docBase/docShapeProperties.h \
-    ../docBase/docPictureProperties.h \
-    ../appUtil/utilPropMask.h \
-    ../docBuf/docDocumentTree.h \
-    ../docBase/docDocumentField.h \
-    ../docBase/docFieldInstructions.h \
-    ../docBase/docSelectionScope.h \
-    ../docBase/docEditRange.h \
-    ../docBase/docEditPosition.h \
-    ../docBase/docListNumberTree.h \
-    ../docBase/docShapeDrawing.h \
+    ../appUtil/utilIndexSet.h \
+    ../appUtil/utilIndexMapping.h \
     ../docBase/docFramePropertiesAdmin.h \
     ../docBase/docFrameProperties.h \
     ../docBase/docPropVal.h \
@@ -2971,6 +2995,7 @@ docRtfSaveRowProperties.o: \
     ../appUtil/utilIndexSet.h \
     ../docBase/docStyleSheet.h \
     ../docBase/docStyle.h \
+    ../appUtil/utilPropMask.h \
     ../docBase/docSectProperties.h \
     ../appUtil/utilDocumentGeometry.h \
     ../appUtil/utilPropMask.h \
@@ -2986,6 +3011,8 @@ docRtfSaveRowProperties.o: \
     ../docBase/docDocumentProperties.h \
     ../docFont/utilDocFontList.h \
     ../docFont/utilDocFont.h \
+    ../utilPs/psFontInfo.h \
+    ../textEncoding/textOfficeCharset.h \
     ../docBase/docListAdmin.h \
     ../docBase/docListTable.h \
     ../docBase/docListOverrideTable.h \
@@ -3001,13 +3028,17 @@ docRtfSaveRowProperties.o: \
     ../docBase/docSelectionScope.h \
     ../docBase/docEditPosition.h \
     ../docBase/docEditRange.h \
+    ../docBase/docEditPosition.h \
     ../docBuf/docTableRectangle.h \
+    ../docBuf/docDocumentTree.h \
+    ../docBase/docDocumentField.h \
+    ../docBase/docFieldInstructions.h \
+    ../docBase/docSelectionScope.h \
+    ../docBase/docEditRange.h \
+    ../docBase/docListNumberTree.h \
     ../docBase/docListTable.h \
     ../appUtil/sioGeneral.h \
     docRtfWriter.h \
-    docRtfTextConverter.h \
-    ../textEncoding/textConverterImpl.h \
-    ../docBase/docTabStop.h \
     docRtfTags.h
 
 docRtfSaveSectProperties.o: \
@@ -3051,19 +3082,11 @@ docRtfSaveSectProperties.o: \
     ../docBase/docListNumberTree.h \
     docRtfWriterImpl.h \
     ../docBuf/docBuf.h \
-    ../docFont/utilDocFont.h \
-    ../utilPs/psFontInfo.h \
-    ../appUtil/utilIndexSet.h \
-    ../appUtil/utilIndexMapping.h \
-    ../textEncoding/utilOfficeCharset.h \
     ../utilPs/psPostScriptFontList.h \
     ../utilPs/psFontFamily.h \
     ../utilPs/psFontInfo.h \
-    ../docBuf/docShape.h \
-    ../appUtil/geoAffineTransform.h \
-    ../docBase/docShapeProperties.h \
-    ../docBase/docPictureProperties.h \
-    ../docBase/docShapeDrawing.h \
+    ../appUtil/utilIndexSet.h \
+    ../appUtil/utilIndexMapping.h \
     ../docBase/docFramePropertiesAdmin.h \
     ../docBase/docFrameProperties.h \
     ../docBase/docPropVal.h \
@@ -3082,6 +3105,8 @@ docRtfSaveSectProperties.o: \
     ../docBase/docDocumentProperties.h \
     ../docFont/utilDocFontList.h \
     ../docFont/utilDocFont.h \
+    ../utilPs/psFontInfo.h \
+    ../textEncoding/textOfficeCharset.h \
     ../docBase/docListAdmin.h \
     ../docBase/docListTable.h \
     ../docBase/docListOverrideTable.h \
@@ -3097,10 +3122,80 @@ docRtfSaveSectProperties.o: \
     ../docBase/docListTable.h \
     ../appUtil/sioGeneral.h \
     docRtfWriter.h \
-    docRtfTextConverter.h \
-    ../textEncoding/textConverterImpl.h \
-    ../docBase/docTabStop.h \
     docRtfTags.h
+
+docRtfSaveStylesheet.o: \
+    docRtfSaveStylesheet.c \
+    docRtfConfig.h \
+    ../include/appDebugon.h \
+    ../include/appDebug.h \
+    docRtfWriterImpl.h \
+    ../docBuf/docBuf.h \
+    ../bitmap/bitmap.h \
+    ../appUtil/utilColor.h \
+    ../appUtil/utilPalette.h \
+    ../appUtil/utilColor.h \
+    ../appUtil/utilMemoryBuffer.h \
+    ../appUtil/geo2DInteger.h \
+    ../utilPs/psPostScriptFontList.h \
+    ../utilPs/psFontFamily.h \
+    ../utilPs/psFontInfo.h \
+    ../appUtil/utilIndexSet.h \
+    ../appUtil/utilIndexMapping.h \
+    ../docBase/docFramePropertiesAdmin.h \
+    ../docBase/docFrameProperties.h \
+    ../docBase/docPropVal.h \
+    ../appUtil/utilIntegerValueNode.h \
+    ../appUtil/utilNumberedPropertiesAdmin.h \
+    ../appUtil/utilIntegerValueNode.h \
+    ../appUtil/utilPagedList.h \
+    ../appUtil/utilIndexSet.h \
+    ../docBase/docStyleSheet.h \
+    ../docBase/docStyle.h \
+    ../appUtil/utilPropMask.h \
+    ../docBase/docSectProperties.h \
+    ../appUtil/utilDocumentGeometry.h \
+    ../appUtil/utilPropMask.h \
+    ../appUtil/geo2DInteger.h \
+    ../docBase/docNotesProperties.h \
+    ../docBase/docRowProperties.h \
+    ../docBase/docCellProperties.h \
+    ../docBase/docItemShading.h \
+    ../docBase/docDocumentAttributeMap.h \
+    ../docBase/docParaProperties.h \
+    ../docBase/docParaNumber.h \
+    ../utilPs/textAttribute.h \
+    ../docBase/docDocumentProperties.h \
+    ../docFont/utilDocFontList.h \
+    ../docFont/utilDocFont.h \
+    ../utilPs/psFontInfo.h \
+    ../textEncoding/textOfficeCharset.h \
+    ../docBase/docListAdmin.h \
+    ../docBase/docListTable.h \
+    ../docBase/docListOverrideTable.h \
+    ../docBase/docDocumentFieldList.h \
+    ../appUtil/utilPagedList.h \
+    ../docBuf/docDrawingShapeList.h \
+    ../docBase/docInsertedObjectList.h \
+    ../docBase/docObject.h \
+    ../docBase/docLayoutPosition.h \
+    ../docBase/docPictureProperties.h \
+    ../docBuf/docSelect.h \
+    ../docBase/docLayoutPosition.h \
+    ../docBase/docSelectionScope.h \
+    ../docBase/docEditPosition.h \
+    ../docBase/docEditRange.h \
+    ../docBase/docEditPosition.h \
+    ../docBuf/docTableRectangle.h \
+    ../docBuf/docDocumentTree.h \
+    ../docBase/docDocumentField.h \
+    ../docBase/docFieldInstructions.h \
+    ../docBase/docSelectionScope.h \
+    ../docBase/docEditRange.h \
+    ../docBase/docListNumberTree.h \
+    ../docBase/docListTable.h \
+    ../appUtil/sioGeneral.h \
+    docRtfWriter.h
 
 docRtfSaveTextAttribute.o: \
     docRtfSaveTextAttribute.c \
@@ -3116,118 +3211,19 @@ docRtfSaveTextAttribute.o: \
     ../appUtil/utilIndexSet.h \
     ../appUtil/utilIndexMapping.h \
     ../appUtil/utilMemoryBuffer.h \
-    ../textEncoding/utilOfficeCharset.h \
+    ../textEncoding/textOfficeCharset.h \
     ../utilPs/psPostScriptFontList.h \
     ../utilPs/psFontFamily.h \
     ../utilPs/psFontInfo.h \
     ../utilPs/textAttribute.h \
     ../appUtil/utilPropMask.h \
     ../utilPs/psShading.h \
-    ../utilPs/textAttributeAdmin.h \
-    ../utilPs/textAttribute.h \
-    ../appUtil/utilNumberedPropertiesAdmin.h \
-    ../appUtil/utilIntegerValueNode.h \
-    ../appUtil/utilPagedList.h \
-    ../appUtil/utilIndexSet.h \
     docRtfWriterImpl.h \
     ../docBuf/docBuf.h \
     ../bitmap/bitmap.h \
     ../appUtil/utilColor.h \
     ../appUtil/utilPalette.h \
     ../appUtil/utilColor.h \
-    ../docFont/utilDocFont.h \
-    ../docBuf/docShape.h \
-    ../appUtil/geoAffineTransform.h \
-    ../docBase/docShapeProperties.h \
-    ../docBase/docPictureProperties.h \
-    ../docBuf/docDocumentTree.h \
-    ../docBase/docDocumentField.h \
-    ../docBase/docFieldInstructions.h \
-    ../docBase/docSelectionScope.h \
-    ../docBase/docEditRange.h \
-    ../docBase/docEditPosition.h \
-    ../docBase/docListNumberTree.h \
-    ../docBase/docShapeDrawing.h \
-    ../docBase/docFramePropertiesAdmin.h \
-    ../docBase/docFrameProperties.h \
-    ../docBase/docPropVal.h \
-    ../appUtil/utilIntegerValueNode.h \
-    ../docBase/docStyleSheet.h \
-    ../docBase/docStyle.h \
-    ../docBase/docSectProperties.h \
-    ../appUtil/utilDocumentGeometry.h \
-    ../appUtil/utilPropMask.h \
-    ../appUtil/geo2DInteger.h \
-    ../docBase/docNotesProperties.h \
-    ../docBase/docRowProperties.h \
-    ../docBase/docCellProperties.h \
-    ../docBase/docItemShading.h \
-    ../docBase/docDocumentAttributeMap.h \
-    ../docBase/docParaProperties.h \
-    ../docBase/docParaNumber.h \
-    ../docBase/docDocumentProperties.h \
-    ../docFont/utilDocFontList.h \
-    ../docBase/docListAdmin.h \
-    ../docBase/docListTable.h \
-    ../docBase/docListOverrideTable.h \
-    ../docBase/docDocumentFieldList.h \
-    ../appUtil/utilPagedList.h \
-    ../docBuf/docDrawingShapeList.h \
-    ../docBase/docInsertedObjectList.h \
-    ../docBase/docObject.h \
-    ../docBase/docLayoutPosition.h \
-    ../docBase/docPictureProperties.h \
-    ../docBuf/docSelect.h \
-    ../docBase/docLayoutPosition.h \
-    ../docBase/docSelectionScope.h \
-    ../docBase/docEditPosition.h \
-    ../docBase/docEditRange.h \
-    ../docBuf/docTableRectangle.h \
-    ../docBase/docListTable.h \
-    ../appUtil/sioGeneral.h \
-    docRtfWriter.h \
-    docRtfTextConverter.h \
-    ../textEncoding/textConverterImpl.h \
-    ../docBase/docTabStop.h \
-    docRtfFlags.h \
-    docRtfTags.h \
-    ../docBase/docItemShadingAdmin.h \
-    ../textEncoding/textConverter.h
-
-docRtfSectProperties.o: \
-    docRtfSectProperties.c \
-    docRtfConfig.h \
-    ../include/appDebugon.h \
-    ../include/appDebug.h \
-    docRtfReaderImpl.h \
-    ../docBuf/docBuf.h \
-    ../bitmap/bitmap.h \
-    ../appUtil/utilColor.h \
-    ../appUtil/utilPalette.h \
-    ../appUtil/utilColor.h \
-    ../appUtil/utilMemoryBuffer.h \
-    ../appUtil/geo2DInteger.h \
-    ../docFont/utilDocFont.h \
-    ../utilPs/psFontInfo.h \
-    ../appUtil/utilIndexSet.h \
-    ../appUtil/utilIndexMapping.h \
-    ../textEncoding/utilOfficeCharset.h \
-    ../utilPs/psPostScriptFontList.h \
-    ../utilPs/psFontFamily.h \
-    ../utilPs/psFontInfo.h \
-    ../docBuf/docShape.h \
-    ../appUtil/geoAffineTransform.h \
-    ../docBase/docShapeProperties.h \
-    ../docBase/docPictureProperties.h \
-    ../appUtil/utilPropMask.h \
-    ../docBuf/docDocumentTree.h \
-    ../docBase/docDocumentField.h \
-    ../docBase/docFieldInstructions.h \
-    ../docBase/docSelectionScope.h \
-    ../docBase/docEditRange.h \
-    ../docBase/docEditPosition.h \
-    ../docBase/docListNumberTree.h \
-    ../docBase/docShapeDrawing.h \
     ../docBase/docFramePropertiesAdmin.h \
     ../docBase/docFrameProperties.h \
     ../docBase/docPropVal.h \
@@ -3249,10 +3245,8 @@ docRtfSectProperties.o: \
     ../docBase/docDocumentAttributeMap.h \
     ../docBase/docParaProperties.h \
     ../docBase/docParaNumber.h \
-    ../utilPs/textAttribute.h \
     ../docBase/docDocumentProperties.h \
     ../docFont/utilDocFontList.h \
-    ../docFont/utilDocFont.h \
     ../docBase/docListAdmin.h \
     ../docBase/docListTable.h \
     ../docBase/docListOverrideTable.h \
@@ -3268,76 +3262,51 @@ docRtfSectProperties.o: \
     ../docBase/docSelectionScope.h \
     ../docBase/docEditPosition.h \
     ../docBase/docEditRange.h \
+    ../docBase/docEditPosition.h \
     ../docBuf/docTableRectangle.h \
+    ../docBuf/docDocumentTree.h \
+    ../docBase/docDocumentField.h \
+    ../docBase/docFieldInstructions.h \
+    ../docBase/docSelectionScope.h \
+    ../docBase/docEditRange.h \
+    ../docBase/docListNumberTree.h \
     ../docBase/docListTable.h \
-    ../docBase/docNoteProperties.h \
     ../appUtil/sioGeneral.h \
-    ../docBase/docTabStop.h \
-    ../docBase/docListOverride.h \
-    ../docBase/docListOverrideLevel.h \
-    ../docBase/docListLevel.h \
-    ../docBase/docDocumentList.h \
-    ../docBase/docBorderProperties.h \
-    docRtfTextConverter.h \
-    ../textEncoding/textConverterImpl.h \
-    docRtfControlWord.h \
-    ../docBase/docTreeType.h \
-    ../docBuf/docTreeNode.h \
-    ../docBuf/docParaNode.h \
-    ../docBase/docParaProperties.h \
-    ../docBuf/docCellNode.h \
-    ../docBuf/docRowNode.h \
-    ../docBase/docRowProperties.h \
-    ../docBuf/docSectNode.h \
-    ../docBase/docSectProperties.h
+    docRtfWriter.h \
+    docRtfFlags.h \
+    docRtfTags.h \
+    ../textEncoding/textConverter.h
 
 docRtfShading.o: \
     docRtfShading.c \
     docRtfConfig.h \
-    ../docBase/docItemShadingAdmin.h \
-    ../docBase/docItemShading.h \
-    ../appUtil/utilPropMask.h \
-    ../appUtil/utilColor.h \
-    ../appUtil/utilPalette.h \
-    ../appUtil/utilColor.h \
-    ../appUtil/utilIntegerValueNode.h \
-    ../appUtil/utilNumberedPropertiesAdmin.h \
-    ../appUtil/utilIntegerValueNode.h \
-    ../appUtil/utilPagedList.h \
-    ../appUtil/utilIndexSet.h \
     ../utilPs/psShading.h \
     ../include/appDebugon.h \
     ../include/appDebug.h \
     docRtfWriterImpl.h \
     ../docBuf/docBuf.h \
     ../bitmap/bitmap.h \
+    ../appUtil/utilColor.h \
+    ../appUtil/utilPalette.h \
+    ../appUtil/utilColor.h \
     ../appUtil/utilMemoryBuffer.h \
     ../appUtil/geo2DInteger.h \
-    ../docFont/utilDocFont.h \
-    ../utilPs/psFontInfo.h \
-    ../appUtil/utilIndexSet.h \
-    ../appUtil/utilIndexMapping.h \
-    ../textEncoding/utilOfficeCharset.h \
     ../utilPs/psPostScriptFontList.h \
     ../utilPs/psFontFamily.h \
     ../utilPs/psFontInfo.h \
-    ../docBuf/docShape.h \
-    ../appUtil/geoAffineTransform.h \
-    ../docBase/docShapeProperties.h \
-    ../docBase/docPictureProperties.h \
-    ../docBuf/docDocumentTree.h \
-    ../docBase/docDocumentField.h \
-    ../docBase/docFieldInstructions.h \
-    ../docBase/docSelectionScope.h \
-    ../docBase/docEditRange.h \
-    ../docBase/docEditPosition.h \
-    ../docBase/docListNumberTree.h \
-    ../docBase/docShapeDrawing.h \
+    ../appUtil/utilIndexSet.h \
+    ../appUtil/utilIndexMapping.h \
     ../docBase/docFramePropertiesAdmin.h \
     ../docBase/docFrameProperties.h \
     ../docBase/docPropVal.h \
+    ../appUtil/utilIntegerValueNode.h \
+    ../appUtil/utilNumberedPropertiesAdmin.h \
+    ../appUtil/utilIntegerValueNode.h \
+    ../appUtil/utilPagedList.h \
+    ../appUtil/utilIndexSet.h \
     ../docBase/docStyleSheet.h \
     ../docBase/docStyle.h \
+    ../appUtil/utilPropMask.h \
     ../docBase/docSectProperties.h \
     ../appUtil/utilDocumentGeometry.h \
     ../appUtil/utilPropMask.h \
@@ -3345,6 +3314,7 @@ docRtfShading.o: \
     ../docBase/docNotesProperties.h \
     ../docBase/docRowProperties.h \
     ../docBase/docCellProperties.h \
+    ../docBase/docItemShading.h \
     ../docBase/docDocumentAttributeMap.h \
     ../docBase/docParaProperties.h \
     ../docBase/docParaNumber.h \
@@ -3352,6 +3322,8 @@ docRtfShading.o: \
     ../docBase/docDocumentProperties.h \
     ../docFont/utilDocFontList.h \
     ../docFont/utilDocFont.h \
+    ../utilPs/psFontInfo.h \
+    ../textEncoding/textOfficeCharset.h \
     ../docBase/docListAdmin.h \
     ../docBase/docListTable.h \
     ../docBase/docListOverrideTable.h \
@@ -3367,13 +3339,17 @@ docRtfShading.o: \
     ../docBase/docSelectionScope.h \
     ../docBase/docEditPosition.h \
     ../docBase/docEditRange.h \
+    ../docBase/docEditPosition.h \
     ../docBuf/docTableRectangle.h \
+    ../docBuf/docDocumentTree.h \
+    ../docBase/docDocumentField.h \
+    ../docBase/docFieldInstructions.h \
+    ../docBase/docSelectionScope.h \
+    ../docBase/docEditRange.h \
+    ../docBase/docListNumberTree.h \
     ../docBase/docListTable.h \
     ../appUtil/sioGeneral.h \
-    docRtfWriter.h \
-    docRtfTextConverter.h \
-    ../textEncoding/textConverterImpl.h \
-    ../docBase/docTabStop.h
+    docRtfWriter.h
 
 docRtfShapePropHash.o: \
     docRtfShapePropHash.c \
@@ -3394,27 +3370,11 @@ docRtfShpTab.o: \
     ../appUtil/utilColor.h \
     ../appUtil/utilMemoryBuffer.h \
     ../appUtil/geo2DInteger.h \
-    ../docFont/utilDocFont.h \
-    ../utilPs/psFontInfo.h \
-    ../appUtil/utilIndexSet.h \
-    ../appUtil/utilIndexMapping.h \
-    ../textEncoding/utilOfficeCharset.h \
     ../utilPs/psPostScriptFontList.h \
     ../utilPs/psFontFamily.h \
     ../utilPs/psFontInfo.h \
-    ../docBuf/docShape.h \
-    ../appUtil/geoAffineTransform.h \
-    ../docBase/docShapeProperties.h \
-    ../docBase/docPictureProperties.h \
-    ../appUtil/utilPropMask.h \
-    ../docBuf/docDocumentTree.h \
-    ../docBase/docDocumentField.h \
-    ../docBase/docFieldInstructions.h \
-    ../docBase/docSelectionScope.h \
-    ../docBase/docEditRange.h \
-    ../docBase/docEditPosition.h \
-    ../docBase/docListNumberTree.h \
-    ../docBase/docShapeDrawing.h \
+    ../appUtil/utilIndexSet.h \
+    ../appUtil/utilIndexMapping.h \
     ../docBase/docFramePropertiesAdmin.h \
     ../docBase/docFrameProperties.h \
     ../docBase/docPropVal.h \
@@ -3425,6 +3385,7 @@ docRtfShpTab.o: \
     ../appUtil/utilIndexSet.h \
     ../docBase/docStyleSheet.h \
     ../docBase/docStyle.h \
+    ../appUtil/utilPropMask.h \
     ../docBase/docSectProperties.h \
     ../appUtil/utilDocumentGeometry.h \
     ../appUtil/utilPropMask.h \
@@ -3440,6 +3401,8 @@ docRtfShpTab.o: \
     ../docBase/docDocumentProperties.h \
     ../docFont/utilDocFontList.h \
     ../docFont/utilDocFont.h \
+    ../utilPs/psFontInfo.h \
+    ../textEncoding/textOfficeCharset.h \
     ../docBase/docListAdmin.h \
     ../docBase/docListTable.h \
     ../docBase/docListOverrideTable.h \
@@ -3455,19 +3418,30 @@ docRtfShpTab.o: \
     ../docBase/docSelectionScope.h \
     ../docBase/docEditPosition.h \
     ../docBase/docEditRange.h \
+    ../docBase/docEditPosition.h \
     ../docBuf/docTableRectangle.h \
+    ../docBuf/docDocumentTree.h \
+    ../docBase/docDocumentField.h \
+    ../docBase/docFieldInstructions.h \
+    ../docBase/docSelectionScope.h \
+    ../docBase/docEditRange.h \
+    ../docBase/docListNumberTree.h \
     ../docBase/docListTable.h \
     ../docBase/docNoteProperties.h \
     ../appUtil/sioGeneral.h \
     ../docBase/docTabStop.h \
+    ../docBase/docTabStopList.h \
+    ../docBase/docTabStop.h \
     ../docBase/docListOverride.h \
     ../docBase/docListOverrideLevel.h \
     ../docBase/docListLevel.h \
+    ../docBase/docListDepth.h \
     ../docBase/docDocumentList.h \
     ../docBase/docBorderProperties.h \
     docRtfTextConverter.h \
-    ../textEncoding/textConverterImpl.h \
     docRtfControlWord.h \
+    docRtfShpTab.h \
+    docRtfReaderImpl.h \
     docRtfTagHash.h \
     ../docBase/docShapeProp.h \
     ../include/appDebugon.h \
@@ -3478,47 +3452,30 @@ docRtfStylesheet.o: \
     docRtfConfig.h \
     ../include/appDebugon.h \
     ../include/appDebug.h \
-    ../docBase/docItemShadingAdmin.h \
-    ../docBase/docItemShading.h \
-    ../appUtil/utilPropMask.h \
+    docRtfReaderImpl.h \
+    ../docBuf/docBuf.h \
+    ../bitmap/bitmap.h \
     ../appUtil/utilColor.h \
     ../appUtil/utilPalette.h \
     ../appUtil/utilColor.h \
+    ../appUtil/utilMemoryBuffer.h \
+    ../appUtil/geo2DInteger.h \
+    ../utilPs/psPostScriptFontList.h \
+    ../utilPs/psFontFamily.h \
+    ../utilPs/psFontInfo.h \
+    ../appUtil/utilIndexSet.h \
+    ../appUtil/utilIndexMapping.h \
+    ../docBase/docFramePropertiesAdmin.h \
+    ../docBase/docFrameProperties.h \
+    ../docBase/docPropVal.h \
     ../appUtil/utilIntegerValueNode.h \
     ../appUtil/utilNumberedPropertiesAdmin.h \
     ../appUtil/utilIntegerValueNode.h \
     ../appUtil/utilPagedList.h \
     ../appUtil/utilIndexSet.h \
-    docRtfReaderImpl.h \
-    ../docBuf/docBuf.h \
-    ../bitmap/bitmap.h \
-    ../appUtil/utilMemoryBuffer.h \
-    ../appUtil/geo2DInteger.h \
-    ../docFont/utilDocFont.h \
-    ../utilPs/psFontInfo.h \
-    ../appUtil/utilIndexSet.h \
-    ../appUtil/utilIndexMapping.h \
-    ../textEncoding/utilOfficeCharset.h \
-    ../utilPs/psPostScriptFontList.h \
-    ../utilPs/psFontFamily.h \
-    ../utilPs/psFontInfo.h \
-    ../docBuf/docShape.h \
-    ../appUtil/geoAffineTransform.h \
-    ../docBase/docShapeProperties.h \
-    ../docBase/docPictureProperties.h \
-    ../docBuf/docDocumentTree.h \
-    ../docBase/docDocumentField.h \
-    ../docBase/docFieldInstructions.h \
-    ../docBase/docSelectionScope.h \
-    ../docBase/docEditRange.h \
-    ../docBase/docEditPosition.h \
-    ../docBase/docListNumberTree.h \
-    ../docBase/docShapeDrawing.h \
-    ../docBase/docFramePropertiesAdmin.h \
-    ../docBase/docFrameProperties.h \
-    ../docBase/docPropVal.h \
     ../docBase/docStyleSheet.h \
     ../docBase/docStyle.h \
+    ../appUtil/utilPropMask.h \
     ../docBase/docSectProperties.h \
     ../appUtil/utilDocumentGeometry.h \
     ../appUtil/utilPropMask.h \
@@ -3526,6 +3483,7 @@ docRtfStylesheet.o: \
     ../docBase/docNotesProperties.h \
     ../docBase/docRowProperties.h \
     ../docBase/docCellProperties.h \
+    ../docBase/docItemShading.h \
     ../docBase/docDocumentAttributeMap.h \
     ../docBase/docParaProperties.h \
     ../docBase/docParaNumber.h \
@@ -3533,6 +3491,8 @@ docRtfStylesheet.o: \
     ../docBase/docDocumentProperties.h \
     ../docFont/utilDocFontList.h \
     ../docFont/utilDocFont.h \
+    ../utilPs/psFontInfo.h \
+    ../textEncoding/textOfficeCharset.h \
     ../docBase/docListAdmin.h \
     ../docBase/docListTable.h \
     ../docBase/docListOverrideTable.h \
@@ -3548,27 +3508,37 @@ docRtfStylesheet.o: \
     ../docBase/docSelectionScope.h \
     ../docBase/docEditPosition.h \
     ../docBase/docEditRange.h \
+    ../docBase/docEditPosition.h \
     ../docBuf/docTableRectangle.h \
+    ../docBuf/docDocumentTree.h \
+    ../docBase/docDocumentField.h \
+    ../docBase/docFieldInstructions.h \
+    ../docBase/docSelectionScope.h \
+    ../docBase/docEditRange.h \
+    ../docBase/docListNumberTree.h \
     ../docBase/docListTable.h \
     ../docBase/docNoteProperties.h \
     ../appUtil/sioGeneral.h \
     ../docBase/docTabStop.h \
+    ../docBase/docTabStopList.h \
+    ../docBase/docTabStop.h \
     ../docBase/docListOverride.h \
     ../docBase/docListOverrideLevel.h \
     ../docBase/docListLevel.h \
+    ../docBase/docListDepth.h \
     ../docBase/docDocumentList.h \
     ../docBase/docBorderProperties.h \
     docRtfTextConverter.h \
-    ../textEncoding/textConverterImpl.h \
     docRtfControlWord.h
 
 docRtfTab.o: \
     docRtfTab.c \
     docRtfConfig.h \
     ../include/charnames.h \
+    ../textEncoding/uniSpecials.h \
     ../appUtil/utilJenkinsPerfectHash.h \
     ../appUtil/appUtilConfig.h \
-    ../textEncoding/utilOfficeCharset.h \
+    ../textEncoding/textOfficeCharset.h \
     ../appUtil/utilIndexMapping.h \
     ../appUtil/utilIndexSet.h \
     docRtfReaderImpl.h \
@@ -3579,24 +3549,9 @@ docRtfTab.o: \
     ../appUtil/utilColor.h \
     ../appUtil/utilMemoryBuffer.h \
     ../appUtil/geo2DInteger.h \
-    ../docFont/utilDocFont.h \
-    ../utilPs/psFontInfo.h \
     ../utilPs/psPostScriptFontList.h \
     ../utilPs/psFontFamily.h \
     ../utilPs/psFontInfo.h \
-    ../docBuf/docShape.h \
-    ../appUtil/geoAffineTransform.h \
-    ../docBase/docShapeProperties.h \
-    ../docBase/docPictureProperties.h \
-    ../appUtil/utilPropMask.h \
-    ../docBuf/docDocumentTree.h \
-    ../docBase/docDocumentField.h \
-    ../docBase/docFieldInstructions.h \
-    ../docBase/docSelectionScope.h \
-    ../docBase/docEditRange.h \
-    ../docBase/docEditPosition.h \
-    ../docBase/docListNumberTree.h \
-    ../docBase/docShapeDrawing.h \
     ../docBase/docFramePropertiesAdmin.h \
     ../docBase/docFrameProperties.h \
     ../docBase/docPropVal.h \
@@ -3607,6 +3562,7 @@ docRtfTab.o: \
     ../appUtil/utilIndexSet.h \
     ../docBase/docStyleSheet.h \
     ../docBase/docStyle.h \
+    ../appUtil/utilPropMask.h \
     ../docBase/docSectProperties.h \
     ../appUtil/utilDocumentGeometry.h \
     ../appUtil/utilPropMask.h \
@@ -3622,6 +3578,7 @@ docRtfTab.o: \
     ../docBase/docDocumentProperties.h \
     ../docFont/utilDocFontList.h \
     ../docFont/utilDocFont.h \
+    ../utilPs/psFontInfo.h \
     ../docBase/docListAdmin.h \
     ../docBase/docListTable.h \
     ../docBase/docListOverrideTable.h \
@@ -3637,18 +3594,27 @@ docRtfTab.o: \
     ../docBase/docSelectionScope.h \
     ../docBase/docEditPosition.h \
     ../docBase/docEditRange.h \
+    ../docBase/docEditPosition.h \
     ../docBuf/docTableRectangle.h \
+    ../docBuf/docDocumentTree.h \
+    ../docBase/docDocumentField.h \
+    ../docBase/docFieldInstructions.h \
+    ../docBase/docSelectionScope.h \
+    ../docBase/docEditRange.h \
+    ../docBase/docListNumberTree.h \
     ../docBase/docListTable.h \
     ../docBase/docNoteProperties.h \
     ../appUtil/sioGeneral.h \
     ../docBase/docTabStop.h \
+    ../docBase/docTabStopList.h \
+    ../docBase/docTabStop.h \
     ../docBase/docListOverride.h \
     ../docBase/docListOverrideLevel.h \
     ../docBase/docListLevel.h \
+    ../docBase/docListDepth.h \
     ../docBase/docDocumentList.h \
     ../docBase/docBorderProperties.h \
     docRtfTextConverter.h \
-    ../textEncoding/textConverterImpl.h \
     docRtfControlWord.h \
     docRtfTagHash.h \
     docRtfTraceImpl.h \
@@ -3659,6 +3625,11 @@ docRtfTab.o: \
     ../docBase/docDrawingObject.h \
     ../docBase/docTextParticule.h \
     ../docBase/docObjectProperties.h \
+    ../docBuf/docShape.h \
+    ../appUtil/geoAffineTransform.h \
+    ../docBase/docShapeProperties.h \
+    ../docBase/docPictureProperties.h \
+    ../docBase/docShapeDrawing.h \
     ../utilPs/psShading.h \
     ../utilPs/psDocumentFontStyle.h \
     ../include/appDebugon.h \
@@ -3677,27 +3648,11 @@ docRtfTables.o: \
     ../appUtil/utilColor.h \
     ../appUtil/utilMemoryBuffer.h \
     ../appUtil/geo2DInteger.h \
-    ../docFont/utilDocFont.h \
-    ../utilPs/psFontInfo.h \
-    ../appUtil/utilIndexSet.h \
-    ../appUtil/utilIndexMapping.h \
-    ../textEncoding/utilOfficeCharset.h \
     ../utilPs/psPostScriptFontList.h \
     ../utilPs/psFontFamily.h \
     ../utilPs/psFontInfo.h \
-    ../docBuf/docShape.h \
-    ../appUtil/geoAffineTransform.h \
-    ../docBase/docShapeProperties.h \
-    ../docBase/docPictureProperties.h \
-    ../appUtil/utilPropMask.h \
-    ../docBuf/docDocumentTree.h \
-    ../docBase/docDocumentField.h \
-    ../docBase/docFieldInstructions.h \
-    ../docBase/docSelectionScope.h \
-    ../docBase/docEditRange.h \
-    ../docBase/docEditPosition.h \
-    ../docBase/docListNumberTree.h \
-    ../docBase/docShapeDrawing.h \
+    ../appUtil/utilIndexSet.h \
+    ../appUtil/utilIndexMapping.h \
     ../docBase/docFramePropertiesAdmin.h \
     ../docBase/docFrameProperties.h \
     ../docBase/docPropVal.h \
@@ -3708,6 +3663,7 @@ docRtfTables.o: \
     ../appUtil/utilIndexSet.h \
     ../docBase/docStyleSheet.h \
     ../docBase/docStyle.h \
+    ../appUtil/utilPropMask.h \
     ../docBase/docSectProperties.h \
     ../appUtil/utilDocumentGeometry.h \
     ../appUtil/utilPropMask.h \
@@ -3723,6 +3679,8 @@ docRtfTables.o: \
     ../docBase/docDocumentProperties.h \
     ../docFont/utilDocFontList.h \
     ../docFont/utilDocFont.h \
+    ../utilPs/psFontInfo.h \
+    ../textEncoding/textOfficeCharset.h \
     ../docBase/docListAdmin.h \
     ../docBase/docListTable.h \
     ../docBase/docListOverrideTable.h \
@@ -3738,18 +3696,27 @@ docRtfTables.o: \
     ../docBase/docSelectionScope.h \
     ../docBase/docEditPosition.h \
     ../docBase/docEditRange.h \
+    ../docBase/docEditPosition.h \
     ../docBuf/docTableRectangle.h \
+    ../docBuf/docDocumentTree.h \
+    ../docBase/docDocumentField.h \
+    ../docBase/docFieldInstructions.h \
+    ../docBase/docSelectionScope.h \
+    ../docBase/docEditRange.h \
+    ../docBase/docListNumberTree.h \
     ../docBase/docListTable.h \
     ../docBase/docNoteProperties.h \
     ../appUtil/sioGeneral.h \
     ../docBase/docTabStop.h \
+    ../docBase/docTabStopList.h \
+    ../docBase/docTabStop.h \
     ../docBase/docListOverride.h \
     ../docBase/docListOverrideLevel.h \
     ../docBase/docListLevel.h \
+    ../docBase/docListDepth.h \
     ../docBase/docDocumentList.h \
     ../docBase/docBorderProperties.h \
     docRtfTextConverter.h \
-    ../textEncoding/textConverterImpl.h \
     docRtfControlWord.h
 
 docRtfTabs.o: \
@@ -3765,27 +3732,11 @@ docRtfTabs.o: \
     ../appUtil/utilColor.h \
     ../appUtil/utilMemoryBuffer.h \
     ../appUtil/geo2DInteger.h \
-    ../docFont/utilDocFont.h \
-    ../utilPs/psFontInfo.h \
-    ../appUtil/utilIndexSet.h \
-    ../appUtil/utilIndexMapping.h \
-    ../textEncoding/utilOfficeCharset.h \
     ../utilPs/psPostScriptFontList.h \
     ../utilPs/psFontFamily.h \
     ../utilPs/psFontInfo.h \
-    ../docBuf/docShape.h \
-    ../appUtil/geoAffineTransform.h \
-    ../docBase/docShapeProperties.h \
-    ../docBase/docPictureProperties.h \
-    ../appUtil/utilPropMask.h \
-    ../docBuf/docDocumentTree.h \
-    ../docBase/docDocumentField.h \
-    ../docBase/docFieldInstructions.h \
-    ../docBase/docSelectionScope.h \
-    ../docBase/docEditRange.h \
-    ../docBase/docEditPosition.h \
-    ../docBase/docListNumberTree.h \
-    ../docBase/docShapeDrawing.h \
+    ../appUtil/utilIndexSet.h \
+    ../appUtil/utilIndexMapping.h \
     ../docBase/docFramePropertiesAdmin.h \
     ../docBase/docFrameProperties.h \
     ../docBase/docPropVal.h \
@@ -3796,6 +3747,7 @@ docRtfTabs.o: \
     ../appUtil/utilIndexSet.h \
     ../docBase/docStyleSheet.h \
     ../docBase/docStyle.h \
+    ../appUtil/utilPropMask.h \
     ../docBase/docSectProperties.h \
     ../appUtil/utilDocumentGeometry.h \
     ../appUtil/utilPropMask.h \
@@ -3811,6 +3763,8 @@ docRtfTabs.o: \
     ../docBase/docDocumentProperties.h \
     ../docFont/utilDocFontList.h \
     ../docFont/utilDocFont.h \
+    ../utilPs/psFontInfo.h \
+    ../textEncoding/textOfficeCharset.h \
     ../docBase/docListAdmin.h \
     ../docBase/docListTable.h \
     ../docBase/docListOverrideTable.h \
@@ -3826,21 +3780,31 @@ docRtfTabs.o: \
     ../docBase/docSelectionScope.h \
     ../docBase/docEditPosition.h \
     ../docBase/docEditRange.h \
+    ../docBase/docEditPosition.h \
     ../docBuf/docTableRectangle.h \
+    ../docBuf/docDocumentTree.h \
+    ../docBase/docDocumentField.h \
+    ../docBase/docFieldInstructions.h \
+    ../docBase/docSelectionScope.h \
+    ../docBase/docEditRange.h \
+    ../docBase/docListNumberTree.h \
     ../docBase/docListTable.h \
     ../appUtil/sioGeneral.h \
     docRtfWriter.h \
-    docRtfTextConverter.h \
-    ../textEncoding/textConverterImpl.h \
-    ../docBase/docTabStop.h \
     docRtfReaderImpl.h \
     ../docBase/docNoteProperties.h \
+    ../docBase/docTabStop.h \
+    ../docBase/docTabStopList.h \
+    ../docBase/docTabStop.h \
     ../docBase/docListOverride.h \
     ../docBase/docListOverrideLevel.h \
     ../docBase/docListLevel.h \
+    ../docBase/docListDepth.h \
     ../docBase/docDocumentList.h \
     ../docBase/docBorderProperties.h \
-    docRtfControlWord.h
+    docRtfTextConverter.h \
+    docRtfControlWord.h \
+    docRtfTags.h
 
 docRtfTagHash.o: \
     docRtfTagHash.c \
@@ -3851,61 +3815,42 @@ docRtfTagHash.o: \
 docRtfTextConverter.o: \
     docRtfTextConverter.c \
     docRtfConfig.h \
-    ../include/appDebugon.h \
-    ../include/appDebug.h \
-    docRtfTextConverter.h \
-    ../textEncoding/textConverterImpl.h \
-    ../textEncoding/utilOfficeCharset.h \
+    ../textEncoding/textOfficeCharset.h \
     ../appUtil/utilIndexMapping.h \
     ../appUtil/utilIndexSet.h \
-    ../textEncoding/textConverter.h
+    docRtfTextConverter.h \
+    ../include/appDebugon.h \
+    ../include/appDebug.h
 
 docRtfTextProperties.o: \
     docRtfTextProperties.c \
     docRtfConfig.h \
     ../include/appDebugon.h \
     ../include/appDebug.h \
-    ../docBase/docItemShadingAdmin.h \
-    ../docBase/docItemShading.h \
-    ../appUtil/utilPropMask.h \
+    docRtfReaderImpl.h \
+    ../docBuf/docBuf.h \
+    ../bitmap/bitmap.h \
     ../appUtil/utilColor.h \
     ../appUtil/utilPalette.h \
     ../appUtil/utilColor.h \
+    ../appUtil/utilMemoryBuffer.h \
+    ../appUtil/geo2DInteger.h \
+    ../utilPs/psPostScriptFontList.h \
+    ../utilPs/psFontFamily.h \
+    ../utilPs/psFontInfo.h \
+    ../appUtil/utilIndexSet.h \
+    ../appUtil/utilIndexMapping.h \
+    ../docBase/docFramePropertiesAdmin.h \
+    ../docBase/docFrameProperties.h \
+    ../docBase/docPropVal.h \
     ../appUtil/utilIntegerValueNode.h \
     ../appUtil/utilNumberedPropertiesAdmin.h \
     ../appUtil/utilIntegerValueNode.h \
     ../appUtil/utilPagedList.h \
     ../appUtil/utilIndexSet.h \
-    docRtfReaderImpl.h \
-    ../docBuf/docBuf.h \
-    ../bitmap/bitmap.h \
-    ../appUtil/utilMemoryBuffer.h \
-    ../appUtil/geo2DInteger.h \
-    ../docFont/utilDocFont.h \
-    ../utilPs/psFontInfo.h \
-    ../appUtil/utilIndexSet.h \
-    ../appUtil/utilIndexMapping.h \
-    ../textEncoding/utilOfficeCharset.h \
-    ../utilPs/psPostScriptFontList.h \
-    ../utilPs/psFontFamily.h \
-    ../utilPs/psFontInfo.h \
-    ../docBuf/docShape.h \
-    ../appUtil/geoAffineTransform.h \
-    ../docBase/docShapeProperties.h \
-    ../docBase/docPictureProperties.h \
-    ../docBuf/docDocumentTree.h \
-    ../docBase/docDocumentField.h \
-    ../docBase/docFieldInstructions.h \
-    ../docBase/docSelectionScope.h \
-    ../docBase/docEditRange.h \
-    ../docBase/docEditPosition.h \
-    ../docBase/docListNumberTree.h \
-    ../docBase/docShapeDrawing.h \
-    ../docBase/docFramePropertiesAdmin.h \
-    ../docBase/docFrameProperties.h \
-    ../docBase/docPropVal.h \
     ../docBase/docStyleSheet.h \
     ../docBase/docStyle.h \
+    ../appUtil/utilPropMask.h \
     ../docBase/docSectProperties.h \
     ../appUtil/utilDocumentGeometry.h \
     ../appUtil/utilPropMask.h \
@@ -3913,6 +3858,7 @@ docRtfTextProperties.o: \
     ../docBase/docNotesProperties.h \
     ../docBase/docRowProperties.h \
     ../docBase/docCellProperties.h \
+    ../docBase/docItemShading.h \
     ../docBase/docDocumentAttributeMap.h \
     ../docBase/docParaProperties.h \
     ../docBase/docParaNumber.h \
@@ -3920,6 +3866,8 @@ docRtfTextProperties.o: \
     ../docBase/docDocumentProperties.h \
     ../docFont/utilDocFontList.h \
     ../docFont/utilDocFont.h \
+    ../utilPs/psFontInfo.h \
+    ../textEncoding/textOfficeCharset.h \
     ../docBase/docListAdmin.h \
     ../docBase/docListTable.h \
     ../docBase/docListOverrideTable.h \
@@ -3935,18 +3883,27 @@ docRtfTextProperties.o: \
     ../docBase/docSelectionScope.h \
     ../docBase/docEditPosition.h \
     ../docBase/docEditRange.h \
+    ../docBase/docEditPosition.h \
     ../docBuf/docTableRectangle.h \
+    ../docBuf/docDocumentTree.h \
+    ../docBase/docDocumentField.h \
+    ../docBase/docFieldInstructions.h \
+    ../docBase/docSelectionScope.h \
+    ../docBase/docEditRange.h \
+    ../docBase/docListNumberTree.h \
     ../docBase/docListTable.h \
     ../docBase/docNoteProperties.h \
     ../appUtil/sioGeneral.h \
     ../docBase/docTabStop.h \
+    ../docBase/docTabStopList.h \
+    ../docBase/docTabStop.h \
     ../docBase/docListOverride.h \
     ../docBase/docListOverrideLevel.h \
     ../docBase/docListLevel.h \
+    ../docBase/docListDepth.h \
     ../docBase/docDocumentList.h \
     ../docBase/docBorderProperties.h \
     docRtfTextConverter.h \
-    ../textEncoding/textConverterImpl.h \
     docRtfControlWord.h \
     docRtfFlags.h
 
@@ -3963,27 +3920,11 @@ docRtfWriteColorTable.o: \
     ../appUtil/utilColor.h \
     ../appUtil/utilMemoryBuffer.h \
     ../appUtil/geo2DInteger.h \
-    ../docFont/utilDocFont.h \
-    ../utilPs/psFontInfo.h \
-    ../appUtil/utilIndexSet.h \
-    ../appUtil/utilIndexMapping.h \
-    ../textEncoding/utilOfficeCharset.h \
     ../utilPs/psPostScriptFontList.h \
     ../utilPs/psFontFamily.h \
     ../utilPs/psFontInfo.h \
-    ../docBuf/docShape.h \
-    ../appUtil/geoAffineTransform.h \
-    ../docBase/docShapeProperties.h \
-    ../docBase/docPictureProperties.h \
-    ../appUtil/utilPropMask.h \
-    ../docBuf/docDocumentTree.h \
-    ../docBase/docDocumentField.h \
-    ../docBase/docFieldInstructions.h \
-    ../docBase/docSelectionScope.h \
-    ../docBase/docEditRange.h \
-    ../docBase/docEditPosition.h \
-    ../docBase/docListNumberTree.h \
-    ../docBase/docShapeDrawing.h \
+    ../appUtil/utilIndexSet.h \
+    ../appUtil/utilIndexMapping.h \
     ../docBase/docFramePropertiesAdmin.h \
     ../docBase/docFrameProperties.h \
     ../docBase/docPropVal.h \
@@ -3994,6 +3935,7 @@ docRtfWriteColorTable.o: \
     ../appUtil/utilIndexSet.h \
     ../docBase/docStyleSheet.h \
     ../docBase/docStyle.h \
+    ../appUtil/utilPropMask.h \
     ../docBase/docSectProperties.h \
     ../appUtil/utilDocumentGeometry.h \
     ../appUtil/utilPropMask.h \
@@ -4009,6 +3951,8 @@ docRtfWriteColorTable.o: \
     ../docBase/docDocumentProperties.h \
     ../docFont/utilDocFontList.h \
     ../docFont/utilDocFont.h \
+    ../utilPs/psFontInfo.h \
+    ../textEncoding/textOfficeCharset.h \
     ../docBase/docListAdmin.h \
     ../docBase/docListTable.h \
     ../docBase/docListOverrideTable.h \
@@ -4024,13 +3968,17 @@ docRtfWriteColorTable.o: \
     ../docBase/docSelectionScope.h \
     ../docBase/docEditPosition.h \
     ../docBase/docEditRange.h \
+    ../docBase/docEditPosition.h \
     ../docBuf/docTableRectangle.h \
+    ../docBuf/docDocumentTree.h \
+    ../docBase/docDocumentField.h \
+    ../docBase/docFieldInstructions.h \
+    ../docBase/docSelectionScope.h \
+    ../docBase/docEditRange.h \
+    ../docBase/docListNumberTree.h \
     ../docBase/docListTable.h \
     ../appUtil/sioGeneral.h \
-    docRtfWriter.h \
-    docRtfTextConverter.h \
-    ../textEncoding/textConverterImpl.h \
-    ../docBase/docTabStop.h
+    docRtfWriter.h
 
 docRtfWriteListTable.o: \
     docRtfWriteListTable.c \
@@ -4045,27 +3993,11 @@ docRtfWriteListTable.o: \
     ../appUtil/utilColor.h \
     ../appUtil/utilMemoryBuffer.h \
     ../appUtil/geo2DInteger.h \
-    ../docFont/utilDocFont.h \
-    ../utilPs/psFontInfo.h \
-    ../appUtil/utilIndexSet.h \
-    ../appUtil/utilIndexMapping.h \
-    ../textEncoding/utilOfficeCharset.h \
     ../utilPs/psPostScriptFontList.h \
     ../utilPs/psFontFamily.h \
     ../utilPs/psFontInfo.h \
-    ../docBuf/docShape.h \
-    ../appUtil/geoAffineTransform.h \
-    ../docBase/docShapeProperties.h \
-    ../docBase/docPictureProperties.h \
-    ../appUtil/utilPropMask.h \
-    ../docBuf/docDocumentTree.h \
-    ../docBase/docDocumentField.h \
-    ../docBase/docFieldInstructions.h \
-    ../docBase/docSelectionScope.h \
-    ../docBase/docEditRange.h \
-    ../docBase/docEditPosition.h \
-    ../docBase/docListNumberTree.h \
-    ../docBase/docShapeDrawing.h \
+    ../appUtil/utilIndexSet.h \
+    ../appUtil/utilIndexMapping.h \
     ../docBase/docFramePropertiesAdmin.h \
     ../docBase/docFrameProperties.h \
     ../docBase/docPropVal.h \
@@ -4076,6 +4008,7 @@ docRtfWriteListTable.o: \
     ../appUtil/utilIndexSet.h \
     ../docBase/docStyleSheet.h \
     ../docBase/docStyle.h \
+    ../appUtil/utilPropMask.h \
     ../docBase/docSectProperties.h \
     ../appUtil/utilDocumentGeometry.h \
     ../appUtil/utilPropMask.h \
@@ -4091,6 +4024,8 @@ docRtfWriteListTable.o: \
     ../docBase/docDocumentProperties.h \
     ../docFont/utilDocFontList.h \
     ../docFont/utilDocFont.h \
+    ../utilPs/psFontInfo.h \
+    ../textEncoding/textOfficeCharset.h \
     ../docBase/docListAdmin.h \
     ../docBase/docListTable.h \
     ../docBase/docListOverrideTable.h \
@@ -4106,15 +4041,20 @@ docRtfWriteListTable.o: \
     ../docBase/docSelectionScope.h \
     ../docBase/docEditPosition.h \
     ../docBase/docEditRange.h \
+    ../docBase/docEditPosition.h \
     ../docBuf/docTableRectangle.h \
+    ../docBuf/docDocumentTree.h \
+    ../docBase/docDocumentField.h \
+    ../docBase/docFieldInstructions.h \
+    ../docBase/docSelectionScope.h \
+    ../docBase/docEditRange.h \
+    ../docBase/docListNumberTree.h \
     ../docBase/docListTable.h \
     ../appUtil/sioGeneral.h \
     docRtfWriter.h \
-    docRtfTextConverter.h \
-    ../textEncoding/textConverterImpl.h \
-    ../docBase/docTabStop.h \
     ../docBase/docListLevel.h \
     ../docBase/docDocumentList.h \
+    ../docBase/docListDepth.h \
     ../docBase/docListLevel.h
 
 docRtfWriteMail.o: \
@@ -4133,27 +4073,11 @@ docRtfWriteMail.o: \
     ../appUtil/utilColor.h \
     ../appUtil/utilMemoryBuffer.h \
     ../appUtil/geo2DInteger.h \
-    ../docFont/utilDocFont.h \
-    ../utilPs/psFontInfo.h \
-    ../appUtil/utilIndexSet.h \
-    ../appUtil/utilIndexMapping.h \
-    ../textEncoding/utilOfficeCharset.h \
     ../utilPs/psPostScriptFontList.h \
     ../utilPs/psFontFamily.h \
     ../utilPs/psFontInfo.h \
-    ../docBuf/docShape.h \
-    ../appUtil/geoAffineTransform.h \
-    ../docBase/docShapeProperties.h \
-    ../docBase/docPictureProperties.h \
-    ../appUtil/utilPropMask.h \
-    ../docBuf/docDocumentTree.h \
-    ../docBase/docDocumentField.h \
-    ../docBase/docFieldInstructions.h \
-    ../docBase/docSelectionScope.h \
-    ../docBase/docEditRange.h \
-    ../docBase/docEditPosition.h \
-    ../docBase/docListNumberTree.h \
-    ../docBase/docShapeDrawing.h \
+    ../appUtil/utilIndexSet.h \
+    ../appUtil/utilIndexMapping.h \
     ../docBase/docFramePropertiesAdmin.h \
     ../docBase/docFrameProperties.h \
     ../docBase/docPropVal.h \
@@ -4164,6 +4088,7 @@ docRtfWriteMail.o: \
     ../appUtil/utilIndexSet.h \
     ../docBase/docStyleSheet.h \
     ../docBase/docStyle.h \
+    ../appUtil/utilPropMask.h \
     ../docBase/docSectProperties.h \
     ../appUtil/utilDocumentGeometry.h \
     ../appUtil/utilPropMask.h \
@@ -4179,6 +4104,8 @@ docRtfWriteMail.o: \
     ../docBase/docDocumentProperties.h \
     ../docFont/utilDocFontList.h \
     ../docFont/utilDocFont.h \
+    ../utilPs/psFontInfo.h \
+    ../textEncoding/textOfficeCharset.h \
     ../docBase/docListAdmin.h \
     ../docBase/docListTable.h \
     ../docBase/docListOverrideTable.h \
@@ -4194,7 +4121,14 @@ docRtfWriteMail.o: \
     ../docBase/docSelectionScope.h \
     ../docBase/docEditPosition.h \
     ../docBase/docEditRange.h \
+    ../docBase/docEditPosition.h \
     ../docBuf/docTableRectangle.h \
+    ../docBuf/docDocumentTree.h \
+    ../docBase/docDocumentField.h \
+    ../docBase/docFieldInstructions.h \
+    ../docBase/docSelectionScope.h \
+    ../docBase/docEditRange.h \
+    ../docBase/docListNumberTree.h \
     ../docBase/docListTable.h \
     docPlainReadWrite.h \
     ../docBuf/docTreeNode.h \
@@ -4220,27 +4154,11 @@ docRtfWriteNode.o: \
     ../appUtil/utilColor.h \
     ../appUtil/utilMemoryBuffer.h \
     ../appUtil/geo2DInteger.h \
-    ../docFont/utilDocFont.h \
-    ../utilPs/psFontInfo.h \
-    ../appUtil/utilIndexSet.h \
-    ../appUtil/utilIndexMapping.h \
-    ../textEncoding/utilOfficeCharset.h \
     ../utilPs/psPostScriptFontList.h \
     ../utilPs/psFontFamily.h \
     ../utilPs/psFontInfo.h \
-    ../docBuf/docShape.h \
-    ../appUtil/geoAffineTransform.h \
-    ../docBase/docShapeProperties.h \
-    ../docBase/docPictureProperties.h \
-    ../appUtil/utilPropMask.h \
-    ../docBuf/docDocumentTree.h \
-    ../docBase/docDocumentField.h \
-    ../docBase/docFieldInstructions.h \
-    ../docBase/docSelectionScope.h \
-    ../docBase/docEditRange.h \
-    ../docBase/docEditPosition.h \
-    ../docBase/docListNumberTree.h \
-    ../docBase/docShapeDrawing.h \
+    ../appUtil/utilIndexSet.h \
+    ../appUtil/utilIndexMapping.h \
     ../docBase/docFramePropertiesAdmin.h \
     ../docBase/docFrameProperties.h \
     ../docBase/docPropVal.h \
@@ -4251,6 +4169,7 @@ docRtfWriteNode.o: \
     ../appUtil/utilIndexSet.h \
     ../docBase/docStyleSheet.h \
     ../docBase/docStyle.h \
+    ../appUtil/utilPropMask.h \
     ../docBase/docSectProperties.h \
     ../appUtil/utilDocumentGeometry.h \
     ../appUtil/utilPropMask.h \
@@ -4266,6 +4185,8 @@ docRtfWriteNode.o: \
     ../docBase/docDocumentProperties.h \
     ../docFont/utilDocFontList.h \
     ../docFont/utilDocFont.h \
+    ../utilPs/psFontInfo.h \
+    ../textEncoding/textOfficeCharset.h \
     ../docBase/docListAdmin.h \
     ../docBase/docListTable.h \
     ../docBase/docListOverrideTable.h \
@@ -4281,7 +4202,14 @@ docRtfWriteNode.o: \
     ../docBase/docSelectionScope.h \
     ../docBase/docEditPosition.h \
     ../docBase/docEditRange.h \
+    ../docBase/docEditPosition.h \
     ../docBuf/docTableRectangle.h \
+    ../docBuf/docDocumentTree.h \
+    ../docBase/docDocumentField.h \
+    ../docBase/docFieldInstructions.h \
+    ../docBase/docSelectionScope.h \
+    ../docBase/docEditRange.h \
+    ../docBase/docListNumberTree.h \
     ../docBase/docListTable.h \
     ../docBuf/docTreeNode.h \
     ../docBuf/docParaNode.h \
@@ -4296,9 +4224,6 @@ docRtfWriteNode.o: \
     ../docBuf/docBuf.h \
     ../appUtil/sioGeneral.h \
     docRtfWriter.h \
-    docRtfTextConverter.h \
-    ../textEncoding/textConverterImpl.h \
-    ../docBase/docTabStop.h \
     docRtfTags.h \
     docRtfFlags.h
 
@@ -4317,27 +4242,11 @@ docRtfWritePictureTags.o: \
     ../appUtil/utilColor.h \
     ../appUtil/utilMemoryBuffer.h \
     ../appUtil/geo2DInteger.h \
-    ../docFont/utilDocFont.h \
-    ../utilPs/psFontInfo.h \
-    ../appUtil/utilIndexSet.h \
-    ../appUtil/utilIndexMapping.h \
-    ../textEncoding/utilOfficeCharset.h \
     ../utilPs/psPostScriptFontList.h \
     ../utilPs/psFontFamily.h \
     ../utilPs/psFontInfo.h \
-    ../docBuf/docShape.h \
-    ../appUtil/geoAffineTransform.h \
-    ../docBase/docShapeProperties.h \
-    ../docBase/docPictureProperties.h \
-    ../appUtil/utilPropMask.h \
-    ../docBuf/docDocumentTree.h \
-    ../docBase/docDocumentField.h \
-    ../docBase/docFieldInstructions.h \
-    ../docBase/docSelectionScope.h \
-    ../docBase/docEditRange.h \
-    ../docBase/docEditPosition.h \
-    ../docBase/docListNumberTree.h \
-    ../docBase/docShapeDrawing.h \
+    ../appUtil/utilIndexSet.h \
+    ../appUtil/utilIndexMapping.h \
     ../docBase/docFramePropertiesAdmin.h \
     ../docBase/docFrameProperties.h \
     ../docBase/docPropVal.h \
@@ -4348,6 +4257,7 @@ docRtfWritePictureTags.o: \
     ../appUtil/utilIndexSet.h \
     ../docBase/docStyleSheet.h \
     ../docBase/docStyle.h \
+    ../appUtil/utilPropMask.h \
     ../docBase/docSectProperties.h \
     ../appUtil/utilDocumentGeometry.h \
     ../appUtil/utilPropMask.h \
@@ -4363,6 +4273,8 @@ docRtfWritePictureTags.o: \
     ../docBase/docDocumentProperties.h \
     ../docFont/utilDocFontList.h \
     ../docFont/utilDocFont.h \
+    ../utilPs/psFontInfo.h \
+    ../textEncoding/textOfficeCharset.h \
     ../docBase/docListAdmin.h \
     ../docBase/docListTable.h \
     ../docBase/docListOverrideTable.h \
@@ -4378,95 +4290,17 @@ docRtfWritePictureTags.o: \
     ../docBase/docSelectionScope.h \
     ../docBase/docEditPosition.h \
     ../docBase/docEditRange.h \
+    ../docBase/docEditPosition.h \
     ../docBuf/docTableRectangle.h \
-    ../docBase/docListTable.h \
-    ../appUtil/sioGeneral.h \
-    docRtfWriter.h \
-    docRtfTextConverter.h \
-    ../textEncoding/textConverterImpl.h \
-    ../docBase/docTabStop.h
-
-docRtfWriteStylesheet.o: \
-    docRtfWriteStylesheet.c \
-    docRtfConfig.h \
-    ../include/appDebugon.h \
-    ../include/appDebug.h \
-    docRtfWriterImpl.h \
-    ../docBuf/docBuf.h \
-    ../bitmap/bitmap.h \
-    ../appUtil/utilColor.h \
-    ../appUtil/utilPalette.h \
-    ../appUtil/utilColor.h \
-    ../appUtil/utilMemoryBuffer.h \
-    ../appUtil/geo2DInteger.h \
-    ../docFont/utilDocFont.h \
-    ../utilPs/psFontInfo.h \
-    ../appUtil/utilIndexSet.h \
-    ../appUtil/utilIndexMapping.h \
-    ../textEncoding/utilOfficeCharset.h \
-    ../utilPs/psPostScriptFontList.h \
-    ../utilPs/psFontFamily.h \
-    ../utilPs/psFontInfo.h \
-    ../docBuf/docShape.h \
-    ../appUtil/geoAffineTransform.h \
-    ../docBase/docShapeProperties.h \
-    ../docBase/docPictureProperties.h \
-    ../appUtil/utilPropMask.h \
     ../docBuf/docDocumentTree.h \
     ../docBase/docDocumentField.h \
     ../docBase/docFieldInstructions.h \
     ../docBase/docSelectionScope.h \
     ../docBase/docEditRange.h \
-    ../docBase/docEditPosition.h \
     ../docBase/docListNumberTree.h \
-    ../docBase/docShapeDrawing.h \
-    ../docBase/docFramePropertiesAdmin.h \
-    ../docBase/docFrameProperties.h \
-    ../docBase/docPropVal.h \
-    ../appUtil/utilIntegerValueNode.h \
-    ../appUtil/utilNumberedPropertiesAdmin.h \
-    ../appUtil/utilIntegerValueNode.h \
-    ../appUtil/utilPagedList.h \
-    ../appUtil/utilIndexSet.h \
-    ../docBase/docStyleSheet.h \
-    ../docBase/docStyle.h \
-    ../docBase/docSectProperties.h \
-    ../appUtil/utilDocumentGeometry.h \
-    ../appUtil/utilPropMask.h \
-    ../appUtil/geo2DInteger.h \
-    ../docBase/docNotesProperties.h \
-    ../docBase/docRowProperties.h \
-    ../docBase/docCellProperties.h \
-    ../docBase/docItemShading.h \
-    ../docBase/docDocumentAttributeMap.h \
-    ../docBase/docParaProperties.h \
-    ../docBase/docParaNumber.h \
-    ../utilPs/textAttribute.h \
-    ../docBase/docDocumentProperties.h \
-    ../docFont/utilDocFontList.h \
-    ../docFont/utilDocFont.h \
-    ../docBase/docListAdmin.h \
-    ../docBase/docListTable.h \
-    ../docBase/docListOverrideTable.h \
-    ../docBase/docDocumentFieldList.h \
-    ../appUtil/utilPagedList.h \
-    ../docBuf/docDrawingShapeList.h \
-    ../docBase/docInsertedObjectList.h \
-    ../docBase/docObject.h \
-    ../docBase/docLayoutPosition.h \
-    ../docBase/docPictureProperties.h \
-    ../docBuf/docSelect.h \
-    ../docBase/docLayoutPosition.h \
-    ../docBase/docSelectionScope.h \
-    ../docBase/docEditPosition.h \
-    ../docBase/docEditRange.h \
-    ../docBuf/docTableRectangle.h \
     ../docBase/docListTable.h \
     ../appUtil/sioGeneral.h \
-    docRtfWriter.h \
-    docRtfTextConverter.h \
-    ../textEncoding/textConverterImpl.h \
-    ../docBase/docTabStop.h
+    docRtfWriter.h
 
 docRtfWriteText.o: \
     docRtfWriteText.c \
@@ -4481,7 +4315,7 @@ docRtfWriteText.o: \
     ../appUtil/utilIndexSet.h \
     ../appUtil/utilIndexMapping.h \
     ../appUtil/utilMemoryBuffer.h \
-    ../textEncoding/utilOfficeCharset.h \
+    ../textEncoding/textOfficeCharset.h \
     ../utilPs/psPostScriptFontList.h \
     ../utilPs/psFontFamily.h \
     ../utilPs/psFontInfo.h \
@@ -4489,25 +4323,14 @@ docRtfWriteText.o: \
     ../appUtil/utilPropMask.h \
     ../textEncoding/uniUtf8.h \
     ../textEncoding/textConverter.h \
+    ../textEncoding/textConverterImpl.h \
+    ../textEncoding/textConverter.h \
     docRtfWriterImpl.h \
     ../docBuf/docBuf.h \
     ../bitmap/bitmap.h \
     ../appUtil/utilColor.h \
     ../appUtil/utilPalette.h \
     ../appUtil/utilColor.h \
-    ../docFont/utilDocFont.h \
-    ../docBuf/docShape.h \
-    ../appUtil/geoAffineTransform.h \
-    ../docBase/docShapeProperties.h \
-    ../docBase/docPictureProperties.h \
-    ../docBuf/docDocumentTree.h \
-    ../docBase/docDocumentField.h \
-    ../docBase/docFieldInstructions.h \
-    ../docBase/docSelectionScope.h \
-    ../docBase/docEditRange.h \
-    ../docBase/docEditPosition.h \
-    ../docBase/docListNumberTree.h \
-    ../docBase/docShapeDrawing.h \
     ../docBase/docFramePropertiesAdmin.h \
     ../docBase/docFrameProperties.h \
     ../docBase/docPropVal.h \
@@ -4546,18 +4369,25 @@ docRtfWriteText.o: \
     ../docBase/docSelectionScope.h \
     ../docBase/docEditPosition.h \
     ../docBase/docEditRange.h \
+    ../docBase/docEditPosition.h \
     ../docBuf/docTableRectangle.h \
+    ../docBuf/docDocumentTree.h \
+    ../docBase/docDocumentField.h \
+    ../docBase/docFieldInstructions.h \
+    ../docBase/docSelectionScope.h \
+    ../docBase/docEditRange.h \
+    ../docBase/docListNumberTree.h \
     ../docBase/docListTable.h \
     ../appUtil/sioGeneral.h \
     docRtfWriter.h \
-    docRtfTextConverter.h \
-    ../textEncoding/textConverterImpl.h \
-    ../docBase/docTabStop.h \
-    docRtfFlags.h
+    docRtfFlags.h \
+    docRtfTextConverter.h
 
 docRtfWriterImpl.o: \
     docRtfWriterImpl.c \
     docRtfConfig.h \
+    ../textEncoding/textConverter.h \
+    ../textEncoding/textConverterImpl.h \
     ../textEncoding/textConverter.h \
     ../include/appDebugon.h \
     ../include/appDebug.h \
@@ -4569,27 +4399,11 @@ docRtfWriterImpl.o: \
     ../appUtil/utilColor.h \
     ../appUtil/utilMemoryBuffer.h \
     ../appUtil/geo2DInteger.h \
-    ../docFont/utilDocFont.h \
-    ../utilPs/psFontInfo.h \
-    ../appUtil/utilIndexSet.h \
-    ../appUtil/utilIndexMapping.h \
-    ../textEncoding/utilOfficeCharset.h \
     ../utilPs/psPostScriptFontList.h \
     ../utilPs/psFontFamily.h \
     ../utilPs/psFontInfo.h \
-    ../docBuf/docShape.h \
-    ../appUtil/geoAffineTransform.h \
-    ../docBase/docShapeProperties.h \
-    ../docBase/docPictureProperties.h \
-    ../appUtil/utilPropMask.h \
-    ../docBuf/docDocumentTree.h \
-    ../docBase/docDocumentField.h \
-    ../docBase/docFieldInstructions.h \
-    ../docBase/docSelectionScope.h \
-    ../docBase/docEditRange.h \
-    ../docBase/docEditPosition.h \
-    ../docBase/docListNumberTree.h \
-    ../docBase/docShapeDrawing.h \
+    ../appUtil/utilIndexSet.h \
+    ../appUtil/utilIndexMapping.h \
     ../docBase/docFramePropertiesAdmin.h \
     ../docBase/docFrameProperties.h \
     ../docBase/docPropVal.h \
@@ -4600,6 +4414,7 @@ docRtfWriterImpl.o: \
     ../appUtil/utilIndexSet.h \
     ../docBase/docStyleSheet.h \
     ../docBase/docStyle.h \
+    ../appUtil/utilPropMask.h \
     ../docBase/docSectProperties.h \
     ../appUtil/utilDocumentGeometry.h \
     ../appUtil/utilPropMask.h \
@@ -4615,6 +4430,8 @@ docRtfWriterImpl.o: \
     ../docBase/docDocumentProperties.h \
     ../docFont/utilDocFontList.h \
     ../docFont/utilDocFont.h \
+    ../utilPs/psFontInfo.h \
+    ../textEncoding/textOfficeCharset.h \
     ../docBase/docListAdmin.h \
     ../docBase/docListTable.h \
     ../docBase/docListOverrideTable.h \
@@ -4630,11 +4447,16 @@ docRtfWriterImpl.o: \
     ../docBase/docSelectionScope.h \
     ../docBase/docEditPosition.h \
     ../docBase/docEditRange.h \
+    ../docBase/docEditPosition.h \
     ../docBuf/docTableRectangle.h \
+    ../docBuf/docDocumentTree.h \
+    ../docBase/docDocumentField.h \
+    ../docBase/docFieldInstructions.h \
+    ../docBase/docSelectionScope.h \
+    ../docBase/docEditRange.h \
+    ../docBase/docListNumberTree.h \
     ../docBase/docListTable.h \
     ../appUtil/sioGeneral.h \
     docRtfWriter.h \
-    docRtfTextConverter.h \
-    ../textEncoding/textConverterImpl.h \
-    ../docBase/docTabStop.h
+    docRtfTextConverter.h
 

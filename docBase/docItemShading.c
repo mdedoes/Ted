@@ -273,8 +273,8 @@ int docIndirectItemShading(	PropertyMask *			pDoneMask,
 				const ExpandedItemShading *	eis,
 				ColorPalette *			cp )
     {
-    const int			maxColors= 256;
     const int			avoidZero= 1;
+    const int			maxColors= 256;
     int				color;
 
     PropertyMask		doneMask;

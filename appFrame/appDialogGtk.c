@@ -21,8 +21,7 @@ void appMakeVerticalDialog(	AppDialog *		ad,
 				EditApplication *	ea,
 				APP_CLOSE_CALLBACK_T	closeCallback,
 				APP_DESTROY_CALLBACK_T	destroyCallback,
-				void *			through,
-				const char *		widgetName )
+				void *			through )
     {
     APP_WIDGET		shell;
     APP_WIDGET		column;

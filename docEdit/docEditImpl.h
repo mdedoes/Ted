@@ -18,10 +18,6 @@
 
 extern void docFlattenRow(		struct BufferItem *		bi );
 
-extern BufferDocument * docIntermediaryDocument(
-				struct BufferItem **		pSectBi,
-				const BufferDocument *		bdFrom );
-
 extern int docEditFindPositionOutsideBlockDelete(
 				int *				pSide,
 				DocumentPosition *		dpNew,

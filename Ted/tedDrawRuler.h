@@ -7,6 +7,7 @@
 #   include	<drawDrawingSurface.h>
 #   include	<appRuler.h>
 #   include	<docTabStop.h>
+#   include	<docTabStopList.h>
 #   include	"tedColumnSeparator.h"
 
 typedef struct TedTopRuler

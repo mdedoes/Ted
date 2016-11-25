@@ -82,7 +82,8 @@ int docCalculateRefFieldValue(	MemoryBuffer *			mbResult,
 		{
 		if  ( skipping )
 		    {
-		    utilMemoryBufferAppendBytes( mbResult, (unsigned char *)" ", 1 );
+		    utilMemoryBufferAppendBytes( mbResult,
+						    (unsigned char *)" ", 1 );
 		    }
 
 		utilMemoryBufferAppendBytes( mbResult,

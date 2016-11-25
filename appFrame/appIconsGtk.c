@@ -43,13 +43,16 @@ int appGetImagePixmap(	EditApplication *	ea,
 	{ SLDEB(name,ea->eaNamedPictureCount); return -1;	}
 
     if  ( np->npPixmap )
-	{ *pPixmap= np->npPixmap; *pMask= mask; return 0;	}
+	{
+	*pPixmap= np->npPixmap;
+	*pMask= np->npMask;
+	return 0;
+	}
 
     pixmap= gdk_pixmap_create_from_xpm_d( ea->eaToplevel.atTopWidget->window,
 					    &mask,
 					    NULL,
 					    (gchar **)np->npBuffer );
-
     if  ( ! pixmap )
 	{ SXDEB(name,pixmap); return -1;	}
 

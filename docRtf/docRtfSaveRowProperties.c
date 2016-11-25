@@ -38,6 +38,11 @@ void docRtfSaveRowProperties(		RtfWriter *		rw,
     if  ( PROPmaskISSET( rpSetMask, RPpropROW_STYLE ) )
 	{ docRtfWriteArgTag( rw, "ts", rpSet->rpRowStyle ); }
 
+    if  ( PROPmaskISSET( rpSetMask, RPpropRTOL ) )
+	{
+	docRtfWriteAltTag( rw, "rtlrow", "ltrrow", rpSet->rpRToL );
+	}
+
     if  ( PROPmaskISSET( rpSetMask, RPpropGAP_WIDTH ) )
 	{ docRtfWriteArgTag( rw, "trgaph", rpSet->rpHalfGapWidthTwips ); }
     if  ( PROPmaskISSET( rpSetMask, RPpropLEFT_INDENT ) )
@@ -99,8 +104,7 @@ void docRtfSaveRowProperties(		RtfWriter *		rw,
     if  ( PROPmaskISSET( rpSetMask, RPpropFRAME ) )
 	{
 	docGetFramePropertiesByNumber( &fp,
-			    &(rw->rwDocument->bdFramePropertyList),
-			    rpSet->rpFrameNumber );
+			    rw->rwDocument, rpSet->rpFrameNumber );
 	if  ( DOCisFRAME( &fp ) )
 	    { docRtfSaveRowFrameProperties( rw, &fp );	}
 	}

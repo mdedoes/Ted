@@ -182,8 +182,7 @@ static int docLayoutWord(	LineLayoutJob *			llj,
 
 	    haveBorder= 1;
 
-	    docGetBorderPropertiesByNumber( &bp,
-			    &(bd->bdBorderPropertyList), ta.taBorderNumber );
+	    docGetBorderPropertiesByNumber( &bp, bd, ta.taBorderNumber );
 
 	    thick= docBorderThick( &space, &bp );
 
@@ -209,8 +208,8 @@ static int docLayoutWord(	LineLayoutJob *			llj,
 
 	    sizeTwips= 10* ta.taFontSizeHalfPoints;
 
-	    if  ( ta.taSuperSub == DOCfontSUPERSCRIPT ||
-		  ta.taSuperSub == DOCfontSUBSCRIPT   )
+	    if  ( ta.taSuperSub == TEXTvaSUPERSCRIPT ||
+		  ta.taSuperSub == TEXTvaSUBSCRIPT   )
 		{ sizeTwips= SUPERSUB_SIZE( sizeTwips ); }
 
 	    len += tp->tpStrlen;
@@ -1521,8 +1520,7 @@ int docLayoutLineBox(	TextLine *			tl,
     llj.lljLayoutContext= lc;
     llj.lljParagraphFrame= pf;
 
-    docGetTabStopListByNumber( &(llj.lljTabStopList),
-					&(lc->lcDocument->bdTabStopListList),
+    docGetTabStopListByNumber( &(llj.lljTabStopList), lc->lcDocument,
 					paraNode->biParaTabStopListNumber );
 
     drTypicalLine= pf->pfParaContentRect;

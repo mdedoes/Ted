@@ -175,11 +175,20 @@ extern unsigned char *	bmBackgroundBuffer(	int	bufferLength,
 extern unsigned char *	bmForegroundBuffer(	int	bufferLength,
 						int	colorEncoding );
 
-extern int bmMakeGrayPalette(	const BitmapDescription *	bd,
-				int *				pColorCount,
-				RGB8Color *			palette );
+extern int bmMakeGrayPalette(
+			const BitmapDescription *	bd,
+			int *				pColorCount,
+			int *				pTransparentColor,
+			RGB8Color *			palette,
+			int				maxColors );
 
 extern int bmInflateTo8bit(		unsigned char *			to,
+					const unsigned char *		from,
+					const BitmapDescription *	bd,
+					int				trnsC,
+					int				remA );
+
+extern int bmInflateToInt(		unsigned int *			to,
 					const unsigned char *		from,
 					const BitmapDescription *	bd,
 					int				trnsC,

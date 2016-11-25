@@ -451,7 +451,7 @@ int docDelimitFieldInDoc(	DocumentSelection *	dsInside,
 	{ LDEB(1); return -1;	}
 
     /*  2  */
-    if  ( ! pPart0 && ! pPart0 )
+    if  ( ! pPart0 && ! pPart1 && ! dsInside && ! dsAround )
 	{ return 0;	}
 
     return docFindFieldParticules( bd, pPart0, pPart1,

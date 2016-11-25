@@ -250,8 +250,7 @@ static int appMakeQuestionDialog( 	EditApplication *	ea,
     appMakeVerticalDialog( &(qc->qcDialog), &paned, ea,
 						(APP_CLOSE_CALLBACK_T)0,
 						(APP_DESTROY_CALLBACK_T)0,
-						(void *)qc,
-						ea->eaMessageDialogName );
+						(void *)qc );
 
     *pQc= qc;
     *pPaned= paned;
@@ -421,7 +420,6 @@ int appQuestionRunSubjectYesNoCancelDialog(
 
     APP_WIDGET				paned;
     APP_WIDGET				sep;
-    APP_WIDGET				buttonRow;
     const QuestionContextResources *	qcr;
 
 
@@ -443,7 +441,7 @@ int appQuestionRunSubjectYesNoCancelDialog(
 
     appGuiInsertSeparatorInColumn( &sep, paned );
 
-    buttonRow= appQuestionMakeYesNoCancelRow( paned,
+    (void) /* buttonRow= */ appQuestionMakeYesNoCancelRow( paned,
 				subjectYesNoCancelContext,
 				qcr->qcrYesText,
 				qcr->qcrNoText,
@@ -479,7 +477,6 @@ int appQuestionRunYesNoCancelDialog(	EditApplication *	ea,
 	{
 	APP_WIDGET				paned;
 	APP_WIDGET				sep;
-	APP_WIDGET				buttonRow;
 	const QuestionContextResources *	qcr;
 
 	if  ( appMakeQuestionDialog( ea, &yesNoCancelContext, &paned ) )
@@ -491,7 +488,7 @@ int appQuestionRunYesNoCancelDialog(	EditApplication *	ea,
 
 	appGuiInsertSeparatorInColumn( &sep, paned );
 
-	buttonRow= appQuestionMakeYesNoCancelRow( paned,
+	(void) /* buttonRow= */ appQuestionMakeYesNoCancelRow( paned,
 					yesNoCancelContext,
 					qcr->qcrYesText,
 					qcr->qcrNoText,
@@ -529,7 +526,6 @@ void appQuestionRunSubjectErrorDialog(	EditApplication *	ea,
 	{
 	APP_WIDGET				paned;
 	APP_WIDGET				sep;
-	APP_WIDGET				buttonRow;
 	const QuestionContextResources *	qcr;
 
 	if  ( appMakeQuestionDialog( ea, &subjectErrorContext, &paned ) )
@@ -542,7 +538,7 @@ void appQuestionRunSubjectErrorDialog(	EditApplication *	ea,
 
 	appGuiInsertSeparatorInColumn( &sep, paned );
 
-	buttonRow= appQuestionMakeOkRow( paned, subjectErrorContext,
+	(void) /* buttonRow= */ appQuestionMakeOkRow( paned, subjectErrorContext,
 							qcr->qcrOkText );
 	}
     else{
@@ -580,7 +576,6 @@ int appQuestionRunOkCancelDialog(	EditApplication *	ea,
 	{
 	APP_WIDGET				paned;
 	APP_WIDGET				sep;
-	APP_WIDGET				buttonRow;
 	const QuestionContextResources *	qcr;
 
 	if  ( appMakeQuestionDialog( ea, &okCancelContext, &paned ) )
@@ -592,7 +587,7 @@ int appQuestionRunOkCancelDialog(	EditApplication *	ea,
 
 	appGuiInsertSeparatorInColumn( &sep, paned );
 
-	buttonRow= appQuestionMakeOkCancelRow( paned,
+	(void) /* buttonRow= */ appQuestionMakeOkCancelRow( paned,
 					okCancelContext,
 					qcr->qcrOkText,
 					qcr->qcrCancelText );
@@ -631,7 +626,6 @@ int appQuestionRunSubjectOkCancelDialog( EditApplication *	ea,
 	{
 	APP_WIDGET				paned;
 	APP_WIDGET				sep;
-	APP_WIDGET				buttonRow;
 	const QuestionContextResources *	qcr;
 
 	if  ( appMakeQuestionDialog( ea, &subjectOkCancelContext, &paned ) )
@@ -644,7 +638,7 @@ int appQuestionRunSubjectOkCancelDialog( EditApplication *	ea,
 
 	appGuiInsertSeparatorInColumn( &sep, paned );
 
-	buttonRow= appQuestionMakeOkCancelRow( paned,
+	(void) /* buttonRow= */ appQuestionMakeOkCancelRow( paned,
 					subjectOkCancelContext,
 					qcr->qcrOkText,
 					qcr->qcrCancelText );
@@ -684,7 +678,6 @@ int appQuestionRunSubjectYesNoDialog(	EditApplication *	ea,
 	{
 	APP_WIDGET				paned;
 	APP_WIDGET				sep;
-	APP_WIDGET				buttonRow;
 	const QuestionContextResources *	qcr;
 
 	if  ( appMakeQuestionDialog( ea, &subjectYesNoContext, &paned ) )
@@ -697,7 +690,7 @@ int appQuestionRunSubjectYesNoDialog(	EditApplication *	ea,
 
 	appGuiInsertSeparatorInColumn( &sep, paned );
 
-	buttonRow= appQuestionMakeYesNoRow( paned,
+	(void) /* buttonRow= */ appQuestionMakeYesNoRow( paned,
 					subjectYesNoContext,
 					qcr->qcrYesText,
 					qcr->qcrNoText );
@@ -734,7 +727,6 @@ void appQuestionRunErrorDialog(	EditApplication *	ea,
 	{
 	APP_WIDGET				paned;
 	APP_WIDGET				sep;
-	APP_WIDGET				buttonRow;
 	const QuestionContextResources *	qcr;
 
 	if  ( appMakeQuestionDialog( ea, &errorContext, &paned ) )
@@ -746,7 +738,7 @@ void appQuestionRunErrorDialog(	EditApplication *	ea,
 
 	appGuiInsertSeparatorInColumn( &sep, paned );
 
-	buttonRow= appQuestionMakeOkRow( paned,
+	(void) /* buttonRow= */ appQuestionMakeOkRow( paned,
 				    errorContext, qcr->qcrOkText );
 	}
     else{

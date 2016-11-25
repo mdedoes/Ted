@@ -37,7 +37,7 @@ void tedRefreshSymbolPicker(	SymbolPicker *			sp,
 				const unsigned char *		cmdEnabled )
     {
     const DocumentProperties *	dp= &(bd->bdProperties);
-    const DocumentFontList *	dfl= &(dp->dpFontList);
+    const DocumentFontList *	dfl= dp->dpFontList;
 
     if  ( sd->sdIsListBullet )
 	{ *pEnabled= 0; return;	}

@@ -59,7 +59,7 @@ void docInitTabStopListList(	NumberedPropertiesList *	tsll )
 
     docInitTabStopList( &tsl );
 
-    num= docTabStopListNumber( tsll, &tsl );
+    num= docTabStopListNumberImpl( tsll, &tsl );
     if  ( num != 0 )
 	{ LDEB(num);	}
 
@@ -74,7 +74,7 @@ void docInitTabStopListList(	NumberedPropertiesList *	tsll )
 /*									*/
 /************************************************************************/
 
-void docGetTabStopListByNumber(		TabStopList *			tsl,
+void docGetTabStopListByNumberImpl(	TabStopList *			tsl,
 					const NumberedPropertiesList *	tsll,
 					int				n )
     {
@@ -93,7 +93,7 @@ void docGetTabStopListByNumber(		TabStopList *			tsl,
 /*									*/
 /************************************************************************/
 
-int docTabStopListNumber(	NumberedPropertiesList *	npl,
+int docTabStopListNumberImpl(	NumberedPropertiesList *	npl,
 				const TabStopList *		tsl )
     {
     const int		make= 1;
@@ -172,7 +172,7 @@ int docMergeTabstopListLists(	int **				pRulerMap,
 
 	    tsl= *((TabStopList *)vtsl);
 
-	    to= docTabStopListNumber( tsllTo, &tsl );
+	    to= docTabStopListNumberImpl( tsllTo, &tsl );
 	    if  ( to < 0 )
 		{ LDEB(to); free( rmap ); return -1;	}
 	    rmap[fr]= to;

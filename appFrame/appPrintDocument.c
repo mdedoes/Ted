@@ -215,17 +215,17 @@ void appApplicationSettingsToPrintGeometry(
 					PrintGeometry *		pg,
 					EditApplication *	ea )
     {
-    pg->pgUsePostScriptFilters= ea->eaUsePostScriptFilters;
-    pg->pgUsePostScriptIndexedImages= ea->eaUsePostScriptIndexedImages;
-    pg->pgEmbedFonts= ea->eaEmbedFonts > 0;
-    pg->pg7Bits= ea->ea7BitsPostScript;
+    pg->pgUsePostScriptFilters= ea->eaUsePostScriptFiltersInt > 0;
+    pg->pgUsePostScriptIndexedImages= ea->eaUsePostScriptIndexedImagesInt > 0;
+    pg->pgEmbedFonts= ea->eaEmbedFontsInt > 0;
+    pg->pg7Bits= ea->ea7BitsPostScriptInt > 0;
 
-    pg->pgSkipEmptyPages= ea->eaSkipEmptyPages;
-    pg->pgSkipBlankPages= ea->eaSkipBlankPages;
-    pg->pgOmitHeadersOnEmptyPages= ea->eaOmitHeadersOnEmptyPages;
+    pg->pgSkipEmptyPages= ea->eaSkipEmptyPagesInt > 0;
+    pg->pgSkipBlankPages= ea->eaSkipBlankPagesInt > 0;
+    pg->pgOmitHeadersOnEmptyPages= ea->eaOmitHeadersOnEmptyPagesInt > 0;
 
     if  ( ea->eaCustomPsSetupFilename )
-	{ pg->pgCustomPsSetupFilename= strdup( ea->eaCustomPsSetupFilename ); }
+	{ pg->pgCustomPsSetupFilename= ea->eaCustomPsSetupFilename; }
 
     return;
     }
@@ -244,6 +244,8 @@ static int appPrintJobForCommand(	PrintJob *		pj,
     int			rval= 0;
     MemoryBuffer	filename;
     const int		readOnly= 1;
+    int			suggestStdin= 0;
+    int			formatHint= -1;
 
     utilInitMemoryBuffer( &filename );
 
@@ -257,9 +259,13 @@ static int appPrintJobForCommand(	PrintJob *		pj,
 	    { XDEB(pj->pjPrivateData); rval= -1; goto ready; }
 	}
 
+    formatHint= appDocumentGetOpenFormat( &suggestStdin,
+			ea->eaFileExtensions, ea->eaFileExtensionCount,
+			&filename, formatHint );
+
     if  ( (*ea->eaOpenDocument)( ea, pj->pjPrivateData, &(pj->pjFormat),
-				    ea->eaToplevel.atTopWidget, (APP_WIDGET)0,
-				    readOnly, &filename ) )
+			    ea->eaToplevel.atTopWidget, (APP_WIDGET)0,
+			    readOnly, suggestStdin, formatHint, &filename ) )
 	{ SDEB((char *)fromName); rval= -1; goto ready; }
 
     pj->pjDrawingSurface= (DrawingSurface)0;
@@ -296,6 +302,7 @@ static int appPrintStartCommandRun(	EditApplication *	ea,
     {
     DocumentRectangle	drScreenIgnored;
     DocumentRectangle	drVisibleIgnored;
+    const int		sheetSize= 0;
 
     pg->pgSheetGeometry= ea->eaDefaultDocumentGeometry;
 
@@ -315,7 +322,7 @@ static int appPrintStartCommandRun(	EditApplication *	ea,
 	{ SDEB(fromName); return -1;	}
 
     if  ( ea->eaSuggestPageSetup )
-	{ (*ea->eaSuggestPageSetup)( pg, pj->pjPrivateData );	}
+	{ (*ea->eaSuggestPageSetup)( pg, pj->pjPrivateData, sheetSize ); }
 
     if  ( (*ea->eaLayoutDocument)( &drScreenIgnored, &drVisibleIgnored,
 					    pj->pjPrivateData, pj->pjFormat,
@@ -378,7 +385,9 @@ int appPrintToFile(	EditApplication *	ea,
     appPrintFinishCommandRun( ea, &pj );
 
   ready:
+
     psCleanPrintGeometry( &pg );
+
     return rval;
     }
 
@@ -393,6 +402,7 @@ int appSaveToPs(		EditApplication *	ea,
     {
     DocumentRectangle		drScreenIgnored;
     DocumentRectangle		drVisibleIgnored;
+    const int			sheetSize= 1;
 
     int				rval= 0;
     PrintGeometry		pg;
@@ -409,7 +419,7 @@ int appSaveToPs(		EditApplication *	ea,
     pj.pjPrintGeometry= &pg;
 
     if  ( ea->eaSuggestPageSetup )
-	{ (*ea->eaSuggestPageSetup)( &pg, pj.pjPrivateData );	}
+	{ (*ea->eaSuggestPageSetup)( &pg, pj.pjPrivateData, sheetSize ); }
 
     if  ( (*ea->eaLayoutDocument)( &drScreenIgnored, &drVisibleIgnored,
 					    pj.pjPrivateData, pj.pjFormat,

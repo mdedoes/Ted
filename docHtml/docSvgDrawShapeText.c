@@ -10,6 +10,7 @@
 #   include	<stdio.h>
 
 #   include	<docDraw.h>
+#   include	<docShape.h>
 #   include	"docSvgDrawImpl.h"
 #   include	"docHtmlWriteImpl.h"
 

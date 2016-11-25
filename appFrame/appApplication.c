@@ -38,7 +38,7 @@ int appPostScriptFontCatalog(		EditApplication *	ea )
 	{ goto ready;	}
 
 #   ifdef USE_FONTCONFIG
-    ea->eaPostScriptFontList.psflAvoidFontconfig= ea->eaAvoidFontconfig;
+    ea->eaPostScriptFontList.psflAvoidFontconfig= ea->eaAvoidFontconfigInt > 0;
 
     if  ( ! ea->eaPostScriptFontList.psflAvoidFontconfig )
 	{
@@ -52,7 +52,7 @@ int appPostScriptFontCatalog(		EditApplication *	ea )
 #   endif
 
     if  ( psFontCatalog( &(ea->eaPostScriptFontList),
-				ea->eaUseKerning < 0, &afmDirectory ) )
+				ea->eaUseKerningInt <= 0, &afmDirectory ) )
 	{ SDEB(ea->eaAfmDirectory); rval= -1; goto ready;	}
 
     if  ( ea->eaGhostscriptFontmap			&&

@@ -10,12 +10,9 @@
 typedef enum TabAlignment
     {
     DOCtaLEFT= 0,
-
     DOCtaRIGHT,
     DOCtaCENTER,
     DOCtaDECIMAL,
-
-    DOCtaBAR,
 
     DOCta_COUNT
     } TabAlignment;
@@ -69,12 +66,6 @@ typedef enum TabProperty
     TABprop_COUNT
     } TabProperty;
 
-typedef struct TabStopList
-    {
-    TabStop *	tslTabStops;
-    short int	tslTabStopCount;
-    } TabStopList;
-
 # define docEqualTabStop( a, b ) ( \
 		(a)->tsTwips == (b)->tsTwips				&& \
 		(a)->tsAlignment == (b)->tsAlignment			&& \
@@ -90,41 +81,14 @@ typedef struct TabStopList
 
 extern void docInitTabStop(	TabStop *		ts );
 
-void docInitTabStopList(	TabStopList *		tsl );
-void docCleanTabStopList(	TabStopList *		tsl );
-
-extern int docAddTabToListTwips(	TabStopList *		tsl,
-					const TabStop *		tsNew );
-
-extern int docAddTabToListPixels(	TabStopList *		tsl,
-					const TabStop *		tsNew );
-
-extern void docDeleteTabFromList(	TabStopList *		tsl,
-					int			n );
-
-extern int docCopyTabStopList(	TabStopList *			to,
-				const TabStopList *		from );
-
-extern int docNextTabStop(	TabStop *			pTs,
-				int *				pX,
-				int *				pTab,
-				const TabStopList *		tsl,
-				int				x0Geometry,
-				int				x0TextLines,
-				int				tabInterval,
-				int				xPosition );
-
-
-extern int docRulerMergeTabs(	TabStopList *		tslTo,
-				int			x0GeometryPixels,
-				double			xfac,
-				const TabStopList *	tslFrom );
-
 extern int docTabStopGetProperty(	const TabStop *		ts,
 					int			prop );
 
 extern int docTabStopSetProperty(	TabStop *		ts,
 					int			prop,
 					int			val );
+
+extern const char * docTabAlignmentStr(	int	alignment );
+extern const char * docTabLeaderStr(	int	leader );
 
 #   endif	/*  DOC_TAB_STOP_H	*/

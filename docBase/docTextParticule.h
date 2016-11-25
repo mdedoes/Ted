@@ -31,13 +31,22 @@ typedef enum DocParticuleKind
     DOCkindCHFTNSEPC,
     DOCkindOPT_HYPH,
 
+    DOCkindLTR_MARK,
+    DOCkindRTL_MARK,
+
     DOCkind_PARA_END,
     DOCkind_COUNT
     } DocParticuleKind;
 
 typedef struct TextParticule
     {
+			/**
+			 * String offset of the particule
+			 */
     unsigned short	tpStroff;
+			/**
+			 * Number of bytes in the particule
+			 */
     unsigned short	tpStrlen;
     unsigned char	tpKind;
     unsigned char	tpFlags;

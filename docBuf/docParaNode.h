@@ -41,10 +41,6 @@ typedef struct ParaNode
     int				btBorderNrBelow;
     int				btTopInset;
     int				btBottomInset;
-
-    unsigned char		btFlags;
-#				define	PARAflagFILL_BEFORE	0x01
-#				define	PARAflagFILL_AFTER	0x02
     } ParaNode;
 
 /************************************************************************/

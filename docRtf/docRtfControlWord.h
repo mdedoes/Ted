@@ -21,10 +21,10 @@ struct RtfReader;
 
 typedef int (*RtfApplyWord)(	const struct RtfControlWord *	rcw,
 				int				arg,
-				struct RtfReader *		rrc );
+				struct RtfReader *		rr );
 
 typedef int (*RtfCommitGroup)(	const struct RtfControlWord *	rcw,
-				struct RtfReader *		rrc );
+				struct RtfReader *		rr );
 
 typedef enum RtfControlType
     {

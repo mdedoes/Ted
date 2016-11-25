@@ -2,6 +2,7 @@
 
 #   include	"bmintern.h"
 #   include	<string.h>
+#   include	<stdlib.h>
 #   include	<appDebugon.h>
 #   include	<geoUnits.h>
 
@@ -253,6 +254,25 @@ int bmCalculateSizes(	BitmapDescription *	bd )
     bd->bdBytesPerRow= ( bd->bdBitsPerPixel* bd->bdPixelsWide+ 7 )/ 8;
     bd->bdBufferLength= bd->bdPixelsHigh* bd->bdBytesPerRow;
 
+    return 0;
+    }
+
+/************************************************************************/
+/*									*/
+/*  Allocate buffer for an image.					*/
+/*									*/
+/************************************************************************/
+
+int bmAllocateBuffer(		RasterImage *		ri )
+    {
+    unsigned char *	fresh;
+
+    fresh= (unsigned char *)realloc( ri->riBytes,
+					    ri->riDescription.bdBufferLength );
+    if  ( ! fresh )
+	{ LXDEB(ri->riDescription.bdBufferLength,fresh); return -1; }
+
+    ri->riBytes= fresh;
     return 0;
     }
 

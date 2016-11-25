@@ -8,8 +8,6 @@
 
 #   include	<appDebugon.h>
 
-#   include	<textAttributeAdmin.h>
-
 #   include	"docBuf.h"
 #   include	"docTreeNode.h"
 #   include	<docTextParticule.h>
@@ -43,8 +41,7 @@ int docChangeParticuleAttributes(	int *			pChanged,
 
 	utilPropMaskClear( &doneMask );
 
-	utilGetTextAttributeByNumber( &ta, &(bd->bdTextAttributeList),
-							tp->tpTextAttrNr );
+	docGetTextAttributeByNumber( &ta, bd, tp->tpTextAttrNr );
 
 	utilUpdateTextAttribute( &doneMask, &ta, taSetMask, taSet );
 
@@ -56,8 +53,7 @@ int docChangeParticuleAttributes(	int *			pChanged,
 	    if  ( pTaAllMask )
 		{ utilPropMaskOr( pTaAllMask, pTaAllMask, &doneMask );	}
 
-	    attributeNumber= utilTextAttributeNumber(
-					&(bd->bdTextAttributeList), &ta );
+	    attributeNumber= docTextAttributeNumber( bd, &ta );
 	    if  ( attributeNumber < 0 )
 		{ LDEB(attributeNumber); return -1;	}
 

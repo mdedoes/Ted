@@ -17,7 +17,7 @@
 #   include	<docBuf.h>
 #   include	<psShading.h>
 #   include	<docBorderPropertyAdmin.h>
-#   include	<docItemShadingAdmin.h>
+#   include	<docPropertiesAdmin.h>
 #   include	<textAttributeAdmin.h>
 #   include	"docWriteCss.h"
 
@@ -112,7 +112,7 @@ static int docCssEmitBorderStyle(
 	}
     else{
 	const DocumentProperties *	dp= &(bd->bdProperties);
-	const ColorPalette *		colpal= &(dp->dpColorPalette);
+	const ColorPalette *		colpal= dp->dpColorPalette;
 	const RGB8Color *		rgb8= colpal->cpColors+ bp->bpColor;
 
 	char				scratch[50];
@@ -142,11 +142,9 @@ void docCssEmitBorderStyleByNumber(
 			    const char *		whatBorder,
 			    int				num )
     {
-    const NumberedPropertiesList *	bpl= &(bd->bdBorderPropertyList);
-
     BorderProperties		bp;
 
-    docGetBorderPropertiesByNumber( &bp, bpl, num );
+    docGetBorderPropertiesByNumber( &bp, bd, num );
 
     if  ( ! DOCisBORDER( &bp ) )
 	{ return;	}
@@ -182,11 +180,8 @@ static int docCssSaveTextAttributeStyle(
 
     const BufferDocument *		bd= at->atDocument;
     const DocumentProperties *		dp= &(bd->bdProperties);
-    const DocumentFontList *		dfl= &(dp->dpFontList);
+    const DocumentFontList *		dfl= dp->dpFontList;
     const DocumentFont *		df;
-
-    const NumberedPropertiesList *	bpl= &(bd->bdBorderPropertyList);
-    const NumberedPropertiesList *	isl= &(bd->bdItemShadingList);
 
     /*  1  */
     fontSize= ta->taFontSizeHalfPoints;
@@ -202,7 +197,7 @@ static int docCssSaveTextAttributeStyle(
 
     if  ( ta->taTextColorNumber > 0 )
 	{
-	const RGB8Color *	rgb8= dp->dpColorPalette.cpColors+ ta->taTextColorNumber;
+	const RGB8Color *	rgb8= dp->dpColorPalette->cpColors+ ta->taTextColorNumber;
 
 	sprintf( scratch, "#%02x%02x%02x",
 					rgb8->rgb8Red,
@@ -255,7 +250,7 @@ static int docCssSaveTextAttributeStyle(
 	sioOutPutString( ";\n", at->atSos );
 	}
 
-    if  ( ta->taSuperSub == DOCfontSUPERSCRIPT )
+    if  ( ta->taSuperSub == TEXTvaSUPERSCRIPT )
 	{
 	sioOutPutString( "  vertical-align: super", at->atSos );
 	sioOutPutString( ";\n", at->atSos );
@@ -263,7 +258,7 @@ static int docCssSaveTextAttributeStyle(
 	fontSize= SUPERSUB_SIZE( fontSize );
 	}
 
-    if  ( ta->taSuperSub == DOCfontSUBSCRIPT )
+    if  ( ta->taSuperSub == TEXTvaSUBSCRIPT )
 	{
 	sioOutPutString( "  vertical-align: sub", at->atSos );
 	sioOutPutString( ";\n", at->atSos );
@@ -271,7 +266,7 @@ static int docCssSaveTextAttributeStyle(
 	fontSize= SUPERSUB_SIZE( fontSize );
 	}
 
-    if  ( docBorderNumberIsBorder( bpl, ta->taBorderNumber ) )
+    if  ( docBorderNumberIsBorder( bd, ta->taBorderNumber ) )
 	{
 	int			col= 0;
 
@@ -279,12 +274,12 @@ static int docCssSaveTextAttributeStyle(
 					    "border", ta->taBorderNumber );
 	}
 
-    if  ( docShadingNumberIsShading( isl, ta->taShadingNumber ) )
+    if  ( docShadingNumberIsShading( bd, ta->taShadingNumber ) )
 	{
 	int			col= 0;
 	ItemShading		is;
 
-	docGetItemShadingByNumber( &is, isl, ta->taShadingNumber );
+	docGetItemShadingByNumber( &is, bd, ta->taShadingNumber );
 
 	if  ( docCssUseBackgroundStyle( &is, at->atDocument ) )
 	    {
@@ -306,13 +301,14 @@ int docCssSaveTextAttributeStyles(	SimpleOutputStream *	sos,
 					const IndexSet *	used,
 					const BufferDocument *	bd )
     {
-    AttributesThrough		at;
+    AttributesThrough			at;
+    const DocumentPropertyLists *	dpl= bd->bdPropertyLists;
 
     at.atSos= sos;
     at.atUsed= used;
     at.atDocument= bd;
 
-    textForAllAttributesInList( &(bd->bdTextAttributeList), used,
+    textForAllAttributesInList( &(dpl->dplTextAttributeList), used,
 			    docCssSaveTextAttributeStyle, (void *)&at );
 
     return 0;

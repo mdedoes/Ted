@@ -14,6 +14,7 @@
 
 #   include	<docBuf.h>
 #   include	<docNotes.h>
+#   include	<docShape.h>
 #   include	<docDocumentNote.h>
 #   include	"docCopyNode.h"
 

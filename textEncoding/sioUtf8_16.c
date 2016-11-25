@@ -40,7 +40,7 @@ typedef struct UtfInputStream
     int				uisEndian;
     int				uisTryBom;
 
-    unsigned char		uisLeft[6+1];
+    char			uisLeft[6+1];
     int				uisLeftCount;
     } UtfInputStream;
 
@@ -206,7 +206,7 @@ static int sioOutUtf16Emit(		SimpleOutputStream *	sosUtf16,
     while( done < count )
 	{
 	unsigned short	utf16;
-	int		step= uniGetUtf8( &utf16, buffer+ done );
+	int		step= uniGetUtf8( &utf16, (char *)buffer+ done );
 
 	if  ( step < 1 )
 	    { break;	}

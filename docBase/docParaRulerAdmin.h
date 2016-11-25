@@ -9,6 +9,7 @@
 #   define	DOC_PARA_RULER_ADMIN_H
 
 #   include	"docTabStop.h"
+#   include	"docTabStopList.h"
 #   include	<utilIntegerValueNode.h>
 #   include	<utilNumberedPropertiesAdmin.h>
 
@@ -24,10 +25,10 @@ typedef void (*TabStopListFunction)( 	const TabStopList * 	tsl,
 
 extern void docInitTabStopListList(	NumberedPropertiesList *	tsll );
 
-extern int docTabStopListNumber(	NumberedPropertiesList *	tsll,
+extern int docTabStopListNumberImpl(	NumberedPropertiesList *	tsll,
 					const TabStopList *		tsl );
 
-extern void docGetTabStopListByNumber(	TabStopList *			tsl,
+extern void docGetTabStopListByNumberImpl( TabStopList *		tsl,
 					const NumberedPropertiesList *	tsll,
 					int				n );
 

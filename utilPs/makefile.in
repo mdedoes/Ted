@@ -180,7 +180,7 @@ psDocumentFonts.o: \
     ../appUtil/sioGeneral.h \
     ../appUtil/sioPfb.h \
     psTtf.h \
-    ../textEncoding/ucd.h \
+    ../textEncoding/ucdGeneralCategory.h \
     ../include/appDebugon.h \
     ../include/appDebug.h
 
@@ -286,7 +286,7 @@ psFontMetrics.o: \
     ../appUtil/utilIndexMapping.h \
     ../appUtil/utilMemoryBuffer.h \
     ../textEncoding/uniUtf8.h \
-    ../textEncoding/ucd.h \
+    ../textEncoding/ucdGeneralCategory.h \
     ../include/appDebugon.h \
     ../include/appDebug.h
 
@@ -450,6 +450,7 @@ psPrint.o: \
     ../appUtil/utilColor.h \
     psPostScriptFontList.h \
     psFontFamily.h \
+    ../textEncoding/uniUtf8.h \
     ../include/appDebugon.h \
     ../include/appDebug.h
 
@@ -586,7 +587,6 @@ psTtfFontInfo.o: \
     psGlyphs.h \
     psTtf.h \
     ../appUtil/sioGeneral.h \
-    psReadWriteFontInfo.h \
     ../include/appDebugon.h \
     ../include/appDebug.h \
     psTtfIntern.h \

@@ -17,8 +17,8 @@
 #   include	<docObjectProperties.h>
 #   include	<docTextLine.h>
 #   include	<docTreeNode.h>
-#   include	<docItemShadingAdmin.h>
 #   include	<docBorderPropertyAdmin.h>
+#   include	<docShape.h>
 
 /************************************************************************/
 /*									*/
@@ -37,7 +37,7 @@ const AfmFontInfo * docLayoutGetAfi(
     BufferDocument *		bd= lc->lcDocument;
 
     DocumentProperties *	dp= &(bd->bdProperties);
-    DocumentFontList *		dfl= &(dp->dpFontList);
+    DocumentFontList *		dfl= dp->dpFontList;
 
     const AfmFontInfo *		afi;
     const IndexSet *		unicodesWanted;
@@ -50,12 +50,10 @@ const AfmFontInfo * docLayoutGetAfi(
     if  ( ! afi )
 	{ LDEB(textAttrNr); return (AfmFontInfo *)0; }
 
-    if  ( docBorderNumberIsBorder( &(bd->bdBorderPropertyList),
-							ta->taBorderNumber ) )
+    if  ( docBorderNumberIsBorder( bd, ta->taBorderNumber ) )
 	{ *pLineFlags |= TLflagBORDER;	}
 
-    if  ( docShadingNumberIsShading( &(bd->bdItemShadingList),
-							ta->taShadingNumber ) )
+    if  ( docShadingNumberIsShading( bd, ta->taShadingNumber ) )
 	{ *pLineFlags |= TLflagSHADING;	}
 
     *pTextAttrNr= textAttrNr;
@@ -102,8 +100,7 @@ int docLayoutFontAscDesc(	const BufferItem *		paraNode,
 	int		thick= 0;
 	int		space= 0;
 
-	docGetBorderPropertiesByNumber( &bp,
-			&(bd->bdBorderPropertyList), ta->taBorderNumber );
+	docGetBorderPropertiesByNumber( &bp, bd, ta->taBorderNumber );
 
 	thick= docBorderThick( &space, &bp );
 
@@ -323,8 +320,7 @@ int docLayoutInlineObject(	TextAttribute *			ta,
     width= ( io->ioScaleXUsed* io->ioTwipsWide )/ 100.0;
 
     docGetEffectiveTextAttributes( ta, bd, paraNode, part );
-    docGetBorderPropertiesByNumber( &bp,
-			    &(bd->bdBorderPropertyList), ta->taBorderNumber );
+    docGetBorderPropertiesByNumber( &bp, bd, ta->taBorderNumber );
 
     if  ( DOCisBORDER( &bp ) )
 	{ thick= docBorderThick( &space, &bp );	}

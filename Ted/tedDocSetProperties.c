@@ -17,36 +17,9 @@
 #   include	"tedDocument.h"
 #   include	<docRtfTrace.h>
 #   include	<docParaRulerAdmin.h>
-#   include	<textAttributeAdmin.h>
-#   include	<docScreenLayout.h>
 #   include	<docEditCommand.h>
 
 #   include	<appDebugon.h>
-
-/************************************************************************/
-/*									*/
-/*  Redo screen font administration after an attribute change.		*/
-/*									*/
-/************************************************************************/
-
-static void tedSetCurrentAttribute(
-				TedDocument *			td,
-				const LayoutContext *		lc )
-    {
-    BufferDocument *		bd= td->tdDocument;
-
-    td->tdCurrentTextAttributeNumber= utilTextAttributeNumber(
-					    &(bd->bdTextAttributeList),
-					    &(td->tdCurrentTextAttribute) );
-
-    if  ( td->tdCurrentTextAttributeNumber < 0 )
-	{ LDEB(td->tdCurrentTextAttributeNumber); return;	}
-
-    td->tdCurrentScreenFont= docOpenScreenFont( lc,
-					td->tdCurrentTextAttributeNumber );
-
-    return;
-    }
 
 /************************************************************************/
 /*									*/
@@ -126,8 +99,7 @@ int tedEditChangeSelectionPropertiesImpl(
 							    taSetMask, taSet );
 	if  ( ! utilPropMaskIsEmpty( &taDoneMask ) )
 	    {
-	    teo->teoSavedTextAttributeNumber=
-		    utilTextAttributeNumber( &(bd->bdTextAttributeList),
+	    teo->teoSavedTextAttributeNumber= docTextAttributeNumber( bd,
 					    &(teo->teoSavedTextAttribute) );
 	    }
 	}
@@ -190,7 +162,7 @@ int tedEditChangeSelectionProperties(
     int				rval = 0;
     EditOperation *		eo= &(teo->teoEo);
 
-    DocumentSelection		dsTraced;
+    DocumentSelection		dsTraced= *ds;
 
     if  ( taSetMask && utilPropMaskIsEmpty( taSetMask ) )
 	{ taSetMask= (const PropertyMask *)0;	}
@@ -258,6 +230,32 @@ int tedEditChangeSelectionProperties(
     if  ( teo->teoEditTrace )
 	{
 	docRtfTraceNewPosition( eo, (const SelectionScope *)0, SELposALL );
+	}
+
+    /*  Activate text attribute setting for future typing */
+    if  ( docIsIBarSelection( ds ) && taSetMask )
+	{
+	EditDocument *		ed= teo->teoEditDocument;
+	TedDocument *		td= (TedDocument *)ed->edPrivateData;
+	BufferDocument *	bd= td->tdDocument;
+	SelectionDescription *	sd= &(td->tdSelectionDescription);
+	TextAttribute *		ta= &(sd->sdTextAttribute);
+
+	PropertyMask		taDoneMask;
+
+	utilPropMaskClear( &taDoneMask );
+
+	utilUpdateTextAttribute( &taDoneMask, ta, taSetMask, taSet );
+
+	if  ( ! utilPropMaskIsEmpty( &taDoneMask ) )
+	    {
+	    const IndexMapping *	a2s= &(td->tdAttributeToScreenFont);
+
+	    sd->sdTextAttributeNumber= docTextAttributeNumber( bd, ta );
+
+	    td->tdCurrentScreenFont= utilIndexMappingGet( a2s,
+			    td->tdSelectionDescription.sdTextAttributeNumber );
+	    }
 	}
 
     tedFinishEditOperation( teo );
@@ -371,23 +369,10 @@ void tedDocChangeTextAttribute(		EditDocument *		ed,
 					const TextAttribute *	taSet,
 					int			traced )
     {
-    TedDocument *		td= (TedDocument *)ed->edPrivateData;
-
-    PropertyMask		changeMask;
-
     LayoutContext		lc;
 
     layoutInitContext( &lc );
     tedSetScreenLayoutContext( &lc, ed );
-
-    utilPropMaskClear( &changeMask );
-
-    utilUpdateTextAttribute( &changeMask,
-			    &(td->tdCurrentTextAttribute), taSetMask, taSet );
-
-    if  ( ! utilPropMaskIsEmpty( &changeMask )	||
-	  td->tdCurrentScreenFont < 0		)
-	{ tedSetCurrentAttribute( td, &lc );	}
 
     if  ( tedDocChangeSelectionProperties( ed, EDITcmdUPD_SPAN_PROPS,
 		    taSetMask, taSet,
@@ -485,8 +470,7 @@ int tedDocSetParagraphTabs(	EditDocument *		ed,
     utilPropMaskClear( &ppSetMask );
     PROPmaskADD( &ppSetMask, PPpropTAB_STOPS );
 
-    ppSet.ppTabStopListNumber= docTabStopListNumber(
-					    &(bd->bdTabStopListList), tsl );
+    ppSet.ppTabStopListNumber= docTabStopListNumber( bd, tsl );
 
     return tedDocChangeParagraphProperties( ed, &ppSetMask, &ppSet, traced );
     }

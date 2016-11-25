@@ -35,6 +35,10 @@ typedef enum NotesJustification
 typedef enum NotesPlacement
     {
 	/**
+	 * No explicit tag in RTF.
+	 */
+    FTNplacePAGE_END= 0,
+	/**
 	 *  [a]endnotes: No sect variant
 	 *  The property is ignored for footnotes.
 	 */
@@ -143,9 +147,12 @@ extern int docSetNotesProperty(		NotesProperties *	np,
 extern int docGetNotesProperty(		const NotesProperties *	np,
 					int			prop );
 
-extern void docInitFootNotesProperties(		NotesProperties *	np );
-extern void docInitEndNotesProperties(		NotesProperties *	np );
+extern void docInitNotesProperties(		NotesProperties *	np );
 extern void docInitFootEndNotesProperties(	FootEndNotesProperties * fep );
+
+extern void docDefaultFootNotesProperties(	NotesProperties *	np );
+extern void docDefaultEndNotesProperties(	NotesProperties *	np );
+extern void docDefaultFootEndNotesProperties(	FootEndNotesProperties * fep );
 
 extern const char * docNotesJustificationStr(	int		val );
 extern const char * docNotesPlacementStr(	int		val );

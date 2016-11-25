@@ -18,11 +18,10 @@
 
 extern int psFontmapForFiles(	SimpleOutputStream *	sosOut,
 				int			fileCount,
-				char **			fileNames );
+				const char * const *	fileNames );
 
 extern int psAfmToGSFontmap(	SimpleOutputStream *	sosFontDir,
-				const char *		afmFileName,
-				SimpleInputStream *	sisAfm );
+				const char *		afmFileName );
 
 extern int psGSLibAfmDirectory(	PostScriptFontList *	psfl,
 				int			ignoreKerning,
@@ -34,6 +33,11 @@ extern int psAfmForFontFiles(	PostScriptFontList *	psfl,
 				int			fileCount,
 				char **			fileNames,
 				const MemoryBuffer *	afmDirectory,
+				const MemoryBuffer *	psDirectory );
+
+extern int psFontFileToAfm(	SimpleOutputStream *	sosAfm,
+				int			omitKernPairs,
+				const char *		fontFileName,
 				const MemoryBuffer *	psDirectory );
 
 #   endif

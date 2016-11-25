@@ -84,7 +84,11 @@ static int bpPngiToBitmap(	const png_structp		pngp,
 
 	case PNG_COLOR_TYPE_GRAY_ALPHA:
 	    bd->bdHasAlpha= 1;
-	    LDEB(png_get_color_type( pngp, pngi )); return -1;
+	    bd->bdColorEncoding= BMcoWHITEBLACK;
+	    bd->bdBitsPerSample= png_get_bit_depth( pngp, pngi );
+	    bd->bdSamplesPerPixel= png_get_channels( pngp, pngi );
+	    bd->bdBitsPerPixel= bd->bdSamplesPerPixel* bd->bdBitsPerSample;
+	    break;
 
 	default:
 	    LDEB(png_get_color_type( pngp, pngi )); return -1;
@@ -337,7 +341,7 @@ static int bpPngiFromBitmap(	png_structp			png,
 
 	case BMcoBLACKWHITE:
 	case BMcoWHITEBLACK:
-	    bit_depth= bd->bdBitsPerPixel;
+	    bit_depth= bd->bdBitsPerSample;
 	    if  ( bd->bdHasAlpha )
 		{
 		color_type= PNG_COLOR_TYPE_GRAY_ALPHA;
@@ -388,6 +392,10 @@ static int bpPngiFromBitmap(	png_structp			png,
 		(*pPalette)[i].green= bd->bdPalette.cpColors[i].rgb8Green;
 		(*pPalette)[i].blue= bd->bdPalette.cpColors[i].rgb8Blue;
 		}
+	    /* Give rest of palette predictable contents */
+	    for ( i= bd->bdPalette.cpColorCount;
+					i < PNG_MAX_PALETTE_LENGTH; i++ )
+		{ (*pPalette)[i]= (*pPalette)[0];	}
 	    if  ( bd->bdHasAlpha )
 		{
 		if  ( bd->bdHasAlpha )

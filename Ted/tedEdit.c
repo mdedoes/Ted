@@ -11,7 +11,7 @@
 #   include	<ctype.h>
 
 #   include	<uniUtf8.h>
-#   include	<ucd.h>
+#   include	<ucdGeneralCategory.h>
 
 #   include	"tedEdit.h"
 #   include	"tedDocument.h"
@@ -19,7 +19,6 @@
 #   include	"tedSelect.h"
 #   include	"tedToolFront.h"
 #   include	<docRtfTrace.h>
-#   include	<textAttributeAdmin.h>
 #   include	<docTreeType.h>
 #   include	<docField.h>
 #   include	<docTextParticule.h>
@@ -176,7 +175,7 @@ int tedDeleteSelectionImpl(	TedEditOperation *	teo )
     TedDocument *		td= (TedDocument *)ed->edPrivateData;
 
     return tedReplaceSelectionImpl( teo, (const char *)0, 0, TYPING_NO,
-					td->tdCurrentTextAttributeNumber );
+			td->tdSelectionDescription.sdTextAttributeNumber );
     }
 
 /************************************************************************/
@@ -196,7 +195,7 @@ static int tedDetermineTypingClass(	int *			pHeadClass,
 	unsigned short	uni;
 	int		step;
 
-	step= uniGetUtf8( &uni, (const unsigned char *)str+ done );
+	step= uniGetUtf8( &uni, str+ done );
 	if  ( step < 1 )
 	    { LDEB(step); return -1;	}
 
@@ -290,7 +289,7 @@ int tedDocReplaceSelection(	EditDocument *		ed,
 	}
 
     if  ( tedReplaceSelectionImpl( &teo, str, length, TYPING_NO,
-					td->tdCurrentTextAttributeNumber ) )
+			td->tdSelectionDescription.sdTextAttributeNumber ) )
 	{ LDEB(length); rval= -1; goto ready;	}
 
     et->etTyping= TYPING_NO;
@@ -371,7 +370,7 @@ int tedDocReplaceSelectionTyping(	EditDocument *		ed,
 	}
 
     if  ( tedReplaceSelectionImpl( &teo, str, length, headClass,
-					td->tdCurrentTextAttributeNumber ) )
+			td->tdSelectionDescription.sdTextAttributeNumber ) )
 	{ LDEB(length); rval= -1; goto ready;	}
 
     et->etTyping= tailClass;
@@ -405,8 +404,8 @@ void tedDocInsertStringWithAttribute(	EditDocument *		ed,
 
     PropertyMask		taDoneMask;
 
-    TextAttribute		ta= td->tdCurrentTextAttribute;
-    int				textAttrNr= td->tdCurrentTextAttributeNumber;
+    TextAttribute		ta= td->tdSelectionDescription.sdTextAttribute;
+    int				textAttrNr= td->tdSelectionDescription.sdTextAttributeNumber;
 
     DocumentSelection		dsTraced;
 
@@ -417,7 +416,7 @@ void tedDocInsertStringWithAttribute(	EditDocument *		ed,
 	{ LDEB(1); goto ready; }
 
     utilUpdateTextAttribute( &taDoneMask, &ta, taSetMask, taSet );
-    textAttrNr= utilTextAttributeNumber( &(bd->bdTextAttributeList), &ta );
+    textAttrNr= docTextAttributeNumber( bd, &ta );
 
     tedStartEditOperation( &teo, &sg, &sd, ed, fullWidth, traced );
 

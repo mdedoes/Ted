@@ -91,6 +91,18 @@ extern const int		DOCrtf_CellHorMergeTagCount;
 extern const char * const	DOCrtf_CellVerMergeTags[];
 extern const int		DOCrtf_CellVerMergeTagCount;
 
+extern const char * const	DOCrtf_ParaAlignTags[];
+extern const int		DOCrtf_ParaAlignTagCount;
+
+extern const char * const	DOCrtf_TabAlignTags[];
+extern const int		DOCrtf_TabAlignTagCount;
+
+extern const char * const	DOCrtf_TabLeaderTags[];
+extern const int		DOCrtf_TabLeaderTagCount;
+
+extern const char * const	DOCrtf_SupersubTags[];
+extern const int		DOCrtf_SupersubTagCount;
+
 extern const char RTFtag_pict[];
 extern const char RTFtag_result[];
 
@@ -99,10 +111,21 @@ extern const char RTFtag_pard[];
 extern const char RTFtag_plain[];
 
 extern const char RTFtag_footnote[];
+extern const char RTFtag_chftn[];
+extern const char RTFtag_fet[];
 
 extern const char RTFtag_revtim[];
 extern const char RTFtag_hlinkbase[];
 extern const char RTFtag__generator[];
+
+extern const char RTFtag_nosupersub[];
+extern const char RTFtag_super[];
+extern const char RTFtag_sub[];
+
+extern const char RTFtag_tql[];
+extern const char RTFtag_tqr[];
+extern const char RTFtag_tqc[];
+extern const char RTFtag_tqdec[];
 
 /* Tags for copy/paste and the Trace */
 

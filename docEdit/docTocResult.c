@@ -10,13 +10,11 @@
 
 #   include	<appDebugon.h>
 
-#   include	<textAttributeAdmin.h>
-
 #   include	<docBuf.h>
 #   include	<docParaString.h>
 #   include	<docParaParticules.h>
 #   include	"docEdit.h"
-#   include	"docEditImpl.h"
+#   include	"docIntermediaryDocument.h"
 #   include	<docTocField.h>
 #   include	"docCalculateToc.h"
 #   include	<docStripFrame.h>
@@ -251,15 +249,15 @@ static BufferItem * docMakeTocParagraph(
     const DocumentProperties *	dp= &(ct->ctBdToc->bdProperties);
     int				textAttrNr= ct->ctLevelAttributeNumbers[level];
 
-    BufferItem *		paraBiToc= (BufferItem *)0;
+    BufferItem *		paraNodeToc= (BufferItem *)0;
 
     TabStopList			tsl;
 
     docInitTabStopList( &tsl );
 
-    paraBiToc= docInsertEmptyParagraph( ct->ctBdToc, refBi, textAttrNr );
-    if  ( ! paraBiToc )
-	{ XDEB(paraBiToc); goto ready;	}
+    paraNodeToc= docInsertEmptyParagraph( ct->ctBdToc, refBi, textAttrNr );
+    if  ( ! paraNodeToc )
+	{ XDEB(paraNodeToc); goto ready;	}
 
     if  ( ds && ! utilPropMaskIsEmpty( &(ds->dsParaMask) ) )
 	{
@@ -267,30 +265,34 @@ static BufferItem * docMakeTocParagraph(
 
 	/*  No mapping needed: The style is in the target document */
 	if  ( docUpdParaProperties( (PropertyMask *)0,
-					&(paraBiToc->biParaProperties),
+					&(paraNodeToc->biParaProperties),
 					&(ds->dsParaMask), ppFrom,
 					(const DocumentAttributeMap *)0 ) )
 	    { LDEB(1);		}
+
+	paraNodeToc->biParaStyle= ds->dsStyleNumber;
 	}
     else{
-	if  ( docCopyParagraphProperties( &(paraBiToc->biParaProperties),
+	if  ( docCopyParagraphProperties( &(paraNodeToc->biParaProperties),
 							    &(ct->ctRefPP) ) )
 	    { LDEB(1);	}
 
-	if  ( ct->ctTocField.tfType == TOCtypeTOC )
+	if  ( ct->ctTocField.tfType == TOCtypeTOC	&&
+	      level >= 0				&&
+	      level <= PPoutlineDEEPEST			)
 	    {
-	    paraBiToc->biParaLeftIndentTwips= level* dp->dpTabIntervalTwips;
+	    paraNodeToc->biParaLeftIndentTwips= level* dp->dpTabIntervalTwips;
 	    }
 	}
 
-    if  ( numbered						&&
-	  paraBiToc->biParaProperties.ppTabStopListNumber == 0	)
+    if  ( numbered							&&
+	  paraNodeToc->biParaProperties.ppTabStopListNumber == 0	)
 	{
 	ParagraphFrame		pf;
 	TabStop			ts;
 	int			n;
 
-	docParagraphFrameTwips( &pf, &(ct->ctBlockFrame), paraBiToc );
+	docParagraphFrameTwips( &pf, &(ct->ctBlockFrame), paraNodeToc );
 
 	docInitTabStop( &ts );
 
@@ -300,17 +302,17 @@ static BufferItem * docMakeTocParagraph(
 
 	if  ( docAddTabToListTwips( &tsl, &ts ) )
 	    { LDEB(1);	}
-	n= docTabStopListNumber( &(ct->ctBdToc->bdTabStopListList), &tsl );
+	n= docTabStopListNumber( ct->ctBdToc, &tsl );
 	if  ( n < 0 )
 	    { LDEB(n);	}
-	else{ paraBiToc->biParaProperties.ppTabStopListNumber= n;	}
+	else{ paraNodeToc->biParaProperties.ppTabStopListNumber= n;	}
 	}
 
   ready:
 
     docCleanTabStopList( &tsl );
 
-    return paraBiToc;
+    return paraNodeToc;
     }
 
 /************************************************************************/
@@ -322,7 +324,7 @@ static BufferItem * docMakeTocParagraph(
 
 static int docStartTocField(	CalculateToc *		ct,
 				const DocumentField *	dfToc,
-				BufferItem *		paraBiToc )
+				BufferItem *		paraNodeToc )
     {
     EditPosition	epStart;
     const int		stroff= 0;
@@ -332,17 +334,17 @@ static int docStartTocField(	CalculateToc *		ct,
 
     DocumentPosition	dp;
 
-    docSetDocumentPosition( &dp, paraBiToc, stroff );
+    docSetDocumentPosition( &dp, paraNodeToc, stroff );
     docSetEditPosition( &epStart, &dp );
 
     ct->ctDfTocTo= docClaimFieldCopy( &(ct->ctBdToc->bdFieldList),
-		    dfToc, &(ct->ctSectBi->biSectSelectionScope), &epStart );
+		    dfToc, &(ct->ctSectNode->biSectSelectionScope), &epStart );
     if  ( ! ct->ctDfTocTo )
 	{ XDEB(ct->ctDfTocTo); return -1;	}
 
-    docDeleteEmptySpan( paraBiToc );
+    docDeleteEmptySpan( paraNodeToc );
 
-    tp= docMakeSpecialParticule( paraBiToc, part, epStart.epStroff,
+    tp= docMakeSpecialParticule( paraNodeToc, part, epStart.epStroff,
 					    DOCkindFIELDHEAD, textAttrNr );
     if  ( ! tp )
 	{ XDEB(tp); return -1;	}
@@ -368,13 +370,12 @@ static int docSetupTocDocument(		CalculateToc *		ct )
     int			level;
     TextAttribute	ta;
 
-    ct->ctBdToc= docIntermediaryDocument( &(ct->ctSectBi), ct->ctBdDoc );
+    ct->ctBdToc= docIntermediaryDocument( &(ct->ctSectNode), ct->ctBdDoc );
     if  ( ! ct->ctBdToc )
 	{ XDEB(ct->ctBdToc); return -1;	}
 
-    ct->ctDefaultTextAttributeNumber= utilTextAttributeNumber(
-					&(ct->ctBdToc->bdTextAttributeList),
-					&(ct->ctTextAttribute) );
+    ct->ctDefaultTextAttributeNumber= docTextAttributeNumber( ct->ctBdToc,
+						    &(ct->ctTextAttribute) );
 
     for ( level= 0; level <= PPoutlineDEEPEST; level++ )
 	{
@@ -394,8 +395,8 @@ static int docSetupTocDocument(		CalculateToc *		ct )
 
 	    utilUpdateTextAttribute( &doneMask, &ta,
 				&(ds->dsTextMask), &(ds->dsTextAttribute) );
-	    ct->ctLevelAttributeNumbers[level]= utilTextAttributeNumber(
-				    &(ct->ctBdToc->bdTextAttributeList), &ta );
+	    ct->ctLevelAttributeNumbers[level]= docTextAttributeNumber(
+							    ct->ctBdToc, &ta );
 	    }
 	}
 
@@ -408,7 +409,7 @@ static int docSetupTocDocument(		CalculateToc *		ct )
 /************************************************************************/
 
 static int docFinishTocField(	CalculateToc *		ct,
-				BufferItem *		paraBiToc )
+				BufferItem *		paraNodeToc )
     {
     TextParticule *	tp;
     int			textAttrNr= ct->ctDefaultTextAttributeNumber;
@@ -416,10 +417,10 @@ static int docFinishTocField(	CalculateToc *		ct,
     DocumentPosition	dpTail;
     EditPosition	epTail;
 
-    docSetDocumentPosition( &dpTail,  paraBiToc, docParaStrlen( paraBiToc ) );
+    docSetDocumentPosition( &dpTail,  paraNodeToc, docParaStrlen( paraNodeToc ) );
     docSetEditPosition( &epTail, &dpTail );
 
-    tp= docMakeSpecialParticule( paraBiToc, paraBiToc->biParaParticuleCount,
+    tp= docMakeSpecialParticule( paraNodeToc, paraNodeToc->biParaParticuleCount,
 			    epTail.epStroff, DOCkindFIELDTAIL, textAttrNr );
     if  ( ! tp )
 	{ XDEB(tp); return -1;	}
@@ -460,18 +461,16 @@ static int docGetTocParaProperties(
     const TextParticule *	tp= (const TextParticule *)0;
 
     tp= dsToc->dsHead.dpNode->biParaParticules+ part0;
-    utilGetTextAttributeByNumber( &(ct->ctTextAttribute),
-					&(ct->ctBdDoc->bdTextAttributeList),
-					tp->tpTextAttrNr );
+    docGetTextAttributeByNumber( &(ct->ctTextAttribute),
+					ct->ctBdDoc, tp->tpTextAttrNr );
 
     part= part0;
     while( part < dsToc->dsHead.dpNode->biParaParticuleCount )
 	{
 	if  ( tp->tpKind == DOCkindSPAN )
 	    {
-	    utilGetTextAttributeByNumber( &(ct->ctTextAttribute),
-					&(ct->ctBdDoc->bdTextAttributeList),
-					tp->tpTextAttrNr );
+	    docGetTextAttributeByNumber( &(ct->ctTextAttribute),
+					    ct->ctBdDoc, tp->tpTextAttrNr );
 
 	    break;
 	    }
@@ -497,7 +496,7 @@ static int docCalculateTocField( CalculateToc *			ct,
 				int				part1,
 				const DocumentField *		dfToc )
     {
-    BufferItem *		paraBiToc= (BufferItem *)0;
+    BufferItem *		paraNodeToc= (BufferItem *)0;
     BufferItem *		refBi= (BufferItem *)0;
 
     int				entryNr= 0;
@@ -509,29 +508,29 @@ static int docCalculateTocField( CalculateToc *			ct,
     if  ( docSetupTocDocument( ct ) )
 	{ LDEB(1); return -1;	}
 
-    refBi= ct->ctSectBi;
+    refBi= ct->ctSectNode;
     te= ct->ctEntries;
     for ( entryNr= 0; entryNr < ct->ctEntryCount; te++, entryNr++ )
 	{
-	paraBiToc= docMakeTocParagraph( ct, refBi,
+	paraNodeToc= docMakeTocParagraph( ct, refBi,
 					    te->teLevel, te->teNumbered );
-	if  ( ! paraBiToc )
-	    { XDEB(paraBiToc); return -1;	}
+	if  ( ! paraNodeToc )
+	    { XDEB(paraNodeToc); return -1;	}
 
 	if  ( ! ct->ctDfTocTo )
 	    {
-	    if  ( docStartTocField( ct, dfToc, paraBiToc ) )
+	    if  ( docStartTocField( ct, dfToc, paraNodeToc ) )
 		{ LDEB(1); return -1;	}
 	    }
 
 	if  ( docParaInsertTocEntry( ct, ct->ctTocField.tfHyperlinks, te,
-				    &(dfToc->dfSelectionScope), paraBiToc ) )
+				    &(dfToc->dfSelectionScope), paraNodeToc ) )
 	    { LDEB(entryNr); return -1;	}
 
-	refBi= paraBiToc;
+	refBi= paraNodeToc;
 	}
 
-    if  ( ! paraBiToc )
+    if  ( ! paraNodeToc )
 	{
 	int			stroff;
 	int			stroffShift;
@@ -541,25 +540,25 @@ static int docCalculateTocField( CalculateToc *			ct,
 	const char *		text= "TOC";
 	const int		len= 3;
 
-	paraBiToc= docMakeTocParagraph( ct, refBi, level, numbered );
-	if  ( ! paraBiToc )
-	    { XDEB(paraBiToc); return -1;	}
+	paraNodeToc= docMakeTocParagraph( ct, refBi, level, numbered );
+	if  ( ! paraNodeToc )
+	    { XDEB(paraNodeToc); return -1;	}
 
-	if  ( docStartTocField( ct, dfToc, paraBiToc ) )
+	if  ( docStartTocField( ct, dfToc, paraNodeToc ) )
 	    { LDEB(1); return -1;	}
 
-	stroff= docParaStrlen( paraBiToc );
-	if  ( docParaStringReplace( &stroffShift, paraBiToc,
+	stroff= docParaStrlen( paraNodeToc );
+	if  ( docParaStringReplace( &stroffShift, paraNodeToc,
 						stroff, stroff, text, len ) )
 	    { LDEB(len); return -1;	}
 
-	if  ( docRedivideStringInParticules( paraBiToc, stroff, len,
-				    paraBiToc->biParaParticuleCount, 0, 
+	if  ( docRedivideStringInParticules( paraNodeToc, stroff, len,
+				    paraNodeToc->biParaParticuleCount, 0, 
 				    ct->ctDefaultTextAttributeNumber ) < 0 )
 	    { LDEB(1); return -1;	}
 	}
 
-    if  ( docFinishTocField( ct, paraBiToc ) )
+    if  ( docFinishTocField( ct, paraNodeToc ) )
 	{ LDEB(1); return -1;	}
 
     return 0;

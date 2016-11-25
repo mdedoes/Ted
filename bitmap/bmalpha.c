@@ -195,8 +195,7 @@ int bmWhiteToTransparent(	RasterImage *			riOut,
 
     if  ( bmCalculateSizes( &(ri.riDescription) ) )
 	{ LDEB(1); rval= -1; goto ready;	}
-    ri.riBytes= (unsigned char *)malloc( ri.riDescription.bdBufferLength );
-    if  ( ! ri.riBytes )
+    if  ( bmAllocateBuffer( &ri ) )
 	{ LLDEB(ri.riDescription.bdBufferLength,ri.riBytes); rval= -1; goto ready; }
 
     switch( bdIn->bdColorEncoding )
@@ -343,8 +342,7 @@ int bmGetAlphaMask(	RasterImage *			riOut,
     if  ( bmCalculateSizes( &(ri.riDescription) ) )
 	{ LDEB(1); rval= -1; goto ready;	}
 
-    ri.riBytes= (unsigned char *)malloc( ri.riDescription.bdBufferLength );
-    if  ( ! ri.riBytes )
+    if  ( bmAllocateBuffer( &ri ) )
 	{ LLDEB(ri.riDescription.bdBufferLength,ri.riBytes); rval= -1; goto ready; }
     memset( ri.riBytes, '\0', ri.riDescription.bdBufferLength );
 
@@ -470,8 +468,7 @@ int bmRemoveAlpha(	RasterImage *			riOut,
     if  ( bmCalculateSizes( &(ri.riDescription) ) )
 	{ LDEB(1); rval= -1; goto ready;	}
 
-    ri.riBytes= (unsigned char *)malloc( ri.riDescription.bdBufferLength );
-    if  ( ! ri.riBytes )
+    if  ( bmAllocateBuffer( &ri ) )
 	{ LLDEB(ri.riDescription.bdBufferLength,ri.riBytes); rval= -1; goto ready; }
     memset( ri.riBytes, '\0', ri.riDescription.bdBufferLength );
 

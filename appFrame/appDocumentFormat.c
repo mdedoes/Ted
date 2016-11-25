@@ -109,7 +109,8 @@ int appDocumentGetSaveFormat(	int *				pSuggestStdout,
     return rval;
     }
 
-int appDocumentGetOpenFormat(	const AppFileExtension *	testExts,
+int appDocumentGetOpenFormat(	int *				pSuggestStdin,
+				const AppFileExtension *	testExts,
 				int				testExtCount,
 				const MemoryBuffer *		filename,
 				int				format )
@@ -117,7 +118,7 @@ int appDocumentGetOpenFormat(	const AppFileExtension *	testExts,
     int				rval= -1;
     const AppFileExtension *	afe;
     int				i;
-    int				suggestStdout= 0;
+    int				suggestStdin= 0;
 
     MemoryBuffer		ext;
 
@@ -135,7 +136,7 @@ int appDocumentGetOpenFormat(	const AppFileExtension *	testExts,
 						1, filename->mbSize-2 ) )
 	    { LDEB(filename->mbSize); rval= -1; goto ready;	}
 
-	suggestStdout= 1;
+	suggestStdin= 1;
 	}
 
     if  ( format >= 0 && format < testExtCount )
@@ -165,6 +166,9 @@ int appDocumentGetOpenFormat(	const AppFileExtension *	testExts,
 
   ready:
 
+    if  ( pSuggestStdin )
+	{ *pSuggestStdin= suggestStdin;	}
+
     utilCleanMemoryBuffer( &ext );
 
     return rval;
@@ -186,6 +190,7 @@ int appFileConvert(	EditApplication *	ea,
     int			interactive= ( ea->eaToplevel.atTopWidget != NULL );
 
     void *		privateData= (void *)0;
+    int			suggestStdin= 0;
     int			fromFormat= -1;
     const int		readOnly= 1;
     const int		isNewDocName= 0;
@@ -203,9 +208,13 @@ int appFileConvert(	EditApplication *	ea,
 	    { XDEB(privateData); rval= -1; goto ready; }
 	}
 
+    fromFormat= appDocumentGetOpenFormat( &suggestStdin,
+			ea->eaFileExtensions, ea->eaFileExtensionCount,
+			fromName, fromFormat );
+
     if  ( (*ea->eaOpenDocument)( ea, privateData, &fromFormat,
-				    ea->eaToplevel.atTopWidget, (APP_WIDGET)0,
-				    readOnly, fromName ) )
+			    ea->eaToplevel.atTopWidget, (APP_WIDGET)0,
+			    readOnly, suggestStdin, fromFormat, fromName ) )
 	{ LDEB(1); rval= -1; goto ready; }
 
     toFormat= appDocumentGetSaveFormat( &suggestStdout, ea, toName, privateData,

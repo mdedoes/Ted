@@ -12,6 +12,7 @@
 #   include	"psPrint.h"
 #   include	<geo2DInteger.h>
 #   include	<sioGeneral.h>
+#   include	<uniUtf8.h>
 
 #   include	<appDebugon.h>
 
@@ -149,6 +150,51 @@ int psPrintStringValue(	PrintingState *		ps,
     return 0;
     }
 
+static int psPrintUnicodeStringValue(	PrintingState *	ps,
+					const char *	s,
+					int		len )
+    {
+    SimpleOutputStream *	sos= ps->psSos;
+    int				off;
+
+    if  ( sioOutPutString( "<FEFF", sos ) < 0 )
+	{ return -1;	}
+
+    off= 0;
+    while( off < len )
+	{
+	unsigned short		uni;
+	int			step= uniGetUtf8( &uni, s+ off );
+
+	if  ( step < 1 )
+	    { XXLDEB(s[off],s[off+1],step); return -1;	}
+
+	sioOutPrintf( sos, "%04X", uni );
+
+	off += step;
+	}
+
+    if  ( sioOutPutByte( '>', sos ) < 0 )
+	{ return -1;	}
+
+    return 0;
+    }
+
+int psPrintPdfMarkStringValue(	PrintingState *		ps,
+				const unsigned char *	s,
+				int			len )
+    {
+    int		i;
+
+    for ( i= 0; i < len; i++ )
+	{
+	if  ( s[i] >= 127 )
+	    { return psPrintUnicodeStringValue( ps, (const char *)s, len ); }
+	}
+
+    return psPrintStringValue( ps, s, len );
+    }
+
 int psMoveShowString(	PrintingState *		ps,
 			const unsigned char *	s,
 			int			len,
@@ -205,8 +251,8 @@ int psSetFont(	PrintingState *			ps,
     int				fontSizeTwips= 10* ta->taFontSizeHalfPoints;
     char			fontName[40];
 
-    if  ( ta->taSuperSub == DOCfontSUPERSCRIPT	||
-	  ta->taSuperSub == DOCfontSUBSCRIPT	)
+    if  ( ta->taSuperSub == TEXTvaSUPERSCRIPT	||
+	  ta->taSuperSub == TEXTvaSUBSCRIPT	)
 	{ fontSizeTwips= SUPERSUB_SIZE( fontSizeTwips ); }
 
     if  ( ta->taSmallCaps )

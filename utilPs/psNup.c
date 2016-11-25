@@ -484,8 +484,5 @@ void psInitPrintGeometry(	PrintGeometry *	pg )
 
 void psCleanPrintGeometry(	PrintGeometry *	pg )
     {
-    if  ( pg->pgCustomPsSetupFilename )
-	{ free( pg->pgCustomPsSetupFilename );	}
-
     return;
     }

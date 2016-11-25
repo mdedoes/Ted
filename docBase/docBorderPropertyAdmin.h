@@ -1,6 +1,6 @@
 /************************************************************************/
 /*									*/
-/*  Manage a lookup to keep track of text attributes.			*/
+/*  Manage a lookup to keep track of border properties.			*/
 /*									*/
 /************************************************************************/
 
@@ -23,7 +23,7 @@ typedef void (*BorderPropertiesFunction)( const BorderProperties * bp,
 
 extern void docInitBorderPropertyList(	NumberedPropertiesList *	bpl );
 
-extern int docBorderPropertiesNumber(	NumberedPropertiesList *	bpl,
+extern int docBorderPropertiesNumberImpl( NumberedPropertiesList *	bpl,
 					const BorderProperties *	bp );
 
 extern void docForAllBorderProperties(
@@ -31,17 +31,17 @@ extern void docForAllBorderProperties(
 				BorderPropertiesFunction	f,
 				void *				through );
 
-extern void docGetBorderPropertiesByNumber(
+extern void docGetBorderPropertiesByNumberImpl(
 					BorderProperties *		bp,
 					const NumberedPropertiesList *	bpl,
 					int				n );
 
-extern int docBorderNumberIsBorder(	const NumberedPropertiesList *	bpl,
+extern int docBorderNumberIsBorderImpl(	const NumberedPropertiesList *	bpl,
 					int				n );
 
 extern int docMergeBorderPropertiesLists(
 				int **				pBorderMap,
-				const int *			cmap,
+				const int *			colorMap,
 				NumberedPropertiesList *	bplTo,
 				const NumberedPropertiesList *	bplFrom );
 

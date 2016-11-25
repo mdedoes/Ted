@@ -288,6 +288,14 @@ static int docRtfSaveTagParticule(	RtfWriter *		rwc,
 	    docRtfWriteNextLine( rwc );
 	    break;
 
+	case DOCkindLTR_MARK:
+	    docRtfWriteTag( rwc, "ltrmark" );
+	    break;
+
+	case DOCkindRTL_MARK:
+	    docRtfWriteTag( rwc, "rtlmark" );
+	    break;
+
 	default:
 	    LDEB(kind); return -1;
 	}
@@ -372,7 +380,10 @@ int docRtfSaveParaNode(		RtfWriter *			rwc,
 		first= (const char *)docParaString( paraNode, tp->tpStroff );
 		}
 
-	    docRtfWriteSwitchTextAttributes( rwc, tp->tpTextAttrNr, first );
+	    if  ( tp->tpKind != DOCkindFIELDTAIL )
+		{
+		docRtfWriteSwitchTextAttributes( rwc, tp->tpTextAttrNr, first );
+		}
 	    }
 
 	switch( tp->tpKind )
@@ -386,6 +397,8 @@ int docRtfSaveParaNode(		RtfWriter *			rwc,
 	    case DOCkindLINEBREAK:
 	    case DOCkindPAGEBREAK:
 	    case DOCkindCOLUMNBREAK:
+	    case DOCkindLTR_MARK:
+	    case DOCkindRTL_MARK:
 		if  ( pastSel )
 		    { break;	}
 

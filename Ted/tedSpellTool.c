@@ -39,7 +39,7 @@ void tedRefreshSpellTool(	SpellTool *			ast,
 	  ast->astSpellChecker->scDictionaryCount == 0	)
 	{ *pEnabled= 0; return;		}
 
-    appSpellToolEnableCorrect( ast, cmdEnabled[EDITcmdREPLACE] );
+    appSpellToolSetReadOnly( ast, ! cmdEnabled[EDITcmdREPLACE] );
 
     *pEnabled= 1;
     return;

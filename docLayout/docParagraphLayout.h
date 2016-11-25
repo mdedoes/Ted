@@ -23,7 +23,7 @@ extern void docGetParaOrnaments(
 			const DocumentRectangle *	drPara,
 			const BufferDocument *		bd,
 			const struct BufferItem *	paraBi,
-			int				atTop,
-			int				atBottom );
+			int				atParaTop,
+			int				atParaBottom );
 
 #   endif	/*  DOC_PARAGRAPH_LAYOUT_H  */

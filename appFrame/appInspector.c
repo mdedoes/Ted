@@ -188,8 +188,6 @@ static AppConfigurableResource APP_InspectorResourceTable[]=
 
 AppInspector * appMakeInspector(    EditApplication *		ea,
 				    APP_WIDGET			option,
-				    const char *		pixmapName,
-				    const char *		widgetName,
 				    InspectorSubjectResources * isr,
 				    int				subjectCount,
 				    AppToolDestroy		destroy,
@@ -219,8 +217,8 @@ AppInspector * appMakeInspector(    EditApplication *		ea,
 	gotResources= 1;
 	}
 
-    if  ( appGetImagePixmap( ea, pixmapName, &iconPixmap, &iconMask )  )
-	{ SDEB(pixmapName); return (AppInspector *)0; }
+    if  ( appGetImagePixmap( ea, ea->eaMainIcon, &iconPixmap, &iconMask )  )
+	{ SDEB(ea->eaMainIcon); return (AppInspector *)0; }
 
     ai= (AppInspector *)malloc( sizeof(AppInspector) );
     if  ( ! ai )
@@ -273,7 +271,7 @@ AppInspector * appMakeInspector(    EditApplication *		ea,
 
     appMakeVerticalTool( &(ai->aiTopWidget), &(ai->aiPaned), ea,
 				iconPixmap, iconMask,
-				widgetName, userResizable,
+				userResizable,
 				option, appInspectorCloseCall, (void *)ai );
 
     appMakeOptionmenuInColumn( &(ai->aiSubjectOptionmenu), ai->aiPaned,

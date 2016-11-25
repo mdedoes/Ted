@@ -4,11 +4,14 @@
 /*									*/
 /************************************************************************/
 
+#   include	"textEncodingConfig.h"
+
 #   include	<stdlib.h>
 
 #   include	"ucd.h"
 #   include	"uniUtf8.h"
 #   include	"uniShiftUtf8.h"
+#   include	"ucdGeneralCategory.h"
 
 #   include	<appDebugon.h>
 
@@ -35,19 +38,19 @@ static int uniShiftUtf8StringUp( char *			to,
 
 	while( n < len )
 	    {
-	    df= uniGetUtf8( &symbol, (unsigned char *)from );
+	    df= uniGetUtf8( &symbol, from );
 	    if  ( df < 1 )
 		{ LDEB(df); return -1;	}
 	    if  (   ucdIsLl( symbol ) )
 		{ break;	}
 
-	    dt= uniPutUtf8( (unsigned char *)to, symbol );
+	    dt= uniPutUtf8( to, symbol );
 	    n0 += dt; from += df; to += dt; n += df;
 	    }
 
 	while( n < len )
 	    {
-	    df= uniGetUtf8( &symbol, (unsigned char *)from );
+	    df= uniGetUtf8( &symbol, from );
 	    if  ( df < 1 )
 		{ LDEB(df); return -1;	}
 	    if  ( ! ucdIsLl( symbol ) )
@@ -55,7 +58,7 @@ static int uniShiftUtf8StringUp( char *			to,
 
 	    symbol= ucdToUpper( symbol );
 
-	    dt= uniPutUtf8( (unsigned char *)to, symbol );
+	    dt= uniPutUtf8( to, symbol );
 	    n1 += dt; from += df; to += dt; n += df;
 	    }
 

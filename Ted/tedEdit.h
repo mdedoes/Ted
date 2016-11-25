@@ -237,9 +237,6 @@ extern int tedDocSetField(	TedEditOperation *		teo,
 				const PropertyMask *		taSetMask,
 				const TextAttribute *		taSet );
 
-extern int tedDocInsertSectBreak(	struct EditDocument *	ed,
-					int			traced );
-
 extern int tedMergeParagraphsInSelection(
 					struct EditDocument *	ed,
 					int			traced );
@@ -277,10 +274,6 @@ extern int tedObjectSetImageProperties(
 				const PropertyMask *		pipSetMask,
 				const PictureProperties *	pipFrom,
 				int				traced );
-
-extern void tedSplitParagraph(		struct EditDocument *	ed,
-					int			onNewPage,
-					int			traced );
 
 extern int tedInsertTable(		struct EditDocument *	ed,
 					int			rows,

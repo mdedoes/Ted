@@ -19,12 +19,98 @@
 #   include	<docTreeNode.h>
 #   include	<docNodeTree.h>
 #   include	<docDebug.h>
-#   include	<docBorderPropertyAdmin.h>
-#   include	<docItemShadingAdmin.h>
 #   include	<docTextParticule.h>
-#   include	<textAttributeAdmin.h>
+#   include	<docPropertiesAdmin.h>
 
 #   include	<appDebugon.h>
+
+/************************************************************************/
+
+static int docGetParaTopBorder(	BorderProperties *		bpTop,
+				int *				pNrAbove,
+				int *				pFillBefore,
+				const BufferDocument *		bd,
+				const BufferItem *		paraNode,
+				const BufferItem *		cellNode )
+    {
+    int				rval= 0;
+    const BufferItem *		prevNode= (const BufferItem *)0;
+
+    if  ( paraNode->biNumberInParent > 0 )
+	{ prevNode= cellNode->biChildren[paraNode->biNumberInParent- 1]; }
+
+    /*  5  */
+    if  ( docBorderNumberIsBorder( bd, paraNode->biParaTopBorderNumber ) )
+	{
+	if  ( ! prevNode						||
+	      prevNode->biParaFrameNumber != paraNode->biParaFrameNumber ||
+	      prevNode->biParaTopBorderNumber !=
+					paraNode->biParaTopBorderNumber	)
+	    {
+	    docGetBorderPropertiesByNumber( bpTop, bd,
+					    paraNode->biParaTopBorderNumber );
+
+	    *pNrAbove= paraNode->biParaTopBorderNumber;
+	    rval= 1;
+	    }
+
+	if  ( prevNode							&&
+	      prevNode->biParaFrameNumber ==
+				      paraNode->biParaFrameNumber	&&
+	      prevNode->biParaBottomBorderNumber ==
+				    paraNode->biParaBottomBorderNumber	)
+	    { *pFillBefore= 1;	}
+	}
+
+    if  ( prevNode							&&
+	  docShadingNumberIsShading( bd, paraNode->biParaShadingNumber ) &&
+	  docShadingNumberIsShading( bd, prevNode->biParaShadingNumber ) )
+	{ *pFillBefore= 1;	}
+
+    return rval;
+    }
+
+static int docGetParaBottomBorder( BorderProperties *		bpBottom,
+				int *				pNrBelow,
+				int *				pFillAfter,
+				const BufferDocument *		bd,
+				const BufferItem *		paraNode,
+				const BufferItem *		cellNode )
+    {
+    int				rval= 0;
+    const BufferItem *		nextNode= (const BufferItem *)0;
+
+    if  ( paraNode->biNumberInParent < cellNode->biChildCount- 1 )
+	{ nextNode= cellNode->biChildren[paraNode->biNumberInParent+ 1]; }
+
+    if  ( docBorderNumberIsBorder( bd, paraNode->biParaBottomBorderNumber ) )
+	{
+	if  ( ! nextNode						||
+	      nextNode->biParaFrameNumber != paraNode->biParaFrameNumber ||
+	      nextNode->biParaBottomBorderNumber !=
+				    paraNode->biParaBottomBorderNumber	)
+	    {
+	    docGetBorderPropertiesByNumber( bpBottom, bd,
+					paraNode->biParaBottomBorderNumber );
+
+	    *pNrBelow= paraNode->biParaBottomBorderNumber;
+	    rval= 1;
+	    }
+
+	if  ( nextNode							&&
+	      nextNode->biParaFrameNumber == paraNode->biParaFrameNumber &&
+	      nextNode->biParaBottomBorderNumber ==
+				    paraNode->biParaBottomBorderNumber	)
+	    { *pFillAfter= 1;	}
+	}
+
+    if  ( nextNode							&&
+	  docShadingNumberIsShading( bd, paraNode->biParaShadingNumber ) &&
+	  docShadingNumberIsShading( bd, nextNode->biParaShadingNumber ) )
+	{ *pFillAfter= 1;	}
+
+    return rval;
+    }
 
 /************************************************************************/
 /*									*/
@@ -45,23 +131,17 @@ void docLayoutCalculateParaTopInset(
     {
     int				topInset= 0;
     int				nrAbove= -1;
+    BorderProperties		bpTop;
     const BufferItem *		cellNode= paraNode->biParent;
-    const BufferItem *		prevNode= (const BufferItem *)0;
-
-    const NumberedPropertiesList *	bpl= &(bd->bdBorderPropertyList);
-    const NumberedPropertiesList *	isl= &(bd->bdItemShadingList);
 
     int				cellMargin= 0;
     int				fillBefore= 0;
-
-    if  ( paraNode->biNumberInParent > 0 )
-	{ prevNode= cellNode->biChildren[paraNode->biNumberInParent- 1]; }
 
     topInset= paraNode->biParaSpaceBeforeTwips;
 
     /*  1  */
     if  ( paraNode->biParaTableNesting > 0	&&
-	  paraNode->biNumberInParent == 0		)
+	  paraNode->biNumberInParent == 0	)
 	{
 	const BufferItem *	rowNode= cellNode->biParent;
 
@@ -115,41 +195,12 @@ void docLayoutCalculateParaTopInset(
 	}
 
     /*  5  */
-    if  ( docBorderNumberIsBorder( bpl, paraNode->biParaTopBorderNumber ) )
-	{
-	if  ( ! prevNode							||
-	      prevNode->biParaFrameNumber != paraNode->biParaFrameNumber	||
-	      prevNode->biParaBottomBorderNumber !=
-					paraNode->biParaTopBorderNumber	)
-	    {
-	    BorderProperties	bpTop;
-
-	    docGetBorderPropertiesByNumber( &bpTop, bpl,
-					    paraNode->biParaTopBorderNumber );
-
-	    docAddBorderToInset( &topInset, &bpTop );
-	    nrAbove= paraNode->biParaTopBorderNumber;
-	    }
-
-	if  ( prevNode							&&
-	      prevNode->biParaFrameNumber ==
-				      paraNode->biParaFrameNumber	&&
-	      prevNode->biParaBottomBorderNumber ==
-				    paraNode->biParaBottomBorderNumber	)
-	    { fillBefore= 1;	}
-	}
-
-    if  ( prevNode							&&
-	  docShadingNumberIsShading( isl, paraNode->biParaShadingNumber ) &&
-	  docShadingNumberIsShading( isl, prevNode->biParaShadingNumber ) )
-	{ fillBefore= 1;	}
+    if  ( docGetParaTopBorder( &bpTop, &nrAbove, &fillBefore,
+						    bd, paraNode, cellNode ) )
+	{ docAddBorderToInset( &topInset, &bpTop ); 		}
 
     paraNode->biParaTopInset= cellMargin+ topInset;
     paraNode->biParaBorderNrAbove= nrAbove;
-
-    if  ( fillBefore )
-	{ paraNode->biParaFlags |=  PARAflagFILL_BEFORE;	}
-    else{ paraNode->biParaFlags &= ~PARAflagFILL_BEFORE;	}
 
     return;
     }
@@ -160,25 +211,18 @@ void docLayoutCalculateParaBottomInset(
     {
     int				bottomInset= 0;
     int				nrBelow= -1;
+    BorderProperties		bpBottom;
     const BufferItem *		cellNode= paraNode->biParent;
     const BufferItem *		rowNode= cellNode->biParent;
-    const BufferItem *		nextBi= (const BufferItem *)0;
-
-    const NumberedPropertiesList *	bpl= &(bd->bdBorderPropertyList);
-    const NumberedPropertiesList *	isl= &(bd->bdItemShadingList);
 
     int				cellMargin= 0;
     int				fillAfter= 0;
-
-    if  ( paraNode->biNumberInParent < paraNode->biParent->biChildCount- 1 )
-	{ nextBi= cellNode->biChildren[paraNode->biNumberInParent+ 1]; }
 
     if  ( paraNode->biParaTableNesting > 0				&&
 	  cellNode->biNumberInParent <
 			    rowNode->biRowProperties.rpCellCount	&&
 	  paraNode->biNumberInParent == cellNode->biChildCount- 1	)
 	{
-
 	const RowProperties *	rp= &(rowNode->biRowProperties);
 	const CellProperties *	cp= rp->rpCells+ cellNode->biNumberInParent;
 
@@ -206,47 +250,19 @@ void docLayoutCalculateParaBottomInset(
 		break;
 
 	    default:
-		LDEB(cp->cpTopPaddingUnit);
+		LDEB(cp->cpBottomPaddingUnit);
 		break;
 	    }
 	}
 
-    if  ( docBorderNumberIsBorder( bpl, paraNode->biParaBottomBorderNumber ) )
-	{
-	if  ( ! nextBi							||
-	      nextBi->biParaFrameNumber != paraNode->biParaFrameNumber	||
-	      nextBi->biParaTopBorderNumber !=
-				    paraNode->biParaBottomBorderNumber	)
-	    {
-	    BorderProperties	bpBottom;
-
-	    docGetBorderPropertiesByNumber( &bpBottom, bpl,
-					paraNode->biParaBottomBorderNumber );
-
-	    docAddBorderToInset( &bottomInset, &bpBottom );
-	    nrBelow= paraNode->biParaBottomBorderNumber;
-	    }
-
-	if  ( nextBi							&&
-	      nextBi->biParaFrameNumber == paraNode->biParaFrameNumber	&&
-	      nextBi->biParaBottomBorderNumber ==
-				    paraNode->biParaBottomBorderNumber	)
-	    { fillAfter= 1;	}
-	}
-
-    if  ( nextBi							&&
-	  docShadingNumberIsShading( isl, paraNode->biParaShadingNumber ) &&
-	  docShadingNumberIsShading( isl, nextBi->biParaShadingNumber )	)
-	{ fillAfter= 1;	}
+    if  ( docGetParaBottomBorder( &bpBottom, &nrBelow, &fillAfter,
+						    bd, paraNode, cellNode ) )
+	{ docAddBorderToInset( &bottomInset, &bpBottom ); 		}
 
     bottomInset += paraNode->biParaSpaceAfterTwips;
 
     paraNode->biParaBottomInset= bottomInset+ cellMargin;
     paraNode->biParaBorderNrBelow= nrBelow;
-
-    if  ( fillAfter )
-	{ paraNode->biParaFlags |=  PARAflagFILL_AFTER;	}
-    else{ paraNode->biParaFlags &= ~PARAflagFILL_AFTER;	}
 
     return;
     }
@@ -281,8 +297,9 @@ int docLayoutParagraphLineExtents(
     int				found;
     int				foundCount;
 
-    const NumberedPropertiesList *	tal= &(bd->bdTextAttributeList);
-    int					count= tal->nplPagedList.plItemCount;
+    DocumentPropertyLists *	dpl= bd->bdPropertyLists;
+    const NumberedPropertiesList * tal= &(dpl->dplTextAttributeList);
+    int				count= tal->nplPagedList.plItemCount;
 
     fresh= (int *)realloc( counts, count* sizeof(int) );
     if  ( ! fresh )
@@ -321,7 +338,7 @@ int docLayoutParagraphLineExtents(
     if  ( found >= 0 )
 	{
 	DocumentProperties *	dp= &(bd->bdProperties);
-	DocumentFontList *	dfl= &(dp->dpFontList);
+	DocumentFontList *	dfl= dp->dpFontList;
 
 	TextAttribute			ta;
 	const AfmFontInfo *		afi;
@@ -333,7 +350,7 @@ int docLayoutParagraphLineExtents(
 	int				fontHigh;
 	int				sizeTwips;
 
-	utilGetTextAttributeByNumber( &ta, &(bd->bdTextAttributeList), found );
+	docGetTextAttributeByNumber( &ta, bd, found );
 
 	afi= (*lc->lcGetFontForAttribute)( &unicodesWanted,
 					&ta, dfl, lc->lcPostScriptFontList );
@@ -441,7 +458,12 @@ void docLayoutCalculateAfterRowTopInset(	BufferItem *		belowBi,
 	docGetCellBottomBorder( &bpBottom, &bottomNr, &useBelow, bd, rowNode,
 							    col, atRowBottom );
 
-	docStretchInsetForBorder( &(belowBi->biRowTopInset), &bpBottom );
+	{
+	int rti= belowBi->biRowTopInset;
+	docStretchInsetForBorder( &rti, &bpBottom );
+	belowBi->biRowTopInset= rti;
+	}
+
 	}
 
     return;
@@ -457,45 +479,79 @@ void docLayoutCalculateAfterRowTopInset(	BufferItem *		belowBi,
 /*  a)  Both have the same border.					*/
 /*  b)  Both have a shading.						*/
 /*									*/
+/*  1)	To avoid a trellis effect, we must fill the space above the,	*/
+/*	paragraph if the paragraph is part of a series of contiguous	*/
+/*	shaded paragraphs without a border between them.		*/
+/*  2)	To avoid a trellis effect, we must fill the space below the,	*/
+/*	paragraph if the paragraph is part of a series of contiguous	*/
+/*	shaded paragraphs without a border between them.		*/
+/*									*/
 /************************************************************************/
 
 void docGetParaOrnaments(
 			BlockOrnaments *		ornaments,
 			DocumentRectangle *		drOutside,
 			DocumentRectangle *		drInside,
-			const DocumentRectangle *	drPara,
+			const DocumentRectangle *	drParaIn,
 			const BufferDocument *		bd,
 			const BufferItem *		paraNode,
-			int				atTop,
-			int				atBottom )
+			int				atParaTop,
+			int				atParaBottom )
     {
-    const NumberedPropertiesList *	bpl= &(bd->bdBorderPropertyList);
-
     int				thick;
     int				space;
 
-    *drOutside= *drPara;
-    *drInside= *drPara;
+    int				nrAbove= -1;
+    BorderProperties		bpTop;
+    int				nrBelow= -1;
+    BorderProperties		bpBottom;
+
+    DocumentRectangle		drPara= *drParaIn;
+
+    if  ( atParaTop )
+	{
+	int		fillBefore= 0;
+
+	docGetParaTopBorder( &bpTop, &nrAbove, &fillBefore,
+					    bd, paraNode, paraNode->biParent );
+
+	/*  1  */
+	if  ( fillBefore )
+	    { drPara.drY0 -= paraNode->biParaSpaceBeforeTwips;	}
+	}
+
+    if  ( atParaBottom )
+	{
+	int		fillAfter= 0;
+
+	docGetParaBottomBorder( &bpBottom, &nrBelow, &fillAfter,
+					    bd, paraNode, paraNode->biParent );
+
+	/*  2  */
+	if  ( fillAfter )
+	    { drPara.drY1 += paraNode->biParaSpaceAfterTwips;	}
+	}
+
+    *drOutside= drPara;
+    *drInside= drPara;
 
     if  ( paraNode->biParaShadingNumber != 0 )
 	{
-	docGetItemShadingByNumber( &(ornaments->boShading),
-						&(bd->bdItemShadingList),
+	docGetItemShadingByNumber( &(ornaments->boShading), bd,
 						paraNode->biParaShadingNumber );
 
 	PROPmaskADD( &(ornaments->boPropMask), ORNdrawSHADE );
 	}
 
-    docGetBorderPropertiesByNumber( &(ornaments->boLeftBorder), bpl,
+    docGetBorderPropertiesByNumber( &(ornaments->boLeftBorder), bd,
 					    paraNode->biParaLeftBorderNumber );
-    docGetBorderPropertiesByNumber( &(ornaments->boRightBorder), bpl,
+    docGetBorderPropertiesByNumber( &(ornaments->boRightBorder), bd,
 					    paraNode->biParaRightBorderNumber );
 
-    if  ( atTop && paraNode->biParaBorderNrAbove >= 0 )
+    if  ( atParaTop && nrAbove >= 0 )
 	{
-	docGetBorderPropertiesByNumber( &(ornaments->boTopBorder), bpl,
-					    paraNode->biParaBorderNrAbove );
-	ornaments->boTopBorderNumber= paraNode->biParaBorderNrAbove;
+	ornaments->boTopBorder= bpTop;
+	ornaments->boTopBorderNumber= nrAbove;
 
 	PROPmaskADD( &(ornaments->boPropMask), ORNdrawTOP_BORDER );
 
@@ -505,47 +561,46 @@ void docGetParaOrnaments(
 	drOutside->drY0= drPara->drY0- space- thick;
 	drInside->drY0= drPara->drY0- space;
 	*/
-	drOutside->drY0= drPara->drY0+ space;
-	drInside->drY0= drPara->drY0+ space+ thick;
+	drOutside->drY0= drPara.drY0+ space;
+	drInside->drY0= drPara.drY0+ space+ thick;
 	}
 
-    if  ( atBottom && paraNode->biParaBorderNrBelow >= 0 )
+    if  ( atParaBottom && nrBelow >= 0 )
 	{
-	docGetBorderPropertiesByNumber( &(ornaments->boBottomBorder), bpl,
-					    paraNode->biParaBorderNrBelow );
-	ornaments->boBottomBorderNumber= paraNode->biParaBorderNrBelow;
+	ornaments->boBottomBorder= bpBottom;
+	ornaments->boBottomBorderNumber= nrBelow;
 
 	PROPmaskADD( &(ornaments->boPropMask), ORNdrawBOTTOM_BORDER );
 
 	thick= docBorderThick( &space, &(ornaments->boBottomBorder) );
-	drInside->drY1= drPara->drY1+ space;
-	drOutside->drY1= drPara->drY1+ space+ thick;
+	drInside->drY1= drPara.drY1+ space;
+	drOutside->drY1= drPara.drY1+ space+ thick;
 	}
 
     if  ( paraNode->biParaLeftBorderNumber != 0 )
 	{
-	docGetBorderPropertiesByNumber( &(ornaments->boLeftBorder), bpl,
+	docGetBorderPropertiesByNumber( &(ornaments->boLeftBorder), bd,
 					paraNode->biParaLeftBorderNumber );
 	ornaments->boLeftBorderNumber= paraNode->biParaLeftBorderNumber;
 
 	PROPmaskADD( &(ornaments->boPropMask), ORNdrawLEFT_BORDER );
 
 	thick= docBorderThick( &space, &(ornaments->boLeftBorder) );
-	drInside->drX0= drPara->drX0- space;
-	drOutside->drX0= drPara->drX0- space- thick;
+	drInside->drX0= drPara.drX0- space;
+	drOutside->drX0= drPara.drX0- space- thick;
 	}
 
     if  ( paraNode->biParaRightBorderNumber != 0 )
 	{
-	docGetBorderPropertiesByNumber( &(ornaments->boRightBorder), bpl,
+	docGetBorderPropertiesByNumber( &(ornaments->boRightBorder), bd,
 					paraNode->biParaRightBorderNumber );
 	ornaments->boRightBorderNumber= paraNode->biParaRightBorderNumber;
 
 	PROPmaskADD( &(ornaments->boPropMask), ORNdrawRIGHT_BORDER );
 
 	thick= docBorderThick( &space, &(ornaments->boRightBorder) );
-	drInside->drX1= drPara->drX1+ space;
-	drOutside->drX1= drPara->drX1+ space+ thick;
+	drInside->drX1= drPara.drX1+ space;
+	drOutside->drX1= drPara.drX1+ space+ thick;
 	}
 
     return;
@@ -655,8 +710,12 @@ int docLayoutStartParagraph(	const LayoutJob *		lj,
 	{
 	switch( paraNode->biParaBreakKind )
 	    {
-	    case DOCibkCOL:	*pStopCode= FORMATstopCOLUMN_BREAK;	break;
-	    case DOCibkPAGE:	*pStopCode= FORMATstopPAGE_BREAK;	break;
+	    case DOCibkCOL:
+		*pStopCode= FORMATstopCOLUMN_BREAK;
+		break;
+	    case DOCibkPAGE:
+		*pStopCode= FORMATstopPAGE_BREAK;
+		break;
 
 	    default:
 		LDEB(paraNode->biParaBreakKind); return -1;

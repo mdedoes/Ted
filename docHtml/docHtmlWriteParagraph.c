@@ -22,7 +22,6 @@
 #   include	<docTreeNode.h>
 #   include	<psShading.h>
 #   include	<docTextParticule.h>
-#   include	<docItemShadingAdmin.h>
 
 #   include	<appDebugon.h>
 
@@ -203,6 +202,8 @@ static int docHtmlSaveParticules( const BufferItem *		paraNode,
 		break;
 
 	    case DOCkindOPT_HYPH:
+	    case DOCkindLTR_MARK:
+	    case DOCkindRTL_MARK:
 		s += tp->tpStrlen; stroff += tp->tpStrlen;
 		break;
 
@@ -228,7 +229,6 @@ static void docHtmlStartParagraphBody(	const BufferItem *	paraNode,
 					HtmlWritingContext *	hwc )
     {
     const BufferDocument *		bd= hwc->hwcDocument;
-    const NumberedPropertiesList *	isl= &(bd->bdItemShadingList);
 
     XmlWriter *				xw= &(hwc->hwcXmlWriter);
     SimpleOutputStream *		sos= xw->xwSos;
@@ -238,7 +238,7 @@ static void docHtmlStartParagraphBody(	const BufferItem *	paraNode,
     int					hasBullet= 0;
     int					part= 0;
 
-    docGetItemShadingByNumber( &is, isl, paraNode->biParaShadingNumber );
+    docGetItemShadingByNumber( &is, bd, paraNode->biParaShadingNumber );
 
     if  ( hwc->hwcSupportsBullets				&&
 	  paraNode->biParaLeftIndentTwips >=  100		&&

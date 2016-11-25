@@ -12,6 +12,7 @@
 #   include	"docListFonts.h"
 #   include	<docDocumentList.h>
 #   include	<docListOverride.h>
+#   include	"docTreeNode.h"
 
 #   include	<appDebugon.h>
 
@@ -27,8 +28,8 @@ typedef struct GetCharsUsed
     DocumentFontList *			gcuDocumentFontList;
     } GetCharsUsed;
 
-static int docCharsUsedGotSpan(	const BufferDocument *		bd,
-				BufferItem *			paraBi,
+static int docCharsUsedGotSpan(	BufferDocument *		bd,
+				BufferItem *			paraNode,
 				int				textAttrNr,
 				const TextAttribute *		ta,
 				int				from,
@@ -37,13 +38,23 @@ static int docCharsUsedGotSpan(	const BufferDocument *		bd,
     {
     GetCharsUsed *		gcu= (GetCharsUsed *)through;
     DocumentFontList *		dfl= gcu->gcuDocumentFontList;
-    const unsigned char *	s;
+    const char *		s;
 
     DocumentFont *		df;
+    int				fontNumber= ta->taFontNumber;
 
-    df= docFontListGetFontByNumber( dfl, ta->taFontNumber );
+    if  ( fontNumber < 0			||
+	  fontNumber >= dfl->dflFontCount	)
+	{
+	if  ( fontNumber >= dfl->dflFontCount )
+	    { LLDEB(fontNumber,dfl->dflFontCount);	}
+
+	fontNumber= docGetDefaultFont( bd );
+	}
+
+    df= docFontListGetFontByNumber( dfl, fontNumber );
     if  ( ! df )
-	{ LXDEB(ta->taFontNumber,df); return -1;	}
+	{ LXDEB(fontNumber,df); return -1;	}
 
     if  ( from == upto )
 	{
@@ -51,13 +62,13 @@ static int docCharsUsedGotSpan(	const BufferDocument *		bd,
 	    { XDEB(0x20); return -1;	}
 	}
 
-    s= docParaString( paraBi, from );
+    s= (const char *)docParaString( paraNode, from );
     while( from < upto )
 	{
 	unsigned short			symbol;
 	int				step;
 
-	step= uniGetUtf8( &symbol, (unsigned char *)s );
+	step= uniGetUtf8( &symbol, s );
 	if  ( step < 1 )
 	    { LDEB(step); return -1;	}
 
@@ -76,7 +87,7 @@ static int docCharsUsedGotSpan(	const BufferDocument *		bd,
 static int docInludeFontOfAttribute(	const BufferDocument *	bd,
 					const TextAttribute *	ta )
     {
-    const DocumentFontList *		dfl= &(bd->bdProperties.dpFontList);
+    const DocumentFontList *		dfl= bd->bdProperties.dpFontList;
     DocumentFont *		df;
 
     df= docFontListGetFontByNumber( dfl, ta->taFontNumber );
@@ -90,7 +101,7 @@ static int docInludeFontOfAttribute(	const BufferDocument *	bd,
     }
 
 static int docCharsListObject(	const BufferDocument *	bd,
-				BufferItem *		paraBi,
+				BufferItem *		paraNode,
 				const TextAttribute *	ta,
 				void *			through )
     {
@@ -111,10 +122,10 @@ static int docCharsListObject(	const BufferDocument *	bd,
 int docGetCharsUsed(	BufferDocument *		bd )
     {
     int				i;
-    DocumentFontList *		dfl= &(bd->bdProperties.dpFontList);
+    DocumentFontList *		dfl= bd->bdProperties.dpFontList;
 
     const DocumentProperties *	dp= &(bd->bdProperties);
-    const ListAdmin *		la= &(dp->dpListAdmin);
+    const ListAdmin *		la= dp->dpListAdmin;
     const DocumentListTable *	dlt= &(la->laListTable);
     const ListOverrideTable *	lot= &(la->laListOverrideTable);
 
@@ -146,8 +157,9 @@ int docGetCharsUsed(	BufferDocument *		bd )
 	      ! PROPmaskISSET( &(ds->dsTextMask), TApropFONT_NUMBER ) )
 	    { continue;	}
 
+	/*  Include the font.. If this fails lets hope the style is not used */
 	if  ( docInludeFontOfAttribute( bd, &(ds->dsTextAttribute) ) )
-	    { XDEB(0x20); return -1;	}
+	    { XDEB(0x20); /* return -1; */	}
 	}
 
     lo= lot->lotOverrides;

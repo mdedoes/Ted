@@ -14,9 +14,11 @@
 #   include	<utilMatchFont.h>
 #   include	<uniUtf8.h>
 #   include	<textConverter.h>
+#   include	<textConverterImpl.h>
 
 #   include	"docRtfWriterImpl.h"
 #   include	"docRtfFlags.h"
+#   include	"docRtfTextConverter.h"
 
 /************************************************************************/
 /*									*/
@@ -87,15 +89,15 @@ static int docRtfEscapeString(	void *			vrw,
 	    default:
 		if  ( c < 32 || c > 127 )
 		    {
-		    static char	hexdigits[]= "0123456789abcdef";
+		    static const char	xdigs[]= "0123456789abcdef";
 
 		    if  ( sioOutPutByte( '\\', sos ) < 0 )
 			{ LDEB(1); return -1;	}
 		    if  ( sioOutPutByte( '\'', sos ) < 0 )
 			{ LDEB(1); return -1;	}
-		    if  ( sioOutPutByte( hexdigits[ ( c >> 4 ) & 0x0f ], sos ) < 0 )
+		    if  ( sioOutPutByte( xdigs[ ( c >> 4 ) & 0x0f ], sos ) < 0 )
 			{ LDEB(1); return -1;	}
-		    if  ( sioOutPutByte( hexdigits[ ( c >> 0 ) & 0x0f ], sos ) < 0 )
+		    if  ( sioOutPutByte( xdigs[ ( c >> 0 ) & 0x0f ], sos ) < 0 )
 			{ LDEB(1); return -1;	}
 		    rw->rwCol += 4;
 		    }
@@ -152,9 +154,8 @@ static int docRtfWriteEncodedString(	RtfWriter *		rw,
 	{
 	int		consumed= 0;
 
-	produced= textConverterConvertFromUtf8(
-				    tc, (void *)rw, docRtfEscapeString,
-				    &consumed, produced, ss, n );
+	produced= textConverterConvertFromUtf8( tc, (void *)rw,
+						&consumed, produced, ss, n );
 	if  ( produced < 0 )
 	    { LDEB(produced); return -1;	}
 
@@ -164,7 +165,7 @@ static int docRtfWriteEncodedString(	RtfWriter *		rw,
 	    {
 	    unsigned short	symbol;
 
-	    consumed= uniGetUtf8( &symbol, (unsigned char *)ss );
+	    consumed= uniGetUtf8( &symbol, ss );
 	    if  ( consumed < 1 )
 		{ LDEB(consumed); return -1;	}
 
@@ -172,7 +173,7 @@ static int docRtfWriteEncodedString(	RtfWriter *		rw,
 		{
 		BufferDocument *	bd= rw->rwDocument;
 		const DocumentFont *	df;
-		TextAttribute *		ta= &(rw->rwcTextAttribute);
+		TextAttribute *		ta= &(rw->rwTextAttribute);
 
 		df= docRtfGetCurrentFont( bd, ta );
 		if  ( df )
@@ -183,14 +184,16 @@ static int docRtfWriteEncodedString(	RtfWriter *		rw,
 
 		    fontNumber= docRtfWriteGetCharset( rw, &charset,
 								df, symbol );
-		    if  ( fontNumber >= 0 && rw->rwcTextCharset != charset )
+		    if  ( fontNumber >= 0 && rw->rwTextCharset != charset )
 			{
 			docRtfWriteArgTag( rw, "f", fontNumber );
 
 			encodingName= utilGetEncodingName( df->dfName,
 								    charset );
-			docRtfWriteSetTextEncodingName( rw, encodingName );
-			rw->rwcTextCharset= charset;
+			textConverterSetNativeEncodingName(
+				    rw->rwTextTextConverter,
+				    encodingName );
+			rw->rwTextCharset= charset;
 			continue;
 			}
 		    }
@@ -211,7 +214,7 @@ void docRtfWriteDocEncodedString(	RtfWriter *		rw,
     {
     const int	fontEncoded= 0;
 
-    docRtfWriteEncodedString( rw, &(rw->rwcTextConverters.rtcRtfConverter),
+    docRtfWriteEncodedString( rw, rw->rwRtfTextConverter,
 							fontEncoded, ss, n );
     }
 
@@ -226,13 +229,16 @@ void docRtfWriteFontEncodedString(	RtfWriter *		rw,
 	{ docRtfWriteDocEncodedString( rw, ss, n ); return;	}
 
     encodingName= docGetEncodingName( rw->rwDocument,
-				&(rw->rwcTextAttribute), rw->rwcTextCharset );
+				&(rw->rwTextAttribute), rw->rwTextCharset );
     if  ( ! encodingName )
-	{ encodingName= docRtfWriteGetRtfEncodingName( rw );	}
+	{
+	encodingName= rw->rwRtfTextConverter->tcNativeEncodingName;
+	}
 
-    docRtfWriteSetTextEncodingName( rw, encodingName );
+    textConverterSetNativeEncodingName(
+			rw->rwTextTextConverter, encodingName );
 
-    docRtfWriteEncodedString( rw, &(rw->rwcTextConverters.rtcTextConverter),
+    docRtfWriteEncodedString( rw, rw->rwTextTextConverter,
 							fontEncoded, ss, n );
     }
 
@@ -241,5 +247,18 @@ void docRtfWriteRawBytes(	RtfWriter *		rw,
 				int			n )
     {
     docRtfEscapeString( (void *)rw, 0, ss, n );
+    }
+
+
+/************************************************************************/
+
+void docRtfWriteSetupTextConverters(	RtfWriter *	rw )
+    {
+    textConverterSetNativeEncodingName(
+			    rw->rwRtfTextConverter,
+			    DOC_RTF_AnsiCharsetName );
+
+    textConverterSetProduce( rw->rwRtfTextConverter, docRtfEscapeString );
+    textConverterSetProduce( rw->rwTextTextConverter, docRtfEscapeString );
     }
 

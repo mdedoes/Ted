@@ -11,9 +11,10 @@
 
 #   include	"docListFonts.h"
 #   include	"docFind.h"
+#   include	"docTreeNode.h"
 #   include	"docDebug.h"
+#   include	"docShape.h"
 #   include	<docObjectProperties.h>
-#   include	<textAttributeAdmin.h>
 #   include	<docTextParticule.h>
 
 #   include	<appDebugon.h>
@@ -26,13 +27,13 @@
 /************************************************************************/
 
 static int docScanParaSpans(	DocumentSelection *		ds,
-				BufferItem *			paraBi,
-				const BufferDocument *		bd,
+				BufferItem *			paraNode,
+				BufferDocument *		bd,
 				const DocumentPosition *	dpFrom,
 				void *				vsdf );
 
 static int docScanShapeSpans(	const DrawingShape *		ds,
-				const BufferDocument *		bd,
+				BufferDocument *		bd,
 				ScanDocumentFonts *		sdf )
     {
     int		rval= 0;
@@ -65,8 +66,8 @@ static int docScanShapeSpans(	const DrawingShape *		ds,
 
 /*  a  */
 static int docScanParaSpans(	DocumentSelection *		ds,
-				BufferItem *			paraBi,
-				const BufferDocument *		bd,
+				BufferItem *			paraNode,
+				BufferDocument *		bd,
 				const DocumentPosition *	dpFrom,
 				void *				vsdf )
     {
@@ -80,9 +81,9 @@ static int docScanParaSpans(	DocumentSelection *		ds,
     int				part;
 
     utilInitTextAttribute( &ta );
-    tp= paraBi->biParaParticules; part= 0;
+    tp= paraNode->biParaParticules; part= 0;
 
-    while( part < paraBi->biParaParticuleCount )
+    while( part < paraNode->biParaParticuleCount )
 	{
 	int		from;
 	int		upto;
@@ -97,14 +98,11 @@ static int docScanParaSpans(	DocumentSelection *		ds,
 		if  ( tp->tpTextAttrNr >= 0			&&
 		      tp->tpTextAttrNr != attributeNumber	)
 		    {
-		    utilGetTextAttributeByNumber( &ta,
-					    &(bd->bdTextAttributeList),
-					    tp->tpTextAttrNr );
-
+		    docGetTextAttributeByNumber( &ta, bd, tp->tpTextAttrNr );
 		    attributeNumber= tp->tpTextAttrNr;
 		    }
 
-		while( part+ 1 < paraBi->biParaParticuleCount )
+		while( part+ 1 < paraNode->biParaParticuleCount )
 		    {
 		    if  ( tp[1].tpKind != DOCkindSPAN	&&
 			  tp[1].tpKind != DOCkindTAB	)
@@ -118,7 +116,7 @@ static int docScanParaSpans(	DocumentSelection *		ds,
 		part++; tp++;
 
 		/* Do invoke the callback for empty spans! */
-		if  ( (*sdf->sdfDocListSpanFont)( bd, paraBi,
+		if  ( (*sdf->sdfDocListSpanFont)( bd, paraNode,
 						attributeNumber, &ta,
 						from, upto, sdf->sdfThrough ) )
 		    { LLDEB(from,tp->tpStroff); return -1;	}
@@ -135,14 +133,12 @@ static int docScanParaSpans(	DocumentSelection *		ds,
 		    if  ( tp->tpTextAttrNr >= 0			&&
 			  tp->tpTextAttrNr != attributeNumber	)
 			{
-			utilGetTextAttributeByNumber( &ta,
-						&(bd->bdTextAttributeList),
-						tp->tpTextAttrNr );
-
+			docGetTextAttributeByNumber( &ta,
+							bd, tp->tpTextAttrNr );
 			attributeNumber= tp->tpTextAttrNr;
 			}
 
-		    if  ( (*sdf->sdfListObject)( bd, paraBi, &ta,
+		    if  ( (*sdf->sdfListObject)( bd, paraNode, &ta,
 							    sdf->sdfThrough ) )
 			{ LDEB(tp->tpKind); return -1;	}
 		    }
@@ -169,6 +165,8 @@ static int docScanParaSpans(	DocumentSelection *		ds,
 	    case DOCkindCOLUMNBREAK:
 	    case DOCkindCHFTNSEP:
 	    case DOCkindCHFTNSEPC:
+	    case DOCkindLTR_MARK:
+	    case DOCkindRTL_MARK:
 		part++; tp++; break;
 
 	    default:

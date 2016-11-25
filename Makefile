@@ -12,10 +12,22 @@
 ####	private:	Install the Ted executable and the most essential
 ####			files for yourself only.
 ####	package:	Build a package. Must sometimes be run as root.
-####	sysvpkg:	Build a Unix system V (Solaris) package. 
+####			Use fakeroot to avoid using root privileges.
+####	sysvpkg:	Build a Unix system V (Solaris) package. On 
+####			OpenSolaris this can be run through fakeroot.
 ####	deb:		Build a Debian package. This is NOT the official 
 ####			Debian distribution but just a way to produce a 
-####			Debian package. (Must be built as root)
+####			Debian package. (Must be built with fakeroot)
+####	deb-dependencies: Install the dependencied for debian. Must be run 
+####			as root.
+####	pet:		Build a Puppy Linux package.
+####	slackpkg:	Build a Slackware Linux installer package
+####	freebsdpkg:	Build a FreeBSD package. (I tried to do something 
+####			similar for OpenBSD but I failed to understand the 
+####			rather hermetic documentation and procedures.)
+####	tedPackage/arch-PKGBUILD: Building blocks for an arch linux package.
+####			Refer to the instructions in tedPackage/arch-PKGBUILD.in
+####			for details
 ####	install:	Install the package. Must be run as root.
 ####	clean:		Cleanup rubbish from previous attempts.
 ####
@@ -35,9 +47,9 @@
 ####    Please NOTE that you have to 'make clean' after you have 
 ####    changed the CONFIGURE_OPTIONS.
 ####
-####		--prefix		Use another place than /usr/local
+####		--prefix		Use another place than /usr
 ####					for installation. E.G.
-####					--prefix=/opt/Ted
+####					--prefix=/opt/Ted or --prefix=/usr/local
 ####		--with-GTK		Use the Gtk+ gui toolkit. (The
 ####					default)
 ####		--with-MOTIF		Use the Motif gui toolkit. (Preferable
@@ -70,7 +82,8 @@ compile:	tedlibs		\
 	: Static executable Ted/Ted.static ready
 	: *   To make an installation package
 	:     you can now run 'make package'. Depending on the platform, 
-	:     it might be that this must be done AS ROOT.
+	:     it might be that this must be done AS ROOT. Try to 
+	:     use 'fakeroot' if possible. Otherwise fall back to 'sudo'
 	: *   To install Ted for yourself only
 	:     you can now run 'make private'
 
@@ -223,16 +236,16 @@ Ted/makefile: Ted/makefile.in Makefile
 
 ####
 ####	Make a ready to install package
-####	Must be run as root
+####	Must be run as root (Or with fakeroot)
 ####
 
-package: tedPackage/makefile compile
+package: compile tedPackage/makefile
 	cd tedPackage && $(MAKE)
 	:
 	: Package ready.
 	: To install Ted, you can now run 'make install' AS ROOT
 
-package.shared: tedPackage/makefile compile.shared
+package.shared: compile.shared tedPackage/makefile
 	cd tedPackage && make package.shared
 	:
 	: Dynamically linked package ready.
@@ -241,59 +254,58 @@ package.shared: tedPackage/makefile compile.shared
 tedPackage/makefile: tedPackage/makefile.in Makefile
 	cd tedPackage && ./configure $(CONFIGURE_OPTIONS)
 
-sysvpkg: tedPackage/makefile compile
-	cd tedPackage && $(MAKE) sysvpkg
+sysvpkg: compile tedPackage/makefile
+	cd tedPackage && $(MAKE) $@
 	:
 	: UNIX system V Package ready.
-	@echo : Run pkgadd -d tedPackage/*.pkg AS ROOT to install Ted
+	@echo : To install Ted run '(AS ROOT)': pkgadd -d tedPackage/*.pkg
 
 deb-dependencies:
 	apt-get install `grep '^Build-Depends:' tedPackage/debian-control.in | sed -e 's/^Build-Depends://' -e 's/, */ /g'`
 
-deb: deb-dependencies tedPackage/makefile compile
-	cd tedPackage && $(MAKE) deb
+deb: compile tedPackage/makefile
+	cd tedPackage && $(MAKE) $@
 	:
 	: Debian Package ready.
-	@echo : Use sudo dpkg -i tedPackage/*.deb to install Ted
+	@echo : To install Ted use: sudo dpkg -i tedPackage/*.deb
+
+pet: compile tedPackage/makefile
+	cd tedPackage && $(MAKE) $@
+	:
+	: Puppy Package ready.
+	@echo : To install Ted use: "cd tedPackage && petget `basename tedPackage/*.pet`"
+
+slackpkg: compile tedPackage/makefile
+	cd tedPackage && $(MAKE) $@
+	:
+	: Slackware Linux Package ready.
+	@echo : To install Ted use: sudo installpkg tedPackage/*-1mdd.tgz
+
+freebsdpkg: compile tedPackage/makefile
+	cd tedPackage && $(MAKE) $@
+	:
+	: FreeBSD Package ready.
+	@echo : To install Ted run '(AS ROOT)': pkg_add tedPackage/*.freebsdpkg.tgz
+
+tedPackage/arch-PKGBUILD: tedPackage/makefile
+	cd tedPackage && make arch-PKGBUILD
 
 ####
 ####	Install Ted from the package just built
 ####
 
 install: package
-	sh ./tedPackage/installTed.sh
+	( cd tedPackage && make install )
 
 install.shared: package.shared
-	sh ./tedPackage/installTed.sh
+	( cd tedPackage && make install )
 
 ####
 ####	Install Ted for yourself
 ####
 
-PRIVATE_FILES=\
-	$(HOME)/Ted/afm/Helvetica.afm		\
-	$(HOME)/Ted/afm/Courier.afm		\
-	$(HOME)/Ted/afm/Symbol.afm		\
-	$(HOME)/Ted/afm/Times-Roman.afm		\
-	$(HOME)/Ted/TedDocument-en_US.rtf	\
-	$(HOME)/Ted/config/Ted.ad.sample	\
-	$(HOME)/Ted/dfa/en_US.dfa
-
-$(HOME)/bin/Ted: Ted/Ted
-	test -d $(HOME)/bin || mkdir $(HOME)/bin
-	cp Ted/Ted.static $(HOME)/bin/Ted || cp Ted/Ted $(HOME)/bin/Ted
-
-$(PRIVATE_FILES):
-	h=`pwd` && cd && tar xvf $$h/tedPackage/TedBindist.tar
-
-private: $(HOME)/bin/Ted $(PRIVATE_FILES)
-	@echo ========= Updating $(HOME)/.Ted.properties:
-	@echo Ted.documentFileName: $(HOME)/Ted/TedDocument-en_US.rtf | \
-					    tee -a $(HOME)/.Ted.properties
-	@echo Ted.afmDirectory: $(HOME)/Ted/afm | \
-					    tee -a $(HOME)/.Ted.properties
-	@echo Ted.spellToolSystemDicts: $(HOME)/Ted/dfa | \
-					    tee -a $(HOME)/.Ted.properties
+private: compile tedPackage/makefile
+	( cd tedPackage && make private )
 
 ####
 ####	Cleanup
@@ -301,7 +313,8 @@ private: $(HOME)/bin/Ted $(PRIVATE_FILES)
 
 clean:
 	rm -fr	lib
-	rm -f	*/config.cache */config.log */config.status
+	rm -f	*/config.cache */config.log */config.status */confdefs.h
+	rm -fr	*/autom4te.cache
 	rm -f	*/*Config.h
 	rm -f	*/makefile
 	rm -f	*/*.o
@@ -309,8 +322,12 @@ clean:
 	rm -fr	tedPackage/scratch
 	rm -f	tedPackage/*.gz
 	rm -f	tedPackage/*.lsm
-	rm -f	tedPackage/installTed.sh
+	rm -f	tedPackage/*.deb
+	rm -f	tedPackage/*.pkg
+	rm -f	tedPackage/*.xz
+	rm -f	tedPackage/*.pet
 	rm -f	tedPackage/README
+	rm -f	tedPackage/arch-PKGBUILD
 	rm -f	tedPackage/package
 	rm -f	tedPackage/package.shared
 

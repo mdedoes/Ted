@@ -105,8 +105,10 @@ static int tedStartUndoOperation( TedEditOperation *	teo,
 		 *  use an actual document as the source of document 
 		 *  content, the values are never used.
 		 */
-    teo->teoSavedTextAttribute= td->tdCurrentTextAttribute;
-    teo->teoSavedTextAttributeNumber= td->tdCurrentTextAttributeNumber;
+    teo->teoSavedTextAttribute=
+			td->tdSelectionDescription.sdTextAttribute;
+    teo->teoSavedTextAttributeNumber=
+			td->tdSelectionDescription.sdTextAttributeNumber;
 
     eo->eoIBarSelectionOld= sd->sdIsIBarSelection;
     eo->eoMultiParagraphSelectionOld= ! sd->sdIsSingleParagraph;
@@ -1210,7 +1212,7 @@ static int tedUndoSetNewList(	TedEditOperation *	teo,
 	{ LDEB(1); rval= -1; goto ready;	}
 
     {
-    ListAdmin *		la= &(eo->eoDocument->bdProperties.dpListAdmin);
+    ListAdmin *		la= eo->eoDocument->bdProperties.dpListAdmin;
 
     if  ( docDocumentListTableDeleteList( &(la->laListTable),
 							    lo->loListIndex ) )

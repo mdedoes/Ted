@@ -17,6 +17,7 @@
 #   include	<sioHex.h>
 #   include	<sioMemory.h>
 #   include	<docObjectProperties.h>
+#   include	<docTreeNode.h>
 #   include	"docMetafileObject.h"
 
 #   include	<appDebugon.h>
@@ -143,8 +144,8 @@ static int docPsListObjectFonts( const InsertedObject *		io,
 	}
     }
 
-static int docPsPrintGotSpan(	const BufferDocument *		bd,
-				BufferItem *			paraBi,
+static int docPsPrintGotSpan(	BufferDocument *		bd,
+				BufferItem *			paraNode,
 				int				textAttrNr,
 				const TextAttribute *		ta,
 				int				from,
@@ -153,7 +154,7 @@ static int docPsPrintGotSpan(	const BufferDocument *		bd,
     {
     GetDocumentFonts *		gdf= (GetDocumentFonts *)through;
     const LayoutContext *	lc= gdf->gdfLayoutContext;
-    const DocumentFontList *	dfl= &(bd->bdProperties.dpFontList);
+    const DocumentFontList *	dfl= bd->bdProperties.dpFontList;
     PostScriptTypeList *	pstl= gdf->gdfPostScriptTypeList;
     const IndexSet *		unicodesWanted;
 

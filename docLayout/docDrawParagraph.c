@@ -25,7 +25,7 @@
 
 static int docDrawParaOrnaments( void *				through,
 				const ParagraphDrawingStrip *	pds,
-				const BufferItem *		paraBi,
+				const BufferItem *		paraNode,
 				const ParagraphFrame *		pf,
 				DrawingContext *		dc,
 				const BlockOrigin *		bo )
@@ -44,8 +44,8 @@ static int docDrawParaOrnaments( void *				through,
     docInitBlockOrnaments( &ornaments );
 
     drPara= pf->pfParaContentRect;
-    if  ( paraBi->biParaFirstIndentTwips < 0 )
-	{ drPara.drX0 += paraBi->biParaFirstIndentTwips;	}
+    if  ( paraNode->biParaFirstIndentTwips < 0 )
+	{ drPara.drX0 += paraNode->biParaFirstIndentTwips;	}
 
     docShiftPosition( &lpTop, bo, &(pds->pdsShadeTop) );
     docShiftPosition( &lpBelow, bo, &(pds->pdsShadeBelow) );
@@ -53,15 +53,9 @@ static int docDrawParaOrnaments( void *				through,
     drPara.drY0= lpTop.lpPageYTwips;
     drPara.drY1= lpBelow.lpPageYTwips;
 
-    if  ( pds->pdsAtParaTop && ( paraBi->biParaFlags & PARAflagFILL_BEFORE ) )
-	{ drPara.drY0 -= paraBi->biParaSpaceBeforeTwips;	}
-
-    if  ( pds->pdsAtParaBottom && ( paraBi->biParaFlags & PARAflagFILL_AFTER ) )
-	{ drPara.drY1 += paraBi->biParaSpaceAfterTwips;	}
-
-    if  ( paraBi->biParaTableNesting > 0 )
+    if  ( paraNode->biParaTableNesting > 0 )
 	{
-	const BufferItem *	rowBi= docGetRowNode( (BufferItem *)paraBi );
+	const BufferItem *	rowBi= docGetRowNode( (BufferItem *)paraNode );
 
 	if  ( ! rowBi )
 	    { XDEB(rowBi);	}
@@ -77,7 +71,7 @@ static int docDrawParaOrnaments( void *				through,
 	}
 
     docGetParaOrnaments( &ornaments, &drOutside, &drInside, &drPara,
-			bd, paraBi, pds->pdsAtParaTop, pds->pdsAtParaBottom );
+			bd, paraNode, pds->pdsAtParaTop, pds->pdsAtParaBottom );
 
     if  ( (*dc->dcDrawOrnaments)( &ornaments, lpTop.lpPage,
 						&drOutside, &drInside,
@@ -95,7 +89,7 @@ static int docDrawParaOrnaments( void *				through,
 
 static int docDelimitParagraphDrawingStrip(
 			ParagraphDrawingStrip *		pds,
-			const BufferItem *		paraBi,
+			const BufferItem *		paraNode,
 			int				countAfter,
 			const LayoutPosition *		lpShadeTop,
 			int				lineFrom,
@@ -112,8 +106,8 @@ static int docDelimitParagraphDrawingStrip(
 
     LayoutPosition	lpBelow= *lpShadeTop;
 
-    tl= paraBi->biParaLines+ line;
-    while( line < paraBi->biParaLineCount )
+    tl= paraNode->biParaLines+ line;
+    while( line < paraNode->biParaLineCount )
 	{
 	docShiftPosition( &lp, bo, &(tl->tlTopPosition) );
 
@@ -127,21 +121,21 @@ static int docDelimitParagraphDrawingStrip(
 
 	docLayoutPushBottomDown( &lpBelow, &lp );
 
-	afterPageBreak= paraBi->biParaParticules[
+	afterPageBreak= paraNode->biParaParticules[
 		    tl->tlFirstParticule+ tl->tlParticuleCount -1].tpKind ==
 		    DOCkindPAGEBREAK;
 
 	line++; tl++;
 	}
 
-    if  ( line == paraBi->biParaLineCount )
+    if  ( line == paraNode->biParaLineCount )
 	{
 	if  ( ! afterPageBreak )
 	    {
-	    lp= paraBi->biBelowPosition;
+	    lp= paraNode->biBelowPosition;
 
 	    if  ( ! countAfter )
-		{ lp.lpPageYTwips -= paraBi->biParaSpaceAfterTwips;	}
+		{ lp.lpPageYTwips -= paraNode->biParaSpaceAfterTwips;	}
 
 	    docLayoutPushBottomDownShifted( &lpBelow, &lp, bo );
 	    }
@@ -164,7 +158,7 @@ static int docDelimitParagraphDrawingStrip(
 
 int docDrawParagraphStrip(		void *			through,
 					ParagraphDrawingStrip *	pds,
-					BufferItem *		paraBi,
+					BufferItem *		paraNode,
 					int			countAfter,
 					const LayoutPosition *	lpShadeTop,
 					int			lineFrom,
@@ -173,17 +167,17 @@ int docDrawParagraphStrip(		void *			through,
 					const LayoutPosition *	lpThisFrame,
 					const BlockOrigin *	bo )
     {
-    if  ( docDelimitParagraphDrawingStrip( pds, paraBi, countAfter,
+    if  ( docDelimitParagraphDrawingStrip( pds, paraNode, countAfter,
 				    lpShadeTop, lineFrom, lpThisFrame, bo ) )
 	{ LDEB(1); return -1;	}
 
     if  ( pds->pdsLineUpto > lineFrom && dc->dcDrawOrnaments )
 	{
-	if  ( docDrawParaOrnaments( through, pds, paraBi, pf, dc, bo ) )
+	if  ( docDrawParaOrnaments( through, pds, paraNode, pf, dc, bo ) )
 	    { LDEB(1); return -1;	}
 	}
 
-    if  ( docDrawTextLines( through, pds, paraBi, pf, dc, bo ) )
+    if  ( docDrawTextLines( through, pds, paraNode, pf, dc, bo ) )
 	{ LDEB(lpThisFrame->lpPage); return -1;	}
 
     return 0;
@@ -198,7 +192,7 @@ int docDrawParagraphStrip(		void *			through,
 /************************************************************************/
 
 int docDrawParaNode(		LayoutPosition *		lpBelow,
-				BufferItem *			paraBi,
+				BufferItem *			paraNode,
 				void *				through,
 				DrawingContext *		dc,
 				const BlockOrigin *		bo )
@@ -215,24 +209,24 @@ int docDrawParaNode(		LayoutPosition *		lpBelow,
     LayoutPosition		lpShadeTop;
 
     docLayoutInitBlockFrame( &bf );
-    docParaBlockFrameTwips( &bf, paraBi, bd, paraBi->biTopPosition.lpPage,
-					    paraBi->biTopPosition.lpColumn );
+    docParaBlockFrameTwips( &bf, paraNode, bd, paraNode->biTopPosition.lpPage,
+					    paraNode->biTopPosition.lpColumn );
 
-    docParagraphFrameTwips( &pf, &bf, paraBi );
+    docParagraphFrameTwips( &pf, &bf, paraNode );
 
-    docShiftPosition( &lpTop, bo, &(paraBi->biTopPosition) );
+    docShiftPosition( &lpTop, bo, &(paraNode->biTopPosition) );
     lpShadeTop= lpTop;
 
     if  ( ! lpShadeTop.lpAtTopOfColumn )
-	{ lpShadeTop.lpPageYTwips += paraBi->biParaSpaceBeforeTwips; }
+	{ lpShadeTop.lpPageYTwips += paraNode->biParaSpaceBeforeTwips; }
 
-    while( line < paraBi->biParaLineCount )
+    while( line < paraNode->biParaLineCount )
 	{
 	const int		countAfter= 0;
 
 	ParagraphDrawingStrip	pds;
 
-	if  ( docDrawParagraphStrip( through, &pds, paraBi, countAfter,
+	if  ( docDrawParagraphStrip( through, &pds, paraNode, countAfter,
 			    &lpShadeTop, line, &pf, dc, &lpTop, bo ) )
 	    { LDEB(line); rval= -1; goto ready;	}
 
@@ -243,29 +237,39 @@ int docDrawParaNode(		LayoutPosition *		lpBelow,
 	    }
 
 	/*  1  */
-if  ( paraBi->biTreeType == DOCinSHPTXT )
+if  ( paraNode->biTreeType == DOCinSHPTXT )
     { break;	}
 
-	if  ( DOC_COLUMN_AFTER( &(paraBi->biBelowPosition), &lpTop ) )
+	if  ( DOC_COLUMN_AFTER( &(paraNode->biBelowPosition), &lpTop ) )
 	    {
-	    int ret= docDrawToNextColumn( paraBi, paraBi,
+	    int			ret;
+	    BufferItem *	bodyNode= paraNode;
+
+	    if  ( paraNode->biTreeType != DOCinBODY )
+		{
+		bodyNode= docGetBodySectNode( paraNode, bd );
+		if  ( ! bodyNode )
+		    { XDEB(bodyNode); return -1;	}
+		}
+
+	    ret= docDrawToNextColumn( bodyNode, bodyNode,
 					    through, &lpTop, &bf, dc );
 	    if  ( ret < 0 )
 		{
-		SLDEB(docLevelStr(paraBi->biLevel),ret);
+		SLDEB(docLevelStr(paraNode->biLevel),ret);
 		rval= -1; goto ready;
 		}
 	    if  ( ret > 0 )
 		{ break;						}
 
-	    docParagraphFrameTwips( &pf, &bf, paraBi );
+	    docParagraphFrameTwips( &pf, &bf, paraNode );
 	    lpShadeTop= lpTop;
 	    }
 	}
 
-    if  ( lpBelow && line >= paraBi->biParaLineCount )
+    if  ( lpBelow && line >= paraNode->biParaLineCount )
 	{
-	docLayoutPushBottomDownShifted( lpBelow, &(paraBi->biBelowPosition),
+	docLayoutPushBottomDownShifted( lpBelow, &(paraNode->biBelowPosition),
 									bo );
 	}
 

@@ -22,20 +22,20 @@
 int docGetTreeOfNode(		DocumentTree **		pTree,
 				BufferItem **		pBodySectNode,
 				BufferDocument *	bd,
-				BufferItem *		bi )
+				BufferItem *		node )
     {
     BufferItem *	selSectBi;
     BufferItem *	bodySectNode= (BufferItem *)0;
     DocumentTree *	dt;
 
-    if  ( bi->biLevel == DOClevBODY && bi->biChildCount > 0 )
-	{ selSectBi= bi->biChildren[0];	}
+    if  ( node->biLevel == DOClevBODY && node->biChildCount > 0 )
+	{ selSectBi= node->biChildren[0];	}
     else{
-	bi= docGetSectNode( bi );
-	if  ( ! bi )
-	    { XDEB(bi); return -1;	}
+	node= docGetSectNode( node );
+	if  ( ! node )
+	    { XDEB(node); return -1;	}
 
-	selSectBi= bi;
+	selSectBi= node;
 	}
 
     if  ( docGetRootOfSelectionScope( &dt, &bodySectNode,
@@ -115,21 +115,21 @@ BufferItem * docGetBodySectNodeOfScope(	const SelectionScope *	ss,
     return sectBi;
     }
 
-BufferItem * docGetBodySectNode(	BufferItem *		bi,
+BufferItem * docGetBodySectNode(	BufferItem *		node,
 					const BufferDocument *	bd )
     {
     int				sect;
 
-    if  ( bi->biLevel != DOClevSECT )
+    if  ( node->biLevel != DOClevSECT )
 	{
-	bi= docGetSectNode( bi );
-	if  ( ! bi )
-	    { XDEB(bi); return (BufferItem *)0;	}
+	node= docGetSectNode( node );
+	if  ( ! node )
+	    { XDEB(node); return (BufferItem *)0;	}
 	}
 
-    if  ( bi->biTreeType == DOCinBODY )
-	{ sect= bi->biNumberInParent;			}
-    else{ sect= bi->biSectSelectionScope.ssOwnerSectNr;	}
+    if  ( node->biTreeType == DOCinBODY )
+	{ sect= node->biNumberInParent;			}
+    else{ sect= node->biSectSelectionScope.ssOwnerSectNr;	}
 
     if  ( sect < 0 || sect >= bd->bdBody.dtRoot->biChildCount )
 	{

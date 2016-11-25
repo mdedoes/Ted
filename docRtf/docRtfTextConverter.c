@@ -8,29 +8,14 @@
 
 #   include	<ctype.h>
 
-#   include	<appDebugon.h>
-
+#   include	<textOfficeCharset.h>
 #   include	"docRtfTextConverter.h"
-#   include	<utilOfficeCharset.h>
-#   include	<textConverter.h>
+
+#   include	<appDebugon.h>
 
 /************************************************************************/
 
 const char DOC_RTF_AnsiCharsetName[]= "CP1252";
-
-/************************************************************************/
-
-void docRtfInitTextConverters( RtfTextConverter * rtc )
-    {
-    utilInitTextConverter( &(rtc->rtcRtfConverter) );
-    utilInitTextConverter( &(rtc->rtcTextConverter) );
-    }
-
-void docRtfCleanTextConverters( RtfTextConverter * rtc )
-    {
-    utilCleanTextConverter( &(rtc->rtcRtfConverter) );
-    utilCleanTextConverter( &(rtc->rtcTextConverter) );
-    }
 
 /************************************************************************/
 

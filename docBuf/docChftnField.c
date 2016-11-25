@@ -185,7 +185,7 @@ int docRecalculateParaChftnTextParticules(
     docPlainTextAttribute( &taSet, rf->rfDocument );
     utilPropMaskClear( &taSetMask );
 
-    taSet.taSuperSub= DOCfontSUPERSCRIPT;
+    taSet.taSuperSub= TEXTvaSUPERSCRIPT;
     PROPmaskADD( &taSetMask, TApropSUPERSUB );
 
     if  ( docChangeParticuleAttributes( &taChanged, (PropertyMask *)0,

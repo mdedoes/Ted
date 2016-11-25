@@ -12,6 +12,7 @@
 #   include	<docBuf.h>
 #   include	<docTocField.h>
 #   include	<docSelectionDescription.h>
+#   include	<docListDepth.h>
 
 /************************************************************************/
 /*									*/

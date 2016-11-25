@@ -300,7 +300,7 @@ typedef void (*BM_SEG_FUN)(	void *				through,
 				int				x1,
 				int				y1 );
 
-typedef int (*BitmapTransformation)(RasterImage *		riOut,
+typedef int (*RasterTransformation)(RasterImage *		riOut,
 				const RasterImage *		riIn,
 				int				option );
 
@@ -405,9 +405,14 @@ extern void bmRectangleSizeTwips(
 			int				pixelsHigh );
 
 extern int bmCalculateSizes(	BitmapDescription *	bd );
+extern int bmAllocateBuffer(	RasterImage *		ri );
 
 extern int bmToGrayscale(
 			RasterImage *			riOut,
+			const RasterImage *		riIn,
+			int				ignoredInt );
+
+extern int bmToWebSafe(	RasterImage *			riOut,
 			const RasterImage *		riIn,
 			int				ignoredInt );
 
@@ -491,20 +496,17 @@ extern int bmSuggestFormat(	const MemoryBuffer *		filename,
 				int				suggestedFormat,
 				const BitmapDescription *	bd );
 
-extern int bmSetSolidWhite(	unsigned char *			buffer,
-				BitmapDescription *		bd );
-
-extern int bmSetSolidBlack(	unsigned char *			buffer,
-				BitmapDescription *		bd );
+extern int bmSetSolidWhite(	RasterImage *			ri );
+extern int bmSetSolidBlack(	RasterImage *			ri );
 
 extern int bmCopyArea(		int				up,
 				int				vp,
-				const RasterImage *		riTo,
+				RasterImage *			riTo,
 				const RasterImage *		riFrom );
 
 extern int bmPaintArea(		int				up,
 				int				vp,
-				const RasterImage *		riTo,
+				RasterImage *			riTo,
 				const RasterImage *		riFrom );
 
 extern int bmGetAlphaMask(

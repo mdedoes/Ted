@@ -1,5 +1,4 @@
 CC=@CC@
-CXX=@CXX@
 XM_CFLAGS=@XM_CFLAGS@
 LIBXPM_CFLAGS=@LIBXPM_CFLAGS@
 X_CFLAGS=@X_CFLAGS@
@@ -7,7 +6,6 @@ GTK_CFLAGS=@GTK_CFLAGS@
 QT_CFLAGS=@QT_CFLAGS@
 FT2_CFLAGS=@FT2_CFLAGS@
 XFT_CFLAGS=@XFT_CFLAGS@
-ICONV_CFLAGS=@ICONV_CFLAGS@
 
 MOTIF_CFLAGS=$(XM_CFLAGS)
 
@@ -31,10 +29,10 @@ WFLAGS=	-Wall			\
 	-Wredundant-decls	\
 	-Wno-unused-parameter	\
 	-Wno-sign-compare	\
-	-isystem /usr/include/gtk-2.0
+	-isystem /usr/include/gtk-2.0 \
+	-DGTK_DISABLE_SINGLE_INCLUDES
 
 INCLUDES=			\
-	$(ICONV_CFLAGS)		\
 	$(FT2_CFLAGS)		\
 	$(XFT_CFLAGS)		\
 	$(X_CFLAGS)		\
@@ -58,15 +56,10 @@ CFLAGS=			\
 	@CFLAGS@	\
 	$(INCLUDES)
 
-CXXFLAGS=		\
-	@CXXFLAGS@	\
-	$(INCLUDES)
-
 #XM_CFLAGS=-I/home/gaai/mark/gnu/lesstif-0.88.0/include/Motif-1.2
 #CFLAGS		= @CFLAGS@ $(WFLAGS) $(INCLUDES)
-#CXXFLAGS	= @CXXFLAGS@ $(WFLAGS) $(INCLUDES)
 
-# 109!!obs
+# 110!!obs
 OBS	=	\
 		sioCopyPasteMotif.o\
 		sioCopyPasteGtk.o\
@@ -120,6 +113,7 @@ OBS	=	\
 		appMatchFont.o\
 		appMarginTool.o\
 		appMain.o\
+		appListTreeGtk.o\
 		appListMotif.o\
 		appListGtk.o\
 		appLabelMotif.o\
@@ -184,7 +178,6 @@ OBS	=	\
 #  is used in this directory:
 #
 ACLOCAL=				\
-	../configure/qt.m4		\
 	../configure/gtk.m4		\
 	../configure/freetype.m4	\
 	../configure/fontconfig.m4	\
@@ -192,7 +185,6 @@ ACLOCAL=				\
 	../configure/xpm.m4		\
 	../configure/motif.m4		\
 	../configure/prefix.m4		\
-	../configure/iconv.m4		\
 	../configure/gui.m4
 
 aclocal.m4:	$(ACLOCAL)
@@ -205,7 +197,7 @@ duplicates:
 includes:
 	includes.sh appFrameConfig.h $(INCLUDES)
 
-# deps -I../include -I../bitmap -I../guiInterface -I../ind -I../drawMeta -I../appFrame -I../textEncoding -I../appUtil -I../docFont -I../utilPs -I/usr/X11R6/include -I/usr/include/gtk-2.0 -I/usr/lib/gtk-2.0/include -I/usr/include/atk-1.0 -I/usr/include/cairo -I/usr/include/pango-1.0 -I/usr/include/glib-2.0 -I/usr/lib/glib-2.0/include  -I/usr/include/freetype2
+# deps -I/usr/include/freetype2 -I/usr/include/freetype2  -I/usr/include/gtk-2.0 -I/usr/lib/x86_64-linux-gnu/gtk-2.0/include -I/usr/include/atk-1.0 -I/usr/include/cairo -I/usr/include/gdk-pixbuf-2.0 -I/usr/include/pango-1.0 -I/usr/include/gio-unix-2.0/ -I/usr/include/glib-2.0 -I/usr/lib/x86_64-linux-gnu/glib-2.0/include -I/usr/include/pixman-1 -I/usr/include/freetype2 -I/usr/include/libpng12   -I../guiInterface -I../appFrame -I../drawMeta -I../appUtil -I../textEncoding -I../utilPs -I../docFont -I../bitmap -I../ind -I../include
 ################################# !! sh
 
 appApplication.o: \
@@ -242,7 +234,7 @@ appApplication.o: \
     appMatchFont.h \
     ../docFont/utilDocFontList.h \
     ../docFont/utilDocFont.h \
-    ../textEncoding/utilOfficeCharset.h \
+    ../textEncoding/textOfficeCharset.h \
     ../utilPs/textAttribute.h \
     ../appUtil/utilPropMask.h \
     ../include/appDebugon.h \
@@ -961,12 +953,6 @@ appFileChooser.o: \
     ../utilPs/psFontFamily.h \
     ../utilPs/psFontInfo.h \
     appPrintJob.h \
-    ../utilPs/psPrint.h \
-    ../utilPs/psFace.h \
-    ../utilPs/textAttribute.h \
-    ../appUtil/utilPropMask.h \
-    ../utilPs/psNup.h \
-    ../utilPs/psPostScriptFontList.h \
     ../include/appDebugon.h \
     ../include/appDebug.h \
     appFileChooser.h \
@@ -1114,7 +1100,7 @@ appFontConfig.o: \
     appMatchFont.h \
     ../docFont/utilDocFontList.h \
     ../docFont/utilDocFont.h \
-    ../textEncoding/utilOfficeCharset.h \
+    ../textEncoding/textOfficeCharset.h \
     ../utilPs/textAttribute.h \
     ../appUtil/utilPropMask.h \
     ../utilPs/psPostScriptFontList.h \
@@ -1147,7 +1133,7 @@ appFontGtk.o: \
     appMatchFont.h \
     ../docFont/utilDocFontList.h \
     ../docFont/utilDocFont.h \
-    ../textEncoding/utilOfficeCharset.h \
+    ../textEncoding/textOfficeCharset.h \
     ../utilPs/textAttribute.h \
     ../appUtil/utilPropMask.h \
     ../utilPs/psPostScriptFontList.h \
@@ -1228,7 +1214,7 @@ appFontTool.o: \
     appMatchFont.h \
     ../docFont/utilDocFontList.h \
     ../docFont/utilDocFont.h \
-    ../textEncoding/utilOfficeCharset.h \
+    ../textEncoding/textOfficeCharset.h \
     ../utilPs/textAttribute.h \
     appFontTool.h \
     ../docFont/docExpandedTextAttribute.h \
@@ -1412,8 +1398,6 @@ appGuiGtkX.o: \
     appGuiGtkX.c \
     appFrameConfig.h \
     ../appUtil/appUtilConfig.h \
-    ../appUtil/appSystem.h \
-    ../appUtil/utilMemoryBuffer.h \
     drawUtilGtk.h \
     appGuiBase.h \
     appGuiBaseMotif.h \
@@ -1431,6 +1415,7 @@ appGuiGtkX.o: \
     ../bitmap/bitmap.h \
     ../appUtil/utilPalette.h \
     ../appUtil/utilColor.h \
+    ../appUtil/utilMemoryBuffer.h \
     ../appUtil/geo2DInteger.h \
     ../include/appDebugon.h \
     ../include/appDebug.h \
@@ -1776,7 +1761,7 @@ appListGtk.o: \
     appGuiBase.h \
     appGuiBaseMotif.h \
     appGuiBaseGtk.h \
-    guiWidgetsGtk.h \
+    appListGtk.h \
     ../include/appDebugon.h \
     ../include/appDebug.h
 
@@ -1788,6 +1773,18 @@ appListMotif.o: \
     appGuiBase.h \
     appGuiBaseMotif.h \
     appGuiBaseGtk.h \
+    ../include/appDebugon.h \
+    ../include/appDebug.h
+
+appListTreeGtk.o: \
+    appListTreeGtk.c \
+    appFrameConfig.h \
+    ../appUtil/appUtilConfig.h \
+    guiWidgets.h \
+    appGuiBase.h \
+    appGuiBaseMotif.h \
+    appGuiBaseGtk.h \
+    appListGtk.h \
     ../include/appDebugon.h \
     ../include/appDebug.h
 
@@ -1865,7 +1862,7 @@ appMatchFont.o: \
     ../appUtil/utilIndexSet.h \
     ../appUtil/utilIndexMapping.h \
     ../appUtil/utilMemoryBuffer.h \
-    ../textEncoding/utilOfficeCharset.h \
+    ../textEncoding/textOfficeCharset.h \
     ../utilPs/textAttribute.h \
     ../appUtil/utilPropMask.h \
     ../utilPs/psPostScriptFontList.h \
@@ -2186,11 +2183,6 @@ appPrintDialog.o: \
     ../appUtil/utilPropMask.h \
     ../utilPs/psNup.h \
     appPrintJob.h \
-    ../utilPs/psPrint.h \
-    ../utilPs/psFace.h \
-    ../utilPs/textAttribute.h \
-    ../utilPs/psNup.h \
-    ../utilPs/psPostScriptFontList.h \
     guiToolUtil.h \
     guiWidgetDrawingSurface.h \
     guiDrawingWidget.h \
@@ -2237,12 +2229,6 @@ appPrintDocument.o: \
     ../utilPs/psFontFamily.h \
     ../utilPs/psFontInfo.h \
     appPrintJob.h \
-    ../utilPs/psPrint.h \
-    ../utilPs/psFace.h \
-    ../utilPs/textAttribute.h \
-    ../appUtil/utilPropMask.h \
-    ../utilPs/psNup.h \
-    ../utilPs/psPostScriptFontList.h \
     ../utilPs/psNup.h \
     ../include/appDebugon.h \
     ../include/appDebug.h
@@ -2392,6 +2378,7 @@ appResource.o: \
     ../appUtil/utilTree.h \
     ../appUtil/utilProperties.h \
     ../appUtil/utilMemoryBuffer.h \
+    ../appUtil/utilMemoryBufferPrintf.h \
     appFrame.h \
     appGuiBase.h \
     appGuiBaseMotif.h \
@@ -2652,7 +2639,7 @@ appSymbolPicker.o: \
     ../appUtil/geo2DInteger.h \
     ../appUtil/utilIndexSet.h \
     ../appUtil/utilIndexMapping.h \
-    ../textEncoding/utilOfficeCharset.h \
+    ../textEncoding/textOfficeCharset.h \
     ../utilPs/textAttribute.h \
     ../utilPs/psPostScriptFontList.h \
     ../utilPs/psFontFamily.h \
@@ -2774,11 +2761,12 @@ appWinMetaX11.o: \
     ../utilPs/psFontInfo.h \
     ../appUtil/utilIndexSet.h \
     ../appUtil/utilIndexMapping.h \
-    ../textEncoding/utilOfficeCharset.h \
+    ../textEncoding/textOfficeCharset.h \
     ../appUtil/sioGeneral.h \
     ../bitmap/bmWmf.h \
     ../bitmap/bmcolor.h \
     ../textEncoding/textConverterImpl.h \
+    ../textEncoding/textConverter.h \
     ../appUtil/geoAffineTransform.h \
     ../docFont/utilDocFontList.h \
     ../docFont/utilDocFont.h \

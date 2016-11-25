@@ -25,6 +25,7 @@ static const int DocRowIntProperties[]=
     RPpropKEEP_ON_ONE_PAGE,
     RPprop_KEEPFOLLOW,
     RPpropAUTOFIT,
+    RPpropRTOL,
     RPpropTRW_WIDTH,
     RPpropTRFTS_WIDTH,
     RPpropTRSPDL,
@@ -90,6 +91,7 @@ void docInitRowProperties(	RowProperties *	rp )
     rp->rpKeepOnOnePage= 0;
     rp->rp_Keepfollow= 0;
     rp->rpAutofit= 0;
+    rp->rpRToL= 0;
 
     rp->rpTopBorderNumber= 0;
     rp->rpBottomBorderNumber= 0;
@@ -844,6 +846,9 @@ int docSetRowProperty(		RowProperties *		rp,
 	case RPpropAUTOFIT:
 	    rp->rpAutofit= ( arg != 0 );
 	    break;
+	case RPpropRTOL:
+	    rp->rpRToL= ( arg != 0 );
+	    break;
 
 	/**/
 	case RPpropTRW_WIDTH:
@@ -1036,6 +1041,9 @@ int docGetRowProperty(		const RowProperties *	rp,
 	    break;
 	case RPpropAUTOFIT:
 	    return rp->rpAutofit;
+	    break;
+	case RPpropRTOL:
+	    return rp->rpRToL;
 	    break;
 
 	/**/

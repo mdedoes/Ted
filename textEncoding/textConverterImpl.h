@@ -4,16 +4,20 @@
 /*									*/
 /************************************************************************/
 
-#   ifndef	UTIL_TEXT_CONVERTER_IMPL_H
-#   define	UTIL_TEXT_CONVERTER_IMPL_H
+#   ifndef	TEXT_CONVERTER_IMPL_H
+#   define	TEXT_CONVERTER_IMPL_H
 
-#   include	<iconv.h>
+#   include	"textConverter.h"
+
+struct TextConverterImpl; /*  read iconv_t */
 
 typedef struct TextConverter
     {
-    char *		tcNativeEncodingName;
-    iconv_t		tcIconvToUtf8;
-    iconv_t		tcIconvFrUtf8;
+    char *			tcNativeEncodingName;
+    struct TextConverterImpl *	tcIconvToUtf8;
+    struct TextConverterImpl *	tcIconvFrUtf8;
+
+    TextConverterProduce	tcProduce;
     } TextConverter;
 
 #   endif

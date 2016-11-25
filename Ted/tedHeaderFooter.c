@@ -82,8 +82,8 @@ int tedDocInsertHeaderFooter(	EditDocument *		ed,
 	{ LDEB(treeType); rval= -1; goto ready;	}
 
     treeParaNode= docMakeExternalParagraph( eo->eoDocument, dtHdFt, treeType,
-					    bodySectNode, ownerNumber,
-					    td->tdCurrentTextAttributeNumber );
+			    bodySectNode, ownerNumber,
+			    td->tdSelectionDescription.sdTextAttributeNumber );
     if  ( ! treeParaNode )
 	{ XDEB(treeParaNode); rval= -1; goto ready;	}
 

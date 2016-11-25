@@ -20,6 +20,7 @@
 #   include	<docTreeNode.h>
 #   include	<geoGrid.h>
 #   include	<geoUnits.h>
+#   include	<docShape.h>
 #   include	<docObjectProperties.h>
 #   include	<bmio.h>
 

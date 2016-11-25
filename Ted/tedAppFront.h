@@ -7,13 +7,13 @@
 #   include	<docDocumentProperties.h>
 #   include	<docNoteProperties.h>
 #   include	<docSectProperties.h>
-#   include	<docTabStop.h>
 #   include	<docDocumentField.h>
 #   include	<docTocField.h>
 #   include	<docHyperlinkField.h>
 #   include	<docExpandedTextAttribute.h>
 
 struct ParagraphProperties;
+struct TabStopList;
 
 /************************************************************************/
 /*									*/
@@ -94,7 +94,7 @@ extern int tedAppChangeParagraphProperties(
 
 extern int tedAppSetParagraphTabs(
 				EditApplication *		ea,
-				const TabStopList *		tsl );
+				const struct TabStopList *	tsl );
 
 extern int tedAppSetNewList(	EditApplication *		ea );
 

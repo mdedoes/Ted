@@ -89,6 +89,7 @@ static const int DOC_IntProperties[] =
     DPpropWIDOWCTRL,
     DPpropTWO_ON_ONE,
     DPpropDOCTEMP,
+    DPpropRTOL,
 
     DPpropNOTETYPES,	/*  \fetN	*/
 
@@ -184,12 +185,13 @@ void docInitDocumentProperties(	DocumentProperties *	dp )
     dp->dpWidowControl= 0;
     dp->dpTwoOnOne= 0;
     dp->dpIsDocumentTemplate= 0;
+    dp->dpRToL= 0;
 
     utilInitDocumentGeometry( &(dp->dpGeometry) );
 
-    docInitFontList( &(dp->dpFontList) );
-    docInitListAdmin( &(dp->dpListAdmin) );
-    utilInitColorPalette( &(dp->dpColorPalette) );
+    dp->dpFontList= (struct DocumentFontList *)0;
+    dp->dpListAdmin= (struct ListAdmin *)0;
+    dp->dpColorPalette= (struct ColorPalette *)0;
 
     utilInitMemoryBuffer( &(dp->dpGeneratorRead) );
     utilInitMemoryBuffer( &(dp->dpGeneratorWrite) );
@@ -218,9 +220,11 @@ void docInitDocumentProperties(	DocumentProperties *	dp )
 
 void docCleanDocumentProperties(	DocumentProperties *	dp )
     {
-    docCleanFontList( &(dp->dpFontList) );
-    docCleanListAdmin( &(dp->dpListAdmin) );
-    utilCleanColorPalette( &(dp->dpColorPalette) );
+    /* Owned by the document:
+    dp->dpFontList
+    dp->dpListAdmin
+    dp->dpColorPalette
+    */
 
     utilInvalidateTime( &(dp->dpCreatim) );
     utilInvalidateTime( &(dp->dpRevtim) );
@@ -281,14 +285,16 @@ int docCopyDocumentProperties(	DocumentProperties *		to,
 					    to, &dpSetMask, from, dam0 ) )
 	{ LDEB(1); return -1;	}
 
-    if  ( docCopyFontList( &(to->dpFontList), &(from->dpFontList) ) )
+    if  ( to->dpFontList != from->dpFontList			&&
+	  docCopyFontList( to->dpFontList, from->dpFontList )	)
 	{ LDEB(1); rval= -1; goto ready;	}
 
-    if  ( docCopyListAdmin( &(to->dpListAdmin), &(from->dpListAdmin) ) )
+    if  ( to->dpListAdmin != from->dpListAdmin			&&
+	  docCopyListAdmin( to->dpListAdmin, from->dpListAdmin ) )
 	{ LDEB(1); rval= -1; goto ready;	}
 
-    if  ( utilCopyColorPalette( &(to->dpColorPalette),
-						&(from->dpColorPalette) ) )
+    if  ( to->dpColorPalette != from->dpColorPalette			&&
+	  utilCopyColorPalette( to->dpColorPalette, from->dpColorPalette ) )
 	{ LDEB(1); rval= -1; goto ready;	}
 
     if  ( utilCopyMemoryBuffer( &(to->dpGeneratorRead),
@@ -550,11 +556,11 @@ void docDocumentPropertyDifference(
 int docAllocateDocumentColor(		DocumentProperties *	dp,
 					const RGB8Color *	rgb8 )
     {
-    const int			maxColors= 256;
     const int			avoidZero= 1;
+    const int			maxColors= 256;
     int				color;
 
-    color= utilPaletteInsertColor( &(dp->dpColorPalette),
+    color= utilPaletteInsertColor( dp->dpColorPalette,
 						avoidZero, maxColors, rgb8 );
     if  ( color < 0 )
 	{ LDEB(color); return -1;	}
@@ -607,6 +613,9 @@ int docSetDocumentProperty(	DocumentProperties *	dp,
 	    return 0;
 	case DPpropDOCTEMP:
 	    dp->dpIsDocumentTemplate= arg != 0;
+	    return 0;
+	case DPpropRTOL:
+	    dp->dpRToL= arg != 0;
 	    return 0;
 
 	case DPpropSTART_PAGE:
@@ -754,6 +763,8 @@ int docGetDocumentProperty(	const DocumentProperties *	dp,
 	    return dp->dpTwoOnOne;
 	case DPpropDOCTEMP:
 	    return dp->dpIsDocumentTemplate;
+	case DPpropRTOL:
+	    return dp->dpRToL;
 
 	case DPpropNOTETYPES:
 	    return dp->dpFootEndNoteType;

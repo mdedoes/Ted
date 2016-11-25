@@ -17,7 +17,6 @@
 #   include	<docTreeNode.h>
 #   include	<docBlockFrame.h>
 #   include	<docPageGrid.h>
-#   include	<docNodeTree.h>
 #   include	<guiToolUtil.h>
 #   include	<guiTextUtil.h>
 
@@ -34,8 +33,7 @@
 /*									*/
 /************************************************************************/
 
-static int tedFormatToolGetRowLeftIndent(
-					int *			pValue,
+static int tedRowToolGetLeftIndent(	int *			pValue,
 					RowMarginsTool *	rmt,
 					const RowProperties *	rp )
     {
@@ -131,7 +129,7 @@ int tedRowMarginToolGetValues(	RowProperties *		rp,
 
     rp->rpHalfGapWidthTwips= value;
 
-    res= tedFormatToolGetRowLeftIndent( &value, rmt, rp );
+    res= tedRowToolGetLeftIndent( &value, rmt, rp );
     if  ( res != 0 )
 	{ return -1;	}
 
@@ -219,7 +217,7 @@ int tedMarginToolCheckLeftIndent(	RowMarginsTool *	rmt,
     {
     int			value;
 
-    if  ( ! tedFormatToolGetRowLeftIndent( &value, rmt, rp ) )
+    if  ( ! tedRowToolGetLeftIndent( &value, rmt, rp ) )
 	{
 	appLengthToTextWidget( rmt->rmtLeftIndentText, value, UNITtyPOINTS );
 	}

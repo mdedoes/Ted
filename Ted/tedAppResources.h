@@ -60,6 +60,12 @@ typedef struct TedAppResources
     char *			tarTraceEditsString;
     int				tarTraceEditsInt;
 
+    char *			tarPdfOutlineString;
+    int				tarPdfOutlineInt;
+
+    char *			tarOverridePaperSizeString;
+    int				tarOverridePaperSizeInt;
+
 				/****************************************/
 				/*  Global data.			*/
 				/****************************************/

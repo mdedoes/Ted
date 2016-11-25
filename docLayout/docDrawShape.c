@@ -11,6 +11,7 @@
 
 #   include	"docDraw.h"
 #   include	"docLayout.h"
+#   include	<docShape.h>
 
 #   include	<appDebugon.h>
 

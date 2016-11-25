@@ -10,6 +10,7 @@
 #   include	<psDocumentFontStyle.h>
 #   include	<geoUnits.h>
 #   include	<bmio.h>
+#   include	<bmWmfIo.h>
 #   include	<textConverter.h>
 
 #   include	<appDebugon.h>
@@ -163,7 +164,7 @@ int appMetaInitDeviceContext(	DeviceContext *			dc,
 
     docInitFontList( &(dc->dcFontList) );
     dc->dcPlayer= player;
-    utilInitTextConverter( &(dc->dcTextConverter) );
+    textInitTextConverter( &(dc->dcTextConverter) );
     utilInitMemoryBuffer( &(dc->dcCollectedText) );
 
     dc->dcPen.lpStyle= PS_SOLID;
@@ -311,7 +312,7 @@ void appMetaCleanDeviceContext(	DeviceContext *		dc,
     int		ob;
 
     docCleanFontList( &(dc->dcFontList) );
-    utilCleanTextConverter( &(dc->dcTextConverter) );
+    textCleanTextConverter( &(dc->dcTextConverter) );
     utilCleanMemoryBuffer( &(dc->dcCollectedText) );
 
     for ( ob= 0; ob < dc->dcObjectCount; ob++ )
@@ -527,15 +528,9 @@ int appMetaExcludeClipRect(	DeviceContext *		dc,
 				int			recordSize,
 				SimpleInputStream *	sis )
     {
-    int			y0;
-    int			x0;
-    int			y1;
-    int			x1;
+    DocumentRectangle	dr;
 
-    y1= sioEndianGetLeInt16( sis );
-    x1= sioEndianGetLeInt16( sis );
-    y0= sioEndianGetLeInt16( sis );
-    x0= sioEndianGetLeInt16( sis );
+    bmWmfReadRectangle( &dr, sis );
 
     WMFDEB(appDebug("ExcludeClipRect(%d..%d,%d..%d)\n", x0,x1,y0,y1));
 
@@ -546,15 +541,9 @@ int appMetaIntersectClipRect(	DeviceContext *		dc,
 				int			recordSize,
 				SimpleInputStream *	sis )
     {
-    int			y0;
-    int			x0;
-    int			y1;
-    int			x1;
+    DocumentRectangle	dr;
 
-    y1= sioEndianGetLeInt16( sis );
-    x1= sioEndianGetLeInt16( sis );
-    y0= sioEndianGetLeInt16( sis );
-    x0= sioEndianGetLeInt16( sis );
+    bmWmfReadRectangle( &dr, sis );
 
     WMFDEB(appDebug("IntersectClipRect(%d..%d,%d..%d)\n", x0,x1,y0,y1));
 

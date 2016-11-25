@@ -11,6 +11,7 @@
 #   include	<appDebugon.h>
 
 #   include	<guiTextUtil.h>
+#   include	<docStatistics.h>
 #   include	"tedApp.h"
 #   include	"tedDocFront.h"
 #   include	"tedDocument.h"
@@ -348,7 +349,7 @@ static PropertyDialog * tedMakePropertyDialog( EditDocument *	ed,
     static DocumentPropertyPageResources	dppr;
     static int					gotResources;
 
-    if  ( appGetImagePixmap( ea, pixmapName, &iconPixmap, &iconMask )  )
+    if  ( appGetImagePixmap( ea, ea->eaMainIcon, &iconPixmap, &iconMask )  )
 	{ SDEB(pixmapName); return (PropertyDialog *)0;	}
 
     dpd= (PropertyDialog *)malloc( sizeof(PropertyDialog) );
@@ -366,8 +367,7 @@ static PropertyDialog * tedMakePropertyDialog( EditDocument *	ed,
     appMakeVerticalDialog( &(dpd->dpdDialog), &paned, ea,
 						tedClosePropertyDialog,
 						(APP_DESTROY_CALLBACK_T)0,
-						(void *)dpd,
-						"tedPropertyDialog" );
+						(void *)dpd );
 
     appSetShellTitle( dpd->dpdDialog.adTopWidget,
 				    printOption, ea->eaApplicationName );
@@ -459,7 +459,6 @@ int tedRunPropertyDialog(	EditDocument *			ed,
     guiBufferToText( dpd->dpdDoccommWidget, &(dpSet->dpDoccomm) );
     guiBufferToText( dpd->dpdHlinkbaseWidget, &(dpSet->dpHlinkbase) );
 
-    guiEnableText( dpd->dpdGeneratorWidget, ! ed->edIsReadonly );
     guiEnableText( dpd->dpdTitleWidget, ! ed->edIsReadonly );
     guiEnableText( dpd->dpdAuthorWidget, ! ed->edIsReadonly );
     guiEnableText( dpd->dpdCompanyWidget, ! ed->edIsReadonly );

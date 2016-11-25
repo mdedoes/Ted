@@ -11,7 +11,7 @@
 #   include	<sioStdin.h>
 #   include	<sioFd.h>
 #   include	<appSystem.h>
-#   include	<utilOfficeCharset.h>
+#   include	<textOfficeCharset.h>
 #   include	<geoUnits.h>
 #   include	<appQuestion.h>
 
@@ -76,7 +76,7 @@ static BufferDocument *	tedMakeDocument(	EditApplication *	ea )
     TextAttribute		ta;
     time_t			now;
 
-    if  ( ! ea->eaPreferBase35Fonts )
+    if  ( ea->eaPreferBase35FontsInt <= 0 )
 	{ psfl= &(ea->eaPostScriptFontList);	}
 
     bd= docNewFile( &ta, "Helvetica", 2* 12, psfl,
@@ -107,8 +107,7 @@ static BufferDocument *	tedMakeDocument(	EditApplication *	ea )
 /*									*/
 /************************************************************************/
 
-int tedNewDocument(	EditApplication *	ea,
-			EditDocument *		ed,
+int tedNewDocument(	EditDocument *		ed,
 			const MemoryBuffer *	filename )
     {
     int				rval= 0;
@@ -116,6 +115,7 @@ int tedNewDocument(	EditApplication *	ea,
     EditTrace *			et= &(td->tdEditTrace);
     BufferDocument *		bd;
 
+    EditApplication *		ea= ed->edApplication;
     TedAppResources *		tar= (TedAppResources *)ea->eaResourceData;
     int				traced;
 
@@ -169,7 +169,7 @@ int tedNewDocument(	EditApplication *	ea,
 	    }
 	}
 
-    if  ( docEditIsTraced( et->etTraceStatus) )
+    if  ( docEditIsTraced( et->etTraceStatus ) )
 	{
 	const DocumentProperties *	dp= &(td->tdDocument->bdProperties);
 
@@ -309,6 +309,9 @@ static BufferDocument * tedTryRtfFile(	unsigned char *		digest,
     if  ( pFormat )
 	{ *pFormat= TEDdockindRTF;	}
 
+    if  ( tar->tarOverridePaperSizeInt > 0 )
+	{ docOverridePaperSize( bd, &(ea->eaDefaultDocumentGeometry) );	}
+
   ready:
 
     if  ( sisMD5 )
@@ -402,6 +405,8 @@ int tedOpenDocumentFile(	unsigned char *		digest,
 				int *			pFormat,
 				BufferDocument **	pBd,
 				EditApplication *	ea,
+				int			suggestStdin,
+				int			formatHint,
 				const MemoryBuffer *	filename,
 				int			complain,
 				APP_WIDGET		relative,
@@ -416,35 +421,31 @@ int tedOpenDocumentFile(	unsigned char *		digest,
     int				triedRtf= 0;
     int				triedTxt= 0;
 
-    MemoryBuffer		ext;
-
     TedAppResources *		tar= (TedAppResources *)ea->eaResourceData;
-
-    utilInitMemoryBuffer( &ext );
 
     tedDetermineDefaultSettings( tar );
 
     if  ( appPostScriptFontCatalog( ea ) )
 	{ SDEB(ea->eaAfmDirectory); rval= -1; goto ready;	}
 
-    if  ( ! bd && utilMemoryBufferEqualsString( filename, "-rtf-" ) )
+    if  ( ! bd && suggestStdin && formatHint == TEDdockindRTF )
 	{
 	bd= tedTryRtfStdin( &format, ea );
 	if  ( ! bd )
 	    { XDEB(bd); rval= -1; goto ready;		}
 	}
 
-    if  ( ! bd && utilMemoryBufferEqualsString( filename, "-txt-" ) )
+    if  ( ! bd && suggestStdin && formatHint == TEDdockindTEXT_OPEN )
 	{
 	bd= tedTryTxtStdin( &format, ea );
 	if  ( ! bd )
 	    { XDEB(bd); rval= -1; goto ready;		}
 	}
 
-    if  ( ! bd && appFileGetFileExtension( &ext, filename ) )
-	{ LDEB(1); rval= -1; goto ready;	}
+    if  ( ! bd && suggestStdin )
+	{ XLDEB(bd,suggestStdin); rval= -1; goto ready;		}
 
-    if  ( ! bd && utilMemoryBufferEqualsString( &ext, "rtf" ) )
+    if  ( ! bd && formatHint == TEDdockindRTF )
 	{
 	/*  1  */
 	bd= tedTryRtfFile( digest, &format, &failedFile,
@@ -458,7 +459,7 @@ int tedOpenDocumentFile(	unsigned char *		digest,
 	triedRtf= 1;
 	}
 
-    if  ( ! bd && utilMemoryBufferEqualsString( &ext, "txt" ) )
+    if  ( ! bd && formatHint == TEDdockindTEXT_OPEN )
 	{
 	bd= tedTryTxtFile( digest, &format, &failedFile,
 				    ea, filename, complain, relative, option );
@@ -498,8 +499,6 @@ int tedOpenDocumentFile(	unsigned char *		digest,
     *pBd= bd; *pFormat= format;
 
   ready:
-
-    utilCleanMemoryBuffer( &ext );
 
     return rval;
     }
@@ -629,10 +628,18 @@ static int tedFindDocument(	const TraceStep *	ts,
 	  es->esCommand == EDITcmd_SAVE		)
 	{
 	const int	complain= 0;
-	int		format;
+	const int	suggestStdin= 0;
+	int		format= -1;
 
-	if  ( ! tedOpenDocumentFile( digest, &format, &bd,
-			    fd->fdApplication, &(es->esNewDocProps.dpHlinkbase),
+	EditApplication *	ea= fd->fdApplication;
+	const MemoryBuffer *	filename= &(es->esNewDocProps.dpHlinkbase);
+
+	format= appDocumentGetOpenFormat( (int *)0,
+			ea->eaFileExtensions, ea->eaFileExtensionCount,
+			filename, format );
+
+	if  ( ! tedOpenDocumentFile( digest, &format, &bd, ea,
+			    suggestStdin, format, filename,
 			    complain, (APP_WIDGET)0, (APP_WIDGET)0 ) )
 	    {
 	    char	digest64[MD5_DIGEST_SIZE_BASE64];
@@ -642,8 +649,7 @@ static int tedFindDocument(	const TraceStep *	ts,
 	    if  ( utilMemoryBufferEqualsString(
 			    &(es->esNewDocProps.dpGeneratorRead), digest64 ) )
 		{
-		if  ( utilCopyMemoryBuffer( &(fd->fdDocumentName),
-					&(es->esNewDocProps.dpHlinkbase) ) )
+		if  ( utilCopyMemoryBuffer( &(fd->fdDocumentName), filename ) )
 		    { LDEB(1); rval= -1; goto ready;	}
 
 		if  ( fd->fdDocument )
@@ -834,6 +840,8 @@ int tedOpenDocument(	EditApplication *	ea,
 			APP_WIDGET		relative,
 			APP_WIDGET		option,
 			const int		readOnly,
+			const int		suggestStdin,
+			const int		formatHint,
 			const MemoryBuffer *	filename )
     {
     int				rval= 0;
@@ -869,17 +877,27 @@ int tedOpenDocument(	EditApplication *	ea,
 	    {
 	    int		fdTrace;
 
-	    fdTrace= docEditTraceTryRelative( et, filename, TedTraceExtension );
+	    if  ( suggestStdin )
+		{
+		fdTrace= docEditTraceTryAnon( et, TedTraceExtension );
+		if  ( fdTrace < 0 )
+		    { LDEB(fdTrace); rval= -1; goto ready;	}
+		}
+	    else{
+		fdTrace= docEditTraceTryRelative( et,
+					    filename, TedTraceExtension );
 
-	    if  ( fdTrace < 0 && et->etTraceStatus == TRACING_NO )
-		{ LCDEB(fdTrace,et->etTraceStatus); rval= -1; goto ready; }
+		if  ( fdTrace < 0 && et->etTraceStatus == TRACING_NO )
+		    { LCDEB(fdTrace,et->etTraceStatus); rval= -1; goto ready; }
 
-	    digest= digest_x;
+		digest= digest_x;
+		}
 	    }
 
 	/*  1,2  */
-	if  ( tedOpenDocumentFile( digest, pFormat, &(td->tdDocument),
-				ea, filename, complain, relative, option ) )
+	if  ( tedOpenDocumentFile( digest, pFormat, &(td->tdDocument), ea,
+					suggestStdin, formatHint, filename,
+					complain, relative, option ) )
 	    { /*SDEB(filename);*/ rval= -1; goto ready;	}
 
 	if  ( digest )
@@ -892,13 +910,14 @@ int tedOpenDocument(	EditApplication *	ea,
     DocumentProperties *	dp= &(td->tdDocument->bdProperties);
 
     /*  3  */
-    if  ( ! ea->eaAvoidFontconfig && ea->eaPreferBase35Fonts )
+    if  ( ea->eaAvoidFontconfigInt <= 0		&&
+	  ea->eaPreferBase35FontsInt >= 0	)
 	{
-	if  ( utilAddBase35FontsToDocList( &(dp->dpFontList) ) )
+	if  ( utilAddBase35FontsToDocList( dp->dpFontList ) )
 	    { LDEB(35); rval= -1; goto ready; }
 	}
     else{
-	if  ( utilAddPsFontsToDocList( &(dp->dpFontList), 
+	if  ( utilAddPsFontsToDocList( dp->dpFontList, 
 						&(ea->eaPostScriptFontList) ) )
 	    {
 	    LDEB(ea->eaPostScriptFontList.psflFamilyCount);
@@ -923,13 +942,21 @@ int tedOpenDocument(	EditApplication *	ea,
 	    { LDEB(1); rval= -1; goto ready;	}
 	}
 
-    if  ( docEditIsTraced( et->etTraceStatus) )
+    if  ( docEditIsTraced( et->etTraceStatus ) )
 	{
 	const DocumentProperties *	dp= &(td->tdDocument->bdProperties);
 
-	if  ( docRtfTraceVersion( EDITcmd_OPEN, filename,
+	if  ( suggestStdin )
+	    {
+	    if  ( docRtfTraceVersion( EDITcmd_NEW, filename,
+					(char *)0, &(dp->dpRevtim), et ) )
+		{ XDEB(digest); rval= -1; goto ready;	}
+	    }
+	else{
+	    if  ( docRtfTraceVersion( EDITcmd_OPEN, filename,
 			    et->etBaseMD5Digest64, &(dp->dpRevtim), et ) )
-	    { XDEB(digest); rval= -1; goto ready;	}
+		{ XDEB(digest); rval= -1; goto ready;	}
+	    }
 
 	et->etBase= et->etIndex- 1;
 	td->tdTraced= 1;

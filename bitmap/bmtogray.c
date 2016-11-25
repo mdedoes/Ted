@@ -222,7 +222,7 @@ int bmToGrayscale(	RasterImage *			riOut,
     if  ( bmCopyDescription( &(ri.riDescription), bdIn ) )
 	{ LDEB(1); rval= -1; goto ready;	}
 
-    ri.riDescription.bdColorEncoding= BMcoWHITEBLACK;
+    ri.riDescription.bdColorEncoding= BMcoBLACKWHITE;
     ri.riDescription.bdBitsPerSample= 8;
 
     if  ( bmCalculateSizes( &(ri.riDescription) ) )
@@ -230,13 +230,15 @@ int bmToGrayscale(	RasterImage *			riOut,
 
     /*  3  */
     if  ( bmGraySetAllocator( &ca, ri.riDescription.bdBitsPerPixel,
-						    bmToGrayAllocateWBColor ) )
+						    bmToGrayAllocateBWColor ) )
 	{ LDEB(ri.riDescription.bdBitsPerPixel); rval= -1; goto ready; }
 
     /*  4  */
-    ri.riBytes= (unsigned char *)malloc( ri.riDescription.bdBufferLength );
-    if  ( ! ri.riBytes )
-	{ LLDEB(ri.riDescription.bdBufferLength,ri.riBytes); rval= -1; goto ready; }
+    if  ( bmAllocateBuffer( &ri ) )
+	{
+	LLDEB(ri.riDescription.bdBufferLength,ri.riBytes);
+	rval= -1; goto ready;
+	}
 
     /*  5  */
     if  ( bmFillImage( &ca, bitmapUnit, swapBitmapBytes, swapBitmapBits,

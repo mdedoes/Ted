@@ -16,7 +16,6 @@
 #   include	"docEditImpl.h"
 #   include	<docTextParticule.h>
 #   include	<docNodeTree.h>
-#   include	<textAttributeAdmin.h>
 
 #   include	<appDebugon.h>
 
@@ -392,8 +391,7 @@ int docFillTableDocument(	BufferDocument *	bdTable,
 
     docInitRowProperties( &rp );
 
-    utilGetTextAttributeByNumber( &ta, &(bdTable->bdTextAttributeList),
-								textAttrNr );
+    docGetTextAttributeByNumber( &ta, bdTable, textAttrNr );
 
     if  ( docEqualWidthColumns( &rp, columns, wide, ta.taFontSizeHalfPoints ) )
 	{ LDEB(columns); rval= -1; goto ready;	}

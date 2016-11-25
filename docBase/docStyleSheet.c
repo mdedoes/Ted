@@ -13,6 +13,7 @@
 #   include	<utilTree.h>
 
 #   include	"docStyleSheet.h"
+#   include	"docListDepth.h"
 
 /************************************************************************/
 /*									*/

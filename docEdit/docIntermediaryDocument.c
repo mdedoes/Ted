@@ -10,9 +10,8 @@
 
 #   include	<docBuf.h>
 #   include	<docNodeTree.h>
-#   include	"docEditImpl.h"
-#   include	<docTabStop.h>
-#   include	<docParaRulerAdmin.h>
+#   include	"docIntermediaryDocument.h"
+#   include	<docPropertiesAdmin.h>
 
 /************************************************************************/
 /*									*/
@@ -26,44 +25,46 @@
 /************************************************************************/
 
 BufferDocument * docIntermediaryDocument(
-				struct BufferItem **		pSectBi,
-				const BufferDocument *		bdFrom )
+				struct BufferItem **		pSectNode,
+				const BufferDocument *		bdRef )
     {
     BufferDocument *	rval= (BufferDocument *)0;
     BufferDocument *	bdTo= (BufferDocument *)0;
-    struct BufferItem *	sectBi;
+    struct BufferItem *	sectNode;
 
     const DocumentAttributeMap * const dam0= (const DocumentAttributeMap *)0;
 
-    bdTo= docNewDocument();
+    bdTo= docNewDocument( bdRef );
     if  ( ! bdTo )
 	{ XDEB(bdTo); goto ready;	}
 
     if  ( docCopyDocumentProperties( &(bdTo->bdProperties),
-					    &(bdFrom->bdProperties) ) )
+					    &(bdRef->bdProperties) ) )
 	{ LDEB(1); goto ready;	}
 
     if  ( docCopyStyleSheet( &(bdTo->bdStyleSheet),
-					    &(bdFrom->bdStyleSheet), dam0 ) )
+					    &(bdRef->bdStyleSheet), dam0 ) )
 	{ LDEB(1); goto ready;	}
 
-    if  ( docMergeTabstopListLists( (int **)0,
-					&(bdTo->bdTabStopListList),
-					&(bdFrom->bdTabStopListList) ) )
-	{ LDEB(1); goto ready;	}
-
-    sectBi= docInsertNode( bdTo, bdTo->bdBody.dtRoot, -1, DOClevSECT );
-    if  ( ! sectBi )
-	{ XDEB(sectBi); goto ready;	}
+    sectNode= docInsertNode( bdTo, bdTo->bdBody.dtRoot, -1, DOClevSECT );
+    if  ( ! sectNode )
+	{ XDEB(sectNode); goto ready;	}
 
     rval= bdTo; bdTo= (BufferDocument *)0; /* steal */
-    *pSectBi= sectBi;
+    if  ( pSectNode )
+	{ *pSectNode= sectNode;	}
 
   ready:
 
     if  ( bdTo )
-	{ docFreeDocument( bdTo );	}
+	{ docFreeIntermediaryDocument( bdTo );	}
 
     return rval;
     }
 
+void docFreeIntermediaryDocument(	BufferDocument *		bd )
+    {
+    bd->bdPropertyLists= (DocumentPropertyLists *)0;
+
+    docFreeDocument( bd );
+    }

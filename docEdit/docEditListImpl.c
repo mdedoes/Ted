@@ -165,7 +165,7 @@ int docNewList(			const DocumentList **		pDl,
 				const TextAttribute *		taSet )
     {
     DocumentProperties *	dp= &(bd->bdProperties);
-    ListAdmin *			la= &(dp->dpListAdmin);
+    ListAdmin *			la= dp->dpListAdmin;
     DocumentListTable *		dlt= &(la->laListTable);
     ListOverrideTable *		lot= &(la->laListOverrideTable);
 

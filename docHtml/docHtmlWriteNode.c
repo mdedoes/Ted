@@ -14,8 +14,6 @@
 
 #   include	<sioGeneral.h>
 
-#   include	<docBorderPropertyAdmin.h>
-#   include	<docItemShadingAdmin.h>
 #   include	<docTreeType.h>
 #   include	<docBuf.h>
 #   include	<psShading.h>
@@ -131,8 +129,6 @@ static int docHtmlEnterCellNode(	HtmlWritingContext *	hwc,
 
     const CellProperties *		cp= &(rowNode->biRowCells[col]);
     BufferDocument *			bd= hwc->hwcDocument;
-    const NumberedPropertiesList *	bpl= &(bd->bdBorderPropertyList);
-    const NumberedPropertiesList *	isl= &(bd->bdItemShadingList);
     XmlWriter *				xw= &(hwc->hwcXmlWriter);
 
     docTableDetermineCellspans( &rowspan, &colspan, cellNode );
@@ -144,13 +140,13 @@ static int docHtmlEnterCellNode(	HtmlWritingContext *	hwc,
     wide= TWIPS_TO_PIXELS( pf.pfCellContentRect.drX1-
 					    pf.pfCellContentRect.drX0 );
 
-    if  ( docBorderNumberIsBorder( bpl, cp->cpTopBorderNumber ) )
+    if  ( docBorderNumberIsBorder( bd, cp->cpTopBorderNumber ) )
 	{ useStyle++;	}
-    if  ( docBorderNumberIsBorder( bpl, cp->cpLeftBorderNumber ) )
+    if  ( docBorderNumberIsBorder( bd, cp->cpLeftBorderNumber ) )
 	{ useStyle++;	}
-    if  ( docBorderNumberIsBorder( bpl, cp->cpRightBorderNumber ) )
+    if  ( docBorderNumberIsBorder( bd, cp->cpRightBorderNumber ) )
 	{ useStyle++;	}
-    if  ( docBorderNumberIsBorder( bpl, cp->cpBottomBorderNumber ) )
+    if  ( docBorderNumberIsBorder( bd, cp->cpBottomBorderNumber ) )
 	{ useStyle++;	}
 
     docHtmlPutString( "<td", hwc );
@@ -177,7 +173,7 @@ static int docHtmlEnterCellNode(	HtmlWritingContext *	hwc,
 	    break;
 	}
 
-    docGetItemShadingByNumber( &is, isl, cp->cpShadingNumber );
+    docGetItemShadingByNumber( &is, bd, cp->cpShadingNumber );
 
     if  ( ! useStyle && is.isPattern == DOCspSOLID )
 	{ docHtmlEmitBackgroundProperty( &is, hwc );	}

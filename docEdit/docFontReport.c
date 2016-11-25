@@ -19,7 +19,7 @@
 #   include	<ucdBlock.h>
 #   include	<psGlyphs.h>
 #   include	<uniUtf8.h>
-#   include	<ucd.h>
+#   include	<ucdGeneralCategory.h>
 
 #   include	<docBuf.h>
 #   include	<docTreeNode.h>
@@ -202,7 +202,7 @@ static int fontReportFieldDataProvider(	int *		pCalculated,
 	{
 	int		uni= docFontReportGetUnicode( fr, fieldName, 2 );
 
-	if  ( uni < past && ucdIsUtf16( uni ) )
+	if  ( uni < past && ! ucdIsCn( uni ) )
 	    {
 	    if  ( uni <= 0xff )
 		{ sprintf( scratch, "0x%02x", (unsigned)uni );	}
@@ -238,7 +238,7 @@ static int fontReportFieldDataProvider(	int *		pCalculated,
 	      uni < past						    &&
 	      utilIndexMappingGet( &(afi->afiUnicodeToGlyphMapping), uni ) >= 0 )
 	    {
-	    int		step= uniPutUtf8( (unsigned char *)scratch, uni );
+	    int		step= uniPutUtf8( scratch, uni );
 
 	    if  ( step < 1 )
 		{ LDEB(step);	}
@@ -453,11 +453,11 @@ static int docMakeFontExample(	const AfmFontInfo *		afi,
     int				n;
     DocumentFont *		dfTo;
 
-    n= docGetFontByName( &(bd->bdProperties.dpFontList), "Times" );
+    n= docGetFontByName( bd->bdProperties.dpFontList, "Times" );
     if  ( n < 0 )
 	{ SLDEB("Times",n); rval= -1; goto ready;	}
 
-    dfTo= docFontListGetFontByNumber( &(bd->bdProperties.dpFontList), n );
+    dfTo= docFontListGetFontByNumber( bd->bdProperties.dpFontList, n );
     if  ( ! dfTo )
 	{ LXDEB(n,dfTo); goto ready;	}
 
@@ -502,10 +502,6 @@ int docFontsDocuments(		const PostScriptFontList *	psfl,
     utilInitMemoryBuffer( &absolute );
     utilInitMemoryBuffer( &relative );
     docInitFontList( &dfl );
-
-    if  ( appTestDirectory( outputDir )		&&
-	  appMakeDirectories( outputDir )	)
-	{ LDEB(1); rval= -1; goto ready;	}
 
     if  ( utilAddPsFontsToDocList( &dfl, psfl ) )
 	{ LDEB(1); rval= -1; goto ready;	}

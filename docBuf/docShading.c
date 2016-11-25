@@ -23,7 +23,7 @@ int docGetSolidRgbShadeOfItem(	int *			pIsFilled,
 				const ItemShading *	is )
     {
     const DocumentProperties *	dp= &(bd->bdProperties);
-    const ColorPalette *	cp= &(dp->dpColorPalette);
+    const ColorPalette *	cp= dp->dpColorPalette;
 
     RGB8Color			cf;
     RGB8Color			cb;

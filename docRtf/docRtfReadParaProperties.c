@@ -12,8 +12,8 @@
 #   include	<appDebugon.h>
 
 #   include	"docRtfReaderImpl.h"
-#   include	<docParaRulerAdmin.h>
-#   include	<docItemShadingAdmin.h>
+#   include	<docTreeNode.h>
+#   include	<docNodeTree.h>
 
 /************************************************************************/
 /*									*/
@@ -80,12 +80,12 @@ int docRtfRememberParagraphProperty(	const RtfControlWord *	rcw,
     switch( rcw->rcwID )
 	{
 	case PPprop_IN_TABLE:  /* intbl */
-	    if  ( rrc->rrcDocument && pp->ppTableNesting > 0 )
-		{ rrc->rrcDocument->bdProperties.dpContainsTables= 1;	}
+	    if  ( rrc->rrDocument && pp->ppTableNesting > 0 )
+		{ rrc->rrDocument->bdProperties.dpContainsTables= 1;	}
 	    break;
 	case PPpropTABLE_NESTING:  /* itap */
-	    if  ( rrc->rrcDocument && pp->ppTableNesting > 0 )
-		{ rrc->rrcDocument->bdProperties.dpContainsTables= 1;	}
+	    if  ( rrc->rrDocument && pp->ppTableNesting > 0 )
+		{ rrc->rrDocument->bdProperties.dpContainsTables= 1;	}
 	    break;
 	}
 
@@ -102,16 +102,13 @@ int docRtfRememberParagraphProperty(	const RtfControlWord *	rcw,
 int docRtfRefreshParagraphProperties(	BufferDocument *	bd,
 					RtfReadingState *	rrs )
     {
-    rrs->rrsParagraphProperties.ppShadingNumber= docItemShadingNumber(
-					&(bd->bdItemShadingList),
+    rrs->rrsParagraphProperties.ppShadingNumber= docItemShadingNumber( bd,
 					&(rrs->rrsParagraphShading) );
 
-    rrs->rrsParagraphProperties.ppTabStopListNumber= docTabStopListNumber(
-					&(bd->bdTabStopListList),
+    rrs->rrsParagraphProperties.ppTabStopListNumber= docTabStopListNumber( bd,
 					&(rrs->rrsTabStopList) );
 
-    rrs->rrsParagraphProperties.ppFrameNumber= docFramePropertiesNumber(
-					&(bd->bdFramePropertyList),
+    rrs->rrsParagraphProperties.ppFrameNumber= docFramePropertiesNumber( bd,
 					&(rrs->rrsParaFrameProperties) );
 
     return 0;
@@ -126,7 +123,8 @@ int docRtfRefreshParagraphProperties(	BufferDocument *	bd,
 int docRtfSetParaProperties(	ParagraphProperties *	pp,
 				BufferDocument *	bd,
 				int			mindTable,
-				RtfReadingState *	rrs )
+				RtfReadingState *	rrs,
+				int			breakOverride )
     {
     PropertyMask		ppSetMask;
 
@@ -143,8 +141,59 @@ int docRtfSetParaProperties(	ParagraphProperties *	pp,
 				    (const DocumentAttributeMap *)0 ) )
 	{ LDEB(1); return -1;	}
 
-    if  ( rrs->rrsParagraphBreakOverride >= 0 )
-	{ pp->ppBreakKind= rrs->rrsParagraphBreakOverride;	}
+    if  ( breakOverride >= 0 )
+	{ pp->ppBreakKind= breakOverride;	}
+
+    return 0;
+    }
+
+int docRtfAdaptToParaProperties(	struct BufferItem *	paraNode,
+					BufferDocument *	bd,
+					RtfReadingState *	rrs,
+					int			breakOverride )
+    {
+    const int		mindTable= 1;
+    BufferItem *	rowNode;
+
+    if  ( docRtfSetParaProperties( &(paraNode->biParaProperties),
+					bd, mindTable, rrs, breakOverride ) )
+	{ LDEB(1); return -1;	}
+
+    rowNode= docGetRowLevelNode( paraNode );
+    if  ( paraNode->biParaTableNesting > 0 )
+	{
+	if  ( ! rowNode->biRowForTable )
+	    {
+	    BufferItem *	cellNode= paraNode->biParent;
+
+	    if  ( paraNode->biNumberInParent > 0	||
+		  cellNode->biNumberInParent > 0	)
+		{
+		if  ( docSplitGroupNodeAtLevel( bd,
+			    (BufferItem **)0, (BufferItem **)0, cellNode,
+			    paraNode->biNumberInParent, DOClevROW ) )
+		    { LDEB(1); return -1;	}
+
+		docCleanRowProperties( &(rowNode->biRowProperties) );
+		docInitRowProperties( &(rowNode->biRowProperties) );
+		}
+
+	    docRtfSetForRow( paraNode );
+	    }
+	}
+    else{
+	if  ( rowNode->biRowForTable )
+	    {
+	    if  ( rowNode->biChildCount == 1 )
+		{
+		rowNode->biRowForTable= 0;
+		}
+	    else{
+		LDEB(rowNode->biChildCount);
+		LLDEB(paraNode->biParaTableNesting,rowNode->biRowForTable);
+		}
+	    }
+	}
 
     return 0;
     }
@@ -156,8 +205,6 @@ void docRtfResetParagraphProperties(	RtfReadingState *	rrs )
 
     docCleanTabStopList( &(rrs->rrsTabStopList) );
     docInitTabStopList( &(rrs->rrsTabStopList) );
-
-    rrs->rrsParagraphBreakOverride= -1;
 
     docInitItemShading( &(rrs->rrsParagraphShading) );
     docInitFrameProperties( &(rrs->rrsParaFrameProperties) );

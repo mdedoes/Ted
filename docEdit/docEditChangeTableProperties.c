@@ -215,6 +215,8 @@ int docEditChangeRowProperties(	SetProperties *			setProps,
 	PropertyMask	rpSetMask= *setProps->sp_rpSetMask;
 	PropertyMask	rpDoneMask;
 
+	DocumentPosition	dp;
+
 	/* prevent crashes */
 	if  ( rpSet->rpCellCount != rowNode->biChildCount )
 	    { PROPmaskUNSET( &rpSetMask, RPpropCELL_LAYOUT );	}
@@ -224,6 +226,14 @@ int docEditChangeRowProperties(	SetProperties *			setProps,
 	if  ( docUpdRowProperties( &rpDoneMask, rp, &rpSetMask, rpSet,
 						setProps->spAttributeMap ) )
 	    { LDEB(1); return -1;	}
+
+	if  ( ! docHeadPosition( &dp, rowNode ) )
+	    {
+	    BufferItem *	paraNode= dp.dpNode;
+
+	    if  ( PROPmaskISSET( &rpSetMask, RPprop_KEEPFOLLOW ) )
+		{ paraNode->biParaKeepWithNext= rp->rp_Keepfollow;	}
+	    }
 
 	if  ( ! utilPropMaskIsEmpty( &rpDoneMask ) )
 	    {

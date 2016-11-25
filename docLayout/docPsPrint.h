@@ -8,9 +8,10 @@
 #   define		DOC_PS_PRINT_H
 
 #   include	<sioGeneral.h>
-#   include	<psNup.h>
 #   include	"layoutContext.h"
 #   include	<docBuf.h>
+
+struct PrintGeometry;
 
 /************************************************************************/
 /*									*/
@@ -25,7 +26,8 @@ extern int docPsPrintDocument(
 			const char *			applicationReference,
 			const MemoryBuffer *		fontDirectory,
 			double				shadingMesh,
+			int				emitOutline,
 			const LayoutContext *		lc,
-			const PrintGeometry *		pg );
+			const struct PrintGeometry *	pg );
 
 #   endif	/*	DOC_PS_PRINT_H	*/

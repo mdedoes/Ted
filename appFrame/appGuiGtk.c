@@ -15,44 +15,6 @@
 
 /************************************************************************/
 /*									*/
-/*  Retrieve configurable resource values from the GUI environment.	*/
-/*									*/
-/*  1)  This should be done wih something like the GNU message catalog	*/
-/*	system. For the moment, just install the default values.	*/
-/*									*/
-/************************************************************************/
-
-void appGuiGetResourceValues(	int *				pGotResources,
-				EditApplication *		ea,
-				void *				pValues,
-				AppConfigurableResource *	acrList,
-				int				acrCount )
-    {
-    AppConfigurableResource *	acr;
-    char *			values= (char *)pValues;
-    int				i;
-
-    if  ( *pGotResources )
-	{ LDEB(*pGotResources); return;	}
-
-    if  ( ! *pGotResources )
-	{ appSetResourceDefaults( ea, acrList, acrCount );	}
-
-    acr= acrList;
-    for ( i= 0; i < acrCount; acr++, i++ )
-	{
-	*((const char **)(values+acr->acrStructOffset))= acr->acrDefaultValue;
-	}
-
-    if  ( ea->eaToplevel.atTopWidget )
-	{ appGuiGetResourceValuesGtkX( ea, pValues, acrList, acrCount ); }
-
-    *pGotResources= 1;
-    return;
-    }
-
-/************************************************************************/
-/*									*/
 /*  Destroy all children of a widget.					*/
 /*									*/
 /************************************************************************/
@@ -81,7 +43,8 @@ int appGuiInitApplication(	EditApplication *	ea,
 
     gtk_set_locale();
 
-    gtk_rc_add_default_file( CONFDIR "/ted.gtkrc-2.0" );
+    if  ( ea->eaStyleToolInt >= 0 )
+	{ gtk_rc_add_default_file( CONFDIR "/ted.gtkrc-2.0" );	}
 
     gtk_init( &argc, &argv );
 
@@ -372,7 +335,6 @@ void appMakeVerticalTool(	APP_WIDGET *		pShell,
 				EditApplication *	ea,
 				APP_BITMAP_IMAGE	iconPixmap,
 				APP_BITMAP_MASK		iconMask,
-				const char *		widgetName,
 				int			userResizable,
 				APP_WIDGET		option,
 				APP_CLOSE_CALLBACK_T	closeCallback,

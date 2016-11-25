@@ -7,8 +7,6 @@
 #   ifndef	TED_FORMAT_TOOL_H
 #   define	TED_FORMAT_TOOL_H
 
-#   include	<docTabStop.h>
-
 #   include	"tedParaLayoutTool.h"
 #   include	"tedParaOrnamentsTool.h"
 #   include	"tedTextOrnamentsTool.h"

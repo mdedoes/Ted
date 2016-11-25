@@ -70,7 +70,10 @@ int docGetIncludePictureField(		IncludePictureField *	ipf,
 	    continue;
 	    }
 
-	LLDEB(gotName,comp);
+	if  ( docFieldHasMergeformat( fi, comp ) )
+	    { comp++; continue;	}
+
+	LLSDEB(gotName,comp,utilMemoryBufferGetString(&(ic->icBuffer)));
 	}
 
     return 0;

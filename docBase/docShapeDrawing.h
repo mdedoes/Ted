@@ -22,12 +22,6 @@
 #   define	EMUtoTWIPS(e)	((e+317)/635)
 #   define	TWIPStoEMU(t)	(635*(t))
 
-typedef struct ShapeVertex
-    {
-    int		svX;
-    int		svY;
-    } ShapeVertex;
-
 typedef struct ShapePath
     {
     const char *	spName;
@@ -35,8 +29,14 @@ typedef struct ShapePath
     short int		spYSize;
     short int		spClosed;
     short int		spVertexCount;
-    ShapeVertex *	spVertices;
+    Point2DI *	spVertices;
     } ShapePath;
+
+/************************************************************************/
+/*									*/
+/*  A shape arrow description as it appears in the shape description.	*/
+/*									*/
+/************************************************************************/
 
 typedef struct ShapeArrow
     {
@@ -196,9 +196,9 @@ typedef struct ShapeDrawing
     long		sdAdjust9Value;
     long		sdAdjust10Value;
 
-    ShapeVertex *	sdVertices;
+    Point2DI *	sdVertices;
     int			sdVertexCount;
-    ShapeVertex *	sdWrapPolygonVertices;
+    Point2DI *	sdWrapPolygonVertices;
     int			sdWrapPolygonVertexCount;
     int *		sdSegmentInfos;
     int			sdSegmentInfoCount;
@@ -290,8 +290,8 @@ typedef struct ShapeDrawing
 #				define	DSdashDASHDOT_L			10
 #				define	DSdashDASHDOTDOT_L		11
 #				define	DSdashHOLLOW			12/*do*/
-    ShapeArrow		sdLineStartArrow;
-    ShapeArrow		sdLineEndArrow;
+    ShapeArrow		sdLineHeadArrow;
+    ShapeArrow		sdLineTailArrow;
     unsigned char	sdLineEndCapStyle;
     unsigned char	sdLineFillDztype;
     unsigned char	sdLineJoinStyle;
@@ -629,11 +629,6 @@ extern const ShapePath	SP_FLOW_CHART_MERGE;
 /*									*/
 /************************************************************************/
 
-extern void docShapeArrowSizesTwips(	int *			pLength,
-					int *			pLength2,
-					int *			pWidth,
-					const ShapeArrow *	sa );
-
 extern void docInitShapeArrow(		ShapeArrow *		sa );
 
 extern void docInitShapeDrawing(	ShapeDrawing *		sd );
@@ -646,5 +641,9 @@ extern int docCopyShapeDrawing(	ShapeDrawing *			to,
 				const ShapeDrawing *		from );
 
 extern void docCleanShapeDrawing(	ShapeDrawing *		sd );
+
+extern int docSetShapeDrawingProperty(	ShapeDrawing *		sd,
+					int			prop,
+					long			arg );
 
 #   endif	/*  DOC_SHAPE_DRAWING_H	*/

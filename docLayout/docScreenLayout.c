@@ -51,6 +51,7 @@
 #   include	<geoGrid.h>
 
 #   include	<docTreeNode.h>
+#   include	<docShape.h>
 #   include	<docTextLine.h>
 #   include	<docTextParticule.h>
 #   include	<docObjectProperties.h>
@@ -286,6 +287,8 @@ static int docScreenLayoutPlaceOneParticule(
 	    break;
 
 	case DOCkindOPT_HYPH:
+	case DOCkindLTR_MARK:
+	case DOCkindRTL_MARK:
 	    if  ( tp->tpTwipsWide > 0 )
 		{ LLDEB(tp->tpKind,tp->tpTwipsWide); /*return -1;*/	}
 
@@ -768,8 +771,8 @@ int docScreenLayoutDocumentBody( int *				pReachedBottom,
     geoInitRectangle( &drChanged );
 
     /*  1  */
-    if  ( dp->dpFontList.dflFontCount == 0 )
-	{ LDEB(dp->dpFontList.dflFontCount); return -1;	}
+    if  ( dp->dpFontList->dflFontCount == 0 )
+	{ LDEB(dp->dpFontList->dflFontCount); return -1;	}
 
     if  ( docScreenLayoutNode( pReachedBottom,
 					bd->bdBody.dtRoot, lc, &drChanged ) )

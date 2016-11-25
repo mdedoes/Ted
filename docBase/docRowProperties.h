@@ -49,6 +49,13 @@ typedef struct RowProperties
     unsigned char	rpKeepOnOnePage;
     unsigned char	rp_Keepfollow;	/*  derived property	*/
     unsigned char	rpAutofit;
+			/**
+			 * 0: Cells in this table row will have left-to-right
+			 *	precedence (the default)
+			 * 1: Cells in this table row will have right-to-left
+			 *	precedence
+			 */
+    unsigned char	rpRToL;
 
     int			rpPreferredWidth;
 
@@ -130,6 +137,7 @@ typedef enum RowProperty
     RPpropIS_TABLE_HEADER,
     RPpropKEEP_ON_ONE_PAGE,
     RPpropAUTOFIT,
+    RPpropRTOL,
 
     /**/
     RPpropTRW_WIDTH,

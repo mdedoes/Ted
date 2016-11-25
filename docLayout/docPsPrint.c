@@ -57,7 +57,7 @@ static int docPsSetFont(	DrawingContext *	dc,
     {
     const LayoutContext *	lc= &(dc->dcLayoutContext);
     BufferDocument *		bd= lc->lcDocument;
-    DocumentFontList *		dfl= &(bd->bdProperties.dpFontList);
+    DocumentFontList *		dfl= bd->bdProperties.dpFontList;
     PrintingState *		ps= (PrintingState *)vps;
     const AfmFontInfo *		afi;
     const IndexSet *		unicodesWanted;
@@ -373,6 +373,7 @@ int docPsPrintDocument(	SimpleOutputStream *		sos,
 			const char *			applicationReference,
 			const MemoryBuffer *		fontDirectory,
 			double				shadingMesh,
+			int				emitOutline,
 			const LayoutContext *		lc,
 			const PrintGeometry *		pg )
     {
@@ -391,18 +392,16 @@ int docPsPrintDocument(	SimpleOutputStream *		sos,
     int				firstPage= pg->pgFirstPage;
     int				lastPage= pg->pgLastPage;
 
-    int				emitOutline= 0;
-
     INIT_LAYOUT_EXTERNAL	initLayoutExternal= (INIT_LAYOUT_EXTERNAL)0;
 
     psInitPostScriptFaceList( &pstl );
     if  ( utilCopyMemoryBuffer( &(pstl.pstlFontDirectory), fontDirectory ) )
 	{ LDEB(1); rval= -1; goto ready;	}
 
-    if  ( firstPage < 0					&&
-	  lastPage < 0					&&
-	  bd->bdBody.dtOutlineTree.lntnChildCount > 0	)
-	{ emitOutline= 1;	}
+    if  ( firstPage >= 0				||
+	  lastPage >= 0					||
+	  bd->bdBody.dtOutlineTree.lntnChildCount == 0	)
+	{ emitOutline= 0;	}
 
     docInitDrawingContext( &dc );
 
@@ -464,6 +463,7 @@ int docPsPrintDocument(	SimpleOutputStream *		sos,
 
     sioOutPrintf( sos, "%%%%BeginProlog\n" );
 
+    psSetDefinePageFontImplementation( sos );
     psSetUtf8ShowImplementation( sos );
     psSetMvsImplementation( sos );
 
@@ -478,7 +478,12 @@ int docPsPrintDocument(	SimpleOutputStream *		sos,
 
     if  ( pg->pgEmbedFonts )
 	{ psIncludeFonts( sos, &pstl );	}
+# if 0
+    /* First fix definition of fonts in images */
     psSelectFontProcedures( sos, &pstl, /*allFonts=*/ 0 );
+# else
+    psSelectFontProcedures( sos, &pstl, /*allFonts=*/ 1 );
+# endif
 
     appMetaDefineProcsetPs( sos );
     psSetPatternImplementation( sos, shadingMesh );

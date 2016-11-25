@@ -1,11 +1,11 @@
 /************************************************************************/
 /*									*/
-/*  Convert text from/to UTF-8 using iconv.				*/
+/*  Convert text from/to UTF-8. (using iconv)				*/
 /*									*/
 /************************************************************************/
 
-#   ifndef	UTIL_TEXT_CONVERTER_H
-#   define	UTIL_TEXT_CONVERTER_H
+#   ifndef	TEXT_CONVERTER_H
+#   define	TEXT_CONVERTER_H
 
 struct TextConverter;
 
@@ -15,6 +15,9 @@ struct TextConverter;
 /*									*/
 /************************************************************************/
 
+/**
+ *
+ */
 typedef int (*TextConverterProduce)(	void *			through,
 					int			produced,
 					const char *		bytes,
@@ -30,12 +33,11 @@ extern void textConverterSetNativeEncodingName(
 					struct TextConverter *	tc,
 					const char *		encodingName );
 
-extern void utilInitTextConverter(	struct TextConverter *	tc );
-extern void utilCleanTextConverter(	struct TextConverter *	tc );
+extern void textInitTextConverter(	struct TextConverter *	tc );
+extern void textCleanTextConverter(	struct TextConverter *	tc );
 
 extern int textConverterConvertToUtf8(	struct TextConverter *	tc,
 					void *			through,
-					TextConverterProduce	produce,
 					int *			pConsumed,
 					int			produced,
 					const char *		text,
@@ -43,10 +45,12 @@ extern int textConverterConvertToUtf8(	struct TextConverter *	tc,
 
 extern int textConverterConvertFromUtf8( struct TextConverter *	tc,
 					void *			through,
-					TextConverterProduce	produce,
 					int *			pConsumed,
 					int			produced,
 					const char *		text,
 					int			len );
+
+extern void textConverterSetProduce(	struct TextConverter *	tc,
+					TextConverterProduce	produce );
 
 #   endif

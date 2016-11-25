@@ -36,7 +36,7 @@ void docInitFramePropertyList(	NumberedPropertiesList *	fpl )
 
     docInitFrameProperties( &fp );
 
-    num= docFramePropertiesNumber( fpl, &fp );
+    num= docFramePropertiesNumberImpl( fpl, &fp );
     if  ( num != 0 )
 	{ LDEB(num);	}
 
@@ -49,7 +49,7 @@ void docInitFramePropertyList(	NumberedPropertiesList *	fpl )
 /*									*/
 /************************************************************************/
 
-void docGetFramePropertiesByNumber(	FrameProperties *		fp,
+void docGetFramePropertiesByNumberImpl(	FrameProperties *		fp,
 					const NumberedPropertiesList *	fpl,
 					int				n )
     {
@@ -68,7 +68,7 @@ void docGetFramePropertiesByNumber(	FrameProperties *		fp,
 /*									*/
 /************************************************************************/
 
-int docFrameNumberIsFrame(		const NumberedPropertiesList *	fpl,
+int docFrameNumberIsFrameImpl(		const NumberedPropertiesList *	fpl,
 					int				n )
     {
     FrameProperties	fp;
@@ -76,7 +76,7 @@ int docFrameNumberIsFrame(		const NumberedPropertiesList *	fpl,
     if  ( n < 0 )
 	{ return 0;	}
 
-    docGetFramePropertiesByNumber( &fp, fpl, n );
+    docGetFramePropertiesByNumberImpl( &fp, fpl, n );
 
     return DOCisFRAME( &fp );
     }
@@ -110,8 +110,8 @@ void docForAllFrameProperties(	const NumberedPropertiesList *	fpl,
 /*									*/
 /************************************************************************/
 
-int docFramePropertiesNumber(	NumberedPropertiesList *	fpl,
-				const FrameProperties *		fp )
+int docFramePropertiesNumberImpl(	NumberedPropertiesList *	fpl,
+					const FrameProperties *		fp )
     {
     const int	make= 1;
 
@@ -127,13 +127,13 @@ int docMergeFramePropertyLists(	int **				pFrameMap,
     if  ( fromCount > 0 )
 	{
 	int		n;
-	int *		bmap= (int *)malloc( fromCount* sizeof(int) );
+	int *		frameMmap= (int *)malloc( fromCount* sizeof(int) );
 
-	if  ( ! bmap )
-	    { LXDEB(fromCount,bmap); return -1; }
+	if  ( ! frameMmap )
+	    { LXDEB(fromCount,frameMmap); return -1; }
 
 	for ( n= 0; n < fromCount; n++ )
-	    { bmap[n]= -1;	}
+	    { frameMmap[n]= -1;	}
 
 	for ( n= 0; n < fromCount; n++ )
 	    {
@@ -147,13 +147,13 @@ int docMergeFramePropertyLists(	int **				pFrameMap,
 
 	    fp= *((FrameProperties *)vfp);
 
-	    to= docFramePropertiesNumber( fplTo, &fp );
+	    to= docFramePropertiesNumberImpl( fplTo, &fp );
 	    if  ( to < 0 )
-		{ LDEB(to); free( bmap ); return -1;	}
-	    bmap[n]= to;
+		{ LDEB(to); free( frameMmap ); return -1;	}
+	    frameMmap[n]= to;
 	    }
 
-	*pFrameMap= bmap;
+	*pFrameMap= frameMmap;
 	}
 
     return 0;

@@ -20,7 +20,7 @@
 #   include	<sioFileio.h>
 #   include	<sioPfb.h>
 #   include	"psTtf.h"
-#   include	<ucd.h>
+#   include	<ucdGeneralCategory.h>
 
 #   include	<appDebugon.h>
 
@@ -240,6 +240,7 @@ static void psDefineEncodedFont(
 				const char *		encodedFontName,
 				const char *		encodingArrayName )
     {
+#   if 0
     sioOutPrintf( sos, "/%s findfont dup length dict begin\n",
 							afi->afiFontName );
     sioOutPrintf( sos, "  {\n" );
@@ -250,6 +251,10 @@ static void psDefineEncodedFont(
     sioOutPrintf( sos, "end " );
 
     sioOutPrintf( sos, "/%s exch definefont pop\n\n", encodedFontName );
+#   else
+    sioOutPrintf( sos, "/%s %s /%s dcpf\n",
+		    encodedFontName, encodingArrayName, afi->afiFontName );
+#   endif
     return;
     }
 
@@ -360,6 +365,23 @@ int psIncludeFonts(	SimpleOutputStream *		sos,
     }
 
 /************************************************************************/
+
+static void psSetStdEncodingArrayName(	char *	encodingArrayName,
+					int	page )
+    {
+    sprintf( encodingArrayName, "CP_%02X", page );
+    return;
+    }
+
+static void psSetFaceEncodingArrayName(	char *	encodingArrayName,
+					int	face,
+					int	page )
+    {
+    sprintf( encodingArrayName, "FCP_%d_%02X", face, page );
+    return;
+    }
+
+/************************************************************************/
 /*									*/
 /*  Emit a standard font encoding page: Mapping all positions to their	*/
 /*  respective standard unicode names.					*/
@@ -376,28 +398,23 @@ static void psEmitStandardFontEncodingPage(	SimpleOutputStream *	sos,
     int			i;
     char		name[20];
 
-    sprintf( name, "CP_%d", page );
+    psSetStdEncodingArrayName( name, page );
 
-    /*  1  */
-    sioOutPrintf( sos, "/%s 256 array def\n", name );
-
-    /*  2  */
-    sioOutPrintf( sos, "0 1 255 { %s exch /.notdef put } for %s\n",
-							    name, name );
+    sioOutPrintf( sos, "sstdcp %% %s {\n", name );
 
     /*  3  */
     for ( i= 0; i < UPP; i++ )
 	{
 	int	code= page* UPP+ i;
 
-	if  ( ucdIsUtf16( code ) )
+	if  ( ! ucdIsCn( code ) )
 	    {
 	    sioOutPrintf( sos, "  dup %3d /%s put\n",
 					i, psUnicodeToGlyphName( code ) );
 	    }
 	}
 
-    sioOutPrintf( sos, "readonly\n\n" );
+    sioOutPrintf( sos, "readonly /%s exch def %% }\n\n", name );
     }
 
 /************************************************************************/
@@ -416,7 +433,7 @@ static void psListNonStdPage(	SimpleOutputStream *		sos,
 	{
 	int		code= page* UPP+ i;
 
-	if  ( ucdIsUtf16( code ) )
+	if  ( ! ucdIsCn( code ) )
 	    {
 	    int				glyph;
 
@@ -460,29 +477,34 @@ static void psListFontEncodingPages(
 
     for ( page= 0; page < UNPAGE; page++ )
 	{
+	char		stdEncodingArrayName[20];
+	char		faceEncodingArrayName[20];
+
+	psSetStdEncodingArrayName( stdEncodingArrayName, page );
+	psSetStdEncodingArrayName( faceEncodingArrayName, page );
+
 	if  ( psf->psfPageUsed[page] )
 	    {
-	    char		encodingArrayName[20];
 	    char		encodedFontName[20];
 
 	    psSetEncodedFontName( encodedFontName, psf, page );
 
 	    if  ( psf->psfPageNonStd[page] )
 		{
-		sprintf( encodingArrayName, "FCP_%d_%02X",
+		psSetFaceEncodingArrayName( faceEncodingArrayName,
 						afi->afiFaceNumber, page );
 
-		sioOutPrintf( sos, "/%s 256 array def\n", encodingArrayName );
-		sioOutPrintf( sos, "CP_%d %s copy\n", page, encodingArrayName );
+		sioOutPrintf( sos, "\n/%s %s 256 array copy\n",
+						    faceEncodingArrayName,
+						    stdEncodingArrayName );
 
 		psListNonStdPage( sos, afi, page );
 
-		sioOutPrintf( sos, "readonly\n\n" );
+		sioOutPrintf( sos, "readonly def\n\n" );
 		}
-	    else{ sprintf( encodingArrayName, "CP_%d", page );	}
 
 	    psDefineEncodedFont( sos, afi,
-				    encodedFontName, encodingArrayName );
+				    encodedFontName, faceEncodingArrayName );
 	    done++;
 	    }
 	}

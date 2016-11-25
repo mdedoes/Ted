@@ -20,7 +20,7 @@
 void appGuiMakeListInColumn(	Widget *		pList,
 				Widget			column,
 				int			visibleItems,
-				APP_LIST_CALLBACK_T	callback,
+				APP_LIST_CALLBACK_T	listCallback,
 				APP_BUTTON_CALLBACK_T	actionCallback,
 				void *			through )
     {
@@ -32,20 +32,30 @@ void appGuiMakeListInColumn(	Widget *		pList,
     ac= 0;
     XtSetArg( al[ac], XmNskipAdjust,		False ); ac++;
     XtSetArg( al[ac], XmNallowResize,		False ); ac++;
-    XtSetArg( al[ac], XmNvisibleItemCount,	visibleItems ); ac++;
-    /* NO!
-    */
-    XtSetArg( al[ac], XmNlistSizePolicy,	XmCONSTANT ); ac++;
+    if  ( visibleItems > 0 )
+	{
+	XtSetArg( al[ac], XmNvisibleItemCount,	visibleItems ); ac++;
+	}
+
     XtSetArg( al[ac], XmNwidth,			25 ); ac++;
 
-    list= XmCreateScrolledList( column, WIDGET_NAME, al, ac );
+    if  ( visibleItems >= 0 )
+	{
+	XtSetArg( al[ac], XmNscrollBarDisplayPolicy,	XmAS_NEEDED ); ac++;
+	XtSetArg( al[ac], XmNlistSizePolicy,		XmCONSTANT ); ac++;
+
+	list= XmCreateScrolledList( column, WIDGET_NAME, al, ac );
+	}
+    else{
+	list= XmCreateList( column, WIDGET_NAME, al, ac );
+	}
 
     XtManageChild( list );
 
-    if  ( callback )
+    if  ( listCallback )
 	{
 	XtAddCallback( list, XmNbrowseSelectionCallback,
-						callback, through );
+						listCallback, through );
 	}
 
     if  ( actionCallback )

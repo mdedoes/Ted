@@ -232,8 +232,7 @@ static int tedGetRulerTwips(
     rightIndentPixels= pfX1Pixels- rightIndentPixels;
     ppNew->ppRightIndentTwips= GRIDtoCOORD( rightIndentPixels, xfac );
 
-    docGetTabStopListByNumber( &tsl, &(bd->bdTabStopListList),
-					ppNew->ppTabStopListNumber );
+    docGetTabStopListByNumber( &tsl, bd, ppNew->ppTabStopListNumber );
 
     if  ( docCopyTabStopList( &tslOld, &tsl ) )
 	{ LDEB(1); rval= -1; goto ready;	}
@@ -241,8 +240,7 @@ static int tedGetRulerTwips(
     if  ( docRulerMergeTabs( &tslOld, pfX0Pixels, xfac, tslNew ) )
 	{ LDEB(1); rval= -1; goto ready;	}
 
-    ppNew->ppTabStopListNumber= docTabStopListNumber(
-					&(bd->bdTabStopListList), &tslOld );
+    ppNew->ppTabStopListNumber= docTabStopListNumber( bd, &tslOld );
 
   ready:
 
@@ -479,8 +477,7 @@ void tedDocAdaptTopRuler(	EditDocument *			ed,
     if  ( sg->sgHead.pgLine >= paraNode->biParaLineCount )
 	{ LLDEB(sg->sgHead.pgLine,paraNode->biParaLineCount); return;	}
 
-    docGetTabStopListByNumber( &tsl, &(bd->bdTabStopListList),
-					paraNode->biParaTabStopListNumber );
+    docGetTabStopListByNumber( &tsl, bd, paraNode->biParaTabStopListNumber );
 
     tl= paraNode->biParaLines+ sg->sgHead.pgLine;
     docBlockFrameTwips( &bf, paraNode, bd,

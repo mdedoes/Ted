@@ -10,63 +10,16 @@
 #   include	<stdio.h>
 
 #   include	"docPropVal.h"
+#   include	"docShapeProp.h"
 #   include	"docShapeDrawing.h"
 
 #   include	<appDebugon.h>
 
 /************************************************************************/
 /*									*/
-/*  Return sizes for arrows in twips.					*/
+/*  Initialize/Clean a shape arrow.					*/
 /*									*/
 /************************************************************************/
-
-void docShapeArrowSizesTwips(	int *			pLength,
-				int *			pLength2,
-				int *			pWidth,
-				const ShapeArrow *	sa )
-    {
-    switch( sa->saArrowLength )
-	{
-	case DSarrowSHORT:
-	    *pLength= 6;
-	    *pLength2= 9;
-	    break;
-	case DSarrowMEDIUM:
-	    *pLength= 8;
-	    *pLength2= 12;
-	    break;
-	case DSarrowLONG:
-	    *pLength= 10;
-	    *pLength2= 15;
-	    break;
-	default:
-	    LDEB(sa->saArrowLength);
-	    *pLength= 9;
-	    *pLength2= 13;
-	}
-
-    switch( sa->saArrowWidth )
-	{
-	case DSarrowNARROW:
-	    *pWidth= 4;
-	    break;
-	case DSarrowMEDIUM:
-	    *pWidth= 6;
-	    break;
-	case DSarrowWIDE:
-	    *pWidth= 8;
-	    break;
-	default:
-	    LDEB(sa->saArrowWidth);
-	    *pWidth= 6;
-	}
-
-    *pLength *= 15;
-    *pLength2 *= 15;
-    *pWidth *= 15;
-
-    return;
-    }
 
 void docInitShapeArrow(	ShapeArrow *	sa )
     {
@@ -96,10 +49,10 @@ void docCleanShapeDrawing(	ShapeDrawing *		sd )
 void docInitShapeDrawingAllocated(	ShapeDrawing *	sd )
     {
     sd->sdVertexCount= 0;
-    sd->sdVertices= (ShapeVertex *)0;
+    sd->sdVertices= (Point2DI *)0;
 
     sd->sdWrapPolygonVertexCount= 0;
-    sd->sdWrapPolygonVertices= (ShapeVertex *)0;
+    sd->sdWrapPolygonVertices= (Point2DI *)0;
 
     sd->sdSegmentInfoCount= 0;
     sd->sdSegmentInfos= (int *)0;
@@ -262,8 +215,8 @@ void docInitShapeDrawing(	ShapeDrawing *	sd )
 
     sd->sdLineStyle= 0;
     sd->sdLineDashing= 0;
-    docInitShapeArrow( &(sd->sdLineStartArrow) );
-    docInitShapeArrow( &(sd->sdLineEndArrow) );
+    docInitShapeArrow( &(sd->sdLineHeadArrow) );
+    docInitShapeArrow( &(sd->sdLineTailArrow) );
     sd->sdLineEndCapStyle= 2;
     sd->sdLineFillDztype= 0;
     sd->sdLineJoinStyle= 2;
@@ -416,7 +369,7 @@ int docCopyShapeDrawing(	ShapeDrawing *		to,
     docInitShapeDrawingAllocated( to );
 
     /*  2  */
-    to->sdVertices= (ShapeVertex *)malloc( from->sdVertexCount* sizeof(ShapeVertex) );
+    to->sdVertices= (Point2DI *)malloc( from->sdVertexCount* sizeof(Point2DI) );
     if  ( ! to->sdVertices )
 	{
 	LXDEB(from->sdVertexCount,to->sdVertices);
@@ -424,8 +377,8 @@ int docCopyShapeDrawing(	ShapeDrawing *		to,
 	}
 
     /*  3  */
-    to->sdWrapPolygonVertices= (ShapeVertex *)malloc(
-		    from->sdWrapPolygonVertexCount* sizeof(ShapeVertex) );
+    to->sdWrapPolygonVertices= (Point2DI *)malloc(
+		    from->sdWrapPolygonVertexCount* sizeof(Point2DI) );
     if  ( ! to->sdWrapPolygonVertices )
 	{
 	LXDEB(from->sdWrapPolygonVertexCount,to->sdWrapPolygonVertices);
@@ -685,4 +638,658 @@ const char * docShapeTypeString(	int	shapeType )
 	    sprintf( scratch, "SHPty%d", shapeType );
 	    return scratch;
 	}
+    }
+
+int docSetShapeDrawingProperty(	ShapeDrawing *		sd,
+				int			prop,
+				long			val )
+    {
+    switch( prop )
+	{
+	case DSHPprop_posh:
+	    sd->sdXPosition= val;
+	    break;
+	case DSHPprop_posrelh:
+	    sd->sdXReference= val;
+	    break;
+	case DSHPprop_posv:
+	    sd->sdYPosition= val;
+	    break;
+	case DSHPprop_posrelv:
+	    sd->sdYReference= val;
+	    break;
+
+	case DSHPprop_fUseShapeAnchor:
+	    sd->sd_fUseShapeAnchor= val != 0;
+	    break;
+	case DSHPprop_fLayoutInCell:
+	    sd->sd_fLayoutInCell= val != 0;
+	    break;
+	case DSHPprop_fAllowOverlap:
+	    sd->sd_fAllowOverlap= val != 0;
+	    break;
+	case DSHPprop_fChangePage:
+	    sd->sd_fChangePage= val != 0;
+	    break;
+
+	case DSHPprop_shapeType:
+	    sd->sdShapeType= val;
+	    break;
+
+	case DSHPprop_rotation:
+	    sd->sdRotation= val;
+	    break;
+
+	case DSHPprop_dxWrapDistLeft:
+	    sd->sdWrapDistLeftEmu= val;
+	    break;
+	case DSHPprop_dyWrapDistTop:
+	    sd->sdWrapDistTopEmu= val;
+	    break;
+	case DSHPprop_dxWrapDistRight:
+	    sd->sdWrapDistRightEmu= val;
+	    break;
+	case DSHPprop_dyWrapDistBottom:
+	    sd->sdWrapDistBottomEmu= val;
+	    break;
+
+	case DSHPprop_hspMaster:
+	    sd->sdMasterShape= val;
+	    break;
+	case DSHPprop_hspNext:
+	    sd->sdNextShape= val;
+	    break;
+
+	case DSHPprop_xLimo:
+	    sd->sdXLimo= val;
+	    break;
+	case DSHPprop_yLimo:
+	    sd->sdXLimo= val;
+	    break;
+
+	case DSHPprop_fIsBullet:
+	    sd->sd_fIsBullet= val != 0;
+	    break;
+	case DSHPprop_fFlipV:
+	    sd->sd_fFlipV= val != 0;
+	    break;
+	case DSHPprop_fFlipH:
+	    sd->sd_fFlipH= val != 0;
+	    break;
+	case DSHPprop_fBehindDocument:
+	    sd->sd_fBehindDocument= val != 0;
+	    break;
+	case DSHPprop_fIsButton:
+	    sd->sd_fIsButton= val != 0;
+	    break;
+	case DSHPprop_fHidden:
+	    sd->sd_fHidden= val != 0;
+	    break;
+	case DSHPprop_fReallyHidden:
+	    sd->sd_fReallyHidden= val != 0;
+	    break;
+	case DSHPprop_fArrowheadsOK:
+	    sd->sd_fArrowheadsOK= val != 0;
+	    break;
+	case DSHPprop_fBackground:
+	    sd->sd_fBackground= val != 0;
+	    break;
+	case DSHPprop_fDeleteAttachedObject:
+	    sd->sd_fDeleteAttachedObject= val != 0;
+	    break;
+	case DSHPprop_fEditedWrap:
+	    sd->sd_fEditedWrap= val != 0;
+	    break;
+	case DSHPprop_fHitTestFill:
+	    sd->sd_fHitTestFill= val != 0;
+	    break;
+	case DSHPprop_fHitTestLine:
+	    sd->sd_fHitTestLine= val != 0;
+	    break;
+	case DSHPprop_fInitiator:
+	    sd->sd_fInitiator= val != 0;
+	    break;
+	case DSHPprop_fNoFillHitTest:
+	    sd->sd_fNoFillHitTest= val != 0;
+	    break;
+	case DSHPprop_fNoHitTestPicture:
+	    sd->sd_fNoHitTestPicture= val != 0;
+	    break;
+	case DSHPprop_fNoLineDrawDash:
+	    sd->sd_fNoLineDrawDash= val != 0;
+	    break;
+	case DSHPprop_fOleIcon:
+	    sd->sd_fOleIcon= val != 0;
+	    break;
+	case DSHPprop_fOnDblClickNotify:
+	    sd->sd_fOnDblClickNotify= val != 0;
+	    break;
+	case DSHPprop_fOneD:
+	    sd->sd_fOneD= val != 0;
+	    break;
+	case DSHPprop_fPreferRelativeSize:
+	    sd->sd_fPreferRelativeSize= val != 0;
+	    break;
+	case DSHPprop_fPrint:
+	    sd->sd_fPrint= val != 0;
+	    break;
+
+	case DSHPprop_fPseudoInline:
+	    sd->sd_fPseudoInline= val != 0;
+	    break;
+
+	case DSHPprop_fLockRotation:
+	    sd->sd_fLockRotation= val != 0;
+	    break;
+	case DSHPprop_fLockAspectRatio:
+	    sd->sd_fLockAspectRatio= val != 0;
+	    break;
+	case DSHPprop_fLockAgainstSelect:
+	    sd->sd_fLockAgainstSelect= val != 0;
+	    break;
+	case DSHPprop_fLockCropping:
+	    sd->sd_fLockCropping= val != 0;
+	    break;
+	case DSHPprop_fLockVerticies:
+	    sd->sd_fLockVerticies= val != 0;
+	    break;
+	case DSHPprop_fLockText:
+	    sd->sd_fLockText= val != 0;
+	    break;
+	case DSHPprop_fLockAdjustHandles:
+	    sd->sd_fLockAdjustHandles= val != 0;
+	    break;
+	case DSHPprop_fLockAgainstGrouping:
+	    sd->sd_fLockAgainstGrouping= val != 0;
+	    break;
+	case DSHPprop_fLockShapeType:
+	    sd->sd_fLockShapeType= val != 0;
+	    break;
+
+	case DSHPprop_fLockPosition:
+	    sd->sd_fLockPosition= val != 0;
+	    break;
+
+	case DSHPprop_fillType:
+	    sd->sdFillType= val;
+	    break;
+	case DSHPprop_fillOpacity:
+	    sd->sdFillOpacity= val;
+	    break;
+	case DSHPprop_fillBackOpacity:
+	    sd->sdFillBackOpacity= val;
+	    break;
+
+	case DSHPprop_fillblipflags:
+	    sd->sdFillblipflags= val;
+	    break;
+
+	case DSHPprop_fillWidth:
+	    sd->sdFillWidthEmu= val;
+	    break;
+	case DSHPprop_fillHeight:
+	    sd->sdFillHeightEmu= val;
+	    break;
+	case DSHPprop_fillAngle:
+	    sd->sdFillAngle= val;
+	    break;
+	case DSHPprop_fillFocus:
+	    sd->sdFillFocus= val;
+	    break;
+
+	case DSHPprop_fillToLeft:
+	    sd->sdFillToLeft= val;
+	    break;
+	case DSHPprop_fillToTop:
+	    sd->sdFillToTop= val;
+	    break;
+	case DSHPprop_fillToRight:
+	    sd->sdFillToRight= val;
+	    break;
+	case DSHPprop_fillToBottom:
+	    sd->sdFillToBottom= val;
+	    break;
+
+	case DSHPprop_fillOriginX:
+	    sd->sdFillOriginX= val;
+	    break;
+	case DSHPprop_fillOriginY:
+	    sd->sdFillOriginY= val;
+	    break;
+	case DSHPprop_fillShapeOriginX:
+	    sd->sdFillShapeOriginX= val;
+	    break;
+	case DSHPprop_fillShapeOriginY:
+	    sd->sdFillShapeOriginY= val;
+	    break;
+
+	case DSHPprop_fillDztype:
+	    sd->sdFillDztype= val;
+	    break;
+
+	case DSHPprop_fillRectLeft:
+	    sd->sdFillRectLeftEmu= val;
+	    break;
+	case DSHPprop_fillRectTop:
+	    sd->sdFillRectTopEmu= val;
+	    break;
+	case DSHPprop_fillRectRight:
+	    sd->sdFillRectRightEmu= val;
+	    break;
+	case DSHPprop_fillRectBottom:
+	    sd->sdFillRectBottomEmu= val;
+	    break;
+
+	case DSHPprop_fillShadePreset:
+	    sd->sdFillShadePreset= val;
+	    break;
+	case DSHPprop_fillShadeType:
+	    sd->sdFillShadeType= val;
+	    break;
+
+	case DSHPprop_fFilled:
+	    sd->sd_fFilled= val != 0;
+	    break;
+	case DSHPprop_fillShape:
+	    sd->sd_fillShape= val != 0;
+	    break;
+	case DSHPprop_fillUseRect:
+	    sd->sd_fillUseRect= val != 0;
+	    break;
+	case DSHPprop_fFillOK:
+	    sd->sd_fFillOK= val != 0;
+	    break;
+	case DSHPprop_fFillShadeShapeOK:
+	    sd->sd_fFillShadeShapeOK= val != 0;
+	    break;
+
+	case DSHPprop_lineType:
+	    sd->sdLineType= val;
+	    break;
+
+	case DSHPprop_lineFillBlipFlags:
+	    sd->sdLineFillBlipFlags= val;
+	    break;
+
+	case DSHPprop_lineFillWidth:
+	    sd->sdLineFillWidthEmu= val;
+	    break;
+	case DSHPprop_lineFillHeight:
+	    sd->sdLineFillHeightEmu= val;
+	    break;
+	case DSHPprop_lineWidth:
+	    sd->sdLineWidthEmu= val;
+	    break;
+
+	case DSHPprop_lineStyle:
+	    sd->sdLineStyle= val;
+	    break;
+	case DSHPprop_lineDashing:
+	    sd->sdLineDashing= val;
+	    break;
+	case DSHPprop_lineStartArrowhead:
+	    sd->sdLineHeadArrow.saArrowHead= val;
+	    break;
+	case DSHPprop_lineEndArrowhead:
+	    sd->sdLineTailArrow.saArrowHead= val;
+	    break;
+	case DSHPprop_lineStartArrowWidth:
+	    sd->sdLineHeadArrow.saArrowWidth= val;
+	    break;
+	case DSHPprop_lineStartArrowLength:
+	    sd->sdLineHeadArrow.saArrowLength= val;
+	    break;
+	case DSHPprop_lineEndArrowWidth:
+	    sd->sdLineTailArrow.saArrowWidth= val;
+	    break;
+	case DSHPprop_lineEndArrowLength:
+	    sd->sdLineTailArrow.saArrowLength= val;
+	    break;
+	case DSHPprop_lineEndCapStyle:
+	    sd->sdLineEndCapStyle= val;
+	    break;
+	case DSHPprop_lineFillDztype:
+	    sd->sdLineFillDztype= val;
+	    break;
+	case DSHPprop_lineJoinStyle:
+	    sd->sdLineJoinStyle= val;
+	    break;
+
+	case DSHPprop_lineMiterLimit:
+	    sd->sdLineMiterLimit= val;
+	    break;
+
+	case DSHPprop_fLine:
+	    sd->sd_fLine= val != 0;
+	    break;
+	case DSHPprop_fLineOK:
+	    sd->sd_fLineOK= val != 0;
+	    break;
+
+	case DSHPprop_fLineUseShapeAnchor:
+	    sd->sd_fLineUseShapeAnchor= val != 0;
+	    break;
+	case DSHPprop_fColumnLineOK:
+	    sd->sd_fColumnLineOK= val != 0;
+	    break;
+	case DSHPprop_fColumnLine:
+	    sd->sd_fColumnLine= val != 0;
+	    break;
+	case DSHPprop_fLeftLine:
+	    sd->sd_fLeftLine= val != 0;
+	    break;
+	case DSHPprop_fTopLine:
+	    sd->sd_fTopLine= val != 0;
+	    break;
+	case DSHPprop_fRightLine:
+	    sd->sd_fRightLine= val != 0;
+	    break;
+	case DSHPprop_fBottomLine:
+	    sd->sd_fBottomLine= val != 0;
+	    break;
+
+	case DSHPprop_fColumnHitTestLine:
+	    sd->sd_fColumnHitTestLine= val != 0;
+	    break;
+	case DSHPprop_fLeftHitTestLine:
+	    sd->sd_fLeftHitTestLine= val != 0;
+	    break;
+	case DSHPprop_fTopHitTestLine:
+	    sd->sd_fTopHitTestLine= val != 0;
+	    break;
+	case DSHPprop_fRightHitTestLine:
+	    sd->sd_fRightHitTestLine= val != 0;
+	    break;
+	case DSHPprop_fBottomHitTestLine:
+	    sd->sd_fBottomHitTestLine= val != 0;
+	    break;
+
+	case DSHPprop_lineFillShape:
+	    sd->sd_lineFillShape= val != 0;
+	    break;
+	case DSHPprop_lineColumnFillShape:
+	    sd->sd_lineColumnFillShape= val != 0;
+	    break;
+	case DSHPprop_lineLeftFillShape:
+	    sd->sd_lineLeftFillShape= val != 0;
+	    break;
+	case DSHPprop_lineTopFillShape:
+	    sd->sd_lineTopFillShape= val != 0;
+	    break;
+	case DSHPprop_lineRightFillShape:
+	    sd->sd_lineRightFillShape= val != 0;
+	    break;
+	case DSHPprop_lineBottomFillShape:
+	    sd->sd_lineBottomFillShape= val != 0;
+	    break;
+
+	case DSHPprop_fInsetPen:
+	    sd->sd_fInsetPen= val != 0;
+	    break;
+	case DSHPprop_fLeftInsetPen:
+	    sd->sd_fLeftInsetPen= val != 0;
+	    break;
+	case DSHPprop_fTopInsetPen:
+	    sd->sd_fTopInsetPen= val != 0;
+	    break;
+	case DSHPprop_fRightInsetPen:
+	    sd->sd_fRightInsetPen= val != 0;
+	    break;
+	case DSHPprop_fBottomInsetPen:
+	    sd->sd_fBottomInsetPen= val != 0;
+	    break;
+
+	case DSHPprop_relLeft:
+	    sd->sdRelRect.drX0= val;
+	    break;
+	case DSHPprop_relTop:
+	    sd->sdRelRect.drY0= val;
+	    break;
+	case DSHPprop_relRight:
+	    sd->sdRelRect.drX1= val;
+	    break;
+	case DSHPprop_relBottom:
+	    sd->sdRelRect.drY1= val;
+	    break;
+
+	case DSHPprop_relRotation:
+	    sd->sdRelRotation= val;
+	    break;
+	case DSHPprop_lidRegroup:
+	    sd->sdRegroupID= val;
+	    break;
+
+	case DSHPprop_groupLeft:
+	    sd->sdGroupRect.drX0= val;
+	    break;
+	case DSHPprop_groupTop:
+	    sd->sdGroupRect.drY0= val;
+	    break;
+	case DSHPprop_groupRight:
+	    sd->sdGroupRect.drX1= val;
+	    break;
+	case DSHPprop_groupBottom:
+	    sd->sdGroupRect.drY1= val;
+	    break;
+
+	case DSHPprop_fRelChangePage:
+	    sd->sd_fRelChangePage= val != 0;
+	    break;
+	case DSHPprop_fRelFlipH:
+	    sd->sd_fRelFlipH= val != 0;
+	    break;
+	case DSHPprop_fRelFlipV:
+	    sd->sd_fRelFlipV= val != 0;
+	    break;
+
+	case DSHPprop_shadowType:
+	    sd->sdShadowType= val;
+	    break;
+	case DSHPprop_shadowOpacity:
+	    sd->sdShadowOpacity= val;
+	    break;
+
+	case DSHPprop_shadowOffsetX:
+	    sd->sdShadowOffsetXEmu= val;
+	    break;
+	case DSHPprop_shadowOffsetY:
+	    sd->sdShadowOffsetYEmu= val;
+	    break;
+
+	case DSHPprop_shadowSecondOffsetX:
+	    sd->sdShadowOffset2XEmu= val;
+	    break;
+	case DSHPprop_shadowSecondOffsetY:
+	    sd->sdShadowOffset2YEmu= val;
+	    break;
+
+	case DSHPprop_shadowScaleXToX:
+	    sd->sdShadowScaleXToX= val;
+	    break;
+	case DSHPprop_shadowScaleYToX:
+	    sd->sdShadowScaleYToX= val;
+	    break;
+	case DSHPprop_shadowScaleXToY:
+	    sd->sdShadowScaleXToY= val;
+	    break;
+	case DSHPprop_shadowScaleYToY:
+	    sd->sdShadowScaleYToY= val;
+	    break;
+
+	case DSHPprop_shadowPerspectiveX:
+	    sd->sdShadowPerspectiveX= val;
+	    break;
+	case DSHPprop_shadowPerspectiveY:
+	    sd->sdShadowPerspectiveY= val;
+	    break;
+
+	case DSHPprop_shadowWeight:
+	    sd->sdShadowWeight= val;
+	    break;
+
+	case DSHPprop_shadowOriginX:
+	    sd->sdShadowOriginX= val;
+	    break;
+	case DSHPprop_shadowOriginY:
+	    sd->sdShadowOriginY= val;
+	    break;
+
+	case DSHPprop_fShadow:
+	    sd->sd_fShadow= val != 0;
+	    break;
+	case DSHPprop_fshadowObscured:
+	    sd->sd_fshadowObscured= val != 0;
+	    break;
+	case DSHPprop_fShadowOK:
+	    sd->sd_fshadowOK= val != 0;
+	    break;
+
+	case DSHPprop_cxk:
+	    sd->sdConnectionSite= val;
+	    break;
+	case DSHPprop_cxstyle:
+	    sd->sdConnectionStyle= val;
+	    break;
+
+	case DSHPprop_geoLeft:
+	    sd->sdGeoRect.drX0= val;
+	    break;
+	case DSHPprop_geoTop:
+	    sd->sdGeoRect.drY0= val;
+	    break;
+	case DSHPprop_geoRight:
+	    sd->sdGeoRect.drX1= val;
+	    break;
+	case DSHPprop_geoBottom:
+	    sd->sdGeoRect.drY1= val;
+	    break;
+
+	case DSHPprop_adjustValue:
+	    sd->sdAdjustValue= val;
+	    break;
+	case DSHPprop_adjust2Value:
+	    sd->sdAdjust2Value= val;
+	    break;
+	case DSHPprop_adjust3Value:
+	    sd->sdAdjust3Value= val;
+	    break;
+	case DSHPprop_adjust4Value:
+	    sd->sdAdjust4Value= val;
+	    break;
+	case DSHPprop_adjust5Value:
+	    sd->sdAdjust5Value= val;
+	    break;
+	case DSHPprop_adjust6Value:
+	    sd->sdAdjust6Value= val;
+	    break;
+	case DSHPprop_adjust7Value:
+	    sd->sdAdjust7Value= val;
+	    break;
+	case DSHPprop_adjust8Value:
+	    sd->sdAdjust8Value= val;
+	    break;
+	case DSHPprop_adjust9Value:
+	    sd->sdAdjust9Value= val;
+	    break;
+	case DSHPprop_adjust10Value:
+	    sd->sdAdjust10Value= val;
+	    break;
+
+	case DSHPprop_dxTextLeft:
+	    sd->sd_dxTextLeft= val;
+	    break;
+	case DSHPprop_dyTextTop:
+	    sd->sd_dyTextTop= val;
+	    break;
+	case DSHPprop_dxTextRight:
+	    sd->sd_dxTextRight= val;
+	    break;
+	case DSHPprop_dyTextBottom:
+	    sd->sd_dyTextBottom= val;
+	    break;
+
+	case DSHPprop_scaleText:
+	    sd->sd_scaleText= val;
+	    break;
+	case DSHPprop_lTxid:
+	    sd->sd_lTxid= val;
+	    break;
+
+	case DSHPprop_WrapText:
+	    sd->sd_WrapText= val;
+	    break;
+	case DSHPprop_anchorText:
+	    sd->sd_anchorText= val;
+	    break;
+	case DSHPprop_txflTextFlow:
+	    sd->sd_txflTextFlow= val;
+	    break;
+	case DSHPprop_cdirFont:
+	    sd->sd_cdirFont= val;
+	    break;
+
+	case DSHPprop_fAutoTextMargin:
+	    sd->sd_fAutoTextMargin= val != 0;
+	    break;
+	case DSHPprop_fRotateText:
+	    sd->sd_fRotateText= val != 0;
+	    break;
+	case DSHPprop_fSelectText:
+	    sd->sd_fSelectText= val != 0;
+	    break;
+	case DSHPprop_fFitShapeToText:
+	    sd->sd_fFitShapeToText= val != 0;
+	    break;
+	case DSHPprop_fFitTextToShape:
+	    sd->sd_fFitTextToShape= val != 0;
+	    break;
+
+	case DSHPprop_shapePath:
+	    sd->sd_shapePath= val;
+	    break;
+
+	case DSHPprop_pictureActive:
+	case DSHPprop_pictureId:
+	case DSHPprop_pictureContrast:
+	case DSHPprop_pictureBrightness:
+	case DSHPprop_pictureDblCrMod:
+	case DSHPprop_pictureFillCrMod:
+	case DSHPprop_pictureLineCrMod:
+	    break;
+
+	case DSHPprop_f3D:
+	case DSHPprop_pibFlags:
+	case DSHPprop_dhgt:
+	case DSHPprop_sizerelh:
+	case DSHPprop_sizerelv:
+	case DSHPprop_pctHoriz:
+	case DSHPprop_pictureGray:
+	case DSHPprop_pictureBiLevel:
+	case DSHPprop_fPreferRelativeResize:
+	case DSHPprop_fScriptAnchor:
+	case DSHPprop_fFakeMaster:
+	case DSHPprop_fCameFromImgDummy:
+	    break;
+
+	case DSHPprop_fRecolorFillAsPicture:
+	    break;
+
+	case DSHPprop_cropFromLeft:
+	    sd->sd_cropFromLeft= val;
+	    break;
+	case DSHPprop_cropFromRight:
+	    sd->sd_cropFromRight= val;
+	    break;
+	case DSHPprop_cropFromTop:
+	    sd->sd_cropFromTop= val;
+	    break;
+	case DSHPprop_cropFromBottom:
+	    sd->sd_cropFromBottom= val;
+	    break;
+
+	default:
+	    LDEB(prop); return -1;
+	}
+
+    return 0;
     }

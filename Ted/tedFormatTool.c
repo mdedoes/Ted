@@ -352,9 +352,6 @@ void tedShowFormatTool(	APP_WIDGET		option,
 
     TedAppResources *			tar;
 
-    const char *			widgetName= "tedFormatTool";
-    const char *			pixmapName= "tedtable";
-
     tar= (TedAppResources *)ea->eaResourceData;
 
     if  ( tar->tarInspector )
@@ -572,7 +569,7 @@ void tedShowFormatTool(	APP_WIDGET		option,
 #   endif
     tft->tftRgbPage.rcpApplication= ea;
 
-    ai= appMakeInspector( ea, option, pixmapName, widgetName,
+    ai= appMakeInspector( ea, option,
 				    tftr.tttrSubjectResources, TEDtsi_COUNT,
 				    tedDestroyFormatTool, (void *)tft );
     if  ( ! ai )
@@ -777,16 +774,17 @@ void tedShowFormatTool(	APP_WIDGET		option,
 /*									*/
 /************************************************************************/
 
-static void tedFormatRefreshToolPages(	int *				enabled,
-					int *				prefs,
-					TedFormatTool *			tft,
-					AppInspector *			ai,
-					EditDocument *			ed,
-					DocumentTree *			ei,
-					const DocumentSelection *	ds,
-					const SelectionGeometry *	sg,
-					const SelectionDescription *	sd,
-					const unsigned char *		cmdEnabled )
+static void tedFormatRefreshToolPages(
+				int *				enabled,
+				int *				prefs,
+				TedFormatTool *			tft,
+				AppInspector *			ai,
+				EditDocument *			ed,
+				DocumentTree *			ei,
+				const DocumentSelection *	ds,
+				const SelectionGeometry *	sg,
+				const SelectionDescription *	sd,
+				const unsigned char *		cmdEnabled )
     {
     TedDocument *		td= (TedDocument *)ed->edPrivateData;
     BufferDocument *		bd= td->tdDocument;
@@ -967,6 +965,7 @@ void tedFormatToolAdaptToSelection( AppInspector *		ai,
 				const unsigned char *		cmdEnabled )
     {
     TedFormatTool *		tft= (TedFormatTool *)ai->aiTarget;
+    TedDocument *		td= (TedDocument *)ed->edPrivateData;
 
     int				subject;
     int				enabled[TEDtsi_COUNT];
@@ -1006,6 +1005,12 @@ void tedFormatToolAdaptToSelection( AppInspector *		ai,
 	  choosePage						||
 	  ! ai->aiSubjects[ai->aiCurrentSubject].isEnabled	)
 	{ appInspectorSelectSubject( ai, preferred );	}
+
+    /*  Actually, this is too late the first time  */
+    guiEnableWidget( td->tdToolsSpellingOption,
+				    enabled[TEDtsiSPELL] );
+    guiEnableWidget( td->tdToolsSymbolOption,
+				    enabled[TEDtsiSYMBOL] );
     }
 
 void tedFormatFieldListChanged(	EditApplication *	ea )

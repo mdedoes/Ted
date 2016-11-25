@@ -9,7 +9,7 @@
 
 #   include	<psFontInfo.h>
 #   include	<utilIndexMapping.h>
-#   include	<utilOfficeCharset.h>
+#   include	<textOfficeCharset.h>
 #   include	<utilIndexSet.h>
 
 /************************************************************************/

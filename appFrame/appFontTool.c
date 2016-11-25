@@ -164,6 +164,8 @@ static void appFontShowSizeInList(
     int		pos;
     int		sizeChosen= -1;
 
+    afc->afcInProgrammaticChange++;
+
     for ( pos= 0; pos < EditFontToolSizeCount; pos++ )
 	{
 	if  ( fontSizeHalfPoints > 0				&&
@@ -175,6 +177,8 @@ static void appFontShowSizeInList(
     if  ( sizeChosen >= 0 )
 	{ appGuiSelectPositionInListWidget( afc->afcSizeList, sizeChosen ); }
     else{ appGuiRemoveSelectionFromListWidget( afc->afcSizeList );	    }
+
+    afc->afcInProgrammaticChange--;
 
     return;
     }
@@ -699,13 +703,13 @@ static void appFontReflectProperties(	AppFontChooser *	afc )
     /*  9  */
     set= 0;
     if  ( PROPmaskISSET( &(afc->afcChosenMask), TApropSUPERSUB ) )
-	{ set= taC->taSuperSub == DOCfontSUPERSCRIPT;	}
+	{ set= taC->taSuperSub == TEXTvaSUPERSCRIPT;	}
     appGuiSetToggleState( afc->afcSuperscriptToggle, set );
 
     /*  10  */
     set= 0;
     if  ( PROPmaskISSET( &(afc->afcChosenMask), TApropSUPERSUB ) )
-	{ set= taC->taSuperSub == DOCfontSUBSCRIPT;	}
+	{ set= taC->taSuperSub == TEXTvaSUBSCRIPT;	}
     appGuiSetToggleState( afc->afcSubscriptToggle, set );
 
     /*  11  */
@@ -800,17 +804,17 @@ static APP_TOGGLE_CALLBACK_H( appFontSuperscriptToggled, w, voidafc, voidtbcs )
 	{
 	int		resetOther= 0;
 
-	if  ( taC->taSuperSub == DOCfontSUBSCRIPT )
+	if  ( taC->taSuperSub == TEXTvaSUBSCRIPT )
 	    { resetOther= 1;	}
 
-	taC->taSuperSub= DOCfontSUPERSCRIPT;
+	taC->taSuperSub= TEXTvaSUPERSCRIPT;
 
 	if  ( resetOther )
 	    { appGuiSetToggleState( afc->afcSubscriptToggle, 0 );	}
 	}
     else{
-	if  ( taC->taSuperSub == DOCfontSUPERSCRIPT )
-	    { taC->taSuperSub= DOCfontREGULAR;	}
+	if  ( taC->taSuperSub == TEXTvaSUPERSCRIPT )
+	    { taC->taSuperSub= TEXTvaREGULAR;	}
 	}
 
     guiEnableWidget( afc->afcApplyButton,
@@ -838,17 +842,17 @@ static APP_TOGGLE_CALLBACK_H( appFontSubscriptToggled, w, voidafc, voidtbcs )
 	{
 	int		resetOther= 0;
 
-	if  ( taC->taSuperSub == DOCfontSUPERSCRIPT )
+	if  ( taC->taSuperSub == TEXTvaSUPERSCRIPT )
 	    { resetOther= 1;	}
 
-	taC->taSuperSub= DOCfontSUBSCRIPT;
+	taC->taSuperSub= TEXTvaSUBSCRIPT;
 
 	if  ( resetOther )
 	    { appGuiSetToggleState( afc->afcSubscriptToggle, 0 );	}
 	}
     else{
-	if  ( taC->taSuperSub == DOCfontSUBSCRIPT )
-	    { taC->taSuperSub= DOCfontREGULAR;	}
+	if  ( taC->taSuperSub == TEXTvaSUBSCRIPT )
+	    { taC->taSuperSub= TEXTvaREGULAR;	}
 	}
 
     guiEnableWidget( afc->afcApplyButton,
@@ -988,8 +992,12 @@ static APP_LIST_CALLBACK_H( appFontFamilyChosen, w, voidafc, voidlcs )
 
     if  ( changed )
 	{
+	afc->afcInProgrammaticChange++;
+
 	appFontReflectFamily( afc );
 	appFontShowExampleOfCurrent( afc );
+
+	afc->afcInProgrammaticChange--;
 	}
 
     return;
@@ -1183,11 +1191,13 @@ static void appFontMakeChooseForm(	APP_WIDGET			parent,
     /********************************************************************/
 
     appMakeColumnInRow( &(afc->afcFamilyColumn), afc->afcChooseRow,
-						familyPosition, familyColspan );
+				familyPosition, familyColspan );
 
-    appMakeLabelInColumn( &(afc->afcFamilyLabel), afc->afcFamilyColumn, aftr->aftrFamily );
+    appMakeLabelInColumn( &(afc->afcFamilyLabel),
+				afc->afcFamilyColumn, aftr->aftrFamily );
 
-    appGuiMakeListInColumn( &(afc->afcFamilyList), afc->afcFamilyColumn, listHeight,
+    appGuiMakeListInColumn( &(afc->afcFamilyList),
+		afc->afcFamilyColumn, listHeight,
 		appFontFamilyChosen, (APP_BUTTON_CALLBACK_T)0, (void *)afc );
 
     /***/
@@ -1195,7 +1205,8 @@ static void appFontMakeChooseForm(	APP_WIDGET			parent,
     appMakeColumnInRow( &(afc->afcFaceColumn), afc->afcChooseRow,
 						facePosition, faceColspan );
 
-    appMakeLabelInColumn( &(afc->afcFaceLabel), afc->afcFaceColumn, aftr->aftrFace );
+    appMakeLabelInColumn( &(afc->afcFaceLabel),
+					afc->afcFaceColumn, aftr->aftrFace );
 
     appGuiMakeListInColumn( &(afc->afcFaceList), afc->afcFaceColumn, listHeight,
 		appFontFaceChosen, (APP_BUTTON_CALLBACK_T)0, (void *)afc );
@@ -1207,9 +1218,10 @@ static void appFontMakeChooseForm(	APP_WIDGET			parent,
     appMakeColumnInRow( &(afc->afcSizeColumn), afc->afcChooseRow,
 						sizePosition, sizeColspan );
 
-    appMakeLabelInColumn( &(afc->afcSizeLabel), afc->afcSizeColumn, aftr->aftrSize );
+    appMakeLabelInColumn( &(afc->afcSizeLabel), afc->afcSizeColumn,
+							    aftr->aftrSize );
 
-    appGuiMakeListInColumn( &(afc->afcSizeList), afc->afcSizeColumn, listHeight- 3,
+    appGuiMakeListInColumn( &(afc->afcSizeList), afc->afcSizeColumn, 0,
 		appFontSizeChosen, (APP_BUTTON_CALLBACK_T)0, (void *)afc );
 
     appMakeTextInColumn( &(afc->afcSizeText), afc->afcSizeColumn,

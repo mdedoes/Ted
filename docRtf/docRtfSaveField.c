@@ -199,7 +199,16 @@ static int docRtfSaveNoteField(	RtfWriter *		rw,
     np= &(dn->dnNoteProperties);
 
     if  ( np->npAutoNumber )
-	{ docRtfWriteTag( rw, "chftn" );	}
+	{
+	docRtfWriteTag( rw, RTFtag_chftn );
+
+	if  ( paraNode->biTreeType == DOCinBODY			&&
+	      rw->rwTextAttribute.taSuperSub != TEXTvaREGULAR	)
+	    {
+	    docRtfWriteTag( rw, RTFtag_nosupersub );
+	    rw->rwTextAttribute.taSuperSub= TEXTvaREGULAR;
+	    }
+	}
     else{
 	docRtfWriteFontEncodedString( rw,
 				(const char *)np->npFixedText.mbBytes,
@@ -211,23 +220,28 @@ static int docRtfSaveNoteField(	RtfWriter *		rw,
 	const int		evenIfAbsent= 0;
 	const int		forcePar= 0;
 
-	switch( np->npTreeType )
-	    {
-	    case DOCinFOOTNOTE:
-		if  ( docRtfSaveDocumentTree( rw, RTFtag_footnote,
+	if  ( paraNode->biTreeType == DOCinFOOTNOTE	||
+	      paraNode->biTreeType == DOCinENDNOTE	)
+	    { SDEB(docTreeTypeStr(paraNode->biTreeType));	}
+	else{
+	    switch( np->npTreeType )
+		{
+		case DOCinFOOTNOTE:
+		    if  ( docRtfSaveDocumentTree( rw, RTFtag_footnote,
 			    &(dn->dnDocumentTree), evenIfAbsent, forcePar ) )
-		    { LDEB(np->npTreeType); return -1;	}
-		break;
+			{ LDEB(np->npTreeType); return -1;	}
+		    break;
 
-	    case DOCinENDNOTE:
-		if  ( docRtfSaveDocumentTree( rw, "footnote\\ftnalt",
+		case DOCinENDNOTE:
+		    if  ( docRtfSaveDocumentTree( rw, "footnote\\ftnalt",
 			    &(dn->dnDocumentTree), evenIfAbsent, forcePar ) )
-		    { LDEB(np->npTreeType); return -1;	}
-		break;
+			{ LDEB(np->npTreeType); return -1;	}
+		    break;
 
-	    default:
-		LDEB(np->npTreeType);
-		break;
+		default:
+		    LDEB(np->npTreeType);
+		    break;
+		}
 	    }
 	}
 

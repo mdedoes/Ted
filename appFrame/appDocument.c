@@ -504,7 +504,7 @@ int appSetupDocument(	EditApplication *	ea,
 
     ed->edDrawingSurface= guiDrawingSurfaceForNativeWidget(
 					    ed->edDocumentWidget.dwWidget,
-					    ea->eaAvoidFontconfig );
+					    ea->eaAvoidFontconfigInt > 0 );
     if  ( ! ed->edDrawingSurface )
 	{ PDEB(ed->edDrawingSurface); appFreeDocument( ea, ed ); return -1; }
 
@@ -724,17 +724,19 @@ void appDocFillMenu(	EditDocument *		ed )
 /*									*/
 /************************************************************************/
 
-EditDocument * appOpenDocument(	EditApplication *	ea,
-				APP_WIDGET		relative,
-				APP_WIDGET		option,
-				int			readOnly,
-				const MemoryBuffer *	filename )
+EditDocument * appOpenDocumentFile(	EditApplication *	ea,
+					APP_WIDGET		relative,
+					APP_WIDGET		option,
+					int			readOnly,
+					int			suggestStdin,
+					int			formatHint,
+					const MemoryBuffer *	filename )
     {
     EditDocument *		ed;
     int				fileReadonly= 0;
     AppFileMessageResources *	afmr= &(ea->eaFileMessageResources);
 
-    if  ( readOnly )
+    if  ( readOnly || suggestStdin )
 	{ fileReadonly= 1;	}
     else{
 	if  ( appTestFileReadable( filename ) )
@@ -758,7 +760,8 @@ EditDocument * appOpenDocument(	EditApplication *	ea,
     ed->edFileReadOnly= fileReadonly;
 
     if  ( (*ea->eaOpenDocument)( ea, ed->edPrivateData, &(ed->edFormat),
-				    relative, option, readOnly, filename ) )
+				relative, option,
+				readOnly, suggestStdin, formatHint, filename ) )
 	{ return (EditDocument *)0; }
 
     if  ( appSetupDocument( ea, ed ) )
@@ -767,6 +770,23 @@ EditDocument * appOpenDocument(	EditApplication *	ea,
     appSetDocument( ea, ed );
 
     return ed;
+    }
+
+EditDocument * appOpenDocument(	EditApplication *	ea,
+				APP_WIDGET		relative,
+				APP_WIDGET		option,
+				int			readOnly,
+				const MemoryBuffer *	filename )
+    {
+    const int	suggestStdin= 0;
+    int		formatHint= -1;
+
+    formatHint= appDocumentGetOpenFormat( (int *)0,
+			ea->eaFileExtensions, ea->eaFileExtensionCount,
+			filename, formatHint );
+
+    return appOpenDocumentFile( ea, relative, option,
+			    readOnly, suggestStdin, formatHint, filename );
     }
 
 int appNewDocument(	EditApplication *	ea,
@@ -781,7 +801,7 @@ int appNewDocument(	EditApplication *	ea,
     if  ( appMakeDocumentWindow( &ed, ea, readOnly, filename, filename ) )
 	{ LDEB(1); return -1;	}
 
-    if  ( (*ea->eaNewDocument)( ea, ed, filename ) )
+    if  ( (*ea->eaNewDocument)( ed, filename ) )
 	{ SDEB(title); return -1; }
 
     if  ( appSetupDocument( ea, ed ) )

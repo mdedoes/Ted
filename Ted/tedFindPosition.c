@@ -335,6 +335,8 @@ int tedFindPosition(	DocumentPosition *		dp,
     if  ( docDrawNode( (LayoutPosition *)0, selRootNode,
 				(void *)&pfj, &(pfj.pfjDrawingContext) ) )
 	{ LDEB(1); return 1;	}
+    if  ( ! pfj.pfjDocumentPosition.dpNode )
+	{ return 1;		}
 
     *dp= pfj.pfjDocumentPosition;
     *pg= pfj.pfjPositionGeometry;

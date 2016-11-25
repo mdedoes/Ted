@@ -16,7 +16,7 @@
 #   include	"docDocumentField.h"
 
 #   include	"docTocField.h"
-#   include	"docParaProperties.h"
+#   include	"docListDepth.h"
 #   include	<utilMemoryBufferPrintf.h>
 
 void docInitTocField(	TocField *	tf )
@@ -156,9 +156,9 @@ static int docTocFieldParseStyleNames(		TocField *	tf )
     {
     StyleNameLevel *	snl;
     const char *	from= utilMemoryBufferGetString( &(tf->tfStyleNamesBytes) );
-    const char *	comma= strchr( from, ',' );
     const char *	s;
     int			ns;
+    int			level= 0;
 
     ns= 0;
     s= from;
@@ -169,6 +169,8 @@ static int docTocFieldParseStyleNames(		TocField *	tf )
 	s++;
 	}
     ns++;
+    if  ( ns % 2 == 1 )
+	{ ns++;	}
     ns /= 2;
     tf->tfStyleNameLevels= (StyleNameLevel *)malloc(
 					    ns* sizeof(StyleNameLevel) );
@@ -177,32 +179,50 @@ static int docTocFieldParseStyleNames(		TocField *	tf )
 
     snl= tf->tfStyleNameLevels;
     tf->tfStyleNameLevelCount= 0;
-    while( comma )
+
+    while( *from )
 	{
-	char *		past= (char *)comma+ 1;
-	int		level;
 	int		len;
+	const char *	comma;
 
-	level= strtol( comma+ 1, &past, 10 );
-	if  ( past == comma+ 1 )
-	    { SDEB(comma); break;	}
-
-	level--;
-	if  ( level < 0 || level > PPoutlineDEEPEST )
-	    { LDEB(level); break;	}
-
-	len= comma- from;
-	snl->snlStyleName= (char *)malloc( len+ 1 );
-	if  ( ! snl->snlStyleName )
-	    { XDEB(snl->snlStyleName); break;	}
-	strncpy( snl->snlStyleName, from, len )[len]= '\0';
-	snl->snlLevel= level- 1;
-
-	tf->tfStyleNameLevelCount++; snl++;
-
-	from= past+ 1;
 	comma= strchr( from, ',' );
+	if  ( comma )
+	    {
+	    char *	past= (char *)comma+ 1;
+	    int		l;
+
+	    past= (char *)comma+ 1;
+	    len= comma- from;
+
+	    l= strtol( comma+ 1, &past, 10 );
+	    if  ( past == comma+ 1 )
+		{ SDEB(comma); level= PPoutlineBODYTEXT;	}
+	    else{ level= l- 1;			}
+
+	    comma= strchr( past, ',' );
+	    }
+	else{
+	    level= PPoutlineBODYTEXT;
+	    len= strlen( from );
+	    }
+
+	if  ( len == 0 || level < 0 || level > PPoutlineBODYTEXT )
+	    { SLLDEB(from,len,level);	}
+	else{
+	    snl->snlStyleName= (char *)malloc( len+ 1 );
+	    if  ( ! snl->snlStyleName )
+		{ XDEB(snl->snlStyleName); return -1;	}
+	    strncpy( snl->snlStyleName, from, len )[len]= '\0';
+	    snl->snlLevel= level;
+	    tf->tfStyleNameLevelCount++; snl++;
+	    }
+
+	if  ( ! comma )
+	    { break;	}
+
+	from= comma+ 1;
 	}
+
     return 0;
     }
 
@@ -225,7 +245,7 @@ int docFieldGetToc(	TocField *		tf,
     for ( comp= 1; comp < fi->fiComponentCount; ic++, comp++ )
 	{
 	if  ( docFieldHasMergeformat( fi, comp ) )
-	    { continue;	}
+	    { comp++; continue;	}
 
 	if  ( docComponentIsArgFlag( fi, comp, 'a' ) )
 	    {
@@ -258,6 +278,9 @@ int docFieldGetToc(	TocField *		tf,
 		{ LDEB(1); return -1;	}
 	    continue;
 	    }
+
+	if  ( docComponentIsFlag( fi, comp, 'c' ) )
+	    { continue;	}
 
 	if  ( docComponentIsArgFlag( fi, comp, 'f' ) )
 	    {
@@ -374,7 +397,6 @@ int docFieldGetToc(	TocField *		tf,
 		if  ( utilCopyMemoryBuffer( &(tf->tfStyleNamesBytes),
 							&(ic->icBuffer) ) )
 		    { LDEB(1); return -1;	}
-		ic++, comp++;
 		}
 
 	    continue;

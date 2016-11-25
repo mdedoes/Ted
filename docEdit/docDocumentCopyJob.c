@@ -9,6 +9,8 @@
 #   include	<stdlib.h>
 #   include	<stdio.h>
 
+#   include	<docPropertiesAdmin.h>
+
 #   include	<appDebugon.h>
 
 #   include	<docBuf.h>
@@ -16,6 +18,7 @@
 #   include	<docParaRulerAdmin.h>
 #   include	<docBorderPropertyAdmin.h>
 #   include	<docItemShadingAdmin.h>
+#   include	<docCellPropertyAdmin.h>
 
 void docInitDocumentCopyJob(	DocumentCopyJob *	dcj )
     {
@@ -114,70 +117,104 @@ static int docSetAttributeMap(	DocumentAttributeMap *		dam,
 				BufferDocument *		bdTo,
 				BufferDocument *		bdFrom )
     {
-    int *		fontMap= (int *)0;
-    int *		colorMap= (int *)0;
-    int *		bmap= (int *)0;
-    int *		shadingMap= (int *)0;
-    int *		frameMap= (int *)0;
-    int *		lsmap= (int *)0;
-    int *		rulerMap= (int *)0;
+    int		rval= 0;
+
+    int *	fontMap= (int *)0;
+    int *	colorMap= (int *)0;
+    int *	borderMap= (int *)0;
+    int *	shadingMap= (int *)0;
+    int *	frameMap= (int *)0;
+    int *	cellMap= (int *)0;
+    int *	lsmap= (int *)0;
+    int *	rulerMap= (int *)0;
+
+    const DocumentPropertyLists *	dplFrom= bdFrom->bdPropertyLists;
+    DocumentPropertyLists *		dplTo= bdTo->bdPropertyLists;
 
     if  ( docMergeColorTables( &colorMap, bdTo, bdFrom ) )
-	{ LDEB(1); return -1;	}
+	{ LDEB(1); rval= -1; goto ready;	}
 
-    if  ( docMergeBorderPropertiesLists( &bmap, colorMap,
-					&(bdTo->bdBorderPropertyList),
-					&(bdFrom->bdBorderPropertyList) ) )
-	{ LDEB(1); return -1;	}
+    if  ( docMergeBorderPropertiesLists( &borderMap, colorMap,
+					&(dplTo->dplBorderPropertyList),
+					&(dplFrom->dplBorderPropertyList) ) )
+	{ LDEB(1); rval= -1; goto ready;	}
 
     if  ( docMergeItemShadingLists( &shadingMap, colorMap,
-					&(bdTo->bdItemShadingList),
-					&(bdFrom->bdItemShadingList) ) )
-	{ LDEB(1); return -1;	}
+					&(dplTo->dplItemShadingList),
+					&(dplFrom->dplItemShadingList) ) )
+	{ LDEB(1); rval= -1; goto ready;	}
 
     if  ( docMergeFramePropertyLists( &frameMap,
-					&(bdTo->bdFramePropertyList),
-					&(bdFrom->bdFramePropertyList) ) )
-	{ LDEB(1); return -1;	}
+					&(dplTo->dplFramePropertyList),
+					&(dplFrom->dplFramePropertyList) ) )
+	{ LDEB(1); rval= -1; goto ready;	}
 
     if  ( docMergeTabstopListLists( &rulerMap,
-					&(bdTo->bdTabStopListList),
-					&(bdFrom->bdTabStopListList) ) )
-	{ LDEB(1); return -1;	}
+					&(dplTo->dplTabStopListList),
+					&(dplFrom->dplTabStopListList) ) )
+	{ LDEB(1); rval= -1; goto ready;	}
+
+    if  ( docMergeCellPropertiesLists( &cellMap, borderMap, shadingMap,
+					&(dplTo->dplCellPropertyList),
+					&(dplFrom->dplCellPropertyList) ) )
+	{ LDEB(1); rval= -1; goto ready;	}
 
     if  ( docMergeDocumentLists( &fontMap, &lsmap, bdTo, bdFrom,
 						    colorMap, rulerMap ) )
-	{ LDEB(1); return -1;	}
+	{ LDEB(1); rval= -1; goto ready;	}
 
     if  ( dam->damFontMap )
 	{ free( dam->damFontMap );	}
-    dam->damFontMap= fontMap;
+    dam->damFontMap= fontMap; fontMap= (int *)0; /* steal */
 
     if  ( dam->damColorMap )
 	{ free( dam->damColorMap );	}
-    dam->damColorMap= colorMap;
+    dam->damColorMap= colorMap; colorMap= (int *)0; /* steal */
 
     if  ( dam->damRulerMap )
 	{ free( dam->damRulerMap );	}
-    dam->damRulerMap= rulerMap;
+    dam->damRulerMap= rulerMap; rulerMap= (int *)0; /* steal */
 
     if  ( dam->damBorderMap )
 	{ free( dam->damBorderMap );	}
-    dam->damBorderMap= bmap;
+    dam->damBorderMap= borderMap; borderMap= (int *)0; /* steal */
 
     if  ( dam->damShadingMap )
 	{ free( dam->damShadingMap );	}
-    dam->damShadingMap= shadingMap;
+    dam->damShadingMap= shadingMap; shadingMap= (int *)0; /* steal */
 
     if  ( dam->damFrameMap )
 	{ free( dam->damFrameMap );	}
-    dam->damFrameMap= frameMap;
+    dam->damFrameMap= frameMap; frameMap= (int *)0; /* steal */
+
+    if  ( dam->damCellMap )
+	{ free( dam->damCellMap );	}
+    dam->damCellMap= cellMap; cellMap= (int *)0; /* steal */
 
     if  ( dam->damListStyleMap )
 	{ free( dam->damListStyleMap );	}
-    dam->damListStyleMap= lsmap;
+    dam->damListStyleMap= lsmap; lsmap= (int *)0;/* steal */
 
-    return 0;
+  ready:
+
+    if  ( fontMap )
+	{ free( fontMap );	}
+    if  ( colorMap )
+	{ free( colorMap );	}
+    if  ( borderMap )
+	{ free( borderMap );	}
+    if  ( shadingMap )
+	{ free( shadingMap );	}
+    if  ( frameMap )
+	{ free( frameMap );	}
+    if  ( cellMap )
+	{ free( cellMap );	}
+    if  ( lsmap )
+	{ free( lsmap );	}
+    if  ( rulerMap )
+	{ free( rulerMap );	}
+
+    return rval;
     }
 
 /************************************************************************/

@@ -1,5 +1,4 @@
 CC=@CC@
-ICONV_CFLAGS=@ICONV_CFLAGS@
 
 WFLAGS=	-Wall			\
 	-Wextra			\
@@ -21,7 +20,6 @@ WFLAGS=	-Wall			\
 	-Wno-sign-compare
 
 INCLUDES=			\
-	$(ICONV_CFLAGS)		\
 	-I. -I../include	\
 	-I../bitmap		\
 	-I../utilPs		\
@@ -52,11 +50,6 @@ OBS	=	\
 
 ../lib/drawMeta.a:	$(OBS)
 	ar ruv $@ $(OBS) && @RANLIB@ $@
-
-ACLOCAL=	../configure/iconv.m4
-
-aclocal.m4:	$(ACLOCAL)
-	cat $(ACLOCAL) > $@
 
 duplicates:
 	nm *.o | grep -w [Tt] | \
@@ -106,11 +99,11 @@ drawMetafileImpl.o: \
     ../utilPs/psFontInfo.h \
     ../appUtil/utilIndexSet.h \
     ../appUtil/utilIndexMapping.h \
-    ../textEncoding/utilOfficeCharset.h \
+    ../textEncoding/textOfficeCharset.h \
     ../appUtil/sioGeneral.h \
     ../bitmap/bmWmf.h \
     ../bitmap/bmcolor.h \
-    ../textEncoding/textConverter.h \
+    ../textEncoding/textConverterImpl.h \
     ../appUtil/geoAffineTransform.h \
     ../docFont/utilDocFontList.h \
     ../docFont/utilDocFont.h \
@@ -140,11 +133,11 @@ drawMetafilePs.o: \
     ../utilPs/psFontInfo.h \
     ../appUtil/utilIndexSet.h \
     ../appUtil/utilIndexMapping.h \
-    ../textEncoding/utilOfficeCharset.h \
+    ../textEncoding/textOfficeCharset.h \
     ../appUtil/sioGeneral.h \
     ../bitmap/bmWmf.h \
     ../bitmap/bmcolor.h \
-    ../textEncoding/textConverter.h \
+    ../textEncoding/textConverterImpl.h \
     ../appUtil/geoAffineTransform.h \
     ../docFont/utilDocFontList.h \
     ../docFont/utilDocFont.h \
@@ -210,7 +203,7 @@ drawMetafilePsProcs.o: \
     ../docFont/utilDocFontList.h \
     ../docFont/utilDocFont.h \
     ../utilPs/psFontInfo.h \
-    ../textEncoding/utilOfficeCharset.h \
+    ../textEncoding/textOfficeCharset.h \
     ../utilPs/psPostScriptFontList.h \
     ../utilPs/textAttribute.h \
     ../include/appDebugon.h \
@@ -231,11 +224,11 @@ drawMetafileSvg.o: \
     ../utilPs/psFontInfo.h \
     ../appUtil/utilIndexSet.h \
     ../appUtil/utilIndexMapping.h \
-    ../textEncoding/utilOfficeCharset.h \
+    ../textEncoding/textOfficeCharset.h \
     ../appUtil/sioGeneral.h \
     ../bitmap/bmWmf.h \
     ../bitmap/bmcolor.h \
-    ../textEncoding/textConverter.h \
+    ../textEncoding/textConverterImpl.h \
     ../appUtil/geoAffineTransform.h \
     ../docFont/utilDocFontList.h \
     ../docFont/utilDocFont.h \
@@ -278,11 +271,11 @@ drawPlayEmf.o: \
     ../utilPs/psFontInfo.h \
     ../appUtil/utilIndexSet.h \
     ../appUtil/utilIndexMapping.h \
-    ../textEncoding/utilOfficeCharset.h \
+    ../textEncoding/textOfficeCharset.h \
     ../appUtil/sioGeneral.h \
     ../bitmap/bmWmf.h \
     ../bitmap/bmcolor.h \
-    ../textEncoding/textConverter.h \
+    ../textEncoding/textConverterImpl.h \
     ../appUtil/geoAffineTransform.h \
     ../docFont/utilDocFontList.h \
     ../docFont/utilDocFont.h \
@@ -316,11 +309,11 @@ drawPlayMacPict.o: \
     ../utilPs/psFontInfo.h \
     ../appUtil/utilIndexSet.h \
     ../appUtil/utilIndexMapping.h \
-    ../textEncoding/utilOfficeCharset.h \
+    ../textEncoding/textOfficeCharset.h \
     ../appUtil/sioGeneral.h \
     ../bitmap/bmWmf.h \
     ../bitmap/bmcolor.h \
-    ../textEncoding/textConverter.h \
+    ../textEncoding/textConverterImpl.h \
     ../appUtil/geoAffineTransform.h \
     ../docFont/utilDocFontList.h \
     ../docFont/utilDocFont.h \
@@ -358,11 +351,11 @@ drawPlayWmf.o: \
     ../utilPs/psFontInfo.h \
     ../appUtil/utilIndexSet.h \
     ../appUtil/utilIndexMapping.h \
-    ../textEncoding/utilOfficeCharset.h \
+    ../textEncoding/textOfficeCharset.h \
     ../appUtil/sioGeneral.h \
     ../bitmap/bmWmf.h \
     ../bitmap/bmcolor.h \
-    ../textEncoding/textConverter.h \
+    ../textEncoding/textConverterImpl.h \
     ../appUtil/geoAffineTransform.h \
     ../docFont/utilDocFontList.h \
     ../docFont/utilDocFont.h \
@@ -398,11 +391,11 @@ drawWinMeta.o: \
     ../utilPs/psFontInfo.h \
     ../appUtil/utilIndexSet.h \
     ../appUtil/utilIndexMapping.h \
-    ../textEncoding/utilOfficeCharset.h \
+    ../textEncoding/textOfficeCharset.h \
     ../appUtil/sioGeneral.h \
     ../bitmap/bmWmf.h \
     ../bitmap/bmcolor.h \
-    ../textEncoding/textConverter.h \
+    ../textEncoding/textConverterImpl.h \
     ../appUtil/geoAffineTransform.h \
     ../docFont/utilDocFontList.h \
     ../docFont/utilDocFont.h \
@@ -420,6 +413,7 @@ drawWinMeta.o: \
     ../appUtil/geoUnits.h \
     ../bitmap/bmio.h \
     ../bitmap/bitmap.h \
+    ../textEncoding/textConverter.h \
     ../include/appDebugon.h \
     ../include/appDebug.h
 
@@ -440,7 +434,7 @@ drawWinMetaImg.o: \
     ../utilPs/psFontInfo.h \
     ../appUtil/utilIndexSet.h \
     ../appUtil/utilIndexMapping.h \
-    ../textEncoding/utilOfficeCharset.h \
+    ../textEncoding/textOfficeCharset.h \
     ../utilPs/psPostScriptFontList.h \
     ../utilPs/psFontFamily.h \
     ../utilPs/psFontInfo.h \
@@ -450,7 +444,7 @@ drawWinMetaImg.o: \
     ../docFont/utilDocFont.h \
     ../bitmap/bmWmf.h \
     ../bitmap/bmcolor.h \
-    ../textEncoding/textConverter.h \
+    ../textEncoding/textConverterImpl.h \
     ../appUtil/geoAffineTransform.h \
     ../docFont/utilDocFontList.h \
     ../appUtil/sioEndian.h \
@@ -480,7 +474,7 @@ drawWinMetaPsFonts.o: \
     ../docFont/utilDocFontList.h \
     ../docFont/utilDocFont.h \
     ../utilPs/psFontInfo.h \
-    ../textEncoding/utilOfficeCharset.h \
+    ../textEncoding/textOfficeCharset.h \
     ../utilPs/psPostScriptFontList.h \
     ../utilPs/psFontFamily.h \
     ../utilPs/textAttribute.h \
@@ -488,7 +482,7 @@ drawWinMetaPsFonts.o: \
     ../docFont/utilDocFont.h \
     ../bitmap/bmWmf.h \
     ../bitmap/bmcolor.h \
-    ../textEncoding/textConverter.h \
+    ../textEncoding/textConverterImpl.h \
     ../appUtil/geoAffineTransform.h \
     ../docFont/utilDocFontList.h \
     ../bitmap/bmWmfIo.h \
@@ -514,11 +508,11 @@ drawWinMetaText.o: \
     ../utilPs/psFontInfo.h \
     ../appUtil/utilIndexSet.h \
     ../appUtil/utilIndexMapping.h \
-    ../textEncoding/utilOfficeCharset.h \
+    ../textEncoding/textOfficeCharset.h \
     ../appUtil/sioGeneral.h \
     ../bitmap/bmWmf.h \
     ../bitmap/bmcolor.h \
-    ../textEncoding/textConverter.h \
+    ../textEncoding/textConverterImpl.h \
     ../appUtil/geoAffineTransform.h \
     ../docFont/utilDocFontList.h \
     ../docFont/utilDocFont.h \
@@ -533,6 +527,7 @@ drawWinMetaText.o: \
     ../appUtil/sioEndian.h \
     ../appUtil/sioGeneral.h \
     ../textEncoding/uniUtf8.h \
+    ../textEncoding/textConverter.h \
     ../include/appDebugon.h \
     ../include/appDebug.h
 

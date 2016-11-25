@@ -33,7 +33,8 @@ WFLAGS=	-Wall			\
 	-Wredundant-decls	\
 	-Wno-unused-parameter	\
 	-Wno-sign-compare	\
-	-isystem /usr/include/gtk-2.0
+	-isystem /usr/include/gtk-2.0 \
+	-DGTK_DISABLE_SINGLE_INCLUDES
 
 INCLUDES=			\
 	$(FT2_CFLAGS)		\
@@ -336,7 +337,6 @@ reconfigure:
 ACLOCAL=				\
 	../configure/platform.m4	\
 	../configure/static.m4		\
-	../configure/qt.m4		\
 	../configure/gtk.m4		\
 	../configure/freetype.m4	\
 	../configure/fontconfig.m4	\
@@ -381,7 +381,7 @@ calls:
 		../docFont/*.o \
 		*.o
 
-# deps -I../include -I../guiInterface -I../docHtml -I../docLayout -I../docRtf -I../docEdit -I../docBuf -I../docBase -I../drawMeta -I../appFrame -I../utilPs -I../docFont -I../textEncoding -I../appUtil -I/usr/X11R6/include -I../bitmap -I../ind -I/usr/include/gtk-2.0 -I/usr/lib/gtk-2.0/include -I/usr/include/atk-1.0 -I/usr/include/cairo -I/usr/include/pango-1.0 -I/usr/include/glib-2.0 -I/usr/lib/glib-2.0/include  -I/usr/include/freetype2
+# deps -I../include -I../guiInterface -I../docHtml -I../docLayout -I../docRtf -I../docEdit -I../docBuf -I../docBase -I../drawMeta -I../appFrame -I../utilPs -I../docFont -I../textEncoding -I../appUtil -I/usr/X11R6/include -I../bitmap -I../ind -I/usr/include/gtk-2.0 -I/usr/lib/x86_64-linux-gnu/gtk-2.0/include -I/usr/include/atk-1.0 -I/usr/include/cairo -I/usr/include/gdk-pixbuf-2.0 -I/usr/include/pango-1.0 -I/usr/include/gio-unix-2.0/ -I/usr/include/glib-2.0 -I/usr/lib/x86_64-linux-gnu/glib-2.0/include -I/usr/include/pixman-1 -I/usr/include/freetype2 -I/usr/include/libpng12
 ################################# !! sh
 
 docScreenFont.o: \
@@ -397,7 +397,7 @@ docScreenFont.o: \
     ../appUtil/utilIndexSet.h \
     ../appUtil/utilIndexMapping.h \
     ../appUtil/utilMemoryBuffer.h \
-    ../textEncoding/utilOfficeCharset.h \
+    ../textEncoding/textOfficeCharset.h \
     ../utilPs/textAttribute.h \
     ../appUtil/utilPropMask.h \
     ../utilPs/psPostScriptFontList.h \
@@ -409,19 +409,6 @@ docScreenFont.o: \
     ../appUtil/utilColor.h \
     ../appUtil/utilPalette.h \
     ../appUtil/utilColor.h \
-    ../docFont/utilDocFont.h \
-    ../docBuf/docShape.h \
-    ../appUtil/geoAffineTransform.h \
-    ../docBase/docShapeProperties.h \
-    ../docBase/docPictureProperties.h \
-    ../docBuf/docDocumentTree.h \
-    ../docBase/docDocumentField.h \
-    ../docBase/docFieldInstructions.h \
-    ../docBase/docSelectionScope.h \
-    ../docBase/docEditRange.h \
-    ../docBase/docEditPosition.h \
-    ../docBase/docListNumberTree.h \
-    ../docBase/docShapeDrawing.h \
     ../docBase/docFramePropertiesAdmin.h \
     ../docBase/docFrameProperties.h \
     ../docBase/docPropVal.h \
@@ -459,7 +446,14 @@ docScreenFont.o: \
     ../docBase/docSelectionScope.h \
     ../docBase/docEditPosition.h \
     ../docBase/docEditRange.h \
+    ../docBase/docEditPosition.h \
     ../docBuf/docTableRectangle.h \
+    ../docBuf/docDocumentTree.h \
+    ../docBase/docDocumentField.h \
+    ../docBase/docFieldInstructions.h \
+    ../docBase/docSelectionScope.h \
+    ../docBase/docEditRange.h \
+    ../docBase/docListNumberTree.h \
     ../docBase/docListTable.h \
     ../docLayout/docParticuleData.h \
     ../docBuf/docStripFrame.h \
@@ -473,10 +467,10 @@ docScreenFont.o: \
     ../docLayout/docSelectionGeometry.h \
     ../docLayout/docScreenLayout.h \
     ../docLayout/docLayout.h \
-    ../utilPs/textAttributeAdmin.h \
-    ../utilPs/textAttribute.h \
     ../utilPs/textAttributeUtil.h \
+    ../utilPs/textAttribute.h \
     ../guiInterface/drawDrawingSurface.h \
+    ../appUtil/geoAffineTransform.h \
     ../include/appDebugon.h \
     ../include/appDebug.h
 
@@ -499,27 +493,11 @@ docSpell.o: \
     ../appUtil/utilPalette.h \
     ../appUtil/utilColor.h \
     ../appUtil/geo2DInteger.h \
-    ../docFont/utilDocFont.h \
-    ../utilPs/psFontInfo.h \
-    ../appUtil/utilIndexSet.h \
-    ../appUtil/utilIndexMapping.h \
-    ../textEncoding/utilOfficeCharset.h \
     ../utilPs/psPostScriptFontList.h \
     ../utilPs/psFontFamily.h \
     ../utilPs/psFontInfo.h \
-    ../docBuf/docShape.h \
-    ../appUtil/geoAffineTransform.h \
-    ../docBase/docShapeProperties.h \
-    ../docBase/docPictureProperties.h \
-    ../appUtil/utilPropMask.h \
-    ../docBuf/docDocumentTree.h \
-    ../docBase/docDocumentField.h \
-    ../docBase/docFieldInstructions.h \
-    ../docBase/docSelectionScope.h \
-    ../docBase/docEditRange.h \
-    ../docBase/docEditPosition.h \
-    ../docBase/docListNumberTree.h \
-    ../docBase/docShapeDrawing.h \
+    ../appUtil/utilIndexSet.h \
+    ../appUtil/utilIndexMapping.h \
     ../docBase/docFramePropertiesAdmin.h \
     ../docBase/docFrameProperties.h \
     ../docBase/docPropVal.h \
@@ -530,6 +508,7 @@ docSpell.o: \
     ../appUtil/utilIndexSet.h \
     ../docBase/docStyleSheet.h \
     ../docBase/docStyle.h \
+    ../appUtil/utilPropMask.h \
     ../docBase/docSectProperties.h \
     ../appUtil/utilDocumentGeometry.h \
     ../appUtil/utilPropMask.h \
@@ -545,6 +524,8 @@ docSpell.o: \
     ../docBase/docDocumentProperties.h \
     ../docFont/utilDocFontList.h \
     ../docFont/utilDocFont.h \
+    ../utilPs/psFontInfo.h \
+    ../textEncoding/textOfficeCharset.h \
     ../docBase/docListAdmin.h \
     ../docBase/docListTable.h \
     ../docBase/docListOverrideTable.h \
@@ -560,7 +541,14 @@ docSpell.o: \
     ../docBase/docSelectionScope.h \
     ../docBase/docEditPosition.h \
     ../docBase/docEditRange.h \
+    ../docBase/docEditPosition.h \
     ../docBuf/docTableRectangle.h \
+    ../docBuf/docDocumentTree.h \
+    ../docBase/docDocumentField.h \
+    ../docBase/docFieldInstructions.h \
+    ../docBase/docSelectionScope.h \
+    ../docBase/docEditRange.h \
+    ../docBase/docListNumberTree.h \
     ../docBase/docListTable.h \
     ../docBuf/docParaParticules.h \
     ../docBuf/docBuf.h \
@@ -611,19 +599,6 @@ tedApp.o: \
     ../utilPs/psFontInfo.h \
     ../appUtil/utilPropMask.h \
     ../docBuf/docBuf.h \
-    ../docFont/utilDocFont.h \
-    ../textEncoding/utilOfficeCharset.h \
-    ../docBuf/docShape.h \
-    ../docBase/docShapeProperties.h \
-    ../docBase/docPictureProperties.h \
-    ../docBuf/docDocumentTree.h \
-    ../docBase/docDocumentField.h \
-    ../docBase/docFieldInstructions.h \
-    ../docBase/docSelectionScope.h \
-    ../docBase/docEditRange.h \
-    ../docBase/docEditPosition.h \
-    ../docBase/docListNumberTree.h \
-    ../docBase/docShapeDrawing.h \
     ../docBase/docFramePropertiesAdmin.h \
     ../docBase/docFrameProperties.h \
     ../docBase/docPropVal.h \
@@ -646,6 +621,7 @@ tedApp.o: \
     ../docBase/docDocumentProperties.h \
     ../docFont/utilDocFontList.h \
     ../docFont/utilDocFont.h \
+    ../textEncoding/textOfficeCharset.h \
     ../docBase/docListAdmin.h \
     ../docBase/docListTable.h \
     ../docBase/docListOverrideTable.h \
@@ -661,7 +637,14 @@ tedApp.o: \
     ../docBase/docSelectionScope.h \
     ../docBase/docEditPosition.h \
     ../docBase/docEditRange.h \
+    ../docBase/docEditPosition.h \
     ../docBuf/docTableRectangle.h \
+    ../docBuf/docDocumentTree.h \
+    ../docBase/docDocumentField.h \
+    ../docBase/docFieldInstructions.h \
+    ../docBase/docSelectionScope.h \
+    ../docBase/docEditRange.h \
+    ../docBase/docListNumberTree.h \
     ../docBase/docListTable.h \
     tedEdit.h \
     ../docEdit/docEdit.h \
@@ -683,9 +666,9 @@ tedApp.o: \
     tedSelect.h \
     tedAppFront.h \
     ../docBase/docRowProperties.h \
+    ../docBase/docPictureProperties.h \
     ../docBase/docNoteProperties.h \
     ../docBase/docSectProperties.h \
-    ../docBase/docTabStop.h \
     ../docBase/docTocField.h \
     ../docBase/docHyperlinkField.h \
     ../docFont/docExpandedTextAttribute.h \
@@ -741,19 +724,6 @@ tedAppFont.o: \
     ../utilPs/psFontInfo.h \
     ../appUtil/utilPropMask.h \
     ../docBuf/docBuf.h \
-    ../docFont/utilDocFont.h \
-    ../textEncoding/utilOfficeCharset.h \
-    ../docBuf/docShape.h \
-    ../docBase/docShapeProperties.h \
-    ../docBase/docPictureProperties.h \
-    ../docBuf/docDocumentTree.h \
-    ../docBase/docDocumentField.h \
-    ../docBase/docFieldInstructions.h \
-    ../docBase/docSelectionScope.h \
-    ../docBase/docEditRange.h \
-    ../docBase/docEditPosition.h \
-    ../docBase/docListNumberTree.h \
-    ../docBase/docShapeDrawing.h \
     ../docBase/docFramePropertiesAdmin.h \
     ../docBase/docFrameProperties.h \
     ../docBase/docPropVal.h \
@@ -776,6 +746,7 @@ tedAppFont.o: \
     ../docBase/docDocumentProperties.h \
     ../docFont/utilDocFontList.h \
     ../docFont/utilDocFont.h \
+    ../textEncoding/textOfficeCharset.h \
     ../docBase/docListAdmin.h \
     ../docBase/docListTable.h \
     ../docBase/docListOverrideTable.h \
@@ -791,13 +762,20 @@ tedAppFont.o: \
     ../docBase/docSelectionScope.h \
     ../docBase/docEditPosition.h \
     ../docBase/docEditRange.h \
+    ../docBase/docEditPosition.h \
     ../docBuf/docTableRectangle.h \
+    ../docBuf/docDocumentTree.h \
+    ../docBase/docDocumentField.h \
+    ../docBase/docFieldInstructions.h \
+    ../docBase/docSelectionScope.h \
+    ../docBase/docEditRange.h \
+    ../docBase/docListNumberTree.h \
     ../docBase/docListTable.h \
     tedDocFront.h \
     ../docBase/docRowProperties.h \
+    ../docBase/docPictureProperties.h \
     ../docBase/docNoteProperties.h \
     ../docBase/docSectProperties.h \
-    ../docBase/docTabStop.h \
     ../docBase/docTocField.h \
     ../docBase/docHyperlinkField.h \
     ../docFont/docExpandedTextAttribute.h \
@@ -857,14 +835,13 @@ tedAppFront.o: \
     ../docBase/docDocumentProperties.h \
     ../docFont/utilDocFontList.h \
     ../docFont/utilDocFont.h \
-    ../textEncoding/utilOfficeCharset.h \
+    ../textEncoding/textOfficeCharset.h \
     ../docBase/docNotesProperties.h \
     ../docBase/docListAdmin.h \
     ../docBase/docListTable.h \
     ../docBase/docListOverrideTable.h \
     ../docBase/docNoteProperties.h \
     ../docBase/docSectProperties.h \
-    ../docBase/docTabStop.h \
     ../docBase/docDocumentField.h \
     ../docBase/docFieldInstructions.h \
     ../docBase/docSelectionScope.h \
@@ -896,12 +873,6 @@ tedAppFront.o: \
     ../appUtil/appUtilConfig.h \
     ../docBuf/docRecalculateFields.h \
     ../docBuf/docBuf.h \
-    ../docFont/utilDocFont.h \
-    ../docBuf/docShape.h \
-    ../docBase/docShapeProperties.h \
-    ../docBuf/docDocumentTree.h \
-    ../docBase/docListNumberTree.h \
-    ../docBase/docShapeDrawing.h \
     ../docBase/docFramePropertiesAdmin.h \
     ../docBase/docFrameProperties.h \
     ../docBase/docPropVal.h \
@@ -919,6 +890,8 @@ tedAppFront.o: \
     ../docBuf/docDrawingShapeList.h \
     ../docBase/docInsertedObjectList.h \
     ../docBuf/docSelect.h \
+    ../docBuf/docDocumentTree.h \
+    ../docBase/docListNumberTree.h \
     ../docBase/docListTable.h \
     tedApp.h \
     ../docBuf/docBuf.h \
@@ -958,20 +931,6 @@ tedBookmarkList.o: \
     ../utilPs/psFontFamily.h \
     ../utilPs/psFontInfo.h \
     ../docBuf/docBuf.h \
-    ../docFont/utilDocFont.h \
-    ../textEncoding/utilOfficeCharset.h \
-    ../docBuf/docShape.h \
-    ../docBase/docShapeProperties.h \
-    ../docBase/docPictureProperties.h \
-    ../appUtil/utilPropMask.h \
-    ../docBuf/docDocumentTree.h \
-    ../docBase/docDocumentField.h \
-    ../docBase/docFieldInstructions.h \
-    ../docBase/docSelectionScope.h \
-    ../docBase/docEditRange.h \
-    ../docBase/docEditPosition.h \
-    ../docBase/docListNumberTree.h \
-    ../docBase/docShapeDrawing.h \
     ../docBase/docFramePropertiesAdmin.h \
     ../docBase/docFrameProperties.h \
     ../docBase/docPropVal.h \
@@ -982,6 +941,7 @@ tedBookmarkList.o: \
     ../appUtil/utilIndexSet.h \
     ../docBase/docStyleSheet.h \
     ../docBase/docStyle.h \
+    ../appUtil/utilPropMask.h \
     ../docBase/docSectProperties.h \
     ../docBase/docNotesProperties.h \
     ../docBase/docRowProperties.h \
@@ -994,6 +954,7 @@ tedBookmarkList.o: \
     ../docBase/docDocumentProperties.h \
     ../docFont/utilDocFontList.h \
     ../docFont/utilDocFont.h \
+    ../textEncoding/textOfficeCharset.h \
     ../docBase/docListAdmin.h \
     ../docBase/docListTable.h \
     ../docBase/docListOverrideTable.h \
@@ -1009,13 +970,20 @@ tedBookmarkList.o: \
     ../docBase/docSelectionScope.h \
     ../docBase/docEditPosition.h \
     ../docBase/docEditRange.h \
+    ../docBase/docEditPosition.h \
     ../docBuf/docTableRectangle.h \
+    ../docBuf/docDocumentTree.h \
+    ../docBase/docDocumentField.h \
+    ../docBase/docFieldInstructions.h \
+    ../docBase/docSelectionScope.h \
+    ../docBase/docEditRange.h \
+    ../docBase/docListNumberTree.h \
     ../docBase/docListTable.h \
     tedAppFront.h \
     ../docBase/docRowProperties.h \
+    ../docBase/docPictureProperties.h \
     ../docBase/docNoteProperties.h \
     ../docBase/docSectProperties.h \
-    ../docBase/docTabStop.h \
     ../docBase/docTocField.h \
     ../docBase/docHyperlinkField.h \
     ../docFont/docExpandedTextAttribute.h \
@@ -1065,14 +1033,13 @@ tedBookmarkTool.o: \
     ../docBase/docDocumentProperties.h \
     ../docFont/utilDocFontList.h \
     ../docFont/utilDocFont.h \
-    ../textEncoding/utilOfficeCharset.h \
+    ../textEncoding/textOfficeCharset.h \
     ../docBase/docNotesProperties.h \
     ../docBase/docListAdmin.h \
     ../docBase/docListTable.h \
     ../docBase/docListOverrideTable.h \
     ../docBase/docNoteProperties.h \
     ../docBase/docSectProperties.h \
-    ../docBase/docTabStop.h \
     ../docBase/docDocumentField.h \
     ../docBase/docFieldInstructions.h \
     ../docBase/docSelectionScope.h \
@@ -1089,12 +1056,6 @@ tedBookmarkTool.o: \
     ../appFrame/appTool.h \
     ../appFrame/guiOptionmenu.h \
     ../docBuf/docBuf.h \
-    ../docFont/utilDocFont.h \
-    ../docBuf/docShape.h \
-    ../docBase/docShapeProperties.h \
-    ../docBuf/docDocumentTree.h \
-    ../docBase/docListNumberTree.h \
-    ../docBase/docShapeDrawing.h \
     ../docBase/docFramePropertiesAdmin.h \
     ../docBase/docFrameProperties.h \
     ../docBase/docPropVal.h \
@@ -1122,6 +1083,8 @@ tedBookmarkTool.o: \
     ../docBase/docEditPosition.h \
     ../docBase/docEditRange.h \
     ../docBuf/docTableRectangle.h \
+    ../docBuf/docDocumentTree.h \
+    ../docBase/docListNumberTree.h \
     ../docBase/docListTable.h \
     ../docEdit/docSelectionDescription.h \
     ../docBuf/docTableRectangle.h \
@@ -1151,27 +1114,11 @@ tedBorderTool.o: \
     ../appUtil/utilColor.h \
     ../appUtil/utilMemoryBuffer.h \
     ../appUtil/geo2DInteger.h \
-    ../docFont/utilDocFont.h \
-    ../utilPs/psFontInfo.h \
-    ../appUtil/utilIndexSet.h \
-    ../appUtil/utilIndexMapping.h \
-    ../textEncoding/utilOfficeCharset.h \
     ../utilPs/psPostScriptFontList.h \
     ../utilPs/psFontFamily.h \
     ../utilPs/psFontInfo.h \
-    ../docBuf/docShape.h \
-    ../appUtil/geoAffineTransform.h \
-    ../docBase/docShapeProperties.h \
-    ../docBase/docPictureProperties.h \
-    ../appUtil/utilPropMask.h \
-    ../docBuf/docDocumentTree.h \
-    ../docBase/docDocumentField.h \
-    ../docBase/docFieldInstructions.h \
-    ../docBase/docSelectionScope.h \
-    ../docBase/docEditRange.h \
-    ../docBase/docEditPosition.h \
-    ../docBase/docListNumberTree.h \
-    ../docBase/docShapeDrawing.h \
+    ../appUtil/utilIndexSet.h \
+    ../appUtil/utilIndexMapping.h \
     ../docBase/docFramePropertiesAdmin.h \
     ../docBase/docFrameProperties.h \
     ../docBase/docPropVal.h \
@@ -1182,6 +1129,7 @@ tedBorderTool.o: \
     ../appUtil/utilIndexSet.h \
     ../docBase/docStyleSheet.h \
     ../docBase/docStyle.h \
+    ../appUtil/utilPropMask.h \
     ../docBase/docSectProperties.h \
     ../appUtil/utilDocumentGeometry.h \
     ../appUtil/utilPropMask.h \
@@ -1197,6 +1145,8 @@ tedBorderTool.o: \
     ../docBase/docDocumentProperties.h \
     ../docFont/utilDocFontList.h \
     ../docFont/utilDocFont.h \
+    ../utilPs/psFontInfo.h \
+    ../textEncoding/textOfficeCharset.h \
     ../docBase/docListAdmin.h \
     ../docBase/docListTable.h \
     ../docBase/docListOverrideTable.h \
@@ -1212,7 +1162,14 @@ tedBorderTool.o: \
     ../docBase/docSelectionScope.h \
     ../docBase/docEditPosition.h \
     ../docBase/docEditRange.h \
+    ../docBase/docEditPosition.h \
     ../docBuf/docTableRectangle.h \
+    ../docBuf/docDocumentTree.h \
+    ../docBase/docDocumentField.h \
+    ../docBase/docFieldInstructions.h \
+    ../docBase/docSelectionScope.h \
+    ../docBase/docEditRange.h \
+    ../docBase/docListNumberTree.h \
     ../docBase/docListTable.h \
     ../docBuf/docStripFrame.h \
     ../docBase/docBlockOrnaments.h \
@@ -1226,6 +1183,7 @@ tedBorderTool.o: \
     ../docFont/utilDocFontList.h \
     ../docLayout/docSelectionGeometry.h \
     ../guiInterface/drawDrawingSurface.h \
+    ../appUtil/geoAffineTransform.h \
     tedBorderTool.h \
     ../docBase/docBorderProperties.h \
     ../appFrame/appFrame.h \
@@ -1245,7 +1203,6 @@ tedBorderTool.o: \
     ../appFrame/appDrawnPulldown.h \
     ../appFrame/guiToolUtil.h \
     ../appFrame/guiTextUtil.h \
-    ../docBase/docBorderPropertyAdmin.h \
     ../appFrame/guiWidgetDrawingSurface.h \
     ../appFrame/guiDrawingWidget.h \
     ../appUtil/appUnit.h \
@@ -1284,7 +1241,6 @@ tedBottomRuler.o: \
     ../utilPs/psPostScriptFontList.h \
     ../utilPs/psFontFamily.h \
     ../utilPs/psFontInfo.h \
-    ../docBase/docTabStop.h \
     tedColumnSeparator.h \
     ../appFrame/appRuler.h \
     ../appFrame/guiWidgetDrawingSurface.h \
@@ -1333,14 +1289,13 @@ tedCellTool.o: \
     ../docBase/docDocumentProperties.h \
     ../docFont/utilDocFontList.h \
     ../docFont/utilDocFont.h \
-    ../textEncoding/utilOfficeCharset.h \
+    ../textEncoding/textOfficeCharset.h \
     ../docBase/docNotesProperties.h \
     ../docBase/docListAdmin.h \
     ../docBase/docListTable.h \
     ../docBase/docListOverrideTable.h \
     ../docBase/docNoteProperties.h \
     ../docBase/docSectProperties.h \
-    ../docBase/docTabStop.h \
     ../docBase/docDocumentField.h \
     ../docBase/docFieldInstructions.h \
     ../docBase/docSelectionScope.h \
@@ -1359,12 +1314,6 @@ tedCellTool.o: \
     ../appFrame/appTool.h \
     ../appFrame/guiOptionmenu.h \
     ../docBuf/docBuf.h \
-    ../docFont/utilDocFont.h \
-    ../docBuf/docShape.h \
-    ../docBase/docShapeProperties.h \
-    ../docBuf/docDocumentTree.h \
-    ../docBase/docListNumberTree.h \
-    ../docBase/docShapeDrawing.h \
     ../docBase/docFramePropertiesAdmin.h \
     ../docBase/docFrameProperties.h \
     ../docBase/docPropVal.h \
@@ -1392,6 +1341,8 @@ tedCellTool.o: \
     ../docBase/docEditPosition.h \
     ../docBase/docEditRange.h \
     ../docBuf/docTableRectangle.h \
+    ../docBuf/docDocumentTree.h \
+    ../docBase/docListNumberTree.h \
     ../docBase/docListTable.h \
     ../appFrame/appColorChooser.h \
     ../appFrame/appDrawnPulldown.h \
@@ -1459,14 +1410,13 @@ tedColumnTool.o: \
     ../docBase/docDocumentProperties.h \
     ../docFont/utilDocFontList.h \
     ../docFont/utilDocFont.h \
-    ../textEncoding/utilOfficeCharset.h \
+    ../textEncoding/textOfficeCharset.h \
     ../docBase/docNotesProperties.h \
     ../docBase/docListAdmin.h \
     ../docBase/docListTable.h \
     ../docBase/docListOverrideTable.h \
     ../docBase/docNoteProperties.h \
     ../docBase/docSectProperties.h \
-    ../docBase/docTabStop.h \
     ../docBase/docDocumentField.h \
     ../docBase/docFieldInstructions.h \
     ../docBase/docSelectionScope.h \
@@ -1485,12 +1435,6 @@ tedColumnTool.o: \
     ../appFrame/appTool.h \
     ../appFrame/guiOptionmenu.h \
     ../docBuf/docBuf.h \
-    ../docFont/utilDocFont.h \
-    ../docBuf/docShape.h \
-    ../docBase/docShapeProperties.h \
-    ../docBuf/docDocumentTree.h \
-    ../docBase/docListNumberTree.h \
-    ../docBase/docShapeDrawing.h \
     ../docBase/docFramePropertiesAdmin.h \
     ../docBase/docFrameProperties.h \
     ../docBase/docPropVal.h \
@@ -1518,6 +1462,8 @@ tedColumnTool.o: \
     ../docBase/docEditPosition.h \
     ../docBase/docEditRange.h \
     ../docBuf/docTableRectangle.h \
+    ../docBuf/docDocumentTree.h \
+    ../docBase/docListNumberTree.h \
     ../docBase/docListTable.h \
     ../appFrame/appColorChooser.h \
     ../appFrame/appDrawnPulldown.h \
@@ -1574,19 +1520,6 @@ tedCopyPaste.o: \
     ../utilPs/psFontInfo.h \
     ../appUtil/utilPropMask.h \
     ../docBuf/docBuf.h \
-    ../docFont/utilDocFont.h \
-    ../textEncoding/utilOfficeCharset.h \
-    ../docBuf/docShape.h \
-    ../docBase/docShapeProperties.h \
-    ../docBase/docPictureProperties.h \
-    ../docBuf/docDocumentTree.h \
-    ../docBase/docDocumentField.h \
-    ../docBase/docFieldInstructions.h \
-    ../docBase/docSelectionScope.h \
-    ../docBase/docEditRange.h \
-    ../docBase/docEditPosition.h \
-    ../docBase/docListNumberTree.h \
-    ../docBase/docShapeDrawing.h \
     ../docBase/docFramePropertiesAdmin.h \
     ../docBase/docFrameProperties.h \
     ../docBase/docPropVal.h \
@@ -1609,6 +1542,7 @@ tedCopyPaste.o: \
     ../docBase/docDocumentProperties.h \
     ../docFont/utilDocFontList.h \
     ../docFont/utilDocFont.h \
+    ../textEncoding/textOfficeCharset.h \
     ../docBase/docListAdmin.h \
     ../docBase/docListTable.h \
     ../docBase/docListOverrideTable.h \
@@ -1624,7 +1558,14 @@ tedCopyPaste.o: \
     ../docBase/docSelectionScope.h \
     ../docBase/docEditPosition.h \
     ../docBase/docEditRange.h \
+    ../docBase/docEditPosition.h \
     ../docBuf/docTableRectangle.h \
+    ../docBuf/docDocumentTree.h \
+    ../docBase/docDocumentField.h \
+    ../docBase/docFieldInstructions.h \
+    ../docBase/docSelectionScope.h \
+    ../docBase/docEditRange.h \
+    ../docBase/docListNumberTree.h \
     ../docBase/docListTable.h \
     tedSelect.h \
     ../docLayout/docSelectionGeometry.h \
@@ -1654,9 +1595,9 @@ tedCopyPaste.o: \
     ../docBuf/docRecalculateFields.h \
     tedDocFront.h \
     ../docBase/docRowProperties.h \
+    ../docBase/docPictureProperties.h \
     ../docBase/docNoteProperties.h \
     ../docBase/docSectProperties.h \
-    ../docBase/docTabStop.h \
     ../docBase/docTocField.h \
     ../docBase/docHyperlinkField.h \
     ../docFont/docExpandedTextAttribute.h \
@@ -1709,19 +1650,6 @@ tedCopyPasteImpl.o: \
     ../utilPs/psFontInfo.h \
     ../appUtil/utilPropMask.h \
     ../docBuf/docBuf.h \
-    ../docFont/utilDocFont.h \
-    ../textEncoding/utilOfficeCharset.h \
-    ../docBuf/docShape.h \
-    ../docBase/docShapeProperties.h \
-    ../docBase/docPictureProperties.h \
-    ../docBuf/docDocumentTree.h \
-    ../docBase/docDocumentField.h \
-    ../docBase/docFieldInstructions.h \
-    ../docBase/docSelectionScope.h \
-    ../docBase/docEditRange.h \
-    ../docBase/docEditPosition.h \
-    ../docBase/docListNumberTree.h \
-    ../docBase/docShapeDrawing.h \
     ../docBase/docFramePropertiesAdmin.h \
     ../docBase/docFrameProperties.h \
     ../docBase/docPropVal.h \
@@ -1744,6 +1672,7 @@ tedCopyPasteImpl.o: \
     ../docBase/docDocumentProperties.h \
     ../docFont/utilDocFontList.h \
     ../docFont/utilDocFont.h \
+    ../textEncoding/textOfficeCharset.h \
     ../docBase/docListAdmin.h \
     ../docBase/docListTable.h \
     ../docBase/docListOverrideTable.h \
@@ -1759,7 +1688,14 @@ tedCopyPasteImpl.o: \
     ../docBase/docSelectionScope.h \
     ../docBase/docEditPosition.h \
     ../docBase/docEditRange.h \
+    ../docBase/docEditPosition.h \
     ../docBuf/docTableRectangle.h \
+    ../docBuf/docDocumentTree.h \
+    ../docBase/docDocumentField.h \
+    ../docBase/docFieldInstructions.h \
+    ../docBase/docSelectionScope.h \
+    ../docBase/docEditRange.h \
+    ../docBase/docListNumberTree.h \
     ../docBase/docListTable.h \
     tedSelect.h \
     ../docLayout/docSelectionGeometry.h \
@@ -1815,27 +1751,11 @@ tedDeleteFromTable.o: \
     ../appUtil/utilColor.h \
     ../appUtil/utilMemoryBuffer.h \
     ../appUtil/geo2DInteger.h \
-    ../docFont/utilDocFont.h \
-    ../utilPs/psFontInfo.h \
-    ../appUtil/utilIndexSet.h \
-    ../appUtil/utilIndexMapping.h \
-    ../textEncoding/utilOfficeCharset.h \
     ../utilPs/psPostScriptFontList.h \
     ../utilPs/psFontFamily.h \
     ../utilPs/psFontInfo.h \
-    ../docBuf/docShape.h \
-    ../appUtil/geoAffineTransform.h \
-    ../docBase/docShapeProperties.h \
-    ../docBase/docPictureProperties.h \
-    ../appUtil/utilPropMask.h \
-    ../docBuf/docDocumentTree.h \
-    ../docBase/docDocumentField.h \
-    ../docBase/docFieldInstructions.h \
-    ../docBase/docSelectionScope.h \
-    ../docBase/docEditRange.h \
-    ../docBase/docEditPosition.h \
-    ../docBase/docListNumberTree.h \
-    ../docBase/docShapeDrawing.h \
+    ../appUtil/utilIndexSet.h \
+    ../appUtil/utilIndexMapping.h \
     ../docBase/docFramePropertiesAdmin.h \
     ../docBase/docFrameProperties.h \
     ../docBase/docPropVal.h \
@@ -1846,6 +1766,7 @@ tedDeleteFromTable.o: \
     ../appUtil/utilIndexSet.h \
     ../docBase/docStyleSheet.h \
     ../docBase/docStyle.h \
+    ../appUtil/utilPropMask.h \
     ../docBase/docSectProperties.h \
     ../appUtil/utilDocumentGeometry.h \
     ../appUtil/utilPropMask.h \
@@ -1861,6 +1782,8 @@ tedDeleteFromTable.o: \
     ../docBase/docDocumentProperties.h \
     ../docFont/utilDocFontList.h \
     ../docFont/utilDocFont.h \
+    ../utilPs/psFontInfo.h \
+    ../textEncoding/textOfficeCharset.h \
     ../docBase/docListAdmin.h \
     ../docBase/docListTable.h \
     ../docBase/docListOverrideTable.h \
@@ -1876,7 +1799,14 @@ tedDeleteFromTable.o: \
     ../docBase/docSelectionScope.h \
     ../docBase/docEditPosition.h \
     ../docBase/docEditRange.h \
+    ../docBase/docEditPosition.h \
     ../docBuf/docTableRectangle.h \
+    ../docBuf/docDocumentTree.h \
+    ../docBase/docDocumentField.h \
+    ../docBase/docFieldInstructions.h \
+    ../docBase/docSelectionScope.h \
+    ../docBase/docEditRange.h \
+    ../docBase/docListNumberTree.h \
     ../docBase/docListTable.h \
     ../docBuf/docDebug.h \
     ../docBuf/docBuf.h \
@@ -1905,16 +1835,18 @@ tedDeleteFromTable.o: \
     ../appFrame/appIcons.h \
     ../appFrame/guiWidgets.h \
     ../guiInterface/drawDrawingSurface.h \
+    ../appUtil/geoAffineTransform.h \
     ../docBase/docRowProperties.h \
+    ../docBase/docPictureProperties.h \
     ../docBase/docNoteProperties.h \
     ../docBase/docSectProperties.h \
-    ../docBase/docTabStop.h \
     ../docBase/docTocField.h \
     ../docBase/docHyperlinkField.h \
     ../docFont/docExpandedTextAttribute.h \
     ../docEdit/docRtfTrace.h \
     ../docEdit/docEditStep.h \
     ../docBase/docDocumentList.h \
+    ../docBase/docListDepth.h \
     ../docBase/docListLevel.h \
     ../docEdit/docEditTrace.h \
     ../docEdit/docEditImpl.h \
@@ -1942,27 +1874,11 @@ tedDeleteNode.o: \
     ../appUtil/utilColor.h \
     ../appUtil/utilMemoryBuffer.h \
     ../appUtil/geo2DInteger.h \
-    ../docFont/utilDocFont.h \
-    ../utilPs/psFontInfo.h \
-    ../appUtil/utilIndexSet.h \
-    ../appUtil/utilIndexMapping.h \
-    ../textEncoding/utilOfficeCharset.h \
     ../utilPs/psPostScriptFontList.h \
     ../utilPs/psFontFamily.h \
     ../utilPs/psFontInfo.h \
-    ../docBuf/docShape.h \
-    ../appUtil/geoAffineTransform.h \
-    ../docBase/docShapeProperties.h \
-    ../docBase/docPictureProperties.h \
-    ../appUtil/utilPropMask.h \
-    ../docBuf/docDocumentTree.h \
-    ../docBase/docDocumentField.h \
-    ../docBase/docFieldInstructions.h \
-    ../docBase/docSelectionScope.h \
-    ../docBase/docEditRange.h \
-    ../docBase/docEditPosition.h \
-    ../docBase/docListNumberTree.h \
-    ../docBase/docShapeDrawing.h \
+    ../appUtil/utilIndexSet.h \
+    ../appUtil/utilIndexMapping.h \
     ../docBase/docFramePropertiesAdmin.h \
     ../docBase/docFrameProperties.h \
     ../docBase/docPropVal.h \
@@ -1973,6 +1889,7 @@ tedDeleteNode.o: \
     ../appUtil/utilIndexSet.h \
     ../docBase/docStyleSheet.h \
     ../docBase/docStyle.h \
+    ../appUtil/utilPropMask.h \
     ../docBase/docSectProperties.h \
     ../appUtil/utilDocumentGeometry.h \
     ../appUtil/utilPropMask.h \
@@ -1988,6 +1905,8 @@ tedDeleteNode.o: \
     ../docBase/docDocumentProperties.h \
     ../docFont/utilDocFontList.h \
     ../docFont/utilDocFont.h \
+    ../utilPs/psFontInfo.h \
+    ../textEncoding/textOfficeCharset.h \
     ../docBase/docListAdmin.h \
     ../docBase/docListTable.h \
     ../docBase/docListOverrideTable.h \
@@ -2003,7 +1922,14 @@ tedDeleteNode.o: \
     ../docBase/docSelectionScope.h \
     ../docBase/docEditPosition.h \
     ../docBase/docEditRange.h \
+    ../docBase/docEditPosition.h \
     ../docBuf/docTableRectangle.h \
+    ../docBuf/docDocumentTree.h \
+    ../docBase/docDocumentField.h \
+    ../docBase/docFieldInstructions.h \
+    ../docBase/docSelectionScope.h \
+    ../docBase/docEditRange.h \
+    ../docBase/docListNumberTree.h \
     ../docBase/docListTable.h \
     ../docBuf/docDebug.h \
     ../docBuf/docBuf.h \
@@ -2031,16 +1957,18 @@ tedDeleteNode.o: \
     ../appFrame/appIcons.h \
     ../appFrame/guiWidgets.h \
     ../guiInterface/drawDrawingSurface.h \
+    ../appUtil/geoAffineTransform.h \
     ../docBase/docRowProperties.h \
+    ../docBase/docPictureProperties.h \
     ../docBase/docNoteProperties.h \
     ../docBase/docSectProperties.h \
-    ../docBase/docTabStop.h \
     ../docBase/docTocField.h \
     ../docBase/docHyperlinkField.h \
     ../docFont/docExpandedTextAttribute.h \
     ../docEdit/docRtfTrace.h \
     ../docEdit/docEditStep.h \
     ../docBase/docDocumentList.h \
+    ../docBase/docListDepth.h \
     ../docBase/docListLevel.h \
     ../docEdit/docEditTrace.h \
     ../docEdit/docEditImpl.h \
@@ -2089,19 +2017,6 @@ tedDocFront.o: \
     ../utilPs/psFontInfo.h \
     ../appUtil/utilPropMask.h \
     ../docBuf/docBuf.h \
-    ../docFont/utilDocFont.h \
-    ../textEncoding/utilOfficeCharset.h \
-    ../docBuf/docShape.h \
-    ../docBase/docShapeProperties.h \
-    ../docBase/docPictureProperties.h \
-    ../docBuf/docDocumentTree.h \
-    ../docBase/docDocumentField.h \
-    ../docBase/docFieldInstructions.h \
-    ../docBase/docSelectionScope.h \
-    ../docBase/docEditRange.h \
-    ../docBase/docEditPosition.h \
-    ../docBase/docListNumberTree.h \
-    ../docBase/docShapeDrawing.h \
     ../docBase/docFramePropertiesAdmin.h \
     ../docBase/docFrameProperties.h \
     ../docBase/docPropVal.h \
@@ -2124,6 +2039,7 @@ tedDocFront.o: \
     ../docBase/docDocumentProperties.h \
     ../docFont/utilDocFontList.h \
     ../docFont/utilDocFont.h \
+    ../textEncoding/textOfficeCharset.h \
     ../docBase/docListAdmin.h \
     ../docBase/docListTable.h \
     ../docBase/docListOverrideTable.h \
@@ -2139,7 +2055,14 @@ tedDocFront.o: \
     ../docBase/docSelectionScope.h \
     ../docBase/docEditPosition.h \
     ../docBase/docEditRange.h \
+    ../docBase/docEditPosition.h \
     ../docBuf/docTableRectangle.h \
+    ../docBuf/docDocumentTree.h \
+    ../docBase/docDocumentField.h \
+    ../docBase/docFieldInstructions.h \
+    ../docBase/docSelectionScope.h \
+    ../docBase/docEditRange.h \
+    ../docBase/docListNumberTree.h \
     ../docBase/docListTable.h \
     tedEdit.h \
     ../docEdit/docEdit.h \
@@ -2168,9 +2091,9 @@ tedDocFront.o: \
     ../appFrame/guiOptionmenu.h \
     tedDocFront.h \
     ../docBase/docRowProperties.h \
+    ../docBase/docPictureProperties.h \
     ../docBase/docNoteProperties.h \
     ../docBase/docSectProperties.h \
-    ../docBase/docTabStop.h \
     ../docBase/docTocField.h \
     ../docBase/docHyperlinkField.h \
     ../docFont/docExpandedTextAttribute.h \
@@ -2185,6 +2108,8 @@ tedDocFront.o: \
     ../docBase/docTextParticule.h \
     ../appFrame/guiDrawingWidget.h \
     ../docEdit/docEditCommand.h \
+    ../docBuf/docCollectStatistics.h \
+    ../docBase/docStatistics.h \
     ../include/appDebugon.h \
     ../include/appDebug.h
 
@@ -2201,27 +2126,11 @@ tedDocRuler.o: \
     ../appUtil/utilColor.h \
     ../appUtil/utilMemoryBuffer.h \
     ../appUtil/geo2DInteger.h \
-    ../docFont/utilDocFont.h \
-    ../utilPs/psFontInfo.h \
-    ../appUtil/utilIndexSet.h \
-    ../appUtil/utilIndexMapping.h \
-    ../textEncoding/utilOfficeCharset.h \
     ../utilPs/psPostScriptFontList.h \
     ../utilPs/psFontFamily.h \
     ../utilPs/psFontInfo.h \
-    ../docBuf/docShape.h \
-    ../appUtil/geoAffineTransform.h \
-    ../docBase/docShapeProperties.h \
-    ../docBase/docPictureProperties.h \
-    ../appUtil/utilPropMask.h \
-    ../docBuf/docDocumentTree.h \
-    ../docBase/docDocumentField.h \
-    ../docBase/docFieldInstructions.h \
-    ../docBase/docSelectionScope.h \
-    ../docBase/docEditRange.h \
-    ../docBase/docEditPosition.h \
-    ../docBase/docListNumberTree.h \
-    ../docBase/docShapeDrawing.h \
+    ../appUtil/utilIndexSet.h \
+    ../appUtil/utilIndexMapping.h \
     ../docBase/docFramePropertiesAdmin.h \
     ../docBase/docFrameProperties.h \
     ../docBase/docPropVal.h \
@@ -2232,6 +2141,7 @@ tedDocRuler.o: \
     ../appUtil/utilIndexSet.h \
     ../docBase/docStyleSheet.h \
     ../docBase/docStyle.h \
+    ../appUtil/utilPropMask.h \
     ../docBase/docSectProperties.h \
     ../appUtil/utilDocumentGeometry.h \
     ../appUtil/utilPropMask.h \
@@ -2247,6 +2157,8 @@ tedDocRuler.o: \
     ../docBase/docDocumentProperties.h \
     ../docFont/utilDocFontList.h \
     ../docFont/utilDocFont.h \
+    ../utilPs/psFontInfo.h \
+    ../textEncoding/textOfficeCharset.h \
     ../docBase/docListAdmin.h \
     ../docBase/docListTable.h \
     ../docBase/docListOverrideTable.h \
@@ -2262,12 +2174,20 @@ tedDocRuler.o: \
     ../docBase/docSelectionScope.h \
     ../docBase/docEditPosition.h \
     ../docBase/docEditRange.h \
+    ../docBase/docEditPosition.h \
     ../docBuf/docTableRectangle.h \
+    ../docBuf/docDocumentTree.h \
+    ../docBase/docDocumentField.h \
+    ../docBase/docFieldInstructions.h \
+    ../docBase/docSelectionScope.h \
+    ../docBase/docEditRange.h \
+    ../docBase/docListNumberTree.h \
     ../docBase/docListTable.h \
     ../docBuf/docBlockFrame.h \
     ../docBuf/docStripFrame.h \
     ../docBase/docParaRulerAdmin.h \
     ../docBase/docTabStop.h \
+    ../docBase/docTabStopList.h \
     ../appUtil/geoGrid.h \
     ../appFrame/guiDrawingWidget.h \
     ../appFrame/appGuiBase.h \
@@ -2281,6 +2201,7 @@ tedDocRuler.o: \
     ../appFrame/appIcons.h \
     ../appFrame/guiWidgets.h \
     ../guiInterface/drawDrawingSurface.h \
+    ../appUtil/geoAffineTransform.h \
     ../docBuf/docBuf.h \
     tedSelect.h \
     ../docLayout/docSelectionGeometry.h \
@@ -2294,9 +2215,9 @@ tedDocRuler.o: \
     ../appFrame/guiOptionmenu.h \
     tedDocFront.h \
     ../docBase/docRowProperties.h \
+    ../docBase/docPictureProperties.h \
     ../docBase/docNoteProperties.h \
     ../docBase/docSectProperties.h \
-    ../docBase/docTabStop.h \
     ../docBase/docTocField.h \
     ../docBase/docHyperlinkField.h \
     ../docFont/docExpandedTextAttribute.h \
@@ -2344,27 +2265,11 @@ tedDocSetProperties.o: \
     ../appUtil/utilColor.h \
     ../appUtil/utilMemoryBuffer.h \
     ../appUtil/geo2DInteger.h \
-    ../docFont/utilDocFont.h \
-    ../utilPs/psFontInfo.h \
-    ../appUtil/utilIndexSet.h \
-    ../appUtil/utilIndexMapping.h \
-    ../textEncoding/utilOfficeCharset.h \
     ../utilPs/psPostScriptFontList.h \
     ../utilPs/psFontFamily.h \
     ../utilPs/psFontInfo.h \
-    ../docBuf/docShape.h \
-    ../appUtil/geoAffineTransform.h \
-    ../docBase/docShapeProperties.h \
-    ../docBase/docPictureProperties.h \
-    ../appUtil/utilPropMask.h \
-    ../docBuf/docDocumentTree.h \
-    ../docBase/docDocumentField.h \
-    ../docBase/docFieldInstructions.h \
-    ../docBase/docSelectionScope.h \
-    ../docBase/docEditRange.h \
-    ../docBase/docEditPosition.h \
-    ../docBase/docListNumberTree.h \
-    ../docBase/docShapeDrawing.h \
+    ../appUtil/utilIndexSet.h \
+    ../appUtil/utilIndexMapping.h \
     ../docBase/docFramePropertiesAdmin.h \
     ../docBase/docFrameProperties.h \
     ../docBase/docPropVal.h \
@@ -2375,6 +2280,7 @@ tedDocSetProperties.o: \
     ../appUtil/utilIndexSet.h \
     ../docBase/docStyleSheet.h \
     ../docBase/docStyle.h \
+    ../appUtil/utilPropMask.h \
     ../docBase/docSectProperties.h \
     ../appUtil/utilDocumentGeometry.h \
     ../appUtil/utilPropMask.h \
@@ -2390,6 +2296,8 @@ tedDocSetProperties.o: \
     ../docBase/docDocumentProperties.h \
     ../docFont/utilDocFontList.h \
     ../docFont/utilDocFont.h \
+    ../utilPs/psFontInfo.h \
+    ../textEncoding/textOfficeCharset.h \
     ../docBase/docListAdmin.h \
     ../docBase/docListTable.h \
     ../docBase/docListOverrideTable.h \
@@ -2405,7 +2313,14 @@ tedDocSetProperties.o: \
     ../docBase/docSelectionScope.h \
     ../docBase/docEditPosition.h \
     ../docBase/docEditRange.h \
+    ../docBase/docEditPosition.h \
     ../docBuf/docTableRectangle.h \
+    ../docBuf/docDocumentTree.h \
+    ../docBase/docDocumentField.h \
+    ../docBase/docFieldInstructions.h \
+    ../docBase/docSelectionScope.h \
+    ../docBase/docEditRange.h \
+    ../docBase/docListNumberTree.h \
     ../docBase/docListTable.h \
     ../docLayout/docParticuleData.h \
     ../docBuf/docStripFrame.h \
@@ -2442,10 +2357,11 @@ tedDocSetProperties.o: \
     ../appFrame/appIcons.h \
     ../appFrame/guiWidgets.h \
     ../guiInterface/drawDrawingSurface.h \
+    ../appUtil/geoAffineTransform.h \
     ../docBase/docRowProperties.h \
+    ../docBase/docPictureProperties.h \
     ../docBase/docNoteProperties.h \
     ../docBase/docSectProperties.h \
-    ../docBase/docTabStop.h \
     ../docBase/docTocField.h \
     ../docBase/docHyperlinkField.h \
     ../docFont/docExpandedTextAttribute.h \
@@ -2455,14 +2371,12 @@ tedDocSetProperties.o: \
     ../docEdit/docRtfTrace.h \
     ../docEdit/docEditStep.h \
     ../docBase/docDocumentList.h \
+    ../docBase/docListDepth.h \
     ../docBase/docListLevel.h \
     ../docEdit/docEditTrace.h \
     ../docBase/docParaRulerAdmin.h \
     ../docBase/docTabStop.h \
-    ../utilPs/textAttributeAdmin.h \
-    ../utilPs/textAttribute.h \
-    ../docLayout/docScreenLayout.h \
-    ../docLayout/docLayout.h \
+    ../docBase/docTabStopList.h \
     ../docEdit/docEditCommand.h \
     ../include/appDebugon.h \
     ../include/appDebug.h
@@ -2479,6 +2393,7 @@ tedDocprops.o: \
     ../appFrame/appGuiBaseMotif.h \
     ../appFrame/appGuiBaseGtk.h \
     ../appUtil/utilMemoryBuffer.h \
+    ../docBase/docStatistics.h \
     tedApp.h \
     ../appFrame/appFrame.h \
     ../appFrame/appGuiResource.h \
@@ -2504,19 +2419,6 @@ tedDocprops.o: \
     ../utilPs/psFontInfo.h \
     ../appUtil/utilPropMask.h \
     ../docBuf/docBuf.h \
-    ../docFont/utilDocFont.h \
-    ../textEncoding/utilOfficeCharset.h \
-    ../docBuf/docShape.h \
-    ../docBase/docShapeProperties.h \
-    ../docBase/docPictureProperties.h \
-    ../docBuf/docDocumentTree.h \
-    ../docBase/docDocumentField.h \
-    ../docBase/docFieldInstructions.h \
-    ../docBase/docSelectionScope.h \
-    ../docBase/docEditRange.h \
-    ../docBase/docEditPosition.h \
-    ../docBase/docListNumberTree.h \
-    ../docBase/docShapeDrawing.h \
     ../docBase/docFramePropertiesAdmin.h \
     ../docBase/docFrameProperties.h \
     ../docBase/docPropVal.h \
@@ -2539,6 +2441,7 @@ tedDocprops.o: \
     ../docBase/docDocumentProperties.h \
     ../docFont/utilDocFontList.h \
     ../docFont/utilDocFont.h \
+    ../textEncoding/textOfficeCharset.h \
     ../docBase/docListAdmin.h \
     ../docBase/docListTable.h \
     ../docBase/docListOverrideTable.h \
@@ -2554,13 +2457,20 @@ tedDocprops.o: \
     ../docBase/docSelectionScope.h \
     ../docBase/docEditPosition.h \
     ../docBase/docEditRange.h \
+    ../docBase/docEditPosition.h \
     ../docBuf/docTableRectangle.h \
+    ../docBuf/docDocumentTree.h \
+    ../docBase/docDocumentField.h \
+    ../docBase/docFieldInstructions.h \
+    ../docBase/docSelectionScope.h \
+    ../docBase/docEditRange.h \
+    ../docBase/docListNumberTree.h \
     ../docBase/docListTable.h \
     tedDocFront.h \
     ../docBase/docRowProperties.h \
+    ../docBase/docPictureProperties.h \
     ../docBase/docNoteProperties.h \
     ../docBase/docSectProperties.h \
-    ../docBase/docTabStop.h \
     ../docBase/docTocField.h \
     ../docBase/docHyperlinkField.h \
     ../docFont/docExpandedTextAttribute.h \
@@ -2581,7 +2491,7 @@ tedDocument.o: \
     tedConfig.h \
     ../appFrame/appFrameConfig.h \
     ../appUtil/appUtilConfig.h \
-    ../textEncoding/utilOfficeCharset.h \
+    ../textEncoding/textOfficeCharset.h \
     ../appUtil/utilIndexMapping.h \
     ../appUtil/utilIndexSet.h \
     ../appFrame/appQuestion.h \
@@ -2613,18 +2523,6 @@ tedDocument.o: \
     ../appFrame/appFrame.h \
     ../appUtil/utilPropMask.h \
     ../docBuf/docBuf.h \
-    ../docFont/utilDocFont.h \
-    ../docBuf/docShape.h \
-    ../docBase/docShapeProperties.h \
-    ../docBase/docPictureProperties.h \
-    ../docBuf/docDocumentTree.h \
-    ../docBase/docDocumentField.h \
-    ../docBase/docFieldInstructions.h \
-    ../docBase/docSelectionScope.h \
-    ../docBase/docEditRange.h \
-    ../docBase/docEditPosition.h \
-    ../docBase/docListNumberTree.h \
-    ../docBase/docShapeDrawing.h \
     ../docBase/docFramePropertiesAdmin.h \
     ../docBase/docFrameProperties.h \
     ../docBase/docPropVal.h \
@@ -2662,7 +2560,14 @@ tedDocument.o: \
     ../docBase/docSelectionScope.h \
     ../docBase/docEditPosition.h \
     ../docBase/docEditRange.h \
+    ../docBase/docEditPosition.h \
     ../docBuf/docTableRectangle.h \
+    ../docBuf/docDocumentTree.h \
+    ../docBase/docDocumentField.h \
+    ../docBase/docFieldInstructions.h \
+    ../docBase/docSelectionScope.h \
+    ../docBase/docEditRange.h \
+    ../docBase/docListNumberTree.h \
     ../docBase/docListTable.h \
     tedSelect.h \
     ../docLayout/docSelectionGeometry.h \
@@ -2670,7 +2575,6 @@ tedDocument.o: \
     ../docBuf/docTableRectangle.h \
     ../docBuf/docSelect.h \
     tedRuler.h \
-    ../docBase/docTabStop.h \
     tedColumnSeparator.h \
     tedAppResources.h \
     ../appFrame/appInspector.h \
@@ -2695,6 +2599,7 @@ tedDocument.o: \
     ../docBuf/docRecalculateFields.h \
     tedDocFront.h \
     ../docBase/docRowProperties.h \
+    ../docBase/docPictureProperties.h \
     ../docBase/docNoteProperties.h \
     ../docBase/docSectProperties.h \
     ../docBase/docTocField.h \
@@ -2756,19 +2661,6 @@ tedDraw.o: \
     ../utilPs/psFontInfo.h \
     ../appUtil/utilPropMask.h \
     ../docBuf/docBuf.h \
-    ../docFont/utilDocFont.h \
-    ../textEncoding/utilOfficeCharset.h \
-    ../docBuf/docShape.h \
-    ../docBase/docShapeProperties.h \
-    ../docBase/docPictureProperties.h \
-    ../docBuf/docDocumentTree.h \
-    ../docBase/docDocumentField.h \
-    ../docBase/docFieldInstructions.h \
-    ../docBase/docSelectionScope.h \
-    ../docBase/docEditRange.h \
-    ../docBase/docEditPosition.h \
-    ../docBase/docListNumberTree.h \
-    ../docBase/docShapeDrawing.h \
     ../docBase/docFramePropertiesAdmin.h \
     ../docBase/docFrameProperties.h \
     ../docBase/docPropVal.h \
@@ -2791,6 +2683,7 @@ tedDraw.o: \
     ../docBase/docDocumentProperties.h \
     ../docFont/utilDocFontList.h \
     ../docFont/utilDocFont.h \
+    ../textEncoding/textOfficeCharset.h \
     ../docBase/docListAdmin.h \
     ../docBase/docListTable.h \
     ../docBase/docListOverrideTable.h \
@@ -2806,7 +2699,14 @@ tedDraw.o: \
     ../docBase/docSelectionScope.h \
     ../docBase/docEditPosition.h \
     ../docBase/docEditRange.h \
+    ../docBase/docEditPosition.h \
     ../docBuf/docTableRectangle.h \
+    ../docBuf/docDocumentTree.h \
+    ../docBase/docDocumentField.h \
+    ../docBase/docFieldInstructions.h \
+    ../docBase/docSelectionScope.h \
+    ../docBase/docEditRange.h \
+    ../docBase/docListNumberTree.h \
     ../docBase/docListTable.h \
     tedSelect.h \
     ../docLayout/docSelectionGeometry.h \
@@ -2886,19 +2786,6 @@ tedDrawGtk.o: \
     ../utilPs/psFontInfo.h \
     ../appUtil/utilPropMask.h \
     ../docBuf/docBuf.h \
-    ../docFont/utilDocFont.h \
-    ../textEncoding/utilOfficeCharset.h \
-    ../docBuf/docShape.h \
-    ../docBase/docShapeProperties.h \
-    ../docBase/docPictureProperties.h \
-    ../docBuf/docDocumentTree.h \
-    ../docBase/docDocumentField.h \
-    ../docBase/docFieldInstructions.h \
-    ../docBase/docSelectionScope.h \
-    ../docBase/docEditRange.h \
-    ../docBase/docEditPosition.h \
-    ../docBase/docListNumberTree.h \
-    ../docBase/docShapeDrawing.h \
     ../docBase/docFramePropertiesAdmin.h \
     ../docBase/docFrameProperties.h \
     ../docBase/docPropVal.h \
@@ -2921,6 +2808,7 @@ tedDrawGtk.o: \
     ../docBase/docDocumentProperties.h \
     ../docFont/utilDocFontList.h \
     ../docFont/utilDocFont.h \
+    ../textEncoding/textOfficeCharset.h \
     ../docBase/docListAdmin.h \
     ../docBase/docListTable.h \
     ../docBase/docListOverrideTable.h \
@@ -2936,7 +2824,14 @@ tedDrawGtk.o: \
     ../docBase/docSelectionScope.h \
     ../docBase/docEditPosition.h \
     ../docBase/docEditRange.h \
+    ../docBase/docEditPosition.h \
     ../docBuf/docTableRectangle.h \
+    ../docBuf/docDocumentTree.h \
+    ../docBase/docDocumentField.h \
+    ../docBase/docFieldInstructions.h \
+    ../docBase/docSelectionScope.h \
+    ../docBase/docEditRange.h \
+    ../docBase/docListNumberTree.h \
     ../docBase/docListTable.h \
     tedDraw.h \
     ../docLayout/docDraw.h \
@@ -3001,19 +2896,6 @@ tedDrawMotif.o: \
     ../utilPs/psFontInfo.h \
     ../appUtil/utilPropMask.h \
     ../docBuf/docBuf.h \
-    ../docFont/utilDocFont.h \
-    ../textEncoding/utilOfficeCharset.h \
-    ../docBuf/docShape.h \
-    ../docBase/docShapeProperties.h \
-    ../docBase/docPictureProperties.h \
-    ../docBuf/docDocumentTree.h \
-    ../docBase/docDocumentField.h \
-    ../docBase/docFieldInstructions.h \
-    ../docBase/docSelectionScope.h \
-    ../docBase/docEditRange.h \
-    ../docBase/docEditPosition.h \
-    ../docBase/docListNumberTree.h \
-    ../docBase/docShapeDrawing.h \
     ../docBase/docFramePropertiesAdmin.h \
     ../docBase/docFrameProperties.h \
     ../docBase/docPropVal.h \
@@ -3036,6 +2918,7 @@ tedDrawMotif.o: \
     ../docBase/docDocumentProperties.h \
     ../docFont/utilDocFontList.h \
     ../docFont/utilDocFont.h \
+    ../textEncoding/textOfficeCharset.h \
     ../docBase/docListAdmin.h \
     ../docBase/docListTable.h \
     ../docBase/docListOverrideTable.h \
@@ -3051,7 +2934,14 @@ tedDrawMotif.o: \
     ../docBase/docSelectionScope.h \
     ../docBase/docEditPosition.h \
     ../docBase/docEditRange.h \
+    ../docBase/docEditPosition.h \
     ../docBuf/docTableRectangle.h \
+    ../docBuf/docDocumentTree.h \
+    ../docBase/docDocumentField.h \
+    ../docBase/docFieldInstructions.h \
+    ../docBase/docSelectionScope.h \
+    ../docBase/docEditRange.h \
+    ../docBase/docListNumberTree.h \
     ../docBase/docListTable.h \
     tedDocument.h \
     ../docBuf/docSelect.h \
@@ -3079,7 +2969,6 @@ tedDrawMotif.o: \
     ../docBase/docBlockOrnaments.h \
     ../docBase/docBorderProperties.h \
     tedRuler.h \
-    ../docBase/docTabStop.h \
     tedColumnSeparator.h \
     tedSelect.h \
     ../docBuf/docTreeNode.h \
@@ -3106,27 +2995,11 @@ tedDrawOrnaments.o: \
     ../appUtil/utilColor.h \
     ../appUtil/utilMemoryBuffer.h \
     ../appUtil/geo2DInteger.h \
-    ../docFont/utilDocFont.h \
-    ../utilPs/psFontInfo.h \
-    ../appUtil/utilIndexSet.h \
-    ../appUtil/utilIndexMapping.h \
-    ../textEncoding/utilOfficeCharset.h \
     ../utilPs/psPostScriptFontList.h \
     ../utilPs/psFontFamily.h \
     ../utilPs/psFontInfo.h \
-    ../docBuf/docShape.h \
-    ../appUtil/geoAffineTransform.h \
-    ../docBase/docShapeProperties.h \
-    ../docBase/docPictureProperties.h \
-    ../appUtil/utilPropMask.h \
-    ../docBuf/docDocumentTree.h \
-    ../docBase/docDocumentField.h \
-    ../docBase/docFieldInstructions.h \
-    ../docBase/docSelectionScope.h \
-    ../docBase/docEditRange.h \
-    ../docBase/docEditPosition.h \
-    ../docBase/docListNumberTree.h \
-    ../docBase/docShapeDrawing.h \
+    ../appUtil/utilIndexSet.h \
+    ../appUtil/utilIndexMapping.h \
     ../docBase/docFramePropertiesAdmin.h \
     ../docBase/docFrameProperties.h \
     ../docBase/docPropVal.h \
@@ -3137,6 +3010,7 @@ tedDrawOrnaments.o: \
     ../appUtil/utilIndexSet.h \
     ../docBase/docStyleSheet.h \
     ../docBase/docStyle.h \
+    ../appUtil/utilPropMask.h \
     ../docBase/docSectProperties.h \
     ../appUtil/utilDocumentGeometry.h \
     ../appUtil/utilPropMask.h \
@@ -3152,6 +3026,8 @@ tedDrawOrnaments.o: \
     ../docBase/docDocumentProperties.h \
     ../docFont/utilDocFontList.h \
     ../docFont/utilDocFont.h \
+    ../utilPs/psFontInfo.h \
+    ../textEncoding/textOfficeCharset.h \
     ../docBase/docListAdmin.h \
     ../docBase/docListTable.h \
     ../docBase/docListOverrideTable.h \
@@ -3167,7 +3043,14 @@ tedDrawOrnaments.o: \
     ../docBase/docSelectionScope.h \
     ../docBase/docEditPosition.h \
     ../docBase/docEditRange.h \
+    ../docBase/docEditPosition.h \
     ../docBuf/docTableRectangle.h \
+    ../docBuf/docDocumentTree.h \
+    ../docBase/docDocumentField.h \
+    ../docBase/docFieldInstructions.h \
+    ../docBase/docSelectionScope.h \
+    ../docBase/docEditRange.h \
+    ../docBase/docListNumberTree.h \
     ../docBase/docListTable.h \
     ../docBuf/docStripFrame.h \
     ../docBase/docBlockOrnaments.h \
@@ -3191,6 +3074,7 @@ tedDrawOrnaments.o: \
     ../appFrame/appIcons.h \
     ../appFrame/guiWidgets.h \
     ../guiInterface/drawDrawingSurface.h \
+    ../appUtil/geoAffineTransform.h \
     tedDraw.h \
     tedLayout.h \
     ../docLayout/docLayout.h \
@@ -3241,6 +3125,8 @@ tedDrawRuler.o: \
     ../appFrame/guiDrawingWidget.h \
     tedDrawRuler.h \
     ../appFrame/appRuler.h \
+    ../docBase/docTabStopList.h \
+    ../docBase/docTabStop.h \
     tedColumnSeparator.h \
     ../include/appDebugon.h \
     ../include/appDebug.h
@@ -3258,27 +3144,11 @@ tedDrawShape.o: \
     ../appUtil/utilColor.h \
     ../appUtil/utilMemoryBuffer.h \
     ../appUtil/geo2DInteger.h \
-    ../docFont/utilDocFont.h \
-    ../utilPs/psFontInfo.h \
-    ../appUtil/utilIndexSet.h \
-    ../appUtil/utilIndexMapping.h \
-    ../textEncoding/utilOfficeCharset.h \
     ../utilPs/psPostScriptFontList.h \
     ../utilPs/psFontFamily.h \
     ../utilPs/psFontInfo.h \
-    ../docBuf/docShape.h \
-    ../appUtil/geoAffineTransform.h \
-    ../docBase/docShapeProperties.h \
-    ../docBase/docPictureProperties.h \
-    ../appUtil/utilPropMask.h \
-    ../docBuf/docDocumentTree.h \
-    ../docBase/docDocumentField.h \
-    ../docBase/docFieldInstructions.h \
-    ../docBase/docSelectionScope.h \
-    ../docBase/docEditRange.h \
-    ../docBase/docEditPosition.h \
-    ../docBase/docListNumberTree.h \
-    ../docBase/docShapeDrawing.h \
+    ../appUtil/utilIndexSet.h \
+    ../appUtil/utilIndexMapping.h \
     ../docBase/docFramePropertiesAdmin.h \
     ../docBase/docFrameProperties.h \
     ../docBase/docPropVal.h \
@@ -3289,6 +3159,7 @@ tedDrawShape.o: \
     ../appUtil/utilIndexSet.h \
     ../docBase/docStyleSheet.h \
     ../docBase/docStyle.h \
+    ../appUtil/utilPropMask.h \
     ../docBase/docSectProperties.h \
     ../appUtil/utilDocumentGeometry.h \
     ../appUtil/utilPropMask.h \
@@ -3304,6 +3175,8 @@ tedDrawShape.o: \
     ../docBase/docDocumentProperties.h \
     ../docFont/utilDocFontList.h \
     ../docFont/utilDocFont.h \
+    ../utilPs/psFontInfo.h \
+    ../textEncoding/textOfficeCharset.h \
     ../docBase/docListAdmin.h \
     ../docBase/docListTable.h \
     ../docBase/docListOverrideTable.h \
@@ -3319,7 +3192,14 @@ tedDrawShape.o: \
     ../docBase/docSelectionScope.h \
     ../docBase/docEditPosition.h \
     ../docBase/docEditRange.h \
+    ../docBase/docEditPosition.h \
     ../docBuf/docTableRectangle.h \
+    ../docBuf/docDocumentTree.h \
+    ../docBase/docDocumentField.h \
+    ../docBase/docFieldInstructions.h \
+    ../docBase/docSelectionScope.h \
+    ../docBase/docEditRange.h \
+    ../docBase/docListNumberTree.h \
     ../docBase/docListTable.h \
     ../docLayout/docLayout.h \
     ../docLayout/docParticuleData.h \
@@ -3337,7 +3217,15 @@ tedDrawShape.o: \
     ../docBase/docBlockOrnaments.h \
     ../docBase/docBorderProperties.h \
     ../guiInterface/drawDrawingSurface.h \
+    ../appUtil/geoAffineTransform.h \
     ../appUtil/geoGrid.h \
+    ../docBuf/docShape.h \
+    ../docBase/docShapeProperties.h \
+    ../docBase/docPictureProperties.h \
+    ../docBase/docShapeDrawing.h \
+    ../docBase/docDrawShapeArrow.h \
+    ../docBase/docShapeDrawing.h \
+    ../appUtil/geo2DDouble.h \
     ../include/appDebugon.h \
     ../include/appDebug.h
 
@@ -3375,19 +3263,6 @@ tedDrawTextLines.o: \
     ../utilPs/psFontInfo.h \
     ../appUtil/utilPropMask.h \
     ../docBuf/docBuf.h \
-    ../docFont/utilDocFont.h \
-    ../textEncoding/utilOfficeCharset.h \
-    ../docBuf/docShape.h \
-    ../docBase/docShapeProperties.h \
-    ../docBase/docPictureProperties.h \
-    ../docBuf/docDocumentTree.h \
-    ../docBase/docDocumentField.h \
-    ../docBase/docFieldInstructions.h \
-    ../docBase/docSelectionScope.h \
-    ../docBase/docEditRange.h \
-    ../docBase/docEditPosition.h \
-    ../docBase/docListNumberTree.h \
-    ../docBase/docShapeDrawing.h \
     ../docBase/docFramePropertiesAdmin.h \
     ../docBase/docFrameProperties.h \
     ../docBase/docPropVal.h \
@@ -3410,6 +3285,7 @@ tedDrawTextLines.o: \
     ../docBase/docDocumentProperties.h \
     ../docFont/utilDocFontList.h \
     ../docFont/utilDocFont.h \
+    ../textEncoding/textOfficeCharset.h \
     ../docBase/docListAdmin.h \
     ../docBase/docListTable.h \
     ../docBase/docListOverrideTable.h \
@@ -3425,7 +3301,14 @@ tedDrawTextLines.o: \
     ../docBase/docSelectionScope.h \
     ../docBase/docEditPosition.h \
     ../docBase/docEditRange.h \
+    ../docBase/docEditPosition.h \
     ../docBuf/docTableRectangle.h \
+    ../docBuf/docDocumentTree.h \
+    ../docBase/docDocumentField.h \
+    ../docBase/docFieldInstructions.h \
+    ../docBase/docSelectionScope.h \
+    ../docBase/docEditRange.h \
+    ../docBase/docListNumberTree.h \
     ../docBase/docListTable.h \
     tedDraw.h \
     ../docLayout/docDraw.h \
@@ -3470,7 +3353,7 @@ tedEdit.o: \
     ../appFrame/appFrameConfig.h \
     ../appUtil/appUtilConfig.h \
     ../textEncoding/uniUtf8.h \
-    ../textEncoding/ucd.h \
+    ../textEncoding/ucdGeneralCategory.h \
     tedEdit.h \
     ../docEdit/docEdit.h \
     ../docBuf/docBuf.h \
@@ -3480,27 +3363,11 @@ tedEdit.o: \
     ../appUtil/utilColor.h \
     ../appUtil/utilMemoryBuffer.h \
     ../appUtil/geo2DInteger.h \
-    ../docFont/utilDocFont.h \
-    ../utilPs/psFontInfo.h \
-    ../appUtil/utilIndexSet.h \
-    ../appUtil/utilIndexMapping.h \
-    ../textEncoding/utilOfficeCharset.h \
     ../utilPs/psPostScriptFontList.h \
     ../utilPs/psFontFamily.h \
     ../utilPs/psFontInfo.h \
-    ../docBuf/docShape.h \
-    ../appUtil/geoAffineTransform.h \
-    ../docBase/docShapeProperties.h \
-    ../docBase/docPictureProperties.h \
-    ../appUtil/utilPropMask.h \
-    ../docBuf/docDocumentTree.h \
-    ../docBase/docDocumentField.h \
-    ../docBase/docFieldInstructions.h \
-    ../docBase/docSelectionScope.h \
-    ../docBase/docEditRange.h \
-    ../docBase/docEditPosition.h \
-    ../docBase/docListNumberTree.h \
-    ../docBase/docShapeDrawing.h \
+    ../appUtil/utilIndexSet.h \
+    ../appUtil/utilIndexMapping.h \
     ../docBase/docFramePropertiesAdmin.h \
     ../docBase/docFrameProperties.h \
     ../docBase/docPropVal.h \
@@ -3511,6 +3378,7 @@ tedEdit.o: \
     ../appUtil/utilIndexSet.h \
     ../docBase/docStyleSheet.h \
     ../docBase/docStyle.h \
+    ../appUtil/utilPropMask.h \
     ../docBase/docSectProperties.h \
     ../appUtil/utilDocumentGeometry.h \
     ../appUtil/utilPropMask.h \
@@ -3526,6 +3394,8 @@ tedEdit.o: \
     ../docBase/docDocumentProperties.h \
     ../docFont/utilDocFontList.h \
     ../docFont/utilDocFont.h \
+    ../utilPs/psFontInfo.h \
+    ../textEncoding/textOfficeCharset.h \
     ../docBase/docListAdmin.h \
     ../docBase/docListTable.h \
     ../docBase/docListOverrideTable.h \
@@ -3541,7 +3411,14 @@ tedEdit.o: \
     ../docBase/docSelectionScope.h \
     ../docBase/docEditPosition.h \
     ../docBase/docEditRange.h \
+    ../docBase/docEditPosition.h \
     ../docBuf/docTableRectangle.h \
+    ../docBuf/docDocumentTree.h \
+    ../docBase/docDocumentField.h \
+    ../docBase/docFieldInstructions.h \
+    ../docBase/docSelectionScope.h \
+    ../docBase/docEditRange.h \
+    ../docBase/docListNumberTree.h \
     ../docBase/docListTable.h \
     ../docBuf/docDebug.h \
     ../docBuf/docBuf.h \
@@ -3569,6 +3446,7 @@ tedEdit.o: \
     ../appFrame/appIcons.h \
     ../appFrame/guiWidgets.h \
     ../guiInterface/drawDrawingSurface.h \
+    ../appUtil/geoAffineTransform.h \
     ../docBuf/docRecalculateFields.h \
     tedApp.h \
     tedSelect.h \
@@ -3582,10 +3460,9 @@ tedEdit.o: \
     ../docBase/docNoteProperties.h \
     ../docEdit/docEditStep.h \
     ../docBase/docDocumentList.h \
+    ../docBase/docListDepth.h \
     ../docBase/docListLevel.h \
     ../docEdit/docEditTrace.h \
-    ../utilPs/textAttributeAdmin.h \
-    ../utilPs/textAttribute.h \
     ../docBase/docTreeType.h \
     ../docBuf/docField.h \
     ../docBase/docTextParticule.h \
@@ -3615,27 +3492,11 @@ tedEditList.o: \
     ../appUtil/utilColor.h \
     ../appUtil/utilMemoryBuffer.h \
     ../appUtil/geo2DInteger.h \
-    ../docFont/utilDocFont.h \
-    ../utilPs/psFontInfo.h \
-    ../appUtil/utilIndexSet.h \
-    ../appUtil/utilIndexMapping.h \
-    ../textEncoding/utilOfficeCharset.h \
     ../utilPs/psPostScriptFontList.h \
     ../utilPs/psFontFamily.h \
     ../utilPs/psFontInfo.h \
-    ../docBuf/docShape.h \
-    ../appUtil/geoAffineTransform.h \
-    ../docBase/docShapeProperties.h \
-    ../docBase/docPictureProperties.h \
-    ../appUtil/utilPropMask.h \
-    ../docBuf/docDocumentTree.h \
-    ../docBase/docDocumentField.h \
-    ../docBase/docFieldInstructions.h \
-    ../docBase/docSelectionScope.h \
-    ../docBase/docEditRange.h \
-    ../docBase/docEditPosition.h \
-    ../docBase/docListNumberTree.h \
-    ../docBase/docShapeDrawing.h \
+    ../appUtil/utilIndexSet.h \
+    ../appUtil/utilIndexMapping.h \
     ../docBase/docFramePropertiesAdmin.h \
     ../docBase/docFrameProperties.h \
     ../docBase/docPropVal.h \
@@ -3646,6 +3507,7 @@ tedEditList.o: \
     ../appUtil/utilIndexSet.h \
     ../docBase/docStyleSheet.h \
     ../docBase/docStyle.h \
+    ../appUtil/utilPropMask.h \
     ../docBase/docSectProperties.h \
     ../appUtil/utilDocumentGeometry.h \
     ../appUtil/utilPropMask.h \
@@ -3661,6 +3523,8 @@ tedEditList.o: \
     ../docBase/docDocumentProperties.h \
     ../docFont/utilDocFontList.h \
     ../docFont/utilDocFont.h \
+    ../utilPs/psFontInfo.h \
+    ../textEncoding/textOfficeCharset.h \
     ../docBase/docListAdmin.h \
     ../docBase/docListTable.h \
     ../docBase/docListOverrideTable.h \
@@ -3676,7 +3540,14 @@ tedEditList.o: \
     ../docBase/docSelectionScope.h \
     ../docBase/docEditPosition.h \
     ../docBase/docEditRange.h \
+    ../docBase/docEditPosition.h \
     ../docBuf/docTableRectangle.h \
+    ../docBuf/docDocumentTree.h \
+    ../docBase/docDocumentField.h \
+    ../docBase/docFieldInstructions.h \
+    ../docBase/docSelectionScope.h \
+    ../docBase/docEditRange.h \
+    ../docBase/docListNumberTree.h \
     ../docBase/docListTable.h \
     ../docBuf/docDebug.h \
     ../docBuf/docBuf.h \
@@ -3704,10 +3575,11 @@ tedEditList.o: \
     ../appFrame/appIcons.h \
     ../appFrame/guiWidgets.h \
     ../guiInterface/drawDrawingSurface.h \
+    ../appUtil/geoAffineTransform.h \
     ../docBase/docRowProperties.h \
+    ../docBase/docPictureProperties.h \
     ../docBase/docNoteProperties.h \
     ../docBase/docSectProperties.h \
-    ../docBase/docTabStop.h \
     ../docBase/docTocField.h \
     ../docBase/docHyperlinkField.h \
     ../docFont/docExpandedTextAttribute.h \
@@ -3717,6 +3589,7 @@ tedEditList.o: \
     ../docEdit/docRtfTrace.h \
     ../docEdit/docEditStep.h \
     ../docBase/docDocumentList.h \
+    ../docBase/docListDepth.h \
     ../docBase/docListLevel.h \
     ../docEdit/docEditTrace.h \
     ../docEdit/docEditImpl.h \
@@ -3738,27 +3611,11 @@ tedEditObject.o: \
     ../appUtil/utilColor.h \
     ../appUtil/utilMemoryBuffer.h \
     ../appUtil/geo2DInteger.h \
-    ../docFont/utilDocFont.h \
-    ../utilPs/psFontInfo.h \
-    ../appUtil/utilIndexSet.h \
-    ../appUtil/utilIndexMapping.h \
-    ../textEncoding/utilOfficeCharset.h \
     ../utilPs/psPostScriptFontList.h \
     ../utilPs/psFontFamily.h \
     ../utilPs/psFontInfo.h \
-    ../docBuf/docShape.h \
-    ../appUtil/geoAffineTransform.h \
-    ../docBase/docShapeProperties.h \
-    ../docBase/docPictureProperties.h \
-    ../appUtil/utilPropMask.h \
-    ../docBuf/docDocumentTree.h \
-    ../docBase/docDocumentField.h \
-    ../docBase/docFieldInstructions.h \
-    ../docBase/docSelectionScope.h \
-    ../docBase/docEditRange.h \
-    ../docBase/docEditPosition.h \
-    ../docBase/docListNumberTree.h \
-    ../docBase/docShapeDrawing.h \
+    ../appUtil/utilIndexSet.h \
+    ../appUtil/utilIndexMapping.h \
     ../docBase/docFramePropertiesAdmin.h \
     ../docBase/docFrameProperties.h \
     ../docBase/docPropVal.h \
@@ -3769,6 +3626,7 @@ tedEditObject.o: \
     ../appUtil/utilIndexSet.h \
     ../docBase/docStyleSheet.h \
     ../docBase/docStyle.h \
+    ../appUtil/utilPropMask.h \
     ../docBase/docSectProperties.h \
     ../appUtil/utilDocumentGeometry.h \
     ../appUtil/utilPropMask.h \
@@ -3784,6 +3642,8 @@ tedEditObject.o: \
     ../docBase/docDocumentProperties.h \
     ../docFont/utilDocFontList.h \
     ../docFont/utilDocFont.h \
+    ../utilPs/psFontInfo.h \
+    ../textEncoding/textOfficeCharset.h \
     ../docBase/docListAdmin.h \
     ../docBase/docListTable.h \
     ../docBase/docListOverrideTable.h \
@@ -3799,7 +3659,14 @@ tedEditObject.o: \
     ../docBase/docSelectionScope.h \
     ../docBase/docEditPosition.h \
     ../docBase/docEditRange.h \
+    ../docBase/docEditPosition.h \
     ../docBuf/docTableRectangle.h \
+    ../docBuf/docDocumentTree.h \
+    ../docBase/docDocumentField.h \
+    ../docBase/docFieldInstructions.h \
+    ../docBase/docSelectionScope.h \
+    ../docBase/docEditRange.h \
+    ../docBase/docListNumberTree.h \
     ../docBase/docListTable.h \
     ../docBuf/docDebug.h \
     ../docBuf/docBuf.h \
@@ -3827,10 +3694,11 @@ tedEditObject.o: \
     ../appFrame/appIcons.h \
     ../appFrame/guiWidgets.h \
     ../guiInterface/drawDrawingSurface.h \
+    ../appUtil/geoAffineTransform.h \
     ../docBase/docRowProperties.h \
+    ../docBase/docPictureProperties.h \
     ../docBase/docNoteProperties.h \
     ../docBase/docSectProperties.h \
-    ../docBase/docTabStop.h \
     ../docBase/docTocField.h \
     ../docBase/docHyperlinkField.h \
     ../docFont/docExpandedTextAttribute.h \
@@ -3849,6 +3717,7 @@ tedEditObject.o: \
     ../docEdit/docRtfTrace.h \
     ../docEdit/docEditStep.h \
     ../docBase/docDocumentList.h \
+    ../docBase/docListDepth.h \
     ../docBase/docListLevel.h \
     ../docEdit/docEditTrace.h \
     ../docBase/docObjectProperties.h \
@@ -3883,27 +3752,11 @@ tedEditOperation.o: \
     ../appUtil/utilColor.h \
     ../appUtil/utilMemoryBuffer.h \
     ../appUtil/geo2DInteger.h \
-    ../docFont/utilDocFont.h \
-    ../utilPs/psFontInfo.h \
-    ../appUtil/utilIndexSet.h \
-    ../appUtil/utilIndexMapping.h \
-    ../textEncoding/utilOfficeCharset.h \
     ../utilPs/psPostScriptFontList.h \
     ../utilPs/psFontFamily.h \
     ../utilPs/psFontInfo.h \
-    ../docBuf/docShape.h \
-    ../appUtil/geoAffineTransform.h \
-    ../docBase/docShapeProperties.h \
-    ../docBase/docPictureProperties.h \
-    ../appUtil/utilPropMask.h \
-    ../docBuf/docDocumentTree.h \
-    ../docBase/docDocumentField.h \
-    ../docBase/docFieldInstructions.h \
-    ../docBase/docSelectionScope.h \
-    ../docBase/docEditRange.h \
-    ../docBase/docEditPosition.h \
-    ../docBase/docListNumberTree.h \
-    ../docBase/docShapeDrawing.h \
+    ../appUtil/utilIndexSet.h \
+    ../appUtil/utilIndexMapping.h \
     ../docBase/docFramePropertiesAdmin.h \
     ../docBase/docFrameProperties.h \
     ../docBase/docPropVal.h \
@@ -3914,6 +3767,7 @@ tedEditOperation.o: \
     ../appUtil/utilIndexSet.h \
     ../docBase/docStyleSheet.h \
     ../docBase/docStyle.h \
+    ../appUtil/utilPropMask.h \
     ../docBase/docSectProperties.h \
     ../appUtil/utilDocumentGeometry.h \
     ../appUtil/utilPropMask.h \
@@ -3929,6 +3783,8 @@ tedEditOperation.o: \
     ../docBase/docDocumentProperties.h \
     ../docFont/utilDocFontList.h \
     ../docFont/utilDocFont.h \
+    ../utilPs/psFontInfo.h \
+    ../textEncoding/textOfficeCharset.h \
     ../docBase/docListAdmin.h \
     ../docBase/docListTable.h \
     ../docBase/docListOverrideTable.h \
@@ -3944,7 +3800,14 @@ tedEditOperation.o: \
     ../docBase/docSelectionScope.h \
     ../docBase/docEditPosition.h \
     ../docBase/docEditRange.h \
+    ../docBase/docEditPosition.h \
     ../docBuf/docTableRectangle.h \
+    ../docBuf/docDocumentTree.h \
+    ../docBase/docDocumentField.h \
+    ../docBase/docFieldInstructions.h \
+    ../docBase/docSelectionScope.h \
+    ../docBase/docEditRange.h \
+    ../docBase/docListNumberTree.h \
     ../docBase/docListTable.h \
     ../docLayout/docLayout.h \
     ../docLayout/docParticuleData.h \
@@ -3976,6 +3839,7 @@ tedEditOperation.o: \
     tedLayout.h \
     ../docLayout/docLayout.h \
     ../guiInterface/drawDrawingSurface.h \
+    ../appUtil/geoAffineTransform.h \
     tedSelect.h \
     tedDocument.h \
     ../appFrame/appFrame.h \
@@ -4001,6 +3865,7 @@ tedEditOperation.o: \
     ../docBase/docNoteProperties.h \
     ../docEdit/docEditStep.h \
     ../docBase/docDocumentList.h \
+    ../docBase/docListDepth.h \
     ../docBase/docListLevel.h \
     ../docEdit/docEditTrace.h \
     ../docBuf/docDocumentNote.h \
@@ -4013,8 +3878,7 @@ tedEditSplit.o: \
     tedConfig.h \
     ../appFrame/appFrameConfig.h \
     ../appUtil/appUtilConfig.h \
-    tedEdit.h \
-    ../docEdit/docEdit.h \
+    ../docBuf/docParaParticules.h \
     ../docBuf/docBuf.h \
     ../bitmap/bitmap.h \
     ../appUtil/utilColor.h \
@@ -4022,27 +3886,11 @@ tedEditSplit.o: \
     ../appUtil/utilColor.h \
     ../appUtil/utilMemoryBuffer.h \
     ../appUtil/geo2DInteger.h \
-    ../docFont/utilDocFont.h \
-    ../utilPs/psFontInfo.h \
-    ../appUtil/utilIndexSet.h \
-    ../appUtil/utilIndexMapping.h \
-    ../textEncoding/utilOfficeCharset.h \
     ../utilPs/psPostScriptFontList.h \
     ../utilPs/psFontFamily.h \
     ../utilPs/psFontInfo.h \
-    ../docBuf/docShape.h \
-    ../appUtil/geoAffineTransform.h \
-    ../docBase/docShapeProperties.h \
-    ../docBase/docPictureProperties.h \
-    ../appUtil/utilPropMask.h \
-    ../docBuf/docDocumentTree.h \
-    ../docBase/docDocumentField.h \
-    ../docBase/docFieldInstructions.h \
-    ../docBase/docSelectionScope.h \
-    ../docBase/docEditRange.h \
-    ../docBase/docEditPosition.h \
-    ../docBase/docListNumberTree.h \
-    ../docBase/docShapeDrawing.h \
+    ../appUtil/utilIndexSet.h \
+    ../appUtil/utilIndexMapping.h \
     ../docBase/docFramePropertiesAdmin.h \
     ../docBase/docFrameProperties.h \
     ../docBase/docPropVal.h \
@@ -4053,6 +3901,7 @@ tedEditSplit.o: \
     ../appUtil/utilIndexSet.h \
     ../docBase/docStyleSheet.h \
     ../docBase/docStyle.h \
+    ../appUtil/utilPropMask.h \
     ../docBase/docSectProperties.h \
     ../appUtil/utilDocumentGeometry.h \
     ../appUtil/utilPropMask.h \
@@ -4068,6 +3917,8 @@ tedEditSplit.o: \
     ../docBase/docDocumentProperties.h \
     ../docFont/utilDocFontList.h \
     ../docFont/utilDocFont.h \
+    ../utilPs/psFontInfo.h \
+    ../textEncoding/textOfficeCharset.h \
     ../docBase/docListAdmin.h \
     ../docBase/docListTable.h \
     ../docBase/docListOverrideTable.h \
@@ -4083,25 +3934,15 @@ tedEditSplit.o: \
     ../docBase/docSelectionScope.h \
     ../docBase/docEditPosition.h \
     ../docBase/docEditRange.h \
+    ../docBase/docEditPosition.h \
     ../docBuf/docTableRectangle.h \
+    ../docBuf/docDocumentTree.h \
+    ../docBase/docDocumentField.h \
+    ../docBase/docFieldInstructions.h \
+    ../docBase/docSelectionScope.h \
+    ../docBase/docEditRange.h \
+    ../docBase/docListNumberTree.h \
     ../docBase/docListTable.h \
-    ../docBuf/docDebug.h \
-    ../docBuf/docBuf.h \
-    ../docEdit/docEditOperation.h \
-    ../appUtil/sioGeneral.h \
-    ../docEdit/docDocumentCopyJob.h \
-    ../docBase/docDocumentAttributeMap.h \
-    ../docEdit/docEditTrace.h \
-    ../appUtil/utilMD5.h \
-    ../appUtil/appUtilConfig.h \
-    ../docLayout/layoutContext.h \
-    ../docFont/utilMatchFont.h \
-    ../docFont/utilDocFontList.h \
-    ../docLayout/docSelectionGeometry.h \
-    ../docEdit/docSelectionDescription.h \
-    ../docBuf/docTableRectangle.h \
-    ../docBuf/docSelect.h \
-    ../docBuf/docParaParticules.h \
     ../docBase/docTextParticule.h \
     ../docBase/docTextLine.h \
     ../docBuf/docTreeNode.h \
@@ -4113,11 +3954,17 @@ tedEditSplit.o: \
     ../docBuf/docSectNode.h \
     ../docBase/docSectProperties.h \
     ../docEdit/docRtfTrace.h \
+    ../docBuf/docBuf.h \
     ../docBase/docNoteProperties.h \
+    ../docEdit/docEditOperation.h \
+    ../appUtil/sioGeneral.h \
     ../docEdit/docEditStep.h \
     ../docBase/docDocumentList.h \
+    ../docBase/docListDepth.h \
     ../docBase/docListLevel.h \
     ../docEdit/docEditTrace.h \
+    ../appUtil/utilMD5.h \
+    ../appUtil/appUtilConfig.h \
     ../docLayout/docLayout.h \
     ../docLayout/docParticuleData.h \
     ../docBuf/docStripFrame.h \
@@ -4125,6 +3972,8 @@ tedEditSplit.o: \
     ../docLayout/docLayoutDocumentTree.h \
     ../docBuf/docBlockFrame.h \
     ../docLayout/layoutContext.h \
+    ../docFont/utilMatchFont.h \
+    ../docFont/utilDocFontList.h \
     ../docLayout/docSelectionGeometry.h \
     ../appFrame/appFrame.h \
     ../appFrame/appGuiBase.h \
@@ -4135,7 +3984,24 @@ tedEditSplit.o: \
     ../appFrame/appIcons.h \
     ../appFrame/guiWidgets.h \
     ../guiInterface/drawDrawingSurface.h \
+    ../appUtil/geoAffineTransform.h \
     ../docEdit/docEditCommand.h \
+    tedEdit.h \
+    ../docEdit/docEdit.h \
+    ../docBuf/docDebug.h \
+    ../docEdit/docDocumentCopyJob.h \
+    ../docBase/docDocumentAttributeMap.h \
+    ../docEdit/docEditTrace.h \
+    ../docLayout/layoutContext.h \
+    ../docLayout/docSelectionGeometry.h \
+    ../docEdit/docSelectionDescription.h \
+    ../docBuf/docTableRectangle.h \
+    ../docBuf/docSelect.h \
+    tedDocFront.h \
+    ../docBase/docPictureProperties.h \
+    ../docBase/docTocField.h \
+    ../docBase/docHyperlinkField.h \
+    ../docFont/docExpandedTextAttribute.h \
     ../include/appDebugon.h \
     ../include/appDebug.h
 
@@ -4173,19 +4039,6 @@ tedField.o: \
     ../utilPs/psFontInfo.h \
     ../appUtil/utilPropMask.h \
     ../docBuf/docBuf.h \
-    ../docFont/utilDocFont.h \
-    ../textEncoding/utilOfficeCharset.h \
-    ../docBuf/docShape.h \
-    ../docBase/docShapeProperties.h \
-    ../docBase/docPictureProperties.h \
-    ../docBuf/docDocumentTree.h \
-    ../docBase/docDocumentField.h \
-    ../docBase/docFieldInstructions.h \
-    ../docBase/docSelectionScope.h \
-    ../docBase/docEditRange.h \
-    ../docBase/docEditPosition.h \
-    ../docBase/docListNumberTree.h \
-    ../docBase/docShapeDrawing.h \
     ../docBase/docFramePropertiesAdmin.h \
     ../docBase/docFrameProperties.h \
     ../docBase/docPropVal.h \
@@ -4208,6 +4061,7 @@ tedField.o: \
     ../docBase/docDocumentProperties.h \
     ../docFont/utilDocFontList.h \
     ../docFont/utilDocFont.h \
+    ../textEncoding/textOfficeCharset.h \
     ../docBase/docListAdmin.h \
     ../docBase/docListTable.h \
     ../docBase/docListOverrideTable.h \
@@ -4223,7 +4077,14 @@ tedField.o: \
     ../docBase/docSelectionScope.h \
     ../docBase/docEditPosition.h \
     ../docBase/docEditRange.h \
+    ../docBase/docEditPosition.h \
     ../docBuf/docTableRectangle.h \
+    ../docBuf/docDocumentTree.h \
+    ../docBase/docDocumentField.h \
+    ../docBase/docFieldInstructions.h \
+    ../docBase/docSelectionScope.h \
+    ../docBase/docEditRange.h \
+    ../docBase/docListNumberTree.h \
     ../docBase/docListTable.h \
     tedEdit.h \
     ../docEdit/docEdit.h \
@@ -4247,6 +4108,7 @@ tedField.o: \
     ../docBase/docNoteProperties.h \
     ../docEdit/docEditStep.h \
     ../docBase/docDocumentList.h \
+    ../docBase/docListDepth.h \
     ../docBase/docListLevel.h \
     ../docEdit/docEditTrace.h \
     tedLayout.h \
@@ -4305,19 +4167,6 @@ tedFileConvert.o: \
     ../utilPs/psFontInfo.h \
     ../appUtil/utilPropMask.h \
     ../docBuf/docBuf.h \
-    ../docFont/utilDocFont.h \
-    ../textEncoding/utilOfficeCharset.h \
-    ../docBuf/docShape.h \
-    ../docBase/docShapeProperties.h \
-    ../docBase/docPictureProperties.h \
-    ../docBuf/docDocumentTree.h \
-    ../docBase/docDocumentField.h \
-    ../docBase/docFieldInstructions.h \
-    ../docBase/docSelectionScope.h \
-    ../docBase/docEditRange.h \
-    ../docBase/docEditPosition.h \
-    ../docBase/docListNumberTree.h \
-    ../docBase/docShapeDrawing.h \
     ../docBase/docFramePropertiesAdmin.h \
     ../docBase/docFrameProperties.h \
     ../docBase/docPropVal.h \
@@ -4340,6 +4189,7 @@ tedFileConvert.o: \
     ../docBase/docDocumentProperties.h \
     ../docFont/utilDocFontList.h \
     ../docFont/utilDocFont.h \
+    ../textEncoding/textOfficeCharset.h \
     ../docBase/docListAdmin.h \
     ../docBase/docListTable.h \
     ../docBase/docListOverrideTable.h \
@@ -4355,16 +4205,26 @@ tedFileConvert.o: \
     ../docBase/docSelectionScope.h \
     ../docBase/docEditPosition.h \
     ../docBase/docEditRange.h \
+    ../docBase/docEditPosition.h \
     ../docBuf/docTableRectangle.h \
+    ../docBuf/docDocumentTree.h \
+    ../docBase/docDocumentField.h \
+    ../docBase/docFieldInstructions.h \
+    ../docBase/docSelectionScope.h \
+    ../docBase/docEditRange.h \
+    ../docBase/docListNumberTree.h \
     ../docBase/docListTable.h \
-    ../utilPs/psTtf.h \
     ../utilPs/psBuildConfigFiles.h \
     ../utilPs/psPostScriptFontList.h \
     ../appUtil/sioFileio.h \
     ../appUtil/utilMemoryBuffer.h \
     ../appUtil/sioGeneral.h \
-    ../appUtil/sioStdin.h \
     ../appUtil/sioStdout.h \
+    ../appFrame/appFindX11Fonts.h \
+    ../appFrame/appMatchFont.h \
+    ../appUtil/appSystem.h \
+    ../docEdit/docFontsDocuments.h \
+    tedFileConvert.h \
     ../include/appDebugon.h \
     ../include/appDebug.h
 
@@ -4402,19 +4262,6 @@ tedFind.o: \
     ../utilPs/psFontInfo.h \
     ../appUtil/utilPropMask.h \
     ../docBuf/docBuf.h \
-    ../docFont/utilDocFont.h \
-    ../textEncoding/utilOfficeCharset.h \
-    ../docBuf/docShape.h \
-    ../docBase/docShapeProperties.h \
-    ../docBase/docPictureProperties.h \
-    ../docBuf/docDocumentTree.h \
-    ../docBase/docDocumentField.h \
-    ../docBase/docFieldInstructions.h \
-    ../docBase/docSelectionScope.h \
-    ../docBase/docEditRange.h \
-    ../docBase/docEditPosition.h \
-    ../docBase/docListNumberTree.h \
-    ../docBase/docShapeDrawing.h \
     ../docBase/docFramePropertiesAdmin.h \
     ../docBase/docFrameProperties.h \
     ../docBase/docPropVal.h \
@@ -4437,6 +4284,7 @@ tedFind.o: \
     ../docBase/docDocumentProperties.h \
     ../docFont/utilDocFontList.h \
     ../docFont/utilDocFont.h \
+    ../textEncoding/textOfficeCharset.h \
     ../docBase/docListAdmin.h \
     ../docBase/docListTable.h \
     ../docBase/docListOverrideTable.h \
@@ -4452,7 +4300,14 @@ tedFind.o: \
     ../docBase/docSelectionScope.h \
     ../docBase/docEditPosition.h \
     ../docBase/docEditRange.h \
+    ../docBase/docEditPosition.h \
     ../docBuf/docTableRectangle.h \
+    ../docBuf/docDocumentTree.h \
+    ../docBase/docDocumentField.h \
+    ../docBase/docFieldInstructions.h \
+    ../docBase/docSelectionScope.h \
+    ../docBase/docEditRange.h \
+    ../docBase/docListNumberTree.h \
     ../docBase/docListTable.h \
     tedAppResources.h \
     ../appFrame/appInspector.h \
@@ -4528,19 +4383,6 @@ tedFindPosition.o: \
     ../utilPs/psFontInfo.h \
     ../appUtil/utilPropMask.h \
     ../docBuf/docBuf.h \
-    ../docFont/utilDocFont.h \
-    ../textEncoding/utilOfficeCharset.h \
-    ../docBuf/docShape.h \
-    ../docBase/docShapeProperties.h \
-    ../docBase/docPictureProperties.h \
-    ../docBuf/docDocumentTree.h \
-    ../docBase/docDocumentField.h \
-    ../docBase/docFieldInstructions.h \
-    ../docBase/docSelectionScope.h \
-    ../docBase/docEditRange.h \
-    ../docBase/docEditPosition.h \
-    ../docBase/docListNumberTree.h \
-    ../docBase/docShapeDrawing.h \
     ../docBase/docFramePropertiesAdmin.h \
     ../docBase/docFrameProperties.h \
     ../docBase/docPropVal.h \
@@ -4563,6 +4405,7 @@ tedFindPosition.o: \
     ../docBase/docDocumentProperties.h \
     ../docFont/utilDocFontList.h \
     ../docFont/utilDocFont.h \
+    ../textEncoding/textOfficeCharset.h \
     ../docBase/docListAdmin.h \
     ../docBase/docListTable.h \
     ../docBase/docListOverrideTable.h \
@@ -4578,7 +4421,14 @@ tedFindPosition.o: \
     ../docBase/docSelectionScope.h \
     ../docBase/docEditPosition.h \
     ../docBase/docEditRange.h \
+    ../docBase/docEditPosition.h \
     ../docBuf/docTableRectangle.h \
+    ../docBuf/docDocumentTree.h \
+    ../docBase/docDocumentField.h \
+    ../docBase/docFieldInstructions.h \
+    ../docBase/docSelectionScope.h \
+    ../docBase/docEditRange.h \
+    ../docBase/docListNumberTree.h \
     ../docBase/docListTable.h \
     tedSelect.h \
     ../docLayout/docSelectionGeometry.h \
@@ -4606,7 +4456,6 @@ tedFindPosition.o: \
     ../docBase/docRowProperties.h \
     ../docBuf/docSectNode.h \
     ../docBase/docSectProperties.h \
-    ../textEncoding/textConverter.h \
     ../docLayout/docDraw.h \
     ../docBase/docBlockOrnaments.h \
     ../docBase/docBorderProperties.h \
@@ -4652,19 +4501,6 @@ tedFindTool.o: \
     ../utilPs/psFontInfo.h \
     ../appUtil/utilPropMask.h \
     ../docBuf/docBuf.h \
-    ../docFont/utilDocFont.h \
-    ../textEncoding/utilOfficeCharset.h \
-    ../docBuf/docShape.h \
-    ../docBase/docShapeProperties.h \
-    ../docBase/docPictureProperties.h \
-    ../docBuf/docDocumentTree.h \
-    ../docBase/docDocumentField.h \
-    ../docBase/docFieldInstructions.h \
-    ../docBase/docSelectionScope.h \
-    ../docBase/docEditRange.h \
-    ../docBase/docEditPosition.h \
-    ../docBase/docListNumberTree.h \
-    ../docBase/docShapeDrawing.h \
     ../docBase/docFramePropertiesAdmin.h \
     ../docBase/docFrameProperties.h \
     ../docBase/docPropVal.h \
@@ -4687,6 +4523,7 @@ tedFindTool.o: \
     ../docBase/docDocumentProperties.h \
     ../docFont/utilDocFontList.h \
     ../docFont/utilDocFont.h \
+    ../textEncoding/textOfficeCharset.h \
     ../docBase/docListAdmin.h \
     ../docBase/docListTable.h \
     ../docBase/docListOverrideTable.h \
@@ -4702,13 +4539,20 @@ tedFindTool.o: \
     ../docBase/docSelectionScope.h \
     ../docBase/docEditPosition.h \
     ../docBase/docEditRange.h \
+    ../docBase/docEditPosition.h \
     ../docBuf/docTableRectangle.h \
+    ../docBuf/docDocumentTree.h \
+    ../docBase/docDocumentField.h \
+    ../docBase/docFieldInstructions.h \
+    ../docBase/docSelectionScope.h \
+    ../docBase/docEditRange.h \
+    ../docBase/docListNumberTree.h \
     ../docBase/docListTable.h \
     tedAppFront.h \
     ../docBase/docRowProperties.h \
+    ../docBase/docPictureProperties.h \
     ../docBase/docNoteProperties.h \
     ../docBase/docSectProperties.h \
-    ../docBase/docTabStop.h \
     ../docBase/docTocField.h \
     ../docBase/docHyperlinkField.h \
     ../docFont/docExpandedTextAttribute.h \
@@ -4751,9 +4595,13 @@ tedFindTool.o: \
     tedColumnTool.h \
     tedCellTool.h \
     tedTabsTool.h \
+    ../docBase/docTabStop.h \
+    ../docBase/docTabStopList.h \
+    ../docBase/docTabStop.h \
     tedListTool.h \
     ../docBase/docListLevel.h \
     ../docBase/docDocumentList.h \
+    ../docBase/docListDepth.h \
     ../docBase/docListLevel.h \
     ../docBase/docListOverride.h \
     ../docBase/docListOverrideLevel.h \
@@ -4766,6 +4614,7 @@ tedFindTool.o: \
     tedFrameTool.h \
     ../docBase/docFrameProperties.h \
     tedTocTool.h \
+    ../docBase/docListDepth.h \
     tedFindTool.h \
     ../appFrame/appFindTool.h \
     tedSpellTool.h \
@@ -4821,19 +4670,6 @@ tedFollowLink.o: \
     ../utilPs/psFontInfo.h \
     ../appUtil/utilPropMask.h \
     ../docBuf/docBuf.h \
-    ../docFont/utilDocFont.h \
-    ../textEncoding/utilOfficeCharset.h \
-    ../docBuf/docShape.h \
-    ../docBase/docShapeProperties.h \
-    ../docBase/docPictureProperties.h \
-    ../docBuf/docDocumentTree.h \
-    ../docBase/docDocumentField.h \
-    ../docBase/docFieldInstructions.h \
-    ../docBase/docSelectionScope.h \
-    ../docBase/docEditRange.h \
-    ../docBase/docEditPosition.h \
-    ../docBase/docListNumberTree.h \
-    ../docBase/docShapeDrawing.h \
     ../docBase/docFramePropertiesAdmin.h \
     ../docBase/docFrameProperties.h \
     ../docBase/docPropVal.h \
@@ -4856,6 +4692,7 @@ tedFollowLink.o: \
     ../docBase/docDocumentProperties.h \
     ../docFont/utilDocFontList.h \
     ../docFont/utilDocFont.h \
+    ../textEncoding/textOfficeCharset.h \
     ../docBase/docListAdmin.h \
     ../docBase/docListTable.h \
     ../docBase/docListOverrideTable.h \
@@ -4871,13 +4708,20 @@ tedFollowLink.o: \
     ../docBase/docSelectionScope.h \
     ../docBase/docEditPosition.h \
     ../docBase/docEditRange.h \
+    ../docBase/docEditPosition.h \
     ../docBuf/docTableRectangle.h \
+    ../docBuf/docDocumentTree.h \
+    ../docBase/docDocumentField.h \
+    ../docBase/docFieldInstructions.h \
+    ../docBase/docSelectionScope.h \
+    ../docBase/docEditRange.h \
+    ../docBase/docListNumberTree.h \
     ../docBase/docListTable.h \
     tedDocFront.h \
     ../docBase/docRowProperties.h \
+    ../docBase/docPictureProperties.h \
     ../docBase/docNoteProperties.h \
     ../docBase/docSectProperties.h \
-    ../docBase/docTabStop.h \
     ../docBase/docTocField.h \
     ../docBase/docHyperlinkField.h \
     ../docFont/docExpandedTextAttribute.h \
@@ -4912,7 +4756,7 @@ tedFontTool.o: \
     ../appUtil/utilIndexSet.h \
     ../appUtil/utilIndexMapping.h \
     ../appUtil/utilMemoryBuffer.h \
-    ../textEncoding/utilOfficeCharset.h \
+    ../textEncoding/textOfficeCharset.h \
     ../appUtil/utilColor.h \
     ../appUtil/utilPalette.h \
     ../appUtil/utilColor.h \
@@ -4939,18 +4783,6 @@ tedFontTool.o: \
     ../appFrame/guiOptionmenu.h \
     ../appFrame/appFrame.h \
     ../docBuf/docBuf.h \
-    ../docFont/utilDocFont.h \
-    ../docBuf/docShape.h \
-    ../docBase/docShapeProperties.h \
-    ../docBase/docPictureProperties.h \
-    ../docBuf/docDocumentTree.h \
-    ../docBase/docDocumentField.h \
-    ../docBase/docFieldInstructions.h \
-    ../docBase/docSelectionScope.h \
-    ../docBase/docEditRange.h \
-    ../docBase/docEditPosition.h \
-    ../docBase/docListNumberTree.h \
-    ../docBase/docShapeDrawing.h \
     ../docBase/docFramePropertiesAdmin.h \
     ../docBase/docFrameProperties.h \
     ../docBase/docPropVal.h \
@@ -4986,7 +4818,14 @@ tedFontTool.o: \
     ../docBase/docSelectionScope.h \
     ../docBase/docEditPosition.h \
     ../docBase/docEditRange.h \
+    ../docBase/docEditPosition.h \
     ../docBuf/docTableRectangle.h \
+    ../docBuf/docDocumentTree.h \
+    ../docBase/docDocumentField.h \
+    ../docBase/docFieldInstructions.h \
+    ../docBase/docSelectionScope.h \
+    ../docBase/docEditRange.h \
+    ../docBase/docListNumberTree.h \
     ../docBase/docListTable.h \
     ../docEdit/docSelectionDescription.h \
     ../docBuf/docTableRectangle.h \
@@ -4995,15 +4834,16 @@ tedFontTool.o: \
     ../appFrame/appInspector.h \
     tedAppFront.h \
     ../docBase/docRowProperties.h \
+    ../docBase/docPictureProperties.h \
     ../docBase/docNoteProperties.h \
     ../docBase/docSectProperties.h \
-    ../docBase/docTabStop.h \
     ../docBase/docTocField.h \
     ../docBase/docHyperlinkField.h \
     ../appFrame/guiToolUtil.h \
     ../docBase/docListOverride.h \
     ../docBase/docListOverrideLevel.h \
     ../docBase/docListLevel.h \
+    ../docBase/docListDepth.h \
     ../docBase/docDocumentList.h \
     ../docEdit/docEditCommand.h \
     ../include/appDebugon.h \
@@ -5015,7 +4855,6 @@ tedFormatTool.o: \
     ../appFrame/appFrameConfig.h \
     ../appUtil/appUtilConfig.h \
     tedFormatTool.h \
-    ../docBase/docTabStop.h \
     tedParaLayoutTool.h \
     ../docBase/docPropVal.h \
     ../docBuf/docBuf.h \
@@ -5025,27 +4864,11 @@ tedFormatTool.o: \
     ../appUtil/utilColor.h \
     ../appUtil/utilMemoryBuffer.h \
     ../appUtil/geo2DInteger.h \
-    ../docFont/utilDocFont.h \
-    ../utilPs/psFontInfo.h \
-    ../appUtil/utilIndexSet.h \
-    ../appUtil/utilIndexMapping.h \
-    ../textEncoding/utilOfficeCharset.h \
     ../utilPs/psPostScriptFontList.h \
     ../utilPs/psFontFamily.h \
     ../utilPs/psFontInfo.h \
-    ../docBuf/docShape.h \
-    ../appUtil/geoAffineTransform.h \
-    ../docBase/docShapeProperties.h \
-    ../docBase/docPictureProperties.h \
-    ../appUtil/utilPropMask.h \
-    ../docBuf/docDocumentTree.h \
-    ../docBase/docDocumentField.h \
-    ../docBase/docFieldInstructions.h \
-    ../docBase/docSelectionScope.h \
-    ../docBase/docEditRange.h \
-    ../docBase/docEditPosition.h \
-    ../docBase/docListNumberTree.h \
-    ../docBase/docShapeDrawing.h \
+    ../appUtil/utilIndexSet.h \
+    ../appUtil/utilIndexMapping.h \
     ../docBase/docFramePropertiesAdmin.h \
     ../docBase/docFrameProperties.h \
     ../docBase/docPropVal.h \
@@ -5056,6 +4879,7 @@ tedFormatTool.o: \
     ../appUtil/utilIndexSet.h \
     ../docBase/docStyleSheet.h \
     ../docBase/docStyle.h \
+    ../appUtil/utilPropMask.h \
     ../docBase/docSectProperties.h \
     ../appUtil/utilDocumentGeometry.h \
     ../appUtil/utilPropMask.h \
@@ -5071,6 +4895,8 @@ tedFormatTool.o: \
     ../docBase/docDocumentProperties.h \
     ../docFont/utilDocFontList.h \
     ../docFont/utilDocFont.h \
+    ../utilPs/psFontInfo.h \
+    ../textEncoding/textOfficeCharset.h \
     ../docBase/docListAdmin.h \
     ../docBase/docListTable.h \
     ../docBase/docListOverrideTable.h \
@@ -5086,7 +4912,14 @@ tedFormatTool.o: \
     ../docBase/docSelectionScope.h \
     ../docBase/docEditPosition.h \
     ../docBase/docEditRange.h \
+    ../docBase/docEditPosition.h \
     ../docBuf/docTableRectangle.h \
+    ../docBuf/docDocumentTree.h \
+    ../docBase/docDocumentField.h \
+    ../docBase/docFieldInstructions.h \
+    ../docBase/docSelectionScope.h \
+    ../docBase/docEditRange.h \
+    ../docBase/docListNumberTree.h \
     ../docBase/docListTable.h \
     ../docLayout/docSelectionGeometry.h \
     ../docEdit/docSelectionDescription.h \
@@ -5102,6 +4935,7 @@ tedFormatTool.o: \
     ../appFrame/appIcons.h \
     ../appFrame/guiWidgets.h \
     ../guiInterface/drawDrawingSurface.h \
+    ../appUtil/geoAffineTransform.h \
     ../appFrame/appInspector.h \
     ../appFrame/appFrame.h \
     ../appFrame/appTool.h \
@@ -5137,9 +4971,13 @@ tedFormatTool.o: \
     tedColumnTool.h \
     tedCellTool.h \
     tedTabsTool.h \
+    ../docBase/docTabStop.h \
+    ../docBase/docTabStopList.h \
+    ../docBase/docTabStop.h \
     tedListTool.h \
     ../docBase/docListLevel.h \
     ../docBase/docDocumentList.h \
+    ../docBase/docListDepth.h \
     ../docBase/docListLevel.h \
     ../docBase/docListOverride.h \
     ../docBase/docListOverrideLevel.h \
@@ -5150,10 +4988,12 @@ tedFormatTool.o: \
     tedBookmarkList.h \
     tedBookmarkTool.h \
     tedImageTool.h \
+    ../docBase/docPictureProperties.h \
     tedFrameTool.h \
     ../docBase/docFrameProperties.h \
     tedTocTool.h \
     ../docBase/docTocField.h \
+    ../docBase/docListDepth.h \
     tedFindTool.h \
     ../appFrame/appFindTool.h \
     tedSpellTool.h \
@@ -5184,7 +5024,6 @@ tedFormatToolShowPage.o: \
     ../appFrame/appFrameConfig.h \
     ../appUtil/appUtilConfig.h \
     tedFormatTool.h \
-    ../docBase/docTabStop.h \
     tedParaLayoutTool.h \
     ../docBase/docPropVal.h \
     ../docBuf/docBuf.h \
@@ -5194,27 +5033,11 @@ tedFormatToolShowPage.o: \
     ../appUtil/utilColor.h \
     ../appUtil/utilMemoryBuffer.h \
     ../appUtil/geo2DInteger.h \
-    ../docFont/utilDocFont.h \
-    ../utilPs/psFontInfo.h \
-    ../appUtil/utilIndexSet.h \
-    ../appUtil/utilIndexMapping.h \
-    ../textEncoding/utilOfficeCharset.h \
     ../utilPs/psPostScriptFontList.h \
     ../utilPs/psFontFamily.h \
     ../utilPs/psFontInfo.h \
-    ../docBuf/docShape.h \
-    ../appUtil/geoAffineTransform.h \
-    ../docBase/docShapeProperties.h \
-    ../docBase/docPictureProperties.h \
-    ../appUtil/utilPropMask.h \
-    ../docBuf/docDocumentTree.h \
-    ../docBase/docDocumentField.h \
-    ../docBase/docFieldInstructions.h \
-    ../docBase/docSelectionScope.h \
-    ../docBase/docEditRange.h \
-    ../docBase/docEditPosition.h \
-    ../docBase/docListNumberTree.h \
-    ../docBase/docShapeDrawing.h \
+    ../appUtil/utilIndexSet.h \
+    ../appUtil/utilIndexMapping.h \
     ../docBase/docFramePropertiesAdmin.h \
     ../docBase/docFrameProperties.h \
     ../docBase/docPropVal.h \
@@ -5225,6 +5048,7 @@ tedFormatToolShowPage.o: \
     ../appUtil/utilIndexSet.h \
     ../docBase/docStyleSheet.h \
     ../docBase/docStyle.h \
+    ../appUtil/utilPropMask.h \
     ../docBase/docSectProperties.h \
     ../appUtil/utilDocumentGeometry.h \
     ../appUtil/utilPropMask.h \
@@ -5240,6 +5064,8 @@ tedFormatToolShowPage.o: \
     ../docBase/docDocumentProperties.h \
     ../docFont/utilDocFontList.h \
     ../docFont/utilDocFont.h \
+    ../utilPs/psFontInfo.h \
+    ../textEncoding/textOfficeCharset.h \
     ../docBase/docListAdmin.h \
     ../docBase/docListTable.h \
     ../docBase/docListOverrideTable.h \
@@ -5255,7 +5081,14 @@ tedFormatToolShowPage.o: \
     ../docBase/docSelectionScope.h \
     ../docBase/docEditPosition.h \
     ../docBase/docEditRange.h \
+    ../docBase/docEditPosition.h \
     ../docBuf/docTableRectangle.h \
+    ../docBuf/docDocumentTree.h \
+    ../docBase/docDocumentField.h \
+    ../docBase/docFieldInstructions.h \
+    ../docBase/docSelectionScope.h \
+    ../docBase/docEditRange.h \
+    ../docBase/docListNumberTree.h \
     ../docBase/docListTable.h \
     ../docLayout/docSelectionGeometry.h \
     ../docEdit/docSelectionDescription.h \
@@ -5271,6 +5104,7 @@ tedFormatToolShowPage.o: \
     ../appFrame/appIcons.h \
     ../appFrame/guiWidgets.h \
     ../guiInterface/drawDrawingSurface.h \
+    ../appUtil/geoAffineTransform.h \
     ../appFrame/appInspector.h \
     ../appFrame/appFrame.h \
     ../appFrame/appTool.h \
@@ -5306,9 +5140,13 @@ tedFormatToolShowPage.o: \
     tedColumnTool.h \
     tedCellTool.h \
     tedTabsTool.h \
+    ../docBase/docTabStop.h \
+    ../docBase/docTabStopList.h \
+    ../docBase/docTabStop.h \
     tedListTool.h \
     ../docBase/docListLevel.h \
     ../docBase/docDocumentList.h \
+    ../docBase/docListDepth.h \
     ../docBase/docListLevel.h \
     ../docBase/docListOverride.h \
     ../docBase/docListOverrideLevel.h \
@@ -5319,10 +5157,12 @@ tedFormatToolShowPage.o: \
     tedBookmarkList.h \
     tedBookmarkTool.h \
     tedImageTool.h \
+    ../docBase/docPictureProperties.h \
     tedFrameTool.h \
     ../docBase/docFrameProperties.h \
     tedTocTool.h \
     ../docBase/docTocField.h \
+    ../docBase/docListDepth.h \
     tedFindTool.h \
     ../appFrame/appFindTool.h \
     tedSpellTool.h \
@@ -5372,19 +5212,6 @@ tedFormatToolUtil.o: \
     ../utilPs/psFontInfo.h \
     ../appUtil/utilPropMask.h \
     ../docBuf/docBuf.h \
-    ../docFont/utilDocFont.h \
-    ../textEncoding/utilOfficeCharset.h \
-    ../docBuf/docShape.h \
-    ../docBase/docShapeProperties.h \
-    ../docBase/docPictureProperties.h \
-    ../docBuf/docDocumentTree.h \
-    ../docBase/docDocumentField.h \
-    ../docBase/docFieldInstructions.h \
-    ../docBase/docSelectionScope.h \
-    ../docBase/docEditRange.h \
-    ../docBase/docEditPosition.h \
-    ../docBase/docListNumberTree.h \
-    ../docBase/docShapeDrawing.h \
     ../docBase/docFramePropertiesAdmin.h \
     ../docBase/docFrameProperties.h \
     ../docBase/docPropVal.h \
@@ -5407,6 +5234,7 @@ tedFormatToolUtil.o: \
     ../docBase/docDocumentProperties.h \
     ../docFont/utilDocFontList.h \
     ../docFont/utilDocFont.h \
+    ../textEncoding/textOfficeCharset.h \
     ../docBase/docListAdmin.h \
     ../docBase/docListTable.h \
     ../docBase/docListOverrideTable.h \
@@ -5422,7 +5250,14 @@ tedFormatToolUtil.o: \
     ../docBase/docSelectionScope.h \
     ../docBase/docEditPosition.h \
     ../docBase/docEditRange.h \
+    ../docBase/docEditPosition.h \
     ../docBuf/docTableRectangle.h \
+    ../docBuf/docDocumentTree.h \
+    ../docBase/docDocumentField.h \
+    ../docBase/docFieldInstructions.h \
+    ../docBase/docSelectionScope.h \
+    ../docBase/docEditRange.h \
+    ../docBase/docListNumberTree.h \
     ../docBase/docListTable.h \
     tedToolUtil.h \
     ../docBase/docRowProperties.h \
@@ -5468,27 +5303,11 @@ tedFrameTool.o: \
     ../appUtil/utilColor.h \
     ../appUtil/utilMemoryBuffer.h \
     ../appUtil/geo2DInteger.h \
-    ../docFont/utilDocFont.h \
-    ../utilPs/psFontInfo.h \
-    ../appUtil/utilIndexSet.h \
-    ../appUtil/utilIndexMapping.h \
-    ../textEncoding/utilOfficeCharset.h \
     ../utilPs/psPostScriptFontList.h \
     ../utilPs/psFontFamily.h \
     ../utilPs/psFontInfo.h \
-    ../docBuf/docShape.h \
-    ../appUtil/geoAffineTransform.h \
-    ../docBase/docShapeProperties.h \
-    ../docBase/docPictureProperties.h \
-    ../appUtil/utilPropMask.h \
-    ../docBuf/docDocumentTree.h \
-    ../docBase/docDocumentField.h \
-    ../docBase/docFieldInstructions.h \
-    ../docBase/docSelectionScope.h \
-    ../docBase/docEditRange.h \
-    ../docBase/docEditPosition.h \
-    ../docBase/docListNumberTree.h \
-    ../docBase/docShapeDrawing.h \
+    ../appUtil/utilIndexSet.h \
+    ../appUtil/utilIndexMapping.h \
     ../docBase/docFramePropertiesAdmin.h \
     ../docBase/docFrameProperties.h \
     ../docBase/docPropVal.h \
@@ -5499,6 +5318,7 @@ tedFrameTool.o: \
     ../appUtil/utilIndexSet.h \
     ../docBase/docStyleSheet.h \
     ../docBase/docStyle.h \
+    ../appUtil/utilPropMask.h \
     ../docBase/docSectProperties.h \
     ../appUtil/utilDocumentGeometry.h \
     ../appUtil/utilPropMask.h \
@@ -5514,6 +5334,8 @@ tedFrameTool.o: \
     ../docBase/docDocumentProperties.h \
     ../docFont/utilDocFontList.h \
     ../docFont/utilDocFont.h \
+    ../utilPs/psFontInfo.h \
+    ../textEncoding/textOfficeCharset.h \
     ../docBase/docListAdmin.h \
     ../docBase/docListTable.h \
     ../docBase/docListOverrideTable.h \
@@ -5529,7 +5351,14 @@ tedFrameTool.o: \
     ../docBase/docSelectionScope.h \
     ../docBase/docEditPosition.h \
     ../docBase/docEditRange.h \
+    ../docBase/docEditPosition.h \
     ../docBuf/docTableRectangle.h \
+    ../docBuf/docDocumentTree.h \
+    ../docBase/docDocumentField.h \
+    ../docBase/docFieldInstructions.h \
+    ../docBase/docSelectionScope.h \
+    ../docBase/docEditRange.h \
+    ../docBase/docListNumberTree.h \
     ../docBase/docListTable.h \
     ../appFrame/appFrame.h \
     ../appFrame/appGuiBase.h \
@@ -5541,6 +5370,7 @@ tedFrameTool.o: \
     ../appFrame/appIcons.h \
     ../appFrame/guiWidgets.h \
     ../guiInterface/drawDrawingSurface.h \
+    ../appUtil/geoAffineTransform.h \
     ../appFrame/appInspector.h \
     ../appFrame/appFrame.h \
     ../appFrame/appTool.h \
@@ -5553,9 +5383,9 @@ tedFrameTool.o: \
     ../docBuf/docSelect.h \
     tedAppFront.h \
     ../docBase/docRowProperties.h \
+    ../docBase/docPictureProperties.h \
     ../docBase/docNoteProperties.h \
     ../docBase/docSectProperties.h \
-    ../docBase/docTabStop.h \
     ../docBase/docTocField.h \
     ../docBase/docHyperlinkField.h \
     ../docFont/docExpandedTextAttribute.h \
@@ -5608,19 +5438,6 @@ tedHeaderFooter.o: \
     ../utilPs/psFontInfo.h \
     ../appUtil/utilPropMask.h \
     ../docBuf/docBuf.h \
-    ../docFont/utilDocFont.h \
-    ../textEncoding/utilOfficeCharset.h \
-    ../docBuf/docShape.h \
-    ../docBase/docShapeProperties.h \
-    ../docBase/docPictureProperties.h \
-    ../docBuf/docDocumentTree.h \
-    ../docBase/docDocumentField.h \
-    ../docBase/docFieldInstructions.h \
-    ../docBase/docSelectionScope.h \
-    ../docBase/docEditRange.h \
-    ../docBase/docEditPosition.h \
-    ../docBase/docListNumberTree.h \
-    ../docBase/docShapeDrawing.h \
     ../docBase/docFramePropertiesAdmin.h \
     ../docBase/docFrameProperties.h \
     ../docBase/docPropVal.h \
@@ -5643,6 +5460,7 @@ tedHeaderFooter.o: \
     ../docBase/docDocumentProperties.h \
     ../docFont/utilDocFontList.h \
     ../docFont/utilDocFont.h \
+    ../textEncoding/textOfficeCharset.h \
     ../docBase/docListAdmin.h \
     ../docBase/docListTable.h \
     ../docBase/docListOverrideTable.h \
@@ -5658,7 +5476,14 @@ tedHeaderFooter.o: \
     ../docBase/docSelectionScope.h \
     ../docBase/docEditPosition.h \
     ../docBase/docEditRange.h \
+    ../docBase/docEditPosition.h \
     ../docBuf/docTableRectangle.h \
+    ../docBuf/docDocumentTree.h \
+    ../docBase/docDocumentField.h \
+    ../docBase/docFieldInstructions.h \
+    ../docBase/docSelectionScope.h \
+    ../docBase/docEditRange.h \
+    ../docBase/docListNumberTree.h \
     ../docBase/docListTable.h \
     tedSelect.h \
     ../docLayout/docSelectionGeometry.h \
@@ -5694,9 +5519,9 @@ tedHeaderFooter.o: \
     ../docLayout/layoutContext.h \
     tedDocFront.h \
     ../docBase/docRowProperties.h \
+    ../docBase/docPictureProperties.h \
     ../docBase/docNoteProperties.h \
     ../docBase/docSectProperties.h \
-    ../docBase/docTabStop.h \
     ../docBase/docTocField.h \
     ../docBase/docHyperlinkField.h \
     ../docFont/docExpandedTextAttribute.h \
@@ -5706,6 +5531,7 @@ tedHeaderFooter.o: \
     ../docEdit/docRtfTrace.h \
     ../docEdit/docEditStep.h \
     ../docBase/docDocumentList.h \
+    ../docBase/docListDepth.h \
     ../docBase/docListLevel.h \
     ../docEdit/docEditTrace.h \
     ../docBuf/docTreeNode.h \
@@ -5733,27 +5559,11 @@ tedHeaderFooterTool.o: \
     ../appUtil/utilColor.h \
     ../appUtil/utilMemoryBuffer.h \
     ../appUtil/geo2DInteger.h \
-    ../docFont/utilDocFont.h \
-    ../utilPs/psFontInfo.h \
-    ../appUtil/utilIndexSet.h \
-    ../appUtil/utilIndexMapping.h \
-    ../textEncoding/utilOfficeCharset.h \
     ../utilPs/psPostScriptFontList.h \
     ../utilPs/psFontFamily.h \
     ../utilPs/psFontInfo.h \
-    ../docBuf/docShape.h \
-    ../appUtil/geoAffineTransform.h \
-    ../docBase/docShapeProperties.h \
-    ../docBase/docPictureProperties.h \
-    ../appUtil/utilPropMask.h \
-    ../docBuf/docDocumentTree.h \
-    ../docBase/docDocumentField.h \
-    ../docBase/docFieldInstructions.h \
-    ../docBase/docSelectionScope.h \
-    ../docBase/docEditRange.h \
-    ../docBase/docEditPosition.h \
-    ../docBase/docListNumberTree.h \
-    ../docBase/docShapeDrawing.h \
+    ../appUtil/utilIndexSet.h \
+    ../appUtil/utilIndexMapping.h \
     ../docBase/docFramePropertiesAdmin.h \
     ../docBase/docFrameProperties.h \
     ../docBase/docPropVal.h \
@@ -5764,6 +5574,7 @@ tedHeaderFooterTool.o: \
     ../appUtil/utilIndexSet.h \
     ../docBase/docStyleSheet.h \
     ../docBase/docStyle.h \
+    ../appUtil/utilPropMask.h \
     ../docBase/docSectProperties.h \
     ../appUtil/utilDocumentGeometry.h \
     ../appUtil/utilPropMask.h \
@@ -5779,6 +5590,8 @@ tedHeaderFooterTool.o: \
     ../docBase/docDocumentProperties.h \
     ../docFont/utilDocFontList.h \
     ../docFont/utilDocFont.h \
+    ../utilPs/psFontInfo.h \
+    ../textEncoding/textOfficeCharset.h \
     ../docBase/docListAdmin.h \
     ../docBase/docListTable.h \
     ../docBase/docListOverrideTable.h \
@@ -5794,7 +5607,14 @@ tedHeaderFooterTool.o: \
     ../docBase/docSelectionScope.h \
     ../docBase/docEditPosition.h \
     ../docBase/docEditRange.h \
+    ../docBase/docEditPosition.h \
     ../docBuf/docTableRectangle.h \
+    ../docBuf/docDocumentTree.h \
+    ../docBase/docDocumentField.h \
+    ../docBase/docFieldInstructions.h \
+    ../docBase/docSelectionScope.h \
+    ../docBase/docEditRange.h \
+    ../docBase/docListNumberTree.h \
     ../docBase/docListTable.h \
     ../appFrame/appFrame.h \
     ../appFrame/appGuiBase.h \
@@ -5806,6 +5626,7 @@ tedHeaderFooterTool.o: \
     ../appFrame/appIcons.h \
     ../appFrame/guiWidgets.h \
     ../guiInterface/drawDrawingSurface.h \
+    ../appUtil/geoAffineTransform.h \
     ../appFrame/appInspector.h \
     ../appFrame/appFrame.h \
     ../appFrame/appTool.h \
@@ -5816,9 +5637,9 @@ tedHeaderFooterTool.o: \
     ../docLayout/docSelectionGeometry.h \
     tedAppFront.h \
     ../docBase/docRowProperties.h \
+    ../docBase/docPictureProperties.h \
     ../docBase/docNoteProperties.h \
     ../docBase/docSectProperties.h \
-    ../docBase/docTabStop.h \
     ../docBase/docTocField.h \
     ../docBase/docHyperlinkField.h \
     ../docFont/docExpandedTextAttribute.h \
@@ -5877,19 +5698,6 @@ tedHeightTool.o: \
     ../appUtil/utilPropMask.h \
     ../docBase/docDocumentAttributeMap.h \
     ../docBuf/docBuf.h \
-    ../docFont/utilDocFont.h \
-    ../textEncoding/utilOfficeCharset.h \
-    ../docBuf/docShape.h \
-    ../docBase/docShapeProperties.h \
-    ../docBase/docPictureProperties.h \
-    ../docBuf/docDocumentTree.h \
-    ../docBase/docDocumentField.h \
-    ../docBase/docFieldInstructions.h \
-    ../docBase/docSelectionScope.h \
-    ../docBase/docEditRange.h \
-    ../docBase/docEditPosition.h \
-    ../docBase/docListNumberTree.h \
-    ../docBase/docShapeDrawing.h \
     ../docBase/docFramePropertiesAdmin.h \
     ../docBase/docFrameProperties.h \
     ../docBase/docPropVal.h \
@@ -5909,6 +5717,7 @@ tedHeightTool.o: \
     ../docBase/docDocumentProperties.h \
     ../docFont/utilDocFontList.h \
     ../docFont/utilDocFont.h \
+    ../textEncoding/textOfficeCharset.h \
     ../docBase/docListAdmin.h \
     ../docBase/docListTable.h \
     ../docBase/docListOverrideTable.h \
@@ -5924,7 +5733,14 @@ tedHeightTool.o: \
     ../docBase/docSelectionScope.h \
     ../docBase/docEditPosition.h \
     ../docBase/docEditRange.h \
+    ../docBase/docEditPosition.h \
     ../docBuf/docTableRectangle.h \
+    ../docBuf/docDocumentTree.h \
+    ../docBase/docDocumentField.h \
+    ../docBase/docFieldInstructions.h \
+    ../docBase/docSelectionScope.h \
+    ../docBase/docEditRange.h \
+    ../docBase/docListNumberTree.h \
     ../docBase/docListTable.h \
     ../appFrame/appInspector.h \
     ../appFrame/appFrame.h \
@@ -5953,27 +5769,11 @@ tedHyperlink.o: \
     ../appUtil/utilColor.h \
     ../appUtil/utilMemoryBuffer.h \
     ../appUtil/geo2DInteger.h \
-    ../docFont/utilDocFont.h \
-    ../utilPs/psFontInfo.h \
-    ../appUtil/utilIndexSet.h \
-    ../appUtil/utilIndexMapping.h \
-    ../textEncoding/utilOfficeCharset.h \
     ../utilPs/psPostScriptFontList.h \
     ../utilPs/psFontFamily.h \
     ../utilPs/psFontInfo.h \
-    ../docBuf/docShape.h \
-    ../appUtil/geoAffineTransform.h \
-    ../docBase/docShapeProperties.h \
-    ../docBase/docPictureProperties.h \
-    ../appUtil/utilPropMask.h \
-    ../docBuf/docDocumentTree.h \
-    ../docBase/docDocumentField.h \
-    ../docBase/docFieldInstructions.h \
-    ../docBase/docSelectionScope.h \
-    ../docBase/docEditRange.h \
-    ../docBase/docEditPosition.h \
-    ../docBase/docListNumberTree.h \
-    ../docBase/docShapeDrawing.h \
+    ../appUtil/utilIndexSet.h \
+    ../appUtil/utilIndexMapping.h \
     ../docBase/docFramePropertiesAdmin.h \
     ../docBase/docFrameProperties.h \
     ../docBase/docPropVal.h \
@@ -5984,6 +5784,7 @@ tedHyperlink.o: \
     ../appUtil/utilIndexSet.h \
     ../docBase/docStyleSheet.h \
     ../docBase/docStyle.h \
+    ../appUtil/utilPropMask.h \
     ../docBase/docSectProperties.h \
     ../appUtil/utilDocumentGeometry.h \
     ../appUtil/utilPropMask.h \
@@ -5999,6 +5800,8 @@ tedHyperlink.o: \
     ../docBase/docDocumentProperties.h \
     ../docFont/utilDocFontList.h \
     ../docFont/utilDocFont.h \
+    ../utilPs/psFontInfo.h \
+    ../textEncoding/textOfficeCharset.h \
     ../docBase/docListAdmin.h \
     ../docBase/docListTable.h \
     ../docBase/docListOverrideTable.h \
@@ -6014,7 +5817,14 @@ tedHyperlink.o: \
     ../docBase/docSelectionScope.h \
     ../docBase/docEditPosition.h \
     ../docBase/docEditRange.h \
+    ../docBase/docEditPosition.h \
     ../docBuf/docTableRectangle.h \
+    ../docBuf/docDocumentTree.h \
+    ../docBase/docDocumentField.h \
+    ../docBase/docFieldInstructions.h \
+    ../docBase/docSelectionScope.h \
+    ../docBase/docEditRange.h \
+    ../docBase/docListNumberTree.h \
     ../docBase/docListTable.h \
     ../docBuf/docDebug.h \
     ../docBuf/docBuf.h \
@@ -6042,10 +5852,11 @@ tedHyperlink.o: \
     ../appFrame/appIcons.h \
     ../appFrame/guiWidgets.h \
     ../guiInterface/drawDrawingSurface.h \
+    ../appUtil/geoAffineTransform.h \
     ../docBase/docRowProperties.h \
+    ../docBase/docPictureProperties.h \
     ../docBase/docNoteProperties.h \
     ../docBase/docSectProperties.h \
-    ../docBase/docTabStop.h \
     ../docBase/docTocField.h \
     ../docBase/docHyperlinkField.h \
     ../docFont/docExpandedTextAttribute.h \
@@ -6093,19 +5904,6 @@ tedIcons.o: \
     ../utilPs/psFontInfo.h \
     ../appUtil/utilPropMask.h \
     ../docBuf/docBuf.h \
-    ../docFont/utilDocFont.h \
-    ../textEncoding/utilOfficeCharset.h \
-    ../docBuf/docShape.h \
-    ../docBase/docShapeProperties.h \
-    ../docBase/docPictureProperties.h \
-    ../docBuf/docDocumentTree.h \
-    ../docBase/docDocumentField.h \
-    ../docBase/docFieldInstructions.h \
-    ../docBase/docSelectionScope.h \
-    ../docBase/docEditRange.h \
-    ../docBase/docEditPosition.h \
-    ../docBase/docListNumberTree.h \
-    ../docBase/docShapeDrawing.h \
     ../docBase/docFramePropertiesAdmin.h \
     ../docBase/docFrameProperties.h \
     ../docBase/docPropVal.h \
@@ -6128,6 +5926,7 @@ tedIcons.o: \
     ../docBase/docDocumentProperties.h \
     ../docFont/utilDocFontList.h \
     ../docFont/utilDocFont.h \
+    ../textEncoding/textOfficeCharset.h \
     ../docBase/docListAdmin.h \
     ../docBase/docListTable.h \
     ../docBase/docListOverrideTable.h \
@@ -6143,14 +5942,17 @@ tedIcons.o: \
     ../docBase/docSelectionScope.h \
     ../docBase/docEditPosition.h \
     ../docBase/docEditRange.h \
+    ../docBase/docEditPosition.h \
     ../docBuf/docTableRectangle.h \
+    ../docBuf/docDocumentTree.h \
+    ../docBase/docDocumentField.h \
+    ../docBase/docFieldInstructions.h \
+    ../docBase/docSelectionScope.h \
+    ../docBase/docEditRange.h \
+    ../docBase/docListNumberTree.h \
     ../docBase/docListTable.h \
-    teddoc.xpm \
-    tedprint.xpm \
     tedmain.xpm \
-    tedabout.xpm \
-    tedtable.xpm \
-    tedprops.xpm
+    tedabout.xpm
 
 tedImageTool.o: \
     tedImageTool.c \
@@ -6189,20 +5991,6 @@ tedImageTool.o: \
     ../appFrame/appTool.h \
     ../appFrame/guiOptionmenu.h \
     ../docBuf/docBuf.h \
-    ../docFont/utilDocFont.h \
-    ../textEncoding/utilOfficeCharset.h \
-    ../docBuf/docShape.h \
-    ../docBase/docShapeProperties.h \
-    ../docBase/docPictureProperties.h \
-    ../appUtil/utilPropMask.h \
-    ../docBuf/docDocumentTree.h \
-    ../docBase/docDocumentField.h \
-    ../docBase/docFieldInstructions.h \
-    ../docBase/docSelectionScope.h \
-    ../docBase/docEditRange.h \
-    ../docBase/docEditPosition.h \
-    ../docBase/docListNumberTree.h \
-    ../docBase/docShapeDrawing.h \
     ../docBase/docFramePropertiesAdmin.h \
     ../docBase/docFrameProperties.h \
     ../docBase/docPropVal.h \
@@ -6213,6 +6001,7 @@ tedImageTool.o: \
     ../appUtil/utilIndexSet.h \
     ../docBase/docStyleSheet.h \
     ../docBase/docStyle.h \
+    ../appUtil/utilPropMask.h \
     ../docBase/docSectProperties.h \
     ../docBase/docNotesProperties.h \
     ../docBase/docRowProperties.h \
@@ -6225,6 +6014,7 @@ tedImageTool.o: \
     ../docBase/docDocumentProperties.h \
     ../docFont/utilDocFontList.h \
     ../docFont/utilDocFont.h \
+    ../textEncoding/textOfficeCharset.h \
     ../docBase/docListAdmin.h \
     ../docBase/docListTable.h \
     ../docBase/docListOverrideTable.h \
@@ -6240,8 +6030,16 @@ tedImageTool.o: \
     ../docBase/docSelectionScope.h \
     ../docBase/docEditPosition.h \
     ../docBase/docEditRange.h \
+    ../docBase/docEditPosition.h \
     ../docBuf/docTableRectangle.h \
+    ../docBuf/docDocumentTree.h \
+    ../docBase/docDocumentField.h \
+    ../docBase/docFieldInstructions.h \
+    ../docBase/docSelectionScope.h \
+    ../docBase/docEditRange.h \
+    ../docBase/docListNumberTree.h \
     ../docBase/docListTable.h \
+    ../docBase/docPictureProperties.h \
     ../docEdit/docSelectionDescription.h \
     ../docBuf/docTableRectangle.h \
     ../docBuf/docSelect.h \
@@ -6249,7 +6047,6 @@ tedImageTool.o: \
     ../docBase/docRowProperties.h \
     ../docBase/docNoteProperties.h \
     ../docBase/docSectProperties.h \
-    ../docBase/docTabStop.h \
     ../docBase/docTocField.h \
     ../docBase/docHyperlinkField.h \
     ../docFont/docExpandedTextAttribute.h \
@@ -6295,19 +6092,6 @@ tedIncludeDocument.o: \
     ../utilPs/psFontInfo.h \
     ../appUtil/utilPropMask.h \
     ../docBuf/docBuf.h \
-    ../docFont/utilDocFont.h \
-    ../textEncoding/utilOfficeCharset.h \
-    ../docBuf/docShape.h \
-    ../docBase/docShapeProperties.h \
-    ../docBase/docPictureProperties.h \
-    ../docBuf/docDocumentTree.h \
-    ../docBase/docDocumentField.h \
-    ../docBase/docFieldInstructions.h \
-    ../docBase/docSelectionScope.h \
-    ../docBase/docEditRange.h \
-    ../docBase/docEditPosition.h \
-    ../docBase/docListNumberTree.h \
-    ../docBase/docShapeDrawing.h \
     ../docBase/docFramePropertiesAdmin.h \
     ../docBase/docFrameProperties.h \
     ../docBase/docPropVal.h \
@@ -6330,6 +6114,7 @@ tedIncludeDocument.o: \
     ../docBase/docDocumentProperties.h \
     ../docFont/utilDocFontList.h \
     ../docFont/utilDocFont.h \
+    ../textEncoding/textOfficeCharset.h \
     ../docBase/docListAdmin.h \
     ../docBase/docListTable.h \
     ../docBase/docListOverrideTable.h \
@@ -6345,7 +6130,14 @@ tedIncludeDocument.o: \
     ../docBase/docSelectionScope.h \
     ../docBase/docEditPosition.h \
     ../docBase/docEditRange.h \
+    ../docBase/docEditPosition.h \
     ../docBuf/docTableRectangle.h \
+    ../docBuf/docDocumentTree.h \
+    ../docBase/docDocumentField.h \
+    ../docBase/docFieldInstructions.h \
+    ../docBase/docSelectionScope.h \
+    ../docBase/docEditRange.h \
+    ../docBase/docListNumberTree.h \
     ../docBase/docListTable.h \
     tedEdit.h \
     ../docEdit/docEdit.h \
@@ -6368,6 +6160,7 @@ tedIncludeDocument.o: \
     ../docBase/docNoteProperties.h \
     ../docEdit/docEditStep.h \
     ../docBase/docDocumentList.h \
+    ../docBase/docListDepth.h \
     ../docBase/docListLevel.h \
     ../docEdit/docEditTrace.h \
     ../docBuf/docTreeNode.h \
@@ -6420,19 +6213,6 @@ tedInput.o: \
     ../utilPs/psFontInfo.h \
     ../appUtil/utilPropMask.h \
     ../docBuf/docBuf.h \
-    ../docFont/utilDocFont.h \
-    ../textEncoding/utilOfficeCharset.h \
-    ../docBuf/docShape.h \
-    ../docBase/docShapeProperties.h \
-    ../docBase/docPictureProperties.h \
-    ../docBuf/docDocumentTree.h \
-    ../docBase/docDocumentField.h \
-    ../docBase/docFieldInstructions.h \
-    ../docBase/docSelectionScope.h \
-    ../docBase/docEditRange.h \
-    ../docBase/docEditPosition.h \
-    ../docBase/docListNumberTree.h \
-    ../docBase/docShapeDrawing.h \
     ../docBase/docFramePropertiesAdmin.h \
     ../docBase/docFrameProperties.h \
     ../docBase/docPropVal.h \
@@ -6455,6 +6235,7 @@ tedInput.o: \
     ../docBase/docDocumentProperties.h \
     ../docFont/utilDocFontList.h \
     ../docFont/utilDocFont.h \
+    ../textEncoding/textOfficeCharset.h \
     ../docBase/docListAdmin.h \
     ../docBase/docListTable.h \
     ../docBase/docListOverrideTable.h \
@@ -6470,7 +6251,14 @@ tedInput.o: \
     ../docBase/docSelectionScope.h \
     ../docBase/docEditPosition.h \
     ../docBase/docEditRange.h \
+    ../docBase/docEditPosition.h \
     ../docBuf/docTableRectangle.h \
+    ../docBuf/docDocumentTree.h \
+    ../docBase/docDocumentField.h \
+    ../docBase/docFieldInstructions.h \
+    ../docBase/docSelectionScope.h \
+    ../docBase/docEditRange.h \
+    ../docBase/docListNumberTree.h \
     ../docBase/docListTable.h \
     tedLayout.h \
     ../docLayout/docLayout.h \
@@ -6496,9 +6284,9 @@ tedInput.o: \
     ../docBuf/docRecalculateFields.h \
     tedDocFront.h \
     ../docBase/docRowProperties.h \
+    ../docBase/docPictureProperties.h \
     ../docBase/docNoteProperties.h \
     ../docBase/docSectProperties.h \
-    ../docBase/docTabStop.h \
     ../docBase/docTocField.h \
     ../docBase/docHyperlinkField.h \
     ../docFont/docExpandedTextAttribute.h \
@@ -6542,27 +6330,11 @@ tedInsertNode.o: \
     ../appUtil/utilColor.h \
     ../appUtil/utilMemoryBuffer.h \
     ../appUtil/geo2DInteger.h \
-    ../docFont/utilDocFont.h \
-    ../utilPs/psFontInfo.h \
-    ../appUtil/utilIndexSet.h \
-    ../appUtil/utilIndexMapping.h \
-    ../textEncoding/utilOfficeCharset.h \
     ../utilPs/psPostScriptFontList.h \
     ../utilPs/psFontFamily.h \
     ../utilPs/psFontInfo.h \
-    ../docBuf/docShape.h \
-    ../appUtil/geoAffineTransform.h \
-    ../docBase/docShapeProperties.h \
-    ../docBase/docPictureProperties.h \
-    ../appUtil/utilPropMask.h \
-    ../docBuf/docDocumentTree.h \
-    ../docBase/docDocumentField.h \
-    ../docBase/docFieldInstructions.h \
-    ../docBase/docSelectionScope.h \
-    ../docBase/docEditRange.h \
-    ../docBase/docEditPosition.h \
-    ../docBase/docListNumberTree.h \
-    ../docBase/docShapeDrawing.h \
+    ../appUtil/utilIndexSet.h \
+    ../appUtil/utilIndexMapping.h \
     ../docBase/docFramePropertiesAdmin.h \
     ../docBase/docFrameProperties.h \
     ../docBase/docPropVal.h \
@@ -6573,6 +6345,7 @@ tedInsertNode.o: \
     ../appUtil/utilIndexSet.h \
     ../docBase/docStyleSheet.h \
     ../docBase/docStyle.h \
+    ../appUtil/utilPropMask.h \
     ../docBase/docSectProperties.h \
     ../appUtil/utilDocumentGeometry.h \
     ../appUtil/utilPropMask.h \
@@ -6588,6 +6361,8 @@ tedInsertNode.o: \
     ../docBase/docDocumentProperties.h \
     ../docFont/utilDocFontList.h \
     ../docFont/utilDocFont.h \
+    ../utilPs/psFontInfo.h \
+    ../textEncoding/textOfficeCharset.h \
     ../docBase/docListAdmin.h \
     ../docBase/docListTable.h \
     ../docBase/docListOverrideTable.h \
@@ -6603,7 +6378,14 @@ tedInsertNode.o: \
     ../docBase/docSelectionScope.h \
     ../docBase/docEditPosition.h \
     ../docBase/docEditRange.h \
+    ../docBase/docEditPosition.h \
     ../docBuf/docTableRectangle.h \
+    ../docBuf/docDocumentTree.h \
+    ../docBase/docDocumentField.h \
+    ../docBase/docFieldInstructions.h \
+    ../docBase/docSelectionScope.h \
+    ../docBase/docEditRange.h \
+    ../docBase/docListNumberTree.h \
     ../docBase/docListTable.h \
     ../docBuf/docDebug.h \
     ../docBuf/docBuf.h \
@@ -6631,16 +6413,18 @@ tedInsertNode.o: \
     ../appFrame/appIcons.h \
     ../appFrame/guiWidgets.h \
     ../guiInterface/drawDrawingSurface.h \
+    ../appUtil/geoAffineTransform.h \
     ../docBase/docRowProperties.h \
+    ../docBase/docPictureProperties.h \
     ../docBase/docNoteProperties.h \
     ../docBase/docSectProperties.h \
-    ../docBase/docTabStop.h \
     ../docBase/docTocField.h \
     ../docBase/docHyperlinkField.h \
     ../docFont/docExpandedTextAttribute.h \
     ../docEdit/docRtfTrace.h \
     ../docEdit/docEditStep.h \
     ../docBase/docDocumentList.h \
+    ../docBase/docListDepth.h \
     ../docBase/docListLevel.h \
     ../docEdit/docEditTrace.h \
     ../docBuf/docParaParticules.h \
@@ -6671,7 +6455,7 @@ tedLayout.o: \
     ../appUtil/utilIndexSet.h \
     ../appUtil/utilIndexMapping.h \
     ../appUtil/utilMemoryBuffer.h \
-    ../textEncoding/utilOfficeCharset.h \
+    ../textEncoding/textOfficeCharset.h \
     ../utilPs/textAttribute.h \
     ../appUtil/utilPropMask.h \
     ../utilPs/psPostScriptFontList.h \
@@ -6697,18 +6481,6 @@ tedLayout.o: \
     ../appUtil/utilPalette.h \
     ../appUtil/utilColor.h \
     ../docBuf/docBuf.h \
-    ../docFont/utilDocFont.h \
-    ../docBuf/docShape.h \
-    ../docBase/docShapeProperties.h \
-    ../docBase/docPictureProperties.h \
-    ../docBuf/docDocumentTree.h \
-    ../docBase/docDocumentField.h \
-    ../docBase/docFieldInstructions.h \
-    ../docBase/docSelectionScope.h \
-    ../docBase/docEditRange.h \
-    ../docBase/docEditPosition.h \
-    ../docBase/docListNumberTree.h \
-    ../docBase/docShapeDrawing.h \
     ../docBase/docFramePropertiesAdmin.h \
     ../docBase/docFrameProperties.h \
     ../docBase/docPropVal.h \
@@ -6743,7 +6515,14 @@ tedLayout.o: \
     ../docBase/docSelectionScope.h \
     ../docBase/docEditPosition.h \
     ../docBase/docEditRange.h \
+    ../docBase/docEditPosition.h \
     ../docBuf/docTableRectangle.h \
+    ../docBuf/docDocumentTree.h \
+    ../docBase/docDocumentField.h \
+    ../docBase/docFieldInstructions.h \
+    ../docBase/docSelectionScope.h \
+    ../docBase/docEditRange.h \
+    ../docBase/docListNumberTree.h \
     ../docBase/docListTable.h \
     tedEdit.h \
     ../docEdit/docEdit.h \
@@ -6819,14 +6598,13 @@ tedLinkTool.o: \
     ../docBase/docDocumentProperties.h \
     ../docFont/utilDocFontList.h \
     ../docFont/utilDocFont.h \
-    ../textEncoding/utilOfficeCharset.h \
+    ../textEncoding/textOfficeCharset.h \
     ../docBase/docNotesProperties.h \
     ../docBase/docListAdmin.h \
     ../docBase/docListTable.h \
     ../docBase/docListOverrideTable.h \
     ../docBase/docNoteProperties.h \
     ../docBase/docSectProperties.h \
-    ../docBase/docTabStop.h \
     ../docBase/docDocumentField.h \
     ../docBase/docFieldInstructions.h \
     ../docBase/docSelectionScope.h \
@@ -6843,12 +6621,6 @@ tedLinkTool.o: \
     ../appFrame/appTool.h \
     ../appFrame/guiOptionmenu.h \
     ../docBuf/docBuf.h \
-    ../docFont/utilDocFont.h \
-    ../docBuf/docShape.h \
-    ../docBase/docShapeProperties.h \
-    ../docBuf/docDocumentTree.h \
-    ../docBase/docListNumberTree.h \
-    ../docBase/docShapeDrawing.h \
     ../docBase/docFramePropertiesAdmin.h \
     ../docBase/docFrameProperties.h \
     ../docBase/docPropVal.h \
@@ -6876,6 +6648,8 @@ tedLinkTool.o: \
     ../docBase/docEditPosition.h \
     ../docBase/docEditRange.h \
     ../docBuf/docTableRectangle.h \
+    ../docBuf/docDocumentTree.h \
+    ../docBase/docListNumberTree.h \
     ../docBase/docListTable.h \
     ../docEdit/docSelectionDescription.h \
     ../docBuf/docTableRectangle.h \
@@ -6904,27 +6678,11 @@ tedListTool.o: \
     ../appUtil/utilColor.h \
     ../appUtil/utilMemoryBuffer.h \
     ../appUtil/geo2DInteger.h \
-    ../docFont/utilDocFont.h \
-    ../utilPs/psFontInfo.h \
-    ../appUtil/utilIndexSet.h \
-    ../appUtil/utilIndexMapping.h \
-    ../textEncoding/utilOfficeCharset.h \
     ../utilPs/psPostScriptFontList.h \
     ../utilPs/psFontFamily.h \
     ../utilPs/psFontInfo.h \
-    ../docBuf/docShape.h \
-    ../appUtil/geoAffineTransform.h \
-    ../docBase/docShapeProperties.h \
-    ../docBase/docPictureProperties.h \
-    ../appUtil/utilPropMask.h \
-    ../docBuf/docDocumentTree.h \
-    ../docBase/docDocumentField.h \
-    ../docBase/docFieldInstructions.h \
-    ../docBase/docSelectionScope.h \
-    ../docBase/docEditRange.h \
-    ../docBase/docEditPosition.h \
-    ../docBase/docListNumberTree.h \
-    ../docBase/docShapeDrawing.h \
+    ../appUtil/utilIndexSet.h \
+    ../appUtil/utilIndexMapping.h \
     ../docBase/docFramePropertiesAdmin.h \
     ../docBase/docFrameProperties.h \
     ../docBase/docPropVal.h \
@@ -6935,6 +6693,7 @@ tedListTool.o: \
     ../appUtil/utilIndexSet.h \
     ../docBase/docStyleSheet.h \
     ../docBase/docStyle.h \
+    ../appUtil/utilPropMask.h \
     ../docBase/docSectProperties.h \
     ../appUtil/utilDocumentGeometry.h \
     ../appUtil/utilPropMask.h \
@@ -6950,6 +6709,8 @@ tedListTool.o: \
     ../docBase/docDocumentProperties.h \
     ../docFont/utilDocFontList.h \
     ../docFont/utilDocFont.h \
+    ../utilPs/psFontInfo.h \
+    ../textEncoding/textOfficeCharset.h \
     ../docBase/docListAdmin.h \
     ../docBase/docListTable.h \
     ../docBase/docListOverrideTable.h \
@@ -6965,7 +6726,14 @@ tedListTool.o: \
     ../docBase/docSelectionScope.h \
     ../docBase/docEditPosition.h \
     ../docBase/docEditRange.h \
+    ../docBase/docEditPosition.h \
     ../docBuf/docTableRectangle.h \
+    ../docBuf/docDocumentTree.h \
+    ../docBase/docDocumentField.h \
+    ../docBase/docFieldInstructions.h \
+    ../docBase/docSelectionScope.h \
+    ../docBase/docEditRange.h \
+    ../docBase/docListNumberTree.h \
     ../docBase/docListTable.h \
     ../appFrame/appFrame.h \
     ../appFrame/appGuiBase.h \
@@ -6977,6 +6745,7 @@ tedListTool.o: \
     ../appFrame/appIcons.h \
     ../appFrame/guiWidgets.h \
     ../guiInterface/drawDrawingSurface.h \
+    ../appUtil/geoAffineTransform.h \
     ../appFrame/appInspector.h \
     ../appFrame/appFrame.h \
     ../appFrame/appTool.h \
@@ -6986,14 +6755,15 @@ tedListTool.o: \
     ../docBuf/docSelect.h \
     ../docBase/docListLevel.h \
     ../docBase/docDocumentList.h \
+    ../docBase/docListDepth.h \
     ../docBase/docListLevel.h \
     ../docBase/docListOverride.h \
     ../docBase/docListOverrideLevel.h \
     tedAppFront.h \
     ../docBase/docRowProperties.h \
+    ../docBase/docPictureProperties.h \
     ../docBase/docNoteProperties.h \
     ../docBase/docSectProperties.h \
-    ../docBase/docTabStop.h \
     ../docBase/docTocField.h \
     ../docBase/docHyperlinkField.h \
     ../docFont/docExpandedTextAttribute.h \
@@ -7046,19 +6816,6 @@ tedMain.o: \
     ../utilPs/psFontInfo.h \
     ../appUtil/utilPropMask.h \
     ../docBuf/docBuf.h \
-    ../docFont/utilDocFont.h \
-    ../textEncoding/utilOfficeCharset.h \
-    ../docBuf/docShape.h \
-    ../docBase/docShapeProperties.h \
-    ../docBase/docPictureProperties.h \
-    ../docBuf/docDocumentTree.h \
-    ../docBase/docDocumentField.h \
-    ../docBase/docFieldInstructions.h \
-    ../docBase/docSelectionScope.h \
-    ../docBase/docEditRange.h \
-    ../docBase/docEditPosition.h \
-    ../docBase/docListNumberTree.h \
-    ../docBase/docShapeDrawing.h \
     ../docBase/docFramePropertiesAdmin.h \
     ../docBase/docFrameProperties.h \
     ../docBase/docPropVal.h \
@@ -7081,6 +6838,7 @@ tedMain.o: \
     ../docBase/docDocumentProperties.h \
     ../docFont/utilDocFontList.h \
     ../docFont/utilDocFont.h \
+    ../textEncoding/textOfficeCharset.h \
     ../docBase/docListAdmin.h \
     ../docBase/docListTable.h \
     ../docBase/docListOverrideTable.h \
@@ -7096,7 +6854,14 @@ tedMain.o: \
     ../docBase/docSelectionScope.h \
     ../docBase/docEditPosition.h \
     ../docBase/docEditRange.h \
+    ../docBase/docEditPosition.h \
     ../docBuf/docTableRectangle.h \
+    ../docBuf/docDocumentTree.h \
+    ../docBase/docDocumentField.h \
+    ../docBase/docFieldInstructions.h \
+    ../docBase/docSelectionScope.h \
+    ../docBase/docEditRange.h \
+    ../docBase/docListNumberTree.h \
     ../docBase/docListTable.h \
     tedAppResources.h \
     ../appFrame/appInspector.h \
@@ -7105,9 +6870,9 @@ tedMain.o: \
     ../appFrame/guiOptionmenu.h \
     tedAppFront.h \
     ../docBase/docRowProperties.h \
+    ../docBase/docPictureProperties.h \
     ../docBase/docNoteProperties.h \
     ../docBase/docSectProperties.h \
-    ../docBase/docTabStop.h \
     ../docBase/docTocField.h \
     ../docBase/docHyperlinkField.h \
     ../docFont/docExpandedTextAttribute.h \
@@ -7126,13 +6891,11 @@ tedMain.o: \
     ../docBuf/docRecalculateFields.h \
     ../docBuf/docBuf.h \
     ../appUtil/appUnit.h \
-    ../appFrame/appMatchFont.h \
     ../utilPs/psBuildConfigFiles.h \
     ../utilPs/psPostScriptFontList.h \
     ../appUtil/sioStdout.h \
     ../appUtil/sioGeneral.h \
-    ../docEdit/docFontsDocuments.h \
-    ../appFrame/appFindX11Fonts.h \
+    tedFileConvert.h \
     ../include/appDebugon.h \
     ../include/appDebug.h
 
@@ -7149,27 +6912,11 @@ tedMouseInput.o: \
     ../appUtil/utilColor.h \
     ../appUtil/utilMemoryBuffer.h \
     ../appUtil/geo2DInteger.h \
-    ../docFont/utilDocFont.h \
-    ../utilPs/psFontInfo.h \
-    ../appUtil/utilIndexSet.h \
-    ../appUtil/utilIndexMapping.h \
-    ../textEncoding/utilOfficeCharset.h \
     ../utilPs/psPostScriptFontList.h \
     ../utilPs/psFontFamily.h \
     ../utilPs/psFontInfo.h \
-    ../docBuf/docShape.h \
-    ../appUtil/geoAffineTransform.h \
-    ../docBase/docShapeProperties.h \
-    ../docBase/docPictureProperties.h \
-    ../appUtil/utilPropMask.h \
-    ../docBuf/docDocumentTree.h \
-    ../docBase/docDocumentField.h \
-    ../docBase/docFieldInstructions.h \
-    ../docBase/docSelectionScope.h \
-    ../docBase/docEditRange.h \
-    ../docBase/docEditPosition.h \
-    ../docBase/docListNumberTree.h \
-    ../docBase/docShapeDrawing.h \
+    ../appUtil/utilIndexSet.h \
+    ../appUtil/utilIndexMapping.h \
     ../docBase/docFramePropertiesAdmin.h \
     ../docBase/docFrameProperties.h \
     ../docBase/docPropVal.h \
@@ -7180,6 +6927,7 @@ tedMouseInput.o: \
     ../appUtil/utilIndexSet.h \
     ../docBase/docStyleSheet.h \
     ../docBase/docStyle.h \
+    ../appUtil/utilPropMask.h \
     ../docBase/docSectProperties.h \
     ../appUtil/utilDocumentGeometry.h \
     ../appUtil/utilPropMask.h \
@@ -7195,6 +6943,8 @@ tedMouseInput.o: \
     ../docBase/docDocumentProperties.h \
     ../docFont/utilDocFontList.h \
     ../docFont/utilDocFont.h \
+    ../utilPs/psFontInfo.h \
+    ../textEncoding/textOfficeCharset.h \
     ../docBase/docListAdmin.h \
     ../docBase/docListTable.h \
     ../docBase/docListOverrideTable.h \
@@ -7210,7 +6960,14 @@ tedMouseInput.o: \
     ../docBase/docSelectionScope.h \
     ../docBase/docEditPosition.h \
     ../docBase/docEditRange.h \
+    ../docBase/docEditPosition.h \
     ../docBuf/docTableRectangle.h \
+    ../docBuf/docDocumentTree.h \
+    ../docBase/docDocumentField.h \
+    ../docBase/docFieldInstructions.h \
+    ../docBase/docSelectionScope.h \
+    ../docBase/docEditRange.h \
+    ../docBase/docListNumberTree.h \
     ../docBase/docListTable.h \
     ../docLayout/docLayout.h \
     ../docLayout/docParticuleData.h \
@@ -7234,6 +6991,7 @@ tedMouseInput.o: \
     ../appFrame/appIcons.h \
     ../appFrame/guiWidgets.h \
     ../guiInterface/drawDrawingSurface.h \
+    ../appUtil/geoAffineTransform.h \
     tedSelect.h \
     ../docLayout/docSelectionGeometry.h \
     ../docEdit/docSelectionDescription.h \
@@ -7241,9 +6999,9 @@ tedMouseInput.o: \
     ../docBuf/docSelect.h \
     tedDocFront.h \
     ../docBase/docRowProperties.h \
+    ../docBase/docPictureProperties.h \
     ../docBase/docNoteProperties.h \
     ../docBase/docSectProperties.h \
-    ../docBase/docTabStop.h \
     ../docBase/docTocField.h \
     ../docBase/docHyperlinkField.h \
     ../docFont/docExpandedTextAttribute.h \
@@ -7293,27 +7051,11 @@ tedNote.o: \
     ../appUtil/utilColor.h \
     ../appUtil/utilMemoryBuffer.h \
     ../appUtil/geo2DInteger.h \
-    ../docFont/utilDocFont.h \
-    ../utilPs/psFontInfo.h \
-    ../appUtil/utilIndexSet.h \
-    ../appUtil/utilIndexMapping.h \
-    ../textEncoding/utilOfficeCharset.h \
     ../utilPs/psPostScriptFontList.h \
     ../utilPs/psFontFamily.h \
     ../utilPs/psFontInfo.h \
-    ../docBuf/docShape.h \
-    ../appUtil/geoAffineTransform.h \
-    ../docBase/docShapeProperties.h \
-    ../docBase/docPictureProperties.h \
-    ../appUtil/utilPropMask.h \
-    ../docBuf/docDocumentTree.h \
-    ../docBase/docDocumentField.h \
-    ../docBase/docFieldInstructions.h \
-    ../docBase/docSelectionScope.h \
-    ../docBase/docEditRange.h \
-    ../docBase/docEditPosition.h \
-    ../docBase/docListNumberTree.h \
-    ../docBase/docShapeDrawing.h \
+    ../appUtil/utilIndexSet.h \
+    ../appUtil/utilIndexMapping.h \
     ../docBase/docFramePropertiesAdmin.h \
     ../docBase/docFrameProperties.h \
     ../docBase/docPropVal.h \
@@ -7324,6 +7066,7 @@ tedNote.o: \
     ../appUtil/utilIndexSet.h \
     ../docBase/docStyleSheet.h \
     ../docBase/docStyle.h \
+    ../appUtil/utilPropMask.h \
     ../docBase/docSectProperties.h \
     ../appUtil/utilDocumentGeometry.h \
     ../appUtil/utilPropMask.h \
@@ -7339,6 +7082,8 @@ tedNote.o: \
     ../docBase/docDocumentProperties.h \
     ../docFont/utilDocFontList.h \
     ../docFont/utilDocFont.h \
+    ../utilPs/psFontInfo.h \
+    ../textEncoding/textOfficeCharset.h \
     ../docBase/docListAdmin.h \
     ../docBase/docListTable.h \
     ../docBase/docListOverrideTable.h \
@@ -7354,7 +7099,14 @@ tedNote.o: \
     ../docBase/docSelectionScope.h \
     ../docBase/docEditPosition.h \
     ../docBase/docEditRange.h \
+    ../docBase/docEditPosition.h \
     ../docBuf/docTableRectangle.h \
+    ../docBuf/docDocumentTree.h \
+    ../docBase/docDocumentField.h \
+    ../docBase/docFieldInstructions.h \
+    ../docBase/docSelectionScope.h \
+    ../docBase/docEditRange.h \
+    ../docBase/docListNumberTree.h \
     ../docBase/docListTable.h \
     ../docBuf/docDebug.h \
     ../docBuf/docBuf.h \
@@ -7383,10 +7135,11 @@ tedNote.o: \
     ../appFrame/appIcons.h \
     ../appFrame/guiWidgets.h \
     ../guiInterface/drawDrawingSurface.h \
+    ../appUtil/geoAffineTransform.h \
     ../docBase/docRowProperties.h \
+    ../docBase/docPictureProperties.h \
     ../docBase/docNoteProperties.h \
     ../docBase/docSectProperties.h \
-    ../docBase/docTabStop.h \
     ../docBase/docTocField.h \
     ../docBase/docHyperlinkField.h \
     ../docFont/docExpandedTextAttribute.h \
@@ -7395,6 +7148,7 @@ tedNote.o: \
     ../docEdit/docRtfTrace.h \
     ../docEdit/docEditStep.h \
     ../docBase/docDocumentList.h \
+    ../docBase/docListDepth.h \
     ../docBase/docListLevel.h \
     ../docEdit/docEditTrace.h \
     ../docEdit/docEditImpl.h \
@@ -7444,20 +7198,6 @@ tedNotesTool.o: \
     ../appFrame/appTool.h \
     ../appFrame/guiOptionmenu.h \
     ../docBuf/docBuf.h \
-    ../docFont/utilDocFont.h \
-    ../textEncoding/utilOfficeCharset.h \
-    ../docBuf/docShape.h \
-    ../docBase/docShapeProperties.h \
-    ../docBase/docPictureProperties.h \
-    ../appUtil/utilPropMask.h \
-    ../docBuf/docDocumentTree.h \
-    ../docBase/docDocumentField.h \
-    ../docBase/docFieldInstructions.h \
-    ../docBase/docSelectionScope.h \
-    ../docBase/docEditRange.h \
-    ../docBase/docEditPosition.h \
-    ../docBase/docListNumberTree.h \
-    ../docBase/docShapeDrawing.h \
     ../docBase/docFramePropertiesAdmin.h \
     ../docBase/docFrameProperties.h \
     ../docBase/docPropVal.h \
@@ -7468,6 +7208,7 @@ tedNotesTool.o: \
     ../appUtil/utilIndexSet.h \
     ../docBase/docStyleSheet.h \
     ../docBase/docStyle.h \
+    ../appUtil/utilPropMask.h \
     ../docBase/docSectProperties.h \
     ../docBase/docNotesProperties.h \
     ../docBase/docRowProperties.h \
@@ -7480,6 +7221,7 @@ tedNotesTool.o: \
     ../docBase/docDocumentProperties.h \
     ../docFont/utilDocFontList.h \
     ../docFont/utilDocFont.h \
+    ../textEncoding/textOfficeCharset.h \
     ../docBase/docListAdmin.h \
     ../docBase/docListTable.h \
     ../docBase/docListOverrideTable.h \
@@ -7495,16 +7237,23 @@ tedNotesTool.o: \
     ../docBase/docSelectionScope.h \
     ../docBase/docEditPosition.h \
     ../docBase/docEditRange.h \
+    ../docBase/docEditPosition.h \
     ../docBuf/docTableRectangle.h \
+    ../docBuf/docDocumentTree.h \
+    ../docBase/docDocumentField.h \
+    ../docBase/docFieldInstructions.h \
+    ../docBase/docSelectionScope.h \
+    ../docBase/docEditRange.h \
+    ../docBase/docListNumberTree.h \
     ../docBase/docListTable.h \
     ../docEdit/docSelectionDescription.h \
     ../docBuf/docTableRectangle.h \
     ../docBuf/docSelect.h \
     tedAppFront.h \
     ../docBase/docRowProperties.h \
+    ../docBase/docPictureProperties.h \
     ../docBase/docNoteProperties.h \
     ../docBase/docSectProperties.h \
-    ../docBase/docTabStop.h \
     ../docBase/docTocField.h \
     ../docBase/docHyperlinkField.h \
     ../docFont/docExpandedTextAttribute.h \
@@ -7557,19 +7306,6 @@ tedObjectDrag.o: \
     ../utilPs/psFontInfo.h \
     ../appUtil/utilPropMask.h \
     ../docBuf/docBuf.h \
-    ../docFont/utilDocFont.h \
-    ../textEncoding/utilOfficeCharset.h \
-    ../docBuf/docShape.h \
-    ../docBase/docShapeProperties.h \
-    ../docBase/docPictureProperties.h \
-    ../docBuf/docDocumentTree.h \
-    ../docBase/docDocumentField.h \
-    ../docBase/docFieldInstructions.h \
-    ../docBase/docSelectionScope.h \
-    ../docBase/docEditRange.h \
-    ../docBase/docEditPosition.h \
-    ../docBase/docListNumberTree.h \
-    ../docBase/docShapeDrawing.h \
     ../docBase/docFramePropertiesAdmin.h \
     ../docBase/docFrameProperties.h \
     ../docBase/docPropVal.h \
@@ -7592,6 +7328,7 @@ tedObjectDrag.o: \
     ../docBase/docDocumentProperties.h \
     ../docFont/utilDocFontList.h \
     ../docFont/utilDocFont.h \
+    ../textEncoding/textOfficeCharset.h \
     ../docBase/docListAdmin.h \
     ../docBase/docListTable.h \
     ../docBase/docListOverrideTable.h \
@@ -7607,7 +7344,14 @@ tedObjectDrag.o: \
     ../docBase/docSelectionScope.h \
     ../docBase/docEditPosition.h \
     ../docBase/docEditRange.h \
+    ../docBase/docEditPosition.h \
     ../docBuf/docTableRectangle.h \
+    ../docBuf/docDocumentTree.h \
+    ../docBase/docDocumentField.h \
+    ../docBase/docFieldInstructions.h \
+    ../docBase/docSelectionScope.h \
+    ../docBase/docEditRange.h \
+    ../docBase/docListNumberTree.h \
     ../docBase/docListTable.h \
     tedEdit.h \
     ../docEdit/docEdit.h \
@@ -7698,19 +7442,6 @@ tedObjects.o: \
     ../utilPs/psFontInfo.h \
     ../appUtil/utilPropMask.h \
     ../docBuf/docBuf.h \
-    ../docFont/utilDocFont.h \
-    ../textEncoding/utilOfficeCharset.h \
-    ../docBuf/docShape.h \
-    ../docBase/docShapeProperties.h \
-    ../docBase/docPictureProperties.h \
-    ../docBuf/docDocumentTree.h \
-    ../docBase/docDocumentField.h \
-    ../docBase/docFieldInstructions.h \
-    ../docBase/docSelectionScope.h \
-    ../docBase/docEditRange.h \
-    ../docBase/docEditPosition.h \
-    ../docBase/docListNumberTree.h \
-    ../docBase/docShapeDrawing.h \
     ../docBase/docFramePropertiesAdmin.h \
     ../docBase/docFrameProperties.h \
     ../docBase/docPropVal.h \
@@ -7733,6 +7464,7 @@ tedObjects.o: \
     ../docBase/docDocumentProperties.h \
     ../docFont/utilDocFontList.h \
     ../docFont/utilDocFont.h \
+    ../textEncoding/textOfficeCharset.h \
     ../docBase/docListAdmin.h \
     ../docBase/docListTable.h \
     ../docBase/docListOverrideTable.h \
@@ -7748,7 +7480,14 @@ tedObjects.o: \
     ../docBase/docSelectionScope.h \
     ../docBase/docEditPosition.h \
     ../docBase/docEditRange.h \
+    ../docBase/docEditPosition.h \
     ../docBuf/docTableRectangle.h \
+    ../docBuf/docDocumentTree.h \
+    ../docBase/docDocumentField.h \
+    ../docBase/docFieldInstructions.h \
+    ../docBase/docSelectionScope.h \
+    ../docBase/docEditRange.h \
+    ../docBase/docListNumberTree.h \
     ../docBase/docListTable.h \
     ../docLayout/docDraw.h \
     ../docBuf/docStripFrame.h \
@@ -7784,6 +7523,10 @@ tedObjects.o: \
     ../docBuf/docSectNode.h \
     ../docBase/docSectProperties.h \
     ../docBase/docTextParticule.h \
+    ../docBuf/docShape.h \
+    ../docBase/docShapeProperties.h \
+    ../docBase/docPictureProperties.h \
+    ../docBase/docShapeDrawing.h \
     ../appUtil/geoGrid.h \
     ../include/appDebugon.h \
     ../include/appDebug.h
@@ -7804,7 +7547,7 @@ tedOpenDocument.o: \
     ../appUtil/sioFd.h \
     ../appUtil/appSystem.h \
     ../appUtil/utilMemoryBuffer.h \
-    ../textEncoding/utilOfficeCharset.h \
+    ../textEncoding/textOfficeCharset.h \
     ../appUtil/utilIndexMapping.h \
     ../appUtil/utilIndexSet.h \
     ../appUtil/geoUnits.h \
@@ -7836,18 +7579,6 @@ tedOpenDocument.o: \
     ../appFrame/appFrame.h \
     ../appUtil/utilPropMask.h \
     ../docBuf/docBuf.h \
-    ../docFont/utilDocFont.h \
-    ../docBuf/docShape.h \
-    ../docBase/docShapeProperties.h \
-    ../docBase/docPictureProperties.h \
-    ../docBuf/docDocumentTree.h \
-    ../docBase/docDocumentField.h \
-    ../docBase/docFieldInstructions.h \
-    ../docBase/docSelectionScope.h \
-    ../docBase/docEditRange.h \
-    ../docBase/docEditPosition.h \
-    ../docBase/docListNumberTree.h \
-    ../docBase/docShapeDrawing.h \
     ../docBase/docFramePropertiesAdmin.h \
     ../docBase/docFrameProperties.h \
     ../docBase/docPropVal.h \
@@ -7885,10 +7616,16 @@ tedOpenDocument.o: \
     ../docBase/docSelectionScope.h \
     ../docBase/docEditPosition.h \
     ../docBase/docEditRange.h \
+    ../docBase/docEditPosition.h \
     ../docBuf/docTableRectangle.h \
+    ../docBuf/docDocumentTree.h \
+    ../docBase/docDocumentField.h \
+    ../docBase/docFieldInstructions.h \
+    ../docBase/docSelectionScope.h \
+    ../docBase/docEditRange.h \
+    ../docBase/docListNumberTree.h \
     ../docBase/docListTable.h \
     tedRuler.h \
-    ../docBase/docTabStop.h \
     tedColumnSeparator.h \
     tedAppResources.h \
     ../appFrame/appInspector.h \
@@ -7904,6 +7641,7 @@ tedOpenDocument.o: \
     ../docBuf/docBuf.h \
     tedDocFront.h \
     ../docBase/docRowProperties.h \
+    ../docBase/docPictureProperties.h \
     ../docBase/docNoteProperties.h \
     ../docBase/docSectProperties.h \
     ../docBase/docTocField.h \
@@ -7921,6 +7659,7 @@ tedOpenDocument.o: \
     ../docEdit/docEditOperation.h \
     ../docEdit/docEditStep.h \
     ../docBase/docDocumentList.h \
+    ../docBase/docListDepth.h \
     ../docBase/docListLevel.h \
     ../docEdit/docEditTrace.h \
     ../docFont/utilMatchFont.h \
@@ -7961,19 +7700,6 @@ tedPage.o: \
     ../utilPs/psFontInfo.h \
     ../appUtil/utilPropMask.h \
     ../docBuf/docBuf.h \
-    ../docFont/utilDocFont.h \
-    ../textEncoding/utilOfficeCharset.h \
-    ../docBuf/docShape.h \
-    ../docBase/docShapeProperties.h \
-    ../docBase/docPictureProperties.h \
-    ../docBuf/docDocumentTree.h \
-    ../docBase/docDocumentField.h \
-    ../docBase/docFieldInstructions.h \
-    ../docBase/docSelectionScope.h \
-    ../docBase/docEditRange.h \
-    ../docBase/docEditPosition.h \
-    ../docBase/docListNumberTree.h \
-    ../docBase/docShapeDrawing.h \
     ../docBase/docFramePropertiesAdmin.h \
     ../docBase/docFrameProperties.h \
     ../docBase/docPropVal.h \
@@ -7996,6 +7722,7 @@ tedPage.o: \
     ../docBase/docDocumentProperties.h \
     ../docFont/utilDocFontList.h \
     ../docFont/utilDocFont.h \
+    ../textEncoding/textOfficeCharset.h \
     ../docBase/docListAdmin.h \
     ../docBase/docListTable.h \
     ../docBase/docListOverrideTable.h \
@@ -8011,7 +7738,14 @@ tedPage.o: \
     ../docBase/docSelectionScope.h \
     ../docBase/docEditPosition.h \
     ../docBase/docEditRange.h \
+    ../docBase/docEditPosition.h \
     ../docBuf/docTableRectangle.h \
+    ../docBuf/docDocumentTree.h \
+    ../docBase/docDocumentField.h \
+    ../docBase/docFieldInstructions.h \
+    ../docBase/docSelectionScope.h \
+    ../docBase/docEditRange.h \
+    ../docBase/docListNumberTree.h \
     ../docBase/docListTable.h \
     tedSelect.h \
     ../docLayout/docSelectionGeometry.h \
@@ -8095,19 +7829,6 @@ tedPageLayoutTool.o: \
     ../appFrame/appInspector.h \
     ../appFrame/appTool.h \
     ../docBuf/docBuf.h \
-    ../docFont/utilDocFont.h \
-    ../textEncoding/utilOfficeCharset.h \
-    ../docBuf/docShape.h \
-    ../docBase/docShapeProperties.h \
-    ../docBase/docPictureProperties.h \
-    ../docBuf/docDocumentTree.h \
-    ../docBase/docDocumentField.h \
-    ../docBase/docFieldInstructions.h \
-    ../docBase/docSelectionScope.h \
-    ../docBase/docEditRange.h \
-    ../docBase/docEditPosition.h \
-    ../docBase/docListNumberTree.h \
-    ../docBase/docShapeDrawing.h \
     ../docBase/docFramePropertiesAdmin.h \
     ../docBase/docFrameProperties.h \
     ../docBase/docPropVal.h \
@@ -8130,6 +7851,7 @@ tedPageLayoutTool.o: \
     ../docBase/docDocumentProperties.h \
     ../docFont/utilDocFontList.h \
     ../docFont/utilDocFont.h \
+    ../textEncoding/textOfficeCharset.h \
     ../docBase/docListAdmin.h \
     ../docBase/docListTable.h \
     ../docBase/docListOverrideTable.h \
@@ -8145,7 +7867,14 @@ tedPageLayoutTool.o: \
     ../docBase/docSelectionScope.h \
     ../docBase/docEditPosition.h \
     ../docBase/docEditRange.h \
+    ../docBase/docEditPosition.h \
     ../docBuf/docTableRectangle.h \
+    ../docBuf/docDocumentTree.h \
+    ../docBase/docDocumentField.h \
+    ../docBase/docFieldInstructions.h \
+    ../docBase/docSelectionScope.h \
+    ../docBase/docEditRange.h \
+    ../docBase/docListNumberTree.h \
     ../docBase/docListTable.h \
     ../docEdit/docSelectionDescription.h \
     ../docBuf/docTableRectangle.h \
@@ -8180,27 +7909,11 @@ tedParaLayoutTool.o: \
     ../appUtil/utilColor.h \
     ../appUtil/utilMemoryBuffer.h \
     ../appUtil/geo2DInteger.h \
-    ../docFont/utilDocFont.h \
-    ../utilPs/psFontInfo.h \
-    ../appUtil/utilIndexSet.h \
-    ../appUtil/utilIndexMapping.h \
-    ../textEncoding/utilOfficeCharset.h \
     ../utilPs/psPostScriptFontList.h \
     ../utilPs/psFontFamily.h \
     ../utilPs/psFontInfo.h \
-    ../docBuf/docShape.h \
-    ../appUtil/geoAffineTransform.h \
-    ../docBase/docShapeProperties.h \
-    ../docBase/docPictureProperties.h \
-    ../appUtil/utilPropMask.h \
-    ../docBuf/docDocumentTree.h \
-    ../docBase/docDocumentField.h \
-    ../docBase/docFieldInstructions.h \
-    ../docBase/docSelectionScope.h \
-    ../docBase/docEditRange.h \
-    ../docBase/docEditPosition.h \
-    ../docBase/docListNumberTree.h \
-    ../docBase/docShapeDrawing.h \
+    ../appUtil/utilIndexSet.h \
+    ../appUtil/utilIndexMapping.h \
     ../docBase/docFramePropertiesAdmin.h \
     ../docBase/docFrameProperties.h \
     ../docBase/docPropVal.h \
@@ -8211,6 +7924,7 @@ tedParaLayoutTool.o: \
     ../appUtil/utilIndexSet.h \
     ../docBase/docStyleSheet.h \
     ../docBase/docStyle.h \
+    ../appUtil/utilPropMask.h \
     ../docBase/docSectProperties.h \
     ../appUtil/utilDocumentGeometry.h \
     ../appUtil/utilPropMask.h \
@@ -8226,6 +7940,8 @@ tedParaLayoutTool.o: \
     ../docBase/docDocumentProperties.h \
     ../docFont/utilDocFontList.h \
     ../docFont/utilDocFont.h \
+    ../utilPs/psFontInfo.h \
+    ../textEncoding/textOfficeCharset.h \
     ../docBase/docListAdmin.h \
     ../docBase/docListTable.h \
     ../docBase/docListOverrideTable.h \
@@ -8241,7 +7957,14 @@ tedParaLayoutTool.o: \
     ../docBase/docSelectionScope.h \
     ../docBase/docEditPosition.h \
     ../docBase/docEditRange.h \
+    ../docBase/docEditPosition.h \
     ../docBuf/docTableRectangle.h \
+    ../docBuf/docDocumentTree.h \
+    ../docBase/docDocumentField.h \
+    ../docBase/docFieldInstructions.h \
+    ../docBase/docSelectionScope.h \
+    ../docBase/docEditRange.h \
+    ../docBase/docListNumberTree.h \
     ../docBase/docListTable.h \
     ../docLayout/docSelectionGeometry.h \
     ../docEdit/docSelectionDescription.h \
@@ -8257,6 +7980,7 @@ tedParaLayoutTool.o: \
     ../appFrame/appIcons.h \
     ../appFrame/guiWidgets.h \
     ../guiInterface/drawDrawingSurface.h \
+    ../appUtil/geoAffineTransform.h \
     ../appFrame/appInspector.h \
     ../appFrame/appFrame.h \
     ../appFrame/appTool.h \
@@ -8265,9 +7989,9 @@ tedParaLayoutTool.o: \
     ../appFrame/guiOptionmenu.h \
     tedAppFront.h \
     ../docBase/docRowProperties.h \
+    ../docBase/docPictureProperties.h \
     ../docBase/docNoteProperties.h \
     ../docBase/docSectProperties.h \
-    ../docBase/docTabStop.h \
     ../docBase/docTocField.h \
     ../docBase/docHyperlinkField.h \
     ../docFont/docExpandedTextAttribute.h \
@@ -8337,19 +8061,6 @@ tedParaOrnamentsTool.o: \
     ../appFrame/appTool.h \
     ../appFrame/guiOptionmenu.h \
     ../docBuf/docBuf.h \
-    ../docFont/utilDocFont.h \
-    ../textEncoding/utilOfficeCharset.h \
-    ../docBuf/docShape.h \
-    ../docBase/docShapeProperties.h \
-    ../docBase/docPictureProperties.h \
-    ../docBuf/docDocumentTree.h \
-    ../docBase/docDocumentField.h \
-    ../docBase/docFieldInstructions.h \
-    ../docBase/docSelectionScope.h \
-    ../docBase/docEditRange.h \
-    ../docBase/docEditPosition.h \
-    ../docBase/docListNumberTree.h \
-    ../docBase/docShapeDrawing.h \
     ../docBase/docFramePropertiesAdmin.h \
     ../docBase/docFrameProperties.h \
     ../docBase/docPropVal.h \
@@ -8372,6 +8083,7 @@ tedParaOrnamentsTool.o: \
     ../docBase/docDocumentProperties.h \
     ../docFont/utilDocFontList.h \
     ../docFont/utilDocFont.h \
+    ../textEncoding/textOfficeCharset.h \
     ../docBase/docListAdmin.h \
     ../docBase/docListTable.h \
     ../docBase/docListOverrideTable.h \
@@ -8387,7 +8099,14 @@ tedParaOrnamentsTool.o: \
     ../docBase/docSelectionScope.h \
     ../docBase/docEditPosition.h \
     ../docBase/docEditRange.h \
+    ../docBase/docEditPosition.h \
     ../docBuf/docTableRectangle.h \
+    ../docBuf/docDocumentTree.h \
+    ../docBase/docDocumentField.h \
+    ../docBase/docFieldInstructions.h \
+    ../docBase/docSelectionScope.h \
+    ../docBase/docEditRange.h \
+    ../docBase/docListNumberTree.h \
     ../docBase/docListTable.h \
     ../appFrame/appColorChooser.h \
     ../appFrame/appDrawnPulldown.h \
@@ -8400,9 +8119,9 @@ tedParaOrnamentsTool.o: \
     ../docLayout/docSelectionGeometry.h \
     tedAppFront.h \
     ../docBase/docRowProperties.h \
+    ../docBase/docPictureProperties.h \
     ../docBase/docNoteProperties.h \
     ../docBase/docSectProperties.h \
-    ../docBase/docTabStop.h \
     ../docBase/docTocField.h \
     ../docBase/docHyperlinkField.h \
     ../docFont/docExpandedTextAttribute.h \
@@ -8434,27 +8153,11 @@ tedRepeat.o: \
     ../appUtil/utilColor.h \
     ../appUtil/utilMemoryBuffer.h \
     ../appUtil/geo2DInteger.h \
-    ../docFont/utilDocFont.h \
-    ../utilPs/psFontInfo.h \
-    ../appUtil/utilIndexSet.h \
-    ../appUtil/utilIndexMapping.h \
-    ../textEncoding/utilOfficeCharset.h \
     ../utilPs/psPostScriptFontList.h \
     ../utilPs/psFontFamily.h \
     ../utilPs/psFontInfo.h \
-    ../docBuf/docShape.h \
-    ../appUtil/geoAffineTransform.h \
-    ../docBase/docShapeProperties.h \
-    ../docBase/docPictureProperties.h \
-    ../appUtil/utilPropMask.h \
-    ../docBuf/docDocumentTree.h \
-    ../docBase/docDocumentField.h \
-    ../docBase/docFieldInstructions.h \
-    ../docBase/docSelectionScope.h \
-    ../docBase/docEditRange.h \
-    ../docBase/docEditPosition.h \
-    ../docBase/docListNumberTree.h \
-    ../docBase/docShapeDrawing.h \
+    ../appUtil/utilIndexSet.h \
+    ../appUtil/utilIndexMapping.h \
     ../docBase/docFramePropertiesAdmin.h \
     ../docBase/docFrameProperties.h \
     ../docBase/docPropVal.h \
@@ -8465,6 +8168,7 @@ tedRepeat.o: \
     ../appUtil/utilIndexSet.h \
     ../docBase/docStyleSheet.h \
     ../docBase/docStyle.h \
+    ../appUtil/utilPropMask.h \
     ../docBase/docSectProperties.h \
     ../appUtil/utilDocumentGeometry.h \
     ../appUtil/utilPropMask.h \
@@ -8480,6 +8184,8 @@ tedRepeat.o: \
     ../docBase/docDocumentProperties.h \
     ../docFont/utilDocFontList.h \
     ../docFont/utilDocFont.h \
+    ../utilPs/psFontInfo.h \
+    ../textEncoding/textOfficeCharset.h \
     ../docBase/docListAdmin.h \
     ../docBase/docListTable.h \
     ../docBase/docListOverrideTable.h \
@@ -8495,7 +8201,14 @@ tedRepeat.o: \
     ../docBase/docSelectionScope.h \
     ../docBase/docEditPosition.h \
     ../docBase/docEditRange.h \
+    ../docBase/docEditPosition.h \
     ../docBuf/docTableRectangle.h \
+    ../docBuf/docDocumentTree.h \
+    ../docBase/docDocumentField.h \
+    ../docBase/docFieldInstructions.h \
+    ../docBase/docSelectionScope.h \
+    ../docBase/docEditRange.h \
+    ../docBase/docListNumberTree.h \
     ../docBase/docListTable.h \
     ../docBuf/docDebug.h \
     ../docBuf/docBuf.h \
@@ -8524,10 +8237,11 @@ tedRepeat.o: \
     ../appFrame/appIcons.h \
     ../appFrame/guiWidgets.h \
     ../guiInterface/drawDrawingSurface.h \
+    ../appUtil/geoAffineTransform.h \
     ../docBase/docRowProperties.h \
+    ../docBase/docPictureProperties.h \
     ../docBase/docNoteProperties.h \
     ../docBase/docSectProperties.h \
-    ../docBase/docTabStop.h \
     ../docBase/docTocField.h \
     ../docBase/docHyperlinkField.h \
     ../docFont/docExpandedTextAttribute.h \
@@ -8536,6 +8250,7 @@ tedRepeat.o: \
     ../docEdit/docRtfTrace.h \
     ../docEdit/docEditStep.h \
     ../docBase/docDocumentList.h \
+    ../docBase/docListDepth.h \
     ../docBase/docListLevel.h \
     ../docEdit/docEditTrace.h \
     ../docBuf/docField.h \
@@ -8598,19 +8313,6 @@ tedRowMarginsTool.o: \
     ../docBase/docDocumentAttributeMap.h \
     tedToolUtil.h \
     ../docBuf/docBuf.h \
-    ../docFont/utilDocFont.h \
-    ../textEncoding/utilOfficeCharset.h \
-    ../docBuf/docShape.h \
-    ../docBase/docShapeProperties.h \
-    ../docBase/docPictureProperties.h \
-    ../docBuf/docDocumentTree.h \
-    ../docBase/docDocumentField.h \
-    ../docBase/docFieldInstructions.h \
-    ../docBase/docSelectionScope.h \
-    ../docBase/docEditRange.h \
-    ../docBase/docEditPosition.h \
-    ../docBase/docListNumberTree.h \
-    ../docBase/docShapeDrawing.h \
     ../docBase/docFramePropertiesAdmin.h \
     ../docBase/docFrameProperties.h \
     ../docBase/docPropVal.h \
@@ -8630,6 +8332,7 @@ tedRowMarginsTool.o: \
     ../docBase/docDocumentProperties.h \
     ../docFont/utilDocFontList.h \
     ../docFont/utilDocFont.h \
+    ../textEncoding/textOfficeCharset.h \
     ../docBase/docListAdmin.h \
     ../docBase/docListTable.h \
     ../docBase/docListOverrideTable.h \
@@ -8645,7 +8348,14 @@ tedRowMarginsTool.o: \
     ../docBase/docSelectionScope.h \
     ../docBase/docEditPosition.h \
     ../docBase/docEditRange.h \
+    ../docBase/docEditPosition.h \
     ../docBuf/docTableRectangle.h \
+    ../docBuf/docDocumentTree.h \
+    ../docBase/docDocumentField.h \
+    ../docBase/docFieldInstructions.h \
+    ../docBase/docSelectionScope.h \
+    ../docBase/docEditRange.h \
+    ../docBase/docListNumberTree.h \
     ../docBase/docListTable.h \
     ../appFrame/appInspector.h \
     ../appFrame/appFrame.h \
@@ -8667,7 +8377,6 @@ tedRowMarginsTool.o: \
     ../docBuf/docPageGrid.h \
     ../docBuf/docBlockFrame.h \
     ../docBuf/docStripFrame.h \
-    ../docBuf/docNodeTree.h \
     ../appFrame/guiToolUtil.h \
     ../appFrame/guiTextUtil.h \
     ../include/appDebugon.h \
@@ -8713,19 +8422,6 @@ tedRowTool.o: \
     ../appFrame/appTool.h \
     ../appFrame/guiOptionmenu.h \
     ../docBuf/docBuf.h \
-    ../docFont/utilDocFont.h \
-    ../textEncoding/utilOfficeCharset.h \
-    ../docBuf/docShape.h \
-    ../docBase/docShapeProperties.h \
-    ../docBase/docPictureProperties.h \
-    ../docBuf/docDocumentTree.h \
-    ../docBase/docDocumentField.h \
-    ../docBase/docFieldInstructions.h \
-    ../docBase/docSelectionScope.h \
-    ../docBase/docEditRange.h \
-    ../docBase/docEditPosition.h \
-    ../docBase/docListNumberTree.h \
-    ../docBase/docShapeDrawing.h \
     ../docBase/docFramePropertiesAdmin.h \
     ../docBase/docFrameProperties.h \
     ../docBase/docPropVal.h \
@@ -8748,6 +8444,7 @@ tedRowTool.o: \
     ../docBase/docDocumentProperties.h \
     ../docFont/utilDocFontList.h \
     ../docFont/utilDocFont.h \
+    ../textEncoding/textOfficeCharset.h \
     ../docBase/docListAdmin.h \
     ../docBase/docListTable.h \
     ../docBase/docListOverrideTable.h \
@@ -8763,7 +8460,14 @@ tedRowTool.o: \
     ../docBase/docSelectionScope.h \
     ../docBase/docEditPosition.h \
     ../docBase/docEditRange.h \
+    ../docBase/docEditPosition.h \
     ../docBuf/docTableRectangle.h \
+    ../docBuf/docDocumentTree.h \
+    ../docBase/docDocumentField.h \
+    ../docBase/docFieldInstructions.h \
+    ../docBase/docSelectionScope.h \
+    ../docBase/docEditRange.h \
+    ../docBase/docListNumberTree.h \
     ../docBase/docListTable.h \
     ../appFrame/appColorChooser.h \
     ../appFrame/appDrawnPulldown.h \
@@ -8779,9 +8483,9 @@ tedRowTool.o: \
     ../docBuf/docSelect.h \
     ../docLayout/docSelectionGeometry.h \
     tedAppFront.h \
+    ../docBase/docPictureProperties.h \
     ../docBase/docNoteProperties.h \
     ../docBase/docSectProperties.h \
-    ../docBase/docTabStop.h \
     ../docBase/docTocField.h \
     ../docBase/docHyperlinkField.h \
     ../docFont/docExpandedTextAttribute.h \
@@ -8834,28 +8538,16 @@ tedRuler.o: \
     ../utilPs/psPostScriptFontList.h \
     ../utilPs/psFontFamily.h \
     ../utilPs/psFontInfo.h \
-    ../docBase/docTabStop.h \
     tedColumnSeparator.h \
     tedDrawRuler.h \
     ../appFrame/appRuler.h \
+    ../docBase/docTabStop.h \
+    ../docBase/docTabStopList.h \
+    ../docBase/docTabStop.h \
     ../appFrame/appMetricRuler.h \
     ../appFrame/appFrame.h \
     ../appFrame/appRuler.h \
     ../docBuf/docBuf.h \
-    ../docFont/utilDocFont.h \
-    ../textEncoding/utilOfficeCharset.h \
-    ../docBuf/docShape.h \
-    ../docBase/docShapeProperties.h \
-    ../docBase/docPictureProperties.h \
-    ../appUtil/utilPropMask.h \
-    ../docBuf/docDocumentTree.h \
-    ../docBase/docDocumentField.h \
-    ../docBase/docFieldInstructions.h \
-    ../docBase/docSelectionScope.h \
-    ../docBase/docEditRange.h \
-    ../docBase/docEditPosition.h \
-    ../docBase/docListNumberTree.h \
-    ../docBase/docShapeDrawing.h \
     ../docBase/docFramePropertiesAdmin.h \
     ../docBase/docFrameProperties.h \
     ../docBase/docPropVal.h \
@@ -8866,6 +8558,7 @@ tedRuler.o: \
     ../appUtil/utilIndexSet.h \
     ../docBase/docStyleSheet.h \
     ../docBase/docStyle.h \
+    ../appUtil/utilPropMask.h \
     ../docBase/docSectProperties.h \
     ../docBase/docNotesProperties.h \
     ../docBase/docRowProperties.h \
@@ -8878,6 +8571,7 @@ tedRuler.o: \
     ../docBase/docDocumentProperties.h \
     ../docFont/utilDocFontList.h \
     ../docFont/utilDocFont.h \
+    ../textEncoding/textOfficeCharset.h \
     ../docBase/docListAdmin.h \
     ../docBase/docListTable.h \
     ../docBase/docListOverrideTable.h \
@@ -8893,7 +8587,14 @@ tedRuler.o: \
     ../docBase/docSelectionScope.h \
     ../docBase/docEditPosition.h \
     ../docBase/docEditRange.h \
+    ../docBase/docEditPosition.h \
     ../docBuf/docTableRectangle.h \
+    ../docBuf/docDocumentTree.h \
+    ../docBase/docDocumentField.h \
+    ../docBase/docFieldInstructions.h \
+    ../docBase/docSelectionScope.h \
+    ../docBase/docEditRange.h \
+    ../docBase/docListNumberTree.h \
     ../docBase/docListTable.h \
     ../appUtil/geoGrid.h \
     ../appFrame/guiWidgetDrawingSurface.h \
@@ -8924,27 +8625,11 @@ tedSaveDocument.o: \
     ../appUtil/utilColor.h \
     ../appUtil/utilMemoryBuffer.h \
     ../appUtil/geo2DInteger.h \
-    ../docFont/utilDocFont.h \
-    ../utilPs/psFontInfo.h \
-    ../appUtil/utilIndexSet.h \
-    ../appUtil/utilIndexMapping.h \
-    ../textEncoding/utilOfficeCharset.h \
     ../utilPs/psPostScriptFontList.h \
     ../utilPs/psFontFamily.h \
     ../utilPs/psFontInfo.h \
-    ../docBuf/docShape.h \
-    ../appUtil/geoAffineTransform.h \
-    ../docBase/docShapeProperties.h \
-    ../docBase/docPictureProperties.h \
-    ../appUtil/utilPropMask.h \
-    ../docBuf/docDocumentTree.h \
-    ../docBase/docDocumentField.h \
-    ../docBase/docFieldInstructions.h \
-    ../docBase/docSelectionScope.h \
-    ../docBase/docEditRange.h \
-    ../docBase/docEditPosition.h \
-    ../docBase/docListNumberTree.h \
-    ../docBase/docShapeDrawing.h \
+    ../appUtil/utilIndexSet.h \
+    ../appUtil/utilIndexMapping.h \
     ../docBase/docFramePropertiesAdmin.h \
     ../docBase/docFrameProperties.h \
     ../docBase/docPropVal.h \
@@ -8955,6 +8640,7 @@ tedSaveDocument.o: \
     ../appUtil/utilIndexSet.h \
     ../docBase/docStyleSheet.h \
     ../docBase/docStyle.h \
+    ../appUtil/utilPropMask.h \
     ../docBase/docSectProperties.h \
     ../appUtil/utilDocumentGeometry.h \
     ../appUtil/utilPropMask.h \
@@ -8970,6 +8656,8 @@ tedSaveDocument.o: \
     ../docBase/docDocumentProperties.h \
     ../docFont/utilDocFontList.h \
     ../docFont/utilDocFont.h \
+    ../utilPs/psFontInfo.h \
+    ../textEncoding/textOfficeCharset.h \
     ../docBase/docListAdmin.h \
     ../docBase/docListTable.h \
     ../docBase/docListOverrideTable.h \
@@ -8985,7 +8673,14 @@ tedSaveDocument.o: \
     ../docBase/docSelectionScope.h \
     ../docBase/docEditPosition.h \
     ../docBase/docEditRange.h \
+    ../docBase/docEditPosition.h \
     ../docBuf/docTableRectangle.h \
+    ../docBuf/docDocumentTree.h \
+    ../docBase/docDocumentField.h \
+    ../docBase/docFieldInstructions.h \
+    ../docBase/docSelectionScope.h \
+    ../docBase/docEditRange.h \
+    ../docBase/docListNumberTree.h \
     ../docBase/docListTable.h \
     ../docLayout/layoutContext.h \
     ../docFont/utilMatchFont.h \
@@ -9000,11 +8695,16 @@ tedSaveDocument.o: \
     ../appFrame/appIcons.h \
     ../appFrame/guiWidgets.h \
     ../guiInterface/drawDrawingSurface.h \
+    ../appUtil/geoAffineTransform.h \
     ../appUtil/appSystem.h \
+    ../utilPs/psPrint.h \
+    ../utilPs/psFace.h \
+    ../utilPs/textAttribute.h \
+    ../utilPs/psNup.h \
+    ../utilPs/psPostScriptFontList.h \
     tedApp.h \
     ../appFrame/appFrame.h \
     tedRuler.h \
-    ../docBase/docTabStop.h \
     tedColumnSeparator.h \
     tedAppResources.h \
     ../appFrame/appInspector.h \
@@ -9028,7 +8728,6 @@ tedSaveDocument.o: \
     ../docEdit/docEditTrace.h \
     ../docBuf/docRecalculateFields.h \
     ../docLayout/docPsPrint.h \
-    ../utilPs/psNup.h \
     ../docHtml/docSvgDraw.h \
     ../docBuf/docDebug.h \
     ../docLayout/docScreenLayout.h \
@@ -9053,15 +8752,11 @@ tedSaveDocument.o: \
     ../docEdit/docEditOperation.h \
     ../docEdit/docEditStep.h \
     ../docBase/docDocumentList.h \
+    ../docBase/docListDepth.h \
     ../docBase/docListLevel.h \
     ../docEdit/docEditTrace.h \
     ../docEdit/docEditCommand.h \
     ../appFrame/appPrintJob.h \
-    ../utilPs/psPrint.h \
-    ../utilPs/psFace.h \
-    ../utilPs/textAttribute.h \
-    ../utilPs/psNup.h \
-    ../utilPs/psPostScriptFontList.h \
     ../appFrame/guiDrawingWidget.h \
     ../include/appDebugon.h \
     ../include/appDebug.h
@@ -9080,27 +8775,11 @@ tedSectionTool.o: \
     ../appUtil/utilColor.h \
     ../appUtil/utilMemoryBuffer.h \
     ../appUtil/geo2DInteger.h \
-    ../docFont/utilDocFont.h \
-    ../utilPs/psFontInfo.h \
-    ../appUtil/utilIndexSet.h \
-    ../appUtil/utilIndexMapping.h \
-    ../textEncoding/utilOfficeCharset.h \
     ../utilPs/psPostScriptFontList.h \
     ../utilPs/psFontFamily.h \
     ../utilPs/psFontInfo.h \
-    ../docBuf/docShape.h \
-    ../appUtil/geoAffineTransform.h \
-    ../docBase/docShapeProperties.h \
-    ../docBase/docPictureProperties.h \
-    ../appUtil/utilPropMask.h \
-    ../docBuf/docDocumentTree.h \
-    ../docBase/docDocumentField.h \
-    ../docBase/docFieldInstructions.h \
-    ../docBase/docSelectionScope.h \
-    ../docBase/docEditRange.h \
-    ../docBase/docEditPosition.h \
-    ../docBase/docListNumberTree.h \
-    ../docBase/docShapeDrawing.h \
+    ../appUtil/utilIndexSet.h \
+    ../appUtil/utilIndexMapping.h \
     ../docBase/docFramePropertiesAdmin.h \
     ../docBase/docFrameProperties.h \
     ../docBase/docPropVal.h \
@@ -9111,6 +8790,7 @@ tedSectionTool.o: \
     ../appUtil/utilIndexSet.h \
     ../docBase/docStyleSheet.h \
     ../docBase/docStyle.h \
+    ../appUtil/utilPropMask.h \
     ../docBase/docSectProperties.h \
     ../appUtil/utilDocumentGeometry.h \
     ../appUtil/utilPropMask.h \
@@ -9126,6 +8806,8 @@ tedSectionTool.o: \
     ../docBase/docDocumentProperties.h \
     ../docFont/utilDocFontList.h \
     ../docFont/utilDocFont.h \
+    ../utilPs/psFontInfo.h \
+    ../textEncoding/textOfficeCharset.h \
     ../docBase/docListAdmin.h \
     ../docBase/docListTable.h \
     ../docBase/docListOverrideTable.h \
@@ -9141,7 +8823,14 @@ tedSectionTool.o: \
     ../docBase/docSelectionScope.h \
     ../docBase/docEditPosition.h \
     ../docBase/docEditRange.h \
+    ../docBase/docEditPosition.h \
     ../docBuf/docTableRectangle.h \
+    ../docBuf/docDocumentTree.h \
+    ../docBase/docDocumentField.h \
+    ../docBase/docFieldInstructions.h \
+    ../docBase/docSelectionScope.h \
+    ../docBase/docEditRange.h \
+    ../docBase/docListNumberTree.h \
     ../docBase/docListTable.h \
     ../appFrame/appFrame.h \
     ../appFrame/appGuiBase.h \
@@ -9153,6 +8842,7 @@ tedSectionTool.o: \
     ../appFrame/appIcons.h \
     ../appFrame/guiWidgets.h \
     ../guiInterface/drawDrawingSurface.h \
+    ../appUtil/geoAffineTransform.h \
     ../appFrame/appInspector.h \
     ../appFrame/appFrame.h \
     ../appFrame/appTool.h \
@@ -9162,9 +8852,9 @@ tedSectionTool.o: \
     ../docBuf/docSelect.h \
     tedAppFront.h \
     ../docBase/docRowProperties.h \
+    ../docBase/docPictureProperties.h \
     ../docBase/docNoteProperties.h \
     ../docBase/docSectProperties.h \
-    ../docBase/docTabStop.h \
     ../docBase/docTocField.h \
     ../docBase/docHyperlinkField.h \
     ../docFont/docExpandedTextAttribute.h \
@@ -9217,19 +8907,6 @@ tedSelect.o: \
     ../utilPs/psFontInfo.h \
     ../appUtil/utilPropMask.h \
     ../docBuf/docBuf.h \
-    ../docFont/utilDocFont.h \
-    ../textEncoding/utilOfficeCharset.h \
-    ../docBuf/docShape.h \
-    ../docBase/docShapeProperties.h \
-    ../docBase/docPictureProperties.h \
-    ../docBuf/docDocumentTree.h \
-    ../docBase/docDocumentField.h \
-    ../docBase/docFieldInstructions.h \
-    ../docBase/docSelectionScope.h \
-    ../docBase/docEditRange.h \
-    ../docBase/docEditPosition.h \
-    ../docBase/docListNumberTree.h \
-    ../docBase/docShapeDrawing.h \
     ../docBase/docFramePropertiesAdmin.h \
     ../docBase/docFrameProperties.h \
     ../docBase/docPropVal.h \
@@ -9252,6 +8929,7 @@ tedSelect.o: \
     ../docBase/docDocumentProperties.h \
     ../docFont/utilDocFontList.h \
     ../docFont/utilDocFont.h \
+    ../textEncoding/textOfficeCharset.h \
     ../docBase/docListAdmin.h \
     ../docBase/docListTable.h \
     ../docBase/docListOverrideTable.h \
@@ -9267,13 +8945,20 @@ tedSelect.o: \
     ../docBase/docSelectionScope.h \
     ../docBase/docEditPosition.h \
     ../docBase/docEditRange.h \
+    ../docBase/docEditPosition.h \
     ../docBuf/docTableRectangle.h \
+    ../docBuf/docDocumentTree.h \
+    ../docBase/docDocumentField.h \
+    ../docBase/docFieldInstructions.h \
+    ../docBase/docSelectionScope.h \
+    ../docBase/docEditRange.h \
+    ../docBase/docListNumberTree.h \
     ../docBase/docListTable.h \
     tedAppFront.h \
     ../docBase/docRowProperties.h \
+    ../docBase/docPictureProperties.h \
     ../docBase/docNoteProperties.h \
     ../docBase/docSectProperties.h \
-    ../docBase/docTabStop.h \
     ../docBase/docTocField.h \
     ../docBase/docHyperlinkField.h \
     ../docFont/docExpandedTextAttribute.h \
@@ -9346,19 +9031,6 @@ tedSelectionDescription.o: \
     ../utilPs/psFontInfo.h \
     ../appUtil/utilPropMask.h \
     ../docBuf/docBuf.h \
-    ../docFont/utilDocFont.h \
-    ../textEncoding/utilOfficeCharset.h \
-    ../docBuf/docShape.h \
-    ../docBase/docShapeProperties.h \
-    ../docBase/docPictureProperties.h \
-    ../docBuf/docDocumentTree.h \
-    ../docBase/docDocumentField.h \
-    ../docBase/docFieldInstructions.h \
-    ../docBase/docSelectionScope.h \
-    ../docBase/docEditRange.h \
-    ../docBase/docEditPosition.h \
-    ../docBase/docListNumberTree.h \
-    ../docBase/docShapeDrawing.h \
     ../docBase/docFramePropertiesAdmin.h \
     ../docBase/docFrameProperties.h \
     ../docBase/docPropVal.h \
@@ -9381,6 +9053,7 @@ tedSelectionDescription.o: \
     ../docBase/docDocumentProperties.h \
     ../docFont/utilDocFontList.h \
     ../docFont/utilDocFont.h \
+    ../textEncoding/textOfficeCharset.h \
     ../docBase/docListAdmin.h \
     ../docBase/docListTable.h \
     ../docBase/docListOverrideTable.h \
@@ -9396,10 +9069,16 @@ tedSelectionDescription.o: \
     ../docBase/docSelectionScope.h \
     ../docBase/docEditPosition.h \
     ../docBase/docEditRange.h \
+    ../docBase/docEditPosition.h \
     ../docBuf/docTableRectangle.h \
+    ../docBuf/docDocumentTree.h \
+    ../docBase/docDocumentField.h \
+    ../docBase/docFieldInstructions.h \
+    ../docBase/docSelectionScope.h \
+    ../docBase/docEditRange.h \
+    ../docBase/docListNumberTree.h \
     ../docBase/docListTable.h \
     tedRuler.h \
-    ../docBase/docTabStop.h \
     tedColumnSeparator.h \
     tedLayout.h \
     ../docLayout/docLayout.h \
@@ -9479,19 +9158,6 @@ tedSelectionGeometry.o: \
     ../utilPs/psFontInfo.h \
     ../appUtil/utilPropMask.h \
     ../docBuf/docBuf.h \
-    ../docFont/utilDocFont.h \
-    ../textEncoding/utilOfficeCharset.h \
-    ../docBuf/docShape.h \
-    ../docBase/docShapeProperties.h \
-    ../docBase/docPictureProperties.h \
-    ../docBuf/docDocumentTree.h \
-    ../docBase/docDocumentField.h \
-    ../docBase/docFieldInstructions.h \
-    ../docBase/docSelectionScope.h \
-    ../docBase/docEditRange.h \
-    ../docBase/docEditPosition.h \
-    ../docBase/docListNumberTree.h \
-    ../docBase/docShapeDrawing.h \
     ../docBase/docFramePropertiesAdmin.h \
     ../docBase/docFrameProperties.h \
     ../docBase/docPropVal.h \
@@ -9514,6 +9180,7 @@ tedSelectionGeometry.o: \
     ../docBase/docDocumentProperties.h \
     ../docFont/utilDocFontList.h \
     ../docFont/utilDocFont.h \
+    ../textEncoding/textOfficeCharset.h \
     ../docBase/docListAdmin.h \
     ../docBase/docListTable.h \
     ../docBase/docListOverrideTable.h \
@@ -9529,7 +9196,14 @@ tedSelectionGeometry.o: \
     ../docBase/docSelectionScope.h \
     ../docBase/docEditPosition.h \
     ../docBase/docEditRange.h \
+    ../docBase/docEditPosition.h \
     ../docBuf/docTableRectangle.h \
+    ../docBuf/docDocumentTree.h \
+    ../docBase/docDocumentField.h \
+    ../docBase/docFieldInstructions.h \
+    ../docBase/docSelectionScope.h \
+    ../docBase/docEditRange.h \
+    ../docBase/docListNumberTree.h \
     ../docBase/docListTable.h \
     tedLayout.h \
     ../docLayout/docLayout.h \
@@ -9609,19 +9283,6 @@ tedShadingTool.o: \
     ../appUtil/utilPropMask.h \
     ../appFrame/appDrawnPulldown.h \
     ../docBuf/docBuf.h \
-    ../docFont/utilDocFont.h \
-    ../textEncoding/utilOfficeCharset.h \
-    ../docBuf/docShape.h \
-    ../docBase/docShapeProperties.h \
-    ../docBase/docPictureProperties.h \
-    ../docBuf/docDocumentTree.h \
-    ../docBase/docDocumentField.h \
-    ../docBase/docFieldInstructions.h \
-    ../docBase/docSelectionScope.h \
-    ../docBase/docEditRange.h \
-    ../docBase/docEditPosition.h \
-    ../docBase/docListNumberTree.h \
-    ../docBase/docShapeDrawing.h \
     ../docBase/docFramePropertiesAdmin.h \
     ../docBase/docFrameProperties.h \
     ../docBase/docPropVal.h \
@@ -9644,6 +9305,7 @@ tedShadingTool.o: \
     ../docBase/docDocumentProperties.h \
     ../docFont/utilDocFontList.h \
     ../docFont/utilDocFont.h \
+    ../textEncoding/textOfficeCharset.h \
     ../docBase/docListAdmin.h \
     ../docBase/docListTable.h \
     ../docBase/docListOverrideTable.h \
@@ -9659,10 +9321,16 @@ tedShadingTool.o: \
     ../docBase/docSelectionScope.h \
     ../docBase/docEditPosition.h \
     ../docBase/docEditRange.h \
+    ../docBase/docEditPosition.h \
     ../docBuf/docTableRectangle.h \
+    ../docBuf/docDocumentTree.h \
+    ../docBase/docDocumentField.h \
+    ../docBase/docFieldInstructions.h \
+    ../docBase/docSelectionScope.h \
+    ../docBase/docEditRange.h \
+    ../docBase/docListNumberTree.h \
     ../docBase/docListTable.h \
     ../utilPs/psShading.h \
-    ../docBase/docItemShadingAdmin.h \
     ../include/appDebugon.h \
     ../include/appDebug.h \
     ../appFrame/guiToolUtil.h \
@@ -9709,14 +9377,13 @@ tedSpellTool.o: \
     ../docBase/docDocumentProperties.h \
     ../docFont/utilDocFontList.h \
     ../docFont/utilDocFont.h \
-    ../textEncoding/utilOfficeCharset.h \
+    ../textEncoding/textOfficeCharset.h \
     ../docBase/docNotesProperties.h \
     ../docBase/docListAdmin.h \
     ../docBase/docListTable.h \
     ../docBase/docListOverrideTable.h \
     ../docBase/docNoteProperties.h \
     ../docBase/docSectProperties.h \
-    ../docBase/docTabStop.h \
     ../docBase/docDocumentField.h \
     ../docBase/docFieldInstructions.h \
     ../docBase/docSelectionScope.h \
@@ -9739,12 +9406,6 @@ tedSpellTool.o: \
     ../appFrame/appTool.h \
     ../appFrame/guiOptionmenu.h \
     ../docBuf/docBuf.h \
-    ../docFont/utilDocFont.h \
-    ../docBuf/docShape.h \
-    ../docBase/docShapeProperties.h \
-    ../docBuf/docDocumentTree.h \
-    ../docBase/docListNumberTree.h \
-    ../docBase/docShapeDrawing.h \
     ../docBase/docFramePropertiesAdmin.h \
     ../docBase/docFrameProperties.h \
     ../docBase/docPropVal.h \
@@ -9772,6 +9433,8 @@ tedSpellTool.o: \
     ../docBase/docEditPosition.h \
     ../docBase/docEditRange.h \
     ../docBuf/docTableRectangle.h \
+    ../docBuf/docDocumentTree.h \
+    ../docBase/docListNumberTree.h \
     ../docBase/docListTable.h \
     ../docEdit/docSelectionDescription.h \
     ../docBuf/docTableRectangle.h \
@@ -9824,7 +9487,7 @@ tedSymbolPicker.o: \
     ../appUtil/utilPropMask.h \
     ../docFont/utilDocFontList.h \
     ../docFont/utilDocFont.h \
-    ../textEncoding/utilOfficeCharset.h \
+    ../textEncoding/textOfficeCharset.h \
     ../docBuf/docSelect.h \
     ../docBase/docLayoutPosition.h \
     ../docBase/docSelectionScope.h \
@@ -9838,17 +9501,6 @@ tedSymbolPicker.o: \
     ../docEdit/docSelectionDescription.h \
     ../docBuf/docTableRectangle.h \
     ../docBuf/docBuf.h \
-    ../docFont/utilDocFont.h \
-    ../docBuf/docShape.h \
-    ../docBase/docShapeProperties.h \
-    ../docBase/docPictureProperties.h \
-    ../docBuf/docDocumentTree.h \
-    ../docBase/docDocumentField.h \
-    ../docBase/docFieldInstructions.h \
-    ../docBase/docSelectionScope.h \
-    ../docBase/docEditRange.h \
-    ../docBase/docListNumberTree.h \
-    ../docBase/docShapeDrawing.h \
     ../docBase/docFramePropertiesAdmin.h \
     ../docBase/docFrameProperties.h \
     ../docBase/docPropVal.h \
@@ -9877,6 +9529,12 @@ tedSymbolPicker.o: \
     ../docBuf/docDrawingShapeList.h \
     ../docBase/docInsertedObjectList.h \
     ../docBuf/docSelect.h \
+    ../docBuf/docDocumentTree.h \
+    ../docBase/docDocumentField.h \
+    ../docBase/docFieldInstructions.h \
+    ../docBase/docSelectionScope.h \
+    ../docBase/docEditRange.h \
+    ../docBase/docListNumberTree.h \
     ../docBase/docListTable.h \
     tedApp.h \
     ../appFrame/appFrame.h \
@@ -9915,27 +9573,11 @@ tedTable.o: \
     ../appUtil/utilColor.h \
     ../appUtil/utilMemoryBuffer.h \
     ../appUtil/geo2DInteger.h \
-    ../docFont/utilDocFont.h \
-    ../utilPs/psFontInfo.h \
-    ../appUtil/utilIndexSet.h \
-    ../appUtil/utilIndexMapping.h \
-    ../textEncoding/utilOfficeCharset.h \
     ../utilPs/psPostScriptFontList.h \
     ../utilPs/psFontFamily.h \
     ../utilPs/psFontInfo.h \
-    ../docBuf/docShape.h \
-    ../appUtil/geoAffineTransform.h \
-    ../docBase/docShapeProperties.h \
-    ../docBase/docPictureProperties.h \
-    ../appUtil/utilPropMask.h \
-    ../docBuf/docDocumentTree.h \
-    ../docBase/docDocumentField.h \
-    ../docBase/docFieldInstructions.h \
-    ../docBase/docSelectionScope.h \
-    ../docBase/docEditRange.h \
-    ../docBase/docEditPosition.h \
-    ../docBase/docListNumberTree.h \
-    ../docBase/docShapeDrawing.h \
+    ../appUtil/utilIndexSet.h \
+    ../appUtil/utilIndexMapping.h \
     ../docBase/docFramePropertiesAdmin.h \
     ../docBase/docFrameProperties.h \
     ../docBase/docPropVal.h \
@@ -9946,6 +9588,7 @@ tedTable.o: \
     ../appUtil/utilIndexSet.h \
     ../docBase/docStyleSheet.h \
     ../docBase/docStyle.h \
+    ../appUtil/utilPropMask.h \
     ../docBase/docSectProperties.h \
     ../appUtil/utilDocumentGeometry.h \
     ../appUtil/utilPropMask.h \
@@ -9961,6 +9604,8 @@ tedTable.o: \
     ../docBase/docDocumentProperties.h \
     ../docFont/utilDocFontList.h \
     ../docFont/utilDocFont.h \
+    ../utilPs/psFontInfo.h \
+    ../textEncoding/textOfficeCharset.h \
     ../docBase/docListAdmin.h \
     ../docBase/docListTable.h \
     ../docBase/docListOverrideTable.h \
@@ -9976,7 +9621,14 @@ tedTable.o: \
     ../docBase/docSelectionScope.h \
     ../docBase/docEditPosition.h \
     ../docBase/docEditRange.h \
+    ../docBase/docEditPosition.h \
     ../docBuf/docTableRectangle.h \
+    ../docBuf/docDocumentTree.h \
+    ../docBase/docDocumentField.h \
+    ../docBase/docFieldInstructions.h \
+    ../docBase/docSelectionScope.h \
+    ../docBase/docEditRange.h \
+    ../docBase/docListNumberTree.h \
     ../docBase/docListTable.h \
     ../docBuf/docDebug.h \
     ../docBuf/docBuf.h \
@@ -10004,19 +9656,21 @@ tedTable.o: \
     ../appFrame/appIcons.h \
     ../appFrame/guiWidgets.h \
     ../guiInterface/drawDrawingSurface.h \
+    ../appUtil/geoAffineTransform.h \
     ../docBase/docRowProperties.h \
+    ../docBase/docPictureProperties.h \
     ../docBase/docNoteProperties.h \
     ../docBase/docSectProperties.h \
-    ../docBase/docTabStop.h \
     ../docBase/docTocField.h \
     ../docBase/docHyperlinkField.h \
     ../docFont/docExpandedTextAttribute.h \
     tedDocument.h \
     ../docBuf/docRecalculateFields.h \
-    ../docEdit/docEditImpl.h \
+    ../docEdit/docIntermediaryDocument.h \
     ../docEdit/docRtfTrace.h \
     ../docEdit/docEditStep.h \
     ../docBase/docDocumentList.h \
+    ../docBase/docListDepth.h \
     ../docBase/docListLevel.h \
     ../docEdit/docEditTrace.h \
     ../docBuf/docPageGrid.h \
@@ -10073,20 +9727,6 @@ tedTableTool.o: \
     ../appFrame/appTool.h \
     ../appFrame/guiOptionmenu.h \
     ../docBuf/docBuf.h \
-    ../docFont/utilDocFont.h \
-    ../textEncoding/utilOfficeCharset.h \
-    ../docBuf/docShape.h \
-    ../docBase/docShapeProperties.h \
-    ../docBase/docPictureProperties.h \
-    ../appUtil/utilPropMask.h \
-    ../docBuf/docDocumentTree.h \
-    ../docBase/docDocumentField.h \
-    ../docBase/docFieldInstructions.h \
-    ../docBase/docSelectionScope.h \
-    ../docBase/docEditRange.h \
-    ../docBase/docEditPosition.h \
-    ../docBase/docListNumberTree.h \
-    ../docBase/docShapeDrawing.h \
     ../docBase/docFramePropertiesAdmin.h \
     ../docBase/docFrameProperties.h \
     ../docBase/docPropVal.h \
@@ -10097,6 +9737,7 @@ tedTableTool.o: \
     ../appUtil/utilIndexSet.h \
     ../docBase/docStyleSheet.h \
     ../docBase/docStyle.h \
+    ../appUtil/utilPropMask.h \
     ../docBase/docSectProperties.h \
     ../docBase/docNotesProperties.h \
     ../docBase/docRowProperties.h \
@@ -10109,6 +9750,7 @@ tedTableTool.o: \
     ../docBase/docDocumentProperties.h \
     ../docFont/utilDocFontList.h \
     ../docFont/utilDocFont.h \
+    ../textEncoding/textOfficeCharset.h \
     ../docBase/docListAdmin.h \
     ../docBase/docListTable.h \
     ../docBase/docListOverrideTable.h \
@@ -10124,7 +9766,14 @@ tedTableTool.o: \
     ../docBase/docSelectionScope.h \
     ../docBase/docEditPosition.h \
     ../docBase/docEditRange.h \
+    ../docBase/docEditPosition.h \
     ../docBuf/docTableRectangle.h \
+    ../docBuf/docDocumentTree.h \
+    ../docBase/docDocumentField.h \
+    ../docBase/docFieldInstructions.h \
+    ../docBase/docSelectionScope.h \
+    ../docBase/docEditRange.h \
+    ../docBase/docListNumberTree.h \
     ../docBase/docListTable.h \
     tedRowMarginsTool.h \
     ../docBase/docRowProperties.h \
@@ -10133,9 +9782,9 @@ tedTableTool.o: \
     ../docBuf/docSelect.h \
     ../docLayout/docSelectionGeometry.h \
     tedAppFront.h \
+    ../docBase/docPictureProperties.h \
     ../docBase/docNoteProperties.h \
     ../docBase/docSectProperties.h \
-    ../docBase/docTabStop.h \
     ../docBase/docTocField.h \
     ../docBase/docHyperlinkField.h \
     ../docFont/docExpandedTextAttribute.h \
@@ -10193,20 +9842,6 @@ tedTabsTool.o: \
     ../appFrame/appTool.h \
     ../appFrame/guiOptionmenu.h \
     ../docBuf/docBuf.h \
-    ../docFont/utilDocFont.h \
-    ../textEncoding/utilOfficeCharset.h \
-    ../docBuf/docShape.h \
-    ../docBase/docShapeProperties.h \
-    ../docBase/docPictureProperties.h \
-    ../appUtil/utilPropMask.h \
-    ../docBuf/docDocumentTree.h \
-    ../docBase/docDocumentField.h \
-    ../docBase/docFieldInstructions.h \
-    ../docBase/docSelectionScope.h \
-    ../docBase/docEditRange.h \
-    ../docBase/docEditPosition.h \
-    ../docBase/docListNumberTree.h \
-    ../docBase/docShapeDrawing.h \
     ../docBase/docFramePropertiesAdmin.h \
     ../docBase/docFrameProperties.h \
     ../docBase/docPropVal.h \
@@ -10217,6 +9852,7 @@ tedTabsTool.o: \
     ../appUtil/utilIndexSet.h \
     ../docBase/docStyleSheet.h \
     ../docBase/docStyle.h \
+    ../appUtil/utilPropMask.h \
     ../docBase/docSectProperties.h \
     ../docBase/docNotesProperties.h \
     ../docBase/docRowProperties.h \
@@ -10229,6 +9865,7 @@ tedTabsTool.o: \
     ../docBase/docDocumentProperties.h \
     ../docFont/utilDocFontList.h \
     ../docFont/utilDocFont.h \
+    ../textEncoding/textOfficeCharset.h \
     ../docBase/docListAdmin.h \
     ../docBase/docListTable.h \
     ../docBase/docListOverrideTable.h \
@@ -10244,8 +9881,17 @@ tedTabsTool.o: \
     ../docBase/docSelectionScope.h \
     ../docBase/docEditPosition.h \
     ../docBase/docEditRange.h \
+    ../docBase/docEditPosition.h \
     ../docBuf/docTableRectangle.h \
+    ../docBuf/docDocumentTree.h \
+    ../docBase/docDocumentField.h \
+    ../docBase/docFieldInstructions.h \
+    ../docBase/docSelectionScope.h \
+    ../docBase/docEditRange.h \
+    ../docBase/docListNumberTree.h \
     ../docBase/docListTable.h \
+    ../docBase/docTabStop.h \
+    ../docBase/docTabStopList.h \
     ../docBase/docTabStop.h \
     ../docEdit/docSelectionDescription.h \
     ../docBuf/docTableRectangle.h \
@@ -10253,6 +9899,7 @@ tedTabsTool.o: \
     ../docLayout/docSelectionGeometry.h \
     tedAppFront.h \
     ../docBase/docRowProperties.h \
+    ../docBase/docPictureProperties.h \
     ../docBase/docNoteProperties.h \
     ../docBase/docSectProperties.h \
     ../docBase/docTocField.h \
@@ -10260,8 +9907,6 @@ tedTabsTool.o: \
     ../docFont/docExpandedTextAttribute.h \
     ../docFont/utilDocFontList.h \
     tedToolUtil.h \
-    ../docBase/docParaRulerAdmin.h \
-    ../docBase/docTabStop.h \
     ../appFrame/guiToolUtil.h \
     ../appFrame/guiTextUtil.h \
     ../docBuf/docTreeNode.h \
@@ -10316,19 +9961,6 @@ tedTextOrnamentsTool.o: \
     ../appFrame/appTool.h \
     ../appFrame/guiOptionmenu.h \
     ../docBuf/docBuf.h \
-    ../docFont/utilDocFont.h \
-    ../textEncoding/utilOfficeCharset.h \
-    ../docBuf/docShape.h \
-    ../docBase/docShapeProperties.h \
-    ../docBase/docPictureProperties.h \
-    ../docBuf/docDocumentTree.h \
-    ../docBase/docDocumentField.h \
-    ../docBase/docFieldInstructions.h \
-    ../docBase/docSelectionScope.h \
-    ../docBase/docEditRange.h \
-    ../docBase/docEditPosition.h \
-    ../docBase/docListNumberTree.h \
-    ../docBase/docShapeDrawing.h \
     ../docBase/docFramePropertiesAdmin.h \
     ../docBase/docFrameProperties.h \
     ../docBase/docPropVal.h \
@@ -10351,6 +9983,7 @@ tedTextOrnamentsTool.o: \
     ../docBase/docDocumentProperties.h \
     ../docFont/utilDocFontList.h \
     ../docFont/utilDocFont.h \
+    ../textEncoding/textOfficeCharset.h \
     ../docBase/docListAdmin.h \
     ../docBase/docListTable.h \
     ../docBase/docListOverrideTable.h \
@@ -10366,7 +9999,14 @@ tedTextOrnamentsTool.o: \
     ../docBase/docSelectionScope.h \
     ../docBase/docEditPosition.h \
     ../docBase/docEditRange.h \
+    ../docBase/docEditPosition.h \
     ../docBuf/docTableRectangle.h \
+    ../docBuf/docDocumentTree.h \
+    ../docBase/docDocumentField.h \
+    ../docBase/docFieldInstructions.h \
+    ../docBase/docSelectionScope.h \
+    ../docBase/docEditRange.h \
+    ../docBase/docListNumberTree.h \
     ../docBase/docListTable.h \
     ../appFrame/appColorChooser.h \
     ../appFrame/appDrawnPulldown.h \
@@ -10384,9 +10024,9 @@ tedTextOrnamentsTool.o: \
     tedToolUtil.h \
     ../docBase/docRowProperties.h \
     tedAppFront.h \
+    ../docBase/docPictureProperties.h \
     ../docBase/docNoteProperties.h \
     ../docBase/docSectProperties.h \
-    ../docBase/docTabStop.h \
     ../docBase/docTocField.h \
     ../docBase/docHyperlinkField.h \
     tedDocument.h \
@@ -10413,27 +10053,11 @@ tedThisNoteTool.o: \
     ../appUtil/utilColor.h \
     ../appUtil/utilMemoryBuffer.h \
     ../appUtil/geo2DInteger.h \
-    ../docFont/utilDocFont.h \
-    ../utilPs/psFontInfo.h \
-    ../appUtil/utilIndexSet.h \
-    ../appUtil/utilIndexMapping.h \
-    ../textEncoding/utilOfficeCharset.h \
     ../utilPs/psPostScriptFontList.h \
     ../utilPs/psFontFamily.h \
     ../utilPs/psFontInfo.h \
-    ../docBuf/docShape.h \
-    ../appUtil/geoAffineTransform.h \
-    ../docBase/docShapeProperties.h \
-    ../docBase/docPictureProperties.h \
-    ../appUtil/utilPropMask.h \
-    ../docBuf/docDocumentTree.h \
-    ../docBase/docDocumentField.h \
-    ../docBase/docFieldInstructions.h \
-    ../docBase/docSelectionScope.h \
-    ../docBase/docEditRange.h \
-    ../docBase/docEditPosition.h \
-    ../docBase/docListNumberTree.h \
-    ../docBase/docShapeDrawing.h \
+    ../appUtil/utilIndexSet.h \
+    ../appUtil/utilIndexMapping.h \
     ../docBase/docFramePropertiesAdmin.h \
     ../docBase/docFrameProperties.h \
     ../docBase/docPropVal.h \
@@ -10444,6 +10068,7 @@ tedThisNoteTool.o: \
     ../appUtil/utilIndexSet.h \
     ../docBase/docStyleSheet.h \
     ../docBase/docStyle.h \
+    ../appUtil/utilPropMask.h \
     ../docBase/docSectProperties.h \
     ../appUtil/utilDocumentGeometry.h \
     ../appUtil/utilPropMask.h \
@@ -10459,6 +10084,8 @@ tedThisNoteTool.o: \
     ../docBase/docDocumentProperties.h \
     ../docFont/utilDocFontList.h \
     ../docFont/utilDocFont.h \
+    ../utilPs/psFontInfo.h \
+    ../textEncoding/textOfficeCharset.h \
     ../docBase/docListAdmin.h \
     ../docBase/docListTable.h \
     ../docBase/docListOverrideTable.h \
@@ -10474,7 +10101,14 @@ tedThisNoteTool.o: \
     ../docBase/docSelectionScope.h \
     ../docBase/docEditPosition.h \
     ../docBase/docEditRange.h \
+    ../docBase/docEditPosition.h \
     ../docBuf/docTableRectangle.h \
+    ../docBuf/docDocumentTree.h \
+    ../docBase/docDocumentField.h \
+    ../docBase/docFieldInstructions.h \
+    ../docBase/docSelectionScope.h \
+    ../docBase/docEditRange.h \
+    ../docBase/docListNumberTree.h \
     ../docBase/docListTable.h \
     ../docBase/docNoteProperties.h \
     tedThisNoteTool.h \
@@ -10488,6 +10122,7 @@ tedThisNoteTool.o: \
     ../appFrame/appIcons.h \
     ../appFrame/guiWidgets.h \
     ../guiInterface/drawDrawingSurface.h \
+    ../appUtil/geoAffineTransform.h \
     ../appFrame/appInspector.h \
     ../appFrame/appFrame.h \
     ../appFrame/appTool.h \
@@ -10498,8 +10133,8 @@ tedThisNoteTool.o: \
     ../docBuf/docSelect.h \
     tedAppFront.h \
     ../docBase/docRowProperties.h \
+    ../docBase/docPictureProperties.h \
     ../docBase/docSectProperties.h \
-    ../docBase/docTabStop.h \
     ../docBase/docTocField.h \
     ../docBase/docHyperlinkField.h \
     ../docFont/docExpandedTextAttribute.h \
@@ -10534,27 +10169,11 @@ tedToc.o: \
     ../appUtil/utilColor.h \
     ../appUtil/utilMemoryBuffer.h \
     ../appUtil/geo2DInteger.h \
-    ../docFont/utilDocFont.h \
-    ../utilPs/psFontInfo.h \
-    ../appUtil/utilIndexSet.h \
-    ../appUtil/utilIndexMapping.h \
-    ../textEncoding/utilOfficeCharset.h \
     ../utilPs/psPostScriptFontList.h \
     ../utilPs/psFontFamily.h \
     ../utilPs/psFontInfo.h \
-    ../docBuf/docShape.h \
-    ../appUtil/geoAffineTransform.h \
-    ../docBase/docShapeProperties.h \
-    ../docBase/docPictureProperties.h \
-    ../appUtil/utilPropMask.h \
-    ../docBuf/docDocumentTree.h \
-    ../docBase/docDocumentField.h \
-    ../docBase/docFieldInstructions.h \
-    ../docBase/docSelectionScope.h \
-    ../docBase/docEditRange.h \
-    ../docBase/docEditPosition.h \
-    ../docBase/docListNumberTree.h \
-    ../docBase/docShapeDrawing.h \
+    ../appUtil/utilIndexSet.h \
+    ../appUtil/utilIndexMapping.h \
     ../docBase/docFramePropertiesAdmin.h \
     ../docBase/docFrameProperties.h \
     ../docBase/docPropVal.h \
@@ -10565,6 +10184,7 @@ tedToc.o: \
     ../appUtil/utilIndexSet.h \
     ../docBase/docStyleSheet.h \
     ../docBase/docStyle.h \
+    ../appUtil/utilPropMask.h \
     ../docBase/docSectProperties.h \
     ../appUtil/utilDocumentGeometry.h \
     ../appUtil/utilPropMask.h \
@@ -10580,6 +10200,8 @@ tedToc.o: \
     ../docBase/docDocumentProperties.h \
     ../docFont/utilDocFontList.h \
     ../docFont/utilDocFont.h \
+    ../utilPs/psFontInfo.h \
+    ../textEncoding/textOfficeCharset.h \
     ../docBase/docListAdmin.h \
     ../docBase/docListTable.h \
     ../docBase/docListOverrideTable.h \
@@ -10595,7 +10217,14 @@ tedToc.o: \
     ../docBase/docSelectionScope.h \
     ../docBase/docEditPosition.h \
     ../docBase/docEditRange.h \
+    ../docBase/docEditPosition.h \
     ../docBuf/docTableRectangle.h \
+    ../docBuf/docDocumentTree.h \
+    ../docBase/docDocumentField.h \
+    ../docBase/docFieldInstructions.h \
+    ../docBase/docSelectionScope.h \
+    ../docBase/docEditRange.h \
+    ../docBase/docListNumberTree.h \
     ../docBase/docListTable.h \
     ../docBuf/docDebug.h \
     ../docBuf/docBuf.h \
@@ -10623,10 +10252,11 @@ tedToc.o: \
     ../appFrame/appIcons.h \
     ../appFrame/guiWidgets.h \
     ../guiInterface/drawDrawingSurface.h \
+    ../appUtil/geoAffineTransform.h \
     ../docBase/docRowProperties.h \
+    ../docBase/docPictureProperties.h \
     ../docBase/docNoteProperties.h \
     ../docBase/docSectProperties.h \
-    ../docBase/docTabStop.h \
     ../docBase/docTocField.h \
     ../docBase/docHyperlinkField.h \
     ../docFont/docExpandedTextAttribute.h \
@@ -10635,6 +10265,7 @@ tedToc.o: \
     ../docEdit/docRtfTrace.h \
     ../docEdit/docEditStep.h \
     ../docBase/docDocumentList.h \
+    ../docBase/docListDepth.h \
     ../docBase/docListLevel.h \
     ../docEdit/docEditTrace.h \
     tedLayout.h \
@@ -10701,14 +10332,13 @@ tedTocTool.o: \
     ../docBase/docDocumentProperties.h \
     ../docFont/utilDocFontList.h \
     ../docFont/utilDocFont.h \
-    ../textEncoding/utilOfficeCharset.h \
+    ../textEncoding/textOfficeCharset.h \
     ../docBase/docNotesProperties.h \
     ../docBase/docListAdmin.h \
     ../docBase/docListTable.h \
     ../docBase/docListOverrideTable.h \
     ../docBase/docNoteProperties.h \
     ../docBase/docSectProperties.h \
-    ../docBase/docTabStop.h \
     ../docBase/docDocumentField.h \
     ../docBase/docFieldInstructions.h \
     ../docBase/docSelectionScope.h \
@@ -10725,12 +10355,6 @@ tedTocTool.o: \
     ../appFrame/appTool.h \
     ../appFrame/guiOptionmenu.h \
     ../docBuf/docBuf.h \
-    ../docFont/utilDocFont.h \
-    ../docBuf/docShape.h \
-    ../docBase/docShapeProperties.h \
-    ../docBuf/docDocumentTree.h \
-    ../docBase/docListNumberTree.h \
-    ../docBase/docShapeDrawing.h \
     ../docBase/docFramePropertiesAdmin.h \
     ../docBase/docFrameProperties.h \
     ../docBase/docPropVal.h \
@@ -10758,10 +10382,13 @@ tedTocTool.o: \
     ../docBase/docEditPosition.h \
     ../docBase/docEditRange.h \
     ../docBuf/docTableRectangle.h \
+    ../docBuf/docDocumentTree.h \
+    ../docBase/docListNumberTree.h \
     ../docBase/docListTable.h \
     ../docEdit/docSelectionDescription.h \
     ../docBuf/docTableRectangle.h \
     ../docBuf/docSelect.h \
+    ../docBase/docListDepth.h \
     ../docBuf/docField.h \
     ../appFrame/guiToolUtil.h \
     ../docBuf/docTreeNode.h \
@@ -10788,27 +10415,11 @@ tedUndo.o: \
     ../appUtil/utilColor.h \
     ../appUtil/utilMemoryBuffer.h \
     ../appUtil/geo2DInteger.h \
-    ../docFont/utilDocFont.h \
-    ../utilPs/psFontInfo.h \
-    ../appUtil/utilIndexSet.h \
-    ../appUtil/utilIndexMapping.h \
-    ../textEncoding/utilOfficeCharset.h \
     ../utilPs/psPostScriptFontList.h \
     ../utilPs/psFontFamily.h \
     ../utilPs/psFontInfo.h \
-    ../docBuf/docShape.h \
-    ../appUtil/geoAffineTransform.h \
-    ../docBase/docShapeProperties.h \
-    ../docBase/docPictureProperties.h \
-    ../appUtil/utilPropMask.h \
-    ../docBuf/docDocumentTree.h \
-    ../docBase/docDocumentField.h \
-    ../docBase/docFieldInstructions.h \
-    ../docBase/docSelectionScope.h \
-    ../docBase/docEditRange.h \
-    ../docBase/docEditPosition.h \
-    ../docBase/docListNumberTree.h \
-    ../docBase/docShapeDrawing.h \
+    ../appUtil/utilIndexSet.h \
+    ../appUtil/utilIndexMapping.h \
     ../docBase/docFramePropertiesAdmin.h \
     ../docBase/docFrameProperties.h \
     ../docBase/docPropVal.h \
@@ -10819,6 +10430,7 @@ tedUndo.o: \
     ../appUtil/utilIndexSet.h \
     ../docBase/docStyleSheet.h \
     ../docBase/docStyle.h \
+    ../appUtil/utilPropMask.h \
     ../docBase/docSectProperties.h \
     ../appUtil/utilDocumentGeometry.h \
     ../appUtil/utilPropMask.h \
@@ -10834,6 +10446,8 @@ tedUndo.o: \
     ../docBase/docDocumentProperties.h \
     ../docFont/utilDocFontList.h \
     ../docFont/utilDocFont.h \
+    ../utilPs/psFontInfo.h \
+    ../textEncoding/textOfficeCharset.h \
     ../docBase/docListAdmin.h \
     ../docBase/docListTable.h \
     ../docBase/docListOverrideTable.h \
@@ -10849,7 +10463,14 @@ tedUndo.o: \
     ../docBase/docSelectionScope.h \
     ../docBase/docEditPosition.h \
     ../docBase/docEditRange.h \
+    ../docBase/docEditPosition.h \
     ../docBuf/docTableRectangle.h \
+    ../docBuf/docDocumentTree.h \
+    ../docBase/docDocumentField.h \
+    ../docBase/docFieldInstructions.h \
+    ../docBase/docSelectionScope.h \
+    ../docBase/docEditRange.h \
+    ../docBase/docListNumberTree.h \
     ../docBase/docListTable.h \
     ../docBuf/docDebug.h \
     ../docBuf/docBuf.h \
@@ -10878,10 +10499,11 @@ tedUndo.o: \
     ../appFrame/appIcons.h \
     ../appFrame/guiWidgets.h \
     ../guiInterface/drawDrawingSurface.h \
+    ../appUtil/geoAffineTransform.h \
     ../docBase/docRowProperties.h \
+    ../docBase/docPictureProperties.h \
     ../docBase/docNoteProperties.h \
     ../docBase/docSectProperties.h \
-    ../docBase/docTabStop.h \
     ../docBase/docTocField.h \
     ../docBase/docHyperlinkField.h \
     ../docFont/docExpandedTextAttribute.h \
@@ -10899,6 +10521,7 @@ tedUndo.o: \
     ../docEdit/docTrace.h \
     ../docEdit/docEditStep.h \
     ../docBase/docDocumentList.h \
+    ../docBase/docListDepth.h \
     ../docBase/docListLevel.h \
     ../docEdit/docRtfTrace.h \
     ../docEdit/docEditTrace.h \
@@ -10951,7 +10574,6 @@ tedVerticalRuler.o: \
     ../utilPs/psPostScriptFontList.h \
     ../utilPs/psFontFamily.h \
     ../utilPs/psFontInfo.h \
-    ../docBase/docTabStop.h \
     tedColumnSeparator.h \
     ../appFrame/appRuler.h \
     ../appFrame/guiWidgetDrawingSurface.h \

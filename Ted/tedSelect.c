@@ -801,22 +801,18 @@ void tedDescribeSelection(	EditDocument *			ed )
     TedDocument *		td= (TedDocument *)ed->edPrivateData;
     BufferDocument *		bd= td->tdDocument;
     const IndexMapping *	a2s= &(td->tdAttributeToScreenFont);
+    SelectionDescription *	sd= &(td->tdSelectionDescription);
 
-    docDescribeSelection( &(td->tdSelectionDescription),
-			&(td->tdSelection), bd,
+    docDescribeSelection( sd, &(td->tdSelection), bd,
 			td->tdSelectionGeometry.sgHead.pgTopPosition.lpPage,
 			td->tdSelectionGeometry.sgTail.pgTopPosition.lpPage,
 			ed->edDocumentId, ed->edIsReadonly );
 
-    td->tdCurrentTextAttribute=
-			    td->tdSelectionDescription.sdTextAttribute;
-    td->tdCurrentTextAttributeNumber=
-			    td->tdSelectionDescription.sdTextAttributeNumber;
     td->tdCurrentScreenFont= utilIndexMappingGet( a2s,
-			    td->tdCurrentTextAttributeNumber );
+					    sd->sdTextAttributeNumber );
 
     if  ( td->tdCurrentScreenFont < 0 )
-	{ LLDEB(td->tdCurrentTextAttributeNumber,td->tdCurrentScreenFont); }
+	{ LLDEB(sd->sdTextAttributeNumber,td->tdCurrentScreenFont); }
     }
 
 void tedSetSelectedPosition(	EditDocument *			ed,

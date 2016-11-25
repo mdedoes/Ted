@@ -59,18 +59,18 @@ int docSvgDrawSpan(		const DrawTextLine *	dtl,
 				    ta->taTextColorNumber );
 
 	df= docFontListGetFontByNumber(
-		    &(dc->dcLayoutContext.lcDocument->bdProperties.dpFontList),
+		    dc->dcLayoutContext.lcDocument->bdProperties.dpFontList,
 		    ta->taFontNumber );
 
 	y= spanBaseline;
 
-	if  ( ta->taSuperSub == DOCfontSUPERSCRIPT )
+	if  ( ta->taSuperSub == TEXTvaSUPERSCRIPT )
 	    {
 	    psGetSuperBaseline( &y, spanBaseline, fontSizeTwips, pd->pdAfi );
 	    textSizeTwips= SUPERSUB_SIZE( fontSizeTwips );
 	    }
 
-	if  ( ta->taSuperSub == DOCfontSUBSCRIPT )
+	if  ( ta->taSuperSub == TEXTvaSUBSCRIPT )
 	    {
 	    psGetSubBaseline( &y, spanBaseline, fontSizeTwips, pd->pdAfi );
 	    textSizeTwips= SUPERSUB_SIZE( fontSizeTwips );

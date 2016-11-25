@@ -21,7 +21,7 @@
 /*									*/
 /************************************************************************/
 
-static const char * appPsRectfillEmulation[]=
+static const char * psRectfillEmulation[]=
 {
 "%%rectfill emulation for one rectangle only",
 "/rectfill where",
@@ -37,8 +37,8 @@ static const char * appPsRectfillEmulation[]=
 
 void psSetRectfillEmulation(	SimpleOutputStream *	sos )
     {
-    psDefineProcedure( sos, appPsRectfillEmulation,
-		    sizeof(appPsRectfillEmulation)/sizeof(const char *) );
+    psDefineProcedure( sos, psRectfillEmulation,
+		    sizeof(psRectfillEmulation)/sizeof(const char *) );
 
     return;
     }
@@ -49,7 +49,7 @@ void psSetRectfillEmulation(	SimpleOutputStream *	sos )
 /*									*/
 /************************************************************************/
 
-static const char * appPsSelectfontEmulation[]=
+static const char * psSelectfontEmulation[]=
 {
 "%%selectfont emulation",
 "/selectfont where",
@@ -65,8 +65,8 @@ static const char * appPsSelectfontEmulation[]=
 
 void psSetSelectfontEmulation(	SimpleOutputStream *	sos )
     {
-    psDefineProcedure( sos, appPsSelectfontEmulation,
-		    sizeof(appPsSelectfontEmulation)/sizeof(const char *) );
+    psDefineProcedure( sos, psSelectfontEmulation,
+		    sizeof(psSelectfontEmulation)/sizeof(const char *) );
 
     return;
     }
@@ -87,7 +87,7 @@ void psSetSelectfontEmulation(	SimpleOutputStream *	sos )
     Also change font setting to an ordinary font.
 # endif
 
-static const char * appPsUtf8ShowImplementation[]=
+static const char * psUtf8ShowImplementation[]=
 {
 "%%%%",
 "%%%%    Emit a single big endian utf16 value. We assume that ",
@@ -195,8 +195,8 @@ static const char * appPsUtf8ShowImplementation[]=
 
 void psSetUtf8ShowImplementation(	SimpleOutputStream *	sos )
     {
-    psDefineProcedure( sos, appPsUtf8ShowImplementation,
-		    sizeof(appPsUtf8ShowImplementation)/sizeof(const char *) );
+    psDefineProcedure( sos, psUtf8ShowImplementation,
+		    sizeof(psUtf8ShowImplementation)/sizeof(const char *) );
 
     return;
     }
@@ -206,6 +206,54 @@ void psSetMvsImplementation(		SimpleOutputStream *	sos )
     sioOutPrintf( sos, "\n/mvs { moveto utf8show } bind def\n" );
     }
 
+static const char * psStartStdCodePageImplementation[]=
+{
+"%%%%",
+"%%%%    Build the array that will hold a standard code page to use in a ",
+"%%%%    font definition. ",
+"%%%%",
+
+"/sstdcp",
+"  {",
+"  256 array 0 1 255",
+"    {",
+"    1 index exch /.notdef put",
+"    } for",
+"  } bind def",
+};
+
+static const char * psDefinePageFontImplementation[]=
+{
+"%%%%",
+"%%%%    Define a code page font with a particular code page ",
+"%%%%    The caller provides the following on the stack: ",
+"%%%%    /encodedFontName codePage /baseFontName ",
+"%%%%",
+
+"/dcpf",
+"  {",
+"  findfont dup length dict begin",
+"    {",
+"    1 index /FID ne",
+"      { def } { pop pop } ifelse",
+"    } forall",
+"  /Encoding exch def currentdict",
+"  end",
+"  definefont pop",
+"  } bind def",
+};
+
+void psSetDefinePageFontImplementation(	SimpleOutputStream *	sos )
+    {
+    psDefineProcedure( sos, psStartStdCodePageImplementation,
+	    sizeof(psStartStdCodePageImplementation)/sizeof(const char *) );
+
+    psDefineProcedure( sos, psDefinePageFontImplementation,
+	    sizeof(psDefinePageFontImplementation)/sizeof(const char *) );
+
+    return;
+    }
+
 /************************************************************************/
 /*									*/
 /*  The 12 shadings that come with MS-Word. Correspond to Windows GDI	*/
@@ -213,7 +261,7 @@ void psSetMvsImplementation(		SimpleOutputStream *	sos )
 /*									*/
 /************************************************************************/
 
-static const char * appPsPatternImplementation[]=
+static const char * psPatternImplementation[]=
 {
 "%%%%",
 "%%%%   Primitives for filling rectangles the way the MS-Windows ",
@@ -455,8 +503,8 @@ static const char * appPsPatternImplementation[]=
 void psSetPatternImplementation(	SimpleOutputStream *	sos,
 					double			shadingMesh )
     {
-    psDefineProcedure( sos, appPsPatternImplementation,
-		    sizeof(appPsPatternImplementation)/sizeof(const char *) );
+    psDefineProcedure( sos, psPatternImplementation,
+		    sizeof(psPatternImplementation)/sizeof(const char *) );
 
     if  ( shadingMesh >= 1e-4 )
 	{

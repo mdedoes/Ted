@@ -10,12 +10,13 @@
 #   include	<stdio.h>
 #   include	<ctype.h>
 
-#   include	"tedEdit.h"
 #   include	<docParaParticules.h>
 #   include	<docRtfTrace.h>
 #   include	<docLayout.h>
 #   include	<appFrame.h>
 #   include	<docEditCommand.h>
+#   include	"tedEdit.h"
+#   include	"tedDocFront.h"
 
 #   include	<appDebugon.h>
 
@@ -65,7 +66,7 @@ static int tedSplitParaNode(	TedEditOperation *		teo,
     return 0;
     }
 
-void tedSplitParagraph(		EditDocument *		ed,
+void tedDocSplitParagraph(	EditDocument *		ed,
 				int			onNewPage,
 				int			traced )
     {

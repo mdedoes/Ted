@@ -305,14 +305,14 @@ int docListLevelSetText(	int *			pChanged,
     int			obytes;
     int			level;
 
-    unsigned char *	from;
+    const char *	from;
     int			i;
 
     if  ( ! ll->llLevelNumbers )
 	{ PDEB(ll->llLevelNumbers); return -1;	}
 
     nbytes= 0; nchars= 0;
-    from= (unsigned char *)text;
+    from= text;
     while( *from )
 	{
 	unsigned short	symbol;
@@ -500,7 +500,7 @@ int docListLevelFormatLevelNumber(	char *	target,
 	    break;
 
 	case 23:
-	    step= uniPutUtf8( (unsigned char *)target, 0xb7 );
+	    step= uniPutUtf8( target, 0xb7 );
 	    target[step]= '\0';
 	    break;
 
@@ -748,8 +748,8 @@ int docListLevelToRtfStrings(	MemoryBuffer *		mbtext,
     }
 
 static int docListLevelConstFromRtfStrings(
-					const unsigned char *	from,
-					int			constChars )
+					const char *	from,
+					int		constChars )
     {
     int		c;
     int		constLen= 0;
@@ -789,7 +789,7 @@ int docListLevelFromRtfStrings(	ListLevel *		ll,
     int				constOff= 0;
     int				constLen= 0;
 
-    const unsigned char *	 from;
+    const char *		 from;
 
     fbytes= utilMemoryBufferGetBytes( &fsize, mbtext );
     lbytes= utilMemoryBufferGetBytes( &lsize, mbnumbers );
@@ -803,7 +803,7 @@ int docListLevelFromRtfStrings(	ListLevel *		ll,
     if  ( ! levelNumbers )
 	{ LPDEB(lsize,levelNumbers); rval= -1; goto ready;	}
 
-    from= fbytes+ 1;
+    from= (char *)fbytes+ 1;
 
     for ( field= 0; field < lsize; field++ )
 	{

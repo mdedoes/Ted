@@ -28,20 +28,20 @@ extern void docFreeNode(	struct BufferDocument *	bd,
 				struct DocumentTree *		dt,
 				struct BufferItem *		bi );
 
-extern struct BufferItem * docInsertNode(	const struct BufferDocument *	bd,
+extern struct BufferItem * docInsertNode( const struct BufferDocument *	bd,
 					struct BufferItem *		parent,
-					int			n,
-					int			level );
+					int				n,
+					int				level );
 
 extern void docDeleteNodes(		struct BufferDocument *	bd,
-					struct DocumentTree *		dt,
-					struct BufferItem *		bi,
+					struct DocumentTree *	dt,
+					struct BufferItem *	bi,
 					int			first,
 					int			count );
 
 extern int docSplitGroupNode(		struct BufferDocument *	bd,
-					struct BufferItem **		pNewBi,
-					struct BufferItem *		oldBi,
+					struct BufferItem **	pNewBi,
+					struct BufferItem *	oldBi,
 					int			n );
 
 extern int docSplitGroupNodeAtLevel(	struct BufferDocument *	bd,

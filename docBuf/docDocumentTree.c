@@ -13,6 +13,7 @@
 
 #   include	"docBuf.h"
 #   include	"docNotes.h"
+#   include	"docShape.h"
 #   include	"docTreeNode.h"
 #   include	"docNodeTree.h"
 #   include	<docTreeType.h>
@@ -32,13 +33,13 @@ void docInitDocumentTree(	DocumentTree *	dt )
 
     dt->dtY0UsedTwips= 0;
     dt->dtY1UsedTwips= 0;
-    dt->eiY0ReservedTwips= 0;
-    dt->eiY1ReservedTwips= 0;
+    dt->dtY0ReservedTwips= 0;
+    dt->dtY1ReservedTwips= 0;
 
     dt->dtPageSelectedUpon= -1;
     dt->dtColumnSelectedIn= -1;
 
-    docInitListNumberTrees( &(dt->eiListNumberTrees) );
+    docInitListNumberTrees( &(dt->dtListNumberTrees) );
     docInitListNumberTreeNode( &(dt->dtOutlineTree) );
 
     docInitChildFields( &(dt->dtRootFields) );
@@ -55,7 +56,7 @@ void docCleanDocumentTree(	BufferDocument *	bd,
 
     docDeleteChildFields( &updateFlags, bd, &(dt->dtRootFields) );
 
-    docCleanListNumberTrees( &(dt->eiListNumberTrees) );
+    docCleanListNumberTrees( &(dt->dtListNumberTrees) );
     docCleanListNumberTreeNode( &(dt->dtOutlineTree) );
 
     return;
@@ -80,14 +81,14 @@ void docInvalidateTreeLayout(	DocumentTree *	dt )
 void docEraseDocumentTree(	BufferDocument *	bd,
 				DocumentTree *		dt )
     {
-    int		resY0= dt->eiY0ReservedTwips;
-    int		resY1= dt->eiY1ReservedTwips;
+    int		resY0= dt->dtY0ReservedTwips;
+    int		resY1= dt->dtY1ReservedTwips;
 
     docCleanDocumentTree( bd, dt );
     docInitDocumentTree( dt );
 
-    dt->eiY0ReservedTwips= resY0;
-    dt->eiY1ReservedTwips= resY1;
+    dt->dtY0ReservedTwips= resY0;
+    dt->dtY1ReservedTwips= resY1;
 
     return;
     }

@@ -60,7 +60,7 @@ static regProg * docSpellNextWordExpr= (regProg *)0;
 
 int docSpellParaFindNext(	DocumentSelection *		ds,
 				BufferItem *			paraBi,
-				const BufferDocument *		bd,
+				BufferDocument *		bd,
 				const DocumentPosition *	dpFrom,
 				void *				through )
     {

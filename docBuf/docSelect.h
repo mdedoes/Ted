@@ -16,6 +16,7 @@
 
 struct BufferDocument;
 struct BufferItem;
+struct DocumentTree;
 struct DocumentField;
 
 /************************************************************************/
@@ -104,7 +105,7 @@ extern void docGetSelectionScope(	SelectionScope *		ss,
 extern void docSetSelectionScope(	DocumentSelection *		ds );
 
 extern int docSelectionSameInstance(
-				const struct BufferItem *	node,
+				const struct DocumentTree *	tree,
 				int				page,
 				int				column );
 

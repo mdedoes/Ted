@@ -22,19 +22,6 @@
 		}
 
 /************************************************************************/
-
-# define DOClayoutUSE_COLUMNS( inExtIt ) \
-		    ( (inExtIt) == DOCinBODY		|| \
-		      (inExtIt) == DOCinFOOTNOTE	|| \
-		      (inExtIt) == DOCinENDNOTE		|| \
-		      (inExtIt) == DOCinFTNSEP		|| \
-		      (inExtIt) == DOCinFTNSEPC		|| \
-		      (inExtIt) == DOCinFTNCN		|| \
-		      (inExtIt) == DOCinAFTNSEP		|| \
-		      (inExtIt) == DOCinAFTNSEPC	|| \
-		      (inExtIt) == DOCinAFTNCN		)
-
-/************************************************************************/
 /*									*/
 /*  Routine declarations.						*/
 /*									*/

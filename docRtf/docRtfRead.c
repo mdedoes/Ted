@@ -19,6 +19,7 @@
 #   include	<docTreeType.h>
 #   include	<docTreeNode.h>
 #   include	<docNotes.h>
+#   include	<docDebug.h>
 
 /************************************************************************/
 
@@ -64,7 +65,7 @@ static int docRtfReadDoc(	const RtfControlWord *	rcw,
     if  ( rval )
 	{ SLDEB(rcw->rcwWord,rval);	}
 
-    docRenumberSeqFields( &changed, rrc->rrcTree, rrc->rrcDocument );
+    docRenumberSeqFields( &changed, rrc->rrcTree, rrc->rrDocument );
 
     return rval;
     }
@@ -92,7 +93,7 @@ BufferDocument * docRtfReadFile(	SimpleInputStream *		sis,
     {
     BufferDocument *		rval= (BufferDocument *)0;
     BufferDocument *		bd= (BufferDocument *)0;
-    RtfReader			rrc;
+    RtfReader *			rr= (RtfReader *)0;
 
     int				res;
     const RtfControlWord *	rcw;
@@ -106,21 +107,19 @@ BufferDocument * docRtfReadFile(	SimpleInputStream *		sis,
     struct DocumentNote *	dn;
     int				changed;
 
-    bd= docNewDocument();
+    bd= docNewDocument( (BufferDocument *)0 );
     if  ( ! bd )
 	{ XDEB(bd); goto ready;	}
 
-    docRtfInitReader( &rrc );
+    rr= docRtfOpenReader( sis, bd, flags );
+    if  ( ! rr )
+	{ XDEB(rr); goto ready;	}
 
-    rrc.rrcDocument= bd;
-    rrc.rrcTree= &(rrc.rrcDocument->bdBody);
-    rrc.rrcNode= rrc.rrcTree->dtRoot;
-    rrc.rrcLevel= DOClevBODY;
-    rrc.rrcSis= sis;
+    rr->rrcTree= &(rr->rrDocument->bdBody);
+    rr->rrcNode= rr->rrcTree->dtRoot;
+    rr->rrcLevel= DOClevBODY;
 
-    rrc.rrcReadFlags |= flags;
-
-    res= docRtfFindControl( &rrc, &c, controlWord, &gotArg, &arg );
+    res= docRtfFindControl( rr, &c, controlWord, &gotArg, &arg );
     if  ( res != RTFfiCTRLGROUP )
 	{ goto ready; }
 
@@ -130,29 +129,29 @@ BufferDocument * docRtfReadFile(	SimpleInputStream *		sis,
     if  ( rcw->rcwType != RTCtypeDEST )
 	{ SLDEB(rcw->rcwWord,rcw->rcwType); goto ready;	}
 
-    res= docRtfApplyControlWord( rcw, gotArg, arg, &rrc );
+    res= docRtfApplyControlWord( rcw, gotArg, arg, rr );
     if  ( res )
 	{ LDEB(1); goto ready; }
 
     /*  Check against trailing garbage. Spaces are not allowed either, 	*/
     /*  but we do not want to scare the user with invisible things.	*/
 
-    if  ( ! ( rrc.rrcReadFlags & RTFflagLENIENT ) )
+    if  ( ! ( rr->rrReadFlags & RTFflagLENIENT ) )
 	{
 	c= sioInGetByte( sis );
 	while( c != EOF )
 	    {
-	    if  ( c != '\r' && c != '\n' && c != ' ' )
+	    if  ( c != '\r' && c != '\n' && c != '\0' && c != ' ' )
 		{
 		const char * message= DOC_RTF_LENIENT_MESSAGE;
-		CSDEB(c,message); goto ready;
+		LCSDEB(rr->rrCurrentLine,c,message); goto ready;
 		}
 
 	    c= sioInGetByte( sis );
 	    }
 	}
 
-    if  ( ! rrc.rrcGotDocGeometry		&&
+    if  ( ! rr->rrcGotDocGeometry		&&
 	  bd->bdBody.dtRoot->biChildCount > 0	)
 	{
 	bd->bdProperties.dpGeometry=
@@ -175,7 +174,7 @@ BufferDocument * docRtfReadFile(	SimpleInputStream *		sis,
 	    { LDEB(DOCinAFTNSEP); goto ready; }
 	}
 
-    if  ( docMakeOverrideForEveryList( &(bd->bdProperties.dpListAdmin) ) )
+    if  ( docMakeOverrideForEveryList( bd->bdProperties.dpListAdmin ) )
 	{ LDEB(1); goto ready;	}
 
     if  ( docGetCharsUsed( bd ) )
@@ -183,11 +182,12 @@ BufferDocument * docRtfReadFile(	SimpleInputStream *		sis,
 
     rval= bd; bd= (BufferDocument *)0; /* steal */
 
-    /* LDEB(1); docListNode(0,rval->bdBody.dtRoot); */
+    /* LDEB(1); docListNode(0,rval->bdBody.dtRoot,0); */
 
   ready:
 
-    docRtfCleanReader( &rrc );
+    if  ( rr )
+	{ docRtfCloseReader( rr );	}
 
     if  ( bd )
 	{ docFreeDocument( bd );	}

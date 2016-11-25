@@ -1,5 +1,6 @@
 yum install \
     gcc \
+    make \
     zlib-devel \
     pcre-devel \
     libX11-devel \

@@ -14,11 +14,75 @@
 #   include	<appSystem.h>
 #   include	<utilTree.h>
 #   include	<utilProperties.h>
+#   include	<utilMemoryBufferPrintf.h>
 
 #   include	"appFrame.h"
 
 #   include	<appDebugon.h>
 
+/************************************************************************/
+
+static int appMakeSystemProperties(	EditApplication *	ea )
+    {
+    if  ( ! ea->eaSystemProperties )
+	{
+	const int	ownKeys= 1;
+
+	ea->eaSystemProperties= utilTreeMakeTree( ownKeys );
+	if  ( ! ea->eaSystemProperties )
+	    { XDEB(ea->eaSystemProperties); return -1;	}
+	}
+
+    return 0;
+    }
+
+static int appMakeUserProperties(	EditApplication *	ea )
+    {
+    if  ( ! ea->eaUserProperties )
+	{
+	const int	ownKeys= 1;
+
+	ea->eaUserProperties= utilTreeMakeTree( ownKeys );
+	if  ( ! ea->eaUserProperties )
+	    { XDEB(ea->eaUserProperties); return -1;	}
+	}
+
+    return 0;
+    }
+
+/************************************************************************/
+/*									*/
+/*  Read properties from file.						*/
+/*									*/
+/************************************************************************/
+
+static int appReadProperties(	void *			properties,
+				const MemoryBuffer *	dir,
+				const MemoryBuffer *	relative )
+    {
+    int			rval= 0;
+
+    const int		relativeIsFile= 0;
+
+    MemoryBuffer	absolute;
+
+    utilInitMemoryBuffer( &absolute );
+
+    if  ( appAbsoluteName( &absolute, relative, relativeIsFile, dir ) < 0 )
+	{ LDEB(1); rval= -1; goto ready; }
+
+    if  ( appTestFileExists( &absolute ) )
+	{ goto ready;	}
+
+    if  ( utilPropertiesReadFile( properties, &absolute ) )
+	{ LDEB(1); rval= -1; goto ready;	}
+
+  ready:
+
+    utilCleanMemoryBuffer( &absolute );
+
+    return rval;
+    }
 
 /************************************************************************/
 /*									*/
@@ -30,51 +94,29 @@ int appReadUserProperties(	EditApplication *	ea )
     {
     int			rval= 0;
 
-    char		local[35+1];
-    const char		format[]= ".%s.properties";
-    const int		relativeIsFile= 0;
-    const int		ownKeys= 1;
-
     MemoryBuffer	homeDirectory;
     MemoryBuffer	relative;
-    MemoryBuffer	absolute;
 
     utilInitMemoryBuffer( &homeDirectory );
     utilInitMemoryBuffer( &relative );
-    utilInitMemoryBuffer( &absolute );
 
-    if  ( sizeof(format)+ strlen( ea->eaApplicationName ) > sizeof( local ) )
-	{
-	SSLDEB(format,ea->eaApplicationName, sizeof(local));
-	rval= -1; goto ready;
-	}
+    if  ( appMakeUserProperties( ea ) )
+	{ XDEB(ea->eaUserProperties); rval= -1; goto ready;	}
 
-    sprintf( local, format, ea->eaApplicationName );
-    if  ( utilMemoryBufferSetString( &relative, local ) )
+    if  ( utilMemoryBufferPrintf( &relative, ".%s.properties",
+						ea->eaApplicationName ) < 1 )
 	{ rval= -1; goto ready;	}
 
     if  ( appHomeDirectory( &homeDirectory ) < 0 )
 	{ LDEB(1); rval= -1; goto ready;	}
 
-    if  ( appAbsoluteName( &absolute,
-			    &relative, relativeIsFile, &homeDirectory ) < 0 )
-	{ SDEB(local); rval= -1; goto ready; }
-
-    if  ( appTestFileExists( &absolute ) )
-	{ goto ready;	}
-
-    ea->eaUserProperties= utilTreeMakeTree( ownKeys );
-    if  ( ! ea->eaUserProperties )
-	{ XDEB(ea->eaUserProperties); rval= -1; goto ready;	}
-
-    if  ( utilPropertiesReadFile( ea->eaUserProperties, &absolute ) )
+    if  ( appReadProperties( ea->eaUserProperties, &homeDirectory, &relative ) )
 	{ LDEB(1); rval= -1; goto ready;	}
 
   ready:
 
     utilCleanMemoryBuffer( &homeDirectory );
     utilCleanMemoryBuffer( &relative );
-    utilCleanMemoryBuffer( &absolute );
 
     return rval;
     }
@@ -89,32 +131,20 @@ int appReadSystemProperties(	EditApplication *	ea )
     {
     int			rval= 0;
 
-    char		local[35+1];
-    const char		format[]= "%s.properties";
     const int		relativeIsFile= 0;
-    const int		ownKeys= 1;
 
     MemoryBuffer	pkgDirectory;
     MemoryBuffer	appRelative;
     MemoryBuffer	appDirectory;
     MemoryBuffer	relative;
-    MemoryBuffer	absolute;
 
     utilInitMemoryBuffer( &pkgDirectory );
     utilInitMemoryBuffer( &appRelative );
     utilInitMemoryBuffer( &appDirectory );
     utilInitMemoryBuffer( &relative );
-    utilInitMemoryBuffer( &absolute );
 
-    if  ( sizeof(format)+ strlen( ea->eaApplicationName ) > sizeof( local ) )
-	{
-	SSLDEB(format,ea->eaApplicationName, sizeof(local));
-	rval= -1; goto ready;
-	}
-
-    sprintf( local, format, ea->eaApplicationName );
-    if  ( utilMemoryBufferSetString( &relative, local ) )
-	{ rval= -1; goto ready;	}
+    if  ( appMakeSystemProperties( ea ) )
+	{ XDEB(ea->eaSystemProperties); rval= -1; goto ready;	}
 
     if  ( utilMemoryBufferSetString( &pkgDirectory, PKGDIR ) )
 	{ rval= -1; goto ready;	}
@@ -125,19 +155,40 @@ int appReadSystemProperties(	EditApplication *	ea )
 					relativeIsFile, &pkgDirectory ) < 0 )
 	{ SSDEB(ea->eaApplicationName,PKGDIR); rval= -1; goto ready; }
 
-    if  ( appAbsoluteName( &absolute,
-			    &relative, relativeIsFile, &appDirectory ) < 0 )
-	{ LDEB(1); rval= -1; goto ready; }
+    if  ( utilMemoryBufferPrintf( &relative, "%s.properties",
+						ea->eaApplicationName ) < 1 )
+	{ rval= -1; goto ready;	}
 
-    if  ( appTestFileExists( &absolute ) )
-	{ goto ready;	}
-
-    ea->eaSystemProperties= utilTreeMakeTree( ownKeys );
-    if  ( ! ea->eaSystemProperties )
-	{ XDEB(ea->eaSystemProperties); rval= -1; goto ready;	}
-
-    if  ( utilPropertiesReadFile( ea->eaSystemProperties, &absolute ) )
+    if  ( appReadProperties( ea->eaSystemProperties,
+					    &appDirectory, &relative ) )
 	{ LDEB(1); rval= -1; goto ready;	}
+
+    if  ( ea->eaLocaleName )
+	{
+	char *	uscore= strchr( ea->eaLocaleName, '_' );
+
+	if  ( uscore )
+	    {
+	    if  ( utilMemoryBufferPrintf( &relative, "%s-%.*s.properties",
+					    ea->eaApplicationName,
+					    (int)( uscore- ea->eaLocaleName ),
+					    ea->eaLocaleName ) < 1 )
+		{ rval= -1; goto ready;	}
+
+	    if  ( appReadProperties( ea->eaSystemProperties,
+					    &appDirectory, &relative ) )
+		{ LDEB(1); rval= -1; goto ready;	}
+	    }
+
+	if  ( utilMemoryBufferPrintf( &relative, "%s-%s.properties",
+					    ea->eaApplicationName,
+					    ea->eaLocaleName ) < 1 )
+	    { rval= -1; goto ready;	}
+
+	if  ( appReadProperties( ea->eaSystemProperties,
+					    &appDirectory, &relative ) )
+	    { LDEB(1); rval= -1; goto ready;	}
+	}
 
   ready:
 
@@ -145,7 +196,6 @@ int appReadSystemProperties(	EditApplication *	ea )
     utilCleanMemoryBuffer( &appRelative );
     utilCleanMemoryBuffer( &appDirectory );
     utilCleanMemoryBuffer( &relative );
-    utilCleanMemoryBuffer( &absolute );
 
     return rval;
     }
@@ -156,7 +206,7 @@ int appReadSystemProperties(	EditApplication *	ea )
 /*									*/
 /*  1)  Tolerate a '*' between the application name and the name of the	*/
 /*	property to make it possible to reuse X11 resource files. Give	*/
-/*	the more specific variant with a dot proority.			*/
+/*	the more specific variant with a dot priority.			*/
 /*  2)  First try system properties, then user properties to give the	*/
 /*	user properties priority.					*/
 /*									*/
@@ -274,14 +324,8 @@ int appSetUserProperty(		EditApplication *	ea,
 				const char *		name,
 				const char *		value )
     {
-    if  ( ! ea->eaUserProperties )
-	{
-	const int	ownKeys= 1;
-
-	ea->eaUserProperties= utilTreeMakeTree( ownKeys );
-	if  ( ! ea->eaUserProperties )
-	    { XDEB(ea->eaUserProperties); return -1;	}
-	}
+    if  ( appMakeUserProperties( ea ) )
+	{ XDEB(ea->eaUserProperties); return -1;	}
 
     return appSetProperty( ea, ea->eaUserProperties, name, value );
     }
@@ -290,14 +334,8 @@ int appSetSystemProperty(	EditApplication *	ea,
 				const char *		name,
 				const char *		value )
     {
-    if  ( ! ea->eaSystemProperties )
-	{
-	const int	ownKeys= 1;
-
-	ea->eaSystemProperties= utilTreeMakeTree( ownKeys );
-	if  ( ! ea->eaSystemProperties )
-	    { XDEB(ea->eaSystemProperties); return -1;	}
-	}
+    if  ( appMakeSystemProperties( ea ) )
+	{ XDEB(ea->eaSystemProperties); return -1;	}
 
     return appSetProperty( ea, ea->eaSystemProperties, name, value );
     }

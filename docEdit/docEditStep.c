@@ -11,6 +11,7 @@
 #   include	<appDebugon.h>
 
 #   include	"docEditStep.h"
+#   include	"docIntermediaryDocument.h"
 
 /************************************************************************/
 /*									*/
@@ -43,6 +44,7 @@ void docInitEditStep(	EditStep *	es )
     es->esSelectionPosition= SELposTAIL;
 
     es->esSourceDocument= (BufferDocument *)0;
+    es->esSourceIsIntermediary= 0;
 
     docInitDocumentStyle( &(es->esNewStyle) );
     utilPropMaskClear( &(es->esNewDocPropMask) );
@@ -58,19 +60,18 @@ void docInitEditStep(	EditStep *	es )
 
 void docCleanEditStep(	EditStep *	es )
     {
-    BufferDocument *	bd= es->esSourceDocument;
-
-    if  ( bd )
+    if  ( es->esSourceDocument )
 	{
-	/* Shallow copies: Do not clean! */
-	docInitDocumentProperties( &(bd->bdProperties) );
-	utilInitNumberedPropertiesList( &(bd->bdTextAttributeList) );
-	utilInitNumberedPropertiesList( &(bd->bdBorderPropertyList) );
-	utilInitNumberedPropertiesList( &(bd->bdItemShadingList) );
-	utilInitNumberedPropertiesList( &(bd->bdFramePropertyList) );
-	utilInitNumberedPropertiesList( &(bd->bdTabStopListList) );
+	if  ( es->esSourceIsIntermediary )
+	    {
+	    /* Shallow copies: Do not clean! */
+	    docInitDocumentProperties( &(es->esSourceDocument->bdProperties) );
 
-	docFreeDocument( es->esSourceDocument );
+	    docFreeIntermediaryDocument( es->esSourceDocument );
+	    }
+	else{
+	    docFreeDocument( es->esSourceDocument );
+	    }
 	}
 
     docCleanDocumentStyle( &(es->esNewStyle) );
@@ -83,3 +84,20 @@ void docCleanEditStep(	EditStep *	es )
     return;
     }
 
+BufferDocument * docEditStepMakeSourceDocument(	EditStep *		es,
+						const BufferDocument *	bdRef )
+    {
+    BufferDocument *	bd;
+
+    if  ( es->esSourceDocument )
+	{ XDEB(es->esSourceDocument); return (BufferDocument *)0;	}
+
+    bd= docNewDocument( bdRef );
+    if  ( ! bd )
+	{ XDEB(bd); return (BufferDocument *)0;	}
+
+    es->esSourceDocument= bd;
+    es->esSourceIsIntermediary= ( bdRef != (BufferDocument *)0 );
+
+    return es->esSourceDocument;
+    }

@@ -105,7 +105,7 @@ if(1)
 	{ *pEnabled= 0; return;	}
 
     docGetFramePropertiesByNumber( &(ft->ftPropertiesSet),
-		    &(bd->bdFramePropertyList), paraBi->biParaFrameNumber );
+					    bd, paraBi->biParaFrameNumber );
 
     if  ( DOCisFRAME( &(ft->ftPropertiesSet) ) )
 	{ *pPref += 2;	}
@@ -198,12 +198,10 @@ static APP_BUTTON_CALLBACK_H( tedFormatChangeFramePushed, w, voidft )
     if  ( tedFrameToolGetChosen( ft ) )
 	{ goto ready;	}
 
-    ppChosen.ppFrameNumber= docFramePropertiesNumber(
-				    &(bd->bdFramePropertyList), fpChosen );
+    ppChosen.ppFrameNumber= docFramePropertiesNumber( bd, fpChosen );
     if  ( ppChosen.ppFrameNumber < 0 )
 	{ LDEB(ppChosen.ppFrameNumber); goto ready;	}
-    frameNumberSet= docFramePropertiesNumber(
-				    &(bd->bdFramePropertyList), fpSet );
+    frameNumberSet= docFramePropertiesNumber( bd, fpSet );
     if  ( frameNumberSet < 0 )
 	{ LDEB(frameNumberSet); goto ready;	}
 

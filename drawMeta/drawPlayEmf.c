@@ -18,13 +18,38 @@
 # endif
 
 /************************************************************************/
+
+typedef struct bmi
+    {
+    long	offBmi;
+    long	cbBmi;
+    long	offBits;
+    long	cbBits;
+    } bmi;
+
+static int appEmfReadBmi(	bmi *			pbmi,
+				SimpleInputStream *	sis )
+    {
+    int	done= 0;
+
+    pbmi->offBmi= sioEndianGetLeInt32( sis ); done += 4;
+    pbmi->cbBmi= sioEndianGetLeInt32( sis ); done += 4;
+    pbmi->offBits= sioEndianGetLeInt32( sis ); done += 4;
+    pbmi->cbBits= sioEndianGetLeInt32( sis ); done += 4;
+
+    return done;
+    }
+
+/************************************************************************/
 /*									*/
 /*  Handle a poly-polygon. For simplicity, treat it as multiple polygons*/
 /*									*/
 /************************************************************************/
 
-static int appEmfGetCounts(	SimpleInputStream *	sis,
+static int appEmfGetPolyPoly(	SimpleInputStream *	sis,
+				const char *		recordTypeStr,
 				int			recordSize,
+				DocumentRectangle *	bounds,
 				int *			pPolyCount,
 				int *			pPointCount,
 				int **			pCounts,
@@ -37,9 +62,21 @@ static int appEmfGetCounts(	SimpleInputStream *	sis,
 
     int *		fresh;
     int			done= 0;
+    int			step;
+
+    step= bmEmfReadRectangle( bounds, sis );
+    if  ( step < 0 )
+	{ LDEB(step); return -1;	}
+    done += step;
 
     polyCount= sioEndianGetLeInt32( sis ); done += 4;
     pointCount= sioEndianGetLeInt32( sis ); done += 4;
+
+    WMFDEB(appDebug(
+	    "%s( polyCount=%d, bounds=[%d..%d x %d..%d] )\n",
+					recordTypeStr,
+					polyCount, bounds->drX0, bounds->drX1,
+					bounds->drY0, bounds->drY1 ));
 
     fresh= (int *)realloc( dc->dcCounts, polyCount* sizeof(int) );
     if  ( ! fresh )
@@ -61,15 +98,17 @@ static int appEmfGetCounts(	SimpleInputStream *	sis,
     return done;
     }
 
-static int appEmfDrawPolyPolygon16(
-				SimpleInputStream *		sis,
-				void *				through,
-				int				recordSize,
-				const DocumentRectangle *	bounds,
-				DeviceContext *			dc,
-				int				fillInside,
-				int				drawBorder,
-				int				closePath )
+static int appEmfDrawPolyPolygonXX(
+				SimpleInputStream *	sis,
+				const char *		recordTypeStr,
+				void *			through,
+				int			recordSize,
+				DocumentRectangle *	bounds,
+				DeviceContext *		dc,
+				MetaGetPoints		getPoints,
+				int			fillInside,
+				int			drawBorder,
+				int			closePath )
     {
     int			polyCount;
     int			pointCount;
@@ -78,18 +117,13 @@ static int appEmfDrawPolyPolygon16(
     int			step;
     int			done= 0;
 
-    step= appEmfGetCounts( sis, recordSize,
+    step= appEmfGetPolyPoly( sis, recordTypeStr, recordSize, bounds,
 				    &polyCount, &pointCount, &counts, dc );
     if  ( step < 0 )
 	{ LDEB(step); return -1;	}
     done += step;
 
-    WMFDEB(appDebug(
-	    "PolyPolygon16( polyCount=%d, bounds=[%d..%d x %d..%d] )\n",
-					polyCount, bounds->drX0, bounds->drX1,
-					bounds->drY0, bounds->drY1 ));
-
-    step= appWinMetaGetPoints16( dc, pointCount, sis );
+    step= (*getPoints)( dc, pointCount, sis );
     if  ( step < 0 )
 	{ LLDEB(pointCount,step); return -1;	}
     done += step;
@@ -178,7 +212,7 @@ static int appEmfReadPen(	DeviceContext *		dc,
     lp->lpStyle= sioEndianGetLeInt32( sis ); done += 4;
     x= sioEndianGetLeInt32( sis ); done += 4;
     y= sioEndianGetLeInt32( sis ); done += 4;
-    lp->lpWidth= x;
+    lp->lpWidth= ( x+ y )/ 2;
 
     step= bmEmfReadRgb8Color( &(lp->lpColor), sis );
     if  ( step < 0 )
@@ -220,8 +254,6 @@ static int appEmfReadLogPenEx(	DeviceContext *		dc,
     {
     int		done= 0;
 
-    long	BrushStyle;
-    long	BrushHatch;
     long	NumStyleEntries;
 
     int		step;
@@ -230,14 +262,14 @@ static int appEmfReadLogPenEx(	DeviceContext *		dc,
     lp->lpStyle= sioEndianGetLeInt32( sis ); done += 4;
     lp->lpWidth= sioEndianGetLeInt32( sis ); done += 4;
 
-    BrushStyle= sioEndianGetLeInt32( sis ); done += 4;
+    (void) /* BrushStyle= */ sioEndianGetLeInt32( sis ); done += 4;
 
     step= bmEmfReadRgb8Color( &(lp->lpColor), sis );
     if  ( step < 0 )
 	{ LDEB(step); return -1;	}
     done += step;
 
-    BrushHatch= sioEndianGetLeInt32( sis ); done += 4;
+    (void) /* BrushHatch= */ sioEndianGetLeInt32( sis ); done += 4;
 
     NumStyleEntries= sioEndianGetLeInt32( sis ); done += 4;
     for ( i= 0; i < NumStyleEntries; i++ )
@@ -256,13 +288,10 @@ static int appEmfExtCreatePen(	DeviceContext *		dc,
     int			step;
     int			done= 0;
 
+    bmi			bmi;
+
     MetaFileObject *	mfo= dc->dcObjects+ ob;
     LogicalPen *	lp= &(mfo->mfoSpecific.mfsLogicalPen);
-
-    long		offBmi;
-    long		cbBmi;
-    long		offBits;
-    long		cbBits;
 
     if  ( ob < 0 || ob >= dc->dcObjectCount )
 	{ LLDEB(ob,dc->dcObjectCount); return -1;	}
@@ -272,17 +301,14 @@ static int appEmfExtCreatePen(	DeviceContext *		dc,
 
     mfo->mfoType= MFtypePEN;
 
-    offBmi= sioEndianGetLeInt32( sis ); done += 4;
-    cbBmi= sioEndianGetLeInt32( sis ); done += 4;
-    offBits= sioEndianGetLeInt32( sis ); done += 4;
-    cbBits= sioEndianGetLeInt32( sis ); done += 4;
+    done += appEmfReadBmi( &bmi, sis );
 
     step= appEmfReadLogPenEx( dc, lp, sis );
     if  ( step < 0 )
 	{ LDEB(step); return -1;	}
     done += step;
 
-    while( skipped+ done < offBmi )
+    while( skipped+ done < bmi.offBmi )
 	{
 	sioEndianGetLeInt32( sis ); done += 4;
 	}
@@ -371,21 +397,15 @@ static int appEmfReadPatternBrush(	DeviceContext *		dc,
     PatternBrush *	pb= &(mfo->mfoPatternBrush);
     int			done= 0;
 
-    long		offBmi;
-    long		cbBmi;
-    long		offBits;
-    long		cbBits;
+    bmi			bmi;
 
     int			skip= 0;
 
     pb->pbUsage= sioEndianGetLeInt32( sis ); done += 4;
 
-    offBmi= sioEndianGetLeInt32( sis ); done += 4;
-    cbBmi= sioEndianGetLeInt32( sis ); done += 4;
-    offBits= sioEndianGetLeInt32( sis ); done += 4;
-    cbBits= sioEndianGetLeInt32( sis ); done += 4;
+    done += appEmfReadBmi( &bmi, sis );
 
-    while( skipped+ done < offBmi )
+    while( skipped+ done < bmi.offBmi )
 	{
 	skip= sioEndianGetLeInt32( sis ); done += 4;
 	}
@@ -424,7 +444,7 @@ static int appEmfReadUtf16String(	char *			to,
 	if  ( c == 0 )
 	    { nchars++; break;	}
 
-	step= uniPutUtf8( (unsigned char *)to, c );
+	step= uniPutUtf8( to, c );
 	if  ( step < 1 || step > 3 )
 	    { XLDEB(c,step); break;	}
 
@@ -530,7 +550,6 @@ static int appEmfReadDesignVector(	DeviceContext *		dc,
     int			done= 0;
     unsigned long	signature;
     int			numAxes;
-    int			axis;
     int			i;
 
     signature= sioEndianGetLeInt32( sis ); done += 4;
@@ -542,7 +561,7 @@ static int appEmfReadDesignVector(	DeviceContext *		dc,
 	{ LDEB(numAxes); return -1;	}
 
     for ( i= 0; i < numAxes; i++ )
-	{ axis= sioEndianGetLeInt32( sis ); done += 4;	}
+	{ (void) /* axis= */ sioEndianGetLeInt32( sis ); done += 4;	}
 
     return done;
     }
@@ -590,12 +609,14 @@ static int appEmfReadLogFontPanose(	DeviceContext *		dc,
 	char	fullName[3*64+1];
 	char	style[3*32+1];
 
+	/*
 	int	Version;
 	int	StyleSize;
 	int	Match;
 	int	Reserved;
 	int	VendirId;
 	int	Culture;
+	*/
 
 	char	panose[10+1];
 
@@ -613,12 +634,12 @@ static int appEmfReadLogFontPanose(	DeviceContext *		dc,
 	    { LDEB(step); return -1;	}
 	done += step;
 
-	Version= sioEndianGetLeInt32( sis ); done += 4;
-	StyleSize= sioEndianGetLeInt32( sis ); done += 4;
-	Match= sioEndianGetLeInt32( sis ); done += 4;
-	Reserved= sioEndianGetLeInt32( sis ); done += 4;
-	VendirId= sioEndianGetLeInt32( sis ); done += 4;
-	Culture= sioEndianGetLeInt32( sis ); done += 4;
+	(void) /* Version= */ sioEndianGetLeInt32( sis ); done += 4;
+	(void) /* StyleSize= */ sioEndianGetLeInt32( sis ); done += 4;
+	(void) /* Match= */ sioEndianGetLeInt32( sis ); done += 4;
+	(void) /* Reserved= */ sioEndianGetLeInt32( sis ); done += 4;
+	(void) /* VendirId= */ sioEndianGetLeInt32( sis ); done += 4;
+	(void) /* Culture= */ sioEndianGetLeInt32( sis ); done += 4;
 
 	memset( panose, 0, sizeof(panose) );
 	for ( i= 0; i < 10; i++ )
@@ -877,9 +898,6 @@ static int appWmfReadSmallTextObject(	DeviceContext *		dc,
     int			refX;
     int			refY;
     int			options;
-    int			iGraphicsMode;
-    double		exScale;
-    double		eyScale;
 
     int			charCount;
 
@@ -890,9 +908,9 @@ static int appWmfReadSmallTextObject(	DeviceContext *		dc,
 
     charCount= sioEndianGetLeInt32( sis ); done += 4;
     options= sioEndianGetLeInt32( sis ); done += 4;
-    iGraphicsMode= sioEndianGetLeInt32( sis ); done += 4;
-    exScale= sioEndianGetLeFloat( sis ); done += 4;
-    eyScale= sioEndianGetLeFloat( sis ); done += 4;
+    (void) /* iGraphicsMode= */ sioEndianGetLeInt32( sis ); done += 4;
+    (void) /* exScale= */ sioEndianGetLeFloat( sis ); done += 4;
+    (void) /* eyScale= */ sioEndianGetLeFloat( sis ); done += 4;
 
     if  ( ! ( options & ETO_NO_RECT ) )
 	{
@@ -926,7 +944,6 @@ static int appWmfReadSmallTextObject(	DeviceContext *		dc,
     return done;
     }
 
-
 static int appEmfStretchBlt(	DeviceContext *		dc,
 				SimpleInputStream *	sis,
 				void *			through,
@@ -938,15 +955,8 @@ static int appEmfStretchBlt(	DeviceContext *		dc,
 
     AffineTransform2D		transform;
 
-    long			BitBltRasterOperation;
-    long			BkColorSrc;
+    bmi				bmi;
 
-    long			offBmi;
-    long			cbBmi;
-    long			offBits;
-    long			cbBits;
-
-    int				skip;
     DocumentRectangle		drDest;
     DocumentRectangle		drSrc;
     int				w;
@@ -957,7 +967,7 @@ static int appEmfStretchBlt(	DeviceContext *		dc,
 	{ LDEB(step); return -1;	}
     done += step;
 
-    BitBltRasterOperation= sioEndianGetLeInt32( sis ); done += 4;
+    (void) /* BitBltRasterOperation= */ sioEndianGetLeInt32( sis ); done += 4;
 
     drSrc.drX0= sioEndianGetLeInt32( sis ); done += 4;
     drSrc.drY0= sioEndianGetLeInt32( sis ); done += 4;
@@ -967,15 +977,12 @@ static int appEmfStretchBlt(	DeviceContext *		dc,
 	{ LDEB(step); return -1;	}
     done += step;
 
-    BkColorSrc= sioEndianGetLeInt32( sis ); done += 4;
+    (void) /* BkColorSrc= */ sioEndianGetLeInt32( sis ); done += 4;
 
     /* What is this? */
-    skip= sioEndianGetLeInt32( sis ); done += 4;
+    (void) /* skip= */ sioEndianGetLeInt32( sis ); done += 4;
 
-    offBmi= sioEndianGetLeInt32( sis ); done += 4;
-    cbBmi= sioEndianGetLeInt32( sis ); done += 4;
-    offBits= sioEndianGetLeInt32( sis ); done += 4;
-    cbBits= sioEndianGetLeInt32( sis ); done += 4;
+    done += appEmfReadBmi( &bmi, sis );
 
     w= sioEndianGetLeInt32( sis ); done += 4;
     h= sioEndianGetLeInt32( sis ); done += 4;
@@ -984,9 +991,9 @@ static int appEmfStretchBlt(	DeviceContext *		dc,
 
     expectBytes= expectBytes- done;
 
-    while( skipped+ done < offBmi )
+    while( skipped+ done < bmi.offBmi )
 	{
-	skip= sioEndianGetLeInt32( sis ); done += 4;
+	(void) /* skip= */ sioEndianGetLeInt32( sis ); done += 4;
 	}
 
     if  ( appMetaDrawRasterImage( sis, through, expectBytes, dc,
@@ -1418,8 +1425,8 @@ int appMetaPlayEmf(	DeviceContext *			dc,
 
 		WMFDEB(appDebug("PolyBezier( count=%d, ... )\n", count ));
 
-		if  ( (*dc->dcDrawPolyPolygon)( dc, through,
-							1, &count, points,
+		if  ( (*dc->dcDrawPolyBezier)( dc, through,
+							count, points, 1,
 							dc->dcFillInsides,
 							dc->dcDrawBorders,
 							dc->dcFillInsides ) )
@@ -1439,7 +1446,7 @@ int appMetaPlayEmf(	DeviceContext *			dc,
 
 		WMFDEB(appDebug("PolyBezierTo16( count=%d, ... )\n", count ));
 
-		if  ( (*dc->dcDrawPolyPolygon)( dc, through, 1, &count, points,
+		if  ( (*dc->dcDrawPolyBezier)( dc, through, count, points, 0,
 								    0, 1, 0 ) )
 		    { LDEB(count); return -1;	}
 		}
@@ -1529,8 +1536,8 @@ int appMetaPlayEmf(	DeviceContext *			dc,
 
 		WMFDEB(appDebug("PolyBezierTo( count=%d, ... )\n", count ));
 
-		if  ( (*dc->dcDrawPolyPolygon)( dc, through,
-							1, &count, points,
+		if  ( (*dc->dcDrawPolyBezier)( dc, through,
+							count, points, 0,
 							dc->dcFillInsides,
 							dc->dcDrawBorders,
 							dc->dcFillInsides ) )
@@ -1571,8 +1578,8 @@ int appMetaPlayEmf(	DeviceContext *			dc,
 
 		WMFDEB(appDebug("PolyBezier16( count=%d, ... )\n", count ));
 
-		if  ( (*dc->dcDrawPolyPolygon)( dc, through,
-							1, &count, points,
+		if  ( (*dc->dcDrawPolyBezier)( dc, through,
+							count, points, 0,
 							dc->dcFillInsides,
 							dc->dcDrawBorders,
 							dc->dcFillInsides ) )
@@ -1598,16 +1605,40 @@ int appMetaPlayEmf(	DeviceContext *			dc,
 		}
 		goto checkSize;
 
-	    case EMR_POLYPOLYGON16:
-		step= bmEmfReadRectangle( &bounds, sis );
+	    case EMR_POLYPOLYGON:
+		WMFDEB(appDebug("PolyPolygon( ... )\n" ));
+
+		step= appEmfDrawPolyPolygonXX( sis, "PolyPolygon",
+			through, recordSize,
+			&bounds, dc, appWinMetaGetPoints32,
+			dc->dcFillInsides, dc->dcDrawBorders, 1 );
 		if  ( step < 0 )
 		    { LDEB(step); return -1;	}
 		done += step;
 
+		goto checkSize;
+
+
+	    case EMR_POLYPOLYGON16:
 		WMFDEB(appDebug("PolyPolygon16( ... )\n" ));
 
-		step= appEmfDrawPolyPolygon16( sis, through, recordSize,
-			&bounds, dc, dc->dcFillInsides, dc->dcDrawBorders, 1 );
+		step= appEmfDrawPolyPolygonXX( sis, "PolyPolygon16",
+			through, recordSize,
+			&bounds, dc, appWinMetaGetPoints16,
+			dc->dcFillInsides, dc->dcDrawBorders, 1 );
+		if  ( step < 0 )
+		    { LDEB(step); return -1;	}
+		done += step;
+
+		goto checkSize;
+
+	    case EMR_POLYPOLYLINE:
+		WMFDEB(appDebug("PolyPolyLine( ... )\n" ));
+
+		step= appEmfDrawPolyPolygonXX( sis, "PolyPolyLine",
+			through, recordSize,
+			&bounds, dc, appWinMetaGetPoints32,
+			0, 1, 0 );
 		if  ( step < 0 )
 		    { LDEB(step); return -1;	}
 		done += step;
@@ -1615,15 +1646,12 @@ int appMetaPlayEmf(	DeviceContext *			dc,
 		goto checkSize;
 
 	    case EMR_POLYPOLYLINE16:
-		step= bmEmfReadRectangle( &bounds, sis );
-		if  ( step < 0 )
-		    { LDEB(step); return -1;	}
-		done += step;
-
 		WMFDEB(appDebug("PolyPolyLine16( ... )\n" ));
 
-		step= appEmfDrawPolyPolygon16( sis, through, recordSize,
-							&bounds, dc, 0, 1, 0 );
+		step= appEmfDrawPolyPolygonXX( sis, "PolyPolyLine16",
+			through, recordSize,
+			&bounds, dc, appWinMetaGetPoints16,
+			0, 1, 0 );
 		if  ( step < 0 )
 		    { LDEB(step); return -1;	}
 		done += step;
@@ -1834,14 +1862,7 @@ int appMetaPlayEmf(	DeviceContext *			dc,
 		DocumentRectangle	drSrc;
 		DocumentRectangle	drDest;
 
-		long			BitBltRasterOperation;
-		long			BkColorSrc;
-		long			UsageSrc;
-
-		long			offBmiSrc;
-		long			cbBmiSrc;
-		long			offBitsSrc;
-		long			cbBitsSrc;
+		bmi			bmiSrc;
 
 		step= bmEmfReadRectangle( &bounds, sis );
 		if  ( step < 0 )
@@ -1853,7 +1874,8 @@ int appMetaPlayEmf(	DeviceContext *			dc,
 		    { LDEB(step); return -1;	}
 		done += step;
 
-		BitBltRasterOperation= sioEndianGetLeInt32( sis ); done += 4;
+		(void) /* BitBltRasterOperation= */
+				    sioEndianGetLeInt32( sis ); done += 4;
 
 		drSrc.drX0= sioEndianGetLeInt32( sis ); done += 4;
 		drSrc.drY0= sioEndianGetLeInt32( sis ); done += 4;
@@ -1866,13 +1888,10 @@ int appMetaPlayEmf(	DeviceContext *			dc,
 		    { LDEB(step); return -1;	}
 		done += step;
 
-		BkColorSrc= sioEndianGetLeInt32( sis ); done += 4;
-		UsageSrc= sioEndianGetLeInt32( sis ); done += 4;
+		(void) /* BkColorSrc= */ sioEndianGetLeInt32( sis ); done += 4;
+		(void) /* UsageSrc= */ sioEndianGetLeInt32( sis ); done += 4;
 
-		offBmiSrc= sioEndianGetLeInt32( sis ); done += 4;
-		cbBmiSrc= sioEndianGetLeInt32( sis ); done += 4;
-		offBitsSrc= sioEndianGetLeInt32( sis ); done += 4;
-		cbBitsSrc= sioEndianGetLeInt32( sis ); done += 4;
+		done += appEmfReadBmi( &bmiSrc, sis );
 
 		expectBytes= recordSize- done;
 
@@ -1901,13 +1920,7 @@ int appMetaPlayEmf(	DeviceContext *			dc,
 
 	    case EMR_STRETCHDIBITS:
 		{
-		long			offBmiSrc;
-		long			cbBmiSrc;
-		long			offBitsSrc;
-		long			cbBitsSrc;
-
-		long			UsageSrc;
-		long			BitBltRasterOperation;
+		bmi			bmiSrc;
 
 		DocumentRectangle	drSrc;
 		DocumentRectangle	drDest;
@@ -1928,20 +1941,18 @@ int appMetaPlayEmf(	DeviceContext *			dc,
 		    { LDEB(step); return -1;	}
 		done += step;
 
-		offBmiSrc= sioEndianGetLeInt32( sis ); done += 4;
-		cbBmiSrc= sioEndianGetLeInt32( sis ); done += 4;
-		offBitsSrc= sioEndianGetLeInt32( sis ); done += 4;
-		cbBitsSrc= sioEndianGetLeInt32( sis ); done += 4;
+		done += appEmfReadBmi( &bmiSrc, sis );
 
-		UsageSrc= sioEndianGetLeInt32( sis ); done += 4;
-		BitBltRasterOperation= sioEndianGetLeInt32( sis ); done += 4;
+		(void) /* UsageSrc= */ sioEndianGetLeInt32( sis ); done += 4;
+		(void) /* BitBltRasterOperation= */
+				    sioEndianGetLeInt32( sis ); done += 4;
 
 		w= sioEndianGetLeInt32( sis ); done += 4;
 		h= sioEndianGetLeInt32( sis ); done += 4;
 		drDest.drX1= drDest.drX0+ w- 1;
 		drDest.drY1= drDest.drY0+ h- 1;
 
-		while ( offBmiSrc > done )
+		while ( bmiSrc.offBmi > done )
 		    { (void) sioInGetByte( sis ); done++;	}
 		expectBytes= recordSize- done;
 
@@ -2103,10 +2114,10 @@ int appMetaPlayEmf(	DeviceContext *			dc,
 		    { LDEB(step); return -1;	}
 		done += step;
 
-		WMFDEB(appDebug("SetPixelV(%d,%d,rgba:%d,%d,%d,%d)\n"
+		WMFDEB(appDebug("SetPixelV(%d,%d,rgba:%d,%d,%d,%d)\n",
 		    bounds.drX0, bounds.drY0,
-		    lb->lbColor.rgb8Red, lb->lbColor.rgb8Green,
-		    lb->lbColor.rgb8Blue, lb->lbColor.rgb8Alpha));
+		    lb.lbColor.rgb8Red, lb.lbColor.rgb8Green,
+		    lb.lbColor.rgb8Blue, lb.lbColor.rgb8Alpha));
 
 		if  ( (*dc->dcSelectBrushObject)( dc, through, &lb ) )
 		    { LDEB(1); return -1;	}
@@ -2145,12 +2156,13 @@ int appMetaPlayEmf(	DeviceContext *			dc,
 		continue;
 	    default:
 		XLDEB(recordType,recordSize);
-		/*
+#		if 1
 		while( done < recordSize )
-		    { ignore= sioInGetByte( sis ); done++; }
+		    { (void) sioInGetByte( sis ); done++; }
 		continue;
-		*/
+#		else
 		return -1;
+#		endif
 	    }
 
 	break;

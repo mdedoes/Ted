@@ -18,7 +18,7 @@ typedef void (*APP_COMPLAIN)(		void *		through,
 
 /************************************************************************/
 /*									*/
-/*  Error numbers. (Can be transtaled to strings by the caller.)	*/
+/*  Error numbers. (Can be translated to strings by the caller.)	*/
 /*									*/
 /************************************************************************/
 
@@ -71,6 +71,9 @@ extern int appAbsoluteName(	MemoryBuffer *		absolute,
 
 extern int appRemoveFile(	const MemoryBuffer *	filename );
 extern int appRenameFile(	const MemoryBuffer *	newName,
+				const MemoryBuffer *	oldName );
+
+extern int appCopyFile(		const MemoryBuffer *	newName,
 				const MemoryBuffer *	oldName );
 
 extern int appForAllFiles(	const MemoryBuffer *	dir,

@@ -51,9 +51,13 @@ static int docDrawHeaderFooter(	BufferItem *		bodySectBi,
     if  ( page != tree->dtPageFormattedFor	||
 	  column != tree->dtColumnFormattedFor	)
 	{
+	const int	adjustDocument= 0;
+
+	/*  We do not expect the tree to change height here	*/
 	if  ( docLayoutDocumentTree( tree, (DocumentRectangle *)0,
 			    page, column, tree->dtY0UsedTwips,
-			    bodySectBi, lc, dc->dcInitLayoutExternal )	)
+			    bodySectBi, lc, dc->dcInitLayoutExternal,
+			    adjustDocument ) )
 	    { LLDEB(page,column); return -1;	}
 	}
 
@@ -136,6 +140,7 @@ static int docDrawNoteSeparator(LayoutPosition *	lpBelow,
     int				column;
 
     const BufferItem *		bodySectNode;
+    const int			adjustDocument= 0;
 
     eiFirstNote= &(dnFirstNote->dnDocumentTree);
     page= eiFirstNote->dtRoot->biTopPosition.lpPage;
@@ -160,9 +165,11 @@ static int docDrawNoteSeparator(LayoutPosition *	lpBelow,
     if  ( page != eiNoteSep->dtPageFormattedFor		||
 	  column != eiNoteSep->dtColumnFormattedFor	)
 	{
+	/*  We do not expect the tree to change height here	*/
 	if  ( docLayoutDocumentTree( eiNoteSep, (DocumentRectangle *)0,
 			page, column, y0Twips,
-			bodySectNode, lc, dc->dcInitLayoutExternal )	)
+			bodySectNode, lc, dc->dcInitLayoutExternal,
+			adjustDocument ) )
 	    { LDEB(1); return -1;	}
 	}
 
@@ -293,7 +300,8 @@ int docDrawEndnotesForSection(		LayoutPosition *	lpBelow,
     if  ( dc->dcFirstPage < 0					||
 	  tree->dtRoot->biBelowPosition.lpPage >= dc->dcFirstPage	)
 	{
-	if  ( docDrawNoteSeparator( lpBelow, through, dc, dfNote, dn, DOCinAFTNSEP ) )
+	if  ( docDrawNoteSeparator( lpBelow, through, dc,
+						dfNote, dn, DOCinAFTNSEP ) )
 	    { LDEB(sect);	}
 	}
 

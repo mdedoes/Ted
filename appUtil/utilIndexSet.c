@@ -638,7 +638,7 @@ int utilIndexSetGetPrev(		const IndexSet *	is,
     }
 
 int utilIndexSetGetNextHole(	const IndexSet *	is,
-					int			n )
+				int			n )
     {
     int		page;
     int		pidx;

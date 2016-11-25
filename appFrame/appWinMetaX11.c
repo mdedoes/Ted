@@ -724,7 +724,6 @@ static int appMeta_PolyPolygonX11(	DeviceContext *		dc,
 					int			fillInsides,
 					int			drawBorders,
 					int			closePath )
-
     {
     DeviceContextX11 *	dcx= (DeviceContextX11 *)through;
     DrawingSurface	ds= dcx->dcxDrawingSurface;
@@ -752,6 +751,18 @@ static int appMeta_PolyPolygonX11(	DeviceContext *		dc,
 	}
 
     return 0;
+    }
+
+static int appMeta_PolyBezierX11(	DeviceContext *		dc,
+					void *			through,
+					int			count,
+					const Point2DI *	points,
+					int			startPath,
+					int			fillInsides,
+					int			drawBorders,
+					int			closePath )
+    {
+return 0;
     }
 
 static int appMetaDrawStringX11(	DeviceContext *		dc,
@@ -1023,6 +1034,7 @@ static int appMetaStartX11DeviceContext(
     dc->dcSelectFontObject= appMetaSelectFontObjectX11;
     dc->dcSelectPatternBrushObject= appMetaSelectPatternBrushObjectX11;
     dc->dcDrawPolyPolygon= appMeta_PolyPolygonX11;
+    dc->dcDrawPolyBezier= appMeta_PolyBezierX11;
     dc->dcDrawString= appMetaDrawStringX11;
     dc->dcPatBlt= appMetaPatBltX11;
     dc->dcDrawPie= appMetaDrawPieX11;
@@ -1061,8 +1073,10 @@ int appMetaPlayWmfX11(	void **			pPrivate,
 
     if  ( player->mpXWinExt == 0 || player->mpYWinExt == 0 )
 	{
+	/*
 	LLDEB(player->mpXWinExt,player->mpYWinExt);
 	LLDEB(player->mpPixelsWide,player->mpPixelsHigh);
+	*/
 	drLogical.drX1= player->mpPixelsWide;
 	drLogical.drY1= player->mpPixelsHigh;
 	}

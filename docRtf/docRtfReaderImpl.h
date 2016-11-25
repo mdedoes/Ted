@@ -11,6 +11,7 @@
 #   include	<docNoteProperties.h>
 #   include	<sioGeneral.h>
 #   include	<docTabStop.h>
+#   include	<docTabStopList.h>
 #   include	<docListOverride.h>
 #   include	<docDocumentList.h>
 #   include	<docBorderProperties.h>
@@ -43,7 +44,6 @@ typedef struct RtfReadingState
     int				rrsTextShadingChanged;
     ParagraphProperties		rrsParagraphProperties;
     TabStopList			rrsTabStopList;
-    int				rrsParagraphBreakOverride;
     ItemShading			rrsParagraphShading;
     FrameProperties		rrsParaFrameProperties;
 
@@ -90,10 +90,10 @@ struct RtfReader
 
     int				rrcAfterNoteref;
 
-    int				rrcReadFlags;
+    int				rrReadFlags;
 
-    int				rrcCurrentLine;
-    struct BufferDocument *	rrcDocument;
+    int				rrCurrentLine;
+    struct BufferDocument *	rrDocument;
     struct DocumentTree *	rrcTree;
     struct BufferItem *		rrcNode;
 				/****************************************/
@@ -117,7 +117,12 @@ struct RtfReader
     ItemShading			rrcRowShading;
 
     BorderProperties		rrcBorderProperties;
-    DrawingShape *		rrcDrawingShape;
+
+    struct DrawingShape *	rrDrawingShape;
+    const RtfControlWord *	rrShapeProperty;
+    MemoryBuffer		rrShapePropertyName;
+    MemoryBuffer		rrShapePropertyValue;
+
     int				rrcNextObjectVertex;
 				    /**
 				     *  The style in the stylesheet that is 
@@ -175,14 +180,16 @@ struct RtfReader
 				/*  For reading 'objects' and pictures.	*/
 				/*  For reading 'fields'.		*/
 				/****************************************/
-    int				rrcAtParaHead;
+    int				rrAfterParaHeadField;
+    int				rrParagraphBreakOverride;
     int				rrcGotDocGeometry;
 				/****************************************/
 				/*  For coping with the way word saves	*/
 				/*  {\pntext ... }			*/
 				/****************************************/
 
-    RtfTextConverter		rrcTextConverters;
+    struct TextConverter *	rrRtfTextConverter;
+    struct TextConverter *	rrTextTextConverter;
 
 				/**
 				 * Only used for reading Undo/Redo traces.
@@ -214,14 +221,6 @@ struct RtfReader
     NoteProperties		rrcNoteProperties;
     PropertyMask		rrcNotePropertyMask;
     };
-
-# define docRtfReadSetRtfEncodingName( r, n ) \
-	textConverterSetNativeEncodingName( &((r)->rrcTextConverters.rtcRtfConverter), (n) )
-# define docRtfReadSetTextEncodingName( r, n ) \
-	textConverterSetNativeEncodingName( &((r)->rrcTextConverters.rtcTextConverter), (n) )
-
-# define docRtfReadGetRtfEncodingName( r ) \
-	((r)->rrcTextConverters.rtcRtfConverter.tcNativeEncodingName+0)
 
 /************************************************************************/
 /*									*/
@@ -281,9 +280,6 @@ extern const char DOC_RTF_LENIENT_MESSAGE[];
 /*  Routine declarations.						*/
 /*									*/
 /************************************************************************/
-
-extern void docRtfInitReader(		RtfReader *		rr );
-extern void docRtfCleanReader(		RtfReader *		rr );
 
 extern void docRtfPopReadingState(	RtfReader *		rr );
 
@@ -577,6 +573,10 @@ extern int docRtfTextSpecialParticule(	const RtfControlWord *	rcw,
 					int			arg,
 					RtfReader *		rr );
 
+extern int docRtfTextBidiMark(		const RtfControlWord *	rcw,
+					int			arg,
+					RtfReader *		rr );
+
 extern int docRtfDrawingObjectProperty(	const RtfControlWord *	rcw,
 					int			arg,
 					RtfReader *		rr );
@@ -594,62 +594,6 @@ extern int docRtfPnProperty(		const RtfControlWord *	rcw,
 					int			arg,
 					RtfReader *		rr );
 
-extern int docRtfShpArray(		const RtfControlWord *	rcw,
-					int			arg,
-					RtfReader *		rr );
-
-extern int docRtfShpString(		const RtfControlWord *	rcw,
-					int			arg,
-					RtfReader *		rr );
-
-extern int docRtfShpPicture(		const RtfControlWord *	rcw,
-					int			arg,
-					RtfReader *		rr );
-
-extern int docRtfShpNumber(		const RtfControlWord *	rcw,
-					int			arg,
-					RtfReader *		rr );
-
-extern int docRtfShpPositionNumber(	const RtfControlWord *	rcw,
-					int			arg,
-					RtfReader *		rr );
-
-extern int docRtfShpTypeNumber(		const RtfControlWord *	rcw,
-					int			arg,
-					RtfReader *		rr );
-
-extern int docRtfShpLockNumber(		const RtfControlWord *	rcw,
-					int			arg,
-					RtfReader *		rr );
-
-extern int docRtfShpFillNumber(		const RtfControlWord *	rcw,
-					int			arg,
-					RtfReader *		rr );
-
-extern int docRtfShpLineNumber(		const RtfControlWord *	rcw,
-					int			arg,
-					RtfReader *		rr );
-
-extern int docRtfShpGroupedNumber(	const RtfControlWord *	rcw,
-					int			arg,
-					RtfReader *		rr );
-
-extern int docRtfShpConnectNumber(	const RtfControlWord *	rcw,
-					int			arg,
-					RtfReader *		rr );
-
-extern int docRtfShpTxboxNumber(	const RtfControlWord *	rcw,
-					int			arg,
-					RtfReader *		rr );
-
-extern int docRtfShpShadowNumber(	const RtfControlWord *	rcw,
-					int			arg,
-					RtfReader *		rr );
-
-extern int docRtfShpColor(		const RtfControlWord *	rcw,
-					int			arg,
-					RtfReader *		rr );
-
 extern int docRtfHierarchy(		const RtfControlWord *	rcw,
 					int			arg,
 					RtfReader *		rr );
@@ -664,16 +608,18 @@ extern int docRtfReadDocumentTree(	const RtfControlWord *	rcw,
 extern int docRtfShapeProperty(		const RtfControlWord *	rcw,
 					int			arg,
 					RtfReader *		rr );
+extern int docRtfShapePropertyName(	const RtfControlWord *	rcw,
+					int			arg,
+					RtfReader *		rr );
+extern int docRtfShapePropertyValue(	const RtfControlWord *	rcw,
+					int			arg,
+					RtfReader *		rr );
 
 extern int docRtfReadRowProperties(	const RtfControlWord *	rcw,
 					int			arg,
 					RtfReader *		rr );
 
 extern int docRtfLookupWord(		const RtfControlWord *	rcw,
-					int			arg,
-					RtfReader *		rr );
-
-extern int docRtfShpGeometryNumber(	const RtfControlWord *	rcw,
 					int			arg,
 					RtfReader *		rr );
 
@@ -701,7 +647,15 @@ extern int docRtfRefreshParagraphProperties(	BufferDocument *	bd,
 extern int docRtfSetParaProperties(	ParagraphProperties *	pp,
 					BufferDocument *	bd,
 					int			mindTable,
-					RtfReadingState *	rrs );
+					RtfReadingState *	rrs,
+					int			breakOverride );
+
+extern int docRtfAdaptToParaProperties(	struct BufferItem *	paraNode,
+					BufferDocument *	bd,
+					RtfReadingState *	rrs,
+					int			breakOverride );
+
+extern void docRtfSetForRow(		struct BufferItem *	node );
 
 extern void docRtfResetParagraphProperties(
 					RtfReadingState *	rrs );
@@ -816,6 +770,14 @@ extern int docRtfCommitListName(	const RtfControlWord *	rcw,
 extern int docRtfCommitListStyleName(	const RtfControlWord *	rcw,
 					RtfReader *		rr );
 
-extern void docRtfResetCellProperties(	RtfReader *	rr );
+extern void docRtfResetCellProperties(	RtfReader *		rr );
+
+extern void docRtfReadSetupTextConverters(	RtfReader *	rr );
+
+extern RtfReader * docRtfOpenReader(		SimpleInputStream *	sis,
+						BufferDocument *	bd,
+						int			flags );
+
+extern void docRtfCloseReader(			RtfReader *		rr );
 
 #   endif	/*	RTF_READER_IMPL_H	*/

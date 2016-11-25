@@ -2,90 +2,12 @@
 
 #   include	<uniUtf8.h>
 #   include	"docDebugList.h"
-#   include	"docListNumberTree.h"
 #   include	"docDocumentList.h"
 #   include	"docListOverride.h"
 #   include	"docListOverrideTable.h"
 #   include	"docListTable.h"
 
 #   include	<appDebugon.h>
-
-/************************************************************************/
-/*									*/
-/*  Debugging:								*/
-/*									*/
-/************************************************************************/
-
-static void docDebugListNumberTreeNode(	int				indent,
-					const ListNumberTreeNode *	lntn,
-					int				before,
-					int				after )
-    {
-    const char *	bb= "";
-    const char *	aa= "";
-
-    if  ( before >= 0				&&
-	  lntn->lntnParaNr >= 0	&&
-	  lntn->lntnParaNr <= before	)
-	{ bb= "#+#"; }
-    if  ( after >= 0 && lntn->lntnParaNr >= after )
-	{ aa= "#-#"; }
-
-    appDebug( "%*sLEAVES= %d PARA= %d%s%s%s\n", 4* indent, "",
-				    lntn->lntnLeafCount,
-				    lntn->lntnParaNr, bb, aa,
-				    lntn->lntnIsLeaf?"*":"" );
-
-    if  ( lntn->lntnParaNr >= 0 )
-	{ before= lntn->lntnParaNr;	}
-
-    if  ( lntn->lntnChildCount > 0 )
-	{
-	int		i;
-
-	if  ( ! lntn->lntnChildren )
-	    { LDEB(lntn->lntnChildren); return;	}
-
-	for ( i= 0; i < lntn->lntnChildCount- 1; i++ )
-	    {
-	    int		aft;
-
-	    aft= lntn->lntnChildren[i+ 1].lntnParaNr;
-
-	    docDebugListNumberTreeNode( indent+ 1, &(lntn->lntnChildren[i]),
-								before, aft );
-
-	    if  ( lntn->lntnChildren[i].lntnParaNr >= 0 )
-		{ before= lntn->lntnChildren[i].lntnParaNr;	}
-	    }
-
-	if  ( i < lntn->lntnChildCount )
-	    {
-	    docDebugListNumberTreeNode( indent+ 1, &(lntn->lntnChildren[i]),
-								before, after );
-	    }
-	}
-
-    return;
-    }
-
-void docListListNumberNode(	int				indent,
-				const ListNumberTreeNode *	lntn )
-    {
-#   if 0
-    int		i;
-
-    appDebug( "%*s PARA=%d %s\n",
-	indent, "",
-	lntn->lntnParaNr,
-	lntn->lntnIsLeaf?"LEAF":"TREE" );
-
-    for ( i= 0; i < lntn->lntnChildCount; i++ )
-	{ docListListNumberNode( indent+ 1, &(lntn->lntnChildren[i]) );	}
-#   else
-    docDebugListNumberTreeNode( indent, lntn, -1, -1 );
-#   endif
-    }
 
 static int docListDocumentListLevelConst( int *			pLevel,
 					const ListLevel *	ll,
@@ -114,7 +36,7 @@ static int docListDocumentListLevelConst( int *			pLevel,
 	    unsigned short	symbol;
 	    int			step;
 
-	    step= uniGetUtf8( &symbol, (unsigned char *)from );
+	    step= uniGetUtf8( &symbol, from );
 	    if  ( step < 1 )
 		{ SLDEB("###",step); break;	}
 

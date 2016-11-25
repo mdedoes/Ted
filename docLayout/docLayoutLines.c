@@ -15,6 +15,7 @@
 #   include	<appDebugon.h>
 #   include	<docObjectProperties.h>
 #   include	<docParaParticules.h>
+#   include	<docShape.h>
 
 #   define	SHOW_LINE_CHANGES	0
 

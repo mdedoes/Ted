@@ -74,11 +74,11 @@ static void tedAdaptFontIndicatorsToValues(
 
     appGuiSetToggleItemState( td->tdFontSuperscriptOption,
 			    PROPmaskISSET( taSetMask, TApropSUPERSUB ) &&
-			    taSet->taSuperSub == DOCfontSUPERSCRIPT );
+			    taSet->taSuperSub == TEXTvaSUPERSCRIPT );
 
     appGuiSetToggleItemState( td->tdFontSubscriptOption,
 			    PROPmaskISSET( taSetMask, TApropSUPERSUB ) &&
-			    taSet->taSuperSub == DOCfontSUBSCRIPT );
+			    taSet->taSuperSub == TEXTvaSUBSCRIPT );
 
     return;
     }

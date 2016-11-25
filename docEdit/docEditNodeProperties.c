@@ -18,6 +18,7 @@
 #   include	<docTreeType.h>
 #   include	<docDocumentNote.h>
 #   include	<docParaParticules.h>
+#   include	<docListDepth.h>
 
 /************************************************************************/
 /*									*/
@@ -57,7 +58,7 @@ static int docInsertListtextField( DocumentField **	pField,
 			    paraNode, bd, dt, DOCfkLISTTEXT, textAttrNr ) )
 	{ LDEB(1); rval= -1; goto ready;	}
 
-    if  ( docListNumberTreesInsertParagraph( &(dt->eiListNumberTrees),
+    if  ( docListNumberTreesInsertParagraph( &(dt->dtListNumberTrees),
 					paraNode->biParaListOverride,
 					paraNode->biParaListLevel, paraNr ) )
 	{ LDEB(paraNr); rval= -1; goto ready;	}
@@ -136,7 +137,7 @@ int docEditUpdParaProperties(	EditOperation *			eo,
 	DocumentPosition	dpTail;
 
 	if  ( docListNumberTreesDeleteParagraph(
-				&(eo->eoTree->eiListNumberTrees), ls, paraNr ) )
+				&(eo->eoTree->dtListNumberTrees), ls, paraNr ) )
 	    { /*LLDEB(override,paraNr);*/	}
 
 	if  ( dfBullet )
@@ -172,14 +173,14 @@ int docEditUpdParaProperties(	EditOperation *			eo,
 	    paraNode->biParaListLevel != ilvl	)	)
 	{
 	if  ( docListNumberTreesDeleteParagraph(
-				&(eo->eoTree->eiListNumberTrees), ls, paraNr ) )
+				&(eo->eoTree->dtListNumberTrees), ls, paraNr ) )
 	    { LLDEB(ls,paraNr);	}
 
 	ls= paraNode->biParaListOverride;
 	ilvl= paraNode->biParaListLevel;
 
 	if  ( docListNumberTreesInsertParagraph(
-			&(eo->eoTree->eiListNumberTrees), ls, ilvl, paraNr ) )
+			&(eo->eoTree->dtListNumberTrees), ls, ilvl, paraNr ) )
 	    { LLLDEB(ls,ilvl,paraNr);	}
 
 	listChange= 1;

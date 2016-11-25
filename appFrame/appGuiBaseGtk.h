@@ -160,7 +160,8 @@ typedef		APP_TXTYPING_CALLBACK_H ((*APP_TXTYPING_CALLBACK_T),w,t);
 typedef		APP_TXACTIVATE_CALLBACK_H ((*APP_TXACTIVATE_CALLBACK_T),w,t);
 
 /****/
-typedef		GtkWidget		APP_LIST_CHOICE;
+
+typedef		GtkTreeSelection	APP_LIST_CHOICE;
 
 #define		APP_LIST_CALLBACK_H(n,w,t,c)				\
 		void n(			GtkWidget *		w,	\

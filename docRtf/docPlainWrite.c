@@ -13,7 +13,6 @@
 #   include	<docNotes.h>
 #   include	<docTreeNode.h>
 #   include	<docNodeTree.h>
-#   include	<textAttributeAdmin.h>
 #   include	<docTreeType.h>
 #   include	<docTreeScanner.h>
 #   include	"docPlainReadWrite.h"
@@ -93,8 +92,7 @@ static int docPlainSaveParaNode(	PlainWritingContext *		pwc,
 	{
 	TextAttribute		ta;
 
-	utilGetTextAttributeByNumber( &ta, &(bd->bdTextAttributeList),
-							tp->tpTextAttrNr );
+	docGetTextAttributeByNumber( &ta, bd, tp->tpTextAttrNr );
 
 	switch( tp->tpKind )
 	    {
@@ -203,6 +201,8 @@ static int docPlainSaveParaNode(	PlainWritingContext *		pwc,
 		/*FALLTHROUGH*/
 	    case DOCkindOBJECT:
 	    case DOCkindFIELDTAIL:
+	    case DOCkindLTR_MARK:
+	    case DOCkindRTL_MARK:
 		break;
 	    }
 

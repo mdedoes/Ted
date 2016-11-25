@@ -93,7 +93,7 @@ extern IND *	indINDread( const char * filename, int readOnly );
 
 extern int indINDputUtf8(	IND *			ind,
 				int			tn,
-				const unsigned char *	key );
+				const char *		key );
 
 extern int indINDputUtf16(	IND *			ind,
 				int			tn,
@@ -104,9 +104,14 @@ extern int indINDforall(	IND *			ind,
 				void *			through,
 				IndForAllFun		fun );
 
-extern int	indINDforget( IND * ind, unsigned char * );
-extern void	indINDfree( IND * ind );
-extern int	indINDwrite( IND * ind, const char * filename );
+extern int	indINDforget(	IND *			ind,
+				const char *		key );
+
+extern void	indINDfree(	IND *			ind );
+
+extern int	indINDwrite(	IND *			ind,
+				const char * 		filename );
+
 extern int	indTNmake( IND * ind );
 extern void	indTNfree( IND * ind, int tn );
 extern int	indTLalloc( IND * ind, int old, int n );
@@ -123,7 +128,7 @@ extern void indTLprint2(	IND *	ind,
 extern int indINDgetUtf8(	int *				paccept,
 				IND *				ind,
 				int				tn,
-				const unsigned char *		key );
+				const char *			key );
 
 extern int indINDgetUtf16(	int *				paccept,
 				IND *				ind,
@@ -143,7 +148,7 @@ extern int indINDguess(		IND *				ind,
 
 extern int indWRDget(		IND *			ind,
 				int *			pWhatWasShifted,
-				const unsigned char *	word,
+				const char *		word,
 				int			asPrefix );
 
 extern int indWRDguess(	IND *				ind,

@@ -308,7 +308,7 @@ int psOutlinePdfmark(		PrintingState *		ps,
     psEmitDestination( ps->psSos, markName );
 
     sioOutPrintf( ps->psSos, " /Title " );
-    psPrintStringValue( ps, title->mbBytes, title->mbSize );
+    psPrintPdfMarkStringValue( ps, title->mbBytes, title->mbSize );
 
     sioOutPrintf( ps->psSos, " /OUT pdfmark\n" );
 

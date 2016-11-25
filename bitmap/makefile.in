@@ -42,13 +42,14 @@ CFLAGS=	\
 
 #CFLAGS= -g -O2 $(WFLAGS) $(X_CFLAGS) $(INCLUDES)
 
-# 58!!obs
+# 59!!obs
 OBS	=	\
 		bmxwd.o\
 		bmxpm.o\
 		bmxbm.o\
 		bmWmfIo.o\
 		bmwmf.o\
+		bmWebSafe.o\
 		bmwbmp.o\
 		bmtogray.o\
 		bmtiff.o\
@@ -327,6 +328,20 @@ bmTextureMap.o: \
     bmgetrow.h \
     bmputrow.h \
     bmRender.h \
+    bmcolor.h \
+    ../include/appDebugon.h \
+    ../include/appDebug.h
+
+bmWebSafe.o: \
+    bmWebSafe.c \
+    bitmapConfig.h \
+    bmRender.h \
+    bitmap.h \
+    ../appUtil/utilColor.h \
+    ../appUtil/utilPalette.h \
+    ../appUtil/utilColor.h \
+    ../appUtil/utilMemoryBuffer.h \
+    ../appUtil/geo2DInteger.h \
     bmcolor.h \
     ../include/appDebugon.h \
     ../include/appDebug.h

@@ -9,6 +9,7 @@
 #   include	<stddef.h>
 
 #   include	"docListFonts.h"
+#   include	"docShape.h"
 
 #   include	<appDebugon.h>
 
@@ -25,8 +26,8 @@ typedef struct GetAttributesUsed
     } GetAttributesUsed;
 
 static int docAttributesUsedGotSpan(
-				const BufferDocument *		bd,
-				BufferItem *			paraBi,
+				BufferDocument *		bd,
+				struct BufferItem *		paraNode,
 				int				textAttrNr,
 				const TextAttribute *		ta,
 				int				from,

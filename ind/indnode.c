@@ -119,10 +119,10 @@ int indINDstep(	int *				pTrans,
 /*									*/
 /************************************************************************/
 
-int indINDgetUtf8(	int *			paccept,
-			IND *			ind,
-			int			tn,
-			const unsigned char *	key )
+int indINDgetUtf8(	int *		paccept,
+			IND *		ind,
+			int		tn,
+			const char *	key )
     {
     int		m;
 
@@ -200,7 +200,7 @@ int indINDgetUtf16(	int *			paccept,
 /************************************************************************/
 
 int indINDforget(	IND *		ind,
-			unsigned char *	key )
+			const char *	key )
     {
     int		accepted;
     int		tn= indINDgetUtf8( &accepted, ind, ind->ind_start, key );
@@ -289,9 +289,9 @@ static int indAddNodeToNode(		IND *		ind,
 /*									*/
 /************************************************************************/
 
-int indINDputUtf8(	IND *			ind,
-			int			tn,
-			const unsigned char *	key )
+int indINDputUtf8(	IND *		ind,
+			int		tn,
+			const char *	key )
     {
     for (;;)
 	{

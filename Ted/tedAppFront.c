@@ -394,7 +394,7 @@ int tedAppChangeAllSectionProperties(
     }
 
 int tedAppSetParagraphTabs(	EditApplication *		ea,
-				const TabStopList *		tsl )
+				const struct TabStopList *	tsl )
     {
     EditDocument *		ed= ea->eaCurrentDocument;
 

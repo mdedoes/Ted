@@ -14,6 +14,7 @@
 #   include	<utilJenkinsPerfectHash.h>
 
 #   include	"docRtfReaderImpl.h"
+#   include	"docRtfShpTab.h"
 #   include	"docRtfTagHash.h"
 #   include	<docShapeProp.h>
 
@@ -26,17 +27,7 @@
 #	define		docRtfShpArray				0
 #	define		docRtfShpString				0
 #	define		docRtfShpPicture			0
-#	define		docRtfShpNumber				0
-#	define		docRtfShpPositionNumber			0
-#	define		docRtfShpTypeNumber			0
-#	define		docRtfShpLockNumber			0
-#	define		docRtfShpFillNumber			0
-#	define		docRtfShpLineNumber			0
-#	define		docRtfShpGroupedNumber			0
-#	define		docRtfShpShadowNumber			0
-#	define		docRtfShpConnectNumber			0
-#	define		docRtfShpTxboxNumber			0
-#	define		docRtfShpGeometryNumber			0
+#	define		docRtfShapeNumber			0
 #	define		docRtfShpColor				0
 
 #   endif
@@ -53,30 +44,31 @@
 		    { s, id, RTCtypeANY, docRtfShpString, }
 # define	SHAPE_PICTURE(s,id) \
 		    { s, id, RTCtypeANY, docRtfShpPicture, }
-# define	SHAPE_NUMBER(s,id) \
-		    { s, id, RTCtypeANY, docRtfShpNumber, }
-# define	SHAPE_POS_NUMBER(s,id) \
-		    { s, id, RTCtypeANY, docRtfShpPositionNumber, }
-# define	SHAPE_TYPE_NUMBER(s,id) \
-		    { s, id, RTCtypeANY, docRtfShpTypeNumber, }
-# define	SHAPE_LOCK_NUMBER(s,id) \
-		    { s, id, RTCtypeANY, docRtfShpLockNumber, }
-# define	SHAPE_FILL_NUMBER(s,id) \
-		    { s, id, RTCtypeANY, docRtfShpFillNumber, }
-# define	SHAPE_LINE_NUMBER(s,id) \
-		    { s, id, RTCtypeANY, docRtfShpLineNumber, }
-# define	SHAPE_GROUP_NUMBER(s,id) \
-		    { s, id, RTCtypeANY, docRtfShpGroupedNumber, }
-# define	SHAPE_SHADOW_NUMBER(s,id) \
-		    { s, id, RTCtypeANY, docRtfShpShadowNumber, }
-# define	SHAPE_CONN_NUMBER(s,id) \
-		    { s, id, RTCtypeANY, docRtfShpConnectNumber, }
-# define	SHAPE_TXBOX_NUMBER(s,id) \
-		    { s, id, RTCtypeANY, docRtfShpTxboxNumber, }
 # define	SHAPE_COLOR(s,id) \
 		    { s, id, RTCtypeANY, docRtfShpColor, }
+
+# define	SHAPE_NUMBER(s,id) \
+		    { s, id, RTCtypeANY, docRtfShapeNumber, }
+# define	SHAPE_POS_NUMBER(s,id) \
+		    { s, id, RTCtypeANY, docRtfShapeNumber, }
+# define	SHAPE_TYPE_NUMBER(s,id) \
+		    { s, id, RTCtypeANY, docRtfShapeNumber, }
+# define	SHAPE_LOCK_NUMBER(s,id) \
+		    { s, id, RTCtypeANY, docRtfShapeNumber, }
+# define	SHAPE_FILL_NUMBER(s,id) \
+		    { s, id, RTCtypeANY, docRtfShapeNumber, }
+# define	SHAPE_LINE_NUMBER(s,id) \
+		    { s, id, RTCtypeANY, docRtfShapeNumber, }
+# define	SHAPE_GROUP_NUMBER(s,id) \
+		    { s, id, RTCtypeANY, docRtfShapeNumber, }
+# define	SHAPE_SHADOW_NUMBER(s,id) \
+		    { s, id, RTCtypeANY, docRtfShapeNumber, }
+# define	SHAPE_CONN_NUMBER(s,id) \
+		    { s, id, RTCtypeANY, docRtfShapeNumber, }
+# define	SHAPE_TXBOX_NUMBER(s,id) \
+		    { s, id, RTCtypeANY, docRtfShapeNumber, }
 # define	SHAPE_GEO_NUMBER(s,id) \
-		    { s, id, RTCtypeANY, docRtfShpGeometryNumber, }
+		    { s, id, RTCtypeANY, docRtfShapeNumber, }
 
 static RtfControlWord	docRtfShapePropertyWords[]=
 {
@@ -457,6 +449,7 @@ static RtfControlWord	docRtfShapePropertyWords[]=
 
     SHAPE_NUMBER( "fScriptAnchor",		DSHPprop_fScriptAnchor ),
     SHAPE_NUMBER( "fFakeMaster",		DSHPprop_fFakeMaster ),
+    SHAPE_NUMBER( "fCameFromImgDummy",		DSHPprop_fCameFromImgDummy ),
     SHAPE_NUMBER( "c3DAmbientIntensity",	DSHPprop_c3DAmbientIntensity ),
     SHAPE_NUMBER( "c3DDiffuseAmt",		DSHPprop_c3DDiffuseAmt ),
     SHAPE_NUMBER( "c3DExtrudePlane",		DSHPprop_c3DExtrudePlane ),
@@ -648,6 +641,11 @@ static RtfControlWord	docRtfShapePropertyWords[]=
     SHAPE_NUMBER( "fNoshadeHR",			DSHPprop_fNoshadeHR ),
     SHAPE_NUMBER( "fHorizRule",			DSHPprop_fHorizRule ),
     SHAPE_NUMBER( "fUserDrawn",			DSHPprop_fUserDrawn ),
+
+    SHAPE_NUMBER( "dhgt",			DSHPprop_dhgt ),
+    SHAPE_NUMBER( "sizerelh",			DSHPprop_sizerelh ),
+    SHAPE_NUMBER( "sizerelv",			DSHPprop_sizerelv ),
+    SHAPE_NUMBER( "pctHoriz",			DSHPprop_pctHoriz ),
 
 				/****************************************/
 				/*  End.				*/

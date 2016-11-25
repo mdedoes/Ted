@@ -14,6 +14,7 @@
 #   include	<uniUtf8.h>
 
 #   include	"docBuf.h"
+#   include	"docShape.h"
 #   include	"docParaString.h"
 #   include	"docParaParticules.h"
 #   include	"docDebug.h"
@@ -244,7 +245,7 @@ TextParticule * docMakeSpecialParticule(
     {
     int			stroffShift= 0;
 
-    unsigned char	bytes[7];
+    char		bytes[8];
     int			count;
     int			sym= '?';
 
@@ -263,6 +264,10 @@ TextParticule * docMakeSpecialParticule(
 
 	case DOCkindFIELDHEAD:	sym= '{'; break;
 	case DOCkindFIELDTAIL:	sym= '}'; break;
+
+	case DOCkindLTR_MARK:	sym= '>'; break;
+	case DOCkindRTL_MARK:	sym= '<'; break;
+
 	default:		sym= '@'; break;
 	}
 
@@ -638,7 +643,6 @@ void docInitParaNode(	BufferItem *		paraNode )
 
     paraNode->biParaTopInset= 0;
     paraNode->biParaBottomInset= 0;
-    paraNode->biParaFlags= 0;
 
     docInitParagraphProperties( &(paraNode->biParaProperties) );
     }

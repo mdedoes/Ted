@@ -14,7 +14,6 @@
 #   include	<guiToolUtil.h>
 #   include	<guiTextUtil.h>
 
-#   include	<docBorderPropertyAdmin.h>
 #   include	<guiWidgetDrawingSurface.h>
 #   include	<guiDrawingWidget.h>
 #   include	<appUnit.h>
@@ -110,7 +109,7 @@ static void tedBorderToolSetProperties(	BorderTool *			bt,
 
     const int			avoidZero= 1;
 
-    docExpandBorderProperties( ebp, bpSet, &(dp->dpColorPalette) );
+    docExpandBorderProperties( ebp, bpSet, dp->dpColorPalette );
 
     if  ( ebp->ebpStyle != DOCbsNONE )
 	{ set= 1;	}
@@ -124,7 +123,7 @@ static void tedBorderToolSetProperties(	BorderTool *			bt,
 	}
 
     appColorChooserSuggestPalette( &(bt->btColorChooser),
-					    avoidZero, &(dp->dpColorPalette) );
+					    avoidZero, dp->dpColorPalette );
     appColorChooserSetColor( &(bt->btColorChooser),
 				    ebp->ebpColorExplicit,
 				    &(ebp->ebpColor) );
@@ -144,7 +143,7 @@ void tedBorderToolSetPropertiesByNumber( BorderTool *			bt,
     const DocumentProperties *	dp= &(bd->bdProperties);
     BorderProperties		bp;
 
-    docGetBorderPropertiesByNumber( &bp, &(bd->bdBorderPropertyList), num );
+    docGetBorderPropertiesByNumber( &bp, bd, num );
 
     tedBorderToolSetProperties( bt, dp, &bp );
 
@@ -708,7 +707,7 @@ static int tedBorderToolGetProperties(	BorderProperties *	bpSet,
 
     docIndirectBorderProperties( &bpDoneMask, bpSet,
 				    &(bt->btPropertiesChanged), ebpChosen,
-				    &(dp->dpColorPalette) );
+				    dp->dpColorPalette );
     if  ( PROPmaskISSET( &(bt->btPropertiesChanged), BRDRpropPEN_WIDE )	&&
 	  changed							)
 	{ bpSet->bpPenWideTwips= wide; }
@@ -727,7 +726,7 @@ int tedBorderToolGetNumber(	int *			pNum,
     PropertyMask	doneMask;
     BorderProperties	bp;
 
-    docGetBorderPropertiesByNumber( &bp,  &(bd->bdBorderPropertyList), *pNum );
+    docGetBorderPropertiesByNumber( &bp,  bd, *pNum );
 
     utilPropMaskClear( &doneMask );
 
@@ -741,7 +740,7 @@ int tedBorderToolGetNumber(	int *			pNum,
 	docInitBorderProperties( &bp );
 	}
 
-    num= docBorderPropertiesNumber( &(bd->bdBorderPropertyList), &bp );
+    num= docBorderPropertiesNumber( bd, &bp );
     if  ( num < 0 )
 	{ LDEB(num); return -1;	}
 

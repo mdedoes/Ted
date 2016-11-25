@@ -20,6 +20,7 @@
 #   include	<docObjectProperties.h>
 #   include	<docMetafileObject.h>
 #   include	<docLayoutObject.h>
+#   include	<docShape.h>
 
 #   include	<appDebugon.h>
 

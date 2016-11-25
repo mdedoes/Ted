@@ -438,10 +438,8 @@ AC_DEFUN(AC_PATH_JPEG,
 	trap "rm -f $h_so_tmp" 0
 	for h_so in \
 	    "/usr/include jpeglib.h /usr/lib64 jpeg" \
-	    "/usr/include jpeglib.h /usr/lib/x86_64-linux-gnu jpeg" \
-	    "/usr/include jpeglib.h /usr/lib/i386-linux-gnu jpeg" \
 	    "/usr/include jpeglib.h - jpeg" \
-	    "/usr/local/include jpeglib.h /usr/local/lib jpeg" \
+	    "/usr/local/include jpeglib.h - jpeg" \
 	    "/usr/pkg/include jpeglib.h /usr/pkg/lib jpeg" \
 	    "/usr/apps/include jpeglib.h /usr/apps/lib jpeg" \
 	    "/usr/sfw/include jpeglib.h /usr/sfw/lib jpeg" \
@@ -573,8 +571,6 @@ AC_DEFUN(AC_PATH_TIFF,
 	trap "rm -f $h_so_tmp" 0
 	for h_so in \
 	    "/usr/include tiffio.h /usr/lib64 tiff" \
-	    "/usr/include tiffio.h /usr/lib/x86_64-linux-gnu tiff" \
-	    "/usr/include tiffio.h /usr/lib/i386-linux-gnu tiff" \
 	    "/usr/include tiffio.h - tiff" \
 	    "/usr/local/include tiffio.h /usr/local/lib tiff" \
 	    "/usr/pkg/include tiffio.h /usr/pkg/lib tiff" \

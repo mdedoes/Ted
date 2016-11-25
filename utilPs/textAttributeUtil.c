@@ -21,8 +21,8 @@ int textGetPixelSize(		double				pixelsPerTwip,
     {
     int			twipsSize= 10* ta->taFontSizeHalfPoints;
 
-    if  ( ta->taSuperSub == DOCfontSUPERSCRIPT		||
-	  ta->taSuperSub == DOCfontSUBSCRIPT		)
+    if  ( ta->taSuperSub == TEXTvaSUPERSCRIPT		||
+	  ta->taSuperSub == TEXTvaSUBSCRIPT		)
 	{
 	return COORDtoGRID( pixelsPerTwip, SUPERSUB_SIZE( twipsSize ) );
 	}

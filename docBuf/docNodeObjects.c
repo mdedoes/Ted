@@ -12,6 +12,7 @@
 #   include	"docParaString.h"
 #   include	"docParaParticules.h"
 #   include	"docTreeScanner.h"
+#   include	<docListDepth.h>
 
 /************************************************************************/
 /*									*/

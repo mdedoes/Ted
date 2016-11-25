@@ -110,10 +110,6 @@ int bmSetFillJob(		FillJob *			fj,
     if  ( ! fj->fjThisRow )
 	{ LXDEB(frWide,fj->fjThisRow); return -1;	}
 
-    fj->fjNextCor= (ColorValue *)malloc( ( toWide+ 9 )* sizeof(ColorValue) );
-    if  ( ! fj->fjNextCor )
-	{ LXDEB(toWide,fj->fjNextCor); return -1;	}
-
     fj->fjNextRow= (ColorValue *)malloc( ( frWide+ 9 )* sizeof(ColorValue) );
     if  ( ! fj->fjNextRow )
 	{ LXDEB(frWide,fj->fjNextRow); return -1;	}
@@ -121,6 +117,10 @@ int bmSetFillJob(		FillJob *			fj,
     fj->fjPrevRow= (ColorValue *)malloc( ( frWide+ 9 )* sizeof(ColorValue) );
     if  ( ! fj->fjPrevRow )
 	{ LXDEB(frWide,fj->fjPrevRow); return -1;	}
+
+    fj->fjNextCor= (ColorValue *)malloc( ( toWide+ 9 )* sizeof(ColorValue) );
+    if  ( ! fj->fjNextCor )
+	{ LXDEB(toWide,fj->fjNextCor); return -1;	}
 
     return 0;
     }

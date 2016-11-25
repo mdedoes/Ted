@@ -232,10 +232,22 @@ extern void appDocumentSetInputContext(		APP_INPUT_METHOD	im,
 					void *			e );
 # endif
 
+/**
+ *  Construct a list of values in the column
+ *
+ *  @param visibleItems: The number of items to display.
+ *	if visibleItems > 0: Allocate sufficient space for this many items. 
+ *		and use a scrollbar if there are items more in the list.
+ *	if visibleItems == 0: Adapt to the available space in the parent.
+ *		Use a scrollbar if there are more items in the list than fit 
+ *		in the assigned space.
+ *	if visibleItems < 0: Resize with the number of itemsd in the list.
+ *
+ */
 extern void appGuiMakeListInColumn(	APP_WIDGET *		pList,
 					APP_WIDGET		column,
 					int			visibleItems,
-					APP_LIST_CALLBACK_T	callback,
+					APP_LIST_CALLBACK_T	listCallback,
 					APP_BUTTON_CALLBACK_T	actionCallback,
 					void *			through );
 
@@ -298,8 +310,9 @@ extern int appGuiGetValueFromSliderCallback(	int *		pValue,
 						APP_WIDGET	w,
 						void *		voidscs );
 
-extern int appGuiGetPositionFromListCallback(	APP_WIDGET	list,
-						void *		voidlcs );
+extern int appGuiGetPositionFromListCallback(
+					    APP_WIDGET		list,
+					    APP_LIST_CHOICE *	voidlcs );
 
 extern char * appGuiGetStringFromListCallback(
 					    APP_WIDGET		list,

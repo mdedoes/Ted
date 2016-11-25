@@ -11,19 +11,17 @@ typedef struct ListNumberTreeNode
     {
 				/**
 				 *  The paragraph number in the document tree
-				 *  that this node refers to.
+				 *  that this node refers to. Internal nodes 
+				 *  in the tree have lntnParaNr == -1.
+				 *  Internal nodes are nodes that implement 
+				 *  levels that are skipped in the indentation 
+				 *  of the tree.
 				 */
     int				lntnParaNr;
 				/**
-				 *  The number of leaves in the offspring of
-				 *  this node. This is to optimize calculating 
-				 *  numbers.
-				 */
-    int				lntnLeafCount;
-				/**
 				 *  The array of children.
 				 */
-    struct ListNumberTreeNode *	lntnChildren;
+    struct ListNumberTreeNode **	lntnChildren;
 				/**
 				 *  The number of children.
 				 */
@@ -31,7 +29,7 @@ typedef struct ListNumberTreeNode
 				/**
 				 *  != 0 if and only if this node is a leaf.
 				 */
-    unsigned char		lntnIsLeaf;
+    unsigned char		x_lntnIsLeaf;
     } ListNumberTreeNode;
 
 typedef struct ListNumberTrees
@@ -39,6 +37,9 @@ typedef struct ListNumberTrees
     ListNumberTreeNode *	lntTrees;
     int				lntTreeCount;
     } ListNumberTrees;
+
+typedef int (*LIST_TREE_FUNC)(	int		ilvl,
+				void *		through );
 
 /************************************************************************/
 /*									*/
@@ -96,5 +97,9 @@ extern int docListNumberTreeGetPrevPath(int *			numberPath,
 					int *			pLevel,
 					ListNumberTreeNode *	root,
 					int			paraNr );
+
+extern int docListNumberTreeForAll(	ListNumberTreeNode *	root,
+					LIST_TREE_FUNC		forOne,
+					void *			through );
 
 #   endif

@@ -26,13 +26,13 @@ static int docRtfSaveColor(	RtfReader *		rrc,
 				const char *		text,
 				int			len )
     {
-    DocumentProperties *	dp= &(rrc->rrcDocument->bdProperties);
-    int				n= dp->dpColorPalette.cpColorCount;
+    DocumentProperties *	dp= &(rrc->rrDocument->bdProperties);
+    int				n= dp->dpColorPalette->cpColorCount;
 
-    if  ( utilPaletteSetCount( &(dp->dpColorPalette), n+ 1 ) )
+    if  ( utilPaletteSetCount( dp->dpColorPalette, n+ 1 ) )
 	{ LDEB(n); return -1;	}
 
-    dp->dpColorPalette.cpColors[n]= rrc->rrcColor;
+    dp->dpColorPalette->cpColors[n]= rrc->rrcColor;
 
     if  ( ! rrc->rrcGotComponent )
 	{
@@ -55,15 +55,15 @@ int docRtfColorComp(	const RtfControlWord *	rcw,
     {
     switch( rcw->rcwID )
 	{
-	case	RGBAcompRED:
+	case RGBAcompRED:
 	    rrc->rrcGotComponent= 1;
 	    rrc->rrcColor.rgb8Red= arg;
 	    break;
-	case	RGBAcompGREEN:
+	case RGBAcompGREEN:
 	    rrc->rrcGotComponent= 1;
 	    rrc->rrcColor.rgb8Green= arg;
 	    break;
-	case	RGBAcompBLUE:
+	case RGBAcompBLUE:
 	    rrc->rrcGotComponent= 1;
 	    rrc->rrcColor.rgb8Blue= arg;
 	    break;

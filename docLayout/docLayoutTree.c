@@ -90,8 +90,8 @@ int docGetBoxAroundTree(	DocumentRectangle *		dr,
 		drTwips.drY1= tree->dtY1UsedTwips;
 		}
 	    else{
-		drTwips.drY0= tree->eiY0ReservedTwips;
-		drTwips.drY1= tree->eiY1ReservedTwips;
+		drTwips.drY0= tree->dtY0ReservedTwips;
+		drTwips.drY1= tree->dtY1ReservedTwips;
 		}
 
 	    docGetPixelRect( &drBox, lc, &drTwips, page );
@@ -181,11 +181,50 @@ int docGetBoxAroundTree(	DocumentRectangle *		dr,
     }
 
 /************************************************************************/
+
+static void docPlaceHeader(	DocumentTree *			tree,
+				const DocumentGeometry *	dgSect )
+    {
+    tree->dtY0UsedTwips= tree->dtRoot->biTopPosition.lpPageYTwips;
+    tree->dtY1UsedTwips= tree->dtRoot->biBelowPosition.lpPageYTwips;
+
+    tree->dtY0ReservedTwips= dgSect->dgHeaderPositionTwips;
+    tree->dtY1ReservedTwips= dgSect->dgTopMarginTwips;
+
+    if  ( tree->dtY1ReservedTwips < tree->dtY1UsedTwips )
+	{ tree->dtY1ReservedTwips=  tree->dtY1UsedTwips;	}
+
+    return;
+    }
+
+static void docPlaceFooter(	DocumentTree *			tree,
+				const DocumentGeometry *	dgSect )
+    {
+    int	high= tree->dtRoot->biBelowPosition.lpPageYTwips-
+			    tree->dtRoot->biTopPosition.lpPageYTwips;
+
+    tree->dtY1UsedTwips=
+		dgSect->dgPageHighTwips- dgSect->dgFooterPositionTwips;
+    tree->dtY0UsedTwips= tree->dtY1UsedTwips- high;
+
+    tree->dtY0ReservedTwips=
+		dgSect->dgPageHighTwips- dgSect->dgBottomMarginTwips;
+    tree->dtY1ReservedTwips=
+		dgSect->dgPageHighTwips- dgSect->dgFooterPositionTwips;
+
+    if  ( tree->dtY0ReservedTwips > tree->dtY0UsedTwips )
+	{ tree->dtY0ReservedTwips=  tree->dtY0UsedTwips;	}
+
+    return;
+    }
+
+/************************************************************************/
 /*									*/
-/*  Do a preliminary layout of an external item.			*/
-/*  Inside the external item, geometry is correct. Some items are	*/
-/*  however used in different positions and here we just calculate the	*/
-/*  layout in order to use the size of the item in geometry		*/
+/*  Do a preliminary layout of a document tree.				*/
+/*									*/
+/*  Inside the tree, geometry is correct. Some trees are however used	*/
+/*  in different positions and here we just calculate the layout in	*/
+/*  order to know the size of the tree to use it in geometry		*/
 /*  calculations about the document as a whole.				*/
 /*									*/
 /*  1)  Remove the bottom of the page master frame. This is the routine	*/
@@ -203,14 +242,9 @@ int docTreePrelayout(		DocumentTree *		tree,
     LayoutJob			treeLj;
     LayoutPosition		treeLp;
 
-    int				high;
-    int				y1;
-
     BlockFrame			bf;
 
     const int			recursively= 0;
-
-    int				yOffset= dgSect->dgHeaderPositionTwips;
 
     docLayoutInitBlockFrame( &bf );
 
@@ -230,7 +264,7 @@ int docTreePrelayout(		DocumentTree *		tree,
 
     treeLp.lpPage= tree->dtRoot->biTopPosition.lpPage;
     treeLp.lpColumn= 0;
-    treeLp.lpPageYTwips= yOffset;
+    treeLp.lpPageYTwips= dgSect->dgHeaderPositionTwips;
     treeLp.lpAtTopOfColumn= 1; /* not really */
 
     treeLj= *lj;
@@ -252,47 +286,26 @@ int docTreePrelayout(		DocumentTree *		tree,
 						tree->dtRoot, &bf, &treeLj ) )
 	{ LDEB(1); rval= -1; goto ready;	}
 
-    y1= tree->dtRoot->biBelowPosition.lpPageYTwips;
-
     switch( tree->dtRoot->biTreeType )
 	{
 	case DOCinFIRST_HEADER:
 	case DOCinLEFT_HEADER:
 	case DOCinRIGHT_HEADER:
-
-	    tree->eiY0ReservedTwips= dgSect->dgHeaderPositionTwips;
-	    tree->eiY1ReservedTwips= dgSect->dgTopMarginTwips;
-
-	    tree->dtY0UsedTwips= tree->eiY0ReservedTwips;
-	    tree->dtY1UsedTwips= y1;
-
-	    if  ( tree->eiY1ReservedTwips < tree->dtY1UsedTwips )
-		{ tree->eiY1ReservedTwips=  tree->dtY1UsedTwips;	}
+	    docPlaceHeader( tree, dgSect );
 	    break;
 
 	case DOCinFIRST_FOOTER:
 	case DOCinLEFT_FOOTER:
 	case DOCinRIGHT_FOOTER:
-
-	    tree->eiY0ReservedTwips=
-			dgSect->dgPageHighTwips- dgSect->dgBottomMarginTwips;
-	    tree->eiY1ReservedTwips=
-			dgSect->dgPageHighTwips- dgSect->dgFooterPositionTwips;
-
-	    high= y1- yOffset;
-	    tree->dtY1UsedTwips= tree->eiY1ReservedTwips;
-	    tree->dtY0UsedTwips= tree->eiY1ReservedTwips- high;
-
-	    if  ( tree->eiY0ReservedTwips > tree->dtY0UsedTwips )
-		{ tree->eiY0ReservedTwips=  tree->dtY0UsedTwips;	}
+	    docPlaceFooter( tree, dgSect );
 	    break;
 
 	case DOCinFOOTNOTE:
 	case DOCinENDNOTE:
 
 	    /*  temporarily: will be placed later on */
-	    tree->dtY0UsedTwips= yOffset;
-	    tree->dtY1UsedTwips= y1;
+	    tree->dtY0UsedTwips= tree->dtRoot->biTopPosition.lpPageYTwips;
+	    tree->dtY1UsedTwips= tree->dtRoot->biBelowPosition.lpPageYTwips;
 	    break;
 
 	case DOCinFTNSEP:
@@ -303,8 +316,8 @@ int docTreePrelayout(		DocumentTree *		tree,
 	case DOCinAFTNCN:
 
 	    /*  temporarily */
-	    tree->dtY0UsedTwips= yOffset;
-	    tree->dtY1UsedTwips= y1;
+	    tree->dtY0UsedTwips= tree->dtRoot->biTopPosition.lpPageYTwips;
+	    tree->dtY1UsedTwips= tree->dtRoot->biBelowPosition.lpPageYTwips;
 	    break;
 
 	default:
@@ -344,13 +357,13 @@ int docSectHeaderFooterPrelayout(	BufferItem *	bodySectNode,
 	if  ( ! dtHdFt )
 	    { XDEB(dtHdFt); return -1;	}
 
-	resY0= dtHdFt->eiY0ReservedTwips;
-	resY1= dtHdFt->eiY1ReservedTwips;
+	resY0= dtHdFt->dtY0ReservedTwips;
+	resY1= dtHdFt->dtY1ReservedTwips;
 
 	if  ( ! dtHdFt->dtRoot || ! applies )
 	    {
-	    dtHdFt->eiY0ReservedTwips= 0;
-	    dtHdFt->eiY1ReservedTwips= 0;
+	    dtHdFt->dtY0ReservedTwips= 0;
+	    dtHdFt->dtY1ReservedTwips= 0;
 	    }
 	else{
 	    if  ( docTreePrelayout( dtHdFt, bodySectNode, lj ) )
@@ -358,8 +371,8 @@ int docSectHeaderFooterPrelayout(	BufferItem *	bodySectNode,
 	    }
 
 	if  ( lj->ljChangedRectanglePixels			&&
-	      ( dtHdFt->eiY0ReservedTwips != resY0	||
-	        dtHdFt->eiY1ReservedTwips != resY1	)	)
+	      ( dtHdFt->dtY0ReservedTwips != resY0	||
+	        dtHdFt->dtY1ReservedTwips != resY1	)	)
 	    { redraw++;	}
 	}
 
@@ -465,6 +478,7 @@ int docCheckPageOfSelectedTree(	int *			pChanged,
     int				y0Twips;
     BufferItem *		selRootBodySectNode= (BufferItem *)0;
     const SelectionScope *	selRootScope;
+    const int			adjustDocument= 0;
 
     if  ( ! selTree->dtRoot )
 	{ XDEB(selTree->dtRoot); return -1;	}
@@ -553,11 +567,12 @@ int docCheckPageOfSelectedTree(	int *			pChanged,
 	return 0;
 	}
 
+    /*  We do not expect the tree to change height here	*/
     if  ( docLayoutDocumentTree( selTree, drChanged,
 				    selTree->dtPageSelectedUpon,
 				    selTree->dtColumnSelectedIn,
 				    y0Twips, selRootBodySectNode, lc,
-				    initLayoutExternal ) )
+				    initLayoutExternal, adjustDocument ) )
 	{ LDEB(selTree->dtPageSelectedUpon); return -1; }
 
     *pBodySectNode= selRootBodySectNode;
@@ -578,64 +593,91 @@ int docLayoutDocumentTree(	DocumentTree *		tree,
 				int			y0Twips,
 				const BufferItem *	bodySectNode,
 				const LayoutContext *	lc,
-				INIT_LAYOUT_EXTERNAL	initLayoutExternal )
+				INIT_LAYOUT_EXTERNAL	initLayoutExternal,
+				int			adjustDocument )
     {
-    int		rval= 0;
+    int				rval= 0;
 
-    if  ( page != tree->dtPageFormattedFor	||
-	  column != tree->dtColumnFormattedFor	)
+    RecalculateFields		rf;
+    LayoutJob			lj;
+    BlockFrame			bf;
+
+    LayoutPosition		lpHere;
+
+    int				oldY1= tree->dtY1UsedTwips;
+
+    docLayoutInitBlockFrame( &bf );
+    docInitRecalculateFields( &rf );
+    docInitLayoutJob( &lj );
+
+    if  ( page == tree->dtPageFormattedFor	&&
+	  column == tree->dtColumnFormattedFor	)
+	{ goto ready;	}
+
+    rf.rfDocument= lc->lcDocument;
+    rf.rfCloseObject= lc->lcCloseObject;
+    rf.rfUpdateFlags=
+	    FIELDdoDOC_FORMATTED|FIELDdoDOC_COMPLETE|FIELDdoPAGE_NUMBER;
+    rf.rfFieldsUpdated= 0;
+    rf.rfBodySectNode= bodySectNode;
+
+    if  ( docRecalculateTextLevelFieldsInDocumentTree( &rf, tree,
+						    bodySectNode, page ) )
+	{ LDEB(page); return -1;	}
+
+    lpHere.lpPage= page;
+    lpHere.lpColumn= column;
+    lpHere.lpPageYTwips= y0Twips;
+    lpHere.lpAtTopOfColumn= 1; /* not really */
+
+    lj.ljBodySectNode= bodySectNode;
+
+    lj.ljChangedRectanglePixels= drChanged;
+    lj.ljContext= *lc;
+    /*
+    lj.ljChangedNode= lc->lcDocument->bdBody.dtRoot;
+    */
+    lj.ljChangedNode= tree->dtRoot;
+
+    if  ( initLayoutExternal 					&&
+	  (*initLayoutExternal)( &lj, tree, page, column )	)
+	{ LDEB(1); rval= -1; goto ready;	}
+
+    if  ( docLayoutGetInitialFrame( &bf, &lj, &lpHere, tree->dtRoot ) )
+	{ LDEB(1); return -1;	}
+
+    docLayoutAdjustFrame( &bf, tree->dtRoot );
+
+    if  ( docLayoutNodeImplementation( &lpHere, &lpHere,
+						tree->dtRoot, &bf, &lj ) )
+	{ LDEB(1); rval= -1; goto ready; }
+
+    tree->dtPageFormattedFor= page;
+    tree->dtColumnFormattedFor= column;
+    tree->dtY0UsedTwips= y0Twips;
+    tree->dtY1UsedTwips= lpHere.lpPageYTwips;
+
+    if  ( adjustDocument			&&
+	  tree->dtY0UsedTwips != oldY1		)
 	{
-	RecalculateFields		rf;
-	LayoutJob			lj;
-	BlockFrame			bf;
+	const DocumentGeometry * dgSect= &(bodySectNode->biSectDocumentGeometry);
+	if  ( docIsHeaderType( tree->dtRoot->biTreeType ) )
+	    {
+	    docPlaceHeader( tree, dgSect );
+	    }
 
-	LayoutPosition			lpHere;
+	if  ( docIsFooterType( tree->dtRoot->biTreeType ) )
+	    {
+	    docPlaceFooter( tree, dgSect );
+	    }
 
-	docLayoutInitBlockFrame( &bf );
-	docInitRecalculateFields( &rf );
-	docInitLayoutJob( &lj );
-
-	rf.rfDocument= lc->lcDocument;
-	rf.rfCloseObject= lc->lcCloseObject;
-	rf.rfUpdateFlags=
-		FIELDdoDOC_FORMATTED|FIELDdoDOC_COMPLETE|FIELDdoPAGE_NUMBER;
-	rf.rfFieldsUpdated= 0;
-	rf.rfBodySectNode= bodySectNode;
-
-	if  ( docRecalculateTextLevelFieldsInDocumentTree( &rf, tree,
-							bodySectNode, page ) )
-	    { LDEB(page); return -1;	}
-
-	lpHere.lpPage= page;
-	lpHere.lpColumn= column;
-	lpHere.lpPageYTwips= y0Twips;
-	lpHere.lpAtTopOfColumn= 1; /* not really */
-
-	lj.ljBodySectNode= bodySectNode;
-
-	lj.ljChangedRectanglePixels= drChanged;
-	lj.ljContext= *lc;
-	lj.ljChangedNode= lc->lcDocument->bdBody.dtRoot;
-
-	if  ( initLayoutExternal 				&&
-	      (*initLayoutExternal)( &lj, tree, page, column )	)
-	    { LDEB(1); rval= -1; goto ready;	}
-
-	if  ( docLayoutGetInitialFrame( &bf, &lj, &lpHere, tree->dtRoot ) )
+	if  ( docAdjustLayoutToChangedTree( &lpHere, tree->dtRoot, &lj ) )
 	    { LDEB(1); return -1;	}
-
-	if  ( docLayoutNodeImplementation( &lpHere, &lpHere,
-						    tree->dtRoot, &bf, &lj ) )
-	    { LDEB(1); rval= -1; goto ready; }
-
-	tree->dtPageFormattedFor= page;
-	tree->dtColumnFormattedFor= column;
-	tree->dtY0UsedTwips= y0Twips;
-	tree->dtY1UsedTwips= lpHere.lpPageYTwips;
-
-      ready:
-	docCleanLayoutJob( &lj );
 	}
+
+  ready:
+
+    docCleanLayoutJob( &lj );
 
     return rval;
     }

@@ -106,19 +106,6 @@ typedef struct LayoutJob
     } LayoutJob;
 
 /************************************************************************/
-
-# define DOClayoutUSE_COLUMNS( inExtIt ) \
-		    ( (inExtIt) == DOCinBODY		|| \
-		      (inExtIt) == DOCinFOOTNOTE	|| \
-		      (inExtIt) == DOCinENDNOTE		|| \
-		      (inExtIt) == DOCinFTNSEP		|| \
-		      (inExtIt) == DOCinFTNSEPC		|| \
-		      (inExtIt) == DOCinFTNCN		|| \
-		      (inExtIt) == DOCinAFTNSEP		|| \
-		      (inExtIt) == DOCinAFTNSEPC	|| \
-		      (inExtIt) == DOCinAFTNCN		)
-
-/************************************************************************/
 /*									*/
 /*  Routine declarations.						*/
 /*									*/
@@ -161,7 +148,8 @@ extern int docLayoutDocumentTree( DocumentTree *	ei,
 				int			y0Twips,
 				const struct BufferItem *	bodySectNode,
 				const LayoutContext *	lc,
-				INIT_LAYOUT_EXTERNAL	initLayoutExternal );
+				INIT_LAYOUT_EXTERNAL	initLayoutExternal,
+				int			adjustDocument );
 
 extern int docLayoutStripChildren(
 				int *				pStopCode,
@@ -306,12 +294,13 @@ extern int docLayoutTableSlice( LayoutPosition *	lpBelow,
 
 extern void docResetExternalTreeLayout(	BufferDocument *	bd );
 
-extern void docDrawingShapeInvalidateTextLayout(	DrawingShape *	ds );
+extern void docDrawingShapeInvalidateTextLayout(
+				struct DrawingShape *		ds );
 
 extern void docShapePageY(	LayoutPosition *	lpShapeTop,
 				LayoutPosition *	lpBelowShape,
 				BlockFrame *		bfShape,
-				const DrawingShape *	ds,
+				const struct DrawingShape *	ds,
 				const struct BufferItem *	paraNode,
 				const LayoutPosition *	lpLineTop,
 				const BlockFrame *	bf );
@@ -321,7 +310,7 @@ extern void docShapePageRectangle(
 				LayoutPosition *	lpBelowShape,
 				int *			pX0,
 				int *			pX1,
-				const DrawingShape *	ds,
+				const struct DrawingShape *	ds,
 				const struct BufferItem *	paraNode,
 				const LayoutPosition *	lpLineTop,
 				const ParagraphFrame *	pfRef,
@@ -329,7 +318,7 @@ extern void docShapePageRectangle(
 				int			xChar );
 
 extern int docShapeCheckTextLayout(
-			DrawingShape *			ds,
+			struct DrawingShape *		ds,
 			const DocumentRectangle *	drTwips,
 			DocumentRectangle *		drChanged,
 			const struct BufferItem *	bodySectNode,
@@ -561,5 +550,13 @@ extern void docPageRectsPixels(	DocumentRectangle *	drOutside,
 
 extern int docSectColumnsAreBalanced(
 				const struct BufferItem *	sectNode );
+
+extern int docAdjustLayoutToChangedTree(
+				LayoutPosition *		lpHere,
+				struct BufferItem *		node,
+				LayoutJob *			lj );
+
+extern void docLayoutAdjustFrame(	BlockFrame *			bf,
+					const struct BufferItem *	node );
 
 #   endif	/*  DOC_LAYOUT_H  */

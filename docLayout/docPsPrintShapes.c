@@ -11,8 +11,11 @@
 #   include	<math.h>
 
 #   include	<sioGeneral.h>
+#   include	<geo2DDouble.h>
 #   include	<psPrintShape.h>
 #   include	<docObjectProperties.h>
+#   include	<docShape.h>
+#   include	<docDrawShapeArrow.h>
 
 #   include	"docDraw.h"
 #   include	"docPsPrintImpl.h"
@@ -26,139 +29,142 @@
 /*									*/
 /************************************************************************/
 
-static void docPsPrintShapePathLow(	SimpleOutputStream *		sos,
+static void docPsEmitVertices(		SimpleOutputStream *		sos,
 					const AffineTransform2D *	at,
-					const ShapePath *		sp )
+					double *			pX,
+					double *			pY,
+					const Point2DI *		sv,
+					int				nv,
+					double				x0,
+					double				y0,
+					double				xm,
+					double				ym )
     {
     int			i;
 
-    double		x;
-    double		y;
-
-    double		x0;
-    double		y0;
-
-    x= sp->spVertices[0].svX- 0.5* sp->spXSize;
-    y= sp->spVertices[0].svY- 0.5* sp->spYSize;
-    x0= AT2_X( x, y, at );
-    y0= AT2_Y( x, y, at );
-
-    sioOutPrintf( sos, "  %g %g bp ", x0, y0 );
-
-    for ( i= 1; i < sp->spVertexCount; i++ )
+    for ( i= 1; i < nv; i++ )
 	{
+	double		x;
+	double		y;
+
 	double		x1;
 	double		y1;
 
-	x= sp->spVertices[i].svX- 0.5* sp->spXSize;
-	y= sp->spVertices[i].svY- 0.5* sp->spYSize;
+	x= sv[i].x- xm;
+	y= sv[i].y- ym;
 	x1= AT2_X( x, y, at );
 	y1= AT2_Y( x, y, at );
 
 	sioOutPrintf( sos, "%g %g rl", x1- x0, y1- y0 );
 
-	if  ( i % 8 == 7 || i == sp->spVertexCount- 1 )
-	    { sioOutPrintf( sos, "\n  " );	}
+	if  ( i % 8 == 7 )
+	    { sioOutPrintf( sos, "\n " );	}
 	else{ sioOutPrintf( sos, " " );		}
 
 	x0= x1; y0= y1;
 	}
 
+    *pX= x0; *pY= y0;
+    }
+
+static void docPsEmitFirstVertex(	SimpleOutputStream *		sos,
+					const AffineTransform2D *	at,
+					double *			pX,
+					double *			pY,
+					const Point2DI *		sv,
+					double				xm,
+					double				ym )
+    {
+    double	x;
+    double	y;
+    double	x0;
+    double	y0;
+
+    x= sv[0].x- xm;
+    y= sv[0].y- ym;
+    x0= AT2_X( x, y, at );
+    y0= AT2_Y( x, y, at );
+
+    sioOutPrintf( sos, " %g %g bp ", x0, y0 );
+
+    *pX= x0; *pY= y0;
+    }
+
+static void docPsPrintShapePathLow(	SimpleOutputStream *		sos,
+					const AffineTransform2D *	at,
+					const ShapePath *		sp )
+    {
+    double	xm= 0.5* sp->spXSize;
+    double	ym= 0.5* sp->spYSize;
+
+    double	x0;
+    double	y0;
+
+    docPsEmitFirstVertex( sos, at, &x0, &y0, sp->spVertices, xm, ym );
+    docPsEmitVertices( sos, at, &x0, &y0, sp->spVertices, sp->spVertexCount,
+							    x0, y0, xm, ym );
+
     if  ( sp->spClosed )
-	{ sioOutPrintf( sos, "  closepath " );	}
+	{ sioOutPrintf( sos, " closepath " );	}
 
     return;
     }
 
 static int docPsPrintArrowHead(	PrintingState *			ps,
-				const AffineTransform2D *	atF,
-				double				xTo,
-				double				yTo,
-				double				xFrom,
-				double				yFrom,
-				const ShapeArrow *		sa )
+				int				lineWidth,
+				const DrawShapeArrow *		dsa )
     {
-    AffineTransform2D		at;
-    AffineTransform2D		att;
-
-    int				length;
-    int				length2;
-    int				width;
+    const ShapeArrow *		sa= &(dsa->dsaArrow);
 
     SimpleOutputStream *	sos= ps->psSos;
 
-    double			xToT;
-    double			yToT;
-    double			xFromT;
-    double			yFromT;
-
-    docShapeArrowSizesTwips( &length, &length2, &width, sa );
-
-    xToT= AT2_X( xTo, yTo, atF );
-    yToT= AT2_Y( xTo, yTo, atF );
-    xFromT= AT2_X( xFrom, yFrom, atF );
-    yFromT= AT2_Y( xFrom, yFrom, atF );
-
-    geoTranslationAffineTransform2D( &at, xToT, yToT );
-
-    geoRotationAffineTransform2DAtan( &att, yToT- yFromT, xToT- xFromT );
-    geoAffineTransform2DProduct( &at, &at, &att );
-
-    sioOutPrintf( ps->psSos, "gsave " );
-    psTransformMatrix( ps->psSos, &at );
-    sioOutPrintf( ps->psSos, " concat %% arrow\n" );
-
     switch( sa->saArrowHead )
 	{
+	int	i;
+
 	case DSarrowNONE:
-	    sioOutPrintf( ps->psSos, "grestore\n" );
-	    return 0;
+	    break;
 
 	case DSarrowARROW:
-	    sioOutPrintf( sos, "0 0 bp " );
-	    sioOutPrintf( sos, "%d %d rl ", -length,  -width );
-	    sioOutPrintf( sos, "%d %d rl ", 0,  2* width );
-	    sioOutPrintf( sos, "closepath fill\n" );
-	    break;
-
 	case DSarrowSTEALTH_ARROW:
-	    sioOutPrintf( sos, "0 0 bp " );
-	    sioOutPrintf( sos, "%d %d rl ", -length2, width );
-	    sioOutPrintf( sos, "%d %d rl ", length2- length, -width );
-	    sioOutPrintf( sos, "%d %d rl ", length- length2, -width );
-	    sioOutPrintf( sos, "closepath fill\n" );
-	    break;
-
 	case DSarrowDIAMOND:
-	    sioOutPrintf( sos, "0 0 bp " );
-	    sioOutPrintf( sos, "%d %d rl ", -length/ 2,   width );
-	    sioOutPrintf( sos, "%d %d rl ", -length/ 2,  -width );
-	    sioOutPrintf( sos, "%d %d rl ",  length/ 2,  -width );
-	    sioOutPrintf( sos, "%d %d rl ",  length/ 2,   width );
-	    sioOutPrintf( sos, "closepath fill\n" );
+	    sioOutPrintf( sos, "%g %g bp ",
+				    dsa->dsaPath[0].x,
+				    dsa->dsaPath[0].y );
+
+	    for ( i= 1; i < dsa->dsaPathLength; i++ )
+		{
+		sioOutPrintf( sos, "%g %g rl ",
+				    dsa->dsaPath[i].x- dsa->dsaPath[i-1].x,
+				    dsa->dsaPath[i].y- dsa->dsaPath[i-1].y );
+		}
+
+	    sioOutPrintf( sos, "closepath fill %% ARROW\n" );
 	    break;
 
 	case DSarrowOPEN_ARROW:
 	    sioOutPrintf( sos, "[] 0 setdash\n" );
 
-	    sioOutPrintf( sos, "%d %d bp ", -length,   width );
-	    sioOutPrintf( sos, "%d %d rl ", length,   -width );
-	    sioOutPrintf( sos, "%d %d rl ", -length,  -width );
+	    sioOutPrintf( sos, "%g %g bp ",
+				dsa->dsaPath[0].x,
+				dsa->dsaPath[0].y );
+
+	    for ( i= 1; i < dsa->dsaPathLength; i++ )
+		{
+		sioOutPrintf( sos, "%g %g rl ",
+				dsa->dsaPath[i].x- dsa->dsaPath[i-1].x,
+				dsa->dsaPath[i].y- dsa->dsaPath[i-1].y );
+		}
+
 	    sioOutPrintf( sos, "stroke\n" );
 	    break;
 
 	case DSarrowOVAL:
-	    sioOutPrintf( sos, "newpath %d %d %d 0 360 arc closepath fill\n",
-				    -length/ 2, 0, -length/ 2 );
-	    break;
-
 	case DSarrowCHEVRON_ARROW:
 	case DSarrow2CHEVRON_ARROW:
 	default:
 	    LDEB(sa->saArrowHead);
 	}
-
-    sioOutPrintf( ps->psSos, "grestore\n" );
 
     return 0;
     }
@@ -236,6 +242,7 @@ static void docPsCubePath(	SimpleOutputStream *		sos,
 /************************************************************************/
 
 static void docPsPrintGetLine(	int *				pLine,
+				int *				pLineWidth,
 				const DrawingShape *		ds,
 				DrawingContext *		dc,
 				PrintingState *			ps,
@@ -301,6 +308,9 @@ static void docPsPrintGetLine(	int *				pLine,
 		LDEB(sd->sdLineDashing);
 		sioOutPrintf( sos, "[] 0 setdash\n" );
 	    }
+
+	if  ( pLineWidth )
+	    { *pLineWidth= widthTwips;	}
 	}
 
     return;
@@ -312,62 +322,6 @@ static void docPsPrintGetLine(	int *				pLine,
 /*									*/
 /************************************************************************/
 
-static int docPsPrintFinishPath( const DrawingShape *		ds,
-				const AffineTransform2D *	at,
-				double				xs,
-				double				ys,
-				const ShapeVertex *		sv,
-				int				nv,
-				int				closed,
-				DrawingContext *		dc,
-				PrintingState *			ps )
-    {
-    SimpleOutputStream *	sos= ps->psSos;
-    const ShapeDrawing *	sd= &(ds->dsDrawing);
-
-    int				line= 0;
-
-    if  ( closed )
-	{
-	int		fill= 0;
-	RGB8Color	rgb8Fill;
-
-	docDrawShapeGetFill( &fill, &rgb8Fill, ds, dc, (void *)ps );
-	if  ( fill )
-	    { sioOutPrintf( sos, "gsave fill grestore\n" ); }
-	}
-
-    docPsPrintGetLine( &line, ds, dc, ps, at );
-    if  ( line )
-	{ sioOutPrintf( sos, "stroke\n" );	}
-
-    if  ( ! closed )
-	{
-	if  ( sd->sdLineStartArrow.saArrowHead != DSarrowNONE )
-	    {
-	    docPsPrintGetLine( &line, ds, dc, ps, (AffineTransform2D *)0 );
-
-	    docPsPrintArrowHead( ps, at, sv[0].svX- 0.5* xs,
-					sv[0].svY- 0.5* ys,
-					sv[1].svX- 0.5* xs,
-					sv[1].svY- 0.5* ys,
-					&(sd->sdLineStartArrow) );
-	    }
-	if  ( sd->sdLineEndArrow.saArrowHead != DSarrowNONE )
-	    {
-	    docPsPrintGetLine( &line, ds, dc, ps, (AffineTransform2D *)0 );
-
-	    docPsPrintArrowHead( ps, at, sv[nv-1].svX- 0.5* xs,
-					sv[nv-1].svY- 0.5* ys,
-					sv[nv-2].svX- 0.5* xs,
-					sv[nv-2].svY- 0.5* ys,
-					&(sd->sdLineEndArrow) );
-	    }
-	}
-
-    return 0;
-    }
-
 static int docPsPrintShapePath(	const DrawingShape *		ds,
 				const ShapePath *		sp,
 				const DocumentRectangle *	dr,
@@ -375,17 +329,117 @@ static int docPsPrintShapePath(	const DrawingShape *		ds,
 				PrintingState *			ps )
     {
     SimpleOutputStream *	sos= ps->psSos;
+    const ShapeDrawing *	sd= &(ds->dsDrawing);
 
     int				rval= 0;
     AffineTransform2D		at;
 
+    int				line= 0;
+    int				lineWidth= 0;
+
+    int				drawHeadArrow= 0;
+    DrawShapeArrow		dsaHead;
+    Point2DD			shaftHead[2];
+    int				drawTailArrow= 0;
+    DrawShapeArrow		dsaTail;
+    Point2DD			shaftTail[2];
+
+    const Point2DI *		sv= sp->spVertices;
+    int				nv= sp->spVertexCount;
+    double			xm= 0.5* sp->spXSize;
+    double			ym= 0.5* sp->spYSize;
+
+    int				from= 0;
+    int				upto= sp->spVertexCount;
+
+    double			x0;
+    double			y0;
+
     docShapeStartShapeTransform( &at, ds, dr, sp->spXSize, sp->spYSize );
 
-    docPsPrintShapePathLow( sos, &at, sp );
+    docPsPrintGetLine( &line, &lineWidth, ds, dc, ps, (AffineTransform2D *)0 );
+    if  ( line && ! sp->spClosed && nv >= 2 )
+	{
+	if  ( sd->sdLineHeadArrow.saArrowHead != DSarrowNONE )
+	    {
+	    drawHeadArrow= 1;
+	    from++;
 
-    docPsPrintFinishPath( ds, &at, sp->spXSize, sp->spYSize,
-					    sp->spVertices, sp->spVertexCount,
-					    sp->spClosed, dc, ps );
+	    shaftHead[0].x= AT2_X(sv[1].x- xm,sv[1].y- ym, &at );
+	    shaftHead[0].y= AT2_Y(sv[1].x- xm,sv[1].y- ym, &at );
+	    shaftHead[1].x= AT2_X(sv[0].x- xm,sv[0].y- ym, &at );
+	    shaftHead[1].y= AT2_Y(sv[0].x- xm,sv[0].y- ym, &at );
+
+	    docShapeArrowSizesTwips( &dsaHead, lineWidth, 1.0,
+					shaftHead, &(sd->sdLineHeadArrow) );
+	    }
+
+	if  ( sd->sdLineTailArrow.saArrowHead != DSarrowNONE )
+	    {
+	    drawTailArrow= 1;
+	    upto--;
+
+	    shaftTail[0].x= AT2_X(sv[nv-2].x- xm,sv[nv-2].y- ym, &at );
+	    shaftTail[0].y= AT2_Y(sv[nv-2].x- xm,sv[nv-2].y- ym, &at );
+	    shaftTail[1].x= AT2_X(sv[nv-1].x- xm,sv[nv-1].y- ym, &at );
+	    shaftTail[1].y= AT2_Y(sv[nv-1].x- xm,sv[nv-1].y- ym, &at );
+
+	    docShapeArrowSizesTwips( &dsaTail, lineWidth, 1.0,
+					shaftTail, &(sd->sdLineTailArrow) );
+	    }
+	}
+
+    if  ( drawHeadArrow )
+	{
+	x0= dsaHead.dsaShaft[1].x;
+	y0= dsaHead.dsaShaft[1].y;
+
+	sioOutPrintf( sos, " %g %g bp ", x0, y0 );
+	}
+    else{
+	docPsEmitFirstVertex( sos, &at, &x0, &y0, sp->spVertices, xm, ym );
+	}
+
+    docPsEmitVertices( sos, &at, &x0, &y0, sp->spVertices, upto,
+							    x0, y0, xm, ym );
+
+    if  ( drawTailArrow )
+	{
+	sioOutPrintf( sos, "%g %g rl ",
+				dsaTail.dsaShaft[1].x- x0,
+				dsaTail.dsaShaft[1].y- y0 );
+	}
+
+    if  ( sp->spClosed )
+	{
+	int		fill= 0;
+	RGB8Color	rgb8Fill;
+
+	sioOutPrintf( sos, " closepath " );
+
+	docDrawShapeGetFill( &fill, &rgb8Fill, ds, dc, (void *)ps );
+	if  ( fill )
+	    { sioOutPrintf( sos, " gsave fill grestore\n" ); }
+	}
+
+    if  ( line )
+	{ sioOutPrintf( sos, "stroke\n" );	}
+
+    if  ( drawHeadArrow )
+	{
+	docPsPrintGetLine( &line, &lineWidth,
+				    ds, dc, ps, (AffineTransform2D *)0 );
+
+	docPsPrintArrowHead( ps, lineWidth, &dsaHead );
+	}
+
+    if  ( drawTailArrow )
+	{
+	docPsPrintGetLine( &line, &lineWidth,
+				    ds, dc, ps, (AffineTransform2D *)0 );
+
+	docPsPrintArrowHead( ps, lineWidth, &dsaTail );
+	}
 
     return rval;
     }
@@ -448,7 +502,7 @@ int docPsPrintDrawDrawingShape(	const DocumentRectangle *	drTwips,
 	    if  ( ds->dsPictureProperties.pipType != DOCokUNKNOWN )
 		{ docPsPrintShapeImage( ps, dc, ds, drTwips, &at ); }
 
-	    docPsPrintGetLine( &line, ds, dc, ps, &at );
+	    docPsPrintGetLine( &line, (int *)0, ds, dc, ps, &at );
 	    if  ( line )
 		{
 		docPsPrintShapePathLow( sos, &at, sp );
@@ -472,7 +526,7 @@ int docPsPrintDrawDrawingShape(	const DocumentRectangle *	drTwips,
 		sioOutPrintf( sos, "fill\n" );
 		}
 
-	    docPsPrintGetLine( &line, ds, dc, ps, &at );
+	    docPsPrintGetLine( &line, (int *)0, ds, dc, ps, &at );
 	    if  ( line )
 		{
 		const int	SC= 21600; /* adjust to geoLeft etc? */
@@ -742,7 +796,7 @@ int docPsPrintDrawDrawingShape(	const DocumentRectangle *	drTwips,
 	    docDrawShapeGetFill( &fill, &rgb8Fill, ds, dc, ps );
 	    if  ( fill )
 		{ sioOutPrintf( sos, "gsave fill grestore " ); }
-	    docPsPrintGetLine( &line, ds, dc, ps, &at );
+	    docPsPrintGetLine( &line, (int *)0, ds, dc, ps, &at );
 	    if  ( line )
 		{ sioOutPrintf( sos, "stroke " );	}
 	    }
@@ -758,7 +812,7 @@ int docPsPrintDrawDrawingShape(	const DocumentRectangle *	drTwips,
 	    docDrawShapeGetFill( &fill, &rgb8Fill, ds, dc, ps );
 	    if  ( fill )
 		{ sioOutPrintf( sos, "gsave fill grestore\n" ); }
-	    docPsPrintGetLine( &line, ds, dc, ps, &at );
+	    docPsPrintGetLine( &line, (int *)0, ds, dc, ps, &at );
 	    if  ( line )
 		{ sioOutPrintf( sos, "stroke\n" );	}
 
@@ -787,7 +841,7 @@ int docPsPrintDrawDrawingShape(	const DocumentRectangle *	drTwips,
 	    if  ( fill )
 		{ psDrawRoundRectPath( sos, &drRRect, r, "cp fill\n" ); }
 
-	    docPsPrintGetLine( &line, ds, dc, ps, &at );
+	    docPsPrintGetLine( &line, (int *)0, ds, dc, ps, &at );
 	    if  ( line )
 		{ psDrawRoundRectPath( sos, &drRRect, r, "stroke\n" ); }
 	    }
@@ -808,7 +862,7 @@ int docPsPrintDrawDrawingShape(	const DocumentRectangle *	drTwips,
 	    docDrawShapeGetFill( &fill, &rgb8Fill, ds, dc, (void *)ps );
 	    if  ( fill )
 		{ docPsCanPath( sos, &drCan, "cp fill" );	}
-	    docPsPrintGetLine( &line, ds, dc, ps, &at );
+	    docPsPrintGetLine( &line, (int *)0, ds, dc, ps, &at );
 	    if  ( line )
 		{ docPsCanPath( sos, &drCan, "stroke" );	}
 	    }
@@ -828,7 +882,7 @@ int docPsPrintDrawDrawingShape(	const DocumentRectangle *	drTwips,
 	    docDrawShapeGetFill( &fill, &rgb8Fill, ds, dc, (void *)ps );
 	    if  ( fill )
 		{ docPsCubePath( sos, &drCube, "cp fill" );	}
-	    docPsPrintGetLine( &line, ds, dc, ps, &at );
+	    docPsPrintGetLine( &line, (int *)0, ds, dc, ps, &at );
 	    if  ( line )
 		{ docPsCubePath( sos, &drCube, "stroke" );	}
 	    }
@@ -838,7 +892,7 @@ int docPsPrintDrawDrawingShape(	const DocumentRectangle *	drTwips,
 	    {
 	    docShapeStartShapeTransform( &at, ds, drTwips, 2, 2 );
 
-	    docPsPrintGetLine( &line, ds, dc, ps, &at );
+	    docPsPrintGetLine( &line, (int *)0, ds, dc, ps, &at );
 
 	    sioOutPrintf( sos, "gsave 0 -0.75 translate 1 0.25 scale" );
 	    sioOutPrintf( sos, " newpath -1 0 1 270 360 arc" );
@@ -872,16 +926,16 @@ int docPsPrintDrawDrawingShape(	const DocumentRectangle *	drTwips,
 					drTwips->drY1- drTwips->drY0 );
 
 		sioOutPrintf( sos, "%d %d bp ",
-			sd->sdVertices[0].svX-
+			sd->sdVertices[0].x-
 				( drTwips->drX1- drTwips->drX0 )/ 2,
-			sd->sdVertices[0].svY-
+			sd->sdVertices[0].y-
 				( drTwips->drY1- drTwips->drY0 )/ 2 );
 
 		for ( i= 1; i < sd->sdVertexCount; i++ )
 		    {
 		    sioOutPrintf( sos, "%d %d rl",
-			    sd->sdVertices[i].svX- sd->sdVertices[i- 1].svX,
-			    sd->sdVertices[i].svY- sd->sdVertices[i- 1].svY );
+			    sd->sdVertices[i].x- sd->sdVertices[i- 1].x,
+			    sd->sdVertices[i].y- sd->sdVertices[i- 1].y );
 
 		    if  ( i % 8 == 7 || i == sd->sdVertexCount- 1 )
 			{ sioOutPrintf( sos, "\n" );	}
@@ -892,7 +946,7 @@ int docPsPrintDrawDrawingShape(	const DocumentRectangle *	drTwips,
 		if  ( fill )
 		    { sioOutPrintf( sos, "gsave closepath fill grestore\n" ); }
 
-		docPsPrintGetLine( &line, ds, dc, ps, &at );
+		docPsPrintGetLine( &line, (int *)0, ds, dc, ps, &at );
 		if  ( line )
 		    { sioOutPrintf( sos, "stroke\n" );	}
 		}

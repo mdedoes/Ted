@@ -87,6 +87,11 @@ void docRtfSaveParagraphProperties(
 	docRtfWriteAltTag( rw, "widctlpar", "nowidctlpar", pp->ppWidowControl );
 	}
 
+    if  ( PROPmaskISSET( updMask, PPpropRTOL ) )
+	{
+	docRtfWriteAltTag( rw, "rtlpar", "ltrpar", pp->ppRToL );
+	}
+
     if  ( PROPmaskISSET( updMask, PPpropKEEP ) )
 	{ docRtfWriteFlagTag( rw, "keep", pp->ppKeepOnPage );	}
 
@@ -120,15 +125,9 @@ void docRtfSaveParagraphProperties(
 
     if  ( PROPmaskISSET( updMask, PPpropALIGNMENT ) )
 	{
-	switch( pp->ppAlignment )
-	    {
-	    case DOCthaLEFT:		docRtfWriteTag( rw, "ql" ); break;
-	    case DOCthaRIGHT:		docRtfWriteTag( rw, "qr" ); break;
-	    case DOCthaCENTERED:	docRtfWriteTag( rw, "qc" ); break;
-	    case DOCthaJUSTIFIED:	docRtfWriteTag( rw, "qj" ); break;
-	    default:
-		LDEB(pp->ppAlignment); break;
-	    }
+	docRtfWriteEnumTag( rw, DOCrtf_ParaAlignTags,
+			    pp->ppAlignment,
+			    DOCrtf_ParaAlignTagCount, DOCtha_COUNT );
 	}
 
     if  ( PROPmaskISSET( updMask, PPpropTAB_STOPS )	&&
@@ -136,7 +135,7 @@ void docRtfSaveParagraphProperties(
 	{
 	TabStopList	tsl;
 
-	docGetTabStopListByNumber( &tsl, &(rw->rwDocument->bdTabStopListList),
+	docGetTabStopListByNumber( &tsl, rw->rwDocument,
 						    pp->ppTabStopListNumber );
 
 	docRtfSaveTabStopList( rw, &tsl );
@@ -182,8 +181,7 @@ void docRtfSaveParagraphProperties(
 	{
 	FrameProperties		fp;
 
-	docGetFramePropertiesByNumber( &fp,
-				&(rw->rwDocument->bdFramePropertyList),
+	docGetFramePropertiesByNumber( &fp, rw->rwDocument,
 				pp->ppFrameNumber );
 
 	if  ( DOCisFRAME( &fp ) )

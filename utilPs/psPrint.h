@@ -81,6 +81,10 @@ extern int psPrintString(	SimpleOutputStream *	sos,
 				int			len,
 				int			sevenBits );
 
+extern int psPrintPdfMarkStringValue(	PrintingState *		ps,
+					const unsigned char *	s,
+					int			len );
+
 extern int psPrintStringValue(		PrintingState *		ps,
 					const unsigned char *	s,
 					int			len );
@@ -135,9 +139,10 @@ extern void psFinishEpsFile(	SimpleOutputStream *	sos );
 extern void psSetPdfmarkEmulation(		SimpleOutputStream *	sos );
 extern void psImageQualityDistillerparams(	SimpleOutputStream *	sos );
 extern void psSetRectfillEmulation(		SimpleOutputStream *	sos );
-extern void psSetSelectfontEmulation(	SimpleOutputStream *	sos );
+extern void psSetSelectfontEmulation(		SimpleOutputStream *	sos );
+extern void psSetDefinePageFontImplementation(	SimpleOutputStream *	sos );
 extern void psSetUtf8ShowImplementation(	SimpleOutputStream *	sos );
-extern void psSetMvsImplementation(	SimpleOutputStream *	sos );
+extern void psSetMvsImplementation(		SimpleOutputStream *	sos );
 extern void psSetPatternImplementation(	SimpleOutputStream *	sos,
 					double			shadingMesh );
 

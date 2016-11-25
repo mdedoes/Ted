@@ -400,10 +400,9 @@ int appRemoveFile(	const MemoryBuffer *	filename )
 /*									*/
 /************************************************************************/
 
-# ifdef		EXDEV
-
-static int appMoveFile(	const char *	fn,
-			const char *	fo )
+static int appMoveFileContents(	const char *	fn,
+				const char *	fo,
+				int		removeSource )
     {
     int			rval= 0;
 
@@ -441,7 +440,7 @@ static int appMoveFile(	const char *	fn,
 	{ SLLSDEB(fo,fdo,errno,strerror(errno)); rval= -1; goto ready; }
     fdo= -1;
 
-    if  ( unlink( fo ) )
+    if  ( removeSource && unlink( fo ) )
 	{ SLSDEB(fo,errno,strerror(errno)); rval= -1; goto ready;	}
 
   ready:
@@ -456,8 +455,6 @@ static int appMoveFile(	const char *	fn,
 
     return rval;
     }
-
-# endif	/*	EXDEV	*/
 
 /************************************************************************/
 /*									*/
@@ -481,7 +478,9 @@ int appRenameFile(	const MemoryBuffer *	newName,
 
     if  ( res < 0 && errno == EXDEV )
 	{
-	res= appMoveFile( fn, fo );
+	const int	removeSource= 1;
+
+	res= appMoveFileContents( fn, fo, removeSource );
 	if  ( res )
 	    { SSLSDEB(fo,fn,errno,strerror(errno)); rval= -1; goto ready; }
 	} 
@@ -492,6 +491,32 @@ int appRenameFile(	const MemoryBuffer *	newName,
 	{ SSLSDEB(fo,fn,errno,strerror(errno)); rval= -1; goto ready;	}
 
 #   endif
+
+  ready:
+
+    return rval;
+    }
+
+/************************************************************************/
+/*									*/
+/*  Copy a file.							*/
+/*									*/
+/************************************************************************/
+
+int appCopyFile(	const MemoryBuffer *	newName,
+			const MemoryBuffer *	oldName )
+    {
+    int			rval= 0;
+
+    const char *	fn= utilMemoryBufferGetString( newName );
+    const char *	fo= utilMemoryBufferGetString( oldName );
+    int			res;
+
+    const int		removeSource= 0;
+
+    res= appMoveFileContents( fn, fo, removeSource );
+    if  ( res )
+	{ SSLSDEB(fo,fn,errno,strerror(errno)); rval= -1; goto ready; }
 
   ready:
 

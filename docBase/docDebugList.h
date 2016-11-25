@@ -7,7 +7,6 @@
 #   ifndef	DOC_DEBUG_LIST_H
 #   define	DOC_DEBUG_LIST_H
 
-#   include	"docListNumberTree.h"
 #   include	"docDocumentList.h"
 #   include	"docListOverride.h"
 #   include	"docListOverrideTable.h"
@@ -18,9 +17,6 @@
 /*  Routine declarations.						*/
 /*									*/
 /************************************************************************/
-
-extern void docListListNumberNode(	int				indent,
-					const ListNumberTreeNode *	lntn );
 
 extern void docListDocumentList(	int				n,
 					const DocumentList *		dl );

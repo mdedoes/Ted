@@ -67,4 +67,10 @@ extern int utilPagedListForAll(		const PagedList *	pl,
 					PagedListForAllFun	fun,
 					void *			through );
 
+extern void * utilPagedListGetNext(	int *			pN,
+					const PagedList *	pl,
+					int			n );
+
+# define utilPagedListGetFirst( pN, is ) utilPagedListGetNext( (pN), (is), -1 )
+
 #   endif	/*  PAGED_LIST_H	*/

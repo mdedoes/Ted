@@ -42,7 +42,7 @@ typedef struct ScreenDrawingData
 
 extern int tedDrawDrawingShape(	const DocumentRectangle *	drTwips,
 				int				page,
-				DrawingShape *			ds,
+				struct DrawingShape *		ds,
 				DrawingContext *		dc,
 				void *				vsdd );
 

@@ -11,6 +11,7 @@
 #   include	<string.h>
 
 #   include	<docDraw.h>
+#   include	<docShape.h>
 #   include	<docLayout.h>
 #   include	"docSvgDrawImpl.h"
 #   include	"docWriteCss.h"
@@ -43,7 +44,7 @@ static int docSvgSetFont(	DrawingContext *	dc,
     {
     const LayoutContext *	lc= &(dc->dcLayoutContext);
     BufferDocument *		bd= lc->lcDocument;
-    DocumentFontList *		dfl= &(bd->bdProperties.dpFontList);
+    DocumentFontList *		dfl= bd->bdProperties.dpFontList;
     const AfmFontInfo *		afi;
     const IndexSet *		unicodesWanted;
 
@@ -264,7 +265,7 @@ static int docSvgDrawOrnaments(	const BlockOrnaments *		bo,
 /************************************************************************/
 
 int docSvgEmitFill(	SvgWriter *			sw,
-			const DrawingShape *		ds )
+			const struct DrawingShape *	ds )
     {
     XmlWriter *		xw= &(sw->swXmlWriter);
     RGB8Color		rgb8Fill;

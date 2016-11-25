@@ -13,7 +13,8 @@
 
 #   include	<uniShiftUtf8.h>
 #   include	<uniUtf8.h>
-#   include	<ucd.h>
+#   include	<ucdGeneralCategory.h>
+#   include	<textConverter.h>
 
 #   include	"docBuf.h"
 #   include	"docParaString.h"
@@ -51,8 +52,8 @@ int docParaStringReplace(		int *			pSizeShift,
 int docParaNextWord(		const BufferItem *		paraNode,
 				int				stroff )
     {
-    const unsigned char *	from= docParaString( paraNode, stroff );
-    int				upto= docParaStrlen( paraNode );
+    const char *	from= (char *)docParaString( paraNode, stroff );
+    int			upto= docParaStrlen( paraNode );
 
     unsigned short		unicode;
     int				step;
@@ -89,15 +90,15 @@ int docParaNextWord(		const BufferItem *		paraNode,
 int docParaPrevWord(		const BufferItem *		paraNode,
 				int				stroff )
     {
-    const unsigned char *	from= docParaString( paraNode, stroff );
+    const char *	from= (const char *)docParaString( paraNode, stroff );
 
-    unsigned short		unicode;
-    int				step;
+    unsigned short	unicode;
+    int			step;
 
     while( stroff > 0 )
 	{
-	int			st;
-	const unsigned char *	fr;
+	int		st;
+	const char *	fr;
 
 	st= 1; fr= from- 1;
 	while( stroff- st > 0 && ( *fr & 0xc0 ) == 0x80 )
@@ -119,8 +120,8 @@ int docParaPrevWord(		const BufferItem *		paraNode,
 
     while( stroff > 0 )
 	{
-	int			st;
-	const unsigned char *	fr;
+	int		st;
+	const char *	fr;
 
 	st= 1; fr= from- 1;
 	while( stroff- st > 0 && ( *fr & 0xc0 ) == 0x80 )
@@ -240,11 +241,57 @@ int docParaPastLastNonBlank(		const BufferItem *	paraNode,
 					int			from,
 					int			upto )
     {
-    while( upto > from				&&
+    while( upto > from					&&
 	   paraNode->biParaString[upto-1] == ' '	)
 	{ upto--;	}
 
     return upto;
+    }
+
+/************************************************************************/
+/*									*/
+/*  Delimit a single particule.						*/
+/*									*/
+/************************************************************************/
+
+static int docDelimitParticule(	TextParticule *			tpNew,
+				const char *			from,
+				int				strLen )
+    {
+    int			len= 0;
+
+    /*  Visible text  */
+    while( len < strLen )
+	{
+	unsigned short	unicode;
+	int step= uniGetUtf8( &unicode, from );
+	if  ( step < 1 )
+	    { LDEB(step); return -1;	}
+
+	if  ( ucdIsZ( unicode ) )
+	    { break;	}
+
+	from += step; len += step;
+	}
+
+    /*  Space  */
+    while( len < strLen )
+	{
+	unsigned short	unicode;
+	int step= uniGetUtf8( &unicode, from );
+	if  ( step < 1 )
+	    { LDEB(step); return -1;	}
+
+	if  ( ! ucdIsZ( unicode ) )
+	    { break;	}
+
+	from += step; len += step;
+	}
+
+    tpNew->tpKind= DOCkindSPAN;
+    tpNew->tpStrlen= len;
+
+    return len;
     }
 
 /************************************************************************/
@@ -267,25 +314,30 @@ int docRedivideStringInParticules(	BufferItem *	paraNode,
 
     while( bytesDone < strLen )
 	{
-	int	len= 0;
+	TextParticule	tpNew;
+	int		len;
 
 #	ifdef DEB_PARTICULES
 	const char *	label= "?-?";
 #	endif
 
-	while( bytesDone+ len < strLen			&&
-	       paraNode->biParaString[strOff+ len] != ' '	)
-	    { len++;	}
-	while( bytesDone+ len < strLen			&&
-	       paraNode->biParaString[strOff+ len] == ' '	)
-	    { len++;	}
+	tpNew.tpKind= DOCkindUNKNOWN;
+	tpNew.tpStroff= strOff;
+	tpNew.tpStrlen= 0;
+	tpNew.tpTextAttrNr= textAttributeNumber;
+
+	len= docDelimitParticule( &tpNew,
+				(const char *)paraNode->biParaString+ strOff,
+				strLen- bytesDone );
+	if  ( len < 0 )
+	    { LDEB(len); return -1;	}
 
 	if  ( partsDone < partsFree )
 	    {
-	    tp->tpStroff= strOff;
-	    tp->tpStrlen= len;
-	    tp->tpKind= DOCkindSPAN;
-	    tp->tpTextAttrNr= textAttributeNumber;
+	    tp->tpKind= tpNew.tpKind;
+	    tp->tpStroff= tpNew.tpStroff;
+	    tp->tpStrlen= tpNew.tpStrlen;
+	    tp->tpTextAttrNr= tpNew.tpTextAttrNr;
 
 	    tp->tpTwipsWide= 0;
 
@@ -295,7 +347,8 @@ int docRedivideStringInParticules(	BufferItem *	paraNode,
 	    }
 	else{
 	    tp= docInsertTextParticule( paraNode, part,
-			    strOff, len, DOCkindSPAN, textAttributeNumber );
+					    tpNew.tpStroff, tpNew.tpStrlen,
+					    tpNew.tpKind, tpNew.tpTextAttrNr );
 	    if  ( ! tp )
 		{ XDEB(tp); return -1;	}
 #	    ifdef DEB_PARTICULES
@@ -324,18 +377,14 @@ int docRedivideStringInParticules(	BufferItem *	paraNode,
 /*									*/
 /*  Save paragraph contents for readers.				*/
 /*									*/
-/*  Note that GNU iconv() expects a 'char **' as its second argument	*/
-/*  rather than a 'const char **' as documented in the single UNIX spec.*/
-/*  See: http://www.opengroup.org/pubs/online/7908799/xsh/iconv.html.	*/
-/*									*/
 /************************************************************************/
 
-static int docParaAppendBytes(	void *		vparaBi,
+static int docParaAppendBytes(	void *		vParaNode,
 				int		offset,
 				const char *	bytes,
 				int		count )
     {
-    BufferItem *	paraNode= (BufferItem *)vparaBi;
+    BufferItem *	paraNode= (BufferItem *)vParaNode;
     int			stroffShift= 0;
 
     if  ( docParaStringReplace( &stroffShift, paraNode, offset, offset,
@@ -369,12 +418,19 @@ int docParaDivideAppendedText(	BufferItem *	paraNode,
 
     if  ( docRedivideStringInParticules( paraNode, stroff, upto- stroff,
 				part, partsFree, textAttributeNumber ) < 0 )
-	{ LLDEB(upto- stroff,paraNode->biParaParticuleCount); return -1;	}
+	{ LLDEB(upto- stroff,paraNode->biParaParticuleCount); return -1; }
 
     return 0;
     }
 
-int docSaveParticules(	BufferDocument *	bd,
+/************************************************************************/
+/*									*/
+/*  Append the text pointed to by 'text' to the paragraph and		*/
+/*  split it into text particules.					*/
+/*									*/
+/************************************************************************/
+
+int docParaAppendText(	BufferDocument *	bd,
 			BufferItem *		paraNode,
 			const TextAttribute *	ta,
 			struct TextConverter *	tc,
@@ -391,8 +447,7 @@ int docSaveParticules(	BufferDocument *	bd,
 	{ LDEB(textAttributeNumber); return -1;	}
 
     upto= textConverterConvertToUtf8( tc, (void *)paraNode,
-				    docParaAppendBytes, &consumed,
-				    stroff, text, len );
+				    &consumed, stroff, text, len );
     if  ( upto < 0 )
 	{ LDEB(upto); return -1;	}
     if  ( consumed != len )
@@ -405,11 +460,16 @@ int docSaveParticules(	BufferDocument *	bd,
     return 0;
     }
 
+void docParaSetupTextConverter(	struct TextConverter *	tc )
+    {
+    textConverterSetProduce( tc, docParaAppendBytes );
+    }
+
 /************************************************************************/
 /*									*/
 /*  Fix a string offset. I.E. Return the highest string offset that is	*/
 /*  <= stroff and that does not point inside an UTF8 sequence.		*/
-/*  Offsets of administrative particules are perfectly acceptible here.	*/
+/*  Offsets of administrative particules are perfectly acceptable here.	*/
 /*									*/
 /************************************************************************/
 
@@ -429,14 +489,14 @@ int docParaFixStroff(		const BufferItem *	paraNode,
 /*  Return the next valid string offset in the paragraph.		*/
 /*									*/
 /*  Positions inside an UTF-8 sequence are invalid.			*/
-/*  Offsets of administrative particules are perfectly acceptible here.	*/
+/*  Offsets of administrative particules are perfectly acceptable here.	*/
 /*									*/
 /************************************************************************/
 
 int docParaNextStroff(	const BufferItem *	paraNode,
 			int			stroff )
     {
-    unsigned char *	from= docParaString( paraNode, stroff );
+    const char *	from= (const char *)docParaString( paraNode, stroff );
 
     unsigned short	unicode;
     int			step;
@@ -453,7 +513,7 @@ int docParaNextStroff(	const BufferItem *	paraNode,
 /*  Return the previous valid string offset in the paragraph.		*/
 /*									*/
 /*  Positions inside an UTF-8 sequence are invalid.			*/
-/*  Offsets of administrative particules are perfectly acceptible here.	*/
+/*  Offsets of administrative particules are perfectly acceptable here.	*/
 /*									*/
 /************************************************************************/
 
@@ -461,14 +521,14 @@ int docParaPrevStroff(	const BufferItem *	paraNode,
 			int			stroff )
     {
     unsigned short		unicode;
-    unsigned char *		from;
+    const char *		from;
     int				step;
 
     if  ( stroff <= 0 )
 	{ LDEB(stroff); return -1;	}
 
     stroff--;
-    from= docParaString( paraNode, stroff );
+    from= (const char *)docParaString( paraNode, stroff );
 
     while( ( *from & 0xc0 ) == 0x80 )
 	{

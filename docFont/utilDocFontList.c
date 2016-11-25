@@ -12,7 +12,7 @@
 #   include	<appDebugon.h>
 
 #   include	"utilDocFontList.h"
-#   include	<utilOfficeCharset.h>
+#   include	<textOfficeCharset.h>
 #   include	<psDocumentFontStyle.h>
 
 /************************************************************************/

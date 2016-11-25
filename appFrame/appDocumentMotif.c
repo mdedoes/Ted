@@ -82,18 +82,15 @@ static int appDocMakeMainWindow(	EditDocument *		ed )
 
     Display *		display= XtDisplay( ea->eaToplevel.atTopWidget );
 
-    int			maxWidth= ( 4* ea->eaScreenPixelsWide )/ 5;
-    int			maxHeight= ( 4* ea->eaScreenPixelsHigh )/ 5;
-
     MemoryBuffer	fullTitle;
     MemoryBuffer	iconName;
 
     utilInitMemoryBuffer( &fullTitle );
     utilInitMemoryBuffer( &iconName );
 
-    if  ( ea->eaDocumentIcon						&&
-	  appGetImagePixmap( ea, ea->eaDocumentIcon, &pixmap, &mask )	)
-	{ SDEB(ea->eaDocumentIcon); return -1;	}
+    if  ( ea->eaMainIcon						&&
+	  appGetImagePixmap( ea, ea->eaMainIcon, &pixmap, &mask )	)
+	{ SDEB(ea->eaMainIcon); return -1;	}
 
     if  ( appFormatDocumentTitle( &fullTitle, &iconName, ea, &(ed->edTitle) ) )
 	{
@@ -113,8 +110,10 @@ static int appDocMakeMainWindow(	EditDocument *		ed )
     XtSetArg( al[ac], XmNwmTimeout,		0 ); ac++; /* LessTif BUG */
     XtSetArg( al[ac], XmNmappedWhenManaged,	False ); ac++;
     XtSetArg( al[ac], XmNinput,			True ); ac++;
+    /*
     XtSetArg( al[ac], XmNmaxWidth,		maxWidth ); ac++;
     XtSetArg( al[ac], XmNmaxHeight,		maxHeight ); ac++;
+    */
 
     if  ( pixmap )
 	{ XtSetArg( al[ac], XmNiconPixmap,	pixmap ); ac++; }
@@ -126,7 +125,7 @@ static int appDocMakeMainWindow(	EditDocument *		ed )
 					    display, al, ac );
 #   else
     ed->edToplevel.atTopWidget= XtAppCreateShell( ea->eaApplicationName, 
-					    ea->eaDocumentWidgetName,
+					    WIDGET_NAME,
 					    topLevelShellWidgetClass,
 					    display, al, ac );
 #   endif

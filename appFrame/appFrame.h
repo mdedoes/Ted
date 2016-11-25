@@ -249,16 +249,17 @@ typedef struct EditApplication
     const char *	eaPlatformCompiled;
     const char *	eaHostDateCompiled;
 
-    const char *	eaDocumentWidgetName;
-    const char *	eaPageToolName;
-    const char *	eaPrintDialogName;
-    const char *	eaMessageDialogName;
+			/**
+			 *  The Application Icon
+			 */
     const char *	eaMainIcon;
+			/**
+			 *  The Image on the Splash Screen
+			 */
     const char *	eaMainPicture;
     AppFileExtension *	eaFileExtensions;
     int			eaFileExtensionCount;
     const char *	eaDefaultFileFilter;
-    const char *	eaDocumentIcon;
     void *			eaResourceData;
     AppConfigurableResource *	eaResourceTable;
     int				eaResourceCount;
@@ -329,9 +330,10 @@ typedef struct EditApplication
 				APP_WIDGET			relative,
 				APP_WIDGET			option,
 				int				readOnly,
+				int				suggestStdin,
+				int				formatHint,
 				const MemoryBuffer *		filename );
     int			(*eaNewDocument)(
-				struct EditApplication *	ea,
 				EditDocument *			ed,
 				const MemoryBuffer *		filename );
     int			(*eaLayoutDocument)(
@@ -363,7 +365,8 @@ typedef struct EditApplication
 				int				format );
     void		(*eaSuggestPageSetup)(
 				struct PrintGeometry *		pg,
-				void *				privateData );
+				void *				privateData,
+				int				sheetSize );
     int			(*eaPrintDocument)(
 				SimpleOutputStream *		sos,
 				const struct PrintJob *		pj,
@@ -482,6 +485,12 @@ typedef struct EditApplication
 
     unsigned int	eaNextDocumentId;
 
+				/**
+				 *  Culture name (Language and teritory) 
+				 *  determined at startup.
+				 */
+    char *			eaLocaleName;
+
     /*  2  */
 #   ifdef USE_MOTIF
     XtAppContext		eaContext;
@@ -527,19 +536,20 @@ typedef struct EditApplication
     char *			eaAuthor;
     char *			eaFocusColor;
 
-    int				eaUsePostScriptFilters;
-    int				eaUsePostScriptIndexedImages;
-    int				ea7BitsPostScript;
-    int				eaSkipEmptyPages;
-    int				eaSkipBlankPages;
-    int				eaOmitHeadersOnEmptyPages;
-    int				eaAvoidFontconfig;
-    int				eaPreferBase35Fonts;
-    int				eaEmbedFonts;
-    int				eaUseKerning;
+    int				eaUsePostScriptFiltersInt;
+    int				eaUsePostScriptIndexedImagesInt;
+    int				ea7BitsPostScriptInt;
+    int				eaSkipEmptyPagesInt;
+    int				eaSkipBlankPagesInt;
+    int				eaOmitHeadersOnEmptyPagesInt;
+    int				eaAvoidFontconfigInt;
+    int				eaPreferBase35FontsInt;
+    int				eaEmbedFontsInt;
+    int				eaUseKerningInt;
+    int				eaStyleToolInt;
 
-    int				eaGotPaste;
     AppFileMessageResources	eaFileMessageResources;
+
     char *			eaMagnificationString;
     char *			eaUsePostScriptFiltersString;
     char *			eaUsePostScriptIndexedImagesString;
@@ -551,13 +561,16 @@ typedef struct EditApplication
     char *			eaPreferBase35FontsString;
     char *			eaEmbedFontsString;
     char *			eaUseKerningString;
-    char *			eaCustomPsSetupFilename;
+    char *			eaStyleToolString;
 
+    char *			eaCustomPsSetupFilename;
 
     char *			eaLeftRulerWidthMMString;
     char *			eaTopRulerHeightMMString;
     char *			eaRightRulerWidthMMString;
     char *			eaBottomRulerHeightMMString;
+
+    int				eaGotPaste;
 
     PostScriptFontList		eaPostScriptFontList;
 
@@ -614,6 +627,15 @@ extern APP_WIDGET appMakeMenu(		APP_WIDGET *		pButton,
 					AppMenuItem *		items,
 					int			itemCount,
 					void *			through );
+
+extern EditDocument * appOpenDocumentFile(
+					EditApplication *	ea,
+					APP_WIDGET		relative,
+					APP_WIDGET		option,
+					int			readOnly,
+					int			suggestStdin,
+					int			formatHint,
+					const MemoryBuffer *	filename );
 
 extern EditDocument * appOpenDocument(	EditApplication *	ea,
 					APP_WIDGET		relative,
@@ -787,8 +809,7 @@ extern void appMakeVerticalDialog(	AppDialog *		ad,
 					EditApplication *	ea,
 					APP_CLOSE_CALLBACK_T	closeCallback,
 					APP_DESTROY_CALLBACK_T	destroyCallback,
-					void *			through,
-					const char *		widgetName );
+					void *			through );
 
 extern int appCallPrintFunction( SimpleOutputStream *		sos,
 				const struct PrintJob *		pj );
@@ -827,7 +848,6 @@ extern void appMakeVerticalTool( APP_WIDGET *		pShell,
 				EditApplication *	ea,
 				APP_BITMAP_IMAGE	iconPixmap,
 				APP_BITMAP_MASK		iconMask,
-				const char *		widgetName,
 				int			userResizable,
 				APP_WIDGET		option,
 				APP_CLOSE_CALLBACK_T	closeCallback,
@@ -939,12 +959,6 @@ extern void appSetCloseCallback(	APP_WIDGET		shell,
 extern void appGuiSetToggleItemLabel(	APP_WIDGET		toggle,
 					const char *		label );
 
-extern void appGuiGetResourceValuesGtkX(
-				EditApplication *		ea,
-				void *				pValues,
-				AppConfigurableResource *	acr,
-				int				acrCount );
-
 extern int appFormatDocumentTitle(	MemoryBuffer *		windowTitle,
 					MemoryBuffer *		iconTitle,
 					EditApplication *	ea,
@@ -1004,7 +1018,8 @@ extern int appDocumentGetSaveFormat(
 extern int appFileCanOpen(	const EditApplication *		ea,
 				int				format );
 
-int appDocumentGetOpenFormat(	const AppFileExtension *	testExts,
+int appDocumentGetOpenFormat(	int *				pSuggestStdin,
+				const AppFileExtension *	testExts,
 				int				testExtCount,
 				const MemoryBuffer *		filename,
 				int				format );
@@ -1063,6 +1078,9 @@ extern int appDocSaveDocument(	EditDocument *		ed,
 				APP_WIDGET		option,
 				int			format,
 				const MemoryBuffer *	filename );
+
+extern int appDetermineBoolean(	int *			pIval,
+				const char *		sVal );
 
 # ifdef __cplusplus
     }

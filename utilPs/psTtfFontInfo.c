@@ -13,7 +13,6 @@
 #   include	"psFontName.h"
 #   include	"psGlyphs.h"
 #   include	"psTtf.h"
-#   include	"psReadWriteFontInfo.h"
 #   include	<utilIndexMapping.h>
 #   include	<appDebugon.h>
 
@@ -264,7 +263,7 @@ static int utilTtfSetWindowsCmapFormat4Names(
 		}
 
 	    if  ( g < 0 || g >= ttf->ttfGlyphCount )
-		{ LLDEB(g,ttf->ttfGlyphCount); return -1; }
+		{ SLLDEB(afi->afiFontName,g,ttf->ttfGlyphCount); continue; }
 
 	    name= psFontInfoGetGlyphName( afi, g );
 	    if  ( name && name[0] )
@@ -324,7 +323,10 @@ static int utilTtfSetPostGlyphNames(
 
 	    idx -= 258;
 	    if  ( idx >= ttpt->ttptStringCount )
-		{ LLDEB(idx,ttpt->ttptStringCount); return -1; }
+		{
+		/* SLLDEB(afi->afiFontName,idx,ttpt->ttptStringCount); */
+		continue;
+		}
 
 	    if  ( psFontInfoSetGlyphName( afi, g,
 					(char *)ttpt->ttptStrings[idx] ) )
@@ -591,31 +593,12 @@ static int utilTtfGetCharMetricsAndEncoding(
     }
 
 /************************************************************************/
-/*									*/
-/*  Try to derive complete font information from a true type font.	*/
-/*									*/
-/************************************************************************/
 
-int psTtfFontInfo(	AfmFontInfo *		afi,
-			const TrueTypeFont *	ttf )
+static int psTtfGetNames(	AfmFontInfo *		afi,
+				char **			pSavedVariant,
+				const TrueTypeFont *	ttf )
     {
     const TrueTypeNameTable *	ttnt= &(ttf->ttfNameTable);
-    const TrueTypePostTable *	ttpt= &(ttf->ttfPostTable);
-    const TrueTypeHheaTable *	hhea= &(ttf->ttfHheaTable);
-    const TrueTypeHeadTable *	ttht= &(ttf->ttfHeadTable);
-    const TrueTypeOS_2Table *	ttot= &(ttf->ttfOS_2Table);
-
-    char *			savedVariant= (char *)0;
-    int				start;
-    int				length;
-    int				weight;
-    int				width;
-
-    if  ( utilTtfGetCharMetricsAndEncoding( afi, ttf ) )
-	{ LDEB(1); return -1;	}
-
-    if  ( utilTtfGetKernPairs( afi, ttf ) )
-	{ LDEB(1); return -1;	}
 
     if  ( psTtfGetName( &(afi->afiFullName), ttnt, 4 ) )
 	{ LDEB(4); return -1;	}
@@ -652,8 +635,24 @@ int psTtfFontInfo(	AfmFontInfo *		afi,
 	    { XDEB(afi->afiVersion); return -1;	}
 	}
 
-    if  ( psTtfGetName( &savedVariant, ttnt, 2 ) )
+    if  ( psTtfGetName( pSavedVariant, ttnt, 2 ) )
 	{ LDEB(2); return -1; }
+
+    return 0;
+    }
+
+/************************************************************************/
+
+static int psTtfGetWeight(	AfmFontInfo *		afi,
+				const TrueTypeFont *	ttf,
+				const char *		savedVariant )
+    {
+    const TrueTypeOS_2Table *	ttot= &(ttf->ttfOS_2Table);
+
+    int				start;
+    int				length;
+
+    int				weight;
 
     if  ( ttot->ttotWeightClass > 0 )
 	{
@@ -689,6 +688,36 @@ int psTtfFontInfo(	AfmFontInfo *		afi,
 	    afi->afiWeightInt= weight;
 	    }
 	}
+
+    if  ( ! afi->afiWeightStr )
+	{
+	char *	str= afi->afiFullName;
+	if  ( utilFontWeightFromString( &weight, &start, &length, str ) )
+	    {
+	    afi->afiWeightStr= (char *)malloc( length+ 1 );
+	    if  ( ! afi->afiWeightStr )
+		{ XDEB(afi->afiWeightStr); return -1;	}
+	    strncpy( afi->afiWeightStr, str+ start, length )[length]= '\0';
+	    afi->afiWeightInt= weight;
+	    }
+	}
+
+    return 0;
+    }
+
+/************************************************************************/
+
+static int psTtfGetWidth(	AfmFontInfo *		afi,
+				const TrueTypeFont *	ttf,
+				const char *		savedVariant )
+    {
+    const TrueTypeOS_2Table *	ttot= &(ttf->ttfOS_2Table);
+
+    int				start;
+    int				length;
+
+    int				width;
+
     if  ( ttot->ttotWidthClass > 0 )
 	{
 	afi->afiWidthInt= FONTwidthULTRACONDENSED;
@@ -722,22 +751,6 @@ int psTtfFontInfo(	AfmFontInfo *		afi,
 	    }
 	}
 
-    if  ( savedVariant )
-	{ free( savedVariant );	}
-
-    if  ( ! afi->afiWeightStr )
-	{
-	char *	str= afi->afiFullName;
-	if  ( utilFontWeightFromString( &weight, &start, &length, str ) )
-	    {
-	    afi->afiWeightStr= (char *)malloc( length+ 1 );
-	    if  ( ! afi->afiWeightStr )
-		{ XDEB(afi->afiWeightStr); return -1;	}
-	    strncpy( afi->afiWeightStr, str+ start, length )[length]= '\0';
-	    afi->afiWeightInt= weight;
-	    }
-	}
-
     if  ( ! afi->afiWidthStr )
 	{
 	char *	str= afi->afiFullName;
@@ -750,6 +763,42 @@ int psTtfFontInfo(	AfmFontInfo *		afi,
 	    afi->afiWidthInt= width;
 	    }
 	}
+
+    return 0;
+    }
+
+/************************************************************************/
+/*									*/
+/*  Try to derive complete font information from a true type font.	*/
+/*									*/
+/************************************************************************/
+
+int psTtfFontInfo(	AfmFontInfo *		afi,
+			const TrueTypeFont *	ttf )
+    {
+    const TrueTypePostTable *	ttpt= &(ttf->ttfPostTable);
+    const TrueTypeHheaTable *	hhea= &(ttf->ttfHheaTable);
+    const TrueTypeHeadTable *	ttht= &(ttf->ttfHeadTable);
+
+    char *			savedVariant= (char *)0;
+
+    if  ( psTtfGetNames( afi, &savedVariant, ttf ) )
+	{ LDEB(1); return -1;	}
+
+    if  ( utilTtfGetCharMetricsAndEncoding( afi, ttf ) )
+	{ LDEB(1); return -1;	}
+
+    if  ( utilTtfGetKernPairs( afi, ttf ) )
+	{ LDEB(1); return -1;	}
+
+    if  ( psTtfGetWeight( afi, ttf, savedVariant ) )
+	{ LDEB(1); return -1;	}
+
+    if  ( psTtfGetWidth( afi, ttf, savedVariant ) )
+	{ LDEB(1); return -1;	}
+
+    if  ( savedVariant )
+	{ free( savedVariant );	}
 
     if  ( ttpt->ttptItalicAngleUpper >= 0 )
 	{
@@ -835,35 +884,6 @@ int psTtfToAfi(		AfmFontInfo *		afi,
   ready:
 
     psTtfCleanTrueTypeFont( &ttf );
-
-    return rval;
-    }
-
-int psTtfToAfm(		SimpleOutputStream *	sosAfm,
-			int			omitKernPairs,
-			const char *		fontFileName,
-			SimpleInputStream *	sisTtf )
-    {
-    int				rval= 0;
-
-    AfmFontInfo			afi;
-    MemoryBuffer		filename;
-
-    psInitAfmFontInfo( &afi );
-    utilInitMemoryBuffer( &filename );
-
-    if  ( utilMemoryBufferSetString( &filename, fontFileName ) )
-	{ rval= -1; goto ready;	}
-
-    if  ( psTtfToAfi( &afi, &filename, sisTtf ) )
-	{ LDEB(1); rval= -1; goto ready;	}
-
-    psWriteAfmFile( sosAfm, omitKernPairs, &afi );
-
-  ready:
-
-    utilCleanMemoryBuffer( &filename );
-    psCleanAfmFontInfo( &afi );
 
     return rval;
     }

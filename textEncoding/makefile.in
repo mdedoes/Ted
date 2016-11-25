@@ -31,10 +31,8 @@ WFLAGS=	-Wall			\
 
 #CFLAGS	= $(WFLAGS) -g -O2 $(INCLUDES)
 
-# 69!!obs
+# 47!!obs
 OBS	=	\
-		utilOfficeCharset.o\
-		utilHtmlCharEntities.o\
 		uniWinCp874GlyphUnicodes.o\
 		uniWinCp1258GlyphUnicodes.o\
 		uniWinCp1257GlyphUnicodes.o\
@@ -48,6 +46,7 @@ OBS	=	\
 		uniUtf8.o\
 		uniSymbolGlyphUnicodes.o\
 		uniShiftUtf8.o\
+		uniPDFDocEncodingGlyphUnicodes.o\
 		uniMacRomanGlyphUnicodes.o\
 		uniLegacyMapping.o\
 		uniKoi8RGlyphUnicodes.o\
@@ -61,45 +60,24 @@ OBS	=	\
 		uniDingbatsGlyphUnicodes.o\
 		uniAlternatives.o\
 		ucdToUpper.o\
+		ucdToMirror.o\
 		ucdToLower.o\
-		ucdToCase.o\
-		ucdIsZs.o\
-		ucdIsZp.o\
-		ucdIsZl.o\
-		ucdIsUtf16.o\
-		ucdIsSo.o\
-		ucdIsSm.o\
-		ucdIsSk.o\
-		ucdIsSc.o\
-		ucdIsPs.o\
-		ucdIsPrivate.o\
-		ucdIsPo.o\
-		ucdIsPi.o\
-		ucdIsPf.o\
-		ucdIsPe.o\
-		ucdIsPd.o\
-		ucdIsPc.o\
-		ucdIsNo.o\
-		ucdIsNl.o\
-		ucdIsNd.o\
-		ucdIsMn.o\
-		ucdIsMe.o\
-		ucdIsMc.o\
-		ucdIsLu.o\
-		ucdIsLt.o\
-		ucdIsLo.o\
-		ucdIsLm.o\
-		ucdIsLl.o\
-		ucdIsCs.o\
-		ucdIsCo.o\
-		ucdIsCf.o\
-		ucdIsCc.o\
-		ucdInClass.o\
+		ucdSymbolClass.o\
+		ucdMapSymbol.o\
+		ucdGeneralCategory.o\
 		ucdBlock.o\
+		ucdBidiClass.o\
 		ucdBaseCharacter.o\
+		textUtf8Util.o\
+		textOfficeCharset.o\
+		textHtmlCharEntities.o\
 		textConverter.o\
+		sioUtf8.o\
 		sioUtf8_16.o\
-		sioIconv.o
+		sioIconv.o\
+		bidiTree.o\
+		bidiTreeBuilder.o\
+		bidiEmbedding.o
 
 
 ../lib/textEncoding.a:	$(OBS)
@@ -128,11 +106,43 @@ aclocal.m4:	$(ACLOCAL)
 # deps -I../include -I../appUtil
 ################################# !! sh
 
+bidiEmbedding.o: \
+    bidiEmbedding.c \
+    textEncodingConfig.h \
+    bidiEmbedding.h
+
+bidiTree.o: \
+    bidiTree.c \
+    textEncodingConfig.h \
+    bidiTree.h \
+    bidiEmbedding.h \
+    ../include/appDebugon.h \
+    ../include/appDebug.h
+
+bidiTreeBuilder.o: \
+    bidiTreeBuilder.c \
+    textEncodingConfig.h \
+    bidiTreeBuilder.h \
+    bidiTree.h \
+    bidiEmbedding.h \
+    ../include/appDebugon.h \
+    ../include/appDebug.h
+
 sioIconv.o: \
     sioIconv.c \
     textEncodingConfig.h \
     sioIconv.h \
     ../appUtil/sioGeneral.h \
+    ../include/appDebugon.h \
+    ../include/appDebug.h
+
+sioUtf8.o: \
+    sioUtf8.c \
+    textEncodingConfig.h \
+    sioUtf8.h \
+    ../appUtil/sioGeneral.h \
+    uniUtf8.h \
+    uniUtf8Ranges.h \
     ../include/appDebugon.h \
     ../include/appDebug.h
 
@@ -158,180 +168,64 @@ textConverter.o: \
     uniLegacyMapping.h \
     ../appUtil/utilIndexSet.h
 
+textHtmlCharEntities.o: \
+    textHtmlCharEntities.c \
+    textEncodingConfig.h \
+    uniLegacyEncoding.h
+
+textOfficeCharset.o: \
+    textOfficeCharset.c \
+    textEncodingConfig.h \
+    textOfficeCharset.h \
+    ../appUtil/utilIndexMapping.h \
+    ../appUtil/utilIndexSet.h \
+    uniLegacyEncoding.h \
+    ../include/appDebugon.h \
+    ../include/appDebug.h
+
+textUtf8Util.o: \
+    textUtf8Util.c \
+    textEncodingConfig.h \
+    uniUtf8.h \
+    textUtf8Util.h \
+    ucd.h \
+    ../include/appDebugon.h \
+    ../include/appDebug.h
+
 ucdBaseCharacter.o: \
     ucdBaseCharacter.c \
     ucd.h \
     ucdIntern.h
 
+ucdBidiClass.o: \
+    ucdBidiClass.c \
+    ucdIntern.h \
+    ucdBidiClass.h
+
 ucdBlock.o: \
     ucdBlock.c \
     ucdBlock.h
 
-ucdInClass.o: \
-    ucdInClass.c \
+ucdGeneralCategory.o: \
+    ucdGeneralCategory.c \
+    ucdIntern.h \
+    ucdGeneralCategory.h
+
+ucdMapSymbol.o: \
+    ucdMapSymbol.c \
     ucdIntern.h
 
-ucdIsCc.o: \
-    ucdIsCc.c \
-    ucd.h \
-    ucdIntern.h
-
-ucdIsCf.o: \
-    ucdIsCf.c \
-    ucd.h \
-    ucdIntern.h
-
-ucdIsCo.o: \
-    ucdIsCo.c \
-    ucd.h \
-    ucdIntern.h
-
-ucdIsCs.o: \
-    ucdIsCs.c \
-    ucd.h \
-    ucdIntern.h
-
-ucdIsLl.o: \
-    ucdIsLl.c \
-    ucd.h \
-    ucdIntern.h
-
-ucdIsLm.o: \
-    ucdIsLm.c \
-    ucd.h \
-    ucdIntern.h
-
-ucdIsLo.o: \
-    ucdIsLo.c \
-    ucd.h \
-    ucdIntern.h
-
-ucdIsLt.o: \
-    ucdIsLt.c \
-    ucd.h \
-    ucdIntern.h
-
-ucdIsLu.o: \
-    ucdIsLu.c \
-    ucd.h \
-    ucdIntern.h
-
-ucdIsMc.o: \
-    ucdIsMc.c \
-    ucd.h \
-    ucdIntern.h
-
-ucdIsMe.o: \
-    ucdIsMe.c \
-    ucd.h \
-    ucdIntern.h
-
-ucdIsMn.o: \
-    ucdIsMn.c \
-    ucd.h \
-    ucdIntern.h
-
-ucdIsNd.o: \
-    ucdIsNd.c \
-    ucd.h \
-    ucdIntern.h
-
-ucdIsNl.o: \
-    ucdIsNl.c \
-    ucd.h \
-    ucdIntern.h
-
-ucdIsNo.o: \
-    ucdIsNo.c \
-    ucd.h \
-    ucdIntern.h
-
-ucdIsPc.o: \
-    ucdIsPc.c \
-    ucd.h \
-    ucdIntern.h
-
-ucdIsPd.o: \
-    ucdIsPd.c \
-    ucd.h \
-    ucdIntern.h
-
-ucdIsPe.o: \
-    ucdIsPe.c \
-    ucd.h \
-    ucdIntern.h
-
-ucdIsPf.o: \
-    ucdIsPf.c \
-    ucd.h \
-    ucdIntern.h
-
-ucdIsPi.o: \
-    ucdIsPi.c \
-    ucd.h \
-    ucdIntern.h
-
-ucdIsPo.o: \
-    ucdIsPo.c \
-    ucd.h \
-    ucdIntern.h
-
-ucdIsPrivate.o: \
-    ucdIsPrivate.c \
-    ucd.h \
-    ucdIntern.h
-
-ucdIsPs.o: \
-    ucdIsPs.c \
-    ucd.h \
-    ucdIntern.h
-
-ucdIsSc.o: \
-    ucdIsSc.c \
-    ucd.h \
-    ucdIntern.h
-
-ucdIsSk.o: \
-    ucdIsSk.c \
-    ucd.h \
-    ucdIntern.h
-
-ucdIsSm.o: \
-    ucdIsSm.c \
-    ucd.h \
-    ucdIntern.h
-
-ucdIsSo.o: \
-    ucdIsSo.c \
-    ucd.h \
-    ucdIntern.h
-
-ucdIsUtf16.o: \
-    ucdIsUtf16.c \
-    ucd.h \
-    ucdIntern.h
-
-ucdIsZl.o: \
-    ucdIsZl.c \
-    ucd.h \
-    ucdIntern.h
-
-ucdIsZp.o: \
-    ucdIsZp.c \
-    ucd.h \
-    ucdIntern.h
-
-ucdIsZs.o: \
-    ucdIsZs.c \
-    ucd.h \
-    ucdIntern.h
-
-ucdToCase.o: \
-    ucdToCase.c \
+ucdSymbolClass.o: \
+    ucdSymbolClass.c \
     ucdIntern.h
 
 ucdToLower.o: \
     ucdToLower.c \
+    ucd.h \
+    ucdIntern.h
+
+ucdToMirror.o: \
+    ucdToMirror.c \
     ucd.h \
     ucdIntern.h
 
@@ -342,6 +236,7 @@ ucdToUpper.o: \
 
 uniAlternatives.o: \
     uniAlternatives.c \
+    textEncodingConfig.h \
     uniAlternatives.h \
     ../appUtil/utilIndexSet.h \
     ../appUtil/utilIndexMapping.h \
@@ -386,6 +281,7 @@ uniKoi8RGlyphUnicodes.o: \
 
 uniLegacyMapping.o: \
     uniLegacyMapping.c \
+    textEncodingConfig.h \
     uniLegacyMapping.h \
     ../appUtil/utilIndexMapping.h \
     ../appUtil/utilIndexSet.h
@@ -400,9 +296,11 @@ uniPDFDocEncodingGlyphUnicodes.o: \
 
 uniShiftUtf8.o: \
     uniShiftUtf8.c \
+    textEncodingConfig.h \
     ucd.h \
     uniUtf8.h \
     uniShiftUtf8.h \
+    ucdGeneralCategory.h \
     ../include/appDebugon.h \
     ../include/appDebug.h
 
@@ -412,7 +310,9 @@ uniSymbolGlyphUnicodes.o: \
 
 uniUtf8.o: \
     uniUtf8.c \
+    textEncodingConfig.h \
     uniUtf8.h \
+    uniUtf8Ranges.h \
     ../include/appDebugon.h \
     ../include/appDebug.h
 
@@ -455,18 +355,4 @@ uniWinCp1258GlyphUnicodes.o: \
 uniWinCp874GlyphUnicodes.o: \
     uniWinCp874GlyphUnicodes.c \
     uniLegacyEncoding.h
-
-utilHtmlCharEntities.o: \
-    utilHtmlCharEntities.c \
-    uniLegacyEncoding.h
-
-utilOfficeCharset.o: \
-    utilOfficeCharset.c \
-    textEncodingConfig.h \
-    utilOfficeCharset.h \
-    ../appUtil/utilIndexMapping.h \
-    ../appUtil/utilIndexSet.h \
-    uniLegacyEncoding.h \
-    ../include/appDebugon.h \
-    ../include/appDebug.h
 

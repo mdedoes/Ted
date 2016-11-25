@@ -9,7 +9,13 @@
 #   ifndef	APP_GUI_RESOURCE_H
 #   define	APP_GUI_RESOURCE_H
 
-#   ifdef USE_MOTIF
+#   ifdef USE_GTK
+#	define USE_OWN_RESOURCE	1
+#   else
+#	define USE_OWN_RESOURCE	1
+#   endif
+
+#   if USE_OWN_RESOURCE == 0
 #   include	<X11/Xlib.h>
 #   include	<X11/Intrinsic.h>
 #   endif
@@ -21,16 +27,11 @@
 /*  abstracted universal solution for calling strtol() or strtod()	*/
 /*  occasionally is made.						*/
 /*									*/
+/*  NO LONGER USE THE ARCHAIC X11 RESOURCE MECHANISM			*/
+/*									*/
 /************************************************************************/
 
-#   ifdef USE_GTK
-#	define USE_OWN_RESOURCE	1
-#   endif
-#   ifdef USE_QT
-#	define USE_OWN_RESOURCE	1
-#   endif
-
-#   ifdef USE_OWN_RESOURCE
+#   if USE_OWN_RESOURCE == 1
 
 typedef struct AppConfigurableResource
     {
@@ -51,7 +52,7 @@ typedef struct AppConfigurableResource
 
 #   endif
 
-#   ifdef USE_MOTIF
+#   if USE_OWN_RESOURCE == 0
 
     typedef XtResource AppConfigurableResource;
 

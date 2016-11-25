@@ -32,6 +32,7 @@ typedef enum DocumentProperty
     DPpropWIDOWCTRL,
     DPpropTWO_ON_ONE,
     DPpropDOCTEMP,
+    DPpropRTOL,
 
     DPpropNOTETYPES,	/*  \fetN	*/
 
@@ -119,15 +120,27 @@ typedef struct DocumentProperties
     unsigned char	dpWidowControl;
     unsigned char	dpTwoOnOne;
     unsigned char	dpIsDocumentTemplate;
+			/**
+			 * 0: This document will have English-style
+			 *	pagination (the default)
+			 *    Text in this document will be displayed from
+			 *	left to right unless overridden by a more
+			 *	specific control (the default)
+			 * 1: This document will be formatted to have
+			 * 	Arabic-style pagination
+			 *    Text in this document will be displayed from
+			 *	right to left unless overridden by a more
+			 *	specific control
+			 */
+    unsigned char	dpRToL;
 
     unsigned char		dpFootEndNoteType;
     FootEndNotesProperties	dpNotesProps;
 
-    DocumentFontList	dpFontList;
-
-    ListAdmin		dpListAdmin;
-
-    ColorPalette	dpColorPalette;
+			/*  Owned by the document */
+    DocumentFontList *	dpFontList;
+    ListAdmin *		dpListAdmin;
+    ColorPalette *	dpColorPalette;
 
     struct tm		dpCreatim;
     struct tm		dpRevtim;
@@ -151,13 +164,13 @@ typedef struct DocumentProperties
     int			dpHeadBorderNumber;
     int			dpFootBorderNumber;
 
-			/*
+			/**
 			 *   Only used in Ted's own copy paste to distinguish
 			 *   between a copy/paste that just holds a text 
 			 *   fragment and one that consists of whole paragraphs
 			 */
     unsigned char	dpHasOpenEnd;
-			/*
+			/**
 			 *   Only used in Ted's own copy paste to know that
 			 *   a pasted document contains tables.
 			 */

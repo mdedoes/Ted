@@ -28,7 +28,7 @@ void utilInitTextAttribute(	TextAttribute *	ta	)
     ta->taFontIsBold= 0;
     ta->taFontIsSlanted= 0;
     ta->taTextIsUnderlined= 0;
-    ta->taSuperSub= DOCfontREGULAR;
+    ta->taSuperSub= TEXTvaREGULAR;
     ta->taSmallCaps= 0;
     ta->taHasStrikethrough= 0;
     ta->taCapitals= 0;

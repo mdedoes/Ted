@@ -24,6 +24,7 @@
 #   include	<docObjectProperties.h>
 #   include	<docTreeNode.h>
 #   include	<docTextParticule.h>
+#   include	<docShape.h>
 
 #   include	<docLayout.h>
 #   include	<geoGrid.h>

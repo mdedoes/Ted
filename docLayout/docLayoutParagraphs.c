@@ -127,8 +127,7 @@ static int docLayoutGetChildFrame(	int *			pFrameNumber,
 
     if  ( frameNumber >= 0 )
 	{
-	docGetFramePropertiesByNumber( fp, &(bd->bdFramePropertyList),
-							    frameNumber );
+	docGetFramePropertiesByNumber( fp, bd, frameNumber );
 	isFrame= DOCisFRAME( fp );
 	}
 
@@ -182,7 +181,8 @@ int docLayoutStripChildren(	int *				pStopCode,
 
 	if  ( ! docHeadPosition( &dp, rowBi ) )
 	    {
-	    rowIsFrame= docLayoutGetChildFrame( &frameRow, &fpRow, bd, dp.dpNode );
+	    rowIsFrame= docLayoutGetChildFrame( &frameRow, &fpRow,
+							    bd, dp.dpNode );
 	    }
 	}
 
@@ -351,6 +351,9 @@ static void docCommitStripLayout_x(
     paraBi0= cellNode->biChildren[plp0->pspChild];
     paraBi1= (const BufferItem *)0;
 
+    if  ( paraBi0->biLevel != DOClevPARA )
+	{ LSDEB(paraBi0->biLevel,docLevelStr(paraBi0->biLevel)); return; }
+
     /*  a  */
     if  ( plp1->pspChild < cellNode->biChildCount )
 	{
@@ -410,7 +413,7 @@ static void docCommitStripLayout_x(
     else{ line0= plp1->pspLine;			}
 
     tl= paraBi0->biParaLines+ plp0->pspLine;
-    while( plp0->pspLine < line0 )
+    while( plp0->pspLine < line0 && plp0->pspLine < paraBi0->biParaLineCount )
 	{
 	if  ( tl->tlTopPosition.lpPage >  page )
 	    { break;	}

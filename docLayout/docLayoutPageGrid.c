@@ -48,28 +48,30 @@ void docLayoutBlockFrame(	BlockFrame *			bf,
 
 void docLayoutColumnTop(	LayoutPosition *	lpTop,
 				BlockFrame *		bf,
-				BufferItem *		bodySectBi,
+				BufferItem *		bodySectNode,
 				const LayoutJob *	lj )
     {
-    if  ( bodySectBi->biTreeType != DOCinBODY )
-	{ SDEB(docTreeTypeStr(bodySectBi->biTreeType));	}
+    if  ( bodySectNode->biTreeType != DOCinBODY )
+	{ SDEB(docTreeTypeStr(bodySectNode->biTreeType));	}
 
-    if  ( lj->ljBodySectNode != bodySectBi )
-	{ XXDEB(lj->ljBodySectNode,bodySectBi);	}
+    /* Can actually happen while formatting endnotes
+    if  ( lj->ljBodySectNode != bodySectNode )
+	{ XXDEB(lj->ljBodySectNode,bodySectNode);	}
+    */
 
-    docLayoutBlockFrame( bf, bodySectBi, lj, lpTop->lpPage, lpTop->lpColumn );
+    docLayoutBlockFrame( bf, bodySectNode, lj, lpTop->lpPage, lpTop->lpColumn );
 
     lpTop->lpPageYTwips= bf->bfContentRect.drY0;
     lpTop->lpAtTopOfColumn= 1;
 
     /*  1  */
-    if  ( DOC_SECTnodeBELOW_PREVIOUS( bodySectBi )		&&
-	  lpTop->lpPage == bodySectBi->biTopPosition.lpPage	&&
-	  bodySectBi->biSectColumnCount > 1			&&
+    if  ( DOC_SECTnodeBELOW_PREVIOUS( bodySectNode )		&&
+	  lpTop->lpPage == bodySectNode->biTopPosition.lpPage	&&
+	  bodySectNode->biSectColumnCount > 1			&&
 	  lpTop->lpColumn > 0					)
 	{
-	lpTop->lpPageYTwips= bodySectBi->biTopPosition.lpPageYTwips;
-	lpTop->lpAtTopOfColumn= 0;
+	lpTop->lpPageYTwips= bodySectNode->biTopPosition.lpPageYTwips;
+	/* NO: we are at the top for this section lpTop->lpAtTopOfColumn= 0; */
 	}
 
     return;
@@ -89,8 +91,8 @@ void docLayoutToNextColumn(	LayoutPosition *	lpTop,
     {
     const LayoutContext *	lc= &(lj->ljContext);
     const BufferDocument *	bd= lc->lcDocument;
-    BufferItem *		bodyBi= bd->bdBody.dtRoot;
-    BufferItem *		bodySectBi;
+    BufferItem *		bodyNode= bd->bdBody.dtRoot;
+    BufferItem *		bodySectNode;
 
     node= docGetSectNode( node );
     if  ( ! node )
@@ -102,12 +104,12 @@ void docLayoutToNextColumn(	LayoutPosition *	lpTop,
 	int			extTo;
 
 	case DOCinBODY:
-	    bodySectBi= node;
+	    bodySectNode= node;
 	    break;
 
 	case DOCinAFTNSEP:
-	    extTo= bodyBi->biChildCount- 1;
-	    bodySectBi= bodyBi->biChildren[extTo];
+	    extTo= bodyNode->biChildCount- 1;
+	    bodySectNode= bodyNode->biChildren[extTo];
 	    break;
 
 	default:
@@ -118,21 +120,22 @@ void docLayoutToNextColumn(	LayoutPosition *	lpTop,
 		SLDEB(docTreeTypeStr(node->biTreeType),extTo);
 		return;
 		}
-	    bodySectBi= bodyBi->biChildren[extTo];
+	    bodySectNode= bodyNode->biChildren[extTo];
 	    break;
 	}
 
     lpTop->lpColumn++;
-    if  ( lpTop->lpColumn >= bodySectBi->biSectColumnCount )
+    if  ( lpTop->lpColumn >= bodySectNode->biSectColumnCount )
 	{ lpTop->lpPage++; lpTop->lpColumn= 0; }
 
-    if  ( lj->ljBodySectNode != bodySectBi )
+    if  ( lj->ljBodySectNode != bodySectNode		&&
+	  node->biTreeType != DOCinENDNOTE		)
 	{
-	XXDEB(lj->ljBodySectNode,bodySectBi);
+	XXDEB(lj->ljBodySectNode,bodySectNode);
 	SDEB(docTreeTypeStr(node->biTreeType));
 	}
 
-    docLayoutColumnTop( lpTop, bf, bodySectBi, lj );
+    docLayoutColumnTop( lpTop, bf, bodySectNode, lj );
 
     return;
     }

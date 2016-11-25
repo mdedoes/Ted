@@ -52,6 +52,13 @@ typedef struct SectionProperties
     unsigned char		spPageNumberStyle;
     unsigned char		spPageNumberHyphen;
     unsigned char		spRestartPageNumbers;
+				/**
+				 * 0: This section will snake (newspaper style)
+				 *	columns from left to right (the default)
+				 * 1: This section will snake (newspaper style)
+				 *	columns from right to left
+				 */
+    unsigned char		spRToL;
 
     int				spStartPageNumber;
 
@@ -79,6 +86,7 @@ typedef enum SectionProperty
     SPpropNUMBER_STYLE,
     SPpropNUMBER_HYPHEN,
     SPpropPAGE_RESTART,
+    SPpropRTOL,
     SPpropSTART_PAGE,
     SPpropCOLUMN_COUNT,
     SPpropCOLUMN_SPACING,

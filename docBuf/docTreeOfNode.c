@@ -33,15 +33,14 @@ int docSelectionSameRoot(
     return docSelectionSameScope( ssFrom, ssTo );
     }
 
-int docSelectionSameInstance(	const BufferItem *		node,
+int docSelectionSameInstance(	const DocumentTree *		tree,
 				int				page,
 				int				column )
     {
-    node= docGetSectNode( (BufferItem *)node );
-    if  ( ! node )
-	{ XDEB(node); return 1;	}
+    if  ( ! tree->dtRoot )
+	{ XDEB(tree->dtRoot); return -1;	}
 
-    switch( node->biTreeType )
+    switch( tree->dtRoot->biTreeType )
 	{
 	case DOCinBODY:
 	    return 1;
@@ -53,8 +52,8 @@ int docSelectionSameInstance(	const BufferItem *		node,
 	case DOCinAFTNSEPC:
 	case DOCinAFTNCN:
 
-	    return node->biTopPosition.lpPage == page && 
-		    node->biTopPosition.lpColumn == column;
+	    return tree->dtPageSelectedUpon == page && 
+		    tree->dtColumnSelectedIn == column;
 
 	case DOCinFIRST_HEADER:
 	case DOCinLEFT_HEADER:
@@ -64,7 +63,7 @@ int docSelectionSameInstance(	const BufferItem *		node,
 	case DOCinLEFT_FOOTER:
 	case DOCinRIGHT_FOOTER:
 
-	    return node->biTopPosition.lpPage == page;
+	    return tree->dtPageSelectedUpon == page;
 
 	case DOCinFOOTNOTE:
 	case DOCinENDNOTE:
@@ -72,7 +71,7 @@ int docSelectionSameInstance(	const BufferItem *		node,
 	    return 1;
 
 	default:
-	    LDEB(node->biTreeType);
+	    LDEB(tree->dtRoot->biTreeType);
 	    return -1;
 	}
     }

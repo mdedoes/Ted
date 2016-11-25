@@ -155,7 +155,7 @@ void docBlockFrameTwips(	BlockFrame *			bf,
 	bf->bfPageGeometry.dgGutterTwips= 0;
 	}
 
-    useColumns= DOClayoutUSE_COLUMNS( sectNode->biTreeType );
+    useColumns= docTreeInColumnType( sectNode->biTreeType );
 
     if  ( useColumns && sp->spColumnCount > 1 )
 	{
@@ -190,7 +190,7 @@ void docBlockFrameTwips(	BlockFrame *			bf,
 
 	    /*  1 Reserved!!  */
 	    if  ( dt && dt->dtRoot )
-		{ bf->bfContentRect.drY0= dt->eiY1ReservedTwips;	}
+		{ bf->bfContentRect.drY0= dt->dtY1ReservedTwips;	}
 	    else{
 		bf->bfContentRect.drY0= bf->bfPageGeometry.dgTopMarginTwips;	
 		}
@@ -201,7 +201,7 @@ void docBlockFrameTwips(	BlockFrame *			bf,
 	    /*  2 Reserved!!  */
 	    if  ( dt && dt->dtRoot )
 		{
-		bf->bfContentRect.drY1= dt->eiY0ReservedTwips;
+		bf->bfContentRect.drY1= dt->dtY0ReservedTwips;
 		}
 	    else{
 		bf->bfContentRect.drY1=
@@ -236,8 +236,8 @@ void docBlockFrameTwips(	BlockFrame *			bf,
 	    if  ( ! dt )
 		{ XDEB(dt); return;	}
 
-	    bf->bfContentRect.drY0= dt->eiY0ReservedTwips;
-	    bf->bfContentRect.drY1= dt->eiY1ReservedTwips;
+	    bf->bfContentRect.drY0= dt->dtY0ReservedTwips;
+	    bf->bfContentRect.drY1= dt->dtY1ReservedTwips;
 	    break;
 
 	case DOCinSHPTXT:
@@ -263,18 +263,17 @@ void docBlockFrameTwips(	BlockFrame *			bf,
     }
 
 void docParaBlockFrameTwips(	BlockFrame *		bf,
-				BufferItem *		paraBi,
+				BufferItem *		paraNode,
 				BufferDocument *	bd,
 				int			page,
 				int			column )
     {
-    if  ( paraBi->biLevel != DOClevPARA )
-	{ LDEB(paraBi->biLevel);	}
+    if  ( paraNode->biLevel != DOClevPARA )
+	{ LDEB(paraNode->biLevel);	}
     else{
 	FrameProperties	fp;
 
-	docGetFramePropertiesByNumber( &fp, &(bd->bdFramePropertyList),
-						paraBi->biParaFrameNumber );
+	docGetFramePropertiesByNumber( &fp, bd, paraNode->biParaFrameNumber );
 	if  ( DOCisFRAME( &fp ) )
 	    {
 	    BlockFrame		bfPage;
@@ -290,7 +289,7 @@ void docParaBlockFrameTwips(	BlockFrame *		bf,
 	    docLayoutInitBlockFrame( bf );
 	    docLayoutInitBlockFrame( &bfPage );
 
-	    docBlockFrameTwips( &bfPage, paraBi, bd, page, column );
+	    docBlockFrameTwips( &bfPage, paraNode, bd, page, column );
 	    docLayoutSetTextFrame( bf, &lpScratch, &bfPage, &fp, frameHigh );
 
 	    docLayoutCleanBlockFrame( &bfPage );
@@ -299,11 +298,11 @@ void docParaBlockFrameTwips(	BlockFrame *		bf,
 	    }
 	}
 
-    docBlockFrameTwips( bf, paraBi, bd, page, column );
+    docBlockFrameTwips( bf, paraNode, bd, page, column );
     }
 
 void docParaBlockFrameRectangle( DocumentRectangle *	dr,
-				BufferItem *		paraBi,
+				BufferItem *		paraNode,
 				BufferDocument *	bd,
 				int			page,
 				int			column )
@@ -311,7 +310,7 @@ void docParaBlockFrameRectangle( DocumentRectangle *	dr,
     BlockFrame	bf;
 
     docLayoutInitBlockFrame( &bf );
-    docBlockFrameTwips( &bf, paraBi, bd, page, column );
+    docBlockFrameTwips( &bf, paraNode, bd, page, column );
 
     *dr= bf.bfContentRect;
 
@@ -503,13 +502,13 @@ void docCellFrameTwips(		ParagraphFrame *	pf,
 
 void docParagraphFrameTwips(	ParagraphFrame *	pf,
 				const BlockFrame *	bf,
-				const BufferItem *	paraBi )
+				const BufferItem *	paraNode )
     {
-    if  ( paraBi->biLevel != DOClevPARA )
-	{ SDEB(docLevelStr(paraBi->biLevel));	}
+    if  ( paraNode->biLevel != DOClevPARA )
+	{ SDEB(docLevelStr(paraNode->biLevel));	}
 
-    if  ( paraBi->biParaTableNesting > 0 )
-	{ docCellFrameTwips( pf, bf, paraBi->biParent );	}
+    if  ( paraNode->biParaTableNesting > 0 )
+	{ docCellFrameTwips( pf, bf, paraNode->biParent );	}
     else{
 	pf->pfRedrawX0Twips= bf->bfContentRect.drX0;
 	pf->pfRedrawX1Twips= bf->bfContentRect.drX1;
@@ -523,11 +522,17 @@ void docParagraphFrameTwips(	ParagraphFrame *	pf,
 	}
 
     pf->pfParaContentRect= pf->pfCellContentRect;
-    pf->pfParaContentRect.drX0 += paraBi->biParaLeftIndentTwips;
-    pf->pfParaContentRect.drX1 -= paraBi->biParaRightIndentTwips;
+    pf->pfParaContentRect.drX0 += paraNode->biParaLeftIndentTwips;
+    pf->pfParaContentRect.drX1 -= paraNode->biParaRightIndentTwips;
 
     return;
     }
+
+/************************************************************************/
+/*									*/
+/*  Determine the rectangle occupied by a table cell.			*/
+/*									*/
+/************************************************************************/
 
 void docCellRectangleTwips(	DocumentRectangle *		drCell,
 				const BlockFrame *		bf,
@@ -535,6 +540,7 @@ void docCellRectangleTwips(	DocumentRectangle *		drCell,
     {
     ParagraphFrame		pf;
     const BufferItem *		rowNode= cellNode->biParent;
+    const BufferItem *		sectNode= docGetSectNode( (BufferItem *)rowNode );
     const LayoutPosition *	lpTop;
     LayoutPosition		lpBelow;
 
@@ -546,14 +552,34 @@ void docCellRectangleTwips(	DocumentRectangle *		drCell,
     if  ( bf->bfPage > lpTop->lpPage			||
 	  ( bf->bfPage == lpTop->lpPage		&&
 	    bf->bfColumn > lpTop->lpColumn	)	)
-	{ pf.pfCellRect.drY0= bf->bfContentRect.drY0;	}
-    else{ pf.pfCellRect.drY0= lpTop->lpPageYTwips;	}
+	{
+	if  ( sectNode->biTopPosition.lpPage == bf->bfPage )
+	    {
+	    pf.pfCellRect.drY0= sectNode->biTopPosition.lpPageYTwips;
+	    }
+	else{
+	    pf.pfCellRect.drY0= bf->bfContentRect.drY0;
+	    }
+	}
+    else{
+	pf.pfCellRect.drY0= lpTop->lpPageYTwips;
+	}
 
     if  ( bf->bfPage < lpBelow.lpPage			||
 	  ( bf->bfPage == lpBelow.lpPage	&&
 	    bf->bfColumn < lpBelow.lpColumn	)	)
-	{ pf.pfCellRect.drY1= bf->bfContentRect.drY1;	}
-    else{ pf.pfCellRect.drY1= lpBelow.lpPageYTwips;	}
+	{
+	if  ( sectNode->biBelowPosition.lpPage == bf->bfPage )
+	    {
+	    pf.pfCellRect.drY1= sectNode->biBelowPosition.lpPageYTwips;
+	    }
+	else{
+	    pf.pfCellRect.drY1= bf->bfContentRect.drY1;
+	    }
+	}
+    else{
+	pf.pfCellRect.drY1= lpBelow.lpPageYTwips;
+	}
 
     *drCell= pf.pfCellRect;
     return;
@@ -570,24 +596,24 @@ void docCellRectangleTwips(	DocumentRectangle *		drCell,
 
 void docLayoutSectColumnTop(	LayoutPosition *	lpTop,
 				BlockFrame *		bf,
-				BufferItem *		bodySectBi,
+				BufferItem *		bodySectNode,
 				BufferDocument *	bd )
     {
-    if  ( bodySectBi->biTreeType != DOCinBODY )
-	{ SDEB(docTreeTypeStr(bodySectBi->biTreeType));	}
+    if  ( bodySectNode->biTreeType != DOCinBODY )
+	{ SDEB(docTreeTypeStr(bodySectNode->biTreeType));	}
 
-    docBlockFrameTwips( bf, bodySectBi, bd, lpTop->lpPage, lpTop->lpColumn );
+    docBlockFrameTwips( bf, bodySectNode, bd, lpTop->lpPage, lpTop->lpColumn );
 
     lpTop->lpPageYTwips= bf->bfContentRect.drY0;
     lpTop->lpAtTopOfColumn= 1;
 
     /*  1  */
-    if  ( DOC_SECTnodeBELOW_PREVIOUS( bodySectBi )		&&
-	  lpTop->lpPage == bodySectBi->biTopPosition.lpPage	&&
-	  bodySectBi->biSectColumnCount > 1			&&
+    if  ( DOC_SECTnodeBELOW_PREVIOUS( bodySectNode )		&&
+	  lpTop->lpPage == bodySectNode->biTopPosition.lpPage	&&
+	  bodySectNode->biSectColumnCount > 1			&&
 	  lpTop->lpColumn > 0					)
 	{
-	lpTop->lpPageYTwips= bodySectBi->biTopPosition.lpPageYTwips;
+	lpTop->lpPageYTwips= bodySectNode->biTopPosition.lpPageYTwips;
 	lpTop->lpAtTopOfColumn= 0;
 	}
 

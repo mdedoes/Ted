@@ -30,7 +30,7 @@ int appWinMetaReadUtf16Text(	DeviceContext *		dc,
     for ( nchars= 0; nchars < expectChars; nchars++ )
 	{
 	int		step;
-	unsigned char	scratch[6+1];
+	char		scratch[6+1];
 	int		c= sioEndianGetLeUint16( sis ); done += 2;
 
 	if  ( c == 0 )
@@ -40,7 +40,8 @@ int appWinMetaReadUtf16Text(	DeviceContext *		dc,
 	if  ( step < 1 || step > 3 )
 	    { XLDEB(c,step); break;	}
 
-	if  ( utilMemoryBufferAppendBytes( &(dc->dcCollectedText), scratch, step ) )
+	if  ( utilMemoryBufferAppendBytes( &(dc->dcCollectedText),
+				    (const unsigned char *)scratch, step ) )
 	    { LDEB(step); return -1;	}
 
 	nbytes += step;
@@ -88,9 +89,9 @@ int appWinMetaReadLegacyText(	DeviceContext *		dc,
 
 	for ( nbytes= 0; nbytes < count; nbytes++ )
 	    {
-	    int			step;
-	    unsigned char	scratch[6+1];
-	    int			c= sioInGetByte( sis ); done += 1;
+	    int		step;
+	    char	scratch[6+1];
+	    int		c= sioInGetByte( sis ); done += 1;
 
 	    if  ( c == 0 )
 		{ nbytes++; break;	}
@@ -100,7 +101,7 @@ int appWinMetaReadLegacyText(	DeviceContext *		dc,
 		{ XLDEB(c,step); break;	}
 
 	    if  ( utilMemoryBufferAppendBytes( &(dc->dcCollectedText),
-							scratch, step ) )
+				    (const unsigned char *)scratch, step ) )
 		{ LDEB(step); rval= -1; goto ready;	}
 	    }
 	}
@@ -110,6 +111,9 @@ int appWinMetaReadLegacyText(	DeviceContext *		dc,
 
 	textConverterSetNativeEncodingName( &(dc->dcTextConverter),
 							oc->ocEncodingName );
+	/* Do at setup time! */
+	dc->dcTextConverter.tcProduce= appWinMetaProduceUtf8;
+
 	buf= (char *)malloc( count+ 1 );
 	if  ( ! buf )
 	    { LPDEB(count,buf); rval= -1; goto ready;	}
@@ -120,7 +124,6 @@ int appWinMetaReadLegacyText(	DeviceContext *		dc,
 	buf[count]= '\0';
 
 	textConverterConvertToUtf8( &(dc->dcTextConverter), (void *)dc,
-					appWinMetaProduceUtf8,
 					&consumed, produced, buf, count );
 	}
 

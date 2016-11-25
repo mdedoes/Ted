@@ -74,6 +74,16 @@ static int appMeta_PolyPolygonPsList(DeviceContext *	dc,
 				int			closePath )
     { return 0;	}
 
+static int appMeta_PolyBezierPsList(DeviceContext *	dc,
+				void *			through,
+				int			count,
+				const Point2DI *	points,
+				int			startPath,
+				int			fillInsides,
+				int			drawBorders,
+				int			closePath )
+    { return 0;	}
+
 static int appMetaDrawArcPsList(DeviceContext *			dc,
 				void *				through,
 				const DocumentRectangle *	dr,
@@ -165,6 +175,7 @@ static int appMetaStartPsList(	DeviceContext *			dc,
     dc->dcSelectFontObject= appMetaSelectFontObjectPsList;
     dc->dcSelectPatternBrushObject= appMetaSelectPatternBrushObjectPsList;
     dc->dcDrawPolyPolygon= appMeta_PolyPolygonPsList;
+    dc->dcDrawPolyBezier= appMeta_PolyBezierPsList;
     dc->dcDrawString= appMetaDrawStringPsList;
     dc->dcPatBlt= appMetaPatBltPsList;
     dc->dcDrawPie= appMetaDrawArcPsList;

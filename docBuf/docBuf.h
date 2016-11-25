@@ -10,9 +10,7 @@
 #   include	<time.h>
 
 #   include	<bitmap.h>
-#   include	<utilDocFont.h>
 #   include	<psPostScriptFontList.h>
-#   include	"docShape.h"
 #   include	<geo2DInteger.h>
 #   include	<utilMemoryBuffer.h>
 
@@ -20,7 +18,6 @@
 
 #   include	<docStyleSheet.h>
 #   include	<docDocumentProperties.h>
-#   include	<docShapeProperties.h>
 #   include	<docDocumentFieldList.h>
 #   include	"docDrawingShapeList.h"
 #   include	<docInsertedObjectList.h>
@@ -45,6 +42,9 @@ struct TextParticule;
 struct DocumentNote;
 struct NoteProperties;
 struct ParagraphProperties;
+struct BorderProperties;
+struct TabStopList;
+struct DocumentPropertyLists;
 
 /************************************************************************/
 /*									*/
@@ -60,11 +60,12 @@ typedef struct NotesList
 
 typedef struct BufferDocument
     {
-    NumberedPropertiesList	bdTextAttributeList;
-    NumberedPropertiesList	bdBorderPropertyList;
-    NumberedPropertiesList	bdItemShadingList;
-    NumberedPropertiesList	bdFramePropertyList;
-    NumberedPropertiesList	bdTabStopListList;
+				/**
+				 *  Numbered properties of the document.
+				 *  In some cases, the lists are shared 
+				 *  between documents.
+				 */
+    struct DocumentPropertyLists *	bdPropertyLists;
 
 				/**
 				  *  The body of the document. This is the 
@@ -121,22 +122,6 @@ typedef struct BufferDocument
     } BufferDocument;
 
 /************************************************************************/
-/*									*/
-/*  Statistics about a document. Used in the 'Document Properties'	*/
-/*  dialog.								*/
-/*									*/
-/************************************************************************/
-
-typedef struct DocumentStatistics
-    {
-    int		dsPageCount;
-    int		dsParagraphCount;
-    int		dsLineCount;
-    int		dsWordCount;
-    int		dsCharacterCount;
-    } DocumentStatistics;
-
-/************************************************************************/
 
 # define docGetObject( bd, n ) \
 		docGetObjectByNumber( &((bd)->bdObjectList), (n) )
@@ -168,7 +153,7 @@ extern BufferDocument * docNewFile(
 				const DocumentGeometry * 	dg );
 
 extern void docFreeDocument( BufferDocument *	bd );
-extern BufferDocument * docNewDocument( void );
+extern BufferDocument * docNewDocument( const BufferDocument *	bdRef );
 
 extern int docNextPosition(	DocumentPosition *	dp );	/* technical */
 extern int docPrevPosition(	DocumentPosition *	dp );	/* technical */
@@ -263,11 +248,6 @@ extern void docWordSelection(
 			DocumentSelection *		dsWord,
 			int *				pIsObject,
 			const DocumentPosition *	dpAround );
-
-extern void docInitDocumentStatistics(		DocumentStatistics *	ds );
-
-extern void docCollectDocumentStatistics(	DocumentStatistics *	ds,
-						const BufferDocument *	bd );
 
 extern int docWhatPageHeader(	DocumentTree **			pTree,
 				int *				pIsEmpty,
@@ -466,6 +446,48 @@ extern void docDelimitTables(		struct BufferItem *	parentNode,
 extern int docTextAttributeNumber(	BufferDocument *	bd,
 					const TextAttribute *	ta );
 
+extern void docGetTextAttributeByNumber( TextAttribute *		ta,
+					const BufferDocument *		bd,
+					int				n );
+
+extern int docItemShadingNumber(	BufferDocument *		bd,
+					const ItemShading *		is );
+
+extern void docGetItemShadingByNumber(	ItemShading *			is,
+					const BufferDocument *		bd,
+					int				n );
+
+extern int docShadingNumberIsShading(	const BufferDocument *		bd,
+					int				n );
+
+extern int docFramePropertiesNumber(	BufferDocument *	bd,
+					const FrameProperties *	fp );
+
+extern void docGetFramePropertiesByNumber(
+				FrameProperties *		fp,
+				const BufferDocument *		bd,
+				int				n );
+
+extern int docBorderPropertiesNumber(	BufferDocument *		bd,
+					const struct BorderProperties *	bp );
+
+extern void docGetBorderPropertiesByNumber(
+				struct BorderProperties *	bp,
+				const BufferDocument *		bd,
+				int				n );
+
+extern int docBorderNumberIsBorder(	const BufferDocument *		bd,
+					int				n );
+
+
+extern int docTabStopListNumber(	BufferDocument *	bd,
+					const struct TabStopList *		tsl );
+
+extern void docGetTabStopListByNumber(
+				struct TabStopList *		tsl,
+				const BufferDocument *		bd,
+				int				n );
+
 extern int docBalanceFieldSelection(	DocumentField **	pLeftField,
 					DocumentField **	pRightField,
 					int *			pBeginMoved,
@@ -661,7 +683,7 @@ extern int docGetAttributesUsedInTree(BufferDocument *		bd,
 
 extern int docGetAttributesUsedInShape(
 				BufferDocument *		bd,
-				const DrawingShape *		ds,
+				const struct DrawingShape *	ds,
 				IndexSet *			isUsed );
 
 extern void docPlainTextAttribute(	TextAttribute *		ta,
@@ -733,5 +755,8 @@ extern void docInvalidateNodeLayout(		struct BufferItem *	node );
 extern struct BufferItem * docGetBodySectNodeOfScope(
 					const SelectionScope *	ss,
 					const BufferDocument *	bd );
+
+extern void docOverridePaperSize(	struct BufferDocument *		bd,
+					const DocumentGeometry *	dgFrom );
 
 #   endif

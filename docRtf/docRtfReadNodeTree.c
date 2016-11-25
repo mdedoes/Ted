@@ -14,7 +14,6 @@
 #   include	"docRtfReaderImpl.h"
 #   include	<docTreeType.h>
 #   include	<docNodeTree.h>
-#   include	<docItemShadingAdmin.h>
 #   include	<docParaParticules.h>
 
 /************************************************************************/
@@ -23,24 +22,22 @@
 /*									*/
 /************************************************************************/
 
-static int docRtfSetRowProperties(	RtfReader *		rrc,
+static int docRtfSetRowProperties(	RtfReader *		rr,
 					BufferItem *		rowNode )
     {
     PropertyMask		rpDoneMask;
 
-    rrc->rrcRowProperties.rpShadingNumber= docItemShadingNumber(
-				&(rrc->rrcDocument->bdItemShadingList),
-				&(rrc->rrcRowShading) );
+    rr->rrcRowProperties.rpShadingNumber= docItemShadingNumber(
+				rr->rrDocument, &(rr->rrcRowShading) );
 
-    rrc->rrcRowProperties.rpFrameNumber= docFramePropertiesNumber(
-				&(rrc->rrcDocument->bdFramePropertyList),
-				&(rrc->rrcRowFrameProperties) );
+    rr->rrcRowProperties.rpFrameNumber= docFramePropertiesNumber(
+			    rr->rrDocument, &(rr->rrcRowFrameProperties) );
 
     utilPropMaskClear( &rpDoneMask );
 
     if  ( docChangeRowProperties( &rpDoneMask, rowNode,
-					    &(rrc->rrcRowPropertyMask),
-					    &(rrc->rrcRowProperties) ) )
+					    &(rr->rrcRowPropertyMask),
+					    &(rr->rrcRowProperties) ) )
 	{ LDEB(1); return -1;	}
 
     return 0;
@@ -54,7 +51,7 @@ static int docRtfSetRowProperties(	RtfReader *		rrc,
 /*									*/
 /************************************************************************/
 
-static int docRtfCheckParagraph(	RtfReader *		rrc,
+static int docRtfCheckParagraph(	RtfReader *		rr,
 					BufferItem *		paraNode )
     {
     int			addEmptyParticule= 0;
@@ -73,7 +70,7 @@ static int docRtfCheckParagraph(	RtfReader *		rrc,
 
 	if  ( tp->tpKind == DOCkindFIELDTAIL )
 	    {
-	    const DocumentFieldList *	dfl= &(rrc->rrcDocument->bdFieldList);
+	    const DocumentFieldList *	dfl= &(rr->rrDocument->bdFieldList);
 	    const DocumentField *	df;
 
 	    df= docGetFieldByNumber( dfl, tp->tpObjectNumber );
@@ -84,7 +81,7 @@ static int docRtfCheckParagraph(	RtfReader *		rrc,
 
     if  ( addEmptyParticule )
 	{
-	RtfReadingState *	rrs= rrc->rrcState;
+	RtfReadingState *	rrs= rr->rrcState;
 
 	const int		part= paraNode->biParaParticuleCount;
 	const int		stroff= docParaStrlen( paraNode );
@@ -93,17 +90,17 @@ static int docRtfCheckParagraph(	RtfReader *		rrc,
 	TextAttribute		ta;
 	int			textAttrNr;
 
-	docPlainTextAttribute( &ta, rrc->rrcDocument );
+	docPlainTextAttribute( &ta, rr->rrDocument );
 
 	if  ( rrs )
 	    {
 	    if  ( rrs->rrsTextShadingChanged )
-		{ docRtfRefreshTextShading( rrc, rrs );	}
+		{ docRtfRefreshTextShading( rr, rrs );	}
 
 	    ta= rrs->rrsTextAttribute;
 	    }
 
-	textAttrNr= docTextAttributeNumber( rrc->rrcDocument, &ta );
+	textAttrNr= docTextAttributeNumber( rr->rrDocument, &ta );
 	if  ( textAttrNr < 0 )
 	    { LDEB(textAttrNr); return -1;	}
 
@@ -111,8 +108,8 @@ static int docRtfCheckParagraph(	RtfReader *		rrc,
 				    stroff, count, DOCkindSPAN, textAttrNr ) )
 	    { LDEB(1); return -1;	}
 
-	rrc->rrcAfterNoteref= 0;
-	rrc->rrcAtParaHead= 0;
+	rr->rrcAfterNoteref= 0;
+	rr->rrAfterParaHeadField= 0;
 	}
 
     return 0;
@@ -124,7 +121,7 @@ static int docRtfCheckParagraph(	RtfReader *		rrc,
 /*									*/
 /************************************************************************/
 
-static int docRtfCloseSect(	RtfReader *		rrc,
+static int docRtfCloseSect(	RtfReader *		rr,
 				BufferItem *		sectNode )
     {
     if  ( sectNode->biTreeType == DOCinBODY )
@@ -137,9 +134,12 @@ static int docRtfCloseSect(	RtfReader *		rrc,
 	/*  Not clear if this is desirable  */
 	if  ( docUpdSectProperties( (PropertyMask *)0,
 				&(sectNode->biSectProperties),
-				&spUpdMask, &(rrc->rrcSectionProperties) ) )
+				&spUpdMask, &(rr->rrcSectionProperties) ) )
 	    { LDEB(1); return -1;	}
 	}
+
+    docCleanRowProperties( &(rr->rrcRowProperties) );
+    docInitRowProperties( &(rr->rrcRowProperties) );
 
     return 0;
     }
@@ -156,12 +156,12 @@ static int docRtfCloseSect(	RtfReader *		rrc,
 /*									*/
 /************************************************************************/
 
-static int docRtfCloseRow(	RtfReader *		rrc,
+static int docRtfCloseRow(	RtfReader *		rr,
 				BufferItem *		rowNode )
     {
     if  ( rowNode->biRowForTable )
 	{
-	if  ( docRtfSetRowProperties( rrc, rowNode ) )
+	if  ( docRtfSetRowProperties( rr, rowNode ) )
 	    { LDEB(1); return -1;	}
 	}
     else{
@@ -184,7 +184,7 @@ static int docRtfCloseRow(	RtfReader *		rrc,
 
 	    docInitCellProperties( &cp );
 	    docCopyCellProperties( &cp,
-			&(rowNode->biRowCells[rowNode->biRowCellCount-1]), dam );
+		    &(rowNode->biRowCells[rowNode->biRowCellCount-1]), dam );
 
 	    /* Add zero width dummy columns to avoid crashes */
 	    while( rowNode->biRowCellCount < rowNode->biChildCount )
@@ -220,7 +220,7 @@ static int docRtfCloseRow(	RtfReader *		rrc,
 /*									*/
 /************************************************************************/
 
-static int docRtfCloseCell(	RtfReader *		rrc,
+static int docRtfCloseCell(	RtfReader *		rr,
 				BufferItem *		cellNode )
     {
     if  ( cellNode->biChildCount == 0 )
@@ -231,7 +231,7 @@ static int docRtfCloseCell(	RtfReader *		rrc,
 
 /************************************************************************/
 
-static void docRtfSetForRow(	BufferItem *	node )
+void docRtfSetForRow(	BufferItem *	node )
     {
     node= docGetRowLevelNode( node );
     while( node )
@@ -253,16 +253,15 @@ static void docRtfSetForRow(	BufferItem *	node )
 /*									*/
 /************************************************************************/
 
-static int docRtfCloseParagraph(	RtfReader *	rrc,
+static int docRtfCloseParagraph(	RtfReader *	rr,
 					BufferItem *	paraNode )
     {
-    RtfReadingState *		rrs= rrc->rrcState;
-    BufferDocument *		bd= rrc->rrcDocument;
+    RtfReadingState *		rrs= rr->rrcState;
+    BufferDocument *		bd= rr->rrDocument;
     const DocumentProperties *	dp= &(bd->bdProperties);
 
     int				paraNr;
     int				textAttributeNumber;
-    const int			mindTable= 1;
 
     ListNumberTreeNode *	root;
 
@@ -270,21 +269,21 @@ static int docRtfCloseParagraph(	RtfReader *	rrc,
     if  ( ! rrs )
 	{ return 0;	}
 
-    if  ( docRtfCheckParagraph( rrc, paraNode ) )
+    if  ( docRtfCheckParagraph( rr, paraNode ) )
 	{ LDEB(1); return -1;	}
 
     textAttributeNumber= paraNode->biParaParticules->tpTextAttrNr;
 
     paraNr= docNumberOfParagraph( paraNode );
 
-    if  ( docRtfPopParaFromFieldStack( rrc, paraNr ) )
+    if  ( docRtfPopParaFromFieldStack( rr, paraNr ) )
 	{ LDEB(1); return -1;	}
 
-    if  ( docRtfSetParaProperties( &(paraNode->biParaProperties),
-							bd, mindTable, rrs ) )
+    if  ( docRtfAdaptToParaProperties( paraNode, bd, rrs,
+					    rr->rrParagraphBreakOverride ) )
 	{ LDEB(1); return -1;	}
 
-    rrs->rrsParagraphBreakOverride= -1;
+    rr->rrParagraphBreakOverride= -1;
 
     if  ( paraNode->biParaListOverride > 0 )
 	{
@@ -296,7 +295,7 @@ static int docRtfCloseParagraph(	RtfReader *	rrc,
 
 	const ListOverrideTable *	lot;
 
-	lot= &(dp->dpListAdmin.laListOverrideTable);
+	lot= &(dp->dpListAdmin->laListOverrideTable);
 
 	if  ( paraNode->biParaListOverride >= lot->lotOverrideCount )
 	    {
@@ -308,14 +307,14 @@ static int docRtfCloseParagraph(	RtfReader *	rrc,
 					&partBegin, &partEnd, paraNode, bd ) )
 	    {
 	    if  ( docInsertParaHeadField( &dfHead, &dsInsideHead, &dsAroundHead,
-			&partBegin, &partEnd, paraNode, bd, rrc->rrcTree,
+			&partBegin, &partEnd, paraNode, bd, rr->rrcTree,
 			DOCfkLISTTEXT, textAttributeNumber ) )
 		{
 		LDEB(paraNode->biParaListOverride); return -1;
 		}
 	    }
 
-	root= docGetListNumberTree( &(rrc->rrcTree->eiListNumberTrees),
+	root= docGetListNumberTree( &(rr->rrcTree->dtListNumberTrees),
 						paraNode->biParaListOverride );
 	if  ( ! root )
 	    { LXDEB(paraNode->biParaListOverride,root); return -1;	}
@@ -328,27 +327,9 @@ static int docRtfCloseParagraph(	RtfReader *	rrc,
     if  ( paraNode->biParaOutlineLevel < PPoutlineBODYTEXT )
 	{
 	if  ( docListNumberTreeInsertParagraph(
-				    &(rrc->rrcTree->dtOutlineTree),
+				    &(rr->rrcTree->dtOutlineTree),
 				    paraNode->biParaOutlineLevel, paraNr ) )
 	    { LDEB(paraNr);	}
-	}
-
-    if  ( paraNode->biParaTableNesting > 0 )
-	{ docRtfSetForRow( paraNode );	}
-    else{
-	BufferItem *	rowNode= docGetRowLevelNode( paraNode );
-
-	if  ( rowNode->biRowForTable )
-	    {
-	    if  ( rowNode->biChildCount == 1 )
-		{
-		rowNode->biRowForTable= 0;
-		}
-	    else{
-		LDEB(rowNode->biChildCount);
-		LLDEB(paraNode->biParaTableNesting,rowNode->biRowForTable);
-		}
-	    }
 	}
 
     return 0;
@@ -360,28 +341,28 @@ static int docRtfCloseParagraph(	RtfReader *	rrc,
 /*									*/
 /************************************************************************/
 
-static int docRtfCloseNode(	RtfReader *		rrc,
+static int docRtfCloseNode(	RtfReader *		rr,
 				BufferItem *		node )
     {
     switch( node->biLevel )
 	{
 	case DOClevSECT:
-	    if  ( docRtfCloseSect( rrc, node ) )
+	    if  ( docRtfCloseSect( rr, node ) )
 		{ LDEB(1); return -1;	}
 	    break;
 
 	case DOClevROW:
-	    if  ( docRtfCloseRow( rrc, node ) )
+	    if  ( docRtfCloseRow( rr, node ) )
 		{ LDEB(1); return -1;	}
 	    break;
 
 	case DOClevCELL:
-	    if  ( docRtfCloseCell( rrc, node ) )
+	    if  ( docRtfCloseCell( rr, node ) )
 		{ LDEB(1); return -1;	}
 	    break;
 
 	case DOClevPARA:
-	    if  ( docRtfCloseParagraph( rrc, node ) )
+	    if  ( docRtfCloseParagraph( rr, node ) )
 		{ LDEB(1); return -1;	}
 	    break;
 
@@ -398,25 +379,25 @@ static int docRtfCloseNode(	RtfReader *		rrc,
 /*									*/
 /************************************************************************/
 
-static int docRtfPopNode(		RtfReader *	rrc,
+static int docRtfPopNode(		RtfReader *	rr,
 					BufferItem *	node )
     {
-    while( rrc->rrcNode )
+    while( rr->rrcNode )
 	{
-	if  ( docRtfCloseNode( rrc, rrc->rrcNode ) )
+	if  ( docRtfCloseNode( rr, rr->rrcNode ) )
 	    { LDEB(1); return -1;	}
 
-	if  ( rrc->rrcNode == node )
+	if  ( rr->rrcNode == node )
 	    {
-	    rrc->rrcNode= rrc->rrcNode->biParent;
-	    rrc->rrcLevel= rrc->rrcNode->biLevel;
+	    rr->rrcNode= rr->rrcNode->biParent;
+	    rr->rrcLevel= rr->rrcNode->biLevel;
 	    return 0;
 	    }
 
-	rrc->rrcNode= rrc->rrcNode->biParent;
+	rr->rrcNode= rr->rrcNode->biParent;
 	}
 
-    XDEB(rrc->rrcNode); return -1;
+    XDEB(rr->rrcNode); return -1;
     }
 
 /************************************************************************/
@@ -426,30 +407,30 @@ static int docRtfPopNode(		RtfReader *	rrc,
 /************************************************************************/
 
 static int docRtfHierarchyCell(	const RtfControlWord *	rcw,
-				RtfReader *		rrc )
+				RtfReader *		rr )
     {
     BufferItem *	levelNode= (BufferItem *)0;
     int			paraInCell= 1;
 
     /*  1  */
-    if  ( rrc->rrcNode )
-	{ levelNode= docGetCellNode( rrc->rrcNode );	}
+    if  ( rr->rrcNode )
+	{ levelNode= docGetCellNode( rr->rrcNode );	}
 
     if ( rcw->rcwID == DOClevCELL		&&
-	 rrc->rrcNode				&&
-	 rrc->rrcNode->biLevel == DOClevCELL	)
+	 rr->rrcNode				&&
+	 rr->rrcNode->biLevel == DOClevCELL	)
 	{
-	int	cc= rrc->rrcNode->biChildCount;
+	int	cc= rr->rrcNode->biChildCount;
 
 	if  ( cc > 0						  &&
-	      rrc->rrcNode->biChildren[cc-1]->biLevel != DOClevPARA )
+	      rr->rrcNode->biChildren[cc-1]->biLevel != DOClevPARA )
 	      { paraInCell= 0;	}
 	}
 
     if  ( ! levelNode						||
-	  ( rrc->rrcNode->biLevel <= DOClevCELL && paraInCell )	)
+	  ( rr->rrcNode->biLevel <= DOClevCELL && paraInCell )	)
 	{
-	BufferItem *	paraNode= docRtfGetParaNode( rrc );
+	BufferItem *	paraNode= docRtfGetParaNode( rr );
 
 	if  ( ! paraNode )
 	    { SDEB(rcw->rcwWord); return -1; }
@@ -459,34 +440,34 @@ static int docRtfHierarchyCell(	const RtfControlWord *	rcw,
 	    {
 	    docSetParaTableNesting( paraNode );
 	    docRtfSetForRow( paraNode );
-	    if  ( rrc->rrcState )
+	    if  ( rr->rrcState )
 		{
-		rrc->rrcState->rrsParagraphProperties.ppTableNesting= 
+		rr->rrcState->rrsParagraphProperties.ppTableNesting= 
 					    paraNode->biParaTableNesting;
 		}
 	    }
 	}
-    if  ( ! rrc->rrcNode )
-	{ SXDEB(rcw->rcwWord,rrc->rrcNode); return -1;	}
+    if  ( ! rr->rrcNode )
+	{ SXDEB(rcw->rcwWord,rr->rrcNode); return -1;	}
 
     /* MS-Word does this: The first clue about a table is \cell */
-    if  ( rrc->rrcNode->biLevel == DOClevPARA	&&
-	  rrc->rrcNode->biParaTableNesting == 0	)
+    if  ( rr->rrcNode->biLevel == DOClevPARA	&&
+	  rr->rrcNode->biParaTableNesting == 0	)
 	{
-	/*LDEB(rrc->rrcNode->biParaTableNesting);*/
-	rrc->rrcNode->biParaTableNesting= 1;
-	docRtfSetForRow( rrc->rrcNode );
-	if  ( rrc->rrcState )
+	/*LDEB(rr->rrcNode->biParaTableNesting);*/
+	rr->rrcNode->biParaTableNesting= 1;
+	docRtfSetForRow( rr->rrcNode );
+	if  ( rr->rrcState )
 	    {
-	    rrc->rrcState->rrsParagraphProperties.ppTableNesting= 
-					rrc->rrcNode->biParaTableNesting;
+	    rr->rrcState->rrsParagraphProperties.ppTableNesting= 
+					rr->rrcNode->biParaTableNesting;
 	    }
 	}
 
-    levelNode= docGetCellNode( rrc->rrcNode );
+    levelNode= docGetCellNode( rr->rrcNode );
     if  ( ! levelNode )
 	{ SXDEB(rcw->rcwWord,levelNode); return -1;	}
-    if  ( docRtfPopNode( rrc, levelNode ) )
+    if  ( docRtfPopNode( rr, levelNode ) )
 	{ SDEB(rcw->rcwWord); return -1;	}
 
     return 0;
@@ -500,7 +481,7 @@ static int docRtfHierarchyCell(	const RtfControlWord *	rcw,
 
 int docRtfHierarchy(	const RtfControlWord *	rcw,
 			int			arg,
-			RtfReader *		rrc )
+			RtfReader *		rr )
     {
     BufferItem *	levelNode= (BufferItem *)0;
 
@@ -508,20 +489,20 @@ int docRtfHierarchy(	const RtfControlWord *	rcw,
 	{
 	case DOClevSECT:
 	    /*  1  */
-	    if  ( rrc->rrcNode )
-		{ levelNode= docGetSectNode( rrc->rrcNode );	}
+	    if  ( rr->rrcNode )
+		{ levelNode= docGetSectNode( rr->rrcNode );	}
 	    if  ( ! levelNode )
 		{
-		if  ( ! docRtfGetParaNode( rrc ) )
+		if  ( ! docRtfGetParaNode( rr ) )
 		    { SDEB(rcw->rcwWord); return -1; }
 		}
-	    if  ( ! rrc->rrcNode )
-		{ SXDEB(rcw->rcwWord,rrc->rrcNode); return -1;	}
+	    if  ( ! rr->rrcNode )
+		{ SXDEB(rcw->rcwWord,rr->rrcNode); return -1;	}
 
-	    levelNode= docGetSectNode( rrc->rrcNode );
+	    levelNode= docGetSectNode( rr->rrcNode );
 	    if  ( ! levelNode )
 		{ SXDEB(rcw->rcwWord,levelNode); return -1;	}
-	    if  ( docRtfPopNode( rrc, levelNode ) )
+	    if  ( docRtfPopNode( rr, levelNode ) )
 		{ SDEB(rcw->rcwWord); return -1;	}
 
 	    break;
@@ -529,27 +510,27 @@ int docRtfHierarchy(	const RtfControlWord *	rcw,
 	case DOClevROW:
 	case DOClevNESTROW:
 	    /*  1  */
-	    if  ( rrc->rrcNode )
-		{ levelNode= docGetRowLevelNode( rrc->rrcNode );	}
+	    if  ( rr->rrcNode )
+		{ levelNode= docGetRowLevelNode( rr->rrcNode );	}
 	    /* ignore stray \row tags rather than fail */
 	    if  ( ! levelNode )
-		{ LSDEB(rrc->rrcCurrentLine,rcw->rcwWord); return 0;	}
-	    if  ( docRtfPopNode( rrc, levelNode ) )
+		{ LSDEB(rr->rrCurrentLine,rcw->rcwWord); return 0;	}
+	    if  ( docRtfPopNode( rr, levelNode ) )
 		{ SDEB(rcw->rcwWord); return -1;	}
 	    break;
 
 	case DOClevCELL:
 	case DOClevNESTCELL:
-	    if  ( docRtfHierarchyCell( rcw, rrc ) )
+	    if  ( docRtfHierarchyCell( rcw, rr ) )
 		{ SDEB(rcw->rcwWord); return -1;	}
 	    break;
 
 	case DOClevPARA:
-	    levelNode= docRtfGetParaNode( rrc );
+	    levelNode= docRtfGetParaNode( rr );
 	    if  ( ! levelNode )
 		{ SDEB(rcw->rcwWord); return -1; }
 
-	    if  ( docRtfPopNode( rrc, levelNode ) )
+	    if  ( docRtfPopNode( rr, levelNode ) )
 		{ SDEB(rcw->rcwWord); return -1;	}
 	    break;
 
@@ -566,19 +547,19 @@ int docRtfHierarchy(	const RtfControlWord *	rcw,
 
 /************************************************************************/
 
-static int docRtfStartParagraph(	RtfReader *	rrc )
+static int docRtfStartParagraph(	RtfReader *	rr )
     {
     BufferItem *		paraNode;
-    RtfReadingState *		rrs= rrc->rrcState;
+    RtfReadingState *		rrs= rr->rrcState;
     const int			mindTable= 1;
 
-    paraNode= docInsertNode( rrc->rrcDocument, rrc->rrcNode, -1, DOClevPARA );
+    paraNode= docInsertNode( rr->rrDocument, rr->rrcNode, -1, DOClevPARA );
     if  ( ! paraNode )
-	{ SXDEB(docLevelStr(rrc->rrcLevel),paraNode); return -1; }
-    rrc->rrcNode= paraNode;
+	{ SXDEB(docLevelStr(rr->rrcLevel),paraNode); return -1; }
+    rr->rrcNode= paraNode;
 
     if  ( docRtfSetParaProperties( &(paraNode->biParaProperties),
-				    rrc->rrcDocument, mindTable, rrs ) )
+				    rr->rrDocument, mindTable, rrs, -1 ) )
 	{ LDEB(1); return -1;	}
 
     /*  Silly old Jade  */
@@ -596,21 +577,21 @@ static int docRtfStartParagraph(	RtfReader *	rrc )
 /*									*/
 /************************************************************************/
 
-static int docRtfStartSect(	RtfReader *	rrc )
+static int docRtfStartSect(	RtfReader *	rr )
     {
     BufferItem *		sectNode;
 
-    sectNode= docInsertNode( rrc->rrcDocument, rrc->rrcNode, -1, DOClevSECT );
+    sectNode= docInsertNode( rr->rrDocument, rr->rrcNode, -1, DOClevSECT );
     if  ( ! sectNode )
-	{ SXDEB(docLevelStr(rrc->rrcLevel),sectNode); return -1; }
-    rrc->rrcNode= sectNode;
+	{ SXDEB(docLevelStr(rr->rrcLevel),sectNode); return -1; }
+    rr->rrcNode= sectNode;
 
     if  ( sectNode->biTreeType == DOCinBODY )
 	{
-	rrc->rrcSelectionScope= sectNode->biSectSelectionScope;
+	rr->rrcSelectionScope= sectNode->biSectSelectionScope;
 
 	if  ( docCopySectionProperties( &(sectNode->biSectProperties),
-					 &(rrc->rrcSectionProperties) ) )
+					 &(rr->rrcSectionProperties) ) )
 	    { LDEB(1); return -1;	}
 
 	if  ( sectNode->biNumberInParent > 0 )
@@ -620,8 +601,8 @@ static int docRtfStartSect(	RtfReader *	rrc )
 	    prevSectNode= sectNode->biParent->biChildren[
 					sectNode->biNumberInParent- 1];
 
-	    if  ( docCopySectHeadersFooters( sectNode, rrc->rrcDocument,
-					    prevSectNode, rrc->rrcDocument ) )
+	    if  ( docCopySectHeadersFooters( sectNode, rr->rrDocument,
+					    prevSectNode, rr->rrDocument ) )
 		{ LDEB(1); return -1;	}
 	    }
 	}
@@ -635,31 +616,31 @@ static int docRtfStartSect(	RtfReader *	rrc )
 /*									*/
 /************************************************************************/
 
-static int docRtfStartRow(	RtfReader *	rrc,
+static int docRtfStartRow(	RtfReader *	rr,
 				int		forTable )
     {
     BufferItem *		rowNode;
 
-    rowNode= docInsertNode( rrc->rrcDocument, rrc->rrcNode, -1, DOClevROW );
+    rowNode= docInsertNode( rr->rrDocument, rr->rrcNode, -1, DOClevROW );
     if  ( ! rowNode )
-	{ SXDEB(docLevelStr(rrc->rrcLevel),rowNode); return -1; }
+	{ SXDEB(docLevelStr(rr->rrcLevel),rowNode); return -1; }
     rowNode->biRowForTable= forTable;
-    rrc->rrcNode= rowNode;
+    rr->rrcNode= rowNode;
 
-    if  ( docRtfSetRowProperties( rrc, rowNode ) )
+    if  ( docRtfSetRowProperties( rr, rowNode ) )
 	{ LDEB(1); return -1;	}
 
     return 0;
     }
 
-static int docRtfStartCell(	RtfReader *	rrc )
+static int docRtfStartCell(	RtfReader *	rr )
     {
     BufferItem *		cellNode;
 
-    cellNode= docInsertNode( rrc->rrcDocument, rrc->rrcNode, -1, DOClevCELL );
+    cellNode= docInsertNode( rr->rrDocument, rr->rrcNode, -1, DOClevCELL );
     if  ( ! cellNode )
-	{ SXDEB(docLevelStr(rrc->rrcLevel),cellNode); return -1; }
-    rrc->rrcNode= cellNode;
+	{ SXDEB(docLevelStr(rr->rrcLevel),cellNode); return -1; }
+    rr->rrcNode= cellNode;
 
     return 0;
     }
@@ -671,14 +652,14 @@ static int docRtfStartCell(	RtfReader *	rrc )
 /************************************************************************/
 
 int docRtfFinishCurrentNode(	const RtfControlWord *	rcw,
-				RtfReader *		rrc )
+				RtfReader *		rr )
     {
-    while(  rrc->rrcNode )
+    while(  rr->rrcNode )
 	{
-	if  ( docRtfCloseNode( rrc, rrc->rrcNode ) )
+	if  ( docRtfCloseNode( rr, rr->rrcNode ) )
 	    { LDEB(1); return -1;	}
 
-	rrc->rrcNode= rrc->rrcNode->biParent;
+	rr->rrcNode= rr->rrcNode->biParent;
 	}
 
     return 0;
@@ -688,7 +669,7 @@ int docRtfFinishCurrentNode(	const RtfControlWord *	rcw,
 
 static int docRtfStartNextCell(	int *		pRowNesting,
 				int		tableNestingTo,
-				RtfReader *	rrc )
+				RtfReader *	rr )
     {
     int			rowNestingTo;
 
@@ -697,10 +678,10 @@ static int docRtfStartNextCell(	int *		pRowNesting,
 	{ rowNestingTo= 1;	}
 
     if  ( tableNestingTo > 0				&&
-	  rrc->rrcNode->biParent->biLevel == DOClevROW	&&
-	  ! rrc->rrcNode->biParent->biRowForTable	)
+	  rr->rrcNode->biParent->biLevel == DOClevROW	&&
+	  ! rr->rrcNode->biParent->biRowForTable	)
 	{
-	if  ( docRtfPopNode( rrc, rrc->rrcNode->biParent ) )
+	if  ( docRtfPopNode( rr, rr->rrcNode->biParent ) )
 	    { LDEB(1); return -1;	}
 
 	(*pRowNesting)--;
@@ -712,7 +693,7 @@ static int docRtfStartNextCell(	int *		pRowNesting,
 	if  ( *pRowNesting < 1 )
 	    { LDEB(*pRowNesting); return -1;	}
 
-	if  ( docRtfStartRow( rrc, tableNestingTo > 0 ) )
+	if  ( docRtfStartRow( rr, tableNestingTo > 0 ) )
 	    { LDEB(1); return -1;	}
 
 	(*pRowNesting)++;
@@ -722,7 +703,7 @@ static int docRtfStartNextCell(	int *		pRowNesting,
     if  ( rowNestingTo < *pRowNesting )
 	{ LLDEB(rowNestingTo,*pRowNesting); return -1;	}
 
-    if  ( docRtfStartParagraph( rrc ) )
+    if  ( docRtfStartParagraph( rr ) )
 	{ LDEB(1); return -1;	}
 
     return 0;
@@ -731,38 +712,38 @@ static int docRtfStartNextCell(	int *		pRowNesting,
 /************************************************************************/
 
 static int docRtfStartNode(	int *		pRowNesting,
-				RtfReader *	rrc )
+				RtfReader *	rr )
     {
-    RtfReadingState *	rrs= rrc->rrcState;
+    RtfReadingState *	rrs= rr->rrcState;
     int			tableNestingTo;
 
     tableNestingTo= rrs->rrsParagraphProperties.ppTableNesting;
 
-    switch( rrc->rrcNode->biLevel )
+    switch( rr->rrcNode->biLevel )
 	{
 	case DOClevBODY:
-	    if  ( docRtfStartSect( rrc ) )
+	    if  ( docRtfStartSect( rr ) )
 		{ LDEB(1); return -1;	}
 	    break;
 
 	case DOClevSECT:
-	    if  ( docRtfStartRow( rrc, tableNestingTo > 0 ) )
+	    if  ( docRtfStartRow( rr, tableNestingTo > 0 ) )
 		{ LDEB(1); return -1;	}
 	    (*pRowNesting)++;
 	    break;
 
 	case DOClevROW:
-	    if  ( docRtfStartCell( rrc ) )
+	    if  ( docRtfStartCell( rr ) )
 		{ LDEB(1); return -1;	}
 	    break;
 
 	case DOClevCELL:
-	    if  ( docRtfStartNextCell( pRowNesting, tableNestingTo, rrc ) )
+	    if  ( docRtfStartNextCell( pRowNesting, tableNestingTo, rr ) )
 		{ LDEB(tableNestingTo); return -1;	}
 	    break;
 
 	default:
-	    SDEB(docLevelStr(rrc->rrcNode->biLevel));
+	    SDEB(docLevelStr(rr->rrcNode->biLevel));
 	    return -1;
 	}
 
@@ -775,22 +756,22 @@ static int docRtfStartNode(	int *		pRowNesting,
 /*									*/
 /************************************************************************/
 
-BufferItem * docRtfGetParaNode(	RtfReader *	rrc )
+BufferItem * docRtfGetParaNode(	RtfReader *	rr )
     {
     int			rowNesting;
 
-    if  ( ! rrc->rrcNode )
-	{ XDEB(rrc->rrcNode); return (BufferItem *)0;	}
+    if  ( ! rr->rrcNode )
+	{ XDEB(rr->rrcNode); return (BufferItem *)0;	}
 
-    rowNesting= docRowNesting( rrc->rrcNode );
+    rowNesting= docRowNesting( rr->rrcNode );
 
-    while( rrc->rrcNode->biLevel != DOClevPARA )
+    while( rr->rrcNode->biLevel != DOClevPARA )
 	{
-	if  ( docRtfStartNode( &rowNesting, rrc ) )
+	if  ( docRtfStartNode( &rowNesting, rr ) )
 	    { LDEB(1); return (BufferItem *)0;	}
 	}
 
-    return rrc->rrcNode;
+    return rr->rrcNode;
     }
 
 /************************************************************************/
@@ -799,21 +780,21 @@ BufferItem * docRtfGetParaNode(	RtfReader *	rrc )
 /*									*/
 /************************************************************************/
 
-BufferItem * docRtfGetSectNode(	RtfReader *	rrc )
+BufferItem * docRtfGetSectNode(	RtfReader *	rr )
     {
-    BufferItem *	sectNode= docGetSectNode( rrc->rrcNode );
+    BufferItem *	sectNode= docGetSectNode( rr->rrcNode );
 
     if  ( ! sectNode )
 	{
 	int	rowNesting= 0;
 
-	while( rrc->rrcNode->biLevel != DOClevSECT )
+	while( rr->rrcNode->biLevel != DOClevSECT )
 	    {
-	    if  ( docRtfStartNode( &rowNesting, rrc ) )
+	    if  ( docRtfStartNode( &rowNesting, rr ) )
 		{ LDEB(1); return (BufferItem *)0;	}
 	    }
 
-	sectNode= rrc->rrcNode;
+	sectNode= rr->rrcNode;
 	}
 
     if  ( ! sectNode || sectNode->biLevel != DOClevSECT )

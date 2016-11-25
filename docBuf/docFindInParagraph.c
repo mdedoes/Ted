@@ -54,7 +54,7 @@ int docFindSetPattern(		void **			pProg,
 
 int docFindParaFindNext(	DocumentSelection *		ds,
 				BufferItem *			paraBi,
-				const BufferDocument *		bd,
+				BufferDocument *		bd,
 				const DocumentPosition *	dpFrom,
 				void *				through )
     {
@@ -84,7 +84,7 @@ int docFindParaFindNext(	DocumentSelection *		ds,
 
 int docFindParaFindPrev(	DocumentSelection *		ds,
 				BufferItem *			paraBi,
-				const BufferDocument *		bd,
+				BufferDocument *		bd,
 				const DocumentPosition *	dpFrom,
 				void *				through )
     {

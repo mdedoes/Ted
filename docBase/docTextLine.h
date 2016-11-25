@@ -30,7 +30,7 @@
 /*	probably subsequent lines as well).				*/
 /*	NOTE that a short int cannot hold the width of A0 paper in	*/
 /*	landscape orientation.						*/
-/*  7)  The indent of the first paragraph in the line relative to the	*/
+/*  7)  The indent of the first particule in the line relative to the	*/
 /*	pf.pfContentRect that is avialable in the formatter and in the	*/
 /*	rendering routines.						*/
 /*	NOTE that a short int cannot hold the width of A0 paper in	*/

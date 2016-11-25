@@ -205,10 +205,10 @@ int bmRGBImage(			BitmapDescription *		bdOut,
 /*									*/
 /************************************************************************/
 
-int bmSetSolidWhite(		unsigned char *		buffer,
-				BitmapDescription *	bd )
+int bmSetSolidWhite(		RasterImage *	ri )
     {
-    int		col;
+    int			col;
+    BitmapDescription *	bd= &(ri->riDescription);
 
     switch( bd->bdColorEncoding )
 	{
@@ -218,13 +218,13 @@ int bmSetSolidWhite(		unsigned char *		buffer,
 		switch( bd->bdBitsPerPixel )
 		    {
 		    case 2:
-			memset( buffer, 0x55, bd->bdBufferLength );
+			memset( ri->riBytes, 0x55, bd->bdBufferLength );
 			break;
 		    case 4:
-			memset( buffer, 0x33, bd->bdBufferLength );
+			memset( ri->riBytes, 0x33, bd->bdBufferLength );
 			break;
 		    case 8:
-			memset( buffer, 0x0f, bd->bdBufferLength );
+			memset( ri->riBytes, 0x0f, bd->bdBufferLength );
 			break;
 		    default:
 			LLDEB(bd->bdBitsPerPixel,bd->bdHasAlpha);
@@ -232,13 +232,13 @@ int bmSetSolidWhite(		unsigned char *		buffer,
 		    }
 		}
 	    else{
-		memset( buffer, 0x00, bd->bdBufferLength );
+		memset( ri->riBytes, 0x00, bd->bdBufferLength );
 		}
 	    break;
 
 	case BMcoWHITEBLACK:
 	case BMcoRGB:
-	    memset( buffer, 0xff, bd->bdBufferLength );
+	    memset( ri->riBytes, 0xff, bd->bdBufferLength );
 	    break;
 
 	case BMcoRGB8PALETTE:
@@ -251,12 +251,12 @@ int bmSetSolidWhite(		unsigned char *		buffer,
 
 	    if  ( ! bd->bdHasAlpha && bd->bdBitsPerPixel == 8 )
 		{
-		memset( buffer, col, bd->bdBufferLength );
+		memset( ri->riBytes, col, bd->bdBufferLength );
 		return 0;
 		}
 	    if  ( ! bd->bdHasAlpha && bd->bdBitsPerPixel == 4 )
 		{
-		memset( buffer, col << 4 | col, bd->bdBufferLength );
+		memset( ri->riBytes, col << 4 | col, bd->bdBufferLength );
 		return 0;
 		}
 
@@ -270,10 +270,10 @@ int bmSetSolidWhite(		unsigned char *		buffer,
     return 0;
     }
 
-int bmSetSolidBlack(		unsigned char *		buffer,
-				BitmapDescription *	bd )
+int bmSetSolidBlack(		RasterImage *	ri )
     {
-    int		col;
+    int			col;
+    BitmapDescription *	bd= &(ri->riDescription);
 
     if  ( bd->bdHasAlpha )
 	{ LDEB(bd->bdHasAlpha); return -1;	}
@@ -281,12 +281,12 @@ int bmSetSolidBlack(		unsigned char *		buffer,
     switch( bd->bdColorEncoding )
 	{
 	case BMcoBLACKWHITE:
-	    memset( buffer, 0xff, bd->bdBufferLength );
+	    memset( ri->riBytes, 0xff, bd->bdBufferLength );
 	    break;
 
 	case BMcoWHITEBLACK:
 	case BMcoRGB:
-	    memset( buffer, 0x00, bd->bdBufferLength );
+	    memset( ri->riBytes, 0x00, bd->bdBufferLength );
 	    break;
 
 	case BMcoRGB8PALETTE:
@@ -296,12 +296,12 @@ int bmSetSolidBlack(		unsigned char *		buffer,
 
 	    if  ( ! bd->bdHasAlpha && bd->bdBitsPerPixel == 8 )
 		{
-		memset( buffer, col, bd->bdBufferLength );
+		memset( ri->riBytes, col, bd->bdBufferLength );
 		return 0;
 		}
 	    if  ( ! bd->bdHasAlpha && bd->bdBitsPerPixel == 4 )
 		{
-		memset( buffer, col << 4 | col, bd->bdBufferLength );
+		memset( ri->riBytes, col << 4 | col, bd->bdBufferLength );
 		return 0;
 		}
 

@@ -68,6 +68,8 @@ typedef struct ListTool
 
     int				ltUnitInt;
 
+    int				ltInProgrammaticChange;
+
     DocumentList		ltListPropertiesSet;
     DocumentList		ltListPropertiesChosen;
     ListOverride		ltListOverrideSet;

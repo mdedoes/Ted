@@ -1,2 +1,3 @@
 pkg install \
-    developer-gnu
+    developer-gnu \
+    fakeroot

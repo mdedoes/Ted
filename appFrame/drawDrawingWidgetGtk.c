@@ -218,11 +218,9 @@ int guiGetLabelFont(	DrawingSurface			ds,
     GtkWidget *		labelw= GTK_BIN( nativeLabel )->child;
 #   endif
     const int		fontSizeHintPixels= -1;
-if(!GTK_IS_BIN(nativeLabel))
-    {
-    XDEB(nativeLabel);
-    abort();
-    }
+
+    if  ( ! GTK_IS_BIN( nativeLabel ) )
+	{ XDEB(nativeLabel);	}
 
     return drawOpenDefaultFont( ds, psfl, labelw, fontSizeHintPixels );
     }

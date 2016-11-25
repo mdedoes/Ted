@@ -128,7 +128,7 @@ static void docItemLayoutStartPosition(	LayoutPosition *	lp,
 
 static int docLayoutBodyNode(		LayoutPosition *	lpBelow,
 					const LayoutPosition *	lpTop,
-					BufferItem *		docBi,
+					BufferItem *		docNode,
 					BlockFrame *		bf,
 					LayoutJob *		lj )
     {
@@ -141,9 +141,9 @@ static int docLayoutBodyNode(		LayoutPosition *	lpBelow,
 
     int				i;
 
-    if  ( docBi->biChildCount > 0 )
+    if  ( docNode->biChildCount > 0 )
 	{
-	lj->ljBodySectNode= docBi->biChildren[0];
+	lj->ljBodySectNode= docNode->biChildren[0];
 
 	if  ( docTreePrelayout( &(bd->bdEiFtnsep), lj->ljBodySectNode, lj ) )
 	    { LDEB(1); return -1;	}
@@ -160,16 +160,16 @@ static int docLayoutBodyNode(		LayoutPosition *	lpBelow,
 	    { LDEB(1); return -1;	}
 	}
 
-    for ( i= 0; i < docBi->biChildCount; i++ )
+    for ( i= 0; i < docNode->biChildCount; i++ )
 	{
-	lj->ljBodySectNode= docBi->biChildren[i];
+	lj->ljBodySectNode= docNode->biChildren[i];
 
 	if  ( docLayoutNodeImplementation( &lpHere, &lpHere,
-						docBi->biChildren[i], bf, lj ) )
+					    docNode->biChildren[i], bf, lj ) )
 	    { LDEB(1); return -1;	}
 	}
 
-    if  ( docBi->biTreeType == DOCinBODY		&&
+    if  ( docNode->biTreeType == DOCinBODY		&&
 	  npEndnotes->npPlacement == FTNplaceDOC_END	)
 	{
 	if  ( docLayoutEndnotesForDocument( &lpHere, &lpHere, bf, lj ) )

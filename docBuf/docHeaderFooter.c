@@ -11,8 +11,6 @@
 #   include	"docBuf.h"
 #   include	"docTreeNode.h"
 #   include	<docTreeType.h>
-#   include	<docBorderPropertyAdmin.h>
-#   include	<docItemShadingAdmin.h>
 
 /************************************************************************/
 /*									*/
@@ -58,9 +56,6 @@ static int docCheckTreeIsEmpty(	int *			pIsEmpty,
 	DocumentPosition		dpBegin;
 	DocumentPosition		dpNext;
 
-	const NumberedPropertiesList *	bpl= &(bd->bdBorderPropertyList);
-	const NumberedPropertiesList *	isl= &(bd->bdItemShadingList);
-
 	if  ( docHeadPosition( &dpBegin, dt->dtRoot ) )
 	    { LDEB(1); docInitDocumentPosition( &dpBegin );	}
 
@@ -73,20 +68,20 @@ static int docCheckTreeIsEmpty(	int *			pIsEmpty,
 	    if  ( pp->ppTableNesting > 0 )
 		{ isEmpty= 0;	}
 
-	    if  ( docBorderNumberIsBorder( bpl, pp->ppTopBorderNumber ) )
+	    if  ( docBorderNumberIsBorder( bd, pp->ppTopBorderNumber ) )
 		{ isEmpty= 0;	}
-	    if  ( docBorderNumberIsBorder( bpl, pp->ppBottomBorderNumber ) )
+	    if  ( docBorderNumberIsBorder( bd, pp->ppBottomBorderNumber ) )
 		{ isEmpty= 0;	}
-	    if  ( docBorderNumberIsBorder( bpl, pp->ppLeftBorderNumber ) )
+	    if  ( docBorderNumberIsBorder( bd, pp->ppLeftBorderNumber ) )
 		{ isEmpty= 0;	}
-	    if  ( docBorderNumberIsBorder( bpl, pp->ppRightBorderNumber ) )
+	    if  ( docBorderNumberIsBorder( bd, pp->ppRightBorderNumber ) )
 		{ isEmpty= 0;	}
-	    if  ( docBorderNumberIsBorder( bpl, pp->ppBetweenBorderNumber ) )
+	    if  ( docBorderNumberIsBorder( bd, pp->ppBetweenBorderNumber ) )
 		{ isEmpty= 0;	}
-	    if  ( docBorderNumberIsBorder( bpl, pp->ppBarNumber ) )
+	    if  ( docBorderNumberIsBorder( bd, pp->ppBarNumber ) )
 		{ isEmpty= 0;	}
 
-	    if  ( docShadingNumberIsShading( isl, pp->ppShadingNumber ) )
+	    if  ( docShadingNumberIsShading( bd, pp->ppShadingNumber ) )
 		{ isEmpty= 0;	}
 	    }
 	}

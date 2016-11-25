@@ -13,7 +13,7 @@
 #   include	"tedEdit.h"
 #   include	"tedDocFront.h"
 #   include	"tedDocument.h"
-#   include	<docEditImpl.h>
+#   include	<docIntermediaryDocument.h>
 #   include	<docRtfTrace.h>
 #   include	<docPageGrid.h>
 #   include	<docTreeNode.h>
@@ -107,7 +107,7 @@ int tedInsertTable(		EditDocument *		ed,
 	{ XDEB(bdTable); rval= -1; goto ready;	}
 
     textAttrNr= docMapTextAttributeNumberFromTo( bdTable, eo->eoDocument,
-					td->tdCurrentTextAttributeNumber );
+			    td->tdSelectionDescription.sdTextAttributeNumber );
     if  ( textAttrNr < 0 )
 	{ LDEB(textAttrNr); rval= -1; goto ready;	}
 
@@ -132,7 +132,7 @@ int tedInsertTable(		EditDocument *		ed,
     tedCleanEditOperation( &teo );
 
     if  ( bdTable )
-	{ docFreeDocument( bdTable );	}
+	{ docFreeIntermediaryDocument( bdTable );	}
 
     return rval;
     }

@@ -499,17 +499,19 @@ int tedDrawSpan(	const DrawTextLine *		dtl,
 
     switch( ta->taSuperSub )
 	{
-	case DOCfontSUPERSCRIPT:
+	case TEXTvaSUPERSCRIPT:
 	    drawFontGetSuperBaseline( &y, baselinePixels,
 				    lc->lcDrawingSurface, fullScreenFont );
 	    break;
 
-	case DOCfontSUBSCRIPT:
+	case TEXTvaSUBSCRIPT:
 	    drawFontGetSubBaseline( &y, baselinePixels,
 				    lc->lcDrawingSurface, fullScreenFont );
+	    break;
+
 	default:
 	    LDEB(ta->taSuperSub);
-	case DOCfontREGULAR:
+	case TEXTvaREGULAR:
 	    y= baselinePixels;
 	    break;
 	}

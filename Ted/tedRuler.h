@@ -5,8 +5,9 @@
 /************************************************************************/
 
 #   include	<appFrame.h>
-#   include	<docTabStop.h>
 #   include	"tedColumnSeparator.h"
+
+struct TabStopList;
 
 /************************************************************************/
 /*									*/
@@ -77,7 +78,7 @@ extern void tedAdaptTopRuler(		void *			voidttr,
 					int			firstIndent,
 					int			leftIndent,
 					int			rightIndent,
-					const TabStopList *	tslSet,
+					const struct TabStopList *	tslSet,
 					int			x0GeometryPx,
 					double			xfac );
 
@@ -90,7 +91,7 @@ extern int tedTopRulerFindMouse(	int *			pIndex,
 extern int tedTopRulerTrackMouse( 	int *			pFirstIndent,
 					int *			pLeftIndent,
 					int *			pRightIndent,
-					TabStopList *		tsl,
+					struct TabStopList *	tsl,
 					int *			pCsCount,
 					ColumnSeparator **	pCs,
 					APP_WIDGET		w,

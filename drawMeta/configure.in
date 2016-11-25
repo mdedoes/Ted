@@ -8,8 +8,6 @@ AC_PROG_RANLIB
 dnl Checks for header files.
 AC_HEADER_STDC
 
-AC_PATH_ICONV
-
 dnl Checks for typedefs, structures, and compiler characteristics.
 AC_C_CONST
 AC_C_BIGENDIAN

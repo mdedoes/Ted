@@ -407,8 +407,11 @@ static int docLayoutStartRow(	int *				pToNextColumn,
     /*  1  */
     /*  NO! lpHere->lpPageYTwips += rowNode->biRowTopInset; */
 
-    docLayoutCalculateRowTopInset( &(rowNode->biRowTopInset),
-						    bd, rowNode, atRowTop );
+    {
+    int rti= rowNode->biRowTopInset;
+    docLayoutCalculateRowTopInset( &rti, bd, rowNode, atRowTop );
+    rowNode->biRowTopInset= rti;
+    }
 
     if  ( docLayoutStartRowCells( rowNode, bd, lpHere, bf, rowPlp ) )
 	{ LDEB(1); return -1;	}
@@ -540,6 +543,10 @@ static int docRowToNextColumn(	LayoutPosition *	lpHere,
 	int			advanceAnyway= 0;
 
 	if  ( docLayoutStripDone( &(plj->pljPos), plj ) )
+	    { continue;	}
+
+	if  ( cellNode->biChildren[plj->pljPos0.pspChild]->biLevel ==
+								DOClevROW )
 	    { continue;	}
 
 	docCommitStripLayout( &advanced, advanceAnyway, plj,

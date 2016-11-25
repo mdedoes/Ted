@@ -67,7 +67,7 @@ int docCalculateSymbolFieldString(
 	    LDEB(sf.sfEncoding); *pCalculated= 0; goto ready;
 	}
 
-    step= uniPutUtf8( (unsigned char *)scratch, sf.sfSymbol );
+    step= uniPutUtf8( scratch, sf.sfSymbol );
     if  ( step < 1 )
 	{ LLDEB(sf.sfSymbol,step); *pCalculated= 0; goto ready;	}
     utilMemoryBufferAppendBytes( mbResult, (unsigned char *)scratch, step );
@@ -128,7 +128,7 @@ int docRecalculateParaSymbolTextParticules(
 	    if  ( ! allocated )
 		{ XDEB(allocated); rval= -1; goto ready;	}
 
-	    fontNumber= docGetFontByName( &(dp->dpFontList), allocated );
+	    fontNumber= docGetFontByName( dp->dpFontList, allocated );
 	    if  ( fontNumber < 0 )
 		{ SLDEB(allocated,fontNumber);	}
 	    else{

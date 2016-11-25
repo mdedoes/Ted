@@ -9,6 +9,7 @@
 #   include	<stdlib.h>
 #   include	<string.h>
 #   include	<errno.h>
+#   include	<iconv.h>
 
 #   include	"uniUtf8.h"
 #   include	<appDebugon.h>
@@ -35,16 +36,16 @@ void textConverterSetNativeEncodingName(	TextConverter *	tc,
 	{
 	char *		oldName= tc->tcNativeEncodingName;
 
-	if  ( tc->tcIconvToUtf8 != (iconv_t)-1 )
+	if  ( (iconv_t)tc->tcIconvToUtf8 != (iconv_t)-1 )
 	    {
-	    iconv_close( tc->tcIconvToUtf8 );
-	    tc->tcIconvToUtf8= (iconv_t)-1;
+	    iconv_close( (iconv_t)tc->tcIconvToUtf8 );
+	    tc->tcIconvToUtf8= (struct TextConverterImpl *)(iconv_t)-1;
 	    }
 
-	if  ( tc->tcIconvFrUtf8 != (iconv_t)-1 )
+	if  ( (iconv_t)tc->tcIconvFrUtf8 != (iconv_t)-1 )
 	    {
-	    iconv_close( tc->tcIconvFrUtf8 );
-	    tc->tcIconvFrUtf8= (iconv_t)-1;
+	    iconv_close( (iconv_t)tc->tcIconvFrUtf8 );
+	    tc->tcIconvFrUtf8= (struct TextConverterImpl *)(iconv_t)-1;
 	    }
 
 	if  ( encodingName )
@@ -58,50 +59,69 @@ void textConverterSetNativeEncodingName(	TextConverter *	tc,
     return;
     }
 
-void utilInitTextConverter(	TextConverter *		tc )
+void textInitTextConverter(	TextConverter *		tc )
     {
     tc->tcNativeEncodingName= (char *)0;
-    tc->tcIconvToUtf8= (iconv_t)-1;
-    tc->tcIconvFrUtf8= (iconv_t)-1;
+    tc->tcIconvToUtf8= (struct TextConverterImpl *)(iconv_t)-1;
+    tc->tcIconvFrUtf8= (struct TextConverterImpl *)(iconv_t)-1;
+
+    tc->tcProduce= (TextConverterProduce)0;
     }
 
-void utilCleanTextConverter(	TextConverter *		tc )
+void textCleanTextConverter(	TextConverter *		tc )
     {
     if  ( tc->tcNativeEncodingName )
 	{ free( tc->tcNativeEncodingName );	}
 
-    if  ( tc->tcIconvToUtf8 != (iconv_t)-1 )
+    if  ( (iconv_t)tc->tcIconvToUtf8 != (iconv_t)-1 )
 	{
-	iconv_close( tc->tcIconvToUtf8 );
-	tc->tcIconvToUtf8= (iconv_t)-1;
+	iconv_close( (iconv_t)tc->tcIconvToUtf8 );
+	tc->tcIconvToUtf8= (struct TextConverterImpl *)(iconv_t)-1;
 	}
 
-    if  ( tc->tcIconvFrUtf8 != (iconv_t)-1 )
+    if  ( (iconv_t)tc->tcIconvFrUtf8 != (iconv_t)-1 )
 	{
-	iconv_close( tc->tcIconvFrUtf8 );
-	tc->tcIconvFrUtf8= (iconv_t)-1;
+	iconv_close( (iconv_t)tc->tcIconvFrUtf8 );
+	tc->tcIconvFrUtf8= (struct TextConverterImpl *)(iconv_t)-1;
 	}
+    }
+
+/************************************************************************/
+
+static int textConverterProduce(	const TextConverter *	tc,
+					void *			through,
+					int			produced,
+					const char *		text,
+					int			len )
+    {
+    int		step;
+
+    step= (*tc->tcProduce)( through, produced, text, len );
+    if  ( step < 0 )
+	{ LLLDEB(produced,len,step); return -1;	}
+
+    return step;
     }
 
 /************************************************************************/
 /*									*/
 /*  Hack because iconv does not support the symbol encoding.		*/
-/*  Convert native bytes to UTF-8.					*/
+/*  Convert legacy bytes to UTF-8.					*/
 /*									*/
 /************************************************************************/
 
 static int textConverterConvertBytesToUtf8(
+					const TextConverter *	tc,
 					const int		unicodes[256],
 					void *			through,
-					TextConverterProduce	produce,
 					int *			pConsumed,
 					int			produced,
 					const char *		text,
 					int			len )
     {
-    unsigned char	scratch[750];
+    char		scratch[750];
     int			buffered= 0;
-    int			shift;
+    int			step;
     const int		scratchLen= sizeof(scratch)- 7;
     int			consumed= 0;
 
@@ -109,31 +129,31 @@ static int textConverterConvertBytesToUtf8(
 	{
 	if  ( buffered >= scratchLen )
 	    {
-	    shift= (*produce)( through, produced, (char *)scratch, buffered );
-	    if  ( shift < 0 )
-		{ LLLDEB(produced,buffered,shift); return -1;	}
-	    produced += shift; buffered= 0;
+	    step= textConverterProduce( tc, through, produced, scratch, buffered );
+	    if  ( step < 0 )
+		{ LLLDEB(produced,buffered,step); return -1;	}
+	    produced += step; buffered= 0;
 	    }
 
 	if  ( unicodes[*text&0xff] < 0 )
 	    {
-	    shift= uniPutUtf8( scratch+ buffered, *text&0xff );	
+	    step= uniPutUtf8( scratch+ buffered, *text&0xff );	
 	    }
 	else{
-	    shift= uniPutUtf8( scratch+ buffered, unicodes[*text&0xff] );
+	    step= uniPutUtf8( scratch+ buffered, unicodes[*text&0xff] );
 	    }
-	if  ( shift < 1 )
-	    { LDEB(shift); return -1;	}
+	if  ( step < 1 )
+	    { LDEB(step); return -1;	}
 
-	text++; len--; consumed++; buffered += shift;
+	text++; len--; consumed++; buffered += step;
 	}
 
     if  ( buffered > 0 )
 	{
-	shift= (*produce)( through, produced, (char *)scratch, buffered );
-	if  ( shift < 0 )
-	    { LLLDEB(produced,buffered,shift); return -1;	}
-	produced += shift; buffered= 0;
+	step= textConverterProduce( tc, through, produced, scratch, buffered );
+	if  ( step < 0 )
+	    { LLLDEB(produced,buffered,step); return -1;	}
+	produced += step; buffered= 0;
 	}
 
     *pConsumed += consumed;
@@ -143,7 +163,7 @@ static int textConverterConvertBytesToUtf8(
 /************************************************************************/
 /*									*/
 /*  Hack because iconv does not support the symbol encoding.		*/
-/*  Convert UTF-8 to native.						*/
+/*  Convert UTF-8 to legacy.						*/
 /*									*/
 /************************************************************************/
 
@@ -159,7 +179,7 @@ static int textConverterConvertBytesFromUtf8(
     {
     unsigned char	scratch[750];
     int			done= 0;
-    int			shift;
+    int			step;
     const int		scratchLen= sizeof(scratch);
     int			consumed= 0;
 
@@ -175,30 +195,30 @@ static int textConverterConvertBytesFromUtf8(
 
 	if  ( done >= scratchLen )
 	    {
-	    shift= (*produce)( through, produced, (char *)scratch, done );
-	    if  ( shift < 0 )
-		{ LLLDEB(produced,done,shift); return -1;	}
-	    produced += shift; done= 0;
+	    step= (*produce)( through, produced, (char *)scratch, done );
+	    if  ( step < 0 )
+		{ LLLDEB(produced,done,step); return -1;	}
+	    produced += step; done= 0;
 	    }
 
-	shift= uniGetUtf8( &symbol, (unsigned char *)text );
-	if  ( shift < 1 )
-	    { LDEB(shift); return -1;	}
+	step= uniGetUtf8( &symbol, text );
+	if  ( step < 1 )
+	    { LDEB(step); return -1;	}
 
 	code= utilIndexMappingGetU( im, symbol );
 	if  ( code < 0 )
 	    { break;	}
 
 	scratch[done++]= code;
-	text += shift; len -= shift; consumed += shift;
+	text += step; len -= step; consumed += step;
 	}
 
     if  ( done > 0 )
 	{
-	shift= (*produce)( through, produced, (char *)scratch, done );
-	if  ( shift < 0 )
-	    { LLLDEB(produced,done,shift); return -1;	}
-	produced += shift; done= 0;
+	step= (*produce)( through, produced, (char *)scratch, done );
+	if  ( step < 0 )
+	    { LLLDEB(produced,done,step); return -1;	}
+	produced += step; done= 0;
 	}
 
     *pConsumed += consumed;
@@ -209,12 +229,15 @@ static int textConverterConvertBytesFromUtf8(
 /*									*/
 /*  Convert bytes using iconv. This is used in both directions.		*/
 /*									*/
+/*  Note that GNU iconv() expects a 'char **' as its second argument	*/
+/*  rather than a 'const char **' as documented in the single UNIX spec.*/
+/*  See: http://www.opengroup.org/pubs/online/7908799/xsh/iconv.html.	*/
+/*									*/
 /************************************************************************/
 
-static int textConverterConvertIconv(
-					iconv_t			ico,
+static int textConverterConvertIconv(	TextConverter *		tc,
+					struct TextConverterImpl *	tci,
 					void *			through,
-					TextConverterProduce	produce,
 					int *			pConsumed,
 					int			produced,
 					const char *		arg_ibuf,
@@ -225,7 +248,9 @@ static int textConverterConvertIconv(
     size_t		oleft= sizeof(scratch);
     int			consumed= 0;
 
-#   ifdef __GNUC__
+    iconv_t		ico= (iconv_t)tci;
+
+#   if defined(__GNUC__) && ! defined(iconv)
     char *		ibuf= (char *)arg_ibuf;
 #   else
     const char *	ibuf= arg_ibuf;
@@ -251,13 +276,13 @@ static int textConverterConvertIconv(
 
 	if  ( obuf > scratch )
 	    {
-	    int	shift;
+	    int	step;
 
-	    shift= (*produce)( through, produced, scratch, obuf- scratch );
-	    if  ( shift < 0 )
-		{ LLLDEB(produced,obuf- scratch,shift); return -1;	}
+	    step= textConverterProduce( tc, through, produced, scratch, obuf- scratch );
+	    if  ( step < 0 )
+		{ LLLDEB(produced,obuf- scratch,step); return -1;	}
 
-	    produced += shift;
+	    produced += step;
 	    obuf= scratch;
 	    oleft= sizeof(scratch);
 	    }
@@ -287,60 +312,60 @@ static int textConverterConvertIconv(
 /************************************************************************/
 
 int textConverterConvertToUtf8(	TextConverter *		tc,
-					void *			through,
-					TextConverterProduce	produce,
-					int *			pConsumed,
-					int			produced,
-					const char *		text,
-					int			len )
+				void *			through,
+				int *			pConsumed,
+				int			produced,
+				const char *		text,
+				int			len )
     {
     if  ( tc				&&
 	  tc->tcNativeEncodingName	&&
 	  tc->tcNativeEncodingName[0]	)
 	{
-	if  ( tc->tcIconvToUtf8 == (iconv_t)-1 )
+	if  ( (iconv_t)tc->tcIconvToUtf8 == (iconv_t)-1 )
 	    {
-	    tc->tcIconvToUtf8= iconv_open( "UTF-8", tc->tcNativeEncodingName );
+	    tc->tcIconvToUtf8= (struct TextConverterImpl *)
+			iconv_open( "UTF-8", tc->tcNativeEncodingName );
 
-	    if  ( tc->tcIconvToUtf8 == (iconv_t)-1			&&
+	    if  ( (iconv_t)tc->tcIconvToUtf8 == (iconv_t)-1		&&
 		  ! strcmp( tc->tcNativeEncodingName, "SYMBOL" )	)
 		{
-		return textConverterConvertBytesToUtf8(
-						uniSymbolGlyphUnicodes,
-						through, produce, pConsumed,
-						produced, text, len );
+		return textConverterConvertBytesToUtf8( tc,
+					    uniSymbolGlyphUnicodes,
+					    through, pConsumed,
+					    produced, text, len );
 		}
 
-	    if  ( tc->tcIconvToUtf8 == (iconv_t)-1			&&
+	    if  ( (iconv_t)tc->tcIconvToUtf8 == (iconv_t)-1		&&
 		  ! strcmp( tc->tcNativeEncodingName, "DINGBATS" )	)
 		{
-		return textConverterConvertBytesToUtf8(
-						uniDingbatsGlyphUnicodes,
-						through, produce, pConsumed,
-						produced, text, len );
+		return textConverterConvertBytesToUtf8( tc,
+					    uniDingbatsGlyphUnicodes,
+					    through, pConsumed,
+					    produced, text, len );
 		}
 
-	    if  ( tc->tcIconvToUtf8 == (iconv_t)-1 )
+	    if  ( (iconv_t)tc->tcIconvToUtf8 == (iconv_t)-1 )
 		{
 		SXDEB(tc->tcNativeEncodingName,tc->tcIconvToUtf8);
 		return -1;
 		}
 	    }
 
-	produced= textConverterConvertIconv( tc->tcIconvToUtf8,
-						through, produce, pConsumed,
-						produced, (char *)text, len );
+	produced= textConverterConvertIconv( tc, tc->tcIconvToUtf8,
+					    through, pConsumed,
+					    produced, (char *)text, len );
 	if  ( produced < 0 )
 	    { LDEB(produced); return -1;	}
 	}
     else{
-	int	shift;
+	int	step;
 
-	shift= (*produce)( through, produced, text, len );
-	if  ( shift < 0 )
-	    { LLLDEB(produced,len,shift); return -1;	}
+	step= textConverterProduce( tc, through, produced, text, len );
+	if  ( step < 0 )
+	    { LLLDEB(produced,len,step); return -1;	}
 
-	produced += shift;
+	produced += step;
 	*pConsumed += len;
 	}
 
@@ -349,7 +374,7 @@ int textConverterConvertToUtf8(	TextConverter *		tc,
 
 /************************************************************************/
 /*									*/
-/*  Convert the UTF-8 input to native bytes.				*/
+/*  Convert the UTF-8 input to legacy bytes.				*/
 /*									*/
 /*  Note that GNU iconv() expects a 'char **' as its second argument	*/
 /*  rather than a 'const char **' as documented in the single UNIX spec.*/
@@ -363,7 +388,6 @@ int textConverterConvertToUtf8(	TextConverter *		tc,
 
 int textConverterConvertFromUtf8(	TextConverter *		tc,
 					void *			through,
-					TextConverterProduce	produce,
 					int *			pConsumed,
 					int			produced,
 					const char *		text,
@@ -373,54 +397,65 @@ int textConverterConvertFromUtf8(	TextConverter *		tc,
 	  tc->tcNativeEncodingName	&&
 	  tc->tcNativeEncodingName[0]	)
 	{
-	if  ( tc->tcIconvFrUtf8 == (iconv_t)-1 )
+	if  ( (iconv_t)tc->tcIconvFrUtf8 == (iconv_t)-1 )
 	    {
-	    tc->tcIconvFrUtf8= iconv_open( tc->tcNativeEncodingName, "UTF-8" );
+	    tc->tcIconvFrUtf8= (struct TextConverterImpl *)
+			    iconv_open( tc->tcNativeEncodingName, "UTF-8" );
 
-	    if  ( tc->tcIconvFrUtf8 == (iconv_t)-1			&&
+	    if  ( (iconv_t)tc->tcIconvFrUtf8 == (iconv_t)-1		&&
 		  ! strcmp( tc->tcNativeEncodingName, "SYMBOL" )	)
 		{
 		return textConverterConvertBytesFromUtf8(
-						&UNI_SymbolToGlyphMapping,
-						uniSymbolGlyphUnicodes,
-						through, produce, pConsumed,
-						produced, text, len );
+					    &UNI_SymbolToGlyphMapping,
+					    uniSymbolGlyphUnicodes,
+					    through, tc->tcProduce, pConsumed,
+					    produced, text, len );
 		}
 
-	    if  ( tc->tcIconvFrUtf8 == (iconv_t)-1			&&
+	    if  ( (iconv_t)tc->tcIconvFrUtf8 == (iconv_t)-1		&&
 		  ! strcmp( tc->tcNativeEncodingName, "DINGBATS" )	)
 		{
+#		if 1
+		/*  Emit the character as a \u12345 unicode */
+		return 0;
+#		else
 		return textConverterConvertBytesFromUtf8(
-						&UNI_DingbatsToGlyphMapping,
-						uniDingbatsGlyphUnicodes,
-						through, produce, pConsumed,
-						produced, text, len );
+					    &UNI_DingbatsToGlyphMapping,
+					    uniDingbatsGlyphUnicodes,
+					    through, tc->tcProduce, pConsumed,
+					    produced, text, len );
+#		endif
 		}
 
-	    if  ( tc->tcIconvFrUtf8 == (iconv_t)-1 )
+	    if  ( (iconv_t)tc->tcIconvFrUtf8 == (iconv_t)-1 )
 		{
 		SXDEB(tc->tcNativeEncodingName,tc->tcIconvFrUtf8);
 		return -1;
 		}
 	    }
 
-	produced= textConverterConvertIconv( tc->tcIconvFrUtf8,
-						through, produce, pConsumed,
-						produced, (char *)text, len );
+	produced= textConverterConvertIconv( tc, tc->tcIconvFrUtf8,
+					    through, pConsumed,
+					    produced, text, len );
 	if  ( produced < 0 )
 	    { LDEB(produced); return -1;	}
 	}
     else{
-	int	shift;
+	int	step;
 
-	shift= (*produce)( through, produced, text, len );
-	if  ( shift < 0 )
-	    { LLLDEB(produced,len,shift); return -1;	}
+	step= textConverterProduce( tc, through, produced, text, len );
+	if  ( step < 0 )
+	    { LLLDEB(produced,len,step); return -1;	}
 
-	produced += shift;
+	produced += step;
 	*pConsumed += len;
 	}
 
     return produced;
     }
 
+void textConverterSetProduce(	struct TextConverter *	tc,
+				TextConverterProduce	produce )
+    {
+    tc->tcProduce= produce;
+    }

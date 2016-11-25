@@ -310,9 +310,7 @@ static int tedDrawBoxAroundTree(
 	}
 
     if  ( docGetBoxAroundTree( &drBox, bodySectNode, tree, justUsed,
-			    tree->dtPageSelectedUpon,
-			    tree->dtColumnSelectedIn,
-			    lc ) )
+		    tree->dtPageSelectedUpon, tree->dtColumnSelectedIn, lc ) )
 	{ LDEB(1); return -1;	}
 
     if  ( ! geoIntersectRectangle( &drIntersect, &drBox, drClip ) )
@@ -333,6 +331,8 @@ static int tedDrawCheckPageOfSelectedTree(
     DocumentRectangle	drChanged;
 
     BufferItem *	bodySectNode;
+
+    geoInitRectangle( &drChanged );
 
     if  ( docCheckPageOfSelectedTree( &changed, &bodySectNode, &drChanged,
 			selRootTree, lc, docStartScreenLayoutForTree ) )
@@ -385,10 +385,10 @@ static int tedDrawSelectionBackground(
     dc->dcSelection= ds;
     dc->dcSelectionGeometry= sg;
 
-    if  ( selRootNode->biTreeType != DOCinBODY			&&
+    if  ( selRootNode->biTreeType != DOCinBODY				&&
 	  selRootNode->biTreeType != DOCinSHPTXT			&&
 	  tedDrawCheckPageOfSelectedTree( sg, ds,
-			    selRootTree, &(dc->dcLayoutContext) )	)
+				selRootTree, &(dc->dcLayoutContext) )	)
 	{ LDEB(1); return -1; }
 
     docInitLayoutPosition( &lpBelow );
@@ -621,7 +621,7 @@ void tedDrawRectangle(		EditDocument *		ed,
 	}
 
     if  ( selRootNode					&&
-	  selRootNode->biTreeType != DOCinBODY	&&
+	  selRootNode->biTreeType != DOCinBODY		&&
 	  selRootNode->biTreeType != DOCinSHPTXT	)
 	{
 	DocumentTree *	x_selRootTree;

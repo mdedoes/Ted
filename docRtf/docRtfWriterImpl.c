@@ -11,19 +11,21 @@
 #   include	<stdio.h>
 #   include	<ctype.h>
 #   include	<textConverter.h>
+#   include	<textConverterImpl.h>
 
 #   include	<appDebugon.h>
 
 #   include	"docRtfWriterImpl.h"
+#   include	"docRtfTextConverter.h"
 
 /************************************************************************/
 
-void docRtfInitWritingContext(	RtfWriter *	rw )
+static void docRtfInitWritingContext(	RtfWriter *	rw )
     {
     rw->rwDocument= (BufferDocument *)0;
 
-    utilInitTextAttribute( &(rw->rwcTextAttribute) );
-    rw->rwcTextCharset= FONTcharsetANSI;
+    utilInitTextAttribute( &(rw->rwTextAttribute) );
+    rw->rwTextCharset= FONTcharsetANSI;
     docInitParagraphProperties( &(rw->rwcParagraphProperties) );
     docInitRowProperties( &(rw->rwRowProperties) );
 
@@ -51,8 +53,8 @@ void docRtfInitWritingContext(	RtfWriter *	rw )
     rw->rwCol= 0;
     rw->rwSosOut= (SimpleOutputStream *)0;
 
-    docRtfInitTextConverters( &(rw->rwcTextConverters) );
-    docRtfWriteSetRtfEncodingName( rw, DOC_RTF_AnsiCharsetName );
+    rw->rwRtfTextConverter= (TextConverter *)0;
+    rw->rwTextTextConverter= (TextConverter *)0;
 
     rw->rwPpExtraMask= (const PropertyMask *)0;
     rw->rwCpExtraMask= (const PropertyMask *)0;
@@ -60,7 +62,7 @@ void docRtfInitWritingContext(	RtfWriter *	rw )
     rw->rwSpExtraMask= (const PropertyMask *)0;
     }
 
-void docRtfCleanWritingContext(	RtfWriter *	rw )
+static void docRtfCleanWritingContext(	RtfWriter *	rw )
     {
     docCleanParagraphProperties( &rw->rwcParagraphProperties );
     docCleanRowProperties( &rw->rwRowProperties );
@@ -69,7 +71,17 @@ void docRtfCleanWritingContext(	RtfWriter *	rw )
 
     utilCleanPagedList( &(rw->rwcEncodedFontList) );
 
-    docRtfCleanTextConverters( &(rw->rwcTextConverters) );
+    if  ( rw->rwRtfTextConverter )
+	{
+	textCleanTextConverter( rw->rwRtfTextConverter );
+	free( rw->rwRtfTextConverter );
+	}
+
+    if  ( rw->rwTextTextConverter )
+	{
+	textCleanTextConverter( rw->rwTextTextConverter );
+	free( rw->rwTextTextConverter );
+	}
     }
 
 /************************************************************************/
@@ -265,7 +277,8 @@ void docRtfWriteEnumTag(	RtfWriter *		rw,
     if  ( arg < 0 || arg >= tagCount )
 	{ LLSDEB(tagCount,arg,tags[0]); return;	}
 
-    docRtfWriteTag( rw, tags[arg] );
+    if  ( tags[arg] )
+	{ docRtfWriteTag( rw, tags[arg] );	}
     }
 
 void docRtfWriteSemicolon(	RtfWriter *	rw )
@@ -392,16 +405,37 @@ RtfWriter * docRtfOpenWriter(		SimpleOutputStream *	sos,
 					BufferDocument *	bd,
 					int			flags )
     {
-    RtfWriter *	rval= (RtfWriter *)malloc(sizeof(RtfWriter) );
+    RtfWriter *		rval= (RtfWriter *)0;
+    RtfWriter *		rw= (RtfWriter *)0;
 
-    if  ( ! rval )
-	{ PDEB(rval); return (RtfWriter *)0;	}
+    rw= (RtfWriter *)malloc(sizeof(RtfWriter) );
+    if  ( ! rw )
+	{ PDEB(rw); goto ready;	}
 
-    docRtfInitWritingContext( rval );
+    docRtfInitWritingContext( rw );
 
-    rval->rwDocument= bd;
-    rval->rwSosOut= sos;
-    rval->rwSaveFlags= flags;
+    rw->rwRtfTextConverter= malloc( sizeof(TextConverter) );
+    if  ( ! rw->rwRtfTextConverter )
+	{ PDEB(rw->rwRtfTextConverter); goto ready;	}
+    textInitTextConverter( rw->rwRtfTextConverter );
+
+    rw->rwTextTextConverter= malloc( sizeof(TextConverter) );
+    if  ( ! rw->rwTextTextConverter )
+	{ PDEB(rw->rwTextTextConverter); goto ready;	}
+    textInitTextConverter( rw->rwTextTextConverter );
+
+    rw->rwDocument= bd;
+    rw->rwSosOut= sos;
+    rw->rwSaveFlags= flags;
+
+    docRtfWriteSetupTextConverters( rw );
+
+    rval= rw; rw= (RtfWriter *)0; /* steal */
+
+  ready:
+
+    if  ( rw )
+	{ docRtfCloseWriter( rw );	}
 
     return rval;
     }

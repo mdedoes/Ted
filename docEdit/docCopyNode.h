@@ -49,9 +49,9 @@ extern int docCopyNote(			DocumentCopyJob *	dcj,
 					DocumentField *		dfTo,
 					const DocumentField *	dfFrom );
 
-extern DrawingShape * docCopyDrawingShape(
+extern struct DrawingShape * docCopyDrawingShape(
 					DocumentCopyJob *	dcj,
-					DrawingShape *		from );
+					struct DrawingShape *	from );
 
 extern struct BufferItem * docCopyNode(
 				DocumentCopyJob *		dcj,

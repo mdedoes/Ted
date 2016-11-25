@@ -154,12 +154,13 @@ int docGetTopOfColumn(	DocumentPosition *		dp,
 int docGetLastInColumnForNode(	DocumentPosition *		dp,
 				int *				pLineBot,
 				int *				pPartBot,
-				BufferItem *			node,
+				BufferItem *			nodeIn,
 				int				page,
 				int				column )
     {
     int			i;
     const TextLine *	tl;
+    BufferItem *	node= nodeIn;
 
     while( node && node->biLevel != DOClevPARA )
 	{
@@ -211,11 +212,11 @@ int docGetLastInColumnForNode(	DocumentPosition *		dp,
 	  tl->tlTopPosition.lpPage != page	||
 	  tl->tlTopPosition.lpColumn != column	)
 	{
-	SDEB(docTreeTypeStr(node->biTreeType));
+	SSDEB(docTreeTypeStr(node->biTreeType),docLevelStr(node->biLevel));
 	LLDEB(page,column);
 	LDEB(node->biBelowPosition.lpPage);
 	LDEB(node->biBelowPosition.lpColumn);
-	/*docListNode(0,node);*/
+	/*docListNode(0,nodeIn,0);*/
 	LDEB(docNumberOfParagraph(node));
 	LLDEB(i,node->biParaLineCount);
 	return -1;

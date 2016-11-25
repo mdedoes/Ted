@@ -1,119 +1,5 @@
 #####################################################################
 ##
-##   Look for Qt
-##
-#####################################################################
-
-AC_DEFUN(AC_PATH_QT,
-[
-    echo Checking for Qt...
-
-    QT_CFLAGS=
-    QT_LIBS=
-    QT_EXTRA_LIBS=
-    QT_STATIC_REF=
-    QT_SHARED_REF=
-
-    QT_HEADERS_FOUND=NO
-    QT_LIBS_FOUND=NO
-
-    ac_qt_includes=${ac_qt_includes:-NO}
-    ac_qt_libraries=${ac_qt_libraries:-NO}
-    ac_qt_static_lib=NO
-    ac_qt_shared_lib=NO
-
-    if  test $ac_qt_includes = NO
-    then
-	# Includes
-	for ac_dir in				\
-	    /usr/local/qt/include
-	do
-	if  test -r "$ac_dir/qconfig.h"
-	    then
-		ac_qt_includes=$ac_dir
-		break
-	    fi
-	done
-    fi
-
-    if  test $ac_qt_libraries = NO
-    then
-	# Libraries
-	for ac_dir in				\
-	    /usr/local/qt/lib
-	do
-	found=no
-
-	if  test -r "$ac_dir/libqt.a"
-	    then
-		ac_qt_libraries=$ac_dir
-		ac_qt_static_lib=$ac_dir/libqt.a
-		found=yes
-	    fi
-
-	if  test -r "$ac_dir/libqt.so"
-	    then
-		ac_qt_libraries=$ac_dir
-		ac_qt_shared_lib=$ac_dir/libqt.so
-		found=yes
-	    fi
-
-	if  test -r "$ac_dir/libqt.dylib"
-	    then
-		ac_qt_libraries=$ac_dir
-		ac_qt_shared_lib=$ac_dir/libqt.dylib
-		found=yes
-	    fi
-
-	if  test $found = yes
-	    then
-		break
-	    fi
-	done
-    fi
-
-    #echo Includes : $ac_qt_includes
-    #echo Libraries: $ac_qt_libraries
-
-    if  test $ac_qt_includes != NO
-    then
-	QT_CFLAGS=" -I$ac_qt_includes"
-	QT_HEADERS_FOUND=YES
-
-	if  test "$QT_CFLAGS" = "$X_CFLAGS"
-	then
-	    QT_CFLAGS=
-	fi
-    fi
-
-    if  test $ac_qt_libraries != NO
-    then
-	QT_LIBS=" -L$ac_qt_libraries"
-	QT_LIBS_FOUND=YES
-
-	if  test "$QT_LIBS" = "$X_LIBS"
-	then
-	    QT_LIBS=
-	fi
-    fi
-
-    if  test $ac_qt_static_lib != NO
-    then
-	QT_STATIC_REF="$ac_qt_static_lib"
-    else
-	QT_STATIC_REF="$QT_LIBS -lXm"
-    fi
-
-    QT_SHARED_REF="$QT_LIBS -lXm"
-
-    AC_SUBST(QT_CFLAGS)dnl
-    AC_SUBST(QT_LIBS)dnl
-    AC_SUBST(QT_STATIC_REF)dnl
-    AC_SUBST(QT_SHARED_REF)dnl
-    AC_SUBST(QT_EXTRA_LIBS)dnl
-])
-#####################################################################
-##
 ##   Look for gtk headers and libraries.
 ##
 #####################################################################
@@ -620,7 +506,7 @@ AC_DEFUN(AC_PATH_XPM,
 ##
 #####################################################################
 
-AC_DEFUN(AC_PATH_XM,
+AC_DEFUN(AC_PATH_MOTIF,
 [
     echo Checking for Motif...
 
@@ -784,32 +670,6 @@ AC_DEFUN(AC_PATH_XM,
 	XM_STATIC_REF="$XM_LIBS -lXm"
     fi
 
-    #  Hack to cope with the linker on some BSD operating systems
-    #  I do not think that this hack will be acceptable on the long 
-    #  term.
-    #  *   The hack is in the wrong position: It is in the Motif 
-    #      configuration, whereas it should be in some more generic 
-    #      environment.
-    #  *   It bypasses the generic autoconf framework. This might 
-    #      pose more issues than it removes.
-    #
-
-    if  test $ac_xm_libraries != NO
-    then
-	if  uname -s > /dev/null
-	then
-	    ac_os_xm=`uname -s`
-	    case $ac_os_xm in
-		FreeBsd|NetBsd|OpenBsd|FreeBSD|NetBSD|OpenBSD)
-		    XM_EXTRA_LIBS="$XM_EXTRA_LIBS -Wl,-R$ac_xm_libraries"
-		    XM_EXTRA_LIBS="$XM_EXTRA_LIBS -Wl,-R$x_libraries"
-		    ;;
-		*)
-		    ;;
-	    esac
-	fi
-    fi
-
     XM_SHARED_REF="$XM_LIBS -lXm"
 
     AC_SUBST(XM_CFLAGS)dnl
@@ -829,25 +689,27 @@ AC_DEFUN(AC_INSTALL_LOCATIONS,
 [
     dnl Installation locations ..
 
-    AC_PREFIX_DEFAULT("/usr/local")
+    AC_PREFIX_DEFAULT("/usr")
 
     if  test x_$prefix = x_NONE
     then
-	PREFIX='"'/usr/local'"'
-	EXEX_PREFIX='"'/usr/local'"'
-	BINDIR='"'/usr/local/bin'"'
+	Q_PREFIX=/usr
+	Q_EXEX_PREFIX=/usr
+	Q_BINDIR=/usr/bin
+	Q_DATADIR=/usr/share
     else
-	PREFIX='"'$prefix'"'
-	EXEX_PREFIX='"'$prefix'"'
-	BINDIR='"'$prefix/bin'"'
+	Q_PREFIX=$prefix
+	Q_EXEX_PREFIX=$prefix
+	Q_BINDIR=$bindir
+	Q_DATADIR=$datadir
     fi
 
     if  test x_$exec_prefix = x_NONE
     then
 	: ok
     else
-	EXEX_PREFIX='"'$exec_prefix'"'
-	BINDIR='"'$exec_prefix/bin'"'
+	Q_EXEX_PREFIX=$exec_prefix
+	Q_BINDIR=$exec_prefix/bin
     fi
 
     case $bindir in
@@ -858,151 +720,43 @@ AC_DEFUN(AC_INSTALL_LOCATIONS,
 	    x_var=`eval echo $bindir`
 	    case $x_var in
 		NONE/bin)
-		    BINDIR='"'/usr/local/bin'"'
+		    Q_BINDIR=/usr/bin
 		    ;;
 		*)
-		    BINDIR='"'$x_var'"'
+		    Q_BINDIR=$x_var
 		    ;;
 	    esac
 	    unset x_var
 	    ;;
 	*)
-	    BINDIR='"'$bindir'"'
+	    Q_BINDIR=$bindir
 	    ;;
     esac
+
+    PREFIX='"'$Q_PREFIX'"'
+    EXEX_PREFIX='"'$Q_EXEX_PREFIX'"'
+    BINDIR='"'$Q_BINDIR'"'
+    DATADIR='"'$Q_DATADIR'"'
 
     AC_DEFINE_UNQUOTED( PREFIX, $PREFIX )
     AC_DEFINE_UNQUOTED( EXEC_PREFIX, $EXEC_PREFIX )
     AC_DEFINE_UNQUOTED( BINDIR, $BINDIR )
+    AC_DEFINE_UNQUOTED( DATADIR, $DATADIR )
+
+    AC_DEFINE_UNQUOTED( Q_PREFIX, $Q_PREFIX )
+    AC_DEFINE_UNQUOTED( Q_EXEC_PREFIX, $Q_EXEC_PREFIX )
+    AC_DEFINE_UNQUOTED( Q_BINDIR, $Q_BINDIR )
+    AC_DEFINE_UNQUOTED( Q_DATADIR, $Q_DATADIR )
 
     AC_SUBST(PREFIX)
     AC_SUBST(EXEC_PREFIX)
     AC_SUBST(BINDIR)
-])
-#####################################################################
-##
-##   Look for iconv
-##
-#####################################################################
+    AC_SUBST(DATADIR)
 
-AC_DEFUN(AC_PATH_ICONV,
-[
-    echo Checking for iconv...
-
-    ICONV_CFLAGS=
-    ICONV_LIBS=
-    ICONV_STATIC_REF=
-    ICONV_SHARED_REF=
-
-    ICONV_FOUND=0
-
-    ac_iconv_includes=${ac_iconv_includes:-NO}
-    ac_iconv_libraries=${ac_iconv_libraries:-NO}
-    ac_iconv_static_lib=NO
-    ac_iconv_shared_lib=NO
-
-    if  test $ac_iconv_includes = "NO"
-    then
-	# Includes
-	for ac_dir in			\
-	    /usr/include		\
-	    /usr/local/include		\
-	    /usr/pkg/include		\
-	    /usr/local/include/iconv	\
-	    /usr/apps/include		\
-	    ../iconv
-	do
-	if  test -r "$ac_dir/iconv.h"
-	    then
-		ac_iconv_includes=$ac_dir
-		break
-	    fi
-	done
-    fi
-
-    if  test $ac_iconv_libraries = "NO"
-    then
-	# Libraries
-	for ac_dir in			\
-	    /usr/lib			\
-	    /usr/local/lib		\
-	    /usr/pkg/lib		\
-	    /usr/local/lib/iconv	\
-	    /usr/apps/lib		\
-	    ../iconv
-	do
-	found=no
-
-	if  test -r "$ac_dir/iconv.a"
-	    then
-		ac_iconv_libraries=$ac_dir
-		ac_iconv_static_lib=$ac_dir/iconv.a
-		found=yes
-		break
-	    fi
-
-	if  test -r "$ac_dir/iconv.so"
-	    then
-		ac_iconv_libraries=$ac_dir
-		ac_iconv_shared_lib=$ac_dir/iconv.so
-		found=yes
-		break
-	    fi
-
-	if  test -r "$ac_dir/iconv.dylib"
-	    then
-		ac_iconv_libraries=$ac_dir
-		ac_iconv_shared_lib=$ac_dir/iconv.dylib
-		found=yes
-		break
-	    fi
-
-	if  test $found = yes
-	    then
-		break
-	    fi
-
-	done
-    fi
-
-    #echo Includes : $ac_iconv_includes
-    #echo Libraries: $ac_iconv_libraries
-
-    if  test $ac_iconv_includes = NO
-    then
-	ICONV_FOUND=0
-	AC_DEFINE(HAVE_ICONV,0)
-    else
-	ICONV_FOUND=1
-	AC_DEFINE(HAVE_ICONV,1)
-	ICONV_CFLAGS=-I$ac_iconv_includes
-
-	if  test "$ICONV_CFLAGS" = "-I/usr/include"
-	then
-	    ICONV_CFLAGS=
-	fi
-    fi
-
-    if  test $ac_iconv_libraries != NO
-    then
-	ICONV_LIBS="-L$ac_iconv_libraries"
-
-	if  test $ac_iconv_static_lib != NO
-	then
-	    ICONV_STATIC_REF="$ac_iconv_static_lib"
-	else
-	    ICONV_STATIC_REF="$ICONV_LIBS -liconv"
-	fi
-
-    ICONV_SHARED_REF="$ICONV_LIBS -liconv"
-
-    fi
-
-    AC_SUBST(ICONV_CFLAGS)dnl
-    AC_SUBST(ICONV_LIBS)dnl
-    AC_SUBST(ICONV_STATIC_REF)dnl
-    AC_SUBST(ICONV_SHARED_REF)dnl
-    AC_SUBST(ICONV_FOUND)dnl
+    AC_SUBST(Q_PREFIX)
+    AC_SUBST(Q_EXEC_PREFIX)
+    AC_SUBST(Q_BINDIR)
+    AC_SUBST(Q_DATADIR)
 ])
 #####################################################################
 ##

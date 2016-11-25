@@ -74,9 +74,9 @@ static int appDocMakeMainWindow(	EditDocument *		ed )
     utilInitMemoryBuffer( &fullTitle );
     utilInitMemoryBuffer( &iconName );
 
-    if  ( ea->eaDocumentIcon						&&
-	  appGetImagePixmap( ea, ea->eaDocumentIcon, &pixmap, &mask )	)
-	{ SDEB(ea->eaDocumentIcon); rval= -1; goto ready;	}
+    if  ( ea->eaMainIcon						&&
+	  appGetImagePixmap( ea, ea->eaMainIcon, &pixmap, &mask )	)
+	{ SDEB(ea->eaMainIcon); rval= -1; goto ready;	}
 
     if  ( appFormatDocumentTitle( &fullTitle, &iconName, ea, &(ed->edTitle) ) )
 	{ LDEB(1); rval= -1; goto ready;	}

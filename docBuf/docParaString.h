@@ -9,7 +9,8 @@
 
 #   include	"docBuf.h"
 #   include	"docTreeNode.h"
-#   include	<textConverter.h>
+
+struct TextConverter;
 
 /************************************************************************/
 /*									*/
@@ -17,7 +18,7 @@
 /*									*/
 /************************************************************************/
 
-extern int docSaveParticules(	BufferDocument *	bd,
+extern int docParaAppendText(	BufferDocument *	bd,
 				BufferItem *		paraBi,
 				const TextAttribute *	ta,
 				struct TextConverter *	tc,
@@ -57,5 +58,7 @@ extern int docParaPrevStroff(	const BufferItem *	paraBi,
 extern int docParaFirstStroff(	const BufferItem *	paraBi );
 
 extern int docParaLastStroff(	const BufferItem *	paraBi );
+
+extern void docParaSetupTextConverter(	struct TextConverter *	tc );
 
 #   endif

@@ -102,8 +102,7 @@ void docDescribeSelection(	SelectionDescription *		sd,
 
     sd->sdDocumentSections= bd->bdBody.dtRoot->biChildCount;
 
-    docGetFramePropertiesByNumber( &fp, &(bd->bdFramePropertyList),
-					dpHead->dpNode->biParaFrameNumber );
+    docGetFramePropertiesByNumber( &fp, bd, dpHead->dpNode->biParaFrameNumber );
     sd->sdHeadInFrame= DOCisFRAME( &fp );
     sd->sdIsSingleFrame= 0;
 

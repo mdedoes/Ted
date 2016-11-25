@@ -19,7 +19,6 @@ static int bmBuildImage(	FillJob *			fj,
 				GetSourceRow			getSource,
 				PutScreenRow			putRow )
     {
-    const BitmapDescription *	bdIn= &(riIn->riDescription);
     int				rval= 0;
 
     int				rowOut;
@@ -44,8 +43,8 @@ static int bmBuildImage(	FillJob *			fj,
 
     drAll.drX0= 0;
     drAll.drY0= 0;
-    drAll.drX1= bdIn->bdPixelsWide- 1;
-    drAll.drY1= bdIn->bdPixelsHigh- 1;
+    drAll.drX1= riIn->riDescription.bdPixelsWide- 1;
+    drAll.drY1= riIn->riDescription.bdPixelsHigh- 1;
 
     if  ( ! drSel )
 	{ drSel= &drAll;	}
@@ -65,8 +64,8 @@ static int bmBuildImage(	FillJob *			fj,
 	    }
 	}
 
-    frWide= bdIn->bdPixelsWide;
-    frHigh= bdIn->bdPixelsHigh;
+    frWide= riIn->riDescription.bdPixelsWide;
+    frHigh= riIn->riDescription.bdPixelsHigh;
 
     if  ( toHigh <= frHigh )
 	{
@@ -84,10 +83,11 @@ static int bmBuildImage(	FillJob *			fj,
 
 	    while( e >= 0 )
 		{
-		from= riIn->riBytes+ rowIn* bdIn->bdBytesPerRow;
+		from= riIn->riBytes+ rowIn* riIn->riDescription.bdBytesPerRow;
 
-		(*getSource)( fj->fjThisRow+ 1, 0,
-					from, 0, bdIn->bdPixelsWide, bdIn );
+		(*getSource)( fj->fjThisRow+ 1, 0, from, 0,
+					    riIn->riDescription.bdPixelsWide,
+					    &(riIn->riDescription) );
 
 		rowIn++; e -= d2;
 		}
@@ -106,11 +106,12 @@ static int bmBuildImage(	FillJob *			fj,
 	rowOut= 0;
 	for ( rowIn= 0; rowIn < frHigh; rowIn++ )
 	    {
-	    from= riIn->riBytes+ rowIn* bdIn->bdBytesPerRow;
+	    from= riIn->riBytes+ rowIn* riIn->riDescription.bdBytesPerRow;
 
 	    bmInitColorRow( fj->fjThisRow+ 1, frWide );
-	    (*getSource)( fj->fjThisRow+ 1, 0,
-					from, 0, bdIn->bdPixelsWide, bdIn );
+	    (*getSource)( fj->fjThisRow+ 1, 0, from, 0,
+					    riIn->riDescription.bdPixelsWide,
+					    &(riIn->riDescription) );
 
 	    while( e >= 0 )
 		{

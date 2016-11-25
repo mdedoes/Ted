@@ -9,6 +9,7 @@
 #   ifndef	DOC_DOCUMENT_LIST_H
 #   define	DOC_DOCUMENT_LIST_H
 
+#   include	"docListDepth.h"
 #   include	"docListLevel.h"
 
 typedef struct DocumentList

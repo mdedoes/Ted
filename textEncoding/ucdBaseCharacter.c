@@ -510,5 +510,5 @@ static const unsigned short * const * const * const UCD_BASE[16]={
 };
 
 int ucdBaseCharacter( int sym ) {
-    return ucdToCase( sym, UCD_BASE );
+    return ucdMapSymbol( sym, UCD_BASE );
 }

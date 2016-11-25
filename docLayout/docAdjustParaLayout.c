@@ -7,7 +7,6 @@
 #   include	"docLayoutConfig.h"
 
 #   include	<stddef.h>
-#   include	<limits.h>
 
 #   include	"docLayout.h"
 #   include	<docPageGrid.h>
@@ -190,21 +189,7 @@ int docAdjustParaLayout(	BufferItem *		paraBi,
 	}
 
     /*  4  */
-    if  ( biParaFrom->biTreeType == DOCinFOOTNOTE		||
-
-	  biParaFrom->biTreeType == DOCinFTNSEP		||
-	  biParaFrom->biTreeType == DOCinFTNSEPC		||
-	  biParaFrom->biTreeType == DOCinFTNCN		||
-	  biParaFrom->biTreeType == DOCinAFTNSEP		||
-	  biParaFrom->biTreeType == DOCinAFTNSEPC		||
-	  biParaFrom->biTreeType == DOCinAFTNCN		||
-
-	  docIsHeaderType( biParaFrom->biTreeType )		||
-	  docIsFooterType( biParaFrom->biTreeType )		)
-	{
-	bf.bfContentRect.drY1= INT_MAX;
-	bf.bfFlowRect.drY1= INT_MAX;
-	}
+    docLayoutAdjustFrame( &bf, biParaFrom );
 
     docParagraphFrameTwips( &(plj.pljPos.plpParagraphFrame), &bf, biParaFrom );
 

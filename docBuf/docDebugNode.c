@@ -15,26 +15,26 @@
 
 #   define	IS			2
 
-static int docCheckGroupLeft(	const BufferItem *	bi )
+static int docCheckGroupLeft(	const BufferItem *	node )
     {
     int		rval= 0;
 
     int		prev= 0;
     int		here;
 
-    if  ( bi->biParent && bi->biNumberInParent > 0 )
+    if  ( node->biParent && node->biNumberInParent > 0 )
 	{
-	prev= bi->biParent->biChildren[bi->biNumberInParent-1]->
+	prev= node->biParent->biChildren[node->biNumberInParent-1]->
 						biLeftParagraphs;
 	}
 
-    here= bi->biLeftParagraphs;
+    here= node->biLeftParagraphs;
 
     if  ( here- prev !=
-	    bi->biChildren[bi->biChildCount- 1]->biLeftParagraphs )
+	    node->biChildren[node->biChildCount- 1]->biLeftParagraphs )
 	{
-	SLDEB(docLevelStr(bi->biLevel),here- prev);
-	LDEB(bi->biChildren[bi->biChildCount- 1]->biLeftParagraphs);
+	SLDEB(docLevelStr(node->biLevel),here- prev);
+	LDEB(node->biChildren[node->biChildCount- 1]->biLeftParagraphs);
 	rval= -1;
 	}
 
@@ -162,7 +162,7 @@ static int docCheckChild(	const BufferItem *	parent,
     return rval;
     }
 
-int docCheckNode(	const BufferItem *	bi,
+int docCheckNode(	const BufferItem *	node,
 			int			checkGeometry )
     {
     int			i;
@@ -170,84 +170,84 @@ int docCheckNode(	const BufferItem *	bi,
 
     LayoutPosition	lpHere;
 
-    if  ( bi->biLevel == DOClevPARA )
+    if  ( node->biLevel == DOClevPARA )
 	{
 	int			part;
 	const TextParticule *	tp;
 	int			stroff;
-	int			tableNesting= docTableNesting( bi );
+	int			tableNesting= docTableNesting( node );
 
-	if  ( bi->biLeftParagraphs != bi->biNumberInParent+ 1 )
+	if  ( node->biLeftParagraphs != node->biNumberInParent+ 1 )
 	    {
 	    appDebug( "############## %s:\n",
-					docLevelStr(bi->biLevel) );
-	    LLDEB(bi->biLeftParagraphs,bi->biNumberInParent+1);
+					docLevelStr(node->biLevel) );
+	    LLDEB(node->biLeftParagraphs,node->biNumberInParent+1);
 	    }
 
-	if  ( tableNesting != bi->biParaTableNesting )
+	if  ( tableNesting != node->biParaTableNesting )
 	    {
 	    SDEB("#######");
-	    LLDEB(tableNesting,bi->biParaTableNesting);
+	    LLDEB(tableNesting,node->biParaTableNesting);
 	    rval= -1;
 	    }
 
 	stroff= 0;
-	tp= bi->biParaParticules;
-	for ( part= 0; part < bi->biParaParticuleCount; tp++, part++ )
+	tp= node->biParaParticules;
+	for ( part= 0; part < node->biParaParticuleCount; tp++, part++ )
 	    {
-	    if  ( tp->tpStroff > docParaStrlen( bi )	||
+	    if  ( tp->tpStroff > docParaStrlen( node )	||
 		  tp->tpStroff != stroff		)
 		{
 		appDebug( "############## %s:\n",
-					docLevelStr(bi->biLevel) );
-		LLLLDEB(part,tp->tpStroff,stroff,docParaStrlen(bi));
+					docLevelStr(node->biLevel) );
+		LLLLDEB(part,tp->tpStroff,stroff,docParaStrlen(node));
 		rval= -1;
 		}
 
 	    stroff= tp->tpStroff+ tp->tpStrlen;
 	    if  ( stroff < 0			||
-		  stroff >  docParaStrlen( bi )	)
+		  stroff >  docParaStrlen( node )	)
 		{
 		appDebug( "############## %s:\n",
-					docLevelStr(bi->biLevel) );
-		LLLLDEB(part,stroff,tp->tpStrlen,docParaStrlen(bi));
+					docLevelStr(node->biLevel) );
+		LLLLDEB(part,stroff,tp->tpStrlen,docParaStrlen(node));
 		rval= -1;
 		}
 	    }
-	if  ( stroff != docParaStrlen( bi ) )
+	if  ( stroff != docParaStrlen( node ) )
 	    {
 	    appDebug( "############## %s:\n",
-					docLevelStr(bi->biLevel) );
-	    LLDEB(stroff,docParaStrlen(bi));
+					docLevelStr(node->biLevel) );
+	    LLDEB(stroff,docParaStrlen(node));
 	    rval= -1;
 	    }
 	}
     else{
-	if  ( bi->biChildCount < 1 )
-	    { SLDEB("#######",bi->biChildCount);	}
+	if  ( node->biChildCount < 1 )
+	    { SLDEB("#######",node->biChildCount);	}
 	}
 
-    if  ( bi->biLevel == DOClevROW )
+    if  ( node->biLevel == DOClevROW )
 	{
-	if  ( docIsRowNode( bi )			&&
-	      bi->biRowCellCount != bi->biChildCount	)
+	if  ( docIsRowNode( node )			&&
+	      node->biRowCellCount != node->biChildCount	)
 	    {
-	    appDebug( "############## %s:\n", docLevelStr(bi->biLevel) );
-	    LLDEB(bi->biRowCellCount,bi->biChildCount);
+	    appDebug( "############## %s:\n", docLevelStr(node->biLevel) );
+	    LLDEB(node->biRowCellCount,node->biChildCount);
 	    }
 	}
 
-    if  ( bi->biChildCount > 0 )
+    if  ( node->biChildCount > 0 )
 	{
-	if  ( docCheckGroupLeft( bi ) )
+	if  ( docCheckGroupLeft( node ) )
 	    { rval= -1;	}
 
-	if  ( ! bi->biParent )
+	if  ( ! node->biParent )
 	    {
 	    DocumentPosition	dp;
 	    docInitDocumentPosition( &dp );
 
-	    if  ( ! docHeadPosition( &dp, (BufferItem *)bi ) )
+	    if  ( ! docHeadPosition( &dp, (BufferItem *)node ) )
 		{
 		const BufferItem *	paraBi= dp.dpNode;
 		int			n= 1;
@@ -266,221 +266,234 @@ int docCheckNode(	const BufferItem *	bi,
 	    }
 	}
 
-    for ( i= 0; i < bi->biChildCount; i++ )
+    for ( i= 0; i < node->biChildCount; i++ )
 	{
 	LayoutPosition	lpBelowChild= lpHere;
 
-	if  ( docCheckChild( bi, bi->biChildren[i], i,
+	if  ( docCheckChild( node, node->biChildren[i], i,
 				    &lpHere, &lpBelowChild, checkGeometry ) )
 	    { rval= -1;	}
 
-	if  ( ! docIsRowNode( bi ) )
+	if  ( ! docIsRowNode( node ) )
 	    { lpHere= lpBelowChild;	}
 
-	if  ( docCheckNode( bi->biChildren[i], checkGeometry ) )
+	if  ( docCheckNode( node->biChildren[i], checkGeometry ) )
 	    { rval= -1;	}
 	}
 
     return rval;
     }
 
-int docCheckRootNode(	const BufferItem *	bi,
+int docCheckRootNode(	const BufferItem *	node,
 			int			checkGeometry )
     {
-    while( bi->biParent )
-	{ bi= bi->biParent;	}
+    while( node->biParent )
+	{ node= node->biParent;	}
 
-    return docCheckNode( bi, checkGeometry );
+    return docCheckNode( node, checkGeometry );
     }
 
 static void docListChildren(	int			indent,
-				const BufferItem *	bi,
+				const BufferItem *	node,
 				int			checkGeometry )
     {
     int			i;
 
     LayoutPosition	lp;
 
-    lp= bi->biTopPosition;
+    lp= node->biTopPosition;
 
-    for ( i= 0; i < bi->biChildCount; i++ )
+    for ( i= 0; i < node->biChildCount; i++ )
 	{
-	docCheckChild( bi, bi->biChildren[i], i, &lp, &lp, checkGeometry );
+	docCheckChild( node, node->biChildren[i], i, &lp, &lp, checkGeometry );
 
-	docListNode( indent+ 1, bi->biChildren[i], checkGeometry );
+	docListNode( indent+ 1, node->biChildren[i], checkGeometry );
 	}
 
-    if  ( bi->biChildCount > 0 )
-	{ docCheckGroupLeft( bi );	}
+    if  ( node->biChildCount > 0 )
+	{ docCheckGroupLeft( node );	}
 
     if  ( checkGeometry						&&
-	  ! docIsRowNode( bi )					&&
-	  ! DOC_SAME_POSITION( &(bi->biBelowPosition), &lp )	)
+	  ! docIsRowNode( node )					&&
+	  ! DOC_SAME_POSITION( &(node->biBelowPosition), &lp )	)
 	{
-	appDebug( "############## %s :\n", docLevelStr(bi->biLevel) );
+	appDebug( "############## %s :\n", docLevelStr(node->biLevel) );
 
-	LLDEB(bi->biBelowPosition.lpPage,lp.lpPage);
-	LLDEB(bi->biBelowPosition.lpColumn,lp.lpColumn);
-	LLDEB(bi->biBelowPosition.lpPageYTwips,lp.lpPageYTwips);
+	LLDEB(node->biBelowPosition.lpPage,lp.lpPage);
+	LLDEB(node->biBelowPosition.lpColumn,lp.lpColumn);
+	LLDEB(node->biBelowPosition.lpPageYTwips,lp.lpPageYTwips);
 	}
     }
 
-void docListNode(	int			indent,
-			const BufferItem *	bi,
-			int			checkGeometry )
+static void docListParaNode(	int			indent,
+				const BufferItem *	node )
     {
     int				i;
-    LayoutPosition		lpHere;
     const TextLine *		tl;
+    LayoutPosition		lpHere;
 
     int				stroff;
     const TextParticule *	tp;
 
+    appDebug( "%*s{ NR= %d TN=%d brk=%s %d particules, %d lines\n",
+				    IS* indent+ IS, "",
+				    docNumberOfParagraph( node ),
+				    node->biParaTableNesting,
+				    docBreakKindStr( node->biParaBreakKind ),
+				    node->biParaParticuleCount,
+				    node->biParaLineCount );
+
+#   if LIST_PARA_STRING
+    {
+    int		length= docParaStrlen( node );
+
+    stroff= 0;
+    while( stroff < length )
+	{
+	int		l= length- stroff;
+
+	if  ( l > 60 )
+	    { l= 60; }
+
+	appDebug( "%*s\"%.*s\"\n",
+			IS* indent+ IS, "",
+			(int)l, (char *)docParaString( node, stroff ) );
+
+	stroff += l;
+	}
+    }
+#   endif
+
+    stroff= 0;
+    tp= node->biParaParticules;
+    for ( i= 0; i < node->biParaParticuleCount; tp++, i++ )
+	{
+	int		list= LIST_PARTICULES;
+	const char *	label= "PART";
+
+	if  ( tp->tpStroff != stroff	)
+	    { list= 1; label= "####";	}
+
+	if  ( list )
+	    { docListParticule( IS* indent+ IS, label, i, node, tp ); }
+
+	stroff= tp->tpStroff+ tp->tpStrlen;
+	}
+
+    if  ( stroff != docParaStrlen( node ) )
+	{
+	SLLDEB("####",stroff,docParaStrlen( node ) );
+	if  ( node->biParaParticuleCount > 0 )
+	    {
+	    i= node->biParaParticuleCount- 1;
+	    tp= node->biParaParticules+ i;
+	    docListParticule( IS* indent+ IS, "####", i, node, tp );
+	    }
+	}
+
+    tl= node->biParaLines;
+    lpHere= node->biTopPosition;
+    for ( i= 0; i < node->biParaLineCount; tl++, i++ )
+	{
+	int	listLine= LIST_LINES || ( i == 0 && LIST_FIRST_LINE );
+
+	if  ( docCompareLayoutPositions( &(tl->tlTopPosition),
+							&lpHere ) < 0 )
+	    {
+	    appDebug( "###### Line= %d\n", i );
+	    LDEB(i);
+	    listLine= 1;
+	    }
+
+	lpHere= tl->tlTopPosition;
+	lpHere.lpPageYTwips += tl->tlLineStride;
+
+	if  ( docCompareLayoutPositions( &(node->biBelowPosition),
+							&lpHere ) < 0 )
+	    {
+	    appDebug( "###### Line= %d\n", i );
+	    LDEB(i);
+	    listLine= 1;
+	    }
+
+	if  ( listLine )
+	    { docListTextLine( IS* indent+ IS, "LINE", i, node, tl ); }
+	}
+
+    return;
+    }
+
+void docListNode(	int			indent,
+			const BufferItem *	node,
+			int			checkGeometry )
+    {
+    int				i;
+
     for ( i= 0; i < indent; i++ )
 	{ appDebug( "%-*s", IS, "." );	}
 
-    appDebug( "NODE %4d 0x%08lx: %s LEFT= %d PG: %d:%d..%d:%d\n",
-			    bi->biNumberInParent,
-			    (unsigned long)bi,
-			    docLevelStr( bi->biLevel ),
-			    bi->biLeftParagraphs,
-			    bi->biTopPosition.lpPage,
-			    bi->biTopPosition.lpColumn,
-			    bi->biBelowPosition.lpPage,
-			    bi->biBelowPosition.lpColumn );
-    switch( bi->biLevel )
+    appDebug( "NODE %4d 0x%08lx: %s(%s) LEFT= %d PG: %d:%d..%d:%d\n",
+			    node->biNumberInParent,
+			    (unsigned long)node,
+			    docLevelStr( node->biLevel ),
+			    docTreeTypeStr( node->biTreeType ),
+			    node->biLeftParagraphs,
+			    node->biTopPosition.lpPage,
+			    node->biTopPosition.lpColumn,
+			    node->biBelowPosition.lpPage,
+			    node->biBelowPosition.lpColumn );
+
+    switch( node->biLevel )
 	{
 	case DOClevBODY:
 	case DOClevSECT:
 	case DOClevCELL:
 	    appDebug( "%*s{ %4d children\n", IS* indent+ IS, "",
-						bi->biChildCount );
+						node->biChildCount );
 
-	    docListChildren( indent, bi, checkGeometry );
+	    docListChildren( indent, node, checkGeometry );
 
 	    break;
 
 	case DOClevROW:
 	    appDebug( "%*s{ %s %4d children %d cells\n", IS* indent+ IS, "",
-				docIsRowNode(bi)?"T:":"--",
-				bi->biChildCount,
-				bi->biRowCellCount );
+				docIsRowNode(node)?"T:":"--",
+				node->biChildCount,
+				node->biRowCellCount );
 
-	    if  ( bi->biRowTableFirst >= 0	||
-		  bi->biRowTablePast >= 0	||
-		  bi->biRowTableHeaderRow >= 0	)
+	    if  ( node->biRowTableFirst >= 0	||
+		  node->biRowTablePast >= 0	||
+		  node->biRowTableHeaderRow >= 0	)
 		{
 		appDebug( "%*s  Table %d .. %d Header@%d\n", IS* indent+ IS, "",
-						bi->biRowTableFirst,
-						bi->biRowTablePast,
-						bi->biRowTableHeaderRow );
+						node->biRowTableFirst,
+						node->biRowTablePast,
+						node->biRowTableHeaderRow );
 
-		if  ( bi->biRowTableFirst >= bi->biParent->biChildCount )
+		if  ( node->biRowTableFirst >= node->biParent->biChildCount )
 		    {
 		    SLLDEB("####",
-			    bi->biRowTableFirst,bi->biParent->biChildCount);
+			    node->biRowTableFirst,node->biParent->biChildCount);
 		    }
-		if  ( bi->biRowTablePast > bi->biParent->biChildCount )
+		if  ( node->biRowTablePast > node->biParent->biChildCount )
 		    {
 		    SLLDEB("####",
-			    bi->biRowTablePast,bi->biParent->biChildCount);
+			    node->biRowTablePast,node->biParent->biChildCount);
 		    }
 		}
 
-	    if  ( docIsRowNode( bi )				&&
-		  bi->biChildCount != bi->biRowCellCount	)
-		{ SLLDEB("####", bi->biChildCount,bi->biRowCellCount); }
+	    if  ( docIsRowNode( node )				&&
+		  node->biChildCount != node->biRowCellCount	)
+		{ SLLDEB("####", node->biChildCount,node->biRowCellCount); }
 
-	    docListChildren( indent, bi, checkGeometry );
+	    docListChildren( indent, node, checkGeometry );
 
 	    break;
 
 	case DOClevPARA:
-	    appDebug( "%*s{ NR= %d TN=%d %d particules, %d lines\n",
-						IS* indent+ IS, "",
-						docNumberOfParagraph( bi ),
-						bi->biParaTableNesting,
-						bi->biParaParticuleCount,
-						bi->biParaLineCount );
-
-#	    if LIST_PARA_STRING
-	    {
-	    int		length= docParaStrlen( bi );
-
-	    stroff= 0;
-	    while( stroff < length )
-		{
-		int		l= length- stroff;
-
-		if  ( l > 60 )
-		    { l= 60; }
-
-		appDebug( "%*s\"%.*s\"\n",
-				IS* indent+ IS, "",
-				(int)l, (char *)docParaString( bi, stroff ) );
-
-		stroff += l;
-		}
-	    }
-#	    endif
-
-	    stroff= 0;
-	    tp= bi->biParaParticules;
-	    for ( i= 0; i < bi->biParaParticuleCount; tp++, i++ )
-		{
-		int		list= LIST_PARTICULES;
-		const char *	label= "PART";
-
-		if  ( tp->tpStroff != stroff	)
-		    { list= 1; label= "####";	}
-
-		if  ( list )
-		    { docListParticule( IS* indent+ IS, label, i, bi, tp ); }
-
-		stroff= tp->tpStroff+ tp->tpStrlen;
-		}
-
-	    if  ( stroff != docParaStrlen( bi ) )
-		{
-		SLLDEB("####",stroff,docParaStrlen( bi ) );
-		if  ( bi->biParaParticuleCount > 0 )
-		    {
-		    i= bi->biParaParticuleCount- 1;
-		    tp= bi->biParaParticules+ i;
-		    docListParticule( IS* indent+ IS, "####", i, bi, tp );
-		    }
-		}
-
-	    tl= bi->biParaLines;
-	    lpHere= bi->biTopPosition;
-	    for ( i= 0; i < bi->biParaLineCount; tl++, i++ )
-		{
-		int	listLine= LIST_LINES || ( i == 0 && LIST_FIRST_LINE );
-
-		if  ( docCompareLayoutPositions( &(tl->tlTopPosition),
-								&lpHere ) < 0 )
-		    {
-		    appDebug( "###### Line= %d\n", i );
-		    LDEB(i);
-		    listLine= 1;
-		    }
-
-		lpHere= tl->tlTopPosition;
-		lpHere.lpPageYTwips += tl->tlLineStride;
-
-		if  ( docCompareLayoutPositions( &(bi->biBelowPosition),
-								&lpHere ) < 0 )
-		    {
-		    appDebug( "###### Line= %d\n", i );
-		    LDEB(i);
-		    listLine= 1;
-		    }
-
-		if  ( listLine )
-		    { docListTextLine( IS* indent+ IS, "LINE", i, bi, tl ); }
-		}
-
+	    docListParaNode( indent, node );
 	    break;
+
 	case DOClevOUT:
 	default:
 	    break;
@@ -492,13 +505,13 @@ void docListNode(	int			indent,
     }
 
 void docListRootNode(	int			indent,
-			const BufferItem *	bi,
+			const BufferItem *	node,
 			int			checkGeometry )
     {
-    while( bi->biParent )
-	{ bi= bi->biParent;	}
+    while( node->biParent )
+	{ node= node->biParent;	}
 
-    docListNode( indent, bi, checkGeometry );
+    docListNode( indent, node, checkGeometry );
 
     return;
     }

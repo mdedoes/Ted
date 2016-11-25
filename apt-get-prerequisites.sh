@@ -4,8 +4,10 @@ apt-get install	\
     libpcre3-dev \
     libx11-dev \
     libxpm-dev \
+    libjpeg8-dev \
     libtiff4-dev \
-    libjpeg62-dev \
     libpng12-dev \
     libgtk2.0-dev \
-    libpaper-dev 
+    libpaper-dev  \
+    lintian \
+    fakeroot

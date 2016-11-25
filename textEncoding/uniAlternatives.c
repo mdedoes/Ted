@@ -7,6 +7,8 @@
 /*									*/
 /************************************************************************/
 
+#   include	"textEncodingConfig.h"
+
 #   include	"uniAlternatives.h"
 #   include	<appDebugon.h>
 

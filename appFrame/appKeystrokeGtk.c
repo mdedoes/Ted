@@ -44,8 +44,8 @@ static APP_EVENT_HANDLER_H( appKeyPressed, w, voiddw, event )
 
 	if  ( dw->dwGotString && unicode > 0 )
 	    {
-	    unsigned char	scratch[8];
-	    int			step= uniPutUtf8( scratch, unicode );
+	    char	scratch[8];
+	    int		step= uniPutUtf8( scratch, unicode );
 
 	    if  ( step > 0 )
 		{

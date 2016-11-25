@@ -101,6 +101,8 @@ static int tedCalculateX(	const BufferItem *	paraNode,
 	case DOCkindPAGEBREAK:
 	case DOCkindCOLUMNBREAK:
 	case DOCkindOPT_HYPH:
+	case DOCkindLTR_MARK:
+	case DOCkindRTL_MARK:
 	    docXPixels= x0Pixels;
 	    return docXPixels;
 
@@ -164,7 +166,7 @@ static void tedSelectionRectangle(
 
 	int			useColumns;
 
-	useColumns= DOClayoutUSE_COLUMNS( ds->dsHead.dpNode->biTreeType );
+	useColumns= docTreeInColumnType( ds->dsHead.dpNode->biTreeType );
 
 	drSel->drX0= 0;
 	drSel->drX1= INT_MAX;

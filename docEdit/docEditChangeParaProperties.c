@@ -12,7 +12,6 @@
 
 #   include	"docEdit.h"
 #   include	<docParaParticules.h>
-#   include	<textAttributeAdmin.h>
 #   include	"docEditSetProperties.h"
 
 #   include	<appDebugon.h>
@@ -128,8 +127,7 @@ static int docFormatHeadParticule( BufferItem *			paraNode,
 	{
 	TextAttribute	ta;
 
-	utilGetTextAttributeByNumber( &ta, &(bd->bdTextAttributeList),
-							    tp->tpTextAttrNr );
+	docGetTextAttributeByNumber( &ta, bd, tp->tpTextAttrNr );
 
 	utilAttributeDifference( &pmSplit, &ta, taSetMask, taSet );
 	}
@@ -177,8 +175,7 @@ static int docFormatTailParticule( BufferItem *			paraNode,
 	{
 	TextAttribute	ta;
 
-	utilGetTextAttributeByNumber( &ta, &(bd->bdTextAttributeList),
-							    tp->tpTextAttrNr );
+	docGetTextAttributeByNumber( &ta, bd, tp->tpTextAttrNr );
 
 	utilAttributeDifference( &pmSplit, &ta, taSetMask, taSet );
 	}

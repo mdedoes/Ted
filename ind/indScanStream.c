@@ -1,6 +1,6 @@
 #   include	"indConfig.h"
 
-#   include	<ucd.h>
+#   include	<ucdGeneralCategory.h>
 #   include	"indScanStream.h"
 #   include	<sioGeneral.h>
 

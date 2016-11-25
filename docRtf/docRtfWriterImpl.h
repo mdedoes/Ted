@@ -10,8 +10,8 @@
 #   include	<docBuf.h>
 #   include	<sioGeneral.h>
 #   include	"docRtfWriter.h"
-#   include	"docRtfTextConverter.h"
-#   include	<docTabStop.h>
+
+struct TabStopList;
 
 /************************************************************************/
 /*									*/
@@ -29,8 +29,22 @@ typedef struct PushedAttribute
 struct RtfWriter
     {
     struct BufferDocument *	rwDocument;
-    TextAttribute		rwcTextAttribute;
-    int				rwcTextCharset;
+				/**
+				 *  The current text attribute. The state of 
+				 *  the writer is also determined by the charset
+				 *  of the current text, as the RTF file format 
+				 *  includes the charset of the text in the 
+				 *  identity of the font.
+				 */
+    TextAttribute		rwTextAttribute;
+				/**
+				 *  The rtf charset of the current text attribute.
+				 *  This is needed as the RTF file format 
+				 *  represents text with 8-bit characters belonging
+				 *  to different fonts if there are too many 
+				 *  different characters in the font.
+				 */
+    int				rwTextCharset;
     ParagraphProperties		rwcParagraphProperties;
     RowProperties		rwRowProperties;
 
@@ -74,21 +88,23 @@ struct RtfWriter
 
     int				rwCol;
     SimpleOutputStream *	rwSosOut;
-    RtfTextConverter		rwcTextConverters;
+
+				/**
+				 * Used for RTF conversions. I.E where 
+				 * no font applies
+				 */
+    struct TextConverter *	rwRtfTextConverter;
+				/**
+				 * Used for Text conversions. I.E where 
+				 * a font applies
+				 */
+    struct TextConverter *	rwTextTextConverter;
 
     const PropertyMask *	rwPpExtraMask;
     const PropertyMask *	rwCpExtraMask;
     const PropertyMask *	rwRpExtraMask;
     const PropertyMask *	rwSpExtraMask;
     };
-
-# define docRtfWriteSetRtfEncodingName( r, n ) \
-	textConverterSetNativeEncodingName( &((r)->rwcTextConverters.rtcRtfConverter), (n) )
-# define docRtfWriteSetTextEncodingName( r, n ) \
-	textConverterSetNativeEncodingName( &((r)->rwcTextConverters.rtcTextConverter), (n) )
-
-# define docRtfWriteGetRtfEncodingName( r ) \
-				((r)->rwcTextConverters.rtcRtfConverter.tcNativeEncodingName+0)
 
 /************************************************************************/
 /*									*/
@@ -203,6 +219,7 @@ extern int docRtfWriteArgDestinationBegin( RtfWriter *		rwc,
 					int			arg );
 
 extern int docRtfSaveDocumentProperties( RtfWriter *			rwc,
+					int				fet,
 					const PropertyMask *		dpMask,
 					const DocumentProperties *	dp );
 
@@ -277,7 +294,7 @@ extern void docRtfWriteListLevel(
 
 extern void docRtfSaveTabStopList(
 				RtfWriter *			rwc,
-				const TabStopList *		tsl );
+				const struct TabStopList *	tsl );
 
 extern void docRtfSaveShadingByNumber(	RtfWriter *		rwc,
 					int			num,
@@ -295,9 +312,6 @@ extern int docRtfSaveParaNode(	RtfWriter *			rwc,
 				const DocumentSelection *	ds,
 				const int			flattenCell,
 				const int			firstInRow );
-
-extern void docRtfInitWritingContext(	RtfWriter *	rwc );
-extern void docRtfCleanWritingContext(	RtfWriter *	rwc );
 
 extern void docRtfWriteSemicolon(	RtfWriter *	rwc );
 
@@ -340,5 +354,7 @@ extern int docRtfWriteSelection(	RtfWriter *			rw,
 extern int docRtfSaveDate(		RtfWriter *		rw,
 					const char *		tag,
 					const struct tm *	tm );
+
+extern void docRtfWriteSetupTextConverters(	RtfWriter *	rw );
 
 #   endif	/*	RTF_WRITER_IMPL_H	*/

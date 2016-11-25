@@ -12,7 +12,6 @@
 
 #   include	<docLayout.h>
 #   include	<docScreenLayout.h>
-#   include	<textAttributeAdmin.h>
 #   include	<textAttributeUtil.h>
 #   include	<drawDrawingSurface.h>
 
@@ -34,14 +33,13 @@ int docOpenScreenFont(	const LayoutContext *	lc,
     if  ( screenFont < 0 )
 	{
 	BufferDocument *	bd= lc->lcDocument;
-	DocumentFontList *	dfl= &(bd->bdProperties.dpFontList);
+	DocumentFontList *	dfl= bd->bdProperties.dpFontList;
 	const AfmFontInfo *	afi;
 	const IndexSet *	unicodesWanted;
 	TextAttribute		ta;
 	int			pixelSize;
 
-	utilGetTextAttributeByNumber( &ta, &(bd->bdTextAttributeList),
-							    textAttrNr );
+	docGetTextAttributeByNumber( &ta, bd, textAttrNr );
 
 	afi= appGetFontInfoForAttribute( &unicodesWanted, &ta, dfl,
 						    lc->lcPostScriptFontList );

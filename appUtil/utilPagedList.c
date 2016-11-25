@@ -266,3 +266,21 @@ void * utilPagedListClaimNewItem(	int *			pN,
 
     return vit;
     }
+
+void * utilPagedListGetNext(	int *			pN,
+				const PagedList *	pl,
+				int			n )
+    {
+    void *	v;
+    int		nn= utilIndexSetGetNext( &(pl->plItemUsed), n );
+
+    if  ( nn < 0 )
+	{ return (void *)0;	}
+
+    v= utilPagedListGetItemByNumber( pl, nn );
+    if  ( ! v )
+	{ XDEB(v);	}
+    else{ *pN= nn;	}
+
+    return v;
+    }

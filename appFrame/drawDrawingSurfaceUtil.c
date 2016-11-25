@@ -44,7 +44,7 @@ int drawGetSymbolExtents(	DocumentRectangle *	drText,
     int				step;
     char			scratch[10];
 
-    step= uniPutUtf8( (unsigned char *)scratch, symbol );
+    step= uniPutUtf8( scratch, symbol );
     if  ( step < 1 )
 	{ return -1;	}
     scratch[step]= '\0';
@@ -62,7 +62,7 @@ void drawSymbol(		DrawingSurface		ds,
     int				step;
     char			scratch[10];
 
-    step= uniPutUtf8( (unsigned char *)scratch, symbol );
+    step= uniPutUtf8( scratch, symbol );
     if  ( step < 1 )
 	{ return;	}
     scratch[step]= '\0';

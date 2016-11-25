@@ -510,6 +510,9 @@ void drawChildSurface(		DrawingSurface			ds,
 				int				yDest,
 				const DocumentRectangle *	drChild )
     {
+    if  ( ! child )
+	{ XDEB(child); return;	}
+
     gdk_draw_pixmap( ds->dsDrawable, ds->dsGc, child->dsDrawable,
 				drChild->drX0, drChild->drY0, xDest, yDest,
 				drChild->drX1- drChild->drX0+ 1,

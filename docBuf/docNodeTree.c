@@ -765,7 +765,7 @@ int docSplitGroupNode(			BufferDocument *	bd,
 /*  its own text.							*/
 /*									*/
 /*  The goal is to make sure that the split before position n in	*/
-/*  parentBi is between two BufferItems with level level.		*/
+/*  splitNode is between two nodes with level level.			*/
 /*									*/
 /************************************************************************/
 

@@ -67,6 +67,11 @@ void docRtfSaveSectionProperties( RtfWriter *			rw,
 
     /**************/
 
+    if  ( PROPmaskISSET( spMask, SPpropRTOL ) )
+	{
+	docRtfWriteAltTag( rw, "rtlsect", "ltrsect", sp->spRToL );
+	}
+
     if  ( PROPmaskISSET( spMask, SPpropSTYLE ) )
 	{ docRtfWriteArgTag( rw, "ds",sp->spStyle );	}
 
@@ -95,9 +100,8 @@ void docRtfSaveSectionProperties( RtfWriter *			rw,
 
     if  ( PROPmaskISSET( spMask, SPpropPAGE_RESTART ) )
 	{
-	if  ( sp->spRestartPageNumbers )
-	    { docRtfWriteTag( rw, "pgnrestart" );	}
-	else{ docRtfWriteTag( rw, "pgncont" );		}
+	docRtfWriteAltTag( rw, "pgnrestart", "pgncont",
+						sp->spRestartPageNumbers );
 	}
 
     if  ( PROPmaskISSET( spMask, SPpropSTART_PAGE ) )

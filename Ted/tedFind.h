@@ -32,7 +32,7 @@ extern int tedSpellFindNext(	void *			voidea,
 extern int docSpellParaFindNext(
 				struct DocumentSelection *	ds,
 				struct BufferItem *		paraNode,
-				const struct BufferDocument *	bd,
+				struct BufferDocument *		bd,
 				const struct DocumentPosition *	dpFrom,
 				void *				through );
 

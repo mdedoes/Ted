@@ -184,7 +184,7 @@ int psTtfGetName(	char **				pName,
 	    int		step;
 
 	    uni= utilEndianExtractBeUint16( ttnr->ttnrSavedBytes+ from );
-	    step= uniPutUtf8( (unsigned char *)name+ to, uni );
+	    step= uniPutUtf8( name+ to, uni );
 	    if  ( step < 1 )
 		{ LLDEB(uni,step); return -1;	}
 

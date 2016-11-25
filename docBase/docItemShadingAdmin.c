@@ -36,7 +36,7 @@ void docInitItemShadingList(	NumberedPropertiesList *	isl )
 
     docInitItemShading( &is );
 
-    num= docItemShadingNumber( isl, &is );
+    num= docItemShadingNumberImpl( isl, &is );
     if  ( num != 0 )
 	{ LDEB(num);	}
 
@@ -49,7 +49,7 @@ void docInitItemShadingList(	NumberedPropertiesList *	isl )
 /*									*/
 /************************************************************************/
 
-void docGetItemShadingByNumber(	ItemShading *			is,
+void docGetItemShadingByNumberImpl( ItemShading *		is,
 				const NumberedPropertiesList *	isl,
 				int				n )
     {
@@ -68,7 +68,7 @@ void docGetItemShadingByNumber(	ItemShading *			is,
 /*									*/
 /************************************************************************/
 
-int docShadingNumberIsShading(		const NumberedPropertiesList *	isl,
+int docShadingNumberIsShadingImpl(	const NumberedPropertiesList *	isl,
 					int				n )
     {
     ItemShading	is;
@@ -76,7 +76,7 @@ int docShadingNumberIsShading(		const NumberedPropertiesList *	isl,
     if  ( n < 0 )
 	{ return 0;	}
 
-    docGetItemShadingByNumber( &is, isl, n );
+    docGetItemShadingByNumberImpl( &is, isl, n );
 
     return DOCisSHADING( &is );
     }
@@ -110,7 +110,7 @@ void docForAllItemShadings(	const NumberedPropertiesList *		isl,
 /*									*/
 /************************************************************************/
 
-int docItemShadingNumber(	NumberedPropertiesList *	isl,
+int docItemShadingNumberImpl(	NumberedPropertiesList *	isl,
 				const ItemShading *		is )
     {
     const int	make= 1;
@@ -126,7 +126,7 @@ int docItemShadingNumber(	NumberedPropertiesList *	isl,
 
 int docMergeItemShadingLists(
 				int **				pShadingMap,
-				const int *			cmap,
+				const int *			colorMap,
 				NumberedPropertiesList *	islTo,
 				const NumberedPropertiesList *	islFrom )
     {
@@ -154,12 +154,12 @@ int docMergeItemShadingLists(
 		{ continue;	}
 
 	    is= *((ItemShading *)vis);
-	    if  ( is.isBackColor > 0 && cmap )
-		{ is.isBackColor= cmap[is.isBackColor];	}
-	    if  ( is.isForeColor > 0 && cmap )
-		{ is.isForeColor= cmap[is.isForeColor];	}
+	    if  ( is.isBackColor > 0 && colorMap )
+		{ is.isBackColor= colorMap[is.isBackColor];	}
+	    if  ( is.isForeColor > 0 && colorMap )
+		{ is.isForeColor= colorMap[is.isForeColor];	}
 
-	    to= docItemShadingNumber( islTo, &is );
+	    to= docItemShadingNumberImpl( islTo, &is );
 	    if  ( to < 0 )
 		{ LDEB(to); free( smap ); return -1;	}
 	    smap[n]= to;

@@ -23,7 +23,7 @@ typedef void (*FramePropertiesFunction)( const FrameProperties * fp,
 
 extern void docInitFramePropertyList(	NumberedPropertiesList *	fpl );
 
-extern int docFramePropertiesNumber(	NumberedPropertiesList *	fpl,
+extern int docFramePropertiesNumberImpl(NumberedPropertiesList *	fpl,
 					const FrameProperties *	fp );
 
 extern void docForAllFrameProperties(
@@ -31,12 +31,12 @@ extern void docForAllFrameProperties(
 				FramePropertiesFunction		f,
 				void *				through );
 
-extern void docGetFramePropertiesByNumber(
+extern void docGetFramePropertiesByNumberImpl(
 					FrameProperties *		fp,
 					const NumberedPropertiesList *	fpl,
 					int				n );
 
-extern int docFrameNumberIsFrame(	const NumberedPropertiesList *	fpl,
+extern int docFrameNumberIsFrameImpl(	const NumberedPropertiesList *	fpl,
 					int				n );
 
 extern int docMergeFramePropertyLists(

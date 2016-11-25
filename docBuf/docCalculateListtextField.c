@@ -13,6 +13,7 @@
 #   include	"docParaParticules.h"
 #   include	"docRecalculateFields.h"
 #   include	<docListLevel.h>
+#   include	<docListDepth.h>
 
 /************************************************************************/
 /*									*/
@@ -122,7 +123,7 @@ int docRecalculateParaListtextTextParticules(
 	*pCalculated= 0; goto ready;
 	}
 
-    root= docGetListNumberTree( &(rf->rfTree->eiListNumberTrees),
+    root= docGetListNumberTree( &(rf->rfTree->dtListNumberTrees),
 							pp->ppListOverride );
     if  ( ! root )
 	{ LXDEB(pp->ppListOverride,root);  *pCalculated= 0; goto ready;	}

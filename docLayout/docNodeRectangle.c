@@ -10,6 +10,28 @@
 #   include	<appDebugon.h>
 
 /************************************************************************/
+
+static void docRowRectangleTwips(	DocumentRectangle *	drRow,
+					const BufferItem *	rowNode,
+					const BlockFrame *	bf )
+    {
+    int			col;
+
+    col= 0;
+    docCellRectangleTwips( drRow, bf, rowNode->biChildren[col] );
+
+    for ( col= 1; col < rowNode->biChildCount; col++ )
+	{
+	DocumentRectangle	drCell;
+
+	docCellRectangleTwips( &drCell, bf, rowNode->biChildren[col] );
+	geoUnionRectangle( drRow, drRow, &drCell );
+	}
+
+    return;
+    }
+
+/************************************************************************/
 /*									*/
 /*  Return a rectangle that contains a node and all its children.	*/
 /*									*/
@@ -74,19 +96,9 @@ void docNodeRectangle(	DocumentRectangle *		drPixels,
 	case DOClevROW:
 	    if  ( docIsRowNode( node ) )
 		{
-		int			col;
 		DocumentRectangle	drRow;
 
-		col= 0;
-		docCellRectangleTwips( &drRow, &bf, node->biChildren[col] );
-
-		for ( col= 1; col < node->biChildCount; col++ )
-		    {
-		    DocumentRectangle	drCell;
-
-		    docCellRectangleTwips( &drCell, &bf, node->biChildren[col] );
-		    geoUnionRectangle( &drRow, &drRow, &drCell );
-		    }
+		docRowRectangleTwips( &drRow, node, &bf );
 
 		drRow.drX0 -= BRDRW_MAX2;
 		drRow.drX1 += BRDRW_MAX2;
@@ -95,6 +107,7 @@ void docNodeRectangle(	DocumentRectangle *		drPixels,
 
 		if  ( bo )
 		    { docShiftRectangle( &drRow, bo, &drRow );	}
+
 		geoUnionRectangle( &drTwips, &drTwips, &drRow );
 		}
 
@@ -114,6 +127,7 @@ void docNodeRectangle(	DocumentRectangle *		drPixels,
 
 		if  ( bo )
 		    { docShiftRectangle( &drCell, bo, &drCell );	}
+
 		geoUnionRectangle( &drTwips, &drTwips, &drCell );
 		}
 	    break;

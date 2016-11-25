@@ -302,10 +302,6 @@ void appScrollToRectangle(	EditDocument *			ed,
     noy= ooy;
 
     appGuiGetScrollbarValues( &noy, &sliderSize, ed->edVerticalScrollbar );
-    /*
-    if  ( noy != ed->edVisibleRect.drY0 )
-	{ LLDEB(noy,ed->edVisibleRect.drY0);	}
-    */
 
     if  ( dr->drY0 <= ed->edVisibleRect.drY0	||
 	  dr->drY1 >= ed->edVisibleRect.drY1	)

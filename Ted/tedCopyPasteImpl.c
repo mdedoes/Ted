@@ -281,6 +281,7 @@ static int tedGetAttributesFromPaste(	TextAttribute *		taSetTo,
 					filename, forceAttributeTo ) )
 	{ LDEB(1); rval= -1; goto ready;	}
 
+    docInitDocumentSelection( &dsAll );
     if  ( docSelectWholeBody( &dsAll, bdFrom ) )
 	{ LDEB(1); rval= -1; goto ready;	}
 

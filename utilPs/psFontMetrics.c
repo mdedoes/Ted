@@ -9,7 +9,7 @@
 
 #   include	"psFontMetrics.h"
 #   include	<uniUtf8.h>
-#   include	<ucd.h>
+#   include	<ucdGeneralCategory.h>
 
 #   include	<appDebugon.h>
 
@@ -24,14 +24,13 @@
 /************************************************************************/
 
 int psCalculateStringExtents(	DocumentRectangle *	dr,
-				const char *		ss,
+				const char *		s,
 				int			len,
 				int			twipsSize,
 				int			withKerning,
 				int			vswap,
 				const AfmFontInfo *	afi )
     {
-    const unsigned char *	s= (const unsigned char *)ss;
     int				off= 0;
     long			x1= 0L;
     long			unitsWide= 0L;

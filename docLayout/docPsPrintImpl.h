@@ -40,7 +40,7 @@ extern void docPsSaveTabLeaderProcedures(	SimpleOutputStream *	sos );
 extern int docPsPrintDrawDrawingShape(
 				const DocumentRectangle *	drTwips,
 				int				page,
-				DrawingShape *			ds,
+				struct DrawingShape *		ds,
 				DrawingContext *		dc,
 				void *				vps );
 
@@ -53,7 +53,7 @@ extern int docPsPrintObject(	const DrawTextLine *		dtl,
 
 extern int docPsPrintShapeImage( PrintingState *		ps,
 				DrawingContext *		dc,
-				DrawingShape *			ds,
+				struct DrawingShape *		ds,
 				const DocumentRectangle *	drTwips,
 				const AffineTransform2D *	at );
 

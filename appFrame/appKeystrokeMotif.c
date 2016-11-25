@@ -16,7 +16,7 @@
 static void appGuiDebugKey(	const char *		how,
 				XKeyPressedEvent *	keyEvent,
 				APP_KEY_VALUE		keysym,
-				unsigned char *		b )
+				char *			b )
     {
     const char *	keyString= XKeysymToString( keysym );
     int			state= keyEvent->state;
@@ -42,7 +42,7 @@ static void appGuiDebugKey(	const char *		how,
     }
 
 static void appGuiHandleKeysym(		DocumentWidget *	dw,
-					unsigned char *		scratch,
+					char *			scratch,
 					APP_KEY_VALUE		keysym,
 					int			state )
     {
@@ -74,10 +74,9 @@ static APP_EVENT_HANDLER_H( appKeyPressed, w, voiddw, event )
     DocumentWidget *		dw= (DocumentWidget *)voiddw;
 
     APP_KEY_VALUE		keysym;
-    int				gotString;
     XKeyPressedEvent *		keyEvent= &(event->xkey);
 
-    unsigned char		scratch[12+1];
+    char			scratch[12+1];
 
     static int			debugKeys= 0;
 
@@ -98,7 +97,7 @@ static APP_EVENT_HANDLER_H( appKeyPressed, w, voiddw, event )
 	{
 	Status	status;
 
-	gotString= XmbLookupString( dw->dwInputContext, keyEvent,
+	(void) /* gotString= */ XmbLookupString( dw->dwInputContext, keyEvent,
 				(char *)scratch, sizeof(scratch)- 1,
 				&keysym, &status );
 	switch( status )
@@ -125,7 +124,7 @@ static APP_EVENT_HANDLER_H( appKeyPressed, w, voiddw, event )
 	    }
 	}
     else{
-	gotString= XLookupString( keyEvent,
+	(void) /* gotString= */ XLookupString( keyEvent,
 				(char *)scratch, sizeof(scratch)- 1,
 				&keysym, (XComposeStatus *)0 );
 

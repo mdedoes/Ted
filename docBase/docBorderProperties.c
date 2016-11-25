@@ -304,8 +304,8 @@ int docIndirectBorderProperties(
 
     if  ( PROPmaskISSET( bpSetMask, BRDRpropCOLOR ) )
 	{
-	const int		maxColors= 256;
 	const int		avoidZero= 1;
+	const int		maxColors= 256;
 	int			color;
 
 	if  ( ebpFrom->ebpColorExplicit )

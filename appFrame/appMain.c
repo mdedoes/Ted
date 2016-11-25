@@ -26,6 +26,41 @@
 
 /************************************************************************/
 /*									*/
+/*  Retrieve configurable resource values from the GUI environment.	*/
+/*									*/
+/*  1)  This should be done wih something like the GNU message catalog	*/
+/*	system. For the moment, just install the default values.	*/
+/*									*/
+/************************************************************************/
+
+void appGuiGetResourceValues(	int *				pGotResources,
+				EditApplication *		ea,
+				void *				pValues,
+				AppConfigurableResource *	acrList,
+				int				acrCount )
+    {
+    AppConfigurableResource *	acr;
+    char *			values= (char *)pValues;
+    int				i;
+
+    if  ( *pGotResources )
+	{ LDEB(*pGotResources); return;	}
+
+    if  ( ! *pGotResources )
+	{ appSetResourceDefaults( ea, acrList, acrCount );	}
+
+    acr= acrList;
+    for ( i= 0; i < acrCount; acr++, i++ )
+	{
+	*((const char **)(values+acr->acrStructOffset))= acr->acrDefaultValue;
+	}
+
+    *pGotResources= 1;
+    return;
+    }
+
+/************************************************************************/
+/*									*/
 /*  Callback that is invoked when the application is closed through	*/
 /*  the window manager.							*/
 /*									*/
@@ -371,6 +406,26 @@ void appSetDocument(	EditApplication *	ea,
     }
 
 /************************************************************************/
+
+int appDetermineBoolean(	int *			pIval,
+				const char *		sVal )
+    {
+    if  ( sVal		&&
+	  *pIval == 0	)
+	{
+	if  ( ! strcmp( sVal, "0" ) )
+	    { *pIval= -1;	}
+	if  ( ! strcmp( sVal, "1" ) )
+	    { *pIval=  1;	}
+
+	if  ( *pIval == 0 )
+	    { SDEB(sVal);	}
+	}
+
+    return 0;
+    }
+
+/************************************************************************/
 /*									*/
 /*  Generic editor type application main().				*/
 /*									*/
@@ -407,38 +462,41 @@ static AppConfigurableResource	APP_ApplicationResourceTable[]=
 
     APP_RESOURCE( "usePostScriptFilters",
 		offsetof(EditApplication,eaUsePostScriptFiltersString),
-		(char *)0 ),
+		"1" ),
     APP_RESOURCE( "usePostScriptIndexedImages",
 		offsetof(EditApplication,eaUsePostScriptIndexedImagesString),
-		(char *)0 ),
+		"1" ),
     APP_RESOURCE( "sevenBitsPostScript",
 		offsetof(EditApplication,ea7BitsPostScriptString),
-		(char *)0 ),
+		"0" ),
 
     APP_RESOURCE( "skipEmptyPages",
 		offsetof(EditApplication,eaSkipEmptyPagesString),
-		(char *)0 ),
+		"0" ),
     APP_RESOURCE( "skipBlankPages",
 		offsetof(EditApplication,eaSkipBlankPagesString),
-		(char *)0 ),
+		"0" ),
     APP_RESOURCE( "omitHeadersOnEmptyPages",
 		offsetof(EditApplication,eaOmitHeadersOnEmptyPagesString),
-		(char *)0 ),
+		"0" ),
     APP_RESOURCE( "customPsSetupFilename",
 		offsetof(EditApplication,eaCustomPsSetupFilename),
 		(char *)0 ),
 
     APP_RESOURCE( "avoidFontconfig",
 		offsetof(EditApplication,eaAvoidFontconfigString),
-		(char *)0 ),
+		"0" ),
     APP_RESOURCE( "preferBase35Fonts",
 		offsetof(EditApplication,eaPreferBase35FontsString),
-		(char *)0 ),
+		"0" ),
     APP_RESOURCE( "embedFonts",
 		offsetof(EditApplication,eaEmbedFontsString),
 		"1" ),
     APP_RESOURCE( "useKerning",
 		offsetof(EditApplication,eaUseKerningString),
+		"1" ),
+    APP_RESOURCE( "styleTool",
+		offsetof(EditApplication,eaStyleToolString),
 		"1" ),
 
     APP_RESOURCE( "leftRulerWidthMM",
@@ -490,7 +548,7 @@ static AppConfigurableResource	APP_ApplicationResourceTable[]=
 /*									*/
 /************************************************************************/
 
-static void appInitializeGeometrySettings(	EditApplication *	ea )
+static void appDetermineGeometrySettings(	EditApplication *	ea )
     {
     int				paperFormat;
 
@@ -529,94 +587,29 @@ static void appInitializeGeometrySettings(	EditApplication *	ea )
     if  ( ea->eaLeftMarginString )
 	{
 	if  ( geoLengthFromString( ea->eaLeftMarginString, ea->eaUnitInt,
-			&ea->eaDefaultDocumentGeometry.dgLeftMarginTwips ) )
+			&(ea->eaDefaultDocumentGeometry.dgLeftMarginTwips) ) )
 	    { SDEB(ea->eaLeftMarginString);	}
 	}
 
     if  ( ea->eaRightMarginString )
 	{
 	if  ( geoLengthFromString( ea->eaRightMarginString, ea->eaUnitInt,
-			&ea->eaDefaultDocumentGeometry.dgRightMarginTwips ) )
+			&(ea->eaDefaultDocumentGeometry.dgRightMarginTwips) ) )
 	    { SDEB(ea->eaRightMarginString);	}
 	}
 
     if  ( ea->eaTopMarginString )
 	{
 	if  ( geoLengthFromString( ea->eaTopMarginString, ea->eaUnitInt,
-			&ea->eaDefaultDocumentGeometry.dgTopMarginTwips ) )
+			&(ea->eaDefaultDocumentGeometry.dgTopMarginTwips) ) )
 	    { SDEB(ea->eaTopMarginString);	}
 	}
 
     if  ( ea->eaBottomMarginString )
 	{
 	if  ( geoLengthFromString( ea->eaBottomMarginString, ea->eaUnitInt,
-			&ea->eaDefaultDocumentGeometry.dgBottomMarginTwips ) )
+			&(ea->eaDefaultDocumentGeometry.dgBottomMarginTwips) ) )
 	    { SDEB(ea->eaBottomMarginString);	}
-	}
-
-    ea->eaUsePostScriptFilters= 0;
-    if  ( ea->eaUsePostScriptFiltersString			&&
-	  ! strcmp( ea->eaUsePostScriptFiltersString, "1" )	)
-	{ ea->eaUsePostScriptFilters= 1;	}
-
-    ea->eaUsePostScriptIndexedImages= 0;
-    if  ( ea->eaUsePostScriptIndexedImagesString			&&
-	  ! strcmp( ea->eaUsePostScriptIndexedImagesString, "1" )	)
-	{ ea->eaUsePostScriptIndexedImages= 1;	}
-
-    ea->ea7BitsPostScript= 0;
-    if  ( ea->ea7BitsPostScriptString			&&
-	  ! strcmp( ea->ea7BitsPostScriptString, "1" )	)
-	{ ea->ea7BitsPostScript= 1;	}
-
-    ea->eaSkipEmptyPages= 0;
-    if  ( ea->eaSkipEmptyPagesString			&&
-	  ! strcmp( ea->eaSkipEmptyPagesString, "1" )	)
-	{ ea->eaSkipEmptyPages= 1;	}
-
-    ea->eaSkipBlankPages= 0;
-    if  ( ea->eaSkipBlankPagesString			&&
-	  ! strcmp( ea->eaSkipBlankPagesString, "1" )	)
-	{ ea->eaSkipBlankPages= 1;	}
-
-    ea->eaOmitHeadersOnEmptyPages= 0;
-    if  ( ea->eaOmitHeadersOnEmptyPagesString			&&
-	  ! strcmp( ea->eaOmitHeadersOnEmptyPagesString, "1" )	)
-	{ ea->eaOmitHeadersOnEmptyPages= 1;	}
-
-    ea->eaAvoidFontconfig= 0;
-    if  ( ea->eaAvoidFontconfigString			&&
-	  ! strcmp( ea->eaAvoidFontconfigString, "1" )	)
-	{ ea->eaAvoidFontconfig= 1;	}
-
-    ea->eaPreferBase35Fonts= 0;
-    if  ( ea->eaPreferBase35FontsString			&&
-	  ! strcmp( ea->eaPreferBase35FontsString, "1" )	)
-	{ ea->eaPreferBase35Fonts= 1;	}
-
-    /*  3  */
-    if  ( ea->eaEmbedFontsString		&&
-	  ea->eaEmbedFonts == 0			)
-	{
-	if  ( ! strcmp( ea->eaEmbedFontsString, "0" ) )
-	    { ea->eaEmbedFonts= -1;	}
-	if  ( ! strcmp( ea->eaEmbedFontsString, "1" ) )
-	    { ea->eaEmbedFonts=  1;	}
-
-	if  ( ea->eaEmbedFonts == 0 )
-	    { SDEB(ea->eaEmbedFontsString);	}
-	}
-
-    if  ( ea->eaUseKerningString		&&
-	  ea->eaUseKerning == 0			)
-	{
-	if  ( ! strcmp( ea->eaUseKerningString, "0" ) )
-	    { ea->eaUseKerning= -1;	}
-	if  ( ! strcmp( ea->eaUseKerningString, "1" ) )
-	    { ea->eaUseKerning=  1;	}
-
-	if  ( ea->eaUseKerning == 0 )
-	    { SDEB(ea->eaUseKerningString);	}
 	}
 
     if  ( ea->eaLeftRulerWidthMMString )
@@ -639,9 +632,6 @@ static void appInitializeGeometrySettings(	EditApplication *	ea )
 	utilArgToInt( &(ea->eaBottomRulerHeightMM),
 					ea->eaBottomRulerHeightMMString );
 	}
-
-    if  ( ea->eaToplevel.atTopWidget )
-	{ appGetPixelsPerTwip( ea );	}
 
     return;
     }
@@ -686,11 +676,33 @@ void appGetApplicationResourceValues(	EditApplication *	ea )
 				sizeof(AppConfigurableResource) );
 	}
 
-    appInitializeGeometrySettings( ea );
+    appDetermineBoolean( &(ea->eaUsePostScriptFiltersInt),
+				    ea->eaUsePostScriptFiltersString );
+    appDetermineBoolean( &(ea->eaUsePostScriptIndexedImagesInt),
+				    ea->eaUsePostScriptIndexedImagesString );
+    appDetermineBoolean( &(ea->ea7BitsPostScriptInt),
+				    ea->ea7BitsPostScriptString );
+    appDetermineBoolean( &(ea->eaSkipEmptyPagesInt),
+				    ea->eaSkipEmptyPagesString );
+    appDetermineBoolean( &(ea->eaSkipBlankPagesInt),
+				    ea->eaSkipBlankPagesString );
+    appDetermineBoolean( &(ea->eaOmitHeadersOnEmptyPagesInt),
+				    ea->eaOmitHeadersOnEmptyPagesString );
+    appDetermineBoolean( &(ea->eaAvoidFontconfigInt),
+				    ea->eaAvoidFontconfigString );
+    appDetermineBoolean( &(ea->eaPreferBase35FontsInt),
+				    ea->eaPreferBase35FontsString );
+    appDetermineBoolean( &(ea->eaEmbedFontsInt),
+				    ea->eaEmbedFontsString );
+    appDetermineBoolean( &(ea->eaUseKerningInt),
+				    ea->eaUseKerningString );
+    appDetermineBoolean( &(ea->eaStyleToolInt),
+				    ea->eaStyleToolString );
+
+    appDetermineGeometrySettings( ea );
 
     return;
     }
-
 
 /************************************************************************/
 /*									*/
@@ -775,7 +787,7 @@ static int appFinishApplicationWindow(	EditApplication *	ea )
 	char *		ident= (char *)0;
 
 
-	if  ( ea->eaPlatformCompiled )
+	if  ( 0 && ea->eaPlatformCompiled )
 	    {
 	    ident= malloc( strlen( ea->eaNameAndVersion )+ 3+
 					strlen( ea->eaPlatformCompiled )+ 1 );
@@ -1078,7 +1090,10 @@ static int appMainHandleSpecialCalls(	EditApplication *	ea,
 	    { break;	}
 
 	if  ( getResources )
-	    { appGetApplicationResourceValues( ea );	}
+	    {
+	    appGetApplicationResourceValues( ea );
+	    getResources= 0;
+	    }
 
 	off= done+ 1;
 	args= (*sc->scExecuteCall)( ea, prog, call, argc- off, argv+ off );
@@ -1110,6 +1125,89 @@ static void appDefaultPapersize(	EditApplication *	ea )
     }
 
 /************************************************************************/
+
+static int appOpenExistingDocument(	EditApplication *	ea,
+					int			readOnly,
+					int			formatHint,
+					const MemoryBuffer *	filename )
+    {
+    int				rval= 0;
+    const MemoryBuffer * const	fileRelativeTo= (const MemoryBuffer *)0;
+    int				relativeIsFile= 1;
+    EditDocument *		ed;
+
+    MemoryBuffer		absolute;
+
+    const int			suggestStdin= 0;
+
+    utilInitMemoryBuffer( &absolute );
+
+    if  ( appAbsoluteName( &absolute,
+		    filename, relativeIsFile, fileRelativeTo ) < 0 )
+	{
+	SDEB(utilMemoryBufferGetString(filename));
+	ed= appOpenDocumentFile( ea, ea->eaToplevel.atTopWidget, (APP_WIDGET)0,
+				readOnly, suggestStdin, formatHint, filename );
+	}
+    else{
+	ed= appOpenDocumentFile( ea, ea->eaToplevel.atTopWidget, (APP_WIDGET)0,
+				readOnly, suggestStdin, formatHint, &absolute );
+	}
+
+    if  ( ! ed )
+	{ XDEB(ed); rval= -1;	}
+
+    utilCleanMemoryBuffer( &absolute );
+
+    return rval;
+    }
+
+/************************************************************************/
+
+static int appSetProperties(		EditApplication *	ea,
+					int			argc,
+					char *			argv[] )
+    {
+    int		arg;
+    int		argTo= 1;
+
+    for ( arg= 1; arg < argc; arg++ )
+	{
+	if  ( arg+ 3 <= argc				&&
+	      ! strcmp( argv[arg], "--setProperty" )	)
+	    {
+	    if  ( appSetUserProperty( ea, argv[arg+ 1], argv[arg+ 2] ) )
+		{ SSDEB(argv[arg+ 1], argv[arg+ 2]); return -1;	}
+
+	    arg += 2; continue;
+	    }
+
+	if  ( ! strncmp( argv[arg], "--", 2 ) )
+	    {
+	    char *	eq= strchr( argv[arg], '=' );
+
+	    if  ( eq )
+		{
+		int	res;
+
+		*eq= '\0';
+		res= appSetUserProperty( ea, argv[arg]+ 2, eq+ 1 );
+		*eq= '=';
+
+		if  ( res )
+		    { SDEB(argv[arg]); return -1;	}
+
+		continue;
+		}
+	    }
+
+	argv[argTo++]= argv[arg];
+	}
+
+    return argTo;
+    }
+
+/************************************************************************/
 /*									*/
 /*  Generic main() procedure.						*/
 /*									*/
@@ -1128,21 +1226,38 @@ int appMain(	EditApplication *	ea,
     {
     int			rval= 0;
 
-    int			argTo;
     int			arg;
     int			res;
     int			didSpecial= 0;
     char *		prog;
+    char *		locale= (char *)0;
 
-    MemoryBuffer	aBuf;
+    MemoryBuffer	filename;
     MemoryBuffer	absolute;
     MemoryBuffer	ext;
 
-    utilInitMemoryBuffer( &aBuf );
+    utilInitMemoryBuffer( &filename );
     utilInitMemoryBuffer( &absolute );
     utilInitMemoryBuffer( &ext );
 
-    setlocale( LC_ALL, "" );
+    locale= setlocale( LC_ALL, "" );
+    if  ( locale )
+	{
+	char *	s= locale;
+	while( isalpha( *s ) || *s == '_' )
+	    { s++;	}
+
+	if  ( s > locale )
+	    {
+	    int	len= s- locale;
+
+	    ea->eaLocaleName= malloc( len+ 1 );
+	    if  ( ! ea->eaLocaleName )
+		{ LXDEB(len,ea->eaLocaleName); return -1;	}
+
+	    strncpy( ea->eaLocaleName, locale, len )[len]= '\0';
+	    }
+	}
 
     appDefaultPapersize( ea );
 
@@ -1154,24 +1269,10 @@ int appMain(	EditApplication *	ea,
     if  ( res )
 	{ LDEB(res); rval= 1; goto ready;	}
 
-    argTo= 1;
-    for ( arg= 1; arg < argc; arg++ )
-	{
-	if  ( arg+ 3 <= argc				&&
-	      ! strcmp( argv[arg], "--setProperty" )	)
-	    {
-	    if  ( appSetUserProperty( ea, argv[arg+ 1], argv[arg+ 2] ) )
-		{
-		SSDEB(argv[arg+ 1], argv[arg+ 2]);
-		rval= 1; goto ready;
-		}
-
-	    arg += 2;
-	    continue;
-	    }
-	argv[argTo++]= argv[arg];
-	}
-    argc= argTo;
+    res= appSetProperties( ea, argc, argv );
+    if  ( res < 0 )
+	{ LDEB(res); rval= 1; goto ready;	}
+    argc= res;
 
     prog= argv[0];
     res= appMainHandleSpecialCalls( ea, "--", 1, prog, argc- 1, argv+ 1 );
@@ -1183,14 +1284,17 @@ int appMain(	EditApplication *	ea,
     if  ( argc <= 1 && didSpecial )
 	{ goto ready;	}
 
-    /*  1  */
-    if  ( appGuiInitApplication( ea, &argc, &argv ) )
-	{ LDEB(1); rval= 1; goto ready;	}
-
     utilInitDocumentGeometry( &(ea->eaDefaultDocumentGeometry) );
 
     /*  b  */
     appGetApplicationResourceValues( ea );
+
+    /*  1  */
+    if  ( appGuiInitApplication( ea, &argc, &argv ) )
+	{ LDEB(1); rval= 1; goto ready;	}
+
+    if  ( ea->eaToplevel.atTopWidget )
+	{ appGetPixelsPerTwip( ea );	}
 
     if  ( appFinishApplicationWindow( ea ) )
 	{ LDEB(1); rval= -1; goto ready;	}
@@ -1226,29 +1330,46 @@ int appMain(	EditApplication *	ea,
 	const int			readOnly= 0;
 	AppFileMessageResources *	afmr= &(ea->eaFileMessageResources);
 
-	if  ( utilMemoryBufferSetString( &aBuf, argv[arg] ) )
+	int				suggestStdin= 0;
+	int				openFormat= -1;
+
+	if  ( utilMemoryBufferSetString( &filename, argv[arg] ) )
 	    { LDEB(1); rval= 1; goto ready;	}
 
-	if  ( ! appTestDirectory( &aBuf ) )
+	if  ( ! appTestDirectory( &filename ) )
 	    {
 	    appRunOpenChooser( (APP_WIDGET)0, ea->eaToplevel.atTopWidget,
 			ea->eaFileExtensionCount, ea->eaFileExtensions,
-			ea->eaDefaultFileFilter, &aBuf,
+			ea->eaDefaultFileFilter, &filename,
 			appChooserOpenDocument, ea, (void *)ea );
 
 	    continue;
 	    }
 
-	if  ( appTestFileExists( &aBuf ) )
+	openFormat= appDocumentGetOpenFormat( &suggestStdin,
+			ea->eaFileExtensions, ea->eaFileExtensionCount,
+			&filename, openFormat );
+
+	if  ( appTestFileExists( &filename ) )
 	    {
 	    int		createNew= ea->eaCreateNewFromCommand;
-	    int		format= -1;
+
+	    int		saveFormat= -1;
 	    int		suggestStdout= 0;
 
-	    format= appDocumentGetSaveFormat( &suggestStdout, ea,
-						&aBuf, (void *)0,
-						APPFILE_CAN_SAVE, format );
-	    if  ( format < 0 || suggestStdout )
+	    if  ( argc == 2 && openFormat >= 0 && suggestStdin )
+		{
+		appOpenDocumentFile( ea,
+				ea->eaToplevel.atTopWidget, (APP_WIDGET)0,
+				readOnly, suggestStdin, openFormat, &filename );
+
+		continue;
+		}
+
+	    saveFormat= appDocumentGetSaveFormat( &suggestStdout, ea,
+						&filename, (void *)0,
+						APPFILE_CAN_SAVE, saveFormat );
+	    if  ( saveFormat < 0 || suggestStdout )
 		{ createNew= 0;	}
 
 	    if  ( createNew )
@@ -1261,35 +1382,19 @@ int appMain(	EditApplication *	ea,
 
 		if  ( ynRes == AQDrespYES )
 		    {
-		    if  ( appNewDocument( ea, &aBuf ) )
+		    if  ( appNewDocument( ea, &filename ) )
 			{ SDEB(argv[arg]);	}
 		    }
 		}
 	    else{
 		appQuestionRunFilenameErrorDialog( ea,
 				    ea->eaToplevel.atTopWidget, (APP_WIDGET)0,
-				    &aBuf, afmr->afmrNoSuchFileMessage );
+				    &filename, afmr->afmrNoSuchFileMessage );
 		}
 	    }
 	else{
-	    const MemoryBuffer * const	fileRelativeTo= (const MemoryBuffer *)0;
-	    int				relativeIsFile= 1;
-	    EditDocument *		ed;
-
-	    if  ( appAbsoluteName( &absolute,
-			    &aBuf, relativeIsFile, fileRelativeTo ) < 0 )
-		{
-		SDEB(argv[arg]);
-		ed= appOpenDocument( ea, ea->eaToplevel.atTopWidget,
-					(APP_WIDGET)0, readOnly, &aBuf );
-		}
-	    else{
-		ed= appOpenDocument( ea, ea->eaToplevel.atTopWidget,
-					(APP_WIDGET)0, readOnly, &absolute );
-		}
-
-	    if  ( ! ed )
-		{ XDEB(ed);	}
+	    (void) appOpenExistingDocument( ea,
+					readOnly, openFormat, &filename );
 	    }
 	}
 
@@ -1311,7 +1416,7 @@ int appMain(	EditApplication *	ea,
 
   ready:
 
-    utilCleanMemoryBuffer( &aBuf );
+    utilCleanMemoryBuffer( &filename );
     utilCleanMemoryBuffer( &absolute );
     utilCleanMemoryBuffer( &ext );
 

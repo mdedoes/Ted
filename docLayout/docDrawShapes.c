@@ -4,6 +4,7 @@
 
 #   include	<appDebugon.h>
 #   include	<docObjectProperties.h>
+#   include	<docShape.h>
 
 /************************************************************************/
 

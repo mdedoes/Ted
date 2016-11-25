@@ -332,7 +332,7 @@ void tedDocGotKey(	void *			voided,
 	    if  ( ! sd.sdCanReplace )
 		{ goto ready;	}
 
-	    tedSplitParagraph( ed,
+	    tedDocSplitParagraph( ed,
 			    state == KEY_CONTROL_MASK	&&
 			    keySym != KEY_j		&&
 			    keySym != KEY_m,
@@ -634,17 +634,17 @@ void tedDocGotKey(	void *			voided,
 		if  ( ! docPrevSimilarRoot( &dpNew, &page, &column, bd ) )
 		    {
 		    const int		lastLine= 0;
-		    DocumentTree *	eiPrev= (DocumentTree *)0;
+		    DocumentTree *	dtPrev= (DocumentTree *)0;
 		    BufferItem *	bodySectNode;
 
-		    if  ( docGetTreeOfNode( &eiPrev, &bodySectNode,
+		    if  ( docGetTreeOfNode( &dtPrev, &bodySectNode,
 							bd, dpNew.dpNode ) )
 			{ LDEB(1); goto ready;	}
 
-		    if  ( eiPrev && eiPrev->dtPageSelectedUpon < 0 && page >= 0 )
+		    if  ( dtPrev && dtPrev->dtPageSelectedUpon < 0 && page >= 0 )
 			{
-			eiPrev->dtPageSelectedUpon= page;
-			eiPrev->dtColumnSelectedIn= column;
+			dtPrev->dtPageSelectedUpon= page;
+			dtPrev->dtColumnSelectedIn= column;
 			}
 
 		    docAvoidParaHeadField( &dpNew, (int *)0, bd );
@@ -704,17 +704,17 @@ void tedDocGotKey(	void *			voided,
 		if  ( ! docNextSimilarRoot( &dpNew, &page, &column, bd ) )
 		    {
 		    const int		lastLine= 0;
-		    DocumentTree *	eiNext= (DocumentTree *)0;
+		    DocumentTree *	dtNext= (DocumentTree *)0;
 		    BufferItem *	bodySectNode;
 
-		    if  ( docGetTreeOfNode( &eiNext, &bodySectNode,
+		    if  ( docGetTreeOfNode( &dtNext, &bodySectNode,
 							bd, dpNew.dpNode ) )
 			{ LDEB(1); goto ready;	}
 
-		    if  ( eiNext && eiNext->dtPageSelectedUpon < 0 && page >= 0 )
+		    if  ( dtNext && dtNext->dtPageSelectedUpon < 0 && page >= 0 )
 			{
-			eiNext->dtPageSelectedUpon= page;
-			eiNext->dtColumnSelectedIn= column;
+			dtNext->dtPageSelectedUpon= page;
+			dtNext->dtColumnSelectedIn= column;
 			}
 
 		    docAvoidParaHeadField( &dpNew, (int *)0, bd );

@@ -283,7 +283,7 @@ static int appDocPrintDocument(	EditDocument *		ed,
 void appDocPrintToFile(	APP_WIDGET			option,
 			APP_WIDGET			panel,
 			EditDocument *			ed,
-			const PrintGeometry *		pg )
+			const struct PrintGeometry *	pg )
     {
     EditApplication *		ea= ed->edApplication;
     PrintJob			pj;

@@ -16,7 +16,6 @@
 #   include	"tedTabsTool.h"
 #   include	"tedAppFront.h"
 #   include	"tedToolUtil.h"
-#   include	<docParaRulerAdmin.h>
 #   include	<guiToolUtil.h>
 #   include	<guiTextUtil.h>
 #   include	<docTreeNode.h>
@@ -106,6 +105,8 @@ static void tedFormatToolRefreshTabsPage(	TabsTool *	tt )
     const TabStop *		ts;
     int				i;
 
+    tt->ttInProgrammaticChange++;
+
     appGuiEmptyListWidget( tt->ttTabPositionList );
 
     ts= tsl->tslTabStops;
@@ -141,6 +142,8 @@ static void tedFormatToolRefreshTabsPage(	TabsTool *	tt )
     guiEnableWidget( tt->ttDeleteTabButton,
 			    tt->ttCanChange && tt->ttTabStopNumber >= 0 );
 
+    tt->ttInProgrammaticChange--;
+
     return;
     }
 
@@ -150,8 +153,7 @@ static void tedFormatToolRefreshTabsPage(	TabsTool *	tt )
 /*									*/
 /************************************************************************/
 
-void tedRefreshTabsTool(
-				TabsTool *			tt,
+void tedRefreshTabsTool(	TabsTool *			tt,
 				int *				pEnabled,
 				int *				pPref,
 				InspectorSubject *		is,
@@ -170,8 +172,7 @@ void tedRefreshTabsTool(
 
     const DocumentAttributeMap * const	dam0= (const DocumentAttributeMap *)0;
 
-    docGetTabStopListByNumber( &tsl, &(bd->bdTabStopListList),
-					    bi->biParaTabStopListNumber );
+    docGetTabStopListByNumber( &tsl, bd, bi->biParaTabStopListNumber );
 
     utilPropMaskClear( &updMask );
     PROPmaskADD( &updMask, PPpropTAB_STOPS );
@@ -220,11 +221,15 @@ void tedRefreshTabsTool(
 
     /**/
 
+    tt->ttInProgrammaticChange++;
+
     appLengthToTextWidget( tt->ttTabDefaultText,
 		tt->ttDocPropertiesChosen.dpTabIntervalTwips, UNITtyPOINTS );
 
     guiEnableWidget( tt->ttTabDefaultFrame, cmdEnabled[EDITcmdUPD_DOC_PROPS] );
     guiEnableText( tt->ttTabDefaultText, cmdEnabled[EDITcmdUPD_DOC_PROPS] );
+
+    tt->ttInProgrammaticChange--;
 
     *pEnabled= 1;
     return;
@@ -362,6 +367,9 @@ static APP_LIST_CALLBACK_H( tedTabsToolTabChosen, w, voidtt, voidlcs )
 
     int				position;
 
+    if  ( tt->ttInProgrammaticChange )
+	{ return;	}
+
     position= appGuiGetPositionFromListCallback( w, voidlcs );
 
     /*  No: takes the role of 'Revert'
@@ -370,7 +378,7 @@ static APP_LIST_CALLBACK_H( tedTabsToolTabChosen, w, voidtt, voidlcs )
     */
 
     if  ( position < 0 || position >= tsl->tslTabStopCount )
-	{ LLDEB(position,tsl->tslTabStopCount);	}
+	{ LLDEB(position,tsl->tslTabStopCount); return;	}
 
     tt->ttTabStopValue= tsl->tslTabStops[position];
     tt->ttTabStopNumber= position;
@@ -680,6 +688,8 @@ void tedFormatFillTabsPage(	TabsTool *			tt,
     tt->ttTabStopValue.tsTwips= -1;
     tt->ttTabStopNumber= -1;
 
+    tt->ttInProgrammaticChange= 0;
+
     /**/
     appMakeColumnFrameInColumn( &(tt->ttTabDefaultFrame),
 			    &(tt->ttTabDefaultPaned),
@@ -758,8 +768,6 @@ void tedTabsToolFillChoosers(		TabsTool *			tt )
     appFillInspectorMenu( DOCta_COUNT, DOCtaLEFT,
 			tt->ttAlignmentItems, tpr->tprAlignmentOptionTexts,
 			&(tt->ttAlignmentOptionmenu) );
-
-    guiEnableWidget( tt->ttAlignmentItems[DOCtaBAR], 0 );
 
     appFillInspectorMenu( DOCtl_COUNT, DOCtlNONE,
 			tt->ttLeaderItems, tpr->tprLeaderOptionTexts,
@@ -873,9 +881,6 @@ static AppConfigurableResource TED_TedTabsToolResourceTable[]=
     APP_RESOURCE( "formatToolTabAlignmentDecimal",
 	offsetof(TabsPageResources,tprAlignmentOptionTexts[DOCtaDECIMAL]),
 	"Decimal" ),
-    APP_RESOURCE( "formatToolTabAlignmentBar",
-	offsetof(TabsPageResources,tprAlignmentOptionTexts[DOCtaBAR]),
-	"Bar" ),
 
     /**/
     APP_RESOURCE( "formatToolTabLeader",

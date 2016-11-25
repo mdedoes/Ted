@@ -10,7 +10,7 @@
 #   include	<ctype.h>
 #   include	<stdlib.h>
 #   include	<uniUtf8.h>
-#   include	<ucd.h>
+#   include	<ucdGeneralCategory.h>
 
 #   include	<appDebugon.h>
 
@@ -110,8 +110,8 @@ int docSetBookmarkField(	FieldInstructions *	fi,
 # define BKMK( sym ) ( ucdIsL( (sym) ) || ucdIsNd( (sym) ) || (sym) == '_' )
 
 static int docBookmarkNormalizeBytes(	int *			pChanged,
-					unsigned char *		to,
-					const unsigned char *	from,
+					char *			to,
+					const char *		from,
 					int			left )
     {
     int			done= 0;
@@ -194,7 +194,7 @@ static int docBookmarkNormalizeBytes(	int *			pChanged,
 
 int docAdaptBookmarkName(	MemoryBuffer *		markName )
     {
-    unsigned char *	buf= markName->mbBytes;
+    char *		buf= (char *)markName->mbBytes;
     int			changed= 0;
     int			done;
 
@@ -214,17 +214,16 @@ int docBookmarkFromText(	MemoryBuffer *		markName,
 				const char *		text,
 				int			len )
     {
-    unsigned char	scratch[DOCmaxBOOKMARK+ 1];
-    int			done;
-    int			changed= 0;
+    char	scratch[DOCmaxBOOKMARK+ 1];
+    int		done;
+    int		changed= 0;
 
-    done= docBookmarkNormalizeBytes( &changed, scratch,
-					(const unsigned char *)text, len );
+    done= docBookmarkNormalizeBytes( &changed, scratch, text, len );
 
     if  ( done < 4 )
 	{ memcpy( scratch, "bkmk", 5 ); done= 4;	}
 
-    if  ( utilMemoryBufferSetBytes( markName, scratch, done ) )
+    if  ( utilMemoryBufferSetBytes( markName, (unsigned char *)scratch, done ) )
 	{ LDEB(done); return -1;	}
 
     return 0;
@@ -246,8 +245,8 @@ int docBookmarkFromText(	MemoryBuffer *		markName,
 int docBookmarkSuffixIndex(		const MemoryBuffer *	markName,
 					int			wanted )
     {
-    const unsigned char *	buf= markName->mbBytes;
-    int				offset= 0;
+    const char *	buf= (char *)markName->mbBytes;
+    int			offset= 0;
 
     /*  1  */
     if  ( markName->mbSize+ wanted < DOCmaxBOOKMARK )

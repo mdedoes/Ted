@@ -86,14 +86,14 @@ static int psFontMetricAddCodeToList(	AfmCodeList *		acl,
 
 int psGetUnicodesFromGlyphNames(	AfmFontInfo *	afi )
     {
-    int		i;
+    int		glyphIndex;
     int		rval= 0;
 
     IndexMapping *	tgm= &(afi->afiUnicodeToGlyphMapping);
 
-    for ( i= 0; i < afi->afiMetricCount; i++ )
+    for ( glyphIndex= 0; glyphIndex < afi->afiMetricCount; glyphIndex++ )
 	{
-	AfmCharMetric *	acm= afi->afiMetrics[i];
+	AfmCharMetric *	acm= afi->afiMetrics[glyphIndex];
 	if  ( acm && acm->acmN )
 	    {
 	    int		code= psGlyphNameToUnicode( acm->acmN );
@@ -107,7 +107,7 @@ int psGetUnicodesFromGlyphNames(	AfmFontInfo *	afi )
 
 	    if  ( utilIndexMappingGet( tgm, code ) < 0 )
 		{
-		utilIndexMappingPut( tgm, code, i );
+		utilIndexMappingPut( tgm, code, glyphIndex );
 
 		if  ( utilIndexSetAdd( &(afi->afiUnicodesProvided), code ) )
 		    { LDEB(code);	}
@@ -319,6 +319,7 @@ int psFontInfoAddMetric(		AfmFontInfo *			afi,
     {
     AfmCharMetric **	fresh;
     AfmCharMetric *	acm;
+    int			duplicate= 0;
 
     if  ( ! afi->afiNameToMetric )
 	{
@@ -338,7 +339,7 @@ int psFontInfoAddMetric(		AfmFontInfo *			afi,
 	    if  ( C >= 0 && psFontMetricAddCode( acm, afi, C ) )
 		{ LDEB(C); return -1;	}
 
-	    return 0;
+	    duplicate= 1;
 	    }
 	}
 
@@ -356,7 +357,7 @@ int psFontInfoAddMetric(		AfmFontInfo *			afi,
     psInitAfmCharMetric( acm );
 
     acm->acmWX= (int)WX;
-    if  ( N )
+    if  ( N && ! duplicate )
 	{
 	acm->acmN= strdup( N );
 
@@ -446,6 +447,7 @@ int psFontInfoSetGlyphName(	AfmFontInfo *		afi,
 	utilTreeDeleteEQ( afi->afiNameToMetric,
 				afi->afiMetrics[glyphIndex]->acmN,
 				(UTIL_TREE_CALLBACK)0, (void *)0 );
+	free( afi->afiMetrics[glyphIndex]->acmN );
 	}
 
     afi->afiMetrics[glyphIndex]->acmN= strdup( glyphName );

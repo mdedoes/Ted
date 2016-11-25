@@ -4,10 +4,13 @@
 /*									*/
 /************************************************************************/
 
+#   include	"textEncodingConfig.h"
+
 #   include	<stdlib.h>
 #   include	<string.h>
 
 #   include	"uniUtf8.h"
+#   include	"uniUtf8Ranges.h"
 
 #   include	<appDebugon.h>
 
@@ -17,19 +20,24 @@
 /*									*/
 /************************************************************************/
 
-# define UTF8_1(a)		(a)
+const Utf8Range Utf8Ranges[]=
+{
+    { 0x00, 0x00, 0x00,	         0x1 },	/*  0	*/
+    { 0x80, 0x7f, 0x00,	        0x80 },	/*  1	*/
+    { 0xe0, 0x1f, 0xc0,	       0x800 },	/*  2	*/
+    { 0xf0, 0x0f, 0xe0,	     0x10000 },	/*  3	*/
+    { 0xf8, 0x07, 0xf0,	    0x200000 },	/*  4	*/
+    { 0xfc, 0x03, 0xf8,	   0x4000000 },	/*  5	*/
+    { 0xfe, 0x01, 0xfc,	  0x80000000 },	/*  6	*/
 
-# define UTF8_2(a,b)		(       (64)*((a)&0x1f)+ \
-				             ((b)&0x3f) )
+#   if 0
+    { 0xff, 0x00, 0xfe,	0x1000000000 },	/*  7	*/
+#   endif
 
-# define UTF8_3(a,b,c)		(    (64*64)*((a)&0x0f)+ \
-				        (64)*((b)&0x3f)+ \
-				             ((c)&0x3f) )
+    { 0xffffffff, 0xffffffff, 0xffffffff }
+};
 
-# define UTF8_4(a,b,c,d)	( (64*64*64)*((a)&0x07)+ \
-				     (64*64)*((b)&0x3f)+ \
-				        (64)*((c)&0x3f)+ \
-				             ((d)&0x3f) )
+const int Utf8RangeCount= sizeof(Utf8Ranges)/sizeof(Utf8Range);
 
 /************************************************************************/
 /*									*/
@@ -37,32 +45,57 @@
 /*									*/
 /************************************************************************/
 
-int uni_GetUtf8(	unsigned short *	pSymbol,
+int unixGetUtf8(	unsigned int *		pSymbol,
 			const unsigned char *	buf )
     {
+    unsigned int	symbol;
+    int			step;
+
     if  ( ! buf[0] )
 	{ return 0;	}
+    if  ( buf[0] < Utf8Ranges[1].urFirstPast )
+	{ *pSymbol= buf[0]; return 1;	}
 
-    if  ( buf[0] < 128 )
-	{ *pSymbol= UTF8_1(buf[0]); return 1; }
+    symbol= 0; step= 1;
+    while( step < Utf8RangeCount )
+	{
+	if  ( buf[0] < Utf8Ranges[step].urFirstPast )
+	    { break;	}
+	if  ( ! UTF_IS_F(buf[step]) )
+	    { LXXDEB(step,buf[0],buf[step]); return 0;	}
 
-    if  ( ( buf[1] & 0xc0 ) != 0x80 )
-	{ XXDEB(buf[0],buf[1]); return 0;	}
-    if  ( buf[0] < 224 )
-	{ *pSymbol= UTF8_2(buf[0],buf[1]); return 2; }
+	symbol= ( symbol << 6 ) + ( buf[step] & UTF_FM );
 
-    if  ( ( buf[2] & 0xc0 ) != 0x80 )
-	{ XXDEB(buf[0],buf[2]); return 0;	}
-    if  ( buf[0] < 240 )
-	{ *pSymbol= UTF8_3(buf[0],buf[1],buf[2]); return 3; }
+	step++;
+	}
 
-    if  ( ( buf[3] & 0xc0 ) != 0x80 )
-	{ XXDEB(buf[0],buf[3]); return 0;	}
-    /* Does not fit in a 16 bit integer!
-    *pSymbol= UTF8_4(buf[0],buf[1],buf[2],buf[3]); return 4;
-    */
-    LLDEB(buf[3],UTF8_4(buf[0],buf[1],buf[2],buf[3]));
-    return 0;
+    if  ( step >= Utf8RangeCount- 1 )
+	{ XLLDEB(buf[0],step,Utf8RangeCount); return 0;	}
+
+    if  ( step == 1 )
+	{ *pSymbol= buf[0]; return 1;	}
+
+    symbol= ( ( buf[0] & Utf8Ranges[step].urFirstMask ) << ( 6* ( step -1 ) ) ) + symbol;
+
+    *pSymbol= symbol;
+    return step;
+    }
+
+int uni_GetUtf8(	unsigned short *	pSymbol,
+			const char *		buf )
+    {
+    unsigned int	symbol;
+    int			step;
+
+    step= unixGetUtf8( &symbol, (const unsigned char *)buf );
+    if  ( step < 1 )
+	{ LDEB(step); return step;	}
+
+    if  ( symbol > 0xffff )
+	{ XLLDEB(buf[0],step,symbol); return -1;	}
+
+    *pSymbol= symbol;
+    return step;
     }
 
 /************************************************************************/
@@ -71,46 +104,101 @@ int uni_GetUtf8(	unsigned short *	pSymbol,
 /*									*/
 /************************************************************************/
 
-int uni_PutUtf8(	unsigned char *		buf,
-			int			symbol )
+int uni_PutUtf8(	char *		buf,
+			int		symbol )
     {
+    int			step;
+    int			done;
+
     if  ( symbol < 0 )
 	{ LDEB(symbol); return 0;	}
     if  ( symbol < 1 )
 	{ return 0;	}
 
-    if  ( symbol < 128 )
+    step= 1;
+    while( step < Utf8RangeCount )
 	{
-	*(buf++)= symbol;
-	return 1;
+	if  ( symbol < Utf8Ranges[step].urValuePast )
+	    { break;	}
+
+	step++;
 	}
 
-    if  ( symbol < 2048 )
+    if  ( step >= Utf8RangeCount- 1 )
+	{ LLLDEB(symbol,step,Utf8RangeCount); return 0;	}
+
+    if  ( step == 1 )
+	{ buf[0]= symbol; return 1;	}
+
+    for ( done= step-1; done > 0; done-- )
 	{
-	*(buf++)= 0xc0 | ( ( symbol >>  6 )        );
-	*(buf++)= 0x80 | ( ( symbol       ) & 0x3f );
-	return 2;
+	buf[done]= ( symbol & UTF_FM ) | UTF_FH;
+	symbol >>= 6;
 	}
 
-    if  ( symbol < 65536 )
-	{
-	*(buf++)= 0xe0 | ( ( symbol >> 12 )        );
-	*(buf++)= 0x80 | ( ( symbol >>  6 ) & 0x3f );
-	*(buf++)= 0x80 | ( ( symbol       ) & 0x3f );
-	return 3;
-	}
+    buf[0] = Utf8Ranges[step].urFirstHead |
+				    ( symbol & Utf8Ranges[step].urFirstMask );
 
-    if  ( symbol < 2097152 )
-	{
-	*(buf++)= 0xf0 | ( ( symbol >> 18 ) & 0x07 );
-	*(buf++)= 0x80 | ( ( symbol >> 12 ) & 0x3f );
-	*(buf++)= 0x80 | ( ( symbol >>  6 ) & 0x3f );
-	*(buf++)= 0x80 | ( ( symbol       ) & 0x3f );
-	return 4;
-	}
-
-    LDEB(symbol); return 0;
+    return step;
     }
+
+# if 0
+extern void xxxx( void );
+void xxxx( void )
+    {
+    int		r;
+
+    for ( r= 2; r < Utf8RangeCount; r++ )
+	{
+	unsigned int	fp= ( 0xff << ( 7- r ) ) & 0xff;
+	unsigned int	fh= ( 0xff << ( 8- r ) ) & 0xff;
+	unsigned int	fm= ( 0xff >> ( r+ 1 ) ) & 0xff;
+
+	unsigned long	vp= fm;
+
+	int		i;
+
+	for ( i= 1; i < r; i++ )
+	    { vp= ( vp << 6 )+ UTF_FM;	}
+	vp++;
+
+	appDebug( "{ 0x%02x, 0x%02x, 0x%02x, 0x%lx }, /* %d */\n",
+						    fp, fm, fh, vp, r );
+	}
+
+    for ( r= 1; r < Utf8RangeCount- 1; r++ )
+	{
+	unsigned int		symbol1;
+
+	LLDEB(r,Utf8Ranges[r- 1].urValuePast);
+
+	for ( symbol1=  Utf8Ranges[r- 1].urValuePast;
+	      symbol1 < Utf8Ranges[r   ].urValuePast;
+	      symbol1++ )
+	    {
+	    unsigned char	buf[10];
+	    int			step1, step2;
+	    unsigned int	symbol2;
+
+	    if  ( symbol1 % 1000000 == 0 )
+		{ LDEB(symbol1);	}
+
+	    step1= uniPutUtf8( buf, symbol1 );
+	    if  ( step1 < 1 )
+		{ LLDEB(symbol1,step1); abort();	}
+	    if  ( step1 != r )
+		{ LLLDEB(symbol1,step1,r); abort();	}
+
+	    step2= unixGetUtf8( &symbol2, buf );
+	    if  ( step2 != step1 )
+		{ LLLDEB(symbol1,step1,step2); abort();	}
+	    if  ( symbol2 != symbol1 )
+		{ LLLDEB(step1,symbol1,symbol2); abort();	}
+	    }
+	}
+    }
+
+# endif
 
 /************************************************************************/
 /*									*/
@@ -118,8 +206,8 @@ int uni_PutUtf8(	unsigned char *		buf,
 /*									*/
 /************************************************************************/
 
-unsigned short * uniUtf8ToUnicodes(	int *			pUlen,
-					const unsigned char *	word )
+unsigned short * uniUtf8ToUnicodes(	int *		pUlen,
+					const char *	word )
     {
     int			l= strlen( (char *)word );
     unsigned short *	ucods= (unsigned short *)malloc( ( l+ 1 )* sizeof(unsigned short) );
@@ -150,21 +238,21 @@ unsigned short * uniUtf8ToUnicodes(	int *			pUlen,
 /*									*/
 /************************************************************************/
 
-unsigned char * uniUnicodesToUtf8(	int *			pMBlen,
-					const unsigned short *	codes )
+char * uniUnicodesToUtf8(	int *			pMBlen,
+				const unsigned short *	codes )
     {
-    int			ulen;
-    unsigned char *	utf8;
-    int			fr;
-    int			mblen;
+    int		ulen;
+    char *	utf8;
+    int		fr;
+    int		mblen;
 
     ulen= 0;
     while( codes[ulen] )
 	{ ulen++;	}
 
-    utf8= (unsigned char *)malloc( 4* ulen+ 1 );
+    utf8= (char *)malloc( 4* ulen+ 1 );
     if  ( ! utf8 )
-	{ LXDEB(ulen,utf8); return (unsigned char *)0;	}
+	{ LXDEB(ulen,utf8); return (char *)0;	}
 
     fr= 0; mblen= 0;
     while( fr < ulen )

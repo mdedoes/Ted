@@ -1351,12 +1351,6 @@ static AppPrintDialog * appMakePrintDialog( EditApplication *	ea,
     static int				gotResources;
     static AppPrintDialogResources	apdr;
 
-    APP_BITMAP_IMAGE	iconPixmap= (APP_BITMAP_IMAGE)0;
-    APP_BITMAP_MASK	iconMask= (APP_BITMAP_MASK)0;
-    
-    if  ( appGetImagePixmap( ea, pixmapName, &iconPixmap, &iconMask )  )
-	{ SDEB(pixmapName); return (AppPrintDialog *)0;	}
-
     if  ( ! ea->eaPrintDestinationsCollected	&&
 	  appGetPrintDestinations( ea )		)
 	{ LDEB(1); return (AppPrintDialog *)0;	}
@@ -1445,8 +1439,7 @@ static AppPrintDialog * appMakePrintDialog( EditApplication *	ea,
     appMakeVerticalDialog( &(apd->apdDialog), &paned, ea,
 						appClosePrintDialog,
 						appDestroyPrintDialog,
-						(void *)apd,
-						ea->eaPrintDialogName );
+						(void *)apd );
 
     appSetShellTitle( apd->apdDialog.adTopWidget,
 					printOption, ea->eaApplicationName );
@@ -1569,6 +1562,8 @@ void appRunPrintDialog(			EditDocument *		ed,
 
     int					i;
 
+    const int				sheetSize= 0;
+
     appPrintJobForEditDocument( &pj, ed, &pg );
 
     /*  1  */
@@ -1607,7 +1602,7 @@ void appRunPrintDialog(			EditDocument *		ed,
     pg.pgSheetGeometry= apd->apdPrinterGeometry;
 
     if  ( ea->eaSuggestPageSetup )
-	{ (*ea->eaSuggestPageSetup)( &pg, ed->edPrivateData );	}
+	{ (*ea->eaSuggestPageSetup)( &pg, ed->edPrivateData, sheetSize ); }
 
     for ( i= 0; i < PSnum__COUNT; i++ )
 	{

@@ -5,7 +5,7 @@
 #   include	<stdio.h>
 #   include	<ctype.h>
 
-#   include	<utilOfficeCharset.h>
+#   include	<textOfficeCharset.h>
 #   include	<appQuestion.h>
 
 #   include	"tedApp.h"
@@ -577,8 +577,6 @@ void * tedMakePrivateData( void )
     td->tdBodySectionNumber= -1;
 
     td->tdDocument= (BufferDocument *)0;
-    utilInitTextAttribute( &(td->tdCurrentTextAttribute) );
-    td->tdCurrentTextAttributeNumber= -1;
     td->tdCurrentScreenFont= -1;
 
     utilInitMemoryBuffer( &(td->tdRecoveredName) );
@@ -752,13 +750,15 @@ void tedObserveFocus(	EditDocument *	ed,
     }
 
 void tedSuggestPageSetup(	PrintGeometry *	pg,
-				void *		privateData )
+				void *		privateData,
+				int		sheetSize )
     {
     TedDocument *		td= (TedDocument *)privateData;
     BufferDocument *		bd= td->tdDocument;
     DocumentProperties *	dp= &(bd->bdProperties);
 
-    pg->pgSheetGeometry= dp->dpGeometry;
+    if  ( sheetSize )
+	{ pg->pgSheetGeometry= dp->dpGeometry;	}
 
     if  ( dp->dpTwoOnOne )
 	{

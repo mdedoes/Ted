@@ -17,14 +17,10 @@
 #   include	"tedDocument.h"
 
 #   include	<appUnit.h>
-#   include	<appMatchFont.h>
-
 #   include	<psBuildConfigFiles.h>
 #   include	<sioGeneral.h>
 #   include	<sioStdout.h>
-
-#   include	<docFontsDocuments.h>
-#   include	<appFindX11Fonts.h>
+#   include	"tedFileConvert.h"
 
 #   include	<appDebugon.h>
 
@@ -107,7 +103,7 @@ static AppConfigurableResource TEDApplicationResourceTable[]=
 #   else
     APP_RESOURCE( "documentFileName",
 		offsetof(TedAppResources,tarAppHelpFileName),
-		DOCUMENT_DIR "TedDocument-en_US.rtf" ),
+		DOCUMENT_DIR "/TedDocument-en_US.rtf" ),
 #   endif
 
     /**/
@@ -149,7 +145,12 @@ static AppConfigurableResource TEDApplicationResourceTable[]=
     APP_RESOURCE( "traceEdits",
 		offsetof(TedAppResources,tarTraceEditsString),
 		"1" ),
-
+    APP_RESOURCE( "pdfOutline",
+		offsetof(TedAppResources,tarPdfOutlineString),
+		"1" ),
+    APP_RESOURCE( "overridePaperSize",
+		offsetof(TedAppResources,tarOverridePaperSizeString),
+		"0" ),
 };
 
 
@@ -1289,106 +1290,12 @@ static int tedGSFontmapForFiles(EditApplication *		ea,
     if  ( ! sosOut )
 	{ XDEB(sosOut); return -1;	}
 
-    if  ( psFontmapForFiles( sosOut, argc, argv ) )
+    if  ( psFontmapForFiles( sosOut, argc, (const char * const *)argv ) )
 	{ SLDEB(call,argc); ret= -1;	}
 
     sioOutClose( sosOut );
 
     return ret;
-    }
-
-/************************************************************************/
-/*									*/
-/*  Build an afm directory file for a particular font file.		*/
-/*									*/
-/************************************************************************/
-
-static int tedAfmForFontFiles(	EditApplication *		ea,
-				const char *			prog,
-				const char *			call,
-				int				argc,
-				char **				argv )
-    {
-    int			ret= argc;
-
-    PostScriptFontList	psfl;
-    MemoryBuffer	afmDir;
-    MemoryBuffer	psDir;
-
-    utilInitMemoryBuffer( &afmDir );
-    utilInitMemoryBuffer( &psDir );
-
-    psInitPostScriptFontList( &psfl );
-
-    if  ( ! ea->eaAfmDirectory )
-	{ XDEB(ea->eaAfmDirectory); ret= -1; goto ready;	}
-    if  ( utilMemoryBufferSetString( &afmDir, ea->eaAfmDirectory ) )
-	{ LDEB(1); ret= -1; goto ready;	}
-    if  ( utilMemoryBufferSetString( &psDir, PSSCRIPT_DIR ) )
-	{ LDEB(1); ret= -1; goto ready;	}
-
-    if  ( psAfmForFontFiles( &psfl, ea->eaUseKerning < 0, argc, argv,
-							&afmDir, &psDir ) )
-	{
-	SSSDEB(call,ea->eaAfmDirectory,PSSCRIPT_DIR);
-	ret= -1; goto ready;
-	}
-
-    if  ( ea->eaToplevel.atTopWidget				&&
-	  appFindX11Fonts( ea->eaToplevel.atTopWidget, &psfl )	)
-	{ XDEB(ea->eaToplevel.atTopWidget); ret= -1; goto ready;	}
-
-    if  ( psSaveAfms( &psfl, ea->eaUseKerning < 0, &afmDir ) )
-	{ SDEB(ea->eaAfmDirectory); ret= -1; goto ready;	}
-
-  ready:
-
-    utilCleanMemoryBuffer( &afmDir );
-    utilCleanMemoryBuffer( &psDir );
-
-    psCleanPostScriptFontList( &psfl );
-
-    return ret;
-    }
-
-static int tedFontsDocuments(	EditApplication *		ea,
-				const char *			prog,
-				const char *			call,
-				int				argc,
-				char **				argv )
-    {
-    int				rval= 1;
-
-    MemoryBuffer		templDir;
-    MemoryBuffer		outDir;
-
-    utilInitMemoryBuffer( &templDir );
-    utilInitMemoryBuffer( &outDir );
-
-    if  ( argc < 1 )
-	{ LDEB(argc); rval= -1; goto ready;	}
-
-    if  ( utilMemoryBufferSetString( &templDir, PSSCRIPT_DIR ) )
-	{ LDEB(1); rval= -1; goto ready;	}
-    if  ( utilMemoryBufferSetString( &outDir, argv[0] ) )
-	{ LDEB(1); rval= -1; goto ready;	}
-
-    if  ( appPostScriptFontCatalog( ea ) )
-	{ SDEB(ea->eaAfmDirectory); rval= -1; goto ready;	}
-
-    if  ( appGetDeferredFontMetricsForList( &(ea->eaPostScriptFontList) ) )
-	{ SDEB(ea->eaAfmDirectory); rval= -1; /*goto ready;*/	}
-
-    if  ( docFontsDocuments( &(ea->eaPostScriptFontList),
-						    &templDir, &outDir ) )
-	{ SDEB(argv[0]); rval= -1; goto ready;	}
-
-  ready:
-
-    utilCleanMemoryBuffer( &templDir );
-    utilCleanMemoryBuffer( &outDir );
-
-    return rval;
     }
 
 static int tedRtfToPs(		EditApplication *		ea,
@@ -1496,15 +1403,11 @@ static EditApplication	TedApplication=
 		    /****************************************************/
     "Ted",
     TED_ConfigString,
-    "Ted, Version 2.22, April 4, 2012",
+    "Ted 2.23, Feb 4, 2013",
     "http://www.nllgg.nl/Ted",
-    MY_PLATFORM,
+    MY_PLATFORM " " MY_RELEASE,
     "\"" MY_HOST_DATE "\"",
 
-    "tedDocument",
-    "tedPageTool",
-    "tedPrintDialog",
-    "tedMessageDialog",
     "tedmain",
     "tedabout",
 		    /****************************************************/
@@ -1515,7 +1418,6 @@ static EditApplication	TedApplication=
 		    /*  Default filter for file choosers.		*/
 		    /****************************************************/
     "*.rtf",
-    "teddoc",
     (void *)&TEDResources,
     TEDApplicationResourceTable,
     sizeof(TEDApplicationResourceTable)/sizeof(AppConfigurableResource),

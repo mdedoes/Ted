@@ -257,7 +257,7 @@ int tedDocReplaceSelectionWithField(
 
     /*  2  */
     if  ( tedEditReplaceSelection( teo, (const char *)"?", 1,
-					td->tdCurrentTextAttributeNumber ) )
+			td->tdSelectionDescription.sdTextAttributeNumber ) )
 	{ LDEB(1); return -1;	}
 
     eo->eoHeadDp.dpStroff--; /* FRAUD: Before the ? */

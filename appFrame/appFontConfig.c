@@ -82,7 +82,7 @@ static int appFcGetEncodingsFromUnicode(AfmFontInfo *		afi,
 		if  ( psFontInfoSetGlyphUnicode( afi, glyphIdx, charcode ) )
 		    { SLXDEB(afi->afiFontName,glyphIdx,charcode); return -1; }
 
-		if  ( ! FT_HAS_GLYPH_NAMES( ftFace )		&&
+		if  ( ! FT_HAS_GLYPH_NAMES( ftFace )	&&
 		      ! afi->afiMetrics[glyphIdx]->acmN	)
 		    {
 		    psFontInfoSetGlyphName( afi, glyphIdx,

@@ -4,6 +4,8 @@
 /*									*/
 /************************************************************************/
 
+#   include	"textEncodingConfig.h"
+
 #   include	"uniLegacyMapping.h"
 
 IndexMapping UNI_SymbolToGlyphMapping;

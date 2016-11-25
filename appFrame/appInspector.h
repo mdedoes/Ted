@@ -161,8 +161,6 @@ extern void appInspectorChoosePage(	AppInspector *		ai,
 extern AppInspector * 	appMakeInspector(
 				    EditApplication *		ea,
 				    APP_WIDGET			option,
-				    const char *		pixmapName,
-				    const char *		widgetName,
 				    InspectorSubjectResources * isr,
 				    int				subjectCount,
 				    AppToolDestroy		closeInspector,

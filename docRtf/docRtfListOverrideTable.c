@@ -9,10 +9,12 @@
 #   include	<stdio.h>
 #   include	<ctype.h>
 
-#   include	<appDebugon.h>
-
 #   include	"docRtfWriterImpl.h"
 #   include	"docRtfReaderImpl.h"
+
+#   include	<docListAdmin.h>
+
+#   include	<appDebugon.h>
 
 int docRtfRememberListOverrideLevelProperty(
 				const RtfControlWord *	rcw,
@@ -126,7 +128,7 @@ static int docRtfListOverride(	const RtfControlWord *	rcw,
     const int * const	colorMap= (const int *)0;
     const int * const	rulerMap= (const int *)0;
 
-    DocumentProperties *	dp= &(rrc->rrcDocument->bdProperties);
+    DocumentProperties *	dp= &(rrc->rrDocument->bdProperties);
 
     docCleanListOverride( &(rrc->rrcListOverride) );
     docInitListOverride( &(rrc->rrcListOverride) );
@@ -137,7 +139,7 @@ static int docRtfListOverride(	const RtfControlWord *	rcw,
 	{ SLDEB(rcw->rcwWord,arg); return -1;	}
 
     if  ( docListOverrideTableSetOverride(
-				    &(dp->dpListAdmin.laListOverrideTable),
+				    &(dp->dpListAdmin->laListOverrideTable),
 				    &(rrc->rrcListOverride),
 				    fontMap, colorMap, rulerMap ) < 0 )
 	{ LDEB(1); return -1;	}
@@ -170,8 +172,8 @@ int docRtfListOverrideTable(	const RtfControlWord *	rcw,
 				int			arg,
 				RtfReader *	rrc )
     {
-    BufferDocument *		bd= rrc->rrcDocument;
-    DocumentTree *		dt= &(rrc->rrcDocument->bdBody);
+    BufferDocument *		bd= rrc->rrDocument;
+    DocumentTree *		dt= &(rrc->rrDocument->bdBody);
     DocumentProperties *	dp= &(bd->bdProperties);
 
     /*  1  */
@@ -181,8 +183,8 @@ int docRtfListOverrideTable(	const RtfControlWord *	rcw,
 	{ SLDEB(rcw->rcwWord,arg); return -1;	}
 
     /*  2  */
-    if  ( docClaimListNumberTrees( &(dt->eiListNumberTrees),
-		       dp->dpListAdmin.laListOverrideTable.lotOverrideCount ) )
+    if  ( docClaimListNumberTrees( &(dt->dtListNumberTrees),
+		       dp->dpListAdmin->laListOverrideTable.lotOverrideCount ) )
 	{ LDEB(1); return -1;	}
 
     return 0;

@@ -332,8 +332,8 @@ void docIndirectTextAttribute(	PropertyMask *			pDoneMask,
 
     if  ( PROPmaskISSET( setMask, TApropTEXT_COLOR ) )
 	{
-	const int		maxColors= 256;
 	const int		avoidZero= 1;
+	const int		maxColors= 256;
 	int			color;
 
 	if  ( etaFrom->etaTextColorExplicit )

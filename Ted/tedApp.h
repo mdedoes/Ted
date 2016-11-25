@@ -13,6 +13,7 @@
 /************************************************************************/
 
 struct TedDocument;
+struct DocumentStatistics;
 
 /************************************************************************/
 /*									*/
@@ -96,7 +97,7 @@ extern void tedAdaptFormatToolToDocument(	EditDocument *	ed,
 						int		choosePage );
 
 extern int tedRunPropertyDialog( EditDocument *			ed,
-				const DocumentStatistics *	ds,
+				const struct DocumentStatistics *	ds,
 				APP_WIDGET			option,
 				const char *			pixmapName );
 
@@ -111,8 +112,7 @@ extern int tedSaveDocument(	EditApplication *		ea,
 
 extern void * tedMakePrivateData( void );
 
-extern int tedNewDocument(	EditApplication *	ea,
-				EditDocument *		ed,
+extern int tedNewDocument(	EditDocument *		ed,
 				const MemoryBuffer *	filename );
 
 extern int tedPrintDocument(	SimpleOutputStream *		sos,
@@ -120,7 +120,8 @@ extern int tedPrintDocument(	SimpleOutputStream *		sos,
 				const struct PrintGeometry *	pg );
 
 extern void tedSuggestPageSetup( struct PrintGeometry *		pg,
-				void *				privateData );
+				void *				privateData,
+				int				sheetSize );
 
 extern void tedFreeDocument(		void *			voidtd,
 					int			format );
@@ -144,6 +145,8 @@ extern int tedOpenDocumentFile(	unsigned char *		digest,
 				int *			pFormat,
 				BufferDocument **	pBd,
 				EditApplication *	ea,
+				int			suggestStdin,
+				int			formatHint,
 				const MemoryBuffer *	filename,
 				int			complain,
 				APP_WIDGET		relative,
@@ -153,24 +156,14 @@ extern int tedObjectDrag(	APP_WIDGET			w,
 				EditDocument *			ed,
 				APP_EVENT *			downEvent );
 
-extern int tedTtfToAfm(		EditApplication *		ea,
-				const char *			prog,
-				const char *			call,
-				int				argc,
-				char **				argv );
-
-extern int tedAfmToGSFontmap(	EditApplication *		ea,
-				const char *			prog,
-				const char *			call,
-				int				argc,
-				char **				argv );
-
 extern int tedOpenDocument(	EditApplication *		ea,
 				void *				voidtd,
 				int *				pFormat,
 				APP_WIDGET			relative,
 				APP_WIDGET			option,
 				int				readOnly,
+				int				suggestStdin,
+				int				formatHint,
 				const MemoryBuffer *		filename );
 
 extern void tedManagePrimarySelection(	EditDocument *			ed );

@@ -546,7 +546,7 @@ int bmbmpDescriptionToHeader(	BmpImageHeader *		bih,
 				int				hasAlpha,
 				const BitmapDescription *	bd )
     {
-    static RGB8Color		BWPalette[257];
+    RGB8Color			BWPalette[257];
     RGB8Color *			palette= (RGB8Color *)0;
 
     bih->bihMagic= BMP_ID;
@@ -597,10 +597,12 @@ int bmbmpDescriptionToHeader(	BmpImageHeader *		bih,
     switch( bd->bdColorEncoding )
 	{
 	int	colorCount;
+	int	transparentColor;
 
 	case BMcoBLACKWHITE:
 	case BMcoWHITEBLACK:
-	    if  ( bmMakeGrayPalette( bd, &colorCount, BWPalette ) )
+	    if  ( bmMakeGrayPalette( bd, &colorCount,
+					&transparentColor, BWPalette, 257 ) )
 		{ LDEB(bd->bdBitsPerPixel); return -1;	}
 			
 	    switch( bd->bdBitsPerPixel )

@@ -104,7 +104,7 @@ void tedRefreshTextOrnamentsTool(
 	const int		avoidZero= 1;
 
 	appColorChooserSuggestPalette( &(tot->totTextColorChooser),
-					    avoidZero, &(dp->dpColorPalette) );
+					    avoidZero, dp->dpColorPalette );
 
 	tot->totCurrentDocumentId= ed->edDocumentId;
 	}
@@ -112,7 +112,7 @@ void tedRefreshTextOrnamentsTool(
     utilPropMaskClear( &doneMask );
     docExpandTextAttribute( &doneMask, etaS,
 			&(sd->sdTextAttribute), &(sd->sdTextAttributeMask),
-			&(dp->dpFontList), &(dp->dpColorPalette) );
+			dp->dpFontList, dp->dpColorPalette );
     docCopyExpandedTextAttribute( etaC, etaS );
 
     if  ( sd->sdIsListBullet )

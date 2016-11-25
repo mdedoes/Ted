@@ -7,8 +7,9 @@
 /*									*/
 /************************************************************************/
 
+struct BufferItem;
+
 #   include	"docFind.h"
-#   include	"docTreeNode.h"
 
 /************************************************************************/
 /*									*/
@@ -22,8 +23,8 @@ typedef int (*DocListObjectFonts)(
 				void *				through );
 
 typedef int (*DocListSpanFont)(
-				const BufferDocument *		bd,
-				BufferItem *			paraBi,
+				BufferDocument *		bd,
+				struct BufferItem *		paraNode,
 				int				textAttrNr,
 				const TextAttribute *		ta,
 				int				from,
@@ -32,7 +33,7 @@ typedef int (*DocListSpanFont)(
 
 typedef int (*DocListObject)(
 				const BufferDocument *		bd,
-				BufferItem *			paraBi,
+				struct BufferItem *		paraNode,
 				const TextAttribute *		ta,
 				void *				through );
 

@@ -7,8 +7,6 @@
 #   include	<docParaRulerAdmin.h>
 
 #   include	<appDebugon.h>
-#   include	<docBorderPropertyAdmin.h>
-#   include	<docItemShadingAdmin.h>
 #   include	<docTreeNode.h>
 #   include	"docTextRun.h"
 #   include	<docTextParticule.h>
@@ -244,7 +242,7 @@ static int docDrawTextBorders(
 	if  ( next > part && xTwips > drText.drX0 )
 	    {
 	    docGetBorderPropertiesByNumber( &(ornaments.boTopBorder),
-			    &(bd->bdBorderPropertyList), borderNumber );
+							    bd, borderNumber );
 	    ornaments.boTopBorderNumber= borderNumber;
 
 	    if  ( DOCisBORDER( &(ornaments.boTopBorder) ) )
@@ -335,7 +333,7 @@ static int docDrawTextShading(
 	if  ( next > part && xTwips > drText.drX0 )
 	    {
 	    docGetItemShadingByNumber( &(ornaments.boShading),
-				    &(bd->bdItemShadingList), shadingNumber );
+							bd, shadingNumber );
 
 	    geoIntersectRectangle( &drText, &drText, drLine );
 
@@ -573,8 +571,7 @@ int docDrawLineParticules(	const DrawTextLine *		dtl,
     LayoutPosition		spanBaseline;
     int				textAttrNr;
 
-    docGetTabStopListByNumber( &tsl, &(bd->bdTabStopListList),
-					paraNode->biParaTabStopListNumber );
+    docGetTabStopListByNumber( &tsl, bd, paraNode->biParaTabStopListNumber );
 
     textAttrNr= docGetEffectiveTextAttributes( &ta, bd, paraNode, part );
 
@@ -687,6 +684,8 @@ int docDrawLineParticules(	const DrawTextLine *		dtl,
 	    return drawn= 1;
 
 	case DOCkindOPT_HYPH:
+	case DOCkindLTR_MARK:
+	case DOCkindRTL_MARK:
 	    (*pXTwips) += tp->tpTwipsWide;
 	    if  ( tp->tpTwipsWide != 0 )
 		{ LLDEB(tp->tpKind,tp->tpTwipsWide);	}

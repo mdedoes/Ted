@@ -22,14 +22,14 @@
 /*									*/
 /************************************************************************/
 
-#   undef	PREFIX
+#   undef	DATADIR
 
-#   ifdef	PREFIX
-#	define	PKGDIR	PREFIX
+#   ifdef	DATADIR
+#	define	PKGDIR	DATADIR
 #   endif
 
 #   ifndef	PKGDIR
-#	define	PKGDIR	"/usr/local"
+#	define	PKGDIR	"/usr/share"
 #   endif
 
 #   ifndef	AFMDIR

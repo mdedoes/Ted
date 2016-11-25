@@ -12,6 +12,8 @@
 #   include	<docScreenLayout.h>
 #   include	"tedDraw.h"
 #   include	<geoGrid.h>
+#   include	<docShape.h>
+#   include	<docDrawShapeArrow.h>
 
 #   include	<appDebugon.h>
 
@@ -22,92 +24,51 @@
 /************************************************************************/
 
 static int tedShapeDrawArrowHead(	const LayoutContext *	lc,
-					int			xTo,
-					int			yTo,
-					int			xFrom,
-					int			yFrom,
 					int			widthPixels,
-					const ShapeArrow *	sa )
+					const DrawShapeArrow *	dsa )
     {
+    const ShapeArrow *	sa= &(dsa->dsaArrow);
     DrawingSurface	ds= lc->lcDrawingSurface;
-    double		xfac= lc->lcPixelsPerTwip;
-    AffineTransform2D	at;
-    AffineTransform2D	att;
-    Point2DI		points[5];
+    Point2DI		points[7];
     Arc2DI		arc;
-
-    int			length;
-    int			length2;
-    int			width;
-
-    docShapeArrowSizesTwips( &length, &length2, &width, sa );
-
-    length= docLayoutXPixels( lc, length );
-    length2= docLayoutXPixels( lc, length2 );
-    width= COORDtoGRID( xfac, width );
-
-    geoRotationAffineTransform2DAtan( &at, yTo- yFrom, xTo- xFrom );
-    geoTranslationAffineTransform2D( &att, xTo, yTo );
-    geoAffineTransform2DProduct( &at, &att, &at );
-
-    points[0].x= xTo;
-    points[0].y= yTo;
 
     switch( sa->saArrowHead )
 	{
+	int	i;
+
 	case DSarrowNONE:
-	    return 0;
+	    break;
+
 	case DSarrowARROW:
-	    points[1].x= AT2_X( -length,  width, &at );
-	    points[1].y= AT2_Y( -length,  width, &at );
-	    points[2].x= AT2_X( -length, -width, &at );
-	    points[2].y= AT2_Y( -length, -width, &at );
-	    points[3]= points[0];
-	    drawFillPolygon( ds, points, 3 );
-	    break;
-
 	case DSarrowSTEALTH_ARROW:
-	    points[1].x= AT2_X( -length2,  width, &at );
-	    points[1].y= AT2_Y( -length2,  width, &at );
-	    points[2].x= AT2_X( -length,  0, &at );
-	    points[2].y= AT2_Y( -length,  0, &at );
-	    points[3].x= AT2_X( -length2, -width, &at );
-	    points[3].y= AT2_Y( -length2, -width, &at );
-	    points[4]= points[0];
-	    drawFillPolygon( ds, points, 4 );
-	    break;
-
 	case DSarrowDIAMOND:
-	    points[1].x= AT2_X( -length/ 2,  width, &at );
-	    points[1].y= AT2_Y( -length/ 2,  width, &at );
-	    points[2].x= AT2_X( -length,  0, &at );
-	    points[2].y= AT2_Y( -length,  0, &at );
-	    points[3].x= AT2_X( -length/ 2, -width, &at );
-	    points[3].y= AT2_Y( -length/ 2, -width, &at );
-	    points[4]= points[0];
-	    drawFillPolygon( ds, points, 4 );
+	    for ( i= 0; i <= dsa->dsaPathLength; i++ )
+		{
+		points[i].x= dsa->dsaPath[i].x;
+		points[i].y= dsa->dsaPath[i].y;
+		}
+	    drawFillPolygon( ds, points, dsa->dsaPathLength );
 	    break;
 
 	case DSarrowOPEN_ARROW:
-	    points[0].x= AT2_X( -length,  width, &at );
-	    points[0].y= AT2_Y( -length,  width, &at );
-	    points[1].x= AT2_X( 0, 0, &at );
-	    points[1].y= AT2_Y( 0, 0, &at );
-	    points[2].x= AT2_X( -length, -width, &at );
-	    points[2].y= AT2_Y( -length, -width, &at );
+	    for ( i= 0; i <= dsa->dsaPathLength; i++ )
+		{
+		points[i].x= dsa->dsaPath[i].x;
+		points[i].y= dsa->dsaPath[i].y;
+		}
 
 	    drawSetLineAttributes( ds,
 		    widthPixels, LineStyleSolid, LineCapButt, LineJoinMiter,
 		    (unsigned char *)0, 0 );
 
-	    drawLines( ds, points, 3, 0 );
+	    drawLines( ds, points, dsa->dsaPathLength, 0 );
 	    break;
 
 	case DSarrowOVAL:
-	    arc.a2diRect.drX0= AT2_X( -length/ 2,  width, &at );
-	    arc.a2diRect.drY0= AT2_Y( -length/ 2,  width, &at );
-	    arc.a2diRect.drX1= AT2_X(  length/ 2, -width, &at );
-	    arc.a2diRect.drY1= AT2_Y(  length/ 2, -width, &at );
+	    arc.a2diRect.drX0= dsa->dsaArrowRectangle.x0;
+	    arc.a2diRect.drY0= dsa->dsaArrowRectangle.y0;
+	    arc.a2diRect.drX1= dsa->dsaArrowRectangle.x1;
+	    arc.a2diRect.drY1= dsa->dsaArrowRectangle.y1;
 
 	    geoNormalizeRectangle( &(arc.a2diRect), &(arc.a2diRect) );
 	    arc.a2diAngleFrom= 64* 0;
@@ -119,7 +80,7 @@ static int tedShapeDrawArrowHead(	const LayoutContext *	lc,
 	case DSarrowCHEVRON_ARROW:
 	case DSarrow2CHEVRON_ARROW:
 	default:
-	    LDEB(sa->saArrowHead); return 0;
+	    LDEB(sa->saArrowHead); break;
 	}
 
     return 0;
@@ -137,7 +98,7 @@ static Point2DI * tedDrawGetVertices(
     int				y0Ref= drTwips->drY0;
 
     int				i;
-    const ShapeVertex *		sv;
+    const Point2DI *		sv;
 
     Point2DI *			xp;
     Point2DI *			xpret;
@@ -149,8 +110,8 @@ static Point2DI * tedDrawGetVertices(
     sv= sd->sdVertices;
     for ( i= 0; i < sd->sdVertexCount; xp++, sv++, i++ )
 	{
-	xp->x= docLayoutXPixels( lc, x0Ref+ sv->svX )- lc->lcOx;
-	xp->y= COORDtoGRID( xfac, y0Ref+ sv->svY )- lc->lcOy;
+	xp->x= docLayoutXPixels( lc, x0Ref+ sv->x )- lc->lcOx;
+	xp->y= COORDtoGRID( xfac, y0Ref+ sv->y )- lc->lcOy;
 	}
 
     if  ( sd->sdVertexCount > 0 && xpret )
@@ -161,6 +122,7 @@ static Point2DI * tedDrawGetVertices(
 
 static void tedShapeGetLine(	int *				pLine,
 				int *				pWidthPixels,
+				int *				pWidthTwips,
 				const DrawingShape *		ds,
 				DrawingContext *		dc,
 				ScreenDrawingData *		sdd )
@@ -248,12 +210,15 @@ static void tedShapeGetLine(	int *				pLine,
 		    widthPixels, lineStyle, capStyle, joinStyle,
 		    dashList, dashCount );
 
-	*pWidthPixels= widthPixels;
+	if  ( pWidthPixels )
+	    { *pWidthPixels= widthPixels;	}
+	if  ( pWidthTwips )
+	    { *pWidthTwips= widthTwips;		}
 	}
     }
 
 static int tedShapeDrawPoints(	const DrawingShape *		ds,
-				const Point2DI *		xp,
+				Point2DI *			xp,
 				int				np,
 				int				closed,
 				DrawingContext *		dc,
@@ -261,9 +226,49 @@ static int tedShapeDrawPoints(	const DrawingShape *		ds,
     {
     const ShapeDrawing *	sd= &(ds->dsDrawing);
     const LayoutContext *	lc= &(dc->dcLayoutContext);
+    double			xfac= lc->lcPixelsPerTwip;
 
     int				line= 0;
     int				widthPixels;
+    int				widthTwips;
+
+    int				drawStartArrow= 0;
+    DrawShapeArrow		dsaStart;
+    Point2DD			shaftStart[2];
+    int				drawEndArrow= 0;
+    DrawShapeArrow		dsaEnd;
+    Point2DD			shaftEnd[2];
+
+    tedShapeGetLine( &line, &widthPixels, &widthTwips, ds, dc, sdd );
+
+    if  ( line && ! closed && np >= 2 )
+	{
+	if  ( sd->sdLineHeadArrow.saArrowHead != DSarrowNONE )
+	    {
+	    drawStartArrow= 1;
+
+	    shaftStart[0].x= xp[1].x;
+	    shaftStart[0].y= xp[1].y;
+	    shaftStart[1].x= xp[0].x;
+	    shaftStart[1].y= xp[0].y;
+
+	    docShapeArrowSizesTwips( &dsaStart, widthTwips, xfac,
+					shaftStart, &(sd->sdLineHeadArrow) );
+	    }
+
+	if  ( sd->sdLineTailArrow.saArrowHead != DSarrowNONE )
+	    {
+	    drawEndArrow= 1;
+
+	    shaftEnd[0].x= xp[np-2].x;
+	    shaftEnd[0].y= xp[np-2].y;
+	    shaftEnd[1].x= xp[np-1].x;
+	    shaftEnd[1].y= xp[np-1].y;
+
+	    docShapeArrowSizesTwips( &dsaEnd, widthTwips, xfac,
+					shaftEnd, &(sd->sdLineTailArrow) );
+	    }
+	}
 
     if  ( closed )
 	{
@@ -275,27 +280,27 @@ static int tedShapeDrawPoints(	const DrawingShape *		ds,
 	    { drawFillPolygon( lc->lcDrawingSurface, xp, np ); }
 	}
 
-    tedShapeGetLine( &line, &widthPixels, ds, dc, sdd );
     if  ( line )
-	{ drawLines( lc->lcDrawingSurface, xp, np, closed ); }
-
-    if  ( line && ! closed && np >= 2 )
 	{
-	if  ( sd->sdLineStartArrow.saArrowHead != DSarrowNONE )
+	if  ( drawStartArrow )
 	    {
-	    tedShapeDrawArrowHead( lc, xp[0].x, xp[0].y,
-					xp[1].x, xp[1].y,
-					widthPixels,
-					&(sd->sdLineStartArrow) );
+	    xp[0].x= dsaStart.dsaShaft[1].x;
+	    xp[0].y= dsaStart.dsaShaft[1].y;
 	    }
-	if  ( sd->sdLineEndArrow.saArrowHead != DSarrowNONE )
+
+	if  ( drawEndArrow )
 	    {
-	    tedShapeDrawArrowHead( lc, xp[np-1].x, xp[np-1].y,
-					xp[np-2].x, xp[np-2].y,
-					widthPixels,
-					&(sd->sdLineEndArrow) );
+	    xp[np-1].x= dsaEnd.dsaShaft[1].x;
+	    xp[np-1].y= dsaEnd.dsaShaft[1].y;
 	    }
+
+	drawLines( lc->lcDrawingSurface, xp, np, closed );
 	}
+
+    if  ( drawStartArrow )
+	{ tedShapeDrawArrowHead( lc, widthPixels, &dsaStart );	}
+    if  ( drawEndArrow )
+	{ tedShapeDrawArrowHead( lc, widthPixels, &dsaEnd );	}
 
     return 0;
     }
@@ -307,7 +312,7 @@ static void tedDrawSetShapePath(Point2DI *			xp,
     {
     const ShapeDrawing *	sd= &(ds->dsDrawing);
     int				np= sp->spVertexCount;
-    const ShapeVertex *		sv= sp->spVertices;
+    const Point2DI *		sv= sp->spVertices;
     int				i;
 
     if  ( sd->sdRotation == 0 )
@@ -327,8 +332,8 @@ static void tedDrawSetShapePath(Point2DI *			xp,
 
 	for ( i= 0; i < np; sv++, i++ )
 	    {
-	    xp[i].x= ( ( xs- sv->svX )* x0+ sv->svX* x1 )/ xs;
-	    xp[i].y= ( ( ys- sv->svY )* y0+ sv->svY* y1 )/ ys;
+	    xp[i].x= ( ( xs- sv->x )* x0+ sv->x* x1 )/ xs;
+	    xp[i].y= ( ( ys- sv->y )* y0+ sv->y* y1 )/ ys;
 	    }
 	}
     else{
@@ -345,8 +350,8 @@ static void tedDrawSetShapePath(Point2DI *			xp,
 	    double	x;
 	    double	y;
 
-	    x= ( ( xs- sv->svX )* dr->drX0+ sv->svX* dr->drX1 )/ xs -xm;
-	    y= ( ( ys- sv->svY )* dr->drY0+ sv->svY* dr->drY1 )/ ys- ym;
+	    x= ( ( xs- sv->x )* dr->drX0+ sv->x* dr->drX1 )/ xs -xm;
+	    y= ( ( ys- sv->y )* dr->drY0+ sv->y* dr->drY1 )/ ys- ym;
 
 	    xp[i].x= AT2_X( x, y, &at )+ xm;
 	    xp[i].y= AT2_Y( x, y, &at )+ ym;
@@ -417,7 +422,7 @@ static int tedDrawPictureFrame( DrawingShape *			ds,
 					    drPixels->drX0, drPixels->drY0,
 					    &drSrc );
 
-    tedShapeGetLine( &line, &widthPixels, ds, dc, sdd );
+    tedShapeGetLine( &line, &widthPixels, (int *)0, ds, dc, sdd );
     if  ( line )
 	{ drawLines( lc->lcDrawingSurface, xp, np+ 1, 0 ); }
 
@@ -479,7 +484,7 @@ static int tedDrawOnlineStorage( DrawingShape *			ds,
 	drawFillRectangle( drsf, &drFill );
 	}
 
-    tedShapeGetLine( &line, &widthPixels, ds, dc, sdd );
+    tedShapeGetLine( &line, &widthPixels, (int *)0, ds, dc, sdd );
     if  ( line )
 	{
 	drawArc( drsf, &arc );
@@ -495,7 +500,7 @@ static int tedDrawOnlineStorage( DrawingShape *			ds,
     return 0;
     }
 
-static int tedDrawMagneticDisk( DrawingShape *			ds,
+static int tedDrawCan( 		DrawingShape *			ds,
 				DrawingContext *		dc,
 				ScreenDrawingData *		sdd,
 				const DocumentRectangle *	drPixels )
@@ -503,65 +508,58 @@ static int tedDrawMagneticDisk( DrawingShape *			ds,
     const LayoutContext *	lc= &(dc->dcLayoutContext);
     DrawingSurface		drsf= lc->lcDrawingSurface;
 
-    const ShapePath *		sp= &SP_RECTANGLE;
-    int				np= sp->spVertexCount;
-    Point2DI *			xp;
-    Arc2DI			arc;
+    Arc2DI			topArc;
+    Arc2DI			botArc;
 
     int				fill= 0;
     int				line= 0;
     int				widthPixels= 0;
 
-    int				wide;
     int				ry0;
     int				ry1;
 
     RGB8Color			rgb8Fill;
 
-    xp= malloc( ( np+ 1 )* sizeof(Point2DI) );
-    if  ( ! xp )
-	{ LXDEB(np,xp); return -1;	}
-
-    tedDrawSetShapePath( xp, ds, sp, drPixels );
-
-    wide= drPixels->drX1- drPixels->drX0;
-    /*
-    high= drPixels->drY1- drPixels->drY0;
-    */
     ry0= ( 5* drPixels->drY0+ 1* drPixels->drY1 )/ 6;
     ry1= ( 1* drPixels->drY0+ 5* drPixels->drY1 )/ 6;
 
-    arc.a2diRect= *drPixels;
-    arc.a2diRect.drX1= drPixels->drX0+ ( wide+ 2 )/ 3;
-    arc.a2diAngleFrom= 64* 90;
-    arc.a2diAngleStep= 64* 180;
+    topArc.a2diRect= *drPixels;
+    topArc.a2diRect.drY0= drPixels->drY0;
+    topArc.a2diRect.drY1= ( 2* drPixels->drY0+ 1* drPixels->drY1 )/ 3;
+    topArc.a2diAngleFrom= 64* 0;
+    topArc.a2diAngleStep= 64* 360;
+
+    botArc.a2diRect= *drPixels;
+    botArc.a2diRect.drY0= ( 1* drPixels->drY0+ 2* drPixels->drY1 )/ 3;
+    botArc.a2diRect.drY1= drPixels->drY1;
+    botArc.a2diAngleFrom= 64* 180;
+    botArc.a2diAngleStep= 64* 180;
 
     docDrawShapeGetFill( &fill, &rgb8Fill, ds, dc, sdd );
     if  ( fill )
 	{
 	DocumentRectangle	drFill= *drPixels;
 
-	drawFillArc( drsf, &arc );
+	drawFillArc( drsf, &topArc );
 
 	drFill.drY0= ry0;
 	drFill.drY1= ry1;
 	drawFillRectangle( drsf, &drFill );
 
-	drawFillArc( drsf, &arc );
+	drawFillArc( drsf, &botArc );
 	}
 
-    tedShapeGetLine( &line, &widthPixels, ds, dc, sdd );
+    tedShapeGetLine( &line, &widthPixels, (int *)0, ds, dc, sdd );
     if  ( line )
 	{
-	drawArc( drsf, &arc );
+	drawArc( drsf, &topArc );
 
 	drawLine( drsf, drPixels->drX0, ry0, drPixels->drX0, ry1 );
 	drawLine( drsf, drPixels->drX1, ry0, drPixels->drX1, ry1 );
 
-	drawArc( drsf, &arc );
+	drawArc( drsf, &botArc );
 	}
 
-    free( xp );
     return 0;
     }
 
@@ -598,7 +596,7 @@ static int tedDrawCallout(	DrawingShape *			ds,
     if  ( fill )
 	{ drawFillPolygon( drsf, xp, np ); }
 
-    tedShapeGetLine( &line, &widthPixels, ds, dc, sdd );
+    tedShapeGetLine( &line, &widthPixels, (int *)0, ds, dc, sdd );
     if  ( line )
 	{
 	int		pp0= 5;
@@ -705,7 +703,7 @@ int tedDrawDrawingShape(	const DocumentRectangle *	drTwips,
 	    docDrawShapeGetFill( &fill, &rgb8Fill, ds, dc, sdd );
 	    if  ( fill )
 		{ drawFillRoundedRect( drsf, &drPixels, w, h );	}
-	    tedShapeGetLine( &line, &widthPixels, ds, dc, sdd );
+	    tedShapeGetLine( &line, &widthPixels, (int *)0, ds, dc, sdd );
 	    if  ( line )
 		{ drawRoundedRect( drsf, &drPixels, w, h );	}
 	    }
@@ -725,7 +723,7 @@ int tedDrawDrawingShape(	const DocumentRectangle *	drTwips,
 	    if  ( fill )
 		{ drawFillArc( drsf, &arc );	}
 
-	    tedShapeGetLine( &line, &widthPixels, ds, dc, sdd );
+	    tedShapeGetLine( &line, &widthPixels, (int *)0, ds, dc, sdd );
 	    if  ( line )
 		{ drawArc( drsf, &arc );	}
 	    }
@@ -744,7 +742,7 @@ int tedDrawDrawingShape(	const DocumentRectangle *	drTwips,
 	    if  ( fill )
 		{ drawFillArc( drsf, &arc );	}
 
-	    tedShapeGetLine( &line, &widthPixels, ds, dc, sdd );
+	    tedShapeGetLine( &line, &widthPixels, (int *)0, ds, dc, sdd );
 	    if  ( line )
 		{ drawArc( drsf, &arc );	}
 	    }
@@ -948,7 +946,7 @@ int tedDrawDrawingShape(	const DocumentRectangle *	drTwips,
 
 	case SHPtyCAN:
 	case SHPtyFLOW_CHART_MAGNETIC_DISK:
-	    if  ( tedDrawMagneticDisk( ds, dc, sdd, &drPixels ) )
+	    if  ( tedDrawCan( ds, dc, sdd, &drPixels ) )
 		{ LDEB(1); rval= -1;	}
 	    break;
 
@@ -971,7 +969,7 @@ int tedDrawDrawingShape(	const DocumentRectangle *	drTwips,
 	    high= xp[2].y- xp[0].y;
 	    */
 
-	    tedShapeGetLine( &line, &widthPixels, ds, dc, sdd );
+	    tedShapeGetLine( &line, &widthPixels, (int *)0, ds, dc, sdd );
 
 # if 0
 	    appDrawDrawArc( add, xp[0].x- wide/ 2,
@@ -1021,7 +1019,7 @@ int tedDrawDrawingShape(	const DocumentRectangle *	drTwips,
 		    { XDEB(xp); rval= -1; goto ready;	}
 
 		tedShapeDrawPoints( ds, xp, sd->sdVertexCount- 1,
-							closed, dc, sdd );
+						    closed, dc, sdd );
 		}
 	    break;
 

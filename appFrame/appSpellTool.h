@@ -58,6 +58,7 @@ typedef struct SpellTool
     APP_WIDGET			astForgetButton;
     APP_WIDGET			astGuessButton;
     APP_WIDGET			astIgnoreButton;
+    APP_WIDGET			astFindNextButton;
 
     APP_WIDGET			astCorrectButton;
     APP_WIDGET			astGuessList;
@@ -65,7 +66,8 @@ typedef struct SpellTool
 
     SpellChecker *		astSpellChecker; /* Not owned by the tool */
     int				astCurrentDictionary;
-    int				astCorrectEnabled;
+    int				astReadOnly;
+    int				astGotAlternative;
     } SpellTool;
 
 /************************************************************************/
@@ -91,8 +93,8 @@ extern void appSpellToolGetResourceTable(
 					SpellToolResources *		astr,
 					InspectorSubjectResources *	isr );
 
-extern void appSpellToolEnableCorrect(	SpellTool *		ast,
-					int			enabled );
+extern void appSpellToolSetReadOnly(	SpellTool *		ast,
+					int			readonly );
 
 extern void appInitSpellTool(		SpellTool *		ast );
 extern void appCleanSpellTool(		SpellTool *		ast );

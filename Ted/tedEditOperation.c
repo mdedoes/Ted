@@ -40,14 +40,16 @@ static int tedEditRedoTreeLayout(	TedEditOperation *	teo,
     {
     const int		page= dt->dtPageFormattedFor;
     const int		column= dt->dtColumnFormattedFor;
+    const int		adjustDocument= 1;
 
     docInvalidateTreeLayout( dt );
 
-    docLayoutDocumentTree( dt, &(teo->teoChangedRect),
+    if  ( docLayoutDocumentTree( dt, &(teo->teoChangedRect),
 			    page, column, dt->dtY0UsedTwips,
 			    bodySectNode, 
 			    &(teo->teoLayoutContext),
-			    docStartScreenLayoutForTree );
+			    docStartScreenLayoutForTree, adjustDocument ) )
+	{ LDEB(1); return -1;	}
 
     if  ( tedOpenTreeObjects( dt, &(teo->teoLayoutContext) ) )
 	{ LDEB(1); return -1;	}
@@ -213,9 +215,7 @@ static int tedEditRefreshLayout(	TedEditOperation *	teo )
 	{ LDEB(1); return -1;	}
 
     if  ( rf.rfFieldsUpdated > 0 )
-	{
-	eo->eoReformatNeeded= REFORMAT_DOCUMENT;
-	}
+	{ eo->eoReformatNeeded= REFORMAT_DOCUMENT;	}
 
     if  ( eo->eoReformatNeeded != REFORMAT_DOCUMENT )
 	{
@@ -638,8 +638,8 @@ int tedEditFinishOldSelection(		TedEditOperation *		teo )
 
     rval= tedEditFinishSelection2( teo, &dsNew );
 
-    td->tdCurrentTextAttribute= teo->teoSavedTextAttribute;
-    td->tdCurrentTextAttributeNumber= teo->teoSavedTextAttributeNumber;
+    td->tdSelectionDescription.sdTextAttribute= teo->teoSavedTextAttribute;
+    td->tdSelectionDescription.sdTextAttributeNumber= teo->teoSavedTextAttributeNumber;
 
     return rval;
     }
@@ -710,8 +710,8 @@ int tedStartEditOperation(	TedEditOperation *	teo,
     if  ( docStartEditOperation( eo, &ds, bd ) )
 	{ LDEB(1); return -1;	}
 
-    teo->teoSavedTextAttribute= td->tdCurrentTextAttribute;
-    teo->teoSavedTextAttributeNumber= td->tdCurrentTextAttributeNumber;
+    teo->teoSavedTextAttribute= td->tdSelectionDescription.sdTextAttribute;
+    teo->teoSavedTextAttributeNumber= td->tdSelectionDescription.sdTextAttributeNumber;
 
     eo->eoIBarSelectionOld= sd->sdIsIBarSelection;
     eo->eoMultiParagraphSelectionOld= ! sd->sdIsSingleParagraph;

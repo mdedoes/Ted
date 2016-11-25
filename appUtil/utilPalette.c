@@ -116,6 +116,57 @@ int utilPaletteColorIndex(	ColorPalette *		cp,
     }
 
 /************************************************************************/
+
+static int utilPaletteColorDistance(	const RGB8Color *	rgb1,
+					const RGB8Color *	rgb2 )
+    {
+    int		dd= 0;
+    int		ddd;
+
+    ddd= rgb1->rgb8Red- rgb2->rgb8Red;
+    if  ( ddd < 0 )
+	{ ddd= -ddd;	}
+    if  ( dd < ddd )
+	{ dd=  ddd;	}
+
+    ddd= rgb1->rgb8Green- rgb2->rgb8Green;
+    if  ( ddd < 0 )
+	{ ddd= -ddd;	}
+    if  ( dd < ddd )
+	{ dd=  ddd;	}
+
+    ddd= rgb1->rgb8Blue- rgb2->rgb8Blue;
+    if  ( ddd < 0 )
+	{ ddd= -ddd;	}
+    if  ( dd < ddd )
+	{ dd=  ddd;	}
+
+    return dd;
+    }
+
+/************************************************************************/
+
+static int utilPaletteFindNearestColor(	const ColorPalette *	cp,
+					const RGB8Color *	rgb8,
+					int			avoidZero )
+    {
+    int		d= 257;
+    int		i;
+    int		color= -1;
+
+    for ( i= avoidZero; i < cp->cpColorCount; i++ )
+	{
+	int		dd= 0;
+
+	dd= utilPaletteColorDistance( rgb8, &(cp->cpColors[i]) );
+	if  ( dd < d )
+	    { d= dd; color= i;	}
+	}
+
+    return color;
+    }
+
+/************************************************************************/
 /*									*/
 /*  Insert a color in a palette. (Or just return its index)		*/
 /*									*/
@@ -126,76 +177,129 @@ int utilPaletteColorIndex(	ColorPalette *		cp,
 
 int utilPaletteInsertColor(	ColorPalette *		cp,
 				int			avoidZero,
-				int			maxSize,
+				int			maxColors,
 				const RGB8Color *	rgb8 )
     {
     int		color;
-    int		colorCount= cp->cpColorCount;
-    RGB8Color *	colors;
     int		extra= 0;
 
     avoidZero= ( avoidZero != 0 );
 
-    colors= cp->cpColors+ avoidZero;
-    for ( color= avoidZero; color < colorCount; colors++, color++ )
+    for ( color= avoidZero; color < cp->cpColorCount; color++ )
 	{
-	if  ( ! bmRGB8ColorsDiffer( colors, rgb8 ) )
+	if  ( ! bmRGB8ColorsDiffer( &(cp->cpColors[color]), rgb8 ) )
 	    { return color;	}
 	}
 
     /*  1  */
-    if  ( maxSize > 0 && colorCount >= maxSize )
+    if  ( maxColors > 0 && cp->cpColorCount >= maxColors )
 	{
-	int		d= 257;
-	int		i;
+	LLDEB(cp->cpColorCount,maxColors);
 
-	LLDEB(colorCount,maxSize);
-
-	color= 0;
-	for ( i= 0; i < colorCount; i++ )
-	    {
-	    int		dd= 0;
-	    int		ddd;
-
-	    ddd= rgb8->rgb8Red- colors[i].rgb8Red;
-	    if  ( ddd < 0 )
-		{ ddd= -ddd;	}
-	    if  ( dd < ddd )
-		{ dd=  ddd;	}
-
-	    ddd= rgb8->rgb8Green- colors[i].rgb8Green;
-	    if  ( ddd < 0 )
-		{ ddd= -ddd;	}
-	    if  ( dd < ddd )
-		{ dd=  ddd;	}
-
-	    ddd= rgb8->rgb8Blue- colors[i].rgb8Blue;
-	    if  ( ddd < 0 )
-		{ ddd= -ddd;	}
-	    if  ( dd < ddd )
-		{ dd=  ddd;	}
-
-	    if  ( dd < d )
-		{ d= dd; color= i;	}
-	    }
+	color= utilPaletteFindNearestColor( cp, rgb8, avoidZero );
+	if  ( color < 0 )
+	    { color= avoidZero;	}
 
 	return color;
 	}
 
-    if  ( avoidZero && colorCount == 0 )
+    if  ( avoidZero && cp->cpColorCount == 0 )
 	{ extra= 1;	}
 
-    if  ( utilPaletteSetCount( cp, extra+ colorCount+ 1 ) )
-	{ LDEB(extra+ colorCount+ 1); return -1;	}
+    if  ( utilPaletteSetCount( cp, extra+ cp->cpColorCount+ 1 ) )
+	{ LDEB(extra+ cp->cpColorCount+ 1); return -1;	}
 
-    if  ( avoidZero && colorCount == 0 )
+    if  ( extra > 0 )
 	{
-	utilInitRGB8Color( cp->cpColors+ colorCount );
-	colorCount++;
+	utilInitRGB8Color( cp->cpColors+ 0 );
 	}
 
-    cp->cpColors[colorCount]= *rgb8;
+    cp->cpColors[cp->cpColorCount- 1]= *rgb8;
 
-    return colorCount;
+    return cp->cpColorCount- 1;
+    }
+
+/************************************************************************/
+/*									*/
+/*  Merge two palettes.							*/
+/*									*/
+/*  1)  Allocate memory for the mapping.				*/
+/*  2)  Map exact matches.						*/
+/*									*/
+/************************************************************************/
+
+int utilMergeColorPalettes(	int **				pColorMap,
+				ColorPalette *			cpTo,
+				const ColorPalette *		cpFrom,
+				int				avoidZero,
+				int				maxColors )
+    {
+    int				rval= 0;
+
+    const RGB8Color *		rgb8From;
+
+    int *			colorMap= (int *)0;
+
+    int				from;
+    int				to;
+
+    avoidZero= avoidZero != 0;
+
+    /*****/
+
+    /*  1  */
+    if  ( cpFrom->cpColorCount > avoidZero )
+	{
+	colorMap= (int *)malloc( cpFrom->cpColorCount* sizeof( int ) );
+	if  ( ! colorMap )
+	    { LXDEB(cpFrom->cpColorCount,colorMap); rval= -1; goto ready; }
+
+	if  ( avoidZero )
+	    { colorMap[0]= 0;	}
+	}
+    for ( from= avoidZero; from < cpFrom->cpColorCount; from++ )
+	{ colorMap[from]= -1;	}
+
+    /*****/
+
+# if 1
+    /*  2  */
+    for ( from= avoidZero; from < cpFrom->cpColorCount; from++ )
+	{
+	for ( to= avoidZero; to < cpTo->cpColorCount; to++ )
+	    {
+	    if  ( ! bmRGB8ColorsDiffer( &(cpFrom->cpColors[from]),
+						    &(cpTo->cpColors[to]) ) )
+		{ colorMap[from]= to; break;	}
+	    }
+	}
+# endif
+
+    /*  1  */
+    rgb8From= cpFrom->cpColors+ avoidZero;
+    for ( from= avoidZero; from < cpFrom->cpColorCount; rgb8From++, from++ )
+	{
+	if  ( colorMap[from] >= 0 )
+	    { continue;	}
+
+	/*  2  */
+	to= utilPaletteInsertColor( cpTo, avoidZero, maxColors, rgb8From );
+	if  ( to < 0 )
+	    { LDEB(to); rval= -1; goto ready;	}
+
+	colorMap[from]= to;
+	}
+
+    /*  steal */
+    if  ( *pColorMap )
+	{ free( *pColorMap );	}
+    *pColorMap= colorMap; colorMap= (int *)0;
+
+  ready:
+
+    if  ( colorMap )
+	{ free( colorMap );	}
+
+    return rval;
     }
 

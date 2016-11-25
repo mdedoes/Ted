@@ -74,7 +74,7 @@ static int docRtfReadNewProps(	const RtfControlWord *	rcw,
     docInitDocumentStyle( &(rrc->rrcStyle) );
 
     docRtfResetParagraphProperties( rrs );
-    docRtfResetTextAttribute( rrs, rrc->rrcDocument );
+    docRtfResetTextAttribute( rrs, rrc->rrDocument );
 
     rrc->rrcTraceInProps++;
 
@@ -88,7 +88,7 @@ static int docRtfReadNewProps(	const RtfControlWord *	rcw,
     rrc->rrcTraceInProps--;
 
     docRtfResetParagraphProperties( rrs );
-    docRtfResetTextAttribute( rrs, rrc->rrcDocument );
+    docRtfResetTextAttribute( rrs, rrc->rrDocument );
 
     return res;
     }
@@ -232,7 +232,8 @@ static int docRtfReadEditStep(	EditStep *			es,
     {
     int				rval= 0;
     int				res;
-    RtfReader			rrc;
+    BufferDocument *		bd= (BufferDocument *)0;
+    RtfReader *			rr= (RtfReader *)0;
     const RtfControlWord *	rcw;
 
     char			controlWord[TEDszRTFCONTROL+1];
@@ -245,8 +246,6 @@ static int docRtfReadEditStep(	EditStep *			es,
 
     const DocumentAttributeMap * const dam0= (const DocumentAttributeMap *)0;
 
-    docRtfInitReader( &rrc );
-
     if  ( readOld && readNew )
 	{ LLDEB(readOld,readNew); rval= -1; goto ready;	}
     else{
@@ -256,34 +255,26 @@ static int docRtfReadEditStep(	EditStep *			es,
 	    { readWhat=  1;	}
 	}
 
-    rrc.rrcDocument= docNewDocument();
-    if  ( ! rrc.rrcDocument )
-	{ XDEB(rrc.rrcDocument); rval= -1; goto ready;	}
-    rrc.rrcTree= &(rrc.rrcDocument->bdBody);
-    rrc.rrcNode= rrc.rrcTree->dtRoot;
-    rrc.rrcLevel= DOClevBODY;
-    rrc.rrcSis= sis;
-    rrc.rrcTraceReadWhat= readWhat;
-    rrc.rrcTraceSelectionPosition= SELposTAIL;
-    rrc.rrcTraceFieldKind= -1;
-    rrc.rrcReadFlags |= RTFflagUNENCODED;
+    bd= docEditStepMakeSourceDocument( es, bdRef );
+    if  ( ! bd )
+	{ XDEB(bd); rval= -1; goto ready;	}
+
+    rr= docRtfOpenReader( sis, bd, RTFflagUNENCODED );
+
+    rr->rrcTree= &(rr->rrDocument->bdBody);
+    rr->rrcNode= rr->rrcTree->dtRoot;
+    rr->rrcLevel= DOClevBODY;
+    rr->rrcTraceReadWhat= readWhat;
+    rr->rrcTraceSelectionPosition= SELposTAIL;
+    rr->rrcTraceFieldKind= -1;
 
     /* Make shallow copies of the document properties */
     if  ( bdRef )
 	{
-	rrc.rrcDocument->bdProperties.dpFontList= bdRef->bdProperties.dpFontList;
-	rrc.rrcDocument->bdProperties.dpDefaultFont= bdRef->bdProperties.dpDefaultFont;
-	rrc.rrcDocument->bdProperties.dpListAdmin= bdRef->bdProperties.dpListAdmin;
-	rrc.rrcDocument->bdProperties.dpColorPalette= bdRef->bdProperties.dpColorPalette;
-
-	rrc.rrcDocument->bdTextAttributeList= bdRef->bdTextAttributeList;
-	rrc.rrcDocument->bdBorderPropertyList= bdRef->bdBorderPropertyList;
-	rrc.rrcDocument->bdItemShadingList= bdRef->bdItemShadingList;
-	rrc.rrcDocument->bdFramePropertyList= bdRef->bdFramePropertyList;
-	rrc.rrcDocument->bdTabStopListList= bdRef->bdTabStopListList;
+	bd->bdProperties.dpDefaultFont= bdRef->bdProperties.dpDefaultFont;
 	}
 
-    res= docRtfFindControl( &rrc, &c, controlWord, &gotArg, &arg );
+    res= docRtfFindControl( rr, &c, controlWord, &gotArg, &arg );
     if  ( res != RTFfiCTRLGROUP )
 	{ LDEB(res); rval= -1; goto ready; }
 
@@ -293,31 +284,31 @@ static int docRtfReadEditStep(	EditStep *			es,
     if  ( rcw->rcwType != RTCtypeDEST )
 	{ SLDEB(rcw->rcwWord,rcw->rcwType); rval= -1; goto ready;	}
 
-    res= docRtfApplyControlWord( rcw, gotArg, arg, &rrc );
+    res= docRtfApplyControlWord( rcw, gotArg, arg, rr );
     if  ( res )
 	{ LDEB(1); rval= -1; goto ready; }
 
-    docDelimitTables( rrc.rrcDocument->bdBody.dtRoot, recursively );
+    docDelimitTables( rr->rrDocument->bdBody.dtRoot, recursively );
 
-    es->esCommand= rrc.rrcTraceCommand;
-    es->esSelectionPosition= rrc.rrcTraceSelectionPosition;
-    es->esFieldKind= rrc.rrcTraceFieldKind;
+    es->esCommand= rr->rrcTraceCommand;
+    es->esSelectionPosition= rr->rrcTraceSelectionPosition;
+    es->esFieldKind= rr->rrcTraceFieldKind;
 
-    es->esOldSelectionScope= rrc.rrcTraceOldSelectionScope;
-    es->esOldEditRange= rrc.rrcTraceOldRange;
-    es->esOldCol0= rrc.rrcTraceOldCol0;
-    es->esOldCol1= rrc.rrcTraceOldCol1;
-    es->esOldPage= rrc.rrcTraceOldPage;
-    es->esOldColumn= rrc.rrcTraceOldColumn;
+    es->esOldSelectionScope= rr->rrcTraceOldSelectionScope;
+    es->esOldEditRange= rr->rrcTraceOldRange;
+    es->esOldCol0= rr->rrcTraceOldCol0;
+    es->esOldCol1= rr->rrcTraceOldCol1;
+    es->esOldPage= rr->rrcTraceOldPage;
+    es->esOldColumn= rr->rrcTraceOldColumn;
 
-    es->esNewSelectionScope= rrc.rrcTraceNewSelectionScope;
-    es->esNewEditRange= rrc.rrcTraceNewRange;
-    es->esNewCol0= rrc.rrcTraceNewCol0;
-    es->esNewCol1= rrc.rrcTraceNewCol1;
-    es->esNewPage= rrc.rrcTraceNewPage;
-    es->esNewColumn= rrc.rrcTraceNewColumn;
+    es->esNewSelectionScope= rr->rrcTraceNewSelectionScope;
+    es->esNewEditRange= rr->rrcTraceNewRange;
+    es->esNewCol0= rr->rrcTraceNewCol0;
+    es->esNewCol1= rr->rrcTraceNewCol1;
+    es->esNewPage= rr->rrcTraceNewPage;
+    es->esNewColumn= rr->rrcTraceNewColumn;
 
-    es->esPropLevel= rrc.rrcTracePropLevel;
+    es->esPropLevel= rr->rrcTracePropLevel;
 
     if  ( es->esCommand == EDITcmdUPD_SPAN_PROPS	||
 	  es->esCommand == EDITcmdUPD_PARA_PROPS	||
@@ -330,13 +321,13 @@ static int docRtfReadEditStep(	EditStep *			es,
 	  es->esCommand == EDITcmdDEL_FIELD		||
 	  es->esCommand == EDITcmdSET_NEW_LIST		)
 	{
-	if  ( docUpdRowProperties( &(rrc.rrcStyle.dsRowMask),
-		    &(rrc.rrcStyle.dsRowProps),
-		    &(rrc.rrcRowPropertyMask), &(rrc.rrcRowProperties),
+	if  ( docUpdRowProperties( &(rr->rrcStyle.dsRowMask),
+		    &(rr->rrcStyle.dsRowProps),
+		    &(rr->rrcRowPropertyMask), &(rr->rrcRowProperties),
 		    (const DocumentAttributeMap *)0 ) )
 	    { LDEB(es->esCommand); rval= -1; goto ready;	}
 
-	if  ( docCopyStyle( &(es->esNewStyle), &(rrc.rrcStyle), dam0 )	)
+	if  ( docCopyStyle( &(es->esNewStyle), &(rr->rrcStyle), dam0 )	)
 	    { LDEB(es->esCommand); rval= -1; goto ready;	}
 
 	if  ( PROPmaskISSET( &(es->esNewStyle.dsRowMask),RPpropCELL_LAYOUT ) ||
@@ -346,44 +337,22 @@ static int docRtfReadEditStep(	EditStep *			es,
 
     if  ( docUpdDocumentProperties(
 	    (PropertyMask *)0, &(es->esNewDocProps),
-	    &(rrc.rrcDocPropertyMask), &(rrc.rrcDocumentProperties), dam0 ) )
+	    &(rr->rrcDocPropertyMask), &(rr->rrcDocumentProperties), dam0 ) )
 	{ LDEB(es->esCommand); rval= -1; goto ready;	}
-    es->esNewDocPropMask= rrc.rrcDocPropertyMask;
+    es->esNewDocPropMask= rr->rrcDocPropertyMask;
 
-    es->esPicturePropMask= rrc.rrcPicturePropMask;
+    es->esPicturePropMask= rr->rrcPicturePropMask;
 
-    es->esNotePropMask= rrc.rrcNotePropertyMask;
-    docInitNoteProperties( &(rrc.rrcNoteProperties) );
+    es->esNotePropMask= rr->rrcNotePropertyMask;
+    docInitNoteProperties( &(rr->rrcNoteProperties) );
 
-    es->esDocumentList= rrc.rrcDocumentList;
-    docInitDocumentList( &(rrc.rrcDocumentList) );
-
-    es->esSourceDocument= rrc.rrcDocument; rrc.rrcDocument= (BufferDocument *)0; /* steal */
+    es->esDocumentList= rr->rrcDocumentList;
+    docInitDocumentList( &(rr->rrcDocumentList) );
 
   ready:
 
-    if  ( rrc.rrcDocument )
-	{
-	BufferDocument *	bd= rrc.rrcDocument;
-
-	/* Shallow copies: Do not clean */
-	if  ( bdRef )
-	    {
-	    docInitFontList( &(bd->bdProperties.dpFontList) );
-	    docInitListAdmin( &(bd->bdProperties.dpListAdmin) );
-	    utilInitColorPalette( &(bd->bdProperties.dpColorPalette) );
-
-	    utilInitNumberedPropertiesList( &(bd->bdTextAttributeList) );
-	    utilInitNumberedPropertiesList( &(bd->bdBorderPropertyList) );
-	    utilInitNumberedPropertiesList( &(bd->bdItemShadingList) );
-	    utilInitNumberedPropertiesList( &(bd->bdFramePropertyList) );
-	    utilInitNumberedPropertiesList( &(bd->bdTabStopListList) );
-	    }
-
-	docFreeDocument( bd );
-	}
-
-    docRtfCleanReader( &rrc );
+    if  ( rr )
+	{ docRtfCloseReader( rr ); 	}
 
     return rval;
     }
@@ -575,10 +544,15 @@ static int docRtfReadExtendedReplace(
     if  ( readNew )
 	{
 	BufferDocument *	swap;
+	int			inte;
 
 	swap= es->esSourceDocument;
 	      es->esSourceDocument= esExt.esSourceDocument;
 			            esExt.esSourceDocument= swap;
+
+	inte= es->esSourceIsIntermediary;
+	      es->esSourceIsIntermediary= esExt.esSourceIsIntermediary;
+					  esExt.esSourceIsIntermediary= inte;
 	}
 
   ready:

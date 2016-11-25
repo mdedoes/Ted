@@ -128,7 +128,7 @@ int docRtfTraceNewProperties(	EditOperation *			eo,
     docRtfWriteDestinationBegin( rw, RTFtag_NPR );
 
     if  ( dpSetMask )
-	{ docRtfSaveDocumentProperties( rw, dpSetMask, dpSet );		}
+	{ docRtfSaveDocumentProperties( rw, -1, dpSetMask, dpSet );	}
     if  ( spSetMask )
 	{ docRtfSaveSectionProperties( rw, spSetMask, spSet );		}
     if  ( rpSetMask )

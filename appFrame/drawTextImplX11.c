@@ -134,7 +134,6 @@ static int appDrawX11SetWS(	int *			pUsed,
 				const char *		ss,
 				int			len )
     {
-    const unsigned char *	us= (const unsigned char *)ss;
     int				wl= 0;
     int				used= 0;
 
@@ -153,12 +152,12 @@ static int appDrawX11SetWS(	int *			pUsed,
 	unsigned short	sym;
 	int		step;
 
-	step= uniGetUtf8( &sym, us );
+	step= uniGetUtf8( &sym, ss );
 	if  ( step < 1 )
 	    { LDEB(step); return -1;	}
 
 	ws[wl].byte1= sym/ 256; ws[wl].byte2= sym% 256; wl++;
-	used += step; us += step; len -= step;
+	used += step; ss += step; len -= step;
 	}
 
     *pUsed= used; return wl;
@@ -175,7 +174,6 @@ static int appDrawX11SetBS(	int *			pUsed,
 				const char *		ss,
 				int			len )
     {
-    const unsigned char *	us= (const unsigned char *)ss;
     int				bl= 0;
     int				used= 0;
 
@@ -198,7 +196,7 @@ static int appDrawX11SetBS(	int *			pUsed,
 	int		step;
 	int		byte;
 
-	step= uniGetUtf8( &sym, us );
+	step= uniGetUtf8( &sym, ss );
 	if  ( step < 1 )
 	    { LDEB(step); return -1;	}
 
@@ -207,7 +205,7 @@ static int appDrawX11SetBS(	int *			pUsed,
 	    { break;	}
 
 	bs[bl]= byte; bl++;
-	used += step; us += step; len -= step;
+	used += step; ss += step; len -= step;
 	}
 
     *pUsed= used; return bl;
@@ -233,7 +231,7 @@ void drawHandleTextSegmentsX11( TextProgress *		tp,
 	int				step;
 	unsigned short			sym;
 
-	step= uniGetUtf8( &sym, (unsigned char *)s );
+	step= uniGetUtf8( &sym, s );
 	if  ( step < 1 )
 	    { LLDEB(len,step); return;	}
 

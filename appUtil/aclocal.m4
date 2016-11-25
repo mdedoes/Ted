@@ -166,13 +166,13 @@ AC_DEFUN(AC_HAVE_LIBPAPER,
 	trap "rm -f $h_so_tmp" 0
 	for h_so in \
 	    "/usr/include paper.h /usr/lib64 paper" \
-	    "/usr/include paper.h /usr/lib paper"
+	    "/usr/include paper.h - paper"
 	do
 	    echo $h_so
 	done > ${h_so_tmp}
 	while read hd h sod so
 	do
-	    if  test -f $hd/$h -a -f ${sod}/lib${so}.so
+	    if  test -f $hd/$h -a \( ${sod} = - -o -f ${sod}/lib${so}.so \)
 	    then
 		case $hd in
 		/usr/include)
@@ -184,7 +184,7 @@ AC_DEFUN(AC_HAVE_LIBPAPER,
 		esac
 
 		case $sod in
-		/usr/lib|/lib)
+		/usr/lib|/lib|-)
 		    LIBPAPER_LIBS=-l${so}
 		    ;;
 		*)

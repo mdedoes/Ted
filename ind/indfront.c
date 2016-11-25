@@ -11,8 +11,8 @@
 
 typedef struct DumpThrough
     {
-    unsigned char *	dtOutbuf;
-    int			dtLevel;
+    char *	dtOutbuf;
+    int		dtLevel;
     } DumpThrough;
 
 static int indDumpAcceptingLink(	void *		vdt,
@@ -42,10 +42,8 @@ static int indDumpAcceptingLink(	void *		vdt,
 
 void indDump(	void *		voidind )
     {
-    unsigned char	outbuf[400];
-
+    char		outbuf[400];
     IND *		ind= (IND *)voidind;
-
     DumpThrough		dt;
 
     dt.dtOutbuf= outbuf;
@@ -99,7 +97,7 @@ int indPutUtf8(	void *		voidind,
 	    { LDEB(tnStart); return -1;	}
 	}
 
-    return indINDputUtf8( ind, tnStart, (const unsigned char *)key );
+    return indINDputUtf8( ind, tnStart, key );
     }
 
 int indPutUtf16(	void *			voidind,
@@ -155,7 +153,7 @@ int indForget(	void *		voidind,
     if  ( ind->ind_magic != INDMAGIC )
 	{ LDEB(ind->ind_magic); return -1;	}
 
-    return indINDforget( ind, (unsigned char *)key );
+    return indINDforget( ind, key );
     }
 
 /************************************************************************/
@@ -177,8 +175,7 @@ int indGetUtf8(	int *		paccept,
     if  ( ind->ind_start < 0 )
 	{ return -1;	}
 
-    return indINDgetUtf8( paccept,
-			ind, ind->ind_start, (const unsigned char *)key );
+    return indINDgetUtf8( paccept, ind, ind->ind_start, key );
     }
 
 int indGetUtf16(	int *			paccept,
@@ -234,8 +231,7 @@ int	indGetWord(	int *			pWhatWasShifted,
     if  ( ind->ind_magic != INDMAGIC )
 	{ LDEB(ind->ind_magic); return -1;	}
 
-    return indWRDget( ind, pWhatWasShifted,
-				(const unsigned char *)word, asPrefix );
+    return indWRDget( ind, pWhatWasShifted, word, asPrefix );
     }
 
 /************************************************************************/
@@ -315,7 +311,7 @@ int indGuess(	void *				voidind,
     if  ( ind->ind_magic != INDMAGIC )
 	{ LDEB(ind->ind_magic); rval= -1; goto ready;	}
 
-    ucods= uniUtf8ToUnicodes( &ulen, (const unsigned char *)word );
+    ucods= uniUtf8ToUnicodes( &ulen, word );
     if  ( ! ucods )
 	{ XDEB(ucods); rval= -1; goto ready;		}
 
@@ -349,7 +345,7 @@ int indGuessWord(	void *				voidind,
     if  ( ind->ind_magic != INDMAGIC )
 	{ LDEB(ind->ind_magic); rval= -1; goto ready;	}
 
-    source= uniUtf8ToUnicodes( &sourceLen, (const unsigned char *)word );
+    source= uniUtf8ToUnicodes( &sourceLen, word );
     if  ( ! source )
 	{ XDEB(source); rval= -1; goto ready;		}
 

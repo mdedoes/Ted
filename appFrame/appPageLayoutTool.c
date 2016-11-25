@@ -442,6 +442,12 @@ void appPageLayoutPageFillPage(	PageLayoutTool *		plt,
     plt->pltCanChangeSelection= 1;
     plt->pltCanChangeDocument= 1;
 
+    plt->pltHeaderFooterFrame= (APP_WIDGET)0;
+    plt->pltHeaderFooterLeftColumn= (APP_WIDGET)0;
+    plt->pltHeaderFooterRightColumn= (APP_WIDGET)0;
+    plt->pltHeaderPositionText= (APP_WIDGET)0;
+    plt->pltFooterPositionText= (APP_WIDGET)0;
+
     /**/
 
     plt->pltDrawingSurface= (DrawingSurface)0;

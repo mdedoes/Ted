@@ -32,10 +32,16 @@ typedef struct TextAttribute
     unsigned char	taCapitals;
 
     unsigned char	taSuperSub;
-#   define			DOCfontREGULAR		0
-#   define			DOCfontSUPERSCRIPT	1
-#   define			DOCfontSUBSCRIPT	2
     } TextAttribute;
+
+typedef enum TextSuperSub
+    {
+    TEXTvaREGULAR= 0,
+    TEXTvaSUPERSCRIPT,
+    TEXTvaSUBSCRIPT,
+
+    TEXTva_COUNT
+    } TextSuperSub;
 
 typedef enum TextProperty
     {

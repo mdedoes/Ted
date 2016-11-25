@@ -85,8 +85,6 @@ static int appWinMetaPlayRecordsImg(	SimpleInputStream *	sis,
 
     for (;;)
 	{
-	long		rop;
-
 	int		x0;
 	int		y0;
 	int		w0;
@@ -109,7 +107,7 @@ static int appWinMetaPlayRecordsImg(	SimpleInputStream *	sis,
 	switch( function )
 	    {
 	    case META_STRETCHBLT:
-		rop= sioEndianGetLeInt32( sis );
+		(void) /* rop= */ sioEndianGetLeInt32( sis );
 		h0= sioEndianGetLeInt16( sis );
 		w0= sioEndianGetLeInt16( sis );
 		y0= sioEndianGetLeInt16( sis );
@@ -128,7 +126,7 @@ static int appWinMetaPlayRecordsImg(	SimpleInputStream *	sis,
 
 		continue;
 	    case META_STRETCHDIB:
-		rop= sioEndianGetLeInt32( sis );
+		(void) /* rop= */ sioEndianGetLeInt32( sis );
 		(void) sioEndianGetLeInt16( sis );
 		/*  source	*/
 		h0= sioEndianGetLeInt16( sis );
@@ -159,10 +157,9 @@ static int appWinMetaPlayRecordsImg(	SimpleInputStream *	sis,
 	    default:
 		{
 		int	done;
-		int	ignore;
 
 		for ( done= 3; done < recordSize; done++ )
-		    { ignore= sioEndianGetLeInt16( sis ); }
+		    { (void) /* ignore= */ sioEndianGetLeInt16( sis ); }
 		continue;
 		}
 	    }
@@ -184,6 +181,7 @@ int appMetaPlayWmfImg(	BitmapDescription *	pBd,
 			unsigned char **	pBuffer,
 			SimpleInputStream *	sis )
     {
+    /*
     int			fileType;
     int			headerSize;
     int			windowsVersion;
@@ -191,6 +189,7 @@ int appMetaPlayWmfImg(	BitmapDescription *	pBd,
     int			objectCount;
     long		maxRecordSize;
     int			parameterCount;
+    */
 
     RasterImage *	abi= (RasterImage *)0;
 
@@ -198,13 +197,13 @@ int appMetaPlayWmfImg(	BitmapDescription *	pBd,
 	{ return -1;	}
     sioInUngetLastRead( sis );
 
-    fileType= sioEndianGetLeInt16( sis );
-    headerSize= sioEndianGetLeInt16( sis );
-    windowsVersion= sioEndianGetLeInt16( sis );
-    fileSize= sioEndianGetLeInt32( sis );
-    objectCount= sioEndianGetLeInt16( sis );
-    maxRecordSize= sioEndianGetLeInt32( sis );
-    parameterCount= sioEndianGetLeInt16( sis );
+    (void) /* fileType= */ sioEndianGetLeInt16( sis );
+    (void) /* headerSize= */ sioEndianGetLeInt16( sis );
+    (void) /* windowsVersion= */ sioEndianGetLeInt16( sis );
+    (void) /* fileSize= */ sioEndianGetLeInt32( sis );
+    (void) /* objectCount= */ sioEndianGetLeInt16( sis );
+    (void) /* maxRecordSize= */ sioEndianGetLeInt32( sis );
+    (void) /* parameterCount= */ sioEndianGetLeInt16( sis );
 
     WMFDEB(appDebug( "IMG WMF ...\n" ));
 

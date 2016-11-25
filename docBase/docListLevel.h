@@ -15,8 +15,6 @@
 
 #   include	"docParaProperties.h"
 
-#   define	DLmaxLEVELS	9
-
 typedef enum ListLevelAlignment
     {
     DOCllaLEFT= 0,

@@ -13,9 +13,10 @@
 
 #   include	<appDebugon.h>
 
-#   include	<utilOfficeCharset.h>
+#   include	<textOfficeCharset.h>
 #   include	<psDocumentFontStyle.h>
 #   include	"docRtfWriterImpl.h"
+#   include	"docRtfTextConverter.h"
 #   include	"docRtfFlags.h"
 
 /************************************************************************/
@@ -146,7 +147,7 @@ int docRtfWriteGetDefaultFont(	RtfWriter *			rw,
     {
     const BufferDocument *	bd= rw->rwDocument;
     const DocumentProperties *	dp= &(bd->bdProperties);
-    const DocumentFontList *	dfl= &(dp->dpFontList);
+    const DocumentFontList *	dfl= dp->dpFontList;
 
     const int			cs= 0;
 
@@ -174,7 +175,7 @@ void docRtfWriteFontTable(	RtfWriter *			rw )
     {
     const BufferDocument *	bd= rw->rwDocument;
     const DocumentProperties *	dp= &(bd->bdProperties);
-    const DocumentFontList *	dfl= &(dp->dpFontList);
+    const DocumentFontList *	dfl= dp->dpFontList;
 
     int				fnt;
 
@@ -229,7 +230,7 @@ int docRtfWriteBuildFontAdmin(	RtfWriter *		rw )
     {
     BufferDocument *		bd= rw->rwDocument;
     DocumentProperties *	dp= &(bd->bdProperties);
-    DocumentFontList *		dfl= &(dp->dpFontList);
+    DocumentFontList *		dfl= dp->dpFontList;
 
     int				f;
     int				fileFontNumber= 0;

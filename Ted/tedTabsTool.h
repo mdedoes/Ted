@@ -13,6 +13,7 @@
 #   include	<appInspector.h>
 #   include	<docBuf.h>
 #   include	<docTabStop.h>
+#   include	<docTabStopList.h>
 #   include	<docSelectionDescription.h>
 #   include	<docSelectionGeometry.h>
 
@@ -55,6 +56,8 @@ typedef struct TabsTool
     EditApplication *		ttApplication;
     AppInspector *		ttInspector;
     const TabsPageResources *	ttPageResources;
+
+    int				ttInProgrammaticChange;
 
     int				ttUnitInt;
     unsigned char		ttCanChange;

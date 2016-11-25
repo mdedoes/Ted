@@ -86,8 +86,7 @@ void appMakeVerticalDialog(	AppDialog *		ad,
 				EditApplication *	ea,
 				APP_CLOSE_CALLBACK_T	closeCallback,
 				APP_DESTROY_CALLBACK_T	destroyCallback,
-				void *			through,
-				const char *		widgetName )
+				void *			through )
     {
     Widget		shell;
     Widget		dialog;
@@ -122,7 +121,7 @@ void appMakeVerticalDialog(	AppDialog *		ad,
 	{ XtSetArg( al[ac], XmNmwmDecorations,	hints.decorations ); ac++; }
 
     shell= XmCreateDialogShell( ea->eaToplevel.atTopWidget,
-						(char *)widgetName, al, ac );
+						WIDGET_NAME, al, ac );
 
     if  ( closeCallback && ea->eaCloseAtom > 0 )
 	{

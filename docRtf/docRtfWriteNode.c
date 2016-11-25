@@ -473,8 +473,8 @@ int docRtfSaveDocumentTree(		RtfWriter *		rw,
 
     docCleanParagraphProperties( &(rw->rwcParagraphProperties) );
     docInitParagraphProperties( &(rw->rwcParagraphProperties) );
-    utilInitTextAttribute( &(rw->rwcTextAttribute) );
-    rw->rwcTextCharset= FONTcharsetANSI;
+    utilInitTextAttribute( &(rw->rwTextAttribute) );
+    rw->rwTextCharset= FONTcharsetANSI;
 
     docRtfWriteDestinationEnd( rw );
     docRtfWriteNextLine( rw );

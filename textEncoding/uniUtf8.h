@@ -11,9 +11,9 @@
 /************************************************************************/
 
 extern int uni_GetUtf8(		unsigned short *	pSymbol,
-				const unsigned char *	buf );
+				const char *		buf );
 
-extern int uni_PutUtf8(		unsigned char *		buf,
+extern int uni_PutUtf8(		char *			buf,
 				int			symbol );
 
 /*
@@ -24,10 +24,10 @@ extern int uni_PutUtf8(		unsigned char *		buf,
 # define uniPutUtf8(b,s) uni_PutUtf8((b),(s))
 
 extern unsigned short * uniUtf8ToUnicodes(
-				int *			pUlen,
-				const unsigned char *	word );
+				int *		pUlen,
+				const char *	word );
 
-extern unsigned char * uniUnicodesToUtf8(
+extern char * uniUnicodesToUtf8(
 				int *			pMBlen,
 				const unsigned short *	codes );
 

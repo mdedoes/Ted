@@ -48,9 +48,23 @@ extern const int DOC_HeaderFooterTypeCount;
 # define docIsHeaderType( t )	( (t) == DOCinFIRST_HEADER || \
 				  (t) == DOCinLEFT_HEADER || \
 				  (t) == DOCinRIGHT_HEADER )
+
 # define docIsFooterType( t )	( (t) == DOCinFIRST_FOOTER || \
 				  (t) == DOCinLEFT_FOOTER || \
 				  (t) == DOCinRIGHT_FOOTER )
+
+# define docIsSeparatorType( t )( (t) == DOCinFTNSEP || \
+				  (t) == DOCinFTNSEPC || \
+				  (t) == DOCinFTNCN || \
+				  (t) == DOCinAFTNSEP || \
+				  (t) == DOCinAFTNSEPC || \
+				  (t) == DOCinAFTNCN )
+
+# define docTreeInColumnType( t ) \
+		    ( (t) == DOCinBODY		|| \
+		      (t) == DOCinFOOTNOTE	|| \
+		      (t) == DOCinENDNOTE	|| \
+		      docIsSeparatorType( t )	)
 
 /************************************************************************/
 /*									*/

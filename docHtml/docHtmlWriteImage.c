@@ -26,6 +26,7 @@
 #   include	<docBuf.h>
 #   include	<docPageGrid.h>
 #   include	<docObjectRect.h>
+#   include	<docShape.h>
 #   include	"docHtmlWriteImpl.h"
 
 #   include	<appDebugon.h>

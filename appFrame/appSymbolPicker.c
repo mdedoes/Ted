@@ -844,8 +844,8 @@ static APP_EVENT_HANDLER_H( appSymbolMousePress, w, voidsp, downEvent )
 
     if  ( sym >= 0 )
 	{
-	unsigned char	scratch[10];
-	int		step;
+	char	scratch[10];
+	int	step;
 
 	sameAsPrevious= sp->spSymbolSelected == sym;
 	sp->spSymbolSelected= sym;
@@ -859,7 +859,7 @@ static APP_EVENT_HANDLER_H( appSymbolMousePress, w, voidsp, downEvent )
 		sp->spPreviousSize= sp->spCollectedString.mbSize;
 
 		if  ( utilMemoryBufferAppendBytes( &(sp->spCollectedString),
-							    scratch, step ) )
+					    (unsigned char *)scratch, step ) )
 		    { LDEB(step);	}
 
 		guiEnableWidget( sp->spClearButton, sp->spEnabled );

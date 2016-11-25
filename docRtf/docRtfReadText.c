@@ -14,10 +14,11 @@
 #   include	<appDebugon.h>
 
 #   include	<uniUtf8.h>
-#   include	<ucd.h>
 
 #   include	"docRtfReaderImpl.h"
 #   include	<docParaString.h>
+#   include	<textConverter.h>
+#   include	<textConverterImpl.h>
 #   include	<docParaParticules.h>
 
 /************************************************************************/
@@ -31,13 +32,13 @@
 /************************************************************************/
 
 /*  1  */
-int docRtfIgnoreText(	RtfReader *	rrc,
+int docRtfIgnoreText(	RtfReader *		rr,
 			const char *		text,
 			int			len )
     { return 0; }
 
 /*  2  */
-int docRtfRefuseText(	RtfReader *	rrc,
+int docRtfRefuseText(	RtfReader *		rr,
 			const char *		text,
 			int			len )
     { LDEB(1); return -1; }
@@ -48,11 +49,11 @@ int docRtfRefuseText(	RtfReader *	rrc,
 /*									*/
 /************************************************************************/
 
-int docRtfSaveRawBytes(		RtfReader *	rrc,
+int docRtfSaveRawBytes(		RtfReader *		rr,
 				const char *		text,
 				int			len )
     {
-    RtfReadingState *	rrs= rrc->rrcState;
+    RtfReadingState *	rrs= rr->rrcState;
 
     if  ( utilMemoryBufferAppendBytes( &(rrs->rrsSavedText),
 					(const unsigned char *)text, len ) )
@@ -74,7 +75,8 @@ static int docRtfSaveBytes(	void *		vmb,
     {
     MemoryBuffer *	mb= (MemoryBuffer *)vmb;
 
-    if  ( utilMemoryBufferAppendBytes( mb, (const unsigned char *)bytes, count ) )
+    if  ( utilMemoryBufferAppendBytes( mb,
+				    (const unsigned char *)bytes, count ) )
 	{ LDEB(mb->mbSize); return -1;	}
 
     return count;
@@ -86,23 +88,34 @@ static int docRtfSaveBytes(	void *		vmb,
 /*									*/
 /************************************************************************/
 
-int docRtfSaveDocEncodedText(	RtfReader *	rrc,
+int docRtfSaveDocEncodedText(	RtfReader *		rr,
 				const char *		text,
 				int			len )
     {
-    RtfReadingState *	rrs= rrc->rrcState;
+    RtfReadingState *	rrs= rr->rrcState;
     int			upto;
     int			consumed= 0;
 
-    upto= textConverterConvertToUtf8(
-				    &(rrc->rrcTextConverters.rtcRtfConverter),
+    upto= textConverterConvertToUtf8( rr->rrRtfTextConverter,
 				    (void *)&(rrs->rrsSavedText),
-				    docRtfSaveBytes, &consumed,
+				    &consumed,
 				    rrs->rrsSavedText.mbSize, text, len );
     if  ( upto < 0 )
 	{ LDEB(upto); return -1;	}
 
     return 0;
+    }
+
+/************************************************************************/
+
+void docRtfReadSetupTextConverters(	RtfReader *	rr )
+    {
+    textConverterSetNativeEncodingName( rr->rrRtfTextConverter,
+						    DOC_RTF_AnsiCharsetName );
+
+    textConverterSetProduce( rr->rrRtfTextConverter, docRtfSaveBytes );
+
+    docParaSetupTextConverter( rr->rrTextTextConverter );
     }
 
 /************************************************************************/
@@ -115,10 +128,10 @@ int docRtfSaveDocEncodedText(	RtfReader *	rrc,
 
 int docRtfStoreSavedText(	char **		pTarget,
 				int *		pSize,
-				RtfReader *	rrc,
+				RtfReader *	rr,
 				int		removeSemicolon )
     {
-    RtfReadingState *	rrs= rrc->rrcState;
+    RtfReadingState *	rrs= rr->rrcState;
 
     char *	fresh;
     int		size;
@@ -147,13 +160,13 @@ int docRtfStoreSavedText(	char **		pTarget,
     }
 
 int docRtfMemoryBufferSetText(	MemoryBuffer *		mb,
-				RtfReader *		rrc,
+				RtfReader *		rr,
 				int			removeSemicolon )
     {
     char *	text= (char *)0;
     int		size;
 
-    if  ( docRtfStoreSavedText( &text, &size, rrc, removeSemicolon ) )
+    if  ( docRtfStoreSavedText( &text, &size, rr, removeSemicolon ) )
 	{ LDEB(1); return -1;	}
 
     if  ( utilMemoryBufferSetBytes( mb, (const unsigned char *)text, size ) )
@@ -165,14 +178,20 @@ int docRtfMemoryBufferSetText(	MemoryBuffer *		mb,
     return 0;
     }
 
+/************************************************************************/
+/*									*/
+/*  Append saved text to a memory buffer.				*/
+/*									*/
+/************************************************************************/
+
 int docRtfMemoryBufferAppendText(	MemoryBuffer *		mb,
-					RtfReader *		rrc )
+					RtfReader *		rr )
     {
     const int	removeSemicolon= 0;
     char *	text= (char *)0;
     int		size;
 
-    if  ( docRtfStoreSavedText( &text, &size, rrc, removeSemicolon ) )
+    if  ( docRtfStoreSavedText( &text, &size, rr, removeSemicolon ) )
 	{ LDEB(1); return -1;	}
 
     if  ( utilMemoryBufferAppendBytes( mb, (const unsigned char *)text, size ) )
@@ -187,21 +206,21 @@ int docRtfMemoryBufferAppendText(	MemoryBuffer *		mb,
 /************************************************************************/
 
 static int docRtfReadAdaptToFontEncoding(
-				RtfReader *			rrc,
+				RtfReader *			rr,
 				RtfReadingState *		rrs )
     {
     const char *		encodingName= (const char *)0;
 
     if  ( rrs->rrsTextCharset >= 0 )
 	{
-	encodingName= docGetEncodingName( rrc->rrcDocument,
+	encodingName= docGetEncodingName( rr->rrDocument,
 			    &(rrs->rrsTextAttribute), rrs->rrsTextCharset );
 	}
 
     if  ( ! encodingName )
-	{ encodingName= docRtfReadGetRtfEncodingName( rrc );	}
+	{ encodingName= rr->rrRtfTextConverter->tcNativeEncodingName;	}
 
-    docRtfReadSetTextEncodingName( rrc, encodingName );
+    textConverterSetNativeEncodingName( rr->rrTextTextConverter, encodingName );
 
     return 0;
     }
@@ -212,44 +231,41 @@ static int docRtfReadAdaptToFontEncoding(
 /*									*/
 /************************************************************************/
 
-int docRtfTextParticule(	RtfReader *		rrc,
+int docRtfTextParticule(	RtfReader *		rr,
 				const char *		text,
 				int			len )
     {
-    RtfReadingState *		rrs= rrc->rrcState;
-    BufferDocument *		bd= rrc->rrcDocument;
+    RtfReadingState *		rrs= rr->rrcState;
+    BufferDocument *		bd= rr->rrDocument;
     BufferItem *		paraNode;
 
-    if  ( rrc->rrcInIgnoredGroup )
+    if  ( rr->rrcInIgnoredGroup )
 	{ return 0;	}
 
-    paraNode= docRtfGetParaNode( rrc );
+    paraNode= docRtfGetParaNode( rr );
     if  ( ! paraNode )
 	{ XDEB(paraNode); return -1; }
 
-    if  ( rrc->rrcAtParaHead )
+    if  ( docParaStrlen( paraNode ) == 0	||
+	  rr->rrAfterParaHeadField		)
 	{
-	int		mindTable= 1;
-
-	if  ( docRtfSetParaProperties(  &(paraNode->biParaProperties),
-							bd, mindTable, rrs ) )
+	if  ( docRtfAdaptToParaProperties( paraNode, bd, rrs,
+					    rr->rrParagraphBreakOverride ) )
 	    { LDEB(1); return -1;	}
-
-	rrc->rrcAtParaHead= 0;
 	}
 
-    if  ( docRtfReadAdaptToFontEncoding( rrc, rrs ) )
+    if  ( docRtfReadAdaptToFontEncoding( rr, rrs ) )
 	{ LDEB(1);	}
 
     if  ( rrs->rrsTextShadingChanged )
-	{ docRtfRefreshTextShading( rrc, rrs );	}
+	{ docRtfRefreshTextShading( rr, rrs );	}
 
-    if  ( docSaveParticules( bd, paraNode, &(rrs->rrsTextAttribute),
-		    &(rrc->rrcTextConverters.rtcTextConverter), text, len ) )
+    if  ( docParaAppendText( bd, paraNode, &(rrs->rrsTextAttribute),
+					rr->rrTextTextConverter, text, len ) )
 	{ LDEB(1); return -1;	}
 
-    rrc->rrcAfterNoteref= 0;
-    rrc->rrcAtParaHead= 0;
+    rr->rrcAfterNoteref= 0;
+    rr->rrAfterParaHeadField= 0;
     
     return 0;
     }
@@ -263,45 +279,45 @@ int docRtfTextParticule(	RtfReader *		rrc,
 
 static int docRtfTextUnicodeValue(	const RtfControlWord *	rcw,
 					int			arg,
-					RtfReader *		rrc )
+					RtfReader *		rr )
     {
-    RtfReadingState *	rrs= rrc->rrcState;
+    RtfReadingState *	rrs= rr->rrcState;
 
-    unsigned char	bytes[7];
+    char		bytes[7];
     int			count;
 
     if  ( arg < 0 )
 	{ arg += 65536;	}
 
-    /* Dirty HACK */
-    if  ( ucdIsPrivate( arg ) )
+    /* Dirty HACK: Only use low byte of characters in the unicode private range */
+    if  ( arg >= 0xE000 && arg <= 0xF8FF )
 	{
 	bytes[0]= arg & 0xff;
 	bytes[1]= '\0';
 
-	return docRtfSaveDocEncodedText( rrc, (char *)bytes, 1 );
+	return docRtfSaveDocEncodedText( rr, (char *)bytes, 1 );
 	}
 
     count= uniPutUtf8( bytes, arg );
     if  ( count < 1 )
 	{ LDEB(count); return 0;	}
 
-    if  ( rrc->rrcAddParticule == docRtfSaveRawBytes )
-	{ XXDEB(rrc->rrcAddParticule,docRtfSaveRawBytes); return 0; }
+    if  ( rr->rrcAddParticule == docRtfSaveRawBytes )
+	{ XXDEB(rr->rrcAddParticule,docRtfSaveRawBytes); return 0; }
 
-    if  ( rrc->rrcAddParticule == docRtfTextParticule )
+    if  ( rr->rrcAddParticule == docRtfTextParticule )
 	{
 	int			stroffShift= 0;
 	int			stroff;
-	BufferItem *		paraNode= docRtfGetParaNode( rrc );
-	BufferDocument *	bd= rrc->rrcDocument;
+	BufferItem *		paraNode= docRtfGetParaNode( rr );
+	BufferDocument *	bd= rr->rrDocument;
 	int			textAttributeNumber;
 
 	if  ( ! paraNode )
 	    { SXDEB(rcw->rcwWord,paraNode); return -1; }
 
 	if  ( rrs->rrsTextShadingChanged )
-	    { docRtfRefreshTextShading( rrc, rrs );	}
+	    { docRtfRefreshTextShading( rr, rrs );	}
 
 	textAttributeNumber= docTextAttributeNumber( bd,
 						&(rrs->rrsTextAttribute) );
@@ -319,7 +335,8 @@ static int docRtfTextUnicodeValue(	const RtfControlWord *	rcw,
 	    { LLDEB(count,paraNode->biParaParticuleCount); return -1; }
 	}
     else{
-	if  ( utilMemoryBufferAppendBytes( &(rrs->rrsSavedText), bytes, count ) )
+	if  ( utilMemoryBufferAppendBytes( &(rrs->rrsSavedText),
+					    (unsigned char *)bytes, count ) )
 	    { LDEB(count); return -1;	}
 	}
 
@@ -328,11 +345,11 @@ static int docRtfTextUnicodeValue(	const RtfControlWord *	rcw,
 
 int docRtfTextUnicode(		const RtfControlWord *	rcw,
 				int			arg,
-				RtfReader *		rrc )
+				RtfReader *		rr )
     {
-    RtfReadingState *	rrs= rrc->rrcState;
+    RtfReadingState *	rrs= rr->rrcState;
 
-    if  ( docRtfTextUnicodeValue( rcw, arg, rrc ) )
+    if  ( docRtfTextUnicodeValue( rcw, arg, rr ) )
 	{ SXDEB(rcw->rcwWord,arg); return -1;	}
 
     rrs->rrsUnicodeBytesToSkip= rrs->rrsBytesPerUnicode;
@@ -341,11 +358,11 @@ int docRtfTextUnicode(		const RtfControlWord *	rcw,
 
 int docRtfTextSpecialChar(	const RtfControlWord *	rcw,
 				int			arg,
-				RtfReader *		rrc )
+				RtfReader *		rr )
     {
     /* docRtfTextParticule() adjusts level */
 
-    if  ( docRtfTextUnicodeValue( rcw, rcw->rcwID, rrc ) )
+    if  ( docRtfTextUnicodeValue( rcw, rcw->rcwID, rr ) )
 	{ SXDEB(rcw->rcwWord,arg); return -1;	}
 
     return 0;
@@ -353,18 +370,18 @@ int docRtfTextSpecialChar(	const RtfControlWord *	rcw,
 
 int docRtfTextSpecialParticule(	const RtfControlWord *	rcw,
 				int			arg,
-				RtfReader *		rrc )
+				RtfReader *		rr )
     {
-    RtfReadingState *	rrs= rrc->rrcState;
+    RtfReadingState *	rrs= rr->rrcState;
     BufferItem *	paraNode;
 
-    if  ( rrc->rrcInIgnoredGroup > 0 )
+    if  ( rr->rrcInIgnoredGroup > 0 )
 	{ return 0;	}
 
     if  ( rrs->rrsTextShadingChanged )
-	{ docRtfRefreshTextShading( rrc, rrs );	}
+	{ docRtfRefreshTextShading( rr, rrs );	}
 
-    paraNode= docRtfGetParaNode( rrc );
+    paraNode= docRtfGetParaNode( rr );
     if  ( ! paraNode )
 	{ SXDEB(rcw->rcwWord,paraNode); return -1; }
 
@@ -374,12 +391,15 @@ int docRtfTextSpecialParticule(	const RtfControlWord *	rcw,
 	case DOCkindLINEBREAK:
 	case DOCkindCHFTNSEP:
 	case DOCkindCHFTNSEPC:
-	    if  ( docSaveSpecialParticule( rrc->rrcDocument, paraNode,
-				&(rrs->rrsTextAttribute), rcw->rcwID ) )
+	case DOCkindOPT_HYPH:
+	case DOCkindLTR_MARK:
+	case DOCkindRTL_MARK:
+	    if  ( docSaveSpecialParticule( rr->rrDocument, paraNode,
+				    &(rrs->rrsTextAttribute), rcw->rcwID ) )
 		{ LDEB(1); return -1;	}
 
-	    rrc->rrcAfterNoteref= 0;
-	    rrc->rrcAtParaHead= 0;
+	    rr->rrcAfterNoteref= 0;
+	    rr->rrAfterParaHeadField= 0;
 
 	    break;
 
@@ -388,31 +408,27 @@ int docRtfTextSpecialParticule(	const RtfControlWord *	rcw,
 	    {
 	    int				done= 0;
 
-	    if  ( rrc->rrcAtParaHead && rcw->rcwID == DOCkindPAGEBREAK )
-		{ rrs->rrsParagraphBreakOverride= DOCibkPAGE; done= 1;	}
+	    if  ( rr->rrParagraphBreakOverride == -1		&&
+		  ( docParaStrlen(paraNode) == 0	||
+		    rr->rrAfterParaHeadField		)	)
+		{
+		if  ( rcw->rcwID == DOCkindPAGEBREAK )
+		    { rr->rrParagraphBreakOverride= DOCibkPAGE; done= 1; }
 
-	    if  ( rrc->rrcAtParaHead && rcw->rcwID == DOCkindCOLUMNBREAK )
-		{ rrs->rrsParagraphBreakOverride= DOCibkCOL; done= 1;	}
+		if  ( rcw->rcwID == DOCkindCOLUMNBREAK )
+		    { rr->rrParagraphBreakOverride= DOCibkCOL; done= 1; }
+		}
 
 	    if  ( ! done						&&
-		  docSaveSpecialParticule( rrc->rrcDocument, paraNode,
+		  docSaveSpecialParticule( rr->rrDocument, paraNode,
 				&(rrs->rrsTextAttribute), rcw->rcwID ) )
 		{ LDEB(1); return -1;	}
 
-	    rrc->rrcAfterNoteref= 0;
-	    rrc->rrcAtParaHead= 0;
+	    rr->rrcAfterNoteref= 0;
+	    rr->rrAfterParaHeadField= 0;
 
 	    break;
 	    }
-
-	case DOCkindOPT_HYPH:
-	    if  ( docSaveSpecialParticule( rrc->rrcDocument, paraNode,
-				&(rrs->rrsTextAttribute), DOCkindOPT_HYPH ) )
-		{ LDEB(1); return -1;	}
-
-	    rrc->rrcAfterNoteref= 0;
-	    rrc->rrcAtParaHead= 0;
-	    break;
 
 	default:
 	    SLDEB(rcw->rcwWord,rcw->rcwID);
@@ -422,3 +438,10 @@ int docRtfTextSpecialParticule(	const RtfControlWord *	rcw,
     return 0;
     }
 
+int docRtfTextBidiMark(	const RtfControlWord *	rcw,
+			int			arg,
+			RtfReader *		rr )
+    {
+/*SDEB(rcw->rcwWord);*/
+    return 0;
+    }

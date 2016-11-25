@@ -3,6 +3,7 @@
 #   include	"docBuf.h"
 #   include	"docTreeNode.h"
 #   include	"docDebug.h"
+#   include	"docShape.h"
 #   include	"docFind.h"
 #   include	<docObjectProperties.h>
 #   include	<docTextParticule.h>
@@ -97,12 +98,12 @@ void docListShapes(		BufferDocument *		bd )
 
 static int docFindParaObjects(	DocumentSelection *		ds,
 				BufferItem *			paraBi,
-				const BufferDocument *		bd,
+				BufferDocument *		bd,
 				const DocumentPosition *	dpFrom,
 				void *				through );
 
 static void docListShapeObjects(	const DrawingShape *	dshp,
-					const BufferDocument *	bd )
+					BufferDocument *	bd )
     {
     DocumentSelection		ds;
 
@@ -110,11 +111,11 @@ static void docListShapeObjects(	const DrawingShape *	dshp,
 	{ LDEB(1); return;	}
 
     docFindFindNextInCurrentTree( &ds, &(ds.dsHead), bd,
-				docFindParaObjects, (void *)0 );
+					    docFindParaObjects, (void *)0 );
     }
 
 static void docListParaObjects(	const BufferItem *	paraBi,
-				const BufferDocument *	bd )
+				BufferDocument *	bd )
     {
     const TextParticule *	tp=  paraBi->biParaParticules;
     int				part;
@@ -190,7 +191,7 @@ static void docListParaObjects(	const BufferItem *	paraBi,
 
 static int docFindParaObjects(	DocumentSelection *		ds,
 				BufferItem *			paraBi,
-				const BufferDocument *		bd,
+				BufferDocument *		bd,
 				const DocumentPosition *	dpFrom,
 				void *				through )
     {

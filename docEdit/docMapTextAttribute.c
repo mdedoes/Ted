@@ -10,7 +10,6 @@
 
 #   include	<appDebugon.h>
 
-#   include	<textAttributeAdmin.h>
 #   include	<docExpandedTextAttribute.h>
 
 #   include	<docBuf.h>
@@ -76,14 +75,12 @@ int docMapTextAttributeNumber(	DocumentCopyJob *	dcj,
     if  ( attributeNumberFrom == dcj->dcjCurrentTextAttributeNumberFrom )
 	{ return dcj->dcjCurrentTextAttributeNumberTo;	}
 
-    utilGetTextAttributeByNumber( &taFrom,
-				&(dcj->dcjSourceDocument->bdTextAttributeList),
-				attributeNumberFrom );
+    docGetTextAttributeByNumber( &taFrom, dcj->dcjSourceDocument,
+							attributeNumberFrom );
 
     docMapTextAttribute( &taTo, &taFrom, dcj );
 
-    attributeNumberTo= utilTextAttributeNumber(
-				&(eo->eoDocument->bdTextAttributeList), &taTo );
+    attributeNumberTo= docTextAttributeNumber( eo->eoDocument, &taTo );
 
     if  ( attributeNumberTo < 0 )
 	{ LDEB(attributeNumberTo);	}
@@ -93,7 +90,6 @@ int docMapTextAttributeNumber(	DocumentCopyJob *	dcj,
 
     return attributeNumberTo;
     }
-
 
 int docMapTextAttributeNumberFromTo(
 				BufferDocument *	bdTo,
@@ -110,23 +106,22 @@ int docMapTextAttributeNumberFromTo(
 
     docInitExpandedTextAttribute( &eta );
 
-    utilGetTextAttributeByNumber( &ta, &(bdFrom->bdTextAttributeList),
-							attributeNumberFrom );
+    docGetTextAttributeByNumber( &ta, bdFrom, attributeNumberFrom );
 
     utilPropMaskFill( &setMask, TAprop_COUNT );
     utilPropMaskClear( &doneMask );
     docExpandTextAttribute( &doneMask, &eta, &ta, &setMask,
-				    &(bdFrom->bdProperties.dpFontList),
-				    &(bdFrom->bdProperties.dpColorPalette) );
+				    bdFrom->bdProperties.dpFontList,
+				    bdFrom->bdProperties.dpColorPalette );
 
     utilPropMaskFill( &setMask, TAprop_COUNT );
     utilPropMaskClear( &doneMask );
 
     docIndirectTextAttribute( &doneMask, &ta, &eta, &setMask,
-				    &(bdTo->bdProperties.dpFontList),
-				    &(bdTo->bdProperties.dpColorPalette) );
+				    bdTo->bdProperties.dpFontList,
+				    bdTo->bdProperties.dpColorPalette );
 
-    rval= utilTextAttributeNumber( &(bdTo->bdTextAttributeList), &ta );
+    rval= docTextAttributeNumber( bdTo, &ta );
 
     docCleanExpandedTextAttribute( &eta );
 

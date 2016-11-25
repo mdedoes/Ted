@@ -23,12 +23,12 @@ int docRtfWriteColorTable(	RtfWriter *			rwc,
 				const DocumentProperties *	dp )
     {
     int				i;
-    const RGB8Color *		rgb8= dp->dpColorPalette.cpColors;
+    const RGB8Color *		rgb8= dp->dpColorPalette->cpColors;
 
     docRtfWriteDestinationBegin( rwc, "colortbl" );
     docRtfWriteNextLine( rwc );
 
-    for ( i= 0; i < dp->dpColorPalette.cpColorCount; rgb8++, i++ )
+    for ( i= 0; i < dp->dpColorPalette->cpColorCount; rgb8++, i++ )
 	{
 	if  ( i != dp->dpDefaultColor )
 	    {

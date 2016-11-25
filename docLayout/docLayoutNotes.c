@@ -66,7 +66,7 @@ static void docLayoutCommitNotesReservation(
 static int docLayoutCollectOneFootnote( NotesReservation *	nr,
 					int *			pHigh,
 					BufferDocument *	bd,
-					const BufferItem *	bodySectBi,
+					const BufferItem *	bodySectNode,
 					const DocumentNote *	dn,
 					DocumentField *		dfNote )
     {
@@ -76,7 +76,7 @@ static int docLayoutCollectOneFootnote( NotesReservation *	nr,
     if  ( nr->nrFootnoteCount == 0 )
 	{
 	nr->nrDfFirstFootnote= dfNote;
-	nr->nrFootnoteSectBi= bodySectBi;
+	nr->nrFootnoteSectBi= bodySectNode;
 
 	tree= docDocumentNoteSeparator( bd, DOCinFTNSEP );
 	if  ( ! tree )
@@ -111,7 +111,7 @@ int docLayoutCollectParaFootnoteHeight(	NotesReservation *	nrTotal,
 					int			referringPage,
 					int			referringColumn,
 					BufferDocument *	bd,
-					const BufferItem *	bodySectBi,
+					const BufferItem *	bodySectNode,
 					const BufferItem *	paraBi,
 					int			partFrom,
 					int			partUpto )
@@ -152,7 +152,7 @@ int docLayoutCollectParaFootnoteHeight(	NotesReservation *	nrTotal,
 	    { continue;	}
 
 	if  ( docLayoutCollectOneFootnote( &nrLocal, &high,
-						    bd, bodySectBi, dn, df ) )
+						    bd, bodySectNode, dn, df ) )
 	    { LDEB(df->dfNoteIndex); return -1;	}
 
 #	if SHOW_NOTE_LAYOUT > 1
@@ -194,7 +194,7 @@ static int docCollectFootnotesForNode(
 			    int *			pReady,
 			    NotesReservation *		nr,
 			    BufferDocument *		bd,
-			    const BufferItem *		bodySectBi,
+			    const BufferItem *		bodySectNode,
 			    const BufferItem *		node,
 			    const DocumentPosition *	dpUpto,
 			    int				partUpto,
@@ -219,15 +219,18 @@ static int docCollectFootnotesForNode(
 
     if  ( node->biTopPosition.lpPage > referringPage 		)
 	{ goto ready;		}
+    if  ( node->biTopPosition.lpPage == referringPage 		&&
+	  node->biTopPosition.lpColumn > referringColumn 	)
+	{ goto ready;		}
 
     for ( i= 0; i < node->biChildCount; i++ )
 	{
-	if  ( node->biTreeType == DOCinBODY		&&
+	if  ( node->biTreeType == DOCinBODY			&&
 	      node->biChildren[i]->biLevel == DOClevSECT	)
-	    { bodySectBi= node->biChildren[i];	}
+	    { bodySectNode= node->biChildren[i];	}
 
 	if  ( docCollectFootnotesForNode( pReady, nr, bd,
-					    bodySectBi, node->biChildren[i],
+					    bodySectNode, node->biChildren[i],
 					    dpUpto, partUpto,
 					    referringPage, referringColumn ) )
 	    { LLDEB(referringPage,referringColumn); return -1;	}
@@ -271,9 +274,9 @@ static int docCollectFootnotesForNode(
 		    }
 
 		if  ( docLayoutCollectParaFootnoteHeight( nr,
-					    tl->tlTopPosition.lpPage,
-					    tl->tlTopPosition.lpColumn,
-					    bd, bodySectBi, node, from, upto ) )
+					tl->tlTopPosition.lpPage,
+					tl->tlTopPosition.lpColumn,
+					bd, bodySectNode, node, from, upto ) )
 		    { LDEB(1); return -1;	}
 		}
 
@@ -439,13 +442,13 @@ int docLayoutFootnotesForColumn(	LayoutPosition *	lpBelowNotes,
 	    {
 	    DocumentTree *	eiBody;
 	    BlockFrame		bfNote;
-	    BufferItem *	bodySectBi;
+	    BufferItem *	bodySectNode;
 
-	    if  ( docGetRootOfSelectionScope( &eiBody, &bodySectBi,
+	    if  ( docGetRootOfSelectionScope( &eiBody, &bodySectNode,
 					    bd, &(dfNote->dfSelectionScope) ) )
 		{ LDEB(1); return -1;	}
 
-	    notesLj.ljBodySectNode= bodySectBi;
+	    notesLj.ljBodySectNode= bodySectNode;
 
 	    docLayoutInitBlockFrame( &bfNote );
 	    if  ( docLayoutGetInitialFrame( &bfNote, &notesLj, &lpHere,
@@ -729,7 +732,7 @@ void docLayoutReserveNoteHeight(	BlockFrame *			bf,
     }
 
 int docSectNotesPrelayout(	int			sect,
-				const BufferItem *	bodySectBi,
+				const BufferItem *	bodySectNode,
 				LayoutJob *		lj )
     {
     const LayoutContext *	lc= &(lj->ljContext);
@@ -751,7 +754,7 @@ int docSectNotesPrelayout(	int			sect,
 	  dfNote;
 	  dfNote= docGetNextNoteInSection( &dn, bd, sect, dfNote, treeType ) )
 	{
-	if  ( docTreePrelayout( &(dn->dnDocumentTree), bodySectBi, lj ) )
+	if  ( docTreePrelayout( &(dn->dnDocumentTree), bodySectNode, lj ) )
 	    { LDEB(1); return -1;	}
 	}
 

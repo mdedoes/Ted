@@ -61,7 +61,7 @@ static int sioInIconvReadBytes(	void *		voidiis,
     /*  1  */
     while( ! tooBig )
 	{
-#	ifdef __GNUC__
+#	if defined(__GNUC__) && ! defined(iconv)
 	char *		inbuf= (char *)iis->iisInBuf;
 #	else
 	const char *	inbuf= (const char *)iis->iisInBuf;
@@ -178,7 +178,7 @@ static int sioOutIconvWriteBytes(	void *			voidios,
 
     if  ( ios->iosInLeft > 0 )
 	{
-#	ifdef __GNUC__
+#	if defined(__GNUC__) && ! defined(iconv)
 	char *		ib= (char *)ios->iosInBuf;
 #	else
 	const char *	ib= (const char *)ios->iosInBuf;

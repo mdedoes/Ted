@@ -12,6 +12,7 @@
 
 #   include	<docObjectProperties.h>
 #   include	<docParaParticules.h>
+#   include	<docShape.h>
 #   include	<appDebugon.h>
 
 #   include	"docRtfReaderImpl.h"
@@ -24,10 +25,10 @@ int docRtfObjectProperty(	const RtfControlWord *	rcw,
     {
     InsertedObject *	io;
 
-    io= docGetObject( rrc->rrcDocument, rrc->rrcInsertedObjectNr );
+    io= docGetObject( rrc->rrDocument, rrc->rrcInsertedObjectNr );
     if  ( ! io )
 	{
-	LSXDEB(rrc->rrcCurrentLine,rcw->rcwWord,rrc->rrcInsertedObjectNr);
+	LSXDEB(rrc->rrCurrentLine,rcw->rcwWord,rrc->rrcInsertedObjectNr);
 	return 0;
 	}
 
@@ -150,16 +151,16 @@ static int docRtfReadPicprop(	const RtfControlWord *	rcw,
 				RtfReader *		rrc )
     {
     int			rval;
-    DrawingShape *	parent= rrc->rrcDrawingShape;
+    DrawingShape *	parent= rrc->rrDrawingShape;
     DrawingShape *	ds;
 
-    ds= docClaimDrawingShape( &(rrc->rrcDocument->bdShapeList) );
+    ds= docClaimDrawingShape( &(rrc->rrDocument->bdShapeList) );
     if  ( ! ds )
 	{ XDEB(ds); return -1;	}
 
     ds->dsDrawing.sdShapeType= rcw->rcwID;
 
-    rrc->rrcDrawingShape= ds;
+    rrc->rrDrawingShape= ds;
 
     rval= docRtfConsumeGroup( (const RtfControlWord *)0, 0, -1,
 				rrc, docRtfPicpropGroups, docRtfIgnoreText );
@@ -167,9 +168,9 @@ static int docRtfReadPicprop(	const RtfControlWord *	rcw,
 	{ SLDEB(rcw->rcwWord,rval);	}
 
     /* ? */
-    docDeleteDrawingShape( rrc->rrcDocument, ds );
+    docDeleteDrawingShape( rrc->rrDocument, ds );
 
-    rrc->rrcDrawingShape= parent;
+    rrc->rrDrawingShape= parent;
     return rval;
     }
 
@@ -186,7 +187,7 @@ static int docRtfSaveObjectData(	RtfReader *		rrc,
     {
     InsertedObject *	io;
 
-    io= docGetObject( rrc->rrcDocument, rrc->rrcInsertedObjectNr );
+    io= docGetObject( rrc->rrDocument, rrc->rrcInsertedObjectNr );
     if  ( ! io )
 	{ LXDEB(rrc->rrcInsertedObjectNr,io); return -1;	}
 
@@ -202,7 +203,7 @@ static int docRtfSaveResultData(	RtfReader *		rrc,
     {
     InsertedObject *	io;
 
-    io= docGetObject( rrc->rrcDocument, rrc->rrcInsertedObjectNr );
+    io= docGetObject( rrc->rrDocument, rrc->rrcInsertedObjectNr );
     if  ( ! io )
 	{ LXDEB(rrc->rrcInsertedObjectNr,io); return -1;	}
 
@@ -212,22 +213,25 @@ static int docRtfSaveResultData(	RtfReader *		rrc,
     return 0;
     }
 
-static int docRtfConsumePict(	RtfReader *	rrc )
+int docRtfReadPict(	const RtfControlWord *	rcw,
+			int			arg,
+			RtfReader *		rrc )
     {
+    int				rval= 0;
+
     RtfReadingState *		externRrs= rrc->rrcState;
     RtfReadingState		internRrs;
 
-    int				rval;
     TextParticule *		tp;
 
-    BufferItem *		paraBi;
+    BufferItem *		paraNode;
     int				ioNrSave= rrc->rrcInsertedObjectNr;
 
     RtfAddTextParticule		addParticule;
 
-    paraBi= docRtfGetParaNode( rrc );
-    if  ( ! paraBi )
-	{ XDEB(paraBi); return -1; }
+    paraNode= docRtfGetParaNode( rrc );
+    if  ( ! paraNode )
+	{ XDEB(paraNode); rval= -1; goto ready; }
 
     utilPropMaskClear( &(rrc->rrcPicturePropMask) );
     docInitPictureProperties( &(rrc->rrcPictureProperties) );
@@ -240,10 +244,10 @@ static int docRtfConsumePict(	RtfReader *	rrc )
 	if  ( externRrs->rrsTextShadingChanged )
 	    { docRtfRefreshTextShading( rrc, externRrs );	}
 
-	tp= docAppendObject( rrc->rrcDocument, paraBi,
+	tp= docAppendObject( rrc->rrDocument, paraNode,
 					    &(externRrs->rrsTextAttribute) );
 	if  ( ! tp )
-	    { LDEB(paraBi->biParaParticuleCount); return -1;	}
+	    { LDEB(paraNode->biParaParticuleCount); rval= -1; goto ready; }
 
 	rrc->rrcInsertedObjectNr= tp->tpObjectNumber;
 	}
@@ -260,9 +264,9 @@ static int docRtfConsumePict(	RtfReader *	rrc )
 	InsertedObject *	io;
 	PictureProperties *	pip;
 
-	io= docGetObject( rrc->rrcDocument, rrc->rrcInsertedObjectNr );
+	io= docGetObject( rrc->rrDocument, rrc->rrcInsertedObjectNr );
 	if  ( ! io )
-	    { LXDEB(rrc->rrcInsertedObjectNr,io); return -1;	}
+	    { LXDEB(rrc->rrcInsertedObjectNr,io); rval= -1; goto ready;	}
 	pip= &(rrc->rrcPictureProperties);
 
 	io->ioKind= pip->pipType;
@@ -276,29 +280,18 @@ static int docRtfConsumePict(	RtfReader *	rrc )
 	io->ioScaleYUsed= pip->pipScaleYUsed;
 	}
 
-    rrc->rrcInsertedObjectNr= ioNrSave;
     docRtfPopReadingState( rrc );
 
-    return rval;
-    }
+  ready:
 
-int docRtfReadPict(	const RtfControlWord *	rcw,
-			int			arg,
-			RtfReader *		rrc )
-    {
-    int		rval;
-
-    if  ( ! docRtfGetParaNode( rrc ) )
-	{ SDEB(rcw->rcwWord); return -1; }
-
-    rval= docRtfConsumePict( rrc );
+    rrc->rrcInsertedObjectNr= ioNrSave;
 
     return rval;
     }
 
 int docRtfReadShpXPict(		const RtfControlWord *	rcw,
 				int			arg,
-				RtfReader *	rrc )
+				RtfReader *		rrc )
     {
     int			rval;
     int			ignore= 0;
@@ -333,7 +326,7 @@ int docRtfReadShpXPict(		const RtfControlWord *	rcw,
 
 static int docRtfReadResultPict(	const RtfControlWord *	rcw,
 					int			arg,
-					RtfReader *	rrc )
+					RtfReader *		rrc )
     {
     int				rval;
 
@@ -357,7 +350,7 @@ static int docRtfReadResultPict(	const RtfControlWord *	rcw,
 	InsertedObject *	io;
 	PictureProperties *	pip;
 
-	io= docGetObject( rrc->rrcDocument, rrc->rrcInsertedObjectNr );
+	io= docGetObject( rrc->rrDocument, rrc->rrcInsertedObjectNr );
 	if  ( ! io )
 	    { LXDEB(rrc->rrcInsertedObjectNr,io); return -1;	}
 	pip= &(rrc->rrcPictureProperties);
@@ -393,7 +386,7 @@ static RtfControlWord	docRtfReadResultXPpictGroups[]=
 
 static int docRtfReadResultXPpict(	const RtfControlWord *	rcw,
 					int			arg,
-					RtfReader *	rrc )
+					RtfReader *		rrc )
     {
     int				rval;
     int				ignore= 0;
@@ -433,7 +426,7 @@ static int docRtfSaveObjectClass(	RtfReader *	rrc,
     {
     InsertedObject *	io;
 
-    io= docGetObject( rrc->rrcDocument, rrc->rrcInsertedObjectNr );
+    io= docGetObject( rrc->rrDocument, rrc->rrcInsertedObjectNr );
     if  ( ! io )
 	{ LXDEB(rrc->rrcInsertedObjectNr,io); return -1;	}
 
@@ -449,7 +442,7 @@ static int docRtfSaveObjectName(	RtfReader *	rrc,
     {
     InsertedObject *	io;
 
-    io= docGetObject( rrc->rrcDocument, rrc->rrcInsertedObjectNr );
+    io= docGetObject( rrc->rrDocument, rrc->rrcInsertedObjectNr );
     if  ( ! io )
 	{ LXDEB(rrc->rrcInsertedObjectNr,io); return -1;	}
 
@@ -556,13 +549,13 @@ int docRtfReadObject(	const RtfControlWord *	rcw,
     if  ( rrs->rrsTextShadingChanged )
 	{ docRtfRefreshTextShading( rrc, rrs );	}
 
-    tp= docAppendObject( rrc->rrcDocument, rrc->rrcNode,
+    tp= docAppendObject( rrc->rrDocument, rrc->rrcNode,
 						&(rrs->rrsTextAttribute) );
     if  ( ! tp )
 	{ SPDEB(rcw->rcwWord,tp); return -1;	}
 
     rrc->rrcInsertedObjectNr= tp->tpObjectNumber;
-    io= docGetObject( rrc->rrcDocument, rrc->rrcInsertedObjectNr );
+    io= docGetObject( rrc->rrDocument, rrc->rrcInsertedObjectNr );
     if  ( ! io )
 	{ LXDEB(rrc->rrcInsertedObjectNr,io); return -1;	}
     io->ioKind= DOCokOLEOBJECT;

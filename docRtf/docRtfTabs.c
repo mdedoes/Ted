@@ -13,6 +13,7 @@
 
 #   include	"docRtfWriterImpl.h"
 #   include	"docRtfReaderImpl.h"
+#   include	"docRtfTags.h"
 
 /************************************************************************/
 /*									*/
@@ -20,8 +21,8 @@
 /*									*/
 /************************************************************************/
 
-void docRtfSaveTabStopList( 	RtfWriter *		rwc,
-				const TabStopList *		tsl )
+void docRtfSaveTabStopList( 	RtfWriter *		rw,
+				const TabStopList *	tsl )
     {
     int			i;
     const TabStop *	ts;
@@ -29,53 +30,25 @@ void docRtfSaveTabStopList( 	RtfWriter *		rwc,
     ts= tsl->tslTabStops;
     for ( i= 0; i < tsl->tslTabStopCount; ts++, i++ )
 	{
-	if  ( rwc->rwCol >= 65 )
-	    { docRtfWriteNextLine( rwc );	}
+	if  ( rw->rwCol >= 65 )
+	    { docRtfWriteNextLine( rw );	}
 
-	switch( ts->tsAlignment )
+	if  ( ts->tsAlignment != DOCtaLEFT )
 	    {
-	    case DOCtaLEFT:
-		break;
-	    case DOCtaRIGHT:
-		docRtfWriteTag( rwc, "tqr" );
-		break;
-	    case DOCtaCENTER:
-		docRtfWriteTag( rwc, "tqc" );
-		break;
-	    case DOCtaDECIMAL:
-		docRtfWriteTag( rwc, "tqdec" );
-		break;
-	    default:
-		LDEB(ts->tsAlignment); break;
+	    docRtfWriteEnumTag( rw, DOCrtf_TabAlignTags, ts->tsAlignment,
+				    DOCrtf_TabAlignTagCount, DOCta_COUNT );
 	    }
 
-	switch( ts->tsLeader )
+	if  ( ts->tsLeader != DOCtlNONE )
 	    {
-	    case DOCtlNONE:
-		break;
-	    case DOCtlDOTS:
-		docRtfWriteTag( rwc, "tldot" );
-		break;
-	    case DOCtlUNDERLINE:
-		docRtfWriteTag( rwc, "tlul" );
-		break;
-	    case DOCtlHYPH:
-		docRtfWriteTag( rwc, "tlhyph" );
-		break;
-	    case DOCtlTHICK:
-		docRtfWriteTag( rwc, "tlth" );
-		break;
-	    case DOCtlEQUAL:
-		docRtfWriteTag( rwc, "tleq" );
-		break;
-	    default:
-		LDEB(ts->tsLeader); break;
+	    docRtfWriteEnumTag( rw, DOCrtf_TabLeaderTags, ts->tsLeader,
+				    DOCrtf_TabLeaderTagCount, DOCtl_COUNT );
 	    }
 
 	if  ( ts->tsFromStyleOrList )
-	    { docRtfWriteTag( rwc, "jclisttab" );	}
+	    { docRtfWriteTag( rw, "jclisttab" );	}
 
-	docRtfWriteArgTag( rwc, "tx", ts->tsTwips );
+	docRtfWriteArgTag( rw, "tx", ts->tsTwips );
 	}
 
     return;

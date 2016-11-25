@@ -13,7 +13,7 @@
 
 #   include	"utilDocFont.h"
 #   include	"utilMatchFont.h"
-#   include	<utilOfficeCharset.h>
+#   include	<textOfficeCharset.h>
 
 /************************************************************************/
 /*									*/

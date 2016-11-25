@@ -11,6 +11,7 @@
 #   include	<appDebugon.h>
 
 #   include	"docBuf.h"
+#   include	"docShape.h"
 #   include	"docParaParticules.h"
 
 /************************************************************************/

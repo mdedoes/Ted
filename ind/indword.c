@@ -4,6 +4,7 @@
 
 #   include	"ind.h"
 #   include	<uniUtf8.h>
+#   include	<ucdGeneralCategory.h>
 #   include	<ucd.h>
 #   include	"indlocal.h"
 #   include	<appDebugon.h>
@@ -87,10 +88,10 @@ static int indGetCapModes(	int *			pTshift,
 /*									*/
 /************************************************************************/
 
-int indWRDget(	IND *			ind,
-		int *			pWhatWasShifted,
-		const unsigned char *	word,
-		int			asPrefix )
+int indWRDget(	IND *		ind,
+		int *		pWhatWasShifted,
+		const char *	word,
+		int		asPrefix )
     {
     int				rval= -1;
 
@@ -137,7 +138,7 @@ int indWRDget(	IND *			ind,
 	    indShiftWord( shifted, ucods, ulen, INDhASIS );
 
 	    if  ( indINDgetUtf8( &accepted, ind, ind->ind_start,
-				(unsigned char *)shifted ) >= 0	&&
+					    shifted ) >= 0	&&
 		  ( accepted || asPrefix )			)
 		{ *pWhatWasShifted= tshift; rval= 0; goto ready;	}
 	    }
@@ -154,7 +155,7 @@ int indWRDget(	IND *			ind,
 	    indShiftWord( shifted, ucods, ulen, INDhASIS );
 
 	    if  ( indINDgetUtf8( &accepted, ind, ind->ind_start,
-			    (unsigned char *)shifted ) >= 0	&&
+					    shifted ) >= 0	&&
 		  ( accepted || asPrefix )			)
 		{ *pWhatWasShifted= hshift; rval= 0; goto ready;	}
 	    }
@@ -168,7 +169,7 @@ int indWRDget(	IND *			ind,
 	    /* already shifted */
 
 	    if  ( indINDgetUtf8( &accepted, ind, ind->ind_start,
-			    (unsigned char *)shifted ) >= 0	&&
+					    shifted ) >= 0	&&
 		  ( accepted || asPrefix )			)
 		{ *pWhatWasShifted= fshift; rval= 0; goto ready;	}
 	    }
@@ -244,7 +245,7 @@ int indShiftWord(	char *				target,
     {
     int			from= 0;
     int			i;
-    unsigned char *	to= (unsigned char *)target;
+    char *		to= target;
 
     switch( how )
 	{

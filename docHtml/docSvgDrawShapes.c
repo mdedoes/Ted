@@ -13,6 +13,7 @@
 #   include	<sioGeneral.h>
 #   include	<docObjectProperties.h>
 #   include	<docDraw.h>
+#   include	<docShape.h>
 #   include	"docSvgDrawImpl.h"
 
 #   include	<appDebugon.h>
@@ -47,8 +48,8 @@ static void docSvgDrawShapePathLow(	SvgWriter *			sw,
 	double		x1;
 	double		y1;
 
-	x= sp->spVertices[i].svX- 0.5* sp->spXSize;
-	y= sp->spVertices[i].svY- 0.5* sp->spYSize;
+	x= sp->spVertices[i].x- 0.5* sp->spXSize;
+	y= sp->spVertices[i].y- 0.5* sp->spYSize;
 	x1= AT2_X( x, y, at );
 	y1= AT2_Y( x, y, at );
 
@@ -412,11 +413,11 @@ int docSvgDrawDrawDrawingShape(	const DocumentRectangle *	drTwips,
 		for ( i= 0; i < sd->sdVertexCount; i++ )
 		    {
 		    sioOutPrintf( xw->xwSos, "%s%s %d,%d", sep, command,
-						sd->sdVertices[i].svX- x0,
-						sd->sdVertices[i].svY- y0 );
+						sd->sdVertices[i].x- x0,
+						sd->sdVertices[i].y- y0 );
 
-		    x0= sd->sdVertices[i].svX;
-		    y0= sd->sdVertices[i].svY;
+		    x0= sd->sdVertices[i].x;
+		    y0= sd->sdVertices[i].y;
 		    sep="\n\t";
 		    command= "l";
 		    }

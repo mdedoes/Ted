@@ -11,8 +11,6 @@
 #   include	<docBuf.h>
 #   include	<docTreeNode.h>
 #   include	<docBlockOrnaments.h>
-#   include	<docBorderPropertyAdmin.h>
-#   include	<docItemShadingAdmin.h>
 #   include	"docRowLayout.h"
 
 #   include	<appDebugon.h>
@@ -37,7 +35,6 @@ static void docGetCellTopBorder( BorderProperties *		pBpTop,
 				int				col,
 				int				atRowTop )
     {
-    const NumberedPropertiesList *	bpl= &(bd->bdBorderPropertyList);
     const BufferItem *		parentBi= rowNode->biParent;
     const CellProperties *	cp= &(rowNode->biRowCells[col]);
 
@@ -86,14 +83,14 @@ static void docGetCellTopBorder( BorderProperties *		pBpTop,
 	  aboveCpC->cpBottomBorderNumber != cp->cpTopBorderNumber	)
 	{
 	aboveNr= aboveCpC->cpBottomBorderNumber;
-	docGetBorderPropertiesByNumber( &bpAbove, bpl, aboveNr );
+	docGetBorderPropertiesByNumber( &bpAbove, bd, aboveNr );
 	if  ( DOCisBORDER( &bpAbove ) )
 	    { useAbove= 1;	}
 	}
 
     /*  3  */
     topNr= cp->cpTopBorderNumber;
-    docGetBorderPropertiesByNumber( &bpTop, bpl, topNr );
+    docGetBorderPropertiesByNumber( &bpTop, bd, topNr );
 
     /*  2  */
     if  ( useAbove )
@@ -107,7 +104,7 @@ static void docGetCellTopBorder( BorderProperties *		pBpTop,
           ! atRowTop						)
 	{
 	docGetBorderPropertiesByNumber( &bpTop,
-					bpl, rowNode->biRowTopBorderNumber );
+					bd, rowNode->biRowTopBorderNumber );
 	topNr= rowNode->biRowTopBorderNumber;
 	useAbove= 0;
 	}
@@ -140,7 +137,6 @@ void docGetCellBottomBorder(	BorderProperties *		pBpBottom,
 				int				col,
 				int				atRowBottom )
     {
-    const NumberedPropertiesList *	bpl= &(bd->bdBorderPropertyList);
     const BufferItem *		parentBi= rowNode->biParent;
     const CellProperties *	cp= &(rowNode->biRowCells[col]);
 
@@ -186,13 +182,13 @@ void docGetCellBottomBorder(	BorderProperties *		pBpBottom,
 
     /*  2  */
     bottomNr= cp->cpBottomBorderNumber;
-    docGetBorderPropertiesByNumber( &bpBottom, bpl, bottomNr );
+    docGetBorderPropertiesByNumber( &bpBottom, bd, bottomNr );
 
     /*  3  */
     if  ( belowCpC )
 	{
 	belowNr= belowCpC->cpBottomBorderNumber;
-	docGetBorderPropertiesByNumber( &bpBelow, bpl, belowNr );
+	docGetBorderPropertiesByNumber( &bpBelow, bd, belowNr );
 
 	if  ( ! DOCisBORDER( &bpBottom )		&&
 	      belowCpC					&&
@@ -208,7 +204,7 @@ void docGetCellBottomBorder(	BorderProperties *		pBpBottom,
 	  ! atRowBottom						)
 	{
 	bottomNr= rowNode->biRowBottomBorderNumber;
-	docGetBorderPropertiesByNumber( &bpBottom, bpl, bottomNr );
+	docGetBorderPropertiesByNumber( &bpBottom, bd, bottomNr );
 	useBelow= 0;
 	}
 
@@ -259,7 +255,6 @@ static int docCellLeftBorderDrawn(
     {
     int				rval= 0;
     const CellProperties *	cp= rowNode->biRowCells+ col;
-    const NumberedPropertiesList *	bpl= &(bd->bdBorderPropertyList);
 
     int				leftHasBorder= 0;
     int				hasLeftBorder= 0;
@@ -269,16 +264,16 @@ static int docCellLeftBorderDrawn(
 
     /*  6  */
     if  ( col > 0							&&
-	  docBorderNumberIsBorder( bpl, cp[-1].cpRightBorderNumber )	)
+	  docBorderNumberIsBorder( bd, cp[-1].cpRightBorderNumber )	)
 	{ leftHasBorder= 1;	}
 
-    docGetBorderPropertiesByNumber( bpLeft, bpl, cp->cpLeftBorderNumber );
+    docGetBorderPropertiesByNumber( bpLeft, bd, cp->cpLeftBorderNumber );
     hasLeftBorder= DOCisBORDER( bpLeft );
 
     if  ( leftHasBorder						&&
 	  cp[-1].cpRightBorderNumber != cp->cpLeftBorderNumber	)
 	{
-	docGetBorderPropertiesByNumber( bpLeft, bpl,
+	docGetBorderPropertiesByNumber( bpLeft, bd,
 					    cp[-1].cpRightBorderNumber );
 	thick= docBorderThick( &space, bpLeft );
 
@@ -324,7 +319,6 @@ static int docCellRightBorderDrawn(
     {
     int				rval= 0;
     const CellProperties *	cp= rowNode->biRowCells+ col;
-    const NumberedPropertiesList *	bpl= &(bd->bdBorderPropertyList);
 
     int				thick;
     int				space;
@@ -340,15 +334,15 @@ static int docCellRightBorderDrawn(
 
     /*  6  */
     if  ( col < rowNode->biChildCount- 1					&&
-	  docBorderNumberIsBorder( bpl, cp[1].cpLeftBorderNumber )	)
+	  docBorderNumberIsBorder( bd, cp[1].cpLeftBorderNumber )	)
 	{ rightHasBorder= 1;	}
 
-    docGetBorderPropertiesByNumber( bpRight, bpl, cp->cpRightBorderNumber );
+    docGetBorderPropertiesByNumber( bpRight, bd, cp->cpRightBorderNumber );
     hasRightBorder= DOCisBORDER( bpRight );
 
     if  ( ! hasRightBorder && rightHasBorder )
 	{
-	docGetBorderPropertiesByNumber( bpRight, bpl,
+	docGetBorderPropertiesByNumber( bpRight, bd,
 						cp[1].cpLeftBorderNumber );
 	*bpRightNr= cp[1].cpLeftBorderNumber;
 	}
@@ -506,9 +500,8 @@ void docGetCellOrnaments(
 
     if  ( shadingNumber != 0 )
 	{
-	docGetItemShadingByNumber( &(cellOrnaments->boShading),
-						&(bd->bdItemShadingList),
-						shadingNumber );
+	docGetItemShadingByNumber( &(cellOrnaments->boShading), bd,
+							    shadingNumber );
 
 	PROPmaskADD( &(cellOrnaments->boPropMask), ORNdrawSHADE );
 	}

@@ -7,13 +7,13 @@
 #   include	<docDocumentProperties.h>
 #   include	<docNoteProperties.h>
 #   include	<docSectProperties.h>
-#   include	<docTabStop.h>
 #   include	<docDocumentField.h>
 #   include	<docTocField.h>
 #   include	<docHyperlinkField.h>
 #   include	<docExpandedTextAttribute.h>
 
 struct ParagraphProperties;
+struct TabStopList;
 
 /************************************************************************/
 /*									*/
@@ -109,7 +109,7 @@ extern int tedDocChangeParagraphProperties(
 
 extern int tedDocSetParagraphTabs(
 				EditDocument *			ed,
-				const TabStopList *		tsl,
+				const struct TabStopList *	tsl,
 				int				traced );
 
 extern int tedDocSetNewList(	EditDocument *			ed,
@@ -336,5 +336,12 @@ extern void tedDocGotKey(	void *				voided,
 extern void tedDocGotString(	void *				voided,
 				const char *			string,
 				int				length );
+
+extern void tedDocSplitParagraph( struct EditDocument *		ed,
+				int				onNewPage,
+				int				traced );
+
+extern int tedDocInsertSectBreak( struct EditDocument *		ed,
+				int				traced );
 
 #   endif	/*  TED_DOC_FRONT_H	*/

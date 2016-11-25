@@ -33,7 +33,7 @@ CFLAGS=	\
 
 #CFLAGS= -g -O2 $(WFLAGS) $(INCLUDES)
 
-# 66!!obs
+# 71!!obs
 OBS	=	\
 		docTreeType.o\
 		docTocField.o\
@@ -43,6 +43,7 @@ OBS	=	\
 		docSymbolField.o\
 		docStyleSheet.o\
 		docStyle.o\
+		docStatistics.o\
 		docShapeProperties.o\
 		docShapeDrawing.o\
 		docSeqField.o\
@@ -55,6 +56,7 @@ OBS	=	\
 		docReadEpsObject.o\
 		docReadEmfObject.o\
 		docReadBitmapObject.o\
+		docPropertiesAdmin.o\
 		docPictureProperties.o\
 		docParaRulerAdmin.o\
 		docParaProperties.o\
@@ -86,14 +88,17 @@ OBS	=	\
 		docFieldGetSet.o\
 		docEditRange.o\
 		docEditPosition.o\
+		docDrawShapeArrow.o\
 		docDocumentProperties.o\
 		docDocumentList.o\
 		docDocumentFieldList.o\
 		docDocumentField.o\
 		docDocumentAttributeMap.o\
+		docDebugListNumberTree.o\
 		docDebugList.o\
 		docDebugFieldInstructions.o\
 		docDateField.o\
+		docCellPropertyAdmin.o\
 		docCellProperties.o\
 		docBorderPropertyAdmin.o\
 		docBorderProperties.o\
@@ -130,7 +135,7 @@ docBookmarkField.o: \
     docBookmarkField.c \
     docBaseConfig.h \
     ../textEncoding/uniUtf8.h \
-    ../textEncoding/ucd.h \
+    ../textEncoding/ucdGeneralCategory.h \
     ../include/appDebugon.h \
     ../include/appDebug.h \
     docDocumentField.h \
@@ -183,6 +188,25 @@ docCellProperties.o: \
     docDocumentAttributeMap.h \
     docPropVal.h
 
+docCellPropertyAdmin.o: \
+    docCellPropertyAdmin.c \
+    docBaseConfig.h \
+    ../include/appDebugon.h \
+    ../include/appDebug.h \
+    docCellPropertyAdmin.h \
+    docCellProperties.h \
+    docItemShading.h \
+    ../appUtil/utilPropMask.h \
+    ../appUtil/utilColor.h \
+    ../appUtil/utilPalette.h \
+    ../appUtil/utilColor.h \
+    docDocumentAttributeMap.h \
+    ../appUtil/utilIntegerValueNode.h \
+    ../appUtil/utilNumberedPropertiesAdmin.h \
+    ../appUtil/utilIntegerValueNode.h \
+    ../appUtil/utilPagedList.h \
+    ../appUtil/utilIndexSet.h
+
 docDateField.o: \
     docDateField.c \
     docBaseConfig.h \
@@ -209,8 +233,8 @@ docDebugList.o: \
     docBaseConfig.h \
     ../textEncoding/uniUtf8.h \
     docDebugList.h \
-    docListNumberTree.h \
     docDocumentList.h \
+    docListDepth.h \
     docListLevel.h \
     ../appUtil/utilPropMask.h \
     ../appUtil/utilMemoryBuffer.h \
@@ -221,6 +245,14 @@ docDebugList.o: \
     docListOverrideLevel.h \
     docListOverrideTable.h \
     docListTable.h \
+    ../include/appDebugon.h \
+    ../include/appDebug.h
+
+docDebugListNumberTree.o: \
+    docDebugListNumberTree.c \
+    docBaseConfig.h \
+    docDebugListNumberTree.h \
+    docListNumberTree.h \
     ../include/appDebugon.h \
     ../include/appDebug.h
 
@@ -265,6 +297,7 @@ docDocumentList.o: \
     ../include/appDebugon.h \
     ../include/appDebug.h \
     docDocumentList.h \
+    docListDepth.h \
     docListLevel.h \
     ../appUtil/utilPropMask.h \
     ../appUtil/utilMemoryBuffer.h \
@@ -292,13 +325,25 @@ docDocumentProperties.o: \
     ../appUtil/utilIndexSet.h \
     ../appUtil/utilIndexMapping.h \
     ../appUtil/utilMemoryBuffer.h \
-    ../textEncoding/utilOfficeCharset.h \
+    ../textEncoding/textOfficeCharset.h \
     ../appUtil/utilColor.h \
     docNotesProperties.h \
     docListAdmin.h \
     docListTable.h \
     docListOverrideTable.h \
     docDocumentAttributeMap.h
+
+docDrawShapeArrow.o: \
+    docDrawShapeArrow.c \
+    docBaseConfig.h \
+    ../appUtil/geo2DDouble.h \
+    ../appUtil/geoAffineTransform.h \
+    docDrawShapeArrow.h \
+    docShapeDrawing.h \
+    ../appUtil/utilColor.h \
+    ../appUtil/geo2DInteger.h \
+    ../include/appDebugon.h \
+    ../include/appDebug.h
 
 docEditPosition.o: \
     docEditPosition.c \
@@ -485,6 +530,7 @@ docListAdmin.o: \
     docListTable.h \
     docListOverrideTable.h \
     docDocumentList.h \
+    docListDepth.h \
     docListLevel.h \
     ../appUtil/utilPropMask.h \
     ../appUtil/utilMemoryBuffer.h \
@@ -516,18 +562,8 @@ docListNumberTree.o: \
     ../include/appDebugon.h \
     ../include/appDebug.h \
     docListNumberTree.h \
-    docListLevel.h \
-    ../appUtil/utilPropMask.h \
-    ../appUtil/utilMemoryBuffer.h \
-    ../utilPs/textAttribute.h \
-    docParaProperties.h \
-    docDocumentAttributeMap.h \
-    docDebugList.h \
-    docDocumentList.h \
-    docListOverride.h \
-    docListOverrideLevel.h \
-    docListOverrideTable.h \
-    docListTable.h
+    docListDepth.h \
+    docDebugListNumberTree.h
 
 docListOverride.o: \
     docListOverride.c \
@@ -541,7 +577,8 @@ docListOverride.o: \
     ../appUtil/utilMemoryBuffer.h \
     ../utilPs/textAttribute.h \
     docParaProperties.h \
-    docDocumentAttributeMap.h
+    docDocumentAttributeMap.h \
+    docListDepth.h
 
 docListOverrideLevel.o: \
     docListOverrideLevel.c \
@@ -569,6 +606,7 @@ docListOverrideTable.o: \
     ../utilPs/textAttribute.h \
     docParaProperties.h \
     docDocumentAttributeMap.h \
+    docListDepth.h \
     docListOverrideTable.h
 
 docListTable.o: \
@@ -577,6 +615,7 @@ docListTable.o: \
     ../include/appDebugon.h \
     ../include/appDebug.h \
     docDocumentList.h \
+    docListDepth.h \
     docListLevel.h \
     ../appUtil/utilPropMask.h \
     ../appUtil/utilMemoryBuffer.h \
@@ -666,7 +705,8 @@ docParaProperties.o: \
     docParaProperties.h \
     ../appUtil/utilPropMask.h \
     docDocumentAttributeMap.h \
-    docPropVal.h
+    docPropVal.h \
+    docListDepth.h
 
 docParaRulerAdmin.o: \
     docParaRulerAdmin.c \
@@ -675,6 +715,7 @@ docParaRulerAdmin.o: \
     ../include/appDebug.h \
     docParaRulerAdmin.h \
     docTabStop.h \
+    docTabStopList.h \
     ../appUtil/utilIntegerValueNode.h \
     ../appUtil/utilNumberedPropertiesAdmin.h \
     ../appUtil/utilIntegerValueNode.h \
@@ -687,6 +728,48 @@ docPictureProperties.o: \
     ../appUtil/utilPropMask.h \
     docObjectProperties.h \
     docPictureProperties.h \
+    ../include/appDebugon.h \
+    ../include/appDebug.h
+
+docPropertiesAdmin.o: \
+    docPropertiesAdmin.c \
+    docBaseConfig.h \
+    docPropertiesAdmin.h \
+    ../appUtil/utilNumberedPropertiesAdmin.h \
+    ../appUtil/utilIntegerValueNode.h \
+    ../appUtil/utilPagedList.h \
+    ../appUtil/utilIndexSet.h \
+    ../docFont/utilDocFontList.h \
+    ../docFont/utilDocFont.h \
+    ../utilPs/psFontInfo.h \
+    ../appUtil/geo2DInteger.h \
+    ../appUtil/utilIndexSet.h \
+    ../appUtil/utilIndexMapping.h \
+    ../appUtil/utilMemoryBuffer.h \
+    ../textEncoding/textOfficeCharset.h \
+    ../appUtil/utilPalette.h \
+    ../appUtil/utilColor.h \
+    docListAdmin.h \
+    docListTable.h \
+    docListOverrideTable.h \
+    docBorderPropertyAdmin.h \
+    docBorderProperties.h \
+    ../appUtil/utilPropMask.h \
+    ../appUtil/utilColor.h \
+    ../appUtil/utilIntegerValueNode.h \
+    docItemShadingAdmin.h \
+    docItemShading.h \
+    docFramePropertiesAdmin.h \
+    docFrameProperties.h \
+    docPropVal.h \
+    docParaRulerAdmin.h \
+    docTabStop.h \
+    docTabStopList.h \
+    docCellPropertyAdmin.h \
+    docCellProperties.h \
+    docDocumentAttributeMap.h \
+    ../utilPs/textAttributeAdmin.h \
+    ../utilPs/textAttribute.h \
     ../include/appDebugon.h \
     ../include/appDebug.h
 
@@ -888,6 +971,7 @@ docShapeDrawing.o: \
     docShapeDrawing.c \
     docBaseConfig.h \
     docPropVal.h \
+    docShapeProp.h \
     docShapeDrawing.h \
     ../appUtil/utilColor.h \
     ../appUtil/geo2DInteger.h \
@@ -902,6 +986,11 @@ docShapeProperties.o: \
     ../appUtil/geo2DInteger.h \
     ../include/appDebugon.h \
     ../include/appDebug.h
+
+docStatistics.o: \
+    docStatistics.c \
+    docBaseConfig.h \
+    docStatistics.h
 
 docStyle.o: \
     docStyle.c \
@@ -924,7 +1013,8 @@ docStyle.o: \
     docDocumentAttributeMap.h \
     docParaProperties.h \
     docParaNumber.h \
-    ../utilPs/textAttribute.h
+    ../utilPs/textAttribute.h \
+    docListDepth.h
 
 docStyleSheet.o: \
     docStyleSheet.c \
@@ -949,7 +1039,8 @@ docStyleSheet.o: \
     docDocumentAttributeMap.h \
     docParaProperties.h \
     docParaNumber.h \
-    ../utilPs/textAttribute.h
+    ../utilPs/textAttribute.h \
+    docListDepth.h
 
 docSymbolField.o: \
     docSymbolField.c \
@@ -969,6 +1060,7 @@ docTabStop.o: \
     docBaseConfig.h \
     ../appUtil/geoGrid.h \
     docTabStop.h \
+    docTabStopList.h \
     ../include/appDebugon.h \
     ../include/appDebug.h
 
@@ -1006,9 +1098,7 @@ docTocField.o: \
     docEditRange.h \
     docEditPosition.h \
     docTocField.h \
-    docParaProperties.h \
-    ../appUtil/utilPropMask.h \
-    docDocumentAttributeMap.h \
+    docListDepth.h \
     ../appUtil/utilMemoryBufferPrintf.h \
     ../appUtil/utilMemoryBuffer.h
 

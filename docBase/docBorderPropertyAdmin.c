@@ -36,7 +36,7 @@ void docInitBorderPropertyList(	NumberedPropertiesList *	bpl )
 
     docInitBorderProperties( &bp );
 
-    num= docBorderPropertiesNumber( bpl, &bp );
+    num= docBorderPropertiesNumberImpl( bpl, &bp );
     if  ( num != 0 )
 	{ LDEB(num);	}
 
@@ -49,7 +49,7 @@ void docInitBorderPropertyList(	NumberedPropertiesList *	bpl )
 /*									*/
 /************************************************************************/
 
-void docGetBorderPropertiesByNumber(	BorderProperties *		bp,
+void docGetBorderPropertiesByNumberImpl( BorderProperties *		bp,
 					const NumberedPropertiesList *	bpl,
 					int				n )
     {
@@ -68,7 +68,7 @@ void docGetBorderPropertiesByNumber(	BorderProperties *		bp,
 /*									*/
 /************************************************************************/
 
-int docBorderNumberIsBorder(		const NumberedPropertiesList *	bpl,
+int docBorderNumberIsBorderImpl(	const NumberedPropertiesList *	bpl,
 					int				n )
     {
     BorderProperties	bp;
@@ -76,7 +76,7 @@ int docBorderNumberIsBorder(		const NumberedPropertiesList *	bpl,
     if  ( n < 0 )
 	{ return 0;	}
 
-    docGetBorderPropertiesByNumber( &bp, bpl, n );
+    docGetBorderPropertiesByNumberImpl( &bp, bpl, n );
 
     return DOCisBORDER( &bp );
     }
@@ -110,7 +110,7 @@ void docForAllBorderProperties(	const NumberedPropertiesList *	bpl,
 /*									*/
 /************************************************************************/
 
-int docBorderPropertiesNumber(	NumberedPropertiesList *		bpl,
+int docBorderPropertiesNumberImpl( NumberedPropertiesList *		bpl,
 				const BorderProperties *		bp )
     {
     const int	make= 1;
@@ -120,7 +120,7 @@ int docBorderPropertiesNumber(	NumberedPropertiesList *		bpl,
 
 int docMergeBorderPropertiesLists(
 				int **				pBorderMap,
-				const int *			cmap,
+				const int *			colorMap,
 				NumberedPropertiesList *	bplTo,
 				const NumberedPropertiesList *	bplFrom )
     {
@@ -129,13 +129,13 @@ int docMergeBorderPropertiesLists(
     if  ( fromCount > 0 )
 	{
 	int		n;
-	int *		bmap= (int *)malloc( fromCount* sizeof(int) );
+	int *		borderMap= (int *)malloc( fromCount* sizeof(int) );
 
-	if  ( ! bmap )
-	    { LXDEB(fromCount,bmap); return -1; }
+	if  ( ! borderMap )
+	    { LXDEB(fromCount,borderMap); return -1; }
 
 	for ( n= 0; n < fromCount; n++ )
-	    { bmap[n]= -1;	}
+	    { borderMap[n]= -1;	}
 
 	for ( n= 0; n < fromCount; n++ )
 	    {
@@ -148,16 +148,16 @@ int docMergeBorderPropertiesLists(
 		{ continue;	}
 
 	    bp= *((BorderProperties *)vbp);
-	    if  ( bp.bpColor > 0 && cmap )
-		{ bp.bpColor= cmap[bp.bpColor];	}
+	    if  ( bp.bpColor > 0 && colorMap )
+		{ bp.bpColor= colorMap[bp.bpColor];	}
 
-	    to= docBorderPropertiesNumber( bplTo, &bp );
+	    to= docBorderPropertiesNumberImpl( bplTo, &bp );
 	    if  ( to < 0 )
-		{ LDEB(to); free( bmap ); return -1;	}
-	    bmap[n]= to;
+		{ LDEB(to); free( borderMap ); return -1;	}
+	    borderMap[n]= to;
 	    }
 
-	*pBorderMap= bmap;
+	*pBorderMap= borderMap;
 	}
 
     return 0;

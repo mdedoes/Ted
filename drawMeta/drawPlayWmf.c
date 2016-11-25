@@ -124,7 +124,6 @@ static int appWmfCreatePenIndirect(	DeviceContext *		dc,
 					SimpleInputStream *	sis )
     {
     int			ob;
-    int			ignore;
     int			done;
 
     int			x;
@@ -140,7 +139,7 @@ static int appWmfCreatePenIndirect(	DeviceContext *		dc,
     dc->dcObjects[ob].mfoLogicalPen.lpStyle= sioEndianGetLeInt16( sis );
     x= sioEndianGetLeInt16( sis );
     y= sioEndianGetLeInt16( sis );
-    dc->dcObjects[ob].mfoLogicalPen.lpWidth= x;
+    dc->dcObjects[ob].mfoLogicalPen.lpWidth= ( x+ y )/ 2;
     bmWmfGetColor( sis, &dc->dcObjects[ob].mfoLogicalPen.lpColor );
 
     WMFDEB(appDebug("CreatePenIndirect( style=%d,x,y=%d,%d) ob=%d\n",
@@ -148,7 +147,7 @@ static int appWmfCreatePenIndirect(	DeviceContext *		dc,
 				x,y, ob ));
 
     for ( done= 8; done < recordSize; done++ )
-	{ ignore= sioEndianGetLeInt16( sis ); }
+	{ (void) /* ignore= */ sioEndianGetLeInt16( sis ); }
 
     return 0;
     }
@@ -264,7 +263,7 @@ static int appWmfCreateFontIndirect(	DeviceContext *		dc,
 	if  ( c == 0 )
 	    { break; 	}
 
-	step= uniPutUtf8( (unsigned char *)lf->lfFaceNameUtf8+ count, c );
+	step= uniPutUtf8( lf->lfFaceNameUtf8+ count, c );
 	if  ( step < 1 )
 	    { XLDEB(c,step); break;	}
 	count += step;
@@ -305,8 +304,6 @@ static int appWmfReadTextObject(SimpleInputStream *	sis,
     int			done= 0;
     int			step;
 
-    int			ignore;
-
     y0= sioEndianGetLeInt16( sis ); done += 2;
     x0= sioEndianGetLeInt16( sis ); done += 2;
     count= sioEndianGetLeInt16( sis ); done += 2;
@@ -331,7 +328,7 @@ static int appWmfReadTextObject(SimpleInputStream *	sis,
     shortsDone += step/ 2;
 
     for ( ; shortsDone < recordSize; shortsDone++ )
-	{ ignore= sioEndianGetLeInt16( sis ); done += 2; }
+	{ (void) /* ignore= */ sioEndianGetLeInt16( sis ); done += 2; }
 
     WMFDEB(appDebug( "ExtTextOut( x=%d, y= %d, opts= %d, ", x0, y0, style ));
     if  ( style )
@@ -551,13 +548,12 @@ static int appWmfCreatePalette(		DeviceContext *		dc,
     {
     int			ob;
     int			done;
-    int			count;
 
     ob= appWmfGetObjectSlot( dc );
     dc->dcObjects[ob].mfoType= MFtypePALETTE;
 
     (void) sioEndianGetLeInt16( sis );
-    count= sioEndianGetLeInt16( sis );
+    (void) /* count= */ sioEndianGetLeInt16( sis );
     /*
     if  ( 2* count != recordSize- 5 )
 	{ LLDEB(count,recordSize);	}

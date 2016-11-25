@@ -179,9 +179,11 @@ int bmExpandPaletteImage(	RasterImage *			riOut,
     /************************************************************/
     /*  Allocate new buffer.					*/
     /************************************************************/
-    ri.riBytes= (unsigned char *)malloc( ri.riDescription.bdBufferLength );
-    if  ( ! ri.riBytes )
-	{ LLDEB(ri.riDescription.bdBufferLength,ri.riBytes); rval= -1; goto ready; }
+    if  ( bmAllocateBuffer( &ri ) )
+	{
+	LXDEB(ri.riDescription.bdBufferLength,ri.riBytes);
+	rval= -1; goto ready;
+	}
 
     from= riIn->riBytes; to= ri.riBytes;
     for ( row= 0; row < bdIn->bdPixelsHigh; row++ )
@@ -207,16 +209,19 @@ int bmExpandPaletteImage(	RasterImage *			riOut,
 
 /************************************************************************/
 /*									*/
-/*  Make a palette for a bitmap description.				*/
+/*  Make a palette for a grayscale raster image.			*/
 /*									*/
 /************************************************************************/
 
-int bmMakeGrayPalette(		const BitmapDescription *	bd,
-				int *				pColorCount,
-				RGB8Color *			palette )
+int bmMakeGrayPalette(	const BitmapDescription *	bd,
+			int *				pColorCount,
+			int *				pTransparentColor,
+			RGB8Color *			palette,
+			int				maxColors )
     {
     int		i;
     int		colorCount;
+    int		transparentColor= -1;
 
     switch( bd->bdColorEncoding )
 	{
@@ -229,21 +234,30 @@ int bmMakeGrayPalette(		const BitmapDescription *	bd,
 		case 1: case 2: case 4: case 8:
 		    colorCount= 1 << bd->bdBitsPerSample;
 
-		    for ( i= 0; i < colorCount; i++ )
+		    if  ( colorCount+ bd->bdHasAlpha > maxColors )
 			{
-			palette[colorCount- i- 1].rgb8Red=
-			palette[colorCount- i- 1].rgb8Green=
-			palette[colorCount- i- 1].rgb8Blue=
-					    ( i* 255 )/ ( colorCount- 1 );
-			palette[colorCount- i- 1].rgb8Alpha= 255;
+			LLLDEB(colorCount,bd->bdHasAlpha,maxColors);
+			return -1;
 			}
 
-		    *pColorCount= colorCount; return 0;
+		    for ( i= 0; i < colorCount; i++ )
+			{
+			int n= colorCount- i- 1;
+			int v= ( i* 255 )/ ( colorCount- 1 );
+
+			palette[n].rgb8Red= v;
+			palette[n].rgb8Green= v;
+			palette[n].rgb8Blue= v;
+			palette[n].rgb8Alpha= 255;
+			}
+
+		    break;
 
 		default:
 		    LLDEB(bd->bdColorEncoding,bd->bdBitsPerSample);
 		    return -1;
 		}
+	    break;
 
 	case BMcoWHITEBLACK:
 	    switch( bd->bdBitsPerSample )
@@ -251,27 +265,54 @@ int bmMakeGrayPalette(		const BitmapDescription *	bd,
 		case 1: case 2: case 4: case 8:
 		    colorCount= 1 << bd->bdBitsPerSample;
 
+		    if  ( colorCount+ bd->bdHasAlpha > maxColors )
+			{
+			LLLDEB(colorCount,bd->bdHasAlpha,maxColors);
+			return -1;
+			}
+
 		    for ( i= 0; i < colorCount; i++ )
 			{
-			palette[i].rgb8Red=
-			palette[i].rgb8Green=
-			palette[i].rgb8Blue= ( i* 255 )/ ( colorCount- 1 );
+			int v= ( i* 255 )/ ( colorCount- 1 );
+
+			palette[i].rgb8Red= v;
+			palette[i].rgb8Green= v;
+			palette[i].rgb8Blue= v;
 			palette[colorCount- i- 1].rgb8Alpha= 255;
 			}
 
-		    *pColorCount= colorCount; return 0;
+		    break;
 
 		default:
 		    LLDEB(bd->bdColorEncoding,bd->bdBitsPerSample);
 		    return -1;
 		}
+	    break;
 
 	case BMcoRGB:
-	    LDEB(bd->bdColorEncoding); return -1;
-
 	default:
 	    LDEB(bd->bdColorEncoding); return -1;
 	}
+
+    if  ( bd->bdHasAlpha )
+	{
+	if  ( colorCount >= maxColors )
+	    { LLDEB(colorCount,maxColors); return -1;	}
+
+	palette[colorCount].rgb8Red= 255;
+	palette[colorCount].rgb8Green= 255;
+	palette[colorCount].rgb8Blue= 255;
+	palette[colorCount].rgb8Alpha= 0;
+
+	transparentColor= colorCount++;
+	}
+
+    if  ( pColorCount )
+	{ *pColorCount= colorCount;	}
+    if  ( pTransparentColor )
+	{ *pTransparentColor= transparentColor;	}
+
+    return 0;
     }
 
 /************************************************************************/
@@ -288,6 +329,147 @@ int bmInflateTo8bit(		unsigned char *			to,
     {
     int			col;
     unsigned char	b;
+
+    switch( bd->bdBitsPerPixel )
+	{
+	case 1:
+	    if  ( bd->bdHasAlpha && removeAlpha )
+		{ LLDEB(bd->bdBitsPerPixel,bd->bdHasAlpha); return -1;	}
+	    else{
+		for ( col= 0; col < bd->bdPixelsWide; col += 8 )
+		    {
+		    b= *(from++);
+
+		    *(to++)= ( b & 0x80 ) >> 7;
+		    *(to++)= ( b & 0x40 ) >> 6;
+		    *(to++)= ( b & 0x20 ) >> 5;
+		    *(to++)= ( b & 0x10 ) >> 4;
+		    *(to++)= ( b & 0x08 ) >> 3;
+		    *(to++)= ( b & 0x04 ) >> 2;
+		    *(to++)= ( b & 0x02 ) >> 1;
+		    *(to++)= ( b & 0x01 )     ;
+		    }
+		}
+
+	    return 0;
+
+	case 2:
+	    if  ( bd->bdHasAlpha && removeAlpha )
+		{
+		for ( col= 0; col < bd->bdPixelsWide; col += 4 )
+		    {
+		    b= *(from++);
+
+		    if  ( ( b & 0x40 ) )
+			{ *(to++)= ( b & 0x80 ) >> 7;	}
+		    else{ *(to++)= transpColor;	}
+
+		    if  ( ( b & 0x10 ) )
+			{ *(to++)= ( b & 0x20 ) >> 5;	}
+		    else{ *(to++)= transpColor;	}
+
+		    if  ( ( b & 0x04 ) )
+			{ *(to++)= ( b & 0x08 ) >> 3;	}
+		    else{ *(to++)= transpColor;	}
+
+		    if  ( ( b & 0x01 ) )
+			{ *(to++)= ( b & 0x02 ) >> 1;	}
+		    else{ *(to++)= transpColor;	}
+		    }
+		}
+	    else{
+		for ( col= 0; col < bd->bdPixelsWide; col += 4 )
+		    {
+		    b= *(from++);
+
+		    *(to++)= ( b & 0xc0 ) >> 6;
+		    *(to++)= ( b & 0x30 ) >> 4;
+		    *(to++)= ( b & 0x0c ) >> 2;
+		    *(to++)= ( b & 0x03 )     ;
+		    }
+		}
+
+	    return 0;
+
+	case 4:
+	    if  ( bd->bdHasAlpha && removeAlpha )
+		{
+		for ( col= 0; col < bd->bdPixelsWide; col += 2 )
+		    {
+		    b= *(from++);
+
+		    if  ( ( b & 0x30 ) )
+			{ *(to++)= ( b & 0xc0 ) >> 6;	}
+		    else{ *(to++)= transpColor;	}
+
+		    if  ( ( b & 0x03 ) )
+			{ *(to++)= ( b & 0x0c ) >> 2;	}
+		    else{ *(to++)= transpColor;	}
+		    }
+		}
+	    else{
+		for ( col= 0; col < bd->bdPixelsWide; col += 2 )
+		    {
+		    b= *(from++);
+
+		    *(to++)= ( b & 0xf0 ) >> 4;
+		    *(to++)= ( b & 0x0f )     ;
+		    }
+		}
+
+	    return 0;
+
+	case 8:
+	    if  ( bd->bdHasAlpha && removeAlpha )
+		{
+		b= *(from++);
+
+		for ( col= 0; col < bd->bdPixelsWide; col += 1 )
+		    {
+		    if  ( ( b & 0x0f ) )
+			{ *(to++)= ( b & 0xf0 ) >> 4;	}
+		    else{ *(to++)= transpColor;	}
+		    }
+		}
+	    else{ memcpy( to, from, bd->bdBytesPerRow );	}
+
+	    return 0;
+
+	case 16:
+	    if  ( ! removeAlpha )
+		{ LDEB(removeAlpha); return -1;	}
+
+	    for ( col= 0; col < bd->bdPixelsWide; col += 1 )
+		{
+		b= *(from++);
+
+		if  ( *from == 0 )
+		    { b= transpColor;	}
+
+		*(to++)= b; from++;
+		}
+
+	    return 0;
+
+	default:
+	    LDEB(bd->bdBitsPerPixel); return -1;
+	}
+    }
+
+/************************************************************************/
+/*									*/
+/*  Inflate a scan line to 16 bits per pixel.				*/
+/*									*/
+/************************************************************************/
+
+int bmInflateToInt(		unsigned int *			to,
+				const unsigned char *		from,
+				const BitmapDescription *	bd,
+				const int			transpColor,
+				int				removeAlpha )
+    {
+    int		col;
+    int		b;
 
     switch( bd->bdBitsPerPixel )
 	{

@@ -98,7 +98,7 @@ int tedDocListFontToolSet(	EditDocument *			ed,
     TedDocument *		td= (TedDocument *)ed->edPrivateData;
     BufferDocument *		bd= td->tdDocument;
     DocumentProperties *	dp= &(bd->bdProperties);
-    DocumentFontList *		dfl= &(dp->dpFontList);
+    DocumentFontList *		dfl= dp->dpFontList;
 
     DocumentList		dlNew;
 
@@ -136,7 +136,7 @@ int tedDocListFontToolSet(	EditDocument *			ed,
     utilInitTextAttribute( &taSet );
 
     docIndirectTextAttribute( (PropertyMask *)0, &taSet, etaSet, taSetMask,
-						dfl, &(dp->dpColorPalette) );
+						dfl, dp->dpColorPalette );
 
     ll= &(dlNew.dlLevels[sd.sdListLevel]);
     docListLevelApplyTextAttribute( ll, taSetMask, &taSet );
@@ -225,7 +225,7 @@ int tedDocSetNewList(		EditDocument *		ed,
 	{ lsExample= sd.sdListOverride;	}
 
     utilPropMaskFill( &taSetMask, TAprop_COUNT );
-    taNew= td->tdCurrentTextAttribute;
+    taNew= td->tdSelectionDescription.sdTextAttribute;
 
     PROPmaskUNSET( &taSetMask, TApropSUPERSUB );
     PROPmaskUNSET( &taSetMask, TApropSMALLCAPS );

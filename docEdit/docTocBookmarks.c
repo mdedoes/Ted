@@ -243,42 +243,45 @@ const DocumentField * docGetParaTocBookmark(
 /*									*/
 /************************************************************************/
 
-static int docSetTocBookmarksForLevel(	BufferDocument *		bd,
-					DocumentTree *			dt,
-					const ListNumberTreeNode *	lntn )
+typedef struct SetBookmarkThrough
     {
-    int		i;
-    int		rval= 0;
+    int			sbtRval;
+    BufferDocument *	sbtDocument;
+    DocumentTree *	sbtTree;
+    } SetBookmarkThrough;
 
-    if  ( lntn->lntnIsLeaf && lntn->lntnParaNr > 0 )
-	{
-	BufferItem *	paraNode;
+static int docSetTocBookmarkForLevel(	int			ilvl,
+					void *			vsbt )
+    {
+    BufferItem *		paraNode;
+    SetBookmarkThrough *	sbt= (SetBookmarkThrough *)vsbt;
 
-	paraNode= docGetParagraphByNumber( dt, lntn->lntnParaNr );
-	if  ( ! paraNode )
-	    { LXDEB(lntn->lntnParaNr,paraNode); rval= -1;	}
-	else{
-	    /*  Do not check return value:			*/
-	    /*  No bookmark is set in an empty paragraph	*/
+    paraNode= docGetParagraphByNumber( sbt->sbtTree, ilvl );
+    if  ( ! paraNode )
+	{ LXDEB(ilvl,paraNode); sbt->sbtRval= -1;	}
+    else{
+	/*  Do not check return value:			*/
+	/*  No bookmark is set in an empty paragraph	*/
 
-	    docGetParaTocBookmark( bd, dt, paraNode );
-	    }
+	docGetParaTocBookmark( sbt->sbtDocument, sbt->sbtTree, paraNode );
 	}
 
-    for ( i= 0; i < lntn->lntnChildCount; i++ )
-	{
-	if  ( docSetTocBookmarksForLevel( bd, dt, &(lntn->lntnChildren[i]) ) )
-	    { LDEB(i); rval= -1;	}
-	}
-
-    return rval;
+    return 0;
     }
 
 int docTocSetOutlineBookmarks(	BufferDocument *	bd )
     {
-    DocumentTree *	dt= &(bd->bdBody);
+    SetBookmarkThrough	sbt;
 
-    return docSetTocBookmarksForLevel( bd, dt, &(dt->dtOutlineTree) );
+    sbt.sbtRval= 0;
+    sbt.sbtDocument= bd;
+    sbt.sbtTree= &(bd->bdBody);
+
+    if  ( docListNumberTreeForAll( &(sbt.sbtTree->dtOutlineTree),
+				docSetTocBookmarkForLevel, (void *)&sbt ) )
+	{ LDEB(1); return -1;	}
+
+    return sbt.sbtRval;
     }
 
 int docSetTocBookmarks(	BufferDocument *		bd )
@@ -306,8 +309,8 @@ int docSetTocBookmarks(	BufferDocument *		bd )
 
 	if  ( ! dfTc )
 	    { continue;	}
-	if  (  ( dfTc->dfKind != DOCfkTC && dfTc->dfKind != DOCfkTCN )	||
-	      dfTc->dfSelectionScope.ssTreeType != DOCinBODY	)
+	if  ( ( dfTc->dfKind != DOCfkTC && dfTc->dfKind != DOCfkTCN )	||
+	      dfTc->dfSelectionScope.ssTreeType != DOCinBODY		)
 	    { continue;	}
 
 	if  ( docDelimitFieldInDoc( &dsInsideTc, &dsAroundTc,

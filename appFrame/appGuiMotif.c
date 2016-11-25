@@ -358,7 +358,6 @@ void appMakeVerticalTool(	APP_WIDGET *		pShell,
 				EditApplication *	ea,
 				APP_BITMAP_IMAGE	iconPixmap,
 				APP_BITMAP_MASK		iconMask,
-				const char *		widgetName,
 				int			userResizable,
 				APP_WIDGET		option,
 				APP_CLOSE_CALLBACK_T	closeCallback,
@@ -402,11 +401,11 @@ void appMakeVerticalTool(	APP_WIDGET *		pShell,
 	{ XtSetArg( al[ac], XmNiconPixmap,	iconPixmap ); ac++; }
 
 #   ifdef USE_X11_R5
-    shell= XtAppCreateShell( ea->eaApplicationName, widgetName,
+    shell= XtAppCreateShell( ea->eaApplicationName, WIDGET_NAME,
 			    applicationShellWidgetClass,
 			    XtDisplay( ea->eaToplevel.atTopWidget ), al, ac );
 #   else
-    shell= XtAppCreateShell( ea->eaApplicationName, widgetName,
+    shell= XtAppCreateShell( ea->eaApplicationName, WIDGET_NAME,
 			    topLevelShellWidgetClass,
 			    XtDisplay( ea->eaToplevel.atTopWidget ), al, ac );
 #   endif
@@ -479,44 +478,6 @@ char * appWidgetName(	char *	file,
     names[nameCount++]= freshName;
 
     return freshName;
-    }
-
-/************************************************************************/
-/*									*/
-/*  Retrieve configurable resource values from the GUI environment.	*/
-/*									*/
-/************************************************************************/
-
-void appGuiGetResourceValues(	int *				pGotResources,
-				EditApplication *		ea,
-				void *				pValues,
-				AppConfigurableResource *	acr,
-				int				acrCount )
-    {
-    if  ( *pGotResources )
-	{ LDEB(*pGotResources); }
-
-    if  ( ! *pGotResources )
-	{ appSetResourceDefaults( ea, acr, acrCount );	}
-
-    if  ( ea->eaToplevel.atTopWidget )
-	{
-	XtGetApplicationResources( ea->eaToplevel.atTopWidget, pValues,
-						    acr, acrCount, NULL, 0 );
-	}
-    else{
-	char *		values= (char *)pValues;
-	int		i;
-
-	for ( i= 0; i < acrCount; acr++, i++ )
-	    {
-	    *((const char **)(values+acr->acrStructOffset))=
-						    acr->acrDefaultValue;
-	    }
-	}
-
-    *pGotResources= 1;
-    return;
     }
 
 /************************************************************************/

@@ -51,8 +51,7 @@ int bmSelect(	RasterImage *			riOut,
     /************************************************************/
     /*  Allocate new buffer.					*/
     /************************************************************/
-    ri.riBytes= (unsigned char *)malloc( ri.riDescription.bdBufferLength );
-    if  ( ! ri.riBytes )
+    if  ( bmAllocateBuffer( &ri ) )
 	{ LLDEB(ri.riDescription.bdBufferLength,ri.riBytes); rval= -1; goto ready;	}
 
     if  ( originBit == 0 )
@@ -174,9 +173,12 @@ void bmSelectTest( void )
 
 int bmCopyArea(			int				x0,
 				int				y0,
-				const RasterImage *		riTo,
+				RasterImage *			riTo,
 				const RasterImage *		riFrom )
     {
+    int			rval= 0;
+    int *		colorMap= (int *)0;
+
     int			x1;
     int			y1;
 
@@ -188,28 +190,54 @@ int bmCopyArea(			int				x0,
     int			copyBytes;
     int			tailBits;
 
-    const BitmapDescription *	bdTo= &(riTo->riDescription);
+    BitmapDescription *		bdTo= &(riTo->riDescription);
     const BitmapDescription *	bdFrom= &(riFrom->riDescription);
 
     /************************************************************/
     /*  Same kind of image?					*/
     /************************************************************/
     if  ( bdTo->bdBitsPerSample != bdFrom->bdBitsPerSample )
-	{ LLDEB(bdTo->bdBitsPerSample,bdFrom->bdBitsPerSample); return -1;	}
+	{
+	LLDEB(bdTo->bdBitsPerSample,bdFrom->bdBitsPerSample);
+	rval= -1; goto ready;
+	}
     if  ( bdTo->bdSamplesPerPixel != bdFrom->bdSamplesPerPixel )
-	{ LLDEB(bdTo->bdSamplesPerPixel,bdFrom->bdSamplesPerPixel); return -1; }
+	{
+	LLDEB(bdTo->bdSamplesPerPixel,bdFrom->bdSamplesPerPixel);
+	rval= -1; goto ready;
+	}
     if  ( bdTo->bdBitsPerPixel != bdFrom->bdBitsPerPixel )
-	{ LLDEB(bdTo->bdBitsPerPixel,bdFrom->bdBitsPerPixel); return -1;	}
+	{
+	LLDEB(bdTo->bdBitsPerPixel,bdFrom->bdBitsPerPixel);
+	rval= -1; goto ready;
+	}
     if  ( bdTo->bdColorEncoding != bdFrom->bdColorEncoding )
-	{ LLDEB(bdTo->bdColorEncoding,bdFrom->bdColorEncoding); return -1; }
+	{
+	LLDEB(bdTo->bdColorEncoding,bdFrom->bdColorEncoding);
+	rval= -1; goto ready;
+	}
+
+    if  ( bdTo->bdColorEncoding == BMcoRGB8PALETTE )
+	{
+	const int	avoidZero= 0;
+	const int	maxColors= 1 << bdTo->bdBitsPerPixel;
+
+	if  ( utilMergeColorPalettes( &colorMap,
+				    &(bdTo->bdPalette), &(bdFrom->bdPalette),
+				    avoidZero, maxColors ) )
+	    { LDEB(maxColors); rval= -1; goto ready;	}
+	}
 
     /************************************************************/
     /*  Origin inside target?					*/
     /************************************************************/
     if  ( x0 < 0 || y0 < 0 )
-	{ LLDEB(x0,y0); return -1;	}
+	{ LLDEB(x0,y0); rval= -1; goto ready;	}
     if  ( x0 >= bdTo->bdPixelsWide || y0 >= bdTo->bdPixelsHigh )
-	{ LLLLDEB(x0,y0,bdTo->bdPixelsWide,bdTo->bdPixelsHigh); return -1; }
+	{
+	LLLLDEB(x0,y0,bdTo->bdPixelsWide,bdTo->bdPixelsHigh);
+	rval= -1; goto ready;
+	}
 
     x1= x0+ bdFrom->bdPixelsWide;
     if  ( x1 > bdTo->bdPixelsWide )
@@ -246,7 +274,16 @@ int bmCopyArea(			int				x0,
 
 	    r1 += targetByte;
 
-	    memcpy( r1, r2, copyBytes );
+	    if  ( colorMap && bdTo->bdBitsPerPixel == 8 )
+		{
+		int	i;
+
+		for ( i= 0; i < copyBytes; i++ )
+		    { r1[i]= colorMap[r2[i]];	}
+		}
+	    else{
+		memcpy( r1, r2, copyBytes );
+		}
 
 	    if  ( tailBits > 0 )
 		{
@@ -257,8 +294,6 @@ int bmCopyArea(			int				x0,
 		*r1 |= *r2 & t2Mask;
 		}
 	    }
-
-	return 0;
 	}
     else{
 	unsigned char	h1Mask= ~( 0xff >> targetBit );
@@ -298,9 +333,14 @@ int bmCopyArea(			int				x0,
 		*r1 |= c & t2Mask;
 		}
 	    }
-
-	return 0;
 	}
+
+  ready:
+
+    if  ( colorMap )
+	{ free( colorMap );	}
+
+    return rval;
     }
 
 /************************************************************************/
@@ -345,7 +385,7 @@ static int bmPaintArea8(	int				x0,
 
 int bmPaintArea(		int				x0,
 				int				y0,
-				const RasterImage *		riTo,
+				RasterImage *			riTo,
 				const RasterImage *		riFrom )
     {
     int				x1;

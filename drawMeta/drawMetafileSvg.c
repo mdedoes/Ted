@@ -192,7 +192,7 @@ static int appCleanObjectSvg(		DeviceContext *		dc,
 					MetaFileObject *	mfo )
     { return 0;	}
 
-static int appMeta_PolyPolygonSvg( DeviceContext *		dc,
+static int appMeta_PolyPolygonSvg(	DeviceContext *		dc,
 					void *			through,
 					int			polyCount,
 					const int *		pointCounts,
@@ -243,6 +243,18 @@ static int appMeta_PolyPolygonSvg( DeviceContext *		dc,
     xmlNewLine( xw );
 
     return 0;
+    }
+
+static int appMeta_PolyBezierSvg(	DeviceContext *		dc,
+					void *			through,
+					int			count,
+					const Point2DI *	points,
+					int			startPath,
+					int			fillInsides,
+					int			drawBorders,
+					int			closePath )
+    {
+return 0;
     }
 
 static int appMetaDrawStringSvg(	DeviceContext *		dc,
@@ -741,6 +753,7 @@ static int appMetaStartSvg(	DeviceContext *			dc,
     dc->dcSelectFontObject= appMetaSelectFontObjectImpl;
     dc->dcSelectPatternBrushObject= appMetaSelectPatternBrushObjectSvg;
     dc->dcDrawPolyPolygon= appMeta_PolyPolygonSvg;
+    dc->dcDrawPolyBezier= appMeta_PolyBezierSvg;
     dc->dcDrawString= appMetaDrawStringSvg;
     dc->dcPatBlt= appMetaPatBltSvg;
     dc->dcDrawPie= appMetaDrawPieSvg;

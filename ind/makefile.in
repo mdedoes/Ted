@@ -74,7 +74,7 @@ indGuessList.o: \
 indScanStream.o: \
     indScanStream.c \
     indConfig.h \
-    ../textEncoding/ucd.h \
+    ../textEncoding/ucdGeneralCategory.h \
     indScanStream.h \
     ../appUtil/sioGeneral.h \
     ind.h \
@@ -238,6 +238,7 @@ indword.o: \
     indGuessList.h \
     ../appUtil/utilMemoryBuffer.h \
     ../textEncoding/uniUtf8.h \
+    ../textEncoding/ucdGeneralCategory.h \
     ../textEncoding/ucd.h \
     indlocal.h \
     ../include/appDebugon.h \

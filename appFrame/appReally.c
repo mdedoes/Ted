@@ -43,7 +43,6 @@ void appRunReallyCloseDialog(	APP_WIDGET			option,
 		appRunSaveChooser( option, ed->edToplevel.atTopWidget,
 					APPFILE_CAN_SAVE, appDocSaveDocument,
 					ed, ed->edPrivateData );
-		return;
 		}
 	    else{
 		if  ( ! appDocSaveDocument( ed, (void *)0,

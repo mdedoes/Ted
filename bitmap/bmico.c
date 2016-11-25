@@ -329,10 +329,9 @@ static int bmIcoCollectResources( IcoFileHeader *		ifh,
 	if  ( bmCalculateSizes( &(riAlpha.riDescription) ) )
 	    { LDEB(1); rval= -1; goto ready;	}
 
-	riAlpha.riBytes= (unsigned char *)malloc( riAlpha.riDescription.bdBufferLength );
-	if  ( ! riAlpha.riBytes )
+	if  ( bmAllocateBuffer( &riAlpha ) )
 	    { LXDEB(riAlpha.riDescription.bdBufferLength,riAlpha.riBytes); rval= -1; goto ready; }
-	bmSetSolidBlack( riAlpha.riBytes, &riAlpha.riDescription );
+	bmSetSolidBlack( &(riAlpha) );
 
 	imageBytes= bmBmpSaveImageBytes( mbImage, bd, buffer, COMPRESS_NONE );
 	if  ( imageBytes < 0 )

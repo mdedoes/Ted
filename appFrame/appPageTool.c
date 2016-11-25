@@ -430,7 +430,7 @@ void * appMakePageTool(	EditApplication *	ea,
 				    sizeof(AppConfigurableResource) );
 	}
 
-    if  ( appGetImagePixmap( ea, pixmapName, &iconPixmap, &iconMask )  )
+    if  ( appGetImagePixmap( ea, ea->eaMainIcon, &iconPixmap, &iconMask )  )
 	{ SDEB(pixmapName); return (void *)0;	}
 
     apt= (AppPageTool *)malloc( sizeof(AppPageTool) );
@@ -450,7 +450,7 @@ void * appMakePageTool(	EditApplication *	ea,
     
     appMakeVerticalTool( &(apt->aptTopWidget), &(apt->aptMainWidget), ea,
 		    iconPixmap, iconMask, 
-		    ea->eaPageToolName, userResizable, pageOption,
+		    userResizable, pageOption,
 		    appClosePageTool, (void *)apt );
 
     apt->aptPageHighMm= DRH_MM;

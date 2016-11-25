@@ -24,6 +24,7 @@
 #   include	<docTextParticule.h>
 #   include	<guiDrawingWidget.h>
 #   include	<docEditCommand.h>
+#   include	<docCollectStatistics.h>
 
 #   include	<appDebugon.h>
 
@@ -346,7 +347,8 @@ APP_MENU_CALLBACK_H( tedDocInsertLineBreak, option, voided, e )
     const int		redoLayout= 1;
 
     tedEditInsertSpecialParticule( ed,
-			DOCkindLINEBREAK, EDITcmdREPLACE, redoLayout, td->tdTraced );
+			DOCkindLINEBREAK, EDITcmdREPLACE,
+			redoLayout, td->tdTraced );
 
     return;
     }
@@ -358,7 +360,8 @@ APP_MENU_CALLBACK_H( tedDocInsertPageBreak, option, voided, e )
     const int		redoLayout= 1;
 
     tedEditInsertSpecialParticule( ed,
-		    DOCkindLINEBREAK, EDITcmdREPLACE_BODY_LEVEL, redoLayout, td->tdTraced );
+		    DOCkindPAGEBREAK, EDITcmdREPLACE_BODY_LEVEL,
+		    redoLayout, td->tdTraced );
 
     return;
     }
@@ -568,18 +571,18 @@ APP_MENU_CALLBACK_H( tedDocFontSupersub, option, voided, e )
     TedDocument *	td= (TedDocument *)ed->edPrivateData;
 
     int			set;
-    int			supersub= DOCfontREGULAR;
+    int			supersub= TEXTvaREGULAR;
 
     set= appGuiGetMenuToggleStateFromCallback( option, e );
     if  ( set )
 	{
 	if  ( option == td->tdFontSubscriptOption )
-	    { supersub= DOCfontSUBSCRIPT;	}
+	    { supersub= TEXTvaSUBSCRIPT;	}
 
 	if  ( option == td->tdFontSuperscriptOption )
-	    { supersub= DOCfontSUPERSCRIPT;	}
+	    { supersub= TEXTvaSUPERSCRIPT;	}
 	}
-    else{ supersub= DOCfontREGULAR;	}
+    else{ supersub= TEXTvaREGULAR;	}
 
     tedSetFontSupersub( ed, supersub );
     }
@@ -704,7 +707,7 @@ int tedDocFontToolSet(		EditDocument *			ed,
     TedDocument *		td= (TedDocument *)ed->edPrivateData;
     BufferDocument *		bd= td->tdDocument;
     DocumentProperties *	dp= &(bd->bdProperties);
-    DocumentFontList *		dfl= &(dp->dpFontList);
+    DocumentFontList *		dfl= dp->dpFontList;
 
     PropertyMask		doneMask;
     TextAttribute		taSet;
@@ -714,7 +717,7 @@ int tedDocFontToolSet(		EditDocument *			ed,
     utilPropMaskClear( &doneMask );
 
     docIndirectTextAttribute( &doneMask, &taSet, etaSet, taSetMask,
-						dfl, &(dp->dpColorPalette) );
+						dfl, dp->dpColorPalette );
 
     tedDocChangeTextAttribute( ed, taSetMask, &taSet, td->tdTraced );
 

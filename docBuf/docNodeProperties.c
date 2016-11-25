@@ -21,11 +21,11 @@
 /************************************************************************/
 
 int docChangeRowProperties(	PropertyMask *			rpDoneMask,
-				BufferItem *			rowBi,
+				BufferItem *			rowNode,
 				const PropertyMask *		rpSetMask,
 				const RowProperties *		rpSet )
     {
-    RowProperties *		rpTo= &(rowBi->biRowProperties);
+    RowProperties *		rpTo= &(rowNode->biRowProperties);
 
     DocumentPosition		dp;
 
@@ -33,16 +33,16 @@ int docChangeRowProperties(	PropertyMask *			rpDoneMask,
 					(const DocumentAttributeMap *)0 ) )
 	{ LDEB(1);	}
 
-    if  ( ! docHeadPosition( &dp, rowBi ) )
+    if  ( ! docHeadPosition( &dp, rowNode ) )
 	{
-	BufferItem *	paraBi= dp.dpNode;
+	BufferItem *	paraNode= dp.dpNode;
 
 	/*  1  */
 	if  ( PROPmaskISSET( rpSetMask, RPprop_KEEPFOLLOW ) )
-	    { paraBi->biParaKeepWithNext= rpTo->rp_Keepfollow;	}
+	    { paraNode->biParaKeepWithNext= rpTo->rp_Keepfollow;	}
 
 	/*  2  */
-	rpTo->rp_Keepfollow= paraBi->biParaKeepWithNext;
+	rpTo->rp_Keepfollow= paraNode->biParaKeepWithNext;
 	}
 
     return 0;

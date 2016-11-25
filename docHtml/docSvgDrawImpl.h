@@ -9,6 +9,7 @@
 #   include	<docBuf.h>
 #   include	<docDraw.h>
 #   include	<docParticuleData.h>
+#   include	<geoAffineTransform.h>
 
 /************************************************************************/
 /*									*/
@@ -17,15 +18,15 @@
 /************************************************************************/
 
 extern int docSvgEmitStroke(	SvgWriter *			sw,
-				const DrawingShape *		ds );
+				const struct DrawingShape *	ds );
 
 extern int docSvgEmitFill(	SvgWriter *			sw,
-				const DrawingShape *		ds );
+				const struct DrawingShape *	ds );
 
 extern int docSvgDrawDrawDrawingShape(
 				const DocumentRectangle *	drTwips,
 				int				page,
-				DrawingShape *			ds,
+				struct DrawingShape *		ds,
 				DrawingContext *		dc,
 				void *				vsw );
 
@@ -82,13 +83,13 @@ extern int docSvgDrawShapeText(	const DocumentRectangle *	drHere,
 				const struct BufferItem *	bodySectNode,
 				int				page,
 				int				column,
-				DrawingShape *			ds,
+				struct DrawingShape *		ds,
 				DrawingContext *		dc,
 				void *				vsw );
 
 extern int docSvgDrawShapeImage( SvgWriter *			sw,
 				DrawingContext *		dc,
-				DrawingShape *			ds,
+				struct DrawingShape *		ds,
 				const DocumentRectangle *	drTwips,
 				const AffineTransform2D *	at );
 

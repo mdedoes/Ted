@@ -181,13 +181,17 @@ static int appMacPictGetPattern(	DeviceContext *		dc,
     {
     int		i;
     int		isSolid;
+    /*
     int		gray= 0xff;
+    */
 
     pattern[0]= sioInGetByte( sis );
     isSolid= ( pattern[0] == 0x00 || pattern[0] == 0xff );
 
+    /*
     if  ( pattern[0] == 0xff )
 	{ gray= 0x00;	}
+    */
 
     for ( i= 1; i < 8; i++ )
 	{
@@ -495,17 +499,19 @@ static int appMacPictGetGlyphState(	DeviceContext *		dc,
     {
     int	dataLength= sioEndianGetBeInt16( sis );
     int	i;
-    int	c;
 
+#   if 0
     int	outlinePreferred= 0;
     int	preserveGlyph= 0;
     int	fractionalWidth= 0;
     int	scalingDisabled= 0;
+#   endif
 
     for ( i= 0; i < dataLength; i++ )
 	{
-	c= sioInGetByte( sis );
+	(void) /* int c= */ sioInGetByte( sis );
 
+#	if 0
 	if  ( i == 0 )
 	    { outlinePreferred= c;	}
 	if  ( i == 1 )
@@ -514,6 +520,7 @@ static int appMacPictGetGlyphState(	DeviceContext *		dc,
 	    { fractionalWidth= c;	}
 	if  ( i == 3 )
 	    { scalingDisabled= c;	}
+#	endif
 	}
 
     PICTDEB(appDebug( "GlyphState( %d:%x,%x,%x,%x )\n",
@@ -548,7 +555,7 @@ static int appMacPictGetString(		DeviceContext *		dc,
     for ( done= 0; done < count; nbytes++, done++ )
 	{
 	int		step;
-	unsigned char	scratch[6+1];
+	char		scratch[6+1];
 	int		c= sioInGetByte( sis );
 	int		unicode;
 
@@ -566,7 +573,8 @@ static int appMacPictGetString(		DeviceContext *		dc,
 	if  ( step < 1 || step > 3 )
 	    { XLDEB(unicode,step); break;	}
 
-	if  ( utilMemoryBufferAppendBytes( &(dc->dcCollectedText), scratch, step ) )
+	if  ( utilMemoryBufferAppendBytes( &(dc->dcCollectedText),
+				    (const unsigned char *)scratch, step ) )
 	    { LDEB(step); return -1;	}
 	}
 
@@ -749,7 +757,6 @@ static int appMacPictGetLongComment(	DeviceContext *		dc,
 					SimpleInputStream *	sis )
     {
     int		i;
-    int		c;
 
     int		kind= sioEndianGetBeInt16( sis );
     int		size= sioEndianGetBeInt16( sis );
@@ -763,22 +770,15 @@ static int appMacPictGetLongComment(	DeviceContext *		dc,
 	{
 	case PICTCMT_TextBegin:
 	    {
-	    int	justify;
-	    int	flip;
-	    int	angle;
-	    int	line;
-	    int	cmnt;
-	    int	angleFixed;
-
 	    if  ( size != 12 )
 		{ goto defaultCase;	}
 
-	    justify= sioEndianGetBeInt16( sis );
-	    flip= sioEndianGetBeInt16( sis );
-	    angle= sioEndianGetBeInt16( sis );
-	    line= sioEndianGetBeInt16( sis );
-	    cmnt= sioEndianGetBeInt16( sis );
-	    angleFixed= sioEndianGetBeInt16( sis );
+	    (void) /* justify= */ sioEndianGetBeInt16( sis );
+	    (void) /* flip= */ sioEndianGetBeInt16( sis );
+	    (void) /* angle= */ sioEndianGetBeInt16( sis );
+	    (void) /* line= */ sioEndianGetBeInt16( sis );
+	    (void) /* cmnt= */ sioEndianGetBeInt16( sis );
+	    (void) /* angleFixed= */ sioEndianGetBeInt16( sis );
 
 	    PICTDEB(appDebug(
 		"%s: justify=%d, flip=%d, angle=%d, angleFixed=%d\n",
@@ -790,7 +790,7 @@ static int appMacPictGetLongComment(	DeviceContext *		dc,
 	case  PICTCMT_DashedLine:
 	    dc->dcObjects[MACPICThandleFRAME_PEN].mfoLogicalPen.lpStyle= PS_DASH;
 	    for ( i= 0; i < size; i++ )
-		{ c= sioInGetByte( sis ); PICTDEB(LDEB(c));	}
+		{ (void) /* c= */ sioInGetByte( sis ); PICTDEB(LDEB(c)); }
 	    break;
 
 	case  PICTCMT_DashedStop:
@@ -803,18 +803,17 @@ static int appMacPictGetLongComment(	DeviceContext *		dc,
 	    if  ( size != 4 )
 		{ LDEB(size); goto defaultCase;	}
 	    {
-	    int x= sioEndianGetBeInt16( sis );
-	    int y= sioEndianGetBeInt16( sis );
+	    (void) /* int x= */ sioEndianGetBeInt16( sis );
+	    (void) /* int y= */ sioEndianGetBeInt16( sis );
 	    PICTDEB(appDebug( "LongComment( %d:%s, %d bytes, %d/%d )\n",
 		    kind, appMacPictCommentName( kind ), size, x, y ));
-	    x= y;
 	    }
 	    break;
 
 	default:
 	defaultCase:
 	    for ( i= 0; i < size; i++ )
-		{ c= sioInGetByte( sis );	}
+		{ (void) /* c= */ sioInGetByte( sis );	}
 	    break;
 	}
 
@@ -1161,7 +1160,6 @@ int appMacPictPlayPict( DeviceContext *			dc,
 			void *				through )
     {
     SimpleInputStream *	sis= dc->dcPlayer->mpInputStream;
-    int			c;
 
     int			rval= 0;
 
@@ -1258,9 +1256,7 @@ int appMacPictPlayPict( DeviceContext *			dc,
 
 		for ( skip= 2; skip < regionBytes; skip += 2 )
 		    {
-		    int		regionCoord;
-
-		    regionCoord= sioEndianGetBeInt16( sis );
+		    (void) /* regionCoord= */ sioEndianGetBeInt16( sis );
 		    }
 		}
 		continue;
@@ -1274,9 +1270,7 @@ int appMacPictPlayPict( DeviceContext *			dc,
 
 	    case MACPICT_PnLocHFrac:
 		{
-		int	val;
-
-		val= sioEndianGetBeInt16( sis );
+		(void) /* val= */ sioEndianGetBeInt16( sis );
 
 		PICTDEB(appDebug( "PnLocHFrac(%d)\n", val ));
 
@@ -1405,15 +1399,10 @@ int appMacPictPlayPict( DeviceContext *			dc,
 
 	    case MACPICT_TxRatio:
 		{
-		int			y0;
-		int			x0;
-		int			y1;
-		int			x1;
-
-		y0= sioEndianGetBeInt16( sis );
-		x0= sioEndianGetBeInt16( sis );
-		y1= sioEndianGetBeInt16( sis );
-		x1= sioEndianGetBeInt16( sis );
+		(void) /* y0= */ sioEndianGetBeInt16( sis );
+		(void) /* x0= */ sioEndianGetBeInt16( sis );
+		(void) /* y1= */ sioEndianGetBeInt16( sis );
+		(void) /* x1= */ sioEndianGetBeInt16( sis );
 
 		PICTDEB(appDebug( "TxRatio( %d, %d, %d, %d )\n",
 							x0, y0, x1, y1 ));
@@ -1998,9 +1987,7 @@ int appMacPictPlayPict( DeviceContext *			dc,
 
 		for ( skip= 2; skip < regionBytes; skip++ )
 		    {
-		    int		regionCoord;
-
-		    regionCoord= sioInGetByte( sis );
+		    (void) /* regionCoord= */ sioInGetByte( sis );
 		    }
 		}
 		continue;
@@ -2014,9 +2001,7 @@ int appMacPictPlayPict( DeviceContext *			dc,
 
 		for ( skip= 2; skip < regionBytes; skip++ )
 		    {
-		    int		regionCoord;
-
-		    regionCoord= sioInGetByte( sis );
+		    (void) /* regionCoord= */ sioInGetByte( sis );
 		    }
 		}
 		continue;
@@ -2101,9 +2086,7 @@ int appMacPictPlayPict( DeviceContext *			dc,
 
 		for ( skip= 0; skip < qtbytes; skip++ )
 		    {
-		    int		qtdata;
-
-		    qtdata= sioInGetByte( sis );
+		    (void) /* qtdata= */ sioInGetByte( sis );
 		    }
 
 		}
@@ -2119,9 +2102,7 @@ int appMacPictPlayPict( DeviceContext *			dc,
 
 		for ( skip= 0; skip < qtbytes; skip++ )
 		    {
-		    int		qtdata;
-
-		    qtdata= sioInGetByte( sis );
+		    (void) /* qtdata= */ sioInGetByte( sis );
 		    }
 
 		}
@@ -2157,7 +2138,7 @@ int appMacPictPlayPict( DeviceContext *			dc,
 		    XLDEB(opcode,bytes);
 
 		    for ( skip= 0; skip < bytes; skip++ )
-			{ c= sioInGetByte( sis );	}
+			{ (void) /* c= */ sioInGetByte( sis );	}
 
 		    continue;
 		    }
@@ -2191,7 +2172,6 @@ int appMacPictGetDeviceHeader(	MacPictHeader *		mph,
     {
     int			c;
     int			i;
-    long		l;
 
     /*  2  */
     mph->mphPictureSize= sioEndianGetBeInt16( sis );
@@ -2223,7 +2203,7 @@ int appMacPictGetDeviceHeader(	MacPictHeader *		mph,
 	    if  ( c != 0xc00 )
 		{ XDEB(c); return -1;	}
 
-	    l= sioEndianGetBeInt32( sis );
+	    (void) /* l= */ sioEndianGetBeInt32( sis );
 	    /*
 	    if  ( l != -1 )
 		{ LDEB(l); return -1;	}

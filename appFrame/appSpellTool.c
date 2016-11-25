@@ -71,12 +71,14 @@ static void appSpellToolSomethingFound(	SpellTool *	ast,
     }
 
 static void appSpellToolGotAlternative(	SpellTool *	ast,
-					int		yes_no )
+					int		gotAlternative )
     {
-    guiEnableWidget( ast->astForgetButton, yes_no );
+    ast->astGotAlternative= gotAlternative;
+
+    guiEnableWidget( ast->astForgetButton, ast->astGotAlternative );
     guiEnableWidget( ast->astCorrectButton,
-				ast->astCorrectEnabled && yes_no );
-    guiEnableWidget( ast->astGuessButton, yes_no );
+			    ast->astGotAlternative && ! ast->astReadOnly );
+    guiEnableWidget( ast->astGuessButton, ast->astGotAlternative );
 
     return;
     }
@@ -121,7 +123,7 @@ static void appSpellToolComplain(	int			error,
 static void appSpellMakeGuesses(	void *		voidast,
 					const char *	word )
     {
-    SpellTool *		ast= (SpellTool *)voidast;
+    SpellTool *			ast= (SpellTool *)voidast;
     SpellChecker *		sc;
     SpellDictionary *		sd;
 
@@ -155,19 +157,19 @@ static void appSpellMakeGuesses(	void *		voidast,
     appSpellToolGotAlternative( ast, 0 );
     }
 
-void appSpellToolEnableCorrect(	SpellTool *		ast,
-				int			enabled )
+void appSpellToolSetReadOnly(	SpellTool *		ast,
+				int			readOnly )
     {
-    if  ( ast->astCorrectEnabled != enabled )
-	{
-	ast->astCorrectEnabled= enabled;
+    ast->astReadOnly= readOnly;
 
-	guiEnableWidget( ast->astCorrectButton, ast->astCorrectEnabled );
+    guiEnableWidget( ast->astCorrectButton,
+				ast->astGotAlternative && ! ast->astReadOnly );
 
-	/* Not needed, but not doing this confuses: */
-	guiEnableWidget( ast->astGuessList, ast->astCorrectEnabled );
-	guiEnableText( ast->astWordText, ast->astCorrectEnabled );
-	}
+    /* Not needed, but not doing this confuses: */
+    guiEnableWidget( ast->astGuessList, ! ast->astReadOnly );
+    guiEnableText( ast->astWordText, ! ast->astReadOnly );
+
+    return;
     }
 
 /************************************************************************/
@@ -184,10 +186,12 @@ static void appSpellToolFindNext(	SpellTool *	ast )
 
     utilInitMemoryBuffer( &mbGuess );
 
-    if  ( ast->astCurrentDictionary < 0 )
-	{ LDEB(ast->astCurrentDictionary); return;	}
     if  ( ! ( sc= ast->astSpellChecker ) )
 	{ XDEB(ast->astSpellChecker); return;	}
+
+    if  ( ast->astCurrentDictionary < 0				||
+	  ast->astCurrentDictionary >= sc->scDictionaryCount	)
+	{ LLDEB(ast->astCurrentDictionary,sc->scDictionaryCount); return; }
 
     sd= sc->scDictionaries+ ast->astCurrentDictionary;
 
@@ -341,12 +345,12 @@ static APP_BUTTON_CALLBACK_H( appSpellToolCorrect, w, voidast )
     SpellChecker *	sc;
     char *		guess;
 
-    if  ( ! ast->astCorrectEnabled )
+    if  ( ast->astReadOnly )
 	{ return;	}
     if  ( ! ( sc= ast->astSpellChecker ) )
 	{ XDEB(ast->astSpellChecker); return;	}
-    if  ( ! sc->scCorrect || ! ast->astCorrectEnabled )
-	{ XLDEB(sc->scCorrect,ast->astCorrectEnabled); return;	}
+    if  ( ! sc->scCorrect || ast->astReadOnly )
+	{ XLDEB(sc->scCorrect,ast->astReadOnly); return;	}
 
     guess= appGetStringFromTextWidget( ast->astWordText );
 
@@ -468,6 +472,7 @@ static void appSpellFillDictionaryMenu(	SpellTool *			ast,
     SpellDictionary *	sd;
 
     int			dict;
+    int			defaultDict= -1;
 
     if  ( ! ( sc= ast->astSpellChecker ) )
 	{ XDEB(ast->astSpellChecker); return;	}
@@ -479,6 +484,11 @@ static void appSpellFillDictionaryMenu(	SpellTool *			ast,
 	{
 	appAddItemToOptionmenu(
 		    &(ast->astDictionaryOptionmenu), sd->sdLocaleLabel );
+
+	if  ( ast->astApplication					&&
+	      ast->astApplication->eaLocaleName				&&
+	      ! strcmp( sd->sdLocale, ast->astApplication->eaLocaleName ) )
+	    { defaultDict= dict;	}
 	}
 
     if  ( sc->scDictionaryCount == 0 )
@@ -487,8 +497,11 @@ static void appSpellFillDictionaryMenu(	SpellTool *			ast,
 		    &(ast->astDictionaryOptionmenu), astr->astrNoDicts );
 	}
 
-    appSetOptionmenu( &(ast->astDictionaryOptionmenu), 0 );
-    ast->astCurrentDictionary= 0;
+    if  ( defaultDict < 0 )
+	{ defaultDict= 0;	}
+
+    appSetOptionmenu( &(ast->astDictionaryOptionmenu), defaultDict );
+    ast->astCurrentDictionary= defaultDict;
 
     appOptionmenuRefreshWidth( &(ast->astDictionaryOptionmenu) );
     }
@@ -529,10 +542,8 @@ static void appSpellMakeButtonRows(
     {
     APP_WIDGET		buttonRow;
 
-    APP_WIDGET		findNextButton;
-
     guiToolMake2BottonRow( &buttonRow, spellForm,
-		&(ast->astIgnoreButton), &(findNextButton),
+		&(ast->astIgnoreButton), &(ast->astFindNextButton),
 		astr->astrIgnore, astr->astrFindNext,
 		appSpellToolIgnorePushed, appSpellToolFindNextPushed,
 		(void *)ast );
@@ -649,6 +660,7 @@ void appInitSpellTool(	SpellTool *	ast )
     ast->astForgetButton= (APP_WIDGET)0;
     ast->astGuessButton= (APP_WIDGET)0;
     ast->astIgnoreButton= (APP_WIDGET)0;
+    ast->astFindNextButton= (APP_WIDGET)0;
 
     ast->astCorrectButton= (APP_WIDGET)0;
     ast->astGuessList= (APP_WIDGET)0;
@@ -656,11 +668,14 @@ void appInitSpellTool(	SpellTool *	ast )
 
     ast->astSpellChecker= (SpellChecker *)0;
     ast->astCurrentDictionary= -1;
-    ast->astCorrectEnabled= 0;
+
+    ast->astReadOnly= 0;
+    ast->astGotAlternative= 0;
     }
 
 void appCleanSpellTool(	SpellTool *	ast )
     {
+    /* ast->astSpellChecker is not owned bt the tool */
     return;
     }
 
@@ -718,13 +733,28 @@ void appSpellToolFillChoosers(	SpellTool *			ast,
 	{ LDEB(1);	}
 
     appSpellFillDictionaryMenu( ast, astr );
+
     return;
     }
 
 void appFinishSpellTool(		SpellTool *			ast,
 					const SpellToolResources *	astr )
     {
+    SpellChecker *		sc;
+    int				hasDict= 1;
+
     appOptionmenuRefreshWidth( &(ast->astDictionaryOptionmenu) );
+
+    if  ( ! ( sc= ast->astSpellChecker ) )
+	{ hasDict= 0;	}
+    else{
+	if  ( ast->astCurrentDictionary < 0				||
+	      ast->astCurrentDictionary >= sc->scDictionaryCount	)
+	    { hasDict= 0;	}
+	}
+
+    guiEnableWidget( ast->astFindNextButton, hasDict );
+    appSpellToolGotAlternative( ast, 0 );
     }
 
 static AppConfigurableResource APP_SpellToolResourceTable[]=

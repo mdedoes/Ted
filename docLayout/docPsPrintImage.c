@@ -15,6 +15,7 @@
 #   include	"docDraw.h"
 #   include	"docPsPrintImpl.h"
 #   include	<drawMetafilePs.h>
+#   include	<docShape.h>
 #   include	<docObjectProperties.h>
 #   include	<bmBitmapPrinter.h>
 #   include	"docMetafileObject.h"
@@ -89,7 +90,10 @@ static int docPsPrintMetafile(	PrintingState *			ps,
 
     sioOutPrintf( ps->psSos, "100 dict begin\n" );
 
+# if 0
+    /* First fix definition of fonts in images */
     psSelectFontProcedures( ps->psSos, &pstl, /*allFonts=*/ 1 );
+# endif
 
     sioOutPrintf( ps->psSos, "gsave %d %d translate %%{IMG\n", x0, y0 );
 

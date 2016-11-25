@@ -19,6 +19,7 @@ void docInitDocumentAttributeMap(	DocumentAttributeMap *	dam )
     dam->damRulerMap= (int *)0;
     dam->damBorderMap= (int *)0;
     dam->damShadingMap= (int *)0;
+    dam->damCellMap= (int *)0;
     dam->damFrameMap= (int *)0;
     dam->damListStyleMap= (int *)0;
 
@@ -41,6 +42,9 @@ void docCleanDocumentAttributeMap(	DocumentAttributeMap *	dam )
 
     if  ( dam->damShadingMap )
 	{ free( dam->damShadingMap );	}
+
+    if  ( dam->damCellMap )
+	{ free( dam->damCellMap );	}
 
     if  ( dam->damFrameMap )
 	{ free( dam->damFrameMap );	}

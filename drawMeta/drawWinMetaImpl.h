@@ -115,6 +115,14 @@ typedef enum MacPictBrushHandle
 
 struct DeviceContext;
 
+/************************************************************************/
+
+typedef int (*MetaGetPoints)(		struct DeviceContext *	dc,
+					int			count,
+					SimpleInputStream *	sis );
+
+/************************************************************************/
+
 typedef int (*MetaDrawRasterImage)(
 				struct DeviceContext *		dc,
 				void *				through,
@@ -148,6 +156,14 @@ typedef int (*MetaDrawPolyPolygon)(	struct DeviceContext *	dc,
 					int			polyCount,
 					const int *		pointCounts,
 					const Point2DI *	points,
+					int			fillInside,
+					int			drawBorder,
+					int			closePath );
+typedef int (*MetaDrawPolyBezier)(	struct DeviceContext *	dc,
+					void *			through,
+					int			pointCounts,
+					const Point2DI *	points,
+					int			hasStart,
 					int			fillInside,
 					int			drawBorder,
 					int			closePath );
@@ -347,6 +363,7 @@ typedef struct DeviceContext
     MetaSelectFontObject		dcSelectFontObject;
     MetaSelectPatternBrushObject	dcSelectPatternBrushObject;
     MetaDrawPolyPolygon			dcDrawPolyPolygon;
+    MetaDrawPolyBezier			dcDrawPolyBezier;
     MetaDrawRoundedRectangle		dcDrawRoundedRectangle;
     MetaDrawString			dcDrawString;
     MetaPatBlt				dcPatBlt;

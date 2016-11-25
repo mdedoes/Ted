@@ -77,6 +77,7 @@ typedef struct EditStep
 			 *   document.
 			 */
     BufferDocument *	esSourceDocument;
+    int			esSourceIsIntermediary;
 
 			/**
 			 *   Holds the kind of field that was deleted or
@@ -122,5 +123,9 @@ typedef struct EditStep
 
 extern void docInitEditStep(	EditStep *		es );
 extern void docCleanEditStep(	EditStep *		es );
+
+extern BufferDocument * docEditStepMakeSourceDocument(
+						EditStep *		es,
+						const BufferDocument *	bdRef );
 
 #    endif	/*  DOC_EDIT_STEP_H	*/

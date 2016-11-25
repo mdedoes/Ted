@@ -7,16 +7,14 @@
 #   ifndef	APP_PRINT_JOB_H
 #   define	APP_PRINT_JOB_H
 
-#   include	<stdio.h>
-
 #   include	<drawDrawingSurface.h>
-
-#   include	<psPrint.h>
 
 # ifdef __cplusplus
 extern "C"
     {
 # endif
+
+struct PrintGeometry;
 
 /************************************************************************/
 /*									*/
@@ -26,12 +24,12 @@ extern "C"
 
 typedef struct PrintJob
     {
-    void *			pjPrivateData;
-    int				pjFormat;
-    const char *		pjTitle;
-    DrawingSurface		pjDrawingSurface;
-    struct EditApplication *	pjApplication;
-    const PrintGeometry *	pjPrintGeometry;
+    void *				pjPrivateData;
+    int					pjFormat;
+    const char *			pjTitle;
+    DrawingSurface			pjDrawingSurface;
+    struct EditApplication *		pjApplication;
+    const struct PrintGeometry *	pjPrintGeometry;
     } PrintJob;
 
 /************************************************************************/

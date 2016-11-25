@@ -7,6 +7,7 @@
 #   include	"docLayoutConfig.h"
 
 #   include	<stddef.h>
+#   include	<limits.h>
 
 #   include	"docLayout.h"
 #   include	<docPageGrid.h>
@@ -138,8 +139,8 @@ int docLayoutInvalidateRange(	DocumentSelection *	dsLayout,
 /*  2)  Calculate the frame in which the text is to be laid out.	*/
 /*  3)  If the preceding paragraph ends on the same page where this	*/
 /*	nodes begins, reserve space for the footnotes upto the		*/
-/*	beginning of this block and subtract the height from the buttom	*/
-/*	of the frame.							*/
+/*	beginning of this block and subtract the footnote height from	*/
+/*	the buttom of the frame.					*/
 /*									*/
 /************************************************************************/
 
@@ -303,4 +304,27 @@ int docGetFirstSectionOnPage(		BufferDocument *	bd,
 	}
 
     return -1;
+    }
+
+/************************************************************************/
+/*									*/
+/*  Adapt the bottom of a block frame to avoid page breaks in trees	*/
+/*  that can not hold one.						*/
+/*									*/
+/************************************************************************/
+
+void docLayoutAdjustFrame(	BlockFrame *		bf,
+				const BufferItem *	node )
+    {
+    /*  4  */
+    if  ( node->biTreeType == DOCinFOOTNOTE		||
+	  docIsSeparatorType( node->biTreeType )	||
+	  docIsHeaderType( node->biTreeType )		||
+	  docIsFooterType( node->biTreeType )		)
+	{
+	bf->bfContentRect.drY1= INT_MAX;
+	bf->bfFlowRect.drY1= INT_MAX;
+	}
+
+    return;
     }

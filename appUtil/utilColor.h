@@ -25,6 +25,12 @@
 				(rgb8)->rgb8Red, (rgb8)->rgb8Green, \
 				(rgb8)->rgb8Blue, (rgb8)->rgb8Alpha )
 
+# define LRGB8DEB(l,rgb8) appDebug("%s(%3d) %s=%ld %s= RGBA:%d:%d:%d:%d\n", \
+				__FILE__, __LINE__, \
+				#l, ((long)l), #rgb8, \
+				(rgb8)->rgb8Red, (rgb8)->rgb8Green, \
+				(rgb8)->rgb8Blue, (rgb8)->rgb8Alpha )
+
 typedef struct	RGB8Color
     {
     unsigned char	rgb8Red;
