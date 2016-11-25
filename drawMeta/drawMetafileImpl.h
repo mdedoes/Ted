@@ -4,10 +4,13 @@
 /*									*/
 /************************************************************************/
 
-#   include	"drawWinMetaImpl.h"
-
 #   ifndef		DRAW_METAFILE_IMPL_H
 #   define		DRAW_METAFILE_IMPL_H
+
+struct DeviceContext;
+struct LogicalBrush;
+struct LogicalPen;
+struct LogicalFont;
 
 /************************************************************************/
 /*									*/
@@ -15,23 +18,23 @@
 /*									*/
 /************************************************************************/
 
-extern int appMetaSelectBrushObjectImpl(DeviceContext *		dc,
+extern int appMetaSelectBrushObjectImpl(struct DeviceContext *	dc,
 					void *			through,
-					LogicalBrush *		lb );
+					struct LogicalBrush *	lb );
 
-extern int appMetaSelectPenObjectImpl(	DeviceContext *		dc,
+extern int appMetaSelectPenObjectImpl(	struct DeviceContext *	dc,
 					void *			through,
-					LogicalPen *		lp );
+					struct LogicalPen *	lp );
 
-extern int appMetaSelectFontObjectImpl(	DeviceContext *		dc,
+extern int appMetaSelectFontObjectImpl(	struct DeviceContext *	dc,
 					void *			through,
-					LogicalFont *		lf );
+					struct LogicalFont *	lf );
 
-extern int appMetaGetPenDots(		DeviceContext *		dc,
+extern int appMetaGetPenDots(		struct DeviceContext *	dc,
 					unsigned char		dots[6],
-					const LogicalPen *	lp );
+					const struct LogicalPen *	lp );
 
-extern int appMetaGetPenWidth(		DeviceContext *		dc,
-					const LogicalPen *	lp );
+extern int appMetaGetPenWidth(		struct DeviceContext *		dc,
+					const struct LogicalPen *	lp );
 
 #   endif	/*	DRAW_METAFILE_IMPL_H	*/

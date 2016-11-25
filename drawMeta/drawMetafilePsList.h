@@ -4,15 +4,15 @@
 /*									*/
 /************************************************************************/
 
-#   include	<psFace.h>
-#   include	"drawMetafile.h"
-
 #   ifndef		DRAW_METAFILE_PS_H
 #   define		DRAW_METAFILE_PS_H
 
+struct PostScriptTypeList;
+struct MetafilePlayer;
+
 typedef int (*MetafileWriteListPs)(
-				PostScriptTypeList *		pstl,
-				const MetafilePlayer *		player,
+				struct PostScriptTypeList *	pstl,
+				const struct MetafilePlayer *	player,
 				const char *			prefix );
 
 /************************************************************************/
@@ -21,16 +21,16 @@ typedef int (*MetafileWriteListPs)(
 /*									*/
 /************************************************************************/
 
-extern int appWmfListFontsPs(	PostScriptTypeList *		pstl,
-				const MetafilePlayer *		player,
+extern int appWmfListFontsPs(	struct PostScriptTypeList *	pstl,
+				const struct MetafilePlayer *	player,
 				const char *			prefix );
 
-extern int appMacPictListFontsPs( PostScriptTypeList *		pstl,
-				const MetafilePlayer *		player,
+extern int appMacPictListFontsPs( struct PostScriptTypeList *	pstl,
+				const struct MetafilePlayer *	player,
 				const char *			prefix );
 
-extern int appEmfListFontsPs(	PostScriptTypeList *		pstl,
-				const MetafilePlayer *		player,
+extern int appEmfListFontsPs(	struct PostScriptTypeList *	pstl,
+				const struct MetafilePlayer *	player,
 				const char *			prefix );
 
 #   endif	/*	DRAW_METAFILE_PS_H	*/

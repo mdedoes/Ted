@@ -10,6 +10,8 @@
 
 #   include	"sioMD5.h"
 #   include	"utilMD5.h"
+#   include	"sioGeneral.h"
+
 #   include	<appDebugon.h>
 
 

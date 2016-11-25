@@ -4,6 +4,6 @@
 /*									*/
 /************************************************************************/
 
-#   include	"sioGeneral.h"
+struct SimpleOutputStream;
 
-extern SimpleOutputStream * sioOutStdoutOpen( void );
+extern struct SimpleOutputStream * sioOutStdoutOpen( void );

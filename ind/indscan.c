@@ -8,9 +8,33 @@
 #   include	"indConfig.h"
 
 #   include	<stdlib.h>
+#   include	<textRegexp.h>
 
-#   include	"indlocal.h"
+#   include	"indSpellScanJob.h"
+
 #   include	<appDebugon.h>
+
+/****************************************************************/
+
+/* PCRE syntax */
+/*
+Only work for ASCII:
+static const char indSpellWordPattern[]= "\\b(\\w+)\\W*";
+static const char indSpellWordPattern[]= "\\b([[:alnum:]]+)[^[:alnum:]]*";
+Look like unicode, but \\b only works for ASCII
+static const char indSpellWordPattern[]= "\\b([\\p{N}\\p{L}]+)[^\\p{N}\\p{L}]*";
+*/
+
+static const char indSpellFirstWordPat[]=
+		    "[^\\p{N}\\p{L}]*([\\p{N}\\p{L}]+)[^\\p{N}\\p{L}]*";
+
+static const char indSpellToWordPat[]=
+		    "[\\p{N}\\p{L}]*[^\\p{N}\\p{L}]*";
+
+/* UNUSED
+static const char indSpellNextWordPat[]=
+		    "([\\p{N}\\p{L}]+)[^\\p{N}\\p{L}]*";
+*/
 
 /****************************************************************/
 /*								*/
@@ -18,7 +42,7 @@
 /*								*/
 /****************************************************************/
 
-void	indCleanSpellScanJob(	SpellScanJob *	ssj	)
+static void indCleanSpellScanWords(	SpellScanJob *	ssj )
     {
     PossibleWord *	pw= ssj->ssjPossibleWords;
 
@@ -34,53 +58,91 @@ void	indCleanSpellScanJob(	SpellScanJob *	ssj	)
     return;
     }
 
-void indInitSpellScanJob(	SpellScanJob *	ssj )
+void	indCleanSpellScanJob(	SpellScanJob *	ssj	)
     {
+    indCleanSpellScanWords( ssj );
+
+    /*
+    if  ( ssj->ssjFirstWordExpr )
+	{ regFree( ssj->ssjFirstWordExpr );	}
+    */
+    if  ( ssj->ssjToWordExpr )
+	{ regFree( ssj->ssjToWordExpr );	}
+    if  ( ssj->ssjNextWordExpr )
+	{ regFree( ssj->ssjNextWordExpr );	}
+
+    return;
+    }
+
+int indStartSpellScanJob(	SpellScanJob *	ssj,
+				int		acceptedPos,
+				const char *	localeTag )
+    {
+    indCleanSpellScanWords( ssj );
+
     ssj->ssjPossibleWords= (PossibleWord *)0;
     ssj->ssjPossibleWordCount= 0;
 
-    return;
-    }
+    ssj->ssjAcceptedPos= acceptedPos;
 
-void indInitSpellCheckContext(	SpellCheckContext *	scc )
-    {
-    scc->sccDictionaryPrefix= "";
-    scc->sccStaticInd= (void *)0;
-    scc->sccForgotInd= (void *)0;
-    scc->sccLearntInd= (void *)0;
-
-    return;
-    }
-
-void indCleanSpellCheckContext(	SpellCheckContext *	scc )
-    {
     /*
-    scc->sccDictionaryPrefix= "";
+    if  ( ! ssj->ssjFirstWordExpr )
+	{
+	int		options= 0;
+
+	ssj->ssjFirstWordExpr= regCompile( indSpellFirstWordPat, options );
+
+	if  ( ! ssj->ssjFirstWordExpr )
+	    { SXDEB(indSpellFirstWordPat,ssj->ssjFirstWordExpr); return -1; }
+	}
     */
 
-    if  ( scc->sccStaticInd )
-	{ indFree( scc->sccStaticInd );	}
-    if  ( scc->sccForgotInd )
-	{ indFree( scc->sccForgotInd );	}
-    if  ( scc->sccLearntInd )
-	{ indFree( scc->sccLearntInd );	}
+    if  ( ! ssj->ssjToWordExpr )
+	{
+	int		options= 0;
 
-    return;
+	ssj->ssjToWordExpr= regCompile( indSpellToWordPat, options );
+
+	if  ( ! ssj->ssjToWordExpr )
+	    { SXDEB(indSpellToWordPat,ssj->ssjToWordExpr); return -1; }
+	}
+
+    if  ( ! ssj->ssjNextWordExpr )
+	{
+	int		options= 0;
+
+	ssj->ssjNextWordExpr= regCompile( indSpellFirstWordPat, options );
+
+	if  ( ! ssj->ssjNextWordExpr )
+	    { SXDEB(indSpellFirstWordPat,ssj->ssjNextWordExpr); return -1; }
+	}
+
+    ssj->ssjOverrideLocaleTag= localeTag;
+
+    return 0;
     }
 
-
-void indInitSpellGuessContext(	SpellGuessContext *	sgc,
-				IndGuessList *		igl,
-				SpellCheckContext *	scc )
+void indInitSpellScanJob(	SpellScanJob *	ssj )
     {
-    sgc->sgcGuessList= igl;
-    sgc->sgcCheckContext= scc;
+    ssj->ssjAcceptedPos= 0;
 
-    return;
-    }
+    ssj->ssjPossibleWords= (PossibleWord *)0;
+    ssj->ssjPossibleWordCount= 0;
 
-void indCleanSpellGuessContext(	SpellGuessContext *	sgc )
-    {
+    ssj->ssjDictionary= (struct SpellDictionary *)0;
+    ssj->ssjChecker= (struct SpellChecker *)0;
+
+    ssj->ssjComplain= (SpellComplain)0;
+    ssj->ssjThrough= (void *)0;
+
+    /*
+    ssj->ssjFirstWordExpr= (void *)0;
+    */
+    ssj->ssjToWordExpr= (void *)0;
+    ssj->ssjNextWordExpr= (void *)0;
+
+    ssj->ssjOverrideLocaleTag= (const char *)0;
+
     return;
     }
 
@@ -142,104 +204,11 @@ void indAddCharacterToPossibilities(	SpellScanJob *	ssj,
 
 /************************************************************************/
 /*									*/
-/*  1)  Give a judgement on the validity of a word.			*/
-/*									*/
-/*  2)  In a list of possiblities, count the number that is not yet	*/
-/*	rejected.							*/
-/*									*/
-/************************************************************************/
-
-/*  1  */
-static int indCheckWord(	const char *		word,
-				SpellCheckContext *	scc,
-				int			asPrefix )
-    {
-    int				accepted;
-    int				ignoredHow;
-
-    if  ( ! asPrefix && isdigit( word[0] ) )
-	{ return 0;	}
-
-    if  ( ! asPrefix && scc->sccForgotInd )
-	{
-	/*  a  */
-	if  ( indGetUtf8( &accepted, scc->sccForgotInd, word ) >= 0	&&
-	      accepted							)
-	    { return -1;	}
-	}
-
-    /*  b  */
-    if  ( ! indGetWord( &ignoredHow, scc->sccStaticInd, word, asPrefix ) )
-	{ return 0;	}
-
-    /*  c  */
-    if  ( scc->sccLearntInd &&
-	  indGetUtf8( &accepted, scc->sccLearntInd, word ) >= 0	&&
-	  ( accepted || asPrefix )				)
-	{ return 0; }
-
-    return -1;
-    }
-
-/*  2  */
-int indCountPossibilities(	SpellScanJob *		ssj,
-				SpellCheckContext *	scc,
-				int			position,
-				int			rejectPrefices )
-    {
-    PossibleWord *	pw= ssj->ssjPossibleWords;
-    int			count= 0;
-
-    while( pw )
-	{
-	if  ( pw->pwRejectedAt == -1 )
-	    {
-	    int	rejectedAsWord;
-	    int	rejectedAsPrefix;
-
-	    rejectedAsWord= indCheckWord( pw->pwForm, scc, 0 );
-
-	    /* LSLDEB(pw->pwStartAt,pw->pwForm,rejectedAsWord); */
-
-	    if  ( rejectedAsWord )
-		{
-		rejectedAsPrefix= rejectPrefices ||
-					indCheckWord( pw->pwForm, scc, 1 );
-		if  ( rejectedAsPrefix )
-		    { pw->pwRejectedAt= position;	}
-		}
-	    else{
-		rejectedAsPrefix= 0;
-		pw->pwAcceptedAt= position;
-		}
-
-	    if  ( ! rejectedAsPrefix )
-		{
-		rejectedAsPrefix= indCheckWord( pw->pwForm, scc, 1 );
-		/* SLDEB(pw->pwForm,rejected); */
-		pw->pwForm[pw->pwInsertionPoint  ]= '\0';
-
-		if  ( rejectedAsPrefix )
-		    { pw->pwRejectedAt= position;	}
-		}
-
-	    if  ( ! rejectedAsWord || ! rejectedAsPrefix )
-		{ count++;	}
-	    }
-
-	pw= pw->pwNext;
-	}
-
-    return count;
-    }
-
-/************************************************************************/
-/*									*/
 /*  Make a list of the possibilities.					*/
 /*									*/
 /************************************************************************/
 
-void	indLogPossibilities(	SpellScanJob *	ssj	)
+void indLogPossibilities(	SpellScanJob *	ssj	)
     {
     PossibleWord *	pw= ssj->ssjPossibleWords;
 
@@ -265,33 +234,33 @@ void	indLogPossibilities(	SpellScanJob *	ssj	)
 /*									*/
 /************************************************************************/
 
-void indRejectPossibilities(	int *			pAcceptedPos,
-				int			acceptedPos,
-				SpellScanJob *		ssj	)
+void indRejectPossibilities(	SpellScanJob *		ssj	)
     {
     PossibleWord *	pw= ssj->ssjPossibleWords;
-    PossibleWord *	rval= pw;
+    PossibleWord *	pww= pw;
     PossibleWord *	next;
 
+    int			acceptedPos= ssj->ssjAcceptedPos;
+
     /*  1  */
-    while( rval						&&
-	   rval->pwRejectedAt != -1			&&
-	   rval->pwRejectedAt >= rval->pwAcceptedAt	)
+    while( pww						&&
+	   pww->pwRejectedAt != -1			&&
+	   pww->pwRejectedAt >= pww->pwAcceptedAt	)
 	{
-	next= rval->pwNext;
+	next= pww->pwNext;
 
-	if  ( acceptedPos < rval->pwAcceptedAt )
-	    { acceptedPos=  rval->pwAcceptedAt;	}
+	if  ( acceptedPos < pww->pwAcceptedAt )
+	    { acceptedPos=  pww->pwAcceptedAt;	}
 
-	free( (char *)rval );
+	free( (char *)pww );
 
-	rval= next;
+	pww= next;
 	}
 
     /*  2  */
-    if  ( rval )
+    if  ( pww )
 	{
-	pw= rval;
+	pw= pww;
 	while( pw )
 	    {
 	    next= pw->pwNext;
@@ -302,8 +271,8 @@ void indRejectPossibilities(	int *			pAcceptedPos,
 		{
 		next= next->pwNext;
 
-		if  ( acceptedPos < rval->pwAcceptedAt )
-		    { acceptedPos=  rval->pwAcceptedAt;	}
+		if  ( acceptedPos < pww->pwAcceptedAt )
+		    { acceptedPos=  pww->pwAcceptedAt;	}
 
 		free( (char *)pw->pwNext );
 		pw->pwNext= next;
@@ -313,9 +282,8 @@ void indRejectPossibilities(	int *			pAcceptedPos,
 	    }
 	}
 
-    ssj->ssjPossibleWords= rval;
-
-    *pAcceptedPos= acceptedPos;
+    ssj->ssjPossibleWords= pww;
+    ssj->ssjAcceptedPos= acceptedPos;
 
     return;
     }
@@ -360,3 +328,72 @@ PossibleWord * indMaximalPossibility(	SpellScanJob *	ssj	)
 
     return rval;
     }
+
+/************************************************************************/
+/*									*/
+/*  Skip to the word after the initial position to check in the		*/
+/*  paragraph.								*/
+/*									*/
+/************************************************************************/
+
+int indSkipToWord(	SpellScanJob *			ssj,
+			int *				pHere,
+			const char *			paraStr,
+			int				here,
+			int				upto )
+    {
+    int			foundWord;
+    int			head= here;
+
+    ExpressionMatch	em;
+
+    foundWord= regFindLeftToRight( &em, ssj->ssjToWordExpr,
+							paraStr, here, upto );
+    if  ( ! foundWord )
+	{ return foundWord;	}
+
+    if  ( regGetFullMatch( &head, &here, &em ) )
+	{ LDEB(1); return -1;	}
+
+    *pHere= here;
+    return foundWord;
+    }
+
+/************************************************************************/
+/*									*/
+/*  Delimit the word after the current position.			*/
+/*									*/
+/************************************************************************/
+
+int indFindNextWord(	SpellScanJob *			ssj,
+			int *				pHead,
+			int *				pTail,
+			int *				pNext,
+			const char *			paraStr,
+			int				here,
+			int				upto )
+    {
+    int			foundWord;
+    int			head= here;
+    int			tail= here;
+    int			next= here;
+
+    ExpressionMatch	em;
+
+    foundWord= regFindLeftToRight( &em, ssj->ssjNextWordExpr,
+							paraStr, here, upto );
+    if  ( ! foundWord )
+	{ return foundWord;	}
+
+    if  ( regGetFullMatch( &here, &next, &em ) )
+	{ LDEB(1); return -1;	}
+
+    if  ( regGetMatch( &head, &tail, &em, 0 ) )
+	{ LDEB(1); return -1;	}
+
+    *pHead= head;
+    *pTail= tail;
+    *pNext= next;
+    return foundWord;
+    }
+

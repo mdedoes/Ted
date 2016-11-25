@@ -1,17 +1,12 @@
 /************************************************************************/
 /*									*/
-/*  Save a BufferDocument into an RTF file.				*/
+/*  Save the fields in a BufferDocument to an RTF file.			*/
 /*									*/
 /************************************************************************/
 
 #   include	"docRtfConfig.h"
 
-#   include	<stdio.h>
 #   include	<ctype.h>
-
-#   include	<bitmap.h>
-
-#   include	<appDebugon.h>
 
 #   include	"docRtfFlags.h"
 #   include	"docRtfTags.h"
@@ -23,6 +18,17 @@
 #   include	<docBookmarkField.h>
 #   include	<docTextParticule.h>
 #   include	<docDocumentNote.h>
+#   include	<docDocumentField.h>
+#   include	<docFieldKind.h>
+#   include	<docBuf.h>
+#   include	<docFields.h>
+#   include	<docIncludePictureField.h>
+
+#   include	<docDebug.h>
+#   include	<appDebugon.h>
+
+static void docRtfWriteStartField(	RtfWriter *		rw,
+					const DocumentField *	df );
 
 /************************************************************************/
 /*									*/
@@ -30,46 +36,81 @@
 /*									*/
 /************************************************************************/
 
-static void docRtfFinishFldrslt(	RtfWriter *	rwc )
+static void docRtfFinishFldrslt(	RtfWriter *	rw )
     {
-    docRtfWriteDestinationEnd( rwc );
-    docRtfWriteDestinationEnd( rwc );
-    docRtfWriteDestinationEnd( rwc );
+    docRtfWriteDestinationEnd( rw );
+    docRtfWriteDestinationEnd( rw );
+    docRtfWriteDestinationEnd( rw );
 
-    rwc->rwcInFldrslt--;
+    rw->rwcInFldrslt--;
 
-    if  ( docRtfPopAttribute( rwc ) )
+    if  ( docRtfPopAttribute( rw ) )
 	{ LDEB(1);	}
 
     return;
     }
 
-static void docRtfWriteWriteComponent(	RtfWriter *			rwc,
-					const InstructionsComponent *	ic )
+static void docRtfWriteFieldComponent(	RtfWriter *			rw,
+					int *				pChild,
+					const DocumentField *		df,
+					int				comp )
     {
-    if  ( ic->icIsQuoted )
-	{ docRtfWriteDocEncodedString( rwc, "\"", 1 );	}
+    int					child= *pChild;
+    int					from= 0;
+    const InstructionsComponent *	ic;
 
-    docRtfWriteDocEncodedString( rwc,
-				(const char *)ic->icBuffer.mbBytes,
-				ic->icBuffer.mbSize );
-    if  ( ic->icIsQuoted )
-	{ docRtfWriteDocEncodedString( rwc, "\"", 1 );	}
+    ic= df->dfInstructions.fiComponents+ comp;
+    from= 0;
 
+    if  ( ic->icType == INSTRtypeQUOTED_VALUE )
+	{ docRtfWriteDocEncodedString( rw, "\"", 1 );	}
+
+    while( child < df->dfInstructionFields.cfChildCount )
+	{
+	const DocumentField *	dfCh= df->dfInstructionFields.cfChildren[child];
+
+	if  ( dfCh->dfHeadPosition.epParaNr < comp )
+	    { child++; continue;	}
+	if  ( dfCh->dfHeadPosition.epParaNr > comp )
+	    { break;	}
+
+	docRtfWriteDocEncodedString( rw,
+				(const char *)ic->icBuffer.mbBytes+ from,
+				dfCh->dfHeadPosition.epStroff- from );
+
+	docRtfWriteStartField( rw, dfCh );
+	docRtfWriteDestinationEnd( rw );
+
+	from= dfCh->dfTailPosition.epStroff;
+	child++;
+	}
+
+    docRtfWriteDocEncodedString( rw,
+				(const char *)ic->icBuffer.mbBytes+ from,
+				ic->icBuffer.mbSize- from );
+
+    if  ( ic->icType == INSTRtypeQUOTED_VALUE )
+	{ docRtfWriteDocEncodedString( rw, "\"", 1 );	}
+
+    *pChild= child;
     return;
     }
 
-static void docRtfWriteFieldInstructions( RtfWriter *			rwc,
-					const FieldInstructions *	fi )
+static void docRtfWriteFieldInstructions( RtfWriter *			rw,
+					const DocumentField *		df )
     {
-    const InstructionsComponent *	ic;
+    const FieldInstructions *		fi= &(df->dfInstructions);
     int					byteCount= 0;
-    int					i;
+    int					comp;
+    int					child= 0;
 
-    ic= fi->fiComponents;
-    for ( i= 0; i < fi->fiComponentCount; i++ )
+    for ( comp= 0; comp < fi->fiComponentCount; comp++ )
 	{
-	if  ( ic->icIsQuoted )
+	const InstructionsComponent *	ic;
+
+	ic= df->dfInstructions.fiComponents+ comp;
+
+	if  ( ic->icType == INSTRtypeQUOTED_VALUE )
 	    { byteCount += 2;	}
 	ic++;
 	}
@@ -77,76 +118,79 @@ static void docRtfWriteFieldInstructions( RtfWriter *			rwc,
     if  ( fi->fiComponentCount > 1 )
 	{ byteCount += fi->fiComponentCount- 1;	}
 
-    docRtfReserveColumns( rwc, byteCount );
+    docRtfReserveColumns( rw, byteCount );
 
-    ic= fi->fiComponents;
     if  ( fi->fiComponentCount > 0 )
-	{ docRtfWriteWriteComponent( rwc, ic++ );	}
-    for ( i= 1; i < fi->fiComponentCount; i++ )
+	{ docRtfWriteFieldComponent( rw, &child, df, 0 );	}
+
+    for ( comp= 1; comp < fi->fiComponentCount; comp++ )
 	{
-	docRtfWriteDocEncodedString( rwc, " ", 1 );
-	docRtfWriteWriteComponent( rwc, ic++ );
+	docRtfWriteDocEncodedString( rw, " ", 1 );
+	docRtfWriteFieldComponent( rw, &child, df, comp );
 	}
 
     return;
     }
 
-static void docRtfWriteStartField(	RtfWriter *		rwc,
+static void docRtfWriteStartField(	RtfWriter *		rw,
 					const DocumentField *	df )
     {
-    docRtfWriteDestinationBegin( rwc, "field" );
-    docRtfWriteDestinationBegin( rwc, "*\\fldinst" );
-    docRtfWriteDestinationBegin( rwc, "" );
+    docRtfWriteDestinationBegin( rw, "field" );
+    docRtfWriteDestinationBegin( rw, "*\\fldinst" );
+    docRtfWriteDestinationBegin( rw, "" );
 
-    docRtfWriteFieldInstructions( rwc, &(df->dfInstructions) );
+    docRtfWriteFieldInstructions( rw, df );
 
-    /*?
-    docRtfWriteDocEncodedString( rwc, " ", 1 );
-    */
+    docRtfWriteDestinationEnd( rw );
+    docRtfWriteDestinationEnd( rw );
 
-    docRtfWriteDestinationEnd( rwc );
-    docRtfWriteDestinationEnd( rwc );
+    return;
+    }
 
-    docRtfWriteDestinationBegin( rwc, "fldrslt" );
-    docRtfWriteDestinationBegin( rwc, "" );
+static void docRtfWriteStartFieldPRes(	RtfWriter *		rw,
+					const DocumentField *	df )
+    {
+    docRtfWriteStartField( rw, df );
 
-    rwc->rwcInFldrslt++;
+    docRtfWriteDestinationBegin( rw, "fldrslt" );
+    docRtfWriteDestinationBegin( rw, "" );
 
-    if  ( docRtfPushAttribute( rwc ) )
+    rw->rwcInFldrslt++;
+
+    if  ( docRtfPushAttribute( rw ) )
 	{ LDEB(1);	}
 
     return;
     }
 
-static void docRtfBookmarkTag(	RtfWriter *		rwc,
+static void docRtfBookmarkTag(	RtfWriter *		rw,
 				const char *		tag,
 				const DocumentField *	df )
     {
     const int			addSemicolon= 0;
 
-    const MemoryBuffer *		mbBookmark;
+    const MemoryBuffer *	mbBookmark;
 
     if  ( ! docFieldGetBookmark( &mbBookmark, df ) )
 	{
-	docRtfWriteDocEncodedStringDestination( rwc, tag,
-			    (const char *)mbBookmark->mbBytes,
-			    mbBookmark->mbSize, addSemicolon );
+	docRtfWriteDocEncodedBufferDestination( rw, tag, mbBookmark,
+								addSemicolon );
 	}
 
     return;
     }
 
-static void docRtfStartTc(	RtfWriter *		rwc,
+static void docRtfStartTc(	RtfWriter *		rw,
 				const DocumentField *	df )
     {
     const FieldKindInformation *	fki= DOC_FieldKinds+ df->dfKind;
 
-    docRtfWriteDestinationBegin( rwc, fki->fkiRtfTag );
+    docRtfWriteDestinationBegin( rw, fki->fkiRtfTag );
 
-    docRtfWriteFieldInstructions( rwc, &(df->dfInstructions) );
+    docRtfWriteFieldInstructions( rw, df );
 
     /* The field instructions actually contain tags */
-    rwc->rwcAfter= RTFafterTAG;
+    rw->rwAfter= RTFafterTAG;
 
     return;
     }
@@ -157,14 +201,14 @@ static void docRtfStartTc(	RtfWriter *		rwc,
 /*									*/
 /************************************************************************/
 
-static int docRtfSaveNoteField(	RtfWriter *		rw,
-				int *			pCount,
-				const BufferItem *	paraNode,
-				const int		part,
-				const TextParticule *	tp,
-				const DocumentField *	df )
+static int docRtfSaveNoteField(	RtfWriter *			rw,
+				int *				pCount,
+				const struct BufferItem *	paraNode,
+				const int			part,
+				const TextParticule *		tp,
+				const DocumentField *		df )
     {
-    const DocumentNote *	dn;
+    DocumentNote *		dn;
     const NoteProperties *	np;
     int				count;
     int				closed;
@@ -174,11 +218,11 @@ static int docRtfSaveNoteField(	RtfWriter *		rw,
     const int			paralen= docParaStrlen( paraNode );
     int				stroff= paralen;
 
-    count= docCountParticulesInField( paraNode, &closed, part,
+    count= docCountParticulesInFieldFwd( paraNode, &closed, part,
 					    paraNode->biParaParticuleCount );
 
     /*  Prefer the attributes of the field result */
-    if  ( count > 0 && tp[1].tpKind == DOCkindSPAN )
+    if  ( count > 0 && tp[1].tpKind == TPkindSPAN )
 	{
 	stroff= tp[1].tpStroff;
 	attrNr= tp[1].tpTextAttrNr;
@@ -189,7 +233,7 @@ static int docRtfSaveNoteField(	RtfWriter *		rw,
 	}
 
     if  ( stroff < paralen )
-	{ first= (const char *)docParaString( paraNode, stroff );	}
+	{ first= docParaString( paraNode, stroff );	}
 
     docRtfWriteSwitchTextAttributes( rw, attrNr, first );
 
@@ -251,19 +295,56 @@ static int docRtfSaveNoteField(	RtfWriter *		rw,
 
 /************************************************************************/
 /*									*/
+/*  Save a NeXTGraphic field.						*/
+/*									*/
+/************************************************************************/
+
+static int docRtfSaveNeXTGraphicField(	RtfWriter *		rw,
+					const DocumentField *	df )
+    {
+    int			rval= 0;
+    IncludePictureField	ipf;
+
+    docInitIncludePictureField( &ipf );
+
+    docRtfWriteDestinationBegin( rw, "" );
+    docRtfWriteDestinationBegin( rw, "NeXTGraphic" );
+
+    if  ( docGetIncludePictureField( &ipf, df ) )
+	{ LDEB(1); rval= -1; goto ready;	}
+
+    docRtfWriteDocEncodedString( rw,
+		(char *)ipf.ipfFilename.mbBytes, ipf.ipfFilename.mbSize );
+    docRtfWriteDocEncodedString( rw, " ", 1 );
+
+    if  ( ipf.ipfTwipsWide > 0 )
+	{ docRtfWriteArgTag( rw, "width", ipf.ipfTwipsWide );	}
+
+    if  ( ipf.ipfTwipsHigh > 0 )
+	{ docRtfWriteArgTag( rw, "height", ipf.ipfTwipsHigh );	}
+
+  ready:
+
+    docCleanIncludePictureField( &ipf );
+
+    return rval;
+    }
+
+/************************************************************************/
+/*									*/
 /*  Save a field head particule						*/
 /*									*/
 /************************************************************************/
 
-int docRtfSaveFieldHead(		RtfWriter *		rwc,
-					const BufferItem *	paraNode,
-					int			part )
+int docRtfSaveFieldHead(	RtfWriter *			rw,
+				const struct BufferItem *	paraNode,
+				int				part )
     {
     const DocumentField *		df;
     const FieldKindInformation *	fki;
     const TextParticule *		tp= paraNode->biParaParticules+ part;
 
-    df= docGetFieldByNumber( &(rwc->rwDocument->bdFieldList),
+    df= docGetFieldByNumber( &(rw->rwDocument->bdFieldList),
 							tp->tpObjectNumber );
     if  ( ! df )
 	{ LPDEB(tp->tpObjectNumber,df); return 0;	}
@@ -273,50 +354,58 @@ int docRtfSaveFieldHead(		RtfWriter *		rwc,
     if  ( fki->fkiIsFieldInRtf )
 	{
 	if  ( df->dfKind != DOCfkMERGEFIELD				||
-	      ! ( rwc->rwSaveFlags & RTFflagNO_MERGEFIELDS )		)
-	    { docRtfWriteStartField( rwc, df );	}
+	      ! ( rw->rwSaveFlags & RTFflagNO_MERGEFIELDS )		)
+	    { docRtfWriteStartFieldPRes( rw, df );	}
 	}
 
     if  ( df->dfKind == DOCfkBOOKMARK			&&
-	  ! ( rwc->rwSaveFlags & RTFflagNO_BOOKMARKS )	)
-	{ docRtfBookmarkTag( rwc, "*\\bkmkstart", df );	}
+	  ! ( rw->rwSaveFlags & RTFflagNO_BOOKMARKS )	)
+	{ docRtfBookmarkTag( rw, "*\\bkmkstart", df );	}
 
     if  ( df->dfKind == DOCfkTC || df->dfKind == DOCfkTCN )
-	{ docRtfStartTc( rwc, df ); }
+	{ docRtfStartTc( rw, df ); }
 
     if  ( df->dfKind == DOCfkCHFTN )
 	{
 	int		count= 0;
 
-	if  ( docRtfSaveNoteField( rwc, &count, paraNode, part, tp, df ) )
+	if  ( docRtfSaveNoteField( rw, &count, paraNode, part, tp, df ) )
 	    { LDEB(df->dfKind); return -1;	}
 
 	return count;
 	}
 
-    if  ( df->dfKind == DOCfkLISTTEXT		&&
-	  paraNode->biParaListOverride > 0	)
+    if  ( df->dfKind == DOCfkNEXTGRAPHIC )
 	{
-	if  ( docRtfPushAttribute( rwc ) )
+	if  ( docRtfSaveNeXTGraphicField( rw, df ) )
+	    { LDEB(df->dfKind); return -1;	}
+
+	return 0;
+	}
+
+    if  ( df->dfKind == DOCfkLISTTEXT				&&
+	  paraNode->biParaProperties->ppListOverride > 0	)
+	{
+	if  ( docRtfPushAttribute( rw ) )
 	    { LDEB(1);	}
 
-	docRtfWriteDestinationBegin( rwc, "listtext" );
+	docRtfWriteDestinationBegin( rw, "listtext" );
 	}
 
     if  ( fki->fkiIsDestinationInRtf	&&
 	  fki->fkiRtfTag		)
 	{
-	docRtfWriteDestinationBegin( rwc, fki->fkiRtfTag );
+	docRtfWriteDestinationBegin( rw, fki->fkiRtfTag );
 
-	docRtfWriteDocEncodedString( rwc,
+	docRtfWriteDocEncodedString( rw,
 		(char *)df->dfData.mbBytes, df->dfData.mbSize );
 
-	docRtfWriteDestinationBegin( rwc, "" );
+	docRtfWriteDestinationBegin( rw, "" );
 
-	docRtfWriteFieldInstructions( rwc, &(df->dfInstructions) );
+	docRtfWriteFieldInstructions( rw, df );
 
-	docRtfWriteDestinationEnd( rwc );
-	docRtfWriteDestinationEnd( rwc );
+	docRtfWriteDestinationEnd( rw );
+	docRtfWriteDestinationEnd( rw );
 	}
 
     return 0;
@@ -328,9 +417,9 @@ int docRtfSaveFieldHead(		RtfWriter *		rwc,
 /*									*/
 /************************************************************************/
 
-int docRtfSaveFieldTail(		RtfWriter *		rwc,
-					const BufferItem *	paraNode,
-					int			part )
+int docRtfSaveFieldTail(	RtfWriter *			rw,
+				const struct BufferItem *	paraNode,
+				int				part )
     {
     const DocumentField *		df;
     const FieldKindInformation *	fki;
@@ -339,7 +428,7 @@ int docRtfSaveFieldTail(		RtfWriter *		rwc,
     if  ( tp->tpObjectNumber < 0 )
 	{ LDEB(tp->tpObjectNumber); return 0; }
 
-    df= docGetFieldByNumber( &(rwc->rwDocument->bdFieldList),
+    df= docGetFieldByNumber( &(rw->rwDocument->bdFieldList),
 						    tp->tpObjectNumber );
     if  ( ! df )
 	{ LPDEB(tp->tpObjectNumber,df); return 0;	}
@@ -347,29 +436,40 @@ int docRtfSaveFieldTail(		RtfWriter *		rwc,
     fki= DOC_FieldKinds+ df->dfKind;
 
     if  ( df->dfKind == DOCfkBOOKMARK			&&
-	  ! ( rwc->rwSaveFlags & RTFflagNO_BOOKMARKS )	)
-	{ docRtfBookmarkTag( rwc, "*\\bkmkend", df ); }
+	  ! ( rw->rwSaveFlags & RTFflagNO_BOOKMARKS )	)
+	{ docRtfBookmarkTag( rw, "*\\bkmkend", df ); }
 
     if  ( df->dfKind == DOCfkTC || df->dfKind == DOCfkTCN )
-	{ docRtfWriteDestinationEnd( rwc ); }
+	{ docRtfWriteDestinationEnd( rw ); }
 
     if  ( fki->fkiIsFieldInRtf )
 	{
 	if  ( df->dfKind != DOCfkMERGEFIELD		    	||
-	      ! ( rwc->rwSaveFlags & RTFflagNO_MERGEFIELDS )	)
+	      ! ( rw->rwSaveFlags & RTFflagNO_MERGEFIELDS )	)
 	    {
-	    if  ( rwc->rwcInFldrslt )
-		{ docRtfFinishFldrslt( rwc );	}
+	    if  ( rw->rwcInFldrslt )
+		{ docRtfFinishFldrslt( rw );	}
 	    }
 	}
 
-    if  ( df->dfKind == DOCfkLISTTEXT		&&
-	  paraNode->biParaListOverride > 0	)
+    if  ( df->dfKind == DOCfkLISTTEXT				&&
+	  paraNode->biParaProperties->ppListOverride > 0	)
 	{
-	docRtfWriteDestinationEnd( rwc );
+	docRtfWriteDestinationEnd( rw );
 
-	if  ( docRtfPopAttribute( rwc ) )
+	if  ( docRtfPopAttribute( rw ) )
 	    { LDEB(1);	}
+	}
+
+    if  ( df->dfKind == DOCfkNEXTGRAPHIC )
+	{
+	docRtfWriteDestinationEnd( rw );
+
+	if  ( docRtfPutByte( 0xac, rw ) < 0 )
+	    { LDEB(1); return -1;	}
+
+	docRtfWriteDestinationEnd( rw );
+	return 0;
 	}
 
     return 0;

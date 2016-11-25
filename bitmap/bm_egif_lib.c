@@ -15,10 +15,12 @@
 #   include	<string.h>
 #   include	"bm_gif_lib.h"
 
-#   include	<appDebugon.h>
 #   include	<sioBlocked.h>
 #   include	<sioLzw.h>
 #   include	<sioEndian.h>
+#   include	<sioGeneral.h>
+
+#   include	<appDebugon.h>
 
 /************************************************************************/
 /*									*/
@@ -443,59 +445,6 @@ int EGifPutExtensionFirst(	GifFileType *	gft,
 
     if  ( sioOutWriteBytes( gft->gftSos, (unsigned char *)Extension, ExtLen ) != ExtLen )
 	{ LDEB(ExtLen); return GIF_ERROR;	}
-
-    return GIF_OK;
-}
-
-/******************************************************************************
-*   Put a middle extension block (see GIF manual) into gif file.	      *
-******************************************************************************/
-
-int EGifPutExtensionNext(	GifFileType *	gft,
-				int		ExtCode,
-				int		ExtLen,
-				const void *	Extension)
-{
-    if  ( ! gft->gftSos )
-	{
-	XDEB(gft->gftSos);
-	_GifError = E_GIF_ERR_NOT_WRITEABLE;
-	return GIF_ERROR;
-	}
-
-    if  ( sioOutPutByte( ExtLen, gft->gftSos ) < 0 )
-	{ return GIF_ERROR;	}
-
-    if  ( sioOutWriteBytes( gft->gftSos, (unsigned char *)Extension, ExtLen ) != ExtLen )
-	{ LDEB(ExtLen); return GIF_ERROR;	}
-
-    return GIF_OK;
-}
-
-/******************************************************************************
-*   Put a last extension block (see GIF manual) into gif file.		      *
-******************************************************************************/
-
-int EGifPutExtensionLast(	GifFileType *	gft,
-				int		ExtCode,
-				int		ExtLen,
-				const void *	Extension )
-{
-    if  ( ! gft->gftSos )
-	{
-	XDEB(gft->gftSos);
-	_GifError = E_GIF_ERR_NOT_WRITEABLE;
-	return GIF_ERROR;
-	}
-
-    if  ( sioOutPutByte( ExtLen, gft->gftSos ) < 0 )
-	{ return GIF_ERROR;	}
-
-    if  ( sioOutWriteBytes( gft->gftSos, (unsigned char *)Extension, ExtLen ) != ExtLen )
-	{ LDEB(ExtLen); return GIF_ERROR;	}
-
-    if  ( sioOutPutByte( '\0', gft->gftSos ) < 0 )
-	{ return GIF_ERROR;	}
 
     return GIF_OK;
 }

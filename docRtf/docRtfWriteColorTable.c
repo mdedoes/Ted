@@ -1,17 +1,16 @@
 /************************************************************************/
 /*									*/
-/*  Save a BufferDocument into an RTF file.				*/
+/*  Save the colors in a struct BufferDocument to an RTF file.		*/
 /*									*/
 /************************************************************************/
 
 #   include	"docRtfConfig.h"
 
-#   include	<stdio.h>
-#   include	<ctype.h>
+#   include	"docRtfWriterImpl.h"
+#   include	<docDocumentProperties.h>
+#   include	<utilPalette.h>
 
 #   include	<appDebugon.h>
-
-#   include	"docRtfWriterImpl.h"
 
 /************************************************************************/
 /*									*/
@@ -19,33 +18,33 @@
 /*									*/
 /************************************************************************/
 
-int docRtfWriteColorTable(	RtfWriter *			rwc,
+int docRtfWriteColorTable(	RtfWriter *			rw,
 				const DocumentProperties *	dp )
     {
     int				i;
     const RGB8Color *		rgb8= dp->dpColorPalette->cpColors;
 
-    docRtfWriteDestinationBegin( rwc, "colortbl" );
-    docRtfWriteNextLine( rwc );
+    docRtfWriteDestinationBegin( rw, "colortbl" );
+    docRtfWriteNextLine( rw );
 
     for ( i= 0; i < dp->dpColorPalette->cpColorCount; rgb8++, i++ )
 	{
 	if  ( i != dp->dpDefaultColor )
 	    {
-	    docRtfWriteArgTag( rwc, "red", rgb8->rgb8Red );
-	    docRtfWriteArgTag( rwc, "green", rgb8->rgb8Green );
-	    docRtfWriteArgTag( rwc, "blue", rgb8->rgb8Blue );
+	    docRtfWriteArgTag( rw, "red", rgb8->rgb8Red );
+	    docRtfWriteArgTag( rw, "green", rgb8->rgb8Green );
+	    docRtfWriteArgTag( rw, "blue", rgb8->rgb8Blue );
 	    }
 
-	if  ( sioOutPutByte( ';', rwc->rwSosOut ) < 0 )
+	if  ( docRtfPutByte( ';', rw ) < 0 )
 	    { LDEB(1); return -1;	}
 
-	rwc->rwCol += 1;
-	docRtfWriteNextLine( rwc );
+	rw->rwCol += 1;
+	docRtfWriteNextLine( rw );
 	}
 
-    docRtfWriteDestinationEnd( rwc );
-    docRtfWriteNextLine( rwc );
+    docRtfWriteDestinationEnd( rw );
+    docRtfWriteNextLine( rw );
 
     return 0;
     }

@@ -1,6 +1,6 @@
 /************************************************************************/
 /*									*/
-/*  Buffer administration routines.					*/
+/*  Manage row properties.						*/
 /*									*/
 /************************************************************************/
 
@@ -8,10 +8,13 @@
 
 #   include	<stdlib.h>
 
-#   include	<appDebugon.h>
-
 #   include	"docRowProperties.h"
+#   include	"docCellProperties.h"
+#   include	"docDocumentAttributeMap.h"
 #   include	"docPropVal.h"
+#   include	<utilPropMask.h>
+
+#   include	<appDebugon.h>
 
 /************************************************************************/
 
@@ -81,17 +84,16 @@ void docCleanRowProperties(	RowProperties *	rp )
 void docInitRowProperties(	RowProperties *	rp )
     {
     rp->rpCellCount= 0;
-    rp->rpCells= (CellProperties *)0;
+    rp->rpCells= (struct CellProperties *)0;
 
     rp->rpHalfGapWidthTwips= 0;
-    rp->rpHeightTwips= 0;
     rp->rpLeftIndentTwips= 0;
+    rp->rpHeightTwips= 0;
 
-    rp->rpIsTableHeader= 0;
-    rp->rpKeepOnOnePage= 0;
-    rp->rp_Keepfollow= 0;
-    rp->rpAutofit= 0;
-    rp->rpRToL= 0;
+    /**/
+    rp->rpRowNumber= -1;
+    rp->rpRowBandNumber= -1;
+    rp->rpRowStyle= -1;
 
     rp->rpTopBorderNumber= 0;
     rp->rpBottomBorderNumber= 0;
@@ -105,20 +107,20 @@ void docInitRowProperties(	RowProperties *	rp )
 
     rp->rpAlignment= DOCthaLEFT;
 
+    rp->rpIsTableHeader= 0;
+    rp->rpKeepOnOnePage= 0;
+    rp->rp_Keepfollow= 0;
+    rp->rpAutofit= 0;
+    rp->rpRToL= 0;
+
     /**/
     rp->rpPreferredWidth= 0;
-    rp->rpPreferredWidthUnit= TRautoNONE;
 
     /**/
-    rp->rpLeftDefaultCellSpacing= 0;
-    rp->rpRightDefaultCellSpacing= 0;
-    rp->rpTopDefaultCellSpacing= 0;
-    rp->rpBottomDefaultCellSpacing= 0;
-
-    rp->rpLeftDefaultCellSpacingUnit= TRautoNONE;
-    rp->rpRightDefaultCellSpacingUnit= TRautoNONE;
-    rp->rpTopDefaultCellSpacingUnit= TRautoNONE;
-    rp->rpBottomDefaultCellSpacingUnit= TRautoNONE;
+    rp->rpTopCellSpacing= 0;
+    rp->rpLeftCellSpacing= 0;
+    rp->rpRightCellSpacing= 0;
+    rp->rpBottomCellSpacing= 0;
 
     /**/
     rp->rpLeftCellPadding= 0;
@@ -126,25 +128,38 @@ void docInitRowProperties(	RowProperties *	rp )
     rp->rpTopCellPadding= 0;
     rp->rpBottomCellPadding= 0;
 
-    rp->rpLeftCellPaddingUnit= TRautoNONE;
-    rp->rpRightCellPaddingUnit= TRautoNONE;
-    rp->rpTopCellPaddingUnit= TRautoNONE;
-    rp->rpBottomCellPaddingUnit= TRautoNONE;
-
     /**/
     rp->rpCellWidthBefore= 0;
     rp->rpCellWidthAfter= 0;
 
+    rp->rpAuthor= -1;
+
+    rp->rpPreferredWidthUnit= TRautoNONE;
+
+    rp->rpTopCellSpacingUnit= TRautoNONE;
+    rp->rpLeftCellSpacingUnit= TRautoNONE;
+    rp->rpRightCellSpacingUnit= TRautoNONE;
+    rp->rpBottomCellSpacingUnit= TRautoNONE;
+
+    rp->rpTopCellPaddingUnit= TRautoNONE;
+    rp->rpLeftCellPaddingUnit= TRautoNONE;
+    rp->rpRightCellPaddingUnit= TRautoNONE;
+    rp->rpBottomCellPaddingUnit= TRautoNONE;
+
     rp->rpCellWidthBeforeUnit= TRautoNONE;
     rp->rpCellWidthAfterUnit= TRautoNONE;
 
-    /**/
-    rp->rpRowNumber= -1;
-    rp->rpRowBandNumber= -1;
-    rp->rpRowStyle= -1;
+    rp->rpAutoformatBorders= 0;
+    rp->rpAutoformatShading= 0;
+    rp->rpAutoformatFont= 0;
+    rp->rpAutoformatColor= 0;
+    rp->rpAutoformatApplyBestFit= 0;
+    rp->rpAutoformatFirstRow= 0;
+    rp->rpAutoformatLastRow= 0;
+    rp->rpAutoformatFirstColumn= 0;
+    rp->rpAutoformatLastColumn= 0;
 
     rp->rpIsLastRow= 0;
-    rp->rpAuthor= -1;
 
     return;
     }
@@ -162,16 +177,19 @@ void docInitRowProperties(	RowProperties *	rp )
 
 int docInsertRowColumn(	RowProperties *			rp,
 			int				col,
-			int				shiftTail,
 			const CellProperties *		cp,
 			const DocumentAttributeMap *	dam )
     {
     int			i;
     CellProperties *	fresh;
-    int			shiftTailBy= 0;
+
+    CellProperties	sav= *cp; /* cp might be in same row */
+
+    if  ( col > rp->rpCellCount )
+	{ LLDEB(col,rp->rpCellCount); return -1;	}
 
     fresh= (CellProperties *)realloc( rp->rpCells,
-			(rp->rpCellCount+ 1)* sizeof(CellProperties) );
+			    (rp->rpCellCount+ 1)* sizeof(CellProperties) );
     if  ( ! fresh )
 	{ LXDEB(rp->rpCellCount,fresh); return -1;	}
     rp->rpCells= fresh;
@@ -179,19 +197,14 @@ int docInsertRowColumn(	RowProperties *			rp,
     if  ( col < 0 )
 	{ col= rp->rpCellCount;	}
 
-    if  ( col < rp->rpCellCount && shiftTail )
-	{
-	shiftTailBy= cp->cpRightBoundaryTwips- docColumnLeft( rp, col );
-	}
-
     for ( i= rp->rpCellCount; i > col; i-- )
 	{
-	docCopyCellProperties( fresh+ i, fresh+ i- 1, dam );
-	fresh[i].cpRightBoundaryTwips += shiftTailBy;
+	docCopyCellProperties( fresh+ i, fresh+ i- 1,
+					    (const DocumentAttributeMap *)0 );
 	}
 
     docInitCellProperties( fresh+ col );
-    docCopyCellProperties( fresh+ col, cp, dam );
+    docCopyCellProperties( fresh+ col, &sav, dam );
 
     rp->rpCellCount++;
 
@@ -208,145 +221,67 @@ int docRowPropertiesMakeColWider(	RowProperties *		rp,
 					int			col,
 					int			wider )
     {
-    int			i;
     CellProperties *	cp;
 
     if  ( col < 0 || col >= rp->rpCellCount )
 	{ LLDEB(col,rp->rpCellCount); return -1;	}
 
     cp= rp->rpCells+ col;
-    for ( i= col; i < rp->rpCellCount; cp++, i++ )
-	{ cp->cpRightBoundaryTwips += wider;	}
+    cp->cpWide += wider;
 
     return 0;
     }
 
 /************************************************************************/
 /*									*/
-/*  Set the width of a range of columns. Space might have been stolen	*/
-/*  from a victim column that has become narrower. Also adjust its	*/
-/*  width.								*/
+/*  Calculate the left and right hand hand side coordinates.		*/
 /*									*/
 /************************************************************************/
 
-void docRowPropertiesSetWidth(		RowProperties *		rp,
-					int			col0,
-					int			col1,
-					int			wide,
-					int			victim,
-					int			victimWide )
-    {
-    CellProperties *	cp;
-    int			col;
-
-    int			ox0= rp->rpLeftIndentTwips;
-    int			nx0= rp->rpLeftIndentTwips;
-
-    cp= rp->rpCells;
-    for ( col= 0; col < col0; cp++, col++ )
-	{
-	int		ox1= cp->cpRightBoundaryTwips;
-	int		w= cp->cpRightBoundaryTwips- ox0;
-
-	if  ( col == victim )
-	    { w= victimWide;	}
-
-	ox0= ox1;
-	nx0= cp->cpRightBoundaryTwips= nx0+ w;
-	}
-
-    for ( col= col0; col <= col1; cp++, col++ )
-	{
-	int		ox1= cp->cpRightBoundaryTwips;
-
-	ox0= ox1;
-	nx0= cp->cpRightBoundaryTwips= nx0+ wide;
-	}
-
-    for ( col= col1+ 1; col < rp->rpCellCount; cp++, col++ )
-	{
-	int		ox1= cp->cpRightBoundaryTwips;
-	int		w= cp->cpRightBoundaryTwips- ox0;
-
-	if  ( col == victim )
-	    { w= victimWide;	}
-
-	ox0= ox1;
-	nx0= cp->cpRightBoundaryTwips= nx0+ w;
-	}
-
-    return;
-    }
-
-/************************************************************************/
-/*									*/
-/*  Calculate the width of a column.					*/
-/*  Calculate the left hand side coordinate.				*/
-/*  Calculate the right hand side coordinate.				*/
-/*									*/
-/************************************************************************/
-
-int docColumnWidth(		const RowProperties *	rp,
+int docRowGetColumnX(		int *			pX0,
+				int *			pX1,
+				int *			pX11,
+				int *			pColspan,
+				const RowProperties *	rp,
 				int			col )
     {
-    int		left;
+    int		x0= rp->rpLeftIndentTwips;
+    int		x1;
+    int		x11;
+    int		colspan= 1;
+    int		i;
 
     if  ( col < 0 || col >= rp->rpCellCount )
 	{ LLDEB(col,rp->rpCellCount); return -1;	}
 
-    if  ( col == 0 )
-	{ left= rp->rpLeftIndentTwips;				}
-    else{ left= rp->rpCells[col-1].cpRightBoundaryTwips;	}
+    for ( i= 0; i < col; i++ )
+	{ x0 += rp->rpCells[i].cpWide;	}
 
-    return rp->rpCells[col].cpRightBoundaryTwips- left;
-    }
+    x1= x0+ rp->rpCells[col].cpWide;
+    x11= x1;
 
-int docColumnLeft(		const RowProperties *	rp,
-				int			col )
-    {
-    if  ( col == 0 )
-	{ return rp->rpLeftIndentTwips;			}
-    else{
-	if  ( col <= 0 || col > rp->rpCellCount )
-	    { LLDEB(col,rp->rpCellCount); return -1;	}
-
-	return rp->rpCells[col-1].cpRightBoundaryTwips;
-	}
-    }
-
-int docColumnRight(		const RowProperties *	rp,
-				int			col )
-    {
-    if  ( col < 0 || col >= rp->rpCellCount )
-	{ LLDEB(col,rp->rpCellCount); return -1;	}
-
-    return rp->rpCells[col].cpRightBoundaryTwips;
-    }
-
-int docCellRight(	int *			pColspan,
-			const RowProperties *	rp,
-			int			col )
-    {
-    int				colspan= 1;
-    const CellProperties *	cp= rp->rpCells+ col;
-    int				right= cp->cpRightBoundaryTwips;
-
-    if  ( cp->cpHorizontalMerge == CELLmergeHEAD )
+    if  ( rp->rpCells[col].cpHorizontalMerge == CELLmergeHEAD )
 	{
-	int		c;
-
-	for ( c= col+ 1; c < rp->rpCellCount; c++ )
+	for ( i= col+ 1; i < rp->rpCellCount; i++ )
 	    {
-	    if  ( rp->rpCells[c].cpHorizontalMerge != CELLmergeFOLLOW )
+	    if  ( rp->rpCells[i].cpHorizontalMerge != CELLmergeFOLLOW )
 		{ break;	}
 
+	    x11 += rp->rpCells[i].cpWide;
 	    colspan++;
-	    right= rp->rpCells[c].cpRightBoundaryTwips;
 	    }
 	}
 
-    *pColspan= colspan;
-    return right;
+    if  ( pX0 )
+	{ *pX0= x0;	}
+    if  ( pX1 )
+	{ *pX1= x1;	}
+    if  ( pX11 )
+	{ *pX11= x11;	}
+    if  ( pColspan )
+	{ *pColspan= colspan;	}
+
+    return 0;
     }
 
 /************************************************************************/
@@ -357,70 +292,22 @@ int docCellRight(	int *			pColspan,
 
 int docDeleteColumnsFromRow(	RowProperties *		rp,
 				int			col0,
-				int			count,
-				int			shiftTail )
+				int			count )
     {
-    int		col1= col0+ count- 1;
-    int		shiftBy= 0;
     int		col;
 
     if  ( col0+ count > rp->rpCellCount )
 	{ LLLDEB(col0,count,rp->rpCellCount); return -1;	}
 
-    if  ( shiftTail )
-	{
-	int	left= docColumnLeft( rp, col0 );
-
-	shiftBy= rp->rpCells[col1].cpRightBoundaryTwips- left;
-	}
-
     rp->rpCellCount -= count;
 
     for ( col= col0; col < rp->rpCellCount; col++ )
 	{
-	docCleanCellProperties( &(rp->rpCells[col]) );
+	/*docCleanCellProperties( &(rp->rpCells[col]) );*/
 	rp->rpCells[col]= rp->rpCells[col+ count];
-	rp->rpCells[col].cpRightBoundaryTwips -= shiftBy;
 	}
 
     return 0;
-    }
-
-/************************************************************************/
-
-void docRowMaskToCellMask(	PropertyMask *		cellMask,
-				const PropertyMask *	rowMask )
-    {
-    utilPropMaskClear( cellMask );
-
-    if  ( PROPmaskISSET( rowMask, RPpropCELL_PROPS ) )
-	{ utilPropMaskFill( cellMask, CLprop_COUNT );	}
-
-    if  ( PROPmaskISSET( rowMask, RPpropCELL_LAYOUT ) )
-	{ PROPmaskADD( cellMask, CLpropCELLX );	}
-    else{ PROPmaskUNSET( cellMask, CLpropCELLX );	}
-
-    return;
-    }
-
-void docRowMaskApplyCellMask(	PropertyMask *		rowMask,
-				const PropertyMask *	cellMask )
-    {
-    if  ( cellMask && ! utilPropMaskIsEmpty( cellMask ) )
-	{
-	PropertyMask	cellMaskCopy= *cellMask;
-
-	if  ( PROPmaskISSET( &cellMaskCopy, CLpropCELLX ) )
-	    {
-	    PROPmaskADD( rowMask, RPpropCELL_LAYOUT );
-	    PROPmaskUNSET( &cellMaskCopy, CLpropCELLX );
-	    }
-
-	if  ( ! utilPropMaskIsEmpty( &cellMaskCopy ) )
-	    { PROPmaskADD( rowMask, RPpropCELL_PROPS );	}
-	}
-
-    return;
     }
 
 /************************************************************************/
@@ -429,42 +316,76 @@ void docRowMaskApplyCellMask(	PropertyMask *		rowMask,
 /*									*/
 /************************************************************************/
 
-void docRowPropertyDifference(	PropertyMask *			pRpDifPask,
+int docRowPropertyDifference(	PropertyMask *			pRpDifMask,
+				PropertyMask *			pCpDifMask,
 				const RowProperties *		rp1,
 				const PropertyMask *		rpCmpMask,
+				const PropertyMask *		cpCmpMask,
 				const RowProperties *		rp2,
+				const int			colTo,
+				const int			colCount,
 				const DocumentAttributeMap *	dam )
     {
     int				p;
-    PropertyMask		rpDifMask;
+    const int			colUpto= colTo+ colCount;
+
+    PropertyMask	rpDifMask;
+    PropertyMask	cpDifMask;
 
     utilPropMaskClear( &rpDifMask );
+    utilPropMaskClear( &cpDifMask );
 
-    if  ( PROPmaskISSET( rpCmpMask, RPpropCELL_LAYOUT )	||
-	  PROPmaskISSET( rpCmpMask, RPpropCELL_PROPS )	)
+    if  ( colTo < 0 || colTo > rp1->rpCellCount )
+	{ LDEB(colTo); return -1;	}
+    if  ( colCount > rp2->rpCellCount )
+	{ LLDEB(colCount,rp2->rpCellCount); return -1; }
+
+    if  ( ! PROPmaskISSET( rpCmpMask, RPprop_CELL_PROPS ) )
+	{ cpCmpMask= (const PropertyMask *)0;	}
+    else{
+	if  ( ! cpCmpMask )
+	    { XDEB(cpCmpMask); return -1;	}
+	}
+    if  ( cpCmpMask && utilPropMaskIsEmpty( cpCmpMask ) )
+	{ cpCmpMask= (const PropertyMask *)0;	}
+
+    if  ( PROPmaskISSET( rpCmpMask, RPprop_CELL_COUNT )	)
+	{
+	if  ( rp1->rpCellCount != colUpto )
+	    { PROPmaskADD( &rpDifMask, RPprop_CELL_COUNT );	}
+	}
+    else{
+	if  ( colUpto > rp1->rpCellCount )
+	    { LLDEB(colUpto,rp1->rpCellCount); return -1;	}
+	}
+
+    if  ( cpCmpMask )
 	{
 	int			col;
 	const CellProperties *	cp1;
 	const CellProperties *	cp2;
 
-	if  ( rp1->rpCellCount != rp2->rpCellCount )
-	    {
-	    PROPmaskADD( &rpDifMask, RPpropCELL_LAYOUT );
-	    PROPmaskADD( &rpDifMask, RPpropCELL_PROPS );
-	    }
+	int			upto= colUpto;
 
-	cp1= rp1->rpCells;
+	/* Do not compare where ther is no overlap: sure to be different */
+	if  ( upto > rp1->rpCellCount )
+	    { upto=  rp1->rpCellCount;	}
+
+	cp1= rp1->rpCells+ colTo;
 	cp2= rp2->rpCells;
-	for ( col= 0; col < rp1->rpCellCount && col < rp2->rpCellCount; cp1++, cp2++, col++ )
+	for ( col= colTo; col < upto; cp1++, cp2++, col++ )
 	    {
-	    PropertyMask	cpCmpMask;
-	    PropertyMask	cpDifMask;
+	    PropertyMask	cp_DifMask;
 
-	    docRowMaskToCellMask( &cpCmpMask, rpCmpMask );
-	    utilPropMaskClear( &cpDifMask );
+	    utilPropMaskClear( &cp_DifMask );
 
-	    docCellPropertyDifference( &cpDifMask, cp1, &cpCmpMask, cp2, dam );
-	    docRowMaskApplyCellMask( &rpDifMask, &cpDifMask );
+	    docCellPropertyDifference( &cp_DifMask, cp1, cpCmpMask, cp2, dam );
+
+	    if  ( ! utilPropMaskIsEmpty( &cp_DifMask ) )
+		{
+		PROPmaskADD( &rpDifMask, RPprop_CELL_PROPS );
+		utilPropMaskOr( &cpDifMask, &cpDifMask, &cp_DifMask );
+		}
 	    }
 	}
 
@@ -522,75 +443,12 @@ void docRowPropertyDifference(	PropertyMask *			pRpDifPask,
 	    { PROPmaskADD( &rpDifMask, RPpropFRAME );	}
 	}
 
-    *pRpDifPask= rpDifMask; return;
-    }
-
-/************************************************************************/
-/*									*/
-/*  Copy row properties. As this routine is not called very often,	*/
-/*  just call the 'update' routine.					*/
-/*									*/
-/************************************************************************/
-
-int docCopyRowProperties(	RowProperties *			rpTo,
-				const RowProperties *		rpFrom,
-				const DocumentAttributeMap *	dam )
-    {
-    PropertyMask		rpDoneMask;
-    PropertyMask		rpSetMask;
-
-    utilPropMaskClear( &rpDoneMask );
-    utilPropMaskClear( &rpSetMask );
-
-    utilPropMaskFill( &rpSetMask, RPprop_FULL_COUNT );
-
-    if  ( docUpdRowProperties( &rpDoneMask, rpTo, &rpSetMask, rpFrom, dam ) )
-	{ LDEB(1); return -1;	}
+    if  ( pRpDifMask )
+	{ utilPropMaskOr( pRpDifMask, pRpDifMask, &rpDifMask );	}
+    if  ( pCpDifMask )
+	{ utilPropMaskOr( pCpDifMask, pCpDifMask, &cpDifMask );	}
 
     return 0;
-    }
-
-/************************************************************************/
-/*									*/
-/*  1)  Are the columns in two RowProperties 'the same' (Do they	*/
-/*	align?)								*/
-/*  2)  All internal borders equal?					*/
-/*  3)  All column properties identical?				*/
-/*									*/
-/************************************************************************/
-
-/*  1  */
-int docApproximatelyAlignedColumns(	const RowProperties *	rp1,
-					const RowProperties *	rp2 )
-    {
-    CellProperties *	cp1;
-    CellProperties *	cp2;
-    int			i;
-
-    const int		D= 40;
-
-    if  ( rp1->rpCellCount != rp2->rpCellCount )
-	{ return 0;	}
-
-    /* No!
-    if  ( rp1->rpHalfGapWidthTwips != rp2->rpHalfGapWidthTwips )
-	{ return 0;	}
-    */
-
-    if  ( rp1->rpLeftIndentTwips > rp2->rpLeftIndentTwips+ D	||
-	  rp1->rpLeftIndentTwips < rp2->rpLeftIndentTwips- D	)
-	{ return 0;	}
-
-    cp1= rp1->rpCells;
-    cp2= rp2->rpCells;
-    for ( i= 0; i < rp1->rpCellCount; cp2++, cp1++, i++ )
-	{
-	if  ( cp1->cpRightBoundaryTwips > cp2->cpRightBoundaryTwips+ D	||
-	      cp1->cpRightBoundaryTwips < cp2->cpRightBoundaryTwips- D	)
-	    { return 0;	}
-	}
-
-    return 1;
     }
 
 /************************************************************************/
@@ -599,74 +457,105 @@ int docApproximatelyAlignedColumns(	const RowProperties *	rp1,
 /*									*/
 /************************************************************************/
 
-int docUpdRowProperties(	PropertyMask *			pRpDonePask,
+int docUpdRowProperties(	PropertyMask *			pRpDoneMask,
+				PropertyMask *			pCpDoneMask,
 				RowProperties *			rpTo,
 				const PropertyMask *		rpSetMask,
-				const RowProperties *		rpFrom,
+				const PropertyMask *		cpSetMask,
+				const RowProperties *		rpSet,
+				const int			colTo,
+				const int			colCount,
 				const DocumentAttributeMap *	dam )
     {
-    int			p;
+    int				p;
+    const int			colUpto= colTo+ colCount;
+    const int			oldUpto= rpTo->rpCellCount;
+
     PropertyMask	rpDoneMask;
-
-    int			updCellLayout;
-    int			updCellProps;
-
-    updCellLayout= PROPmaskISSET( rpSetMask, RPpropCELL_LAYOUT );
-    updCellProps= PROPmaskISSET( rpSetMask, RPpropCELL_PROPS );
+    PropertyMask	cpDoneMask;
 
     utilPropMaskClear( &rpDoneMask );
+    utilPropMaskClear( &cpDoneMask );
 
-    if  ( updCellLayout || updCellProps )
+    if  ( colTo < 0 || colTo > rpTo->rpCellCount )
+	{ LDEB(colTo); return -1;	}
+
+    if  ( ! PROPmaskISSET( rpSetMask, RPprop_CELL_PROPS ) )
+	{ cpSetMask= (const PropertyMask *)0;	}
+    else{
+	if  ( ! cpSetMask )
+	    { XDEB(cpSetMask); return -1;	}
+	}
+    if  ( cpSetMask && utilPropMaskIsEmpty( cpSetMask ) )
+	{ cpSetMask= (const PropertyMask *)0;	}
+
+    if  ( PROPmaskISSET( rpSetMask, RPprop_CELL_COUNT )	)
+	{
+	if  ( rpTo->rpCellCount != colUpto )
+	    {
+	    if  ( rpTo->rpCellCount > colUpto )
+		{ rpTo->rpCellCount=  colUpto;	}
+
+	    if  ( rpTo->rpCellCount < colUpto )
+		{
+		CellProperties *	fresh;
+
+		if  ( colCount > rpSet->rpCellCount )
+		    { LLDEB(colCount,rpSet->rpCellCount); return -1; }
+
+		fresh= realloc( rpTo->rpCells,
+					    colUpto* sizeof(CellProperties) );
+		if  ( ! fresh )
+		    { LXDEB(colUpto,fresh); return -1;	}
+		rpTo->rpCells= fresh;
+
+		while( rpTo->rpCellCount < colUpto )
+		    {
+		    rpTo->rpCells[rpTo->rpCellCount]=
+				    rpSet->rpCells[rpTo->rpCellCount- colTo];
+		    rpTo->rpCellCount++;
+		    }
+		}
+
+	    PROPmaskADD( &rpDoneMask, RPprop_CELL_COUNT );
+	    }
+	}
+    else{
+	if  ( colUpto > rpTo->rpCellCount )
+	    { LLDEB(colUpto,rpTo->rpCellCount); return -1;	}
+	}
+
+    if  ( cpSetMask )
 	{
 	int			col;
 	CellProperties *	cpTo;
-	const CellProperties *	cpFrom;
+	const CellProperties *	cpSet;
 
-	if  ( updCellLayout )
+	int			upto= colUpto;
+
+	if  ( colCount > rpSet->rpCellCount )
+	    { LLDEB(colCount,rpSet->rpCellCount); return -1; }
+
+	/* Do not compare what we just copied: sure to be equal */
+	if  ( upto > oldUpto )
+	    { upto=  oldUpto;	}
+
+	cpTo= rpTo->rpCells+ colTo;
+	cpSet= rpSet->rpCells;
+	for ( col= colTo; col < upto; cpTo++, cpSet++, col++ )
 	    {
-	    while( rpTo->rpCellCount > rpFrom->rpCellCount )
-		{
-		docCleanCellProperties( &(rpTo->rpCells[rpTo->rpCellCount-1]) );
-		PROPmaskADD( &rpDoneMask, RPpropCELL_LAYOUT );
-		if  ( updCellProps )
-		    { PROPmaskADD( &rpDoneMask, RPpropCELL_PROPS );	}
-		rpTo->rpCellCount--;
-		}
-	    }
+	    PropertyMask	cp_DoneMask;
 
-	cpTo= rpTo->rpCells;
-	cpFrom= rpFrom->rpCells;
-	for ( col= 0;
-	      col < rpTo->rpCellCount && col < rpFrom->rpCellCount;
-	      cpTo++, cpFrom++, col++ )
-	    {
-	    PropertyMask	cpSetMask;
-	    PropertyMask	cpDoneMask;
+	    utilPropMaskClear( &cp_DoneMask );
 
-	    docRowMaskToCellMask( &cpSetMask, rpSetMask );
-	    utilPropMaskClear( &cpDoneMask );
-
-	    if  ( docUpdCellProperties( &cpDoneMask, cpTo,
-						&cpSetMask, cpFrom, dam ) )
+	    if  ( docUpdCellProperties( &cp_DoneMask, cpTo,
+						cpSetMask, cpSet, dam ) )
 		{ LDEB(1); return -1;	}
 
-	    docRowMaskApplyCellMask( &rpDoneMask, &cpDoneMask );
-	    }
-
-	if  ( updCellLayout )
-	    {
-	    while( rpTo->rpCellCount < rpFrom->rpCellCount )
+	    if  ( ! utilPropMaskIsEmpty( &cp_DoneMask ) )
 		{
-		const int	shiftTail= 0; /* at end: irrelevant */
-
-		if  ( docInsertRowColumn( rpTo, rpTo->rpCellCount, shiftTail,
-								cpFrom, dam ) )
-		    { LDEB(rpTo->rpCellCount); return -1;	}
-
-		PROPmaskADD( &rpDoneMask, RPpropCELL_LAYOUT );
-		if  ( updCellProps )
-		    { PROPmaskADD( &rpDoneMask, RPpropCELL_PROPS );	}
-		cpFrom++;
+		PROPmaskADD( &rpDoneMask, RPprop_CELL_PROPS );
+		utilPropMaskOr( &cpDoneMask, &cpDoneMask, &cp_DoneMask );
 		}
 	    }
 	}
@@ -678,7 +567,7 @@ int docUpdRowProperties(	PropertyMask *			pRpDonePask,
 	if  ( PROPmaskISSET( rpSetMask, prop ) )
 	    {
 	    int		valt= docGetRowProperty( rpTo, prop );
-	    int		valf= docGetRowProperty( rpFrom, prop );
+	    int		valf= docGetRowProperty( rpSet, prop );
 
 	    if  ( valt != valf )
 		{
@@ -697,7 +586,7 @@ int docUpdRowProperties(	PropertyMask *			pRpDonePask,
 	if  ( PROPmaskISSET( rpSetMask, prop ) )
 	    {
 	    int		valt= docGetRowProperty( rpTo, prop );
-	    int		valf= docGetRowProperty( rpFrom, prop );
+	    int		valf= docGetRowProperty( rpSet, prop );
 
 	    if  ( valf >= 0 && dam && dam->damBorderMap )
 		{ valf= dam->damBorderMap[valf];	}
@@ -714,7 +603,7 @@ int docUpdRowProperties(	PropertyMask *			pRpDonePask,
 
     if  ( PROPmaskISSET( rpSetMask, RPpropSHADING ) )
 	{
-	int	fromNumber= rpFrom->rpShadingNumber;
+	int	fromNumber= rpSet->rpShadingNumber;
 
 	if  ( fromNumber >= 0 && dam && dam->damShadingMap )
 	    { fromNumber= dam->damShadingMap[fromNumber];	}
@@ -728,7 +617,7 @@ int docUpdRowProperties(	PropertyMask *			pRpDonePask,
 
     if  ( PROPmaskISSET( rpSetMask, RPpropFRAME ) )
 	{
-	int	fromNumber= rpFrom->rpFrameNumber;
+	int	fromNumber= rpSet->rpFrameNumber;
 
 	if  ( fromNumber >= 0 && dam && dam->damFrameMap )
 	    { fromNumber= dam->damFrameMap[fromNumber];	}
@@ -740,8 +629,60 @@ int docUpdRowProperties(	PropertyMask *			pRpDonePask,
 	    }
 	}
 
-    if  ( pRpDonePask )
-	{ utilPropMaskOr( pRpDonePask, pRpDonePask, &rpDoneMask );	}
+    if  ( pRpDoneMask )
+	{ utilPropMaskOr( pRpDoneMask, pRpDoneMask, &rpDoneMask );	}
+    if  ( pCpDoneMask )
+	{ utilPropMaskOr( pCpDoneMask, pCpDoneMask, &cpDoneMask );	}
+
+    return 0;
+    }
+
+/************************************************************************/
+/*									*/
+/*  Copy row properties. As this routine is not called very often,	*/
+/*  use part of the 'update' mechanism.					*/
+/*									*/
+/************************************************************************/
+
+int docCopyRowProperties(	RowProperties *			rpTo,
+				const RowProperties *		rpFrom,
+				const DocumentAttributeMap *	dam )
+    {
+    int			col;
+    int			p;
+
+    CellProperties *	fresh;
+
+    fresh= realloc( rpTo->rpCells,
+			    rpFrom->rpCellCount* sizeof(CellProperties) );
+    if  ( ! fresh )
+	{ LXDEB(rpFrom->rpCellCount,fresh); return -1;	}
+    rpTo->rpCells= fresh;
+    rpTo->rpCellCount= rpFrom->rpCellCount;
+
+    for ( col= 0; col < rpFrom->rpCellCount; col++ )
+	{ fresh[col]= rpFrom->rpCells[col];	}
+
+    for ( p= 0; p < DocRowIntPropertyCount; p++ )
+	{
+	int	prop= DocRowIntProperties[p];
+	int	val= docGetRowProperty( rpFrom, prop );
+
+	if  ( docSetRowProperty( rpTo, prop, val ) )
+	    { LLDEB(prop,val);	}
+	}
+
+    for ( p= 0; p < DocRowBorderPropertyCount; p++ )
+	{
+	int	prop= DocRowIntProperties[p];
+	int	val= docGetRowProperty( rpFrom, prop );
+
+	if  ( docSetRowProperty( rpTo, prop, val ) )
+	    { LLDEB(prop,val);	}
+	}
+
+    rpTo->rpShadingNumber= rpFrom->rpShadingNumber;
+    rpTo->rpFrameNumber= rpFrom->rpFrameNumber;
 
     return 0;
     }
@@ -763,24 +704,22 @@ int docEqualWidthColumns(		RowProperties *		rp,
 
     CellProperties		cp;
 
-    const int			shiftTail= 0; /* at end: irrelevant */
-
     docInitCellProperties( &cp );
+    cp.cpWide= wide/ columns;
 
     rp->rpHalfGapWidthTwips= 5* fontHalfPoints;
     rp->rpLeftIndentTwips=  -5* fontHalfPoints;
 
     for ( col= 0; col < columns; col++ )
 	{
-	cp.cpRightBoundaryTwips= ( ( col+ 1 )* wide )/ columns;
-
-	if  ( docInsertRowColumn( rp, col, shiftTail, &cp,
+	if  ( docInsertRowColumn( rp, col, &cp,
 					(const DocumentAttributeMap *)0 ) )
 	    { LDEB(col); rval= -1; goto ready;	}
 	}
 
   ready:
-    docCleanCellProperties( &cp );
+
+    /*docCleanCellProperties( &cp );*/
 
     return rval;
     }
@@ -860,29 +799,29 @@ int docSetRowProperty(		RowProperties *		rp,
 
 	/**/
 	case RPpropTRSPDL:
-	    rp->rpLeftDefaultCellSpacing= arg;
+	    rp->rpLeftCellSpacing= arg;
 	    break;
 	case RPpropTRSPDR:
-	    rp->rpRightDefaultCellSpacing= arg;
+	    rp->rpRightCellSpacing= arg;
 	    break;
 	case RPpropTRSPDT:
-	    rp->rpTopDefaultCellSpacing= arg;
+	    rp->rpTopCellSpacing= arg;
 	    break;
 	case RPpropTRSPDB:
-	    rp->rpBottomDefaultCellSpacing= arg;
+	    rp->rpBottomCellSpacing= arg;
 	    break;
 
 	case RPpropTRSPDFL:
-	    rp->rpLeftDefaultCellSpacingUnit= arg;
+	    rp->rpLeftCellSpacingUnit= arg;
 	    break;
 	case RPpropTRSPDFR:
-	    rp->rpRightDefaultCellSpacingUnit= arg;
+	    rp->rpRightCellSpacingUnit= arg;
 	    break;
 	case RPpropTRSPDFT:
-	    rp->rpTopDefaultCellSpacingUnit= arg;
+	    rp->rpTopCellSpacingUnit= arg;
 	    break;
 	case RPpropTRSPDFB:
-	    rp->rpBottomDefaultCellSpacingUnit= arg;
+	    rp->rpBottomCellSpacingUnit= arg;
 	    break;
 
 	/**/
@@ -973,8 +912,8 @@ int docSetRowProperty(		RowProperties *		rp,
 	    rp->rpAuthor= arg;
 	    break;
 
-	case RPpropCELL_LAYOUT:
-	case RPpropCELL_PROPS:
+	case RPprop_CELL_COUNT:
+	case RPprop_CELL_PROPS:
 	default:
 	    LDEB(prop); return -1;
 	}
@@ -989,191 +928,157 @@ int docGetRowProperty(		const RowProperties *	rp,
 	{
 	case RPpropGAP_WIDTH:
 	    return rp->rpHalfGapWidthTwips;
-	    break;
 
 	case RPpropLEFT_INDENT:
 	    return rp->rpLeftIndentTwips;
-	    break;
 
 	case RPpropHEIGHT:
 	    return rp->rpHeightTwips;
-	    break;
 
 	case RPpropTOP_BORDER:
 	    return rp->rpTopBorderNumber;
-	    break;
 	case RPpropBOTTOM_BORDER:
 	    return rp->rpBottomBorderNumber;
-	    break;
 	case RPpropLEFT_BORDER:
 	    return rp->rpLeftBorderNumber;
-	    break;
 	case RPpropRIGHT_BORDER:
 	    return rp->rpRightBorderNumber;
-	    break;
 	case RPpropHORIZ_BORDER:
 	    return rp->rpHorizontalBorderNumber;
-	    break;
 	case RPpropVERT_BORDER:
 	    return rp->rpVerticalBorderNumber;
-	    break;
 
 	case RPpropSHADING:
 	    return rp->rpShadingNumber;
-	    break;
 	case RPpropFRAME:
 	    return rp->rpFrameNumber;
-	    break;
 
 	/**/
 	case RPpropALIGNMENT:
 	    return rp->rpAlignment;
-	    break;
 
 	case RPpropIS_TABLE_HEADER:
 	    return rp->rpIsTableHeader;
-	    break;
 	case RPpropKEEP_ON_ONE_PAGE:
 	    return rp->rpKeepOnOnePage;
-	    break;
 	case RPprop_KEEPFOLLOW:
 	    return rp->rp_Keepfollow;
-	    break;
 	case RPpropAUTOFIT:
 	    return rp->rpAutofit;
-	    break;
 	case RPpropRTOL:
 	    return rp->rpRToL;
-	    break;
 
 	/**/
 	case RPpropTRW_WIDTH:
 	    return rp->rpPreferredWidth;
-	    break;
 	case RPpropTRFTS_WIDTH:
 	    return rp->rpPreferredWidthUnit;
-	    break;
 
 	/**/
 	case RPpropTRSPDL:
-	    return rp->rpLeftDefaultCellSpacing;
-	    break;
+	    return rp->rpLeftCellSpacing;
 	case RPpropTRSPDR:
-	    return rp->rpRightDefaultCellSpacing;
-	    break;
+	    return rp->rpRightCellSpacing;
 	case RPpropTRSPDT:
-	    return rp->rpTopDefaultCellSpacing;
-	    break;
+	    return rp->rpTopCellSpacing;
 	case RPpropTRSPDB:
-	    return rp->rpBottomDefaultCellSpacing;
-	    break;
+	    return rp->rpBottomCellSpacing;
 
 	case RPpropTRSPDFL:
-	    return rp->rpLeftDefaultCellSpacingUnit;
-	    break;
+	    return rp->rpLeftCellSpacingUnit;
 	case RPpropTRSPDFR:
-	    return rp->rpRightDefaultCellSpacingUnit;
-	    break;
+	    return rp->rpRightCellSpacingUnit;
 	case RPpropTRSPDFT:
-	    return rp->rpTopDefaultCellSpacingUnit;
-	    break;
+	    return rp->rpTopCellSpacingUnit;
 	case RPpropTRSPDFB:
-	    return rp->rpBottomDefaultCellSpacingUnit;
-	    break;
+	    return rp->rpBottomCellSpacingUnit;
 
 	/**/
 	case RPpropTRPADDL:
 	    return rp->rpLeftCellPadding;
-	    break;
 	case RPpropTRPADDR:
 	    return rp->rpRightCellPadding;
-	    break;
 	case RPpropTRPADDT:
 	    return rp->rpTopCellPadding;
-	    break;
 	case RPpropTRPADDB:
 	    return rp->rpBottomCellPadding;
-	    break;
 
 	case RPpropTRPADDFL:
 	    return rp->rpLeftCellPaddingUnit;
-	    break;
 	case RPpropTRPADDFR:
 	    return rp->rpRightCellPaddingUnit;
-	    break;
 	case RPpropTRPADDFT:
 	    return rp->rpTopCellPaddingUnit;
-	    break;
 	case RPpropTRPADDFB:
 	    return rp->rpBottomCellPaddingUnit;
-	    break;
 
 	/**/
 	case RPpropTRW_WIDTHB:
 	    return rp->rpCellWidthBefore;
-	    break;
 	case RPpropTRW_WIDTHA:
 	    return rp->rpCellWidthAfter;
-	    break;
 
 	case RPpropTRFTS_WIDTHB:
 	    return rp->rpCellWidthBeforeUnit;
-	    break;
 	case RPpropTRFTS_WIDTHA:
 	    return rp->rpCellWidthAfterUnit;
-	    break;
 
 	case RPpropAUTOFORMAT_BORDERS:
 	    return rp->rpAutoformatBorders;
-	    break;
 	case RPpropAUTOFORMAT_SHADING:
 	    return rp->rpAutoformatShading;
-	    break;
 	case RPpropAUTOFORMAT_FONT:
 	    return rp->rpAutoformatFont;
-	    break;
 	case RPpropAUTOFORMAT_COLOR:
 	    return rp->rpAutoformatColor;
-	    break;
 	case RPpropAUTOFORMAT_APPLY_BEST_FIT:
 	    return rp->rpAutoformatApplyBestFit;
-	    break;
 	case RPpropAUTOFORMAT_FIRST_ROW:
 	    return rp->rpAutoformatFirstRow;
-	    break;
 	case RPpropAUTOFORMAT_LAST_ROW:
 	    return rp->rpAutoformatLastRow;
-	    break;
 	case RPpropAUTOFORMAT_FIRST_COLUMN:
 	    return rp->rpAutoformatFirstColumn;
-	    break;
 	case RPpropAUTOFORMAT_LAST_COLUMN:
 	    return rp->rpAutoformatLastColumn;
-	    break;
 
 	case RPpropROW_NUMBER:
 	    return rp->rpRowNumber;
-	    break;
 	case RPpropROW_BAND_NUMBER:
 	    return rp->rpRowBandNumber;
-	    break;
 	case RPpropROW_STYLE:
 	    return rp->rpRowStyle;
-	    break;
 
 	case RPpropIS_LAST_ROW:
 	    return rp->rpIsLastRow;
-	    break;
 
 	case RPpropTRAUTH:
 	    return rp->rpAuthor;
-	    break;
 
-	case RPpropCELL_LAYOUT:
-	case RPpropCELL_PROPS:
+	case RPprop_CELL_COUNT:
+	    return rp->rpCellCount;
+
+	case RPprop_CELL_PROPS:
 	default:
 	    LDEB(prop); return -1;
 	}
 
     return 0;
+    }
+
+void docRowPropertiesSetCellDefaults(
+				CellProperties *		cp,
+				const RowProperties *		rp )
+    {
+    cp->cpTopPadding= rp->rpTopCellPadding;
+    cp->cpLeftPadding= rp->rpLeftCellPadding;
+    cp->cpRightPadding= rp->rpRightCellPadding;
+    cp->cpBottomPadding= rp->rpBottomCellPadding;
+
+    cp->cpTopPaddingUnit= rp->rpTopCellPaddingUnit;
+    cp->cpLeftPaddingUnit= rp->rpLeftCellPaddingUnit;
+    cp->cpRightPaddingUnit= rp->rpRightCellPaddingUnit;
+    cp->cpBottomPaddingUnit= rp->rpBottomCellPaddingUnit;
+
+    return;
     }

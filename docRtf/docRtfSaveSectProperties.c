@@ -6,15 +6,20 @@
 
 #   include	"docRtfConfig.h"
 
-#   include	<stdio.h>
 #   include	<ctype.h>
-
-#   include	<appDebugon.h>
 
 #   include	<docTreeType.h>
 #   include	<docTreeNode.h>
 #   include	"docRtfWriterImpl.h"
 #   include	"docRtfTags.h"
+#   include	<docPropVal.h>
+#   include	<docDocumentProperties.h>
+#   include	<docSectProperties.h>
+#   include	<docBuf.h>
+#   include	<utilPropMask.h>
+
+#   include	<docDebug.h>
+#   include	<appDebugon.h>
 
 /************************************************************************/
 /*									*/
@@ -35,18 +40,18 @@ void docRtfSaveSectionProperties( RtfWriter *			rw,
     if  ( PROPmaskISSET( spMask, DGpropPAGE_HEIGHT ) )
 	{ docRtfWriteArgTag( rw, "pghsxn",	dg->dgPageHighTwips );	}
     if  ( PROPmaskISSET( spMask, DGpropLEFT_MARGIN ) )
-	{ docRtfWriteArgTag( rw, "marglsxn",dg->dgLeftMarginTwips );	}
+	{ docRtfWriteArgTag( rw, "marglsxn",dg->dgMargins.roLeftOffset );	}
     if  ( PROPmaskISSET( spMask, DGpropTOP_MARGIN ) )
 	{
-	docRtfWriteArgTag( rw, "margtsxn",dg->dgTopMarginTwips );
+	docRtfWriteArgTag( rw, "margtsxn",dg->dgMargins.roTopOffset );
 	}
     if  ( PROPmaskISSET( spMask, DGpropRIGHT_MARGIN ) )
 	{
-	docRtfWriteArgTag( rw, "margrsxn",dg->dgRightMarginTwips );
+	docRtfWriteArgTag( rw, "margrsxn",dg->dgMargins.roRightOffset );
 	}
     if  ( PROPmaskISSET( spMask, DGpropBOTTOM_MARGIN ) )
 	{
-	docRtfWriteArgTag( rw, "margbsxn",dg->dgBottomMarginTwips );
+	docRtfWriteArgTag( rw, "margbsxn",dg->dgMargins.roBottomOffset );
 	}
     if  ( PROPmaskISSET( spMask, DGpropGUTTER ) )
 	{
@@ -73,10 +78,12 @@ void docRtfSaveSectionProperties( RtfWriter *			rw,
 	}
 
     if  ( PROPmaskISSET( spMask, SPpropSTYLE ) )
-	{ docRtfWriteArgTag( rw, "ds",sp->spStyle );	}
+	{ docRtfWriteArgTag( rw, "ds", sp->spStyle );	}
 
     if  ( PROPmaskISSET( spMask, SPpropTITLEPG ) )
-	{ docRtfWriteFlagTag( rw, "titlepg", sp->spHasTitlePage );	}
+	{ docRtfWriteFlagTag( rw, RTFtag_titlepg, sp->spHasTitlePage );	}
+    if  ( PROPmaskISSET( spMask, SPpropENDPG ) )
+	{ docRtfWriteFlagTag( rw, RTFtag_endpg, sp->spHasEndPage );	}
 
     if  ( PROPmaskISSET( spMask, SPpropBREAK_KIND ) )
 	{
@@ -124,7 +131,7 @@ void docRtfSaveSectionProperties( RtfWriter *			rw,
 	for ( i= 0; i < sp->spColumnCount; sc++, i++ )
 	    {
 	    if  ( sc->scColumnWidthTwips == 0	&&
-		  sc->scSpaceToRightTwips == 0	)
+		  sc->scSpaceAfterTwips == 0	)
 		{ continue;	}
 
 	    docRtfWriteArgTag( rw, "colno", i+ 1 );
@@ -133,9 +140,9 @@ void docRtfSaveSectionProperties( RtfWriter *			rw,
 		{
 		docRtfWriteArgTag( rw, "colw", sc->scColumnWidthTwips );
 		}
-	    if  ( sc->scSpaceToRightTwips != 0 )
+	    if  ( sc->scSpaceAfterTwips != 0 )
 		{
-		docRtfWriteArgTag( rw, "colsr", sc->scSpaceToRightTwips );
+		docRtfWriteArgTag( rw, "colsr", sc->scSpaceAfterTwips );
 		}
 	    }
 	}
@@ -182,12 +189,11 @@ void docRtfSaveSectionProperties( RtfWriter *			rw,
 /************************************************************************/
 
 int docRtfSaveSectionPropertiesOfNode(
-				    RtfWriter *			rw,
-				    const DocumentSelection *	ds,
-				    const BufferItem *		sectNode )
+			    RtfWriter *				rw,
+			    const struct BufferItem *		sectNode )
     {
-    const SectionProperties *	sp= &(sectNode->biSectProperties);
-    const DocumentProperties *	dp= &(rw->rwDocument->bdProperties);
+    const SectionProperties *	sp= sectNode->biSectProperties;
+    const DocumentProperties *	dp= rw->rwDocument->bdProperties;
 
     SectionProperties		spDef;
     PropertyMask		dgSetMask;
@@ -213,14 +219,22 @@ int docRtfSaveSectionPropertiesOfNode(
     utilPropMaskClear( &spDifMask );
     docSectPropertyDifference( &spDifMask, &spDef, &spCmpMask, sp );
 
-    if  ( ds )
-	{ PROPmaskUNSET( &spDifMask, SPpropTITLEPG );	}
+    if  ( rw->rwCurrentTree->ptSelection )
+	{
+	PROPmaskUNSET( &spDifMask, SPpropTITLEPG );
+	PROPmaskUNSET( &spDifMask, SPpropENDPG );
+	}
 
     if  ( rw->rwSpExtraMask )
 	{ utilPropMaskOr( &spDifMask, &spDifMask, rw->rwSpExtraMask );	}
 
     docRtfWriteNextLine( rw );
     docRtfWriteTag( rw, "sectd" );
+
+    /* Make consecutive sections independent */
+    docRtfWriteTag( rw, RTFtag_pard );
+    docCleanParagraphProperties( &(rw->rwCurrentTree->ptParagraphProperties) );
+    docInitParagraphProperties( &(rw->rwCurrentTree->ptParagraphProperties) );
 
     docRtfSaveSectionProperties( rw, &spDifMask, sp );
 
@@ -239,33 +253,34 @@ int docRtfSaveSectionPropertiesOfNode(
 /*									*/
 /************************************************************************/
 
-static int docRtfSaveSectHeaderFooter(	RtfWriter *		rw,
-					const BufferItem *	sectNode,
-					const BufferItem *	prevBi,
-					const char *		tag,
-					int			treeType )
+static int docRtfSaveSectHeaderFooter(
+				RtfWriter *			rw,
+				const struct BufferItem *	sectNode,
+				const struct BufferItem *	prevNode,
+				const char *			tag,
+				int				treeType )
     {
     const int			forcePar= 1;
-    DocumentTree *		dt;
+    struct DocumentTree *	tree;
     int				evenIfAbsent= 0;
     unsigned char		applies= 1;
 
-    dt= docSectionHeaderFooter( sectNode, &applies,
-				&(rw->rwDocument->bdProperties), treeType );
+    tree= docSectionHeaderFooter( sectNode, &applies,
+				rw->rwDocument->bdProperties, treeType );
 
-    if  ( prevBi )
+    if  ( prevNode )
 	{
-	const DocumentTree *	prevDt;
+	const struct DocumentTree *	prevDt;
 
-	prevDt= docSectionHeaderFooter( prevBi, (unsigned char *)0,
-				&(rw->rwDocument->bdProperties), treeType );
+	prevDt= docSectionHeaderFooter( prevNode, (unsigned char *)0,
+				rw->rwDocument->bdProperties, treeType );
 	if  ( prevDt && prevDt->dtRoot )
 	    { evenIfAbsent= 1;	}
 	}
 
-    if  ( dt )
+    if  ( tree )
 	{
-	if  ( docRtfSaveDocumentTree( rw, tag, dt, evenIfAbsent, forcePar ) )
+	if  ( docRtfSaveDocumentTree( rw, tag, tree, evenIfAbsent, forcePar ) )
 	    { LSDEB(treeType,tag); return -1;	}
 	}
 
@@ -282,12 +297,15 @@ typedef struct HeaderFooterType
 
 static const HeaderFooterType	HeaderFooterTypes[]=
 {
-    { "headerf", DOCinFIRST_HEADER,	},
-    { "headerl", DOCinLEFT_HEADER,	},
-    { "headerr", DOCinRIGHT_HEADER,	},
-    { "footerf", DOCinFIRST_FOOTER,	},
-    { "footerl", DOCinLEFT_FOOTER,	},
-    { "footerr", DOCinRIGHT_FOOTER,	},
+    { "headerf",	DOCinFIRST_HEADER,	},
+    { "headerl",	DOCinLEFT_HEADER,	},
+    { "headerr",	DOCinRIGHT_HEADER,	},
+    { "*\\headere",	DOCinLAST_HEADER,	},
+
+    { "footerf",	DOCinFIRST_FOOTER,	},
+    { "footerl",	DOCinLEFT_FOOTER,	},
+    { "footerr",	DOCinRIGHT_FOOTER,	},
+    { "*\\footere",	DOCinLAST_FOOTER,	},
 };
 
 static const int HeaderFooterTypeCount=
@@ -300,21 +318,24 @@ static const int HeaderFooterTypeCount=
 /************************************************************************/
 
 int docRtfSaveSectHeadersFooters(	RtfWriter *		rw,
-					const BufferItem *	sectNode )
+					const struct BufferItem *	sectNode )
     {
-    const BufferItem *		prevBi= (const BufferItem *)0;
-    const DocumentProperties *	dp= &(rw->rwDocument->bdProperties);
+    const struct BufferItem *		prevNode= (const struct BufferItem *)0;
+    const DocumentProperties *	dp= rw->rwDocument->bdProperties;
 
     int				hdft;
 
     if  ( sectNode->biParent				&&
-	  sectNode->biNumberInParent > 0			)
-	{ prevBi= sectNode->biParent->biChildren[ sectNode->biNumberInParent- 1]; }
+	  sectNode->biNumberInParent > 0		)
+	{
+	prevNode= sectNode->biParent->biChildren[
+					    sectNode->biNumberInParent- 1];
+	}
 
     /*  Word 11+ uses right header/footer anyway. For compatibility: */
     if  ( ! dp->dpHasFacingPages )
 	{
-	if  ( docRtfSaveSectHeaderFooter( rw, sectNode, prevBi,
+	if  ( docRtfSaveSectHeaderFooter( rw, sectNode, prevNode,
 					    "header", DOCinRIGHT_HEADER ) )
 	    { LDEB(1); return -1;	}
 	}
@@ -322,7 +343,7 @@ int docRtfSaveSectHeadersFooters(	RtfWriter *		rw,
     /*  Word 11+ uses right header/footer anyway. For compatibility: */
     if  ( ! dp->dpHasFacingPages )
 	{
-	if  ( docRtfSaveSectHeaderFooter( rw, sectNode, prevBi,
+	if  ( docRtfSaveSectHeaderFooter( rw, sectNode, prevNode,
 					    "footer", DOCinRIGHT_FOOTER ) )
 	    { LDEB(1); return -1;	}
 	}
@@ -331,7 +352,7 @@ int docRtfSaveSectHeadersFooters(	RtfWriter *		rw,
 	{
 	const HeaderFooterType* hft= HeaderFooterTypes+ hdft;
 
-	if  ( docRtfSaveSectHeaderFooter( rw, sectNode, prevBi,
+	if  ( docRtfSaveSectHeaderFooter( rw, sectNode, prevNode,
 					    hft->hftTag, hft->htfTreeType ) )
 	    { SDEB(hft->hftTag); return -1;	}
 	}
@@ -347,30 +368,30 @@ int docRtfSaveSectHeadersFooters(	RtfWriter *		rw,
 /************************************************************************/
 
 int docRtfSaveHeaderFooter(	RtfWriter *		rw,
-				const DocumentTree *	dt )
+				struct DocumentTree *	tree )
     {
     const int			forcePar= 1;
     const int			evenIfAbsent= 0;
 
     int				hdft;
 
-    if  ( ! dt->dtRoot )
-	{ XDEB(dt->dtRoot); return -1;	}
+    if  ( ! tree->dtRoot )
+	{ XDEB(tree->dtRoot); return -1;	}
 
     for ( hdft= 0; hdft < HeaderFooterTypeCount; hdft++ )
 	{
 	const HeaderFooterType* hft= HeaderFooterTypes+ hdft;
 
-	if  ( hft->htfTreeType != dt->dtRoot->biTreeType )
+	if  ( hft->htfTreeType != tree->dtRoot->biTreeType )
 	    { continue;	}
 
-	if  ( docRtfSaveDocumentTree( rw, hft->hftTag, dt,
+	if  ( docRtfSaveDocumentTree( rw, hft->hftTag, tree,
 						    evenIfAbsent, forcePar ) )
 	    { SDEB(hft->hftTag); return -1;	}
 
 	return 0;
 	}
 
-    SDEB(docTreeTypeStr(dt->dtRoot->biTreeType));
+    SDEB(docTreeTypeStr(tree->dtRoot->biTreeType));
     return -1;
     }

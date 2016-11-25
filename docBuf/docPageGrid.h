@@ -7,19 +7,14 @@
 #   ifndef	DOC_PAGE_GRID_H
 #   define	DOC_PAGE_GRID_H
 
-#   include	"docBuf.h"
-#   include	"docBlockFrame.h"
-#   include	"docStripFrame.h"
-
-/************************************************************************/
-
-#   define	includeRectangleY( dr1, dr2 ) \
-		{ \
-		if  ( (dr1)->drY0 > (dr2)->drY0 )  \
-		    { (dr1)->drY0=  (dr2)->drY0; } \
-		if  ( (dr1)->drY1 < (dr2)->drY1 )  \
-		    { (dr1)->drY1=  (dr2)->drY1; } \
-		}
+struct LayoutPosition;
+struct BufferDocument;
+struct DocumentTree;
+struct BlockFrame;
+struct ParagraphFrame;
+struct FrameProperties;
+struct BufferItem;
+struct DocumentRectangle;
 
 /************************************************************************/
 /*									*/
@@ -27,68 +22,96 @@
 /*									*/
 /************************************************************************/
 
-extern void docBlockFrameTwips(	BlockFrame *			bf,
-				struct BufferItem *		bi,
-				BufferDocument *		bd,
+extern void docBlockFrameTwips(	struct BlockFrame *		bf,
+				const struct BufferItem *	node,
+				struct BufferDocument *		bd,
 				int				page,
 				int				column );
 
-extern void docCellFrameTwips(	ParagraphFrame *		pf,
-				const BlockFrame *		bf,
+void docSectionBlockFrameTwips(	struct BlockFrame *		bf,
+				const struct BufferItem *	node,
+				const struct BufferItem *	bodySectNode,
+				struct BufferDocument *		bd,
+				int				page,
+				int				column );
+
+extern void docCellFrameTwips(	struct ParagraphFrame *		pf,
+				const struct BlockFrame *	bf,
 				const struct BufferItem *	cellNode );
 
 extern void docCellRectangleTwips(
-				DocumentRectangle *		drCell,
-				const BlockFrame *		bf,
+				struct DocumentRectangle *	drCell,
+				const struct BlockFrame *	bf,
 				const struct BufferItem *	cellNode );
 
 extern void docLayoutSectColumnTop(
-				LayoutPosition *		lpTop,
-				BlockFrame *			bf,
+				struct LayoutPosition *		lpTop,
+				struct BlockFrame *		bf,
 				struct BufferItem *		bodySectNode,
-				BufferDocument *		bd );
+				struct BufferDocument *		bd );
 
-extern void docParaBlockFrameRectangle( DocumentRectangle *	dr,
-					struct BufferItem *	paraBi,
-					BufferDocument *	bd,
-					int			page,
-					int			column );
+extern void docParaBlockFrameTwips(
+				struct BlockFrame *		bf,
+				struct BufferItem *		paraNode,
+				const struct BufferItem *	bodySectNode,
+				struct BufferDocument *		bd,
+				int				page,
+				int				column );
 
-extern void docParaBlockFrameTwips(	BlockFrame *		bf,
-					struct BufferItem *	paraBi,
-					BufferDocument *	bd,
-					int			page,
-					int			column );
-
-extern void docParagraphFrameTwips(	ParagraphFrame *	pf,
-					const BlockFrame *	bf,
-					const struct BufferItem * paraBi );
+extern void docParagraphFrameTwips(
+				struct ParagraphFrame *		pf,
+				const struct BlockFrame *	bf,
+				const struct BufferItem * 	paraNode );
 
 extern void docLayoutSetTextFrame(
-				BlockFrame *			bfTextFrame,
-				const LayoutPosition *		lpRef,
-				const BlockFrame *		bfRef,
-				const FrameProperties *		fp,
+				struct BlockFrame *		bfTextFrame,
+				const struct LayoutPosition *	lpRef,
+				const struct BlockFrame *	bfRef,
+				const struct FrameProperties *	fp,
 				int				frameHighVal );
 
-extern void docLayoutFrameX(	BlockFrame *			bfTextFrame,
+extern void docLayoutFrameX(	struct BlockFrame *		bfTextFrame,
 				int				xRefProp,
 				int				xPosProp,
 				int				xPosVal,
 				int				layoutInCell,
-				const ParagraphFrame *		pfRef,
-				const BlockFrame *		bfRef,
+				const struct ParagraphFrame *	pfRef,
+				const struct BlockFrame *	bfRef,
 				int				xChar,
 				int				frameWide );
 
-extern void docLayoutFrameY(	BlockFrame *			bfTextFrame,
+extern void docLayoutFrameY(	struct BlockFrame *		bfTextFrame,
 				int				yRefProp,
 				int				yPosProp,
 				int				yPosVal,
-				const LayoutPosition *		lpLineTop,
-				const LayoutPosition *		lpParaTop,
-				const BlockFrame *		bfRef,
+				const struct LayoutPosition *	lpLineTop,
+				const struct LayoutPosition *	lpParaTop,
+				const struct BlockFrame *	bfRef,
 				int				frameHighProp,
 				int				frameHighVal );
+
+extern int docDrawWhatPageHeader( struct DocumentTree **	pTree,
+				int *				pIsEmpty,
+				const struct BufferItem *	bodySectNode,
+				int				page,
+				const struct BufferDocument *	bd );
+
+extern int docDrawWhatPageFooter( struct DocumentTree **		pTree,
+				int *				pIsEmpty,
+				const struct BufferItem *	bodySectNode,
+				int				page,
+				const struct BufferDocument *	bd );
+
+extern int docLayoutWhatPageHeader( struct DocumentTree **	pTree,
+				int *				pIsEmpty,
+				const struct BufferItem *	bodySectNode,
+				int				page,
+				const struct BufferDocument *	bd );
+
+extern int docLayoutWhatPageFooter( struct DocumentTree **	pTree,
+				int *				pIsEmpty,
+				const struct BufferItem *	bodySectNode,
+				int				page,
+				const struct BufferDocument *	bd );
 
 #   endif	/*  DOC_PAGE_GRID_H  */

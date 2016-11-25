@@ -8,12 +8,18 @@
 
 #   include	<stdlib.h>
 
-#   include	<appDebugon.h>
-
 #   include	"docBuf.h"
-#   include	"docDebug.h"
 #   include	"docParaParticules.h"
 #   include	"docField.h"
+#   include	"docSelect.h"
+#   include	"docTreeNode.h"
+
+#   include	<docDocumentField.h>
+#   include	<docTextParticule.h>
+#   include	"docFields.h"
+
+#   include	"docDebug.h"
+#   include	<appDebugon.h>
 
 # if 0
 
@@ -100,7 +106,7 @@ static DocumentField * docGetLeftOuterField(
     }
 
 static DocumentField * docGetRightOuterField(
-				    DocumentField *		df,
+				    DocumentField *	df,
 				    const EditPosition *	epHead,
 				    const EditPosition *	epTail )
     {
@@ -160,8 +166,8 @@ int docBalanceFieldSelection(	DocumentField **	pLeftField,
 				int *			pTailPart,
 				DocumentPosition *	dpHead,
 				DocumentPosition *	dpTail,
-				DocumentTree *		dt,
-				BufferDocument *	bd )
+				struct DocumentTree *		dt,
+				struct BufferDocument *	bd )
     {
     int				rval= 0;
     int				leftEditable= 0;
@@ -178,14 +184,13 @@ int docBalanceFieldSelection(	DocumentField **	pLeftField,
     int				headMoved= 0;
     int				tailMoved= 0;
 
-    DocumentField **		pathHead= (DocumentField **)0;
-    DocumentField **		pathTail= (DocumentField **)0;
+    const DocumentField **	pathHead= (const DocumentField **)0;
+    const DocumentField **	pathTail= (const DocumentField **)0;
 
     DocumentSelection		dsInsideB;
     DocumentSelection		dsAroundB;
 
-    dsInsideB.dsHead= dsAroundB.dsHead= *dpHead;
-    dsInsideB.dsTail= dsAroundB.dsTail= *dpTail;
+    docSetRangeSelection( &dsInsideB, dpHead, dpTail, 1 );
 
     docSetEditPosition( &epHead, dpHead );
     docSetEditPosition( &epTail, dpTail );
@@ -282,10 +287,10 @@ int docBalanceFieldSelection(	DocumentField **	pLeftField,
 /*									*/
 /************************************************************************/
 
-int docCountParticulesInField(		const BufferItem *	paraBi,
-					int *			pClosed,
-					int			part,
-					int			partUpto )
+int docCountParticulesInFieldFwd( const struct BufferItem *	paraNode,
+				int *				pClosed,
+				int				part,
+				int				partUpto )
     {
     int				fieldLevel= 0;
     int				partCount= 0;
@@ -293,15 +298,15 @@ int docCountParticulesInField(		const BufferItem *	paraBi,
 
     const TextParticule *	tp;
 
-    tp= paraBi->biParaParticules+ part;
-    if  ( tp->tpKind != DOCkindFIELDHEAD )
-	{ LDEB(tp->tpKind); return -1;	}
+    tp= paraNode->biParaParticules+ part;
+    if  ( tp->tpKind != TPkindFIELDHEAD )
+	{ LSDEB(tp->tpKind,docFieldKindStr(tp->tpKind)); return -1;	}
     fieldNumber= tp->tpObjectNumber;
 
     tp++; part++;
     while( part < partUpto )
 	{
-	if  ( tp->tpKind == DOCkindFIELDHEAD )
+	if  ( tp->tpKind == TPkindFIELDHEAD )
 	    {
 	    /*  1  */
 	    if  ( tp->tpObjectNumber == fieldNumber )
@@ -310,7 +315,7 @@ int docCountParticulesInField(		const BufferItem *	paraBi,
 	    fieldLevel++;
 	    }
 
-	if  ( tp->tpKind == DOCkindFIELDTAIL )
+	if  ( tp->tpKind == TPkindFIELDTAIL )
 	    {
 	    if  ( tp->tpObjectNumber == fieldNumber )
 		{
@@ -334,6 +339,58 @@ int docCountParticulesInField(		const BufferItem *	paraBi,
     return partCount;
     }
 
+int docCountParticulesInFieldBwd( const struct BufferItem *	paraNode,
+				int *				pClosed,
+				int				part,
+				int				partFrom )
+    {
+    int				fieldLevel= 0;
+    int				partCount= 0;
+    int				fieldNumber;
+
+    const TextParticule *	tp;
+
+    tp= paraNode->biParaParticules+ part;
+    if  ( tp->tpKind != TPkindFIELDTAIL )
+	{ LSDEB(tp->tpKind,docFieldKindStr(tp->tpKind)); return -1;	}
+    fieldNumber= tp->tpObjectNumber;
+
+    tp--; part--;
+    while( part >= partFrom )
+	{
+	if  ( tp->tpKind == TPkindFIELDHEAD )
+	    {
+	    /*  1  */
+	    if  ( tp->tpObjectNumber == fieldNumber )
+		{ LLDEB(tp->tpObjectNumber,fieldNumber);	}
+
+	    fieldLevel++;
+	    }
+
+	if  ( tp->tpKind == TPkindFIELDTAIL )
+	    {
+	    if  ( tp->tpObjectNumber == fieldNumber )
+		{
+		/*  1 
+		if  ( fieldLevel != 0 )
+		    { LDEB(fieldLevel);	}
+		*/
+
+		*pClosed= 1;
+		return partCount;
+		}
+
+	    fieldLevel--;
+	    }
+
+	partCount++, part--; tp--;
+	}
+
+    /*  1  */
+    *pClosed= 0;
+    return partCount;
+    }
+
 /************************************************************************/
 /*									*/
 /*  Find the particules that delimit a field.				*/
@@ -341,7 +398,6 @@ int docCountParticulesInField(		const BufferItem *	paraBi,
 /************************************************************************/
 
 static int docFindFieldParticules(
-				const BufferDocument *		bd,
 				int *				pPart0,
 				int *				pPart1,
 				DocumentSelection *		dsInside,
@@ -371,7 +427,7 @@ static int docFindFieldParticules(
     while( part0 < dsField->dsHead.dpNode->biParaParticuleCount	&&
 	   tp->tpStroff == dsField->dsHead.dpStroff		)
 	{
-	if  ( tp->tpKind == DOCkindFIELDHEAD		&&
+	if  ( tp->tpKind == TPkindFIELDHEAD		&&
 	      tp->tpObjectNumber == df->dfFieldNumber	)
 	    { break;	}
 
@@ -397,7 +453,7 @@ static int docFindFieldParticules(
     while( part1 >= 0					&&
 	   tp->tpStroff == dsField->dsTail.dpStroff	)
 	{
-	if  ( tp->tpKind == DOCkindFIELDTAIL		&&
+	if  ( tp->tpKind == TPkindFIELDTAIL		&&
 	      tp->tpObjectNumber == df->dfFieldNumber	)
 	    { break;	}
 
@@ -407,7 +463,8 @@ static int docFindFieldParticules(
 	  tp->tpStroff != dsField->dsTail.dpStroff	)
 	{
 	LLLDEB(part1,tp->tpStroff,dsField->dsTail.dpStroff);
-	LDEB(df->dfFieldNumber);docListNode(0,dsField->dsTail.dpNode,0);
+	LDEB(df->dfFieldNumber);
+	docListNode(0,dsField->dsTail.dpNode,0);
 	return -1;
 	}
 
@@ -438,7 +495,7 @@ int docDelimitFieldInDoc(	DocumentSelection *	dsInside,
 				DocumentSelection *	dsAround,
 				int *			pPart0,
 				int *			pPart1,
-				const BufferDocument *	bd,
+				const struct BufferDocument *	bd,
 				const DocumentField *	df )
     {
     DocumentSelection	dsField;
@@ -454,7 +511,7 @@ int docDelimitFieldInDoc(	DocumentSelection *	dsInside,
     if  ( ! pPart0 && ! pPart1 && ! dsInside && ! dsAround )
 	{ return 0;	}
 
-    return docFindFieldParticules( bd, pPart0, pPart1,
+    return docFindFieldParticules( pPart0, pPart1,
 					    dsInside, dsAround, &dsField, df );
     }
 
@@ -462,8 +519,7 @@ int docDelimitFieldInTree(	DocumentSelection *	dsInside,
 				DocumentSelection *	dsAround,
 				int *			pPart0,
 				int *			pPart1,
-				const BufferDocument *	bd,
-				const DocumentTree *	dt,
+				const struct DocumentTree *	dt,
 				const DocumentField *	df )
     {
     DocumentSelection	dsField;
@@ -474,7 +530,7 @@ int docDelimitFieldInTree(	DocumentSelection *	dsInside,
 	{ LDEB(1); return -1;	}
 
     /*  2  */
-    return docFindFieldParticules( bd, pPart0, pPart1,
+    return docFindFieldParticules( pPart0, pPart1,
 					    dsInside, dsAround, &dsField, df );
     }
 
@@ -491,23 +547,23 @@ int docDelimitParaHeadField(	DocumentField **	pDfHead,
 				DocumentSelection *	dsAroundHead,
 				int *			pHeadPart,
 				int *			pTailPart,
-				const BufferItem *	paraBi,
-				const BufferDocument *	bd )
+				const struct BufferItem *	paraNode,
+				const struct BufferDocument *	bd )
     {
     int				part;
     const TextParticule *	tp;
     int				fieldKind;
 
-    fieldKind= docParaHeadFieldKind( paraBi, bd );
+    fieldKind= docParaHeadFieldKind( paraNode );
     if  ( fieldKind < 0 )
 	{ return 1;	}
 
-    tp= paraBi->biParaParticules;
-    for ( part= 0; part < paraBi->biParaParticuleCount; tp++, part++ )
+    tp= paraNode->biParaParticules;
+    for ( part= 0; part < paraNode->biParaParticuleCount; tp++, part++ )
 	{
 	DocumentField *	df;
 
-	if  ( tp->tpKind == DOCkindFIELDHEAD )
+	if  ( tp->tpKind == TPkindFIELDHEAD )
 	    {
 	    df= docGetFieldByNumber( &(bd->bdFieldList), tp->tpObjectNumber );
 	    if  ( ! df )

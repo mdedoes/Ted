@@ -1,16 +1,16 @@
 #   include	"tedConfig.h"
 
 #   include	<stdlib.h>
-#   include	<stdio.h>
 
 #   include	"tedRuler.h"
 #   include	"tedDrawRuler.h"
 #   include	<appMetricRuler.h>
-#   include	<appFrame.h>
-#   include	<docBuf.h>
-#   include	<geoGrid.h>
+#   include	<appEditApplication.h>
+#   include	<appEditDocument.h>
+#   include	<docTabStop.h>
 #   include	<guiWidgetDrawingSurface.h>
 #   include	<guiDrawingWidget.h>
+#   include	<docParaProperties.h>
 
 #   include	<appDebugon.h>
 
@@ -80,8 +80,8 @@ void * tedMakeTopRuler(	int				height,
 
     ttr->ttrMagnification= magnification;
 
-    ttr->ttrBlockFrameX0= documentC0;
-    ttr->ttrBlockFrameX1= documentC1;
+    ttr->ttrTableColumnX0= documentC0;
+    ttr->ttrTableColumnX1= documentC1;
     ttr->ttrParaFrameX0= documentC0;
     ttr->ttrParaFrameX1= documentC1;
 
@@ -264,11 +264,11 @@ static void tedDrawTopRuler(	APP_WIDGET			w,
 
     for ( tab= 0; tab < ttr->ttrTabStopList.tslTabStopCount; ts++, tab++ )
 	{
-	if  ( ts->tsPixels < rd->rdVisibleC0	||
-	      ts->tsPixels > rd->rdVisibleC1	)
+	if  ( ts->tsOffset < rd->rdVisibleC0	||
+	      ts->tsOffset > rd->rdVisibleC1	)
 	    { continue;	}
 
-	tedTabSymbolRect( &drButton, ts->tsPixels, rd );
+	tedTabSymbolRect( &drButton, ts->tsOffset, rd );
 
 	if  ( drClip							&&
 	      ! geoIntersectRectangle( &drButton, &drButton, drClip )	)
@@ -279,14 +279,14 @@ static void tedDrawTopRuler(	APP_WIDGET			w,
 	      drButton.drX1 > rd->rdVisibleC1	)
 	    { continue;	}
 
-	tedRulerDrawTab( rd, ts->tsPixels, ts->tsAlignment );
+	tedRulerDrawTab( rd, ts->tsOffset, ts->tsAlignment );
 	}
     }
 
     return;
     }
 
-APP_EVENT_HANDLER_H( tedRedrawTopRuler, w, voidttr, event )
+APP_REDRAW_HANDLER_H( tedRedrawTopRuler, w, voidttr, event )
     {
     TedTopRuler *	ttr= (TedTopRuler *)voidttr;
     RulerData *		rd= &(ttr->ttrRulerData);
@@ -299,10 +299,13 @@ APP_EVENT_HANDLER_H( tedRedrawTopRuler, w, voidttr, event )
     if  ( ! rd->rdDrawingSurface )
 	{ tedRulerMakeDrawingSurface( ttr, w );	}
 
-    guiCollectExposures( &drClip, w, event );
-    drawSetClipRect( rd->rdDrawingSurface, &drClip );
-
+    guiStartDrawing( &drClip, rd->rdDrawingSurface, w, event );
     geoShiftRectangle( &drClip, ox, oy );
+
+    drawSetLineAttributes( rd->rdDrawingSurface,
+			1, LineStyleSolid, LineCapProjecting, LineJoinMiter,
+			(const unsigned char *)0, 0 );
+
     tedDrawTopRuler( w, ttr, &drClip );
     drawNoClipping( rd->rdDrawingSurface );
     }
@@ -589,7 +592,7 @@ static int tedTopRulerDragItem(	int *			pV0,
 				int			ox,
 				EditDocument *		ed )
     {
-    SelectRectangle *	sr= sr= &(ed->edSelectRectangle);
+    SelectRectangle *	sr= &(ed->edSelectRectangle);
     TopRulerDrag	trd;
     int			startValue= *pV0;
     int			oldDirection= sr->srDirection;
@@ -622,10 +625,10 @@ static int tedTopRulerDragItem(	int *			pV0,
 
     appMetricRulerExposeValue( ed );
 
-    appRunDragLoop( w, ea, downEvent,
+    guiRunDragLoop( w, ea->eaContext, downEvent,
 				tedTopRulerMouseUp,
 				tedTopRulerMouseMove,
-				0, (APP_TIMER_CALLBACK)0,
+				0, (APP_DRAG_TIMER_CALLBACK)0,
 				(void *)&trd );
 
     appMetricRulerExposeValue( ed );
@@ -653,19 +656,10 @@ static int tedTopRulerDragItem(	int *			pV0,
 /*	assume she wants to set a new tab.				*/
 /*  8)  Is it on one of the table column separators? Allow the user to	*/
 /*	drag it.							*/
-/*  9)  Is it on the button with the kind of thabs that is to be added?	*/
-/*	Rotate the type.						*/
+/*  9)  Is it on the button with the kind of tab stops that is to be	*/
+/*	added? Rotate the type.						*/
 /*									*/
 /************************************************************************/
-
-static int tedCompareTabStopsPixels(	const void *	voidts1,
-					const void *	voidts2	)
-    {
-    const TabStop *	ts1= (const TabStop *)voidts1;
-    const TabStop *	ts2= (const TabStop *)voidts2;
-
-    return ts1->tsPixels- ts2->tsPixels;
-    }
 
 /*  2  */
 static int tedTopRulerDragTab(	APP_WIDGET		w,
@@ -674,26 +668,25 @@ static int tedTopRulerDragTab(	APP_WIDGET		w,
 				int			item,
 				int			x,
 				int			ox,
-				int			mouseX,
 				int			mouseY,
 				EditDocument *		ed )
     {
     TabStop *		ts= ttr->ttrTabStopList.tslTabStops+ item;
 
-    int			x0= ts->tsPixels;
+    int			x0= ts->tsOffset;
     int			x1;
     int			dxAbs;
     DocumentRectangle	drActive;
 
     int			prop;
 
-    x1= ts->tsPixels;
+    x1= ts->tsOffset;
 
     prop= tedTopRulerDragItem( &x1, (int *)0, &mouseY, PPpropTAB_STOPS,
 		    w, downEvent,
 		    ttr, ttr->ttrParaFrameX0, ttr->ttrParaFrameX1, x, ox, ed );
 
-    ts->tsPixels= x1;
+    ts->tsOffset= x1;
 
     tedRulerActiveRect( &drActive, ttr );
 
@@ -718,9 +711,7 @@ static int tedTopRulerDragTab(	APP_WIDGET		w,
 	    }
 	}
 
-    qsort( ttr->ttrTabStopList.tslTabStops,
-				ttr->ttrTabStopList.tslTabStopCount,
-				sizeof(TabStop), tedCompareTabStopsPixels );
+    docTabStopListSortByOffset( &(ttr->ttrTabStopList) );
 
     return prop;
     }
@@ -736,7 +727,6 @@ static int tedTopRulerTabClick(	TabStopList *		tsl,
 				APP_EVENT *		downEvent,
 				TedTopRuler *		ttr,
 				int			item,
-				int			x,
 				int			ox,
 				int			mouseX,
 				int			mouseY,
@@ -748,7 +738,7 @@ static int tedTopRulerTabClick(	TabStopList *		tsl,
 	{
 	/*  2  */
 	property= tedTopRulerDragTab( w, downEvent, ttr,
-			item, mouseX+ ox, ox, mouseX, mouseY, ed );
+			item, mouseX+ ox, ox, mouseY, ed );
 
 	if  ( property == PPpropTAB_STOPS )
 	    {
@@ -766,17 +756,17 @@ static int tedTopRulerTabClick(	TabStopList *		tsl,
 
 	docInitTabStop( &tsNew );
 
-	tsNew.tsPixels= mouseX+ ox;
+	tsNew.tsOffset= mouseX+ ox;
 	tsNew.tsAlignment= ttr->ttrTabKind;
 
-	item= docAddTabToListPixels( &(ttr->ttrTabStopList), &tsNew );
+	item= docAddTabToList( &(ttr->ttrTabStopList), &tsNew );
 	if  ( item < 0 )
 	    { LDEB(item); return PPprop_NONE;	}
 
 	guiExposeDrawingWidget( w );
 
 	tedTopRulerDragTab( w, downEvent, ttr,
-			    item, mouseX+ ox, ox, mouseX, mouseY, ed );
+			    item, mouseX+ ox, ox, mouseY, ed );
 
 	if  ( docCopyTabStopList( tsl, &(ttr->ttrTabStopList) ) )
 	    { LDEB(1); return -1;	}
@@ -793,7 +783,6 @@ static int tedTopRulerTabClick(	TabStopList *		tsl,
 /************************************************************************/
 
 int tedTopRulerFindMouse(	int *			pIndex,
-				APP_WIDGET		w,
 				int			mouseX,
 				int			mouseY,
 				EditDocument *		ed )
@@ -820,7 +809,7 @@ int tedTopRulerFindMouse(	int *			pIndex,
 	ts= rtsl->tslTabStops;
 	for ( tab= 0; tab < rtsl->tslTabStopCount; ts++, tab++ )
 	    {
-	    tedTabSymbolRect( &drButton, ts->tsPixels, rd );
+	    tedTabSymbolRect( &drButton, ts->tsOffset, rd );
 
 	    if  ( mouseX+ ox >= drButton.drX0	&&
 		  mouseX+ ox <  drButton.drX1	)
@@ -913,12 +902,12 @@ int tedTopRulerTrackMouse(	int *			pFirstIndent,
     if  ( upDown < 1 || button != 1 || seq > 1 )
 	{ return -1;	}
 
-    property= tedTopRulerFindMouse( &item, w, mouseX, mouseY, ed );
+    property= tedTopRulerFindMouse( &item, mouseX, mouseY, ed );
     switch( property )
 	{
 	case PPpropTAB_STOPS:
 	    return tedTopRulerTabClick( tsl, w, downEvent, ttr, item,
-					mouseX+ ox, ox, mouseX, mouseY, ed );
+						ox, mouseX, mouseY, ed );
 
 	case PPpropFIRST_INDENT:
 	    /*  4  */
@@ -970,8 +959,8 @@ int tedTopRulerTrackMouse(	int *			pFirstIndent,
 	    int		xMax;
 
 	    wide= ttr->ttrColumns[item].csX1- ttr->ttrColumns[item].csX0;
-	    xMin= ttr->ttrBlockFrameX0- wide;
-	    xMax= ttr->ttrBlockFrameX1+ wide;
+	    xMin= ttr->ttrTableColumnX0- wide;
+	    xMax= ttr->ttrTableColumnX1+ wide;
 
 	    if  ( item > 0 )
 		{ xMin= ttr->ttrColumns[item- 1].csX1; }
@@ -1015,6 +1004,7 @@ int tedTopRulerTrackMouse(	int *			pFirstIndent,
 
 	case PPprop_NONE:
 	    return property;
+
 	default:
 	    LDEB(property); return -1;
 	}
@@ -1035,22 +1025,19 @@ void tedAdaptTopRuler(		void *			voidttr,
 				int			firstIndent,
 				int			leftIndent,
 				int			rightIndent,
-				const TabStopList *	tslSet,
-				int			x0GeometryPixels,
-				double			xfac )
+				int			paraFrameX0,
+				int			paraFrameX1,
+				const TabStopList *	tslSet )
     {
     TedTopRuler *	ttr= (TedTopRuler *)voidttr;
     RulerData *		rd= &(ttr->ttrRulerData);
 
     int			redraw= 0;
 
-    TabStopList		tslCopy;
-    int			i;
-
-    docInitTabStopList( &tslCopy );
-
-    if  ( docCopyTabStopList( &tslCopy, tslSet ) )
-	{ LDEB(1); goto ready;	}
+    if  ( ttr->ttrParaFrameX0 != paraFrameX0 )
+	{ ttr->ttrParaFrameX0=   paraFrameX0; redraw= 1;	}
+    if  ( ttr->ttrParaFrameX1 != paraFrameX1 )
+	{ ttr->ttrParaFrameX1=   paraFrameX1; redraw= 1;	}
 
     if  ( rd->rdDocumentC0 != documentC0 )
 	{ rd->rdDocumentC0=   documentC0; redraw= 1;	}
@@ -1071,25 +1058,13 @@ void tedAdaptTopRuler(		void *			voidttr,
     if  ( ttr->ttrRightIndent != rightIndent )
 	{ ttr->ttrRightIndent=   rightIndent; redraw= 1;	}
 
-    if  ( tslCopy.tslTabStopCount != ttr->ttrTabStopList.tslTabStopCount )
-	{ redraw= 1;	}
-    for ( i= 0; i < tslCopy.tslTabStopCount; i++ )
+    if  ( ! docEqualTabStopList( &(ttr->ttrTabStopList), tslSet ) )
 	{
-	tslCopy.tslTabStops[i].tsPixels= x0GeometryPixels+
-			COORDtoGRID( xfac, tslCopy.tslTabStops[i].tsTwips );
+	redraw= 1;
 
-	if  ( i < ttr->ttrTabStopList.tslTabStopCount			&&
-	      ! docEqualTabStop( &(tslCopy.tslTabStops[i]),
-				&(ttr->ttrTabStopList.tslTabStops[i]) )	)
-	    { redraw= 1;	}
+	if  ( docCopyTabStopList( &(ttr->ttrTabStopList), tslSet ) )
+	    { LDEB(1); goto ready;	}
 	}
-
-    /* steal by swapping */
-    {
-    TabStopList	sw= ttr->ttrTabStopList;
-                    ttr->ttrTabStopList= tslCopy;
-		                         tslCopy= sw;
-    }
 
     {
     if  ( ! rd->rdDrawingSurface )
@@ -1103,8 +1078,6 @@ void tedAdaptTopRuler(		void *			voidttr,
 
   ready:
 
-    docCleanTabStopList( &tslCopy );
-
     return;
     }
 
@@ -1112,19 +1085,12 @@ int tedSetRulerColumns(		APP_WIDGET		w,
 				void *			voidttr,
 				int			bfX0Pixels,
 				int			bfX1Pixels,
-				int			pfX0Pixels,
-				int			pfX1Pixels,
-				ColumnSeparator *	cs,
+				const ColumnSeparator *	cs,
 				int			csCount )
     {
     TedTopRuler *	ttr= (TedTopRuler *)voidttr;
     int			changed= 0;
     int			i;
-
-    ttr->ttrBlockFrameX0= bfX0Pixels;
-    ttr->ttrBlockFrameX1= bfX1Pixels;
-    ttr->ttrParaFrameX0= pfX0Pixels;
-    ttr->ttrParaFrameX1= pfX1Pixels;
 
     if  ( csCount != ttr->ttrColumnCount )
 	{
@@ -1161,11 +1127,14 @@ int tedSetRulerColumns(		APP_WIDGET		w,
 	    { ttr->ttrColumns[i].csX1=   cs[i].csX1; changed= 1; }
 	}
 
-#   ifdef USE_MOTIF
+#   if USE_MOTIF
     if  ( changed && XtIsRealized( w ) )
 #   endif
-#   ifdef USE_GTK
-    if  ( changed && GTK_WIDGET_REALIZED( w ) )
+#   if USE_GTK
+#	if GTK_MAJOR_VERSION == 2 && GTK_MINOR_VERSION < 22
+#		define gtk_widget_get_realized( x ) GTK_WIDGET_REALIZED( (x) )
+#	endif
+    if  ( changed && gtk_widget_get_realized( w ) )
 #   endif
 	{
 	guiExposeDrawingWidget( w );

@@ -13,6 +13,7 @@
 #   include	<utilTree.h>
 
 #   include	"docStyleSheet.h"
+#   include	"docStyle.h"
 #   include	"docListDepth.h"
 
 /************************************************************************/
@@ -22,9 +23,9 @@
 /*									*/
 /************************************************************************/
 
-int docCopyStyleSheet(	DocumentStyleSheet *		to,
-			const DocumentStyleSheet *	from,
-			const DocumentAttributeMap *	dam )
+int docCopyStyleSheet(	DocumentStyleSheet *			to,
+			const DocumentStyleSheet *		from,
+			const struct DocumentAttributeMap *	dam )
     {
     int			i;
 

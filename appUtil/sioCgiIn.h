@@ -5,8 +5,8 @@
 /*									*/
 /************************************************************************/
 
-#   include	"sioGeneral.h"
-#   include	"appCgiIn.h"
+struct SimpleInputStream;
+struct CGIRequest;
 
-extern SimpleInputStream * sioInCgiOpen(	CGIRequest *	cgir );
+extern struct SimpleInputStream * sioInCgiOpen(	struct CGIRequest *	cgir );
 

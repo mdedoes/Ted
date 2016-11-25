@@ -7,8 +7,10 @@
 #   ifndef	PS_MATCH_FONT_H
 #   define	PS_MATCH_FONT_H
 
-#   include	"psPostScriptFontList.h"
-#   include	"textAttribute.h"
+struct IndexSet;
+struct TextAttribute;
+struct PostScriptFontList;
+struct AfmFontInfo;
 
 /************************************************************************/
 /*									*/
@@ -16,11 +18,11 @@
 /*									*/
 /************************************************************************/
 
-extern AfmFontInfo * psGetPsFontInfoForAttribute(
-				const char *			familyName,
-				int				styleInt,
-				const IndexSet *		unicodesUsed,
-				const TextAttribute *		ta,
-				const PostScriptFontList *	psfl );
+extern struct AfmFontInfo * psGetPsFontInfoForAttribute(
+			const char *				familyName,
+			int					styleInt,
+			const struct IndexSet *			unicodesUsed,
+			const struct TextAttribute *		ta,
+			const struct PostScriptFontList *	psfl );
 
 #   endif

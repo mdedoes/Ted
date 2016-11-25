@@ -9,11 +9,22 @@
 
 #   include	<stdlib.h>
 
-#   include	<appDebugon.h>
-
 #   include	"docBuf.h"
 #   include	"docNodeTree.h"
 #   include	"docParaParticules.h"
+#   include	"docSectHeadersFooters.h"
+#   include	"docRowNodeProperties.h"
+#   include	"docParaNodeProperties.h"
+#   include	<docRowProperties.h>
+#   include	"docSelect.h"
+#   include	"docTreeNode.h"
+#   include	<docTextParticule.h>
+#   include	<docDocumentProperties.h>
+#   include	<docSectProperties.h>
+#   include	"docParaParticuleAdmin.h"
+
+#   include	"docDebug.h"
+#   include	<appDebugon.h>
 
 #   define	VALIDATE_TREE	0
 
@@ -69,13 +80,13 @@ NOTE: I am educated as a biologist. My trees have their root at the
 
 /************************************************************************/
 /*									*/
-/*  Free a BufferItem.							*/
+/*  Free a struct BufferItem.							*/
 /*									*/
 /************************************************************************/
 
-static void docCleanNode(	BufferDocument *	bd,
-				DocumentTree *		dt,
-				BufferItem *		node )
+static void docCleanNode(	struct BufferDocument *	bd,
+				struct DocumentTree *		dt,
+				struct BufferItem *		node )
     {
     int				i;
 
@@ -99,7 +110,11 @@ static void docCleanNode(	BufferDocument *	bd,
 		free( shf );
 		}
 
-	    docCleanSectionProperties( &(node->biSectProperties) );
+	    if  ( node->biSectProperties )
+		{
+		docCleanSectionProperties( node->biSectProperties );
+		free( node->biSectProperties );
+		}
 	    }
 	    break;
 
@@ -107,7 +122,6 @@ static void docCleanNode(	BufferDocument *	bd,
 	    break;
 
 	case DOClevROW:
-	    docCleanRowProperties( &(node->biRowProperties) );
 	    break;
 
 	case DOClevPARA:
@@ -124,33 +138,33 @@ static void docCleanNode(	BufferDocument *	bd,
     node->biLevel= DOClevOUT;
     }
 
-void docFreeNode(	BufferDocument *	bd,
-			DocumentTree *		dt,
-			BufferItem *		node )
+void docFreeNode(	struct BufferDocument *	bd,
+			struct DocumentTree *		dt,
+			struct BufferItem *		node )
     {
     docCleanNode( bd, dt, node );
     free( node );
     }
 
-BufferItem * docMakeNode( void )
+struct BufferItem * docMakeNode( void )
     {
-    return (BufferItem *)malloc(sizeof(BufferItem));
+    return (struct BufferItem *)malloc(sizeof(struct BufferItem));
     }
 
 /************************************************************************/
 /*									*/
-/*  Initialise a BufferItem.						*/
+/*  Initialise a struct BufferItem.						*/
 /*									*/
 /************************************************************************/
 
-void docInitNode(	BufferItem *		node,
-			BufferItem *		parent,
-			const BufferDocument *	bd,
+void docInitNode(	struct BufferItem *		node,
+			struct BufferItem *		parent,
+			const struct BufferDocument *	bd,
 			int			numberInParent,
 			int			level,
 			int			treeType )
     {
-    node->biChildren= (BufferItem **)0;
+    node->biChildren= (struct BufferItem **)0;
     node->biChildCount= 0;
     node->biLeftParagraphs= 0;
 
@@ -166,10 +180,13 @@ void docInitNode(	BufferItem *		node,
 		{ XDEB(node->biSectHeadersFooters);			}
 	    else{ docInitSectHeadersFooters( node->biSectHeadersFooters ); }
 
-	    docInitSectionProperties( &(node->biSectProperties) );
+	    node->biSectProperties= malloc( sizeof(SectionProperties) );
+	    if  ( ! node->biSectProperties )
+		{ XDEB(node->biSectProperties);			}
+	    else{ docInitSectionProperties( node->biSectProperties ); }
 
 	    if  ( bd )
-		{ node->biSectDocumentGeometry= bd->bdProperties.dpGeometry; }
+		{ node->biSectDocumentGeometry= bd->bdProperties->dpGeometry; }
 
 	    docInitSelectionScope( &(node->biSectSelectionScope) );
 
@@ -183,18 +200,24 @@ void docInitNode(	BufferItem *		node,
 	    node->biCellRowspan= 1;
 	    node->biCellMergedCellTopRow= -1;
 	    node->biCellMergedCellTopCol= -1;
+
+	    node->biCellProperties= (const struct CellProperties *)0;
+	    node->biCellHeadX= 0;
+	    node->biCellTailX= 0;
+	    node->biCellColspan= 0;
 	    break;
 
 	case DOClevROW:
-	    node->biRowTableHeaderRow= -1;
 	    node->biRowTableFirst= -1;
 	    node->biRowTablePast= -1;
+	    node->biRowPastHeaderRow= -1;
 	    node->biRowPrecededByHeader= 0;
 	    node->biRowForTable= 0;
 
 	    node->biRowTopInset= 0;
 
-	    docInitRowProperties( &(node->biRowProperties) );
+	    node->BIU.biuRow.brProperties= (const struct RowProperties *)0;
+	    node->BIU.biuRow.brRowPropertyNumber= 0;
 
 	    docInitLayoutPosition( &(node->biRowBelowAllCellsPosition) );
 	    docInitLayoutPosition( &(node->biRowAboveHeaderPosition) );
@@ -206,7 +229,7 @@ void docInitNode(	BufferItem *		node,
 
 	default:
 	    node->biLevel= DOClevOUT;
-	    node->biParent= (BufferItem *)0;
+	    node->biParent= (struct BufferItem *)0;
 	    LDEB(level); return;
 	}
 
@@ -228,12 +251,12 @@ void docInitNode(	BufferItem *		node,
 /*									*/
 /************************************************************************/
 
-static void docSectSetSelectionScopes(		BufferItem *	sectBi )
+static void docSectSetSelectionScopes(		struct BufferItem *	sectNode )
     {
-    int				n= sectBi->biNumberInParent;
-    SectHeadersFooters *	shf= sectBi->biSectHeadersFooters;
+    int				n= sectNode->biNumberInParent;
+    SectHeadersFooters *	shf= sectNode->biSectHeadersFooters;
 
-    sectBi->biSectSelectionScope.ssSectNr= n;
+    sectNode->biSectSelectionScope.ssSectNr= n;
 
     if  ( shf )
 	{
@@ -252,6 +275,11 @@ static void docSectSetSelectionScopes(		BufferItem *	sectBi )
 	    shf->shfRightPageHeader.dtRoot->
 				biSectSelectionScope.ssOwnerSectNr= n;
 	    }
+	if  ( shf->shfLastPageHeader.dtRoot )
+	    {
+	    shf->shfLastPageHeader.dtRoot->
+				biSectSelectionScope.ssOwnerSectNr= n;
+	    }
 
 	if  ( shf->shfFirstPageFooter.dtRoot )
 	    {
@@ -268,6 +296,11 @@ static void docSectSetSelectionScopes(		BufferItem *	sectBi )
 	    shf->shfRightPageFooter.dtRoot->
 				biSectSelectionScope.ssOwnerSectNr= n;
 	    }
+	if  ( shf->shfLastPageFooter.dtRoot )
+	    {
+	    shf->shfLastPageFooter.dtRoot->
+				biSectSelectionScope.ssOwnerSectNr= n;
+	    }
 	}
 
     return;
@@ -281,7 +314,7 @@ static void docSectSetSelectionScopes(		BufferItem *	sectBi )
 /*									*/
 /************************************************************************/
 
-static void docParagraphsDeleted(	BufferItem *	node,
+static void docParagraphsDeleted(	struct BufferItem *	node,
 					int		paragraphsDeleted )
     {
     while( node->biParent )
@@ -302,9 +335,9 @@ static void docParagraphsDeleted(	BufferItem *	node,
     }
 
 /*  1  */
-void docDeleteNodes(	BufferDocument *	bd,
-			DocumentTree *		dt,
-			BufferItem *		node,
+void docDeleteNodes(	struct BufferDocument *	bd,
+			struct DocumentTree *	dt,
+			struct BufferItem *	node,
 			int			first,
 			int			count )
     {
@@ -372,9 +405,9 @@ void docDeleteNodes(	BufferDocument *	bd,
     }
 
 /*  2  */
-void docDeleteNode(	BufferDocument *	bd,
-			DocumentTree *		dt,
-			BufferItem *		node )
+void docDeleteNode(	struct BufferDocument *	bd,
+			struct DocumentTree *	dt,
+			struct BufferItem *	node )
     {
     if  ( node->biParent )
 	{
@@ -391,11 +424,11 @@ void docDeleteNode(	BufferDocument *	bd,
 /*									*/
 /************************************************************************/
 
-void docDeleteDocumentTree(	BufferDocument *	bd,
-				DocumentTree *		dt )
+void docDeleteDocumentTree(	struct BufferDocument *	bd,
+				struct DocumentTree *		dt )
     {
     docFreeNode( bd, dt, dt->dtRoot );
-    dt->dtRoot= (BufferItem *)0;
+    dt->dtRoot= (struct BufferItem *)0;
     }
 
 /************************************************************************/
@@ -406,7 +439,7 @@ void docDeleteDocumentTree(	BufferDocument *	bd,
 /*									*/
 /************************************************************************/
 
-static void docParagraphsInserted(	BufferItem *	node,
+static void docParagraphsInserted(	struct BufferItem *	node,
 					int		paragraphsInserted )
     {
     while( node->biParent )
@@ -466,19 +499,19 @@ int docValidChildLevel(		int		parentLevel,
 /*									*/
 /************************************************************************/
 
-BufferItem * docInsertNode(	const BufferDocument *	bd,
-				BufferItem *		parent,
+struct BufferItem * docInsertNode(	const struct BufferDocument *	bd,
+				struct BufferItem *		parent,
 				int			n,
 				int			level )
     {
-    BufferItem *	rval= (BufferItem *)0;
-    BufferItem *	newBi= (BufferItem *)0;
+    struct BufferItem *	rval= (struct BufferItem *)0;
+    struct BufferItem *	newNode= (struct BufferItem *)0;
 
     int			i;
 
     int			newSize;
 
-    BufferItem **	freshChildren;
+    struct BufferItem **	freshChildren;
 
     int			paragraphsInserted;
 
@@ -493,28 +526,22 @@ BufferItem * docInsertNode(	const BufferDocument *	bd,
     if  ( n == -1 )
 	{ n= parent->biChildCount;	}
 
-    newSize= parent->biChildCount;
+    newSize= ( parent->biChildCount+ 1 )* sizeof(struct BufferItem *);
 
-    if  ( newSize % 10 )
-	{ newSize ++;		}
-    else{ newSize += 10;	}
-
-    newSize *= sizeof(BufferItem *);
-
-    freshChildren= (BufferItem **)realloc( parent->biChildren, newSize );
+    freshChildren= (struct BufferItem **)realloc( parent->biChildren, newSize );
     if  ( ! freshChildren )
 	{ LLXDEB(parent->biChildCount,newSize,freshChildren); goto ready; }
     parent->biChildren= freshChildren;
 
-    newBi= (BufferItem *)malloc( sizeof(BufferItem) );
-    if  ( ! newBi )
-	{ XDEB(newBi); goto ready;	}
+    newNode= (struct BufferItem *)malloc( sizeof(struct BufferItem) );
+    if  ( ! newNode )
+	{ XDEB(newNode); goto ready;	}
 
-    docInitNode( newBi, parent, bd, n, level, parent->biTreeType );
+    docInitNode( newNode, parent, bd, n, level, parent->biTreeType );
 
     if  ( n == 0 )
-	{ newBi->biTopPosition= parent->biTopPosition;			}
-    else{ newBi->biTopPosition= freshChildren[n-1]->biBelowPosition;	}
+	{ newNode->biTopPosition= parent->biTopPosition;		}
+    else{ newNode->biTopPosition= freshChildren[n-1]->biBelowPosition;	}
 
     for ( i= parent->biChildCount; i > n; i-- )
 	{
@@ -526,16 +553,16 @@ BufferItem * docInsertNode(	const BufferDocument *	bd,
 	    { docSectSetSelectionScopes( freshChildren[i] ); }
 	}
 
-    freshChildren[n]= newBi;
+    freshChildren[n]= newNode;
     parent->biChildCount++;
 
-    rval= newBi; newBi= (BufferItem *)0; /* steal */
+    rval= newNode; newNode= (struct BufferItem *)0; /* steal */
 
     if  ( level == DOClevPARA )
 	{
 	paragraphsInserted= 1;
 
-	docSetParaTableNesting( rval );
+	docSetParaTableNesting( rval, bd );
 
 	if  ( n > 0 )
 	    { rval->biLeftParagraphs= freshChildren[n-1]->biLeftParagraphs; }
@@ -557,55 +584,56 @@ BufferItem * docInsertNode(	const BufferDocument *	bd,
 
   ready:
 
-    if  ( newBi )
-	{ free( newBi );	}
+    if  ( newNode )
+	{ free( newNode );	}
 
     return rval;
     }
 
 /************************************************************************/
 /*									*/
-/*  Make an empty paragraph: Needed at several locations.		*/
+/*  Append an empty paragraph at the end of a (sub)tree in the		*/
+/*  document.								*/
 /*									*/
 /************************************************************************/
 
-BufferItem * docInsertEmptyParagraph(
-				BufferDocument *	bd,
-				BufferItem *		node,
-				int			textAttributeNumber )
+struct BufferItem * docAppendParagraph(
+			struct BufferDocument *	bd,
+			struct BufferItem *	node,
+			int			textAttributeNr )
     {
     if  ( node->biLevel < DOClevSECT )
-	{ LDEB(node->biLevel); return (BufferItem *)0;	}
+	{ LDEB(node->biLevel); return (struct BufferItem *)0;	}
 
     if  ( node->biLevel < DOClevROW )
 	{
 	node= docInsertNode( bd, node, -1, DOClevROW );
 	if  ( ! node )
-	    { XDEB(node); return (BufferItem *)0;   }
+	    { XDEB(node); return (struct BufferItem *)0;   }
 	}
 
     if  ( node->biLevel < DOClevCELL )
 	{
 	node= docInsertNode( bd, node, -1, DOClevCELL );
 	if  ( ! node )
-	    { XDEB(node); return (BufferItem *)0;   }
+	    { XDEB(node); return (struct BufferItem *)0;   }
 	}
 
     if  ( node->biLevel < DOClevPARA )
 	{
 	node= docInsertNode( bd, node, -1, DOClevPARA );
 	if  ( ! node )
-	    { XDEB(node); return (BufferItem *)0;   }
+	    { XDEB(node); return (struct BufferItem *)0;   }
 	}
     else{
 	node= docInsertNode( bd, node->biParent, -1, DOClevPARA );
 	if  ( ! node )
-	    { XDEB(node); return (BufferItem *)0;   }
+	    { XDEB(node); return (struct BufferItem *)0;   }
 	}
 
     if  ( ! docInsertTextParticule( node, 0, 0, 0,
-				    DOCkindSPAN, textAttributeNumber ) )
-	{ LDEB(1); return (BufferItem *)0;	}
+				    TPkindSPAN, textAttributeNr ) )
+	{ LDEB(1); return (struct BufferItem *)0;	}
 
     return node;
     }
@@ -614,44 +642,50 @@ BufferItem * docInsertEmptyParagraph(
 /*									*/
 /*  Insert a new row in a table.					*/
 /*									*/
+/*  8)  Force the per column administration to be redone.		*/
+/*									*/
 /************************************************************************/
 
-BufferItem * docInsertRowNode(	BufferDocument *	bd,
-				BufferItem *		sectBi,
-				int			n,
-				const RowProperties *	rp,
-				int			textAttributeNumber )
+struct BufferItem * docInsertRowNode(
+			struct BufferDocument *		bd,
+			struct BufferItem *			parentNode,
+			int				n,
+			const struct RowProperties *	rp,
+			int				textAttributeNr )
     {
     int				col;
 
-    BufferItem *		rval= (BufferItem *)0;
-    BufferItem *		rowBi= (BufferItem *)0;
+    struct BufferItem *		rval= (struct BufferItem *)0;
+    struct BufferItem *		rowNode= (struct BufferItem *)0;
 
-    rowBi= docInsertNode( bd, sectBi, n, DOClevROW );
-    if  ( ! rowBi )
-	{ XDEB(rowBi); goto ready;	}
+    rowNode= docInsertNode( bd, parentNode, n, DOClevROW );
+    if  ( ! rowNode )
+	{ XDEB(rowNode); goto ready;	}
 
-    if  ( docCopyRowProperties( &(rowBi->biRowProperties), rp,
-					(const DocumentAttributeMap *)0 ) )
+    if  ( docSetRowNodeProperties( rowNode, rp, bd ) )
 	{ LDEB(1); goto ready; }
 
     for ( col= 0; col < rp->rpCellCount; col++ )
 	{
-	BufferItem *	paraBi;
+	struct BufferItem *	paraNode;
 
-	paraBi= docInsertEmptyParagraph( bd, rowBi, textAttributeNumber );
-	if  ( ! paraBi )
-	    { XDEB(paraBi); goto ready; }
+	paraNode= docAppendParagraph( bd, rowNode, textAttributeNr );
+	if  ( ! paraNode )
+	    { XDEB(paraNode); goto ready; }
 
-	docSetParaTableNesting( paraBi );
+	docSetParaTableNesting( paraNode, bd );
 	}
 
-    rval= rowBi; rowBi= (BufferItem *)0; /* steal */
+    /*  8  */
+    if  ( docSetRowNodeProperties( rowNode, rp, bd ) )
+	{ LDEB(1); goto ready; }
+
+    rval= rowNode; rowNode= (struct BufferItem *)0; /* steal */
 
   ready:
 
-    if  ( rowBi )
-	{ docDeleteNode( bd, (DocumentTree *)0, rowBi );	}
+    if  ( rowNode )
+	{ docDeleteNode( bd, (struct DocumentTree *)0, rowNode );	}
 
     return rval;
     }
@@ -668,26 +702,26 @@ BufferItem * docInsertRowNode(	BufferDocument *	bd,
 /*									*/
 /************************************************************************/
 
-int docSplitGroupNode(			BufferDocument *	bd,
-					BufferItem **		pNewBi,
-					BufferItem *		oldBi,
+int docSplitGroupNode(			struct BufferDocument *	bd,
+					struct BufferItem **	pNewNode,
+					struct BufferItem *	oldNode,
 					int			n )
     {
-    BufferItem *	newBi;
+    struct BufferItem *	newNode;
     int			i;
     int			prev;
 
     /*  1  */
-    newBi= docInsertNode( bd, oldBi->biParent,
-				oldBi->biNumberInParent, oldBi->biLevel );
-    if  ( ! newBi )
-	{ XDEB(newBi); return -1;	}
+    newNode= docInsertNode( bd, oldNode->biParent,
+				oldNode->biNumberInParent, oldNode->biLevel );
+    if  ( ! newNode )
+	{ XDEB(newNode); return -1;	}
 
     /*  2  */
-    switch( oldBi->biLevel )
+    switch( oldNode->biLevel )
 	{
 	case DOClevSECT:
-	    if  ( docCopySectDescription( newBi, bd, oldBi, bd ) )
+	    if  ( docCopySectDescription( newNode, bd, oldNode, bd ) )
 		{ LDEB(1); return -1;	}
 	    break;
 
@@ -695,55 +729,54 @@ int docSplitGroupNode(			BufferDocument *	bd,
 	    break;
 
 	case DOClevROW:
-	    if  ( docCopyRowProperties( &(newBi->biRowProperties),
-					&(oldBi->biRowProperties),
+	    if  ( docCopyRowNodeProperties( newNode, oldNode, bd,
 					(const DocumentAttributeMap *)0 ) )
 		{ LDEB(1); return -1;	}
 	    break;
 
 	default:
-	    LDEB(oldBi->biLevel); return -1;
+	    LDEB(oldNode->biLevel); return -1;
 	}
 
-    newBi->biChildren= (BufferItem **)malloc( n* sizeof(BufferItem *) );
-    if  ( ! newBi->biChildren )
-	{ XDEB(newBi->biChildren); return -1;	}
+    newNode->biChildren= (struct BufferItem **)malloc( n* sizeof(struct BufferItem *) );
+    if  ( ! newNode->biChildren )
+	{ XDEB(newNode->biChildren); return -1;	}
 
     /*  3  */
     for ( i= 0; i < n; i++ )
 	{
-	newBi->biChildren[i]= oldBi->biChildren[i];
-	newBi->biChildren[i]->biParent= newBi;
+	newNode->biChildren[i]= oldNode->biChildren[i];
+	newNode->biChildren[i]->biParent= newNode;
 	}
 
     /*  4  */
     prev= 0;
-    if  ( newBi->biNumberInParent > 0 )
+    if  ( newNode->biNumberInParent > 0 )
 	{
-	prev= newBi->biParent->biChildren[newBi->biNumberInParent-1]->
+	prev= newNode->biParent->biChildren[newNode->biNumberInParent-1]->
 							biLeftParagraphs;
 	}
 
     if  ( n == 0 )
-	{ newBi->biLeftParagraphs= prev; }
+	{ newNode->biLeftParagraphs= prev; }
     else{
-	newBi->biLeftParagraphs= prev+ newBi->biChildren[n-1]->biLeftParagraphs;
+	newNode->biLeftParagraphs= prev+ newNode->biChildren[n-1]->biLeftParagraphs;
 	}
 
     /*  4,5  */
-    newBi->biChildCount= n;
-    oldBi->biChildCount -= n;
+    newNode->biChildCount= n;
+    oldNode->biChildCount -= n;
 
     prev= 0;
-    for ( i= 0; i < oldBi->biChildCount; i++ )
+    for ( i= 0; i < oldNode->biChildCount; i++ )
 	{
-	BufferItem *	child= oldBi->biChildren[i+ n];
+	struct BufferItem *	child= oldNode->biChildren[i+ n];
 
 	/*  5  */
-	oldBi->biChildren[i]= child;
+	oldNode->biChildren[i]= child;
 	child->biNumberInParent -= n;
 
-	if  ( oldBi->biChildren[i]->biLevel == DOClevPARA )
+	if  ( oldNode->biChildren[i]->biLevel == DOClevPARA )
 	    { prev++;	}
 	else{
 	    if  ( child->biChildCount > 0 )
@@ -753,10 +786,10 @@ int docSplitGroupNode(			BufferDocument *	bd,
 		}
 	    }
 
-	oldBi->biChildren[i]->biLeftParagraphs= prev;
+	oldNode->biChildren[i]->biLeftParagraphs= prev;
 	}
 
-    *pNewBi= newBi; return 0;
+    *pNewNode= newNode; return 0;
     }
 
 /************************************************************************/
@@ -769,19 +802,19 @@ int docSplitGroupNode(			BufferDocument *	bd,
 /*									*/
 /************************************************************************/
 
-int docSplitGroupNodeAtLevel(	BufferDocument *	bd,
-				BufferItem **		pBeforeNode,
-				BufferItem **		pAfterNode,
-				BufferItem *		splitNode,
+int docSplitGroupNodeAtLevel(	struct BufferDocument *	bd,
+				struct BufferItem **		pBeforeNode,
+				struct BufferItem **		pAfterNode,
+				struct BufferItem *		splitNode,
 				int			n,
 				int			level )
     {
-    BufferItem *	beforeNode= (BufferItem *)0;
-    BufferItem *	afterNode= splitNode;
-    BufferItem *	node;
+    struct BufferItem *	beforeNode= (struct BufferItem *)0;
+    struct BufferItem *	afterNode= splitNode;
+    struct BufferItem *	node;
 
 #   if VALIDATE_TREE
-    SDEB(docLevelStr(parentBi->biLevel));
+    SDEB(docLevelStr(bd->bdBody.dtRoot->biLevel));
     if  ( docCheckNode( bd->bdBody.dtRoot ) )
 	{ LDEB(2); docListNode( 0, bd->bdBody.dtRoot ); abort(); }
 #   endif
@@ -837,10 +870,10 @@ int docSplitGroupNodeAtLevel(	BufferDocument *	bd,
 /*									*/
 /************************************************************************/
 
-int docMergeGroupNodes(		BufferItem *	to,
-				BufferItem *	from )
+int docMergeGroupNodes(		struct BufferItem *	to,
+				struct BufferItem *	from )
     {
-    BufferItem **	freshChildren;
+    struct BufferItem **	freshChildren;
     int			f;
     int			t;
     int			left;
@@ -863,8 +896,8 @@ int docMergeGroupNodes(		BufferItem *	to,
 	{ LDEB(2); docListRootNode( 0, from ); abort(); }
 #   endif
 
-    freshChildren= (BufferItem **)realloc( to->biChildren,
-	    ( to->biChildCount+ from->biChildCount )* sizeof(BufferItem *) );
+    freshChildren= (struct BufferItem **)realloc( to->biChildren,
+	    ( to->biChildCount+ from->biChildCount )* sizeof(struct BufferItem *) );
     if  ( ! freshChildren )
 	{
 	LLXDEB(to->biChildCount,from->biChildCount,freshChildren);
@@ -874,10 +907,10 @@ int docMergeGroupNodes(		BufferItem *	to,
 
     if  ( from->biParent && from->biNumberInParent > 0 )
 	{
-	BufferItem *	prevBi;
+	struct BufferItem *	prevNode;
 
-	prevBi= from->biParent->biChildren[from->biNumberInParent- 1];
-	paragraphsMoved= from->biLeftParagraphs- prevBi->biLeftParagraphs;
+	prevNode= from->biParent->biChildren[from->biNumberInParent- 1];
+	paragraphsMoved= from->biLeftParagraphs- prevNode->biLeftParagraphs;
 	}
     else{
 	paragraphsMoved= from->biLeftParagraphs;
@@ -927,7 +960,7 @@ int docMergeGroupNodes(		BufferItem *	to,
 /*									*/
 /************************************************************************/
 
-int docNumberOfParagraph(	const BufferItem *	node )
+int docNumberOfParagraph(	const struct BufferItem *	node )
     {
     int		n= 0;
 
@@ -953,13 +986,13 @@ int docNumberOfParagraph(	const BufferItem *	node )
     return n;
     }
 
-BufferItem * docGetParagraphByNumber(	const DocumentTree *	dt,
+struct BufferItem * docGetParagraphByNumber(	const struct DocumentTree *	dt,
 					int			paraNr )
     {
-    BufferItem *	node= dt->dtRoot;
+    struct BufferItem *	node= dt->dtRoot;
 
     if  ( paraNr < 1 )
-	{ LDEB(paraNr); return (BufferItem *)0;	}
+	{ LDEB(paraNr); return (struct BufferItem *)0;	}
 
     while( node->biChildCount > 0 )
 	{
@@ -974,7 +1007,7 @@ BufferItem * docGetParagraphByNumber(	const DocumentTree *	dt,
 	if  ( i >= node->biChildCount )
 	    {
 	    /* LLSDEB(paraNr,node->biChildCount,docLevelStr(node->biLevel)); */
-	    return (BufferItem *)0;
+	    return (struct BufferItem *)0;
 	    }
 
 	if  ( i > 0 )
@@ -984,32 +1017,32 @@ BufferItem * docGetParagraphByNumber(	const DocumentTree *	dt,
 	}
 
     if  ( node->biLevel != DOClevPARA )
-	{ SDEB(docLevelStr(node->biLevel)); return (BufferItem *)0;	}
+	{ SDEB(docLevelStr(node->biLevel)); return (struct BufferItem *)0;	}
 
     if  ( paraNr != 1 )
-	{ LDEB(paraNr); return (BufferItem *)0; }
+	{ LDEB(paraNr); return (struct BufferItem *)0; }
 
     return node;
     }
 
-BufferItem * docGetCommonParent(	BufferItem *	paraNode1,
-					BufferItem *	paraNode2 )
+struct BufferItem * docGetCommonParent(	struct BufferItem *	paraNode1,
+					struct BufferItem *	paraNode2 )
     {
     int			paraNr1= docNumberOfParagraph( paraNode1 );
     int			paraNr2= docNumberOfParagraph( paraNode2 );
 
-    BufferItem *	bi1= paraNode1;
-    BufferItem *	bi2= paraNode2;
+    struct BufferItem *	bi1= paraNode1;
+    struct BufferItem *	bi2= paraNode2;
 
     if  ( paraNr1 < 1 || paraNr2 < paraNr1 )
-	{ LLDEB(paraNr1,paraNr2); return (BufferItem *)0;	}
+	{ LLDEB(paraNr1,paraNr2); return (struct BufferItem *)0;	}
 
     while( bi1->biParent )
 	{ bi1= bi1->biParent;	}
     while( bi2->biParent )
 	{ bi2= bi2->biParent;	}
     if  ( bi1 != bi2 )
-	{ XXDEB(bi1,bi2); return (BufferItem *)0;	}
+	{ XXDEB(bi1,bi2); return (struct BufferItem *)0;	}
 
     while( bi1->biChildCount > 0 )
 	{
@@ -1027,7 +1060,7 @@ BufferItem * docGetCommonParent(	BufferItem *	paraNode1,
 	if  ( i >= bi1->biChildCount )
 	    {
 	    /* LLSDEB(paraNr,bi1->biChildCount,docLevelStr(bi1->biLevel)); */
-	    return (BufferItem *)0;
+	    return (struct BufferItem *)0;
 	    }
 
 	if  ( i > 0 )
@@ -1040,22 +1073,22 @@ BufferItem * docGetCommonParent(	BufferItem *	paraNode1,
 	}
 
     if  ( bi1->biLevel != DOClevPARA )
-	{ SDEB(docLevelStr(bi1->biLevel)); return (BufferItem *)0;	}
+	{ SDEB(docLevelStr(bi1->biLevel)); return (struct BufferItem *)0;	}
 
     if  ( paraNr1 != 1 || paraNr2 != 1 )
-	{ LLDEB(paraNr1,paraNr2); return (BufferItem *)0; }
+	{ LLDEB(paraNr1,paraNr2); return (struct BufferItem *)0; }
 
     return bi1;
     }
 
 /************************************************************************/
 /*									*/
-/*  Return the nearest parent of a BufferItem that is a real row.	*/
+/*  Return the nearest parent of a struct BufferItem that is a real row.	*/
 /*  candidate row, cell.						*/
 /*									*/
 /************************************************************************/
 
-BufferItem * docGetRowNode(		BufferItem *		node )
+struct BufferItem * docGetRowNode(		struct BufferItem *		node )
     {
     while( node && ! docIsRowNode( node ) )
 	{ node= node->biParent;	}
@@ -1063,7 +1096,7 @@ BufferItem * docGetRowNode(		BufferItem *		node )
     return node;
     }
 
-BufferItem * docGetRowLevelNode(	BufferItem *		node )
+struct BufferItem * docGetRowLevelNode(	struct BufferItem *		node )
     {
     while( node					&&
 	   node->biLevel != DOClevROW		)
@@ -1072,7 +1105,7 @@ BufferItem * docGetRowLevelNode(	BufferItem *		node )
     return node;
     }
 
-BufferItem * docGetCellNode(		BufferItem *		node )
+struct BufferItem * docGetCellNode(		struct BufferItem *		node )
     {
     while( node					&&
 	   node->biLevel != DOClevCELL		)
@@ -1083,11 +1116,11 @@ BufferItem * docGetCellNode(		BufferItem *		node )
 
 /************************************************************************/
 /*									*/
-/*  Return the nearest parent of a BufferItem that is a section.	*/
+/*  Return the nearest parent of a struct BufferItem that is a section.	*/
 /*									*/
 /************************************************************************/
 
-BufferItem * docGetSectNode(		BufferItem *		node )
+struct BufferItem * docGetSectNode(		struct BufferItem *		node )
     {
     while( node					&&
 	   node->biLevel != DOClevSECT		)
@@ -1103,7 +1136,7 @@ BufferItem * docGetSectNode(		BufferItem *		node )
 /*									*/
 /************************************************************************/
 
-int docTableNesting(		const BufferItem *	node )
+int docTableNesting(		const struct BufferItem *	node )
     {
     int			tableNesting= 0;
 
@@ -1118,7 +1151,7 @@ int docTableNesting(		const BufferItem *	node )
     return tableNesting;
     }
 
-int docRowNesting(		const BufferItem *	node )
+int docRowNesting(		const struct BufferItem *	node )
     {
     int			rowNesting= 0;
 
@@ -1133,12 +1166,13 @@ int docRowNesting(		const BufferItem *	node )
     return rowNesting;
     }
 
-void docSetParaTableNesting(		BufferItem *	paraBi )
+void docSetParaTableNesting(		struct BufferItem *		paraNode,
+					const struct BufferDocument *	bd )
     {
-    if  ( paraBi->biLevel != DOClevPARA )
-	{ SDEB(docLevelStr(paraBi->biLevel)); return;	}
+    if  ( paraNode->biLevel != DOClevPARA )
+	{ SDEB(docLevelStr(paraNode->biLevel)); return;	}
 
-    paraBi->biParaTableNesting= docTableNesting( paraBi );
+    docParaNodeSetTableNesting( paraNode, docTableNesting( paraNode ), bd );
     }
 
 /************************************************************************/
@@ -1147,7 +1181,7 @@ void docSetParaTableNesting(		BufferItem *	paraBi )
 /*									*/
 /************************************************************************/
 
-void docSetTreeTypeOfNode(	BufferItem *		node,
+void docSetTreeTypeOfNode(	struct BufferItem *		node,
 				int			treeType )
     {
     int		i;
@@ -1170,15 +1204,15 @@ void docSetTreeTypeOfNode(	BufferItem *		node,
 /************************************************************************/
 
 int docNodeAtExtremity(	int *				pAtExtremity,
-			const BufferItem *		parentNode,
-			const BufferItem *		paraNode,
+			const struct BufferItem *		parentNode,
+			const struct BufferItem *		paraNode,
 			int				after )
     {
     if  ( after )
 	{
 	DocumentPosition	dpTail;
 
-	if  ( docTailPosition( &dpTail, (BufferItem *)parentNode ) )
+	if  ( docTailPosition( &dpTail, (struct BufferItem *)parentNode ) )
 	    { LDEB(1); return -1;	}
 
 	*pAtExtremity= ( paraNode == dpTail.dpNode );
@@ -1186,7 +1220,7 @@ int docNodeAtExtremity(	int *				pAtExtremity,
     else{
 	DocumentPosition	dpHead;
 
-	if  ( docHeadPosition( &dpHead, (BufferItem *)parentNode ) )
+	if  ( docHeadPosition( &dpHead, (struct BufferItem *)parentNode ) )
 	    { LDEB(1); return -1;	}
 
 	*pAtExtremity= ( paraNode == dpHead.dpNode );

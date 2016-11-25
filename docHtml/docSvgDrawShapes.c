@@ -14,7 +14,11 @@
 #   include	<docObjectProperties.h>
 #   include	<docDraw.h>
 #   include	<docShape.h>
+#   include	<docShapeType.h>
+#   include	<docShapePath.h>
+#   include	<svgWriter.h>
 #   include	"docSvgDrawImpl.h"
+#   include	<geo2DInteger.h>
 
 #   include	<appDebugon.h>
 
@@ -106,7 +110,7 @@ static int docSvgDrawShapePath(	const DrawingShape *		ds,
 /*									*/
 /************************************************************************/
 
-int docSvgDrawDrawDrawingShape(	const DocumentRectangle *	drTwips,
+int docSvgDrawDrawDrawingShape(	const DocumentRectangle *	drOutside,
 				int				page,
 				DrawingShape *			ds,
 				DrawingContext *		dc,
@@ -122,7 +126,7 @@ int docSvgDrawDrawDrawingShape(	const DocumentRectangle *	drTwips,
     DocumentRectangle		drHere;
     DocumentRectangle		drNorm;
 
-    docShapeGetRects( &drHere, &drNorm, drTwips, ds );
+    docShapeGetRects( &drHere, &drNorm, drOutside, ds );
 
     switch( sd->sdShapeType )
 	{
@@ -132,12 +136,12 @@ int docSvgDrawDrawDrawingShape(	const DocumentRectangle *	drTwips,
 	    break;
 
 	case 33:
-	    if  ( docSvgDrawShapePath( ds, &SP_33, drTwips, dc, sw ) )
+	    if  ( docSvgDrawShapePath( ds, &SP_33, drOutside, dc, sw ) )
 		{ LDEB(1); rval= -1;	}
 	    break;
 
 	case 34:
-	    if  ( docSvgDrawShapePath( ds, &SP_34, drTwips, dc, sw ) )
+	    if  ( docSvgDrawShapePath( ds, &SP_34, drOutside, dc, sw ) )
 		{ LDEB(1); rval= -1;	}
 	    break;
 
@@ -145,10 +149,10 @@ int docSvgDrawDrawDrawingShape(	const DocumentRectangle *	drTwips,
 	    {
 	    const ShapePath *	sp= &SP_RECTANGLE;
 
-	    if  ( docSvgDrawShapePath( ds, sp, drTwips, dc, sw ) )
+	    if  ( docSvgDrawShapePath( ds, sp, drOutside, dc, sw ) )
 		{ LDEB(1); rval= -1;	}
 
-	    docShapeStartShapeTransform( &at, ds, drTwips,
+	    docShapeStartShapeTransform( &at, ds, drOutside,
 						    sp->spXSize, sp->spYSize );
 
 	    if  ( ds->dsPictureProperties.pipType != DOCokUNKNOWN )
@@ -160,215 +164,215 @@ int docSvgDrawDrawDrawingShape(	const DocumentRectangle *	drTwips,
 	case SHPtyFLOW_CHART_PROCESS:
 	case SHPtyACCENT_BORDER_CALLOUT_90:
 	case SHPtyTEXT_BOX:
-	    if  ( docSvgDrawShapePath( ds, &SP_RECTANGLE, drTwips, dc, sw ) )
+	    if  ( docSvgDrawShapePath( ds, &SP_RECTANGLE, drOutside, dc, sw ) )
 		{ LDEB(1); rval= -1;	}
 	    break;
 
 	case SHPtyDIAMOND:
 	case SHPtyFLOW_CHART_DECISION:
-	    if  ( docSvgDrawShapePath( ds, &SP_DIAMOND, drTwips, dc, sw ) )
+	    if  ( docSvgDrawShapePath( ds, &SP_DIAMOND, drOutside, dc, sw ) )
 		{ LDEB(1); rval= -1;	}
 	    break;
 
 	case SHPtyISOSCELES_TRIANGLE:
 	case SHPtyFLOW_CHART_EXTRACT:
 	    if  ( docSvgDrawShapePath( ds, &SP_ISOSCELES_TRIANGLE,
-							drTwips, dc, sw ) )
+							drOutside, dc, sw ) )
 		{ LDEB(1); rval= -1;	}
 	    break;
 
 	case SHPtyFLOW_CHART_MERGE:
 	    if  ( docSvgDrawShapePath( ds, &SP_FLOW_CHART_MERGE,
-							drTwips, dc, sw ) )
+							drOutside, dc, sw ) )
 		{ LDEB(1); rval= -1;	}
 	    break;
 
 	case SHPtyRIGHT_TRIANGLE:
 	    if  ( docSvgDrawShapePath( ds, &SP_RIGHT_TRIANGLE,
-							drTwips, dc, sw ) )
+							drOutside, dc, sw ) )
 		{ LDEB(1); rval= -1;	}
 	    break;
 
 	case SHPtyPARALLELOGRAM:
 	case SHPtyFLOW_CHART_INPUT_OUTPUT:
 	    if  ( docSvgDrawShapePath( ds, &SP_PARALLELOGRAM,
-							drTwips, dc, sw ) )
+							drOutside, dc, sw ) )
 		{ LDEB(1); rval= -1;	}
 	    break;
 
 	case SHPtyTRAPEZOID:
 	case SHPtyFLOW_CHART_MANUAL_OPERATION:
-	    if  ( docSvgDrawShapePath( ds, &SP_TRAPEZOID, drTwips, dc, sw ) )
+	    if  ( docSvgDrawShapePath( ds, &SP_TRAPEZOID, drOutside, dc, sw ) )
 		{ LDEB(1); rval= -1;	}
 	    break;
 
 	case SHPtyHEXAGON:
 	case SHPtyFLOW_CHART_PREPARATION:
-	    if  ( docSvgDrawShapePath( ds, &SP_HEXAGON, drTwips, dc, sw ) )
+	    if  ( docSvgDrawShapePath( ds, &SP_HEXAGON, drOutside, dc, sw ) )
 		{ LDEB(1); rval= -1;	}
 	    break;
 
 	case SHPtyOCTAGON:
-	    if  ( docSvgDrawShapePath( ds, &SP_OCTAGON, drTwips, dc, sw ) )
+	    if  ( docSvgDrawShapePath( ds, &SP_OCTAGON, drOutside, dc, sw ) )
 		{ LDEB(1); rval= -1;	}
 	    break;
 
 	case SHPtyPLUS_SIGN:
-	    if  ( docSvgDrawShapePath( ds, &SP_PLUS_SIGN, drTwips, dc, sw ) )
+	    if  ( docSvgDrawShapePath( ds, &SP_PLUS_SIGN, drOutside, dc, sw ) )
 		{ LDEB(1); rval= -1;	}
 	    break;
 
 	case SHPtyARROW:
-	    if  ( docSvgDrawShapePath( ds, &SP_ARROW, drTwips, dc, sw ) )
+	    if  ( docSvgDrawShapePath( ds, &SP_ARROW, drOutside, dc, sw ) )
 		{ LDEB(1); rval= -1;	}
 	    break;
 
 	case SHPtyNOTCHED_RIGHT_ARROW:
 	    if  ( docSvgDrawShapePath( ds, &SP_NOTCHED_RIGHT_ARROW,
-							drTwips, dc, sw ) )
+							drOutside, dc, sw ) )
 		{ LDEB(1); rval= -1;	}
 	    break;
 
 	case SHPtyHOME_PLATE:
-	    if  ( docSvgDrawShapePath( ds, &SP_HOME_PLATE, drTwips, dc, sw ) )
+	    if  ( docSvgDrawShapePath( ds, &SP_HOME_PLATE, drOutside, dc, sw ) )
 		{ LDEB(1); rval= -1;	}
 	    break;
 
 	case SHPtyCHEVRON:
-	    if  ( docSvgDrawShapePath( ds, &SP_CHEVRON, drTwips, dc, sw ) )
+	    if  ( docSvgDrawShapePath( ds, &SP_CHEVRON, drOutside, dc, sw ) )
 		{ LDEB(1); rval= -1;	}
 	    break;
 
 	case SHPtyLEFT_ARROW:
-	    if  ( docSvgDrawShapePath( ds, &SP_LEFT_ARROW, drTwips, dc, sw ) )
+	    if  ( docSvgDrawShapePath( ds, &SP_LEFT_ARROW, drOutside, dc, sw ) )
 		{ LDEB(1); rval= -1;	}
 	    break;
 
 	case SHPtyRIGHT_ARROW_CALLOUT:
 	    if  ( docSvgDrawShapePath( ds, &SP_RIGHT_ARROW_CALLOUT,
-							drTwips, dc, sw ) )
+							drOutside, dc, sw ) )
 		{ LDEB(1); rval= -1;	}
 	    break;
 	case SHPtyLEFT_ARROW_CALLOUT:
 	    if  ( docSvgDrawShapePath( ds, &SP_LEFT_ARROW_CALLOUT,
-							drTwips, dc, sw ) )
+							drOutside, dc, sw ) )
 		{ LDEB(1); rval= -1;	}
 	    break;
 	case SHPtyUP_ARROW_CALLOUT:
 	    if  ( docSvgDrawShapePath( ds, &SP_UP_ARROW_CALLOUT,
-							drTwips, dc, sw ) )
+							drOutside, dc, sw ) )
 		{ LDEB(1); rval= -1;	}
 	    break;
 	case SHPtyDOWN_ARROW_CALLOUT:
 	    if  ( docSvgDrawShapePath( ds, &SP_DOWN_ARROW_CALLOUT,
-							drTwips, dc, sw ) )
+							drOutside, dc, sw ) )
 		{ LDEB(1); rval= -1;	}
 	    break;
 
 	case SHPtyLEFT_RIGHT_ARROW_CALLOUT:
 	    if  ( docSvgDrawShapePath( ds, &SP_LEFT_RIGHT_ARROW_CALLOUT,
-							drTwips, dc, sw ) )
+							drOutside, dc, sw ) )
 		{ LDEB(1); rval= -1;	}
 	    break;
 
 	case SHPtyUP_DOWN_ARROW_CALLOUT:
 	    if  ( docSvgDrawShapePath( ds, &SP_UP_DOWN_ARROW_CALLOUT,
-							drTwips, dc, sw ) )
+							drOutside, dc, sw ) )
 		{ LDEB(1); rval= -1;	}
 	    break;
 
 	case SHPtyQUAD_ARROW_CALLOUT:
 	    if  ( docSvgDrawShapePath( ds, &SP_QUAD_ARROW_CALLOUT,
-							drTwips, dc, sw ) )
+							drOutside, dc, sw ) )
 		{ LDEB(1); rval= -1;	}
 	    break;
 
 	case SHPtyLEFT_RIGHT_ARROW:
 	    if  ( docSvgDrawShapePath( ds, &SP_LEFT_RIGHT_ARROW,
-							drTwips, dc, sw ) )
+							drOutside, dc, sw ) )
 		{ LDEB(1); rval= -1;	}
 	    break;
 
 	case SHPtyUP_ARROW:
-	    if  ( docSvgDrawShapePath( ds, &SP_UP_ARROW, drTwips, dc, sw ) )
+	    if  ( docSvgDrawShapePath( ds, &SP_UP_ARROW, drOutside, dc, sw ) )
 		{ LDEB(1); rval= -1;	}
 	    break;
 
 	case SHPtyDOWN_ARROW:
-	    if  ( docSvgDrawShapePath( ds, &SP_DOWN_ARROW, drTwips, dc, sw ) )
+	    if  ( docSvgDrawShapePath( ds, &SP_DOWN_ARROW, drOutside, dc, sw ) )
 		{ LDEB(1); rval= -1;	}
 	    break;
 
 	case SHPtyUP_DOWN_ARROW:
 	    if  ( docSvgDrawShapePath( ds, &SP_UP_DOWN_ARROW,
-							drTwips, dc, sw ) )
+							drOutside, dc, sw ) )
 		{ LDEB(1); rval= -1;	}
 	    break;
 
 	case SHPtyQUAD_ARROW:
-	    if  ( docSvgDrawShapePath( ds, &SP_QUAD_ARROW, drTwips, dc, sw ) )
+	    if  ( docSvgDrawShapePath( ds, &SP_QUAD_ARROW, drOutside, dc, sw ) )
 		{ LDEB(1); rval= -1;	}
 	    break;
 
 	case SHPtyLEFT_RIGHT_UP_ARROW:
 	    if  ( docSvgDrawShapePath( ds, &SP_LEFT_RIGHT_UP_ARROW,
-							drTwips, dc, sw ) )
+							drOutside, dc, sw ) )
 		{ LDEB(1); rval= -1;	}
 	    break;
 
 	case SHPtyLEFT_UP_ARROW:
 	    if  ( docSvgDrawShapePath( ds, &SP_LEFT_UP_ARROW,
-							drTwips, dc, sw ) )
+							drOutside, dc, sw ) )
 		{ LDEB(1); rval= -1;	}
 	    break;
 
 	case SHPtyBENT_UP_ARROW:
 	    if  ( docSvgDrawShapePath( ds, &SP_BENT_UP_ARROW,
-							drTwips, dc, sw ) )
+							drOutside, dc, sw ) )
 		{ LDEB(1); rval= -1;	}
 	    break;
 
 	case SHPtyPENTAGON:
-	    if  ( docSvgDrawShapePath( ds, &SP_PENTAGON, drTwips, dc, sw ) )
+	    if  ( docSvgDrawShapePath( ds, &SP_PENTAGON, drOutside, dc, sw ) )
 		{ LDEB(1); rval= -1;	}
 	    break;
 
 	case SHPtySTAR:
-	    if  ( docSvgDrawShapePath( ds, &SP_STAR, drTwips, dc, sw ) )
+	    if  ( docSvgDrawShapePath( ds, &SP_STAR, drOutside, dc, sw ) )
 		{ LDEB(1); rval= -1;	}
 	    break;
 
 	case SHPtySEAL4:
-	    if  ( docSvgDrawShapePath( ds, &SP_SEAL4, drTwips, dc, sw ) )
+	    if  ( docSvgDrawShapePath( ds, &SP_SEAL4, drOutside, dc, sw ) )
 		{ LDEB(1); rval= -1;	}
 	    break;
 
 	case 32:
 	case SHPtyLINE:
-	    if  ( docSvgDrawShapePath( ds, &SP_LINE, drTwips, dc, sw ) )
+	    if  ( docSvgDrawShapePath( ds, &SP_LINE, drOutside, dc, sw ) )
 		{ LDEB(1); rval= -1;	}
 	    break;
 
 	case SHPtyFLOW_CHART_MANUAL_INPUT:
 	    if  ( docSvgDrawShapePath( ds, &SP_FLOW_CHART_MANUAL_INPUT,
-							drTwips, dc, sw ) )
+							drOutside, dc, sw ) )
 		{ LDEB(1); rval= -1;	}
 	    break;
 	case SHPtyFLOW_CHART_OFF_PAGE_CONNECTOR:
 	    if  ( docSvgDrawShapePath( ds, &SP_FLOW_CHART_OFF_PAGE_CONNECTOR,
-							drTwips, dc, sw ) )
+							drOutside, dc, sw ) )
 		{ LDEB(1); rval= -1;	}
 	    break;
 
 	case SHPtyFLOW_CHART_PUNCHED_CARD:
 	    if  ( docSvgDrawShapePath( ds, &SP_FLOW_CHART_PUNCHED_CARD,
-							drTwips, dc, sw ) )
+							drOutside, dc, sw ) )
 		{ LDEB(1); rval= -1;	}
 	    break;
 
 	case SHPtyWEDGE_RECT_CALLOUT:
 	    if  ( docSvgDrawShapePath( ds, &SP_WEDGE_RECT_CALLOUT,
-							drTwips, dc, sw ) )
+							drOutside, dc, sw ) )
 		{ LDEB(1); rval= -1;	}
 	    break;
 
@@ -403,12 +407,12 @@ int docSvgDrawDrawDrawingShape(	const DocumentRectangle *	drTwips,
 		int		i;
 		const char *	command= "M";
 		const char *	sep= "";
-		int		x0= ( drTwips->drX1- drTwips->drX0 )/ 2;
-		int		y0= ( drTwips->drY1- drTwips->drY0 )/ 2;
+		int		x0= ( drOutside->drX1- drOutside->drX0 )/ 2;
+		int		y0= ( drOutside->drY1- drOutside->drY0 )/ 2;
 
-		docShapeStartShapeTransform( &at, ds, drTwips,
-					drTwips->drX1- drTwips->drX0,
-					drTwips->drY1- drTwips->drY0 );
+		docShapeStartShapeTransform( &at, ds, drOutside,
+					drOutside->drX1- drOutside->drX0,
+					drOutside->drY1- drOutside->drY0 );
 
 		for ( i= 0; i < sd->sdVertexCount; i++ )
 		    {

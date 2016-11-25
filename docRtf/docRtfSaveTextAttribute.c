@@ -7,18 +7,24 @@
 #   include	"docRtfConfig.h"
 
 #   include	<stdlib.h>
-#   include	<stdio.h>
 #   include	<ctype.h>
 
-#   include	<appDebugon.h>
-
 #   include	<uniUtf8.h>
-#   include	<utilMatchFont.h>
+#   include	<fontMatchFont.h>
 #   include	<psShading.h>
 #   include	"docRtfWriterImpl.h"
 #   include	"docRtfFlags.h"
 #   include	"docRtfTags.h"
 #   include	<textConverter.h>
+#   include	<docItemShading.h>
+#   include	<docBuf.h>
+#   include	<docDocumentProperties.h>
+#   include	<utilPropMask.h>
+#   include	<fontDocFontList.h>
+#   include	<fontDocFont.h>
+#   include	<docAttributes.h>
+
+#   include	<appDebugon.h>
 
 /************************************************************************/
 /*									*/
@@ -52,15 +58,15 @@ static void docRtfSaveTextAttributeImpl(	RtfWriter *		rw,
 
     if  ( PROPmaskISSET( updMask, TApropSHADING ) )
 	{
-	const BufferDocument *		bd= rw->rwDocument;
-	ItemShading			is;
+	const struct BufferDocument *		bd= rw->rwDocument;
+	const ItemShading *		is;
 
-	docGetItemShadingByNumber( &is, bd, ta->taShadingNumber );
+	is= docGetItemShadingByNumber( bd, ta->taShadingNumber );
 
-	if  ( is.isBackColor > 0		&&
-	      is.isPattern == DOCspSOLID	&&
-	      is.isLevel == 0			)
-	    { docRtfWriteArgTag( rw, "cb", is.isBackColor );	}
+	if  ( is->isBackColor > 0		&&
+	      is->isPattern == DOCspSOLID	&&
+	      is->isLevel == 0			)
+	    { docRtfWriteArgTag( rw, "cb", is->isBackColor );	}
 
 	docRtfSaveShadingByNumber( rw, ta->taShadingNumber,
 		DOCrtf_TextShadingTags, DOCrtf_TextShadingTagCount,
@@ -98,6 +104,11 @@ static void docRtfSaveTextAttributeImpl(	RtfWriter *		rw,
     if  ( PROPmaskISSET( updMask, TApropSTRIKETHROUGH ) )
 	{ docRtfWriteFlagTag( rw, "strike", ta->taHasStrikethrough );	}
 
+    if  ( PROPmaskISSET( updMask, TApropLOCALE ) )
+	{ docRtfWriteArgTag( rw, "lang", ta->taLocaleId );	}
+    if  ( PROPmaskISSET( updMask, TApropNOPROOF ) )
+	{ docRtfWriteFlagTag( rw, "noproof", ta->taNoProof );	}
+
     return;
     }
 
@@ -110,11 +121,11 @@ void docRtfSaveTextAttribute(		RtfWriter *		rw,
     if  ( ! ( rw->rwSaveFlags & RTFflagUNENCODED )		&&
 	  PROPmaskISSET( updMask, TApropFONT_NUMBER )	)
 	{
-	const DocumentProperties *	dp= &(rw->rwDocument->bdProperties);
+	const DocumentProperties *	dp= rw->rwDocument->bdProperties;
 	const DocumentFontList *	dfl= dp->dpFontList;
 	const DocumentFont *		df;
 
-	df= docFontListGetFontByNumber( dfl, taFile.taFontNumber );
+	df= fontFontListGetFontByNumber( dfl, taFile.taFontNumber );
 	if  ( df )
 	    {
 	    int			fileFontNumber;
@@ -123,7 +134,7 @@ void docRtfSaveTextAttribute(		RtfWriter *		rw,
 
 	    fileFontNumber= docRtfWriteGetCharset( rw, &charset, df, symbol );
 	    if  ( fileFontNumber < 0 )
-		{ SLXDEB(df->dfName,fileFontNumber,symbol);	}
+		{ SLXDEB(utilMemoryBufferGetString(&(df->dfName)),fileFontNumber,symbol);	}
 	    else{ taFile.taFontNumber= fileFontNumber;		}
 	    }
 	}
@@ -195,7 +206,7 @@ void docRtfWriteSwitchTextAttributes(	RtfWriter *		rw,
 					int			textAttrNr,
 					const char *		first )
     {
-    const BufferDocument *	bd= rw->rwDocument;
+    const struct BufferDocument *	bd= rw->rwDocument;
     TextAttribute		ta;
 
     int				symbol= ' ';
@@ -209,11 +220,11 @@ void docRtfWriteSwitchTextAttributes(	RtfWriter *		rw,
 	    { symbol= uni;	}
 	}
 
-    docGetTextAttributeByNumber( &ta, bd, textAttrNr );
+    ta= *docGetTextAttributeByNumber( bd, textAttrNr );
 
     if  ( ta.taFontNumber >= 0 )
 	{
-	const DocumentProperties *	dp= &(bd->bdProperties);
+	const DocumentProperties *	dp= bd->bdProperties;
 	const DocumentFontList *	dfl= dp->dpFontList;
 
 	PropertyMask			taSetMask;
@@ -223,16 +234,16 @@ void docRtfWriteSwitchTextAttributes(	RtfWriter *		rw,
 	utilPropMaskFill( &taSetMask, TAprop_COUNT );
 
 	utilPropMaskClear( &doneMask );
-	utilUpdateTextAttribute( &doneMask, &(rw->rwTextAttribute),
+	textUpdateTextAttribute( &doneMask, &(rw->rwTextAttribute),
 							    &taSetMask, &ta );
 	if  ( PROPmaskISSET( &doneMask, TApropSHADING ) )
 	    {
 	    if  ( ! docShadingNumberIsShading( bd, ta.taShadingNumber ) )
 		{
 		docRtfWriteTag( rw, RTFtag_plain );
-		utilInitTextAttribute( &(rw->rwTextAttribute) );
+		textInitTextAttribute( &(rw->rwTextAttribute) );
 		utilPropMaskClear( &doneMask );
-		utilUpdateTextAttribute( &doneMask, &(rw->rwTextAttribute),
+		textUpdateTextAttribute( &doneMask, &(rw->rwTextAttribute),
 							    &taSetMask, &ta );
 		}
 	    }
@@ -241,7 +252,7 @@ void docRtfWriteSwitchTextAttributes(	RtfWriter *		rw,
 	    {
 	    const DocumentFont *		df;
 
-	    df= docFontListGetFontByNumber( dfl, ta.taFontNumber );
+	    df= fontFontListGetFontByNumber( dfl, ta.taFontNumber );
 	    if  ( df )
 		{
 		int			fileFontNumber;
@@ -251,7 +262,7 @@ void docRtfWriteSwitchTextAttributes(	RtfWriter *		rw,
 		fileFontNumber= docRtfWriteGetCharset( rw,
 						&charset, df, symbol );
 		if  ( fileFontNumber < 0 )
-		    { SLXDEB(df->dfName,fileFontNumber,symbol);	}
+		    { SLXDEB(utilMemoryBufferGetString(&(df->dfName)),fileFontNumber,symbol);	}
 		else{ ta.taFontNumber= fileFontNumber;		}
 
 		if  ( rw->rwTextCharset != charset )
@@ -260,7 +271,7 @@ void docRtfWriteSwitchTextAttributes(	RtfWriter *		rw,
 		    PROPmaskADD( &doneMask, TApropFONT_NUMBER );
 		    }
 
-		encodingName= utilGetEncodingName( df->dfName, charset );
+		encodingName= fontGetEncodingName( &(df->dfName), charset );
 		textConverterSetNativeEncodingName(
 				    rw->rwTextTextConverter, encodingName );
 		}

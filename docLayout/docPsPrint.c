@@ -24,6 +24,14 @@
 #   include	"docPsPrintImpl.h"
 #   include	"docPsPrint.h"
 #   include	<docTreeNode.h>
+#   include	<docPageGrid.h>
+#   include	<docDocumentProperties.h>
+#   include	<docSectProperties.h>
+#   include	<sioGeneral.h>
+#   include	<sioUtil.h>
+#   include	<psFace.h>
+#   include	<docBuf.h>
+#   include	<psPrint.h>
 
 #   include	<appDebugon.h>
 
@@ -38,6 +46,11 @@
 /*									*/
 /************************************************************************/
 
+# ifdef __GNUC__
+# pragma GCC diagnostic push
+# pragma GCC diagnostic ignored "-Wunused-parameter"
+# endif
+
 static int docPsSetColorRgb(	DrawingContext *	dc,
 				void *			vps,
 				const RGB8Color *	rgb8 )
@@ -50,21 +63,20 @@ static int docPsSetColorRgb(	DrawingContext *	dc,
     return 0;
     }
 
+# ifdef __GNUC__
+# pragma GCC diagnostic pop
+# endif
+
 static int docPsSetFont(	DrawingContext *	dc,
 				void *			vps,
 				int			textAttrNumber,
 				const TextAttribute *	ta )
     {
     const LayoutContext *	lc= &(dc->dcLayoutContext);
-    BufferDocument *		bd= lc->lcDocument;
-    DocumentFontList *		dfl= bd->bdProperties.dpFontList;
     PrintingState *		ps= (PrintingState *)vps;
-    const AfmFontInfo *		afi;
-    const IndexSet *		unicodesWanted;
+    const struct AfmFontInfo *	afi;
 
-    const PostScriptFontList *	psfl= lc->lcPostScriptFontList;
-
-    afi= (*lc->lcGetFontForAttribute)( &unicodesWanted, ta, dfl, psfl );
+    afi= docDocLayoutGetFontInfo( lc, ta );
     if  ( ! afi )
 	{ LDEB(textAttrNumber); return -1; }
 
@@ -172,7 +184,7 @@ static void docPsPageBoxes(	DrawingContext *		dc,
 
 static int docPsFinishPage(	void *				vps,
 				DrawingContext *		dc,
-				BufferItem *			bodySectBi,
+				struct BufferItem *			bodySectNode,
 				int				page,
 				int				asLast )
     {
@@ -204,11 +216,11 @@ static int docPsFinishPage(	void *				vps,
 	  dc->dcPostponeHeadersFooters	)
 	{
 	if  ( dc->dcDocHasPageHeaders				&&
-	      docDrawPageHeader( bodySectBi, vps, dc, page )	)
+	      docDrawPageHeader( bodySectNode, vps, dc, page )	)
 	    { LLDEB(dc->dcDocHasPageHeaders,page);	}
 
 	if  ( dc->dcDocHasPageFooters				&&
-	      docDrawPageFooter( bodySectBi, vps, dc, page )	)
+	      docDrawPageFooter( bodySectNode, vps, dc, page )	)
 	    { LLDEB(dc->dcDocHasPageFooters,page);	}
 	}
 
@@ -227,23 +239,23 @@ static int docPsFinishPage(	void *				vps,
     if  ( ! pageIsMarked )
 	{
 	const LayoutContext *	lc= &(dc->dcLayoutContext);
-	const BufferDocument *	bd= lc->lcDocument;
+	const struct BufferDocument *	bd= lc->lcDocument;
 
-	DocumentTree *			tree;
+	struct DocumentTree *			tree;
 	int				isEmpty;
 
 	if  ( dc->dcDocHasPageHeaders )
 	    {
-	    tree= (DocumentTree *)0;
-	    docWhatPageHeader( &tree, &isEmpty, bodySectBi, page, bd );
+	    tree= (struct DocumentTree *)0;
+	    docDrawWhatPageHeader( &tree, &isEmpty, bodySectNode, page, bd );
 	    if  ( ! tree || ! tree->dtRoot || isEmpty )
 		{ pageHasHeader= 0;	}
 	    }
 
 	if  ( dc->dcDocHasPageFooters )
 	    {
-	    tree= (DocumentTree *)0;
-	    docWhatPageFooter( &tree, &isEmpty, bodySectBi, page, bd );
+	    tree= (struct DocumentTree *)0;
+	    docDrawWhatPageFooter( &tree, &isEmpty, bodySectNode, page, bd );
 	    if  ( ! tree || ! tree->dtRoot || isEmpty )
 		{ pageHasFooter= 0;	}
 	    }
@@ -302,7 +314,7 @@ static int docPsPrintStartPage(	void *				vps,
 
 static int docPsPrintPageRange(	PrintingState *		ps,
 				DrawingContext *	dc,
-				BufferItem *		bodyBi,
+				struct BufferItem *		bodyNode,
 				int			firstPage,
 				int			lastPage,
 				int			asLast )
@@ -312,35 +324,35 @@ static int docPsPrintPageRange(	PrintingState *		ps,
 
     docInitLayoutPosition( &lpBelow );
 
-    for ( i= 0; i < bodyBi->biChildCount; i++ )
+    for ( i= 0; i < bodyNode->biChildCount; i++ )
 	{
-	if  ( bodyBi->biChildren[i]->biBelowPosition.lpPage >= firstPage )
+	if  ( bodyNode->biChildren[i]->biBelowPosition.lpPage >= firstPage )
 	    { break;	}
 	}
 
-    if  ( i >= bodyBi->biChildCount )
+    if  ( i >= bodyNode->biChildCount )
 	{ LDEB(i); return -1; }
 
     if  ( docPsPrintStartPage( (void *)ps,
-	    &(bodyBi->biChildren[i]->biSectDocumentGeometry), dc, firstPage ) )
+	    &(bodyNode->biChildren[i]->biSectDocumentGeometry), dc, firstPage ) )
 	{ LDEB(firstPage); return -1;	}
 
     if  ( ! dc->dcPostponeHeadersFooters )
 	{
-	docDrawPageHeader( bodyBi->biChildren[i], (void *)ps, dc, firstPage );
+	docDrawPageHeader( bodyNode->biChildren[i], (void *)ps, dc, firstPage );
 	}
 
     if  ( docDrawShapesForPage( (void *)ps, dc, 1, firstPage ) )
 	{ LDEB(firstPage);	}
 
-    docDrawNode( &lpBelow, bodyBi, (void *)ps, dc );
+    docDrawNode( &lpBelow, bodyNode, (void *)ps, dc );
 
     if  ( lastPage < 0 )
-	{ lastPage= bodyBi->biBelowPosition.lpPage;	}
+	{ lastPage= bodyNode->biBelowPosition.lpPage;	}
 
-    for ( i= bodyBi->biChildCount- 1; i >= 0; i-- )
+    for ( i= bodyNode->biChildCount- 1; i >= 0; i-- )
 	{
-	if  ( bodyBi->biChildren[i]->biTopPosition.lpPage <= lastPage )
+	if  ( bodyNode->biChildren[i]->biTopPosition.lpPage <= lastPage )
 	    { break;	}
 	}
 
@@ -352,10 +364,10 @@ static int docPsPrintPageRange(	PrintingState *		ps,
 
     if  ( ! dc->dcPostponeHeadersFooters )
 	{
-	docDrawPageFooter( bodyBi->biChildren[i], (void *)ps, dc, lastPage );
+	docDrawPageFooter( bodyNode->biChildren[i], (void *)ps, dc, lastPage );
 	}
 
-    docPsFinishPage( (void *)ps, dc, bodyBi->biChildren[i],
+    docPsFinishPage( (void *)ps, dc, bodyNode->biChildren[i],
 						    lastPage, asLast );
 
     return 0;
@@ -367,7 +379,7 @@ static int docPsPrintPageRange(	PrintingState *		ps,
 /*									*/
 /************************************************************************/
 
-int docPsPrintDocument(	SimpleOutputStream *		sos,
+int docPsPrintDocument(	struct SimpleOutputStream *	sos,
 			const char *			title,
 			const char *			applicationName,
 			const char *			applicationReference,
@@ -379,10 +391,10 @@ int docPsPrintDocument(	SimpleOutputStream *		sos,
     {
     int				rval= 0;
 
-    BufferDocument *		bd= lc->lcDocument;
-    DocumentProperties *	dp= &(bd->bdProperties);
+    struct BufferDocument *	bd= lc->lcDocument;
+    DocumentProperties *	dp= bd->bdProperties;
     DocumentGeometry *		dg= &(dp->dpGeometry);
-    BufferItem *		bodyBi= bd->bdBody.dtRoot;
+    struct BufferItem *		bodyNode= bd->bdBody.dtRoot;
 
     PostScriptTypeList		pstl;
 
@@ -392,7 +404,7 @@ int docPsPrintDocument(	SimpleOutputStream *		sos,
     int				firstPage= pg->pgFirstPage;
     int				lastPage= pg->pgLastPage;
 
-    INIT_LAYOUT_EXTERNAL	initLayoutExternal= (INIT_LAYOUT_EXTERNAL)0;
+    const START_TREE_LAYOUT	startTreeLayout= (START_TREE_LAYOUT)0;
 
     psInitPostScriptFaceList( &pstl );
     if  ( utilCopyMemoryBuffer( &(pstl.pstlFontDirectory), fontDirectory ) )
@@ -408,26 +420,27 @@ int docPsPrintDocument(	SimpleOutputStream *		sos,
     dc.dcSetColorRgb= docPsSetColorRgb;
     dc.dcSetFont= docPsSetFont;
     dc.dcDrawShape= docPsPrintDrawDrawingShape;
-    dc.dcDrawObject= docPsPrintObject;
+    dc.dcDrawInlineObject= docPsPrintInlineObject;
     dc.dcStartField= docPsPrintStartField;
     dc.dcFinishField= docPsPrintFinishField;
     dc.dcDrawTab= docPsPrintTab;
     dc.dcDrawFtnsep= docPsPrintFtnsep;
-    dc.dcDrawSpan= docPsPrintSpan;
+    dc.dcDrawTextRun= docPsPrintTextRun;
     dc.dcDrawUnderline= docPsPrintRunUnderline;
     dc.dcDrawStrikethrough= docPsPrintRunStrikethrough;
 
-    dc.dcDrawTextLine= docPsPrintTextLine;
+    dc.dcStartTextLine= docPsPrintStartTextLine;
+    dc.dcFinishTextLine= docPsPrintFinishTextLine;
     dc.dcDrawOrnaments= docPsPrintOrnaments;
     dc.dcFinishPage= docPsFinishPage;
     dc.dcStartPage= docPsPrintStartPage;
-    dc.dcInitLayoutExternal= initLayoutExternal;
+    dc.dcStartTreeLayout= startTreeLayout;
 
     dc.dcLayoutContext= *lc;
 
     dc.dcFirstPage= pg->pgFirstPage;
     dc.dcLastPage= pg->pgLastPage;
-    dc.dcDrawExternalItems= 1;
+    dc.dcDrawOtherTrees= 1;
     dc.dcPostponeHeadersFooters= 0;
 
     if  ( pg->pgOmitHeadersOnEmptyPages )
@@ -445,8 +458,14 @@ int docPsPrintDocument(	SimpleOutputStream *		sos,
     ps.psPrintGeometry.pgOmitHeadersOnEmptyPages=
 					    pg->pgOmitHeadersOnEmptyPages;
 
-    docInquireHeadersFooters( &(dc.dcDocHasPageHeaders),
-				    &(dc.dcDocHasPageFooters), bd );
+    {
+    int	h, f;
+
+    docInquireHeadersFooters( &h, &f, bd );
+
+    dc.dcDocHasPageHeaders= h;
+    dc.dcDocHasPageFooters= f;
+    }
 
     if  ( ! utilMemoryBufferIsEmpty( &(dp->dpTitle) ) )
 	{ title= utilMemoryBufferGetString( &(dp->dpTitle) );	}
@@ -502,17 +521,14 @@ int docPsPrintDocument(	SimpleOutputStream *		sos,
 
     if  ( pg->pgCustomPsSetupFilename )
 	{
-	SimpleInputStream *	sis;
+	struct SimpleInputStream *	sis;
 
 	sis= sioInFileioOpenS( pg->pgCustomPsSetupFilename );
 	if  ( ! sis )
 	    { SXDEB(pg->pgCustomPsSetupFilename,sis);	}
 	else{
-	    unsigned char		buf[500];
-	    int				got;
-
-	    while( ( got= sioInReadBytes( sis, buf, sizeof(buf) ) ) > 0 )
-		{ sioOutWriteBytes( sos, buf, got );	}
+	    if  ( sioCopyStream( sos, sis ) )
+		{ LDEB(1);	}
 
 	    sioInClose( sis );
 	    }
@@ -538,7 +554,7 @@ int docPsPrintDocument(	SimpleOutputStream *		sos,
 	  ! pg->pgPrintSheetsReverse	&&
 	  ! pg->pgPrintBookletOrder	)
 	{
-	if  ( docPsPrintPageRange( &ps, &dc, bodyBi,
+	if  ( docPsPrintPageRange( &ps, &dc, bodyNode,
 				    firstPage, lastPage, /* asLast */ 1 ) )
 	    { LDEB(firstPage); rval= -1; goto ready;	}
 	}
@@ -546,7 +562,7 @@ int docPsPrintDocument(	SimpleOutputStream *		sos,
 	if  ( pg->pgPrintBookletOrder )
 	    { LDEB(pg->pgPrintBookletOrder); }
 
-	if  ( docPsPrintPageRange( &ps, &dc, bodyBi,
+	if  ( docPsPrintPageRange( &ps, &dc, bodyNode,
 				    firstPage, lastPage, /* asLast */ 1 ) )
 	    { LDEB(firstPage); rval= -1; goto ready;	}
 	}

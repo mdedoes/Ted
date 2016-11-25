@@ -5,11 +5,14 @@
 
 #   include	<sioFileio.h>
 
+#   include	"bmformats.h"
 #   include	"bmintern.h"
 #   include	"bmio.h"
-#   include	<appDebugon.h>
 
 #   include	"bm_gif_lib.h"
+#   include	<sioGeneral.h>
+
+#   include	<appDebugon.h>
 
 int _GifError = 0;
 
@@ -278,10 +281,10 @@ int bmGifReadGif(		BitmapDescription *	bd,
     return rval;
     }
 
-int bmReadGifFile(	const MemoryBuffer *	filename,
-			unsigned char **	pBuffer,
-			BitmapDescription *	bd,
-			int *			pPrivateFormat )
+int bmReadGifFile(	const struct MemoryBuffer *	filename,
+			unsigned char **		pBuffer,
+			BitmapDescription *		bd,
+			int *				pPrivateFormat )
     {
     SimpleInputStream *	sis;
 
@@ -482,7 +485,7 @@ int bmGifWriteGif(		const BitmapDescription *	bd,
     return 0;
     }
 
-int bmWriteGifFile(	const MemoryBuffer *		filename,
+int bmWriteGifFile(	const struct MemoryBuffer *	filename,
 			const unsigned char *		buffer,
 			const BitmapDescription *	bd,
 			int				privateFormat )
@@ -507,6 +510,11 @@ int bmWriteGifFile(	const MemoryBuffer *		filename,
 /*  Can this bitmap be written in GIF?					*/
 /************************************************************************/
 
+# ifdef __GNUC__
+# pragma GCC diagnostic push
+# pragma GCC diagnostic ignored "-Wunused-parameter"
+# endif
+
 int bmCanWriteGifFile(	const BitmapDescription *	bd,
 			int				privateFormat )
     {
@@ -520,3 +528,8 @@ int bmCanWriteGifFile(	const BitmapDescription *	bd,
 
     return -1;
     }
+
+# ifdef __GNUC__
+# pragma GCC diagnostic pop
+# endif
+

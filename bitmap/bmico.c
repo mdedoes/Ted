@@ -2,10 +2,13 @@
 
 #   include	<stdio.h>
 #   include	<stdlib.h>
+
+#   include	"bmformats.h"
 #   include	"bmintern.h"
 #   include	<sioEndian.h>
 #   include	<sioFileio.h>
 #   include	<utilMemoryBuffer.h>
+#   include	<sioGeneral.h>
 
 #   include	"bmbmp.h"
 
@@ -195,9 +198,6 @@ int bmReadIcoFile(	const MemoryBuffer *	filename,
 /*  Write a Microsoft ICO file.						*/
 /************************************************************************/
 
-static int bmbmpSizeIcoDirectory(	const IcoDirectoryEntry *	ide )
-    { return 16;	}
-
 static int bmbmpWriteIcoDirectory(	const IcoDirectoryEntry *	ide,
 					SimpleOutputStream *		sos )
     {
@@ -262,7 +262,10 @@ static int bmIcoCollectResources( IcoFileHeader *		ifh,
     ide->ideBytesInRes= 0;
     ide->ideImageOffset= 0;
 
+    /*
     size= bmbmpSizeIcoDirectory( ide );
+    */
+    size= 16;
     if  ( size < 0 )
 	{ LDEB(size); rval= -1; goto ready;	}
     bytesNeeded += size;
@@ -418,6 +421,11 @@ static int bmIcoWriteResources( SimpleOutputStream *		sos,
     return bytesWritten;
     }
 
+# ifdef __GNUC__
+# pragma GCC diagnostic push
+# pragma GCC diagnostic ignored "-Wunused-parameter"
+# endif
+
 int bmWriteIcoFile(	const MemoryBuffer *		filename,
 			const unsigned char *		buffer,
 			const BitmapDescription *	bd,
@@ -461,6 +469,15 @@ int bmWriteIcoFile(	const MemoryBuffer *		filename,
     return rval;
     }
 
+# ifdef __GNUC__
+# pragma GCC diagnostic pop
+# endif
+
+# ifdef __GNUC__
+# pragma GCC diagnostic push
+# pragma GCC diagnostic ignored "-Wunused-parameter"
+# endif
+
 int bmCanWriteIcoFile( const BitmapDescription *	bd,
 			int				privateFormat )
     {
@@ -479,3 +496,8 @@ int bmCanWriteIcoFile( const BitmapDescription *	bd,
 	    return -1;
 	}
     }
+
+# ifdef __GNUC__
+# pragma GCC diagnostic pop
+# endif
+

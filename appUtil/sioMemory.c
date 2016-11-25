@@ -1,6 +1,6 @@
 /************************************************************************/
 /*									*/
-/*  Simple io streams using the C stdio.				*/
+/*  Simple io streams to/from MemoryBuffers.				*/
 /*									*/
 /************************************************************************/
 
@@ -10,11 +10,36 @@
 #   include	<string.h>
 
 #   include	"sioMemory.h"
+#   include	"sioGeneral.h"
+#   include	"utilMemoryBuffer.h"
+
 #   include	<appDebugon.h>
 
 typedef struct SioMemoryPrivate
     {
-    MemoryBuffer *	smpBuffer;
+			/**
+			 *  The (array of) memory buffer(s) that we consume 
+			 *  or produce. [We only produce one]
+			 */
+    MemoryBuffer *	smpBuffers;
+
+			/**
+			 *  The index in the array of buffers that 
+			 *  we consume. [We only produce one]
+			 */
+    int			smpIndex;
+
+			/**
+			 *  The number of buffers in the array that 
+			 *  we consume. [We only produce one]
+			 */
+    int			smpCount;
+
+			/**
+			 *  The position in the buffer that 
+			 *  we currently produce or consume.
+			 *  [We only produce one]
+			 */
     int			smpPosition;
     } SioMemoryPrivate;
 
@@ -26,44 +51,92 @@ static int sioInMemoryReadBytes(	void *		voidsmp,
 					unsigned int	count )
     {
     SioMemoryPrivate *	smp= (SioMemoryPrivate *)voidsmp;
-    MemoryBuffer *	mb= smp->smpBuffer;
+    int			done= 0;
 
-    if  ( smp->smpPosition >= mb->mbSize )
+    while( done < count && smp->smpIndex < smp->smpCount )
+	{
+	const MemoryBuffer *	mb= smp->smpBuffers+ smp->smpIndex;
+	int			todo;
+
+	/* Nothing to consume at this index */
+	if  ( smp->smpPosition >= mb->mbSize )
+	    {
+	    smp->smpIndex++;
+	    smp->smpPosition= 0;
+	    continue;
+	    }
+
+	todo= count- done;
+	if  ( smp->smpPosition+ todo > mb->mbSize )
+	    { todo= mb->mbSize- smp->smpPosition;	}
+	memcpy( buffer, mb->mbBytes+ smp->smpPosition, todo );
+
+	smp->smpPosition += todo;
+	done += todo;
+	buffer += todo;
+	}
+
+    if  ( done < 1 )
 	{ return -1;	}
 
-    if  ( smp->smpPosition+ count > mb->mbSize )
-	{ count= mb->mbSize- smp->smpPosition;	}
+    return done;
+    }
 
-    memcpy( buffer, mb->mbBytes+ smp->smpPosition, count );
-    smp->smpPosition += count;
+static SimpleInputStream * sioInMemoryOpenArrayOrFrom(
+						const MemoryBuffer *	mb,
+						int			count,
+						int			from )
+    {
+    SimpleInputStream *	sis= (SimpleInputStream *)0;
+    SioMemoryPrivate *	smp= (SioMemoryPrivate *)0;
 
-    return count;
+    if  ( count < 1 || from < 0 || ( count > 1 && from > 0 ) )
+	{ LLDEB(count,from); goto ready;	}
+
+    smp= (SioMemoryPrivate *)malloc( sizeof(SioMemoryPrivate) );
+    if  ( ! smp )
+	{ XDEB(smp); goto ready;	}
+
+    smp->smpBuffers= (MemoryBuffer *)mb;
+    smp->smpPosition= from;
+    smp->smpIndex= 0;
+    smp->smpCount= count;
+
+    sis= sioInOpen( (void *)smp, sioInMemoryReadBytes, sioMemoryClose );
+
+    if  ( ! sis )
+	{ XDEB(sis); goto ready;	}
+
+     smp= (SioMemoryPrivate *)0; /* steal */
+
+  ready:
+
+    return sis;
     }
 
 SimpleInputStream * sioInMemoryOpenFrom(	const MemoryBuffer *	mb,
 						int			from )
     {
-    SimpleInputStream *	sis;
-    SioMemoryPrivate *	smp;
+    const int	count= 1;
 
-    smp= (SioMemoryPrivate *)malloc( sizeof(SioMemoryPrivate) );
-    if  ( ! smp )
-	{ XDEB(smp); return (SimpleInputStream *)0;	}
-
-    smp->smpBuffer= (MemoryBuffer *)mb;
-    smp->smpPosition= from;
-
-    sis= sioInOpen( (void *)smp, sioInMemoryReadBytes, sioMemoryClose );
-
-    if  ( ! sis )
-	{ XDEB(sis); free( smp ); return (SimpleInputStream *)0; }
-
-    return sis;
+    return sioInMemoryOpenArrayOrFrom( mb, count, from );
     }
 
 SimpleInputStream * sioInMemoryOpen(	const MemoryBuffer *	mb )
     {
-    return sioInMemoryOpenFrom( mb, 0 );
+    const int	count= 1;
+    const int	from= 0;
+
+    return sioInMemoryOpenArrayOrFrom( mb, count, from );
+    }
+
+SimpleInputStream * sioInMemoryArrayOpen(
+					const struct MemoryBuffer *	mb,
+					int				count )
+    {
+    const int	from= 0;
+
+    return sioInMemoryOpenArrayOrFrom( mb, count, from );
     }
 
 static int sioOutMemoryWriteBytes(	void *			voidsmp,
@@ -71,7 +144,7 @@ static int sioOutMemoryWriteBytes(	void *			voidsmp,
 					int			count )
     {
     SioMemoryPrivate *	smp= (SioMemoryPrivate *)voidsmp;
-    MemoryBuffer *	mb= smp->smpBuffer;
+    MemoryBuffer *	mb= smp->smpBuffers;
 
     if  ( smp->smpPosition+ count > mb->mbSize )
 	{
@@ -109,8 +182,10 @@ SimpleOutputStream * sioOutMemoryOpenTo(	MemoryBuffer *	mb,
     if  ( ! smp )
 	{ XDEB(smp); return (SimpleOutputStream *)0;	}
 
-    smp->smpBuffer= mb;
+    smp->smpBuffers= mb;
     smp->smpPosition= to;
+    smp->smpIndex= 0;
+    smp->smpCount= 1;
 
     sos= sioOutOpen( (void *)smp, sioOutMemoryWriteBytes, sioMemoryClose );
     if  ( ! sos )

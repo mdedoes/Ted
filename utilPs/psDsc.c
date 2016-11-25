@@ -28,7 +28,7 @@
 #   include	<time.h>
 
 #   include	"psPrint.h"
-#   include	<geo2DInteger.h>
+#   include	<geoRectangle.h>
 #   include	<sioGeneral.h>
 
 #   include	<appDebugon.h>
@@ -112,7 +112,7 @@ static int psFoldComment(	SimpleOutputStream *	sos,
 	    }
 
 	len -= l; value += l;
-	sioOutPrintf( sos, "\n" );
+	sioOutPutByte( '\n', sos );
 	}
 
     return 0;
@@ -124,11 +124,12 @@ static int psFoldComment(	SimpleOutputStream *	sos,
 /*									*/
 /************************************************************************/
 
-void psStartDSCDocument( const PrintingState *		ps,
-			const PostScriptTypeList *	pstl,
-			const char *			title,
-			const char *			creatorName,
-			const char *			creatorReference )
+void psStartDSCDocument(
+		const PrintingState *			ps,
+		const struct PostScriptTypeList *	pstl,
+		const char *				title,
+		const char *				creatorName,
+		const char *				creatorReference )
     {
     SimpleOutputStream *	sos= ps->psSos;
 

@@ -1,6 +1,10 @@
-#   include	"psFontInfo.h"
 #   include	"psTtfTableEntry.h"
 #   include	"psTtfNameTable.h"
+
+#   include	<utilIndexMapping.h>
+
+struct SimpleInputStream;
+struct AfmFontInfo;
 
 /************************************************************************/
 /*									*/
@@ -29,7 +33,7 @@
 
 #   define	PLATFORM_UNICODE	0
 #   define	PLATFORM_MAC		1
-#   define	PLATFORM_WINDOWS	2
+#   define	PLATFORM_WINDOWS	3
 
 # if 0
 
@@ -335,16 +339,16 @@ typedef struct TrueTypeFont
 /************************************************************************/
 
 extern int psTtfLoadFont(	TrueTypeFont *		ttf,
-				SimpleInputStream *	sisTtf ,
+				struct SimpleInputStream *	sisTtf ,
 				long			filePos );
 
 extern int psTtcLoadFont(	TrueTypeFont *		ttf,
-				SimpleInputStream *	sisTtf,
+				struct SimpleInputStream *	sisTtf,
 				int			fontIndex );
 
 extern void psTtfInitTrueTypeFont(	TrueTypeFont *	ttf );
 extern void psTtfCleanTrueTypeFont(	TrueTypeFont *	ttf );
 
-extern int psTtfFontInfo(	AfmFontInfo *		afi,
+extern int psTtfFontInfo(	struct AfmFontInfo *	afi,
 				const TrueTypeFont *	ttf );
 

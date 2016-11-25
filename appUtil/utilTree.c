@@ -1643,8 +1643,12 @@ int utilTreeFreeTree(	void *			tree,
 /*  Utility callback: Free the values when a tree is closed.		*/
 /*									*/
 /************************************************************************/
-/*									*/
-/*ARGSUSED*/
+
+# ifdef __GNUC__
+# pragma GCC diagnostic push
+# pragma GCC diagnostic ignored "-Wunused-parameter"
+# endif
+
 int utilTreeFreeValue(	const char *	key,
 			void *		val,
 			void *		through )
@@ -1654,3 +1658,8 @@ int utilTreeFreeValue(	const char *	key,
     
     return 0;
     }
+
+# ifdef __GNUC__
+# pragma GCC diagnostic pop
+# endif
+

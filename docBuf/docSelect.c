@@ -6,13 +6,22 @@
 
 #   include	"docBufConfig.h"
 
-#   include	<appDebugon.h>
-
 #   include	"docBuf.h"
 #   include	"docNodeTree.h"
 #   include	"docDebug.h"
 #   include	"docParaString.h"
 #   include	"docParaParticules.h"
+#   include	"docTableRectangle.h"
+#   include	<docCellProperties.h>
+#   include	"docTreeNode.h"
+#   include	<docTextLine.h>
+#   include	<docTextParticule.h>
+#   include	<docParaProperties.h>
+#   include	"docObjects.h"
+#   include	"docFields.h"
+#   include	"docSelect.h"
+
+#   include	<appDebugon.h>
 
 /************************************************************************/
 /*									*/
@@ -21,7 +30,7 @@
 /************************************************************************/
 
 int docGotoFirstPosition(	DocumentPosition *	dp,
-				BufferItem *		node )
+				struct BufferItem *	node )
     {
     while( node )
 	{
@@ -41,7 +50,7 @@ int docGotoFirstPosition(	DocumentPosition *	dp,
     }
 
 int docHeadPosition(	DocumentPosition *	dp,
-			BufferItem *		node )
+			struct BufferItem *	node )
     {
     while( node )
 	{
@@ -61,7 +70,7 @@ int docHeadPosition(	DocumentPosition *	dp,
     }
 
 int docGotoLastPosition(	DocumentPosition *	dp,
-				BufferItem *		node )
+				struct BufferItem *	node )
     {
     while( node )
 	{
@@ -81,7 +90,7 @@ int docGotoLastPosition(	DocumentPosition *	dp,
     }
 
 int docTailPosition(	DocumentPosition *	dp,
-			BufferItem *		node )
+			struct BufferItem *		node )
     {
     while( node )
 	{
@@ -101,7 +110,7 @@ int docTailPosition(	DocumentPosition *	dp,
     }
 
 int docDocumentHead(	DocumentPosition *	dp,
-			BufferDocument *	bd )
+			struct BufferDocument *	bd )
     {
     if  ( docHeadPosition( dp, bd->bdBody.dtRoot ) )
 	{ return -1;	}
@@ -110,7 +119,7 @@ int docDocumentHead(	DocumentPosition *	dp,
     }
 
 int docDocumentTail(	DocumentPosition *	dp,
-				BufferDocument *	bd )
+			struct BufferDocument *	bd )
     {
     if  ( docTailPosition( dp, bd->bdBody.dtRoot ) )
 	{ return -1;	}
@@ -127,15 +136,15 @@ int docDocumentTail(	DocumentPosition *	dp,
 
 void docAvoidParaHeadField(	DocumentPosition *	dp,
 				int *			pPart,
-				const BufferDocument *	bd )
+				const struct BufferDocument *	bd )
     {
-    DocumentField *	dfHead= (DocumentField *)0;
-    DocumentSelection	dsInsideHead;
-    DocumentSelection	dsAroundHead;
-    int			partBegin= -1;
-    int			partEnd= -1;
+    struct DocumentField *	dfHead= (struct DocumentField *)0;
+    DocumentSelection		dsInsideHead;
+    DocumentSelection		dsAroundHead;
+    int				partBegin= -1;
+    int				partEnd= -1;
 
-    int	fieldKind= docParaHeadFieldKind( dp->dpNode, bd );
+    int	fieldKind= docParaHeadFieldKind( dp->dpNode );
     if  ( fieldKind < 0 )
 	{ return;	}
 
@@ -159,19 +168,13 @@ void docAvoidParaHeadField(	DocumentPosition *	dp,
 /*									*/
 /************************************************************************/
 
-# define docIsMergedCell( node ) ( \
-    (node)->biParent && \
-    docIsRowNode( (node)->biParent ) && \
-    (node)->biNumberInParent < (node)->biParent->biRowCellCount && \
-    CELL_MERGED( &( (node)->biParent->biRowCells[(node)->biNumberInParent] ) ) )
-
-static BufferItem * docNextNode(	BufferItem *	node,
-					int		level )
+static struct BufferItem * docNextNode(	struct BufferItem *	node,
+					int			level )
     {
     for (;;)
 	{
 	if  ( ! node->biParent )
-	    { return (BufferItem *)0;	}
+	    { return (struct BufferItem *)0;	}
 
 	if  ( node->biNumberInParent < node->biParent->biChildCount- 1 )
 	    {
@@ -199,19 +202,19 @@ static BufferItem * docNextNode(	BufferItem *	node,
 	}
     }
 
-BufferItem *	docNextParagraph(	BufferItem *	node )
+struct BufferItem *	docNextParagraph(	struct BufferItem *	node )
     { return docNextNode( node, DOClevPARA );	}
 
-BufferItem *	docNextSection(	BufferItem *	node )
+struct BufferItem *	docNextSection(	struct BufferItem *	node )
     { return docNextNode( node, DOClevSECT );	}
 
-static BufferItem * docPrevNode(	BufferItem *	node,
+static struct BufferItem * docPrevNode(	struct BufferItem *	node,
 					int		level )
     {
     for (;;)
 	{
 	if  ( ! node->biParent )
-	    { return (BufferItem *)0;	}
+	    { return (struct BufferItem *)0;	}
 
 	if  ( node->biNumberInParent > 0 )
 	    {
@@ -239,10 +242,10 @@ static BufferItem * docPrevNode(	BufferItem *	node,
 	}
     }
 
-BufferItem *	docPrevParagraph(	BufferItem *	node )
+struct BufferItem *	docPrevParagraph(	struct BufferItem *	node )
     { return docPrevNode( node, DOClevPARA );	}
 
-BufferItem *	docPrevSection(		BufferItem *	node )
+struct BufferItem *	docPrevSection(		struct BufferItem *	node )
     { return docPrevNode( node, DOClevSECT );	}
 
 /************************************************************************/
@@ -256,40 +259,40 @@ BufferItem *	docPrevSection(		BufferItem *	node )
 
 int docNextWord(	DocumentPosition *	dp )
     {
-    BufferItem *		paraBi= dp->dpNode;
+    struct BufferItem *		paraNode= dp->dpNode;
     int				stroff= dp->dpStroff;
 
-    if  ( stroff == docParaStrlen( paraBi ) )
+    if  ( stroff == docParaStrlen( paraNode ) )
 	{
-	paraBi= docNextParagraph( paraBi );
-	if  ( ! paraBi )
+	paraNode= docNextParagraph( paraNode );
+	if  ( ! paraNode )
 	    { return 1;	}
 
 	stroff= 0;
 	}
 
-    stroff= docParaNextWord( paraBi, stroff );
-    docSetDocumentPosition( dp, paraBi, stroff );
+    stroff= docParaNextWord( paraNode, stroff );
+    docSetDocumentPosition( dp, paraNode, stroff );
 
     return 0;
     }
 
 int docPrevWord(	DocumentPosition *	dp )
     {
-    BufferItem *		paraBi= dp->dpNode;
+    struct BufferItem *		paraNode= dp->dpNode;
     int				stroff= dp->dpStroff;
 
     if  ( stroff == 0 )
 	{
-	paraBi= docPrevParagraph( paraBi );
-	if  ( ! paraBi )
+	paraNode= docPrevParagraph( paraNode );
+	if  ( ! paraNode )
 	    { return 1;	}
 
-	stroff= docParaStrlen( paraBi );
+	stroff= docParaStrlen( paraNode );
 	}
 
-    stroff= docParaPrevWord( paraBi, stroff );
-    docSetDocumentPosition( dp, paraBi, stroff );
+    stroff= docParaPrevWord( paraNode, stroff );
+    docSetDocumentPosition( dp, paraNode, stroff );
 
     return 0;
     }
@@ -307,10 +310,14 @@ int docPrevWord(	DocumentPosition *	dp )
 
 int docLineUp(		int *			pLine,
 			DocumentPosition *	dp,
-			int			line )
+			int			positionFlags )
     {
+    int			line;
     TextLine *		tl;
-    BufferItem *	node= dp->dpNode;
+    struct BufferItem *	node= dp->dpNode;
+
+    if  ( docGetLineOfPosition( &line, dp, positionFlags ) )
+	{ LDEB(dp->dpStroff); return -1;	}
 
     line--;
 
@@ -320,7 +327,7 @@ int docLineUp(		int *			pLine,
 	if  ( node->biParaLineCount == 0 )
 	    { LLDEB(docNumberOfParagraph(node),node->biParaLineCount);	}
 
-	if  ( node->biLevel == DOClevPARA		&&
+	if  ( node->biLevel == DOClevPARA	&&
 	      line < node->biParaLineCount	&& /* against crashes */
 	      line >= 0				)
 	    {
@@ -335,27 +342,28 @@ int docLineUp(		int *			pLine,
 	    }
 
 	/*  2  */
-	if  ( node->biLevel == DOClevPARA		&&
-	      node->biParaTableNesting > 0	&&
-	      node->biNumberInParent == 0		)
+	if  ( node->biLevel == DOClevPARA			&&
+	      node->biParaProperties->ppTableNesting > 0	&&
+	      node->biNumberInParent == 0			)
 	    {
 	    int			col;
 	    int			row0;
 	    int			row;
 	    int			row1;
 
-	    BufferItem *	parentNode;
+	    struct BufferItem *	parentNode;
 
-	    if  ( docDelimitTable( node, &parentNode, &col, &row0, &row, &row1 ) )
+	    if  ( docDelimitTable( node,
+				    &parentNode, &col, &row0, &row, &row1 ) )
 		{ LDEB(1); return -1;	}
 
 	    if  ( row > row0 )
 		{
-		BufferItem *	rowNode= parentNode->biChildren[row-1];
+		struct BufferItem *	rowNode= parentNode->biChildren[row-1];
 
 		if  ( col < rowNode->biChildCount )
 		    {
-		    BufferItem *	cellNode= rowNode->biChildren[col];
+		    struct BufferItem *	cellNode= rowNode->biChildren[col];
 
 		    node= cellNode->biChildren[cellNode->biChildCount-1];
 		    line= node->biParaLineCount- 1;
@@ -386,17 +394,21 @@ int docLineUp(		int *			pLine,
 
 int docLineDown(	int *			pLine,
 			DocumentPosition *	dp,
-			int			line )
+			int			positionFlags )
     {
+    int			line;
     TextLine *		tl;
-    BufferItem *	node= dp->dpNode;
+    struct BufferItem *	node= dp->dpNode;
+
+    if  ( docGetLineOfPosition( &line, dp, positionFlags ) )
+	{ LDEB(dp->dpStroff); return -1;	}
 
     line++;
 
     /*  1  */
     while( node )
 	{
-	if  ( node->biLevel == DOClevPARA		&&
+	if  ( node->biLevel == DOClevPARA	&&
 	      line < node->biParaLineCount	&&
 	      line >= 0				)   /*  against crashes  */
 	    {
@@ -411,8 +423,8 @@ int docLineDown(	int *			pLine,
 	    }
 
 	/*  2  */
-	if  ( node->biLevel == DOClevPARA					&&
-	      node->biParaTableNesting > 0				&&
+	if  ( node->biLevel == DOClevPARA				&&
+	      node->biParaProperties->ppTableNesting > 0		&&
 	      node->biNumberInParent == node->biParent->biChildCount- 1	)
 	    {
 	    int			col;
@@ -420,18 +432,18 @@ int docLineDown(	int *			pLine,
 	    int			row;
 	    int			row1;
 
-	    BufferItem *	parentNode;
+	    struct BufferItem *	parentNode;
 
 	    if  ( docDelimitTable( node, &parentNode, &col, &row0, &row, &row1 ) )
 		{ LDEB(1); return -1;	}
 
 	    if  ( row < row1 )
 		{
-		BufferItem *	rowNode= parentNode->biChildren[row+1];
+		struct BufferItem *	rowNode= parentNode->biChildren[row+1];
 
 		if  ( col < rowNode->biChildCount )
 		    {
-		    BufferItem *	cellNode= rowNode->biChildren[col];
+		    struct BufferItem *	cellNode= rowNode->biChildren[col];
 
 		    node= cellNode->biChildren[0];
 		    line= 0;
@@ -458,12 +470,11 @@ int docLineHead(	DocumentPosition *	dp,
     {
     int			line;
     int			flags= 0;
-    const int		lastOne= PARAfindFIRST;
 
     if  ( positionFlags & POSflagLINE_HEAD )
 	{ return 0;	}
 
-    if  ( docFindLineOfPosition( &line, &flags, dp, lastOne ) )
+    if  ( docFindLineOfPosition( &line, &flags, dp, PARAfindFIRST ) )
 	{ LDEB(dp->dpStroff); return -1;	}
 
     dp->dpStroff= dp->dpNode->biParaLines[line].tlStroff;
@@ -476,13 +487,12 @@ int docLineTail(	DocumentPosition *	dp,
     {
     int			line;
     int			flags= 0;
-    const int		lastOne= PARAfindLAST;
     const TextLine *	tl;
 
     if  ( positionFlags & POSflagLINE_TAIL )
 	{ return 0;	}
 
-    if  ( docFindLineOfPosition( &line, &flags, dp, lastOne ) )
+    if  ( docFindLineOfPosition( &line, &flags, dp, PARAfindLAST ) )
 	{ LDEB(dp->dpStroff); return -1;	}
 
     tl= &(dp->dpNode->biParaLines[line]);
@@ -497,36 +507,73 @@ int docLineTail(	DocumentPosition *	dp,
 /*									*/
 /************************************************************************/
 
-void docLineSelection(	DocumentSelection *	dsLine,
-			int *			pPartLineBegin,
-			int *			pPartLineEnd,
-			const BufferItem *	node,
-			int			line )
+void docTextLineSelection(	DocumentSelection *		dsLine,
+				const struct BufferItem *	paraNode,
+				const TextLine *		tl )
     {
-    const TextLine *	tl= node->biParaLines+ line;
+    DocumentPosition	dpHead;
+    DocumentPosition	dpTail;
 
-    if  ( node->biLevel != DOClevPARA )
-	{ LLDEB(node->biLevel,DOClevPARA); return;	}
-    if  ( line < 0 || line >= node->biParaLineCount )
-	{ LLDEB(line,node->biParaLineCount); return;	}
+    const int		direction= 1;
+
+    docInitDocumentPosition( &dpHead );
+    docInitDocumentPosition( &dpTail );
+
+    if  ( paraNode->biLevel != DOClevPARA )
+	{ LLDEB(paraNode->biLevel,DOClevPARA); return;	}
 
     docInitDocumentSelection( dsLine );
 
-    dsLine->dsHead.dpNode= (BufferItem *)node;
-    dsLine->dsHead.dpStroff= tl->tlStroff;
+    dpHead.dpNode= (struct BufferItem *)paraNode;
+    dpHead.dpStroff= tl->tlStroff;
 
-    dsLine->dsTail.dpNode= (BufferItem *)node;
-    dsLine->dsTail.dpStroff= tl->tlStroff+ tl->tlStrlen;
+    dpTail.dpNode= (struct BufferItem *)paraNode;
+    dpTail.dpStroff= tl->tlStroff+ tl->tlStrlen;
 
-    dsLine->dsAnchor= dsLine->dsHead;
-    dsLine->dsDirection= 1;
+    docSetRangeSelection( dsLine, &dpHead, &dpTail, direction );
 
-    dsLine->dsCol0= dsLine->dsCol1= -1;
+    return;
+    }
 
-    docSetSelectionScope( dsLine );
 
-    *pPartLineBegin= tl->tlFirstParticule;
-    *pPartLineEnd= tl->tlFirstParticule+ tl->tlParticuleCount- 1;
+void docLineSelection(	DocumentSelection *		dsLine,
+			const struct BufferItem *	paraNode,
+			int				line )
+    {
+    if  ( paraNode->biLevel != DOClevPARA )
+	{ LLDEB(paraNode->biLevel,DOClevPARA); return;	}
+    if  ( line < 0 || line >= paraNode->biParaLineCount )
+	{ LLDEB(line,paraNode->biParaLineCount); return;	}
+
+    docTextLineSelection( dsLine, paraNode, paraNode->biParaLines+ line );
+    }
+
+void docIntersectLineSelection(	DocumentSelection *		dsLine,
+				struct BufferItem *		paraNode,
+				const TextLine *		tl,
+				const DocumentSelection * 	ds )
+    {
+    *dsLine= *ds;
+
+    if  ( ds->dsHead.dpNode != paraNode )
+	{
+	dsLine->dsHead.dpNode= paraNode;
+	dsLine->dsHead.dpStroff= tl->tlStroff;
+	}
+    else{
+	if  ( dsLine->dsHead.dpStroff < tl->tlStroff )
+	    { dsLine->dsHead.dpStroff=  tl->tlStroff;	}
+	}
+
+    if  ( ds->dsTail.dpNode != paraNode )
+	{
+	dsLine->dsTail.dpNode= paraNode;
+	dsLine->dsTail.dpStroff= tl->tlStroff+ tl->tlStrlen;
+	}
+    else{
+	if  ( dsLine->dsTail.dpStroff > tl->tlStroff+ tl->tlStrlen )
+	    { dsLine->dsTail.dpStroff=  tl->tlStroff+ tl->tlStrlen;	}
+	}
 
     return;
     }
@@ -545,50 +592,81 @@ void docLineSelection(	DocumentSelection *	dsLine,
 
 void docWordSelection(	DocumentSelection *		dsWord,
 			int *				pIsObject,
+			int *				pAfterObject,
 			const DocumentPosition *	dpAround )
     {
     TextParticule *	tp;
 
-    BufferItem *	paraBi= dpAround->dpNode;
+    struct BufferItem *	paraNode= dpAround->dpNode;
     int			part;
+    const int		direction= 1;
 
-    if  ( paraBi->biLevel != DOClevPARA )
-	{ LLDEB(paraBi->biLevel,DOClevPARA); return;	}
+    if  ( paraNode->biLevel != DOClevPARA )
+	{ LLDEB(paraNode->biLevel,DOClevPARA); return;	}
 
     if  ( docFindParticuleOfPosition( &part, (int *)0,
 						dpAround, PARAfindLAST ) )
 	{ LDEB(dpAround->dpStroff); return;	}
 
-    tp= paraBi->biParaParticules+ part;
-    while( part < paraBi->biParaParticuleCount- 1		&&
-	   tp->tpStroff+ tp->tpStrlen <= dpAround->dpStroff	)
-	{ tp++; part++;	}
+    tp= dpAround->dpNode->biParaParticules+ part;
 
     if  ( tp->tpStroff == dpAround->dpStroff	&&
 	  part > 0				&&
-	  tp[-1].tpKind == DOCkindOBJECT	)
+	  tp[-1].tpKind == TPkindOBJECT		)
 	{
-	docSetParaSelection( dsWord, paraBi, 1,
+	if  ( dsWord )
+	    {
+	    docSetParaSelection( dsWord, paraNode, direction,
 					tp[-1].tpStroff, tp[-1].tpStrlen );
-	*pIsObject= 1;
+	    }
+	if  ( pIsObject )
+	    { *pIsObject= 1;	}
+	if  ( pAfterObject )
+	    { *pAfterObject= 1;	}
 	return;
 	}
 
-    if  ( tp->tpKind == DOCkindOBJECT )
+    if  ( tp->tpKind == TPkindOBJECT )
 	{
-	docSetParaSelection( dsWord, paraBi, 1, tp->tpStroff, tp->tpStrlen );
-	*pIsObject= 1;
+	if  ( dsWord )
+	    {
+	    docSetParaSelection( dsWord, paraNode, direction,
+					tp->tpStroff, tp->tpStrlen );
+	    }
+	if  ( pIsObject )
+	    { *pIsObject= 1;	}
+	if  ( pAfterObject )
+	    {
+	    if  ( tp->tpStroff == dpAround->dpStroff )
+		{ *pAfterObject= 0;	}
+	    else{
+		if  ( tp->tpStroff+ tp->tpStrlen == dpAround->dpStroff )
+		    { *pAfterObject= 1;	}
+		else{
+		    LLLDEB(dpAround->dpStroff,tp->tpStroff,tp->tpStrlen);
+		    docListNode(0,dpAround->dpNode,0);
+		    *pAfterObject= 0;
+		    }
+		}
+	    }
 	return;
 	}
     else{
-	int	stroffHead;
-	int	stroffTail;
+	if  ( dsWord )
+	    {
+	    int	stroffHead;
+	    int	stroffTail;
 
-	docParaHeadOfWord( &stroffHead, paraBi, part );
-	docParaTailOfWord( &stroffTail, paraBi, part );
+	    docParaHeadOfWord( &stroffHead, paraNode, part );
+	    docParaTailOfWord( &stroffTail, paraNode, part );
 
-	docSetParaSelection( dsWord, paraBi, 1,
+	    docSetParaSelection( dsWord, paraNode, direction,
 					stroffHead, stroffTail- stroffHead );
+	    }
+	if  ( pIsObject )
+	    { *pIsObject= 0;	}
+	if  ( pAfterObject )
+	    { *pAfterObject= 0;	}
 	}
 
     return;
@@ -601,43 +679,44 @@ void docWordSelection(	DocumentSelection *		dsWord,
 /************************************************************************/
 
 int docTableRectangleSelection(	DocumentSelection *	ds,
-				BufferItem **		pSelParentBi,
-				BufferDocument *	bd,
+				struct BufferItem **	pParentNode,
+				struct BufferDocument *	bd,
 				const TableRectangle *	tr )
     {
     DocumentSelection	dsNew;
 
-    BufferItem *	selSectBi;
-    BufferItem *	selParentBi;
-    BufferItem *	rowNode;
-    BufferItem *	cellNode;
+    struct BufferItem *	selSectNode;
+    struct BufferItem *	selParentNode;
+    struct BufferItem *	rowNode;
+    struct BufferItem *	cellNode;
 
     docInitDocumentSelection( &dsNew );
 
     /*******/
 
-    selParentBi= docGetSelectionRoot( (DocumentTree **)0, (BufferItem **)0,
-								    bd, ds );
-    if  ( ! selParentBi )
-	{ XDEB(selParentBi); return -1;	}
+    selParentNode= docGetSelectionRoot(
+				(struct DocumentTree **)0,
+				(struct BufferItem **)0, bd, ds );
+    if  ( ! selParentNode )
+	{ XDEB(selParentNode); return -1;	}
 
-    if  ( selParentBi->biLevel == DOClevPARA )
-	{ selParentBi= selParentBi->biParent;	}
-    if  ( selParentBi->biLevel == DOClevCELL )
-	{ selParentBi= selParentBi->biParent;	}
-    if  ( selParentBi->biLevel == DOClevROW )
-	{ selParentBi= selParentBi->biParent;	}
+    if  ( selParentNode->biLevel == DOClevPARA )
+	{ selParentNode= selParentNode->biParent;	}
+    if  ( selParentNode->biLevel == DOClevCELL )
+	{ selParentNode= selParentNode->biParent;	}
+    if  ( selParentNode->biLevel == DOClevROW )
+	{ selParentNode= selParentNode->biParent;	}
 
-    selSectBi= docGetSectNode( selParentBi );
-    if  ( ! selSectBi )
-	{ XDEB(selSectBi); return -1;	}
+    selSectNode= docGetSectNode( selParentNode );
+    if  ( ! selSectNode )
+	{ XDEB(selSectNode); return -1;	}
 
     /*******/
 
     if  ( tr->trRow0 < 0					||
-	  tr->trRow0 >= selParentBi->biChildCount		)
-	{ LLDEB(tr->trRow0,selParentBi->biChildCount); return -1;	}
-    rowNode= selParentBi->biChildren[tr->trRow0];
+	  tr->trRow0 >= selParentNode->biChildCount		)
+	{ LLDEB(tr->trRow0,selParentNode->biChildCount); return -1;	}
+    rowNode= selParentNode->biChildren[tr->trRow0];
 
     if  ( tr->trCol0 < 0			||
 	  tr->trCol0 >= rowNode->biChildCount	)
@@ -650,9 +729,9 @@ int docTableRectangleSelection(	DocumentSelection *	ds,
     /*******/
 
     if  ( tr->trRow1 < 0				||
-	  tr->trRow1 >= selParentBi->biChildCount	)
-	{ LLDEB(tr->trRow0,selParentBi->biChildCount); return -1;	}
-    rowNode= selParentBi->biChildren[tr->trRow1];
+	  tr->trRow1 >= selParentNode->biChildCount	)
+	{ LLDEB(tr->trRow0,selParentNode->biChildCount); return -1;	}
+    rowNode= selParentNode->biChildren[tr->trRow1];
 
     if  ( tr->trCol1 < 0			||
 	  tr->trCol1 >= rowNode->biChildCount	)
@@ -679,7 +758,7 @@ int docTableRectangleSelection(	DocumentSelection *	ds,
     docSetSelectionScope( &dsNew );
 
     *ds= dsNew;
-    *pSelParentBi= selParentBi;
+    *pParentNode= selParentNode;
 
     return 0;
     }
@@ -690,16 +769,16 @@ int docTableRectangleSelection(	DocumentSelection *	ds,
 /*									*/
 /************************************************************************/
 
-int docGetObjectSelection(	const DocumentSelection *	ds,
-				const BufferDocument *		bd,
-				int *				pPart,
+int docGetObjectSelection(	int *				pPart,
 				DocumentPosition *		dpObject,
-				InsertedObject **		pIo )
+				struct InsertedObject **	pIo,
+				const struct BufferDocument *	bd,
+				const DocumentSelection *	ds )
     {
-    if  ( ds->dsHead.dpNode				&&
-	  ds->dsTail.dpNode == ds->dsHead.dpNode	)
+    if  ( docSelectionIsSet( ds )		&&
+	  docSelectionSingleParagraph( ds )	)
 	{
-	BufferItem *		paraBi= ds->dsHead.dpNode;
+	struct BufferItem *	paraNode= ds->dsHead.dpNode;
 	int			part;
 	TextParticule *		tp;
 
@@ -707,9 +786,9 @@ int docGetObjectSelection(	const DocumentSelection *	ds,
 						&(ds->dsHead), PARAfindLAST ) )
 	    { LDEB(ds->dsHead.dpStroff); return -1;	}
 
-	tp= paraBi->biParaParticules+ part;
+	tp= paraNode->biParaParticules+ part;
 
-	if  ( tp->tpKind == DOCkindOBJECT			&&
+	if  ( tp->tpKind == TPkindOBJECT			&&
 	      ds->dsHead.dpStroff == tp->tpStroff		&&
 	      ds->dsTail.dpStroff == tp->tpStroff+ tp->tpStrlen	)
 	    {
@@ -735,7 +814,7 @@ int docGetObjectSelection(	const DocumentSelection *	ds,
 int docSelectFrameOfPosition(	DocumentSelection *		ds,
 				const DocumentPosition *	dp )
     {
-    BufferItem *	cellNode;
+    struct BufferItem *	cellNode;
     int			para0;
     int			para1;
     int			frameNumber;
@@ -751,20 +830,22 @@ int docSelectFrameOfPosition(	DocumentSelection *		ds,
     if  ( ! dp->dpNode )
 	{ XDEB(dp->dpNode); return 1;	}
 
-    frameNumber= dp->dpNode->biParaFrameNumber;
+    frameNumber= dp->dpNode->biParaProperties->ppFrameNumber;
     cellNode= dp->dpNode->biParent;
     para0= para1= dp->dpNode->biNumberInParent;
 
     while( para0 > 0 )
 	{
-	if  ( cellNode->biChildren[para0- 1]->biParaFrameNumber != frameNumber )
+	if  ( cellNode->biChildren[para0- 1]->biParaProperties->ppFrameNumber
+							    != frameNumber )
 	    { break;	}
 	para0--;
 	}
 
     while( para1 < cellNode->biChildCount- 1 )
 	{
-	if  ( cellNode->biChildren[para1+ 1]->biParaFrameNumber != frameNumber )
+	if  ( cellNode->biChildren[para1+ 1]->biParaProperties->ppFrameNumber
+							    != frameNumber )
 	    { break;	}
 	para1++;
 	}

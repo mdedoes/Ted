@@ -6,9 +6,11 @@
 
 #   include	"utilPsConfig.h"
 
-#   include	<appDebugon.h>
-
 #   include	"textAttributeAdmin.h"
+#   include	"textAttribute.h"
+#   include	"utilNumberedPropertiesAdmin.h"
+
+#   include	<appDebugon.h>
 
 /************************************************************************/
 /*									*/
@@ -16,7 +18,7 @@
 /*									*/
 /************************************************************************/
 
-void utilInitTextAttributeList(	NumberedPropertiesList *	tal )
+void textInitTextAttributeList(	NumberedPropertiesList *	tal )
     {
     int			num;
     TextAttribute	ta;
@@ -26,16 +28,18 @@ void utilInitTextAttributeList(	NumberedPropertiesList *	tal )
     utilStartNumberedPropertyList( tal,
 
 		    TAprop_COUNT,
-		    (NumberedPropertiesGetProperty)utilGetTextProperty,
+		    (NumberedPropertiesGetProperty)textGetTextProperty,
+		    (NumberedPropertiesCopyProperties)0,
+		    (NumberedPropertiesGetNumber)textTextAttributeNumber,
 
 		    sizeof(TextAttribute),
-		    (InitPagedListItem)utilInitTextAttribute,
+		    (InitPagedListItem)textInitTextAttribute,
 		    (CleanPagedListItem)0 );
 
-    utilInitTextAttribute( &ta );
+    textInitTextAttribute( &ta );
     ta.taFontNumber= 0;
 
-    num= utilTextAttributeNumber( tal, &ta );
+    num= textTextAttributeNumber( tal, &ta );
     if  ( num != 0 )
 	{ LDEB(num);	}
 
@@ -48,17 +52,22 @@ void utilInitTextAttributeList(	NumberedPropertiesList *	tal )
 /*									*/
 /************************************************************************/
 
-void utilGetTextAttributeByNumber(	TextAttribute *			ta,
+const TextAttribute * textGetTextAttributeByNumber(
 					const NumberedPropertiesList *	tal,
 					int				n )
     {
     void *	vta= utilPagedListGetItemByNumber( &(tal->nplPagedList), n );
 
     if  ( ! vta )
-	{ LXDEB(n,vta); utilInitTextAttribute( ta ); return; }
+	{
+	static TextAttribute	defTa;
 
-    *ta= *((TextAttribute *)vta);
-    return;
+	LXDEB(n,vta);
+	textInitTextAttribute( &defTa );
+	return &defTa;
+	}
+
+    return (TextAttribute *)vta;
     }
 
 /************************************************************************/
@@ -100,7 +109,7 @@ int textForAllAttributesInList(
 /*									*/
 /************************************************************************/
 
-int utilTextAttributeNumber(	NumberedPropertiesList *	tal,
+int textTextAttributeNumber(	NumberedPropertiesList *	tal,
 				const TextAttribute *		ta )
     {
     const int	make= 1;

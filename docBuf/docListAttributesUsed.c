@@ -6,10 +6,12 @@
 
 #   include	"docBufConfig.h"
 
-#   include	<stddef.h>
-
-#   include	"docListFonts.h"
 #   include	"docShape.h"
+#   include	"docTextRun.h"
+#   include	"docTreeScanner.h"
+#   include	"docParaScanner.h"
+#   include	<utilIndexSet.h>
+#   include	<docScanner.h>
 
 #   include	<appDebugon.h>
 
@@ -25,59 +27,47 @@ typedef struct GetAttributesUsed
     IndexSet *	gauAttributesUsed;
     } GetAttributesUsed;
 
+# ifdef __GNUC__
+# pragma GCC diagnostic push
+# pragma GCC diagnostic ignored "-Wunused-parameter"
+# endif
+
 static int docAttributesUsedGotSpan(
-				BufferDocument *		bd,
-				struct BufferItem *		paraNode,
-				int				textAttrNr,
-				const TextAttribute *		ta,
-				int				from,
-				int				upto,
+				const TextRun *			tr,
 				void *				through )
     {
     GetAttributesUsed *		gau= (GetAttributesUsed *)through;
 
-    if  ( utilIndexSetAdd( gau->gauAttributesUsed, textAttrNr ) )
-	{ LDEB(textAttrNr); return -1;	}
+    if  ( utilIndexSetAdd( gau->gauAttributesUsed, tr->trTextAttributeNr ) )
+	{ LDEB(tr->trTextAttributeNr); return -1;	}
 
-    return 0;
+    return SCANadviceOK;
     }
 
-int docGetAttributesUsedInTree(	BufferDocument *		bd,
-				const DocumentTree *		dt,
+# ifdef __GNUC__
+# pragma GCC diagnostic pop
+# endif
+
+int docGetAttributesUsedInShape( struct BufferDocument *	bd,
+				struct DrawingShape *		ds,
 				IndexSet *			isUsed )
     {
-    ScanDocumentFonts		sdf;
-    GetAttributesUsed		gau;
+    int			res;
+    GetAttributesUsed	gau;
 
-    docInitScanDocumentFonts( &sdf );
+    const int		treeFlags= FLAGtsSCAN_FOOT_END_NOTES;
+    const int		paraFlags= FLAGpsSCAN_COMBINE_LINES|
+					FLAGpsSCAN_EMPTY_SPANS|
+					FLAGpsSCAN_SHAPE_TEXTS;
 
     gau.gauAttributesUsed= isUsed;
 
-    sdf.sdfListObjectFonts= (DocListObjectFonts)0;
-    sdf.sdfDocListSpanFont= docAttributesUsedGotSpan;
-    sdf.sdfThrough= &gau;
-
-    /*  a  */
-    if  ( docListTreeFonts( bd, dt, &sdf ) )
-	{ LDEB(1); return -1;;	}
-
-    return 0;
-    }
-
-int docGetAttributesUsedInShape( BufferDocument *		bd,
-				const DrawingShape *		ds,
-				IndexSet *			isUsed )
-    {
-    int		child;
-
-    if  ( docGetAttributesUsedInTree( bd, &(ds->dsDocumentTree), isUsed ) )
-	{ LDEB(1); return -1;	}
-
-    for ( child= 0; child < ds->dsChildCount; child++ )
-	{
-	if  ( docGetAttributesUsedInShape( bd, ds->dsChildren[child], isUsed ) )
-	    { LDEB(child); return -1;	}
-	}
+    res= docScanShapeParagraphsLogicalOrder( bd, ds, treeFlags, paraFlags,
+		    (ParticuleVisitor)0, (ParaFieldVisitor)0,
+		    docAttributesUsedGotSpan,
+		    (ObjectVisitor)0, (TabVisitor)0, &gau );
+    if  ( res != SCANadviceOK )
+	{ LLDEB(res,SCANadviceOK); return -1;	}
 
     return 0;
     }

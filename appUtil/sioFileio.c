@@ -6,17 +6,20 @@
 
 #   include	"appUtilConfig.h"
 
-#   include	"sioFileio.h"
-#   include	"sioFd.h"
-#   include	"sioStdin.h"
-#   include	"sioStdout.h"
-
-#   include	<appDebugon.h>
 #   include	<unistd.h>
 #   include	<errno.h>
 #   include	<string.h>
 #   include	<stdlib.h>
 #   include	<fcntl.h>
+
+#   include	"sioFileio.h"
+#   include	"sioFd.h"
+#   include	"sioStdin.h"
+#   include	"sioStdout.h"
+#   include	"sioGeneral.h"
+#   include	"utilMemoryBuffer.h"
+
+#   include	<appDebugon.h>
 
 typedef struct FileIo
     {

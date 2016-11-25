@@ -15,6 +15,7 @@
 
 #   include	"appSystem.h"
 #   include	"utilFontmap.h"
+#   include	"utilMemoryBuffer.h"
 
 #   include	<appDebugon.h>
 
@@ -207,11 +208,11 @@ int utilFontmapReadMap(	const char *	filename )
 		if  ( utilMemoryBufferSetString( &local, scratch ) )
 		    { LDEB(l); rval= -1; goto ready;	}
 
-		if  ( appAbsoluteName( &runfile, &local, 1, &fileBuf ) < 0 )
+		if  ( fileAbsoluteName( &runfile, &local, 1, &fileBuf ) < 0 )
 		    { SSDEB(filename,scratch); rval= -1; goto ready;	}
 
 		/*  2  */
-		if  ( ! appTestFileExists( &runfile )	&&
+		if  ( ! fileTestFileExists( &runfile )	&&
 		      utilFontmapReadMap( utilMemoryBufferGetString( &runfile ) ) )
 		    { LDEB(1); rval= -1; goto ready;	}
 

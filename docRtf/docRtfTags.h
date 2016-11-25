@@ -107,6 +107,9 @@ extern const char RTFtag_pict[];
 extern const char RTFtag_result[];
 
 extern const char RTFtag_par[];
+extern const char RTFtag_cell[];
+extern const char RTFtag_row[];
+extern const char RTFtag_sect[];
 extern const char RTFtag_pard[];
 extern const char RTFtag_plain[];
 
@@ -122,10 +125,18 @@ extern const char RTFtag_nosupersub[];
 extern const char RTFtag_super[];
 extern const char RTFtag_sub[];
 
+extern const char RTFtag_titlepg[];
+extern const char RTFtag_endpg[];
+
 extern const char RTFtag_tql[];
 extern const char RTFtag_tqr[];
 extern const char RTFtag_tqc[];
 extern const char RTFtag_tqdec[];
+
+extern const char RTFtag_cellx[];
+
+extern const char RTFtag_ltrch[];
+extern const char RTFtag_rtlch[];
 
 /* Tags for copy/paste and the Trace */
 
@@ -150,6 +161,9 @@ extern const char RTFtag_UNO[];
 extern const char RTFtag_UTA[];
 extern const char RTFtag_UPP[];
 extern const char RTFtag_UTP[];
+extern const char RTFtag_URP[];
+extern const char RTFtag_UCP[];
+extern const char RTFtag_UcP[];
 extern const char RTFtag_USP[];
 extern const char RTFtag_USDP[];
 extern const char RTFtag_UDP[];

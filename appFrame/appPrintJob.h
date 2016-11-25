@@ -15,6 +15,7 @@ extern "C"
 # endif
 
 struct PrintGeometry;
+struct SimpleOutputStream;
 
 /************************************************************************/
 /*									*/
@@ -37,6 +38,12 @@ typedef struct PrintJob
 /*  Routine declarations.						*/
 /*									*/
 /************************************************************************/
+
+extern int appPrintDocument(	int				printer,
+				const struct PrintJob *		pj );
+
+extern int appCallPrintFunction( struct SimpleOutputStream *	sos,
+				const struct PrintJob *		pj );
 
 # ifdef __cplusplus
     }

@@ -7,8 +7,9 @@
 #   include	"utilPsConfig.h"
 
 #   include	"textAttributeUtil.h"
+#   include	"textAttribute.h"
 #   include	<geoGrid.h>
-#   include	"psFontInfo.h"
+#   include	"psTextExtents.h"
 
 /************************************************************************/
 /*									*/
@@ -19,7 +20,7 @@
 int textGetPixelSize(		double				pixelsPerTwip,
 				const TextAttribute *		ta )
     {
-    int			twipsSize= 10* ta->taFontSizeHalfPoints;
+    int			twipsSize= TA_FONT_SIZE_TWIPS( ta );
 
     if  ( ta->taSuperSub == TEXTvaSUPERSCRIPT		||
 	  ta->taSuperSub == TEXTvaSUBSCRIPT		)
@@ -29,6 +30,5 @@ int textGetPixelSize(		double				pixelsPerTwip,
     else{
 	return COORDtoGRID( pixelsPerTwip, twipsSize );
 	}
-
     }
 

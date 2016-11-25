@@ -8,18 +8,23 @@
 #   ifndef	DOC_DESCRIBE_SET_SELECTION_H
 #   define	DOC_DESCRIBE_SET_SELECTION_H
 
-#   include	<docBuf.h>
-#   include	"layoutContext.h"
+struct DocumentTree;
+struct BufferItem;
+struct DocumentRectangle;
+struct LayoutContext;
+struct LayoutContext;
+struct BufferDocument;
+struct DocumentSelection;
 
 extern int docDescribeSetSelection(
-			DocumentTree **			pTreeSet,
+			struct DocumentTree **		pTreeSet,
 			struct BufferItem **		pBodySectNodeSet,
-			DocumentRectangle *		drExternalSet,
+			struct DocumentRectangle *	drExternalSet,
 			int *				pRedrawOldTree,
 			int *				pRedrawNewTree,
-			LayoutContext *			lc,
-			BufferDocument *		bd,
-			const DocumentSelection *	dsOld,
-			const DocumentSelection *	dsSet );
+			struct LayoutContext *		lc,
+			struct BufferDocument *		bd,
+			const struct DocumentSelection * dsOld,
+			const struct DocumentSelection * dsSet );
 
 #   endif	/*  DOC_DESCRIBE_SET_SELECTION_H  */

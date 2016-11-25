@@ -9,8 +9,6 @@
 #   define	DOC_DOCUMENT_NOTE_H
 
 #   include	"docDocumentTree.h"
-#   include	<docEditPosition.h>
-#   include	<docSelectionScope.h>
 #   include	<docNoteProperties.h>
 
 /************************************************************************/
@@ -20,7 +18,6 @@
 /************************************************************************/
 
 struct BufferDocument;
-struct BufferItem;
 
 /************************************************************************/
 /*									*/
@@ -40,14 +37,15 @@ typedef struct DocumentNote
     NoteProperties	dnNoteProperties;
     } DocumentNote;
 
-# define NOTE_IS_DELETED( dn )	((dn)->dnNoteNumber < 0 )
-
 /************************************************************************/
 /*									*/
 /*  Routine declarations.						*/
 /*									*/
 /************************************************************************/
 
-extern void docInitNote(		DocumentNote *		dn );
+extern void docInitNote(	struct DocumentNote *		dn );
+
+extern void docCleanNote(	struct BufferDocument *		bd,
+				struct DocumentNote *		dn );
 
 #   endif

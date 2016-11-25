@@ -6,16 +6,19 @@
 /************************************************************************/
 
 #   include	"appFrameConfig.h"
+#   include	<guiBase.h>
+
+# if USE_GTK_DIALOGS
 
 #   include	<stdio.h>
 #   include	<stddef.h>
 
-#   include	"appFrame.h"
+#   include	"appEditApplication.h"
 #   include	"appQuestion.h"
+#   include	<guiWidgets.h>
+#   include	<utilMemoryBuffer.h>
 
 #   include	<appDebugon.h>
-
-# if USE_GTK_DIALOGS
 
 int appQuestionRunSubjectYesNoCancelDialog(
 					EditApplication *	ea,
@@ -184,7 +187,7 @@ int appQuestionRunSubjectOkCancelDialog( EditApplication *	ea,
 int appQuestionRunSubjectYesNoDialog(	EditApplication *	ea,
 					APP_WIDGET		relative,
 					APP_WIDGET		option,
-					const char *		subject,
+					const MemoryBuffer *	subject,
 					const char *		message )
     {
     GtkWidget *		dialog;
@@ -192,14 +195,17 @@ int appQuestionRunSubjectYesNoDialog(	EditApplication *	ea,
 
     if  ( ! ea->eaToplevel.atTopWidget )
 	{
-	appDebug( "%s: \"%s\" %s\n", ea->eaApplicationName, subject, message );
+	appDebug( "%s: \"%s\" %s\n",
+		    ea->eaApplicationName,
+		    utilMemoryBufferGetString( subject ), message );
+
 	return AQDrespFAILURE;
 	}
 
     dialog=  gtk_message_dialog_new( GTK_WINDOW( relative ), GTK_DIALOG_MODAL,
 			GTK_MESSAGE_QUESTION, GTK_BUTTONS_NONE, message, 1 );
     g_object_set( G_OBJECT( dialog ),
-		    "secondary-text", subject,
+		    "secondary-text", utilMemoryBufferGetString( subject ),
 		    NULL );
     gtk_dialog_add_button( GTK_DIALOG( dialog ),
 				    GTK_STOCK_YES, GTK_RESPONSE_YES );

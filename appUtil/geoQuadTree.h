@@ -11,7 +11,7 @@
 #   ifndef	GEO_QUAD_TREE_H
 #   define	GEO_QUAD_TREE_H
 
-#   include	"geo2DInteger.h"
+#   include	"geoRectangle.h"
 
 typedef enum Quadrant
     {

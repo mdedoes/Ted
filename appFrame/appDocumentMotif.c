@@ -6,15 +6,20 @@
 
 #   include	"appFrameConfig.h"
 
-#   include	<stddef.h>
-#   include	<stdio.h>
+#   if USE_MOTIF
 
-#   include	"appFrame.h"
-#   include	"guiDrawingWidget.h"
+#   include	<stddef.h>
+#   include	<limits.h>
+
+#   include	"appEditApplication.h"
+#   include	"appEditDocument.h"
+#   include	"appDocument.h"
+#   include	"appDocFront.h"
+#   include	<guiMenuItem.h>
+#   include	<guiDrawingWidget.h>
+#   include	<guiWidgetsImpl.h>
 
 #   include	<appDebugon.h>
-
-#   ifdef USE_MOTIF
 
 #   include	<Xm/Form.h>
 #   include	<Xm/ScrolledW.h>
@@ -77,8 +82,6 @@ static int appDocMakeMainWindow(	EditDocument *		ed )
 
     Arg			al[20];
     int			ac;
-    Pixmap		pixmap= (Pixmap)0;
-    Pixmap		mask= (Pixmap)0;
 
     Display *		display= XtDisplay( ea->eaToplevel.atTopWidget );
 
@@ -87,10 +90,6 @@ static int appDocMakeMainWindow(	EditDocument *		ed )
 
     utilInitMemoryBuffer( &fullTitle );
     utilInitMemoryBuffer( &iconName );
-
-    if  ( ea->eaMainIcon						&&
-	  appGetImagePixmap( ea, ea->eaMainIcon, &pixmap, &mask )	)
-	{ SDEB(ea->eaMainIcon); return -1;	}
 
     if  ( appFormatDocumentTitle( &fullTitle, &iconName, ea, &(ed->edTitle) ) )
 	{
@@ -115,9 +114,6 @@ static int appDocMakeMainWindow(	EditDocument *		ed )
     XtSetArg( al[ac], XmNmaxHeight,		maxHeight ); ac++;
     */
 
-    if  ( pixmap )
-	{ XtSetArg( al[ac], XmNiconPixmap,	pixmap ); ac++; }
-
 #   ifdef USE_X11_R5
     ed->edToplevel.atTopWidget= XtAppCreateShell( ea->eaApplicationName, 
 					    ea->eaDocumentWidgetName,
@@ -130,21 +126,21 @@ static int appDocMakeMainWindow(	EditDocument *		ed )
 					    display, al, ac );
 #   endif
 
-    appSetCloseCallback( ed->edToplevel.atTopWidget, ea,
+    guiSetCloseCallback( ed->edToplevel.atTopWidget,
 					appDocFileCloseCallback, (void *)ed );
 
     ac= 0;
-    XtSetArg( al[ac],	XmNsashWidth,		1 ); ac++;
-    XtSetArg( al[ac],	XmNsashHeight,		1 ); ac++;
-    XtSetArg( al[ac],	XmNseparatorOn,		False ); ac++;
-    XtSetArg( al[ac],	XmNmarginWidth,		0 ); ac++;
-    XtSetArg( al[ac],	XmNmarginHeight,	0 ); ac++;
-    XtSetArg( al[ac],	XmNspacing,		0 ); ac++;
+    XtSetArg( al[ac], XmNsashWidth,	1 ); ac++;
+    XtSetArg( al[ac], XmNsashHeight,	1 ); ac++;
+    XtSetArg( al[ac], XmNseparatorOn,	False ); ac++;
+    XtSetArg( al[ac], XmNmarginWidth,	0 ); ac++;
+    XtSetArg( al[ac], XmNmarginHeight,	0 ); ac++;
+    XtSetArg( al[ac], XmNspacing,	0 ); ac++;
 
     ed->edMainWindow= XmCreatePanedWindow(
 			ed->edToplevel.atTopWidget, WIDGET_NAME, al, ac );
 
-    appGuiInsertMenubarInColumn( &(ed->edMenuBar), ed->edMainWindow );
+    guiInsertMenubarInColumn( &(ed->edMenuBar), ed->edMainWindow );
 
     appDocFillMenu( ed );
 
@@ -168,6 +164,7 @@ static int appDocMakeScrolledWindow(	EditDocument *		ed )
     XtSetArg( al[ac], XmNscrollBarDisplayPolicy, XmSTATIC ); ac++;
     XtSetArg( al[ac], XmNhighlightThickness,	0 ); ac++;
     XtSetArg( al[ac], XmNspacing,		0 ); ac++;
+    XtSetArg( al[ac], XmNpaneMaximum,		SHRT_MAX ); ac++;
 
     ed->edScrolledWindow=
 	    XmCreateScrolledWindow( ed->edMainWindow, WIDGET_NAME, al, ac );
@@ -198,14 +195,14 @@ static int appDocMakeScrolledWindow(	EditDocument *		ed )
     XtAddCallback( ed->edHorizontalScrollbar, XmNdragCallback,
 			    appDocHorizontalScrollbarCallback, (void *)ed );
 
-    appMotifTurnOfSashTraversal( ed->edMainWindow );
+    guiMotifTurnOfSashTraversal( ed->edMainWindow );
 
     return 0;
     }
 
-int appMakeDocumentWidget(	EditApplication *	ea,
-				EditDocument *		ed )
+int appMakeDocumentWidget(	EditDocument *		ed )
     {
+    EditApplication *	ea= ed->edApplication;
     Arg			al[20];
     int			ac= 0;
 
@@ -213,7 +210,7 @@ int appMakeDocumentWidget(	EditApplication *	ea,
     int			screen= DefaultScreen( display );
     Pixel		blackPixel= BlackPixel( display, screen );
 
-    appDocumentRulerWidth( ea, ed );
+    appDocumentRulerWidth( ed );
 
     /*  2  */
     ed->edWorkWidget= XmCreateForm( ed->edScrolledWindow, WIDGET_NAME, al, ac );
@@ -335,26 +332,21 @@ int appMakeDocumentWidget(	EditApplication *	ea,
 
 static int appDocMakeToolbar(	EditDocument *		ed )
     {
-#   if 0
-    EditApplication *	ea= ed->edApplication;
+#   if 1
     Arg			al[20];
     int			ac= 0;
 
-    Display *		display= ea->eaDisplay;
-    int			screen= DefaultScreen( ea->eaDisplay );
-
-    int			verPixPerCM;
-
-    verPixPerCM= ( 10* DisplayHeight( display, screen ) )/
-					DisplayHeightMM( display, screen );
     XtSetArg( al[ac], XmNleftAttachment,	XmATTACH_FORM ); ac++;
     XtSetArg( al[ac], XmNtopAttachment,		XmATTACH_FORM ); ac++;
     XtSetArg( al[ac], XmNrightAttachment,	XmATTACH_FORM ); ac++;
-    XtSetArg( al[ac], XmNheight,		verPixPerCM ); ac++;
 
-    ed->edToolbar= XmCreateForm( ed->edMainWindow, WIDGET_NAME, al, ac );
+    XtSetArg( al[ac], XmNseparatorOn,	False ); ac++;
+    XtSetArg( al[ac], XmNresizeHeight,	True ); ac++;
+    XtSetArg( al[ac], XmNallowResize,	True ); ac++;
 
+    ed->edToolbar= XmCreatePanedWindow( ed->edMainWindow, WIDGET_NAME, al, ac );
 #   endif
+
     return 0;
     }
 
@@ -363,10 +355,10 @@ int appFinishDocumentWindow(	EditDocument *		ed )
     EditApplication *	ea= ed->edApplication;
 
     /*  3  */
-    if  ( appDocMakeMainWindow( ed )			||
-	  appDocMakeToolbar( ed )			||
-	  appDocMakeScrolledWindow( ed )		||
-	  (*ea->eaMakeDocumentWidget)( ea, ed )		)
+    if  ( appDocMakeMainWindow( ed )		||
+	  appDocMakeToolbar( ed )		||
+	  appDocMakeScrolledWindow( ed )	||
+	  (*ea->eaMakeDocumentWidget)( ed )	)
 	{ LDEB(1); return -1; }
 
     XtAddEventHandler( ed->edDocumentWidget.dwWidget,
@@ -390,6 +382,10 @@ int appFinishDocumentWindow(	EditDocument *		ed )
 
     XtManageChild( ed->edMainWindow );
 
+    XtRealizeWidget( ed->edToplevel.atTopWidget );
+
+    appSetNamedWindowIcon( ea, ed->edToplevel.atTopWidget, ea->eaMainIcon );
+
     return 0;
     }
 
@@ -403,7 +399,7 @@ int appFinishDocumentSetup(	EditDocument *		ed )
 
     if  ( ea->eaObserveFocus )
 	{
-	appGuiSetFocusChangeHandler( dw->dwWidget,
+	guiSetFocusChangeHandler( dw->dwWidget,
 					    ea->eaObserveFocus, (void *)ed );
 	}
 
@@ -430,7 +426,7 @@ int appFinishDocumentSetup(	EditDocument *		ed )
 				ea->eaDocumentCursor );
 	}
 
-    appDocumentSetInputContext( ea->eaInputMethod, dw );
+    guiDocumentSetInputContext( ea->eaInputMethod, dw );
 
     return 0;
     }
@@ -464,7 +460,7 @@ void appSetWindowsItemState(	APP_WIDGET	menu,
 			NULL );
 
 	if  ( voided == (void *)ed )
-	    { appGuiSetToggleItemState( children[j], changed ); }
+	    { guiSetToggleItemState( children[j], changed ); }
 	}
 
     return;
@@ -522,10 +518,67 @@ void appRenameWindowsOption(		APP_WIDGET		menu,
 
 	if  ( voided == (void *)ed )
 	    {
-	    appGuiSetToggleItemLabel( children[i],
+	    guiSetToggleItemLabel( children[i],
 					utilMemoryBufferGetString( title ) );
 	    }
 	}
+    }
+
+void appAppSetWindowsOption(	APP_WIDGET		menu,
+				EditDocument *		ed,
+				const MemoryBuffer *	title )
+    {
+    APP_WIDGET		item;
+    AppMenuItem		ami;
+
+    if  ( ed->edHasBeenChanged )
+	{ ami.amiItemType= ITEMtyTOGGLE_ON;	}
+    else{ ami.amiItemType= ITEMtyTOGGLE_OFF;	}
+
+    ami.amiText= utilMemoryBufferGetString( title );
+    ami.amiKey= (char *)0;
+    ami.amiKeyText= (char *)0;
+    ami.amiCallback= (APP_MENU_CALLBACK_T)appDocToFront;
+
+    item= guiSetToggleMenuItem( menu, &(ed->edToplevel), &ami, (void *)ed );
+
+    XtVaSetValues( item,
+		    XmNuserData,	(void *)ed,
+		    NULL );
+    }
+
+void appDocSetVerticalScrollbarValues(
+				EditDocument *		ed,
+				int			minimum,
+				int			maximum,
+				int			value,
+				int			sliderSize )
+    {
+    XtVaSetValues( ed->edVerticalScrollbar,
+	XmNminimum,		minimum,
+	XmNmaximum,		maximum,
+	XmNvalue,		value,
+	XmNsliderSize,		sliderSize,
+	XmNpageIncrement,	( 9* sliderSize+ 9 )/10,
+	XmNincrement,		( sliderSize+ SCROLL_BAR_STEP- 1 )/ SCROLL_BAR_STEP,
+	NULL );
+
+    return;
+    }
+
+void appDocSetHorizontalScrollbarValues(
+				EditDocument *		ed,
+				int			minimum,
+				int			maximum,
+				int			value,
+				int			sliderSize )
+    {
+    XtVaSetValues( ed->edHorizontalScrollbar,
+			XmNminimum,	minimum,
+			XmNmaximum,	maximum,
+			XmNvalue,	value,
+			XmNsliderSize,	sliderSize,
+			NULL );
     }
 
 #   endif

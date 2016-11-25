@@ -1,14 +1,10 @@
 CC=@CC@
 
-ZLIB_CFLAGS=@ZLIB_CFLAGS@
-PCRE_CFLAGS=@PCRE_CFLAGS@
-
 INCLUDES=			\
-	-I../include		\
-	-I../appUtil		\
-	-I../textEncoding	\
 	-I../utilPs		\
-	-I.
+	-I../textEncoding	\
+	-I../appUtil		\
+	-I../include
 
 CFLAGS=	@CFLAGS@ 		\
 	$(INCLUDES)
@@ -30,15 +26,18 @@ WFLAGS=	-Wall			\
 	-Wno-missing-field-initializers	\
 	-Wredundant-decls	\
 	-Wno-unused-parameter	\
-	-Wno-sign-compare
+	-fsanitize=address	\
+	-Wno-sign-compare	\
+	-Werror
 
-#CFLAGS	= $(WFLAGS) -g -O2 $(INCLUDES)
+#CFLAGS= $(WFLAGS) -g -O2 $(INCLUDES)
 
-# 7!!obs
+# 8!!obs
 OBS	=	\
-		utilMatchFont.o\
-		utilDocFontList.o\
-		utilDocFont.o\
+		fontMatchFont.o\
+		fontEncodedFont.o\
+		fontDocFontList.o\
+		fontDocFont.o\
 		docExpandedTextAttribute.o\
 		cssFontFamily.o
 
@@ -60,91 +59,95 @@ includes:
 ################################# !! sh
 
 cssFontFamily.o: \
-    cssFontFamily.c \
-    docFontConfig.h \
     ../appUtil/appUtilConfig.h \
-    ../include/appDebugon.h \
-    ../include/appDebug.h \
-    utilDocFont.h \
-    ../utilPs/psFontInfo.h \
-    ../appUtil/geo2DInteger.h \
-    ../appUtil/utilIndexSet.h \
     ../appUtil/utilIndexMapping.h \
+    ../appUtil/utilIndexSet.h \
     ../appUtil/utilMemoryBuffer.h \
+    docFontConfig.h \
+    fontDocFont.h \
+    ../include/appDebug.h \
+    ../include/appDebugon.h \
     ../textEncoding/textOfficeCharset.h \
-    ../utilPs/psDocumentFontStyle.h
+    ../utilPs/psDocumentFontStyle.h \
+    cssFontFamily.c
 
 docExpandedTextAttribute.o: \
-    docExpandedTextAttribute.c \
-    docFontConfig.h \
     ../appUtil/appUtilConfig.h \
-    ../include/appDebugon.h \
-    ../include/appDebug.h \
-    ../appUtil/utilPropMask.h \
-    ../utilPs/textAttribute.h \
-    ../appUtil/utilPalette.h \
     ../appUtil/utilColor.h \
+    ../appUtil/utilIndexMapping.h \
+    ../appUtil/utilIndexSet.h \
+    ../appUtil/utilMemoryBuffer.h \
+    ../appUtil/utilPalette.h \
+    ../appUtil/utilPropMask.h \
     docExpandedTextAttribute.h \
-    utilDocFontList.h \
-    utilDocFont.h \
-    ../utilPs/psFontInfo.h \
-    ../appUtil/geo2DInteger.h \
-    ../appUtil/utilIndexSet.h \
-    ../appUtil/utilIndexMapping.h \
-    ../appUtil/utilMemoryBuffer.h \
-    ../textEncoding/textOfficeCharset.h \
-    ../appUtil/utilColor.h
-
-utilDocFont.o: \
-    utilDocFont.c \
     docFontConfig.h \
-    ../appUtil/appUtilConfig.h \
-    ../include/appDebugon.h \
+    fontDocFont.h \
+    fontDocFontList.h \
     ../include/appDebug.h \
-    utilDocFont.h \
-    ../utilPs/psFontInfo.h \
-    ../appUtil/geo2DInteger.h \
-    ../appUtil/utilIndexSet.h \
-    ../appUtil/utilIndexMapping.h \
-    ../appUtil/utilMemoryBuffer.h \
+    ../include/appDebugon.h \
     ../textEncoding/textOfficeCharset.h \
-    ../utilPs/psDocumentFontStyle.h
+    ../utilPs/textAttribute.h \
+    docExpandedTextAttribute.c
 
-utilDocFontList.o: \
-    utilDocFontList.c \
-    docFontConfig.h \
+fontDocFont.o: \
     ../appUtil/appUtilConfig.h \
-    ../include/appDebugon.h \
-    ../include/appDebug.h \
-    utilDocFontList.h \
-    utilDocFont.h \
-    ../utilPs/psFontInfo.h \
-    ../appUtil/geo2DInteger.h \
-    ../appUtil/utilIndexSet.h \
     ../appUtil/utilIndexMapping.h \
+    ../appUtil/utilIndexSet.h \
     ../appUtil/utilMemoryBuffer.h \
-    ../textEncoding/textOfficeCharset.h \
-    ../utilPs/psDocumentFontStyle.h
-
-utilMatchFont.o: \
-    utilMatchFont.c \
     docFontConfig.h \
-    ../appUtil/appUtilConfig.h \
-    ../include/appDebugon.h \
+    fontDocFont.h \
     ../include/appDebug.h \
+    ../include/appDebugon.h \
+    ../textEncoding/textOfficeCharset.h \
     ../utilPs/psDocumentFontStyle.h \
-    utilDocFont.h \
-    ../utilPs/psFontInfo.h \
-    ../appUtil/geo2DInteger.h \
-    ../appUtil/utilIndexSet.h \
+    fontDocFont.c
+
+fontDocFontList.o: \
+    ../appUtil/appUtilConfig.h \
     ../appUtil/utilIndexMapping.h \
+    ../appUtil/utilIndexSet.h \
     ../appUtil/utilMemoryBuffer.h \
+    docFontConfig.h \
+    fontDocFont.h \
+    fontDocFontList.h \
+    ../include/appDebug.h \
+    ../include/appDebugon.h \
     ../textEncoding/textOfficeCharset.h \
-    utilMatchFont.h \
-    utilDocFontList.h \
-    ../utilPs/psPostScriptFontList.h \
+    ../utilPs/psDocumentFontStyle.h \
+    fontDocFontList.c
+
+fontEncodedFont.o: \
+    ../appUtil/appUtilConfig.h \
+    ../appUtil/utilIndexMapping.h \
+    ../appUtil/utilIndexSet.h \
+    ../appUtil/utilMemoryBuffer.h \
+    ../appUtil/utilPagedList.h \
+    docFontConfig.h \
+    fontDocFont.h \
+    fontDocFontList.h \
+    fontEncodedFont.h \
+    ../include/appDebug.h \
+    ../include/appDebugon.h \
+    ../textEncoding/textOfficeCharset.h \
+    fontEncodedFont.c
+
+fontMatchFont.o: \
+    ../appUtil/appUtilConfig.h \
+    ../appUtil/geo2DInteger.h \
+    ../appUtil/utilIndexMapping.h \
+    ../appUtil/utilIndexSet.h \
+    ../appUtil/utilMemoryBuffer.h \
+    docFontConfig.h \
+    fontDocFont.h \
+    fontDocFontList.h \
+    fontMatchFont.h \
+    ../include/appDebug.h \
+    ../include/appDebugon.h \
+    ../textEncoding/textOfficeCharset.h \
+    ../utilPs/psDocumentFontStyle.h \
     ../utilPs/psFontFamily.h \
     ../utilPs/psFontInfo.h \
+    ../utilPs/psPostScriptFontList.h \
     ../utilPs/textAttribute.h \
-    ../appUtil/utilPropMask.h
+    fontMatchFont.c
 

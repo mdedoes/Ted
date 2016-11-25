@@ -1,11 +1,11 @@
 #   include	"docBaseConfig.h"
 
-#   include	<uniUtf8.h>
 #   include	"docDebugList.h"
 #   include	"docDocumentList.h"
 #   include	"docListOverride.h"
 #   include	"docListOverrideTable.h"
 #   include	"docListTable.h"
+#   include	<uniUtf8.h>
 
 #   include	<appDebugon.h>
 

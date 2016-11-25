@@ -1,8 +1,9 @@
 #   ifndef		PSTTF_TABLE_ENTRY_H
 #   define		PSTTF_TABLE_ENTRY_H
 
-#   include	<sioGeneral.h>
 #   include	<utilMemoryBuffer.h>
+
+struct SimpleInputStream;
 
 typedef struct TrueTypeTableEntry
     {
@@ -18,8 +19,8 @@ extern void utilInitTrueTypeTableEntry(		TrueTypeTableEntry *	ttte );
 extern void utilCleanTrueTypeTableEntry(	TrueTypeTableEntry *	ttte );
 
 extern TrueTypeTableEntry * psTtfReadTableEntries(
-					SimpleInputStream *	sisTtf,
-					int			tableCount,
-					int			filePos );
+				struct SimpleInputStream *	sisTtf,
+				int				tableCount,
+				int				filePos );
 
 #   endif	/*	PSTTF_TABLE_ENTRY_H	*/

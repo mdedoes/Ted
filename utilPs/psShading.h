@@ -28,6 +28,7 @@ typedef enum ShadingPattern
     } ShadingPattern;
 
 extern const char * const PsShadingNames[];
+extern const char * const PsShadingNames_90[];
 
 /************************************************************************/
 /*									*/

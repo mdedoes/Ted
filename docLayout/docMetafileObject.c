@@ -6,18 +6,18 @@
 
 #   include	"docLayoutConfig.h"
 
-#   include	<stdio.h>
 #   include	<ctype.h>
 
-#   include	<docBuf.h>
+#   include	<docPictureProperties.h>
 #   include	"docMetafileObject.h"
+#   include	"layoutContext.h"
 
 #   include	<appDebugon.h>
 
 int docSetMetafilePlayer(	MetafilePlayer *		mp,
-				SimpleInputStream *		sisMeta,
+				struct SimpleInputStream *	sisMeta,
 				const LayoutContext *		lc,
-				const PictureProperties *	pip,
+				const PictureProperties * 	pip,
 				int				pixelsWide,
 				int				pixelsHigh )
     {

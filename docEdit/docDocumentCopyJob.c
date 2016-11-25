@@ -7,7 +7,6 @@
 #   include	"docEditConfig.h"
 
 #   include	<stdlib.h>
-#   include	<stdio.h>
 
 #   include	<docPropertiesAdmin.h>
 
@@ -15,19 +14,22 @@
 
 #   include	<docBuf.h>
 #   include	"docDocumentCopyJob.h"
-#   include	<docParaRulerAdmin.h>
+#   include	"docEditOperation.h"
+#   include	<docParaTabsAdmin.h>
 #   include	<docBorderPropertyAdmin.h>
 #   include	<docItemShadingAdmin.h>
-#   include	<docCellPropertyAdmin.h>
+#   include	<docFieldStack.h>
+#   include	<docFramePropertiesAdmin.h>
 
 void docInitDocumentCopyJob(	DocumentCopyJob *	dcj )
     {
     dcj->dcjEditOperation= (EditOperation *)0;
     docInitSelectionScope( &(dcj->dcjTargetSelectionScope) );
-    dcj->dcjTargetTree= (DocumentTree *)0;
-    dcj->dcjSourceDocument= (BufferDocument *)0;
-    dcj->dcjSourceTree= (DocumentTree *)0;
+    dcj->dcjTargetTree= (struct DocumentTree *)0;
+    dcj->dcjSourceDocument= (struct BufferDocument *)0;
+    dcj->dcjSourceTree= (struct DocumentTree *)0;
     dcj->dcjCopyFields= 0;
+    dcj->dcjStealFields= 0;
     dcj->dcjFieldMap= (int *)0;
 
     docInitDocumentAttributeMap( &(dcj->dcjAttributeMap) );
@@ -35,7 +37,7 @@ void docInitDocumentCopyJob(	DocumentCopyJob *	dcj )
 
     utilInitMemoryBuffer( &(dcj->dcjRefFileName) );
 
-    dcj->dcjFieldStack= (FieldCopyStackLevel *)0;
+    dcj->dcjFieldStack= (struct FieldStackLevel *)0;
 
     dcj->dcjInExternalTree= 0;
 
@@ -60,14 +62,7 @@ void docCleanDocumentCopyJob(	DocumentCopyJob *	dcj )
 
     utilCleanMemoryBuffer( &(dcj->dcjRefFileName) );
 
-    while( dcj->dcjFieldStack )
-	{
-	FieldCopyStackLevel *	prev= dcj->dcjFieldStack->fcslPrev;
-
-	free( dcj->dcjFieldStack );
-
-	dcj->dcjFieldStack= prev;
-	}
+    docCleanFieldStack( dcj->dcjFieldStack );
 
     utilCleanIndexSet( &(dcj->dcjNoteFieldsCopied) );
 
@@ -75,17 +70,11 @@ void docCleanDocumentCopyJob(	DocumentCopyJob *	dcj )
     }
 
 int docPushFieldOnCopyStack(		DocumentCopyJob *	dcj,
-					DocumentField *		df )
+					struct DocumentField *	df,
+					int			piece )
     {
-    FieldCopyStackLevel *	fcsl;
-
-    fcsl= (FieldCopyStackLevel *)malloc( sizeof(FieldCopyStackLevel) );
-    if  ( ! fcsl )
-	{ XDEB(fcsl); return -1;	}
-
-    fcsl->fcslPrev= dcj->dcjFieldStack;
-    fcsl->fcslField= df;
-    dcj->dcjFieldStack= fcsl;
+    if  ( docFieldStackPushLevel( &(dcj->dcjFieldStack), df, piece ) )
+	{ LDEB(1); return -1;	}
 
     return 0;
     }
@@ -96,7 +85,7 @@ int docPushFieldOnCopyStack(		DocumentCopyJob *	dcj,
 /*									*/
 /************************************************************************/
 
-static int * docAllocateFieldMap(	const BufferDocument *	bdFrom )
+static int * docAllocateFieldMap(	const struct BufferDocument *	bdFrom )
     {
     int *	fieldMap;
     int		i;
@@ -114,8 +103,8 @@ static int * docAllocateFieldMap(	const BufferDocument *	bdFrom )
 /************************************************************************/
 
 static int docSetAttributeMap(	DocumentAttributeMap *		dam,
-				BufferDocument *		bdTo,
-				BufferDocument *		bdFrom )
+				struct BufferDocument *		bdTo,
+				struct BufferDocument *		bdFrom )
     {
     int		rval= 0;
 
@@ -125,6 +114,7 @@ static int docSetAttributeMap(	DocumentAttributeMap *		dam,
     int *	shadingMap= (int *)0;
     int *	frameMap= (int *)0;
     int *	cellMap= (int *)0;
+    int *	rowMap= (int *)0;
     int *	lsmap= (int *)0;
     int *	rulerMap= (int *)0;
 
@@ -154,10 +144,19 @@ static int docSetAttributeMap(	DocumentAttributeMap *		dam,
 					&(dplFrom->dplTabStopListList) ) )
 	{ LDEB(1); rval= -1; goto ready;	}
 
+    /*  Not needed: We never refer to cells by property number
     if  ( docMergeCellPropertiesLists( &cellMap, borderMap, shadingMap,
 					&(dplTo->dplCellPropertyList),
 					&(dplFrom->dplCellPropertyList) ) )
 	{ LDEB(1); rval= -1; goto ready;	}
+    */
+
+    /*  Not needed: We never refer to rows by property number
+    if  ( docMergeCellPropertiesLists( &rowMap, borderMap, shadingMap,
+					&(dplTo->dplRowPropertyList),
+					&(dplFrom->dplRowPropertyList) ) )
+	{ LDEB(1); rval= -1; goto ready;	}
+    */
 
     if  ( docMergeDocumentLists( &fontMap, &lsmap, bdTo, bdFrom,
 						    colorMap, rulerMap ) )
@@ -209,6 +208,8 @@ static int docSetAttributeMap(	DocumentAttributeMap *		dam,
 	{ free( frameMap );	}
     if  ( cellMap )
 	{ free( cellMap );	}
+    if  ( rowMap )
+	{ free( rowMap );	}
     if  ( lsmap )
 	{ free( lsmap );	}
     if  ( rulerMap )
@@ -225,7 +226,7 @@ static int docSetAttributeMap(	DocumentAttributeMap *		dam,
 
 int docSet1DocumentCopyJob(	DocumentCopyJob *	dcj,
 				EditOperation *		eo,
-				int			copyFields )
+				int			fieldHandling )
     {
     int *	fieldMap;
 
@@ -234,7 +235,8 @@ int docSet1DocumentCopyJob(	DocumentCopyJob *	dcj,
     dcj->dcjTargetTree= eo->eoTree;
     dcj->dcjSourceDocument= eo->eoDocument;
     dcj->dcjSourceTree= eo->eoTree;
-    dcj->dcjCopyFields= copyFields;
+    dcj->dcjCopyFields= fieldHandling == CFH_COPY;
+    dcj->dcjStealFields= fieldHandling == CFH_STEAL;
 
     fieldMap= docAllocateFieldMap( dcj->dcjSourceDocument );
     if  ( ! fieldMap )
@@ -246,7 +248,7 @@ int docSet1DocumentCopyJob(	DocumentCopyJob *	dcj,
     dcj->dcjFieldMap= fieldMap;
 
     if  ( eo->eoBottomField					&&
-	  docPushFieldOnCopyStack( dcj, eo->eoBottomField )	)
+	  docPushFieldOnCopyStack( dcj, eo->eoBottomField, FSpieceFLDRSLT ) )
 	{ LDEB(1); return -1;	}
 
     return 0;
@@ -260,7 +262,7 @@ int docSet1DocumentCopyJob(	DocumentCopyJob *	dcj,
 
 int docSetTraceDocumentCopyJob(	DocumentCopyJob *	dcj,
 				EditOperation *		eo,
-				BufferDocument *	bdFrom )
+				struct BufferDocument *	bdFrom )
     {
     int *	fieldMap= (int *)0;
 
@@ -281,7 +283,7 @@ int docSetTraceDocumentCopyJob(	DocumentCopyJob *	dcj,
     dcj->dcjFieldMap= fieldMap;
 
     if  ( eo->eoBottomField					&&
-	  docPushFieldOnCopyStack( dcj, eo->eoBottomField )	)
+	  docPushFieldOnCopyStack( dcj, eo->eoBottomField, FSpieceFLDRSLT ) )
 	{ LDEB(1); return -1;	}
 
     return 0;
@@ -295,14 +297,14 @@ int docSetTraceDocumentCopyJob(	DocumentCopyJob *	dcj,
 
 int docSet2DocumentCopyJob(	DocumentCopyJob *	dcj,
 				EditOperation *		eo,
-				BufferDocument *	bdFrom,
-				DocumentTree *		eiFrom,
+				struct BufferDocument *	bdFrom,
+				struct DocumentTree *		eiFrom,
 				const MemoryBuffer *	refFileName,
 				int			forceAttributeTo )
     {
     int *		fldmap;
 
-    BufferDocument *	bdTo= eo->eoDocument;
+    struct BufferDocument *	bdTo= eo->eoDocument;
 
     dcj->dcjEditOperation= eo;
     dcj->dcjTargetSelectionScope= eo->eoSelectionScope;
@@ -310,6 +312,7 @@ int docSet2DocumentCopyJob(	DocumentCopyJob *	dcj,
     dcj->dcjSourceDocument= bdFrom;
     dcj->dcjSourceTree= eiFrom;
     dcj->dcjCopyFields= 1;
+    dcj->dcjStealFields= 0;
     dcj->dcjForceAttributeTo= forceAttributeTo;
 
     fldmap= docAllocateFieldMap( dcj->dcjSourceDocument );
@@ -332,7 +335,7 @@ int docSet2DocumentCopyJob(	DocumentCopyJob *	dcj,
 	}
 
     if  ( eo->eoBottomField					&&
-	  docPushFieldOnCopyStack( dcj, eo->eoBottomField )	)
+	  docPushFieldOnCopyStack( dcj, eo->eoBottomField, FSpieceFLDRSLT ) )
 	{ LDEB(1); return -1;	}
 
     return 0;

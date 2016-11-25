@@ -9,17 +9,22 @@
 #   include	<stdio.h>
 #   include	<ctype.h>
 
-#   include	<appDebugon.h>
-
 #   include	<sioMemory.h>
 #   include	<docBuf.h>
 #   include	<docNodeTree.h>
-#   include	<docParaString.h>
-#   include	<docParaParticules.h>
-#   include	<textConverter.h>
-#   include	<textConverterImpl.h>
 #   include	<sioUtf8.h>
+#   include	<textAttribute.h>
 #   include	"docPlainReadWrite.h"
+#   include	<docPropVal.h>
+#   include	<docParaNodeProperties.h>
+#   include	<docSelect.h>
+#   include	<docTreeNode.h>
+#   include	<docDocumentProperties.h>
+#   include	<docParaProperties.h>
+#   include	<sioGeneral.h>
+#   include	<docParaBuilder.h>
+
+#   include	<appDebugon.h>
 
 /************************************************************************/
 /*									*/
@@ -29,26 +34,30 @@
 
 typedef struct PlainReadingContext
     {
-    TextAttribute	prcTextAttribute;
-    BufferItem *	prcParaNode;
-    int			prcHasOpenEnd;
-    int			prcLongestParagraph;
-    MemoryBuffer	prcCollected;
+    struct BufferDocument *	prcDocument;
+    struct DocumentTree *	prcTree;
 
-    TextConverter	prcTextConverter;
+    TextAttribute		prcTextAttribute;
+    struct BufferItem *		prcParaNode;
+    int				prcHasOpenEnd;
+    int				prcLongestParagraph;
+    MemoryBuffer		prcCollected;
+
+    ParagraphProperties		prcParagraphProperties;
+    struct ParagraphBuilder *	prcParagraphBuilder;
     } PlainReadingContext;
 
 static void docPlainInitReadingContext( PlainReadingContext *	prc )
     {
-    utilInitTextAttribute( &(prc->prcTextAttribute) );
+    textInitTextAttribute( &(prc->prcTextAttribute) );
 
-    prc->prcParaNode= (BufferItem *)0;
+    prc->prcParaNode= (struct BufferItem *)0;
     prc->prcHasOpenEnd= 0;
     prc->prcLongestParagraph= 0;
 
     utilInitMemoryBuffer( &(prc->prcCollected) );
-    textInitTextConverter( &(prc->prcTextConverter) );
-    docParaSetupTextConverter( &(prc->prcTextConverter) );
+    docInitParagraphProperties( &(prc->prcParagraphProperties) );
+    prc->prcParagraphBuilder= (struct ParagraphBuilder *)0;
     }
 
 static void docPlainCleanReadingContext( PlainReadingContext *	prc )
@@ -56,17 +65,17 @@ static void docPlainCleanReadingContext( PlainReadingContext *	prc )
     /* utilCleanTextAttribute( &(prc->prcTextAttribute) ); */
 
     utilCleanMemoryBuffer( &(prc->prcCollected) );
-    textCleanTextConverter( &(prc->prcTextConverter) );
+    docCleanParagraphProperties( &(prc->prcParagraphProperties) );
+    if  ( prc->prcParagraphBuilder )
+	{ docCloseParagraphBuilder( prc->prcParagraphBuilder );	}
     }
 
-static int docPlainReadParaContents(	BufferDocument *	bd,
-					BufferItem *		paraNode,
-					int			c,
-					SimpleInputStream *	sis,
-					PlainReadingContext *	prc )
+static int docPlainReadParaContents(	int				c,
+					struct SimpleInputStream *	sis,
+					PlainReadingContext *		prc )
     {
     int				rval= 0;
-    SimpleOutputStream *	sos= (SimpleOutputStream *)0;
+    struct SimpleOutputStream *	sos= (struct SimpleOutputStream *)0;
 
     utilEmptyMemoryBuffer( &(prc->prcCollected) );
 
@@ -77,8 +86,11 @@ static int docPlainReadParaContents(	BufferDocument *	bd,
 	if  ( c == '\f' )
 	    {
 	    /*  Ignored inside the paragraph */
-	    if  ( docParaStrlen( paraNode ) == 0 )
-		{ paraNode->biParaBreakKind= DOCibkPAGE;	}
+	    if  ( docParaStrlen( prc->prcParaNode ) == 0 )
+		{
+		docParaNodeSetBreakKind( prc->prcParaNode,
+					    DOCibkPAGE, prc->prcDocument );
+		}
 
 	    c= sioInGetUtf8( sis );
 	    if  ( c == EOF )
@@ -89,9 +101,10 @@ static int docPlainReadParaContents(	BufferDocument *	bd,
 
 	if  ( c == '\t' )
 	    {
-	    if  ( docSaveSpecialParticule( bd, paraNode,
-				    &(prc->prcTextAttribute), DOCkindTAB ) )
-		{ LDEB(docParaStrlen(paraNode)); rval= -1; goto ready;	}
+	    if  ( docParaBuilderAppendTab(
+				    prc->prcParagraphBuilder,
+				    &(prc->prcTextAttribute) ) )
+		{ LDEB(1); rval= -1; goto ready;	}
 
 	    c= sioInGetUtf8( sis );
 	    if  ( c == EOF )
@@ -123,7 +136,7 @@ static int docPlainReadParaContents(	BufferDocument *	bd,
 		{ break;	}
 	    }
 
-	sioOutClose( sos ); sos= (SimpleOutputStream *)0;
+	sioOutClose( sos ); sos= (struct SimpleOutputStream *)0;
 
 	if  ( done > 0 )
 	    {
@@ -132,8 +145,8 @@ static int docPlainReadParaContents(	BufferDocument *	bd,
 
 	    bytes= utilMemoryBufferGetBytes( &size, &(prc->prcCollected) );
 
-	    if  ( docParaAppendText( bd, paraNode, &(prc->prcTextAttribute),
-			    &(prc->prcTextConverter), (char *)bytes, size ) )
+	    if  ( docParagraphBuilderAppendText( prc->prcParagraphBuilder, 
+			&(prc->prcTextAttribute), (char *)bytes, size ) )
 		{ LDEB(size); rval= -1; goto ready;	}
 	    }
 
@@ -142,12 +155,6 @@ static int docPlainReadParaContents(	BufferDocument *	bd,
 	if  ( c == '\n' )
 	    { prc->prcHasOpenEnd= 0; break;	}
 	}
-
-    /*  HACK: fix first paragraph of document!	*/
-    if  ( paraNode->biParaParticuleCount > 1			&&
-	  paraNode->biParaParticules[0].tpKind == DOCkindSPAN	&&
-	  paraNode->biParaParticules[0].tpStrlen == 0		)
-	{ docDeleteParticules( paraNode, 0, 1 );	}
 
   ready:
 
@@ -165,14 +172,13 @@ static int docPlainReadParaContents(	BufferDocument *	bd,
 /*									*/
 /************************************************************************/
 
-static int docPlainReadParagraph(	BufferDocument *	bd,
-					SimpleInputStream *	sis,
-					PlainReadingContext *	prc )
+static int docPlainReadParagraph(	struct BufferDocument *		bd,
+					struct SimpleInputStream *	sis,
+					PlainReadingContext *		prc )
     {
     int			c;
-    BufferItem *	paraNode;
-
-    int			textAttrNr;
+    struct BufferItem *	refNode= (struct BufferItem *)0;
+    struct BufferItem *	paraNode= (struct BufferItem *)0;
 
     /*  1  */
     c= sioInGetUtf8( sis );
@@ -186,29 +192,28 @@ static int docPlainReadParagraph(	BufferDocument *	bd,
 	if  ( docDocumentHead( &dp, bd ) )
 	    { LDEB(1);	}
 
-	paraNode= dp.dpNode;
-	prc->prcParaNode= paraNode;
+	refNode= dp.dpNode->biParent;
+	docDeleteNode( prc->prcDocument, prc->prcTree, dp.dpNode );
 	}
     else{
-	paraNode= docInsertNode( bd, prc->prcParaNode->biParent,
-							    -1, DOClevPARA );
-	if  ( ! paraNode )
-	    { XDEB(paraNode); return -1;	}
-
-	prc->prcParaNode= paraNode;
+	refNode= prc->prcParaNode->biParent;
 	}
 
-    if  ( docPlainReadParaContents( bd, paraNode, c, sis, prc ) )
+    paraNode= docParaBuilderStartNewParagraph( prc->prcParagraphBuilder,
+				    refNode,
+				    &(prc->prcParagraphProperties),
+				    &(prc->prcTextAttribute),
+				    prc->prcParagraphProperties.ppRToL );
+    if  ( ! paraNode )
+	{ XDEB(paraNode); return -1;	}
+    prc->prcParaNode= paraNode;
+
+    if  ( docPlainReadParaContents( c, sis, prc ) )
 	{ LDEB(1); return -1;	}
 
-    if  ( paraNode->biParaParticuleCount == 0 )
-	{
-	textAttrNr= docTextAttributeNumber( bd, &(prc->prcTextAttribute) );
-
-	if  ( ! docInsertTextParticule( paraNode, 0, 0, 0,
-						    DOCkindSPAN, textAttrNr ) )
-	    { LDEB( paraNode->biParaParticuleCount); return -1;	}
-	}
+    if  ( docParaBuilderFinishParagraph( prc->prcParagraphBuilder,
+						&(prc->prcTextAttribute) ) )
+	{ LDEB(1);	}
 
     if  ( prc->prcLongestParagraph < docParaStrlen( paraNode ) )
 	{ prc->prcLongestParagraph=  docParaStrlen( paraNode );	}
@@ -229,40 +234,48 @@ static int docPlainReadParagraph(	BufferDocument *	bd,
 /*									*/
 /************************************************************************/
 
-BufferDocument * docPlainReadFile(
-			SimpleInputStream *		sis,
+struct BufferDocument * docPlainReadFile(
+			struct SimpleInputStream *	sis,
 			int *				pMxL,
 			const DocumentGeometry *	dgPaper )
     {
-    BufferDocument *	rval= (BufferDocument *)0;
-    BufferDocument *	bd;
-    DocumentGeometry	dgDoc= *dgPaper;
+    struct BufferDocument *	rval= (struct BufferDocument *)0;
+    struct BufferDocument *	bd= (struct BufferDocument *)0;
+    DocumentGeometry		dgDoc= *dgPaper;
     /*
-    const char *	lc_ctype= nl_langinfo( CODESET );
+    const char *		lc_ctype= nl_langinfo( CODESET );
     */
-    const char *	lc_ctype= "UTF-8";
-    const char *	font= "Courier";
+    const char *		lc_ctype= "UTF-8";
+    const char *		font= "Courier";
 
     PlainReadingContext	prc;
 
     docPlainInitReadingContext( &prc );
 
-    dgDoc.dgLeftMarginTwips= 960;
-    dgDoc.dgRightMarginTwips= 960;
-
-    if  ( lc_ctype )
-	{
-	textConverterSetNativeEncodingName(
-					&(prc.prcTextConverter), lc_ctype );
-	}
+    dgDoc.dgMargins.roLeftOffset= 960;
+    dgDoc.dgMargins.roRightOffset= 960;
 
     bd= docNewFile( &(prc.prcTextAttribute),
 				    font, 2* 9,
-				    (PostScriptFontList *)0, &dgDoc );
+				    (struct PostScriptFontList *)0, &dgDoc );
     if  ( ! bd )
-	{ XDEB(bd); return bd;	}
+	{ XDEB(bd); goto ready;	}
 
-    bd->bdProperties.dpTabIntervalTwips= 960;
+    bd->bdProperties->dpTabIntervalTwips= 960;
+
+    prc.prcDocument= bd;
+    prc.prcTree= &(bd->bdBody);
+    prc.prcParagraphBuilder= docOpenParagraphBuilder( prc.prcDocument,
+		    &(bd->bdBody.dtRoot->biChildren[0]->biSectSelectionScope),
+		    prc.prcTree );
+    if  ( ! prc.prcParagraphBuilder )
+	{ XDEB(prc.prcParagraphBuilder); goto ready;	}
+
+    if  ( lc_ctype )
+	{
+	docParagraphBuilderSetNativeEncodingName(
+					prc.prcParagraphBuilder, lc_ctype );
+	}
 
     for (;;)
 	{
@@ -277,8 +290,8 @@ BufferDocument * docPlainReadFile(
 	}
 
     *pMxL= prc.prcLongestParagraph;
-    bd->bdProperties.dpHasOpenEnd= prc.prcHasOpenEnd;
-    rval= bd; bd= (BufferDocument *)0; /* steal */
+    bd->bdProperties->dpHasOpenEnd= prc.prcHasOpenEnd;
+    rval= bd; bd= (struct BufferDocument *)0; /* steal */
 
   ready:
 

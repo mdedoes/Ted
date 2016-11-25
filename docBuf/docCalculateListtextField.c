@@ -6,14 +6,22 @@
 
 #   include	"docBufConfig.h"
 
-#   include	<appDebugon.h>
-
 #   include	"docBuf.h"
+#   include	"docTreeNode.h"
+#   include	"docNodeTree.h"
 #   include	"docEvalField.h"
-#   include	"docParaParticules.h"
 #   include	"docRecalculateFields.h"
+#   include	"docParaNodeProperties.h"
+#   include	"docParaBuilderImpl.h"
+#   include	"docParaParticuleAdmin.h"
 #   include	<docListLevel.h>
 #   include	<docListDepth.h>
+#   include	<docTextParticule.h>
+#   include	<docParaProperties.h>
+#   include	"docParaBuilder.h"
+
+#   include	"docDebug.h"
+#   include	<appDebugon.h>
 
 /************************************************************************/
 /*									*/
@@ -73,18 +81,23 @@ static int docCalculateListtextParaString( char *		target,
 /*									*/
 /************************************************************************/
 
+# ifdef __GNUC__
+# pragma GCC diagnostic push
+# pragma GCC diagnostic ignored "-Wunused-parameter"
+# endif
+
 int docRecalculateParaListtextTextParticules(
 				int *				pCalculated,
-				int *				pPartShift,
 				int *				pStroffShift,
-				BufferItem *			paraNode,
-				int				part,
-				int				partCount,
-				DocumentField *			dfListtext,
-				const RecalculateFields *	rf )
+				struct ParagraphBuilder *	pb,
+				struct DocumentField *		dfListtext,
+				const RecalculateFields *	rf,
+				int				partHead,
+				int				partCount )
     {
-    int				rval= 0;
-    const ParagraphProperties *	pp= &(paraNode->biParaProperties);
+    int				partTail= partHead+ partCount;
+    BufferItem *		paraNode= pb->pbParaNode;
+    const ParagraphProperties *	pp= paraNode->biParaProperties;
 
     int				ilvl= pp->ppListLevel;
 
@@ -106,18 +119,17 @@ int docRecalculateParaListtextTextParticules(
     int				stroffShift;
     int				textAttrNr= -1;
 
-    int				partsMade= 0;
     int				makeSep= 0;
-    int				sepKind= DOCkindTAB;
+    int				sepKind= TPkindTAB;
 
-    TextParticule *		tp;
+    struct TextParticule *	tp;
 
     if  ( pp->ppListOverride <= 0 )
 	{ /*LDEB(pp->ppListOverride);*/ *pCalculated= 0; goto ready; }
 
     /*  1,2,3,4  */
     if  ( docGetListLevelOfParagraph( startPath, formatPath,
-					&lo, &dl, &ll, pp, rf->rfDocument ) )
+				&lo, &dl, &ll, paraNode, rf->rfDocument ) )
 	{
 	LLDEB(pp->ppListOverride,pp->ppListLevel);
 	*pCalculated= 0; goto ready;
@@ -145,45 +157,48 @@ int docRecalculateParaListtextTextParticules(
 
     /*  7  */
     if  ( docFieldReplaceContents( &stroff, &stroffShift, &textAttrNr,
-			    paraNode, part, partCount,
+			    paraNode, partHead, partCount,
 			    *pStroffShift, addedString, addedStrlen, rf ) )
-	{ LDEB(1); rval= -1; goto ready;	}
+	{ LDEB(1); partTail= -1; goto ready;	}
 
     /*  9  */
     if  ( ll->llFollow == DOCllfTAB )
-	{ makeSep= 1; sepKind= DOCkindTAB;	}
+	{ makeSep= 1; sepKind= TPkindTAB;	}
 
     if  ( ll->llFollow == DOCllfSPACE					&&
 	  ( PROPmaskISSET( &(ll->llTextAttributeMask),
 					TApropTEXTUNDERLINED )	||
 	    PROPmaskISSET( &(ll->llTextAttributeMask),
 					TApropSTRIKETHROUGH )	)	)
-	{ makeSep= 1; sepKind= DOCkindSPAN;	}
+	{ makeSep= 1; sepKind= TPkindSPAN;	}
 
-    tp= docInsertTextParticule( paraNode, part+ 1,
-					    stroff, addedStrlen- makeSep,
-					    DOCkindSPAN, textAttrNr );
+    tp= docParaGraphBuilderInsertSpanParticule( pb,
+		    partHead+ 1, stroff, addedStrlen- makeSep, textAttrNr );
     if  ( ! tp )
-	{ XDEB(tp); *pCalculated= 0; goto ready;	}
-    partsMade++;
+	{ XDEB(tp); *pCalculated= 0; partTail= -1; goto ready;	}
+
+    partTail= partHead+ 1;
 
     /*  10  */
     if  ( makeSep )
 	{
-	tp= docInsertTextParticule( paraNode, part+ 2,
+	tp= docInsertTextParticule( paraNode, partHead+ 2,
 					    stroff+ addedStrlen- makeSep, 1,
 					    sepKind, textAttrNr );
 	if  ( ! tp )
-	    { XDEB(tp); *pCalculated= 0; goto ready;	}
-	partsMade++;
+	    { XDEB(tp); *pCalculated= 0; partTail= -1; goto ready;	}
+
+	partTail= partHead+ 2;
 	}
 
     *pCalculated= 1;
-    *pPartShift= partsMade- partCount;
-    *pStroffShift += stroffShift;
+    *pStroffShift= stroffShift;
 
   ready:
 
-    return rval;
+    return partTail;
     }
 
+# ifdef __GNUC__
+# pragma GCC diagnostic pop
+# endif

@@ -6,12 +6,13 @@
 
 #   include	"docRtfConfig.h"
 
-#   include	<stdio.h>
 #   include	<ctype.h>
 
-#   include	<appDebugon.h>
-
 #   include	"docRtfWriterImpl.h"
+#   include	<docNotesProperties.h>
+#   include	<utilPropMask.h>
+
+#   include	<appDebugon.h>
 
 int docRtfSaveNotesProperties(
 		RtfWriter *			rw,

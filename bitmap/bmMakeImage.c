@@ -18,8 +18,7 @@
 /*									*/
 /************************************************************************/
 
-int bmTransparentImage(		BitmapDescription *		bdOut,
-				unsigned char **		pBufOut,
+int bmTransparentImage(		RasterImage *			riOut,
 				int				colorEncoding,
 				int				wide,
 				int				high )
@@ -85,8 +84,8 @@ int bmTransparentImage(		BitmapDescription *		bdOut,
 	}
 
     /* steal */
-    *bdOut= bd;
-    *pBufOut= buffer;
+    riOut->riDescription= bd;
+    riOut->riBytes= buffer;
 
     buffer= (unsigned char *)0;
     bmInitDescription( &bd );
@@ -106,8 +105,7 @@ int bmTransparentImage(		BitmapDescription *		bdOut,
 /*									*/
 /************************************************************************/
 
-int bmRGBImage(			BitmapDescription *		bdOut,
-				unsigned char **		pBufOut,
+int bmRGBImage(			RasterImage *			riOut,
 				int				colorEncoding,
 				int				r,
 				int				g,
@@ -184,8 +182,8 @@ int bmRGBImage(			BitmapDescription *		bdOut,
 	}
 
     /* steal */
-    *bdOut= bd;
-    *pBufOut= buffer;
+    riOut->riDescription= bd;
+    riOut->riBytes= buffer;
 
     buffer= (unsigned char *)0;
     bmInitDescription( &bd );

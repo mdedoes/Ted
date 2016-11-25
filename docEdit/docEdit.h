@@ -7,10 +7,26 @@
 #   ifndef		DOC_EDIT_H
 #   define		DOC_EDIT_H
 
-#   include		<docBuf.h>
-#   include		<docDebug.h>
-#   include		"docEditOperation.h"
-#   include		"docDocumentCopyJob.h"
+struct BufferDocument;
+struct BufferItem;
+struct CellProperties;
+struct DocumentAttributeMap;
+struct DocumentCopyJob;
+struct DocumentField;
+struct DocumentList;
+struct DocumentPosition;
+struct DocumentProperties;
+struct DocumentSelection;
+struct DocumentTree;
+struct EditOperation;
+struct FieldInstructions;
+struct ListOverride;
+struct ParagraphProperties;
+struct PropertyMask;
+struct RowProperties;
+struct SectionProperties;
+struct SelectionScope;
+struct TextAttribute;
 
 /************************************************************************/
 /*									*/
@@ -18,281 +34,256 @@
 /*									*/
 /************************************************************************/
 
-extern int docRollNodeChildren(		EditOperation *		eo,
-					struct BufferItem *	parentBi,
+extern int docRollNodeChildren(		struct EditOperation *	eo,
+					struct BufferItem *	parentNode,
 					int			from,
 					int			to,
 					int			by );
 
 extern int docEditDeleteReplacedFields(
-			EditOperation *			eo );
+			struct EditOperation *			eo );
 
 extern int docParaReplaceText(
-			EditOperation *			eo,
+			struct EditOperation *		eo,
 			int				paraNr,
-			DocumentPosition *		dpTail,
-			const DocumentPosition *	dpHead,
+			struct DocumentPosition *	dpTail,
+			const struct DocumentPosition *	dpHead,
 			unsigned int			stroffTail,
 			const char *			addedText,
 			unsigned int			addedLength,
 			int				addedAttributeNumber );
 
 extern int docParaDeleteText(
-			EditOperation *			eo,
+			struct EditOperation *		eo,
 			int				paraNr,
-			DocumentPosition *		dpTail,
-			const DocumentPosition *	dpHead,
+			struct DocumentPosition *	dpTail,
+			const struct DocumentPosition *	dpHead,
 			unsigned int			stroffTail );
 
 extern int docParaInsertTail(
-			DocumentCopyJob *		dcj,
+			struct DocumentCopyJob *	dcj,
 			int				paraNrTo,
-			DocumentPosition *		dpTail,
-			const DocumentPosition *	dpTo,
-			const DocumentPosition *	dpFrom );
+			struct DocumentPosition *	dpTail,
+			const struct DocumentPosition *	dpTo,
+			const struct DocumentPosition *	dpFrom );
 
-extern int docSplitParaNode(	struct BufferItem **	pNewParaBi,
-				EditOperation *		eo,
+extern int docSplitParaNode(	struct BufferItem **	pNewParaNode,
+				struct EditOperation *	eo,
 				int			splitLevel );
 
-extern int docEditSplitParaParent(	EditOperation *		eo,
+extern int docEditSplitParaParent(	struct EditOperation *	eo,
 					struct BufferItem **	pBeforeNode,
 					struct BufferItem **	pAfterNode,
 					struct BufferItem *	paraNode,
 					int			after,
 					int			splitLevel );
 
-extern int docRemoveSelectionTail(	EditOperation *		eo );
+extern int docRemoveSelectionTail(	struct EditOperation *	eo );
 
-extern void docDeleteEmptyParents(	EditOperation *		eo,
+extern void docDeleteEmptyParents(	struct EditOperation *	eo,
 					int *			pSectsDeleted,
-					struct BufferItem *	bi );
+					struct BufferItem *	node );
 
-extern void docEditDeleteNodes(	EditOperation *		eo,
+extern void docEditDeleteNodes(	struct EditOperation *	eo,
 				int *			pSectionsDeleted,
 				int *			pFirstParaDeleted,
 				int *			pParagraphsDeleted,
-				struct BufferItem *	bi,
+				struct BufferItem *	node,
 				int			first,
 				int			count );
 
 extern struct TextParticule * docEditParaSpecialParticule(
-					EditOperation *		eo,
+					struct EditOperation *	eo,
 					int			kind );
 
 extern int docReplaceSelection(
-			EditOperation *		eo,
+			struct EditOperation *	eo,
 			const char *		addedText,
 			int			addedLength,
 			int			addedAttributeNumber );
 
 extern int docDeleteSelection(
-			EditOperation *			eo );
+			struct EditOperation *		eo );
 
-extern int docMergeParagraphsInSelection(	EditOperation *	eo );
+extern int docMergeParagraphsInSelection(	struct EditOperation *	eo );
 
-extern int docInsertTableRows(	DocumentSelection *	dsRows,
-				EditOperation *		eo,
-				struct BufferItem *	sectBi,
-				const struct BufferItem * refRowBi,
-				const RowProperties *	rp,
-				int			textAttributeNumber,
+extern int docInsertTableRows(	struct DocumentSelection *	dsRows,
+				struct EditOperation *	eo,
+				struct BufferItem *	sectNode,
+				const struct BufferItem * refRowNode,
+				const struct RowProperties *	rp,
+				int			textAttributeNr,
 				int			n,
 				int			paraNr,
 				int			rows );
 
-extern int docSplitColumnInRows(	struct BufferItem **	pNewParaBi,
-					EditOperation *		eo,
-					struct BufferItem *	sectBi,
+extern int docSplitColumnInRows(	struct BufferItem **	pNewParaNode,
+					struct EditOperation *	eo,
+					struct BufferItem *	parentNode,
 					int			row0,
 					int			row,
 					int			row1,
 					int			col,
 					int			after );
 
-extern int docDeleteColumnsFromRows(	EditOperation *		eo,
-					struct BufferItem *	sectBi,
+extern int docDeleteColumnsFromRows(	struct EditOperation *	eo,
+					struct BufferItem *	sectNode,
 					int			delRow0,
 					int			delRow1,
 					int			delCol0,
 					int			delCol1 );
 
-extern void docEditShiftReferences(	EditOperation *		eo,
-					const SelectionScope *	ssRoot,
-					int			paraFrom,
-					int			stroffFrom,
-					int			sectShift,
-					int			paraShift,
-					int			stroffShift );
+extern void docEditShiftReferences(
+				struct EditOperation *		eo,
+				const struct SelectionScope *	ssRoot,
+				int				paraFrom,
+				int				stroffFrom,
+				int				sectShift,
+				int				paraShift,
+				int				stroffShift );
 
 extern void docEditAvoidDeletedParagraphs(
-					EditOperation *		eo,
-					const SelectionScope *	ssRoot,
-					int			paraFrom,
-					int			paraUpto );
+				struct EditOperation *		eo,
+				const struct SelectionScope *	ssRoot,
+				int				paraFrom,
+				int				paraUpto );
 
 extern int docEditUpdParaProperties(
-				EditOperation *			eo,
-				PropertyMask *			pPpDonePask,
+				struct EditOperation *		eo,
+				struct PropertyMask *		pPpDonePask,
 				struct BufferItem *		paraNode,
-				const PropertyMask *		ppSetMask,
-				const ParagraphProperties *	ppNew,
-				const DocumentAttributeMap *	dam );
+				const struct PropertyMask *	ppSetMask,
+				const struct ParagraphProperties *	ppNew,
+				const struct DocumentAttributeMap *	dam );
 
 extern int docEditUpdSectProperties(
-				EditOperation *			eo,
-				PropertyMask *			pSpDonePask,
+				struct EditOperation *		eo,
+				struct PropertyMask *		pSpDonePask,
 				struct BufferItem *		sectNode,
-				const PropertyMask *		spSetMask,
-				const SectionProperties *	spNew,
-				const DocumentAttributeMap *	dam );
+				const struct PropertyMask *	spSetMask,
+				const struct SectionProperties * spNew );
 
-extern int docEditShiftParticuleOffsets( EditOperation *	eo,
-					struct BufferItem *	paraBi,
+extern int docEditShiftParticuleOffsets( struct EditOperation *	eo,
+					struct BufferItem *	paraNode,
 					int			paraNr,
 					int			partFrom,
-					int			partUpto,
 					int			stroffFrom,
 					int			stroffShift );
 
-extern int docEditCleanParticules(	EditOperation *		eo,
-					struct BufferItem *	paraBi,
+extern int docEditCleanParticules(	struct EditOperation *	eo,
+					struct BufferItem *	paraNode,
 					int			partFrom,
 					int			partUpto );
 
-extern int docCheckNoBreakAsLast(	EditOperation *		eo,
-					struct BufferItem *	paraBi );
+extern int docCheckNoBreakAsLast(	struct EditOperation *	eo,
+					struct BufferItem *	paraNode );
 
 extern void docEditAdaptRowPropertiesToFirstChild(
-					EditOperation *		eo,
-					const struct BufferItem *	paraBi );
+				struct EditOperation *		eo,
+				const struct BufferItem *	paraNode );
 
-extern int docEditFixParaBreakKind(	EditOperation *		eo,
-					DocumentTree *		dt,
-					BufferDocument *	bd,
-					int			paraNr );
+extern int docEditFixParaBreakKind(
+				struct EditOperation *		eo,
+				struct DocumentTree *		dt,
+				struct BufferDocument *		bd,
+				int				paraNr );
 
-extern int docIncludeDocument(		DocumentCopyJob *	dcj );
+extern int docIncludeDocument(	struct DocumentCopyJob *	dcj );
 
-extern int docSectionParagraph( EditOperation *		eo,
-			struct BufferItem **		pParaBi,
-			struct BufferItem *		sectBi,
+extern int docSectionParagraph( struct EditOperation *	eo,
+			struct BufferItem **		pParaNode,
+			struct BufferItem *		sectNode,
 			int				sectShift,
-			const ParagraphProperties *	pp,
-			int				textAttributeNumber );
+			const struct ParagraphProperties *	pp,
+			int				textAttributeNr );
 
 extern int docEditDeleteFieldsForBlockDelete(
-				EditOperation *			eo,
-				const DocumentSelection *	ds );
-
-extern int docDeleteFieldsInRange(	EditOperation *		eo,
-					DocumentSelection *	dsBalanced );
+			struct EditOperation *			eo,
+			const struct DocumentSelection *	ds );
 
 extern int docEditSurroundTextSelectionByField(
-				EditOperation *			eo,
-				DocumentField **		pDf,
-				DocumentSelection *		dsInside,
-				DocumentSelection *		dsAround,
-				int *				pHeadPart,
-				int *				pTailPart,
-				const PropertyMask *		taSetMask,
-				const TextAttribute *		taSet,
-				int				fieldKind,
-				const FieldInstructions *	fi );
+			struct EditOperation *			eo,
+			struct DocumentField **			pDf,
+			struct DocumentSelection *		dsInside,
+			struct DocumentSelection *		dsAround,
+			int *					pHeadPart,
+			int *					pTailPart,
+			const struct PropertyMask *		taSetMask,
+			const struct TextAttribute *		taSet,
+			int					fieldKind,
+			const struct FieldInstructions *	fi );
 
 extern int docChangeSelectionProperties(
-			EditOperation *			eo,
-			const DocumentSelection *	ds,
+			struct EditOperation *		eo,
+			const struct DocumentSelection *	ds,
 
-			PropertyMask *			selTaChgMask,
-			const PropertyMask *		taSetMask,
-			const TextAttribute *		taSet,
+			struct PropertyMask *		selTaChgMask,
+			const struct PropertyMask *	taSetMask,
+			const struct TextAttribute *	taSet,
 
-			PropertyMask *			selPpChgMask,
-			const PropertyMask *		ppSetMask,
-			const ParagraphProperties *	ppSet,
+			struct PropertyMask *		selPpChgMask,
+			const struct PropertyMask *	ppSetMask,
+			const struct ParagraphProperties *	ppSet,
 
-			PropertyMask *			selCpChgMask,
-			const PropertyMask *		cpSetMask,
-			const CellProperties *		cpSet,
+			struct PropertyMask *		selCpChgMask,
+			const struct PropertyMask *	cpSetMask,
+			const struct CellProperties *	cpSet,
 
-			PropertyMask *			selRpChgMask,
-			const PropertyMask *		rpSetMask,
-			const RowProperties *		rpSet,
+			struct PropertyMask *		selRpChgMask,
+			const struct PropertyMask *	rpSetMask,
+			const struct RowProperties *	rpSet,
 
-			PropertyMask *			selSpChgMask,
-			const PropertyMask *		spSetMask,
-			const SectionProperties *	spSet,
+			struct PropertyMask *		selSpChgMask,
+			const struct PropertyMask *	spSetMask,
+			const struct SectionProperties * spSet,
 
-			PropertyMask *			docDpChgMask,
-			const PropertyMask *		dpSetMask,
-			const DocumentProperties *	dpSet );
+			struct PropertyMask *		docDpChgMask,
+			const struct PropertyMask *	dpSetMask,
+			const struct DocumentProperties *	dpSet );
 
-extern int docInsertParagraph(	EditOperation *		eo,
-				DocumentPosition *	dpNew,
+extern int docInsertParagraph(	struct EditOperation *	eo,
+				struct DocumentPosition *	dpNew,
 				struct BufferItem *	paraNode,
 				int			after,
-				int			textAttributeNumber );
+				int			textAttributeNr );
 
-extern int docInsertSection(	EditOperation *		eo,
-				DocumentPosition *	dpBeforeSplit,
-				DocumentPosition *	dpAfterSplit,
+extern int docInsertSection(	struct EditOperation *	eo,
+				struct DocumentPosition *	dpBeforeSplit,
+				struct DocumentPosition *	dpAfterSplit,
 				struct BufferItem *	paraNode,
 				int			split,
 				int			after,
-				int			textAttributeNumber );
+				int			textAttributeNr );
 
-extern int docEditChangeList(	EditOperation *			eo,
+extern int docEditChangeList(	struct EditOperation *		eo,
 				struct DocumentList *		dl,
 				struct ListOverride *		lo,
 				const struct DocumentList *	dlNew );
 
 extern int docCopySelectionProperties(
-			DocumentCopyJob *		dcj,
-			const DocumentSelection *	dsTo,
-			const DocumentSelection *	dsFrom,
+			struct DocumentCopyJob *		dcj,
+			const struct DocumentSelection *	dsTo,
+			const struct DocumentSelection *	dsFrom,
+			const struct TextAttribute *		taSet,
+			const struct PropertyMask *		taSetMask,
+			const struct PropertyMask *		ppSetMask,
+			const struct PropertyMask *		cpSetMask,
+			const struct PropertyMask *		rpSetMask,
+			const struct PropertyMask *		spSetMask,
+			const struct PropertyMask *		dpSetMask );
 
-			PropertyMask *			selPpDoneMask,
-			const PropertyMask *		ppSetMask,
+extern int docEditShiftIndent(		struct EditOperation *	eo,
+					int			step );
 
-			PropertyMask *			selCpDoneMask,
-			const PropertyMask *		cpSetMask,
-
-			PropertyMask *			selRpDoneMask,
-			const PropertyMask *		rpSetMask,
-
-			PropertyMask *			selSpDoneMask,
-			const PropertyMask *		spSetMask,
-
-			PropertyMask *			docDpDoneMask,
-			const PropertyMask *		dpSetMask );
-
-extern int docEditShiftIndent(		EditOperation *	eo,
-					int		step );
-
-extern int docDeleteField(	DocumentSelection *		dsExInside,
-				EditOperation *			eo,
+extern int docDeleteField(	struct DocumentSelection *	dsExInside,
+				struct EditOperation *		eo,
 				struct BufferItem *		paraNodeHead,
 				struct BufferItem *		paraNodeTail,
 				int				partHead,
 				int				partTail,
-				DocumentField *			df );
+				struct DocumentField *		df );
 
-extern int docSurroundTextSelectionByField(
-				BufferDocument *		bd,
-				DocumentTree *			dt,
-				const DocumentSelection *	ds,
-				DocumentField **		pDf,
-				DocumentSelection *		dsInside,
-				DocumentSelection *		dsAround,
-				int *				pHeadPart,
-				int *				pTailPart,
-				const PropertyMask *		taSetMask,
-				const TextAttribute *		taSet,
-				int				fieldKind,
-				const FieldInstructions *	fi );
-
-extern int docFillTableDocument( BufferDocument *	bdTable,
+extern int docFillTableDocument( struct BufferDocument *	bdTable,
 				struct BufferItem *	parentNode,
 				int			textAttrNr,
 				int			wide,

@@ -9,6 +9,7 @@
 
 #   include	<sioGeneral.h>
 #   include	"psFontName.h"
+#   include	"psFontInfo.h"
 #   include	"psReadWriteFontInfo.h"
 
 #   include	<appDebugon.h>
@@ -146,7 +147,7 @@ static const AfmKeyword	psAfmMetricsKeywords[]=
 /*									*/
 /************************************************************************/
 
-static char *	psGetInputLine(	char *				s,
+static char * psGetInputLine(	char *				s,
 				int *				pLen,
 				int				size,
 				AfmReader *			ar )
@@ -271,45 +272,6 @@ static int psAfmConsumeLines(	AfmReader *		ar,
 
 /************************************************************************/
 /*									*/
-/*  Ignore an input line.						*/
-/*									*/
-/************************************************************************/
-
-static int psAfmIgnore(		AfmReader *		ar,
-				int			valPos,
-				char *			input )
-    { return 0; }
-
-/************************************************************************/
-/*									*/
-/*  Consume font metrics.						*/
-/*									*/
-/*  1)  Not interested in the version.					*/
-/*  1)  Not interested in the rest of the file: Return 1.		*/
-/*									*/
-/************************************************************************/
-
-static int psAfmStartFontMetrics(	AfmReader *		ar,
-					int			valPos,
-					char *			input )
-    {
-    int		res;
-
-    res= psAfmConsumeLines( ar, input, psAfmMetricsKeywords,
-			    sizeof(psAfmMetricsKeywords)/sizeof(AfmKeyword) );
-    if  ( res < 0 )
-	{ LDEB(res); return res;	}
-
-    return 1;
-    }
-
-static int psAfmEndFontMetrics(	AfmReader *		ar,
-				int			valPos,
-				char *			input )
-    { return 1;		}
-
-/************************************************************************/
-/*									*/
 /*  Extract various types of values.					*/
 /*									*/
 /************************************************************************/
@@ -352,7 +314,8 @@ static int psAfmGetNumber(	double *	pNumber,
 
 /************************************************************************/
 /*									*/
-/*  Extract various strings.						*/
+/*  Ted specific comments in the AFM file to relate fonts to local	*/
+/*  fonts and to X11 fonts.						*/
 /*									*/
 /************************************************************************/
 
@@ -364,7 +327,13 @@ static const AfmKeyword	psAfmSpecialComments[]=
 	{ "X11Font",			psAfmX11Font,			},
     };
 
-static int	psAfmComment(	AfmReader *		ar,
+/************************************************************************/
+/*									*/
+/*  Handle a special comment.						*/
+/*									*/
+/************************************************************************/
+
+static int psAfmComment(	AfmReader *		ar,
 				int			valPos,
 				char *			input )
     {
@@ -412,75 +381,13 @@ static int	psAfmComment(	AfmReader *		ar,
     return 0;
     }
 
-static int psAfmFontName(	AfmReader *		ar,
-				int			valPos,
-				char *			input )
-    { return psAfmSaveString( &(ar->arAfi->afiFontName), input+ valPos ); }
-
-static int psAfmFontFileName(	AfmReader *		ar,
-				int			valPos,
-				char *			input )
-    {
-    return utilMemoryBufferSetString( &(ar->arAfi->afiFontFileName),
-							    input+ valPos );
-    }
-
-static int psAfmX11Font(	AfmReader *		ar,
-				int			valPos,
-				char *			input )
-    { return psAddX11FontToInfo( ar->arAfi, input+ valPos );	}
-
-static int psAfmResourceName(	AfmReader *		ar,
-				int			valPos,
-				char *			input )
-    { return psAfmSaveString( &(ar->arAfi->afiResourceName), input+ valPos ); }
-
-static int psAfmFullName(	AfmReader *		ar,
-				int			valPos,
-				char *			input )
-    { return psAfmSaveString( &(ar->arAfi->afiFullName), input+ valPos ); }
-
-static int psAfmNotice(		AfmReader *		ar,
-				int			valPos,
-				char *			input )
-    { return psAfmSaveString( &(ar->arAfi->afiNotice), input+ valPos ); }
-
-static int psAfmVersion(	AfmReader *		ar,
-				int			valPos,
-				char *			input )
-    { return psAfmSaveString( &(ar->arAfi->afiVersion), input+ valPos ); }
-
-static int psAfmFamilyName(	AfmReader *		ar,
-				int			valPos,
-				char *			input )
-    { return psAfmSaveString( &(ar->arAfi->afiFamilyName), input+ valPos ); }
-
-static int	psAfmWeight(	AfmReader *		ar,
-				int			valPos,
-				char *			input )
-    {
-    int		weight;
-    int		start;
-    int		length;
-
-    if  ( utilFontWeightFromString( &weight, &start, &length, input+ valPos ) )
-	{ ar->arAfi->afiWeightInt= weight;	}
-
-    return psAfmSaveString( &(ar->arAfi->afiWeightStr), input+ valPos );
-    }
-
-static int	psAfmEncodingScheme(	AfmReader *	ar,
-					int		valPos,
-					char *		input )
-    { return psAfmSaveString( &(ar->arAfi->afiEncodingScheme), input+ valPos ); }
-
 /************************************************************************/
 /*									*/
-/*  Unimplemented..							*/
+/*  Extract The bounding box of a glyph or the font.			*/
 /*									*/
 /************************************************************************/
 
-static int	psAfmBBox(	int			valPos,
+static int psAfmBBox(	int			valPos,
 				char *			input,
 				DocumentRectangle *	dr )
     {
@@ -518,6 +425,12 @@ static int	psAfmBBox(	int			valPos,
     return done;
     }
 
+/************************************************************************/
+/*									*/
+/*  Extract The bounding box of the font				*/
+/*									*/
+/************************************************************************/
+
 static int psAfmFontBBox(	AfmReader *	ar,
 				int		valPos,
 				char *		input )
@@ -540,17 +453,18 @@ static int psAfmFontBBox(	AfmReader *	ar,
     return 0;
     }
 
-static int	psAfmMappingScheme(	AfmReader *	ar,
-					int		valPos,
-					char *		input )
-    { LDEB(1); return -1; }
+/************************************************************************/
+/*									*/
+/*  Start the list of characters.					*/
+/*									*/
+/************************************************************************/
 
-static int	psAfmCharacterSet(	AfmReader *		ar,
-					int			valPos,
-					char *			input )
-    { return psAfmSaveString( &(ar->arAfi->afiCharacterSet), input+ valPos ); }
+# ifdef __GNUC__
+# pragma GCC diagnostic push
+# pragma GCC diagnostic ignored "-Wunused-parameter"
+# endif
 
-static int	psAfmCharacters(	AfmReader *		ar,
+static int psAfmCharacters(	AfmReader *		ar,
 					int			valPos,
 					char *			input )
     {
@@ -573,136 +487,22 @@ static int	psAfmCharacters(	AfmReader *		ar,
     return 0;
     }
 
-static int	psAfmIsFixedV(		AfmReader *	ar,
-					int		valPos,
-					char *		input )
-    {
-    LDEB(1); return -1;
-    }
+# ifdef __GNUC__
+# pragma GCC diagnostic pop
+# endif
 
-static int	psAfmStartDirection(	AfmReader *	ar,
-					int		valPos,
-					char *		input )
-    {
-    LDEB(1); return -1;
-    }
+/************************************************************************/
+/*									*/
+/*  Start the list of character metrics.				*/
+/*									*/
+/************************************************************************/
 
-static int	psAfmFontFileIndex(	AfmReader *			ar,
-					int			valPos,
-					char *			input )
-    {
-    double	d;
+# ifdef __GNUC__
+# pragma GCC diagnostic push
+# pragma GCC diagnostic ignored "-Wunused-parameter"
+# endif
 
-    if  ( psAfmGetNumber( &d, input, valPos ) )
-	{ LDEB(1); return -1;	}
-
-    ar->arAfi->afiFontFileIndex= (int)d; return 0;
-    }
-
-static int	psAfmCapHeight(	AfmReader *			ar,
-				int			valPos,
-				char *			input )
-    {
-    double	d;
-
-    if  ( psAfmGetNumber( &d, input, valPos ) )
-	{ LDEB(1); return -1;	}
-
-    ar->arAfi->afiCapHeight= (int)d; return 0;
-    }
-
-static int	psAfmXHeight(	AfmReader *			ar,
-				int			valPos,
-				char *			input )
-    {
-    double	d;
-
-    if  ( psAfmGetNumber( &d, input, valPos ) )
-	{ LDEB(1); return -1;	}
-
-    ar->arAfi->afiXHeight= (int)d; return 0;
-    }
-
-static int	psAfmAscender(	AfmReader *			ar,
-					int	valPos,
-					char *	input )
-    {
-    double	d;
-
-    if  ( psAfmGetNumber( &d, input, valPos ) )
-	{ LDEB(1); return -1;	}
-
-    ar->arAfi->afiAscender= (int)d; return 0;
-    }
-
-static int	psAfmDescender(	AfmReader *			ar,
-					int	valPos,
-					char *	input )
-    {
-    double	d;
-
-    if  ( psAfmGetNumber( &d, input, valPos ) )
-	{ LDEB(1); return -1;	}
-
-    ar->arAfi->afiDescender= (int)d; return 0;
-    }
-
-static int	psAfmUnderlinePosition(	AfmReader *			ar,
-					int	valPos,
-					char *	input )
-    {
-    double	d;
-
-    if  ( psAfmGetNumber( &d, input, valPos ) )
-	{ LDEB(1); return -1;	}
-
-    ar->arAfi->afiUnderlinePosition= (int)d; return 0;
-    }
-
-static int	psAfmUnderlineThickness(	AfmReader *			ar,
-					int	valPos,
-					char *	input )
-    {
-    double	d;
-
-    if  ( psAfmGetNumber( &d, input, valPos ) )
-	{ LDEB(1); return -1;	}
-
-    ar->arAfi->afiUnderlineThickness= (int)d; return 0;
-    }
-
-static int	psAfmItalicAngle(	AfmReader *			ar,
-					int		valPos,
-					char *		input )
-    {
-    if  ( psAfmGetNumber( &(ar->arAfi->afiItalicAngle), input, valPos ) )
-	{ return -1;	}
-
-    ar->arAfi->afiTanItalicAngle= tan( ( M_PI* ar->arAfi->afiItalicAngle ) / 180  );
-
-    return 0;
-    }
-
-static int	psAfmCharWidth(	AfmReader *			ar,
-					int	valPos,
-					char *	input )
-    {
-    LDEB(1); return -1;
-    }
-
-static int	psAfmIsFixedPitch(	AfmReader *			ar,
-					int	valPos,
-					char *	input )
-    {
-    if  ( ! strcmp( input+ valPos, "false" ) )
-	{ ar->arAfi->afiIsFixedPitch= 0; return 0;	}
-    if  ( ! strcmp( input+ valPos, "true" ) )
-	{ ar->arAfi->afiIsFixedPitch= 1; return 0;	}
-
-    SSDEB(input,input+ valPos); return -1;
-    }
-
-static int	psAfmStartCharMetrics(	AfmReader *		ar,
+static int psAfmStartCharMetrics(	AfmReader *		ar,
 					int			valPos,
 					char *			input )
     {
@@ -837,10 +637,283 @@ static int	psAfmStartCharMetrics(	AfmReader *		ar,
     LDEB(AFMlenLINE); return -1;
     }
 
+# ifdef __GNUC__
+# pragma GCC diagnostic pop
+# endif
+
+# ifdef __GNUC__
+# pragma GCC diagnostic push
+# pragma GCC diagnostic ignored "-Wunused-parameter"
+# endif
+
+/************************************************************************/
+/*									*/
+/*  Ignore an input line.						*/
+/*									*/
+/************************************************************************/
+
+static int psAfmIgnore(		AfmReader *		ar,
+				int			valPos,
+				char *			input )
+    { return 0; }
+
+/************************************************************************/
+/*									*/
+/*  Consume font metrics.						*/
+/*									*/
+/*  1)  Not interested in the version.					*/
+/*  1)  Not interested in the rest of the file: Return 1.		*/
+/*									*/
+/************************************************************************/
+
+static int psAfmStartFontMetrics(	AfmReader *		ar,
+					int			valPos,
+					char *			input )
+    {
+    int		res;
+
+    res= psAfmConsumeLines( ar, input, psAfmMetricsKeywords,
+			    sizeof(psAfmMetricsKeywords)/sizeof(AfmKeyword) );
+    if  ( res < 0 )
+	{ LDEB(res); return res;	}
+
+    return 1;
+    }
+
+static int psAfmEndFontMetrics(	AfmReader *		ar,
+				int			valPos,
+				char *			input )
+    { return 1;		}
+
+/************************************************************************/
+/*									*/
+/*  Extract various strings.						*/
+/*									*/
+/************************************************************************/
+
+static int psAfmFontName(	AfmReader *		ar,
+				int			valPos,
+				char *			input )
+    { return psAfmSaveString( &(ar->arAfi->afiFontName), input+ valPos ); }
+
+static int psAfmFontFileName(	AfmReader *		ar,
+				int			valPos,
+				char *			input )
+    {
+    return utilMemoryBufferSetString( &(ar->arAfi->afiFontFileName),
+							    input+ valPos );
+    }
+
+static int psAfmX11Font(	AfmReader *		ar,
+				int			valPos,
+				char *			input )
+    { return psAddX11FontToInfo( ar->arAfi, input+ valPos );	}
+
+static int psAfmResourceName(	AfmReader *		ar,
+				int			valPos,
+				char *			input )
+    { return psAfmSaveString( &(ar->arAfi->afiResourceName), input+ valPos ); }
+
+static int psAfmFullName(	AfmReader *		ar,
+				int			valPos,
+				char *			input )
+    { return psAfmSaveString( &(ar->arAfi->afiFullName), input+ valPos ); }
+
+static int psAfmNotice(		AfmReader *		ar,
+				int			valPos,
+				char *			input )
+    { return psAfmSaveString( &(ar->arAfi->afiNotice), input+ valPos ); }
+
+static int psAfmVersion(	AfmReader *		ar,
+				int			valPos,
+				char *			input )
+    { return psAfmSaveString( &(ar->arAfi->afiVersion), input+ valPos ); }
+
+static int psAfmFamilyName(	AfmReader *		ar,
+				int			valPos,
+				char *			input )
+    { return psAfmSaveString( &(ar->arAfi->afiFamilyName), input+ valPos ); }
+
+static int psAfmWeight(	AfmReader *		ar,
+				int			valPos,
+				char *			input )
+    {
+    int		weight;
+    int		start;
+    int		length;
+
+    if  ( utilFontWeightFromString( &weight, &start, &length, input+ valPos ) )
+	{ ar->arAfi->afiWeightInt= weight;	}
+
+    return psAfmSaveString( &(ar->arAfi->afiWeightStr), input+ valPos );
+    }
+
+static int psAfmEncodingScheme(	AfmReader *	ar,
+					int		valPos,
+					char *		input )
+    {
+    if  ( psAfmSaveString( &(ar->arAfi->afiEncodingScheme), input+ valPos ) )
+	{ SDEB(input); return -1;	}
+
+    if  ( ar->arAfi->afiEncodingScheme					&&
+	  ! strcmp( ar->arAfi->afiEncodingScheme, "FontSpecific" )	)
+	{ ar->arAfi->afiFontSpecificEncoding= 1;	}
+    else{ ar->arAfi->afiFontSpecificEncoding= 0;	}
+
+    return 0;
+    }
+
+/************************************************************************/
+/*									*/
+/*  Unimplemented..							*/
+/*									*/
+/************************************************************************/
+
+
+static int psAfmMappingScheme(	AfmReader *	ar,
+					int		valPos,
+					char *		input )
+    { LDEB(1); return -1; }
+
+static int psAfmCharacterSet(	AfmReader *		ar,
+					int			valPos,
+					char *			input )
+    { return psAfmSaveString( &(ar->arAfi->afiCharacterSet), input+ valPos ); }
+
+static int psAfmIsFixedV(		AfmReader *	ar,
+					int		valPos,
+					char *		input )
+    {
+    LDEB(1); return -1;
+    }
+
+static int psAfmStartDirection(	AfmReader *	ar,
+					int		valPos,
+					char *		input )
+    {
+    LDEB(1); return -1;
+    }
+
+static int psAfmFontFileIndex(	AfmReader *			ar,
+					int			valPos,
+					char *			input )
+    {
+    double	d;
+
+    if  ( psAfmGetNumber( &d, input, valPos ) )
+	{ LDEB(1); return -1;	}
+
+    ar->arAfi->afiFontFileIndex= (int)d; return 0;
+    }
+
+static int psAfmCapHeight(	AfmReader *			ar,
+				int			valPos,
+				char *			input )
+    {
+    double	d;
+
+    if  ( psAfmGetNumber( &d, input, valPos ) )
+	{ LDEB(1); return -1;	}
+
+    ar->arAfi->afiCapHeight= (int)d; return 0;
+    }
+
+static int psAfmXHeight(	AfmReader *			ar,
+				int			valPos,
+				char *			input )
+    {
+    double	d;
+
+    if  ( psAfmGetNumber( &d, input, valPos ) )
+	{ LDEB(1); return -1;	}
+
+    ar->arAfi->afiXHeight= (int)d; return 0;
+    }
+
+static int psAfmAscender(	AfmReader *			ar,
+					int	valPos,
+					char *	input )
+    {
+    double	d;
+
+    if  ( psAfmGetNumber( &d, input, valPos ) )
+	{ LDEB(1); return -1;	}
+
+    ar->arAfi->afiAscender= (int)d; return 0;
+    }
+
+static int psAfmDescender(	AfmReader *			ar,
+					int	valPos,
+					char *	input )
+    {
+    double	d;
+
+    if  ( psAfmGetNumber( &d, input, valPos ) )
+	{ LDEB(1); return -1;	}
+
+    ar->arAfi->afiDescender= (int)d; return 0;
+    }
+
+static int psAfmUnderlinePosition(	AfmReader *			ar,
+					int	valPos,
+					char *	input )
+    {
+    double	d;
+
+    if  ( psAfmGetNumber( &d, input, valPos ) )
+	{ LDEB(1); return -1;	}
+
+    ar->arAfi->afiUnderlinePosition= (int)d; return 0;
+    }
+
+static int psAfmUnderlineThickness(	AfmReader *			ar,
+					int	valPos,
+					char *	input )
+    {
+    double	d;
+
+    if  ( psAfmGetNumber( &d, input, valPos ) )
+	{ LDEB(1); return -1;	}
+
+    ar->arAfi->afiUnderlineThickness= (int)d; return 0;
+    }
+
+static int psAfmItalicAngle(	AfmReader *			ar,
+					int		valPos,
+					char *		input )
+    {
+    if  ( psAfmGetNumber( &(ar->arAfi->afiItalicAngle), input, valPos ) )
+	{ return -1;	}
+
+    ar->arAfi->afiTanItalicAngle=
+		    tan( ( M_PI* ar->arAfi->afiItalicAngle ) / 180  );
+
+    return 0;
+    }
+
+static int psAfmCharWidth(	AfmReader *			ar,
+					int	valPos,
+					char *	input )
+    {
+    LDEB(1); return -1;
+    }
+
+static int psAfmIsFixedPitch(	AfmReader *			ar,
+					int	valPos,
+					char *	input )
+    {
+    if  ( ! strcmp( input+ valPos, "false" ) )
+	{ ar->arAfi->afiIsFixedPitch= 0; return 0;	}
+    if  ( ! strcmp( input+ valPos, "true" ) )
+	{ ar->arAfi->afiIsFixedPitch= 1; return 0;	}
+
+    SSDEB(input,input+ valPos); return -1;
+    }
+
 static int psAfmStartKernPairs(	AfmReader *		ar,
 				int			valPos,
 				char *			input )
-{
+    {
     int		lineLength;
 
     if  ( ar->arAfmFlags & PSflagIGNORE_KERNING )
@@ -956,7 +1029,7 @@ static int psAfmStartKernPairs(	AfmReader *		ar,
     LDEB(AFMlenLINE); return -1;
     }
 
-static AfmKeyword	psAfmKernDataKeywords[]=
+static AfmKeyword psAfmKernDataKeywords[]=
     {
 	{ "Comment",		psAfmIgnore,		},
 	{ "StartKernPairs",	psAfmStartKernPairs,	},
@@ -964,15 +1037,15 @@ static AfmKeyword	psAfmKernDataKeywords[]=
 	{ "EndKernData",				},
     };
 
-static int	psAfmStartKernData(	AfmReader *			ar,
-					int	valPos,
-					char *	input )
+static int psAfmStartKernData(	AfmReader *	ar,
+					int		valPos,
+					char *		input )
     {
     return psAfmConsumeLines( ar, input, psAfmKernDataKeywords,
 		    sizeof(psAfmKernDataKeywords)/sizeof(AfmKeyword) );
     }
 
-static int	psAfmStartComposites(	AfmReader *	ar,
+static int psAfmStartComposites(	AfmReader *	ar,
 					int		valPos,
 					char *		input )
     {
@@ -987,7 +1060,7 @@ static int	psAfmStartComposites(	AfmReader *	ar,
     return 0;
     }
 
-static int	psAfmStartTrackKern(	AfmReader *	ar,
+static int psAfmStartTrackKern(	AfmReader *	ar,
 					int		valPos,
 					char *		input )
     {
@@ -1001,4 +1074,8 @@ static int	psAfmStartTrackKern(	AfmReader *	ar,
 
     return 0;
     }
+
+# ifdef __GNUC__
+# pragma GCC diagnostic pop
+# endif
 

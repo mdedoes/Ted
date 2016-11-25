@@ -7,11 +7,12 @@
 #   ifndef	UTIL_TEXT_ATTRIBUTE_ADMIN_H
 #   define	UTIL_TEXT_ATTRIBUTE_ADMIN_H
 
-#   include	"textAttribute.h"
-#   include	<utilNumberedPropertiesAdmin.h>
+struct IndexSet;
+struct TextAttribute;
+struct NumberedPropertiesList;
 
 typedef int (*TextAttributeFunction)(	int			n,
-					const TextAttribute *	ta,
+					const struct TextAttribute *	ta,
 					void *			through );
 
 /************************************************************************/
@@ -20,19 +21,18 @@ typedef int (*TextAttributeFunction)(	int			n,
 /*									*/
 /************************************************************************/
 
-extern void utilInitTextAttributeList(	NumberedPropertiesList *	tal );
+extern void textInitTextAttributeList(	struct NumberedPropertiesList *	tal );
 
-extern int utilTextAttributeNumber(	NumberedPropertiesList *	tal,
-					const TextAttribute *		ta );
+extern int textTextAttributeNumber(	struct NumberedPropertiesList *	tal,
+					const struct TextAttribute *		ta );
 
-extern void utilGetTextAttributeByNumber(
-					TextAttribute *			ta,
-					const NumberedPropertiesList *	tal,
+extern const struct TextAttribute * textGetTextAttributeByNumber(
+					const struct NumberedPropertiesList *	tal,
 					int				n );
 
 extern int textForAllAttributesInList(
-				const NumberedPropertiesList *	tal,
-				const IndexSet *		filter,
+				const struct NumberedPropertiesList *	tal,
+				const struct IndexSet *		filter,
 				TextAttributeFunction		f,
 				void *				through );
 

@@ -7,12 +7,17 @@
 #   ifndef	APP_QUESTION_H
 #   define	APP_QUESTION_H
 
-#   include	"appFrame.h"
+#   include	<guiBase.h>
+
+#   if ! USE_HEADLESS
 
 # ifdef __cplusplus
 extern "C"
     {
 # endif
+
+struct EditApplication;
+struct MemoryBuffer;
 
 /************************************************************************/
 /*									*/
@@ -21,62 +26,64 @@ extern "C"
 /************************************************************************/
 
 extern int appQuestionRunSubjectYesNoCancelDialog(
-					EditApplication *	ea,
+					struct EditApplication * ea,
 					APP_WIDGET		relative,
 					APP_WIDGET		option,
 					const char *		subject,
 					const char *		question );
 
 extern int appQuestionRunYesNoCancelDialog(
-					EditApplication *	ea,
+					struct EditApplication * ea,
 					APP_WIDGET		relative,
 					APP_WIDGET		option,
 					const char *		question );
 
 extern void appQuestionRunSubjectErrorDialog(
-					EditApplication *	ea,
+					struct EditApplication * ea,
 					APP_WIDGET		relative,
 					APP_WIDGET		option,
 					const char *		subject,
 					const char *		message );
 
 extern void appQuestionRunFilenameErrorDialog(
-					EditApplication *	ea,
+					struct EditApplication * ea,
 					APP_WIDGET		relative,
 					APP_WIDGET		option,
-					const MemoryBuffer *	filename,
+					const struct MemoryBuffer *	filename,
 					const char *		message );
 
-extern void appQuestionRunErrorDialog(	EditApplication *	ea,
+extern void appQuestionRunErrorDialog(	struct EditApplication * ea,
 					APP_WIDGET		relative,
 					APP_WIDGET		option,
 					const char *		message );
 
-extern int appQuestionRunOkCancelDialog( EditApplication * ea,
+extern int appQuestionRunOkCancelDialog( struct EditApplication * ea,
 					APP_WIDGET		relative,
 					APP_WIDGET		option,
 					const char *		question );
 
-extern int appQuestionRunSubjectOkCancelDialog( EditApplication * ea,
+extern int appQuestionRunSubjectOkCancelDialog( struct EditApplication * ea,
 					APP_WIDGET		relative,
 					APP_WIDGET		option,
 					const char *		subject,
 					const char *		question );
 
-extern int appQuestionRunFilenameOkCancelDialog( EditApplication * ea,
+extern int appQuestionRunFilenameOkCancelDialog( struct EditApplication * ea,
 					APP_WIDGET		relative,
 					APP_WIDGET		option,
-					const MemoryBuffer *	filename,
+					const struct MemoryBuffer *	filename,
 					const char *		question );
 
-extern int appQuestionRunSubjectYesNoDialog( EditApplication *	ea,
+extern int appQuestionRunSubjectYesNoDialog( struct EditApplication * ea,
 					APP_WIDGET		relative,
 					APP_WIDGET		option,
-					const char *		subject,
+					const struct MemoryBuffer *	subject,
 					const char *		message );
 
 # ifdef __cplusplus
     }
 # endif
+
+#   endif
 
 #   endif

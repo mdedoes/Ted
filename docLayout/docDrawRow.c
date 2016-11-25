@@ -1,16 +1,24 @@
 #   include	"docLayoutConfig.h"
 
 #   include	"docDraw.h"
+#   include	"docDrawPara.h"
+#   include	"docSelectLayout.h"
 #   include	<docPageGrid.h>
 #   include	"docRowLayout.h"
 #   include	<docTreeNode.h>
-#   include	<docTextLine.h>
+#   include	<docRowProperties.h>
+#   include	<docBlockOrnaments.h>
+#   include	<docStripFrame.h>
+#   include	<docCellProperties.h>
+#   include	<docBlockFrame.h>
+#   include	<docSelect.h>
 
+#   include	<docDebug.h>
 #   include	<appDebugon.h>
 
 /************************************************************************/
 
-static int docDrawRowPageStrip(	BufferItem *			rowNode,
+static int docDrawRowPageStrip(	const struct BufferItem *	rowNode,
 				const LayoutPosition *		lpThisFrame,
 				BlockFrame *			bf,
 				void *				through,
@@ -29,7 +37,7 @@ static int docDrawRowPageStrip(	BufferItem *			rowNode,
 /************************************************************************/
 
 static int docDrawCellOrnamentsForRow(
-			const BufferItem *			rowNode,
+			const struct BufferItem *		rowNode,
 			const BlockFrame *			bf,
 			const BlockOrigin *			bo,
 			void *					through,
@@ -39,7 +47,8 @@ static int docDrawCellOrnamentsForRow(
 			const LayoutPosition *			lpTop )
     {
     const LayoutContext *		lc= &(dc->dcLayoutContext);
-    const BufferDocument *		bd= lc->lcDocument;
+    const struct BufferDocument *	bd= lc->lcDocument;
+    const RowProperties * 		rp= rowNode->biRowProperties;
     const CellProperties *		cp;
     int					col;
 
@@ -47,10 +56,10 @@ static int docDrawCellOrnamentsForRow(
 	{ return 0;	}
 
     /*  4  */
-    cp= rowNode->biRowCells;
+    cp= rp->rpCells;
     for ( col= 0; col < rowNode->biChildCount; cp++, col++ )
 	{
-	BufferItem *			cellNode= rowNode->biChildren[col];
+	struct BufferItem *		cellNode= rowNode->biChildren[col];
 
 	BlockOrnaments			cellOrnaments;
 	DocumentRectangle		drCell;
@@ -86,7 +95,7 @@ static int docDrawCellOrnamentsForRow(
 
 static int docDrawAdvanceRowInCell(
 				void *				through,
-				BufferItem *			rowNode,
+				const struct BufferItem *	rowNode,
 				LayoutPosition *		lpThisFrame,
 				LayoutPosition *		lpBelow,
 				BlockFrame *			bf,
@@ -106,7 +115,7 @@ static int docDrawAdvanceRowInCell(
 
 static int docDrawAdvanceParaInCell(
 				void *				through,
-				BufferItem *			paraBi,
+				struct BufferItem *		paraNode,
 				const LayoutPosition *		lpThisFrame,
 				LayoutPosition *		lpBelow,
 				BlockFrame *			bf,
@@ -121,23 +130,11 @@ static int docDrawAdvanceParaInCell(
 
     LayoutPosition		lpShadeTop= *lpThisFrame;
 
-    docParagraphFrameTwips( &pf, bf, paraBi );
+    docParagraphFrameTwips( &pf, bf, paraNode );
 
-    while( line < paraBi->biParaLineCount )
-	{
-	TextLine *	tl= paraBi->biParaLines+ line;
-	LayoutPosition	lpLine;
+    line= docParaFindFirstLineInFrame( paraNode, 0, lpThisFrame, bo );
 
-	docShiftPosition( &lpLine, bo, &(tl->tlTopPosition) );
-
-	if  ( ! DOC_COLUMN_AFTER( lpThisFrame, &lpLine ) )
-	    { break;	}
-
-	line++;
-	}
-
-    /**/
-    if  ( docDrawParagraphStrip( through, &pds, paraBi, countAfter,
+    if  ( docDrawParagraphStrip( through, &pds, paraNode, countAfter,
 				&lpShadeTop, line, &pf, dc, lpThisFrame, bo ) )
 	{ LDEB(line); return -1;	}
 
@@ -158,22 +155,22 @@ static int docDrawAdvanceParaInCell(
 /************************************************************************/
 
 static int docDrawCellPageStrip( void *				through,
-				const BufferItem *		cellNode,
+				const struct BufferItem *	cellNode,
 				const LayoutPosition *		lpThisFrame,
 				BlockFrame *			bf,
 				DrawingContext *		dc,
 				const BlockOrigin *		bo )
 				
     {
-    int			child= 0;
+    int				child= 0;
 
-    LayoutPosition	lpShadeTop= *lpThisFrame;
-    LayoutPosition	lpShadeBelow= *lpThisFrame;
+    LayoutPosition		lpShadeTop= *lpThisFrame;
+    LayoutPosition		lpShadeBelow= *lpThisFrame;
 
     /*  1  */
     while( child < cellNode->biChildCount )
 	{
-	BufferItem *		childNode= cellNode->biChildren[child];
+	struct BufferItem *	childNode= cellNode->biChildren[child];
 	const LayoutPosition *	belowChildPos;
 	LayoutPosition		lpChildBottom;
 
@@ -182,7 +179,8 @@ static int docDrawCellPageStrip( void *				through,
 	else{ belowChildPos= &(childNode->biBelowPosition);		}
 
 	docShiftPosition( &lpChildBottom, bo, belowChildPos );
-	if  ( ! DOC_COLUMN_AFTER( lpThisFrame, &lpChildBottom ) )
+	if  ( docCompareLayoutPositionFrames( lpThisFrame,
+							&lpChildBottom ) <= 0 )
 	    { break;	}
 
 	child++;
@@ -191,12 +189,12 @@ static int docDrawCellPageStrip( void *				through,
     /*  2  */
     while( child < cellNode->biChildCount )
 	{
-	BufferItem *	childNode= cellNode->biChildren[child];
+	struct BufferItem *	childNode= cellNode->biChildren[child];
 	LayoutPosition	lpChildTop;
 
 	docShiftPosition( &lpChildTop, bo, &(childNode->biTopPosition) );
 
-	if  ( DOC_COLUMN_AFTER( &lpChildTop, lpThisFrame ) )
+	if  ( docCompareLayoutPositionFrames( &lpChildTop, lpThisFrame ) > 0 )
 	    { break;	}
 
 	switch( childNode->biLevel )
@@ -235,7 +233,7 @@ static int docDrawCellPageStrip( void *				through,
 /*									*/
 /************************************************************************/
 
-static int docDrawRowPageStrip(	BufferItem *			rowNode,
+static int docDrawRowPageStrip(	const struct BufferItem *	rowNode,
 				const LayoutPosition *		lpThisFrame,
 				BlockFrame *			bf,
 				void *				through,
@@ -245,21 +243,24 @@ static int docDrawRowPageStrip(	BufferItem *			rowNode,
     int				col;
 
     LayoutPosition		lpTop;
+    const RowProperties * 	rp= rowNode->biRowProperties;
     const CellProperties *	cp;
 
     int				atRowTop= 0;
     int				atRowBottom= 0;
 
-    if  ( DOC_SAME_FRAME( lpThisFrame,
-				&(rowNode->biTopPosition) ) )
+    if  ( docCompareLayoutPositionFrames( lpThisFrame,
+				&(rowNode->biTopPosition) ) == 0 )
 	{ atRowTop= 1;	}
-    if  ( DOC_SAME_FRAME( lpThisFrame,
-				&(rowNode->biRowBelowAllCellsPosition) ) )
+    if  ( docCompareLayoutPositionFrames( lpThisFrame,
+				&(rowNode->biRowBelowAllCellsPosition) ) == 0 )
 	{ atRowBottom= 1;	}
 
     lpTop= *lpThisFrame;
 
-    if  ( ! rowNode->biRowIsTableHeader )
+    /*  Do not use rp->rpIsTableHeader to avoid trouble when headers are 
+     *  not contiguous */
+    if  ( rowNode->biNumberInParent >= rowNode->biRowPastHeaderRow )
 	{
 	if  ( atRowTop )
 	    {
@@ -275,13 +276,15 @@ static int docDrawRowPageStrip(	BufferItem *			rowNode,
 		}
 	    }
 	else{
-	    if  ( rowNode->biRowTableHeaderRow >= 0 )
+	    if  ( rowNode->biRowPastHeaderRow > rowNode->biRowTableFirst )
 		{
 		int		high;
 
 		if  ( docDrawTableHeader( &high, rowNode, bf, through,
 							    dc, lpThisFrame ) )
-		    { LDEB(rowNode->biRowIsTableHeader); return -1;	}
+		    { LDEB(rp->rpIsTableHeader); return -1;	}
+
+		lpTop.lpPageYTwips += high;
 		}
 	    }
 	}
@@ -290,13 +293,13 @@ static int docDrawRowPageStrip(	BufferItem *			rowNode,
 					    atRowTop, atRowBottom, &lpTop ) )
 	{ LDEB(1); return -1;	}
 
-    cp= rowNode->biRowCells;
+    cp= rp->rpCells;
     for ( col= 0; col < rowNode->biChildCount; cp++, col++ )
 	{
-	BufferItem *	cellNode= rowNode->biChildren[col];
+	struct BufferItem *	cellNode= rowNode->biChildren[col];
 
-	int		selected;
-	int		cmp;
+	int			selected;
+	int			cmp;
 
 	if  ( CELL_MERGED( cp ) )
 	    { continue;	}
@@ -326,7 +329,7 @@ static int docDrawRowPageStrip(	BufferItem *			rowNode,
 /************************************************************************/
 
 int docDrawTableHeader(	int *				pHigh,
-			const BufferItem *		rowNode,
+			const struct BufferItem *	rowNode,
 			const BlockFrame *		bfRef,
 			void *				through,
 			DrawingContext *		dc,
@@ -334,36 +337,49 @@ int docDrawTableHeader(	int *				pHigh,
     {
     int				rval= 0;
     const LayoutContext *	lc= &(dc->dcLayoutContext);
-    BufferItem *		headerBi;
+    struct BufferItem *		headerNode0;
+    struct BufferItem *		headerNode1;
     BlockFrame			bfHeader;
 
     BlockOrigin			bo;
+
+    int				row;
 
     docInitBlockOrigin( &bo );
     docLayoutInitBlockFrame( &bfHeader );
 
     /*  1  */
-    if  ( rowNode->biRowTableHeaderRow < 0 )
-	{ LDEB(rowNode->biRowTableHeaderRow); rval= -1; goto ready;	}
+    if  ( rowNode->biRowPastHeaderRow <= rowNode->biRowTableFirst )
+	{
+	LLDEB(rowNode->biRowPastHeaderRow,rowNode->biRowTableFirst);
+	rval= -1; goto ready;
+	}
 
-    headerBi= rowNode->biParent->biChildren[rowNode->biRowTableHeaderRow];
+    headerNode0= rowNode->biParent->biChildren[rowNode->biRowTableFirst];
+    headerNode1= rowNode->biParent->biChildren[rowNode->biRowPastHeaderRow- 1];
 
     /*  2  */
-    docBlockFrameTwips( &bfHeader, headerBi,
+    docSectionBlockFrameTwips( &bfHeader, headerNode0, dc->dcBodySectNode,
 			    lc->lcDocument,
-			    headerBi->biTopPosition.lpPage,
-			    headerBi->biTopPosition.lpColumn );
+			    headerNode0->biTopPosition.lpPage,
+			    headerNode0->biTopPosition.lpColumn );
 
     bo.boOverrideFrame= 1;
     bo.boXShift= bfRef->bfContentRect.drX0- bfHeader.bfContentRect.drX0;
-    bo.boYShift= lpHeader->lpPageYTwips- headerBi->biTopPosition.lpPageYTwips;
-    bo.boFrameOverride= *lpHeader;
+    bo.boYShift= lpHeader->lpPageYTwips- headerNode0->biTopPosition.lpPageYTwips;
+    bo.boOverridePage= lpHeader->lpPage;
+    bo.boOverrideColumn= lpHeader->lpPage;
 
-    if  ( docDrawRowNode( headerBi, through, dc, &bo ) )
-	{ LDEB(1); rval= -1; goto ready;	}
+    for ( row= rowNode->biRowTableFirst;
+				row < rowNode->biRowPastHeaderRow; row++ )
+	{
+	if  ( docDrawRowNode( rowNode->biParent->biChildren[row],
+							through, dc, &bo ) )
+	    { LDEB(1); rval= -1; goto ready;	}
+	}
 
-    *pHigh= headerBi->biBelowPosition.lpPageYTwips- 
-					headerBi->biTopPosition.lpPageYTwips;
+    *pHigh= headerNode1->biBelowPosition.lpPageYTwips- 
+					headerNode0->biTopPosition.lpPageYTwips;
 
   ready:
 
@@ -381,18 +397,20 @@ int docDrawTableHeader(	int *				pHigh,
 /*									*/
 /************************************************************************/
 
-int docDrawRowNode(	BufferItem *			rowNode,
+int docDrawRowNode(	struct BufferItem *		rowNode,
 			void *				through,
 			DrawingContext *		dc,
 			const BlockOrigin *		bo )
     {
     const LayoutContext *	lc= &(dc->dcLayoutContext);
+
     int				rval= 0;
     LayoutPosition		lpThisFrame;
     BlockFrame			bf;
 
     docLayoutInitBlockFrame( &bf );
-    docBlockFrameTwips( &bf, rowNode, lc->lcDocument,
+    docSectionBlockFrameTwips( &bf, rowNode, dc->dcBodySectNode,
+					    lc->lcDocument,
 					    rowNode->biTopPosition.lpPage,
 					    rowNode->biTopPosition.lpColumn );
 
@@ -401,8 +419,8 @@ int docDrawRowNode(	BufferItem *			rowNode,
     if  ( docDrawRowPageStrip( rowNode, &lpThisFrame, &bf, through, dc, bo ) )
 	{ LDEB(1); rval= -1; goto ready;	}
 
-    while( DOC_COLUMN_AFTER( &(rowNode->biRowBelowAllCellsPosition),
-							    &lpThisFrame ) )
+    while( docCompareLayoutPositionFrames(
+	    &(rowNode->biRowBelowAllCellsPosition), &lpThisFrame ) > 0 )
 	{
 	int			ret;
 

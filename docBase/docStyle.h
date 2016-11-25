@@ -11,8 +11,9 @@
 
 #   include	"docSectProperties.h"
 #   include	"docRowProperties.h"
+#   include	"docCellProperties.h"
 #   include	"docParaProperties.h"
-#   include	"docParaNumber.h"
+#   include	<textAttribute.h>
 #   include	"docDocumentAttributeMap.h"
 
 /************************************************************************/
@@ -56,9 +57,25 @@ typedef struct DocumentStyle
 
     char *		dsName;
     PropertyMask	dsSectMask;
+			    /**
+			     *  Row properties that have been set while reading 
+			     *  the (row) style.
+			     */
     PropertyMask	dsRowMask;
+			    /**
+			     *  Cell properties that have been set while 
+			     *  reading the (cell) style.
+			     */
     PropertyMask	dsCellMask;
+			    /**
+			     *  Paragraph properties that have been set while 
+			     *  reading the (paragraph) style.
+			     */
     PropertyMask	dsParaMask;
+			    /**
+			     *  Text attributes properties that have been set 
+			     *  while reading the (character) style.
+			     */
     PropertyMask	dsTextMask;
     } DocumentStyle;
 

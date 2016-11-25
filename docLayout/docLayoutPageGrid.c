@@ -6,25 +6,29 @@
 
 #   include	"docLayoutConfig.h"
 
-#   include	<stddef.h>
-
 #   include	<docBuf.h>
 #   include	"docLayout.h"
+#   include	"docStripLayoutJob.h"
 #   include	<docPageGrid.h>
 #   include	<docTreeType.h>
 #   include	<docTreeNode.h>
 #   include	<docNodeTree.h>
+#   include	<docPropVal.h>
+#   include	<docFrameProperties.h>
+#   include	<docSectProperties.h>
+#   include	<docBlockFrame.h>
 
+#   include	<docDebug.h>
 #   include	<appDebugon.h>
 
 void docLayoutBlockFrame(	BlockFrame *			bf,
-				BufferItem *			node,
+				struct BufferItem *		node,
 				const LayoutJob *		lj,
 				int				page,
 				int				column )
     {
     const LayoutContext *	lc= &(lj->ljContext);
-    BufferDocument *		bd= lc->lcDocument;
+    struct BufferDocument *	bd= lc->lcDocument;
 
     docBlockFrameTwips( bf, node, bd, page, column );
 
@@ -48,7 +52,7 @@ void docLayoutBlockFrame(	BlockFrame *			bf,
 
 void docLayoutColumnTop(	LayoutPosition *	lpTop,
 				BlockFrame *		bf,
-				BufferItem *		bodySectNode,
+				struct BufferItem *	bodySectNode,
 				const LayoutJob *	lj )
     {
     if  ( bodySectNode->biTreeType != DOCinBODY )
@@ -65,7 +69,7 @@ void docLayoutColumnTop(	LayoutPosition *	lpTop,
     lpTop->lpAtTopOfColumn= 1;
 
     /*  1  */
-    if  ( DOC_SECTnodeBELOW_PREVIOUS( bodySectNode )		&&
+    if  ( bodySectNode->biSectBreakKind == DOCibkNONE		&&
 	  lpTop->lpPage == bodySectNode->biTopPosition.lpPage	&&
 	  bodySectNode->biSectColumnCount > 1			&&
 	  lpTop->lpColumn > 0					)
@@ -86,13 +90,13 @@ void docLayoutColumnTop(	LayoutPosition *	lpTop,
 
 void docLayoutToNextColumn(	LayoutPosition *	lpTop,
 				BlockFrame *		bf,
-				BufferItem *		node,
+				struct BufferItem *	node,
 				const LayoutJob *	lj )
     {
     const LayoutContext *	lc= &(lj->ljContext);
-    const BufferDocument *	bd= lc->lcDocument;
-    BufferItem *		bodyNode= bd->bdBody.dtRoot;
-    BufferItem *		bodySectNode;
+    const struct BufferDocument * bd= lc->lcDocument;
+    struct BufferItem *		bodyNode= bd->bdBody.dtRoot;
+    struct BufferItem *		bodySectNode;
 
     node= docGetSectNode( node );
     if  ( ! node )
@@ -140,6 +144,79 @@ void docLayoutToNextColumn(	LayoutPosition *	lpTop,
     return;
     }
 
+void docLayoutToNextPage(	LayoutPosition *	lpTop,
+				BlockFrame *		bf,
+				struct BufferItem *	node,
+				const LayoutJob *	lj )
+    {
+    docLayoutToNextColumn( lpTop, bf, node, lj );
+
+    while( lpTop->lpColumn > 0 )
+	{
+	docLayoutToNextColumn( lpTop, bf, node, lj );
+	}
+    }
+
+int docLayoutToFirstColumn(	LayoutPosition *	lpTop,
+				BlockFrame *		bf,
+				struct BufferItem *	node,
+				const LayoutJob *	lj )
+    {
+    int	changedFrame= 0;
+
+    while( lpTop->lpColumn > 0 )
+	{
+	docLayoutToNextColumn( lpTop, bf, node, lj );
+	changedFrame= 1;
+	}
+
+    return changedFrame;
+    }
+
+int docLayoutToEvenPage(	struct LayoutPosition *		lpTop,
+				struct BlockFrame *		bf,
+				struct BufferItem *		node,
+				const LayoutJob *		lj )
+    {
+    int	changedFrame= 0;
+
+    while( lpTop->lpColumn > 0 )
+	{
+	docLayoutToNextColumn( lpTop, bf, node, lj );
+	changedFrame= 1;
+	}
+
+    while( ! ( lpTop->lpPage % 2 ) )
+	{
+	docLayoutToNextColumn( lpTop, bf, node, lj );
+	changedFrame= 1;
+	}
+
+    return changedFrame;
+    }
+
+int docLayoutToOddPage(		struct LayoutPosition *		lpTop,
+				struct BlockFrame *		bf,
+				struct BufferItem *		node,
+				const LayoutJob *		lj )
+    {
+    int	changedFrame= 0;
+
+    while( lpTop->lpColumn > 0 )
+	{
+	docLayoutToNextColumn( lpTop, bf, node, lj );
+	changedFrame= 1;
+	}
+
+    while( lpTop->lpPage % 2 )
+	{
+	docLayoutToNextColumn( lpTop, bf, node, lj );
+	changedFrame= 1;
+	}
+
+    return changedFrame;
+    }
+
 /************************************************************************/
 /*									*/
 /*  Adjust geometry to position paragraphs in a text frame.		*/
@@ -151,15 +228,15 @@ void docLayoutFinishFrame(	const FrameProperties *		fp,
 				const BlockFrame *		bfFlow,
 				const LayoutJob *		lj,
 				const ParagraphLayoutPosition *	plpFlow,
-				BufferItem *			cellBi,
+				struct BufferItem *		cellNode,
 				int				paraFrom,
 				int				paraUpto )
     {
-    BufferItem *		paraBi0= cellBi->biChildren[paraFrom];
-    BufferItem *		paraBi1= cellBi->biChildren[paraUpto- 1];
+    struct BufferItem *		paraNode0= cellNode->biChildren[paraFrom];
+    struct BufferItem *		paraNode1= cellNode->biChildren[paraUpto- 1];
 
     int				y0= bfTextFrame->bfContentRect.drY0;
-    int				y1= paraBi1->biBelowPosition.lpPageYTwips;
+    int				y1= paraNode1->biBelowPosition.lpPageYTwips;
 
     int				frameHeight;
     BlockFrame			bfRedo;
@@ -172,16 +249,16 @@ void docLayoutFinishFrame(	const FrameProperties *		fp,
 	y1= y0- fp->fpHighTwips;
 
 	/*
-	if  ( paraBi1->biBelowPosition.lpPageYTwips > y1 )
-	    { LLDEB(paraBi1->biBelowPosition.lpPageYTwips,y1);	}
+	if  ( paraNode1->biBelowPosition.lpPageYTwips > y1 )
+	    { LLDEB(paraNode1->biBelowPosition.lpPageYTwips,y1);	}
 	*/
 	}
 
     if  ( fp->fpHighTwips > 0 )
 	{ y1= y0+ fp->fpHighTwips;	}
 
-    if  ( paraBi1->biBelowPosition.lpPageYTwips < y1 )
-	{ paraBi1->biBelowPosition.lpPageYTwips=  y1;	}
+    if  ( paraNode1->biBelowPosition.lpPageYTwips < y1 )
+	{ paraNode1->biBelowPosition.lpPageYTwips=  y1;	}
 
     frameHeight= y1- y0;
     docLayoutInitBlockFrame( &bfRedo );
@@ -192,16 +269,16 @@ void docLayoutFinishFrame(	const FrameProperties *		fp,
 	  bfTextFrame->bfContentRect.drY0	)
 	{
 	int		yBelow;
-	LayoutPosition	lpTop= paraBi0->biTopPosition;
+	LayoutPosition	lpTop= paraNode0->biTopPosition;
 
 	lpTop.lpPageYTwips= bfRedo.bfContentRect.drY0;
 
 	yBelow= bfRedo.bfContentRect.drY0+ frameHeight;
 
 	docRedoParaStripLayout( lj, bfTextFrame, &lpTop,
-						cellBi, paraFrom, paraUpto );
+						cellNode, paraFrom, paraUpto );
 
-	paraBi1->biBelowPosition.lpPageYTwips= yBelow;
+	paraNode1->biBelowPosition.lpPageYTwips= yBelow;
 	}
 
     return;

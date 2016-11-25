@@ -7,10 +7,10 @@
 #   include	"docBaseConfig.h"
 
 #   include	<utilPalette.h>
+#   include	"docBorderProperties.h"
+#   include	<utilPropMask.h>
 
 #   include	<appDebugon.h>
-
-#   include	"docBorderProperties.h"
 
 /************************************************************************/
 /*									*/
@@ -306,7 +306,7 @@ int docIndirectBorderProperties(
 	{
 	const int		avoidZero= 1;
 	const int		maxColors= 256;
-	int			color;
+	int			color= 0;
 
 	if  ( ebpFrom->ebpColorExplicit )
 	    {
@@ -314,8 +314,6 @@ int docIndirectBorderProperties(
 				avoidZero, maxColors, &(ebpFrom->ebpColor) );
 	    if  ( color < 0 )
 		{ LDEB(color); return -1;	}
-
-	    color= color;
 	    }
 	else{ color= 0;	}
 

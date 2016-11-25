@@ -5,13 +5,16 @@
 /*									*/
 /************************************************************************/
 
-#   include	"sioGeneral.h"
+struct SimpleOutputStream;
+struct SimpleInputStream;
 
-extern SimpleInputStream * sioInHexOpen(	SimpleInputStream * sisHex );
+extern struct SimpleInputStream * sioInHexOpen(
+				    struct SimpleInputStream * sisHex );
 
-extern SimpleOutputStream * sioOutHexOpenFolded(
-				    SimpleOutputStream *	sosHex,
+extern struct SimpleOutputStream * sioOutHexOpenFolded(
+				    struct SimpleOutputStream *	sosHex,
 				    int				wide,
 				    int				lastNl );
 
-extern SimpleOutputStream * sioOutHexOpen(	SimpleOutputStream * sosHex );
+extern struct SimpleOutputStream * sioOutHexOpen(
+				    struct SimpleOutputStream * sosHex );

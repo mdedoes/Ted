@@ -1,6 +1,6 @@
 /************************************************************************/
 /*									*/
-/*  Save a BufferDocument into an HTML file.				*/
+/*  Save a struct BufferDocument into an HTML file.				*/
 /*  Depending on the parameters, this is either an HTML file with	*/
 /*  a directory for the images, or a MHTML (rfc2112,rfc2557) aggregate.	*/
 /*  RFC 2557 was never validated.					*/
@@ -19,7 +19,10 @@
 #   include	<utilMemoryBufferPrintf.h>
 
 #   include	<docBuf.h>
+#   include	<docObject.h>
 #   include	"docHtmlWriteImpl.h"
+#   include	"docHtmlWrite.h"
+#   include	<docDocumentProperties.h>
 
 #   include	<appDebugon.h>
 
@@ -70,15 +73,15 @@ const int  DocEmlDirectoryCssNameLength= sizeof(DocEmlDirectoryCssName)- 1;
 /************************************************************************/
 
 int docEmlSaveDocument(		SimpleOutputStream *	sos,
-				BufferDocument *	bd,
+				struct BufferDocument *	bd,
 				const char *		mimeBoundary,
-				const LayoutContext *	lc )
+				const struct LayoutContext *	lc )
     {
     int				rval= 0;
     HtmlWritingContext		hwc;
     EmlWriter			ew;
 
-    const DocumentProperties *	dp= &(bd->bdProperties);
+    const DocumentProperties *	dp= bd->bdProperties;
     SimpleOutputStream *	sosCss= (SimpleOutputStream *)0;
 
     docInitHtmlWritingContext( &hwc );
@@ -140,7 +143,7 @@ int docEmlSaveDocument(		SimpleOutputStream *	sos,
 	{ LDEB(1); rval= -1; goto ready;	}
 
     if  ( docHtmlSaveSelection( &hwc, &(bd->bdBody),
-					(const DocumentSelection *)0 ) )
+				    (const struct DocumentSelection *)0 ) )
 	{ LDEB(1); rval= -1; goto ready; }
 
     if  ( ! hwc.hwcInlineNotes )

@@ -77,9 +77,9 @@ extern int utilMemoryBufferEqualsString(	const MemoryBuffer *	mb,
 						const char *		s );
 
 extern int utilMemoryBufferLastIndexOf(	const MemoryBuffer *	mb,
-					int			cal );
+					int			val );
 
 extern int utilMemoryBufferIndexOf(	const MemoryBuffer *	mb,
-					int			cal );
+					int			val );
 
 #   endif	/*  UTIL_MEMORY_H	*/

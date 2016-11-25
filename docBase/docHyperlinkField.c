@@ -10,12 +10,14 @@
 
 #   include	"docDocumentField.h"
 #   include	"docHyperlinkField.h"
+#   include	"docFieldKind.h"
 
 void docInitHyperlinkField(	HyperlinkField *	hf )
     {
     utilInitMemoryBuffer( &(hf->hfFile) );
     utilInitMemoryBuffer( &(hf->hfBookmark) );
     utilInitMemoryBuffer( &(hf->hfFont) );
+    utilInitMemoryBuffer( &(hf->hfTarget) );
     }
 
 void docCleanHyperlinkField(	HyperlinkField *	hf )
@@ -23,6 +25,7 @@ void docCleanHyperlinkField(	HyperlinkField *	hf )
     utilCleanMemoryBuffer( &(hf->hfFile) );
     utilCleanMemoryBuffer( &(hf->hfBookmark) );
     utilCleanMemoryBuffer( &(hf->hfFont) );
+    utilCleanMemoryBuffer( &(hf->hfTarget) );
     }
 
 /************************************************************************/
@@ -82,6 +85,9 @@ int docSetHyperlinkField(	FieldInstructions *	fi,
     if  ( docFieldInstructionsAddArgFlagIfSet( fi, 'o', &(hf->hfFont) ) )
 	{ CDEB('o'); return -1;	}
 
+    if  ( docFieldInstructionsAddArgFlagIfSet( fi, 't', &(hf->hfTarget) ) )
+	{ CDEB('t'); return -1;	}
+
     return rval;
     }
 
@@ -107,7 +113,7 @@ int docGetHyperlinkField(	HyperlinkField *	hf,
     ic= fi->fiComponents+ 1;
     for ( comp= 1; comp < fi->fiComponentCount; ic++, comp++ )
 	{
-	if  ( comp == 1 && ! ic->icIsFlag )
+	if  ( comp == 1 && ic->icType != INSTRtypeFLAG )
 	    {
 	    if  ( utilCopyMemoryBuffer( &(hf->hfFile), &(ic->icBuffer) ) )
 		{ CDEB('o'); return -1;	}
@@ -125,6 +131,16 @@ int docGetHyperlinkField(	HyperlinkField *	hf,
 	    continue;
 	    }
 
+	if  ( docComponentIsArgFlag( fi, comp, 't' ) )
+	    {
+	    ic++, comp++;
+
+	    if  ( utilCopyMemoryBuffer( &(hf->hfTarget), &(ic->icBuffer) ) )
+		{ CDEB('t'); return -1;	}
+
+	    continue;
+	    }
+
 	if  ( docComponentIsArgFlag( fi, comp, 'l' ) )
 	    {
 	    ic++, comp++;
@@ -135,7 +151,7 @@ int docGetHyperlinkField(	HyperlinkField *	hf,
 	    continue;
 	    }
 
-	LLSDEB(comp,ic->icIsFlag,utilMemoryBufferGetString(&(ic->icBuffer)));
+	LLSDEB(comp,ic->icType,utilMemoryBufferGetString(&(ic->icBuffer)));
 	}
 
     return 0;
@@ -161,6 +177,8 @@ int docEqualHyperlinkFields(	const HyperlinkField *		hf1,
 	{ return 0;	}
     if  ( ! utilEqualMemoryBuffer( &(hf1->hfFont), &(hf2->hfFont) ) )
 	{ return 0;	}
+    if  ( ! utilEqualMemoryBuffer( &(hf1->hfTarget), &(hf2->hfTarget) ) )
+	{ return 0;	}
 
     return 1;
     }
@@ -173,6 +191,8 @@ int docCopyHyperlinkField(	HyperlinkField *		to,
     if  ( utilCopyMemoryBuffer( &(to->hfBookmark), &(from->hfBookmark) ) )
 	{ return -1;	}
     if  ( utilCopyMemoryBuffer( &(to->hfFont), &(from->hfFont) ) )
+	{ return -1;	}
+    if  ( utilCopyMemoryBuffer( &(to->hfTarget), &(from->hfTarget) ) )
 	{ return -1;	}
 
     return 0;

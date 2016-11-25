@@ -6,11 +6,11 @@
 
 #   include	"docBaseConfig.h"
 
-#   include	<stdlib.h>
+#   include	"docItemShading.h"
+#   include	"docItemShadingAdmin.h"
+#   include	<utilNumberedPropertiesAdmin.h>
 
 #   include	<appDebugon.h>
-
-#   include	"docItemShadingAdmin.h"
 
 /************************************************************************/
 /*									*/
@@ -29,6 +29,8 @@ void docInitItemShadingList(	NumberedPropertiesList *	isl )
     
 			ISprop_COUNT,
 			(NumberedPropertiesGetProperty)docGetShadingProperty,
+			(NumberedPropertiesCopyProperties)0,
+			(NumberedPropertiesGetNumber)docItemShadingNumberImpl,
 
 			sizeof(ItemShading),
 			(InitPagedListItem)docInitItemShading,
@@ -49,17 +51,22 @@ void docInitItemShadingList(	NumberedPropertiesList *	isl )
 /*									*/
 /************************************************************************/
 
-void docGetItemShadingByNumberImpl( ItemShading *		is,
+const ItemShading * docGetItemShadingByNumberImpl(
 				const NumberedPropertiesList *	isl,
 				int				n )
     {
     void *	vis= utilPagedListGetItemByNumber( &(isl->nplPagedList), n );
 
     if  ( ! vis )
-	{ LXDEB(n,vis); docInitItemShading( is ); return; }
+	{
+	static ItemShading	defIs;
 
-    *is= *((ItemShading *)vis);
-    return;
+	LXDEB(n,vis);
+	docInitItemShading( &defIs );
+	return &defIs;
+	}
+
+    return (ItemShading *)vis;
     }
 
 /************************************************************************/
@@ -71,14 +78,14 @@ void docGetItemShadingByNumberImpl( ItemShading *		is,
 int docShadingNumberIsShadingImpl(	const NumberedPropertiesList *	isl,
 					int				n )
     {
-    ItemShading	is;
+    const ItemShading *	is;
 
     if  ( n < 0 )
 	{ return 0;	}
 
-    docGetItemShadingByNumberImpl( &is, isl, n );
+    is= docGetItemShadingByNumberImpl( isl, n );
 
-    return DOCisSHADING( &is );
+    return DOCisSHADING( is );
     }
 
 /************************************************************************/
@@ -124,50 +131,30 @@ int docItemShadingNumberImpl(	NumberedPropertiesList *	isl,
 /*									*/
 /************************************************************************/
 
-int docMergeItemShadingLists(
-				int **				pShadingMap,
+static int docTranslateItemShading(
+				void *				visTo,
+				const void *			visFrom,
+				void *				vcolorMap )
+    {
+    ItemShading *		isTo= (ItemShading *)visTo;
+    const ItemShading *		isFrom= (const ItemShading *)visFrom;
+    const int *			colorMap= (const int *)vcolorMap;
+
+    *isTo= *isFrom;
+    if  ( isFrom->isBackColor > 0 && colorMap )
+	{ isTo->isBackColor= colorMap[isFrom->isBackColor];	}
+    if  ( isFrom->isForeColor > 0 && colorMap )
+	{ isTo->isForeColor= colorMap[isFrom->isForeColor];	}
+
+    return 0;
+    }
+
+int docMergeItemShadingLists(	int **				pShadingMap,
 				const int *			colorMap,
 				NumberedPropertiesList *	islTo,
 				const NumberedPropertiesList *	islFrom )
     {
-    int		fromCount= islFrom->nplPagedList.plItemCount;
-
-    if  ( fromCount > 0 )
-	{
-	int		n;
-	int *		smap= (int *)malloc( fromCount* sizeof(int) );
-
-	if  ( ! smap )
-	    { LXDEB(fromCount,smap); return -1; }
-
-	for ( n= 0; n < fromCount; n++ )
-	    { smap[n]= -1;	}
-
-	for ( n= 0; n < fromCount; n++ )
-	    {
-	    int				to;
-	    void *			vis;
-	    ItemShading			is;
-
-	    vis= utilPagedListGetItemByNumber( &(islFrom->nplPagedList), n );
-	    if  ( ! vis )
-		{ continue;	}
-
-	    is= *((ItemShading *)vis);
-	    if  ( is.isBackColor > 0 && colorMap )
-		{ is.isBackColor= colorMap[is.isBackColor];	}
-	    if  ( is.isForeColor > 0 && colorMap )
-		{ is.isForeColor= colorMap[is.isForeColor];	}
-
-	    to= docItemShadingNumberImpl( islTo, &is );
-	    if  ( to < 0 )
-		{ LDEB(to); free( smap ); return -1;	}
-	    smap[n]= to;
-	    }
-
-	*pShadingMap= smap;
-	}
-
-    return 0;
+    return docMergeNumberedPropertiesLists( pShadingMap, islTo, islFrom,
+				docTranslateItemShading, (void *)colorMap );
     }
 

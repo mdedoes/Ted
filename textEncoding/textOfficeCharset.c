@@ -5,6 +5,8 @@
 #   include	"textOfficeCharset.h"
 #   include	"uniLegacyEncoding.h"
 
+#   include	<utilIndexSet.h>
+
 #   include	<appDebugon.h>
 
 static OfficeCharset PS_OfficeCharsets[]= 
@@ -21,8 +23,13 @@ static OfficeCharset PS_OfficeCharsets[]=
 			},
     { FONTcharsetSYMBOL, /* 2 */ -1,
 			0, (const char *)0,
+#			if 0
 			"SYMBOL", /* Not a name supported by iconv */
 			uniSymbolGlyphUnicodes,
+#			else
+			(const char *)0,
+			(const int *)0,
+#			endif
 			},
     { FONTcharsetRUSSIAN, /* 204 */ FONTcodepageRUSSIAN,
 			1, " Cyr",
@@ -70,35 +77,35 @@ static OfficeCharset PS_OfficeCharsets[]=
 			"SHIFT_JIS",
 			(const int *)0,
 			},
-    { FONTcharsetHANGEUL, /* 0 */ FONTcodepageHANGEUL,
+    { FONTcharsetHANGEUL, /* 128 */ FONTcodepageHANGEUL,
 			0, (const char *)0,
 			"CP949",
 			(const int *)0,
 			},
-    { FONTcharsetCHINESEBIG5, /* 0 */ FONTcodepageCHINESEBIG5,
+    { FONTcharsetCHINESEBIG5, /* 136 */ FONTcodepageCHINESEBIG5,
 			0, (const char *)0,
 			"BIG-5",
 			(const int *)0,
 			},
     /* default */
-    { FONTcharsetDEFAULT, -1,
+    { FONTcharsetDEFAULT, /* 1 */ -1,
 			0, (const char *)0,
 			(const char *)0,
 			(const int *)0,
 			},
 
     /* conversion */
-    { FONTcharsetMAC_ROMAN, FONTcodepageMAC_ROMAN,
+    { FONTcharsetMAC_ROMAN, /* 77 */ FONTcodepageMAC_ROMAN,
 			0, (const char *)0,
 			"MACINTOSH"
 			},
 
-    { FONTcharsetMAC_256, FONTcodepageMAC_ROMAN,
+    { FONTcharsetMAC_256, /* 256 */ FONTcodepageMAC_ROMAN,
 			0, (const char *)0,
 			"MACINTOSH"
 			},
 
-    { FONTcharsetGB2312, /* 0 */ FONTcodepageGB2312,
+    { FONTcharsetGB2312, /* 134 */ FONTcodepageGB2312,
 			0, (const char *)0,
 			"GB2312",
 			(const int *)0,
@@ -107,7 +114,7 @@ static OfficeCharset PS_OfficeCharsets[]=
     /*  FONTcharsetJOHAB	*/
 };
 
-const OfficeCharset * utilGetOfficeCharsetByCharset(
+const OfficeCharset * textGetOfficeCharsetByCharset(
 					int *		pIdx,
 					int		charset )
     {
@@ -134,7 +141,7 @@ const OfficeCharset * utilGetOfficeCharsetByCharset(
     return (const OfficeCharset *)0;
     }
 
-const OfficeCharset * utilGetOfficeCharsetByIndex(
+const OfficeCharset * textGetOfficeCharsetByIndex(
 					int		charsetIdx )
     {
     int				n;
@@ -150,7 +157,7 @@ const OfficeCharset * utilGetOfficeCharsetByIndex(
     return PS_OfficeCharsets+ charsetIdx;
     }
 
-const OfficeCharset * utilGetOfficeCharsetBySuffix(
+const OfficeCharset * textGetOfficeCharsetBySuffix(
 					int *		pIdx,
 					const char *	fontname )
     {
@@ -194,7 +201,7 @@ const OfficeCharset * utilGetOfficeCharsetBySuffix(
 /*									*/
 /************************************************************************/
 
-int utilOfficeCharsetCodeForUnicode(	int		charsetIdx,
+int textOfficeCharsetCodeForUnicode(	int		charsetIdx,
 					int		unicode )
     {
     OfficeCharset * oc= PS_OfficeCharsets+ charsetIdx;
@@ -227,7 +234,7 @@ static int docFontCalculateLegacyCoverage( void )
 
 	utilInitIndexSet( &(DF_LegacyCoverage[charsetIdx]) );
 
-	oc= utilGetOfficeCharsetByIndex( charsetIdx );
+	oc= textGetOfficeCharsetByIndex( charsetIdx );
 	if  ( ! oc || ! oc->ocUnicodes )
 	    { continue;	}
 
@@ -239,7 +246,7 @@ static int docFontCalculateLegacyCoverage( void )
     return 0;
     }
 
-const IndexSet * utilOfficeCharsetGetCodeSet(	int	charsetIdx )
+const IndexSet * textOfficeCharsetGetCodeSet(	int	charsetIdx )
     {
     const OfficeCharset *	oc;
 
@@ -251,7 +258,7 @@ const IndexSet * utilOfficeCharsetGetCodeSet(	int	charsetIdx )
 	DF_LegacyCoverageCalculated= 1;
 	}
 
-    oc= utilGetOfficeCharsetByIndex( charsetIdx );
+    oc= textGetOfficeCharsetByIndex( charsetIdx );
     if  ( ! oc || ! oc->ocUnicodes )
 	{ return (const IndexSet *)0;	}
 

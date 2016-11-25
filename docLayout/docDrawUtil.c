@@ -7,8 +7,9 @@
 #   include	"docLayoutConfig.h"
 
 #   include	"docDraw.h"
+#   include	"docDrawLine.h"
+#   include	<docAttributes.h>
 
-#   include	<docTextLine.h>
 #   include	<appDebugon.h>
 
 /************************************************************************/
@@ -20,19 +21,23 @@
 void docInitDrawingContext(	DrawingContext *	dc )
     {
     dc->dcCurrentTextAttributeSet= 0;
-    utilInitTextAttribute( &(dc->dcCurrentTextAttribute) );
+    textInitTextAttribute( &(dc->dcCurrentTextAttribute) );
 
     dc->dcCurrentColorSet= 0;
     utilInitRGB8Color( &(dc->dcCurrentColor) );
 
     layoutInitContext( &(dc->dcLayoutContext) );
+    dc->dcBodySectNode= (struct BufferItem *)0;
 
     dc->dcClipRect= (DocumentRectangle *)0;
-    dc->dcSelection= (DocumentSelection *)0;
-    dc->dcSelectionGeometry= (SelectionGeometry *)0;
+    dc->dcSelection= (struct DocumentSelection *)0;
+    dc->dcSelectionHeadPositionFlags= 0;
+    dc->dcSelectionTailPositionFlags= 0;
+    dc->dcSelectionIsTableRectangle= 0;
+
     dc->dcFirstPage= -1;
     dc->dcLastPage= -1;
-    dc->dcDrawExternalItems= 0;
+    dc->dcDrawOtherTrees= 0;
     dc->dcPostponeHeadersFooters= 0;
     dc->dcDocHasPageHeaders= 0;
     dc->dcDocHasPageFooters= 0;
@@ -42,70 +47,22 @@ void docInitDrawingContext(	DrawingContext *	dc )
     dc->dcSetColorRgb= (SET_COLOR_RGB)0;
     dc->dcSetFont= (SET_FONT)0;
     dc->dcDrawShape= (DRAW_SHAPE)0;
-    dc->dcDrawObject= (DRAW_OBJECT)0;
+    dc->dcDrawInlineObject= (DRAW_INLINE_OBJECT)0;
     dc->dcStartField= (START_FIELD)0;
     dc->dcFinishField= (FINISH_FIELD)0;
     dc->dcDrawTab= (DRAW_TAB)0;
     dc->dcDrawFtnsep= (DRAW_FTNSEP)0;
     dc->dcDrawUnderline= (DRAW_UNDERLINE)0;
     dc->dcDrawStrikethrough= (DRAW_STRIKETHROUGH)0;
-    dc->dcDrawSpan= (DRAW_SPAN)0;
+    dc->dcDrawTextRun= (DRAW_TEXT_RUN)0;
 
-    dc->dcDrawTextLine= (DRAW_TEXT_LINE)0;
+    dc->dcStartTextLine= (START_TEXT_LINE)0;
+    dc->dcFinishTextLine= (FINISH_TEXT_LINE)0;
     dc->dcDrawOrnaments= (DRAW_ORNAMENTS)0;
 
     dc->dcFinishPage= (FINISH_PAGE)0;
     dc->dcStartPage= (START_PAGE)0;
-    dc->dcInitLayoutExternal= (INIT_LAYOUT_EXTERNAL)0;
-
-    return;
-    }
-
-/************************************************************************/
-
-void docInitDrawTextLine(	DrawTextLine *	dtl )
-    {
-    dtl->dtlThrough= (void *)0;
-    dtl->dtlDrawingContext= (DrawingContext *)0;
-
-    docInitLayoutPosition( &(dtl->dtlShiftedTop) );
-    geoInitRectangle( &(dtl->dtlLineRectangle) );
-    docInitLayoutPosition( &(dtl->dtlBaselinePosition) );
-    docInitLayoutPosition( &(dtl->dtlShiftedBaselinePosition) );
-    dtl->dtlXShift= 0;
-    dtl->dtlYShift= 0;
-    dtl->dtlPartUpto= 0;
-    dtl->dtlParticuleData= (const ParticuleData *)0;
-    dtl->dtlTextLine= (const struct TextLine *)0;
-    dtl->dtlParaNode= (struct BufferItem *)0;
-    dtl->dtlParagraphFrame= (ParagraphFrame *)0;
-    dtl->dtlDrawParticulesSeparately= 0;
-    }
-
-void docSetDrawTextLine(	DrawTextLine *			dtl,
-				void *				through,
-				DrawingContext *		dc,
-				const TextLine *		tl,
-				const struct BufferItem *	paraBi,
-				const BlockOrigin *		bo,
-				const ParagraphFrame *		pf,
-				const DocumentRectangle *	drLine )
-    {
-    dtl->dtlThrough= through;
-    dtl->dtlDrawingContext= dc;
-
-    dtl->dtlTextLine= tl;
-    dtl->dtlPartUpto= tl->tlFirstParticule+ tl->tlParticuleCount;
-    dtl->dtlBaselinePosition= tl->tlTopPosition;
-    dtl->dtlBaselinePosition.lpPageYTwips += TL_BASELINE( tl );
-    dtl->dtlParaNode= paraBi;
-    dtl->dtlXShift= bo->boXShift;
-    dtl->dtlYShift= bo->boYShift;
-    docShiftPosition( &(dtl->dtlShiftedTop), bo, &(tl->tlTopPosition) );
-    dtl->dtlParagraphFrame= pf;
-    dtl->dtlLineRectangle= *drLine;
-    dtl->dtlShiftedBaselinePosition= dtl->dtlShiftedTop;
-    dtl->dtlShiftedBaselinePosition.lpPageYTwips += TL_BASELINE( tl );
+    dc->dcStartTreeLayout= (START_TREE_LAYOUT)0;
 
     return;
     }

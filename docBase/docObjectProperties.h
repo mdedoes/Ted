@@ -84,9 +84,15 @@ typedef enum InsertedObjectProperty
     IOpropOBJCROP_LEFT,
     IOpropOBJCROP_RIGHT,
 
+# define IOprop_COUNT IOprop_UNSUPPORTED
     IOprop_UNSUPPORTED,
 
-    IOprop_COUNT
+    IOprop_OBJDATA,
+    IOprop_OBJNAME,
+    IOprop_OBJCLASS,
+    IOprop_RESULT,
+
+    IOprop_FULL_COUNT
     } InsertedObjectProperty;
 
 /************************************************************************/

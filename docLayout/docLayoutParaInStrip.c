@@ -7,11 +7,13 @@
 
 #   include	"docLayoutConfig.h"
 
-#   include	<stddef.h>
-
 #   include	"docLayout.h"
+#   include	"docLayoutStopCode.h"
+#   include	"docStripLayoutJob.h"
 #   include	<docTreeNode.h>
 #   include	<docTextLine.h>
+#   include	<docParaProperties.h>
+#   include	<docBlockFrame.h>
 
 #   include	<appDebugon.h>
 
@@ -49,14 +51,15 @@ int docLayoutParagraphInStrip(	int *				pStopCode,
 				BlockFrame *			bf,
 				const LayoutJob *		lj,
 				int				cellTopInset,
-				BufferItem *			paraNode )
+				int				isRedo,
+				struct BufferItem * const	paraNode )
     {
+    const ParagraphProperties *	pp= paraNode->biParaProperties;
     const LayoutContext *	lc= &(lj->ljContext);
     int				stopCode= FORMATstopREADY;
     int				accepted;
     int				prevLine;
     LayoutPosition		lpBefore= plp->plpPos;
-    const int			isRedo= 0;
 
     int				changed= 0;
 
@@ -87,7 +90,7 @@ int docLayoutParagraphInStrip(	int *				pStopCode,
 	{ LDEB(accepted); return -1;	}
 
     /*  2  */
-    if  ( paraNode->biParaWidowControl					&&
+    if  ( pp->ppWidowControl						&&
 	  stopCode == FORMATstopBLOCK_FULL				&&
 	  ! lpBefore.lpAtTopOfColumn					&&
 	  plp->pspLine == 1						&&
@@ -99,8 +102,8 @@ int docLayoutParagraphInStrip(	int *				pStopCode,
 	}
 
     /*  3  */
-    if  ( ( paraNode->biParaKeepOnPage	||
-	    paraNode->biParaKeepWithNext	)			&&
+    if  ( ( pp->ppKeepOnPage	||
+	    pp->ppKeepWithNext	)					&&
 	  ! lpBefore.lpAtTopOfColumn					&&
 	  stopCode == FORMATstopBLOCK_FULL				&&
 	  paraNode->biParaLineCount >= plp->pspLine			&&
@@ -124,9 +127,9 @@ int docLayoutParagraphInStrip(	int *				pStopCode,
 	}
 
     /*  4  */
-    if  ( paraNode->biParaWidowControl				&&
-	  plp->pspLine > 1					&&
-	  plp->pspLine- prevLine == 1				)
+    if  ( pp->ppWidowControl			&&
+	  plp->pspLine > 1			&&
+	  plp->pspLine- prevLine == 1		)
 	{
 	TextLine *		tl= paraNode->biParaLines+ prevLine- 1;
 
@@ -137,7 +140,7 @@ int docLayoutParagraphInStrip(	int *				pStopCode,
 	    /*  5  */
 	    if  ( paraNode->biParaLineCount == 3 )
 		{
-		BufferItem *	node= paraNode;
+		struct BufferItem *	node= paraNode;
 
 		docStripLayoutStartChild( plp, plp->pspChild );
 		plp->plpPos= tl[1].tlTopPosition;
@@ -145,7 +148,7 @@ int docLayoutParagraphInStrip(	int *				pStopCode,
 		while( node->biNumberInParent > 0 )
 		    {
 		    node= node->biParent->biChildren[node->biNumberInParent-1];
-		    if  ( ! node->biParaKeepWithNext )
+		    if  ( ! node->biParaProperties->ppKeepWithNext )
 			{ *pStopCode= FORMATstopBLOCK_FULL; break; }
 
 		    plp->pspChild--;

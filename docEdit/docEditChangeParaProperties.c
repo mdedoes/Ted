@@ -6,13 +6,21 @@
 
 #   include	"docEditConfig.h"
 
-#   include	<stddef.h>
-#   include	<stdio.h>
 #   include	<ctype.h>
 
 #   include	"docEdit.h"
 #   include	<docParaParticules.h>
+#   include	<textAttribute.h>
 #   include	"docEditSetProperties.h"
+#   include	"docEditOperation.h"
+#   include	<docTreeNode.h>
+#   include	<docTextParticule.h>
+#   include	<docParaProperties.h>
+#   include	<utilPropMask.h>
+#   include	<docFields.h>
+#   include	<docAttributes.h>
+#   include	<docBuf.h>
+#   include	<docParaParticuleAdmin.h>
 
 #   include	<appDebugon.h>
 
@@ -34,15 +42,15 @@ static int docEditChangeParaAndTextProperties(
 				EditOperation *			eo,
 				PropertyMask *			pPpDoneMask,
 				PropertyMask *			pTaDoneMask,
-				BufferItem *			paraNode,
+				struct BufferItem *		paraNode,
 				int				partFrom,
 				int				partUpto,
 				const PropertyMask *		taSetMask,
 				const TextAttribute *		taSet,
 				const PropertyMask *		ppSetMask,
-				const ParagraphProperties *	ppSet )
+				const struct ParagraphProperties * ppSet )
     {
-    BufferDocument *		bd= eo->eoDocument;
+    struct BufferDocument *		bd= eo->eoDocument;
 
     PropertyMask		ppDoneMask;
     PropertyMask		taDoneMask;
@@ -58,36 +66,36 @@ static int docEditChangeParaAndTextProperties(
     utilPropMaskClear( &taDoneMask );
 
     /*  A  */
-    if  ( paraNode->biParaListOverride > 0 )
+    if  ( paraNode->biParaProperties->ppListOverride > 0 )
 	{
-	DocumentField *		dfHead= (DocumentField *)0;
+	struct DocumentField *	dfHead= (struct DocumentField *)0;
 	DocumentSelection	dsInsideHead;
 	DocumentSelection	dsAroundHead;
-	int			bulletPartBegin= -1;
-	int			bulletPartEnd= -1;
+	int			bulletPartHead= -1;
+	int			bulletPartTail= -1;
 
 	if  ( docDelimitParaHeadField( &dfHead,
 			    &dsInsideHead, &dsAroundHead,
-			    &bulletPartBegin, &bulletPartEnd, paraNode, bd ) )
+			    &bulletPartHead, &bulletPartTail, paraNode, bd ) )
 	    { LDEB(1);	}
 
-	if  ( partFrom <= bulletPartEnd )
-	    { partFrom= bulletPartEnd+ 1;	}
+	if  ( partFrom <= bulletPartTail )
+	    { partFrom= bulletPartTail+ 1;	}
 	}
 
     if  ( taSetMask )
 	{
 	if  ( docChangeParticuleAttributes( &textChanged, &taDoneMask, bd,
-						paraNode, partFrom, partUpto,
-						taSet, taSetMask ) )
+				paraNode, partFrom, partUpto,
+				taSet, taSetMask ) )
 	    { LLDEB(partFrom,partUpto); return -1;	}
 	}
 
     if  ( ppSetMask )
 	{
 	if  ( docEditUpdParaProperties( eo, &ppDoneMask, paraNode,
-					ppSetMask, ppSet,
-					(const DocumentAttributeMap *)0 ) )
+				ppSetMask, ppSet,
+				(const struct DocumentAttributeMap *)0 ) )
 	    { LDEB(1); return -1;	}
 	}
 
@@ -100,12 +108,17 @@ static int docEditChangeParaAndTextProperties(
     }
 
 /************************************************************************/
+/*									*/
+/*  If necessary, split the particule at the head of the text selection	*/
+/*  to apply the attribute change to the tail of the particule.		*/
+/*									*/
+/************************************************************************/
 
-static int docFormatHeadParticule( BufferItem *			paraNode,
+static int docFormatHeadParticule( struct BufferItem *		paraNode,
 				int *				pSplit,
 				const PropertyMask *		taSetMask,
 				const TextAttribute *		taSet,
-				BufferDocument *		bd,
+				struct BufferDocument *		bd,
 				const DocumentSelection *	ds )
     {
     int				part;
@@ -125,11 +138,11 @@ static int docFormatHeadParticule( BufferItem *			paraNode,
     utilPropMaskClear( &pmSplit );
     if  ( taSetMask && (unsigned)ds->dsHead.dpStroff > tp->tpStroff )
 	{
-	TextAttribute	ta;
+	const TextAttribute *	ta;
 
-	docGetTextAttributeByNumber( &ta, bd, tp->tpTextAttrNr );
+	ta= docGetTextAttributeByNumber( bd, tp->tpTextAttrNr );
 
-	utilAttributeDifference( &pmSplit, &ta, taSetMask, taSet );
+	textAttributeDifference( &pmSplit, ta, taSetMask, taSet );
 	}
 
     if  ( ! utilPropMaskIsEmpty( &pmSplit ) )
@@ -151,11 +164,18 @@ static int docFormatHeadParticule( BufferItem *			paraNode,
     return part;
     }
 
-static int docFormatTailParticule( BufferItem *			paraNode,
+/************************************************************************/
+/*									*/
+/*  If necessary, split the particule at the tail of the text selection	*/
+/*  to apply the attribute change to the head of the particule.		*/
+/*									*/
+/************************************************************************/
+
+static int docFormatTailParticule( struct BufferItem *		paraNode,
 				int *				pSplit,
 				const PropertyMask *		taSetMask,
 				const TextAttribute *		taSet,
-				BufferDocument *		bd,
+				struct BufferDocument *		bd,
 				const DocumentSelection *	ds )
     {
     int				part1;
@@ -173,11 +193,11 @@ static int docFormatTailParticule( BufferItem *			paraNode,
     utilPropMaskClear( &pmSplit );
     if  ( taSetMask && part1 < paraNode->biParaParticuleCount )
 	{
-	TextAttribute	ta;
+	const TextAttribute *	ta;
 
-	docGetTextAttributeByNumber( &ta, bd, tp->tpTextAttrNr );
+	ta= docGetTextAttributeByNumber( bd, tp->tpTextAttrNr );
 
-	utilAttributeDifference( &pmSplit, &ta, taSetMask, taSet );
+	textAttributeDifference( &pmSplit, ta, taSetMask, taSet );
 	}
 
     if  ( ! utilPropMaskIsEmpty( &pmSplit ) )
@@ -202,24 +222,33 @@ static int docFormatTailParticule( BufferItem *			paraNode,
     }
 
 /************************************************************************/
+/*									*/
+/*  Change paragraph properties and the text properties of the range	*/
+/*  that is selected inside the paragraph.				*/
+/*									*/
+/************************************************************************/
 
 int docEditChangeParaProperties( SetProperties *		setProps,
 				const DocumentSelection *	ds,
-				BufferItem *			paraNode,
+				struct BufferItem *		paraNode,
 				const TextAttribute *		taSet,
-				const ParagraphProperties *	ppSet )
+				const struct ParagraphProperties * ppSet )
     {
-    EditOperation *	eo= setProps->spEditOperation;
-    BufferDocument *	bd= eo->eoDocument;
+    EditOperation *		eo= setProps->spEditOperation;
+    struct BufferDocument *	bd= eo->eoDocument;
 
-    int			part= 0;
-    int			part1= paraNode->biParaParticuleCount;
-    int			split;
+    int				part= 0;
+    int				part1= paraNode->biParaParticuleCount;
+    int				split;
 
-    PropertyMask	paraTaDoneMask;
-    PropertyMask	paraPpDoneMask;
+    PropertyMask		paraTaDoneMask;
+    PropertyMask		paraPpDoneMask;
 
-    if  ( paraNode == ds->dsHead.dpNode )
+    if  ( setProps->sp_taSetMask				&&
+	  utilPropMaskIsEmpty( setProps->sp_taSetMask )		)
+	{ setProps->sp_taSetMask= (const PropertyMask *)0;	}
+
+    if  ( setProps->sp_taSetMask && ds && paraNode == ds->dsHead.dpNode )
 	{
 	part= docFormatHeadParticule( paraNode, &split,
 				    setProps->sp_taSetMask, taSet, bd, ds );
@@ -227,10 +256,10 @@ int docEditChangeParaProperties( SetProperties *		setProps,
 	    { LDEB(part); return -1;	}
 	}
 
-    if  ( paraNode == ds->dsTail.dpNode )
+    if  ( setProps->sp_taSetMask && ds && paraNode == ds->dsTail.dpNode )
 	{
 	part1= docFormatTailParticule( paraNode, &split,
-			setProps->sp_taSetMask, taSet, bd, ds );
+				    setProps->sp_taSetMask, taSet, bd, ds );
 	if  ( part1 < 0 )
 	    { LDEB(part1); return -1;	}
 	}

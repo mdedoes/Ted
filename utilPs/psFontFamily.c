@@ -5,23 +5,41 @@
 #   include	<ctype.h>
 
 #   include	"psFontFamily.h"
+#   include	"psFontInfo.h"
 #   include	"psCompareFontInfo.h"
 
 #   include	<appDebugon.h>
 
 /************************************************************************/
 
-static int appPsSetFontInfo(	PsFontFamily *		aff,
+static int psFixFamilyName(	PsFontFamily *		psf,
+				AfmFontInfo *		afi,
+				const char *		fix )
+    {
+    int		fl;
+
+    free( afi->afiFamilyName );
+    afi->afiFamilyName= strdup( fix );
+
+    if  ( ! afi->afiFamilyName )
+	{ return -1;	}
+
+    fl= strlen( afi->afiFamilyName );
+    psf->psfFontFamilyName= afi->afiFamilyName;
+    return fl;
+    }
+
+static int psSetFontInfo(	PsFontFamily *		psf,
 				int			n,
 				AfmFontInfo *		afi )
     {
     int		fl;
 
-    aff->psfFaces[n]= afi;
+    psf->psfFaces[n]= afi;
 
     if  ( afi->afiIsFixedPitch )
-	{ aff->psfHasFixedWidth= 1;		}
-    else{ aff->psfHasProportionalWidth= 1;	}
+	{ psf->psfHasFixedWidth= 1;		}
+    else{ psf->psfHasProportionalWidth= 1;	}
 
     fl= strlen( afi->afiFamilyName );
 
@@ -30,38 +48,33 @@ static int appPsSetFontInfo(	PsFontFamily *		aff,
 	{
 	if  ( ! strcmp( afi->afiFamilyName, "FreeMono" ) )
 	    {
-	    free( afi->afiFamilyName );
-	    afi->afiFamilyName= strdup( "Free Monospaced" );
-	    fl= strlen( afi->afiFamilyName );
-	    aff->psfFontFamilyName= afi->afiFamilyName;
+	    fl= psFixFamilyName( psf, afi, "Free Monospaced" );
+	    if  ( fl < 0 )
+		{ LDEB(fl); return -1;	}
 	    }
 	if  ( ! strcmp( afi->afiFamilyName, "FreeSans" ) )
 	    {
-	    free( afi->afiFamilyName );
-	    afi->afiFamilyName= strdup( "Free Sans" );
-	    fl= strlen( afi->afiFamilyName );
-	    aff->psfFontFamilyName= afi->afiFamilyName;
+	    fl= psFixFamilyName( psf, afi, "Free Sans" );
+	    if  ( fl < 0 )
+		{ LDEB(fl); return -1;	}
 	    }
 	if  ( ! strcmp( afi->afiFamilyName, "FreeSerif" ) )
 	    {
-	    free( afi->afiFamilyName );
-	    afi->afiFamilyName= strdup( "Free Serif" );
-	    fl= strlen( afi->afiFamilyName );
-	    aff->psfFontFamilyName= afi->afiFamilyName;
+	    fl= psFixFamilyName( psf, afi, "Free Serif" );
+	    if  ( fl < 0 )
+		{ LDEB(fl); return -1;	}
 	    }
 	if  ( ! strcmp( afi->afiFamilyName, "TlwgTypewriter" ) )
 	    {
-	    free( afi->afiFamilyName );
-	    afi->afiFamilyName= strdup( "Tlwg Typewriter" );
-	    fl= strlen( afi->afiFamilyName );
-	    aff->psfFontFamilyName= afi->afiFamilyName;
+	    fl= psFixFamilyName( psf, afi, "Tlwg Typewriter" );
+	    if  ( fl < 0 )
+		{ LDEB(fl); return -1;	}
 	    }
 	if  ( ! strcmp( afi->afiFamilyName, "TlwgMono" ) )
 	    {
-	    free( afi->afiFamilyName );
-	    afi->afiFamilyName= strdup( "Tlwg Mono" );
-	    fl= strlen( afi->afiFamilyName );
-	    aff->psfFontFamilyName= afi->afiFamilyName;
+	    fl= psFixFamilyName( psf, afi, "Tlwg Mono" );
+	    if  ( fl < 0 )
+		{ LDEB(fl); return -1;	}
 	    }
 	}
 
@@ -100,7 +113,7 @@ static int appPsSetFontInfo(	PsFontFamily *		aff,
 /*									*/
 /************************************************************************/
 
-static int appPsSetFontFaces(	PsFontFamily *		aff,
+static int psSetFontFaces(	PsFontFamily *		psf,
 				AfmFontInfo **		afis,
 				int			count )
     {
@@ -110,23 +123,23 @@ static int appPsSetFontFaces(	PsFontFamily *		aff,
     if  ( count == 0 )
 	{ LDEB(count); return 0;	}
 
-    saved= (AfmFontInfo **)realloc( aff->psfFaces,
+    saved= (AfmFontInfo **)realloc( psf->psfFaces,
 					count* sizeof(AfmFontInfo *) );
     if  ( ! saved )
 	{ LXDEB(count,saved); return -1;	}
-    aff->psfFaces= saved;
+    psf->psfFaces= saved;
 
-    aff->psfFontFamilyName_Orig= afis[0]->afiFamilyName_Orig;
-    aff->psfFontFamilyName= afis[0]->afiFamilyName;
+    psf->psfFontFamilyName_Orig= afis[0]->afiFamilyName_Orig;
+    psf->psfFontFamilyName= afis[0]->afiFamilyName;
 
-    appPsSetFontInfo( aff, 0, afis[0] );
-    aff->psfWidthInt= afis[0]->afiWidthInt;
+    psSetFontInfo( psf, 0, afis[0] );
+    psf->psfWidthInt= afis[0]->afiWidthInt;
 
     for ( face= 1; face < count; face++ )
 	{
 	if  ( afis[face]->afiIsFixedPitch )
 	    {
-	    if  ( aff->psfHasProportionalWidth )
+	    if  ( psf->psfHasProportionalWidth )
 		{
 		SLDEB(afis[face]->afiFullName,afis[face]->afiIsFixedPitch);
 		}
@@ -136,19 +149,19 @@ static int appPsSetFontFaces(	PsFontFamily *		aff,
 	    "Nimbus Mono L Regular Oblique"
 	    "Nimbus Mono L Bold"
 	    "Nimbus Mono L Bold Oblique"
-	    if  ( aff->psfHasFixedWidth )
+	    if  ( psf->psfHasFixedWidth )
 		{ SLDEB(afis[face]->afiFullName,afis[face]->afiIsFixedPitch); }
 	    */
 	    }
 
-	appPsSetFontInfo( aff, face, afis[face] );
+	psSetFontInfo( psf, face, afis[face] );
 	}
 
-    aff->psfFaceCount= count;
+    psf->psfFaceCount= count;
 
-    if  ( aff->psfFaceCount > 0 )
+    if  ( psf->psfFaceCount > 0 )
 	{
-	qsort( aff->psfFaces, aff->psfFaceCount, sizeof(AfmFontInfo *),
+	qsort( psf->psfFaces, psf->psfFaceCount, sizeof(AfmFontInfo *),
 					psFontCompareInfosExcludingFamily );
 	}
 
@@ -167,7 +180,7 @@ PsFontFamily * psFontFamilyFromFaces(	AfmFontInfo **	afis,
 					int		count )
     {
     PsFontFamily *	rval= (PsFontFamily *)0;
-    PsFontFamily *	aff= (PsFontFamily *)0;
+    PsFontFamily *	psf= (PsFontFamily *)0;
     int			n;
 
     for ( n= 1; n < count; n++ )
@@ -177,21 +190,21 @@ PsFontFamily * psFontFamilyFromFaces(	AfmFontInfo **	afis,
 	    { break;	}
 	}
 
-    aff= (PsFontFamily *)malloc( sizeof(PsFontFamily) );
-    if  ( ! aff )
-	{ XDEB(aff); goto ready;	}
-    psInitFontFamily( aff );
+    psf= (PsFontFamily *)malloc( sizeof(PsFontFamily) );
+    if  ( ! psf )
+	{ XDEB(psf); goto ready;	}
+    psInitFontFamily( psf );
 
-    if  ( appPsSetFontFaces( aff, afis, n ) )
+    if  ( psSetFontFaces( psf, afis, n ) )
 	{ LDEB(n); goto ready;	}
 
-    rval= aff; aff= (PsFontFamily *)0;
+    rval= psf; psf= (PsFontFamily *)0;
     *pConsumed= n;
 
   ready:
 
-    if  ( aff )
-	{ psFreeFontFamily( aff );	}
+    if  ( psf )
+	{ psFreeFontFamily( psf );	}
 
     return rval;
     }
@@ -202,30 +215,30 @@ PsFontFamily * psFontFamilyFromFaces(	AfmFontInfo **	afis,
 /*									*/
 /************************************************************************/
 
-void psInitFontFamily(	PsFontFamily *	aff )
+void psInitFontFamily(	PsFontFamily *	psf )
     {
-    aff->psfFontFamilyName_Orig= (char *)0;
-    aff->psfFontFamilyName= (char *)0;
-    aff->psfFaces= (AfmFontInfo **)0;
-    aff->psfFaceCount= 0;
-    aff->psfHasFixedWidth= 0;
-    aff->psfHasProportionalWidth= 0;
+    psf->psfFontFamilyName_Orig= (char *)0;
+    psf->psfFontFamilyName= (char *)0;
+    psf->psfFaces= (struct AfmFontInfo **)0;
+    psf->psfFaceCount= 0;
+    psf->psfHasFixedWidth= 0;
+    psf->psfHasProportionalWidth= 0;
 
     return;
     }
 
-static void psCleanFontFamily( PsFontFamily * aff )
+static void psCleanFontFamily( PsFontFamily * psf )
     {
-    /*  aff->psfFontFamilyName_Orig: Managed by afis	*/
-    /*  aff->psfFontFamilyName: Managed by afis		*/
+    /*  psf->psfFontFamilyName_Orig: Managed by afis	*/
+    /*  psf->psfFontFamilyName: Managed by afis		*/
 
-    if  ( aff->psfFaces )
-	{ free( aff->psfFaces );	}
+    if  ( psf->psfFaces )
+	{ free( psf->psfFaces );	}
     }
 
-void psFreeFontFamily( PsFontFamily * aff )
+void psFreeFontFamily( PsFontFamily * psf )
     {
-    psCleanFontFamily( aff );
+    psCleanFontFamily( psf );
 
-    free( aff );
+    free( psf );
     }

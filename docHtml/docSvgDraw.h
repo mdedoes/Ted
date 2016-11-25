@@ -7,8 +7,8 @@
 #   ifndef		DOC_SVG_DRAW_H
 #   define		DOC_SVG_DRAW_H
 
-#   include	<sioGeneral.h>
-#   include	<layoutContext.h>
+struct SimpleOutputStream;
+struct LayoutContext;
 
 /************************************************************************/
 /*									*/
@@ -17,9 +17,9 @@
 /************************************************************************/
 
 extern int docSvgDrawDocument(
-			SimpleOutputStream *		sos,
+			struct SimpleOutputStream *	sos,
 			const char *			applicationName,
 			const char *			applicationReference,
-			const LayoutContext *		lc );
+			const struct LayoutContext *	lc );
 
 #   endif	/*	DOC_SVG_DRAW_H	*/

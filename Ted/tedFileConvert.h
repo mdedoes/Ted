@@ -1,13 +1,7 @@
 #   ifndef	TED_FILE_CONVERT_H
 #   define	TED_FILE_CONVERT_H
 
-#   include	<appFrame.h>
-
-#   include	<utilPropMask.h>
-#   include	<utilMemoryBuffer.h>
-
-#   include	<geo2DInteger.h>
-#   include	<utilIndexMapping.h>
+struct EditApplication;
 
 /************************************************************************/
 /*									*/
@@ -15,25 +9,37 @@
 /*									*/
 /************************************************************************/
 
-extern int tedTtfToAfm(		EditApplication *		ea,
+extern int tedTtfToAfm(		struct EditApplication *	ea,
 				const char *			prog,
 				const char *			call,
 				int				argc,
 				char **				argv );
 
-extern int tedAfmToGSFontmap(	EditApplication *		ea,
+extern int tedAfmToGSFontmap(	struct EditApplication *	ea,
 				const char *			prog,
 				const char *			call,
 				int				argc,
 				char **				argv );
 
-extern int tedAfmForFontFiles(	EditApplication *		ea,
+extern int tedAfmForFontFiles(	struct EditApplication *	ea,
 				const char *			prog,
 				const char *			call,
 				int				argc,
 				char **				argv );
 
-extern int tedFontsDocuments(	EditApplication *		ea,
+extern int tedFontsDocuments(	struct EditApplication *	ea,
+				const char *			prog,
+				const char *			call,
+				int				argc,
+				char **				argv );
+
+extern int tedConcatenate(	struct EditApplication *	ea,
+				const char *			prog,
+				const char *			call,
+				int				argc,
+				char **				argv );
+
+extern int tedConcatenateText(	struct EditApplication *	ea,
 				const char *			prog,
 				const char *			call,
 				int				argc,

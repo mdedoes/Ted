@@ -12,31 +12,32 @@
 #   include	<sioMD5.h>
 #   include	<utilMD5.h>
 #   include	<docHtmlWrite.h>
-#   include	<textOfficeCharset.h>
-#   include	<appQuestion.h>
 #   include	<appSystem.h>
 #   include	<psPrint.h>
 
 #   include	"tedApp.h"
-#   include	"tedRuler.h"
 #   include	"tedAppResources.h"
 #   include	"tedLayout.h"
 #   include	"tedDocument.h"
 
 #   include	<docPsPrint.h>
 #   include	<docSvgDraw.h>
-#   include	<docDebug.h>
-#   include	<docScreenLayout.h>
 #   include	<docRtfReadWrite.h>
 #   include	<docPlainReadWrite.h>
 #   include	<docField.h>
-#   include	<docParaParticules.h>
 #   include	<docRecalculateTocField.h>
 #   include	<docRtfTrace.h>
 #   include	<docEditCommand.h>
 
 #   include	<appPrintJob.h>
-#   include	<guiDrawingWidget.h>
+#   include	<docFileExtensions.h>
+#   include	<docRecalculateIncludeTextField.h>
+#   include	<docTreeNode.h>
+#   include	<docDocumentProperties.h>
+#   include	<appEditApplication.h>
+#   include	<sioGeneral.h>
+#   include	<layoutContext.h>
+#   include	<docBuf.h>
 
 #   include	<appDebugon.h>
 
@@ -48,20 +49,21 @@
 
 static int tedRefreshRecalculateFields(	int *			pReachedBottom,
 					RecalculateFields *	rf,
-					DOC_CLOSE_OBJECT	closeObject,
 					TedDocument *		td,
 					const LayoutContext *	lc )
     {
-    BufferDocument *		bd= td->tdDocument;
+    struct BufferDocument *		bd= td->tdDocument;
     const int			page= 0;
 
     rf->rfDocument= bd;
-    rf->rfCloseObject= docScreenCloseObject;
     rf->rfUpdateFlags= FIELDdoDOC_FORMATTED|FIELDdoDOC_COMPLETE|FIELDdoDOC_INFO;
     rf->rfFieldsUpdated= 0;
+    rf->rfLocale= lc->lcLocale;
 
     rf->rfBodySectNode= bd->bdBody.dtRoot->biChildren[0];
 
+    if  ( docRecalculateIncludeTextFields( rf ) )
+	{ LDEB(1); return -1;	}
     if  ( docRecalculateTocFields( rf ) )
 	{ LDEB(1); return -1;	}
 
@@ -82,22 +84,17 @@ static int tedRefreshRecalculateFields(	int *			pReachedBottom,
 /*									*/
 /************************************************************************/
 
-int tedPrintDocument(	SimpleOutputStream *		sos,
-			const PrintJob *		pj,
+int tedPreparePrint(	const PrintJob *		pj,
 			const PrintGeometry *		pg )
     {
     int				rval= 0;
 
     EditApplication *		ea= pj->pjApplication;
     TedDocument *		td= (TedDocument *)pj->pjPrivateData;
-    BufferDocument *		bd= td->tdDocument;
-    DocumentProperties *	dp= &(bd->bdProperties);
+    struct BufferDocument *		bd= td->tdDocument;
+    DocumentProperties *	dp= bd->bdProperties;
 
     time_t			now;
-
-    double			shadingMesh= -1;
-    TedAppResources *		tar= (TedAppResources *)ea->eaResourceData;
-    int				emitOutline= tar->tarPdfOutlineInt > 0;
 
     RecalculateFields		rf;
     LayoutContext		lc;
@@ -110,9 +107,6 @@ int tedPrintDocument(	SimpleOutputStream *		sos,
 	  utilMemoryBufferSetString( &fontDir, ea->eaFontDirectory )	)
 	{ XDEB(ea->eaFontDirectory); rval= -1; goto ready;	}
 
-    if  ( tar )
-	{ shadingMesh= tar->tarShadingMeshPointsDouble;	}
-
     now= time( (time_t *)0 );
     dp->dpPrintim= *localtime( &now );
 
@@ -121,16 +115,49 @@ int tedPrintDocument(	SimpleOutputStream *		sos,
     tedSetDocumentLayoutContext( &lc, pj->pjDrawingSurface,
 					&(ea->eaPostScriptFontList), td );
 
-    if  ( tedRefreshRecalculateFields( (int *)0, &rf,
-					docScreenCloseObject, td, &lc ) )
+    if  ( tedRefreshRecalculateFields( (int *)0, &rf, td, &lc ) )
 	{ LDEB(1); rval= -1; goto ready;	}
+
+  ready:
+
+    utilCleanMemoryBuffer( &fontDir );
+
+    return rval;
+    }
+
+int tedPrintDocument(	SimpleOutputStream *		sos,
+			const PrintJob *		pj,
+			const PrintGeometry *		pg )
+    {
+    int				rval= 0;
+
+    EditApplication *		ea= pj->pjApplication;
+    TedDocument *		td= (TedDocument *)pj->pjPrivateData;
+
+    LayoutContext		lc;
+
+    double			shadingMesh= -1;
+    TedAppResources *		tar= (TedAppResources *)ea->eaResourceData;
+    int				emitOutline= tar->tarPdfOutlineInt > 0;
+
+    MemoryBuffer		fontDir;
+
+    utilInitMemoryBuffer( &fontDir );
+
+    if  ( ea->eaFontDirectory						&&
+	  utilMemoryBufferSetString( &fontDir, ea->eaFontDirectory )	)
+	{ XDEB(ea->eaFontDirectory); rval= -1; goto ready;	}
+
+    layoutInitContext( &lc );
+    tedSetDocumentLayoutContext( &lc, pj->pjDrawingSurface,
+					&(ea->eaPostScriptFontList), td );
 
     if  ( docPsPrintDocument( sos, pj->pjTitle,
 				    ea->eaApplicationName,
 				    ea->eaReference,
 				    &fontDir,
 				    shadingMesh, emitOutline, &lc, pg ) )
-	{ LDEB(1); rval= -1; goto ready;	}
+	{ LDEB(1); rval= -1;	}
 
   ready:
 
@@ -157,8 +184,7 @@ static int tedSaveSvg(	SimpleOutputStream *		sos,
     layoutInitContext( &lc );
     tedSetDocumentLayoutContext( &lc, ds, &(ea->eaPostScriptFontList), td );
 
-    if  ( tedRefreshRecalculateFields( (int *)0, &rf,
-					    docScreenCloseObject, td, &lc ) )
+    if  ( tedRefreshRecalculateFields( (int *)0, &rf, td, &lc ) )
 	{ LDEB(1); return -1;	}
 
     if  ( docSvgDrawDocument( sos, ea->eaApplicationName,
@@ -171,10 +197,10 @@ static int tedSaveSvg(	SimpleOutputStream *		sos,
 /************************************************************************/
 
 static SimpleOutputStream * tedOpenSaveOutput(
-					const DocumentProperties *	dp,
-					int			format,
-					int			suggestStdout,
-					const MemoryBuffer *	filename )
+				const DocumentProperties *	dp,
+				int				format,
+				int				suggestStdout,
+				const MemoryBuffer *		filename )
     {
     SimpleOutputStream *	sosDoc= (SimpleOutputStream *)0;
     SimpleOutputStream *	rval= (SimpleOutputStream *)0;
@@ -230,6 +256,41 @@ static SimpleOutputStream * tedOpenSaveOutput(
 
 /************************************************************************/
 
+static int tedLayoutForSaveFormatted(
+				RecalculateFields *		rf,
+				LayoutContext *			lc,
+				DrawingSurface			ds,
+				const PostScriptFontList *	psfl,
+				TedDocument *			td,
+				int				format )
+    {
+    DocumentRectangle		drScreenIgnored;
+    DocumentRectangle		drVisibleIgnored;
+
+    struct BufferDocument *		bd= td->tdDocument;
+    DocumentProperties *	dp= bd->bdProperties;
+
+    docInitRecalculateFields( rf );
+    layoutInitContext( lc );
+
+    tedSetDocumentLayoutContext( lc, ds, psfl, td );
+    lc->lcLocale= td->tdLocale;
+    rf->rfLocale= lc->lcLocale;
+
+    if  ( ! ds )
+	{
+	if  ( tedFirstRecalculateFields( rf, bd ) )
+	    { LDEB(1); return -1;	}
+
+	if  ( tedLayoutDocument( &drScreenIgnored, &drVisibleIgnored,
+				    td, format, (DrawingSurface)0,
+				    psfl, &(dp->dpGeometry) ) )
+	    { LDEB(format); return -1;	}
+	}
+
+    return 0;
+    }
+
 static int tedSaveDocumentImpl(		EditApplication *	ea,
 					DrawingSurface		ds,
 					SimpleOutputStream *	sos,
@@ -239,13 +300,10 @@ static int tedSaveDocumentImpl(		EditApplication *	ea,
 					const MemoryBuffer *	filename )
     {
     time_t			now;
-    BufferDocument *		bd= td->tdDocument;
-    DocumentProperties *	dp= &(bd->bdProperties);
+    struct BufferDocument *		bd= td->tdDocument;
+    DocumentProperties *	dp= bd->bdProperties;
 
     const PostScriptFontList *	psfl= &(ea->eaPostScriptFontList);
-
-    DocumentRectangle		drScreenIgnored;
-    DocumentRectangle		drVisibleIgnored;
 
     switch( format )
 	{
@@ -253,7 +311,8 @@ static int tedSaveDocumentImpl(		EditApplication *	ea,
 	    now= time( (time_t *)0 );
 	    dp->dpRevtim= *localtime( &now );
 
-	    if  ( docRtfSaveDocument( sos, bd, (const DocumentSelection *)0, 0 ) )
+	    if  ( docRtfSaveDocument( sos, bd,
+				    (const struct DocumentSelection *)0, 0 ) )
 		{ LDEB(1); return -1;	}
 	    break;
 
@@ -263,13 +322,13 @@ static int tedSaveDocumentImpl(		EditApplication *	ea,
 
 	case TEDdockindTEXT_SAVE_WIDE:
 	    if  ( docPlainSaveDocument( sos, bd,
-					(const DocumentSelection *)0, 0 ) )
+				    (const struct DocumentSelection *)0, 0 ) )
 		{ LDEB(1); return -1;	}
 	    break;
 
 	case TEDdockindTEXT_SAVE_FOLDED:
 	    if  ( docPlainSaveDocument( sos, bd,
-					(const DocumentSelection *)0, 1 ) )
+				    (const struct DocumentSelection *)0, 1 ) )
 		{ LDEB(1); return -1;	}
 	    break;
 
@@ -278,24 +337,8 @@ static int tedSaveDocumentImpl(		EditApplication *	ea,
 	    RecalculateFields	rf;
 	    LayoutContext	lc;
 
-	    docInitRecalculateFields( &rf );
-	    layoutInitContext( &lc );
-	    tedSetDocumentLayoutContext( &lc, ds, psfl, td );
-
-	    if  ( ! ds )
-		{
-		if  ( tedFirstRecalculateFields( &rf,
-						(DOC_CLOSE_OBJECT)0, bd ) )
-		    { LDEB(1); return -1;	}
-
-		if  ( tedLayoutDocument( &drScreenIgnored, &drVisibleIgnored,
-					    td, format, (DrawingSurface)0,
-					    psfl, &(dp->dpGeometry) ) )
-		    {
-		    SDEB(utilMemoryBufferGetString(documentTitle));
-		    return -1;
-		    }
-		}
+	    if  ( tedLayoutForSaveFormatted( &rf, &lc, ds, psfl, td, format ) )
+		{ SDEB(utilMemoryBufferGetString(documentTitle)); return -1; }
 
 	    if  ( docHtmlSaveDocument( sos, bd, filename, &lc ) )
 		{ LDEB(1); return -1;	}
@@ -308,24 +351,8 @@ static int tedSaveDocumentImpl(		EditApplication *	ea,
 	    RecalculateFields	rf;
 	    LayoutContext	lc;
 
-	    docInitRecalculateFields( &rf );
-	    layoutInitContext( &lc );
-	    tedSetDocumentLayoutContext( &lc, ds, psfl, td );
-
-	    if  ( ! ds )
-		{
-		if  ( tedFirstRecalculateFields( &rf,
-						(DOC_CLOSE_OBJECT)0, bd ) )
-		    { LDEB(1); return -1;	}
-
-		if  ( tedLayoutDocument( &drScreenIgnored, &drVisibleIgnored,
-					    td, format, (DrawingSurface)0,
-					    psfl, &(dp->dpGeometry) ) )
-		    {
-		    SDEB(utilMemoryBufferGetString(documentTitle));
-		    return -1;
-		    }
-		}
+	    if  ( tedLayoutForSaveFormatted( &rf, &lc, ds, psfl, td, format ) )
+		{ SDEB(utilMemoryBufferGetString(documentTitle)); return -1; }
 
 	    if  ( docEmlSaveDocument( sos, bd, mimeBoundary, &lc ) )
 		{ SDEB(mimeBoundary); return -1;	}
@@ -337,23 +364,8 @@ static int tedSaveDocumentImpl(		EditApplication *	ea,
 	    RecalculateFields	rf;
 	    LayoutContext	lc;
 
-	    docInitRecalculateFields( &rf );
-	    layoutInitContext( &lc );
-	    tedSetDocumentLayoutContext( &lc, ds, psfl, td );
-
-	    if  ( ! ds )
-		{
-		if  ( tedFirstRecalculateFields( &rf, (DOC_CLOSE_OBJECT)0, bd ) )
-		    { LDEB(1); return -1;	}
-
-		if  ( tedLayoutDocument( &drScreenIgnored, &drVisibleIgnored,
-					    td, format, (DrawingSurface)0,
-					    psfl, &(dp->dpGeometry) ) )
-		    {
-		    SDEB(utilMemoryBufferGetString(documentTitle));
-		    return -1;
-		    }
-		}
+	    if  ( tedLayoutForSaveFormatted( &rf, &lc, ds, psfl, td, format ) )
+		{ SDEB(utilMemoryBufferGetString(documentTitle)); return -1; }
 
 	    if  ( docEpubSaveDocument( sos, bd, &lc ) )
 		{ LDEB(format); return -1;	}
@@ -368,27 +380,14 @@ static int tedSaveDocumentImpl(		EditApplication *	ea,
 
 	case TEDdockindSVG:
 	    {
+	    RecalculateFields	rf;
 	    LayoutContext	lc;
 
-	    layoutInitContext( &lc );
-	    tedSetDocumentLayoutContext( &lc, ds, psfl, td );
-
-	    if  ( ! ds )
-		{
-		if  ( tedLayoutDocument( &drScreenIgnored, &drVisibleIgnored,
-					    td, format, (DrawingSurface)0,
-					    psfl, &(dp->dpGeometry) ) )
-		    {
-		    SDEB(utilMemoryBufferGetString(documentTitle));
-		    return -1;
-		    }
-		}
+	    if  ( tedLayoutForSaveFormatted( &rf, &lc, ds, psfl, td, format ) )
+		{ SDEB(utilMemoryBufferGetString(documentTitle)); return -1; }
 
 	    if  ( tedSaveSvg( sos, ea, td, ds ) )
-		{
-		SDEB(utilMemoryBufferGetString(documentTitle));
-		return -1;
-		}
+		{ SDEB(utilMemoryBufferGetString(documentTitle)); return -1; }
 	    }
 
 	    break;
@@ -418,8 +417,8 @@ int tedSaveDocument(	EditApplication *	ea,
     int				rval= 0;
     TedDocument *		td= (TedDocument *)privateData;
     EditTrace *			etOld= &(td->tdEditTrace);
-    BufferDocument *		bd= td->tdDocument;
-    DocumentProperties *	dp= &(bd->bdProperties);
+    struct BufferDocument *		bd= td->tdDocument;
+    DocumentProperties *	dp= bd->bdProperties;
 
     SimpleOutputStream *	sosDoc= (SimpleOutputStream *)0;
     SimpleOutputStream *	sosMD5= (SimpleOutputStream *)0;
@@ -482,7 +481,8 @@ int tedSaveDocument(	EditApplication *	ea,
     if  ( suggestStdout && format == TEDdockindHTML_FILES )
 	{ filename= (const MemoryBuffer *)0;	}
 
-    if  ( tedSaveDocumentImpl( ea, ds, sos, td, format, documentTitle, filename ) )
+    if  ( tedSaveDocumentImpl( ea, ds, sos, td, format,
+						    documentTitle, filename ) )
 	{ LDEB(format); rval= -1; goto ready;	}
 
     /*  flush to finalize digest */
@@ -536,8 +536,8 @@ int tedSaveDocument(	EditApplication *	ea,
 	utilMD5ToBase64( etOld->etBaseMD5Digest64, digest );
 
 	if  ( docRtfTraceVersion( EDITcmd_SAVE, filename,
-						    etOld->etBaseMD5Digest64,
-						    &(dp->dpRevtim), etOld ) )
+				etOld->etBaseMD5Digest64, &(dp->dpRevtim),
+				etOld, (struct BufferDocument *)0 ) )
 	    { LDEB(saveDigest); rval= -1; goto ready;	}
 
 	etOld->etBase= etOld->etIndex- 1;

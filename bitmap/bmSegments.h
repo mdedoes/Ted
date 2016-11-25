@@ -2,6 +2,7 @@
 #   define		BM_SEGMENTS_H
 
 #   include	"bitmap.h"
+#   include	<geoRectangle.h>
 
 typedef struct DataRun
     {

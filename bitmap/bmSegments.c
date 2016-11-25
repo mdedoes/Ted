@@ -554,10 +554,13 @@ static int bmStartNewSegment(	int *			pnco,
 
     if  ( nco >= mco )
 	{
+	CompIndex *	fresh;
+
 	mco= ( 3* mco )/2+ 1;
-	comps= (CompIndex *)realloc( comps, mco* sizeof(CompIndex) );
-	if  ( ! comps )
-	    { return -1;	}
+	fresh= (CompIndex *)realloc( comps, mco* sizeof(CompIndex) );
+	if  ( ! fresh )
+	    { XDEB(fresh); return -1;	}
+	comps= fresh;
 	}
 
     comps[nco].ci_compo= bs;
@@ -1109,6 +1112,11 @@ failure:
     return -1;
     }
 
+# ifdef __GNUC__
+# pragma GCC diagnostic push
+# pragma GCC diagnostic ignored "-Wunused-parameter"
+# endif
+
 int bmcDrawComponent(	const BitmapSegment *	bs,
 			unsigned char *		buffer,
 			int			col0,
@@ -1155,6 +1163,10 @@ int bmcDrawComponent(	const BitmapSegment *	bs,
 
     return 0;
     }
+
+# ifdef __GNUC__
+# pragma GCC diagnostic pop
+# endif
 
 /************************************************************************/
 /*									*/

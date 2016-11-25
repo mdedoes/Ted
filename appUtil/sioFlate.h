@@ -5,10 +5,12 @@
 /*									*/
 /************************************************************************/
 
-#   include	"sioGeneral.h"
+struct SimpleOutputStream;
+struct SimpleInputStream;
 
-extern SimpleInputStream * sioInFlateOpen(SimpleInputStream *	sisFlate );
+extern struct SimpleInputStream * sioInFlateOpen(
+				struct SimpleInputStream *	sisFlate );
 
-extern SimpleOutputStream * sioOutFlateOpen(
-					SimpleOutputStream *	sosFlate,
-					int			gzipEmbedded );
+extern struct SimpleOutputStream * sioOutFlateOpen(
+				struct SimpleOutputStream *	sosFlate,
+				int				gzipEmbedded );

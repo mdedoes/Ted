@@ -1,12 +1,16 @@
 #   include	"appFrameConfig.h"
 
-#   include	<stdlib.h>
-#   include	<stdio.h>
+#   if ! USE_HEADLESS
 
-#   include	"guiWidgets.h"
+#   include	<stdlib.h>
+
+#   include	<guiWidgets.h>
 #   include	"appMetricRuler.h"
-#   include	"guiWidgetDrawingSurface.h"
-#   include	"guiDrawingWidget.h"
+#   include	<guiWidgetDrawingSurface.h>
+#   include	<guiDrawingWidget.h>
+#   include	"appRuler.h"
+#   include	"appEditApplication.h"
+#   include	"appEditDocument.h"
 
 #   include	<appDebugon.h>
 
@@ -40,14 +44,14 @@ typedef struct MetricRulerDrag
     MetricRuler *	mrdMr;
     APP_WIDGET		mrdWidget;
     int			mrdOc;
-    EditDocument *	mrdDocument;
+    struct EditDocument *	mrdDocument;
     } MetricRulerDrag;
 
 void * appMakeMetricRuler(
 			int				sizeAcross,
 			double				magnifiedPixelsPerTwip,
 			double				magnification,
-			const PostScriptFontList *	psfl,
+			const struct PostScriptFontList *	psfl,
 
 			int				minUnused,
 			int				maxUnused,
@@ -512,7 +516,7 @@ SDEB((char *)scratch);
     return;
     }
 
-APP_EVENT_HANDLER_H( appRedrawHorizontalMetricRuler, w, voidmr, event )
+APP_REDRAW_HANDLER_H( appRedrawHorizontalMetricRuler, w, voidmr, event )
     {
     MetricRuler *	mr= (MetricRuler *)voidmr;
     RulerData *		rd= &(mr->mrRulerData);
@@ -529,12 +533,16 @@ APP_EVENT_HANDLER_H( appRedrawHorizontalMetricRuler, w, voidmr, event )
 		    FONT_HEIGHT(rd->rdSizeAcross), mr->mrMagnification, w );
 	}
 
-    guiCollectExposures( &drClip, w, event );
+    guiStartDrawing( &drClip, rd->rdDrawingSurface, w, event );
+
+    drawSetLineAttributes( rd->rdDrawingSurface,
+			1, LineStyleSolid, LineCapProjecting, LineJoinMiter,
+			(const unsigned char *)0, 0 );
 
     appDrawHorizontalRuler( w, mr, &drClip, ox );
     }
 
-APP_EVENT_HANDLER_H( appRedrawVerticalMetricRuler, w, voidmr, event )
+APP_REDRAW_HANDLER_H( appRedrawVerticalMetricRuler, w, voidmr, event )
     {
     MetricRuler *	mr= (MetricRuler *)voidmr;
     RulerData *		rd= &(mr->mrRulerData);
@@ -551,7 +559,11 @@ APP_EVENT_HANDLER_H( appRedrawVerticalMetricRuler, w, voidmr, event )
 		    FONT_HEIGHT(rd->rdSizeAcross), mr->mrMagnification, w );
 	}
 
-    guiCollectExposures( &drClip, w, event );
+    guiStartDrawing( &drClip, rd->rdDrawingSurface, w, event );
+
+    drawSetLineAttributes( rd->rdDrawingSurface,
+			1, LineStyleSolid, LineCapProjecting, LineJoinMiter,
+			(const unsigned char *)0, 0 );
 
     appDrawVerticalRuler( w, mr, &drClip, oy );
     }
@@ -940,10 +952,10 @@ static void appHorizontalRulerDragItem(	int *			pValue,
 
     appMetricRulerExposeValue( ed );
 
-    appRunDragLoop( w, ea, downEvent,
+    guiRunDragLoop( w, ea->eaContext, downEvent,
 				appHorizontalRulerMouseUp,
 				appHorizontalRulerMouseMove,
-				0, (APP_TIMER_CALLBACK)0,
+				0, (APP_DRAG_TIMER_CALLBACK)0,
 				(void *)&mrd );
 
     if  ( pChanged && *pValue != startValue )
@@ -1271,10 +1283,10 @@ static void appVerticalRulerDragItem(	int *			pValue,
 
     appMetricRulerExposeValue( ed );
 
-    appRunDragLoop( w, ea, downEvent,
+    guiRunDragLoop( w, ea->eaContext, downEvent,
 				appVerticalRulerMouseUp,
 				appVerticalRulerMouseMove,
-				0, (APP_TIMER_CALLBACK)0,
+				0, (APP_DRAG_TIMER_CALLBACK)0,
 				(void *)&mrd );
     if  ( pChanged && *pValue != startValue )
 	{ *pChanged= 1;	}
@@ -1506,3 +1518,4 @@ void appAdaptMetricRuler(	APP_WIDGET	w,
 	}
     }
 
+#   endif

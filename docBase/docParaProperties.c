@@ -6,11 +6,13 @@
 
 #   include	"docBaseConfig.h"
 
-#   include	<appDebugon.h>
-
 #   include	"docParaProperties.h"
 #   include	"docPropVal.h"
 #   include	"docListDepth.h"
+#   include	"docDocumentAttributeMap.h"
+#   include	<utilPropMask.h>
+
+#   include	<appDebugon.h>
 
 /************************************************************************/
 /*									*/
@@ -34,7 +36,7 @@ void docInitParagraphProperties(	ParagraphProperties *	pp )
     pp->ppSpaceAfterTwips= 0;
     pp->ppLineSpacingTwips= 0;
 
-    pp->ppStyle= 0;
+    pp->ppStyleNumber= 0;
     pp->ppListOverride= 0;
 
     pp->ppTopBorderNumber= 0;
@@ -338,7 +340,7 @@ int docSetParaProperty(		ParagraphProperties *	pp,
     switch( prop )
 	{
 	case PPpropSTYLE:
-	    pp->ppStyle= arg;
+	    pp->ppStyleNumber= arg;
 	    break;
 
 	case PPpropLISTOVERRIDE:
@@ -375,8 +377,7 @@ int docSetParaProperty(		ParagraphProperties *	pp,
 	    break;
 
 	case PPpropTAB_STOPS:
-	    LDEB(prop);
-	    return 0;
+	    pp->ppTabStopListNumber= arg;
 
 	case PPpropBREAK_KIND:
 	    pp->ppBreakKind= arg;
@@ -481,7 +482,7 @@ int docGetParaProperty(		const ParagraphProperties *	pp,
     switch( prop )
 	{
 	case PPpropSTYLE:
-	    return pp->ppStyle;
+	    return pp->ppStyleNumber;
 
 	case PPpropLISTOVERRIDE:
 	    return pp->ppListOverride;
@@ -505,7 +506,7 @@ int docGetParaProperty(		const ParagraphProperties *	pp,
 	    return pp->ppAlignment;
 
 	case PPpropTAB_STOPS:
-	    LDEB(prop); return -1;
+	    return pp->ppTabStopListNumber;
 
 	case PPpropBREAK_KIND:
 	    return pp->ppBreakKind;
@@ -551,6 +552,12 @@ int docGetParaProperty(		const ParagraphProperties *	pp,
 
 	case PPpropBAR_BORDER:
 	    return pp->ppBarNumber;
+
+	case PPpropSHADING:
+	    return pp->ppShadingNumber;
+
+	case PPpropFRAME:
+	    return pp->ppFrameNumber;
 
 	case PPpropOUTLINELEVEL:
 	    return pp->ppOutlineLevel;

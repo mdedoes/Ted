@@ -6,11 +6,19 @@
 
 #   include	"docBufConfig.h"
 
-#   include	<appDebugon.h>
-
 #   include	"docBuf.h"
 #   include	"docTreeNode.h"
 #   include	"docNodeTree.h"
+#   include	"docTableRectangle.h"
+#   include	<docRowProperties.h>
+#   include	<docCellProperties.h>
+#   include	"docSelect.h"
+#   include	<docDocumentAttributeMap.h>
+#   include	<docParaProperties.h>
+#   include	<docEditRange.h>
+
+#   include	"docDebug.h"
+#   include	<appDebugon.h>
 
 /************************************************************************/
 /*									*/
@@ -18,22 +26,24 @@
 /*									*/
 /************************************************************************/
 
-int docDelimitTable(	const BufferItem *	paraNode,
-			BufferItem **		pParentNode,
-			int *			pCol,
-			int *			pRow0,
-			int *			pRow,
-			int *			pRow1 )
+int docDelimitTable(	const struct BufferItem *	paraNode,
+			struct BufferItem **		pParentNode,
+			int *				pCol,
+			int *				pRow0,
+			int *				pRow,
+			int *				pRow1 )
     {
-    BufferItem *	rowNode;
-    BufferItem *	parentNode;
+    struct BufferItem *	rowNode;
+    struct BufferItem *	parentNode;
     int			col;
 
-    if  ( paraNode->biLevel != DOClevPARA	||
-	  paraNode->biParaTableNesting == 0	)
+    if  ( paraNode->biLevel != DOClevPARA			||
+	  paraNode->biParaProperties->ppTableNesting == 0	)
 	{ /* LLDEB(paraNode->biLevel,paraNode->biParaInTable); */ return -1; }
 
-    rowNode= paraNode->biParent->biParent;
+    rowNode= docGetRowNode( (struct BufferItem *)paraNode );
+    if  ( ! rowNode )
+	{ XDEB(rowNode); return -1;	}
     parentNode= rowNode->biParent;
     col= paraNode->biParent->biNumberInParent;
 
@@ -57,20 +67,22 @@ int docDelimitTable(	const BufferItem *	paraNode,
 /*									*/
 /************************************************************************/
 
-int docGetCellBottom(		LayoutPosition *	lpBottom,
-				const BufferItem *	cellNode )
+int docGetCellBottom(		LayoutPosition *		lpBottom,
+				const struct BufferItem *	cellNode )
     {
-    const BufferItem *		rowNode= cellNode->biParent;
-    int				col= cellNode->biNumberInParent;
-    const BufferItem *		parentNode= rowNode->biParent;
+    const struct BufferItem *	rowNode= cellNode->biParent;
+    const struct BufferItem *	parentNode= rowNode->biParent;
 
     int				row0= rowNode->biNumberInParent;
     int				rowp= rowNode->biRowTablePast;
-    const CellProperties *	cp= &(rowNode->biRowCells[col]);
+    const CellProperties *	cp= cellNode->biCellProperties;
 
     const LayoutPosition *	lpBelow= &(rowNode->biBelowPosition);
 
     int				rowspan= 1;
+
+    if  ( ! cp )
+	{ XDEB(cp); return 1; }
 
     if  ( cp->cpVerticalMerge == CELLmergeFOLLOW )
 	{ rowspan= 0;	}
@@ -78,29 +90,21 @@ int docGetCellBottom(		LayoutPosition *	lpBottom,
 	if  ( cp->cpVerticalMerge == CELLmergeHEAD )
 	    {
 	    int		nRow;
-	    int		csp= 1;
-	    int		l, r;
-
-	    if  ( col == 0 )
-		{ l= rowNode->biRowLeftIndentTwips;	}
-	    else{ l= cp[-1].cpRightBoundaryTwips;	}
-	    r= docGetCellRight( &csp, cellNode );
 
 	    for ( nRow= row0+ 1; nRow < rowp; nRow++ )
 		{
-		int			ncsp= 1;
-		const BufferItem *	nRowBi= parentNode->biChildren[nRow];
+		const struct BufferItem *	nRowNode= parentNode->biChildren[nRow];
+		const RowProperties *	nRowRp= nRowNode->biRowProperties;
 		int			nCol;
 
-		nCol= docGetMatchingCell( &ncsp, nRowBi, l, r );
+		nCol= docGetMatchingCell( nRowNode, cellNode );
 		if  ( nCol < 0 )
 		    { break;	}
 
-		if  ( nRowBi->biRowCells[nCol].cpVerticalMerge !=
-							    CELLmergeFOLLOW )
+		if  ( nRowRp->rpCells[nCol].cpVerticalMerge != CELLmergeFOLLOW )
 		    { break;	}
 
-		lpBelow= &(nRowBi->biBelowPosition);
+		lpBelow= &(nRowNode->biBelowPosition);
 		rowspan++;
 		}
 	    }
@@ -112,24 +116,18 @@ int docGetCellBottom(		LayoutPosition *	lpBottom,
     return rowspan;
     }
 
+/************************************************************************/
+/*									*/
+/*  Determine the spans of a table cell.				*/
+/*									*/
+/************************************************************************/
+
 void docTableDetermineCellspans(	int *			pRowspan,
 					int *			pColspan,
-					const BufferItem *	cellNode )
+					const struct BufferItem *	cellNode )
     {
-    const BufferItem *		rowNode= cellNode->biParent;
-    int				col= cellNode->biNumberInParent;
-
-    const CellProperties *	cp= &(rowNode->biRowCells[col]);
-
-    int				colspan= 1;
+    int				colspan= cellNode->biCellColspan;
     int				rowspan= 1;
-
-    if  ( cp->cpHorizontalMerge == CELLmergeFOLLOW )
-	{ colspan= 0;	}
-    else{
-	if  ( cp->cpHorizontalMerge == CELLmergeHEAD )
-	    { /* right= */ docGetCellRight( &colspan, cellNode );	}
-	}
 
     rowspan= docGetCellBottom( (LayoutPosition *)0, cellNode );
 
@@ -161,11 +159,13 @@ void docTableDetermineCellspans(	int *			pRowspan,
 int docGetTableRectangle(	TableRectangle *		tr,
 				const DocumentSelection *	ds )
     {
-    BufferItem *	parentNode0;
-    BufferItem *	parentNode1;
+    struct BufferItem *	parentNode0;
+    struct BufferItem *	parentNode1;
 
     TableRectangle	trHead;
     TableRectangle	trTail;
+
+    int			wholeSingleCell= 0;
 
     /*  1  */
     if  ( docDelimitTable( ds->dsHead.dpNode, &parentNode0,
@@ -207,6 +207,7 @@ int docGetTableRectangle(	TableRectangle *		tr,
     tr->trRow0= trHead.trRow0;
     tr->trRow1= trTail.trRow0;
     tr->trRow11= trHead.trRow11;
+    tr->trPastHeaderRow= parentNode0->biChildren[trHead.trRow0]->biRowPastHeaderRow;
 
     tr->trCellColspan= 0;
     tr->trCellRowspan= 0;
@@ -214,27 +215,35 @@ int docGetTableRectangle(	TableRectangle *		tr,
     tr->trIsSingleCell= (	tr->trRow0 == tr->trRow1	&&
 				tr->trCol0 == tr->trCol1	);
 
-    tr->trIsColSlice= (		tr->trRow0 == tr->trRow00	&&
-    				tr->trRow1 == tr->trRow11	);
-
-    tr->trIsRowSlice= (		tr->trCol0 == 0			&&
-				tr->trCol1 == tr->trCol11	);
-
-    tr->trIsTableSlice= tr->trIsColSlice || tr->trIsRowSlice;
-    tr->trIsWholeTable= tr->trIsColSlice && tr->trIsRowSlice;
-
     /*  7  */
     if  ( tr->trIsSingleCell )
 	{
-	const BufferItem *	rowNode0= parentNode0->biChildren[trHead.trRow0];
-	const BufferItem *	cellNode0= rowNode0->biChildren[tr->trCol0];
+	BufferItem *	rowNode0= parentNode0->biChildren[trHead.trRow0];
+	BufferItem *	cellNode0= rowNode0->biChildren[tr->trCol0];
+
+	DocumentSelection	dsCell;
+
+	docSetNodeSelection( &dsCell, cellNode0 );
+	wholeSingleCell= docSameSelection( &dsCell, ds );
 
 	docTableDetermineCellspans(
 			&(tr->trCellRowspan), &(tr->trCellColspan), cellNode0 );
 	}
 
-    tr->trInTableHeader=
-		parentNode0->biChildren[trHead.trRow0]->biRowIsTableHeader;
+    tr->trIsColumnSlice= 0;
+    if  ( tr->trRow0 == tr->trRow00 && tr->trRow1 == tr->trRow11 )
+	{
+	tr->trIsColumnSlice= ! tr->trIsSingleCell || wholeSingleCell;
+	}
+
+    tr->trIsRowSlice= 0;
+    if  ( tr->trCol0 == 0 && tr->trCol1 == tr->trCol11 )
+	{
+	tr->trIsRowSlice= ! tr->trIsSingleCell || wholeSingleCell;
+	}
+
+    tr->trIsTableSlice= tr->trIsColumnSlice || tr->trIsRowSlice;
+    tr->trIsWholeTable= tr->trIsColumnSlice && tr->trIsRowSlice;
 
     return 0;
     }
@@ -245,71 +254,75 @@ int docGetTableRectangle(	TableRectangle *		tr,
 /*									*/
 /************************************************************************/
 
-void docDelimitTables(	BufferItem *		parentNode,
+void docDelimitTables(	struct BufferItem *	parentNode,
 			int			recursively )
     {
-    int		n;
-    int		headerRow= -1;
+    int				n;
+
+    if  ( ! parentNode )
+	{ XDEB(parentNode); return;	}
 
     n= 0;
     while( n < parentNode->biChildCount )
 	{
-	BufferItem *	rowNodeFirst;
-	BufferItem *	rowNode;
+	struct BufferItem *	firstNode;
 
-	int		first;
-	int		past;
+	int			first;
+	int			past;
 
-	rowNodeFirst= parentNode->biChildren[n];
-	if  ( ! docIsRowNode( rowNodeFirst ) )
+	int			pastHeaderRow= -1;
+
+	firstNode= parentNode->biChildren[n];
+	if  ( ! docIsRowNode( firstNode ) )
 	    {
-	    if  ( recursively && rowNodeFirst->biLevel != DOClevPARA )
-		{ docDelimitTables( rowNodeFirst, recursively );	}
+	    if  ( recursively && firstNode->biLevel != DOClevPARA )
+		{ docDelimitTables( firstNode, recursively );	}
 
-	    if  ( rowNodeFirst->biLevel == DOClevROW )
+	    if  ( firstNode->biLevel == DOClevROW )
 		{
-		rowNodeFirst->biRowTableHeaderRow= -1;
-		rowNodeFirst->biRowTableFirst= -1;
-		rowNodeFirst->biRowTablePast= -1;
+		firstNode->biRowTableFirst= -1;
+		firstNode->biRowTablePast= -1;
+		firstNode->biRowPastHeaderRow= -1;
 		}
 
-	    headerRow= -1;
 	    n++; continue;
 	    }
 
+	if  ( n >= parentNode->biChildCount )
+	    { break;	}
+
 	first= n;
-	past= n+ 1;
+	past= n;
+	pastHeaderRow= n;
 
 	while( past < parentNode->biChildCount )
 	    {
-	    rowNode= parentNode->biChildren[past];
+	    struct BufferItem *		rowNode= parentNode->biChildren[past];
+	    const RowProperties *	rp;
 
 	    if  ( ! docIsRowNode( rowNode ) )
 		{ break;	}
 
-	    /*
-	    if  ( ! docApproximatelyAlignedColumns(
-					&(rowNodeFirst->biRowProperties),
-					&(rowNode->biRowProperties) )	)
-		{ break;	}
-	    */
+	    rp= rowNode->biRowProperties;
+	    if  ( rp->rpIsTableHeader )
+		{ pastHeaderRow= past+ 1;	}
 
 	    past++; 
 	    }
 
+	if  ( past == n )
+	    { LLDEB(past,n);	}
+
 	while( n < past )
 	    {
-	    rowNode= parentNode->biChildren[n];
+	    struct BufferItem *		rowNode= parentNode->biChildren[n];
 
-	    if  ( recursively && rowNode->biLevel != DOClevPARA )
+	    if  ( recursively )
 		{ docDelimitTables( rowNode, recursively );	}
 
-	    if  ( rowNode->biRowIsTableHeader )
-		{ headerRow= n;	}
-
-	    rowNode->biRowTableHeaderRow= headerRow;
 	    rowNode->biRowTableFirst= first;
 	    rowNode->biRowTablePast= past;
+	    rowNode->biRowPastHeaderRow= pastHeaderRow;
 
 	    n++;
 	    }
@@ -320,53 +333,33 @@ void docDelimitTables(	BufferItem *		parentNode,
 
 /************************************************************************/
 /*									*/
-/*  Get colspan and right border of a cell.				*/
+/*  Find the cell with left and right coordinates as given.		*/
 /*									*/
 /************************************************************************/
 
-int docGetCellRight(	int *			pColspan,
-			const BufferItem *	cellNode )
-    {
-    const BufferItem *	rowNode= cellNode->biParent;
-    int			col= cellNode->biNumberInParent;
-
-    return docCellRight( pColspan, &(rowNode->biRowProperties), col );
-    }
-
-/************************************************************************/
-/*									*/
-/*  Find the cell with left and right borders as given.			*/
-/*									*/
-/************************************************************************/
-
-int docGetMatchingCell(		int *			pColspan,
-				const BufferItem *	rowNode,
-				int			l,
-				int			r )
+int docGetMatchingCell(		const struct BufferItem *	rowNode,
+				const struct BufferItem *	refCellNode )
     {
     int				col;
-    int				ll, rr;
-    const CellProperties *	cp;
 
     if  ( rowNode->biLevel != DOClevROW )
 	{ SDEB(docLevelStr(rowNode->biLevel)); return -1;	}
 
     /*  2  */
-    rr= rowNode->biRowLeftIndentTwips;
-    cp= rowNode->biRowCells;
-    for ( col= 0; col < rowNode->biChildCount; cp++, col++ )
+    for ( col= 0; col < rowNode->biChildCount; col++ )
 	{
-	int		colspan= 1;
+	struct BufferItem *		cellNode= rowNode->biChildren[col];
+	const CellProperties *	cp= cellNode->biCellProperties;
+
+	if  ( ! cp )
+	    { LXDEB(col,cp); continue; }
 
 	if  ( cp->cpHorizontalMerge == CELLmergeFOLLOW )
 	    { continue;	}
 
-	ll= rr; rr= cp->cpRightBoundaryTwips;
-	if  ( cp->cpHorizontalMerge == CELLmergeHEAD )
-	    { rr= docGetCellRight( &colspan, rowNode->biChildren[col] ); }
-
-	if  ( ll == l && rr == r )
-	    { *pColspan= colspan; return col;	}
+	if  ( cellNode->biCellHeadX == refCellNode->biCellHeadX	&&
+	      cellNode->biCellTailX == refCellNode->biCellTailX )
+	    { return col;	}
 	}
 
     return -1;
@@ -374,42 +367,20 @@ int docGetMatchingCell(		int *			pColspan,
 
 /************************************************************************/
 /*									*/
-/*  Get the cell and row properties for a node.				*/
+/*  Limit a selection that ends in a merged cell to the cell that it	*/
+/*  started in.								*/
 /*									*/
 /************************************************************************/
 
-const CellProperties *	docGetCellProperties(
-					const RowProperties **	pRp,
-					const BufferItem *	cellNode )
-    {
-    const BufferItem *		rowNode= cellNode->biParent;
-    const RowProperties *	rp= &(rowNode->biRowProperties);
-    int				col= cellNode->biNumberInParent;
-    const CellProperties *	cp= &(rp->rpCells[col]);
-
-    if  ( ! docIsRowNode( rowNode ) )
-	{
-	SSDEB(docLevelStr(rowNode->biLevel),docLevelStr(cellNode->biLevel));
-	return (const CellProperties *)0;
-	}
-
-    if  ( pRp )
-	{ *pRp= rp;	}
-
-    return cp;
-    }
-
-void docAvoidMergedTail(	DocumentSelection *	dsNew,
+void docAvoidMergedCellTail(	DocumentSelection *	dsNew,
 				EditRange *		er )
     {
-    BufferItem *	cellNode= docGetCellNode( dsNew->dsTail.dpNode );
+    struct BufferItem *	cellNode= docGetCellNode( dsNew->dsTail.dpNode );
 
     if  ( cellNode )
 	{
-	const RowProperties *	rp;
-	const CellProperties *	cp;
+	const CellProperties *	cp= cellNode->biCellProperties;
 
-	cp= docGetCellProperties( &rp, cellNode );
 	if  ( cp && CELL_MERGED( cp ) )
 	    {
 	    cellNode= docGetCellNode( dsNew->dsHead.dpNode );
@@ -432,14 +403,14 @@ void docAvoidMergedTail(	DocumentSelection *	dsNew,
 /*									*/
 /************************************************************************/
 
-void docSetCellRectangleProperties(	CellProperties *		cpSet,
-					const BufferItem *		rowNode,
+void docGetCellRectangleProperties(	CellProperties *		cpTo,
+					const struct BufferItem *		rowNode,
 					const TableRectangle *		tr,
 					const DocumentAttributeMap *	dam )
     {
-    const RowProperties *	rp= &(rowNode->biRowProperties);
+    const RowProperties *	rp= rowNode->biRowProperties;
 
-    if  ( docCopyCellProperties( cpSet, &(rp->rpCells[tr->trCol0]), dam ) )
+    if  ( docCopyCellProperties( cpTo, &(rp->rpCells[tr->trCol0]), dam ) )
 	{ LDEB(1); return;	}
 
     if  ( tr->trCol1 > tr->trCol0 )
@@ -449,21 +420,23 @@ void docSetCellRectangleProperties(	CellProperties *		cpSet,
 	if  ( fromNumber >= 0 && dam && dam->damBorderMap )
 	    { fromNumber= dam->damBorderMap[fromNumber];	}
 
-	cpSet->cpRightBorderNumber= fromNumber;
+	cpTo->cpRightBorderNumber= fromNumber;
 	}
 
     if  ( tr->trRow1 > tr->trRow0 )
 	{
+	const struct BufferItem *	rowNode1;
 	const RowProperties *	rp1;
 	int 			fromNumber;
 
-	rp1= &(rowNode->biParent->biChildren[tr->trRow1]->biRowProperties);
+	rowNode1= rowNode->biParent->biChildren[tr->trRow1];
+	rp1= rowNode1->biRowProperties;
 
 	fromNumber= rp1->rpCells[tr->trCol0].cpBottomBorderNumber;
 	if  ( fromNumber >= 0 && dam && dam->damBorderMap )
 	    { fromNumber= dam->damBorderMap[fromNumber];	}
 
-	cpSet->cpBottomBorderNumber= fromNumber;
+	cpTo->cpBottomBorderNumber= fromNumber;
 	}
 
     return;

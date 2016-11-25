@@ -1,6 +1,6 @@
 /************************************************************************/
 /*									*/
-/*  Save a BufferDocument into an HTML file.				*/
+/*  Save a struct BufferDocument into an HTML file.				*/
 /*									*/
 /*  Writes RTF attributes as CSS styles.				*/
 /*									*/
@@ -16,10 +16,16 @@
 
 #   include	<docBuf.h>
 #   include	<psShading.h>
-#   include	<docBorderPropertyAdmin.h>
 #   include	<docPropertiesAdmin.h>
 #   include	<textAttributeAdmin.h>
+#   include	<docItemShading.h>
+#   include	<docBorderProperties.h>
 #   include	"docWriteCss.h"
+#   include	<docDocumentProperties.h>
+#   include	<psTextExtents.h>
+#   include	<textAttribute.h>
+#   include	<fontDocFont.h>
+#   include	<docAttributes.h>
 
 #   include	<appDebugon.h>
 
@@ -30,7 +36,7 @@
 /************************************************************************/
 
 int docCssUseBackgroundStyle(	const ItemShading *		is,
-				const BufferDocument *		bd )
+				const struct BufferDocument *		bd )
     {
     int				isFilled= 0;
     RGB8Color			rgb8;
@@ -48,7 +54,7 @@ int docCssUseBackgroundStyle(	const ItemShading *		is,
 
 void docCssEmitBackgroundStyle( int *				pCol,
 				SimpleOutputStream *		sos,
-				const BufferDocument *		bd,
+				const struct BufferDocument *		bd,
 				const ItemShading *		is )
     {
     int				isFilled= 0;
@@ -83,7 +89,7 @@ void docCssEmitBackgroundStyle( int *				pCol,
 static int docCssEmitBorderStyle(
 			    int *			pCol,
 			    SimpleOutputStream *	sos,
-			    const BufferDocument *	bd,
+			    const struct BufferDocument *	bd,
 			    const char *		whatBorder,
 			    const BorderProperties *	bp )
     {
@@ -111,7 +117,7 @@ static int docCssEmitBorderStyle(
 	    { LDEB(1); return -1;	}
 	}
     else{
-	const DocumentProperties *	dp= &(bd->bdProperties);
+	const DocumentProperties *	dp= bd->bdProperties;
 	const ColorPalette *		colpal= dp->dpColorPalette;
 	const RGB8Color *		rgb8= colpal->cpColors+ bp->bpColor;
 
@@ -138,18 +144,18 @@ static int docCssEmitBorderStyle(
 void docCssEmitBorderStyleByNumber(
 			    int *			pCol,
 			    SimpleOutputStream *	sos,
-			    const BufferDocument *	bd,
+			    const struct BufferDocument *	bd,
 			    const char *		whatBorder,
 			    int				num )
     {
-    BorderProperties		bp;
+    const BorderProperties *		bp;
 
-    docGetBorderPropertiesByNumber( &bp, bd, num );
+    bp= docGetBorderPropertiesByNumber( bd, num );
 
-    if  ( ! DOCisBORDER( &bp ) )
+    if  ( ! DOCisBORDER( bp ) )
 	{ return;	}
 
-    docCssEmitBorderStyle( pCol, sos, bd, whatBorder, &bp );
+    docCssEmitBorderStyle( pCol, sos, bd, whatBorder, bp );
     }
 
 /************************************************************************/
@@ -165,7 +171,7 @@ typedef struct AttributesThrough
     {
     SimpleOutputStream *	atSos;
     const IndexSet *		atUsed;
-    const BufferDocument *	atDocument;
+    const struct BufferDocument *	atDocument;
     } AttributesThrough;
 
 static int docCssSaveTextAttributeStyle(
@@ -178,8 +184,8 @@ static int docCssSaveTextAttributeStyle(
     int					size;
     int					fontSize;
 
-    const BufferDocument *		bd= at->atDocument;
-    const DocumentProperties *		dp= &(bd->bdProperties);
+    const struct BufferDocument *		bd= at->atDocument;
+    const DocumentProperties *		dp= bd->bdProperties;
     const DocumentFontList *		dfl= dp->dpFontList;
     const DocumentFont *		df;
 
@@ -187,7 +193,7 @@ static int docCssSaveTextAttributeStyle(
     fontSize= ta->taFontSizeHalfPoints;
     fontSize= ( 6* ta->taFontSizeHalfPoints )/ 5;
 
-    df= docFontListGetFontByNumber( dfl, ta->taFontNumber );
+    df= fontFontListGetFontByNumber( dfl, ta->taFontNumber );
     if  ( ! df )
 	{ LXDEB(ta->taFontNumber,df); return -1;	}
 
@@ -210,7 +216,7 @@ static int docCssSaveTextAttributeStyle(
 	}
 
     size= cssFontFamilyIndicator( scratch, sizeof(scratch)- 1,
-						df->dfStyleInt, df->dfName );
+					    df->dfStyleInt, &(df->dfName) );
     if  ( size < 0 )
 	{ LDEB(size);	}
     if  ( size > 0 )
@@ -277,17 +283,17 @@ static int docCssSaveTextAttributeStyle(
     if  ( docShadingNumberIsShading( bd, ta->taShadingNumber ) )
 	{
 	int			col= 0;
-	ItemShading		is;
+	const ItemShading *	is;
 
-	docGetItemShadingByNumber( &is, bd, ta->taShadingNumber );
+	is= docGetItemShadingByNumber( bd, ta->taShadingNumber );
 
-	if  ( docCssUseBackgroundStyle( &is, at->atDocument ) )
+	if  ( docCssUseBackgroundStyle( is, at->atDocument ) )
 	    {
-	    docCssEmitBackgroundStyle( &col, at->atSos, at->atDocument, &is );
+	    docCssEmitBackgroundStyle( &col, at->atSos, at->atDocument, is );
 	    }
 	}
 
-    sprintf( scratch, "%d%spt", fontSize/ 2, fontSize % 2?".5":"" );
+    sprintf( scratch, "%d%spt", fontSize/ 2, (fontSize % 2)?".5":"" );
     sioOutPutString( "  font-size: ", at->atSos );
     sioOutPutString( scratch, at->atSos );
     sioOutPutString( ";\n", at->atSos );
@@ -299,7 +305,7 @@ static int docCssSaveTextAttributeStyle(
 
 int docCssSaveTextAttributeStyles(	SimpleOutputStream *	sos,
 					const IndexSet *	used,
-					const BufferDocument *	bd )
+					const struct BufferDocument *	bd )
     {
     AttributesThrough			at;
     const DocumentPropertyLists *	dpl= bd->bdPropertyLists;

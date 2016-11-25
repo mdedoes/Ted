@@ -6,44 +6,46 @@
 
 #   include	"docBufConfig.h"
 
-#   include	<appDebugon.h>
-
 #   include	"docBuf.h"
 #   include	<docTreeType.h>
 #   include	"docTreeNode.h"
 #   include	"docNodeTree.h"
+#   include	"docSelect.h"
+
+#   include	"docDebug.h"
+#   include	<appDebugon.h>
 
 /************************************************************************/
 /*									*/
-/*  What BufferItem is the common root of the selection.		*/
+/*  What struct BufferItem is the common root of the selection.		*/
 /*									*/
 /************************************************************************/
 
-int docGetTreeOfNode(		DocumentTree **		pTree,
-				BufferItem **		pBodySectNode,
-				BufferDocument *	bd,
-				BufferItem *		node )
+int docGetTreeOfNode(		struct DocumentTree **		pTree,
+				struct BufferItem **		pBodySectNode,
+				struct BufferDocument *		bd,
+				struct BufferItem *		node )
     {
-    BufferItem *	selSectBi;
-    BufferItem *	bodySectNode= (BufferItem *)0;
-    DocumentTree *	dt;
+    struct BufferItem *		selSectNode;
+    struct BufferItem *		bodySectNode= (struct BufferItem *)0;
+    struct DocumentTree *	tree;
 
     if  ( node->biLevel == DOClevBODY && node->biChildCount > 0 )
-	{ selSectBi= node->biChildren[0];	}
+	{ selSectNode= node->biChildren[0];	}
     else{
 	node= docGetSectNode( node );
 	if  ( ! node )
 	    { XDEB(node); return -1;	}
 
-	selSectBi= node;
+	selSectNode= node;
 	}
 
-    if  ( docGetRootOfSelectionScope( &dt, &bodySectNode,
-				    bd, &(selSectBi->biSectSelectionScope) ) )
+    if  ( docGetRootOfSelectionScope( &tree, &bodySectNode,
+				    bd, &(selSectNode->biSectSelectionScope) ) )
 	{ LDEB(1); return -1;	}
 
     if  ( pTree )
-	{ *pTree= dt;			}
+	{ *pTree= tree;			}
     if  ( pBodySectNode )
 	{ *pBodySectNode= bodySectNode;	}
 
@@ -52,49 +54,41 @@ int docGetTreeOfNode(		DocumentTree **		pTree,
 
 /************************************************************************/
 /*									*/
-/*  What BufferItem is the common root of the selection.		*/
+/*  What struct BufferItem is the common root of the selection.		*/
 /*									*/
 /************************************************************************/
 
-BufferItem * docGetSelectionRoot(
-			DocumentTree **			pTree,
-			BufferItem **			pBodySectNode,
-			BufferDocument *		bd,
+struct BufferItem * docGetSelectionRoot(
+			struct DocumentTree **		pTree,
+			struct BufferItem **		pBodySectNode,
+			struct BufferDocument *		bd,
 			const DocumentSelection *	ds )
     {
-    BufferItem *	selRootBi= (BufferItem *)0;
+    struct BufferItem *	selRootNode= (struct BufferItem *)0;
 
-    if  ( ! ds->dsHead.dpNode || ! ds->dsTail.dpNode )
+    if  ( ! docSelectionIsSet( ds ) )
 	{
 	XXDEB(ds->dsHead.dpNode,ds->dsTail.dpNode);
-	return (BufferItem *)0;
+	return (struct BufferItem *)0;
 	}
 
-    selRootBi= docGetCommonParent( ds->dsHead.dpNode, ds->dsTail.dpNode );
+    selRootNode= docGetCommonParent( ds->dsHead.dpNode, ds->dsTail.dpNode );
 
     if  ( pTree || pBodySectNode )
 	{
-	DocumentTree *	dt= (DocumentTree *)0;
-	BufferItem *	bodySectNode= (BufferItem *)0;
-
-	if  ( docGetTreeOfNode( &dt, &bodySectNode, bd, selRootBi ) )
-	    { LDEB(1); return (BufferItem *)0;	}
-
-	if  ( pTree )
-	    { *pTree= dt;			}
-	if  ( pBodySectNode )
-	    { *pBodySectNode= bodySectNode;	}
+	if  ( docGetTreeOfNode( pTree, pBodySectNode, bd, selRootNode ) )
+	    { LDEB(1); return (struct BufferItem *)0;	}
 	}
 
-    return selRootBi;
+    return selRootNode;
     }
 
 /************************************************************************/
 
-BufferItem * docGetBodySectNodeOfScope(	const SelectionScope *	ss,
-					const BufferDocument *	bd )
+struct BufferItem * docGetBodySectNodeOfScope(	const SelectionScope *	ss,
+					const struct BufferDocument *	bd )
     {
-    BufferItem *		sectBi;
+    struct BufferItem *		sectNode;
     int				sect;
 
     if  ( ss->ssTreeType == DOCinBODY )
@@ -104,19 +98,19 @@ BufferItem * docGetBodySectNodeOfScope(	const SelectionScope *	ss,
     if  ( sect < 0 || sect >= bd->bdBody.dtRoot->biChildCount )
 	{
 	SLLDEB(docTreeTypeStr(ss->ssTreeType),sect,bd->bdBody.dtRoot->biChildCount);
-	return (BufferItem *)0;
+	return (struct BufferItem *)0;
 	}
 
-    sectBi= bd->bdBody.dtRoot->biChildren[sect];
+    sectNode= bd->bdBody.dtRoot->biChildren[sect];
 
-    if  ( sectBi->biLevel != DOClevSECT )
-	{ LDEB(sectBi->biLevel); return (BufferItem *)0;	}
+    if  ( sectNode->biLevel != DOClevSECT )
+	{ LDEB(sectNode->biLevel); return (struct BufferItem *)0;	}
 
-    return sectBi;
+    return sectNode;
     }
 
-BufferItem * docGetBodySectNode(	BufferItem *		node,
-					const BufferDocument *	bd )
+struct BufferItem * docGetBodySectNode(	struct BufferItem *		node,
+					const struct BufferDocument *	bd )
     {
     int				sect;
 
@@ -124,7 +118,7 @@ BufferItem * docGetBodySectNode(	BufferItem *		node,
 	{
 	node= docGetSectNode( node );
 	if  ( ! node )
-	    { XDEB(node); return (BufferItem *)0;	}
+	    { XDEB(node); return (struct BufferItem *)0;	}
 	}
 
     if  ( node->biTreeType == DOCinBODY )
@@ -134,7 +128,7 @@ BufferItem * docGetBodySectNode(	BufferItem *		node,
     if  ( sect < 0 || sect >= bd->bdBody.dtRoot->biChildCount )
 	{
 	LLDEB(sect,bd->bdBody.dtRoot->biChildCount);
-	return (BufferItem *)0;
+	return (struct BufferItem *)0;
 	}
 
     return bd->bdBody.dtRoot->biChildren[sect];

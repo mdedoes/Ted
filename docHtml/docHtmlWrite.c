@@ -1,6 +1,6 @@
 /************************************************************************/
 /*									*/
-/*  Save a BufferDocument into an HTML file.				*/
+/*  Save a struct BufferDocument into an HTML file.				*/
 /*  Depending on the parameters, this is either an HTML file with	*/
 /*  a directory for the images, or a MHTML (rfc2112,rfc2557) aggregate.	*/
 /*  RFC 2557 was never validated.					*/
@@ -13,7 +13,7 @@
 #   include	<stdio.h>
 #   include	<ctype.h>
 
-#   include	<utilWindowsLanguageCode.h>
+#   include	<textMsLocale.h>
 #   include	<sioGeneral.h>
 
 #   include	<docBuf.h>
@@ -21,9 +21,13 @@
 #   include	"docHtmlWriteImpl.h"
 #   include	<docHyperlinkField.h>
 #   include	<docBookmarkField.h>
-#   include	<docTreeNode.h>
 #   include	<docNotes.h>
 #   include	<docDocumentNote.h>
+#   include	<docDocumentField.h>
+#   include	<docFieldKind.h>
+#   include	<docItemShading.h>
+#   include	<docDocumentProperties.h>
+#   include	<docAttributes.h>
 
 #   include	<appDebugon.h>
 
@@ -31,7 +35,7 @@ void docInitHtmlWritingContext(	HtmlWritingContext *	hwc )
     {
     xmlInitXmlWriter( &(hwc->hwcXmlWriter) );
 
-    hwc->hwcLayoutContext= (const LayoutContext *)0;
+    hwc->hwcLayoutContext= (const struct LayoutContext *)0;
     docLayoutInitBlockFrame( &(hwc->hwcBlockFrame) );
     docInitParagraphFrame( &(hwc->hwcParagraphFrame) );
 
@@ -39,7 +43,7 @@ void docInitHtmlWritingContext(	HtmlWritingContext *	hwc )
     hwc->hwcGetImageSrc= (HtmlGetImageSrc)0;
     hwc->hwcGetCssName= (HtmlGetCssName)0;
     hwc->hwcPrivate= (void *)0;
-    hwc->hwcDocument= (BufferDocument *)0;
+    hwc->hwcDocument= (struct BufferDocument *)0;
 
     utilInitIndexMapping( &(hwc->hwcDeferredNotes) );
 
@@ -255,7 +259,7 @@ int docHtmlStartAnchor(	HtmlWritingContext *		hwc,
 
 int docHtmlStartField(	const DocumentField *		df,
 			HtmlWritingContext *		hwc,
-			const BufferItem *		bi,
+			const struct BufferItem *	node,
 			int				attNr )
     {
     int			rval= 0;
@@ -278,7 +282,7 @@ int docHtmlStartField(	const DocumentField *		df,
 	case DOCfkCHFTN:
 	    hwc->hwcInHyperlink++;
 	    if  ( ! hwc->hwcInBookmark && hwc->hwcInHyperlink == 1 )
-		{ docHtmlStartNote( df, hwc, bi, attNr );	}
+		{ docHtmlStartNote( df, hwc, node, attNr );	}
 	    break;
 
 	case DOCfkHYPERLINK:
@@ -392,7 +396,7 @@ void docHtmlEmitBackgroundProperty(
 				const ItemShading *		is,
 				HtmlWritingContext *		hwc )
     {
-    const BufferDocument *	bd= hwc->hwcDocument;
+    const struct BufferDocument *	bd= hwc->hwcDocument;
 
     int				isFilled= 0;
     RGB8Color			rgb8;
@@ -440,14 +444,14 @@ static void docHtmlSaveMetaElement(	HtmlWritingContext *	hwc,
 int docHtmlStartDocument(	HtmlWritingContext *	hwc )
     {
     int				rval= 0;
-    const DocumentProperties *	dp= &(hwc->hwcDocument->bdProperties);
-    const char *		lang;
+    const DocumentProperties *	dp= hwc->hwcDocument->bdProperties;
 
     MemoryBuffer		stylesheet;
+    const char *		localeTag;
 
     utilInitMemoryBuffer( &stylesheet );
 
-    lang= utilLangForLanguageCode( dp->dpDefaultLanguage );
+    localeTag= textGetMsLocaleTagById( dp->dpDefaultLocaleId );
 
 #   if 0
     docHtmlPutString( "<!DOCTYPE HTML PUBLIC \"-//W3C//DTD HTML 4.01//EN\">\r\n",
@@ -464,8 +468,8 @@ int docHtmlStartDocument(	HtmlWritingContext *	hwc )
     docHtmlPutString( "<html", hwc );
     docHtmlWriteStringAttribute( hwc,
 				"xmlns", "http://www.w3.org/1999/xhtml" );
-    if  ( lang )
-	{ docHtmlWriteStringAttribute( hwc, "xml:lang", lang );	}
+    if  ( localeTag )
+	{ docHtmlWriteStringAttribute( hwc, "xml:lang", localeTag );	}
     docHtmlPutString( ">", hwc );
     docHtmlNewLine( hwc );
 
@@ -477,13 +481,16 @@ int docHtmlStartDocument(	HtmlWritingContext *	hwc )
     docHtmlPutString( "/>", hwc );
     docHtmlNewLine( hwc );
 
+    docHtmlPutString( "<title>", hwc );
     if  ( ! utilMemoryBufferIsEmpty( &(dp->dpTitle) ) )
 	{
-	docHtmlPutString( "<title>", hwc );
 	docHtmlEscapeString( utilMemoryBufferGetString( &(dp->dpTitle) ), hwc );
-	docHtmlPutString( "</title>", hwc );
-	docHtmlNewLine( hwc );
 	}
+    else{
+	docHtmlEscapeString( ".", hwc );
+	}
+    docHtmlPutString( "</title>", hwc );
+    docHtmlNewLine( hwc );
 
     if  ( ! hwc->hwcInlineCss )
 	{
@@ -568,13 +575,13 @@ int docHtmlSaveNotes(	HtmlWritingContext *	hwc )
 	  dfNote;
 	  dfNote= docGetNextNoteInDocument( &dn, hwc->hwcDocument, dfNote, -1 ) )
 	{
-	DocumentTree *	ei;
+	struct DocumentTree *	ei;
 
 	ei= &(dn->dnDocumentTree);
 	if  ( ! ei->dtRoot )
 	    { XDEB(ei->dtRoot); continue;	}
 
-	if  ( docHtmlSaveSelection( hwc, ei, (const DocumentSelection *)0 ) )
+	if  ( docHtmlSaveSelection( hwc, ei, (const struct DocumentSelection *)0 ) )
 	    { XDEB(ei->dtRoot); return -1; }
 	}
 

@@ -6,10 +6,14 @@
 
 #   include	"docBufConfig.h"
 
-#   include	<appDebugon.h>
-
 #   include	<psShading.h>
+#   include	<docItemShading.h>
 #   include	"docBuf.h"
+#   include	<docDocumentProperties.h>
+#   include	<utilPalette.h>
+#   include	"docAttributes.h"
+
+#   include	<appDebugon.h>
 
 /************************************************************************/
 /*									*/
@@ -19,10 +23,10 @@
 
 int docGetSolidRgbShadeOfItem(	int *			pIsFilled,
 				RGB8Color *		rgb8,
-				const BufferDocument *	bd,
+				const struct BufferDocument *	bd,
 				const ItemShading *	is )
     {
-    const DocumentProperties *	dp= &(bd->bdProperties);
+    const DocumentProperties *	dp= bd->bdProperties;
     const ColorPalette *	cp= dp->dpColorPalette;
 
     RGB8Color			cf;

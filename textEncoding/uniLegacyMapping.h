@@ -1,6 +1,6 @@
 /************************************************************************/
 /*									*/
-/*  Two unicode to byte mappings for legacy encodings.			*/
+/*  Unicode to byte mappings for legacy encodings.			*/
 /*									*/
 /************************************************************************/
 
@@ -18,8 +18,19 @@
 
 extern IndexMapping UNI_SymbolToGlyphMapping;
 extern IndexMapping UNI_DingbatsToGlyphMapping;
+extern IndexMapping UNI_CP1252ToGlyphMapping;
 
 extern IndexSet UNI_SymbolCodeSet;
 extern IndexSet UNI_DingbatsCodeSet;
+
+/************************************************************************/
+/*									*/
+/*  Routine Declarations.						*/
+/*									*/
+/************************************************************************/
+
+extern int textSetLegacyMapping(	IndexMapping *	im,
+					IndexSet *	is,
+					const int *	unicodes );
 
 #   endif

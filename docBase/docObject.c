@@ -6,14 +6,13 @@
 
 #   include	"docBaseConfig.h"
 
-#   include	<stdlib.h>
-#   include	<string.h>
-
 #   include	<geoGrid.h>
-#   include	<appDebugon.h>
+#   include	<geoRectangle.h>
 
 #   include	"docObject.h"
 #   include	"docObjectProperties.h"
+
+#   include	<appDebugon.h>
 
 /************************************************************************/
 /*									*/
@@ -25,12 +24,9 @@ void docCleanInsertedObject( InsertedObject * io )
     {
     utilCleanMemoryBuffer( &io->ioObjectData );
     utilCleanMemoryBuffer( &io->ioResultData );
+    utilCleanMemoryBuffer( &io->ioObjectName );
+    utilCleanMemoryBuffer( &io->ioObjectClass );
 
-    if  ( io->ioObjectName )
-	{ free( io->ioObjectName );	}
-    if  ( io->ioObjectClass )
-	{ free( io->ioObjectClass );	}
-    
     bmCleanRasterImage( &(io->ioRasterImage) );
     }
 
@@ -65,10 +61,9 @@ void docInitInsertedObject(	InsertedObject *	io )
 
     utilInitMemoryBuffer( &io->ioObjectData );
     utilInitMemoryBuffer( &io->ioResultData );
+    utilInitMemoryBuffer( &io->ioObjectName );
+    utilInitMemoryBuffer( &io->ioObjectClass );
     
-    io->ioObjectName= (char *)0;
-    io->ioObjectClass= (char *)0;
-
     io->ioDrawingShape= (struct DrawingShape *)0;
 
     io->ioDrawingSurface= (struct DrawingSurface *)0;
@@ -97,49 +92,32 @@ void docObjectAdaptToPictureGeometry(	InsertedObject *		io,
     }
 
 int docObjectSetData(	InsertedObject *	io,
+			int			prop,
 			const char *		bytes,
 			int			size )
     {
-    return utilMemoryBufferSetBytes( &(io->ioObjectData),
+    switch( prop )
+	{
+	case IOprop_OBJDATA:
+	    return utilMemoryBufferSetBytes( &(io->ioObjectData),
 				    (const unsigned char *)bytes, size );
-    }
 
-int docSetResultData(	InsertedObject *	io,
-			const char *		bytes,
-			int			size )
-    {
-    return utilMemoryBufferSetBytes( &(io->ioResultData),
+	case IOprop_OBJNAME:
+	    return utilMemoryBufferSetBytes( &(io->ioObjectName),
 				    (const unsigned char *)bytes, size );
-    }
 
-int docSetObjectName(	InsertedObject *	io,
-			const char *		name,
-			int			len )
-    {
-    char *	fresh= (char *)malloc( len+ 1 );
+	case IOprop_OBJCLASS:
+	    return utilMemoryBufferSetBytes( &(io->ioObjectClass),
+				    (const unsigned char *)bytes, size );
 
-    if  ( ! fresh )
-	{ LXDEB(len,fresh); return -1;	}
+	case IOprop_RESULT:
+	    return utilMemoryBufferSetBytes( &(io->ioResultData),
+				    (const unsigned char *)bytes, size );
 
-    io->ioObjectName= fresh;
-    strncpy( fresh, name, len ); fresh[len]= '\0';
+	default:
+	    LDEB(prop); return -1;
+	}
 
-    return 0;
-    }
-
-int docSetObjectClass(	InsertedObject *	io,
-			const char *		name,
-			int			len )
-    {
-    char *	fresh= (char *)malloc( len+ 1 );
-
-    if  ( ! fresh )
-	{ LXDEB(len,fresh); return -1;	}
-
-    io->ioObjectClass= fresh;
-    strncpy( fresh, name, len ); fresh[len]= '\0';
-
-    return 0;
     }
 
 /************************************************************************/

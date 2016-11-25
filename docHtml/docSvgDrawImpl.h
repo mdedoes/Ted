@@ -4,12 +4,19 @@
 /*									*/
 /************************************************************************/
 
-#   include	<sioGeneral.h>
-#   include	<svgWriter.h>
-#   include	<docBuf.h>
-#   include	<docDraw.h>
-#   include	<docParticuleData.h>
-#   include	<geoAffineTransform.h>
+struct InsertedObject;
+struct SimpleOutputStream;
+struct DrawTextLine;
+struct LayoutPosition;
+struct TextRun;
+struct SvgWriter;
+struct DrawingShape;
+struct DocumentRectangle;
+struct DrawingContext;
+struct TextAttribute;
+struct BufferItem;
+struct LayoutContext;
+struct AffineTransform2D;
 
 /************************************************************************/
 /*									*/
@@ -17,79 +24,72 @@
 /*									*/
 /************************************************************************/
 
-extern int docSvgEmitStroke(	SvgWriter *			sw,
+extern int docSvgEmitStroke(	struct SvgWriter *		sw,
 				const struct DrawingShape *	ds );
 
-extern int docSvgEmitFill(	SvgWriter *			sw,
+extern int docSvgEmitFill(	struct SvgWriter *		sw,
 				const struct DrawingShape *	ds );
 
 extern int docSvgDrawDrawDrawingShape(
-				const DocumentRectangle *	drTwips,
+				const struct DocumentRectangle * drTwips,
 				int				page,
 				struct DrawingShape *		ds,
-				DrawingContext *		dc,
+				struct DrawingContext *		dc,
 				void *				vsw );
 
-extern int docSvgDrawObject(	const DrawTextLine *		dtl,
+extern int docSvgDrawInlineObject(
+				const struct DrawTextLine *	dtl,
 				int				part,
-				InsertedObject *		io,
-				int				x0Twips,
-				int				x1Twips,
-				const LayoutPosition *		baseLine );
+				struct InsertedObject *		io,
+				const struct DocumentRectangle * drTwips,
+				const struct LayoutPosition *	baseLine );
 
-extern int docSvgDrawTab(	const DrawTextLine *		dtl,
+extern int docSvgDrawTab(	const struct DrawTextLine *	dtl,
 				int				part,
 				int				textAttrNr,
-				const TextAttribute *		ta,
+				const struct TextAttribute *	ta,
 				int				leader,
 				int				x0Twips,
 				int				x1Twips,
-				const LayoutPosition *		baseLine );
+				const struct LayoutPosition *	baseLine );
 
-extern int docSvgDrawFtnsep(	const DrawTextLine *		dtl,
+extern int docSvgDrawFtnsep(	const struct DrawTextLine *	dtl,
 				int				part,
 				int				textAttrNr,
-				const TextAttribute *		ta,
+				const struct TextAttribute *	ta,
 				int				x0Twips,
 				int				x1Twips,
-				const LayoutPosition *		baseLine );
+				const struct LayoutPosition *	baseLine );
 
-extern int docSvgDrawSpan(	const DrawTextLine *		dtl,
-				int				part,
-				int				count,
-				const LayoutPosition *		baseLine,
-				int				textAttrNr,
-				const TextAttribute *		ta,
-				const char *			printString,
-				int				nbLen );
+extern int docSvgDrawTextRun(	const struct TextRun *		tr,
+				int				x0Twips,
+				int				x1Twips,
+				const struct DrawTextLine *	dtl,
+				const struct LayoutPosition *	baseLine,
+				const char *			printString );
 
-extern int docSvgDrawTextLine(	struct BufferItem *		paraBi,
-				int				line,
-				const ParagraphFrame *		pf,
-				const DocumentRectangle *	drLine,
-				void *				vps,
-				DrawingContext *		dc,
-				const BlockOrigin *		bo );
+extern int docSvgStartTextLine(	struct DrawTextLine *		dtl,
+				int				x0Twips );
 
-extern int docSvgSaveShapeObject( SimpleOutputStream *	sos,
-				int			page,
-				int			pixelsWide,
-				int			pixelsHigh,
-				const InsertedObject *	io,
-				struct BufferItem *	bodySectNode,
-				const LayoutContext *	lc );
+extern int docSvgSaveShapeObject( struct SimpleOutputStream *	sos,
+				int				page,
+				int				pixelsWide,
+				int				pixelsHigh,
+				const struct InsertedObject *	io,
+				struct BufferItem *		bodySectNode,
+				const struct LayoutContext *	lc );
 
-extern int docSvgDrawShapeText(	const DocumentRectangle *	drHere,
+extern int docSvgDrawShapeText(	const struct DocumentRectangle *	drHere,
 				const struct BufferItem *	bodySectNode,
 				int				page,
 				int				column,
 				struct DrawingShape *		ds,
-				DrawingContext *		dc,
+				struct DrawingContext *		dc,
 				void *				vsw );
 
-extern int docSvgDrawShapeImage( SvgWriter *			sw,
-				DrawingContext *		dc,
+extern int docSvgDrawShapeImage( struct SvgWriter *		sw,
+				struct DrawingContext *		dc,
 				struct DrawingShape *		ds,
-				const DocumentRectangle *	drTwips,
-				const AffineTransform2D *	at );
+				const struct DocumentRectangle * drTwips,
+				const struct AffineTransform2D * at );
 

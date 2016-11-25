@@ -4,8 +4,10 @@
 #   include	<stdio.h>
 #   include	<ctype.h>
 
-#   include	"bmintern.h"
+#   include	"bmformats.h"
 #   include	<sioFileio.h>
+#   include	<sioGeneral.h>
+
 #   include	<appDebugon.h>
 
 /************************************************************************/
@@ -80,7 +82,7 @@ static int bmWbmpReadWbmp(	BitmapDescription *	bd,
     return 0;
     }
 
-int bmReadWbmpFile(	const MemoryBuffer *	filename,
+int bmReadWbmpFile(	const struct MemoryBuffer *	filename,
 			unsigned char **	pBuffer,
 			BitmapDescription *	bd,
 			int *			pPrivateFormat )
@@ -158,7 +160,7 @@ static int bmWbmpPutNumber(	int			num,
     return 0;
     }
 
-int bmWriteWbmpFile(	const MemoryBuffer *		filename,
+int bmWriteWbmpFile(	const struct MemoryBuffer *	filename,
 			const unsigned char *		buffer,
 			const BitmapDescription *	bd,
 			int				privateFormat )

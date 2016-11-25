@@ -6,13 +6,14 @@
 
 #   include	"docBufConfig.h"
 
-#   include	<appDebugon.h>
-
-#   include	"docBuf.h"
 #   include	"docField.h"
 #   include	"docEvalField.h"
+#   include	"docParaBuilderImpl.h"
 #   include	"docRecalculateFields.h"
 #   include	<docMergeField.h>
+#   include	<docDocumentField.h>
+
+#   include	<appDebugon.h>
 
 /************************************************************************/
 /*									*/
@@ -60,45 +61,48 @@ static int docCalculateMergefieldFieldString(
     return rval;
     }
 
-int docRecalculateMergeField(
-				int *				pCalculated,
-				int *				pPartShift,
+int docRecalculateMergeField(	int *				pCalculated,
 				int *				pStroffShift,
-				struct BufferItem *		paraBi,
-				int				part,
-				int				partCount,
+				ParagraphBuilder *		pb,
 				DocumentField *			df,
-				const RecalculateFields *	rf )
+				const RecalculateFields *	rf,
+				int				partHead,
+				int				partCount )
     {
-    int					rval= 0;
-    MemoryBuffer			mbResult;
-    int					calculated= 0;
+    int				partTail= partHead+ partCount;
+    MemoryBuffer		mbResult;
+    int				calculated= 0;
 
-    const FieldKindInformation *	fki= DOC_FieldKinds+ df->dfKind;
+    const FieldKindInformation * fki= DOC_FieldKinds+ df->dfKind;
 
     utilInitMemoryBuffer( &mbResult );
 
     if  ( docCalculateMergefieldFieldString( &calculated, &mbResult, df, rf ) )
-	{ SDEB(fki->fkiLabel); rval= -1; goto ready;	}
+	{ SDEB(fki->fkiLabel); partTail= -1; goto ready;	}
 
     if  ( ! calculated )
 	{
 	*pCalculated= 0;
-	*pPartShift= 0;
-	/* NO! *pStroffShift= 0; */
+	*pStroffShift= 0;
 	goto ready;
 	}
 
-    if  ( docRecalculateFieldParticulesFromString(
-				    pCalculated, pPartShift, pStroffShift,
-				    paraBi, part, partCount, &mbResult, rf ) )
-	{ LDEB(1); rval= -1; goto ready;	}
+    *pCalculated= 1;
+
+    partTail= docRecalculateFieldParticulesFromString(
+				    pCalculated, pStroffShift,
+				    pb, partHead, partCount, &mbResult, rf );
+    if  ( partTail <= partHead )
+	{
+	SLLDEB(fki->fkiLabel,partHead,partTail);
+	partTail= -1; goto ready;
+	}
 
   ready:
 
     utilCleanMemoryBuffer( &mbResult );
 
-    return rval;
+    return partTail;
     }
 
 

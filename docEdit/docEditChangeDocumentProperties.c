@@ -7,11 +7,14 @@
 #   include	"docEditConfig.h"
 
 #   include	<stddef.h>
-#   include	<stdio.h>
 #   include	<ctype.h>
 
 #   include	<docField.h>
 #   include	"docEditSetProperties.h"
+#   include	"docEditOperation.h"
+#   include	<docDocumentProperties.h>
+#   include	<utilPropMask.h>
+#   include	<docBuf.h>
 
 #   include	<appDebugon.h>
 
@@ -29,7 +32,7 @@ int docChangeDocumentProperties(
     utilPropMaskClear( &dpDoneMask );
 
     if  ( docUpdDocumentProperties( &dpDoneMask,
-					    &(eo->eoDocument->bdProperties),
+					    eo->eoDocument->bdProperties,
 					    dpSetMask, dpSet, dam ) )
 	{ LDEB(1); return -1;	}
 

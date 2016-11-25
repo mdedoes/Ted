@@ -8,14 +8,19 @@
 #   ifndef	DOC_FIND_H
 #   define	DOC_FIND_H
 
-#   include	"docBuf.h"
+struct DocumentSelection;
+struct BufferItem;
+struct BufferDocument;
+struct DocumentPosition;
+struct DocumentTree;
 
 typedef int (*PARA_FIND_STRING)(
-			    DocumentSelection *		ds,
-			    struct BufferItem *		paraNode,
-			    BufferDocument *		bd,
-			    const DocumentPosition *	dpFrom,
-			    void *			through );
+			    struct DocumentSelection *		ds,
+			    struct BufferItem *			paraNode,
+			    struct BufferDocument *		bd,
+			    struct DocumentTree *		tree,
+			    const struct DocumentPosition *	dpFrom,
+			    void *				through );
 
 /************************************************************************/
 /*									*/
@@ -23,36 +28,39 @@ typedef int (*PARA_FIND_STRING)(
 /*									*/
 /************************************************************************/
 
-extern int docFindParaFindNext(	DocumentSelection *		ds,
+extern int docFindParaFindNext(	struct DocumentSelection *	ds,
 				struct BufferItem *		paraNode,
-				BufferDocument *		bd,
-				const DocumentPosition *	dpFrom,
+				struct BufferDocument *		bd,
+				struct DocumentTree *		tree,
+				const struct DocumentPosition *	dpFrom,
 				void *				through );
 
-extern int docFindParaFindPrev(	DocumentSelection *		ds,
+extern int docFindParaFindPrev(	struct DocumentSelection *	ds,
 				struct BufferItem *		paraNode,
-				BufferDocument *		bd,
-				const DocumentPosition *	dpFrom,
+				struct BufferDocument *		bd,
+				struct DocumentTree *		tree,
+				const struct DocumentPosition *	dpFrom,
 				void *				through );
 
 extern int docFindFindNextInDocument(
-				DocumentSelection *		ds,
-				const DocumentPosition *	dpFrom,
-				BufferDocument *		bd,
+				struct DocumentSelection *	ds,
+				const struct DocumentPosition *	dpFrom,
+				struct BufferDocument *		bd,
 				PARA_FIND_STRING		findNext,
 				void *				through );
 
 extern int docFindFindPrevInDocument(
-				DocumentSelection *		ds,
-				const DocumentPosition *	dpFrom,
-				BufferDocument *		bd,
+				struct DocumentSelection *	ds,
+				const struct DocumentPosition *	dpFrom,
+				struct BufferDocument *		bd,
 				PARA_FIND_STRING		findPrev,
 				void *				through );
 
 extern int docFindFindNextInCurrentTree(
-				DocumentSelection *		ds,
-				const DocumentPosition *	dpFrom,
-				BufferDocument *		bd,
+				struct DocumentSelection *	ds,
+				const struct DocumentPosition *	dpFrom,
+				struct BufferDocument *		bd,
+				struct DocumentTree *		tree,
 				PARA_FIND_STRING		findNext,
 				void *				through );
 

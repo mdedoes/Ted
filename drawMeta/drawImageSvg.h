@@ -4,12 +4,13 @@
 /*									*/
 /************************************************************************/
 
-#   include	<svgWriter.h>
-#   include	<bitmap.h>
-#   include	<utilMemoryBuffer.h>
-
 #   ifndef		DRAW_IMAGE_SVG_H
 #   define		DRAW_IMAGE_SVG_H
+
+struct SvgWriter;
+struct RasterImage;
+struct DocumentRectangle;
+struct MemoryBuffer;
 
 /************************************************************************/
 /*									*/
@@ -17,15 +18,16 @@
 /*									*/
 /************************************************************************/
 
-extern int drawRasterImageSvg(	SvgWriter *			sw,
-				const RasterImage *		abiSrc,
-				const DocumentRectangle *	drSrc,
-				const DocumentRectangle *	drDest );
+extern int drawRasterImageSvg(
+			struct SvgWriter *			sw,
+			const struct RasterImage *		riSrc,
+			const struct DocumentRectangle *	drSrc,
+			const struct DocumentRectangle *	drDest );
 
 extern int drawRasterImageSvgFromData(
-				SvgWriter *			sw,
-				const char *			contentType,
-				const MemoryBuffer *		mb,
-				const DocumentRectangle *	drDest );
+			struct SvgWriter *			sw,
+			const char *				contentType,
+			const struct MemoryBuffer *		mb,
+			const struct DocumentRectangle *	drDest );
 
 #   endif	/*	DRAW_IMAGE_SVG_H	*/

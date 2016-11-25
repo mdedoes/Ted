@@ -17,46 +17,52 @@ int	indAddGuess(	IndGuessList *		igl,
 			const char *		word,
 			int			score )
     {
+    int			rval= 0;
+
     int			i;
     unsigned int	sz;
-    unsigned char *	saved;
+    char *		saved= (char *)0;
     IndGuessScore *	fresh;
 
     /*  1  */
     for ( i= 0; i < igl->iglGuessCount; i++ )
 	{
-	if  ( ! strcmp( (char *)igl->iglGuesses[i].igsWord, (char *)word ) )
+	if  ( ! strcmp( igl->iglGuesses[i].igsWord, word ) )
 	    {
 	    if  ( igl->iglGuesses[i].igsScore < score )
 		{ igl->iglGuesses[i].igsScore=  score;	}
 
-	    return 0;
+	    goto ready;
 	    }
 	}
 
     /*  2  */
     sz= strlen( (char *)word )+ 1;
-    saved= (unsigned char *)malloc( sz+ 1 );
+    saved= malloc( sz+ 1 );
     if  ( ! saved )
-	{ LLDEB(sz,saved); return -1;	}
-    strcpy( (char *)saved, (const char *)word );
+	{ LLDEB(sz,saved); rval= -1; goto ready;	}
+    strcpy( saved, word );
 
     /*  3  */
     sz= ( igl->iglGuessCount+  1 )* sizeof(IndGuessScore);
 
     fresh= (IndGuessScore *)realloc( (void *)igl->iglGuesses, sz );
-
     if  ( ! fresh )
-	{ LLDEB(sz,fresh); return -1;	}
+	{ LLDEB(sz,fresh); rval= -1; goto ready;	}
 
     igl->iglGuesses= fresh;
 
     fresh += igl->iglGuessCount++;
 
-    fresh->igsWord= saved;
+    fresh->igsWord= saved; saved= (char *)0; /* steal */
     fresh->igsScore= score;
 
-    return 0;
+  ready:
+
+    if  ( saved )
+	{ free( saved );	}
+
+    return rval;
     }
 
 void indCleanGuessList( IndGuessList *	igl )

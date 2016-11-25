@@ -60,7 +60,7 @@ AC_DEFUN(AC_PATH_XPM,
 		esac
 
 		case $sod in
-		/usr/lib|/lib)
+		/usr/lib|/lib|-)
 		    LIBXPM_LIBS=-l${so}
 		    ;;
 		*)
@@ -115,6 +115,8 @@ AC_DEFUN(AC_PATH_XPM,
 	    echo 'Avoiding libxpm'
 	    AC_DEFINE(HAVE_LIBXPM,1)
 	    AC_DEFINE(USE_LIBXPM,0)
+	    LIBXPM_CFLAGS=
+	    LIBXPM_LIBS=
 	    ;;
 	NO.TEST)
 	    echo 'No libxpm'
@@ -174,6 +176,7 @@ AC_DEFUN(AC_PATH_PNG,
 	    "/usr/local/include png.h /usr/local/lib png" \
 	    "/usr/pkg/include png.h /usr/pkg/lib png" \
 	    "/usr/X11R6/include png.h /usr/X11R6/lib png" \
+	    "/usr/X11/include png.h /usr/X11/lib png" \
 	    "/usr/apps/include png.h /usr/apps/lib png" \
 	    "/usr/sfw/include png.h /usr/sfw/lib png" \
 	    "/opt/sfw/include png.h /opt/sfw/lib png" \
@@ -184,7 +187,9 @@ AC_DEFUN(AC_PATH_PNG,
 	done > ${h_so_tmp}
 	while read hd h sod so
 	do
-	    if  test -f $hd/$h -a -f ${sod}/lib${so}.so
+	    if  test -f $hd/$h -a \
+		\( ${sod} = - -o -f ${sod}/lib${so}.so \
+		              -o -f ${sod}/lib${so}.dylib \)
 	    then
 		case $hd in
 		/usr/include)
@@ -196,7 +201,7 @@ AC_DEFUN(AC_PATH_PNG,
 		esac
 
 		case $sod in
-		/usr/lib|/lib)
+		/usr/lib|/lib|-)
 		    LIBPNG_LIBS=-l${so}
 		    ;;
 		*)
@@ -251,6 +256,8 @@ AC_DEFUN(AC_PATH_PNG,
 	    echo 'Avoiding libpng'
 	    AC_DEFINE(HAVE_LIBPNG,1)
 	    AC_DEFINE(USE_LIBPNG,0)
+	    LIBPNG_CFLAGS=
+	    LIBPNG_LIBS=
 	    ;;
 	NO.TEST)
 	    echo 'No libpng'
@@ -328,7 +335,7 @@ AC_DEFUN(AC_PATH_ZLIB,
 		esac
 
 		case $sod in
-		/usr/lib|/lib)
+		/usr/lib|/lib|-)
 		    ZLIB_LIBS=-l${so}
 		    ;;
 		*)
@@ -383,6 +390,8 @@ AC_DEFUN(AC_PATH_ZLIB,
 	    echo 'Avoiding zlib'
 	    AC_DEFINE(HAVE_ZLIB,1)
 	    AC_DEFINE(USE_ZLIB,0)
+	    ZLIB_CFLAGS=
+	    ZLIB_LIBS=
 	    ;;
 	NO.TEST)
 	    echo 'No zlib'
@@ -449,7 +458,9 @@ AC_DEFUN(AC_PATH_JPEG,
 	done > ${h_so_tmp}
 	while read hd h sod so
 	do
-	    if  test -f $hd/$h -a \( ${sod} = - -o -f ${sod}/lib${so}.so \)
+	    if  test -f $hd/$h -a \
+		\( ${sod} = - -o -f ${sod}/lib${so}.so \
+		              -o -f ${sod}/lib${so}.dylib \)
 	    then
 		case $hd in
 		/usr/include)
@@ -516,6 +527,8 @@ AC_DEFUN(AC_PATH_JPEG,
 	    echo 'Avoiding libjpeg'
 	    AC_DEFINE(HAVE_LIBJPEG,1)
 	    AC_DEFINE(USE_LIBJPEG,0)
+	    LIBJPEG_CFLAGS=
+	    LIBJPEG_LIBS=
 	    ;;
 	NO.TEST)
 	    echo 'No libjpeg'
@@ -570,8 +583,10 @@ AC_DEFUN(AC_PATH_TIFF,
 	h_so_tmp="$$.h_so_tmp"
 	trap "rm -f $h_so_tmp" 0
 	for h_so in \
-	    "/usr/include tiffio.h /usr/lib64 tiff" \
 	    "/usr/include tiffio.h - tiff" \
+	    "/usr/include/x86_64-linux-gnu tiffio.h - tiff" \
+	    "/usr/include/i386-linux-gnu tiffio.h - tiff" \
+	    "/usr/include tiffio.h /usr/lib64 tiff" \
 	    "/usr/local/include tiffio.h /usr/local/lib tiff" \
 	    "/usr/pkg/include tiffio.h /usr/pkg/lib tiff" \
 	    "/usr/local/include/tiff tiffio.h /usr/local/lib/tiff tiff" \
@@ -583,7 +598,9 @@ AC_DEFUN(AC_PATH_TIFF,
 	done > ${h_so_tmp}
 	while read hd h sod so
 	do
-	    if  test -f $hd/$h -a \( ${sod} = - -o -f ${sod}/lib${so}.so \)
+	    if  test -f $hd/$h -a \
+		\( ${sod} = - -o -f ${sod}/lib${so}.so \
+		              -o -f ${sod}/lib${so}.dylib \)
 	    then
 		case $hd in
 		/usr/include)
@@ -650,6 +667,9 @@ AC_DEFUN(AC_PATH_TIFF,
 	    echo 'Avoiding libtiff'
 	    AC_DEFINE(HAVE_LIBTIFF,1)
 	    AC_DEFINE(USE_LIBTIFF,0)
+	    USE_LIBTIFF=NO
+	    LIBTIFF_CFLAGS=
+	    LIBTIFF_LIBS=
 	    ;;
 	NO.TEST)
 	    echo 'No libtiff'
@@ -668,4 +688,145 @@ AC_DEFUN(AC_PATH_TIFF,
 
     AC_SUBST(LIBTIFF_CFLAGS)dnl
     AC_SUBST(LIBTIFF_LIBS)dnl
+])
+#####################################################################
+##
+##   Look for libwebp
+##
+#####################################################################
+
+AC_DEFUN(AC_PATH_WEBP,
+[
+    echo Checking for libwebp...
+
+    LIBWEBP_CFLAGS=
+    LIBWEBP_LIBS=
+
+    LIBWEBP_HEADERS_FOUND=NO
+    LIBWEBP_LIBS_FOUND=NO
+    LIBWEBP_FOUND=0
+
+    if  ( pkg-config libwebp --cflags ) > /dev/null 2>&1
+    then
+	LIBWEBP_CFLAGS=`pkg-config libwebp --cflags`
+	LIBWEBP_HEADERS_FOUND=YES
+    fi
+
+    if  ( pkg-config libwebp --libs ) > /dev/null 2>&1
+    then
+	LIBWEBP_LIBS=`pkg-config libwebp --libs`
+	LIBWEBP_LIBS_FOUND=YES
+    fi
+
+    ########  The hard way
+    if test $LIBWEBP_HEADERS_FOUND = NO -o $LIBWEBP_LIBS_FOUND = NO
+    then
+	h_so_tmp="$$.h_so_tmp"
+	trap "rm -f $h_so_tmp" 0
+	for h_so in \
+	    "/usr/include webp/decode.h /usr/lib64 webp" \
+	    "/usr/include webp/decode.h /usr/lib webp" \
+	    "/usr/local/include webp/decode.h /usr/local/lib webp" \
+	    "/usr/pkg/include webp/decode.h /usr/pkg/lib webp" \
+	    "/usr/X11R6/include webp/decode.h /usr/X11R6/lib webp" \
+	    "/usr/X11/include webp/decode.h /usr/X11/lib webp" \
+	    "/usr/apps/include webp/decode.h /usr/apps/lib webp" \
+	    "/usr/sfw/include webp/decode.h /usr/sfw/lib webp" \
+	    "/opt/sfw/include webp/decode.h /opt/sfw/lib webp" \
+	    "/usr/local/include/webp webp/decode.h /usr/local/lib/webp webp" \
+	    "/usr/local/include/libwebp webp/decode.h /usr/local/lib/libwebp webp"
+	do
+	    echo $h_so
+	done > ${h_so_tmp}
+	while read hd h sod so
+	do
+	    if  test -f $hd/$h -a \
+		\( ${sod} = - -o -f ${sod}/lib${so}.so \
+		              -o -f ${sod}/lib${so}.dylib \)
+	    then
+		case $hd in
+		/usr/include)
+		    : ok
+		    ;;
+		*)
+		    LIBWEBP_CFLAGS=-I${hd}
+		    ;;
+		esac
+
+		case $sod in
+		/usr/lib|/lib|-)
+		    LIBWEBP_LIBS=-l${so}
+		    ;;
+		*)
+		    LIBWEBP_LIBS="-L${sod} -l${so}"
+		    ;;
+		esac
+
+		LIBWEBP_HEADERS_FOUND=YES
+		LIBWEBP_LIBS_FOUND=YES
+		break
+	    fi
+	done < ${h_so_tmp}
+    fi
+    ########
+
+    AC_ARG_WITH( LIBWEBP,
+	[ --with-LIBWEBP Use libwebp if available],
+	[
+	    if  test $withval = yes
+	    then
+		USE_LIBWEBP=YES
+	    else
+		USE_LIBWEBP=NO
+	    fi
+	],
+	[
+	    USE_LIBWEBP=TEST;
+	])
+
+    case $LIBWEBP_HEADERS_FOUND.$LIBWEBP_LIBS_FOUND in
+	YES.YES)
+	    LIBWEBP_FOUND=1
+	    HAVE_LIBWEBP=YES
+	    ;;
+	*)
+	    LIBWEBP_FOUND=0
+	    # Try for ourselves
+	    AC_TRY_COMPILE([#include <webp/decode.h>],
+	      [WebPInitDecoderConfig(WebPDecoderConfig *)0);],
+		HAVE_LIBWEBP=YES,HAVE_LIBWEBP=NO,)
+	    ;;
+    esac
+
+    case $HAVE_LIBWEBP.$USE_LIBWEBP in
+	YES.TEST|YES.YES)
+	    echo 'Using libwebp'
+	    AC_DEFINE(HAVE_LIBWEBP,1)
+	    AC_DEFINE(USE_LIBWEBP,1)
+	    USE_LIBWEBP=YES
+	    ;;
+	YES.NO)
+	    echo 'Avoiding libwebp'
+	    AC_DEFINE(HAVE_LIBWEBP,1)
+	    AC_DEFINE(USE_LIBWEBP,0)
+	    LIBWEBP_CFLAGS=
+	    LIBWEBP_LIBS=
+	    ;;
+	NO.TEST)
+	    echo 'No libwebp'
+	    AC_DEFINE(HAVE_LIBWEBP,0)
+	    AC_DEFINE(USE_LIBWEBP,0)
+	    USE_LIBWEBP=NO
+	    ;;
+	NO.YES)
+	    echo '##### No libwebp found'
+	    AC_DEFINE(HAVE_LIBWEBP,0)
+	    AC_DEFINE(USE_LIBWEBP,0)
+	    ;;
+	*)
+	    ;;
+    esac
+
+    AC_SUBST(LIBWEBP_CFLAGS)dnl
+    AC_SUBST(LIBWEBP_LIBS)dnl
 ])

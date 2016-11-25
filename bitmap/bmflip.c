@@ -1,6 +1,7 @@
 #   include	"bitmapConfig.h"
 
 #   include	<geoAffineTransform.h>
+#   include	<geoRectangle.h>
 #   include	<geo2DInteger.h>
 
 #   include	"bmintern.h"
@@ -87,7 +88,7 @@ static void bmFlip4Init( int n )
 
 /************************************************************************/
 /*									*/
-/*  Flip the bytes in a scan line.					*/
+/*  Flip the pixels in a scan line.					*/
 /*									*/
 /************************************************************************/
 
@@ -158,10 +159,15 @@ static void bmFlipBits(	unsigned char *		to,
 /*									*/
 /************************************************************************/
 
+# ifdef __GNUC__
+# pragma GCC diagnostic push
+# pragma GCC diagnostic ignored "-Wunused-parameter"
+# endif
+
 static void bmFlip8Bits(	unsigned char *		to,
 				const unsigned char *	from,
 				int			pixelsWide,
-				int			ignored	)
+				int			ignoredInt	)
     {
     int			i;
 
@@ -171,11 +177,20 @@ static void bmFlip8Bits(	unsigned char *		to,
 	{ *(to--)= *(from++); }
     }
 
+# ifdef __GNUC__
+# pragma GCC diagnostic pop
+# endif
+
 /************************************************************************/
 /*									*/
 /*  Flip a scan line consisting of 24 bit pixels			*/
 /*									*/
 /************************************************************************/
+
+# ifdef __GNUC__
+# pragma GCC diagnostic push
+# pragma GCC diagnostic ignored "-Wunused-parameter"
+# endif
 
 static void bmFlip24Bits(	unsigned char *		to,
 				const unsigned char *	from,
@@ -193,11 +208,20 @@ static void bmFlip24Bits(	unsigned char *		to,
 	}
     }
 
+# ifdef __GNUC__
+# pragma GCC diagnostic pop
+# endif
+
 /************************************************************************/
 /*									*/
 /*  Mirror bitmap images: Flip over horizontal axis.			*/
 /*									*/
 /************************************************************************/
+
+# ifdef __GNUC__
+# pragma GCC diagnostic push
+# pragma GCC diagnostic ignored "-Wunused-parameter"
+# endif
 
 int bmVerticalFlip(	RasterImage *			riOut,
 			const RasterImage *		riIn,
@@ -240,11 +264,20 @@ int bmVerticalFlip(	RasterImage *			riOut,
     return rval;
     }
 
+# ifdef __GNUC__
+# pragma GCC diagnostic pop
+# endif
+
 /************************************************************************/
 /*									*/
 /*  Mirror bitmap images: Rotate 180 degrees.				*/
 /*									*/
 /************************************************************************/
+
+# ifdef __GNUC__
+# pragma GCC diagnostic push
+# pragma GCC diagnostic ignored "-Wunused-parameter"
+# endif
 
 int bmRotate180(	RasterImage *			riOut,
 			const RasterImage *		riIn,
@@ -306,11 +339,20 @@ int bmRotate180(	RasterImage *			riOut,
     return rval;
     }
 
+# ifdef __GNUC__
+# pragma GCC diagnostic pop
+# endif
+
 /************************************************************************/
 /*									*/
 /*  Mirror bitmap images: Flip over vertical axis.			*/
 /*									*/
 /************************************************************************/
+
+# ifdef __GNUC__
+# pragma GCC diagnostic push
+# pragma GCC diagnostic ignored "-Wunused-parameter"
+# endif
 
 int bmHorizontalFlip(	RasterImage *			riOut,
 			const RasterImage *		riIn,
@@ -371,6 +413,10 @@ int bmHorizontalFlip(	RasterImage *			riOut,
 
     return rval;
     }
+
+# ifdef __GNUC__
+# pragma GCC diagnostic pop
+# endif
 
 /************************************************************************/
 /*									*/

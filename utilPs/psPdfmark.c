@@ -11,7 +11,7 @@
 #   include	<string.h>
 
 #   include	"psPrint.h"
-#   include	<geo2DInteger.h>
+#   include	<geoRectangle.h>
 #   include	<sioGeneral.h>
 
 #   include	<appDebugon.h>
@@ -156,27 +156,29 @@ int psEmitDestPdfmark(		SimpleOutputStream *		sos,
 /************************************************************************/
 
 static int psUriLinkDestination(	SimpleOutputStream *	sos,
-					const unsigned char *	fileName,
+					const char *		fileName,
 					int			fileSize,
 					const MemoryBuffer *	markName )
     {
     const int	sevenBits= 1;
+    const int	utf8= 1;
 
-    psPrintString( sos, fileName, fileSize, sevenBits );
+    psPrintString( sos, fileName, fileSize, sevenBits, utf8 );
 
     if  ( markName && ! utilMemoryBufferIsEmpty( markName ) )
 	{
 	if  ( sioOutPutByte( '#', sos ) < 0 )
 	    { return -1;	}
 
-	psPrintString( sos, markName->mbBytes, markName->mbSize, sevenBits );
+	psPrintString( sos, (char *)markName->mbBytes, markName->mbSize,
+							    sevenBits, utf8 );
 	}
 
     return 0;
     }
 
 static void psWebLinkDestination(	SimpleOutputStream *	sos,
-					const unsigned char *	fileName,
+					const char *		fileName,
 					int			fileSize,
 					const MemoryBuffer *	markName )
     {
@@ -193,9 +195,11 @@ static void psFileLinkDestMark(	SimpleOutputStream *	sos,
 					const MemoryBuffer *	fileName,
 					const MemoryBuffer *	markName )
     {
-    const int			sevenBits= 1;
-    const unsigned char *	file= fileName->mbBytes;
-    int				size= fileName->mbSize;
+    const int		sevenBits= 1;
+    const int		utf8= 1;
+
+    const char *	file= (char *)fileName->mbBytes;
+    int			size= fileName->mbSize;
 
     if  ( size > 5 && ! strncmp( (const char *)file, "file://", 7 ) )
 	{ file += 7; size -= 7; }
@@ -208,7 +212,7 @@ static void psFileLinkDestMark(	SimpleOutputStream *	sos,
 	if  ( offset+ 3 < size					&&
 	      ! strncmp( (const char *)file+ offset, "://", 3 )	)
 	    {
-	    psWebLinkDestination( sos, fileName->mbBytes,
+	    psWebLinkDestination( sos, (char *)fileName->mbBytes,
 					fileName->mbSize, markName );
 	    return;
 	    }
@@ -216,7 +220,7 @@ static void psFileLinkDestMark(	SimpleOutputStream *	sos,
 
     sioOutPrintf( sos, "  /Action /Launch /File (" );
 
-    psPrintString( sos, file, size, sevenBits );
+    psPrintString( sos, file, size, sevenBits, utf8 );
 
     sioOutPrintf( sos, ")\n" );
 
@@ -308,7 +312,7 @@ int psOutlinePdfmark(		PrintingState *		ps,
     psEmitDestination( ps->psSos, markName );
 
     sioOutPrintf( ps->psSos, " /Title " );
-    psPrintPdfMarkStringValue( ps, title->mbBytes, title->mbSize );
+    psPrintPdfMarkStringValue( ps, title );
 
     sioOutPrintf( ps->psSos, " /OUT pdfmark\n" );
 

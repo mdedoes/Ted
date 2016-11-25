@@ -9,17 +9,16 @@
 
 #   include	<time.h>
 
-#   include	<utilPropMask.h>
-#   include	<utilPalette.h>
-
-#   include	<utilDocumentGeometry.h>
-#   include	<utilDocFontList.h>
+#   include	<geoDocumentPageSetup.h>
 #   include	<utilColor.h>
 #   include	<utilMemoryBuffer.h>
 
 #   include	"docNotesProperties.h"
-#   include	"docListAdmin.h"
 #   include	"docDocumentAttributeMap.h"
+
+struct PropertyMask;
+struct DocumentFontList;
+struct ListAdmin;
 
 typedef enum DocumentProperty
     {
@@ -88,6 +87,17 @@ typedef enum DocumentProperty
     DPprop_COUNT,
 
     DPprop_INFO,
+    DPprop_REVTBL,
+
+    DPprop_OPERATOR,
+    DPprop_VERSION,
+    DPprop_EDMINS,
+    DPprop_NOFPAGES,
+    DPprop_NOFWORDS,
+    DPprop_NOFCHARS,
+    DPprop_NOFCHARSWS,
+    DPprop_VERN,
+
 				/****************************************/
     DPprop_IGNORED,		/*  Various document properties that	*/
 				/*  are ignored, but accepted to avoid	*/
@@ -105,7 +115,7 @@ typedef struct DocumentProperties
     int			dpDefaultColor;
     int			dpDocumentCharset; /* ansi, mac, pc, pca */
     int			dpAnsiCodepage;
-    int			dpDefaultLanguage;
+    int			dpDefaultLocaleId;
 
     int			dpDefaultFont;
     int			dpDefaultFontDbch;
@@ -115,11 +125,25 @@ typedef struct DocumentProperties
 
     int			dpStartPageNumber;
 
+			/**
+			 *  This flag controls two things:
+			 *  - Use different page headers and footers 
+			 *    on odd and on even pages.
+			 *  - Obey the break property of sections that 
+			 *    start on odd or on even pages.
+			 */
     unsigned char	dpHasFacingPages;
     unsigned char	dpGutterHorizontal;
     unsigned char	dpWidowControl;
     unsigned char	dpTwoOnOne;
+
+			/**
+			 *  The document is a template: Invite the user 
+			 *  to save it under a different name by forgetting 
+			 *  the file name. (And that it is a template.)
+			 */
     unsigned char	dpIsDocumentTemplate;
+
 			/**
 			 * 0: This document will have English-style
 			 *	pagination (the default)
@@ -138,9 +162,9 @@ typedef struct DocumentProperties
     FootEndNotesProperties	dpNotesProps;
 
 			/*  Owned by the document */
-    DocumentFontList *	dpFontList;
-    ListAdmin *		dpListAdmin;
-    ColorPalette *	dpColorPalette;
+    struct DocumentFontList *	dpFontList;
+    struct ListAdmin *		dpListAdmin;
+    struct ColorPalette *	dpColorPalette;
 
     struct tm		dpCreatim;
     struct tm		dpRevtim;
@@ -211,16 +235,16 @@ extern int docCopyDocumentProperties(	DocumentProperties *		to,
 					const DocumentProperties *	from );
 
 extern int docUpdDocumentProperties(
-				PropertyMask *			pDoneMask,
+				struct PropertyMask *		pDoneMask,
 				DocumentProperties *		dpTo,
-				const PropertyMask *		dpSetMask,
+				const struct PropertyMask *	dpSetMask,
 				const DocumentProperties *	dpFrom,
 				const DocumentAttributeMap *	dam );
 
 extern void docDocumentPropertyDifference(
-				PropertyMask *			pDifMask,
+				struct PropertyMask *		pDifMask,
 				const DocumentProperties *	dp1,
-				const PropertyMask *		cmpMask,
+				const struct PropertyMask *	cmpMask,
 				const DocumentProperties *	dp2 );
 
 extern int docPropertiesSetFilename(	DocumentProperties *	dp,
@@ -253,8 +277,8 @@ extern int docSetDocumentPropertyTime(	DocumentProperties *	dp,
 					int			prop,
 					const struct tm *	val );
 
-extern void docFillDocFootnoteMask(		PropertyMask *	dpMask );
-extern void docFillDocEndnoteMask(		PropertyMask *	dpMask );
-extern void docFillDocNotesMask(		PropertyMask *	dpMask );
+extern void docFillDocFootnoteMask(		struct PropertyMask *	dpMask );
+extern void docFillDocEndnoteMask(		struct PropertyMask *	dpMask );
+extern void docFillDocNotesMask(		struct PropertyMask *	dpMask );
 
 #   endif	/*  DOC_DOCUMENT_PROPERTIES_H  */

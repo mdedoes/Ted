@@ -7,6 +7,7 @@
 #   include	<ucdGeneralCategory.h>
 #   include	<ucd.h>
 #   include	"indlocal.h"
+#   include	"indguess.h"
 #   include	<appDebugon.h>
 
 /************************************************************************/

@@ -6,12 +6,10 @@
 
 #   include	"docRtfConfig.h"
 
-#   include	<stdio.h>
 #   include	<ctype.h>
 
-#   include	<appDebugon.h>
-
 #   include	"docRtfReaderImpl.h"
+#   include	"docRtfReadTreeStack.h"
 #   include	"docRtfReadWrite.h"
 #   include	"docRtfTagEnum.h"
 #   include	"docRtfFlags.h"
@@ -19,7 +17,11 @@
 #   include	<docTreeType.h>
 #   include	<docTreeNode.h>
 #   include	<docNotes.h>
-#   include	<docDebug.h>
+#   include	<docFieldKind.h>
+#   include	<docListAdmin.h>
+#   include	<docBuf.h>
+
+#   include	<appDebugon.h>
 
 /************************************************************************/
 
@@ -33,12 +35,12 @@ const char DOC_RTF_LENIENT_MESSAGE[]= "Use lenientRtf setting";
 
 RtfControlWord	docRtfDocumentGroups[]=
 {
-    RTF_DEST_XX( "tc",		DOCfkTC,	docRtfLookupEntry ),
-    RTF_DEST_XX( "tcn",		DOCfkTCN,	docRtfLookupEntry ),
+    RTF_DEST_XX( "tc",	 RTCscopePARA_FIELD, DOCfkTC,	docRtfLookupEntry ),
+    RTF_DEST_XX( "tcn",	 RTCscopePARA_FIELD, DOCfkTCN,	docRtfLookupEntry ),
 
-    RTF_DEST_XX( "nonesttables", 1,		docRtfSkipGroup ),
+    RTF_DEST_XX( "nonesttables", RTCscopeHIERARCHY, 1,	docRtfSkipGroup ),
 
-    RTF_DEST_XX( "trowd",	DOClevROW,	docRtfReadRowProperties ),
+    RTF_DEST_XX( "trowd", RTCscopeROW, DOClevROW, docRtfReadRowProperties ),
 
     { (char *)0, 0, 0 }
 };
@@ -51,21 +53,35 @@ RtfControlWord	docRtfDocumentGroups[]=
 
 static int docRtfReadDoc(	const RtfControlWord *	rcw,
 				int			arg,
-				RtfReader *		rrc )
+				RtfReader *		rr )
     {
-    int		rval= 0;
-    int		changed= 0;
+    int			rval= 0;
 
-    rrc->rrcSelectionScope.ssTreeType= DOCinBODY;
+    SelectionScope	ss;
+    RtfTreeStack	internRts;
 
-    rval= docRtfReadGroup( rcw, 0, 0, rrc,
+    docRtfInitTreeStack( &internRts );
+    docInitSelectionScope( &ss );
+
+    ss.ssTreeType= DOCinBODY;
+
+    docRtfPushTreeStack( rr, &internRts, &ss, &(rr->rrDocument->bdBody) );
+
+    rval= docRtfReadGroup( rcw, 0, 0, rr,
 				docRtfDocumentGroups,
-				docRtfTextParticule,
-				docRtfFinishCurrentNode );
+				docRtfGotText,
+				docRtfFinishCurrentTree );
     if  ( rval )
-	{ SLDEB(rcw->rcwWord,rval);	}
+	{ SLDEB(rcw->rcwWord,rval); rval= -1; goto ready;	}
 
-    docRenumberSeqFields( &changed, rrc->rrcTree, rrc->rrDocument );
+    if  ( docRtfPopTreeFromFieldStack( rr, &internRts ) )
+	{ LDEB(1); rval= -1; goto ready;	}
+
+    docRenumberSeqFields( (int *)0, &(rr->rrDocument->bdBody), rr->rrDocument );
+
+  ready:
+
+    docRtfPopTreeStack( rr );
 
     return rval;
     }
@@ -83,16 +99,16 @@ static int docRtfReadDoc(	const RtfControlWord *	rcw,
 
 static RtfControlWord	docRtfOutsideGroups[]=
     {
-	RTF_DEST_XX( "rtf",	0,	docRtfReadDoc ),
+	RTF_DEST_XX( "rtf",	RTCscopeANY, 0,	docRtfReadDoc ),
 
 	{ (char *)0, 0, 0 }
     };
 
-BufferDocument * docRtfReadFile(	SimpleInputStream *		sis,
+struct BufferDocument * docRtfReadFile(	struct SimpleInputStream *	sis,
 					unsigned int			flags )
     {
-    BufferDocument *		rval= (BufferDocument *)0;
-    BufferDocument *		bd= (BufferDocument *)0;
+    struct BufferDocument *	rval= (struct BufferDocument *)0;
+    struct BufferDocument *	bd= (struct BufferDocument *)0;
     RtfReader *			rr= (RtfReader *)0;
 
     int				res;
@@ -103,21 +119,17 @@ BufferDocument * docRtfReadFile(	SimpleInputStream *		sis,
     int				arg= -1;
     int				c;
 
-    const DocumentField *	dfNote;
+    const struct DocumentField *	dfNote;
     struct DocumentNote *	dn;
     int				changed;
 
-    bd= docNewDocument( (BufferDocument *)0 );
+    bd= docNewDocument( (struct BufferDocument *)0 );
     if  ( ! bd )
 	{ XDEB(bd); goto ready;	}
 
     rr= docRtfOpenReader( sis, bd, flags );
     if  ( ! rr )
 	{ XDEB(rr); goto ready;	}
-
-    rr->rrcTree= &(rr->rrDocument->bdBody);
-    rr->rrcNode= rr->rrcTree->dtRoot;
-    rr->rrcLevel= DOClevBODY;
 
     res= docRtfFindControl( rr, &c, controlWord, &gotArg, &arg );
     if  ( res != RTFfiCTRLGROUP )
@@ -136,25 +148,14 @@ BufferDocument * docRtfReadFile(	SimpleInputStream *		sis,
     /*  Check against trailing garbage. Spaces are not allowed either, 	*/
     /*  but we do not want to scare the user with invisible things.	*/
 
-    if  ( ! ( rr->rrReadFlags & RTFflagLENIENT ) )
-	{
-	c= sioInGetByte( sis );
-	while( c != EOF )
-	    {
-	    if  ( c != '\r' && c != '\n' && c != '\0' && c != ' ' )
-		{
-		const char * message= DOC_RTF_LENIENT_MESSAGE;
-		LCSDEB(rr->rrCurrentLine,c,message); goto ready;
-		}
+    if  ( ! ( rr->rrReadFlags & RTFflagLENIENT )	&&
+	  docRtfCheckAtEOF( rr )			)
+	{ XDEB(rr->rrReadFlags); goto ready;	}
 
-	    c= sioInGetByte( sis );
-	    }
-	}
-
-    if  ( ! rr->rrcGotDocGeometry		&&
+    if  ( ! rr->rrGotDocGeometry		&&
 	  bd->bdBody.dtRoot->biChildCount > 0	)
 	{
-	bd->bdProperties.dpGeometry=
+	bd->bdProperties->dpGeometry=
 		    bd->bdBody.dtRoot->biChildren[0]->biSectDocumentGeometry;
 	}
 
@@ -163,24 +164,27 @@ BufferDocument * docRtfReadFile(	SimpleInputStream *		sis,
     dfNote= docGetFirstNoteOfDocument( &dn, bd, DOCinFOOTNOTE );
     if  ( dfNote )
 	{
-	if  ( docCheckSeparatorItemForNoteType( bd, DOCinFOOTNOTE ) )
+	if  ( docCheckSeparatorExistenceForNoteType( bd, DOCinFOOTNOTE ) )
 	    { LDEB(DOCinFTNSEP); goto ready; }
 	}
 
     dfNote= docGetFirstNoteOfDocument( &dn, bd, DOCinENDNOTE );
     if  ( dfNote )
 	{
-	if  ( docCheckSeparatorItemForNoteType( bd, DOCinENDNOTE ) )
+	if  ( docCheckSeparatorExistenceForNoteType( bd, DOCinENDNOTE ) )
 	    { LDEB(DOCinAFTNSEP); goto ready; }
 	}
 
-    if  ( docMakeOverrideForEveryList( bd->bdProperties.dpListAdmin ) )
+    if  ( docMakeOverrideForEveryList( bd->bdProperties->dpListAdmin ) )
 	{ LDEB(1); goto ready;	}
 
     if  ( docGetCharsUsed( bd ) )
 	{ LDEB(1); goto ready;	}
 
-    rval= bd; bd= (BufferDocument *)0; /* steal */
+    if  ( bd->bdProperties->dpDefaultLocaleId > 0 )
+	{ bd->bdLocaleId= bd->bdProperties->dpDefaultLocaleId;	}
+
+    rval= bd; bd= (struct BufferDocument *)0; /* steal */
 
     /* LDEB(1); docListNode(0,rval->bdBody.dtRoot,0); */
 
@@ -206,35 +210,13 @@ BufferDocument * docRtfReadFile(	SimpleInputStream *		sis,
 
 int docRtfRememberProperty(	const RtfControlWord *	rcw,
 				int			arg,
-				RtfReader *		rrc )
+				RtfReader *		rr )
     {
-    RtfReadingState *	rrs= rrc->rrcState;
-
     switch( rcw->rcwID )
 	{
 	case RTFidUC:
-	    if  ( rrc->rrcState )
-		{ rrc->rrcState->rrsBytesPerUnicode= arg;	}
-	    break;
-				/****************************************/
-				/*  Set/Unset Text Attributes.		*/
-				/****************************************/
-	case RTFidULNONE:
-	    rrs->rrsTextAttribute.taTextIsUnderlined= 0;
-	    break;
-				/****************************************/
-				/*  Set/Unset Text Attributes.		*/
-				/*  In Paragraph Numbering.		*/
-				/****************************************/
-	case RTFidPNULNONE:
-	    rrc->rrcParagraphNumber.pnTextAttribute.taTextIsUnderlined= 0;
-	    break;
-
-				/****************************************/
-				/*  Paragraph Numbering.		*/
-				/****************************************/
-	case RTFidPNHANG:
-	    rrc->rrcParagraphNumber.pnUseHangingIndent= 1;
+	    if  ( rr->rrState )
+		{ rr->rrState->rrsBytesPerUnicode= arg;	}
 	    break;
 				/****************************************/
 				/*  Unknown				*/

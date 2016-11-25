@@ -6,19 +6,23 @@
 
 #   include	"tedConfig.h"
 
+#   if USE_GTK
+
 #   include	<stddef.h>
 #   include	<stdio.h>
 #   include	<string.h>
 
-#   include	"tedApp.h"
 #   include	"tedDraw.h"
 #   include	"tedSelect.h"
 #   include	"tedLayout.h"
 #   include	"tedDocument.h"
+#   include	<appEditApplication.h>
+#   include	<appEditDocument.h>
+#   include	<layoutContext.h>
+#   include	<docScreenDraw.h>
+#   include	<geo2DInteger.h>
 
 #   include	<appDebugon.h>
-
-#   ifdef USE_GTK
 
 /************************************************************************/
 /*									*/
@@ -28,11 +32,11 @@
 
 void tedSetObjectWindows(	EditDocument *			ed,
 				const PositionGeometry *	pg,
-				const InsertedObject *		io,
+				const struct InsertedObject *	io,
 				const LayoutContext *		lc )
     {
     APP_WIDGET			w= ed->edDocumentWidget.dwWidget;
-    GdkWindow *			win= w->window;
+    GdkWindow *			win= gtk_widget_get_window( w );
 
     TedDocument *		td= (TedDocument *)ed->edPrivateData;
 
@@ -42,6 +46,8 @@ void tedSetObjectWindows(	EditDocument *			ed,
 
     DocumentRectangle		drObj;
     Point2DI			xp[RESIZE_COUNT];
+
+    const int			afterObject= 0;
 
     static const int		font_cursors[RESIZE_COUNT]=
 				    {
@@ -73,7 +79,7 @@ void tedSetObjectWindows(	EditDocument *			ed,
     xswa.window_type= GDK_WINDOW_CHILD;
     attributesMask= GDK_WA_X | GDK_WA_Y;
 
-    tedGetObjectRectangle( &drObj, xp, io, pg, lc, ed );
+    tedGetObjectRectangle( &drObj, xp, io, pg, lc, afterObject, td );
     for ( i= 0; i < RESIZE_COUNT; i++ )
 	{
 	xp[i].x -= drObj.drX0;
@@ -134,6 +140,20 @@ void tedHideObjectWindows(	EditDocument *	ed )
     gdk_window_hide( td->tdObjectWindow );
     }
 
+void tedDestroyObjectWindows(	TedDocument *	td )
+    {
+    int		i;
+
+    for ( i= 0; i < RESIZE_COUNT; i++ )
+	{
+	if  ( td->tdObjectResizeWindows[i] )
+	    { gdk_window_destroy( td->tdObjectResizeWindows[i] );	}
+	}
+
+    if  ( td->tdObjectWindow )
+	{ gdk_window_destroy( td->tdObjectWindow );	}
+    }
+
 /************************************************************************/
 /*									*/
 /*  Blinking cursor: GTK specific code.					*/
@@ -165,13 +185,13 @@ static int tedShowIBar(	void *		voided )
     td->tdShowIBarId= (guint)0;
 
     if  ( tedGetSelection( &ds, &sg, &sd,
-			    (DocumentTree **)0, (struct BufferItem **)0, ed ) )
+			    (struct DocumentTree **)0, (struct BufferItem **)0, ed ) )
 	{ LDEB(1); return 0;	}
 
-    tedGetIBarRect( &drPixels, &(sg.sgHead), &lc );
-    tedDrawIBar( &drPixels, &lc );
+    docScreenGetIBarRect( &drPixels, &(sg.sgHead), &lc );
+    docScreenDrawIBar( &drPixels, &lc );
 
-    td->tdHideIBarId= gtk_timeout_add( TED_BLINK_VISIBLE,
+    td->tdHideIBarId= g_timeout_add( TED_BLINK_VISIBLE,
 						tedHideIBar, (void *)ed );
     return 0;
     }
@@ -185,7 +205,7 @@ static int tedHideIBar(	void *		voided )
 
     tedUndrawIBar( ed );
 
-    td->tdShowIBarId= gtk_timeout_add( TED_BLINK_INVISIBLE,
+    td->tdShowIBarId= g_timeout_add( TED_BLINK_INVISIBLE,
 						tedShowIBar, (void *)ed );
     return 0;
     }
@@ -196,7 +216,7 @@ void tedStartCursorBlink(	EditDocument *	ed )
 
     tedStopCursorBlink( ed );
 
-    td->tdHideIBarId= gtk_timeout_add( TED_BLINK_VISIBLE,
+    td->tdHideIBarId= g_timeout_add( TED_BLINK_VISIBLE,
 						tedHideIBar, (void *)ed );
     }
 
@@ -205,7 +225,7 @@ void tedStopCursorBlink(	EditDocument *	ed )
     TedDocument *		td= (TedDocument *)ed->edPrivateData;
 
     if  ( td->tdHideIBarId )
-	{ gtk_timeout_remove( td->tdHideIBarId ); }
+	{ g_source_remove( td->tdHideIBarId ); }
 
     if  ( td->tdShowIBarId )
 	{
@@ -219,14 +239,14 @@ void tedStopCursorBlink(	EditDocument *	ed )
 	layoutInitContext( &lc );
 	tedSetScreenLayoutContext( &lc, ed );
 
-	gtk_timeout_remove( td->tdShowIBarId );
+	g_source_remove( td->tdShowIBarId );
 
 	if  ( tedGetSelection( &ds, &sg, &sd,
-			   (DocumentTree **)0, (struct BufferItem **)0, ed ) )
+			   (struct DocumentTree **)0, (struct BufferItem **)0, ed ) )
 	    { LDEB(1); return;	}
 
-	tedGetIBarRect( &drPixels, &(sg.sgHead), &lc );
-	tedDrawIBar( &drPixels, &lc );
+	docScreenGetIBarRect( &drPixels, &(sg.sgHead), &lc );
+	docScreenDrawIBar( &drPixels, &lc );
 	}
 
     td->tdHideIBarId= (guint)0;
@@ -235,12 +255,12 @@ void tedStopCursorBlink(	EditDocument *	ed )
     return;
     }
 
-void tedCleanCursorBlink(	TedDocument *	td )
+void tedCleanCursorBlink(	struct TedDocument *	td )
     {
     if  ( td->tdHideIBarId )
-	{ gtk_timeout_remove( td->tdHideIBarId ); }
+	{ g_source_remove( td->tdHideIBarId ); }
     if  ( td->tdShowIBarId )
-	{ gtk_timeout_remove( td->tdShowIBarId ); }
+	{ g_source_remove( td->tdShowIBarId ); }
 
     td->tdHideIBarId= (guint)0;
     td->tdShowIBarId= (guint)0;

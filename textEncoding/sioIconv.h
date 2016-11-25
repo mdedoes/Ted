@@ -4,15 +4,16 @@
 /*									*/
 /************************************************************************/
 
-#   include	<sioGeneral.h>
+struct SimpleInputStream;
+struct SimpleOutputStream;
 
-extern SimpleInputStream * sioInIconvOpen(
-					SimpleInputStream *	sisIn,
+extern struct SimpleInputStream * sioInIconvOpen(
+					struct SimpleInputStream *	sisIn,
 					const char *		tocode,
 					const char *		frcode );
 
-extern SimpleOutputStream * sioOutIconvOpen(
-					SimpleOutputStream *	sosOut,
+extern struct SimpleOutputStream * sioOutIconvOpen(
+					struct SimpleOutputStream *	sosOut,
 					const char *		tocode,
 					const char *		frcode );
 

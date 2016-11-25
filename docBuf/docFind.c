@@ -8,15 +8,18 @@
 
 #   include	<ctype.h>
 
-#   include	<appDebugon.h>
-
 #   include	"docBuf.h"
 #   include	"docNotes.h"
 #   include	"docTreeNode.h"
 #   include	"docFind.h"
 #   include	"docNodeTree.h"
 #   include	<docTreeType.h>
-#   include	<docDocumentNote.h>
+#   include	"docDocumentNote.h"
+#   include	"docSelect.h"
+#   include	<docDocumentProperties.h>
+
+#   include	"docDebug.h"
+#   include	<appDebugon.h>
 
 /************************************************************************/
 /*									*/
@@ -39,23 +42,24 @@
 /************************************************************************/
 
 typedef int (*STEP_TREE)(	DocumentPosition *	dp,
+				struct DocumentTree **	pTree,
 				int *			pPage,
 				int *			pColumn,
 				int			samePhase,
-				const BufferDocument *	bd );
+				const struct BufferDocument *	bd );
 
-typedef BufferItem * (*STEP_PARA)(	BufferItem *	bi );
+typedef struct BufferItem * (*STEP_PARA)(	struct BufferItem *	node );
 
 typedef int (*START_PARA)(	DocumentPosition *	dp,
-				BufferItem *		bi );
+				struct BufferItem *		node );
 
 typedef struct DocumentFindJob
     {
     DocumentSelection		dfjStartSelection;
     DocumentPosition		dfjCurrentPosition;
 
-    int				dfjExternalItemPage;
-    int				dfjExternalItemColumn;
+    int				dfjTreePage;
+    int				dfjTreeColumn;
 
     int				dfjWrapCount;
     int				dfjReverse;
@@ -65,7 +69,8 @@ typedef struct DocumentFindJob
     START_PARA			dfjStartPara;
     PARA_FIND_STRING		dfjFindString;
 
-    BufferDocument *		dfjDocument;
+    struct DocumentTree *	dfjTree;
+    struct BufferDocument *	dfjDocument;
     void *			dfjThrough;
     } DocumentFindJob;
 
@@ -110,23 +115,23 @@ static int docFindGetDocNoteItemIndex(	int	treeType )
 
 /************************************************************************/
 
-static DocumentTree * docFindGetHeaderFooter(
-				BufferItem *			bodySectNode,
+static struct DocumentTree * docFindGetHeaderFooter(
+				const struct BufferItem *	bodySectNode,
 				const DocumentProperties *	dp,
 				int				hf )
     {
     unsigned char		applies= 1;
-    DocumentTree *		dt;
+    struct DocumentTree *	tree;
 
-    dt= docSectionHeaderFooter( bodySectNode, &applies, dp,
+    tree= docSectionHeaderFooter( bodySectNode, &applies, dp,
 						DOC_HeaderFooterTypes[hf] );
 
-    if  ( ! dt )
-	{ XDEB(dt); return (DocumentTree *)0;	}
+    if  ( ! tree )
+	{ XDEB(tree); return (struct DocumentTree *)0;	}
     if  ( ! applies )
-	{ return (DocumentTree *)0;	}
+	{ return (struct DocumentTree *)0;	}
 
-    return dt;
+    return tree;
     }
 
 /************************************************************************/
@@ -142,10 +147,11 @@ static DocumentTree * docFindGetHeaderFooter(
 static int docFindInitFindJob(	DocumentFindJob *		dfj,
 				int				reverse,
 				const DocumentPosition *	dpFrom,
-				const BufferDocument *		bd )
+				struct BufferDocument *		bd )
     {
-    dfj->dfjExternalItemPage= -1;
-    dfj->dfjExternalItemColumn= -1;
+    dfj->dfjTree= (struct DocumentTree *)0;
+    dfj->dfjTreePage= -1;
+    dfj->dfjTreeColumn= -1;
     dfj->dfjReverse= reverse;
 
     if  ( dpFrom->dpNode )
@@ -156,29 +162,31 @@ static int docFindInitFindJob(	DocumentFindJob *		dfj,
 
 	if  ( dpFrom->dpNode->biTreeType != DOCinBODY )
 	    {
-	    DocumentTree *	dt;
-	    BufferItem *	bodySectNode;
+	    struct DocumentTree *	tree;
+	    struct BufferItem *	bodySectNode;
 
-	    if  ( docGetTreeOfNode( &dt, &bodySectNode, (BufferDocument *)bd,
-							    dpFrom->dpNode ) )
+	    if  ( docGetTreeOfNode( &tree, &bodySectNode, bd, dpFrom->dpNode ) )
 		{ LDEB(1); return -1;	}
 
-	    dfj->dfjExternalItemPage= dt->dtPageSelectedUpon;
-	    dfj->dfjExternalItemColumn= dt->dtColumnSelectedIn;
+	    dfj->dfjTree= tree;
+	    dfj->dfjTreePage= tree->dtPageSelectedUpon;
+	    dfj->dfjTreeColumn= tree->dtColumnSelectedIn;
 	    }
 	}
     else{
-	BufferItem *	bodyBi= bd->bdBody.dtRoot;
+	struct BufferItem *	bodyNode= bd->bdBody.dtRoot;
 
 	if  ( reverse )
 	    {
-	    if  ( docTailPosition( &(dfj->dfjCurrentPosition), bodyBi ) )
+	    if  ( docTailPosition( &(dfj->dfjCurrentPosition), bodyNode ) )
 		{ LDEB(1); return 1;	}
 	    }
 	else{
-	    if  ( docHeadPosition( &(dfj->dfjCurrentPosition), bodyBi ) )
+	    if  ( docHeadPosition( &(dfj->dfjCurrentPosition), bodyNode ) )
 		{ LDEB(1); return 1;	}
 	    }
+
+	dfj->dfjTree= &(bd->bdBody);
 	}
 
     docInitDocumentSelection( &(dfj->dfjStartSelection) );
@@ -197,31 +205,33 @@ static int docFindInitFindJob(	DocumentFindJob *		dfj,
 /************************************************************************/
 
 static int docFindNextHeaderFooter(	DocumentPosition *	dpNew,
-					int *			pExtItPage,
-					int *			pExtItColumn,
-					const BufferDocument *	bd,
+					struct DocumentTree **	pTree,
+					int *			pTreePage,
+					int *			pTreeColumn,
+					const struct BufferDocument *	bd,
 					int			sectFrom,
 					int			hfFrom )
     {
-    BufferItem *		bodyBi= bd->bdBody.dtRoot;
-    const DocumentProperties *	dp= &(bd->bdProperties);
+    struct BufferItem *		bodyNode= bd->bdBody.dtRoot;
+    const DocumentProperties *	dp= bd->bdProperties;
 
     int				sect;
-    BufferItem *		bodySectNode;
-    int				hf;
-    DocumentTree *		dt;
 
-    for ( sect= sectFrom; sect < bodyBi->biChildCount; sect++ )
+    for ( sect= sectFrom; sect < bodyNode->biChildCount; sect++ )
 	{
-	bodySectNode= bodyBi->biChildren[sect];
+	struct BufferItem *		bodySectNode;
+	int			hf;
+	struct DocumentTree *		tree;
+
+	bodySectNode= bodyNode->biChildren[sect];
 
 	for ( hf= hfFrom; hf < DOC_HeaderFooterTypeCount; hf++ )
 	    {
 	    int			page;
 	    int			usedInDoc;
 
-	    dt= docFindGetHeaderFooter( bodySectNode, dp, hf );
-	    if  ( ! dt || ! dt->dtRoot )
+	    tree= docFindGetHeaderFooter( bodySectNode, dp, hf );
+	    if  ( ! tree || ! tree->dtRoot )
 		{ continue;	}
 
 	    page= docSectionHeaderFooterFirstPage( &usedInDoc, bodySectNode,
@@ -230,14 +240,15 @@ static int docFindNextHeaderFooter(	DocumentPosition *	dpNew,
 	    if  ( page < 0 || ! usedInDoc )
 		{ continue;	}
 
-	    if  ( docHeadPosition( dpNew, dt->dtRoot ) )
+	    if  ( docHeadPosition( dpNew, tree->dtRoot ) )
 		{
 		SDEB(docTreeTypeStr(DOC_HeaderFooterTypes[hf]));
 		continue;
 		}
 
-	    *pExtItPage= page;
-	    *pExtItColumn= 0; /* irrelevant */
+	    *pTree= tree;
+	    *pTreePage= page;
+	    *pTreeColumn= 0; /* irrelevant */
 	    return 0;
 	    }
 
@@ -253,9 +264,10 @@ static int docFindNextHeaderFooter(	DocumentPosition *	dpNew,
 /*									*/
 /************************************************************************/
 
-static int docFindNextNote(		DocumentPosition *	dp,
-					const BufferDocument *	bd,
-					DocumentField *		dfNote )
+static int docFindNextNote(	DocumentPosition *		dp,
+				struct DocumentTree **		pTree,
+				const struct BufferDocument *	bd,
+				struct DocumentField *		dfNote )
     {
     DocumentNote *	dn;
 
@@ -267,6 +279,7 @@ static int docFindNextNote(		DocumentPosition *	dp,
 	    if  ( docHeadPosition( dp, dn->dnDocumentTree.dtRoot ) )
 		{ LDEB(1); return -1;	}
 
+	    *pTree= &(dn->dnDocumentTree);
 	    return 0;
 	    }
 
@@ -282,24 +295,25 @@ static int docFindNextNote(		DocumentPosition *	dp,
 /*									*/
 /************************************************************************/
 
-static int docFindNextSeparator(	DocumentPosition *	dp,
-					int *			pExtItPage,
-					int *			pExtItColumn,
-					const BufferDocument *	bd,
-					int			sepFrom )
+static int docFindNextSeparator( DocumentPosition *		dp,
+				struct DocumentTree **		pTree,
+				int *				pTreePage,
+				int *				pTreeColumn,
+				const struct BufferDocument *	bd,
+				int				sepFrom )
     {
     int			sep;
 
     for ( sep= sepFrom; sep < DOC_FindDocNoteItemCount; sep++ )
 	{
-	DocumentTree *		dt;
+	struct DocumentTree *		tree;
 	DocumentNote *		dn;
 	int			page= -1;
 	int			column= -1;
 
-	dt= docDocumentNoteSeparator( (BufferDocument *)bd,
+	tree= docDocumentNoteSeparator( (struct BufferDocument *)bd,
 						DOC_FindDocNoteItems[sep] );
-	if  ( ! dt || ! dt->dtRoot )
+	if  ( ! tree || ! tree->dtRoot )
 	    { continue;	}
 
 	switch( DOC_FindDocNoteItems[sep] )
@@ -322,8 +336,8 @@ static int docFindNextSeparator(	DocumentPosition *	dp,
 	    case DOCinAFTNSEP:
 		if  ( ! docGetFirstNoteOfDocument( &dn, bd, DOCinENDNOTE ) )
 		    { continue;	}
-		page= dt->dtRoot->biTopPosition.lpPage;
-		column= dt->dtRoot->biTopPosition.lpColumn;
+		page= tree->dtRoot->biTopPosition.lpPage;
+		column= tree->dtRoot->biTopPosition.lpColumn;
 		break;
 
 	    case DOCinAFTNSEPC:
@@ -334,11 +348,12 @@ static int docFindNextSeparator(	DocumentPosition *	dp,
 		LDEB(DOC_FindDocNoteItems[sep]); return -1;
 	    }
 
-	if  ( docHeadPosition( dp, dt->dtRoot ) )
+	if  ( docHeadPosition( dp, tree->dtRoot ) )
 	    { LDEB(1); return -1;	}
 
-	*pExtItPage= page;
-	*pExtItColumn= column;
+	*pTree= tree;
+	*pTreePage= page;
+	*pTreeColumn= column;
 	return 0;
 	}
 
@@ -355,28 +370,29 @@ static int docFindNextSeparator(	DocumentPosition *	dp,
 /*									*/
 /************************************************************************/
 
-static int docFindNextNextTree(		DocumentPosition *	dp,
-					int *			pPage,
-					int *			pColumn,
-					int			samePhase,
-					const BufferDocument *	bd )
+static int docFindNextNextTree(	DocumentPosition *		dp,
+				struct DocumentTree **		pTree,
+				int *				pPage,
+				int *				pColumn,
+				int				samePhase,
+				const struct BufferDocument *	bd )
     {
     int				phaseTo;
     int				phaseFrom;
 
     int				res;
     int				hfFrom;
-    DocumentField *		dfNote= (DocumentField *)0;
+    struct DocumentField *	dfNote= (struct DocumentField *)0;
     int				sectFrom;
     int				sepFrom;
 
-    const BufferItem *		selSectBi;
+    const struct BufferItem *		selSectNode;
     const SelectionScope *	ss;
 
-    selSectBi= docGetSectNode( dp->dpNode );
-    if  ( ! selSectBi )
-	{ XDEB(selSectBi); return -1;	}
-    ss= &(selSectBi->biSectSelectionScope);
+    selSectNode= docGetSectNode( dp->dpNode );
+    if  ( ! selSectNode )
+	{ XDEB(selSectNode); return -1;	}
+    ss= &(selSectNode->biSectSelectionScope);
 
     phaseTo= 0;
     sectFrom= 0; hfFrom= 0; sepFrom= 0;
@@ -391,13 +407,14 @@ static int docFindNextNextTree(		DocumentPosition *	dp,
 	case DOCinFIRST_HEADER:	case DOCinFIRST_FOOTER:
 	case DOCinLEFT_HEADER:	case DOCinLEFT_FOOTER:
 	case DOCinRIGHT_HEADER:	case DOCinRIGHT_FOOTER:
+	case DOCinLAST_HEADER:	case DOCinLAST_FOOTER:
 
 	    phaseFrom= 1;
 	    phaseTo= 1;
 	    sectFrom= ss->ssOwnerSectNr;
-	    hfFrom= docFindGetHeaderFooterIndex( selSectBi->biTreeType );
+	    hfFrom= docFindGetHeaderFooterIndex( selSectNode->biTreeType );
 	    if  ( hfFrom < 0 )
-		{ LLDEB(selSectBi->biTreeType,hfFrom); return -1;	}
+		{ LLDEB(selSectNode->biTreeType,hfFrom); return -1;	}
 	    hfFrom++;
 
 	    break;
@@ -418,16 +435,16 @@ static int docFindNextNextTree(		DocumentPosition *	dp,
 
 	    phaseFrom= 3;
 	    phaseTo= 3;
-	    sepFrom= docFindGetDocNoteItemIndex( selSectBi->biTreeType );
+	    sepFrom= docFindGetDocNoteItemIndex( selSectNode->biTreeType );
 	    if  ( sepFrom < 0 )
-		{ LLDEB(selSectBi->biTreeType,sepFrom); return -1; }
+		{ LLDEB(selSectNode->biTreeType,sepFrom); return -1; }
 	    sepFrom++;
 
 	    break;
 
 	default:
 	    LDEB(ss->ssTreeType);
-	    LDEB(selSectBi->biTreeType);
+	    LDEB(selSectNode->biTreeType);
 	    return -1;
 	}
 
@@ -439,7 +456,7 @@ static int docFindNextNextTree(		DocumentPosition *	dp,
 
     if  ( phaseTo <= 1 )
 	{
-	res= docFindNextHeaderFooter( dp,
+	res= docFindNextHeaderFooter( dp, pTree,
 				    pPage, pColumn, bd, sectFrom, hfFrom );
 	if  ( res < 0 )
 	    { LDEB(res); return res;	}
@@ -454,7 +471,7 @@ static int docFindNextNextTree(		DocumentPosition *	dp,
 
     if  ( phaseTo <= 2 )
 	{
-	res= docFindNextNote( dp, bd, dfNote );
+	res= docFindNextNote( dp, pTree, bd, dfNote );
 	if  ( res < 0 )
 	    { LDEB(res); return res;	}
 	if  ( res == 0 )
@@ -468,7 +485,7 @@ static int docFindNextNextTree(		DocumentPosition *	dp,
 
     if  ( phaseTo <= 3 )
 	{
-	res= docFindNextSeparator( dp, pPage, pColumn, bd, sepFrom );
+	res= docFindNextSeparator( dp, pTree, pPage, pColumn, bd, sepFrom );
 	if  ( res < 0 )
 	    { LDEB(res); return res;	}
 	if  ( res == 0 )
@@ -480,7 +497,7 @@ static int docFindNextNextTree(		DocumentPosition *	dp,
     if  ( samePhase && ( phaseTo != phaseFrom ) )
 	{ return 1;	}
 
-    if  ( docDocumentHead( dp, (BufferDocument *)bd ) )
+    if  ( docDocumentHead( dp, (struct BufferDocument *)bd ) )
 	{ LDEB(1); return -1;	}
 
     return 0;
@@ -492,32 +509,33 @@ static int docFindNextNextTree(		DocumentPosition *	dp,
 /*									*/
 /************************************************************************/
 
-static int docFindPrevHeaderFooter(	DocumentPosition *	dpNew,
-					int *			pExtItPage,
-					int *			pExtItColumn,
-					const BufferDocument *	bd,
-					int			sectFrom,
-					int			hfFrom )
+static int docFindPrevHeaderFooter(
+				DocumentPosition *		dpNew,
+				struct DocumentTree **		pTree,
+				int *				pTreePage,
+				int *				pTreeColumn,
+				const struct BufferDocument *	bd,
+				int				sectFrom,
+				int				hfFrom )
     {
-    BufferItem *		bodyBi= bd->bdBody.dtRoot;
-    const DocumentProperties *	dp= &(bd->bdProperties);
+    struct BufferItem *		bodyNode= bd->bdBody.dtRoot;
+    const DocumentProperties *	dp= bd->bdProperties;
 
     int				sect;
-    BufferItem *		bodySectNode;
     int				hf;
-    DocumentTree *		dt;
+    struct DocumentTree *		tree;
 
     for ( sect= sectFrom; sect >= 0; sect-- )
 	{
-	bodySectNode= bodyBi->biChildren[sect];
+	struct BufferItem *	bodySectNode= bodyNode->biChildren[sect];
 
 	for ( hf= hfFrom; hf >= 0; hf-- )
 	    {
 	    int			page;
 	    int			usedInDoc;
 
-	    dt= docFindGetHeaderFooter( bodySectNode, dp, hf );
-	    if  ( ! dt || ! dt->dtRoot )
+	    tree= docFindGetHeaderFooter( bodySectNode, dp, hf );
+	    if  ( ! tree || ! tree->dtRoot )
 		{ continue;	}
 
 	    page= docSectionHeaderFooterFirstPage( &usedInDoc, bodySectNode,
@@ -526,11 +544,12 @@ static int docFindPrevHeaderFooter(	DocumentPosition *	dpNew,
 	    if  ( page < 0 || ! usedInDoc )
 		{ continue;	}
 
-	    if  ( docTailPosition( dpNew, dt->dtRoot ) )
+	    if  ( docTailPosition( dpNew, tree->dtRoot ) )
 		{ LDEB(1); return -1;	}
 
-	    *pExtItPage= page;
-	    *pExtItColumn= 0; /* irrelevant */
+	    *pTree= tree;
+	    *pTreePage= page;
+	    *pTreeColumn= 0; /* irrelevant */
 	    return 0;
 	    }
 
@@ -540,9 +559,10 @@ static int docFindPrevHeaderFooter(	DocumentPosition *	dpNew,
     return 1;
     }
 
-static int docFindPrevNote(		DocumentPosition *	dp,
-					const BufferDocument *	bd,
-					DocumentField *		dfNote )
+static int docFindPrevNote(	DocumentPosition *		dp,
+				struct DocumentTree **		pTree,
+				const struct BufferDocument *	bd,
+				struct DocumentField *		dfNote )
     {
     DocumentNote *	dn;
 
@@ -554,6 +574,7 @@ static int docFindPrevNote(		DocumentPosition *	dp,
 	    if  ( docTailPosition( dp, dn->dnDocumentTree.dtRoot ) )
 		{ LDEB(1); return -1;	}
 
+	    *pTree= &(dn->dnDocumentTree);
 	    return 0;
 	    }
 
@@ -563,21 +584,21 @@ static int docFindPrevNote(		DocumentPosition *	dp,
     return 1;
     }
 
-static int docFindPrevSeparator(	DocumentPosition *	dp,
-					int *			pExtItPage,
-					int *			pExtItColumn,
-					const BufferDocument *	bd,
-					int			sepFrom )
+static int docFindPrevSeparator( DocumentPosition *		dp,
+				struct DocumentTree **		pTree,
+				const struct BufferDocument *	bd,
+				int				sepFrom )
     {
     int			sep;
 
     for ( sep= sepFrom; sep >= 0; sep-- )
 	{
-	DocumentTree *		dt;
+	struct DocumentTree *		tree;
 	DocumentNote *		dn;
 
-	dt= docDocumentNoteSeparator( (BufferDocument *)bd, DOC_FindDocNoteItems[sep] );
-	if  ( ! dt || ! dt->dtRoot )
+	tree= docDocumentNoteSeparator( (struct BufferDocument *)bd,
+					    DOC_FindDocNoteItems[sep] );
+	if  ( ! tree || ! tree->dtRoot )
 	    { continue;	}
 
 	switch( DOC_FindDocNoteItems[sep] )
@@ -608,40 +629,42 @@ static int docFindPrevSeparator(	DocumentPosition *	dp,
 		LDEB(DOC_FindDocNoteItems[sep]); return -1;
 	    }
 
-	if  ( docTailPosition( dp, dt->dtRoot ) )
+	if  ( docTailPosition( dp, tree->dtRoot ) )
 	    { LDEB(1); return -1;	}
 
+	*pTree= tree;
 	return 0;
 	}
 
     return 1;
     }
 
-static int docFindPrevPrevTree(		DocumentPosition *	dp,
-					int *			pPage,
-					int *			pColumn,
-					int			samePhase,
-					const BufferDocument *	bd )
+static int docFindPrevPrevTree(	DocumentPosition *		dp,
+				struct DocumentTree **		pTree,
+				int *				pPage,
+				int *				pColumn,
+				int				samePhase,
+				const struct BufferDocument *	bd )
     {
     int				phaseTo;
     int				phaseFrom;
 
     int				res;
     int				hfFrom;
-    DocumentField *		dfNote= (DocumentField *)0;
+    struct DocumentField *	dfNote= (struct DocumentField *)0;
     int				sectFrom;
     int				sepFrom;
 
-    BufferItem *		bodyBi= bd->bdBody.dtRoot;
-    const BufferItem *		selSectBi;
+    struct BufferItem *		bodyNode= bd->bdBody.dtRoot;
+    const struct BufferItem *		selSectNode;
     const SelectionScope *	ss;
 
-    selSectBi= docGetSectNode( dp->dpNode );
-    if  ( ! selSectBi )
-	{ XDEB(selSectBi); return -1;	}
-    ss= &(selSectBi->biSectSelectionScope);
+    selSectNode= docGetSectNode( dp->dpNode );
+    if  ( ! selSectNode )
+	{ XDEB(selSectNode); return -1;	}
+    ss= &(selSectNode->biSectSelectionScope);
 
-    sectFrom= bodyBi->biChildCount- 1;
+    sectFrom= bodyNode->biChildCount- 1;
     hfFrom= DOC_HeaderFooterTypeCount- 1;
     sepFrom= DOC_FindDocNoteItemCount- 1;
 
@@ -656,13 +679,14 @@ static int docFindPrevPrevTree(		DocumentPosition *	dp,
 	case DOCinFIRST_HEADER:	case DOCinFIRST_FOOTER:
 	case DOCinLEFT_HEADER:	case DOCinLEFT_FOOTER:
 	case DOCinRIGHT_HEADER:	case DOCinRIGHT_FOOTER:
+	case DOCinLAST_HEADER:	case DOCinLAST_FOOTER:
 
 	    phaseFrom= 1;
 	    phaseTo= 1;
 	    sectFrom= ss->ssOwnerSectNr;
-	    hfFrom= docFindGetHeaderFooterIndex( selSectBi->biTreeType );
+	    hfFrom= docFindGetHeaderFooterIndex( selSectNode->biTreeType );
 	    if  ( hfFrom < 0 )
-		{ LLDEB(selSectBi->biTreeType,hfFrom); return -1;	}
+		{ LLDEB(selSectNode->biTreeType,hfFrom); return -1;	}
 
 	    hfFrom--;
 
@@ -683,16 +707,16 @@ static int docFindPrevPrevTree(		DocumentPosition *	dp,
 
 	    phaseFrom= 3;
 	    phaseTo= 3;
-	    sepFrom= docFindGetDocNoteItemIndex( selSectBi->biTreeType );
+	    sepFrom= docFindGetDocNoteItemIndex( selSectNode->biTreeType );
 	    if  ( sepFrom < 0 )
-		{ LLDEB(selSectBi->biTreeType,sepFrom); return -1; }
+		{ LLDEB(selSectNode->biTreeType,sepFrom); return -1; }
 	    sepFrom--;
 
 	    break;
 
 	default:
 	    LDEB(ss->ssTreeType);
-	    LDEB(selSectBi->biTreeType);
+	    LDEB(selSectNode->biTreeType);
 	    return -1;
 	}
 
@@ -704,7 +728,7 @@ static int docFindPrevPrevTree(		DocumentPosition *	dp,
 
     if  ( phaseTo >= 3 )
 	{
-	res= docFindPrevSeparator( dp, pPage, pColumn, bd, sepFrom );
+	res= docFindPrevSeparator( dp, pTree, bd, sepFrom );
 	if  ( res < 0 )
 	    { LDEB(res); return res;	}
 	if  ( res == 0 )
@@ -718,7 +742,7 @@ static int docFindPrevPrevTree(		DocumentPosition *	dp,
 
     if  ( phaseTo >= 2 )
 	{
-	res= docFindPrevNote( dp, bd, dfNote );
+	res= docFindPrevNote( dp, pTree, bd, dfNote );
 	if  ( res < 0 )
 	    { LDEB(res); return res;	}
 	if  ( res == 0 )
@@ -732,7 +756,8 @@ static int docFindPrevPrevTree(		DocumentPosition *	dp,
 
     if  ( phaseTo >= 1 )
 	{
-	res= docFindPrevHeaderFooter( dp, pPage, pColumn, bd, sectFrom, hfFrom );
+	res= docFindPrevHeaderFooter( dp, pTree, pPage, pColumn,
+						bd, sectFrom, hfFrom );
 	if  ( res < 0 )
 	    { LDEB(res); return res;	}
 	if  ( res == 0 )
@@ -744,7 +769,7 @@ static int docFindPrevPrevTree(		DocumentPosition *	dp,
     if  ( samePhase && ( phaseTo != phaseFrom ) )
 	{ return 1;	}
 
-    if  ( docTailPosition( dp, bodyBi ) )
+    if  ( docTailPosition( dp, bodyNode ) )
 	{ LDEB(1); return 1;	}
 
     return 0;
@@ -754,31 +779,30 @@ static int docFindInCurrentTree(
 				DocumentSelection *		ds,
 				const DocumentFindJob *		dfj )
     {
-    BufferItem *		bi= dfj->dfjCurrentPosition.dpNode;
-
-    int				ret;
+    struct BufferItem *		node= dfj->dfjCurrentPosition.dpNode;
 
     DocumentPosition		dpHere;
 
-    if  ( bi->biLevel != DOClevPARA )
-	{ LLDEB(bi->biLevel,DOClevPARA); return -1;	}
+    if  ( node->biLevel != DOClevPARA )
+	{ LLDEB(node->biLevel,DOClevPARA); return -1;	}
 
     dpHere= dfj->dfjCurrentPosition;
 
     for (;;)
 	{
-	ret= (*dfj->dfjFindString)( ds, bi,
-				dfj->dfjDocument, &dpHere, dfj->dfjThrough );
+	int	ret= (*dfj->dfjFindString)( ds, node,
+				dfj->dfjDocument, dfj->dfjTree,
+				&dpHere, dfj->dfjThrough );
 
 	if  ( ret == 0 )
 	    { return ret;		}
 	if  ( ret < 0 )
 	    { LDEB(ret); return ret;	}
 
-	bi= (*dfj->dfjStepPara)( bi );
-	if  ( ! bi )
+	node= (*dfj->dfjStepPara)( node );
+	if  ( ! node )
 	    { return 1;	}
-	if  ( (*dfj->dfjStartPara)( &dpHere, bi ) )
+	if  ( (*dfj->dfjStartPara)( &dpHere, node ) )
 	    { LDEB(1); return 1;	}
 	}
     }
@@ -787,7 +811,7 @@ static int docFindInCurrentTree(
 
 typedef int (*FIND_IN_TREE)(	DocumentSelection *		ds,
 				const DocumentPosition *	dpFrom,
-				const BufferDocument *		bd,
+				const struct BufferDocument *	bd,
 				PARA_FIND_STRING		findNext,
 				void *				through );
 
@@ -824,16 +848,16 @@ static int docFindStepInDocument(
 
 	    if  ( dsNew.dsHead.dpNode->biTreeType != DOCinBODY )
 		{
-		DocumentTree *	dt;
-		BufferItem *	bodySectNode;
+		struct DocumentTree *	tree;
+		struct BufferItem *	bodySectNode;
 
-		if  ( docGetTreeOfNode( &dt, &bodySectNode,
-				(BufferDocument *)dfj->dfjDocument,
+		if  ( docGetTreeOfNode( &tree, &bodySectNode,
+				(struct BufferDocument *)dfj->dfjDocument,
 				dsNew.dsHead.dpNode ) )
 		    { LDEB(1); return -1;	}
 
-		dt->dtPageSelectedUpon= dfj->dfjExternalItemPage;
-		dt->dtColumnSelectedIn= dfj->dfjExternalItemColumn;
+		tree->dtPageSelectedUpon= dfj->dfjTreePage;
+		tree->dtColumnSelectedIn= dfj->dfjTreeColumn;
 		}
 
 	    *ds= dsNew;
@@ -851,8 +875,9 @@ static int docFindStepInDocument(
 	    }
 
 	ret= (*dfj->dfjStepTree)( &(dfj->dfjCurrentPosition),
-				    &(dfj->dfjExternalItemPage),
-				    &(dfj->dfjExternalItemColumn),
+				    &(dfj->dfjTree),
+				    &(dfj->dfjTreePage),
+				    &(dfj->dfjTreeColumn),
 				    samePhase, dfj->dfjDocument );
 	if  ( ret < 0 )
 	    { LDEB(ret); return -1;	}
@@ -872,7 +897,7 @@ static int docFindStepInDocument(
 
 int docFindFindNextInDocument(	DocumentSelection *		ds,
 				const DocumentPosition *	dpFrom,
-				BufferDocument *		bd,
+				struct BufferDocument *		bd,
 				PARA_FIND_STRING		findNext,
 				void *				through )
     {
@@ -889,12 +914,20 @@ int docFindFindNextInDocument(	DocumentSelection *		ds,
     dfj.dfjDocument= bd;
     dfj.dfjThrough= through;
 
+    if  ( dpFrom && dpFrom->dpNode )
+	{
+	if  ( docGetTreeOfNode( &(dfj.dfjTree),
+				(struct BufferItem **)0, bd, dpFrom->dpNode ) )
+	    { LDEB(1); return -1;	}
+	}
+    else{ dfj.dfjTree= &(bd->bdBody);	}
+
     return docFindStepInDocument( ds, &dfj );
     }
 
 int docFindFindPrevInDocument(	DocumentSelection *		ds,
 				const DocumentPosition *	dpFrom,
-				BufferDocument *		bd,
+				struct BufferDocument *		bd,
 				PARA_FIND_STRING		findPrev,
 				void *				through )
     {
@@ -911,6 +944,14 @@ int docFindFindPrevInDocument(	DocumentSelection *		ds,
     dfj.dfjDocument= bd;
     dfj.dfjThrough= through;
 
+    if  ( dpFrom && dpFrom->dpNode )
+	{
+	if  ( docGetTreeOfNode( &(dfj.dfjTree),
+				(struct BufferItem **)0, bd, dpFrom->dpNode ) )
+	    { LDEB(1); return -1;	}
+	}
+    else{ dfj.dfjTree= &(bd->bdBody);	}
+
     return docFindStepInDocument( ds, &dfj );
     }
 
@@ -925,7 +966,8 @@ int docFindFindPrevInDocument(	DocumentSelection *		ds,
 int docFindFindNextInCurrentTree(
 				DocumentSelection *		ds,
 				const DocumentPosition *	dpFrom,
-				BufferDocument *		bd,
+				struct BufferDocument *		bd,
+				struct DocumentTree *		tree,
 				PARA_FIND_STRING		findNext,
 				void *				through )
     {
@@ -940,6 +982,7 @@ int docFindFindNextInCurrentTree(
     dfj.dfjFindString= findNext;
 
     dfj.dfjDocument= bd;
+    dfj.dfjTree= tree;
     dfj.dfjThrough= through;
 
     return docFindInCurrentTree( ds, &dfj );
@@ -951,40 +994,38 @@ int docFindFindNextInCurrentTree(
 /*									*/
 /************************************************************************/
 
-int docNextSimilarRoot(		DocumentPosition *	dp,
-				int *			pPage,
-				int *			pColumn,
-				BufferDocument *	bd )
+int docNextSimilarTree(		DocumentPosition *	dp,
+				struct DocumentTree **	pTree,
+				struct BufferDocument *	bd )
     {
-    int		page= dp->dpNode->biTopPosition.lpPage;
-    int		column= dp->dpNode->biTopPosition.lpColumn;
-    const int	samePhase= 1;
+    int			page= dp->dpNode->biTopPosition.lpPage;
+    int			column= dp->dpNode->biTopPosition.lpColumn;
+    const int		samePhase= 1;
+    struct DocumentTree *	tree;
 
-    int ret= docFindNextNextTree( dp, &page, &column, samePhase, bd );
+    int ret= docFindNextNextTree( dp, &tree, &page, &column, samePhase, bd );
 
     if  ( ret < 0 )
 	{ LDEB(ret); return -1;	}
 
-    *pPage= page;
-    *pColumn= column;
+    *pTree= tree;
     return ret;
     }
 
-int docPrevSimilarRoot(		DocumentPosition *	dp,
-				int *			pPage,
-				int *			pColumn,
-				BufferDocument *	bd )
+int docPrevSimilarTree(		DocumentPosition *	dp,
+				struct DocumentTree **		pTree,
+				struct BufferDocument *	bd )
     {
-    int		page= dp->dpNode->biTopPosition.lpPage;
-    int		column= dp->dpNode->biTopPosition.lpColumn;
-    const int	samePhase= 1;
+    int			page= dp->dpNode->biTopPosition.lpPage;
+    int			column= dp->dpNode->biTopPosition.lpColumn;
+    const int		samePhase= 1;
+    struct DocumentTree *	tree;
 
-    int ret= docFindPrevPrevTree( dp, &page, &column, samePhase, bd );
+    int ret= docFindPrevPrevTree( dp, &tree, &page, &column, samePhase, bd );
 
     if  ( ret < 0 )
 	{ LDEB(ret); return -1;	}
 
-    *pPage= page;
-    *pColumn= column;
+    *pTree= tree;
     return ret;
     }

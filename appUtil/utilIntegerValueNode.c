@@ -55,8 +55,15 @@ IntegerValueNode * utilChildIntegerValueNode(
     int		r= ivn->ivnChildCount;
     int		m= ( l+ r )/ 2;
 
+    if  ( ivn->ivnIsLeaf )
+	{
+	LLLDEB(ivn->ivnIsLeaf,make,propval);
+	return (IntegerValueNode *)0;
+	}
+
     if  ( ivn->ivnChildCount > 0 )
 	{
+if(!ivn->ivnChildren){XDEB(ivn->ivnChildren);}
 	while ( l < m )
 	    {
 	    if  ( ivn->ivnChildren[m].ivnValue < propval )

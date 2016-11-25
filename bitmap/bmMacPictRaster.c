@@ -4,7 +4,10 @@
 #   include	<stdlib.h>
 
 #   include	<sioEndian.h>
+#   include	<geoRectangle.h>
 #   include	"bmio.h"
+#   include	"bitmap.h"
+#   include	<sioGeneral.h>
 
 #   include	<appDebugon.h>
 
@@ -311,6 +314,7 @@ int bmMacPictGetImage(		RasterImage *	abi,
     /*  5  */
     if  ( direct || hasPalette )
 	{
+#	if 0
 	int		version;
 	int		packType;
 	long		packSize;
@@ -320,21 +324,24 @@ int bmMacPictGetImage(		RasterImage *	abi,
 	int		planeBytes;
 	int		table;
 	int		reserved;
+#	endif
 
-	version= sioEndianGetBeInt16( sis ); bytesRead += 2;
-	packType= sioEndianGetBeInt16( sis ); bytesRead += 2;
+	/* version= */ sioEndianGetBeInt16( sis ); bytesRead += 2;
+	/* packType= */ sioEndianGetBeInt16( sis ); bytesRead += 2;
+	/*
 	if  ( packType == 4 )
 	    { packed= 1;	}
-	packSize= sioEndianGetBeInt32( sis ); bytesRead += 4;
-	xRes= sioEndianGetBeInt32( sis ); bytesRead += 4;
-	yRes= sioEndianGetBeInt32( sis ); bytesRead += 4;
-	pixelType= sioEndianGetBeInt16( sis ); bytesRead += 2;
-	bd->bdBitsPerPixel= sioEndianGetBeInt16( sis ); bytesRead += 2;
-	bd->bdSamplesPerPixel= sioEndianGetBeInt16( sis ); bytesRead += 2;
-	bd->bdBitsPerSample= sioEndianGetBeInt16( sis ); bytesRead += 2;
-	planeBytes= sioEndianGetBeInt32( sis ); bytesRead += 4;
-	table= sioEndianGetBeInt32( sis ); bytesRead += 4;
-	reserved= sioEndianGetBeInt32( sis ); bytesRead += 4;
+	*/
+	/* packSize= */ sioEndianGetBeInt32( sis ); bytesRead += 4;
+	/* xRes= */ sioEndianGetBeInt32( sis ); bytesRead += 4;
+	/* yRes= */ sioEndianGetBeInt32( sis ); bytesRead += 4;
+	/* pixelType= */ sioEndianGetBeInt16( sis ); bytesRead += 2;
+	/* bd->bdBitsPerPixel= */ sioEndianGetBeInt16( sis ); bytesRead += 2;
+	/* bd->bdSamplesPerPixel= */ sioEndianGetBeInt16( sis ); bytesRead += 2;
+	/* bd->bdBitsPerSample= */ sioEndianGetBeInt16( sis ); bytesRead += 2;
+	/* planeBytes= */ sioEndianGetBeInt32( sis ); bytesRead += 4;
+	/* table= */ sioEndianGetBeInt32( sis ); bytesRead += 4;
+	/* reserved= */ sioEndianGetBeInt32( sis ); bytesRead += 4;
 
 	if  ( bd->bdSamplesPerPixel == 4 )
 	    { bd->bdHasAlpha= 1;	}
@@ -362,6 +369,7 @@ LDEB(bd->bdPixelsWide);
 	    bd->bdBitsPerPixel= 24;
 	    }
 
+#       if 0
 	version= version;
 	packType= packType;
 	packSize= packSize;
@@ -371,6 +379,7 @@ LDEB(bd->bdPixelsWide);
 	planeBytes= planeBytes;
 	table= table;
 	reserved= reserved;
+#       endif
 	}
 
     /*  6  */

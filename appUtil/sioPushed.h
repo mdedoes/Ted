@@ -8,11 +8,12 @@
 /*									*/
 /************************************************************************/
 
-#   include	"sioGeneral.h"
+struct SimpleInputStream;
+struct SimpleOutputStream;
 
-extern SimpleInputStream * sioInPushedOpen(
-					SimpleInputStream *	sisIn );
+extern struct SimpleInputStream * sioInPushedOpen(
+				struct SimpleInputStream *	sisIn );
 
-extern SimpleOutputStream * sioOutPushedOpen(
-					SimpleOutputStream *	sosOut );
+extern struct SimpleOutputStream * sioOutPushedOpen(
+				struct SimpleOutputStream *	sosOut );
 

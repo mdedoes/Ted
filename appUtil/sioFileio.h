@@ -4,24 +4,25 @@
 /*									*/
 /************************************************************************/
 
-#   include	"utilMemoryBuffer.h"
-#   include	"sioGeneral.h"
+struct SimpleOutputStream;
+struct SimpleInputStream;
+struct MemoryBuffer;
 
-extern SimpleOutputStream * sioOutFileioOpen(
-				    const MemoryBuffer *	filename );
+extern struct SimpleOutputStream * sioOutFileioOpen(
+				    const struct MemoryBuffer *	filename );
 
-extern SimpleOutputStream * sioOutFileioOpenForAppend(
-				    const MemoryBuffer *	filename );
+extern struct SimpleOutputStream * sioOutFileioOpenForAppend(
+				    const struct MemoryBuffer *	filename );
 
-extern SimpleOutputStream * sioOutFileioOpenS(
+extern struct SimpleOutputStream * sioOutFileioOpenS(
 				    const char *		filename );
 
-extern SimpleOutputStream * sioOutFileioOpenTempFile(
-				    MemoryBuffer *		filename,
+extern struct SimpleOutputStream * sioOutFileioOpenTempFile(
+				    struct MemoryBuffer *	filename,
 				    const char *		template );
 
-extern SimpleInputStream * sioInFileioOpen(
-				    const MemoryBuffer *	filename );
+extern struct SimpleInputStream * sioInFileioOpen(
+				    const struct MemoryBuffer *	filename );
 
-extern SimpleInputStream * sioInFileioOpenS(
+extern struct SimpleInputStream * sioInFileioOpenS(
 				    const char *		filename );

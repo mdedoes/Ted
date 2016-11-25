@@ -4,68 +4,76 @@
 /*									*/
 /************************************************************************/
 
-#   ifndef	DOC_PARA_PARICULES_H
-#   define	DOC_PARA_PARICULES_H
+#   ifndef	DOC_PARA_PARTICULES_H
+#   define	DOC_PARA_PARTICULES_H
 
-#   include	"docBuf.h"
-#   include	<docTextParticule.h>
-#   include	<docTextLine.h>
-#   include	"docTreeNode.h"
+struct DocumentPosition;
+struct DocumentSelection;
+struct BufferItem;
+struct TextParticule;
+struct TextLine;
+struct BufferDocument;
+struct DocumentTree;
 
-		/**
-		  * Find the first particule that containd this position
-		  */
-#   define	PARAfindFIRST	0
-		/**
-		  * Find the last particule that containd this position
-		  */
-#   define	PARAfindLAST	1
-		/**
-		  * Find the last particule that contains this position
-		  * Or.. If it is the last position in the paragraph,
-		  * return the position past the last particule.
-		  */
-#   define	PARAfindPAST	2
+	/**
+	 * Find the first particule that contains this position
+	 */
+#   define PARAfindFIRST	0
+
+	/**
+	 * Find the last particule that contains this position
+	 */
+#   define PARAfindLAST		1
+
+	/**
+	 * Find the last particule that contains this position
+	 * Or.. If it is the last position in the paragraph,
+	 * return the position past the last particule.
+	 */
+#   define PARAfindPAST		2
 
 /************************************************************************/
 
-			/**
-			 *  The position is at the head of the particule.
-			 */
-#   define	POSflagPART_HEAD	0x01
-			/**
-			 *  The position is at the tail of the particule.
-			 */
-#   define	POSflagPART_TAIL	0x02
-			/**
-			 *  The position is immediately after a line or page
-			 *  break.
-			 */
-#   define	POSflagPART_AFTER_BREAK	0x04
+	/**
+	 *  The position is at the head of the particule.
+	 */
+#   define POSflagPART_HEAD		0x01
 
-			/**
-			 *  The position is at the head of the line.
-			 */
-#   define	POSflagLINE_HEAD	0x08
-			/**
-			 *  The position is at the tail of the line.
-			 */
-#   define	POSflagLINE_TAIL	0x10
+	/**
+	 *  The position is at the tail of the particule.
+	 */
+#   define POSflagPART_TAIL		0x02
 
-			/**
-			 *  The position is at the head of the paragraph.
-			 */
-#   define	POSflagPARA_HEAD	0x20
-			/**
-			 *  The position is at the tail of the paragraph.
-			 */
-#   define	POSflagPARA_TAIL	0x40
+	/**
+	 *  The position is immediately after a line or page break.
+	 */
+#   define POSflagPART_AFTER_BREAK	0x04
 
-			/**
-			 *  Used when a position is compared to a selection.
-			 *  The flag is set if the position is in the selection.
-			 */
-#   define	POSflagPARA_FOUND	0x80
+	/**
+	 *  The position is at the head of the line.
+	 */
+#   define POSflagLINE_HEAD		0x08
+
+	/**
+	 *  The position is at the tail of the line.
+	 */
+#   define POSflagLINE_TAIL		0x10
+
+	/**
+	 *  The position is at the head of the paragraph.
+	 */
+#   define POSflagPARA_HEAD		0x20
+
+	/**
+	 *  The position is at the tail of the paragraph.
+	 */
+#   define POSflagPARA_TAIL		0x40
+
+	/**
+	 *  Used when a position is compared to a selection.
+	 *  The flag is set if the position is inside the selection.
+	 */
+#   define POSflagPARA_FOUND		0x80
 
 /************************************************************************/
 /*									*/
@@ -76,85 +84,55 @@
 extern int docFindParticuleOfPosition(
 				int *				pPart,
 				int *				pFlags,
-				const DocumentPosition *	dp,
+				const struct DocumentPosition *	dp,
 				int				lastOne );
 
 extern int docFindLineOfPosition( int *				pLine,
 				int *				pFlags,
-				const DocumentPosition *	dp,
+				const struct DocumentPosition *	dp,
 				int				lastOne );
 
-extern void docInitParaNode(	BufferItem *			paraBi );
-extern int docDeleteEmptySpan(	BufferItem *			paraBi );
+extern int docGetLineOfPosition( int *				pLine,
+				const struct DocumentPosition *	dp,
+				int				positionFlags );
 
-extern void docCleanParaNode(	BufferDocument *		bd,
-				DocumentTree *			dt,
-				BufferItem *			paraBi );
-
-extern TextParticule *	docInsertParticules(	BufferItem *	paraBi,
-						int		part,
-						int		count );
-
-extern void docDeleteParticules(	BufferItem *	bi,
-					int		first,
-					int		count );
-
-extern int docInsertAdminParticule(	BufferDocument *	bd,
-					BufferItem *		paraBi,
-					int			n,
-					int			off,
-					int			objectNumber,
-					int			kind,
-					const TextAttribute *	ta );
-
-extern TextParticule *	docInsertTextParticule(	BufferItem *	bi,
-						int		n,
-						int		off,
-						int		len,
-						int		kind,
-						int		textAttrNr );
-
-extern TextParticule * docMakeSpecialParticule(
-				BufferItem *			paraBi,
-				int				n,
+extern void docSetLineFlags(	int *				pFlags,
+				const struct BufferItem *	paraNode,
 				int				stroff,
-				int				kind,
-				int				textAttrNr );
+				const struct TextLine *		tl );
 
-extern int docSaveSpecialParticule(	BufferDocument *	bd,
-					BufferItem *		paraBi,
-					const TextAttribute *	ta,
-					int			kind );
+extern void docInitParaNode(	struct BufferItem *		paraNode );
+extern void docCleanParaNode(	struct BufferDocument *		bd,
+				struct DocumentTree *		dt,
+				struct BufferItem *		paraNode );
 
-extern int docShiftParticuleOffsets(	BufferDocument *	bd,
-					BufferItem *		paraBi,
-					int			partFrom,
-					int			partUpto,
-					int			stroffShift );
+extern struct TextLine * docInsertTextLine(
+				struct BufferItem *		paraNode,
+				int				line );
 
-extern int docSplitTextParticule( TextParticule **		pTpPart,
-				TextParticule **		pTpNext,
-				BufferItem *			paraBi,
+extern void docCleanParticuleObject(
+				struct BufferDocument *		bd,
+				struct TextParticule *		tp );
+
+extern int docIntersectSelectionWithParagraph(
+				struct DocumentSelection *	dsPara,
+				int *				pPartFrom,
+				int *				pPartUpto,
+				int *				pHeadFlags,
+				int *				pTailFlags,
+				const struct BufferItem *	paraNode,
+				const struct DocumentSelection * ds );
+
+extern int docParaDelimitDirectionalRun(
+				int *				pDirection,
+				int *				pStroffUpto,
+				int *				pPartUpto,
+				const struct BufferItem *	paraNode,
+				int				stroffFrom );
+
+extern void docSetParticuleFlags( int *				pFlags,
+				const struct BufferItem *	paraNode,
 				int				part,
 				int				stroff );
 
-extern TextLine * docInsertTextLine(	BufferItem *	bi,
-					int		line );
-
-extern TextParticule *	docAppendObject(	BufferDocument *	bd,
-						BufferItem *		paraNode,
-						const TextAttribute *	ta );
-
-extern void docCleanParticuleObject(	BufferDocument *	bd,
-					TextParticule *		tp );
-
-extern int docIntersectSelectionWithParagraph(
-				    DocumentSelection *		dsPara,
-				    int *			pPartFrom,
-				    int *			pPartUpto,
-				    int *			pHeadFlags,
-				    int *			pTailFlags,
-				    const BufferItem *		paraNode,
-				    const DocumentSelection *	ds );
-
-#   endif		/*  DOC_PARA_PARICULES_H	*/
+#   endif		/*  DOC_PARA_PARTICULES_H	*/

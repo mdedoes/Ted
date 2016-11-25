@@ -7,72 +7,16 @@
 
 #   include	"docEditConfig.h"
 
-#   include	<stdio.h>
 #   include	<stdlib.h>
 
 #   include	<appDebugon.h>
 
 #   include	<docBuf.h>
-#   include	<docNotes.h>
 #   include	<docShape.h>
-#   include	<docDocumentNote.h>
+#   include	"docDocumentCopyJob.h"
+#   include	"docEditOperation.h"
 #   include	"docCopyNode.h"
-
-/************************************************************************/
-/*									*/
-/*  Copy a note from one paragraph to another.				*/
-/*									*/
-/************************************************************************/
-
-int docCopyNote(		DocumentCopyJob *	dcj,
-				DocumentField *		dfTo,
-				const DocumentField *	dfFrom )
-    {
-    EditOperation *		eo= dcj->dcjEditOperation;
-    BufferDocument *		bdTo= eo->eoDocument;
-
-    DocumentNote *		dnTo;
-    DocumentNote *		dnFrom;
-
-    dnFrom= docGetNoteOfField( dfFrom, dcj->dcjSourceDocument );
-    if  ( ! dnFrom )
-	{ XDEB(dnFrom); return -1;	}
-
-    dfTo->dfNoteIndex= docInsertNote( &dnTo, bdTo, dfTo,
-				    dnFrom->dnNoteProperties.npAutoNumber );
-    if  ( dfTo->dfNoteIndex < 0 )
-	{ LDEB(dfTo->dfNoteIndex); return -1;	}
-
-    /* realloc */
-    dnFrom= docGetNoteOfField( dfFrom, dcj->dcjSourceDocument );
-    if  ( ! dnFrom )
-	{ XDEB(dnFrom); return -1;	}
-
-    if  ( dnFrom->dnDocumentTree.dtRoot )
-	{
-	SelectionScope	ssRoot;
-
-	docInitSelectionScope( &ssRoot );
-
-	ssRoot.ssTreeType= dnFrom->dnNoteProperties.npTreeType;
-	ssRoot.ssSectNr= 0;
-	ssRoot.ssOwnerSectNr= dfTo->dfSelectionScope.ssSectNr;
-	ssRoot.ssOwnerNumber= dfTo->dfFieldNumber;
-
-	if  ( docCopyDocumentTree( dcj, &(dnTo->dnDocumentTree), &ssRoot,
-						&(dnFrom->dnDocumentTree) ) )
-	    { XDEB(dnTo->dnDocumentTree.dtRoot); return -1;	}
-	}
-
-    dnTo->dnNoteProperties.npTreeType=
-				dnFrom->dnNoteProperties.npTreeType;
-
-    if  ( docCheckSeparatorItemForNoteType( bdTo,
-					dnTo->dnNoteProperties.npTreeType ) )
-	{ LDEB(dnTo->dnNoteProperties.npTreeType); return -1; }
-
-    return 0;
-    }
+#   include	"docEditImpl.h"
 
 /************************************************************************/
 /*									*/
@@ -150,5 +94,60 @@ DrawingShape * docCopyDrawingShape(
 	}
 
     return rval;
+    }
+
+/************************************************************************/
+
+struct DocumentTree * docEditInsertHeaderFooter(
+					EditOperation *		eo,
+					int			treeType,
+					int			textAttrNr,
+					int			refPage )
+    {
+    struct DocumentTree *	dtHdFt;
+    struct BufferItem *		bodySectNode;
+
+    struct BufferItem *		treeParaNode;
+    const int			ownerNumber= -1;
+
+    DocumentPosition		dpNew;
+
+    int				page;
+    const int			column= 0;
+
+    /*  2  */
+    if  ( docGetHeaderFooter( &dtHdFt, &bodySectNode, &(eo->eoHeadDp),
+						eo->eoDocument, treeType ) )
+	{ LDEB(treeType); return (struct DocumentTree *)0;	}
+
+    treeParaNode= docStartDocumentTree( eo->eoDocument, dtHdFt, treeType,
+			bodySectNode, ownerNumber, textAttrNr );
+    if  ( ! treeParaNode )
+	{ XDEB(treeParaNode); return (struct DocumentTree *)0;	}
+
+    /*  4  */
+    if  ( docHeadPosition( &dpNew, treeParaNode ) )
+	{ LDEB(1); return (struct DocumentTree *)0;	}
+    docAvoidParaHeadField( &dpNew, (int *)0, eo->eoDocument );
+
+    page= docHeaderFooterPage( eo->eoDocument, bodySectNode,
+							refPage, treeType );
+    if  ( page < 0 )
+	{ LDEB(page); return (struct DocumentTree *)0;	}
+
+    docInvalidateTreeLayout( dtHdFt );
+
+    dtHdFt->dtPageSelectedUpon= page;
+    dtHdFt->dtColumnSelectedIn= column;
+
+    eo->eoTree= dtHdFt;
+    docGetSelectionScope( &(eo->eoSelectionScope), bodySectNode );
+    eo->eoReformatNeeded= REFORMAT_BODY_SECT;
+
+    /*  5  */
+    docSetIBarRange( &(eo->eoAffectedRange), &dpNew );
+    docSetIBarRange( &(eo->eoSelectedRange), &dpNew );
+
+    return dtHdFt;
     }
 

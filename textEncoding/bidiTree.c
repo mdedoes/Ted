@@ -7,19 +7,25 @@
 #   include	"textEncodingConfig.h"
 
 #   include	<stdlib.h>
-#   include	<limits.h>
+#   include	<stdio.h>
 
 #   include	"bidiTree.h"
-#   include	"bidiEmbedding.h"
+#   include	"ucdBidiClass.h"
+#   include	<utilMemoryBuffer.h>
 
 #   include	<appDebugon.h>
 
+void bidiInitRun(		BidiRun *	br )
+    {
+    br->brFrom= 0;
+    br->brUpto= 0;
+    br->brLevel= 0;
+    br->brInitiator= UCDbidi_ON;
+    }
+
 void bidiInitTreeNode(			BidiNode *	bn )
     {
-    bn->bnFrom= 0;
-    bn->bnUpto= 0;
-    bn->bnEmbedding= BIDIembedEMBEDDING;
-    bn->bnLevel= 0;
+    bidiInitRun( &(bn->bnRun) );
 
     bn->bnParent= (BidiNode *)0;
     bn->bnChildren= (BidiNode **)0;
@@ -48,8 +54,143 @@ void bidiCleanTreeNode(			BidiNode *	bn )
     return;
     }
 
+BidiNode * bidiNodeStartTree(	int		initiator,
+				int		level,
+				int		from,
+				int		upto )
+    {
+    BidiNode *	fresh= (BidiNode *)0;
+
+    if  ( level < 0 || level > 1 )
+	{ LDEB(level); return (BidiNode *)0;	}
+
+    fresh= malloc( sizeof(BidiNode) );
+    if  ( ! fresh )
+	{ XDEB(fresh); return (BidiNode *)0;	}
+
+    bidiInitTreeNode( fresh );
+
+    fresh->bnRun.brLevel= level;
+    fresh->bnRun.brInitiator= initiator;
+    fresh->bnRun.brFrom= from;
+    fresh->bnRun.brUpto= upto;
+
+    return fresh;
+    }
+
+static int bidiNodeFindChild(	BidiNode *		parent,
+				int			offset )
+    {
+    int	l= 0;
+    int	r= parent->bnChildCount;
+    int	m= ( l+ r )/ 2;
+
+    /* ge */
+    while( l < m )
+	{
+	if  ( parent->bnChildren[m]->bnRun.brFrom < offset )
+	    { l= m;	}
+	else{ r= m;	}
+
+	m= ( l+ r )/ 2;
+	}
+
+    if  ( offset <= parent->bnChildren[m]->bnRun.brFrom )
+	{ return m;		}
+    else{ return m+ 1;	}
+    }
+
+/************************************************************************/
+/*									*/
+/*  Path the initiator of a partial run. I.E between the children of	*/
+/*  a node.								*/
+/*									*/
+/************************************************************************/
+
+static int bidiSetPartialRunInitiator(	BidiRun *		br )
+    {
+    switch( br->brInitiator )
+	{
+	case UCDbidi_R:
+	case UCDbidi_L:
+	    return 0;
+
+	case UCDbidi_LRO:
+	case UCDbidi_LRE:
+	case UCDbidi_LRI:
+	    br->brInitiator= UCDbidi_L;
+	    return 0;
+
+	case UCDbidi_RLO:
+	case UCDbidi_RLE:
+	case UCDbidi_RLI:
+	    br->brInitiator= UCDbidi_R;
+	    return 0;
+
+	case UCDbidi_FSI:
+	default:
+	    SDEB(ucdBidiClassStr(br->brInitiator));
+	    return -1;
+	}
+    }
+
+BidiNode * bidiFindNode(	BidiRun *		br,
+				BidiNode *		parent,
+				int			offset )
+    {
+    if  ( ! parent )
+	{ XDEB(parent); return (BidiNode *)0;	}
+
+    if  ( offset < parent->bnRun.brFrom || offset > parent->bnRun.brUpto )
+	{
+	LLLDEB(parent->bnRun.brFrom,offset,parent->bnRun.brUpto);
+	return (BidiNode *)0;
+	}
+
+    while( parent->bnChildCount > 0 )
+	{
+	int		nip= bidiNodeFindChild( parent, offset );
+	BidiNode *	child;
+
+	/* past last child */
+	if  ( nip >= parent->bnChildCount )
+	    {
+	    child= parent->bnChildren[nip-1];
+
+	    *br= parent->bnRun;
+	    if  ( bidiSetPartialRunInitiator( br ) )
+		{ LDEB(1); return (BidiNode *)0;	}
+	    br->brFrom= child->bnRun.brUpto;
+	    return parent;
+	    }
+
+	/* inside child */
+	child=  parent->bnChildren[nip];
+	if  ( offset >= child->bnRun.brFrom	&&
+	      offset <= child->bnRun.brUpto	)
+	    {
+	    parent= child; continue;
+	    }
+
+	/* before child */
+	*br= parent->bnRun;
+	br->brUpto= child->bnRun.brFrom;
+	if  ( nip > 0 )
+	    {
+	    if  ( bidiSetPartialRunInitiator( br ) )
+		{ LDEB(1); return (BidiNode *)0;	}
+	    br->brFrom= parent->bnChildren[nip-1]->bnRun.brUpto;
+	    }
+
+	return parent;
+	}
+
+    *br= parent->bnRun;
+    return parent;
+    }
+
 BidiNode * bidiNodeAddChild(	BidiNode *	parent,
-				int		embedding,
+				int		initiator,
 				int		level,
 				int		from,
 				int		upto )
@@ -58,9 +199,46 @@ BidiNode * bidiNodeAddChild(	BidiNode *	parent,
     BidiNode **	children= (BidiNode **)0;
     int		nip= 0;
 
-    if  ( level <= parent->bnLevel	||
-	  level >  parent->bnLevel+ 2	)
-	{ LLDEB(level,parent->bnLevel); return (BidiNode *)0;	}
+    if  ( from < 0 || upto < from )
+	{ LLDEB(from,upto); return (BidiNode *)0;	}
+
+    if  ( initiator != UCDbidi_R	&&
+	  initiator != UCDbidi_L	&&
+	  initiator != UCDbidi_LRO	&&
+	  initiator != UCDbidi_RLO	&&
+	  initiator != UCDbidi_LRE	&&
+	  initiator != UCDbidi_RLE	&&
+	  initiator != UCDbidi_FSI	&&
+	  initiator != UCDbidi_LRI	&&
+	  initiator != UCDbidi_RLI	)
+	{ SDEB(ucdBidiClassStr(initiator)); return (BidiNode *)0;	}
+
+    if  ( level < parent->bnRun.brLevel	||
+	  level > parent->bnRun.brLevel+ 2	)
+	{
+	LLLLDEB(level,parent->bnRun.brLevel,from,upto);
+	SSDEB(ucdBidiClassStr(initiator),
+			    ucdBidiClassStr(parent->bnRun.brInitiator));
+	return (BidiNode *)0;
+	}
+
+    if  ( level == parent->bnRun.brLevel )
+	{
+	if  ( ( initiator != UCDbidi_R			&&
+	        initiator != UCDbidi_L			)	||
+	      ( parent->bnRun.brInitiator != UCDbidi_LRO	&&
+	        parent->bnRun.brInitiator != UCDbidi_RLO	&&
+	        parent->bnRun.brInitiator != UCDbidi_LRE	&&
+	        parent->bnRun.brInitiator != UCDbidi_RLE	&&
+	        parent->bnRun.brInitiator != UCDbidi_FSI	&&
+	        parent->bnRun.brInitiator != UCDbidi_LRI	&&
+	        parent->bnRun.brInitiator != UCDbidi_RLI	)	)
+	    {
+	    SSDEB(ucdBidiClassStr(initiator),
+			    ucdBidiClassStr(parent->bnRun.brInitiator));
+	    return (BidiNode *)0;
+	    }
+	}
 
     children= (BidiNode **)realloc( parent->bnChildren,
 			    ( parent->bnChildCount+ 1 )* sizeof(BidiNode *) );
@@ -73,42 +251,24 @@ BidiNode * bidiNodeAddChild(	BidiNode *	parent,
 
     if  ( parent->bnChildCount > 0 )
 	{
-	int	l= 0;
-	int	r= parent->bnChildCount;
-	int	m= ( l+ r )/ 2;
-
-	while( l < m )
-	    {
-	    if  ( parent->bnChildren[m]->bnFrom < from )
-		{ l= m;	}
-	    else{ r= m;	}
-
-	    m= ( l+ r )/ 2;
-	    }
-
-	if  ( from <= parent->bnChildren[m]->bnFrom )
-	    { nip= m;		}
-	else{ nip= m+ 1;	}
+	nip= bidiNodeFindChild( parent, from );
 
 	/*  Overlap with subsequent is wrong	*/
 	if  ( nip < parent->bnChildCount		&&
-	      parent->bnChildren[nip]->bnFrom > upto	)
+	      parent->bnChildren[nip]->bnRun.brFrom > upto	)
 	    {
-	    LLLDEB(nip,parent->bnChildren[nip]->bnFrom,upto);
+	    LLLDEB(nip,parent->bnChildren[nip]->bnRun.brFrom,upto);
 	    return (BidiNode *)0;
 	    }
 
 	/*  Overlap with previous is wrong	*/
 	if  ( nip > 0					&&
-	      parent->bnChildren[nip-1]->bnUpto > from	)
+	      parent->bnChildren[nip-1]->bnRun.brUpto > from	)
 	    {
-	    LLLDEB(nip,parent->bnChildren[nip-1]->bnUpto,from);
+	    LLLDEB(nip,parent->bnChildren[nip-1]->bnRun.brUpto,from);
 	    return (BidiNode *)0;
 	    }
 	}
-
-    if  ( bidiStretchNode( parent, upto ) )
-	{ LDEB(upto); return (BidiNode *)0;	}
 
     child= malloc( sizeof(BidiNode) );
     if  ( ! child )
@@ -118,10 +278,10 @@ BidiNode * bidiNodeAddChild(	BidiNode *	parent,
 
     child->bnParent= parent;
     child->bnNumberInParent= nip;
-    child->bnEmbedding= embedding;
-    child->bnLevel= level;
-    child->bnFrom= from;
-    child->bnUpto= upto;
+    child->bnRun.brLevel= level;
+    child->bnRun.brInitiator= initiator;
+    child->bnRun.brFrom= from;
+    child->bnRun.brUpto= upto;
 
     if  ( nip < parent->bnChildCount )
 	{
@@ -140,240 +300,190 @@ BidiNode * bidiNodeAddChild(	BidiNode *	parent,
     return child;
     }
 
+void bidiNodeDeleteNode(	BidiNode *	node )
+    {
+    BidiNode *	parent= node->bnParent;
+
+    if  ( node->bnParent )
+	{
+	if  ( node->bnNumberInParent >= parent->bnChildCount )
+	    { LLDEB(node->bnNumberInParent,parent->bnChildCount);	}
+	else{
+	    int		i;
+
+	    parent->bnChildCount--;
+
+	    for ( i= node->bnNumberInParent; i < parent->bnChildCount; i++ )
+		{ parent->bnChildren[i]= parent->bnChildren[i+1];	}
+	    }
+	}
+
+    bidiCleanTreeNode( node );
+    free( node );
+
+    return;
+    }
+
 int bidiStretchNode(	BidiNode *	bn,
 			int		upto )
     {
     while( bn )
 	{
-	if  ( bn->bnUpto < upto )
-	    { bn->bnUpto=  upto;	}
+	BidiNode *	parent= bn->bnParent;
 
-	bn= bn->bnParent;
+	if  ( parent && bn->bnNumberInParent < parent->bnChildCount- 1 )
+	    {
+	    const BidiNode *	next;
+
+	    next= parent->bnChildren[bn->bnNumberInParent+1];
+
+	    if  ( upto > next->bnRun.brFrom )
+		{ LLDEB(upto,next->bnRun.brFrom); return -1;	}
+	    }
+
+	if  ( bn->bnRun.brUpto < upto )
+	    { bn->bnRun.brUpto=  upto;	}
+
+	bn= parent;
 	}
 
     return 0;
     }
 
-/**
- *  Traverse a range of contiguous children
- */
-typedef struct TraverseNode
-    {
-    int			tnFrom;
-    int			tnUpto;
-    BidiGotLevel	tnGotLevel;
-    void *		tnThrough;
-    } TraverseNode;
-
-static int bidiTraverseNodeImpl(	const BidiNode *	bn,
-					const TraverseNode *	tn );
-
-static int bidiTraverseChildrenBwd(	const BidiNode *	bn,
-					const TraverseNode *	tn,
-					int			fr,
-					int			to )
-    {
-    to--;
-
-    while( to >= fr )
-	{
-	int	tt= to- 1;
-	int	t;
-
-	if  ( bn->bnChildren[to]->bnLevel == bn->bnLevel+ 2 )
-	    {
-	    while( tt >= fr && bn->bnChildren[tt]->bnLevel == bn->bnLevel+ 2 )
-		{ tt--;	}
-	    }
-
-	for ( t= tt+ 1; t <= to; t++ )
-	    {
-	    if  ( bidiTraverseNodeImpl( bn->bnChildren[t], tn ) )
-		{ LDEB(t); return -1;	}
-	    }
-
-	to= tt;
-	}
-
-    return 0;
-    }
-
-static int bidiTraverseChildrenFwd(	const BidiNode *	bn,
-					const TraverseNode *	tn,
-					int			fr,
-					int			to )
-    {
-    fr++;
-
-    while( fr <= to )
-	{
-	if  ( bidiTraverseNodeImpl( bn->bnChildren[fr], tn ) )
-	    { LDEB(fr); return -1;	}
-	fr++;
-	}
-
-    return 0;
-    }
-
-/**
- *  Traverse a node and its offspring in presentation (drawing) order
- *  NOTE: bnChildCount is expected to be so low that binary search 
- *	for the starting child is not worth the amount of code.
- */
-static int bidiTraverseNodeImpl(	const BidiNode *	bn,
-					const TraverseNode *	tn )
-    {
-    int		from= bn->bnFrom;
-    int		upto= bn->bnUpto;
-    int		forward;
-
-    if  ( bn->bnParent					&&
-	  ( bn->bnEmbedding == BIDIembedLRE	||
-	    bn->bnEmbedding == BIDIembedRLE	||
-	    bn->bnEmbedding == BIDIembedLRO	||
-	    bn->bnEmbedding == BIDIembedRLO	)	)
-	{ from++; upto--;	}
-
-    if  ( tn->tnFrom >= 0 )
-	{
-	if  ( tn->tnFrom >= upto )
-	    { return 0;	}
-	if  ( from < tn->tnFrom )
-	    { from=  tn->tnFrom;	}
-	}
-
-    if  ( tn->tnUpto >= 0 )
-	{
-	if  ( tn->tnUpto <= from )
-	    { return 0;	}
-	if  ( upto > tn->tnUpto )
-	    { upto=  tn->tnUpto;	}
-	}
-
-    forward= ( bn->bnLevel % 2 ) == 0;
-
-    if  ( forward )
-	{
-	int		fr= INT_MAX;
-	int		to;
-
-	for ( to= 0; to < bn->bnChildCount; to++ )
-	    {
-	    const BidiNode *	child= bn->bnChildren[to];
-
-	    if  ( child->bnLevel <= bn->bnLevel		||
-		  child->bnLevel > bn->bnLevel+ 2	)
-		{ LLDEB(bn->bnLevel,child->bnLevel); return -1;	}
-
-	    if  ( child->bnFrom >= upto )
-		{ break;	}
-	    if  ( child->bnUpto <= from )
-		{ continue;	}
-
-	    if  ( child->bnFrom > from )
-		{
-		if  ( bidiTraverseChildrenBwd( bn, tn, fr, to ) )
-		    { LLDEB(fr,to);	}
-		fr= INT_MAX;
-
-		if  ( (*tn->tnGotLevel)( tn->tnThrough,
-						bn->bnEmbedding, bn->bnLevel,
-						from, child->bnFrom ) )
-		    { LDEB(1); return -1;	}
-		}
-
-	    if  ( fr == INT_MAX )
-		{ fr= to;	}
-
-	    from= child->bnUpto;
-	    }
-
-	if  ( bidiTraverseChildrenBwd( bn, tn, fr, to ) )
-	    { LLDEB(fr,to);	}
-
-	if  ( from < upto )
-	    {
-	    if  ( (*tn->tnGotLevel)( tn->tnThrough,
-						bn->bnEmbedding, bn->bnLevel,
-						from, upto ) )
-		{ LDEB(1); return -1;	}
-	    }
-	}
-    else{
-	int		to= INT_MIN;
-	int		fr;
-
-	for ( fr= bn->bnChildCount- 1; fr >= 0; fr-- )
-	    {
-	    const BidiNode *	child= bn->bnChildren[fr];
-
-	    if  ( child->bnFrom >= upto )
-		{ continue;	}
-	    if  ( child->bnUpto <= from )
-		{ break;	}
-
-	    if  ( child->bnLevel <= bn->bnLevel		||
-		  child->bnLevel > bn->bnLevel+ 2	)
-		{ LLDEB(bn->bnLevel,child->bnLevel); return -1;	}
-
-	    if  ( child->bnUpto < upto )
-		{
-		if  ( bidiTraverseChildrenFwd( bn, tn, fr, to ) )
-		    { LLDEB(fr,to);	}
-		to= INT_MIN;
-
-		if  ( (*tn->tnGotLevel)( tn->tnThrough,
-						bn->bnEmbedding, bn->bnLevel,
-						child->bnUpto, upto ) )
-		    { LDEB(1); return -1;	}
-		}
-
-	    if  ( to < 0 )
-		{ to= fr;	}
-
-	    upto= child->bnFrom;
-	    }
-
-	if  ( bidiTraverseChildrenFwd( bn, tn, fr, to ) )
-	    { LLDEB(fr,to);	}
-
-	if  ( from < upto )
-	    {
-	    if  ( (*tn->tnGotLevel)( tn->tnThrough,
-						bn->bnEmbedding, bn->bnLevel,
-						from, upto ) )
-		{ LDEB(1); return -1;	}
-	    }
-	}
-
-    return 0;
-    }
-
-int bidiTraverseNode(	const BidiNode *	bn,
-			int			from,
-			int			upto,
-			BidiGotLevel		gotLevel,
-			void *			through )
-    {
-    TraverseNode	tn;
-
-    if  ( ! gotLevel )
-	{ XDEB(gotLevel); return -1;	}
-
-    tn.tnFrom= from;
-    tn.tnUpto= upto;
-    tn.tnGotLevel= gotLevel;
-    tn.tnThrough= through;
-
-    return bidiTraverseNodeImpl( bn, &tn );
-    }
-
-void bidiListNode(	const BidiNode *	bn,
-			const char *		symbols )
+int bidiShiftNode(	BidiNode *	bn,
+			int		from,
+			int		by )
     {
     int		i;
-    int		from= bn->bnFrom;
 
+    if  ( bn->bnRun.brFrom > from )
+	{ bn->bnRun.brFrom += by;	}
+
+    i= 0;
+    while( i < bn->bnChildCount && bn->bnChildren[i]->bnRun.brUpto < from )
+	{ i++;	}
+    while( i < bn->bnChildCount )
+	{
+	if  ( bidiShiftNode( bn->bnChildren[i], from, by ) )
+	    { LDEB(i); return -1;	}
+
+	i++;
+	}
+
+    if  ( bn->bnRun.brUpto >= from )
+	{ bn->bnRun.brUpto += by;	}
+
+    return 0;
+    }
+
+/************************************************************************/
+/*									*/
+/*  Debugging routine to list tree contents.				*/
+/*									*/
+/************************************************************************/
+
+static void bidiListNodeHead(
+			const BidiNode *	bn,
+			int			indent,
+			int			maxIndent,
+			const char *		syms )
+    {
+    int		i;
+    char	scratch[20];
+
+    appDebug( "%3d ", bn->bnRun.brFrom );
+
+    if  ( indent > 0 )
+	{
+	for ( i= 0; i < indent- 1; i++ )
+	    {
+	    appDebug( "   |" );
+	    }
+	appDebug( "   +" );
+	}
+
+    sprintf( scratch, "%d:%s",
+		    bn->bnRun.brLevel,
+		    ucdBidiClassStr( bn->bnRun.brInitiator ) );
+    appDebug( "---+ %-6s", scratch );
+
+    for ( i= indent; i < maxIndent; i++ )
+	{
+	appDebug( "    " );
+	}
+
+    appDebug( "%3d..%3d ", bn->bnRun.brFrom, bn->bnRun.brUpto );
+
+    appDebug( "\n" );
+    }
+
+static void bidiListNodeTail(
+			const BidiNode *	bn,
+			int			indent,
+			const char *		syms )
+    {
+    int		i;
+
+    appDebug( "%3d ", bn->bnRun.brUpto );
+
+    for ( i= 0; i < indent; i++ )
+	{
+	appDebug( "   |" );
+	}
+
+    appDebug( "\n" );
+    }
+
+static void bidiListNodeRange(
+			const BidiNode *	bn,
+			int			indent,
+			int			maxIndent,
+			int			last,
+			const char *		syms,
+			int			from,
+			int			upto )
+    {
+    int		i;
+
+    appDebug( "    " );
+
+    for ( i= 0; i < indent; i++ )
+	{
+	appDebug( "   |" );
+	}
+
+    if  ( last )
+	{ appDebug( "   \\" );	}
+    else{ appDebug( "   |" );	}
+
+    for ( i= indent; i < maxIndent; i++ )
+	{
+	appDebug( "    " );
+	}
+
+    appDebug( "       %3d..%3d: %d: ", from, upto, bn->bnRun.brLevel );
+
+    if  ( syms )
+	{ appDebug( " \"%.*s\"", upto- from, syms+ from );	}
+
+    appDebug( "\n" );
+    }
+
+static void bidiListNodeImpl(
+			const BidiNode *	bn,
+			int			indent,
+			int			maxIndent,
+			const char *		syms )
+    {
+    int			i;
+    int			from;
+
+    if  ( ! bn )
+	{ XDEB(bn); return;	}
+
+    bidiListNodeHead( bn, indent, maxIndent, syms );
+
+    from= bn->bnRun.brFrom;
     for ( i= 0; i < bn->bnChildCount; i++ )
 	{
 	const BidiNode *	ch= bn->bnChildren[i];
@@ -382,44 +492,68 @@ void bidiListNode(	const BidiNode *	bn,
 	    { SXXDEB("####",ch->bnParent,bn);	}
 	if  ( ch->bnNumberInParent != i )
 	    { SLLDEB("####",ch->bnNumberInParent,i);	}
-	if  ( ch->bnFrom < from )
-	    { SLLLDEB("####",i,ch->bnFrom,from);	}
+	if  ( ch->bnRun.brFrom < from )
+	    { SLLLDEB("####",i,ch->bnRun.brFrom,from);	}
 
-	if  ( i == 0 || ch->bnFrom > from )
+	if  ( ch->bnRun.brFrom > from )
 	    {
-	    appDebug( "%3d..%3d/%3d..%3d (%3d@%2d): %*s%s %d",
-		from, ch->bnFrom, bn->bnFrom, bn->bnUpto,
-		( ch->bnFrom- from ), bn->bnNumberInParent,
-		3* bn->bnLevel, "",
-		bidiEmbeddingStr( bn->bnEmbedding ), bn->bnLevel );
+	    const int	last= i == bn->bnChildCount- 1;
 
-	    if  ( symbols )
-		{
-		appDebug( " \"%.*s\"", ch->bnFrom- from, symbols+ from );
-		}
-
-	    appDebug( "\n" );
+	    bidiListNodeRange( bn, indent, maxIndent, last, syms,
+						from, ch->bnRun.brFrom );
 	    }
 
+	bidiListNodeImpl( ch, indent+ 1, maxIndent, syms );
 
-	bidiListNode( ch, symbols );
-
-	from= ch->bnUpto;
+	from= ch->bnRun.brUpto;
 	}
 
-    if  ( i == 0 || from < bn->bnUpto )
+    if  ( bn->bnRun.brUpto > from )
 	{
-	appDebug( "%3d..%3d/%3d..%3d (%3d@%2d): %*s%s %d",
-		from, bn->bnUpto, bn->bnFrom, bn->bnUpto,
-		( bn->bnUpto- from ), bn->bnNumberInParent,
-		3* bn->bnLevel, "",
-		bidiEmbeddingStr( bn->bnEmbedding ), bn->bnLevel );
+	const int	last= 1;
 
-	if  ( symbols )
-	    {
-	    appDebug( " \"%.*s\"", bn->bnUpto- from, symbols+ from );
-	    }
-
-	appDebug( "\n" );
+	bidiListNodeRange( bn, indent, maxIndent, last, syms,
+						from, bn->bnRun.brUpto );
 	}
+
+    bidiListNodeTail( bn, indent, syms );
     }
+
+static int bidiMaxIndent(
+			const BidiNode *	bn,
+			int			indent )
+    {
+    int		maxIndent= indent;
+
+    if  ( bn )
+	{
+	int		i;
+
+	for ( i= 0; i < bn->bnChildCount; i++ )
+	    {
+	    int	childIndent= bidiMaxIndent( bn->bnChildren[i], indent+ 1 );
+
+	    if  ( maxIndent < childIndent )
+		{ maxIndent=  childIndent;	}
+	    }
+	}
+
+    return maxIndent;
+    }
+
+void bidiListNode(	const BidiNode *	bn,
+			const MemoryBuffer *	symbols )
+    {
+    const char *	syms= (const char *)0;
+    int			indent= 0;
+    int			maxIndent= bidiMaxIndent( bn, indent );
+
+    if  ( ! bn )
+	{ XDEB(bn); return;	}
+
+    if  ( symbols )
+	{ syms= utilMemoryBufferGetString( symbols );	}
+
+    bidiListNodeImpl( bn, indent, maxIndent, syms );
+    }
+

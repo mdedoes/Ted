@@ -2,10 +2,13 @@
 
 #   include	<stdlib.h>
 #   include	"bitmap.h"
-#   include	<appDebugon.h>
+#   include	"bmformat.h"
 #   include	<appSystem.h>
+#   include	<utilMemoryBuffer.h>
 
-int bmWrite(	const MemoryBuffer *		filename,
+#   include	<appDebugon.h>
+
+int bmWrite(	const struct MemoryBuffer *	filename,
 		const unsigned char *		buffer,
 		const BitmapDescription *	bd,
 		int				fileFormat )
@@ -29,7 +32,7 @@ int bmCanWrite( const BitmapDescription *	bd,
     if  ( ! bmFileFormats[fileFormat].bffFileType->bftWrite )
 	{ return -1;	}
 
-    return (*bmFileFormats[fileFormat].bffFileType->bftCanWrite)(
+    return (*bmFileFormats[fileFormat].bffFileType->bftTestCanWrite)(
 			bd, bmFileFormats[fileFormat].bffPrivate );
     }
 
@@ -39,10 +42,10 @@ int bmCanWrite( const BitmapDescription *	bd,
 /*									*/
 /************************************************************************/
 
-int bmRead(	const MemoryBuffer *	filename,
-		unsigned char **	pBuffer,
-		BitmapDescription *	bd,
-		int *			pFileFormat )
+int bmRead(	const struct MemoryBuffer *	filename,
+		unsigned char **		pBuffer,
+		BitmapDescription *		bd,
+		int *				pFileFormat )
     {
     int			rval= -1;
     int			fileType;
@@ -55,7 +58,7 @@ int bmRead(	const MemoryBuffer *	filename,
 
     utilInitMemoryBuffer( &extension );
 
-    appFileGetFileExtension( &extension, filename );
+    fileGetFileExtension( &extension, filename );
     if  ( utilMemoryBufferIsEmpty( &extension ) )
 	{
 	SLDEB(utilMemoryBufferGetString(filename),extension.mbSize);

@@ -6,11 +6,11 @@
 
 #   include	"docBufConfig.h"
 
-#   include	<appDebugon.h>
-
-#   include	"docBuf.h"
 #   include	"docField.h"
 #   include	"docEvalField.h"
+#   include	"docTreeNode.h"
+
+#   include	<appDebugon.h>
 
 /************************************************************************/
 /*									*/
@@ -30,6 +30,9 @@
 #   define	MULTI_PARAGRAPH		0
 #   define	SINGLE_PARAGRAPH	1
 
+#   define	SPLIT_SPACE		0
+#   define	KEEP_SPACE		1
+
 const FieldKindInformation DOC_FieldKinds[]=
 {
     {
@@ -48,7 +51,7 @@ const FieldKindInformation DOC_FieldKinds[]=
 		DOClevSPAN,
 		FIELD_IN_RTF,
 		NO_DEST,
-		docRecalculateHyperlinkField,
+		(CALCULATE_TEXT_PARTICULES)0,
 		(CALCULATE_TEXT_STRING)0,
 		FIELDdoDOC_COMPLETE, /* Must Be: FIELDdoNEVER, */
 		RESULT_EDITABLE,
@@ -64,6 +67,7 @@ const FieldKindInformation DOC_FieldKinds[]=
 		FIELDdoNEVER,
 		RESULT_READONLY,
 		SINGLE_PARAGRAPH,
+		KEEP_SPACE,
 		"xe",
     },
     {
@@ -76,6 +80,7 @@ const FieldKindInformation DOC_FieldKinds[]=
 		FIELDdoNEVER,
 		RESULT_READONLY,
 		SINGLE_PARAGRAPH,
+		KEEP_SPACE,
 		"tc",
     },
     {
@@ -88,6 +93,7 @@ const FieldKindInformation DOC_FieldKinds[]=
 		FIELDdoNEVER,
 		RESULT_READONLY,
 		SINGLE_PARAGRAPH,
+		KEEP_SPACE,
 		"tcn",
     },
     {
@@ -399,6 +405,17 @@ const FieldKindInformation DOC_FieldKinds[]=
 		SINGLE_PARAGRAPH,
     },
     {
+	"NeXTGraphic",
+		DOClevSPAN,
+		NOT_IN_RTF,
+		DEST_IN_RTF,
+		docRecalculateIncludePictureField,
+		(CALCULATE_TEXT_STRING)0,
+		FIELDdoDOC_COMPLETE,
+		RESULT_READONLY,
+		SINGLE_PARAGRAPH,
+    },
+    {
 	"TOC",
 		DOClevCELL,
 		FIELD_IN_RTF,
@@ -408,6 +425,53 @@ const FieldKindInformation DOC_FieldKinds[]=
 		FIELDdoTOC, /* Have their own call */
 		RESULT_READONLY,
 		MULTI_PARAGRAPH,
+    },
+    {
+	"INCLUDETEXT",
+		DOClevBODY,
+		FIELD_IN_RTF,
+		NO_DEST,
+		(CALCULATE_TEXT_PARTICULES)0,
+		(CALCULATE_TEXT_STRING)0,
+		FIELDdoINCLUDETEXT, /* Have their own call */
+		RESULT_READONLY,
+		MULTI_PARAGRAPH,
+    },
+
+    {
+	"=",
+		DOClevSPAN,
+		FIELD_IN_RTF,
+		NO_DEST,
+		docRecalculateParaStringTextParticules,
+		docCalculateFormulaFieldString,
+		FIELDdoDOC_FORMATTED,
+		RESULT_READONLY,
+		SINGLE_PARAGRAPH,
+		KEEP_SPACE,
+    },
+    {
+	"IF",
+		DOClevSPAN,
+		FIELD_IN_RTF,
+		NO_DEST,
+		docRecalculateParaStringTextParticules,
+		docCalculateIfFieldString,
+		FIELDdoDOC_FORMATTED,
+		RESULT_READONLY,
+		SINGLE_PARAGRAPH,
+		KEEP_SPACE,
+    },
+    {
+	"SHAPE",
+		DOClevSPAN,
+		FIELD_IN_RTF,
+		NO_DEST,
+		(CALCULATE_TEXT_PARTICULES)0,
+		(CALCULATE_TEXT_STRING)0,
+		FIELDdoNEVER, /* Have their own ad-hoc call */
+		RESULT_READONLY,
+		SINGLE_PARAGRAPH,
     },
 };
 

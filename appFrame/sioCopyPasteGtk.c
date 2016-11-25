@@ -10,10 +10,12 @@
 
 #   include	"sioXprop.h"
 #   include	<sioMemory.h>
+#   include	<sioGeneral.h>
+#   include	<utilMemoryBuffer.h>
 
 #   include	<appDebugon.h>
 
-#   ifdef	USE_GTK
+#   if	USE_GTK
 
 /************************************************************************/
 /*									*/
@@ -60,8 +62,13 @@ SimpleInputStream * sioInOpenPaste(	APP_WIDGET		w,
 	{ XDEB(pis); return (SimpleInputStream *)0;	}
 
     utilInitMemoryBuffer( &(pis->pisMemoryBuffer) );
+    /*
     pis->pisMemoryBuffer.mbBytes= gsd->data;
     pis->pisMemoryBuffer.mbSize= gsd->length;
+    */
+    pis->pisMemoryBuffer.mbBytes=
+		    (unsigned char *)gtk_selection_data_get_data( gsd );
+    pis->pisMemoryBuffer.mbSize= gtk_selection_data_get_length( gsd );
 
     pis->pisPasteStream= sioInMemoryOpen( &(pis->pisMemoryBuffer) );
     if  ( ! pis->pisPasteStream )
@@ -129,7 +136,7 @@ SimpleOutputStream * sioOutOpenCopy(	APP_WIDGET		w,
     if  ( ! cs )
 	{ XDEB(cs); return (SimpleOutputStream *)0;	}
 
-    cs->csType= gsd->target;
+    cs->csType= gtk_selection_data_get_target( gsd );
     cs->csSelectionData= gsd;
     utilInitMemoryBuffer( &(cs->csMemoryBuffer) );
 

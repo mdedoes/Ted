@@ -37,6 +37,7 @@ extern int docListOverrideTableAddOverride(
 extern int docListOverrideTableSetOverride(
 				ListOverrideTable *		lot,
 				const struct ListOverride *	lo,
+				const int *			listIndexMap,
 				const int *			fontMap,
 				const int *			colorMap,
 				const int *			rulerMap );
@@ -44,6 +45,7 @@ extern int docListOverrideTableSetOverride(
 extern int docMergeListOverrideIntoTable(
 				ListOverrideTable *		lot,
 				const struct ListOverride *	lo,
+				const int *			listIndexMap,
 				const int *			fontMap,
 				const int *			colorMap,
 				const int *			rulerMap );

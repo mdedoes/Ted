@@ -7,13 +7,15 @@
 #   ifndef	SIO_HTTP_H
 #   define	SIO_HTTP_H
 
-#   include     "sioGeneral.h"
 #   include     "appSystem.h"
 
-extern int sioHttpOpen(		SimpleInputStream **	pSisBody,
-				SimpleInputStream **	pSisHeader,
-				SimpleOutputStream **	pSosBody,
-				SimpleOutputStream **	pSosHeader,
+struct SimpleInputStream;
+struct SimpleOutputStream;
+
+extern int sioHttpOpen(		struct SimpleInputStream **	pSisBody,
+				struct SimpleInputStream **	pSisHeader,
+				struct SimpleOutputStream **	pSosBody,
+				struct SimpleOutputStream **	pSosHeader,
 				const char *		host,
 				const char *		port,
 				const char *		url,

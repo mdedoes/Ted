@@ -6,26 +6,29 @@
 
 #   include	"docRtfConfig.h"
 
-#   include	<string.h>
-#   include	<stdio.h>
 #   include	<ctype.h>
 
-#   include	<appDebugon.h>
-
 #   include	"docRtfReaderImpl.h"
-#   include	<docParaParticules.h>
+#   include	"docRtfReadTreeStack.h"
+#   include	"docRtfFindProperty.h"
 #   include	<docRecalculateFields.h>
 #   include	<docTreeType.h>
 #   include	<docNodeTree.h>
 #   include	<docNotes.h>
 #   include	<docDocumentNote.h>
+#   include	<docDocumentField.h>
+#   include	<docFieldKind.h>
+#   include	<docSelect.h>
+#   include	<docTreeNode.h>
+#   include	<docBuf.h>
+
+#   include	<appDebugon.h>
 
 /************************************************************************/
 /*									*/
 /*  Consume Headers, Footers, Notes &c: Separate item trees that are.	*/
 /*  embedded in the document.						*/
 /*									*/
-/*  1)  Save the current position.					*/
 /*  2)  Make the header/note &c.					*/
 /*  3)  Consume its contents.						*/
 /*  4)  Make sure that no bookmarks protrude beyond the end of the	*/
@@ -37,131 +40,96 @@
 /************************************************************************/
 
 int docRtfReadDocumentTree(	const RtfControlWord *	rcw,
-				DocumentTree *		dt,
-				int *			pExtItKind,
-				RtfReader *		rrc,
+				struct DocumentTree *	tree,
+				int *			pTreeType,
+				RtfReader *		rr,
 				int			ignoreEmpty,
 				const SelectionScope *	ss )
     {
     int				rval= 0;
+
     RtfReadingState		internRrs;
+    RtfTreeStack		internRts;
 
-    DocumentTree *		savedEi;
-    BufferItem *		savedBi;
-    int				savedLevel;
-    SelectionScope		savedSelectionScope;
-    struct RtfFieldStackLevel *	savedFieldStackLevel;
-    int				savedLastFieldNumber;
-    RowProperties		savedRowProperties;
-
-    int				changed= 0;
-
-    /*  1  */
-    savedEi= rrc->rrcTree;
-    savedBi= rrc->rrcNode;
-    savedLevel= rrc->rrcLevel;
-    savedSelectionScope= rrc->rrcSelectionScope;
-    savedFieldStackLevel= rrc->rrcFieldStack;
-    savedLastFieldNumber= rrc->rrcLastFieldNumber;
-    savedRowProperties= rrc->rrcRowProperties;
-
-    docInitRowProperties( &(rrc->rrcRowProperties) );
-
-    docRtfPushReadingState( rrc, &internRrs );
-
-    docRtfResetParagraphProperties( &internRrs );
-    docRtfResetTextAttribute( &internRrs, rrc->rrDocument );
-
-    if  ( ! savedBi )
-	{ XDEB(savedBi); rval= -1; goto ready;	}
+    docRtfInitTreeStack( &internRts );
 
     /*  2  */
-    if  ( ! dt->dtRoot							&&
-	  docMakeDocumentTree( rrc->rrDocument, dt,
-				    ss, &(rrc->rrcSectionProperties) )	)
-	{ LDEB(1); rval= -1; goto ready;	}
+    if  ( ! tree->dtRoot						&&
+	  docMakeDocumentTree( rr->rrDocument, tree,
+				    ss, &(rr->rrSectionProperties) )	)
+	{ LDEB(1); return -1;	}
+
+    docRtfPushReadingState( rr, &internRrs );
+    docRtfPushTreeStack( rr, &internRts, ss, tree );
+
+    docRtfResetParagraphProperties( &internRrs );
+    docRtfResetTextAttribute( &internRrs, rr->rrDocument );
 
     /*  3  */
-    rrc->rrcTree= dt;
-    rrc->rrcNode= dt->dtRoot;
-    rrc->rrcLevel= DOClevSECT;
-    rrc->rrcSelectionScope= *ss;
-    rrc->rrcFieldStack= (struct RtfFieldStackLevel *)0;
-    rrc->rrcLastFieldNumber= -1;
-
-    if  ( docRtfReadGroup( rcw, 0, 0, rrc,
+    if  ( docRtfReadGroup( rcw, 0, 0, rr,
 			    docRtfDocumentGroups,
-			    docRtfTextParticule, docRtfFinishCurrentNode ) )
+			    docRtfGotText, docRtfFinishCurrentTree ) )
 	{ LDEB(1); rval= -1;	}
 
     /*  5  */
     {
     DocumentPosition	dp;
 
-    if  ( docTailPosition( &dp, dt->dtRoot ) )
+    if  ( docTailPosition( &dp, tree->dtRoot ) )
 	{
 	if  ( ignoreEmpty )
-	    { docEraseDocumentTree( rrc->rrDocument, dt );	}
+	    { docEraseDocumentTree( rr->rrDocument, tree );	}
 	else{
-	    const int	textAttributeNumber= 0;
+	    const int	textAttributeNr= 0;
 
-	    if  ( ! docInsertEmptyParagraph( rrc->rrDocument, dt->dtRoot,
-						textAttributeNumber ) )
-		{ LDEB(textAttributeNumber);	}
+	    if  ( ! docAppendParagraph( rr->rrDocument, tree->dtRoot,
+						textAttributeNr ) )
+		{ LDEB(textAttributeNr);	}
 	    }
 	}
     else{
 	/********************************************************/
 	/*  Delete empty paragraph caused by final \par		*/
 	/********************************************************/
-	if  ( docParaStrlen( dp.dpNode ) ==  0		&&
-	      dp.dpNode->biParaTableNesting == 0		&&
-	      docNumberOfParagraph( dp.dpNode ) > 1	&&
-	      dp.dpNode->biParaParticuleCount == 1	)
+	if  ( docParaStrlen( dp.dpNode ) ==  0			&&
+	      dp.dpNode->biParaProperties->ppTableNesting == 0	&&
+	      docNumberOfParagraph( dp.dpNode ) > 1		&&
+	      dp.dpNode->biParaParticuleCount == 1		)
 	    {
-	    BufferItem *	bi= dp.dpNode;
+	    struct BufferItem *	node= dp.dpNode;
 
-	    while( bi->biParent && bi->biParent->biChildCount == 1 )
-		{ bi= bi->biParent;	}
+	    while( node->biParent && node->biParent->biChildCount == 1 )
+		{ node= node->biParent;	}
 
-	    docDeleteNode( rrc->rrDocument, dt, bi );
+	    docDeleteNode( rr->rrDocument, tree, node );
 	    }
 	}
     }
 
     /*  4  */
-    if  ( docRtfPopScopeFromFieldStack( rrc ) )
+    if  ( docRtfPopTreeFromFieldStack( rr, &internRts ) )
 	{ LDEB(1); rval= -1; goto ready;	}
 
-    docRenumberSeqFields( &changed, rrc->rrcTree, rrc->rrDocument );
+    docRenumberSeqFields( (int *)0, tree, rr->rrDocument );
 
-    *pExtItKind= rrc->rrcSelectionScope.ssTreeType;
+    *pTreeType= internRts.rtsSelectionScope.ssTreeType;
 
   ready:
+
     /*  6  */
-
-    docCleanRowProperties( &(rrc->rrcRowProperties) );
-    rrc->rrcRowProperties= savedRowProperties;
-
-    rrc->rrcLastFieldNumber= savedLastFieldNumber;
-    rrc->rrcFieldStack= savedFieldStackLevel;
-    rrc->rrcSelectionScope= savedSelectionScope;
-    rrc->rrcLevel= savedLevel;
-    rrc->rrcNode= savedBi;
-    rrc->rrcTree= savedEi;
-
-    docRtfPopReadingState( rrc );
+    docRtfPopTreeStack( rr );
+    docRtfPopReadingState( rr );
 
     return rval;
     }
 
 int docRtfReadExtTree(		const RtfControlWord *	rcw,
 				int			arg,
-				RtfReader *	rrc )
+				RtfReader *		rr )
     {
-    BufferItem *	sectNode;
-    BufferDocument *	bd= rrc->rrDocument;
-    DocumentTree *	dt;
+    struct BufferItem *		sectNode;
+    struct BufferDocument *	bd= rr->rrDocument;
+    struct DocumentTree *	dt;
 
     SelectionScope	ss;
     int			treeType;
@@ -172,20 +140,17 @@ int docRtfReadExtTree(		const RtfControlWord *	rcw,
 
     switch( rcw->rcwID )
 	{
-	case DOCinFIRST_HEADER:
-	case DOCinLEFT_HEADER:
-	case DOCinRIGHT_HEADER:
+	case DOCinFIRST_HEADER:	case DOCinFIRST_FOOTER:
+	case DOCinLEFT_HEADER:	case DOCinLEFT_FOOTER:
+	case DOCinRIGHT_HEADER:	case DOCinRIGHT_FOOTER:
+	case DOCinLAST_HEADER:	case DOCinLAST_FOOTER:
 
-	case DOCinFIRST_FOOTER:
-	case DOCinLEFT_FOOTER:
-	case DOCinRIGHT_FOOTER:
-
-	    sectNode= docRtfGetSectNode( rrc );
+	    sectNode= docRtfGetSectNode( rr );
 	    if  ( ! sectNode )
 		{ XDEB(sectNode); return -1;	}
 
 	    dt= docSectionHeaderFooter( sectNode, (unsigned char *)0,
-			    &(rrc->rrDocument->bdProperties), rcw->rcwID );
+			    rr->rrDocument->bdProperties, rcw->rcwID );
 	    if  ( ! dt )
 		{ LXDEB(rcw->rcwID,dt); return -1;	}
 
@@ -220,68 +185,8 @@ int docRtfReadExtTree(		const RtfControlWord *	rcw,
     ss.ssTreeType= rcw->rcwID;
     ss.ssOwnerNumber= -1;
 
-    if  ( docRtfReadDocumentTree( rcw, dt, &treeType, rrc, ignoreEmpty, &ss ) )
+    if  ( docRtfReadDocumentTree( rcw, dt, &treeType, rr, ignoreEmpty, &ss ) )
 	{ SDEB(rcw->rcwWord); return -1;	}
-
-    return 0;
-    }
-
-/************************************************************************/
-
-static int docExtractFixedTextNote(	DocumentNote *		dn,
-					BufferDocument *	bd,
-					BufferItem *		ownerNode,
-					int			fixedStroff,
-					int			fixedStrlen,
-					const char *		fieldinst,
-					int			fieldsize )
-
-    {
-    DocumentSelection	dsField;
-    BufferItem *	noteBi;
-    const int		part0= 0;
-
-    if  ( utilMemoryBufferSetBytes( &(dn->dnNoteProperties.npFixedText),
-		    docParaString( ownerNode,  fixedStroff ), fixedStrlen ) )
-	{ LDEB(fixedStrlen);	}
-
-    if  ( docHeadPosition( &(dsField.dsHead),
-					dn->dnDocumentTree.dtRoot ) )
-	{ LDEB(1); return -1;	}
-    noteBi= dsField.dsHead.dpNode;
-    docSetDocumentPosition( &(dsField.dsTail), noteBi, fixedStrlen );
-
-    if  ( docParaStrlen( noteBi ) >= fixedStrlen			&&
-	  ! memcmp( docParaString( noteBi, 0 ),
-		docParaString( ownerNode, fixedStroff ), fixedStrlen )	)
-	{
-	int			part1;
-	TextParticule *		tp1;
-	DocumentField *		df;
-
-	if  ( docFindParticuleOfPosition( &part1, (int *)0,
-					&(dsField.dsTail), PARAfindFIRST ) )
-	    { LDEB(fixedStroff); return -1; }
-	tp1= noteBi->biParaParticules+ part1;
-
-	if  ( tp1->tpStroff+ tp1->tpStrlen > fixedStrlen )
-	    {
-	    if  ( docSplitTextParticule( &tp1, (TextParticule **)0,
-					    noteBi, part1, fixedStrlen ) )
-		{ LDEB(part1); return -1;	}
-	    }
-
-	part1++;
-
-	df= docMakeField( bd, &(dn->dnDocumentTree), &dsField,
-		    part0, part1, tp1->tpTextAttrNr, tp1->tpTextAttrNr );
-	if  ( ! df )
-	    { XDEB(df); return -1;	}
-
-	df->dfKind= DOCfkCHFTN;
-	if  ( docSetFieldInst( df, fieldinst, fieldsize ) )
-	    { LDEB(1);	}
-	}
 
     return 0;
     }
@@ -292,19 +197,19 @@ static int docExtractFixedTextNote(	DocumentNote *		dn,
 /*									*/
 /************************************************************************/
 
-int docRtfReadFootnote(		const RtfControlWord *	rcw,
+int docRtfReadNote(		const RtfControlWord *	rcw,
 				int			arg,
-				RtfReader *		rrc )
+				RtfReader *		rr )
     {
     int			rval= 0;
-    BufferDocument *	bd= rrc->rrDocument;
+    struct BufferDocument *	bd= rr->rrDocument;
 
     DocumentField *	dfNote;
     DocumentNote *	dn;
     int			noteIndex;
 
-    BufferItem *	ownerNode;
-    BufferItem *	sectNode;
+    struct BufferItem *	ownerNode;
+    struct BufferItem *	sectNode;
     SelectionScope	ss;
 
     int			treeType;
@@ -314,74 +219,55 @@ int docRtfReadFootnote(		const RtfControlWord *	rcw,
     int			fixedStroff= 0;
     int			fixedStrlen= 0;
 
-    const char *	fieldinst= " -CHFTN ";
-    int			fieldsize= 8;
+    const char *	instBytes= " -CHFTN ";
+    int			instSize= 8;
 
     docInitSelectionScope( &ss );
 
-    ownerNode= docRtfGetParaNode( rrc );
+    ownerNode= docRtfGetParaNode( rr );
     if  ( ! ownerNode )
 	{ XDEB(ownerNode); rval= -1; goto ready;	}
     sectNode= docGetSectNode( ownerNode );
     if  ( ! sectNode )
 	{ XDEB(sectNode); rval= -1; goto ready;	}
 
-    if  ( rrc->rrcAfterNoteref )
+    if  ( rr->rrAfterNoteref )
 	{ autoNumber= 1;	}
     else{
 	const char *		fieldRslt= (const char *)0;
 
-	DocumentPosition	dp;
-	int			part0;
-
 	dfNote= docRtfSpecialField( DOCfkCHFTN,
-				    fieldinst, fieldsize, fieldRslt, rrc );
+				    instBytes, instSize, fieldRslt, rr );
 	if  ( ! dfNote )
 	    { SDEB(rcw->rcwWord); rval= -1; goto ready; }
 
-	docSetDocumentPosition( &dp, ownerNode,
-					dfNote->dfHeadPosition.epStroff );
-	if  ( docFindParticuleOfPosition( &part0, (int *)0,
-						    &dp, PARAfindFIRST ) )
+	if  ( docNoteIncludeFixedTextInField( &fixedStroff, &fixedStrlen,
+						    ownerNode, dfNote ) )
 	    { LDEB(dfNote->dfHeadPosition.epStroff); rval= -1; goto ready; }
-
-	/* Move the fixed text into the note field */
-	if  ( ownerNode->biParaParticules[part0   ].tpKind == DOCkindSPAN	&&
-	      ownerNode->biParaParticules[part0+ 1].tpKind == DOCkindFIELDHEAD )
-	    {
-	    fixedStroff= ownerNode->biParaParticules[part0   ].tpStroff;
-	    fixedStrlen= ownerNode->biParaParticules[part0   ].tpStrlen;
-
-	    dfNote->dfHeadPosition.epStroff= fixedStroff;
-
-	    ownerNode->biParaParticules[part0+ 1].tpKind= DOCkindSPAN;
-	    ownerNode->biParaParticules[part0+ 1].tpObjectNumber= -1;
-	    ownerNode->biParaParticules[part0+ 1].tpStroff= fixedStroff;
-	    ownerNode->biParaParticules[part0+ 1].tpStrlen= fixedStrlen;
-
-	    ownerNode->biParaParticules[part0   ].tpKind= DOCkindFIELDHEAD;
-	    ownerNode->biParaParticules[part0   ].tpObjectNumber=
-						    dfNote->dfFieldNumber;
-	    ownerNode->biParaParticules[part0   ].tpStrlen= 0;
-	    }
 
 	autoNumber= 0;
 	if  ( fixedStrlen > 0 )
 	    {
-	    PROPmaskADD( &(rrc->rrcNotePropertyMask), NOTEpropFIXED_TEXT );
+	    PROPmaskADD( &(rr->rrNotePropertyMask), NOTEpropFIXED_TEXT );
 	    }
 	}
 
-    dfNote= docGetFieldByNumber( &(bd->bdFieldList), rrc->rrcLastFieldNumber );
+    dfNote= docGetFieldByNumber( &(bd->bdFieldList),
+				    rr->rrTreeStack->rtsLastFieldNumber );
     if  ( ! dfNote )
-	{ LPDEB(rrc->rrcLastFieldNumber,dfNote); return -1;	}
+	{
+	LPDEB(rr->rrTreeStack->rtsLastFieldNumber,dfNote);
+	rval= -1; goto ready;
+	}
 
     noteIndex= docInsertNote( &dn, bd, dfNote, autoNumber );
     if  ( noteIndex < 0 )
 	{ LDEB(noteIndex); rval= -1; goto ready;	}
 
-    rrc->rrcAfterNoteref= 0;
-    rrc->rrAfterParaHeadField= 0;
+    rr->rrAfterNoteref= 0;
+    rr->rrAfterParaHeadField= 0;
+    rr->rrAfterInlineShape= 0;
+    rr->rrInlineShapeObjectNumber= -1;
 
     ss.ssTreeType= DOCinFOOTNOTE;
     ss.ssSectNr= 0;
@@ -389,7 +275,7 @@ int docRtfReadFootnote(		const RtfControlWord *	rcw,
     ss.ssOwnerNumber= dfNote->dfFieldNumber;
 
     if  ( docRtfReadDocumentTree( rcw, &(dn->dnDocumentTree), &treeType,
-						rrc, ignoreEmpty, &ss ) )
+						rr, ignoreEmpty, &ss ) )
 	{ SDEB(rcw->rcwWord); rval= -1; goto ready;	}
 
     dn->dnNoteProperties.npAutoNumber= autoNumber;
@@ -400,7 +286,7 @@ int docRtfReadFootnote(		const RtfControlWord *	rcw,
 	  fixedStrlen > 0						&&
 	  docExtractFixedTextNote( dn, bd, ownerNode,
 					fixedStroff, fixedStrlen,
-					fieldinst, fieldsize )		)
+					instBytes, instSize )		)
 	{ LDEB(1); rval= -1; goto ready;	}
 
   ready:

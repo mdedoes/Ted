@@ -4,8 +4,23 @@
 /*									*/
 /************************************************************************/
 
-#   include	"drawMacPict.h"
-#   include	<sioGeneral.h>
+#   include	<geoRectangle.h>
+
+struct SimpleInputStream;
+struct MacPictHeader;
+
+/************************************************************************/
+/*									*/
+/*  Information that can be extracted from the file header.		*/
+/*									*/
+/************************************************************************/
+
+typedef struct MacPictHeader
+    {
+    int			mphPictureSize;
+    int			mphVersion;
+    DocumentRectangle	mphFrame;
+    } MacPictHeader;
 
 /************************************************************************/
 /*									*/
@@ -13,5 +28,5 @@
 /*									*/
 /************************************************************************/
 
-extern int appMacPictGetDeviceHeader(	MacPictHeader *		mph,
-					SimpleInputStream *	sis );
+extern int appMacPictGetDeviceHeader(	struct MacPictHeader *		mph,
+					struct SimpleInputStream *	sis );

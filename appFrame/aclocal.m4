@@ -40,6 +40,129 @@ AC_DEFUN(AC_PATH_GTK,
 	GTK_LIBS_FOUND=YES
     fi
 
+    AC_ARG_WITH( GTK3,
+	[  --with-GTK3       Use Gtk+3 user interface: use --with-GTK also ],
+	[
+	if  test $withval = yes
+	then
+	    if  ( pkg-config --cflags gtk+-3.0 ) > /dev/null 2>&1
+	    then
+		GTK_CFLAGS=`pkg-config --cflags gtk+-3.0`
+		GTK_HEADERS_FOUND=YES
+	    fi
+
+	    if  ( pkg-config --libs gtk+-3.0 ) > /dev/null 2>&1
+	    then
+		GTK_LIBS=`pkg-config --libs gtk+-3.0`
+		GTK_LIBS_FOUND=YES
+	    fi
+	fi
+	]
+    )
+
+    ########  The hard way
+    if test $GTK_HEADERS_FOUND = NO -o $GTK_LIBS_FOUND = NO
+    then
+	h_so_tmp="$$.h_so_tmp"
+	trap "rm -f $h_so_tmp" 0
+	for h_so in \
+	    "/usr/local/include/gtk-2.0 gtk/gtk.h /usr/local/lib/ gtk-x11-2.0"
+	do
+	    echo $h_so
+	done > ${h_so_tmp}
+	while read hd h sod so
+	do
+	    if  test -f $hd/$h -a \
+		\( ${sod} = - -o -f ${sod}/lib${so}.so \
+		              -o -f ${sod}/lib${so}.dylib \)
+	    then
+		case $hd in
+		/usr/include)
+		    : ok
+		    ;;
+		*)
+		    GTK_CFLAGS=-I${hd}
+		    ;;
+		esac
+
+		case $sod in
+		/usr/lib|/lib|-)
+		    GTK_LIBS=-l${so}
+		    ;;
+		*)
+		    GTK_LIBS="-L${sod} -l${so}"
+		    ;;
+		esac
+
+		GTK_HEADERS_FOUND=YES
+		GTK_LIBS_FOUND=YES
+		break
+	    fi
+	done < ${h_so_tmp}
+    fi
+
+    AC_ARG_WITH( GTK,
+	[ --with-GTK Use GTK if available],
+	[
+	    if  test $withval = yes
+	    then
+		USE_GTK=YES
+	    else
+		USE_GTK=NO
+		#### Avoid all refrerences in the build
+		undef GTK_LIBS
+		undef GTK_CFLAGS
+	    fi
+	],
+	[
+	    USE_GTK=TEST;
+	])
+
+
+    case $GTK_HEADERS_FOUND.$GTK_LIBS_FOUND in
+	YES.YES)
+	    GTK_FOUND=1
+	    HAVE_GTK=YES
+	    ;;
+	*)
+	    GTK_FOUND=0
+	    # Try for ourselves
+	    AC_TRY_COMPILE([#include <gtk/gtk.h>],
+	      [GtkWidget *w; gtk_init(int *)0,(char ***)0; w= gtk_window_new( GTK_WINDOW_TOPLEVEL );],
+		HAVE_GTK=YES,HAVE_GTK=NO,)
+	    ;;
+    esac
+
+    case $HAVE_GTK.$USE_GTK in
+	YES.TEST|YES.YES)
+	    echo 'Using GTK'
+	    AC_DEFINE(HAVE_GTK,1)
+	    AC_DEFINE(USE_GTK,1)
+	    USE_GTK=YES
+	    ;;
+	YES.NO)
+	    echo 'Avoiding GTK'
+	    AC_DEFINE(HAVE_GTK,1)
+	    AC_DEFINE(USE_GTK,0)
+	    USE_GTK=NO
+	    GTK_CFLAGS=
+	    GTK_LIBS=
+	    ;;
+	NO.TEST)
+	    echo 'No GTK'
+	    AC_DEFINE(HAVE_GTK,0)
+	    AC_DEFINE(USE_GTK,0)
+	    USE_GTK=NO
+	    ;;
+	NO.YES)
+	    echo '##### No GTK found'
+	    AC_DEFINE(HAVE_GTK,0)
+	    AC_DEFINE(USE_GTK,0)
+	    USE_GTK=NO
+	    ;;
+	*)
+	    ;;
+    esac
 
     AC_SUBST(GTK_CFLAGS)dnl
     AC_SUBST(GTK_LIBS)dnl
@@ -61,6 +184,7 @@ AC_DEFUN(AC_PATH_FT2,
     FT2_LIBS_FOUND=NO
     FT2_FOUND=0
 
+    # The old way
     if  ( freetype-config --cflags ) > /dev/null 2>&1
     then
 	FT2_CFLAGS=`freetype-config --cflags`
@@ -70,6 +194,19 @@ AC_DEFUN(AC_PATH_FT2,
     if  ( freetype-config --libs ) > /dev/null 2>&1
     then
 	FT2_LIBS=`freetype-config --libs`
+	FT2_LIBS_FOUND=YES
+    fi
+
+    # The new way
+    if  ( pkg-config freetype2 --cflags ) > /dev/null 2>&1
+    then
+	FT2_CFLAGS=`pkg-config freetype2 --cflags`
+	FT2_HEADERS_FOUND=YES
+    fi
+
+    if  ( pkg-config freetype2 --libs ) > /dev/null 2>&1
+    then
+	FT2_LIBS=`pkg-config freetype2 --libs`
 	FT2_LIBS_FOUND=YES
     fi
 
@@ -140,7 +277,7 @@ AC_DEFUN(AC_HAVE_FONTCONFIG,
 		esac
 
 		case $sod in
-		/usr/lib|/lib)
+		/usr/lib|/lib|-)
 		    FONTCONFIG_LIBS=-l${so}
 		    ;;
 		*)
@@ -164,6 +301,9 @@ AC_DEFUN(AC_HAVE_FONTCONFIG,
 		USE_FONTCONFIG=YES
 	    else
 		USE_FONTCONFIG=NO
+		#### Avoid all refrerences in the build
+		undef FONTCONFIG_LIBS
+		undef FONTCONFIG_CFLAGS
 	    fi
 	],
 	[
@@ -195,6 +335,8 @@ AC_DEFUN(AC_HAVE_FONTCONFIG,
 	    echo 'Avoiding Fontconfig'
 	    AC_DEFINE(HAVE_FONTCONFIG,1)
 	    AC_DEFINE(USE_FONTCONFIG,0)
+	    FONTCONFIG_CFLAGS=
+	    FONTCONFIG_LIBS=
 	    ;;
 	NO.TEST)
 	    echo 'No Fontconfig'
@@ -284,7 +426,7 @@ AC_DEFUN(AC_PATH_XFT,
 		esac
 
 		case $sod in
-		/usr/lib|/lib)
+		/usr/lib|/lib|-)
 		    XFT_LIBS=-l${so}
 		    ;;
 		*)
@@ -308,6 +450,9 @@ AC_DEFUN(AC_PATH_XFT,
 		USE_XFT=YES
 	    else
 		USE_XFT=NO
+		#### Avoid all refrerences in the build
+		undef XFT_LIBS
+		undef XFT_CFLAGS
 	    fi
 	],
 	[
@@ -334,6 +479,9 @@ AC_DEFUN(AC_PATH_XFT,
 		    ;;
 		*)
 		    echo '##### Not using Xft without Fontconfig'
+		    #### Avoid all refrerences in the build
+		    undef XFT_LIBS
+		    undef XFT_CFLAGS
 		    AC_DEFINE(HAVE_XFT,1)
 		    AC_DEFINE(USE_XFT,0)
 		    USE_XFT=NO
@@ -344,6 +492,8 @@ AC_DEFUN(AC_PATH_XFT,
 	    echo 'Avoiding Xft'
 	    AC_DEFINE(HAVE_XFT,1)
 	    AC_DEFINE(USE_XFT,0)
+	    XFT_CFLAGS=
+	    XFT_LIBS=
 	    ;;
 	NO.TEST)
 	    echo 'No Xft'
@@ -426,7 +576,7 @@ AC_DEFUN(AC_PATH_XPM,
 		esac
 
 		case $sod in
-		/usr/lib|/lib)
+		/usr/lib|/lib|-)
 		    LIBXPM_LIBS=-l${so}
 		    ;;
 		*)
@@ -481,6 +631,8 @@ AC_DEFUN(AC_PATH_XPM,
 	    echo 'Avoiding libxpm'
 	    AC_DEFINE(HAVE_LIBXPM,1)
 	    AC_DEFINE(USE_LIBXPM,0)
+	    LIBXPM_CFLAGS=
+	    LIBXPM_LIBS=
 	    ;;
 	NO.TEST)
 	    echo 'No libxpm'
@@ -512,171 +664,271 @@ AC_DEFUN(AC_PATH_MOTIF,
 
     XM_CFLAGS=
     XM_LIBS=
-    XM_EXTRA_LIBS=
-    XM_STATIC_REF=
-    XM_SHARED_REF=
 
     MOTIF_HEADERS_FOUND=NO
     MOTIF_LIBS_FOUND=NO
 
-    ac_xm_includes=${ac_xm_includes:-NO}
-    ac_xm_libraries=${ac_xm_libraries:-NO}
-    ac_xm_static_lib=NO
-    ac_xm_shared_lib=NO
-
-    if  test $ac_xm_includes = NO
+    ########  The hard way
+    if test $MOTIF_HEADERS_FOUND = NO -o $MOTIF_LIBS_FOUND = NO
     then
-	# Includes
-	for ac_dir in				\
-	    /usr/include			\
-	    /usr/X11R6/include			\
-	    /usr/local/include			\
-	    /usr/dt/include			\
-	    /opt/SUNWmotif/include		\
-	    /usr/include/Motif2.1		\
-	    /usr/apps/include			\
-	    /usr/pkg/include			\
-	    /usr/local/LessTif/include		\
-	    /usr/X11R6/LessTif/Motif1.2/include
+	h_so_tmp="$$.h_so_tmp"
+	trap "rm -f $h_so_tmp" 0
+	for h_so in \
+	    "/usr/include Xm/Xm.h /usr/lib Xm"				\
+	    "/usr/include Xm/Xm.h - Xm"					\
+	    "/usr/X11R6/include Xm/Xm.h /usr/X11R6/lib Xm"		\
+	    "/usr/local/include Xm/Xm.h /usr/local/lib Xm"		\
+	    "/usr/dt/include Xm/Xm.h /usr/dt/lib Xm"			\
+	    "/opt/SUNWmotif/include Xm/Xm.h /opt/SUNWmotif/lib Xm"	\
+	    "/usr/include/Motif2.1 Xm/Xm.h /usr/apps/lib Xm"		\
+	    "/usr/apps/include Xm/Xm.h /usr/pkg/lib Xm"			\
+	    "/usr/pkg/include Xm/Xm.h /usr/local/LessTif/lib Xm"	\
+	    "/usr/local/LessTif/include Xm/Xm.h /usr/local/LessTif/lib Xm" \
+	    "/usr/X11R6/LessTif/Motif1.2/include Xm/Xm.h /usr/X11R6/LessTif/Motif1.2/lib Xm" \
+	    "/usr/include Xm.h /usr/lib Xm"
 	do
-	if  test -r "$ac_dir/Xm/Xm.h"
+	    echo $h_so
+	done > ${h_so_tmp}
+	while read hd h sod so
+	do
+	    if  test -f $hd/$h -a \
+		\( ${sod} = - -o -f ${sod}/lib${so}.so \
+		              -o -f ${sod}/lib${so}.dylib \)
 	    then
-		ac_xm_includes=$ac_dir
+		case $hd in
+		/usr/include)
+		    : ok
+		    ;;
+		*)
+		    XM_CFLAGS=-I${hd}
+		    ;;
+		esac
+
+		case $sod in
+		/usr/lib|/lib|-)
+		    XM_LIBS=-l${so}
+		    ;;
+		*)
+		    XM_LIBS="-L${sod} -l${so}"
+		    ;;
+		esac
+
+		MOTIF_HEADERS_FOUND=YES
+		MOTIF_LIBS_FOUND=YES
 		break
 	    fi
-	done
+	done < ${h_so_tmp}
     fi
 
-    if  test $ac_xm_libraries = NO
-    then
-	# Libraries
-	for ac_dir in				\
-	    /usr/lib				\
-	    /usr/X11R6/lib			\
-	    /usr/local/lib			\
-	    /usr/dt/lib				\
-	    /opt/SUNWmotif/lib			\
-	    /usr/apps/lib			\
-	    /usr/pkg/lib			\
-	    /usr/local/LessTif/lib		\
-	    /usr/X11R6/LessTif/Motif1.2/lib
-	do
-	found=no
-
-	if  test -r "$ac_dir/libXm.a"
+    AC_ARG_WITH( MOTIF,
+	[ --with-MOTIF Use Motif if available],
+	[
+	    if  test $withval = yes
 	    then
-		ac_xm_libraries=$ac_dir
-		ac_xm_static_lib=$ac_dir/libXm.a
-		found=yes
+		USE_MOTIF=YES
+	    else
+		USE_MOTIF=NO
+		#### Avoid all refrerences in the build
+		undef MOTIF_LIBS
+		undef MOTIF_CFLAGS
 	    fi
+	],
+	[
+	    USE_MOTIF=TEST;
+	])
 
-	if  test -r "$ac_dir/libXm.so"
-	    then
-		ac_xm_libraries=$ac_dir
-		ac_xm_shared_lib=$ac_dir/libXm.so
-		found=yes
-	    fi
 
-	if  test -r "$ac_dir/libXm.dylib"
-	    then
-		ac_xm_libraries=$ac_dir
-		ac_xm_shared_lib=$ac_dir/libXm.dylib
-		found=yes
-	    fi
+    case $MOTIF_HEADERS_FOUND.$MOTIF_LIBS_FOUND in
+	YES.YES)
+	    MOTIF_FOUND=1
+	    HAVE_MOTIF=YES
+	    ;;
+	*)
+	    MOTIF_FOUND=0
+	    # Try for ourselves
+	    AC_TRY_COMPILE([#include <Xm/Text.h>],
+	      [XmString s= XmStringCreateLocalized( (char *)"text" );],
+		HAVE_MOTIF=YES,HAVE_MOTIF=NO,)
+	    ;;
+    esac
 
-	if  test $found = yes
-	    then
-		break
-	    fi
-	done
-    fi
-
-    #echo Includes : $ac_xm_includes
-    #echo Libraries: $ac_xm_libraries
+    case $HAVE_MOTIF.$USE_MOTIF in
+	YES.TEST|YES.YES)
+	    echo 'Using MOTIF'
+	    AC_DEFINE(HAVE_MOTIF,1)
+	    AC_DEFINE(USE_MOTIF,1)
+	    USE_MOTIF=YES
+	    ;;
+	YES.NO)
+	    echo 'Avoiding MOTIF'
+	    AC_DEFINE(HAVE_MOTIF,1)
+	    AC_DEFINE(USE_MOTIF,0)
+	    USE_MOTIF=NO
+	    XM_CFLAGS=
+	    XM_LIBS=
+	    XM_EXTRA_LIBS=
+	    ;;
+	NO.TEST)
+	    echo 'No MOTIF'
+	    AC_DEFINE(HAVE_MOTIF,0)
+	    AC_DEFINE(USE_MOTIF,0)
+	    USE_MOTIF=NO
+	    ;;
+	NO.YES)
+	    echo '##### No MOTIF found'
+	    AC_DEFINE(HAVE_MOTIF,0)
+	    AC_DEFINE(USE_MOTIF,0)
+	    USE_MOTIF=NO
+	    ;;
+	*)
+	    ;;
+    esac
 
     XM_EXTRA_LIBS=""
     #  Too simple..
     #  AC_CHECK_LIB( Xp, XpStartPage, XM_EXTRA_LIBS="-lXp" )
-    if  test -r $x_libraries/libXp.a
+    if  test -r $x_libraries/libXp.a -o -r $x_libraries/libXp.so
     then
 	XM_EXTRA_LIBS="${XM_EXTRA_LIBS} -lXp"
-    else
-	if  test -r $x_libraries/libXp.so
-	then
-	    XM_EXTRA_LIBS="${XM_EXTRA_LIBS} -lXp"
-	fi
     fi
 
-    if  test $ac_xm_includes != NO
+    if  test -r $x_libraries/libXmu.a -o -r $x_libraries/libXmu.so
     then
-	XM_CFLAGS=" -I$ac_xm_includes"
-	MOTIF_HEADERS_FOUND=YES
-
-	if  test "$XM_CFLAGS" = "$X_CFLAGS"
-	then
-	    XM_CFLAGS=
-	fi
+	XM_EXTRA_LIBS="${XM_EXTRA_LIBS} -lXmu"
     fi
-
-    if  test $ac_xm_libraries != NO
-    then
-	XM_LIBS=" -L$ac_xm_libraries"
-	MOTIF_LIBS_FOUND=YES
-
-	if  test "$XM_LIBS" = "$X_LIBS"
-	then
-	    XM_LIBS=
-	fi
-    fi
-
-    # Some SGI IRIX versions
-    if  test $ac_xm_includes = NO
-    then
-	if test -f /usr/include/Xm.h
-	then
-	    XM_CFLAGS=
-	    MOTIF_HEADERS_FOUND=YES
-	fi
-    fi
-
-    # Some SGI IRIX versions
-    if  test $ac_xm_libraries = NO
-    then
-	if test -f /usr/lib/libXm.a
-	then
-	    XM_LIBS=
-	    MOTIF_LIBS_FOUND=YES
-	fi
-
-	if test -f /usr/lib/libXm.so
-	then
-	    XM_LIBS=
-	    MOTIF_LIBS_FOUND=YES
-	fi
-    fi
-
-    if  test $ac_xm_static_lib != NO
-    then
-	XM_STATIC_REF="$ac_xm_static_lib"
-	if  nm $ac_xm_static_lib | grep -q XpStartPage 2>/dev/null
-	then
-	    XM_EXTRA_LIBS="${XM_EXTRA_LIBS} -lXp"
-	fi
-	if  nm $ac_xm_static_lib | grep -q XEditResPut8 2>/dev/null
-	then
-	    XM_EXTRA_LIBS="${XM_EXTRA_LIBS} -lXmu"
-	fi
-    else
-	XM_STATIC_REF="$XM_LIBS -lXm"
-    fi
-
-    XM_SHARED_REF="$XM_LIBS -lXm"
 
     AC_SUBST(XM_CFLAGS)dnl
     AC_SUBST(XM_LIBS)dnl
-    AC_SUBST(XM_STATIC_REF)dnl
-    AC_SUBST(XM_SHARED_REF)dnl
     AC_SUBST(XM_EXTRA_LIBS)dnl
+])
+#####################################################################
+##
+##   Look for libenchant
+##
+#####################################################################
+
+AC_DEFUN(AC_PATH_ENCHANT,
+[
+    echo Checking for libenchant...
+
+    ENCHANT_CFLAGS=
+    ENCHANT_LIBS=
+
+    ENCHANT_HEADERS_FOUND=NO
+    ENCHANT_LIBS_FOUND=NO
+    ENCHANT_FOUND=0
+
+    if  ( pkg-config libenchant --cflags ) > /dev/null 2>&1
+    then
+	ENCHANT_CFLAGS=`pkg-config libenchant --cflags`
+	ENCHANT_HEADERS_FOUND=YES
+    fi
+
+    if  ( pkg-config libenchant --libs ) > /dev/null 2>&1
+    then
+	ENCHANT_LIBS=`pkg-config libenchant --libs`
+	ENCHANT_LIBS_FOUND=YES
+    fi
+
+    ########  The hard way
+    if test $ENCHANT_HEADERS_FOUND = NO -o $ENCHANT_LIBS_FOUND = NO
+    then
+	h_so_tmp="$$.h_so_tmp"
+	trap "rm -f $h_so_tmp" 0
+	for h_so in \
+	    "/usr/include enchant/enchant.h - enchant"
+	do
+	    echo $h_so
+	done > ${h_so_tmp}
+	while read hd h sod so
+	do
+	    if  test -f $hd/$h -a \( ${sod} = - -o -f ${sod}/lib${so}.so \)
+	    then
+		case $hd in
+		/usr/include)
+		    : ok
+		    ;;
+		*)
+		    ENCHANT_CFLAGS=-I${hd}
+		    ;;
+		esac
+
+		case $sod in
+		/usr/lib|/lib|-)
+		    ENCHANT_LIBS=-l${so}
+		    ;;
+		*)
+		    ENCHANT_LIBS="-L${sod} -l${so}"
+		    ;;
+		esac
+
+		ENCHANT_HEADERS_FOUND=YES
+		ENCHANT_LIBS_FOUND=YES
+		break
+	    fi
+	done < ${h_so_tmp}
+    fi
+    ########
+
+    AC_ARG_WITH( ENCHANT,
+	[ --with-ENCHANT Use libenchant if available],
+	[
+	    if  test $withval = yes
+	    then
+		USE_ENCHANT=YES
+	    else
+		USE_ENCHANT=NO
+	    fi
+	],
+	[
+	    USE_ENCHANT=TEST;
+	])
+
+    case $ENCHANT_HEADERS_FOUND.$ENCHANT_LIBS_FOUND in
+	YES.YES)
+	    ENCHANT_FOUND=1
+	    HAVE_ENCHANT=YES
+	    ;;
+	*)
+	    ENCHANT_FOUND=0
+	    # Try for ourselves
+	    AC_TRY_COMPILE([#include <enchant/enchant.h>],
+	      [EnchantBroker * b=((EnchantBroker *)0);],
+		HAVE_ENCHANT=YES,HAVE_ENCHANT=NO,)
+	    ;;
+    esac
+
+    case $HAVE_ENCHANT.$USE_ENCHANT in
+	YES.TEST|YES.YES)
+	    echo 'Using libenchant'
+	    AC_DEFINE(HAVE_ENCHANT,1)
+	    AC_DEFINE(USE_ENCHANT,1)
+	    USE_ENCHANT=YES
+	    ;;
+	YES.NO)
+	    echo 'Avoiding libenchant'
+	    AC_DEFINE(HAVE_ENCHANT,1)
+	    AC_DEFINE(USE_ENCHANT,0)
+	    ENCHANT_CFLAGS=
+	    ENCHANT_LIBS=
+	    ;;
+	NO.TEST)
+	    echo 'No libenchant'
+	    AC_DEFINE(HAVE_ENCHANT,0)
+	    AC_DEFINE(USE_ENCHANT,0)
+	    USE_ENCHANT=NO
+	    ;;
+	NO.YES)
+	    echo '##### No libenchant found'
+	    AC_DEFINE(HAVE_ENCHANT,0)
+	    AC_DEFINE(USE_ENCHANT,0)
+	    ;;
+	*)
+	    ;;
+    esac
+
+    AC_SUBST(ENCHANT_CFLAGS)dnl
+    AC_SUBST(ENCHANT_LIBS)dnl
 ])
 #####################################################################
 ##
@@ -694,12 +946,12 @@ AC_DEFUN(AC_INSTALL_LOCATIONS,
     if  test x_$prefix = x_NONE
     then
 	Q_PREFIX=/usr
-	Q_EXEX_PREFIX=/usr
+	Q_EXEC_PREFIX=/usr
 	Q_BINDIR=/usr/bin
 	Q_DATADIR=/usr/share
     else
 	Q_PREFIX=$prefix
-	Q_EXEX_PREFIX=$prefix
+	Q_EXEC_PREFIX=$prefix
 	Q_BINDIR=$bindir
 	Q_DATADIR=$datadir
     fi
@@ -708,7 +960,7 @@ AC_DEFUN(AC_INSTALL_LOCATIONS,
     then
 	: ok
     else
-	Q_EXEX_PREFIX=$exec_prefix
+	Q_EXEC_PREFIX=$exec_prefix
 	Q_BINDIR=$exec_prefix/bin
     fi
 
@@ -734,7 +986,7 @@ AC_DEFUN(AC_INSTALL_LOCATIONS,
     esac
 
     PREFIX='"'$Q_PREFIX'"'
-    EXEX_PREFIX='"'$Q_EXEX_PREFIX'"'
+    EXEC_PREFIX='"'$Q_EXEC_PREFIX'"'
     BINDIR='"'$Q_BINDIR'"'
     DATADIR='"'$Q_DATADIR'"'
 
@@ -772,7 +1024,6 @@ AC_DEFUN(AC_CHOOSE_GUI,
     GUI=NONE
     NO_MOTIF=NO
     NO_GTK=NO
-    NO_QT=NO
 
     AC_ARG_WITH( MOTIF,
 	[  --with-MOTIF            Use Motif/LessTif user interface],
@@ -793,8 +1044,8 @@ AC_DEFUN(AC_CHOOSE_GUI,
 		fi
 	    else
 		echo '############' WARNING '############'
-		echo 'MOTIF_HEADERS_FOUND=' $MOTIF_HEADERS_FOUND
-		echo 'MOTIF_LIBS_FOUND=' $MOTIF_HEADERS_FOUND
+		echo 'MOTIF_HEADERS_FOUND=' \"$MOTIF_HEADERS_FOUND\"
+		echo 'MOTIF_LIBS_FOUND=' \"$MOTIF_LIBS_FOUND\"
 	    fi
 	    
 	    GUI=MOTIF
@@ -824,7 +1075,7 @@ AC_DEFUN(AC_CHOOSE_GUI,
 	    else
 		echo '############' WARNING '############'
 		echo 'GTK_HEADERS_FOUND=' $GTK_HEADERS_FOUND
-		echo 'GTK_LIBS_FOUND=' $GTK_HEADERS_FOUND
+		echo 'GTK_LIBS_FOUND=' $GTK_LIBS_FOUND
 	    fi
 	    
 	    GUI=GTK
@@ -834,32 +1085,13 @@ AC_DEFUN(AC_CHOOSE_GUI,
 	]
     )
 
-    AC_ARG_WITH( QT,
-	[  --with-QT              Use Qt user interface ],
+    AC_ARG_WITH( HEADLESS,
+	[  --with-HEADLESS              Use NO GUI user interface (headless) ],
 	[
 	if  test $withval = yes
 	then
-	    echo Choosing QT ...
-
-	    if  test	x_$QT_HEADERS_FOUND = x_YES	-a \
-			    x_$QT_LIBS_FOUND = x_YES
-	    then
-		if  test $GUI = NONE
-		then
-		    : ok
-		else
-		    echo '############' WARNING '############'
-		    echo 'GUI=' $GUI
-		fi
-	    else
-		echo '############' WARNING '############'
-		echo 'QT_HEADERS_FOUND=' $QT_HEADERS_FOUND
-		echo 'QT_LIBS_FOUND=' $QT_HEADERS_FOUND
-	    fi
-	    
-	    GUI=QT
-	else
-	    NO_QT=YES
+	    echo Choosing HEADLESS ...
+	    GUI=HEADLESS
 	fi
 	]
     )
@@ -882,27 +1114,24 @@ AC_DEFUN(AC_CHOOSE_GUI,
 	GUI=MOTIF
     fi
 
-#    if  test	$GUI = NONE				-a \
-#		$NO_QT = NO				-a \
-#		x_$QT_HEADERS_FOUND = x_YES		-a \
-#		x_$QT_LIBS_FOUND = x_YES
-#    then
-#	echo Found QT
-#	GUI=QT
-#    fi
-
     case $GUI in
     MOTIF)
 	AC_SUBST(GUI)
-	AC_DEFINE( USE_MOTIF )
+	AC_DEFINE( USE_MOTIF, 1 )
+	AC_DEFINE( USE_GTK, 0 )
+	AC_DEFINE( USE_HEADLESS, 0 )
 	;;
     GTK)
 	AC_SUBST(GUI)
-	AC_DEFINE( USE_GTK )
+	AC_DEFINE( USE_GTK, 1 )
+	AC_DEFINE( USE_MOTIF, 0 )
+	AC_DEFINE( USE_HEADLESS, 0 )
 	;;
-    QT)
+    HEADLESS)
 	AC_SUBST(GUI)
-	AC_DEFINE( USE_QT )
+	AC_DEFINE( USE_HEADLESS, 1 )
+	AC_DEFINE( USE_GTK, 0 )
+	AC_DEFINE( USE_MOTIF, 0 )
 	;;
     *)
 	echo '############' WARNING '############'

@@ -8,6 +8,9 @@
 #   include	<sioFlate.h>
 
 #   include	"bmBitmapPrinter.h"
+#   include	"bitmap.h"
+#   include	<sioGeneral.h>
+#   include	<geoRectangle.h>
 
 #   include	<appDebugon.h>
 
@@ -22,7 +25,6 @@
 
 int bmPsOpenBitmapPrinter(	BitmapPrinter *			bp,
 				SimpleOutputStream *		sos,
-				const BitmapDescription *	bd,
 				int				useFilters,
 				int				indexedImages )
     {

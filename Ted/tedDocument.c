@@ -2,32 +2,39 @@
 
 #   include	<stddef.h>
 #   include	<stdlib.h>
-#   include	<stdio.h>
 #   include	<ctype.h>
 
-#   include	<textOfficeCharset.h>
-#   include	<appQuestion.h>
-
 #   include	"tedApp.h"
+#   include	"tedDraw.h"
 #   include	"tedSelect.h"
 #   include	"tedRuler.h"
 #   include	"tedAppResources.h"
 #   include	"tedLayout.h"
+#   include	"docScreenObjects.h"
 #   include	"tedDocument.h"
-#   include	"tedDocFront.h"
+#   include	<tedDocFront.h>
 
-#   include	<docDebug.h>
-#   include	<docScreenLayout.h>
 #   include	<docFind.h>
 #   include	<docField.h>
-#   include	<docParaParticules.h>
 #   include	<docRecalculateTocField.h>
 #   include	<docNodeTree.h>
 #   include	<docEditCommand.h>
 
-#   include	<guiDrawingWidget.h>
 #   include	<psNup.h>
+#   include	<docFileExtensions.h>
+#   include	<docRecalculateIncludeTextField.h>
+#   include	<appDocument.h>
+#   include	<docTreeNode.h>
+#   include	<docDocumentProperties.h>
+#   include	<appEditApplication.h>
+#   include	<appEditDocument.h>
+#   include	<layoutContext.h>
+#   include	<docLayout.h>
+#   include	<docObjects.h>
+#   include	<docBuf.h>
+#   include	<appDocFront.h>
 
+#   include	<docDebug.h>
 #   include	<appDebugon.h>
 
 #   define VALIDATE_TREE	0
@@ -48,10 +55,10 @@ const char TedTraceExtension[]= "Ted";
 
 void tedMoveObjectWindows(	EditDocument *		ed )
     {
-    InsertedObject *		io;
+    struct InsertedObject *	io;
 
     DocumentPosition		dpObj;
-    PositionGeometry		pg;
+    const PositionGeometry *	pgObj;
     int				partObj;
 
     LayoutContext		lc;
@@ -61,12 +68,10 @@ void tedMoveObjectWindows(	EditDocument *		ed )
 
     docInitDocumentPosition( &dpObj );
 
-    if  ( tedGetObjectSelection( ed, &partObj, &dpObj, &io ) )
+    if  ( tedGetObjectSelection( &pgObj, &partObj, &dpObj, &io, ed ) )
 	{ LDEB(1); return;	}
 
-    tedPositionGeometry( &pg, &dpObj, PARAfindLAST, &lc );
-
-    tedSetObjectWindows( ed, &pg, io, &lc );
+    tedSetObjectWindows( ed, pgObj, io, &lc );
     }
 
 /************************************************************************/
@@ -160,8 +165,8 @@ int tedFinishDocumentSetup(	EditDocument *		ed )
     EditApplication *		ea= ed->edApplication;
 
     TedDocument *		td= (TedDocument *)ed->edPrivateData;
-    BufferDocument *		bd= td->tdDocument;
-    DocumentProperties *	dp= &(bd->bdProperties);
+    struct BufferDocument *	bd= td->tdDocument;
+    DocumentProperties *	dp= bd->bdProperties;
 
     const TedAppResources *	tar= (TedAppResources *)ea->eaResourceData;
 
@@ -176,17 +181,20 @@ int tedFinishDocumentSetup(	EditDocument *		ed )
 
     {
     DocumentPosition		dpFirst;
-    const BufferItem *		bodySectNode= (const BufferItem *)0;
+    const struct BufferItem *	bodySectNode= (const struct BufferItem *)0;
 
     /*  1  */
     if  ( ! docGotoFirstPosition( &dpFirst, bd->bdBody.dtRoot ) )
 	{
 	const int			lastLine= 0;
-	BufferItem *			bodyNode= bd->bdBody.dtRoot;
+	struct BufferItem *			bodyNode= bd->bdBody.dtRoot;
+	const int			asWord= 0;
+	const int			caseSensitive= 1;
 
 	if  ( tar->tarFindPattern					&&
 	      ! docFindSetPattern( &(td->tdFindProg),
-			    tar->tarFindPattern, tar->tarFindRegex )	&&
+			    tar->tarFindPattern, tar->tarFindRegex,
+			    asWord, caseSensitive )			&&
 	      ! docFindFindNextInDocument( &(td->tdSelection),
 		    &dpFirst, bd,
 		    docFindParaFindNext, td->tdFindProg )	)
@@ -198,9 +206,8 @@ int tedFinishDocumentSetup(	EditDocument *		ed )
 	    bodySectNode= bodyNode->biChildren[0];
 	    }
 
-	tedSelectionGeometry( &(td->tdSelectionGeometry),
-			     &(td->tdSelection), bodySectNode, lastLine,
-			     &lc );
+	docSelectionGeometry( &(td->tdSelectionGeometry), &(td->tdSelection),
+					     bodySectNode, lastLine, &lc );
 
 	tedDescribeSelection( ed );
 	}
@@ -226,7 +233,6 @@ int tedFinishDocumentSetup(	EditDocument *		ed )
 
     /*
     if  ( dw->dwColors.acAllocator.caDepth < 4 )
-    */
     if  ( 0 )
 	{
 	td->tdDrawMonochrome= 1;
@@ -236,6 +242,7 @@ int tedFinishDocumentSetup(	EditDocument *		ed )
 	utilRGB8SolidBlack( &(td->tdTableColor) );
 	}
     else{
+    */
 	td->tdDrawMonochrome= 0;
 
 	td->tdSelColor.rgb8Red= 176;
@@ -249,7 +256,9 @@ int tedFinishDocumentSetup(	EditDocument *		ed )
 	td->tdTableColor.rgb8Red= 192;
 	td->tdTableColor.rgb8Green= 192;
 	td->tdTableColor.rgb8Blue= 192;
+    /*
 	}
+    */
 
     if  ( utilRGB8LumaChromaHue( &luma, &chroma, &hue,
 						&(ed->edBackgroundColor) ) )
@@ -298,12 +307,12 @@ int tedFinishDocumentSetup(	EditDocument *		ed )
 	    }
 	}
 
-    if  ( tedOpenTreeObjects( &(bd->bdBody), &lc ) )
+    if  ( docOpenTreeObjects( &(bd->bdBody), &lc ) )
 	{ LDEB(1);	}
 
     td->tdDrawTableGrid= tar->tarShowTableGridInt;
 
-    appGuiSetToggleItemState( td->tdDrawTableGridOption,
+    guiSetToggleItemState( td->tdDrawTableGridOption,
 						td->tdDrawTableGrid >= 0 );
 
     if  ( ! utilMemoryBufferIsEmpty( &(td->tdRecoveredName) ) )
@@ -398,7 +407,7 @@ void tedDocumentFirstVisible(	EditDocument *	ed )
 	dr.drY1 += sh;
 	}
 
-    appScrollToRectangle( ed, &dr, (int *)0, (int *)0 );
+    appScrollToRectangle( (int *)0, (int *)0, ed, &dr );
 
     return;
     }
@@ -426,7 +435,7 @@ void tedFreeDocument(		void *			voidtd,
 
     if  ( td->tdDocument )
 	{
-	docCleanDocumentObjects( td->tdDocument, docScreenCloseObject );
+	docCleanDocumentObjects( td->tdDocument );
 	docFreeDocument( td->tdDocument );
 	}
 
@@ -441,15 +450,18 @@ void tedFreeDocument(		void *			voidtd,
 
     bmCleanRasterImage( &(td->tdCopiedImage) );
 
-    docFindSetPattern( &(td->tdFindProg), (const char *)0, 0 );
+    docFindSetPattern( &(td->tdFindProg), (const char *)0, 0, 0, 0 );
+
+    tedDestroyObjectWindows( td );
 
     free( td );
     }
 
-int tedMakeDocumentWidget(	EditApplication *	ea,
-				EditDocument *		ed )
+int tedMakeDocumentWidget(	EditDocument *		ed )
     {
-    if  ( appMakeDocumentWidget( ea, ed ) )
+    EditApplication *	ea= ed->edApplication;
+
+    if  ( appMakeDocumentWidget( ed ) )
 	{ LDEB(1); return -1;	}
 
     if  ( ! ea->eaDocumentCursor	&&
@@ -471,17 +483,18 @@ int tedMakeDocumentWidget(	EditApplication *	ea,
 /************************************************************************/
 
 int tedFirstRecalculateFields(	RecalculateFields *	rf,
-				DOC_CLOSE_OBJECT	closeObject,
-				BufferDocument *	bd )
+				struct BufferDocument *	bd )
     {
     const int			page= 0;
 
     rf->rfDocument= bd;
-    rf->rfCloseObject= closeObject;
     rf->rfUpdateFlags= FIELDdoDOC_INFO|FIELDdoDOC_COMPLETE|FIELDdoCHFTN;
     rf->rfFieldsUpdated= 0;
 
     rf->rfBodySectNode= bd->bdBody.dtRoot->biChildren[0];
+
+    if  ( docRecalculateIncludeTextFields( rf ) )
+	{ LDEB(1); return -1;	}
 
     if  ( docRecalculateTocFields( rf ) )
 	{ LDEB(1); return -1;	}
@@ -502,7 +515,7 @@ int tedLayoutDocument(		DocumentRectangle *		drScreen,
 				const DocumentGeometry *	dgDef )
     {
     TedDocument *		td= (TedDocument *)privateData;
-    BufferDocument *		bd= td->tdDocument;
+    struct BufferDocument *		bd= td->tdDocument;
 
     const int			page= 0;
     int				noteNumbersChanged= 0;
@@ -514,7 +527,7 @@ int tedLayoutDocument(		DocumentRectangle *		drScreen,
     DocumentRectangle		drOutside;
     DocumentRectangle		drInside;
 
-    BufferItem *		rootNode= bd->bdBody.dtRoot;
+    struct BufferItem *		rootNode= bd->bdBody.dtRoot;
 
     docInitRecalculateFields( &rf );
     layoutInitContext( &lc );
@@ -526,8 +539,9 @@ int tedLayoutDocument(		DocumentRectangle *		drScreen,
     *drVisible= drOutside;
 
     tedSetDocumentLayoutContext( &lc, ds, psfl, td );
+    rf.rfLocale= lc.lcLocale;
 
-    if  ( tedFirstRecalculateFields( &rf, docScreenCloseObject, bd ) )
+    if  ( tedFirstRecalculateFields( &rf, bd ) )
 	{ LDEB(page); return -1;	}
 
     if  ( tedLayoutDocumentBody( &reachedBottom, &lc ) )
@@ -554,6 +568,7 @@ int tedLayoutDocument(		DocumentRectangle *		drScreen,
 					rootNode->biBelowPosition.lpPage );
 
     /* LDEB(1); docListNode(0,rootNode,1); */
+    /* LDEB(1); docListFieldsOfDocument(bd); */
 
     return 0;
     }
@@ -564,7 +579,7 @@ int tedLayoutDocument(		DocumentRectangle *		drScreen,
 /*									*/
 /************************************************************************/
 
-void * tedMakePrivateData( void )
+void * tedMakePrivateData( const EditApplication *	ea )
     {
     int			i;
     TedDocument *	td;
@@ -576,7 +591,7 @@ void * tedMakePrivateData( void )
     docInitSelectionDescription( &(td->tdSelectionDescription) );
     td->tdBodySectionNumber= -1;
 
-    td->tdDocument= (BufferDocument *)0;
+    td->tdDocument= (struct BufferDocument *)0;
     td->tdCurrentScreenFont= -1;
 
     utilInitMemoryBuffer( &(td->tdRecoveredName) );
@@ -588,6 +603,8 @@ void * tedMakePrivateData( void )
 
     utilInitIndexMapping( &(td->tdAttributeToScreenFont) );
     docInitEditTrace( &(td->tdEditTrace) );
+
+    td->tdLocale= ea->eaLocale;
 
     td->tdFormatMenu= (APP_WIDGET)0;
     td->tdFormatMenuButton= (APP_WIDGET)0;
@@ -692,11 +709,11 @@ void * tedMakePrivateData( void )
     td->tdFindProg= (void *)0;
     td->tdOwnsPrimarySelection= 0;
 
-#   ifdef USE_MOTIF
+#   if USE_MOTIF
     td->tdHideIBarId= (XtIntervalId)0;
     td->tdShowIBarId= (XtIntervalId)0;
 #   endif
-#   ifdef USE_GTK
+#   if USE_GTK
     td->tdHideIBarId= 0;
     td->tdShowIBarId= 0;
 #   endif
@@ -734,7 +751,7 @@ void tedObserveFocus(	EditDocument *	ed,
 	    {
 	    appSetCurrentDocument( ea, ed );
 
-	    tedAdaptPageToolToDocument( ea, ed );
+	    tedAdaptPageToolToDocument( ed );
 
 	    tedAdaptFormatToolToDocument( ed, 0 );
 	    }
@@ -754,8 +771,8 @@ void tedSuggestPageSetup(	PrintGeometry *	pg,
 				int		sheetSize )
     {
     TedDocument *		td= (TedDocument *)privateData;
-    BufferDocument *		bd= td->tdDocument;
-    DocumentProperties *	dp= &(bd->bdProperties);
+    struct BufferDocument *		bd= td->tdDocument;
+    DocumentProperties *	dp= bd->bdProperties;
 
     if  ( sheetSize )
 	{ pg->pgSheetGeometry= dp->dpGeometry;	}

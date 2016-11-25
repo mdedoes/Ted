@@ -1,18 +1,18 @@
 /************************************************************************/
 /*									*/
-/*  Read/Write paragraph cell to/from RTF.				*/
+/*  Read/Write cell to/from RTF.					*/
 /*									*/
 /************************************************************************/
 
 #   include	"docRtfConfig.h"
 
-#   include	<stdio.h>
 #   include	<ctype.h>
 
-#   include	<appDebugon.h>
-
 #   include	"docRtfReaderImpl.h"
-#   include	"docRtfTagEnum.h"
+#   include	"docRtfReadTreeStack.h"
+#   include	<docAttributes.h>
+
+#   include	<appDebugon.h>
 
 /************************************************************************/
 /*									*/
@@ -22,83 +22,97 @@
 
 int docRtfRememberCellShadingProperty(	const RtfControlWord *	rcw,
 					int			arg,
-					RtfReader *		rrc )
+					RtfReader *		rr )
     {
-    if  ( docSetShadingProperty( &(rrc->rrcCellShading), rcw->rcwID, arg ) < 0 )
+    if  ( docSetShadingProperty( &(rr->rrCellShading), rcw->rcwID, arg ) < 0 )
 	{ SLDEB(rcw->rcwWord,arg); return -1;	}
 
-    PROPmaskADD( &(rrc->rrcCellPropertyMask), CLpropSHADING );
-    PROPmaskADD( &(rrc->rrcStyle.dsCellMask), CLpropSHADING );
+    PROPmaskADD( &(rr->rrCellPropertyMask), CLpropSHADING );
+    PROPmaskADD( &(rr->rrStyle.dsCellMask), CLpropSHADING );
 
     return 0;
     }
 
-void docRtfResetCellProperties(	RtfReader *	rrc )
+void docRtfResetCellProperties(	RtfReader *	rr )
     {
-    docCleanCellProperties( &(rrc->rrcCellProperties) );
-    docInitCellProperties( &(rrc->rrcCellProperties) );
-    docInitItemShading( &(rrc->rrcCellShading) );
-    utilPropMaskClear( &(rrc->rrcCellPropertyMask) );
+    /*docCleanCellProperties( &(rr->rrCellProperties) );*/
+    docInitCellProperties( &(rr->rrCellProperties) );
+    docInitItemShading( &(rr->rrCellShading) );
+    utilPropMaskClear( &(rr->rrCellPropertyMask) );
+
+    docRowPropertiesSetCellDefaults( &(rr->rrCellProperties),
+					&(rr->rrTreeStack->rtsRowProperties) );
 
     return;
     }
 
-static int docRtfSetCellX(		RtfReader *		rrc,
-					int			arg )
+int docRtfGotCellX(		const RtfControlWord *	rcw,
+				int			arg,
+				RtfReader *		rr )
     {
-    CellProperties *	cp= &(rrc->rrcCellProperties);
-
     const int		col= -1;
-    const int		shiftTail= 0;
 
-    cp->cpRightBoundaryTwips= arg;
+    if  ( arg < 0 )
+	{
+	DocumentGeometry * dg= &(rr->rrSectionProperties.spDocumentGeometry);
 
-    cp->cpShadingNumber= docItemShadingNumber( rrc->rrDocument,
-						    &(rrc->rrcCellShading) );
-    if  ( cp->cpShadingNumber < 0 )
-	{ LDEB(cp->cpShadingNumber);	}
+	LDEB(arg);
 
-    if  ( docInsertRowColumn( &(rrc->rrcRowProperties),
-		    col, shiftTail, cp, (const DocumentAttributeMap *)0 ) )
-	{ LDEB(rrc->rrcRowProperties.rpCellCount); return -1; }
+	arg= geoContentWide( dg );
+	}
 
-    PROPmaskADD( &(rrc->rrcCellPropertyMask), CLpropCELLX );
-    PROPmaskADD( &(rrc->rrcStyle.dsCellMask), CLpropCELLX );
-    PROPmaskADD( &(rrc->rrcRowPropertyMask), RPpropCELL_LAYOUT );
 
-    docRowMaskApplyCellMask( &(rrc->rrcRowPropertyMask),
-						&(rrc->rrcCellPropertyMask) );
+    rr->rrCellProperties.cpWide= arg- rr->rrTreeStack->rtsRowCellX;
+    rr->rrStyle.dsCellProps.cpWide= arg- rr->rrTreeStack->rtsRowCellX;
+
+    rr->rrCellProperties.cpShadingNumber= docItemShadingNumber(
+				    rr->rrDocument, &(rr->rrCellShading) );
+    rr->rrStyle.dsCellProps.cpShadingNumber=
+				    rr->rrCellProperties.cpShadingNumber;
+
+    if  ( rr->rrCellProperties.cpShadingNumber < 0 )
+	{ LDEB(rr->rrCellProperties.cpShadingNumber);	}
+
+    if  ( ! utilPropMaskIsEmpty( &(rr->rrCellPropertyMask) ) )
+	{
+	PROPmaskADD( &(rr->rrRowPropertyMask), RPprop_CELL_PROPS );
+	}
+    if  ( ! utilPropMaskIsEmpty( &(rr->rrStyle.dsCellMask) ) )
+	{
+	PROPmaskADD( &(rr->rrStyle.dsRowMask), RPprop_CELL_PROPS );
+	}
+
+    if  ( arg > 0 )
+	{
+	if  ( docInsertRowColumn( &(rr->rrTreeStack->rtsRowProperties), col,
+		&(rr->rrCellProperties), (const DocumentAttributeMap *)0 ) )
+	    { LDEB(rr->rrTreeStack->rtsRowProperties.rpCellCount); return -1; }
+
+	rr->rrTreeStack->rtsRowCellX= arg;
+
+	PROPmaskADD( &(rr->rrCellPropertyMask),  CLpropWIDTH );
+	PROPmaskADD( &(rr->rrStyle.dsCellMask), CLpropWIDTH );
+
+	PROPmaskADD( &(rr->rrRowPropertyMask),  RPprop_CELL_COUNT );
+	PROPmaskADD( &(rr->rrStyle.dsRowMask), RPprop_CELL_COUNT );
+
+	PROPmaskADD( &(rr->rrRowPropertyMask),  RPprop_CELL_PROPS );
+	PROPmaskADD( &(rr->rrStyle.dsRowMask), RPprop_CELL_PROPS );
+	}
+
+    docRtfResetCellProperties( rr );
 
     return 0;
     }
 
 int docRtfRememberCellProperty(		const RtfControlWord *	rcw,
 					int			arg,
-					RtfReader *		rrc )
+					RtfReader *		rr )
     {
     switch( rcw->rcwID )
 	{
 	case CLprop_NONE:
-	    docRtfResetCellProperties( rrc );
-	    return 0;
-
-	case CLpropCELLX:
-	    if  ( arg < 0 )
-		{
-		DocumentGeometry *	dg;
-
-		SLDEB(rcw->rcwWord,arg);
-
-		dg= &(rrc->rrcSectionProperties.spDocumentGeometry);
-
-		arg= dg->dgPageWideTwips-
-			    ( dg->dgRightMarginTwips+ dg->dgLeftMarginTwips );
-		}
-
-	    if  ( docRtfSetCellX( rrc, arg ) )
-		{ SLDEB(rcw->rcwWord,arg); return -1;	}
-
-	    docRtfResetCellProperties( rrc );
+	    docRtfResetCellProperties( rr );
 	    return 0;
 
 	/**/
@@ -106,13 +120,10 @@ int docRtfRememberCellProperty(		const RtfControlWord *	rcw,
 	case CLpropBOTTOM_BORDER:
 	case CLpropLEFT_BORDER:
 	case CLpropRIGHT_BORDER:
-	    arg= docRtfReadGetBorderNumber( rrc );
+	    arg= docRtfReadGetBorderNumber( rr );
 	    if  ( arg < 0 )
 		{ SLDEB(rcw->rcwWord,arg); return -1;	}
 	    break;
-
-	case RTFid_NOT_SUPPORTED:
-	    return 0;
 
 	case CLpropHOR_MERGE:
 	case CLpropTEXT_FLOW:
@@ -120,14 +131,17 @@ int docRtfRememberCellProperty(		const RtfControlWord *	rcw,
 	case CLpropVERT_MERGE:
 	    arg= rcw->rcwEnumValue;
 	    break;
+
+	case CLprop_NOT_SUPPORTED:
+	    return 0;
 	}
 
-    PROPmaskADD( &(rrc->rrcCellPropertyMask), rcw->rcwID );
-    if  ( docSetCellProperty( &(rrc->rrcCellProperties), rcw->rcwID, arg ) < 0 )
+    PROPmaskADD( &(rr->rrCellPropertyMask), rcw->rcwID );
+    if  ( docSetCellProperty( &(rr->rrCellProperties), rcw->rcwID, arg ) < 0 )
 	{ SLDEB(rcw->rcwWord,arg); return -1;	}
 
-    PROPmaskADD( &(rrc->rrcStyle.dsCellMask), rcw->rcwID );
-    if  ( docSetCellProperty( &(rrc->rrcStyle.dsCellProps),
+    PROPmaskADD( &(rr->rrStyle.dsCellMask), rcw->rcwID );
+    if  ( docSetCellProperty( &(rr->rrStyle.dsCellProps),
 						rcw->rcwID, arg ) < 0 )
 	{ SLDEB(rcw->rcwWord,arg); return -1;	}
 
@@ -142,7 +156,7 @@ int docRtfRememberCellProperty(		const RtfControlWord *	rcw,
 
 int docRtfRememberCellInstanceProperty(	const RtfControlWord *	rcw,
 					int			arg,
-					RtfReader *	rrc )
+					RtfReader *	rr )
     {
     return 0;
     }

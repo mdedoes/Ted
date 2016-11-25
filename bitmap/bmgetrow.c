@@ -439,6 +439,11 @@ static void bmGetWhiteBlack124SourceRow(ColorValue *			cv,
     return;
     }
 
+# ifdef __GNUC__
+# pragma GCC diagnostic push
+# pragma GCC diagnostic ignored "-Wunused-parameter"
+# endif
+
 static void bmGetBlackWhite8SourceRow(	ColorValue *			cv,
 					int				col0Out,
 					const unsigned char *		from,
@@ -462,6 +467,15 @@ static void bmGetBlackWhite8SourceRow(	ColorValue *			cv,
 	}
     }
 
+# ifdef __GNUC__
+# pragma GCC diagnostic pop
+# endif
+
+# ifdef __GNUC__
+# pragma GCC diagnostic push
+# pragma GCC diagnostic ignored "-Wunused-parameter"
+# endif
+
 static void bmGetWhiteBlack8SourceRow(	ColorValue *			cv,
 					int				col0Out,
 					const unsigned char *		from,
@@ -482,6 +496,15 @@ static void bmGetWhiteBlack8SourceRow(	ColorValue *			cv,
 	cv->cvN++;
 	}
     }
+
+# ifdef __GNUC__
+# pragma GCC diagnostic pop
+# endif
+
+# ifdef __GNUC__
+# pragma GCC diagnostic push
+# pragma GCC diagnostic ignored "-Wunused-parameter"
+# endif
 
 static void bmGetWhiteBlack16ASourceRow(ColorValue *			cv,
 					int				col0Out,
@@ -504,11 +527,20 @@ static void bmGetWhiteBlack16ASourceRow(ColorValue *			cv,
 	}
     }
 
+# ifdef __GNUC__
+# pragma GCC diagnostic pop
+# endif
+
 /************************************************************************/
 /*									*/
 /*  Add data from one row of a 24 bits image to an acumulator array.	*/
 /*									*/
 /************************************************************************/
+
+# ifdef __GNUC__
+# pragma GCC diagnostic push
+# pragma GCC diagnostic ignored "-Wunused-parameter"
+# endif
 
 static void bmGetRGB24SourceRow(	ColorValue *			cv,
 					int				col0Out,
@@ -532,6 +564,15 @@ static void bmGetRGB24SourceRow(	ColorValue *			cv,
 
     return;
     }
+
+# ifdef __GNUC__
+# pragma GCC diagnostic pop
+# endif
+
+# ifdef __GNUC__
+# pragma GCC diagnostic push
+# pragma GCC diagnostic ignored "-Wunused-parameter"
+# endif
 
 static void bmGetRGBA32SourceRow(	ColorValue *			cv,
 					int				col0Out,
@@ -567,11 +608,20 @@ static void bmGetRGBA32SourceRow(	ColorValue *			cv,
     return;
     }
 
+# ifdef __GNUC__
+# pragma GCC diagnostic pop
+# endif
+
 /************************************************************************/
 /*									*/
 /*  Add data from one row of a 48 bits image to an acumulator array.	*/
 /*									*/
 /************************************************************************/
+
+# ifdef __GNUC__
+# pragma GCC diagnostic push
+# pragma GCC diagnostic ignored "-Wunused-parameter"
+# endif
 
 static void bmGetRGB48SourceRow(	ColorValue *			cv,
 					int				col0Out,
@@ -597,6 +647,15 @@ static void bmGetRGB48SourceRow(	ColorValue *			cv,
     return;
     }
 
+# ifdef __GNUC__
+# pragma GCC diagnostic pop
+# endif
+
+# ifdef __GNUC__
+# pragma GCC diagnostic push
+# pragma GCC diagnostic ignored "-Wunused-parameter"
+# endif
+
 static void bmGetRGBA64SourceRow(	ColorValue *			cv,
 					int				col0Out,
 					const unsigned char *		ucFrom,
@@ -621,6 +680,10 @@ static void bmGetRGBA64SourceRow(	ColorValue *			cv,
 
     return;
     }
+
+# ifdef __GNUC__
+# pragma GCC diagnostic pop
+# endif
 
 /************************************************************************/
 /*									*/

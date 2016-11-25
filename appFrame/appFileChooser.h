@@ -4,8 +4,16 @@
 /*									*/
 /************************************************************************/
 
-#   include	"appFrame.h"
-#   include	"guiOptionmenu.h"
+#   include	<guiBase.h>
+
+#   if ! USE_HEADLESS
+
+#   include	<guiOptionmenu.h>
+#   include	<utilMemoryBuffer.h>
+
+struct AppFileExtension;
+struct EditApplication;
+struct EditDocument;
 
 /************************************************************************/
 /*									*/
@@ -27,15 +35,17 @@ typedef struct AppFileChooserResources
     char *			acrNotReadableMessage;
     char *			acrOverwriteMessage;
     char *			acrNoSuchDirMessage;
+
+    char *			acrPostScriptFiles;
     } AppFileChooserResources;
 
-typedef int (*APP_OPEN_DOCUMENT)(	EditApplication *	ea,
+typedef int (*APP_OPEN_DOCUMENT)(	struct EditApplication * ea,
 					void *			through,
 					APP_WIDGET		relative,
 					APP_WIDGET		option,
 					const MemoryBuffer *	filename );
 
-typedef int (*APP_SAVE_DOCUMENT)(	EditDocument *		ed,
+typedef int (*APP_SAVE_DOCUMENT)(	struct EditDocument *	ed,
 					void *			through,
 					APP_WIDGET		relative,
 					APP_WIDGET		option,
@@ -44,10 +54,10 @@ typedef int (*APP_SAVE_DOCUMENT)(	EditDocument *		ed,
 
 typedef struct AppChooserInformation
     {
-#   ifdef USE_MOTIF
+#   if USE_MOTIF
     AppDialog				aciDialog;
 #   endif
-#   ifdef USE_GTK
+#   if USE_GTK
 #	ifdef GTK_RESPONSE_ACCEPT
 	    APP_WIDGET			aciWidget;
 #	endif
@@ -56,13 +66,13 @@ typedef struct AppChooserInformation
 #	else
 #   endif
 
-    EditApplication *			aciApplication;
-    EditDocument *			aciDocument;
+    struct EditApplication *		aciApplication;
+    struct EditDocument *		aciDocument;
     MemoryBuffer			aciFilename;
     void *				aciThrough;
     APP_OPEN_DOCUMENT			aciOpenDocument;
     APP_SAVE_DOCUMENT			aciSaveDocument;
-    const AppFileExtension *		aciExtensions;
+    const struct AppFileExtension *	aciExtensions;
     int					aciExtensionCount;
     AppOptionmenu			aciFilterOptionmenu;
     APP_WIDGET				aciOption;
@@ -83,55 +93,82 @@ typedef struct AppChooserInformation
 /*									*/
 /************************************************************************/
 
-extern void appFileChooserGetTexts(	EditApplication *		ea,
+extern void appFileChooserGetTexts(	struct EditApplication *	ea,
 					AppChooserInformation *		aci );
 
 extern int appFileChooserTestNameForOpen(
-				const AppChooserInformation *	aci );
+				const AppChooserInformation *	aci,
+				const MemoryBuffer *		filename );
 
 extern int appFileChooserTestNameForWrite(
-				const AppChooserInformation *	aci );
+				const AppChooserInformation *	aci,
+				const MemoryBuffer *		filename );
 
-extern int appChooserSaveFilename(	AppChooserInformation *	aci,
-					const MemoryBuffer *	filename,
-					const char *		extension );
+extern int appChooserImplGetFilename(	const AppChooserInformation *	aci,
+					MemoryBuffer *		filename );
+
+extern int appChooserImplSetFilename(	AppChooserInformation *	aci,
+					const MemoryBuffer *	filename );
+
+extern int appChooserTestFilename(
+				const AppChooserInformation *	aci,
+				const MemoryBuffer *		filename );
 
 extern int appRunSaveChooser(	APP_WIDGET		option,
 				APP_WIDGET		relative,
-				unsigned int		useFlags,
 				APP_SAVE_DOCUMENT	saveDocument,
-				EditDocument *		ed,
+				struct EditDocument *	ed,
 				void *			through );
 
 extern int appRunPrintToFileChooser(
 				APP_WIDGET		option,
 				APP_WIDGET		relative,
 				APP_SAVE_DOCUMENT	saveDocument,
-				EditDocument *		ed,
+				struct EditDocument *	ed,
 				void *			through );
 
 extern void appRunOpenChooser(	APP_WIDGET		option,
 				APP_WIDGET		relative,
 				int			extensionCount,
-				AppFileExtension *	openExtensions,
+				struct AppFileExtension *	openExtensions,
 				const char *		defaultFilter,
 				const MemoryBuffer *	dir,
 				APP_OPEN_DOCUMENT	openDocument,
-				EditApplication *	ea,
+				struct EditApplication * ea,
 				void *			through );
 
 extern int appFileFilterGetDescriptions(
-				EditApplication *	ea,
-				AppFileExtension *	extensions,
+				struct EditApplication *	ea,
+				struct AppFileExtension *	extensions,
 				int			extensionCount );
 
 extern int appFileChooserConfirmOverWrite(
 				const AppChooserInformation *	aci,
 				const char *			filename );
 
-extern int appChooserOpenDocument(	EditApplication *	ea,
+extern int appChooserOpenDocument(	struct EditApplication * ea,
 					void *			through,
 					APP_WIDGET		relative,
 					APP_WIDGET		option,
 					const MemoryBuffer *	filename );
 
+extern int appChooserChangeFilenameExtension(
+				const AppChooserInformation *	aci,
+				MemoryBuffer *			filename,
+				int				newFormat );
+
+extern int appSaveChooserSave(	AppChooserInformation *		aci,
+				APP_WIDGET			relative,
+				struct EditDocument *		ed,
+				const MemoryBuffer *		filename );
+
+extern int appSaveChooserPrint(	AppChooserInformation *		aci,
+				const MemoryBuffer *		filename );
+
+extern int appPrintChooserFileName(
+				AppChooserInformation *		aci,
+				MemoryBuffer *			changed,
+				struct EditDocument *		ed,
+				const MemoryBuffer *		filename );
+
+#   endif

@@ -17,6 +17,7 @@
 #   include	"sioEndian.h"
 #   include	"utilMemoryBuffer.h"
 #   include	"utilDosTime.h"
+#   include	"sioGeneral.h"
 
 #   include	<appDebugon.h>
 
@@ -250,6 +251,11 @@ typedef struct ZipStats
     unsigned long	zsDirectorySize;
     } ZipStats;
 
+# ifdef __GNUC__
+# pragma GCC diagnostic push
+# pragma GCC diagnostic ignored "-Wunused-parameter"
+# endif
+
 static int sioZipEmitDirectoryEntry(	int		n,
 					void *		voidzos,
 					void *		voidzs )
@@ -272,6 +278,10 @@ static int sioZipEmitDirectoryEntry(	int		n,
 
     return 0;
     }
+
+# ifdef __GNUC__
+# pragma GCC diagnostic pop
+# endif
 
 int sioZipFlushOutput(		ZipOutput *		zo )
     {

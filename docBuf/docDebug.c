@@ -7,7 +7,9 @@
 #   include	"docDebug.h"
 #   include	<docTextParticule.h>
 #   include	<docTextLine.h>
-#   include	<docDocumentNote.h>
+#   include	"docDocumentNote.h"
+#   include	<fontDocFontList.h>
+#   include	<fontDocFont.h>
 
 #   include	<appDebugon.h>
 
@@ -16,7 +18,7 @@
 void docListParticule(	int			indent,
 			const char *		label,
 			int			n,
-			const BufferItem *	bi,
+			const struct BufferItem *	node,
 			const TextParticule *	tp )
     {
     appDebug( "%*s%s %3d: [S %4d..%4d] A=%-3d %s %s",
@@ -30,12 +32,12 @@ void docListParticule(	int			indent,
 	{
 	appDebug( " \"%.*s\"",
 		    (int)tp->tpStrlen,
-		    docParaString( bi, tp->tpStroff ) );
+		    docParaString( node, tp->tpStroff ) );
 	}
 
-    if  ( tp->tpKind == DOCkindOBJECT		||
-	  tp->tpKind == DOCkindFIELDHEAD	||
-	  tp->tpKind == DOCkindFIELDTAIL	||
+    if  ( tp->tpKind == TPkindOBJECT		||
+	  tp->tpKind == TPkindFIELDHEAD	||
+	  tp->tpKind == TPkindFIELDTAIL	||
 	  tp->tpObjectNumber >= 0		)
 	{ appDebug( " OBNR=%d", tp->tpObjectNumber );	}
 
@@ -47,7 +49,7 @@ void docListParticule(	int			indent,
 void docListTextLine(	int			indent,
 			const char *		label,
 			int			n,
-			const BufferItem *	paraBi,
+			const struct BufferItem *	paraNode,
 			const TextLine *	tl )
     {
 #   if LIST_LINE_PARTICULES
@@ -93,30 +95,30 @@ void docListTextLine(	int			indent,
 
     appDebug( "\"%.*s\"\n",
 		    (int)tl->tlStrlen,
-		    docParaString( paraBi, tl->tlStroff ) );
+		    docParaString( paraNode, tl->tlStroff ) );
 
 #   if LIST_LINE_PARTICULES
 
-    tp= paraBi->biParaParticules+ tl->tlFirstParticule;
+    tp= paraNode->biParaParticules+ tl->tlFirstParticule;
     for ( part= tl->tlFirstParticule;
           part < tl->tlFirstParticule+ tl->tlParticuleCount;
 	  tp++, part++ )
-	{ docListParticule( indent+ 4, "PART", part, paraBi, tp ); }
+	{ docListParticule( indent+ 4, "PART", part, paraNode, tp ); }
 
 #   endif
 
     return;
     }
 
-void docListNotes(	const BufferDocument *	bd )
+void docListNotes(	const struct BufferDocument *	bd )
     {
     int				i;
-    const DocumentNote *	dn;
 
-    dn= bd->bdNotesList.nlNotes;
-    for ( i= 0; i < bd->bdNotesList.nlNoteCount; dn++, i++ )
+    for ( i= 0; i < bd->bdNotesList.nlNoteCount; i++ )
 	{
-	if  ( NOTE_IS_DELETED( dn ) )
+	const DocumentNote *	dn= bd->bdNotesList.nlNotes[i];
+
+	if  ( ! dn )
 	    {
 	    appDebug( "%4d DELETED\n", i );
 	    continue;
@@ -140,12 +142,13 @@ void docListFontList( const DocumentFontList *	dfl )
     appDebug( "FONTLIST: %d fonts\n", dfl->dflFontCount );
     for ( i= 0; i < dfl->dflFontCount; i++ )
 	{
-	const DocumentFont *	df= docFontListGetFontByNumber( dfl, i );
+	const DocumentFont *	df= fontFontListGetFontByNumber( dfl, i );
 
 	if  ( ! df )
 	    { continue;	}
 
-	appDebug( "FONT %6d: \"%s\"\n", df->dfDocFontNumber, df->dfName );
+	appDebug( "FONT %6d: \"%s\"\n", df->dfDocFontNumber,
+				utilMemoryBufferGetString( &(df->dfName) ) );
 	}
     }
 

@@ -8,11 +8,12 @@
 
 #   include	<stdlib.h>
 
+#   include	<sioGeneral.h>
 #   include	"sioXprop.h"
 
 #   include	<appDebugon.h>
 
-#   ifdef USE_MOTIF
+#   if USE_MOTIF
 
 #   include	<X11/Xlib.h>
 #   include	<X11/Xatom.h>

@@ -12,16 +12,17 @@
 #   include	<ctype.h>
 #   include	<ctype.h>
 
-#   include	"tedApp.h"
-
 #   include	<psBuildConfigFiles.h>
 #   include	<sioFileio.h>
 #   include	<sioStdout.h>
-#   include	<appFindX11Fonts.h>
-#   include	<appMatchFont.h>
+#   include	<drawMatchFont.h>
 #   include	<appSystem.h>
+#   include	<docCopyNode.h>
 #   include	<docFontsDocuments.h>
 #   include	"tedFileConvert.h"
+#   include	"tedDocument.h"
+#   include	<appEditApplication.h>
+#   include	<sioGeneral.h>
 
 #   include	<appDebugon.h>
 
@@ -197,9 +198,11 @@ int tedAfmForFontFiles(	EditApplication *		ea,
 	ret= -1; goto ready;
 	}
 
+#   if 0 && FONTS_X11
     if  ( ea->eaToplevel.atTopWidget				&&
 	  appFindX11Fonts( ea->eaToplevel.atTopWidget, &psfl )	)
 	{ XDEB(ea->eaToplevel.atTopWidget); ret= -1; goto ready;	}
+#   endif
 
     if  ( psSaveAfms( &psfl, ea->eaUseKerningInt < 0, &afmDir ) )
 	{ SDEB(ea->eaAfmDirectory); ret= -1; goto ready;	}
@@ -246,27 +249,27 @@ int tedFontsDocuments(	EditApplication *		ea,
     if  ( utilMemoryBufferSetString( &scriptRelative, "checkfontsdocs.sh" ) )
 	{ LDEB(1); rval= -1; goto ready;	}
 
-    if  ( appAbsoluteName( &scriptAbsoluteFrom,
+    if  ( fileAbsoluteName( &scriptAbsoluteFrom,
 			    &scriptRelative, relativeIsFile, &templDir ) < 0 )
 	{ SDEB(utilMemoryBufferGetString(&templDir)); rval= -1; goto ready; }
-    if  ( appAbsoluteName( &scriptAbsoluteTo,
+    if  ( fileAbsoluteName( &scriptAbsoluteTo,
 			    &scriptRelative, relativeIsFile, &outDir ) < 0 )
 	{ SDEB(utilMemoryBufferGetString(&outDir)); rval= -1; goto ready; }
 
     if  ( appPostScriptFontCatalog( ea ) )
 	{ SDEB(ea->eaAfmDirectory); rval= -1; goto ready;	}
 
-    if  ( appGetDeferredFontMetricsForList( &(ea->eaPostScriptFontList) ) )
+    if  ( drawGetDeferredFontMetricsForList( &(ea->eaPostScriptFontList) ) )
 	{ SDEB(ea->eaAfmDirectory); rval= -1; /*goto ready;*/	}
 
-    if  ( appTestDirectory( &outDir )	&&
-	  appMakeDirectories( &outDir )	)
+    if  ( fileTestDirectory( &outDir )	&&
+	  fileMakeDirectories( &outDir )	)
 	{ SDEB(utilMemoryBufferGetString(&outDir)); rval= -1; goto ready; }
 
     if  ( appCopyFile( &scriptAbsoluteTo, &scriptAbsoluteFrom ) )
 	{ SDEB(argv[0]); rval= -1; goto ready;	}
 
-    if  ( docFontsDocuments( &(ea->eaPostScriptFontList),
+    if  ( docFontsDocuments( &(ea->eaPostScriptFontList), ea->eaLocale,
 						    &templDir, &outDir ) )
 	{ SDEB(argv[0]); rval= -1; goto ready;	}
 
@@ -279,5 +282,95 @@ int tedFontsDocuments(	EditApplication *		ea,
     utilCleanMemoryBuffer( &scriptAbsoluteTo );
 
     return rval;
+    }
+
+static int tedConcatenateX(	EditApplication *		ea,
+				int				argc,
+				char **				argv,
+				int				omitSectBreak )
+    {
+    int			rval= argc;
+    int			arg;
+
+    int			stdinCount= 0;
+
+    TedDocument *	tdIn= (TedDocument *)0;
+    TedDocument *	tdOut= (TedDocument *)0;
+    int			formatIn= -1;
+    int			formatOut= -1;
+
+    MemoryBuffer	fileName;
+
+    utilInitMemoryBuffer( &fileName );
+
+    if  ( argc < 2 )
+	{ LLDEB(2,argc); rval= -1; goto ready;	}
+
+    for ( arg= 0; arg < argc- 1; arg++ )
+	{
+	int		suggestStdin= 0;
+
+	if  ( utilMemoryBufferSetString( &fileName, argv[arg] ) )
+	    { LSDEB(arg,argv[arg]); rval= -1; goto ready;	}
+
+	tdIn= (TedDocument *)appOpenDocumentInput( ea, &formatIn,
+				    &suggestStdin, stdinCount > 0, &fileName );
+	if  ( ! tdIn )
+	    { SXDEB(argv[arg],tdIn); rval= -1; goto ready;	}
+
+	if  ( suggestStdin )
+	    { stdinCount++;	}
+
+	if  ( ! tdOut )
+	    { tdOut= tdIn; formatOut= formatIn;	}
+	else{
+	    if  ( docAppendDocument( tdOut->tdDocument,
+					    tdIn->tdDocument, omitSectBreak ) )
+		{ SDEB(argv[arg]); rval= -1; goto ready;	}
+
+	    tedFreeDocument( tdIn, formatIn );
+	    }
+
+	tdIn= (TedDocument *)0; formatIn= -1;
+	}
+
+    if  ( utilMemoryBufferSetString( &fileName, argv[arg] ) )
+	{ LSDEB(arg,argv[arg]); rval= -1; goto ready;	}
+
+    if  ( appSaveDocumentOutput( ea, tdOut, formatOut, &fileName ) )
+	{ LSDEB(arg,argv[arg]); rval= -1; goto ready;	}
+
+  ready:
+
+    if  ( tdIn )
+	{ tedFreeDocument( tdIn, formatIn );	}
+    if  ( tdOut )
+	{ tedFreeDocument( tdOut, formatOut );	}
+
+    utilCleanMemoryBuffer( &fileName );
+
+    return rval;
+    }
+
+int tedConcatenate(	EditApplication *		ea,
+			const char *			prog,
+			const char *			call,
+			int				argc,
+			char **				argv )
+    {
+    const int	omitSectBreak= 0;
+
+    return tedConcatenateX( ea, argc, argv, omitSectBreak );
+    }
+
+int tedConcatenateText(	EditApplication *		ea,
+			const char *			prog,
+			const char *			call,
+			int				argc,
+			char **				argv )
+    {
+    const int	omitSectBreak= 1;
+
+    return tedConcatenateX( ea, argc, argv, omitSectBreak );
     }
 

@@ -9,8 +9,10 @@
 
 #   include	<utilColor.h>
 #   include	<utilPalette.h>
-#   include	<utilMemoryBuffer.h>
-#   include	<geo2DInteger.h>
+
+struct AppFileExtension;
+struct MemoryBuffer;
+struct DocumentRectangle;
 
 /************************************************************************/
 /*									*/
@@ -131,88 +133,6 @@ typedef struct RasterImage
     } RasterImage;
 
 /************************************************************************/
-/*									*/
-/*  Description of a bitmap file format.				*/
-/*									*/
-/************************************************************************/
-
-typedef struct	BitmapFileType
-    {
-    int (*bftWrite)(	const MemoryBuffer *		filename,
-			const unsigned char *		buffer,
-			const BitmapDescription *	bd,
-			int				privateFormat );
-
-    int (*bftCanWrite)( const BitmapDescription *	bd,
-			int				privateFormat );
-
-    int (*bftRead)(	const MemoryBuffer *		filename,
-			unsigned char **		pBuffer,
-			BitmapDescription *		bd,
-			int *				pPrivateFormat );
-
-    const char *	bftFileExtension;
-    const char *	bftFileFilter;
-    const char *	bftTypeId;
-    const char *	bftTypeDescription;
-    } BitmapFileType;
-
-typedef struct	BitmapFileFormat
-    {
-    const char *	bffDescription;
-    const char *	bffId;
-    int			bffPrivate;
-    BitmapFileType *	bffFileType;
-    } BitmapFileFormat;
-
-/************************************************************************/
-/*									*/
-/*  Catalog of available of a bitmap file formats.			*/
-/*									*/
-/************************************************************************/
-
-extern BitmapFileFormat	bmFileFormats[];
-extern const int	bmNumberOfFileFormats;
-
-extern BitmapFileType *	bmFileTypes[];
-extern const int	bmNumberOfFileTypes;
-
-/************************************************************************/
-/*									*/
-/*  For Reading/Writing from/to streams.				*/
-/*									*/
-/************************************************************************/
-
-extern int bmWriteGifFile(	const MemoryBuffer *		filename,
-				const unsigned char *		buffer,
-				const BitmapDescription *	bd,
-				int				privateFormat );
-
-extern int bmCanWriteGifFile(	const BitmapDescription *	bd,
-				int				privateFormat );
-
-extern int bmWriteJpegFile(	const MemoryBuffer *		filename,
-				const unsigned char *		buffer,
-				const BitmapDescription *	bd,
-				int				privateFormat );
-
-extern int bmCanWriteJpegFile(	const BitmapDescription *	bd,
-				int				privateFormat );
-
-/************************************************************************/
-
-extern int bmWriteRtfFile(	const MemoryBuffer *		filename,
-				const unsigned char *		buffer,
-				const BitmapDescription *	bd,
-				int				privateFormat );
-
-extern int bmCanWriteRtfFile(	const BitmapDescription *	bd,
-				int				privateFormat );
-
-extern int bmCanWritePngFile(	const BitmapDescription *	bd,
-				int				privateFormat );
-
-/************************************************************************/
 /*  Routines.								*/
 /************************************************************************/
 
@@ -223,7 +143,7 @@ extern void bmCleanDescription(	BitmapDescription *	bd	);
 extern int bmCopyDescription(	BitmapDescription *		bdOut,
 				const BitmapDescription *	bdIn	);
 
-extern int bmWrite(	const MemoryBuffer *		filename,
+extern int bmWrite(	const struct MemoryBuffer *		filename,
 			const unsigned char *		buffer,
 			const BitmapDescription *	bd,
 			int				fileFormat );
@@ -231,14 +151,14 @@ extern int bmWrite(	const MemoryBuffer *		filename,
 extern int bmCanWrite(	const BitmapDescription *	bd,
 			int				fileFormat );
 
-extern int bmRead(	const MemoryBuffer *	filename,
+extern int bmRead(	const struct MemoryBuffer *	filename,
 			unsigned char **	pBuffer,
 			BitmapDescription *	bd,
 			int *			pFileFormat );
 
-extern int bmSelect(	RasterImage *			riOut,
-			const RasterImage *		riIn,
-			const DocumentRectangle *	drSrc );
+extern int bmSelect(	RasterImage *				riOut,
+			const RasterImage *			riIn,
+			const struct DocumentRectangle *	drSrc );
 
 extern int bmComponents( void ***		pComponents,
 			int *			pCount,
@@ -247,19 +167,19 @@ extern int bmComponents( void ***		pComponents,
 
 extern int bmComponentBitmap( unsigned char **		buffer,
 			BitmapDescription *		bdout,
-			DocumentRectangle *		dr,
+			struct DocumentRectangle *	dr,
 			const BitmapDescription *	bdin,
 			const void *			component );
 
 extern int bmGroupBitmap( unsigned char **		buffer,
 			BitmapDescription *		bdout,
-			DocumentRectangle *		dr,
+			struct DocumentRectangle *	dr,
 			const BitmapDescription *	bdin,
-			const void *			vbc	);
+			const void *			vbc );
 
 int bmgGroupBitmap(	unsigned char **		pBuffer,
 			BitmapDescription *		bdout,
-			DocumentRectangle *		dr,
+			struct DocumentRectangle *	dr,
 			const BitmapDescription *	bdin,
 			const void *			vcg );
 
@@ -369,14 +289,12 @@ extern int bmExpandPaletteImage( RasterImage *			riOut,
 				const RasterImage *		riIn,
 				int				ignoredInt );
 
-extern int bmTransparentImage(	BitmapDescription *		bdOut,
-				unsigned char **		pBufOut,
+extern int bmTransparentImage(	RasterImage *			riOut,
 				int				colorEncoding,
 				int				wide,
 				int				high );
 
-extern int bmRGBImage(		BitmapDescription *		bdOut,
-				unsigned char **		pBufOut,
+extern int bmRGBImage(		RasterImage *			riOut,
 				int				colorEncoding,
 				int				r,
 				int				g,
@@ -492,7 +410,7 @@ extern int bmDrawBox(		unsigned char *			buffer,
 				int				y1,
 				int				wide );
 
-extern int bmSuggestFormat(	const MemoryBuffer *		filename,
+extern int bmSuggestFormat(	const struct MemoryBuffer *	filename,
 				int				suggestedFormat,
 				const BitmapDescription *	bd );
 
@@ -532,5 +450,25 @@ extern void bmFreeRasterImage(	RasterImage *		ri );
 
 extern int bmCopyRasterImage(	RasterImage *		to,
 				const RasterImage *	from );
+
+extern int bmMakeFileExtensions(struct AppFileExtension **	pAfeList,
+				int *				pAfeCount );
+
+extern int bmToNativeARGB32(	unsigned char *			target,
+				unsigned char *			source,
+				const BitmapDescription *	bd,
+				int				stride );
+
+extern int bmToNativeA1(	unsigned char *			target,
+				unsigned char *			source,
+				const BitmapDescription *	bd,
+				int				stride );
+
+extern int bmCanSaveAsContentType(
+				const BitmapDescription *	bd,
+				const char *			contentType );
+
+extern const char * bmGetContentTypeOfFormat(
+				int				fileFormat );
 
 #   endif

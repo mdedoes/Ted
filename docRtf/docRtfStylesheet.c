@@ -1,18 +1,22 @@
 /************************************************************************/
 /*									*/
 /*  Read the various document tables of an RTF text file into a		*/
-/*  BufferDocument.							*/
+/*  struct BufferDocument.							*/
 /*									*/
 /************************************************************************/
 
 #   include	"docRtfConfig.h"
 
-#   include	<stdio.h>
 #   include	<ctype.h>
 
-#   include	<appDebugon.h>
-
 #   include	"docRtfReaderImpl.h"
+#   include	"docRtfReadTreeStack.h"
+#   include	"docRtfFindProperty.h"
+#   include	<docStyleSheet.h>
+#   include	<docBuf.h>
+#   include	<docTreeNode.h>
+
+#   include	<appDebugon.h>
 
 /************************************************************************/
 /*									*/
@@ -21,11 +25,11 @@
 /*									*/
 /************************************************************************/
 
-static int docRtfStyleName(	RtfReader *	rrc,
+static int docRtfStyleName(	RtfReader *		rr,
 				const char *		name,
 				int			len )
     {
-    RtfReadingState *		rrs= rrc->rrcState;
+    RtfReadingState *		rrs= rr->rrState;
 
     DocumentStyle *		ds;
 
@@ -34,101 +38,103 @@ static int docRtfStyleName(	RtfReader *	rrc,
 
     const DocumentAttributeMap * const dam0= (const DocumentAttributeMap *)0;
 
-    if  ( docRtfSaveDocEncodedText( rrc, name, len ) )
+    if  ( docRtfSaveDocEncodedText( rr, name, len ) )
 	{ LDEB(len); return -1;	}
 
-    ds= &(rrc->rrcStyle);
+    ds= &(rr->rrStyle);
     switch( ds->dsLevel )
 	{
 	case DOClevSPAN:
 	    break;
 
 	case 0: case -1:
-	    LDEB(rrc->rrcStyle.dsLevel);
+	    LDEB(rr->rrStyle.dsLevel);
 	    ds->dsStyleNumber= 0;
 	    ds->dsLevel= DOClevPARA;
 	    break;
 
 	case DOClevPARA:
-	    ds->dsStyleNumber= rrs->rrsParagraphProperties.ppStyle;
+	    ds->dsStyleNumber= rrs->rrsParagraphProperties.ppStyleNumber;
 	    break;
 
 	case DOClevROW:
 	    /* NO! They have trowd and the sheet owns the style
-	    ds->dsStyleNumber= rrc->rrcRowProperties.rpRowStyle;
+	    ds->dsStyleNumber= rr->rrRowProperties.rpRowStyle;
 	    */
 	    break;
 
 	case DOClevSECT:
-	    ds->dsStyleNumber= rrc->rrcSectionProperties.spStyle;
+	    ds->dsStyleNumber= rr->rrSectionProperties.spStyle;
 	    break;
 
 	default:
-	    LDEB(rrc->rrcStyle.dsLevel); return -1;
+	    LDEB(rr->rrStyle.dsLevel); return -1;
 	}
 
-    if  ( docRtfStoreStyleProperties( rrc ) )
+    if  ( docRtfStoreStyleProperties( rr ) )
 	{ LDEB(1);	}
 
-    if  ( docRtfStoreSavedText( &(rrc->rrcStyle.dsName),
-					    &size, rrc, removeSemicolon ) )
+    if  ( docRtfStoreSavedText( &(rr->rrStyle.dsName),
+					    &size, rr, removeSemicolon ) )
 	{ LDEB(len); return -1;	}
 
-    ds= docInsertStyle( &(rrc->rrDocument->bdStyleSheet),
-					rrc->rrcStyle.dsStyleNumber,
-					&(rrc->rrcStyle), dam0 );
+    ds= docInsertStyle( &(rr->rrDocument->bdStyleSheet),
+					rr->rrStyle.dsStyleNumber,
+					&(rr->rrStyle), dam0 );
     if  ( ! ds )
 	{ XDEB(ds); return -1;	}
 
-    docCleanDocumentStyle( &(rrc->rrcStyle) );
-    docInitDocumentStyle( &(rrc->rrcStyle) );
+    docCleanDocumentStyle( &(rr->rrStyle) );
+    docInitDocumentStyle( &(rr->rrStyle) );
 
     docRtfResetParagraphProperties( rrs );
-    docRtfResetTextAttribute( rrs, rrc->rrDocument );
+    docRtfResetTextAttribute( rrs, rr->rrDocument );
 
     return 0;
     }
 
 static int docRtfStyleGroup(		const RtfControlWord *	rcw,
 					int			arg,
-					RtfReader *	rrc )
+					RtfReader *		rr )
     {
-    RtfReadingState *	rrs= rrc->rrcState;
+    RtfReadingState *	rrs= rr->rrState;
 
     switch( rcw->rcwID )
 	{
 	case DOClevSPAN:
-	    rrc->rrcStyle.dsStyleNumber= arg;
-	    rrc->rrcStyle.dsLevel= DOClevSPAN;
+	    rr->rrStyle.dsStyleNumber= arg;
+	    rr->rrStyle.dsLevel= DOClevSPAN;
 	    break;
 
 	case DOClevSECT:
-	    rrc->rrcSectionProperties.spStyle= arg;
-	    rrc->rrcStyle.dsStyleNumber= arg;
-	    rrc->rrcStyle.dsLevel= DOClevSECT;
+	    rr->rrSectionProperties.spStyle= arg;
+	    rr->rrStyle.dsStyleNumber= arg;
+	    rr->rrStyle.dsLevel= DOClevSECT;
 	    break;
 
 	case DOClevROW:
-	    rrc->rrcRowProperties.rpRowStyle= arg;
-	    rrc->rrcStyle.dsStyleNumber= arg;
-	    rrc->rrcStyle.dsLevel= DOClevROW;
+	    if  ( ! rr->rrTreeStack )
+		{ XDEB(rr->rrTreeStack); return -1;	}
+	    rr->rrTreeStack->rtsRowProperties.rpRowStyle= arg;
+	    rr->rrStyle.dsStyleNumber= arg;
+	    rr->rrStyle.dsLevel= DOClevROW;
 	    break;
 
 	case DOClevPARA:
-	    rrs->rrsParagraphProperties.ppStyle= arg;
-	    rrc->rrcStyle.dsStyleNumber= arg;
-	    rrc->rrcStyle.dsLevel= DOClevPARA;
+	    rrs->rrsParagraphProperties.ppStyleNumber= arg;
+	    rr->rrStyle.dsStyleNumber= arg;
+	    rr->rrStyle.dsLevel= DOClevPARA;
 	    break;
 
 	default:
 	    LDEB(rcw->rcwID);
 	}
 
-    if  ( docRtfReadGroup( rcw, 0, 0, rrc,
+    if  ( docRtfReadGroup( rcw, 0, 0, rr,
 		    (RtfControlWord *)0, docRtfStyleName, (RtfCommitGroup)0 ) )
 	{ SLDEB(rcw->rcwWord,arg); return -1;	}
 
-    rrc->rrcStyle.dsLevel= DOClevANY;
+    rr->rrStyle.dsLevel= DOClevANY;
 
     return 0;
     }
@@ -140,15 +146,15 @@ static int docRtfStyleGroup(		const RtfControlWord *	rcw,
 /************************************************************************/
 
 static RtfControlWord	docRtfStylesheetGroups[]=
-    {
-	RTF_DEST_XX( "cs",	DOClevSPAN,	docRtfStyleGroup ),
-	RTF_DEST_XX( "ds",	DOClevSECT,	docRtfStyleGroup ),
-	RTF_DEST_XX( "ts",	DOClevROW,	docRtfStyleGroup ),
-	RTF_DEST_XX( "tsrowd",	DOClevROW,	docRtfStyleGroup ),
-	RTF_DEST_XX( "s",	DOClevPARA,	docRtfStyleGroup ),
+{
+    RTF_DEST_XX( "cs",	RTCscopeSTYLE, DOClevSPAN,	docRtfStyleGroup ),
+    RTF_DEST_XX( "ds",	RTCscopeSTYLE, DOClevSECT,	docRtfStyleGroup ),
+    RTF_DEST_XX( "ts",	RTCscopeSTYLE, DOClevROW,	docRtfStyleGroup ),
+    RTF_DEST_XX( "tsrowd", RTCscopeSTYLE, DOClevROW,	docRtfStyleGroup ),
+    RTF_DEST_XX( "s",	RTCscopeSTYLE, DOClevPARA,	docRtfStyleGroup ),
 
-	{ (char *)0, 0, 0 }
-    };
+    { (char *)0, 0, 0 }
+};
 
 /************************************************************************/
 /*									*/
@@ -157,28 +163,28 @@ static RtfControlWord	docRtfStylesheetGroups[]=
 /*									*/
 /************************************************************************/
 
-static int docRtfReadWordGroup(	RtfReader *	rrc,
+static int docRtfReadWordGroup(	RtfReader *		rr,
 				int			gotArg,
 				int			arg,
 				const char *		controlWord,
 				const RtfControlWord *	groupWords,
-				RtfAddTextParticule	addParticule )
+				RtfGotText		gotText )
     {
     const RtfControlWord *	rcw;
 
     rcw= docRtfFindPropertyWord( controlWord );
     if  ( rcw )
 	{
-	if  ( docRtfReadGroupX( rcw, rcw, gotArg, arg, rrc, groupWords,
-					addParticule, (RtfCommitGroup)0 ) )
+	if  ( docRtfReadGroupX( rcw, rcw, gotArg, arg, rr, groupWords,
+					gotText, (RtfCommitGroup)0 ) )
 	    { SDEB(rcw->rcwWord); return -1;	}
 	}
     else{
-	if  ( rrc->rrcComplainUnknown )
-	    { LSDEB(rrc->rrCurrentLine,controlWord);	}
+	if  ( rr->rrComplainUnknown )
+	    { LSDEB(rr->rrCurrentLine,controlWord);	}
 
-	if  ( docRtfReadUnknownGroup( rrc ) )
-	    { LSDEB(rrc->rrCurrentLine,controlWord); return -1;	}
+	if  ( docRtfReadUnknownGroup( rr ) )
+	    { LSDEB(rr->rrCurrentLine,controlWord); return -1;	}
 	}
 
     return 0;
@@ -196,28 +202,28 @@ static int docRtfReadWordGroup(	RtfReader *	rrc,
 
 int docRtfStylesheet(		const RtfControlWord *	rcw,
 				int			arg,
-				RtfReader *		rrc )
+				RtfReader *		rr )
     {
-    RtfReadingState *		rrs= rrc->rrcState;
+    RtfReadingState *		rrs= rr->rrState;
     int				res;
 
     char			controlWord[TEDszRTFCONTROL+1];
     int				gotArg;
     int				c;
 
-    docCleanDocumentStyle( &(rrc->rrcStyle) );
-    docInitDocumentStyle( &(rrc->rrcStyle) );
+    docCleanDocumentStyle( &(rr->rrStyle) );
+    docInitDocumentStyle( &(rr->rrStyle) );
 
-    res= docRtfFindControl( rrc, &c, controlWord, &gotArg, &arg );
+    res= docRtfFindControl( rr, &c, controlWord, &gotArg, &arg );
     if  ( res < 0 )
 	{ LDEB(res); return -1;	}
 
-    rrc->rrcStyle.dsLevel= DOClevPARA;
-    rrs->rrsParagraphProperties.ppStyle= 0;
+    rr->rrStyle.dsLevel= DOClevPARA;
+    rrs->rrsParagraphProperties.ppStyleNumber= 0;
 
     for (;;)
 	{
-	rrs= rrc->rrcState;
+	rrs= rr->rrState;
 
 	switch( res )
 	    {
@@ -228,18 +234,18 @@ int docRtfStylesheet(		const RtfControlWord *	rcw,
 		rcw= docRtfFindWord( controlWord, docRtfStylesheetGroups );
 		if  ( ! rcw )
 		    {
-		    if  ( docRtfReadWordGroup( rrc, gotArg, arg, controlWord,
+		    if  ( docRtfReadWordGroup( rr, gotArg, arg, controlWord,
 					(RtfControlWord *)0, docRtfStyleName ) )
 			{ SDEB(controlWord); return -1;	}
 		    }
 		else{
 		  groupFound:
-		    res= docRtfApplyControlWord( rcw, gotArg, arg, rrc );
+		    res= docRtfApplyControlWord( rcw, gotArg, arg, rr );
 		    if  ( res < 0 )
 			{ LDEB(res); SDEB(controlWord); return -1;	}
 		    }
 
-		res= docRtfFindControl( rrc, &c, controlWord, &gotArg, &arg );
+		res= docRtfFindControl( rr, &c, controlWord, &gotArg, &arg );
 		if  ( res < 0 )
 		    { LDEB(res); return -1;	}
 		continue;
@@ -249,14 +255,14 @@ int docRtfStylesheet(		const RtfControlWord *	rcw,
 		if  ( rcw )
 		    { goto groupFound; }
 
-		rrc->rrcInIgnoredGroup++;
+		rr->rrInIgnoredGroup++;
 
-		if  ( docRtfReadUnknownGroup( rrc ) )
-		    { LDEB(1); rrc->rrcInIgnoredGroup--; return -1;	}
+		if  ( docRtfReadUnknownGroup( rr ) )
+		    { LDEB(1); rr->rrInIgnoredGroup--; return -1;	}
 
-		rrc->rrcInIgnoredGroup--;
+		rr->rrInIgnoredGroup--;
 
-		res= docRtfFindControl( rrc, &c, controlWord, &gotArg, &arg );
+		res= docRtfFindControl( rr, &c, controlWord, &gotArg, &arg );
 		if  ( res < 0 )
 		    { LDEB(res); return -1;	}
 		continue;
@@ -269,11 +275,11 @@ int docRtfStylesheet(		const RtfControlWord *	rcw,
 
 		if  ( docRtfReadGroupX( (const RtfControlWord *)0,
 			rcwApplyFirst, gotArgApplyFirst, argApplyFirst,
-			rrc, docRtfStylesheetGroups,
+			rr, docRtfStylesheetGroups,
 			docRtfStyleName, (RtfCommitGroup)0 ) )
 		    { LDEB(1); return -1;	}
 
-		res= docRtfFindControl( rrc, &c, controlWord, &gotArg, &arg );
+		res= docRtfFindControl( rr, &c, controlWord, &gotArg, &arg );
 		if  ( res < 0 )
 		    { LDEB(res); return -1;	}
 		}
@@ -297,9 +303,9 @@ int docRtfStylesheet(		const RtfControlWord *	rcw,
 
 int docRtfRememberStyleProperty(	const RtfControlWord *	rcw,
 					int			arg,
-					RtfReader *		rrc )
+					RtfReader *		rr )
     {
-    DocumentStyle *	ds= &(rrc->rrcStyle);
+    DocumentStyle *	ds= &(rr->rrStyle);
 
     /* \s \cs \ds tags but \s and \ds handeled with the para/sect style */
     if  ( rcw->rcwID == DSpropSTYLE_NUMBER )
@@ -322,36 +328,30 @@ int docRtfRememberStyleProperty(	const RtfControlWord *	rcw,
 /*									*/
 /************************************************************************/
 
-int docRtfStoreStyleProperties(		RtfReader *		rrc )
+int docRtfStoreStyleProperties(		RtfReader *		rr )
     {
-    RtfReadingState *		rrs= rrc->rrcState;
-    BufferDocument *		bd= rrc->rrDocument;
-    int				mindTable= 1;
+    RtfReadingState *		rrs= rr->rrState;
+    struct BufferDocument *		bd= rr->rrDocument;
 
-    DocumentStyle *		ds= &(rrc->rrcStyle);
+    DocumentStyle *		ds= &(rr->rrStyle);
 
     /*  SECT	*/
     docCopySectionProperties( &(ds->dsSectProps),
-					    &(rrc->rrcSectionProperties) );
+					    &(rr->rrSectionProperties) );
 
     /*  ROW	*/
 
     /*  CELL	*/
-    ds->dsCellProps.cpShadingNumber= docItemShadingNumber(
-				    rrc->rrDocument, &(rrc->rrcCellShading) );
-    if  ( ds->dsCellProps.cpShadingNumber < 0 )
-	{ LDEB(ds->dsCellProps.cpShadingNumber);	}
 
     /*  PARA	*/
-    if  ( docRtfSetParaProperties( &(ds->dsParaProps), bd,
-						    mindTable, rrs, -1 ) )
+    if  ( docRtfSetParaProperties( &(ds->dsParaProps), bd, rrs ) )
 	{ LDEB(1);	}
 
     /*  SPAN	*/
     if  ( rrs->rrsTextShadingChanged )
 	{
-	docRtfRefreshTextShading( rrc, rrs );
-	PROPmaskADD( &(rrc->rrcStyle.dsTextMask), TApropSHADING );
+	docRtfRefreshTextShading( rr, rrs );
+	PROPmaskADD( &(rr->rrStyle.dsTextMask), TApropSHADING );
 	}
 
     ds->dsTextAttribute= rrs->rrsTextAttribute;

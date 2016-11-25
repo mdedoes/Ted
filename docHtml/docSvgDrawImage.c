@@ -9,18 +9,20 @@
 #   include	<stddef.h>
 #   include	<stdio.h>
 
-#   include	<sioMemory.h>
-#   include	<sioHex.h>
-
 #   include	<docDraw.h>
+#   include	<docDrawLine.h>
 #   include	"docSvgDrawImpl.h"
 #   include	<drawMetafileSvg.h>
 #   include	<drawImageSvg.h>
-#   include	<docObjectRect.h>
 #   include	<docObjectProperties.h>
 #   include	<docMetafileObject.h>
-#   include	<docLayoutObject.h>
 #   include	<docShape.h>
+#   include	<bmObjectReader.h>
+#   include	<docObjectIo.h>
+#   include	<docObject.h>
+#   include	<sioGeneral.h>
+#   include	<svgWriter.h>
+#   include	<docLayoutObject.h>
 
 #   include	<appDebugon.h>
 
@@ -40,13 +42,14 @@ static int docSvgDrawMetafile(	SvgWriter *			sw,
     XmlWriter *			xw= &(sw->swXmlWriter);
     int				rval= 0;
 
-    SimpleInputStream *		sisMem= (SimpleInputStream *)0;
-    SimpleInputStream *		sisMeta= (SimpleInputStream *)0;
+    ObjectReader		or;
 
     MetafilePlayer		mp;
     MetafileWriteSvg		playMetafile;
 
     DocumentRectangle		drSrc;
+
+    bmInitObjectReader( &or );
 
     switch( objectKind )
 	{
@@ -68,17 +71,12 @@ static int docSvgDrawMetafile(	SvgWriter *			sw,
 	    LDEB(pip->pipType); goto ready;
 	}
 
-    sisMem= sioInMemoryOpen( mb );
-    if  ( ! sisMem )
-	{ XDEB(sisMem); rval= -1; goto ready;	}
-
-    sisMeta= sioInHexOpen( sisMem );
-    if  ( ! sisMeta )
-	{ XDEB(sisMeta); rval= -1; goto ready;	}
+    if  ( bmOpenObjectReader( &or, mb ) )
+	{ LDEB(1); rval= -1; goto ready;	}
 
     docObjectGetSourceRect( &drSrc, pip );
 
-    docSetMetafilePlayer( &mp, sisMeta, lc, pip, 0, 0 );
+    docSetMetafilePlayer( &mp, or.orSisHex, lc, pip, 0, 0 );
 
     sioOutPutString( "<svg ", xw->xwSos );
     svgWriteRectangleAttributes( sw, drDest );
@@ -93,10 +91,8 @@ static int docSvgDrawMetafile(	SvgWriter *			sw,
     xmlNewLine( xw );
 
   ready:
-    if  ( sisMeta )
-	{ sioInClose( sisMeta );	}
-    if  ( sisMem )
-	{ sioInClose( sisMem );	}
+
+    bmCleanObjectReader( &or );
 
     return rval;
     }
@@ -131,7 +127,7 @@ static int docSvgDrawRasterImage( SvgWriter *			sw,
 
     if  ( ! io->ioRasterImage.riBytes )
 	{
-	if  ( docGetBitmapForObject( io ) )
+	if  ( docGetRasterImageForObject( io ) )
 	    { XDEB(io->ioRasterImage.riBytes);	}
 	}
 
@@ -177,7 +173,7 @@ static int docSvgDrawShapeRaster( SvgWriter *			sw,
 
     if  ( ! ds->dsRasterImage.riBytes )
 	{
-	if  ( docGetBitmapForObjectData( pip->pipType,
+	if  ( docGetRasterImageForObjectData( pip->pipType,
 				&(ds->dsRasterImage), &(ds->dsPictureData) ) )
 	    { XDEB(ds->dsRasterImage.riBytes);	}
 	}
@@ -237,21 +233,16 @@ int docSvgDrawShapeImage(	SvgWriter *			sw,
 /*									*/
 /************************************************************************/
 
-int docSvgDrawObject(		const DrawTextLine *		dtl,
+int docSvgDrawInlineObject(	const DrawTextLine *		dtl,
 				int				part,
 				InsertedObject *		io,
-				const int			x0Twips,
-				const int			x1Twips,
+				const DocumentRectangle *	drTwips,
 				const LayoutPosition *		baseLine )
     {
     SvgWriter *			sw= (SvgWriter *)dtl->dtlThrough;
 
     DrawingContext *		dc= dtl->dtlDrawingContext;
     const LayoutContext *	lc= &(dc->dcLayoutContext);
-
-    DocumentRectangle		drDest;
-
-    docObjectGetPageRect( &drDest, io, x0Twips, baseLine->lpPageYTwips );
 
     switch( io->ioKind )
 	{
@@ -263,7 +254,7 @@ int docSvgDrawObject(		const DrawTextLine *		dtl,
 
 	    if  ( docSvgDrawMetafile( sw, &(io->ioPictureProperties),
 						    &(io->ioObjectData),
-						    io->ioKind, lc, &drDest ) )
+						    io->ioKind, lc, drTwips ) )
 		{ LDEB(1); break;	}
 
 	    dc->dcCurrentTextAttributeSet= 0;
@@ -274,7 +265,7 @@ int docSvgDrawObject(		const DrawTextLine *		dtl,
 	case DOCokPICTPNGBLIP:
 
 	    done= docSvgDrawRasterImage( sw, dc, io,
-				    io->ioKind, &(io->ioObjectData), &drDest );
+				    io->ioKind, &(io->ioObjectData), drTwips );
 	    return done;
 
 	case DOCokOLEOBJECT:
@@ -284,7 +275,7 @@ int docSvgDrawObject(		const DrawTextLine *		dtl,
 		{
 		if  ( docSvgDrawMetafile( sw, &(io->ioPictureProperties),
 					    &(io->ioResultData),
-					    io->ioResultKind, lc, &drDest ) )
+					    io->ioResultKind, lc, drTwips ) )
 		    { LDEB(1); break;	}
 
 		dc->dcCurrentTextAttributeSet= 0;
@@ -296,7 +287,7 @@ int docSvgDrawObject(		const DrawTextLine *		dtl,
 	    	  io->ioResultKind == DOCokPICTPNGBLIP	)
 		{
 		done= docSvgDrawRasterImage( sw, dc, io,
-			    io->ioResultKind, &(io->ioResultData), &drDest );
+			    io->ioResultKind, &(io->ioResultData), drTwips );
 		return done;
 		}
 

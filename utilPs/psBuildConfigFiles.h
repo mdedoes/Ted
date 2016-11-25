@@ -7,8 +7,9 @@
 #   ifndef	PS_CONFIG_H
 #   define	PS_CONFIG_H
 
-#   include	"psPostScriptFontList.h"
-#   include	<sioGeneral.h>
+struct SimpleOutputStream;
+struct MemoryBuffer;
+struct PostScriptFontList;
 
 /************************************************************************/
 /*									*/
@@ -16,28 +17,28 @@
 /*									*/
 /************************************************************************/
 
-extern int psFontmapForFiles(	SimpleOutputStream *	sosOut,
+extern int psFontmapForFiles(	struct SimpleOutputStream *	sosOut,
 				int			fileCount,
 				const char * const *	fileNames );
 
-extern int psAfmToGSFontmap(	SimpleOutputStream *	sosFontDir,
+extern int psAfmToGSFontmap(	struct SimpleOutputStream *	sosFontDir,
 				const char *		afmFileName );
 
-extern int psGSLibAfmDirectory(	PostScriptFontList *	psfl,
+extern int psGSLibAfmDirectory(	struct PostScriptFontList *	psfl,
 				int			ignoreKerning,
-				const MemoryBuffer *	afmDirectory,
-				const MemoryBuffer *	psDirectory );
+				const struct MemoryBuffer *	afmDirectory,
+				const struct MemoryBuffer *	psDirectory );
 
-extern int psAfmForFontFiles(	PostScriptFontList *	psfl,
+extern int psAfmForFontFiles(	struct PostScriptFontList *	psfl,
 				int			ignoreKerning,
 				int			fileCount,
 				char **			fileNames,
-				const MemoryBuffer *	afmDirectory,
-				const MemoryBuffer *	psDirectory );
+				const struct MemoryBuffer *	afmDirectory,
+				const struct MemoryBuffer *	psDirectory );
 
-extern int psFontFileToAfm(	SimpleOutputStream *	sosAfm,
+extern int psFontFileToAfm(	struct SimpleOutputStream *	sosAfm,
 				int			omitKernPairs,
 				const char *		fontFileName,
-				const MemoryBuffer *	psDirectory );
+				const struct MemoryBuffer *	psDirectory );
 
 #   endif

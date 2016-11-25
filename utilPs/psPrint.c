@@ -10,9 +10,13 @@
 #   include	<stdio.h>
 
 #   include	"psPrint.h"
-#   include	<geo2DInteger.h>
+#   include	"psFontInfo.h"
+#   include	"psTextExtents.h"
+#   include	"textAttribute.h"
+#   include	<geoRectangle.h>
 #   include	<sioGeneral.h>
 #   include	<uniUtf8.h>
+#   include	<utilColor.h>
 
 #   include	<appDebugon.h>
 
@@ -84,65 +88,104 @@ void psRefreshNupSchema(
 /*									*/
 /************************************************************************/
 
-int psPrintString(	SimpleOutputStream *	sos,
-			const unsigned char *	s,
-			int			len,
+static int psPrintByte(	SimpleOutputStream *	sos,
+			int			byte,
 			int			sevenBits )
     {
-    int				i;
-
-    for ( i= 0; i < len; s++, i++ )
+    if  ( byte == '(' || byte == ')' || byte == '\\' )
 	{
-	if  ( *s == '(' || *s == ')' || *s == '\\' )
-	    {
-	    if  ( sioOutPutByte( '\\', sos ) < 0 )
-		{ return -1;	}
-	    if  ( sioOutPutByte( *s, sos ) < 0 )
-		{ return -1;	}
-	    continue;
-	    }
-
-	if  ( *s == '\r' )
-	    {
-	    if  ( sioOutPutByte( '\\', sos ) < 0 )
-		{ return -1;	}
-	    if  ( sioOutPutByte( 'r', sos ) < 0 )
-		{ return -1;	}
-	    continue;
-	    }
-
-	if  ( *s == '\n' )
-	    {
-	    if  ( sioOutPutByte( '\\', sos ) < 0 )
-		{ return -1;	}
-	    if  ( sioOutPutByte( 'n', sos ) < 0 )
-		{ return -1;	}
-	    continue;
-	    }
-
-	if  ( (   isascii( *s ) && ! isprint( *s )	)	||
-	      ( ! isascii( *s ) && sevenBits		)	)
-	    {
-	    sioOutPrintf( sos, "\\%03o", *s );
-	    continue;
-	    }
-
-	if  ( sioOutPutByte( *s, sos ) < 0 )
+	if  ( sioOutPutByte( '\\', sos ) < 0 )
 	    { return -1;	}
+	if  ( sioOutPutByte( byte, sos ) < 0 )
+	    { return -1;	}
+	return 0;
+	}
+
+    if  ( byte == '\r' )
+	{
+	if  ( sioOutPutByte( '\\', sos ) < 0 )
+	    { return -1;	}
+	if  ( sioOutPutByte( 'r', sos ) < 0 )
+	    { return -1;	}
+	return 0;
+	}
+
+    if  ( byte == '\n' )
+	{
+	if  ( sioOutPutByte( '\\', sos ) < 0 )
+	    { return -1;	}
+	if  ( sioOutPutByte( 'n', sos ) < 0 )
+	    { return -1;	}
+	return 0;
+	}
+
+    if  ( (   isascii( byte ) && ! isprint( byte )	)	||
+	  ( ! isascii( byte ) && sevenBits		)	)
+	{
+	sioOutPrintf( sos, "\\%03o", byte );
+	return 0;
+	}
+
+    if  ( sioOutPutByte( byte, sos ) < 0 )
+	{ return -1;	}
+
+    return 0;
+    }
+
+int psPrintString(	SimpleOutputStream *	sos,
+			const char *		s,
+			int			len,
+			int			sevenBits,
+			int			utf8 )
+    {
+    int		done;
+
+    if  ( utf8 )
+	{
+	for ( done= 0; done < len; s++, done++ )
+	    {
+	    if  ( psPrintByte( sos, (*s) & 0xff, sevenBits ) )
+		{ LCDEB(done,*s); return -1;	}
+	    }
+	}
+    else{
+	done= 0;
+	while( done < len )
+	    {
+	    unsigned short	uni;
+	    int			step= uniGetUtf8( &uni, s );
+
+	    if  ( step < 1 )
+		{ XXLDEB(s[0],s[1],step); return -1;	}
+
+	    if  ( uni < 256 )
+		{
+		if  ( psPrintByte( sos, uni, sevenBits ) )
+		    { LCDEB(done,*s); return -1;	}
+		}
+	    else{
+		XDEB(uni);
+		if  ( psPrintByte( sos, ' ', sevenBits ) )
+		    { LLDEB(done,uni); return -1;	}
+		}
+
+	    done += step; s += step;
+	    }
 	}
 
     return 0;
     }
 
 int psPrintStringValue(	PrintingState *		ps,
-			const unsigned char *	s,
+			const char *		s,
 			int			len )
     {
     SimpleOutputStream *	sos= ps->psSos;
+    int				utf8= 0;
 
     if  ( sioOutPutByte( '(', sos ) < 0 )
 	{ return -1;	}
-    if  ( psPrintString( ps->psSos, s, len, ps->ps7Bits ) < 0 )
+    if  ( psPrintString( ps->psSos, s, len, ps->ps7Bits, utf8 ) < 0 )
 	{ return -1;	}
     if  ( sioOutPutByte( ')', sos ) < 0 )
 	{ return -1;	}
@@ -181,34 +224,42 @@ static int psPrintUnicodeStringValue(	PrintingState *	ps,
     }
 
 int psPrintPdfMarkStringValue(	PrintingState *		ps,
-				const unsigned char *	s,
-				int			len )
+				const MemoryBuffer *	mb )
     {
-    int		i;
+    int			i;
+    const char *	s= (const char *)mb->mbBytes;
+    int			len= mb->mbSize;
 
     for ( i= 0; i < len; i++ )
 	{
-	if  ( s[i] >= 127 )
-	    { return psPrintUnicodeStringValue( ps, (const char *)s, len ); }
+	if  ( ( s[i] & 0xff ) >= 127 )
+	    { return psPrintUnicodeStringValue( ps, s, len ); }
 	}
 
     return psPrintStringValue( ps, s, len );
     }
 
 int psMoveShowString(	PrintingState *		ps,
-			const unsigned char *	s,
+			const char *		s,
 			int			len,
 			int			x,
 			int			y )
     {
     SimpleOutputStream *	sos= ps->psSos;
 
+    const char *		operator= "mvsf";
+    int				utf8= 0;
+
+    if  ( ps->psCurrentFontInfo					&&
+	  ! ps->psCurrentFontInfo->afiFontSpecificEncoding	)
+	{ operator= "mvsu"; utf8= 1;	}
+
     if  ( sioOutPutByte( '(', sos ) < 0 )
 	{ return -1;	}
-    if  ( psPrintString( ps->psSos, s, len, ps->ps7Bits ) < 0 )
+    if  ( psPrintString( ps->psSos, s, len, ps->ps7Bits, utf8 ) < 0 )
 	{ return -1;	}
 
-    sioOutPrintf( sos, ") %d %d mvs\n", x, y );
+    sioOutPrintf( sos, ") %d %d %s\n", x, y, operator );
 
     ps->psLastPageMarked= ps->psPagesPrinted;
 
@@ -216,17 +267,24 @@ int psMoveShowString(	PrintingState *		ps,
     }
 
 int psShowString(	PrintingState *		ps,
-			const unsigned char *	s,
+			const char *		s,
 			int			len )
     {
     SimpleOutputStream *	sos= ps->psSos;
 
+    const char *		operator= "show";
+    int				utf8= 0;
+
+    if  ( ps->psCurrentFontInfo					&&
+	  ! ps->psCurrentFontInfo->afiFontSpecificEncoding	)
+	{ operator= "utf8show"; utf8= 1;	}
+
     if  ( sioOutPutByte( '(', sos ) < 0 )
 	{ return -1;	}
-    if  ( psPrintString( ps->psSos, s, len, ps->ps7Bits ) < 0 )
+    if  ( psPrintString( ps->psSos, s, len, ps->ps7Bits, utf8 ) < 0 )
 	{ return -1;	}
 
-    sioOutPrintf( sos, ") utf8show " );
+    sioOutPrintf( sos, ") %s ", operator );
 
     ps->psLastPageMarked= ps->psPagesPrinted;
 
@@ -244,11 +302,11 @@ int psShowString(	PrintingState *		ps,
 /************************************************************************/
 
 int psSetFont(	PrintingState *			ps,
-		const AfmFontInfo *		afi,
+		const struct AfmFontInfo *	afi,
 		const TextAttribute *		ta )
     {
     SimpleOutputStream *	sos= ps->psSos;
-    int				fontSizeTwips= 10* ta->taFontSizeHalfPoints;
+    int				fontSizeTwips= TA_FONT_SIZE_TWIPS( ta );
     char			fontName[40];
 
     if  ( ta->taSuperSub == TEXTvaSUPERSCRIPT	||
@@ -256,13 +314,15 @@ int psSetFont(	PrintingState *			ps,
 	{ fontSizeTwips= SUPERSUB_SIZE( fontSizeTwips ); }
 
     if  ( ta->taSmallCaps )
-	{ fontSizeTwips= ( 8* fontSizeTwips )/ 10;	}
+	{ fontSizeTwips= SCAPS_SIZE( fontSizeTwips );	}
 
     if  ( fontSizeTwips == 0 )
 	{ LDEB(fontSizeTwips); fontSizeTwips= 1;	}
 
     psSetFontName( fontName, afi );
     sioOutPrintf( sos, "%d %s\n", fontSizeTwips, fontName );
+
+    ps->psCurrentFontInfo= afi;
 
     ps->psLastPageMarked= ps->psPagesPrinted;
 
@@ -284,6 +344,9 @@ void psInitPrintingState(	PrintingState *	ps )
     ps->psPagesPrinted= 0;
     ps->psSheetsPrinted= 0;
     ps->psSheetsStarted= 0;
+
+    ps->psPostScriptFontList= (const struct PostScriptFontList *)0;
+    ps->psCurrentFontInfo= (const struct AfmFontInfo *)0;
 
     psInitPrintGeometry( &(ps->psPrintGeometry) );
 
@@ -458,8 +521,7 @@ int psDestPdfmark(		PrintingState *		ps,
 /************************************************************************/
 
 void psFlushLink(		PrintingState *		ps,
-				int			x0,
-				int			wide,
+				int			x1,
 				int			lineTop,
 				int			lineHeight )
     {
@@ -469,14 +531,14 @@ void psFlushLink(		PrintingState *		ps,
 
 	drLink.drX0= ps->psLinkRectLeft;
 	drLink.drY0= lineTop+ lineHeight;
-	drLink.drX1= x0+ wide;
+	drLink.drX1= x1;
 	drLink.drY1= lineTop;
 
 	psSourcePdfmark( ps->psSos, &drLink,
 				    &(ps->psLinkFile), &(ps->psLinkMark) );
 
 	ps->psLinkParticulesDone= 0;
-	ps->psLinkRectLeft= x0;
+	ps->psLinkRectLeft= x1;
 	}
 
     return;

@@ -10,6 +10,34 @@
 #   include	"utilPropMask.h"
 #   include	<appDebugon.h>
 
+void utilDebugPropMask(	const char *		file,
+			int			line,
+			const char *		name,
+			const PropertyMask *	pm )
+    {
+    if  ( pm )
+	{
+	int		p;
+	const char *	s= "";
+
+	appDebug( "%s(%d) %s={", file, line, name );
+
+	for ( p= 0; p < PROPmaskMAXPROPS; p++ )
+	    {
+	    if  ( PROPmaskISSET(pm,p) )
+		{
+		appDebug( "%s%d", s, p );
+		s= ",";
+		}
+	    }
+
+	appDebug( "}\n" );
+	}
+    else{
+	appDebug( "%s(%d) %s=0x0\n", file, line, name );
+	}
+    }
+
 void utilPropMaskClear(	PropertyMask *	pm )
     {
     memset( pm->pmBits, 0, PROPmaskSIZE );

@@ -6,9 +6,11 @@
 
 #   include	<ctype.h>
 
-#   include	<appDebugon.h>
-
+#   include	"bmformats.h"
 #   include	"bmintern.h"
+#   include	<utilMemoryBuffer.h>
+
+#   include	<appDebugon.h>
 
 #   if USE_LIBXPM
 
@@ -137,7 +139,7 @@ static int bmXpmPaletteColor(	const char *	c_color,
 /*									*/
 /************************************************************************/
 
-int bmReadXpmFile(	const MemoryBuffer *	filename,
+int bmReadXpmFile(	const struct MemoryBuffer *	filename,
 			unsigned char **	pBuffer,
 			BitmapDescription *	bd,
 			int *			pPrivateFormat )
@@ -459,7 +461,6 @@ const int BMXPMBase= sizeof(BMXPMBytes)- 1;
 /************************************************************************/
 
 static int bmXpmFillPalette(	XpmImage *			image,
-				const BitmapDescription *	bd,
 				const RGB8Color *		palette )
     {
     int		col;
@@ -480,10 +481,14 @@ static int bmXpmFillPalette(	XpmImage *			image,
     for ( col= 0; col < image->ncolors; col++ )
 	{
 	int	b;
-	int	c= ( ( block- 1 )* col )/ ( image->ncolors-1 );
+	int	c;
 	int	idx= 0;
 	int	blk= block/ BMXPMBase;
 	char	scratch[20];
+
+	if  ( image->ncolors < 2 )
+	    { c= block* col;					}
+	else{ c= ( ( block- 1 )* col )/ ( image->ncolors- 1 );	}
 
 	for ( b= 0; b < charactersPerPixel; b++ )
 	    {
@@ -513,6 +518,11 @@ static int bmXpmFillPalette(	XpmImage *			image,
 /*  Emot the raster image in XPM format.				*/
 /*									*/
 /************************************************************************/
+
+# ifdef __GNUC__
+# pragma GCC diagnostic push
+# pragma GCC diagnostic ignored "-Wunused-parameter"
+# endif
 
 int bmWriteXpmFile(	const MemoryBuffer *		filename,
 			const unsigned char *		buffer,
@@ -545,7 +555,7 @@ int bmWriteXpmFile(	const MemoryBuffer *		filename,
 
 	case BMcoRGB8PALETTE:
 	    image.ncolors= cp->cpColorCount;
-	    if  ( bmXpmFillPalette( &image, bd, cp->cpColors ) )
+	    if  ( bmXpmFillPalette( &image, cp->cpColors ) )
 		{ LDEB(cp->cpColorCount); bmXpmClean( &image ); rval= -1; goto ready; }
 
 	    break;
@@ -560,7 +570,7 @@ int bmWriteXpmFile(	const MemoryBuffer *		filename,
 		{ LDEB(bd->bdBitsPerPixel); rval= -1; goto ready;	}
 	    image.ncolors= colorCount;
 
-	    if  ( bmXpmFillPalette( &image, bd, BWPalette ) )
+	    if  ( bmXpmFillPalette( &image, BWPalette ) )
 		{ LDEB(colorCount); bmXpmClean( &image ); rval= -1; goto ready; }
 
 	    break;
@@ -600,6 +610,15 @@ int bmWriteXpmFile(	const MemoryBuffer *		filename,
     return rval;
     }
 
+# ifdef __GNUC__
+# pragma GCC diagnostic pop
+# endif
+
+# ifdef __GNUC__
+# pragma GCC diagnostic push
+# pragma GCC diagnostic ignored "-Wunused-parameter"
+# endif
+
 int bmCanWriteXpmFile(	const BitmapDescription *	bd,
 			int				privateFormat )
     {
@@ -615,5 +634,9 @@ int bmCanWriteXpmFile(	const BitmapDescription *	bd,
 
     return 0;
     }
+
+# ifdef __GNUC__
+# pragma GCC diagnostic pop
+# endif
 
 #   endif

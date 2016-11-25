@@ -9,44 +9,54 @@
 #   include	<stdio.h>
 #   include	<ctype.h>
 
-#   include	<appDebugon.h>
-
 #   include	<sioFd.h>
 
 #   include	"docRtfTrace.h"
 #   include	"docEditCommand.h"
+#   include	"docEditStep.h"
+#   include	"docEditTrace.h"
 
 #   include	<docRtfTraceImpl.h>
 #   include	<docRtfReaderImpl.h>
+#   include	<docRtfFindProperty.h>
 #   include	<docTreeType.h>
 #   include	<docRtfTags.h>
 #   include	<docRtfFlags.h>
+#   include	<sioGeneral.h>
+#   include	<docAttributes.h>
+#   include	<docBuf.h>
+#   include	<docRtfReadTreeStack.h>
+
+#   include	<appDebugon.h>
 
 /************************************************************************/
 
 static int docRtfReadVersion(	const RtfControlWord *	rcw,
 				int			arg,
-				RtfReader *		rrc )
+				RtfReader *		rr )
     {
     int		res;
 
-    if  ( rcw->rcwID == rrc->rrcTraceReadWhat )
+    if  ( rcw->rcwID == rr->rrTraceReadWhat )
 	{
-	if  ( rrc->rrcTraceCommand != EDITcmdUPD_NOTE )
-	    { rrc->rrcSelectionScope.ssTreeType= DOCinBODY;	}
+	RtfTreeStack *	rts= rr->rrTreeStack;
 
-	utilPropMaskClear( &(rrc->rrcPicturePropMask) );
-	docInitPictureProperties( &(rrc->rrcPictureProperties) );
+	if  ( rr->rrTraceCommand != EDITcmdUPD_NOTE )
+	    { rts->rtsSelectionScope.ssTreeType= DOCinBODY;	}
 
-	res= docRtfReadGroup( rcw, 0, 0, rrc,
+	utilPropMaskClear( &(rr->rrPicturePropMask) );
+	docInitPictureProperties( &(rr->rrPictureProperties) );
+
+	res= docRtfReadGroup( rcw, 0, 0, rr,
 				docRtfDocumentGroups,
-				docRtfTextParticule,
+				docRtfGotText,
 				(RtfCommitGroup)0 );
+				/* Why not docRtfFinishCurrentTree ? */
 	if  ( res )
 	    { SLDEB(rcw->rcwWord,res);	}
 	}
     else{
-	res= docRtfSkipGroup( rcw, arg, rrc );
+	res= docRtfSkipGroup( rcw, arg, rr );
 	if  ( res )
 	    { SLDEB(rcw->rcwWord,res);	}
 	}
@@ -54,53 +64,71 @@ static int docRtfReadVersion(	const RtfControlWord *	rcw,
     return res;
     }
 
+# ifdef __GNUC__
+# pragma GCC diagnostic push
+# pragma GCC diagnostic ignored "-Wunused-parameter"
+# endif
+
 static int docRtfCommitNewProps(	const RtfControlWord *	rcw,
-					RtfReader *		rrc )
+					RtfReader *		rr )
     {
-    if  ( docRtfStoreStyleProperties( rrc ) )
+    if  ( docRtfStoreStyleProperties( rr ) )
 	{ LDEB(1);	}
 
     return 0;
     }
 
+# ifdef __GNUC__
+# pragma GCC diagnostic pop
+# endif
+
+# ifdef __GNUC__
+# pragma GCC diagnostic push
+# pragma GCC diagnostic ignored "-Wunused-parameter"
+# endif
+
 static int docRtfReadNewProps(	const RtfControlWord *	rcw,
 				int			arg,
-				RtfReader *		rrc )
+				RtfReader *		rr )
     {
-    RtfReadingState *	rrs= rrc->rrcState;
+    RtfReadingState *	rrs= rr->rrState;
     int			res;
 
-    docCleanDocumentStyle( &(rrc->rrcStyle) );
-    docInitDocumentStyle( &(rrc->rrcStyle) );
+    docCleanDocumentStyle( &(rr->rrStyle) );
+    docInitDocumentStyle( &(rr->rrStyle) );
 
     docRtfResetParagraphProperties( rrs );
-    docRtfResetTextAttribute( rrs, rrc->rrDocument );
+    docRtfResetTextAttribute( rrs, rr->rrDocument );
 
-    rrc->rrcTraceInProps++;
+    rr->rrTraceInProps++;
 
-    res= docRtfReadGroup( rcw, 0, 0, rrc,
+    res= docRtfReadGroup( rcw, 0, 0, rr,
 			    docRtfDocumentGroups,
 			    docRtfRefuseText,
 			    docRtfCommitNewProps );
     if  ( res )
 	{ SLDEB(rcw->rcwWord,res);	}
 
-    rrc->rrcTraceInProps--;
+    rr->rrTraceInProps--;
 
     docRtfResetParagraphProperties( rrs );
-    docRtfResetTextAttribute( rrs, rrc->rrDocument );
+    docRtfResetTextAttribute( rrs, rr->rrDocument );
 
     return res;
     }
 
-static RtfControlWord	docRtfTraceDetailGroups[]=
-    {
-	RTF_DEST_XX( RTFtag_NTX,	 1, docRtfReadVersion ),
-	RTF_DEST_XX( RTFtag_NPR,	 1, docRtfReadNewProps ),
-	RTF_DEST_XX( RTFtag_OTX,	-1, docRtfReadVersion ),
+# ifdef __GNUC__
+# pragma GCC diagnostic pop
+# endif
 
-	{ (char *)0, 0, 0 }
-    };
+static RtfControlWord	docRtfTraceDetailGroups[]=
+{
+    RTF_DEST_XX( RTFtag_NTX, RTCscopeANY, EDITversionNEW, docRtfReadVersion ),
+    RTF_DEST_XX( RTFtag_NPR, RTCscopeANY, EDITversionNEW, docRtfReadNewProps ),
+    RTF_DEST_XX( RTFtag_OTX, RTCscopeANY, EDITversionOLD, docRtfReadVersion ),
+
+    { (char *)0, 0, 0 }
+};
 
 /************************************************************************/
 /*									*/
@@ -108,26 +136,35 @@ static RtfControlWord	docRtfTraceDetailGroups[]=
 /*									*/
 /************************************************************************/
 
+# ifdef __GNUC__
+# pragma GCC diagnostic push
+# pragma GCC diagnostic ignored "-Wunused-parameter"
+# endif
+
 static int docRtfReadTraceStep(	const RtfControlWord *	rcw,
 				int			arg,
-				RtfReader *		rrc )
+				RtfReader *		rr )
     {
-    int		res;
+    int			res;
+    RtfTreeStack *	rts= rr->rrTreeStack;
 
-    rrc->rrcTraceCommand= rcw->rcwID;
+    rr->rrTraceCommand= rcw->rcwID;
 
-    if  ( rrc->rrcTraceCommand == EDITcmdUPD_NOTE )
-	{ rrc->rrcSelectionScope.ssTreeType= DOCinFOOTNOTE;	}
+    if  ( rr->rrTraceCommand == EDITcmdUPD_NOTE )
+	{ rts->rtsSelectionScope.ssTreeType= DOCinFOOTNOTE;	}
 
-    res= docRtfReadGroup( rcw, 0, 0, rrc,
+    res= docRtfReadGroup( rcw, 0, 0, rr,
 				docRtfTraceDetailGroups,
-				(RtfAddTextParticule)0,
-				(RtfCommitGroup)0 );
+				(RtfGotText)0, (RtfCommitGroup)0 );
     if  ( res )
 	{ SLDEB(rcw->rcwWord,res);	}
 
     return res;
     }
+
+# ifdef __GNUC__
+# pragma GCC diagnostic pop
+# endif
 
 /************************************************************************/
 /*									*/
@@ -136,7 +173,7 @@ static int docRtfReadTraceStep(	const RtfControlWord *	rcw,
 /************************************************************************/
 
 # define RTF_TRACE_CMD( word, id ) \
-		    RTF_DEST_XX( (word), (id), docRtfReadTraceStep )
+	    RTF_DEST_XX( (word), RTCscopeANY, (id), docRtfReadTraceStep )
 
 static RtfControlWord	docRtfTraceGroups[]=
 {
@@ -151,6 +188,9 @@ static RtfControlWord	docRtfTraceGroups[]=
     RTF_TRACE_CMD( RTFtag_UTA,		EDITcmdUPD_SPAN_PROPS ),
     RTF_TRACE_CMD( RTFtag_UPP,		EDITcmdUPD_PARA_PROPS ),
     RTF_TRACE_CMD( RTFtag_UTP,		EDITcmdUPD_TABLE_PROPS ),
+    RTF_TRACE_CMD( RTFtag_URP,		EDITcmdUPD_ROW_PROPS ),
+    RTF_TRACE_CMD( RTFtag_UCP,		EDITcmdUPD_COLUMN_PROPS ),
+    RTF_TRACE_CMD( RTFtag_UcP,		EDITcmdUPD_CELL_PROPS ),
     RTF_TRACE_CMD( RTFtag_USP,		EDITcmdUPD_SECT_PROPS ),
     RTF_TRACE_CMD( RTFtag_USDP,		EDITcmdUPD_SECTDOC_PROPS ),
     RTF_TRACE_CMD( RTFtag_UDP,		EDITcmdUPD_DOC_PROPS ),
@@ -224,74 +264,68 @@ const char *	docRtfGetTraceTag(	int	command )
     return rcw->rcwWord;
     }
 
-static int docRtfReadEditStep(	EditStep *			es,
-				SimpleInputStream *		sis,
-				int				readOld,
-				int				readNew,
-				const BufferDocument *		bdRef )
+/************************************************************************/
+
+typedef struct ReadEditStep
     {
-    int				rval= 0;
-    int				res;
-    BufferDocument *		bd= (BufferDocument *)0;
-    RtfReader *			rr= (RtfReader *)0;
-    const RtfControlWord *	rcw;
+    RtfReader *			resRtfReader;
+    const RtfControlWord *	resControlWord;
+    int				resArg;
+    int				resGotArg;
 
-    char			controlWord[TEDszRTFCONTROL+1];
-    int				gotArg;
-    int				arg= -1;
-    int				readWhat= 0;
-    int				c;
+    SelectionScope		resSelectionScope;
+    RtfTreeStack		resTreeStack;
+    } ReadEditStep;
 
+static void docInitReadEditStep(	ReadEditStep *	reds )
+    {
+    reds->resRtfReader= (RtfReader *)0;
+    reds->resControlWord= (RtfControlWord *)0;
+    reds->resArg= -1;
+    reds->resGotArg= 0;
+
+    docInitSelectionScope( &(reds->resSelectionScope) );
+    docRtfInitTreeStack( &(reds->resTreeStack) );
+    }
+
+static void docCleanReadEditStep(	ReadEditStep *	reds )
+    {
+    if  ( reds->resRtfReader )
+	{
+	if  (  reds->resRtfReader->rrTreeStack )
+	    { docRtfPopTreeStack(  reds->resRtfReader );	}
+
+	docRtfCloseReader( reds->resRtfReader );
+	}
+    }
+
+/************************************************************************/
+/*									*/
+/*  Consume the body (contents) of an EditStep.				*/
+/*									*/
+/************************************************************************/
+
+static int docRtfReadEditStepBody(	ReadEditStep *		reds,
+					EditStep *		es,
+					int			readWhat )
+    {
     const int			recursively= 1;
-
     const DocumentAttributeMap * const dam0= (const DocumentAttributeMap *)0;
 
-    if  ( readOld && readNew )
-	{ LLDEB(readOld,readNew); rval= -1; goto ready;	}
-    else{
-	if  ( readOld )
-	    { readWhat= -1;	}
-	if  ( readNew )
-	    { readWhat=  1;	}
-	}
+    RtfReader *			rr= reds->resRtfReader;
+    int				res;
 
-    bd= docEditStepMakeSourceDocument( es, bdRef );
-    if  ( ! bd )
-	{ XDEB(bd); rval= -1; goto ready;	}
+    rr->rrTraceReadWhat= readWhat;
 
-    rr= docRtfOpenReader( sis, bd, RTFflagUNENCODED );
-
-    rr->rrcTree= &(rr->rrDocument->bdBody);
-    rr->rrcNode= rr->rrcTree->dtRoot;
-    rr->rrcLevel= DOClevBODY;
-    rr->rrcTraceReadWhat= readWhat;
-    rr->rrcTraceSelectionPosition= SELposTAIL;
-    rr->rrcTraceFieldKind= -1;
-
-    /* Make shallow copies of the document properties */
-    if  ( bdRef )
-	{
-	bd->bdProperties.dpDefaultFont= bdRef->bdProperties.dpDefaultFont;
-	}
-
-    res= docRtfFindControl( rr, &c, controlWord, &gotArg, &arg );
-    if  ( res != RTFfiCTRLGROUP )
-	{ LDEB(res); rval= -1; goto ready; }
-
-    rcw= docRtfFindWord( controlWord, docRtfTraceGroups );
-    if  ( ! rcw )
-	{ SXDEB(controlWord,rcw); rval= -1; goto ready; }
-    if  ( rcw->rcwType != RTCtypeDEST )
-	{ SLDEB(rcw->rcwWord,rcw->rcwType); rval= -1; goto ready;	}
-
-    res= docRtfApplyControlWord( rcw, gotArg, arg, rr );
+    res= docRtfApplyControlWord( reds->resControlWord, reds->resGotArg,
+							reds->resArg,  rr );
     if  ( res )
-	{ LDEB(1); rval= -1; goto ready; }
+	{ SDEB(reds->resControlWord->rcwWord); return -1; }
 
     docDelimitTables( rr->rrDocument->bdBody.dtRoot, recursively );
 
-    es->esCommand= rr->rrcTraceCommand;
-    es->esSelectionPosition= rr->rrcTraceSelectionPosition;
+    es->esCommand= rr->rrTraceCommand;
+    es->esSelectionPosition= rr->rrTraceSelectionPosition;
     es->esFieldKind= rr->rrcTraceFieldKind;
 
     es->esOldSelectionScope= rr->rrcTraceOldSelectionScope;
@@ -313,6 +347,9 @@ static int docRtfReadEditStep(	EditStep *			es,
     if  ( es->esCommand == EDITcmdUPD_SPAN_PROPS	||
 	  es->esCommand == EDITcmdUPD_PARA_PROPS	||
 	  es->esCommand == EDITcmdUPD_TABLE_PROPS	||
+	  es->esCommand == EDITcmdUPD_ROW_PROPS		||
+	  es->esCommand == EDITcmdUPD_COLUMN_PROPS	||
+	  es->esCommand == EDITcmdUPD_CELL_PROPS	||
 	  es->esCommand == EDITcmdUPD_SECT_PROPS	||
 	  es->esCommand == EDITcmdUPD_SECTDOC_PROPS	||
 	  es->esCommand == EDITcmdUPD_DOC_PROPS		||
@@ -321,38 +358,136 @@ static int docRtfReadEditStep(	EditStep *			es,
 	  es->esCommand == EDITcmdDEL_FIELD		||
 	  es->esCommand == EDITcmdSET_NEW_LIST		)
 	{
-	if  ( docUpdRowProperties( &(rr->rrcStyle.dsRowMask),
-		    &(rr->rrcStyle.dsRowProps),
-		    &(rr->rrcRowPropertyMask), &(rr->rrcRowProperties),
+	RtfTreeStack *	rts= rr->rrTreeStack;
+	PropertyMask	cpAllMask;
+
+	utilPropMaskClear( &cpAllMask );
+	utilPropMaskFill( &cpAllMask, CLprop_COUNT );
+
+	rts->rtsRowProperties.rpShadingNumber= docItemShadingNumber(
+				rr->rrDocument, &(rr->rrRowShading) );
+
+	if  ( docUpdRowProperties( &(rr->rrStyle.dsRowMask),
+		    &(rr->rrStyle.dsCellMask), /* ? */
+		    &(rr->rrStyle.dsRowProps),
+		    &(rr->rrRowPropertyMask), &cpAllMask,
+		    &(rts->rtsRowProperties),
+		    0, rts->rtsRowProperties.rpCellCount,
 		    (const DocumentAttributeMap *)0 ) )
-	    { LDEB(es->esCommand); rval= -1; goto ready;	}
+	    { LDEB(es->esCommand); return -1;	}
 
-	if  ( docCopyStyle( &(es->esNewStyle), &(rr->rrcStyle), dam0 )	)
-	    { LDEB(es->esCommand); rval= -1; goto ready;	}
+	if  ( docCopyStyle( &(es->esNewStyle), &(rr->rrStyle), dam0 )	)
+	    { LDEB(es->esCommand); return -1;	}
 
-	if  ( PROPmaskISSET( &(es->esNewStyle.dsRowMask),RPpropCELL_LAYOUT ) ||
-	      PROPmaskISSET( &(es->esNewStyle.dsRowMask),RPpropCELL_PROPS ) )
-	    { PROPmaskUNSET( &(es->esNewStyle.dsCellMask), CLpropCELLX ); }
+	/*  Set by the RTF parser, but never the result of a set props */
+	PROPmaskUNSET( &(es->esNewStyle.dsRowMask), RPprop_CELL_COUNT );
+
+	if  ( rr->rrStyle.dsRowProps.rpCellCount == 0 )
+	    {
+	    PROPmaskUNSET( &(es->esNewStyle.dsRowMask), RPprop_CELL_PROPS );
+	    }
 	}
 
     if  ( docUpdDocumentProperties(
 	    (PropertyMask *)0, &(es->esNewDocProps),
-	    &(rr->rrcDocPropertyMask), &(rr->rrcDocumentProperties), dam0 ) )
-	{ LDEB(es->esCommand); rval= -1; goto ready;	}
-    es->esNewDocPropMask= rr->rrcDocPropertyMask;
+	    &(rr->rrDocPropertyMask), &(rr->rrDocumentProperties), dam0 ) )
+	{ LDEB(es->esCommand); return -1;	}
+    es->esNewDocPropMask= rr->rrDocPropertyMask;
 
-    es->esPicturePropMask= rr->rrcPicturePropMask;
+    es->esPicturePropMask= rr->rrPicturePropMask;
 
-    es->esNotePropMask= rr->rrcNotePropertyMask;
-    docInitNoteProperties( &(rr->rrcNoteProperties) );
+    es->esNotePropMask= rr->rrNotePropertyMask;
+    docInitNoteProperties( &(rr->rrNoteProperties) );
 
     es->esDocumentList= rr->rrcDocumentList;
     docInitDocumentList( &(rr->rrcDocumentList) );
 
+    return 0;
+    }
+
+static int docRtfReadEditStepHead(
+				ReadEditStep *			reds,
+				EditStep *			es,
+				struct SimpleInputStream *	sis,
+				const struct BufferDocument *	bdRef )
+    {
+    int				rval= 0;
+    int				res;
+    struct BufferDocument *	bd= (struct BufferDocument *)0;
+    RtfReader *			rr= (RtfReader *)0;
+    const RtfControlWord *	rcw;
+
+    char			controlWord[TEDszRTFCONTROL+1];
+    int				gotArg;
+    int				arg= -1;
+    int				c;
+
+    bd= docEditStepMakeSourceDocument( es, bdRef );
+    if  ( ! bd )
+	{ XDEB(bd); rval= -1; goto ready;	}
+
+    rr= docRtfOpenReader( sis, bd, RTFflagUNENCODED );
+    if  ( ! rr )
+	{ XDEB(rr); rval= -1; goto ready;	}
+
+    bd= (struct BufferDocument *)0; /* stolen by rr */
+
+    docRtfPushTreeStack( rr, &(reds->resTreeStack), &(reds->resSelectionScope),
+					    &(rr->rrDocument->bdBody) );
+
+    rr->rrTraceSelectionPosition= SELposTAIL;
+    rr->rrcTraceFieldKind= -1;
+
+    if  ( bdRef )
+	{
+	rr->rrDocument->bdProperties->dpDefaultFont=
+				    bdRef->bdProperties->dpDefaultFont;
+	}
+
+    res= docRtfFindControl( rr, &c, controlWord, &gotArg, &arg );
+    if  ( res != RTFfiCTRLGROUP )
+	{ LDEB(res); rval= -1; goto ready; }
+
+    rcw= docRtfFindWord( controlWord, docRtfTraceGroups );
+    if  ( ! rcw )
+	{ SXDEB(controlWord,rcw); rval= -1; goto ready; }
+    if  ( rcw->rcwType != RTCtypeDEST )
+	{ SLDEB(rcw->rcwWord,rcw->rcwType); rval= -1; goto ready;	}
+
+    reds->resRtfReader= rr; rr= (RtfReader *)0; /* steal */
+    reds->resControlWord= rcw;
+    reds->resGotArg= gotArg;
+    reds->resArg= arg;
+
   ready:
 
     if  ( rr )
-	{ docRtfCloseReader( rr ); 	}
+	{ docRtfCloseReader( rr );	}
+    if  ( bd )
+	{ docFreeDocument( bd );	}
+
+    return rval;
+    }
+
+static int docRtfReadEditStep(	EditStep *			es,
+				struct SimpleInputStream *	sis,
+				int				readWhat,
+				const struct BufferDocument *	bdRef )
+    {
+    int			rval= 0;
+    ReadEditStep	reds;
+
+    docInitReadEditStep( &reds );
+
+    if  ( docRtfReadEditStepHead( &reds, es, sis, bdRef ) )
+	{ LDEB(1); rval= -1; goto ready;	}
+
+    if  ( docRtfReadEditStepBody( &reds, es, readWhat ) )
+	{ LDEB(1); rval= -1; goto ready;	}
+
+  ready:
+
+    docCleanReadEditStep( &reds );
 
     return rval;
     }
@@ -361,10 +496,10 @@ static int docRtfReadEditStep(	EditStep *			es,
 
 int docRtfSelectionScopeProperty(	const RtfControlWord *	rcw,
 					int			arg,
-					RtfReader *		rrc )
+					RtfReader *		rr )
     {
-    SelectionScope *	ssOld= &(rrc->rrcTraceOldSelectionScope);
-    SelectionScope *	ssNew= &(rrc->rrcTraceNewSelectionScope);
+    SelectionScope *	ssOld= &(rr->rrcTraceOldSelectionScope);
+    SelectionScope *	ssNew= &(rr->rrcTraceNewSelectionScope);
 
     switch( rcw->rcwID )
 	{
@@ -382,10 +517,10 @@ int docRtfSelectionScopeProperty(	const RtfControlWord *	rcw,
 	    return 0;
 
 	case SSpropPAGE:
-	    rrc->rrcTraceOldPage= rrc->rrcTraceNewPage= arg;
+	    rr->rrcTraceOldPage= rr->rrcTraceNewPage= arg;
 	    return 0;
 	case SSpropCOLUMN:
-	    rrc->rrcTraceOldColumn= rrc->rrcTraceNewColumn= arg;
+	    rr->rrcTraceOldColumn= rr->rrcTraceNewColumn= arg;
 	    return 0;
 
 	case SSprop_COUNT+ SSpropTREE_TYPE:
@@ -402,10 +537,10 @@ int docRtfSelectionScopeProperty(	const RtfControlWord *	rcw,
 	    return 0;
 
 	case SSprop_COUNT+ SSpropPAGE:
-	    rrc->rrcTraceNewPage= arg;
+	    rr->rrcTraceNewPage= arg;
 	    return 0;
 	case SSprop_COUNT+ SSpropCOLUMN:
-	    rrc->rrcTraceNewColumn= arg;
+	    rr->rrcTraceNewColumn= arg;
 	    return 0;
 
 	default:
@@ -415,59 +550,59 @@ int docRtfSelectionScopeProperty(	const RtfControlWord *	rcw,
 
 int docRtfEditRangeProperty(		const RtfControlWord *	rcw,
 					int			arg,
-					RtfReader *		rrc )
+					RtfReader *		rr )
     {
     switch( rcw->rcwID )
 	{
 	case TRACEposOLD_HEAD_COL:
-	    rrc->rrcTraceOldCol0= arg;
+	    rr->rrcTraceOldCol0= arg;
 	    return 0;
 	case TRACEposOLD_HEAD_PARA:
-	    rrc->rrcTraceOldRange.erHead.epParaNr= arg;
+	    rr->rrcTraceOldRange.erHead.epParaNr= arg;
 	    return 0;
 	case TRACEposOLD_HEAD_STROFF:
-	    rrc->rrcTraceOldRange.erHead.epStroff= arg;
+	    rr->rrcTraceOldRange.erHead.epStroff= arg;
 	    return 0;
 
 	case TRACEposOLD_TAIL_COL:
-	    rrc->rrcTraceOldCol1= arg;
+	    rr->rrcTraceOldCol1= arg;
 	    return 0;
 	case TRACEposOLD_TAIL_PARA:
-	    rrc->rrcTraceOldRange.erTail.epParaNr= arg;
+	    rr->rrcTraceOldRange.erTail.epParaNr= arg;
 	    return 0;
 	case TRACEposOLD_TAIL_STROFF:
-	    rrc->rrcTraceOldRange.erTail.epStroff= arg;
+	    rr->rrcTraceOldRange.erTail.epStroff= arg;
 	    return 0;
 
 	case TRACEposNEW_HEAD_COL:
-	    rrc->rrcTraceNewCol0= arg;
+	    rr->rrcTraceNewCol0= arg;
 	    return 0;
 	case TRACEposNEW_HEAD_PARA:
-	    rrc->rrcTraceNewRange.erHead.epParaNr= arg;
+	    rr->rrcTraceNewRange.erHead.epParaNr= arg;
 	    return 0;
 	case TRACEposNEW_HEAD_STROFF:
-	    rrc->rrcTraceNewRange.erHead.epStroff= arg;
+	    rr->rrcTraceNewRange.erHead.epStroff= arg;
 	    return 0;
 
 	case TRACEposNEW_TAIL_COL:
-	    rrc->rrcTraceNewCol1= arg;
+	    rr->rrcTraceNewCol1= arg;
 	    return 0;
 	case TRACEposNEW_TAIL_PARA:
-	    rrc->rrcTraceNewRange.erTail.epParaNr= arg;
+	    rr->rrcTraceNewRange.erTail.epParaNr= arg;
 	    return 0;
 	case TRACEposNEW_TAIL_STROFF:
-	    rrc->rrcTraceNewRange.erTail.epStroff= arg;
+	    rr->rrcTraceNewRange.erTail.epStroff= arg;
 	    return 0;
 
 	case TRACEposSELECTED:
-	    rrc->rrcTraceSelectionPosition= rcw->rcwEnumValue;
+	    rr->rrTraceSelectionPosition= rcw->rcwEnumValue;
 	    return 0;
 
 	case TRACEposPROP_LEVEL:
-	    rrc->rrcTracePropLevel= arg;
+	    rr->rrcTracePropLevel= arg;
 	    return 0;
 	case TRACEposFIELD_KIND:
-	    rrc->rrcTraceFieldKind= arg;
+	    rr->rrcTraceFieldKind= arg;
 	    return 0;
 
 	default:
@@ -478,14 +613,13 @@ int docRtfEditRangeProperty(		const RtfControlWord *	rcw,
 /************************************************************************/
 
 static int docRtfReadTraceStepN( EditStep *			es,
-				int				readOld,
-				int				readNew,
+				int				readWhat,
 				const EditTrace *		et,
 				int				n,
-				const BufferDocument *		bdRef )
+				const struct BufferDocument *	bdRef )
     {
     int				rval= 0;
-    SimpleInputStream *		sis= (SimpleInputStream *)0;
+    struct SimpleInputStream *		sis= (struct SimpleInputStream *)0;
     const TraceStep *		ts;
 
     ts= (const TraceStep *)utilPagedListGetItemByNumber(
@@ -497,7 +631,7 @@ static int docRtfReadTraceStepN( EditStep *			es,
     if  ( ! sis )
 	{ LPDEB(et->etTraceFileHandle,sis); rval= -1; goto ready;	}
 
-    if  ( docRtfReadEditStep( es, sis, readOld, readNew, bdRef ) )
+    if  ( docRtfReadEditStep( es, sis, readWhat, bdRef ) )
 	{ LDEB(1); rval= -1; goto ready;	}
 
   ready:
@@ -510,23 +644,22 @@ static int docRtfReadTraceStepN( EditStep *			es,
 
 static int docRtfReadExtendedReplace(
 				EditStep *			es,
-				int				readOld,
-				int				readNew,
+				int				readWhat,
 				const EditTrace *		et,
 				int				n,
-				const BufferDocument *		bdRef )
+				const struct BufferDocument *		bdRef )
     {
     int			rval= 0;
     EditStep		esExt;
 
     docInitEditStep( &esExt );
 
-    if  ( docRtfReadTraceStepN( es, readOld, readNew, et, n, bdRef ) )
+    if  ( docRtfReadTraceStepN( es, readWhat, et, n, bdRef ) )
 	{ LDEB(1); rval= -1; goto ready;	}
     if  ( es->esCommand != EDITcmdREPLACE )
 	{ LDEB(es->esCommand); rval= -1; goto ready;	}
 
-    if  ( docRtfReadTraceStepN( &esExt, readOld, readNew, et, n+ 1, bdRef ) )
+    if  ( docRtfReadTraceStepN( &esExt, readWhat, et, n+ 1, bdRef ) )
 	{ LDEB(1); rval= -1; goto ready;	}
     if  ( esExt.esCommand != EDITcmdEXTEND_REPLACE )
 	{ LDEB(es->esCommand); rval= -1; goto ready;	}
@@ -541,9 +674,9 @@ static int docRtfReadExtendedReplace(
     es->esNewColumn= esExt.esNewColumn;
     */
 
-    if  ( readNew )
+    if  ( readWhat == EDITversionNEW )
 	{
-	BufferDocument *	swap;
+	struct BufferDocument *	swap;
 	int			inte;
 
 	swap= es->esSourceDocument;
@@ -566,15 +699,18 @@ int docEditReadTraceStep(	EditStep *			es,
 				int *				pIsRepeat,
 				int				direction,
 				const EditTrace *		et,
-				const BufferDocument *		bdRef )
+				const struct BufferDocument *		bdRef )
     {
     int			rval= 0;
     int			n;
     const TraceStep *	ts= (const TraceStep *)0;
 
-    const int		readNew= direction > 0;
-    const int		readOld= direction < 0;
     int			isRepeat= 0;
+
+    const int		readWhat= direction > 0?EDITversionNEW:
+				(
+				direction < 0? EDITversionOLD: EDITversionNONE
+				);
 
     n= docEditGetTraceStep( &ts, &isRepeat, direction, et, et->etIndex );
     if  ( n < 0 )
@@ -583,8 +719,7 @@ int docEditReadTraceStep(	EditStep *			es,
     switch( ts->tsCommand )
 	{
 	case EDITcmdEXTEND_REPLACE:
-	    if  ( docRtfReadExtendedReplace( es, readOld, readNew,
-							    et, n- 1, bdRef ) )
+	    if  ( docRtfReadExtendedReplace( es, readWhat, et, n- 1, bdRef ) )
 		{ LDEB(1); rval= -1; goto ready;	}
 	    es->esTraceIndex= n- 1;
 	    es->esStepCount= 2;
@@ -602,15 +737,13 @@ int docEditReadTraceStep(	EditStep *			es,
 
 	    if  ( ts && ts->tsCommand == EDITcmdEXTEND_REPLACE )
 		{
-		if  ( docRtfReadExtendedReplace( es, readOld, readNew,
-								et, n, bdRef ) )
+		if  ( docRtfReadExtendedReplace( es, readWhat, et, n, bdRef ) )
 		    { LDEB(1); rval= -1; goto ready;	}
 		es->esTraceIndex= n;
 		es->esStepCount= 2;
 		}
 	    else{
-		if  ( docRtfReadTraceStepN( es, readOld, readNew,
-								et, n, bdRef ) )
+		if  ( docRtfReadTraceStepN( es, readWhat, et, n, bdRef ) )
 		    { LDEB(1); rval= -1; goto ready;	}
 		es->esTraceIndex= n;
 		es->esStepCount= 1;
@@ -618,7 +751,7 @@ int docEditReadTraceStep(	EditStep *			es,
 	    break;
 
 	default:
-	    if  ( docRtfReadTraceStepN( es, readOld, readNew, et, n, bdRef ) )
+	    if  ( docRtfReadTraceStepN( es, readWhat, et, n, bdRef ) )
 		{ LDEB(1); rval= -1; goto ready;	}
 	    es->esTraceIndex= n;
 	    es->esStepCount= 1;
@@ -633,36 +766,52 @@ int docEditReadTraceStep(	EditStep *			es,
     return rval;
     }
 
-int docRtfScanEditTrace(	const EditTrace *		et,
-				SimpleInputStream *		sis,
+int docRtfScanEditTrace(	struct SimpleInputStream *	sis,
 				HandleEditStep			handleStep,
 				void *				through,
-				int				readOld,
-				int				readNew,
-				const BufferDocument *		bdRef )
+				const IndexMapping *		readWhats,
+				const struct BufferDocument *	bdRef )
     {
     int			rval= 0;
 
     TraceStep		ts;
     EditStep		es;
+    ReadEditStep	reds;
+
     int			step= 0;
     int			exhausted= 0;
 
     docInitTraceStep( &ts );
     docInitEditStep( &es );
+    docInitReadEditStep( &reds );
 
     step= 0;
     ts.tsTraceOffset= 0;
 
     while( ! exhausted )
 	{
-	int	res;
-	long	endOffset;
+	int			res;
+	long			endOffset;
+	int			readWhat= EDITversionNONE;
 
 	ts.tsTraceOffset= sioInGetBytesRead( sis );
 
-	if  ( docRtfReadEditStep( &es, sis, readOld, readNew, bdRef ) )
+	if  ( docRtfReadEditStepHead( &reds, &es, sis, bdRef ) )
 	    { LDEB(1); rval= -1; goto ready;	}
+
+	if  ( readWhats )
+	    {
+	    readWhat= utilIndexMappingGet( readWhats,
+						reds.resControlWord->rcwID );
+	    if  ( readWhat < 0 )
+		{ readWhat= EDITversionNONE;	}
+	    }
+
+	if  ( docRtfReadEditStepBody( &reds, &es, readWhat ) )
+	    { LDEB(1); rval= -1; goto ready;	}
+
+	docCleanReadEditStep( &reds );
+	docInitReadEditStep( &reds );
 
 	{
 	int	c= sioInGetByte( sis );
@@ -694,6 +843,7 @@ int docRtfScanEditTrace(	const EditTrace *		et,
 
   ready:
 
+    docCleanReadEditStep( &reds );
     docCleanEditStep( &es );
 
     return rval;

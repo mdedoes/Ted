@@ -6,19 +6,19 @@
 # To manually test a build from source:
 # - Install prerequisites: pacman -S base-devel $depends
 # - Make a directory src
-# - Extract the Ted-2.23.src.tar.gz in the src directory
-# - Run the srcipt src/Ted-2.23/tedPackage/arch-pkg.sh
+# - Extract the Ted-2.23h.src.tar.gz in the src directory
+# - Run the srcipt src/Ted-2.23h/tedPackage/arch-pkg.sh
 #   make tedPackage/arch-PKGBUILD
 # - In the directory that holds the src subdirectory call:
-#   sh src/Ted-2.23/tedPackage/arch-pkg.sh
+#   sh src/Ted-2.23h/tedPackage/arch-pkg.sh
 # - To validate the package call: (First call pacman -S namcap)
-#   namcap ted-2.23-1-@ARCH@.pkg.tar.xz
+#   namcap ted-2.23h-1-@ARCH@.pkg.tar.xz
 # - To install call:
-#   sudo pacman -U ted-2.23-1-@ARCH@.pkg.tar.xz
+#   sudo pacman -U ted-2.23h-1-@ARCH@.pkg.tar.xz
 #
 
 pkgname=ted
-pkgver=2.23
+pkgver=2.23h
 pkgrel=1
 pkgdesc="An easy rich text processor"
 arch=('i686' 'x86_64')

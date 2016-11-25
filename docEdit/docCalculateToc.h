@@ -4,23 +4,33 @@
 /*									*/
 /************************************************************************/
 
-#   include	<docTocField.h>
-#   include	<docBlockFrame.h>
-#   include	<docListDepth.h>
-
 #   ifndef	DOC_CALCULATE_TOC_H
 #   define	DOC_CALCULATE_TOC_H
 
+#   include	<docTocField.h>
+#   include	<docBlockFrame.h>
+#   include	<docStripFrame.h>
+#   include	<docListDepth.h>
+#   include	<docSelect.h>
+#   include	<docParaProperties.h>
+#   include	<utilIndexSet.h>
+#   include	<textAttribute.h>
+
+struct DocumentField;
+struct FieldStackLevel;
+struct BufferItem;
+struct DocumentStyle;
+
 typedef struct TocEntry
     {
-    int				teLevel;
-    const DocumentField *	teField;
-    DocumentSelection		teDsInside;
-    DocumentSelection		teDsAround;
-    int				tePart0;
-    int				tePart1;
-    const MemoryBuffer *	teMarkName;
-    int				teNumbered;
+    int					teLevel;
+    const struct DocumentField *	teField;
+    DocumentSelection			teDsInside;
+    DocumentSelection			teDsAround;
+    int					tePart0;
+    int					tePart1;
+    const MemoryBuffer *		teMarkName;
+    int					teNumbered;
     } TocEntry;
 
 /************************************************************************/
@@ -32,25 +42,66 @@ typedef struct CalculateToc
 				 *  table of contents. Finally we will 
 				 *  insert it in the document.
 				 */
-    BufferDocument *		ctBdToc;
+    struct BufferDocument *	ctBdToc;
 				/**
 				 *  The document that we index and that will 
 				 *  recieve the table of contents.
 				 */
-    BufferDocument *		ctBdDoc;
+    struct BufferDocument *	ctBdDoc;
+
 				/**
 				 *  The section that will hold the table of 
 				 *  contents.
 				 */
     struct BufferItem *		ctSectNode;
-    DocumentField *		ctDfTocTo;
+
+				/**
+				 *  The section in the body to whiche the 
+				 *  node that will hold the table of  contents
+				 * belongs.
+				 */
+    struct BufferItem *		ctBodySectNode;
+
+				/**
+				 * To build the paragraphs in the intermediary
+				 * document.
+				 */
+    struct ParagraphBuilder *	ctParagraphBuilder;
+
+				/**
+				 *  Keep track of the stack of fields while
+				 *  we build the field hierarchy in the 
+				 *  temporary document;
+				 */
+    struct FieldStackLevel *	ctFieldStack;
+
     TocField			ctTocField;
+
+				/**
+				 *  Frame on the page for the layout of 
+				 *  the TOC. Derived from the source document 
+				 *  that holds the TOC
+				 */
     BlockFrame			ctBlockFrame;
+				/**
+				 *  Frame to make the paragraps fit
+				 */
+    ParagraphFrame		ctParagraphFrame;
+
     ParagraphProperties		ctRefPP;
     TextAttribute		ctTextAttribute;
-    int				ctDefaultTextAttributeNumber;
-    const DocumentStyle *	ctLevelStyles[PPoutline_COUNT];
-    int				ctLevelAttributeNumbers[PPoutline_COUNT];
+
+				/**
+				 *  The styles to use fort the different 
+				 *  levels.
+				 */
+    const struct DocumentStyle * ctLevelStyles[PPoutline_COUNT];
+				/**
+				 *  The text attributes to use fort the 
+				 *  different levels.
+				 */
+    TextAttribute 		ctLevelAttributes[PPoutline_COUNT];
+
 				/**
 				 *  The numbers of the styles that are 
 				 *  listed in the table of contents.

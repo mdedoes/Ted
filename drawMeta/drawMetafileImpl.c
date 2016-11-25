@@ -1,8 +1,7 @@
 #   include	"drawMetaConfig.h"
 
-#   include	<stddef.h>
-
 #   include	"drawMetafileImpl.h"
+#   include	"drawWinMetaImpl.h"
 
 #   include	<appDebugon.h>
 
@@ -150,7 +149,7 @@ int appMetaSelectFontObjectImpl(	DeviceContext *		dc,
     {
     DocumentFontList *		dfl= &(dc->dcFontList);
     const MetafilePlayer *	player= dc->dcPlayer;
-    const IndexSet *		unicodesWanted;
+    const struct IndexSet *	unicodesWanted;
 
     dc->dcAfi= (*player->mpGetFontForAttribute)( &unicodesWanted,
 		&(lf->lfTextAttribute), dfl, player->mpPostScriptFontList );
@@ -178,7 +177,7 @@ int appMetaGetPenWidth(		DeviceContext *		dc,
 
 	case PS_DASH:
 	    if  ( lp->lpWidth > 1 )
-		{ break;;	}
+		{ break;	}
 
 	    widthTwips= 10;
 	    break;

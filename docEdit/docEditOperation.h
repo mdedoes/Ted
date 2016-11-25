@@ -7,8 +7,19 @@
 #   ifndef		DOC_EDIT_OPERATION_H
 #   define		DOC_EDIT_OPERATION_H
 
-#   include		<docBuf.h>
-#   include		<sioGeneral.h>
+#   include		<docSelectionScope.h>
+#   include		<docEditRange.h>
+#   include		<utilIndexSet.h>
+#   include		<docSelect.h>
+
+struct BufferItem;
+struct DocumentField;
+struct BufferDocument;
+struct DocumentTree;
+struct SimpleOutputStream;
+struct DocumentSelection;
+struct DocumentNote;
+struct ParagraphBuilder;
 
 /************************************************************************/
 
@@ -34,7 +45,14 @@ typedef struct EditOperation
     {
     SelectionScope		eoSelectionScope;
     struct BufferItem *		eoBodySectNode;
-    DocumentField *		eoBottomField;
+    struct DocumentField *	eoBottomField;
+				/**
+				 *  Set where an edit operation is the 
+				 *  evaluation of a read-only field.
+				 *  Balancing the selection would replace
+				 *  the whole field as it is read-only.
+				 */
+    int				eoIsFieldBalanced;
 				    /************************************/
 				    /*  Field (if any) that fully holds	*/
 				    /*  the initial selection for this	*/
@@ -105,13 +123,19 @@ typedef struct EditOperation
 				  *  The document that the edit operation 
 				  *  operates upon.
 				  */
-    BufferDocument *		eoDocument;
+    struct BufferDocument *	eoDocument;
 				/**
 				  *  The tree of the document that the edit 
 				  *  operation operates upon.
 				  */
-    DocumentTree *		eoTree;
-    DOC_CLOSE_OBJECT		eoCloseObject;
+    struct DocumentTree *	eoTree;
+
+				/**
+				 *  Paragraph builder that manages changes 
+				 *  to the current paragraph of the edit 
+				 *  operation.
+				 */
+    struct ParagraphBuilder *	eoParagraphBuilder;
 
 				/**
 				 *   The position at the head of the current 
@@ -122,7 +146,7 @@ typedef struct EditOperation
     DocumentPosition		eoHeadDp;
 				/**
 				 *   The position at the end of the current 
-				 *   step in the dit operation. It is at the
+				 *   step in the edit operation. It is at the
 				 *   end of the region that has been affected
 				 *   by the current step.
 				 */
@@ -137,7 +161,7 @@ typedef struct EditOperation
     int				eoCol0;
     int				eoCol1;
 
-    SimpleOutputStream *	eoTraceStream;
+    struct SimpleOutputStream *	eoTraceStream;
     struct RtfWriter *		eoTraceWriter;
     } EditOperation;
 
@@ -150,29 +174,31 @@ typedef struct EditOperation
 extern void docInitEditOperation(	EditOperation *	eo );
 extern void docCleanEditOperation(	EditOperation *	eo );
 
-extern void docEditOperationGetSelection(	DocumentSelection *	dsNew,
+extern void docEditOperationGetSelection(	struct DocumentSelection *	dsNew,
 						const EditOperation *	eo );
 
-extern int docStartEditOperation(	EditOperation *			eo,
-					const DocumentSelection *	ds,
-					BufferDocument *		bd );
+extern int docStartEditOperation(
+			EditOperation *			eo,
+			const struct DocumentSelection *	ds,
+			struct BufferDocument *		bd,
+			struct DocumentField *		bottomField );
 
 extern void docEditIncludeNodeInReformatRange(	EditOperation *		eo,
-						struct BufferItem *	bi );
+						struct BufferItem *	node );
 
 extern void docEditIncludeRowsInReformatRange(
 					EditOperation *		eo,
-					struct BufferItem *	sectBi,
+					struct BufferItem *	sectNode,
 					int			row0,
 					int			row1 );
 
 extern void docSetParagraphAdjust(	EditOperation *		eo,
-					struct BufferItem *	paraBi,
+					struct BufferItem *	paraNode,
 					int			stroffShift,
 					int			stroffUpto );
 
 extern void docExtendParagraphAdjust(	EditOperation *		eo,
-					struct BufferItem *	paraBi,
+					struct BufferItem *	paraNode,
 					int			stroffShift );
 
 extern void docEditFinishStep(		EditOperation *		eo );
@@ -181,7 +207,7 @@ extern int docMoveEditOperationToBodySect(
 					EditOperation *		eo,
 					struct BufferItem *	bodySectNode );
 
-extern DocumentField * docEditOperationGetSelectedNote(
+extern struct DocumentField * docEditOperationGetSelectedNote(
 					struct DocumentNote **	pDn,
 					int *			pSelInNote,
 					const EditOperation *	eo );

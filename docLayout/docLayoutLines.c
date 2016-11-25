@@ -1,21 +1,29 @@
 /************************************************************************/
 /*									*/
-/*  Layout of a document.						*/
+/*  Layout of a series of lines in a document.				*/
 /*									*/
 /************************************************************************/
 
 #   include	"docLayoutConfig.h"
 
-#   include	<stddef.h>
+#   include	<stdlib.h>
 
 #   include	"docLayout.h"
+#   include	"docLayoutStopCode.h"
 #   include	"docParticuleData.h"
+#   include	"docLayoutLine.h"
+
+#   include	<docParaParticules.h>
+#   include	<docTreeNode.h>
+#   include	<docTextLine.h>
+#   include	<docTextParticule.h>
+#   include	<docParaProperties.h>
+#   include	<docStripFrame.h>
+#   include	<docBlockFrame.h>
+#   include	<docPropVal.h>
 
 #   include	<docDebug.h>
 #   include	<appDebugon.h>
-#   include	<docObjectProperties.h>
-#   include	<docParaParticules.h>
-#   include	<docShape.h>
 
 #   define	SHOW_LINE_CHANGES	0
 
@@ -30,7 +38,7 @@
 
 static int docAboveLine(	int *				pStopCode,
 				LayoutPosition *		lp,
-				const BufferItem *		paraNode,
+				const struct BufferItem *	paraNode,
 				int				part,
 				const BlockFrame *		bf,
 				const ParagraphFrame *		pf )
@@ -43,7 +51,10 @@ static int docAboveLine(	int *				pStopCode,
 
 	/*  2  */
 	if  ( lp->lpAtTopOfColumn )
-	    { spaceAboveLineTwips -= paraNode->biParaSpaceBeforeTwips;	}
+	    {
+	    spaceAboveLineTwips -=
+			    paraNode->biParaProperties->ppSpaceBeforeTwips;
+	    }
 	}
 
     if  ( lp->lpPageYTwips+ spaceAboveLineTwips >= bf->bfContentRect.drY1 )
@@ -77,8 +88,7 @@ static int docBelowLine(	int *				pStopCode,
 				LayoutPosition *		lp,
 				const LayoutPosition *		lpLineTop,
 				int				lineStride,
-				const BufferItem *		paraNode,
-				int				partFrom,
+				const struct BufferItem *	paraNode,
 				int				partUpto,
 				const BlockFrame *		bf,
 				const ParagraphFrame *		pf,
@@ -94,10 +104,9 @@ static int docBelowLine(	int *				pStopCode,
     int				footnoteHeight;
 
     /*  1  */
-    if  ( partUpto == paraNode->biParaParticuleCount			&&
-	  paraNode->biParaTableNesting > 0				&&
-	  paraNode->biNumberInParent ==
-				    paraNode->biParent->biChildCount- 1	)
+    if  ( partUpto == paraNode->biParaParticuleCount		&&
+	  paraNode->biParaProperties->ppTableNesting > 0	&&
+	  paraNode->biNumberInParent == paraNode->biParent->biChildCount- 1 )
 	{ spaceBelowLineTwips += paraNode->biParaBottomInset; }
 
     lpBelowLine= *lpLineTop;
@@ -108,7 +117,7 @@ static int docBelowLine(	int *				pStopCode,
 					/********************************/
 
     lineBottom= lpBelowLine.lpPageYTwips+ spaceBelowLineTwips;
-    lineHeight= lineBottom- lpLineTop->lpPageYTwips;
+    lineHeight= lineBottom- lineBottom- lpLineTop->lpPageYTwips;
 
     footnoteHeight= nrLine->nrFtnsepHeight+ nrLine->nrFootnoteHeight;
     flowY1WithNotes= bf->bfFlowRect.drY1- footnoteHeight;
@@ -137,135 +146,6 @@ static int docBelowLine(	int *				pStopCode,
 
 /************************************************************************/
 /*									*/
-/*  Calculations on line inserts.					*/
-/*									*/
-/************************************************************************/
-
-static int docPlaceShape(	const BufferItem *	paraNode,
-				const LayoutPosition *	lpLineTop,
-				InsertedObject *	io,
-				const ParagraphFrame *	pf,
-				const BlockFrame *	bf,
-				int			xChar )
-    {
-    DrawingShape *		ds= io->ioDrawingShape;
-    int				x1;
-    LayoutPosition		lpBelowShape;
-
-    if  ( ! ds )
-	{ XDEB(ds); return -1;	}
-
-    docShapePageRectangle( &(io->ioY0Position), &lpBelowShape,
-				&(io->ioX0Twips), &x1,
-				ds, paraNode, lpLineTop, pf, bf, xChar );
-
-    docDrawingShapeInvalidateTextLayout( ds );
-
-    return 0;
-    }
-
-static int docPlaceShapeY(	const BufferItem *	paraNode,
-				const LayoutPosition *	lpLineTop,
-				InsertedObject *	io,
-				const BlockFrame *	bf )
-    {
-    DrawingShape *		ds= io->ioDrawingShape;
-    LayoutPosition		lpBelowShape;
-
-    BlockFrame			bfShape;
-
-    docLayoutInitBlockFrame( &bfShape );
-
-    docShapePageY( &(io->ioY0Position), &lpBelowShape, &bfShape,
-						ds, paraNode, lpLineTop, bf );
-
-    docDrawingShapeInvalidateTextLayout( ds );
-
-    docLayoutCleanBlockFrame( &bfShape );
-
-    return 0;
-    }
-
-static int docPlaceLineInserts(	BufferDocument *	bd,
-				const BufferItem *	paraNode,
-				const TextLine *	tl,
-				const ParticuleData *	pd,
-				const ParagraphFrame *	pf,
-				const BlockFrame *	bf,
-				const LayoutPosition *	lp )
-    {
-    int				i;
-    const TextParticule *	tp;
-
-    tp= paraNode->biParaParticules+ tl->tlFirstParticule;
-    for ( i= 0; i < tl->tlParticuleCount; tp++, i++ )
-	{
-	if  ( tp->tpKind == DOCkindFIELDHEAD )
-	    {
-	    if  ( docSetPageOfField( &(bd->bdFieldList),
-					tp->tpObjectNumber,  lp->lpPage ) )
-		{ LDEB(lp->lpPage); docListNode(0,paraNode,0);	}
-	    }
-
-	if  ( tp->tpKind == DOCkindOBJECT )
-	    {
-	    InsertedObject *	io;
-
-	    io= docGetObject( bd, tp->tpObjectNumber );
-	    if  ( ! io )
-		{ LPDEB(tp->tpObjectNumber,io);	}
-
-	    if  ( io && io->ioKind == DOCokDRAWING_SHAPE )
-		{
-		if  ( docPlaceShape( paraNode, &(tl->tlTopPosition),
-						    io, pf, bf, pd->pdX0 ) )
-		    { LDEB(1);	}
-		}
-	    }
-	}
-
-    return 0;
-    }
-
-static int docPlaceLineInsertsY(BufferDocument *	bd,
-				const BufferItem *	paraNode,
-				const TextLine *	tl,
-				const BlockFrame *	bf,
-				const LayoutPosition *	lp )
-    {
-    int				i;
-    const TextParticule *	tp;
-
-    tp= paraNode->biParaParticules+ tl->tlFirstParticule;
-    for ( i= 0; i < tl->tlParticuleCount; tp++, i++ )
-	{
-	if  ( tp->tpKind == DOCkindFIELDHEAD )
-	    {
-	    docSetPageOfField( &(bd->bdFieldList),
-					tp->tpObjectNumber,  lp->lpPage );
-	    }
-
-	if  ( tp->tpKind == DOCkindOBJECT )
-	    {
-	    InsertedObject *	io;
-
-	    io= docGetObject( bd, tp->tpObjectNumber );
-	    if  ( ! io )
-		{ LPDEB(tp->tpObjectNumber,io);	}
-
-	    if  ( io && io->ioKind == DOCokDRAWING_SHAPE )
-		{
-		if  ( docPlaceShapeY( paraNode, &(tl->tlTopPosition), io, bf ) )
-		    { LDEB(1);	}
-		}
-	    }
-	}
-
-    return 0;
-    }
-
-/************************************************************************/
-/*									*/
 /*  Layout successive lines of a paragraph.				*/
 /*									*/
 /*  1)  Cope with the output of sgmls: Ignore enormous space before's	*/
@@ -277,7 +157,7 @@ static int docLayout_Line(	int *				pStopCode,
 				TextLine *			resTl,
 				NotesReservation *		pNrLine,
 				const BlockFrame *		bf,
-				BufferItem *			paraNode,
+				struct BufferItem *		paraNode,
 				int				redoLineLayout,
 				int				part,
 				ParticuleData *			pd,
@@ -287,19 +167,23 @@ static int docLayout_Line(	int *				pStopCode,
 				LayoutPosition *		lpBottom )
     {
     const LayoutContext *	lc= &(lj->ljContext);
-    BufferDocument *		bd= lc->lcDocument;
+    struct BufferDocument *	bd= lc->lcDocument;
 
-    int				accepted;
     int				res;
+    int				accepted;
 
     TextParticule *		tp= paraNode->biParaParticules+ part;
 
     TextLine			workTl;
     TextLine *			tl= &(workTl);
 
+    LineRun			blr;
+    LineLayoutJob		llj;
     LayoutPosition		lpHere;
-
     NotesReservation		nrLine;
+
+    docInitLineRun( &blr );
+    docInitLineLayoutJob( &llj );
 
     lpHere= *lpTop;
 
@@ -324,8 +208,15 @@ static int docLayout_Line(	int *				pStopCode,
 
     tl->tlTopPosition= lpHere;
     if  ( redoLineLayout )
-	{ accepted= docLayoutLineBox( tl, paraNode, part, lc, pd, pf );	}
-    else{ accepted= tl->tlParticuleCount;				}
+	{
+	docStartLayoutLine( &blr, &llj, paraNode, part, lc, pd, pf );
+
+	accepted= docLayoutLineBox( &blr, &llj );
+	}
+    else{
+	accepted= tl->tlParticuleCount;
+	llj.lljLineStride= tl->tlLineStride;
+	}
 
     if  ( accepted < 1 )
 	{ LDEB(accepted); return -1;	}
@@ -337,9 +228,8 @@ static int docLayout_Line(	int *				pStopCode,
 	{ LDEB(1); return -1;	}
 
     res= docBelowLine( pStopCode, &lpHere,
-				    &(tl->tlTopPosition), tl->tlLineStride,
-				    paraNode, part, part+ accepted,
-				    bf, pf, &nrLine );
+				&(tl->tlTopPosition), llj.lljLineStride,
+				paraNode, part+ accepted, bf, pf, &nrLine );
     if  ( res < 0 )
 	{ LDEB(res); return -1;	}
     if  ( res > 0 )
@@ -347,15 +237,22 @@ static int docLayout_Line(	int *				pStopCode,
 
     if  ( redoLineLayout )
 	{
-	tl->tlStrlen=
-	    tp[accepted-1].tpStroff+ tp[accepted-1].tpStrlen- tp->tpStroff;
-	tl->tlParticuleCount= accepted;
-	tl->tlFlowWidthTwips=
-		    pf->pfParaContentRect.drX1- pf->pfParaContentRect.drX0;
+	tl->tlFlags= blr.lrLineFlags;
+	tl->tlWordCount= blr.lrWordCount;
 
-	if  ( lj->ljLayoutScreenLine					&&
-	      (*lj->ljLayoutScreenLine)( tl, paraNode, lc, pf, pd ) < 0	)
+	tl->tlLineStride= llj.lljLineStride;
+	tl->tlRectangle= llj.lljLineRectangle;
+	tl->tlStrlen= llj.lljTailStroff- llj.lljHeadStroff;
+	tl->tlParticuleCount= accepted;
+	tl->tlFrameWidthTwips= PARA_FRAME_WIDTH( pf );
+
+	if  ( lj->ljScreenLayoutLine			&&
+	      (*lj->ljScreenLayoutLine)( tl, &llj ) < 0	)
 	    { LDEB(accepted); return -1;	}
+
+	if  ( paraNode->biParaProperties->ppAlignment == DOCthaRIGHT )
+	    { tl->tlPixelShift= llj.lljPixelShift;	}
+	else{ tl->tlPixelShift= 0;			}
 
 	if  ( docPlaceLineInserts( bd, paraNode, tl, pd, pf, bf, &lpHere ) )
 	    { LDEB(accepted); }
@@ -387,50 +284,30 @@ static void docLayoutAddLineToExpose(
 				const TextLine *		tlLine )
     {
     const LayoutContext *	lc= &(lj->ljContext);
-    DocumentRectangle		drBox;
+    DocumentRectangle		drLineFramePixels;
 
     LayoutPosition		lpTop;
-    LayoutPosition		lpBottom;
+    LayoutPosition		lpNextLine;
 
-    lpTop= boxLine->tlTopPosition;
-    lpBottom= lpTop;
-    lpBottom.lpPageYTwips += boxLine->tlLineStride;
+    const struct BlockOrigin * const	bo= (const struct BlockOrigin *)0;
 
-    docGetPixelRectForPos( &drBox, lc,
-			    pf->pfRedrawX0Twips, pf->pfRedrawX1Twips,
-			    &lpTop, &lpBottom );
+    docTextLineGetShiftedTop( &lpTop, bo, boxLine );
+    docTextLineGetShiftedNextLineTop( &lpNextLine, bo, boxLine );
+    docLineFrameRectanglePixels( &drLineFramePixels, &lpTop, &lpNextLine,
+							boxLine, bo, pf, lc );
 
-    geoUnionRectangle( drChanged, drChanged, &drBox );
+    geoUnionRectangle( drChanged, drChanged, &drLineFramePixels );
 
     if  ( tlLine )
 	{
-	DocumentRectangle	drTl;
+	DocumentRectangle	drFrameTl;
 
-	lpTop= tlLine->tlTopPosition;
-	lpBottom= lpTop;
-	lpBottom.lpPageYTwips += tlLine->tlLineStride;
+	docTextLineGetShiftedTop( &lpTop, bo, tlLine );
+	docTextLineGetShiftedNextLineTop( &lpNextLine, bo, tlLine );
+	docLineFrameRectanglePixels( &drFrameTl, &lpTop, &lpNextLine,
+							tlLine, bo, pf, lc );
 
-	docGetPixelRectForPos( &drTl, lc,
-			    pf->pfRedrawX0Twips, pf->pfRedrawX1Twips,
-			    &lpTop, &lpBottom );
-
-	if  ( drTl.drX0 != drBox.drX0	||
-	      drTl.drX1 != drBox.drX1	||
-	      drTl.drY0 != drBox.drY0	||
-	      drTl.drY1 != drBox.drY1	)
-	    {
-	    geoUnionRectangle( drChanged, drChanged, &drTl );
-	    geoUnionRectangle( drChanged, drChanged, &drBox );
-
-#	    if SHOW_LINE_CHANGES
-	    appDebug( "EXPOSE [%4d..%4d x %4d..%4d]\n",
-				    drChanged->drX0, drChanged->drX1,
-				    drChanged->drY0, drChanged->drY1 );
-#	    endif
-	    }
-	}
-    else{
-	geoUnionRectangle( drChanged, drChanged, &drBox );
+	geoUnionRectangle( drChanged, drChanged, &drFrameTl );
 
 #	if SHOW_LINE_CHANGES
 	appDebug( "EXPOSE [%4d..%4d x %4d..%4d]\n",
@@ -438,6 +315,13 @@ static void docLayoutAddLineToExpose(
 				    drChanged->drY0, drChanged->drY1 );
 #	endif
 	}
+#   if SHOW_LINE_CHANGES
+    else{
+	appDebug( "EXPOSE [%4d..%4d x %4d..%4d]\n",
+				    drChanged->drX0, drChanged->drX1,
+				    drChanged->drY0, drChanged->drY1 );
+	}
+#   endif
     }
 
 /************************************************************************/
@@ -469,21 +353,26 @@ int docLayoutParaLines(		int *				pStopCode,
 				int *				pLine,
 				BlockFrame *			bf,
 				const LayoutJob *		lj,
-				BufferItem *			paraNode,
+				struct BufferItem *		paraNode,
 				int				part )
     {
+    int				rval= 0;
     int				stopCode= FORMATstopREADY;
 
     int				line= (*pLine);
     int				done= 0;
 
-    ParticuleData *		pd;
+    ParticuleData *		pd= (ParticuleData *)0;
 
     LayoutPosition		lp= (*lpHere);
 
+    if  ( paraNode->biLevel != DOClevPARA )
+	{ SDEB(docLevelStr(paraNode->biLevel)); rval= -1; goto ready;	}
+
     /*  1  */
-    if  ( docPsClaimParticuleData( paraNode->biParaParticuleCount, &pd ) )
-	{ LDEB(paraNode->biParaParticuleCount); return -1;	}
+    pd= malloc( paraNode->biParaParticuleCount* sizeof(ParticuleData) );
+    if  ( ! pd )
+	{ LXDEB(paraNode->biParaParticuleCount,pd); rval= -1; goto ready; }
 
     /*  2  */
     while( part < paraNode->biParaParticuleCount )
@@ -498,11 +387,11 @@ int docLayoutParaLines(		int *				pStopCode,
 
 	DocumentRectangle *	drChanged= lj->ljChangedRectanglePixels;
 
-	int			flowWidth;
+	int			frameWidth;
 
 	docInitNotesReservation( &nrLine );
 
-	flowWidth= pf->pfParaContentRect.drX1- pf->pfParaContentRect.drX0;
+	frameWidth= PARA_FRAME_WIDTH( pf );
 
 	docInitTextLine( &boxLine );
 
@@ -518,7 +407,7 @@ int docLayoutParaLines(		int *				pStopCode,
 	    if  ( tlLine->tlFirstParticule+ tlLine->tlParticuleCount >
 					paraNode->biParaParticuleCount	||
 		  tlLine->tlStroff != tp->tpStroff			||
-		  tlLine->tlFlowWidthTwips != flowWidth			)
+		  tlLine->tlFrameWidthTwips != frameWidth		)
 		{ placeOldLine= 0;	}
 	    }
 
@@ -527,7 +416,7 @@ int docLayoutParaLines(		int *				pStopCode,
 			paraNode, ! placeOldLine, part, pd, lj, pf, &lp, &lp );
 
 	if  ( accepted < 0 )
-	    { LDEB(accepted); return -1;	}
+	    { LDEB(accepted); rval= -1; goto ready;	}
 
 	/*  6  */
 	if  ( accepted == 0 )
@@ -548,7 +437,7 @@ int docLayoutParaLines(		int *				pStopCode,
 	    {
 	    tlLine= docInsertTextLine( paraNode, -1 );
 	    if  ( ! tlLine )
-		{ XDEB(tlLine); return -1;		}
+		{ XDEB(tlLine); rval= -1; goto ready;		}
 	    }
 	else{
 	    tlLine= paraNode->biParaLines+ line;
@@ -567,10 +456,10 @@ int docLayoutParaLines(		int *				pStopCode,
 
 	    switch( paraNode->biParaParticules[part].tpKind )
 		{
-		case DOCkindPAGEBREAK:
+		case TPkindPAGEBREAK:
 		    stopCode= FORMATstopPAGE_BREAK;
 		    break;
-		case DOCkindCOLUMNBREAK:
+		case TPkindCOLUMNBREAK:
 		    stopCode= FORMATstopCOLUMN_BREAK;
 		    break;
 		default:
@@ -591,6 +480,13 @@ int docLayoutParaLines(		int *				pStopCode,
 	  paraNode->biParaLineCount > line	)
 	{ paraNode->biParaLineCount=  line; }
 
-    return done;
+    rval= done;
+
+  ready:
+
+    if  ( pd )
+	{ free( pd );	}
+
+    return rval;
     }
 

@@ -936,8 +936,7 @@ static int bmHashColorsRGB8(	HashBucket ***		pHashTable,
 /*									*/
 /************************************************************************/
 
-static int bmHashToHistogram(	ColorReducer *		cr,
-				int			colorCount )
+static int bmHashToHistogram(	ColorReducer *		cr )
     {
     HashBucket *		hashBucket;
 
@@ -1020,9 +1019,9 @@ int bmColorReduce(	RasterImage *			riOut,
 
     int				bitsPerPixel;
 
-    int				bitmapUnit= 0;
-    int				swapBitmapBytes= 0;
-    int				swapBitmapBits= 0;
+    const int			bitmapUnit= 0;
+    const int			swapBitmapBytes= 0;
+    const int			swapBitmapBits= 0;
     const int			dither= 0;
 
     RasterImage			ri;
@@ -1089,7 +1088,7 @@ int bmColorReduce(	RasterImage *			riOut,
 	if  ( bmAllocateHistogram( cr, colorCount ) )
 	    { LDEB(colorCount); rval= -1; goto ready;	}
 
-	if  ( bmHashToHistogram( cr, colorCount ) )
+	if  ( bmHashToHistogram( cr ) )
 	    { LDEB(colorCount); rval= -1; goto ready;	}
 
 	if  ( bmAllocateCutNodes( cr, maxcolors ) )
@@ -1133,7 +1132,7 @@ int bmColorReduce(	RasterImage *			riOut,
 
     if  ( bmFillImage( &ca, bitmapUnit, swapBitmapBytes, swapBitmapBits,
 			dither, ri.riBytes, &(ri.riDescription),
-			riIn, (const DocumentRectangle *)0 ) )
+			riIn, (const struct DocumentRectangle *)0 ) )
 	{ LDEB(1); rval= -1; goto ready;	}
 
     /* steal */

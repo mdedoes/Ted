@@ -1,7 +1,12 @@
 #   include	"bitmapConfig.h"
 
 #   include	<stdlib.h>
+#   include	<string.h>
+
+#   include	"bmformats.h"
 #   include	"bmintern.h"
+#   include	<utilMemoryBuffer.h>
+
 #   include	<appDebugon.h>
 
 #   if USE_LIBTIFF
@@ -9,72 +14,169 @@
 #   include	<tiffio.h>
 
 /************************************************************************/
-/*									*/
-/*  Read a tiff file.							*/
-/*									*/
-/*  9)  Allocate an extra byte as the libtiff fax 3 code scribbles	*/
-/*	beyond the end of the buffer.					*/
-/*									*/
-/************************************************************************/
 
-int bmReadTiffFile(	const MemoryBuffer *		filename,
-			unsigned char **	pBuffer,
-			BitmapDescription *	bd,
-			int *			pPrivateFormat )
+typedef struct TiffReader
     {
-    int				rval= 0;
+    TIFF *		trTiff;
+    uint16		trCompression;
+    uint16		trBitsPerSample;
+    uint16		trPlanarConfig;
 
-    TIFF *			t= (TIFF *)0;
-    unsigned int		col;
 
-    unsigned char *		buffer= (unsigned char *)0;
-    int				fileFormat;
+    unsigned long	trStripSize;
 
-    unsigned short		photometric;
-    unsigned short		bitsPerSample;
-    float			resolution;
+    unsigned char	trTiled;
+    uint32		trTileWide;
+    uint32		trTileHigh;
 
-    unsigned short		unsignedShort;
-    unsigned short *		whatKind;
-    unsigned long		unsignedLong;
+    unsigned long	trTileSize;
+    unsigned long	trTileRowSize;
+    unsigned char *	trTileBuffer;
 
-    unsigned short *		redMap= (unsigned short *)0;
-    unsigned short *		greenMap= (unsigned short *)0;
-    unsigned short *		blueMap= (unsigned short *)0;
+    uint16		trPhotometric;
 
-    unsigned short		planarConfig= 1;
+    float *		trYcbcrCoefficients;
+    float *		trReferenceBlackWhite;
+    uint16		trYcbcrPositioning;
+    uint16		trYcbcrSubSamplingX;
+    uint16		trYcbcrSubSamplingY;
 
-    t= TIFFOpen( utilMemoryBufferGetString( filename ), "r" );
-    if  ( ! t )
-	{ XDEB(t); rval= -1; goto ready;	}
+    /* libtiff wants these contigous and in this order */
+    TIFFYCbCrToRGB	trYCbCrToRGB;
+    TIFFRGBValue	tr_clamptab[4*256];
+    int			tr_cr_r_tab[256];
+    int			tr_cb_b_tab[256];
+    int32		tr_cr_g_tab[256];
+    int32		tr_cb_g_tab[256];
+    int32		tr_y_tab[256];
+    /* end contiguous block */
 
-    if  ( TIFFGetField( t, TIFFTAG_COMPRESSION, &unsignedShort ) != 1 )
-	{ LDEB(TIFFTAG_COMPRESSION); rval= -1; goto ready;	}
-    fileFormat= unsignedShort;
+    } TiffReader;
 
-    if  ( TIFFGetField( t, TIFFTAG_IMAGEWIDTH, &unsignedLong ) != 1 )
-	{ LDEB(TIFFTAG_IMAGEWIDTH); rval= -1; goto ready;	}
-    bd->bdPixelsWide= unsignedLong;
+static void bmInitTiffReader(	TiffReader *	tr )
+    {
+    memset( tr, 0, sizeof(TiffReader) );
+    }
 
-    if  ( TIFFGetField( t, TIFFTAG_IMAGELENGTH, &unsignedLong ) != 1 )
-	{ LDEB(TIFFTAG_IMAGELENGTH); rval= -1; goto ready;	}
-    bd->bdPixelsHigh= unsignedLong;
+static void bmCleanTiffReader(	TiffReader *	tr )
+    {
+    if  ( tr->trTiff )
+	{ TIFFClose( tr->trTiff );	}
+    if  ( tr->trTileBuffer )
+	{ free( tr->trTileBuffer );	}
+    }
 
-    if  ( TIFFGetField( t, TIFFTAG_BITSPERSAMPLE, &bitsPerSample ) != 1 )
-	{ LDEB(TIFFTAG_BITSPERSAMPLE); rval= -1; goto ready; }
-    if  ( bitsPerSample > 8 )
-	{ LDEB(bitsPerSample); return -1;	}
-    bd->bdBitsPerSample= bitsPerSample;
+static int bmTiffExtractYcbrcr(		TiffReader *		tr )
+    {
+    /* http://www.remotesensing.org/libtiff/TIFFTechNote2.html */
 
-    if  ( TIFFGetField( t, TIFFTAG_SAMPLESPERPIXEL, &unsignedShort ) != 1 )
-	{ LDEB(TIFFTAG_SAMPLESPERPIXEL); rval= -1; goto ready; }
-    bd->bdSamplesPerPixel= unsignedShort;
+    TIFFGetFieldDefaulted( tr->trTiff, TIFFTAG_YCBCRCOEFFICIENTS, &tr->trYcbcrCoefficients );
+    TIFFGetFieldDefaulted( tr->trTiff, TIFFTAG_REFERENCEBLACKWHITE, &tr->trReferenceBlackWhite );
 
-    if  ( TIFFGetField( t, TIFFTAG_EXTRASAMPLES, &unsignedShort,
+    if  ( TIFFYCbCrToRGBInit( &(tr->trYCbCrToRGB), tr->trYcbcrCoefficients, tr->trReferenceBlackWhite ) < 0 )
+	{ LDEB(1); return -1;	}
+
+    TIFFGetFieldDefaulted( tr->trTiff, TIFFTAG_YCBCRPOSITIONING, &tr->trYcbcrPositioning );
+    TIFFGetFieldDefaulted( tr->trTiff, TIFFTAG_YCBCRSUBSAMPLING, &tr->trYcbcrSubSamplingX, &tr->trYcbcrSubSamplingY );
+
+    return 0;
+    }
+
+static int bmTiffExtractPalette(	TiffReader *		tr,
+					BitmapDescription *	bd )
+    {
+    unsigned short *		redMap= (uint16 *)0;
+    unsigned short *		greenMap= (uint16 *)0;
+    unsigned short *		blueMap= (uint16 *)0;
+
+    int				color;
+
+    if  ( TIFFGetField( tr->trTiff, TIFFTAG_COLORMAP,
+				&redMap, &greenMap, &blueMap ) != 1 )
+	{ LDEB(TIFFTAG_COLORMAP); return -1; }
+
+    if  ( bd->bdHasAlpha )
+	{
+	if  ( bd->bdSamplesPerPixel != 2 )
+	    { LDEB(bd->bdSamplesPerPixel); return -1; }
+	}
+    else{
+	if  ( bd->bdSamplesPerPixel != 1 )
+	    { LDEB(bd->bdSamplesPerPixel); return -1; }
+	}
+
+    if  ( utilPaletteSetCount( &(bd->bdPalette), 1 << tr->trBitsPerSample ) )
+	{ LDEB(1 << tr->trBitsPerSample); return -1;	}
+
+    for ( color= 0; color < bd->bdPalette.cpColorCount; color++ )
+	{
+	bd->bdPalette.cpColors[color].rgb8Red= redMap[color]/256;
+	bd->bdPalette.cpColors[color].rgb8Green= greenMap[color]/256;
+	bd->bdPalette.cpColors[color].rgb8Blue= blueMap[color]/256;
+	}
+
+    bd->bdBitsPerSample= 8;
+    bd->bdColorEncoding= BMcoRGB8PALETTE;
+
+    if  ( bd->bdHasAlpha )
+	{
+	bd->bdSamplesPerPixel= 4;
+	bd->bdBitsPerPixel= 2* tr->trBitsPerSample;
+	}
+    else{
+	bd->bdSamplesPerPixel= 3;
+	bd->bdBitsPerPixel= 1* tr->trBitsPerSample;
+	}
+
+    return 0;
+    }
+
+static int bmTiffExtractDescription(	int *			pFileFormat,
+					BitmapDescription *	bd,
+					TiffReader *		tr )
+    {
+    int			fileFormat;
+
+    uint16		u16;
+    uint32		u32;
+    uint16 *		whatKind;
+
+    if  ( TIFFGetField( tr->trTiff, TIFFTAG_COMPRESSION, &(tr->trCompression) ) != 1 )
+	{ LDEB(TIFFTAG_COMPRESSION); return -1;	}
+    fileFormat= tr->trCompression;
+
+    if  ( TIFFGetField( tr->trTiff, TIFFTAG_IMAGEWIDTH, &u32 ) != 1 )
+	{ LDEB(TIFFTAG_IMAGEWIDTH); return -1;	}
+    bd->bdPixelsWide= u32;
+
+    if  ( TIFFGetField( tr->trTiff, TIFFTAG_IMAGELENGTH, &u32 ) != 1 )
+	{ LDEB(TIFFTAG_IMAGELENGTH); return -1;	}
+    bd->bdPixelsHigh= u32;
+
+    /* A tiled image */
+    if  ( TIFFGetField( tr->trTiff, TIFFTAG_TILELENGTH, &tr->trTileHigh ) == 1 )
+	{
+	tr->trTiled= 1;
+
+	if  ( TIFFGetField( tr->trTiff, TIFFTAG_TILEWIDTH, &tr->trTileWide ) != 1 )
+	    { LDEB(TIFFTAG_TILEWIDTH); return -1;	}
+	}
+
+    if  ( TIFFGetField( tr->trTiff, TIFFTAG_BITSPERSAMPLE, &tr->trBitsPerSample ) != 1 )
+	{ LDEB(TIFFTAG_BITSPERSAMPLE); return -1; }
+    if  ( tr->trBitsPerSample > 8 )
+	{ LDEB(tr->trBitsPerSample); return -1;	}
+    bd->bdBitsPerSample= tr->trBitsPerSample;
+
+    if  ( TIFFGetField( tr->trTiff, TIFFTAG_SAMPLESPERPIXEL, &u16 ) != 1 )
+	{ LDEB(TIFFTAG_SAMPLESPERPIXEL); return -1; }
+    bd->bdSamplesPerPixel= u16;
+
+    if  ( TIFFGetField( tr->trTiff, TIFFTAG_EXTRASAMPLES, &u16,
 							 &whatKind ) != 1 )
 	{ bd->bdHasAlpha= 0; }
     else{
-	switch( unsignedShort )
+	switch( u16 )
 	    {
 	    case 0:
 		bd->bdHasAlpha= 0;
@@ -88,15 +190,15 @@ int bmReadTiffFile(	const MemoryBuffer *		filename,
 		break;
 
 	    default:
-		LLDEB(TIFFTAG_EXTRASAMPLES,unsignedShort);
+		LLDEB(TIFFTAG_EXTRASAMPLES,u16);
 		return -1;
 	    }
 	}
 
-    if  ( TIFFGetField( t, TIFFTAG_PHOTOMETRIC, &photometric ) != 1 )
-	{ LDEB(TIFFTAG_PHOTOMETRIC); rval= -1; goto ready;	}
+    if  ( TIFFGetField( tr->trTiff, TIFFTAG_PHOTOMETRIC, &tr->trPhotometric ) != 1 )
+	{ LDEB(TIFFTAG_PHOTOMETRIC); return -1;	}
 
-    switch( photometric )
+    switch( tr->trPhotometric )
 	{
 	case PHOTOMETRIC_MINISWHITE:
 	    bd->bdColorEncoding= BMcoBLACKWHITE;
@@ -114,46 +216,27 @@ int bmReadTiffFile(	const MemoryBuffer *		filename,
 	    break;
 
 	case PHOTOMETRIC_PALETTE:
-	    if  ( TIFFGetField( t, TIFFTAG_COLORMAP,
-					&redMap, &greenMap, &blueMap ) != 1 )
-		{ LDEB(TIFFTAG_COLORMAP); rval= -1; goto ready; }
-
-	    if  ( bd->bdHasAlpha )
-		{
-		if  ( bd->bdSamplesPerPixel != 2 )
-		    { LDEB(bd->bdSamplesPerPixel); rval= -1; goto ready; }
-		}
-	    else{
-		if  ( bd->bdSamplesPerPixel != 1 )
-		    { LDEB(bd->bdSamplesPerPixel); rval= -1; goto ready; }
-		}
-
-	    if  ( utilPaletteSetCount( &(bd->bdPalette), 1 << bitsPerSample ) )
-		{ LDEB(1 << bitsPerSample); rval= -1; goto ready;	}
-
-	    for ( col= 0; col < bd->bdPalette.cpColorCount; col++ )
-		{
-		bd->bdPalette.cpColors[col].rgb8Red= redMap[col]/256;
-		bd->bdPalette.cpColors[col].rgb8Green= greenMap[col]/256;
-		bd->bdPalette.cpColors[col].rgb8Blue= blueMap[col]/256;
-		}
-
-	    bd->bdBitsPerSample= 8;
-	    bd->bdColorEncoding= BMcoRGB8PALETTE;
-
-	    if  ( bd->bdHasAlpha )
-		{
-		bd->bdSamplesPerPixel= 4;
-		bd->bdBitsPerPixel= 2* bitsPerSample;
-		}
-	    else{
-		bd->bdSamplesPerPixel= 3;
-		bd->bdBitsPerPixel=    bitsPerSample;
-		}
-
+	    if  ( bmTiffExtractPalette( tr, bd ) )
+		{ LDEB(tr->trPhotometric); return -1; }
 	    break;
+
+	case PHOTOMETRIC_YCBCR:
+	    if  ( tr->trCompression == COMPRESSION_JPEG )
+		{
+		TIFFSetField( tr->trTiff, TIFFTAG_JPEGCOLORMODE, JPEGCOLORMODE_RGB);
+		}
+	    else{
+		if  ( bmTiffExtractYcbrcr( tr ) )
+		    { LDEB(tr->trPhotometric); return -1;	}
+		LLDEB(tr->trCompression,COMPRESSION_JPEG); return -1;
+		}
+
+	    bd->bdColorEncoding= BMcoRGB;
+	    bd->bdBitsPerPixel= bd->bdBitsPerSample* bd->bdSamplesPerPixel;
+	    break;
+
 	default:
-	    LDEB(photometric); rval= -1; goto ready;
+	    LDEB(tr->trPhotometric); return -1;
 	}
 
     bd->bdBytesPerRow= ( bd->bdBitsPerPixel* bd->bdPixelsWide + 7 )/ 8;
@@ -161,16 +244,19 @@ int bmReadTiffFile(	const MemoryBuffer *		filename,
 
     if  ( bd->bdSamplesPerPixel != 1 )
 	{
-	if  ( TIFFGetField( t, TIFFTAG_PLANARCONFIG, &planarConfig ) != 1 )
-	    { LDEB(TIFFTAG_PLANARCONFIG); rval= -1; goto ready;	}
-	if  ( planarConfig != 1 )
+	if  ( TIFFGetField( tr->trTiff, TIFFTAG_PLANARCONFIG, &tr->trPlanarConfig ) != 1 )
+	    { LDEB(TIFFTAG_PLANARCONFIG); return -1;	}
+	if  ( tr->trPlanarConfig != 1 )
 	    {
-	    LLDEB(bd->bdSamplesPerPixel,planarConfig);
+	    LLDEB(bd->bdSamplesPerPixel,tr->trPlanarConfig);
 	    LLDEB(bd->bdBitsPerSample,bd->bdBitsPerPixel);
 	    }
 	}
+    else{
+	tr->trPlanarConfig= 1;
+	}
 
-    if  ( TIFFGetField( t, TIFFTAG_RESOLUTIONUNIT, &unsignedShort ) != 1 )
+    if  ( TIFFGetField( tr->trTiff, TIFFTAG_RESOLUTIONUNIT, &u16 ) != 1 )
 	{
 	/* SLDEB(filename,TIFFTAG_RESOLUTIONUNIT); */
 	bd->bdUnit= BMunPIXEL;
@@ -178,37 +264,39 @@ int bmReadTiffFile(	const MemoryBuffer *		filename,
 	bd->bdYResolution= 1;
 	}
     else{
-	switch( unsignedShort )
+	float		resolution;
+
+	switch( u16 )
 	    {
 	    case	RESUNIT_INCH:
 		bd->bdUnit= BMunINCH;
-		if  ( TIFFGetField( t, TIFFTAG_XRESOLUTION, &resolution ) != 1 )
-		    { LDEB(TIFFTAG_XRESOLUTION); rval= -1; goto ready; }
+		if  ( TIFFGetField( tr->trTiff, TIFFTAG_XRESOLUTION, &resolution ) != 1 )
+		    { LDEB(TIFFTAG_XRESOLUTION); return -1; }
 		bd->bdXResolution= (int)resolution;
-		if  ( TIFFGetField( t, TIFFTAG_YRESOLUTION, &resolution ) != 1 )
-		    { LDEB(TIFFTAG_YRESOLUTION); rval= -1; goto ready; }
+		if  ( TIFFGetField( tr->trTiff, TIFFTAG_YRESOLUTION, &resolution ) != 1 )
+		    { LDEB(TIFFTAG_YRESOLUTION); return -1; }
 		bd->bdYResolution= (int)resolution;
 		break;
 	    case	RESUNIT_CENTIMETER:
 		bd->bdUnit= BMunM;
-		if  ( TIFFGetField( t, TIFFTAG_XRESOLUTION, &resolution ) != 1 )
-		    { LDEB(TIFFTAG_XRESOLUTION); rval= -1; goto ready; }
+		if  ( TIFFGetField( tr->trTiff, TIFFTAG_XRESOLUTION, &resolution ) != 1 )
+		    { LDEB(TIFFTAG_XRESOLUTION); return -1; }
 		bd->bdXResolution= (int)100* resolution;
-		if  ( TIFFGetField( t, TIFFTAG_YRESOLUTION, &resolution ) != 1 )
-		    { LDEB(TIFFTAG_YRESOLUTION); rval= -1; goto ready; }
+		if  ( TIFFGetField( tr->trTiff, TIFFTAG_YRESOLUTION, &resolution ) != 1 )
+		    { LDEB(TIFFTAG_YRESOLUTION); return -1; }
 		bd->bdYResolution= 100* (int)resolution;
 		break;
 	    case	RESUNIT_NONE:
 		bd->bdUnit= BMunPIXEL;
-		if  ( TIFFGetField( t, TIFFTAG_XRESOLUTION, &resolution ) != 1 )
+		if  ( TIFFGetField( tr->trTiff, TIFFTAG_XRESOLUTION, &resolution ) != 1 )
 		    { LDEB(TIFFTAG_XRESOLUTION); resolution= 1;	}
 		bd->bdXResolution= (int)resolution;
-		if  ( TIFFGetField( t, TIFFTAG_YRESOLUTION, &resolution ) != 1 )
+		if  ( TIFFGetField( tr->trTiff, TIFFTAG_YRESOLUTION, &resolution ) != 1 )
 		    { LDEB(TIFFTAG_YRESOLUTION); resolution= 1;	}
 		bd->bdYResolution= (int)resolution;
 		break;
 	    default:
-		LDEB(unsignedShort); rval= -1; goto ready;
+		LDEB(u16); return -1;
 	    }
 
 	if  ( bd->bdXResolution == 0	||
@@ -221,6 +309,159 @@ int bmReadTiffFile(	const MemoryBuffer *		filename,
 	    }
 	}
 
+    *pFileFormat= fileFormat;
+
+    return 0;
+    }
+
+# if 0
+static int bmTiffYCbCrtoRGB(	TiffReader *		tr,
+				unsigned char *		to,
+				const unsigned char *	from )
+    {
+    uint32	Y, Cb, Cr;
+    uint32	r, g, b;
+
+    TIFFYCbCrtoRGB( &(tr->trYCbCrToRGB), Y, Cb, Cr, &r, &g, &b);
+
+    *(to++)= (r&0xff);
+    *(to++)= (g&0xff);
+    *(to++)= (b&0xff);
+
+    return 0;
+    }
+# endif
+
+static int bmTiffReadStrips(	TiffReader *			tr,
+				const BitmapDescription *	bd,
+				unsigned char *			buffer )
+    {
+    int		offset= 0;
+    int		strip= 0;
+
+    tr->trStripSize= TIFFStripSize( tr->trTiff );
+
+    while( offset < bd->bdBufferLength )
+	{
+	int		done;
+
+	done= TIFFReadEncodedStrip( tr->trTiff, strip, buffer+ offset,
+					    bd->bdBufferLength- offset );
+	if  ( done < 1 )
+	    { LDEB(done); return -1; }
+
+	offset += done; strip++;
+	}
+
+    return 0;
+    }
+
+static int bmTiffReadTiles(	TiffReader *			tr,
+				const BitmapDescription *	bd,
+				unsigned char *			buffer )
+    {
+    int		imageRow;
+    int		tileRowSizeSource;
+
+    if  ( bd->bdBitsPerPixel % 8 )
+	{ LDEB(bd->bdBitsPerPixel); return -1;	}
+
+    tr->trTileSize= TIFFTileSize( tr->trTiff );
+    /*tileSize= ( tileWide* tileHigh* bd->bdBitsPerPixel )/ 8;*/
+    tr->trTileBuffer= malloc( tr->trTileSize+ 1 );
+    if  ( ! tr->trTileBuffer )
+	{ LXDEB(tr->trTileSize,tr->trTileBuffer); return -1;	}
+
+    tr->trTileRowSize= TIFFTileRowSize( tr->trTiff );
+
+    tileRowSizeSource= ( tr->trTileWide* bd->bdBitsPerPixel )/ 8;
+
+    for ( imageRow= 0; imageRow < bd->bdPixelsHigh; imageRow += tr->trTileHigh )
+	{
+	int		imageCol;
+	int		tileRow;
+
+	for ( imageCol= 0; imageCol < bd->bdPixelsWide; imageCol += tr->trTileWide )
+	    {
+	    const int	z= 0; /* no support for image depth > 1 */
+	    const int	sample= 0; /* no support for planar images */
+
+	    int		colOffset= ( imageCol* bd->bdBitsPerPixel )/ 8;
+	    int		row;
+
+	    int		pixelsWide= bd->bdPixelsWide- imageCol;
+	    int		tileRowSizeTarget;
+	    int		done;
+
+	    if  ( pixelsWide > tr->trTileWide )
+		{ pixelsWide = tr->trTileWide;	}
+	    tileRowSizeTarget= ( pixelsWide* bd->bdBitsPerPixel )/ 8;
+
+	    done= TIFFReadTile( tr->trTiff, tr->trTileBuffer,
+						    imageCol, imageRow, z, sample );
+	    if  ( done < 0 )
+		{ LLLDEB(imageRow,imageCol,done); return -1; }
+
+	    for ( tileRow= 0, row= imageRow;
+		  tileRow < tr->trTileHigh && row < bd->bdPixelsHigh;
+		  tileRow++, row++ )
+		{
+		memcpy( buffer+ row* bd->bdBytesPerRow+ colOffset,
+			tr->trTileBuffer+ tileRow* tileRowSizeSource,
+			tileRowSizeTarget );
+		}
+	    }
+	}
+
+    return 0;
+    }
+
+static int bmTiffReadScanlines(	TiffReader *			tr,
+				const BitmapDescription *	bd,
+				unsigned char *			buffer )
+    {
+    int	row;
+
+    for ( row= 0; row < bd->bdPixelsHigh; row++ )
+	{
+	if  ( TIFFReadScanline( tr->trTiff, buffer+ row* bd->bdBytesPerRow,
+							row, 0 ) < 0 )
+	    { LDEB(row); return -1; }
+	}
+
+    return 0;
+    }
+
+/************************************************************************/
+/*									*/
+/*  Read a tiff file.							*/
+/*									*/
+/*  9)  Allocate an extra byte as the libtiff fax 3 code scribbles	*/
+/*	beyond the end of the buffer.					*/
+/*									*/
+/************************************************************************/
+
+int bmReadTiffFile(	const MemoryBuffer *	filename,
+			unsigned char **	pBuffer,
+			BitmapDescription *	bd,
+			int *			pPrivateFormat )
+    {
+    int				rval= 0;
+
+    unsigned char *		buffer= (unsigned char *)0;
+    int				fileFormat= -1;
+
+    TiffReader			tr;
+
+    bmInitTiffReader( &tr );
+
+    tr.trTiff= TIFFOpen( utilMemoryBufferGetString( filename ), "r" );
+    if  ( ! tr.trTiff )
+	{ XDEB(tr.trTiff); rval= -1; goto ready;	}
+
+    if  ( bmTiffExtractDescription( &fileFormat, bd, &tr ) )
+	{ LDEB(1); rval= -1; goto ready;	}
+
     /*  9  */
     buffer= (unsigned char *)malloc( bd->bdBufferLength+ 1 );
     if  ( ! buffer )
@@ -228,33 +469,29 @@ int bmReadTiffFile(	const MemoryBuffer *		filename,
 
     if  ( bd->bdBitsPerPixel % 8 == 0 )
 	{
-	int		offset= 0;
-	int		strip= 0;
-
-	while( offset < bd->bdBufferLength )
+	if  ( tr.trTiled )
 	    {
-	    int		done;
-
-	    done= TIFFReadEncodedStrip( t, strip, buffer+ offset,
-						bd->bdBufferLength- offset );
-	    if  ( done < 1 )
-		{ LDEB(done); free( buffer ); TIFFClose( t ); return -1; }
-
-	    offset += done; strip++;
+	    if  ( bmTiffReadTiles( &tr, bd, buffer ) )
+		{ LDEB(tr.trTiled); rval= -1; goto ready;	}
+	    }
+	else{
+	    if  ( bmTiffReadStrips( &tr, bd, buffer ) )
+		{ LDEB(1); rval= -1; goto ready;	}
 	    }
 	}
     else{
-	int	row;
-
-	for ( row= 0; row < bd->bdPixelsHigh; row++ )
+	if  ( tr.trTiled )
 	    {
-	    if  ( TIFFReadScanline( t, buffer+ row* bd->bdBytesPerRow,
-								row, 0 ) < 0 )
-		{ LDEB(row); free( buffer ); TIFFClose( t ); return -1; }
+	    if  ( bmTiffReadTiles( &tr, bd, buffer ) )
+		{ LDEB(tr.trTiled); rval= -1; goto ready;	}
+	    }
+	else{
+	    if  ( bmTiffReadScanlines( &tr, bd, buffer ) )
+		{ LDEB(1); rval= -1; goto ready;	}
 	    }
 	}
 
-    if  ( planarConfig != 1 )
+    if  ( tr.trPlanarConfig != 1 )
 	{
 	unsigned char *		scratch;
 
@@ -272,10 +509,8 @@ int bmReadTiffFile(	const MemoryBuffer *		filename,
     *pPrivateFormat= fileFormat;
 
   ready:
-    if  ( t )
-	{ TIFFClose( t );	}
-    if  ( buffer )
-	{ free( buffer );	}
+
+    bmCleanTiffReader( &tr );
 
     return rval;
     }
@@ -342,25 +577,30 @@ int bmWriteTiffFile(	const MemoryBuffer *		filename,
 			const BitmapDescription *	bd,
 			int				privateFormat )
     {
-    TIFF *			t;
+    int				rval= 0;
+    TIFF *			t= (TIFF *)0;
     int				colorSpace= PHOTOMETRIC_MINISWHITE; /*bah*/
     unsigned long		rowsPerStrip;
     int				unit, xResolution, yResolution;
     int				row;
     int				i;
 
+    unsigned short *	redMap= (unsigned short *)0;
+    unsigned short *	greenMap= (unsigned short *)0;
+    unsigned short *	blueMap= (unsigned short *)0;
+
     t= TIFFOpen( utilMemoryBufferGetString( filename ), "w" );
     if  ( ! t )
-	{ XDEB(t); return -1;	}
+	{ XDEB(t); rval= -1; goto ready;	}
 
     if  ( ! TIFFSetField( t, TIFFTAG_COMPRESSION, privateFormat ) )
-	{ LLDEB(TIFFTAG_COMPRESSION,privateFormat); return -1; }
+	{ LLDEB(TIFFTAG_COMPRESSION,privateFormat); rval= -1; goto ready; }
 
     if  ( ! TIFFSetField( t, TIFFTAG_IMAGELENGTH, (long)bd->bdPixelsHigh ) )
-	{ LLDEB(TIFFTAG_IMAGELENGTH,(long)bd->bdPixelsHigh); return -1; }
+	{ LLDEB(TIFFTAG_IMAGELENGTH,(long)bd->bdPixelsHigh); rval= -1; goto ready; }
 
     if  ( ! TIFFSetField( t, TIFFTAG_IMAGEWIDTH, (long)bd->bdPixelsWide ) )
-	{ LLDEB(TIFFTAG_IMAGEWIDTH,(long)bd->bdPixelsWide); return -1; }
+	{ LLDEB(TIFFTAG_IMAGEWIDTH,(long)bd->bdPixelsWide); rval= -1; goto ready; }
 
     switch( bd->bdColorEncoding )
 	{
@@ -373,19 +613,16 @@ int bmWriteTiffFile(	const MemoryBuffer *		filename,
 	case BMcoRGB8PALETTE: colorSpace= PHOTOMETRIC_PALETTE;
 				break;
 	default:
-		LDEB(bd->bdColorEncoding); return -1;
+		LDEB(bd->bdColorEncoding); rval= -1; goto ready;
 	}
 
     if  ( ! TIFFSetField( t, TIFFTAG_PHOTOMETRIC, colorSpace ) )
-	{ LLDEB(TIFFTAG_PHOTOMETRIC,colorSpace); return -1; }
+	{ LLDEB(TIFFTAG_PHOTOMETRIC,colorSpace); rval= -1; goto ready; }
 
     if  ( colorSpace == PHOTOMETRIC_PALETTE )
 	{
 	int			colorCountOut;
 	int			colorCountIn;
-	unsigned short *	redMap;
-	unsigned short *	greenMap;
-	unsigned short *	blueMap;
 
 	switch( bd->bdBitsPerPixel )
 	    {
@@ -417,16 +654,16 @@ int bmWriteTiffFile(	const MemoryBuffer *		filename,
 		    }
 		else{
 		    LDEB(bd->bdHasAlpha);
-		    LLDEB(bd->bdBitsPerPixel,bd->bdBitsPerSample); return -1;
+		    LLDEB(bd->bdBitsPerPixel,bd->bdBitsPerSample); rval= -1; goto ready;
 		    }
 		break;
 
 	    default:
-		LLDEB(bd->bdBitsPerPixel,bd->bdBitsPerSample); return -1;
+		LLDEB(bd->bdBitsPerPixel,bd->bdBitsPerSample); rval= -1; goto ready;
 	    }
 
 	if  ( bd->bdPalette.cpColorCount > colorCountIn )
-	    { LLDEB(bd->bdPalette.cpColorCount,colorCountIn); return -1; }
+	    { LLDEB(bd->bdPalette.cpColorCount,colorCountIn); rval= -1; goto ready; }
 
 	/*
 	if  ( colorCountIn != colorCountOut )
@@ -441,7 +678,7 @@ int bmWriteTiffFile(	const MemoryBuffer *		filename,
 	    (unsigned short *)malloc( colorCountOut * sizeof(unsigned short) );
 
 	if  ( ! redMap || ! greenMap || ! blueMap )
-	    { LDEB(colorCountOut); return -1; }
+	    { LDEB(colorCountOut); rval= -1; goto ready; }
 
 	for ( i= 0; i < bd->bdPalette.cpColorCount; i++ )
 	    {
@@ -460,35 +697,33 @@ int bmWriteTiffFile(	const MemoryBuffer *		filename,
 	    {
 	    if  ( ! TIFFSetField( t, TIFFTAG_BITSPERSAMPLE,
 						    bd->bdBitsPerPixel/ 2 ) )
-		{ LLDEB(TIFFTAG_BITSPERSAMPLE,bd->bdBitsPerSample); return -1; }
+		{ LLDEB(TIFFTAG_BITSPERSAMPLE,bd->bdBitsPerSample); rval= -1; goto ready; }
 	    if  ( ! TIFFSetField( t, TIFFTAG_SAMPLESPERPIXEL, 2 ) )
-		{ LLDEB(TIFFTAG_SAMPLESPERPIXEL,1); TIFFClose(t); return -1; }
+		{ LLDEB(TIFFTAG_SAMPLESPERPIXEL,1); rval= -1; goto ready; }
 	    }
 	else{
 	    if  ( ! TIFFSetField( t, TIFFTAG_BITSPERSAMPLE,
 						    bd->bdBitsPerPixel ) )
-		{ LLDEB(TIFFTAG_BITSPERSAMPLE,bd->bdBitsPerSample); return -1; }
+		{ LLDEB(TIFFTAG_BITSPERSAMPLE,bd->bdBitsPerSample); rval= -1; goto ready; }
 	    if  ( ! TIFFSetField( t, TIFFTAG_SAMPLESPERPIXEL, 1 ) )
-		{ LLDEB(TIFFTAG_SAMPLESPERPIXEL,1); TIFFClose(t); return -1; }
+		{ LLDEB(TIFFTAG_SAMPLESPERPIXEL,1); rval= -1; goto ready; }
 	    }
 
 	if  ( TIFFSetField( t, TIFFTAG_COLORMAP,
 				    redMap, greenMap, blueMap ) != 1 )
-	    { LDEB(TIFFTAG_COLORMAP); TIFFClose(t); return -1;	}
-
-	free( redMap ); free( greenMap ); free( blueMap );
+	    { LDEB(TIFFTAG_COLORMAP); rval= -1; goto ready;	}
 	}
     else{
 	if  ( ! TIFFSetField( t, TIFFTAG_BITSPERSAMPLE, bd->bdBitsPerSample ) )
-	    { LLDEB(TIFFTAG_BITSPERSAMPLE,bd->bdBitsPerSample); return -1; }
+	    { LLDEB(TIFFTAG_BITSPERSAMPLE,bd->bdBitsPerSample); rval= -1; goto ready; }
 
 	if  ( ! TIFFSetField( t, TIFFTAG_SAMPLESPERPIXEL,
 						bd->bdSamplesPerPixel ) )
-	    { LLDEB(TIFFTAG_SAMPLESPERPIXEL,bd->bdSamplesPerPixel); return -1; }
+	    { LLDEB(TIFFTAG_SAMPLESPERPIXEL,bd->bdSamplesPerPixel); rval= -1; goto ready; }
 	}
 
     if  ( ! TIFFSetField( t, TIFFTAG_PLANARCONFIG, 1 ) )
-	{ LLDEB(TIFFTAG_PLANARCONFIG,1); TIFFClose(t); return -1; }
+	{ LLDEB(TIFFTAG_PLANARCONFIG,1); rval= -1; goto ready; }
 
 					/********************************/
 					/*  To make PC's happy, make	*/
@@ -509,7 +744,7 @@ int bmWriteTiffFile(	const MemoryBuffer *		filename,
 	{ rowsPerStrip= 1;	}
 
     if  ( ! TIFFSetField( t, TIFFTAG_ROWSPERSTRIP, rowsPerStrip ) )
-	{ LLDEB(TIFFTAG_ROWSPERSTRIP,rowsPerStrip); TIFFClose(t); return -1; }
+	{ LLDEB(TIFFTAG_ROWSPERSTRIP,rowsPerStrip); rval= -1; goto ready; }
 
     if  ( bd->bdHasAlpha )
 	{
@@ -519,7 +754,7 @@ int bmWriteTiffFile(	const MemoryBuffer *		filename,
 	    {
 	    LLDEB(colorSpace,bd->bdSamplesPerPixel);
 	    LLDEB(TIFFTAG_EXTRASAMPLES,bd->bdHasAlpha); 
-	    TIFFClose(t); return -1;
+	    rval= -1; goto ready;
 	    }
 	}
 
@@ -558,29 +793,39 @@ int bmWriteTiffFile(	const MemoryBuffer *		filename,
 	}
 
     if  ( ! TIFFSetField( t, TIFFTAG_RESOLUTIONUNIT, unit ) )
-	{ LLDEB(TIFFTAG_RESOLUTIONUNIT, unit); return -1; }
+	{ LLDEB(TIFFTAG_RESOLUTIONUNIT, unit); rval= -1; goto ready; }
 
     if  ( ! TIFFSetField( t, TIFFTAG_XRESOLUTION, (float)xResolution ) )
-	{ LLDEB(TIFFTAG_XRESOLUTION, xResolution); return -1; }
+	{ LLDEB(TIFFTAG_XRESOLUTION, xResolution); rval= -1; goto ready; }
 
     if  ( ! TIFFSetField( t, TIFFTAG_YRESOLUTION, (float)yResolution ) )
-	{ LLDEB(TIFFTAG_YRESOLUTION, yResolution); return -1; }
+	{ LLDEB(TIFFTAG_YRESOLUTION, yResolution); rval= -1; goto ready; }
 
     if  ( ! TIFFSetField( t, TIFFTAG_SOFTWARE, "appFrame:"
 		    " Mark de Does,"
 		    " mark@mdedoes.com" ) )
-	{ LDEB(TIFFTAG_SOFTWARE); return -1; }
+	{ LDEB(TIFFTAG_SOFTWARE); rval= -1; goto ready; }
 
     for ( row= 0; row < bd->bdPixelsHigh; row++ )
 	{
 	if  ( TIFFWriteScanline( t, (char *) buffer+ row* bd->bdBytesPerRow,
 								row, 0 ) < 0 )
-	    { LDEB(row); return -1; }
+	    { LDEB(row); rval= -1; goto ready; }
 	}
 
-    TIFFClose( t );
+  ready:
 
-    return 0;
+    if  ( t )
+	{ TIFFClose( t ); 	}
+
+    if  ( redMap )
+	{ free( redMap );	}
+    if  ( greenMap )
+	{ free( greenMap );	}
+    if  ( blueMap )
+	{ free( blueMap );	}
+
+    return rval;
     }
 
 #   endif /* TIFF_FOUND */

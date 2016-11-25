@@ -42,7 +42,7 @@ void docInitDocumentStyle(	DocumentStyle *	ds )
     docInitRowProperties( &(ds->dsRowProps) );
     docInitCellProperties( &(ds->dsCellProps) );
     docInitParagraphProperties( &(ds->dsParaProps) );
-    utilInitTextAttribute( &(ds->dsTextAttribute) );
+    textInitTextAttribute( &(ds->dsTextAttribute) );
 
     utilPropMaskClear( &(ds->dsSectMask ) );
     utilPropMaskClear( &(ds->dsRowMask ) );
@@ -58,7 +58,7 @@ void docInitDocumentStyle(	DocumentStyle *	ds )
 void docCleanDocumentStyle(	DocumentStyle *	ds )
     {
     docCleanParagraphProperties( &(ds->dsParaProps) );
-    docCleanCellProperties( &(ds->dsCellProps) );
+    /*docCleanCellProperties( &(ds->dsCellProps) );*/
     docCleanRowProperties( &(ds->dsRowProps) );
     docCleanSectionProperties( &(ds->dsSectProps) );
 
@@ -92,8 +92,10 @@ int docCopyStyle(	DocumentStyle *			to,
 			&(from->dsCellMask), &(from->dsCellProps), dam ) )
 	{ LDEB(1); rval= -1; goto ready;	}
 
-    if  ( docUpdRowProperties( (PropertyMask *)0, &(ds.dsRowProps),
-			&(from->dsRowMask), &(from->dsRowProps), dam ) )
+    if  ( docUpdRowProperties( (PropertyMask *)0, (PropertyMask *)0,
+		    &(ds.dsRowProps), &(from->dsRowMask), &(from->dsCellMask),
+		    &(from->dsRowProps),
+		    0, from->dsRowProps.rpCellCount, dam ) )
 	{ LDEB(1); rval= -1; goto ready;	}
 
     if  ( docCopySectionProperties( &(ds.dsSectProps),
@@ -111,6 +113,7 @@ int docCopyStyle(	DocumentStyle *			to,
     docInitDocumentStyle( &ds );
 
   ready:
+
     docCleanDocumentStyle( &ds );
 
     return rval;

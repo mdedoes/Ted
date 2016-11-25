@@ -6,14 +6,14 @@
 
 #   include	"docRtfConfig.h"
 
-#   include	<stdio.h>
 #   include	<ctype.h>
-
-#   include	<appDebugon.h>
 
 #   include	"docRtfWriterImpl.h"
 #   include	"docRtfReaderImpl.h"
 #   include	"docRtfTags.h"
+#   include	<docAttributes.h>
+
+#   include	<appDebugon.h>
 
 /************************************************************************/
 /*									*/
@@ -52,33 +52,33 @@ void docRtfSaveBorderByNumber(		RtfWriter *			rwc,
 					int				num,
 					int				anyway )
     {
-    const BufferDocument *		bd= rwc->rwDocument;
+    const struct BufferDocument *	bd= rwc->rwDocument;
 
-    BorderProperties			bp;
+    const BorderProperties *		bp;
 
-    docGetBorderPropertiesByNumber( &bp, bd, num );
+    bp= docGetBorderPropertiesByNumber( bd, num );
 
-    if  ( ! anyway && bp.bpStyle == DOCbsNONE )
+    if  ( ! anyway && bp->bpStyle == DOCbsNONE )
 	{ return;	}
 
-    docRtfSaveBorder( rwc, tag, &bp );
+    docRtfSaveBorder( rwc, tag, bp );
     }
 
 int docRtfBeginBorder(		const RtfControlWord *	rcw,
 				int			arg,
 				RtfReader *		rr )
     {
-    docInitBorderProperties( &(rr->rrcBorderProperties) );
-    rr->rrcBorderProperties.bpStyle= DOCbsS;
+    docInitBorderProperties( &(rr->rrBorderProperties) );
+    rr->rrBorderProperties.bpStyle= DOCbsS;
     return 0;
     }
 
 int docRtfReadGetBorderNumber(	RtfReader *	rr )
     {
     int rval= docBorderPropertiesNumber( rr->rrDocument,
-						&(rr->rrcBorderProperties) );
+						&(rr->rrBorderProperties) );
 
-    docInitBorderProperties( &(rr->rrcBorderProperties) );
+    docInitBorderProperties( &(rr->rrBorderProperties) );
 
     return rval;
     }
@@ -87,7 +87,7 @@ int docRtfBrdrProperty(		const RtfControlWord *	rcw,
 				int			arg,
 				RtfReader *		rr )
     {
-    if  ( docSetBorderProperty( &(rr->rrcBorderProperties),
+    if  ( docSetBorderProperty( &(rr->rrBorderProperties),
 						    rcw->rcwID, arg ) < 0 )
 	{ SLLDEB(rcw->rcwWord,rcw->rcwID,arg); return -1; }
 

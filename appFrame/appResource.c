@@ -15,8 +15,10 @@
 #   include	<utilTree.h>
 #   include	<utilProperties.h>
 #   include	<utilMemoryBufferPrintf.h>
+#   include	<utilMemoryBuffer.h>
 
-#   include	"appFrame.h"
+#   include	"appEditApplication.h"
+#   include	"appGuiResource.h"
 
 #   include	<appDebugon.h>
 
@@ -68,10 +70,10 @@ static int appReadProperties(	void *			properties,
 
     utilInitMemoryBuffer( &absolute );
 
-    if  ( appAbsoluteName( &absolute, relative, relativeIsFile, dir ) < 0 )
+    if  ( fileAbsoluteName( &absolute, relative, relativeIsFile, dir ) < 0 )
 	{ LDEB(1); rval= -1; goto ready; }
 
-    if  ( appTestFileExists( &absolute ) )
+    if  ( fileTestFileExists( &absolute ) )
 	{ goto ready;	}
 
     if  ( utilPropertiesReadFile( properties, &absolute ) )
@@ -82,6 +84,20 @@ static int appReadProperties(	void *			properties,
     utilCleanMemoryBuffer( &absolute );
 
     return rval;
+    }
+
+/************************************************************************/
+
+int appReadOverrideProperties(	EditApplication *	ea,
+				const MemoryBuffer *	filename )
+    {
+    if  ( appMakeUserProperties( ea ) )
+	{ XDEB(ea->eaUserProperties); return -1;	}
+
+    if  ( utilPropertiesReadFile( ea->eaUserProperties, filename ) )
+	{ LDEB(1); return -1;	}
+
+    return 0;
     }
 
 /************************************************************************/
@@ -107,7 +123,7 @@ int appReadUserProperties(	EditApplication *	ea )
 						ea->eaApplicationName ) < 1 )
 	{ rval= -1; goto ready;	}
 
-    if  ( appHomeDirectory( &homeDirectory ) < 0 )
+    if  ( fileHomeDirectory( &homeDirectory ) < 0 )
 	{ LDEB(1); rval= -1; goto ready;	}
 
     if  ( appReadProperties( ea->eaUserProperties, &homeDirectory, &relative ) )
@@ -131,70 +147,60 @@ int appReadSystemProperties(	EditApplication *	ea )
     {
     int			rval= 0;
 
-    const int		relativeIsFile= 0;
-
-    MemoryBuffer	pkgDirectory;
-    MemoryBuffer	appRelative;
-    MemoryBuffer	appDirectory;
+    MemoryBuffer	confDirectory;
     MemoryBuffer	relative;
 
-    utilInitMemoryBuffer( &pkgDirectory );
-    utilInitMemoryBuffer( &appRelative );
-    utilInitMemoryBuffer( &appDirectory );
+    utilInitMemoryBuffer( &confDirectory );
     utilInitMemoryBuffer( &relative );
 
     if  ( appMakeSystemProperties( ea ) )
 	{ XDEB(ea->eaSystemProperties); rval= -1; goto ready;	}
 
-    if  ( utilMemoryBufferSetString( &pkgDirectory, PKGDIR ) )
+    if  ( utilMemoryBufferSetString( &confDirectory, CONFDIR ) )
 	{ rval= -1; goto ready;	}
-    if  ( utilMemoryBufferSetString( &appRelative, ea->eaApplicationName ) )
-	{ rval= -1; goto ready;	}
-
-    if  ( appAbsoluteName( &appDirectory, &appRelative,
-					relativeIsFile, &pkgDirectory ) < 0 )
-	{ SSDEB(ea->eaApplicationName,PKGDIR); rval= -1; goto ready; }
 
     if  ( utilMemoryBufferPrintf( &relative, "%s.properties",
 						ea->eaApplicationName ) < 1 )
 	{ rval= -1; goto ready;	}
 
     if  ( appReadProperties( ea->eaSystemProperties,
-					    &appDirectory, &relative ) )
-	{ LDEB(1); rval= -1; goto ready;	}
-
-    if  ( ea->eaLocaleName )
+					    &confDirectory, &relative ) )
 	{
-	char *	uscore= strchr( ea->eaLocaleName, '_' );
+	SDEB(utilMemoryBufferGetString(&confDirectory));
+	SDEB(utilMemoryBufferGetString(&relative));
+	rval= -1; goto ready;
+	}
+
+    if  ( ea->eaLocaleTag )
+	{
+	char *	uscore= strchr( ea->eaLocaleTag, '_' );
 
 	if  ( uscore )
 	    {
 	    if  ( utilMemoryBufferPrintf( &relative, "%s-%.*s.properties",
 					    ea->eaApplicationName,
-					    (int)( uscore- ea->eaLocaleName ),
-					    ea->eaLocaleName ) < 1 )
+					    (int)( uscore- ea->eaLocaleTag ),
+					    ea->eaLocaleTag ) < 1 )
 		{ rval= -1; goto ready;	}
 
 	    if  ( appReadProperties( ea->eaSystemProperties,
-					    &appDirectory, &relative ) )
+					    &confDirectory, &relative ) )
 		{ LDEB(1); rval= -1; goto ready;	}
 	    }
 
 	if  ( utilMemoryBufferPrintf( &relative, "%s-%s.properties",
 					    ea->eaApplicationName,
-					    ea->eaLocaleName ) < 1 )
+					    ea->eaLocaleTag ) < 1 )
 	    { rval= -1; goto ready;	}
 
 	if  ( appReadProperties( ea->eaSystemProperties,
-					    &appDirectory, &relative ) )
+					    &confDirectory, &relative ) )
 	    { LDEB(1); rval= -1; goto ready;	}
 	}
 
   ready:
 
-    utilCleanMemoryBuffer( &pkgDirectory );
-    utilCleanMemoryBuffer( &appRelative );
-    utilCleanMemoryBuffer( &appDirectory );
+    utilCleanMemoryBuffer( &confDirectory );
     utilCleanMemoryBuffer( &relative );
 
     return rval;
@@ -212,27 +218,53 @@ int appReadSystemProperties(	EditApplication *	ea )
 /*									*/
 /************************************************************************/
 
-static void appSetResourceDefault(
+static char * appGetResourceValueFromTree(
 				EditApplication *		ea,
 				void *				tree,
 				char *				scratch,
-				AppConfigurableResource *	acr )
+				const char *			name )
     {
     const char *	key;
     void *		value;
 
-    /*  1  */
-    sprintf( scratch, "%s*%s", ea->eaApplicationName, acr->acrResourceName );
+    sprintf( scratch, "%s.%s", ea->eaApplicationName, name );
     value= utilTreeGetEQ( tree, &key, scratch );
     if  ( value )
-	{ acr->acrDefaultValue= (char *)value;	}
+	{ return (char *)value;	}
 
-    sprintf( scratch, "%s.%s", ea->eaApplicationName, acr->acrResourceName );
+    sprintf( scratch, "%s*%s", ea->eaApplicationName, name );
     value= utilTreeGetEQ( tree, &key, scratch );
     if  ( value )
-	{ acr->acrDefaultValue= (char *)value;	}
+	{ return (char *)value;	}
 
-    return;
+    return (char *)0;
+    }
+
+static char * appGetResourceValue(
+				EditApplication *		ea,
+				char *				scratch,
+				const char *			name )
+    {
+    char *	value;
+
+    /*  2  */
+    if  ( ea->eaUserProperties )
+	{
+	value= appGetResourceValueFromTree( ea, ea->eaUserProperties,
+							    scratch, name );
+	if  ( value )
+	    { return value; }
+	}
+
+    if  ( ea->eaSystemProperties )
+	{
+	value= appGetResourceValueFromTree( ea, ea->eaSystemProperties,
+							    scratch, name );
+	if  ( value )
+	    { return value; }
+	}
+
+    return (char *)0;
     }
 
 void appSetResourceDefaults(	EditApplication *		ea,
@@ -254,23 +286,18 @@ void appSetResourceDefaults(	EditApplication *		ea,
     maxLen= strlen( ea->eaApplicationName )+ 1+ maxLen+ 1;
     scratch= malloc( maxLen );
     if  ( ! scratch )
-	{ LXDEB(maxLen,scratch); return;	}
+	{ LXDEB(maxLen,scratch); goto ready;	}
 
     for ( i= 0; i < acrCount; i++ )
 	{
-	/*  2  */
-	if  ( ea->eaSystemProperties )
-	    {
-	    appSetResourceDefault( ea, ea->eaSystemProperties,
-							scratch, acr+ i );
-	    }
+	char *	value;
 
-	if  ( ea->eaUserProperties )
-	    {
-	    appSetResourceDefault( ea, ea->eaUserProperties,
-							scratch, acr+ i );
-	    }
+	value= appGetResourceValue( ea, scratch, acr[i].acrResourceName );
+	if  ( value )
+	    { acr[i].acrDefaultValue= value; continue; }
 	}
+
+  ready:
 
     if  ( scratch )
 	{ free( scratch );	}
@@ -284,16 +311,16 @@ static int appSetProperty(		EditApplication *	ea,
 					const char *		value )
     {
     int			rval= 0;
-    int			maxLen;
+    int			len;
     char *		scratch= (char *)0;
 
     char *		savedValue= (char *)0;
     void *		prevValue= (char *)0;
 
-    maxLen= strlen( ea->eaApplicationName )+ 1+ strlen( name )+ 1;
-    scratch= malloc( maxLen );
+    len= strlen( ea->eaApplicationName )+ 1+ strlen( name )+ 1;
+    scratch= malloc( len );
     if  ( ! scratch )
-	{ LXDEB(maxLen,scratch); rval= -1; goto ready;	}
+	{ LXDEB(len,scratch); rval= -1; goto ready;	}
 
     sprintf( scratch, "%s.%s", ea->eaApplicationName, name );
 
@@ -338,5 +365,64 @@ int appSetSystemProperty(	EditApplication *	ea,
 	{ XDEB(ea->eaSystemProperties); return -1;	}
 
     return appSetProperty( ea, ea->eaSystemProperties, name, value );
+    }
+
+/************************************************************************/
+
+const char * appGetProperty(	EditApplication *	ea,
+				const char *		name )
+    {
+    const char *	value= (const char *)0;
+    int			len;
+    char *		scratch= (char *)0;
+
+    len= strlen( ea->eaApplicationName )+ 1+ strlen( name )+ 1;
+    scratch= malloc( len );
+    if  ( ! scratch )
+	{ LXDEB(len,scratch); goto ready;	}
+
+    value= appGetResourceValue( ea, scratch, name );
+
+  ready:
+
+    if  ( scratch )
+	{ free( scratch );	}
+
+    return value;
+    }
+
+/************************************************************************/
+/*									*/
+/*  Retrieve configurable resource values from the GUI environment.	*/
+/*									*/
+/*  1)  This should be done wih something like the GNU message catalog	*/
+/*	system. For the moment, just install the default values.	*/
+/*									*/
+/************************************************************************/
+
+void appGuiGetResourceValues(	int *				pGotResources,
+				EditApplication *		ea,
+				void *				pValues,
+				AppConfigurableResource *	acrList,
+				int				acrCount )
+    {
+    AppConfigurableResource *	acr;
+    char *			values= (char *)pValues;
+    int				i;
+
+    if  ( *pGotResources )
+	{ LDEB(*pGotResources); return;	}
+
+    if  ( ! *pGotResources )
+	{ appSetResourceDefaults( ea, acrList, acrCount );	}
+
+    acr= acrList;
+    for ( i= 0; i < acrCount; acr++, i++ )
+	{
+	*((const char **)(values+acr->acrStructOffset))= acr->acrDefaultValue;
+	}
+
+    *pGotResources= 1;
+    return;
     }
 

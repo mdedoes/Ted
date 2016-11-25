@@ -16,6 +16,8 @@ typedef struct DocumentAttributeMap
     int *			damFrameMap;
     int *			damShadingMap;
     int *			damCellMap;
+    int *			damParaMap;
+    int *			damRowMap;
     int *			damListStyleMap;
     } DocumentAttributeMap;
 

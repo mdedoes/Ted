@@ -4,16 +4,18 @@
 /*									*/
 /************************************************************************/
 
-#   include	"psFontFamily.h"
-
 #   ifndef	PS_FONT_LIST_H
 #   define	PS_FONT_LIST_H
 
+struct PsFontFamily;
+struct AfmFontInfo;
+struct MemoryBuffer;
+
 typedef struct PostScriptFontList
     {
-    PsFontFamily **	psflFamilies;
+    struct PsFontFamily **	psflFamilies;
     int			psflFamilyCount;
-    AfmFontInfo **	psflInfos;
+    struct AfmFontInfo **	psflInfos;
     int			psflInfoCount;
     int			psflAvoidFontconfig;
 				/*  Do not use fontconfig. This is a	*/
@@ -36,10 +38,10 @@ extern void psInitPostScriptFontList(	PostScriptFontList *	psfl );
 extern void psCleanPostScriptFontList(	PostScriptFontList *	psfl );
 
 extern int psPostScriptFontListAddInfo(	PostScriptFontList *	psfl,
-					AfmFontInfo *		afi );
+					struct AfmFontInfo *		afi );
 
 extern int psPostScriptFontListAddFamily( PostScriptFontList *	psfl,
-					PsFontFamily *		aff );
+					struct PsFontFamily *		aff );
 
 extern int psPostScriptFontListInfosToFamilies(
 					PostScriptFontList *	psfl );
@@ -48,25 +50,25 @@ extern int psPostScriptFontListGetFamilyByName(
 					const PostScriptFontList *	psfl,
 					const char *			name );
 
-extern AfmFontInfo * psPostScriptFontListGetFontInfoByFaceFile(
+extern struct AfmFontInfo * psPostScriptFontListGetFontInfoByFaceFile(
 					const PostScriptFontList *	psfl,
 					const char *			file );
 
 extern int psPostScriptFontListSetFontInfoForFaceFile(
 					PostScriptFontList *		psfl,
-					AfmFontInfo *			afi,
+					struct AfmFontInfo *			afi,
 					const char *			file );
 
-extern AfmFontInfo * psPostScriptFontListGetFontInfoByFontName(
+extern struct AfmFontInfo * psPostScriptFontListGetFontInfoByFontName(
 					const PostScriptFontList *	psfl,
 					const char *			name );
 
 extern int psSaveAfms(		const PostScriptFontList *	psfl,
 				int				omitKernPairs,
-				const MemoryBuffer *		afmDirectory );
+				const struct MemoryBuffer *		afmDirectory );
 
 extern int psFontCatalog(		PostScriptFontList *	psfl,
 					int			ignoreKerning,
-					const MemoryBuffer *	afmDirectory );
+					const struct MemoryBuffer *	afmDirectory );
 
 #   endif

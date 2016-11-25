@@ -6,14 +6,16 @@
 
 #   include	"docRtfConfig.h"
 
-#   include	<stdio.h>
 #   include	<ctype.h>
 
-#   include	<appDebugon.h>
-
 #   include	"docRtfWriterImpl.h"
-#   include	<docParaRulerAdmin.h>
 #   include	"docRtfTags.h"
+#   include	<docPropVal.h>
+#   include	<docFrameProperties.h>
+#   include	<utilPropMask.h>
+#   include	<docAttributes.h>
+
+#   include	<appDebugon.h>
 
 /************************************************************************/
 
@@ -63,13 +65,13 @@ void docRtfSaveParaTableNesting(	RtfWriter *		rw,
 
 void docRtfSaveParagraphProperties(
 				RtfWriter *			rw,
-				const PropertyMask *		updMask,
+				const struct PropertyMask *	updMask,
 				const ParagraphProperties *	pp )
     {
     const int			anyway= 1;
 
     if  ( PROPmaskISSET( updMask, PPpropSTYLE ) )
-	{ docRtfWriteArgTag( rw, "s", pp->ppStyle ); }
+	{ docRtfWriteArgTag( rw, "s", pp->ppStyleNumber ); }
 
     if  ( PROPmaskISSET( updMask, PPpropLISTOVERRIDE ) )
 	{ docRtfWriteArgTag( rw, "ls", pp->ppListOverride ); }
@@ -133,12 +135,12 @@ void docRtfSaveParagraphProperties(
     if  ( PROPmaskISSET( updMask, PPpropTAB_STOPS )	&&
 	  pp->ppTabStopListNumber >= 0			)
 	{
-	TabStopList	tsl;
+	const struct TabStopList *	tsl;
 
-	docGetTabStopListByNumber( &tsl, rw->rwDocument,
+	tsl= docGetTabStopListByNumber( rw->rwDocument,
 						    pp->ppTabStopListNumber );
 
-	docRtfSaveTabStopList( rw, &tsl );
+	docRtfSaveTabStopList( rw, tsl );
 	}
 
     if  ( PROPmaskISSET( updMask, PPpropTOP_BORDER ) )
@@ -179,13 +181,12 @@ void docRtfSaveParagraphProperties(
 
     if  ( PROPmaskISSET( updMask, PPpropFRAME ) )
 	{
-	FrameProperties		fp;
+	const FrameProperties *	fp;
 
-	docGetFramePropertiesByNumber( &fp, rw->rwDocument,
-				pp->ppFrameNumber );
+	fp= docGetFramePropertiesByNumber( rw->rwDocument, pp->ppFrameNumber );
 
-	if  ( DOCisFRAME( &fp ) )
-	    { docRtfSaveParaFrameProperties( rw, &fp );	}
+	if  ( DOCisFRAME( fp ) )
+	    { docRtfSaveParaFrameProperties( rw, fp );	}
 	}
 
     if  ( PROPmaskISSET( updMask, PPpropSHADING ) )

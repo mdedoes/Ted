@@ -4,6 +4,9 @@
 /*									*/
 /************************************************************************/
 
+#   ifndef		UCD_BLOCK_H
+#   define		UCD_BLOCK_H
+
 typedef struct UcdBlock
     {
     unsigned int	ubFirst;
@@ -28,3 +31,4 @@ extern const int	UCD_BlockCount;
 
 extern int ucdGetBlock(	int sym );
 
+#   endif	/*	UCD_BLOCK_H	*/

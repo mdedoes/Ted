@@ -7,7 +7,15 @@
 #   ifndef	DOC_DEBUG_H
 #   define	DOC_DEBUG_H
 
-#   include	"docBuf.h"
+struct BufferDocument;
+struct BufferItem;
+struct DocumentTree;
+struct DocumentField;
+struct TextParticule;
+struct ChildFields;
+struct DocumentFontList;
+struct TextLine;
+struct TextAttribute;
 
 /************************************************************************/
 /*									*/
@@ -15,67 +23,74 @@
 /*									*/
 /************************************************************************/
 
-extern void docCheckFieldOffsets(	const BufferDocument *	bd,
-					const struct BufferItem *	bi );
+extern const char * docKindStr(		int			kind );
+extern const char * docTreeTypeStr(	int			kind );
+extern const char * docFieldKindStr(	int			kind );
+extern const char * docObjectKindStr(	int			kind );
+extern const char * docBreakKindStr(	int			kind );
+extern const char * docAttributeStr(	const struct TextAttribute *	ta );
+extern const char * docParticuleFlagsStr( int			flags );
 
-extern int docCheckNode(	const struct BufferItem *	bi,
-				int			checkGeometry );
-extern int docCheckRootNode(	const struct BufferItem *	bi,
-				int			checkGeometry );
+extern void docCheckFieldOffsets(	const struct BufferDocument *	bd,
+					const struct BufferItem *	node );
+
+extern int docCheckNode(	const struct BufferItem *	node,
+				const struct BufferDocument *	bd,
+				int				checkGeometry );
+
+extern int docCheckRootNode(	const struct BufferItem *	node,
+				const struct BufferDocument *	bd,
+				int				checkGeometry );
 
 extern void docListFieldParticule(	int				indent,
 					const char *			label,
 					int				n,
-					const struct BufferItem *		bi,
+					const struct BufferItem *	node,
 					const struct TextParticule *	tp,
-					const DocumentField *		df );
+					const struct DocumentField *	df );
 
-extern void docListFieldTree(		const BufferDocument *	bd,
-					const DocumentTree *	dt );
+extern void docListFieldTree(	const struct DocumentTree *	dt,
+				const struct BufferDocument *	bd );
 
-extern void docScanNotesOfDocument(	const BufferDocument *	bd );
+extern void docScanNotesOfDocument(	const struct BufferDocument *	bd );
 
-extern void docListFields(		const ChildFields *	cf,
-					const BufferDocument *	bd );
+extern void docListFields(		const struct ChildFields *	cf,
+					const struct BufferDocument *	bd );
 
-extern void docListFontList(		const DocumentFontList * dfl );
+extern void docListFieldsOfDocument(	const struct BufferDocument *	bd );
 
-extern void docLogRectangle(	const char *			label,
-				const DocumentRectangle *	dr );
+extern void docListFontList(		const struct DocumentFontList * dfl );
 
-extern void docLogRectangles(	const char *			label1,
-				const DocumentRectangle *	dr1,
-				const char *			label2,
-				const DocumentRectangle *	dr2 );
+extern void docListNode(	int				indent,
+				const struct BufferItem *	node,
+				int				checkGeometry );
 
-extern void docListNode(	int			indent,
-				const struct BufferItem *	bi,
-				int			checkGeometry );
-
-extern void docListRootNode(	int			indent,
-				const struct BufferItem *	bi,
-				int			checkGeometry );
+extern void docListRootNode(	int				indent,
+				const struct BufferItem *	node,
+				int				checkGeometry );
 
 extern void docListParticule(	int				indent,
 				const char *			label,
 				int				n,
-				const struct BufferItem *		bi,
+				const struct BufferItem *	node,
 				const struct TextParticule *	tp );
 
-extern void docListTextLine(	int			indent,
-				const char *		label,
-				int			n,
-				const struct BufferItem *	bi,
-				const struct TextLine *	tl );
+extern void docListTextLine(	int				indent,
+				const char *			label,
+				int				n,
+				const struct BufferItem *	node,
+				const struct TextLine *		tl );
 
-extern void docListObjects(	BufferDocument * 	bd );
+extern void docListObjects(	struct BufferDocument * 	bd );
 
-extern void docListNotes(	const BufferDocument *	bd );
+extern void docListNotes(	const struct BufferDocument *	bd );
 
-extern void docListShapes(		BufferDocument *		bd );
-extern void docListDocumentObjects(	BufferDocument *		bd );
+extern void docListShapes(		struct BufferDocument *		bd );
+extern void docListDocumentObjects(	struct BufferDocument *		bd );
 
 extern void docListField(		int			indent,
-					const DocumentField *	df );
+					const struct DocumentField *	df );
+
+extern const char * docLevelStr(	int			level );
 
 #   endif

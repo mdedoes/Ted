@@ -1,5 +1,5 @@
 #   include	<math.h>
-#   include	<geoLineFitter.h>
+#   include	"geoLineFitter.h"
 #   include	<appDebugon.h>
 
 /************************************************************************/

@@ -2,6 +2,8 @@
 
 #   include	<ucdGeneralCategory.h>
 #   include	"indScanStream.h"
+#   include	"indSpellScanJob.h"
+#   include	"indSpellGuessContext.h"
 #   include	<sioGeneral.h>
 
 #   include	<appDebugon.h>
@@ -20,9 +22,14 @@
 /*									*/
 /************************************************************************/
 
-int indScanStream(	SimpleInputStream *	sis,
-			SpellCheckContext *	scc,
-			void *			through )
+# ifdef __GNUC__
+# pragma GCC diagnostic push
+# pragma GCC diagnostic ignored "-Wunused-parameter"
+# endif
+
+int indScanStream(	SimpleInputStream *		sis,
+			struct SpellDictionary *	sd,
+			void *				through )
     {
     int				rval= 0;
 
@@ -31,11 +38,13 @@ int indScanStream(	SimpleInputStream *	sis,
     IndGuessList		igl;
 
     int				position= -1;
-    int				acceptedPos= position;
 
     indInitSpellScanJob( &ssj );
     indInitGuessList( &igl );
-    indInitSpellGuessContext( &sgc, &igl, scc );
+    indInitSpellGuessContext( &sgc, &igl, sd );
+
+    if  ( indStartSpellScanJob( &ssj, position, (const char *)0 ) )
+	{ LDEB(position); return -1;	}
 
     for (;;)
 	{
@@ -71,7 +80,7 @@ int indScanStream(	SimpleInputStream *	sis,
 	    }
 
 	/*  5  */
-	count= indCountPossibilities( &ssj, scc, position, c == EOF );
+	count= indCountPossibilities( &ssj, sd, position, c == EOF );
 
 	/*  6  */
 	if  ( count == 0 )
@@ -84,16 +93,19 @@ int indScanStream(	SimpleInputStream *	sis,
 		{ XDEB(maxpw); rval= -1; goto ready;	}
 	    }
 
-	indRejectPossibilities( &acceptedPos, acceptedPos, &ssj );
+	indRejectPossibilities( &ssj );
 	indAddCharacterToPossibilities( &ssj, c );
 	}
 
   ready:
 
     indCleanGuessList( &igl );
-    indCleanSpellGuessContext( &sgc );
     indCleanSpellScanJob( &ssj );
 
     return rval;
     }
+
+# ifdef __GNUC__
+# pragma GCC diagnostic pop
+# endif
 

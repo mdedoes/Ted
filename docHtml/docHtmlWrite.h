@@ -13,9 +13,10 @@
 #   ifndef		DOC_HTML_WRITE_H
 #   define		DOC_HTML_WRITE_H
 
-#   include		<sioGeneral.h>
-#   include		<docBuf.h>
-#   include		<layoutContext.h>
+struct SimpleOutputStream;
+struct MemoryBuffer;
+struct BufferDocument;
+struct LayoutContext;
 
 /************************************************************************/
 /*									*/
@@ -23,19 +24,19 @@
 /*									*/
 /************************************************************************/
 
-extern int docHtmlSaveDocument(	SimpleOutputStream *	sos,
-				BufferDocument *	bd,
-				const MemoryBuffer *	filename,
-				const LayoutContext *	lc );
+extern int docHtmlSaveDocument(	struct SimpleOutputStream *	sos,
+				struct BufferDocument *		bd,
+				const struct MemoryBuffer *	filename,
+				const struct LayoutContext *	lc );
 
-extern int docEmlSaveDocument(	SimpleOutputStream *	sos,
-				BufferDocument *	bd,
-				const char *		mimeBoundary,
-				const LayoutContext *	lc );
+extern int docEmlSaveDocument(	struct SimpleOutputStream *	sos,
+				struct BufferDocument *		bd,
+				const char *			mimeBoundary,
+				const struct LayoutContext *	lc );
 
-extern int docEpubSaveDocument(	SimpleOutputStream *	sos,
-				BufferDocument *	bd,
-				const LayoutContext *	lc );
+extern int docEpubSaveDocument(	struct SimpleOutputStream *	sos,
+				struct BufferDocument *		bd,
+				const struct LayoutContext *	lc );
 
 #   endif	/*	DOC_HTML_WRITE_H	*/
 

@@ -6,10 +6,9 @@
 
 #   include	"docLayoutConfig.h"
 
-#   include	<stddef.h>
-
 #   include	"docLayout.h"
 #   include	"docSelectLayout.h"
+#   include	"docLayoutDocumentTree.h"
 #   include	<docPageGrid.h>
 #   include	<docField.h>
 #   include	<docTreeType.h>
@@ -17,7 +16,16 @@
 #   include	<docTextLine.h>
 #   include	<docNotes.h>
 #   include	<docRecalculateFields.h>
+#   include	<docDocumentField.h>
+#   include	<docSelect.h>
+#   include	<docSectProperties.h>
+#   include	<docBlockFrame.h>
+#   include	<docNodeTree.h>
+#   include	<docDocumentTree.h>
+#   include	<docTreeNode.h>
+#   include	<docBuf.h>
 
+#   include	<docDebug.h>
 #   include	<appDebugon.h>
 
 /************************************************************************/
@@ -33,10 +41,12 @@ static int docNoteSeparatorBox(	DocumentRectangle *		dr,
 				int				column,
 				const LayoutContext *		lc )
     {
-    DocumentTree *		eiNoteSep;
+    struct DocumentTree *	noteSepTree;
     int				y0Twips;
     struct DocumentNote *	dnFirstNote;
     DocumentField *		dfNote;
+
+    const struct BufferItem *	bodySectNode;
 
     dfNote= docGetFirstNoteInColumn( &dnFirstNote, lc->lcDocument, 
 						page, column, noteItKind );
@@ -44,23 +54,25 @@ static int docNoteSeparatorBox(	DocumentRectangle *		dr,
     if  ( ! dfNote )
 	{ XDEB(dfNote); return -1;	}
 
-    if  ( docNoteSeparatorRectangle( dr, &eiNoteSep, &y0Twips,
-					    dnFirstNote, noteSepKind, lc ) )
+    bodySectNode= docGetBodySectNodeOfScope( &(dfNote->dfSelectionScope),
+							    lc->lcDocument );
+
+    if  ( docNoteSeparatorRectangle( dr, &noteSepTree, &y0Twips,
+				dnFirstNote, noteSepKind, bodySectNode, lc ) )
 	{ LDEB(1); return -1;	}
 
     return 0;
     }
 
 int docGetBoxAroundTree(	DocumentRectangle *		dr,
-				const BufferItem *		bodySectNode,
-				const DocumentTree *		tree,
+				const struct DocumentTree *	tree,
 				int				justUsed,
 				int				page,
 				int				column,
 				const LayoutContext *		lc )
     {
     int				rval= 0;
-    BufferItem *		treeRoot= tree->dtRoot;
+    struct BufferItem *		treeRoot= tree->dtRoot;
 
     BlockFrame			bf;
     DocumentRectangle		drTwips;
@@ -73,12 +85,10 @@ int docGetBoxAroundTree(	DocumentRectangle *		dr,
 
     switch( treeRoot->biTreeType )
 	{
-	case DOCinFIRST_HEADER:
-	case DOCinLEFT_HEADER:
-	case DOCinRIGHT_HEADER:
-	case DOCinFIRST_FOOTER:
-	case DOCinLEFT_FOOTER:
-	case DOCinRIGHT_FOOTER:
+	case DOCinFIRST_HEADER:	case DOCinFIRST_FOOTER:
+	case DOCinLEFT_HEADER:	case DOCinLEFT_FOOTER:
+	case DOCinRIGHT_HEADER:	case DOCinRIGHT_FOOTER:
+	case DOCinLAST_HEADER:	case DOCinLAST_FOOTER:
 
 	    docBlockFrameTwips( &bf, treeRoot, lc->lcDocument, page, column );
 
@@ -182,14 +192,14 @@ int docGetBoxAroundTree(	DocumentRectangle *		dr,
 
 /************************************************************************/
 
-static void docPlaceHeader(	DocumentTree *			tree,
+static void docPlaceHeader(	struct DocumentTree *			tree,
 				const DocumentGeometry *	dgSect )
     {
     tree->dtY0UsedTwips= tree->dtRoot->biTopPosition.lpPageYTwips;
     tree->dtY1UsedTwips= tree->dtRoot->biBelowPosition.lpPageYTwips;
 
     tree->dtY0ReservedTwips= dgSect->dgHeaderPositionTwips;
-    tree->dtY1ReservedTwips= dgSect->dgTopMarginTwips;
+    tree->dtY1ReservedTwips= dgSect->dgMargins.roTopOffset;
 
     if  ( tree->dtY1ReservedTwips < tree->dtY1UsedTwips )
 	{ tree->dtY1ReservedTwips=  tree->dtY1UsedTwips;	}
@@ -197,7 +207,7 @@ static void docPlaceHeader(	DocumentTree *			tree,
     return;
     }
 
-static void docPlaceFooter(	DocumentTree *			tree,
+static void docPlaceFooter(	struct DocumentTree *			tree,
 				const DocumentGeometry *	dgSect )
     {
     int	high= tree->dtRoot->biBelowPosition.lpPageYTwips-
@@ -208,7 +218,7 @@ static void docPlaceFooter(	DocumentTree *			tree,
     tree->dtY0UsedTwips= tree->dtY1UsedTwips- high;
 
     tree->dtY0ReservedTwips=
-		dgSect->dgPageHighTwips- dgSect->dgBottomMarginTwips;
+		dgSect->dgPageHighTwips- dgSect->dgMargins.roBottomOffset;
     tree->dtY1ReservedTwips=
 		dgSect->dgPageHighTwips- dgSect->dgFooterPositionTwips;
 
@@ -232,9 +242,9 @@ static void docPlaceFooter(	DocumentTree *			tree,
 /*									*/
 /************************************************************************/
 
-int docTreePrelayout(		DocumentTree *		tree,
-				const BufferItem *	bodySectNode,
-				LayoutJob *		lj )
+int docTreePrelayout(		struct DocumentTree *		tree,
+				const struct BufferItem *	bodySectNode,
+				LayoutJob *			lj )
     {
     int				rval= 0;
     const LayoutContext *	lc= &(lj->ljContext);
@@ -257,10 +267,10 @@ int docTreePrelayout(		DocumentTree *		tree,
 
     tree->dtRoot->biSectDocumentGeometry.dgPageWideTwips=
 						dgSect->dgPageWideTwips;
-    tree->dtRoot->biSectDocumentGeometry.dgLeftMarginTwips=
-						dgSect->dgLeftMarginTwips;
-    tree->dtRoot->biSectDocumentGeometry.dgRightMarginTwips=
-						dgSect->dgRightMarginTwips;
+    tree->dtRoot->biSectDocumentGeometry.dgMargins.roLeftOffset=
+						dgSect->dgMargins.roLeftOffset;
+    tree->dtRoot->biSectDocumentGeometry.dgMargins.roRightOffset=
+						dgSect->dgMargins.roRightOffset;
 
     treeLp.lpPage= tree->dtRoot->biTopPosition.lpPage;
     treeLp.lpColumn= 0;
@@ -291,12 +301,14 @@ int docTreePrelayout(		DocumentTree *		tree,
 	case DOCinFIRST_HEADER:
 	case DOCinLEFT_HEADER:
 	case DOCinRIGHT_HEADER:
+	case DOCinLAST_HEADER:
 	    docPlaceHeader( tree, dgSect );
 	    break;
 
 	case DOCinFIRST_FOOTER:
 	case DOCinLEFT_FOOTER:
 	case DOCinRIGHT_FOOTER:
+	case DOCinLAST_FOOTER:
 	    docPlaceFooter( tree, dgSect );
 	    break;
 
@@ -337,22 +349,22 @@ int docTreePrelayout(		DocumentTree *		tree,
 /*									*/
 /************************************************************************/
 
-int docSectHeaderFooterPrelayout(	BufferItem *	bodySectNode,
-					LayoutJob *	lj )
+int docSectHeaderFooterPrelayout(	struct BufferItem *	bodySectNode,
+					LayoutJob *		lj )
     {
     int				hdft;
     int				redraw= 0;
 
     for ( hdft= 0; hdft < DOC_HeaderFooterTypeCount; hdft++ )
 	{
-	DocumentTree *		dtHdFt;
+	struct DocumentTree *		dtHdFt;
 	unsigned char		applies;
 
 	int			resY0;
 	int			resY1;
 
 	dtHdFt= docSectionHeaderFooter( bodySectNode, &applies,
-				    &(lj->ljContext.lcDocument->bdProperties),
+				    lj->ljContext.lcDocument->bdProperties,
 				    DOC_HeaderFooterTypes[hdft] );
 	if  ( ! dtHdFt )
 	    { XDEB(dtHdFt); return -1;	}
@@ -398,21 +410,21 @@ int docSectHeaderFooterPrelayout(	BufferItem *	bodySectNode,
 /*									*/
 /************************************************************************/
 
-void docResetExternalTreeLayout(	BufferDocument *	bd )
+void docResetExternalTreeLayout(	struct BufferDocument *	bd )
     {
     int		i;
 
-    docInvalidateTreeLayout( &(bd->bdEiFtnsep) );
-    docInvalidateTreeLayout( &(bd->bdEiFtnsepc) );
-    docInvalidateTreeLayout( &(bd->bdEiFtncn) );
+    docInvalidateTreeLayout( &(bd->bdFtnsep) );
+    docInvalidateTreeLayout( &(bd->bdFtnsepc) );
+    docInvalidateTreeLayout( &(bd->bdFtncn) );
 
-    docInvalidateTreeLayout( &(bd->bdEiAftnsep) );
-    docInvalidateTreeLayout( &(bd->bdEiAftnsepc) );
-    docInvalidateTreeLayout( &(bd->bdEiAftncn) );
+    docInvalidateTreeLayout( &(bd->bdAftnsep) );
+    docInvalidateTreeLayout( &(bd->bdAftnsepc) );
+    docInvalidateTreeLayout( &(bd->bdAftncn) );
 
     for ( i= 0; i < bd->bdBody.dtRoot->biChildCount; i++ )
 	{
-	BufferItem *	bodySectNode=  bd->bdBody.dtRoot->biChildren[i];
+	struct BufferItem *	bodySectNode=  bd->bdBody.dtRoot->biChildren[i];
 
 	docInvalidateSectHeaderFooterLayout( bodySectNode );
 	}
@@ -428,22 +440,22 @@ void docResetExternalTreeLayout(	BufferDocument *	bd )
 /************************************************************************/
 
 static int docGetY0ForSelectedNoteSeparator(
-					int *			pY0Twips,
-					BufferItem **		pBodySectNode,
-					const LayoutContext *	lc,
-					const DocumentTree *	selTree,
-					int			noteItKind,
-					int			sepItKind )
+				int *			pY0Twips,
+				struct BufferItem **	pBodySectNode,
+				const LayoutContext *	lc,
+				const struct DocumentTree *	selTree,
+				int			noteItKind,
+				int			sepItKind )
     {
     struct DocumentNote *	dnFirstNote;
-    DocumentTree *		eiBody;
-    DocumentTree *		eiNoteSep;
+    struct DocumentTree *		eiBody;
+    struct DocumentTree *		noteSepTree;
     int				y0Twips;
 
     DocumentRectangle		drExtern;
 
     DocumentField *		dfNote;
-    BufferItem *		bodySectNode;
+    struct BufferItem *		bodySectNode;
 
     dfNote= docGetFirstNoteInColumn( &dnFirstNote, lc->lcDocument, 
 					    selTree->dtPageSelectedUpon,
@@ -459,8 +471,8 @@ static int docGetY0ForSelectedNoteSeparator(
 						&(dfNote->dfSelectionScope) ) )
 	{ LDEB(1); return -1;	}
 
-    if  ( docNoteSeparatorRectangle( &drExtern, &eiNoteSep,
-				    &y0Twips, dnFirstNote, sepItKind, lc ) )
+    if  ( docNoteSeparatorRectangle( &drExtern, &noteSepTree,
+			&y0Twips, dnFirstNote, sepItKind, bodySectNode, lc ) )
 	{ LDEB(1); return -1;	}
 
     *pY0Twips= y0Twips;
@@ -469,14 +481,14 @@ static int docGetY0ForSelectedNoteSeparator(
     }
 
 int docCheckPageOfSelectedTree(	int *			pChanged,
-				BufferItem **		pBodySectNode,
+				struct BufferItem **	pBodySectNode,
 				DocumentRectangle *	drChanged,
-				DocumentTree *		selTree,
+				struct DocumentTree *	selTree,
 				const LayoutContext *	lc,
-				INIT_LAYOUT_EXTERNAL	initLayoutExternal )
+				START_TREE_LAYOUT	startTreeLayout )
     {
     int				y0Twips;
-    BufferItem *		selRootBodySectNode= (BufferItem *)0;
+    struct BufferItem *		selRootBodySectNode= (struct BufferItem *)0;
     const SelectionScope *	selRootScope;
     const int			adjustDocument= 0;
 
@@ -491,13 +503,10 @@ int docCheckPageOfSelectedTree(	int *			pChanged,
 	    LDEB(selTree->dtRoot->biTreeType);
 	    return -1;
 
-	case DOCinFIRST_HEADER:
-	case DOCinLEFT_HEADER:
-	case DOCinRIGHT_HEADER:
-
-	case DOCinFIRST_FOOTER:
-	case DOCinLEFT_FOOTER:
-	case DOCinRIGHT_FOOTER:
+	case DOCinFIRST_HEADER:	case DOCinFIRST_FOOTER:
+	case DOCinLEFT_HEADER:	case DOCinLEFT_FOOTER:
+	case DOCinRIGHT_HEADER:	case DOCinRIGHT_FOOTER:
+	case DOCinLAST_HEADER:	case DOCinLAST_FOOTER:
 
 	    selRootBodySectNode= docGetBodySectNodeOfScope( selRootScope,
 							    lc->lcDocument );
@@ -572,7 +581,7 @@ int docCheckPageOfSelectedTree(	int *			pChanged,
 				    selTree->dtPageSelectedUpon,
 				    selTree->dtColumnSelectedIn,
 				    y0Twips, selRootBodySectNode, lc,
-				    initLayoutExternal, adjustDocument ) )
+				    startTreeLayout, adjustDocument ) )
 	{ LDEB(selTree->dtPageSelectedUpon); return -1; }
 
     *pBodySectNode= selRootBodySectNode;
@@ -586,14 +595,14 @@ int docCheckPageOfSelectedTree(	int *			pChanged,
 /*									*/
 /************************************************************************/
 
-int docLayoutDocumentTree(	DocumentTree *		tree,
+int docLayoutDocumentTree(	struct DocumentTree *	tree,
 				DocumentRectangle *	drChanged,
 				int			page,
 				int			column,
 				int			y0Twips,
-				const BufferItem *	bodySectNode,
+				const struct BufferItem * bodySectNode,
 				const LayoutContext *	lc,
-				INIT_LAYOUT_EXTERNAL	initLayoutExternal,
+				START_TREE_LAYOUT	startTreeLayout,
 				int			adjustDocument )
     {
     int				rval= 0;
@@ -610,16 +619,12 @@ int docLayoutDocumentTree(	DocumentTree *		tree,
     docInitRecalculateFields( &rf );
     docInitLayoutJob( &lj );
 
-    if  ( page == tree->dtPageFormattedFor	&&
-	  column == tree->dtColumnFormattedFor	)
-	{ goto ready;	}
-
     rf.rfDocument= lc->lcDocument;
-    rf.rfCloseObject= lc->lcCloseObject;
     rf.rfUpdateFlags=
 	    FIELDdoDOC_FORMATTED|FIELDdoDOC_COMPLETE|FIELDdoPAGE_NUMBER;
     rf.rfFieldsUpdated= 0;
     rf.rfBodySectNode= bodySectNode;
+    rf.rfLocale= lc->lcLocale;
 
     if  ( docRecalculateTextLevelFieldsInDocumentTree( &rf, tree,
 						    bodySectNode, page ) )
@@ -634,17 +639,15 @@ int docLayoutDocumentTree(	DocumentTree *		tree,
 
     lj.ljChangedRectanglePixels= drChanged;
     lj.ljContext= *lc;
-    /*
-    lj.ljChangedNode= lc->lcDocument->bdBody.dtRoot;
-    */
     lj.ljChangedNode= tree->dtRoot;
 
-    if  ( initLayoutExternal 					&&
-	  (*initLayoutExternal)( &lj, tree, page, column )	)
+    if  ( startTreeLayout 				&&
+	  (*startTreeLayout)( &lj, tree, page, column )	)
 	{ LDEB(1); rval= -1; goto ready;	}
 
     if  ( docLayoutGetInitialFrame( &bf, &lj, &lpHere, tree->dtRoot ) )
 	{ LDEB(1); return -1;	}
+
 
     docLayoutAdjustFrame( &bf, tree->dtRoot );
 

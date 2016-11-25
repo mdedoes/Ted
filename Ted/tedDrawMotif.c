@@ -6,21 +6,26 @@
 
 #   include	"tedConfig.h"
 
+#   if USE_MOTIF
+
 #   include	<stddef.h>
-#   include	<stdio.h>
 
 #   include	"tedApp.h"
 #   include	"tedDocument.h"
 #   include	"tedLayout.h"
-#   include	"tedDraw.h"
 #   include	"tedRuler.h"
 #   include	"tedSelect.h"
+#   include	"tedDraw.h"
+#   include	<tedDocFront.h>
 
-#   include	<docTreeNode.h>
+#   include	<docObject.h>
+#   include	<appEditApplication.h>
+#   include	<appEditDocument.h>
+#   include	<layoutContext.h>
+#   include	<docScreenDraw.h>
+#   include	<geo2DInteger.h>
 
 #   include	<appDebugon.h>
-
-#   ifdef USE_MOTIF
 
 #   include	<X11/cursorfont.h>
 
@@ -45,6 +50,8 @@ void tedSetObjectWindows(	EditDocument *			ed,
 
     DocumentRectangle		drObj;
     Point2DI			xp[RESIZE_COUNT];
+
+    const int			afterObject= 0;
 
     static const int		font_cursors[RESIZE_COUNT]=
 				    {
@@ -74,7 +81,7 @@ void tedSetObjectWindows(	EditDocument *			ed,
 	    { cursors[i]= XCreateFontCursor( display, font_cursors[i] ); }
 	}
 
-    tedGetObjectRectangle( &drObj, xp, io, pg, lc, ed );
+    tedGetObjectRectangle( &drObj, xp, io, pg, lc, afterObject, td );
     for ( i= 0; i < RESIZE_COUNT; i++ )
 	{
 	xp[i].x -= drObj.drX0;
@@ -133,6 +140,11 @@ void tedHideObjectWindows(	EditDocument *	ed )
 						    td->tdObjectWindow );
     }
 
+void tedDestroyObjectWindows(	TedDocument *	td )
+    {
+    /* Not needed with plain X11 windows */
+    }
+
 /************************************************************************/
 /*									*/
 /*  Blinking cursor: MOTIF specific code.				*/
@@ -165,11 +177,11 @@ static void tedShowIBar(	void *		voided,
     td->tdShowIBarId= (XtIntervalId)0;
 
     if  ( tedGetSelection( &ds, &sg, &sd,
-			    (DocumentTree **)0, (BufferItem **)0, ed ) )
+			    (struct DocumentTree **)0, (struct BufferItem **)0, ed ) )
 	{ LDEB(1); return;	}
 
-    tedGetIBarRect( &drPixels, &(sg.sgHead), &lc );
-    tedDrawIBar( &drPixels, &lc );
+    docScreenGetIBarRect( &drPixels, &(sg.sgHead), &lc );
+    docScreenDrawIBar( &drPixels, &lc );
 
     td->tdHideIBarId= XtAppAddTimeOut( ea->eaContext, TED_BLINK_VISIBLE,
 						tedHideIBar, (void *)ed );
@@ -222,10 +234,10 @@ void tedStopCursorBlink(	EditDocument *	ed )
 	XtRemoveTimeOut( td->tdShowIBarId );
 
 	if  ( ! tedGetSelection( &ds, &sg, &sd,
-				(DocumentTree **)0, (BufferItem **)0, ed ) )
+				(struct DocumentTree **)0, (struct BufferItem **)0, ed ) )
 	    {
-	    tedGetIBarRect( &drPixels, &(sg.sgHead), &lc );
-	    tedDrawIBar( &drPixels, &lc );
+	    docScreenGetIBarRect( &drPixels, &(sg.sgHead), &lc );
+	    docScreenDrawIBar( &drPixels, &lc );
 	    }
 	}
 
@@ -235,7 +247,7 @@ void tedStopCursorBlink(	EditDocument *	ed )
     return;
     }
 
-void tedCleanCursorBlink(	TedDocument *	td )
+void tedCleanCursorBlink(	struct TedDocument *	td )
     {
     if  ( td->tdHideIBarId )
 	{ XtRemoveTimeOut( td->tdHideIBarId ); }

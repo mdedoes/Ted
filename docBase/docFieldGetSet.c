@@ -6,14 +6,14 @@
 
 #   include	"docBaseConfig.h"
 
-#   include	<stdlib.h>
 #   include	<string.h>
+#   include	<stdlib.h>
 #   include	<ctype.h>
 
-#   include	<appDebugon.h>
-
 #   include	"docFieldFormat.h"
+#   include	"docFieldInstructions.h"
 
+#   include	<appDebugon.h>
 
 int docFieldHasMergeformat(		const FieldInstructions *	fi,
 					int				comp )
@@ -37,7 +37,7 @@ int docFieldHasMergeformat(		const FieldInstructions *	fi,
 
 static const char * FieldFormats[]=
     {
-    "",			/*  MERGE_ASIS	*/
+    "",			/*  FIELDformatASIS	*/
 
 	    /* Case shifting	*/
     "Lower",
@@ -46,21 +46,21 @@ static const char * FieldFormats[]=
     "Caps",
 
 	    /* Number formatting */
-    "Alphabetic",	/*  MERGE_ALPHABETIC_UPPER	*/
+    "Alphabetic",	/*  FIELDformatALPHABETIC_UPPER	*/
     "Arabic",
     "CardText",
     "DollarText",
-    "Hex",		/*  MERGE_HEX_UPPER		*/
+    "Hex",		/*  FIELDformatHEX_UPPER		*/
     "Ordinal",
     "OrdText",
-    "Roman",		/*  MERGE_ROMAN_UPPER		*/
+    "Roman",		/*  FIELDformatROMAN_UPPER		*/
 
     "CharFormat",
     "MergeFormat",
 
-    "alphabetic",	/*  MERGE_ALPHABETIC_LOWER	*/
-    "hex",		/*  MERGE_HEX_LOWER		*/
-    "roman",		/*  MERGE_ROMAN_LOWER		*/
+    "alphabetic",	/*  FIELDformatALPHABETIC_LOWER	*/
+    "hex",		/*  FIELDformatHEX_LOWER		*/
+    "roman",		/*  FIELDformatROMAN_LOWER		*/
     };
 
 const int FieldFormatCount= sizeof(FieldFormats)/sizeof(char *);
@@ -77,8 +77,8 @@ int docFieldFormatInt(	const InstructionsComponent *	ic )
 
     format= utilMemoryBufferGetString( &(ic->icBuffer) );
 
-    if  ( FieldFormatCount != MERGE__COUNT )
-	{ LLDEB(FieldFormatCount,MERGE__COUNT);	}
+    if  ( FieldFormatCount != FIELDformat_COUNT )
+	{ LLDEB(FieldFormatCount,FIELDformat_COUNT);	}
 
     if  ( FieldFormatLength[0] < 0 )
 	{
@@ -102,17 +102,17 @@ int docFieldFormatInt(	const InstructionsComponent *	ic )
 
 	if  ( j == ic->icBuffer.mbSize )
 	    {
-	    if  ( i == MERGE_ROMAN_UPPER	&&
+	    if  ( i == FIELDformatROMAN_UPPER	&&
 		  islower( format[0] )		)
-		{ return MERGE_ROMAN_LOWER;		}
+		{ return FIELDformatROMAN_LOWER;		}
 
-	    if  ( i == MERGE_ALPHABETIC_UPPER	&&
+	    if  ( i == FIELDformatALPHABETIC_UPPER	&&
 		  islower( format[0] )		)
-		{ return MERGE_ALPHABETIC_LOWER;	}
+		{ return FIELDformatALPHABETIC_LOWER;	}
 
-	    if  ( i == MERGE_HEX_UPPER		&&
+	    if  ( i == FIELDformatHEX_UPPER		&&
 		  islower( format[0] )		)
-		{ return MERGE_HEX_LOWER;		}
+		{ return FIELDformatHEX_LOWER;		}
 
 	    return i;
 	    }
@@ -126,13 +126,13 @@ int docFieldInstructionsAddFormat(	FieldInstructions *	fi,
     {
     MemoryBuffer	mb;
 
-    if  ( FieldFormatCount != MERGE__COUNT )
-	{ LLDEB(FieldFormatCount,MERGE__COUNT);	}
+    if  ( FieldFormatCount != FIELDformat_COUNT )
+	{ LLDEB(FieldFormatCount,FIELDformat_COUNT);	}
 
     if  ( format < 0 || format >= FieldFormatCount )
 	{ LLDEB(format,FieldFormatCount);	}
 
-    if  ( format == MERGE_ASIS )
+    if  ( format == FIELDformatASIS )
 	{ return 0;	}
 
     mb.mbBytes= (unsigned char *)FieldFormats[format];
@@ -185,26 +185,26 @@ int docFieldComponentNumberFormat(
     f= docFieldFormatInt( ic );
     switch( f )
 	{
-	case MERGE_ALPHABETIC_UPPER:
-	case MERGE_ARABIC:
-	case MERGE_CARDTEXT:
-	case MERGE_DOLLARTEXT:
-	case MERGE_HEX_UPPER:
-	case MERGE_ORDINAL:
-	case MERGE_ORDTEXT:
-	case MERGE_ROMAN_UPPER:
+	case FIELDformatALPHABETIC_UPPER:
+	case FIELDformatARABIC:
+	case FIELDformatCARDTEXT:
+	case FIELDformatDOLLARTEXT:
+	case FIELDformatHEX_UPPER:
+	case FIELDformatORDINAL:
+	case FIELDformatORDTEXT:
+	case FIELDformatROMAN_UPPER:
 
-	case MERGE_ALPHABETIC_LOWER:
-	case MERGE_HEX_LOWER:
-	case MERGE_ROMAN_LOWER:
+	case FIELDformatALPHABETIC_LOWER:
+	case FIELDformatHEX_LOWER:
+	case FIELDformatROMAN_LOWER:
 	    *pNumberFormat= f;
 	    break;
 
-	case MERGE_MERGEFORMAT:
+	case FIELDformatMERGEFORMAT:
 	    break;
 
 	default:
-	    LDEB(f); return -1;
+	    SLDEB(utilMemoryBufferGetString(&(ic->icBuffer)),f); return -1;
 	}
 
     return 0;
@@ -219,13 +219,13 @@ int docFieldComponentCaseShift(	unsigned char *			pCaseShift,
     f= docFieldFormatInt( ic );
     switch( f )
 	{
-	case MERGE_MERGEFORMAT:
+	case FIELDformatMERGEFORMAT:
 	    break;
 
-	case MERGE_LOWER:
-	case MERGE_UPPER:
-	case MERGE_FIRSTCAP:
-	case MERGE_CAPS:
+	case FIELDformatLOWER:
+	case FIELDformatUPPER:
+	case FIELDformatFIRSTCAP:
+	case FIELDformatCAPS:
 	    *pCaseShift= f;
 	    break;
 

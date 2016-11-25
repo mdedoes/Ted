@@ -8,23 +8,35 @@
 
 #   include	<stdio.h>
 
-#   include	<appDebugon.h>
-
 #   include	<docBuf.h>
-#   include	<docParaString.h>
-#   include	<docParaParticules.h>
 #   include	"docEdit.h"
 #   include	"docIntermediaryDocument.h"
+#   include	"docRecalculateTocField.h"
 #   include	<docTocField.h>
 #   include	"docCalculateToc.h"
 #   include	<docStripFrame.h>
 #   include	<docPageGrid.h>
 #   include	<docTabStop.h>
-#   include	<docParaRulerAdmin.h>
 #   include	<docHyperlinkField.h>
 #   include	<docRefField.h>
 #   include	<docPagerefField.h>
-#   include	"docRecalculateTocField.h"
+#   include	<docDocumentField.h>
+#   include	<docFieldKind.h>
+#   include	<docFieldStack.h>
+#   include	<docStyle.h>
+#   include	<docTabStopList.h>
+#   include	"docEditOperation.h"
+#   include	"docDocumentCopyJob.h"
+#   include	<docTreeNode.h>
+#   include	<docTextParticule.h>
+#   include	<docDocumentProperties.h>
+#   include	<docNodeTree.h>
+#   include	<docFields.h>
+#   include	<docAttributes.h>
+#   include	<docParaBuilder.h>
+
+#   include	<docDebug.h>
+#   include	<appDebugon.h>
 
 /************************************************************************/
 /*									*/
@@ -43,28 +55,19 @@
 static int docParaInsertTocEntry(	CalculateToc *		ct,
 					int			makeHyperlinks,
 					const TocEntry *	te,
+					const TextAttribute *	ta,
 					const SelectionScope *	ss,
-					BufferItem *		paraBi )
+					BufferItem *		paraNode )
     {
-    int			rval= 0;
+    int				rval= 0;
 
-    int			textAttrNr= ct->ctLevelAttributeNumbers[te->teLevel];
-    DocumentField *	dfParent= ct->ctDfTocTo;
-    DocumentField *	dfHyper= (DocumentField *)0;
-    DocumentField *	dfRef= (DocumentField *)0;
-    DocumentField *	dfPageref= (DocumentField *)0;
+    DocumentField *		dfHyper= (DocumentField *)0;
+    DocumentField *		dfRef= (DocumentField *)0;
+    DocumentField *		dfPageref= (DocumentField *)0;
 
-    int			stroffShift;
-
-    TextParticule *	tp;
-
-    DocumentFieldList *	dfl= &(ct->ctBdToc->bdFieldList);
-
-    EditPosition	ep;
-
-    HyperlinkField	hf;
-    RefField		rf;
-    PagerefField	pf;
+    HyperlinkField		hf;
+    RefField			rf;
+    PagerefField		pf;
 
     docInitHyperlinkField( &hf );
     docInitRefField( &rf );
@@ -76,151 +79,83 @@ static int docParaInsertTocEntry(	CalculateToc *		ct,
 	  utilCopyMemoryBuffer( &(pf.pfBookmark), te->teMarkName )	)
 	{ XDEB(te->teMarkName); rval= -1; goto ready;	}
 
-    docDeleteEmptySpan( paraBi );
-
-    ep.epParaNr= docNumberOfParagraph( paraBi );
-    ep.epStroff= docParaStrlen( paraBi );
+    docParagraphBuilderDeleteEmptySpan( ct->ctParagraphBuilder );
 
     /* HYPERLINK */
     if  ( makeHyperlinks )
 	{
-	dfHyper= docClaimField( dfl );
+	dfHyper= docParaBuilderAppendFieldHead( ct->ctParagraphBuilder, ta,
+					DOCfkHYPERLINK, (const char *)0, 0 );
 	if  ( ! dfHyper )
 	    { XDEB(dfHyper); rval= -1; goto ready;	}
 
-	tp= docMakeSpecialParticule( paraBi,
-				    paraBi->biParaParticuleCount, ep.epStroff,
-				    DOCkindFIELDHEAD, textAttrNr );
-	if  ( ! tp )
-	    { XDEB(tp); rval= -1; goto ready;	}
-
-	tp->tpObjectNumber= dfHyper->dfFieldNumber;
-	dfHyper->dfHeadPosition= ep;
-	dfHyper->dfSelectionScope= *ss;
-
-	dfHyper->dfKind= DOCfkHYPERLINK;
 	if  ( docSetHyperlinkField( &(dfHyper->dfInstructions), &hf ) )
 	    { LDEB(1); rval= -1; goto ready;	}
 
-	ep.epStroff += tp->tpStrlen;
-	dfParent= dfHyper;
+	if  ( docFieldStackPushLevel( &(ct->ctFieldStack),
+						dfHyper, FSpieceFLDRSLT ) )
+	    { LDEB(1); rval= -1; goto ready;	}
 	}
 
     /* REF */
-    dfRef= docClaimField( dfl );
+    dfRef= docParaBuilderAppendFieldHead( ct->ctParagraphBuilder, ta,
+					    DOCfkREF, (const char *)0, 0 );
     if  ( ! dfRef )
 	{ XDEB(dfRef); rval= -1; goto ready;	}
-
-    tp= docMakeSpecialParticule( paraBi,
-				    paraBi->biParaParticuleCount, ep.epStroff,
-				    DOCkindFIELDHEAD, textAttrNr );
-    if  ( ! tp )
-	{ XDEB(tp); rval= -1; goto ready;	}
-
-    tp->tpObjectNumber= dfRef->dfFieldNumber;
-    dfRef->dfHeadPosition= ep;
-    dfRef->dfSelectionScope= *ss;
 
     if  ( docSetRefField( dfRef, &rf ) )
 	{ LDEB(1); rval= -1; goto ready;	}
 
-    ep.epStroff += tp->tpStrlen;
-
-    if  ( docParaStringReplace( &stroffShift, paraBi, ep.epStroff, ep.epStroff,
-								    "x", 1 ) )
-	{ LDEB(1); rval= -1; goto ready; }
-    tp= docInsertTextParticule( paraBi,
-				    paraBi->biParaParticuleCount, ep.epStroff,
-				    stroffShift, DOCkindSPAN, textAttrNr );
-    if  ( ! tp )
-	{ XDEB(tp); rval= -1; goto ready;	}
-    ep.epStroff += stroffShift;
-
-    tp= docMakeSpecialParticule( paraBi,
-				    paraBi->biParaParticuleCount, ep.epStroff,
-				    DOCkindFIELDTAIL, textAttrNr );
-    if  ( ! tp )
-	{ XDEB(tp); rval= -1; goto ready;	}
-
-    tp->tpObjectNumber= dfRef->dfFieldNumber;
-    docSetFieldTail( dfRef, &ep );
-    if  ( docAddChildToField( dfRef, dfParent ) )
+    if  ( docFieldStackPushLevel( &(ct->ctFieldStack), dfRef, FSpieceFLDRSLT ) )
 	{ LDEB(1); rval= -1; goto ready;	}
 
-    ep.epStroff += tp->tpStrlen;
+    if  ( docParagraphBuilderAppendText( ct->ctParagraphBuilder, ta, "x", 1 ) )
+	{ LDEB(1); rval= -1; goto ready;	}
+
+    if  ( docParaBuilderAppendFieldTail( ct->ctParagraphBuilder, ta, dfRef ) )
+	{ LDEB(1); rval= -1; goto ready;	}
+    if  ( docFieldStackPopLevel( &(ct->ctFieldStack), &(ct->ctBdToc->bdBody) ) )
+	{ LDEB(1); rval= -1; goto ready;	}
 
     if  ( te->teNumbered )
 	{
 	/* SEPARATOR */
-	if  ( docParaStringReplace( &stroffShift, paraBi,
-					ep.epStroff, ep.epStroff, " ", 1 ) )
-	    { LDEB(1); rval= -1; goto ready; }
-	tp= docInsertTextParticule( paraBi,
-				    paraBi->biParaParticuleCount, ep.epStroff,
-				    stroffShift, DOCkindTAB, textAttrNr );
-	if  ( ! tp )
-	    { XDEB(tp); rval= -1; goto ready;	}
-	ep.epStroff += stroffShift;
+	if  ( docParaBuilderAppendTab( ct->ctParagraphBuilder, ta ) )
+	    { LDEB(1); return -1;	}
 
 	/* PAGEREF */
-	dfPageref= docClaimField( dfl );
+	dfPageref= docParaBuilderAppendFieldHead( ct->ctParagraphBuilder, ta,
+					    DOCfkPAGEREF, (const char *)0, 0 );
 	if  ( ! dfPageref )
 	    { XDEB(dfPageref); rval= -1; goto ready;	}
 
-	tp= docMakeSpecialParticule( paraBi,
-				    paraBi->biParaParticuleCount, ep.epStroff,
-				    DOCkindFIELDHEAD, textAttrNr );
-	if  ( ! tp )
-	    { XDEB(tp); rval= -1; goto ready;	}
-
-	tp->tpObjectNumber= dfPageref->dfFieldNumber;
-	dfPageref->dfHeadPosition= ep;
-	dfPageref->dfSelectionScope= *ss;
-
-	dfPageref->dfKind= DOCfkPAGEREF;
 	if  ( docSetPagerefField( dfPageref, &pf ) )
 	    { LDEB(1); rval= -1; goto ready;	}
 
-	ep.epStroff += tp->tpStrlen;
-
-	if  ( docParaStringReplace( &stroffShift, paraBi,
-					ep.epStroff, ep.epStroff, "x", 1 ) )
-	    { LDEB(1); rval= -1; goto ready; }
-	tp= docInsertTextParticule( paraBi,
-				    paraBi->biParaParticuleCount, ep.epStroff,
-				    stroffShift, DOCkindSPAN, textAttrNr );
-	if  ( ! tp )
-	    { XDEB(tp); rval= -1; goto ready;	}
-	ep.epStroff += stroffShift;
-
-	tp= docMakeSpecialParticule( paraBi,
-				    paraBi->biParaParticuleCount, ep.epStroff,
-				    DOCkindFIELDTAIL, textAttrNr );
-	if  ( ! tp )
-	    { XDEB(tp); rval= -1; goto ready;	}
-
-	tp->tpObjectNumber= dfPageref->dfFieldNumber;
-	docSetFieldTail( dfPageref, &ep );
-	if  ( docAddChildToField( dfPageref, dfParent ) )
+	if  ( docFieldStackPushLevel( &(ct->ctFieldStack),
+						dfPageref, FSpieceFLDRSLT ) )
 	    { LDEB(1); rval= -1; goto ready;	}
 
-	ep.epStroff += tp->tpStrlen;
+	if  ( docParagraphBuilderAppendText( ct->ctParagraphBuilder, ta,
+								    "x", 1 ) )
+	    { LDEB(1); rval= -1; goto ready;	}
+
+	if  ( docParaBuilderAppendFieldTail( ct->ctParagraphBuilder,
+						    ta, dfPageref ) )
+	    { LDEB(1); rval= -1; goto ready;	}
+	if  ( docFieldStackPopLevel( &(ct->ctFieldStack),
+						    &(ct->ctBdToc->bdBody) ) )
+	    { LDEB(1); rval= -1; goto ready;	}
 	}
 
     if  ( dfHyper )
 	{
-	tp= docMakeSpecialParticule( paraBi,
-				    paraBi->biParaParticuleCount, ep.epStroff,
-				    DOCkindFIELDTAIL, textAttrNr );
-	if  ( ! tp )
-	    { XDEB(tp); rval= -1; goto ready;	}
-
-	tp->tpObjectNumber= dfHyper->dfFieldNumber;
-	docSetFieldTail( dfHyper, &ep );
-	if  ( docAddChildToField( dfHyper, ct->ctDfTocTo ) )
+	if  ( docParaBuilderAppendFieldTail( ct->ctParagraphBuilder,
+						    ta, dfHyper ) )
 	    { LDEB(1); rval= -1; goto ready;	}
-
-	ep.epStroff += tp->tpStrlen;
+	if  ( docFieldStackPopLevel( &(ct->ctFieldStack),
+						    &(ct->ctBdToc->bdBody) ) )
+	    { LDEB(1); rval= -1; goto ready;	}
 	}
 
   ready:
@@ -238,120 +173,123 @@ static int docParaInsertTocEntry(	CalculateToc *		ct,
 /*									*/
 /************************************************************************/
 
-static BufferItem * docMakeTocParagraph(
+static struct BufferItem * docMakeTocParagraph(
 				CalculateToc *			ct,
-				BufferItem *			refBi,
+				struct BufferItem *		refNode,
 				int				level,
-				int				numbered )
+				int				numbered,
+				const TextAttribute *		ta )
 
     {
     const DocumentStyle *	ds= ct->ctLevelStyles[level];
-    const DocumentProperties *	dp= &(ct->ctBdToc->bdProperties);
-    int				textAttrNr= ct->ctLevelAttributeNumbers[level];
+    const DocumentProperties *	dp= ct->ctBdToc->bdProperties;
 
-    BufferItem *		paraNodeToc= (BufferItem *)0;
+    struct BufferItem *		paraNodeToc= (struct BufferItem *)0;
 
     TabStopList			tsl;
+    ParagraphProperties		ppToc;
+
+    PropertyMask		ppSetMask;
+
+    utilPropMaskClear( &ppSetMask );
 
     docInitTabStopList( &tsl );
-
-    paraNodeToc= docInsertEmptyParagraph( ct->ctBdToc, refBi, textAttrNr );
-    if  ( ! paraNodeToc )
-	{ XDEB(paraNodeToc); goto ready;	}
+    docInitParagraphProperties( &ppToc );
 
     if  ( ds && ! utilPropMaskIsEmpty( &(ds->dsParaMask) ) )
 	{
-	const ParagraphProperties *	ppFrom= &(ds->dsParaProps);
-
 	/*  No mapping needed: The style is in the target document */
-	if  ( docUpdParaProperties( (PropertyMask *)0,
-					&(paraNodeToc->biParaProperties),
-					&(ds->dsParaMask), ppFrom,
+	if  ( docUpdParaProperties( &ppSetMask, &ppToc,
+					&(ds->dsParaMask), &(ds->dsParaProps),
 					(const DocumentAttributeMap *)0 ) )
 	    { LDEB(1);		}
 
-	paraNodeToc->biParaStyle= ds->dsStyleNumber;
+	ppToc.ppStyleNumber= ds->dsStyleNumber;
+	PROPmaskADD( &ppSetMask, PPpropSTYLE );
 	}
     else{
-	if  ( docCopyParagraphProperties( &(paraNodeToc->biParaProperties),
-							    &(ct->ctRefPP) ) )
+	PropertyMask	ppAllMask;
+
+	utilPropMaskClear( &ppAllMask );
+	utilPropMaskFill( &ppAllMask, PPprop_COUNT );
+
+	if  ( docUpdParaProperties( &ppSetMask, &ppToc, &ppAllMask,
+			    &(ct->ctRefPP), (const DocumentAttributeMap *)0 ) )
 	    { LDEB(1);	}
 
 	if  ( ct->ctTocField.tfType == TOCtypeTOC	&&
 	      level >= 0				&&
 	      level <= PPoutlineDEEPEST			)
 	    {
-	    paraNodeToc->biParaLeftIndentTwips= level* dp->dpTabIntervalTwips;
+	    ppToc.ppLeftIndentTwips= level* dp->dpTabIntervalTwips;
+	    PROPmaskADD( &ppSetMask, PPpropLEFT_INDENT );
 	    }
 	}
 
-    if  ( numbered							&&
-	  paraNodeToc->biParaProperties.ppTabStopListNumber == 0	)
+    if  ( ppToc.ppTabStopListNumber > 0 )
 	{
-	ParagraphFrame		pf;
+	const ParagraphFrame *	pf= &(ct->ctParagraphFrame);
+	const TabStopList *	tslFound;
+
+	tslFound= docGetTabStopListByNumber( ct->ctBdToc,
+						ppToc.ppTabStopListNumber );
+
+	if  ( ! tslFound			||
+	      tslFound->tslTabStopCount == 0	)
+	    { ppToc.ppTabStopListNumber= 0;	}
+	else{
+	    const TabStop *	ts= &(tslFound->tslTabStops[0]);
+	    int			wide;
+
+	    wide= pf->pfCellContentRect.drX1- pf->pfCellContentRect.drX0;
+
+	    if  ( ts->tsAlignment == DOCtaRIGHT )
+		{
+		if  ( ts->tsOffset > wide )
+		    { ppToc.ppTabStopListNumber= 0;	}
+		}
+	    else{
+		if  ( ts->tsOffset > ( 19* wide ) / 20 )
+		    { ppToc.ppTabStopListNumber= 0;	}
+		}
+	    }
+	}
+
+    if  ( numbered				&&
+	  ppToc.ppTabStopListNumber == 0	)
+	{
 	TabStop			ts;
 	int			n;
-
-	docParagraphFrameTwips( &pf, &(ct->ctBlockFrame), paraNodeToc );
+	const ParagraphFrame *	pf= &(ct->ctParagraphFrame);
 
 	docInitTabStop( &ts );
 
 	ts.tsAlignment= DOCtaRIGHT;
-	ts.tsTwips= pf.pfCellContentRect.drX1- pf.pfCellContentRect.drX0;
+	ts.tsOffset= pf->pfCellContentRect.drX1- pf->pfCellContentRect.drX0;
 	ts.tsLeader= DOCtlDOTS;
 
-	if  ( docAddTabToListTwips( &tsl, &ts ) )
+	if  ( docAddTabToList( &tsl, &ts ) )
 	    { LDEB(1);	}
 	n= docTabStopListNumber( ct->ctBdToc, &tsl );
 	if  ( n < 0 )
 	    { LDEB(n);	}
-	else{ paraNodeToc->biParaProperties.ppTabStopListNumber= n;	}
+	else{
+	    ppToc.ppTabStopListNumber= n;
+	    PROPmaskADD( &ppSetMask, PPpropTAB_STOPS );
+	    }
 	}
+
+    paraNodeToc= docParaBuilderStartNewParagraph( ct->ctParagraphBuilder,
+					refNode, &ppToc, ta, ppToc.ppRToL );
+    if  ( ! paraNodeToc )
+	{ XDEB(paraNodeToc); goto ready;	}
 
   ready:
 
     docCleanTabStopList( &tsl );
+    docCleanParagraphProperties( &ppToc );
 
     return paraNodeToc;
-    }
-
-/************************************************************************/
-/*									*/
-/*  Clone the source TOC field to hold all TOC entries in the		*/
-/*  intermediary toc document.						*/
-/*									*/
-/************************************************************************/
-
-static int docStartTocField(	CalculateToc *		ct,
-				const DocumentField *	dfToc,
-				BufferItem *		paraNodeToc )
-    {
-    EditPosition	epStart;
-    const int		stroff= 0;
-    const int		part= 0;
-    TextParticule *	tp;
-    int			textAttrNr= ct->ctDefaultTextAttributeNumber;
-
-    DocumentPosition	dp;
-
-    docSetDocumentPosition( &dp, paraNodeToc, stroff );
-    docSetEditPosition( &epStart, &dp );
-
-    ct->ctDfTocTo= docClaimFieldCopy( &(ct->ctBdToc->bdFieldList),
-		    dfToc, &(ct->ctSectNode->biSectSelectionScope), &epStart );
-    if  ( ! ct->ctDfTocTo )
-	{ XDEB(ct->ctDfTocTo); return -1;	}
-
-    docDeleteEmptySpan( paraNodeToc );
-
-    tp= docMakeSpecialParticule( paraNodeToc, part, epStart.epStroff,
-					    DOCkindFIELDHEAD, textAttrNr );
-    if  ( ! tp )
-	{ XDEB(tp); return -1;	}
-
-    tp->tpObjectNumber= ct->ctDfTocTo->dfFieldNumber;
-
-    return 0;
     }
 
 /************************************************************************/
@@ -368,14 +306,14 @@ static int docStartTocField(	CalculateToc *		ct,
 static int docSetupTocDocument(		CalculateToc *		ct )
     {
     int			level;
-    TextAttribute	ta;
 
     ct->ctBdToc= docIntermediaryDocument( &(ct->ctSectNode), ct->ctBdDoc );
     if  ( ! ct->ctBdToc )
 	{ XDEB(ct->ctBdToc); return -1;	}
 
-    ct->ctDefaultTextAttributeNumber= docTextAttributeNumber( ct->ctBdToc,
-						    &(ct->ctTextAttribute) );
+    ct->ctParagraphBuilder= docOpenParagraphBuilder( ct->ctBdToc,
+				    &(ct->ctSectNode->biSectSelectionScope),
+				    &(ct->ctBdToc->bdBody) );
 
     for ( level= 0; level <= PPoutlineDEEPEST; level++ )
 	{
@@ -386,72 +324,48 @@ static int docSetupTocDocument(		CalculateToc *		ct )
 	ds= docGetStyleByName( &(ct->ctBdToc->bdStyleSheet), scratch );
 	ct->ctLevelStyles[level]= ds;
 
-	ct->ctLevelAttributeNumbers[level]= ct->ctDefaultTextAttributeNumber;
+	ct->ctLevelAttributes[level]= ct->ctTextAttribute;
 	if  ( ds && ! utilPropMaskIsEmpty( &(ds->dsTextMask) ) )
 	    {
 	    PropertyMask	doneMask;
 
-	    docPlainTextAttribute( &ta, ct->ctBdToc );
+	    docPlainTextAttribute( &(ct->ctLevelAttributes[level]),
+								ct->ctBdToc );
 
-	    utilUpdateTextAttribute( &doneMask, &ta,
+	    textUpdateTextAttribute( &doneMask, &(ct->ctLevelAttributes[level]),
 				&(ds->dsTextMask), &(ds->dsTextAttribute) );
-	    ct->ctLevelAttributeNumbers[level]= docTextAttributeNumber(
-							    ct->ctBdToc, &ta );
 	    }
 	}
 
-    ct->ctLevelAttributeNumbers[PPoutlineBODYTEXT]=
-					ct->ctDefaultTextAttributeNumber;
+    ct->ctLevelAttributes[PPoutlineBODYTEXT]= ct->ctTextAttribute;
 
     return 0;
     }
 
 /************************************************************************/
-
-static int docFinishTocField(	CalculateToc *		ct,
-				BufferItem *		paraNodeToc )
-    {
-    TextParticule *	tp;
-    int			textAttrNr= ct->ctDefaultTextAttributeNumber;
-
-    DocumentPosition	dpTail;
-    EditPosition	epTail;
-
-    docSetDocumentPosition( &dpTail,  paraNodeToc, docParaStrlen( paraNodeToc ) );
-    docSetEditPosition( &epTail, &dpTail );
-
-    tp= docMakeSpecialParticule( paraNodeToc, paraNodeToc->biParaParticuleCount,
-			    epTail.epStroff, DOCkindFIELDTAIL, textAttrNr );
-    if  ( ! tp )
-	{ XDEB(tp); return -1;	}
-    tp->tpObjectNumber= ct->ctDfTocTo->dfFieldNumber;
-
-    ct->ctDfTocTo->dfTailPosition= epTail;
-
-    if  ( docAddRootFieldToTree( &(ct->ctBdToc->bdBody), ct->ctDfTocTo ) )
-	{ LDEB(1); return -1;	}
-
-    return 0;
-    }
-
+/*									*/
+/*  Derive paragraph properties from the source document.		*/
+/*									*/
 /************************************************************************/
 
 static int docGetTocParaProperties(
 				CalculateToc *			ct,
-				const DocumentSelection *	dsToc,
-				int				part0,
-				int				part1 )
+				const DocumentSelection *	dsInsideToc,
+				int				part0 )
     {
     int			rval= 0;
 
-    docBlockFrameTwips( &(ct->ctBlockFrame),
-				dsToc->dsHead.dpNode, ct->ctBdDoc,
-				dsToc->dsHead.dpNode->biTopPosition.lpPage,
-				dsToc->dsHead.dpNode->biTopPosition.lpColumn );
+    docSectionBlockFrameTwips( &(ct->ctBlockFrame),
+			dsInsideToc->dsHead.dpNode,
+			ct->ctBodySectNode, ct->ctBdDoc,
+			dsInsideToc->dsHead.dpNode->biTopPosition.lpPage,
+			dsInsideToc->dsHead.dpNode->biTopPosition.lpColumn );
 
+    docParagraphFrameTwips( &(ct->ctParagraphFrame), &(ct->ctBlockFrame),
+						dsInsideToc->dsHead.dpNode );
 
     if  ( docCopyParagraphProperties( &(ct->ctRefPP),
-				&(dsToc->dsHead.dpNode->biParaProperties ) ) )
+			    dsInsideToc->dsHead.dpNode->biParaProperties ) )
 	{ LDEB(1); rval= -1; goto ready;	}
 
     ct->ctRefPP.ppOutlineLevel= PPoutlineBODYTEXT;
@@ -460,16 +374,16 @@ static int docGetTocParaProperties(
     int				part;
     const TextParticule *	tp= (const TextParticule *)0;
 
-    tp= dsToc->dsHead.dpNode->biParaParticules+ part0;
-    docGetTextAttributeByNumber( &(ct->ctTextAttribute),
+    tp= dsInsideToc->dsHead.dpNode->biParaParticules+ part0;
+    ct->ctTextAttribute= *docGetTextAttributeByNumber(
 					ct->ctBdDoc, tp->tpTextAttrNr );
 
     part= part0;
-    while( part < dsToc->dsHead.dpNode->biParaParticuleCount )
+    while( part < dsInsideToc->dsHead.dpNode->biParaParticuleCount )
 	{
-	if  ( tp->tpKind == DOCkindSPAN )
+	if  ( tp->tpKind == TPkindSPAN )
 	    {
-	    docGetTextAttributeByNumber( &(ct->ctTextAttribute),
+	    ct->ctTextAttribute= *docGetTextAttributeByNumber(
 					    ct->ctBdDoc, tp->tpTextAttrNr );
 
 	    break;
@@ -491,75 +405,61 @@ static int docGetTocParaProperties(
 /************************************************************************/
 
 static int docCalculateTocField( CalculateToc *			ct,
-				const DocumentSelection *	dsToc,
+				const DocumentSelection *	dsInsideToc,
 				int				part0,
-				int				part1,
 				const DocumentField *		dfToc )
     {
-    BufferItem *		paraNodeToc= (BufferItem *)0;
-    BufferItem *		refBi= (BufferItem *)0;
+    struct BufferItem *		paraNodeToc= (struct BufferItem *)0;
+    struct BufferItem *		refNode= (struct BufferItem *)0;
 
     int				entryNr= 0;
     TocEntry *			te;
 
-    if  ( docGetTocParaProperties( ct, dsToc, part0, part1 ) )
+    if  ( docGetTocParaProperties( ct, dsInsideToc, part0 ) )
 	{ LDEB(1); return -1;	}
 
     if  ( docSetupTocDocument( ct ) )
 	{ LDEB(1); return -1;	}
 
-    refBi= ct->ctSectNode;
+    refNode= ct->ctSectNode;
     te= ct->ctEntries;
     for ( entryNr= 0; entryNr < ct->ctEntryCount; te++, entryNr++ )
 	{
-	paraNodeToc= docMakeTocParagraph( ct, refBi,
-					    te->teLevel, te->teNumbered );
+	const TextAttribute *	ta= &(ct->ctLevelAttributes[te->teLevel]);
+
+	paraNodeToc= docMakeTocParagraph( ct, refNode,
+					    te->teLevel, te->teNumbered, ta );
 	if  ( ! paraNodeToc )
 	    { XDEB(paraNodeToc); return -1;	}
 
-	if  ( ! ct->ctDfTocTo )
-	    {
-	    if  ( docStartTocField( ct, dfToc, paraNodeToc ) )
-		{ LDEB(1); return -1;	}
-	    }
-
-	if  ( docParaInsertTocEntry( ct, ct->ctTocField.tfHyperlinks, te,
+	if  ( docParaInsertTocEntry( ct, ct->ctTocField.tfHyperlinks, te, ta,
 				    &(dfToc->dfSelectionScope), paraNodeToc ) )
 	    { LDEB(entryNr); return -1;	}
 
-	refBi= paraNodeToc;
+	if  ( docParaBuilderFinishParagraph( ct->ctParagraphBuilder, ta ) )
+	    { LDEB(1); return -1;	}
+
+	refNode= paraNodeToc;
 	}
 
     if  ( ! paraNodeToc )
 	{
-	int			stroff;
-	int			stroffShift;
 	const int		level= 0;
 	const int		numbered= 0;
 
-	const char *		text= "TOC";
-	const int		len= 3;
+	const TextAttribute *	ta= &(ct->ctTextAttribute);
 
-	paraNodeToc= docMakeTocParagraph( ct, refBi, level, numbered );
+	paraNodeToc= docMakeTocParagraph( ct, refNode, level, numbered, ta );
 	if  ( ! paraNodeToc )
 	    { XDEB(paraNodeToc); return -1;	}
 
-	if  ( docStartTocField( ct, dfToc, paraNodeToc ) )
+	if  ( docParagraphBuilderAppendText( ct->ctParagraphBuilder, ta,
+								"TOC", 3 ) )
 	    { LDEB(1); return -1;	}
 
-	stroff= docParaStrlen( paraNodeToc );
-	if  ( docParaStringReplace( &stroffShift, paraNodeToc,
-						stroff, stroff, text, len ) )
-	    { LDEB(len); return -1;	}
-
-	if  ( docRedivideStringInParticules( paraNodeToc, stroff, len,
-				    paraNodeToc->biParaParticuleCount, 0, 
-				    ct->ctDefaultTextAttributeNumber ) < 0 )
+	if  ( docParaBuilderFinishParagraph( ct->ctParagraphBuilder, ta ) )
 	    { LDEB(1); return -1;	}
 	}
-
-    if  ( docFinishTocField( ct, paraNodeToc ) )
-	{ LDEB(1); return -1;	}
 
     return 0;
     }
@@ -570,8 +470,8 @@ static int docCalculateTocField( CalculateToc *			ct,
 /*									*/
 /************************************************************************/
 
-int docRecalculateOneTocField(	BufferDocument *	bdDoc,
-				const DocumentField *	dfToc )
+int docRecalculateOneTocField(	struct BufferDocument *	bdDoc,
+				DocumentField *		dfToc )
     {
     int				rval= 0;
 
@@ -605,18 +505,19 @@ int docRecalculateOneTocField(	BufferDocument *	bdDoc,
 					&(dfToc->dfSelectionScope), bdDoc );
 
     ct.ctBdDoc= bdDoc;
+    ct.ctBodySectNode= eo.eoBodySectNode;
     docFieldGetToc( &(ct.ctTocField), dfToc );
 
     if  ( docCollectTocInput( &ct ) )
 	{ LDEB(1); rval= -1; goto ready;	}
 
-    if  ( docCalculateTocField( &ct, &dsInsideToc, part0, part1, dfToc ) )
+    if  ( docCalculateTocField( &ct, &dsInsideToc, part0, dfToc ) )
 	{ LDEB(1); rval= -1; goto ready;	}
 
-    if  ( docStartEditOperation( &eo, &dsAroundToc, bdDoc ) )
+    if  ( docStartEditOperation( &eo, &dsInsideToc, bdDoc, dfToc ) )
 	{ LDEB(1); rval= -1; goto ready;	}
 
-    ct.ctBdToc->bdProperties.dpHasOpenEnd= 1;
+    ct.ctBdToc->bdProperties->dpHasOpenEnd= 1;
 
     if  ( docSet2DocumentCopyJob( &dcj, &eo, ct.ctBdToc, &(ct.ctBdToc->bdBody),
 					    refFileName, forceAttributeTo) )

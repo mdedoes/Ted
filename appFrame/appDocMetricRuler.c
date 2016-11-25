@@ -6,14 +6,16 @@
 
 #   include	"appFrameConfig.h"
 
+#   if ! USE_HEADLESS
+
 #   include	<stddef.h>
-#   include	<stdio.h>
 #   include	<ctype.h>
 
-#   include	"guiWidgets.h"
+#   include	<guiWidgets.h>
 #   include	"appMetricRuler.h"
-#   include	"guiWidgetDrawingSurface.h"
-#   include	"guiDrawingWidget.h"
+#   include	<guiDrawingWidget.h>
+#   include	"appEditApplication.h"
+#   include	"appEditDocument.h"
 
 #   include	<appDebugon.h>
 
@@ -348,7 +350,7 @@ void appDocSetMetricTopRuler(	EditDocument *		ed,
 
     guiDrawSetButtonPressHandler( ed->edTopRulerWidget,
 						mouseDown, (void *)ed );
-#   ifdef USE_GTK
+#   if USE_GTK
     gtk_widget_add_events( ed->edTopRulerWidget, GDK_POINTER_MOTION_MASK );
 #   endif
 
@@ -393,9 +395,11 @@ void appDocSetMetricLeftRuler(	EditDocument *		ed,
 
     guiDrawSetButtonPressHandler( ed->edLeftRulerWidget,
 						    mouseDown, (void *)ed );
-#   ifdef USE_GTK
+#   if USE_GTK
     gtk_widget_add_events( ed->edTopRulerWidget, GDK_POINTER_MOTION_MASK );
 #   endif
 
     return;
     }
+
+#   endif

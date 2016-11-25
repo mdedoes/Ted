@@ -6,13 +6,17 @@
 
 #   include	"docLayoutConfig.h"
 
-#   include	<stddef.h>
-
 #   include	<docBuf.h>
 #   include	<docTreeNode.h>
 #   include	<docBlockOrnaments.h>
+#   include	<docBorderProperties.h>
 #   include	"docRowLayout.h"
+#   include	<docRowProperties.h>
+#   include	<docCellProperties.h>
+#   include	<geoRectangle.h>
+#   include	<docAttributes.h>
 
+#   include	<docDebug.h>
 #   include	<appDebugon.h>
 
 /************************************************************************/
@@ -27,24 +31,26 @@
 /*									*/
 /************************************************************************/
 
-static void docGetCellTopBorder( BorderProperties *		pBpTop,
+static const BorderProperties * docGetCellTopBorder(
 				int *				pBpTopNr,
 				int *				pUseAbove,
-				const BufferDocument *		bd,
-				const BufferItem *		rowNode,
+				const struct BufferDocument *	bd,
+				const struct BufferItem *	rowNode,
 				int				col,
 				int				atRowTop )
     {
-    const BufferItem *		parentBi= rowNode->biParent;
-    const CellProperties *	cp= &(rowNode->biRowCells[col]);
+    const struct BufferItem *	parentNode= rowNode->biParent;
+    const RowProperties *	rp= rowNode->biRowProperties;
+    const struct BufferItem *	cellNode= rowNode->biChildren[col];
+    const CellProperties *	cp= cellNode->biCellProperties;
 
-    const BufferItem *		rowBiAbove= (const BufferItem *)0;
+    const struct BufferItem *	rowNodeAbove= (const struct BufferItem *)0;
 
     const CellProperties *	aboveCpC= (const CellProperties *)0;
     int				useAbove= 0;
 
-    BorderProperties		bpAbove;
-    BorderProperties		bpTop;
+    const BorderProperties *	bpAbove= (const BorderProperties *)0;
+    const BorderProperties *	bpTop= (const BorderProperties *)0;
     int				aboveNr= -1;
     int				topNr;
 
@@ -53,29 +59,22 @@ static void docGetCellTopBorder( BorderProperties *		pBpTop,
 	{
 	if  ( rowNode->biNumberInParent <= 0 )
 	    {
+	    LLDEB(rowNode->biNumberInParent,rowNode->biRowTableFirst);
 	    SDEB(docTreeTypeStr(rowNode->biTreeType));
-	    LDEB(rowNode->biNumberInParent);
 	    }
-	else{ rowBiAbove= parentBi->biChildren[rowNode->biNumberInParent- 1]; }
+	else{
+	    rowNodeAbove= parentNode->biChildren[rowNode->biNumberInParent- 1];
+	    }
 	}
 
-    if  ( rowBiAbove )
+    if  ( rowNodeAbove )
 	{
-	int		csp= 1;
-	int		cspa= 1;
-	int		l, r;
-	int		aboveCol;
+	int			aboveCol;
+	const RowProperties *	rpAbove= rowNodeAbove->biRowProperties;
 
-	if  ( col == 0 )
-	    { l= rowNode->biRowLeftIndentTwips;	}
-	else{ l= cp[-1].cpRightBoundaryTwips;	}
-	r= cp->cpRightBoundaryTwips;
-	if  ( cp->cpHorizontalMerge == CELLmergeHEAD )
-	    { r= docGetCellRight( &csp, rowNode->biChildren[col] );	}
-
-	aboveCol= docGetMatchingCell( &cspa, rowBiAbove, l, r );
-	if  ( aboveCol >= 0 )
-	    { aboveCpC= rowBiAbove->biRowCells+ aboveCol;	}
+	aboveCol= docGetMatchingCell( rowNodeAbove, cellNode );
+	if  ( aboveCol >= 0 && aboveCol < rpAbove->rpCellCount )
+	    { aboveCpC= rpAbove->rpCells+ aboveCol;	}
 	}
 
     /*  2  */
@@ -83,14 +82,15 @@ static void docGetCellTopBorder( BorderProperties *		pBpTop,
 	  aboveCpC->cpBottomBorderNumber != cp->cpTopBorderNumber	)
 	{
 	aboveNr= aboveCpC->cpBottomBorderNumber;
-	docGetBorderPropertiesByNumber( &bpAbove, bd, aboveNr );
-	if  ( DOCisBORDER( &bpAbove ) )
+	bpAbove= docGetBorderPropertiesByNumber( bd, aboveNr );
+
+	if  ( ! atRowTop && DOCisBORDER( bpAbove ) )
 	    { useAbove= 1;	}
 	}
 
     /*  3  */
     topNr= cp->cpTopBorderNumber;
-    docGetBorderPropertiesByNumber( &bpTop, bd, topNr );
+    bpTop= docGetBorderPropertiesByNumber( bd, topNr );
 
     /*  2  */
     if  ( useAbove )
@@ -103,17 +103,15 @@ static void docGetCellTopBorder( BorderProperties *		pBpTop,
     if  ( rowNode->biNumberInParent > rowNode->biRowTableFirst	&&
           ! atRowTop						)
 	{
-	docGetBorderPropertiesByNumber( &bpTop,
-					bd, rowNode->biRowTopBorderNumber );
-	topNr= rowNode->biRowTopBorderNumber;
+	topNr= rp->rpTopBorderNumber;
+	bpTop= docGetBorderPropertiesByNumber( bd, topNr );
 	useAbove= 0;
 	}
 
-    *pBpTop= bpTop;
     *pBpTopNr= topNr;
     *pUseAbove= useAbove;
 
-    return;
+    return bpTop;
     }
 
 /************************************************************************/
@@ -129,70 +127,65 @@ static void docGetCellTopBorder( BorderProperties *		pBpTop,
 /*									*/
 /************************************************************************/
 
-void docGetCellBottomBorder(	BorderProperties *		pBpBottom,
+const BorderProperties * docGetCellBottomBorder(
 				int *				pBpBottomNr,
 				int *				pUseBelow,
-				const BufferDocument *		bd,
-				const BufferItem *		rowNode,
+				const struct BufferDocument *	bd,
+				const struct BufferItem *	rowNode,
 				int				col,
 				int				atRowBottom )
     {
-    const BufferItem *		parentBi= rowNode->biParent;
-    const CellProperties *	cp= &(rowNode->biRowCells[col]);
+    const struct BufferItem *	parentNode= rowNode->biParent;
+    const struct BufferItem *	cellNode= rowNode->biChildren[col];
 
-    const BufferItem *		rowBiBelow= (const BufferItem *)0;
+    const RowProperties * 	rp= rowNode->biRowProperties;
+    const CellProperties *	cp= cellNode->biCellProperties;
+
+    const struct BufferItem *	rowNodeBelow= (const struct BufferItem *)0;
 
     const CellProperties *	belowCpC= (const CellProperties *)0;
     int				useBelow= 0;
 
-    BorderProperties		bpBelow;
-    BorderProperties 		bpBottom;
-    int				belowNr;
+    const BorderProperties *	bpBelow= (const BorderProperties *)0;
+    const BorderProperties  *	bpBottom= (const BorderProperties *)0;
     int				bottomNr;
 
     /*  0  */
-    if  ( col >= rowNode->biRowCellCount )
-	{ LLDEB(col,rowNode->biRowCellCount);	}
+    if  ( col >= rp->rpCellCount )
+	{ LLDEB(col,rp->rpCellCount);	}
     if  ( rowNode->biRowTablePast < 0				||
 	  rowNode->biRowTablePast > rowNode->biParent->biChildCount	)
 	{ LLDEB(rowNode->biRowTablePast,rowNode->biParent->biChildCount); }
 
     /*  1  */
     if  ( rowNode->biNumberInParent < rowNode->biRowTablePast- 1 )
-	{ rowBiBelow= parentBi->biChildren[rowNode->biNumberInParent+ 1];	}
+	{ rowNodeBelow= parentNode->biChildren[rowNode->biNumberInParent+ 1]; }
 
-    if  ( rowBiBelow )
+    if  ( rowNodeBelow )
 	{
-	int		csp= 1;
-	int		cspb= 1;
-	int		l, r;
-	int		belowCol;
+	int			belowCol;
+	const RowProperties *	rpBelow= rowNodeBelow->biRowProperties;
 
-	if  ( col == 0 )
-	    { l= rowNode->biRowLeftIndentTwips;	}
-	else{ l= cp[-1].cpRightBoundaryTwips;	}
-	r= cp->cpRightBoundaryTwips;
-	if  ( cp->cpHorizontalMerge == CELLmergeHEAD )
-	    { r= docGetCellRight( &csp, rowNode->biChildren[col] );	}
-
-	belowCol= docGetMatchingCell( &cspb, rowBiBelow, l, r );
+	belowCol= docGetMatchingCell( rowNodeBelow, cellNode );
 	if  ( belowCol >= 0 )
-	    { belowCpC= rowBiBelow->biRowCells+ belowCol;	}
+	    { belowCpC= rpBelow->rpCells+ belowCol;	}
 	}
 
     /*  2  */
     bottomNr= cp->cpBottomBorderNumber;
-    docGetBorderPropertiesByNumber( &bpBottom, bd, bottomNr );
+    bpBottom= docGetBorderPropertiesByNumber( bd, bottomNr );
 
     /*  3  */
     if  ( belowCpC )
 	{
-	belowNr= belowCpC->cpBottomBorderNumber;
-	docGetBorderPropertiesByNumber( &bpBelow, bd, belowNr );
+	int		belowNr;
 
-	if  ( ! DOCisBORDER( &bpBottom )		&&
-	      belowCpC					&&
-	      DOCisBORDER( &bpBelow )	)
+	belowNr= belowCpC->cpBottomBorderNumber;
+	bpBelow= docGetBorderPropertiesByNumber( bd, belowNr );
+
+	if  ( ! DOCisBORDER( bpBottom )		&&
+	      belowCpC				&&
+	      DOCisBORDER( bpBelow )		)
 	    {
 	    useBelow= 1;
 	    bottomNr= belowNr;
@@ -203,146 +196,108 @@ void docGetCellBottomBorder(	BorderProperties *		pBpBottom,
     if  ( rowNode->biNumberInParent < rowNode->biRowTablePast- 1	&&
 	  ! atRowBottom						)
 	{
-	bottomNr= rowNode->biRowBottomBorderNumber;
-	docGetBorderPropertiesByNumber( &bpBottom, bd, bottomNr );
+	bottomNr= rp->rpBottomBorderNumber;
+	bpBottom= docGetBorderPropertiesByNumber( bd, bottomNr );
 	useBelow= 0;
 	}
 
-    *pBpBottom= bpBottom;
     *pBpBottomNr= bottomNr;
     *pUseBelow= useBelow;
 
-    return;
+    return bpBottom;
     }
 
 /************************************************************************/
 /*									*/
-/*  Draw part of the grid originating from a table row.			*/
-/*									*/
-/*  3)  Is this cell shaded?						*/
-/*  6)  If a cell has a right boder, and the next one a left border,	*/
-/*	MS-Word only draws the right border of the leftmost cell.	*/
-/*	( The same applies in the vertical direction. )			*/
-/*  7)  Base the decisions on whether to draw a table grid on the same	*/
-/*	criteria.							*/
-/*  8)  Draw cell top border.						*/
-/*  9)  Draw cell left border.						*/
-/* 10)  Draw cell right border.						*/
-/* 11)  Draw cell bottom border.					*/
-/*									*/
-/* Experimentation with MS-Word reveals:				*/
-/* a)	The the top border is drawn inside the cell and that the	*/
-/*	formatter allocates space for it.				*/
-/* b)	That the left and right borders are half in the cell. Typically	*/
-/*	covering part of the horizontal gap that the table reserves.	*/
-/* c)	That the bottom border is completely below the cell. So inside	*/
-/*	the table it comes at the same location as the top border of	*/
-/*	the next row.							*/
+/*  Get the left border of the cell. 'Left' is in terms of the cell	*/
+/*  properties. So in right-to-left rows, the result is drawn on the	*/
+/*  right hand side of the cell.					*/
 /*									*/
 /************************************************************************/
 
-static int docCellLeftBorderDrawn(
-				BorderProperties *		bpLeft,
+static int docGetCellLeftBorder( const BorderProperties **	pBpLeft,
 				int *				bpLeftNr,
-				int *				pProp,
-				DocumentRectangle *		drOutside,
-				DocumentRectangle *		drInside,
-				const DocumentRectangle *	drCell,
-				const BufferDocument *		bd,
-				const BufferItem *		rowNode,
-				int				col,
-				int				drawTableGrid )
+				const struct BufferDocument *	bd,
+				const RowProperties *		rp,
+				int				col )
     {
     int				rval= 0;
-    const CellProperties *	cp= rowNode->biRowCells+ col;
+    const CellProperties *	cp= rp->rpCells+ col;
 
     int				leftHasBorder= 0;
     int				hasLeftBorder= 0;
 
-    int				thick= 0;
-    int				space;
+    const BorderProperties *	bpLeft= (const BorderProperties *)0;
 
     /*  6  */
     if  ( col > 0							&&
 	  docBorderNumberIsBorder( bd, cp[-1].cpRightBorderNumber )	)
 	{ leftHasBorder= 1;	}
 
-    docGetBorderPropertiesByNumber( bpLeft, bd, cp->cpLeftBorderNumber );
+    bpLeft= docGetBorderPropertiesByNumber( bd, cp->cpLeftBorderNumber );
     hasLeftBorder= DOCisBORDER( bpLeft );
 
     if  ( leftHasBorder						&&
 	  cp[-1].cpRightBorderNumber != cp->cpLeftBorderNumber	)
 	{
-	docGetBorderPropertiesByNumber( bpLeft, bd,
+	bpLeft= docGetBorderPropertiesByNumber( bd,
 					    cp[-1].cpRightBorderNumber );
-	thick= docBorderThick( &space, bpLeft );
 
-	drOutside->drX0= drCell->drX0+ 1- thick/ 2;
-	drInside->drX0= drOutside->drX0+ thick;
 	*bpLeftNr= cp[-1].cpRightBorderNumber;
 	}
     else{
 	/*  9  */
 	if  ( hasLeftBorder )
 	    {
-	    *pProp= ORNdrawLEFT_BORDER; rval= 1;
-
-	    thick= docBorderThick( &space, bpLeft );
-
-	    drOutside->drX0= drCell->drX0- thick/ 2;
-	    drInside->drX0= drOutside->drX0+ thick;
 	    *bpLeftNr= cp->cpLeftBorderNumber;
+	    rval= 1;
 	    }
 	}
 
-    /*  7  */
-    if  ( drawTableGrid )
-	{
-	if  ( ! hasLeftBorder && ! leftHasBorder )
-	    { *pProp= ORNdrawLEFT_GRID; rval= 1;	}
-	}
+    *pBpLeft= bpLeft;
 
     return rval;
     }
 
-static int docCellRightBorderDrawn(
-				BorderProperties *		bpRight,
+/************************************************************************/
+/*									*/
+/*  Get the right border of the cell. 'Right' is in terms of the cell	*/
+/*  properties. So in right-to-left rows, the result is drawn on the	*/
+/*  left hand side of the cell.						*/
+/*									*/
+/************************************************************************/
+
+static int docGetCellRightBorder( const BorderProperties **	pBpRight,
 				int *				bpRightNr,
-				int *				pProp,
-				DocumentRectangle *		drOutside,
-				DocumentRectangle *		drInside,
-				const DocumentRectangle *	drCell,
-				const BufferDocument *		bd,
-				const BufferItem *		rowNode,
-				int				col,
-				int				drawTableGrid )
+				const struct BufferDocument *	bd,
+				const RowProperties *		rp,
+				int				col )
     {
     int				rval= 0;
-    const CellProperties *	cp= rowNode->biRowCells+ col;
-
-    int				thick;
-    int				space;
+    const CellProperties *	cp= rp->rpCells+ col;
 
     int				drawCellRight= 1;
 
     int				rightHasBorder= 0;
     int				hasRightBorder= 0;
 
-    if  ( col < rowNode->biChildCount- 1	&&
+    const BorderProperties *	bpRight= (const BorderProperties *)0;
+
+    if  ( col < rp->rpCellCount- 1			&&
 	  cp[1].cpHorizontalMerge ==CELLmergeFOLLOW	)
 	{ drawCellRight= 0;	}
 
     /*  6  */
-    if  ( col < rowNode->biChildCount- 1					&&
+    if  ( col < rp->rpCellCount- 1					&&
 	  docBorderNumberIsBorder( bd, cp[1].cpLeftBorderNumber )	)
 	{ rightHasBorder= 1;	}
 
-    docGetBorderPropertiesByNumber( bpRight, bd, cp->cpRightBorderNumber );
+    bpRight= docGetBorderPropertiesByNumber( bd, cp->cpRightBorderNumber );
     hasRightBorder= DOCisBORDER( bpRight );
 
     if  ( ! hasRightBorder && rightHasBorder )
 	{
-	docGetBorderPropertiesByNumber( bpRight, bd,
+	bpRight= docGetBorderPropertiesByNumber( bd,
 						cp[1].cpLeftBorderNumber );
 	*bpRightNr= cp[1].cpLeftBorderNumber;
 	}
@@ -350,32 +305,143 @@ static int docCellRightBorderDrawn(
     /*  10  */
     if  ( drawCellRight && hasRightBorder )
 	{
-	*pProp= ORNdrawRIGHT_BORDER; rval= 1;
-
-	thick= docBorderThick( &space, bpRight );
-	drInside->drX1= drCell->drX1- thick/ 2;
-	drOutside->drX1= drInside->drX1+ thick;
 	*bpRightNr= cp->cpRightBorderNumber;
+	rval= 1;
 	}
 
-    /*  7  */
-    if  ( drawTableGrid )
-	{
-	if  ( ! hasRightBorder && ! rightHasBorder )
-	    { *pProp= ORNdrawRIGHT_GRID; rval= 1;	}
-	}
-
+    *pBpRight= bpRight;
     return rval;
     }
 
-static int docCellTopBorderDrawn( BorderProperties *		bpTop,
-				int *				bpTopNr,
+/************************************************************************/
+/*									*/
+/*  Get the left border of the cell. 'Left' is in geometric terms.	*/
+/*  So in right-to-left rows, the result is based on the right border	*/
+/*  of the cell properties.						*/
+/*									*/
+/************************************************************************/
+
+static int docCellLeftBorderDrawn(
+				const BorderProperties **	pBpLeft,
+				int *				pBpLeftNr,
 				int *				pProp,
 				DocumentRectangle *		drOutside,
 				DocumentRectangle *		drInside,
 				const DocumentRectangle *	drCell,
-				const BufferDocument *		bd,
-				const BufferItem *		rowNode,
+				const struct BufferDocument *	bd,
+				const RowProperties *		rp,
+				int				col,
+				int				drawTableGrid )
+    {
+    int				rval= 0;
+
+    int				bpLeftNr= -1;
+    const BorderProperties *	bpLeft= (const BorderProperties *)0;
+
+    if  ( rp->rpRToL )
+	{
+	rval= docGetCellRightBorder( &bpLeft, &bpLeftNr, bd, rp, col );
+	if  ( rval < 0 )
+	    { LDEB(rval); return 0;	}
+	}
+    else{
+	rval= docGetCellLeftBorder( &bpLeft, &bpLeftNr, bd, rp, col );
+	if  ( rval < 0 )
+	    { LDEB(rval); return 0;	}
+	}
+
+    if  ( bpLeft )
+	{
+	int		thick= 0;
+	int		space;
+
+	thick= docBorderThick( &space, bpLeft );
+
+	drOutside->drX0= drCell->drX0+ 1- thick/ 2;
+	drInside->drX0= drOutside->drX0+ thick;
+	}
+
+    if  ( rval )
+	{ *pProp= ORNdrawLEFT_BORDER;	}
+    else{
+	if  ( drawTableGrid )
+	    { *pProp= ORNdrawLEFT_GRID; rval= 1;	}
+	}
+
+    *pBpLeftNr= bpLeftNr;
+    *pBpLeft= bpLeft;
+
+    return rval;
+    }
+
+/************************************************************************/
+/*									*/
+/*  Get the right border of the cell. 'Right' is in geometric terms.	*/
+/*  So in right-to-left rows, the result is based on the left border	*/
+/*  of the cell properties.						*/
+/*									*/
+/************************************************************************/
+
+static int docCellRightBorderDrawn(
+				const BorderProperties **	pBpRight,
+				int *				pBpRightNr,
+				int *				pProp,
+				DocumentRectangle *		drOutside,
+				DocumentRectangle *		drInside,
+				const DocumentRectangle *	drCell,
+				const struct BufferDocument *	bd,
+				const RowProperties * 		rp,
+				int				col,
+				int				drawTableGrid )
+    {
+    int				rval= 0;
+
+    int				bpRightNr= -1;
+    const BorderProperties *	bpRight= (const BorderProperties *)0;
+
+    if  ( rp->rpRToL )
+	{
+	rval= docGetCellLeftBorder( &bpRight, &bpRightNr, bd, rp, col );
+	if  ( rval < 0 )
+	    { LDEB(rval); return 0;	}
+	}
+    else{
+	rval= docGetCellRightBorder( &bpRight, &bpRightNr, bd, rp, col );
+	if  ( rval < 0 )
+	    { LDEB(rval); return 0;	}
+	}
+
+    /*  10  */
+    if  ( rval )
+	{
+	int		thick;
+	int		space;
+
+	*pProp= ORNdrawRIGHT_BORDER;
+
+	thick= docBorderThick( &space, bpRight );
+	drInside->drX1= drCell->drX1- thick/ 2;
+	drOutside->drX1= drInside->drX1+ thick;
+	}
+    else{
+	/*  7  */
+	if  ( drawTableGrid )
+	    { *pProp= ORNdrawRIGHT_GRID; rval= 1;	}
+	}
+
+    *pBpRightNr= bpRightNr;
+    *pBpRight= bpRight;
+
+    return rval;
+    }
+
+static int docCellTopBorderDrawn( const BorderProperties **	pBpTop,
+				int *				bpTopNr,
+				int *				pProp,
+				DocumentRectangle *		drInside,
+				const DocumentRectangle *	drCell,
+				const struct BufferDocument *	bd,
+				const struct BufferItem *	rowNode,
 				int				col,
 				int				atRowTop,
 				int				drawTableGrid )
@@ -383,7 +449,10 @@ static int docCellTopBorderDrawn( BorderProperties *		bpTop,
     int				rval= 0;
     int				useAbove= 0;
 
-    docGetCellTopBorder( bpTop, bpTopNr, &useAbove, bd, rowNode, col, atRowTop );
+    const BorderProperties *	bpTop= (const BorderProperties *)0;
+
+    bpTop= docGetCellTopBorder( bpTopNr, &useAbove, bd,
+					    rowNode, col, atRowTop );
 
     if  ( useAbove )
 	{
@@ -420,18 +489,18 @@ static int docCellTopBorderDrawn( BorderProperties *		bpTop,
 	    }
 	}
 
+    *pBpTop= bpTop;
     return rval;
     }
 
 static int docCellBottomBorderDrawn(
-				BorderProperties *		bpBottom,
+				const BorderProperties **	pBpBottom,
 				int *				bpBottomNr,
 				int *				pProp,
 				DocumentRectangle *		drOutside,
-				DocumentRectangle *		drInside,
 				const DocumentRectangle *	drCell,
-				const BufferDocument *		bd,
-				const BufferItem *		rowNode,
+				const struct BufferDocument *	bd,
+				const struct BufferItem *	rowNode,
 				int				col,
 				int				atRowBottom,
 				int				drawTableGrid )
@@ -443,7 +512,9 @@ static int docCellBottomBorderDrawn(
 
     int				useBelow= 0;
 
-    docGetCellBottomBorder( bpBottom, bpBottomNr, &useBelow,
+    const BorderProperties *	bpBottom= (const BorderProperties *)0;
+
+    bpBottom= docGetCellBottomBorder( bpBottomNr, &useBelow,
 					bd, rowNode, col, atRowBottom );
 
     /*  11  */
@@ -463,12 +534,33 @@ static int docCellBottomBorderDrawn(
 	    { *pProp= ORNdrawBOTTOM_GRID; rval= 1;	}
 	}
 
+    *pBpBottom= bpBottom;
     return rval;
     }
 
 /************************************************************************/
 /*									*/
 /*  Retrieve the borders and shading of a cell.				*/
+/*									*/
+/*  3)  Is this cell shaded?						*/
+/*  6)  If a cell has a right boder, and the next one a left border,	*/
+/*	MS-Word only draws the right border of the leftmost cell.	*/
+/*	( The same applies in the vertical direction. )			*/
+/*  7)  Base the decisions on whether to draw a table grid on the same	*/
+/*	criteria.							*/
+/*  8)  Draw cell top border.						*/
+/*  9)  Draw cell left border.						*/
+/* 10)  Draw cell right border.						*/
+/* 11)  Draw cell bottom border.					*/
+/*									*/
+/* Experimentation with MS-Word reveals:				*/
+/* a)	The the top border is drawn inside the cell and that the	*/
+/*	formatter allocates space for it.				*/
+/* b)	That the left and right borders are half in the cell. Typically	*/
+/*	covering part of the horizontal gap that the table reserves.	*/
+/* c)	That the bottom border is completely below the cell. So inside	*/
+/*	the table it comes at the same location as the top border of	*/
+/*	the next row.							*/
 /*									*/
 /************************************************************************/
 
@@ -477,15 +569,15 @@ void docGetCellOrnaments(
 			DocumentRectangle *		drOutside,
 			DocumentRectangle *		drInside,
 			const DocumentRectangle *	drCell,
-			const BufferDocument *		bd,
-			const BufferItem *		rowNode,
+			const struct BufferDocument *	bd,
+			const struct BufferItem *	rowNode,
 			int				col,
 			int				atRowTop,
 			int				atRowBottom,
 			int				drawTableGrid )
     {
-    const CellProperties *	cp= rowNode->biRowCells+ col;
-    const RowProperties *	rp= &(rowNode->biRowProperties);
+    const RowProperties * 	rp= rowNode->biRowProperties;
+    const CellProperties *	cp= rp->rpCells+ col;
     int				shadingNumber;
 
     int				prop= 0;
@@ -500,7 +592,7 @@ void docGetCellOrnaments(
 
     if  ( shadingNumber != 0 )
 	{
-	docGetItemShadingByNumber( &(cellOrnaments->boShading), bd,
+	cellOrnaments->boShading= docGetItemShadingByNumber( bd,
 							    shadingNumber );
 
 	PROPmaskADD( &(cellOrnaments->boPropMask), ORNdrawSHADE );
@@ -508,25 +600,25 @@ void docGetCellOrnaments(
 
     if  ( docCellTopBorderDrawn( &(cellOrnaments->boTopBorder),
 		    &(cellOrnaments->boTopBorderNumber),
-		    &prop, drOutside, drInside, drCell,
+		    &prop, drInside, drCell,
 		    bd, rowNode, col, atRowTop, drawTableGrid ) )
 	{ PROPmaskADD( &(cellOrnaments->boPropMask), prop );	}
 
     if  ( docCellLeftBorderDrawn( &(cellOrnaments->boLeftBorder),
-		    &(cellOrnaments->boLeftBorderNumber),
-		    &prop, drOutside, drInside, drCell,
-		    bd, rowNode, col, drawTableGrid ) )
+		&(cellOrnaments->boLeftBorderNumber),
+		&prop, drOutside, drInside, drCell,
+		bd, rp, col, drawTableGrid ) )
 	{ PROPmaskADD( &(cellOrnaments->boPropMask), prop );	}
 
     if  ( docCellRightBorderDrawn( &(cellOrnaments->boRightBorder),
-		    &(cellOrnaments->boRightBorderNumber),
-		    &prop, drOutside, drInside, drCell,
-		    bd, rowNode, col, drawTableGrid ) )
+		&(cellOrnaments->boRightBorderNumber),
+		&prop, drOutside, drInside, drCell,
+		bd, rp, col, drawTableGrid ) )
 	{ PROPmaskADD( &(cellOrnaments->boPropMask), prop );	}
 
     if  ( docCellBottomBorderDrawn( &(cellOrnaments->boBottomBorder),
 		    &(cellOrnaments->boBottomBorderNumber),
-		    &prop, drOutside, drInside, drCell,
+		    &prop, drOutside, drCell,
 		    bd, rowNode, col, atRowBottom, drawTableGrid ) )
 	{ PROPmaskADD( &(cellOrnaments->boPropMask), prop );	}
 
@@ -546,31 +638,32 @@ void docGetCellOrnaments(
 /*									*/
 /************************************************************************/
 
-void docLayoutCalculateRowTopInset(	int *			pInset,
-					const BufferDocument *	bd,
-					const BufferItem *	rowNode,
-					int			atRowTop )
+void docLayoutCalculateRowTopInset(
+				int *				pInset,
+				const struct BufferDocument *	bd,
+				const struct BufferItem *	rowNode,
+				int				atRowTop )
     {
     int				col;
-    const CellProperties *	cp;
 
     *pInset= 0;
 
     /*  1  */
-    cp= rowNode->biRowCells;
-    for ( col= 0; col < rowNode->biChildCount; cp++, col++ )
+    for ( col= 0; col < rowNode->biChildCount; col++ )
 	{
-	int			useAbove= 0;
-	BorderProperties	bpTop;
-	int			topNr;
+	const struct BufferItem *	cellNode= rowNode->biChildren[col];
+	int				useAbove= 0;
+	const BorderProperties *	bpTop;
+	int				topNr;
 
-	if  ( CELL_MERGED( cp ) )
+	if  ( docIsRowNode( rowNode )			&&
+	      CELL_MERGED( cellNode->biCellProperties )	)
 	    { continue;	}
 
-	docGetCellTopBorder( &bpTop, &topNr,
-					&useAbove, bd, rowNode, col, atRowTop );
+	bpTop= docGetCellTopBorder( &topNr,
+				&useAbove, bd, rowNode, col, atRowTop );
 
-	docStretchInsetForBorder( pInset, &bpTop );
+	docStretchInsetForBorder( pInset, bpTop );
 	}
 
     return;

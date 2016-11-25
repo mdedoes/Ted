@@ -10,6 +10,7 @@
 
 #   include	"docDocumentField.h"
 #   include	"docRefField.h"
+#   include	"docFieldKind.h"
 
 void docInitRefField(	RefField *	rf )
     {
@@ -68,7 +69,7 @@ int docGetRefField(		RefField *		rf,
 	    continue;
 	    }
 
-	if  ( ! ic->icIsFlag )
+	if  ( ic->icType != INSTRtypeFLAG )
 	    {
 	    if  ( utilCopyMemoryBuffer( &(rf->rfBookmark), &(ic->icBuffer) ) )
 		{ LDEB(comp);	}

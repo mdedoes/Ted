@@ -9,11 +9,35 @@
 
 #   include	<utilMemoryBuffer.h>
 
+typedef enum FieldInstructionComponentType
+    {
+    INSTRtypeFLAG,
+    INSTRtypeVALUE,
+    INSTRtypeQUOTED_VALUE,
+
+    INSTRtype_COUNT
+    } FieldInstructionComponentType;
+
 typedef struct InstructionsComponent
     {
+			/**
+			 *  The actual contents of the instruction.
+			 */
     MemoryBuffer	icBuffer;
-    unsigned char	icIsFlag;
-    unsigned char	icIsQuoted;
+
+			/**
+			 *  The offset of the component in the original
+			 *  instructions string. This can be used to 
+			 *  correlate the instructions fields to the 
+			 *  instructions components.
+			 */
+    int			icOffset;
+
+			/**
+			 *  The type of instruction. This is a
+			 *  FieldInstructionComponentType value;
+			 */
+    unsigned char	icType;	
     } InstructionsComponent;
 
 typedef struct FieldInstructions
@@ -43,8 +67,9 @@ extern int docAllocateComponents(	FieldInstructions *		fi,
 					int				n );
 
 extern int docSetFieldInstructions(	FieldInstructions *	fi,
-					const char *		bytes,
-					int			size );
+					int			keepSpace,
+					const char *		instBytes,
+					int			instSize );
 
 extern int docFieldComponentInt(	int *				pVal,
 					const InstructionsComponent *	ic ) ;
@@ -72,12 +97,17 @@ extern int docStartFieldInstructions(	FieldInstructions *	fi,
 extern int docFieldInstructionsAddArgFlag(
 					FieldInstructions *	fi,
 					int			flag,
-					const MemoryBuffer *	valueName );
+					const MemoryBuffer *	value );
+
+extern int docFieldInstructionsAddIntFlag(
+					FieldInstructions *	fi,
+					int			flag,
+					int			value );
 
 extern int docFieldInstructionsAddArgFlagIfSet(
 					FieldInstructions *	fi,
 					int			flag,
-					const MemoryBuffer *	valueName );
+					const MemoryBuffer *	value );
 
 extern int docFieldInstructionsAddComponent(
 					FieldInstructions *	fi,
@@ -104,7 +134,6 @@ extern int docComponentEqualsWordNoCase( const InstructionsComponent *	ic,
 					const char *			word,
 					int				len );
 
-extern void docListFieldInstructions(	int				indent,
-					const FieldInstructions *	fi );
+extern void docListFieldInstructions(	const FieldInstructions *	fi );
 
 #   endif /*  DOC_FIELD_INSTRUCTIONS_H  */

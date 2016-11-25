@@ -7,7 +7,7 @@
 #   ifndef	DOC_PICTURE_PROPERTIES_H
 #   define	DOC_PICTURE_PROPERTIES_H
 
-#   include	<utilPropMask.h>
+struct PropertyMask;
 
 /************************************************************************/
 /*									*/
@@ -23,15 +23,21 @@ typedef struct PictureProperties
     int			pip_xWinExt;	/*  Of metafile picture.	*/
     int			pip_yWinExt;	/*  Of metafile picture.	*/
 
-					/********************************/
-    int			pipTwipsWide;	/*  Width of object.		*/
-    int			pipTwipsHigh;	/*  Height of object.		*/
-					/*  NOTE: this is a property of	*/
-					/*  the image. Not of the way	*/
-					/*  in which it is included.	*/
-					/*  That is controlled by the	*/
-					/*  scale.			*/
-					/********************************/
+			/**
+			 *  Width of the image or object.
+			 *  This is a property of the image. Not of the 
+			 *  way in which it is included. That is controlled by 
+			 *  the scale.
+			 */
+    int			pipTwipsWide;
+
+			/**
+			 *  Height of the image or object.
+			 *  This is a property of the image. Not of the 
+			 *  way in which it is included. That is controlled by 
+			 *  the scale.
+			 */
+    int			pipTwipsHigh;
 
     int			pipScaleXSet;
     int			pipScaleYSet;
@@ -52,7 +58,7 @@ typedef struct PictureProperties
     int			pipBmBytesPerRow;
 
     unsigned int	pipPictureIsWordArt:1;
-    unsigned int	pipMetafileIsBitmap:1;
+    unsigned int	pipMetafileIsRaster:1;
     unsigned int	pipPictIsScaled:1;
     } PictureProperties;
 
@@ -102,12 +108,6 @@ typedef enum PictureProperty
     } PictureProperty;
 
 /************************************************************************/
-
-# define PICshpSHPPICT		0
-# define PICshpNONSHPPICT	1
-# define PICshpPICT		2
-
-/************************************************************************/
 /*									*/
 /*  Routine declarations.						*/
 /*									*/
@@ -116,16 +116,16 @@ typedef enum PictureProperty
 extern void docInitPictureProperties(	PictureProperties *	pip );
 
 extern int docUpdPictureProperties(
-				PropertyMask *			pDoneMask,
-				PictureProperties *		pipTo,
-				const PropertyMask *		pipUpdMask,
-				const PictureProperties *	pipFrom );
+			struct PropertyMask *		pDoneMask,
+			PictureProperties *		pipTo,
+			const struct PropertyMask *	pipUpdMask,
+			const PictureProperties *	pipFrom );
 
 extern void docPicturePropertyDifference(
-				PropertyMask *			pDifMask,
-				const PictureProperties *	pip1,
-				const PropertyMask *		cmpMask,
-				const PictureProperties *	pip2 );
+			struct PropertyMask *		pDifMask,
+			const PictureProperties *	pip1,
+			const struct PropertyMask *	cmpMask,
+			const PictureProperties *	pip2 );
 
 extern int docSetPictureProperty(	PictureProperties *	pip,
 					int			prop,

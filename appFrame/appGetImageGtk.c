@@ -6,6 +6,8 @@
 
 #   include	"appFrameConfig.h"
 
+#   if USE_GTK
+
 #   include	<stddef.h>
 #   include	<stdio.h>
 
@@ -13,9 +15,9 @@
 
 #   include	<appDebugon.h>
 
-#   ifdef USE_GTK
+struct RasterImage;
 
-int appImgPastePixmap(		RasterImage *	abi,
+int appImgPastePixmap(		struct RasterImage *	ri,
 				APP_WIDGET		w,
 				APP_SELECTION_EVENT *	event )
     {

@@ -14,9 +14,10 @@
 #   include	"psGlyphs.h"
 #   include	"psTtf.h"
 #   include	<utilIndexMapping.h>
-#   include	<appDebugon.h>
-
 #   include	"psTtfIntern.h"
+#   include	"psFontInfo.h"
+
+#   include	<appDebugon.h>
 
 /************************************************************************/
 /*									*/
@@ -253,26 +254,31 @@ static int utilTtfSetWindowsCmapFormat4Names(
 		g= ( v+ idDelta ) % 65536;
 		}
 
-	    c= v % 256;
-
-	    /*  HACK: MS Symbol */
-	    if  ( ttcr->ttcrEncodingID == 0 /* && v < 256 */ )
-		{
-		if  ( psFontInfoSetGlyphCode( afi, g, c ) )
-		    { LDEB(g); return -1;	}
-		}
-
 	    if  ( g < 0 || g >= ttf->ttfGlyphCount )
 		{ SLLDEB(afi->afiFontName,g,ttf->ttfGlyphCount); continue; }
 
-	    name= psFontInfoGetGlyphName( afi, g );
-	    if  ( name && name[0] )
-		{ continue;	}
+	    c= v;
+	    if  ( c >= 256 )
+		{
+		if  ( ttf->ttfGlyphCount < 256 )
+		    { c= v % 256;				}
+		else{ LLDEB(v,ttf->ttfGlyphCount); c= -1;	}
+		}
 
-	    sprintf( scratch, "win%04x", v );
-	    if  ( psFontInfoSetGlyphName( afi, g, scratch ) )
-		{ LSDEB(g,name); return -1;	}
-	    if  ( psFontInfoSetGlyphCode( afi, g, c ) )
+	    /*  HACK: MS Symbol
+	    if  ( ttcr->ttcrEncodingID == 0 ) .......
+	    */
+
+	    name= psFontInfoGetGlyphName( afi, g );
+	    if  ( ! name )
+		{
+		sprintf( scratch, "win%04x", v );
+
+		if  ( psFontInfoSetGlyphName( afi, g, name ) )
+		    { LSDEB(g,name); return -1;	}
+		}
+
+	    if  ( c >= 0 && psFontInfoSetGlyphCode( afi, g, c ) )
 		{ LSDEB(g,name); return -1;	}
 	    }
 	}
@@ -377,9 +383,12 @@ static int utilTtfSetCharNames(	const TrueTypeFont *	ttf,
     ttcr= ttct->ttctEncodingRecords;
     for ( i= 0; i < ttct->ttctEncodingRecordCount; ttcr++, i++ )
 	{
+	/*  Unicode 2.0 full repertoire */
 	if  ( ttcr->ttcrPlatformID == 0		&&
 	      ttcr->ttcrFormat == 4		)
 	    { break;	}
+
+	/*  Unicode 1.1 full repertoire */
 	if  ( ttcr->ttcrPlatformID == 3		&&
 	      ttcr->ttcrEncodingID == 1		&&
 	      ttcr->ttcrFormat == 4		)
@@ -388,9 +397,11 @@ static int utilTtfSetCharNames(	const TrueTypeFont *	ttf,
 
     if  ( i < ttct->ttctEncodingRecordCount )
 	{
+	/*LLLDEB(ttcr->ttcrPlatformID,ttcr->ttcrEncodingID,ttcr->ttcrFormat);*/
 	if  ( utilTtfSetUnicodeCmapFormat4Names( ttf, ttcr, afi ) )
 	    { LDEB(1); return -1;	}
 
+	afi->afiFontSpecificEncoding= 0;
 	return 0;
 	}
 
@@ -406,9 +417,11 @@ static int utilTtfSetCharNames(	const TrueTypeFont *	ttf,
 
     if  ( i < ttct->ttctEncodingRecordCount )
 	{
+	/*LLLDEB(ttcr->ttcrPlatformID,ttcr->ttcrEncodingID,ttcr->ttcrFormat);*/
 	if  ( utilTtfSetUnicodeCmapFormat0Names( ttf, ttcr, afi ) )
 	    { LDEB(1); return -1;	}
 
+	afi->afiFontSpecificEncoding= 0;
 	return 0;
 	}
 
@@ -423,9 +436,11 @@ static int utilTtfSetCharNames(	const TrueTypeFont *	ttf,
 
     if  ( i < ttct->ttctEncodingRecordCount )
 	{
+	/*LLLDEB(ttcr->ttcrPlatformID,ttcr->ttcrEncodingID,ttcr->ttcrFormat);*/
 	if  ( utilTtfSetWindowsCmapFormat4Names( ttf, ttcr, afi ) )
 	    { LDEB(1); return -1;	}
 
+	afi->afiFontSpecificEncoding= 1;
 	return 0;
 	}
 
@@ -738,6 +753,7 @@ static int psTtfGetWidth(	AfmFontInfo *		afi,
 	    { afi->afiWidthInt= FONTwidthEXTRAEXPANDED;		}
 	if  ( ttot->ttotWidthClass >= 9 )
 	    { afi->afiWidthInt= FONTwidthULTRAEXPANDED;		}
+
 	afi->afiWidthStr= strdup( psWidthStr( afi->afiWidthInt ) );
 	}
     else{
@@ -859,9 +875,9 @@ int psTtfFontInfo(	AfmFontInfo *		afi,
 /*									*/
 /************************************************************************/
 
-int psTtfToAfi(		AfmFontInfo *		afi,
-			const MemoryBuffer *	fontFileName,
-			SimpleInputStream *	sisTtf )
+int psTtfToAfi(		AfmFontInfo *			afi,
+			const MemoryBuffer *		fontFileName,
+			struct SimpleInputStream *	sisTtf )
     {
     int				rval= 0;
 

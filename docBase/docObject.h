@@ -15,9 +15,6 @@
 #   include	"docPictureProperties.h"
 
 struct DrawingSurface;
-struct BufferDocument;
-struct BufferItem;
-struct TextParticule;
 struct DrawingShape;
 
 /************************************************************************/
@@ -28,31 +25,79 @@ struct DrawingShape;
 
 typedef struct InsertedObject
     {
-    int			ioKind;		/*  Kind of object.		*/
-    int			ioResultKind;	/*  Kind of object.		*/
-    int			ioTwipsWide;	/*  objw			*/
-    int			ioTwipsHigh;	/*  objh			*/
-					/*  NOTE: this is a property of	*/
-					/*  the object. Not of the way	*/
-					/*  in which it is included.	*/
-					/*  That is controlled by the	*/
-					/*  scale.			*/
-    short int		ioScaleXSet;	/*  In %.			*/
-    short int		ioScaleYSet;	/*  In %.			*/
-    short int		ioScaleXUsed;	/*  In %.			*/
-    short int		ioScaleYUsed;	/*  In %.			*/
+			/**
+			 *  Kind of object
+			 *  enum ObjectKind: DOCokSOMETHING values
+			 */
+    int			ioKind;
+
+			/**
+			 *  Kind of result object
+			 *  Used where the (OLE) object is stored as an 
+			 *  image or a piece of text.
+			 *  enum ObjectKind: DOCokSOMETHING values
+			 */
+    int			ioResultKind;
+
+			/**
+			 *  Width of the object: objw in rtf
+			 *  NOTE: this is a property of the object. Not of 
+			 *  the way in which it is included. That is 
+			 *  controlled by the scale.
+			 */
+    int			ioTwipsWide;
+
+			/**
+			 *  Height of the object: objh in rtf
+			 *  NOTE: this is a property of the object. Not of 
+			 *  the way in which it is included. That is 
+			 *  controlled by the scale.
+			 */
+    int			ioTwipsHigh;
+
+			/**
+			 *  Horizontal scale of the object as it is set 
+			 *  by the user, or it is read from the input 
+			 *  file. (In %)
+			 */
+    short int		ioScaleXSet;
+
+			/**
+			 *  Vertical scale of the object as it is set 
+			 *  by the user, or it is read from the input 
+			 *  file. (In %)
+			 */
+    short int		ioScaleYSet;
+
+			/**
+			 *  Horizontal scale of the object as it is used.
+			 *  Objects are scaled to fit on the page or in 
+			 *  a table cell. (In %)
+			 *  (So used <= set)
+			 */
+    short int		ioScaleXUsed;
+
+			/**
+			 *  Vertical scale of the object as it is used.
+			 *  Objects are scaled to fit on the page or in 
+			 *  a table cell. (In %)
+			 *  (So used <= set)
+			 */
+    short int		ioScaleYUsed;
+#if 1
     int			ioPixelsWide;	/*  Width of object on screen	*/
     int			ioPixelsHigh;	/*  Height of object on screen	*/
+#endif
 
     PictureProperties	ioPictureProperties;
 
     LayoutPosition	ioY0Position;
     int			ioX0Twips;
 
-    unsigned int	ioRtfResultKind:4; /*  From rslt* tags.		*/
-    unsigned int	ioRtfEmbedKind:4;  /*  From objemb.. tags.	*/
+    unsigned char	ioRtfResultKind; /*  From rslt* tags.		*/
+    unsigned char	ioRtfEmbedKind;  /*  From objemb.. tags.	*/
 
-    unsigned int	ioInline:8;  	/*  Part of the text flow?	*/
+    unsigned char	ioInline;	/*  Part of the text flow?	*/
 
     int			ioTopCropTwips;
     int			ioBottomCropTwips;
@@ -61,19 +106,14 @@ typedef struct InsertedObject
 
     MemoryBuffer	ioObjectData;
     MemoryBuffer	ioResultData;
-
-    char *		ioObjectName;
-    char *		ioObjectClass;
+    MemoryBuffer	ioObjectName;
+    MemoryBuffer	ioObjectClass;
 
     struct DrawingShape *	ioDrawingShape;
 
     struct DrawingSurface *	ioDrawingSurface;
-    RasterImage		ioRasterImage;
+    RasterImage			ioRasterImage;
     } InsertedObject;
-
-typedef void (*DOC_CLOSE_OBJECT)(
-				const struct BufferDocument *	bd,
-				const struct TextParticule *	tp );
 
 /************************************************************************/
 /*									*/
@@ -81,11 +121,11 @@ typedef void (*DOC_CLOSE_OBJECT)(
 /*									*/
 /************************************************************************/
 
-extern int docObjectSetData(	InsertedObject *		io,
-				const char *			bytes,
-				int				size );
+extern void docInitInsertedObject(	InsertedObject *		io );
+extern void docCleanInsertedObject(	InsertedObject *		io );
 
-extern int docSetResultData(	InsertedObject *		io,
+extern int docObjectSetData(	InsertedObject *		io,
+				int				prop,
 				const char *			bytes,
 				int				size );
 
@@ -97,41 +137,22 @@ extern int docSaveResultTag(	InsertedObject *		io,
 				const char *			tag,
 				int				arg );
 
-extern int docSetObjectName(	InsertedObject *		io,
-				const char *			name,
-				int				len );
-
-extern int docSetObjectClass(	InsertedObject *		io,
-				const char *			name,
-				int				len );
-
-extern void docInitInsertedObject(	InsertedObject *		io );
-extern void docCleanInsertedObject(	InsertedObject *		io );
-
 extern void docObjectAdaptToPictureGeometry(
 				InsertedObject *		io,
 				const PictureProperties *	pip );
 
-extern int docReadWmfObject(		InsertedObject *	io,
-					const MemoryBuffer *	filename );
+extern void docObjectGetCropRect(
+				struct DocumentRectangle *	dr,
+				const PictureProperties *	pip,
+				const BitmapDescription *	bd );
 
-extern int docReadEmfObject(		InsertedObject *	io,
-					const MemoryBuffer *	filename );
+extern void docObjectGetPixelRectangle(
+				struct DocumentRectangle *	drPixels,
+				const InsertedObject *		io,
+				double				pixelsPerTwip );
 
-extern int docReadBitmapObject(		InsertedObject *	io,
-					const MemoryBuffer *	filename );
-
-extern int docReadEpsObject(		const MemoryBuffer *	fullName,
-					InsertedObject *	io );
-
-extern int docReadFileObject(		const MemoryBuffer *	fullName,
-					InsertedObject *	io );
-
-extern void docObjectGetCropRect(	DocumentRectangle *		dr,
-					const PictureProperties *	pip,
-					const BitmapDescription *	bd );
-
-extern void docObjectSetPixelSize(	InsertedObject *		io,
-					double pixelsPerTwip		);
+extern void docObjectSetPixelSize(
+				InsertedObject *		io,
+				double				pixelsPerTwip );
 
 #   endif	/*  DOC_OBJECT_H	*/

@@ -6,11 +6,16 @@
 
 #   include	"docBufConfig.h"
 
-#   include	<appDebugon.h>
-
 #   include	"docBuf.h"
-#   include	"docDebug.h"
 #   include	"docTreeNode.h"
+#   include	"docTableRectangle.h"
+#   include	"docSelect.h"
+#   include	<docEditPosition.h>
+#   include	<docEditRange.h>
+#   include	"docNodeTree.h"
+
+#   include	"docDebug.h"
+#   include	<appDebugon.h>
 
 /************************************************************************/
 /*									*/
@@ -76,19 +81,19 @@ int docComparePositions(	const DocumentPosition *	dp1,
 /*									*/
 /************************************************************************/
 
-int docCompareNodePositionToSelection(	const BufferItem *		node,
+int docCompareNodePositionToSelection(	const struct BufferItem *	node,
 					const DocumentSelection *	ds )
     {
     if  ( ds )
 	{
 	DocumentPosition	dp;
 
-	if  ( docTailPosition( &dp, (BufferItem *)node ) )
+	if  ( docTailPosition( &dp, (struct BufferItem *)node ) )
 	    { LDEB(1); return 0;	}
 	if  ( docComparePositions( &dp, &(ds->dsHead) ) < 0 )
 	    { return -1;	}
 
-	if  ( docHeadPosition( &dp, (BufferItem *)node ) )
+	if  ( docHeadPosition( &dp, (struct BufferItem *)node ) )
 	    { LDEB(1); return 0;	}
 	if  ( docComparePositions( &(ds->dsTail), &dp ) < 0 )
 	    { return  1;	}
@@ -99,7 +104,7 @@ int docCompareNodePositionToSelection(	const BufferItem *		node,
 
 int docCompareCellPositionToSelection(
 				int *				pSelected,
-				const BufferItem *		cellNode,
+				const struct BufferItem *	cellNode,
 				const DocumentSelection *	ds )
     {
     int			col= cellNode->biNumberInParent;
@@ -125,14 +130,14 @@ int docCompareCellPositionToSelection(
 
 int docPositionForEditPosition(	DocumentPosition *		dpNew,
 				const EditPosition *		ep,
-				const DocumentTree *		dt )
+				const struct DocumentTree *	tree )
     {
-    BufferItem *		paraNode;
+    struct BufferItem *		paraNode;
 
-    if  ( ! dt )
-	{ XDEB(dt); return -1;	}
+    if  ( ! tree )
+	{ XDEB(tree); return -1;	}
 
-    paraNode= docGetParagraphByNumber( dt, ep->epParaNr );
+    paraNode= docGetParagraphByNumber( tree, ep->epParaNr );
     if  ( ! paraNode )
 	{ LXDEB(ep->epParaNr,paraNode); return -1;	}
     if  ( ep->epStroff > docParaStrlen( paraNode ) )
@@ -155,7 +160,7 @@ int docPositionForEditPosition(	DocumentPosition *		dpNew,
 /************************************************************************/
 
 int docSetDocumentPosition(	DocumentPosition *	dp,
-				BufferItem *		node,
+				struct BufferItem *	node,
 				int			stroff )
     {
     dp->dpNode= node;
@@ -172,7 +177,7 @@ int docSetDocumentPosition(	DocumentPosition *	dp,
 
 void docInitDocumentPosition(	DocumentPosition *	dp )
     {
-    dp->dpNode= (BufferItem *)0;
+    dp->dpNode= (struct BufferItem *)0;
     dp->dpStroff= 0;
 
     return;
@@ -185,16 +190,16 @@ void docInitDocumentPosition(	DocumentPosition *	dp )
 /************************************************************************/
 
 int docSelectionForEditPositionsInTree(	DocumentSelection *		dsNew,
-					const DocumentTree *		dt,
+					const struct DocumentTree *	tree,
 					const EditPosition *		epHead,
 					const EditPosition *		epTail )
     {
     DocumentPosition		dpHead;
     DocumentPosition		dpTail;
 
-    if  ( docPositionForEditPosition( &dpHead, epHead, dt ) )
+    if  ( docPositionForEditPosition( &dpHead, epHead, tree ) )
 	{ LDEB(1); return -1;	}
-    if  ( docPositionForEditPosition( &dpTail, epTail, dt ) )
+    if  ( docPositionForEditPosition( &dpTail, epTail, tree ) )
 	{ LDEB(1); return -1;	}
 
     docSetRangeSelection( dsNew, &dpHead, &dpTail, 1 );
@@ -203,30 +208,30 @@ int docSelectionForEditPositionsInTree(	DocumentSelection *		dsNew,
     }
 
 int docSelectionForEditPositionsInDoc(	DocumentSelection *		dsNew,
-					const BufferDocument *		bd,
+					const struct BufferDocument *	bd,
 					const SelectionScope *		ss,
 					const EditPosition *		epHead,
 					const EditPosition *		epTail )
     {
-    DocumentTree *		dt;
-    BufferItem *		bodySectBi;
+    struct DocumentTree *	tree;
+    struct BufferItem *		bodySectNode;
 
     TableRectangle		tr;
 
-    if  ( docGetRootOfSelectionScope( &dt, &bodySectBi, 
-						(BufferDocument *)bd, ss ) )
+    if  ( docGetRootOfSelectionScope( &tree, &bodySectNode, 
+					(struct BufferDocument *)bd, ss ) )
 	{ LDEB(1); return -1;	}
 
-    if  ( docSelectionForEditPositionsInTree( dsNew, dt, epHead, epTail ) )
+    if  ( docSelectionForEditPositionsInTree( dsNew, tree, epHead, epTail ) )
 	{ LDEB(1); return -1;	}
 
     if  ( ! docSelectionInsideCell( dsNew )	&&
 	  ! docGetTableRectangle( &tr, dsNew )	)
 	{
-	BufferItem *	selParentBi;
+	struct BufferItem *	selParentNode;
 
-	if  ( docTableRectangleSelection( dsNew, &selParentBi,
-						(BufferDocument *)bd, &tr ) )
+	if  ( docTableRectangleSelection( dsNew, &selParentNode,
+					(struct BufferDocument *)bd, &tr ) )
 	    { LDEB(1);	}
 	}
 

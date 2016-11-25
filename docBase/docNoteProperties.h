@@ -8,7 +8,8 @@
 #   define	DOC_NOTE_PROPERTIES_H
 
 #   include	<utilMemoryBuffer.h>
-#   include	<utilPropMask.h>
+
+struct PropertyMask;
 
 typedef struct NoteProperties
     {
@@ -39,14 +40,14 @@ extern int docCopyNoteProperties(	NoteProperties *	to,
 					const NoteProperties *	from );
 
 extern int docNotePropertyDifference(
-				PropertyMask *			pDifMask,
+				struct PropertyMask *		pDifMask,
 				const NoteProperties *		np1,
-				const PropertyMask *		cmpMask,
+				const struct PropertyMask *	cmpMask,
 				const NoteProperties *		np2 );
 
-extern int docUpdNoteProperties( PropertyMask *			npDoneMask,
+extern int docUpdNoteProperties( struct PropertyMask *		npDoneMask,
 				NoteProperties *		npTo,
-				const PropertyMask *		npSetMask,
+				const struct PropertyMask *	npSetMask,
 				const NoteProperties *		npSet );
 
 #   endif

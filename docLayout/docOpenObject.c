@@ -6,154 +6,20 @@
 
 #   include	"docLayoutConfig.h"
 
-#   include	<stdio.h>
-
-#   include	<sioMemory.h>
-#   include	<sioHex.h>
-#   include	<drawMetafile.h>
 #   include	"docLayoutObject.h"
 
-#   include	<appDebugon.h>
-
-#   include	<docBuf.h>
 #   include	<docPageGrid.h>
 #   include	<docTreeNode.h>
-#   include	<geoGrid.h>
 #   include	<geoUnits.h>
 #   include	<docShape.h>
 #   include	<docObjectProperties.h>
-#   include	<bmio.h>
+#   include	<docObjectIo.h>
+#   include	<docStripFrame.h>
+#   include	<docBlockFrame.h>
+#   include	<docObject.h>
+#   include	<docShapeGeometry.h>
 
-/************************************************************************/
-/*									*/
-/*  Make the bitmap for an image.					*/
-/*  Make a name for an image.						*/
-/*									*/
-/************************************************************************/
-
-static int docGetBitmap(	bmReadBitmap		readBitmap,
-				RasterImage *		ri,
-				const MemoryBuffer *	mb )
-    {
-    int			rval= 0;
-    int			res;
-
-    SimpleInputStream *	sisMem= (SimpleInputStream *)0;
-    SimpleInputStream *	sisBitmap= (SimpleInputStream *)0;
-
-    sisMem= sioInMemoryOpen( mb );
-    if  ( ! sisMem )
-	{ XDEB(sisMem); rval= -1; goto ready;	}
-
-    sisBitmap= sioInHexOpen( sisMem );
-    if  ( ! sisBitmap )
-	{ XDEB(sisBitmap); rval= -1; goto ready;	}
-
-    res= (*readBitmap)( &(ri->riDescription), &(ri->riBytes), sisBitmap );
-
-    if  ( res < 0 )
-	{ LDEB(res); rval= -1;	}
-
-  ready:
-
-    if  ( sisBitmap )
-	{ sioInClose( sisBitmap );	}
-    if  ( sisMem )
-	{ sioInClose( sisMem );	}
-
-    return rval;
-    }
-
-int docGetBitmapForObjectData(	int			kind,
-				RasterImage *		ri,
-				const MemoryBuffer *	mb )
-    {
-    switch( kind )
-	{
-	case DOCokPICTWMETAFILE:
-	    if  ( docGetBitmap( appMetaPlayWmfImg, ri, mb )	)
-		{ LDEB(1); return -1;	}
-
-	    break;
-
-	case DOCokPICTPNGBLIP:
-	    if  ( docGetBitmap( bmPngReadPng, ri, mb )	)
-		{ LDEB(1); return -1;	}
-	    break;
-
-	case DOCokPICTJPEGBLIP:
-	    if  ( docGetBitmap( bmJpegReadJfif, ri, mb )	)
-		{ LDEB(1); return -1;	}
-
-	    break;
-
-	case DOCokMACPICT:
-	case DOCokPICTEMFBLIP:
-	default:
-	    LDEB(kind); return -1;
-	}
-
-    return 0;
-    }
-
-int docGetBitmapForObject(	InsertedObject *	io )
-    {
-    switch( io->ioKind )
-	{
-	case DOCokPICTWMETAFILE:
-	    if  ( ! io->ioRasterImage.riBytes				&&
-		  docGetBitmapForObjectData( io->ioKind,
-			&(io->ioRasterImage), &(io->ioObjectData) )	)
-		{ LDEB(1); return 0;	}
-
-	    if  ( io->ioRasterImage.riBytes )
-		{ io->ioPictureProperties.pipMetafileIsBitmap= 1;	}
-
-	    break;
-
-	case DOCokPICTPNGBLIP:
-	case DOCokPICTJPEGBLIP:
-	    if  ( ! io->ioRasterImage.riBytes				&&
-		  docGetBitmapForObjectData( io->ioKind,
-			&(io->ioRasterImage), &(io->ioObjectData) )	)
-		{ LDEB(1); return 0;	}
-	    break;
-
-	case DOCokOLEOBJECT:
-	    if  ( io->ioResultKind == DOCokPICTWMETAFILE )
-		{
-		if  ( ! io->ioRasterImage.riBytes			&&
-		      docGetBitmapForObjectData( io->ioResultKind,
-			    &(io->ioRasterImage), &(io->ioResultData) )	)
-		    { LDEB(1); return 0;	}
-
-		if  ( io->ioRasterImage.riBytes )
-		    { io->ioPictureProperties.pipMetafileIsBitmap= 1;	}
-
-		return 0;
-		}
-
-	    if  ( io->ioResultKind == DOCokPICTPNGBLIP	||
-		  io->ioResultKind == DOCokPICTJPEGBLIP )
-		{
-		if  ( ! io->ioRasterImage.riBytes			&&
-		      docGetBitmapForObjectData( io->ioResultKind,
-			    &(io->ioRasterImage), &(io->ioResultData) )	)
-		    { LDEB(1); return 0;	}
-
-		return 0;
-		}
-
-	    return 0;
-
-	case DOCokMACPICT:
-	case DOCokPICTEMFBLIP:
-	default:
-	    LDEB(io->ioKind); return 0;
-	}
-
-    return 0;
-    }
+#   include	<appDebugon.h>
 
 int docCheckObjectLayout(	int *			pFixed,
 				InsertedObject *	io )
@@ -178,7 +44,7 @@ int docCheckObjectLayout(	int *			pFixed,
 	else{
 	    DocumentRectangle	drTwips;
 
-	    docPlaceRootShapeRect( &drTwips, &(io->ioDrawingShape->dsShapeProperties), 0, 0 );
+	    docPlaceRootShapeRect( &drTwips, &(ds->dsShapeProperties), 0, 0 );
 
 	    if  ( io->ioTwipsWide == 0 )
 		{
@@ -193,20 +59,61 @@ int docCheckObjectLayout(	int *			pFixed,
 	    }
 	}
 
-    if  ( ( pip->pipTwipsWide == 0		||
-	    pip->pipTwipsHigh == 0		)	&&
-	  ( io->ioKind == DOCokPICTPNGBLIP	||
-	    io->ioKind == DOCokPICTJPEGBLIP	)	)
+    if  ( pip->pipTwipsWide == 0		||
+	  pip->pipTwipsHigh == 0		)
 	{
-	if  ( ! io->ioRasterImage.riBytes	&&
-	      docGetBitmapForObject( io )	)
-	    { LDEB(1);	}
-	else{
-	    bmRectangleSizeTwips( &(pip->pipTwipsWide), &(pip->pipTwipsHigh),
-				&(io->ioRasterImage.riDescription),
-				io->ioRasterImage.riDescription.bdPixelsWide,
-				io->ioRasterImage.riDescription.bdPixelsHigh );
-	    fixed= 1;
+	switch( io->ioKind )
+	    {
+	    case DOCokPICTPNGBLIP:
+	    case DOCokPICTJPEGBLIP:
+		if  ( docReadRasterSize( io ) )
+		    { LDEB(io->ioKind);	}
+		else{ fixed= 1;		}
+		break;
+
+	    case DOCokPICTEMFBLIP:
+		if  ( docReadEmfSize( io, &(io->ioObjectData) ) )
+		    { LDEB(io->ioKind);	}
+		else{ fixed= 1;		}
+		break;
+
+	    case DOCokPICTWMETAFILE:
+		if  ( docReadWmfSize( io, &(io->ioObjectData) ) )
+		    { LDEB(io->ioKind);	}
+		else{ fixed= 1;		}
+		break;
+
+	    case DOCokOLEOBJECT:
+		switch( io->ioResultKind )
+		    {
+		    case DOCokPICTPNGBLIP:
+		    case DOCokPICTJPEGBLIP:
+			if  ( docReadRasterSize( io ) )
+			    { LDEB(io->ioKind);	}
+			else{ fixed= 1;		}
+			break;
+
+		    case DOCokPICTEMFBLIP:
+			if  ( docReadEmfSize( io, &(io->ioResultData) ) )
+			    { LDEB(io->ioKind);	}
+			else{ fixed= 1;		}
+			break;
+
+		    case DOCokPICTWMETAFILE:
+			if  ( docReadWmfSize( io, &(io->ioResultData) ) )
+			    { LDEB(io->ioKind);	}
+			else{ fixed= 1;		}
+			break;
+
+		    default:
+			/* object will be ignored */
+			break;
+		    }
+		break;
+
+	    default:
+		/* object will be ignored */
+		break;
 	    }
 	}
 
@@ -298,9 +205,9 @@ void docLayoutScaleObjectToFitParagraphFrame(
     return;
     }
 
-void docScaleObjectToParagraph( BufferDocument *		bd,
-				BufferItem *			paraBi,
-				double				xfac,
+void docScaleObjectToParagraph( struct BufferDocument *		bd,
+				struct BufferItem *		paraNode,
+				double				pixelsPerTwip,
 				InsertedObject *		io )
     {
     ParagraphFrame		pf;
@@ -312,15 +219,15 @@ void docScaleObjectToParagraph( BufferDocument *		bd,
 
     int				pageHigh;
 
-    docBlockFrameTwips( &bf, paraBi, bd,
-				    paraBi->biTopPosition.lpPage,
-				    paraBi->biTopPosition.lpColumn );
+    docLayoutInitBlockFrame( &bf );
 
-    docParagraphFrameTwips( &pf, &bf, paraBi );
+    docBlockFrameTwips( &bf, paraNode, bd,
+				    paraNode->biTopPosition.lpPage,
+				    paraNode->biTopPosition.lpColumn );
 
-    pageHigh= bf.bfPageGeometry.dgPageHighTwips- 
-			    bf.bfPageGeometry.dgTopMarginTwips-
-			    bf.bfPageGeometry.dgBottomMarginTwips;
+    docParagraphFrameTwips( &pf, &bf, paraNode );
+
+    pageHigh= geoContentHigh( &(bf.bfPageGeometry) );
 
     docLayoutScaleObjectToFitParagraphFrame( &changed,
 				    io, pageHigh, &(pf.pfParaContentRect) );
@@ -328,18 +235,63 @@ void docScaleObjectToParagraph( BufferDocument *		bd,
     pip->pipScaleXUsed= io->ioScaleXUsed;
     pip->pipScaleYUsed= io->ioScaleYUsed;
 
-    io->ioPixelsWide= COORDtoGRID( xfac,
-				( io->ioScaleXUsed* pip->pipTwipsWide )/ 100 );
-    io->ioPixelsHigh= COORDtoGRID( xfac,
-				( io->ioScaleYUsed* pip->pipTwipsHigh )/ 100 );
-    if  ( io->ioPixelsWide < 1 )
-	{ io->ioPixelsWide=  1;	}
-    if  ( io->ioPixelsHigh < 1 )
-	{ io->ioPixelsHigh=  1;	}
+    docObjectSetPixelSize( io, pixelsPerTwip );
 
     pip->pip_xWinExt= (int) ( ( 100000.0* pip->pipTwipsWide )/ TWIPS_PER_M );
     pip->pip_yWinExt= (int) ( ( 100000.0* pip->pipTwipsHigh )/ TWIPS_PER_M );
 
+    docLayoutCleanBlockFrame( &bf );
+
     return;
     }
 
+/************************************************************************/
+/*									*/
+/*  Find the twips rectangle on the page for an object.			*/
+/*									*/
+/************************************************************************/
+
+void docObjectGetPageRect(	DocumentRectangle *		drDest,
+				const InsertedObject *		io,
+				int				x0Twips,
+				int				baselineTwips )
+    {
+    const PictureProperties *	pip= &(io->ioPictureProperties);
+
+    if  ( io->ioKind == DOCokDRAWING_SHAPE )
+	{
+	const DrawingShape *	ds= io->ioDrawingShape;
+
+	docPlaceRootShapeRect( drDest, &(ds->dsShapeProperties),
+						x0Twips, baselineTwips );
+	}
+    else{
+	int	twipsWide= ( pip->pipScaleXUsed* pip->pipTwipsWide )/ 100;
+	int	twipsHigh= ( pip->pipScaleYUsed* pip->pipTwipsHigh )/ 100;
+	
+	drDest->drX0= x0Twips;
+	drDest->drY1= baselineTwips;
+
+	drDest->drX1= drDest->drX0+ twipsWide;
+	drDest->drY0= drDest->drY1- twipsHigh;
+	}
+
+    return;
+    }
+
+/************************************************************************/
+/*									*/
+/*  Find the twips rectangle of the object itself.			*/
+/*									*/
+/************************************************************************/
+
+void docObjectGetSourceRect(	DocumentRectangle *		drSrc,
+				const PictureProperties *	pip )
+    {
+    drSrc->drX0= 0;
+    drSrc->drY0= 0;
+    drSrc->drX1= pip->pipTwipsWide- 1;
+    drSrc->drY1= pip->pipTwipsHigh- 1;
+
+    return;
+    }

@@ -7,17 +7,19 @@
 #   include	"docHtmlConfig.h"
 
 #   include	<stddef.h>
-#   include	<stdio.h>
 
-#   include	<sioGeneral.h>
-
-#   include	<psFontMetrics.h>
+#   include	<psTextExtents.h>
 #   include	"docSvgDrawImpl.h"
 #   include	<docDraw.h>
-#   include	<docLayout.h>
+#   include	<docDrawLine.h>
+#   include	<docTextRun.h>
 #   include	<docTabStop.h>
-#   include	<docTextLine.h>
-#   include	<docTreeNode.h>
+#   include	<fontDocFont.h>
+#   include	<fontDocFontList.h>
+#   include	<docDocumentProperties.h>
+#   include	<svgWriter.h>
+#   include	<docParticuleData.h>
+#   include	<docBuf.h>
 
 #   include	<appDebugon.h>
 
@@ -27,14 +29,12 @@
 /*									*/
 /************************************************************************/
 
-int docSvgDrawSpan(		const DrawTextLine *	dtl,
-				int			part,
-				int			count,
+int docSvgDrawTextRun(		const TextRun *		tr,
+				int			x0Twips,
+				int			x1Twips,
+				const DrawTextLine *	dtl,
 				const LayoutPosition *	baseline,
-				int			textAttrNr,
-				const TextAttribute *	ta,
-				const char *		printString,
-				int			nbLen )
+				const char *		printString )
     {
     SvgWriter *			sw= (SvgWriter *)dtl->dtlThrough;
     DrawingContext *		dc= dtl->dtlDrawingContext;
@@ -44,33 +44,34 @@ int docSvgDrawSpan(		const DrawTextLine *	dtl,
 
     int				spanBaseline= baseline->lpPageYTwips;
 
-    const ParticuleData *	pd= dtl->dtlParticuleData+ part;
+    const ParticuleData *	pd= dtl->dtlParticuleData+ tr->trPartFrom;
 
-    fontSizeTwips= 10* ta->taFontSizeHalfPoints;
+    fontSizeTwips= TA_FONT_SIZE_TWIPS( tr->trTextAttribute );
     textSizeTwips= fontSizeTwips;
 
-    if  ( nbLen > 0 )
+    if  ( tr->trStrlen > 0 )
 	{
 	int			y;
 	const DocumentFont *	df;
 
-	docDrawSetFont( dc, (void *)sw, textAttrNr, ta );
+	docDrawSetFont( dc, (void *)sw,
+			    tr->trTextAttributeNr, tr->trTextAttribute );
 	docDrawSetColorNumber( dc, (void *)sw,
-				    ta->taTextColorNumber );
+			    tr->trTextAttribute->taTextColorNumber );
 
-	df= docFontListGetFontByNumber(
-		    dc->dcLayoutContext.lcDocument->bdProperties.dpFontList,
-		    ta->taFontNumber );
+	df= fontFontListGetFontByNumber(
+		    dc->dcLayoutContext.lcDocument->bdProperties->dpFontList,
+		    tr->trTextAttribute->taFontNumber );
 
 	y= spanBaseline;
 
-	if  ( ta->taSuperSub == TEXTvaSUPERSCRIPT )
+	if  ( tr->trTextAttribute->taSuperSub == TEXTvaSUPERSCRIPT )
 	    {
 	    psGetSuperBaseline( &y, spanBaseline, fontSizeTwips, pd->pdAfi );
 	    textSizeTwips= SUPERSUB_SIZE( fontSizeTwips );
 	    }
 
-	if  ( ta->taSuperSub == TEXTvaSUBSCRIPT )
+	if  ( tr->trTextAttribute->taSuperSub == TEXTvaSUBSCRIPT )
 	    {
 	    psGetSubBaseline( &y, spanBaseline, fontSizeTwips, pd->pdAfi );
 	    textSizeTwips= SUPERSUB_SIZE( fontSizeTwips );
@@ -79,15 +80,15 @@ int docSvgDrawSpan(		const DrawTextLine *	dtl,
 	xmlPutString( "<text ", xw );
 
 #	if 1
-	xmlWriteStringAttribute( xw, "font-family", df->dfName );
+	xmlWriteBufferAttribute( xw, "font-family", &(df->dfName) );
 	xmlWriteIntAttribute( xw, "font-size", textSizeTwips );
 	xmlWriteRgb8Attribute( xw, "fill", &(dc->dcCurrentColor) );
-	if  ( ta->taFontIsSlanted )
+	if  ( tr->trTextAttribute->taFontIsSlanted )
 	    { xmlWriteStringAttribute( xw, "font-style", "italic" );	}
-	if  ( ta->taFontIsBold )
+	if  ( tr->trTextAttribute->taFontIsBold )
 	    { xmlWriteStringAttribute( xw, "font-weight", "bold" );	}
 
-	if  ( ta->taTextIsUnderlined )
+	if  ( tr->trTextAttribute->taTextIsUnderlined )
 	    {
 	    /* Does not work with Firefox */
 	    xmlWriteRgb8Attribute( xw, "stroke", &(dc->dcCurrentColor) );
@@ -103,14 +104,13 @@ int docSvgDrawSpan(		const DrawTextLine *	dtl,
 	}
 #	endif
 
-	xmlWriteIntAttribute( xw, "x",
-			    pd->pdX0+ pd->pdLeftBorderWidth+ dtl->dtlXShift );
-	xmlWriteIntAttribute( xw, "y", y+ dtl->dtlYShift );
+	xmlWriteIntAttribute( xw, "x", x0Twips+ pd->pdLeftBorderWidth );
+	xmlWriteIntAttribute( xw, "y", y );
 
 	xmlPutString( ">", xw );
 	xmlNewLine( xw );
 
-	xmlEscapeCharacters( xw, printString, nbLen );
+	xmlEscapeCharacters( xw, printString, tr->trStrlen );
 	xmlPutString( "</text>", xw );
 	xmlNewLine( xw );
 	}
@@ -136,7 +136,7 @@ int docSvgDrawFtnsep(		const DrawTextLine *	dtl,
     int				y0;
     int				h;
 
-    fontSizeTwips= 10* ta->taFontSizeHalfPoints;
+    fontSizeTwips= TA_FONT_SIZE_TWIPS( ta );
 
     xHeight= ( fontSizeTwips+ 1 )/ 2;
 
@@ -195,11 +195,8 @@ int docSvgDrawTab(	const DrawTextLine *		dtl,
     DrawingContext *		dc= dtl->dtlDrawingContext;
     XmlWriter *			xw= &(sw->swXmlWriter);
 
-    const TextLine *		tl= dtl->dtlTextLine;
-    int				lineHeight= tl->tlDescY1- tl->tlAscY0;
-
-    int				x0= x0Twips+ lineHeight/ 4;
-    int				x1= x1Twips- lineHeight/2;
+    int				x0= x0Twips+ dtl->dtlLineHeight/ 4;
+    int				x1= x1Twips- dtl->dtlLineHeight/2;
 
     int				spanBaseline= baseLine->lpPageYTwips;
 
@@ -266,62 +263,14 @@ int docSvgDrawTab(	const DrawTextLine *		dtl,
     return 0;
     }
 
+
 /************************************************************************/
 /*									*/
-/*  Layout and print successive lines of a paragraph.			*/
+/*  Print the lines in the paragraph.					*/
 /*									*/
 /************************************************************************/
 
-int docSvgDrawTextLine(		BufferItem *			paraBi,
-				int				line,
-				const ParagraphFrame *		pf,
-				const DocumentRectangle *	drLine,
-				void *				vsw,
-				DrawingContext *		dc,
-				const BlockOrigin *		bo )
-    {
-    const LayoutContext *	lc= &(dc->dcLayoutContext);
-
-    const TextLine *		tl= paraBi->biParaLines+ line;
-    int				part= tl->tlFirstParticule;
-
-    int				done= 0;
-    int				accepted;
-    TextLine			boxLine;
-
-    ParticuleData *		pd;
-
-    int				xTwips;
-    DrawTextLine		dtl;
-
-    docInitDrawTextLine( &dtl );
-
-    if  ( docPsClaimParticuleData( paraBi->biParaParticuleCount, &pd ) )
-	{ LDEB(paraBi->biParaParticuleCount); return -1;	}
-
-    boxLine= *tl;
-    accepted= docLayoutLineBox( &boxLine, paraBi, part, lc, pd+ part, pf );
-
-    if  ( accepted < 1 )
-	{ LDEB(accepted); return -1;	}
-
-    docSetDrawTextLine( &dtl, vsw, dc, tl, paraBi, bo, pf, drLine );
-    dtl.dtlParticuleData= pd;
-    dtl.dtlDrawParticulesSeparately= paraBi->biParaAlignment == DOCthaJUSTIFIED;
-
-    done= 0;
-    xTwips= pf->pfParaContentRect.drX0+ tl->tlLineIndent;
-    while( done < dtl.dtlTextLine->tlParticuleCount )
-	{
-	int		drawn;
-
-	drawn= docDrawLineParticules( &dtl, &xTwips, part );
-	if  ( drawn < 1 )
-	    { LDEB(drawn); return -1;	}
-
-	done += drawn; part += drawn;
-	}
-
-    return accepted;
-    }
+int docSvgStartTextLine(	struct DrawTextLine *		dtl,
+				int				x0Twips )
+    { return 0;	}
 

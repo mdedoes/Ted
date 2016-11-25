@@ -7,10 +7,14 @@
 #   include	"docBaseConfig.h"
 
 #   include	<stdlib.h>
-
-#   include	<appDebugon.h>
+#   include	<limits.h>
 
 #   include	"docDocumentField.h"
+#   include	"docTreeType.h"
+#   include	"docFieldScanner.h"
+#   include	"docScanner.h"
+
+#   include	<appDebugon.h>
 
 /************************************************************************/
 /*									*/
@@ -19,9 +23,9 @@
 /*									*/
 /************************************************************************/
 
-static int docInsertFieldAt(		DocumentField *		parent,
+static int docInsertFieldAt(		DocumentField *		dfPa,
 					ChildFields *		cf,
-					DocumentField *		df,
+					DocumentField *		dfCh,
 					int			pos )
     {
     DocumentField **		fresh;
@@ -38,34 +42,35 @@ static int docInsertFieldAt(		DocumentField *		parent,
 	cf->cfChildren[i]= cf->cfChildren[i-1];
 	cf->cfChildren[i]->dfNumberInParent= i;
 	}
-    cf->cfChildren[pos]= df;
+    cf->cfChildren[pos]= dfCh;
     cf->cfChildren[pos]->dfNumberInParent= pos;
-    df->dfParent= parent;
+    dfCh->dfParent= dfPa;
 
     cf->cfChildCount++;
 
     return 0;
     }
 
-int docInsertChildField(		DocumentField *		parent,
+int docInsertChildField(		DocumentField *		dfPa,
 					ChildFields *		cf,
-					DocumentField *		df )
+					DocumentField *		dfCh )
     {
     int				pos;
 
     pos= cf->cfChildCount- 1;
     while( pos >= 0 && docCompareEditPositions(
-				&(df->dfHeadPosition),
+				&(dfCh->dfHeadPosition),
 				&(cf->cfChildren[pos]->dfTailPosition) ) < 0 )
 	{ pos--;	}
     pos++;
 
-    return docInsertFieldAt( parent, cf, df, pos );
+    return docInsertFieldAt( dfPa, cf, dfCh, pos );
     }
 
 /************************************************************************/
 /*									*/
 /*  Delete a field from its parent: Replace it with its children.	*/
+/*  This is for child fields. NOT for instruction fields.		*/
 /*									*/
 /************************************************************************/
 
@@ -81,10 +86,10 @@ int docDeleteChildField(	ChildFields *		cf,
 	return -1;
 	}
 
-    if  ( df->dfChildFields.cfChildCount >= 1 )
+    if  ( df->dfResultFields.cfChildCount >= 1 )
 	{
 	int		i;
-	int		step= df->dfChildFields.cfChildCount- 1;
+	int		step= df->dfResultFields.cfChildCount- 1;
 
 	if  ( step > 0 )
 	    {
@@ -108,7 +113,7 @@ int docDeleteChildField(	ChildFields *		cf,
 
 	for ( i= 0; i <= step; i++ ) /* <= !! */
 	    {
-	    cf->cfChildren[pos+ i]= df->dfChildFields.cfChildren[i];
+	    cf->cfChildren[pos+ i]= df->dfResultFields.cfChildren[i];
 	    cf->cfChildren[pos+ i]->dfNumberInParent= pos+ i;
 	    cf->cfChildren[pos+ i]->dfParent= df->dfParent;
 	    }
@@ -164,7 +169,7 @@ DocumentField * docFindChildField(	const ChildFields *	cf,
 		if  ( docEditPositionInField( df, ep ) )
 		    {
 		    dfFound= df;
-		    cf= &(dfFound->dfChildFields);
+		    cf= &(dfFound->dfResultFields);
 		    break;
 		    }
 		}
@@ -180,7 +185,7 @@ DocumentField * docFindChildField(	const ChildFields *	cf,
 		if  ( docEditPositionInField( df, ep ) )
 		    {
 		    dfFound= df;
-		    cf= &(dfFound->dfChildFields);
+		    cf= &(dfFound->dfResultFields);
 		    break;
 		    }
 		}
@@ -238,7 +243,7 @@ DocumentField * docFindFieldInRange(	const EditRange *	er,
 		  ( dfC->dfKind == kind || kind < 0 )			)
 		{ return dfC;	}
 
-	    df= docFindFieldInRange( er, &(dfC->dfChildFields), lastOne, kind );
+	    df= docFindFieldInRange( er, &(dfC->dfResultFields), lastOne, kind );
 	    if  ( df )
 		{ return df;	}
 	    }
@@ -261,7 +266,7 @@ DocumentField * docFindFieldInRange(	const EditRange *	er,
 		  ( dfC->dfKind == kind || kind < 0 )			)
 		{ return dfC;	}
 
-	    df= docFindFieldInRange( er, &(dfC->dfChildFields), lastOne, kind );
+	    df= docFindFieldInRange( er, &(dfC->dfResultFields), lastOne, kind );
 	    if  ( df )
 		{ return df;	}
 	    }
@@ -281,12 +286,12 @@ void docSetFieldTail(		DocumentField *		dfPa,
     {
     dfPa->dfTailPosition= *epTail;
 
-    if  ( dfPa->dfChildFields.cfChildCount > 0 )
+    if  ( dfPa->dfResultFields.cfChildCount > 0 )
 	{
 	DocumentField *	dfCh;
 
-	dfCh= dfPa->dfChildFields.cfChildren[
-					dfPa->dfChildFields.cfChildCount- 1];
+	dfCh= dfPa->dfResultFields.cfChildren[
+					dfPa->dfResultFields.cfChildCount- 1];
 
 	if  ( docCompareEditPositions( &(dfCh->dfTailPosition),
 						&(dfPa->dfTailPosition) ) >= 0 )
@@ -294,6 +299,12 @@ void docSetFieldTail(		DocumentField *		dfPa,
 	}
 
     return;
+    }
+
+void docSetFieldHead(		DocumentField *		dfPa,
+				const EditPosition *	epHead )
+    {
+    dfPa->dfHeadPosition= *epHead;
     }
 
 /************************************************************************/
@@ -306,8 +317,8 @@ void docSetFieldTail(		DocumentField *		dfPa,
 /*  									*/
 /************************************************************************/
 
-int docAddChildToField(			DocumentField *		dfCh,
-					DocumentField *		dfPa )
+int docAddResultChildToField(		DocumentField *		dfPa,
+					DocumentField *		dfCh )
     {
     if  ( ! docSelectionSameScope( &(dfCh->dfSelectionScope),
 					&(dfPa->dfSelectionScope) ) )
@@ -322,11 +333,20 @@ int docAddChildToField(			DocumentField *		dfCh,
 	{ LDEB(1); return -1;	}
     */
 
-    if  ( docInsertChildField( dfPa, &(dfPa->dfChildFields), dfCh ) )
+    if  ( docInsertChildField( dfPa, &(dfPa->dfResultFields), dfCh ) )
 	{ LDEB(1); return -1;	}
-    dfCh->dfParent= dfPa;
 
     return 0;
+    }
+
+int docAddInstructionsChildToField(	DocumentField *		dfPa,
+					DocumentField *		dfCh )
+    {
+    if  ( dfCh->dfSelectionScope.ssTreeType != DOCinFIELD_INSTRUCTIONS )
+	{ LDEB(dfCh->dfSelectionScope.ssTreeType); return -1;	}
+
+    return docInsertFieldAt( dfPa, &(dfPa->dfInstructionFields), dfCh,
+				    dfPa->dfInstructionFields.cfChildCount );
     }
 
 int docInsertFieldInTree(		ChildFields *		cf,
@@ -334,16 +354,13 @@ int docInsertFieldInTree(		ChildFields *		cf,
     {
     DocumentField *	parent= (DocumentField *)0;
 
-    if  ( df->dfChildFields.cfChildCount > 0 )
-	{ LDEB(df->dfChildFields.cfChildCount); return -1;	}
+    if  ( df->dfResultFields.cfChildCount > 0 )
+	{ LDEB(df->dfResultFields.cfChildCount); return -1;	}
 
     for (;;)
 	{
 	int		i0;
 	int		i1;
-	int		i;
-	int		pos;
-	int		step;
 
 	/* Find the last field that is completely before the insert	*/
 	i0= 0;
@@ -389,7 +406,7 @@ int docInsertFieldInTree(		ChildFields *		cf,
 		  docCompareEditPositions( &(df->dfTailPosition),
 					&(df1->dfTailPosition) ) <= 0	)
 		{
-		cf= &(df1->dfChildFields);
+		cf= &(df1->dfResultFields);
 		parent= df1;
 		continue;
 		}
@@ -398,10 +415,14 @@ int docInsertFieldInTree(		ChildFields *		cf,
 	/* Surround the fields found with the insert */
 	if  ( i1 <= i0 )
 	    {
+	    int		i;
+	    int		pos;
+	    int		step;
+
 	    pos= 0;
 	    for ( i= i1; i <= i0; i++ )
 		{
-		if  ( docInsertFieldAt( df, &(df->dfChildFields),
+		if  ( docInsertFieldAt( df, &(df->dfResultFields),
 						cf->cfChildren[i], pos++ ) )
 		    { LDEB(pos); return -1;	}
 		}
@@ -421,7 +442,7 @@ int docInsertFieldInTree(		ChildFields *		cf,
 /************************************************************************/
 
 static int docFieldPath(	DocumentField ***	pPath,
-				DocumentField *		dfTo )
+				DocumentField *	dfTo )
     {
     DocumentField *	df;
     int			deep= 0;
@@ -488,5 +509,286 @@ DocumentField *	docFieldGetCommonParent(	DocumentField *	dfHead,
 	{ free( pathTail );	}
 
     return rval;
+    }
+
+/************************************************************************/
+/*									*/
+/*  Scan fields.							*/
+/*									*/
+/*  1)  Look for the first child that does not end before the range.	*/
+/*  2)  Stop if the field begins before the range.			*/
+/*									*/
+/************************************************************************/
+
+int docScanFieldsInRange(	const ChildFields *	cf,
+				const EditRange * 	er,
+				TreeFieldVisitor	enterField,
+				TreeFieldVisitor	leaveField,
+				void *			through )
+    {
+    int		m= 0;
+    int		cmp;
+
+    if  ( cf->cfChildCount == 0 )
+	{ return SCANadviceOK;	}
+
+    /*  1  */
+    if  ( er )
+	{
+	DocumentField *	dfm;
+	int		l;
+	int		r;
+
+	l= 0; r= cf->cfChildCount; m= ( l+ r )/ 2;
+	while( l < m )
+	    {
+	    dfm= cf->cfChildren[m];
+
+	    cmp= docCompareEditPositions(
+				&(dfm->dfTailPosition), &(er->erHead) );
+
+	    if  ( cmp < 0 )
+		{ l= m;	}
+	    else{ r= m;	}
+
+	    m= ( l+ r )/ 2;
+	    }
+
+	dfm= cf->cfChildren[m];
+	cmp= docCompareEditPositions(
+				&(dfm->dfTailPosition), &(er->erHead) );
+	if  ( cmp < 0 )
+	    { m++;	}
+	}
+
+    for ( ; m < cf->cfChildCount; m++ )
+	{
+	DocumentField *	dfc= cf->cfChildren[m];
+	int		res;
+
+	/*  2  */
+	if  ( er )
+	    {
+	    cmp= docCompareEditPositions(
+				&(dfc->dfHeadPosition), &(er->erTail) );
+	    if  ( cmp > 0 )
+		{ break;	}
+	    }
+
+	if  ( dfc->dfFieldNumber < 0 )
+	    { LDEB(dfc->dfFieldNumber); continue;	}
+
+	if  ( enterField )
+	    {
+	    res= (*enterField)( dfc, er, through );
+
+	    switch( res )
+		{
+		case SCANadviceOK:
+		    break;
+		case SCANadviceSKIP:
+		    continue;
+		case SCANadviceSTOP:
+		    return res;
+		default:
+		    LDEB(res); return -1;
+		}
+	    }
+
+	if  ( dfc->dfResultFields.cfChildCount > 0 )
+	    {
+	    res= docScanFieldsInRange( &(dfc->dfResultFields), er,
+					enterField, leaveField, through );
+	    switch( res )
+		{
+		case SCANadviceOK:
+		    break;
+		case SCANadviceSKIP:
+		    LDEB(res); break;
+		case SCANadviceSTOP:
+		    return res;
+		default:
+		    LDEB(res); return -1;
+		}
+	    }
+
+	if  ( leaveField )
+	    {
+	    res= (*leaveField)( dfc, er, through );
+
+	    switch( res )
+		{
+		case SCANadviceOK:
+		    break;
+		case SCANadviceSKIP:
+		    LDEB(res); break;
+		case SCANadviceSTOP:
+		    return res;
+		default:
+		    LDEB(res); return -1;
+		}
+	    }
+	}
+
+    return SCANadviceOK;
+    }
+
+/************************************************************************/
+/*									*/
+/*  Shift fields in an edit operation.					*/
+/*  NOTE that we depend on the paragraph number only for shifting the	*/
+/*  section number: Only the body has more than one section and there	*/
+/*  is a colose relationship in that case.				*/
+/*									*/
+/*  1)	For (BODY) fields that span sections, the section number is	*/
+/*	that of the head position of the field.				*/
+/*									*/
+/************************************************************************/
+
+typedef struct ContentShift
+    {
+    int		csSectFrom;
+
+    int		csSectShift;
+    int		csParaShift;
+    int		csStroffShift;
+    } ContentShift;
+
+static void docShiftFieldStart(		DocumentField *		df,
+					const EditPosition *	epFrom,
+					const ContentShift *	cs )
+    {
+    /*  earlier paragraph  */
+    if  ( df->dfHeadPosition.epParaNr < epFrom->epParaNr )
+	{ return;	}
+
+    /*  later paragraph  */
+    if  ( df->dfHeadPosition.epParaNr > epFrom->epParaNr )
+	{
+	df->dfHeadPosition.epParaNr += cs->csParaShift;
+	/*  1  */
+	if  ( df->dfSelectionScope.ssTreeType == DOCinBODY )
+	    { df->dfSelectionScope.ssSectNr += cs->csSectShift;	}
+
+	return;
+	}
+
+    /* Same paragraph */
+    if  ( df->dfHeadPosition.epStroff < epFrom->epStroff )
+	{ return;	}
+    if  ( df->dfHeadPosition.epStroff >= epFrom->epStroff )
+	{
+	df->dfHeadPosition.epParaNr += cs->csParaShift;
+	df->dfHeadPosition.epStroff += cs->csStroffShift;
+	/*  1  */
+	if  ( df->dfSelectionScope.ssTreeType == DOCinBODY )
+	    { df->dfSelectionScope.ssSectNr += cs->csSectShift;	}
+
+	return;
+	}
+
+    return;
+    }
+
+static void docShiftFieldEnd(		DocumentField *		df,
+					const EditPosition *	epFrom,
+					const ContentShift *	cs )
+    {
+    /*  earlier paragraph  */
+    if  ( df->dfTailPosition.epParaNr < epFrom->epParaNr )
+	{ return;	}
+
+    /*  later paragraph  */
+    if  ( df->dfTailPosition.epParaNr > epFrom->epParaNr )
+	{
+	df->dfTailPosition.epParaNr += cs->csParaShift;
+	/*  1 NO: See comment above
+	if  ( df->dfSelectionScope.ssTreeType == DOCinBODY )
+	    { df->dfSelectionScope.ssSectNr += cs->csSectShift;	}
+	*/
+
+	return;
+	}
+
+    /* Same paragraph */
+    if  ( df->dfTailPosition.epStroff < epFrom->epStroff )
+	{ return;	}
+    if  ( df->dfTailPosition.epStroff >= epFrom->epStroff )
+	{
+	df->dfTailPosition.epParaNr += cs->csParaShift;
+	df->dfTailPosition.epStroff += cs->csStroffShift;
+	/*  1
+	if  ( df->dfSelectionScope.ssTreeType == DOCinBODY )
+	    { df->dfSelectionScope.ssSectNr += cs->csSectShift;	}
+	*/
+
+	return;
+	}
+
+    return;
+    }
+
+static int docShiftField(		DocumentField *		df,
+					const EditRange *	er,
+					void *			through )
+    {
+    ContentShift *	cs= (ContentShift *)through;
+
+    if  ( df->dfSelectionScope.ssTreeType == DOCinBODY			&&
+	  df->dfSelectionScope.ssOwnerSectNr >= 0			&&
+	  df->dfSelectionScope.ssOwnerSectNr > cs->csSectFrom		)
+	{ df->dfSelectionScope.ssOwnerSectNr += cs->csSectShift;	}
+
+    docShiftFieldStart( df, &(er->erHead), cs );
+    docShiftFieldEnd( df, &(er->erHead), cs );
+
+    return SCANadviceOK;
+    }
+
+void docShiftChildFieldReferences(	const ChildFields *	cf,
+					int			sectFrom,
+					int			paraFrom,
+					int			stroffFrom,
+					int			sectShift,
+					int			paraShift,
+					int			stroffShift )
+    {
+    EditRange		er;
+    ContentShift	cs;
+
+    er.erHead.epParaNr= paraFrom;
+    er.erHead.epStroff= stroffFrom;
+    er.erTail.epParaNr= INT_MAX;
+    er.erTail.epStroff= INT_MAX;
+
+    cs.csSectFrom= sectFrom;
+    cs.csSectShift= sectShift;
+    cs.csParaShift= paraShift;
+    cs.csStroffShift= stroffShift;
+
+    if  ( docScanFieldsInRange( cf, &er,
+			docShiftField, (TreeFieldVisitor)0, (void *)&cs ) )
+	{ LDEB(1);	}
+
+    return;
+    }
+
+/************************************************************************/
+/*									*/
+/*  Find the parent that is in the document: I.E: That is not in the	*/
+/*  field instructions.							*/
+/*									*/
+/************************************************************************/
+
+const DocumentField * docGetLocationParent(
+					const DocumentField *	df )
+    {
+    while( df && df->dfSelectionScope.ssTreeType == DOCinFIELD_INSTRUCTIONS )
+	{ df= df->dfParent;	}
+
+    if  ( ! df )
+	{ XDEB(df);	}
+
+    return df;
     }
 

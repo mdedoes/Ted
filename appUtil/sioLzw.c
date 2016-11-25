@@ -26,6 +26,8 @@
 #   include	<string.h>
 
 #   include	"sioLzw.h"
+#   include	"sioGeneral.h"
+
 #   include	<appDebugon.h>
 
 /************************************************************************/

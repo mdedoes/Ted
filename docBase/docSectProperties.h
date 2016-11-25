@@ -7,7 +7,7 @@
 #   ifndef	DOC_SECT_PROP_H
 #   define	DOC_SECT_PROP_H
 
-#   include	<utilDocumentGeometry.h>
+#   include	<geoDocumentPageSetup.h>
 #   include	"docNotesProperties.h"
 
 typedef enum PageNumberStyle
@@ -34,23 +34,83 @@ typedef enum PageNumberHyphen
 
 typedef struct SectionColumn
     {
+		/**
+		 *  The width of the column
+		 */
     int		scColumnWidthTwips;
-    int		scSpaceToRightTwips;
+
+		/**
+		 *  The space between the column and the subsequent one.
+		 *  (So this is irrelevant for the last column.)
+		 */
+    int		scSpaceAfterTwips;
     } SectionColumn;
 
 typedef struct SectionProperties
     {
+				/**
+				 *  Page size, margins and header/footer
+				 *  positions.
+				 */
     DocumentGeometry		spDocumentGeometry;
 
+				/**
+				 *  Style of this section. This is a reference 
+				 *  to a style in the document style sheet.
+				 */
     int				spStyle;
 
+				/**
+				 *  The spacing between the newspaper style
+				 *  columns of this section. [Only relevant 
+				 *  if the section has more than one column.
+				 */
     int				spColumnSpacingTwips;
+				/**
+				 *  If non zero: draw a line between the
+				 *  columns of this section. [Only relevant 
+				 *  if the section has more than one column.
+				 */
     unsigned char		spLineBetweenColumns;
 
+				/**
+				 *  Use different headers and footers on the 
+				 *  first page of the section.
+				 */
     unsigned char		spHasTitlePage;
+				/**
+				 *  Use different headers and footers on the 
+				 *  last page of the section. Unless those for
+				 *  the first page apply. NOTE: This is not a 
+				 *  MS-Word RTF feature.
+				 */
+    unsigned char		spHasEndPage;
+				/**
+				 *  The kind of section break before this 
+				 *  section. NOTE that MS-Word only implements
+				 *  odd and even breaks in documents that have 
+				 *  have different odd an even pages in the 
+				 *  document properties. And that for 
+				 *  compatibility with MS-Word Ted implements 
+				 *  the same thing.
+				 */
     unsigned char		spBreakKind;
+
+				/**
+				 *  Style of the page numbers for this section.
+				 */
     unsigned char		spPageNumberStyle;
+
+				/**
+				 *  Style of the hyphen in the page numbers 
+				 *  for this section.
+				 */
     unsigned char		spPageNumberHyphen;
+
+				/**
+				 *  Use per section page numbering for this 
+				 *  section. (A boolean flag.)
+				 */
     unsigned char		spRestartPageNumbers;
 				/**
 				 * 0: This section will snake (newspaper style)
@@ -60,11 +120,28 @@ typedef struct SectionProperties
 				 */
     unsigned char		spRToL;
 
+				/**
+				 *  If this section uses per section page 
+				 *  numbering, use this number as the number 
+				 *  of the first page.
+				 */
     int				spStartPageNumber;
 
+				/**
+				 *  The newspaper style columns of this section.
+				 *  Columns are only allocated if there is 
+				 *  more than one column. In RToL sections,
+				 *  the first column is on the right hand 
+				 *  side of the page.
+				 */
     int				spColumnCount;
     SectionColumn *		spColumns;
 
+				/**
+				 *  Determines the placement and numbering 
+				 *  of footnotes and endnotes in this 
+				 *  section. (If any)
+				 */
     FootEndNotesProperties	spNotesProperties;
     } SectionProperties;
 
@@ -82,6 +159,7 @@ typedef enum SectionProperty
 
     SPpropSTYLE= DGprop_COUNT,
     SPpropTITLEPG,
+    SPpropENDPG,
     SPpropBREAK_KIND,
     SPpropNUMBER_STYLE,
     SPpropNUMBER_HYPHEN,
@@ -138,14 +216,14 @@ extern int docSectionPropertiesSetColumnCount(
 					int			count );
 
 extern void docSectPropertyDifference(
-				PropertyMask *			pDiffMask,
+				struct PropertyMask *		pDiffMask,
 				const SectionProperties *	sp1,
-				const PropertyMask *		cmpMask,
+				const struct PropertyMask *	cmpMask,
 				const SectionProperties *	sp2 );
 
-extern int docUpdSectProperties( PropertyMask *			pSpDoneMask,
+extern int docUpdSectProperties( struct PropertyMask *		pSpDoneMask,
 				SectionProperties *		spTo,
-				const PropertyMask *		spSetMask,
+				const struct PropertyMask *	spSetMask,
 				const SectionProperties *	spSet );
 
 extern int docSectSetEqualColumnWidth(	SectionProperties *		sp );
@@ -165,7 +243,7 @@ extern int docSetSectionProperty(	SectionProperties *	sp,
 extern int docGetSectionProperty(	const SectionProperties *	sp,
 					int				prop );
 
-extern void docFillSectNotesMask(	PropertyMask *		spMask );
+extern void docFillSectNotesMask(	struct PropertyMask *		spMask );
 
 extern int docSectGetColumnSpacing(
 				int *				pMinValue,

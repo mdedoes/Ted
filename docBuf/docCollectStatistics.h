@@ -8,9 +8,8 @@
 #   ifndef	DOC_COLLECT_STATISTICS_H
 #   define	DOC_COLLECT_STATISTICS_H
 
-#   include	<docStatistics.h>
-
 struct BufferDocument;
+struct DocumentStatistics;
 
 /************************************************************************/
 /*									*/
@@ -18,7 +17,8 @@ struct BufferDocument;
 /*									*/
 /************************************************************************/
 
-extern void docCollectDocumentStatistics( DocumentStatistics *		ds,
-					const struct BufferDocument *	bd );
+extern void docCollectDocumentStatistics(
+				struct DocumentStatistics *	ds,
+				const struct BufferDocument *	bd );
 
 #   endif

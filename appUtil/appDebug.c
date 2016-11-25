@@ -55,3 +55,37 @@ int appDebugSetFile(	const char *	filename,
 
     return 0;
     }
+
+# ifdef __GNUC__
+
+#   include <execinfo.h>
+#   include <stdlib.h>
+
+void appDebugStackTrace(	const char *	file,
+				int		line )
+    {
+    void *	frames[30];
+    size_t	count;
+    char **	names;
+    int		frame;
+
+    count = backtrace (frames, sizeof(frames)/sizeof(void *));
+    names = backtrace_symbols (frames, count);
+
+    appDebug( "from %s(%d) %d frames:\n", file, line, (int)count );
+
+    for ( frame = 0; frame < count; frame++ )
+	{ appDebug( "%6d: %s(..)\n", frame, names[frame] );	}
+
+    free (names);
+    }
+
+# else
+
+void appDebugStackTrace(	const char *	file,
+				int		line )
+    {
+    appDebug( "from %s(%d) Can only print stack with GCC!\n", file, line );
+    }
+
+# endif

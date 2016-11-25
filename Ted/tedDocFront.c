@@ -7,24 +7,34 @@
 #   include	"tedConfig.h"
 
 #   include	<stddef.h>
-#   include	<stdio.h>
 #   include	<string.h>
 #   include	<ctype.h>
-#   include	<sioGeneral.h>
 
-#   include	"tedApp.h"
 #   include	"tedEdit.h"
-#   include	"tedSpellTool.h"
-#   include	"tedDocFront.h"
+#   include	"tedApp.h"
+#   include	<tedDocFront.h>
+#   include	"tedDocMenu.h"
 #   include	"tedSelect.h"
 #   include	"tedCopyPasteImpl.h"
 #   include	"tedDocument.h"
-#   include	"tedToolFront.h"
+#   include	"tedAppResources.h"
+#   include	<tedToolFront.h>
 #   include	<docTreeType.h>
 #   include	<docTextParticule.h>
 #   include	<guiDrawingWidget.h>
 #   include	<docEditCommand.h>
 #   include	<docCollectStatistics.h>
+#   include	<docFieldKind.h>
+#   include	<docExpandedTextAttribute.h>
+#   include	<docPropVal.h>
+#   include	<docStatistics.h>
+#   include	<docDocumentProperties.h>
+#   include	<appEditApplication.h>
+#   include	<appEditDocument.h>
+#   include	<appGuiDocument.h>
+#   include	<docBuf.h>
+#   include	<docParaProperties.h>
+#   include	<appDocFront.h>
 
 #   include	<appDebugon.h>
 
@@ -63,7 +73,7 @@ int tedDocReplace(	EditDocument *		ed,
 void tedDocSelAll(		EditDocument *	ed )
     {
     TedDocument *		td= (TedDocument *)ed->edPrivateData;
-    BufferDocument *		bd= td->tdDocument;
+    struct BufferDocument *		bd= td->tdDocument;
 
     DocumentSelection		dsNew;
     SelectionGeometry		sg;
@@ -72,7 +82,7 @@ void tedDocSelAll(		EditDocument *	ed )
     const int			lastLine= 0;
 
     if  ( tedGetSelection( &dsNew, &sg, &sd,
-			    (DocumentTree **)0, (struct BufferItem **)0, ed ) )
+		(struct DocumentTree **)0, (struct BufferItem **)0, ed ) )
 	{ docInitDocumentSelection( &dsNew );	}
 
     if  ( docSelectWholeBody( &dsNew, bd ) )
@@ -100,7 +110,7 @@ void tedDocSelectWholeCell(	EditDocument *	ed,
     const int			lastLine= 0;
 
     if  ( tedGetSelection( &ds, &sg, &sd,
-			(DocumentTree **)0, (struct BufferItem **)0, ed  ) )
+	    (struct DocumentTree **)0, (struct BufferItem **)0, ed  ) )
 	{ LDEB(1); return;	}
 
     if  ( docSelectWholeCell( &ds, direction, allRows ) )
@@ -121,7 +131,7 @@ int tedDocSelectColumn(		EditDocument *	ed,
     const int			lastLine= 0;
 
     if  ( tedGetSelection( &ds, &sg, &sd,
-			(DocumentTree **)0, (struct BufferItem **)0, ed  ) )
+	    (struct DocumentTree **)0, (struct BufferItem **)0, ed  ) )
 	{ LDEB(1); return -1;	}
 
     if  ( docSelectColumn( &ds, col ) )
@@ -149,7 +159,7 @@ void tedDocSelectRow(		EditDocument *	ed,
     const int			lastLine= 0;
 
     if  ( tedGetSelection( &ds, &sg, &sd,
-			(DocumentTree **)0, (struct BufferItem **)0, ed  ) )
+		(struct DocumentTree **)0, (struct BufferItem **)0, ed  ) )
 	{ LDEB(1); return;	}
 
     if  ( docSelectRow( &ds, direction, allColumns ) )
@@ -175,7 +185,7 @@ void tedDocSelectTable(	EditDocument *		ed )
     const int			lastLine= 0;
 
     if  ( tedGetSelection( &ds, &sg, &sd,
-			(DocumentTree **)0, (struct BufferItem **)0, ed  ) )
+		(struct DocumentTree **)0, (struct BufferItem **)0, ed  ) )
 	{ LDEB(1); return;	}
 
     if  ( docSelectWholeTable( &ds ) )
@@ -209,7 +219,7 @@ int tedDocSelectCurrentFrame(	EditDocument *	ed )
     const int			lastLine= 0;
 
     if  ( tedGetSelection( &dsNew, &sg, &sd,
-			    (DocumentTree **)0, (struct BufferItem **)0, ed ) )
+		(struct DocumentTree **)0, (struct BufferItem **)0, ed ) )
 	{ docInitDocumentSelection( &dsNew );	}
 
     if  ( docSelectFrameOfPosition( &dsNew, &(dsNew.dsHead) ) )
@@ -295,13 +305,13 @@ APP_MENU_CALLBACK_H( tedDocTableDrawGrid, option, voided, e )
     TedDocument *		td= (TedDocument *)ed->edPrivateData;
     int				set;
 
-    set= appGuiGetMenuToggleStateFromCallback( option, e );
+    set= guiGetMenuToggleStateFromCallback( option, e );
 
     if  ( set )
 	{ td->tdDrawTableGrid=  1;	}
     else{ td->tdDrawTableGrid= -1;	}
 
-    appDocExposeRectangle( ed, (const DocumentRectangle *)0, 0,0 );
+    tedExposeWholeDocument( ed );
 
     return;
     }
@@ -319,7 +329,7 @@ APP_MENU_CALLBACK_H( tedDocTableDeleteRow, option, voided, e )
     EditDocument *	ed= (EditDocument *)voided;
     TedDocument *	td= (TedDocument *)ed->edPrivateData;
 
-    tedDocDeleteRow( ed, td->tdTraced );
+    tedDocDeleteRows( ed, td->tdTraced );
     }
 
 APP_MENU_CALLBACK_H( tedDocTableDeleteColumn, option, voided, e )
@@ -327,7 +337,7 @@ APP_MENU_CALLBACK_H( tedDocTableDeleteColumn, option, voided, e )
     EditDocument *	ed= (EditDocument *)voided;
     TedDocument *	td= (TedDocument *)ed->edPrivateData;
 
-    tedDocDeleteColumn( ed, td->tdTraced );
+    tedDocDeleteColumns( ed, td->tdTraced );
     }
 
 /************************************************************************/
@@ -347,7 +357,7 @@ APP_MENU_CALLBACK_H( tedDocInsertLineBreak, option, voided, e )
     const int		redoLayout= 1;
 
     tedEditInsertSpecialParticule( ed,
-			DOCkindLINEBREAK, EDITcmdREPLACE,
+			TPkindLINEBREAK, EDITcmdREPLACE,
 			redoLayout, td->tdTraced );
 
     return;
@@ -360,7 +370,7 @@ APP_MENU_CALLBACK_H( tedDocInsertPageBreak, option, voided, e )
     const int		redoLayout= 1;
 
     tedEditInsertSpecialParticule( ed,
-		    DOCkindPAGEBREAK, EDITcmdREPLACE_BODY_LEVEL,
+		    TPkindPAGEBREAK, EDITcmdREPLACE_BODY_LEVEL,
 		    redoLayout, td->tdTraced );
 
     return;
@@ -373,7 +383,8 @@ APP_MENU_CALLBACK_H( tedDocInsertColumnBreak, option, voided, e )
     const int		redoLayout= 1;
 
     tedEditInsertSpecialParticule( ed,
-		    DOCkindLINEBREAK, EDITcmdREPLACE_BODY_LEVEL, redoLayout, td->tdTraced );
+		    TPkindCOLUMNBREAK, EDITcmdREPLACE_BODY_LEVEL,
+		    redoLayout, td->tdTraced );
 
     return;
     }
@@ -385,7 +396,8 @@ APP_MENU_CALLBACK_H( tedDocInsertChftnsep, option, voided, e )
     const int		redoLayout= 0;
 
     tedEditInsertSpecialParticule( ed,
-			DOCkindLINEBREAK, EDITcmdREPLACE_FTNSEP, redoLayout, td->tdTraced );
+			TPkindCHFTNSEP, EDITcmdREPLACE_FTNSEP,
+			redoLayout, td->tdTraced );
 
     return;
     }
@@ -399,33 +411,29 @@ APP_MENU_CALLBACK_H( tedDocInsertChftnsep, option, voided, e )
 APP_MENU_CALLBACK_H( tedDocFormatAlignLeft, w, voided, e )
     {
     EditDocument *	ed= (EditDocument *)voided;
-    TedDocument *	td= (TedDocument *)ed->edPrivateData;
 
-    tedDocFormatSetParaAlignment( ed, DOCthaLEFT, td->tdTraced );
+    tedDocChangeParagraphPropertyValue( ed, PPpropALIGNMENT, DOCthaLEFT );
     }
 
 APP_MENU_CALLBACK_H( tedDocFormatAlignRight, w, voided, e )
     {
     EditDocument *	ed= (EditDocument *)voided;
-    TedDocument *	td= (TedDocument *)ed->edPrivateData;
 
-    tedDocFormatSetParaAlignment( ed, DOCthaRIGHT, td->tdTraced );
+    tedDocChangeParagraphPropertyValue( ed, PPpropALIGNMENT, DOCthaRIGHT );
     }
 
 APP_MENU_CALLBACK_H( tedDocFormatAlignCenter, w, voided, e )
     {
     EditDocument *	ed= (EditDocument *)voided;
-    TedDocument *	td= (TedDocument *)ed->edPrivateData;
 
-    tedDocFormatSetParaAlignment( ed, DOCthaCENTERED, td->tdTraced );
+    tedDocChangeParagraphPropertyValue( ed, PPpropALIGNMENT, DOCthaCENTERED );
     }
 
 APP_MENU_CALLBACK_H( tedDocFormatAlignJustify, w, voided, e )
     {
     EditDocument *	ed= (EditDocument *)voided;
-    TedDocument *	td= (TedDocument *)ed->edPrivateData;
 
-    tedDocFormatSetParaAlignment( ed, DOCthaJUSTIFIED, td->tdTraced );
+    tedDocChangeParagraphPropertyValue( ed, PPpropALIGNMENT, DOCthaJUSTIFIED );
     }
 
 /************************************************************************/
@@ -543,20 +551,26 @@ APP_MENU_CALLBACK_H( tedDocMenuInsertSectBreak, option, voided, e )
 
 APP_MENU_CALLBACK_H( tedDocFontBold, option, voided, e )
     {
-    int	set= appGuiGetMenuToggleStateFromCallback( option, e );
-    tedToggleTextAttribute( (EditDocument *)voided, set, TApropFONTBOLD );
+    int	set= guiGetMenuToggleStateFromCallback( option, e );
+
+    tedDocChangeTextAttributeValue( (EditDocument *)voided,
+					    TApropFONTBOLD, set != 0 );
     }
 
 APP_MENU_CALLBACK_H( tedDocFontItalic, option, voided, e )
     {
-    int	set= appGuiGetMenuToggleStateFromCallback( option, e );
-    tedToggleTextAttribute( (EditDocument *)voided, set, TApropFONTSLANTED );
+    int	set= guiGetMenuToggleStateFromCallback( option, e );
+
+    tedDocChangeTextAttributeValue( (EditDocument *)voided,
+					    TApropFONTSLANTED, set != 0 );
     }
 
 APP_MENU_CALLBACK_H( tedDocFontUnderlined, option, voided, e )
     {
-    int	set= appGuiGetMenuToggleStateFromCallback( option, e );
-    tedToggleTextAttribute( (EditDocument *)voided, set, TApropTEXTUNDERLINED );
+    int	set= guiGetMenuToggleStateFromCallback( option, e );
+
+    tedDocChangeTextAttributeValue( (EditDocument *)voided,
+					    TApropTEXTUNDERLINED, set != 0 );
     }
 
 /************************************************************************/
@@ -573,7 +587,7 @@ APP_MENU_CALLBACK_H( tedDocFontSupersub, option, voided, e )
     int			set;
     int			supersub= TEXTvaREGULAR;
 
-    set= appGuiGetMenuToggleStateFromCallback( option, e );
+    set= guiGetMenuToggleStateFromCallback( option, e );
     if  ( set )
 	{
 	if  ( option == td->tdFontSubscriptOption )
@@ -584,7 +598,7 @@ APP_MENU_CALLBACK_H( tedDocFontSupersub, option, voided, e )
 	}
     else{ supersub= TEXTvaREGULAR;	}
 
-    tedSetFontSupersub( ed, supersub );
+    tedDocChangeTextAttributeValue( ed, TApropSUPERSUB, supersub );
     }
 
 /************************************************************************/
@@ -607,11 +621,42 @@ APP_MENU_CALLBACK_H( tedDocFormatOnePara, option, voided, e )
 /*									*/
 /************************************************************************/
 
+static void tedDocShowFindTool(	EditDocument *		ed )
+    {
+    EditApplication *	ea= ed->edApplication;
+    TedDocument *	td= (TedDocument *)ed->edPrivateData;
+
+XDEB(ed->edToolbar);
+    if  ( ed->edToolbar )
+	{
+	tedDocBuildFormatTool( ed );
+
+	tedDocToolShowFindTool( ed,
+				&(td->tdSelectionDescription),
+				&(td->tdSelection),
+				td->tdDocument );
+
+	tedAdaptFormatToolToDocument( ed, 0 );
+	}
+    else{
+	/*  To get the correct title  */
+	tedAppShowFormatTool( td->tdToolsFormatToolOption, ea );
+	tedAdaptFormatToolToDocument( ed, 0 );
+
+	tedAppToolShowFindTool( ea,
+				&(td->tdSelectionDescription),
+				&(td->tdSelection),
+				td->tdDocument );
+	}
+
+    return;
+    }
+
 APP_MENU_CALLBACK_H( tedDocToolFind, findOption, voided, e )
     {
     EditDocument *	ed= (EditDocument *)voided;
 
-    tedShowFindTool( ed );
+    tedDocShowFindTool( ed );
 
     return;
     }
@@ -627,13 +672,33 @@ APP_MENU_CALLBACK_H( tedDocToolFindNext, findOption, voided, e )
 
     if  ( ! td->tdFindProg )
 	{
-	tedShowFindTool( ed );
+	tedDocShowFindTool( ed );
 	return;
 	}
 
     tedDocFindNext( ed );
 
     return;
+    }
+
+int tedDocFindToolSetPattern(	void *		voided,
+				const char *	pattern,
+				int		useRegex,
+				int		asWord,
+				int		caseSensitive )
+    {
+    EditDocument *		ed= (EditDocument *)voided;
+    EditApplication *		ea= ed->edApplication;
+    TedAppResources *		tar= (TedAppResources *)ea->eaResourceData;
+    TedDocument *		td= (TedDocument *)ed->edPrivateData;
+
+    tar->tarFindPattern= (char *)0;
+
+    if  ( docFindSetPattern( &(td->tdFindProg),
+				pattern, useRegex, asWord, caseSensitive ) )
+	{ SDEB(pattern); return -1;	}
+
+    return 0;
     }
 
 /************************************************************************/
@@ -649,10 +714,10 @@ APP_MENU_CALLBACK_H( tedDocToolSpell, spellOption, voided, e )
     TedDocument *	td= (TedDocument *)ed->edPrivateData;
 
     /*  To get the correct title  */
-    tedShowFormatTool( td->tdToolsFormatToolOption, ea );
+    tedAppShowFormatTool( td->tdToolsFormatToolOption, ea );
     tedAdaptFormatToolToDocument( ed, 0 );
 
-    tedFormatShowSpellPage( ea );
+    tedAppFormatShowSpellPage( ea );
 
     return;
     }
@@ -705,15 +770,15 @@ int tedDocFontToolSet(		EditDocument *			ed,
 				const ExpandedTextAttribute *	etaSet )
     {
     TedDocument *		td= (TedDocument *)ed->edPrivateData;
-    BufferDocument *		bd= td->tdDocument;
-    DocumentProperties *	dp= &(bd->bdProperties);
-    DocumentFontList *		dfl= dp->dpFontList;
+    struct BufferDocument *	bd= td->tdDocument;
+    DocumentProperties *	dp= bd->bdProperties;
+    struct DocumentFontList *	dfl= dp->dpFontList;
 
     PropertyMask		doneMask;
     TextAttribute		taSet;
 
 
-    utilInitTextAttribute( &taSet );
+    textInitTextAttribute( &taSet );
     utilPropMaskClear( &doneMask );
 
     docIndirectTextAttribute( &doneMask, &taSet, etaSet, taSetMask,
@@ -736,11 +801,11 @@ APP_MENU_CALLBACK_H( tedDocInsertLink, option, voided, e )
     TedDocument *		td= (TedDocument *)ed->edPrivateData;
     EditApplication *		ea= ed->edApplication;
 
-    tedShowFormatTool( td->tdToolsFormatToolOption, ea );
+    tedAppShowFormatTool( td->tdToolsFormatToolOption, ea );
 
     tedAdaptFormatToolToDocument( ed, 0 );
 
-    tedFormatShowLinkPage( ea );
+    tedAppFormatShowLinkPage( ea );
 
     return;
     }
@@ -757,11 +822,11 @@ APP_MENU_CALLBACK_H( tedDocInsertBookmark, option, voided, e )
     TedDocument *		td= (TedDocument *)ed->edPrivateData;
     EditApplication *		ea= ed->edApplication;
 
-    tedShowFormatTool( td->tdToolsFormatToolOption, ea );
+    tedAppShowFormatTool( td->tdToolsFormatToolOption, ea );
 
     tedAdaptFormatToolToDocument( ed, 0 );
 
-    tedFormatShowBookmarkPage( ea );
+    tedAppFormatShowBookmarkPage( ea );
     }
 
 /************************************************************************/
@@ -779,10 +844,10 @@ APP_MENU_CALLBACK_H( tedDocShowPageTool, pageOption, voided, e )
     TedDocument *	td= (TedDocument *)ed->edPrivateData;
 
     /*  To get the correct title  */
-    tedShowFormatTool( td->tdToolsFormatToolOption, ea );
+    tedAppShowFormatTool( td->tdToolsFormatToolOption, ea );
     tedAdaptFormatToolToDocument( ed, 0 );
 
-    tedFormatShowPagePage( ea );
+    tedAppFormatShowPagePage( ea );
     }
 
     return;
@@ -801,10 +866,10 @@ APP_MENU_CALLBACK_H( tedDocToolFont, option, voided, e )
     TedDocument *		td= (TedDocument *)ed->edPrivateData;
 
     /*  To get the correct title  */
-    tedShowFormatTool( td->tdToolsFormatToolOption, ea );
+    tedAppShowFormatTool( td->tdToolsFormatToolOption, ea );
     tedAdaptFormatToolToDocument( ed, 0 );
 
-    tedFormatShowFontPage( ea );
+    tedAppFormatShowFontPage( ea );
 
     return;
     }
@@ -816,10 +881,10 @@ APP_MENU_CALLBACK_H( tedDocToolInsertSymbol, option, voided, e )
     TedDocument *		td= (TedDocument *)ed->edPrivateData;
 
     /*  To get the correct title  */
-    tedShowFormatTool( td->tdToolsFormatToolOption, ea );
+    tedAppShowFormatTool( td->tdToolsFormatToolOption, ea );
     tedAdaptFormatToolToDocument( ed, 0 );
 
-    tedFormatShowSymbolPage( ea );
+    tedAppFormatShowSymbolPage( ea );
 
     return;
     }
@@ -837,7 +902,7 @@ APP_MENU_CALLBACK_H( tedDocFormatTool, option, voided, e )
 
     /* option == td->tdToolsFormatToolOption */
 
-    tedShowFormatTool( option, ea );
+    tedAppShowFormatTool( option, ea );
     tedAdaptFormatToolToDocument( ed, 0 );
     }
 
@@ -852,7 +917,7 @@ APP_SCROLLBAR_CALLBACK_H( tedDocHorizontalScrollbarCallback, w, voided, e )
     {
     EditDocument *		ed= (EditDocument *)voided;
     TedDocument *		td= (TedDocument *)ed->edPrivateData;
-    int				x= appGuiGetScrollbarValueFromCallback( w, e );
+    int				x= guiGetScrollbarValueFromCallback( w, e );
 
     appDocScrollToX( ed, x );
 
@@ -866,7 +931,7 @@ APP_SCROLLBAR_CALLBACK_H( tedDocVerticalScrollbarCallback, w, voided, e )
     {
     EditDocument *		ed= (EditDocument *)voided;
     TedDocument *		td= (TedDocument *)ed->edPrivateData;
-    int				y= appGuiGetScrollbarValueFromCallback( w, e );
+    int				y= guiGetScrollbarValueFromCallback( w, e );
 
     appDocScrollToY( ed, y );
 
@@ -904,13 +969,13 @@ APP_MENU_CALLBACK_H( tedDocFileProps, option, voided, e )
     {
     EditDocument *		ed= (EditDocument *)voided;
     TedDocument *		td= (TedDocument *)ed->edPrivateData;
-    BufferDocument *		bd= td->tdDocument;
+    struct BufferDocument *	bd= td->tdDocument;
 
     DocumentStatistics		ds;
 
     docCollectDocumentStatistics( &ds, bd );
 
-    tedRunPropertyDialog( ed, &ds, option, "props" );
+    tedRunPropertyDialog( ed, bd->bdProperties, &ds, option );
     }
 
 
@@ -945,4 +1010,18 @@ APP_MENU_CALLBACK_H( tedDocFileRecover, option, voided, e )
     EditDocument *		ed= (EditDocument *)voided;
 
     tedDocRecover( ed );
+    }
+
+/************************************************************************/
+/*									*/
+/*  Display the online manual.						*/
+/*									*/
+/************************************************************************/
+
+APP_MENU_CALLBACK_H( tedDocManual, option, voided, e )
+    {
+    EditDocument *	ed= (EditDocument *)voided;
+    EditApplication *	ea= ed->edApplication;
+
+    tedManual( option, ea, ed->edToplevel.atTopWidget );
     }

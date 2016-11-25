@@ -18,6 +18,8 @@
 #   include	<sioBlocked.h>
 #   include	<sioLzw.h>
 #   include	<sioEndian.h>
+#   include	<sioGeneral.h>
+
 #   include	<appDebugon.h>
 
 /************************************************************************/

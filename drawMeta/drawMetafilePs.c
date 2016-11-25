@@ -1,12 +1,13 @@
 #   include	"drawMetaConfig.h"
 
 #   include	<stddef.h>
+#   include	<math.h>
 
 #   include	"drawMetafileImpl.h"
 #   include	"drawMetafilePs.h"
 #   include	"drawWinMetaImpl.h"
-#   include	<psFontMetrics.h>
-#   include	<utilMatchFont.h>
+#   include	<psTextExtents.h>
+#   include	<fontMatchFont.h>
 #   include	<psPrint.h>
 #   include	<psPrintShape.h>
 #   include	<psShading.h>
@@ -14,8 +15,7 @@
 #   include	<bmEmfIo.h>
 #   include	<bmBitmapPrinter.h>
 #   include	"drawMacPictImpl.h"
-
-#   include	<math.h>
+#   include	<sioGeneral.h>
 
 #   include	<appDebugon.h>
 
@@ -76,7 +76,7 @@ static void appMetaSetFontPs(		PrintingState *		ps,
     {
     ta.taFontSizeHalfPoints= fontSizeTwips/ 10;
 
-    if  ( docEqualTextAttributes( &ta, &(dc->dcTextAttributeSet) ) )
+    if  ( textEqualFontFace( &ta, &(dc->dcTextAttributeSet) ) )
 	{ return;	}
 
     dc->dcTextAttributeSet= ta;
@@ -202,8 +202,7 @@ static int appDrawMetaBitmapImagePs(
 							twipsWide, twipsHigh );
     sioOutPrintf( sos, "grestore\n" );
 
-    if  ( bmPsPrintBitmapImage( sos, 1,
-			    twipsWide, -twipsHigh,
+    if  ( bmPsPrintRasterImage( sos, twipsWide, -twipsHigh,
 			    drDest->drX0, ( drDest->drY0+ twipsHigh ),
 			    drSrc, onWhite,
 			    ps->psUsePostScriptFilters,
@@ -405,7 +404,7 @@ static int appMetaDrawStringPs(		DeviceContext *		dc,
 					const MemoryBuffer *	text )
     {
     PrintingState *	ps= (PrintingState *)through;
-    const AfmFontInfo *	afi= dc->dcAfi;
+    const struct AfmFontInfo *	afi= dc->dcAfi;
     LogicalFont *	lf= &(dc->dcFont);
 
     int			wide;
@@ -525,7 +524,7 @@ static int appMetaDrawStringPs(		DeviceContext *		dc,
 	x0= y0= 0;
 	}
 
-    psMoveShowString( ps, (unsigned char *)s, len, x0, y0 );
+    psMoveShowString( ps, s, len, x0, y0 );
 
     if  ( dc->dcFont.lfTextAttribute.taTextIsUnderlined )
 	{
@@ -900,8 +899,7 @@ static int appMetaSelectPatternBrushObjectPs(	DeviceContext *		dc,
     sioOutPrintf( sos, "currentfile %d string readhexstring\n",
 				    abi->riDescription.bdPixelsHigh* bytesPerRow );
 
-    bmPsOpenBitmapPrinter( &bp, sos, &(abi->riDescription),
-						useFilters, indexedImages );
+    bmPsOpenBitmapPrinter( &bp, sos, useFilters, indexedImages );
 
     {
     DocumentRectangle	drSel;

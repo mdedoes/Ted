@@ -11,77 +11,87 @@
 #   include	<stdio.h>
 #   include	<ctype.h>
 #   include	<textConverter.h>
-#   include	<textConverterImpl.h>
+#   include	<docPropVal.h>
+#   include	<textOfficeCharset.h>
+#   include	<utilMemoryBuffer.h>
+#   include	<fontEncodedFont.h>
+#   include	<sioGeneral.h>
+#   include	<docTreeNode.h>
+#   include	"docRtfWriterImpl.h"
+#   include	"docRtfControlWord.h"
+#   include	"docRtfFindProperty.h"
 
 #   include	<appDebugon.h>
-
-#   include	"docRtfWriterImpl.h"
-#   include	"docRtfTextConverter.h"
 
 /************************************************************************/
 
 static void docRtfInitWritingContext(	RtfWriter *	rw )
     {
-    rw->rwDocument= (BufferDocument *)0;
+    rw->rwDocument= (struct BufferDocument *)0;
 
-    utilInitTextAttribute( &(rw->rwTextAttribute) );
+    rw->rwCurrentTree= (struct PushedTree *)0;
+
+    textInitTextAttribute( &(rw->rwTextAttribute) );
     rw->rwTextCharset= FONTcharsetANSI;
-    docInitParagraphProperties( &(rw->rwcParagraphProperties) );
     docInitRowProperties( &(rw->rwRowProperties) );
 
     docInitParagraphProperties( &(rw->rwcOutsideTableParagraphProperties) );
 
-    utilInitPagedList( &(rw->rwcEncodedFontList) );
-    utilStartPagedList( &(rw->rwcEncodedFontList),
+    utilInitPagedList( &(rw->rwEncodedFontList) );
+    utilStartPagedList( &(rw->rwEncodedFontList),
 				sizeof(EncodedFont),
-				(InitPagedListItem)docRtfInitEncodedFont,
+				(InitPagedListItem)fontInitEncodedFont,
 				(CleanPagedListItem)0 );
 
     rw->rwcPushedAttribute= (PushedAttribute *)0;
 
     rw->rwcInFldrslt= 0;
-    rw->rwTableNesting= 0;
     rw->rwDeepestTableNesting= 0;
 
     rw->rwSectionPropertiesSaved= 0;
 
     rw->rwSaveFlags= 0;
 
-    rw->rwcAfter= RTFafterTEXT;
+    rw->rwAfter= RTFafterTEXT;
     rw->rwcLastNodeLevel= DOClevOUT;
 
     rw->rwCol= 0;
-    rw->rwSosOut= (SimpleOutputStream *)0;
+    rw->rwSosOut= (struct SimpleOutputStream *)0;
 
-    rw->rwRtfTextConverter= (TextConverter *)0;
-    rw->rwTextTextConverter= (TextConverter *)0;
+    rw->rwRtfTextConverter= (struct TextConverter *)0;
+    rw->rwTextTextConverter= (struct TextConverter *)0;
 
-    rw->rwPpExtraMask= (const PropertyMask *)0;
-    rw->rwCpExtraMask= (const PropertyMask *)0;
-    rw->rwRpExtraMask= (const PropertyMask *)0;
-    rw->rwSpExtraMask= (const PropertyMask *)0;
+    rw->rwPpExtraMask= (const struct PropertyMask *)0;
+    rw->rwCpExtraMask= (const struct PropertyMask *)0;
+    rw->rwRpExtraMask= (const struct PropertyMask *)0;
+    rw->rwSpExtraMask= (const struct PropertyMask *)0;
     }
 
 static void docRtfCleanWritingContext(	RtfWriter *	rw )
     {
-    docCleanParagraphProperties( &rw->rwcParagraphProperties );
     docCleanRowProperties( &rw->rwRowProperties );
 
     docCleanParagraphProperties( &rw->rwcOutsideTableParagraphProperties );
 
-    utilCleanPagedList( &(rw->rwcEncodedFontList) );
+    utilCleanPagedList( &(rw->rwEncodedFontList) );
 
     if  ( rw->rwRtfTextConverter )
-	{
-	textCleanTextConverter( rw->rwRtfTextConverter );
-	free( rw->rwRtfTextConverter );
-	}
+	{ textCloseTextConverter( rw->rwRtfTextConverter );	}
 
     if  ( rw->rwTextTextConverter )
-	{
-	textCleanTextConverter( rw->rwTextTextConverter );
-	free( rw->rwTextTextConverter );
-	}
+	{ textCloseTextConverter( rw->rwTextTextConverter );	}
+    }
+
+/************************************************************************/
+/*									*/
+/*  Emit a byte								*/
+/*									*/
+/************************************************************************/
+
+int docRtfPutByte(	int			c,
+			RtfWriter *		rw )
+    {
+    return sioOutPutByte( c, rw->rwSosOut );
     }
 
 /************************************************************************/
@@ -112,7 +122,7 @@ void docRtfWriteNextLine(	RtfWriter *	rw )
 	sioOutPutString( "\r\n", rw->rwSosOut );
 
 	rw->rwCol= 0;
-	rw->rwcAfter= RTFafterTEXT;
+	rw->rwAfter= RTFafterTEXT;
 	}
 
     return;
@@ -135,7 +145,7 @@ int docRtfWriteTag(	RtfWriter *	rw,
 	{ LDEB(1); return -1;	}
     if  ( sioOutPutString( tag, rw->rwSosOut ) < 0 )
 	{ LDEB(1); return -1;	}
-    rw->rwcAfter= RTFafterTAG;
+    rw->rwAfter= RTFafterTAG;
 
     return 0;
     }
@@ -162,10 +172,10 @@ int docRtfWriteDestinationBegin(	RtfWriter *		rw,
 	rw->rwCol += 1;
 	if  ( sioOutPutString( tag, rw->rwSosOut ) < 0 )
 	    { LDEB(1); return -1;	}
-	rw->rwcAfter= RTFafterTAG;
+	rw->rwAfter= RTFafterTAG;
 	}
     else{
-	rw->rwcAfter= RTFafterTEXT;
+	rw->rwAfter= RTFafterTEXT;
 	}
 
     return 0;
@@ -199,7 +209,7 @@ int docRtfWriteArgDestinationBegin(	RtfWriter *		rw,
     if  ( sioOutPutString( scratch, rw->rwSosOut ) < 0 )
 	{ LDEB(1); return -1;	}
 
-    rw->rwcAfter= RTFafterARG;
+    rw->rwAfter= RTFafterARG;
 
     return 0;
     }
@@ -210,7 +220,7 @@ int docRtfWriteDestinationEnd(		RtfWriter *	rw )
 	{ LDEB(1); return -1;	}
 
     rw->rwCol += 1;
-    rw->rwcAfter= RTFafterTEXT;
+    rw->rwAfter= RTFafterTEXT;
 
     return 0;
     }
@@ -241,44 +251,45 @@ int docRtfWriteArgTag(	RtfWriter *		rw,
     if  ( sioOutPutString( scratch, rw->rwSosOut ) < 0 )
 	{ LDEB(1); return -1;	}
 
-    rw->rwcAfter= RTFafterARG;
+    rw->rwAfter= RTFafterARG;
 
     return 0;
     }
 
-void docRtfWriteFlagTag(	RtfWriter *		rw,
+int docRtfWriteFlagTag(		RtfWriter *		rw,
 				const char *		tag,
 				int			arg )
     {
     if  ( arg )
-	{ docRtfWriteTag( rw, tag );		}
-    else{ docRtfWriteArgTag( rw, tag, arg );	}
+	{ return docRtfWriteTag( rw, tag );		}
+    else{ return docRtfWriteArgTag( rw, tag, arg );	}
     }
 
-void docRtfWriteAltTag(		RtfWriter *		rw,
+int docRtfWriteAltTag(		RtfWriter *		rw,
 				const char *		yesTag,
 				const char *		noTag,
 				int			arg )
     {
     if  ( arg )
-	{ docRtfWriteTag( rw, yesTag );	}
-    else{ docRtfWriteTag( rw, noTag  );	}
+	{ return docRtfWriteTag( rw, yesTag );	}
+    else{ return docRtfWriteTag( rw, noTag  );	}
     }
 
-void docRtfWriteEnumTag(	RtfWriter *		rw,
+int docRtfWriteEnumTag(		RtfWriter *		rw,
 				const char * const *	tags,
 				int			arg,
 				int			tagCount,
 				int			enumCount )
     {
     if  ( tagCount != enumCount )
-	{ LLSDEB(tagCount,enumCount,tags[0]); return;	}
+	{ LLSDEB(tagCount,enumCount,tags[0]); return -1;	}
 
     if  ( arg < 0 || arg >= tagCount )
-	{ LLSDEB(tagCount,arg,tags[0]); return;	}
+	{ LLSDEB(tagCount,arg,tags[0]); return -1;	}
 
     if  ( tags[arg] )
-	{ docRtfWriteTag( rw, tags[arg] );	}
+	{ return docRtfWriteTag( rw, tags[arg] );	}
+    else{ return 0;					}
     }
 
 void docRtfWriteSemicolon(	RtfWriter *	rw )
@@ -286,7 +297,45 @@ void docRtfWriteSemicolon(	RtfWriter *	rw )
     sioOutPutString( ";", rw->rwSosOut );
     rw->rwCol += 1;
 
-    rw->rwcAfter= RTFafterTEXT;
+    rw->rwAfter= RTFafterTEXT;
+    }
+
+int docRtfWriteProperty(		RtfWriter *		rw,
+					int			scope,
+					int			prop,
+					int			value )
+    {
+    const RtfControlWord *	rcw;
+
+    rcw= docRtfFindProperty( scope, prop, value );
+    if  ( ! rcw )
+	{ LLLXDEB(scope,prop,value,rcw); return -1;	}
+
+    switch( rcw->rcwType )
+	{
+	case RTCtypeFLAG:
+	    if  ( docRtfWriteFlagTag( rw, rcw->rcwWord, value ) )
+		{ SDEB(rcw->rcwWord); return -1;	}
+	    return 0;
+
+	case RTCtypeNUMBER:
+	    if  ( docRtfWriteArgTag( rw, rcw->rcwWord, value ) )
+		{ SDEB(rcw->rcwWord); return -1;	}
+	    return 0;
+
+	case RTCtypeENUM:
+	    if  ( docRtfWriteTag( rw, rcw->rcwWord ) )
+		{ SDEB(rcw->rcwWord); return -1;	}
+	    return 0;
+
+	case RTCtypeSYMBOL:
+	case RTCtypeDEST:
+	default:
+	    SLDEB(rcw->rcwWord,rcw->rcwType);
+	    return -1;
+	}
+
+    return 0;
     }
 
 /************************************************************************/
@@ -304,12 +353,12 @@ int docRtfWriteMemoryBuffer(	RtfWriter *			rw,
     if  ( rw->rwCol+ mb->mbSize > 78 )
 	{ docRtfWriteNextLine( rw ); }
 
-    if  ( rw->rwcAfter != RTFafterTEXT )
+    if  ( rw->rwAfter != RTFafterTEXT )
 	{
 	if  ( sioOutPutByte( ' ', rw->rwSosOut ) < 0 )
 	    { LDEB(1); return -1;	}
 	rw->rwCol += 1;
-	rw->rwcAfter= RTFafterTEXT;
+	rw->rwAfter= RTFafterTEXT;
 	}
 
     s= mb->mbBytes;
@@ -374,6 +423,17 @@ void docRtfWriteDocEncodedStringDestination(
     return;
     }
 
+void docRtfWriteDocEncodedBufferDestination(
+					RtfWriter *		rw,
+					const char *		tag,
+					const MemoryBuffer *	mb,
+					int			addSemicolon )
+    {
+    docRtfWriteDocEncodedStringDestination( rw, tag,
+				    (const char *)mb->mbBytes,
+				    mb->mbSize, addSemicolon );
+    }
+
 /************************************************************************/
 /*									*/
 /*  Write a destination that does not need any transcoding.		*/
@@ -402,7 +462,7 @@ void docRtfWriteRawBytesDestination(	RtfWriter *		rw,
 /************************************************************************/
 
 RtfWriter * docRtfOpenWriter(		SimpleOutputStream *	sos,
-					BufferDocument *	bd,
+					struct BufferDocument *	bd,
 					int			flags )
     {
     RtfWriter *		rval= (RtfWriter *)0;
@@ -414,15 +474,13 @@ RtfWriter * docRtfOpenWriter(		SimpleOutputStream *	sos,
 
     docRtfInitWritingContext( rw );
 
-    rw->rwRtfTextConverter= malloc( sizeof(TextConverter) );
+    rw->rwRtfTextConverter= textOpenTextConverter();
     if  ( ! rw->rwRtfTextConverter )
 	{ PDEB(rw->rwRtfTextConverter); goto ready;	}
-    textInitTextConverter( rw->rwRtfTextConverter );
 
-    rw->rwTextTextConverter= malloc( sizeof(TextConverter) );
+    rw->rwTextTextConverter= textOpenTextConverter();
     if  ( ! rw->rwTextTextConverter )
 	{ PDEB(rw->rwTextTextConverter); goto ready;	}
-    textInitTextConverter( rw->rwTextTextConverter );
 
     rw->rwDocument= bd;
     rw->rwSosOut= sos;

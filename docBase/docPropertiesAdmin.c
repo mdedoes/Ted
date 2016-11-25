@@ -11,8 +11,10 @@
 #   include	"docBorderPropertyAdmin.h"
 #   include	"docItemShadingAdmin.h"
 #   include	"docFramePropertiesAdmin.h"
-#   include	"docParaRulerAdmin.h"
+#   include	"docParaTabsAdmin.h"
 #   include	"docCellPropertyAdmin.h"
+#   include	"docRowPropertyAdmin.h"
+#   include	"docParaPropertyAdmin.h"
 
 #   include	<textAttributeAdmin.h>
 
@@ -34,8 +36,10 @@ void docFreeDocumentPropertyLists( DocumentPropertyLists * dpl )
     utilCleanNumberedPropertiesList( &(dpl->dplFramePropertyList) );
     utilCleanNumberedPropertiesList( &(dpl->dplTabStopListList) );
     utilCleanNumberedPropertiesList( &(dpl->dplCellPropertyList) );
+    utilCleanNumberedPropertiesList( &(dpl->dplRowPropertyList) );
+    utilCleanNumberedPropertiesList( &(dpl->dplParaPropertyList) );
 
-    docCleanFontList( &(dpl->dplFontList) );
+    fontCleanDocFontList( &(dpl->dplFontList) );
     docCleanListAdmin( &(dpl->dplListAdmin) );
     utilCleanColorPalette( &(dpl->dplColorPalette) );
 
@@ -54,14 +58,16 @@ DocumentPropertyLists * docMakeDocumentPropertyLists( void )
     if  ( ! dpl )
 	{ XDEB(dpl); return (DocumentPropertyLists *)0;	}
 
-    utilInitTextAttributeList( &(dpl->dplTextAttributeList) );
+    textInitTextAttributeList( &(dpl->dplTextAttributeList) );
     docInitBorderPropertyList( &(dpl->dplBorderPropertyList) );
     docInitItemShadingList( &(dpl->dplItemShadingList) );
     docInitFramePropertyList( &(dpl->dplFramePropertyList) );
     docInitTabStopListList( &(dpl->dplTabStopListList) );
     docInitCellPropertyList( &(dpl->dplCellPropertyList) );
+    docInitRowPropertiesList( &(dpl->dplRowPropertyList) );
+    docInitParagraphPropertyList( &(dpl->dplParaPropertyList) );
 
-    docInitFontList( &(dpl->dplFontList) );
+    fontInitDocFontList( &(dpl->dplFontList) );
     docInitListAdmin( &(dpl->dplListAdmin) );
     utilInitColorPalette( &(dpl->dplColorPalette) );
 

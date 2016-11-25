@@ -16,14 +16,16 @@
 #   include	"psPostScriptFontList.h"
 #   include	"textAttribute.h"
 #   include	"psMatchFont.h"
+#   include	"psFontInfo.h"
 
 /************************************************************************/
 
-# define SHOW_MISSING 0
+# define SHOW_MISSING 1
 # if SHOW_MISSING
 
-static int utilMatchFontShowMissing( int n, AfmFontInfo * afi )
+static int utilMatchFontShowMissing( int n, void * vafi )
     {
+    AfmFontInfo * afi= (AfmFontInfo *)vafi;
     SXDEB(afi->afiFullName,n);
     return 0;
     }
@@ -40,20 +42,20 @@ static int utilMatchFontShowMissing( int n, AfmFontInfo * afi )
 /************************************************************************/
 
 static int psFontFamilySupportsUnicodes(
-				    const PsFontFamily *	aff,
+				    const PsFontFamily *	psf,
 				    int *			pMissingCount,
 				    const IndexSet *		required )
     {
     int				rval= 1;
-    AfmFontInfo *		afi= aff->psfFaces[0]; /* 1 */
+    AfmFontInfo *		afi= psf->psfFaces[0]; /* 1 */
 
     IndexSet			missing;
     int				missingCount= 0;
 
     utilInitIndexSet( &missing );
 
-    if  ( aff->psfFaceCount == 0 || ! afi )
-	{ LXDEB(aff->psfFaceCount,afi); rval= 0; goto ready;	}
+    if  ( psf->psfFaceCount == 0 || ! afi )
+	{ LXDEB(psf->psfFaceCount,afi); rval= 0; goto ready;	}
 
     /*  2  */
     if  ( ! required )
@@ -196,7 +198,7 @@ static int psGetFamilyByName(
 				const PostScriptFontList *	psfl )
     {
     int				fam;
-    const PsFontFamily *	aff;
+    const PsFontFamily *	psf;
     int				missingCount= INT_MAX;
 
     if  ( ! name )
@@ -206,19 +208,19 @@ static int psGetFamilyByName(
     if  ( fam < 0 )
 	{ return -1;	}
 
-    aff= psfl->psflFamilies[fam];
-    if  ( aff )
+    psf= psfl->psflFamilies[fam];
+    if  ( psf )
 	{
 	if  ( ! unicodes )
-	    { *pPsf= aff; return 0; }
+	    { *pPsf= psf; return 0; }
 
-	if  ( psFontFamilySupportsUnicodes( aff, &missingCount, unicodes ) )
-	    { *pPsf= aff; return 0; }
+	if  ( psFontFamilySupportsUnicodes( psf, &missingCount, unicodes ) )
+	    { *pPsf= psf; return 0; }
 
 	if  ( missingCount < *pMissing )
 	    {
 	    *pMissing= missingCount;
-	    *pPsfFallback= aff;
+	    *pPsfFallback= psf;
 	    }
 	}
 

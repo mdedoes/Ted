@@ -8,9 +8,26 @@
 #   ifndef		DOC_DOCUMENT_COPY_JOB_H
 #   define		DOC_DOCUMENT_COPY_JOB_H
 
-#   include		<docBuf.h>
-#   include		"docEditOperation.h"
+#   include		<utilMemoryBuffer.h>
+#   include		<utilIndexSet.h>
+#   include		<docSelectionScope.h>
 #   include		<docDocumentAttributeMap.h>
+
+struct DocumentField;
+struct FieldStackLevel;
+struct TextAttribute;
+struct EditOperation;
+struct BufferDocument;
+struct DocumentTree;
+
+typedef enum CopyFieldHandling
+    {
+    CFH_SHALLOW= 0,
+    CFH_COPY,
+    CFH_STEAL,
+
+    CFH__COUNT
+    } CopyFieldHandling;
 
 /************************************************************************/
 /*									*/
@@ -19,29 +36,32 @@
 /*									*/
 /************************************************************************/
 
-typedef struct FieldCopyStackLevel
-    {
-    DocumentField *			fcslField;
-    struct FieldCopyStackLevel *	fcslPrev;
-    } FieldCopyStackLevel;
-
 typedef struct DocumentCopyJob
     {
-    EditOperation *		dcjEditOperation;
+    struct EditOperation *	dcjEditOperation;
     SelectionScope		dcjTargetSelectionScope;
 
-    DocumentTree *		dcjTargetTree;
-    BufferDocument *		dcjSourceDocument;
-    DocumentTree *		dcjSourceTree;
+    struct DocumentTree *	dcjTargetTree;
+    struct BufferDocument *	dcjSourceDocument;
+    struct DocumentTree *	dcjSourceTree;
 				    /**
 				     *  Are we in an excursion to an 
 				     *  external tree?
 				     */
     int				dcjInExternalTree;
 
-    int				dcjCopyFields;
+				/**
+				 *  Fields are copied: We expect head and 
+				 *  tail to be in the source.
+				 */
+    unsigned char		dcjCopyFields;
+				/**
+				 *  Fields are stolen: We want this to happen
+				 *  when we move the tail of a substitution.
+				 */
+    unsigned char		dcjStealFields;
     int *			dcjFieldMap;
-    FieldCopyStackLevel *	dcjFieldStack;
+    struct FieldStackLevel *	dcjFieldStack;
 
     DocumentAttributeMap	dcjAttributeMap;
     int				dcjForceAttributeTo;
@@ -84,34 +104,35 @@ extern int docMapTextAttributeNumber(
 				int			attributeNumberFrom );
 
 extern int docMapTextAttributeNumberFromTo(
-				BufferDocument *	bdTo,
-				const BufferDocument *	bdFrom,
+				struct BufferDocument *	bdTo,
+				const struct BufferDocument *	bdFrom,
 				int			attributeNumberFrom );
 
 extern void docInitDocumentCopyJob(	DocumentCopyJob *	dcj );
 extern void docCleanDocumentCopyJob(	DocumentCopyJob *	dcj );
 
 extern int docSet1DocumentCopyJob(	DocumentCopyJob *	dcj,
-					EditOperation *		eo,
-					int			copyFields );
+					struct EditOperation *	eo,
+					int			fieldHandling );
 
 extern int docSetTraceDocumentCopyJob(	DocumentCopyJob *	dcj,
-					EditOperation *		eo,
-					BufferDocument *	bdFrom );
+					struct EditOperation *	eo,
+					struct BufferDocument *	bdFrom );
 
 extern int docSet2DocumentCopyJob(
 				DocumentCopyJob *	dcj,
-				EditOperation *		eo,
-				BufferDocument *	bdFrom,
-				DocumentTree *		eiFrom,
+				struct EditOperation *		eo,
+				struct BufferDocument *	bdFrom,
+				struct DocumentTree *	dtFrom,
 				const MemoryBuffer *	refFileName,
 				int			forceAttributeTo );
 
 extern int docPushFieldOnCopyStack(	DocumentCopyJob *	dcj,
-					DocumentField *		df );
+					struct DocumentField *	df,
+					int			piece );
 
-extern void docMapTextAttribute(	TextAttribute *		taTo,
-					const TextAttribute *	taFrom,
+extern void docMapTextAttribute(	struct TextAttribute *		taTo,
+					const struct TextAttribute *	taFrom,
 					const DocumentCopyJob *	dcj );
 
 #   endif	/*	DOC_DOCUMENT_COPY_JOB_H	*/

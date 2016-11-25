@@ -3,7 +3,7 @@
 #   include	<stdlib.h>
 
 #   include	"utilTree.h"
-#   include	<appTagval.h>
+#   include	"appTagval.h"
 
 #   include	<appDebugon.h>
 
@@ -14,9 +14,9 @@
 /************************************************************************/
 
 int appTagvalGetStringValue(	const char **		pValue,
-					int *			pNull,
-					const void *		tree,
-					const char *		name )
+				int *			pNull,
+				const void *		tree,
+				const char *		name )
     {
     const void *	val= utilTreeGetEQ( tree, (const char **)0, name );
     const char *	value;

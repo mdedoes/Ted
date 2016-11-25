@@ -7,7 +7,7 @@
 #   ifndef	UTIL_TEXT_ATTRIBUTE_UTIL_H
 #   define	UTIL_TEXT_ATTRIBUTE_UTIL_H
 
-#   include	"textAttribute.h"
+struct TextAttribute;
 
 /************************************************************************/
 /*									*/
@@ -16,6 +16,6 @@
 /************************************************************************/
 
 extern int textGetPixelSize(	double				pixelsPerTwip,
-				const TextAttribute *		ta );
+				const struct TextAttribute *		ta );
 
 #   endif	/*  UTIL_TEXT_ATTRIBUTE_UTIL_H	*/

@@ -18,6 +18,18 @@
 #   include	"docSvgDraw.h"
 #   include	<psShading.h>
 #   include	<docTreeNode.h>
+#   include	<docObject.h>
+#   include	<docBorderProperties.h>
+#   include	<docItemShading.h>
+#   include	<docBlockOrnaments.h>
+#   include	<docDocumentProperties.h>
+#   include	<docSectProperties.h>
+#   include	<sioGeneral.h>
+#   include	<psFontInfo.h>
+#   include	<svgWriter.h>
+#   include	<docBuf.h>
+#   include	<docAttributes.h>
+#   include	<docShapeGeometry.h>
 
 #   include	<appDebugon.h>
 
@@ -43,14 +55,9 @@ static int docSvgSetFont(	DrawingContext *	dc,
 				const TextAttribute *	ta )
     {
     const LayoutContext *	lc= &(dc->dcLayoutContext);
-    BufferDocument *		bd= lc->lcDocument;
-    DocumentFontList *		dfl= bd->bdProperties.dpFontList;
     const AfmFontInfo *		afi;
-    const IndexSet *		unicodesWanted;
 
-    const PostScriptFontList *	psfl= lc->lcPostScriptFontList;
-
-    afi= (*lc->lcGetFontForAttribute)( &unicodesWanted, ta, dfl, psfl );
+    afi= docDocLayoutGetFontInfo( lc, ta );
     if  ( ! afi )
 	{ LDEB(textAttrNumber); return -1; }
 
@@ -68,7 +75,7 @@ static int docSvgSetFont(	DrawingContext *	dc,
 
 static void docSvgWriteBorderAttributes(
 				SvgWriter *			sw,
-				const BufferDocument *		bd,
+				const struct BufferDocument *		bd,
 				const BorderProperties *	bp,
 				int				thick )
     {
@@ -88,7 +95,7 @@ static void docSvgWriteBorderAttributes(
 
 static void docSvgDrawHorizontalBorder(
 				SvgWriter *			sw,
-				const BufferDocument *		bd,
+				const struct BufferDocument *		bd,
 				const BorderProperties *	bp,
 				const DocumentRectangle *	drBorder )
     {
@@ -109,7 +116,7 @@ static void docSvgDrawHorizontalBorder(
 
 static void docSvgDrawVerticalBorder(
 				SvgWriter *			sw,
-				const BufferDocument *		bd,
+				const struct BufferDocument *		bd,
 				const BorderProperties *	bp,
 				const DocumentRectangle *	drBorder )
     {
@@ -144,7 +151,7 @@ static int docSvgDrawOrnaments(	const BlockOrnaments *		bo,
     SvgWriter *			sw= (SvgWriter *)through;
     XmlWriter *			xw= &(sw->swXmlWriter);
     const LayoutContext *	lc= &(dc->dcLayoutContext);
-    const BufferDocument *	bd= lc->lcDocument;
+    const struct BufferDocument *	bd= lc->lcDocument;
 
     int				rectBorder= 0;
     DocumentRectangle		drRectBorder;
@@ -175,7 +182,7 @@ static int docSvgDrawOrnaments(	const BlockOrnaments *		bo,
 	    { drShade= &drRectBorder;	}
 
 	if  ( docGetSolidRgbShadeOfItem( &isFilled, &rgb8,
-						bd, &(bo->boShading) ) )
+						bd, bo->boShading ) )
 	    { LDEB(1);	}
 
 	if  ( isFilled )
@@ -186,7 +193,7 @@ static int docSvgDrawOrnaments(	const BlockOrnaments *		bo,
 
 	    if  ( rectBorder )
 		{
-		docSvgWriteBorderAttributes( sw, bd, &(bo->boTopBorder),
+		docSvgWriteBorderAttributes( sw, bd, bo->boTopBorder,
 					    drOutside->drY0- drInside->drY0 );
 		}
 
@@ -194,8 +201,8 @@ static int docSvgDrawOrnaments(	const BlockOrnaments *		bo,
 	    xmlNewLine( xw );
 	    }
 
-	if  ( bo->boShading.isPattern != DOCspSOLID )
-	    { LDEB(bo->boShading.isPattern);	}
+	if  ( bo->boShading->isPattern != DOCspSOLID )
+	    { LDEB(bo->boShading->isPattern);	}
 	}
     else{
 	if  ( rectBorder )
@@ -203,7 +210,7 @@ static int docSvgDrawOrnaments(	const BlockOrnaments *		bo,
 	    sioOutPutString( "<rect", xw->xwSos );
 	    svgWriteRectangleAttributes( sw, &drRectBorder );
 	    xmlWriteStringAttribute( xw, "fill", "none" );
-	    docSvgWriteBorderAttributes( sw, bd, &(bo->boTopBorder),
+	    docSvgWriteBorderAttributes( sw, bd, bo->boTopBorder,
 					    drOutside->drY0- drInside->drY0 );
 	    sioOutPutString( "/>", xw->xwSos );
 	    xmlNewLine( xw );
@@ -217,7 +224,7 @@ static int docSvgDrawOrnaments(	const BlockOrnaments *		bo,
 
 	drBorder.drY1= drInside->drY0- 1;
 
-	docSvgDrawHorizontalBorder( sw, bd, &(bo->boTopBorder), &drBorder );
+	docSvgDrawHorizontalBorder( sw, bd, bo->boTopBorder, &drBorder );
 	xmlNewLine( xw );
 	/*done= 1;*/
 	}
@@ -231,7 +238,7 @@ static int docSvgDrawOrnaments(	const BlockOrnaments *		bo,
 	drBorder.drY1= drInside->drY1;
 	drBorder.drX1= drInside->drX0- 1;
 
-	docSvgDrawVerticalBorder( sw, bd, &(bo->boLeftBorder), &drBorder );
+	docSvgDrawVerticalBorder( sw, bd, bo->boLeftBorder, &drBorder );
 	/*done= 1;*/
 	}
 
@@ -244,7 +251,7 @@ static int docSvgDrawOrnaments(	const BlockOrnaments *		bo,
 	drBorder.drY1= drInside->drY1;
 	drBorder.drX0= drInside->drX1+ 1;
 
-	docSvgDrawVerticalBorder( sw, bd, &(bo->boRightBorder), &drBorder );
+	docSvgDrawVerticalBorder( sw, bd, bo->boRightBorder, &drBorder );
 	/*done= 1;*/
 	}
 
@@ -255,7 +262,7 @@ static int docSvgDrawOrnaments(	const BlockOrnaments *		bo,
 
 	drBorder.drY0= drInside->drY1+ 1;
 
-	docSvgDrawHorizontalBorder( sw, bd, &(bo->boBottomBorder), &drBorder );
+	docSvgDrawHorizontalBorder( sw, bd, bo->boBottomBorder, &drBorder );
 	/*done= 1;*/
 	}
 
@@ -356,7 +363,7 @@ int docSvgEmitStroke(	SvgWriter *			sw,
 
 static int docSvgFinishPage(	void *				vsw,
 				DrawingContext *		dc,
-				BufferItem *			bodySectNode,
+				struct BufferItem *			bodySectNode,
 				int				page,
 				int				asLast )
     {
@@ -457,7 +464,7 @@ static int docSvgDrawStartPage(	void *				vsw,
 
 static int docSvgDrawPageRange(	SvgWriter *		sw,
 				DrawingContext *	dc,
-				BufferItem *		bodyBi,
+				struct BufferItem *	bodyNode,
 				int			firstPage,
 				int			lastPage,
 				int			asLast )
@@ -467,34 +474,34 @@ static int docSvgDrawPageRange(	SvgWriter *		sw,
 
     docInitLayoutPosition( &lpBelow );
 
-    for ( i= 0; i < bodyBi->biChildCount; i++ )
+    for ( i= 0; i < bodyNode->biChildCount; i++ )
 	{
-	if  ( bodyBi->biChildren[i]->biBelowPosition.lpPage >= firstPage )
+	if  ( bodyNode->biChildren[i]->biBelowPosition.lpPage >= firstPage )
 	    { break;	}
 	}
 
-    if  ( i >= bodyBi->biChildCount )
+    if  ( i >= bodyNode->biChildCount )
 	{ LDEB(i); return -1; }
 
     docSvgDrawStartPage( (void *)sw,
-	    &(bodyBi->biChildren[i]->biSectDocumentGeometry), dc, firstPage );
+	    &(bodyNode->biChildren[i]->biSectDocumentGeometry), dc, firstPage );
 
     if  ( ! dc->dcPostponeHeadersFooters )
 	{
-	docDrawPageHeader( bodyBi->biChildren[i], (void *)sw, dc, firstPage );
+	docDrawPageHeader( bodyNode->biChildren[i], (void *)sw, dc, firstPage );
 	}
 
     if  ( docDrawShapesForPage( (void *)sw, dc, 1, firstPage ) )
 	{ LDEB(firstPage);	}
 
-    docDrawNode( &lpBelow, bodyBi, (void *)sw, dc );
+    docDrawNode( &lpBelow, bodyNode, (void *)sw, dc );
 
     if  ( lastPage < 0 )
-	{ lastPage= bodyBi->biBelowPosition.lpPage;	}
+	{ lastPage= bodyNode->biBelowPosition.lpPage;	}
 
-    for ( i= bodyBi->biChildCount- 1; i >= 0; i-- )
+    for ( i= bodyNode->biChildCount- 1; i >= 0; i-- )
 	{
-	if  ( bodyBi->biChildren[i]->biTopPosition.lpPage <= lastPage )
+	if  ( bodyNode->biChildren[i]->biTopPosition.lpPage <= lastPage )
 	    { break;	}
 	}
 
@@ -506,10 +513,10 @@ static int docSvgDrawPageRange(	SvgWriter *		sw,
 
     if  ( ! dc->dcPostponeHeadersFooters )
 	{
-	docDrawPageFooter( bodyBi->biChildren[i], (void *)sw, dc, lastPage );
+	docDrawPageFooter( bodyNode->biChildren[i], (void *)sw, dc, lastPage );
 	}
 
-    docSvgFinishPage( (void *)sw, dc, bodyBi->biChildren[i],
+    docSvgFinishPage( (void *)sw, dc, bodyNode->biChildren[i],
 						    lastPage, asLast );
 
     return 0;
@@ -522,27 +529,28 @@ static void docSvgSetDrawingContext(	DrawingContext *	dc,
 					int			firstPage,
 					int			lastPage )
     {
-    INIT_LAYOUT_EXTERNAL	initLayoutExternal= (INIT_LAYOUT_EXTERNAL)0;
+    START_TREE_LAYOUT	startTreeLayout= (START_TREE_LAYOUT)0;
 
     dc->dcSetColorRgb= docSvgSetColorRgb;
     dc->dcSetFont= docSvgSetFont;
     dc->dcDrawShape= docSvgDrawDrawDrawingShape;
-    dc->dcDrawObject= docSvgDrawObject;
+    dc->dcDrawInlineObject= docSvgDrawInlineObject;
     dc->dcDrawTab= docSvgDrawTab;
     dc->dcDrawFtnsep= docSvgDrawFtnsep;
-    dc->dcDrawSpan= docSvgDrawSpan;
+    dc->dcDrawTextRun= docSvgDrawTextRun;
 
-    dc->dcDrawTextLine= docSvgDrawTextLine;
+    dc->dcStartTextLine= docSvgStartTextLine;
+    /* NO dc->dcFinishTextLine= .. */
     dc->dcDrawOrnaments= docSvgDrawOrnaments;
     dc->dcFinishPage= docSvgFinishPage;
     dc->dcStartPage= docSvgDrawStartPage;
-    dc->dcInitLayoutExternal= initLayoutExternal;
+    dc->dcStartTreeLayout= startTreeLayout;
 
     dc->dcLayoutContext= *lc;
 
     dc->dcFirstPage= firstPage;
     dc->dcLastPage= lastPage;
-    dc->dcDrawExternalItems= 1;
+    dc->dcDrawOtherTrees= 1;
     dc->dcPostponeHeadersFooters= 0;
 
     return;
@@ -560,17 +568,17 @@ int docSvgDrawDocument(	SimpleOutputStream *		sos,
 			const char *			applicationReference,
 			const LayoutContext *		lc )
     {
-    BufferDocument *		bd= lc->lcDocument;
-    DocumentProperties *	dp= &(bd->bdProperties);
+    struct BufferDocument *		bd= lc->lcDocument;
+    DocumentProperties *	dp= bd->bdProperties;
     DocumentGeometry *		dg= &(dp->dpGeometry);
-    BufferItem *		bodyBi= bd->bdBody.dtRoot;
+    struct BufferItem *		bodyNode= bd->bdBody.dtRoot;
 
     DrawingContext		dc;
     SvgWriter			sw;
     XmlWriter *			xw= &(sw.swXmlWriter);
 
     docInitDrawingContext( &dc );
-    docSvgSetDrawingContext( &dc, lc, 0, bodyBi->biBelowPosition.lpPage );
+    docSvgSetDrawingContext( &dc, lc, 0, bodyNode->biBelowPosition.lpPage );
 
     svgInitSvgWriter( &sw );
     sw.swXmlWriter.xwSos= sos;
@@ -583,8 +591,14 @@ int docSvgDrawDocument(	SimpleOutputStream *		sos,
     sw.swViewBox.drY1= dg->dgPageHighTwips- 1;
     sw.swMultiPage= dc.dcLastPage > dc.dcFirstPage;
 
-    docInquireHeadersFooters( &(dc.dcDocHasPageHeaders),
-				    &(dc.dcDocHasPageFooters), bd );
+    {
+    int	h, f;
+
+    docInquireHeadersFooters( &h, &f, bd );
+
+    dc.dcDocHasPageHeaders= h;
+    dc.dcDocHasPageFooters= f;
+    }
 
     svgStartDocument( &sw );
 
@@ -612,7 +626,7 @@ int docSvgDrawDocument(	SimpleOutputStream *		sos,
 	xmlNewLine( xw );
 	}
 
-    if  ( docSvgDrawPageRange( &sw, &dc, bodyBi,
+    if  ( docSvgDrawPageRange( &sw, &dc, bodyNode,
 			    dc.dcFirstPage, dc.dcLastPage, /* asLast */ 1 ) )
 	{ LDEB(dc.dcFirstPage); return -1;	}
 
@@ -638,11 +652,11 @@ int docSvgSaveShapeObject(	SimpleOutputStream *	sos,
 				int			pixelsWide,
 				int			pixelsHigh,
 				const InsertedObject *	io,
-				BufferItem *		bodySectNode,
+				struct BufferItem *	bodySectNode,
 				const LayoutContext *	lc )
     {
     int				rval= 0;
-    const DrawingShape *	ds= io->ioDrawingShape;
+    DrawingShape *		ds= io->ioDrawingShape;
 
     DrawingContext		dc;
     SvgWriter			sw;
@@ -655,6 +669,7 @@ int docSvgSaveShapeObject(	SimpleOutputStream *	sos,
 
     docInitDrawingContext( &dc );
     docSvgSetDrawingContext( &dc, lc, page, page );
+    dc.dcBodySectNode= bodySectNode;
 
     sw.swXmlWriter.xwSos= sos;
 
@@ -681,8 +696,8 @@ int docSvgSaveShapeObject(	SimpleOutputStream *	sos,
     xmlPutString( "    ]]></style>", xw ); xmlNewLine( xw );
     xmlPutString( "</defs>", xw ); xmlNewLine( xw );
 
-    if  ( docDrawShape( &dc, &sw, bodySectNode, io ) )
-	{ LDEB(1); rval= -1; goto ready;;	}
+    if  ( docDrawShape( &dc, &sw, bodySectNode, &(sw.swViewBox), io ) )
+	{ LDEB(1); rval= -1; goto ready;	}
 
     svgFinishDocument( &sw );
 

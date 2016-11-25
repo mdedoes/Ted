@@ -9,16 +9,19 @@
 #   include	<stdio.h>
 #   include	<ctype.h>
 
-#   include	<appDebugon.h>
-
-#   include	<utilMatchFont.h>
+#   include	<fontMatchFont.h>
 #   include	<uniUtf8.h>
 #   include	<textConverter.h>
 #   include	<textConverterImpl.h>
-
 #   include	"docRtfWriterImpl.h"
 #   include	"docRtfFlags.h"
-#   include	"docRtfTextConverter.h"
+#   include	<fontEncodedFont.h>
+#   include	<docBuf.h>
+#   include	<sioGeneral.h>
+#   include	<fontDocFont.h>
+#   include	<docAttributes.h>
+
+#   include	<appDebugon.h>
 
 /************************************************************************/
 /*									*/
@@ -40,7 +43,7 @@ static int docRtfEscapeString(	void *			vrw,
     if  ( n == 0 )
 	{ return n;	}
 
-    switch( rw->rwcAfter )
+    switch( rw->rwAfter )
 	{
 	case RTFafterTAG:
 	    if  ( ss[0] == ' '		||
@@ -59,7 +62,7 @@ static int docRtfEscapeString(	void *			vrw,
 	    break;
 
 	default:
-	    CDEB(rw->rwcAfter); return -1;
+	    CDEB(rw->rwAfter); return -1;
 	}
 
 
@@ -70,7 +73,7 @@ static int docRtfEscapeString(	void *			vrw,
 
 	rw->rwCol += 1;
 	}
-    rw->rwcAfter= RTFafterTEXT;
+    rw->rwAfter= RTFafterTEXT;
 
     i= 0;
     while( i < n )
@@ -171,11 +174,11 @@ static int docRtfWriteEncodedString(	RtfWriter *		rw,
 
 	    if  ( fontEncoded )
 		{
-		BufferDocument *	bd= rw->rwDocument;
+		struct BufferDocument *	bd= rw->rwDocument;
 		const DocumentFont *	df;
 		TextAttribute *		ta= &(rw->rwTextAttribute);
 
-		df= docRtfGetCurrentFont( bd, ta );
+		df= docGetFontOfAttribute( bd, ta );
 		if  ( df )
 		    {
 		    int			fontNumber;
@@ -188,11 +191,10 @@ static int docRtfWriteEncodedString(	RtfWriter *		rw,
 			{
 			docRtfWriteArgTag( rw, "f", fontNumber );
 
-			encodingName= utilGetEncodingName( df->dfName,
+			encodingName= fontGetEncodingName( &(df->dfName),
 								    charset );
 			textConverterSetNativeEncodingName(
-				    rw->rwTextTextConverter,
-				    encodingName );
+				    rw->rwTextTextConverter, encodingName );
 			rw->rwTextCharset= charset;
 			continue;
 			}
@@ -208,17 +210,17 @@ static int docRtfWriteEncodedString(	RtfWriter *		rw,
     return 0;
     }
 
-void docRtfWriteDocEncodedString(	RtfWriter *		rw,
-					const char *		ss,
+int docRtfWriteDocEncodedString(	RtfWriter *		rw,
+					const char *		s,
 					int			n )
     {
     const int	fontEncoded= 0;
 
-    docRtfWriteEncodedString( rw, rw->rwRtfTextConverter,
-							fontEncoded, ss, n );
+    return docRtfWriteEncodedString( rw, rw->rwRtfTextConverter,
+							fontEncoded, s, n );
     }
 
-void docRtfWriteFontEncodedString(	RtfWriter *		rw,
+int docRtfWriteFontEncodedString(	RtfWriter *		rw,
 					const char *		ss,
 					int			n )
     {
@@ -226,7 +228,9 @@ void docRtfWriteFontEncodedString(	RtfWriter *		rw,
     const char *		encodingName= (const char *)0;
 
     if  ( rw->rwSaveFlags & RTFflagUNENCODED )
-	{ docRtfWriteDocEncodedString( rw, ss, n ); return;	}
+	{
+	return docRtfWriteDocEncodedString( rw, ss, n );
+	}
 
     encodingName= docGetEncodingName( rw->rwDocument,
 				&(rw->rwTextAttribute), rw->rwTextCharset );
@@ -238,7 +242,7 @@ void docRtfWriteFontEncodedString(	RtfWriter *		rw,
     textConverterSetNativeEncodingName(
 			rw->rwTextTextConverter, encodingName );
 
-    docRtfWriteEncodedString( rw, rw->rwTextTextConverter,
+    return docRtfWriteEncodedString( rw, rw->rwTextTextConverter,
 							fontEncoded, ss, n );
     }
 

@@ -6,11 +6,13 @@
 
 #   include	"docBaseConfig.h"
 
-#   include	<stdlib.h>
+#   include	"docCellProperties.h"
+#   include	"docCellPropertyAdmin.h"
+#   include	"docDocumentAttributeMap.h"
+#   include	<utilNumberedPropertiesAdmin.h>
+#   include	<utilPropMask.h>
 
 #   include	<appDebugon.h>
-
-#   include	"docCellPropertyAdmin.h"
 
 /************************************************************************/
 /*									*/
@@ -29,6 +31,8 @@ void docInitCellPropertyList(	NumberedPropertiesList *	cpl )
 
 		    CLprop_COUNT,
 		    (NumberedPropertiesGetProperty)docGetCellProperty,
+		    (NumberedPropertiesCopyProperties)0,
+		    (NumberedPropertiesGetNumber)docCellPropertiesNumber,
 
 		    sizeof(CellProperties),
 		    (InitPagedListItem)docInitCellProperties,
@@ -49,17 +53,22 @@ void docInitCellPropertyList(	NumberedPropertiesList *	cpl )
 /*									*/
 /************************************************************************/
 
-void docGetCellPropertiesByNumber(	CellProperties *		cp,
+const CellProperties * docGetCellPropertiesByNumber(
 					const NumberedPropertiesList *	cpl,
 					int				n )
     {
     void *	vcp= utilPagedListGetItemByNumber( &(cpl->nplPagedList), n );
 
     if  ( ! vcp )
-	{ LXDEB(n,vcp); docInitCellProperties( cp ); return; }
+	{
+	static CellProperties	defCp;
 
-    *cp= *((CellProperties *)vcp);
-    return;
+	LXDEB(n,vcp);
+	docInitCellProperties( &defCp );
+	return &defCp;
+	}
+
+    return (CellProperties *)vcp;
     }
 
 /************************************************************************/
@@ -99,58 +108,42 @@ int docCellPropertiesNumber(	NumberedPropertiesList *		cpl,
     return utilGetPropertyNumber( cpl, make, (void *)cp );
     }
 
+static int docTranslateCellProperties(
+				void *				vcpTo,
+				const void *			vcpFrom,
+				void *				vdam )
+    {
+    CellProperties *		cpTo= (CellProperties *)vcpTo;
+    const CellProperties *	cpFrom= (const CellProperties *)vcpFrom;
+    const DocumentAttributeMap * dam= (const DocumentAttributeMap *)vdam;
+
+    PropertyMask		cpSetMask;
+
+    utilPropMaskClear( &cpSetMask );
+    utilPropMaskFill( &cpSetMask, CLprop_COUNT );
+
+    if  ( docUpdCellProperties( (PropertyMask *)0, cpTo, &cpSetMask,
+							    cpFrom, dam ) )
+	{ LDEB(1); return -1;	}
+
+    return 0;
+    }
+
 int docMergeCellPropertiesLists(
 				int **				pCellMap,
 				const int *			borderMap,
 				const int *			shadingMap,
-				NumberedPropertiesList *	cplTo,
-				const NumberedPropertiesList *	cplFrom )
+				NumberedPropertiesList *	bplTo,
+				const NumberedPropertiesList *	bplFrom )
     {
-    int		fromCount= cplFrom->nplPagedList.plItemCount;
+    DocumentAttributeMap	dam;
 
-    if  ( fromCount > 0 )
-	{
-	int		n;
-	int *		cellMmap= (int *)malloc( fromCount* sizeof(int) );
+    docInitDocumentAttributeMap( &dam );
 
-	if  ( ! cellMmap )
-	    { LXDEB(fromCount,cellMmap); return -1; }
+    dam.damBorderMap= (int *)borderMap;
+    dam.damShadingMap= (int *)shadingMap;
 
-	for ( n= 0; n < fromCount; n++ )
-	    { cellMmap[n]= -1;	}
-
-	for ( n= 0; n < fromCount; n++ )
-	    {
-	    int			to;
-	    void *      	vcp;
-	    CellProperties	cp;
-
-	    vcp= utilPagedListGetItemByNumber( &(cplFrom->nplPagedList), n );
-	    if  ( ! vcp )
-		{ continue;	}
-
-	    cp= *((CellProperties *)vcp);
-	    if  ( cp.cpTopBorderNumber > 0 && borderMap )
-		{ cp.cpTopBorderNumber= borderMap[cp.cpTopBorderNumber]; }
-	    if  ( cp.cpLeftBorderNumber > 0 && borderMap )
-		{ cp.cpLeftBorderNumber= borderMap[cp.cpLeftBorderNumber]; }
-	    if  ( cp.cpRightBorderNumber > 0 && borderMap )
-		{ cp.cpRightBorderNumber= borderMap[cp.cpRightBorderNumber]; }
-	    if  ( cp.cpBottomBorderNumber > 0 && borderMap )
-		{ cp.cpBottomBorderNumber= borderMap[cp.cpBottomBorderNumber]; }
-
-	    if  ( cp.cpShadingNumber > 0 && shadingMap )
-		{ cp.cpShadingNumber= shadingMap[cp.cpShadingNumber]; }
-
-	    to= docCellPropertiesNumber( cplTo, &cp );
-	    if  ( to < 0 )
-		{ LDEB(to); free( cellMmap ); return -1;	}
-	    cellMmap[n]= to;
-	    }
-
-	*pCellMap= cellMmap;
-	}
-
-    return 0;
+    return docMergeNumberedPropertiesLists( pCellMap, bplTo, bplFrom,
+					docTranslateCellProperties, &dam );
     }
 

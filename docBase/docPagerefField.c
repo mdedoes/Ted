@@ -11,12 +11,13 @@
 #   include	"docDocumentField.h"
 #   include	"docPagerefField.h"
 #   include	"docFieldFormat.h"
+#   include	"docFieldKind.h"
 
 void docInitPagerefField(	PagerefField *	pf )
     {
     utilInitMemoryBuffer( &(pf->pfBookmark) );
 
-    pf->pfNumberFormat= MERGE_ASIS;
+    pf->pfNumberFormat= FIELDformatASIS;
     pf->pfAsHyperlink= 0;
     pf->pfWithPosition= 0;
 
@@ -30,7 +31,7 @@ void docCleanPagerefField(	PagerefField *	pf )
 
 /************************************************************************/
 /*									*/
-/*  Evaluate REF fields.						*/
+/*  Evaluate PAGEREF fields.						*/
 /*									*/
 /************************************************************************/
 
@@ -62,7 +63,7 @@ int docGetPagerefField(		PagerefField *		pf,
 	    continue;
 	    }
 
-	if  ( ! ic->icIsFlag )
+	if  ( ic->icType != INSTRtypeFLAG )
 	    {
 	    if  ( utilCopyMemoryBuffer( &(pf->pfBookmark), &(ic->icBuffer) ) )
 		{ LDEB(comp);	}

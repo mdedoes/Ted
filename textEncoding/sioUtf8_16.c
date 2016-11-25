@@ -12,6 +12,8 @@
 
 #   include	"sioUtf8_16.h"
 #   include	"uniUtf8.h"
+#   include	<sioGeneral.h>
+
 #   include	<appDebugon.h>
 
 /************************************************************************/

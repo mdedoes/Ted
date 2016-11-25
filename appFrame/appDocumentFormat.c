@@ -7,15 +7,17 @@
 #   include	"appFrameConfig.h"
 
 #   include	<stddef.h>
-#   include	<stdio.h>
 #   include	<stdlib.h>
 
 #   include	<appSystem.h>
-#   include	"appFrame.h"
-#   include	"appQuestion.h"
-#   include	"guiWidgetDrawingSurface.h"
-#   include	"guiDrawingWidget.h"
+#   include	<utilFileExtension.h>
+#   include	<utilMemoryBuffer.h>
+#   include	"appEditApplication.h"
+#   include	"appGuiApplication.h"
 #   include	"appFileChooser.h"
+#   include	"appGuiResource.h"
+
+#   include	<utilFileExtension.h>
 
 #   include	<appDebugon.h>
 
@@ -42,6 +44,20 @@ int appDocumentTestCanSave(	EditApplication *		ea,
     return 0;
     }
 
+/************************************************************************/
+/*									*/
+/*  Derive the format of the document from the extension of filename.	*/
+/*									*/
+/*  1)  Recognise -ext- filename as the ext extension with the		*/
+/*	suggestion to save to stdout.					*/
+/*  2)  If we have a format suggestion and the extension matches the	*/
+/*	suggested format AND the document can be saved in the suggested	*/
+/*	format, follow the suggestion.					*/
+/*  3)  Look for the first format that has the extension of the	file	*/
+/*	name where the document can be saved in that format.		*/
+/*									*/
+/************************************************************************/
+
 int appDocumentGetSaveFormat(	int *				pSuggestStdout,
 				EditApplication *		ea,
 				const MemoryBuffer *		filename,
@@ -58,9 +74,10 @@ int appDocumentGetSaveFormat(	int *				pSuggestStdout,
 
     utilInitMemoryBuffer( &ext );
 
-    if  ( appFileGetFileExtension( &ext, filename ) )
+    if  ( fileGetFileExtension( &ext, filename ) )
 	{ LDEB(1); rval= -1; goto ready;	}
 
+    /*  1  */
     if  ( utilMemoryBufferIsEmpty( &ext )		&&
 	  filename->mbSize >= 3				&&
 	  filename->mbBytes[0] == '-'			&&
@@ -73,6 +90,7 @@ int appDocumentGetSaveFormat(	int *				pSuggestStdout,
 	suggestStdout= 1;
 	}
 
+    /*  2  */
     if  ( format >= 0 && format < ea->eaFileExtensionCount )
 	{
 	afe= ea->eaFileExtensions+ format;
@@ -87,6 +105,7 @@ int appDocumentGetSaveFormat(	int *				pSuggestStdout,
 	    }
 	}
 
+    /*  3  */
     afe= ea->eaFileExtensions;
     for ( i= 0; i < ea->eaFileExtensionCount; afe++, i++ )
 	{
@@ -109,69 +128,89 @@ int appDocumentGetSaveFormat(	int *				pSuggestStdout,
     return rval;
     }
 
-int appDocumentGetOpenFormat(	int *				pSuggestStdin,
-				const AppFileExtension *	testExts,
-				int				testExtCount,
-				const MemoryBuffer *		filename,
-				int				format )
+/************************************************************************/
+
+void * appOpenDocumentInput(	EditApplication *	ea,
+				int *			pFromFormat,
+				int *			pSuggestStdin,
+				int			refuseStdin,
+				const MemoryBuffer *	fromName )
     {
-    int				rval= -1;
-    const AppFileExtension *	afe;
-    int				i;
-    int				suggestStdin= 0;
+    void *		privateData= (void *)0;
+    void *		rval= (void *)0;
 
-    MemoryBuffer		ext;
+    int			suggestStdin= 0;
+    int			fromFormat= -1;
+    const int		readOnly= 1;
 
-    utilInitMemoryBuffer( &ext );
-
-    if  ( appFileGetFileExtension( &ext, filename ) )
-	{ LDEB(1); rval= -1; goto ready;	}
-
-    if  ( utilMemoryBufferIsEmpty( &ext )		&&
-	  filename->mbSize >= 3				&&
-	  filename->mbBytes[0] == '-'			&&
-	  filename->mbBytes[filename->mbSize-1] == '-'	)
+    if  ( ea->eaMakePrivateData	)
 	{
-	if  ( utilMemoryBufferGetRange( &ext, filename,
-						1, filename->mbSize-2 ) )
-	    { LDEB(filename->mbSize); rval= -1; goto ready;	}
-
-	suggestStdin= 1;
+	privateData= (*ea->eaMakePrivateData)( ea );
+	if  ( ! privateData )
+	    { XDEB(privateData); goto ready; }
 	}
 
-    if  ( format >= 0 && format < testExtCount )
-	{
-	afe= testExts+ format;
+    fromFormat= utilDocumentGetOpenFormat( &suggestStdin,
+			ea->eaFileExtensions, ea->eaFileExtensionCount,
+			fromName, fromFormat );
 
-	if  ( afe->afeUseFlags & APPFILE_CAN_OPEN )
-	    {
-	    if  ( utilMemoryBufferIsEmpty( &ext )			||
-		  ! afe->afeExtension					||
-		  utilMemoryBufferEqualsString( &ext, afe->afeExtension ) )
-		{ rval= format; goto ready;	}
-	    }
-	}
+    if  ( (*ea->eaOpenDocument)( ea, privateData, &fromFormat,
+			    ea->eaToplevel.atTopWidget, (APP_WIDGET)0,
+			    readOnly, suggestStdin && ! refuseStdin,
+			    fromFormat, fromName ) )
+	{ LDEB(1); goto ready; }
 
-    afe= testExts;
-    for ( i= 0; i < testExtCount; afe++, i++ )
-	{
-	if  ( ! ( afe->afeUseFlags & APPFILE_CAN_OPEN ) )
-	    { continue;	}
+    rval= privateData; privateData= (void *)0; /* steal */
 
-	if  ( utilMemoryBufferIsEmpty( &ext )				||
-	      ! afe->afeExtension					||
-	      utilMemoryBufferEqualsString( &ext, afe->afeExtension )	)
-	    { rval= i; goto ready;	}
-	}
-
-  ready:
-
+    if  ( pFromFormat )
+	{ *pFromFormat= fromFormat;	}
     if  ( pSuggestStdin )
 	{ *pSuggestStdin= suggestStdin;	}
 
-    utilCleanMemoryBuffer( &ext );
+  ready:
+
+    if  ( privateData )
+	{ (*ea->eaFreeDocument)( privateData, fromFormat ); }
 
     return rval;
+    }
+
+/************************************************************************/
+
+int appSaveDocumentOutput(	EditApplication*	ea,
+				void *			privateData,
+				int			fromFormat,
+				const MemoryBuffer *	toName )
+    {
+    int			toFormat;
+    int			suggestStdout= 0;
+
+    const int		isNewDocName= 0;
+
+    toFormat= appDocumentGetSaveFormat( &suggestStdout, ea, toName, privateData,
+						APPFILE_CAN_SAVE, fromFormat );
+    if  ( toFormat < 0 )
+	{ LDEB(toFormat); return -1;	}
+
+    if  ( (*ea->eaSaveDocument)( ea, (DrawingSurface)0,
+				    privateData, toFormat, toName,
+				    suggestStdout, toName, isNewDocName ) )
+	{
+#	if ! USE_HEADLESS
+
+	const int	interactive= ( ea->eaToplevel.atTopWidget != NULL );
+
+	if  ( interactive )
+	    {
+	    appReportSaveFailure( ea, (APP_WIDGET)0,
+				    ea->eaToplevel.atTopWidget, toName );
+	    }
+#	endif
+
+	return -1;
+	}
+
+    return 0;
     }
 
 /************************************************************************/
@@ -187,55 +226,22 @@ int appFileConvert(	EditApplication *	ea,
 			const MemoryBuffer *	toName )
     {
     int			rval= 0;
-    int			interactive= ( ea->eaToplevel.atTopWidget != NULL );
 
     void *		privateData= (void *)0;
-    int			suggestStdin= 0;
     int			fromFormat= -1;
-    const int		readOnly= 1;
-    const int		isNewDocName= 0;
-    int			toFormat;
 
-    int			suggestStdout= 0;
+    const int		refuseStdin= 0;
 
     if  ( utilEqualMemoryBuffer( fromName, toName ) )
 	{ LDEB(1); rval= -1; goto ready;	}
 
-    if  ( ea->eaMakePrivateData	)
-	{
-	privateData= (*ea->eaMakePrivateData)();
-	if  ( ! privateData )
-	    { XDEB(privateData); rval= -1; goto ready; }
-	}
+    privateData= appOpenDocumentInput( ea, &fromFormat,
+					    (int *)0, refuseStdin, fromName );
+    if  ( ! privateData )
+	{ XDEB(privateData); rval= -1; goto ready; }
 
-    fromFormat= appDocumentGetOpenFormat( &suggestStdin,
-			ea->eaFileExtensions, ea->eaFileExtensionCount,
-			fromName, fromFormat );
-
-    if  ( (*ea->eaOpenDocument)( ea, privateData, &fromFormat,
-			    ea->eaToplevel.atTopWidget, (APP_WIDGET)0,
-			    readOnly, suggestStdin, fromFormat, fromName ) )
-	{ LDEB(1); rval= -1; goto ready; }
-
-    toFormat= appDocumentGetSaveFormat( &suggestStdout, ea, toName, privateData,
-						APPFILE_CAN_SAVE, fromFormat );
-    if  ( toFormat < 0 )
-	{ LDEB(toFormat); rval= -1; goto ready;	}
-
-    {
-    if  ( (*ea->eaSaveDocument)( ea, (DrawingSurface)0,
-				    privateData, toFormat, toName,
-				    suggestStdout, toName, isNewDocName ) )
-	{
-	if  ( interactive )
-	    {
-	    appReportSaveFailure( ea, (APP_WIDGET)0,
-				    ea->eaToplevel.atTopWidget, toName );
-	    }
-
-	rval= -1; goto ready;
-	}
-    }
+    if  ( appSaveDocumentOutput( ea, privateData, fromFormat, toName ) )
+	{ LDEB(fromFormat); rval= -1; goto ready;	}
 
   ready:
 
@@ -261,7 +267,6 @@ int appFileCanOpen(	const EditApplication *		ea,
 
     return 0;
     }
-
 
 /************************************************************************/
 /*									*/

@@ -7,42 +7,61 @@
 #   ifndef	DOC_EDIT_SET_PROPS_H
 #   define	DOC_EDIT_SET_PROPS_H
 
-#   include	<stdio.h>
+#   include	<docTableRectangle.h>
+#   include	<docRowProperties.h>
 
-#   include	<docBuf.h>
-#   include	"docEditOperation.h"
+struct TextAttribute;
+struct ParagraphProperties;
+struct CellProperties;
+struct RowProperties;
+struct SectionProperties;
+struct PropertyMask;
+struct EditOperation;
+struct DocumentAttributeMap;
+struct DocumentSelection;
+struct DocumentProperties;
+struct BufferItem;
 
 typedef struct SetProperties
     {
-    EditOperation *			spEditOperation;
+    struct EditOperation *		spEditOperation;
     int					spRedoParaLayout;
-    const DocumentAttributeMap *	spAttributeMap;
+    const struct DocumentAttributeMap *	spAttributeMap;
     TableRectangle			spTableRectangle;
 
     int					spGotPara;
     int					spGotCell;
-    int					spGotRow;
+    int					spEnteredRow;
+    int					spLeftRow;
     int					spGotSect;
 
-    PropertyMask *			sp_taDoneMask;
-    const PropertyMask *		sp_taSetMask;
-    const TextAttribute *		sp_taSet;
+					/**
+					 *  Properties of the current row.
+					 *  If attributes are mapped from 
+					 *  one document to another, the values 
+					 *  are meant for the target document.
+					 */
+    RowProperties			spCurrentRowProperties;
 
-    PropertyMask *			sp_ppDoneMask;
-    const PropertyMask *		sp_ppSetMask;
-    const ParagraphProperties *		sp_ppSet;
+    struct PropertyMask *		sp_taDoneMask;
+    const struct PropertyMask *		sp_taSetMask;
+    const struct TextAttribute *	sp_taSet;
 
-    PropertyMask *			sp_cpDoneMask;
-    const PropertyMask *		sp_cpSetMask;
-    const CellProperties *		sp_cpSet;
+    struct PropertyMask *		sp_ppDoneMask;
+    const struct PropertyMask *		sp_ppSetMask;
+    const struct ParagraphProperties *	sp_ppSet;
 
-    PropertyMask *			sp_rpDoneMask;
-    const PropertyMask *		sp_rpSetMask;
-    const RowProperties *		sp_rpSet;
+    struct PropertyMask *		sp_cpDoneMask;
+    const struct PropertyMask *		sp_cpSetMask;
+    const struct CellProperties *	sp_cpSet;
 
-    PropertyMask *			sp_spDoneMask;
-    const PropertyMask *		sp_spSetMask;
-    const SectionProperties *		sp_spSet;
+    struct PropertyMask *		sp_rpDoneMask;
+    const struct PropertyMask *		sp_rpSetMask;
+    const struct RowProperties *	sp_rpSet;
+
+    struct PropertyMask *		sp_spDoneMask;
+    const struct PropertyMask *		sp_spSetMask;
+    const struct SectionProperties *	sp_spSet;
     } SetProperties;
 
 /************************************************************************/
@@ -51,30 +70,33 @@ typedef struct SetProperties
 /*									*/
 /************************************************************************/
 
+extern void docEditInitSetProperties(
+				SetProperties *			setProps );
+
+extern void docEditCleanSetProperties(
+				SetProperties *			setProps );
+
 extern int docEditChangeParaProperties(
 				SetProperties *			setProps,
-				const DocumentSelection *	ds,
+				const struct DocumentSelection * ds,
 				struct BufferItem *		paraNode,
-				const TextAttribute *		taSet,
-				const ParagraphProperties *	ppSet );
-
-extern int docEditChangeCellProperties(
-				SetProperties *			setProps,
-				const DocumentSelection *	ds,
-				struct BufferItem *		cellNode,
-				const CellProperties *		cpSet );
+				const struct TextAttribute *	taSet,
+				const struct ParagraphProperties * ppSet );
 
 extern int docEditChangeRowProperties(
 				SetProperties *			setProps,
-				const DocumentSelection *	ds,
 				struct BufferItem *		rowNode,
-				const RowProperties *		rpSet );
+				const struct PropertyMask *	rpSetMask );
+
+extern int docEditSetRowNodeProperties(
+				struct BufferItem *		rowNode,
+				SetProperties *			setProps );
 
 extern int docChangeDocumentProperties(
-				EditOperation *			eo,
-				PropertyMask *			docDpDoneMask,
-				const PropertyMask *		dpSetMask,
-				const DocumentProperties *	dpSet,
-				const DocumentAttributeMap *	dam );
+				struct EditOperation *		eo,
+				struct PropertyMask *		docDpDoneMask,
+				const struct PropertyMask *	dpSetMask,
+				const struct DocumentProperties * dpSet,
+				const struct DocumentAttributeMap * dam );
 
 #    endif	/*  DOC_EDIT_SET_PROPS_H	*/

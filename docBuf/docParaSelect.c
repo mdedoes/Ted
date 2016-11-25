@@ -6,16 +6,18 @@
 
 #   include	"docBufConfig.h"
 
-#   include	<appDebugon.h>
-
-#   include	"docBuf.h"
-#   include	"docDebug.h"
 #   include	"docParaParticules.h"
 #   include	"docParaString.h"
 #   include	"docNodeTree.h"
+#   include	"docSelect.h"
+#   include	"docTreeNode.h"
+#   include	<docTextParticule.h>
+
+#   include	"docDebug.h"
+#   include	<appDebugon.h>
 
 #   define DOCisADMINISTRATIVE(k) \
-	    ( (k) == DOCkindFIELDHEAD || (k) == DOCkindFIELDTAIL )
+	    ( (k) == TPkindFIELDHEAD || (k) == TPkindFIELDTAIL )
 
 /*  Navigate to the next valid document position.			*/
 
@@ -32,7 +34,7 @@
 
 int docGotoNextPosition(	DocumentPosition *	dp )
     {
-    BufferItem *	paraNode= dp->dpNode;
+    struct BufferItem *	paraNode= dp->dpNode;
     int			stroff= dp->dpStroff;
     int			tail= docParaLastStroff( paraNode );
 
@@ -48,7 +50,7 @@ int docGotoNextPosition(	DocumentPosition *	dp )
 	if  ( stroff < 0 )
 	    { break;	}
 
-	docSetDocumentPosition( &dpNext, (BufferItem *)paraNode, stroff );
+	docSetDocumentPosition( &dpNext, (struct BufferItem *)paraNode, stroff );
 	if  ( docFindParticuleOfPosition( &part, (int *)0,
 						    &dpNext, PARAfindFIRST ) )
 	    { LDEB(1); return -1;	}
@@ -84,7 +86,7 @@ int docGotoNextPosition(	DocumentPosition *	dp )
 
 int docNextPosition(	DocumentPosition *	dp )
     {
-    BufferItem *	paraNode= dp->dpNode;
+    struct BufferItem *	paraNode= dp->dpNode;
     int			stroff= dp->dpStroff;
     int			tail= docParaLastStroff( paraNode );
 
@@ -132,7 +134,7 @@ int docNextPosition(	DocumentPosition *	dp )
 
 int docGotoPrevPosition(	DocumentPosition *	dp )
     {
-    BufferItem *	paraNode= dp->dpNode;
+    struct BufferItem *	paraNode= dp->dpNode;
     int			stroff= dp->dpStroff;
 
     int			head= docParaFirstStroff( paraNode );
@@ -149,7 +151,7 @@ int docGotoPrevPosition(	DocumentPosition *	dp )
 	if  ( stroff < 0 )
 	    { break;	}
 
-	docSetDocumentPosition( &dpPrev, (BufferItem *)paraNode, stroff );
+	docSetDocumentPosition( &dpPrev, (struct BufferItem *)paraNode, stroff );
 	if  ( docFindParticuleOfPosition( &part, (int *)0,
 						    &dpPrev, PARAfindLAST ) )
 	    { LDEB(1); return -1;	}
@@ -179,7 +181,7 @@ int docGotoPrevPosition(	DocumentPosition *	dp )
 
 int docPrevPosition(	DocumentPosition *	dp )
     {
-    BufferItem *	paraNode= dp->dpNode;
+    struct BufferItem *	paraNode= dp->dpNode;
     int			stroff= dp->dpStroff;
 
     const int		head= 0;
@@ -217,12 +219,12 @@ int docPrevPosition(	DocumentPosition *	dp )
 /*									*/
 /************************************************************************/
 
-int docParaFirstStroff(	const BufferItem *	paraNode )
+int docParaFirstStroff(	const struct BufferItem *	paraNode )
     {
     int		stroff= 0;
     int		part= 0;
 
-    while( part < paraNode->biParaParticuleCount				&&
+    while( part < paraNode->biParaParticuleCount			&&
 	   DOCisADMINISTRATIVE(paraNode->biParaParticules[part].tpKind)	)
 	{
 	stroff= paraNode->biParaParticules[part].tpStroff+
@@ -242,7 +244,7 @@ int docParaFirstStroff(	const BufferItem *	paraNode )
 /*									*/
 /************************************************************************/
 
-int docParaLastStroff(	const BufferItem *	paraNode )
+int docParaLastStroff(	const struct BufferItem *	paraNode )
     {
     int		stroff= docParaStrlen( paraNode );
     int		part= paraNode->biParaParticuleCount- 1;

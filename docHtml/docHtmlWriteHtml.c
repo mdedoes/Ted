@@ -1,6 +1,6 @@
 /************************************************************************/
 /*									*/
-/*  Save a BufferDocument into an HTML file.				*/
+/*  Save a struct BufferDocument into an HTML file.				*/
 /*  Depending on the parameters, this is either an HTML file with	*/
 /*  a directory for the images, or a MHTML (rfc2112,rfc2557) aggregate.	*/
 /*  RFC 2557 was never validated.					*/
@@ -18,7 +18,9 @@
 #   include	<sioFileio.h>
 
 #   include	<docBuf.h>
+#   include	<docObject.h>
 #   include	"docHtmlWriteImpl.h"
+#   include	"docHtmlWrite.h"
 
 #   include	<appDebugon.h>
 
@@ -80,9 +82,9 @@ const int  DocHtmlDirectorySuffixLength= sizeof(DocHtmlDirectorySuffix)- 1;
 /************************************************************************/
 
 int docHtmlSaveDocument(	SimpleOutputStream *	sos,
-				BufferDocument *	bd,
+				struct BufferDocument *	bd,
 				const MemoryBuffer *	filename,
-				const LayoutContext *	lc )
+				const struct LayoutContext *	lc )
     {
     int				rval= 0;
     HtmlWritingContext		hwc;
@@ -113,7 +115,7 @@ int docHtmlSaveDocument(	SimpleOutputStream *	sos,
 
     if  ( hw.hwFilename )
 	{
-	if  ( appFileGetRelativeName( &(hw.hwRelativeName), hw.hwFilename ) )
+	if  ( fileGetRelativeName( &(hw.hwRelativeName), hw.hwFilename ) )
 	    { LDEB(1); rval= -1; goto ready;	}
 
 	if  ( utilCopyMemoryBuffer( &(hw.hwFilesDirectoryAbs),
@@ -123,10 +125,10 @@ int docHtmlSaveDocument(	SimpleOutputStream *	sos,
 						    &(hw.hwRelativeName) ) )
 	    { LDEB(1); rval= -1; goto ready;	}
 
-	if  ( appFileSetExtension( &(hw.hwFilesDirectoryAbs),
+	if  ( fileChangeExtension( &(hw.hwFilesDirectoryAbs),
 						    (const char *)0 ) )
 	    { LDEB(1); rval= -1; goto ready;	}
-	if  ( appFileSetExtension( &(hw.hwFilesDirectoryRel),
+	if  ( fileChangeExtension( &(hw.hwFilesDirectoryRel),
 						    (const char *)0 ) )
 	    { LDEB(1); rval= -1; goto ready;	}
 
@@ -144,7 +146,7 @@ int docHtmlSaveDocument(	SimpleOutputStream *	sos,
 	{ LDEB(1); rval= -1; goto ready;	}
 
     if  ( docHtmlSaveSelection( &hwc, &(bd->bdBody),
-					    (const DocumentSelection *)0 ) )
+					(const struct DocumentSelection *)0 ) )
 	{ LDEB(1); rval= -1; goto ready; }
 
     if  ( ! hwc.hwcInlineNotes )
@@ -159,8 +161,8 @@ int docHtmlSaveDocument(	SimpleOutputStream *	sos,
 
     if  ( hwc.hwcImageCount > 0	|| ! hwc.hwcInlineCss )
 	{
-	if  ( appTestDirectory( &(hw.hwFilesDirectoryAbs) )	&&
-	      appMakeDirectory( &(hw.hwFilesDirectoryAbs) )	)
+	if  ( fileTestDirectory( &(hw.hwFilesDirectoryAbs) )	&&
+	      fileMakeDirectory( &(hw.hwFilesDirectoryAbs) )	)
 	    { LDEB(1); rval= -1; goto ready;	}
 	}
 

@@ -6,6 +6,8 @@
 
 #   include	"appFrameConfig.h"
 
+#   if ! USE_HEADLESS
+
 #   include	<stddef.h>
 #   include	<stdio.h>
 #   include	<ctype.h>
@@ -16,8 +18,10 @@
 #   undef	y0
 #   undef	y1
 
-#   include	"appFrame.h"
+#   include	"appGuiApplication.h"
 #   include	"appZoomMenu.h"
+#   include	"appEditDocument.h"
+#   include	<guiMenuItem.h>
 
 #   include	<appDebugon.h>
 
@@ -57,9 +61,9 @@ void appUpdateZoomMenu(	APP_WIDGET	menu,
 	sprintf( scratch, "%6.0f %%",
 		    100.0 * appZoomFactor( logs2mag+ i - optionCount/ 2 ) );
 
-	appGuiSetToggleItemLabel( options[i], scratch );
+	guiSetToggleItemLabel( options[i], scratch );
 
-	appGuiSetToggleItemState( options[i], i == optionCount/ 2 );
+	guiSetToggleItemState( options[i], i == optionCount/ 2 );
 	}
     }
 
@@ -120,36 +124,36 @@ void appZoomChangeFactor(	APP_WIDGET		option,
 /*									*/
 /************************************************************************/
 
-void appMakeZoomMenu(		EditApplication *	ea,
-				EditDocument *		ed,
+void appMakeZoomMenu(		EditDocument *		ed,
 				APP_WIDGET *		pZoomMenu,
+				APP_WIDGET *		options,
 				APP_WIDGET		menubar,
 				int			logSqrt2Magnification,
-				const char *		zoomText,
-				AppMenuItem *		optionItems,
-				APP_WIDGET *		options,
-				int			optionCount )
+				AppMenu *		am )
     {
     int			i;
     APP_WIDGET		menu;
 
     APP_WIDGET		button;
 
-    for ( i= 1; i < optionCount; i++ )
+    for ( i= 1; i < am->amItemCount; i++ )
 	{
-	optionItems[i]= optionItems[0];
-	optionItems[i].amiItemType= ITEMtyTOGGLE_OFF;
+	am->amItems[i]= am->amItems[0];
+	am->amItems[i].amiItemType= ITEMtyTOGGLE_OFF;
 	}
-    optionItems[optionCount/2].amiItemType= ITEMtyTOGGLE_ON;
+    am->amItems[am->amItemCount/2].amiItemType= ITEMtyTOGGLE_ON;
 
-    menu= appMakeMenu( &button, &(ed->edToplevel), ea, menubar,
-			zoomText, 0, optionItems, optionCount, (void *)ed );
+    menu= appMakeMenu( &button, &(ed->edToplevel), ed->edApplication, menubar, am, (void *)ed );
 
-    for ( i= 0; i < optionCount; i++ )
-	{ options[i]= optionItems[i].amiOptionWidget;	}
+    for ( i= 0; i < am->amItemCount; i++ )
+	{
+	options[i]= am->amItems[i].amiOptionWidget;
+	}
     *pZoomMenu= menu;
 
-    appUpdateZoomMenu( menu, options, optionCount, logSqrt2Magnification );
+    appUpdateZoomMenu( menu, options, am->amItemCount, logSqrt2Magnification );
 
     return;
     }
+
+#   endif

@@ -1,6 +1,6 @@
 /************************************************************************/
 /*									*/
-/*  Save a BufferDocument into an HTML file.				*/
+/*  Save a struct BufferDocument into an HTML file.				*/
 /*  Depending on the parameters, this is either an HTML file with	*/
 /*  a directory for the images, or a MHTML (rfc2112,rfc2557) aggregate.	*/
 /*  RFC 2557 was never validated.					*/
@@ -21,15 +21,23 @@
 #   include	"docHtmlWriteImpl.h"
 #   include	"docWriteCss.h"
 #   include	<docTreeScanner.h>
+#   include	<docScanner.h>
 #   include	<docTreeNode.h>
 #   include	<docNodeTree.h>
 #   include	<docLayout.h>
+#   include	<docRowProperties.h>
+#   include	<docItemShading.h>
+#   include	<docPropVal.h>
+#   include	<docDocumentProperties.h>
+#   include	<docSectProperties.h>
+#   include	<docCellProperties.h>
+#   include	<docAttributes.h>
 
 #   include	<appDebugon.h>
 
 static int docHtmlStartTable(	HtmlWritingContext *		hwc,
-				const BufferItem *		rowNode,
-				const BufferItem *		bodySectNode )
+				const struct BufferItem *	rowNode,
+				const RowProperties *		rp )
     {
     int				rval= 0;
     int				cellPadding;
@@ -45,11 +53,11 @@ static int docHtmlStartTable(	HtmlWritingContext *		hwc,
 
     char			scratch[100];
 
-    docBlockFrameTwips( &(hwc->hwcBlockFrame), (BufferItem *)rowNode,
-					    hwc->hwcDocument, page, column );
+    docBlockFrameTwips( &(hwc->hwcBlockFrame), (struct BufferItem *)rowNode,
+				    hwc->hwcDocument, page, column );
 
     docCellFrameTwips( &(hwc->hwcParagraphFrame), &(hwc->hwcBlockFrame),
-							rowNode->biChildren[0] );
+						rowNode->biChildren[0] );
     tableX0= hwc->hwcParagraphFrame.pfCellRect.drX0;
     if  ( rowNode->biChildCount > 1 )
 	{
@@ -74,7 +82,7 @@ static int docHtmlStartTable(	HtmlWritingContext *		hwc,
     sprintf( scratch, "<table style=\"width:%d%%\" cellspacing=\"0\"", width );
     docHtmlPutString( scratch, hwc );
 
-    cellPadding= TWIPS_TO_PIXELS( rowNode->biRowHalfGapWidthTwips )- 4;
+    cellPadding= TWIPS_TO_PIXELS( rp->rpHalfGapWidthTwips )- 4;
     if  ( cellPadding < 1 )
 	{ docHtmlWriteIntAttribute( hwc, "cellpadding", 0 ); }
     if  ( cellPadding > 1 )
@@ -106,30 +114,30 @@ static int docHtmlFinishTable(	HtmlWritingContext *		hwc )
     return 0;
     }
 
-static int docHtmlEnterCellNode(	HtmlWritingContext *	hwc,
-					const BufferItem *	bodySectNode,
-					const BufferItem *	rowNode,
-					int			col,
-					const BufferItem *	cellNode )
+static int docHtmlEnterCellNode( HtmlWritingContext *		hwc,
+				const struct BufferItem *	rowNode,
+				int				col,
+				const struct BufferItem *	cellNode )
     {
-    int					wide;
+    int				wide;
 
-    const int				page= 0;
-    const int				column= 0;
+    const int			page= 0;
+    const int			column= 0;
 
-    BlockFrame				bf;
-    ParagraphFrame			pf;
+    BlockFrame			bf;
+    ParagraphFrame		pf;
 
-    int					useStyle= 1;
+    int				useStyle= 1;
 
-    int					rowspan= 1;
-    int					colspan= 1;
+    int				rowspan= 1;
+    int				colspan= 1;
 
-    ItemShading				is;
+    const ItemShading *		is;
 
-    const CellProperties *		cp= &(rowNode->biRowCells[col]);
-    BufferDocument *			bd= hwc->hwcDocument;
-    XmlWriter *				xw= &(hwc->hwcXmlWriter);
+    const RowProperties *	rp= rowNode->biRowProperties;
+    const CellProperties *	cp= &(rp->rpCells[col]);
+    struct BufferDocument *	bd= hwc->hwcDocument;
+    XmlWriter *			xw= &(hwc->hwcXmlWriter);
 
     docTableDetermineCellspans( &rowspan, &colspan, cellNode );
 
@@ -173,10 +181,10 @@ static int docHtmlEnterCellNode(	HtmlWritingContext *	hwc,
 	    break;
 	}
 
-    docGetItemShadingByNumber( &is, bd, cp->cpShadingNumber );
+    is= docGetItemShadingByNumber( bd, cp->cpShadingNumber );
 
-    if  ( ! useStyle && is.isPattern == DOCspSOLID )
-	{ docHtmlEmitBackgroundProperty( &is, hwc );	}
+    if  ( ! useStyle && is->isPattern == DOCspSOLID )
+	{ docHtmlEmitBackgroundProperty( is, hwc );	}
 
     if  ( useStyle )
 	{
@@ -188,9 +196,9 @@ static int docHtmlEnterCellNode(	HtmlWritingContext *	hwc,
 	sprintf( scratch, "width: %dpx;", wide );
 	docHtmlPutString( scratch, hwc );
 
-	if  ( is.isPattern == DOCspSOLID )
+	if  ( is->isPattern == DOCspSOLID )
 	    {
-	    docCssEmitBackgroundStyle( &(xw->xwColumn), sos, bd, &is );
+	    docCssEmitBackgroundStyle( &(xw->xwColumn), sos, bd, is );
 	    }
 
 	docCssEmitBorderStyleByNumber( &(xw->xwColumn), sos, bd,
@@ -212,24 +220,25 @@ static int docHtmlEnterCellNode(	HtmlWritingContext *	hwc,
     }
 
 static int docHtmlEnterRowNode(	HtmlWritingContext *		hwc,
-				const BufferItem *		rowNode,
-				const BufferItem *		bodySectNode )
+				const struct BufferItem *		rowNode )
     {
     int			high;
     int			tableNesting= docTableNesting( rowNode );
+
+    const RowProperties *	rp= rowNode->biRowProperties;
 
     if  ( hwc->hwcTableNesting == tableNesting			&&
 	  rowNode->biRowTableFirst == rowNode->biNumberInParent	)
 	{ docHtmlFinishTable( hwc );	}
 
     if  ( hwc->hwcTableNesting < tableNesting )
-	{ docHtmlStartTable( hwc, rowNode, bodySectNode );	}
+	{ docHtmlStartTable( hwc, rowNode, rp );	}
 
     docHtmlPutString( "<tr style=\"", hwc );
 
     docHtmlPutString( "vertical-align: top;", hwc );
 
-    high= rowNode->biRowHeightTwips;
+    high= rp->rpHeightTwips;
     if  ( high < 0 )
 	{ high= -high;	}
     high= TWIPS_TO_PIXELS( high );
@@ -283,35 +292,37 @@ static int docHtmlEmitSectColumnStyleProps(
     return 0;
     }
 
-static int dochtmlEnterSectNode(	BufferItem *		node,
+static int dochtmlEnterSectNode(	struct BufferItem *	node,
 					HtmlWritingContext *	hwc )
     {
-    int			rval= 0;
-    unsigned char	applies= 0;
+    int				rval= 0;
+    unsigned char		applies= 0;
+    const DocumentProperties *	dp= hwc->hwcDocument->bdProperties;
+    int				breakKind;
 
     SectionProperties	sp;
 
     docInitSectionProperties( &sp );
 
-    if  ( docSectionHasHeaderFooter( node, &applies,
-				&(hwc->hwcDocument->bdProperties),
-				DOCinFIRST_HEADER )			&&
+    if  ( docSectionHasHeaderFooter( node, &applies, dp,
+					    DOCinFIRST_HEADER )		&&
 	  applies							)
 	{
-	DocumentTree *	headerTree;
+	struct DocumentTree *	headerTree;
 
-	headerTree= docSectionHeaderFooter( node, &applies,
-				    &(hwc->hwcDocument->bdProperties),
-				    DOCinFIRST_HEADER );
+	headerTree= docSectionHeaderFooter( node, &applies, dp,
+							DOCinFIRST_HEADER );
 
 	if  ( docHtmlSaveSelection( hwc, headerTree,
-				    (const DocumentSelection *)0 ) )
+				    (const struct DocumentSelection *)0 ) )
 	    { LDEB(1);	}
 	}
 
     docHtmlPutString( "<div style=\"", hwc );
 
-    switch( node->biSectBreakKind )
+    breakKind= docLayoutGetSectBreakKind( node->biSectProperties, dp );
+
+    switch( breakKind )
 	{
 	case DOCibkNONE:
 	    break;
@@ -332,7 +343,7 @@ static int dochtmlEnterSectNode(	BufferItem *		node,
 	{
 	int		balanced;
 
-	if  ( docCopySectionProperties( &sp, &(node->biSectProperties) ) )
+	if  ( docCopySectionProperties( &sp, node->biSectProperties ) )
 	    { LDEB(1); rval= -1; goto ready;	}
 
 	docSectSetEqualColumnWidth( &sp );
@@ -353,8 +364,7 @@ static int dochtmlEnterSectNode(	BufferItem *		node,
     return rval;
     }
 
-static int dochtmlLeaveSectNode(	BufferItem *		node,
-					HtmlWritingContext *	hwc )
+static int dochtmlLeaveSectNode(	HtmlWritingContext *	hwc )
     {
     docHtmlPutString( "</div>", hwc );
     docHtmlNewLine( hwc );
@@ -362,9 +372,9 @@ static int dochtmlLeaveSectNode(	BufferItem *		node,
     return 0;
     }
 
-static int docHtmlLeaveNode(	BufferItem *			node,
-				const DocumentSelection *	ds,
-				const BufferItem *		bodySectNode,
+static int docHtmlLeaveNode(	struct BufferItem *			node,
+				const struct DocumentSelection * ds,
+				const struct BufferItem *		bodySectNode,
 				void *				voidhwc )
     {
     HtmlWritingContext *	hwc= (HtmlWritingContext *)voidhwc;
@@ -373,7 +383,7 @@ static int docHtmlLeaveNode(	BufferItem *			node,
 	{
 	case DOClevSECT:
 	    if  ( node->biTreeType == DOCinBODY && ! ds )
-		{ dochtmlLeaveSectNode( node, hwc );	}
+		{ dochtmlLeaveSectNode( hwc );	}
 	    break;
 
 	case DOClevBODY:
@@ -403,12 +413,12 @@ static int docHtmlLeaveNode(	BufferItem *			node,
 	    LDEB(node->biLevel); return -1;
 	}
 
-    return ADVICEtsOK;
+    return SCANadviceOK;
     }
 
-static int docHtmlEnterNode(	BufferItem *			node,
-				const DocumentSelection *	ds,
-				const BufferItem *		bodySectNode,
+static int docHtmlEnterNode(	struct BufferItem *		node,
+				const struct DocumentSelection * ds,
+				const struct BufferItem *	bodySectNode,
 				void *				voidhwc )
     {
     HtmlWritingContext *	hwc= (HtmlWritingContext *)voidhwc;
@@ -430,7 +440,7 @@ static int docHtmlEnterNode(	BufferItem *			node,
 	case DOClevCELL:
 	    if  ( docIsRowNode( node->biParent ) )
 		{
-		if  ( docHtmlEnterCellNode( hwc, bodySectNode,
+		if  ( docHtmlEnterCellNode( hwc,
 			    node->biParent, node->biNumberInParent, node ) )
 		    { LDEB(node->biNumberInParent); return -1;	}
 		}
@@ -439,7 +449,7 @@ static int docHtmlEnterNode(	BufferItem *			node,
 	case DOClevROW:
 	    if  ( docIsRowNode( node ) )
 		{
-		if  ( docHtmlEnterRowNode( hwc, node, bodySectNode ) )
+		if  ( docHtmlEnterRowNode( hwc, node ) )
 		    { LDEB(1); return -1;	}
 		}
 	    break;
@@ -453,14 +463,14 @@ static int docHtmlEnterNode(	BufferItem *			node,
 	    LDEB(node->biLevel); return -1;
 	}
 
-    return ADVICEtsOK;
+    return SCANadviceOK;
     }
 
 /************************************************************************/
 
 int docHtmlSaveSelection(	HtmlWritingContext *		hwc,
-				DocumentTree *			dt,
-				const DocumentSelection *	ds )
+				struct DocumentTree *			dt,
+				const struct DocumentSelection * ds )
     {
     const int			flags= 0;
 
@@ -468,12 +478,14 @@ int docHtmlSaveSelection(	HtmlWritingContext *		hwc,
 	{
 	if  ( docScanSelection( hwc->hwcDocument, ds,
 					docHtmlEnterNode, docHtmlLeaveNode,
+					(TreeVisitor)0, (TreeVisitor)0, 
 					flags, (void *)hwc ) < 0 )
 	    { LDEB(1); return -1;	}
 	}
     else{
 	if  ( docScanTree( hwc->hwcDocument, dt,
 					docHtmlEnterNode, docHtmlLeaveNode,
+					(TreeVisitor)0, (TreeVisitor)0, 
 					flags, (void *)hwc ) < 0 )
 	    { LDEB(1); return -1;	}
 	}

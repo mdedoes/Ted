@@ -14,6 +14,7 @@
 
 #   include	<appDebugon.h>
 
+#   include	"docFieldKind.h"
 #   include	"docDocumentField.h"
 #   include	"docBookmarkField.h"
 
@@ -94,12 +95,12 @@ int docFieldMatchesBookmark(	const DocumentField *		df,
     }
 
 int docSetBookmarkField(	FieldInstructions *	fi,
-				const MemoryBuffer *	mb )
+				const MemoryBuffer *	markName )
     {
     if  ( docStartFieldInstructions( fi, "BOOKMARK", 8 ) )
 	{ LDEB(8); return -1;	}
 
-    if  ( docFieldInstructionsAddComponent( fi, mb ) )
+    if  ( docFieldInstructionsAddComponent( fi, markName ) )
 	{ LDEB(1); return -1;	}
 
     return 0;
@@ -206,7 +207,8 @@ int docAdaptBookmarkName(	MemoryBuffer *		markName )
 
 /************************************************************************/
 /*									*/
-/*  Derive a nice bookmark from the document text.			*/
+/*  Derive a nice bookmark name from the document text.			*/
+/*  Very short selections get a default name.				*/
 /*									*/
 /************************************************************************/
 
@@ -220,8 +222,8 @@ int docBookmarkFromText(	MemoryBuffer *		markName,
 
     done= docBookmarkNormalizeBytes( &changed, scratch, text, len );
 
-    if  ( done < 4 )
-	{ memcpy( scratch, "bkmk", 5 ); done= 4;	}
+    if  ( done < 3 )
+	{ strcpy( scratch, "bkmk" ); done= 4;	}
 
     if  ( utilMemoryBufferSetBytes( markName, (unsigned char *)scratch, done ) )
 	{ LDEB(done); return -1;	}

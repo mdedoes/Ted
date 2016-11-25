@@ -6,11 +6,14 @@
 
 #   include	"docBufConfig.h"
 
-#   include	<appDebugon.h>
-
 #   include	"docBuf.h"
 #   include	"docTreeNode.h"
 #   include	<docTextParticule.h>
+#   include	<textAttribute.h>
+#   include	<utilPropMask.h>
+#   include	"docAttributes.h"
+
+#   include	<appDebugon.h>
 
 /************************************************************************/
 /*									*/
@@ -21,8 +24,8 @@
 
 int docChangeParticuleAttributes(	int *			pChanged,
 					PropertyMask *		pTaAllMask,
-					BufferDocument *	bd,
-					BufferItem *		paraBi,
+					struct BufferDocument *	bd,
+					struct BufferItem *		paraNode,
 					int			part,
 					int			partUpto,
 					const TextAttribute *	taSet,
@@ -32,7 +35,7 @@ int docChangeParticuleAttributes(	int *			pChanged,
     int				i;
     int				changed= 0;
 
-    tp= paraBi->biParaParticules+ part;
+    tp= paraNode->biParaParticules+ part;
     for ( i= part; i < partUpto; tp++, i++ )
 	{
 	TextAttribute	ta;
@@ -41,9 +44,9 @@ int docChangeParticuleAttributes(	int *			pChanged,
 
 	utilPropMaskClear( &doneMask );
 
-	docGetTextAttributeByNumber( &ta, bd, tp->tpTextAttrNr );
+	ta= *docGetTextAttributeByNumber( bd, tp->tpTextAttrNr );
 
-	utilUpdateTextAttribute( &doneMask, &ta, taSetMask, taSet );
+	textUpdateTextAttribute( &doneMask, &ta, taSetMask, taSet );
 
 	if  ( ! utilPropMaskIsEmpty( &doneMask )	||
 	      attributeNumber < 0			)

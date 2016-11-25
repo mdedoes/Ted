@@ -8,15 +8,16 @@
 #   define DOC_HYPERLINK_FIELD_H
 
 #   include	<utilMemoryBuffer.h>
-#   include	"docFieldInstructions.h"
 
 struct DocumentField;
+struct FieldInstructions;
 
 typedef struct HyperlinkField
     {
     MemoryBuffer	hfFile;
     MemoryBuffer	hfBookmark;
     MemoryBuffer	hfFont;
+    MemoryBuffer	hfTarget;
     } HyperlinkField;
 
 /************************************************************************/
@@ -34,7 +35,7 @@ extern int docGetHyperlinkField(	HyperlinkField *		hf,
 extern int docMakeHyperlinkRelative(	struct DocumentField *	dfTo,
 					const MemoryBuffer *	refFileName );
 
-extern int docSetHyperlinkField(	FieldInstructions *	fi,
+extern int docSetHyperlinkField(	struct FieldInstructions *	fi,
 					const HyperlinkField *	hf );
 
 extern int docHyperlinkFieldIsLink(	const HyperlinkField *		hf );

@@ -11,7 +11,6 @@ struct BufferDocument;
 struct DocumentTree;
 struct BufferItem;
 struct DocumentField;
-struct DocumentSelection;
 
 /************************************************************************/
 /*									*/

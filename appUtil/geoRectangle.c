@@ -1,7 +1,11 @@
 #   include	"appUtilConfig.h"
 
 #   include	<limits.h>
-#   include	"geo2DInteger.h"
+
+#   include	"geoRectangle.h"
+#   include	"geoRectangleOffsets.h"
+
+#   include	<appDebugon.h>
 
 void geoInitRectangle(	DocumentRectangle *		dr )
     { dr->drX0= dr->drY0= dr->drX1= dr->drY1= 0; return; }
@@ -99,5 +103,77 @@ int geoIntersectRectangle(	DocumentRectangle *		dr,
     else{ res.drY1= dr2->drY1;	}
 
     *dr= res; return 1;
+    }
+
+int geoRectangleSubtractPadding( DocumentRectangle *		drInside,
+				const DocumentRectangle *	drOutside,
+				const RectangleOffsets *	padding )
+    {
+    DocumentRectangle	dr;
+
+    dr= *drOutside;
+    if  ( dr.drX0 != INT_MIN )
+	{ dr.drX0 += padding->roLeftOffset;	}
+    if  ( dr.drX1 != INT_MAX )
+	{ dr.drX1 -= padding->roRightOffset;	}
+    if  ( dr.drY0 != INT_MIN )
+	{ dr.drY0 += padding->roTopOffset;	}
+    if  ( dr.drY1 != INT_MAX )
+	{ dr.drY1 -= padding->roBottomOffset;	}
+
+    if  ( dr.drX0 > dr.drX1 || dr.drY0 > dr.drY1 )
+	{ return -1;	}
+
+    *drInside= dr;
+    return 0;
+    }
+
+int geoRectangleAddMargins( 	DocumentRectangle *		drOutside,
+				const DocumentRectangle *	drInside,
+				const RectangleOffsets *	margins )
+    {
+    DocumentRectangle	dr;
+
+    dr= *drInside;
+    if  ( dr.drX0 != INT_MIN )
+	{ dr.drX0 -= margins->roLeftOffset;	}
+    if  ( dr.drX1 != INT_MAX )
+	{ dr.drX1 += margins->roRightOffset;	}
+    if  ( dr.drY0 != INT_MIN )
+	{ dr.drY0 -= margins->roTopOffset;	}
+    if  ( dr.drY1 != INT_MAX )
+	{ dr.drY1 += margins->roBottomOffset;	}
+
+    if  ( dr.drX0 > dr.drX1 || dr.drY0 > dr.drY1 )
+	{ return -1;	}
+
+    *drOutside= dr;
+    return 0;
+    }
+
+void geoLogRectangle(	const char *			label,
+			const DocumentRectangle *	dr )
+    {
+    appDebug( "%s: [%4d+%4d=%4d]x[%4d+%4d=%4d]\n", label,
+		dr->drX0, dr->drX1- dr->drX0+ 1, dr->drX1,
+		dr->drY0, dr->drY1- dr->drY0+ 1, dr->drY1 );
+
+    return;
+    }
+
+void geoLogRectangles(	const char *			label1,
+			const DocumentRectangle *	dr1,
+			const char *			label2,
+			const DocumentRectangle *	dr2 )
+    {
+    appDebug( "%s: [%4d+%4d]x[%4d+%4d] %s [%4d+%4d]x[%4d+%4d]\n",
+		label1,
+		dr1->drX0, dr1->drX1- dr1->drX0+ 1,
+		dr1->drY0, dr1->drY1- dr1->drY0+ 1,
+		label2,
+		dr2->drX0, dr2->drX1- dr2->drX0+ 1,
+		dr2->drY0, dr2->drY1- dr2->drY0+ 1 );
+
+    return;
     }
 

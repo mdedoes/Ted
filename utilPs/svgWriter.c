@@ -118,6 +118,7 @@ void svgWriteViewBoxAttribute(		SvgWriter *			sw,
 
 /************************************************************************/
 
+# if 0
 static const char PsSvgArrowMarker[]=
 
     "<marker id=\"Arrow\"\n"
@@ -167,6 +168,8 @@ static const char PsSvgOvalMarker[]=
     "    orient=\"auto\">\n"
     "  <path d=\"M 0 0 L 10 5 L 0 10 z\" />\n"
     "</marker>\n";
+
+# endif
 
 /************************************************************************/
 
@@ -294,7 +297,7 @@ static const char **	PsSvgF_Patterns[]=
 int svgDefineShading(		SvgWriter *		sw,
 				int			pattern,
 				int			shading,
-				const RGB8Color *	rgb8 )
+				const struct RGB8Color *	rgb8 )
     {
     XmlWriter *	xw= &(sw->swXmlWriter);
 

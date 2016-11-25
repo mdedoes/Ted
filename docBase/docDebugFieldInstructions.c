@@ -1,20 +1,36 @@
 #   include	"docBaseConfig.h"
 
-#   include	<appDebugon.h>
+#   include	<stdio.h>
+
 #   include	"docFieldInstructions.h"
 
-void docListFieldInstructions(		int				indent,
-					const FieldInstructions *	fi )
+#   include	<appDebugon.h>
+
+static const char * docInstructionComponentTypeStr(	int	type )
+    {
+    static char scratch[20];
+
+    switch( type )
+	{
+	case INSTRtypeFLAG:		return "F";
+	case INSTRtypeVALUE:		return "V";
+	case INSTRtypeQUOTED_VALUE:	return "QV";
+
+	default:
+	    sprintf( scratch, "%d", type );
+	    return scratch;
+	}
+    }
+
+void docListFieldInstructions(		const FieldInstructions *	fi )
     {
     const InstructionsComponent *	ic= fi->fiComponents;
     int					i;
 
     for ( i= 0; i < fi->fiComponentCount; ic++, i++ )
 	{
-	appDebug( "%*s %2d: q=%s f=%s \"%s\"\n",
-		    indent, "", i,
-		    ic->icIsQuoted?"Y":"N",
-		    ic->icIsFlag?"Y":"N",
+	appDebug( " %s\"%s\"",
+		    docInstructionComponentTypeStr( ic->icType ),
 		    utilMemoryBufferGetString( &(ic->icBuffer) ) );
 	}
 

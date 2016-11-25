@@ -6,6 +6,7 @@
 #   include	"psTtfNameTable.h"
 #   include	<utilEndian.h>
 #   include	<sioEndian.h>
+#   include	<sioGeneral.h>
 
 #   include	<appDebugon.h>
 

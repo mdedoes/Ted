@@ -7,15 +7,17 @@
 #   include	"docRtfConfig.h"
 
 #   include	<stdlib.h>
-#   include	<stdio.h>
 #   include	<ctype.h>
 #   include	<bitmap.h>
 
 #   include	<docDrawingObject.h>
 #   include	<docShape.h>
-#   include	<appDebugon.h>
+#   include	<docShapeType.h>
+#   include	<geo2DInteger.h>
 
 #   include	"docRtfReaderImpl.h"
+
+#   include	<appDebugon.h>
 
 static int docRtfDrawingObjectAllocatePoints(	DrawingShape *	ds,
 						int		n )
@@ -41,14 +43,14 @@ static int docRtfDrawingObjectAllocatePoints(	DrawingShape *	ds,
 
 int docRtfDrawingObjectProperty(	const RtfControlWord *	rcw,
 					int			arg,
-					RtfReader *		rrc )
+					RtfReader *		rr )
     {
-    DrawingShape *	ds= rrc->rrDrawingShape;
+    DrawingShape *	ds= rr->rrDrawingShape;
     ShapeDrawing *	sd;
     ShapeProperties *	sp;
 
     if  ( ! ds )
-	{ SLLXDEB(rcw->rcwWord,arg,rrc->rrCurrentLine,ds); return 0;	}
+	{ SLLXDEB(rcw->rcwWord,arg,rr->rrCurrentLine,ds); return 0;	}
 
     sd= &(ds->dsDrawing);
     sp= &(ds->dsShapeProperties);
@@ -75,7 +77,7 @@ int docRtfDrawingObjectProperty(	const RtfControlWord *	rcw,
 
 	    if  ( sd->sdShapeType == SHPtyLINE )
 		{
-		rrc->rrcNextObjectVertex= sd->sdVertexCount;
+		rr->rrcNextObjectVertex= sd->sdVertexCount;
 		if  ( docRtfDrawingObjectAllocatePoints( ds, 2 ) )
 		    { LDEB(arg); return -1;	}
 		}
@@ -155,7 +157,7 @@ int docRtfDrawingObjectProperty(	const RtfControlWord *	rcw,
 	    break;
 
 	case DOpropPOINT_COUNT:
-	    rrc->rrcNextObjectVertex= sd->sdVertexCount;
+	    rr->rrcNextObjectVertex= sd->sdVertexCount;
 	    if  ( docRtfDrawingObjectAllocatePoints( ds, arg ) )
 		{ LDEB(arg); return -1;	}
 	    break;
@@ -240,30 +242,30 @@ int docRtfDrawingObjectProperty(	const RtfControlWord *	rcw,
 
 int docRtfDrawingObjectCoordinate(	const RtfControlWord *	rcw,
 					int			arg,
-					RtfReader *	rrc )
+					RtfReader *		rr )
     {
-    DrawingShape *	ds= rrc->rrDrawingShape;
+    DrawingShape *	ds= rr->rrDrawingShape;
     ShapeDrawing *	sd;
 
     if  ( ! ds )
-	{ SLLXDEB(rcw->rcwWord,arg,rrc->rrCurrentLine,ds); return 0;	}
+	{ SLLXDEB(rcw->rcwWord,arg,rr->rrCurrentLine,ds); return 0;	}
 
     sd= &(ds->dsDrawing);
 
-    if  ( rrc->rrcNextObjectVertex >= sd->sdVertexCount	||
-	  rrc->rrcNextObjectVertex < 0			)
+    if  ( rr->rrcNextObjectVertex >= sd->sdVertexCount	||
+	  rr->rrcNextObjectVertex < 0			)
 	{
-	LLLDEB(sd->sdShapeType,rrc->rrcNextObjectVertex,sd->sdVertexCount);
+	LLLDEB(sd->sdShapeType,rr->rrcNextObjectVertex,sd->sdVertexCount);
 	return 0;
 	}
 
     switch( rcw->rcwID )
 	{
 	case DOpropX:
-	    sd->sdVertices[rrc->rrcNextObjectVertex  ].x= arg;
+	    sd->sdVertices[rr->rrcNextObjectVertex  ].x= arg;
 	    break;
 	case DOpropY:
-	    sd->sdVertices[rrc->rrcNextObjectVertex++].y= arg;
+	    sd->sdVertices[rr->rrcNextObjectVertex++].y= arg;
 	    break;
 
 	default:

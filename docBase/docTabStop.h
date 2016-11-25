@@ -34,31 +34,38 @@ typedef enum TabLeader
 typedef struct TabStop
     {
 			/**
-			 *  Position in twips
+			 *  Position in twips. (ab)used for pixel 
+			 *  coordinates on the ruler.
+			 *
+			 *  In left-to-right paragraphs, this is an offset
+			 *  from the left hand side of the frame of the
+			 *  paragraph. In right-to-left paragraphs it is 
+			 *  an offset from the right hand side.
+			 *
 			 */
-    int			tsTwips;
+    int			tsOffset;
+
 			/**
 			 *  Alignment: A DOCta* value
 			 */
     unsigned char	tsAlignment;
+
 			/**
 			 *  Tab leader: a DOCtl* value
 			 */
     unsigned char	tsLeader;
+
 			/**
 			 *  True if the tab comes from a style or a
-			 *  list.
+			 *  list. (Will be replaced when the ruler of the 
+			 *  list is applied to the paragraph.)
 			 */
     unsigned char	tsFromStyleOrList;
-			/**
-			 *  Position in pixels. A derived property.
-			 */
-    short int		tsPixels;
     } TabStop;
 
 typedef enum TabProperty
     {
-    TABpropX= 0,
+    TABpropOFFSET= 0,
     TABpropALIGN,
     TABpropLEADER,
     TABpropFROM_STYLE,
@@ -67,11 +74,10 @@ typedef enum TabProperty
     } TabProperty;
 
 # define docEqualTabStop( a, b ) ( \
-		(a)->tsTwips == (b)->tsTwips				&& \
+		(a)->tsOffset == (b)->tsOffset				&& \
 		(a)->tsAlignment == (b)->tsAlignment			&& \
 		(a)->tsLeader == (b)->tsLeader				&& \
 		(a)->tsFromStyleOrList == (b)->tsFromStyleOrList	)
-
 
 /************************************************************************/
 /*									*/
@@ -80,6 +86,9 @@ typedef enum TabProperty
 /************************************************************************/
 
 extern void docInitTabStop(	TabStop *		ts );
+
+extern void docCalculatedTabStop(	TabStop *	ts,
+					int		offset );
 
 extern int docTabStopGetProperty(	const TabStop *		ts,
 					int			prop );

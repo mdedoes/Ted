@@ -6,17 +6,21 @@
 /************************************************************************/
 
 #   include	"appFrameConfig.h"
-
-#   include	<stdlib.h>
-#   include	<stdio.h>
-#   include	<stddef.h>
-
-#   include	"appFrame.h"
-#   include	"appQuestion.h"
-
-#   include	<appDebugon.h>
+#   include	<guiBase.h>
 
 # if USE_OWN_DIALOGS
+
+#   include	<stdlib.h>
+#   include	<stddef.h>
+
+#   include	"appEditApplication.h"
+#   include	"appQuestion.h"
+#   include	"appGuiResource.h"
+#   include	<guiWidgets.h>
+#   include	<guiRunDialog.h>
+#   include	<utilMemoryBuffer.h>
+
+#   include	<appDebugon.h>
 
 typedef struct QuestionContextResources
     {
@@ -70,7 +74,7 @@ static APP_BUTTON_CALLBACK_H( appQuestionOkButtonPushed, button, voidqc )
     {
     QuestionContext *		qc= (QuestionContext *)voidqc;
 
-    appGuiBreakDialog( &(qc->qcDialog), AQDrespOK );
+    guiBreakDialog( &(qc->qcDialog), AQDrespOK );
     return;
     }
 
@@ -78,7 +82,7 @@ static APP_BUTTON_CALLBACK_H( appQuestionYesButtonPushed, button, voidqc )
     {
     QuestionContext *		qc= (QuestionContext *)voidqc;
 
-    appGuiBreakDialog( &(qc->qcDialog), AQDrespYES );
+    guiBreakDialog( &(qc->qcDialog), AQDrespYES );
     return;
     }
 
@@ -86,7 +90,7 @@ static APP_BUTTON_CALLBACK_H( appQuestionNoButtonPushed, button, voidqc )
     {
     QuestionContext *		qc= (QuestionContext *)voidqc;
 
-    appGuiBreakDialog( &(qc->qcDialog), AQDrespNO );
+    guiBreakDialog( &(qc->qcDialog), AQDrespNO );
     return;
     }
 
@@ -94,7 +98,7 @@ static APP_BUTTON_CALLBACK_H( appQuestionCancelButtonPushed, button, voidqc )
     {
     QuestionContext *		qc= (QuestionContext *)voidqc;
 
-    appGuiBreakDialog( &(qc->qcDialog), AQDrespCANCEL );
+    guiBreakDialog( &(qc->qcDialog), AQDrespCANCEL );
     return;
     }
 
@@ -114,9 +118,9 @@ static APP_WIDGET appQuestionMakeOkRow(	APP_WIDGET		parent,
     const int		showAsDefault= 1;
     const int		colspan= 1;
 
-    buttonRow= appMakeRowInColumn( parent, 1, heightResizable );
+    buttonRow= guiMakeRowInColumn( parent, 1, heightResizable );
 
-    appMakeButtonInRow( &(qc->qcOkButton), buttonRow, okText,
+    guiMakeButtonInRow( &(qc->qcOkButton), buttonRow, okText,
 				appQuestionOkButtonPushed, (void *)qc,
 				0, colspan, showAsDefault );
 
@@ -135,22 +139,22 @@ static APP_WIDGET appQuestionMakeYesNoCancelRow( APP_WIDGET	parent,
     const int		showOtherAsDefault= 0;
     const int		colspan= 1;
 
-    buttonRow= appMakeRowInColumn( parent, 3, heightResizable );
+    buttonRow= guiMakeRowInColumn( parent, 3, heightResizable );
 
-    appMakeButtonInRow( &(qc->qcYesButton), buttonRow, yesText,
+    guiMakeButtonInRow( &(qc->qcYesButton), buttonRow, yesText,
 				appQuestionYesButtonPushed,
 				(void *)qc, 0, colspan, showYesAsDefault );
 
-    appMakeButtonInRow( &(qc->qcNoButton), buttonRow, noText,
+    guiMakeButtonInRow( &(qc->qcNoButton), buttonRow, noText,
 				appQuestionNoButtonPushed,
 				(void *)qc, 1, colspan, showOtherAsDefault );
 
-    appMakeButtonInRow( &(qc->qcCancelButton), buttonRow, cancelText,
+    guiMakeButtonInRow( &(qc->qcCancelButton), buttonRow, cancelText,
 				appQuestionCancelButtonPushed,
 				(void *)qc, 2, colspan, showOtherAsDefault );
 
-    appGuiSetDefaultButtonForDialog( &(qc->qcDialog), qc->qcYesButton );
-    appGuiSetCancelButtonForDialog( &(qc->qcDialog), qc->qcCancelButton );
+    guiSetDefaultButtonForDialog( &(qc->qcDialog), qc->qcYesButton );
+    guiSetCancelButtonForDialog( &(qc->qcDialog), qc->qcCancelButton );
 
     return buttonRow;
     }
@@ -166,18 +170,18 @@ static APP_WIDGET appQuestionMakeOkCancelRow( APP_WIDGET	parent,
     const int		showAsDefault= 0;
     const int		colspan= 1;
 
-    buttonRow= appMakeRowInColumn( parent, 2, heightResizable );
+    buttonRow= guiMakeRowInColumn( parent, 2, heightResizable );
 
-    appMakeButtonInRow( &(qc->qcOkButton), buttonRow, okText,
+    guiMakeButtonInRow( &(qc->qcOkButton), buttonRow, okText,
 				appQuestionOkButtonPushed,
 				(void *)qc, 0, colspan, showAsDefault );
 
-    appMakeButtonInRow( &(qc->qcCancelButton), buttonRow, cancelText,
+    guiMakeButtonInRow( &(qc->qcCancelButton), buttonRow, cancelText,
 				appQuestionCancelButtonPushed,
 				(void *)qc, 1, colspan, showAsDefault );
 
-    appGuiSetDefaultButtonForDialog( &(qc->qcDialog), qc->qcOkButton );
-    appGuiSetCancelButtonForDialog( &(qc->qcDialog), qc->qcCancelButton );
+    guiSetDefaultButtonForDialog( &(qc->qcDialog), qc->qcOkButton );
+    guiSetCancelButtonForDialog( &(qc->qcDialog), qc->qcCancelButton );
 
     return buttonRow;
     }
@@ -194,18 +198,18 @@ static APP_WIDGET appQuestionMakeYesNoRow( APP_WIDGET		parent,
     const int		showAsDefault= 0;
     const int		colspan= 1;
 
-    buttonRow= appMakeRowInColumn( parent, 2, heightResizable );
+    buttonRow= guiMakeRowInColumn( parent, 2, heightResizable );
 
-    appMakeButtonInRow( &(qc->qcYesButton), buttonRow, yesText,
+    guiMakeButtonInRow( &(qc->qcYesButton), buttonRow, yesText,
 				    appQuestionYesButtonPushed,
 				    (void *)qc, 0, colspan, showAsDefault );
 
-    appMakeButtonInRow( &(qc->qcNoButton), buttonRow, noText,
+    guiMakeButtonInRow( &(qc->qcNoButton), buttonRow, noText,
 				    appQuestionNoButtonPushed,
 				    (void *)qc, 1, colspan, showAsDefault );
 
-    appGuiSetDefaultButtonForDialog( &(qc->qcDialog), qc->qcYesButton );
-    appGuiSetCancelButtonForDialog( &(qc->qcDialog), qc->qcNoButton );
+    guiSetDefaultButtonForDialog( &(qc->qcDialog), qc->qcYesButton );
+    guiSetCancelButtonForDialog( &(qc->qcDialog), qc->qcNoButton );
 
     return buttonRow;
     }
@@ -247,7 +251,7 @@ static int appMakeQuestionDialog( 	EditApplication *	ea,
 				    sizeof(AppConfigurableResource) );
 	}
 
-    appMakeVerticalDialog( &(qc->qcDialog), &paned, ea,
+    guiMakeVerticalDialog( &(qc->qcDialog), &paned, ea->eaToplevel.atTopWidget,
 						(APP_CLOSE_CALLBACK_T)0,
 						(APP_DESTROY_CALLBACK_T)0,
 						(void *)qc );
@@ -269,8 +273,8 @@ static void appQuestionMakeSubjectQuestion( QuestionContext *	qc,
 					const char *		subject,
 					const char *		question )
     {
-    appMakeLabelInColumn( &(qc->qcSubjectWidget), paned, subject );
-    appMakeLabelInColumn( &(qc->qcQuestionWidget), paned, question );
+    guiMakeLabelInColumn( &(qc->qcSubjectWidget), paned, subject );
+    guiMakeLabelInColumn( &(qc->qcQuestionWidget), paned, question );
 
     return;
     }
@@ -285,7 +289,7 @@ static void appQuestionMakeQuestion(	QuestionContext *	qc,
 					APP_WIDGET		paned,
 					const char *		question )
     {
-    appMakeLabelInColumn( &(qc->qcQuestionWidget), paned, question );
+    guiMakeLabelInColumn( &(qc->qcQuestionWidget), paned, question );
 
     return;
     }
@@ -302,7 +306,7 @@ static void appQuestionChangeSubject(	QuestionContext *	qc,
     if  ( ! qc->qcSubjectWidget )
 	{ XDEB(qc->qcSubjectWidget); return;	}
 
-    appGuiChangeLabelText( qc->qcSubjectWidget, subject );
+    guiChangeLabelText( qc->qcSubjectWidget, subject );
     }
 
 static void appQuestionChangeQuestion(	QuestionContext *	qc,
@@ -311,24 +315,24 @@ static void appQuestionChangeQuestion(	QuestionContext *	qc,
     if  ( ! qc->qcQuestionWidget )
 	{ XDEB(qc->qcQuestionWidget); return;	}
 
-    appGuiChangeLabelText( qc->qcQuestionWidget, question );
+    guiChangeLabelText( qc->qcQuestionWidget, question );
     }
 
 static void appQuestionChangeOkText(	QuestionContext *	qc,
 					const char *		okText )
-    { appGuiChangeButtonText( qc->qcOkButton, okText );	}
+    { guiChangeButtonText( qc->qcOkButton, okText );	}
 
 static void appQuestionChangeYesText(	QuestionContext *	qc,
 					const char *		yesText )
-    { appGuiChangeButtonText( qc->qcYesButton, yesText );	}
+    { guiChangeButtonText( qc->qcYesButton, yesText );	}
 
 static void appQuestionChangeNoText(	QuestionContext *	qc,
 					const char *		noText )
-    { appGuiChangeButtonText( qc->qcNoButton, noText );	}
+    { guiChangeButtonText( qc->qcNoButton, noText );	}
 
 static void appQuestionChangeCancelText( QuestionContext *	qc,
 					const char *		cancelText )
-    { appGuiChangeButtonText( qc->qcCancelButton, cancelText );	}
+    { guiChangeButtonText( qc->qcCancelButton, cancelText );	}
 
 
 static void appQuestionRunDialog(	EditApplication *	ea,
@@ -336,14 +340,14 @@ static void appQuestionRunDialog(	EditApplication *	ea,
 					APP_WIDGET		relative,
 					APP_WIDGET		option )
     {
-    appSetShellTitle( qc->qcDialog.adTopWidget,
+    guiSetDialogTitle( qc->qcDialog.adTopWidget,
 					option, ea->eaApplicationName );
 
-    appGuiShowDialog( ea, &(qc->qcDialog), relative );
+    guiShowDialog( ea->eaContext, &(qc->qcDialog), relative );
 
-    appGuiRunDialog( &(qc->qcDialog), AQDrespNONE, ea );
+    guiRunDialog( &(qc->qcDialog), AQDrespNONE, ea->eaContext );
 
-    appGuiHideDialog( &(qc->qcDialog) );
+    guiHideDialog( &(qc->qcDialog) );
 
     return;
     }
@@ -439,7 +443,7 @@ int appQuestionRunSubjectYesNoCancelDialog(
     appQuestionMakeSubjectQuestion( subjectYesNoCancelContext, paned,
 						    subject, question );
 
-    appGuiInsertSeparatorInColumn( &sep, paned );
+    guiInsertSeparatorInColumn( &sep, paned );
 
     (void) /* buttonRow= */ appQuestionMakeYesNoCancelRow( paned,
 				subjectYesNoCancelContext,
@@ -450,7 +454,7 @@ int appQuestionRunSubjectYesNoCancelDialog(
     rval= appQuestionRunAnyYesNoCancelDialog( ea, relative, option,
 						subjectYesNoCancelContext );
 
-    appDestroyShellWidget( subjectYesNoCancelContext->qcDialog.adTopWidget );
+    guiDestroyShellWidget( subjectYesNoCancelContext->qcDialog.adTopWidget );
 
     if  ( subjectYesNoCancelContext )
 	{ free( subjectYesNoCancelContext );	}
@@ -486,7 +490,7 @@ int appQuestionRunYesNoCancelDialog(	EditApplication *	ea,
 
 	appQuestionMakeQuestion( yesNoCancelContext, paned, question );
 
-	appGuiInsertSeparatorInColumn( &sep, paned );
+	guiInsertSeparatorInColumn( &sep, paned );
 
 	(void) /* buttonRow= */ appQuestionMakeYesNoCancelRow( paned,
 					yesNoCancelContext,
@@ -501,7 +505,7 @@ int appQuestionRunYesNoCancelDialog(	EditApplication *	ea,
     rval= appQuestionRunAnyYesNoCancelDialog( ea, relative, option,
 					yesNoCancelContext );
 
-    appDestroyShellWidget( yesNoCancelContext->qcDialog.adTopWidget );
+    guiDestroyShellWidget( yesNoCancelContext->qcDialog.adTopWidget );
     if  ( yesNoCancelContext )
 	{ free( yesNoCancelContext );	}
 
@@ -536,7 +540,7 @@ void appQuestionRunSubjectErrorDialog(	EditApplication *	ea,
 	appQuestionMakeSubjectQuestion( subjectErrorContext, paned,
 							subject, message );
 
-	appGuiInsertSeparatorInColumn( &sep, paned );
+	guiInsertSeparatorInColumn( &sep, paned );
 
 	(void) /* buttonRow= */ appQuestionMakeOkRow( paned, subjectErrorContext,
 							qcr->qcrOkText );
@@ -552,7 +556,7 @@ void appQuestionRunSubjectErrorDialog(	EditApplication *	ea,
 
     appQuestionRunOkDialog( ea, relative, option, subjectErrorContext );
 
-    appDestroyShellWidget( subjectErrorContext->qcDialog.adTopWidget );
+    guiDestroyShellWidget( subjectErrorContext->qcDialog.adTopWidget );
     if  ( subjectErrorContext )
 	{ free( subjectErrorContext );	}
     }
@@ -585,7 +589,7 @@ int appQuestionRunOkCancelDialog(	EditApplication *	ea,
 
 	appQuestionMakeQuestion( okCancelContext, paned, question );
 
-	appGuiInsertSeparatorInColumn( &sep, paned );
+	guiInsertSeparatorInColumn( &sep, paned );
 
 	(void) /* buttonRow= */ appQuestionMakeOkCancelRow( paned,
 					okCancelContext,
@@ -599,7 +603,7 @@ int appQuestionRunOkCancelDialog(	EditApplication *	ea,
     rval= appQuestionRunAnyOkCancelDialog( ea, relative, option,
 							    okCancelContext );
 
-    appDestroyShellWidget( okCancelContext->qcDialog.adTopWidget );
+    guiDestroyShellWidget( okCancelContext->qcDialog.adTopWidget );
     if  ( okCancelContext )
 	{ free( okCancelContext );	}
 
@@ -636,7 +640,7 @@ int appQuestionRunSubjectOkCancelDialog( EditApplication *	ea,
 	appQuestionMakeSubjectQuestion( subjectOkCancelContext, paned,
 							subject, message );
 
-	appGuiInsertSeparatorInColumn( &sep, paned );
+	guiInsertSeparatorInColumn( &sep, paned );
 
 	(void) /* buttonRow= */ appQuestionMakeOkCancelRow( paned,
 					subjectOkCancelContext,
@@ -651,7 +655,7 @@ int appQuestionRunSubjectOkCancelDialog( EditApplication *	ea,
     rval= appQuestionRunAnyOkCancelDialog( ea, relative, option,
 						    subjectOkCancelContext );
 
-    appDestroyShellWidget( subjectOkCancelContext->qcDialog.adTopWidget );
+    guiDestroyShellWidget( subjectOkCancelContext->qcDialog.adTopWidget );
     if  ( subjectOkCancelContext )
 	{ free( subjectOkCancelContext );	}
 
@@ -661,7 +665,7 @@ int appQuestionRunSubjectOkCancelDialog( EditApplication *	ea,
 int appQuestionRunSubjectYesNoDialog(	EditApplication *	ea,
 					APP_WIDGET		relative,
 					APP_WIDGET		option,
-					const char *		subject,
+					const MemoryBuffer *	subject,
 					const char *		message )
     {
     int			rval;
@@ -670,7 +674,7 @@ int appQuestionRunSubjectYesNoDialog(	EditApplication *	ea,
 
     if  ( ! ea->eaToplevel.atTopWidget )
 	{
-	appDebug( "%s: \"%s\" %s\n", ea->eaApplicationName, subject, message );
+	appDebug( "%s: \"%s\" %s\n", ea->eaApplicationName, utilMemoryBufferGetString( subject ), message );
 	return AQDrespFAILURE;
 	}
 
@@ -686,9 +690,9 @@ int appQuestionRunSubjectYesNoDialog(	EditApplication *	ea,
 	qcr= subjectYesNoContext->qcResources;
 
 	appQuestionMakeSubjectQuestion( subjectYesNoContext, paned,
-							subject, message );
+							utilMemoryBufferGetString( subject ), message );
 
-	appGuiInsertSeparatorInColumn( &sep, paned );
+	guiInsertSeparatorInColumn( &sep, paned );
 
 	(void) /* buttonRow= */ appQuestionMakeYesNoRow( paned,
 					subjectYesNoContext,
@@ -697,13 +701,13 @@ int appQuestionRunSubjectYesNoDialog(	EditApplication *	ea,
 	}
     else{
 	appQuestionChangeQuestion( subjectYesNoContext, message );
-	appQuestionChangeSubject( subjectYesNoContext, subject );
+	appQuestionChangeSubject( subjectYesNoContext, utilMemoryBufferGetString( subject ) );
 	}
 
     rval= appQuestionRunAnyYesNoDialog( ea, relative, option,
 							subjectYesNoContext );
 
-    appDestroyShellWidget( subjectYesNoContext->qcDialog.adTopWidget );
+    guiDestroyShellWidget( subjectYesNoContext->qcDialog.adTopWidget );
     if  ( subjectYesNoContext )
 	{ free( subjectYesNoContext );	}
 
@@ -736,7 +740,7 @@ void appQuestionRunErrorDialog(	EditApplication *	ea,
 
 	appQuestionMakeQuestion( errorContext, paned, message );
 
-	appGuiInsertSeparatorInColumn( &sep, paned );
+	guiInsertSeparatorInColumn( &sep, paned );
 
 	(void) /* buttonRow= */ appQuestionMakeOkRow( paned,
 				    errorContext, qcr->qcrOkText );
@@ -750,7 +754,7 @@ void appQuestionRunErrorDialog(	EditApplication *	ea,
 
     appQuestionRunOkDialog( ea, relative, option, errorContext );
 
-    appDestroyShellWidget( errorContext->qcDialog.adTopWidget );
+    guiDestroyShellWidget( errorContext->qcDialog.adTopWidget );
     if  ( errorContext )
 	{ free( errorContext );	}
 

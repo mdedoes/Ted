@@ -12,9 +12,11 @@
 #   include	<errno.h>
 
 #   include	"sioIconv.h"
+#   include	<sioGeneral.h>
+
 #   include	<appDebugon.h>
 
-#   if HAVE_ICONV	/*  {{	*/
+#   if HAVE_LIBICONV	/*  {{	*/
 
 typedef struct IconvInStream
     {
@@ -278,4 +280,4 @@ SimpleOutputStream * sioOutIconvOpen(
     return sos;
     }
 
-#   endif /*  HAVE_ICONV }}	*/
+#   endif /*  HAVE_LIBICONV }}	*/

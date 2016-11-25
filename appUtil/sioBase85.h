@@ -5,8 +5,11 @@
 /*									*/
 /************************************************************************/
 
-#   include	"sioGeneral.h"
+struct SimpleInputStream;
+struct SimpleOutputStream;
 
-extern SimpleInputStream * sioInBase85Open(	SimpleInputStream * sisBase85 );
+extern struct SimpleInputStream * sioInBase85Open(
+				struct SimpleInputStream * sisBase85 );
 
-extern SimpleOutputStream * sioOutBase85Open(	SimpleOutputStream * sosBase85 );
+extern struct SimpleOutputStream * sioOutBase85Open(
+				struct SimpleOutputStream * sosBase85 );

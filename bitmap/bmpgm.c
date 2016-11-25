@@ -5,9 +5,11 @@
 #   include	<ctype.h>
 #   include	<string.h>
 
-#   include	"bmintern.h"
-#   include	<appDebugon.h>
+#   include	"bmformats.h"
 #   include	<sioFileio.h>
+#   include	<sioGeneral.h>
+
+#   include	<appDebugon.h>
 
 /************************************************************************/
 /*									*/
@@ -52,10 +54,10 @@ static int bmPbmGetNumber(	int *			pNum,
     sioInUngetLastRead( sis ); *pNum= num; return 0;
     }
 
-int bmReadPbmFile(	const MemoryBuffer *	filename,
-			unsigned char **	pBuf,
-			BitmapDescription *	bd,
-			int *			pPrivateFormat )
+int bmReadPbmFile(	const struct MemoryBuffer *	filename,
+			unsigned char **		pBuf,
+			BitmapDescription *		bd,
+			int *				pPrivateFormat )
     {
     SimpleInputStream *		sis;
     int				privateFormat;
@@ -387,7 +389,7 @@ static void bmPbmRuler(	SimpleOutputStream *		sos,
     sioOutPrintf( sos, "\n" );
     }
 
-int bmWritePbmFile(	const MemoryBuffer *		filename,
+int bmWritePbmFile(	const struct MemoryBuffer *	filename,
 			const unsigned char *		buffer,
 			const BitmapDescription *	bd,
 			int				privateFormat )

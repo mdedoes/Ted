@@ -7,8 +7,8 @@
 #   ifndef		RTF_WRITER_H
 #   define		RTF_WRITER_H
 
-#   include	<sioGeneral.h>
-#   include	<docBuf.h>
+struct SimpleOutputStream;
+struct BufferDocument;
 
 struct RtfWriter;
 typedef struct RtfWriter RtfWriter;
@@ -19,9 +19,10 @@ typedef struct RtfWriter RtfWriter;
 /*									*/
 /************************************************************************/
 
-extern RtfWriter *	docRtfOpenWriter(	SimpleOutputStream *	sos,
-						BufferDocument *	bd,
-						int			flags );
+extern RtfWriter *	docRtfOpenWriter(
+				struct SimpleOutputStream *	sos,
+				struct BufferDocument *		bd,
+				int				flags );
 
 extern void docRtfCloseWriter(	RtfWriter *	rw );
 

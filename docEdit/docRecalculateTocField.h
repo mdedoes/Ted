@@ -1,13 +1,15 @@
 /************************************************************************/
 /*									*/
-/*  Manage bookmarks related to TOC fields.				*/
+/*  Recalculate TOC fields.						*/
 /*									*/
 /************************************************************************/
 
 #   ifndef	DOC_CALCULATE_TOC_FIELD_H
 #   define	DOC_CALCULATE_TOC_FIELD_H
 
-#   include	<docRecalculateFields.h>
+struct BufferDocument;
+struct DocumentField;
+struct RecalculateFields;
 
 /************************************************************************/
 /*									*/
@@ -15,9 +17,9 @@
 /*									*/
 /************************************************************************/
 
-extern int docRecalculateTocFields( RecalculateFields *		rf );
+extern int docRecalculateTocFields( struct RecalculateFields *	rf );
 
-extern int docRecalculateOneTocField(	BufferDocument *	bdDoc,
-					const DocumentField *	df );
+extern int docRecalculateOneTocField(	struct BufferDocument *	bdDoc,
+					struct DocumentField *	df );
 
 #   endif /*	DOC_CALCULATE_TOC_FIELD_H	*/

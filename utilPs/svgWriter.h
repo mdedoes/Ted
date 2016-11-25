@@ -8,8 +8,9 @@
 #   define		SVG_WRITER_H
 
 #   include		<xmlWriter.h>
-#   include		<geo2DInteger.h>
-#   include		<utilColor.h>
+#   include		<geoRectangle.h>
+
+struct RGB8Color;
 
 /************************************************************************/
 /*									*/
@@ -65,7 +66,7 @@ extern int svgFinishDocument(	SvgWriter *		sw );
 extern int svgDefineShading(	SvgWriter *		sw,
 				int			pattern,
 				int			shading,
-				const RGB8Color *	rgb8 );
+				const struct RGB8Color *	rgb8 );
 
 extern void svgWriteRectangleAttributes(
 				SvgWriter *			sw,

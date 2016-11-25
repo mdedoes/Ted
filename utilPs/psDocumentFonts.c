@@ -13,14 +13,16 @@
 #   include	"psPrint.h"
 #   include	"psGlyphs.h"
 #   include	<utilTree.h>
-#   include	<geo2DInteger.h>
+#   include	<geoRectangle.h>
 #   include	<utilFontmap.h>
 #   include	<appSystem.h>
 #   include	"psFace.h"
 #   include	<sioFileio.h>
 #   include	<sioPfb.h>
 #   include	"psTtf.h"
+#   include	"psFontInfo.h"
 #   include	<ucdGeneralCategory.h>
+#   include	<sioGeneral.h>
 
 #   include	<appDebugon.h>
 
@@ -38,7 +40,7 @@ static int utilPsGetEmbedFromFilename(	const MemoryBuffer *	fontFile )
 
     utilInitMemoryBuffer( &extension );
 
-    if  ( appFileGetFileExtension( &extension, fontFile ) )
+    if  ( fileGetFileExtension( &extension, fontFile ) )
 	{ LDEB(1); goto ready;	}
     if  ( utilMemoryBufferIsEmpty( &extension ) )
 	{ goto ready;	}
@@ -79,7 +81,7 @@ static int utilPsGetEmbed(		PostScriptFace *	psf,
 
     if  ( ! utilMemoryBufferIsEmpty( &(psf->psfAfi->afiFontFileName) ) )
 	{
-	if  ( appTestFileExists( &(psf->psfAfi->afiFontFileName) ) )
+	if  ( fileTestFileExists( &(psf->psfAfi->afiFontFileName) ) )
 	    { res= PSembedNO; goto ready;	}
 
 	res= utilPsGetEmbedFromFilename( &(psf->psfAfi->afiFontFileName) );
@@ -105,11 +107,11 @@ static int utilPsGetEmbed(		PostScriptFace *	psf,
 	if  ( utilMemoryBufferSetString( &relative, fontFile ) )
 	    { LDEB(1); res= PSembedNO; goto ready;	}
 
-	l= appAbsoluteName( &absolute, &relative,
+	l= fileAbsoluteName( &absolute, &relative,
 					    relativeIsFile, fontDirectory );
 	if  ( l <= 0 )
 	    { res= PSembedNO; goto ready;	}
-	if  ( appTestFileExists( &absolute ) )
+	if  ( fileTestFileExists( &absolute ) )
 	    { res= PSembedNO; goto ready;	}
 
 	res= utilPsGetEmbedFromFilename( &absolute );
@@ -141,7 +143,7 @@ static int utilPsGetEmbed(		PostScriptFace *	psf,
 /*									*/
 /************************************************************************/
 
-void psDscListFontNames(	SimpleOutputStream *		sos,
+void psDscListFontNames(	struct SimpleOutputStream *	sos,
 				int				embedFonts,
 				const PostScriptTypeList *	pstl )
     {
@@ -235,39 +237,26 @@ void psDscListFontNames(	SimpleOutputStream *		sos,
 /************************************************************************/
 
 static void psDefineEncodedFont(
-				SimpleOutputStream *	sos,
+				struct SimpleOutputStream *	sos,
 				const AfmFontInfo *	afi,
 				const char *		encodedFontName,
 				const char *		encodingArrayName )
     {
-#   if 0
-    sioOutPrintf( sos, "/%s findfont dup length dict begin\n",
-							afi->afiFontName );
-    sioOutPrintf( sos, "  {\n" );
-    sioOutPrintf( sos, "    1 index /FID ne\n" );
-    sioOutPrintf( sos, "      { def } { pop pop } ifelse\n" );
-    sioOutPrintf( sos, "  } forall\n");
-    sioOutPrintf( sos, "  /Encoding %s def currentdict\n", encodingArrayName );
-    sioOutPrintf( sos, "end " );
-
-    sioOutPrintf( sos, "/%s exch definefont pop\n\n", encodedFontName );
-#   else
     sioOutPrintf( sos, "/%s %s /%s dcpf\n",
 		    encodedFontName, encodingArrayName, afi->afiFontName );
-#   endif
     return;
     }
 
-int psIncludeFonts(	SimpleOutputStream *		sos,
+int psIncludeFonts(	struct SimpleOutputStream *		sos,
 			const PostScriptTypeList *	pstl )
     {
     int				rval= 0;
     const char *		fontName;
     PostScriptFace *		psf;
 
-    SimpleInputStream *	sisFile= (SimpleInputStream *)0;
-    SimpleInputStream *	sisPfb= (SimpleInputStream *)0;
-    SimpleInputStream *	sis= (SimpleInputStream *)0;
+    struct SimpleInputStream *	sisFile= (struct SimpleInputStream *)0;
+    struct SimpleInputStream *	sisPfb= (struct SimpleInputStream *)0;
+    struct SimpleInputStream *	sis= (struct SimpleInputStream *)0;
 
     psf= (PostScriptFace *)utilTreeGetFirst( pstl->pstlFaceTree, &fontName );
     while( psf )
@@ -291,8 +280,7 @@ int psIncludeFonts(	SimpleOutputStream *		sos,
 			utilMemoryBufferGetString( &(psf->psfFontFileName) ) );
 	    sioOutPrintf( sos, "%%###\n" );
 
-	    sioOutPrintf( sos, "%%%%BeginFont: %s\n",
-					    afi->afiFontName );
+	    sioOutPrintf( sos, "%%%%BeginFont: %s\n", afi->afiFontName );
 
 	    switch( psf->psfEmbed )
 		{
@@ -325,15 +313,12 @@ int psIncludeFonts(	SimpleOutputStream *		sos,
 		    break;
 
 		case PSembedTTFTO42:
-		    if  ( psTtfToPt42( sos, &(psf->psfFontFileName), sisFile ) )
+		    if  ( psTtfToPt42( sos, sisFile ) )
 			{ LDEB(1); rval= -1; goto ready; }
 		    break;
 
 		case PSembedTTCTO42:
-		    if  ( psTtcToPt42( sos,
-				    &(psf->psfFontFileName),
-				    psf->psfFontFileIndex,
-				    sisFile ) )
+		    if  ( psTtcToPt42( sos, psf->psfFontFileIndex, sisFile ) )
 			{ LDEB(1); rval= -1; goto ready; }
 		    break;
 
@@ -346,9 +331,9 @@ int psIncludeFonts(	SimpleOutputStream *		sos,
 	    sioOutPrintf( sos, "%%###}   F_%d:\n", afi->afiFaceNumber );
 
 	    if  ( sisPfb )
-		{ sioInClose( sisPfb ); sisPfb= (SimpleInputStream *)0;	}
+		{ sioInClose( sisPfb ); sisPfb= (struct SimpleInputStream *)0;	}
 	    if  ( sisFile )
-		{ sioInClose( sisFile ); sisFile= (SimpleInputStream *)0; }
+		{ sioInClose( sisFile ); sisFile= (struct SimpleInputStream *)0; }
 	    }
 
 	psf= (PostScriptFace *)utilTreeGetNext( pstl->pstlFaceTree, &fontName );
@@ -362,6 +347,27 @@ int psIncludeFonts(	SimpleOutputStream *		sos,
 	{ sioInClose( sisFile );	}
 
     return rval;
+    }
+
+/************************************************************************/
+/*									*/
+/*  Emit a select font procedure.					*/
+/*									*/
+/*  NOTE that we draw upside down.					*/
+/*									*/
+/************************************************************************/
+
+static void psSelectFontProcedure(
+				struct SimpleOutputStream *	sos,
+				int				faceNumber,
+				const char *			fontName )
+    {
+    sioOutPrintf( sos, "/F_%d\t{\n", faceNumber );
+    sioOutPrintf( sos, "  6 array identmatrix\n" );
+    sioOutPrintf( sos, "  dup 0 3 index put\n" );
+    sioOutPrintf( sos, "  dup 3 3 index neg put\n" );
+    sioOutPrintf( sos, "  /%s exch selectfont\n", fontName );
+    sioOutPrintf( sos, "  } bind def\n" );
     }
 
 /************************************************************************/
@@ -392,8 +398,9 @@ static void psSetFaceEncodingArrayName(	char *	encodingArrayName,
 /*									*/
 /************************************************************************/
 
-static void psEmitStandardFontEncodingPage(	SimpleOutputStream *	sos,
-						int			page )
+static void psEmitStandardFontEncodingPage(
+				struct SimpleOutputStream *	sos,
+				int				page )
     {
     int			i;
     char		name[20];
@@ -423,7 +430,7 @@ static void psEmitStandardFontEncodingPage(	SimpleOutputStream *	sos,
 /*									*/
 /************************************************************************/
 
-static void psListNonStdPage(	SimpleOutputStream *		sos,
+static void psListNonStdPage(	struct SimpleOutputStream *	sos,
 				const AfmFontInfo *		afi,
 				int				page )
     {
@@ -437,7 +444,7 @@ static void psListNonStdPage(	SimpleOutputStream *		sos,
 	    {
 	    int				glyph;
 
-	    glyph= utilIndexMappingGet( &(afi->afiUnicodeToGlyphMapping), code );
+	    glyph= utilIndexMappingGet( &(afi->afiCodeToGlyphMapping), code );
 	    if  ( glyph < 0 )
 		{ /*LDEB(glyph);*/	}
 	    else{
@@ -468,7 +475,7 @@ void psSetFontName(		char *			fontName,
     { sprintf( fontName, "F_%d", afi->afiFaceNumber ); }
 
 static void psListFontEncodingPages(
-				SimpleOutputStream *		sos,
+				struct SimpleOutputStream *		sos,
 				const PostScriptFace *		psf )
     {
     const AfmFontInfo *		afi= psf->psfAfi;
@@ -512,12 +519,83 @@ static void psListFontEncodingPages(
     sioOutPrintf( sos, "\n" );
     }
 
-void psSelectFontProcedures(	SimpleOutputStream *		sos,
+static void psCompositeFontProcedure(	struct SimpleOutputStream *	sos,
+					const PostScriptFace *		psf )
+    {
+    char		compositeName[20];
+    const AfmFontInfo *	afi= psf->psfAfi;
+    int			childCount;
+    int			page;
+
+    int			encoding[UNPAGE];
+
+    for ( page= 0; page < UNPAGE; page++ )
+	{ encoding[page]= 0;	}
+
+    sprintf( compositeName, "CF_%d", afi->afiFaceNumber );
+
+    sioOutPrintf( sos, "\n" );
+    sioOutPrintf( sos, "%%###    %s:\n", compositeName );
+    sioOutPrintf( sos, "%%###    %s\n", afi->afiFullName );
+    sioOutPrintf( sos, "%%### -> %s\n", afi->afiFontName );
+    sioOutPrintf( sos, "%%###\n\n" );
+
+    psListFontEncodingPages( sos, psf );
+
+    sioOutPrintf( sos, "/%s dup <<\n", compositeName );
+    sioOutPrintf( sos, "  /FontType 0\n" );
+    sioOutPrintf( sos, "  /FMapType 2\n" ); /* 8/8 */
+    sioOutPrintf( sos, "  /FontMatrix [ 1 0 0 1 0 0 ]\n" );
+    sioOutPrintf( sos, "  /FDepVector [\n" );
+
+    childCount= 0;
+    for ( page= 0; page < UNPAGE; page++ )
+	{
+	if  ( psf->psfPageUsed[page] )
+	    {
+	    char	encodedFontName[20];
+
+	    psSetEncodedFontName( encodedFontName, psf, page );
+	    sioOutPrintf( sos, "    /%s findfont %% %d\n",
+				    encodedFontName, childCount );
+	    encoding[page]= childCount++;
+	    }
+	}
+
+    sioOutPrintf( sos, "  ]\n" );
+    sioOutPrintf( sos, "  /Encoding [" );
+
+    sioOutPrintf( sos, "\n%%  " );
+    for ( page= 0; page < 16; page++ )
+	{ sioOutPrintf( sos, "  +%X", page );	}
+
+    for ( page= 0; page < UNPAGE; page++ )
+	{
+	if  ( page % 16 == 0 )
+	    {
+	    if  ( page > 0 )
+		{ sioOutPrintf( sos, "   %% %X+..", (page- 1)/16 ); }
+
+	    sioOutPrintf( sos, "\n   " );
+	    }
+
+	sioOutPrintf( sos, "%4d", encoding[page] );
+	}
+
+    sioOutPrintf( sos, " ] %% %X+..\n", (page- 1)/16  );
+    sioOutPrintf( sos, ">> definefont\n" );
+
+    psSelectFontProcedure( sos, afi->afiFaceNumber, compositeName );
+
+    return;
+    }
+
+void psSelectFontProcedures(	struct SimpleOutputStream *	sos,
 				const PostScriptTypeList *	pstl,
 				int				allFonts )
     {
     const char *		fontName;
-    PostScriptFace *		psf;
+    const PostScriptFace *	psf;
     int				page;
 
     int				faceNumber= 1;
@@ -529,82 +607,23 @@ void psSelectFontProcedures(	SimpleOutputStream *		sos,
 	}
 
     /*  2  */
-    psf= (PostScriptFace *)utilTreeGetFirst( pstl->pstlFaceTree, &fontName );
+    psf= (const PostScriptFace *)utilTreeGetFirst( pstl->pstlFaceTree, &fontName );
     while( psf )
 	{
 	if  ( psf->psfAppearsInText || allFonts )
 	    {
-	    char		compositeName[20];
 	    const AfmFontInfo *	afi= psf->psfAfi;
-	    int			childCount;
 
-	    int			encoding[UNPAGE];
-
-	    for ( page= 0; page < UNPAGE; page++ )
-		{ encoding[page]= 0;	}
-
-	    sprintf( compositeName, "CF_%d", afi->afiFaceNumber );
-
-	    sioOutPrintf( sos, "\n" );
-	    sioOutPrintf( sos, "%%###    %s:\n", compositeName );
-	    sioOutPrintf( sos, "%%###    %s\n", afi->afiFullName );
-	    sioOutPrintf( sos, "%%### -> %s\n", afi->afiFontName );
-	    sioOutPrintf( sos, "%%###\n\n" );
-
-	    psListFontEncodingPages( sos, psf );
-
-	    sioOutPrintf( sos, "/%s dup <<\n", compositeName );
-	    sioOutPrintf( sos, "  /FontType 0\n" );
-	    sioOutPrintf( sos, "  /FMapType 2\n" ); /* 8/8 */
-	    sioOutPrintf( sos, "  /FontMatrix [ 1 0 0 1 0 0 ]\n" );
-	    sioOutPrintf( sos, "  /FDepVector [\n" );
-
-	    childCount= 0;
-	    for ( page= 0; page < UNPAGE; page++ )
+	    if  ( afi->afiFontSpecificEncoding )
 		{
-		if  ( psf->psfPageUsed[page] )
-		    {
-		    char	encodedFontName[20];
-
-		    psSetEncodedFontName( encodedFontName, psf, page );
-		    sioOutPrintf( sos, "    /%s findfont %% %d\n",
-					    encodedFontName, childCount );
-		    encoding[page]= childCount++;
-		    }
+		psSelectFontProcedure( sos,
+					afi->afiFaceNumber, afi->afiFontName );
 		}
-
-	    sioOutPrintf( sos, "  ]\n" );
-	    sioOutPrintf( sos, "  /Encoding [" );
-
-	    sioOutPrintf( sos, "\n%%  " );
-	    for ( page= 0; page < 16; page++ )
-		{ sioOutPrintf( sos, "  +%X", page );	}
-
-	    for ( page= 0; page < UNPAGE; page++ )
-		{
-		if  ( page % 16 == 0 )
-		    {
-		    if  ( page > 0 )
-			{ sioOutPrintf( sos, "   %% %X+..", (page- 1)/16 ); }
-
-		    sioOutPrintf( sos, "\n   " );
-		    }
-
-		sioOutPrintf( sos, "%4d", encoding[page] );
-		}
-
-	    sioOutPrintf( sos, " ] %% %X+..\n", (page- 1)/16  );
-	    sioOutPrintf( sos, ">> definefont\n" );
-
-	    sioOutPrintf( sos, "/F_%d\t{\n", afi->afiFaceNumber );
-	    sioOutPrintf( sos, "  6 array identmatrix\n" );
-	    sioOutPrintf( sos, "  dup 0 3 index put\n" );
-	    sioOutPrintf( sos, "  dup 3 3 index neg put\n" );
-	    sioOutPrintf( sos, "  /%s exch selectfont\n", compositeName );
-	    sioOutPrintf( sos, "  } bind def\n" );
+	    else{ psCompositeFontProcedure( sos, psf );	}
 	    }
 
-	psf= (PostScriptFace *)utilTreeGetNext( pstl->pstlFaceTree, &fontName );
+	psf= (const PostScriptFace *)utilTreeGetNext(
+					    pstl->pstlFaceTree, &fontName );
 	faceNumber++;
 	}
 

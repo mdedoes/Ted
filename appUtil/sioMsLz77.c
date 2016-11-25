@@ -23,6 +23,7 @@
 
 #   include	"sioMsLz77.h"
 #   include	"sioEndian.h"
+#   include	"sioGeneral.h"
 
 #   include	<appDebugon.h>
 

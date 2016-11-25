@@ -9,13 +9,15 @@
 #   include	<stdlib.h>
 #   include	<string.h>
 
-#   include	<appDebugon.h>
-
 #   include	<utilPropMask.h>
 #   include	<textAttribute.h>
 #   include	<utilPalette.h>
 
 #   include	"docExpandedTextAttribute.h"
+#   include	"fontDocFont.h"
+#   include	"fontDocFontList.h"
+
+#   include	<appDebugon.h>
 
 /************************************************************************/
 /*									*/
@@ -25,7 +27,7 @@
 
 void docInitExpandedTextAttribute(	ExpandedTextAttribute *	eta )
     {
-    utilInitTextAttribute( &(eta->etaTextAttribute) );
+    textInitTextAttribute( &(eta->etaTextAttribute) );
 
     utilInitRGB8Color( &(eta->etaTextColor) );
     eta->etaTextColorExplicit= 0;
@@ -158,12 +160,12 @@ static void utilUpdateTextAttributeX(	PropertyMask *		pDoneMask,
 
 	if  ( ! setMask || PROPmaskISSET( setMask, prop ) )
 	    {
-	    int	to= utilGetTextProperty( taTo, prop );
-	    int	from= utilGetTextProperty( taFrom, prop );
+	    int	to= textGetTextProperty( taTo, prop );
+	    int	from= textGetTextProperty( taFrom, prop );
 
 	    if  ( to != from )
 		{
-		utilSetTextProperty( taTo, prop, from );
+		textSetTextProperty( taTo, prop, from );
 		PROPmaskADD( &doneMask, prop );
 		}
 	    }
@@ -250,7 +252,7 @@ int docExpandTextAttribute(	PropertyMask *			pDoneMask,
 				ExpandedTextAttribute *		etaTo,
 				const TextAttribute *		taFrom,
 				const PropertyMask *		setMask,
-				const DocumentFontList *	dfl,
+				const struct DocumentFontList *	dfl,
 				const ColorPalette *		cp )
     {
     PropertyMask		doneMask= *pDoneMask;
@@ -294,15 +296,15 @@ int docExpandTextAttribute(	PropertyMask *			pDoneMask,
 	{
 	const DocumentFont *	df;
 
-	df= docFontListGetFontByNumber( dfl, taFrom->taFontNumber );
+	df= fontFontListGetFontByNumber( dfl, taFrom->taFontNumber );
 	if  ( ! df )
 	    { LXDEB(taFrom->taFontNumber,df);	}
 	else{
 	    int		changed= 0;
 
 	    if  ( docExpandedTextAttributeSetFontName( etaTo, &changed,
-						    df->dfName ) )
-		{ SDEB(df->dfName); return -1;	}
+				utilMemoryBufferGetString(&(df->dfName)) ) )
+		{ SDEB(utilMemoryBufferGetString(&(df->dfName))); return -1;	}
 
 	    if  ( changed )
 		{ PROPmaskADD( &doneMask, TApropFONT_NUMBER );	}
@@ -322,7 +324,7 @@ void docIndirectTextAttribute(	PropertyMask *			pDoneMask,
 				TextAttribute *			taTo,
 				const ExpandedTextAttribute *	etaFrom,
 				const PropertyMask *		setMask,
-				DocumentFontList *		dfl,
+				struct DocumentFontList *	dfl,
 				ColorPalette *			cp )
     {
     PropertyMask		doneMask;
@@ -332,12 +334,13 @@ void docIndirectTextAttribute(	PropertyMask *			pDoneMask,
 
     if  ( PROPmaskISSET( setMask, TApropTEXT_COLOR ) )
 	{
-	const int		avoidZero= 1;
-	const int		maxColors= 256;
 	int			color;
 
 	if  ( etaFrom->etaTextColorExplicit )
 	    {
+	    const int	avoidZero= 1;
+	    const int	maxColors= 256;
+
 	    color= utilPaletteInsertColor( cp,
 			    avoidZero, maxColors, &(etaFrom->etaTextColor) );
 	    if  ( color < 0 )
@@ -361,7 +364,7 @@ void docIndirectTextAttribute(	PropertyMask *			pDoneMask,
 	    taTo->taFontNumber= etaFrom->etaTextAttribute.taFontNumber;
 	    }
 	else{
-	    int	fontNumber= docGetFontByName( dfl, etaFrom->etaFontName );
+	    int	fontNumber= fontListGetFontByName( dfl, etaFrom->etaFontName );
 
 	    if  ( fontNumber < 0 )
 		{

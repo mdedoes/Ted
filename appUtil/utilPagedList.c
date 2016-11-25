@@ -44,6 +44,8 @@ void utilStartPagedList(		PagedList *		pl,
     {
     if  ( pl->plItemPageCount > 0 )
 	{ LDEB(pl->plItemPageCount);	}
+    if  ( sizeofItem < 1 )
+	{ LDEB(sizeofItem);	}
 
     pl->plSizeofItem= sizeofItem;
     pl->plInitItem= initItem;
@@ -62,7 +64,7 @@ static int utilPagedListCleanItem(	int		n,
     return 0;
     }
 
-void utilCleanPagedList(	PagedList *	pl )
+void utilEmptyPagedList(	PagedList *	pl )
     {
     int		page;
 
@@ -71,16 +73,27 @@ void utilCleanPagedList(	PagedList *	pl )
 	utilIndexSetForAll( &(pl->plItemUsed),
 					utilPagedListCleanItem, (void *)pl );
 	}
+    pl->plItemCount= 0;
 
     for ( page = 0; page < pl->plItemPageCount; page++ )
 	{
 	if  ( pl->plItemPages[page] )
 	    { free( pl->plItemPages[page] );	}
 	}
+    pl->plItemPageCount= 0;
 
     if  ( pl->plItemPages )
-	{ free( pl->plItemPages );	}
+	{
+	free( pl->plItemPages );
+	pl->plItemPages= (void **)0;
+	}
 
+    utilEmptyIndexSet( &(pl->plItemUsed) );
+    }
+
+void utilCleanPagedList(	PagedList *	pl )
+    {
+    utilEmptyPagedList( pl );
     utilCleanIndexSet( &(pl->plItemUsed) );
 
     return;
@@ -109,6 +122,9 @@ int utilPagedListForAll(	const PagedList *	pl,
     {
     ForAllThrough	fat;
 
+    if  ( pl->plSizeofItem < 1 )
+	{ LDEB(pl->plSizeofItem); return -1;	}
+
     fat.fatPagedList= pl;
     fat.fatForAllFun= fun;
     fat.fatThrough= through;
@@ -117,11 +133,31 @@ int utilPagedListForAll(	const PagedList *	pl,
 					utilPagedListForOne, (void *)&fat );
     }
 
+int utilPagedListForAllBwd(	const PagedList *	pl,
+				PagedListForAllFun	fun,
+				void *			through )
+    {
+    ForAllThrough	fat;
+
+    if  ( pl->plSizeofItem < 1 )
+	{ LDEB(pl->plSizeofItem); return -1;	}
+
+    fat.fatPagedList= pl;
+    fat.fatForAllFun= fun;
+    fat.fatThrough= through;
+
+    return utilIndexSetForAllBwd( &(pl->plItemUsed),
+					utilPagedListForOne, (void *)&fat );
+    }
+
 void * utilPagedListGetItemByNumber(	const PagedList *	pl,
 					int			n )
     {
     int			page= n/ PL_PGSZ;
     unsigned char *	itemPage;
+
+    if  ( pl->plSizeofItem < 1 )
+	{ LDEB(pl->plSizeofItem); return (void *)0;	}
 
     if  ( n < 0 )
 	{ LDEB(n); return (void *)0;	}
@@ -139,13 +175,13 @@ void * utilPagedListGetItemByNumber(	const PagedList *	pl,
     return (void *)(itemPage+ (n % PL_PGSZ)*pl->plSizeofItem);
     }
 
-void utilPagedListDeleteItemByNumber(	PagedList *		pl,
+int utilPagedListDeleteItemByNumber(	PagedList *		pl,
 					int			n )
     {
     void *		vit= utilPagedListGetItemByNumber( pl, n );
 
     if  ( ! vit )
-	{ LXDEB(n,vit);	}
+	{ LXDEB(n,vit); return -1;	}
 
     if  ( vit && pl->plCleanItem )
 	{ (*pl->plCleanItem)( vit );	}
@@ -160,7 +196,7 @@ void utilPagedListDeleteItemByNumber(	PagedList *		pl,
 	pl->plItemCount--; n--;
 	}
 
-    return;
+    return 0;
     }
 
 void * utilPagedListClaimItem(	PagedList *		pl,
@@ -172,6 +208,8 @@ void * utilPagedListClaimItem(	PagedList *		pl,
 
     if  ( n < 0 )
 	{ LDEB(n); return (void *)0;	}
+    if  ( pl->plSizeofItem < 1 )
+	{ LDEB(pl->plSizeofItem); return (void *)0;	}
 
     if  ( page >= pl->plItemPageCount )
 	{

@@ -20,6 +20,12 @@
 #   include	<docTextParticule.h>
 #   include	<docNotes.h>
 #   include	<docDocumentNote.h>
+#   include	<docDocumentField.h>
+#   include	<docFieldKind.h>
+#   include	<docSelect.h>
+#   include	<docDocumentProperties.h>
+#   include	<docBuf.h>
+#   include	<docBlockFrame.h>
 
 #   include	<appDebugon.h>
 
@@ -41,7 +47,7 @@ static void docLayoutCommitNotesReservation(
 	  nr->nrDfFirstFootnote			)
 	{
 	nrTotal->nrDfFirstFootnote= nr->nrDfFirstFootnote;
-	nrTotal->nrFootnoteSectBi= nr->nrFootnoteSectBi;
+	nrTotal->nrFootnoteSectNode= nr->nrFootnoteSectNode;
 	}
 
     if  ( nrTotal->nrFtnsepHeight == 0		&&
@@ -65,18 +71,18 @@ static void docLayoutCommitNotesReservation(
 
 static int docLayoutCollectOneFootnote( NotesReservation *	nr,
 					int *			pHigh,
-					BufferDocument *	bd,
-					const BufferItem *	bodySectNode,
+					struct BufferDocument *	bd,
+					const struct BufferItem *	bodySectNode,
 					const DocumentNote *	dn,
 					DocumentField *		dfNote )
     {
-    const DocumentTree *	tree;
+    const struct DocumentTree *	tree;
     int				high;
 
     if  ( nr->nrFootnoteCount == 0 )
 	{
 	nr->nrDfFirstFootnote= dfNote;
-	nr->nrFootnoteSectBi= bodySectNode;
+	nr->nrFootnoteSectNode= bodySectNode;
 
 	tree= docDocumentNoteSeparator( bd, DOCinFTNSEP );
 	if  ( ! tree )
@@ -110,9 +116,9 @@ static int docLayoutCollectOneFootnote( NotesReservation *	nr,
 int docLayoutCollectParaFootnoteHeight(	NotesReservation *	nrTotal,
 					int			referringPage,
 					int			referringColumn,
-					BufferDocument *	bd,
-					const BufferItem *	bodySectNode,
-					const BufferItem *	paraBi,
+					struct BufferDocument *	bd,
+					const struct BufferItem *	bodySectNode,
+					const struct BufferItem *	paraNode,
 					int			partFrom,
 					int			partUpto )
     {
@@ -121,22 +127,22 @@ int docLayoutCollectParaFootnoteHeight(	NotesReservation *	nrTotal,
     
     NotesReservation	nrLocal;
 
-    if  ( paraBi->biTreeType != DOCinBODY )
+    if  ( paraNode->biTreeType != DOCinBODY )
 	{ return 0;	}
 
     docInitNotesReservation( &nrLocal );
 
-    if  ( partUpto > paraBi->biParaParticuleCount )
-	{ LLDEB(partUpto,paraBi->biParaParticuleCount); return -1;	}
+    if  ( partUpto > paraNode->biParaParticuleCount )
+	{ LLDEB(partUpto,paraNode->biParaParticuleCount); return -1;	}
 
-    tp= paraBi->biParaParticules+ partFrom;
+    tp= paraNode->biParaParticules+ partFrom;
     for ( part= partFrom; part < partUpto; tp++, part++ )
 	{
 	DocumentField *	df;
 	DocumentNote *	dn;
 	int		high;
 
-	if  ( tp->tpKind != DOCkindFIELDHEAD )
+	if  ( tp->tpKind != TPkindFIELDHEAD )
 	    { continue;	}
 	df= docGetFieldByNumber( &(bd->bdFieldList), tp->tpObjectNumber );
 	if  ( ! df || df->dfKind != DOCfkCHFTN )
@@ -193,9 +199,9 @@ int docLayoutCollectParaFootnoteHeight(	NotesReservation *	nrTotal,
 static int docCollectFootnotesForNode(
 			    int *			pReady,
 			    NotesReservation *		nr,
-			    BufferDocument *		bd,
-			    const BufferItem *		bodySectNode,
-			    const BufferItem *		node,
+			    struct BufferDocument *	bd,
+			    const struct BufferItem *	bodySectNode,
+			    const struct BufferItem *	node,
 			    const DocumentPosition *	dpUpto,
 			    int				partUpto,
 			    int				referringPage,
@@ -210,17 +216,13 @@ static int docCollectFootnotesForNode(
         incomplete.
 	Filter on the page of the lines inside the paragraphs instead.
 
-    if  ( node->biBelowPosition.lpPage < referringPage 		)
-	{ goto ready;		}
-    if  ( node->biBelowPosition.lpPage == referringPage 		&&
-	  node->biBelowPosition.lpColumn < referringColumn	)
+    if  ( docCompareLayoutPositionToFrame( &(node->biBelowPosition),
+				    referringPage, referringColumn ) < 0 )
 	{ goto ready;		}
     */
 
-    if  ( node->biTopPosition.lpPage > referringPage 		)
-	{ goto ready;		}
-    if  ( node->biTopPosition.lpPage == referringPage 		&&
-	  node->biTopPosition.lpColumn > referringColumn 	)
+    if  ( docCompareLayoutPositionToFrame( &(node->biTopPosition),
+				    referringPage, referringColumn ) > 0 )
 	{ goto ready;		}
 
     for ( i= 0; i < node->biChildCount; i++ )
@@ -248,10 +250,8 @@ static int docCollectFootnotesForNode(
 	    int		from;
 	    int		upto;
 
-	    if  ( tl->tlTopPosition.lpPage < referringPage 	)
-		{ continue;		}
-	    if  ( tl->tlTopPosition.lpPage == referringPage 	&&
-		  tl->tlTopPosition.lpColumn < referringColumn	)
+	    if  ( docCompareLayoutPositionToFrame( &(tl->tlTopPosition),
+				    referringPage, referringColumn ) < 0 )
 		{ continue;		}
 
 	    from= tl->tlFirstParticule;
@@ -263,13 +263,11 @@ static int docCollectFootnotesForNode(
 	    if  ( upto > from )
 		{
 		/* Filtering should have been done by the caller */
-		if  ( tl->tlTopPosition.lpPage > referringPage )
-		    { LLDEB(tl->tlTopPosition.lpPage,referringPage); break; }
-		if  ( tl->tlTopPosition.lpPage == referringPage &&
-		      tl->tlTopPosition.lpColumn > referringColumn )
+		if  ( docCompareLayoutPositionToFrame( &(tl->tlTopPosition),
+				    referringPage, referringColumn ) > 0 )
 		    {
-		    LLLDEB(referringPage,
-			    tl->tlTopPosition.lpColumn,referringColumn);
+		    LLDEB(tl->tlTopPosition.lpPage,referringPage);
+		    LLDEB(tl->tlTopPosition.lpColumn,referringColumn);
 		    break;
 		    }
 
@@ -300,7 +298,7 @@ int docCollectFootnotesFromColumn(
 			BlockFrame *			bf,
 			const DocumentPosition *	dpHere,
 			int				partHere,
-			BufferDocument *		bd,
+			struct BufferDocument *		bd,
 			int				referringPage,
 			int				referringColumn )
     {
@@ -351,16 +349,16 @@ int docLayoutFootnotesForColumn(	LayoutPosition *	lpBelowNotes,
 					const LayoutJob *	refLj )
     {
     const LayoutContext *	lc= &(refLj->ljContext);
-    BufferDocument *		bd= lc->lcDocument;
+    struct BufferDocument *		bd= lc->lcDocument;
     const NotesReservation *	refNr= &(refBf->bfNotesReservation);
-    const DocumentProperties *	dp= &(bd->bdProperties);
+    const DocumentProperties *	dp= bd->bdProperties;
     const NotesProperties *	npFootnotes= &(dp->dpNotesProps.fepFootnotesProps);
 
     LayoutJob			notesLj;
     LayoutPosition		lpHere;
 
-    DocumentTree *		tree;
-    DocumentTree *		eiNoteSep;
+    struct DocumentTree *		tree;
+    struct DocumentTree *		eiNoteSep;
     int				notesDone;
 
     int				sepHigh= 0;
@@ -440,9 +438,9 @@ int docLayoutFootnotesForColumn(	LayoutPosition *	lpBelowNotes,
 	      tree->dtColumnFormattedFor != lpBelowText->lpColumn	||
 	      tree->dtY0UsedTwips != y0Twips			)
 	    {
-	    DocumentTree *	eiBody;
+	    struct DocumentTree *	eiBody;
 	    BlockFrame		bfNote;
-	    BufferItem *	bodySectNode;
+	    struct BufferItem *	bodySectNode;
 
 	    if  ( docGetRootOfSelectionScope( &eiBody, &bodySectNode,
 					    bd, &(dfNote->dfSelectionScope) ) )
@@ -521,15 +519,15 @@ int docLayoutEndnotesForSection(	LayoutPosition *	lpBelow,
 					LayoutJob *		lj )
     {
     const LayoutContext *	lc= &(lj->ljContext);
-    BufferDocument *		bd= lc->lcDocument;
-    const DocumentProperties *	dp= &(bd->bdProperties);
+    struct BufferDocument *		bd= lc->lcDocument;
+    const DocumentProperties *	dp= bd->bdProperties;
     const NotesProperties *	npFootnotes= &(dp->dpNotesProps.fepFootnotesProps);
 
     DocumentNote *		dn;
     DocumentField *		dfFirstNote;
 
-    DocumentTree *		tree;
-    DocumentTree *		eiNoteSep;
+    struct DocumentTree *		tree;
+    struct DocumentTree *		eiNoteSep;
 
     int				attempt;
 
@@ -648,15 +646,16 @@ int docLayoutEndnotesForDocument(	LayoutPosition *	lpBelow,
 /*									*/
 /************************************************************************/
 
-int docNoteSeparatorRectangle(	DocumentRectangle *	drExtern,
-				DocumentTree **		pEiNoteSep,
-				int *			pY0Twips,
-				const DocumentNote *	dnFirstNote,
-				int			treeType,
-				const LayoutContext *	lc )
+int docNoteSeparatorRectangle(	DocumentRectangle *		drExtern,
+				struct DocumentTree **		pEiNoteSep,
+				int *				pY0Twips,
+				const DocumentNote *		dnFirstNote,
+				int				treeType,
+				const struct BufferItem *	bodySectNode,
+				const LayoutContext *		lc )
     {
-    const DocumentTree *	eiFirstNote= &(dnFirstNote->dnDocumentTree);
-    DocumentTree *		eiNoteSep;
+    const struct DocumentTree *	eiFirstNote= &(dnFirstNote->dnDocumentTree);
+    struct DocumentTree *	eiNoteSep;
 
     int				page;
     int				column;
@@ -682,8 +681,8 @@ int docNoteSeparatorRectangle(	DocumentRectangle *	drExtern,
     y0Twips= y1Twips- high;
 
     docLayoutInitBlockFrame( &bfNoteSep );
-    docBlockFrameTwips( &bfNoteSep, eiFirstNote->dtRoot,
-				lc->lcDocument, page, column );
+    docSectionBlockFrameTwips( &bfNoteSep, eiFirstNote->dtRoot,
+				bodySectNode, lc->lcDocument, page, column );
 
     drTwips.drX0= bfNoteSep.bfContentRect.drX0;
     drTwips.drX1= bfNoteSep.bfContentRect.drX1;
@@ -732,11 +731,11 @@ void docLayoutReserveNoteHeight(	BlockFrame *			bf,
     }
 
 int docSectNotesPrelayout(	int			sect,
-				const BufferItem *	bodySectNode,
+				const struct BufferItem *	bodySectNode,
 				LayoutJob *		lj )
     {
     const LayoutContext *	lc= &(lj->ljContext);
-    BufferDocument *		bd= lc->lcDocument;
+    struct BufferDocument *		bd= lc->lcDocument;
 
     DocumentField *		dfNote;
     DocumentNote *		dn;

@@ -7,6 +7,6 @@
 /*									*/
 /************************************************************************/
 
-#   include	"sioGeneral.h"
+struct SimpleInputStream;
 
-extern SimpleInputStream * sioInStdinOpen( void );
+extern struct SimpleInputStream * sioInStdinOpen( void );

@@ -27,6 +27,12 @@ void utilInitIndexSet(	IndexSet *	is )
     is->isPageCount= 0;
     }
 
+void utilEmptyIndexSet(	IndexSet *	is )
+    {
+    utilCleanIndexSet( is );
+    utilInitIndexSet( is );
+    }
+
 /************************************************************************/
 /*									*/
 /*  Free the memory that is used inside an integer set.			*/
@@ -494,7 +500,7 @@ int utilCopyIndexSet(		IndexSet *		to,
 /*									*/
 /************************************************************************/
 
-int utilIndexSetForAll(	const IndexSet *		is,
+int utilIndexSetForAll(		const IndexSet *	is,
 				IndexSetForOne		forOne,
 				void *			through )
     {
@@ -525,6 +531,46 @@ int utilIndexSetForAll(	const IndexSet *		is,
 		    }
 
 		mask <<= 1; one++;
+		}
+	    }
+	}
+
+    return n;
+    }
+
+int utilIndexSetForAllBwd(	const IndexSet *		is,
+				IndexSetForOne		forOne,
+				void *			through )
+    {
+    int		page;
+    int		n= 0;
+
+    for ( page= is->isPageCount- 1; page >= 0; page-- )
+	{
+	int			pidx;
+	const unsigned char *	pbuf= is->isPages[page];
+	int			one= page* ISET_PSZb+ ISET_PSZb- 1;
+
+	if  ( ! pbuf )
+	    { continue;	}
+
+	pbuf += ISET_PSZB- 1;
+
+	for ( pidx= ISET_PSZB- 1; pidx >= 0; pbuf--, pidx-- )
+	    {
+	    unsigned char	mask= 0x80;
+	    int			b;
+
+	    for ( b= 0; b < 8; b++ )
+		{
+		if  ( (*pbuf) & mask )
+		    {
+		    if  ( (*forOne)( one, through ) )
+			{ LDEB(one); return -1;	}
+		    n++;
+		    }
+
+		mask >>= 1; one--;
 		}
 	    }
 	}
@@ -605,6 +651,9 @@ int utilIndexSetGetPrev(		const IndexSet *	is,
     pidx= ISET_PIDX(n);
     mbit= ISET_MBIT(n);
     mask= ISET_MASK(n);
+
+    if  ( page >= is->isPageCount )
+	{ /*LLLDEB(n,page,is->isPageCount);*/ return -1;	}
 
     while( page >= 0 )
 	{

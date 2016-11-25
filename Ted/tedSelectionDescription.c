@@ -7,18 +7,20 @@
 #   include	"tedConfig.h"
 
 #   include	<stddef.h>
-#   include	<stdio.h>
 #   include	<ctype.h>
 
-#   include	"tedApp.h"
 #   include	"tedRuler.h"
 #   include	"tedLayout.h"
 #   include	"tedSelect.h"
-#   include	"tedAppResources.h"
-#   include	"tedToolFront.h"
+#   include	<tedDocFront.h>
+#   include	<tedToolFront.h>
 #   include	"tedDocument.h"
 #   include	<docParaParticules.h>
 #   include	<docEditCommand.h>
+#   include	<appEditApplication.h>
+#   include	<appEditDocument.h>
+#   include	<docLayout.h>
+#   include	<docBuf.h>
 
 #   include	<appDebugon.h>
 
@@ -40,32 +42,29 @@ int tedHasSelection(	const EditDocument *	ed )
     const TedDocument *		td= (const TedDocument *)ed->edPrivateData;
     const DocumentSelection *	ds= &(td->tdSelection);
 
-    if  ( ds->dsHead.dpNode )
-	{ return 1;	}
-
-    return 0;
+    return docSelectionIsSet( ds );
     }
 
 int tedGetSelection(	DocumentSelection *		ds,
 			SelectionGeometry *		sg,
 			SelectionDescription *		sd,
-			DocumentTree **			pEi,
-			BufferItem **			pBodySectNode,
+			struct DocumentTree **		pTree,
+			struct BufferItem **		pBodySectNode,
 			const EditDocument *		ed )
     {
     const TedDocument *		td= (const TedDocument *)ed->edPrivateData;
-    BufferDocument *		bd= td->tdDocument;
+    struct BufferDocument *	bd= td->tdDocument;
     const DocumentSelection *	dss= &(td->tdSelection);
 
-    BufferItem *		bodySectNode= (BufferItem *)0;
-    DocumentTree *		ei= (DocumentTree *)0;
+    struct BufferItem *		bodySectNode= (struct BufferItem *)0;
+    struct DocumentTree *	tree= (struct DocumentTree *)0;
 
-    if  ( ! dss->dsHead.dpNode )
+    if  ( ! docSelectionIsSet( dss ) )
 	{ return 1;	}
 
-    if  ( pEi || pBodySectNode )
+    if  ( pTree || pBodySectNode )
 	{
-	if  ( docGetTreeOfNode( &ei, &bodySectNode, bd, dss->dsHead.dpNode ) )
+	if  ( docGetTreeOfNode( &tree, &bodySectNode, bd, dss->dsHead.dpNode ) )
 	    { LDEB(1); return -1;	}
 	}
 
@@ -74,8 +73,8 @@ int tedGetSelection(	DocumentSelection *		ds,
     *sd= td->tdSelectionDescription;
     if  ( pBodySectNode )
 	{ *pBodySectNode= bodySectNode;	}
-    if  ( pEi )
-	{ *pEi= ei;	}
+    if  ( pTree )
+	{ *pTree= tree;	}
 
     return 0;
     }
@@ -95,7 +94,7 @@ void tedDelimitCurrentSelection(	EditDocument *		ed )
     SelectionGeometry		sgDoc;
     SelectionDescription	sdDoc;
 
-    BufferItem *		bodySectNode;
+    struct BufferItem *		bodySectNode;
 
     int				lastLine;
 
@@ -105,13 +104,13 @@ void tedDelimitCurrentSelection(	EditDocument *		ed )
     tedSetScreenLayoutContext( &lc, ed );
 
     if  ( tedGetSelection( &dsDoc, &sgDoc, &sdDoc,
-				    (DocumentTree **)0, &bodySectNode, ed ) )
+			    (struct DocumentTree **)0, &bodySectNode, ed ) )
 	{ LDEB(1); return;	}
 
     lastLine= sdDoc.sdIsIBarSelection &&
 	( td->tdSelectionGeometry.sgHead.pgPositionFlags & POSflagLINE_HEAD );
 
-    tedSelectionGeometry( &(td->tdSelectionGeometry), &dsDoc, bodySectNode,
+    docSelectionGeometry( &(td->tdSelectionGeometry), &dsDoc, bodySectNode,
 							    lastLine, &lc );
 
     return;
@@ -144,6 +143,7 @@ static void tedAdaptOptions(	TedDocument *			td,
     guiEnableWidget( td->tdInsPictOption, cmdEnabled[EDITcmdREPLACE] );
     guiEnableWidget( td->tdInsFileOption, cmdEnabled[EDITcmdREPLACE] );
     guiEnableWidget( td->tdInsSymbolOption, cmdEnabled[EDITcmdREPLACE] );
+    guiEnableWidget( td->tdToolsSymbolOption, cmdEnabled[EDITcmdREPLACE] );
 
     guiEnableWidget( td->tdFormatOneParaOption,
 					cmdEnabled[EDITcmdMERGE_PARAS] );
@@ -269,18 +269,17 @@ static void tedAdaptOptions(	TedDocument *			td,
 void tedAdaptToolsToSelection(	EditDocument *		ed )
     {
     EditApplication *		ea= ed->edApplication;
-    TedAppResources *		tar= (TedAppResources *)ea->eaResourceData;
     TedDocument *		td= (TedDocument *)ed->edPrivateData;
 
     DocumentSelection		ds;
     SelectionGeometry		sg;
     SelectionDescription	sd;
-    DocumentTree *		ei;
-    BufferItem *		bodySectNode;
+    struct DocumentTree *	tree;
+    struct BufferItem *		bodySectNode;
 
     unsigned char		cmdEnabled[EDITcmd_COUNT];
 
-    if  ( tedGetSelection( &ds, &sg, &sd, &ei, &bodySectNode, ed ) )
+    if  ( tedGetSelection( &ds, &sg, &sd, &tree, &bodySectNode, ed ) )
 	{ LDEB(1); return;	}
 
     docEnableEditCommands( cmdEnabled, &sd );
@@ -297,11 +296,22 @@ void tedAdaptToolsToSelection(	EditDocument *		ed )
 
     tedAdaptOptions( td, cmdEnabled, &(td->tdSelectionDescription) );
 
-    if  ( tar->tarInspector )
+    if  ( ea->eaInspector )
 	{
 	const int	choosePage= 0;
 
-	tedFormatToolAdaptToSelection( tar->tarInspector, ed, choosePage, ei,
+	tedAppRefreshFormatTool( ea->eaInspector, choosePage,
+					    td->tdDocument, tree,
+					    &(td->tdSelection),
+					    &(td->tdSelectionGeometry),
+					    &(td->tdSelectionDescription),
+					    cmdEnabled );
+	}
+
+    if  ( ed->edInspector )
+	{
+	tedDocRefreshFormatTool( ed, ed->edInspector,
+					    td->tdDocument, tree,
 					    &(td->tdSelection),
 					    &(td->tdSelectionGeometry),
 					    &(td->tdSelectionDescription),
@@ -319,25 +329,38 @@ void tedAdaptFormatToolToDocument(	EditDocument *	ed,
 					int		choosePage )
     {
     EditApplication *		ea= ed->edApplication;
-    TedAppResources *		tar= (TedAppResources *)ea->eaResourceData;
+    TedDocument *		td= (TedDocument *)ed->edPrivateData;
 
-    DocumentTree *		ei;
+    struct DocumentTree *	tree;
     DocumentSelection		ds;
     SelectionGeometry		sg;
     SelectionDescription	sd;
 
     unsigned char		cmdEnabled[EDITcmd_COUNT];
 
-    if  ( ! tar->tarInspector )
+    if  ( ! ea->eaInspector && ! ed->edInspector )
 	{ return;	}
 
-    if  ( tedGetSelection( &ds, &sg, &sd, &ei, (BufferItem **)0, ed ) )
+    if  ( tedGetSelection( &ds, &sg, &sd, &tree, (struct BufferItem **)0, ed ) )
 	{ LDEB(1); return;	}
 
     docEnableEditCommands( cmdEnabled, &sd );
 
-    tedFormatToolAdaptToSelection( tar->tarInspector, ed, choosePage,
-					    ei, &ds, &sg, &sd, cmdEnabled );
+    if  ( ea->eaInspector )
+	{
+	tedAppRefreshFormatTool( ea->eaInspector, choosePage,
+			    td->tdDocument, tree, &ds, &sg, &sd, cmdEnabled );
+	}
+
+    if  ( ed->edInspector )
+	{
+	tedDocRefreshFormatTool( ed, ed->edInspector,
+					    td->tdDocument, tree,
+					    &(td->tdSelection),
+					    &(td->tdSelectionGeometry),
+					    &(td->tdSelectionDescription),
+					    cmdEnabled );
+	}
 
     return;
     }

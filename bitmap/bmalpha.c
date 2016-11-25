@@ -105,6 +105,11 @@ static int bmSetAlphaBytes(	unsigned char *			b1,
     return 0;
     }
 
+# ifdef __GNUC__
+# pragma GCC diagnostic push
+# pragma GCC diagnostic ignored "-Wunused-parameter"
+# endif
+
 int bmWhiteToTransparent(	RasterImage *			riOut,
 				const RasterImage *		riIn,
 				int				ignoredInt )
@@ -262,6 +267,10 @@ int bmWhiteToTransparent(	RasterImage *			riOut,
     return rval;
     }
 
+# ifdef __GNUC__
+# pragma GCC diagnostic pop
+# endif
+
 static int bmGetRowAlpha(	unsigned char *		to,
 				const unsigned char *	from,
 				int			pixelsWide,
@@ -314,6 +323,11 @@ static int bmGetRowAlpha(	unsigned char *		to,
     return 0;
     }
 
+# ifdef __GNUC__
+# pragma GCC diagnostic push
+# pragma GCC diagnostic ignored "-Wunused-parameter"
+# endif
+
 int bmGetAlphaMask(	RasterImage *			riOut,
 			const RasterImage *		riIn,
 			int				ignoredInt )
@@ -323,6 +337,8 @@ int bmGetAlphaMask(	RasterImage *			riOut,
     int				row;
 
     RasterImage			ri;
+
+    const int			unit= 1;
 
     bmInitRasterImage( &ri );
 
@@ -342,8 +358,21 @@ int bmGetAlphaMask(	RasterImage *			riOut,
     if  ( bmCalculateSizes( &(ri.riDescription) ) )
 	{ LDEB(1); rval= -1; goto ready;	}
 
+    if  ( unit > 1 && ri.riDescription.bdBytesPerRow % unit )
+	{
+	ri.riDescription.bdBytesPerRow=
+		    unit* ( ( ri.riDescription.bdBytesPerRow+ unit- 1 )/ unit );
+
+	ri.riDescription.bdBufferLength=
+			    ri.riDescription.bdPixelsHigh*
+			    ri.riDescription.bdBytesPerRow;
+	}
+
     if  ( bmAllocateBuffer( &ri ) )
-	{ LLDEB(ri.riDescription.bdBufferLength,ri.riBytes); rval= -1; goto ready; }
+	{
+	LLDEB(ri.riDescription.bdBufferLength,ri.riBytes);
+	rval= -1; goto ready;
+	}
     memset( ri.riBytes, '\0', ri.riDescription.bdBufferLength );
 
     switch( bdIn->bdColorEncoding )
@@ -385,6 +414,10 @@ int bmGetAlphaMask(	RasterImage *			riOut,
 
     return rval;
     }
+
+# ifdef __GNUC__
+# pragma GCC diagnostic pop
+# endif
 
 static int bmRemoveRowAlpha(	unsigned char *		to,
 				const unsigned char *	from,
@@ -441,6 +474,11 @@ static int bmRemoveRowAlpha(	unsigned char *		to,
 
     return 0;
     }
+
+# ifdef __GNUC__
+# pragma GCC diagnostic push
+# pragma GCC diagnostic ignored "-Wunused-parameter"
+# endif
 
 int bmRemoveAlpha(	RasterImage *			riOut,
 			const RasterImage *		riIn,
@@ -548,6 +586,10 @@ int bmRemoveAlpha(	RasterImage *			riOut,
 
     return rval;
     }
+
+# ifdef __GNUC__
+# pragma GCC diagnostic pop
+# endif
 
 int bmSetAlphaMask(	BitmapDescription *		bdOut,
 			const BitmapDescription *	bdImage,

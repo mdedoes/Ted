@@ -3,25 +3,94 @@
 
 typedef struct TableRectangle
     {
-    int		trCol0;
-    int		trCol1;
-    int		trCol11;
+			/**
+			 *  The first (left-most in a left to right table)
+			 *  column of the selected rectangle.
+			 */
+    int			trCol0;
 
-    int		trRow00;
-    int		trRow0;
-    int		trRow1;
-    int		trRow11;
+			/**
+			 *  The last (right-most in a left to right table)
+			 *  column of the selected rectangle.
+			 */
+    int			trCol1;
 
-    int		trIsRowSlice;
-    int		trIsColSlice;
-    int		trIsTableSlice;
-    int		trIsWholeTable;
-    int		trIsSingleCell;
+			/**
+			 *  The last (right-most in a left to right table)
+			 *  column of the table.
+			 */
+    int			trCol11;
 
-    int		trCellColspan;
-    int		trCellRowspan;
+			/**
+			 *  The sequence number in the parent of the 
+			 *  first row in the table.
+			 */
+    int			trRow00;
 
-    int		trInTableHeader;
+			/**
+			 *  The sequence number in the parent of the 
+			 *  first row in the selected rectangle.
+			 */
+    int			trRow0;
+
+			/**
+			 *  The sequence number in the parent of the 
+			 *  last row in the selected rectangle.
+			 */
+    int			trRow1;
+
+			/**
+			 *  The sequence number in the parent of the 
+			 *  last row in the table.
+			 */
+    int			trRow11;
+
+			/**
+			 *  The sequence number in the parent of the 
+			 *  first row that is not a header.
+			 */
+    int			trPastHeaderRow;
+
+			/**
+			 *  The selection consists of one or more rows 
+			 *  in the table. (IE the whole rows are selected)
+			 */
+    unsigned char	trIsRowSlice;
+
+			/**
+			 *  The selection consists of one or more columns 
+			 *  in the table. (IE the whole columns are selected)
+			 */
+    unsigned char	trIsColumnSlice;
+
+			/**
+			 *  The selection is a table slice: It consists 
+			 *  of whole rows, whole columns or the whole table.
+			 */
+    unsigned char	trIsTableSlice;
+
+			/**
+			 *  The selection is the whole table.
+			 */
+    unsigned char	trIsWholeTable;
+
+			/**
+			 *  True if and only if the selection is inside 
+			 *  a single table cell.
+			 */
+    unsigned char	trIsSingleCell;
+
+			/**
+			 *  In single cell rectangles, this is the colspan 
+			 *  of the cell.
+			 */
+    int			trCellColspan;
+
+			/**
+			 *  In single cell rectangles, this is the rowspan 
+			 *  of the cell.
+			 */
+    int			trCellRowspan;
     } TableRectangle;
 
 /************************************************************************/

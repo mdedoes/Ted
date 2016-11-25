@@ -9,17 +9,20 @@
 #   include	<stddef.h>
 #   include	<stdio.h>
 
-#   include	<sioMemory.h>
-#   include	<sioHex.h>
-
 #   include	"docDraw.h"
+#   include	"docDrawLine.h"
+#   include	<bmObjectReader.h>
 #   include	"docPsPrintImpl.h"
 #   include	<drawMetafilePs.h>
 #   include	<docShape.h>
 #   include	<docObjectProperties.h>
 #   include	<bmBitmapPrinter.h>
 #   include	"docMetafileObject.h"
-#   include	"docLayoutObject.h"
+#   include	<docObjectIo.h>
+#   include	<sioGeneral.h>
+#   include	<docObject.h>
+#   include	<psFace.h>
+#   include	<psPrint.h>
 
 #   include	<appDebugon.h>
 
@@ -41,8 +44,7 @@ static int docPsPrintMetafile(	PrintingState *			ps,
     int				scaleX= pip->pipScaleXUsed;
     int				scaleY= pip->pipScaleYUsed;
 
-    SimpleInputStream *		sisMem= (SimpleInputStream *)0;
-    SimpleInputStream *		sisMeta= (SimpleInputStream *)0;
+    ObjectReader		or;
 
     PostScriptTypeList		pstl;
 
@@ -51,6 +53,7 @@ static int docPsPrintMetafile(	PrintingState *			ps,
     MetafilePlayer		mp;
     MetafileWritePs		playMetafile;
 
+    bmInitObjectReader( &or );
     psInitPostScriptFaceList( &pstl );
 
     if  ( docPsListImageFonts( &pstl, pip, mb, lc, "pf" ) )
@@ -76,15 +79,10 @@ static int docPsPrintMetafile(	PrintingState *			ps,
 	    LDEB(pip->pipType); goto ready;
 	}
 
-    sisMem= sioInMemoryOpen( mb );
-    if  ( ! sisMem )
-	{ XDEB(sisMem); rval= -1; goto ready;	}
+    if  ( bmOpenObjectReader( &or, mb ) )
+	{ LDEB(1); rval= -1; goto ready;	}
 
-    sisMeta= sioInHexOpen( sisMem );
-    if  ( ! sisMeta )
-	{ XDEB(sisMeta); rval= -1; goto ready;	}
-
-    docSetMetafilePlayer( &mp, sisMeta, lc, pip, 0, 0 );
+    docSetMetafilePlayer( &mp, or.orSisHex, lc, pip, 0, 0 );
 
     y0= baseline- ( ( scaleY/100.0 )* mp.mpTwipsHigh );
 
@@ -115,35 +113,29 @@ static int docPsPrintMetafile(	PrintingState *			ps,
     ps->psLastPageMarked= ps->psPagesPrinted;
 
   ready:
-    if  ( sisMeta )
-	{ sioInClose( sisMeta );	}
-    if  ( sisMem )
-	{ sioInClose( sisMem );	}
+
+    bmCleanObjectReader( &or );
 
     psCleanPostScriptFaceList( &pstl );
 
     return rval;
     }
 
-static int psPrintIncludeEpsObject(	PrintingState *		ps,
+static int docPsPrintIncludeEpsObject(	PrintingState *		ps,
 					InsertedObject *	io,
 					int			x0,
 					int			baseLine )
     {
     int				rval= 0;
-    SimpleInputStream *		sisMem= (SimpleInputStream *)0;
-    SimpleInputStream *		sisHex= (SimpleInputStream *)0;
+    ObjectReader		or;
 
     DocumentRectangle		drTo;
     DocumentRectangle		drBBox;
 
-    sisMem= sioInMemoryOpen( &(io->ioResultData) );
-    if  ( ! sisMem )
-	{ XDEB(sisMem); rval= -1; goto ready;	}
+    bmInitObjectReader( &or );
 
-    sisHex= sioInHexOpen( sisMem );
-    if  ( ! sisHex )
-	{ XDEB(sisHex); rval= -1; goto ready;	}
+    if  ( bmOpenObjectReader( &or, &(io->ioResultData) ) )
+	{ LDEB(1); rval= -1; goto ready;	}
 
     drBBox.drX0= 0;
     drBBox.drY0= 0;
@@ -158,7 +150,7 @@ static int psPrintIncludeEpsObject(	PrintingState *		ps,
     psBeginEpsObject( ps->psSos, &drTo, &drBBox,
 			utilMemoryBufferGetString( &(io->ioObjectData) ) );
 
-    if  ( psIncludeEpsFile( ps->psSos, sisHex ) )
+    if  ( psIncludeEpsFile( ps->psSos, or.orSisHex ) )
 	{ LDEB(1); rval= -1;	}
 
     psEndEpsObject( ps->psSos );
@@ -167,10 +159,7 @@ static int psPrintIncludeEpsObject(	PrintingState *		ps,
 
   ready:
 
-    if  ( sisHex )
-	{ sioInClose( sisHex );	}
-    if  ( sisMem )
-	{ sioInClose( sisMem );	}
+    bmCleanObjectReader( &or );
 
     return rval;
     }
@@ -209,7 +198,7 @@ static void psPrintObjectBox(	DrawingContext *	dc,
 /*									*/
 /************************************************************************/
 
-static int docPsPrintBitmapObject( PrintingState *		ps,
+static int docPsPrintRasterObject( PrintingState *		ps,
 				int				x0,
 				int				baseLine,
 				const RasterImage *		abi,
@@ -236,7 +225,7 @@ static int docPsPrintBitmapObject( PrintingState *		ps,
 
     docObjectGetCropRect( &drSel, pip, bd );
 
-    if  ( bmPsPrintBitmap( ps->psSos, 1,
+    if  ( bmPsPrintBitmap( ps->psSos,
 			    20.0* scaleX, -20.0* scaleY,
 			    x0, baseLine, (const DocumentRectangle *)0,
 			    ps->psUsePostScriptFilters,
@@ -248,32 +237,33 @@ static int docPsPrintBitmapObject( PrintingState *		ps,
     return 0;
     }
 
-static int docPsPrintShapeBitmap(	int				kind,
+static int docPsPrintShapeRaster(	int				kind,
 					PrintingState *			ps,
 					DrawingShape *			ds,
 					const DocumentRectangle *	drTwips,
 					const AffineTransform2D *	at )
     {
     const PictureProperties *	pip= &(ds->dsPictureProperties);
-    int				x0= 0;
-    int				y0= 0;
 
     if  ( ! ds->dsRasterImage.riBytes )
 	{
-	if  ( docGetBitmapForObjectData( kind,
+	if  ( docGetRasterImageForObjectData( kind,
 				&(ds->dsRasterImage), &(ds->dsPictureData) ) )
 	    { XDEB(ds->dsRasterImage.riBytes);	}
 	}
 
     if  ( ds->dsRasterImage.riBytes )
 	{
-	AffineTransform2D		atLocal;
+	AffineTransform2D	atLocal;
 
-	DocumentRectangle		drSel;
+	DocumentRectangle	drSel;
 
-	double				xs;
-	double				ys;
-	const int			onWhite= 0;
+	double			xs;
+	double			ys;
+	const int		onWhite= 0;
+
+	int			x0= 0;
+	int			y0= 0;
 
 	/* Center image in frame */
 	geoTranslationAffineTransform2D( &atLocal, -0.5, 0.5 );
@@ -287,7 +277,7 @@ static int docPsPrintShapeBitmap(	int				kind,
 	xs= drTwips->drX1- drTwips->drX0+ 1;
 	ys= drTwips->drY1- drTwips->drY0+ 1;
 
-	if  ( bmPsPrintBitmapImage( ps->psSos, 1, xs, -ys, x0, y0, &drSel,
+	if  ( bmPsPrintRasterImage( ps->psSos, xs, -ys, x0, y0, &drSel,
 					onWhite,
 					ps->psUsePostScriptFilters,
 					ps->psUsePostScriptIndexedImages,
@@ -327,7 +317,7 @@ int docPsPrintShapeImage(	PrintingState *			ps,
 
 	case DOCokPICTPNGBLIP:
 	case DOCokPICTJPEGBLIP:
-	    if  ( docPsPrintShapeBitmap( pip->pipType, ps, ds, drTwips, at ) )
+	    if  ( docPsPrintShapeRaster( pip->pipType, ps, ds, drTwips, at ) )
 		{ LDEB(1); return -1;	}
 	    break;
 
@@ -353,55 +343,42 @@ static int docPsPrintJpegImage( PrintingState *			ps,
 
     const PictureProperties *	pip= &(io->ioPictureProperties);
 
-    SimpleInputStream *	sisMem= (SimpleInputStream *)0;
-    SimpleInputStream *	sisBitmap= (SimpleInputStream *)0;
+    ObjectReader		or;
 
     double		scaleX= pip->pipScaleXUsed/ 100.0;
     double		scaleY= pip->pipScaleYUsed/ 100.0;
 
-    sisMem= sioInMemoryOpen( mb );
-    if  ( ! sisMem )
-	{ XDEB(sisMem); rval= -1; goto ready;	}
+    bmInitObjectReader( &or );
 
-    sisBitmap= sioInHexOpen( sisMem );
-    if  ( ! sisBitmap )
-	{ XDEB(sisBitmap); rval= -1; goto ready;	}
+    if  ( bmOpenObjectReader( &or, mb ) )
+	{ LDEB(1); rval= -1; goto ready;	}
 
     if  ( bmEpsTestJpegEmbeddable( &pixelsWide, &pixelsHigh,
-			    &componentCount, &bitsPerComponent, sisBitmap ) )
+		    &componentCount, &bitsPerComponent, or.orSisHex ) )
 	{ rval= 1; goto ready;	}
 
-    sioInClose( sisBitmap ); sisBitmap= (SimpleInputStream *)0;
-    sioInClose( sisMem ); sisMem= (SimpleInputStream *)0;
+    bmCleanObjectReader( &or );
+    bmInitObjectReader( &or );
 
-    sisMem= sioInMemoryOpen( mb );
-    if  ( ! sisMem )
-	{ XDEB(sisMem); rval= -1; goto ready;	}
-
-    sisBitmap= sioInHexOpen( sisMem );
-    if  ( ! sisBitmap )
-	{ XDEB(sisBitmap); rval= -1; goto ready;	}
+    if  ( bmOpenObjectReader( &or, mb ) )
+	{ LDEB(1); rval= -1; goto ready;	}
 
     if  ( bmPsPrintJpegImage( ps->psSos,
-			pip->pipTwipsWide* scaleX, -pip->pipTwipsHigh* scaleY,
-			componentCount, x0, baseLine,
-			pixelsWide, pixelsHigh, bitsPerComponent, sisBitmap ) )
+		    pip->pipTwipsWide* scaleX, -pip->pipTwipsHigh* scaleY,
+		    componentCount, x0, baseLine,
+		    pixelsWide, pixelsHigh, bitsPerComponent, or.orSisHex ) )
 	{ LDEB(1); rval= -1; goto ready;	}
 
     ps->psLastPageMarked= ps->psPagesPrinted;
 
   ready:
 
-    if  ( sisBitmap )
-	{ sioInClose( sisBitmap ); }
-    if  ( sisMem )
-	{ sioInClose( sisMem ); }
+    bmCleanObjectReader( &or );
 
     return rval;
     }
 
-static int docPsPrintBitmapImage(	PrintingState *		ps,
-					DrawingContext *	dc,
+static int docPsPrintRasterImage(	PrintingState *		ps,
 					InsertedObject *	io,
 					int			objectKind,
 					MemoryBuffer *		mb,
@@ -410,7 +387,7 @@ static int docPsPrintBitmapImage(	PrintingState *		ps,
     {
     if  ( ! io->ioRasterImage.riBytes )
 	{
-	if  ( docGetBitmapForObject( io ) )
+	if  ( docGetRasterImageForObject( io ) )
 	    { XDEB(io->ioRasterImage.riBytes);	}
 	}
 
@@ -426,7 +403,7 @@ static int docPsPrintBitmapImage(	PrintingState *		ps,
 		}
 	    }
 
-	if  ( docPsPrintBitmapObject( ps, x0Twips, baseLine,
+	if  ( docPsPrintRasterObject( ps, x0Twips, baseLine,
 			&(io->ioRasterImage), &(io->ioPictureProperties) ) )
 	    { LDEB(1); return -1;	}
 
@@ -437,11 +414,15 @@ static int docPsPrintBitmapImage(	PrintingState *		ps,
     return 0;
     }
 
-int docPsPrintObject(		const DrawTextLine *		dtl,
+# ifdef __GNUC__
+# pragma GCC diagnostic push
+# pragma GCC diagnostic ignored "-Wunused-parameter"
+# endif
+
+int docPsPrintInlineObject(	const DrawTextLine *		dtl,
 				int				part,
 				InsertedObject *		io,
-				const int			x0Twips,
-				const int			x1Twips,
+				const DocumentRectangle *	drTwips,
 				const LayoutPosition *		baseLine )
     {
     PrintingState *		ps= (PrintingState *)dtl->dtlThrough;
@@ -458,21 +439,24 @@ int docPsPrintObject(		const DrawTextLine *		dtl,
 	case DOCokMACPICT:
 
 	    if  ( docPsPrintMetafile( ps, pip, &(io->ioObjectData),
-			    io->ioKind, lc, x0Twips, baseLine->lpPageYTwips ) )
+			    io->ioKind, lc,
+			    drTwips->drX0, drTwips->drY1 ) )
 		{ LDEB(1); break;	}
 
 	    dc->dcCurrentTextAttributeSet= 0;
 	    dc->dcCurrentColorSet= 0;
 	    ps->psLinkParticulesDone++;
-	    return 1;
+	    return 0;
 
 	case DOCokPICTJPEGBLIP:
 	case DOCokPICTPNGBLIP:
 
-	    done= docPsPrintBitmapImage( ps, dc, io,
-					io->ioKind, &(io->ioObjectData),
-					x0Twips, baseLine->lpPageYTwips );
-	    return done;
+	    done= docPsPrintRasterImage( ps, io,
+				io->ioKind, &(io->ioObjectData),
+				drTwips->drX0, drTwips->drY1 );
+	    if  ( done < 0 )
+		{ LDEB(done); return -1;	}
+	    return 0;
 	    break;
 
 	case DOCokOLEOBJECT:
@@ -481,8 +465,8 @@ int docPsPrintObject(		const DrawTextLine *		dtl,
 		  io->ioResultKind == DOCokMACPICT		)
 		{
 		if  ( docPsPrintMetafile( ps, pip, &(io->ioResultData),
-					io->ioResultKind,
-					lc, x0Twips, baseLine->lpPageYTwips ) )
+				io->ioResultKind, lc,
+				drTwips->drX0, drTwips->drY1 ) )
 		    { LDEB(1); break;	}
 
 		dc->dcCurrentTextAttributeSet= 0;
@@ -494,35 +478,41 @@ int docPsPrintObject(		const DrawTextLine *		dtl,
 	    if  ( io->ioResultKind == DOCokPICTJPEGBLIP	||
 	    	  io->ioResultKind == DOCokPICTPNGBLIP	)
 		{
-		done= docPsPrintBitmapImage( ps, dc, io,
-					io->ioResultKind, &(io->ioResultData),
-					x0Twips, baseLine->lpPageYTwips );
-		return done;
+		done= docPsPrintRasterImage( ps, io,
+				io->ioResultKind, &(io->ioResultData),
+				drTwips->drX0, drTwips->drY1 );
+		if  ( done < 0 )
+		    { LDEB(done); return -1;	}
+		return 0;
 		}
 
 	    break;
 
 	case DOCokEPS_FILE:
-	    if  ( psPrintIncludeEpsObject( ps, io,
-					x0Twips, baseLine->lpPageYTwips ) )
+	    if  ( docPsPrintIncludeEpsObject( ps, io,
+				drTwips->drX0, drTwips->drY1 ) )
 		{ LDEB(1); break;	}
 
 	    dc->dcCurrentTextAttributeSet= 0;
 	    dc->dcCurrentColorSet= 0;
 	    ps->psLinkParticulesDone++;
-	    return 1;
+	    return 0;
 
 	case DOCokDRAWING_SHAPE:
 	    /*  Done in a separate loop from generic drawing code */
-	    return 1;
+	    return 0;
 
 	default:
 	    LDEB(io->ioKind); return 0;
 	}
 
-    psPrintObjectBox( dc, ps, io, x0Twips, baseLine->lpPageYTwips );
+    psPrintObjectBox( dc, ps, io, drTwips->drX0, drTwips->drY1 );
     ps->psLinkParticulesDone++;
-    return 1;
+    return 0;
     }
+
+# ifdef __GNUC__
+# pragma GCC diagnostic pop
+# endif
 
 

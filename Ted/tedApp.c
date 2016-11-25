@@ -8,20 +8,27 @@
 
 #   include	<stddef.h>
 #   include	<stdlib.h>
-#   include	<stdio.h>
 #   include	<ctype.h>
-#   include	<sioGeneral.h>
 #   include	<utilArgToX.h>
 
 #   include	"tedApp.h"
 #   include	"tedEdit.h"
 #   include	"tedSelect.h"
-#   include	"tedAppFront.h"
-#   include	"tedDocFront.h"
+#   include	<tedDocFront.h>
+#   include	"tedDocMenu.h"
 #   include	"tedAppResources.h"
 #   include	"tedDocument.h"
 #   include	<appFileChooser.h>
 #   include	<docTreeNode.h>
+#   include	<utilFileExtension.h>
+#   include	<appInspector.h>
+#   include	<docFileExtensions.h>
+#   include	<docDocumentProperties.h>
+#   include	<appEditApplication.h>
+#   include	<appGuiApplication.h>
+#   include	<appEditDocument.h>
+#   include	<docBuf.h>
+#   include	<appPrintDialog.h>
 
 #   include	<appDebugon.h>
 
@@ -41,11 +48,6 @@ void tedDetermineDefaultSettings(	TedAppResources *	tar )
     if  ( appDetermineBoolean( &(tar->tarShowTableGridInt),
 					    tar->tarShowTableGridString ) )
 	{ SDEB(tar->tarShowTableGridString);	}
-
-    /*  3  */
-    if  ( appDetermineBoolean( &(tar->tarAutoHyphenateInt),
-					    tar->tarAutoHyphenateString ) )
-	{ SDEB(tar->tarAutoHyphenateString);	}
 
     /*  3  */
     if  ( tar->tarShadingMeshTwipsString	&&
@@ -90,7 +92,7 @@ static int	tedBuildOpenImageExtensions(	TedAppResources *	tar )
 	{
 	AppFileExtension *	afe;
 
-	if  ( appImgMakeFileExtensions( &(tar->tarOpenImageExtensions),
+	if  ( bmMakeFileExtensions( &(tar->tarOpenImageExtensions),
 					&(tar->tarOpenImageExtensionCount) ) )
 	    { LDEB(1); return -1;	}
 
@@ -116,10 +118,64 @@ static int	tedBuildOpenImageExtensions(	TedAppResources *	tar )
     }
 
 /************************************************************************/
+
+static int tedInsertDocumentFile(	EditDocument *		ed,
+					APP_WIDGET		relative,
+					APP_WIDGET		option,
+					const struct MemoryBuffer *	filename )
+    {
+    int			rval= 0;
+
+    const int		complain= 1;
+    const int		suggestStdin= 0;
+    int			formatHint= -1;
+    int			format;
+
+    EditApplication *	ea= ed->edApplication;
+    TedDocument *	td= (TedDocument *)ed->edPrivateData;
+
+    struct BufferDocument *	bd= (struct BufferDocument *)0;
+
+    formatHint= utilDocumentGetOpenFormat( (int *)0,
+		    ea->eaFileExtensions, ea->eaFileExtensionCount,
+		    filename, formatHint );
+
+    if  ( tedOpenDocumentFile( (unsigned char *)0, &format, &bd, ea,
+				    suggestStdin, formatHint, filename,
+				    complain, relative, option ) )
+	{ LDEB(1); rval= -1; goto ready;	}
+
+    switch( format )
+	{
+	case TEDdockindRTF:
+	    if  ( tedIncludeRtfDocument( ed, bd, td->tdTraced ) )
+		{ LDEB(1); rval= -1; goto ready;	}
+	    break;
+
+	case TEDdockindTEXT_SAVE_WIDE:
+	case TEDdockindTEXT_SAVE_FOLDED:
+	    if  ( tedIncludePlainDocument( ed, bd, td->tdTraced ) )
+		{ LDEB(1); rval= -1; goto ready;	}
+	    break;
+
+	default:
+	    LDEB(format); rval= -1; goto ready;
+	}
+	
+  ready:
+
+    if  ( bd )
+	{ docFreeDocument( bd );	}
+
+    return rval;
+    }
+
+/************************************************************************/
 /*									*/
 /*  Callback for the 'Insert File' menu option.				*/
 /*  1)  Test whether the file is an image file: If so include it as an	*/
 /*	image.								*/
+/*  2)  Otherwise, include it as a document.				*/
 /*									*/
 /************************************************************************/
 
@@ -131,61 +187,30 @@ static int tedInsertFile(	EditApplication *	ea,
     {
     int				rval= 0;
     EditDocument *		ed= (EditDocument *)voided;
-    TedDocument *		td= (TedDocument *)ed->edPrivateData;
 
     int				format;
-    BufferDocument *		bd= (BufferDocument *)0;
 
     TedAppResources *		tar= (TedAppResources *)ea->eaResourceData;
 
     /*  1  */
-    format= appDocumentGetOpenFormat( (int *)0,
+    format= utilDocumentGetOpenFormat( (int *)0,
 			tar->tarOpenImageExtensions,
 			tar->tarOpenImageExtensionCount, filename, -1 );
 
     if  ( format >= 0 )
 	{
 	/*  1  */
-	rval= tedObjectOpenImage( ea, voided, relative, option, filename );
+	rval= tedDocInsertImageFile( ed, relative, option, filename );
 	if  ( rval )
 	    { LDEB(rval);	}
 	}
     else{
-	const int	complain= 1;
-	const int	suggestStdin= 0;
-	int		formatHint= -1;
-
-	formatHint= appDocumentGetOpenFormat( (int *)0,
-			ea->eaFileExtensions, ea->eaFileExtensionCount,
-			filename, formatHint );
-
-	if  ( tedOpenDocumentFile( (unsigned char *)0, &format, &bd, ea,
-					suggestStdin, formatHint, filename,
-					complain, relative, option ) )
+	/*  2  */
+	if  ( tedInsertDocumentFile( ed, relative, option, filename ) )
 	    { LDEB(1); rval= -1; goto ready;	}
-
-	switch( format )
-	    {
-	    case TEDdockindRTF:
-		if  ( tedIncludeRtfDocument( ed, bd, td->tdTraced ) )
-		    { LDEB(1); rval= -1; goto ready;	}
-		break;
-
-	    case TEDdockindTEXT_SAVE_WIDE:
-	    case TEDdockindTEXT_SAVE_FOLDED:
-		if  ( tedIncludePlainDocument( ed, bd, td->tdTraced ) )
-		    { LDEB(1); rval= -1; goto ready;	}
-		break;
-
-	    default:
-		LDEB(format); rval= -1; goto ready;
-	    }
 	}
 	    
   ready:
-
-    if  ( bd )
-	{ docFreeDocument( bd );	}
 
     return rval;
     }
@@ -222,7 +247,7 @@ APP_MENU_CALLBACK_H( tedDocFilePrint, printOption, voided, e )
     {
     EditDocument *	ed= (EditDocument *)voided;
     TedDocument *	td= (TedDocument *)ed->edPrivateData;
-    BufferDocument *	bd= td->tdDocument;
+    struct BufferDocument *	bd= td->tdDocument;
 
     int			pageCount= bd->bdBody.dtRoot->biBelowPosition.lpPage+ 1;
     int			firstPage= -1;
@@ -232,10 +257,11 @@ APP_MENU_CALLBACK_H( tedDocFilePrint, printOption, voided, e )
     SelectionGeometry		sg;
     SelectionDescription	sd;
 
-    const DocumentGeometry *	dgDoc= &(bd->bdProperties.dpGeometry);
+    const DocumentGeometry *	dgDoc= &(bd->bdProperties->dpGeometry);
 
     if  ( ! tedGetSelection( &ds, &sg, &sd,
-				(DocumentTree **)0, (BufferItem **)0, ed ) )
+				(struct DocumentTree **)0,
+				(struct BufferItem **)0, ed ) )
 	{
 	firstPage= sg.sgHead.pgTopPosition.lpPage;
 	lastPage= sg.sgTail.pgTopPosition.lpPage;
@@ -252,6 +278,17 @@ APP_MENU_CALLBACK_H( tedDocFilePrint, printOption, voided, e )
 /*  Run a file chooser to insert an image.				*/
 /*									*/
 /************************************************************************/
+
+static int tedInsertImageFileFromChooser(
+			EditApplication *	ea,
+			void *			voided,
+			APP_WIDGET		relative,
+			APP_WIDGET		option,
+			const MemoryBuffer *	filename )
+    {
+    return tedDocInsertImageFile( (EditDocument *)voided,
+					    relative, option, filename );
+    }
 
 APP_MENU_CALLBACK_H( tedDocInsertImage, option, voided, e )
     {
@@ -271,7 +308,7 @@ APP_MENU_CALLBACK_H( tedDocInsertImage, option, voided, e )
 			tar->tarOpenImageExtensionCount,
 			tar->tarOpenImageExtensions,
 			(char *)0, (MemoryBuffer *)0,
-			tedObjectOpenImage, ea, (void *)ed );
+			tedInsertImageFileFromChooser, ea, (void *)ed );
 
     return;
     }
@@ -317,12 +354,21 @@ static void tedMakeDocumentToHelp(	EditDocument *	ed )
 /*									*/
 /************************************************************************/
 
+# ifdef __GNUC__
+# pragma GCC diagnostic push
+# pragma GCC diagnostic ignored "-Wunused-parameter"
+# endif
+
 static APP_DESTROY_CALLBACK_H( tedManualDestroyed, w, voidtar )
     {
     TedAppResources *	tar= (TedAppResources *)voidtar;
 
     tar->tarManualDocument= (EditDocument *)0;
     }
+
+# ifdef __GNUC__
+# pragma GCC diagnostic pop
+# endif
 
 void tedManual(		APP_WIDGET		option,
 			EditApplication *	ea,
@@ -353,7 +399,7 @@ void tedManual(		APP_WIDGET		option,
 
 	tedMakeDocumentToHelp( tar->tarManualDocument );
 
-	appSetDestroyCallback( tar->tarManualDocument->edToplevel.atTopWidget,
+	guiSetDestroyCallback( tar->tarManualDocument->edToplevel.atTopWidget,
 					tedManualDestroyed, (void *)tar );
 	}
 
@@ -374,18 +420,16 @@ void tedVisibleDocumentCountChanged(	EditApplication *	ea,
 					int			from,
 					int			to )
     {
-    TedAppResources *	tar= (TedAppResources *)ea->eaResourceData;
-
     if  ( from == 0 && to > 0 )
 	{
-	if  ( tar->tarInspector )
-	    { appEnableInspector( tar->tarInspector, 1 ); }
+	if  ( ea->eaInspector )
+	    { appEnableInspector( ea->eaInspector, 1 ); }
 	}
 
     if  ( from > 0 && to == 0 )
 	{
-	if  ( tar->tarInspector )
-	    { appEnableInspector( tar->tarInspector, 0 ); }
+	if  ( ea->eaInspector )
+	    { appEnableInspector( ea->eaInspector, 0 ); }
 	}
 
     return;

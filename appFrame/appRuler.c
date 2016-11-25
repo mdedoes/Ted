@@ -5,22 +5,22 @@
 /************************************************************************/
 
 #   include	"appFrameConfig.h"
-#   include	"guiWidgetDrawingSurface.h"
-#   include	"guiDrawingWidget.h"
-#   include	"drawDrawingSurfacePrivate.h"
+
+#   if ! USE_HEADLESS
+
+#   include	<guiWidgetDrawingSurface.h>
+#   include	<guiDrawingWidget.h>
+#   include	<drawDrawingSurfacePrivate.h>
 
 #   include	<stdio.h>
 #   include	<string.h>
-
-#   define	y0	math_y0
-#   define	y1	math_y1
 #   include	<math.h>
-#   undef	y0
-#   undef	y1
 
-#   include	<appUnit.h>
+#   include	<geoUnit.h>
+#   include	<psPostScriptFontList.h>
 #   include	"appRuler.h"
 
+#   include	<geoRectangle.h>
 #   include	<appDebugon.h>
 
 #   ifndef	M_LN10
@@ -45,7 +45,7 @@ void appInitRulerData(	RulerData *	rd )
 
     rd->rdScreenFont= -1;
     rd->rdDrawingSurface= (DrawingSurface)0;
-    rd->rdPostScriptFontList= (const PostScriptFontList *)0;
+    rd->rdPostScriptFontList= (const struct PostScriptFontList *)0;
 
     rd->rdBackgroundExplicit= 0;
 
@@ -159,9 +159,11 @@ void appRulerMakeDrawingSurface( RulerData *		rd,
     rd->rdDrawingSurface= guiDrawingSurfaceForNativeWidget( w,
 			    rd->rdPostScriptFontList->psflAvoidFontconfig );
 
+    /* Do not touch the drawing surface outside drawing events
     drawSetLineAttributes( rd->rdDrawingSurface,
 			1, LineStyleSolid, LineCapProjecting, LineJoinMiter,
 			(const unsigned char *)0, 0 );
+    */
 
     if  ( ! rd->rdBackgroundExplicit )
 	{
@@ -271,7 +273,7 @@ void appRulerCalculateIncrements(	RulerData *	rd,
 	    break;
 	}
 
-    rd->rdTwipsPerUnit= appUnitToTwips( 1.0, rd->rdUnit );
+    rd->rdTwipsPerUnit= geoUnitToTwips( 1.0, rd->rdUnit );
     rd->rdMagnifiedPixelsPerTwip= magnifiedPixelsPerTwip;
 
     unitsPerText= appRulerPerItem( ( 30.0/ mmPerUnit )/ magnification );
@@ -310,32 +312,6 @@ void appRulerTagText(	char *		to,
     return;
     }
 
-# if SHOW_SCROLLS
-static void appShowCopy(	DrawingSurface			ds,
-				int				x,
-				int				y,
-				const DocumentRectangle *	drSrc )
-    {
-    RGB8Color		blue;
-    DocumentRectangle	drTarget;
-
-    blue.rgb8Red= 0;
-    blue.rgb8Green= 0;
-    blue.rgb8Blue= 255;
-
-    drTarget= *drSrc;
-
-    geoShiftRectangle( &drTarget, x- drSrc->drX0, y- drSrc->drY0 );
-    drTarget.drX1--;
-    drTarget.drY1--;
-
-    drawSetForegroundColor( ds, &blue );
-    drawRectangle( ds, &drTarget );
-
-    return;
-    }
-# endif
-
 void appScrollHorizontalRuler(		RulerData *		rd,
 					DocumentRectangle *	drClip,
 					int			srcolledX )
@@ -365,9 +341,6 @@ void appScrollHorizontalRuler(		RulerData *		rd,
 	if  ( drSrc.drX0 <= drSrc.drX1 )
 	    {
 	    drawMoveArea( ds, drAll.drX0, drAll.drY0, &drSrc );
-#	    if SHOW_SCROLLS
-	    appShowCopy( ds, drAll.drX0, drAll.drY0, &drSrc );
-#	    endif
 	    }
 	}
     else{
@@ -377,9 +350,6 @@ void appScrollHorizontalRuler(		RulerData *		rd,
 	if  ( drSrc.drX0 <= drSrc.drX1 )
 	    {
 	    drawMoveArea( ds, drAll.drX0- srcolledX, drAll.drY0, &drSrc );
-#	    if SHOW_SCROLLS
-	    appShowCopy( ds, drAll.drX0- srcolledX, drAll.drY0, &drSrc );
-#	    endif
 	    }
 	}
 
@@ -450,3 +420,5 @@ void appScrollVerticalRuler(		RulerData *		rd,
 
     return;
     }
+
+#   endif

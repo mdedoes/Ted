@@ -14,6 +14,7 @@
 #   include	<utilRanges.h>
 #   include	"docFieldInstructions.h"
 #   include	"docDocumentField.h"
+#   include	"docFieldKind.h"
 
 #   include	"docTocField.h"
 #   include	"docListDepth.h"
@@ -287,13 +288,15 @@ int docFieldGetToc(	TocField *		tf,
 	    tf->tfType= TOCtypeTOC;
 	    tf->tfUseTcEntries= 1;
 
-	    if  ( comp < fi->fiComponentCount- 1 && ! ic[1].icIsFlag )
+	    if  ( comp < fi->fiComponentCount- 1	&&
+		  ic[1].icType != INSTRtypeFLAG		)
 		{
 		ic++, comp++;
 
 		if  ( utilCopyMemoryBuffer( &(tf->tfIdentifierName),
 							    &(ic->icBuffer) ) )
 		    { LDEB(1); return -1;	}
+
 		continue;
 		}
 
@@ -321,7 +324,8 @@ int docFieldGetToc(	TocField *		tf,
 
 	if  ( docComponentIsFlag( fi, comp, 'n' ) )
 	    {
-	    if  ( comp < fi->fiComponentCount- 1 && ! ic[1].icIsFlag )
+	    if  ( comp < fi->fiComponentCount- 1	&&
+		  ic[1].icType != INSTRtypeFLAG		)
 		{
 		ic++, comp++;
 
@@ -341,7 +345,8 @@ int docFieldGetToc(	TocField *		tf,
 
 	if  ( docComponentIsFlag( fi, comp, 'o' ) )
 	    {
-	    if  ( comp < fi->fiComponentCount- 1 && ! ic[1].icIsFlag )
+	    if  ( comp < fi->fiComponentCount- 1	&&
+		  ic[1].icType != INSTRtypeFLAG		)
 		{
 		ic++, comp++;
 
@@ -390,7 +395,8 @@ int docFieldGetToc(	TocField *		tf,
 	    tf->tfType= TOCtypeTOC;
 	    tf->tfUseStyleNames= 1;
 
-	    if  ( comp < fi->fiComponentCount- 1 && ! ic[1].icIsFlag )
+	    if  ( comp < fi->fiComponentCount- 1	&&
+		  ic[1].icType != INSTRtypeFLAG		)
 		{
 		ic++, comp++;
 

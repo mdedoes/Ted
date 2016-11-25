@@ -7,13 +7,12 @@
 #   ifndef	PS_FONT_INFO_H
 #   define	PS_FONT_INFO_H
 
-#   include	<geo2DInteger.h>
+#   include	<geoRectangle.h>
 #   include	<utilIndexSet.h>
 #   include	<utilIndexMapping.h>
 #   include	<utilMemoryBuffer.h>
 
-#   define	SCAPS_SIZE( sz )	( 8*(sz)/10 )
-#   define	SUPERSUB_SIZE( sz )	( 6*(sz)/10 )
+struct AfmFontInfo;
 
 #   define	PSflagDEFER_METRICS	0x01
 #   define	PSflagIGNORE_KERNING	0x02
@@ -46,65 +45,109 @@ typedef struct AfmCodeList
 
 typedef struct AfmCharMetric
     {
+			    /**
+			     *  Potentially empty array of code points 
+			     *  associated to this glyph. This is because it 
+			     *  is possible to map more than one code point 
+			     *  in the default encoding to the same glyph.
+			     *  Only code values < 256 are saved to the 
+			     *  afm file.
+			     */
     AfmCodeList		acmDefaultCodeList;
     AfmCodeList		acmUnicodeCodeList;
-				    /************************************/
-				    /*  Potentially empty array of code	*/
-				    /*  points associated to this glyph.*/
-				    /*  This is because it is possible	*/
-				    /*  to map more than one code point	*/
-				    /*  in the default encoding to the	*/
-				    /*  same glyph.			*/
-				    /*  Only values < 256 are saved to	*/
-				    /*  the afm file.			*/
-				    /************************************/
 
     short int		acmWX;
     DocumentRectangle	acmBBox;
     char *		acmN;
+			    /**
+			     *  Index of the glyph in the font.
+			     */
     short int		acmGlyphIndex;
-				    /************************************/
-				    /*  Index of the glyph in the font.	*/
-				    /************************************/
+
     AfmKerningPair *	acmKernPairs;
     short int		acmKernPairCount;
     } AfmCharMetric;
-
-struct AfmFontInfo;
 
 typedef int (*ResolveFontMetrics)(	struct AfmFontInfo *	afi );
 
 typedef struct AfmFontInfo
     {
-			    /********************************************/
-			    /*  Must be unique in the font list.	*/
-			    /********************************************/
+			    /**
+			     *  Must be unique in the font list. Use the 
+			     *  index in the list.
+			     */
     int			afiFaceNumber;
-			    /********************************************/
-			    /*  General font information. At least an	*/
-			    /*  Approximation must be known while the	*/
-			    /*  font catalog is made.			*/
-			    /********************************************/
+
+			    /**
+			     *  The (technical) font name. This is the name 
+			     *  that we use to refer to the font in PostScript.
+			     */
     char *		afiFontName;
+
+			    /**
+			     *  The (visible) font name. This is the name 
+			     *  that we show to the user and that we use 
+			     *  to match external (RTF) font names to the font.
+			     */
     char *		afiFullName;
     char *		afiFamilyName;
     char *		afiFamilyName_Orig;
+
+			    /**
+			     *  The style of the font: Somenting like
+			     *  'Bold Oblique'. We try find it by comparing 
+			     *  the full name with the family name. If that 
+			     *  fails, we use afiWeightStr. The string is 
+			     *  owned by another field: Do not free!
+			     */
+    char *		afiStyle;
+
+			    /**
+			     *  The weight of the font. (Bold)
+			     */
     char *		afiWeightStr;
     short int		afiWeightInt;
+
+			    /**
+			     *  The width of the font. (Narrow, Condensed)
+			     */
     char *		afiWidthStr;
     short int		afiWidthInt;
+
+			    /**
+			     *  The slant of the font.
+			     */
     double		afiItalicAngle;
     double		afiTanItalicAngle;
+
+			    /**
+			     *  If true, all characters have the same width.
+			     */
     unsigned char	afiIsFixedPitch;
 
+			    /**
+			     *  The copyright notice. Simply used to move it
+			     *  around between font files and the metrics file.
+			     */
     char *		afiNotice;
+			    /**
+			     *  The version string of the font. Simply used to
+			     *  move it around between font files and the 
+			     *  metrics file.
+			     */
     char *		afiVersion;
+			    /**
+			     *  The font vendor name. Simply used to move it
+			     *  around between font files and the metrics file.
+			     */
+    char *		afiVendor;
 
-			    /********************************************/
-			    /*  Metrics information: Must be known as	*/
-			    /*  soon as text is formatted.		*/
-			    /********************************************/
+			    /**
+			     *  The divisor that relates the metrics to the 
+			     *  M-square. 1000 for PS fonts, 2048 for TTF fonts.
+			     */
     int			afiUnitsPerEm;
+
     DocumentRectangle	afiFontBBox;
     int			afiUnderlinePosition;
     int			afiUnderlineThickness;
@@ -113,40 +156,96 @@ typedef struct AfmFontInfo
     int			afiAscender;
     int			afiDescender;
 
-			    /********************************************/
-			    /*  Glyph Metrics information: Must be	*/
-			    /*  known as soon as text is formatted.	*/
-			    /********************************************/
-    MemoryBuffer	afiAfmFileName;
-    unsigned char	afiMetricsDeferred;
     unsigned char	afiIgnoreKerning;
+
+			    /**
+			     *  Glyph Metrics information: Must be known 
+			     *  as soon as text is formatted.
+			     */
     int			afiMetricCount;
     AfmCharMetric **	afiMetrics;
+
+			    /**
+			     *  Map glyph names to glyph metrics.
+			     */
     void *		afiNameToMetric;
     int			afiFallbackGlyph;
 
-			    /********************************************/
-			    /*  Collected screen font information.	*/
-			    /********************************************/
-    char **		afiX11Fonts;
-    int			afiX11FontCount;
-
+			    /**
+			     *  Encoding Scheme as it is found in the 
+			     *  file: More or less meningless.
+			     */
     char *		afiEncodingScheme;
+			    /**
+			     *  Character Set as it is found in the 
+			     *  file: More or less meningless.
+			     */
     char *		afiCharacterSet;
-    char *		afiVendor;
 
+			    /**
+			     *  True if no encoding could be derived from 
+			     *  the glyph names or from the encoding in 
+			     *  the TTF file.
+			     */
+    unsigned char	afiFontSpecificEncoding;
+
+			    /**
+			     *  Resource name as it is found in the 
+			     *  file. Meanongless here, merely used to 
+			     *  move information around between font files 
+			     *  and metric files.
+			     */
     char *		afiResourceName;
+
     MemoryBuffer	afiFontFileName;
     int			afiFontFileIndex;
 
     IndexSet		afiUnicodesProvided;
-    IndexMapping	afiUnicodeToGlyphMapping;
+
+			    /**
+			     *  For a (partially?) unicode supporting font,
+			     *  the mapping from unicode to glyph is stored 
+			     *  here. [ We know that it should have been 
+			     *  the other way round, but we do not know how 
+			     *  to deal with that knowlege.
+			     *
+			     *  For a font with FontSpecific encoding,
+			     *  the mapping is from the font specific 
+			     *  code point to the glyph.
+			     */
+    IndexMapping	afiCodeToGlyphMapping;
+
+			    /**
+			     *  If the metrics information was retrieved 
+			     *  from an AFM file, the name of the file 
+			     *  is stored here. It is used to retrieve 
+			     *  deferred metric information.
+			     */
+    MemoryBuffer	afiAfmFileName;
+
+			    /**
+			     *  True if and only if loading full font 
+			     *  metrics was postponed for efficiency reasons.
+			     */
+    unsigned char	afiMetricsDeferred;
+
+			    /**
+			     *  If loading metrics has been deferred: 
+			     *  call this function to obtain them later 
+			     *  on.
+			     */
+    ResolveFontMetrics	afiResolveMetrics;
+
 			    /********************************************/
 			    /*  Hacked screen related functionality.	*/
 			    /********************************************/
-    char *		afiStyle;
-
-    ResolveFontMetrics	afiResolveMetrics;
+			    /**
+			     *  To operate in absolutely archaic environments,
+			     *  Ted keeps track of X11 fonts that match a font.
+			     *  The administration is kept here.
+			     */
+    char **		afiX11Fonts;
+    int			afiX11FontCount;
     } AfmFontInfo;
 
 # define psFontHasUnicode( a, u ) \
@@ -210,9 +309,7 @@ typedef struct AfmFontInfo
 /*									*/
 /************************************************************************/
 
-extern int psGetUnicodesFromGlyphNames(	AfmFontInfo *		afi );
-extern int psGetAlternateGlyphs(	AfmFontInfo *		afi );
-extern int psResolveFallbackGlyph(	AfmFontInfo *		afi );
+extern int psGetCodeToGlyphMapping(	AfmFontInfo *		afi );
 
 extern void psInitAfmFontInfo(		AfmFontInfo *		afi );
 extern void psCleanAfmFontInfo(		AfmFontInfo *		afi );

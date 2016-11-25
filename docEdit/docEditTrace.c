@@ -58,7 +58,7 @@ void docCleanEditTrace(	EditTrace *	et )
 	  ! utilMemoryBufferIsEmpty( &(et->etTraceFileName) )	&&
     	  et->etTraceFileHandle >= 0				)
 	{
-	if  ( appRemoveFile( &(et->etTraceFileName) ) )
+	if  ( fileRemoveFile( &(et->etTraceFileName) ) )
 	    { LDEB(1);	}
 	}
 
@@ -86,9 +86,9 @@ int docEditTraceSetTempName(	EditTrace *		et,
     return 0;
     }
 
-int docEditTraceSetDocumentName(	EditTrace *		et,
-					const MemoryBuffer *	documentName,
-					const char *		extension )
+int docEditTraceTraceFileName(	MemoryBuffer *		traceName,
+				const MemoryBuffer *	documentName,
+				const char *		extension )
     {
     int			rval= 0;
 
@@ -98,17 +98,19 @@ int docEditTraceSetDocumentName(	EditTrace *		et,
 
     utilInitMemoryBuffer( &docBaseName );
 
-    if  ( appFileGetRelativeName( &docBaseName, documentName ) )
+    if  ( fileGetRelativeName( &docBaseName, documentName ) )
 	{ LDEB(1); rval= -1; goto ready;	}
-    if  ( appFileAddExtension( &(docBaseName), extension ) )
+    if  ( fileAddExtension( &(docBaseName), extension ) )
 	{ LDEB(1); rval= -1; goto ready;	}
+
 #   define	HIDE_TRACE_FILE	0
 #   if		HIDE_TRACE_FILE
     if  ( utilMemoryBufferReplaceBytes( &(docBaseName), 0, 0,
 					    (const unsigned char *)".", 1 ) )
 	{ LDEB(1); rval= -1; goto ready;	}
 #   endif
-    if  ( appAbsoluteName( &(et->etTraceFileName), &docBaseName,
+
+    if  ( fileAbsoluteName( traceName, &docBaseName,
 					    relativeIsFile, documentName ) < 0 )
 	{ LDEB(1); rval= -1; goto ready;	}
 
@@ -117,6 +119,14 @@ int docEditTraceSetDocumentName(	EditTrace *		et,
     utilCleanMemoryBuffer( &docBaseName );
 
     return rval;
+    }
+
+int docEditTraceSetDocumentName(	EditTrace *		et,
+					const MemoryBuffer *	documentName,
+					const char *		extension )
+    {
+    return docEditTraceTraceFileName( &(et->etTraceFileName),
+					    documentName, extension );
     }
 
 int docEditTraceOpenTrace(	EditTrace *		et,

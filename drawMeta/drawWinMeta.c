@@ -12,6 +12,8 @@
 #   include	<bmio.h>
 #   include	<bmWmfIo.h>
 #   include	<textConverter.h>
+#   include	<sioGeneral.h>
+#   include	<fontDocFont.h>
 
 #   include	<appDebugon.h>
 
@@ -162,9 +164,9 @@ int appMetaInitDeviceContext(	DeviceContext *			dc,
     dc->dcFillHatched= 0;
     dc->dcFillPattern= 0;
 
-    docInitFontList( &(dc->dcFontList) );
+    fontInitDocFontList( &(dc->dcFontList) );
     dc->dcPlayer= player;
-    textInitTextConverter( &(dc->dcTextConverter) );
+    dc->dcTextConverter= (struct TextConverter *)0;
     utilInitMemoryBuffer( &(dc->dcCollectedText) );
 
     dc->dcPen.lpStyle= PS_SOLID;
@@ -234,7 +236,7 @@ int appMetaInitDeviceContext(	DeviceContext *			dc,
     dc->dcFont.lfQuality= 0;
     dc->dcFont.lfPitchAndFamily= 0;
     dc->dcFont.lfFaceNameUtf8[0]= '\0';
-    utilInitTextAttribute( &(dc->dcFont.lfTextAttribute) );
+    textInitTextAttribute( &(dc->dcFont.lfTextAttribute) );
 
     /* A good initial guess: */
     dc->dcTransform.dctDeviceRect= dc->dcTransform.dctLogicalRect;
@@ -267,7 +269,7 @@ int appMetaInitDeviceContext(	DeviceContext *			dc,
 
     dc->dcPoints= (Point2DI *)0;
     dc->dcCounts= (int *)0;
-    dc->dcAfi= (AfmFontInfo *)0;
+    dc->dcAfi= (struct AfmFontInfo *)0;
     dc->dcFontEncoding= -1;
 
     utilInitRGB8Color( &(dc->dcColorSet) );
@@ -275,7 +277,7 @@ int appMetaInitDeviceContext(	DeviceContext *			dc,
     dc->dcX= dc->dcTransform.dctLogicalRect.drX0;
     dc->dcY= dc->dcTransform.dctLogicalRect.drY0;
 
-    utilInitTextAttribute( &(dc->dcTextAttributeSet) );
+    textInitTextAttribute( &(dc->dcTextAttributeSet) );
 
     return 0;
     }
@@ -311,8 +313,9 @@ void appMetaCleanDeviceContext(	DeviceContext *		dc,
     {
     int		ob;
 
-    docCleanFontList( &(dc->dcFontList) );
-    textCleanTextConverter( &(dc->dcTextConverter) );
+    fontCleanDocFontList( &(dc->dcFontList) );
+    if  ( dc->dcTextConverter )
+	{ textCloseTextConverter( dc->dcTextConverter );	}
     utilCleanMemoryBuffer( &(dc->dcCollectedText) );
 
     for ( ob= 0; ob < dc->dcObjectCount; ob++ )
@@ -359,9 +362,9 @@ int appWinMetaRememberFontInList(	DeviceContext *		dc,
 
     const IndexSet *		unicodesWanted;
 
-    docInitDocumentFont( &dfNew );
+    fontInitDocumentFont( &dfNew );
 
-    utilInitTextAttribute( ta );
+    textInitTextAttribute( ta );
 
     ta->taFontNumber= 0;
     if  ( lf->lfHeight < 0 )
@@ -386,12 +389,12 @@ int appWinMetaRememberFontInList(	DeviceContext *		dc,
 	    break;
 	}
 
-    if  ( docFontSetFamilyName( &dfNew, lf->lfFaceNameUtf8 ) )
+    if  ( fontSetFamilyName( &dfNew, lf->lfFaceNameUtf8 ) )
 	{ LDEB(1); rval= -1; goto ready;	}
-    if  ( docFontSetFamilyStyle( &dfNew, familyStyle ) )
+    if  ( fontSetFamilyStyle( &dfNew, familyStyle ) )
 	{ LDEB(1); rval= -1; goto ready;	}
 
-    fontNum= docMergeFontIntoFontlist( dfl, &dfNew );
+    fontNum= fontMergeFontIntoList( dfl, &dfNew );
     if  ( fontNum < 0 )
 	{ SLDEB(lf->lfFaceNameUtf8,fontNum); goto ready;	}
 
@@ -408,7 +411,7 @@ int appWinMetaRememberFontInList(	DeviceContext *		dc,
 
   ready:
 
-    docCleanDocumentFont( &dfNew );
+    fontCleanDocumentFont( &dfNew );
 
     return rval;
     }
@@ -524,6 +527,11 @@ int appWinMetaGetPoints32(	DeviceContext *		dc,
 /*									*/
 /************************************************************************/
 
+# ifdef __GNUC__
+# pragma GCC diagnostic push
+# pragma GCC diagnostic ignored "-Wunused-parameter"
+# endif
+
 int appMetaExcludeClipRect(	DeviceContext *		dc,
 				int			recordSize,
 				SimpleInputStream *	sis )
@@ -537,6 +545,15 @@ int appMetaExcludeClipRect(	DeviceContext *		dc,
     return 0;
     }
 
+# ifdef __GNUC__
+# pragma GCC diagnostic pop
+# endif
+
+# ifdef __GNUC__
+# pragma GCC diagnostic push
+# pragma GCC diagnostic ignored "-Wunused-parameter"
+# endif
+
 int appMetaIntersectClipRect(	DeviceContext *		dc,
 				int			recordSize,
 				SimpleInputStream *	sis )
@@ -549,6 +566,10 @@ int appMetaIntersectClipRect(	DeviceContext *		dc,
 
     return 0;
     }
+
+# ifdef __GNUC__
+# pragma GCC diagnostic pop
+# endif
 
 /************************************************************************/
 /*									*/

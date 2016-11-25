@@ -7,16 +7,17 @@
 #   include	"tedConfig.h"
 
 #   include	<stddef.h>
-#   include	<stdio.h>
 #   include	<ctype.h>
 
 #   include	"tedEdit.h"
-#   include	"tedDocFront.h"
+#   include	<tedDocFront.h>
 #   include	<docRtfTrace.h>
 #   include	<docEditImpl.h>
 #   include	<docTreeNode.h>
 #   include	<docNodeTree.h>
 #   include	<docEditCommand.h>
+#   include	<docSelectionGeometry.h>
+#   include	<docSelectionDescription.h>
 
 #   include	<appDebugon.h>
 
@@ -33,7 +34,7 @@ static int tedEditDeleteSelectedParagaphs(	DocumentPosition *	dpNew,
     int				rval= 0;
     EditOperation *		eo= &(teo->teoEo);
 
-    BufferItem *		parentNode;
+    struct BufferItem *		parentNode;
     int				child0;
     int				child1;
 
@@ -81,7 +82,7 @@ static int tedEditDeleteSelectedParagaphs(	DocumentPosition *	dpNew,
     return rval;
     }
 
-int tedDocDeleteSelectedParagraphs(	EditDocument *	ed,
+int tedDocDeleteSelectedParagraphs(	struct EditDocument *	ed,
 					int		traced )
     {
     int				rval= 0;
@@ -104,7 +105,7 @@ int tedDocDeleteSelectedParagraphs(	EditDocument *	ed,
 
     if  ( eo->eoHeadDp.dpNode->biNumberInParent == 0 )
 	{
-	BufferItem *	parentNode= eo->eoHeadDp.dpNode->biParent;
+	struct BufferItem *	parentNode= eo->eoHeadDp.dpNode->biParent;
 
 	if  ( eo->eoTailDp.dpNode->biNumberInParent ==
 						parentNode->biChildCount -1 )
@@ -158,7 +159,7 @@ int tedDocDeleteSelectedParagraphs(	EditDocument *	ed,
     return rval;
     }
 
-int tedDocDeleteCurrentFrame(	EditDocument *	ed,
+int tedDocDeleteCurrentFrame(	struct EditDocument *	ed,
 				int		traced )
     {
     if  ( tedDocSelectCurrentFrame( ed ) )
@@ -176,14 +177,14 @@ int tedDocDeleteCurrentFrame(	EditDocument *	ed,
 static int tedEditDeleteSelectedSections(
 					DocumentPosition *	dpNew,
 					int *			pSide,
-					BufferItem *		sectNode0,
-					BufferItem *		sectNode1,
+					struct BufferItem *		sectNode0,
+					struct BufferItem *		sectNode1,
 					TedEditOperation *	teo )
     {
     int				rval= 0;
     EditOperation *		eo= &(teo->teoEo);
 
-    BufferItem *		parentNode;
+    struct BufferItem *		parentNode;
     int				child0;
     int				child1;
 
@@ -239,7 +240,7 @@ static int tedEditDeleteSelectedSections(
 /*									*/
 /************************************************************************/
 
-int tedDocDeleteSelectedSections(	EditDocument *	ed,
+int tedDocDeleteSelectedSections(	struct EditDocument *	ed,
 					int		traced )
     {
     int				rval= 0;
@@ -253,8 +254,8 @@ int tedDocDeleteSelectedSections(	EditDocument *	ed,
     int				side;
     int				allChildren= 0;
 
-    BufferItem *		sectNode0;
-    BufferItem *		sectNode1;
+    struct BufferItem *		sectNode0;
+    struct BufferItem *		sectNode1;
     DocumentSelection		dsTraced;
 
     const int			fullWidth= 1;
@@ -274,7 +275,7 @@ int tedDocDeleteSelectedSections(	EditDocument *	ed,
 
     if  ( sectNode0->biNumberInParent == 0 )
 	{
-	BufferItem *	parentNode= sectNode0->biParent;
+	struct BufferItem *	parentNode= sectNode0->biParent;
 
 	if  ( sectNode1->biNumberInParent == parentNode->biChildCount -1 )
 	    { allChildren= 1;	}

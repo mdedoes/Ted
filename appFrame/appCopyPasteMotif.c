@@ -6,15 +6,20 @@
 
 #   include	"appFrameConfig.h"
 
+#   include	<guiBase.h>
+
+#   if	USE_MOTIF
+
 #   include	<stddef.h>
-#   include	<stdio.h>
 #   include	<stdlib.h>
 
-#   include	"appFrame.h"
+#   include	"appEditApplication.h"
+#   include	"appEditDocument.h"
+#   include	"appDocFront.h"
+#   include	"appAppFront.h"
+#   include	"appSelectionType.h"
 
 #   include	<appDebugon.h>
-
-#   ifdef	USE_MOTIF
 
 /************************************************************************/
 /*									*/
@@ -227,6 +232,9 @@ APP_GIVE_COPY( appDocReplyToCopyRequest, w, event, voided )
 	Atom *			fresh;
 	int			i;
 
+	int			count;
+	int			size;
+
 	if  ( ed->edTargetTypeCount < 1 )
 	    { LDEB(ed->edTargetTypeCount); goto refuse;	}
 
@@ -238,13 +246,19 @@ APP_GIVE_COPY( appDocReplyToCopyRequest, w, event, voided )
 	for ( i= 0; i < ed->edTargetTypeCount; i++ )
 	    { atoms[i]= ed->edTargetTypes[i].asttTargetAtom; }
 
+	size= 8* sizeof(Atom);
+	count= ed->edTargetTypeCount;
+
+	while( size > 32 )
+	    { size /= 2; count *= 2;	}
+
 	XChangeProperty( display,
 			response.xselection.requestor,
 			response.xselection.property,
 			response.xselection.target,
-			8* sizeof(Atom), PropModeReplace,
+			size, PropModeReplace,
 			(unsigned char *)atoms,
-			ed->edTargetTypeCount );
+			count );
 
 	XSendEvent( display, response.xselection.requestor, False, 0L,
 								&response );
@@ -688,18 +702,6 @@ void appAllocateCopyPasteTargetAtoms(	EditApplication *	ea )
 	}
 
     return;
-    }
-
-void appCopyPixmapValue(	APP_SELECTION_EVENT *	event,
-				APP_BITMAP_IMAGE	pixmapCopied )
-    {
-    XSelectionEvent *	selEvent= &(event->xselection);
-
-    XChangeProperty( selEvent->display,
-		    selEvent->requestor, selEvent->property, selEvent->target,
-		    8* sizeof(Pixmap), PropModeReplace,
-		    (unsigned char *)&pixmapCopied,
-		    1 );
     }
 
 #   endif

@@ -1,13 +1,19 @@
 #   include	"bitmapConfig.h"
 
+#   if		USE_LIBPNG	/*	{{	*/
+
 #   include	<stdlib.h>
+
+#   include	"bmformats.h"
 #   include	"bmintern.h"
 #   include	"bmio.h"
 #   include	<png.h>
-#   include	<appDebugon.h>
 #   include	<sioFileio.h>
 #   include	<utilEndian.h>
 #   include	<geoUnits.h>
+#   include	<sioGeneral.h>
+
+#   include	<appDebugon.h>
 
 # if 1
 #   ifndef png_jmpbuf
@@ -173,10 +179,10 @@ static int bmPngReadContents(	png_info *		pngi,
     *pBuffer= buffer; return 0;
     }
 
-int bmReadPngFile(	const MemoryBuffer *	filename,
-			unsigned char **	pBuffer,
-			BitmapDescription *	bd,
-			int *			pPrivateFormat )
+int bmReadPngFile(	const struct MemoryBuffer *	filename,
+			unsigned char **		pBuffer,
+			BitmapDescription *		bd,
+			int *				pPrivateFormat )
     {
     SimpleInputStream *	sis;
 
@@ -275,15 +281,30 @@ int bmPngReadPng(	BitmapDescription *	bd,
 /*									*/
 /************************************************************************/
 
-int bmCanWritePngFile( const BitmapDescription *	bd,
+# ifdef __GNUC__
+# pragma GCC diagnostic push
+# pragma GCC diagnostic ignored "-Wunused-parameter"
+# endif
+
+int bmCanWritePngFile(	const BitmapDescription *	bd,
 			int				privateFormat )
     {
     if  ( bd->bdColorEncoding == BMcoRGB8PALETTE	&&
+	  ! bd->bdHasAlpha				&&
 	  bd->bdBitsPerPixel > 8			)
+	{ return -1;	}
+
+    if  ( bd->bdColorEncoding == BMcoRGB8PALETTE	&&
+	  bd->bdHasAlpha				&&
+	  bd->bdBitsPerPixel > 16			)
 	{ return -1;	}
 
     return 0;
     }
+
+# ifdef __GNUC__
+# pragma GCC diagnostic pop
+# endif
 
 /************************************************************************/
 /*									*/
@@ -386,16 +407,20 @@ static int bpPngiFromBitmap(	png_structp			png,
 	    sig_bit.blue= bd->bdBitsPerSample;
 	    sig_bit.alpha= 0;
 
+	    /* Give palette predictable contents */
+	    for ( i= 0; i < PNG_MAX_PALETTE_LENGTH; i++ )
+		{
+		(*pPalette)[i].red= 0;
+		(*pPalette)[i].green= 0;
+		(*pPalette)[i].blue= 0;
+		}
+
 	    for ( i= 0; i < bd->bdPalette.cpColorCount; i++ )
 		{
 		(*pPalette)[i].red= bd->bdPalette.cpColors[i].rgb8Red;
 		(*pPalette)[i].green= bd->bdPalette.cpColors[i].rgb8Green;
 		(*pPalette)[i].blue= bd->bdPalette.cpColors[i].rgb8Blue;
 		}
-	    /* Give rest of palette predictable contents */
-	    for ( i= bd->bdPalette.cpColorCount;
-					i < PNG_MAX_PALETTE_LENGTH; i++ )
-		{ (*pPalette)[i]= (*pPalette)[0];	}
 	    if  ( bd->bdHasAlpha )
 		{
 		if  ( bd->bdHasAlpha )
@@ -429,13 +454,13 @@ static int bpPngiFromBitmap(	png_structp			png,
     return 0;
     }
 
-static void bmPngWriteContents(	png_structp			png,
+static void bmPngWriteContents(	unsigned char **		pScratch,
+				png_structp			png,
 				png_infop			pngi,
 				const unsigned char *		buffer,
 				const BitmapDescription *	bd )
     {
     int			row;
-    unsigned char *	scratch= (unsigned char *)0;
     int			color_type= png_get_color_type( png, pngi );
 
     if  ( bd->bdColorEncoding == BMcoBLACKWHITE )
@@ -443,9 +468,9 @@ static void bmPngWriteContents(	png_structp			png,
 	if  ( bd->bdBitsPerPixel == 1 )
 	    { png_set_invert_mono( png );	}
 	else{
-	    scratch= (unsigned char *)malloc( bd->bdBytesPerRow );
-	    if  ( ! scratch )
-		{ LXDEB(bd->bdBytesPerRow,scratch);	}
+	    *pScratch= (unsigned char *)realloc( *pScratch, bd->bdBytesPerRow );
+	    if  ( ! *pScratch )
+		{ LXDEB(bd->bdBytesPerRow,*pScratch);	}
 	    }
 	}
 
@@ -461,9 +486,9 @@ static void bmPngWriteContents(	png_structp			png,
 	*/
 	if  ( testEndian[0] )
 	    {
-	    scratch= (unsigned char *)malloc( bd->bdBytesPerRow );
-	    if  ( ! scratch )
-		{ LXDEB(bd->bdBytesPerRow,scratch);	}
+	    *pScratch= (unsigned char *)realloc( *pScratch, bd->bdBytesPerRow );
+	    if  ( ! *pScratch )
+		{ LXDEB(bd->bdBytesPerRow,*pScratch);	}
 	    }
 	}
 
@@ -474,24 +499,24 @@ static void bmPngWriteContents(	png_structp			png,
 	const unsigned char *	from= buffer+ row* bd->bdBytesPerRow;
 
 	if  ( bd->bdColorEncoding == BMcoBLACKWHITE	&&
-	      scratch					)
+	      *pScratch					)
 	    {
 	    int			col;
-	    unsigned char *	to= scratch;
+	    unsigned char *	to= *pScratch;
 
 	    for ( col= 0; col < bd->bdBytesPerRow; col++ )
 		{ *(to++)= ~*(from++); }
 
-	    from= scratch;
+	    from= *pScratch;
 	    }
 
 	if  ( color_type == PNG_COLOR_TYPE_RGB	&&
 	      bd->bdBitsPerSample == 16					&&
-	      scratch							)
+	      *pScratch							)
 	    {
 	    int			col;
 	    const BmUint16 *	fr= (const BmUint16 *)from;
-	    unsigned char *	to= scratch;
+	    unsigned char *	to= *pScratch;
 
 	    for ( col= 0; col < bd->bdBytesPerRow; col += sizeof(BmUint16) )
 		{
@@ -499,7 +524,7 @@ static void bmPngWriteContents(	png_structp			png,
 		to += sizeof(BmUint16);
 		}
 
-	    from= scratch;
+	    from= *pScratch;
 	    }
 
 	png_write_rows( png, (unsigned char **)&from, 1 );
@@ -507,13 +532,15 @@ static void bmPngWriteContents(	png_structp			png,
 
     png_write_end( png, pngi );
 
-    if  ( scratch )
-	{ free( scratch );	}
-
     return;
     }
 
-int bmWritePngFile(	const MemoryBuffer *		filename,
+# ifdef __GNUC__
+# pragma GCC diagnostic push
+# pragma GCC diagnostic ignored "-Wunused-parameter"
+# endif
+
+int bmWritePngFile(	const struct MemoryBuffer *	filename,
 			const unsigned char *		buffer,
 			const BitmapDescription *	bd,
 			int				privateFormat )
@@ -532,6 +559,10 @@ int bmWritePngFile(	const MemoryBuffer *		filename,
     return 0;
     }
 
+# ifdef __GNUC__
+# pragma GCC diagnostic pop
+# endif
+
 /************************************************************************/
 /*									*/
 /*  Write a bitmap to a png stream.					*/
@@ -546,24 +577,40 @@ static void bmPngWriteBytes(	png_struct *	png,
 
     sos= (SimpleOutputStream *)png_get_io_ptr( png );
 
-    if  ( sioOutWriteBytes( sos, (const unsigned char *)buffer, count )
-								!= count )
+    if  ( sioOutWriteBytes( sos, (const unsigned char *)buffer, count ) != count )
 	{ LDEB(count);	}
 
     return;
     }
 
+# ifdef __GNUC__
+# pragma GCC diagnostic push
+# pragma GCC diagnostic ignored "-Wunused-parameter"
+# endif
+
 static void bmPngFlushBytes(    png_struct *    png )
     { return;	}
 
-int bmPngWritePng(		const BitmapDescription *	bd,
+# ifdef __GNUC__
+# pragma GCC diagnostic pop
+# endif
+
+/************************************************************************/
+/*									*/
+/*  Write a png. Intermediate function to cope with setjmp/longjmp	*/
+/*  semantics.								*/
+/*									*/
+/************************************************************************/
+
+static int bmPngWritePng_x(	png_colorp *			pPalette,
+				unsigned char **		pScratch,
+				const BitmapDescription *	bd,
 				const unsigned char *		buffer,
 				SimpleOutputStream *		sos )
     {
     int			rval= 0;
     png_structp		pngp= (png_structp)0;
     png_infop		pngip= (png_infop)0;
-    png_colorp		palette= (png_colorp)0;
 
     pngp = png_create_write_struct( PNG_LIBPNG_VER_STRING, (void *)0,
 				    (png_error_ptr)0, (png_error_ptr)0 );
@@ -586,17 +633,35 @@ int bmPngWritePng(		const BitmapDescription *	bd,
     png_init_io( pngp, (FILE *)0 );
     png_set_write_fn( pngp, (void *)sos, bmPngWriteBytes, bmPngFlushBytes );
 
-    if  ( bpPngiFromBitmap( pngp, pngip, &palette, bd ) )
+    if  ( bpPngiFromBitmap( pngp, pngip, pPalette, bd ) )
 	{ LDEB(bd->bdColorEncoding); rval= -1; goto ready; }
 
-    bmPngWriteContents( pngp, pngip, buffer, bd );
+    bmPngWriteContents( pScratch, pngp, pngip, buffer, bd );
 
   ready:
-
-    if  ( palette )
-	{ free( palette );	}
 
     png_destroy_write_struct( &pngp, &pngip );
 
     return rval;
     }
+
+int bmPngWritePng(		const BitmapDescription *	bd,
+				const unsigned char *		buffer,
+				SimpleOutputStream *		sos )
+    {
+    int			rval= 0;
+
+    png_colorp		palette= (png_colorp)0;
+    unsigned char *	scratch= (unsigned char *)0;
+
+    rval= bmPngWritePng_x( &palette, &scratch, bd, buffer, sos );
+
+    if  ( palette )
+	{ free( palette );	}
+    if  ( scratch )
+	{ free( scratch );	}
+
+    return rval;
+    }
+
+#   endif		/*	USE_LIBPNG	}}	*/

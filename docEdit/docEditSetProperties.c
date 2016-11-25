@@ -6,16 +6,18 @@
 
 #   include	"docEditConfig.h"
 
-#   include	<stddef.h>
-#   include	<stdio.h>
 #   include	<ctype.h>
 
 #   include	"docEdit.h"
 #   include	<docTreeNode.h>
 #   include	<docNodeTree.h>
 #   include	<docTreeScanner.h>
+#   include	<docScanner.h>
 #   include	<docTreeType.h>
 #   include	"docEditSetProperties.h"
+#   include	"docEditOperation.h"
+#   include	<docSelect.h>
+#   include	<utilPropMask.h>
 
 #   include	<appDebugon.h>
 
@@ -25,14 +27,18 @@
 /*									*/
 /************************************************************************/
 
-static int docSetPropsEnterNode( BufferItem *			node,
+# ifdef __GNUC__
+# pragma GCC diagnostic push
+# pragma GCC diagnostic ignored "-Wunused-parameter"
+# endif
+
+static int docSetPropsEnterNode( struct BufferItem *		node,
 				const DocumentSelection *	ds,
-				const BufferItem *		bodySectNode,
+				const struct BufferItem *	bodySectNode,
 				void *				through )
     {
     SetProperties *	setProps= (SetProperties *)through;
     EditOperation *	eo= setProps->spEditOperation;
-
 
     switch( node->biLevel )
 	{
@@ -46,22 +52,15 @@ static int docSetPropsEnterNode( BufferItem *			node,
 
 	case DOClevCELL:
 	    if  ( docIsRowNode( node->biParent ) )
-		{
-		setProps->spGotCell++;
-
-		if  ( docEditChangeCellProperties( setProps, ds, node,
-							setProps->sp_cpSet ) )
-		    { LDEB(node->biLevel); return -1;	}
-		}
+		{ setProps->spGotCell++;	}
 	    break;
 
 	case DOClevROW:
 	    if  ( docIsRowNode( node ) )
 		{
-		setProps->spGotRow++;
+		setProps->spEnteredRow++;
 
-		if  ( docEditChangeRowProperties( setProps, ds, node,
-							setProps->sp_rpSet ) )
+		if  ( docEditSetRowNodeProperties( node, setProps ) )
 		    { LDEB(node->biLevel); return -1;	}
 		}
 	    break;
@@ -73,8 +72,7 @@ static int docSetPropsEnterNode( BufferItem *			node,
 		{
 		if  ( docEditUpdSectProperties( eo, setProps->sp_spDoneMask,
 				      node, setProps->sp_spSetMask,
-				      setProps->sp_spSet,
-				      setProps->spAttributeMap ) )
+				      setProps->sp_spSet ) )
 		    { XDEB(setProps->sp_spSetMask); return -1;	}
 		}
 	    break;
@@ -86,8 +84,12 @@ static int docSetPropsEnterNode( BufferItem *			node,
 	    LDEB(node->biLevel); return -1;
 	}
 
-    return ADVICEtsOK;
+    return SCANadviceOK;
     }
+
+# ifdef __GNUC__
+# pragma GCC diagnostic pop
+# endif
 
 /************************************************************************/
 /*									*/
@@ -101,33 +103,37 @@ int docChangeSelectionProperties(
 
 			PropertyMask *			selTaDoneMask,
 			const PropertyMask *		taSetMask,
-			const TextAttribute *		taSet,
+			const struct TextAttribute *	taSet,
 
 			PropertyMask *			selPpDoneMask,
 			const PropertyMask *		ppSetMask,
-			const ParagraphProperties *	ppSet,
+			const struct ParagraphProperties * ppSet,
 
 			PropertyMask *			selCpDoneMask,
 			const PropertyMask *		cpSetMask,
-			const CellProperties *		cpSet,
+			const struct CellProperties *	cpSet,
 
 			PropertyMask *			selRpDoneMask,
 			const PropertyMask *		rpSetMask,
-			const RowProperties *		rpSet,
+			const struct RowProperties *	rpSet,
 
 			PropertyMask *			selSpDoneMask,
 			const PropertyMask *		spSetMask,
-			const SectionProperties *	spSet,
+			const struct SectionProperties * spSet,
 
 			PropertyMask *			docDpDoneMask,
 			const PropertyMask *		dpSetMask,
-			const DocumentProperties *	dpSet )
+			const struct DocumentProperties * dpSet )
 
     {
-    const int			flags= 0; /* NOT FLAGtsSCAN_MERGED_CELLS */
-    SetProperties		setProps;
+    int			rval= 0;
+    const int		flags= 0; /* NOT FLAGtsSCAN_MERGED_CELLS */
+    SetProperties	setProps;
 
-    if  ( ds && docIsIBarSelection( ds ) )
+    docEditInitSetProperties( &setProps );
+
+    if  ( ds && docIsIBarSelection( ds )		&&
+	  docParaStrlen( ds->dsHead.dpNode ) > 0	)
 	{ taSetMask= (const PropertyMask *)0;	}
 
     if  ( taSetMask && utilPropMaskIsEmpty( taSetMask ) )
@@ -145,12 +151,6 @@ int docChangeSelectionProperties(
 
     setProps.spEditOperation= eo;
     setProps.spRedoParaLayout= 1;
-    setProps.spAttributeMap= (const DocumentAttributeMap *)0;
-
-    setProps.spGotPara= 0;
-    setProps.spGotCell= 0;
-    setProps.spGotRow= 0;
-    setProps.spGotSect= 0;
 
     setProps.sp_taDoneMask= selTaDoneMask;
     setProps.sp_taSetMask= taSetMask;
@@ -175,7 +175,7 @@ int docChangeSelectionProperties(
     if  ( cpSetMask || rpSetMask )
 	{
 	if  ( docGetTableRectangle( &(setProps.spTableRectangle), ds ) )
-	    { XXDEB(cpSetMask,rpSetMask); return -1;	}
+	    { XXDEB(cpSetMask,rpSetMask); rval= -1; goto ready;	}
 	}
     else{
 	docInitTableRectangle( &(setProps.spTableRectangle) );
@@ -184,20 +184,24 @@ int docChangeSelectionProperties(
     if  ( dpSetMask							&&
 	  docChangeDocumentProperties( eo, docDpDoneMask,
 			    dpSetMask, dpSet, setProps.spAttributeMap )	)
-	{ LDEB(1); return -1;	}
+	{ LDEB(1); rval= -1; goto ready;	}
 
     if  ( ! ds )
 	{
 	if  ( docScanTree( eo->eoDocument, eo->eoTree,
 				    docSetPropsEnterNode, (NodeVisitor)0,
+				    (TreeVisitor)0, (TreeVisitor)0, 
 				    flags, (void *)&setProps ) < 0 )
-	    { LDEB(1); return -1;	}
+	    { LDEB(1); rval= -1; goto ready;	}
 	}
     else{
-	if  ( ( ! ds->dsHead.dpNode || ! ds->dsTail.dpNode ) )
-	    { XXDEB(ds->dsHead.dpNode,ds->dsTail.dpNode); return -1; }
+	if  ( ! docSelectionIsSet( ds ) )
+	    {
+	    XXDEB(ds->dsHead.dpNode,ds->dsTail.dpNode);
+	    rval= -1; goto ready;
+	    }
 
-	if  ( docSelectionInsideParagraph( ds ) &&
+	if  ( docSelectionSingleParagraph( ds ) &&
 	      ! ppSetMask			&&
 	      ! cpSetMask			&&
 	      ! rpSetMask			&&
@@ -214,60 +218,107 @@ int docChangeSelectionProperties(
 
 	if  ( docScanSelection( eo->eoDocument, ds,
 				    docSetPropsEnterNode, (NodeVisitor)0,
+				    (TreeVisitor)0, (TreeVisitor)0, 
 				    flags, (void *)&setProps ) < 0 )
-	    { LDEB(1); return -1;	}
+	    { LDEB(1); rval= -1; goto ready;	}
 
-	if  ( cpSetMask && ! setProps.spGotCell )
+	if  ( ( rpSetMask || cpSetMask ) && ! setProps.spEnteredRow )
 	    {
-	    BufferItem *	cellNode= docGetCellNode( ds->dsHead.dpNode );
-
-	    if  ( ! cellNode )
-		{ XDEB(cellNode); return -1;	}
-
-	    if  ( docSetPropsEnterNode( cellNode, ds,
-				eo->eoBodySectNode, (void *)&setProps ) < 0 )
-		{ XDEB(cpSetMask); return -1;	}
-	    }
-
-	if  ( rpSetMask && ! setProps.spGotRow )
-	    {
-	    BufferItem *	rowNode= docGetRowNode( ds->dsHead.dpNode );
+	    struct BufferItem *	rowNode= docGetRowNode( ds->dsHead.dpNode );
 
 	    if  ( ! rowNode )
-		{ XDEB(rowNode); return -1;	}
+		{ XDEB(rowNode); rval= -1; goto ready;	}
 
 	    if  ( docSetPropsEnterNode( rowNode, ds,
 				eo->eoBodySectNode, (void *)&setProps ) < 0 )
-		{ XDEB(rpSetMask); return -1;	}
+		{ XDEB(rpSetMask); rval= -1; goto ready;	}
+	    }
+
+	if  ( cpSetMask && ! setProps.spGotCell )
+	    {
+	    struct BufferItem *	cellNode= docGetCellNode( ds->dsHead.dpNode );
+
+	    if  ( ! cellNode )
+		{ XDEB(cellNode); rval= -1; goto ready;	}
+
+	    if  ( docSetPropsEnterNode( cellNode, ds,
+				eo->eoBodySectNode, (void *)&setProps ) < 0 )
+		{ XDEB(cpSetMask); rval= -1; goto ready;	}
 	    }
 
 	if  ( spSetMask && ! setProps.spGotSect )
 	    {
-	    BufferItem *	sectNode= docGetSectNode( ds->dsHead.dpNode );
+	    struct BufferItem *	sectNode= docGetSectNode( ds->dsHead.dpNode );
 
 	    if  ( ! sectNode )
-		{ XDEB(sectNode); return -1;	}
+		{ XDEB(sectNode); rval= -1; goto ready;	}
 
 	    if  ( docSetPropsEnterNode( sectNode, ds,
 				eo->eoBodySectNode, (void *)&setProps ) < 0 )
-		{ XDEB(spSetMask); return -1;	}
+		{ XDEB(spSetMask); rval= -1; goto ready;	}
 	    }
 
 	if  ( spSetMask && ds->dsHead.dpNode->biTreeType != DOCinBODY )
 	    {
-	    BufferItem *	bodySectNode;
+	    struct BufferItem *	bodySectNode;
 
 	    bodySectNode= docGetBodySectNode( ds->dsHead.dpNode,
 							    eo->eoDocument );
 	    if  ( ! bodySectNode )
-		{ XDEB(bodySectNode); return -1;	}
+		{ XDEB(bodySectNode); rval= -1; goto ready;	}
 
 	    if  ( docSetPropsEnterNode( bodySectNode, ds,
 				    bodySectNode, (void *)&setProps ) < 0 )
-		{ XDEB(spSetMask); return -1;	}
+		{ XDEB(spSetMask); rval= -1; goto ready;	}
 	    }
 	}
 
-    return 0;
+  ready:
+
+    docEditCleanSetProperties( &setProps );
+
+    return rval;
+    }
+
+void docEditInitSetProperties(	SetProperties *		setProps )
+    {
+    setProps->spEditOperation= (struct EditOperation *)0;
+    setProps->spRedoParaLayout= 0;
+    setProps->spAttributeMap= (const struct DocumentAttributeMap *)0;
+
+    docInitTableRectangle( &(setProps->spTableRectangle) );
+
+    setProps->spGotPara= 0;
+    setProps->spGotCell= 0;
+    setProps->spEnteredRow= 0;
+    setProps->spLeftRow= 0;
+    setProps->spGotSect= 0;
+
+    docInitRowProperties( &(setProps->spCurrentRowProperties) );
+
+    setProps->sp_taDoneMask= (struct PropertyMask *)0;
+    setProps->sp_taSetMask= (const struct PropertyMask *)0;
+    setProps->sp_taSet= (const struct TextAttribute *)0;
+
+    setProps->sp_ppDoneMask= (struct PropertyMask *)0;
+    setProps->sp_ppSetMask= (const struct PropertyMask *)0;
+    setProps->sp_ppSet= (const struct ParagraphProperties *)0;
+
+    setProps->sp_cpDoneMask= (struct PropertyMask *)0;
+    setProps->sp_cpSetMask= (const struct PropertyMask *)0;
+    setProps->sp_cpSet= (const struct CellProperties *)0;
+
+    setProps->sp_rpDoneMask= (struct PropertyMask *)0;
+    setProps->sp_rpSetMask= (const struct PropertyMask *)0;
+    setProps->sp_rpSet= (const struct RowProperties *)0;
+
+    setProps->sp_spDoneMask= (struct PropertyMask *)0;
+    setProps->sp_spSetMask= (const struct PropertyMask *)0;
+    setProps->sp_spSet= (const struct SectionProperties *)0;
+    }
+
+void docEditCleanSetProperties(	SetProperties *		setProps )
+    {
+    docCleanRowProperties( &(setProps->spCurrentRowProperties) );
     }
 

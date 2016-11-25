@@ -7,8 +7,9 @@
 #   ifndef	SIO_VPRINTF_H
 #   define	SIO_VPRINTF_H
 
-#   include	"sioGeneral.h"
 #   include	<stdarg.h>
+
+struct SimpleOutputStream;
 
 /************************************************************************/
 /*									*/
@@ -16,7 +17,7 @@
 /*									*/
 /************************************************************************/
 
-extern int sioOutVPrintf(	SimpleOutputStream *	sos,
-				const char *		format,
-				va_list			ap );
+extern int sioOutVPrintf(	struct SimpleOutputStream *	sos,
+				const char *			format,
+				va_list				ap );
 #   endif

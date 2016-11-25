@@ -9,7 +9,7 @@
 #   include	<appDebugon.h>
 
 #   include	"docLayoutPosition.h"
-#   include	<geo2DInteger.h>
+#   include	<geoRectangle.h>
 
 /************************************************************************/
 /*									*/
@@ -35,7 +35,9 @@ void docInitBlockOrigin(	BlockOrigin *	bo )
     {
     bo->boXShift= 0;
     bo->boYShift= 0;
-    docInitLayoutPosition( &(bo->boFrameOverride) );
+
+    bo->boOverridePage= 0;
+    bo->boOverrideColumn= 0;
     bo->boOverrideFrame= 0;
     }
 
@@ -87,19 +89,54 @@ int docCompareLayoutPositions(	const LayoutPosition *		lp1,
     return 0;
     }
 
+int docCompareLayoutPositionFrames(
+				const LayoutPosition *		lp1,
+				const LayoutPosition *		lp2 )
+    {
+    if  ( lp1->lpPage > lp2->lpPage )
+	{ return  1;	}
+    if  ( lp1->lpPage < lp2->lpPage )
+	{ return -1;	}
+
+    if  ( lp1->lpColumn > lp2->lpColumn )
+	{ return  1;	}
+    if  ( lp1->lpColumn < lp2->lpColumn )
+	{ return -1;	}
+
+    return 0;
+    }
+
+int docCompareLayoutPositionToFrame(
+				const LayoutPosition *		lp,
+				int				page,
+				int				column )
+    {
+    if  ( lp->lpPage > page )
+	{ return  1;	}
+    if  ( lp->lpPage < page )
+	{ return -1;	}
+
+    if  ( lp->lpColumn > column )
+	{ return  1;	}
+    if  ( lp->lpColumn < column )
+	{ return -1;	}
+
+    return 0;
+    }
+
 void docShiftPosition(	LayoutPosition *	to,
 			const BlockOrigin *	bo,
 			const LayoutPosition *	from )
     {
     *to= *from;
 
-    if  ( bo->boOverrideFrame )
+    if  ( bo && bo->boOverrideFrame )
 	{
-	to->lpPage= bo->boFrameOverride.lpPage;
-	to->lpColumn= bo->boFrameOverride.lpColumn;
+	to->lpPage= bo->boOverridePage;
+	to->lpColumn= bo->boOverrideColumn;
 	}
 
-    to->lpPageYTwips += bo->boYShift;
+    to->lpPageYTwips += (bo?bo->boYShift:0);
     }
 
 void docShiftRectangle(	DocumentRectangle *		to,
@@ -108,18 +145,10 @@ void docShiftRectangle(	DocumentRectangle *		to,
     {
     *to= *from;
 
-    to->drY0 += bo->boYShift;
-    to->drY1 += bo->boYShift;
-    }
+    to->drX0 += (bo?bo->boXShift:0);
+    to->drX1 += (bo?bo->boXShift:0);
 
-void docLayoutPushBottomDownShifted(	LayoutPosition *	lpParentBottom,
-					const LayoutPosition *	lpChildBottom,
-					const BlockOrigin *	bo )
-    {
-    LayoutPosition	lpBottom;
-
-    docShiftPosition( &lpBottom, bo, lpChildBottom );
-
-    docLayoutPushBottomDown( lpParentBottom, &lpBottom );
+    to->drY0 += (bo?bo->boYShift:0);
+    to->drY1 += (bo?bo->boYShift:0);
     }
 

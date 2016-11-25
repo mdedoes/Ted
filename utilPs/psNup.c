@@ -482,7 +482,17 @@ void psInitPrintGeometry(	PrintGeometry *	pg )
     return;
     }
 
+# ifdef __GNUC__
+# pragma GCC diagnostic push
+# pragma GCC diagnostic ignored "-Wunused-parameter"
+# endif
+
 void psCleanPrintGeometry(	PrintGeometry *	pg )
     {
     return;
     }
+
+# ifdef __GNUC__
+# pragma GCC diagnostic pop
+# endif
+

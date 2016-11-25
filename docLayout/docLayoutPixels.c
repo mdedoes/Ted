@@ -6,14 +6,17 @@
 
 #   include	"docLayoutConfig.h"
 
-#   include	<stddef.h>
-
 #   include	"docLayout.h"
 #   include	<geoGrid.h>
-#   include	<docDebug.h>
 #   include	<docTreeNode.h>
 #   include	<docTreeType.h>
+#   include	<docPropVal.h>
+#   include	<docDocumentProperties.h>
+#   include	<docSectProperties.h>
+#   include	"docSelectionGeometry.h"
+#   include	<docBuf.h>
 
+#   include	<docDebug.h>
 #   include	<appDebugon.h>
 
 /************************************************************************/
@@ -21,11 +24,11 @@
 int docLayoutYPixels(	const LayoutContext *	lc,
 			const LayoutPosition *	lp )
     {
-    DocumentRectangle	drPixels;
+    DocumentRectangle	drPagePixels;
 
-    docGetPageRectPixels( &drPixels, lc, lp->lpPage );
+    docGetPageRectPixels( &drPagePixels, lc, lp->lpPage );
 
-    return drPixels.drY0+ lc->lcPixelsPerTwip* lp->lpPageYTwips;
+    return drPagePixels.drY0+ lc->lcPixelsPerTwip* lp->lpPageYTwips;
     }
 
 int docLayoutXPixels(	const LayoutContext *	lc,
@@ -97,7 +100,7 @@ void docGetPixelRectangleForPages(
 				int				page1 )
     {
     int			sectNr;
-    const BufferItem *	bodyNode= lc->lcDocument->bdBody.dtRoot;
+    const struct BufferItem *	bodyNode= lc->lcDocument->bdBody.dtRoot;
     int			first= 1;
 
     sectNr= docGetFirstSectionOnPage( lc->lcDocument, page1 );
@@ -106,7 +109,7 @@ void docGetPixelRectangleForPages(
 
     while( sectNr >= 0 )
 	{
-	const BufferItem *	sectNode= bodyNode->biChildren[sectNr];
+	const struct BufferItem *	sectNode= bodyNode->biChildren[sectNr];
 
 	if  ( sectNr == 0					||
 	      ( sectNode->biSectBreakKind != DOCibkNONE	&&
@@ -168,16 +171,19 @@ void docPixelRectangleForPositions(
     docGetPixelRectForPos( &drPixelsB, lc,
 			    pgB->pgXTwips, pgB->pgXTwips,
 			    &(pgB->pgTopPosition),
-			    &(pgB->pgBottomPosition) );
+			    &(pgB->pgNextLinePosition) );
 
-    drPixelsB.drX0= drPixelsB.drX1= pgB->pgXPixels; /* Do not trust XTwips yet */
+    /* Do not trust XTwips yet */
+    drPixelsB.drX0= drPixelsB.drX1= pgB->pgXPixels;
 
 
     docGetPixelRectForPos( &drPixelsE, lc,
 			    pgE->pgXTwips, pgE->pgXTwips,
 			    &(pgE->pgTopPosition),
-			    &(pgE->pgBottomPosition) );
-    drPixelsE.drX0= drPixelsE.drX1= pgE->pgXPixels; /* Do not trust XTwips yet */
+			    &(pgE->pgNextLinePosition) );
+
+    /* Do not trust XTwips yet */
+    drPixelsE.drX0= drPixelsE.drX1= pgE->pgXPixels;
 
     geoUnionRectangle( drPixels, &drPixelsB, &drPixelsE );
 
@@ -190,39 +196,45 @@ void docPixelRectangleForPositions(
 /*									*/
 /************************************************************************/
 
-void docPageRectsPixels(	DocumentRectangle *	drOut,
-				DocumentRectangle *	drIn,
-				double			xfac,
-				const BufferItem *	bodySectBi,
-				const BufferDocument *	bd )
+void docPageRectsPixels(	DocumentRectangle *		drOut,
+				DocumentRectangle *		drIn,
+				double				xfac,
+				const struct BufferItem *	bodySectNode,
+				const struct BufferDocument *	bd )
     {
-    const DocumentGeometry *	dg= &(bd->bdProperties.dpGeometry);
+    const DocumentGeometry *	dg= &(bd->bdProperties->dpGeometry);
     DocumentRectangle		drPage;
 
-    if  ( bodySectBi )
+    if  ( bodySectNode )
 	{
-	if  ( bodySectBi->biLevel != DOClevSECT )
-	    { SDEB(docLevelStr(bodySectBi->biLevel));	}
-	if  ( bodySectBi->biTreeType != DOCinBODY )
-	    { SDEB(docTreeTypeStr(bodySectBi->biTreeType));	}
+	if  ( bodySectNode->biLevel != DOClevSECT )
+	    { SDEB(docLevelStr(bodySectNode->biLevel));	}
+	if  ( bodySectNode->biTreeType != DOCinBODY )
+	    { SDEB(docTreeTypeStr(bodySectNode->biTreeType));	}
 
-	dg= &(bodySectBi->biSectDocumentGeometry);
+	dg= &(bodySectNode->biSectDocumentGeometry);
 	}
 
-    drPage.drX0= 0;
-    drPage.drY0= 0;
-    drPage.drX1= COORDtoGRID( xfac, dg->dgPageWideTwips );
-    drPage.drY1= COORDtoGRID( xfac, dg->dgPageHighTwips );
+    utilDocumentGeometryGetPageRect( &drPage, dg );
+
+    drPage.drX0= COORDtoGRID( xfac, drPage.drX0 );
+    drPage.drY0= COORDtoGRID( xfac, drPage.drY0 );
+    drPage.drX1= COORDtoGRID( xfac, drPage.drX1 );
+    drPage.drY1= COORDtoGRID( xfac, drPage.drY1 );
 
     if  ( drOut )
 	{ *drOut= drPage;	}
 
     if  ( drIn )
 	{
-	drIn->drX0= COORDtoGRID( xfac, dg->dgLeftMarginTwips );
-	drIn->drY0= COORDtoGRID( xfac, dg->dgTopMarginTwips );
-	drIn->drX1= drPage.drX1- COORDtoGRID( xfac, dg->dgRightMarginTwips );
-	drIn->drY1= drPage.drY1- COORDtoGRID( xfac, dg->dgBottomMarginTwips );
+	DocumentRectangle		drBody;
+
+	utilDocumentGeometryGetBodyRect( &drBody, dg );
+
+	drIn->drX0= COORDtoGRID( xfac, drBody.drX0 );
+	drIn->drY0= COORDtoGRID( xfac, drBody.drY0 );
+	drIn->drX1= COORDtoGRID( xfac, drBody.drX1 );
+	drIn->drY1= COORDtoGRID( xfac, drBody.drY1 );
 	}
 
     return;
@@ -238,7 +250,7 @@ int docGetPageForYPixels(	const LayoutContext *		lc,
 				int				yPixels )
     {
     int			sectNr;
-    const BufferItem *	bodyNode= lc->lcDocument->bdBody.dtRoot;
+    const struct BufferItem *	bodyNode= lc->lcDocument->bdBody.dtRoot;
     int			candidate= 0;
 
     DocumentRectangle	drOutside;
@@ -248,7 +260,7 @@ int docGetPageForYPixels(	const LayoutContext *		lc,
     int			pagesBefore= 0;
     int			heightBefore= 0;
 
-    const BufferItem *	sectNode= bodyNode->biChildren[0];
+    const struct BufferItem *	sectNode= bodyNode->biChildren[0];
 
     docPageRectsPixels( &drOutside, &drInside, lc->lcPixelsPerTwip,
 						    sectNode, lc->lcDocument );

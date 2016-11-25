@@ -6,15 +6,18 @@
 
 #   include	"docLayoutConfig.h"
 
-#   include	<stddef.h>
-
 #   include	"docLayout.h"
+#   include	"docParagraphLayout.h"
+#   include	"docStripLayoutJob.h"
 #   include	<docPageGrid.h>
 #   include	<docTreeType.h>
 #   include	<docTreeNode.h>
 #   include	<docTextLine.h>
-#   include	<docDebug.h>
+#   include	<docParaProperties.h>
+#   include	<docSelect.h>
+#   include	<docBlockFrame.h>
 
+#   include	<docDebug.h>
 #   include	<appDebugon.h>
 
 /************************************************************************/
@@ -54,7 +57,7 @@
 /*									*/
 /************************************************************************/
 
-int docAdjustParaLayout(	BufferItem *		paraBi,
+int docAdjustParaLayout(	struct BufferItem * const	paraNode,
 				int			afterReplace,
 				int			stroffFrom,
 				int			stroffShift,
@@ -63,7 +66,7 @@ int docAdjustParaLayout(	BufferItem *		paraBi,
     {
     const LayoutContext *	lc= &(lj->ljContext);
     int				rval= 0;
-    BufferDocument *		bd= lc->lcDocument;
+    struct BufferDocument *		bd= lc->lcDocument;
     int				fontSize;
 
     BlockFrame			bf;
@@ -74,31 +77,33 @@ int docAdjustParaLayout(	BufferItem *		paraBi,
 
     LayoutPosition		oldLpBelow;
     int				paraUpto;
-    const BufferItem *		prevParaBi= (const BufferItem *)0;
-    BufferItem *		cellBi= paraBi->biParent;
+    const struct BufferItem *		prevParaNode= (const struct BufferItem *)0;
+    struct BufferItem *		cellNode= paraNode->biParent;
 
     int				fromPara;
     int				fromLine= 0;
-    BufferItem *		biParaFrom;
+    struct BufferItem *		biParaFrom;
 
     LayoutPosition		lpHere;
 
     docInitParagraphLayoutJob( &plj );
     docLayoutInitBlockFrame( &bf );
 
-    if  ( paraBi->biLevel != DOClevPARA )
-	{ LLDEB(paraBi->biLevel,DOClevPARA); rval= -1; goto ready; }
+    plj.pljLayoutJob= lj;
+
+    if  ( paraNode->biLevel != DOClevPARA )
+	{ LLDEB(paraNode->biLevel,DOClevPARA); rval= -1; goto ready; }
     /*
-    if  ( fromLine < 0 || fromLine >= paraBi->biParaLineCount )
-	{ LLDEB(fromLine, paraBi->biParaLineCount); rval= -1; goto ready; }
+    if  ( fromLine < 0 || fromLine >= paraNode->biParaLineCount )
+	{ LLDEB(fromLine, paraNode->biParaLineCount); rval= -1; goto ready; }
     */
 
     /*  a,b  */
     {
     TextLine *	tlShift;
 
-    tlShift= paraBi->biParaLines;
-    for ( fromLine= 0; fromLine < paraBi->biParaLineCount;
+    tlShift= paraNode->biParaLines;
+    for ( fromLine= 0; fromLine < paraNode->biParaLineCount;
 						    tlShift++, fromLine++ )
 	{
 	if  ( tlShift->tlStroff+ tlShift->tlStrlen >= stroffFrom )
@@ -108,10 +113,10 @@ int docAdjustParaLayout(	BufferItem *		paraBi,
 	    }
 	}
 
-    tlShift= paraBi->biParaLines+ fromLine;
+    tlShift= paraNode->biParaLines+ fromLine;
     docInvalidateTextLine( tlShift );
     tlShift++;
-    for ( line= fromLine+ 1; line < paraBi->biParaLineCount; tlShift++, line++ )
+    for ( line= fromLine+ 1; line < paraNode->biParaLineCount; tlShift++, line++ )
 	{
 	tlShift->tlStroff += stroffShift;
 
@@ -120,52 +125,52 @@ int docAdjustParaLayout(	BufferItem *		paraBi,
 	}
     }
 
-    paraBi->biParaMajorityFontAscY0= 0;
-    paraBi->biParaMajorityFontDescY1= 0;
-    paraBi->biParaMajorityFontSize= 0;
+    paraNode->biParaMajorityFontAscY0= 0;
+    paraNode->biParaMajorityFontDescY1= 0;
+    paraNode->biParaMajorityFontSize= 0;
 
     /*  c  */
-    oldLpBelow= paraBi->biBelowPosition;
-    paraUpto= paraBi->biNumberInParent+ 1;
+    oldLpBelow= paraNode->biBelowPosition;
+    paraUpto= paraNode->biNumberInParent+ 1;
 
-    if  ( paraBi->biNumberInParent > 0 )
-	{ prevParaBi= cellBi->biChildren[paraBi->biNumberInParent- 1]; }
+    if  ( paraNode->biNumberInParent > 0 )
+	{ prevParaNode= cellNode->biChildren[paraNode->biNumberInParent- 1]; }
 
     /*  d  */
-    biParaFrom= paraBi;
+    biParaFrom= paraNode;
     fromPara= biParaFrom->biNumberInParent;
-    if  ( afterReplace			&&
-	  paraBi->biParaWidowControl	&&
-	  fromLine < 3			&&
-	  prevParaBi			&&
-	  paraBi->biNumberInParent > 0	)
+    if  ( afterReplace					&&
+	  paraNode->biParaProperties->ppWidowControl	&&
+	  fromLine < 3					&&
+	  prevParaNode					&&
+	  paraNode->biNumberInParent > 0	)
 	{
 	fromLine= 0;
 	fromPart= 0;
 
-	while( prevParaBi->biNumberInParent > 0 )
+	while( prevParaNode->biNumberInParent > 0 )
 	    {
-	    prevParaBi= cellBi->biChildren[prevParaBi->biNumberInParent- 1];
+	    prevParaNode= cellNode->biChildren[prevParaNode->biNumberInParent- 1];
 
 	    fromPara--;
-	    biParaFrom= cellBi->biChildren[fromPara];
+	    biParaFrom= cellNode->biChildren[fromPara];
 
-	    if  ( ! prevParaBi->biParaKeepWithNext )
+	    if  ( ! prevParaNode->biParaProperties->ppKeepWithNext )
 		{ break;	}
 	    }
 
-	lpHere= prevParaBi->biBelowPosition;
+	lpHere= prevParaNode->biBelowPosition;
 	}
     else{
 	const TextLine *	tl;
 
-	tl= paraBi->biParaLines+ fromLine;
+	tl= paraNode->biParaLines+ fromLine;
 	fromPart= tl->tlFirstParticule;
 	if  ( fromPart == 0 )
 	    {
-	    if  ( paraBi->biNumberInParent == 0 || ! prevParaBi )
-		{ lpHere= paraBi->biTopPosition;	}
-	    else{ lpHere= prevParaBi->biBelowPosition;	}
+	    if  ( paraNode->biNumberInParent == 0 || ! prevParaNode )
+		{ lpHere= paraNode->biTopPosition;	}
+	    else{ lpHere= prevParaNode->biBelowPosition;	}
 	    }
 	else{ lpHere= tl->tlTopPosition;		}
 	}
@@ -191,13 +196,14 @@ int docAdjustParaLayout(	BufferItem *		paraBi,
     /*  4  */
     docLayoutAdjustFrame( &bf, biParaFrom );
 
-    docParagraphFrameTwips( &(plj.pljPos.plpParagraphFrame), &bf, biParaFrom );
+    docParagraphFrameTwips( &(plj.pljPos.plpParagraphFrame),
+						    &bf, biParaFrom );
 
     if  ( docLayoutParagraphLineExtents( &fontSize, lc, biParaFrom ) )
 	{ LDEB(1); rval= -1; goto ready;	}
 
-    docLayoutCalculateParaTopInset( bd, paraBi );
-    docLayoutCalculateParaBottomInset( bd, paraBi );
+    docLayoutCalculateParaTopInset( bd, paraNode );
+    docLayoutCalculateParaBottomInset( bd, paraNode );
 
     if  ( lj->ljStartScreenParagraph					&&
 	  (*lj->ljStartScreenParagraph)( biParaFrom,
@@ -205,36 +211,36 @@ int docAdjustParaLayout(	BufferItem *		paraBi,
 	{ LDEB(1); rval= -1; goto ready;	}
 
     /*  6  */
-    docBeginParagraphLayoutProgress( &plj,
+    docBeginParagraphLayoutProgress( &plj, lj,
 			biParaFrom->biNumberInParent, fromLine, fromPart,
 			paraUpto, &lpHere );
 
-    docFindStripLayoutOrigin( &plj, lpHere.lpPage, lpHere.lpColumn, cellBi );
+    docFindStripLayoutOrigin( &plj, lpHere.lpPage, lpHere.lpColumn, cellNode );
 
-    if  ( docLayoutStackedStrip( cellBi, &bf, lj, &plj ) )
+    if  ( docLayoutStackedStrip( cellNode, &bf, &plj ) )
 	{ LDEB(1); rval= -1; goto ready;	}
 
     lpHere= plj.pljPos.plpPos;
 
-    if  ( paraBi->biParaLineCount < 1 )
+    if  ( paraNode->biParaLineCount < 1 )
 	{
-	LDEB(paraBi->biParaLineCount); docListNode(0,paraBi,0);
+	LDEB(paraNode->biParaLineCount); docListNode(0,paraNode,0);
 	rval= -1; goto ready;
 	}
 
-    if  ( ! DOC_SAME_POSITION( &(paraBi->biBelowPosition), &lpHere ) )
+    if  ( ! DOC_SAME_POSITION( &(paraNode->biBelowPosition), &lpHere ) )
 	{
-	LLDEB(paraBi->biBelowPosition.lpPage,lpHere.lpPage);
-	LDEB(paraBi->biBelowPosition.lpPageYTwips);
+	LLDEB(paraNode->biBelowPosition.lpPage,lpHere.lpPage);
+	LDEB(paraNode->biBelowPosition.lpPageYTwips);
 	LDEB(lpHere.lpPageYTwips);
 
-	paraBi->biBelowPosition= lpHere;
+	paraNode->biBelowPosition= lpHere;
 	}
 
-    if  ( ! DOC_SAME_POSITION( &(paraBi->biBelowPosition), &oldLpBelow ) )
+    if  ( ! DOC_SAME_POSITION( &(paraNode->biBelowPosition), &oldLpBelow ) )
 	{
 	/*  5  */
-	if  ( docAdjustParentLayout( &lpHere, paraBi, &bf, lj ) )
+	if  ( docAdjustParentLayout( &lpHere, paraNode, &bf, lj ) )
 	    { LDEB(1); rval= -1; goto ready;	}
 	}
 

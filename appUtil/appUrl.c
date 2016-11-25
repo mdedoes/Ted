@@ -10,7 +10,7 @@
 
 #   include	<string.h>
 
-#   include	<appUrl.h>
+#   include	"appUrl.h"
 
 #   include	<appDebugon.h>
 
@@ -137,8 +137,8 @@ int appUrlGetHttpHostPort(	char *		host,
 	made= 0;
 	for (;;)
 	    {
-	    if  ( made >= hostLen )
-		{ LLDEB(made,hostLen); return -1;	}
+	    if  ( made >= portLen )
+		{ LLDEB(made,portLen); return -1;	}
 
 	    if  ( *s >= '0' && *s <= '9' )
 		{ *(port++)= *(s++); used++; made++; continue;	}

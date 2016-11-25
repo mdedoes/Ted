@@ -10,6 +10,7 @@
 
 #   include	"docDocumentField.h"
 #   include	"docSymbolField.h"
+#   include	"docFieldKind.h"
 
 void docInitSymbolField(	SymbolField *	sf )
     {
@@ -78,7 +79,7 @@ int docFieldGetSymbol(	SymbolField *		sf,
 	if  ( docComponentIsFlag( fi, comp, 'u' ) )
 	    { sf->sfEncoding= SYMBOLencUNICODE; continue;	}
 
-	if  ( ! ic->icIsFlag )
+	if  ( ic->icType != INSTRtypeFLAG )
 	    {
 	    if  ( docFieldComponentInt( &(sf->sfSymbol), ic ) )
 		{ LLDEB(comp,fi->fiComponentCount);	}

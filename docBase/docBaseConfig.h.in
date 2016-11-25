@@ -11,9 +11,6 @@
    byte first (like Motorola and SPARC, unlike Intel and VAX).  */
 #undef WORDS_BIGENDIAN
 
-/* Define if you have the strerror function.  */
-#undef HAVE_STRERROR
-
 #undef SIZEOF_SHORT
 #undef SIZEOF_INT
 #undef SIZEOF_LONG

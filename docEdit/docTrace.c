@@ -7,7 +7,6 @@
 #   include	"docEditConfig.h"
 
 #   include	<stddef.h>
-#   include	<stdio.h>
 #   include	<ctype.h>
 
 #   include	"docCopyNode.h"
@@ -15,6 +14,12 @@
 #   include	"docTrace.h"
 #   include	"docEdit.h"
 #   include	<docTreeNode.h>
+#   include	<docDocumentField.h>
+#   include	<docPictureProperties.h>
+#   include	<docObject.h>
+#   include	"docDocumentCopyJob.h"
+#   include	"docEditOperation.h"
+#   include	<docBuf.h>
 
 #   include	<appDebugon.h>
 
@@ -25,14 +30,14 @@
 /************************************************************************/
 
 int docReinsertNodes(	EditOperation *		eo,
-			BufferItem *		parentTo,
-			const BufferItem *	parentFrom,
+			struct BufferItem *		parentTo,
+			const struct BufferItem *	parentFrom,
 			int			to,
 			const EditStep *	es )
     {
     int				rval= 0;
     DocumentCopyJob		dcj;
-    int				from;
+    const int			from= 0;
 
     /*  Deletion was at the tail of the parent? */
     switch( es->esSelectionPosition )
@@ -55,18 +60,15 @@ int docReinsertNodes(	EditOperation *		eo,
 	{ LDEB(1); rval= -1; goto ready;	}
 
     docGetSelectionScope( &(dcj.dcjTargetSelectionScope), parentTo );
-    if  ( docGetRootOfSelectionScope( &(dcj.dcjTargetTree), (BufferItem **)0,
+    if  ( docGetRootOfSelectionScope( &(dcj.dcjTargetTree), (struct BufferItem **)0,
 			    eo->eoDocument, &(dcj.dcjTargetSelectionScope) ) )
 	{ LDEB(1); rval= -1; goto ready;	}
 
-    for ( from= 0; from < parentFrom->biChildCount; from++ )
-	{
-	if  ( ! docCopyNode( &dcj, parentTo, to,
-					parentFrom->biChildren[from] ) )
-	    { LLDEB(from,to); rval= -1; goto ready;	}
+    if  ( docCopyNodeChildren( &dcj, parentTo, to,
+				parentFrom, from,  parentFrom->biChildCount ) )
+	{ LLDEB(from,to); rval= -1; goto ready;	}
 
-	to++;
-	}
+    to +=  parentFrom->biChildCount;
 
     /* remove the empty child that was added to prevent an empty parent */
     if  ( es->esSelectionPosition == SELposTAIL )
@@ -95,22 +97,22 @@ int docReinsertNodes(	EditOperation *		eo,
 /*									*/
 /************************************************************************/
 
-const DocumentField * docTraceGetFromField( const EditStep * 	es )
+const struct DocumentField * docTraceGetFromField( const EditStep * 	es )
     {
-    const int			lastOne= 0;
+    const int				lastOne= 0;
 
-    DocumentPosition		dpFrom;
-    EditPosition		epFrom;
-    const DocumentField *	dfFrom;
+    DocumentPosition			dpFrom;
+    EditPosition			epFrom;
+    const struct DocumentField *	dfFrom;
 
     if  ( docHeadPosition( &dpFrom, es->esSourceDocument->bdBody.dtRoot ) )
-	{ LDEB(1); return (const DocumentField *)0;	}
+	{ LDEB(1); return (const struct DocumentField *)0;	}
     docSetEditPosition( &epFrom, &dpFrom );
 
     dfFrom= docFindChildField( &(es->esSourceDocument->bdBody.dtRootFields),
 							&epFrom, lastOne );
     if  ( ! dfFrom )
-	{ XDEB(dfFrom); return (const DocumentField *)0;	}
+	{ XDEB(dfFrom); return (const struct DocumentField *)0;	}
 
     return dfFrom;
     }
@@ -136,8 +138,8 @@ const PictureProperties * docTraceGetFromPictureProps( const EditStep *	es )
     if  ( docNextPosition( &dsObjFrom.dsTail ) )
 	{ LDEB(1); return (const PictureProperties *)0;	}
 
-    if  ( docGetObjectSelection( &dsObjFrom, es->esSourceDocument,
-					&partObjFrom, &dpObjFrom, &ioFrom ) )
+    if  ( docGetObjectSelection( &partObjFrom, &dpObjFrom, &ioFrom,
+					es->esSourceDocument, &dsObjFrom ) )
 	{ LDEB(1); return (const PictureProperties *)0;	}
 
     return &(ioFrom->ioPictureProperties);

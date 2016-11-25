@@ -12,13 +12,55 @@
 #   include	<ctype.h>
 #   include	<charnames.h>
 
-#   include	<appDebugon.h>
-
 #   include	<textOfficeCharset.h>
 
 #   include	"docRtfReaderImpl.h"
 #   include	"docRtfTags.h"
 #   include	"docRtfFlags.h"
+#   include	"docRtfFindProperty.h"
+#   include	<sioGeneral.h>
+
+#   include	<appDebugon.h>
+
+/************************************************************************/
+
+int docRtfReadByte(		RtfReader *	rr )
+    {
+    int			c;
+
+    c= sioInGetByte( rr->rrInputStream );
+    while( c == '\n' || c == '\r' )
+	{
+	if  ( c == '\n' )
+	    { rr->rrCurrentLine++;	}
+	c= sioInGetByte( rr->rrInputStream );
+	}
+
+    return c;
+    }
+
+int docRtfUngetLastRead(	RtfReader *	rr )
+    {
+    return sioInUngetLastRead( rr->rrInputStream );
+    }
+
+int docRtfCheckAtEOF(		RtfReader *	rr )
+    {
+    int	c= sioInGetByte( rr->rrInputStream );
+
+    while( c != EOF )
+	{
+	if  ( c != '\r' && c != '\n' && c != '\0' && c != ' ' )
+	    {
+	    const char * message= DOC_RTF_LENIENT_MESSAGE;
+	    LCSDEB(rr->rrCurrentLine,c,message); return -1;
+	    }
+
+	c= sioInGetByte( rr->rrInputStream );
+	}
+
+    return 0;
+    }
 
 /************************************************************************/
 /*									*/
@@ -26,25 +68,18 @@
 /*									*/
 /************************************************************************/
 
-static int docRtfReadControlWord(	RtfReader *		rrc,
+static int docRtfReadControlWord(	RtfReader *		rr,
 					int *			pC,
 					char *			controlWord,
 					int *			pGotArg,
 					int *			pArg )
     {
-    SimpleInputStream *	sis= rrc->rrcSis;
+    SimpleInputStream *	sis= rr->rrInputStream;
     int			c;
     int			len= 0;
     int			sign= 1;
 
-    c= sioInGetByte( sis );
-    while( c == '\n' || c == '\r' )
-	{
-	if  ( c == '\n' )
-	    { rrc->rrCurrentLine++;	}
-	c= sioInGetByte( sis );
-	}
-
+    c= docRtfReadByte( rr );
     if  ( c != '\\' )
 	{ CDEB(c); return -1;	}
 
@@ -54,7 +89,7 @@ static int docRtfReadControlWord(	RtfReader *		rrc,
 	switch( c )
 	    {
 	    case '\n':
-		rrc->rrCurrentLine++;
+		rr->rrCurrentLine++;
 		/*FALLTHROUGH*/
 	    case '\r':
 		strcpy( controlWord, RTFtag_par  );
@@ -115,6 +150,9 @@ static int docRtfReadControlWord(	RtfReader *		rrc,
 /*									*/
 /*  Find a Control word.						*/
 /*									*/
+/*  The applicability of the control word is limited to the invocation	*/
+/*  scope.								*/
+/*									*/
 /************************************************************************/
 
 const RtfControlWord * docRtfFindWord(	const char *		controlWord,
@@ -137,7 +175,7 @@ const RtfControlWord * docRtfFindWord(	const char *		controlWord,
 int docRtfApplyControlWord(	const RtfControlWord *	rcw,
 				int			gotArg,
 				int			arg,
-				RtfReader *		rrc )
+				RtfReader *		rr )
     {
     if  ( ! gotArg )
 	{ arg= -1;	}
@@ -145,7 +183,10 @@ int docRtfApplyControlWord(	const RtfControlWord *	rcw,
     if  ( rcw->rcwType == RTCtypeENUM )
 	{
 	if  ( gotArg )
-	    { SLLLDEB(rcw->rcwWord,arg,rcw->rcwType,gotArg);	}
+	    {
+	    SLLLDEB(rcw->rcwWord,arg,rcw->rcwType,gotArg);
+	    return 0;
+	    }
 
 	arg= rcw->rcwEnumValue;
 	}
@@ -155,8 +196,8 @@ int docRtfApplyControlWord(	const RtfControlWord *	rcw,
 	  rcw->rcwID != PIPpropTYPE	)
 	{ SLLDEB(rcw->rcwWord,rcw->rcwType,rcw->rcwEnumValue);	}
 
-    if  ( (*rcw->rcwApply) ( rcw, arg, rrc ) )
-	{ LSLDEB(rrc->rrCurrentLine,rcw->rcwWord,arg); return -1;	}
+    if  ( (*rcw->rcwApply) ( rcw, arg, rr ) )
+	{ LSLDEB(rr->rrCurrentLine,rcw->rcwWord,arg); return -1;	}
 
     return 0;
     }
@@ -173,22 +214,22 @@ int docRtfApplyControlWord(	const RtfControlWord *	rcw,
 /*									*/
 /************************************************************************/
 
-int docRtfFindControl(		RtfReader *		rrc,
+int docRtfFindControl(		RtfReader *		rr,
 				int *			pC,
 				char *			controlWord,
 				int *			pGotArg,
 				int *			pArg )
     {
-    SimpleInputStream *	sis= rrc->rrcSis;
-    RtfReadingState *	rrs= rrc->rrcState;
+    SimpleInputStream *	sis= rr->rrInputStream;
+    RtfReadingState *	rrs= rr->rrState;
 
     int			c;
     int			res;
 
-    if  ( rrc->rrcCharacterAhead != EOF )
+    if  ( rr->rrcCharacterAhead != EOF )
 	{
-	*pC= rrc->rrcCharacterAhead;
-	rrc->rrcCharacterAhead= EOF;
+	*pC= rr->rrcCharacterAhead;
+	rr->rrcCharacterAhead= EOF;
 	return RTFfiCHAR;
 	}
 
@@ -202,7 +243,7 @@ int docRtfFindControl(		RtfReader *		rrc,
 		if  ( rrs )
 		    { rrs->rrsUnicodeBytesToSkip= 0;	}
 
-		if  ( ! ( rrc->rrReadFlags & RTFflagLENIENT ) )
+		if  ( ! ( rr->rrReadFlags & RTFflagLENIENT ) )
 		    {
 		    const char * message= DOC_RTF_LENIENT_MESSAGE;
 		    XSDEB(c,message); return -1;
@@ -211,7 +252,7 @@ int docRtfFindControl(		RtfReader *		rrc,
 
 	    case '\\':
 		sioInUngetLastRead( sis );
-		res= docRtfReadControlWord( rrc, &c,
+		res= docRtfReadControlWord( rr, &c,
 						controlWord, pGotArg, pArg );
 
 		if  ( res < 0 )
@@ -257,18 +298,11 @@ int docRtfFindControl(		RtfReader *		rrc,
 		if  ( rrs )
 		    { rrs->rrsUnicodeBytesToSkip= 0;	}
 
-		c= sioInGetByte( sis );
-		while( c == '\n' || c == '\r' )
-		    {
-		    if  ( c == '\n' )
-			{ rrc->rrCurrentLine++;	}
-		    c= sioInGetByte( sis );
-		    }
-
+		c= docRtfReadByte( rr );
 		if  ( c == '\\' )
 		    {
 		    sioInUngetLastRead( sis );
-		    res= docRtfReadControlWord( rrc, &c,
+		    res= docRtfReadControlWord( rr, &c,
 						controlWord, pGotArg, pArg );
 		    if  ( res < 0 )
 			{ LDEB(res); return -1;	}
@@ -276,7 +310,7 @@ int docRtfFindControl(		RtfReader *		rrc,
 			{
 			if  ( c == '*' )
 			    {
-			    res= docRtfReadControlWord( rrc, &c,
+			    res= docRtfReadControlWord( rr, &c,
 						controlWord, pGotArg, pArg );
 			    if  ( res )
 				{ LDEB(res); return -1;	}
@@ -299,7 +333,7 @@ int docRtfFindControl(		RtfReader *		rrc,
 			if  ( rrs && rrs->rrsUnicodeBytesToSkip > 0 )
 			    { rrs->rrsUnicodeBytesToSkip= 0;	}
 
-			rrc->rrcCharacterAhead= c;
+			rr->rrcCharacterAhead= c;
 
 			return RTFfiTEXTGROUP;
 			}
@@ -311,7 +345,7 @@ int docRtfFindControl(		RtfReader *		rrc,
 		return RTFfiTEXTGROUP;
 
 	    case '\n':
-		rrc->rrCurrentLine++;
+		rr->rrCurrentLine++;
 		/*FALLTHROUGH*/
 	    case '\r':
 		continue;
@@ -339,14 +373,14 @@ int docRtfFindControl(		RtfReader *		rrc,
 /*									*/
 /************************************************************************/
 
-static int docRtfAddParticule(	RtfReader *		rrc,
+static int docRtfAddParticule(	RtfReader *		rr,
 				const char *		collectedText,
 				int			len )
     {
-    RtfReadingState *	rrs= rrc->rrcState;
+    RtfReadingState *	rrs= rr->rrState;
 
-    if  ( ! rrc->rrcAddParticule )
-	{ XDEB(rrc->rrcAddParticule); return -1;	}
+    if  ( ! rr->rrGotText )
+	{ XDEB(rr->rrGotText); return -1;	}
 
     while ( rrs->rrsUnicodeBytesToSkip > 0 && len > 0 )
 	{
@@ -354,7 +388,7 @@ static int docRtfAddParticule(	RtfReader *		rrc,
 	collectedText++;
 	}
 
-    if  ( len > 0 && (*rrc->rrcAddParticule)( rrc, collectedText, len ) )
+    if  ( len > 0 && (*rr->rrGotText)( rr, collectedText, len ) )
 	{ LDEB(len); return -1;	}
 
     return 0;
@@ -373,10 +407,10 @@ static int docRtfReadText(	int			c,
 				int *			pGotArg,
 				int *			pArg,
 
-				RtfReader *	rrc )
+				RtfReader *		rr )
     {
-    RtfReadingState *	rrs= rrc->rrcState;
-    SimpleInputStream *	sis= rrc->rrcSis;
+    RtfReadingState *	rrs= rr->rrState;
+    SimpleInputStream *	sis= rr->rrInputStream;
     int			res;
 
     static char *	collectedText;
@@ -412,23 +446,23 @@ static int docRtfReadText(	int			c,
 		LDEB(c); return -1;
 
 	    case '}':
-		if  ( docRtfAddParticule( rrc, collectedText, len ) )
+		if  ( docRtfAddParticule( rr, collectedText, len ) )
 		    { LDEB(len); return -1;	}
 		rrs->rrsUnicodeBytesToSkip= 0;
 		return RTFfiCLOSE;
 
 	    case '{':
 		sioInUngetLastRead( sis );
-		res= docRtfFindControl( rrc, &c, controlWord, pGotArg, pArg );
+		res= docRtfFindControl( rr, &c, controlWord, pGotArg, pArg );
 		if  ( res < 0 )
 		    { LDEB(res); return res;	}
-		if  ( docRtfAddParticule( rrc, collectedText, len ) )
+		if  ( docRtfAddParticule( rr, collectedText, len ) )
 		    { LDEB(len); return -1;	}
 		rrs->rrsUnicodeBytesToSkip= 0;
 		*pC= c; return res;
 
 	    case '\n':
-		rrc->rrCurrentLine++;
+		rr->rrCurrentLine++;
 		/*FALLTHROUGH*/
 
 	    case '\r' :
@@ -436,13 +470,13 @@ static int docRtfReadText(	int			c,
 
 	    case '\\':
 		sioInUngetLastRead( sis );
-		res= docRtfFindControl( rrc, &c, controlWord, pGotArg, pArg );
+		res= docRtfFindControl( rr, &c, controlWord, pGotArg, pArg );
 		if  ( res < 0 )
 		    { LDEB(res); return res;	}
 
 		if  ( res != RTFfiCHAR )
 		    {
-		    if  ( docRtfAddParticule( rrc, collectedText, len ) )
+		    if  ( docRtfAddParticule( rr, collectedText, len ) )
 			{ LDEB(len); return -1;	}
 
 		    return res;
@@ -471,7 +505,7 @@ static int docRtfReadText(	int			c,
 		break;
 
 	    case '\t':
-		if  ( docRtfAddParticule( rrc, collectedText, len ) )
+		if  ( docRtfAddParticule( rr, collectedText, len ) )
 		    { LDEB(len); return -1;	}
 		strcpy( controlWord, "tab" ); *pGotArg= 0; *pArg= -1;
 		res= RTFfiWORD;
@@ -488,20 +522,20 @@ static int docRtfReadText(	int			c,
 
 int docRtfSkipGroup(	const RtfControlWord *	rcw,
 			int			ignored_arg,
-			RtfReader *		rrc )
+			RtfReader *		rr )
     {
     int		rval= 0;
-    int		complainUnknown= rrc->rrcComplainUnknown;
+    int		complainUnknown= rr->rrComplainUnknown;
 
-    rrc->rrcComplainUnknown= 0;
-    rrc->rrcInIgnoredGroup++;
+    rr->rrComplainUnknown= 0;
+    rr->rrInIgnoredGroup++;
 
-    if  ( docRtfReadGroup( rcw, 0, 0, rrc,
+    if  ( docRtfReadGroup( rcw, 0, 0, rr,
 		(RtfControlWord *)0, docRtfIgnoreText, (RtfCommitGroup)0 ) )
 	{ SDEB(rcw->rcwWord); rval= -1;	}
 
-    rrc->rrcInIgnoredGroup--;
-    rrc->rrcComplainUnknown= complainUnknown;
+    rr->rrInIgnoredGroup--;
+    rr->rrComplainUnknown= complainUnknown;
 
     return rval;
     }
@@ -516,26 +550,26 @@ int docRtfReadGroupX(	const RtfControlWord *	rcw,
 			const RtfControlWord *	applyFirst,
 			int			gotArg,
 			int			arg,
-			RtfReader *	rrc,
+			RtfReader *		rr,
 			const RtfControlWord *	groupWords,
-			RtfAddTextParticule	addParticule,
+			RtfGotText		gotText,
 			RtfCommitGroup		commitGroup )
     {
     int				rval;
     RtfReadingState		internRrs;
 
-    docRtfPushReadingState( rrc, &internRrs );
+    docRtfPushReadingState( rr, &internRrs );
 
     rval= docRtfConsumeGroup( applyFirst, gotArg, arg,
-					    rrc, groupWords, addParticule );
+					    rr, groupWords, gotText );
 
     if  ( rval )
 	{ LDEB(rval);	}
 
-    if  ( commitGroup && (*commitGroup)( rcw, rrc ) )
+    if  ( commitGroup && (*commitGroup)( rcw, rr ) )
 	{ LDEB(1); rval= -1;	}
 
-    docRtfPopReadingState( rrc );
+    docRtfPopReadingState( rr );
 
     return rval;
     }
@@ -543,26 +577,26 @@ int docRtfReadGroupX(	const RtfControlWord *	rcw,
 int docRtfReadGroup(	const RtfControlWord *	rcw,
 			int			gotArg,
 			int			arg,
-			RtfReader *		rrc,
+			RtfReader *		rr,
 			const RtfControlWord *	groupWords,
-			RtfAddTextParticule	addParticule,
+			RtfGotText		gotText,
 			RtfCommitGroup		commitGroup )
     {
     int				rval;
     RtfReadingState		internRrs;
 
-    docRtfPushReadingState( rrc, &internRrs );
+    docRtfPushReadingState( rr, &internRrs );
 
     rval= docRtfConsumeGroup( (const RtfControlWord *)0, gotArg, arg,
-					    rrc, groupWords, addParticule );
+					    rr, groupWords, gotText );
 
     if  ( rval )
 	{ LDEB(rval);	}
 
-    if  ( commitGroup && (*commitGroup)( rcw, rrc ) )
+    if  ( commitGroup && (*commitGroup)( rcw, rr ) )
 	{ LDEB(1); rval= -1;	}
 
-    docRtfPopReadingState( rrc );
+    docRtfPopReadingState( rr );
 
     return rval;
     }
@@ -573,7 +607,7 @@ int docRtfReadGroup(	const RtfControlWord *	rcw,
 /*									*/
 /************************************************************************/
 
-static int docRtfConsumeWord(	RtfReader *		rrc,
+static int docRtfConsumeWord(	RtfReader *		rr,
 				const RtfControlWord *	rcw,
 				int *			pC,
 				char *			controlWord,
@@ -593,33 +627,37 @@ static int docRtfConsumeWord(	RtfReader *		rrc,
 
     if  ( rcw->rcwPrepare )
 	{
-	if  ( (*rcw->rcwPrepare) ( rcw, arg, rrc ) )
+	if  ( (*rcw->rcwPrepare) ( rcw, arg, rr ) )
 	    { SLDEB(rcw->rcwWord,arg); return -1;	}
 	}
 
-    if  ( rcw->rcwDetailWords )
+    if  ( rcw->rcwApplyDetail )
 	{
 	for (;;)
 	    {
-	    const RtfControlWord *	rcwAhead;
+	    const RtfControlWord *	rcwDetailAhead;
 
-	    resAhead= docRtfFindControl( rrc, &c,
+	    resAhead= docRtfFindControl( rr, &c,
 			controlWord, &gotArgAhead, &argAhead );
 
 	    if  ( resAhead != RTFfiWORD )
 		{ break;	}
 
-	    rcwAhead= docRtfFindWord( controlWord, rcw->rcwDetailWords );
-
-	    if  ( ! rcwAhead )
+	    rcwDetailAhead= docRtfFindPropertyWord( controlWord );
+	    if  ( ! rcwDetailAhead )
 		{ break;	}
-	    if  ( rcwAhead->rcwType == RTCtypeDEST )
-		{ SLDEB(rcwAhead->rcwWord,rcwAhead->rcwType); break;	}
+	    if  ( rcwDetailAhead->rcwApply !=  rcw->rcwApplyDetail )
+		{ break;	}
+	    if  ( rcwDetailAhead->rcwType == RTCtypeDEST )
+		{
+		SLDEB(rcwDetailAhead->rcwWord,rcwDetailAhead->rcwType);
+		break;
+		}
 
-	    if  ( ! rrc->rrcInIgnoredGroup )
+	    if  ( ! rr->rrInIgnoredGroup )
 		{
 		int resx= docRtfApplyControlWord(
-				    rcwAhead, gotArgAhead, argAhead, rrc  );
+			    rcwDetailAhead, gotArgAhead, argAhead, rr  );
 
 		if  ( resx < 0 )
 		    { LSDEB(resx,controlWord); return -1; }
@@ -627,7 +665,7 @@ static int docRtfConsumeWord(	RtfReader *		rrc,
 	    }
 	}
 
-    if  ( rrc->rrcInIgnoredGroup )
+    if  ( rr->rrInIgnoredGroup )
 	{
 	if  ( rcw->rcwType == RTCtypeDEST )
 	    { SLDEB(rcw->rcwWord,rcw->rcwType);	}
@@ -635,14 +673,14 @@ static int docRtfConsumeWord(	RtfReader *		rrc,
 	res= 0;
 	}
     else{
-	res= docRtfApplyControlWord( rcw, gotArg, arg, rrc );
+	res= docRtfApplyControlWord( rcw, gotArg, arg, rr );
 	if  ( res < 0 )
 	    { SLDEB(rcw->rcwWord,res); return -1;	}
 	}
 
     if  ( resAhead == -2 )
 	{
-	res= docRtfFindControl( rrc, &c, controlWord, &gotArg, &arg );
+	res= docRtfFindControl( rr, &c, controlWord, &gotArg, &arg );
 	}
     else{
 	res= resAhead; arg= argAhead; gotArg= gotArgAhead;
@@ -659,17 +697,17 @@ static int docRtfConsumeWord(	RtfReader *		rrc,
 /*									*/
 /************************************************************************/
 
-int docRtfReadUnknownGroup(	RtfReader *	rrc )
+int docRtfReadUnknownGroup(	RtfReader *	rr )
     {
-    int		complainUnknown= rrc->rrcComplainUnknown;
+    int		complainUnknown= rr->rrComplainUnknown;
 
-    rrc->rrcComplainUnknown= 0;
+    rr->rrComplainUnknown= 0;
 
-    if  ( docRtfReadGroup( (const RtfControlWord *)0, 0, 0, rrc,
+    if  ( docRtfReadGroup( (const RtfControlWord *)0, 0, 0, rr,
 		    (RtfControlWord *)0, docRtfIgnoreText, (RtfCommitGroup)0 ) )
 	{ LDEB(1); return -1;	}
 
-    rrc->rrcComplainUnknown= complainUnknown;
+    rr->rrComplainUnknown= complainUnknown;
 
     return 0;
     }
@@ -677,9 +715,9 @@ int docRtfReadUnknownGroup(	RtfReader *	rrc )
 int docRtfConsumeGroup(	const RtfControlWord *	applyFirst,
 			int			gotArg,
 			int			arg,
-			RtfReader *		rrc,
+			RtfReader *		rr,
 			const RtfControlWord *	groupWords,
-			RtfAddTextParticule	addParticule )
+			RtfGotText		gotText )
     {
     int				rval= 0;
     int				res;
@@ -688,23 +726,23 @@ int docRtfConsumeGroup(	const RtfControlWord *	applyFirst,
     char			controlWord[TEDszRTFCONTROL+1];
     int				c;
 
-    RtfAddTextParticule		savedAddParticule= rrc->rrcAddParticule;
+    RtfGotText			savedGotText= rr->rrGotText;
 
     if  ( applyFirst )
 	{
-	res= docRtfConsumeWord( rrc, applyFirst,
+	res= docRtfConsumeWord( rr, applyFirst,
 					&c, controlWord, &gotArg, &arg );
 	if  ( res < 0 )
 	    { LDEB(res); rval= -1; goto ready;	}
 	}
     else{
-	res= docRtfFindControl( rrc, &c, controlWord, &gotArg, &arg );
+	res= docRtfFindControl( rr, &c, controlWord, &gotArg, &arg );
 	if  ( res < 0 )
 	    { LDEB(res); rval= -1; goto ready;	}
 	}
 
-    if  ( addParticule )
-	{ rrc->rrcAddParticule= addParticule;	}
+    if  ( gotText )
+	{ rr->rrGotText= gotText;	}
 
     for (;;)
 	{
@@ -718,7 +756,7 @@ int docRtfConsumeGroup(	const RtfControlWord *	applyFirst,
 		goto ready;
 
 	    case RTFfiCHAR:
-		res= docRtfReadText( c, &c, controlWord, &gotArg, &arg, rrc );
+		res= docRtfReadText( c, &c, controlWord, &gotArg, &arg, rr );
 		if  ( res < 0 )
 		    { SLDEB(controlWord,res); rval= -1; goto ready;	}
 		break;
@@ -731,10 +769,10 @@ int docRtfConsumeGroup(	const RtfControlWord *	applyFirst,
 		rcw= docRtfFindPropertyWord( controlWord );
 		if  ( ! rcw )
 		    {
-		    if  ( rrc->rrcComplainUnknown && ! rrc->rrcInIgnoredGroup )
-			{ LSDEB(rrc->rrCurrentLine,controlWord);	}
+		    if  ( rr->rrComplainUnknown && ! rr->rrInIgnoredGroup )
+			{ LSDEB(rr->rrCurrentLine,controlWord);	}
 
-		    res= docRtfFindControl( rrc, &c,
+		    res= docRtfFindControl( rr, &c,
 						controlWord, &gotArg, &arg );
 		    if  ( res < 0 )
 			{ LDEB(res); rval= -1; goto ready;	}
@@ -744,13 +782,13 @@ int docRtfConsumeGroup(	const RtfControlWord *	applyFirst,
 			{
 			SLDEB(rcw->rcwWord,rcw->rcwType);
 
-			res= docRtfFindControl( rrc, &c,
+			res= docRtfFindControl( rr, &c,
 						controlWord, &gotArg, &arg );
 			if  ( res < 0 )
 			    { LDEB(res); rval= -1; goto ready;	}
 			}
 		    else{
-			res= docRtfConsumeWord( rrc, rcw,
+			res= docRtfConsumeWord( rr, rcw,
 					    &c, controlWord, &gotArg, &arg );
 			if  ( res < 0 )
 			    { LDEB(res); rval= -1; goto ready;	}
@@ -766,35 +804,35 @@ int docRtfConsumeGroup(	const RtfControlWord *	applyFirst,
 		    if  ( rcw->rcwType == RTCtypeDEST )
 			{
 		      groupFound:
-			if  ( rrc->rrcInIgnoredGroup )
+			if  ( rr->rrInIgnoredGroup )
 			    {
 			    res= docRtfReadGroup( (const RtfControlWord *)0,
-					0, 0, rrc, (RtfControlWord *)0,
+					0, 0, rr, (RtfControlWord *)0,
 					docRtfIgnoreText, (RtfCommitGroup)0 );
 			    }
 			else{
 			    res= docRtfApplyControlWord( rcw,
-							    gotArg, arg, rrc );
+							    gotArg, arg, rr );
 			    }
 			if  ( res < 0 )
 			    { LSDEB(res,controlWord); rval= -1; goto ready; }
 			}
 		    else{
-			if  ( docRtfReadGroupX( rcw, rcw, gotArg, arg, rrc,
-				groupWords, addParticule, (RtfCommitGroup)0 ) )
+			if  ( docRtfReadGroupX( rcw, rcw, gotArg, arg, rr,
+				groupWords, gotText, (RtfCommitGroup)0 ) )
 			    { SDEB(rcw->rcwWord); return -1;	}
 			}
 		    }
 		else{
-		    if  ( rrc->rrcComplainUnknown && ! rrc->rrcInIgnoredGroup )
-			{ LSDEB(rrc->rrCurrentLine,controlWord);	}
+		    if  ( rr->rrComplainUnknown && ! rr->rrInIgnoredGroup )
+			{ LSDEB(rr->rrCurrentLine,controlWord);	}
 
-		    if  ( docRtfReadUnknownGroup( rrc ) )
-			{ LSDEB(rrc->rrCurrentLine,controlWord); return -1; }
+		    if  ( docRtfReadUnknownGroup( rr ) )
+			{ LSDEB(rr->rrCurrentLine,controlWord); return -1; }
 		    }
 
 		c= 0x0;
-		res= docRtfFindControl( rrc, &c, controlWord, &gotArg, &arg );
+		res= docRtfFindControl( rr, &c, controlWord, &gotArg, &arg );
 		if  ( res < 0 )
 		    { LDEB(res); rval= -1; goto ready;	}
 		break;
@@ -819,14 +857,14 @@ int docRtfConsumeGroup(	const RtfControlWord *	applyFirst,
 		    goto textGroup;
 		    }
 
-		rrc->rrcInIgnoredGroup++;
+		rr->rrInIgnoredGroup++;
 
-		if  ( docRtfReadUnknownGroup( rrc ) )
-		    { LDEB(1); rrc->rrcInIgnoredGroup--; rval= -1; goto ready;	}
+		if  ( docRtfReadUnknownGroup( rr ) )
+		    { LDEB(1); rr->rrInIgnoredGroup--; rval= -1; goto ready;	}
 
-		rrc->rrcInIgnoredGroup--;
+		rr->rrInIgnoredGroup--;
 
-		res= docRtfFindControl( rrc, &c,
+		res= docRtfFindControl( rr, &c,
 					    controlWord, &gotArg, &arg );
 		if  ( res < 0 )
 		    { LDEB(res); rval= -1; goto ready;	}
@@ -840,11 +878,10 @@ int docRtfConsumeGroup(	const RtfControlWord *	applyFirst,
 	      textGroup:
 		if  ( docRtfReadGroupX( (const RtfControlWord *)0,
 			    rcwApplyFirst, gotArgApplyFirst, argApplyFirst,
-			    rrc, groupWords,
-			    addParticule, (RtfCommitGroup)0 ) )
+			    rr, groupWords, gotText, (RtfCommitGroup)0 ) )
 		    { LDEB(1); rval= -1; goto ready;	}
 
-		res= docRtfFindControl( rrc, &c,
+		res= docRtfFindControl( rr, &c,
 					    controlWord, &gotArg, &arg );
 		if  ( res < 0 )
 		    { LDEB(res); rval= -1; goto ready;	}
@@ -856,7 +893,8 @@ int docRtfConsumeGroup(	const RtfControlWord *	applyFirst,
 	}
 
   ready:
-    rrc->rrcAddParticule= savedAddParticule;
+
+    rr->rrGotText= savedGotText;
 
     return rval;
     }
@@ -870,11 +908,11 @@ int docRtfConsumeGroup(	const RtfControlWord *	applyFirst,
 int docRtfApplyDocEncodedTextGroup(
 				const RtfControlWord *	rcw,
 				int			arg,
-				RtfReader *		rrc )
+				RtfReader *		rr )
     {
     const int	gotArg=		0;
 
-    if  ( docRtfReadGroup( rcw, gotArg, arg, rrc,
+    if  ( docRtfReadGroup( rcw, gotArg, arg, rr,
 						(const RtfControlWord *)0,
 						docRtfSaveDocEncodedText,
 						rcw->rwcCommitGroup ) )
@@ -885,11 +923,11 @@ int docRtfApplyDocEncodedTextGroup(
 
 int docRtfApplyRawBytesGroup(	const RtfControlWord *	rcw,
 				int			arg,
-				RtfReader *		rrc )
+				RtfReader *		rr )
     {
     const int	gotArg=		0;
 
-    if  ( docRtfReadGroup( rcw, gotArg, arg, rrc,
+    if  ( docRtfReadGroup( rcw, gotArg, arg, rr,
 						(const RtfControlWord *)0,
 						docRtfSaveRawBytes,
 						rcw->rwcCommitGroup ) )
@@ -906,6 +944,6 @@ int docRtfApplyRawBytesGroup(	const RtfControlWord *	rcw,
 
 int docRtfIgnoreWord(	const RtfControlWord *	rcw,
 			int			arg,
-			RtfReader *		rrc )
+			RtfReader *		rr )
     { return 0;	}
 

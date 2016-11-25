@@ -1,6 +1,6 @@
 /************************************************************************/
 /*									*/
-/*  Calculate page number and ref fields.				*/
+/*  Bookkeeping for FILENAME fields.					*/
 /*									*/
 /************************************************************************/
 
@@ -10,6 +10,7 @@
 
 #   include	"docDocumentField.h"
 #   include	"docFileNameField.h"
+#   include	"docFieldKind.h"
 
 void docInitFileNameField(	FileNameField *	fnf )
     {
@@ -24,7 +25,7 @@ void docCleanFileNameField(	FileNameField *	fnf )
 
 /************************************************************************/
 /*									*/
-/*  Evaluate REF fields.						*/
+/*  Evaluate FILENAME fields.						*/
 /*									*/
 /************************************************************************/
 

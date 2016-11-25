@@ -1,27 +1,31 @@
 #   ifndef		LAYOUT_CONTEXT_H
 #   define		LAYOUT_CONTEXT_H
 
-#   include	<utilIndexMapping.h>
-#   include	<utilMatchFont.h>
-#   include	<docBuf.h>
+#   include	<fontMatchFont.h>
 
 struct DrawingSurface;
+struct LayoutPosition;
+struct IndexMapping;
+struct BufferDocument;
+struct PostScriptFontList;
+struct SimpleLocale;
 
 typedef struct LayoutContext
     {
-    struct DrawingSurface *	lcDrawingSurface;
-    IndexMapping *		lcAttributeToScreenFont;
-    const PostScriptFontList *	lcPostScriptFontList;
-    BufferDocument *		lcDocument;
-    DOC_CLOSE_OBJECT		lcCloseObject;
+    struct DrawingSurface *		lcDrawingSurface;
+    struct IndexMapping *		lcAttributeToScreenFont;
+    const struct PostScriptFontList *	lcPostScriptFontList;
+    struct BufferDocument *		lcDocument;
 
-    int				lcOx;
-    int				lcOy;
+    int					lcOx;
+    int					lcOy;
 
-    GetFontForAttribute		lcGetFontForAttribute;
+    GetFontForAttribute			lcGetFontForAttribute;
 
-    double			lcPixelsPerTwip;
-    double			lcPageGapPixels;
+    double				lcPixelsPerTwip;
+    double				lcPageGapPixels;
+
+    const struct SimpleLocale *		lcLocale;
     } LayoutContext;
 
 /************************************************************************/
@@ -30,13 +34,13 @@ typedef struct LayoutContext
 /*									*/
 /************************************************************************/
 
-extern void layoutInitContext(	LayoutContext *		lc );
+extern void layoutInitContext(	LayoutContext *			lc );
 
-extern int docLayoutYPixels(	const LayoutContext *	lc,
-				const LayoutPosition *	lp );
+extern int docLayoutYPixels(	const LayoutContext *		lc,
+				const struct LayoutPosition *	lp );
 
-extern int docLayoutXPixels(	const LayoutContext *	lc,
-				int			xTwips );
+extern int docLayoutXPixels(	const LayoutContext *		lc,
+				int				xTwips );
 
 int docGetPageForYPixels(	const LayoutContext *		lc,
 				int				yPixels );

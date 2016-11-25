@@ -7,9 +7,10 @@
 #   include	<utilEndian.h>
 #   include	<utilMemoryBuffer.h>
 #   include	<utilIndexMapping.h>
-#   include	<appDebugon.h>
-
 #   include	"psTtfIntern.h"
+#   include	<sioGeneral.h>
+
+#   include	<appDebugon.h>
 
 /************************************************************************/
 /*									*/
@@ -226,14 +227,14 @@ void psTtfCleanTrueTypeFont(	TrueTypeFont *	ttf )
 /*									*/
 /************************************************************************/
 
-static SimpleInputStream * utilTtfOpenTableStream(
+static struct SimpleInputStream * utilTtfOpenTableStream(
 					const TrueTypeTableEntry **	pTtte,
 					const char *			tag,
 					const TrueTypeFont *		ttf )
     {
     int				tab;
     const TrueTypeTableEntry *	ttte;
-    SimpleInputStream *		sis;
+    struct SimpleInputStream *		sis;
 
     ttte= ttf->ttfTables;
     for ( tab= 0; tab < ttf->ttfTableCount; ttte++, tab++ )
@@ -243,11 +244,11 @@ static SimpleInputStream * utilTtfOpenTableStream(
 	}
 
     if  ( tab >= ttf->ttfTableCount )
-	{ /*SLDEB(tag,ttf->ttfTableCount);*/ return (SimpleInputStream *)0; }
+	{ /*SLDEB(tag,ttf->ttfTableCount);*/ return (struct SimpleInputStream *)0; }
 
     sis= sioInMemoryOpen( &(ttte->ttteMemoryBuffer) );
     if  ( ! sis )
-	{ XDEB(sis); return (SimpleInputStream *)0;	}
+	{ XDEB(sis); return (struct SimpleInputStream *)0;	}
 
     *pTtte= ttte;
     return sis;
@@ -263,7 +264,7 @@ static int utilTtfExtractNameTable(	TrueTypeFont *	ttf )
     {
     int				rval= 0;
 
-    SimpleInputStream *		sisName= (SimpleInputStream *)0;
+    struct SimpleInputStream *		sisName= (struct SimpleInputStream *)0;
     const TrueTypeTableEntry *	ttte;
 
     TrueTypeNameTable *		ttnt= &(ttf->ttfNameTable);
@@ -287,7 +288,7 @@ static int utilTtfExtractPostTable(	TrueTypeFont *	ttf )
     {
     int				rval= 0;
 
-    SimpleInputStream *		sisPost= (SimpleInputStream *)0;
+    struct SimpleInputStream *		sisPost= (struct SimpleInputStream *)0;
     const TrueTypeTableEntry *	ttte;
 
     TrueTypePostTable *		ttpt= &(ttf->ttfPostTable);
@@ -391,7 +392,7 @@ static int utilTtfExtractOS_2Table(	TrueTypeFont *	ttf )
     {
     int				rval= 0;
 
-    SimpleInputStream *		sisOS_2= (SimpleInputStream *)0;
+    struct SimpleInputStream *		sisOS_2= (struct SimpleInputStream *)0;
     const TrueTypeTableEntry *	ttte;
 
     TrueTypeOS_2Table *		ttot= &(ttf->ttfOS_2Table);
@@ -455,7 +456,7 @@ static int utilTtfExtractHheaTable(	TrueTypeFont *	ttf )
     {
     int				rval= 0;
 
-    SimpleInputStream *		sisHhea= (SimpleInputStream *)0;
+    struct SimpleInputStream *		sisHhea= (struct SimpleInputStream *)0;
     const TrueTypeTableEntry *	ttte;
 
     int				i;
@@ -504,7 +505,7 @@ static int utilTtfExtractVheaTable(	TrueTypeFont *	ttf )
     {
     int				rval= 0;
 
-    SimpleInputStream *		sisVhea= (SimpleInputStream *)0;
+    struct SimpleInputStream *		sisVhea= (struct SimpleInputStream *)0;
     const TrueTypeTableEntry *	ttte;
 
     int				i;
@@ -554,7 +555,7 @@ static int utilTtfExtractHeadTable(	TrueTypeFont *	ttf )
     {
     int				rval= 0;
 
-    SimpleInputStream *		sisHead= (SimpleInputStream *)0;
+    struct SimpleInputStream *		sisHead= (struct SimpleInputStream *)0;
     const TrueTypeTableEntry *	ttte;
 
     TrueTypeHeadTable *		ttht= &(ttf->ttfHeadTable);
@@ -609,7 +610,7 @@ static int utilTtfExtractLocaTable(	TrueTypeFont *	ttf )
     {
     int				rval= 0;
 
-    SimpleInputStream *		sisLoca= (SimpleInputStream *)0;
+    struct SimpleInputStream *		sisLoca= (struct SimpleInputStream *)0;
     const TrueTypeTableEntry *	ttte;
 
     TrueTypeHeadTable *		ttht= &(ttf->ttfHeadTable);
@@ -678,7 +679,7 @@ static int utilTtfExtractHmtxTable(	TrueTypeFont *	ttf )
     {
     int				rval= 0;
 
-    SimpleInputStream *		sisHmtx= (SimpleInputStream *)0;
+    struct SimpleInputStream *		sisHmtx= (struct SimpleInputStream *)0;
     const TrueTypeTableEntry *	ttte;
 
     const TrueTypeHheaTable *	hhea= &(ttf->ttfHheaTable);
@@ -837,7 +838,7 @@ static int utilTtfExtractCmapTable(	TrueTypeFont *	ttf )
     {
     int				rval= 0;
 
-    SimpleInputStream *		sisCmap= (SimpleInputStream *)0;
+    struct SimpleInputStream *		sisCmap= (struct SimpleInputStream *)0;
     const TrueTypeTableEntry *	ttte;
     TrueTypeCmapTable *		ttct= &(ttf->ttfCmapTable);
     TrueTypeCmapRecord *	ttcr;
@@ -1015,7 +1016,7 @@ static int utilTtfExtractKernTable(	TrueTypeFont *	ttf )
     {
     int				rval= 0;
 
-    SimpleInputStream *		sisKern= (SimpleInputStream *)0;
+    struct SimpleInputStream *		sisKern= (struct SimpleInputStream *)0;
     const TrueTypeTableEntry *	ttte;
     TrueTypeKernTable *		ttkt= &(ttf->ttfKernTable);
     TrueTypeKernSub *		ttks;
@@ -1140,9 +1141,9 @@ static int utilTtfExtractKernTable(	TrueTypeFont *	ttf )
 /*									*/
 /************************************************************************/
 
-int psTtfLoadFont(	TrueTypeFont *		ttf,
-			SimpleInputStream *	sisTtf,
-			long			filePos )
+int psTtfLoadFont(	TrueTypeFont *			ttf,
+			struct SimpleInputStream *	sisTtf,
+			long				filePos )
     {
     int				tableCount;
 
@@ -1186,9 +1187,9 @@ int psTtfLoadFont(	TrueTypeFont *		ttf,
     return 0;
     }
 
-int psTtcLoadFont(	TrueTypeFont *		ttf,
-			SimpleInputStream *	sisTtf,
-			int			fontIndex )
+int psTtcLoadFont(	TrueTypeFont *			ttf,
+			struct SimpleInputStream *	sisTtf,
+			int				fontIndex )
     {
     long		filePos= 0;
 

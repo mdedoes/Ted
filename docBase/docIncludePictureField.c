@@ -10,6 +10,7 @@
 
 #   include	"docDocumentField.h"
 #   include	"docIncludePictureField.h"
+#   include	"docFieldKind.h"
 
 void docInitIncludePictureField(	IncludePictureField *	ipf )
     {
@@ -17,6 +18,9 @@ void docInitIncludePictureField(	IncludePictureField *	ipf )
     utilInitMemoryBuffer( &(ipf->ipfConverter) );
 
     ipf->ipfDoNotSaveResult= 0;
+
+    ipf->ipfTwipsWide= 0;
+    ipf->ipfTwipsHigh= 0;
 
     return;
     }
@@ -41,7 +45,8 @@ int docGetIncludePictureField(		IncludePictureField *	ipf,
     int					comp;
     int					gotName= 0;
 
-    if  ( df->dfKind != DOCfkINCLUDEPICTURE )
+    if  ( df->dfKind != DOCfkINCLUDEPICTURE	&&
+	  df->dfKind != DOCfkNEXTGRAPHIC	)
 	{ return 1;	}
 
     ic= fi->fiComponents+ 1;
@@ -61,7 +66,27 @@ int docGetIncludePictureField(		IncludePictureField *	ipf,
 	    continue;
 	    }
 
-	if  ( ! ic->icIsFlag && ! gotName )
+	if  ( docComponentIsArgFlag( fi, comp, 'w' ) )
+	    {
+	    ic++, comp++;
+
+	    if  ( docFieldComponentInt( &(ipf->ipfTwipsWide), ic ) )
+		{ LDEB(comp);	}
+
+	    continue;
+	    }
+
+	if  ( docComponentIsArgFlag( fi, comp, 'h' ) )
+	    {
+	    ic++, comp++;
+
+	    if  ( docFieldComponentInt( &(ipf->ipfTwipsHigh), ic ) )
+		{ LDEB(comp);	}
+
+	    continue;
+	    }
+
+	if  ( ic->icType != INSTRtypeFLAG && ! gotName )
 	    {
 	    if  ( utilCopyMemoryBuffer( &(ipf->ipfFilename), &(ic->icBuffer) ) )
 		{ LDEB(comp);	}
@@ -69,6 +94,11 @@ int docGetIncludePictureField(		IncludePictureField *	ipf,
 	    gotName= 1;
 	    continue;
 	    }
+
+	if  ( comp < fi->fiComponentCount -1			&&
+	      docComponentIsFlag( fi, comp, '*' )		&&
+	      docComponentEqualsWordNoCase( ic+ 1, "mergeformatinet", 15 )	)
+	    { comp++; continue;	}
 
 	if  ( docFieldHasMergeformat( fi, comp ) )
 	    { comp++; continue;	}

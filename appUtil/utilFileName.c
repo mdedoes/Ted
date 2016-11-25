@@ -14,6 +14,7 @@
 #   include	<string.h>
 
 #   include	"appSystem.h"
+#   include	"utilMemoryBuffer.h"
 
 #   include	<appDebugon.h>
 
@@ -24,7 +25,7 @@
 /*									*/
 /************************************************************************/
 
-int appFileGetFileExtension(	MemoryBuffer *		extension,
+int fileGetFileExtension(	MemoryBuffer *		extension,
 				const MemoryBuffer *	filename )
     {
     const char *	all= utilMemoryBufferGetString( filename );
@@ -101,43 +102,62 @@ static int appFileSetExtensionX(	MemoryBuffer *		filename,
     return 0;
     }
 
-int appFileSetExtension(		MemoryBuffer *		filename,
-					const char *		extension )
+int fileChangeExtension(	MemoryBuffer *		filename,
+				const char *		extension )
     {
     return appFileSetExtensionX( filename, extension, 1 );
     }
 
-int appFileAddExtension(		MemoryBuffer *		filename,
-					const char *		extension )
+int fileAddExtension(		MemoryBuffer *		filename,
+				const char *		extension )
     {
     return appFileSetExtensionX( filename, extension, 0 );
     }
 
-int appFileGetRelativeName(	MemoryBuffer *		relative,
-				const MemoryBuffer *	filename )
+static int fileFileGetBaseNameX( MemoryBuffer *		relative,
+				const MemoryBuffer *	filename,
+				int			removeExtension )
     {
-    const char *	all= utilMemoryBufferGetString( filename );
+    const char *	bytes= utilMemoryBufferGetString( filename );
     const char *	slash;
 
-    slash= strrchr( all, '/' );
+    int			from= 0;
+    int			upto= strlen( bytes );
 
-    if  ( ! slash )
+    slash= strrchr( bytes, '/' );
+
+    if  ( slash )
+	{ from= slash- bytes+ 1;	}
+
+    if  ( removeExtension )
 	{
-	if  ( utilCopyMemoryBuffer( relative, filename ) )
-	    { LDEB(1); return -1;	}
-	}
-    else{
-	int	off= slash- all+ 1;
-	int	len= filename->mbSize- off;
+	const char *	dot;
 
-	if  ( utilMemoryBufferGetRange( relative, filename, off, len ) )
-	    { LDEB(1); return -1;	}
+	dot= strrchr( bytes+ from, '.' );
+	if  ( dot )
+	    { upto= dot- bytes;	}
 	}
 
-    return 0;
+    return utilMemoryBufferGetRange( relative, filename, from, upto- from );
     }
 
-int appDirectoryOfFileName(	MemoryBuffer *		dir,
+int fileGetRelativeName(	MemoryBuffer *		relative,
+				const MemoryBuffer *	filename )
+    {
+    const int	removeExtension= 0;
+
+    return fileFileGetBaseNameX( relative, filename, removeExtension );
+    }
+
+int fileGetBaseName(	MemoryBuffer *		relative,
+			const MemoryBuffer *	filename )
+    {
+    const int	removeExtension= 1;
+
+    return fileFileGetBaseNameX( relative, filename, removeExtension );
+    }
+
+int fileDirectoryOfFileName(	MemoryBuffer *		dir,
 				const MemoryBuffer *	name )
     {
     const char *	all= utilMemoryBufferGetString( name );
@@ -153,7 +173,7 @@ int appDirectoryOfFileName(	MemoryBuffer *		dir,
     return 0;
     }
 
-int appFileNameIsAbsolute( const char *	filename )
+int fileNameIsAbsolute( const char *	filename )
     { return filename[0] == '/';	}
 
 /************************************************************************/
@@ -236,10 +256,10 @@ static int utilFileNameCatenate(	MemoryBuffer *		path,
     return path->mbSize;
     }
 
-extern int appAbsoluteName(	MemoryBuffer *		absolute,
-				const MemoryBuffer *	relative,
-				int			relativeIsFile,
-				const MemoryBuffer *	nameRelativeTo )
+int fileAbsoluteName(	MemoryBuffer *		absolute,
+			const MemoryBuffer *	relative,
+			int			relativeIsFile,
+			const MemoryBuffer *	nameRelativeTo )
     {
     int			rval= -1;
     int			relLen= 0;
@@ -286,7 +306,7 @@ extern int appAbsoluteName(	MemoryBuffer *		absolute,
 	}
 
     /*  4  */
-    if  ( appCurrentDirectory( absolute ) < 0 )
+    if  ( fileCurrentDirectory( absolute ) < 0 )
 	{ LDEB(1); rval= -1; goto ready;	}
 
     /*  6  */
@@ -313,7 +333,7 @@ static void xx( const char *	filename,
     {
     char	absolute[1000+1];
 
-    if  ( appAbsoluteName( absolute, sizeof( absolute )- 1,
+    if  ( fileAbsoluteName( absolute, sizeof( absolute )- 1,
 					    filename, fileRelativeTo ) < 0 )
 	{ SSDEB( filename, fileRelativeTo );		}
     else{ SSSDEB( filename, fileRelativeTo, absolute );	}

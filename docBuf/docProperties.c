@@ -13,10 +13,18 @@
 #   include	<docListOverride.h>
 
 #   include	"docBuf.h"
-#   include	"docDebug.h"
 #   include	"docFind.h"
 #   include	"docTreeNode.h"
+#   include	"docSelect.h"
+#   include	<docDocumentProperties.h>
+#   include	<docParaProperties.h>
+#   include	<utilPalette.h>
+#   include	<docListAdmin.h>
+#   include	<fontDocFontList.h>
+#   include	<fontDocFont.h>
+#   include	"docAttributes.h"
 
+#   include	"docDebug.h"
 #   include	<appDebugon.h>
 
 /************************************************************************/
@@ -35,15 +43,21 @@
 
 typedef struct ResourceUsed
     {
-    int *	ruFontsUsed;
-    int *	ruListStyleUsed;
+    unsigned char *	ruFontsUsed;
+    unsigned char *	ruListStyleUsed;
     } ResourceUsed;
+
+# ifdef __GNUC__
+# pragma GCC diagnostic push
+# pragma GCC diagnostic ignored "-Wunused-parameter"
+# endif
 
 /*  a  */
 static int docMergeScanParaAttributes(
 				DocumentSelection *		ds,
-				BufferItem *			paraNode,
-				BufferDocument *		bd,
+				struct BufferItem *		paraNode,
+				struct BufferDocument *		bd,
+				struct DocumentTree *		tree,
 				const DocumentPosition *	dpFrom,
 				void *				through )
     {
@@ -52,50 +66,55 @@ static int docMergeScanParaAttributes(
     TextParticule *		tp;
     int				part;
     int				errors= 0;
+    int				ls;
 
     tp= paraNode->biParaParticules;
     for ( part= 0; part < paraNode->biParaParticuleCount; part++, tp++ )
 	{
-	TextAttribute	ta;
+	const TextAttribute *	ta;
 
 	if  ( tp->tpTextAttrNr < 0 )
 	    { errors++; tp->tpTextAttrNr= 0;	}
 
-	docGetTextAttributeByNumber( &ta, bd, tp->tpTextAttrNr );
+	ta= docGetTextAttributeByNumber( bd, tp->tpTextAttrNr );
 
-	ru->ruFontsUsed[ta.taFontNumber]= 1;
+	ru->ruFontsUsed[ta->taFontNumber]= 1;
 	}
 
     if  ( errors > 0 )
-	{
-	LDEB(errors);
-	docListNode(0,paraNode,0);
-	}
+	{ LDEB(errors); docListNode(0,paraNode,0);	}
 
-    if  ( paraNode->biParaListOverride > 0 )
-	{ ru->ruListStyleUsed[paraNode->biParaListOverride]= 1;	}
+    ls= paraNode->biParaProperties->ppListOverride;
+    if  ( ls > 0 )
+	{ ru->ruListStyleUsed[ls]= 1;	}
 
     return 1;
     }
 
-static int docMergeListTables(	BufferDocument *		bdTo,
-				BufferDocument *		bdFrom,
-				const int *			lsUsed,
+# ifdef __GNUC__
+# pragma GCC diagnostic pop
+# endif
+
+static int docMergeListTables(	struct BufferDocument *		bdTo,
+				struct BufferDocument *		bdFrom,
+				const unsigned char *		lsUsed,
 				int *				lsMap,
-				const int *			listUsed,
+				const unsigned char *		listUsed,
+				int *				listIndexMap,
 				const int *			fontMap,
 				const int *			colorMap,
 				const int *			rulerMap )
     {
-    DocumentProperties *	dpTo= &(bdTo->bdProperties);
-    const DocumentProperties *	dpFrom= &(bdFrom->bdProperties);
+    DocumentProperties *	dpTo= bdTo->bdProperties;
+    const DocumentProperties *	dpFrom= bdFrom->bdProperties;
     ListAdmin *			laTo= dpTo->dpListAdmin;
     const ListAdmin *		laFrom= dpFrom->dpListAdmin;
 
     int				listStylesAdded;
 
     listStylesAdded= docMergeListAdmins( laTo, laFrom,
-					    lsUsed, lsMap, listUsed,
+					    lsUsed, lsMap,
+					    listUsed, listIndexMap,
 					    fontMap, colorMap, rulerMap );
     if  ( listStylesAdded < 0 )
 	{ LDEB(listStylesAdded); return -1;	}
@@ -108,12 +127,12 @@ static int docMergeListTables(	BufferDocument *		bdTo,
     return 0;
     }
 
-static void docCountListFontsUsed(	BufferDocument *	bdFrom,
-					const int *		lsUsed,
-					int *			listUsed,
-					int *			fontUsed )
+static void docCountListFontsUsed(	struct BufferDocument *	bdFrom,
+					const unsigned char *	lsUsed,
+					unsigned char *		listUsed,
+					unsigned char *		fontUsed )
     {
-    const DocumentProperties *	dpFrom= &(bdFrom->bdProperties);
+    const DocumentProperties *	dpFrom= bdFrom->bdProperties;
     const ListAdmin *		laFrom= dpFrom->dpListAdmin;
     const DocumentListTable *	dltFrom= &(laFrom->laListTable);
     const ListOverrideTable *	lotFrom= &(laFrom->laListOverrideTable);
@@ -178,17 +197,17 @@ static void docCountListFontsUsed(	BufferDocument *	bdFrom,
 
 int docMergeDocumentLists(	int **				pFontMap,
 				int **				pListStyleMap,
-				BufferDocument *		bdTo,
-				BufferDocument *		bdFrom,
+				struct BufferDocument *		bdTo,
+				struct BufferDocument *		bdFrom,
 				const int *			colorMap,
 				const int *			rulerMap )
     {
     int				rval= 0;
 
-    DocumentProperties *	dpTo= &(bdTo->bdProperties);
+    DocumentProperties *	dpTo= bdTo->bdProperties;
     DocumentFontList *		dflTo= dpTo->dpFontList;
 
-    const DocumentProperties *	dpFrom= &(bdFrom->bdProperties);
+    const DocumentProperties *	dpFrom= bdFrom->bdProperties;
     const DocumentFontList *	dflFrom= dpFrom->dpFontList;
 
     const ListAdmin *		laFrom= dpFrom->dpListAdmin;
@@ -196,11 +215,12 @@ int docMergeDocumentLists(	int **				pFontMap,
     const ListOverrideTable *	lotFrom= &(laFrom->laListOverrideTable);
 
     int *			fontMap= (int *)0;
-    int *			fontUsed= (int *)0;
+    unsigned char *		fontUsed= (unsigned char *)0;
 
-    int *			lsUsed= (int *)0;
+    unsigned char *		lsUsed= (unsigned char *)0;
     int *			lsMap= (int *)0;
-    int *			listUsed= (int *)0;
+    unsigned char *		listUsed= (unsigned char *)0;
+    int *			listIndexMap= (int *)0;
 
     int				from;
     int				to;
@@ -218,7 +238,8 @@ int docMergeDocumentLists(	int **				pFontMap,
 	fontMap= (int *)malloc( dflFrom->dflFontCount* sizeof( int ) );
 	if  ( ! fontMap )
 	    { LXDEB(dflFrom->dflFontCount,fontMap); rval= -1; goto ready; }
-	fontUsed= (int *)malloc( dflFrom->dflFontCount* sizeof( int ) );
+	fontUsed= (unsigned char *)malloc(
+			    dflFrom->dflFontCount* sizeof( unsigned char ) );
 	if  ( ! fontUsed )
 	    { LXDEB(dflFrom->dflFontCount,fontUsed); rval= -1; goto ready; }
 
@@ -228,7 +249,8 @@ int docMergeDocumentLists(	int **				pFontMap,
 
     if  ( lotFrom->lotOverrideCount > 0 )
 	{
-	lsUsed= (int *)malloc( lotFrom->lotOverrideCount* sizeof(int) );
+	lsUsed= (unsigned char *)malloc(
+			    lotFrom->lotOverrideCount* sizeof(unsigned char) );
 	if  ( ! lsUsed )
 	    { LXDEB(lotFrom->lotOverrideCount,lsUsed); rval= -1; goto ready; }
 	lsMap= (int *)malloc( lotFrom->lotOverrideCount* sizeof(int) );
@@ -243,12 +265,17 @@ int docMergeDocumentLists(	int **				pFontMap,
 
     if  ( dltFrom->dltListCount > 0 )
 	{
-	listUsed= (int *)malloc( dltFrom->dltListCount* sizeof(int) );
+	listUsed= (unsigned char *)malloc(
+				dltFrom->dltListCount* sizeof(unsigned char) );
 	if  ( ! listUsed )
 	    { LXDEB(dltFrom->dltListCount,listUsed); rval= -1; goto ready; }
 
+	listIndexMap= (int *)malloc( dltFrom->dltListCount* sizeof(int) );
+	if  ( ! listIndexMap )
+	    { LXDEB(dltFrom->dltListCount,listIndexMap); rval= -1; goto ready; }
+
 	for ( from= 0; from < dltFrom->dltListCount; from++ )
-	    { listUsed[from]= 0; }
+	    { listUsed[from]= 0; listIndexMap[from]= -1; }
 	}
 
     /*****/
@@ -275,26 +302,27 @@ int docMergeDocumentLists(	int **				pFontMap,
 	if  ( ! fontUsed || ! fontUsed[from] )
 	    { continue;	}
 
-	dfFrom= docFontListGetFontByNumber( dflFrom, from );
+	dfFrom= fontFontListGetFontByNumber( dflFrom, from );
 	if  ( ! dfFrom )
 	    { continue;	}
-	if  ( ! dfFrom->dfName )
-	    { XDEB(dfFrom->dfName); continue;	}
+	if  ( utilMemoryBufferIsEmpty( &(dfFrom->dfName) ) )
+	    { LDEB(from); continue;	}
 
-	to= docMergeFontIntoFontlist( dflTo, dfFrom );
+	to= fontMergeFontIntoList( dflTo, dfFrom );
 	if  ( to < 0 )
 	    { LDEB(to); rval= -1; goto ready;	}
 
 	fontMap[from]= to;
 
-	dfTo= docFontListGetFontByNumber( dflTo, to );
+	dfTo= fontFontListGetFontByNumber( dflTo, to );
 	if  ( ! dfTo )
 	    { XDEB(dfTo); continue;	}
 	}
 
     /*****/
 
-    if  ( docMergeListTables( bdTo, bdFrom, lsUsed, lsMap, listUsed,
+    if  ( docMergeListTables( bdTo, bdFrom, lsUsed, lsMap,
+						listUsed, listIndexMap,
 						fontMap, colorMap, rulerMap ) )
 	{ LDEB(1); rval= -1; goto ready;	}
 
@@ -316,21 +344,23 @@ int docMergeDocumentLists(	int **				pFontMap,
 
     if  ( listUsed )
 	{ free( listUsed );	}
+    if  ( listIndexMap )
+	{ free( listIndexMap );	}
 
     return rval;
     }
 
 int docMergeColorTables(	int **				pColorMap,
-				BufferDocument *		bdTo,
-				const BufferDocument *		bdFrom )
+				struct BufferDocument *		bdTo,
+				const struct BufferDocument *		bdFrom )
     {
     const int			avoidZero= 1;
     const int			maxColors= 256;
 
-    DocumentProperties *	dpTo= &(bdTo->bdProperties);
+    DocumentProperties *	dpTo= bdTo->bdProperties;
     ColorPalette *		cpTo= dpTo->dpColorPalette;
 
-    const DocumentProperties *	dpFrom= &(bdFrom->bdProperties);
+    const DocumentProperties *	dpFrom= bdFrom->bdProperties;
     const ColorPalette *	cpFrom= dpFrom->dpColorPalette;
 
     return utilMergeColorPalettes( pColorMap, cpTo, cpFrom,

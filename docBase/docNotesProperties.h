@@ -4,14 +4,14 @@
 /*									*/
 /************************************************************************/
 
-#   include	<utilPropMask.h>
-
 #   ifndef	DOC_NOTES_PROPERTIES_H
 #   define	DOC_NOTES_PROPERTIES_H
 
 #   define	DPfetFOOT_ONLY		0
 #   define	DPfetEND_ONLY		1
 #   define	DPfetFOOT_END_BOTH	2
+
+struct PropertyMask;
 
 /************************************************************************/
 /*									*/
@@ -127,16 +127,16 @@ typedef struct FootEndNotesProperties
 /************************************************************************/
 
 extern int docUpdFootEndNotesProperties(
-		PropertyMask *			pDoneMask,
+		struct PropertyMask *		pDoneMask,
 		FootEndNotesProperties *	fep,
-		const PropertyMask *		setMask,
+		const struct PropertyMask *	setMask,
 		const FootEndNotesProperties *	fepSet,
 		const int			fepPropMap[FEPprop_COUNT] );
 
 extern int docFootEndNotesPropertyDifference(
-		PropertyMask *			pDifMask,
+		struct PropertyMask *		pDifMask,
 		const FootEndNotesProperties *	fep1,
-		const PropertyMask *		cmpMask,
+		const struct PropertyMask *	cmpMask,
 		const FootEndNotesProperties *	fep2,
 		const int			fepPropMap[FEPprop_COUNT] );
 

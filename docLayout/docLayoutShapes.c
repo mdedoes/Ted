@@ -6,12 +6,19 @@
 
 #   include	"docLayoutConfig.h"
 
-#   include	<stddef.h>
-
 #   include	<docPageGrid.h>
 #   include	<docTreeNode.h>
 #   include	<docShape.h>
 #   include	"docLayout.h"
+#   include	"docLayoutDocumentTree.h"
+#   include	<docFrameProperties.h>
+#   include	<docParaProperties.h>
+#   include	<docSectProperties.h>
+#   include	<docStripFrame.h>
+#   include	<docBlockFrame.h>
+#   include	<docObject.h>
+#   include	<docBuf.h>
+#   include	<docShapeGeometry.h>
 
 #   include	<appDebugon.h>
 
@@ -39,13 +46,13 @@ void docDrawingShapeInvalidateTextLayout(	DrawingShape *	ds )
 /*									*/
 /************************************************************************/
 
-void docShapePageY(		LayoutPosition *	lpShapeTop,
-				LayoutPosition *	lpBelowShape,
-				BlockFrame *		bfShape,
-				const DrawingShape *	ds,
-				const BufferItem *	paraBi,
-				const LayoutPosition *	lpLineTop,
-				const BlockFrame *	bf )
+void docShapePageY(	LayoutPosition *		lpShapeTop,
+			LayoutPosition *		lpBelowShape,
+			BlockFrame *			bfShape,
+			const DrawingShape *		ds,
+			const struct BufferItem *	paraNode,
+			const LayoutPosition *		lpLineTop,
+			const BlockFrame *		bf )
     {
     const ShapeProperties *	sp= &(ds->dsShapeProperties);
     int				yRefProp= sp->spYReference;
@@ -63,7 +70,7 @@ void docShapePageY(		LayoutPosition *	lpShapeTop,
 
     docLayoutFrameY( bfShape,
 			yRefProp, ds->dsDrawing.sdYPosition, sp->spRect.drY0,
-			lpLineTop, &(paraBi->biTopPosition),
+			lpLineTop, &(paraNode->biTopPosition),
 			bf, -shapeHigh, shapeHigh );
 
     lpShapeTop->lpPageYTwips= bfShape->bfContentRect.drY0;
@@ -74,16 +81,24 @@ void docShapePageY(		LayoutPosition *	lpShapeTop,
     return;
     }
 
-void docShapePageRectangle(	LayoutPosition *	lpShapeTop,
-				LayoutPosition *	lpBelowShape,
-				int *			pX0,
-				int *			pX1,
-				const DrawingShape *	ds,
-				const BufferItem *	paraBi,
-				const LayoutPosition *	lpLineTop,
-				const ParagraphFrame *	pfRef,
-				const BlockFrame *	bfRef,
-				int			xChar )
+/************************************************************************/
+/*									*/
+/*  Determine the rectangle for a shape that is not embedded in the	*/
+/*  text line. Shapes that are embedded in the text line are handled	*/
+/*  as part of the normal text flow of the paragraph.			*/
+/*									*/
+/************************************************************************/
+
+void docShapePageRectangle(	LayoutPosition *		lpShapeTop,
+				LayoutPosition *		lpBelowShape,
+				int *				pX0,
+				int *				pX1,
+				const DrawingShape *		ds,
+				const struct BufferItem *	paraNode,
+				const LayoutPosition *		lpLineTop,
+				const ParagraphFrame *		pfRef,
+				const BlockFrame *		bfRef,
+				int				xChar )
     {
     const ShapeProperties *	sp= &(ds->dsShapeProperties);
     int				xRefProp= sp->spXReference;
@@ -95,17 +110,18 @@ void docShapePageRectangle(	LayoutPosition *	lpShapeTop,
     docLayoutInitBlockFrame( &bfShape );
 
     docPlaceRootShapeRect( &drShape, &(ds->dsShapeProperties), 0, 0 );
-    shapeWide= drShape.drX1= drShape.drX0+ 1;
+    shapeWide= drShape.drX1- drShape.drX0+ 1;
 
     docShapePageY( lpShapeTop, lpBelowShape, &bfShape,
-					    ds, paraBi, lpLineTop, bfRef );
+					    ds, paraNode, lpLineTop, bfRef );
 
     if  ( xRefProp == FXrefIGNORE )
 	{ xRefProp= ds->dsDrawing.sdXReference; }
 
     docLayoutFrameX( &bfShape,
 	    xRefProp, ds->dsDrawing.sdXPosition, sp->spRect.drX0,
-	    paraBi->biParaTableNesting > 0 && ds->dsDrawing.sd_fLayoutInCell,
+	    paraNode->biParaProperties->ppTableNesting > 0 &&
+				    ds->dsDrawing.sd_fLayoutInCell,
 	    pfRef, bfRef, xChar, shapeWide );
 
     *pX0= bfShape.bfContentRect.drX0;
@@ -124,62 +140,125 @@ void docShapePageRectangle(	LayoutPosition *	lpShapeTop,
 
 int docShapeCheckTextLayout(
 			DrawingShape *			ds,
-			const DocumentRectangle *	drTwips,
+			const DocumentRectangle *	drInside,
 			DocumentRectangle *		drChanged,
-			const BufferItem *		bodySectNode,
-			int				page,
-			int				column,
+			const struct BufferItem *	bodySectNode,
 			const LayoutContext *		lc,
-			INIT_LAYOUT_EXTERNAL		initLayoutExternal )
+			START_TREE_LAYOUT		startTreeLayout )
     {
+    /*  We do not expect the tree to change height here	*/
+    const int		adjustDocument= 0;
+    DocumentTree *	tree= &(ds->dsDocumentTree);
+    BufferItem *	treeRoot= tree->dtRoot;
+
     DocumentGeometry	dgBox;
 
-    int			wide;
+    const int		page= 0;
+    const int		column= 0;
 
     utilInitDocumentGeometry( &dgBox );
 
-    if  ( drTwips->drX0 <= drTwips->drX1 )
-	{
-	wide= drTwips->drX1- drTwips->drX0;
-	dgBox.dgLeftMarginTwips= drTwips->drX0;
-	}
-    else{
-	wide= drTwips->drX0- drTwips->drX1;
-	dgBox.dgLeftMarginTwips= drTwips->drX1;
-	}
-
-    if  ( drTwips->drY0 <= drTwips->drY1 )
-	{
-	/* high= drTwips->drY1- drTwips->drY0; */
-	dgBox.dgTopMarginTwips= drTwips->drY0;
-	}
-    else{
-	/* high= drTwips->drY0- drTwips->drY1; */
-	dgBox.dgTopMarginTwips= drTwips->drY1;
-	}
-
-    dgBox.dgRightMarginTwips=  dgBox.dgPageWideTwips- 
-					dgBox.dgLeftMarginTwips- wide;
-
-    dgBox.dgLeftMarginTwips += EMUtoTWIPS( ds->dsDrawing.sd_dxTextLeft );
-    dgBox.dgTopMarginTwips += EMUtoTWIPS( ds->dsDrawing.sd_dyTextTop );
-    dgBox.dgRightMarginTwips += EMUtoTWIPS( ds->dsDrawing.sd_dxTextRight );
-    /* Irrelevant: */
-    dgBox.dgBottomMarginTwips= 0;
+    docShapeRootGeometry( &dgBox, &(ds->dsDrawing), drInside );
 
     ds->dsDocumentTree.dtRoot->biSectDocumentGeometry= dgBox;
 
-    if  ( page != ds->dsDocumentTree.dtPageFormattedFor		||
-	  column != ds->dsDocumentTree.dtColumnFormattedFor	)
-	{
-	/*  We do not expect the tree to change height here	*/
-	const int	adjustDocument= 0;
+    if  ( docLayoutDocumentTree( tree,
+		drChanged, page, column, dgBox.dgMargins.roTopOffset,
+		bodySectNode, lc, startTreeLayout, adjustDocument ) )
+	{ LLDEB(page,column); return -1;	}
 
-	if  ( docLayoutDocumentTree( &(ds->dsDocumentTree),
-		drChanged, page, column, dgBox.dgTopMarginTwips,
-		bodySectNode, lc, initLayoutExternal, adjustDocument ) )
-	    { LLDEB(page,column); return -1;	}
+    treeRoot->biTopPosition.lpPage= page;
+    treeRoot->biTopPosition.lpColumn= column;
+    treeRoot->biTopPosition.lpPageYTwips= tree->dtY0UsedTwips;
+
+    treeRoot->biBelowPosition.lpPage= page;
+    treeRoot->biBelowPosition.lpColumn= column;
+    treeRoot->biBelowPosition.lpPageYTwips= tree->dtY1UsedTwips;
+
+    return 0;
+    }
+
+/************************************************************************/
+/*									*/
+/*  Determine the rectangle of a shape that adapts to to its text.	*/
+/*  The (buggy) behavior of MS-Word is as follows:			*/
+/*									*/
+/*  Take the width of the shape and adapt the height to the height that	*/
+/*  the texts gets at that height.					*/
+/*									*/
+/*  The BUG in word is that initially it uses the height from the file,	*/
+/*  rather than that it determines the height when the file is read. It	*/
+/*  does however adapt the height of the shape when the height of its	*/
+/*  contents changes.							*/
+/*									*/
+/************************************************************************/
+
+int docShapePrelayout(	InsertedObject *		io,
+			const struct BufferItem *	bodySectNode,
+			const LayoutContext *		lc )
+    {
+    DrawingShape *	ds= io->ioDrawingShape;
+    ShapeProperties *	sp= &(ds->dsShapeProperties);
+    ShapeDrawing *	sd= &(ds->dsDrawing);
+
+    struct BufferItem *	textRoot= ds->dsDocumentTree.dtRoot;
+
+    if  ( textRoot )
+	{
+	const int		recursively= 1;
+
+	/*TODO: Should not be necessary */
+	docDelimitTables( textRoot, recursively );
+	}
+
+    if  ( sd->sd_fPseudoInline )
+	{
+	DocumentRectangle	drOutside;
+
+	docPlaceRootShapeRect( &drOutside, sp, 0, 0 );
+
+	if  ( textRoot && sd->sd_fFitShapeToText )
+	    {
+	    int			round;
+
+	    for ( round= 0; round < 3; round++ )
+		{
+		const int		page= 0;
+
+		RectangleOffsets	padding;
+		DocumentRectangle	drInside;
+
+		docShapeGetPadding( &padding, &drOutside, sd );
+		geoRectangleSubtractPadding( &drInside, &drOutside, &padding );
+
+		if  ( docShapeCheckTextLayout( ds,
+				&drInside, (DocumentRectangle *)0,
+				bodySectNode, lc, (START_TREE_LAYOUT)0 ) )
+		    { LDEB(page); return -1;	}
+
+		drInside.drY0= textRoot->biTopPosition.lpPageYTwips-
+					EMUtoTWIPS( sd->sd_dyTextTop );
+		drInside.drY1= textRoot->biBelowPosition.lpPageYTwips+
+					EMUtoTWIPS( sd->sd_dyTextBottom );
+
+		geoRectangleAddMargins( &drOutside, &drInside, &padding );
+		}
+	    }
+
+	io->ioInline= 1;
+	io->ioScaleYSet= 100;
+	io->ioScaleYUsed= 100;
+	io->ioTwipsWide= drOutside.drX1- drOutside.drX0+ 1;
+	io->ioTwipsHigh= drOutside.drY1- drOutside.drY0+ 1;
+
+	io->ioPictureProperties.pipScaleYSet= io->ioScaleYSet;
+	io->ioPictureProperties.pipScaleYUsed= io->ioScaleYUsed;
+	io->ioPictureProperties.pipTwipsWide= io->ioTwipsWide;
+	io->ioPictureProperties.pipTwipsHigh= io->ioTwipsHigh;
+
+	sp->spRect.drY1= sp->spRect.drY0+ io->ioTwipsHigh;
 	}
 
     return 0;
     }
+

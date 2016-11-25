@@ -5,13 +5,14 @@
 /*									*/
 /************************************************************************/
 
-#   include	"sioGeneral.h"
+struct SimpleOutputStream;
+struct SimpleInputStream;
 
-extern SimpleInputStream * sioInForkOpen(
-					SimpleInputStream *	sisIn,
-					SimpleOutputStream *	sosFork );
+extern struct SimpleInputStream * sioInForkOpen(
+				struct SimpleInputStream *	sisIn,
+				struct SimpleOutputStream *	sosFork );
 
-extern SimpleOutputStream * sioOutForkOpen(
-					SimpleOutputStream *	sosOut,
-					SimpleOutputStream *	sosFork );
+extern struct SimpleOutputStream * sioOutForkOpen(
+				struct SimpleOutputStream *	sosOut,
+				struct SimpleOutputStream *	sosFork );
 

@@ -7,18 +7,21 @@
 #   include	"tedConfig.h"
 
 #   include	<stddef.h>
-#   include	<stdio.h>
 
-#   include	"tedApp.h"
 #   include	"tedEdit.h"
 #   include	"tedSelect.h"
 #   include	<docRtfTrace.h>
-#   include	"tedLayout.h"
 #   include	"tedDocument.h"
-#   include	"tedToolFront.h"
+#   include	<tedToolFront.h>
 #   include	<docField.h>
 #   include	<docRecalculateFields.h>
 #   include	<docEditCommand.h>
+#   include	<docDocumentField.h>
+#   include	<docFieldKind.h>
+#   include	<appEditDocument.h>
+#   include	<docTreeNode.h>
+#   include	<docFields.h>
+#   include	<docBuf.h>
 
 #   include	<appDebugon.h>
 
@@ -40,7 +43,7 @@ static void tedIncludeFieldInRedraw(
 
     const int			lastLine= 1;
 
-    tedSelectionGeometry( &sgNew, dsField, eo->eoBodySectNode, lastLine,
+    docSelectionGeometry( &sgNew, dsField, eo->eoBodySectNode, lastLine,
 						    &(teo->teoLayoutContext) );
 
     tedIncludeRectangleInChange( teo, &(sgNew.sgRectangle) );
@@ -54,39 +57,48 @@ static void tedIncludeFieldInRedraw(
 /*									*/
 /************************************************************************/
 
-int tedLayoutNodeOfField(	TedEditOperation *	teo,
-				DocumentSelection *	dsAround,
-				unsigned int		whenMask )
+int tedLayoutNodeOfField(	TedEditOperation *		teo,
+				const DocumentSelection *	dsAround,
+				unsigned int			whenMask )
     {
     const LayoutContext *	lc= &(teo->teoLayoutContext);
-    BufferDocument *		bd= lc->lcDocument;
+    struct BufferDocument *	bd= lc->lcDocument;
 
-    struct BufferItem *		bi;
-    DocumentTree *		ei;
-    struct BufferItem *		bodySectNode;
-
-    bi= docGetSelectionRoot( &ei, &bodySectNode, bd, dsAround );
-    if  ( ! bi )
-	{ XDEB(bi); return -1;	}
+    struct BufferItem *		node;
 
     if  ( whenMask )
 	{
-	RecalculateFields		rf;
+	struct DocumentTree *	tree;
+	struct BufferItem *	bodySectNode;
+
+	RecalculateFields	rf;
 
 	docInitRecalculateFields( &rf );
 
+	node= docGetSelectionRoot( &tree, &bodySectNode, bd, dsAround );
+	if  ( ! node )
+	    { XDEB(node); return -1;	}
+
 	rf.rfDocument= bd;
-	rf.rfTree= ei;
-	rf.rfSelectedTree= ei;
-	rf.rfCloseObject= lc->lcCloseObject;
+	rf.rfTree= tree;
+	rf.rfSelectionScope= &(dsAround->dsSelectionScope);
+	rf.rfBodySectNode= bodySectNode;
+	rf.rfSelectedTree= tree;
 	rf.rfUpdateFlags= whenMask;
 	rf.rfFieldsUpdated= 0;
+	rf.rfLocale= lc->lcLocale;
 
-	if  ( docRecalculateTextLevelFields( &rf, bi ) )
+	if  ( docRecalculateTextLevelFields( &rf, node ) )
 	    { XDEB(whenMask);	}
 	}
+    else{
+	node= docGetSelectionRoot( (struct DocumentTree **)0,
+				    (struct BufferItem **)0, bd, dsAround );
+	if  ( ! node )
+	    { XDEB(node); return -1;	}
+	}
 
-    docEditIncludeNodeInReformatRange( &(teo->teoEo), bi );
+    docEditIncludeNodeInReformatRange( &(teo->teoEo), node );
 
     return 0;
     }
@@ -114,7 +126,7 @@ int tedFlattenFieldImpl(	TedEditOperation *		teo,
     docEditIncludeNodeInReformatRange( eo, dsAroundField->dsHead.dpNode );
     docEditIncludeNodeInReformatRange( eo, dsAroundField->dsTail.dpNode );
 
-    tedFormatFieldListChanged( teo->teoEditDocument->edApplication );
+    tedAppFormatFieldListChanged( teo->teoEditDocument->edApplication );
 
     return 0;
     }
@@ -174,11 +186,20 @@ static int tedFlattenField(	EditDocument *			ed,
 	    {
 	    if  ( docRtfTraceNewProperties( eo,
 		    taSetMask, taSet,
-		    (const PropertyMask *)0, (const ParagraphProperties *)0,
-		    (const PropertyMask *)0, (const CellProperties *)0,
-		    (const PropertyMask *)0, (const RowProperties *)0,
-		    (const PropertyMask *)0, (const SectionProperties *)0,
-		    (const PropertyMask *)0, (const DocumentProperties *)0 ) )
+		    (const PropertyMask *)0,
+		    (const struct ParagraphProperties *)0,
+
+		    (const PropertyMask *)0,
+		    (const struct CellProperties *)0,
+
+		    (const PropertyMask *)0,
+		    (const struct RowProperties *)0,
+
+		    (const PropertyMask *)0,
+		    (const struct SectionProperties *)0,
+
+		    (const PropertyMask *)0,
+		    (const struct DocumentProperties *)0 ) )
 		{ LDEB(1); rval= -1; goto ready;	}
 
 	    docRtfTraceFieldKind( eo, df->dfKind );
@@ -202,13 +223,8 @@ static int tedFlattenField(	EditDocument *			ed,
 	{ LDEB(1); rval= -1; goto ready;	}
 
     /*  3,4  */
-#   if 0
-    if  ( tedEditFinishSelection( &teo, &dsExInside ) )
-	{ LDEB(1);	}
-#   else
     if  ( tedEditFinishOldSelection( &teo ) )
 	{ LDEB(1);	}
-#   endif
 
     docSetEditRange( &(eo->eoAffectedRange), &dsExInside );
 
@@ -320,7 +336,7 @@ int tedInsertPageNumber(	EditDocument *	ed,
     if  ( docStartFieldInstructions( &fi, "PAGE", 4 ) )
 	{ LDEB(4); rval= -1; goto ready;	}
 
-    utilInitTextAttribute( &taSet );
+    textInitTextAttribute( &taSet );
     utilPropMaskClear( &taSetMask );
 
     tedStartEditOperation( &teo, &sg, &sd, ed, fullWidth, traced );
@@ -378,7 +394,7 @@ int tedDocFlattenTypedField(	EditDocument *			ed,
 				int				traced )
     {
     TedDocument *		td= (TedDocument *)ed->edPrivateData;
-    BufferDocument *		bd= td->tdDocument;
+    struct BufferDocument *		bd= td->tdDocument;
 
     DocumentField *		df;
     DocumentSelection		dsInsideField;
@@ -391,7 +407,7 @@ int tedDocFlattenTypedField(	EditDocument *			ed,
     SelectionDescription	sd;
 
     tedGetSelection( &ds, &sg, &sd,
-			    (DocumentTree **)0, (struct BufferItem **)0, ed );
+		    (struct DocumentTree **)0, (struct BufferItem **)0, ed );
 
     df= docFindTypedFieldForPosition( bd, &(ds.dsHead), fieldType, 0 );
     if  ( ! df )

@@ -15,6 +15,11 @@
 
 #   define	MAX_COMPONENTS	4
 
+# ifdef __GNUC__
+# pragma GCC diagnostic push
+# pragma GCC diagnostic ignored "-Wunused-parameter"
+# endif
+
 int bmInvertImage(	RasterImage *			riOut,
 			const RasterImage *		riIn,
 			int				ignoredInt )
@@ -75,4 +80,8 @@ int bmInvertImage(	RasterImage *			riOut,
 
     return rval;
     }
+
+# ifdef __GNUC__
+# pragma GCC diagnostic pop
+# endif
 

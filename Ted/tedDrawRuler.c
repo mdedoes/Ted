@@ -1,13 +1,9 @@
 #   include	"tedConfig.h"
 
-#   include	<stdio.h>
-
 #   include	<appMetricRuler.h>
-#   include	<appFrame.h>
 #   include	<docTabStop.h>
-#   include	<guiWidgetDrawingSurface.h>
-#   include	<guiDrawingWidget.h>
 #   include	"tedDrawRuler.h"
+#   include	<geo2DInteger.h>
 
 #   include	<appDebugon.h>
 

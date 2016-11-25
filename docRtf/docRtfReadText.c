@@ -8,18 +8,19 @@
 
 #   include	<stdlib.h>
 #   include	<string.h>
-#   include	<stdio.h>
 #   include	<ctype.h>
-
-#   include	<appDebugon.h>
 
 #   include	<uniUtf8.h>
 
 #   include	"docRtfReaderImpl.h"
-#   include	<docParaString.h>
+#   include	"docRtfReadTreeStack.h"
 #   include	<textConverter.h>
-#   include	<textConverterImpl.h>
-#   include	<docParaParticules.h>
+#   include	<docTreeNode.h>
+#   include	<docTextParticule.h>
+#   include	<docBuf.h>
+#   include	<docParaBuilder.h>
+
+#   include	<appDebugon.h>
 
 /************************************************************************/
 /*									*/
@@ -53,7 +54,7 @@ int docRtfSaveRawBytes(		RtfReader *		rr,
 				const char *		text,
 				int			len )
     {
-    RtfReadingState *	rrs= rr->rrcState;
+    RtfReadingState *	rrs= rr->rrState;
 
     if  ( utilMemoryBufferAppendBytes( &(rrs->rrsSavedText),
 					(const unsigned char *)text, len ) )
@@ -84,7 +85,9 @@ static int docRtfSaveBytes(	void *		vmb,
 
 /************************************************************************/
 /*									*/
-/*  Save text: It is in the document encoding.				*/
+/*  Save text: It is in the document encoding. (I.E. the encoding of	*/
+/*  the document file that is not necessarily identical to the encoding	*/
+/*  of the current text font.						*/
 /*									*/
 /************************************************************************/
 
@@ -92,7 +95,7 @@ int docRtfSaveDocEncodedText(	RtfReader *		rr,
 				const char *		text,
 				int			len )
     {
-    RtfReadingState *	rrs= rr->rrcState;
+    RtfReadingState *	rrs= rr->rrState;
     int			upto;
     int			consumed= 0;
 
@@ -108,14 +111,18 @@ int docRtfSaveDocEncodedText(	RtfReader *		rr,
 
 /************************************************************************/
 
-void docRtfReadSetupTextConverters(	RtfReader *	rr )
+int docRtfReadSetupTextConverters(	RtfReader *	rr )
     {
+    rr->rrRtfTextConverter= textOpenTextConverter();
+    if  ( ! rr->rrRtfTextConverter )
+	{ PDEB(rr->rrRtfTextConverter); return -1;	}
+
     textConverterSetNativeEncodingName( rr->rrRtfTextConverter,
 						    DOC_RTF_AnsiCharsetName );
 
     textConverterSetProduce( rr->rrRtfTextConverter, docRtfSaveBytes );
 
-    docParaSetupTextConverter( rr->rrTextTextConverter );
+    return 0;
     }
 
 /************************************************************************/
@@ -131,7 +138,7 @@ int docRtfStoreSavedText(	char **		pTarget,
 				RtfReader *	rr,
 				int		removeSemicolon )
     {
-    RtfReadingState *	rrs= rr->rrcState;
+    RtfReadingState *	rrs= rr->rrState;
 
     char *	fresh;
     int		size;
@@ -209,7 +216,8 @@ static int docRtfReadAdaptToFontEncoding(
 				RtfReader *			rr,
 				RtfReadingState *		rrs )
     {
-    const char *		encodingName= (const char *)0;
+    const char *	encodingName= (const char *)0;
+    RtfTreeStack *	rts= rr->rrTreeStack;
 
     if  ( rrs->rrsTextCharset >= 0 )
 	{
@@ -218,9 +226,13 @@ static int docRtfReadAdaptToFontEncoding(
 	}
 
     if  ( ! encodingName )
-	{ encodingName= rr->rrRtfTextConverter->tcNativeEncodingName;	}
+	{
+	encodingName= textConverterGetNativeEncodingName(
+						rr->rrRtfTextConverter );
+	}
 
-    textConverterSetNativeEncodingName( rr->rrTextTextConverter, encodingName );
+    docParagraphBuilderSetNativeEncodingName( rts->rtsParagraphBuilder,
+								encodingName );
 
     return 0;
     }
@@ -231,15 +243,15 @@ static int docRtfReadAdaptToFontEncoding(
 /*									*/
 /************************************************************************/
 
-int docRtfTextParticule(	RtfReader *		rr,
-				const char *		text,
-				int			len )
+int docRtfGotText(	RtfReader *		rr,
+			const char *		text,
+			int			len )
     {
-    RtfReadingState *		rrs= rr->rrcState;
-    BufferDocument *		bd= rr->rrDocument;
-    BufferItem *		paraNode;
+    RtfReadingState *		rrs= rr->rrState;
+    RtfTreeStack *		rts= rr->rrTreeStack;
+    struct BufferItem *		paraNode;
 
-    if  ( rr->rrcInIgnoredGroup )
+    if  ( rr->rrInIgnoredGroup )
 	{ return 0;	}
 
     paraNode= docRtfGetParaNode( rr );
@@ -249,8 +261,7 @@ int docRtfTextParticule(	RtfReader *		rr,
     if  ( docParaStrlen( paraNode ) == 0	||
 	  rr->rrAfterParaHeadField		)
 	{
-	if  ( docRtfAdaptToParaProperties( paraNode, bd, rrs,
-					    rr->rrParagraphBreakOverride ) )
+	if  ( docRtfAdaptToParaProperties( rr ) )
 	    { LDEB(1); return -1;	}
 	}
 
@@ -260,12 +271,14 @@ int docRtfTextParticule(	RtfReader *		rr,
     if  ( rrs->rrsTextShadingChanged )
 	{ docRtfRefreshTextShading( rr, rrs );	}
 
-    if  ( docParaAppendText( bd, paraNode, &(rrs->rrsTextAttribute),
-					rr->rrTextTextConverter, text, len ) )
+    if  ( docParagraphBuilderAppendText( rts->rtsParagraphBuilder,
+					&(rrs->rrsTextAttribute), text, len ) )
 	{ LDEB(1); return -1;	}
 
-    rr->rrcAfterNoteref= 0;
+    rr->rrAfterNoteref= 0;
     rr->rrAfterParaHeadField= 0;
+    rr->rrAfterInlineShape= 0;
+    rr->rrInlineShapeObjectNumber= -1;
     
     return 0;
     }
@@ -281,10 +294,10 @@ static int docRtfTextUnicodeValue(	const RtfControlWord *	rcw,
 					int			arg,
 					RtfReader *		rr )
     {
-    RtfReadingState *	rrs= rr->rrcState;
+    RtfReadingState *	rrs= rr->rrState;
+    RtfTreeStack *	rts= rr->rrTreeStack;
 
     char		bytes[7];
-    int			count;
 
     if  ( arg < 0 )
 	{ arg += 65536;	}
@@ -295,23 +308,15 @@ static int docRtfTextUnicodeValue(	const RtfControlWord *	rcw,
 	bytes[0]= arg & 0xff;
 	bytes[1]= '\0';
 
-	return docRtfSaveDocEncodedText( rr, (char *)bytes, 1 );
+	return docRtfSaveDocEncodedText( rr, bytes, 1 );
 	}
 
-    count= uniPutUtf8( bytes, arg );
-    if  ( count < 1 )
-	{ LDEB(count); return 0;	}
+    if  ( rr->rrGotText == docRtfSaveRawBytes )
+	{ XXDEB(rr->rrGotText,docRtfSaveRawBytes); return 0; }
 
-    if  ( rr->rrcAddParticule == docRtfSaveRawBytes )
-	{ XXDEB(rr->rrcAddParticule,docRtfSaveRawBytes); return 0; }
-
-    if  ( rr->rrcAddParticule == docRtfTextParticule )
+    if  ( rr->rrGotText == docRtfGotText )
 	{
-	int			stroffShift= 0;
-	int			stroff;
-	BufferItem *		paraNode= docRtfGetParaNode( rr );
-	BufferDocument *	bd= rr->rrDocument;
-	int			textAttributeNumber;
+	struct BufferItem *	paraNode= docRtfGetParaNode( rr );
 
 	if  ( ! paraNode )
 	    { SXDEB(rcw->rcwWord,paraNode); return -1; }
@@ -319,24 +324,19 @@ static int docRtfTextUnicodeValue(	const RtfControlWord *	rcw,
 	if  ( rrs->rrsTextShadingChanged )
 	    { docRtfRefreshTextShading( rr, rrs );	}
 
-	textAttributeNumber= docTextAttributeNumber( bd,
-						&(rrs->rrsTextAttribute) );
-	if  ( textAttributeNumber < 0 )
-	    { LDEB(textAttributeNumber); return -1;	}
-
-	stroff= docParaStrlen( paraNode );
-
-	if  ( docParaStringReplace( &stroffShift, paraNode, stroff, stroff,
-						    (char *)bytes, count ) )
-	    { LDEB(docParaStrlen(paraNode)); return -1;	}
-
-	if  ( docParaDivideAppendedText( paraNode, textAttributeNumber,
-						    stroff, stroff+ count ) )
-	    { LLDEB(count,paraNode->biParaParticuleCount); return -1; }
+	if  ( docParagraphBuilderAppendSymbol( rts->rtsParagraphBuilder, 
+					&(rrs->rrsTextAttribute), arg ) )
+	    { LDEB(arg); return -1;	}
 	}
     else{
+	int	count;
+
+	count= uniPutUtf8( bytes, arg );
+	if  ( count < 1 )
+	    { LDEB(count); return 0;	}
+
 	if  ( utilMemoryBufferAppendBytes( &(rrs->rrsSavedText),
-					    (unsigned char *)bytes, count ) )
+					(unsigned char *)bytes, count ) )
 	    { LDEB(count); return -1;	}
 	}
 
@@ -347,7 +347,7 @@ int docRtfTextUnicode(		const RtfControlWord *	rcw,
 				int			arg,
 				RtfReader *		rr )
     {
-    RtfReadingState *	rrs= rr->rrcState;
+    RtfReadingState *	rrs= rr->rrState;
 
     if  ( docRtfTextUnicodeValue( rcw, arg, rr ) )
 	{ SXDEB(rcw->rcwWord,arg); return -1;	}
@@ -360,7 +360,7 @@ int docRtfTextSpecialChar(	const RtfControlWord *	rcw,
 				int			arg,
 				RtfReader *		rr )
     {
-    /* docRtfTextParticule() adjusts level */
+    /* docRtfGotText() adjusts level */
 
     if  ( docRtfTextUnicodeValue( rcw, rcw->rcwID, rr ) )
 	{ SXDEB(rcw->rcwWord,arg); return -1;	}
@@ -372,10 +372,11 @@ int docRtfTextSpecialParticule(	const RtfControlWord *	rcw,
 				int			arg,
 				RtfReader *		rr )
     {
-    RtfReadingState *	rrs= rr->rrcState;
-    BufferItem *	paraNode;
+    RtfReadingState *	rrs= rr->rrState;
+    RtfTreeStack *	rts= rr->rrTreeStack;
+    struct BufferItem *	paraNode;
 
-    if  ( rr->rrcInIgnoredGroup > 0 )
+    if  ( rr->rrInIgnoredGroup > 0 )
 	{ return 0;	}
 
     if  ( rrs->rrsTextShadingChanged )
@@ -387,24 +388,27 @@ int docRtfTextSpecialParticule(	const RtfControlWord *	rcw,
 
     switch( rcw->rcwID )
 	{
-	case DOCkindTAB:
-	case DOCkindLINEBREAK:
-	case DOCkindCHFTNSEP:
-	case DOCkindCHFTNSEPC:
-	case DOCkindOPT_HYPH:
-	case DOCkindLTR_MARK:
-	case DOCkindRTL_MARK:
-	    if  ( docSaveSpecialParticule( rr->rrDocument, paraNode,
-				    &(rrs->rrsTextAttribute), rcw->rcwID ) )
+	case TPkindTAB:
+	case TPkindLINEBREAK:
+	case TPkindCHFTNSEP:
+	case TPkindCHFTNSEPC:
+	case TPkindOPT_HYPH:
+	case TPkindLTR_MARK:
+	case TPkindRTL_MARK:
+	    if  ( docParaBuilderAppendSpecialParticule(
+				rts->rtsParagraphBuilder,
+				&(rrs->rrsTextAttribute), rcw->rcwID ) )
 		{ LDEB(1); return -1;	}
 
-	    rr->rrcAfterNoteref= 0;
+	    rr->rrAfterNoteref= 0;
 	    rr->rrAfterParaHeadField= 0;
+	    rr->rrAfterInlineShape= 0;
+	    rr->rrInlineShapeObjectNumber= -1;
 
 	    break;
 
-	case DOCkindPAGEBREAK:
-	case DOCkindCOLUMNBREAK:
+	case TPkindPAGEBREAK:
+	case TPkindCOLUMNBREAK:
 	    {
 	    int				done= 0;
 
@@ -412,20 +416,23 @@ int docRtfTextSpecialParticule(	const RtfControlWord *	rcw,
 		  ( docParaStrlen(paraNode) == 0	||
 		    rr->rrAfterParaHeadField		)	)
 		{
-		if  ( rcw->rcwID == DOCkindPAGEBREAK )
+		if  ( rcw->rcwID == TPkindPAGEBREAK )
 		    { rr->rrParagraphBreakOverride= DOCibkPAGE; done= 1; }
 
-		if  ( rcw->rcwID == DOCkindCOLUMNBREAK )
+		if  ( rcw->rcwID == TPkindCOLUMNBREAK )
 		    { rr->rrParagraphBreakOverride= DOCibkCOL; done= 1; }
 		}
 
 	    if  ( ! done						&&
-		  docSaveSpecialParticule( rr->rrDocument, paraNode,
+		  docParaBuilderAppendSpecialParticule(
+				rts->rtsParagraphBuilder,
 				&(rrs->rrsTextAttribute), rcw->rcwID ) )
 		{ LDEB(1); return -1;	}
 
-	    rr->rrcAfterNoteref= 0;
+	    rr->rrAfterNoteref= 0;
 	    rr->rrAfterParaHeadField= 0;
+	    rr->rrAfterInlineShape= 0;
+	    rr->rrInlineShapeObjectNumber= -1;
 
 	    break;
 	    }
@@ -438,10 +445,3 @@ int docRtfTextSpecialParticule(	const RtfControlWord *	rcw,
     return 0;
     }
 
-int docRtfTextBidiMark(	const RtfControlWord *	rcw,
-			int			arg,
-			RtfReader *		rr )
-    {
-/*SDEB(rcw->rcwWord);*/
-    return 0;
-    }

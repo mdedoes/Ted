@@ -12,6 +12,7 @@
 #   include	<stdio.h>
 
 #   include	<sioGeneral.h>
+#   include	<sioUtil.h>
 #   include	<sioBase85.h>
 #   include	<sioEndian.h>
 
@@ -316,13 +317,8 @@ int bmPsPrintJpegImage(	SimpleOutputStream *		sos,
     if  ( ! sos85 )
 	{ XDEB(sos85); rval= -1; goto ready;	}
 
-    {
-    unsigned char	buf[1000];
-    int			done;
-
-    while( ( done= sioInReadBytes( sis, buf, sizeof(buf) ) ) > 0 )
-	{ sioOutWriteBytes( sos85, buf, done );	}
-    }
+    if  ( sioCopyStream( sos85, sis ) )
+	{ LDEB(1); rval= -1; goto ready;	}
 
     sioOutClose( sos85 ); sos85= (SimpleOutputStream *)0;
 

@@ -1,19 +1,21 @@
 /************************************************************************/
 /*									*/
 /*  Read the various document tables of an RTF text file into a		*/
-/*  BufferDocument.							*/
+/*  struct BufferDocument.							*/
 /*									*/
 /************************************************************************/
 
 #   include	"docRtfConfig.h"
 
 #   include	<string.h>
-#   include	<stdio.h>
 #   include	<ctype.h>
 
-#   include	<appDebugon.h>
-
 #   include	"docRtfWriterImpl.h"
+#   include	<docStyle.h>
+#   include	<docStyleSheet.h>
+#   include	<docTreeNode.h>
+
+#   include	<appDebugon.h>
 
 /************************************************************************/
 /*									*/

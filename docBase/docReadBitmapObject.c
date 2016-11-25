@@ -10,28 +10,33 @@
 #   include	<stdio.h>
 
 #   include	<bmio.h>
-#   include	<sioMemory.h>
 #   include	<sioFileio.h>
 #   include	<sioHex.h>
+#   include	<sioMemory.h>
+
+#   include	"docObject.h"
+#   include	"docObjectIo.h"
+#   include	"docObjectProperties.h"
+#   include	<bmObjectReader.h>
+#   include	<drawMetafile.h>
+#   include	<sioGeneral.h>
+#   include	<sioUtil.h>
 
 #   include	<appDebugon.h>
 
-#   include	"docObject.h"
-#   include	"docObjectProperties.h"
-
 /************************************************************************/
 /*									*/
-/*  Read a bitmap/pixmap image file.					*/
+/*  Read a raster image file.						*/
 /*									*/
 /************************************************************************/
 
-int docReadBitmapObject(	InsertedObject *	io,
+int docReadRasterObject(	InsertedObject *	io,
 				const MemoryBuffer *	filename )
     {
     int				rval= 0;
     int				res;
     RasterImage			ri;
-    const char *		typeId= "?";
+    const char *		contentType= "?";
     int				copyAsFile= 0;
     int				includedAsRaster= 0;
 
@@ -46,10 +51,13 @@ int docReadBitmapObject(	InsertedObject *	io,
     res= bmRead( filename,
 		&(ri.riBytes), &(ri.riDescription), &(ri.riFormat) );
     if  ( res )
-	{ LDEB(res); rval= -1; goto ready;	}
+	{
+	SLDEB(utilMemoryBufferGetString(filename),res);
+	rval= -1; goto ready;
+	}
 
     if  ( ri.riFormat >= 0 )
-	{ typeId= bmFileFormats[ri.riFormat].bffFileType->bftTypeId; }
+	{ contentType= bmGetContentTypeOfFormat( ri.riFormat );	}
 
     io->ioKind= DOCokPICTPNGBLIP;
     io->ioInline= 1;
@@ -69,17 +77,14 @@ int docReadBitmapObject(	InsertedObject *	io,
     if  ( ! sosHex )
 	{ XDEB(sosHex); rval= -1; goto ready;	}
 
-    if  ( ri.riFormat >= 0				&&
-	  ( ! strcmp( typeId, "jpgFile" )	||
-	    ! strcmp( typeId, "jpegFile" )	)	)
+    if  ( ! strcmp( contentType, "image/jpeg" ) )
 	{
 	io->ioKind= DOCokPICTJPEGBLIP;
 	pip->pipType= DOCokPICTJPEGBLIP;
 	copyAsFile= 1;
 	}
 
-    if  ( ri.riFormat >= 0			&&
-	  ! strcmp( typeId, "pngFile" )		)
+    if  ( ! strcmp( contentType, "image/png" ) )
 	{
 	io->ioKind= DOCokPICTPNGBLIP;
 	pip->pipType= DOCokPICTPNGBLIP;
@@ -88,30 +93,18 @@ int docReadBitmapObject(	InsertedObject *	io,
 
     if  ( copyAsFile )
 	{
-	unsigned char		buf[4096];
-	int			got;
-
 	sisFile= sioInFileioOpen( filename );
 	if  ( ! sisFile )
 	    { XDEB(sisFile); rval= -1; goto ready; }
 
-	for (;;)
-	    {
-	    got= sioInReadBytes( sisFile, buf, sizeof(buf) );
-	    if  ( got < 0 )
-		{ LDEB(got); rval= -1; goto ready; }
-	    if  ( got <= 0 )
-		{ break; }
-
-	    if  ( sioOutWriteBytes( sosHex, buf, got ) < 0 )
-		{ LDEB(got); rval= -1; goto ready;	}
-	    }
+	if  ( sioCopyStream( sosHex, sisFile ) )
+	    { LDEB(1); rval= -1; goto ready; }
 
 	includedAsRaster= 1;
 	}
 
-    if  ( ! includedAsRaster					&&
-	  ! bmCanWritePngFile(  &(ri.riDescription), 1 )	)
+    if  ( ! includedAsRaster						&&
+	  bmCanSaveAsContentType( &(ri.riDescription), "image/png" )	)
 	{
 	if  ( bmPngWritePng( &(ri.riDescription), ri.riBytes, sosHex ) )
 	    { LDEB(1); rval= -1; goto ready;	}
@@ -126,7 +119,7 @@ int docReadBitmapObject(	InsertedObject *	io,
 	if  ( bmWmfWriteWmf( &(ri.riDescription), ri.riBytes, sosHex ) )
 	    { LDEB(1); rval= -1; goto ready;	}
 
-	pip->pipMetafileIsBitmap= 1;
+	pip->pipMetafileIsRaster= 1;
 	pip->pipMetafileBitmapBpp= ri.riDescription.bdBitsPerPixel;
 
 	io->ioKind= DOCokPICTWMETAFILE;
@@ -146,4 +139,124 @@ int docReadBitmapObject(	InsertedObject *	io,
 	{ sioOutClose( sosMem );	}
 
     return rval;
+    }
+
+int docReadRasterSize(		InsertedObject *	io )
+    {
+    int				rval= 0;
+    PictureProperties *		pip= &(io->ioPictureProperties);
+
+    if  ( ! io->ioRasterImage.riBytes )
+	{
+	if  ( docGetRasterImageForObject( io ) )
+	    { LDEB(1); rval= -1; goto ready;	}
+	}
+
+    bmImageSizeTwips( &(io->ioTwipsWide), &(io->ioTwipsHigh),
+					&(io->ioRasterImage.riDescription) );
+
+    pip->pipTwipsWide= io->ioTwipsWide;
+    pip->pipTwipsHigh= io->ioTwipsHigh;
+
+  ready:
+
+    return rval;
+    }
+
+/************************************************************************/
+/*									*/
+/*  Make the bitmap for an image.					*/
+/*  Make a name for an image.						*/
+/*									*/
+/************************************************************************/
+
+int docGetRasterImageForObjectData(	int			kind,
+					RasterImage *		ri,
+					const MemoryBuffer *	mb )
+    {
+    switch( kind )
+	{
+	case DOCokPICTWMETAFILE:
+	    if  ( bmReadRasterObject( ri, appMetaPlayWmfImg, "wmf", mb )	)
+		{ LDEB(1); return -1;	}
+	    break;
+
+	case DOCokPICTPNGBLIP:
+	    if  ( bmReadRasterObject( ri, bmPngReadPng, "png", mb )	)
+		{ LDEB(1); return -1;	}
+	    break;
+
+	case DOCokPICTJPEGBLIP:
+	    if  ( bmReadRasterObject( ri, bmJpegReadJfif, "jpg", mb )	)
+		{ LDEB(1); return -1;	}
+
+	    break;
+
+	case DOCokMACPICT:
+	case DOCokPICTEMFBLIP:
+	default:
+	    LDEB(kind); return -1;
+	}
+
+    return 0;
+    }
+
+int docGetRasterImageForObject(	InsertedObject *	io )
+    {
+    switch( io->ioKind )
+	{
+	case DOCokPICTWMETAFILE:
+	    if  ( ! io->ioRasterImage.riBytes				&&
+		  docGetRasterImageForObjectData( io->ioKind,
+			&(io->ioRasterImage), &(io->ioObjectData) )	)
+		{ LDEB(1); return 0;	}
+
+	    if  ( io->ioRasterImage.riBytes )
+		{ io->ioPictureProperties.pipMetafileIsRaster= 1;	}
+
+	    break;
+
+	case DOCokPICTPNGBLIP:
+	case DOCokPICTJPEGBLIP:
+	    if  ( ! io->ioRasterImage.riBytes				&&
+		  docGetRasterImageForObjectData( io->ioKind,
+			&(io->ioRasterImage), &(io->ioObjectData) )	)
+		{ LDEB(1); return 0;	}
+	    break;
+
+	case DOCokOLEOBJECT:
+	    switch( io->ioResultKind )
+		{
+		case DOCokPICTWMETAFILE:
+		    if  ( ! io->ioRasterImage.riBytes			&&
+			  docGetRasterImageForObjectData( io->ioResultKind,
+				&(io->ioRasterImage), &(io->ioResultData) ) )
+			{ LDEB(1); return 0;	}
+
+		    if  ( io->ioRasterImage.riBytes )
+			{ io->ioPictureProperties.pipMetafileIsRaster= 1; }
+
+		    return 0;
+
+		case DOCokPICTPNGBLIP:
+		case DOCokPICTJPEGBLIP:
+		    if  ( ! io->ioRasterImage.riBytes			&&
+			  docGetRasterImageForObjectData( io->ioResultKind,
+				&(io->ioRasterImage), &(io->ioResultData) ) )
+			{ LDEB(1); return 0;	}
+
+		    return 0;
+
+		default:
+		    LLDEB(io->ioKind,io->ioResultKind); return 0;
+		}
+	    return 0;
+
+	case DOCokMACPICT:
+	case DOCokPICTEMFBLIP:
+	default:
+	    LDEB(io->ioKind); return 0;
+	}
+
+    return 0;
     }

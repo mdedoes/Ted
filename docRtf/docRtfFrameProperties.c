@@ -6,7 +6,6 @@
 
 #   include	"docRtfConfig.h"
 
-#   include	<stdio.h>
 #   include	<ctype.h>
 
 #   include	<appDebugon.h>
@@ -351,16 +350,16 @@ void docRtfSaveRowFrameProperties( RtfWriter *		rwc,
 
 int docRtfRememberParaFrameProperty(	const RtfControlWord *	rcw,
 					int			arg,
-					RtfReader *	rrc )
+					RtfReader *		rr )
     {
-    RtfReadingState *	rrs= rrc->rrcState;
+    RtfReadingState *	rrs= rr->rrState;
     FrameProperties *	fp= &(rrs->rrsParaFrameProperties);
 
     if  ( docSetFrameProperty( fp, rcw->rcwID, arg ) )
 	{ LSLDEB(rcw->rcwID,rcw->rcwWord,arg); return -1;	}
 
     /*
-    PROPmaskADD( &(rrc->rrcStyle.dsParaMask), rcw->rcwID );
+    PROPmaskADD( &(rr->rrStyle.dsParaMask), rcw->rcwID );
     */
 
     return 0;
@@ -368,15 +367,15 @@ int docRtfRememberParaFrameProperty(	const RtfControlWord *	rcw,
 
 int docRtfRememberRowFrameProperty(	const RtfControlWord *	rcw,
 					int			arg,
-					RtfReader *	rrc )
+					RtfReader *		rr )
     {
-    FrameProperties *	fp= &(rrc->rrcRowFrameProperties);
+    FrameProperties *	fp= &(rr->rrcRowFrameProperties);
 
     if  ( docSetFrameProperty( fp, rcw->rcwID, arg ) )
 	{ LSLDEB(rcw->rcwID,rcw->rcwWord,arg); return -1;	}
 
     /*
-    PROPmaskADD( &(rrc->rrcStyle.dsRowMask), rcw->rcwID );
+    PROPmaskADD( &(rr->rrStyle.dsRowMask), rcw->rcwID );
     */
 
     return 0;

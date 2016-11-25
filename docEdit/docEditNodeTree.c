@@ -6,16 +6,20 @@
 
 #   include	"docEditConfig.h"
 
-#   include	<stdio.h>
-
-#   include	<appDebugon.h>
-
 #   include	<docBuf.h>
 #   include	<docTreeNode.h>
 #   include	<docNodeTree.h>
 #   include	"docEdit.h"
 #   include	"docCopyNode.h"
 #   include	<docField.h>
+#   include	<docRowNodeProperties.h>
+#   include	<docParaProperties.h>
+#   include	"docEditOperation.h"
+#   include	"docDocumentCopyJob.h"
+#   include	<utilPropMask.h>
+#   include	<docObjects.h>
+
+#   include	<appDebugon.h>
 
 #   define	VALIDATE_TREE	0
 
@@ -29,15 +33,16 @@
 
 void docDeleteEmptyParents(	EditOperation *		eo,
 				int *			pSectsDeleted,
-				BufferItem *		node )
+				struct BufferItem *		node )
     {
     int			sectionsDeleted= 0;
     const int		recursively= 0;
+    struct BufferDocument *	bd= eo->eoDocument;
 
     while( node && node->biChildCount == 0 )
 	{
 	int		numberInParent= node->biNumberInParent;
-	BufferItem *	parent= node->biParent;
+	struct BufferItem *	parent= node->biParent;
 
 	if  ( ! parent )
 	    { LXDEB(node->biNumberInParent,node->biParent); break;	}
@@ -47,15 +52,10 @@ void docDeleteEmptyParents(	EditOperation *		eo,
 
 	docDeleteNode( eo->eoDocument, eo->eoTree, node );
 
-	if  ( parent				&&
-	      docIsRowNode( parent )		)
-	    {
-	    const int	shiftTail= 1;
-
-	    if  ( docDeleteColumnsFromRow( &(parent->biRowProperties),
-					    numberInParent, 1, shiftTail ) )
-		{ LDEB(numberInParent);	}
-	    }
+	if  ( parent							&&
+	      docIsRowNode( parent )					&&
+	      docDeleteColumnsFromRowNode( parent, numberInParent, 1, bd )	)
+	    { LDEB(numberInParent);	}
 
 	node= parent;
 	if  ( ! node )
@@ -70,9 +70,9 @@ void docDeleteEmptyParents(	EditOperation *		eo,
     return;
     }
 
-int docRemoveSelectionTail(	EditOperation *			eo )
+int docRemoveSelectionTail(	EditOperation *	eo )
     {
-    BufferItem *	lastParaBi;
+    struct BufferItem *	lastParaNode;
     int			paraShift= 0;
     int			sectShift= 0;
 
@@ -80,12 +80,12 @@ int docRemoveSelectionTail(	EditOperation *			eo )
     int			parentCount= 0;
     int			mergeTail= 0;
 
-    lastParaBi= eo->eoLastDp.dpNode;
+    lastParaNode= eo->eoLastDp.dpNode;
 
     for (;;)
 	{
-	BufferItem *	parent= lastParaBi->biParent;
-	BufferItem *	prevParaBi= docPrevParagraph( lastParaBi );
+	struct BufferItem *	parent= lastParaNode->biParent;
+	struct BufferItem *	prevParaNode= docPrevParagraph( lastParaNode );
 
 	int		sectionsDeleted= 0;
 	int		firstParaDeleted= -1;
@@ -94,25 +94,25 @@ int docRemoveSelectionTail(	EditOperation *			eo )
 	int		from;
 	int		count;
 
-	while( prevParaBi					&&
-	       prevParaBi != eo->eoTailDp.dpNode		&&
-	       prevParaBi->biParent == lastParaBi->biParent	)
-	    { prevParaBi= docPrevParagraph( prevParaBi );	}
+	while( prevParaNode					&&
+	       prevParaNode != eo->eoTailDp.dpNode		&&
+	       prevParaNode->biParent == lastParaNode->biParent	)
+	    { prevParaNode= docPrevParagraph( prevParaNode );	}
 
-	if  ( ! prevParaBi )
-	    { XDEB(prevParaBi); return -1;	}
+	if  ( ! prevParaNode )
+	    { XDEB(prevParaNode); return -1;	}
 
-	if  ( prevParaBi->biParent == parent )
-	    { from= prevParaBi->biNumberInParent+ 1;	}
+	if  ( prevParaNode->biParent == parent )
+	    { from= prevParaNode->biNumberInParent+ 1;	}
 	else{
 	    from= 0;
 
 	    if  ( parentCount == 0					&&
-		  lastParaBi->biNumberInParent < parent->biChildCount	)
+		  lastParaNode->biNumberInParent < parent->biChildCount	)
 		{ mergeTail= 1;	}
 	    }
 
-	count= lastParaBi->biNumberInParent- from+ 1;
+	count= lastParaNode->biNumberInParent- from+ 1;
 
 	parentCount++;
 	docEditDeleteNodes( eo, &sectionsDeleted,
@@ -135,23 +135,23 @@ int docRemoveSelectionTail(	EditOperation *			eo )
 
 	sectShift -= sectionsDeleted;
 
-	if  ( prevParaBi == eo->eoTailDp.dpNode )
+	if  ( prevParaNode == eo->eoTailDp.dpNode )
 	    { break;	}
 
-	lastParaBi= prevParaBi;
-	if  ( ! lastParaBi )
-	    { XDEB(lastParaBi); break;	}
+	lastParaNode= prevParaNode;
+	if  ( ! lastParaNode )
+	    { XDEB(lastParaNode); break;	}
 	}
 
     if  ( mergeTail )
 	{
-	lastParaBi= docNextParagraph( eo->eoTailDp.dpNode );
-	if  ( lastParaBi )
+	lastParaNode= docNextParagraph( eo->eoTailDp.dpNode );
+	if  ( lastParaNode )
 	    {
 	    int			sectionsDeleted;
-	    BufferItem *	lastParent;
+	    struct BufferItem *	lastParent;
 
-	    lastParent= lastParaBi->biParent;
+	    lastParent= lastParaNode->biParent;
 
 	    if  ( docMergeGroupNodes( eo->eoTailDp.dpNode->biParent,
 							    lastParent ) )
@@ -195,17 +195,19 @@ void docEditDeleteNodes(	EditOperation *		eo,
 				int *			pSectionsDeleted,
 				int *			pFirstParaDeleted,
 				int *			pParagraphsDeleted,
-				BufferItem *		parentNode,
+				struct BufferItem *		parentNode,
 				int			first,
 				int			count )
     {
-    int		i;
+    int			i;
 
-    int		firstParaDeleted= -1;
-    int		bulletsDeleted= 0;
-    int		sectionsDeleted= 0;
-    int		paragraphsDeleted= 0;
-    int		lastStroff= 0;
+    struct BufferDocument *	bd= eo->eoDocument;
+
+    int			firstParaDeleted= -1;
+    int			bulletsDeleted= 0;
+    int			sectionsDeleted= 0;
+    int			paragraphsDeleted= 0;
+    int			lastStroff= 0;
 
     if  ( count == 0 )
 	{ LDEB(count);	}
@@ -229,8 +231,7 @@ void docEditDeleteNodes(	EditOperation *		eo,
 	{
 	docCleanNodeObjects( &bulletsDeleted, &paragraphsDeleted,
 						eo->eoTree, eo->eoDocument,
-						parentNode->biChildren[i],
-						eo->eoCloseObject );
+						parentNode->biChildren[i] );
 
 	if  ( parentNode->biChildren[i]->biLevel == DOClevSECT )
 	    { eo->eoSectionsDeleted++;	}
@@ -243,10 +244,7 @@ void docEditDeleteNodes(	EditOperation *		eo,
 
     if  ( docIsRowNode( parentNode ) )
 	{
-	const int	shiftTail= 1;
-
-	if  ( docDeleteColumnsFromRow( &(parentNode->biRowProperties),
-						first, count, shiftTail ) )
+	if  ( docDeleteColumnsFromRowNode( parentNode, first, count, bd ) )
 	    { LLDEB(first,count);	}
 	}
 
@@ -302,19 +300,20 @@ void docEditDeleteNodes(	EditOperation *		eo,
 /*									*/
 /************************************************************************/
 
-int docSectionParagraph( EditOperation *		eo,
-			BufferItem **			pParaBi,
-			BufferItem *			sectBi,
-			int				sectShift,
-			const ParagraphProperties *	pp,
-			int				textAttributeNumber )
+int docSectionParagraph(
+		EditOperation *			eo,
+		struct BufferItem **		pParaNode,
+		struct BufferItem *		sectNode,
+		int				sectShift,
+		const ParagraphProperties *	pp,
+		int				textAttributeNr )
     {
-    BufferDocument *	bd= eo->eoDocument;
-    BufferItem *	paraBi;
+    struct BufferDocument *	bd= eo->eoDocument;
+    struct BufferItem *	paraNode;
 
-    paraBi= docInsertEmptyParagraph( bd, sectBi, textAttributeNumber );
-    if  ( ! paraBi )
-	{ XDEB(paraBi); return -1;	}
+    paraNode= docAppendParagraph( bd, sectNode, textAttributeNr );
+    if  ( ! paraNode )
+	{ XDEB(paraNode); return -1;	}
 
     if  ( pp )
 	{
@@ -327,24 +326,24 @@ int docSectionParagraph( EditOperation *		eo,
 	utilPropMaskFill( &ppUpdMask, PPprop_FULL_COUNT );
 	PROPmaskUNSET( &ppUpdMask, PPpropTABLE_NESTING );
 
-	if  ( docEditUpdParaProperties( eo, &ppChgMask, paraBi,
+	if  ( docEditUpdParaProperties( eo, &ppChgMask, paraNode,
 				    &ppUpdMask, pp,
 				    (const DocumentAttributeMap *)0 ) )
 	    { LDEB(1);	}
 	}
 
     {
-    int			paraNr= docNumberOfParagraph( paraBi );
+    int			paraNr= docNumberOfParagraph( paraNode );
     const int		paraShift= 1;
     const int		stroffFrom= 0;
     const int		stroffShift= 0;
 
-    docEditShiftReferences( eo, &(sectBi->biSectSelectionScope),
+    docEditShiftReferences( eo, &(sectNode->biSectSelectionScope),
 				    paraNr, stroffFrom,
 				    sectShift, paraShift, stroffShift );
     }
 
-    *pParaBi= paraBi; return 0;
+    *pParaNode= paraNode; return 0;
     }
 
 /************************************************************************/
@@ -354,7 +353,7 @@ int docSectionParagraph( EditOperation *		eo,
 /************************************************************************/
 
 int docRollNodeChildren(	EditOperation *		eo,
-				BufferItem *		parentNode,
+				struct BufferItem *		parentNode,
 				int			from,
 				int			upto,
 				int			by )
@@ -362,7 +361,6 @@ int docRollNodeChildren(	EditOperation *		eo,
     int				rval= 0;
     int				del0= upto;
     int				del1= upto;
-    const int			copyFields= 1;
     int				count= upto- from;
 
     DocumentCopyJob		dcj;
@@ -385,7 +383,7 @@ int docRollNodeChildren(	EditOperation *		eo,
 	{ LDEB(2); docListNode( 0, parentNode ); abort(); }
 #   endif
 
-    if  ( docSet1DocumentCopyJob( &dcj, eo, copyFields ) )
+    if  ( docSet1DocumentCopyJob( &dcj, eo, CFH_COPY ) )
 	{ LDEB(1); rval= -1; goto ready;	}
 
     if  ( by > 0 )

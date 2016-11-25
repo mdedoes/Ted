@@ -6,10 +6,12 @@
 
 #   include	"docBaseConfig.h"
 
-#   include	<appDebugon.h>
-
 #   include	"docCellProperties.h"
 #   include	"docPropVal.h"
+#   include	"docDocumentAttributeMap.h"
+#   include	<utilPropMask.h>
+
+#   include	<appDebugon.h>
 
 /************************************************************************/
 /*									*/
@@ -19,7 +21,7 @@
 
 void docInitCellProperties(	CellProperties *	cp )
     {
-    cp->cpRightBoundaryTwips= 0;
+    cp->cpWide= 0;
 
     cp->cpTopBorderNumber= 0;
     cp->cpLeftBorderNumber= 0;
@@ -57,7 +59,7 @@ void docInitCellProperties(	CellProperties *	cp )
 /*									*/
 /************************************************************************/
 
-int docUpdCellProperties(	PropertyMask *			pCpDonePask,
+int docUpdCellProperties(	PropertyMask *			pCpDoneMask,
 				CellProperties *		cpTo,
 				const PropertyMask *		cpSetMask,
 				const CellProperties *		cpFrom,
@@ -67,12 +69,12 @@ int docUpdCellProperties(	PropertyMask *			pCpDonePask,
 
     utilPropMaskClear( &cpDoneMask );
 
-    if  ( PROPmaskISSET( cpSetMask, CLpropCELLX ) )
+    if  ( PROPmaskISSET( cpSetMask, CLpropWIDTH ) )
 	{
-	if  ( cpTo->cpRightBoundaryTwips != cpFrom->cpRightBoundaryTwips )
+	if  ( cpTo->cpWide != cpFrom->cpWide )
 	    {
-	    cpTo->cpRightBoundaryTwips= cpFrom->cpRightBoundaryTwips;
-	    PROPmaskADD( &cpDoneMask, CLpropCELLX );
+	    cpTo->cpWide= cpFrom->cpWide;
+	    PROPmaskADD( &cpDoneMask, CLpropWIDTH );
 	    }
 	}
 
@@ -276,8 +278,8 @@ int docUpdCellProperties(	PropertyMask *			pCpDonePask,
 	    }
 	}
 
-    if  ( pCpDonePask )
-	{ utilPropMaskOr( pCpDonePask, pCpDonePask, &cpDoneMask );	}
+    if  ( pCpDoneMask )
+	{ utilPropMaskOr( pCpDoneMask, pCpDoneMask, &cpDoneMask );	}
 
     return 0;
     }
@@ -288,7 +290,7 @@ int docUpdCellProperties(	PropertyMask *			pCpDonePask,
 /*									*/
 /************************************************************************/
 
-void docCellPropertyDifference(	PropertyMask *			pCpDifPask,
+void docCellPropertyDifference(	PropertyMask *			pCpDifMask,
 				const CellProperties *		cpTo,
 				const PropertyMask *		cpCmpMask,
 				const CellProperties *		cpFrom,
@@ -298,10 +300,10 @@ void docCellPropertyDifference(	PropertyMask *			pCpDifPask,
 
     utilPropMaskClear( &cpDifMask );
 
-    if  ( PROPmaskISSET( cpCmpMask, CLpropCELLX ) )
+    if  ( PROPmaskISSET( cpCmpMask, CLpropWIDTH ) )
 	{
-	if  ( cpTo->cpRightBoundaryTwips != cpFrom->cpRightBoundaryTwips )
-	    { PROPmaskADD( &cpDifMask, CLpropCELLX ); }
+	if  ( cpTo->cpWide != cpFrom->cpWide )
+	    { PROPmaskADD( &cpDifMask, CLpropWIDTH ); }
 	}
 
     /**/
@@ -448,8 +450,8 @@ void docCellPropertyDifference(	PropertyMask *			pCpDifPask,
 	    { PROPmaskADD( &cpDifMask, CLpropRIGHT_PADDING_UNIT ); }
 	}
 
-    if  ( pCpDifPask )
-	{ utilPropMaskOr( pCpDifPask, pCpDifPask, &cpDifMask );	}
+    if  ( pCpDifMask )
+	{ utilPropMaskOr( pCpDifMask, pCpDifMask, &cpDifMask );	}
 
     return;
     }
@@ -477,8 +479,8 @@ int docSetCellProperty(		CellProperties *	cp,
     {
     switch( prop )
 	{
-	case CLpropCELLX:
-	    cp->cpRightBoundaryTwips= arg;
+	case CLpropWIDTH:
+	    cp->cpWide= arg;
 	    break;
 
 	case CLpropTOP_BORDER:
@@ -563,8 +565,8 @@ int docGetCellProperty(		const CellProperties *	cp,
     {
     switch( prop )
 	{
-	case CLpropCELLX:
-	    return cp->cpRightBoundaryTwips;
+	case CLpropWIDTH:
+	    return cp->cpWide;
 	    break;
 
 	case CLpropTOP_BORDER:

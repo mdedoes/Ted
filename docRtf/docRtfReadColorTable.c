@@ -7,12 +7,13 @@
 
 #   include	"docRtfConfig.h"
 
-#   include	<stdio.h>
 #   include	<ctype.h>
 
-#   include	<appDebugon.h>
-
 #   include	"docRtfReaderImpl.h"
+#   include	<docBuf.h>
+#   include	<utilPalette.h>
+
+#   include	<appDebugon.h>
 
 /************************************************************************/
 /*									*/
@@ -26,7 +27,7 @@ static int docRtfSaveColor(	RtfReader *		rrc,
 				const char *		text,
 				int			len )
     {
-    DocumentProperties *	dp= &(rrc->rrDocument->bdProperties);
+    DocumentProperties *	dp= rrc->rrDocument->bdProperties;
     int				n= dp->dpColorPalette->cpColorCount;
 
     if  ( utilPaletteSetCount( dp->dpColorPalette, n+ 1 ) )

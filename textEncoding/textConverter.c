@@ -9,10 +9,8 @@
 #   include	<stdlib.h>
 #   include	<string.h>
 #   include	<errno.h>
-#   include	<iconv.h>
 
 #   include	"uniUtf8.h"
-#   include	<appDebugon.h>
 
 #   include	"textConverter.h"
 #   include	"textConverterImpl.h"
@@ -20,15 +18,37 @@
 #   include	"uniLegacyEncoding.h"
 #   include	"uniLegacyMapping.h"
 
-void textConverterSetNativeEncodingName(	TextConverter *	tc,
-						const char *	encodingName )
+#   if	USE_LIBICONV
+#	include	<iconv.h>
+#   endif
+
+#   include	<appDebugon.h>
+
+#   if	USE_LIBICONV
+#	define	ICONV_NONE	((struct TextConverterImpl *)(iconv_t)-1)
+#   else
+#	define	ICONV_NONE	((struct TextConverterImpl *)-1)
+#   endif
+
+const char * textConverterGetNativeEncodingName(	TextConverter *	tc )
+    {
+    return tc->tcNativeEncodingName;
+    }
+
+int textConverterSetNativeEncodingName(	TextConverter *	tc,
+					const char *	encodingName )
     {
     if  ( ! encodingName )
-	{ XDEB(encodingName); return;	}
+	{ XDEB(encodingName); return -1;	}
+
+#   if ! USE_LIBICONV
+    if  ( encodingName && ! strcmp( encodingName, "UTF-8" ) )
+	{ encodingName= (const char *)0;	}
+#   endif
 
     /* Shortcut that also covers the both null case */
     if  ( tc->tcNativeEncodingName == encodingName )
-	{ return;	}
+	{ return 0;	}
 
     if  ( (   tc->tcNativeEncodingName && ! encodingName )	||
 	  ( ! tc->tcNativeEncodingName &&   encodingName )	||
@@ -36,17 +56,19 @@ void textConverterSetNativeEncodingName(	TextConverter *	tc,
 	{
 	char *		oldName= tc->tcNativeEncodingName;
 
-	if  ( (iconv_t)tc->tcIconvToUtf8 != (iconv_t)-1 )
+#	if USE_LIBICONV
+	if  ( tc->tcIconvToUtf8 != ICONV_NONE )
 	    {
 	    iconv_close( (iconv_t)tc->tcIconvToUtf8 );
-	    tc->tcIconvToUtf8= (struct TextConverterImpl *)(iconv_t)-1;
+	    tc->tcIconvToUtf8= ICONV_NONE;
 	    }
 
-	if  ( (iconv_t)tc->tcIconvFrUtf8 != (iconv_t)-1 )
+	if  ( tc->tcIconvFrUtf8 != ICONV_NONE )
 	    {
 	    iconv_close( (iconv_t)tc->tcIconvFrUtf8 );
-	    tc->tcIconvFrUtf8= (struct TextConverterImpl *)(iconv_t)-1;
+	    tc->tcIconvFrUtf8= ICONV_NONE;
 	    }
+#	endif
 
 	if  ( encodingName )
 	    { tc->tcNativeEncodingName= strdup( encodingName );	}
@@ -56,45 +78,69 @@ void textConverterSetNativeEncodingName(	TextConverter *	tc,
 	    { free( oldName );	}
 	}
 
-    return;
+    return 0;
     }
 
-void textInitTextConverter(	TextConverter *		tc )
+static void textInitTextConverter(	TextConverter *		tc )
     {
     tc->tcNativeEncodingName= (char *)0;
-    tc->tcIconvToUtf8= (struct TextConverterImpl *)(iconv_t)-1;
-    tc->tcIconvFrUtf8= (struct TextConverterImpl *)(iconv_t)-1;
+    tc->tcIconvToUtf8= ICONV_NONE;
+    tc->tcIconvFrUtf8= ICONV_NONE;
 
     tc->tcProduce= (TextConverterProduce)0;
     }
 
-void textCleanTextConverter(	TextConverter *		tc )
+TextConverter * textOpenTextConverter( void )
+    {
+    TextConverter *	tc= malloc( sizeof(TextConverter) );
+
+    if  ( ! tc )
+	{ PDEB(tc); return (TextConverter *)0;	}
+
+    textInitTextConverter( tc );
+
+    return tc;
+    }
+
+static void textCleanTextConverter(	TextConverter *		tc )
     {
     if  ( tc->tcNativeEncodingName )
 	{ free( tc->tcNativeEncodingName );	}
 
-    if  ( (iconv_t)tc->tcIconvToUtf8 != (iconv_t)-1 )
+#   if USE_LIBICONV
+    if  ( tc->tcIconvToUtf8 != ICONV_NONE )
 	{
 	iconv_close( (iconv_t)tc->tcIconvToUtf8 );
-	tc->tcIconvToUtf8= (struct TextConverterImpl *)(iconv_t)-1;
+	tc->tcIconvToUtf8= ICONV_NONE;
 	}
 
-    if  ( (iconv_t)tc->tcIconvFrUtf8 != (iconv_t)-1 )
+    if  ( tc->tcIconvFrUtf8 != ICONV_NONE )
 	{
 	iconv_close( (iconv_t)tc->tcIconvFrUtf8 );
-	tc->tcIconvFrUtf8= (struct TextConverterImpl *)(iconv_t)-1;
+	tc->tcIconvFrUtf8= ICONV_NONE;
 	}
+#   endif
+    }
+
+void textCloseTextConverter(	struct TextConverter *	tc )
+    {
+    textCleanTextConverter( tc );
+    free( tc );
+    return;
     }
 
 /************************************************************************/
 
-static int textConverterProduce(	const TextConverter *	tc,
+static int textConverterProduce(	TextConverter *		tc,
 					void *			through,
 					int			produced,
 					const char *		text,
 					int			len )
     {
     int		step;
+
+    if  ( ! tc->tcProduce )
+	{ XDEB(tc->tcProduce); return -1;	}
 
     step= (*tc->tcProduce)( through, produced, text, len );
     if  ( step < 0 )
@@ -111,7 +157,7 @@ static int textConverterProduce(	const TextConverter *	tc,
 /************************************************************************/
 
 static int textConverterConvertBytesToUtf8(
-					const TextConverter *	tc,
+					TextConverter *		tc,
 					const int		unicodes[256],
 					void *			through,
 					int *			pConsumed,
@@ -235,6 +281,8 @@ static int textConverterConvertBytesFromUtf8(
 /*									*/
 /************************************************************************/
 
+# if USE_LIBICONV
+
 static int textConverterConvertIconv(	TextConverter *		tc,
 					struct TextConverterImpl *	tci,
 					void *			through,
@@ -264,8 +312,7 @@ static int textConverterConvertIconv(	TextConverter *		tc,
 	    {
 	    /*  return value is irrelevant: Just tells that the	*/
 	    /*  conversion was incomplete. So does ileft > 0.	*/
-
-	    (void)iconv( ico, &ibuf, &ileft, &obuf, &oleft );
+	    iconv( ico, &ibuf, &ileft, &obuf, &oleft );
 
 	    if  ( ibuf == iibuf )
 		{ /*XXDEB(ibuf,iibuf);*/ break;	}
@@ -278,7 +325,8 @@ static int textConverterConvertIconv(	TextConverter *		tc,
 	    {
 	    int	step;
 
-	    step= textConverterProduce( tc, through, produced, scratch, obuf- scratch );
+	    step= textConverterProduce( tc, through, produced, 
+						    scratch, obuf- scratch );
 	    if  ( step < 0 )
 		{ LLLDEB(produced,obuf- scratch,step); return -1;	}
 
@@ -293,9 +341,27 @@ static int textConverterConvertIconv(	TextConverter *		tc,
 	    { LSDEB(errno,strerror(errno)); return -1;	}
 	}
 
+    /* flush: E.G: CP1255 is stateful */
+    ileft= 0;
+    obuf= scratch;
+    oleft= sizeof(scratch);
+    iconv( ico, NULL, &ileft, &obuf, &oleft );
+    if  ( obuf > scratch )
+	{
+	int	step;
+
+	step= textConverterProduce( tc, through, produced, 
+						scratch, obuf- scratch );
+	if  ( step < 0 )
+	    { LLLDEB(produced,obuf- scratch,step); return -1;	}
+
+	produced += step;
+	}
+
     *pConsumed += consumed;
     return produced;
     }
+# endif
 
 /************************************************************************/
 /*									*/
@@ -322,12 +388,14 @@ int textConverterConvertToUtf8(	TextConverter *		tc,
 	  tc->tcNativeEncodingName	&&
 	  tc->tcNativeEncodingName[0]	)
 	{
-	if  ( (iconv_t)tc->tcIconvToUtf8 == (iconv_t)-1 )
+	if  ( tc->tcIconvToUtf8 == ICONV_NONE )
 	    {
+#	    if  USE_LIBICONV
 	    tc->tcIconvToUtf8= (struct TextConverterImpl *)
 			iconv_open( "UTF-8", tc->tcNativeEncodingName );
+#	    endif
 
-	    if  ( (iconv_t)tc->tcIconvToUtf8 == (iconv_t)-1		&&
+	    if  ( tc->tcIconvToUtf8 == ICONV_NONE		&&
 		  ! strcmp( tc->tcNativeEncodingName, "SYMBOL" )	)
 		{
 		return textConverterConvertBytesToUtf8( tc,
@@ -336,7 +404,7 @@ int textConverterConvertToUtf8(	TextConverter *		tc,
 					    produced, text, len );
 		}
 
-	    if  ( (iconv_t)tc->tcIconvToUtf8 == (iconv_t)-1		&&
+	    if  ( tc->tcIconvToUtf8 == ICONV_NONE		&&
 		  ! strcmp( tc->tcNativeEncodingName, "DINGBATS" )	)
 		{
 		return textConverterConvertBytesToUtf8( tc,
@@ -345,18 +413,32 @@ int textConverterConvertToUtf8(	TextConverter *		tc,
 					    produced, text, len );
 		}
 
-	    if  ( (iconv_t)tc->tcIconvToUtf8 == (iconv_t)-1 )
+	    /* IS A MUST-SUPPORT as it is the default RTF encoding */
+	    if  ( tc->tcIconvToUtf8 == ICONV_NONE		&&
+		  ! strcmp( tc->tcNativeEncodingName, "CP1252" ) )
+		{
+		return textConverterConvertBytesToUtf8( tc,
+					    uniWinCp1252GlyphUnicodes,
+					    through, pConsumed,
+					    produced, text, len );
+		}
+
+	    if  ( tc->tcIconvToUtf8 == ICONV_NONE )
 		{
 		SXDEB(tc->tcNativeEncodingName,tc->tcIconvToUtf8);
 		return -1;
 		}
 	    }
 
+#	if USE_LIBICONV
 	produced= textConverterConvertIconv( tc, tc->tcIconvToUtf8,
 					    through, pConsumed,
 					    produced, (char *)text, len );
 	if  ( produced < 0 )
 	    { LDEB(produced); return -1;	}
+#	else
+	SDEB(tc->tcNativeEncodingName); return -1;
+#	endif
 	}
     else{
 	int	step;
@@ -397,12 +479,14 @@ int textConverterConvertFromUtf8(	TextConverter *		tc,
 	  tc->tcNativeEncodingName	&&
 	  tc->tcNativeEncodingName[0]	)
 	{
-	if  ( (iconv_t)tc->tcIconvFrUtf8 == (iconv_t)-1 )
+	if  ( tc->tcIconvFrUtf8 == ICONV_NONE )
 	    {
+#	    if  USE_LIBICONV
 	    tc->tcIconvFrUtf8= (struct TextConverterImpl *)
 			    iconv_open( tc->tcNativeEncodingName, "UTF-8" );
+#	    endif
 
-	    if  ( (iconv_t)tc->tcIconvFrUtf8 == (iconv_t)-1		&&
+	    if  ( tc->tcIconvFrUtf8 == ICONV_NONE		&&
 		  ! strcmp( tc->tcNativeEncodingName, "SYMBOL" )	)
 		{
 		return textConverterConvertBytesFromUtf8(
@@ -412,7 +496,7 @@ int textConverterConvertFromUtf8(	TextConverter *		tc,
 					    produced, text, len );
 		}
 
-	    if  ( (iconv_t)tc->tcIconvFrUtf8 == (iconv_t)-1		&&
+	    if  ( tc->tcIconvFrUtf8 == ICONV_NONE		&&
 		  ! strcmp( tc->tcNativeEncodingName, "DINGBATS" )	)
 		{
 #		if 1
@@ -427,18 +511,33 @@ int textConverterConvertFromUtf8(	TextConverter *		tc,
 #		endif
 		}
 
-	    if  ( (iconv_t)tc->tcIconvFrUtf8 == (iconv_t)-1 )
+	    /* IS A MUST-SUPPORT as it is the default RTF encoding */
+	    if  ( tc->tcIconvFrUtf8 == ICONV_NONE			&&
+		  ! strcmp( tc->tcNativeEncodingName, "CP1252" )	)
+		{
+		return textConverterConvertBytesFromUtf8(
+					    &UNI_CP1252ToGlyphMapping,
+					    uniWinCp1252GlyphUnicodes,
+					    through, tc->tcProduce, pConsumed,
+					    produced, text, len );
+		}
+
+	    if  ( tc->tcIconvFrUtf8 == ICONV_NONE )
 		{
 		SXDEB(tc->tcNativeEncodingName,tc->tcIconvFrUtf8);
 		return -1;
 		}
 	    }
 
+#	if USE_LIBICONV
 	produced= textConverterConvertIconv( tc, tc->tcIconvFrUtf8,
 					    through, pConsumed,
 					    produced, text, len );
 	if  ( produced < 0 )
 	    { LDEB(produced); return -1;	}
+#	else
+	SDEB(tc->tcNativeEncodingName); return -1;
+#	endif
 	}
     else{
 	int	step;

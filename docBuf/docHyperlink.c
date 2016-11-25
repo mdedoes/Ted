@@ -6,10 +6,15 @@
 
 #   include	"docBufConfig.h"
 
-#   include	<appDebugon.h>
-
 #   include	"docBuf.h"
 #   include	"docField.h"
+#   include	<textAttribute.h>
+#   include	<utilColor.h>
+#   include	<docDocumentProperties.h>
+#   include	<utilPropMask.h>
+#   include	"docAttributes.h"
+
+#   include	<appDebugon.h>
 
 /************************************************************************/
 /*									*/
@@ -19,9 +24,9 @@
 
 int docSetHyperlinkAttribute(	TextAttribute *		taSet,
 				PropertyMask *		taSetMask,
-				BufferDocument *	bd )
+				struct BufferDocument *	bd )
     {
-    DocumentProperties *		dp= &(bd->bdProperties);
+    struct DocumentProperties *		dp= bd->bdProperties;
     int					blue;
     RGB8Color				rgb8Blue;
 
@@ -53,7 +58,7 @@ int docSetHyperlinkAttribute(	TextAttribute *		taSet,
 
 int docRemoveHyperlinkAttribute(	TextAttribute *		taSet,
 					PropertyMask *		taSetMask,
-					BufferDocument *	bd )
+					struct BufferDocument *	bd )
     {
     docPlainTextAttribute( taSet, bd );
     utilPropMaskClear( taSetMask );

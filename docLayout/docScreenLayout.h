@@ -7,9 +7,12 @@
 #   ifndef	DOC_SCREEN_LAYOUT_H
 #   define	DOC_SCREEN_LAYOUT_H
 
-#   include	<docBuf.h>
-#   include	"docLayout.h"
-#   include	<utilIndexMapping.h>
+struct LayoutContext;
+struct LayoutJob;
+struct DocumentTree;
+struct BufferItem;
+struct DocumentRectangle;
+struct BufferDocument;
 
 /************************************************************************/
 /*									*/
@@ -17,39 +20,26 @@
 /*									*/
 /************************************************************************/
 
-extern int docScreenTextWidth(		int			screenFont,
-					const TextAttribute *	ta,
-					const LayoutContext *	lc,
-					const char *		s,
-					int			len );
-
 extern int docOpenScreenFont(	
-			const LayoutContext *		lc,
-			int				attributeNumber );
+			const struct LayoutContext *		lc,
+			int					textAttrNr );
 
 extern int docStartScreenLayoutForTree(
-				LayoutJob *		lj,
-				DocumentTree *		ei,
-				int			page,
-				int			column );
-
-extern int docScreenLayoutOpenParaFonts(
-				const LayoutContext *		lc,
-				struct BufferItem *		paraNode );
+				struct LayoutJob *		lj,
+				struct DocumentTree *		tree,
+				int				page,
+				int				column );
 
 extern int docScreenLayoutNode(	int *				pReachedBottom,
 				struct BufferItem *		node,
-				const LayoutContext *		lc,
-				DocumentRectangle *		drChanged );
+				const struct LayoutContext *	lc,
+				struct DocumentRectangle *	drChanged );
 
 extern int docScreenLayoutDocumentBody(
 				int *				pReachedBottom,
-				BufferDocument *		bd,
-				const LayoutContext *		lc );
+				struct BufferDocument *		bd,
+				const struct LayoutContext *	lc );
 
-extern void docScreenCloseObject(	const BufferDocument *		bd,
-					const struct TextParticule *	tp );
-
-extern void docSetScreenLayoutFunctions(	LayoutJob *	lj );
+extern void docSetScreenLayoutFunctions(	struct LayoutJob *	lj );
 
 #   endif	/*  DOC_SCREEN_LAYOUT_H	*/

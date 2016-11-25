@@ -4,8 +4,6 @@
 /*									*/
 /************************************************************************/
 
-#   include	<geo2DInteger.h>
-
 /************************************************************************/
 /*									*/
 /*  Opcodes.								*/
@@ -218,17 +216,4 @@
 # define PENMODE_notPatOr	13
 # define PENMODE_notPatXor	14
 # define PENMODE_notPatBic	15
-
-/************************************************************************/
-/*									*/
-/*  Information that can be extracted from the file header.		*/
-/*									*/
-/************************************************************************/
-
-typedef struct MacPictHeader
-    {
-    int			mphPictureSize;
-    int			mphVersion;
-    DocumentRectangle	mphFrame;
-    } MacPictHeader;
 

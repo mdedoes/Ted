@@ -6,6 +6,7 @@
 #   include	"drawMetafile.h"
 #   include	"drawWinMetaImpl.h"
 #   include	<sioEndian.h>
+#   include	<sioGeneral.h>
 
 #   include	<appDebugon.h>
 
@@ -30,6 +31,11 @@
 /*  Retrieve the bitmap that might be in a WMF.				*/
 /*									*/
 /************************************************************************/
+
+# ifdef __GNUC__
+# pragma GCC diagnostic push
+# pragma GCC diagnostic ignored "-Wunused-parameter"
+# endif
 
 static int appMetaBitmapImageImg(	RasterImage **	pAbi,
 					SimpleInputStream *	sis,
@@ -71,6 +77,10 @@ static int appMetaBitmapImageImg(	RasterImage **	pAbi,
 
     return 0;
     }
+
+# ifdef __GNUC__
+# pragma GCC diagnostic pop
+# endif
 
 /************************************************************************/
 /*									*/

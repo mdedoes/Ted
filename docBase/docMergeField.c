@@ -11,6 +11,7 @@
 #   include	"docDocumentField.h"
 #   include	"docMergeField.h"
 #   include	"docFieldFormat.h"
+#   include	"docFieldKind.h"
 
 void docInitMergeField(	MergeField *	mf )
     {
@@ -20,7 +21,7 @@ void docInitMergeField(	MergeField *	mf )
 
     mf->mfIsMapped= 0;
     mf->mfEnableVertival= 0;
-    mf->mfCaseShift= MERGE_ASIS;
+    mf->mfCaseShift= FIELDformatASIS;
 
     return;
     }
@@ -70,7 +71,7 @@ int docGetMergeField(		MergeField *			mf,
 	    continue;
 	    }
 
-	if  ( ! ic->icIsFlag )
+	if  ( ic->icType != INSTRtypeFLAG )
 	    {
 	    if  ( utilCopyMemoryBuffer( &(mf->mfFieldName), &(ic->icBuffer) ) )
 		{ LDEB(comp);	}

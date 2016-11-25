@@ -16,8 +16,10 @@
 #ifndef _GIF_LIB_H
 #define _GIF_LIB_H
 
-#   include	<sioGeneral.h>
 #   include	"bmcolor.h"
+
+struct SimpleInputStream;
+struct SimpleOutputStream;
 
 /*************************/
 /*************************/
@@ -28,8 +30,6 @@
 # define EGifPutComment bm_EGifPutComment
 # define EGifPutExtension bm_EGifPutExtension
 # define EGifPutExtensionFirst bm_EGifPutExtensionFirst
-# define EGifPutExtensionLast bm_EGifPutExtensionLast
-# define EGifPutExtensionNext bm_EGifPutExtensionNext
 # define EGifPutImageDesc bm_EGifPutImageDesc
 # define EGifPutScreenDesc bm_EGifPutScreenDesc
 # define EGifSpew bm_EGifSpew
@@ -93,13 +93,13 @@ typedef struct GifFileType
     GifImageDesc		gftCurrentImageDescriptor;
 
     /**/
-    SimpleOutputStream *	gftSos;
-    SimpleOutputStream *	gftSosBlocked;
-    SimpleOutputStream *	gftSosLzw;
+    struct SimpleOutputStream *	gftSos;
+    struct SimpleOutputStream *	gftSosBlocked;
+    struct SimpleOutputStream *	gftSosLzw;
 
-    SimpleInputStream *		gftSis;
-    SimpleInputStream *		gftSisBlocked;
-    SimpleInputStream *		gftSisLzw;
+    struct SimpleInputStream *		gftSis;
+    struct SimpleInputStream *		gftSisBlocked;
+    struct SimpleInputStream *		gftSisLzw;
 
     long			gftPixelCount;
 				    /************************************/
@@ -138,7 +138,7 @@ extern void bmGifInitGifColorMap(      GifColorMap *   gcm );
 * (GIF_LIB file EGIF_LIB.C).						      *
 ******************************************************************************/
 
-extern GifFileType *EGifOpenFileHandle(	SimpleOutputStream *	sos );
+extern GifFileType *EGifOpenFileHandle(	struct SimpleOutputStream *	sos );
 
 extern void bmGifSetVersion(		GifFileType *		gft,
 					const char *		version );
@@ -156,10 +156,6 @@ extern int bmGifPutPixels(	GifFileType *		GifFile,
 
 int EGifPutComment(GifFileType *GifFile, const char *GifComment);
 int EGifPutExtensionFirst(GifFileType *GifFile, int GifExtCode, int GifExtLen,
-                           const void * GifExtension);
-int EGifPutExtensionNext(GifFileType *GifFile, int GifExtCode, int GifExtLen,
-                           const void * GifExtension);
-int EGifPutExtensionLast(GifFileType *GifFile, int GifExtCode, int GifExtLen,
                            const void * GifExtension);
 int EGifPutExtension(GifFileType *GifFile, int GifExtCode, int GifExtLen,
 							const void * GifExtension);
@@ -182,7 +178,7 @@ int EGifCloseFile(GifFileType *GifFile);
 * (GIF_LIB file DGIF_LIB.C).						      *
 ******************************************************************************/
 
-GifFileType *DGifOpenFileHandle(	SimpleInputStream *	sis );
+GifFileType *DGifOpenFileHandle(	struct SimpleInputStream *	sis );
 int bmGifGetRecordType(GifFileType *GifFile, GifRecordType *GifType);
 int DGifGetImageDesc(GifFileType *GifFile);
 

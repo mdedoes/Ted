@@ -12,7 +12,18 @@
 #   include	"docBuf.h"
 #   include	"docNodeTree.h"
 #   include	"docParaParticules.h"
+#   include	"docParaNodeProperties.h"
 #   include	<docListLevel.h>
+#   include	<fontMatchFont.h>
+#   include	<fontDocFont.h>
+#   include	<fontDocFontList.h>
+#   include	"docSelect.h"
+#   include	"docTreeNode.h"
+#   include	<docTextParticule.h>
+#   include	<docDocumentProperties.h>
+#   include	<docParaProperties.h>
+#   include	"docFields.h"
+#   include	"docAttributes.h"
 
 #   include	<appDebugon.h>
 
@@ -25,14 +36,10 @@
 static int docGetPositionAttributes(
 				PropertyMask *			pUpdMask,
 				TextAttribute *			pTaNew,
-				const BufferDocument *		bd,
+				const struct BufferDocument *		bd,
 				const TextParticule *		tp )
     {
-    TextAttribute		ta;
-
-    docGetTextAttributeByNumber( &ta, bd, tp->tpTextAttrNr );
-
-    *pTaNew= ta;
+    *pTaNew= *docGetTextAttributeByNumber( bd, tp->tpTextAttrNr );
 
     if  ( pUpdMask )
 	{
@@ -51,24 +58,25 @@ static int docGetPositionAttributes(
 /************************************************************************/
 
 int docGetEffectiveTextAttributes(
-				TextAttribute *			ta,
-				BufferDocument *		bd,
-				const BufferItem *		paraNode,
+				const TextAttribute **		pTa,
+				struct BufferDocument *		bd,
+				const struct BufferItem *	paraNode,
 				int				part )
     {
     const TextParticule *	tp= paraNode->biParaParticules+ part;
     int				textAttrNr= tp->tpTextAttrNr;
+    const TextAttribute *	ta;
 
-    docGetTextAttributeByNumber( ta, bd, tp->tpTextAttrNr );
+    ta= docGetTextAttributeByNumber( bd, tp->tpTextAttrNr );
 
-    if  ( paraNode->biParaListOverride > 0 )
+    if  ( paraNode->biParaProperties->ppListOverride > 0 )
 	{
 	DocumentSelection	dsInside;
 	DocumentSelection	dsAround;
 	int			headPart;
 	int			tailPart;
 
-	if  ( ! docDelimitParaHeadField( (DocumentField **)0,
+	if  ( ! docDelimitParaHeadField( (struct DocumentField **)0,
 		    &dsInside, &dsAround,
 		    &headPart, &tailPart, paraNode, bd )		&&
 		    part > headPart					&&
@@ -78,10 +86,11 @@ int docGetEffectiveTextAttributes(
 
 	    if  ( docGetListLevelOfParagraph( (int *)0, (int *)0,
 		    (struct ListOverride **)0, (struct DocumentList **)0, &ll,
-			    &(paraNode->biParaProperties), bd ) )
+		    paraNode, bd ) )
 		{ LDEB(1);	}
 	    else{
 		PropertyMask		taSetMask;
+		TextAttribute		taHead= *ta;
 
 		taSetMask= ll->llTextAttributeMask;
 
@@ -94,14 +103,16 @@ int docGetEffectiveTextAttributes(
 		    PROPmaskUNSET( &taSetMask, TApropSTRIKETHROUGH );
 		    }
 
-		utilUpdateTextAttribute( (PropertyMask *)0, ta,
+		textUpdateTextAttribute( (PropertyMask *)0, &taHead,
 					&taSetMask, &(ll->llTextAttribute) );
 
-		textAttrNr= docTextAttributeNumber( bd, ta );
+		textAttrNr= docTextAttributeNumber( bd, &taHead );
+		ta= docGetTextAttributeByNumber( bd, textAttrNr );
 		}
 	    }
 	}
 
+    *pTa= ta;
     return textAttrNr;
     }
 
@@ -112,9 +123,9 @@ int docGetEffectiveTextAttributes(
 /*  Remember the text attribute of the beginning of the selection.	*/
 /*									*/
 /*  NOTE that for I-Bar selections, in case of ambiguity, there is a	*/
-/*									*/
 /*	preference for the attribute of the particule before the	*/
 /*	current position.						*/
+/*									*/
 /*  1)  Get the last particule number for the beginning of the 		*/
 /*	selection.							*/
 /*  2)  If the paragraph is part of a list, exclude the bullet from	*/
@@ -122,12 +133,12 @@ int docGetEffectiveTextAttributes(
 /*									*/
 /************************************************************************/
 
-int docGetSelectionAttributes(	BufferDocument *		bd,
-				const DocumentSelection *	ds,
+int docGetSelectionAttributes(	TextAttribute *			ta,
 				PropertyMask *			pUpdMask,
-				TextAttribute *			ta )
+				struct BufferDocument *		bd,
+				const DocumentSelection *	ds )
     {
-    BufferItem *		paraNode;
+    struct BufferItem *		paraNode;
     int				part;
     const TextParticule *	tp;
     int				textAttrNr;
@@ -135,8 +146,8 @@ int docGetSelectionAttributes(	BufferDocument *		bd,
     TextAttribute		taNew;
     PropertyMask		updMask;
 
-    int				bulletPartBegin= -1;
-    int				bulletPartEnd= -1;
+    int				bulletPartHead= -1;
+    int				bulletPartTail= -1;
 
     int				returnBullet= 0;
     int				IBar= docIsIBarSelection( ds );
@@ -154,23 +165,23 @@ int docGetSelectionAttributes(	BufferDocument *		bd,
 	}
 
     /*  2  */
-    if  ( paraNode->biParaListOverride > 0 )
+    if  ( paraNode->biParaProperties->ppListOverride > 0 )
 	{
-	DocumentField *		dfBullet= (DocumentField *)0;
+	struct DocumentField *	dfBullet= (struct DocumentField *)0;
 	DocumentSelection	dsInsideBullet;
 	DocumentSelection	dsAroundBullet;
 
 	if  ( docDelimitParaHeadField( &dfBullet,
 					&dsInsideBullet, &dsAroundBullet,
-					&bulletPartBegin, &bulletPartEnd,
+					&bulletPartHead, &bulletPartTail,
 					paraNode, bd ) )
 	    { LDEB(1);	}
 
-	if  ( part <= bulletPartEnd )
+	if  ( part <= bulletPartTail )
 	    {
-	    if  ( ! docSelectionInsideParagraph( ds )			||
+	    if  ( ! docSelectionSingleParagraph( ds )			||
 		  ds->dsTail.dpStroff >= dsAroundBullet.dsTail.dpStroff	)
-		{ part= bulletPartEnd+ 1;	}
+		{ part= bulletPartTail+ 1;	}
 	    else{ returnBullet= 1;		}
 	    }
 	}
@@ -180,15 +191,18 @@ int docGetSelectionAttributes(	BufferDocument *		bd,
     if  ( IBar				&&
 	  part > 0			&&
 	  ( flags & POSflagPART_HEAD )	&&
-	  tp[-1].tpKind == DOCkindSPAN	)
+	  tp[-1].tpKind == TPkindSPAN	)
 	{ tp--; part--; }
 
     textAttrNr= docGetPositionAttributes( &updMask, &taNew, bd, tp );
 
     if  ( IBar || returnBullet )
 	{
-	*pUpdMask= updMask;
-	*ta= taNew;
+	if  ( pUpdMask )
+	    { *pUpdMask= updMask;	}
+	if  ( ta )
+	    { *ta= taNew;		}
+
 	return textAttrNr;
 	}
 
@@ -206,23 +220,23 @@ int docGetSelectionAttributes(	BufferDocument *		bd,
 	    {
 	    while( part < paraNode->biParaParticuleCount )
 		{
-		PropertyMask	pm;
-		PropertyMask	pmAll;
+		PropertyMask		pm;
+		PropertyMask		pmAll;
 
-		TextAttribute	ta;
+		const TextAttribute *	ta;
 
 		if  ( paraNode == ds->dsTail.dpNode			&&
 		      tp->tpStroff >= ds->dsTail.dpStroff	)
 		    { break;	}
 
-		docGetTextAttributeByNumber( &ta, bd, tp->tpTextAttrNr );
+		ta= docGetTextAttributeByNumber( bd, tp->tpTextAttrNr );
 
 		utilPropMaskClear( &pm );
 
 		utilPropMaskClear( &pmAll );
 		utilPropMaskFill( &pmAll, TAprop_COUNT );
 
-		utilAttributeDifference( &pm, &taNew, &pmAll, &ta );
+		textAttributeDifference( &pm, &taNew, &pmAll, ta );
 
 		utilPropMaskOr( &updMask, &updMask, &pm );
 
@@ -241,28 +255,78 @@ int docGetSelectionAttributes(	BufferDocument *		bd,
 	tp= paraNode->biParaParticules+ part;
 
 	/*  2  */
-	if  ( paraNode->biParaListOverride > 0 )
+	if  ( paraNode->biParaProperties->ppListOverride > 0 )
 	    {
-	    DocumentField *	dfBullet= (DocumentField *)0;
-	    DocumentSelection	dsInsideBullet;
-	    DocumentSelection	dsAroundBullet;
+	    struct DocumentField *	dfBullet= (struct DocumentField *)0;
+	    DocumentSelection		dsInsideBullet;
+	    DocumentSelection		dsAroundBullet;
 
 	    if  ( docDelimitParaHeadField( &dfBullet,
 					&dsInsideBullet, &dsAroundBullet,
-					&bulletPartBegin, &bulletPartEnd,
+					&bulletPartHead, &bulletPartTail,
 					paraNode, bd ) )
 		{ LDEB(1);	}
 
-	    part= bulletPartEnd+ 1;
+	    part= bulletPartTail+ 1;
 	    tp= paraNode->biParaParticules+ part;
 	    }
 	}
 
     utilPropMaskNot( &updMask, &updMask );
 
-    *pUpdMask= updMask;
-    *ta= taNew;
+    if  ( pUpdMask )
+	{ *pUpdMask= updMask;	}
+    if  ( ta )
+	{ *ta= taNew;	}
 
     return textAttrNr;
+    }
+
+/************************************************************************/
+
+const char * docGetEncodingName(
+				struct BufferDocument *		bd,
+				TextAttribute *			ta,
+				int				charset )
+    {
+    const char *		encodingName= (const char *)0;
+
+    const DocumentFont *	df;
+
+    df= docGetFontOfAttribute( bd, ta );
+    if  ( df )
+	{ encodingName= fontGetEncodingName( &(df->dfName), charset );	}
+
+    return encodingName;
+    }
+
+/************************************************************************/
+
+const DocumentFont * docGetFontOfAttribute(
+				struct BufferDocument *		bd,
+				TextAttribute *			ta )
+    {
+    DocumentProperties *	dp= bd->bdProperties;
+    DocumentFontList *		dfl= dp->dpFontList;
+    const DocumentFont *	df;
+
+    if  ( ta->taFontNumber < 0 )
+	{
+	/*LDEB(ta->taFontNumber);*/
+	ta->taFontNumber= docGetDefaultFont( bd );
+	}
+
+    df= fontFontListGetFontByNumber( dfl, ta->taFontNumber );
+    if  ( ! df )
+	{
+	if  ( ta->taFontNumber >= 0 )
+	    { LXDEB(ta->taFontNumber,df);	}
+	else{
+	    ta->taFontNumber= docGetDefaultFont( bd );
+	    df= fontFontListGetFontByNumber( dfl, ta->taFontNumber );
+	    }
+	}
+
+    return df;
     }
 

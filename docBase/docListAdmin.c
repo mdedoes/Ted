@@ -96,9 +96,10 @@ int docMakeOverrideForEveryList(	ListAdmin *	la )
 
 int docMergeListAdmins(	ListAdmin *			laTo,
 			const ListAdmin *		laFrom,
-			const int *			lsUsed,
+			const unsigned char *		lsUsed,
 			int *				lsMap,
-			const int *			listUsed,
+			const unsigned char *		listUsed,
+			int *				listIndexMap,
 			const int *			fontMap,
 			const int *			colorMap,
 			const int *			rulerMap )
@@ -113,26 +114,6 @@ int docMergeListAdmins(	ListAdmin *			laTo,
     int				from;
     int				listStylesAdded= 0;
 
-    lo= lotFrom->lotOverrides;
-    for ( from= 0; from < lotFrom->lotOverrideCount; lo++, from++ )
-	{
-	int	oldCount= lotTo->lotOverrideCount;
-
-	int	listStyle;
-
-	if  ( ! lsUsed[from] )
-	    { continue;	}
-
-	listStyle= docMergeListOverrideIntoTable( lotTo, lo,
-						fontMap, colorMap, rulerMap );
-	if  ( listStyle < 0 )
-	    { LDEB(listStyle); return -1;	}
-	lsMap[from]= listStyle;
-
-	if  ( listStyle >= oldCount )
-	    { listStylesAdded++;	}
-	}
-
     dl= dltFrom->dltLists;
     for ( from= 0; from < dltFrom->dltListCount; dl++, from++ )
 	{
@@ -145,6 +126,28 @@ int docMergeListAdmins(	ListAdmin *			laTo,
 						fontMap, colorMap, rulerMap );
 	if  ( listIndex < 0 )
 	    { LLDEB(from,listIndex); return -1;	}
+
+	listIndexMap[from]= listIndex;
+	}
+
+    lo= lotFrom->lotOverrides;
+    for ( from= 0; from < lotFrom->lotOverrideCount; lo++, from++ )
+	{
+	int	oldCount= lotTo->lotOverrideCount;
+
+	int	listStyle;
+
+	if  ( ! lsUsed[from] )
+	    { continue;	}
+
+	listStyle= docMergeListOverrideIntoTable( lotTo, lo,
+				listIndexMap, fontMap, colorMap, rulerMap );
+	if  ( listStyle < 0 )
+	    { LDEB(listStyle); return -1;	}
+	lsMap[from]= listStyle;
+
+	if  ( listStyle >= oldCount )
+	    { listStylesAdded++;	}
 	}
 
     return listStylesAdded;

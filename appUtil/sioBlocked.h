@@ -6,8 +6,11 @@
 /*									*/
 /************************************************************************/
 
-#   include	"sioGeneral.h"
+struct SimpleInputStream;
+struct SimpleOutputStream;
 
-extern SimpleInputStream * sioInBlockedOpen(	SimpleInputStream * sisBlocks );
+extern struct SimpleInputStream * sioInBlockedOpen(
+				struct SimpleInputStream * sisBlocks );
 
-extern SimpleOutputStream * sioOutBlockedOpen( SimpleOutputStream * sosBlocks );
+extern struct SimpleOutputStream * sioOutBlockedOpen(
+				struct SimpleOutputStream * sosBlocks );

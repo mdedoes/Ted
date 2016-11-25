@@ -34,7 +34,7 @@ if  grep '^Ted.documentFileName:' "${PROPFILE}"
 then
     : ok
 else
-    echo Ted.documentFileName: ${TEDDIR}/TedDocument-en_US.rtf | \
+    echo Ted.documentFileName: ${TEDDIR}/doc/TedDocument-en_US.rtf | \
 					    tee -a "${PROPFILE}"
 fi
 

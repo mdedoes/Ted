@@ -18,10 +18,49 @@
 /*									*/
 /************************************************************************/
 
-struct BufferDocument;
 struct BufferItem;
-struct TextLine;
-struct TextParticule;
+
+/************************************************************************/
+/*									*/
+/*  Type of node.							*/
+/*									*/
+/************************************************************************/
+
+typedef enum ItemLevel
+    {
+			/************************************************/
+			/*  Ignore; Garbage values.			*/
+			/************************************************/
+    DOClevANY,
+    DOClevOUT,
+			/************************************************/
+			/*  Different kinds of BufferItems.		*/
+			/************************************************/
+    DOClevBODY,
+    DOClevSECT,
+    DOClevROW,
+    DOClevCELL,
+    DOClevPARA,
+			/************************************************/
+			/*  Not really a level: Plain text.		*/
+			/************************************************/
+    DOClevSPAN,
+			/************************************************/
+			/*  Not really a level: To be investigated	*/
+			/*  Values currently only used in the RTF	*/
+			/*  parser for tags that it ignores or handles	*/
+			/*  in a special way.				*/
+			/************************************************/
+    DOClevNESTCELL,
+    DOClevNESTROW,
+			/************************************************/
+    DOClevNONESTTABLES,
+			/************************************************/
+    DOClevCOLUMN,
+    DOClevTABLE,
+
+    DOClev_COUNT
+    } ItemLevel;
 
 /************************************************************************/
 /*									*/
@@ -32,7 +71,7 @@ struct TextParticule;
 /*  element nodes. An item at level DOClevPARA is very much comparable	*/
 /*  to a <div> in HTML terms. The HTML equivalent of a <span> does not	*/
 /*  exist inside the Ted source code. Spans are implemented by a series	*/
-/*  of text particules of kind DOCkindSPAN with equal text attributes.	*/
+/*  of text particules of kind TPkindSPAN with equal text attributes.	*/
 /*									*/
 /*  2)  Geometry information that is set by the formatter.		*/
 /*	The insets are an amount of space that the item claims for	*/
@@ -99,11 +138,11 @@ typedef struct BufferItem
 
     } BufferItem;
 
-# define docIsCellNode( bi )	( (bi)->biLevel == DOClevCELL )
-# define docIsParaNode( bi )	( (bi)->biLevel == DOClevPARA )
-# define docIsSectNode( bi )	( (bi)->biLevel == DOClevSECT )
-# define docIsRowNode( bi )	( (bi)->biLevel == DOClevROW && \
-				  (bi)->biRowCellCount > 0 )
+# define docIsCellNode( node )	( (node)->biLevel == DOClevCELL )
+# define docIsParaNode( node )	( (node)->biLevel == DOClevPARA )
+# define docIsSectNode( node )	( (node)->biLevel == DOClevSECT )
+# define docIsRowNode( node )	( (node)->biLevel == DOClevROW && \
+				  (node)->BIU.biuRow.brRowPropertyNumber > 0 )
 
 /************************************************************************/
 /*									*/

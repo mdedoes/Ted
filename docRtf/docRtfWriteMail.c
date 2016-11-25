@@ -10,23 +10,26 @@
 #   include	<stdio.h>
 #   include	<ctype.h>
 
-#   include	<appDebugon.h>
-
 #   include	<sioGeneral.h>
 #   include	<sioBase64.h>
 #   include	"docRtfReadWrite.h"
 #   include	"docPlainReadWrite.h"
 #   include	<docTreeNode.h>
+#   include	<docBuf.h>
+#   include	<docSelect.h>
+#   include	<docDocumentProperties.h>
+
+#   include	<appDebugon.h>
 
 int docWriteRtfMail(		SimpleOutputStream *		sos,
 				const char *			mimeBoundary,
-				BufferDocument *		bd )
+				struct BufferDocument *		bd )
     {
     SimpleOutputStream *	sosOpened= (SimpleOutputStream *)0;
     SimpleOutputStream *	sosBody= (SimpleOutputStream *)0;
     int				rval= 0;
 
-    const DocumentProperties *	dp= &(bd->bdProperties);
+    const DocumentProperties *	dp= bd->bdProperties;
 
     const char *		file= utilMemoryBufferGetString( &(dp->dpFilename) );
 
@@ -72,10 +75,10 @@ int docWriteRtfMail(		SimpleOutputStream *		sos,
 		const int		fold= 1;
 		const int		direction= 1;
 
-		struct BufferItem *	bi= dpFirst.dpNode;
+		struct BufferItem *	node= dpFirst.dpNode;
 
-		docSetParaSelection( &ds, bi, direction,
-						0, docParaStrlen( bi ) );
+		docSetParaSelection( &ds, node, direction,
+						0, docParaStrlen( node ) );
 
 		if  ( docPlainSaveDocument( sos, bd, &ds, fold ) )
 		    { rval= -1; goto ready;	}

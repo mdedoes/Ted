@@ -12,9 +12,11 @@
 #   include	<sioHex.h>
 
 #   include	<psPrint.h>
-#   include	<geo2DInteger.h>
+#   include	<geoRectangle.h>
 #   include	"docObject.h"
+#   include	"docObjectIo.h"
 #   include	"docObjectProperties.h"
+#   include	<sioGeneral.h>
 
 #   include	<appDebugon.h>
 

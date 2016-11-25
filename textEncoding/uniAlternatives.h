@@ -10,8 +10,8 @@
 #   ifndef	UNI_ALTERNATIVES_H
 #   define	UNI_ALTERNATIVES_H
 
-#   include	<utilIndexSet.h>
-#   include	<utilIndexMapping.h>
+struct IndexMapping;
+struct IndexSet;
 
 /************************************************************************/
 /*									*/
@@ -21,8 +21,8 @@
 
 extern int uniGetAlternative(		int 			unicode );
 
-extern int uniIncludeWithAlternatives(	IndexSet *		is );
+extern int uniIncludeWithAlternatives(	struct IndexSet *	is );
 
-extern int uniMapToAlternatives(	IndexMapping *		im );
+extern int uniMapToAlternatives(	struct IndexMapping *	im );
 
 #   endif /*	UNI_ALTERNATIVES_H	*/

@@ -12,9 +12,6 @@
 #undef WORDS_BIGENDIAN
 
 
-/* Define if you have the strerror function.  */
-#undef HAVE_STRERROR
-
 /* Define if you have the uname function.  */
 #undef HAVE_UNAME
 

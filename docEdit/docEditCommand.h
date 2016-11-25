@@ -65,6 +65,9 @@ typedef enum EditCommand
     EDITcmdUPD_SPAN_PROPS,
     EDITcmdUPD_PARA_PROPS,
     EDITcmdUPD_TABLE_PROPS,
+    EDITcmdUPD_ROW_PROPS,
+    EDITcmdUPD_COLUMN_PROPS,
+    EDITcmdUPD_CELL_PROPS,
     EDITcmdUPD_SECT_PROPS,
     EDITcmdUPD_SECTDOC_PROPS,
     EDITcmdUPD_DOC_PROPS,
@@ -195,5 +198,14 @@ typedef enum EditCommand
 
     EDITcmd_COUNT
     } EditCommand;
+
+typedef enum EditWhatVersion
+    {
+    EDITversionNONE= 0,
+    EDITversionOLD,
+    EDITversionNEW,
+
+    EDITversion_COUNT
+    } EditWhatVersion;
 
 #    endif	/*  DOC_EDIT_COMMAND_H	*/

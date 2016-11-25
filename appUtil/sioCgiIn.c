@@ -12,6 +12,9 @@
 
 #   include	"appTagval.h"
 #   include	"sioCgiIn.h"
+#   include	"appCgiIn.h"
+#   include	"sioGeneral.h"
+
 #   include	<appDebugon.h>
 
 typedef struct CgiInputStream

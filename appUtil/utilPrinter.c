@@ -70,7 +70,7 @@ static int utilPrinterGetLprPrinters(	const char *		command,
     char			scratch[250+1];
 
     int				l;
-    FILE *			f;
+    FILE *			f= (FILE *)0;
     int				found= 0;
 
     PrintDestination *		fresh;
@@ -79,7 +79,7 @@ static int utilPrinterGetLprPrinters(	const char *		command,
 
     f= popen( command, "r" );
     if  ( ! f )
-	{ return 0;	}
+	{ goto ready;	}
 
     while( fgets( scratch, 250, f ) )
 	{
@@ -97,14 +97,14 @@ static int utilPrinterGetLprPrinters(	const char *		command,
 	fresh= (PrintDestination *)realloc( *pDestinations,
 				    (count+ 1)*sizeof( PrintDestination ) );
 	if  ( ! fresh )
-	    { XDEB(fresh); return -1;	}
+	    { XDEB(fresh); found= -1; goto ready;	}
 	*pDestinations= fresh;
 
 	fresh += count;
 
 	fresh->pdCommand= (char *)malloc( l+ 23 );
 	if  ( ! fresh->pdCommand )
-	    { LXDEB(l,fresh->pdCommand); return -1;	}
+	    { LXDEB(l,fresh->pdCommand); found= -1; goto ready;	}
 #	if 0
 	Has the advantage that there is no maximum on the file size.
 	Has the disadvantage that it does not work on SuSE Linux 6.0
@@ -117,7 +117,7 @@ static int utilPrinterGetLprPrinters(	const char *		command,
 	fresh->pdPrintKind= APPprinterTMPFILE;
 	fresh->pdPrinterName= strdup( scratch );
 	if  ( ! fresh->pdPrinterName )
-	    { LXDEB(l,fresh->pdPrinterName); return -1;	}
+	    { LXDEB(l,fresh->pdPrinterName); found= -1; goto ready;	}
 
 	fresh->pdCommandLength= strlen( fresh->pdCommand );
 	fresh->pdPercentCount= 1;
@@ -143,6 +143,47 @@ static int utilPrinterGetLprPrinters(	const char *		command,
 	}
 
     *pPrinterCount= count;
+
+  ready:
+
+    if  ( f )
+	{ pclose( f );	}
+
+    return found;
+    }
+
+static int utilPrinterReadLpPrinters(	int			count,
+					PrintDestination **	pDestinations,
+					FILE *			f,
+					char *			scratch )
+    {
+    int				found= 0;
+    PrintDestination *		fresh;
+
+    while( fgets( scratch, 250, f ) )
+	{
+	char *	s;
+	int	l;
+
+	scratch[250]= '\0';
+
+	s= strchr( scratch, ' ' );
+	if  ( ! s )
+	    { continue;	}
+	*s= '\0'; l= s- scratch;
+
+	fresh= (PrintDestination *)realloc( *pDestinations,
+				(count+ 1)*sizeof( PrintDestination ) );
+	if  ( ! fresh )
+	    { XDEB(fresh); return -1;	}
+	*pDestinations= fresh;
+
+	if  ( utilPrinterSetLpCommand( fresh+ count, scratch, l ) )
+	    { LDEB(l); return -1;	}
+
+	found++; count++;
+	}
+
     return found;
     }
 
@@ -158,7 +199,6 @@ static int utilPrinterGetAixPrinters(	const char *		command,
     FILE *			f;
     int				found= 0;
 
-    PrintDestination *		fresh;
     int				count= *pPrinterCount;
     const char *		defaultPrinterName;
 
@@ -168,28 +208,11 @@ static int utilPrinterGetAixPrinters(	const char *		command,
 
     if  ( fgets( scratch, 250, f ) && fgets( scratch, 250, f ) )
 	{
-	while( fgets( scratch, 250, f ) )
-	    {
-	    char *	s;
+	found= utilPrinterReadLpPrinters( count, pDestinations, f, scratch );
+	if  ( found < 0 )
+	    { SLDEB(command,found); pclose( f ); return -1;	}
 
-	    scratch[250]= '\0';
-
-	    s= strchr( scratch, ' ' );
-	    if  ( ! s )
-		{ continue;	}
-	    *s= '\0'; l= s- scratch;
-    
-	    fresh= (PrintDestination *)realloc( *pDestinations,
-				    (count+ 1)*sizeof( PrintDestination ) );
-	    if  ( ! fresh )
-		{ XDEB(fresh); return -1;	}
-	    *pDestinations= fresh;
-    
-	    if  ( utilPrinterSetLpCommand( fresh+ count, scratch, l ) )
-		{ LDEB(l); return -1;	}
-    
-	    found++; count++;
-	    }
+	count += found;
 	}
 
     pclose( f );
@@ -225,7 +248,6 @@ static int utilPrinterGetLpPrinters(	const char *		command,
     FILE *			f;
     int				found= 0;
 
-    PrintDestination *		fresh;
     int				count= *pPrinterCount;
     const char *		defaultPrinterName;
 
@@ -234,28 +256,11 @@ static int utilPrinterGetLpPrinters(	const char *		command,
     if  ( ! f )
 	{ return 0;	}
 
-    while( fgets( scratch, 250, f ) )
-	{
-	char *	s;
+    found= utilPrinterReadLpPrinters( count, pDestinations, f, scratch );
+    if  ( found < 0 )
+	{ SLDEB(command,found); pclose( f ); return -1;	}
 
-	scratch[250]= '\0';
-
-	s= strchr( scratch, ' ' );
-	if  ( ! s )
-	    { continue;	}
-	*s= '\0'; l= s- scratch;
-
-	fresh= (PrintDestination *)realloc( *pDestinations,
-				(count+ 1)*sizeof( PrintDestination ) );
-	if  ( ! fresh )
-	    { XDEB(fresh); return -1;	}
-	*pDestinations= fresh;
-
-	if  ( utilPrinterSetLpCommand( fresh+ count, scratch, l ) )
-	    { LDEB(l); return -1;	}
-
-	found++; count++;
-	}
+    count += found;
 
     pclose( f );
 

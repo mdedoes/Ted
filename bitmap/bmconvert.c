@@ -3,6 +3,8 @@
 #   include	"bmintern.h"
 #   include	"bmgetrow.h"
 #   include	"bmputrow.h"
+#   include	<geoRectangle.h>
+
 #   include	<appDebugon.h>
 
 /************************************************************************/

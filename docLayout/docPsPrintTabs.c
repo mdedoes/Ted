@@ -11,14 +11,14 @@
 
 #   include	<sioGeneral.h>
 #   include	"docDraw.h"
+#   include	"docDrawLine.h"
 #   include	"docPsPrintImpl.h"
 #   include	<docTabStop.h>
-#   include	<docTextLine.h>
+#   include	<psPrint.h>
 
 #   include	<appDebugon.h>
 
 static int psPrintDrawTab(	DrawingContext *	dc,
-				const DrawTextLine *	dtl,
 				PrintingState *		ps,
 				const TextAttribute *	ta,
 				int			x0,
@@ -39,6 +39,11 @@ static int psPrintDrawTab(	DrawingContext *	dc,
     return 0;
     }
 
+# ifdef __GNUC__
+# pragma GCC diagnostic push
+# pragma GCC diagnostic ignored "-Wunused-parameter"
+# endif
+
 int docPsPrintTab(	const DrawTextLine *		dtl,
 			int				part,
 			int				textAttrNr,
@@ -51,11 +56,8 @@ int docPsPrintTab(	const DrawTextLine *		dtl,
     PrintingState *		ps= (PrintingState *)dtl->dtlThrough;
     DrawingContext *		dc= dtl->dtlDrawingContext;
 
-    const TextLine *		tl= dtl->dtlTextLine;
-    int				lineHeight= tl->tlDescY1- tl->tlAscY0;
-
-    int				x0= x0Twips+ lineHeight/ 4;
-    int				x1= x1Twips- lineHeight/ 2;
+    int				x0= x0Twips+ dtl->dtlLineHeight/ 4;
+    int				x1= x1Twips- dtl->dtlLineHeight/ 2;
 
     int				spanBaseline= baseline->lpPageYTwips;
 
@@ -68,11 +70,11 @@ int docPsPrintTab(	const DrawTextLine *		dtl,
 
 	    if  ( ta->taFontIsBold )
 		{
-		psPrintDrawTab( dc, dtl, ps, ta, x0, x1, spanBaseline,
+		psPrintDrawTab( dc, ps, ta, x0, x1, spanBaseline,
 							60, "dot-tab-bold" );
 		}
 	    else{
-		psPrintDrawTab( dc, dtl, ps, ta, x0, x1, spanBaseline,
+		psPrintDrawTab( dc, ps, ta, x0, x1, spanBaseline,
 							60, "dot-tab" );
 		}
 
@@ -82,11 +84,11 @@ int docPsPrintTab(	const DrawTextLine *		dtl,
 
 	    if  ( ta->taFontIsBold )
 		{
-		psPrintDrawTab( dc, dtl, ps, ta, x0, x1, spanBaseline,
+		psPrintDrawTab( dc, ps, ta, x0, x1, spanBaseline,
 							20, "ul-tab-bold" );
 		}
 	    else{
-		psPrintDrawTab( dc, dtl, ps, ta, x0, x1, spanBaseline,
+		psPrintDrawTab( dc, ps, ta, x0, x1, spanBaseline,
 							20, "ul-tab" );
 		}
 
@@ -96,11 +98,11 @@ int docPsPrintTab(	const DrawTextLine *		dtl,
 
 	    if  ( ta->taFontIsBold )
 		{
-		psPrintDrawTab( dc, dtl, ps, ta, x0, x1, spanBaseline,
+		psPrintDrawTab( dc, ps, ta, x0, x1, spanBaseline,
 							140, "dash-tab-bold" );
 		}
 	    else{
-		psPrintDrawTab( dc, dtl, ps, ta, x0, x1, spanBaseline,
+		psPrintDrawTab( dc, ps, ta, x0, x1, spanBaseline,
 							140, "dash-tab" );
 		}
 
@@ -121,6 +123,10 @@ int docPsPrintTab(	const DrawTextLine *		dtl,
 
     return 0;
     }
+
+# ifdef __GNUC__
+# pragma GCC diagnostic pop
+# endif
 
 /************************************************************************/
 /*									*/

@@ -44,6 +44,7 @@
 #	endif
 #   endif
 
-#undef HAVE_ICONV
+#undef HAVE_LIBICONV
+#undef USE_LIBICONV
 
 #   endif	/*  TEXT_ENCODING_CONFIG_H  */

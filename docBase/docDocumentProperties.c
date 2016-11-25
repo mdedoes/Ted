@@ -6,12 +6,16 @@
 
 #   include	"docBaseConfig.h"
 
+#   include	<utilDateTime.h>
 #   include	<utilPalette.h>
 #   include	<utilPropMask.h>
-#   include	<appUnit.h>
-#   include	<appDebugon.h>
+#   include	<textOfficeCharset.h>
+#   include	<fontDocFontList.h>
 
 #   include	"docDocumentProperties.h"
+#   include	"docListAdmin.h"
+
+#   include	<appDebugon.h>
 
 /************************************************************************/
 /*									*/
@@ -167,7 +171,7 @@ void docInitDocumentProperties(	DocumentProperties *	dp )
     dp->dpDefaultColor= 0;
     dp->dpDocumentCharset= DOCcharsetANSI;
     dp->dpAnsiCodepage= -1;
-    dp->dpDefaultLanguage= -1;
+    dp->dpDefaultLocaleId= -1;
 
     dp->dpDefaultFont= -1;
     dp->dpDefaultFontDbch= -1;
@@ -286,7 +290,7 @@ int docCopyDocumentProperties(	DocumentProperties *		to,
 	{ LDEB(1); return -1;	}
 
     if  ( to->dpFontList != from->dpFontList			&&
-	  docCopyFontList( to->dpFontList, from->dpFontList )	)
+	  fontCopyDocFontList( to->dpFontList, from->dpFontList )	)
 	{ LDEB(1); rval= -1; goto ready;	}
 
     if  ( to->dpListAdmin != from->dpListAdmin			&&
@@ -575,16 +579,16 @@ int docSetDocumentProperty(	DocumentProperties *	dp,
     switch( prop )
 	{
 	case DGpropLEFT_MARGIN:
-	    dp->dpGeometry.dgLeftMarginTwips= arg;
+	    dp->dpGeometry.dgMargins.roLeftOffset= arg;
 	    return 0;
 	case DGpropTOP_MARGIN:
-	    dp->dpGeometry.dgTopMarginTwips= arg;
+	    dp->dpGeometry.dgMargins.roTopOffset= arg;
 	    return 0;
 	case DGpropRIGHT_MARGIN:
-	    dp->dpGeometry.dgRightMarginTwips= arg;
+	    dp->dpGeometry.dgMargins.roRightOffset= arg;
 	    return 0;
 	case DGpropBOTTOM_MARGIN:
-	    dp->dpGeometry.dgBottomMarginTwips= arg;
+	    dp->dpGeometry.dgMargins.roBottomOffset= arg;
 	    return 0;
 	case DGpropPAGE_WIDTH:
 	    dp->dpGeometry.dgPageWideTwips= arg;
@@ -700,7 +704,7 @@ int docSetDocumentProperty(	DocumentProperties *	dp,
 	    return 0;
 
 	case DPpropDEFLANG:
-	    dp->dpDefaultLanguage= arg;
+	    dp->dpDefaultLocaleId= arg;
 	    return 0;
 
 	case DPpropTOP_BORDER:
@@ -736,13 +740,13 @@ int docGetDocumentProperty(	const DocumentProperties *	dp,
 	case DGpropPAGE_HEIGHT:
 	    return dp->dpGeometry.dgPageHighTwips;
 	case DGpropLEFT_MARGIN:
-	    return dp->dpGeometry.dgLeftMarginTwips;
+	    return dp->dpGeometry.dgMargins.roLeftOffset;
 	case DGpropRIGHT_MARGIN:
-	    return dp->dpGeometry.dgRightMarginTwips;
+	    return dp->dpGeometry.dgMargins.roRightOffset;
 	case DGpropTOP_MARGIN:
-	    return dp->dpGeometry.dgTopMarginTwips;
+	    return dp->dpGeometry.dgMargins.roTopOffset;
 	case DGpropBOTTOM_MARGIN:
-	    return dp->dpGeometry.dgBottomMarginTwips;
+	    return dp->dpGeometry.dgMargins.roBottomOffset;
 	/* NO DGpropHEADER_POSITION: */
 	/* NO DGpropFOOTER_POSITION: */
 	case DGpropGUTTER:
@@ -810,7 +814,7 @@ int docGetDocumentProperty(	const DocumentProperties *	dp,
 	case DPpropANSICPG:
 	    return dp->dpAnsiCodepage;
 	case DPpropDEFLANG:
-	    return dp->dpDefaultLanguage;
+	    return dp->dpDefaultLocaleId;
 
 	case DPpropDEFF:
 	    return dp->dpDefaultFont;

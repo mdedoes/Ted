@@ -6,17 +6,17 @@
 
 #   include	"docEditConfig.h"
 
-#   include	<stdio.h>
-
-#   include	<appDebugon.h>
-
 #   include	<docBuf.h>
-#   include	<docDebug.h>
-#   include	<docParaParticules.h>
 #   include	<docNodeTree.h>
 #   include	"docEdit.h"
 #   include	"docEditImpl.h"
 #   include	<docTreeType.h>
+#   include	"docEditOperation.h"
+#   include	<docFields.h>
+#   include	<docParaBuilder.h>
+
+#   include	<docDebug.h>
+#   include	<appDebugon.h>
 
 #   define	DEB_PARTICULES		0
 #   define	SHOW_SELECTION_RANGE	0
@@ -157,10 +157,10 @@ void docEditShiftReferences(		EditOperation *		eo,
 					int			paraShift,
 					int			stroffShift )
     {
-    DocumentTree *		dt= eo->eoTree;
+    struct DocumentTree *	dt= eo->eoTree;
     int				sectFrom= -1;
 
-    if  ( docGetRootOfSelectionScope( &dt, (BufferItem **)0,
+    if  ( docGetRootOfSelectionScope( &dt, (struct BufferItem **)0,
 						eo->eoDocument, ssRoot ) )
 	{ SDEB(docTreeTypeStr(ssRoot->ssTreeType)); return;	}
 
@@ -268,14 +268,12 @@ void docEditShiftReferences(		EditOperation *		eo,
 /************************************************************************/
 
 int docEditShiftParticuleOffsets(	EditOperation *		eo,
-					BufferItem *		paraBi,
+					struct BufferItem *	paraNode,
 					int			paraNr,
 					int			partFrom,
-					int			partUpto,
 					int			stroffFrom,
 					int			stroffShift )
     {
-    BufferDocument *		bd= eo->eoDocument;
     int				rval;
 
     docAdjustEditPositionOffsetB( &(eo->eoSelectedRange.erHead),
@@ -288,30 +286,10 @@ int docEditShiftParticuleOffsets(	EditOperation *		eo,
     docAdjustEditPositionOffsetE( &(eo->eoAffectedRange.erTail),
 					    paraNr, stroffFrom, stroffShift );
 
-    rval= docShiftParticuleOffsets( bd, paraBi,
-					    partFrom, partUpto, stroffShift );
+    rval= docParagraphBuilderShiftOffsets( eo->eoParagraphBuilder,
+					partFrom, stroffFrom, stroffShift );
 
     return rval;
-    }
-
-/************************************************************************/
-/*									*/
-/*  Delete all fields that are embedded in the content that we will	*/
-/*  replace in this edit operation.					*/
-/*									*/
-/************************************************************************/
-
-int docEditDeleteReplacedFields(	EditOperation *		eo )
-    {
-    DocumentSelection	dsBalanced;
-
-    dsBalanced.dsHead= eo->eoHeadDp;
-    dsBalanced.dsTail= eo->eoTailDp;
-
-    if  ( docDeleteFieldsInRange( eo, &dsBalanced ) )
-	{ LDEB(1); return -1;	}
-
-    return 0;
     }
 
 /************************************************************************/
@@ -326,16 +304,16 @@ int docEditFindPositionOutsideBlockDelete(
 				const DocumentSelection *	dsDel )
     {
     int			side;
-    BufferItem *	newBi;
+    struct BufferItem *	newNode;
 
     side= 1;
-    newBi= docNextParagraph( dsDel->dsTail.dpNode );
-    if  ( ! newBi || docHeadPosition( dpNew, newBi ) )
+    newNode= docNextParagraph( dsDel->dsTail.dpNode );
+    if  ( ! newNode || docHeadPosition( dpNew, newNode ) )
 	{
 	side= -1;
-	newBi= docPrevParagraph( dsDel->dsHead.dpNode );
+	newNode= docPrevParagraph( dsDel->dsHead.dpNode );
 
-	if  ( ! newBi || docTailPosition( dpNew, newBi ) )
+	if  ( ! newNode || docTailPosition( dpNew, newNode ) )
 	    { LDEB(1); return -1;	}
 	}
 

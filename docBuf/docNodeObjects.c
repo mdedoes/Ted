@@ -6,76 +6,18 @@
 
 #   include	"docBufConfig.h"
 
-#   include	<appDebugon.h>
+#   include	<stdlib.h>
 
 #   include	"docBuf.h"
-#   include	"docParaString.h"
-#   include	"docParaParticules.h"
 #   include	"docTreeScanner.h"
+#   include	<docScanner.h>
 #   include	<docListDepth.h>
+#   include	"docTreeNode.h"
+#   include	<docTextParticule.h>
+#   include	<docParaProperties.h>
+#   include	"docObjects.h"
 
-/************************************************************************/
-/*									*/
-/*  Insert an object.							*/
-/*									*/
-/*  NOTE that objects have text attributes. This is for the following	*/
-/*  reasons:								*/
-/*  *)  The calculation of the descender height below the object.	*/
-/*  *)  This makes editing around the object and saving it MUCH easier.	*/
-/*									*/
-/************************************************************************/
-
-static TextParticule *	docInsertObject( BufferDocument *	bd,
-					BufferItem *		paraBi,
-					int			n,
-					int			off,
-					const TextAttribute *	ta )
-    {
-    TextParticule *	tp;
-    InsertedObject *	io;
-
-    int			objectNumber;
-    int			textAttributeNumber;
-
-    textAttributeNumber= docTextAttributeNumber( bd, ta );
-    if  ( textAttributeNumber < 0 )
-	{ LDEB(textAttributeNumber); return (TextParticule *)0;	}
-
-    io= docClaimObject( &objectNumber, bd );
-    if  ( ! io )
-	{ XDEB(io); return (TextParticule *)0; }
-
-    tp= docInsertTextParticule( paraBi, n, off, 1,
-					DOCkindOBJECT, textAttributeNumber );
-    if  ( ! tp )
-	{
-	XDEB(tp);
-	docDeleteObject( bd, objectNumber );
-	return tp;
-	}
-
-    tp->tpObjectNumber= objectNumber;
-
-    return tp;
-    }
-
-TextParticule *	docAppendObject(	BufferDocument *	bd,
-					BufferItem *		paraBi,
-					const TextAttribute *	ta )
-    {
-    TextParticule *	tp;
-    int			stroffShift= 0;
-    int			off= docParaStrlen( paraBi );
-
-    if  ( docParaStringReplace( &stroffShift, paraBi, off, off, " ", 1 ) )
-	{ LLDEB(docParaStrlen(paraBi),1); return (TextParticule *)0; }
-
-    tp= docInsertObject( bd, paraBi, -1, off, ta );
-    if  ( ! tp )
-	{ LDEB(paraBi->biParaParticuleCount); return tp;	}
-
-    return tp;
-    }
+#   include	<appDebugon.h>
 
 /************************************************************************/
 /*									*/
@@ -83,22 +25,61 @@ TextParticule *	docAppendObject(	BufferDocument *	bd,
 /*									*/
 /************************************************************************/
 
+typedef struct CleanTreeObjects
+    {
+    int				ctoBulletsDeleted;
+    int				ctoParagraphCount;
+    struct DocumentTree *	ctoTree;
+    struct CleanTreeObjects *	ctoParent;
+    } CleanTreeObjects;
+
 typedef struct CleanNodeObjects
     {
-    int			cnoBulletsDeleted;
-    int			cnoParagraphCount;
-    DOC_CLOSE_OBJECT	cnoCloseObject;
-    DocumentTree *	cnoTree;
-    BufferDocument *	cnoDocument;
+    CleanTreeObjects *		cnoTreeObjects;
+    struct BufferDocument *	cnoDocument;
     } CleanNodeObjects;
 
 static void docInitCleanNodeObjects(	CleanNodeObjects *	cno )
     {
-    cno->cnoBulletsDeleted= 0;
-    cno->cnoParagraphCount= 0;
-    cno->cnoCloseObject= (DOC_CLOSE_OBJECT)0;
-    cno->cnoTree= (DocumentTree *)0;
-    cno->cnoDocument= (BufferDocument *)0;
+    cno->cnoTreeObjects= (CleanTreeObjects *)0;
+    cno->cnoDocument= (struct BufferDocument *)0;
+    }
+
+static CleanTreeObjects * docPushCleanTreeObjects(
+				CleanNodeObjects *	cno,
+				DocumentTree *		tree )
+    {
+    CleanTreeObjects *	cto= malloc( sizeof(CleanTreeObjects) );
+
+    if  ( ! cto )
+	{ XDEB(cto); return cto;	}
+
+    cto->ctoBulletsDeleted= 0;
+    cto->ctoParagraphCount= 0;
+    cto->ctoTree= tree;
+    cto->ctoParent= cno->cnoTreeObjects;
+
+    cno->cnoTreeObjects= cto;
+
+    return cto;
+    }
+
+static int docPopCleanTreeObjects(
+				CleanNodeObjects *	cno,
+				DocumentTree *		tree )
+    {
+    CleanTreeObjects *	cto= cno->cnoTreeObjects;
+
+    if  ( ! cno->cnoTreeObjects )
+	{ XDEB(cno->cnoTreeObjects); return -1;	}
+    if  ( cno->cnoTreeObjects->ctoTree != tree )
+	{ XXDEB(cno->cnoTreeObjects->ctoTree,tree); return -1;	}
+
+    cno->cnoTreeObjects= cto->ctoParent;
+
+    free( cto );
+
+    return 0;
     }
 
 static void docCleanParaObjects(	CleanNodeObjects *	cno,
@@ -107,22 +88,24 @@ static void docCleanParaObjects(	CleanNodeObjects *	cno,
     int			part;
     TextParticule *	tp;
 
+    CleanTreeObjects *	cto= cno->cnoTreeObjects;
+
     tp= paraNode->biParaParticules;
     for ( part= 0; part < paraNode->biParaParticuleCount; tp++, part++ )
 	{
-	if  ( tp->tpKind == DOCkindOBJECT )
-	    { (*cno->cnoCloseObject)( cno->cnoDocument, tp );	}
+	if  ( tp->tpKind == TPkindOBJECT )
+	    { docCloseParticuleObject( cno->cnoDocument, tp );	}
 	}
 
-    if  ( paraNode->biParaListOverride > 0			||
-	  paraNode->biParaOutlineLevel < PPoutlineBODYTEXT	)
+    if  ( paraNode->biParaProperties->ppListOverride > 0		||
+	  paraNode->biParaProperties->ppOutlineLevel < PPoutlineBODYTEXT )
 	{
 	if  ( docRemoveParagraphFromList( paraNode,
-					cno->cnoTree, cno->cnoDocument ) )
+					    cto->ctoTree, cno->cnoDocument ) )
 	    { LDEB(1);	}
 
-	if  ( paraNode->biParaListOverride > 0 )
-	    { cno->cnoBulletsDeleted++;	}
+	if  ( paraNode->biParaProperties->ppListOverride > 0 )
+	    { cto->ctoBulletsDeleted++;	}
 	}
 
     return;
@@ -131,130 +114,148 @@ static void docCleanParaObjects(	CleanNodeObjects *	cno,
 static void docCleanTreeObjects(
 				int *			pBulletsDeleted,
 				int *			pParagraphCount,
-				DocumentTree *		dt,
-				BufferDocument *	bd,
-				DOC_CLOSE_OBJECT	closeObject )
+				struct DocumentTree *	tree,
+				struct BufferDocument *	bd )
     {
-    if  ( dt->dtRoot )
+    if  ( tree->dtRoot )
 	{
 	docCleanNodeObjects( pBulletsDeleted, pParagraphCount,
-					    dt, bd, dt->dtRoot, closeObject );
+					    tree, bd, tree->dtRoot );
 	}
     }
 
-static void docCleanHeaderFooterObjects(	SectHeadersFooters *	shf,
-						CleanNodeObjects *	cno )
-    {
-    docCleanTreeObjects( &(cno->cnoBulletsDeleted), &(cno->cnoParagraphCount),
-				&(shf->shfFirstPageHeader),
-				cno->cnoDocument, cno->cnoCloseObject );
+# ifdef __GNUC__
+# pragma GCC diagnostic push
+# pragma GCC diagnostic ignored "-Wunused-parameter"
+# endif
 
-    docCleanTreeObjects( &(cno->cnoBulletsDeleted), &(cno->cnoParagraphCount),
-				&(shf->shfLeftPageHeader),
-				cno->cnoDocument, cno->cnoCloseObject );
-
-    docCleanTreeObjects( &(cno->cnoBulletsDeleted), &(cno->cnoParagraphCount),
-				&(shf->shfRightPageHeader),
-				cno->cnoDocument, cno->cnoCloseObject );
-
-    docCleanTreeObjects( &(cno->cnoBulletsDeleted), &(cno->cnoParagraphCount),
-				&(shf->shfFirstPageFooter),
-				cno->cnoDocument, cno->cnoCloseObject );
-
-    docCleanTreeObjects( &(cno->cnoBulletsDeleted), &(cno->cnoParagraphCount),
-				&(shf->shfLeftPageFooter),
-				cno->cnoDocument, cno->cnoCloseObject );
-
-    docCleanTreeObjects( &(cno->cnoBulletsDeleted), &(cno->cnoParagraphCount),
-				&(shf->shfRightPageFooter),
-				cno->cnoDocument, cno->cnoCloseObject );
-
-    return;
-    }
-
-static int docVisitCleanNode(	BufferItem *			node,
-				const DocumentSelection *	ds,
-				const BufferItem *		bodySectNode,
-				void *				vcno )
+static int docVisitCleanNode(
+			struct BufferItem *			node,
+			const struct DocumentSelection *	ds,
+			const struct BufferItem *		bodySectNode,
+			void *					vcno )
     {
     CleanNodeObjects *	cno= (CleanNodeObjects *)vcno;
+    CleanTreeObjects *	cto= cno->cnoTreeObjects;
 
     switch( node->biLevel )
 	{
 	case DOClevPARA:
 	    docCleanParaObjects( cno, node );
-	    cno->cnoParagraphCount++;
-	    break;
-
-	case DOClevSECT:
-	    if  ( node->biSectHeadersFooters )
-		{
-		docCleanHeaderFooterObjects( node->biSectHeadersFooters, cno );
-		}
+	    cto->ctoParagraphCount++;
 	    break;
 
 	default:
 	    break;
 	}
 
-    return ADVICEtsOK;
+    return SCANadviceOK;
     }
 
-void docCleanNodeObjects(	int *			pBulletsDeleted,
-				int *			pParagraphCount,
-				DocumentTree *		dt,
-				BufferDocument *	bd,
-				BufferItem *		node,
-				DOC_CLOSE_OBJECT	closeObject )
+static int docVisitCleanEnterTree(
+			struct DocumentTree *		tree,
+			const struct BufferItem *	bodySectNode,
+			void *				vcno )
     {
-    const int		flags= 0;
+    CleanNodeObjects *	cno= (CleanNodeObjects *)vcno;
+
+    if  ( ! docPushCleanTreeObjects( cno, tree ) )
+	{ LDEB(1); return -1;	}
+
+    return SCANadviceOK;
+    }
+
+static int docVisitCleanLeaveTree(
+			struct DocumentTree *		tree,
+			const struct BufferItem *	bodySectNode,
+			void *				vcno )
+    {
+    CleanNodeObjects *	cno= (CleanNodeObjects *)vcno;
+
+    if  ( docPopCleanTreeObjects( cno, tree ) )
+	{ LDEB(1); return -1;	}
+
+    return SCANadviceOK;
+    }
+
+# ifdef __GNUC__
+# pragma GCC diagnostic pop
+# endif
+
+int docCleanNodeObjects(	int *			pBulletsDeleted,
+				int *			pParagraphCount,
+				struct DocumentTree *	tree,
+				struct BufferDocument *	bd,
+				struct BufferItem *	node )
+    {
+    int			rval= 0;
+    const int		flags= FLAGtsSCAN_SECTION_HEADERS_FOOTERS;
 
     CleanNodeObjects	cno;
+    CleanTreeObjects *	cto;
 
     docInitCleanNodeObjects( &cno );
-    cno.cnoCloseObject= closeObject;
     cno.cnoDocument= bd;
-    cno.cnoTree= dt;
+
+    cto= docPushCleanTreeObjects( &cno, tree );
+    if  ( ! cto )
+	{ XDEB(cto); rval= -1; goto ready;	}
 
     if  ( docScanTreeNode( bd, node,
-			    docVisitCleanNode, (NodeVisitor)0, flags, &cno ) )
-	{ LDEB(1);	}
+			    docVisitCleanNode, (NodeVisitor)0,
+			    docVisitCleanEnterTree, docVisitCleanLeaveTree,
+			    flags, &cno ) < 0 )
+	{ LDEB(1); rval= -1; goto ready;	}
     else{
 	if  ( pBulletsDeleted )
-	    { *pBulletsDeleted += cno.cnoBulletsDeleted;	}
+	    { *pBulletsDeleted += cto->ctoBulletsDeleted;	}
 	if  ( pParagraphCount )
-	    { *pParagraphCount += cno.cnoParagraphCount;	}
+	    { *pParagraphCount += cto->ctoParagraphCount;	}
 	}
 
-    return;
+  ready:
+
+    while( cno.cnoTreeObjects )
+	{
+	if  ( docPopCleanTreeObjects( &cno, cno.cnoTreeObjects->ctoTree ) )
+	    { LDEB(1); return -1;	}
+	}
+
+    return rval;
     }
 
-void docCleanDocumentObjects(	BufferDocument *	bd,
-				DOC_CLOSE_OBJECT	closeObject )
+/**
+ *  Clean the objects in the separators directly attached to the 
+ *  document.
+ *
+ *  TODO: Combine with the tree scanner in the same way as the 
+ *  section headers and footers.
+ */
+void docCleanDocumentObjects(	struct BufferDocument *	bd )
     {
     int		bulletsDeleted= 0;
     int		paragraphCount= 0;
 
     docCleanTreeObjects( &bulletsDeleted, &paragraphCount,
-				    &(bd->bdBody), bd, closeObject );
+						    &(bd->bdBody), bd );
 
     docCleanTreeObjects( &bulletsDeleted, &paragraphCount,
-				    &(bd->bdEiFtnsep), bd, closeObject );
+						    &(bd->bdFtnsep), bd );
 
     docCleanTreeObjects( &bulletsDeleted, &paragraphCount,
-				    &(bd->bdEiFtnsepc), bd, closeObject );
+						    &(bd->bdFtnsepc), bd );
 
     docCleanTreeObjects( &bulletsDeleted, &paragraphCount,
-				    &(bd->bdEiFtncn), bd, closeObject );
+						    &(bd->bdFtncn), bd );
 
     docCleanTreeObjects( &bulletsDeleted, &paragraphCount,
-				    &(bd->bdEiAftnsep), bd, closeObject );
+						    &(bd->bdAftnsep), bd );
 
     docCleanTreeObjects( &bulletsDeleted, &paragraphCount,
-				    &(bd->bdEiAftnsepc), bd, closeObject );
+						    &(bd->bdAftnsepc), bd );
 
     docCleanTreeObjects( &bulletsDeleted, &paragraphCount,
-				    &(bd->bdEiAftncn), bd, closeObject );
+						    &(bd->bdAftncn), bd );
 
     return;
     }

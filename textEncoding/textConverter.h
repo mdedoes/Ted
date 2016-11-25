@@ -16,7 +16,7 @@ struct TextConverter;
 /************************************************************************/
 
 /**
- *
+ *  Emit bytes to be included in the target.
  */
 typedef int (*TextConverterProduce)(	void *			through,
 					int			produced,
@@ -24,17 +24,17 @@ typedef int (*TextConverterProduce)(	void *			through,
 					int			count );
 
 /************************************************************************/
-/*									*/
-/*  Routine declarations.						*/
-/*									*/
-/************************************************************************/
 
-extern void textConverterSetNativeEncodingName(
+extern struct TextConverter * textOpenTextConverter( void );
+
+extern void textCloseTextConverter(	struct TextConverter *	tc );
+
+extern int textConverterSetNativeEncodingName(
 					struct TextConverter *	tc,
 					const char *		encodingName );
 
-extern void textInitTextConverter(	struct TextConverter *	tc );
-extern void textCleanTextConverter(	struct TextConverter *	tc );
+extern const char * textConverterGetNativeEncodingName(
+					struct TextConverter *	tc );
 
 extern int textConverterConvertToUtf8(	struct TextConverter *	tc,
 					void *			through,

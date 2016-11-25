@@ -20,8 +20,12 @@
 ####			Debian package. (Must be built with fakeroot)
 ####	deb-dependencies: Install the dependencied for debian. Must be run 
 ####			as root.
-####	pet:		Build a Puppy Linux package.
-####	slackpkg:	Build a Slackware Linux installer package
+####	pet:		Build a Puppy Linux package. Only works if you first
+####			download and install the devx_<version>.sfs  file as
+####			an extra punishment after the puppy installation.
+####	slackpkg:	Build a Slackware Linux installer package. This 
+####			also applies for Vector Linux, where the build 
+####			can be called through fakeroot.
 ####	freebsdpkg:	Build a FreeBSD package. (I tried to do something 
 ####			similar for OpenBSD but I failed to understand the 
 ####			rather hermetic documentation and procedures.)
@@ -50,6 +54,7 @@
 ####		--prefix		Use another place than /usr
 ####					for installation. E.G.
 ####					--prefix=/opt/Ted or --prefix=/usr/local
+####					On OSX with brew use --prefix=/usr/local
 ####		--with-GTK		Use the Gtk+ gui toolkit. (The
 ####					default)
 ####		--with-MOTIF		Use the Motif gui toolkit. (Preferable
@@ -65,6 +70,11 @@
 ####					not to use it. This makes it possible
 ####					to avoid it even if the software is 
 ####					found on the machine.
+####		--without-LIBICONV	In some cases detecting libiconv is 
+####					such a nuisance that it is easier to 
+####					avoid it. Without libiconv, Ted can 
+####					only handle US and western European
+####					documents.
 ####
 ####
 ####	P.S.	To port to Compaq OpenVMS, use the descrip.mms file
@@ -75,8 +85,7 @@
 
 CONFIGURE_OPTIONS=--with-GTK
 
-compile:	tedlibs		\
-		Ted/Ted		\
+compile:	Ted/Ted		\
 		Ted/Ted.static
 	:
 	: Static executable Ted/Ted.static ready
@@ -87,8 +96,7 @@ compile:	tedlibs		\
 	: *   To install Ted for yourself only
 	:     you can now run 'make private'
 
-compile.shared:	tedlibs		\
-		Ted/Ted
+compile.shared:	Ted/Ted
 	:
 	: Dynamic executable Ted/Ted ready
 	: *   To make an installation package
@@ -107,131 +115,335 @@ lib:
 ####	Build ted libraries
 ####
 
-tedlibs: 	lib			\
-		lib/appUtil.a		\
+tedlibs: 	lib/appUtil.a		\
 		lib/textEncoding.a	\
 		lib/utilPs.a		\
 		lib/bitmap.a		\
 		lib/docFont.a		\
+		lib/drawMeta.a		\
 		lib/docBase.a		\
 		lib/docBuf.a		\
 		lib/ind.a		\
-		lib/drawMeta.a		\
 		lib/docRtf.a		\
 		lib/docEdit.a		\
 		lib/docLayout.a		\
 		lib/docHtml.a		\
-		lib/appFrame.a
+		lib/guiBase.a		\
+		lib/appFrame.a		\
+		lib/appTools.a		\
+		lib/tedResource.a	\
+		lib/tedTools.a
 
 ####
-lib/bitmap.a: bitmap/makefile
-	cd bitmap && $(MAKE)
+AUT_DEP= Makefile
+AUT_CFG= appUtil/appUtilConfig.h
 
-bitmap/makefile: bitmap/makefile.in Makefile
-	cd bitmap && ./configure $(CONFIGURE_OPTIONS)
-
-####
-lib/docBuf.a: docBuf/makefile
-	cd docBuf && $(MAKE)
-
-docBuf/makefile: docBuf/makefile.in Makefile
-	cd docBuf && ./configure $(CONFIGURE_OPTIONS)
-
-####
-lib/docBase.a: docBase/makefile
-	cd docBase && $(MAKE)
-
-docBase/makefile: docBase/makefile.in Makefile
-	cd docBase && ./configure $(CONFIGURE_OPTIONS)
-
-####
-lib/docHtml.a: docHtml/makefile
-	cd docHtml && $(MAKE)
-
-docHtml/makefile: docHtml/makefile.in Makefile
-	cd docHtml && ./configure $(CONFIGURE_OPTIONS)
-
-####
-lib/docLayout.a: docLayout/makefile
-	cd docLayout && $(MAKE)
-
-docLayout/makefile: docLayout/makefile.in Makefile
-	cd docLayout && ./configure $(CONFIGURE_OPTIONS)
-
-####
-lib/docRtf.a: docRtf/makefile
-	cd docRtf && $(MAKE)
-
-docRtf/makefile: docRtf/makefile.in Makefile
-	cd docRtf && ./configure $(CONFIGURE_OPTIONS)
-
-####
-lib/docEdit.a: docEdit/makefile
-	cd docEdit && $(MAKE)
-
-docEdit/makefile: docEdit/makefile.in Makefile
-	cd docEdit && ./configure $(CONFIGURE_OPTIONS)
-
-####
-lib/ind.a: ind/makefile
-	cd ind && $(MAKE)
-
-ind/makefile: ind/makefile.in Makefile
-	cd ind && ./configure $(CONFIGURE_OPTIONS)
-
-####
-lib/appUtil.a: appUtil/makefile
+lib/appUtil.a: $(AUT_CFG) lib
 	cd appUtil && $(MAKE)
 
-appUtil/makefile: appUtil/makefile.in Makefile
+$(AUT_CFG): \
+	appUtil/makefile.in appUtil/appUtilConfig.h.in $(AUT_DEP)
 	cd appUtil && ./configure $(CONFIGURE_OPTIONS)
 
 ####
-lib/textEncoding.a: textEncoding/makefile
+TXE_DEP= \
+	$(AUT_CFG) \
+	Makefile
+TXE_CFG= textEncoding/textEncodingConfig.h
+
+lib/textEncoding.a: $(TXE_CFG) lib
 	cd textEncoding && $(MAKE)
 
-textEncoding/makefile: textEncoding/makefile.in Makefile
+$(TXE_CFG): \
+	textEncoding/makefile.in textEncoding/textEncodingConfig.h.in $(TXE_DEP)
 	cd textEncoding && ./configure $(CONFIGURE_OPTIONS)
 
 ####
-lib/utilPs.a: utilPs/makefile
+UPS_DEP= \
+	$(AUT_CFG) $(TXE_CFG) \
+	Makefile
+UPS_CFG= utilPs/utilPsConfig.h
+
+lib/utilPs.a: $(UPS_CFG) lib
 	cd utilPs && $(MAKE)
 
-utilPs/makefile: utilPs/makefile.in Makefile
+$(UPS_CFG): utilPs/makefile.in utilPs/utilPsConfig.h.in $(UPS_DEP)
 	cd utilPs && ./configure $(CONFIGURE_OPTIONS)
 
 ####
-lib/docFont.a: docFont/makefile
+DFT_DEP= \
+	$(AUT_CFG) $(TXE_CFG) \
+	$(UPS_CFG) \
+	Makefile
+DFT_CFG= docFont/docFontConfig.h
+
+lib/docFont.a: $(DFT_CFG) lib
 	cd docFont && $(MAKE)
 
-docFont/makefile: docFont/makefile.in Makefile
+$(DFT_CFG): docFont/makefile.in docFont/docFontConfig.h.in $(DFT_DEP)
 	cd docFont && ./configure $(CONFIGURE_OPTIONS)
 
 ####
-lib/appFrame.a: appFrame/makefile
+IND_DEP= \
+	$(AUT_CFG) $(TXE_CFG) \
+	\
+	$(DFT_CFG) $(UPS_CFG) \
+	Makefile
+IND_CFG= ind/indConfig.h
+
+lib/ind.a: $(IND_CFG) lib
+	cd ind && $(MAKE)
+
+$(IND_CFG): ind/makefile.in ind/indConfig.h.in $(IND_DEP)
+	cd ind && ./configure $(CONFIGURE_OPTIONS)
+
+####
+BIM_DEP= \
+	$(AUT_CFG) $(UPSE_CFG) \
+	\
+	$(TXE_CFG) \
+	Makefile
+BIM_CFG= bitmap/bitmapConfig.h
+
+lib/bitmap.a: $(BIM_CFG) lib
+	cd bitmap && $(MAKE)
+
+$(BIM_CFG): bitmap/makefile.in bitmap/bitmapConfig.h.in $(BIM_DEP)
+	cd bitmap && ./configure $(CONFIGURE_OPTIONS)
+
+####
+DRM_DEP= \
+	$(AUT_CFG) $(TXE_CFG) \
+	$(DFT_CFG) $(UPS_CFG) \
+	$(BIM_CFG) \
+	\
+	$(IND_CFG) \
+	Makefile
+DRM_CFG= drawMeta/drawMetaConfig.h
+
+lib/drawMeta.a: $(DRM_CFG) lib
+	cd drawMeta && $(MAKE)
+
+$(DRM_CFG): drawMeta/makefile.in drawMeta/drawMetaConfig.h.in $(DRM_DEP)
+	cd drawMeta && ./configure $(CONFIGURE_OPTIONS)
+
+####
+DBA_DEP= \
+	$(AUT_CFG) $(TXE_CFG) \
+	$(DFT_CFG) $(UPS_CFG) \
+	$(BIM_CFG) $(DRM_CFG) \
+	\
+	$(IND_CFG) \
+	Makefile
+DBA_CFG= docBase/docBaseConfig.h
+
+lib/docBase.a: $(DBA_CFG) lib
+	cd docBase && $(MAKE)
+
+$(DBA_CFG): docBase/makefile.in docBase/docBaseConfig.h.in $(DBA_DEP)
+	cd docBase && ./configure $(CONFIGURE_OPTIONS)
+
+####
+DBU_DEP= \
+	$(AUT_CFG) $(TXE_CFG) \
+	$(DFT_CFG) $(UPS_CFG) \
+	$(DBA_CFG) \
+	\
+	$(BIM_CFG) $(IND_CFG) \
+	Makefile
+DBU_CFG= docBuf/docBufConfig.h
+
+lib/docBuf.a: $(DBU_CFG) lib
+	cd docBuf && $(MAKE)
+
+$(DBU_CFG): docBuf/makefile.in docBuf/docBufConfig.h.in $(DBU_DEP)
+	cd docBuf && ./configure $(CONFIGURE_OPTIONS)
+
+####
+DRT_DEP= \
+	$(AUT_CFG) $(TXE_CFG) \
+	$(DFT_CFG) $(UPS_CFG) \
+	$(BIM_CFG) \
+	$(DBA_CFG) $(DBU_CFG) \
+	\
+	$(IND_CFG) \
+	Makefile
+DRT_CFG= docRtf/docRtfConfig.h
+
+lib/docRtf.a: $(DRT_CFG) lib
+	cd docRtf && $(MAKE)
+
+$(DRT_CFG): docRtf/makefile.in docRtf/docRtfConfig.h.in $(DRT_DEP)
+	cd docRtf && ./configure $(CONFIGURE_OPTIONS)
+
+####
+DED_DEP= \
+	$(AUT_CFG) $(TXE_CFG) \
+	$(DFT_CFG) $(UPS_CFG) \
+	$(BIM_CFG) \
+	$(DBA_CFG) $(DBU_CFG) \
+	$(DRT_CFG) \
+	\
+	$(IND_CFG) \
+	Makefile
+DED_CFG= docEdit/docEditConfig.h
+
+lib/docEdit.a: $(DED_CFG) lib
+	cd docEdit && $(MAKE)
+
+$(DED_CFG): docEdit/makefile.in docEdit/docEditConfig.h.in $(DED_DEP)
+	cd docEdit && ./configure $(CONFIGURE_OPTIONS)
+
+####
+DLY_DEP= \
+	$(AUT_CFG) $(TXE_CFG) \
+	$(DFT_CFG) $(UPS_CFG) \
+	$(BIM_CFG) $(DRM_CFG) \
+	$(DBA_CFG) $(DBU_CFG) \
+	$(DED_CFG) \
+	\
+	$(IND_CFG) \
+	Makefile
+DLY_CFG= docLayout/docLayoutConfig.h
+
+lib/docLayout.a: $(DLY_CFG) lib
+	cd docLayout && $(MAKE)
+
+$(DLY_CFG): docLayout/makefile.in docLayout/docLayoutConfig.h.in $(DLY_DEP)
+	cd docLayout && ./configure $(CONFIGURE_OPTIONS)
+
+####
+DHT_DEP= \
+	$(AUT_CFG) $(TXE_CFG) \
+	$(DFT_CFG) $(UPS_CFG) \
+	$(BIM_CFG) $(DRM_CFG) \
+	$(DBA_CFG) $(DBU_CFG) \
+	$(DLY_CFG) $(DED_CFG) \
+	\
+	$(IND_CFG) \
+	Makefile
+DHT_CFG= docHtml/docHtmlConfig.h
+
+lib/docHtml.a: $(DHT_CFG) lib
+	cd docHtml && $(MAKE)
+
+$(DHT_CFG): docHtml/makefile.in docHtml/docHtmlConfig.h.in $(DHT_DEP)
+	cd docHtml && ./configure $(CONFIGURE_OPTIONS)
+
+####
+GUB_DEP= \
+	$(AUT_CFG) $(TXE_CFG) \
+	$(DFT_CFG) $(UPS_CFG) \
+	$(BIM_CFG) $(DRM_CFG) \
+	$(IND_CFG) \
+	\
+	$(DBA_CFG) $(DBU_CFG) \
+	$(DLY_CFG) $(DED_CFG) \
+	Makefile
+GUB_CFG= guiBase/guiBaseConfig.h
+
+lib/guiBase.a: $(GUB_CFG) lib
+	cd guiBase && $(MAKE)
+
+$(GUB_CFG): guiBase/makefile.in guiBase/guiBaseConfig.h.in $(GUB_DEP)
+	cd guiBase && ./configure $(CONFIGURE_OPTIONS)
+
+####
+APF_DEP= \
+	$(AUT_CFG) $(TXE_CFG) \
+	$(DFT_CFG) $(UPS_CFG) \
+	$(BIM_CFG) $(DRM_CFG) \
+	$(IND_CFG) $(GUB_CFG) \
+	\
+	$(DBA_CFG) $(DBU_CFG) \
+	$(DLY_CFG) $(DED_CFG) \
+	Makefile
+APF_CFG= appFrame/appFrameConfig.h
+
+lib/appFrame.a: $(APF_CFG) lib
 	cd appFrame && $(MAKE)
 
-appFrame/makefile: appFrame/makefile.in Makefile
+$(APF_CFG): appFrame/makefile.in appFrame/appFrameConfig.h.in $(APF_DEP)
 	cd appFrame && ./configure $(CONFIGURE_OPTIONS)
 
 ####
-lib/drawMeta.a: drawMeta/makefile
-	cd drawMeta && $(MAKE)
+APT_DEP= \
+	$(AUT_CFG) $(TXE_CFG) \
+	$(DFT_CFG) $(UPS_CFG) \
+	$(BIM_CFG) $(DRM_CFG) \
+	$(IND_CFG) $(GUB_CFG) \
+	$(APF_CFG) \
+	$(DBA_CFG) $(DBU_CFG) \
+	$(DLY_CFG) $(DED_CFG) \
+	Makefile
+APT_CFG= appTools/appToolsConfig.h
 
-drawMeta/makefile: drawMeta/makefile.in Makefile
-	cd drawMeta && ./configure $(CONFIGURE_OPTIONS)
+lib/appTools.a: $(APT_CFG) lib
+	cd appTools && $(MAKE)
+
+$(APT_CFG): appTools/makefile.in appTools/appToolsConfig.h.in $(APT_DEP)
+	cd appTools && ./configure $(CONFIGURE_OPTIONS)
+
+####
+TER_DEP= \
+	$(AUT_CFG) $(TXE_CFG) \
+	$(DFT_CFG) $(UPS_CFG) \
+	$(BIM_CFG) $(DRM_CFG) \
+	$(IND_CFG) $(GUB_CFG) \
+	$(APF_CFG) $(APT_DEB) \
+	$(DBA_CFG) $(DBU_CFG) \
+	$(DLY_CFG) $(DED_CFG) \
+	Makefile
+TER_CFG= tedResource/tedResourceConfig.h
+
+lib/tedResource.a: $(TER_CFG) lib
+	cd tedResource && $(MAKE)
+
+$(TER_CFG): tedResource/makefile.in tedResource/tedResourceConfig.h.in $(TER_DEP)
+	cd tedResource && ./configure $(CONFIGURE_OPTIONS)
+
+####
+TET_DEP= \
+	$(AUT_CFG) $(TXE_CFG) \
+	$(DFT_CFG) $(UPS_CFG) \
+	$(BIM_CFG) $(DRM_CFG) \
+	$(IND_CFG) $(GUB_CFG) \
+	$(DBA_CFG) $(DBU_CFG) \
+	$(DLY_CFG) $(DED_CFG) \
+	$(APF_CFG) $(APT_CFG) \
+	$(TER_CFG) \
+	tedTools/tedToolsConfig.h
+TET_CFG= tedTools/tedToolsConfig.h
+
+lib/tedTools.a: $(TET_CFG) lib
+	cd tedTools && $(MAKE)
+
+$(TET_CFG): tedTools/makefile.in tedTools/tedToolsConfig.h.in $(TET_DEP)
+	cd tedTools && ./configure $(CONFIGURE_OPTIONS)
 
 ####
 ####	Compile and link Ted
 ####
+TED_DEP= \
+	$(AUT_CFG) $(TXE_CFG) \
+	$(DFT_CFG) $(UPS_CFG) \
+	$(BIM_CFG) $(DRM_CFG) \
+	$(IND_CFG) $(GUB_CFG) \
+	$(DBA_CFG) $(DBU_CFG) \
+	$(DLY_CFG) $(DED_CFG) \
+	$(DRT_CFG) $(DHT_CFG) \
+	$(APF_CFG) $(APT_CFG) \
+	$(TER_CFG) \
+	Makefile
+TED_CFG= Ted/tedConfig.h
 
-Ted/Ted.static: tedlibs Ted/makefile
+Ted/Ted.static: tedlibs $(TED_CFG) Ted/Ted
 	cd Ted && $(MAKE) Ted.static
 
-Ted/Ted: tedlibs Ted/makefile
+Ted/Ted: tedlibs $(TED_CFG)
 	cd Ted && $(MAKE)
 
-Ted/makefile: Ted/makefile.in Makefile
+$(TED_CFG): Ted/makefile.in Ted/tedConfig.h.in $(TED_DEP)
 	cd Ted && ./configure $(CONFIGURE_OPTIONS)
 
 ####
@@ -246,7 +458,7 @@ package: compile tedPackage/makefile
 	: To install Ted, you can now run 'make install' AS ROOT
 
 package.shared: compile.shared tedPackage/makefile
-	cd tedPackage && make package.shared
+	cd tedPackage && $(MAKE) package.shared
 	:
 	: Dynamically linked package ready.
 	: To install Ted, you can now run 'make install' AS ROOT
@@ -288,24 +500,24 @@ freebsdpkg: compile tedPackage/makefile
 	@echo : To install Ted run '(AS ROOT)': pkg_add tedPackage/*.freebsdpkg.tgz
 
 tedPackage/arch-PKGBUILD: tedPackage/makefile
-	cd tedPackage && make arch-PKGBUILD
+	cd tedPackage && $(MAKE) arch-PKGBUILD
 
 ####
 ####	Install Ted from the package just built
 ####
 
 install: package
-	( cd tedPackage && make install )
+	( cd tedPackage && $(MAKE) install && $(MAKE) postinstall )
 
 install.shared: package.shared
-	( cd tedPackage && make install )
+	( cd tedPackage && $(MAKE) install && $(MAKE) postinstall )
 
 ####
 ####	Install Ted for yourself
 ####
 
 private: compile tedPackage/makefile
-	( cd tedPackage && make private )
+	( cd tedPackage && $(MAKE) private )
 
 ####
 ####	Cleanup
@@ -313,7 +525,7 @@ private: compile tedPackage/makefile
 
 clean:
 	rm -fr	lib
-	rm -f	*/config.cache */config.log */config.status */confdefs.h
+	rm -fr	*/config.cache */config.log */config.status */confdefs.h autom4te.cache
 	rm -fr	*/autom4te.cache
 	rm -f	*/*Config.h
 	rm -f	*/makefile

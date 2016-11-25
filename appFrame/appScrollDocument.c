@@ -7,18 +7,20 @@
 #   include	"appFrameConfig.h"
 
 #   include	<stddef.h>
-#   include	<stdio.h>
 
-#   include	"appFrame.h"
-#   include	"appGuiKeys.h"
-#   include	"guiWidgetDrawingSurface.h"
-#   include	"guiDrawingWidget.h"
+#   if ! USE_HEADLESS
+
+#   include	"appEditApplication.h"
+#   include	"appEditDocument.h"
+#   include	"appGuiDocument.h"
+#   include	"appDocument.h"
+#   include	"appDocFront.h"
+#   include	<guiKeys.h>
+#   include	<guiWidgetDrawingSurface.h>
+#   include	<guiDrawingWidget.h>
 #   include	<geoUnits.h>
 
 #   include	<appDebugon.h>
-
-#   define	WHEEL_STEP	10
-#   define	BAR_STEP	20
 
 /************************************************************************/
 /*									*/
@@ -58,9 +60,6 @@ static void appDocScrollVertically(	EditDocument *		ed,
 	    drSrc.drY0= scrolledY;
 	    drSrc.drY1= high- 1;
 
-	    /*
-	    drawMoveArea( ds, 0, scrolledY, wide, high- scrolledY, 0, 0 );
-	    */
 	    drawMoveArea( ds, 0, 0, &drSrc );
 
 	    drClip.drY0= ed->edVisibleRect.drY1- scrolledY;
@@ -81,9 +80,6 @@ static void appDocScrollVertically(	EditDocument *		ed,
 	    drSrc.drY0= 0;
 	    drSrc.drY1= high+ scrolledY- 1;
 
-	    /*
-	    drawMoveArea( ds, 0, 0, wide, high+ scrolledY, 0, -scrolledY );
-	    */
 	    drawMoveArea( ds, 0, -scrolledY, &drSrc );
 
 	    drClip.drY0= ed->edVisibleRect.drY0;
@@ -103,7 +99,7 @@ static void appDocScrollVertically(	EditDocument *		ed,
 
 #   if 1
     drawSetClipRect( ds, &drScreen );
-    (*ea->eaDrawRectangle)( ed, &drClip, ox, oy );
+    (*ea->eaDrawRectangle)( ed, &drClip );
     drawNoClipping( ds );
 #   else
     guiExposeDrawingWidgetRectangle( dw->dwWidget, &drScreen );
@@ -201,7 +197,7 @@ static void appDocScrollHorizontally(	EditDocument *		ed,
 
 #   if 1
     drawSetClipRect( ds, &drScreen );
-    (*ea->eaDrawRectangle)( ed, &drClip, ox, oy );
+    (*ea->eaDrawRectangle)( ed, &drClip );
     drawNoClipping( ds );
 #   else
     guiExposeDrawingWidgetRectangle( dw->dwWidget, &drScreen );
@@ -233,7 +229,9 @@ void appDocScrollToY(	EditDocument *		ed,
     ed->edVisibleRect.drY0 += scrolledY;
     ed->edVisibleRect.drY1 += scrolledY;
 
+    ed->edInProgrammaticChange++;
     appDocScrollVertically( ed, scrolledY );
+    ed->edInProgrammaticChange--;
 
     return;
     }
@@ -249,7 +247,9 @@ void appDocScrollToX(	EditDocument *		ed,
     ed->edVisibleRect.drX0 += scrolledX;
     ed->edVisibleRect.drX1 += scrolledX;
 
+    ed->edInProgrammaticChange++;
     appDocScrollHorizontally( ed, scrolledX );
+    ed->edInProgrammaticChange--;
 
     return;
     }
@@ -257,17 +257,25 @@ void appDocScrollToX(	EditDocument *		ed,
 APP_SCROLLBAR_CALLBACK_H( appDocVerticalScrollbarCallback, w, voided, e )
     {
     EditDocument *	ed= (EditDocument *)voided;
-    int			y= appGuiGetScrollbarValueFromCallback( w, e );
 
-    appDocScrollToY( ed, y );
+    if  ( ! ed->edInProgrammaticChange )
+	{
+	int	y= guiGetScrollbarValueFromCallback( w, e );
+
+	appDocScrollToY( ed, y );
+	}
     }
 
 APP_SCROLLBAR_CALLBACK_H( appDocHorizontalScrollbarCallback, w, voided, e )
     {
     EditDocument *	ed= (EditDocument *)voided;
-    int			x= appGuiGetScrollbarValueFromCallback( w, e );
 
-    appDocScrollToX( ed, x );
+    if  ( ! ed->edInProgrammaticChange )
+	{
+	int	x= guiGetScrollbarValueFromCallback( w, e );
+
+	appDocScrollToX( ed, x );
+	}
     }
 
 /************************************************************************/
@@ -279,29 +287,94 @@ APP_SCROLLBAR_CALLBACK_H( appDocHorizontalScrollbarCallback, w, voided, e )
 /*									*/
 /************************************************************************/
 
-void appScrollToRectangle(	EditDocument *			ed,
-				const DocumentRectangle *	dr,
-				int *				pScrolledX,
-				int *				pScrolledY )
+
+static void appScrollDocumentToXY( int *		pScrolledX,
+				int *			pScrolledY,
+				EditDocument *		ed,
+				int			oox,
+				int			nox,
+				int			hSliderSize,
+				int			ooy,
+				int			noy,
+				int			vSliderSize )
     {
-    int		sliderSize;
+    int		scrolledX= nox- oox;
+    int		scrolledY= noy- ooy;
 	
+#   if USE_GTK
+    int		changed= 0;
+#   endif
+
+    if  ( noy != ooy )
+	{
+	ed->edInProgrammaticChange++;
+	guiSetScrollbarValues( ed->edVerticalScrollbar, noy, vSliderSize );
+	ed->edInProgrammaticChange--;
+#	if USE_GTK
+	changed= 1;
+#	endif
+	}
+
+    if  ( nox != oox )
+	{
+	ed->edInProgrammaticChange++;
+	guiSetScrollbarValues( ed->edHorizontalScrollbar, nox, hSliderSize );
+	ed->edInProgrammaticChange--;
+#	if USE_GTK
+	changed= 1;
+#	endif
+	}
+
+    ed->edVisibleRect.drX0 += scrolledX;
+    ed->edVisibleRect.drY0 += scrolledY;
+    ed->edVisibleRect.drX1 += scrolledX;
+    ed->edVisibleRect.drY1 += scrolledY;
+
+    if  ( scrolledX != 0 )
+	{
+	ed->edInProgrammaticChange++;
+	appDocScrollHorizontally( ed, scrolledX );
+	ed->edInProgrammaticChange--;
+	}
+    if  ( scrolledY != 0 )
+	{
+	ed->edInProgrammaticChange++;
+	appDocScrollVertically( ed, scrolledY );
+	ed->edInProgrammaticChange--;
+	}
+
+#   if USE_GTK
+    if  ( changed )
+	{ guiExposeDrawingWidget( ed->edDocumentWidget.dwWidget );	}
+#   endif
+
+    if  ( pScrolledX )
+	{ *pScrolledX= scrolledX;	}
+    if  ( pScrolledY )
+	{ *pScrolledY= scrolledY;	}
+
+    return;
+    }
+
+void appScrollToRectangle(	int *				pScrolledX,
+				int *				pScrolledY,
+				EditDocument *			ed,
+				const DocumentRectangle *	dr )
+    {
+    int		vSliderSize;
+    int		hSliderSize;
+
     int		oox= ed->edVisibleRect.drX0;
     int		ooy= ed->edVisibleRect.drY0;
-    int		nox;
-    int		noy;
-
-    int		changed= 0;
+    int		nox= oox;
+    int		noy= ooy;
 
     int		visWide= ed->edVisibleRect.drX1- ed->edVisibleRect.drX0+ 1;
     int		visHigh= ed->edVisibleRect.drY1- ed->edVisibleRect.drY0+ 1;
     int		fullWide= ed->edFullRect.drX1- ed->edFullRect.drX0+ 1;
     int		fullHigh= ed->edFullRect.drY1- ed->edFullRect.drY0+ 1;
 
-    nox= oox;
-    noy= ooy;
-
-    appGuiGetScrollbarValues( &noy, &sliderSize, ed->edVerticalScrollbar );
+    guiGetScrollbarValues( &noy, &vSliderSize, ed->edVerticalScrollbar );
 
     if  ( dr->drY0 <= ed->edVisibleRect.drY0	||
 	  dr->drY1 >= ed->edVisibleRect.drY1	)
@@ -314,17 +387,7 @@ void appScrollToRectangle(	EditDocument *			ed,
 	    { noy= 0;	 }
 	}
 
-    if  ( noy != ooy )
-	{
-	appGuiSetScrollbarValues( ed->edVerticalScrollbar, noy, sliderSize );
-	changed= 1;
-	}
-
-    appGuiGetScrollbarValues( &nox, &sliderSize, ed->edHorizontalScrollbar );
-    /*
-    if  ( nox != ed->edVisibleRect.drX0 )
-	{ LLDEB(nox,ed->edVisibleRect.drX0);	}
-    */
+    guiGetScrollbarValues( &nox, &hSliderSize, ed->edHorizontalScrollbar );
 
     if  ( dr->drX0 <= ed->edVisibleRect.drX0	||
 	  dr->drX1 >= ed->edVisibleRect.drX1	)
@@ -337,39 +400,63 @@ void appScrollToRectangle(	EditDocument *			ed,
 	    { nox= 0;	 }
 	}
 
-    if  ( nox != oox )
-	{
-	appGuiSetScrollbarValues( ed->edHorizontalScrollbar,
-							nox, sliderSize );
-	changed= 1;
-	}
-
-    {
-    int		scrolledX= nox- oox;
-    int		scrolledY= noy- ooy;
-
-    ed->edVisibleRect.drX0 += scrolledX;
-    ed->edVisibleRect.drY0 += scrolledY;
-    ed->edVisibleRect.drX1 += scrolledX;
-    ed->edVisibleRect.drY1 += scrolledY;
-
-    if  ( scrolledX != 0 )
-	{ appDocScrollHorizontally( ed, scrolledX );	}
-    if  ( scrolledY != 0 )
-	{ appDocScrollVertically( ed, scrolledY );	}
-
-#   ifdef USE_GTK
-    if  ( changed )
-	{ guiExposeDrawingWidget( ed->edDocumentWidget.dwWidget );	}
-#   endif
-
-    if  ( pScrolledX )
-	{ *pScrolledX= scrolledX;	}
-    if  ( pScrolledY )
-	{ *pScrolledY= scrolledY;	}
-    }
+    appScrollDocumentToXY( pScrolledX, pScrolledY, ed,
+					oox, nox, hSliderSize,
+					ooy, noy, vSliderSize );
 
     return;
+    }
+
+void appScrollToPosition(	int *				pScrolledX,
+				int *				pScrolledY,
+				EditDocument *			ed,
+				int				x,
+				int				y )
+    {
+    int		vSliderSize;
+    int		hSliderSize;
+
+    int		oox= ed->edVisibleRect.drX0;
+    int		ooy= ed->edVisibleRect.drY0;
+    int		nox= oox;
+    int		noy= ooy;
+
+    int		visWide= ed->edVisibleRect.drX1- ed->edVisibleRect.drX0+ 1;
+    int		visHigh= ed->edVisibleRect.drY1- ed->edVisibleRect.drY0+ 1;
+    int		fullWide= ed->edFullRect.drX1- ed->edFullRect.drX0+ 1;
+    int		fullHigh= ed->edFullRect.drY1- ed->edFullRect.drY0+ 1;
+
+    guiGetScrollbarValues( &noy, &vSliderSize, ed->edVerticalScrollbar );
+
+    if  ( y <= ed->edVisibleRect.drY0 )
+	{ noy= y;	}
+    else{
+	if  ( y >= ed->edVisibleRect.drY1 )
+	    { noy= y- visHigh+ 1;	}
+	}
+
+    if  ( noy > fullHigh- visHigh )
+	{ noy=  fullHigh- visHigh;	}
+    if  ( noy < 0 )
+	{ noy= 0;	 }
+
+    guiGetScrollbarValues( &nox, &hSliderSize, ed->edHorizontalScrollbar );
+
+    if  ( x <= ed->edVisibleRect.drX0 )
+	{ nox= x;	}
+    else{
+	if  ( x >= ed->edVisibleRect.drX1 )
+	    { nox= x- visWide+ 1;	}
+	}
+
+    if  ( nox > fullWide- visWide )
+	{ nox=  fullWide- visWide;	}
+    if  ( nox < 0 )
+	{ nox= 0;	 }
+
+    appScrollDocumentToXY( pScrolledX, pScrolledY, ed,
+					oox, nox, hSliderSize,
+					ooy, noy, vSliderSize );
     }
 
 /************************************************************************/
@@ -486,9 +573,9 @@ static void appDocAdaptToWidgetSize(	EditDocument *	ed,
     return;
     }
 
-void appDocumentRulerWidth(	EditApplication *	ea,
-				EditDocument *		ed )
+void appDocumentRulerWidth(	struct EditDocument *		ed )
     {
+    EditApplication *	ea= ed->edApplication;
     int			mult;
     const double	pixPerMM= TWIPS_PER_MM* ea->eaPixelsPerTwip;
 
@@ -557,7 +644,7 @@ void appMouseWheelDown(		EditDocument *	ed )
     int			sliderSize;
 
     sliderSize= ed->edVisibleRect.drY1- ed->edVisibleRect.drY0+ 1;
-    noy += ( sliderSize+ WHEEL_STEP- 1 )/ WHEEL_STEP;
+    noy += ( sliderSize+ SCROLL_WHEEL_STEP- 1 )/ SCROLL_WHEEL_STEP;
 
     if  ( noy > ed->edFullRect.drY1- sliderSize )
 	{ noy=  ed->edFullRect.drY1- sliderSize;	}
@@ -572,7 +659,7 @@ void appMouseWheelDown(		EditDocument *	ed )
 
     appDocScrollVertically( ed, scrolledY );
 
-    appGuiSetScrollbarValues( ed->edVerticalScrollbar, noy, sliderSize );
+    guiSetScrollbarValues( ed->edVerticalScrollbar, noy, sliderSize );
     }
 
 void appMouseWheelUp(		EditDocument *	ed )
@@ -584,7 +671,7 @@ void appMouseWheelUp(		EditDocument *	ed )
     int			sliderSize;
 
     sliderSize= ed->edVisibleRect.drY1- ed->edVisibleRect.drY0+ 1;
-    noy -= ( sliderSize+ WHEEL_STEP- 1 )/ WHEEL_STEP;
+    noy -= ( sliderSize+ SCROLL_WHEEL_STEP- 1 )/ SCROLL_WHEEL_STEP;
 
     if  ( noy < 0 )
 	{ noy=  0;	}
@@ -599,7 +686,7 @@ void appMouseWheelUp(		EditDocument *	ed )
 
     appDocScrollVertically( ed, scrolledY );
 
-    appGuiSetScrollbarValues( ed->edVerticalScrollbar, noy, sliderSize );
+    guiSetScrollbarValues( ed->edVerticalScrollbar, noy, sliderSize );
     }
 
 APP_EVENT_HANDLER_H( appScrollEventHandler, w, voided, scrollEvent )
@@ -609,7 +696,7 @@ APP_EVENT_HANDLER_H( appScrollEventHandler, w, voided, scrollEvent )
 
     switch( direction )
 	{
-#	ifdef USE_MOTIF
+#	if USE_MOTIF
 	case Button1:
 	case Button2:
 	case Button3:
@@ -632,13 +719,14 @@ APP_EVENT_HANDLER_H( appScrollEventHandler, w, voided, scrollEvent )
     return;
     }
 
-
 void appDocSetScrollbarValues(	EditDocument *	ed )
     {
     int			sliderSize;
     int			maximum;
     int			minimum;
     int			value;
+
+    /******/
 
     sliderSize= ed->edVisibleRect.drY1- ed->edVisibleRect.drY0+ 1;
     minimum= ed->edFullRect.drY0;
@@ -651,28 +739,12 @@ void appDocSetScrollbarValues(	EditDocument *	ed )
     if  ( value+ sliderSize > maximum )
 	{ value= maximum- sliderSize; }
 
-#   ifdef USE_MOTIF
-    XtVaSetValues( ed->edVerticalScrollbar,
-		XmNminimum,		minimum,
-		XmNmaximum,		maximum,
-		XmNvalue,		value,
-		XmNsliderSize,		sliderSize,
-		XmNpageIncrement,	( 9* sliderSize+ 9 )/10,
-		XmNincrement,		( sliderSize+ BAR_STEP- 1 )/ BAR_STEP,
-		NULL );
-#   endif
+    ed->edInProgrammaticChange++;
+    appDocSetVerticalScrollbarValues( ed,
+				minimum, maximum, value, sliderSize );
+    ed->edInProgrammaticChange--;
 
-#   ifdef USE_GTK
-    ed->edVerticalAdjustment->lower= minimum;
-    ed->edVerticalAdjustment->upper= maximum;
-    ed->edVerticalAdjustment->value= value;
-    ed->edVerticalAdjustment->page_size= sliderSize;
-    ed->edVerticalAdjustment->page_increment= ( 9* sliderSize+ 9 )/10;
-    ed->edVerticalAdjustment->step_increment=
-				    ( sliderSize+ BAR_STEP- 1 )/ BAR_STEP;
-
-    gtk_adjustment_changed( ed->edVerticalAdjustment );
-#   endif
+    /******/
 
     sliderSize= ed->edVisibleRect.drX1- ed->edVisibleRect.drX0+ 1;
     minimum= ed->edFullRect.drX0;
@@ -682,29 +754,12 @@ void appDocSetScrollbarValues(	EditDocument *	ed )
 	{ maximum= ed->edVisibleRect.drX1+ 1;	}
     else{ maximum= ed->edFullRect.drX1+ 1;	}
 
-#   ifdef USE_MOTIF
-    XtVaSetValues( ed->edHorizontalScrollbar,
-			XmNminimum,	minimum,
-			XmNmaximum,	maximum,
-			XmNvalue,	value,
-			XmNsliderSize,	sliderSize,
-			NULL );
-#   endif
-
-#   ifdef USE_GTK
-    ed->edHorizontalAdjustment->lower= minimum;
-    ed->edHorizontalAdjustment->upper= maximum;
-    ed->edHorizontalAdjustment->value= value;
-    ed->edHorizontalAdjustment->page_size= sliderSize;
-
-    /* Otherwise, the contols at the end are inactive: */
-    ed->edHorizontalAdjustment->page_increment= ( 9* sliderSize+ 9 )/10;
-    ed->edHorizontalAdjustment->step_increment=
-				    ( sliderSize+ BAR_STEP- 1 )/ BAR_STEP;
-
-    gtk_adjustment_changed( ed->edHorizontalAdjustment );
-#   endif
+    ed->edInProgrammaticChange++;
+    appDocSetHorizontalScrollbarValues( ed,
+				minimum, maximum, value, sliderSize );
+    ed->edInProgrammaticChange--;
 
     return;
     }
 
+#   endif

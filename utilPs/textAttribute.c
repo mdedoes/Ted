@@ -17,7 +17,7 @@
 /*									*/
 /************************************************************************/
 
-void utilInitTextAttribute(	TextAttribute *	ta	)
+void textInitTextAttribute(	TextAttribute *	ta	)
     {
     ta->taFontNumber= -1;
     ta->taFontSizeHalfPoints= 0;
@@ -33,6 +33,9 @@ void utilInitTextAttribute(	TextAttribute *	ta	)
     ta->taHasStrikethrough= 0;
     ta->taCapitals= 0;
     ta->taBaselineShiftHalfPoints= 0;
+
+    ta->taLocaleId= DOClocaleNOTSET;
+    ta->taNoProof= 0;
     }
 
 /************************************************************************/
@@ -41,7 +44,7 @@ void utilInitTextAttribute(	TextAttribute *	ta	)
 /*									*/
 /************************************************************************/
 
-int utilSetTextProperty(		TextAttribute *		ta,
+int textSetTextProperty(		TextAttribute *		ta,
 					int			prop,
 					int			arg )
     {
@@ -103,6 +106,16 @@ int utilSetTextProperty(		TextAttribute *		ta,
 	    ta->taBaselineShiftHalfPoints= arg;
 	    break;
 
+	case TApropLOCALE:
+	    ta->taLocaleId= arg;
+	    break;
+
+	case TApropNOPROOF:
+	    ta->taNoProof= arg != 0;
+	    break;
+
+	/*****/
+
 	case TAprop_BASELINE_SHIFT_DOWN:
 	    ta->taBaselineShiftHalfPoints= -arg;
 	    break;
@@ -120,7 +133,7 @@ int utilSetTextProperty(		TextAttribute *		ta,
 /*									*/
 /************************************************************************/
 
-int utilGetTextProperty(		const TextAttribute *	ta,
+int textGetTextProperty(		const TextAttribute *	ta,
 					int			prop )
     {
     switch( prop )
@@ -168,6 +181,16 @@ int utilGetTextProperty(		const TextAttribute *	ta,
 	    return ta->taBaselineShiftHalfPoints;
 	    break;
 
+	case TApropLOCALE:
+	    return ta->taLocaleId;
+	    break;
+
+	case TApropNOPROOF:
+	    return ta->taNoProof;
+	    break;
+
+	/*******/
+
 	case TAprop_BASELINE_SHIFT_DOWN:
 	    return -ta->taBaselineShiftHalfPoints;
 	    break;
@@ -183,7 +206,7 @@ int utilGetTextProperty(		const TextAttribute *	ta,
 /*									*/
 /************************************************************************/
 
-void utilAttributeDifference(		PropertyMask *		pDifMask,
+void textAttributeDifference(		PropertyMask *		pDifMask,
 					const TextAttribute *	ta1,
 					const PropertyMask *	cmpMask,
 					const TextAttribute *	ta2 )
@@ -197,8 +220,8 @@ void utilAttributeDifference(		PropertyMask *		pDifMask,
 	{
 	if  ( ! cmpMask || PROPmaskISSET( cmpMask, prop ) )
 	    {
-	    int	val1= utilGetTextProperty( ta1, prop );
-	    int	val2= utilGetTextProperty( ta2, prop );
+	    int	val1= textGetTextProperty( ta1, prop );
+	    int	val2= textGetTextProperty( ta2, prop );
 
 	    if  ( val1 != val2 )
 		{ PROPmaskADD( &difMask, prop ); }
@@ -217,7 +240,7 @@ void utilAttributeDifference(		PropertyMask *		pDifMask,
 /*									*/
 /************************************************************************/
 
-void utilUpdateTextAttribute(		PropertyMask *		pDoneMask,
+void textUpdateTextAttribute(		PropertyMask *		pDoneMask,
 					TextAttribute *		ta,
 					const PropertyMask *	taSetMask,
 					const TextAttribute *	taSet )
@@ -231,12 +254,12 @@ void utilUpdateTextAttribute(		PropertyMask *		pDoneMask,
 	{
 	if  ( ! taSetMask || PROPmaskISSET( taSetMask, prop ) )
 	    {
-	    int	to= utilGetTextProperty( ta, prop );
-	    int	from= utilGetTextProperty( taSet, prop );
+	    int	to= textGetTextProperty( ta, prop );
+	    int	from= textGetTextProperty( taSet, prop );
 
 	    if  ( to != from )
 		{
-		utilSetTextProperty( ta, prop, from );
+		textSetTextProperty( ta, prop, from );
 		PROPmaskADD( &doneMask, prop );
 		}
 	    }

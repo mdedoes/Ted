@@ -7,13 +7,27 @@
 #   ifndef	DOC_RTF_TRACE_H
 #   define	DOC_RTF_TRACE_H
 
-#   include	<stdio.h>
+struct tm;
 
-#   include	<docBuf.h>
-#   include	<docNoteProperties.h>
-#   include	"docEditOperation.h"
-#   include	"docEditStep.h"
-#   include	"docEditTrace.h"
+struct PictureProperties;
+struct DocumentField;
+struct RowProperties;
+struct CellProperties;
+struct ParagraphProperties;
+struct SectionProperties;
+struct DocumentProperties;
+struct TextAttribute;
+struct EditStep;
+struct EditOperation;
+struct DocumentSelection;
+struct SelectionScope;
+struct DocumentList;
+struct NoteProperties;
+struct EditTrace;
+struct PropertyMask;
+struct DocumentTree;
+struct BufferDocument;
+struct MemoryBuffer;
 
 /************************************************************************/
 /*									*/
@@ -22,126 +36,125 @@
 /************************************************************************/
 
 extern int docRtfTraceOldContents(
-				DocumentSelection *		ds,
-				const EditOperation *		eo,
+				struct DocumentSelection *	ds,
+				const struct EditOperation *	eo,
 				int				level,
 				unsigned int			flags );
 
 extern int docRtfTraceOldContentsLow(
-				const EditOperation *		eo,
-				const DocumentSelection *	ds,
+				const struct EditOperation *	eo,
+				const struct DocumentSelection *ds,
 				unsigned int			flags );
 
 extern int docRtfTraceOldProperties(
-				DocumentSelection *		ds,
-				EditOperation *			eo,
+				struct DocumentSelection *	ds,
+				struct EditOperation *		eo,
 				int				level,
-				const PropertyMask *		taSetMask,
-				const PropertyMask *		ppSetMask,
-				const PropertyMask *		cpSetMask,
-				const PropertyMask *		rpSetMask,
-				const PropertyMask *		spSetMask,
-				const PropertyMask *		dpSetMask );
+				const struct PropertyMask *	taSetMask,
+				const struct PropertyMask *	ppSetMask,
+				const struct PropertyMask *	cpSetMask,
+				const struct PropertyMask *	rpSetMask,
+				const struct PropertyMask *	spSetMask,
+				const struct PropertyMask *	dpSetMask );
 
 extern int docRtfTraceNewProperties(
-				EditOperation *			eo,
+				struct EditOperation *		eo,
 
-				const PropertyMask *		taSetMask,
-				const TextAttribute *		taSet,
+				const struct PropertyMask *	taSetMask,
+				const struct TextAttribute *	taSet,
 
-				const PropertyMask *		ppSetMask,
-				const ParagraphProperties *	ppSet,
+				const struct PropertyMask *	ppSetMask,
+				const struct ParagraphProperties * ppSet,
 
-				const PropertyMask *		cpSetMask,
-				const CellProperties *		cpSet,
+				const struct PropertyMask *	cpSetMask,
+				const struct CellProperties *	cpSet,
 
-				const PropertyMask *		rpSetMask,
-				const RowProperties *		rpSet,
+				const struct PropertyMask *	rpSetMask,
+				const struct RowProperties *	rpSet,
 
-				const PropertyMask *		spSetMask,
-				const SectionProperties *	spSet,
+				const struct PropertyMask *	spSetMask,
+				const struct SectionProperties * spSet,
 
-				const PropertyMask *		dpSetMask,
-				const DocumentProperties *	dpSet );
+				const struct PropertyMask *	dpSetMask,
+				const struct DocumentProperties * dpSet );
 
 extern int docRtfTraceHeaderFooter(
-				EditOperation *			eo,
-				const DocumentTree *		dt );
+				struct EditOperation *		eo,
+				struct DocumentTree *		tree );
 
 extern int docRtfTraceNewContents(
-				EditOperation *			eo,
+				struct EditOperation *		eo,
 				int				posWhere );
 
 extern int docRtfTraceNewPosition(
-				EditOperation *			eo,
-				const SelectionScope *		ssNew,
+				struct EditOperation *		eo,
+				const struct SelectionScope *	ssNew,
 				int				posWhere );
 
-extern int docTraceStartStep(	EditOperation *			eo,
-				EditTrace *			et,
+extern int docTraceStartStep(	struct EditOperation *		eo,
+				struct EditTrace *		et,
 				int				command,
 				int				fieldKind );
 
-extern int docTraceStartReplace( DocumentSelection *		dsTraced,
-				EditOperation *			eo,
-				EditTrace *			et,
+extern int docTraceStartReplace( struct DocumentSelection *	dsTraced,
+				struct EditOperation *		eo,
+				struct EditTrace *		et,
 				int				command,
 				int				level,
 				unsigned int			flags );
 
-extern int docTraceExtendReplace( EditOperation *		eo,
-				EditTrace *			et,
-				int				command,
-				int				level,
-				unsigned int			flags );
+extern int docTraceExtendReplace( struct EditOperation *	eo,
+				struct EditTrace *		et,
+				int				command );
 
-extern int docRtfTraceFieldKind(	EditOperation *		eo,
+extern int docRtfTraceFieldKind(	struct EditOperation *	eo,
 					int			kind );
 
-extern int docRtfTraceOldField(	EditOperation *			eo,
-				const DocumentField *		df );
-extern int docRtfTraceNewField(	EditOperation *			eo,
-				const DocumentField *		df );
+extern int docRtfTraceOldField(	struct EditOperation *		eo,
+				const struct DocumentField *	df );
+extern int docRtfTraceNewField(	struct EditOperation *		eo,
+				const struct DocumentField *	df );
 
-extern int docEditReadTraceStep( EditStep *			es,
+extern int docEditReadTraceStep( struct EditStep *		es,
 				int *				pIsRepeat,
 				int				direction,
-				const EditTrace *		et,
-				const BufferDocument *		bd );
+				const struct EditTrace *	et,
+				const struct BufferDocument *	bd );
 
-extern int docRtfTraceCloseTrace( EditOperation *		eo,
-				EditTrace *			et );
+extern int docRtfTraceCloseTrace( struct EditOperation *	eo,
+				struct EditTrace *		et );
 
 extern int docRtfTraceOldImageProperties(
-				EditOperation *			eo,
-				const PropertyMask *		pipSetMask,
-				const PictureProperties *	pipSet );
+				struct EditOperation *		eo,
+				const struct PropertyMask *	pipSetMask,
+				const struct PictureProperties * pipSet );
 
 extern int docRtfTraceNewImageProperties(
-				EditOperation *			eo,
-				const PropertyMask *		pipSetMask,
-				const PictureProperties *	pipSet );
+				struct EditOperation *		eo,
+				const struct PropertyMask *	pipSetMask,
+				const struct PictureProperties * pipSet );
 
 extern int docRtfTraceOldNoteProperties(
-				EditOperation *			eo,
-				const PropertyMask *		npSetMask,
-				const NoteProperties *		npSet );
+				struct EditOperation *		eo,
+				const struct PropertyMask *	npSetMask,
+				const struct NoteProperties *	npSet );
 
 extern int docRtfTraceNewNoteProperties(
-				EditOperation *			eo,
-				const PropertyMask *		npSetMask,
-				const NoteProperties *		npSet );
+				struct EditOperation *		eo,
+				const struct PropertyMask *	npSetMask,
+				const struct NoteProperties *	npSet );
 
-extern int docRtfTraceOldList(	EditOperation *			eo,
-				const DocumentList *		dl );
+extern int docRtfTraceOldList(	struct EditOperation *		eo,
+				const struct DocumentList *	dl );
 
-extern int docRtfTraceNewList(	EditOperation *			eo,
-				const DocumentList *		dl );
+extern int docRtfTraceNewList(	struct EditOperation *		eo,
+				const struct DocumentList *	dl );
 
 extern int docRtfTraceVersion(	int				command,
-				const MemoryBuffer *		filename,
+				const struct MemoryBuffer *	filename,
 				const char *			digest64,
 				const struct tm *		revtim,
-				EditTrace *			et );
+				struct EditTrace *		et,
+				struct BufferDocument *		bd );
 
 #    endif	/*  DOC_RTF_TRACE_H	*/

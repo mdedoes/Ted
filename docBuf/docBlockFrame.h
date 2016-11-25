@@ -7,8 +7,10 @@
 #   ifndef	DOC_BLOCK_FRAME_H
 #   define	DOC_BLOCK_FRAME_H
 
-#   include	<docDocumentField.h>
-#   include	"docBuf.h"
+#   include	<geoRectangle.h>
+#   include	<geoDocumentPageSetup.h>
+
+struct DocumentField;
 
 /************************************************************************/
 /*									*/
@@ -24,9 +26,9 @@
 
 typedef struct NotesReservation
     {
-    DocumentField *		nrDfFirstFootnote;
+    struct DocumentField *	nrDfFirstFootnote;
     int				nrFootnoteCount;
-    const struct BufferItem *	nrFootnoteSectBi;
+    const struct BufferItem *	nrFootnoteSectNode;
 
     int				nrFtnsepHeight;
     int				nrFootnoteHeight;
@@ -71,7 +73,7 @@ typedef struct BlockFrame
     } BlockFrame;
 
 #   define	BF_HAS_FOOTNOTES( bf ) \
-		    ((bf)->bfNotesReservation.nrDfFirstFootnote != (DocumentField *)0)
+		    ((bf)->bfNotesReservation.nrDfFirstFootnote != (struct DocumentField *)0)
 
 /************************************************************************/
 /*									*/

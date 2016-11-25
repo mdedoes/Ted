@@ -11,7 +11,6 @@
 #   include	<stdio.h>
 #   include	<ctype.h>
 
-#   include	"tedApp.h"
 #   include	"tedSelect.h"
 #   include	"tedCopyPasteImpl.h"
 #   include	"tedEdit.h"
@@ -21,11 +20,34 @@
 #   include	<docRtfFlags.h>
 #   include	<docTreeNode.h>
 #   include	<docEditCommand.h>
-
+#   include	<docObject.h>
+#   include	<docParaProperties.h>
+#   include	<docDocumentCopyJob.h>
 #   include	<sioFileio.h>
 #   include	<sioMemory.h>
+#   include	<appEditDocument.h>
+#   include	<sioGeneral.h>
+#   include	<docBuf.h>
 
 #   include	<appDebugon.h>
+
+/************************************************************************/
+/*									*/
+/*  Save the picture of an object for Copy/Paste.			*/
+/*									*/
+/************************************************************************/
+
+static int tedSaveObjectPicture(	RasterImage *		abiTo,
+					const InsertedObject *	io )
+    {
+    if  ( ! io->ioRasterImage.riBytes )
+	{ LXDEB(io->ioKind,io->ioRasterImage.riBytes); return -1;	}
+
+    if  ( bmCopyRasterImage( abiTo, &(io->ioRasterImage) ) )
+	{ LDEB(1); return -1;	}
+
+    return 0;
+    }
 
 /************************************************************************/
 /*									*/
@@ -33,7 +55,7 @@
 /*									*/
 /************************************************************************/
 
-void tedSaveSelectionToFile(	BufferDocument *		bd,
+void tedSaveSelectionToFile(	struct BufferDocument *		bd,
 				const DocumentSelection *	ds,
 				int				rtfFlags,
 				const char *			filename )
@@ -54,7 +76,7 @@ void tedSaveSelectionToFile(	BufferDocument *		bd,
     return;
     }
 
-void tedSaveSelectionTxtToFile(	BufferDocument *		bd,
+void tedSaveSelectionTxtToFile(	struct BufferDocument *		bd,
 				const char *			filename )
     {
     SimpleOutputStream *	sos;
@@ -95,7 +117,8 @@ int tedDocSaveSelectionRtf(	MemoryBuffer *		mb,
 	{ return -1; }
 
     if  ( tedGetSelection( ds, &sg, sd,
-			    (DocumentTree **)0, (struct BufferItem **)0, ed ) )
+			    (struct DocumentTree **)0,
+			    (struct BufferItem **)0, ed ) )
 	{ return -1;	}
 
     sos= sioOutMemoryOpen( mb );
@@ -144,8 +167,8 @@ int tedDocCopySelection(	EditDocument *	ed )
     docInitDocumentPosition( &dpObject );
 
     if  ( sd.sdIsObjectSelection					&&
-	  ! docGetObjectSelection( &ds, td->tdDocument,
-				      &partObject, &dpObject, &io )	)
+	  ! docGetObjectSelection( &partObject, &dpObject, &io,
+						td->tdDocument, &ds )	)
 	{
 	if  ( tedSaveObjectPicture( &(td->tdCopiedImage), io )	)
 	    { LDEB(1);	}
@@ -160,7 +183,7 @@ static int tedGetRulerFromPaste(	ParagraphProperties *	ppSet,
 					PropertyMask *		ppSetMask,
 					EditOperation *		eo,
 					const MemoryBuffer *	filename,
-					BufferDocument *	bdFrom )
+					struct BufferDocument *	bdFrom )
     {
     int				rval= 0;
 
@@ -190,8 +213,8 @@ static int tedGetRulerFromPaste(	ParagraphProperties *	ppSet,
     PROPmaskADD( ppSetMask, PPpropLISTLEVEL );
 
     if  ( docUpdParaProperties( (PropertyMask *)0, ppSet, ppSetMask,
-						&(dp.dpNode->biParaProperties),
-						&(dcj.dcjAttributeMap) ) )
+			    dp.dpNode->biParaProperties,
+			    &(dcj.dcjAttributeMap) ) )
 	{ LDEB(1); rval= -1; goto ready; }
 
   ready:
@@ -209,7 +232,7 @@ static int tedGetRulerFromPaste(	ParagraphProperties *	ppSet,
 /************************************************************************/
 
 int tedApplyPastedRuler(		EditDocument *		ed,
-					BufferDocument *	bdFrom,
+					struct BufferDocument *	bdFrom,
 					int			traced )
     {
     int				rval= 0;
@@ -237,13 +260,13 @@ int tedApplyPastedRuler(		EditDocument *		ed,
 	{ LDEB(1); rval= -1; goto ready;	}
 
     if  ( tedEditChangeSelectionProperties( &teo, &ds,
-		    DOClevPARA, EDITcmdUPD_PARA_PROPS,
-		    (const PropertyMask *)0, (const TextAttribute *)0,
-		    &ppSetMask, &ppSet,
-		    (const PropertyMask *)0, (const CellProperties *)0,
-		    (const PropertyMask *)0, (const RowProperties *)0,
-		    (const PropertyMask *)0, (const SectionProperties *)0,
-		    (const PropertyMask *)0, (const DocumentProperties *)0 ) )
+		DOClevPARA, EDITcmdUPD_PARA_PROPS,
+		(const PropertyMask *)0, (const TextAttribute *)0,
+		&ppSetMask, &ppSet,
+		(const PropertyMask *)0, (const struct CellProperties *)0,
+		(const PropertyMask *)0, (const struct RowProperties *)0,
+		(const PropertyMask *)0, (const struct SectionProperties *)0,
+		(const PropertyMask *)0, (const struct DocumentProperties *)0 ))
 	{ LDEB(1); rval= -1; goto ready; }
 
     /* tedEditChangeSelectionProperties() finishes the TedEditOperation */
@@ -262,7 +285,7 @@ static int tedGetAttributesFromPaste(	TextAttribute *		taSetTo,
 					PropertyMask *		taSetMask,
 					EditOperation *		eo,
 					const MemoryBuffer *	filename,
-					BufferDocument *	bdFrom )
+					struct BufferDocument *	bdFrom )
     {
     int				rval= 0;
 
@@ -287,10 +310,10 @@ static int tedGetAttributesFromPaste(	TextAttribute *		taSetTo,
 
     utilPropMaskClear( taSetMask );
 
-    utilInitTextAttribute( &taSetFrom );
-    utilInitTextAttribute( taSetTo );
+    textInitTextAttribute( &taSetFrom );
+    textInitTextAttribute( taSetTo );
 
-    docGetSelectionAttributes( bdFrom, &dsAll, taSetMask, &taSetFrom );
+    docGetSelectionAttributes( &taSetFrom, taSetMask, bdFrom, &dsAll );
     docMapTextAttribute( taSetTo, &taSetFrom, &dcj );
 
     utilPropMaskClear( &taOnlyMask );
@@ -328,7 +351,7 @@ static int tedGetAttributesFromPaste(	TextAttribute *		taSetTo,
 /************************************************************************/
 
 int tedApplyPastedFont(		EditDocument *		ed,
-				BufferDocument *	bdFrom,
+				struct BufferDocument *	bdFrom,
 				int			traced )
     {
     int				rval= 0;
@@ -358,13 +381,13 @@ int tedApplyPastedFont(		EditDocument *		ed,
 	{ LDEB(1); rval= -1; goto ready; }
 
     if  ( tedEditChangeSelectionProperties( &teo, &ds,
-		    DOClevSPAN, EDITcmdUPD_SPAN_PROPS,
-		    &taSetMask, &taSet,
-		    (const PropertyMask *)0, (const ParagraphProperties *)0,
-		    (const PropertyMask *)0, (const CellProperties *)0,
-		    (const PropertyMask *)0, (const RowProperties *)0,
-		    (const PropertyMask *)0, (const SectionProperties *)0,
-		    (const PropertyMask *)0, (const DocumentProperties *)0 ) )
+		DOClevSPAN, EDITcmdUPD_SPAN_PROPS,
+		&taSetMask, &taSet,
+		(const PropertyMask *)0, (const ParagraphProperties *)0,
+		(const PropertyMask *)0, (const struct CellProperties *)0,
+		(const PropertyMask *)0, (const struct RowProperties *)0,
+		(const PropertyMask *)0, (const struct SectionProperties *)0,
+		(const PropertyMask *)0, (const struct DocumentProperties *)0 ))
 	{ LDEB(1); rval= -1; goto ready; }
 
     /* tedEditChangeSelectionProperties() finishes the TedEditOperation */

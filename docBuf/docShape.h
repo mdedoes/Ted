@@ -17,9 +17,10 @@
 #   define	DOC_SHAPE_H
 
 struct DrawingSurface;
+struct IndexSet;
 
 #   include	<utilColor.h>
-#   include	<geo2DInteger.h>
+#   include	<geoRectangle.h>
 #   include	<utilMemoryBuffer.h>
 #   include	<geoAffineTransform.h>
 #   include	<docShapeProperties.h>
@@ -27,32 +28,49 @@ struct DrawingSurface;
 #   include	"docDocumentTree.h"
 #   include	<docShapeDrawing.h>
 #   include	<bitmap.h>
+#   include	<docSelectionScope.h>
 
 typedef struct DrawingShape
     {
-			/************************************************/
-			/*  Properties as found in regular rtf tags.	*/
-			/*  Are only set for the top level shape in a	*/
-			/*  hierarchy.					*/
-			/************************************************/
+			/**
+			 *  Properties as found in regular rtf tags.
+			 *  Are only set for the top level shape in a hierarchy
+			 */
     ShapeProperties	dsShapeProperties;
 
-			/************************************************/
-			/*  Position.					*/
-			/************************************************/
+			/**
+			 *  True if and only if this shape is the child 
+			 *  of another shape. [I.E if it is not the top 
+			 *  of the hierarchy.]
+			 */
     unsigned char	dsIsChildShape;
 
-			/************************************************/
-			/*  Drawing.					*/
-			/************************************************/
+			/**
+			 *  The drawing of the shape.
+			 */
     ShapeDrawing	dsDrawing;
 
-			/************************************************/
-			/*  Embedding in the document.			*/
-			/************************************************/
-    int				dsShapeNumber;
-    SelectionScope		dsSelectionScope;
-    DocumentTree		dsDocumentTree;
+			/**
+			 *  The unique shape number in the document.
+			 */
+    int			dsShapeNumber;
+
+			/**
+			 *  The selection scope for the text inside 
+			 *  the shape.
+			 */
+    SelectionScope	dsSelectionScope;
+
+			/**
+			 *  The text inside the shape. (If any)
+			 */
+    DocumentTree	dsDocumentTree;
+
+			/**
+			 *  The child shapes of this shape. In 
+			 *  practice, a shape does not have both text 
+			 *  content and children.
+			 */
     struct DrawingShape **	dsChildren;
     int				dsChildCount;
 
@@ -60,7 +78,6 @@ typedef struct DrawingShape
     MemoryBuffer		dsPictureData;
     struct DrawingSurface *	dsDrawingSurface;
     RasterImage			dsRasterImage;
-
     } DrawingShape;
 
 # define DSflipHORIZONTAL( ds ) \
@@ -75,7 +92,7 @@ typedef struct DrawingShape
 /*									*/
 /************************************************************************/
 
-void docInitShapeAllocated(		DrawingShape *		ds );
+extern void docInitShapeAllocated(	DrawingShape *		ds );
 extern void docInitDrawingShape(	DrawingShape *		ds );
 extern void docCleanDrawingShape(	DrawingShape *		ds );
 
@@ -110,5 +127,9 @@ extern void docShapeGetChildRect(
 				const DrawingShape *		dsChild,
 				const DocumentRectangle *	dr,
 				const DrawingShape *		ds );
+
+extern int docGetAttributesUsedInShape( struct BufferDocument *	bd,
+				struct DrawingShape *		ds,
+				struct IndexSet *		isUsed );
 
 #   endif	/*  DOC_SHAPE_H	*/

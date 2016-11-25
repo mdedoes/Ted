@@ -12,7 +12,15 @@
 #   include	"docLayout.h"
 #   include	<docTreeType.h>
 #   include	<docTreeNode.h>
+#   include	<docRowProperties.h>
+#   include	<docSelect.h>
+#   include	<docDocumentProperties.h>
+#   include	<docSectProperties.h>
+#   include	<docPropVal.h>
+#   include	<docBuf.h>
+#   include	<docBlockFrame.h>
 
+#   include	<docDebug.h>
 #   include	<appDebugon.h>
 
 /************************************************************************/
@@ -27,12 +35,13 @@
 /*									*/
 /************************************************************************/
 
-static void docLayoutPlaceSectTop(	BufferItem *		sectNode,
+static void docLayoutPlaceSectTop(	struct BufferItem *	sectNode,
 					LayoutPosition *	lpHere,
 					BlockFrame *		bf,
 					LayoutJob *		lj )
     {
     int		changedFrame= 0;
+    int		breakKind;
 
     if  ( sectNode->biNumberInParent == 0 )
 	{
@@ -46,7 +55,7 @@ static void docLayoutPlaceSectTop(	BufferItem *		sectNode,
 	docLayoutColumnTop( lpHere, bf, sectNode, lj );
 	}
     else{
-	if  ( ! DOC_SECTnodeBELOW_PREVIOUS( sectNode ) )
+	if  ( sectNode->biSectBreakKind != DOCibkNONE )
 	    {
 	    const int		belowText= 0;
 	    LayoutPosition	lpBelowNotes;
@@ -63,10 +72,13 @@ static void docLayoutPlaceSectTop(	BufferItem *		sectNode,
 	    }
 	}
 
-    switch( sectNode->biSectBreakKind )
+    breakKind= docLayoutGetSectBreakKind( sectNode->biSectProperties,
+				lj->ljContext.lcDocument->bdProperties );
+
+    switch( breakKind )
 	{
 	case DOCibkNONE:
-	    if  ( ! DOC_SECTnodeBELOW_PREVIOUS( sectNode ) )
+	    if  ( sectNode->biSectBreakKind != DOCibkNONE )
 		{ goto pageCase;	}
 
 	    lpHere->lpColumn= 0;
@@ -79,41 +91,22 @@ static void docLayoutPlaceSectTop(	BufferItem *		sectNode,
 
 	case DOCibkPAGE:
 	  pageCase:
-	    while( lpHere->lpColumn > 0 )
-		{
-		docLayoutToNextColumn( lpHere, bf, sectNode, lj );
-		changedFrame= 1;
-		}
+	    if  ( docLayoutToFirstColumn( lpHere, bf, sectNode, lj ) )
+		{ changedFrame= 1;	}
 	    break;
 
 	case DOCibkEVEN:	/*  1  */
-	    while( lpHere->lpColumn > 0 )
-		{
-		docLayoutToNextColumn( lpHere, bf, sectNode, lj );
-		changedFrame= 1;
-		}
-	    while( ! ( lpHere->lpPage % 2 ) )
-		{
-		docLayoutToNextColumn( lpHere, bf, sectNode, lj );
-		changedFrame= 1;
-		}
+	    if  ( docLayoutToEvenPage( lpHere, bf, sectNode, lj ) )
+		{ changedFrame= 1;	}
 	    break;
 
 	case DOCibkODD:	/*  1  */
-	    while( lpHere->lpColumn > 0 )
-		{
-		docLayoutToNextColumn( lpHere, bf, sectNode, lj );
-		changedFrame= 1;
-		}
-	    while( lpHere->lpPage % 2 )
-		{
-		docLayoutToNextColumn( lpHere, bf, sectNode, lj );
-		changedFrame= 1;
-		}
+	    if  ( docLayoutToOddPage( lpHere, bf, sectNode, lj ) )
+		{ changedFrame= 1;	}
 	    break;
 
 	default:
-	    LDEB(sectNode->biSectBreakKind);
+	    LDEB(breakKind);
 	    break;
 	}
 
@@ -128,7 +121,7 @@ static void docLayoutPlaceSectTop(	BufferItem *		sectNode,
 	sectNode->biTopPosition= *lpHere;
 	}
 
-    if  ( sectNode->biNumberInParent == 0		&&
+    if  ( sectNode->biNumberInParent == 0	&&
 	  sectNode->biParent			)
 	{ sectNode->biParent->biTopPosition= *lpHere; }
 
@@ -140,7 +133,8 @@ static void docLayoutPlaceSectTop(	BufferItem *		sectNode,
 /*  Do the layout of the children of a section.				*/
 /*									*/
 /*  2)  See whether and where to restart if a row does not fit in the	*/
-/*	column.								*/
+/*	column. (Because a previous row was to be on the same page as	*/
+/*	this one.							*/
 /*  3)  Between tables.							*/
 /*  4)  Tables.								*/
 /*  5)  Finally do the layout of the end notes belonging to this	*/
@@ -152,7 +146,7 @@ static void docLayoutPlaceSectTop(	BufferItem *		sectNode,
 
 int docLayoutSectChildren(	LayoutPosition *	lpBelow,
 				const LayoutPosition *	lpTop,
-				BufferItem *		sectNode,
+				struct BufferItem *		sectNode,
 				int			from,
 				BlockFrame *		bf,
 				LayoutJob *		lj )
@@ -166,11 +160,14 @@ int docLayoutSectChildren(	LayoutPosition *	lpBelow,
     i= from;
     while( i > 0 )
 	{
-	BufferItem *	childNode= sectNode->biChildren[--i];
+	struct BufferItem *	childNode= sectNode->biChildren[--i];
+	const RowProperties *	rp;
 
 	if  ( ! docIsRowNode( childNode ) )
 	    { break;	}
-	if  ( ! childNode->biRow_Keepfollow )
+
+	rp= childNode->biRowProperties;
+	if  ( ! rp->rp_Keepfollow )
 	    { break;	}
 	}
 
@@ -180,7 +177,7 @@ int docLayoutSectChildren(	LayoutPosition *	lpBelow,
 	/*  3  */
 	while( i < sectNode->biChildCount )
 	    {
-	    BufferItem *	childNode= sectNode->biChildren[i];
+	    struct BufferItem *	childNode= sectNode->biChildren[i];
 
 	    if  ( docIsRowNode( childNode ) )
 		{ break;	}
@@ -199,7 +196,7 @@ int docLayoutSectChildren(	LayoutPosition *	lpBelow,
 
 	    while( upto < sectNode->biChildCount )
 		{
-		BufferItem *	childNode= sectNode->biChildren[upto];
+		struct BufferItem *	childNode= sectNode->biChildren[upto];
 
 		if  ( ! docIsRowNode( childNode ) )
 		    { break;	}
@@ -220,7 +217,7 @@ int docLayoutSectChildren(	LayoutPosition *	lpBelow,
 
     /*  5  */
     {
-    const DocumentProperties *	dp= &(lc->lcDocument->bdProperties);
+    const DocumentProperties *	dp= lc->lcDocument->bdProperties;
     const NotesProperties *	npEndnotes= &(dp->dpNotesProps.fepEndnotesProps);
 
     if  ( sectNode->biTreeType == DOCinBODY		&&
@@ -261,12 +258,12 @@ int docLayoutSectChildren(	LayoutPosition *	lpBelow,
 
 static int docBalanceSectionColumns(	LayoutPosition *	lpBelow,
 					BlockFrame *		bf,
-					BufferItem *		sectNode,
+					struct BufferItem *	sectNode,
 					const LayoutJob *	refLj )
     {
     int				rval= 0;
     const LayoutContext *	lc= &(refLj->ljContext);
-    BufferDocument *		bd= lc->lcDocument;
+    struct BufferDocument *		bd= lc->lcDocument;
     int				l, m, r;
 
     int				fromSectTop;
@@ -276,7 +273,7 @@ static int docBalanceSectionColumns(	LayoutPosition *	lpBelow,
 
     int				col;
 
-    BufferItem *		childNode;
+    struct BufferItem *		childNode;
 
     BlockFrame			bfFrom;
     LayoutPosition		lpFrom;
@@ -317,7 +314,7 @@ static int docBalanceSectionColumns(	LayoutPosition *	lpBelow,
 	{ pageY0= sectNode->biTopPosition.lpPageYTwips;	}
     else{ pageY0= bfCol.bfContentRect.drY0;		}
 
-    childNode= (BufferItem *)0;
+    childNode= (struct BufferItem *)0;
     for ( from= 0; from < sectNode->biChildCount; from++ )
 	{
 	childNode= sectNode->biChildren[from];
@@ -335,7 +332,7 @@ static int docBalanceSectionColumns(	LayoutPosition *	lpBelow,
 
     l= 240;
     r= bf->bfPageGeometry.dgPageHighTwips- pageY0-
-				    bf->bfPageGeometry.dgBottomMarginTwips;
+				    bf->bfPageGeometry.dgMargins.roBottomOffset;
     m= ( l+ r )/ 2;
 
     bfFrom= *bf;
@@ -388,39 +385,13 @@ static int docBalanceSectionColumns(	LayoutPosition *	lpBelow,
 
 /************************************************************************/
 /*									*/
-/*  Are the columns of a section node to be balanced?			*/
-/*									*/
-/************************************************************************/
-
-int docSectColumnsAreBalanced(	const BufferItem *		sectNode )
-    {
-    const SectionProperties *	sp= &(sectNode->biSectProperties);
-    int				nrInParent= sectNode->biNumberInParent;
-
-    if  ( sp->spColumnCount > 1					&&
-	  sectNode->biParent					&&
-	  nrInParent < sectNode->biParent->biChildCount- 1	)
-	{
-	const BufferItem *	nextSectNode;
-
-	nextSectNode= sectNode->biParent->biChildren[nrInParent+ 1];
-
-	if  ( DOC_SECTnodeBELOW_PREVIOUS( nextSectNode ) )
-	    { return 1;	}
-	}
-
-    return 0;
-    }
-
-/************************************************************************/
-/*									*/
 /*  Last step in the layout of a section: Endnotes and balancing.	*/
 /*									*/
 /************************************************************************/
 
 int docLayoutFinishSectNode(	LayoutPosition *		lpBelow,
 				const LayoutPosition *		lpTop,
-				BufferItem *			sectNode,
+				struct BufferItem *		sectNode,
 				BlockFrame *			bf,
 				LayoutJob *			lj )
     {
@@ -444,7 +415,7 @@ int docLayoutFinishSectNode(	LayoutPosition *		lpBelow,
 
 int docLayoutSectNode(	LayoutPosition *		lpBelow,
 			const LayoutPosition *		lpTop,
-			BufferItem *			sectNode,
+			struct BufferItem *			sectNode,
 			BlockFrame *			bf,
 			LayoutJob *			lj )
     {
@@ -489,3 +460,21 @@ int docLayoutSectNode(	LayoutPosition *		lpBelow,
     return 0;
     }
 
+/************************************************************************/
+/*									*/
+/*  Return the kind of page where this section starts.			*/
+/*  MS-Word only implements odd/even if the document has different odd	*/
+/*  and even pages.							*/
+/*									*/
+/************************************************************************/
+
+int docLayoutGetSectBreakKind(	const SectionProperties *	sp,
+				const DocumentProperties *	dp )
+    {
+    if  ( ( sp->spBreakKind == DOCibkEVEN	||
+	    sp->spBreakKind == DOCibkODD	)	&&
+	    ! dp->dpHasFacingPages			)
+	{ return DOCibkPAGE;	}
+
+    return sp->spBreakKind;
+    }

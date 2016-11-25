@@ -65,9 +65,11 @@
 #   define	SIO_SMTP_H
 
 #   include     "appSystem.h"
-#   include     "sioGeneral.h"
 
-extern SimpleOutputStream * sioOutSmtpOpen(	const char *	mailHost,
+struct SimpleOutputStream;
+
+extern struct SimpleOutputStream * sioOutSmtpOpen(
+						const char *	mailHost,
 						const char *	mailPort,
 						const char *	user,
 						const char *	pass,

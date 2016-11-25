@@ -8,17 +8,21 @@
 #   include	"tedConfig.h"
 
 #   include	<stddef.h>
-#   include	<stdio.h>
 #   include	<ctype.h>
 
-#   include	"tedApp.h"
 #   include	"tedEdit.h"
 #   include	<docRtfTrace.h>
 #   include	<docTreeNode.h>
-#   include	<appFrame.h>
+#   include	<appEditDocument.h>
 #   include	<docEditCommand.h>
 #   include	<docParaParticules.h>
+#   include	<docDocumentCopyJob.h>
+#   include	<docDocumentProperties.h>
+#   include	<docSelectionGeometry.h>
+#   include	<docSelectionDescription.h>
+#   include	<docBuf.h>
 
+#   include	<docDebug.h>
 #   include	<appDebugon.h>
 
 /************************************************************************/
@@ -28,7 +32,7 @@
 /************************************************************************/
 
 int tedIncludeDocument(	TedEditOperation *		teo,
-			DocumentCopyJob *		dcj )
+			struct DocumentCopyJob *	dcj )
     {
     EditOperation *	eo= &(teo->teoEo);
     int			beginStrlenOld= docParaStrlen( eo->eoHeadDp.dpNode );
@@ -58,10 +62,10 @@ int tedIncludeDocument(	TedEditOperation *		teo,
 /*									*/
 /************************************************************************/
 
-int tedEditIncludeDocument(	TedEditOperation *	teo,
-				DocumentCopyJob *	dcj,
-				int			command,
-				int			posWhere )
+int tedEditIncludeDocument(	TedEditOperation *		teo,
+				struct DocumentCopyJob *	dcj,
+				int				command,
+				int				posWhere )
     {
     EditOperation *		eo= &(teo->teoEo);
 
@@ -123,7 +127,7 @@ int tedEditIncludeDocument(	TedEditOperation *	teo,
 /************************************************************************/
 
 int tedIncludePlainDocument(	EditDocument *		ed,
-				BufferDocument *	bdFrom,
+				struct BufferDocument *	bdFrom,
 				int			traced )
     {
     int				rval= 0;
@@ -143,7 +147,7 @@ int tedIncludePlainDocument(	EditDocument *		ed,
 
     tedStartEditOperation( &teo, &sg, &sd, ed, fullWidth, traced );
 
-    if  ( bdFrom->bdProperties.dpContainsTables )
+    if  ( bdFrom->bdProperties->dpContainsTables )
 	{
 	if  ( sd.sdHeadInTable )
 	    { goto ready;	}
@@ -184,7 +188,7 @@ int tedIncludePlainDocument(	EditDocument *		ed,
 /************************************************************************/
 
 int tedIncludeRtfDocument(	EditDocument *		ed,
-				BufferDocument *	bdFrom,
+				struct BufferDocument *	bdFrom,
 				int			traced )
     {
     int				rval= 0;
@@ -204,7 +208,7 @@ int tedIncludeRtfDocument(	EditDocument *		ed,
     tedStartEditOperation( &teo, &sg, &sd, ed, fullWidth, traced );
 
     /*  1  */
-    if  ( bdFrom->bdProperties.dpContainsTables )
+    if  ( bdFrom->bdProperties->dpContainsTables )
 	{
 	if  ( sd.sdHeadInTable )
 	    { goto ready;	}

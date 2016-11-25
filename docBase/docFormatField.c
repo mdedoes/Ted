@@ -10,18 +10,19 @@
 #   include	<stdio.h>
 #   include	<ctype.h>
 
-#   include	<utilBase26.h>
-#   include	<utilRoman.h>
-
-#   include	<appDebugon.h>
+#   include	<numbersBase26.h>
+#   include	<numbersRoman.h>
+#   include	<utilNumberFormat.h>
 
 #   include	"docDocumentField.h"
 #   include	"docFieldFormat.h"
 
+#   include	<appDebugon.h>
+
 /************************************************************************/
 /*									*/
-/*  Format values following the arguments of the \\* format flags in	*/
-/*  the fieldinstructions.						*/
+/*  Format values following the arguments of the \\* or \\# format	*/
+/*  flags in the fieldinstructions.					*/
 /*									*/
 /************************************************************************/
 
@@ -40,56 +41,56 @@ int docFieldFormatInteger(	MemoryBuffer *			mbResult,
 
     switch( format )
 	{
-	case MERGE_ARABIC:
+	case FIELDformatARABIC:
 	    sprintf( scratch, "%d", value );
 	    utilMemoryBufferAppendBytes( mbResult,
 				(unsigned char *)scratch, strlen( scratch ) );
 	    break;
 
-	case MERGE_ALPHABETIC_UPPER:
-	    if  ( utilBase26String( scratch, sizeof(scratch)-1, value, 1 ) )
+	case FIELDformatALPHABETIC_UPPER:
+	    if  ( numbersBase26String( scratch, sizeof(scratch)-1, value, 1 ) )
 		{ sprintf( scratch, "ALPHA:%d", value );	}
 	    utilMemoryBufferAppendBytes( mbResult,
 				(unsigned char *)scratch, strlen( scratch ) );
 	    break;
 
-	case MERGE_ALPHABETIC_LOWER:
-	    if  ( utilBase26String( scratch, sizeof(scratch)-1, value, 0 ) )
+	case FIELDformatALPHABETIC_LOWER:
+	    if  ( numbersBase26String( scratch, sizeof(scratch)-1, value, 0 ) )
 		{ sprintf( scratch, "alpha:%d", value );	}
 	    utilMemoryBufferAppendBytes( mbResult,
 				(unsigned char *)scratch, strlen( scratch ) );
 	    break;
 
-	case MERGE_ROMAN_UPPER:
-	    if  ( utilRomanString( scratch, sizeof(scratch)-1, value, 1 ) )
+	case FIELDformatROMAN_UPPER:
+	    if  ( numbersRomanString( scratch, sizeof(scratch)-1, value, 1 ) )
 		{ sprintf( scratch, "ROMAN:%d", value );	}
 	    utilMemoryBufferAppendBytes( mbResult,
 				(unsigned char *)scratch, strlen( scratch ) );
 	    break;
 
-	case MERGE_ROMAN_LOWER:
-	    if  ( utilRomanString( scratch, sizeof(scratch)-1, value, 0 ) )
+	case FIELDformatROMAN_LOWER:
+	    if  ( numbersRomanString( scratch, sizeof(scratch)-1, value, 0 ) )
 		{ sprintf( scratch, "roman:%d", value );	}
 	    utilMemoryBufferAppendBytes( mbResult,
 				(unsigned char *)scratch, strlen( scratch ) );
 	    break;
 
-	case MERGE_HEX_UPPER:
+	case FIELDformatHEX_UPPER:
 	    sprintf( scratch, "%X", (unsigned)value );
 	    utilMemoryBufferAppendBytes( mbResult,
 				(unsigned char *)scratch, strlen( scratch ) );
 	    break;
 
-	case MERGE_HEX_LOWER:
+	case FIELDformatHEX_LOWER:
 	    sprintf( scratch, "%x", (unsigned)value );
 	    utilMemoryBufferAppendBytes( mbResult,
 				(unsigned char *)scratch, strlen( scratch ) );
 	    break;
 
-	case MERGE_CARDTEXT:
-	case MERGE_DOLLARTEXT:
-	case MERGE_ORDINAL:
-	case MERGE_ORDTEXT:
+	case FIELDformatCARDTEXT:
+	case FIELDformatDOLLARTEXT:
+	case FIELDformatORDINAL:
+	case FIELDformatORDTEXT:
 	default:
 	    LDEB(format);
 	    sprintf( scratch, "(%d)", value );
@@ -101,3 +102,27 @@ int docFieldFormatInteger(	MemoryBuffer *			mbResult,
     return 0;
     }
 
+/************************************************************************/
+/*									*/
+/*  Format a double following the arguments of the \\# format flags	*/
+/*  in the fieldinstructions.						*/
+/*									*/
+/************************************************************************/
+
+int docFieldFormatNumber(	MemoryBuffer *			mbResult,
+				const MemoryBuffer *		picture,
+				double				value,
+				const struct SimpleLocale *	sl )
+    {
+    char			scratch[100+1];
+
+    const char *		format= utilMemoryBufferGetString( picture );
+
+    if  ( utilFormatNumber( scratch, sizeof(scratch)-1, format, value, sl ) )
+	{ SFDEB(format,value); return -1;	}
+
+    utilMemoryBufferAppendBytes( mbResult,
+			(unsigned char *)scratch, strlen( scratch ) );
+
+    return 0;
+    }

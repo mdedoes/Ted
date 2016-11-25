@@ -4,6 +4,8 @@
 #   include	<stdlib.h>
 #   include	"bitmap.h"
 
+#   include	<geoRectangle.h>
+
 #   include	<appDebugon.h>
 
 int bmSelect(	RasterImage *			riOut,

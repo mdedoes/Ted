@@ -18,11 +18,11 @@ DIR=`pwd`/pkgscratch
 rm -rf $DESTDIR $DIR
 mkdir -p $DESTDIR $DIR
 
-PKGFILE=Ted_2.23_${PLATFORM}.pkg
+PKGFILE=Ted_2.23h_${PLATFORM}.pkg
 
 trap "rm -rf $DESTDIR $DIR" 0 2
 
-cat ted-2.23-${PLATFORM}.tar.gz | ( cd ${DESTDIR} && umask 0 && tar xfz - )
+cat ted-2.23h-${PLATFORM}.tar.gz | ( cd ${DESTDIR} && umask 0 && tar xfz - )
 
 sh ./customize.sh "$@" < Ted.prototype.in > Ted.prototype
 sh ./customize.sh "$@" < Ted.pkginfo.in >   Ted.pkginfo

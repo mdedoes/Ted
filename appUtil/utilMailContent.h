@@ -7,11 +7,11 @@
 #   ifndef	UTIL_MAIL_CONTENT_H
 #   define	UTIL_MAIL_CONTENT_H
 
-#   include	"sioGeneral.h"
+struct SimpleOutputStream;
 
-typedef int (*WriteMail)(	SimpleOutputStream *	sos,
-				const char *		mimeBoundary,
-				void *			voiddoc );
+typedef int (*WriteMail)(	struct SimpleOutputStream *	sos,
+				const char *			mimeBoundary,
+				void *				voiddoc );
 
 typedef struct MailContent
     {

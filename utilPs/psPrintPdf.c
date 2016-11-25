@@ -6,9 +6,6 @@
 
 #   include	"utilPsConfig.h"
 
-#   include	<stddef.h>
-#   include	<stdio.h>
-
 #   include	<utilMemoryBufferPrintf.h>
 #   include	"psPrint.h"
 
@@ -43,3 +40,11 @@ int psSetToPdfCommand(	MemoryBuffer *			command,
     return 0;
     }
 
+int psSetTestToPdfCommand(	MemoryBuffer *			command )
+    {
+    if  ( utilMemoryBufferSetString( command,
+			    "echo showpage | ps2pdf - > /tmp/xx.pdf" ) )
+	{ LDEB(1); return -1;	}
+
+    return 0;
+    }

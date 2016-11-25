@@ -1,22 +1,26 @@
 /************************************************************************/
 /*									*/
-/*  Ted, generic shape drawing functionality.				*/
+/*  Generic shape drawing functionality.				*/
 /*									*/
 /************************************************************************/
 
 #   include	"docLayoutConfig.h"
 
-#   include	<stddef.h>
 #   include	<limits.h>
 
 #   include	"docDraw.h"
 #   include	"docLayout.h"
 #   include	<docShape.h>
+#   include	<docShapeType.h>
+#   include	<docObject.h>
+#   include	<docTreeNode.h>
+#   include	<docShapeGeometry.h>
+#   include	<geoRectangleOffsets.h>
 
 #   include	<appDebugon.h>
 
 int docDrawShapeGetFill(	int *			pFill,
-				RGB8Color *		rgb8,
+				struct RGB8Color *	rgb8,
 				const DrawingShape *	ds,
 				DrawingContext *	dc,
 				void *			through )
@@ -34,7 +38,7 @@ int docDrawShapeGetFill(	int *			pFill,
     }
 
 int docDrawShapeGetLine(	int *			pLine,
-				RGB8Color *		rgb8,
+				struct RGB8Color *	rgb8,
 				const DrawingShape *	ds,
 				DrawingContext *	dc,
 				void *			through )
@@ -62,7 +66,7 @@ int docDrawShapeGetLine(	int *			pLine,
 /*									*/
 /************************************************************************/
 
-static int docDrawDrawingShape(	const DocumentRectangle *	drTwips,
+static int docDrawDrawingShape(	const DocumentRectangle *	drOutside,
 				const struct BufferItem *	bodySectNode,
 				int				page,
 				int				column,
@@ -70,13 +74,17 @@ static int docDrawDrawingShape(	const DocumentRectangle *	drTwips,
 				DrawingContext *		dc,
 				void *				through )
     {
-    const LayoutContext *	lc= &(dc->dcLayoutContext);
     int				rval= 0;
+    const LayoutContext *	lc= &(dc->dcLayoutContext);
 
     DocumentRectangle		drHere;
     DocumentRectangle		drNorm;
 
-    docShapeGetRects( &drHere, &drNorm, drTwips, ds );
+    const struct BufferItem *	saveBodySectNode= dc->dcBodySectNode;
+
+    docShapeGetRects( &drHere, &drNorm, drOutside, ds );
+
+    dc->dcBodySectNode= bodySectNode;
 
     if  ( ds->dsDrawing.sdShapeType == SHPtyGROUP )
 	{
@@ -91,7 +99,7 @@ static int docDrawDrawingShape(	const DocumentRectangle *	drTwips,
 
 	    if  ( docDrawDrawingShape( &drChild, bodySectNode, page, column,
 						    dsChild, dc, through ) )
-		{ LDEB(child); rval= -1;	}
+		{ LDEB(child); rval= -1; goto ready;	}
 	    }
 	}
     else{
@@ -99,17 +107,17 @@ static int docDrawDrawingShape(	const DocumentRectangle *	drTwips,
 	    {
 	    DocumentRectangle	drPixels;
 
-	    docGetPixelRect( &drPixels, lc, drTwips, page );
+	    docGetPixelRect( &drPixels, lc, drOutside, page );
 	    geoNormalizeRectangle( &drPixels, &drPixels );
 
 	    if  ( ! geoIntersectRectangle( (DocumentRectangle *)0,
 						dc->dcClipRect, &drPixels ) )
-		{ return 0;	}
+		{ goto ready;	}
 	    }
 
 	if  ( dc->dcDrawShape						&&
-	      (*dc->dcDrawShape)( drTwips, page, ds, dc, through )	)
-	    { LDEB(1); rval= -1;	}
+	      (*dc->dcDrawShape)( drOutside, page, ds, dc, through )	)
+	    { LDEB(1); rval= -1; goto ready;	}
 
 	dc->dcCurrentTextAttributeSet= 0;
 	dc->dcCurrentColorSet= 0;
@@ -120,8 +128,12 @@ static int docDrawDrawingShape(	const DocumentRectangle *	drTwips,
 	if  ( ds->dsDocumentTree.dtRoot					&&
 	      docDrawShapeText( &drHere, bodySectNode,
 					page, column, ds, dc, through )	)
-	    { LDEB(page); rval= -1;	}
+	    { LDEB(page); rval= -1; goto ready;	}
 	}
+
+  ready:
+
+    dc->dcBodySectNode= saveBodySectNode;
 
     return rval;
     }
@@ -132,7 +144,7 @@ static int docDrawDrawingShape(	const DocumentRectangle *	drTwips,
 /*									*/
 /************************************************************************/
 
-int docDrawShapeText(	const DocumentRectangle *	drHere,
+int docDrawShapeText(	const DocumentRectangle *	drOutside,
 			const struct BufferItem *	bodySectNode,
 			int				page,
 			int				column,
@@ -142,19 +154,28 @@ int docDrawShapeText(	const DocumentRectangle *	drHere,
     {
     const LayoutContext *	lc= &(dc->dcLayoutContext);
 
+    BlockOrigin			bo ;
     LayoutPosition		lpBelow;
 
+    RectangleOffsets		padding;
+    DocumentRectangle		drInside;
+
+    docInitBlockOrigin( &bo );
     docInitLayoutPosition( &lpBelow );
 
-    if  ( page != ds->dsDocumentTree.dtPageFormattedFor		||
-	  column != ds->dsDocumentTree.dtColumnFormattedFor	)
-	{
-	if  ( docShapeCheckTextLayout( ds, drHere, (DocumentRectangle *)0,
-		    bodySectNode, page, column, lc, dc->dcInitLayoutExternal ) )
-	    { LDEB(page); return -1;	}
-	}
+    docShapeGetPadding( &padding, drOutside, &(ds->dsDrawing) );
+    geoRectangleSubtractPadding( &drInside, drOutside, &padding );
 
-    if  ( docDrawNode( &lpBelow, ds->dsDocumentTree.dtRoot, through, dc ) )
+    if  ( docShapeCheckTextLayout( ds, &drInside, (DocumentRectangle *)0,
+				bodySectNode, lc, dc->dcStartTreeLayout ) )
+	{ LDEB(page); return -1;	}
+
+    bo.boXShift= drOutside->drX0;
+    bo.boYShift= drOutside->drY0;
+
+    lpBelow= ds->dsDocumentTree.dtRoot->biTopPosition;
+    if  ( docDrawGroupNode( &lpBelow,
+				ds->dsDocumentTree.dtRoot, through, dc, &bo ) )
 	{ LDEB(1);	}
 
     return 0;
@@ -171,6 +192,7 @@ int docDrawShapeText(	const DocumentRectangle *	drHere,
 int docDrawShape(	DrawingContext *		dc,
 			void *				through,
 			const struct BufferItem *	bodySectNode,
+			const struct DocumentRectangle * drOutside,
 			const InsertedObject *		io )
     {
     const LayoutContext *	lc= &(dc->dcLayoutContext);
@@ -179,19 +201,14 @@ int docDrawShape(	DrawingContext *		dc,
     int				page= io->ioY0Position.lpPage;
     int				column= io->ioY0Position.lpColumn;
 
-    DocumentRectangle		drTwips;
-
     if  ( ! ds )
 	{ XDEB(ds); return 0;	}
-
-    docPlaceRootShapeRect( &drTwips, &(io->ioDrawingShape->dsShapeProperties),
-				io->ioX0Twips, io->ioY0Position.lpPageYTwips );
 
     if  ( dc->dcClipRect )
 	{
 	DocumentRectangle	drPixels;
 
-	docGetPixelRect( &drPixels, lc, &drTwips, page );
+	docGetPixelRect( &drPixels, lc, drOutside, page );
 	geoNormalizeRectangle( &drPixels, &drPixels );
 
 	if  ( ! geoIntersectRectangle( (DocumentRectangle *)0,
@@ -199,7 +216,7 @@ int docDrawShape(	DrawingContext *		dc,
 	    { return 0;	}
 	}
 
-    docDrawDrawingShape( &drTwips, bodySectNode, page, column,
+    docDrawDrawingShape( drOutside, bodySectNode, page, column,
 							ds, dc, through );
     return 0;
     }

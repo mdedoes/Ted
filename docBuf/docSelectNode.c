@@ -6,28 +6,29 @@
 
 #   include	"docBufConfig.h"
 
-#   include	<appDebugon.h>
-
 #   include	"docBuf.h"
 #   include	"docTreeNode.h"
 #   include	"docNodeTree.h"
+#   include	"docSelect.h"
+
+#   include	<appDebugon.h>
 
 /************************************************************************/
 /*									*/
 /*  Implementation of a 'Select All' menu option.			*/
-/*  Extend selection to whole document tree.				*/
+/*  Extend selection to the whole document tree.			*/
 /*									*/
 /************************************************************************/
 
 int docSelectWholeBody(		DocumentSelection *	ds,
-				BufferDocument *	bd )
+				struct BufferDocument *	bd )
     {
-    BufferItem *		selRootNode= (BufferItem *)0;
+    struct BufferItem *		selRootNode= (struct BufferItem *)0;
 
-    if  ( ds->dsHead.dpNode && ds->dsTail.dpNode )
+    if  ( docSelectionIsSet( ds ) )
 	{
-	selRootNode= docGetSelectionRoot( (DocumentTree **)0,
-					    (BufferItem **)0, bd, ds );
+	selRootNode= docGetSelectionRoot( (struct DocumentTree **)0,
+					(struct BufferItem **)0, bd, ds );
 	}
 
     if  ( ! selRootNode )
@@ -67,8 +68,8 @@ int docSelectWholeBody(		DocumentSelection *	ds,
 int docSelectWholeSection(	DocumentSelection *	ds,
 				int			direction )
     {
-    BufferItem *		sectNode0= docGetSectNode( ds->dsHead.dpNode );
-    BufferItem *		sectNode1= docGetSectNode( ds->dsTail.dpNode );
+    struct BufferItem *		sectNode0= docGetSectNode( ds->dsHead.dpNode );
+    struct BufferItem *		sectNode1= docGetSectNode( ds->dsTail.dpNode );
 
     if  ( ! sectNode0 || ! sectNode1 )
 	{ XXDEB(sectNode0,sectNode1); return -1;	}
@@ -125,8 +126,8 @@ int docSelectWholeSection(	DocumentSelection *	ds,
 int docSelectWholeParagraph(	DocumentSelection *	ds,
 				int			direction )
     {
-    BufferItem *		paraNode0= ds->dsHead.dpNode;
-    BufferItem *		paraNode1= ds->dsTail.dpNode;
+    struct BufferItem *		paraNode0= ds->dsHead.dpNode;
+    struct BufferItem *		paraNode1= ds->dsTail.dpNode;
 
     if  ( paraNode0->biParent != paraNode1->biParent )
 	{ XXDEB(paraNode0->biParent,paraNode1->biParent); return -1;	}
@@ -181,10 +182,10 @@ int docSelectRow(		DocumentSelection *	ds,
 				int			direction,
 				int			allColumns )
     {
-    BufferItem *		cellNode0= docGetCellNode( ds->dsHead.dpNode );
-    BufferItem *		cellNode1= docGetCellNode( ds->dsTail.dpNode );
-    BufferItem *		rowNode0= docGetRowNode( cellNode0 );
-    BufferItem *		rowNode1= docGetRowNode( cellNode1 );
+    struct BufferItem *		cellNode0= docGetCellNode( ds->dsHead.dpNode );
+    struct BufferItem *		cellNode1= docGetCellNode( ds->dsTail.dpNode );
+    struct BufferItem *		rowNode0= docGetRowNode( cellNode0 );
+    struct BufferItem *		rowNode1= docGetRowNode( cellNode1 );
 
     if  ( ! rowNode0 || ! rowNode1 )
 	{ XXDEB(rowNode0,rowNode1); return -1;	}
@@ -196,7 +197,7 @@ int docSelectRow(		DocumentSelection *	ds,
 	{
 	int		row0, row1;
 
-	if  ( docDelimitTable( ds->dsHead.dpNode, (BufferItem **)0,
+	if  ( docDelimitTable( ds->dsHead.dpNode, (struct BufferItem **)0,
 					(int *)0, &row0, (int *)0, &row1 ) )
 	    { LDEB(1); return -1;	}
 
@@ -288,11 +289,11 @@ int docSelectWholeCell(		DocumentSelection *	ds,
 				int			direction,
 				int			allRows )
     {
-    BufferItem *	cellNode0= docGetCellNode( ds->dsHead.dpNode );
-    BufferItem *	cellNode1= docGetCellNode( ds->dsTail.dpNode );
-    BufferItem *	rowNode0;
-    BufferItem *	rowNode1;
-    BufferItem *	parentNode;
+    struct BufferItem *	cellNode0= docGetCellNode( ds->dsHead.dpNode );
+    struct BufferItem *	cellNode1= docGetCellNode( ds->dsTail.dpNode );
+    struct BufferItem *	rowNode0;
+    struct BufferItem *	rowNode1;
+    struct BufferItem *	parentNode;
 
     DocumentPosition	dpHead;
     DocumentPosition	dpTail;
@@ -419,8 +420,8 @@ int docSelectColumn(	DocumentSelection *	ds,
     const int		direction= 0;
     const int		allRows= 1;
 
-    BufferItem *	paraNode= ds->dsHead.dpNode;
-    BufferItem *	rowNode= docGetRowNode( paraNode );
+    struct BufferItem *	paraNode= ds->dsHead.dpNode;
+    struct BufferItem *	rowNode= docGetRowNode( paraNode );
 
     if  ( ! rowNode )
 	{ XDEB(rowNode); return -1;	}
@@ -446,10 +447,10 @@ int docSelectColumn(	DocumentSelection *	ds,
 
 int docSelectWholeTable(	DocumentSelection *	ds )
     {
-    BufferItem *		rowNode0= docGetRowNode( ds->dsHead.dpNode );
-    BufferItem *		rowNode1= docGetRowNode( ds->dsTail.dpNode );
+    struct BufferItem *		rowNode0= docGetRowNode( ds->dsHead.dpNode );
+    struct BufferItem *		rowNode1= docGetRowNode( ds->dsTail.dpNode );
 
-    BufferItem *		parentNode;
+    struct BufferItem *		parentNode;
     int				row0;
     int				row1;
 
@@ -479,3 +480,258 @@ int docSelectWholeTable(	DocumentSelection *	ds )
     return 0;
     }
 
+/************************************************************************/
+/*									*/
+/*  Select a table cell by row/column.					*/
+/*									*/
+/************************************************************************/
+
+int docSelectTableCell(		DocumentSelection *	dsCell,
+				struct BufferItem *	childNode,
+				int			col,
+				int			row )
+    {
+    struct BufferItem *	rowNode;
+
+    rowNode= docGetRowNode( childNode );
+    if  ( ! rowNode )
+	{ XDEB(rowNode); return -1;	}
+
+    row += rowNode->biRowTableFirst;
+    if  ( row < rowNode->biRowTableFirst	||
+	  row >= rowNode->biRowTablePast	)
+	{
+	LLLDEB(rowNode->biRowTableFirst,row,rowNode->biRowTablePast);
+	return -1;
+	}
+    rowNode= rowNode->biParent->biChildren[row];
+
+    if  ( col < 0 || col >= rowNode->biChildCount )
+	{ LLDEB(col,rowNode->biChildCount); return -1;	}
+
+    if  ( docSetNodeSelection( dsCell, rowNode->biChildren[col] ) )
+	{ LDEB(1); return -1;	}
+
+    return 0;
+    }
+
+int docSelectTableLeft(		DocumentSelection *		dsSlice,
+				struct BufferItem *		childNode )
+    {
+    int			col;
+    int			row0;
+    int			row;
+    int			row1;
+
+    struct BufferItem *	parentNode;
+    struct BufferItem *	rowNode;
+
+    DocumentPosition	dpHead;
+    DocumentPosition	dpTail;
+
+    if  ( docDelimitTable( childNode, &parentNode, &col, &row0, &row, &row1 ) )
+	{ LDEB(1); return -1;	}
+
+    if  ( col == 0 )
+	{ return 1;	}
+
+    rowNode= parentNode->biChildren[row];
+
+    if  ( docHeadPosition( &dpHead, rowNode->biChildren[0] ) )
+	{ LDEB(1); return -1;	}
+    if  ( docTailPosition( &dpTail, rowNode->biChildren[col- 1] ) )
+	{ LDEB(1); return -1;	}
+
+    docSetRangeSelection( dsSlice, &dpHead, &dpTail, 1 );
+
+    return 0;
+    }
+
+int docSelectTableRight(	DocumentSelection *		dsSlice,
+				struct BufferItem *		childNode )
+    {
+    int			col;
+    int			row0;
+    int			row;
+    int			row1;
+
+    struct BufferItem *	parentNode;
+    struct BufferItem *	rowNode;
+
+    DocumentPosition	dpHead;
+    DocumentPosition	dpTail;
+
+    if  ( docDelimitTable( childNode, &parentNode, &col, &row0, &row, &row1 ) )
+	{ LDEB(1); return -1;	}
+
+    rowNode= parentNode->biChildren[row];
+
+    if  ( col == rowNode->biChildCount- 1 )
+	{ return 1;	}
+
+    if  ( docHeadPosition( &dpHead, rowNode->biChildren[col+ 1] ) )
+	{ LDEB(1); return -1;	}
+    if  ( docTailPosition( &dpTail,
+			    rowNode->biChildren[rowNode->biChildCount- 1] ) )
+	{ LDEB(1); return -1;	}
+
+    docSetRangeSelection( dsSlice, &dpHead, &dpTail, 1 );
+
+    return 0;
+    }
+
+int docSelectTableAbove(	DocumentSelection *		dsSlice,
+				struct BufferItem *		childNode )
+    {
+    int			col;
+    int			row0;
+    int			row;
+    int			row1;
+
+    int			hcol;
+    int			tcol;
+
+    struct BufferItem *	parentNode;
+    struct BufferItem *	rowNode;
+    struct BufferItem *	cellNode;
+
+    DocumentPosition	dpHead;
+    DocumentPosition	dpTail;
+
+    if  ( docDelimitTable( childNode, &parentNode, &col, &row0, &row, &row1 ) )
+	{ LDEB(1); return -1;	}
+
+    if  ( row <= row0 )
+	{ return 1;	}
+
+    rowNode= parentNode->biChildren[row];
+    cellNode= rowNode->biChildren[col];
+
+    hcol= docGetMatchingCell( parentNode->biChildren[row0], cellNode );
+    tcol= docGetMatchingCell( parentNode->biChildren[row-1], cellNode );
+    if  ( hcol < 0 || tcol < 0 )
+	{ LLDEB(hcol,tcol); return -1;	}
+
+    if  ( docHeadPosition( &dpHead,
+			    parentNode->biChildren[row0]->biChildren[hcol] ) )
+	{ LDEB(1); return -1;	}
+    if  ( docTailPosition( &dpTail,
+			    parentNode->biChildren[row-1]->biChildren[tcol] ) )
+	{ LDEB(1); return -1;	}
+
+    docSetRangeSelection( dsSlice, &dpHead, &dpTail, 1 );
+
+    return 0;
+    }
+
+int docSelectTableBelow(	DocumentSelection *		dsSlice,
+				struct BufferItem *		childNode )
+    {
+    int			col;
+    int			row0;
+    int			row;
+    int			row1;
+
+    int			hcol;
+    int			tcol;
+
+    struct BufferItem *	parentNode;
+    struct BufferItem *	rowNode;
+    struct BufferItem *	cellNode;
+
+    DocumentPosition	dpHead;
+    DocumentPosition	dpTail;
+
+    if  ( docDelimitTable( childNode, &parentNode, &col, &row0, &row, &row1 ) )
+	{ LDEB(1); return -1;	}
+
+    if  ( row >= row1 )
+	{ return 1;	}
+
+    rowNode= parentNode->biChildren[row];
+    cellNode= rowNode->biChildren[col];
+
+    hcol= docGetMatchingCell( parentNode->biChildren[row+1], cellNode );
+    tcol= docGetMatchingCell( parentNode->biChildren[row1], cellNode );
+    if  ( hcol < 0 || tcol < 0 )
+	{ LLDEB(hcol,tcol); return -1;	}
+
+    if  ( docHeadPosition( &dpHead,
+			    parentNode->biChildren[row+1]->biChildren[hcol] ) )
+	{ LDEB(1); return -1;	}
+    if  ( docTailPosition( &dpTail,
+			    parentNode->biChildren[row1]->biChildren[tcol] ) )
+	{ LDEB(1); return -1;	}
+
+    docSetRangeSelection( dsSlice, &dpHead, &dpTail, 1 );
+
+    return 0;
+    }
+
+int docSelectTableRect(	DocumentSelection *		dsRect,
+			struct BufferItem *		childNode,
+			int				col0Set,
+			int				col1Set,
+			int				row0Set,
+			int				row1Set )
+    {
+    int			col;
+    int			row0;
+    int			row;
+    int			row1;
+
+    struct BufferItem *	parentNode;
+    struct BufferItem *	rowNode;
+
+    DocumentPosition	dpHead;
+    DocumentPosition	dpTail;
+
+    if  ( docDelimitTable( childNode, &parentNode, &col, &row0, &row, &row1 ) )
+	{ LDEB(1); return -1;	}
+
+    rowNode= parentNode->biChildren[row];
+
+    if  ( row0Set == -1 && row1Set == -1 )
+	{ row0Set= row; row1Set= row;	}
+    else{
+	row0Set += rowNode->biRowTableFirst;
+	row1Set += rowNode->biRowTableFirst;
+	}
+
+    if  ( row0Set > row1Set			||
+	  row0Set < rowNode->biRowTableFirst	||
+	  row1Set >= rowNode->biRowTablePast	)
+	{
+	LLDEB(row0Set,rowNode->biRowTableFirst);
+	LLDEB(row1Set,rowNode->biRowTablePast);
+	return -1;
+	}
+
+    if  ( col0Set == -1 && col1Set == -1 )
+	{
+	col0Set= 0;
+	col1Set= rowNode->biChildCount- 1;
+	}
+
+    if  ( col1Set < col0Set						||
+	  col0Set < 0							||
+	  col1Set < 0							||
+	  col1Set >= parentNode->biChildren[row0Set]->biChildCount	||
+	  col1Set >= parentNode->biChildren[row1Set]->biChildCount	)
+	{
+	LLLDEB(col0Set,row0Set,parentNode->biChildren[row0Set]->biChildCount);
+	LLLDEB(col1Set,row1Set,parentNode->biChildren[row1Set]->biChildCount);
+	return -1;
+	}
+
+    if  ( docHeadPosition( &dpHead,
+			parentNode->biChildren[row0Set]->biChildren[col0Set] ) )
+	{ LDEB(1); return -1;	}
+    if  ( docTailPosition( &dpTail,
+			parentNode->biChildren[row1Set]->biChildren[col1Set] ) )
+	{ LDEB(1); return -1;	}
+
+    docSetRangeSelection( dsRect, &dpHead, &dpTail, 1 );
+
+    return 0;
+    }

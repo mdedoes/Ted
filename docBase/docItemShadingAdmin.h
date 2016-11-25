@@ -7,11 +7,10 @@
 #   ifndef	DOC_ITEM_SHADING_ADMIN_H
 #   define	DOC_ITEM_SHADING_ADMIN_H
 
-#   include	"docItemShading.h"
-#   include	<utilIntegerValueNode.h>
-#   include	<utilNumberedPropertiesAdmin.h>
+struct NumberedPropertiesList;
+struct ItemShading;
 
-typedef void (*ItemShadingFunction)(	const ItemShading *	is,
+typedef void (*ItemShadingFunction)(	const struct ItemShading *	is,
 					int			n,
 					void *			through );
 
@@ -21,27 +20,27 @@ typedef void (*ItemShadingFunction)(	const ItemShading *	is,
 /*									*/
 /************************************************************************/
 
-extern void docInitItemShadingList(	NumberedPropertiesList *	isl );
+extern void docInitItemShadingList(	struct NumberedPropertiesList *	isl );
 
-extern int docItemShadingNumberImpl(	NumberedPropertiesList *	isl,
-					const ItemShading *	is );
+extern int docItemShadingNumberImpl(	struct NumberedPropertiesList *	isl,
+					const struct ItemShading *	is );
 
 extern int docShadingNumberIsShadingImpl(
-					const NumberedPropertiesList *	isl,
+					const struct NumberedPropertiesList *	isl,
 					int				n );
 
-extern void docForAllItemShadings(	const NumberedPropertiesList *	isl,
+extern void docForAllItemShadings(	const struct NumberedPropertiesList *	isl,
 					ItemShadingFunction	f,
 					void *			through );
 
-extern void docGetItemShadingByNumberImpl( ItemShading *		is,
-					const NumberedPropertiesList *	isl,
+extern const struct ItemShading * docGetItemShadingByNumberImpl(
+					const struct NumberedPropertiesList *	isl,
 					int				n );
 
 extern int docMergeItemShadingLists(
 				int **				pShadingMap,
 				const int *			colorMap,
-				NumberedPropertiesList *	islTo,
-				const NumberedPropertiesList *	islFrom );
+				struct NumberedPropertiesList *	islTo,
+				const struct NumberedPropertiesList *	islFrom );
 
 #   endif	/*  DOC_ITEM_SHADING_ADMIN_H	*/

@@ -11,8 +11,9 @@
 #   include	<string.h>
 
 #   include	"psPrint.h"
-#   include	<geo2DInteger.h>
+#   include	<geoRectangle.h>
 #   include	<sioFileio.h>
+#   include	<sioGeneral.h>
 
 #   include	<appDebugon.h>
 
@@ -61,7 +62,7 @@ static const char * appEndEPSF[]=
     "    } bind def",
     };
 
-void psDefineEpsProcs(	SimpleOutputStream *		sos )
+void psDefineEpsProcs(	struct SimpleOutputStream *		sos )
     {
     psDefineProcedure( sos, appBeginEPSF,
 				sizeof(appBeginEPSF)/sizeof(const char *) );
@@ -72,12 +73,13 @@ void psDefineEpsProcs(	SimpleOutputStream *		sos )
     return;
     }
 
-void psBeginEpsObject(		SimpleOutputStream *		sos,
+void psBeginEpsObject(		struct SimpleOutputStream *	sos,
 				const DocumentRectangle *	drTo,
 				const DocumentRectangle *	drBBox,
 				const char *			file )
     {
     const int		sevenBits= 1;
+    const int		utf8= 1;
     AffineTransform2D	at;
 
     if  ( geoAffineTransformForTriangles( &at,
@@ -104,14 +106,14 @@ void psBeginEpsObject(		SimpleOutputStream *		sos,
     sioOutPrintf( sos, " concat\n" );
 
     sioOutPrintf( sos, "%%%%BeginDocument: (" );
-    psPrintString( sos, (unsigned char *)file, strlen( file ), sevenBits );
+    psPrintString( sos, file, strlen( file ), sevenBits, utf8 );
     sioOutPrintf( sos, ")\n" );
 
     return;
     }
 
 
-void psEndEpsObject(	SimpleOutputStream *		sos )
+void psEndEpsObject(	struct SimpleOutputStream *		sos )
     {
     sioOutPrintf( sos, "%%%%EndDocument\n" );
     sioOutPrintf( sos, "EndEPSF\n" );
@@ -129,7 +131,7 @@ void psEndEpsObject(	SimpleOutputStream *		sos )
 /*									*/
 /************************************************************************/
 
-int psSaveEpsFile(	SimpleOutputStream *	sos,
+int psSaveEpsFile(	struct SimpleOutputStream *	sos,
 			DocumentRectangle *	drBBox,
 			const MemoryBuffer *	filename )
     {
@@ -138,7 +140,7 @@ int psSaveEpsFile(	SimpleOutputStream *	sos,
 
     char			line[512+ 2];
 
-    SimpleInputStream *		sis= (SimpleInputStream *)0;
+    struct SimpleInputStream *		sis= (struct SimpleInputStream *)0;
 
     int				n;
 
@@ -211,8 +213,8 @@ int psSaveEpsFile(	SimpleOutputStream *	sos,
 /*									*/
 /************************************************************************/
 
-int psIncludeEpsFile(	SimpleOutputStream *	sos,
-				SimpleInputStream *	sis )
+int psIncludeEpsFile(	struct SimpleOutputStream *	sos,
+				struct SimpleInputStream *	sis )
     {
     char	line[512+1];
 

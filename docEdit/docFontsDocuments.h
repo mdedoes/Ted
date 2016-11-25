@@ -7,7 +7,9 @@
 #   ifndef	DOC_FONTS_DOCUMENTS_H
 #   define	DOC_FONTS_DOCUMENTS_H
 
-#   include	<docBuf.h>
+struct PostScriptFontList;
+struct MemoryBuffer;
+struct SimpleLocale;
 
 /************************************************************************/
 /*									*/
@@ -15,8 +17,10 @@
 /*									*/
 /************************************************************************/
 
-extern int docFontsDocuments(	const PostScriptFontList *	psfl,
-				const MemoryBuffer *		templDir,
-				const MemoryBuffer *		outputDir );
+extern int docFontsDocuments(
+			const struct PostScriptFontList *	psfl,
+			const struct SimpleLocale *		sl,
+			const struct MemoryBuffer *		templDir,
+			const struct MemoryBuffer *		outputDir );
 
 #    endif	/*  DOC_FONTS_DOCUMENTS_H	*/

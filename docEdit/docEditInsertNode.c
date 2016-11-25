@@ -6,14 +6,17 @@
 
 #   include	"docEditConfig.h"
 
-#   include	<stdio.h>
-
-#   include	<appDebugon.h>
-
 #   include	<docBuf.h>
 #   include	<docNodeTree.h>
-#   include	<docParaParticules.h>
 #   include	"docEdit.h"
+#   include	<docParaProperties.h>
+#   include	"docEditOperation.h"
+#   include	<docTreeNode.h>
+#   include	<docTextParticule.h>
+#   include	<utilPropMask.h>
+#   include	<docParaParticuleAdmin.h>
+
+#   include	<appDebugon.h>
 
 /************************************************************************/
 /*									*/
@@ -23,24 +26,24 @@
 
 int docInsertParagraph(		EditOperation *		eo,
 				DocumentPosition *	dpNew,
-				BufferItem *		paraNode,
+				struct BufferItem *	paraNode,
 				int			after,
-				int			textAttributeNumber )
+				int			textAttrNr )
     {
     int			pos= paraNode->biNumberInParent+ ( after != 0 );
-    BufferItem *	parentNode= paraNode->biParent;
+    struct BufferItem *	parentNode= paraNode->biParent;
 
-    BufferItem *	newParaBi;
+    struct BufferItem *	newParaNode;
     int			paraNr;
 
     PropertyMask	ppChgMask;
     PropertyMask	ppUpdMask;
 
-    newParaBi= docInsertNode( eo->eoDocument, parentNode, pos, DOClevPARA );
-    if  ( ! newParaBi )
-	{ XDEB(newParaBi); return -1;	}
+    newParaNode= docInsertNode( eo->eoDocument, parentNode, pos, DOClevPARA );
+    if  ( ! newParaNode )
+	{ XDEB(newParaNode); return -1;	}
 
-    paraNr= docNumberOfParagraph( newParaBi );
+    paraNr= docNumberOfParagraph( newParaNode );
 
     {
     const int	sectShift= 0;
@@ -59,19 +62,19 @@ int docInsertParagraph(		EditOperation *		eo,
     utilPropMaskClear( &ppUpdMask );
     utilPropMaskFill( &ppUpdMask, PPprop_FULL_COUNT );
 
-    if  ( docEditUpdParaProperties( eo, &ppChgMask, newParaBi,
-				    &ppUpdMask, &(paraNode->biParaProperties),
-				    (const DocumentAttributeMap *)0 ) )
+    if  ( docEditUpdParaProperties( eo, &ppChgMask, newParaNode, &ppUpdMask,
+				paraNode->biParaProperties,
+				(const struct DocumentAttributeMap *)0 ) )
 	{ LDEB(1);	}
 
-    if  ( ! docInsertTextParticule( newParaBi, 0, 0, 0,
-					DOCkindSPAN, textAttributeNumber ) )
+    if  ( ! docInsertTextParticule( newParaNode, 0, 0, 0,
+					TPkindSPAN, textAttrNr ) )
 	{ LDEB(1); return -1;	}
 
     docEditIncludeNodeInReformatRange( eo, paraNode );
-    docEditIncludeNodeInReformatRange( eo, newParaBi );
+    docEditIncludeNodeInReformatRange( eo, newParaNode );
 
-    if  ( docHeadPosition( dpNew, newParaBi ) )
+    if  ( docHeadPosition( dpNew, newParaNode ) )
 	{ LDEB(1); return -1;	}
 
     return 0;
@@ -86,12 +89,12 @@ int docInsertParagraph(		EditOperation *		eo,
 int docInsertSection(		EditOperation *		eo,
 				DocumentPosition *	dpBeforeSplit,
 				DocumentPosition *	dpAfterSplit,
-				BufferItem *		paraNode,
+				struct BufferItem *		paraNode,
 				int			split,
 				int			after,
-				int			textAttributeNumber )
+				int			textAttrNr )
     {
-    BufferItem *	sectNode;
+    struct BufferItem *	sectNode;
 
     sectNode= docGetSectNode( paraNode );
     if  ( ! sectNode )
@@ -109,8 +112,8 @@ int docInsertSection(		EditOperation *		eo,
 
     if  ( split )
 	{
-	BufferItem *		beforeNode;
-	BufferItem *		afterNode;
+	struct BufferItem *		beforeNode;
+	struct BufferItem *		afterNode;
 
 	if  ( docEditSplitParaParent( eo, &beforeNode, &afterNode,
 					    paraNode, after, DOClevSECT ) )
@@ -122,9 +125,9 @@ int docInsertSection(		EditOperation *		eo,
 	    { LDEB(1); return -1;	}
 	}
     else{
-	BufferItem *	parentNode;
-	BufferItem *	newSectNode;
-	BufferItem *	newParaBi;
+	struct BufferItem *	parentNode;
+	struct BufferItem *	newSectNode;
+	struct BufferItem *	newParaNode;
 	const int	sectShift= 1;
 
 	int		pos= sectNode->biNumberInParent+ ( after != 0 );
@@ -141,8 +144,9 @@ int docInsertSection(		EditOperation *		eo,
 						    sectNode, eo->eoDocument ) )
 	    { LDEB(1);	}
 
-	if  ( docSectionParagraph( eo, &newParaBi, newSectNode, sectShift,
-			&(paraNode->biParaProperties), textAttributeNumber ) )
+	if  ( docSectionParagraph( eo, &newParaNode, newSectNode, sectShift,
+			paraNode->biParaProperties,
+			textAttrNr ) )
 	    { LDEB(1); return -1;	}
 
 	docEditIncludeNodeInReformatRange( eo, sectNode );

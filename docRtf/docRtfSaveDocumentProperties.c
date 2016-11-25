@@ -6,14 +6,20 @@
 
 #   include	"docRtfConfig.h"
 
-#   include	<stdio.h>
 #   include	<ctype.h>
+#   include	<time.h>
 
-#   include	<appDebugon.h>
-
-#   include	<textOfficeCharset.h>
 #   include	"docRtfWriterImpl.h"
 #   include	"docRtfTags.h"
+#   include	<utilMemoryBuffer.h>
+#   include	<docDocumentProperties.h>
+#   include	<docBuf.h>
+#   include	<utilPropMask.h>
+#   include	<docListAdmin.h>
+#   include	<fontDocFontList.h>
+#   include	<utilPalette.h>
+
+#   include	<appDebugon.h>
 
 /************************************************************************/
 /*									*/
@@ -27,10 +33,7 @@ static int docRtfSaveInfo(	RtfWriter *		rw,
     {
     const int		addSemicolon= 0;
 
-    docRtfWriteDocEncodedStringDestination( rw, tag,
-				    (const char *)info->mbBytes,
-				    info->mbSize, addSemicolon );
-
+    docRtfWriteDocEncodedBufferDestination( rw, tag, info, addSemicolon );
     docRtfWriteNextLine( rw );
 
     return 0;
@@ -85,7 +88,7 @@ int docRtfSaveDocumentProperties(	RtfWriter *			rw,
 	}
 
     if  ( PROPmaskISSET( dpMask, DPpropDEFLANG ) )
-	{ docRtfWriteArgTag( rw, "deflang", dp->dpDefaultLanguage );	}
+	{ docRtfWriteArgTag( rw, "deflang", dp->dpDefaultLocaleId );	}
 
     if  ( PROPmaskISSET( dpMask, DPpropRTOL ) )
 	{
@@ -177,13 +180,13 @@ int docRtfSaveDocumentProperties(	RtfWriter *			rw,
     	{ docRtfWriteArgTag( rw, "paperh", dg->dgPageHighTwips );	}
 
     if  ( PROPmaskISSET( dpMask, DGpropLEFT_MARGIN ) )
-    	{ docRtfWriteArgTag( rw, "margl", dg->dgLeftMarginTwips );	}
+    	{ docRtfWriteArgTag( rw, "margl", dg->dgMargins.roLeftOffset );	}
     if  ( PROPmaskISSET( dpMask, DGpropRIGHT_MARGIN ) )
-    	{ docRtfWriteArgTag( rw, "margr", dg->dgRightMarginTwips );	}
+    	{ docRtfWriteArgTag( rw, "margr", dg->dgMargins.roRightOffset );	}
     if  ( PROPmaskISSET( dpMask, DGpropTOP_MARGIN ) )
-    	{ docRtfWriteArgTag( rw, "margt", dg->dgTopMarginTwips );	}
+    	{ docRtfWriteArgTag( rw, "margt", dg->dgMargins.roTopOffset );	}
     if  ( PROPmaskISSET( dpMask, DGpropBOTTOM_MARGIN ) )
-    	{ docRtfWriteArgTag( rw, "margb", dg->dgBottomMarginTwips );	}
+    	{ docRtfWriteArgTag( rw, "margb", dg->dgMargins.roBottomOffset );	}
 
     if  ( PROPmaskISSET( dpMask, DGpropGUTTER ) )
 	{ docRtfWriteArgTag( rw, "gutter", dg->dgGutterTwips ); }
@@ -278,34 +281,34 @@ int docRtfSaveDocumentProperties(	RtfWriter *			rw,
 /************************************************************************/
 
 int docRtfSaveDocNotesSeparators(	RtfWriter *		rw,
-					const BufferDocument *	bd )
+					struct BufferDocument *	bd )
     {
     const int			evenIfAbsent= 0;
     const int			forcePar= 0;
 
-    if  ( docRtfSaveDocumentTree( rw, "ftnsep", &(bd->bdEiFtnsep),
+    if  ( docRtfSaveDocumentTree( rw, "ftnsep", &(bd->bdFtnsep),
 						    evenIfAbsent, forcePar ) )
 	{ LDEB(1); return -1;	}
 
-    if  ( docRtfSaveDocumentTree( rw, "ftnsepc", &(bd->bdEiFtnsepc),
+    if  ( docRtfSaveDocumentTree( rw, "ftnsepc", &(bd->bdFtnsepc),
 						    evenIfAbsent, forcePar ) )
 	{ LDEB(1); return -1;	}
 
-    if  ( docRtfSaveDocumentTree( rw, "ftncn", &(bd->bdEiFtncn),
+    if  ( docRtfSaveDocumentTree( rw, "ftncn", &(bd->bdFtncn),
 						    evenIfAbsent, forcePar ) )
 	{ LDEB(1); return -1;	}
 
     /******/
 
-    if  ( docRtfSaveDocumentTree( rw, "aftnsep", &(bd->bdEiAftnsep),
+    if  ( docRtfSaveDocumentTree( rw, "aftnsep", &(bd->bdAftnsep),
 						    evenIfAbsent, forcePar ) )
 	{ LDEB(1); return -1;	}
 
-    if  ( docRtfSaveDocumentTree( rw, "aftnsepc", &(bd->bdEiAftnsepc),
+    if  ( docRtfSaveDocumentTree( rw, "aftnsepc", &(bd->bdAftnsepc),
 						    evenIfAbsent, forcePar ) )
 	{ LDEB(1); return -1;	}
 
-    if  ( docRtfSaveDocumentTree( rw, "aftncn", &(bd->bdEiAftncn),
+    if  ( docRtfSaveDocumentTree( rw, "aftncn", &(bd->bdAftncn),
 						    evenIfAbsent, forcePar ) )
 	{ LDEB(1); return -1;	}
 
@@ -338,6 +341,18 @@ int docRtfDocPropMask(	PropertyMask *			dpSaveMask,
     if  ( docUpdDocumentProperties( dpSaveMask, &dpDef,
 						    &dpSetMask, dpDoc, dam0 ) )
 	{ LDEB(1); rval= -1; goto ready;	}
+
+    if  ( dpDoc->dpFontList->dflFontCount > 0 )
+	{ PROPmaskADD( dpSaveMask, DPpropFONTTABLE );	}
+    if  ( dpDoc->dpColorPalette->cpColorCount > 0 )
+	{ PROPmaskADD( dpSaveMask, DPpropCOLORTABLE );	}
+    if  ( dpDoc->dpListAdmin->laListTable.dltListCount > 0 )
+	{ PROPmaskADD( dpSaveMask, DPpropLISTTABLE );	}
+    if  ( dpDoc->dpListAdmin->laListOverrideTable.lotOverrideCount > 0 )
+	{ PROPmaskADD( dpSaveMask, DPpropLISTOVERRIDETABLE );	}
+
+    if  ( ! utilMemoryBufferIsEmpty( &(dpDoc->dpGeneratorWrite) ) )
+	{ PROPmaskADD( dpSaveMask, DPpropGENERATOR );	}
 
   ready:
 

@@ -1,5 +1,6 @@
-#   include	<sioGeneral.h>
 #   include	"psTtfTableEntry.h"
+
+struct SimpleInputStream;
 
 typedef struct TrueTypeNameRecord
     {
@@ -27,7 +28,7 @@ extern void psTtfCleanTrueTypeNameRecord(	TrueTypeNameRecord *	ttnr );
 extern void psTtfInitTrueTypeNameTable(		TrueTypeNameTable *	ttnt );
 extern void psTtfCleanTrueTypeNameTable(	TrueTypeNameTable *	ttnt );
 
-extern int psTtfExtractNameRecords(	SimpleInputStream *		sisName,
+extern int psTtfExtractNameRecords(	struct SimpleInputStream *	sisName,
 					const TrueTypeTableEntry *	ttte,
 					TrueTypeNameTable *		ttnt );
 

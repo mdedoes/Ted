@@ -1,10 +1,10 @@
 #   include	"tedConfig.h"
 
 #   include	<stdlib.h>
-#   include	<stdio.h>
 
 #   include	"tedRuler.h"
-#   include	<appFrame.h>
+#   include	<appEditApplication.h>
+#   include	<appEditDocument.h>
 #   include	<appRuler.h>
 #   include	<guiWidgetDrawingSurface.h>
 #   include	<guiDrawingWidget.h>
@@ -67,7 +67,7 @@ static void tedDrawVerticalRuler(	APP_WIDGET		w,
     drawNoClipping( ds );
     }
 
-static APP_EVENT_HANDLER_H( tedRedrawVerticalRuler, w, voidrd, event )
+static APP_REDRAW_HANDLER_H( tedRedrawVerticalRuler, w, voidrd, event )
     {
     RulerData *		rd= (RulerData *)voidrd;
 
@@ -83,7 +83,12 @@ static APP_EVENT_HANDLER_H( tedRedrawVerticalRuler, w, voidrd, event )
 				    fontSizeHintPixels, magnification, w );
 	}
 
-    guiCollectExposures( &drClip, w, event );
+    guiStartDrawing( &drClip, rd->rdDrawingSurface, w, event );
+
+    drawSetLineAttributes( rd->rdDrawingSurface,
+			1, LineStyleSolid, LineCapProjecting, LineJoinMiter,
+			(const unsigned char *)0, 0 );
+
     tedDrawVerticalRuler( w, rd, &drClip );
     }
 

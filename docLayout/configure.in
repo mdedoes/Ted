@@ -9,7 +9,6 @@ dnl Checks for header files.
 AC_HEADER_STDC
 
 dnl Checks for typedefs, structures, and compiler characteristics.
-AC_C_CONST
 AC_C_BIGENDIAN
 AC_CHECK_SIZEOF(short)
 AC_CHECK_SIZEOF(int)

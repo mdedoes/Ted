@@ -6,10 +6,6 @@
 
 #   include	"docEditConfig.h"
 
-#   include	<stdio.h>
-
-#   include	<appDebugon.h>
-
 #   include	<docBuf.h>
 #   include	<docNotes.h>
 #   include	<docTreeNode.h>
@@ -17,56 +13,18 @@
 #   include	<docField.h>
 #   include	<docTreeType.h>
 #   include	<docDocumentNote.h>
-#   include	<docParaParticules.h>
 #   include	<docListDepth.h>
+#   include	<docRowNodeProperties.h>
+#   include	<docParaNodeProperties.h>
+#   include	"docEditOperation.h"
+#   include	<docParaProperties.h>
+#   include	<docSectProperties.h>
+#   include	<utilPropMask.h>
+#   include	<docFields.h>
+#   include	<docNodeTree.h>
+#   include	<docParaBuilder.h>
 
-/************************************************************************/
-/*									*/
-/*  Set the list number field at the head of a fresh paragraph.		*/
-/*									*/
-/*  We have an issue with the text attributes of the fresh field:	*/
-/*  -	If we copy it from the particles in the paragraph, we		*/
-/*	contaminate the text attributes of the listttext field.		*/
-/*									*/
-/************************************************************************/
-
-static int docInsertListtextField( DocumentField **	pField,
-				DocumentSelection *	dsInsideField,
-				DocumentSelection *	dsAroundField,
-				int *			pPartBegin,
-				int *			pPartEnd,
-				BufferItem *		paraNode,
-				DocumentTree *		dt,
-				BufferDocument *	bd )
-    {
-    int				rval= 0;
-
-    int				paraNr= docNumberOfParagraph( paraNode );
-    int				textAttrNr= 0;
-
-#   if 1
-    if  ( paraNode->biParaParticuleCount > 0 )
-	{
-	const TextParticule *		tp= paraNode->biParaParticules;
-
-	textAttrNr= tp->tpTextAttrNr;
-	}
-#   endif
-
-    if  ( docInsertParaHeadField( pField, dsInsideField, dsAroundField,
-			    pPartBegin, pPartEnd,
-			    paraNode, bd, dt, DOCfkLISTTEXT, textAttrNr ) )
-	{ LDEB(1); rval= -1; goto ready;	}
-
-    if  ( docListNumberTreesInsertParagraph( &(dt->dtListNumberTrees),
-					paraNode->biParaListOverride,
-					paraNode->biParaListLevel, paraNr ) )
-	{ LDEB(paraNr); rval= -1; goto ready;	}
-
-  ready:
-
-    return rval;
-    }
+#   include	<appDebugon.h>
 
 /************************************************************************/
 /*									*/
@@ -76,12 +34,12 @@ static int docInsertListtextField( DocumentField **	pField,
 
 int docEditUpdParaProperties(	EditOperation *			eo,
 				PropertyMask *			pPpDoneMask,
-				BufferItem *			paraNode,
+				struct BufferItem *		paraNode,
 				const PropertyMask *		ppSetMask,
-				const ParagraphProperties *	ppSet,
-				const DocumentAttributeMap *	dam )
+				const struct ParagraphProperties * ppSet,
+				const struct DocumentAttributeMap *	dam )
     {
-    BufferDocument *		bd= eo->eoDocument;
+    struct BufferDocument *	bd= eo->eoDocument;
 
     int				wasInList= 0;
     int				isInList= 0;
@@ -94,22 +52,25 @@ int docEditUpdParaProperties(	EditOperation *			eo,
 
     PropertyMask		ppDoneMask;
 
-    DocumentField *		dfBullet= (DocumentField *)0;
+    struct DocumentField *	dfBullet= (struct DocumentField *)0;
     DocumentSelection		dsInsideBullet;
     DocumentSelection		dsAroundBullet;
     int				partBulletHead= -1;
     int				partBulletTail= -1;
 
     int				paraNr= -1;
+    int				listOverride;
+    int				outlineLevel;
 
     utilPropMaskClear( &ppDoneMask );
 
     /*  A  */
-    if  ( paraNode->biParaListOverride > 0 )
+    listOverride= paraNode->biParaProperties->ppListOverride;
+    if  ( listOverride > 0 )
 	{
 	wasInList= 1;
-	ls= paraNode->biParaListOverride;
-	ilvl= paraNode->biParaListLevel;
+	ls= listOverride;
+	ilvl= paraNode->biParaProperties->ppListLevel;
 
 	if  ( docDelimitParaHeadField( &dfBullet,
 			    &dsInsideBullet, &dsAroundBullet,
@@ -117,19 +78,19 @@ int docEditUpdParaProperties(	EditOperation *			eo,
 	    { /* LDEB(paraNode->biParaListOverride); */	}
 	}
 
-    olevel= paraNode->biParaOutlineLevel;
+    olevel= paraNode->biParaProperties->ppOutlineLevel;
 
-    if  ( docUpdParaProperties( &ppDoneMask, &(paraNode->biParaProperties),
-						    ppSetMask, ppSet, dam ) )
+    if  ( docParaNodeUpdProperties( &ppDoneMask, paraNode,
+						ppSetMask, ppSet, dam, bd ) )
 	{ LDEB(1); return -1;	}
 
-    if  ( paraNode->biParaListOverride > 0 )
+    if  ( paraNode->biParaProperties->ppListOverride > 0 )
 	{ isInList= 1;	}
 
-    if  ( wasInList						||
-	  isInList						||
-	  olevel < PPoutlineBODYTEXT				||
-	  paraNode->biParaOutlineLevel < PPoutlineBODYTEXT	)
+    if  ( wasInList							||
+	  isInList							||
+	  olevel < PPoutlineBODYTEXT					||
+	  paraNode->biParaProperties->ppOutlineLevel < PPoutlineBODYTEXT )
 	{ paraNr= docNumberOfParagraph( paraNode );	}
 
     if  ( wasInList && ! isInList )
@@ -157,27 +118,27 @@ int docEditUpdParaProperties(	EditOperation *			eo,
 
     if  ( ! wasInList && isInList )
 	{
-	if  ( docInsertListtextField( &dfBullet,
+	if  ( docParagraphBuilderInsertListtextField( &dfBullet,
 					&dsInsideBullet, &dsAroundBullet,
 					&partBulletHead, &partBulletTail,
-					paraNode, eo->eoTree, bd ) )
+					eo->eoParagraphBuilder ) )
 	    { LDEB(1); return -1;	}
 
 	listChange= 1;
 	eo->eoFieldUpdate |= FIELDdoLISTTEXT;
 	}
 
-    if  ( wasInList					&&
-	  isInList					&&
-	  ( paraNode->biParaListOverride != ls	||
-	    paraNode->biParaListLevel != ilvl	)	)
+    if  ( wasInList						&&
+	  isInList						&&
+	  ( paraNode->biParaProperties->ppListOverride != ls	||
+	    paraNode->biParaProperties->ppListLevel != ilvl	)	)
 	{
 	if  ( docListNumberTreesDeleteParagraph(
 				&(eo->eoTree->dtListNumberTrees), ls, paraNr ) )
 	    { LLDEB(ls,paraNr);	}
 
-	ls= paraNode->biParaListOverride;
-	ilvl= paraNode->biParaListLevel;
+	ls= paraNode->biParaProperties->ppListOverride;
+	ilvl= paraNode->biParaProperties->ppListLevel;
 
 	if  ( docListNumberTreesInsertParagraph(
 			&(eo->eoTree->dtListNumberTrees), ls, ilvl, paraNr ) )
@@ -187,7 +148,8 @@ int docEditUpdParaProperties(	EditOperation *			eo,
 	eo->eoFieldUpdate |= FIELDdoLISTTEXT;
 	}
 
-    if  ( paraNode->biParaOutlineLevel != olevel )
+    outlineLevel= paraNode->biParaProperties->ppOutlineLevel;
+    if  ( outlineLevel != olevel )
 	{
 	if  ( olevel < PPoutlineBODYTEXT )
 	    {
@@ -196,16 +158,17 @@ int docEditUpdParaProperties(	EditOperation *			eo,
 		{ LDEB(paraNr);	}
 	    }
 
-	if  ( paraNode->biParaOutlineLevel < PPoutlineBODYTEXT )
+	if  ( outlineLevel < PPoutlineBODYTEXT )
 	    {
 	    if  ( docListNumberTreeInsertParagraph(
 					&(eo->eoTree->dtOutlineTree),
-					paraNode->biParaOutlineLevel, paraNr ) )
+					outlineLevel, paraNr ) )
 		{ LDEB(paraNr);	}
 	    }
 	}
 
-    if  ( listChange )
+    if  ( listChange							||
+	  ( isInList && PROPmaskISSET( &ppDoneMask, PPpropRTOL ) )	)
 	{
 	int		indentChanged= 0;
 
@@ -213,8 +176,8 @@ int docEditUpdParaProperties(	EditOperation *			eo,
 	    { LDEB(1);		}
 	}
 
-    if  ( paraNode->biParaTableNesting > 0	&&
-	  paraNode->biNumberInParent == 0		)
+    if  ( paraNode->biParaProperties->ppTableNesting > 0	&&
+	  paraNode->biNumberInParent == 0			)
 	{ docEditAdaptRowPropertiesToFirstChild( eo, paraNode );	}
 
     if  ( ! utilPropMaskIsEmpty( &ppDoneMask ) )
@@ -233,12 +196,12 @@ int docEditUpdParaProperties(	EditOperation *			eo,
 /*									*/
 /************************************************************************/
 
-static void docInvalidateNoteLayoutForSection(	BufferDocument *	bd,
+static void docInvalidateNoteLayoutForSection(	struct BufferDocument *	bd,
 						int			sect )
     {
-    DocumentField *	dfNote;
-    DocumentNote *	dn;
-    const int		treeType= -1;
+    struct DocumentField *	dfNote;
+    DocumentNote *		dn;
+    const int			treeType= -1;
 
     if  ( sect >= 0 )
 	{
@@ -275,29 +238,45 @@ static void docInvalidateNoteLayoutForSection(	BufferDocument *	bd,
 
 int docEditUpdSectProperties(	EditOperation *			eo,
 				PropertyMask *			pSpDoneMask,
-				BufferItem *			sectNode,
+				struct BufferItem *			sectNode,
 				const PropertyMask *		spSetMask,
-				const SectionProperties *	spNew,
-				const DocumentAttributeMap *	dam )
+				const SectionProperties *	spNew )
     {
     PropertyMask		spDoneMask;
+    int				prevBalanced0= 0;
+    int				prevBalanced1= 0;
 
     utilPropMaskClear( &spDoneMask );
 
     if  ( spSetMask && utilPropMaskIsEmpty( spSetMask ) )
 	{ spSetMask= (const PropertyMask *)0;	}
 
+    if  ( sectNode->biNumberInParent > 0		&&
+	  sectNode->biParent				)
+	{
+	prevBalanced0= docSectColumnsAreBalanced(
+		sectNode->biParent->biChildren[sectNode->biNumberInParent- 1] );
+	}
+
     if  ( spSetMask )
 	{
-	if  ( docUpdSectProperties( &spDoneMask, &(sectNode->biSectProperties),
+	if  ( docUpdSectProperties( &spDoneMask, sectNode->biSectProperties,
 							spSetMask, spNew ) )
 	    { LDEB(1); return -1;	}
+	}
+
+    if  ( sectNode->biNumberInParent > 0		&&
+	  sectNode->biParent				)
+	{
+	prevBalanced1= docSectColumnsAreBalanced(
+		sectNode->biParent->biChildren[sectNode->biNumberInParent- 1] );
 	}
 
     if  ( sectNode->biTreeType == DOCinBODY )
 	{
 	/*
 	if  ( PROPmaskISSET( &spDoneMask, SPpropTITLEPG )	||
+	      PROPmaskISSET( &spDoneMask, SPpropENDPG )		||
 	      PROPmaskISSET( &spDoneMask, SPpropNUMBER_STYLE )	||
 	      PROPmaskISSET( &spDoneMask, SPpropNUMBER_HYPHEN )	||
 	      PROPmaskISSET( &spDoneMask, SPpropPAGE_RESTART )	||
@@ -329,6 +308,9 @@ int docEditUpdSectProperties(	EditOperation *			eo,
 	    docInvalidateNoteLayoutForSection( eo->eoDocument,
 						sectNode->biNumberInParent );
 	    }
+
+	if  ( prevBalanced1 != prevBalanced0 )
+	    { eo->eoReformatNeeded= REFORMAT_DOCUMENT;	}
 	}
 
     if  ( ! utilPropMaskIsEmpty( &spDoneMask ) )
@@ -342,20 +324,21 @@ int docEditUpdSectProperties(	EditOperation *			eo,
 
 void docEditAdaptRowPropertiesToFirstChild(
 					EditOperation *		eo,
-					const BufferItem *	paraNode )
+					const struct BufferItem *	paraNode )
     {
-    if  ( paraNode->biParaTableNesting > 0	&&
-	  paraNode->biNumberInParent == 0		)
+    if  ( paraNode->biParaProperties->ppTableNesting > 0	&&
+	  paraNode->biNumberInParent == 0			)
 	{
-	BufferItem *	cellNode= paraNode->biParent;
+	struct BufferDocument *	bd= eo->eoDocument;
+	const struct BufferItem *	cellNode= paraNode->biParent;
 
 	if  ( cellNode->biNumberInParent == 0 )
 	    {
-	    BufferItem *	rowNode= cellNode->biParent;
+	    struct BufferItem *		rowNode= cellNode->biParent;
 
-	    if  ( rowNode->biRow_Keepfollow != paraNode->biParaKeepWithNext )
+	    if  ( docRowNodeSetKeepFollow( rowNode,
+			    paraNode->biParaProperties->ppKeepWithNext, bd ) )
 		{
-		rowNode->biRow_Keepfollow= paraNode->biParaKeepWithNext;
 		docEditIncludeNodeInReformatRange( eo, rowNode );
 		}
 	    }

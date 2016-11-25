@@ -8,16 +8,20 @@
 
 #   include	"appFrameConfig.h"
 
-#   include	<stddef.h>
-#   include	<stdio.h>
+#   if USE_GTK
 
-#   include	"appFrame.h"
-#   include	"guiWidgetDrawingSurface.h"
-#   include	"guiDrawingWidget.h"
+#   include	<stddef.h>
+
+#   include	"appEditApplication.h"
+#   include	"appGuiApplication.h"
+#   include	"appEditDocument.h"
+#   include	"appGuiDocument.h"
+#   include	"appDocument.h"
+#   include	"appDocFront.h"
+#   include	<guiDrawingWidget.h>
+#   include	<guiWidgetsGtk.h>
 
 #   include	<appDebugon.h>
-
-#   ifdef USE_GTK
 
 /************************************************************************/
 /*									*/
@@ -41,9 +45,7 @@ static APP_EVENT_HANDLER_H( appDocTopConfigure, w, voided, event )
     EditDocument *	ed= (EditDocument *)voided;
 
     if  ( event->type == GDK_MAP )
-	{
-	ed->edMapped= 1;
-	}
+	{ ed->edMapped= 1;	}
 
     return;
     }
@@ -63,9 +65,6 @@ static int appDocMakeMainWindow(	EditDocument *		ed )
     int			rval= 0;
     EditApplication *	ea= ed->edApplication;
 
-    APP_BITMAP_IMAGE	pixmap= (APP_BITMAP_IMAGE)0;
-    APP_BITMAP_MASK	mask= (APP_BITMAP_MASK)0;
-
     const int		spacing= 0;
 
     MemoryBuffer	fullTitle;
@@ -73,10 +72,6 @@ static int appDocMakeMainWindow(	EditDocument *		ed )
 
     utilInitMemoryBuffer( &fullTitle );
     utilInitMemoryBuffer( &iconName );
-
-    if  ( ea->eaMainIcon						&&
-	  appGetImagePixmap( ea, ea->eaMainIcon, &pixmap, &mask )	)
-	{ SDEB(ea->eaMainIcon); rval= -1; goto ready;	}
 
     if  ( appFormatDocumentTitle( &fullTitle, &iconName, ea, &(ed->edTitle) ) )
 	{ LDEB(1); rval= -1; goto ready;	}
@@ -88,24 +83,37 @@ static int appDocMakeMainWindow(	EditDocument *		ed )
 
     gtk_window_set_position( GTK_WINDOW( ed->edToplevel.atTopWidget ),
 						GTK_WIN_POS_CENTER );
+    /*
     gtk_window_set_policy( GTK_WINDOW( ed->edToplevel.atTopWidget ), 
 						    TRUE, TRUE, FALSE );
+    */
+    gtk_window_set_resizable( GTK_WINDOW( ed->edToplevel.atTopWidget ), TRUE );
 
     gtk_widget_realize( ed->edToplevel.atTopWidget );
 
-    gdk_window_set_icon( ed->edToplevel.atTopWidget->window,
-					ed->edToplevel.atTopWidget->window,
-					pixmap, mask );
-    gdk_window_set_icon_name( ed->edToplevel.atTopWidget->window,
-				    utilMemoryBufferGetString( &iconName ) );
+    appSetNamedWindowIcon( ea, ed->edToplevel.atTopWidget, ea->eaMainIcon );
 
-    appSetCloseCallback( ed->edToplevel.atTopWidget, ea,
+#   if  GTK_MAJOR_VERSION < 3
+    gdk_window_set_icon_name(
+		    gtk_widget_get_window( ed->edToplevel.atTopWidget ),
+		    utilMemoryBufferGetString( &iconName ) );
+#   else
+    gtk_window_set_icon_name(
+			    GTK_WINDOW( ed->edToplevel.atTopWidget ),
+			    utilMemoryBufferGetString( &iconName ) );
+#   endif
+
+    guiSetCloseCallback( ed->edToplevel.atTopWidget,
 					appDocFileCloseCallback, (void *)ed );
 
-    appSetDestroyCallback( ed->edToplevel.atTopWidget,
+    guiSetDestroyCallback( ed->edToplevel.atTopWidget,
 					appDestroyEditDocument, (void *)ed );
 
+#   if GTK_MAJOR_VERSION < 3
     ed->edMainWindow= gtk_vbox_new( FALSE, spacing );
+#   else
+    ed->edMainWindow= gtk_box_new( GTK_ORIENTATION_VERTICAL, spacing );
+#   endif
     gtk_container_add( GTK_CONTAINER( ed->edToplevel.atTopWidget ),
 							ed->edMainWindow );
     gtk_widget_show( ed->edMainWindow );
@@ -114,7 +122,7 @@ static int appDocMakeMainWindow(	EditDocument *		ed )
 
 #   if GTK_MAJOR_VERSION < 2
     gtk_accel_group_attach( ed->edToplevel.atAccelGroup,
-				    GTK_OBJECT( ed->edToplevel.atTopWidget ) );
+				    G_OBJECT( ed->edToplevel.atTopWidget ) );
 #   else
     gtk_window_add_accel_group( GTK_WINDOW( ed->edToplevel.atTopWidget ),
 					    ed->edToplevel.atAccelGroup );
@@ -137,7 +145,7 @@ static int appDocMakeMainWindow(	EditDocument *		ed )
 
 static int appDocMakeScrolledWindow(	EditDocument *		ed )
     {
-    ed->edScrolledWindow= gtk_table_new( 2, 2, FALSE );
+    ed->edScrolledWindow= guiGtkMakeGrid( 2, 2, FALSE );
 
     gtk_widget_show( ed->edScrolledWindow );
     gtk_box_pack_start( GTK_BOX( ed->edMainWindow ),
@@ -145,32 +153,38 @@ static int appDocMakeScrolledWindow(	EditDocument *		ed )
 
     /*****/
 
+#   if GTK_MAJOR_VERSION < 3
     ed->edVerticalScrollbar= gtk_vscrollbar_new( NULL );
+#   else
+    ed->edVerticalScrollbar=
+	    gtk_scrollbar_new( GTK_ORIENTATION_VERTICAL, NULL );
+#   endif
     ed->edVerticalAdjustment=
 	    gtk_range_get_adjustment( GTK_RANGE( ed->edVerticalScrollbar ) );
 
-    gtk_table_attach( GTK_TABLE( ed->edScrolledWindow ),
-			ed->edVerticalScrollbar,
-			1, 2,
-			0, 1,
-			GTK_FILL,
-			GTK_FILL | GTK_EXPAND | GTK_SHRINK,
+    guiGtkAttachChildInGrid( ed->edScrolledWindow, ed->edVerticalScrollbar,
+			1, 1, /* col, colspan */
+			0, 1, /* row, rowspan */
+			FALSE, TRUE, /* hexpand, vexpand */
 			0, 0 );
 
     gtk_widget_show( ed->edVerticalScrollbar );
 
     /*****/
 
+#   if GTK_MAJOR_VERSION < 3
     ed->edHorizontalScrollbar= gtk_hscrollbar_new( NULL );
+#   else
+    ed->edHorizontalScrollbar=
+			gtk_scrollbar_new( GTK_ORIENTATION_HORIZONTAL, NULL );
+#   endif
     ed->edHorizontalAdjustment=
 	    gtk_range_get_adjustment( GTK_RANGE( ed->edHorizontalScrollbar ) );
 
-    gtk_table_attach( GTK_TABLE( ed->edScrolledWindow ),
-			ed->edHorizontalScrollbar,
-			0, 1,
-			1, 2,
-			GTK_FILL | GTK_EXPAND | GTK_SHRINK,
-			GTK_FILL,
+    guiGtkAttachChildInGrid( ed->edScrolledWindow, ed->edHorizontalScrollbar,
+			0, 1, /* col, colspan */
+			1, 1, /* row, rowspan */
+			TRUE, FALSE, /* hexpand, vexpand */
 			0, 0 );
 
     gtk_widget_show( ed->edHorizontalScrollbar );
@@ -178,85 +192,72 @@ static int appDocMakeScrolledWindow(	EditDocument *		ed )
     return 0;
     }
 
-int appMakeDocumentWidget(	EditApplication *	ea,
-				EditDocument *		ed )
+int appMakeDocumentWidget(	EditDocument *		ed )
     {
-    appDocumentRulerWidth( ea, ed );
+    appDocumentRulerWidth( ed );
 
     /*  2  */
-    ed->edWorkWidget= gtk_table_new( 3, 3, FALSE );
+    ed->edWorkWidget= guiGtkMakeGrid( 3, 3, FALSE );
 
-    gtk_table_attach( GTK_TABLE( ed->edScrolledWindow ),
-			ed->edWorkWidget,
-			0, 1,
-			0, 1,
-			GTK_FILL | GTK_EXPAND | GTK_SHRINK,
-			GTK_FILL | GTK_EXPAND | GTK_SHRINK,
+    guiGtkAttachChildInGrid( ed->edScrolledWindow, ed->edWorkWidget,
+			0, 1, /* col, colspan */
+			0, 1, /* row, rowspan */
+			TRUE, TRUE, /* hexpand, vexpand */
 			0, 0 );
 
     gtk_widget_show( ed->edWorkWidget );
 
     ed->edTopRulerWidget= gtk_drawing_area_new();
 
-    gtk_table_attach( GTK_TABLE( ed->edWorkWidget ),
-			ed->edTopRulerWidget,
-			0, 3,
-			0, 1,
-			GTK_FILL | GTK_EXPAND | GTK_SHRINK,
-			GTK_FILL,
+    guiGtkAttachChildInGrid( ed->edWorkWidget, ed->edTopRulerWidget,
+			0, 3, /* col, colspan */
+			0, 1, /* row, rowspan */
+			TRUE, FALSE, /* hexpand, vexpand */
 			0, 0 );
 
     gtk_widget_show( ed->edTopRulerWidget );
 
     ed->edBottomRulerWidget= gtk_drawing_area_new();
 
-    gtk_table_attach( GTK_TABLE( ed->edWorkWidget ),
-			ed->edBottomRulerWidget,
-			0, 3,
-			2, 3,
-			GTK_FILL | GTK_EXPAND | GTK_SHRINK,
-			GTK_FILL,
+    guiGtkAttachChildInGrid( ed->edWorkWidget, ed->edBottomRulerWidget,
+			0, 3, /* col, colspan */
+			2, 1, /* row, rowspan */
+			TRUE, FALSE, /* hexpand, vexpand */
 			0, 0 );
 
     gtk_widget_show( ed->edBottomRulerWidget );
 
     ed->edLeftRulerWidget= gtk_drawing_area_new();
 
-    gtk_table_attach( GTK_TABLE( ed->edWorkWidget ),
-			ed->edLeftRulerWidget,
-			0, 1,
-			1, 2,
-			GTK_FILL,
-			GTK_FILL | GTK_EXPAND | GTK_SHRINK,
+    guiGtkAttachChildInGrid( ed->edWorkWidget, ed->edLeftRulerWidget,
+			0, 1, /* col, colspan */
+			1, 1, /* row, rowspan */
+			FALSE, TRUE, /* hexpand, vexpand */
 			0, 0 );
 
     gtk_widget_show( ed->edLeftRulerWidget );
 
     ed->edRightRulerWidget= gtk_drawing_area_new();
 
-    gtk_table_attach( GTK_TABLE( ed->edWorkWidget ),
-			ed->edRightRulerWidget,
-			2, 3,
-			1, 2,
-			GTK_FILL,
-			GTK_FILL | GTK_EXPAND | GTK_SHRINK,
+    guiGtkAttachChildInGrid( ed->edWorkWidget, ed->edRightRulerWidget,
+			2, 1, /* col, colspan */
+			1, 1, /* row, rowspan */
+			FALSE, TRUE, /* hexpand, vexpand */
 			0, 0 );
 
     gtk_widget_show( ed->edRightRulerWidget );
 
     ed->edDocumentWidget.dwWidget= gtk_drawing_area_new();
 
-    gtk_table_attach( GTK_TABLE( ed->edWorkWidget ),
-			ed->edDocumentWidget.dwWidget,
-			1, 2,
-			1, 2,
-			GTK_FILL | GTK_EXPAND | GTK_SHRINK,
-			GTK_FILL | GTK_EXPAND | GTK_SHRINK,
+    guiGtkAttachChildInGrid( ed->edWorkWidget, ed->edDocumentWidget.dwWidget,
+			1, 1, /* col, colspan */
+			1, 1, /* row, rowspan */
+			TRUE, TRUE, /* hexpand, vexpand */
 			0, 0 );
 
     gtk_widget_show( ed->edDocumentWidget.dwWidget );
 
-    GTK_WIDGET_SET_FLAGS( ed->edDocumentWidget.dwWidget, GTK_CAN_FOCUS );
+    gtk_widget_set_can_focus( ed->edDocumentWidget.dwWidget, TRUE );
     gtk_window_set_focus( GTK_WINDOW( ed->edToplevel.atTopWidget ),
 					    ed->edDocumentWidget.dwWidget );
 
@@ -265,26 +266,22 @@ int appMakeDocumentWidget(	EditApplication *	ea,
 
 static int appDocMakeToolbar(	EditDocument *		ed )
     {
-#   if 0
-    EditApplication *	ea= ed->edApplication;
-    Arg			al[20];
-    int			ac= 0;
-
-    Display *		display= ea->eaDisplay;
-    int			screen= DefaultScreen( ea->eaDisplay );
-
-    int			verPixPerCM;
-
-    verPixPerCM= ( 10* DisplayHeight( display, screen ) )/
-					DisplayHeightMM( display, screen );
-    XtSetArg( al[ac], XmNleftAttachment,	XmATTACH_FORM ); ac++;
-    XtSetArg( al[ac], XmNtopAttachment,		XmATTACH_FORM ); ac++;
-    XtSetArg( al[ac], XmNrightAttachment,	XmATTACH_FORM ); ac++;
-    XtSetArg( al[ac], XmNheight,		verPixPerCM ); ac++;
-
-    ed->edToolbar= XmCreateForm( ed->edMainWindow, WIDGET_NAME, al, ac );
-
+#   if GTK_MAJOR_VERSION < 3
+    ed->edToolbar= gtk_vbox_new( FALSE, COLUMN_SPACING_GTK );
+#   else
+    ed->edToolbar= gtk_box_new( GTK_ORIENTATION_VERTICAL, COLUMN_SPACING_GTK );
 #   endif
+
+    gtk_container_add( GTK_CONTAINER( ed->edMainWindow ), ed->edToolbar );
+
+    gtk_widget_set_name( ed->edToolbar, "tedInspector");
+
+    gtk_widget_show( ed->edToolbar );
+/*
+Disables arrow keys for one reason or another
+LDEB(1);gtk_widget_set_can_focus(ed->edToolbar,1);
+*/
+
     return 0;
     }
 
@@ -297,32 +294,32 @@ int appFinishDocumentWindow(	EditDocument *		ed )
     if  ( appDocMakeMainWindow( ed )			||
 	  appDocMakeToolbar( ed )			||
 	  appDocMakeScrolledWindow( ed )		||
-	  (*ea->eaMakeDocumentWidget)( ea, ed )		)
+	  (*ea->eaMakeDocumentWidget)( ed )		)
 	{ LDEB(1); return -1; }
 
-    gtk_signal_connect( GTK_OBJECT( dw->dwWidget ),
+    g_signal_connect( G_OBJECT( dw->dwWidget ),
 				    "configure_event",
-				    (GtkSignalFunc)appDocConfigure,
+				    (GCallback)appDocConfigure,
 				    (void *)ed );
 
-    gtk_signal_connect( GTK_OBJECT( ed->edToplevel.atTopWidget ), 
+    g_signal_connect( G_OBJECT( ed->edToplevel.atTopWidget ), 
 				    "map_event",
-				    (GtkSignalFunc)appDocTopConfigure,
+				    (GCallback)appDocTopConfigure,
 				    (void *)ed );
 
-    gtk_signal_connect( GTK_OBJECT( dw->dwWidget ),
+    g_signal_connect( G_OBJECT( dw->dwWidget ),
 				    "selection_clear_event",
-				    (GtkSignalFunc)appDocCopyPasteHandler,
+				    (GCallback)appDocCopyPasteHandler,
 				    (void *)ed );
 
-    gtk_signal_connect( GTK_OBJECT( dw->dwWidget ),
+    g_signal_connect( G_OBJECT( dw->dwWidget ),
 				    "selection_received",
-				    (GtkSignalFunc)appDocGotPasteReplyGtk,
+				    (GCallback)appDocGotPasteReplyGtk,
 				    (void *)ed );
 
-    gtk_signal_connect( GTK_OBJECT( dw->dwWidget ),
+    g_signal_connect( G_OBJECT( dw->dwWidget ),
 				    "selection_get",
-				    (GtkSignalFunc)appDocReplyToCopyRequest,
+				    (GCallback)appDocReplyToCopyRequest,
 				    (void *)ed );
 
     return 0;
@@ -348,10 +345,10 @@ int appFinishDocumentSetup(	EditDocument *		ed )
 	{
 	/*  2  */
 #	if 1
-	appGuiSetFocusChangeHandler( ed->edToplevel.atTopWidget,
+	guiSetFocusChangeHandler( ed->edToplevel.atTopWidget,
 					    ea->eaObserveFocus, (void *)ed );
 #	else
-	appGuiSetFocusChangeHandler( dw->dwWidget,
+	guiSetFocusChangeHandler( dw->dwWidget,
 					    ea->eaObserveFocus, (void *)ed );
 #	endif
 	}
@@ -374,111 +371,61 @@ int appFinishDocumentSetup(	EditDocument *		ed )
     dw->dwGotString= ea->eaDocGotString;
     dw->dwGotKey= ea->eaDocGotKey;
 
-    gtk_signal_connect( GTK_OBJECT( ed->edVerticalAdjustment ),
+    g_signal_connect( G_OBJECT( ed->edVerticalAdjustment ),
 			    "value_changed", 
-			    (GtkSignalFunc)appDocVerticalScrollbarCallback,
+			    (GCallback)appDocVerticalScrollbarCallback,
 			    (void *)ed );
 
-    gtk_signal_connect( GTK_OBJECT( ed->edHorizontalAdjustment ),
+    g_signal_connect( G_OBJECT( ed->edHorizontalAdjustment ),
 			    "value_changed", 
-			    (GtkSignalFunc)appDocHorizontalScrollbarCallback,
+			    (GCallback)appDocHorizontalScrollbarCallback,
 			    (void *)ed );
 
-    appDocumentSetInputContext( ea->eaInputMethod, dw );
+    guiDocumentSetInputContext( ea->eaInputMethod, dw );
 
     return 0;
     }
 
-/************************************************************************/
-/*									*/
-/*  Management of the 'Windows' menu options.				*/
-/*									*/
-/************************************************************************/
-
-void appSetWindowsItemState(	APP_WIDGET	menu,
-				EditDocument *	ed,
-				int		changed )
+void appDocSetVerticalScrollbarValues(
+				EditDocument *		ed,
+				int			minimum,
+				int			maximum,
+				int			value,
+				int			sliderSize )
     {
-    GList *	glf;
-    GList *	gl;
+    gtk_adjustment_set_lower( ed->edVerticalAdjustment, minimum );
+    gtk_adjustment_set_upper( ed->edVerticalAdjustment, maximum );
+    gtk_adjustment_set_value( ed->edVerticalAdjustment, value );
+    gtk_adjustment_set_page_size( ed->edVerticalAdjustment, sliderSize );
+    gtk_adjustment_set_page_increment( ed->edVerticalAdjustment,
+				    ( 9* sliderSize+ 9 )/10 );
+    gtk_adjustment_set_step_increment( ed->edVerticalAdjustment,
+				    ( sliderSize+ SCROLL_BAR_STEP- 1 )/ SCROLL_BAR_STEP );
 
-    gl= glf= gtk_container_children( GTK_CONTAINER( menu ) );
-
-    while( gl )
-	{
-	GtkWidget *	child= (GtkWidget *)gl->data;
-	void *		voided;
-	
-	voided= gtk_object_get_user_data( GTK_OBJECT( child ) );
-
-	if  ( voided == (void *)ed )
-	    { appGuiSetToggleItemState( child, changed ); }
-
-	gl= gl->next;
-	}
-
-    if  ( glf )
-	{ g_list_free( glf );	}
+    gtk_adjustment_changed( ed->edVerticalAdjustment );
 
     return;
     }
 
-void appRemoveWindowsOption(	APP_WIDGET		menu,
-				EditDocument *		oldEd )
+void appDocSetHorizontalScrollbarValues(
+				EditDocument *		ed,
+				int			minimum,
+				int			maximum,
+				int			value,
+				int			sliderSize )
     {
-    GList *	glf;
-    GList *	gl;
+    gtk_adjustment_set_lower( ed->edHorizontalAdjustment, minimum );
+    gtk_adjustment_set_upper( ed->edHorizontalAdjustment, maximum );
+    gtk_adjustment_set_value( ed->edHorizontalAdjustment, value );
+    gtk_adjustment_set_page_size( ed->edHorizontalAdjustment, sliderSize );
 
-    gl= glf= gtk_container_children( GTK_CONTAINER( menu ) );
+    /* Otherwise, the contols at the end are inactive: */
+    gtk_adjustment_set_page_increment( ed->edHorizontalAdjustment,
+				    ( 9* sliderSize+ 9 )/10 );
+    gtk_adjustment_set_step_increment( ed->edHorizontalAdjustment,
+				    ( sliderSize+ SCROLL_BAR_STEP- 1 )/ SCROLL_BAR_STEP );
 
-    while( gl )
-	{
-	GtkWidget *	child= (GtkWidget *)gl->data;
-	void *		voided;
-	
-	voided= gtk_object_get_user_data( GTK_OBJECT( child ) );
-
-	if  ( voided == (void *)oldEd )
-	    { gtk_widget_destroy( child );	}
-
-	gl= gl->next;
-	}
-
-    if  ( glf )
-	{ g_list_free( glf );	}
-
-    return;
-    }
-
-void appRenameWindowsOption(		APP_WIDGET		menu,
-					EditDocument *		ed,
-					const MemoryBuffer *	title )
-    {
-    GList *	glf;
-    GList *	gl;
-
-    gl= glf= gtk_container_children( GTK_CONTAINER( menu ) );
-
-    while( gl )
-	{
-	GtkWidget *	child= (GtkWidget *)gl->data;
-	void *		voided;
-	
-	voided= gtk_object_get_user_data( GTK_OBJECT( child ) );
-
-	if  ( voided == (void *)ed )
-	    {
-	    appGuiSetToggleItemLabel( child,
-				utilMemoryBufferGetString( title ) );
-	    }
-
-	gl= gl->next;
-	}
-
-    if  ( glf )
-	{ g_list_free( glf );	}
-
-    return;
+    gtk_adjustment_changed( ed->edHorizontalAdjustment );
     }
 
 #   endif

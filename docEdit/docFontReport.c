@@ -11,11 +11,9 @@
 #   include	<stdio.h>
 #   include	<ctype.h>
 
-#   include	<appDebugon.h>
-
 #   include	<sioFileio.h>
 #   include	<appSystem.h>
-#   include	<utilMatchFont.h>
+#   include	<fontMatchFont.h>
 #   include	<ucdBlock.h>
 #   include	<psGlyphs.h>
 #   include	<uniUtf8.h>
@@ -26,17 +24,27 @@
 #   include	<docField.h>
 #   include	"docCopyNode.h"
 #   include	"docDocumentCopyJob.h"
+#   include	"docEditOperation.h"
 #   include	"docFontsDocuments.h"
 #   include	<docRecalculateFields.h>
 #   include	<docRtfReadWrite.h>
 #   include	<docRtfFlags.h>
+#   include	<docDocumentProperties.h>
+#   include	<psPostScriptFontList.h>
+#   include	<sioGeneral.h>
+#   include	<fontDocFont.h>
+#   include	<fontDocFontList.h>
+#   include	<psFontInfo.h>
+#   include	<psFontFamily.h>
+
+#   include	<appDebugon.h>
 
 /************************************************************************/
 
 typedef struct FontReport
     {
     const AfmFontInfo *	frAfi;
-    BufferDocument *	frBd;
+    struct BufferDocument *	frBd;
 
     int			frBlockIndex;
     unsigned int	frPageFirst;
@@ -153,7 +161,7 @@ static int fontReportFieldDataProvider(	int *		pCalculated,
     if  ( ! strcmp( fieldName, "Slant" ) )
 	{
 	return fontReportProvideData( pCalculated, mbResult,
-						    afi->afiItalicAngle < -1?
+						    FONT_IS_SLANTED( afi )?
 						    "Italic":"Roman" );
 	}
 
@@ -220,7 +228,7 @@ static int fontReportFieldDataProvider(	int *		pCalculated,
 
 	if  ( uni > 0							    &&
 	      uni < past						    &&
-	      utilIndexMappingGet( &(afi->afiUnicodeToGlyphMapping), uni ) >= 0 )
+	      utilIndexMappingGet( &(afi->afiCodeToGlyphMapping), uni ) >= 0 )
 	    {
 	    const char *	N= psUnicodeToGlyphName( uni );
 
@@ -236,7 +244,7 @@ static int fontReportFieldDataProvider(	int *		pCalculated,
 
 	if  ( uni > 0							    &&
 	      uni < past						    &&
-	      utilIndexMappingGet( &(afi->afiUnicodeToGlyphMapping), uni ) >= 0 )
+	      utilIndexMappingGet( &(afi->afiCodeToGlyphMapping), uni ) >= 0 )
 	    {
 	    int		step= uniPutUtf8( scratch, uni );
 
@@ -271,52 +279,52 @@ static int docSubstituteFontPage(	int *			pUsed,
     EditOperation	eo;
 
     const AfmFontInfo *	afi= fr->frAfi;
-    BufferDocument *	bd= fr->frBd;
+    struct BufferDocument *	bd= fr->frBd;
 
     docInitEditOperation( &eo );
     docInitDocumentCopyJob( &dcj );
 
     for ( uni= fr->frPageFirst; uni <= fr->frPageLast; uni++ )
 	{
-	if  ( utilIndexMappingGet( &(afi->afiUnicodeToGlyphMapping), uni ) >= 0 )
+	if  ( utilIndexMappingGet( &(afi->afiCodeToGlyphMapping), uni ) >= 0 )
 	    { used= 1; break;	}
 	}
 
     if  ( used )
 	{
-	BufferItem *	bodySectBi= bd->bdBody.dtRoot->biChildren[0];
+	struct BufferItem *	bodySectNode= bd->bdBody.dtRoot->biChildren[0];
 
 	if  ( fr->frCurrentSection < bd->bdBody.dtRoot->biChildCount )
 	    {
 	    const int	page= 0;
 
-	    bodySectBi= bd->bdBody.dtRoot->biChildren[fr->frCurrentSection];
+	    bodySectNode= bd->bdBody.dtRoot->biChildren[fr->frCurrentSection];
 
 	    if  ( docRecalculateTextLevelFieldsInDocumentTree(
-				    rf, &(bd->bdBody), bodySectBi, page ) )
+				    rf, &(bd->bdBody), bodySectNode, page ) )
 		{ LDEB(1); return -1;	}
 	    }
 	else{
 	    DocumentPosition		dp;
 	    DocumentSelection		ds;
-	    const int			copyFields= 1;
 
 	    if  ( docTailPosition( &dp, bd->bdBody.dtRoot ) )
 		{ LDEB(1); rval= -1; goto ready;	}
 	    docSetRangeSelection( &ds, &dp, &dp, 1 );
 
-	    if  ( docStartEditOperation( &eo, &ds, bd ) )
+	    if  ( docStartEditOperation( &eo, &ds, bd,
+						(struct DocumentField *)0 ) )
 		{ LDEB(1); rval= -1; goto ready;	}
 
-	    if  ( docSet1DocumentCopyJob( &dcj, &eo, copyFields ) )
+	    if  ( docSet1DocumentCopyJob( &dcj, &eo, CFH_COPY ) )
 		{ LDEB(1); rval= -1; goto ready;	}
 
-	    bodySectBi= docCopyNode( &dcj, bd->bdBody.dtRoot,
-					fr->frCurrentSection, bodySectBi );
-	    if  ( ! bodySectBi )
-		{ XDEB(bodySectBi); rval= -1; goto ready;	}
+	    bodySectNode= docCopyNode( &dcj, bd->bdBody.dtRoot,
+					fr->frCurrentSection, bodySectNode );
+	    if  ( ! bodySectNode )
+		{ XDEB(bodySectNode); rval= -1; goto ready;	}
 
-	    if  ( docRecalculateTextLevelFields( rf, bodySectBi ) )
+	    if  ( docRecalculateTextLevelFields( rf, bodySectNode ) )
 		{ LDEB(1); rval= -1; goto ready;	}
 	    }
 	}
@@ -337,8 +345,9 @@ static int docSubstituteFontPage(	int *			pUsed,
 /*									*/
 /************************************************************************/
 
-static int docSubstituteFontProperties(	const AfmFontInfo *	afi,
-					BufferDocument *	bd )
+static int docSubstituteFontProperties(	const AfmFontInfo *		afi,
+					const struct SimpleLocale *	sl,
+					struct BufferDocument *		bd )
     {
     FontReport		fr;
     RecalculateFields	rf;
@@ -356,6 +365,8 @@ static int docSubstituteFontProperties(	const AfmFontInfo *	afi,
     rf.rfUpdateFlags= FIELDdoDOC_INFO;
     rf.rfFieldDataProvider= fontReportFieldDataProvider;
     rf.rfMergeThrough= &fr;
+
+    rf.rfLocale= sl;
 
     ub= UCD_Blocks;
     while( fr.frBlockIndex < UCD_BlockCount )
@@ -397,8 +408,7 @@ static int docSubstituteFontProperties(	const AfmFontInfo *	afi,
 /************************************************************************/
 
 static int docMakeFontExample(	const AfmFontInfo *		afi,
-				const PostScriptFontList *	psfl,
-				DocumentFontList *		dfl,
+				const struct SimpleLocale *	sl,
 				const MemoryBuffer *		templateName,
 				const MemoryBuffer *		outputDir )
     {
@@ -409,7 +419,7 @@ static int docMakeFontExample(	const AfmFontInfo *		afi,
 
     SimpleInputStream *		sis= (SimpleInputStream *)0;
     SimpleOutputStream *	sos= (SimpleOutputStream *)0;
-    BufferDocument *		bd= (BufferDocument *)0;
+    struct BufferDocument *		bd= (struct BufferDocument *)0;
 
     const int			relativeIsFile= 0;
     unsigned char *		s;
@@ -433,7 +443,7 @@ static int docMakeFontExample(	const AfmFontInfo *		afi,
 	s++;
 	}
 
-    if  ( appAbsoluteName( &absolute, &relative,
+    if  ( fileAbsoluteName( &absolute, &relative,
 					    relativeIsFile, outputDir ) < 0 )
 	{ LDEB(1); rval= -1; goto ready;	}
 
@@ -445,7 +455,7 @@ static int docMakeFontExample(	const AfmFontInfo *		afi,
     if  ( ! bd )
 	{ LDEB(1); rval= -1; goto ready;	}
 
-    if  ( docSubstituteFontProperties( afi, bd ) )
+    if  ( docSubstituteFontProperties( afi, sl, bd ) )
 	{ SDEB(afi->afiFontName); rval= -1; goto ready;	}
 
     /*  HACK internals of document font list. */
@@ -453,15 +463,15 @@ static int docMakeFontExample(	const AfmFontInfo *		afi,
     int				n;
     DocumentFont *		dfTo;
 
-    n= docGetFontByName( bd->bdProperties.dpFontList, "Times" );
+    n= fontListGetFontByName( bd->bdProperties->dpFontList, "Times" );
     if  ( n < 0 )
 	{ SLDEB("Times",n); rval= -1; goto ready;	}
 
-    dfTo= docFontListGetFontByNumber( bd->bdProperties.dpFontList, n );
+    dfTo= fontFontListGetFontByNumber( bd->bdProperties->dpFontList, n );
     if  ( ! dfTo )
 	{ LXDEB(n,dfTo); goto ready;	}
 
-    if  ( docFontSetFamilyName( dfTo, afi->afiFamilyName ) )
+    if  ( fontSetFamilyName( dfTo, afi->afiFamilyName ) )
 	{ LDEB(1); rval= -1; goto ready;	}
     }
 
@@ -489,6 +499,7 @@ static int docMakeFontExample(	const AfmFontInfo *		afi,
     }
 
 int docFontsDocuments(		const PostScriptFontList *	psfl,
+				const struct SimpleLocale *	sl,
 				const MemoryBuffer *		templDir,
 				const MemoryBuffer *		outputDir )
     {
@@ -501,9 +512,9 @@ int docFontsDocuments(		const PostScriptFontList *	psfl,
 
     utilInitMemoryBuffer( &absolute );
     utilInitMemoryBuffer( &relative );
-    docInitFontList( &dfl );
+    fontInitDocFontList( &dfl );
 
-    if  ( utilAddPsFontsToDocList( &dfl, psfl ) )
+    if  ( fontAddPsFontsToDocList( &dfl, psfl ) )
 	{ LDEB(1); rval= -1; goto ready;	}
 
     for ( fam= 0; fam < psfl->psflFamilyCount; fam++ )
@@ -517,17 +528,22 @@ int docFontsDocuments(		const PostScriptFontList *	psfl,
 	    AfmFontInfo *	afi= aff->psfFaces[face];
 	    const int		relativeIsFile= 0;
 
+	    int			isItalic= 0;
+
+	    if  ( FONT_IS_SLANTED( afi ) )
+		{ isItalic= 1;	}
+
 	    if  ( afi->afiMetricsDeferred )
 		{ continue;	}
 
-	    if  ( afi->afiWeightInt >= FONTweightDEMIBOLD )
+	    if  ( FONT_IS_BOLD( afi ) )
 		{
-		if  ( afi->afiItalicAngle < -1.0 )
+		if  ( isItalic )
 		    { relativeName= "font-bi.rtf";	}
 		else{ relativeName= "font-b.rtf";	}
 		}
 	    else{
-		if  ( afi->afiItalicAngle < -1.0 )
+		if  ( isItalic )
 		    { relativeName= "font-i.rtf";	}
 		else{ relativeName= "font.rtf";		}
 		}
@@ -535,7 +551,7 @@ int docFontsDocuments(		const PostScriptFontList *	psfl,
 	    if  ( utilMemoryBufferSetString( &relative, relativeName ) )
 		{ LDEB(1); rval= -1; goto ready;	}
 
-	    if  ( appAbsoluteName( &absolute,
+	    if  ( fileAbsoluteName( &absolute,
 				    &relative, relativeIsFile, templDir ) < 0 )
 		{ SDEB(relativeName); rval= -1; goto ready;	}
 
@@ -543,14 +559,14 @@ int docFontsDocuments(		const PostScriptFontList *	psfl,
 		  psGetDeferredMetrics( afi )		)
 		{ SDEB(afi->afiFontName); rval= -1; goto ready;	}
 
-	    if  ( docMakeFontExample( afi, psfl, &dfl, &absolute, outputDir ) )
+	    if  ( docMakeFontExample( afi, sl, &absolute, outputDir ) )
 		{ SDEB(afi->afiFontName); rval= -1; goto ready;	}
 	    }
 	}
 
   ready:
 
-    docCleanFontList( &dfl );
+    fontCleanDocFontList( &dfl );
     utilCleanMemoryBuffer( &absolute );
     utilCleanMemoryBuffer( &relative );
 

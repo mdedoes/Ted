@@ -9,8 +9,6 @@
 
 #   define	DOCmaxBOOKMARK	40
 
-#   include	<utilMemoryBuffer.h>
-
 struct DocumentField;
 struct MemoryBuffer;
 struct FieldInstructions;
@@ -21,23 +19,24 @@ struct FieldInstructions;
 /*									*/
 /************************************************************************/
 
-extern int docFieldGetBookmark(	const MemoryBuffer **		markName,
+extern int docFieldGetBookmark(	const struct MemoryBuffer **	markName,
 				const struct DocumentField *	df );
 
 extern int docIsTocBookmark(	long *				pId,
 				const struct DocumentField *	df );
 
-extern int docFieldMatchesBookmark(	const struct DocumentField *	df,
-					const MemoryBuffer *	markName );
+extern int docFieldMatchesBookmark(
+				const struct DocumentField *	df,
+				const struct MemoryBuffer *	markName );
 
-extern int docSetBookmarkField(		struct FieldInstructions *	fi,
-					const struct MemoryBuffer *	mb );
+extern int docSetBookmarkField(	struct FieldInstructions *	fi,
+				const struct MemoryBuffer *	markName );
 
-extern int docAdaptBookmarkName(	struct MemoryBuffer *	markName );
+extern int docAdaptBookmarkName(struct MemoryBuffer *		markName );
 
-extern int docBookmarkFromText(		struct MemoryBuffer *	markName,
-					const char *		text,
-					int			len );
+extern int docBookmarkFromText(	struct MemoryBuffer *		markName,
+				const char *			text,
+				int				len );
 
 extern int docBookmarkSuffixIndex(
 				const struct MemoryBuffer *	markName,

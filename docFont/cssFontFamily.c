@@ -11,7 +11,7 @@
 
 #   include	<appDebugon.h>
 
-#   include	"utilDocFont.h"
+#   include	"fontDocFont.h"
 #   include	<psDocumentFontStyle.h>
 
 /************************************************************************/
@@ -23,7 +23,7 @@
 int cssFontFamilyIndicator(		char *		target,
 					int		maxSize,
 					int		styleInt,
-					const char *	familyName )
+					const MemoryBuffer *	familyName )
     {
     const char *	genericFamily= (const char *)0;
     const char *	hintFamily= (const char *)0;
@@ -74,14 +74,14 @@ int cssFontFamilyIndicator(		char *		target,
 	commas++;
 	hintSize= 1+ strlen( hintFamily )+ 1;
 	}
-    nameSize= 1+ strlen( familyName )+ 1;
+    nameSize= 1+ familyName->mbSize+ 1;
 
     size= nameSize+ genericSize+ hintSize+ commas;
     if  ( size > maxSize )
 	{ LLLLDEB(nameSize,genericSize,hintSize,maxSize); return -1; }
 
     *(target++)= '"';
-    strcpy( target, familyName ); target += nameSize- 2;
+    strcpy( target, utilMemoryBufferGetString( familyName ) ); target += nameSize- 2;
     *(target++)= '"';
 
     if  ( hintFamily )

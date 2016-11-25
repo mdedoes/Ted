@@ -6,6 +6,7 @@
 #   include	<math.h>
 
 #   include	"psCompareFontInfo.h"
+#   include	"psFontInfo.h"
 
 #   include	<appDebugon.h>
 
@@ -19,13 +20,12 @@ static int psCompareFontInfos(	const AfmFontInfo *	afi1,
 				const AfmFontInfo *	afi2,
 				int			includeFamily )
     {
-    int		cmp;
     int		slant1;
     int		slant2;
 
     if  ( includeFamily )
 	{
-	cmp= strcmp( afi1->afiFamilyName, afi2->afiFamilyName );
+	int	cmp= strcmp( afi1->afiFamilyName, afi2->afiFamilyName );
 
 	if  ( cmp > 0 )
 	    { return  1;	}
@@ -33,14 +33,14 @@ static int psCompareFontInfos(	const AfmFontInfo *	afi1,
 	    { return -1;	}
 	}
 
-    if  ( afi1->afiWidthInt > afi1->afiWidthInt )
+    if  ( afi1->afiWidthInt > afi2->afiWidthInt )
 	{ return  1;	}
-    if  ( afi1->afiWidthInt < afi1->afiWidthInt )
+    if  ( afi1->afiWidthInt < afi2->afiWidthInt )
 	{ return -1;	}
 
-    if  ( afi1->afiWeightInt > afi1->afiWeightInt )
+    if  ( afi1->afiWeightInt > afi2->afiWeightInt )
 	{ return  1;	}
-    if  ( afi1->afiWeightInt < afi1->afiWeightInt )
+    if  ( afi1->afiWeightInt < afi2->afiWeightInt )
 	{ return -1;	}
 
     slant1= FONT_IS_SLANTED( afi1 );

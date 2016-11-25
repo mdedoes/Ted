@@ -9,6 +9,7 @@
 #   include	"sioUtf8.h"
 #   include	"uniUtf8.h"
 #   include	"uniUtf8Ranges.h"
+#   include	<sioGeneral.h>
 
 #   include	<appDebugon.h>
 

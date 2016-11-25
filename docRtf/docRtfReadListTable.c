@@ -6,13 +6,15 @@
 
 #   include	"docRtfConfig.h"
 
-#   include	<stdio.h>
 #   include	<ctype.h>
-
-#   include	<appDebugon.h>
 
 #   include	"docRtfReaderImpl.h"
 #   include	"docRtfTagEnum.h"
+#   include	<docBuf.h>
+#   include	<docListTable.h>
+#   include	<docListAdmin.h>
+
+#   include	<appDebugon.h>
 
 /************************************************************************/
 /*									*/
@@ -126,8 +128,8 @@ int docRtfRememberListProperty(	const RtfControlWord *	rcw,
 static int docRtfCommitListLevelProperties(	const RtfControlWord *	rcw,
 						RtfReader *		rr )
     {
-    BufferDocument *		bd= rr->rrDocument;
-    RtfReadingState *		rrs= rr->rrcState;
+    struct BufferDocument *		bd= rr->rrDocument;
+    RtfReadingState *		rrs= rr->rrState;
 
     if  ( docListLevelFromRtfStrings( &(rr->rrcDocumentListLevel),
 		    &(rr->rrcListLevelText), &(rr->rrcListLevelNumbers) ) )
@@ -138,21 +140,21 @@ static int docRtfCommitListLevelProperties(	const RtfControlWord *	rcw,
     if  ( rrs->rrsTextShadingChanged )
 	{
 	docRtfRefreshTextShading( rr, rrs );
-	PROPmaskADD( &(rr->rrcStyle.dsTextMask), TApropSHADING );
+	PROPmaskADD( &(rr->rrStyle.dsTextMask), TApropSHADING );
 	}
 
     if  ( docListLevelSetStyle( &(rr->rrcDocumentListLevel),
-					&(rr->rrcStyle.dsParaMask),
+					&(rr->rrStyle.dsParaMask),
 					&(rrs->rrsParagraphProperties),
-					&(rr->rrcStyle.dsTextMask),
+					&(rr->rrStyle.dsTextMask),
 					&(rrs->rrsTextAttribute) ) )
 	{ LDEB(1); return -1;	}
 
     docRtfResetParagraphProperties( rrs );
     docRtfResetTextAttribute( rrs, bd );
 
-    utilPropMaskClear( &(rr->rrcStyle.dsParaMask) );
-    utilPropMaskClear( &(rr->rrcStyle.dsTextMask) );
+    utilPropMaskClear( &(rr->rrStyle.dsParaMask) );
+    utilPropMaskClear( &(rr->rrStyle.dsTextMask) );
 
     return 0;
     }
@@ -160,7 +162,7 @@ static int docRtfCommitListLevelProperties(	const RtfControlWord *	rcw,
 int docRtfReadListLevelGroup(	const RtfControlWord *	rcw,
 				RtfReader *		rr )
     {
-    RtfReadingState *		rrs= rr->rrcState;
+    RtfReadingState *		rrs= rr->rrState;
 
     docCleanDocumentListLevel( &(rr->rrcDocumentListLevel) );
     docInitDocumentListLevel( &(rr->rrcDocumentListLevel) );
@@ -170,8 +172,8 @@ int docRtfReadListLevelGroup(	const RtfControlWord *	rcw,
     docRtfResetParagraphProperties( rrs );
     docRtfResetTextAttribute( rrs, rr->rrDocument );
 
-    utilPropMaskClear( &(rr->rrcStyle.dsParaMask) );
-    utilPropMaskClear( &(rr->rrcStyle.dsTextMask) );
+    utilPropMaskClear( &(rr->rrStyle.dsParaMask) );
+    utilPropMaskClear( &(rr->rrStyle.dsTextMask) );
 
     if  ( docRtfReadGroup( rcw, 0, 0, rr,
 			    (RtfControlWord *)0, docRtfRefuseText,
@@ -185,7 +187,7 @@ int docRtfRememberListLevel(	const RtfControlWord *	rcw,
 				int			arg,
 				RtfReader *		rr )
     {
-    RtfReadingState *		rrs= rr->rrcState;
+    RtfReadingState *		rrs= rr->rrState;
 
     const int			copyIds= 1;
     const int * const		fontMap= (const int *)0;
@@ -201,8 +203,8 @@ int docRtfRememberListLevel(	const RtfControlWord *	rcw,
     docRtfResetParagraphProperties( rrs );
     docRtfResetTextAttribute( rrs, rr->rrDocument );
 
-    utilPropMaskClear( &(rr->rrcStyle.dsParaMask) );
-    utilPropMaskClear( &(rr->rrcStyle.dsTextMask) );
+    utilPropMaskClear( &(rr->rrStyle.dsParaMask) );
+    utilPropMaskClear( &(rr->rrStyle.dsTextMask) );
 
     if  ( docRtfReadListLevelGroup( rcw, rr ) )
 	{ SLDEB(rcw->rcwWord,arg); return -1;	}
@@ -227,7 +229,7 @@ int docRtfRememberList(	const RtfControlWord *		rcw,
 			int				arg,
 			RtfReader *			rr )
     {
-    DocumentProperties *	dp= &(rr->rrDocument->bdProperties);
+    DocumentProperties *	dp= rr->rrDocument->bdProperties;
 
     const int * const		fontMap= (const int *)0;
     const int * const		colorMap= (const int *)0;
@@ -265,51 +267,3 @@ int docRtfListTable(		const RtfControlWord *	rcw,
 
     return 0;
     }
-
-/************************************************************************/
-/*									*/
-/*  Word 95 type paragraph numbers: Just remember the properties.	*/
-/*									*/
-/************************************************************************/
-
-int docRtfPnProperty(		const RtfControlWord *	rcw,
-				int			arg,
-				RtfReader *		rr )
-    {
-    ParagraphNumber *		pn= &(rr->rrcParagraphNumber);
-
-    switch( rcw->rcwID )
-	{
-	case LLpropSTARTAT:
-	    pn->pnStartAt= arg;
-	    break;
-
-	case LLpropSTYLE:
-	    pn->pnNumberStyle= arg;
-	    break;
-
-	case LLpropJUSTIFY:
-	    pn->pnJustification= arg;
-	    break;
-
-	case LLpropINDENT:
-	    pn->pnIndent= arg;
-	    break;
-
-	case LLpropPREV:
-	    pn->pnUsePrevText= arg != 0;
-	    break;
-
-	case LLpropSPACE:
-	    pn->pnSpace= arg;
-	    break;
-
-	default:
-	    SDEB(rcw->rcwWord);
-	    break;
-	}
-
-    return 0;
-    }
-
-

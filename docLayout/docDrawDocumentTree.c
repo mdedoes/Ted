@@ -6,14 +6,40 @@
 #   include	<docTreeNode.h>
 #   include	<docNotes.h>
 #   include	<docDocumentNote.h>
+#   include	<docDocumentField.h>
+#   include	<docPageGrid.h>
+#   include	<docSelect.h>
+#   include	<docBuf.h>
+#   include	<docNodeTree.h>
+#   include	<geoRectangle.h>
 
 #   include	<appDebugon.h>
 
 /************************************************************************/
 /*									*/
-/*  Draw external items such as headers/footers/footnotes/endnotes.	*/
+/*  Draw external trees such as headers/footers/footnotes/endnotes.	*/
 /*									*/
 /************************************************************************/
+
+static int docDrawTreeRoot(	LayoutPosition *		lpBelow,
+				DocumentTree *			tree,
+				const struct BufferItem *	bodySectNode,
+				DrawingContext *		dc,
+				void *				through )
+    {
+    int				rval;
+    const struct BufferItem *	saveBodySectNode= dc->dcBodySectNode;
+
+    dc->dcBodySectNode= bodySectNode;
+
+    rval= docDrawNode( lpBelow, tree->dtRoot, through, dc );
+    if  ( rval )
+	{ LDEB(rval);	}
+
+    dc->dcBodySectNode= saveBodySectNode;
+
+    return rval;
+    }
 
 /************************************************************************/
 /*									*/
@@ -21,17 +47,15 @@
 /*									*/
 /************************************************************************/
 
-static int docDrawHeaderFooter(	BufferItem *		bodySectBi,
+static int docDrawHeaderFooter(	struct BufferItem *	bodySectNode,
 				void *			through,
-				DocumentTree *		tree,
+				struct DocumentTree *	tree,
 				DrawingContext *	dc,
 				int			page )
     {
     const LayoutContext *	lc= &(dc->dcLayoutContext);
-
-    const int		column= 0; /* irrelevant */
-
-    LayoutPosition	lpBelow;
+    const int			column= 0; /* irrelevant */
+    LayoutPosition		lpBelow;
 
     docInitLayoutPosition( &lpBelow );
 
@@ -40,7 +64,7 @@ static int docDrawHeaderFooter(	BufferItem *		bodySectBi,
 	const int		justUsed= 1;
 	DocumentRectangle	drExtern;
 
-	if  ( docGetBoxAroundTree( &drExtern, bodySectBi, tree, justUsed,
+	if  ( docGetBoxAroundTree( &drExtern, tree, justUsed,
 							    page, column, lc ) )
 	    { LDEB(1); return -1;	}
 
@@ -56,29 +80,29 @@ static int docDrawHeaderFooter(	BufferItem *		bodySectBi,
 	/*  We do not expect the tree to change height here	*/
 	if  ( docLayoutDocumentTree( tree, (DocumentRectangle *)0,
 			    page, column, tree->dtY0UsedTwips,
-			    bodySectBi, lc, dc->dcInitLayoutExternal,
+			    bodySectNode, lc, dc->dcStartTreeLayout,
 			    adjustDocument ) )
 	    { LLDEB(page,column); return -1;	}
 	}
 
-    if  ( docDrawNode( &lpBelow, tree->dtRoot, through, dc ) )
+    if  ( docDrawTreeRoot( &lpBelow, tree, bodySectNode, dc, through ) )
 	{ LDEB(1); return -1;	}
 
     return 0;
     }
 
-int docDrawPageHeader(	BufferItem *			bodySectNode,
+int docDrawPageHeader(	struct BufferItem *		bodySectNode,
 			void *				through,
 			DrawingContext *		dc,
 			int				page )
     {
     const LayoutContext *	lc= &(dc->dcLayoutContext);
-    BufferDocument *		bd= lc->lcDocument;
+    struct BufferDocument *	bd= lc->lcDocument;
 
-    DocumentTree *		tree= (DocumentTree *)0;
+    struct DocumentTree *	tree= (struct DocumentTree *)0;
     int				isEmpty;
 
-    docWhatPageHeader( &tree, &isEmpty, bodySectNode, page, bd );
+    docDrawWhatPageHeader( &tree, &isEmpty, bodySectNode, page, bd );
     if  ( ! tree || ! tree->dtRoot )
 	{ return 0;	}
 
@@ -88,18 +112,18 @@ int docDrawPageHeader(	BufferItem *			bodySectNode,
     return 0;
     }
 
-int docDrawPageFooter(	BufferItem *			bodySectNode,
+int docDrawPageFooter(	struct BufferItem *		bodySectNode,
 			void *				through,
 			DrawingContext *		dc,
 			int				page )
     {
     const LayoutContext *	lc= &(dc->dcLayoutContext);
-    BufferDocument *		bd= lc->lcDocument;
+    struct BufferDocument *	bd= lc->lcDocument;
 
-    DocumentTree *		tree= (DocumentTree *)0;
+    struct DocumentTree *	tree= (struct DocumentTree *)0;
     int				isEmpty;
 
-    docWhatPageFooter( &tree, &isEmpty, bodySectNode, page, bd );
+    docDrawWhatPageFooter( &tree, &isEmpty, bodySectNode, page, bd );
     if  ( ! tree || ! tree->dtRoot )
 	{ return 0;	}
 
@@ -120,17 +144,17 @@ int docDrawPageFooter(	BufferItem *			bodySectNode,
 /*									*/
 /************************************************************************/
 
-static int docDrawNoteSeparator(LayoutPosition *	lpBelow,
-				void *			through,
-				DrawingContext *	dc,
-				const DocumentField *	dfFirstNote,
-				const DocumentNote *	dnFirstNote,
-				int			treeType )
+static int docDrawNoteSeparator(
+			LayoutPosition *		lpBelow,
+			void *				through,
+			DrawingContext *		dc,
+			const struct BufferItem *	bodySectNode,
+			const DocumentNote *		dnFirstNote,
+			int				treeType )
     {
     const LayoutContext *	lc= &(dc->dcLayoutContext);
-    BufferDocument *		bd= lc->lcDocument;
-    const DocumentTree *	eiFirstNote;
-    DocumentTree *		eiNoteSep;
+    const struct DocumentTree *	firstNoteTree;
+    struct DocumentTree *	noteSepTree;
     int				y0Twips;
 
     int				ret;
@@ -139,18 +163,15 @@ static int docDrawNoteSeparator(LayoutPosition *	lpBelow,
     int				page;
     int				column;
 
-    const BufferItem *		bodySectNode;
     const int			adjustDocument= 0;
 
-    eiFirstNote= &(dnFirstNote->dnDocumentTree);
-    page= eiFirstNote->dtRoot->biTopPosition.lpPage;
-    column= eiFirstNote->dtRoot->biTopPosition.lpColumn;
-
-    bodySectNode= docGetBodySectNodeOfScope( &(dfFirstNote->dfSelectionScope), bd );
+    firstNoteTree= &(dnFirstNote->dnDocumentTree);
+    page= firstNoteTree->dtRoot->biTopPosition.lpPage;
+    column= firstNoteTree->dtRoot->biTopPosition.lpColumn;
 
     /*  1  */
-    ret= docNoteSeparatorRectangle( &drExtern, &eiNoteSep, &y0Twips,
-						dnFirstNote, treeType, lc );
+    ret= docNoteSeparatorRectangle( &drExtern, &noteSepTree, &y0Twips,
+				dnFirstNote, treeType, bodySectNode, lc );
     if  ( ret < 0 )
 	{ LDEB(ret); return -1;	}
     if  ( ret > 0 )
@@ -162,19 +183,19 @@ static int docDrawNoteSeparator(LayoutPosition *	lpBelow,
 	{ return 0;	}
 
     /*  3  */
-    if  ( page != eiNoteSep->dtPageFormattedFor		||
-	  column != eiNoteSep->dtColumnFormattedFor	)
+    if  ( page != noteSepTree->dtPageFormattedFor	||
+	  column != noteSepTree->dtColumnFormattedFor	)
 	{
 	/*  We do not expect the tree to change height here	*/
-	if  ( docLayoutDocumentTree( eiNoteSep, (DocumentRectangle *)0,
+	if  ( docLayoutDocumentTree( noteSepTree, (DocumentRectangle *)0,
 			page, column, y0Twips,
-			bodySectNode, lc, dc->dcInitLayoutExternal,
+			bodySectNode, lc, dc->dcStartTreeLayout,
 			adjustDocument ) )
 	    { LDEB(1); return -1;	}
 	}
 
     /*  4  */
-    if  ( docDrawNode( lpBelow, eiNoteSep->dtRoot, through, dc ) )
+    if  ( docDrawTreeRoot( lpBelow, noteSepTree, bodySectNode, dc, through ) )
 	{ LDEB(1); return -1;	}
 
     return 0;
@@ -187,9 +208,10 @@ int docDrawFootnotesForColumn(	int				page,
     {
     int				rval= 0;
     const LayoutContext *	lc= &(dc->dcLayoutContext);
-    BufferDocument *		bd= lc->lcDocument;
+    struct BufferDocument *	bd= lc->lcDocument;
     DocumentField *		dfNote;
     DocumentNote *		dn;
+    const BufferItem *		bodySectNode;
 
     LayoutPosition		lpBelow;
 
@@ -200,14 +222,17 @@ int docDrawFootnotesForColumn(	int				page,
     if  ( ! dfNote )
 	{ goto ready;	}
 
-    if  ( docDrawNoteSeparator( &lpBelow, through, dc, dfNote, dn, DOCinFTNSEP ) )
+    bodySectNode= docGetBodySectNodeOfScope( &(dfNote->dfSelectionScope), bd );
+
+    if  ( docDrawNoteSeparator( &lpBelow, through, dc, bodySectNode, dn,
+							    DOCinFTNSEP ) )
 	{ LDEB(page);	}
 
     for ( ;
 	  dfNote;
 	  dfNote= docGetNextNoteInDocument( &dn, bd, dfNote, DOCinFOOTNOTE ) )
 	{
-	DocumentTree *	tree= &(dn->dnDocumentTree);
+	struct DocumentTree *	tree= &(dn->dnDocumentTree);
 
 	if  ( dn->dnReferringPage < page )
 	    { LLDEB(page,dn->dnReferringPage); continue;	}
@@ -220,7 +245,7 @@ int docDrawFootnotesForColumn(	int				page,
 	if  ( ! tree->dtRoot )
 	    { XDEB(tree->dtRoot); continue;	}
 
-	if  ( docDrawNode( &lpBelow, tree->dtRoot, through, dc ) )
+	if  ( docDrawTreeRoot( &lpBelow, tree, bodySectNode, dc, through ) )
 	    { LDEB(1); rval= -1; goto ready;	}
 	}
 
@@ -247,12 +272,12 @@ int docDrawEndnotesForSection(		LayoutPosition *	lpBelow,
     {
     int				rval= 0;
     const LayoutContext *	lc= &(dc->dcLayoutContext);
-    BufferDocument *		bd= lc->lcDocument;
-    BufferItem *		bodySectNode;
+    struct BufferDocument *	bd= lc->lcDocument;
+    struct BufferItem *		bodySectNode;
 
     DocumentNote *		dn;
     DocumentField *		dfNote;
-    DocumentTree *		tree;
+    struct DocumentTree *	tree;
 
     LayoutPosition		lpHere;
     DocumentPosition		dp;
@@ -301,7 +326,7 @@ int docDrawEndnotesForSection(		LayoutPosition *	lpBelow,
 	  tree->dtRoot->biBelowPosition.lpPage >= dc->dcFirstPage	)
 	{
 	if  ( docDrawNoteSeparator( lpBelow, through, dc,
-						dfNote, dn, DOCinAFTNSEP ) )
+					bodySectNode, dn, DOCinAFTNSEP ) )
 	    { LDEB(sect);	}
 	}
 
@@ -312,7 +337,7 @@ int docDrawEndnotesForSection(		LayoutPosition *	lpBelow,
 						    dfNote, DOCinENDNOTE ) )
 	{
 	tree= &(dn->dnDocumentTree);
-	if  ( dc->dcLastPage >= 0				&&
+	if  ( dc->dcLastPage >= 0					&&
 	      tree->dtRoot->biTopPosition.lpPage > dc->dcLastPage	)
 	    { goto ready;	}
 
@@ -323,7 +348,7 @@ int docDrawEndnotesForSection(		LayoutPosition *	lpBelow,
 	if  ( dc->dcFirstPage < 0					||
 	      tree->dtRoot->biBelowPosition.lpPage >= dc->dcFirstPage	)
 	    {
-	    if  ( docDrawNode( lpBelow, tree->dtRoot, through, dc ) )
+	    if  ( docDrawTreeRoot( lpBelow, tree, bodySectNode, dc, through ) )
 		{ LDEB(1); rval= -1; goto ready;	}
 	    }
 

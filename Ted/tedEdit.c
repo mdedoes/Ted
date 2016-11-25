@@ -7,7 +7,6 @@
 #   include	"tedConfig.h"
 
 #   include	<stddef.h>
-#   include	<stdio.h>
 #   include	<ctype.h>
 
 #   include	<uniUtf8.h>
@@ -15,15 +14,19 @@
 
 #   include	"tedEdit.h"
 #   include	"tedDocument.h"
-#   include	"tedApp.h"
 #   include	"tedSelect.h"
-#   include	"tedToolFront.h"
+#   include	<tedToolFront.h>
+#   include	<tedDocFront.h>
 #   include	<docRtfTrace.h>
 #   include	<docTreeType.h>
 #   include	<docField.h>
 #   include	<docTextParticule.h>
 #   include	<docTreeNode.h>
 #   include	<docEditCommand.h>
+#   include	<docDocumentField.h>
+#   include	<docFieldKind.h>
+#   include	<appEditDocument.h>
+#   include	<docAttributes.h>
 
 #   include	<appDebugon.h>
 
@@ -354,7 +357,7 @@ int tedDocReplaceSelectionTyping(	EditDocument *		ed,
 	    {
 	    if  ( teo.teoEditTrace					&&
 		  docTraceExtendReplace( &(teo.teoEo), teo.teoEditTrace,
-				    EDITcmdEXTEND_REPLACE, DOClevSPAN, 0 ) )
+						EDITcmdEXTEND_REPLACE ) )
 		{ LDEB(1); rval= -1; goto ready;	}
 	    }
 	else{
@@ -396,7 +399,7 @@ void tedDocInsertStringWithAttribute(	EditDocument *		ed,
 					int			traced )
     {
     TedDocument *		td= (TedDocument *)ed->edPrivateData;
-    BufferDocument *		bd= td->tdDocument;
+    struct BufferDocument *		bd= td->tdDocument;
 
     TedEditOperation		teo;
     SelectionGeometry		sg;
@@ -415,7 +418,7 @@ void tedDocInsertStringWithAttribute(	EditDocument *		ed,
     if  ( ! tedHasSelection( ed ) )
 	{ LDEB(1); goto ready; }
 
-    utilUpdateTextAttribute( &taDoneMask, &ta, taSetMask, taSet );
+    textUpdateTextAttribute( &taDoneMask, &ta, taSetMask, taSet );
     textAttrNr= docTextAttributeNumber( bd, &ta );
 
     tedStartEditOperation( &teo, &sg, &sd, ed, fullWidth, traced );
@@ -491,6 +494,7 @@ void tedEditInsertSpecialParticule(	EditDocument *	ed,
     tedFinishEditOperation( &teo );
 
   ready:
+
     tedCleanEditOperation( &teo );
 
     return;
@@ -518,7 +522,7 @@ int tedDocUpdField(	TedEditOperation *		teo,
     if  ( docCopyFieldInstructions( &(dfTo->dfInstructions), fi ) )
 	{ LDEB(1); rval= -1; goto ready;	}
 
-    tedFormatFieldListChanged( ed->edApplication );
+    tedAppFormatFieldListChanged( ed->edApplication );
 
     if  ( dfTo->dfKind == DOCfkTOC			&&
 	  tedRefreshTocField( &dsAround, teo, dfTo )	)
@@ -597,12 +601,12 @@ int tedDocSetField(	TedEditOperation *		teo,
 	DocumentSelection	dsTraced;
 
 	if  ( docRtfTraceNewProperties( eo,
-		    taSetMask, taSet,
-		    (const PropertyMask *)0, (const ParagraphProperties *)0,
-		    (const PropertyMask *)0, (const CellProperties *)0,
-		    (const PropertyMask *)0, (const RowProperties *)0,
-		    (const PropertyMask *)0, (const SectionProperties *)0,
-		    (const PropertyMask *)0, (const DocumentProperties *)0 ) )
+	    taSetMask, taSet,
+	    (const PropertyMask *)0, (const struct ParagraphProperties *)0,
+	    (const PropertyMask *)0, (const struct CellProperties *)0,
+	    (const PropertyMask *)0, (const struct RowProperties *)0,
+	    (const PropertyMask *)0, (const struct SectionProperties *)0,
+	    (const PropertyMask *)0, (const struct DocumentProperties *)0 ) )
 	    { LDEB(1); rval= -1; goto ready;	}
 
 	if  ( docRtfTraceOldContents( &dsTraced, eo, DOClevSPAN, 0 ) )
@@ -619,7 +623,7 @@ int tedDocSetField(	TedEditOperation *		teo,
     if  ( tedLayoutNodeOfField( teo, &dsAround, FIELDdoNOTHING ) )
 	{ LDEB(1); rval= -1; goto ready;	}
 
-    tedFormatFieldListChanged( ed->edApplication );
+    tedAppFormatFieldListChanged( ed->edApplication );
 
     tedEditFinishSelection( teo, &dsInside );
 

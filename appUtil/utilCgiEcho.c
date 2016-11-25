@@ -1,5 +1,6 @@
 #   include	"utilCgiEcho.h"
 #   include	"utilTree.h"
+#   include	"sioGeneral.h"
 
 #   include	<appDebugon.h>
 

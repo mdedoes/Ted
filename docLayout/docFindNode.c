@@ -8,36 +8,36 @@
 
 #   include	"docLayoutConfig.h"
 
-#   include	<stddef.h>
-
 #   include	<docBuf.h>
 #   include	"docLayout.h"
+#   include	<docPageGrid.h>
+#   include	<geoRectangle.h>
 
 #   include	<appDebugon.h>
 
-int docFindHeaderFooterForY(		DocumentTree **		pTree,
+int docFindHeaderFooterForY(		struct DocumentTree **		pTree,
 					struct BufferItem **	pSelSectNode,
 					int *			pColumn,
 					const LayoutContext *	lc,
 					struct BufferItem *	bodySectNode,
-					BufferDocument *	bd,
+					struct BufferDocument *	bd,
 					int			page,
 					int			docY )
     {
     int				isEmpty;
-    DocumentTree *		dt;
+    struct DocumentTree *		dt;
 
     DocumentRectangle		drExtern;
     const int			justUsed= 0;
 
     /*  4  */
-    dt= (DocumentTree *)0;
-    docWhatPageHeader( &dt, &isEmpty, bodySectNode, page, bd );
+    dt= (struct DocumentTree *)0;
+    docDrawWhatPageHeader( &dt, &isEmpty, bodySectNode, page, bd );
     if  ( dt && dt->dtRoot )
 	{
 	const int		headerColumn= 0;
 
-	if  ( docGetBoxAroundTree( &drExtern, bodySectNode, dt, justUsed,
+	if  ( docGetBoxAroundTree( &drExtern, dt, justUsed,
 						    page, headerColumn, lc ) )
 	    { LDEB(1);	}
 	else{
@@ -53,13 +53,13 @@ int docFindHeaderFooterForY(		DocumentTree **		pTree,
 	}
 
     /*  5  */
-    dt= (DocumentTree *)0;
-    docWhatPageFooter( &dt, &isEmpty, bodySectNode, page, bd );
+    dt= (struct DocumentTree *)0;
+    docDrawWhatPageFooter( &dt, &isEmpty, bodySectNode, page, bd );
     if  ( dt && dt->dtRoot )
 	{
 	const int		footerColumn= 0;
 
-	if  ( docGetBoxAroundTree( &drExtern, bodySectNode, dt, justUsed,
+	if  ( docGetBoxAroundTree( &drExtern, dt, justUsed,
 						    page, footerColumn, lc ) )
 	    { LDEB(1);	}
 	else{

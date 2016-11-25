@@ -4,12 +4,17 @@
 
 #   include	"appFrameConfig.h"
 
-#   include	<stddef.h>
-#   include	<stdio.h>
+#   if ! USE_HEADLESS
 
-#   include	"appFrame.h"
+#   include	<stddef.h>
+
+#   include	"appEditApplication.h"
+#   include	"appGuiApplication.h"
+#   include	"appEditDocument.h"
+#   include	"appGuiDocument.h"
 #   include	"appQuestion.h"
 #   include	"appFileChooser.h"
+#   include	"appDocument.h"
 
 #   include	<appDebugon.h>
 
@@ -41,8 +46,7 @@ void appRunReallyCloseDialog(	APP_WIDGET			option,
 	    if  ( utilMemoryBufferIsEmpty( &(ed->edFilename) ) )
 		{
 		appRunSaveChooser( option, ed->edToplevel.atTopWidget,
-					APPFILE_CAN_SAVE, appDocSaveDocument,
-					ed, ed->edPrivateData );
+				appDocSaveDocument, ed, ed->edPrivateData );
 		}
 	    else{
 		if  ( ! appDocSaveDocument( ed, (void *)0,
@@ -85,3 +89,5 @@ int appRunReallyQuitDialog(	APP_WIDGET			option,
 					relative, option,
 					afmr->afmrReallyQuitQuestion );
     }
+
+#   endif

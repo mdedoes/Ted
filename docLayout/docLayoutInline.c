@@ -7,18 +7,136 @@
 
 #   include	"docLayoutConfig.h"
 
-#   include	<stddef.h>
-#   include	<stdlib.h>
-
-#   include	<psFontMetrics.h>
 #   include	"docLayout.h"
+#   include	"docLayoutLine.h"
 
-#   include	<appDebugon.h>
 #   include	<docObjectProperties.h>
 #   include	<docTextLine.h>
 #   include	<docTreeNode.h>
-#   include	<docBorderPropertyAdmin.h>
 #   include	<docShape.h>
+#   include	<docObject.h>
+#   include	<textAttribute.h>
+#   include	<docBorderProperties.h>
+#   include	<docTextParticule.h>
+#   include	<psTextExtents.h>
+#   include	"docParticuleData.h"
+#   include	<docStripFrame.h>
+#   include	<docAttributes.h>
+
+#   include	<appDebugon.h>
+
+/************************************************************************/
+/*									*/
+/*  Start to insert a candidate run in the line.			*/
+/*									*/
+/************************************************************************/
+
+void docInitLineRun(		LineRun *		lr )
+    {
+    lr->lrParaNode= (struct BufferItem *)0;
+
+    lr->lrHeadParticule= 0;
+    lr->lrTailParticule= 0;
+
+    geoInitRectangle( &(lr->lrRectangle) );
+    lr->lrVisibleX1= 0;
+
+    lr->lrFattestBorder= 0;
+
+    lr->lrWordCount= 0;
+
+    lr->lrLineFlags= 0;
+
+    lr->lrAddRightBorder= 0;
+    lr->lrRightBorderThick= 0;
+    }
+
+void docLineLayoutStartRun(	LineRun *		lr,
+				struct BufferItem *	paraNode,
+				int			part,
+				int			x0 )
+    {
+    lr->lrParaNode= paraNode;
+
+    lr->lrHeadParticule= part;
+    lr->lrTailParticule= part;
+
+    lr->lrRectangle.drX0= x0;
+    lr->lrRectangle.drX1= lr->lrRectangle.drX0;
+    lr->lrRectangle.drY0= 0;
+    lr->lrRectangle.drY1= 0;
+    lr->lrVisibleX1= lr->lrRectangle.drX0;
+
+    lr->lrFattestBorder= 0;
+
+    lr->lrWordCount= 0;
+
+    lr->lrLineFlags= 0;
+
+    lr->lrAddRightBorder= 0;
+    lr->lrRightBorderThick= 0;
+
+    return;
+    }
+
+void docLineLayoutStartChildRun(	struct LineRun *	lr,
+					int			part,
+					const struct LineRun *	parent )
+    {
+    docLineLayoutStartRun( lr, parent->lrParaNode, part,
+						parent->lrRectangle.drX1 );
+    }
+
+void docLineLayoutIncludeRun(	LineRun *	to,
+				const LineRun *	from )
+    {
+    to->lrTailParticule= from->lrTailParticule;
+
+    geoIncludeRectangleY( &(to->lrRectangle), &(from->lrRectangle) );
+
+    to->lrRectangle.drX1= from->lrRectangle.drX1;
+    if  ( from->lrVisibleX1 > from->lrRectangle.drX0 )
+	{ to->lrVisibleX1= from->lrVisibleX1;	}
+
+    if  ( to->lrFattestBorder < from->lrFattestBorder )
+	{ to->lrFattestBorder=  from->lrFattestBorder;	}
+
+    to->lrWordCount += from->lrWordCount;
+    to->lrLineFlags |= from->lrLineFlags;
+
+    return;
+    }
+
+/************************************************************************/
+
+void docLayoutAddExtraToPrevious(	ParticuleData *	pd,
+					int		extra )
+    {
+    if  ( pd[-1].pdTwipsWide+ extra < 0 )
+	{
+	LLDEB(pd[-1].pdTwipsWide,extra);
+	pd[-1].pdTwipsWide= 0;
+	}
+    else{ pd[-1].pdTwipsWide += extra;		}
+
+    if  ( pd[-1].pdVisibleBBox.drX1+ extra < 0 )
+	{
+	LLDEB(pd[-1].pdVisibleBBox.drX1,extra);
+	pd[-1].pdVisibleBBox.drX1= 0;
+	}
+    else{ pd[-1].pdVisibleBBox.drX1 += extra;	}
+
+    return;
+    }
+
+void docLayoutAddRightBorderToPrevious(	ParticuleData *	pd,
+					int		rightBorderThick )
+    {
+    pd[-1].pdFlags |= TPflagRIGHT_BORDER;
+    pd[-1].pdRightBorderWidth= rightBorderThick;
+
+    docLayoutAddExtraToPrevious( pd, rightBorderThick );
+    }
 
 /************************************************************************/
 /*									*/
@@ -26,29 +144,25 @@
 /*									*/
 /************************************************************************/
 
-const AfmFontInfo * docLayoutGetAfi(
+const struct AfmFontInfo * docLayoutGetAfi(
 			int *				pTextAttrNr,
-			TextAttribute *			ta,
+			const TextAttribute **		pTa,
 			unsigned char *			pLineFlags,
 			const LayoutContext *		lc,
-			const BufferItem *		paraNode,
+			const struct BufferItem *	paraNode,
 			int				part )
     {
-    BufferDocument *		bd= lc->lcDocument;
+    struct BufferDocument *	bd= lc->lcDocument;
 
-    DocumentProperties *	dp= &(bd->bdProperties);
-    DocumentFontList *		dfl= dp->dpFontList;
-
-    const AfmFontInfo *		afi;
-    const IndexSet *		unicodesWanted;
+    const struct AfmFontInfo *	afi;
     int				textAttrNr;
+    const TextAttribute *	ta;
 
-    textAttrNr= docGetEffectiveTextAttributes( ta, bd, paraNode, part );
+    textAttrNr= docGetEffectiveTextAttributes( &ta, bd, paraNode, part );
 
-    afi= (*lc->lcGetFontForAttribute)( &unicodesWanted,
-					ta, dfl, lc->lcPostScriptFontList );
+    afi= docDocLayoutGetFontInfo( lc, ta );
     if  ( ! afi )
-	{ LDEB(textAttrNr); return (AfmFontInfo *)0; }
+	{ LDEB(textAttrNr); return (struct AfmFontInfo *)0; }
 
     if  ( docBorderNumberIsBorder( bd, ta->taBorderNumber ) )
 	{ *pLineFlags |= TLflagBORDER;	}
@@ -56,8 +170,60 @@ const AfmFontInfo * docLayoutGetAfi(
     if  ( docShadingNumberIsShading( bd, ta->taShadingNumber ) )
 	{ *pLineFlags |= TLflagSHADING;	}
 
+    *pTa= ta;
     *pTextAttrNr= textAttrNr;
     return afi;
+    }
+
+/************************************************************************/
+
+int docLayoutTextExtents(	DocumentRectangle *		drText,
+				const TextAttribute *		ta,
+				const struct AfmFontInfo *	afi,
+				const char *			from,
+				int				len )
+    {
+    int			fontSizeTwips;
+    int			width;
+
+    fontSizeTwips= TA_FONT_SIZE_TWIPS( ta );
+
+    if  ( ta->taSuperSub == TEXTvaSUPERSCRIPT ||
+	  ta->taSuperSub == TEXTvaSUBSCRIPT   )
+	{ fontSizeTwips= SUPERSUB_SIZE( fontSizeTwips ); }
+
+    width= psTextExtents( drText, ta, fontSizeTwips, afi, from, len );
+    if  ( width < 0 )
+	{ LLDEB(len,width); return -1;	}
+
+    if  ( ta->taBaselineShiftHalfPoints > 0 )
+	{ drText->drY0 -= 10* ta->taBaselineShiftHalfPoints;	}
+    if  ( ta->taBaselineShiftHalfPoints < 0 )
+	{ drText->drY1 -= 10* ta->taBaselineShiftHalfPoints;	}
+
+    return width;
+    }
+
+int docLayoutTextExtentsInParticule(
+				DocumentRectangle *		drText,
+				const LayoutContext *		lc,
+				const BufferItem *		paraNode,
+				int				part,
+				const char *			from,
+				int				len )
+    {
+    int				textAttrNr;
+    const TextAttribute *	ta;
+    const struct AfmFontInfo *	afi;
+
+    unsigned char		ignoredLineFlags= 0;
+
+    afi= docLayoutGetAfi( &textAttrNr, &ta, &ignoredLineFlags,
+						    lc, paraNode, part );
+    if  ( ! afi )
+	{ XDEB(afi); return -1;	}
+
+    return docLayoutTextExtents( drText, ta, afi, from, len );
     }
 
 /************************************************************************/
@@ -66,273 +232,261 @@ const AfmFontInfo * docLayoutGetAfi(
 /*									*/
 /************************************************************************/
 
-int docLayoutFontAscDesc(	const BufferItem *		paraNode,
-				TextAttribute *			ta,
+static int docLayoutFontAscDesc( const struct BufferItem *	paraNode,
+				const TextAttribute **		pTa,
 				DocumentRectangle *		drAscDesc,
 				int *				pBorder,
 				const LayoutContext *		lc,
 				int				part )
     {
-    BufferDocument *		bd= lc->lcDocument;
+    struct BufferDocument *	bd= lc->lcDocument;
+    const TextAttribute *	ta;
 
     int				rval;
     DocumentRectangle		drBBox;
 
-    const AfmFontInfo *		afi;
-    BorderProperties		bp;
+    const struct AfmFontInfo *	afi;
 
-    int				sizeTwips;
+    int				fontSizeTwips;
     const int			vswap= 1;
 
     unsigned char		lineFlags= 0;
     int				textAttrNr;
 
-    afi= docLayoutGetAfi( &textAttrNr, ta, &lineFlags, lc, paraNode, part );
+    afi= docLayoutGetAfi( &textAttrNr, &ta, &lineFlags, lc, paraNode, part );
     if  ( ! afi )
 	{ XDEB(afi); return -1;	}
 
-    sizeTwips= 10* ta->taFontSizeHalfPoints;
+    fontSizeTwips= TA_FONT_SIZE_TWIPS( ta );
 
-    rval= psFontBBox( &drBBox, drAscDesc, sizeTwips, vswap, afi );
+    rval= psFontBBox( &drBBox, drAscDesc, fontSizeTwips, vswap, afi );
 
     if  ( pBorder && ( lineFlags & TLflagBORDER ) )
 	{
-	int		thick= 0;
-	int		space= 0;
+	int				thick= 0;
+	int				space= 0;
+	const BorderProperties *	bp;
 
-	docGetBorderPropertiesByNumber( &bp, bd, ta->taBorderNumber );
+	bp= docGetBorderPropertiesByNumber( bd, ta->taBorderNumber );
 
-	thick= docBorderThick( &space, &bp );
+	thick= docBorderThick( &space, bp );
 
 	*pBorder= thick+ space;
 	}
 
-    return rval;
-    }
-
-/************************************************************************/
-/*									*/
-/*  Calculate the layout of the next stretch of text upto the point	*/
-/*  where it can be folded.						*/
-/*									*/
-/************************************************************************/
-
-static int docLayoutSegmentedStringExtents(
-				DocumentRectangle *	drRet,
-				const char *		printString,
-				const int *		segments,
-				int			segmentCount,
-				int			sizeTwips,
-				const AfmFontInfo *	afi )
-    {
-    const char *		s= printString;
-    int				seg;
-    int				scapsSize= ( 8* sizeTwips )/ 10;
-
-    int				x= 0;
-    int				wide;
-
-    DocumentRectangle		dr;
-    int				done= 0;
-
-    const int			withKerning= 0;
-    const int			vswap= 1;
-
-    for ( seg= 0; seg < segmentCount; seg++ )
-	{
-	if  ( segments[2* seg+ 0] > 0 )
-	    {
-	    wide= psCalculateStringExtents( &dr, s, segments[2* seg+ 0],
-					sizeTwips, withKerning, vswap, afi );
-
-	    if  ( done )
-		{
-		drRet->drX1= x+ dr.drX1;
-
-		includeRectangleY( drRet, &dr );
-		}
-	    else{ *drRet= dr;	}
-
-	    s += segments[2* seg+ 0];
-	    x += wide;
-	    done= 1;
-	    }
-
-	if  ( segments[2* seg+ 1] > 0 )
-	    {
-	    wide= psCalculateStringExtents( &dr, s, segments[2* seg+ 1],
-					scapsSize, withKerning, vswap, afi );
-
-	    if  ( done )
-		{
-		drRet->drX1= x+ dr.drX1;
-
-		includeRectangleY( drRet, &dr );
-		}
-	    else{ *drRet= dr;	}
-
-	    s += segments[2* seg+ 1];
-	    x += wide;
-	    done= 1;
-	    }
-	}
-
-    return x;
-    }
-
-int docLayoutStringExtents(	int *			pWidth,
-				int *			pDecWidth,
-				DocumentRectangle *	dr,
-				const TextAttribute *	ta,
-				int			sizeTwips,
-				const BufferDocument *	bd,
-				const AfmFontInfo *	afi,
-				const char *		printString,
-				int			len )
-    {
-    char *			upperString= (char *)0;
-    int *			segments= (int *)0;
-    int				segmentCount= 0;
-
-    int				rval= 0;
-    const int			withKerning= 0;
-    const int			vswap= 1;
-
-    int				dec;
-    int				d;
-
-    int				width;
-    int				fontHigh;
-    int				decWidth;
-
-    DocumentRectangle		drFontBBox;
-    DocumentRectangle		drFontAscDesc;
-
-    if  ( ! printString )
-	{ printString= "";	}
-
-    if  ( len > 0 && ( ta->taSmallCaps || ta->taCapitals ) )
-	{
-	if  ( docMakeCapsString( &upperString, &segments, &segmentCount,
-						    ta, printString, len ) )
-	    { LDEB(len); return -1;	}
-
-	if  ( ! upperString )
-	    { XDEB(upperString); return -1;	}
-
-	printString= upperString;
-	}
-
-    if  ( len > 0 && ta->taSmallCaps && ! ta->taCapitals )
-	{
-	width= docLayoutSegmentedStringExtents( dr, printString,
-				    segments, segmentCount, sizeTwips, afi );
-	if  ( width < 0 )
-	    { LLDEB(ta->taFontNumber,width);	}
-	}
-    else{
-	width= psCalculateStringExtents( dr, printString, len,
-					sizeTwips, withKerning, vswap, afi );
-	if  ( width < 0 )
-	    { LSLDEB(len,printString,width);	}
-	}
-
-    (void)psFontBBox( &drFontBBox, &drFontAscDesc, sizeTwips, vswap, afi );
-    dr->drY0= drFontAscDesc.drY0;
-    dr->drY1= drFontAscDesc.drY1;
-
-    /*LINEDISTANCE: scale the position of the baseline based on the bbox */
-    fontHigh= drFontBBox.drY1- drFontBBox.drY0;
-    if  ( fontHigh < 2 )
-	{ LLDEB(ta->taFontSizeHalfPoints,fontHigh); fontHigh= 2;	}
-    dr->drY0= ( drFontBBox.drY0* sizeTwips )/ fontHigh;
-    dr->drY1= ( drFontBBox.drY1* sizeTwips )/ fontHigh;
-
-    dec= -1;
-    for ( d= 0; d < len; d++ )
-	{
-	if  ( printString[d] == '.' || printString[d] == ','	)
-	    { dec= d;	}
-	}
-
-    if  ( dec >= 0 )
-	{
-	DocumentRectangle		drDec;
-
-	decWidth= psCalculateStringExtents( &drDec, printString, dec,
-					sizeTwips, withKerning, vswap, afi );
-	if  ( decWidth < 0 )
-	    { LDEB(decWidth);	}
-	}
-    else{ decWidth= width;	}
-
-    *pWidth= width;
-    *pDecWidth= decWidth;
-
-    if  ( upperString )
-	{ free( upperString );	}
-    if  ( segments )
-	{ free( segments );	}
-
+    *pTa= ta;
     return rval;
     }
 
 /************************************************************************/
 
-int docLayoutInlineObject(	TextAttribute *			ta,
-				BufferDocument *		bd,
+int docLayoutInlineObject(	LineRun *			lr,
+				ParticuleData *			pd,
+				struct BufferDocument *		bd,
 				const struct BufferItem *	paraNode,
 				int				part,
-				InsertedObject *		io,
-				DocumentRectangle *		drWord,
-				int *				pWordBorder,
-				int *				pX1,
-				int				x0 )
+				InsertedObject *		io )
     {
-    const int			accepted= 1;
-
-    BorderProperties		bp;
+    const BorderProperties *	bp;
     int				thick= 0;
     int				space= 0;
 
     int				width;
+    const TextAttribute *	ta;
 
+    /*  In shapes that do not compete with the text, do not reserve space */
     if  ( io->ioKind == DOCokDRAWING_SHAPE )
 	{
-	DrawingShape *		ds= io->ioDrawingShape;
+	const DrawingShape *	ds= io->ioDrawingShape;
 	const ShapeProperties *	sp= &(ds->dsShapeProperties);
+	const ShapeDrawing *	sd= &(ds->dsDrawing);
 
-	if  ( sp->spWrapStyle == SHPswtNONE	||
-	      sp->spWrapStyle == SHPswtTHROUGH	)
+	if  ( ! sd->sd_fPseudoInline				&&
+	      ( sp->spWrapStyle == SHPswtNONE		||
+	        sp->spWrapStyle == SHPswtTHROUGH	)	)
 	    {
-	    drWord->drX0= x0;
-	    drWord->drX1= x0;
-	    drWord->drY0= 0;
-	    drWord->drY1= 0;
-
-	    *pWordBorder= 0;
-
-	    *pX1= x0;
-	    return accepted;
+	    lr->lrTailParticule= part+ 1;
+	    lr->lrLineFlags= TLflagINLINECONTENT; /* WHY? */
+	    return 0;
 	    }
 	}
 
     width= ( io->ioScaleXUsed* io->ioTwipsWide )/ 100.0;
 
-    docGetEffectiveTextAttributes( ta, bd, paraNode, part );
-    docGetBorderPropertiesByNumber( &bp, bd, ta->taBorderNumber );
+    docGetEffectiveTextAttributes( &ta, bd, paraNode, part );
+    bp= docGetBorderPropertiesByNumber( bd, ta->taBorderNumber );
 
-    if  ( DOCisBORDER( &bp ) )
-	{ thick= docBorderThick( &space, &bp );	}
+    if  ( DOCisBORDER( bp ) )
+	{ thick= docBorderThick( &space, bp );	}
 
-    drWord->drX0= x0;
-    drWord->drX1= x0+ width;
-    drWord->drY0= -( io->ioScaleYUsed* io->ioTwipsHigh )/ 100.0;
-    drWord->drY1= 0;
+    lr->lrTailParticule= part+ 1;
 
-    *pWordBorder= thick+ space;
+    lr->lrRectangle.drX1= lr->lrRectangle.drX0+ width;
+    lr->lrRectangle.drY0= -( io->ioScaleYUsed* io->ioTwipsHigh )/ 100.0;
+    lr->lrRectangle.drY1= 0;
+    lr->lrVisibleX1= lr->lrRectangle.drX1;
 
-    *pX1= x0+ width;
-    return accepted;
+    lr->lrFattestBorder= thick+ space;
+    lr->lrLineFlags= TLflagINLINECONTENT;
+
+    if  ( ta->taBaselineShiftHalfPoints > 0 )
+	{ lr->lrRectangle.drY0 -= 10* ta->taBaselineShiftHalfPoints; }
+    if  ( ta->taBaselineShiftHalfPoints < 0 )
+	{ lr->lrRectangle.drY1 -= 10* ta->taBaselineShiftHalfPoints; }
+
+    /* some extra space ? Take leading! LINEDISTANCE */
+    lr->lrRectangle.drY0 -= ( 150* paraNode->biParaMajorityFontSize )/ 100;
+
+    pd->pdTwipsWide= width;
+    pd->pdVisibleBBox= lr->lrRectangle;
+    pd->pdVisibleBBox.drX0= 0;
+    pd->pdVisibleBBox.drX1= pd->pdTwipsWide;
+
+    return 0;
+    }
+
+int docLayoutSeparator(	struct LineRun *		lr,
+			ParticuleData *			pd,
+			const struct BufferItem *	paraNode,
+			int				part,
+			const LineLayoutJob *		llj )
+    {
+    int				width= 2880;
+    const TextAttribute *	ta;
+
+    DocumentRectangle		drAscDesc;
+
+    if  ( width > llj->lljLineWidth )
+	{ width=  llj->lljLineWidth;	}
+
+    if  ( docLayoutFontAscDesc( paraNode, &ta,
+			    &drAscDesc, &(lr->lrFattestBorder),
+			    llj->lljLayoutContext, part ) < 0 )
+	{ LDEB(1); return -1;	}
+
+    lr->lrRectangle.drY0= drAscDesc.drY0;
+    lr->lrRectangle.drY1= drAscDesc.drY1;
+
+    if  ( ta->taBaselineShiftHalfPoints > 0 )
+	{ lr->lrRectangle.drY0 -= 10* ta->taBaselineShiftHalfPoints; }
+    if  ( ta->taBaselineShiftHalfPoints < 0 )
+	{ lr->lrRectangle.drY1 -= 10* ta->taBaselineShiftHalfPoints; }
+
+    lr->lrTailParticule= part+ 1;
+    lr->lrRectangle.drX1= lr->lrRectangle.drX0+ width;
+    lr->lrVisibleX1= lr->lrRectangle.drX1;
+    lr->lrLineFlags |= TLflagINLINECONTENT;
+
+    pd->pdTwipsWide= width;
+    pd->pdVisibleBBox= lr->lrRectangle;
+    pd->pdVisibleBBox.drX0= 0;
+    pd->pdVisibleBBox.drX1= pd->pdTwipsWide;
+
+    return 0;
+    }
+
+int docLayoutOptionalHyphen(
+			struct LineRun *		lr,
+			ParticuleData *			pd,
+			const struct BufferItem *	paraNode,
+			int				part,
+			const LayoutContext *		lc )
+    {
+    int				width;
+    DocumentRectangle		drAscDesc;
+
+    int				from;
+    int				len;
+
+    from= paraNode->biParaParticules[part].tpStroff;
+    len= paraNode->biParaParticules[part].tpStrlen;
+
+    width= docLayoutTextExtentsInParticule( &drAscDesc, lc, paraNode, part,
+				    docParaString( paraNode, from ), len );
+    if  ( width < 0 )
+	{ LLDEB(len,width); return -1;	}
+
+    lr->lrTailParticule= part+ 1;
+    lr->lrRectangle.drX1= lr->lrRectangle.drX0+ width;
+    lr->lrVisibleX1= lr->lrRectangle.drX1;
+    lr->lrLineFlags |= TLflagINLINECONTENT;
+
+    return 0;
+    }
+
+/************************************************************************/
+/*									*/
+/*  Add an optional hyphen to a line that is full.			*/
+/*									*/
+/*  It is guaranteed to fit, because otherwise the line would have been	*/
+/*  folded to make it fit.						*/
+/*									*/
+/************************************************************************/
+
+int docLayoutShowOptionalHyphen( const LayoutContext *		lc,
+				struct BufferItem *		paraNode,
+				int				part,
+				unsigned char *			pLineFlags,
+				ParticuleData *			pd,
+				int				x0 )
+    {
+    const TextParticule *	tp= paraNode->biParaParticules+ part;
+
+    int				textAttrNr;
+    const TextAttribute *	ta;
+    const struct AfmFontInfo *	afi;
+
+    int				width;
+    DocumentRectangle		drPart;
+
+    const char *		from;
+    int				len;
+
+    unsigned char		lineFlags= 0;
+
+    from= docParaString( paraNode, tp->tpStroff );
+    len= tp->tpStrlen;
+
+    afi= docLayoutGetAfi( &textAttrNr, &ta, &lineFlags, lc, paraNode, part );
+    if  ( ! afi )
+	{ XDEB(afi); return -1;	}
+
+    width= docLayoutTextExtents( &drPart, ta, afi, from, len );
+    if  ( width < 0 )
+	{ LLDEB(len,width); return -1;	}
+
+    docInitParticuleData( pd );
+    pd->pdAfi= afi;
+    pd->pdX0= x0;
+    pd->pdTwipsWide= width;
+    pd->pdVisibleBBox= drPart;
+
+    *pLineFlags |= lineFlags;
+    return 0;
+    }
+
+/************************************************************************/
+/*									*/
+/*  Fill the pixel rectangle for a line of text.			*/
+/*  The rectangle has the full width of the frame that holds the	*/
+/*  paragraph that holds the line.					*/
+/*									*/
+/************************************************************************/
+
+void docLineFrameRectanglePixels(
+				DocumentRectangle *	drLineFramePixels,
+				const LayoutPosition *	lpTop,
+				const LayoutPosition *	lpBottom,
+				const TextLine *	tl,
+				const BlockOrigin *	bo,
+				const ParagraphFrame *	pf,
+				const LayoutContext *	lc )
+    {
+    docGetPixelRectForPos( drLineFramePixels, lc,
+			pf->pfCellContentRect.drX0+ (bo?bo->boXShift:0),
+			pf->pfCellContentRect.drX1+ (bo?bo->boXShift:0),
+			lpTop, lpBottom );
+
+    return;
     }
 

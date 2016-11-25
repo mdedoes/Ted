@@ -7,9 +7,10 @@
 #   ifndef	DOC_BORDER_PROP_H
 #   define	DOC_BORDER_PROP_H
 
-#   include	<utilPropMask.h>
 #   include	<utilColor.h>
-#   include	<utilPalette.h>
+
+struct PropertyMask;
+struct ColorPalette;
 
 /************************************************************************/
 /*									*/
@@ -50,6 +51,7 @@ typedef enum BorderStyle
     DOCbsENGRAVE,
     DOCbsFRAME,
     DOCbsOUTSET,
+    DOCbsINSET,
 
     DOCbsTBL,
     DOCbsNIL,
@@ -111,10 +113,10 @@ typedef enum BorderProperty
 extern void docInitBorderProperties(	BorderProperties *	bp );
 
 extern void docUpdateBorderProperties(
-				    PropertyMask * 		pBpDoneMask,
-				    BorderProperties *		bpTo,
-				    const PropertyMask * 	bpSetMask,
-				    const BorderProperties *	bpFrom );
+			    struct PropertyMask * 		pBpDoneMask,
+			    BorderProperties *			bpTo,
+			    const struct PropertyMask * 	bpSetMask,
+			    const BorderProperties *		bpFrom );
 
 extern void docCopyBorderProperties(BorderProperties *		bpTo,
 				    const BorderProperties *	bpFrom,
@@ -127,14 +129,14 @@ extern int docBordersDiffer(	const BorderProperties *	bp1,
 extern void docExpandBorderProperties(
 				ExpandedBorderProperties *	ebp,
 				const BorderProperties *	bp,
-				const ColorPalette *		cp );
+				const struct ColorPalette *	cp );
 
 extern int docIndirectBorderProperties(
-			PropertyMask *				pBpDoneMask,
-			BorderProperties *			bp,
-			const PropertyMask * 			bpSetMask,
-			const ExpandedBorderProperties *	ebp,
-			ColorPalette *				cp );
+		struct PropertyMask *				pBpDoneMask,
+		BorderProperties *				bp,
+		const struct PropertyMask * 			bpSetMask,
+		const ExpandedBorderProperties *		ebp,
+		struct ColorPalette *				cp );
 
 extern void docInitExpandedBorderProperties(
 				ExpandedBorderProperties *	ebp );

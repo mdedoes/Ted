@@ -1,5 +1,6 @@
-#   include	"sioGeneral.h"
 #   include	"appCgiIn.h"
+
+struct SimpleOutputStream;
 
 /************************************************************************/
 /*									*/
@@ -9,8 +10,8 @@
 
 extern void utilCgiEchoValueList(	void *			tree,
 					const char *		label,
-					SimpleOutputStream *	sos );
+					struct SimpleOutputStream *	sos );
 
 extern void utilCgiEchoRequest(		const CGIRequest *	cgir,
-					SimpleOutputStream *	sos );
+					struct SimpleOutputStream *	sos );
 

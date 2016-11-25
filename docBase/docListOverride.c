@@ -44,6 +44,7 @@ void docCleanListOverride(	ListOverride *	lo )
 
 int docCopyListOverride(	ListOverride *		to,
 				const ListOverride *	from,
+				const int *		listIndexMap,
 				const int *		fontMap,
 				const int *		colorMap,
 				const int *		rulerMap )
@@ -72,6 +73,10 @@ int docCopyListOverride(	ListOverride *		to,
 	}
 
     *to= *from;
+    if  ( listIndexMap )
+	{
+	to->loListIndex= listIndexMap[from->loListIndex];
+	}
 
     for ( i= 0; i < to->loLevelCount; i++ )
 	{
@@ -90,11 +95,13 @@ int docCopyListOverride(	ListOverride *		to,
 int docCopyListOverrideSameDocument(	ListOverride *		to,
 					const ListOverride *	from )
     {
+    const int * const	listIndexMap= (const int *)0;
     const int * const	fontMap= (const int *)0;
     const int * const	colorMap= (const int *)0;
     const int * const	rulerMap= (const int *)0;
 
-    return docCopyListOverride( to, from, fontMap, colorMap, rulerMap );
+    return docCopyListOverride( to, from,
+			    listIndexMap, fontMap, colorMap, rulerMap );
     }
 
 int docListOverrideAddLevel(	ListOverride *			lo,
@@ -130,6 +137,9 @@ int docSetListOverrideProperty(	ListOverride *		lo,
 	    return 0;
 
 	case LOpropOVERRIDECOUNT:
+	    if  ( value < 0 || value > DLmaxLEVELS )
+		{ LLDEB(DLmaxLEVELS,value); return -1;	}
+
 	    lo->loOverrideCount= value;
 	    return 0;
 

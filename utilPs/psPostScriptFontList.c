@@ -7,6 +7,8 @@
 #   include	"psPostScriptFontList.h"
 #   include	"psCompareFontInfo.h"
 #   include	"psFontName.h"
+#   include	"psFontInfo.h"
+#   include	"psFontFamily.h"
 #   include	<utilTree.h>
 
 #   include	<appDebugon.h>
@@ -19,9 +21,9 @@
 
 void psInitPostScriptFontList(	PostScriptFontList *	psfl )
     {
-    psfl->psflFamilies= (PsFontFamily **)0;
+    psfl->psflFamilies= (struct PsFontFamily **)0;
     psfl->psflFamilyCount= 0;
-    psfl->psflInfos= (AfmFontInfo **)0;
+    psfl->psflInfos= (struct AfmFontInfo **)0;
     psfl->psflInfoCount= 0;
 
     psfl->psflAvoidFontconfig= 0;

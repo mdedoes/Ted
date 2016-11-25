@@ -1,7 +1,7 @@
 /************************************************************************/
 /*									*/
-/*  Save the images in a BufferDocument and include references in the	*/
-/*  HTML file.								*/
+/*  Save the images in a document and include references in the	HTML	*/
+/*  file.								*/
 /*									*/
 /************************************************************************/
 
@@ -20,17 +20,22 @@
 #   include	"docSvgDrawImpl.h"
 
 #   include	<sioGeneral.h>
-#   include	<sioMemory.h>
-#   include	<sioHex.h>
+#   include	<sioUtil.h>
 
 #   include	<docBuf.h>
 #   include	<docPageGrid.h>
-#   include	<docObjectRect.h>
 #   include	<docShape.h>
 #   include	"docHtmlWriteImpl.h"
 
-#   include	<appDebugon.h>
 #   include	<docObjectProperties.h>
+#   include	<bmObjectReader.h>
+#   include	<docObjectIo.h>
+#   include	<docObject.h>
+#   include	<svgWriter.h>
+#   include	<layoutContext.h>
+#   include	<docShapeGeometry.h>
+
+#   include	<appDebugon.h>
 
 /************************************************************************/
 
@@ -116,7 +121,8 @@ int docHtmlObjectSaveHow(	int *			pType,
 	{ return 1;	}
 
 #   if  USE_PNG
-    if  ( abi->riDescription.bdColorEncoding == BMcoRGB8PALETTE )
+    if  ( abi->riDescription.bdColorEncoding == BMcoRGB8PALETTE		&&
+	  bmCanSaveAsContentType( &(abi->riDescription), "image/png" )	)
 	{
 	*pType= DOCokPICTPNGBLIP;
 	*pMimeType= "image/png";
@@ -127,7 +133,7 @@ int docHtmlObjectSaveHow(	int *			pType,
 #   endif
 
 #   if  USE_GIF
-    if  ( ! bmCanWriteGifFile( &(abi->riDescription), 89 ) )
+    if  ( bmCanSaveAsContentType( &(abi->riDescription), "image/gif" ) )
 	{
 	*pType= DOCokGIF_FILE;
 	*pMimeType= "image/gif";
@@ -137,7 +143,7 @@ int docHtmlObjectSaveHow(	int *			pType,
 	}
 #   endif
 
-    if  ( ! bmCanWriteJpegFile( &(abi->riDescription), 0 ) )
+    if  ( bmCanSaveAsContentType( &(abi->riDescription), "image/jpeg" ) )
 	{
 	*pType= DOCokPICTJPEGBLIP;
 	*pMimeType= "image/jpeg";
@@ -331,7 +337,7 @@ static int docHtmlRasterImageSize(	int *			pWide,
 
     if  ( ! io->ioRasterImage.riBytes )
 	{
-	if  ( docGetBitmapForObject( io ) )
+	if  ( docGetRasterImageForObject( io ) )
 	    { XDEB(io->ioRasterImage.riBytes); return 1;	}
 	}
 
@@ -476,8 +482,8 @@ static int docHtmlSaveDrawingShape(	HtmlWritingContext *	hwc,
 
     SimpleOutputStream *	sosImage= (SimpleOutputStream *)0;
 
-    DocumentTree *		ei= (DocumentTree *)0;
-    struct BufferItem *		bodySectBi= (struct BufferItem *)0;
+    struct DocumentTree *		ei= (struct DocumentTree *)0;
+    struct BufferItem *		bodySectNode= (struct BufferItem *)0;
 
     DrawingShape *		ds= io->ioDrawingShape;
 
@@ -486,7 +492,7 @@ static int docHtmlSaveDrawingShape(	HtmlWritingContext *	hwc,
     pixelsHigh= TWIPS_TO_PIXELS(drDest.drY1- drDest.drY0+ 1);
     page= io->ioY0Position.lpPage;
 
-    if  ( docGetRootOfSelectionScope( &ei, &bodySectBi,
+    if  ( docGetRootOfSelectionScope( &ei, &bodySectNode,
 					hwc->hwcLayoutContext->lcDocument,
 					&(ds->dsSelectionScope) ) )
 	{ LDEB(1);	}
@@ -500,7 +506,7 @@ static int docHtmlSaveDrawingShape(	HtmlWritingContext *	hwc,
 
     if  ( docSvgSaveShapeObject( sosImage,
 				    page, pixelsWide, pixelsHigh,
-				    io, bodySectBi, hwc->hwcLayoutContext ) )
+				    io, bodySectNode, hwc->hwcLayoutContext ) )
 	{ LDEB(1); return -1;	}
 
   ready:
@@ -530,8 +536,7 @@ static int docHtmlPlayMetafileToSvg(	HtmlWritingContext *	hwc,
     const PictureProperties *	pip= &(io->ioPictureProperties);
 
     SimpleOutputStream *	sosImage= (SimpleOutputStream *)0;
-    SimpleInputStream *		sisMem= (SimpleInputStream *)0;
-    SimpleInputStream *		sisHex= (SimpleInputStream *)0;
+    ObjectReader		or;
 
     MetafilePlayer		mp;
     SvgWriter			sw;
@@ -539,6 +544,7 @@ static int docHtmlPlayMetafileToSvg(	HtmlWritingContext *	hwc,
     DocumentRectangle		drDest;
 
     svgInitSvgWriter( &sw );
+    bmInitObjectReader( &or );
 
     if  ( ! hwc->hwcOpenImageStream )
 	{ XDEB(hwc->hwcOpenImageStream); rval= -1; goto ready;	}
@@ -547,12 +553,8 @@ static int docHtmlPlayMetafileToSvg(	HtmlWritingContext *	hwc,
     if  ( ! sosImage )
 	{ XDEB(sosImage); rval= -1; goto ready; }
 
-    sisMem= sioInMemoryOpen( mb );
-    if  ( ! sisMem )
-	{ XDEB(sisMem); rval= -1; goto ready;	}
-    sisHex= sioInHexOpen( sisMem );
-    if  ( ! sisHex )
-	{ XDEB(sisHex); rval= -1; goto ready;	}
+    if  ( bmOpenObjectReader( &or, mb ) )
+	{ LDEB(1); rval= -1; goto ready;	}
 
     sw.swXmlWriter.xwSos= sosImage;
 
@@ -561,7 +563,7 @@ static int docHtmlPlayMetafileToSvg(	HtmlWritingContext *	hwc,
     sw.swWide= TWIPS_TO_PIXELS(drDest.drX1- drDest.drX0+ 1);
     sw.swHigh= TWIPS_TO_PIXELS(drDest.drY1- drDest.drY0+ 1);
 
-    docSetMetafilePlayer( &mp, sisHex, hwc->hwcLayoutContext, pip,
+    docSetMetafilePlayer( &mp, or.orSisHex, hwc->hwcLayoutContext, pip,
 						    sw.swWide, sw.swHigh );
 
     svgStartDocument( &sw );
@@ -573,10 +575,7 @@ static int docHtmlPlayMetafileToSvg(	HtmlWritingContext *	hwc,
 
   ready:
 
-    if  ( sisHex )
-	{ sioInClose( sisHex );	}
-    if  ( sisMem )
-	{ sioInClose( sisMem );	}
+    bmCleanObjectReader( &or );
 
     if  ( sosImage )
 	{ sioOutClose( sosImage );	}
@@ -600,11 +599,9 @@ static int docHtmlSaveObjectData(	HtmlWritingContext *	hwc,
     int				rval= 0;
 
     SimpleOutputStream *	sosImage= (SimpleOutputStream *)0;
-    SimpleInputStream *		sisMem= (SimpleInputStream *)0;
-    SimpleInputStream *		sisHex= (SimpleInputStream *)0;
+    ObjectReader		or;
 
-    int			done;
-    unsigned char	buf[1024];
+    bmInitObjectReader( &or );
 
     if  ( ! hwc->hwcOpenImageStream )
 	{ XDEB(hwc->hwcOpenImageStream); rval= -1; goto ready;	}
@@ -613,25 +610,15 @@ static int docHtmlSaveObjectData(	HtmlWritingContext *	hwc,
     if  ( ! sosImage )
 	{ XDEB(sosImage); rval= -1; goto ready; }
 
-    sisMem= sioInMemoryOpen( mb );
-    if  ( ! sisMem )
-	{ XDEB(sisMem); rval= -1; goto ready;	}
-    sisHex= sioInHexOpen( sisMem );
-    if  ( ! sisHex )
-	{ XDEB(sisHex); rval= -1; goto ready;	}
+    if  ( bmOpenObjectReader( &or, mb ) )
+	{ LDEB(1); rval= -1; goto ready;	}
 
-    while( ( done= sioInReadBytes( sisHex, buf, sizeof(buf) ) ) > 0 )
-	{
-	if  ( sioOutWriteBytes( sosImage, buf, done ) != done )
-	    { LDEB(done);	}
-	}
+    if  ( sioCopyStream( sosImage, or.orSisHex ) )
+	{ LDEB(1); rval= -1; goto ready;	}
 
   ready:
 
-    if  ( sisHex )
-	{ sioInClose( sisHex );	}
-    if  ( sisMem )
-	{ sioInClose( sisMem );	}
+    bmCleanObjectReader( &or );
 
     if  ( sosImage )
 	{ sioOutClose( sosImage );	}
@@ -771,7 +758,7 @@ static int docHtmlSaveImage( int n, void * vio, void * vhwc )
 
 int docHtmlSaveImages(	HtmlWritingContext *		hwc )
     {
-    BufferDocument *	bd= hwc->hwcDocument;
+    struct BufferDocument *	bd= hwc->hwcDocument;
 
     utilPagedListForAll( &(bd->bdObjectList.iolPagedList),
 					    docHtmlSaveImage, (void *)hwc );

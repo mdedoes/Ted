@@ -6,10 +6,8 @@
 
 #   include	"docHtmlConfig.h"
 
-#   include	<stdio.h>
 #   include	<ctype.h>
 
-#   include	<sioGeneral.h>
 #   include	<docBuf.h>
 #   include	<docDocumentNote.h>
 #   include	"docHtmlWriteImpl.h"
@@ -17,6 +15,10 @@
 #   include	<docTreeNode.h>
 #   include	<docTreeType.h>
 #   include	<utilMemoryBufferPrintf.h>
+#   include	<docDocumentField.h>
+#   include	<docFieldKind.h>
+#   include	<docSelect.h>
+#   include	<docNodeTree.h>
 
 #   include	<appDebugon.h>
 
@@ -34,7 +36,7 @@ static int docHtmlSaveDeferredNote(	int		from,
     {
     SaveNotes *			sn= (SaveNotes *)vsn;
     HtmlWritingContext *	hwc= sn->snHtmlWritingContext;
-    const BufferDocument *	bd= hwc->hwcDocument;
+    const struct BufferDocument *	bd= hwc->hwcDocument;
 
     const DocumentField *	df;
     struct DocumentNote *	dn;
@@ -55,7 +57,7 @@ static int docHtmlSaveDeferredNote(	int		from,
 	    { XDEB(dn->dnDocumentTree.dtRoot);	}
 	else{
 	    if  ( docHtmlSaveSelection( hwc, &(dn->dnDocumentTree),
-					(const DocumentSelection *)0 ) )
+					(const struct DocumentSelection *)0 ) )
 		{ LDEB(1); return -1; }
 	    }
 	}
@@ -85,7 +87,7 @@ int docHtmlSaveDeferredNotes(	HtmlWritingContext *		hwc )
 
 int docHtmlStartNote(	const DocumentField *		df,
 			HtmlWritingContext *		hwc,
-			const BufferItem *		bi,
+			const struct BufferItem *		node,
 			int				attNr )
     {
     int				rval= 0;
@@ -104,7 +106,7 @@ int docHtmlStartNote(	const DocumentField *		df,
     utilInitMemoryBuffer( &mbRef );
     utilInitMemoryBuffer( &mbDef );
 
-    if  ( bi->biTreeType == DOCinBODY )
+    if  ( node->biTreeType == DOCinBODY )
 	{
 	DocumentNote *	dn;
 
@@ -125,7 +127,7 @@ int docHtmlStartNote(	const DocumentField *		df,
 
 		if  ( paraNr == 1 )
 		    {
-		    title= (char *)docParaString( dpLast.dpNode, 0 );
+		    title= docParaString( dpLast.dpNode, 0 );
 		    titleSize= docParaStrlen( dpLast.dpNode );
 		    }
 		}

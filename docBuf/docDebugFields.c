@@ -3,17 +3,23 @@
 #   include	"docBuf.h"
 #   include	"docNotes.h"
 #   include	"docTreeNode.h"
-#   include	"docDebug.h"
+#   include	"docNodeTree.h"
 #   include	<docTreeType.h>
 #   include	<docTextParticule.h>
-#   include	<docDocumentNote.h>
+#   include	"docDocumentNote.h"
+#   include	<docDocumentField.h>
+#   include	<docFieldKind.h>
+#   include	"docSelect.h"
+#   include	"docSectHeadersFooters.h"
+#   include	"docFields.h"
 
+#   include	"docDebug.h"
 #   include	<appDebugon.h>
 
 void docListFieldParticule(	int			indent,
 				const char *		label,
 				int			n,
-				const BufferItem *	bi,
+				const struct BufferItem *	node,
 				const TextParticule *	tp,
 				const DocumentField *	df )
     {
@@ -26,12 +32,12 @@ void docListFieldParticule(	int			indent,
 	{
 	appDebug( " \"%.*s\"",
 		    (int)tp->tpStrlen,
-		    docParaString( bi, tp->tpStroff ) );
+		    docParaString( node, tp->tpStroff ) );
 	}
 
-    if  ( tp->tpKind == DOCkindOBJECT		||
-	  tp->tpKind == DOCkindFIELDHEAD	||
-	  tp->tpKind == DOCkindFIELDTAIL	||
+    if  ( tp->tpKind == TPkindOBJECT		||
+	  tp->tpKind == TPkindFIELDHEAD	||
+	  tp->tpKind == TPkindFIELDTAIL	||
 	  tp->tpObjectNumber >= 0		)
 	{ appDebug( " OBNR=%d", tp->tpObjectNumber );	}
 
@@ -43,17 +49,16 @@ void docListFieldParticule(	int			indent,
     return;
     }
 
-static int docCheckFieldHeadParticule(	int			stroff,
-					int			part,
+static int docCheckFieldHeadParticule(	int			part,
 					int			paraNr,
-					const BufferItem *	paraNode,
+					const struct BufferItem *	paraNode,
 					const DocumentField *	df )
     {
     int				wrong= 0;
     const TextParticule *	tp= paraNode->biParaParticules+ part;
 
-    if  ( tp->tpKind != DOCkindFIELDHEAD )
-	{ SLLDEB("####",tp->tpKind,DOCkindFIELDHEAD); wrong= 1;	}
+    if  ( tp->tpKind != TPkindFIELDHEAD )
+	{ SLLDEB("####",tp->tpKind,TPkindFIELDHEAD); wrong= 1;	}
 
     if  ( df->dfFieldNumber != tp->tpObjectNumber )
 	{
@@ -78,17 +83,16 @@ static int docCheckFieldHeadParticule(	int			stroff,
     return wrong;
     }
 
-static int docCheckFieldTailParticule(	int			stroff,
-					int			part,
+static int docCheckFieldTailParticule(	int			part,
 					int			paraNr,
-					const BufferItem *	paraNode,
+					const struct BufferItem *	paraNode,
 					const DocumentField *	df )
     {
     int				wrong= 0;
     const TextParticule *	tp= paraNode->biParaParticules+ part;
 
-    if  ( tp->tpKind != DOCkindFIELDTAIL )
-	{ SLLDEB("####",tp->tpKind,DOCkindFIELDTAIL); wrong= 1;	}
+    if  ( tp->tpKind != TPkindFIELDTAIL )
+	{ SLLDEB("####",tp->tpKind,TPkindFIELDTAIL); wrong= 1;	}
 
     if  ( df->dfFieldNumber != tp->tpObjectNumber )
 	{
@@ -113,12 +117,12 @@ static int docCheckFieldTailParticule(	int			stroff,
     return wrong;
     }
 
-void docCheckFieldOffsets(	const BufferDocument *	bd,
-				const BufferItem *	bi )
+void docCheckFieldOffsets(	const struct BufferDocument *	bd,
+				const struct BufferItem *	node )
     {
     const DocumentFieldList *	dfl= &(bd->bdFieldList);
 
-    switch( bi->biLevel )
+    switch( node->biLevel )
 	{
 	int			i;
 	int			part;
@@ -130,41 +134,39 @@ void docCheckFieldOffsets(	const BufferDocument *	bd,
 	case DOClevSECT:
 	case DOClevCELL:
 	case DOClevROW:
-	    for ( i= 0; i < bi->biChildCount; i++ )
-		{ docCheckFieldOffsets( bd, bi->biChildren[i] );	}
+	    for ( i= 0; i < node->biChildCount; i++ )
+		{ docCheckFieldOffsets( bd, node->biChildren[i] );	}
 	    break;
 
 	case DOClevPARA:
-	    paraNr= docNumberOfParagraph( bi );
-	    tp=  bi->biParaParticules;
+	    paraNr= docNumberOfParagraph( node );
+	    tp=  node->biParaParticules;
 	    wrong= 0;
-	    for ( part= 0; part < bi->biParaParticuleCount; tp++, part++ )
+	    for ( part= 0; part < node->biParaParticuleCount; tp++, part++ )
 		{
 		const DocumentField *	df;
 
-		if  ( tp->tpKind != DOCkindFIELDTAIL	&&
-		      tp->tpKind != DOCkindFIELDHEAD	)
+		if  ( tp->tpKind != TPkindFIELDTAIL	&&
+		      tp->tpKind != TPkindFIELDHEAD	)
 		    { continue;	}
 
 		df= docGetFieldByNumber( dfl, tp->tpObjectNumber );
 		if  ( ! df )
 		    { SLXDEB("####",tp->tpObjectNumber,df); continue;	}
 
-		if  ( tp->tpKind == DOCkindFIELDHEAD )
+		if  ( tp->tpKind == TPkindFIELDHEAD )
 		    {
-		    if  ( docCheckFieldHeadParticule( tp->tpStroff,
-						    part, paraNr, bi, df ) )
+		    if  ( docCheckFieldHeadParticule( part, paraNr, node, df ) )
 			{ wrong= 1;	}
 		    }
-		if  ( tp->tpKind == DOCkindFIELDTAIL )
+		if  ( tp->tpKind == TPkindFIELDTAIL )
 		    {
-		    if  ( docCheckFieldTailParticule( tp->tpStroff,
-						    part, paraNr, bi, df ) )
+		    if  ( docCheckFieldTailParticule( part, paraNr, node, df ) )
 			{ wrong= 1;	}
 		    }
 		}
 	    if  ( wrong )
-		{ docListNode(0,bi,0);	}
+		{ docListNode(0,node,0);	}
 	    break;
 
 	case DOClevOUT:
@@ -185,21 +187,24 @@ typedef struct FieldPosition
 static void docCheckNoteOfField(	int			indent,
 					FieldPosition *		fp,
 					const DocumentField *	df,
-					const BufferDocument *	bd )
+					const struct BufferDocument *	bd )
     {
     const DocumentNote *	dn= docGetNoteOfField( df, bd );
 
     if  ( ! dn )
 	{ SXDEB("##",dn); return;	}
 
-    if  ( dn->dnReferringPage < fp->fpPage			||
-	  ( dn->dnReferringPage == fp->fpPage	&&
-	    dn->dnReferringColumn < fp->fpColumn	)	)
+    if  ( dn->dnReferringPage >= 0 || fp->fpPage >= 0 )
 	{
-	appDebug( "%*s## NOTE %d:%d PG/COL BEFORE PREVIOUS %d:%d\n",
-		indent+ 15, "",
-		dn->dnReferringPage, dn->dnReferringColumn,
-		fp->fpPage, fp->fpColumn );
+	if  ( dn->dnReferringPage < fp->fpPage			||
+	      ( dn->dnReferringPage == fp->fpPage	&&
+		dn->dnReferringColumn < fp->fpColumn	)	)
+	    {
+	    appDebug( "%*s## NOTE %d:%d PG/COL BEFORE PREVIOUS %d:%d\n",
+		    indent+ 15, "",
+		    dn->dnReferringPage, dn->dnReferringColumn,
+		    fp->fpPage, fp->fpColumn );
+	    }
 	}
 
     if  ( ! dn->dnDocumentTree.dtRoot )
@@ -227,35 +232,90 @@ static void docCheckNoteOfField(	int			indent,
     return;
     }
 
-static void docCheckFieldPosition(
-				int			indent,
-				FieldPosition *		fp,
+static void docListFieldHead(	int			indent,
 				const DocumentField *	df,
-				const BufferDocument *	bd )
+				const char *		headString,
+				const char *		tailString )
     {
-    const NotesList *		nl= &(bd->bdNotesList);
-    const char *		endString= "}";
     int				fix= 12- indent;
 
     if  ( fix < 0 )
 	{ fix= 0;	}
 
-    if  ( df->dfChildFields.cfChildCount > 0 )
-	{ endString= " "; }
-
-    appDebug( "%*s {%*s%4d:%-4d .. %4d:%-4d %s #%d:%s\n",
+    appDebug( "%*s %s%*s%4d:%-4d .. %4d:%-4d %s #%d:%s",
 		indent, "",
+		headString,
 		fix, "",
 		df->dfHeadPosition.epParaNr,
 		df->dfHeadPosition.epStroff,
 		df->dfTailPosition.epParaNr,
 		df->dfTailPosition.epStroff,
-		endString,
+		tailString,
 		df->dfFieldNumber, docFieldKindStr( df->dfKind ) );
 
-    /*
-    docListFieldInstructions( indent+ 8, &(df->dfInstructions ) );
-    */
+    docListFieldInstructions( &(df->dfInstructions ) );
+    appDebug( "\n" );
+
+    return;
+    }
+
+static void docListFieldTail(	int			indent,
+				const DocumentField *	df,
+				const char *		tailString )
+    {
+    int			fix= 25- indent;
+
+    if  ( fix < 0 )
+	{ fix= 0;	}
+
+    appDebug( "%*s %s%*s%4d:%-4d   #%d:%s\n",
+		indent, "",
+		tailString,
+		fix, "",
+		df->dfTailPosition.epParaNr,
+		df->dfTailPosition.epStroff,
+		df->dfFieldNumber, docFieldKindStr( df->dfKind ) );
+    }
+
+static void docCheckInstructionsFieldPosition(
+				int			indent,
+				EditPosition *		ep,
+				const DocumentField *	df )
+    {
+    const char *		tailString= "]";
+
+    if  ( df->dfResultFields.cfChildCount > 0		||
+	  df->dfInstructionFields.cfChildCount > 0	)
+	{ tailString= " "; }
+
+    docListFieldHead( indent, df, "[", tailString );
+
+    if  ( docCompareEditPositions( ep, &(df->dfHeadPosition) ) > 0 )
+	{ appDebug( "%*s## START BEFORE PREV\n", indent+ 15, "" ); }
+
+    if  ( docCompareEditPositions( &(df->dfHeadPosition),
+					&(df->dfTailPosition) ) > 0 )
+	{ appDebug( "%*s## START AFTER END\n", indent+ 15, "" ); }
+
+    *ep= df->dfTailPosition;
+
+    return;
+    }
+
+static void docCheckResultFieldPosition(
+				int			indent,
+				FieldPosition *		fp,
+				const DocumentField *	df,
+				const struct BufferDocument *	bd )
+    {
+    const NotesList *		nl= &(bd->bdNotesList);
+    const char *		tailString= "}";
+
+    if  ( df->dfResultFields.cfChildCount > 0		||
+	  df->dfInstructionFields.cfChildCount > 0	)
+	{ tailString= " "; }
+
+    docListFieldHead( indent, df, "{", tailString );
 
     if  ( docCompareEditPositions( &(fp->fpPosition),
 					    &(df->dfHeadPosition) ) > 0 )
@@ -278,11 +338,11 @@ static void docCheckFieldPosition(
 	}
 
     {
-    DocumentTree  *	dt;
-    BufferItem *	bodySectNode= (BufferItem *)0;
+    struct DocumentTree  *	dt;
+    struct BufferItem *	bodySectNode= (struct BufferItem *)0;
 
     if  ( docGetRootOfSelectionScope( &dt, &bodySectNode,
-			(BufferDocument *)bd, &(df->dfSelectionScope) )	||
+			(struct BufferDocument *)bd, &(df->dfSelectionScope) )	||
 	  ! bodySectNode						)
 	{
 	SXDEB("##",bodySectNode);
@@ -296,93 +356,146 @@ static void docCheckFieldPosition(
     return;
     }
 
-static void docCheckFieldTree(		int			indent,
-					const BufferDocument *	bd,
-					const DocumentTree *	dt,
+static void docCheckFieldHierarchy(	int			indent,
+					int			pos,
+					const DocumentField *	dfPa,
+					const ChildFields *	cf,
+					const DocumentField *	dfCh )
+    {
+    if  ( dfCh->dfParent != dfPa )
+	{ appDebug( "%*s## WRONG PARENT\n", indent+ 15, "" ); }
+    if  ( dfCh->dfNumberInParent != pos )
+	{
+	appDebug( "%*s## WRONG INDEX %d@%d\n", indent+ 15, "",
+					    dfCh->dfNumberInParent, pos );
+	}
+
+    if  ( pos > 0 && dfCh == cf->cfChildren[pos-1] )
+	{ appDebug( "%*s## FIELD APPEARS TWICE\n", indent+ 15, "" ); }
+
+    return;
+    }
+
+static void docCheckInstructionFieldTree( int			indent,
+					const DocumentField *	dfPa )
+    {
+    int			i;
+    const ChildFields *	cfI= &(dfPa->dfInstructionFields);
+
+    EditPosition	ep;
+
+    docInitEditPosition( &ep );
+    if  ( cfI->cfChildCount > 0 )
+	{ ep= cfI->cfChildren[0]->dfHeadPosition;	}
+
+    for ( i= 0; i < cfI->cfChildCount; i++ )
+	{
+	const DocumentField *	dfCh= cfI->cfChildren[i];
+
+	docCheckInstructionsFieldPosition( indent, &ep, dfCh );
+
+	docCheckFieldHierarchy( indent, i, dfPa, cfI, dfCh );
+
+	if  ( dfCh->dfSelectionScope.ssTreeType != DOCinFIELD_INSTRUCTIONS )
+	    { SLDEB("###",dfCh->dfSelectionScope.ssTreeType);	}
+
+	if  ( dfCh->dfResultFields.cfChildCount > 0 )
+	    {
+	    const ChildFields *	cfR= &(dfCh->dfResultFields);
+	    int			j;
+
+	    appDebug( "%*s## INSTRUCTION FIELD HAS RESULTS\n", indent+ 15, "" );
+
+	    for ( j= 0; j < cfR->cfChildCount; j++ )
+		{
+		docListFieldHead( indent+ 1, cfR->cfChildren[j], "<", ">" );
+		}
+	    }
+
+	if  ( dfCh->dfInstructionFields.cfChildCount > 0 )
+	    { docCheckInstructionFieldTree( indent+ 1, dfCh );	}
+
+	if  ( dfCh->dfResultFields.cfChildCount > 0		||
+	      dfCh->dfInstructionFields.cfChildCount > 0	)
+	    { docListFieldTail( indent, dfCh, "]" );	}
+	}
+
+    return;
+    }
+
+static void docCheckResultFieldTree(	int			indent,
+					const struct BufferDocument *	bd,
+					const struct DocumentTree *	dt,
 					FieldPosition *		fp,
-					const DocumentField *	parent,
+					const DocumentField *	dfPa,
 					const ChildFields *	cf )
     {
     int			i;
 
     for ( i= 0; i < cf->cfChildCount; i++ )
 	{
-	const DocumentField *	df= cf->cfChildren[i];
+	const DocumentField *	dfCh= cf->cfChildren[i];
 
-	docCheckFieldPosition( indent, fp, df, bd );
+	docCheckResultFieldPosition( indent, fp, dfCh, bd );
 
-	if  ( df->dfParent != parent )
-	    { appDebug( "%*s## WRONG PARENT\n", indent+ 15, "" ); }
-	if  ( df->dfNumberInParent != i )
+	docCheckFieldHierarchy( indent, i, dfPa, cf, dfCh );
+
+	fp->fpPosition= dfCh->dfHeadPosition;
+
+	if  ( dfCh->dfResultFields.cfChildCount > 0 )
 	    {
-	    appDebug( "%*s## WRONG INDEX %d@%d\n", indent+ 15, "",
-						df->dfNumberInParent, i );
-	    }
-
-	if  ( i > 0 && df == cf->cfChildren[i-1] )
-	    { appDebug( "%*s## FIELD APPEARS TWICE\n", indent+ 15, "" ); }
-
-	fp->fpPosition= df->dfHeadPosition;
-
-	if  ( df->dfChildFields.cfChildCount > 0 )
-	    {
-	    int			fix= 25- indent;
-
-	    if  ( fix < 0 )
-		{ fix= 0;	}
-
-	    docCheckFieldTree( indent+ 1, bd, dt,
-					fp, df, &(df->dfChildFields) );
+	    docCheckResultFieldTree( indent+ 1, bd, dt,
+					fp, dfCh, &(dfCh->dfResultFields) );
 
 	    if  ( docCompareEditPositions( &(fp->fpPosition),
-					    &(df->dfTailPosition ) ) > 0 )
+					    &(dfCh->dfTailPosition ) ) > 0 )
 		{ appDebug( "%*s## CHILD PAST END\n", indent+ 15, "" ); }
+	    }
 
-	    appDebug( "%*s }%*s%4d:%-4d   #%d:%s\n",
-			indent, "",
-			fix, "",
-			df->dfTailPosition.epParaNr,
-			df->dfTailPosition.epStroff,
-			df->dfFieldNumber, docFieldKindStr( df->dfKind ) );
+	if  ( dfCh->dfInstructionFields.cfChildCount > 0 )
+	    {
+	    docCheckInstructionFieldTree( indent+ 1, dfCh );
+	    }
 
-	    if  ( dt )
+	if  ( dfCh->dfResultFields.cfChildCount > 0		||
+	      dfCh->dfInstructionFields.cfChildCount > 0	)
+	    { docListFieldTail( indent, dfCh, "}" );	}
+
+	if  ( dt )
+	    {
+	    DocumentSelection	dsInside;
+	    DocumentSelection	dsAround;
+	    int			part0;
+	    int			part1;
+
+	    if  ( docDelimitFieldInTree( &dsInside, &dsAround,
+					    &part0, &part1, dt, dfCh ) )
 		{
-		DocumentSelection	dsInside;
-		DocumentSelection	dsAround;
-		int			part0;
-		int			part1;
+		appDebug( "### '%s' Field not found\n",
+					docFieldKindStr( dfCh->dfKind ) );
+		LLDEB(dfCh->dfHeadPosition.epParaNr,dfCh->dfHeadPosition.epStroff);
+		LLDEB(dfCh->dfTailPosition.epParaNr,dfCh->dfTailPosition.epStroff);
+		}
+	    else{
+		docCheckFieldHeadParticule(
+			    part0, dfCh->dfHeadPosition.epParaNr,
+			    dsAround.dsHead.dpNode, dfCh );
 
-		if  ( docDelimitFieldInTree( &dsInside, &dsAround,
-						&part0, &part1, bd, dt, df ) )
-		    {
-		    appDebug( "### '%s' Field not found\n",
-					    docFieldKindStr( df->dfKind ) );
-		    LLDEB(df->dfHeadPosition.epParaNr,df->dfHeadPosition.epStroff);
-		    LLDEB(df->dfTailPosition.epParaNr,df->dfTailPosition.epStroff);
-		    }
-		else{
-		    docCheckFieldHeadParticule(
-				dsAround.dsHead.dpStroff,
-				part0, df->dfHeadPosition.epParaNr,
-				dsAround.dsHead.dpNode, df );
-
-		    docCheckFieldTailParticule(
-				dsInside.dsTail.dpStroff,
-				part1, df->dfTailPosition.epParaNr,
-				dsInside.dsTail.dpNode, df );
-		    }
+		docCheckFieldTailParticule(
+			    part1, dfCh->dfTailPosition.epParaNr,
+			    dsInside.dsTail.dpNode, dfCh );
 		}
 	    }
 
-	fp->fpPosition= df->dfTailPosition;
+	fp->fpPosition= dfCh->dfTailPosition;
 	}
     }
 
-void docListFieldTree(	const BufferDocument *	bd,
-			const DocumentTree *	dt )
+void docListFieldTree(	const struct DocumentTree *	dt,
+			const struct BufferDocument *	bd )
     {
     const ChildFields *	cf= &(dt->dtRootFields);
-    DocumentField *	parent= (DocumentField *)0;
+    DocumentField *	dfPa= (DocumentField *)0;
 
     if  ( cf->cfChildCount > 0 )
 	{
@@ -392,14 +505,14 @@ void docListFieldTree(	const BufferDocument *	bd,
 	fp.fpPage= -1;
 	fp.fpColumn= 0;
 
-	docCheckFieldTree( 0, bd, dt, &fp, parent, cf );
+	docCheckResultFieldTree( 0, bd, dt, &fp, dfPa, cf );
 	}
 
     return;
     }
 
 void docListFields(	const ChildFields *	cf,
-			const BufferDocument *	bd )
+			const struct BufferDocument *	bd )
     {
     DocumentField *	df;
 
@@ -417,16 +530,76 @@ void docListFields(	const ChildFields *	cf,
 	    const int		indent= 0;
 	    DocumentField *	odf= df;
 
-	    docCheckFieldPosition( indent, &fp, df, bd );
+	    docCheckResultFieldPosition( indent, &fp, df, bd );
 
 	    df= docGetNextField( cf, df );
 	    if  ( df == odf )
-		{ XXDEB(df,odf); /*abort();*/	}
+		{ XXDEB(df,odf); /*abort();*/ break;	}
 	    }
 	}
     }
 
-static void docScanNotes(	const BufferDocument *	bd,
+void docListFieldsOfDocument(	const struct BufferDocument *	bd )
+    {
+    appDebug( "BODY:\n" );
+    docListFieldTree( &(bd->bdBody), bd );
+
+    if  ( bd->bdBody.dtRoot )
+	{
+	int		sect;
+
+	for ( sect= 0; sect < bd->bdBody.dtRoot->biChildCount; sect++ )
+	    {
+	    const struct BufferItem *	sectNode= bd->bdBody.dtRoot->biChildren[sect];
+	    SectHeadersFooters *	shf;
+
+	    shf= sectNode->biSectHeadersFooters;
+
+	    if  ( shf && shf->shfFirstPageHeader.dtRootFields.cfChildCount > 0 )
+		{
+		appDebug( "SECT %d First Page Header:\n", sect );
+		docListFieldTree( &(shf->shfFirstPageHeader), bd );
+		}
+	    if  ( shf && shf->shfLeftPageHeader.dtRootFields.cfChildCount > 0 )
+		{
+		appDebug( "SECT %d Left Page Header:\n", sect );
+		docListFieldTree( &(shf->shfLeftPageHeader), bd );
+		}
+	    if  ( shf && shf->shfRightPageHeader.dtRootFields.cfChildCount > 0 )
+		{
+		appDebug( "SECT %d Right Page Header:\n", sect );
+		docListFieldTree( &(shf->shfRightPageHeader), bd );
+		}
+	    if  ( shf && shf->shfLastPageHeader.dtRootFields.cfChildCount > 0 )
+		{
+		appDebug( "SECT %d Last Page Header:\n", sect );
+		docListFieldTree( &(shf->shfLastPageHeader), bd );
+		}
+	    if  ( shf && shf->shfFirstPageFooter.dtRootFields.cfChildCount > 0 )
+		{
+		appDebug( "SECT %d First Page Footer:\n", sect );
+		docListFieldTree( &(shf->shfFirstPageFooter), bd );
+		}
+	    if  ( shf && shf->shfLeftPageFooter.dtRootFields.cfChildCount > 0 )
+		{
+		appDebug( "SECT %d Left Page Footer:\n", sect );
+		docListFieldTree( &(shf->shfLeftPageFooter), bd );
+		}
+	    if  ( shf && shf->shfRightPageFooter.dtRootFields.cfChildCount > 0 )
+		{
+		appDebug( "SECT %d Right Page Footer:\n", sect );
+		docListFieldTree( &(shf->shfRightPageFooter), bd );
+		}
+	    if  ( shf && shf->shfLastPageFooter.dtRootFields.cfChildCount > 0 )
+		{
+		appDebug( "SECT %d Last Page Footer:\n", sect );
+		docListFieldTree( &(shf->shfLastPageHeader), bd );
+		}
+	    }
+	}
+    }
+
+static void docScanNotes(	const struct BufferDocument *	bd,
 				int			treeType )
     {
     DocumentField *	dfNote;
@@ -446,14 +619,14 @@ static void docScanNotes(	const BufferDocument *	bd,
 	    {
 	    const int		indent= 0;
 
-	    docCheckFieldPosition( indent, &fp, dfNote, bd );
+	    docCheckResultFieldPosition( indent, &fp, dfNote, bd );
 
 	    dfNote= docGetNextNoteInDocument( &dn, bd, dfNote, treeType );
 	    }
 	}
     }
 
-void docScanNotesOfDocument(	const BufferDocument *	bd )
+void docScanNotesOfDocument(	const struct BufferDocument *	bd )
     {
     docScanNotes( bd, DOCinFOOTNOTE );
     docScanNotes( bd, DOCinENDNOTE );
@@ -464,16 +637,16 @@ void docListField(		int			indent,
     {
     const FieldInstructions *		fi= &(df->dfInstructions);
 
-    appDebug( "%*s %4d:%-4d .. %4d:%-4d #%d:%s %d instructions\n",
+    appDebug( "%*s %4d:%-4d .. %4d:%-4d #%d:%s ",
 		indent, "",
 		df->dfHeadPosition.epParaNr,
 		df->dfHeadPosition.epStroff,
 		df->dfTailPosition.epParaNr,
 		df->dfTailPosition.epStroff,
-		df->dfFieldNumber, docFieldKindStr( df->dfKind ),
-		fi->fiComponentCount );
+		df->dfFieldNumber, docFieldKindStr( df->dfKind ) );
 
-    docListFieldInstructions( indent+ 4, fi );
+    docListFieldInstructions( fi );
+    appDebug( "\n" );
 
     return;
     }

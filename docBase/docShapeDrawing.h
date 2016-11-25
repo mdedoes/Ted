@@ -16,21 +16,14 @@
 #   ifndef	DOC_SHAPE_DRAWING_H
 #   define	DOC_SHAPE_DRAWING_H
 
+struct Point2DI;
+
 #   include	<utilColor.h>
-#   include	<geo2DInteger.h>
+#   include	<utilMemoryBuffer.h>
+#   include	<geoRectangle.h>
 
 #   define	EMUtoTWIPS(e)	((e+317)/635)
 #   define	TWIPStoEMU(t)	(635*(t))
-
-typedef struct ShapePath
-    {
-    const char *	spName;
-    short int		spXSize;
-    short int		spYSize;
-    short int		spClosed;
-    short int		spVertexCount;
-    Point2DI *	spVertices;
-    } ShapePath;
 
 /************************************************************************/
 /*									*/
@@ -61,6 +54,11 @@ typedef struct ShapeArrow
 
 typedef struct ShapeDrawing
     {
+			/**
+			 *  Shape type
+			 */
+    int			sdShapeType;
+
 			/************************************************/
 			/*  Position.					*/
 			/************************************************/
@@ -77,7 +75,6 @@ typedef struct ShapeDrawing
 			/************************************************/
 			/*  Object Type					*/
 			/************************************************/
-    int			sdShapeType;
     int			sdRotation;
 
     int			sdWrapDistLeftEmu;
@@ -91,30 +88,30 @@ typedef struct ShapeDrawing
     int			sdXLimo;
     int			sdYLimo;
 
-    unsigned int	sd_fIsBullet:1;
-    unsigned int	sd_fFlipH:1;
-    unsigned int	sd_fFlipV:1;
-    unsigned int	sd_fBehindDocument:1;
-    unsigned int	sd_fIsButton:1;
-    unsigned int	sd_fHidden:1;
-    unsigned int	sd_fReallyHidden:1;
-    unsigned int	sd_fArrowheadsOK:1;
-    unsigned int	sd_fBackground:1;
-    unsigned int	sd_fDeleteAttachedObject:1;
-    unsigned int	sd_fEditedWrap:1;
-    unsigned int	sd_fHitTestFill:1;
-    unsigned int	sd_fHitTestLine:1;
-    unsigned int	sd_fInitiator:1;
-    unsigned int	sd_fNoFillHitTest:1;
-    unsigned int	sd_fNoHitTestPicture:1;
-    unsigned int	sd_fNoLineDrawDash:1;
-    unsigned int	sd_fOleIcon:1;
-    unsigned int	sd_fOnDblClickNotify:1;
-    unsigned int	sd_fOneD:1;
-    unsigned int	sd_fPreferRelativeSize:1;
-    unsigned int	sd_fPrint:1;
+    unsigned char	sd_fIsBullet;
+    unsigned char	sd_fFlipH;
+    unsigned char	sd_fFlipV;
+    unsigned char	sd_fBehindDocument;
+    unsigned char	sd_fIsButton;
+    unsigned char	sd_fHidden;
+    unsigned char	sd_fReallyHidden;
+    unsigned char	sd_fArrowheadsOK;
+    unsigned char	sd_fBackground;
+    unsigned char	sd_fDeleteAttachedObject;
+    unsigned char	sd_fEditedWrap;
+    unsigned char	sd_fHitTestFill;
+    unsigned char	sd_fHitTestLine;
+    unsigned char	sd_fInitiator;
+    unsigned char	sd_fNoFillHitTest;
+    unsigned char	sd_fNoHitTestPicture;
+    unsigned char	sd_fNoLineDrawDash;
+    unsigned char	sd_fOleIcon;
+    unsigned char	sd_fOnDblClickNotify;
+    unsigned char	sd_fOneD;
+    unsigned char	sd_fPreferRelativeSize;
+    unsigned char	sd_fPrint;
 
-    unsigned int	sd_fPseudoInline:1;
+    unsigned char	sd_fPseudoInline;
 
 			/************************************************/
 			/*  Text box.					*/
@@ -140,26 +137,27 @@ typedef struct ShapeDrawing
     unsigned char	sd_txflTextFlow;
     unsigned char	sd_cdirFont;
 
-    unsigned int	sd_fAutoTextMargin:1;
-    unsigned int	sd_fRotateText:1;
-    unsigned int	sd_fSelectText:1;
-    unsigned int	sd_fFitShapeToText:1;
-    unsigned int	sd_fFitTextToShape:1;
+    unsigned char	sd_fAutoTextMargin;
+    unsigned char	sd_fRotateText;
+    unsigned char	sd_fSelectText;
+
+    unsigned char	sd_fFitShapeToText;
+    unsigned char	sd_fFitTextToShape;
 
 			/************************************************/
 			/*  Lock.					*/
 			/************************************************/
-    unsigned int	sd_fLockRotation:1;
-    unsigned int	sd_fLockAspectRatio:1;
-    unsigned int	sd_fLockAgainstSelect:1;
-    unsigned int	sd_fLockCropping:1;
-    unsigned int	sd_fLockVerticies:1;
-    unsigned int	sd_fLockText:1;
-    unsigned int	sd_fLockAdjustHandles:1;
-    unsigned int	sd_fLockAgainstGrouping:1;
-    unsigned int	sd_fLockShapeType:1;
+    unsigned char	sd_fLockRotation;
+    unsigned char	sd_fLockAspectRatio;
+    unsigned char	sd_fLockAgainstSelect;
+    unsigned char	sd_fLockCropping;
+    unsigned char	sd_fLockVerticies;
+    unsigned char	sd_fLockText;
+    unsigned char	sd_fLockAdjustHandles;
+    unsigned char	sd_fLockAgainstGrouping;
+    unsigned char	sd_fLockShapeType;
 
-    unsigned int	sd_fLockPosition:1;
+    unsigned char	sd_fLockPosition;
 
 			/************************************************/
 			/*  Grouped Shapes				*/
@@ -177,13 +175,24 @@ typedef struct ShapeDrawing
 
     DocumentRectangle	sdGroupRect;
 
-    unsigned int	sd_fRelChangePage:1;
-    unsigned int	sd_fRelFlipH:1;
-    unsigned int	sd_fRelFlipV:1;
+    unsigned char	sd_fRelChangePage;
+    unsigned char	sd_fRelFlipH;
+    unsigned char	sd_fRelFlipV;
 
-			    /********************************************/
-			    /*  Geometry				*/
-			    /********************************************/
+				/*
+				 *  Strings
+				 */
+    MemoryBuffer	sd_wzName;
+    MemoryBuffer	sd_wzDescription;
+    MemoryBuffer	sd_gtextUNICODE;
+    MemoryBuffer	sd_gtextFont;
+    MemoryBuffer	sd_pibName;
+    MemoryBuffer	sd_fillBlipName;
+
+
+				/*
+				 *  Geometry
+				 */
     DocumentRectangle	sdGeoRect;
     long		sdAdjustValue;
     long		sdAdjust2Value;
@@ -196,9 +205,9 @@ typedef struct ShapeDrawing
     long		sdAdjust9Value;
     long		sdAdjust10Value;
 
-    Point2DI *	sdVertices;
+    struct Point2DI *	sdVertices;
     int			sdVertexCount;
-    Point2DI *	sdWrapPolygonVertices;
+    struct Point2DI *	sdWrapPolygonVertices;
     int			sdWrapPolygonVertexCount;
     int *		sdSegmentInfos;
     int			sdSegmentInfoCount;
@@ -255,11 +264,11 @@ typedef struct ShapeDrawing
     RGB8Color		sdFillBackColor;
     RGB8Color		sdFillCrModColor;
 
-    unsigned int	sd_fFilled:1;
-    unsigned int	sd_fillShape:1;
-    unsigned int	sd_fillUseRect:1;
-    unsigned int	sd_fFillOK:1;
-    unsigned int	sd_fFillShadeShapeOK:1;
+    unsigned char	sd_fFilled;
+    unsigned char	sd_fillShape;
+    unsigned char	sd_fillUseRect;
+    unsigned char	sd_fFillOK;
+    unsigned char	sd_fFillShadeShapeOK;
 
 			    /********************************************/
 			    /*  Number/Flag: Line.			*/
@@ -290,6 +299,7 @@ typedef struct ShapeDrawing
 #				define	DSdashDASHDOT_L			10
 #				define	DSdashDASHDOTDOT_L		11
 #				define	DSdashHOLLOW			12/*do*/
+    unsigned char	sdLineDashStyle;
     ShapeArrow		sdLineHeadArrow;
     ShapeArrow		sdLineTailArrow;
     unsigned char	sdLineEndCapStyle;
@@ -302,35 +312,187 @@ typedef struct ShapeDrawing
     RGB8Color		sdLineBackColor;
     RGB8Color		sdLineCrModColor;
 
-    unsigned int	sd_fLine:1;
-    unsigned int	sd_fLineOK:1;
+    unsigned char	sd_fLine;
+    unsigned char	sd_fLineOK;
 
-    unsigned int	sd_fLineUseShapeAnchor:1;
-    unsigned int	sd_fColumnLineOK:1;
-    unsigned int	sd_fColumnLine:1;
-    unsigned int	sd_fLeftLine:1;
-    unsigned int	sd_fTopLine:1;
-    unsigned int	sd_fRightLine:1;
-    unsigned int	sd_fBottomLine:1;
+    unsigned char	sd_fLineUseShapeAnchor;
+    unsigned char	sd_fColumnLineOK;
+    unsigned char	sd_fColumnLine;
+    unsigned char	sd_fLeftLine;
+    unsigned char	sd_fTopLine;
+    unsigned char	sd_fRightLine;
+    unsigned char	sd_fBottomLine;
 
-    unsigned int	sd_fColumnHitTestLine:1;
-    unsigned int	sd_fLeftHitTestLine:1;
-    unsigned int	sd_fTopHitTestLine:1;
-    unsigned int	sd_fRightHitTestLine:1;
-    unsigned int	sd_fBottomHitTestLine:1;
+    unsigned char	sd_fColumnHitTestLine;
+    unsigned char	sd_fLeftHitTestLine;
+    unsigned char	sd_fTopHitTestLine;
+    unsigned char	sd_fRightHitTestLine;
+    unsigned char	sd_fBottomHitTestLine;
 
-    unsigned int	sd_lineFillShape:1;
-    unsigned int	sd_lineColumnFillShape:1;
-    unsigned int	sd_lineLeftFillShape:1;
-    unsigned int	sd_lineTopFillShape:1;
-    unsigned int	sd_lineRightFillShape:1;
-    unsigned int	sd_lineBottomFillShape:1;
+    unsigned char	sd_lineFillShape;
+    unsigned char	sd_lineColumnFillShape;
+    unsigned char	sd_lineLeftFillShape;
+    unsigned char	sd_lineTopFillShape;
+    unsigned char	sd_lineRightFillShape;
+    unsigned char	sd_lineBottomFillShape;
 
-    unsigned int	sd_fInsetPen:1;
-    unsigned int	sd_fLeftInsetPen:1;
-    unsigned int	sd_fTopInsetPen:1;
-    unsigned int	sd_fRightInsetPen:1;
-    unsigned int	sd_fBottomInsetPen:1;
+    unsigned char	sd_fInsetPen;
+    unsigned char	sd_fLeftInsetPen;
+    unsigned char	sd_fTopInsetPen;
+    unsigned char	sd_fRightInsetPen;
+    unsigned char	sd_fBottomInsetPen;
+
+    int			sd_lineOpacity;
+    int			sd_lineblipflags;
+
+    int			sd_lineBackColorExt;
+    int			sd_lineBackColorExtCMY;
+    int			sd_lineBackColorExtK;
+    int			sd_lineBackColorExtMod;
+    int			sd_lineBottomBackColor;
+    int			sd_lineBottomBackColorExt;
+    int			sd_lineBottomBackColorExtCMY;
+    int			sd_lineBottomBackColorExtK;
+    int			sd_lineBottomBackColorExtMod;
+    int			sd_lineBottomColor;
+    int			sd_lineBottomColorExt;
+    int			sd_lineBottomColorExtCMY;
+    int			sd_lineBottomColorExtK;
+    int			sd_lineBottomColorExtMod;
+    int			sd_lineBottomCrMod;
+    int			sd_lineBottomDashing;
+    int			sd_lineBottomEndArrowLength;
+    int			sd_lineBottomEndArrowWidth;
+    int			sd_lineBottomEndArrowhead;
+    int			sd_lineBottomEndCapStyle;
+    int			sd_lineBottomFillBlipFlags;
+    int			sd_lineBottomFillDztype;
+    int			sd_lineBottomFillHeight;
+    int			sd_lineBottomFillWidth;
+    int			sd_lineBottomMiterLimit;
+    int			sd_lineBottomOpacity;
+    int			sd_lineBottomStartArrowLength;
+    int			sd_lineBottomStartArrowWidth;
+    int			sd_lineBottomStartArrowhead;
+    int			sd_lineBottomStyle;
+    int			sd_lineBottomType;
+    int			sd_lineBottomWidth;
+    int			sd_lineColorExt;
+    int			sd_lineColorExtCMY;
+    int			sd_lineColorExtK;
+    int			sd_lineColorExtMod;
+    int			sd_lineColumnBackColor;
+    int			sd_lineColumnBackColorExt;
+    int			sd_lineColumnBackColorExtCMY;
+    int			sd_lineColumnBackColorExtK;
+    int			sd_lineColumnBackColorExtMod;
+    int			sd_lineColumnColor;
+    int			sd_lineColumnColorExt;
+    int			sd_lineColumnColorExtCMY;
+    int			sd_lineColumnColorExtK;
+    int			sd_lineColumnColorExtMod;
+    int			sd_lineColumnCrMod;
+    int			sd_lineColumnDashing;
+    int			sd_lineColumnEndArrowLength;
+    int			sd_lineColumnEndArrowWidth;
+    int			sd_lineColumnEndArrowhead;
+    int			sd_lineColumnEndCapStyle;
+    int			sd_lineColumnFillBlipFlags;
+    int			sd_lineColumnFillDztype;
+    int			sd_lineColumnFillHeight;
+    int			sd_lineColumnFillWidth;
+    int			sd_lineColumnMiterLimit;
+    int			sd_lineColumnOpacity;
+    int			sd_lineColumnStartArrowLength;
+    int			sd_lineColumnStartArrowWidth;
+    int			sd_lineColumnStartArrowhead;
+    int			sd_lineColumnStyle;
+    int			sd_lineColumnType;
+    int			sd_lineColumnWidth;
+    int			sd_lineLeftBackColor;
+    int			sd_lineLeftBackColorExt;
+    int			sd_lineLeftBackColorExtCMY;
+    int			sd_lineLeftBackColorExtK;
+    int			sd_lineLeftBackColorExtMod;
+    int			sd_lineLeftColor;
+    int			sd_lineLeftColorExt;
+    int			sd_lineLeftColorExtCMY;
+    int			sd_lineLeftColorExtK;
+    int			sd_lineLeftColorExtMod;
+    int			sd_lineLeftCrMod;
+    int			sd_lineLeftDashing;
+    int			sd_lineLeftEndArrowLength;
+    int			sd_lineLeftEndArrowWidth;
+    int			sd_lineLeftEndArrowhead;
+    int			sd_lineLeftEndCapStyle;
+    int			sd_lineLeftFillBlipFlags;
+    int			sd_lineLeftFillDztype;
+    int			sd_lineLeftFillHeight;
+    int			sd_lineLeftFillWidth;
+    int			sd_lineLeftMiterLimit;
+    int			sd_lineLeftOpacity;
+    int			sd_lineLeftStartArrowLength;
+    int			sd_lineLeftStartArrowWidth;
+    int			sd_lineLeftStartArrowhead;
+    int			sd_lineLeftStyle;
+    int			sd_lineLeftType;
+    int			sd_lineLeftWidth;
+    int			sd_lineRightBackColor;
+    int			sd_lineRightBackColorExt;
+    int			sd_lineRightBackColorExtCMY;
+    int			sd_lineRightBackColorExtK;
+    int			sd_lineRightBackColorExtMod;
+    int			sd_lineRightColor;
+    int			sd_lineRightColorExt;
+    int			sd_lineRightColorExtCMY;
+    int			sd_lineRightColorExtK;
+    int			sd_lineRightColorExtMod;
+    int			sd_lineRightCrMod;
+    int			sd_lineRightDashing;
+    int			sd_lineRightEndArrowLength;
+    int			sd_lineRightEndArrowWidth;
+    int			sd_lineRightEndArrowhead;
+    int			sd_lineRightEndCapStyle;
+    int			sd_lineRightFillBlipFlags;
+    int			sd_lineRightFillDztype;
+    int			sd_lineRightFillHeight;
+    int			sd_lineRightFillWidth;
+    int			sd_lineRightMiterLimit;
+    int			sd_lineRightOpacity;
+    int			sd_lineRightStartArrowLength;
+    int			sd_lineRightStartArrowWidth;
+    int			sd_lineRightStartArrowhead;
+    int			sd_lineRightStyle;
+    int			sd_lineRightType;
+    int			sd_lineRightWidth;
+    int			sd_lineTopBackColor;
+    int			sd_lineTopBackColorExt;
+    int			sd_lineTopBackColorExtCMY;
+    int			sd_lineTopBackColorExtK;
+    int			sd_lineTopBackColorExtMod;
+    int			sd_lineTopColor;
+    int			sd_lineTopColorExt;
+    int			sd_lineTopColorExtCMY;
+    int			sd_lineTopColorExtK;
+    int			sd_lineTopColorExtMod;
+    int			sd_lineTopCrMod;
+    int			sd_lineTopDashing;
+    int			sd_lineTopEndArrowLength;
+    int			sd_lineTopEndArrowWidth;
+    int			sd_lineTopEndArrowhead;
+    int			sd_lineTopEndCapStyle;
+    int			sd_lineTopFillBlipFlags;
+    int			sd_lineTopFillDztype;
+    int			sd_lineTopFillHeight;
+    int			sd_lineTopFillWidth;
+    int			sd_lineTopMiterLimit;
+    int			sd_lineTopOpacity;
+    int			sd_lineTopStartArrowLength;
+    int			sd_lineTopStartArrowWidth;
+    int			sd_lineTopStartArrowhead;
+    int			sd_lineTopStyle;
+    int			sd_lineTopType;
+    int			sd_lineTopWidth;
 
 			/************************************************/
 			/*  Shadow.					*/
@@ -351,277 +513,158 @@ typedef struct ShapeDrawing
     int			sdShadowOriginX;
     int			sdShadowOriginY;
 
-    unsigned int	sd_fShadow:1;
-    unsigned int	sd_fshadowObscured:1;
-    unsigned int	sd_fshadowOK:1;
+    int			sd_shadowColorExt;
+    int			sd_shadowColorExtCMY;
+    int			sd_shadowColorExtK;
+    int			sd_shadowColorExtMod;
+    int			sd_shadowHighlightExt;
+    int			sd_shadowHighlightExtCMY;
+    int			sd_shadowHighlightExtK;
+    int			sd_shadowHighlightExtMod;
+
+    unsigned char	sd_fShadow;
+    unsigned char	sd_fshadowObscured;
+    unsigned char	sd_fshadowOK;
 
     RGB8Color		sdShadowColor;
     RGB8Color		sdShadowHighlightColor;
     RGB8Color		sdShadowCrModColor;
     RGB8Color		sdShadowc3DExtrusionColor;
     RGB8Color		sdShadowc3DCrModColor;
+    RGB8Color		sdPictureTransparentColor;
+
 			/************************************************/
 			/*  Connectors.					*/
 			/************************************************/
     unsigned char	sdConnectionSite;
     unsigned char	sdConnectionStyle;
 
+    int			sd_gtextAlign;
+
+    unsigned char	sd_fGtext;
+    unsigned char	sd_gtextFVertical;
+    unsigned char	sd_gtextFKern;
+    unsigned char	sd_gtextFTight;
+    unsigned char	sd_gtextFStretch;
+    unsigned char	sd_gtextFShrinkFit;
+    unsigned char	sd_gtextFBestFit;
+    unsigned char	sd_gtextFNormalize;
+    unsigned char	sd_gtextFDxMeasure;
+    unsigned char	sd_gtextFBold;
+    unsigned char	sd_gtextFItalic;
+    unsigned char	sd_gtextFUnderline;
+    unsigned char	sd_gtextFShadow;
+    unsigned char	sd_gtextFSmallcaps;
+    unsigned char	sd_gtextFStrikethrough;
+
 				/****************************************/
 
     int			sd_shapePath;
+
+    int			sd_pictureActive;
+    int			sd_pictureId;
+    int			sd_pictureContrast;
+    int			sd_pictureBrightness;
+    int			sd_pictureDblCrMod;
+    int			sd_pictureFillCrMod;
+    int			sd_pictureLineCrMod;
+    int			sd_pibFlags;
+    int			sd_dhgt;
+    int			sd_sizerelh;
+    int			sd_sizerelv;
+    int			sd_pctHoriz;
+    int			sd_pictureGray;
+    int			sd_pictureBiLevel;
+
+    unsigned char	sd_fPreferRelativeResize;
+    unsigned char	sd_fScriptAnchor;
+    unsigned char	sd_fFakeMaster;
+    unsigned char	sd_fCameFromImgDummy;
+    unsigned char	sd_fRecolorFillAsPicture;
 
     int			sd_cropFromLeft;
     int			sd_cropFromRight;
     int			sd_cropFromTop;
     int			sd_cropFromBottom;
+
+    int			sd_c3DEdgeThickness;
+    int			sd_c3DExtrudeForward;
+    int			sd_c3DExtrudeBackward;
+    int			sd_c3DRotationAxisX;
+    int			sd_c3DRotationAxisY;
+    int			sd_c3DRotationAxisZ;
+    int			sd_c3DRotationCenterZ;
+    int			sd_c3DXViewpoint;
+    int			sd_c3DYViewpoint;
+    int			sd_c3DZViewpoint;
+    int			sd_c3DKeyX;
+    int			sd_c3DKeyY;
+    int			sd_c3DKeyZ;
+    int			sd_c3DFillX;
+    int			sd_c3DFillY;
+    int			sd_c3DFillZ;
+    int			sd_c3DAmbientIntensity;
+    int			sd_c3DDiffuseAmt;
+    int			sd_c3DExtrudePlane;
+    int			sd_c3DFillIntensity;
+    int			sd_c3DKeyIntensity;
+    int			sd_c3DOriginX;
+    int			sd_c3DOriginY;
+    int			sd_c3DRenderMode;
+    int			sd_c3DRotationAngle;
+    int			sd_c3DRotationCenterX;
+    int			sd_c3DRotationCenterY;
+    int			sd_c3DShininess;
+    int			sd_c3DSkewAmount;
+    int			sd_c3DSkewAngle;
+    int			sd_c3DSpecularAmt;
+    int			sd_c3DTolerance;
+    int			sd_c3DXRotationAngle;
+    int			sd_c3DYRotationAngle;
+    int			sd_c3DExtrusionColorExt;
+    int			sd_c3DExtrusionColorExtCMY;
+    int			sd_c3DExtrusionColorExtK;
+    int			sd_c3DExtrusionColorExtMod;
+
+    unsigned char	sd_f3D;
+    unsigned char	sd_fC3DRotationCenterAut;
+    unsigned char	sd_fc3DMetallic;
+    unsigned char	sd_fc3DUseExtrusionColor;
+    unsigned char	sd_fc3DLightFace;
+    unsigned char	sd_fc3DParallel;
+    unsigned char	sd_fc3DKeyHarsh;
+    unsigned char	sd_fc3DFillHarsh;
+    unsigned char	sd_fc3DConstrainRotation;
+    unsigned char	sd_fc3DRotationCenterAuto;
+
+    int			sd_spcot;
+    int			sd_dxyCalloutGap;
+    int			sd_spcoa;
+    int			sd_spcod;
+    int			sd_dxyCalloutDropSpecified;
+    int			sd_dxyCalloutLengthSpecified;
+    int			sd_bWMode;
+    int			sd_dgmt;
+    int			sd_ccol;
+    int			sd_dzColMargin;
+    int			sd_fillColorExt;
+    int			sd_fillColorExtCMY;
+    int			sd_fillColorExtK;
+    int			sd_fillColorExtMod;
+
+    unsigned char	sd_fStandardHR;
+    unsigned char	sd_fNoshadeHR;
+    unsigned char	sd_fHorizRule;
+    unsigned char	sd_fUserDrawn;
+    unsigned char	sd_fCallout;
+    unsigned char	sd_fCalloutAccentBar;
+    unsigned char	sd_fCalloutTextBorder;
+    unsigned char	sd_fCalloutDropAuto;
+    unsigned char	sd_fCalloutLengthSpecified;
+    unsigned char	sd_fCalloutMinusX;
+    unsigned char	sd_fCalloutMinusY;
+    unsigned char	sd_f3DOK;
     } ShapeDrawing;
-
-/************************************************************************/
-/*									*/
-/*  Kinds of shape.							*/
-/*									*/
-/************************************************************************/
-
-typedef enum ShapeType
-    {
-    SHPtyFREE= -1,
-
-    SHPtyFREEFORM_OR_NON_AUTOSHAPE= 0,
-    SHPtyRECTANGLE= 1,
-    SHPtyROUND_RECTANGLE= 2,
-    SHPtyELLIPSE= 3,
-    SHPtyDIAMOND= 4,
-    SHPtyISOSCELES_TRIANGLE= 5,
-    SHPtyRIGHT_TRIANGLE= 6,
-    SHPtyPARALLELOGRAM= 7,
-    SHPtyTRAPEZOID= 8,
-    SHPtyHEXAGON= 9,
-    SHPtyOCTAGON= 10,
-    SHPtyPLUS_SIGN= 11,
-    SHPtySTAR= 12,
-    SHPtyARROW= 13,
-    SHPtyTHICK_ARROW= 14,
-    SHPtyHOME_PLATE= 15,
-    SHPtyCUBE= 16,
-    SHPtyBALLOON= 17,
-    SHPtySEAL= 18,
-    SHPtyARC= 19,
-    SHPtyLINE= 20,
-    SHPtyPLAQUE= 21,
-    SHPtyCAN= 22,
-    SHPtyDONUT= 23,
-    SHPtyTEXT_SIMPLE= 24,
-    SHPtyTEXT_OCTAGON= 25,
-    SHPtyTEXT_HEXAGON= 26,
-    SHPtyTEXT_CURVE= 27,
-    SHPtyTEXT_WAVE= 28,
-    SHPtyTEXT_RING= 29,
-    SHPtyTEXT_ON_CURVE= 30,
-    SHPtyTEXT_ON_RING= 31,
-    SHPtyCALLOUT_1= 41,
-    SHPtyCALLOUT_2= 42,
-    SHPtyCALLOUT_3= 43,
-    SHPtyACCENT_CALLOUT_1= 44,
-    SHPtyACCENT_CALLOUT_2= 45,
-    SHPtyACCENT_CALLOUT_3= 46,
-    SHPtyBORDER_CALLOUT_1= 47,
-    SHPtyBORDER_CALLOUT_2= 48,
-    SHPtyBORDER_CALLOUT_3= 49,
-    SHPtyACCENT_BORDER_CALLOUT_1= 50,
-    SHPtyACCENT_BORDER_CALLOUT_2= 51,
-    SHPtyACCENT_BORDER_CALLOUT_3= 52,
-    SHPtyRIBBON= 53,
-    SHPtyRIBBON2= 54,
-    SHPtyCHEVRON= 55,
-    SHPtyPENTAGON= 56,
-    SHPtyNO_SMOKING= 57,
-    SHPtySEAL8= 58,
-    SHPtySEAL16= 59,
-    SHPtySEAL32= 60,
-    SHPtyWEDGE_RECT_CALLOUT= 61,
-    SHPtyWEDGE_RRECT_CALLOUT= 62,
-    SHPtyWEDGE_ELLIPSE_CALLOUT= 63,
-    SHPtyWAVE= 64,
-    SHPtyFOLDED_CORNER= 65,
-    SHPtyLEFT_ARROW= 66,
-    SHPtyDOWN_ARROW= 67,
-    SHPtyUP_ARROW= 68,
-    SHPtyLEFT_RIGHT_ARROW= 69,
-    SHPtyUP_DOWN_ARROW= 70,
-    SHPtyIRREGULARSEAL1= 71,
-    SHPtyIRREGULARSEAL2= 72,
-    SHPtyLIGHTNING_BOLT= 73,
-    SHPtyHEART= 74,
-    SHPtyPICTURE_FRAME= 75,
-    SHPtyQUAD_ARROW= 76,
-    SHPtyLEFT_ARROW_CALLOUT= 77,
-    SHPtyRIGHT_ARROW_CALLOUT= 78,
-    SHPtyUP_ARROW_CALLOUT= 79,
-    SHPtyDOWN_ARROW_CALLOUT= 80,
-    SHPtyLEFT_RIGHT_ARROW_CALLOUT= 81,
-    SHPtyUP_DOWN_ARROW_CALLOUT= 82,
-    SHPtyQUAD_ARROW_CALLOUT= 83,
-    SHPtyBEVEL= 84,
-    SHPtyLEFT_BRACKET= 85,
-    SHPtyRIGHT_BRACKET= 86,
-    SHPtyLEFT_BRACE= 87,
-    SHPtyRIGHT_BRACE= 88,
-    SHPtyLEFT_UP_ARROW= 89,
-    SHPtyBENT_UP_ARROW= 90,
-    SHPtyBENT_ARROW= 91,
-    SHPtySEAL24= 92,
-    SHPtySTRIPED_RIGHT_ARROW= 93,
-    SHPtyNOTCHED_RIGHT_ARROW= 94,
-    SHPtyBLOCK_ARC= 95,
-    SHPtySMILEY_FACE= 96,
-    SHPtyVERTICAL_SCROLL= 97,
-    SHPtyHORIZONTAL_SCROLL= 98,
-    SHPtyCIRCULAR_ARROW= 99,
-    SHPtyNOTCHED_CIRCULAR_ARROW= 100,
-    SHPtyUTURN_ARROW= 101,
-    SHPtyCURVED_RIGHT_ARROW= 102,
-    SHPtyCURVED_LEFT_ARROW= 103,
-    SHPtyCURVED_UP_ARROW= 104,
-    SHPtyCURVED_DOWN_ARROW= 105,
-    SHPtyCLOUD_CALLOUT= 106,
-    SHPtyELLIPSE_RIBBON= 107,
-    SHPtyELLIPSE_RIBBON_2= 108,
-    SHPtyFLOW_CHART_PROCESS= 109,
-    SHPtyFLOW_CHART_DECISION= 110,
-    SHPtyFLOW_CHART_INPUT_OUTPUT= 111,
-    SHPtyFLOW_CHART_PREDEFINED_PROCESS= 112,
-    SHPtyFLOW_CHART_INTERNAL_STORAGE= 113,
-    SHPtyFLOW_CHART_DOCUMENT= 114,
-    SHPtyFLOW_CHART_MULTIDOCUMENT= 115,
-    SHPtyFLOW_CHART_TERMINATOR= 116,
-    SHPtyFLOW_CHART_PREPARATION= 117,
-    SHPtyFLOW_CHART_MANUAL_INPUT= 118,
-    SHPtyFLOW_CHART_MANUAL_OPERATION= 119,
-    SHPtyFLOW_CHART_CONNECTOR= 120,
-    SHPtyFLOW_CHART_PUNCHED_CARD= 121,
-    SHPtyFLOW_CHART_PUNCHED_TAPE= 122,
-    SHPtyFLOW_CHART_SUMMING_JUNCTION= 123,
-    SHPtyFLOW_CHART_OR= 124,
-    SHPtyFLOW_CHART_COLLATE= 125,
-    SHPtyFLOW_CHART_SORT= 126,
-    SHPtyFLOW_CHART_EXTRACT= 127,
-    SHPtyFLOW_CHART_MERGE= 128,
-    SHPtyFLOW_CHART_OFFLINE_STORAGE= 129,
-    SHPtyFLOW_CHART_ONLINE_STORAGE= 130,
-    SHPtyFLOW_CHART_MAGNETIC_TAPE= 131,
-    SHPtyFLOW_CHART_MAGNETIC_DISK= 132,
-    SHPtyFLOW_CHART_MAGNETIC_DRUM= 133,
-    SHPtyFLOW_CHART_DISPLAY= 134,
-    SHPtyFLOW_CHART_DELAY= 135,
-    SHPtyTEXT_PLAIN_TEXT= 136,
-    SHPtyTEXT_STOP= 137,
-    SHPtyTEXT_TRIANGLE= 138,
-    SHPtyTEXT_TRIANGLE_INVERTED= 139,
-    SHPtyTEXT_CHEVRON= 140,
-    SHPtyTEXT_CHEVRON_INVERTED= 141,
-    SHPtyTEXT_RING_INSIDE= 142,
-    SHPtyTEXT_RING_OUTSIDE= 143,
-    SHPtyTEXT_ARCH_UP_CURVE= 144,
-    SHPtyTEXT_ARCH_DOWN_CURVE= 145,
-    SHPtyTEXT_CIRCLE_CURVE= 146,
-    SHPtyTEXT_BUTTON_CURVE= 147,
-    SHPtyTEXT_ARCH_UP_POUR= 148,
-    SHPtyTEXT_ARCH_DOWN_POUR= 149,
-    SHPtyTEXT_CIRCLE_POUR= 150,
-    SHPtyTEXT_BUTTON_POUR= 151,
-    SHPtyTEXT_CURVE_UP= 152,
-    SHPtyTEXT_CURVE_DOWN= 153,
-    SHPtyTEXT_CASCADE_UP= 154,
-    SHPtyTEXT_CASCADE_DOWN= 155,
-    SHPtyTEXT_WAVE1= 156,
-    SHPtyTEXT_WAVE2= 157,
-    SHPtyTEXT_WAVE3= 158,
-    SHPtyTEXT_WAVE4= 159,
-    SHPtyTEXT_INFLATE= 160,
-    SHPtyTEXT_DEFLATE= 161,
-    SHPtyTEXT_INFLATE_BOTTOM= 162,
-    SHPtyTEXT_DEFLATE_BOTTOM= 163,
-    SHPtyTEXT_INFLATE_TOP= 164,
-    SHPtyTEXT_DEFLATE_TOP= 165,
-    SHPtyTEXT_DEFLATE_INFLATE= 166,
-    SHPtyTEXT_DEFLATE_INFLATE_DEFLATE= 167,
-    SHPtyTEXT_FADE_RIGHT= 168,
-    SHPtyTEXT_FADE_LEFT= 169,
-    SHPtyTEXT_FADE_UP= 170,
-    SHPtyTEXT_FADE_DOWN= 171,
-    SHPtyTEXT_SLANT_UP= 172,
-    SHPtyTEXT_SLANT_DOWN= 173,
-    SHPtyTEXT_CAN_UP= 174,
-    SHPtyTEXT_CAN_DOWN= 175,
-    SHPtyFLOW_CHART_ALTERNATE_PROCESS= 176,
-    SHPtyFLOW_CHART_OFF_PAGE_CONNECTOR= 177,
-    SHPtyCALLOUT_90= 178,
-    SHPtyACCENT_CALLOUT_90= 179,
-    SHPtyBORDER_CALLOUT_90= 180,
-    SHPtyACCENT_BORDER_CALLOUT_90= 181,
-    SHPtyLEFT_RIGHT_UP_ARROW= 182,
-    SHPtySUN= 183,
-    SHPtyMOON= 184,
-    SHPtyBRACKET_PAIR= 185,
-    SHPtyBRACE_PAIR= 186,
-    SHPtySEAL4= 187,
-    SHPtyDOUBLE_WAVE= 188,
-    SHPtyHOST_CONTROL= 201,
-    SHPtyTEXT_BOX= 202,
-
-    SHPtyUNKNOWN,
-    SHPtyGROUP,
-    SHPtyPICPROP,
-
-    SHPty_COUNT
-    } ShapeType;
-
-/************************************************************************/
-/*									*/
-/*  Descriptions of shapes.						*/
-/*									*/
-/************************************************************************/
-
-extern const ShapePath	SP_33;
-extern const ShapePath	SP_34;
-extern const ShapePath	SP_LINE;
-extern const ShapePath	SP_RECTANGLE;
-extern const ShapePath	SP_DIAMOND;
-extern const ShapePath	SP_ISOSCELES_TRIANGLE;
-extern const ShapePath	SP_RIGHT_TRIANGLE;
-extern const ShapePath	SP_PARALLELOGRAM;
-extern const ShapePath	SP_TRAPEZOID;
-extern const ShapePath	SP_HEXAGON;
-extern const ShapePath	SP_OCTAGON;
-extern const ShapePath	SP_PLUS_SIGN;
-extern const ShapePath	SP_ARROW;
-extern const ShapePath	SP_NOTCHED_RIGHT_ARROW;
-extern const ShapePath	SP_HOME_PLATE;
-extern const ShapePath	SP_CHEVRON;
-extern const ShapePath	SP_LEFT_ARROW;
-extern const ShapePath	SP_RIGHT_ARROW_CALLOUT;
-extern const ShapePath	SP_LEFT_ARROW_CALLOUT;
-extern const ShapePath	SP_UP_ARROW_CALLOUT;
-extern const ShapePath	SP_LEFT_RIGHT_ARROW_CALLOUT;
-extern const ShapePath	SP_UP_DOWN_ARROW_CALLOUT;
-extern const ShapePath	SP_DOWN_ARROW_CALLOUT;
-extern const ShapePath	SP_QUAD_ARROW_CALLOUT;
-extern const ShapePath	SP_LEFT_RIGHT_ARROW;
-extern const ShapePath	SP_UP_ARROW;
-extern const ShapePath	SP_DOWN_ARROW;
-extern const ShapePath	SP_UP_DOWN_ARROW;
-extern const ShapePath	SP_QUAD_ARROW;
-extern const ShapePath	SP_LEFT_RIGHT_UP_ARROW;
-extern const ShapePath	SP_LEFT_UP_ARROW;
-extern const ShapePath	SP_BENT_UP_ARROW;
-extern const ShapePath	SP_PENTAGON;
-extern const ShapePath	SP_FLOW_CHART_PUNCHED_CARD;
-extern const ShapePath	SP_FLOW_CHART_MANUAL_INPUT;
-extern const ShapePath	SP_FLOW_CHART_OFF_PAGE_CONNECTOR;
-extern const ShapePath	SP_WEDGE_RECT_CALLOUT;
-extern const ShapePath	SP_STAR;
-extern const ShapePath	SP_SEAL4;
-extern const ShapePath	SP_FLOW_CHART_MERGE;
 
 /************************************************************************/
 /*									*/
@@ -644,6 +687,15 @@ extern void docCleanShapeDrawing(	ShapeDrawing *		sd );
 
 extern int docSetShapeDrawingProperty(	ShapeDrawing *		sd,
 					int			prop,
-					long			arg );
+					long			value );
+
+extern long docGetShapeDrawingProperty(	const ShapeDrawing *	sd,
+					int			prop );
+
+extern int docSetShapeDrawingStringProperty(
+					ShapeDrawing *		sd,
+					int			prop,
+					const char *		text,
+					int			size );
 
 #   endif	/*  DOC_SHAPE_DRAWING_H	*/

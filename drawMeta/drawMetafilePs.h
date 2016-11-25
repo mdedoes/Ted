@@ -4,14 +4,15 @@
 /*									*/
 /************************************************************************/
 
-#   include	<psPrint.h>
-#   include	"drawMetafile.h"
-
 #   ifndef		DRAW_METAFILE_PS_H
 #   define		DRAW_METAFILE_PS_H
 
-typedef int (*MetafileWritePs)(	PrintingState *			ps,
-				const MetafilePlayer *		player );
+struct PrintingState;
+struct MetafilePlayer;
+struct SimpleOutputStream;
+
+typedef int (*MetafileWritePs)(	struct PrintingState *		ps,
+				const struct MetafilePlayer *	player );
 
 /************************************************************************/
 /*									*/
@@ -19,15 +20,15 @@ typedef int (*MetafileWritePs)(	PrintingState *			ps,
 /*									*/
 /************************************************************************/
 
-extern int appMetaPlayWmfPs(	PrintingState *			ps,
-				const MetafilePlayer *		player );
+extern int appMetaPlayWmfPs(	struct PrintingState *		ps,
+				const struct MetafilePlayer *	player );
 
-extern int appMacPictPlayFilePs( PrintingState *		ps,
-				const MetafilePlayer *		player );
+extern int appMacPictPlayFilePs( struct PrintingState *		ps,
+				const struct MetafilePlayer *	player );
 
-extern int appMetaPlayEmfPs(	PrintingState *			ps,
-				const MetafilePlayer *		player );
+extern int appMetaPlayEmfPs(	struct PrintingState *		ps,
+				const struct MetafilePlayer *	player );
 
-extern int appMetaDefineProcsetPs(	SimpleOutputStream *	sos );
+extern int appMetaDefineProcsetPs( struct SimpleOutputStream *	sos );
 
 #   endif	/*	DRAW_METAFILE_PS_H	*/

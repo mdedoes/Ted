@@ -10,80 +10,22 @@
 #   include	<string.h>
 #   include	<stdlib.h>
 
-#   include	<appDebugon.h>
 #   include	<appSystem.h>
 #   include	<sioFileio.h>
 
 #   include	"indSpellChecker.h"
+#   include	"indSpellGuessContext.h"
+#   include	"indIndSpellDictionary.h"
 #   include	"ind.h"
+#   include	"indlocal.h"
+#   include	"indPrivateDict.h"
+#   include	"indSpellScanJob.h"
+#   include	<sioGeneral.h>
+
+#   include	<appDebugon.h>
 
 #   define FILEL 600
 static const char * const	INDSPELL_DfaExtension= "dfa";
-
-/************************************************************************/
-/*									*/
-/*  Obtain the list of dictionaries.					*/
-/*									*/
-/************************************************************************/
-
-static int indSpellAddDictionary(	const MemoryBuffer *	filename,
-					void *			voidsc )
-    {
-    int				rval= 0;
-    SpellChecker *		sc= (SpellChecker *)voidsc;
-    SpellCheckContext *		scc;
-    SpellDictionary *		fresh;
-
-    MemoryBuffer		relative;
-    int				i;
-
-    utilInitMemoryBuffer( &relative );
-
-    for ( i= 0; i < sc->scDictionaryCount; i++ )
-	{
-	if  ( utilEqualMemoryBuffer( &(sc->scDictionaries[i].sdFileName),
-								filename ) )
-	    { goto ready;	}
-	}
-
-    if  ( appFileGetRelativeName( &relative, filename ) < 0 )
-	{ LDEB(1); rval= -1; goto ready;	}
-
-    fresh= (SpellDictionary *)realloc( sc->scDictionaries,
-			(sc->scDictionaryCount+ 1)*sizeof(SpellDictionary) );
-    if  ( ! fresh )
-	{ XDEB(fresh); rval= -1; goto ready;	}
-    sc->scDictionaries= fresh;
-
-    fresh += sc->scDictionaryCount;
-
-    indInitSpellDictionary( fresh );
-    fresh->sdLocale= utilMemoryStrdup( &relative );
-    fresh->sdLocaleLabel= utilMemoryStrdup( &relative );
-    if  ( utilCopyMemoryBuffer( &(fresh->sdFileName), filename ) )
-	{ LDEB(1);	}
-
-    {
-    int	rl= relative.mbSize;
-
-    fresh->sdLocale[rl- strlen(INDSPELL_DfaExtension)-1]='\0';
-    fresh->sdLocaleLabel[rl- strlen(INDSPELL_DfaExtension)-1]='\0';
-    }
-
-    fresh->sdSpellCheckContext= scc= (SpellCheckContext *)malloc(
-						sizeof(SpellCheckContext) );
-    indInitSpellCheckContext( scc );
-    if  ( ! scc )
-	{ XDEB(scc); rval= -1; goto ready;	}
-
-    sc->scDictionaryCount++;
-
-  ready:
-
-    utilCleanMemoryBuffer( &relative );
-
-    return rval;
-    }
 
 /************************************************************************/
 /*									*/
@@ -110,18 +52,18 @@ static int indSpellPrivateDictionaryName(
     utilInitMemoryBuffer( &home );
     utilInitMemoryBuffer( &dicts );
 
-    if  ( appHomeDirectory( &home ) < 0 )
+    if  ( fileHomeDirectory( &home ) < 0 )
 	{ LDEB(1); rval= -1; goto ready;	}
 
-    if  ( appAbsoluteName( &dicts, privateDicts, 0, &home ) < 0 )
+    if  ( fileAbsoluteName( &dicts, privateDicts, 0, &home ) < 0 )
 	{ LDEB(1); rval= -1; goto ready;	}
 
-    if  ( appTestDirectory( &dicts ) )
+    if  ( fileTestDirectory( &dicts ) )
 	{
 	if  ( readOnly )
 	    { rval= 1; goto ready;	}
 
-	if  ( appMakeDirectory( &dicts ) )
+	if  ( fileMakeDirectory( &dicts ) )
 	    {
 	    (*complain)( SCerrPRIVATE_DIR_NOT_MADE,
 				utilMemoryBufferGetString( &dicts ), through );
@@ -136,7 +78,7 @@ static int indSpellPrivateDictionaryName(
 		    (const unsigned char *)suffix, strlen( suffix ) ) )
 	{ LDEB(1); return -1;	}
 
-    if  ( appAbsoluteName( dictName, &relative, 0, &dicts ) < 0 )
+    if  ( fileAbsoluteName( dictName, &relative, 0, &dicts ) < 0 )
 	{ LDEB(1); rval= -1; goto ready;	}
 
   ready:
@@ -150,6 +92,28 @@ static int indSpellPrivateDictionaryName(
 
 /************************************************************************/
 /*									*/
+/*  Clean a SpellChecker						*/
+/*									*/
+/************************************************************************/
+
+static void indSpellFreeIndDict(	IndSpellDictionary *	isd )
+    {
+    if  ( isd->isdStaticInd )
+	{ indINDfree( isd->isdStaticInd );	}
+
+    if  ( isd->isdForgotInd )
+	{ indINDfree( isd->isdForgotInd );	}
+
+    if  ( isd->isdLearntInd )
+	{ indINDfree( isd->isdLearntInd );	}
+
+    free( isd );
+
+    return;
+    }
+
+/************************************************************************/
+/*									*/
 /*  Open index files for a certain dictionary.				*/
 /*									*/
 /************************************************************************/
@@ -159,32 +123,38 @@ static int indSpellOpenDictionary(	SpellDictionary *	sd,
 					void *			through,
 					const SpellChecker *	sc )
     {
-    int			rval= 0;
-    int			ret;
-    SpellCheckContext *	scc= (SpellCheckContext *)sd->sdSpellCheckContext;
-    SimpleInputStream *	sis= (SimpleInputStream *)0;
-    const char *	sdf;
+    int				rval= 0;
+    int				ret;
+    SimpleInputStream *		sis= (SimpleInputStream *)0;
+    const char *		sdf;
 
-    const int		readOnly= 1;
+    const int			readOnly= 1;
 
-    MemoryBuffer	dictName;
+    MemoryBuffer		dictName;
+    IndSpellDictionary *	isd= (IndSpellDictionary *)0;
 
     utilInitMemoryBuffer( &dictName );
 
-    if  ( ! scc )
-	{ XDEB(scc); rval= -1; goto ready;	}
-    if  ( scc->sccStaticInd )
+    if  ( sd->sdBackend )
 	{ goto ready;	}
 
+    isd= malloc( sizeof(IndSpellDictionary) );
+    if  ( ! isd )
+	{ XDEB(isd); rval= -1; goto ready;	}
+
+    isd->isdStaticInd= (IND *)0;
+    isd->isdForgotInd= (IND *)0;
+    isd->isdLearntInd= (IND *)0;
+
     sdf= utilMemoryBufferGetString( &(sd->sdFileName) );
-    scc->sccStaticInd= indRead( sdf, 1 );
-    if  ( ! scc->sccStaticInd )
+    isd->isdStaticInd= indRead( sdf, 1 );
+    if  ( ! isd->isdStaticInd )
 	{
 	(*complain)( SCerrDICT_NO_ACCESS, sdf, through );
 	rval= -1; goto ready;
 	}
 
-    ret= indSpellPrivateDictionaryName( &dictName, sd->sdLocale,
+    ret= indSpellPrivateDictionaryName( &dictName, sd->sdLocaleTag,
 		    &(sc->scPrivateDirectory), readOnly, complain, through );
     if  ( ret < 0 )
 	{ LDEB(ret); rval= -1; goto ready;	}
@@ -195,14 +165,19 @@ static int indSpellOpenDictionary(	SpellDictionary *	sd,
     if  ( sis )
 	{
 	if  ( indReadPrivateDictionary( sis,
-				&(scc->sccLearntInd), &(scc->sccForgotInd) ) )
+				&(isd->isdLearntInd), &(isd->isdForgotInd) ) )
 	    {
 	    (*complain)( SCerrPRIVATE_DICT_WRONG_FORMAT,
-						    sd->sdLocale, through );
+						    sd->sdLocaleTag, through );
 	    }
 	}
 
+    sd->sdBackend= isd; isd= (IndSpellDictionary *)0; /* steal */
+
   ready:
+
+    if  ( isd )
+	{ indSpellFreeIndDict( isd );	}
 
     if  ( sis )
 	{ sioInClose( sis );	}
@@ -211,6 +186,31 @@ static int indSpellOpenDictionary(	SpellDictionary *	sd,
 
     return rval;
     }
+
+/************************************************************************/
+/*									*/
+/*  Close a dictionary.							*/
+/*									*/
+/************************************************************************/
+
+# ifdef __GNUC__
+# pragma GCC diagnostic push
+# pragma GCC diagnostic ignored "-Wunused-parameter"
+# endif
+
+static void indSpellCleanDict(	const SpellChecker *	sc,
+				SpellDictionary *	sd )
+    {
+    if  ( sd->sdBackend )
+	{
+	indSpellFreeIndDict( sd->sdBackend );
+	sd->sdBackend= (void *)0;
+	}
+    }
+
+# ifdef __GNUC__
+# pragma GCC diagnostic pop
+# endif
 
 /************************************************************************/
 /*									*/
@@ -226,8 +226,8 @@ static int indSpellLearnWord(	SpellDictionary *	sd,
     {
     int			rval= 0;
     int			ret;
-    SpellCheckContext *	scc= (SpellCheckContext *)sd->sdSpellCheckContext;
     SimpleOutputStream * sos= (SimpleOutputStream *)0;
+    IndSpellDictionary * isd= (IndSpellDictionary *)0;
 
     const int		readOnly= 0;
 
@@ -235,21 +235,16 @@ static int indSpellLearnWord(	SpellDictionary *	sd,
 
     utilInitMemoryBuffer( &dictName );
 
-    if  ( ! scc )
-	{ XDEB(scc); goto ready;	}
+    isd= (IndSpellDictionary *)sd->sdBackend;
 
-    if  ( ! scc->sccStaticInd					&&
-	  indSpellOpenDictionary( sd, complain, through, sc )	)
-	{ rval= -1; goto ready;	}
-
-    if  ( ! scc->sccLearntInd )
+    if  ( ! isd->isdLearntInd )
 	{
-	scc->sccLearntInd= indMake();
-	if  ( ! scc->sccLearntInd )
-	    { XDEB(scc->sccLearntInd); rval= -1; goto ready;	}
+	isd->isdLearntInd= indINDmake( 0 );
+	if  ( ! isd->isdLearntInd )
+	    { XDEB(isd->isdLearntInd); rval= -1; goto ready;	}
 	}
 
-    ret= indSpellPrivateDictionaryName( &dictName, sd->sdLocale,
+    ret= indSpellPrivateDictionaryName( &dictName, sd->sdLocaleTag,
 		    &(sc->scPrivateDirectory), readOnly, complain, through );
     if  ( ret < 0 )
 	{ LDEB(ret); rval= -1; goto ready;	}
@@ -260,8 +255,8 @@ static int indSpellLearnWord(	SpellDictionary *	sd,
     if  ( ! sos )
 	{ rval= -1; goto ready;	}
 
-    if  ( indLearnWord( sos, scc->sccLearntInd, scc->sccForgotInd, word ) )
-	{ SDEB((char *)word); rval= -1; goto ready;	}
+    if  ( indLearnWord( sos, isd->isdLearntInd, isd->isdForgotInd, word ) )
+	{ SDEB(word); rval= -1; goto ready;	}
 
   ready:
 
@@ -281,8 +276,8 @@ static int indSpellForgetWord(	SpellDictionary *	sd,
     {
     int			rval= 0;
     int			ret;
-    SpellCheckContext *	scc= (SpellCheckContext *)sd->sdSpellCheckContext;
     SimpleOutputStream * sos= (SimpleOutputStream *)0;
+    IndSpellDictionary * isd= (IndSpellDictionary *)0;
 
     const int		readOnly= 0;
 
@@ -290,21 +285,16 @@ static int indSpellForgetWord(	SpellDictionary *	sd,
 
     utilInitMemoryBuffer( &dictName );
 
-    if  ( ! scc )
-	{ XDEB(scc); goto ready;	}
+    isd= (IndSpellDictionary *)sd->sdBackend;
 
-    if  ( ! scc->sccStaticInd					&&
-	  indSpellOpenDictionary( sd, complain, through, sc )	)
-	{ rval= -1; goto ready;	}
-
-    if  ( ! scc->sccForgotInd )
+    if  ( ! isd->isdForgotInd )
 	{
-	scc->sccForgotInd= indMake();
-	if  ( ! scc->sccForgotInd )
-	    { XDEB(scc->sccForgotInd); rval= -1; goto ready;	}
+	isd->isdLearntInd= indINDmake( 0 );
+	if  ( ! isd->isdForgotInd )
+	    { XDEB(isd->isdForgotInd); rval= -1; goto ready;	}
 	}
 
-    ret= indSpellPrivateDictionaryName( &dictName, sd->sdLocale,
+    ret= indSpellPrivateDictionaryName( &dictName, sd->sdLocaleTag,
 		    &(sc->scPrivateDirectory), readOnly, complain, through );
     if  ( ret < 0 )
 	{ LDEB(ret); rval= -1; goto ready;	}
@@ -315,8 +305,8 @@ static int indSpellForgetWord(	SpellDictionary *	sd,
     if  ( ! sos )
 	{ rval= -1; goto ready;	}
 
-    if  ( indForgetWord( sos, scc->sccLearntInd, scc->sccForgotInd, word ) )
-	{ SDEB((char *)word);	}
+    if  ( indForgetWord( sos, isd->isdLearntInd, isd->isdForgotInd, word ) )
+	{ SDEB(word);	}
 
   ready:
 
@@ -328,35 +318,41 @@ static int indSpellForgetWord(	SpellDictionary *	sd,
     return rval;
     }
 
-static void indSpellIgnoreWord(	SpellDictionary *	sd,
+# ifdef __GNUC__
+# pragma GCC diagnostic push
+# pragma GCC diagnostic ignored "-Wunused-parameter"
+# endif
+
+static int indSpellIgnoreWord(	SpellDictionary *	sd,
 				SpellComplain		complain,
 				void *			through,
 				const SpellChecker *	sc,
 				const char *		word )
     {
-    SpellCheckContext *	scc= (SpellCheckContext *)sd->sdSpellCheckContext;
+    IndSpellDictionary * isd= (IndSpellDictionary *)0;
 
-    if  ( ! scc )
-	{ XDEB(scc); return;	}
+    isd= (IndSpellDictionary *)sd->sdBackend;
 
-    if  ( ! scc->sccLearntInd )
-	{
-	scc->sccLearntInd= indMake();
-	if  ( ! scc->sccLearntInd )
-	    { XDEB(scc->sccLearntInd); return;	}
-	}
+    if  ( indMoveWord( isd->isdForgotInd, isd->isdLearntInd, word ) )
+	{ SDEB((char *)word); return -1;	}
 
-    if  ( indMoveWord( scc->sccForgotInd, scc->sccLearntInd, word ) )
-	{ SDEB((char *)word);	}
-
-    return;
+    return 0;
     }
+
+# ifdef __GNUC__
+# pragma GCC diagnostic pop
+# endif
 
 /************************************************************************/
 /*									*/
 /*  Make guesses.							*/
 /*									*/
 /************************************************************************/
+
+# ifdef __GNUC__
+# pragma GCC diagnostic push
+# pragma GCC diagnostic ignored "-Wunused-parameter"
+# endif
 
 static int indSpellGuess(	IndGuessList *		igl,
 				SpellDictionary *	sd,
@@ -367,16 +363,8 @@ static int indSpellGuess(	IndGuessList *		igl,
     {
     int			count= 0;
     int			limit;
-    SpellCheckContext *	scc= (SpellCheckContext *)sd->sdSpellCheckContext;
 
-    if  ( ! scc )
-	{ XDEB(scc); return -1;	}
-
-    if  ( ! scc->sccStaticInd					&&
-	  indSpellOpenDictionary( sd, complain, through, sc )	)
-	{ return -1;	}
-
-    limit= indCollectGuesses( igl, scc, word );
+    limit= indCollectGuesses( igl, sd, word );
 
     for ( count= 0; count < igl->iglGuessCount; count++ )
 	{
@@ -387,23 +375,119 @@ static int indSpellGuess(	IndGuessList *		igl,
     return count;
     }
 
+# ifdef __GNUC__
+# pragma GCC diagnostic pop
+# endif
+
 /************************************************************************/
 /*									*/
-/*  Clean a SpellChecker						*/
+/*  Look for an unacceptable word.					*/
 /*									*/
 /************************************************************************/
 
-static void indSpellCleanDict(	SpellDictionary *	sd )
+static int indScanCheckWordInd(
+			int *				pFoundFrom,
+			int *				pFoundUpto,
+			struct SpellScanJob *		ssj,
+			struct SpellDictionary *	sd,
+			const char *			paraStr,
+			int				head,
+			int				tail,
+			int				next,
+			int				atEnd )
     {
-    SpellCheckContext *	scc= (SpellCheckContext *)sd->sdSpellCheckContext;
+    int		count;
 
-    if  ( scc )
+    if  ( indNewPossibility( ssj, head ) )
+	{ CDEB(paraStr[head]); return -1;	}
+
+    {
+    int	from= head;
+
+    while( from < tail )
+	{ indAddCharacterToPossibilities( ssj, paraStr[from++] ); }
+    }
+
+    /*  Does the word match here?  */
+    count= indCountPossibilities( ssj, sd, tail, atEnd );
+
+    if  ( count == 0 )
 	{
-	indCleanSpellCheckContext( scc );
-	free( scc );
+	PossibleWord *	maxpw;
+
+	maxpw= indMaximalPossibility( ssj );
+
+	if  ( ! maxpw )
+	    { XDEB(maxpw); return -1;	}
+
+	*pFoundFrom= maxpw->pwStartAt;
+	*pFoundUpto= maxpw->pwInsertionPoint;
+
+	return 1;
 	}
 
-    return;
+    {
+    int	from= tail;
+
+    while( from < next )
+	{ indAddCharacterToPossibilities( ssj, paraStr[from++] ); }
+    }
+
+    /*  Is the word with the trailing white space a valid prefix? */
+    /* count= */ (void) indCountPossibilities( ssj, sd, next, atEnd );
+
+    indRejectPossibilities( ssj );
+
+    return 0;
+    }
+
+/************************************************************************/
+/*									*/
+/*  Obtain the list of dictionaries.					*/
+/*									*/
+/************************************************************************/
+
+static int indSpellFoundDictionary(	const MemoryBuffer *	filename,
+					void *			voidsc )
+    {
+    int				rval= 0;
+    SpellChecker *		sc= (SpellChecker *)voidsc;
+    SpellDictionary *		sd;
+
+    MemoryBuffer		base;
+    int				i;
+
+    utilInitMemoryBuffer( &base );
+
+    for ( i= 0; i < sc->scDictionaryCount; i++ )
+	{
+	if  ( utilEqualMemoryBuffer( &(sc->scDictionaries[i].sdFileName),
+								filename ) )
+	    { goto ready;	}
+	}
+
+    if  ( fileGetBaseName( &base, filename ) < 0 )
+	{ LDEB(1); rval= -1; goto ready;	}
+
+    sd= indSpellCheckerAddDictionary( sc,
+			    utilMemoryBufferGetString( &base ), filename );
+    if  ( ! sd )
+	{ XDEB(sd); rval= -1; goto ready;	}
+
+    sd->sdOpenDictionary= indSpellOpenDictionary;
+    sd->sdCloseDictionary= indSpellCleanDict;
+
+    sd->sdLearnWord= indSpellLearnWord;
+    sd->sdForgetWord= indSpellForgetWord;
+    sd->sdIgnoreWord= indSpellIgnoreWord;
+    sd->sdGuessWord= indSpellGuess;
+    sd->sdCheckWord= indScanCheckWordInd;
+
+  ready:
+
+    utilCleanMemoryBuffer( &base );
+
+    return rval;
     }
 
 /************************************************************************/
@@ -412,35 +496,42 @@ static void indSpellCleanDict(	SpellDictionary *	sd )
 /*									*/
 /************************************************************************/
 
-int indSpellSetup(		SpellChecker *	sc,
+int spellSetupInd(		SpellChecker *	sc,
 				SpellComplain	complain,
+				int		complain_none,
 				void *		through )
     {
-    if  ( appForAllFiles( &(sc->scSystemDirectory), INDSPELL_DfaExtension,
-					(void *)sc, indSpellAddDictionary ) )
-	{ LDEB(1); return -1;	}
+    if  ( ! fileTestDirectory( &(sc->scSystemDirectory) ) )
+	{
+	if  ( appForAllFiles( &(sc->scSystemDirectory), INDSPELL_DfaExtension,
+					(void *)sc, indSpellFoundDictionary ) )
+	    { LDEB(1); return -1;	}
+	}
 
     if  ( sc->scDictionaryCount == 0 )
 	{
 	const char * dn= utilMemoryBufferGetString( &(sc->scSystemDirectory) );
 
-	if  ( appTestDirectory( &(sc->scSystemDirectory) ) )
-	    { (*complain)( SCerrDIR_DOES_NOT_EXIST, dn, through );	}
+	if  ( fileTestDirectory( &(sc->scSystemDirectory) ) )
+	    {
+	    if  ( complain_none )
+		{
+		(*complain)( SCerrDIR_DOES_NOT_EXIST, dn, through );
+		}
+	    }
 	else{
-	    if  ( appTestFileReadable( &(sc->scSystemDirectory) ) )
+	    if  ( fileTestFileReadable( &(sc->scSystemDirectory) ) )
 		{ (*complain)( SCerrDIR_NO_ACCESS, dn, through );	}
-	    else{ (*complain)( SCerrDIR_HAS_NO_DICTS, dn, through );	}
+	    else{
+		if  ( complain_none )
+		    {
+		    (*complain)( SCerrDIR_HAS_NO_DICTS, dn, through );
+		    }
+		}
 	    }
 
 	return 1;
 	}
-
-    sc->scOpenDict= indSpellOpenDictionary;
-    sc->scCleanDict= indSpellCleanDict;
-    sc->scLearnWord= indSpellLearnWord;
-    sc->scForgetWord= indSpellForgetWord;
-    sc->scIgnoreWord= indSpellIgnoreWord;
-    sc->scGuessWord= indSpellGuess;
 
     return 0;
     }

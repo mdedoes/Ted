@@ -30,6 +30,7 @@ typedef struct AllocatorColor
 #   define acRed	acColorValues.rgb16Red
 #   define acGreen	acColorValues.rgb16Green
 #   define acBlue	acColorValues.rgb16Blue
+#   define acAlpha	acColorValues.rgb16Alpha
 
 struct ColorAllocator;
 

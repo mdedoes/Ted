@@ -7,7 +7,9 @@
 #   include	"docBaseConfig.h"
 
 #   include	<appSystem.h>
+#   include	"docObjectIo.h"
 #   include	"docObject.h"
+#   include	<utilMemoryBuffer.h>
 
 #   include	<appDebugon.h>
 
@@ -20,7 +22,7 @@
 
 static int docReadIncludedBitmapFile(	const MemoryBuffer *	fullName,
 					InsertedObject *	io )
-    { return docReadBitmapObject( io, fullName );	}
+    { return docReadRasterObject( io, fullName );	}
 
 static int docCollectIncludedWmfFile(	const MemoryBuffer *	fullName,
 					InsertedObject *	io )
@@ -46,7 +48,7 @@ int docReadFileObject(		const MemoryBuffer *	fullName,
 
     utilInitMemoryBuffer( &extension );
 
-    if  ( appFileGetFileExtension( &extension, fullName ) )
+    if  ( fileGetFileExtension( &extension, fullName ) )
 	{ LDEB(1); res= -1; goto ready;	}
 
     if  ( ! included							&&

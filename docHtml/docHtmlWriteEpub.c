@@ -1,6 +1,6 @@
 /************************************************************************/
 /*									*/
-/*  Save a BufferDocument into an EPUB file.				*/
+/*  Save a struct BufferDocument into an EPUB file.				*/
 /*									*/
 /*  Documents can be validated against:					*/
 /*  -  http://threepress.org/document/epub-validate.			*/
@@ -15,14 +15,19 @@
 
 #   include	<sioGeneral.h>
 #   include	<sioZip.h>
-#   include	<utilWindowsLanguageCode.h>
 #   include	<utilMemoryBufferPrintf.h>
+#   include	<textMsLocale.h>
 
 #   include	<docBuf.h>
 #   include	<docCalculateToc.h>
 #   include	"docHtmlWriteImpl.h"
+#   include	"docHtmlWrite.h"
 #   include	<docEvalField.h>
 #   include	<docTreeType.h>
+#   include	<docObject.h>
+#   include	<docDocumentField.h>
+#   include	<docFieldKind.h>
+#   include	<docDocumentProperties.h>
 
 #   include	<appDebugon.h>
 
@@ -99,10 +104,12 @@ static const char	DocEpubMediaDoc[]= "application/xhtml+xml";
 static const char	DocEpubMediaEpub[]= "application/epub+zip";
 
 static const char	DocEpubNameContentLen= sizeof(DocEpubNameContent)- 1;
+/*
 static const int	DocEpubNameMediaLenAbs= sizeof(DocEpubNameMediaAbs)- 1;
 static const int	DocEpubNameMediaLenRel= sizeof(DocEpubNameMediaRel) -1;
 static const int	DocEpubNameCssLenAbs= sizeof(DocEpubNameCssAbs) -1;
 static const int	DocEpubNameCssLenRel= sizeof(DocEpubNameCssRel) -1;
+*/
 
 /************************************************************************/
 
@@ -233,18 +240,18 @@ static void docEpubEmitOpfMetaElementIfSet(
 static int docEpubEmitMetaData(		XmlWriter *		xw,
 					const MemoryBuffer *	title,
 					const MemoryBuffer *	identifier,
-					const BufferDocument *	bd )
+					const struct BufferDocument *	bd )
     {
     int				rval= 0;
-    const DocumentProperties *	dp= &(bd->bdProperties);
-    const char *		lang= "en_US";
+    const DocumentProperties *	dp= bd->bdProperties;
 
     MemoryBuffer		mbLang;
+    const char *		localeTag;
 
     int				l;
 
     utilInitMemoryBuffer( &mbLang );
-    if  ( utilMemoryBufferSetString( &mbLang, lang ) )
+    if  ( utilMemoryBufferSetString( &mbLang, "en_US" ) )
 	{ LDEB(1); rval= -1; goto ready;	}
 
     for ( l= 0; l < sizeof(DocEpubOpfMetaHead)/sizeof(char *); l++ )
@@ -252,10 +259,10 @@ static int docEpubEmitMetaData(		XmlWriter *		xw,
 
     docEpubEmitOpfMetaElement( xw, (char *)0, "dc:title", title );
 
-    lang= utilLangForLanguageCode( dp->dpDefaultLanguage );
-    if  ( lang )
+    localeTag= textGetMsLocaleTagById( dp->dpDefaultLocaleId );
+    if  ( localeTag )
 	{
-	if  ( utilMemoryBufferSetString( &mbLang, lang ) )
+	if  ( utilMemoryBufferSetString( &mbLang, localeTag ) )
 	    { LDEB(1); rval= -1; goto ready;	}
 	}
 
@@ -359,7 +366,7 @@ static int docEpubAddImageToOpf(	int			n,
     return rval;
     }
 
-static int docEpubAddImagesToOpf(	const BufferDocument *	bd,
+static int docEpubAddImagesToOpf(	const struct BufferDocument *	bd,
 					XmlWriter *		xw )
     {
     utilPagedListForAll( &(bd->bdObjectList.iolPagedList),
@@ -391,7 +398,7 @@ static int docEpubStartOpf(	ZipOutput *		zo,
 				XmlWriter *		xw,
 				const MemoryBuffer *	title,
 				const MemoryBuffer *	identifier,
-				const BufferDocument *	bd )
+				const struct BufferDocument *	bd )
     {
     const char * const		nameMember= DocEpubNameOpf;
     const int			compressed= 1;
@@ -414,7 +421,7 @@ static int docEpubStartOpf(	ZipOutput *		zo,
 static int docEpubEmitSimpleOpf(	ZipOutput *		zo,
 					const MemoryBuffer *	title,
 					const MemoryBuffer *	identifier,
-					const BufferDocument *	bd )
+					const struct BufferDocument *	bd )
     {
     int				rval= 0;
     int				l;
@@ -568,8 +575,7 @@ static int docEpubStartNcx(	ZipOutput *		zo,
 				XmlWriter *		xw,
 				const MemoryBuffer *	title,
 				const MemoryBuffer *	identifier,
-				int			depth,
-				const BufferDocument *	bd )
+				int			depth )
     {
     const char * const		nameMember= DocEpubNameNcx;
     const int			compressed= 1;
@@ -597,8 +603,7 @@ static int docEpubStartNcx(	ZipOutput *		zo,
 
 static int docEpubEmitSimpleNcx(	ZipOutput *		zo,
 					const MemoryBuffer *	title,
-					const MemoryBuffer *	identifier,
-					const BufferDocument *	bd )
+					const MemoryBuffer *	identifier )
     {
     int				rval= 0;
     const int			depth= 1;
@@ -609,7 +614,7 @@ static int docEpubEmitSimpleNcx(	ZipOutput *		zo,
 
     xmlInitXmlWriter( &xw );
 
-    if  ( docEpubStartNcx( zo, &xw, title, identifier, depth, bd ) )
+    if  ( docEpubStartNcx( zo, &xw, title, identifier, depth ) )
 	{ LDEB(1); rval= -1; goto ready;	}
 
     sioOutPutString( "    <navMap>\n", xw.xwSos );
@@ -644,7 +649,7 @@ static int docEpubEmitSimpleNcx(	ZipOutput *		zo,
 static int docEpubEmitCompositeNcx(	EpubWriter *		ew,
 					const MemoryBuffer *	title,
 					const MemoryBuffer *	identifier,
-					const BufferDocument *	bd )
+					struct BufferDocument *	bd )
     {
     int				rval= 0;
 
@@ -665,7 +670,7 @@ static int docEpubEmitCompositeNcx(	EpubWriter *		ew,
     xmlInitXmlWriter( &xw );
 
     if  ( docEpubStartNcx( &(ew->ewZipOutput), &xw,
-			title, identifier, ew->ewCalculateToc.ctDepth, bd ) )
+			title, identifier, ew->ewCalculateToc.ctDepth ) )
 	{ LDEB(1); rval= -1; goto ready;	}
 
     sioOutPutString( "    <navMap>\n", xw.xwSos );
@@ -801,7 +806,7 @@ static int docEpubWriteCss(		HtmlWritingContext *	hwc )
 /************************************************************************/
 
 static int docEpubEmitDocument(	HtmlWritingContext *		hwc,
-				BufferDocument *		bd,
+				struct BufferDocument *		bd,
 				const char *			relativeName,
 				const DocumentSelection *	ds )
     {
@@ -858,7 +863,7 @@ static int docEpubEmitDocument(	HtmlWritingContext *		hwc,
 /************************************************************************/
 
 static DocumentField * docHtmlGetTocForEpub(	TocField *		tf,
-						BufferDocument *	bd )
+						struct BufferDocument *	bd )
     {
     const DocumentFieldList *	dfl= &(bd->bdFieldList);
     const int			fieldCount= dfl->dflPagedList.plItemCount;
@@ -890,14 +895,14 @@ static DocumentField * docHtmlGetTocForEpub(	TocField *		tf,
 /************************************************************************/
 
 int docEpubSaveDocument(	SimpleOutputStream *	sos,
-				BufferDocument *	bd,
-				const LayoutContext *	lc )
+				struct BufferDocument *	bd,
+				const struct LayoutContext *	lc )
     {
     HtmlWritingContext		hwc;
     int				rval= 0;
     EpubWriter			ew;
 
-    const DocumentProperties *	dp= &(bd->bdProperties);
+    const DocumentProperties *	dp= bd->bdProperties;
     DocumentField *		dfToc;
 
     MemoryBuffer		identifier;
@@ -967,7 +972,7 @@ int docEpubSaveDocument(	SimpleOutputStream *	sos,
 						&title, &identifier, bd ) )
 	    { LDEB(1); rval= -1; goto ready;	}
 	if  ( docEpubEmitSimpleNcx( &(ew.ewZipOutput),
-						&title, &identifier, bd ) )
+						&title, &identifier ) )
 	    { LDEB(1); rval= -1; goto ready;	}
 	if  ( docEpubEmitDocument( &hwc, bd, DocEpubNameDocRel,
 					    (const DocumentSelection *)0 ) )

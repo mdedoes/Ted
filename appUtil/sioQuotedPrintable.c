@@ -8,8 +8,9 @@
 #   include	"appUtilConfig.h"
 
 #   include	<stdlib.h>
-
 #   include	"sioQuotedPrintable.h"
+#   include	"sioGeneral.h"
+
 #   include	<appDebugon.h>
 
 /************************************************************************/

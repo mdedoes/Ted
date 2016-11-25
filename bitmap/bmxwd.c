@@ -2,16 +2,20 @@
 
 #   include	<stdlib.h>
 #   include	<stdio.h>
-#   include	"bmintern.h"
+
+#   include	"bmformats.h"
 #   include	<sioFileio.h>
 #   include	<sioEndian.h>
-#   include	<appDebugon.h>
+#   include	<sioGeneral.h>
 
 #   include	"XWDFile.h"
+
+#   include	<appDebugon.h>
 
 /************************************************************************/
 /*  Implementing routines.						*/
 /************************************************************************/
+
 static int bmReadX11wd(	SimpleInputStream *	sis,
 			XWDFileHeader *		xh,
 			unsigned char **	pBuf,
@@ -21,7 +25,7 @@ static int bmReadX11wd(	SimpleInputStream *	sis,
 /*  Read an XWD file.							*/
 /************************************************************************/
 
-int bmReadXwdFile(	const MemoryBuffer *	filename,
+int bmReadXwdFile(	const struct MemoryBuffer *	filename,
 			unsigned char **	pBuf,
 			BitmapDescription *	bd,
 			int *			pPrivateFormat )
@@ -409,14 +413,3 @@ static int bmReadX11wd(	SimpleInputStream *	sis,
     return rval;
     }
 
-/************************************************************************/
-/*									*/
-/*  Write an XWD file.							*/
-/*									*/
-/************************************************************************/
-
-int bmWriteXwdFile(	const MemoryBuffer *		filename,
-			const unsigned char *		buffer,
-			const BitmapDescription *	bd,
-			int				privateFormat )
-    { LDEB(-1); return -1; }

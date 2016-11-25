@@ -6,10 +6,7 @@
 
 #   include	"docEditConfig.h"
 
-#   include	<stdio.h>
 #   include	<limits.h>
-
-#   include	<appDebugon.h>
 
 #   include	<docBuf.h>
 #   include	<docField.h>
@@ -18,173 +15,22 @@
 #   include	<docParaString.h>
 #   include	<docParaParticules.h>
 #   include	"docEdit.h"
+#   include	<docPropVal.h>
+#   include	<docParaNodeProperties.h>
+#   include	<docParaProperties.h>
+#   include	"docEditOperation.h"
+#   include	"docDocumentCopyJob.h"
+#   include	<docTreeNode.h>
+#   include	<docTextParticule.h>
+#   include	<utilPropMask.h>
+#   include	<docFields.h>
+#   include	<docParaBuilder.h>
+#   include	<docParaParticuleAdmin.h>
+
+#   include	<appDebugon.h>
 
 #   define	DEB_PARTICULES		0
 #   define	SHOW_SELECTION_RANGE	0
-
-/************************************************************************/
-/*									*/
-/*  Decide what to do at the head of the insertion. The decision only	*/
-/*  depends on the target paragraph and the text attribute of the	*/
-/*  source text.							*/
-/*									*/
-/************************************************************************/
-
-static int docEditParaFindHeadPositions(
-			int *				pPartHead,
-			int *				pStroff0,
-			int *				pSplitHead,
-			int *				pMergeHead,
-			const DocumentPosition *	dpHead,
-			int				addedAttrNr )
-    {
-    int				partHead;
-    const BufferItem *		paraNode= dpHead->dpNode;
-    int				stroff0= dpHead->dpStroff;
-
-    const TextParticule *	tp;
-
-    int				splitHead= 0;
-    int				mergeHead= 0;
-
-    int				headFlags= 0;
-
-    if  ( docFindParticuleOfPosition( &partHead, &headFlags,
-						    dpHead, PARAfindPAST ) )
-	{ LDEB(1); return -1; }
-
-    /*  B  */
-    stroff0= dpHead->dpStroff;
-    if  ( partHead < paraNode->biParaParticuleCount )
-	{
-	tp= paraNode->biParaParticules+ partHead;
-
-	if  ( tp->tpKind == DOCkindSPAN 		&&
-	      ( addedAttrNr < 0			||
-	        addedAttrNr == tp->tpTextAttrNr	)	)
-	    { stroff0= tp->tpStroff;	}
-
-	if  ( partHead > 0					&&
-	      tp[-1].tpKind == DOCkindSPAN			&&
-	      dpHead->dpStroff == tp->tpStroff			&&
-	      ( addedAttrNr < 0				||
-	        addedAttrNr == tp[-1].tpTextAttrNr	)	)
-	    {
-	    mergeHead= 1; partHead--;
-	    stroff0= tp[-1].tpStroff;
-	    }
-	else{
-	    /*  C  */
-	    if  ( dpHead->dpStroff > tp->tpStroff		&&
-		  addedAttrNr >= 0				&&
-		  addedAttrNr != tp->tpTextAttrNr		)
-		{
-		if  ( tp->tpKind != DOCkindSPAN )
-		    { LDEB(tp->tpKind); return -1;	}
-
-		splitHead= 1;
-		}
-	    }
-	}
-    else{
-	partHead= paraNode->biParaParticuleCount;
-	tp= paraNode->biParaParticules+ partHead- 1;
-
-	if  ( stroff0 != docParaStrlen( paraNode ) )
-	    { LLDEB(stroff0,docParaStrlen(paraNode));	}
-
-	if  ( paraNode->biParaParticuleCount > 0		&&
-	      tp->tpKind == DOCkindSPAN				&&
-	      ( addedAttrNr < 0			||
-	        addedAttrNr == tp->tpTextAttrNr	)		&&
-	      docParaPastLastNonBlank( paraNode, tp->tpStroff, stroff0 ) == stroff0 )
-	    {
-	    mergeHead= 1; partHead--;
-	    stroff0= tp->tpStroff;
-	    }
-	}
-
-    *pPartHead= partHead;
-    *pStroff0= stroff0;
-    *pSplitHead= splitHead;
-    *pMergeHead= mergeHead;
-    return 0;
-    }
-
-static int docEditParaFindTailPositions(
-			int *				pPartUpto,
-			int *				pStroff1,
-			int *				pSplitTail,
-			int *				pMergeTail,
-			const DocumentPosition *	dpTail,
-			int				addedAttrNr )
-    {
-    int				partUpto;
-    int				stroff1= dpTail->dpStroff;
-
-    const TextParticule *	tp;
-
-    int				splitTail= 0;
-    int				mergeTail= 0;
-
-    int				tailFlags= 0;
-
-    if  ( docFindParticuleOfPosition( &partUpto, &tailFlags,
-						    dpTail, PARAfindPAST ) )
-	{ LDEB(1); return -1; }
-
-    if  ( partUpto < dpTail->dpNode->biParaParticuleCount )
-	{
-	tp= dpTail->dpNode->biParaParticules+ partUpto;
-
-	/* include next? */
-	if  ( partUpto < dpTail->dpNode->biParaParticuleCount- 1	&&
-	      tp[1].tpKind == DOCkindSPAN				&&
-	      dpTail->dpStroff == tp->tpStroff+ tp->tpStrlen		&&
-	      addedAttrNr == tp[1].tpTextAttrNr				)
-	    {
-	    mergeTail= 1; partUpto++;
-	    stroff1= tp[1].tpStroff+ tp[1].tpStrlen;
-	    }
-	else{
-	    if  ( tp->tpKind == DOCkindSPAN )
-		{
-		/*  E  */
-		if  ( dpTail->dpStroff >= tp->tpStroff		&&
-		      addedAttrNr != tp->tpTextAttrNr		)
-		    {
-		    if  ( dpTail->dpStroff > tp->tpStroff )
-			{
-			splitTail= 1;
-			partUpto++;
-			}
-		    }
-		else{
-		    partUpto++;
-		    stroff1= tp->tpStroff+ tp->tpStrlen;
-		    }
-		}
-	    else{
-		if  ( dpTail->dpStroff != tp->tpStroff )
-		    {
-		    LLLDEB(dpTail->dpStroff,tp->tpStroff,tp->tpStrlen);
-		    return -1;
-		    }
-		}
-	    }
-	}
-    else{
-	partUpto= dpTail->dpNode->biParaParticuleCount;
-	if  ( stroff1 != docParaStrlen( dpTail->dpNode ) )
-	    { LLDEB(stroff1,docParaStrlen(dpTail->dpNode));	}
-	}
-
-    *pPartUpto= partUpto;
-    *pStroff1= stroff1;
-    *pSplitTail= splitTail;
-    *pMergeTail= mergeTail;
-    return 0;
-    }
 
 /************************************************************************/
 /*									*/
@@ -225,7 +71,7 @@ int docParaReplaceText(	EditOperation *			eo,
 			int				paraNr,
 			DocumentPosition *		dpNewTail,
 			const DocumentPosition *	dpHead,
-			unsigned int			stroffTail,
+			unsigned int			stroffReplaceTail,
 			const char *			addedText,
 			unsigned int			addedLength,
 			int				addedAttributeNr )
@@ -240,19 +86,18 @@ int docParaReplaceText(	EditOperation *			eo,
     int				mergeHead= 0;
     int				mergeTail= 0;
 
-    int				stroff0;
-    int				stroff1;
-    int				partsFree;
+    int				stroffRedivideHead;
+    int				stroffRedivideTail;
     int				partsMade;
 
     int				stroffShift;
 
     DocumentPosition		dpTail= *dpHead;
 
-    dpTail.dpStroff= stroffTail;
+    dpTail.dpStroff= stroffReplaceTail;
 
     /*  B,C  */
-    if  ( docEditParaFindHeadPositions( &partHead, &stroff0,
+    if  ( docParaSubstituteFindHeadPositions( &partHead, &stroffRedivideHead,
 					    &splitHead, &mergeHead,
 					    dpHead, addedAttributeNr ) )
 	{ LDEB(dpHead->dpStroff); rval= -1; goto ready;	}
@@ -264,7 +109,7 @@ int docParaReplaceText(	EditOperation *			eo,
 	}
 
     /*  D,E  */
-    if  ( docEditParaFindTailPositions( &partUpto, &stroff1,
+    if  ( docParaSubstituteFindTailPositions( &partUpto, &stroffRedivideTail,
 					    &splitTail, &mergeTail,
 					    &dpTail, addedAttributeNr ) )
 	{ LDEB(dpTail.dpStroff); rval= -1; goto ready;	}
@@ -272,8 +117,13 @@ int docParaReplaceText(	EditOperation *			eo,
     /*  C  */
     if  ( splitHead )
 	{
-	if  ( docSplitTextParticule( (TextParticule **)0,
-					(TextParticule **)0, dpHead->dpNode,
+	if  ( docParaBuilderStartExistingParagraph( eo->eoParagraphBuilder,
+					dpHead->dpNode, dpHead->dpStroff ) )
+	    { LDEB(dpHead->dpStroff); rval= -1; goto ready;	}
+
+	if  ( docParaBuilderSplitTextParticule( (TextParticule **)0,
+					(TextParticule **)0,
+					eo->eoParagraphBuilder,
 					partHead, dpHead->dpStroff ) )
 	    { LDEB(partHead); rval= -1; goto ready;	}
 
@@ -281,73 +131,74 @@ int docParaReplaceText(	EditOperation *			eo,
 	partUpto++;	/*  Split: shift number		*/
 
 	/* redivide will take care of splitting the tail */
-	if  ( dpHead->dpStroff == stroffTail )
+	if  ( dpHead->dpStroff == stroffReplaceTail )
 	    { splitTail= 0;	}
 	}
 
     /*  E  */
     if  ( splitTail )
 	{
-	if  ( docSplitTextParticule( (TextParticule **)0,
-					(TextParticule **)0, dpHead->dpNode,
-					partUpto- 1, stroffTail ) )
-	    { LDEB(partUpto); rval= -1; goto ready;	}
+	if  ( docParaBuilderStartExistingParagraph( eo->eoParagraphBuilder,
+					dpHead->dpNode, stroffReplaceTail ) )
+	    { LDEB(dpHead->dpStroff); rval= -1; goto ready;	}
 
-	stroff1= stroffTail;
+	if  ( docParaBuilderSplitTextParticule( (TextParticule **)0,
+					(TextParticule **)0,
+					eo->eoParagraphBuilder,
+					partUpto- 1, stroffReplaceTail ) )
+	    { LDEB(partHead); rval= -1; goto ready;	}
+
+	stroffRedivideTail= stroffReplaceTail;
 	}
 
-    /*  G  */
-    stroffShift= 0;
-    if  ( docParaStringReplace( &stroffShift, dpHead->dpNode,
-				    dpHead->dpStroff, stroffTail,
-				    addedText, addedLength ) )
-	{ LDEB(addedLength); rval= -1; goto ready;	}
+    if  ( dpHead->dpNode->biParaParticuleCount == 1			&&
+	  dpHead->dpNode->biParaParticules[0].tpKind == TPkindSPAN	&&
+	  dpHead->dpNode->biParaParticules[0].tpStrlen == 0		)
+	{ partHead= 0;	}
 
     /*  F  */
     if  ( docEditCleanParticules( eo, dpHead->dpNode, partHead, partUpto ) )
 	{ LLDEB(partHead,partUpto); rval= -1; goto ready;	}
 
-    /*  H  */
-    partsFree= partUpto- partHead;
-    stroff1 += stroffShift;
-    partsMade= docRedivideStringInParticules( dpHead->dpNode,
-				stroff0, stroff1- stroff0,
-				partHead, partsFree, addedAttributeNr );
+XDEB(eo->eoParagraphBuilder);
+    if  ( docParaBuilderStartExistingParagraph( eo->eoParagraphBuilder,
+					dpHead->dpNode, dpHead->dpStroff ) )
+	{ LDEB(dpHead->dpStroff); rval= -1; goto ready;	}
+
+    /*  G  */
+    stroffShift= 0;
+    partsMade= docParaBuilderSubstitute( &stroffShift, eo->eoParagraphBuilder,
+			dpHead->dpStroff, stroffReplaceTail,
+			stroffRedivideHead, stroffRedivideTail,
+			partHead, partUpto,
+			addedText, addedLength, addedAttributeNr );
     if  ( partsMade < 0 )
 	{ LDEB(partsMade); rval= -1; goto ready;	}
 
     /*  I  */
-    if  ( partsMade < partsFree )
+    if  ( dpHead->dpNode->biParaParticuleCount == 0 )
 	{
-	docDeleteParticules( dpHead->dpNode,
-				partHead+ partsMade, partsFree- partsMade );
+	TextParticule *	tp;
 
-	if  ( dpHead->dpNode->biParaParticuleCount == 0 )
-	    {
-	    TextParticule *	tp;
+	if  ( partHead != 0 || docParaStrlen( dpHead->dpNode ) != 0 )
+	    { LLDEB(partHead,docParaStrlen(dpHead->dpNode));	}
 
-	    if  ( partHead != 0 || docParaStrlen( dpHead->dpNode ) != 0 )
-		{ LLDEB(partHead,docParaStrlen(dpHead->dpNode));	}
+	tp= docInsertTextParticule( dpHead->dpNode, partHead,
+				    docParaStrlen( dpHead->dpNode ), 0,
+				    TPkindSPAN, addedAttributeNr );
+	if  ( ! tp )
+	    { XDEB(tp); rval= -1; goto ready;	}
+	partsMade++;
 
-	    tp= docInsertTextParticule( dpHead->dpNode, partHead,
-					docParaStrlen( dpHead->dpNode ), 0,
-					DOCkindSPAN, addedAttributeNr );
-	    if  ( ! tp )
-		{ XDEB(tp); rval= -1; goto ready;	}
-	    partsMade++;
-
-	    /* No.. Gives problems in the incremental formatter!
-	    docInvalidateParagraphLayout( paraNode );
-	    */
-	    }
+	/* No.. Gives problems in the incremental formatter!
+	docInvalidateParagraphLayout( paraNode );
+	*/
 	}
 
-    partUpto += partsMade- partsFree;
 
     /*  J  */
     if  ( docEditShiftParticuleOffsets( eo, dpHead->dpNode, paraNr,
-		    partHead+ partsMade, dpHead->dpNode->biParaParticuleCount,
-		    dpHead->dpStroff, stroffShift ) )
+		    partHead+ partsMade, dpHead->dpStroff, stroffShift ) )
 	{ LDEB(stroffShift);	}
 
 #   if DEB_PARTICULES
@@ -417,7 +268,7 @@ static int docParaMergeParticule(
 				DocumentPosition *		dpFrom,
 				int *				pPartFrom )
     {
-    BufferItem *		nodeFrom= dpFrom->dpNode;
+    struct BufferItem *		nodeFrom= dpFrom->dpNode;
     const char *		addedString;
     int				addedStrlen;
     const TextParticule *	tpTo;
@@ -425,7 +276,7 @@ static int docParaMergeParticule(
     const TextParticule * const tpFrom= nodeFrom->biParaParticules+ *pPartFrom;
 
     /*  1  */
-    addedString= (const char *)docParaString( nodeFrom, dpFrom->dpStroff );
+    addedString= docParaString( nodeFrom, dpFrom->dpStroff );
     addedStrlen= tpFrom->tpStroff+ tpFrom->tpStrlen- dpFrom->dpStroff;
 
     if  ( docParaReplaceText( eo, paraNrTo, dpTo, dpTo, dpTo->dpStroff,
@@ -493,8 +344,8 @@ int docParaInsertTail(		DocumentCopyJob *		dcj,
     DocumentPosition		dpFrom= *dp_From;
     int				rval= 0;
 
-    BufferItem *		nodeTo= dpTo.dpNode;
-    const BufferItem *		nodeFrom= dpFrom.dpNode;
+    struct BufferItem *		nodeTo= dpTo.dpNode;
+    const struct BufferItem *		nodeFrom= dpFrom.dpNode;
 
     int				textAttrTo= INT_MAX;	/*  Impossible	*/
 
@@ -503,7 +354,6 @@ int docParaInsertTail(		DocumentCopyJob *		dcj,
 
     int				partTo;
     int				partFrom;
-    int				stroff0;
 
     int				splitHead= 0;
     int				mergeHead= 0;
@@ -514,9 +364,9 @@ int docParaInsertTail(		DocumentCopyJob *		dcj,
 	{ LDEB(1); return -1; }
 
     /*  A  */
-    if  ( nodeFrom->biParaListOverride > 0 )
+    if  ( nodeFrom->biParaProperties->ppListOverride > 0 )
 	{
-	DocumentField *		dfHead= (DocumentField *)0;
+	struct DocumentField *	dfHead= (struct DocumentField *)0;
 	DocumentSelection	dsInsideHead;
 	DocumentSelection	dsAroundHead;
 	int			partHead= -1;
@@ -539,13 +389,13 @@ int docParaInsertTail(		DocumentCopyJob *		dcj,
     {
     const TextParticule * const	tpFrom= nodeFrom->biParaParticules+ partFrom;
 
-    if  ( tpFrom->tpKind == DOCkindSPAN )
+    if  ( tpFrom->tpKind == TPkindSPAN )
 	{ textAttrTo= docMapTextAttributeNumber( dcj, tpFrom->tpTextAttrNr ); }
     else{ textAttrTo= INT_MAX; /* not an existing value */		}
     }
 
     /*  B,C  */
-    if  ( docEditParaFindHeadPositions( &partTo, &stroff0,
+    if  ( docParaSubstituteFindHeadPositions( &partTo, (int *)0,
 				&splitHead, &mergeHead, &dpTo, textAttrTo ) )
 	{ LDEB(dpTo.dpStroff); rval= -1; goto ready;	}
 
@@ -567,7 +417,7 @@ int docParaInsertTail(		DocumentCopyJob *		dcj,
 	}
     else{
 	const TextParticule * const tpFrom= nodeFrom->biParaParticules+ partFrom;
-	if  ( tpFrom->tpKind == DOCkindSPAN		&&
+	if  ( tpFrom->tpKind == TPkindSPAN		&&
 	      ! ( fromFlags & POSflagPARA_TAIL )	)
 	    {
 	    if  ( docParaMergeParticule( eo, paraNrTo, textAttrTo,
@@ -592,8 +442,8 @@ int docParaInsertTail(		DocumentCopyJob *		dcj,
 	copyLastAsText= 0;
 
 	if  ( partTo < nodeTo->biParaParticuleCount	&&
-	      tpFrom->tpKind == DOCkindSPAN		&&
-	      tpTo->tpKind == DOCkindSPAN		&&
+	      tpFrom->tpKind == TPkindSPAN		&&
+	      tpTo->tpKind == TPkindSPAN		&&
 	      textAttrTo == tpTo->tpTextAttrNr		)
 	    { copyLastAsText= 1;	}
 	}
@@ -626,10 +476,10 @@ int docParaInsertTail(		DocumentCopyJob *		dcj,
     /*  F  */
     if  ( copyLastAsText > 0 )
 	{
-	char *		addedString;
+	const char *	addedString;
 	int		addedStrlen;
 
-	addedString= (char *)docParaString( nodeFrom, dpFrom.dpStroff );
+	addedString= docParaString( nodeFrom, dpFrom.dpStroff );
 	addedStrlen= docParaStrlen( nodeFrom )- dpFrom.dpStroff;
 
 	if  ( docParaReplaceText( eo, paraNrTo, &dpTo,
@@ -653,7 +503,7 @@ int docParaInsertTail(		DocumentCopyJob *		dcj,
 static void docEditShiftSplitReferences(EditOperation *		eo,
 					int			splitLevel )
     {
-    const BufferItem *	oldParaNode= eo->eoTailDp.dpNode;
+    const struct BufferItem *	oldParaNode= eo->eoTailDp.dpNode;
     const int		paraNr= docNumberOfParagraph( oldParaNode );
     const int		stroffFrom= eo->eoTailDp.dpStroff;
     const int		paraShift= 1;
@@ -681,8 +531,8 @@ static void docEditShiftSplitReferences(EditOperation *		eo,
 
 static int docMoveTailToNew(	EditOperation *		eo,
 				DocumentCopyJob *	dcj,
-				BufferItem *		newNode,
-				BufferItem *		oldNode,
+				struct BufferItem *		newNode,
+				struct BufferItem *		oldNode,
 				int			part )
     {
     TextParticule *	newTp;
@@ -699,7 +549,7 @@ static int docMoveTailToNew(	EditOperation *		eo,
     if  ( docParaStringReplace( &stroffShift, newNode,
 				    docParaStrlen( newNode ),
 				    docParaStrlen( newNode ),
-				    (char *)docParaString( oldNode, stroff ),
+				    docParaString( oldNode, stroff ),
 				    docParaStrlen( oldNode )- stroff ) )
 	{ LLDEB(docParaStrlen(oldNode),stroff); return -1; }
 
@@ -715,24 +565,24 @@ static int docMoveTailToNew(	EditOperation *		eo,
 		newStrlen += tp->tpStrlen; part++; tp++;
 		continue;
 
-	    case DOCkindFIELDTAIL:
+	    case TPkindFIELDTAIL:
 		/*  5  */
 		break;
 
-	    case DOCkindFIELDHEAD:
+	    case TPkindFIELDHEAD:
 		break;
 
-	    case DOCkindOBJECT:
-	    case DOCkindSPAN:
-	    case DOCkindTAB:
-	    case DOCkindLINEBREAK:
-	    case DOCkindPAGEBREAK:
-	    case DOCkindCOLUMNBREAK:
+	    case TPkindOBJECT:
+	    case TPkindSPAN:
+	    case TPkindTAB:
+	    case TPkindLINEBREAK:
+	    case TPkindPAGEBREAK:
+	    case TPkindCOLUMNBREAK:
 		break;
 	    }
 
 	if  ( docCopyParticuleAndData( &newTp, dcj, newNode, partShift++,
-					newStrlen, tp->tpStrlen, oldNode, tp ) )
+					newStrlen, tp->tpStrlen, tp ) )
 	    { LDEB(part); return -1;	}
 
 	newStrlen += tp->tpStrlen; part++; tp++;
@@ -746,7 +596,7 @@ static int docMoveTailToNew(	EditOperation *		eo,
 	tp= oldNode->biParaParticules+ oldNode->biParaParticuleCount- 1;
 
 	newTp= docInsertTextParticule( newNode, -1, 0, 0,
-				    DOCkindSPAN, tp->tpTextAttrNr );
+				    TPkindSPAN, tp->tpTextAttrNr );
 	if  ( ! newTp )
 	    { LDEB(newNode->biParaParticuleCount); return -1; }
 	}
@@ -756,7 +606,7 @@ static int docMoveTailToNew(	EditOperation *		eo,
 	tp= oldNode->biParaParticules;
 
 	newTp= docInsertTextParticule( oldNode, -1, 0, 0,
-				    DOCkindSPAN, tp->tpTextAttrNr );
+				    TPkindSPAN, tp->tpTextAttrNr );
 	if  ( ! newTp )
 	    { LDEB(oldNode->biParaParticuleCount); return -1; }
 	}
@@ -769,14 +619,14 @@ static int docMoveTailToNew(	EditOperation *		eo,
 /************************************************************************/
 
 int docEditSplitParaParent(	EditOperation *		eo,
-				BufferItem **		pBeforeNode,
-				BufferItem **		pAfterNode,
-				BufferItem *		paraNode,
+				struct BufferItem **		pBeforeNode,
+				struct BufferItem **		pAfterNode,
+				struct BufferItem *		paraNode,
 				int			after,
 				int			splitLevel )
     {
-    BufferItem *	beforeNode;
-    BufferItem *	afterNode;
+    struct BufferItem *	beforeNode;
+    struct BufferItem *	afterNode;
 
     after= after != 0;
 
@@ -815,27 +665,26 @@ int docEditSplitParaParent(	EditOperation *		eo,
 /*									*/
 /************************************************************************/
 
-int docSplitParaNode(		BufferItem **		pNewParaNode,
+int docSplitParaNode(		struct BufferItem **	pNewParaNode,
 				EditOperation *		eo,
 				int			splitLevel )
     {
     int				rval= 0;
 
-    BufferItem *		oldParaNode= eo->eoTailDp.dpNode;
-    BufferItem *		newParaNode;
+    struct BufferItem *		oldParaNode= eo->eoTailDp.dpNode;
+    struct BufferItem *		newParaNode;
 
     PropertyMask		ppChgMask;
     PropertyMask		ppUpdMask;
 
     DocumentCopyJob		dcj;
-    const int			copyFields= 0;
 
     int				part;
     int				headFlags;
 
     docInitDocumentCopyJob( &dcj );
 
-    if  ( docSet1DocumentCopyJob( &dcj, eo, copyFields ) )
+    if  ( docSet1DocumentCopyJob( &dcj, eo, CFH_STEAL ) )
 	{ LDEB(1); rval= -1; goto ready;	}
 
     if  ( docFindParticuleOfPosition( &part, &headFlags,
@@ -866,8 +715,8 @@ int docSplitParaNode(		BufferItem **		pNewParaNode,
     if  ( splitLevel < DOClevPARA )
 	{
 	const int	after= 1;
-	BufferItem *	beforeNode;
-	BufferItem *	afterNode;
+	struct BufferItem *	beforeNode;
+	struct BufferItem *	afterNode;
 
 	if  ( docEditSplitParaParent( eo, &beforeNode, &afterNode, oldParaNode,
 							after, splitLevel ) )
@@ -901,14 +750,14 @@ int docSplitParaNode(		BufferItem **		pNewParaNode,
     utilPropMaskFill( &ppUpdMask, PPprop_FULL_COUNT );
 
     /*  1a  */
-    if  ( docEditUpdParaProperties( eo, &ppChgMask, newParaNode,
-				&ppUpdMask, &(oldParaNode->biParaProperties),
+    if  ( docEditUpdParaProperties( eo, &ppChgMask, newParaNode, &ppUpdMask,
+				oldParaNode->biParaProperties,
 				&(dcj.dcjAttributeMap) ) )
 	{ LDEB(1); rval= -1; goto ready;	}
 
-    if  ( oldParaNode->biParaListOverride > 0 )
+    if  ( oldParaNode->biParaProperties->ppListOverride > 0 )
 	{ dcj.dcjBulletsCopied++;		}
-    if  ( newParaNode->biParaListOverride > 0 )
+    if  ( newParaNode->biParaProperties->ppListOverride > 0 )
 	{ eo->eoFieldUpdate |= FIELDdoLISTTEXT;	}
 
     docInvalidateParagraphLayout( newParaNode );
@@ -991,7 +840,7 @@ static TextParticule * docParaSpecialParticule(
     /*  2  */
     if  ( dp->dpNode->biParaParticuleCount == 1			&&
 	  docParaStrlen( dp->dpNode ) == 0			&&
-	  dp->dpNode->biParaParticules->tpKind == DOCkindSPAN	)
+	  dp->dpNode->biParaParticules->tpKind == TPkindSPAN	)
 	{
 	dp->dpNode->biParaParticules->tpKind= kind;
 	dp->dpNode->biParaParticules->tpStrlen= 1;
@@ -1000,8 +849,7 @@ static TextParticule * docParaSpecialParticule(
 	tailPart= 1;
 
 	if  ( docEditShiftParticuleOffsets( eo, dp->dpNode, paraNr,
-				    tailPart, dp->dpNode->biParaParticuleCount,
-				    dp->dpStroff, 1 ) )
+						tailPart, dp->dpStroff, 1 ) )
 	    { LDEB(1);	}
 
 	return dp->dpNode->biParaParticules;
@@ -1055,7 +903,7 @@ static TextParticule * docParaSpecialParticule(
 
     /*  7  */
     if  ( docEditShiftParticuleOffsets( eo, dp->dpNode, paraNr, tailPart,
-			dp->dpNode->biParaParticuleCount, dp->dpStroff, 1 ) )
+							    dp->dpStroff, 1 ) )
 	{ LDEB(1);	}
 
     *pStroffShift= stroffShift;
@@ -1089,11 +937,11 @@ TextParticule * docEditParaSpecialParticule(
 /************************************************************************/
 
 int docEditFixParaBreakKind(	EditOperation *		eo,
-				DocumentTree *		dt,
-				BufferDocument *	bd,
+				struct DocumentTree *		dt,
+				struct BufferDocument *	bd,
 				int			paraNr )
     {
-    BufferItem *	paraNode= docGetParagraphByNumber( dt, paraNr );
+    struct BufferItem *	paraNode= docGetParagraphByNumber( dt, paraNr );
 
     int			partHead= 0;
     int			stroffHead= 0;
@@ -1105,9 +953,9 @@ int docEditFixParaBreakKind(	EditOperation *		eo,
     if  ( ! paraNode )
 	{ LXDEB(paraNr,paraNode); return -1;	}
 
-    if  ( paraNode->biParaListOverride > 0 )
+    if  ( paraNode->biParaProperties->ppListOverride > 0 )
 	{
-	DocumentField *		dfHead= (DocumentField *)0;
+	struct DocumentField *	dfHead= (struct DocumentField *)0;
 	DocumentSelection	dsInsideHead;
 	DocumentSelection	dsAroundHead;
 	int			partBegin= -1;
@@ -1115,7 +963,7 @@ int docEditFixParaBreakKind(	EditOperation *		eo,
 
 	if  ( docDelimitParaHeadField( &dfHead, &dsInsideHead, &dsAroundHead,
 					&partBegin, &partEnd, paraNode, bd ) )
-	    { LDEB(paraNode->biParaListOverride);		}
+	    { LDEB(1);		}
 	else{
 	    stroffHead= dsAroundHead.dsTail.dpStroff;
 	    partHead= partEnd+ 1;
@@ -1134,12 +982,12 @@ int docEditFixParaBreakKind(	EditOperation *		eo,
 
 	switch( tp->tpKind )
 	    {
-	    case DOCkindPAGEBREAK:
-		paraNode->biParaBreakKind= DOCibkPAGE;
+	    case TPkindPAGEBREAK:
+		docParaNodeSetBreakKind( paraNode, DOCibkPAGE, bd );
 		break;
 
-	    case DOCkindCOLUMNBREAK:
-		paraNode->biParaBreakKind= DOCibkCOL;
+	    case TPkindCOLUMNBREAK:
+		docParaNodeSetBreakKind( paraNode, DOCibkCOL, bd );
 		break;
 
 	    default:
@@ -1156,8 +1004,8 @@ int docEditFixParaBreakKind(	EditOperation *		eo,
 	docShiftEditRange( &(eo->eoAffectedRange),
 			    paraNr, tp->tpStroff, paraShift, stroffShift );
 
-	docEditShiftParticuleOffsets( eo, paraNode, paraNr, 
-				    part+ 1, paraNode->biParaParticuleCount,
+SDEB("!!!!!!");
+	docEditShiftParticuleOffsets( eo, paraNode, paraNr, part+ 1,
 				    tp->tpStroff+ tp->tpStrlen, stroffShift );
 
 	docDeleteParticules( paraNode, part, 1 );

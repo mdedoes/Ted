@@ -24,6 +24,14 @@ typedef struct PropertyMask
 #   define	PROPmaskISSET( pm, v ) \
 			( (pm)->pmBits[(v)/8] & (1<<((v)%8)) ) != 0
 
+#   define PMDEB(pm) utilDebugPropMask( __FILE__, __LINE__, #pm, (pm) )
+
+/************************************************************************/
+/*									*/
+/*  Routine declarations.						*/
+/*									*/
+/************************************************************************/
+
 extern void utilPropMaskClear(		PropertyMask *		pm );
 
 extern void utilPropMaskFill(		PropertyMask *		pm,
@@ -41,5 +49,10 @@ extern void utilPropMaskOr(		PropertyMask *		pm0,
 
 extern void utilPropMaskNot(		PropertyMask *		pm0,
 					const PropertyMask *	pm1 );
+
+extern void utilDebugPropMask(		const char *		file,
+					int			line,
+					const char *		name,
+					const PropertyMask *	pm );
 
 #   endif	/*  UTIL_PROP_MASK_H  */

@@ -7,16 +7,20 @@
 #   include	"tedConfig.h"
 
 #   include	<stddef.h>
-#   include	<stdio.h>
 #   include	<ctype.h>
 
 #   include	<docParaParticules.h>
 #   include	<docRtfTrace.h>
 #   include	<docLayout.h>
-#   include	<appFrame.h>
 #   include	<docEditCommand.h>
 #   include	"tedEdit.h"
-#   include	"tedDocFront.h"
+#   include	<tedDocFront.h>
+#   include	<docPropVal.h>
+#   include	<docParaNodeProperties.h>
+#   include	<docParaProperties.h>
+#   include	<docTreeNode.h>
+#   include	<docSelectionGeometry.h>
+#   include	<docSelectionDescription.h>
 
 #   include	<appDebugon.h>
 
@@ -40,7 +44,7 @@ static int tedSplitParaNode(	TedEditOperation *		teo,
 				int				onNewPage )
     {
     EditOperation *		eo= &(teo->teoEo);
-    BufferItem *		newParaNode;
+    struct BufferItem *		newParaNode;
     const LayoutContext *	lc= &(teo->teoLayoutContext);
 
     DocumentRectangle		drPara;
@@ -52,9 +56,9 @@ static int tedSplitParaNode(	TedEditOperation *		teo,
     if  ( docSplitParaNode( &newParaNode, &(teo->teoEo), splitLevel ) )
 	{ LDEB(1); return -1;	}
 
-    newParaNode->biParaBreakKind= DOCibkNONE;
-    if  ( newParaNode->biParaTableNesting == 0 && onNewPage )
-	{ newParaNode->biParaBreakKind= DOCibkPAGE;	}
+    if  ( newParaNode->biParaProperties->ppTableNesting == 0 && onNewPage )
+	{ docParaNodeSetBreakKind( newParaNode, DOCibkPAGE, eo->eoDocument ); }
+    else{ docParaNodeSetBreakKind( newParaNode, DOCibkNONE, eo->eoDocument ); }
     
     /*  3  */
     geoUnionRectangle( &(teo->teoChangedRect),
@@ -66,8 +70,9 @@ static int tedSplitParaNode(	TedEditOperation *		teo,
     return 0;
     }
 
-void tedDocSplitParagraph(	EditDocument *		ed,
+void tedDocSplitParagraph(	struct EditDocument *	ed,
 				int			onNewPage,
+				const int		editCommand,
 				int			traced )
     {
     TedEditOperation		teo;
@@ -78,15 +83,11 @@ void tedDocSplitParagraph(	EditDocument *		ed,
     DocumentPosition		dpBefore;
     DocumentSelection		dsTraced;
 
-    int				command= EDITcmdREPLACE;
     const int			fullWidth= 1;
 
     tedStartEditOperation( &teo, &sg, &sd, ed, fullWidth, traced );
 
-    if  ( onNewPage )
-	{ command= EDITcmdREPLACE_BODY_LEVEL;	}
-
-    if  ( tedEditStartReplace( &dsTraced, &teo, command, DOClevSPAN, 0 ) )
+    if  ( tedEditStartReplace( &dsTraced, &teo, editCommand, DOClevSPAN, 0 ) )
 	{ LDEB(1); goto ready;	}
 
     if  ( tedEditDeleteSelection( &teo ) )
@@ -123,9 +124,16 @@ void tedDocSplitParagraph(	EditDocument *		ed,
 /*  after a paragraph break: In those cases, let the section break	*/
 /*  replace the paragraph break.					*/
 /*									*/
+/*  1)  If we are at the head of the paragraph, and it is possible to	*/
+/*	navigate to a previous position.. Do so: It does not make sense	*/
+/*	to split the section inside the paragraph.			*/
+/*  2)  If we are at the end of the paragraph, and it is possible to	*/
+/*	navigate to a subsequent position.. Do so: It does not make	*/
+/*	sense to split the section inside the paragraph.		*/
+/*									*/
 /************************************************************************/
 
-int tedDocInsertSectBreak(	EditDocument *		ed,
+int tedDocInsertSectBreak(	struct EditDocument *	ed,
 				int			traced )
     {
     int				rval= 0;
@@ -136,31 +144,25 @@ int tedDocInsertSectBreak(	EditDocument *		ed,
     SelectionGeometry		sg;
     SelectionDescription	sd;
 
-    int				part;
-    int				partFlags;
-
     DocumentSelection		dsTraced;
+    int				pastFlags= 0;
 
     const int			fullWidth= 1;
 
     tedStartEditOperation( &teo, &sg, &sd, ed, fullWidth, traced );
 
-    if  ( docFindParticuleOfPosition( &part, &partFlags,
-					    &(eo->eoHeadDp), PARAfindFIRST ) )
-	{ LDEB(1); rval= -1; goto ready;	}
-    if  ( ( partFlags & POSflagPARA_HEAD )	&&
-	  ! docPrevPosition( &(eo->eoHeadDp)  )	)
+    /*  1  */
+    if  ( ( sd.sdHeadFlags & POSflagPARA_HEAD )	&&
+	  ! docPrevPosition( &(eo->eoHeadDp) )	)
 	{
 	docSetEditPosition( &(eo->eoReformatRange.erHead), &(eo->eoHeadDp) );
 	eo->eoSelectedRange.erHead= eo->eoReformatRange.erHead;
 	eo->eoAffectedRange.erHead= eo->eoReformatRange.erHead;
 	}
 
-    if  ( docFindParticuleOfPosition( &part, &partFlags,
-					    &(eo->eoTailDp), PARAfindPAST ) )
-	{ LDEB(1); rval= -1; goto ready;	}
-    if  ( ( partFlags & POSflagPARA_TAIL )	&&
-	  ! docNextPosition( &(eo->eoTailDp)  )	)
+    /*  2  */
+    if  ( ( sd.sdPastFlags & POSflagPARA_TAIL )	&&
+	  ! docNextPosition( &(eo->eoTailDp) )	)
 	{
 	eo->eoLastDp= eo->eoTailDp;
 	docSetEditPosition( &(eo->eoReformatRange.erTail), &(eo->eoTailDp) );
@@ -175,11 +177,11 @@ int tedDocInsertSectBreak(	EditDocument *		ed,
     if  ( tedEditDeleteSelection( &teo ) )
 	{ rval= -1; goto ready;	}
 
-    if  ( docFindParticuleOfPosition( &part, &partFlags,
+    if  ( docFindParticuleOfPosition( (int *)0, &pastFlags,
 					    &(eo->eoTailDp), PARAfindPAST ) )
 	{ LDEB(1); rval= -1; goto ready;	}
 
-    if  ( ! ( partFlags & (POSflagPARA_HEAD|POSflagPARA_TAIL) ) )
+    if  ( ! ( pastFlags & (POSflagPARA_HEAD|POSflagPARA_TAIL) ) )
 	{
 	if  ( tedSplitParaNode( &teo, DOClevSECT, onNewPage ) )
 	    { LDEB(1); rval= -1; goto ready;	}
@@ -190,7 +192,7 @@ int tedDocInsertSectBreak(	EditDocument *		ed,
 	tedEditFinishSelectionTail( &teo );
 	}
     else{
-	const int		after= ( partFlags & POSflagPARA_HEAD ) == 0;
+	const int		after= ( pastFlags & POSflagPARA_HEAD ) == 0;
 	DocumentPosition	dpBefore;
 	DocumentPosition	dpAfter;
 	DocumentSelection	dsSplit;

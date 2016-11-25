@@ -6,12 +6,14 @@
 
 #   include	"docEditConfig.h"
 
-#   include	<appDebugon.h>
-
 #   include	<docBuf.h>
 #   include	<docNodeTree.h>
 #   include	"docIntermediaryDocument.h"
 #   include	<docPropertiesAdmin.h>
+#   include	<docDocumentProperties.h>
+#   include	<docTreeNode.h>
+
+#   include	<appDebugon.h>
 
 /************************************************************************/
 /*									*/
@@ -24,22 +26,22 @@
 /*									*/
 /************************************************************************/
 
-BufferDocument * docIntermediaryDocument(
+struct BufferDocument * docIntermediaryDocument(
 				struct BufferItem **		pSectNode,
-				const BufferDocument *		bdRef )
+				const struct BufferDocument *		bdRef )
     {
-    BufferDocument *	rval= (BufferDocument *)0;
-    BufferDocument *	bdTo= (BufferDocument *)0;
+    struct BufferDocument *	rval= (struct BufferDocument *)0;
+    struct BufferDocument *	bdTo= (struct BufferDocument *)0;
     struct BufferItem *	sectNode;
 
-    const DocumentAttributeMap * const dam0= (const DocumentAttributeMap *)0;
+    const struct DocumentAttributeMap * const dam0= (const struct DocumentAttributeMap *)0;
 
     bdTo= docNewDocument( bdRef );
     if  ( ! bdTo )
 	{ XDEB(bdTo); goto ready;	}
 
-    if  ( docCopyDocumentProperties( &(bdTo->bdProperties),
-					    &(bdRef->bdProperties) ) )
+    if  ( docCopyDocumentProperties( bdTo->bdProperties,
+					    bdRef->bdProperties ) )
 	{ LDEB(1); goto ready;	}
 
     if  ( docCopyStyleSheet( &(bdTo->bdStyleSheet),
@@ -50,7 +52,7 @@ BufferDocument * docIntermediaryDocument(
     if  ( ! sectNode )
 	{ XDEB(sectNode); goto ready;	}
 
-    rval= bdTo; bdTo= (BufferDocument *)0; /* steal */
+    rval= bdTo; bdTo= (struct BufferDocument *)0; /* steal */
     if  ( pSectNode )
 	{ *pSectNode= sectNode;	}
 
@@ -62,7 +64,7 @@ BufferDocument * docIntermediaryDocument(
     return rval;
     }
 
-void docFreeIntermediaryDocument(	BufferDocument *		bd )
+void docFreeIntermediaryDocument(	struct BufferDocument *		bd )
     {
     bd->bdPropertyLists= (DocumentPropertyLists *)0;
 

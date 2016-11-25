@@ -14,6 +14,7 @@
 #   include	"docDocumentFieldList.h"
 #   include	"docBookmarkField.h"
 #   include	"docDocumentField.h"
+#   include	"docFieldKind.h"
 
 /************************************************************************/
 /*									*/

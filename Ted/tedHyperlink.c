@@ -7,16 +7,20 @@
 #   include	"tedConfig.h"
 
 #   include	<stddef.h>
-#   include	<stdio.h>
 
 #   include	"tedEdit.h"
-#   include	"tedDocFront.h"
+#   include	<tedDocFront.h>
 #   include	"tedDocument.h"
 #   include	"tedSelect.h"
 #   include	<docField.h>
 #   include	<docHyperlinkField.h>
 #   include	<docBookmarkField.h>
 #   include	<docEditCommand.h>
+#   include	<docFieldKind.h>
+#   include	<appEditDocument.h>
+#   include	<docFieldInstructions.h>
+#   include	<docDocumentFieldList.h>
+#   include	<docBuf.h>
 
 #   include	<appDebugon.h>
 
@@ -26,13 +30,13 @@ int tedDocSetHyperlink(	EditDocument *		ed,
     {
     int				rval= 0;
     TedDocument *		td= (TedDocument *)ed->edPrivateData;
-    BufferDocument *		bd= td->tdDocument;
+    struct BufferDocument *	bd= td->tdDocument;
 
     DocumentSelection		ds;
     SelectionGeometry		sg;
     SelectionDescription	sd;
 
-    DocumentField *		dfHyperlink;
+    struct DocumentField *	dfHyperlink;
 
     TedEditOperation		teo;
     EditOperation *		eo= &(teo.teoEo);
@@ -46,7 +50,7 @@ int tedDocSetHyperlink(	EditDocument *		ed,
 
     docInitFieldInstructions( &fi );
 
-    utilInitTextAttribute( &taSet );
+    textInitTextAttribute( &taSet );
     utilPropMaskClear( &taSetMask );
 
     tedStartEditOperation( &teo, &sg, &sd, ed, fullWidth, traced );
@@ -85,7 +89,7 @@ int tedDocRemoveHyperlink(	EditDocument *		ed,
 				int			traced )
     {
     TedDocument *		td= (TedDocument *)ed->edPrivateData;
-    BufferDocument *		bd= td->tdDocument;
+    struct BufferDocument *		bd= td->tdDocument;
 
     PropertyMask		taSetMask;
     TextAttribute		taSet;
@@ -97,12 +101,12 @@ int tedDocRemoveHyperlink(	EditDocument *		ed,
 						&taSetMask, &taSet, traced );
     }
 
-int tedDocFindBookmarkField(	DocumentField **		pDf,
+int tedDocFindBookmarkField(	struct DocumentField **		pDf,
 				EditDocument *			ed,
 				const MemoryBuffer *		markName )
     {
     TedDocument *		td= (TedDocument *)ed->edPrivateData;
-    BufferDocument *		bd= td->tdDocument;
+    struct BufferDocument *		bd= td->tdDocument;
 
     return docFindBookmarkField( pDf, &(bd->bdFieldList), markName );
     }
@@ -113,9 +117,9 @@ int tedDocSetBookmark(	EditDocument *		ed,
     {
     int				rval= 0;
     TedDocument *		td= (TedDocument *)ed->edPrivateData;
-    BufferDocument *		bd= td->tdDocument;
+    struct BufferDocument *		bd= td->tdDocument;
 
-    DocumentField *		dfBookmark;
+    struct DocumentField *	dfBookmark;
 
     TedEditOperation		teo;
     EditOperation *		eo= &(teo.teoEo);
@@ -124,7 +128,7 @@ int tedDocSetBookmark(	EditDocument *		ed,
     SelectionGeometry		sg;
     SelectionDescription	sd;
 
-    DocumentField *		dfFound;
+    struct DocumentField *	dfFound;
     FieldInstructions		fi;
 
     const int			fullWidth= 0;

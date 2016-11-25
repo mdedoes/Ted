@@ -2,12 +2,21 @@
 
 #   include	"docBuf.h"
 #   include	"docTreeNode.h"
-#   include	"docDebug.h"
 #   include	"docShape.h"
 #   include	"docFind.h"
 #   include	<docObjectProperties.h>
 #   include	<docTextParticule.h>
+#   include	<docObject.h>
+#   include	"docSelect.h"
+#   include	"docObjects.h"
+
+#   include	"docDebug.h"
 #   include	<appDebugon.h>
+
+# ifdef __GNUC__
+# pragma GCC diagnostic push
+# pragma GCC diagnostic ignored "-Wunused-parameter"
+# endif
 
 static int docListObject( int n, void * vio, void * through )
     {
@@ -44,19 +53,23 @@ static int docListObject( int n, void * vio, void * through )
     if  ( size > 0 )
 	{
 	appDebug( "    OBJ BYTES: \"%.*s\"\n", size,
-				utilMemoryBufferGetString( &(io->ioObjectData) ) );
+			    utilMemoryBufferGetString( &(io->ioObjectData) ) );
 	}
 
     if  ( ressize > 0 )
 	{
 	appDebug( "    RES BYTES: \"%.*s\"\n", ressize,
-				utilMemoryBufferGetString( &(io->ioResultData) ) );
+			    utilMemoryBufferGetString( &(io->ioResultData) ) );
 	}
 
     return 0;
     }
 
-void docListObjects( BufferDocument * bd )
+# ifdef __GNUC__
+# pragma GCC diagnostic pop
+# endif
+
+void docListObjects( struct BufferDocument * bd )
     {
     utilPagedListForAll( &(bd->bdObjectList.iolPagedList),
 						docListObject, (void *)0 );
@@ -80,6 +93,11 @@ static void docListShape(	int				indent,
 	}
     }
 
+# ifdef __GNUC__
+# pragma GCC diagnostic push
+# pragma GCC diagnostic ignored "-Wunused-parameter"
+# endif
+
 static int docListShapeX(	int				n,
 				void *				vds,
 				void *				through )
@@ -88,7 +106,11 @@ static int docListShapeX(	int				n,
     return 0;
     }
 
-void docListShapes(		BufferDocument *		bd )
+# ifdef __GNUC__
+# pragma GCC diagnostic pop
+# endif
+
+void docListShapes(		struct BufferDocument *		bd )
     {
     DrawingShapeList *	dsl= &(bd->bdShapeList);
     PagedList *		pl= &(dsl->dslPagedList);
@@ -97,34 +119,36 @@ void docListShapes(		BufferDocument *		bd )
     }
 
 static int docFindParaObjects(	DocumentSelection *		ds,
-				BufferItem *			paraBi,
-				BufferDocument *		bd,
+				struct BufferItem *			paraNode,
+				struct BufferDocument *		bd,
+				struct DocumentTree *			tree,
 				const DocumentPosition *	dpFrom,
 				void *				through );
 
-static void docListShapeObjects(	const DrawingShape *	dshp,
-					BufferDocument *	bd )
+static void docListShapeObjects(	DrawingShape *		dshp,
+					struct BufferDocument *	bd )
     {
     DocumentSelection		ds;
 
     if  ( docHeadPosition( &(ds.dsHead), dshp->dsDocumentTree.dtRoot ) )
 	{ LDEB(1); return;	}
 
-    docFindFindNextInCurrentTree( &ds, &(ds.dsHead), bd,
+    docFindFindNextInCurrentTree( &ds, &(ds.dsHead),
+					    bd, &(dshp->dsDocumentTree),
 					    docFindParaObjects, (void *)0 );
     }
 
-static void docListParaObjects(	const BufferItem *	paraBi,
-				BufferDocument *	bd )
+static void docListParaObjects(	const struct BufferItem *	paraNode,
+				struct BufferDocument *	bd )
     {
-    const TextParticule *	tp=  paraBi->biParaParticules;
+    const TextParticule *	tp=  paraNode->biParaParticules;
     int				part;
 
-    for ( part= 0; part < paraBi->biParaParticuleCount; tp++, part++ )
+    for ( part= 0; part < paraNode->biParaParticuleCount; tp++, part++ )
 	{
 	const InsertedObject *	io;
 
-	if  ( tp->tpKind != DOCkindOBJECT )
+	if  ( tp->tpKind != TPkindOBJECT )
 	    { continue;	}
 
 	io= docGetObject( bd, tp->tpObjectNumber );
@@ -139,7 +163,7 @@ static void docListParaObjects(	const BufferItem *	paraBi,
 		dshp= io->ioDrawingShape;
 
 		appDebug( "%s - OBJECT %4d: %s %4d\n",
-			docTreeTypeStr( paraBi->biTreeType ),
+			docTreeTypeStr( paraNode->biTreeType ),
 			tp->tpObjectNumber, docObjectKindStr( io->ioKind ),
 			dshp->dsShapeNumber );
 
@@ -156,7 +180,7 @@ static void docListParaObjects(	const BufferItem *	paraBi,
 			dshp= io->ioDrawingShape;
 
 			appDebug( "%s - OBJECT %4d: %s -> %s %4d\n",
-			    docTreeTypeStr( paraBi->biTreeType ),
+			    docTreeTypeStr( paraNode->biTreeType ),
 			    tp->tpObjectNumber,
 			    docObjectKindStr( io->ioKind ),
 			    docObjectKindStr( io->ioResultKind ),
@@ -170,7 +194,7 @@ static void docListParaObjects(	const BufferItem *	paraBi,
 
 		    default:
 			appDebug( "%s - OBJECT %4d: %s -> %s\n",
-			    docTreeTypeStr( paraBi->biTreeType ),
+			    docTreeTypeStr( paraNode->biTreeType ),
 			    tp->tpObjectNumber,
 			    docObjectKindStr( io->ioKind ),
 			    docObjectKindStr( io->ioResultKind ) );
@@ -180,7 +204,7 @@ static void docListParaObjects(	const BufferItem *	paraBi,
 
 	    default:
 		appDebug( "%s - OBJECT %4d: %s\n",
-			docTreeTypeStr( paraBi->biTreeType ),
+			docTreeTypeStr( paraNode->biTreeType ),
 			tp->tpObjectNumber, docObjectKindStr( io->ioKind ) );
 		break;
 	    }
@@ -189,17 +213,27 @@ static void docListParaObjects(	const BufferItem *	paraBi,
     return;
     }
 
+# ifdef __GNUC__
+# pragma GCC diagnostic push
+# pragma GCC diagnostic ignored "-Wunused-parameter"
+# endif
+
 static int docFindParaObjects(	DocumentSelection *		ds,
-				BufferItem *			paraBi,
-				BufferDocument *		bd,
+				struct BufferItem *			paraNode,
+				struct BufferDocument *		bd,
+				struct DocumentTree *			tree,
 				const DocumentPosition *	dpFrom,
 				void *				through )
     {
-    docListParaObjects( paraBi, bd );
+    docListParaObjects( paraNode, bd );
     return 1;
     }
 
-void docListDocumentObjects(	BufferDocument *	bd )
+# ifdef __GNUC__
+# pragma GCC diagnostic pop
+# endif
+
+void docListDocumentObjects(	struct BufferDocument *	bd )
     {
     DocumentSelection		ds;
 

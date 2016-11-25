@@ -8,7 +8,7 @@
 #   define	DOC_PROPERTY_ADMIN_H
 
 #   include	<utilNumberedPropertiesAdmin.h>
-#   include	<utilDocFontList.h>
+#   include	<fontDocFontList.h>
 #   include	<utilPalette.h>
 
 #   include	"docListAdmin.h"
@@ -21,6 +21,8 @@ typedef struct DocumentPropertyLists
     NumberedPropertiesList	dplFramePropertyList;
     NumberedPropertiesList	dplTabStopListList;
     NumberedPropertiesList	dplCellPropertyList;
+    NumberedPropertiesList	dplRowPropertyList;
+    NumberedPropertiesList	dplParaPropertyList;
 
     DocumentFontList		dplFontList;
     ListAdmin			dplListAdmin;

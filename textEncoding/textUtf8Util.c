@@ -29,6 +29,9 @@ int textMirrorUtf8String(	char *			to,
     {
     int		done= 0;
 
+    if  ( len < 0 )
+	{ LDEB(len); return -1;	}
+
     to += len;
 
     while( done < len )
@@ -41,7 +44,8 @@ int textMirrorUtf8String(	char *			to,
 	if  ( step < 1 )
 	    { LDEB(step); return -1;	}
 
-	to -= step;
+	if  ( done+ step > len )
+	    { LXLLDEB(done,symbol,step,len); break;	}
 
 	mirror= ucdToMirror( symbol );
 	if  ( mirror != symbol )
@@ -53,9 +57,11 @@ int textMirrorUtf8String(	char *			to,
 	    if  ( step2 != step )
 		{ LLDEB(step2,step); return -1;	}
 
+	    to -= step2;
 	    memcpy( to, buf, step2 );
 	    }
 	else{
+	    to -= step;
 	    memcpy( to, from, step );
 	    }
 

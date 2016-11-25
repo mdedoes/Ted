@@ -6,11 +6,20 @@
 
 #   include	"docBufConfig.h"
 
-#   include	<appDebugon.h>
-
 #   include	"docBuf.h"
 #   include	"docTreeNode.h"
 #   include	<docTreeType.h>
+#   include	"docSectHeadersFooters.h"
+#   include	"docHeaderFooterScopes.h"
+#   include	"docPageGrid.h"
+#   include	<docParaProperties.h>
+#   include	"docSelect.h"
+#   include	<docDocumentProperties.h>
+#   include	<docSectProperties.h>
+#   include	"docAttributes.h"
+
+#   include	"docDebug.h"
+#   include	<appDebugon.h>
 
 /************************************************************************/
 /*									*/
@@ -28,6 +37,7 @@ const int DOC_HeaderScopes[PAGES__COUNT]=
     DOCinRIGHT_HEADER,	/*  PAGES_ALL_PAGES		*/
     DOCinRIGHT_HEADER,	/*  PAGES_ODD_PAGES		*/
     DOCinLEFT_HEADER,	/*  PAGES_EVEN_PAGES		*/
+    DOCinLAST_HEADER,	/*  PAGES_LAST_PAGE		*/
     };
 
 const int DOC_FooterScopes[PAGES__COUNT]=
@@ -37,6 +47,7 @@ const int DOC_FooterScopes[PAGES__COUNT]=
     DOCinRIGHT_FOOTER,	/*  PAGES_ALL_PAGES		*/
     DOCinRIGHT_FOOTER,	/*  PAGES_ODD_PAGES		*/
     DOCinLEFT_FOOTER,	/*  PAGES_EVEN_PAGES		*/
+    DOCinLAST_FOOTER,	/*  PAGES_LAST_PAGE		*/
     };
 
 /************************************************************************/
@@ -46,8 +57,8 @@ const int DOC_FooterScopes[PAGES__COUNT]=
 /************************************************************************/
 
 static int docCheckTreeIsEmpty(	int *			pIsEmpty,
-				const BufferDocument *	bd,
-				const DocumentTree *	dt )
+				const struct BufferDocument *	bd,
+				const struct DocumentTree *	dt )
     {
     int			isEmpty= 1;
 
@@ -63,7 +74,7 @@ static int docCheckTreeIsEmpty(	int *			pIsEmpty,
 	if  ( ! docNextPosition( &dpNext ) )
 	    { isEmpty= 0;	}
 	else{
-	    const ParagraphProperties *	pp= &(dpBegin.dpNode->biParaProperties);
+	    const ParagraphProperties *	pp= dpBegin.dpNode->biParaProperties;
 
 	    if  ( pp->ppTableNesting > 0 )
 		{ isEmpty= 0;	}
@@ -98,17 +109,18 @@ static int docCheckTreeIsEmpty(	int *			pIsEmpty,
 /*									*/
 /************************************************************************/
 
-int docWhatPageHeader(	DocumentTree **		pTree,
-			int *			pIsEmpty,
-			const BufferItem *	bodySectNode,
-			int			page,
-			const BufferDocument *	bd )
+static int docWhatPageHeader(	struct DocumentTree **		pTree,
+				int *			pIsEmpty,
+				const struct BufferItem *	bodySectNode,
+				int			page,
+				const struct BufferDocument *	bd,
+				int			mindEndpg )
     {
-    const DocumentProperties *	dp= &(bd->bdProperties);
-    const SectionProperties *	sp= &(bodySectNode->biSectProperties);
+    const DocumentProperties *	dp= bd->bdProperties;
+    const SectionProperties *	sp= bodySectNode->biSectProperties;
 
     SectHeadersFooters *	shf= bodySectNode->biSectHeadersFooters;
-    DocumentTree *		tree= (DocumentTree *)0;
+    struct DocumentTree *		tree= (struct DocumentTree *)0;
 
     if  ( ! shf )
 	{ XDEB(shf); return -1;	}
@@ -120,6 +132,17 @@ int docWhatPageHeader(	DocumentTree **		pTree,
 	if  ( pTree )
 	    { *pTree= tree;	}
 	return DOCinFIRST_HEADER;
+	}
+
+    if  ( mindEndpg					&&
+	  sp->spHasEndPage				&&
+	  page == bodySectNode->biBelowPosition.lpPage	)
+	{
+	tree= &(shf->shfLastPageHeader);
+	docCheckTreeIsEmpty( pIsEmpty, bd, tree );
+	if  ( pTree )
+	    { *pTree= tree;	}
+	return DOCinLAST_HEADER;
 	}
 
     if  ( page % 2 && dp->dpHasFacingPages )
@@ -139,17 +162,18 @@ int docWhatPageHeader(	DocumentTree **		pTree,
 	}
     }
 
-int docWhatPageFooter(	DocumentTree **		pTree,
-			int *			pIsEmpty,
-			const BufferItem *	bodySectNode,
-			int			page,
-			const BufferDocument *	bd )
+static int docWhatPageFooter(	struct DocumentTree **		pTree,
+				int *			pIsEmpty,
+				const struct BufferItem *	bodySectNode,
+				int			page,
+				const struct BufferDocument *	bd,
+				int			mindEndpg )
     {
-    const DocumentProperties *	dp= &(bd->bdProperties);
-    const SectionProperties *	sp= &(bodySectNode->biSectProperties);
+    const DocumentProperties *	dp= bd->bdProperties;
+    const SectionProperties *	sp= bodySectNode->biSectProperties;
 
     SectHeadersFooters *	shf= bodySectNode->biSectHeadersFooters;
-    DocumentTree *		tree= (DocumentTree *)0;
+    struct DocumentTree *		tree= (struct DocumentTree *)0;
 
     if  ( ! shf )
 	{ XDEB(shf); return -1;	}
@@ -161,6 +185,17 @@ int docWhatPageFooter(	DocumentTree **		pTree,
 	if  ( pTree )
 	    { *pTree= tree;	}
 	return DOCinFIRST_FOOTER;
+	}
+
+    if  ( mindEndpg					&&
+	  sp->spHasEndPage				&&
+	  page == bodySectNode->biBelowPosition.lpPage	)
+	{
+	tree= &(shf->shfLastPageFooter);
+	docCheckTreeIsEmpty( pIsEmpty, bd, tree );
+	if  ( pTree )
+	    { *pTree= tree;	}
+	return DOCinLAST_FOOTER;
 	}
 
     if  ( page % 2 && dp->dpHasFacingPages )
@@ -178,6 +213,54 @@ int docWhatPageFooter(	DocumentTree **		pTree,
 	    { *pTree= tree;	}
 	return DOCinRIGHT_FOOTER;
 	}
+    }
+
+int docLayoutWhatPageHeader(	struct DocumentTree **		pTree,
+				int *			pIsEmpty,
+				const struct BufferItem *	bodySectNode,
+				int			page,
+				const struct BufferDocument *	bd )
+    {
+    const int	mindEndpg= 0;
+
+    return docWhatPageHeader( pTree, pIsEmpty, bodySectNode,
+						    page, bd, mindEndpg );
+    }
+
+int docDrawWhatPageHeader(	struct DocumentTree **		pTree,
+				int *			pIsEmpty,
+				const struct BufferItem *	bodySectNode,
+				int			page,
+				const struct BufferDocument *	bd )
+    {
+    const int	mindEndpg= 1;
+
+    return docWhatPageHeader( pTree, pIsEmpty, bodySectNode,
+						    page, bd, mindEndpg );
+    }
+
+int docLayoutWhatPageFooter(	struct DocumentTree **		pTree,
+				int *			pIsEmpty,
+				const struct BufferItem *	bodySectNode,
+				int			page,
+				const struct BufferDocument *	bd )
+    {
+    const int	mindEndpg= 0;
+
+    return docWhatPageFooter( pTree, pIsEmpty, bodySectNode,
+						    page, bd, mindEndpg );
+    }
+
+int docDrawWhatPageFooter(	struct DocumentTree **		pTree,
+				int *			pIsEmpty,
+				const struct BufferItem *	bodySectNode,
+				int			page,
+				const struct BufferDocument *	bd )
+    {
+    const int	mindEndpg= 1;
+
+    return docWhatPageFooter( pTree, pIsEmpty, bodySectNode,
+						    page, bd, mindEndpg );
     }
 
 /************************************************************************/
@@ -211,8 +294,12 @@ int docWhatPagesForHeaderFooter( const DocumentProperties *	dp,
 		}
 	    /*unreachable*/
 
+	case DOCinLAST_HEADER:
+	case DOCinLAST_FOOTER:
+	    return PAGES_LAST_PAGE;
+
 	default:
-	    LDEB(treeType);
+	    LSDEB(treeType,docTreeTypeStr(treeType));
 	    return -1;
 	}
     }
@@ -223,23 +310,20 @@ int docWhatPagesForHeaderFooter( const DocumentProperties *	dp,
 /*									*/
 /************************************************************************/
 
-DocumentTree *	docSectionHeaderFooter(
+struct DocumentTree *	docSectionHeaderFooter(
 				const BufferItem *		bodySectNode,
 				unsigned char *			pApplies,
 				const DocumentProperties *	dp,
 				int				treeType )
     {
-    const SectionProperties *	sp= &(bodySectNode->biSectProperties);
+    const SectionProperties *	sp= bodySectNode->biSectProperties;
     SectHeadersFooters *	shf= bodySectNode->biSectHeadersFooters;
 
     if  ( ! shf )
-	{ XDEB(shf); return (DocumentTree *)0;	}
+	{ XDEB(shf); return (struct DocumentTree *)0;	}
 
     switch( treeType )
 	{
-	case DOCinBODY:
-	    LDEB(treeType); return (DocumentTree *)0;
-
 	case DOCinFIRST_HEADER:
 	    if  ( pApplies )
 		{ *pApplies= sp->spHasTitlePage;	}
@@ -254,6 +338,11 @@ DocumentTree *	docSectionHeaderFooter(
 	    if  ( pApplies )
 		{ *pApplies= 1;	}
 	    return &(shf->shfRightPageHeader);
+
+	case DOCinLAST_HEADER:
+	    if  ( pApplies )
+		{ *pApplies= sp->spHasEndPage;	}
+	    return &(shf->shfLastPageHeader);
 
 	case DOCinFIRST_FOOTER:
 	    if  ( pApplies )
@@ -270,17 +359,22 @@ DocumentTree *	docSectionHeaderFooter(
 		{ *pApplies= 1;	}
 	    return &(shf->shfRightPageFooter);
 
+	case DOCinLAST_FOOTER:
+	    if  ( pApplies )
+		{ *pApplies= sp->spHasEndPage;	}
+	    return &(shf->shfLastPageFooter);
+
 	default:
-	    LDEB(treeType); return (DocumentTree *)0;
+	    LDEB(treeType); return (struct DocumentTree *)0;
 	}
     }
 
-int docSectionHasHeaderFooter(	const BufferItem *		bodySectNode,
+int docSectionHasHeaderFooter(	const struct BufferItem *	bodySectNode,
 				unsigned char *			pApplies,
 				const DocumentProperties *	dp,
 				int				treeType )
     {
-    DocumentTree *	dt;
+    struct DocumentTree *	dt;
 
     dt= docSectionHeaderFooter( bodySectNode, pApplies, dp, treeType );
     if  ( ! dt || ! dt->dtRoot )
@@ -299,23 +393,23 @@ int docSectionHasHeaderFooter(	const BufferItem *		bodySectNode,
 
 int docSectionHeaderFooterFirstPage(
 				int *				pUsedByDocument,
-				const BufferItem *		bodySectNode,
+				const struct BufferItem *	bodySectNode,
 				int				treeType,
 				const DocumentProperties *	dp )
     {
-    const SectionProperties *	sp= &(bodySectNode->biSectProperties);
+    const SectionProperties *	sp= bodySectNode->biSectProperties;
     int				topPage= bodySectNode->biTopPosition.lpPage;
     int				belowPage= bodySectNode->biBelowPosition.lpPage;
     int				page;
 
-    const BufferItem *		prevBi= (const BufferItem *)0;
+    const struct BufferItem *		prevNode= (const struct BufferItem *)0;
 
     if  ( bodySectNode->biNumberInParent > 0 )
 	{
-	prevBi= bodySectNode->biParent->biChildren[
+	prevNode= bodySectNode->biParent->biChildren[
 					    bodySectNode->biNumberInParent- 1];
 
-	if  ( prevBi->biBelowPosition.lpPage >= belowPage )
+	if  ( prevNode->biBelowPosition.lpPage >= belowPage )
 	    { *pUsedByDocument= 0; return -1;	}
 	}
 
@@ -329,9 +423,8 @@ int docSectionHeaderFooterFirstPage(
 	    if  ( ! sp->spHasTitlePage )
 		{ *pUsedByDocument= 0; return -1;	}
 
-	    if  ( prevBi && prevBi->biBelowPosition.lpPage >= topPage )
-		{ *pUsedByDocument= 0; return topPage;
-		}
+	    if  ( prevNode && prevNode->biBelowPosition.lpPage >= topPage )
+		{ *pUsedByDocument= 0; return topPage;	}
 	    page= topPage;
 	    break;
 
@@ -367,6 +460,11 @@ int docSectionHeaderFooterFirstPage(
 		}
 	    break;
 
+	case DOCinLAST_HEADER:
+	case DOCinLAST_FOOTER:
+	    page= bodySectNode->biBelowPosition.lpPage;
+	    break;
+
 	default:
 	    LDEB(treeType); *pUsedByDocument= 0; return -1;
 	}
@@ -384,26 +482,25 @@ int docSectionHeaderFooterFirstPage(
 /*									*/
 /************************************************************************/
 
-int docGetHeaderFooter(		DocumentTree **			pEi,
-				BufferItem **			pBodySectNode,
+int docGetHeaderFooter(		struct DocumentTree **		pTree,
+				struct BufferItem **		pBodySectNode,
 				const DocumentPosition *	dp,
-				BufferDocument *		bd,
+				struct BufferDocument *		bd,
 				int				treeType )
     {
-    DocumentTree *	eiDp;
-    DocumentTree *	eiHdFt;
-    BufferItem *	bodySectNode;
-    unsigned char	applies= 1;
+    struct DocumentTree *	headerFooterTree;
+    struct BufferItem *		bodySectNode;
+    unsigned char		applies= 1;
 
-    if  ( docGetTreeOfNode( &eiDp, &bodySectNode, bd, dp->dpNode ) )
+    if  ( docGetTreeOfNode( (DocumentTree **)0, &bodySectNode, bd, dp->dpNode ) )
 	{ LDEB(1); return -1;	}
 
-    eiHdFt= docSectionHeaderFooter( bodySectNode, &applies,
-					    &(bd->bdProperties), treeType );
-    if  ( ! eiHdFt )
-	{ XDEB(eiHdFt); return -1;	}
+    headerFooterTree= docSectionHeaderFooter( bodySectNode, &applies,
+					    bd->bdProperties, treeType );
+    if  ( ! headerFooterTree )
+	{ XDEB(headerFooterTree); return -1;	}
 
-    *pEi= eiHdFt; *pBodySectNode= bodySectNode; return 0;
+    *pTree= headerFooterTree; *pBodySectNode= bodySectNode; return 0;
     }
 
 /************************************************************************/
@@ -414,33 +511,33 @@ int docGetHeaderFooter(		DocumentTree **			pEi,
 
 int docInquireHeadersFooters(	int *			pDocHasHeaders,
 				int *			pDocHasFooters,
-				const BufferDocument *	bd )
+				const struct BufferDocument *	bd )
     {
     int			i;
     int			hasPageHeader= 0;
     int			hasPageFooter= 0;
 
-    const BufferItem *	bodyBi= bd->bdBody.dtRoot;
+    const struct BufferItem *	bodyNode= bd->bdBody.dtRoot;
 
-    for ( i= 0; i < bodyBi->biChildCount; i++ )
+    for ( i= 0; i < bodyNode->biChildCount; i++ )
 	{
 	int			j;
-	BufferItem *		sectBi= bodyBi->biChildren[i];
+	struct BufferItem *		sectNode= bodyNode->biChildren[i];
 
 	for ( j= 0; j < PAGES__COUNT; j++ )
 	    {
-	    DocumentTree *	dt;
+	    struct DocumentTree *	dt;
 	    unsigned char	applies;
 
 	    applies= 1;
-	    dt= docSectionHeaderFooter( sectBi, &applies,
-				    &(bd->bdProperties), DOC_HeaderScopes[j] );
+	    dt= docSectionHeaderFooter( sectNode, &applies,
+				    bd->bdProperties, DOC_HeaderScopes[j] );
 	    if  ( dt && dt->dtRoot && applies )
 		{ hasPageHeader= 1;	}
 
 	    applies= 1;
-	    dt= docSectionHeaderFooter( sectBi, &applies,
-				    &(bd->bdProperties), DOC_FooterScopes[j] );
+	    dt= docSectionHeaderFooter( sectNode, &applies,
+				    bd->bdProperties, DOC_FooterScopes[j] );
 	    if  ( dt && dt->dtRoot && applies )
 		{ hasPageFooter= 1;	}
 	    }
@@ -460,16 +557,16 @@ int docInquireHeadersFooters(	int *			pDocHasHeaders,
 
 static int DOC_TryPageOffsets[]= { 0, 1, -1, 2 };
 
-int docHeaderFooterPage(		const BufferDocument *	bd,
-					const BufferItem *	bodySectNode,
-					int			currentPage,
-					int			treeType )
+int docHeaderFooterPage(	const struct BufferDocument *	bd,
+				const struct BufferItem *	bodySectNode,
+				int				currentPage,
+				int				treeType )
     {
     switch( treeType )
 	{
 	int		isEmpty;
 	int		i;
-	DocumentTree *	eiTry;
+	struct DocumentTree *	eiTry;
 	int		ttForPg;
 
 	case DOCinFIRST_HEADER:
@@ -487,7 +584,7 @@ int docHeaderFooterPage(		const BufferDocument *	bd,
 		      pg > bodySectNode->biBelowPosition.lpPage	)
 		    { continue;	}
 
-		ttForPg= docWhatPageHeader( &eiTry, &isEmpty,
+		ttForPg= docDrawWhatPageHeader( &eiTry, &isEmpty,
 							bodySectNode, pg, bd );
 		if  ( ttForPg == treeType )
 		    { return pg;	}
@@ -504,11 +601,18 @@ int docHeaderFooterPage(		const BufferDocument *	bd,
 		      pg > bodySectNode->biBelowPosition.lpPage	)
 		    { continue;	}
 
-		ttForPg= docWhatPageFooter( &eiTry, &isEmpty,
+		ttForPg= docDrawWhatPageFooter( &eiTry, &isEmpty,
 							bodySectNode, pg, bd );
 		if  ( ttForPg == treeType )
 		    { return pg;	}
 		}
+	    break;
+
+	case DOCinLAST_HEADER:
+	case DOCinLAST_FOOTER:
+	    if  ( bodySectNode->biBelowPosition.lpPage >
+				    bodySectNode->biTopPosition.lpPage )
+		{ return bodySectNode->biBelowPosition.lpPage;	}
 	    break;
 
 	default:
@@ -525,19 +629,22 @@ int docHeaderFooterPage(		const BufferDocument *	bd,
 /*									*/
 /************************************************************************/
 
-void docInvalidateSectHeaderFooterLayout(	BufferItem *	sectBi )
+void docInvalidateSectHeaderFooterLayout(
+				struct BufferItem *	sectNode )
     {
-    SectHeadersFooters *	shf= sectBi->biSectHeadersFooters;
+    SectHeadersFooters *	shf= sectNode->biSectHeadersFooters;
 
     if  ( shf )
 	{
 	docInvalidateTreeLayout( &(shf->shfFirstPageHeader) );
 	docInvalidateTreeLayout( &(shf->shfLeftPageHeader) );
 	docInvalidateTreeLayout( &(shf->shfRightPageHeader) );
+	docInvalidateTreeLayout( &(shf->shfLastPageHeader) );
 
 	docInvalidateTreeLayout( &(shf->shfFirstPageFooter) );
 	docInvalidateTreeLayout( &(shf->shfLeftPageFooter) );
 	docInvalidateTreeLayout( &(shf->shfRightPageFooter) );
+	docInvalidateTreeLayout( &(shf->shfLastPageFooter) );
 	}
 
     return;
@@ -549,16 +656,18 @@ void docInvalidateSectHeaderFooterLayout(	BufferItem *	sectBi )
 /*									*/
 /************************************************************************/
 
-void docCleanSectHeadersFooters( BufferDocument *		bd,
+void docCleanSectHeadersFooters( struct BufferDocument *		bd,
 				SectHeadersFooters *		shf )
     {
     docCleanDocumentTree( bd, &(shf->shfFirstPageHeader) );
     docCleanDocumentTree( bd, &(shf->shfLeftPageHeader) );
     docCleanDocumentTree( bd, &(shf->shfRightPageHeader) );
+    docCleanDocumentTree( bd, &(shf->shfLastPageHeader) );
 
     docCleanDocumentTree( bd, &(shf->shfFirstPageFooter) );
     docCleanDocumentTree( bd, &(shf->shfLeftPageFooter) );
     docCleanDocumentTree( bd, &(shf->shfRightPageFooter) );
+    docCleanDocumentTree( bd, &(shf->shfLastPageFooter) );
 
     return;
     }
@@ -568,8 +677,10 @@ void docInitSectHeadersFooters( SectHeadersFooters *		shf )
     docInitDocumentTree( &(shf->shfFirstPageHeader) );
     docInitDocumentTree( &(shf->shfLeftPageHeader) );
     docInitDocumentTree( &(shf->shfRightPageHeader) );
+    docInitDocumentTree( &(shf->shfLastPageHeader) );
 
     docInitDocumentTree( &(shf->shfFirstPageFooter) );
     docInitDocumentTree( &(shf->shfLeftPageFooter) );
     docInitDocumentTree( &(shf->shfRightPageFooter) );
+    docInitDocumentTree( &(shf->shfLastPageFooter) );
     }

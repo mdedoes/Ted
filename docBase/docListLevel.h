@@ -9,14 +9,15 @@
 #   ifndef	DOC_LIST_LEVEL_H
 #   define	DOC_LIST_LEVEL_H
 
-#   include	<utilPropMask.h>
 #   include	<utilMemoryBuffer.h>
 #   include	<textAttribute.h>
+#   include	<utilPropMask.h>
 
-#   include	"docParaProperties.h"
+struct ParagraphProperties;
 
 typedef enum ListLevelAlignment
     {
+    DOClla_NONE= -1,
     DOCllaLEFT= 0,
     DOCllaCENTER,
     DOCllaRIGHT,
@@ -32,6 +33,42 @@ typedef enum ListLevelFollow
 
     DOCllf_COUNT
     } ListLevelFollow;
+
+/*===*/
+# define	DOCpnDEC	0
+# define	DOCpnUCRM	1
+# define	DOCpnLCRM	2
+# define	DOCpnUCLTR	3
+# define	DOCpnLCLTR	4
+# define	DOCpnORD	5
+# define	DOCpnCARD	6
+# define	DOCpnORDT	7
+
+# define	DOCpnDBNUM	10
+# define	DOCpnDBNUMD	11
+# define	DOCpnAIU	12
+# define	DOCpnIROHA	13
+# define	DOCpnDBNUML	16
+# define	DOCpnDBNUMT	DOCpnDBNUML	/* ? */
+# define	DOCpnDBNUMK	17
+# define	DOCpnCNUM	18
+# define	DOCpnDECD	19
+# define	DOCpnAIUD	20
+# define	DOCpnIROHAD	21
+# define	DOCpnGANADA	24
+# define	DOCpnGBNUM	26
+# define	DOCpnGBNUMD	27
+# define	DOCpnGBNUML	28
+# define	DOCpnGBNUMK	29
+# define	DOCpnZODIAC	30
+# define	DOCpnZODIACD	31
+# define	DOCpnZODIACL	32
+# define	DOCpnCHOSUNG	42
+# define	DOCpnAIUEO	DOCpnAIU	/* ? */
+# define	DOCpnAIUEOD	DOCpnAIUD	/* ? */
+# define	DOCpnBIDIA	46
+# define	DOCpnBIDIB	48
+/*===*/
 
 /************************************************************************/
 /*									*/
@@ -163,7 +200,7 @@ extern int docCopyDocumentListLevel(	ListLevel *		to,
 
 extern int docListLevelSetStyle( ListLevel *			ll,
 				const PropertyMask *		paraMask,
-				const ParagraphProperties *	pp,
+				const struct ParagraphProperties *	pp,
 				const PropertyMask *		textMask,
 				const TextAttribute *		ta );
 

@@ -5,13 +5,14 @@
 /*									*/
 /************************************************************************/
 
-#   include	<sioGeneral.h>
+struct SimpleInputStream;
+struct SimpleOutputStream;
 
-extern SimpleInputStream * sioInUtf8_16Open(
-				    SimpleInputStream * 	sisUtf16,
+extern struct SimpleInputStream * sioInUtf8_16Open(
+				    struct SimpleInputStream * 	sisUtf16,
 				    int				endian );
 
-extern SimpleOutputStream * sioOutUtf8_16Open(
-				    SimpleOutputStream *	sosUtf16,
+extern struct SimpleOutputStream * sioOutUtf8_16Open(
+				    struct SimpleOutputStream *	sosUtf16,
 				    int				endian,
 				    int				bom );

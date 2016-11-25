@@ -177,6 +177,10 @@ int psWriteAfmFile(	SimpleOutputStream *	sos,
 	{
 	sioOutPrintf( sos, "EncodingScheme %s\n", afi->afiEncodingScheme );
 	}
+    else{
+	if  ( afi->afiFontSpecificEncoding )
+	    { sioOutPrintf( sos, "EncodingScheme %s\n", "FontSpecific" ); }
+	}
 
     if  ( afi->afiCapHeight != 0 )
 	{ sioOutPrintf( sos, "CapHeight %d\n", afi->afiCapHeight );	}

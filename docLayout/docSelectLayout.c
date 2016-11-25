@@ -7,14 +7,15 @@
 
 #   include	"docLayoutConfig.h"
 
-#   include	<appDebugon.h>
-
 #   include	<docBuf.h>
-#   include	<docDebug.h>
 #   include	<docTextLine.h>
 #   include	<docTreeNode.h>
 #   include	<docNodeTree.h>
 #   include	"docSelectLayout.h"
+#   include	<docSelect.h>
+
+#   include	<docDebug.h>
+#   include	<appDebugon.h>
 
 /************************************************************************/
 /*									*/
@@ -28,56 +29,52 @@ static int docParaGetFirstInColumn(
 			DocumentPosition *		dp,
 			int *				pLineTop,
 			int *				pPartTop,
-			BufferItem *			paraBi,
+			struct BufferItem *		paraNode,
 			int				lineUpto,
 			int				page,
 			int				column )
     {
     int			i;
-    const TextLine *	tl= paraBi->biParaLines;
+    const TextLine *	tl= paraNode->biParaLines;
 
     for ( i= 0; i < lineUpto; tl++, i++ )
 	{
-	if  ( tl->tlTopPosition.lpPage >= page )
-	    {
-	    if  ( tl->tlTopPosition.lpPage > page )
-		{ break;	}
-	    if  ( tl->tlTopPosition.lpColumn >= column )
-		{ break;	}
-	    }
+	if  ( docCompareLayoutPositionToFrame( &(tl->tlTopPosition),
+							page, column ) >= 0 )
+	    { break;	}
 	}
 
-    if  ( paraBi->biParaLineCount > 0 && i >= paraBi->biParaLineCount )
+    if  ( paraNode->biParaLineCount > 0 && i >= paraNode->biParaLineCount )
 	{
-	tl= paraBi->biParaLines+ paraBi->biParaLineCount- 1;
+	tl= paraNode->biParaLines+ paraNode->biParaLineCount- 1;
 
 	if  ( tl->tlFlags & TLflagBLOCKBREAK )
 	    {
-	    BufferItem *	nextBi= docNextParagraph( paraBi );
+	    struct BufferItem *	nextBi= docNextParagraph( paraNode );
 
 	    if  ( nextBi && nextBi->biParaLineCount > 0 )
-		{ i= 0; paraBi= nextBi; tl= paraBi->biParaLines;	}
+		{ i= 0; paraNode= nextBi; tl= paraNode->biParaLines;	}
 	    }
 	}
 
-    if  ( i >= paraBi->biParaLineCount		||
+    if  ( i >= paraNode->biParaLineCount		||
 	  tl->tlTopPosition.lpPage != page	||
 	  tl->tlTopPosition.lpColumn != column	)
 	{
-	SDEB(docTreeTypeStr(paraBi->biTreeType));
+	SDEB(docTreeTypeStr(paraNode->biTreeType));
 	LLDEB(page,column);
-	LDEB(paraBi->biBelowPosition.lpPage);
-	LDEB(paraBi->biBelowPosition.lpColumn);
-	/*docListNode(0,paraBi);*/
-	LDEB(docNumberOfParagraph(paraBi));
-	LLDEB(i,paraBi->biParaLineCount);
+	LDEB(paraNode->biBelowPosition.lpPage);
+	LDEB(paraNode->biBelowPosition.lpColumn);
+	/*docListNode(0,paraNode);*/
+	LDEB(docNumberOfParagraph(paraNode));
+	LLDEB(i,paraNode->biParaLineCount);
 	return -1;
 	}
 
-    dp->dpNode= paraBi;
+    dp->dpNode= paraNode;
     dp->dpStroff= tl->tlStroff;
 
-    *pLineTop= tl- paraBi->biParaLines;
+    *pLineTop= tl- paraNode->biParaLines;
     *pPartTop= tl->tlFirstParticule;
 
     return 0;
@@ -87,7 +84,7 @@ int docGetFirstInColumnForNode(
 			DocumentPosition *		dp,
 			int *				pLineTop,
 			int *				pPartTop,
-			BufferItem *			node,
+			struct BufferItem *		node,
 			int				page,
 			int				column )
     {
@@ -109,13 +106,10 @@ int docGetFirstInColumnForNode(
 
 	for ( i= 0; i < node->biChildCount; i++ )
 	    {
-	    if  ( node->biChildren[i]->biBelowPosition.lpPage >= page )
-		{
-		if  ( node->biChildren[i]->biBelowPosition.lpPage > page )
-		    { break;	}
-		if  ( node->biChildren[i]->biBelowPosition.lpColumn >= column )
-		    { break;	}
-		}
+	    if  ( docCompareLayoutPositionToFrame(
+			    &(node->biChildren[i]->biBelowPosition),
+			    page, column ) >= 0 )
+		{ break;	}
 	    }
 
 	if  ( i >= node->biChildCount )
@@ -143,7 +137,7 @@ int docGetFirstInColumnForNode(
 int docGetTopOfColumn(	DocumentPosition *		dp,
 			int *				pLineTop,
 			int *				pPartTop,
-			BufferDocument *		bd,
+			struct BufferDocument *		bd,
 			int				page,
 			int				column )
     {
@@ -154,13 +148,13 @@ int docGetTopOfColumn(	DocumentPosition *		dp,
 int docGetLastInColumnForNode(	DocumentPosition *		dp,
 				int *				pLineBot,
 				int *				pPartBot,
-				BufferItem *			nodeIn,
+				struct BufferItem *		nodeIn,
 				int				page,
 				int				column )
     {
     int			i;
     const TextLine *	tl;
-    BufferItem *	node= nodeIn;
+    struct BufferItem *	node= nodeIn;
 
     while( node && node->biLevel != DOClevPARA )
 	{
@@ -171,13 +165,10 @@ int docGetLastInColumnForNode(	DocumentPosition *		dp,
 
 	for ( i= node->biChildCount- 1; i >= 0; i-- )
 	    {
-	    if  ( node->biChildren[i]->biTopPosition.lpPage <= page )
-		{
-		if  ( node->biChildren[i]->biTopPosition.lpPage < page )
-		    { break;	}
-		if  ( node->biChildren[i]->biTopPosition.lpColumn <= column )
-		    { break;	}
-		}
+	    if  ( docCompareLayoutPositionToFrame(
+			    &(node->biChildren[i]->biTopPosition),
+			    page, column ) <= 0 )
+		{ break;	}
 	    }
 
 	if  ( i < 0 )
@@ -199,13 +190,9 @@ int docGetLastInColumnForNode(	DocumentPosition *		dp,
     tl= node->biParaLines+ node->biParaLineCount- 1;
     for ( i= node->biParaLineCount- 1; i >= 0; tl--, i-- )
 	{
-	if  ( tl->tlTopPosition.lpPage <= page )
-	    {
-	    if  ( tl->tlTopPosition.lpPage < page )
-		{ break;	}
-	    if  ( tl->tlTopPosition.lpColumn <= column )
-		{ break;	}
-	    }
+	if  ( docCompareLayoutPositionToFrame( &(tl->tlTopPosition),
+							page, column ) <= 0 )
+	    { break;	}
 	}
 
     if  ( i < 0					||
@@ -234,7 +221,7 @@ int docGetLastInColumnForNode(	DocumentPosition *		dp,
 int docGetBottomOfColumn(
 			DocumentPosition *		dp,
 			int *				pPartBot,
-			BufferDocument *		bd,
+			struct BufferDocument *		bd,
 			int				page,
 			int				column )
     {
@@ -244,3 +231,68 @@ int docGetBottomOfColumn(
 					    bd->bdBody.dtRoot, page, column );
     }
 
+/************************************************************************/
+
+int docParaFindLastLineInFrame(
+			const struct BufferItem *	paraNode,
+			int				lineFrom,
+			const LayoutPosition *		lpThisFrame,
+			const BlockOrigin *		bo )
+    {
+    int			l= lineFrom;
+    int			r= paraNode->biParaLineCount;
+    int			m= ( l+ r )/ 2;
+
+    LayoutPosition	lp;
+
+    if  ( paraNode->biParaLineCount == 0 )
+	{ return paraNode->biParaLineCount;	}
+
+    while( l < m )
+	{
+	docTextLineGetShiftedTop( &lp, bo, &(paraNode->biParaLines[m]) );
+
+	if  ( docCompareLayoutPositionFrames( &lp, lpThisFrame ) > 0 )
+	    { r= m;	}
+	else{ l= m;	}
+
+	m= ( l+ r )/ 2;
+	}
+
+    docTextLineGetShiftedTop( &lp, bo, &(paraNode->biParaLines[m]) );
+    if  ( docCompareLayoutPositionFrames( &lp, lpThisFrame ) > 0 )
+	{ return m- 1;	}
+    else{ return m;	}
+    }
+
+int docParaFindFirstLineInFrame(
+			const struct BufferItem *	paraNode,
+			int				lineFrom,
+			const LayoutPosition *		lpThisFrame,
+			const BlockOrigin *		bo )
+    {
+    int			l= lineFrom;
+    int			r= paraNode->biParaLineCount;
+    int			m= ( l+ r )/ 2;
+
+    LayoutPosition	lp;
+
+    if  ( paraNode->biParaLineCount == 0 )
+	{ return paraNode->biParaLineCount;	}
+
+    while( l < m )
+	{
+	docTextLineGetShiftedTop( &lp, bo, &(paraNode->biParaLines[m]) );
+
+	if  ( docCompareLayoutPositionFrames( lpThisFrame, &lp ) > 0 )
+	    { l= m;	}
+	else{ r= m;	}
+
+	m= ( l+ r )/ 2;
+	}
+
+    docTextLineGetShiftedTop( &lp, bo, &(paraNode->biParaLines[m]) );
+    if  ( docCompareLayoutPositionFrames( lpThisFrame, &lp ) > 0 )
+	{ return m+ 1;	}
+    else{ return m;	}
+    }

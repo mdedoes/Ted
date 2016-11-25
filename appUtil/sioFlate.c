@@ -8,10 +8,11 @@
 #   include	"appUtilConfig.h"
 
 #   include	<stdlib.h>
+#   include	<zlib.h>
 
 #   include	"sioFlate.h"
 #   include	"sioEndian.h"
-#   include	<zlib.h>
+#   include	"sioGeneral.h"
 
 #   include	<appDebugon.h>
 

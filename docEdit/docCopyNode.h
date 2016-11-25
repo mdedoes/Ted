@@ -7,8 +7,13 @@
 #   ifndef		DOC_COPY_NODE_H
 #   define		DOC_COPY_NODE_H
 
-#   include		<docBuf.h>
-#   include		"docDocumentCopyJob.h"
+struct DocumentField;
+struct DocumentCopyJob;
+struct DocumentTree;
+struct SelectionScope;
+struct BufferDocument;
+struct BufferItem;
+struct TextParticule;
 
 /************************************************************************/
 /*									*/
@@ -16,19 +21,22 @@
 /*									*/
 /************************************************************************/
 
-extern int docCopyDocumentTree(		DocumentCopyJob *	dcj,
-					DocumentTree *		eiTo,
-					const SelectionScope *	ssRoot,
-					DocumentTree *		eiFrom );
+extern int docCopyDocumentTree(	struct DocumentCopyJob *	dcj,
+				struct DocumentTree *		treeTo,
+				const struct SelectionScope *	ssRoot,
+				struct DocumentTree *		treeFrom );
 
-extern int docCopySectChildren(		DocumentCopyJob *	dcj,
-					struct BufferItem *	sectBiTo,
-					const struct BufferItem * sectBiFrom );
+extern int docCopyNodeChildren(	struct DocumentCopyJob *	dcj,
+				struct BufferItem *		parentNodeTo,
+				int				to,
+				const struct BufferItem *	parentNodeFrom,
+				int				from,
+				int				n );
 
 extern int docCopyParticules(
-			DocumentCopyJob *		dcj,
-			struct BufferItem *		biTo,
-			const struct BufferItem *	biFrom,
+			struct DocumentCopyJob *	dcj,
+			struct BufferItem *		nodeTo,
+			const struct BufferItem *	nodeFrom,
 			int				partTo,
 			int				partFrom,
 			int				countFrom,
@@ -37,33 +45,36 @@ extern int docCopyParticules(
 
 extern int docCopyParticuleAndData(
 				struct TextParticule **		pTpTo,
-				DocumentCopyJob *		dcj,
-				struct BufferItem *		paraBiTo,
+				struct DocumentCopyJob *	dcj,
+				struct BufferItem *		paraNodeTo,
 				int				partTo,
 				int				stroffTo,
 				int				strlenTo,
-				const struct BufferItem *	paraBiFrom,
 				const struct TextParticule *	tpFrom );
 
-extern int docCopyNote(			DocumentCopyJob *	dcj,
-					DocumentField *		dfTo,
-					const DocumentField *	dfFrom );
+extern int docCopyNote(		struct DocumentCopyJob *	dcj,
+				struct DocumentField *		dfTo,
+				const struct DocumentField *	dfFrom );
 
 extern struct DrawingShape * docCopyDrawingShape(
-					DocumentCopyJob *	dcj,
-					struct DrawingShape *	from );
+				struct DocumentCopyJob *	dcj,
+				struct DrawingShape *		from );
 
 extern struct BufferItem * docCopyNode(
-				DocumentCopyJob *		dcj,
-				struct BufferItem *		parentBiTo,
+				struct DocumentCopyJob *	dcj,
+				struct BufferItem *		parentNodeTo,
 				int				n,
-				const struct BufferItem *	biFrom );
+				const struct BufferItem *	nodeFrom );
 
 extern struct BufferItem * docCopyParaNode(
-				DocumentCopyJob *		dcj,
-				const SelectionScope *		ssRoot,
+				struct DocumentCopyJob *	dcj,
+				const struct SelectionScope *	ssRoot,
 				struct BufferItem *		parentNodeTo,
 				int				n,
 				const struct BufferItem *	paraNodeFrom );
+
+extern int docAppendDocument(	struct BufferDocument *	bdTo,
+				struct BufferDocument *	bdFrom,
+				int			omitSectBreak );
 
 #   endif	/*	DOC_COPY_NODE_H	*/

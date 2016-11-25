@@ -7,7 +7,7 @@
 #   ifndef	UTIL_MB_PRINTF
 #   define	UTIL_MB_PRINTF
 
-#   include	"utilMemoryBuffer.h"
+struct MemoryBuffer;
 
 /************************************************************************/
 /*									*/
@@ -16,12 +16,12 @@
 /************************************************************************/
 
 #ifdef	__GNUC__
-extern int utilMemoryBufferPrintf( MemoryBuffer *	mb,
+extern int utilMemoryBufferPrintf( struct MemoryBuffer *	mb,
 				const char *		format,
 				... )
 				__attribute__ (( format ( printf, 2, 3 ) ));
 #else
-extern int utilMemoryBufferPrintf( MemoryBuffer *	mb,
+extern int utilMemoryBufferPrintf( struct MemoryBuffer *	mb,
 				const char *		format,
 				... );
 #endif

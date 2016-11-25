@@ -8,15 +8,13 @@
 #   include	"tedConfig.h"
 
 #   include	<stddef.h>
-#   include	<stdio.h>
 #   include	<ctype.h>
 
-#   include	"tedApp.h"
 #   include	"tedSelect.h"
 #   include	"tedAppResources.h"
 #   include	"tedLayout.h"
 #   include	"tedEdit.h"
-#   include	"tedDocFront.h"
+#   include	<tedDocFront.h>
 #   include	"tedDocument.h"
 #   include	<docSelectLayout.h>
 #   include	<docRtfTrace.h>
@@ -24,6 +22,10 @@
 #   include	<appQuestion.h>
 #   include	<docEditCommand.h>
 #   include	<docTreeType.h>
+#   include	<appEditApplication.h>
+#   include	<appEditDocument.h>
+#   include	<docBuf.h>
+#   include	<docEditImpl.h>
 
 #   include	<appDebugon.h>
 
@@ -42,7 +44,6 @@ int tedDocInsertHeaderFooter(	EditDocument *		ed,
 				int			treeType,
 				int			traced )
     {
-    TedDocument *		td= (TedDocument *)ed->edPrivateData;
     int				rval = 0;
 
     TedEditOperation		teo;
@@ -51,15 +52,7 @@ int tedDocInsertHeaderFooter(	EditDocument *		ed,
     SelectionGeometry		sg;
     SelectionDescription	sd;
 
-    DocumentTree *		dtHdFt;
-    BufferItem *		bodySectNode;
-
-    BufferItem *		treeParaNode;
-    const int			ownerNumber= -1;
-
-    int				page= -1;
-    const int			column= 0;
-    DocumentPosition		dpNew;
+    struct DocumentTree *	dtHdFt;
 
     const int			fullWidth= 1;
 
@@ -77,38 +70,12 @@ int tedDocInsertHeaderFooter(	EditDocument *		ed,
 	}
 
     /*  2  */
-    if  ( docGetHeaderFooter( &dtHdFt, &bodySectNode, &(eo->eoHeadDp),
-						eo->eoDocument, treeType ) )
-	{ LDEB(treeType); rval= -1; goto ready;	}
+    dtHdFt= docEditInsertHeaderFooter( eo, treeType,
+					    sd.sdTextAttributeNumber,
+					    sg.sgHead.pgTopPosition.lpPage );
+    if  ( ! dtHdFt )
+	{ LXDEB(treeType,dtHdFt); rval= -1; goto ready;	}
 
-    treeParaNode= docMakeExternalParagraph( eo->eoDocument, dtHdFt, treeType,
-			    bodySectNode, ownerNumber,
-			    td->tdSelectionDescription.sdTextAttributeNumber );
-    if  ( ! treeParaNode )
-	{ XDEB(treeParaNode); rval= -1; goto ready;	}
-
-    /*  4  */
-    if  ( docHeadPosition( &dpNew, treeParaNode ) )
-	{ LDEB(1); rval= -1; goto ready;	}
-    docAvoidParaHeadField( &dpNew, (int *)0, eo->eoDocument );
-
-    page= docHeaderFooterPage( eo->eoDocument, bodySectNode,
-				sg.sgHead.pgTopPosition.lpPage, treeType );
-    if  ( page < 0 )
-	{ LDEB(page); rval= -1; goto ready;	}
-
-    docInvalidateTreeLayout( dtHdFt );
-
-    dtHdFt->dtPageSelectedUpon= page;
-    dtHdFt->dtColumnSelectedIn= column;
-
-    eo->eoTree= dtHdFt;
-    docGetSelectionScope( &(eo->eoSelectionScope), bodySectNode );
-    eo->eoReformatNeeded= REFORMAT_BODY_SECT;
-
-    /*  5  */
-    docSetIBarRange( &(eo->eoAffectedRange), &dpNew );
-    docSetIBarRange( &(eo->eoSelectedRange), &dpNew );
     tedEditFinishSelectionTail( &teo );
 
     if  ( teo.teoEditTrace )
@@ -147,10 +114,10 @@ void tedDocEditHeaderFooter(		EditDocument *		ed,
 					int			treeType )
     {
     TedDocument *		td= (TedDocument *)ed->edPrivateData;
-    BufferDocument *		bd= td->tdDocument;
+    struct BufferDocument *	bd= td->tdDocument;
 
-    DocumentTree *		ei;
-    BufferItem *		bodySectNode;
+    struct DocumentTree *	tree;
+    struct BufferItem *		bodySectNode;
 
     DocumentSelection		ds;
     SelectionGeometry		sg;
@@ -165,7 +132,7 @@ void tedDocEditHeaderFooter(		EditDocument *		ed,
     tedSetScreenLayoutContext( &lc, ed );
 
     /*  1  */
-    if  ( tedGetSelection( &ds, &sg, &sd, &ei, &bodySectNode, ed ) )
+    if  ( tedGetSelection( &ds, &sg, &sd, &tree, &bodySectNode, ed ) )
 	{ LDEB(1); return;	}
 
     /*  2  */
@@ -189,11 +156,11 @@ void tedDocEditHeaderFooter(		EditDocument *		ed,
 	}
 
     /*  4  */
-    if  ( docGetHeaderFooter( &ei, &bodySectNode, &(ds.dsHead), bd, treeType ) )
+    if  ( docGetHeaderFooter( &tree, &bodySectNode, &(ds.dsHead), bd, treeType ) )
 	{ LDEB(treeType); return;	}
 
     /*  5  */
-    if  ( ei->dtRoot )
+    if  ( tree->dtRoot )
 	{
 	DocumentPosition	dpNew;
 	const int		lastLine= 0;
@@ -201,10 +168,10 @@ void tedDocEditHeaderFooter(		EditDocument *		ed,
 	int			scrolledX= 0;
 	int			scrolledY= 0;
 
-	ei->dtPageSelectedUpon= page;
-	ei->dtColumnSelectedIn= column;
+	tree->dtPageSelectedUpon= page;
+	tree->dtColumnSelectedIn= column;
 
-	if  ( docHeadPosition( &dpNew, ei->dtRoot ) )
+	if  ( docHeadPosition( &dpNew, tree->dtRoot ) )
 	    { LDEB(1); return;	}
 
 	docAvoidParaHeadField( &dpNew, (int *)0, bd );
@@ -239,10 +206,10 @@ int tedDocDeleteHeaderFooter(		EditDocument *		ed,
     int				rval= 0;
 
     TedDocument *		td= (TedDocument *)ed->edPrivateData;
-    BufferDocument *		bd= td->tdDocument;
+    struct BufferDocument *	bd= td->tdDocument;
 
-    DocumentTree *		tree= (DocumentTree *)0;
-    BufferItem *		bodySectNode;
+    struct DocumentTree *	tree= (struct DocumentTree *)0;
+    struct BufferItem *		bodySectNode;
 
     TedEditOperation		teo;
     EditOperation *		eo= &(teo.teoEo);

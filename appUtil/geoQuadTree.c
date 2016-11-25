@@ -165,11 +165,20 @@ void qtFreeTree(	QuadTree *			qt,
     return;
     }
 
+# ifdef __GNUC__
+# pragma GCC diagnostic push
+# pragma GCC diagnostic ignored "-Wunused-parameter"
+# endif
+
 int qtFreeData(		int		x,
 			int		y,
 			void *		data,
 			void *		through )
     { free( data ); return 0; }
+
+# ifdef __GNUC__
+# pragma GCC diagnostic pop
+# endif
 
 /************************************************************************/
 /*									*/

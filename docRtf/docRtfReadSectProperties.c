@@ -6,14 +6,16 @@
 
 #   include	"docRtfConfig.h"
 
-#   include	<stdio.h>
 #   include	<ctype.h>
 
-#   include	<appDebugon.h>
-
 #   include	"docRtfReaderImpl.h"
+#   include	"docRtfReadTreeStack.h"
 #   include	<docTreeType.h>
 #   include	<docTreeNode.h>
+#   include	<docDocumentTree.h>
+#   include	<docBuf.h>
+
+#   include	<appDebugon.h>
 
 /************************************************************************/
 /*									*/
@@ -23,17 +25,12 @@
 
 int docRtfRememberSectionProperty(	const RtfControlWord *	rcw,
 					int			arg,
-					RtfReader *		rrc )
+					RtfReader *		rr )
     {
-    SectionProperties *		sp= &(rrc->rrcSectionProperties);
+    SectionProperties *		sp= &(rr->rrSectionProperties);
 
-    if  ( rrc->rrcTree						&&
-	  rrc->rrcTree->dtRoot					&&
-	  rrc->rrcTree->dtRoot->biTreeType != DOCinBODY	)
-	{
-	/* SSDEB(docTreeTypeStr(rrc->rrcTree->dtRoot->biTreeType),rcw->rcwWord); */
-	return 0;
-	}
+    if  ( rr->rrTreeStack->rtsSelectionScope.ssTreeType != DOCinBODY )
+	{ return 0; }
 
     switch( rcw->rcwID )
 	{
@@ -41,14 +38,14 @@ int docRtfRememberSectionProperty(	const RtfControlWord *	rcw,
 	    {
 	    const DocumentProperties *	dp;
 
-	    if  ( ! rrc->rrDocument )
-		{ XDEB(rrc->rrDocument); return -1;	}
+	    if  ( ! rr->rrDocument )
+		{ XDEB(rr->rrDocument); return -1;	}
 
-	    dp= &(rrc->rrDocument->bdProperties);
+	    dp= rr->rrDocument->bdProperties;
 
 	    docCleanSectionProperties( sp );
 	    docInitSectionProperties( sp );
-	    rrc->rrcSectionColumn= 0;
+	    rr->rrSectionColumn= 0;
 
 	    sp->spDocumentGeometry= dp->dpGeometry;
 	    sp->spNotesProperties= dp->dpNotesProps;
@@ -56,41 +53,41 @@ int docRtfRememberSectionProperty(	const RtfControlWord *	rcw,
 	    return 0;
 
 	case SPpropSTYLE:
-	    rrc->rrcStyle.dsLevel= DOClevSECT;
+	    rr->rrStyle.dsLevel= DOClevSECT;
 	    break;
 
 	/***/
 	case SPprop_COLUMN_NUMBER:
-	    rrc->rrcSectionColumn= arg- 1;
+	    rr->rrSectionColumn= arg- 1;
 	    return 0;
 
 	case SPprop_COLUMN_WIDTH:
 	    if  ( sp->spColumnCount < 2				||
-		  rrc->rrcSectionColumn < 0			||
-		  rrc->rrcSectionColumn >= sp->spColumnCount	)
+		  rr->rrSectionColumn < 0			||
+		  rr->rrSectionColumn >= sp->spColumnCount	)
 		{
-		/*LLDEB(rrc->rrcSectionColumn,sp->spColumnCount);*/
+		/*LLDEB(rr->rrSectionColumn,sp->spColumnCount);*/
 		return 0;
 		}
 
-	    sp->spColumns[rrc->rrcSectionColumn].scColumnWidthTwips= arg;
+	    sp->spColumns[rr->rrSectionColumn].scColumnWidthTwips= arg;
 	    return 0;
 
 	case SPprop_COLUMN_RIGHT:
 	    if  ( sp->spColumnCount < 2				||
-		  rrc->rrcSectionColumn < 0			||
-		  rrc->rrcSectionColumn >= sp->spColumnCount	)
-		{ LLDEB(rrc->rrcSectionColumn,sp->spColumnCount); return 0; }
+		  rr->rrSectionColumn < 0			||
+		  rr->rrSectionColumn >= sp->spColumnCount	)
+		{ LLDEB(rr->rrSectionColumn,sp->spColumnCount); return 0; }
 
-	    sp->spColumns[rrc->rrcSectionColumn].scSpaceToRightTwips= arg;
+	    sp->spColumns[rr->rrSectionColumn].scSpaceAfterTwips= arg;
 	    return 0;
 	}
 
     if  ( docSetSectionProperty( sp, rcw->rcwID, arg ) < 0 )
-	{ SLDEB(rcw->rcwWord,arg); return -1;	}
+	{ LSLDEB(rr->rrCurrentLine,rcw->rcwWord,arg); return -1;	}
 
-    PROPmaskADD( &(rrc->rrcSectionPropertyMask), rcw->rcwID );
-    PROPmaskADD( &(rrc->rrcStyle.dsSectMask), rcw->rcwID );
+    PROPmaskADD( &(rr->rrcSectionPropertyMask), rcw->rcwID );
+    PROPmaskADD( &(rr->rrStyle.dsSectMask), rcw->rcwID );
 
     return 0;
     }

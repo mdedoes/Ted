@@ -6,16 +6,22 @@
 
 #   include	"docEditConfig.h"
 
-#   include	<stdio.h>
-
-#   include	<appDebugon.h>
-
 #   include	<docBuf.h>
 #   include	<docNodeTree.h>
 #   include	<docField.h>
 #   include	<docParaString.h>
 #   include	<docParaParticules.h>
+#   include	<docDocumentField.h>
+#   include	"docEditOperation.h"
 #   include	"docEdit.h"
+#   include	<docTextParticule.h>
+#   include	<docTreeNode.h>
+#   include	<utilPropMask.h>
+#   include	<docFields.h>
+#   include	<docParaParticuleAdmin.h>
+#   include	<docParaBuilder.h>
+
+#   include	<appDebugon.h>
 
 /************************************************************************/
 /*									*/
@@ -28,57 +34,57 @@
 /*									*/
 /************************************************************************/
 
-static int docFieldInsertEndParticule(
-				BufferDocument *		bd,
-				const DocumentPosition *	dpEnd,
+static int docFieldInsertTailParticule(
+				EditOperation *			eo,
+				const DocumentPosition *	dpTail,
 				int				part1,
 				int *				pTailPart,
 				int				fieldNumber,
 				const PropertyMask *		taSetMask,
-				const TextAttribute *		taSet )
+				const struct TextAttribute *	taSet )
     {
     TextParticule *	tp;
     int			textAttrNr;
 
-    BufferItem *	paraBi= dpEnd->dpNode;
+    struct BufferItem *	paraNode= dpTail->dpNode;
 
     /*  1  */
-    tp= paraBi->biParaParticules+ part1;
+    tp= paraNode->biParaParticules+ part1;
     if  ( tp->tpStrlen > 0				&&
-	  dpEnd->dpStroff == tp->tpStroff+ tp->tpStrlen	)
+	  dpTail->dpStroff == tp->tpStroff+ tp->tpStrlen	)
 	{ part1++; tp++;	}
 
-    if  ( part1 < paraBi->biParaParticuleCount )
+    if  ( part1 < paraNode->biParaParticuleCount )
 	{ textAttrNr= tp[ 0].tpTextAttrNr; }
     else{ textAttrNr= tp[-1].tpTextAttrNr; }
 
     /*  2  */
-    if  ( part1 < paraBi->biParaParticuleCount	&&
-	  tp->tpStroff != dpEnd->dpStroff	)
+    if  ( part1 < paraNode->biParaParticuleCount	&&
+	  tp->tpStroff != dpTail->dpStroff	)
 	{
-	if  ( docSplitTextParticule( (TextParticule **)0, &tp, paraBi,
-						    part1, dpEnd->dpStroff ) )
+	if  ( docSplitTextParticule( (TextParticule **)0, &tp, paraNode,
+						    part1, dpTail->dpStroff ) )
 	    { LDEB(part1); return -1;	}
 
 	part1++;
 	}
 
     /*  3  */
-    tp= docMakeSpecialParticule( paraBi, part1,
-				dpEnd->dpStroff, DOCkindFIELDTAIL, textAttrNr );
+    tp= docMakeSpecialParticule( paraNode, part1,
+				dpTail->dpStroff, TPkindFIELDTAIL, textAttrNr );
     if  ( ! tp )
 	{ XDEB(tp); return -1;	}
 
     tp->tpObjectNumber= fieldNumber;
-    docShiftParticuleOffsets( bd, paraBi, part1+ 1,
-				paraBi->biParaParticuleCount, tp->tpStrlen );
+    docParagraphBuilderShiftOffsets( eo->eoParagraphBuilder,
+				part1+ 1, dpTail->dpStroff, tp->tpStrlen );
 
     /*  4  */
     if  ( taSetMask && ! utilPropMaskIsEmpty( taSetMask ) )
 	{
 	if  ( docChangeParticuleAttributes( (int *)0, (PropertyMask *)0,
-						bd, paraBi, part1, part1+ 1,
-						taSet, taSetMask ) )
+				eo->eoDocument, paraNode, part1, part1+ 1,
+				taSet, taSetMask ) )
 	    { LDEB(part1); return -1;	}
 	}
 
@@ -97,40 +103,40 @@ static int docFieldInsertEndParticule(
 /*									*/
 /************************************************************************/
 
-static int docFieldInsertStartParticule(
-				BufferDocument *		bd,
-				const DocumentPosition *	dpStart,
+static int docFieldInsertHeadParticule(
+				EditOperation *			eo,
+				const DocumentPosition *	dpHead,
 				int *				pStroffShift,
 				int				part0,
 				int *				pHeadPart,
 				int *				pTailPart,
 				int				fieldNumber,
 				const PropertyMask *		taSetMask,
-				const TextAttribute *		taSet )
+				const struct TextAttribute *	taSet )
     {
     TextParticule *	tp;
     int			textAttrNr;
 
     int			part1= *pTailPart;
 
-    BufferItem *	paraBi= dpStart->dpNode;
+    struct BufferItem *	paraNode= dpHead->dpNode;
 
     /*  1  */
-    tp= paraBi->biParaParticules+ part0;
+    tp= paraNode->biParaParticules+ part0;
     if  ( tp->tpStrlen > 0					&&
-	  dpStart->dpStroff == tp->tpStroff+ tp->tpStrlen	)
+	  dpHead->dpStroff == tp->tpStroff+ tp->tpStrlen	)
 	{ part0++; tp++;	}
 
-    if  ( part0 < paraBi->biParaParticuleCount )
+    if  ( part0 < paraNode->biParaParticuleCount )
 	{ textAttrNr= tp[ 0].tpTextAttrNr; }
     else{ textAttrNr= tp[-1].tpTextAttrNr; }
 
     /*  2  */
-    if  ( part0 < paraBi->biParaParticuleCount	&&
-	  tp->tpStroff != dpStart->dpStroff	)
+    if  ( part0 < paraNode->biParaParticuleCount	&&
+	  tp->tpStroff != dpHead->dpStroff	)
 	{
-	if  ( docSplitTextParticule( (TextParticule **)0, &tp, paraBi,
-						part0, dpStart->dpStroff ) )
+	if  ( docSplitTextParticule( (TextParticule **)0, &tp, paraNode,
+						part0, dpHead->dpStroff ) )
 	    { LDEB(part1); return -1;	}
 
 	if  ( part1 >= part0 )
@@ -140,21 +146,22 @@ static int docFieldInsertStartParticule(
 	}
 
     /*  3  */
-    tp= docMakeSpecialParticule( paraBi, part0,
-			    dpStart->dpStroff, DOCkindFIELDHEAD, textAttrNr );
+    tp= docMakeSpecialParticule( paraNode, part0,
+			    dpHead->dpStroff, TPkindFIELDHEAD, textAttrNr );
     if  ( ! tp )
 	{ XDEB(tp); return -1;	}
 
     tp->tpObjectNumber= fieldNumber;
 
-    docShiftParticuleOffsets( bd, paraBi, part0+ 1,
-				paraBi->biParaParticuleCount, tp->tpStrlen );
+    docParagraphBuilderShiftOffsets( eo->eoParagraphBuilder,
+				    part0+ 1, dpHead->dpStroff, tp->tpStrlen );
+
     /*  4  */
     if  ( taSetMask && ! utilPropMaskIsEmpty( taSetMask ) )
 	{
-	if  ( docChangeParticuleAttributes( (int *)0, (PropertyMask *)0, bd,
-						paraBi, part0, part0+ 1,
-						taSet, taSetMask ) )
+	if  ( docChangeParticuleAttributes( (int *)0, (PropertyMask *)0,
+				eo->eoDocument, paraNode, part0, part0+ 1,
+				taSet, taSetMask ) )
 	    { LDEB(part1); return -1;	}
 	}
 
@@ -162,7 +169,9 @@ static int docFieldInsertStartParticule(
 	{ part1++;	}
 
     *pStroffShift= tp->tpStrlen;
-    *pHeadPart= part0; *pTailPart= part1; return 0;
+    *pHeadPart= part0;
+    *pTailPart= part1;
+    return 0;
     }
 
 /************************************************************************/
@@ -171,25 +180,23 @@ static int docFieldInsertStartParticule(
 /*									*/
 /************************************************************************/
 
-int docSurroundTextSelectionByField(
-				BufferDocument *		bd,
-				DocumentTree *			dt,
-				const DocumentSelection *	ds,
-				DocumentField **		pDf,
-				DocumentSelection *		dsInside,
-				DocumentSelection *		dsAround,
+int docEditSurroundTextSelectionByField(
+				EditOperation *			eo,
+				struct DocumentField **		pDf,
+				DocumentSelection *		pDsInside,
+				DocumentSelection *		pDsAround,
 				int *				pHeadPart,
 				int *				pTailPart,
-				const PropertyMask *		taSetMask,
-				const TextAttribute *		taSet,
+				const struct PropertyMask *	taSetMask,
+				const struct TextAttribute *	taSet,
 				int				fieldKind,
-				const FieldInstructions *	fi )
+				const struct FieldInstructions *	fi )
     {
+    int				rval= 0;
+
     int				headPart;
     int				tailPart;
     int				startShift= 0;
-
-    DocumentSelection		dsBalanced= *ds;
 
     DocumentField *		df;
     DocumentField *		dfLeft;
@@ -198,64 +205,83 @@ int docSurroundTextSelectionByField(
     int				headMoved= 0;
     int				tailMoved= 0;
 
-    const BufferItem *		sectBi;
+    const struct BufferItem *	sectNode;
     int				headParaNr;
     int				tailParaNr;
 
     int				singlePara;
     
+    struct BufferDocument *	bd= eo->eoDocument;
+    struct DocumentTree *	dt= eo->eoTree;
+
+    DocumentSelection		dsAround;
+    DocumentSelection		dsInside;
+    DocumentSelection		dsBalanced;
+
+    docEditOperationGetSelection( &dsBalanced, eo );
+
     singlePara= DOC_FieldKinds[fieldKind].fkiSingleParagraph;
 
     if  ( singlePara && dsBalanced.dsHead.dpNode != dsBalanced.dsTail.dpNode )
 	{
 	LXXDEB(singlePara,dsBalanced.dsHead.dpNode,dsBalanced.dsTail.dpNode);
-	return -1;
+	rval= -1; goto ready;
 	}
 
-    sectBi= docGetSectNode( dsBalanced.dsHead.dpNode );
-    if  ( ! sectBi )
-	{ XDEB(sectBi); return -1;	}
+    sectNode= docGetSectNode( dsBalanced.dsHead.dpNode );
+    if  ( ! sectNode )
+	{ XDEB(sectNode); rval= -1; goto ready;	}
 
     if  ( docFindParticuleOfPosition( &headPart, (int *)0,
 					&(dsBalanced.dsHead), PARAfindLAST ) )
-	{ LDEB(dsBalanced.dsHead.dpStroff); return -1;	}
+	{ LDEB(dsBalanced.dsHead.dpStroff); rval= -1; goto ready;	}
     if  ( docFindParticuleOfPosition( &tailPart, (int *)0,
 					&(dsBalanced.dsTail), PARAfindFIRST ) )
-	{ LDEB(dsBalanced.dsTail.dpStroff); return -1;	}
+	{ LDEB(dsBalanced.dsTail.dpStroff); rval= -1; goto ready;	}
 
     if  ( docBalanceFieldSelection( &dfLeft, &dfRight,
 			&headMoved, &tailMoved,
 			&headPart, &tailPart, 
 			&(dsBalanced.dsHead), &(dsBalanced.dsTail), dt, bd ) )
-	{ LDEB(1); return -1;	}
-
-#   if 0
-    if  ( headMoved || tailMoved )
-	{ LLDEB(headMoved,tailMoved); /*return -1;*/	}
-#   endif
+	{ LDEB(1); rval= -1; goto ready;	}
 
     df= docClaimField( &(bd->bdFieldList) );
     if  ( ! df )
-	{ XDEB(df); return -1;	}
+	{ XDEB(df); rval= -1; goto ready;	}
+
+    if  ( docParaBuilderStartExistingParagraph( eo->eoParagraphBuilder,
+						dsBalanced.dsTail.dpNode,
+						dsBalanced.dsTail.dpStroff ) )
+	{ LDEB(dsBalanced.dsTail.dpStroff); rval= -1; goto ready;	}
+
+    tailParaNr= docParaBuilderGetParagraphNumber(
+					eo->eoParagraphBuilder );
 
     /*  find end, split?, insert end particule */
-    if  ( docFieldInsertEndParticule( bd, &(dsBalanced.dsTail),
+    if  ( docFieldInsertTailParticule( eo, &(dsBalanced.dsTail),
 					tailPart, &tailPart,
 					df->dfFieldNumber, taSetMask, taSet ) )
-	{ LDEB(1); return -1;	}
+	{ LDEB(1); rval= -1; goto ready;	}
+
+    if  ( docParaBuilderStartExistingParagraph( eo->eoParagraphBuilder,
+						dsBalanced.dsHead.dpNode,
+						dsBalanced.dsHead.dpStroff ) )
+	{ LDEB(dsBalanced.dsHead.dpStroff); rval= -1; goto ready;	}
+
+    headParaNr= docParaBuilderGetParagraphNumber(
+					eo->eoParagraphBuilder );
 
     /*  find begin, split?, insert start particule */
-    if  ( docFieldInsertStartParticule( bd, &(dsBalanced.dsHead), &startShift,
+    if  ( docFieldInsertHeadParticule( eo, &(dsBalanced.dsHead),
+					&startShift,
 					headPart, &headPart, &tailPart,
 					df->dfFieldNumber, taSetMask, taSet ) )
-	{ LDEB(1); return -1;	}
+	{ LDEB(1); rval= -1; goto ready;	}
 
     if  ( dsBalanced.dsHead.dpNode == dsBalanced.dsTail.dpNode )
 	{ dsBalanced.dsTail.dpStroff += startShift;	}
 
-    headParaNr= docNumberOfParagraph( dsBalanced.dsHead.dpNode );
-    tailParaNr= docNumberOfParagraph( dsBalanced.dsTail.dpNode );
-    df->dfSelectionScope= sectBi->biSectSelectionScope;
+    df->dfSelectionScope= sectNode->biSectSelectionScope;
     df->dfHeadPosition.epParaNr= headParaNr;
     df->dfHeadPosition.epStroff= dsBalanced.dsHead.dpStroff;
     df->dfTailPosition.epParaNr= tailParaNr;
@@ -275,51 +301,62 @@ int docSurroundTextSelectionByField(
 	}
 
     if  ( docInsertFieldInTree( &(dt->dtRootFields), df ) )
-	{ LDEB(1); return -1;	}
+	{ LDEB(1); rval= -1; goto ready;	}
 
-    if  ( docDelimitFieldInDoc( dsInside, dsAround,
+    if  ( docDelimitFieldInDoc( &dsInside, &dsAround,
 					    pHeadPart, pTailPart, bd, df ) )
-	{ LDEB(df->dfFieldNumber); return -1; }
+	{ LDEB(df->dfFieldNumber); rval= -1; goto ready; }
 
     df->dfKind= fieldKind;
 
     if  ( fi )
 	{
 	if  ( docCopyFieldInstructions( &(df->dfInstructions), fi ) )
-	    { LDEB(1); return -1;	}
+	    { LDEB(1); rval= -1; goto ready;	}
 	}
 
-    *pDf= df; return 0;
+    docSetEditPosition( &(eo->eoSelectedRange.erTail), &(dsAround.dsTail) );
+    docSetEditPosition( &(eo->eoAffectedRange.erTail), &(dsAround.dsTail) );
+
+    if  ( pDf )
+	{ *pDf= df;		}
+    if  ( pDsInside )
+	{ *pDsInside= dsInside;	}
+    if  ( pDsAround )
+	{ *pDsAround= dsAround;	}
+
+  ready:
+
+    return rval;
     }
 
 /************************************************************************/
 
 static int docDeleteFieldParticule(	EditOperation *		eo,
-					BufferItem *		paraBi,
+					BufferItem *		paraNode,
 					int			paraNr,
 					int			part )
     {
     int				textAttrNr;
     int				stroffShift= 0;
-    const TextParticule *	tp= paraBi->biParaParticules+ part;
+    const TextParticule *	tp= paraNode->biParaParticules+ part;
 
     int				partStroff= tp->tpStroff;
     int				partStrlen= tp->tpStrlen;
 
-    textAttrNr= paraBi->biParaParticules[0].tpTextAttrNr;
-    docParaStringReplace( &stroffShift, paraBi,
+    textAttrNr= paraNode->biParaParticules[0].tpTextAttrNr;
+    docParaStringReplace( &stroffShift, paraNode,
 				partStroff, partStroff+ partStrlen,
 				(const char *)0, 0 );
-    docDeleteParticules( paraBi, part, 1 );
+    docDeleteParticules( paraNode, part, 1 );
 
-    docEditShiftParticuleOffsets( eo, paraBi, paraNr,
-				    part, paraBi->biParaParticuleCount,
-				    partStroff, -partStrlen );
+    docEditShiftParticuleOffsets( eo, paraNode, paraNr, part,
+						partStroff, -partStrlen );
 
-    if  ( paraBi->biParaParticuleCount == 0 )
+    if  ( paraNode->biParaParticuleCount == 0 )
 	{
-	if  ( ! docInsertTextParticule( paraBi,
-					0, 0, 0, DOCkindSPAN, textAttrNr ) )
+	if  ( ! docInsertTextParticule( paraNode,
+					0, 0, 0, TPkindSPAN, textAttrNr ) )
 	    { LDEB(1); return -1;	}
 	}
 
@@ -338,8 +375,8 @@ static int docDeleteFieldParticule(	EditOperation *		eo,
 
 int docDeleteField(		DocumentSelection *		dsExInside,
 				EditOperation *			eo,
-				BufferItem *			paraNodeHead,
-				BufferItem *			paraNodeTail,
+				struct BufferItem *		paraNodeHead,
+				struct BufferItem *		paraNodeTail,
 				int				partHead,
 				int				partTail,
 				DocumentField *			df )

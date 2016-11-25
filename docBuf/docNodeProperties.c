@@ -1,48 +1,38 @@
 /************************************************************************/
 /*									*/
-/*  Buffer manipulation routines.					*/
+/*  Manage the properties of tree nodes.				*/
 /*									*/
 /************************************************************************/
 
 #   include	"docBufConfig.h"
 
+#   include	"docTreeNode.h"
+#   include	<docPropVal.h>
+#   include	<docSectProperties.h>
+
 #   include	<appDebugon.h>
 
-#   include	"docBuf.h"
-#   include	"docTreeNode.h"
-
 /************************************************************************/
 /*									*/
-/*  Set the properties of a table row.					*/
-/*									*/
-/*  1)  Adapt to an explicit \trkeepfollow.				*/
-/*  2)  Adapt to an implicit \trkeepfollow.				*/
+/*  Are the columns of a section node to be balanced?			*/
 /*									*/
 /************************************************************************/
 
-int docChangeRowProperties(	PropertyMask *			rpDoneMask,
-				BufferItem *			rowNode,
-				const PropertyMask *		rpSetMask,
-				const RowProperties *		rpSet )
+int docSectColumnsAreBalanced(	const struct BufferItem *	sectNode )
     {
-    RowProperties *		rpTo= &(rowNode->biRowProperties);
+    const SectionProperties *	sp= sectNode->biSectProperties;
+    int				nrInParent= sectNode->biNumberInParent;
 
-    DocumentPosition		dp;
-
-    if  ( docUpdRowProperties( rpDoneMask, rpTo, rpSetMask, rpSet,
-					(const DocumentAttributeMap *)0 ) )
-	{ LDEB(1);	}
-
-    if  ( ! docHeadPosition( &dp, rowNode ) )
+    if  ( sp->spColumnCount > 1					&&
+	  sectNode->biParent					&&
+	  nrInParent < sectNode->biParent->biChildCount- 1	)
 	{
-	BufferItem *	paraNode= dp.dpNode;
+	const struct BufferItem *	nextSectNode;
 
-	/*  1  */
-	if  ( PROPmaskISSET( rpSetMask, RPprop_KEEPFOLLOW ) )
-	    { paraNode->biParaKeepWithNext= rpTo->rp_Keepfollow;	}
+	nextSectNode= sectNode->biParent->biChildren[nrInParent+ 1];
 
-	/*  2  */
-	rpTo->rp_Keepfollow= paraNode->biParaKeepWithNext;
+	if  ( nextSectNode->biSectBreakKind == DOCibkNONE )
+	    { return 1;	}
 	}
 
     return 0;

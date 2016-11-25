@@ -7,13 +7,16 @@
 #   include	"docEditConfig.h"
 
 #   include	<stddef.h>
-#   include	<stdio.h>
 #   include	<ctype.h>
 
 #   include	"docEdit.h"
 #   include	<docTreeNode.h>
 #   include	<docNodeTree.h>
 #   include	<docDocumentList.h>
+#   include	"docEditOperation.h"
+#   include	<docDocumentProperties.h>
+#   include	<docParaProperties.h>
+#   include	<docBuf.h>
 
 #   include	<appDebugon.h>
 
@@ -29,9 +32,9 @@ int docEditShiftIndent(		EditOperation *	eo,
     {
     int				rval= 0;
 
-    BufferDocument *		bd= eo->eoDocument;
+    struct BufferDocument *		bd= eo->eoDocument;
 
-    BufferItem *		paraNode;
+    struct BufferItem *		paraNode;
 
     ParagraphProperties		ppSet;
 
@@ -44,21 +47,22 @@ int docEditShiftIndent(		EditOperation *	eo,
 	PropertyMask	ppSetMask;
 	int		apply= 0;
 
+	int		listOverride= paraNode->biParaProperties->ppListOverride;
+
 	utilPropMaskClear( &ppDoneMask );
 	utilPropMaskClear( &ppSetMask );
 
-	if  ( paraNode->biParaListOverride >= 1 )
+	if  ( listOverride >= 1 )
 	    {
 	    struct ListOverride *	lo;
 	    DocumentList *		dl;
 	    int				ilvl;
 
-	    ilvl= paraNode->biParaListLevel;
+	    ilvl= paraNode->biParaProperties->ppListLevel;
 	    ilvl += step;
 
-	    if  ( docGetListOfParagraph( &lo, &dl,
-					    paraNode->biParaListOverride, bd ) )
-		{ LDEB(paraNode->biParaListOverride); rval= -1; goto ready; }
+	    if  ( docGetListOfParagraph( &lo, &dl, listOverride, bd ) )
+		{ LDEB(listOverride); rval= -1; goto ready; }
 
 	    if  ( ilvl >= 0 )
 		{
@@ -72,13 +76,16 @@ int docEditShiftIndent(		EditOperation *	eo,
 		}
 	    }
 	else{
-	    const DocumentProperties *	dp= &(bd->bdProperties);
+	    const DocumentProperties *	dp= bd->bdProperties;
+	    int				leftIndentTwips;
 
-	    ppSet.ppLeftIndentTwips= paraNode->biParaLeftIndentTwips+
+	    leftIndentTwips= paraNode->biParaProperties->ppLeftIndentTwips;
+
+	    ppSet.ppLeftIndentTwips= leftIndentTwips+
 						step* dp->dpTabIntervalTwips;
 
-	    if  ( paraNode->biParaLeftIndentTwips > 0	&&
-		  ppSet.ppLeftIndentTwips < 0		)
+	    if  ( leftIndentTwips > 0		&&
+		  ppSet.ppLeftIndentTwips < 0	)
 		{ ppSet.ppLeftIndentTwips= 0;	}
 
 	    if  ( ppSet.ppLeftIndentTwips >= 0 )

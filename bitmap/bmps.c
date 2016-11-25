@@ -3,6 +3,9 @@
 #   include	<stdio.h>
 
 #   include	"bmBitmapPrinter.h"
+#   include	<sioGeneral.h>
+#   include	"bitmap.h"
+#   include	<geoRectangle.h>
 
 #   include	<appDebugon.h>
 
@@ -96,7 +99,6 @@ int bmPsRowStringSize(		const BitmapDescription *	bd,
 /************************************************************************/
 
 int bmPsPrintBitmap(	SimpleOutputStream *		sos,
-			int				level,
 			double				xscale,
 			double				yscale,
 			int				ox,
@@ -127,7 +129,7 @@ int bmPsPrintBitmap(	SimpleOutputStream *		sos,
     xscale= ( xscale* rectangleWideTwips )/ 20;
     yscale= ( yscale* rectangleHighTwips )/ 20;
 
-    return bmPsPrintBitmapImage( sos, level, xscale, yscale, ox, oy, drSel,
+    return bmPsPrintRasterImage( sos, xscale, yscale, ox, oy, drSel,
 			    onWhite, useFilters, indexedImages, bd, buffer );
     }
 
@@ -352,8 +354,7 @@ void bmPsWriteImageInstructions(
     return;
     }
 
-int bmPsPrintBitmapImage(	SimpleOutputStream *		sos,
-				int				level,
+int bmPsPrintRasterImage(	SimpleOutputStream *		sos,
 				double				xscale,
 				double				yscale,
 				int				ox,
@@ -410,7 +411,7 @@ int bmPsPrintBitmapImage(	SimpleOutputStream *		sos,
 		    indexedImages );
 	}
 
-    bmPsOpenBitmapPrinter( &bp, sos, bd, useFilters, indexedImages );
+    bmPsOpenBitmapPrinter( &bp, sos, useFilters, indexedImages );
 
     if  ( bmPsWriteBitmapData( &bp, drSel, bd, buffer ) )
 	{ LDEB(1); return -1;	}

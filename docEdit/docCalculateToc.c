@@ -19,6 +19,12 @@
 #   include	<docSeqField.h>
 #   include	<docBookmarkField.h>
 #   include	<docTextParticule.h>
+#   include	<docDocumentField.h>
+#   include	<docFieldKind.h>
+#   include	<docFieldStack.h>
+#   include	<docStyle.h>
+#   include	<docFields.h>
+#   include	<docParaBuilder.h>
 
 #   include	<appDebugon.h>
 
@@ -27,7 +33,7 @@
 static void docInitTocEntry(	TocEntry *	te )
     {
     te->teLevel= PPoutlineBODYTEXT;
-    te->teField= (const DocumentField *)0;
+    te->teField= (const struct DocumentField *)0;
     docInitDocumentSelection( &(te->teDsInside) );
     docInitDocumentSelection( &(te->teDsAround) );
     te->tePart0= 0;
@@ -42,20 +48,22 @@ void docInitCalculateToc(	CalculateToc *	ct )
     {
     int		i;
 
-    ct->ctBdToc= (BufferDocument *)0;
-    ct->ctBdDoc= (BufferDocument *)0;
-    ct->ctSectNode= (BufferItem *)0;
-    ct->ctDfTocTo= (DocumentField *)0;
+    ct->ctBdToc= (struct BufferDocument *)0;
+    ct->ctBdDoc= (struct BufferDocument *)0;
+    ct->ctSectNode= (struct BufferItem *)0;
+    ct->ctBodySectNode= (struct BufferItem *)0;
+    ct->ctParagraphBuilder= (struct ParagraphBuilder *)0;
+    ct->ctFieldStack= (struct FieldStackLevel *)0;
 
     docInitTocField( &(ct->ctTocField) );
     docLayoutInitBlockFrame( &(ct->ctBlockFrame) );
+    docInitParagraphFrame( &(ct->ctParagraphFrame) );
     docInitParagraphProperties( &(ct->ctRefPP) );
-    utilInitTextAttribute( &(ct->ctTextAttribute) );
-    ct->ctDefaultTextAttributeNumber= -1;
+    textInitTextAttribute( &(ct->ctTextAttribute) );
     for ( i= 0; i < PPoutline_COUNT; i++ )
 	{
 	ct->ctLevelStyles[i]= (const DocumentStyle *)0;
-	ct->ctLevelAttributeNumbers[i]= -1;
+	textInitTextAttribute( &(ct->ctLevelAttributes[i]) );
 	}
     utilInitIndexSet( &(ct->ctStyleNumbers) );
 
@@ -70,11 +78,17 @@ void docInitCalculateToc(	CalculateToc *	ct )
 
 void docCleanCalculateToc(	CalculateToc *	ct )
     {
+    if  ( ct->ctParagraphBuilder )
+	{ docCloseParagraphBuilder( ct->ctParagraphBuilder );	}
+
+    docCleanFieldStack( ct->ctFieldStack );
+
     if  ( ct->ctBdToc )
 	{ docFreeIntermediaryDocument( ct->ctBdToc );	}
 
     docCleanTocField( &(ct->ctTocField) );
     docLayoutCleanBlockFrame( &(ct->ctBlockFrame) );
+    /* docCleanParagraphFrame( &(ct->ctParagraphFrame) ); */
     docCleanParagraphProperties( &(ct->ctRefPP) );
 
     utilInitIndexSet( &(ct->ctStyleNumbers) );
@@ -135,12 +149,13 @@ static int docCompareTocEntries(	const void *	voidte1,
 static int docGetTocEntry(	TocEntry *		te,
 				const CalculateToc *	ct )
     {
-    char			flag[2];
     const TocField *		tf= &(ct->ctTocField);
+    int				paraStyleNumber;
+    int				paraOutlineLevel;
 
     if  ( te->teField->dfKind == DOCfkBOOKMARK )
 	{
-	BufferItem *	paraNode;
+	struct BufferItem *	paraNode;
 
 	if  ( tf->tfType != TOCtypeTOC )
 	    { return 1;	}
@@ -170,7 +185,7 @@ static int docGetTocEntry(	TocEntry *		te,
 	tp= te->teDsInside.dsHead.dpNode->biParaParticules+ te->tePart0+ 1;
 	for ( part= te->tePart0+ 1; part < te->tePart1; tp++, part++ )
 	    {
-	    if  ( tp->tpKind == DOCkindSPAN && tp->tpStrlen > 0 )
+	    if  ( tp->tpKind == TPkindSPAN && tp->tpStrlen > 0 )
 		{ break;	}
 	    }
 
@@ -181,12 +196,13 @@ static int docGetTocEntry(	TocEntry *		te,
 	if  ( docFieldGetBookmark( &(te->teMarkName), te->teField ) )
 	    { LDEB(te->teField->dfFieldNumber); return -1;	}
 
+	paraStyleNumber= paraNode->biParaProperties->ppStyleNumber;
 	if  ( tf->tfType == TOCtypeTOC				&&
 	      tf->tfUseStyleLevels				&&
-	      paraNode->biParaStyle > 0				&&
-	      paraNode->biParaStyle < ct->ctStyleLevelCount	)
+	      paraStyleNumber > 0				&&
+	      paraStyleNumber < ct->ctStyleLevelCount		)
 	    {
-	    te->teLevel= ct->ctStyleLevels[paraNode->biParaStyle];
+	    te->teLevel= ct->ctStyleLevels[paraStyleNumber];
 
 	    if  ( te->teLevel <= tf->tfStyleLevel1	&&
 		  te->teLevel >= tf->tfStyleLevel0	)
@@ -200,17 +216,18 @@ static int docGetTocEntry(	TocEntry *		te,
 	if  ( tf->tfType == TOCtypeTOC				&&
 	      tf->tfUseStyleNames				&&
 	      utilIndexSetContains( &(ct->ctStyleNumbers),
-				      paraNode->biParaStyle )	)
+					  paraStyleNumber )	)
 	    {
 	    te->teNumbered= 1;
 	    return 0;
 	    }
 
+	paraOutlineLevel= paraNode->biParaProperties->ppOutlineLevel;
 	if  ( tf->tfType == TOCtypeTOC				&&
 	      tf->tfUseOutlineLevels				&&
-	      paraNode->biParaOutlineLevel < PPoutlineBODYTEXT	)
+	      paraOutlineLevel < PPoutlineBODYTEXT	)
 	    {
-	    te->teLevel= paraNode->biParaOutlineLevel;
+	    te->teLevel= paraOutlineLevel;
 
 	    te->teNumbered= te->teLevel < tf->tfNLevel0	||
 			    te->teLevel > tf->tfNLevel1	;
@@ -220,21 +237,24 @@ static int docGetTocEntry(	TocEntry *		te,
 	return 1;
 	}
 
-    if  ( tf->tfType == TOCtypeTOC		&&
+    if  ( tf->tfType == TOCtypeTOC			&&
 	  ( te->teField->dfKind == DOCfkTC	||
 	    te->teField->dfKind == DOCfkTCN	)	)
 	{
+	char		flag[2];
 	DocumentField *	dfBookmark;
 
-	if  ( ! tf->tfUseTcEntries			||
-	      te->teLevel > tf->tfEntryLevel1	||
-	      te->teLevel < tf->tfEntryLevel0	)
+	if  ( ! tf->tfUseTcEntries )
 	    { return 1;	}
 
 	flag[1]= '\0';
 	if  ( docFieldGetTc( te->teField, flag,
 				    &(te->teLevel), &(te->teNumbered) ) )
 	    { LDEB(te->teField->dfFieldNumber); return -1;	}
+
+	if  ( te->teLevel > tf->tfEntryLevel1	||
+	      te->teLevel < tf->tfEntryLevel0	)
+	    { return 1;	}
 
 	dfBookmark= docFindTypedChildField( &(ct->ctBdDoc->bdBody.dtRootFields),
 			    &(te->teField->dfHeadPosition), DOCfkBOOKMARK );
@@ -261,7 +281,7 @@ static int docGetTocEntry(	TocEntry *		te,
     if  ( te->teField->dfKind == DOCfkSEQ )
 	{
 	SeqField		sf;
-	BufferItem *		paraNode;
+	struct BufferItem *		paraNode;
 	const DocumentField *	dfBookmark;
 
 	if  ( tf->tfType != TOCtypeSEQ )
@@ -372,7 +392,7 @@ static int docCollectTocEntries(	CalculateToc *			ct )
 static int docTocCollectTocStyles(	CalculateToc *		ct )
     {
     const TocField *		tf= &(ct->ctTocField);
-    const BufferDocument *	bd= ct->ctBdDoc;
+    const struct BufferDocument *	bd= ct->ctBdDoc;
     int				i;
 
     ct->ctStyleLevels= (unsigned char *)malloc(
@@ -408,13 +428,15 @@ static int docTocCollectTocStyles(	CalculateToc *		ct )
 	    DocumentStyle *	ds;
 
 	    ds= docGetStyleByName( &(bd->bdStyleSheet), snl->snlStyleName );
-	    if  ( ds )
-		{
+	    if  ( ! ds )
+		{ SXDEB(snl->snlStyleName,ds);	}
+	    else{
 		ct->ctStyleLevels[ds->dsStyleNumber]= snl->snlLevel;
-		}
 
-	    if  ( utilIndexSetAdd( &(ct->ctStyleNumbers), ds->dsStyleNumber ) )
-		{ LDEB(ds->dsStyleNumber); return -1;	}
+		if  ( utilIndexSetAdd( &(ct->ctStyleNumbers),
+							ds->dsStyleNumber ) )
+		    { LDEB(ds->dsStyleNumber); return -1;	}
+		}
 	    }
 	}
 
@@ -433,17 +455,19 @@ static int docTocCollectTocStyles(	CalculateToc *		ct )
 static int docTocSetStyleBookmarks(	CalculateToc *		ct )
     {
     const TocField *		tf= &(ct->ctTocField);
-    BufferDocument *		bd= ct->ctBdDoc;
+    struct BufferDocument *		bd= ct->ctBdDoc;
     DocumentPosition		dp;
 
     if  ( docHeadPosition( &dp, bd->bdBody.dtRoot ) )
 	{ LDEB(1); return 0;	}
     while( dp.dpNode )
 	{
-	if  ( dp.dpNode->biParaStyle > 0			&&
-	      dp.dpNode->biParaStyle < ct->ctStyleLevelCount	)
+	int	dpStyleNumber= dp.dpNode->biParaProperties->ppStyleNumber;
+
+	if  ( dpStyleNumber > 0				&&
+	      dpStyleNumber < ct->ctStyleLevelCount	)
 	    {
-	    int	level= ct->ctStyleLevels[dp.dpNode->biParaStyle];
+	    int	level= ct->ctStyleLevels[dpStyleNumber];
 
 	    if  ( level <= tf->tfStyleLevel1	&&
 		  level >= tf->tfStyleLevel0	)

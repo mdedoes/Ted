@@ -7,16 +7,22 @@
 #   include	"tedConfig.h"
 
 #   include	<stddef.h>
-#   include	<stdio.h>
 #   include	<ctype.h>
 
 #   include	"tedEdit.h"
-#   include	"tedDocFront.h"
+#   include	<tedDocFront.h>
 #   include	"tedSelect.h"
 #   include	"tedDocument.h"
 #   include	<docRtfTrace.h>
 #   include	<docEditImpl.h>
 #   include	<docEditCommand.h>
+#   include	<docExpandedTextAttribute.h>
+#   include	<docDocumentList.h>
+#   include	<docDocumentProperties.h>
+#   include	<docParaProperties.h>
+#   include	<appEditDocument.h>
+#   include	<docTreeNode.h>
+#   include	<docBuf.h>
 
 #   include	<appDebugon.h>
 
@@ -96,9 +102,9 @@ int tedDocListFontToolSet(	EditDocument *			ed,
     int				rval= 0;
 
     TedDocument *		td= (TedDocument *)ed->edPrivateData;
-    BufferDocument *		bd= td->tdDocument;
-    DocumentProperties *	dp= &(bd->bdProperties);
-    DocumentFontList *		dfl= dp->dpFontList;
+    struct BufferDocument *		bd= td->tdDocument;
+    DocumentProperties *	dp= bd->bdProperties;
+    struct DocumentFontList *	dfl= dp->dpFontList;
 
     DocumentList		dlNew;
 
@@ -113,7 +119,7 @@ int tedDocListFontToolSet(	EditDocument *			ed,
     docInitDocumentList( &dlNew );
 
     if  ( tedGetSelection( &ds, &sg, &sd,
-			    (DocumentTree **)0, (struct BufferItem **)0, ed ) )
+			    (struct DocumentTree **)0, (struct BufferItem **)0, ed ) )
 	{ LDEB(1); rval= -1; goto ready;	}
 
     if  ( ! sd.sdHasLists	||
@@ -133,7 +139,7 @@ int tedDocListFontToolSet(	EditDocument *			ed,
 	{ LDEB(1); rval= -1; goto ready;	}
     }
 
-    utilInitTextAttribute( &taSet );
+    textInitTextAttribute( &taSet );
 
     docIndirectTextAttribute( (PropertyMask *)0, &taSet, etaSet, taSetMask,
 						dfl, dp->dpColorPalette );
@@ -168,7 +174,7 @@ int tedDocSetNewList(		EditDocument *		ed,
     int				lsExample= -1;
 
     TedDocument *		td= (TedDocument *)ed->edPrivateData;
-    BufferDocument *		bd= td->tdDocument;
+    struct BufferDocument *		bd= td->tdDocument;
     const DocumentList *	dl= (const DocumentList *)0;
 
     PropertyMask		taSetMask;
@@ -185,7 +191,7 @@ int tedDocSetNewList(		EditDocument *		ed,
     DocumentSelection		dsTraced;
 
     utilPropMaskClear( &taSetMask );
-    utilInitTextAttribute( &taNew );
+    textInitTextAttribute( &taNew );
 
     utilPropMaskClear( &ppSetMask );
     utilPropMaskClear( &ppOldMask );
@@ -239,9 +245,9 @@ int tedDocSetNewList(		EditDocument *		ed,
 	if  ( docRtfTraceNewProperties( eo,
 		    (const PropertyMask *)0, (const TextAttribute *)0,
 		    &ppOldMask, &ppSet,
-		    (const PropertyMask *)0, (const CellProperties *)0,
-		    (const PropertyMask *)0, (const RowProperties *)0,
-		    (const PropertyMask *)0, (const SectionProperties *)0,
+		    (const PropertyMask *)0, (const struct CellProperties *)0,
+		    (const PropertyMask *)0, (const struct RowProperties *)0,
+		    (const PropertyMask *)0, (const struct SectionProperties *)0,
 		    (const PropertyMask *)0, (const DocumentProperties *)0 ) )
 	    { LDEB(1); rval= -1; goto ready;	}
 	}
@@ -249,9 +255,9 @@ int tedDocSetNewList(		EditDocument *		ed,
     if  ( tedEditChangeSelectionPropertiesImpl( &teo, &ds,
 		    (const PropertyMask *)0, (const TextAttribute *)0,
 		    &ppSetMask, &ppSet,
-		    (const PropertyMask *)0, (const CellProperties *)0,
-		    (const PropertyMask *)0, (const RowProperties *)0,
-		    (const PropertyMask *)0, (const SectionProperties *)0,
+		    (const PropertyMask *)0, (const struct CellProperties *)0,
+		    (const PropertyMask *)0, (const struct RowProperties *)0,
+		    (const PropertyMask *)0, (const struct SectionProperties *)0,
 		    (const PropertyMask *)0, (const DocumentProperties *)0 ) )
 	{ LDEB(ls); rval= -1; goto ready;	}
 

@@ -11,12 +11,15 @@
 
 #   include	"docBuf.h"
 #   include	<docTreeType.h>
+#   include	<docSelectionScope.h>
 #   include	"docTreeNode.h"
 #   include	"docNodeTree.h"
+#   include	"docSelect.h"
+#   include	"docDebug.h"
 
 int docSelectionSameRoot(
 			const DocumentSelection *	dsFrom,
-			const BufferItem *		biTo )
+			const struct BufferItem *		biTo )
     {
     const SelectionScope *	ssFrom= &(dsFrom->dsSelectionScope);
     const SelectionScope *	ssTo;
@@ -25,7 +28,7 @@ int docSelectionSameRoot(
           ssFrom->ssTreeType == DOCinBODY	)
 	{ return 1;	}
 
-    biTo= docGetSectNode( (BufferItem *)biTo );
+    biTo= docGetSectNode( (struct BufferItem *)biTo );
     if  ( ! biTo )
 	{ XDEB(biTo); return -1;	}
     ssTo= &(biTo->biSectSelectionScope);
@@ -33,7 +36,7 @@ int docSelectionSameRoot(
     return docSelectionSameScope( ssFrom, ssTo );
     }
 
-int docSelectionSameInstance(	const DocumentTree *		tree,
+int docSelectionSameInstance(	const struct DocumentTree *		tree,
 				int				page,
 				int				column )
     {
@@ -55,13 +58,10 @@ int docSelectionSameInstance(	const DocumentTree *		tree,
 	    return tree->dtPageSelectedUpon == page && 
 		    tree->dtColumnSelectedIn == column;
 
-	case DOCinFIRST_HEADER:
-	case DOCinLEFT_HEADER:
-	case DOCinRIGHT_HEADER:
-
-	case DOCinFIRST_FOOTER:
-	case DOCinLEFT_FOOTER:
-	case DOCinRIGHT_FOOTER:
+	case DOCinFIRST_HEADER:	case DOCinFIRST_FOOTER:
+	case DOCinLEFT_HEADER:	case DOCinLEFT_FOOTER:
+	case DOCinRIGHT_HEADER:	case DOCinRIGHT_FOOTER:
+	case DOCinLAST_HEADER:	case DOCinLAST_FOOTER:
 
 	    return tree->dtPageSelectedUpon == page;
 
@@ -71,7 +71,8 @@ int docSelectionSameInstance(	const DocumentTree *		tree,
 	    return 1;
 
 	default:
-	    LDEB(tree->dtRoot->biTreeType);
+	    LSDEB(tree->dtRoot->biTreeType,
+			    docTreeTypeStr(tree->dtRoot->biTreeType));
 	    return -1;
 	}
     }
@@ -83,12 +84,12 @@ int docSelectionSameInstance(	const DocumentTree *		tree,
 /************************************************************************/
 
 void docGetSelectionScope(	SelectionScope *	ss,
-				const BufferItem *	node )
+				const struct BufferItem *	node )
     {
     if  ( ! node )
 	{ XDEB(node);	}
 
-    node= docGetSectNode( (BufferItem *)node );
+    node= docGetSectNode( (struct BufferItem *)node );
     if  ( ! node )
 	{ XDEB(node);				}
     else{ (*ss)= node->biSectSelectionScope;	}

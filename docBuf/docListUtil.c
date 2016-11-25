@@ -8,14 +8,21 @@
 
 #   include	"docBufConfig.h"
 
-#   include	<appDebugon.h>
-
 #   include	"docBuf.h"
 #   include	"docTreeNode.h"
+#   include	"docNodeTree.h"
 #   include	"docTreeScanner.h"
+#   include	<docScanner.h>
 #   include	<docDocumentList.h>
 #   include	<docListOverride.h>
-#   include	<docDocumentNote.h>
+#   include	"docDocumentNote.h"
+#   include	"docSectHeadersFooters.h"
+#   include	"docParaNodeProperties.h"
+#   include	<docListAdmin.h>
+#   include	<docDocumentProperties.h>
+#   include	<docParaProperties.h>
+
+#   include	<appDebugon.h>
 
 /************************************************************************/
 /*									*/
@@ -31,9 +38,9 @@
 int docGetListOfParagraph(	ListOverride **		pLo,
 				DocumentList **		pDl,
 				int			ls,
-				const BufferDocument *	bd )
+				const struct BufferDocument *	bd )
     {
-    return docGetListForStyle( pLo, pDl, ls, bd->bdProperties.dpListAdmin );
+    return docGetListForStyle( pLo, pDl, ls, bd->bdProperties->dpListAdmin );
     }
 
 int docGetListLevelOfParagraph(	int *				startPath,
@@ -41,15 +48,17 @@ int docGetListLevelOfParagraph(	int *				startPath,
 				ListOverride **			pLo,
 				DocumentList **			pDl,
 				const ListLevel **		pLl,
-				const ParagraphProperties *	pp,
-				const BufferDocument *		bd )
+				const struct BufferItem *	paraNode,
+				const struct BufferDocument *		bd )
     {
     ListOverride *	lo;
     DocumentList *	dl;
     const ListLevel *	ll;
 
+    const ParagraphProperties *	pp= paraNode->biParaProperties;
+
     if  ( docGetListForStyle( &lo, &dl, pp->ppListOverride,
-					    bd->bdProperties.dpListAdmin ) )
+					    bd->bdProperties->dpListAdmin ) )
 	{ LDEB(pp->ppListOverride); return -1;	}
 
     if  ( docListGetFormatPath( startPath, formatPath, &ll,
@@ -72,30 +81,33 @@ int docGetListLevelOfParagraph(	int *				startPath,
 /*									*/
 /************************************************************************/
 
-int docRemoveParagraphFromList(		BufferItem *		paraNode,
-					DocumentTree *		dt,
-					BufferDocument *	bd )
+int docRemoveParagraphFromList(	struct BufferItem *			paraNode,
+				struct DocumentTree *			dt,
+				const struct BufferDocument *		bd )
     {
-    int				rval= 0;
-    int				paraNr= docNumberOfParagraph( paraNode );
+    int		rval= 0;
+    int		paraNr= docNumberOfParagraph( paraNode );
 
-    if  ( paraNode->biParaListOverride > 0 )
+    int		listOverride;
+    int		listLevel;
+    int		outlineLevel;
+
+    if  ( docParaNodeRemoveListProperties(
+		    &listOverride, &listLevel, &outlineLevel, paraNode, bd ) )
+	{ LDEB(1); return -1;	}
+
+    if  ( listOverride > 0 )
 	{
 	if  ( docListNumberTreesDeleteParagraph( &(dt->dtListNumberTrees),
-					paraNode->biParaListOverride, paraNr ) )
+						    listOverride, paraNr ) )
 	    { LDEB(paraNr); rval= -1;	}
-
-	paraNode->biParaListOverride= 0;
-	paraNode->biParaListLevel= 0;
 	}
 
-    if  ( paraNode->biParaOutlineLevel < PPoutlineBODYTEXT )
+    if  ( outlineLevel < PPoutlineBODYTEXT )
 	{
 	if  ( docListNumberTreeDeleteParagraph(
 					&(dt->dtOutlineTree), paraNr ) )
 	    { LDEB(paraNr); rval= -1;	}
-
-	paraNode->biParaOutlineLevel= PPoutlineBODYTEXT;
 	}
 
     return rval;
@@ -116,9 +128,14 @@ typedef struct FindList
     int	fl_multiLevel;
     } FindList;
 
-static int docFindListEnterNode( BufferItem *			node,
-				const DocumentSelection *	ds,
-				const BufferItem *		bodySectNode,
+# ifdef __GNUC__
+# pragma GCC diagnostic push
+# pragma GCC diagnostic ignored "-Wunused-parameter"
+# endif
+
+static int docFindListEnterNode( struct BufferItem *		node,
+				const struct DocumentSelection * ds,
+				const struct BufferItem *	bodySectNode,
 				void *				through )
     {
     FindList *	fl= (FindList *)through;
@@ -127,7 +144,7 @@ static int docFindListEnterNode( BufferItem *			node,
 	{
 	const ParagraphProperties *	pp;
 
-	pp= &(node->biParaProperties);
+	pp= node->biParaProperties;
 	if  ( fl->fl_ls < 0		&&
 	      pp->ppListOverride >= 1	)
 	    {
@@ -149,17 +166,21 @@ static int docFindListEnterNode( BufferItem *			node,
 	    }
 	}
 
-    return ADVICEtsOK;
+    return SCANadviceOK;
     }
+
+# ifdef __GNUC__
+# pragma GCC diagnostic pop
+# endif
 
 int docFindListOfSelection(	int *				pLs,
 				int *				pLevel,
 				int *				pMultiList,
 				int *				pMultiLevel,
 				int *				pParaNr,
-				const DocumentSelection *	ds,
-				DocumentTree *			tree,
-				BufferDocument *		bd )
+				const struct DocumentSelection * ds,
+				struct DocumentTree *		tree,
+				struct BufferDocument *		bd )
     {
     const int	flags= 0;
     FindList	fl;
@@ -173,12 +194,16 @@ int docFindListOfSelection(	int *				pLs,
     if  ( ds )
 	{
 	if  ( docScanSelection( bd, ds,
-		    docFindListEnterNode, (NodeVisitor)0, flags, &fl ) < 0 )
+		    docFindListEnterNode, (NodeVisitor)0,
+		    (TreeVisitor)0, (TreeVisitor)0, 
+		    flags, &fl ) < 0 )
 	    { LDEB(1); return -1;	}
 	}
     else{
 	if  ( docScanTree( bd, tree,
-		    docFindListEnterNode, (NodeVisitor)0, flags, &fl ) < 0 )
+		    docFindListEnterNode, (NodeVisitor)0,
+		    (TreeVisitor)0, (TreeVisitor)0, 
+		    flags, &fl ) < 0 )
 	    { LDEB(1); return -1;	}
 	}
 
@@ -199,43 +224,12 @@ int docFindListOfSelection(	int *				pLs,
 /*  The ruler of a list was changed: transfer properties to the		*/
 /*  paragraphs in the list.						*/
 /*									*/
-/*  NOTE: The implementation relies on the fact that the root of the	*/
-/*	tree is not a paragraph that has to be adjusted.		*/
-/*									*/
 /************************************************************************/
 
-static int docAdaptParagraphPropsToListLevel(
-					int *			pChanged,
-					ParagraphProperties *	pp,
-					const ListLevel *	ll )
-    {
-    int		changed= 0;
-
-    if  ( pp->ppFirstIndentTwips != ll->llFirstIndentTwips )
-	{
-	pp->ppFirstIndentTwips= ll->llFirstIndentTwips;
-	changed= 1;
-	}
-
-    if  ( pp->ppLeftIndentTwips != ll->llLeftIndentTwips )
-	{
-	pp->ppLeftIndentTwips= ll->llLeftIndentTwips;
-	changed= 1;
-	}
-
-    if  ( pp->ppTabStopListNumber != ll->llTabStopListNumber )
-	{
-	pp->ppTabStopListNumber= ll->llTabStopListNumber;
-	changed= 1;
-	}
-
-    *pChanged= changed;
-    return 0;
-    }
-
-int docAdaptParagraphToListLevel(	int *			pChanged,
-					BufferItem *		paraNode,
-					const BufferDocument *	bd )
+int docAdaptParagraphToListLevel(
+				int *				pChanged,
+				struct BufferItem *		paraNode,
+				const struct BufferDocument *	bd )
     {
     int				indentChanged= 0;
 
@@ -245,16 +239,18 @@ int docAdaptParagraphToListLevel(	int *			pChanged,
 
     int * const			startPath= (int *)0;
     int * const			formatPath= (int *)0;
-    const ParagraphProperties *	pp= &(paraNode->biParaProperties);
 
     if  ( docGetListLevelOfParagraph( startPath, formatPath,
-						    &lo, &dl, &ll, pp, bd ) )
-	{ LLDEB(paraNode->biParaListOverride,paraNode->biParaListLevel);	}
+						&lo, &dl, &ll, paraNode, bd ) )
+	{ LDEB(1); }
     else{
-	if  ( docAdaptParagraphPropsToListLevel( &indentChanged,
-					&(paraNode->biParaProperties), ll ) )
+	if  ( docParaNodeAdaptPropertiesToListLevel( &indentChanged,
+							paraNode, ll, bd ) )
 	    { LDEB(1);		}
 	}
+
+    if  ( pChanged )
+	{ *pChanged= indentChanged;	}
 
     return 0;
     }
@@ -262,7 +258,7 @@ int docAdaptParagraphToListLevel(	int *			pChanged,
 /************************************************************************/
 /*									*/
 /*  Apply the changes to a list to the affected paragraphs at a 	*/
-/*  cetrain level of the list.						*/
+/*  certain level of the list.						*/
 /*									*/
 /************************************************************************/
 
@@ -271,7 +267,8 @@ static int docApplyListRulerLevel(
 				int				level,
 				const DocumentList *		dl,
 				const ListOverride *		lo,
-				const DocumentTree *		dt )
+				const struct BufferDocument *		bd,
+				const struct DocumentTree *		dt )
     {
     const ListLevel *		ll= (const ListLevel *)0;
     const ListOverrideLevel *	lol= (const ListOverrideLevel *)0;
@@ -290,11 +287,11 @@ static int docApplyListRulerLevel(
 
     for ( i= 0; i < lntn->lntnChildCount; i++ )
 	{
-	BufferItem *		paraNode;
+	struct BufferItem *		paraNode;
 	int			changed= 0;
 	ListNumberTreeNode *	child= lntn->lntnChildren[i];
 
-	if  ( docApplyListRulerLevel( child, level+ 1, dl, lo, dt ) )
+	if  ( docApplyListRulerLevel( child, level+ 1, dl, lo, bd, dt ) )
 	    { LLDEB(level,i); rval= -1;	}
 
 	if  ( child->lntnParaNr < 0 )
@@ -304,17 +301,14 @@ static int docApplyListRulerLevel(
 	if  ( ! paraNode )
 	    { LXDEB(child->lntnParaNr,paraNode); rval= -1; continue; }
 
-	if  ( paraNode->biParaListLevel != level )
-	    {
-	    LLLDEB(child->lntnParaNr,paraNode->biParaListLevel,level);
-	    rval= -1;
-	    }
+	if  ( paraNode->biParaProperties->ppListLevel != level )
+	    { LLDEB(child->lntnParaNr,level); rval= -1;	}
 
 	if  ( ! ll )
 	    { XDEB(ll); continue;		}
 
-	if  ( docAdaptParagraphPropsToListLevel( &changed,
-					&(paraNode->biParaProperties), ll ) )
+	if  ( docParaNodeAdaptPropertiesToListLevel( &changed,
+							paraNode, ll, bd ) )
 	    { LDEB(1); return -1;	}
 
 	if  ( changed )
@@ -333,15 +327,15 @@ static int docApplyListRulerLevel(
 
 static int docApplyListRulerToTree(	const DocumentList *		dl,
 					const ListOverride *		lo,
-					BufferDocument *		bd,
-					const DocumentTree *		dt )
+					const struct BufferDocument *	bd,
+					const struct DocumentTree *	dt )
     {
     if  ( ! dt->dtRoot						||
 	  dt->dtListNumberTrees.lntTreeCount <= lo->loIndex	)
 	{ return 0;	}
 
     return docApplyListRulerLevel( dt->dtListNumberTrees.lntTrees+ lo->loIndex,
-								0, dl, lo, dt );
+							    0, dl, lo, bd, dt );
     }
 
 /************************************************************************/
@@ -354,35 +348,34 @@ static int docApplyListRulerToTree(	const DocumentList *		dl,
 
 int docApplyListRuler(	const DocumentList *		dl,
 			const ListOverride *		lo,
-			BufferDocument *		bd )
+			struct BufferDocument *		bd )
     {
     int			i;
     int			rval= 0;
-    BufferItem *	bodyBi;
-    DocumentNote *	dn;
+    struct BufferItem *	bodyNode;
 
     if  ( docApplyListRulerToTree( dl, lo, bd, &(bd->bdBody) ) )
 	{ LDEB(1); rval= -1;	}
 
-    if  ( docApplyListRulerToTree( dl, lo, bd, &(bd->bdEiFtnsep) ) )
+    if  ( docApplyListRulerToTree( dl, lo, bd, &(bd->bdFtnsep) ) )
 	{ LDEB(1); rval= -1;	}
-    if  ( docApplyListRulerToTree( dl, lo, bd, &(bd->bdEiFtnsepc) ) )
+    if  ( docApplyListRulerToTree( dl, lo, bd, &(bd->bdFtnsepc) ) )
 	{ LDEB(1); rval= -1;	}
-    if  ( docApplyListRulerToTree( dl, lo, bd, &(bd->bdEiFtncn) ) )
-	{ LDEB(1); rval= -1;	}
-
-    if  ( docApplyListRulerToTree( dl, lo, bd, &(bd->bdEiAftnsep) ) )
-	{ LDEB(1); rval= -1;	}
-    if  ( docApplyListRulerToTree( dl, lo, bd, &(bd->bdEiAftnsepc) ) )
-	{ LDEB(1); rval= -1;	}
-    if  ( docApplyListRulerToTree( dl, lo, bd, &(bd->bdEiAftncn) ) )
+    if  ( docApplyListRulerToTree( dl, lo, bd, &(bd->bdFtncn) ) )
 	{ LDEB(1); rval= -1;	}
 
-    bodyBi= bd->bdBody.dtRoot;
-    for ( i= 0; i < bodyBi->biChildCount; i++ )
+    if  ( docApplyListRulerToTree( dl, lo, bd, &(bd->bdAftnsep) ) )
+	{ LDEB(1); rval= -1;	}
+    if  ( docApplyListRulerToTree( dl, lo, bd, &(bd->bdAftnsepc) ) )
+	{ LDEB(1); rval= -1;	}
+    if  ( docApplyListRulerToTree( dl, lo, bd, &(bd->bdAftncn) ) )
+	{ LDEB(1); rval= -1;	}
+
+    bodyNode= bd->bdBody.dtRoot;
+    for ( i= 0; i < bodyNode->biChildCount; i++ )
 	{
-	BufferItem *		sectBi= bodyBi->biChildren[i];
-	SectHeadersFooters *	shf= sectBi->biSectHeadersFooters;
+	struct BufferItem *	sectNode= bodyNode->biChildren[i];
+	SectHeadersFooters *	shf= sectNode->biSectHeadersFooters;
 
 	if  ( shf )
 	    {
@@ -395,6 +388,9 @@ int docApplyListRuler(	const DocumentList *		dl,
 	    if  ( docApplyListRulerToTree( dl, lo, bd,
 					    &(shf->shfRightPageHeader) ) )
 		{ LDEB(1); rval= -1;	}
+	    if  ( docApplyListRulerToTree( dl, lo, bd,
+					    &(shf->shfLastPageHeader) ) )
+		{ LDEB(1); rval= -1;	}
 
 	    if  ( docApplyListRulerToTree( dl, lo, bd,
 					    &(shf->shfFirstPageFooter) ) )
@@ -405,13 +401,17 @@ int docApplyListRuler(	const DocumentList *		dl,
 	    if  ( docApplyListRulerToTree( dl, lo, bd,
 					    &(shf->shfRightPageFooter) ) )
 		{ LDEB(1); rval= -1;	}
+	    if  ( docApplyListRulerToTree( dl, lo, bd,
+					    &(shf->shfLastPageFooter) ) )
+		{ LDEB(1); rval= -1;	}
 	    }
 	}
 
-    dn= bd->bdNotesList.nlNotes;
-    for ( i= 0; i < bd->bdNotesList.nlNoteCount; dn++, i++ )
+    for ( i= 0; i < bd->bdNotesList.nlNoteCount; i++ )
 	{
-	if  ( NOTE_IS_DELETED( dn ) )
+	DocumentNote *	dn= bd->bdNotesList.nlNotes[i];
+
+	if  ( ! dn )
 	    { continue;	}
 
 	if  ( docApplyListRulerToTree( dl, lo, bd, &(dn->dnDocumentTree) ) )

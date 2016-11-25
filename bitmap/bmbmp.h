@@ -1,9 +1,10 @@
 #   include	"bitmapConfig.h"
 
-#   include	<stdio.h>
 #   include	"bmintern.h"
-#   include	<sioGeneral.h>
-#   include	<utilMemoryBuffer.h>
+
+struct SimpleInputStream;
+struct SimpleOutputStream;
+struct MemoryBuffer;
 
 /************************************************************************/
 /*									*/
@@ -83,17 +84,17 @@ typedef struct IcoDirectoryEntry
 extern int bmCollectDib(	const BitmapDescription *	bd,
 				const unsigned char *		buffer,
 				BmpImageHeader *		bih,
-				MemoryBuffer *			bmpBytes,
+				struct MemoryBuffer *		bmpBytes,
 				RGB8Color **			pPalette,
 				int				privateFormat,
 				int				fileHeader );
 
 extern int bmpWriteImageHeader(	const BmpImageHeader *		bih,
-				SimpleOutputStream *		sos,
+				struct SimpleOutputStream *		sos,
 				const RGB8Color *		palette );
 
 extern int bmpReadImageHeader(	BmpImageHeader *	bih,
-				SimpleInputStream *	sis,
+				struct SimpleInputStream *	sis,
 				RGB8Color **		pPalette );
 
 extern int bmpHeaderToDescription(	BitmapDescription *	bd,
@@ -103,7 +104,7 @@ extern int bmpHeaderToDescription(	BitmapDescription *	bd,
 					int			assumeAlpha );
 
 extern int bmBmpReadImageBytes(	unsigned char **		pBuffer,
-				SimpleInputStream *		sis,
+				struct SimpleInputStream *		sis,
 				int				compression,
 				int				bytesPerRowF,
 				int				bitsPerPixelFile,
@@ -113,7 +114,7 @@ extern int bmBmpReadDibX(	BitmapDescription *		pBd,
 				unsigned char **		pBuffer,
 				BmpImageHeader *		bih,
 				const RGB8Color *		palette,
-				SimpleInputStream *		sis );
+				struct SimpleInputStream *		sis );
 
 extern int bmbmpDescriptionToHeader(	BmpImageHeader *	bih,
 					RGB8Color **		pPalette,
@@ -124,7 +125,7 @@ extern int bmbmpDescriptionToHeader(	BmpImageHeader *	bih,
 extern int bmpSizeImageHeader(	const BmpImageHeader *	bih,
 				RGB8Color *		palette );
 
-extern int bmBmpSaveImageBytes(	MemoryBuffer *			bmpBytes,
+extern int bmBmpSaveImageBytes(	struct MemoryBuffer *			bmpBytes,
 				const BitmapDescription *	bd,
 				const unsigned char *		buffer,
 				int				compression );

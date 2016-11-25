@@ -7,8 +7,11 @@
 #   ifndef		DOC_PLAIN_RW_H
 #   define		DOC_PLAIN_RW_H
 
-#   include	<docBuf.h>
-#   include	<sioGeneral.h>
+struct DocumentGeometry;
+struct BufferDocument;
+struct DocumentSelection;
+struct SimpleInputStream;
+struct SimpleOutputStream;
 
 /************************************************************************/
 /*									*/
@@ -16,13 +19,14 @@
 /*									*/
 /************************************************************************/
 
-extern BufferDocument *	docPlainReadFile( SimpleInputStream *	sis,
+extern struct BufferDocument *	docPlainReadFile(
+				    struct SimpleInputStream *	sis,
 				    int *			pMxL,
-				    const DocumentGeometry *	dg );
+				    const struct DocumentGeometry * dg );
 
-extern int docPlainSaveDocument(SimpleOutputStream *		sos,
-				BufferDocument *		bd,
-				const DocumentSelection *	ds,
+extern int docPlainSaveDocument(struct SimpleOutputStream *	sos,
+				struct BufferDocument *		bd,
+				const struct DocumentSelection * ds,
 				int				fold );
 
 #   endif	/*	DOC_PLAIN_RW_H	*/

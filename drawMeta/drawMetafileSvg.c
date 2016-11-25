@@ -2,18 +2,20 @@
 
 #   include	<stddef.h>
 #   include	<string.h>
+#   include	<stdio.h>
 
 #   include	"drawMetafileImpl.h"
 #   include	"drawMetafileSvg.h"
 #   include	"drawWinMetaImpl.h"
-#   include	<psFontMetrics.h>
-#   include	<utilMatchFont.h>
-#   include	<utilDocFont.h>
+#   include	<psTextExtents.h>
+#   include	<fontMatchFont.h>
 #   include	<bmWmfIo.h>
 #   include	<bmEmfIo.h>
 #   include	"drawMacPictImpl.h"
 #   include	"drawImageSvg.h"
 #   include	<psShading.h>
+#   include	<svgWriter.h>
+#   include	<sioGeneral.h>
 
 #   include	<appDebugon.h>
 
@@ -266,7 +268,7 @@ static int appMetaDrawStringSvg(	DeviceContext *		dc,
     SvgWriter *		sw= (SvgWriter *)through;
     XmlWriter *		xw= &(sw->swXmlWriter);
 
-    const AfmFontInfo *	afi= dc->dcAfi;
+    const struct AfmFontInfo *	afi= dc->dcAfi;
     LogicalFont *	lf= &(dc->dcFont);
 
     int			wide;
@@ -554,7 +556,7 @@ static int appMetaDrawPieSvg(	DeviceContext *			dc,
 		    xAxisRotation, largeArcFlag, sweepFlag,
 		    xe, ye,
 		    cx- xe, cy- ye,
-		    xs- cx, ys- ys );
+		    xs- cx, ys- cy );
 
     xmlPutString( "\"", xw );
     xmlNewLine( xw );

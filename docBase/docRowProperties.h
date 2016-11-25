@@ -7,8 +7,9 @@
 #   ifndef	DOC_ROW_PROPS_H
 #   define	DOC_ROW_PROPS_H
 
-#   include	"docCellProperties.h"
-#   include	"docDocumentAttributeMap.h"
+struct PropertyMask;
+struct DocumentAttributeMap;
+struct CellProperties;
 
 /************************************************************************/
 /*									*/
@@ -18,108 +19,118 @@
 
 typedef struct RowProperties
     {
-    int			rpCellCount;
-    CellProperties *	rpCells;
+    int				rpCellCount;
+    struct CellProperties *	rpCells;
 
-    int			rpHalfGapWidthTwips;
-    int			rpLeftIndentTwips;
-    int			rpHeightTwips;
+    int				rpHalfGapWidthTwips;
+    int				rpLeftIndentTwips;
+    int				rpHeightTwips;
 
-    int			rpRowNumber;
-    int			rpRowBandNumber;
-    int			rpRowStyle;
+    int				rpRowNumber;
+    int				rpRowBandNumber;
+    int				rpRowStyle;
 
-			/************************************************/
-			/*  Row borders are not stored in the word	*/
-			/*  binary format, and seem to be irrelevant	*/
-			/************************************************/
-    int			rpTopBorderNumber;
-    int			rpLeftBorderNumber;
-    int			rpRightBorderNumber;
-    int			rpBottomBorderNumber;
-    int			rpVerticalBorderNumber;
-    int			rpHorizontalBorderNumber;
+				/**
+				 *  Row Borders.
+				 *  Row borders are not stored in the word
+				 *  binary format, and seem to be irrelevant.
+				 */
+    int				rpTopBorderNumber;
+    int				rpLeftBorderNumber;
+    int				rpRightBorderNumber;
+    int				rpBottomBorderNumber;
+    int				rpVerticalBorderNumber;
+    int				rpHorizontalBorderNumber;
 
-    int			rpShadingNumber;
-    int			rpFrameNumber;
+    int				rpShadingNumber;
+    int				rpFrameNumber;
 
-    unsigned char	rpAlignment;
+    unsigned char		rpAlignment;
 
-    unsigned char	rpIsTableHeader;
-    unsigned char	rpKeepOnOnePage;
-    unsigned char	rp_Keepfollow;	/*  derived property	*/
-    unsigned char	rpAutofit;
-			/**
-			 * 0: Cells in this table row will have left-to-right
-			 *	precedence (the default)
-			 * 1: Cells in this table row will have right-to-left
-			 *	precedence
-			 */
-    unsigned char	rpRToL;
+				/**
+				 *  Is this row a table header row? 
+				 *  Ted might handle header rows that are 
+				 *  not a contiguous range at the top of the 
+				 *  table incorrectly.
+				 */
+    unsigned char		rpIsTableHeader;
 
-    int			rpPreferredWidth;
+				/**
+				 *  Try to keep the row on one page?
+				 */
+    unsigned char		rpKeepOnOnePage;
 
-    int			rpTopDefaultCellSpacing;
-    int			rpLeftDefaultCellSpacing;
-    int			rpRightDefaultCellSpacing;
-    int			rpBottomDefaultCellSpacing;
+				/**
+				 *  Try to keep the row on the same page 
+				 *  as the subsequent one. Newer versions 
+				 *  of MS-Word derive this from the same 
+				 *  property of the first paragraph in the row.
+				 */
+    unsigned char		rp_Keepfollow;
 
-    int			rpTopCellPadding;
-    int			rpLeftCellPadding;
-    int			rpRightCellPadding;
-    int			rpBottomCellPadding;
+    unsigned char		rpAutofit;
+				/**
+				 * 0:	Cells in this table row will have 
+				 *	left-to-right *	precedence (the default)
+				 * 1:	Cells in this table row will have 
+				 *	right-to-left precedence
+				 */
+    unsigned char		rpRToL;
 
-    int			rpCellWidthBefore;
-    int			rpCellWidthAfter;
+    int				rpPreferredWidth;
 
-    int			rpAuthor;
+    int				rpTopCellSpacing;
+    int				rpLeftCellSpacing;
+    int				rpRightCellSpacing;
+    int				rpBottomCellSpacing;
 
-			/* TableAutoFormatUnit */
-    unsigned char	rpPreferredWidthUnit;
+    int				rpTopCellPadding;
+    int				rpLeftCellPadding;
+    int				rpRightCellPadding;
+    int				rpBottomCellPadding;
 
-			/* TableAutoFormatUnit */
-    unsigned char	rpTopDefaultCellSpacingUnit;
-    unsigned char	rpLeftDefaultCellSpacingUnit;
-    unsigned char	rpRightDefaultCellSpacingUnit;
-    unsigned char	rpBottomDefaultCellSpacingUnit;
+    int				rpCellWidthBefore;
+    int				rpCellWidthAfter;
 
-			/* TableAutoFormatUnit */
-    unsigned char	rpTopCellPaddingUnit;
-    unsigned char	rpLeftCellPaddingUnit;
-    unsigned char	rpRightCellPaddingUnit;
-    unsigned char	rpBottomCellPaddingUnit;
+    int				rpAuthor;
 
-			/* TableAutoFormatUnit */
-    unsigned char	rpCellWidthBeforeUnit;
-    unsigned char	rpCellWidthAfterUnit;
+				/* TableAutoFormatUnit */
+    unsigned char		rpPreferredWidthUnit;
 
-    unsigned char	rpAutoformatBorders;
-    unsigned char	rpAutoformatShading;
-    unsigned char	rpAutoformatFont;
-    unsigned char	rpAutoformatColor;
-    unsigned char	rpAutoformatApplyBestFit;
-    unsigned char	rpAutoformatFirstRow;
-    unsigned char	rpAutoformatLastRow;
-    unsigned char	rpAutoformatFirstColumn;
-    unsigned char	rpAutoformatLastColumn;
+				/* TableAutoFormatUnit */
+    unsigned char		rpTopCellSpacingUnit;
+    unsigned char		rpLeftCellSpacingUnit;
+    unsigned char		rpRightCellSpacingUnit;
+    unsigned char		rpBottomCellSpacingUnit;
 
-    unsigned char	rpIsLastRow;
+				/* TableAutoFormatUnit */
+    unsigned char		rpTopCellPaddingUnit;
+    unsigned char		rpLeftCellPaddingUnit;
+    unsigned char		rpRightCellPaddingUnit;
+    unsigned char		rpBottomCellPaddingUnit;
+
+				/* TableAutoFormatUnit */
+    unsigned char		rpCellWidthBeforeUnit;
+    unsigned char		rpCellWidthAfterUnit;
+
+    unsigned char		rpAutoformatBorders;
+    unsigned char		rpAutoformatShading;
+    unsigned char		rpAutoformatFont;
+    unsigned char		rpAutoformatColor;
+    unsigned char		rpAutoformatApplyBestFit;
+    unsigned char		rpAutoformatFirstRow;
+    unsigned char		rpAutoformatLastRow;
+    unsigned char		rpAutoformatFirstColumn;
+    unsigned char		rpAutoformatLastColumn;
+
+    unsigned char		rpIsLastRow;
     } RowProperties;
 
 typedef enum RowProperty
     {
     RPprop_NONE= -1,
 
-		/**
-		 *  The number of cells and their x position (cellx)
-		 */
-    RPpropCELL_LAYOUT= 0,
-		/**
-		 *  Other cell properties such as borders and shading.
-		 */
-    RPpropCELL_PROPS,
-
-    RPpropGAP_WIDTH,
+    RPpropGAP_WIDTH= 0,
     RPpropLEFT_INDENT,
     RPpropHEIGHT,
 
@@ -191,9 +202,27 @@ typedef enum RowProperty
     RPpropTRAUTH,
 
     RPprop_COUNT,
+					/* For read/write/tool only */
+#   define	RPprop_KEEPFOLLOW	RPprop_COUNT
+    RPprop_ADMIN_COUNT,
+		/**
+		 *  The number of cells changes: This affects the whole 
+		 *  row layout. Protruding cells are removed at the end 
+		 *  or extra cells are copied after the existing cells.
+		 *  The RowPropertiesAdmin relies on the fact that 
+		 *  RPprop_CELL_COUNT == RPprop_ADMIN_COUNT
+		 */
+#   define RPprop_CELL_COUNT	RPprop_ADMIN_COUNT
 
     RPprop_IGNORED,		/*  For read/write/tool only	*/
-    RPprop_KEEPFOLLOW,		/*  For read/write/tool only	*/
+
+		/**
+		 *  Other cell properties such as borders and shading.
+		 *  are included. The logical OR of all changes is included 
+		 *  in the result cell mask. All properties in the input cell 
+		 *  mask are applied.
+		 */
+    RPprop_CELL_PROPS,
 
     RPprop_FULL_COUNT
     } RowProperty;
@@ -213,38 +242,29 @@ typedef enum RowProperty
 extern void docInitRowProperties(	RowProperties *		rp );
 extern void docCleanRowProperties(	RowProperties *		rp );
 
-extern int docCopyRowProperties(	RowProperties *			to,
-					const RowProperties *		from,
-					const DocumentAttributeMap *	dam );
+extern int docCopyRowProperties( RowProperties *		to,
+				const RowProperties *		from,
+				const struct DocumentAttributeMap * dam );
 
 extern int docInsertRowColumn(	RowProperties *			rp,
 				int				n,
-				int				shiftTail,
-				const CellProperties *		cp,
-				const DocumentAttributeMap *	dam );
+				const struct CellProperties *	cp,
+				const struct DocumentAttributeMap * dam );
 
-extern int docApproximatelyAlignedColumns(
-				const RowProperties *	rp1,
-				const RowProperties *	rp2 );
-
-extern int docUpdRowProperties(	PropertyMask *			pRpDonePask,
-				RowProperties *			rp,
-				const PropertyMask *		rpSetMask,
+extern int docUpdRowProperties(	struct PropertyMask *		pRpDoneMask,
+				struct PropertyMask *		pCpDoneMask,
+				RowProperties *			rpTo,
+				const struct PropertyMask *	rpSetMask,
+				const struct PropertyMask *	cpSetMask,
 				const RowProperties *		rpSet,
-				const DocumentAttributeMap *	dam );
+				int				colTo,
+				int				colCount,
+				const struct DocumentAttributeMap * dam );
 
 extern int docDeleteColumnsFromRow(
 				RowProperties *			rp,
 				int				col0,
-				int				count,
-				int				shiftTail );
-
-extern void docRowPropertiesSetWidth(	RowProperties *		rp,
-					int			col0,
-					int			col1,
-					int			wide,
-					int			victim,
-					int			victimWide );
+				int				count );
 
 extern int docSetRowProperty(		RowProperties *		rp,
 					int			prop,
@@ -258,32 +278,30 @@ extern int docEqualWidthColumns(	RowProperties *		rp,
 					int			wide,
 					int			fsHalfPoints );
 
-extern int docColumnWidth(		const RowProperties *	rp,
-					int			col );
-extern int docColumnLeft(		const RowProperties *	rp,
-					int			col );
-extern int docColumnRight(		const RowProperties *	rp,
+extern int docRowGetColumnX(		int *			pX0,
+					int *			pX1,
+					int *			pX11,
+					int *			pColspan,
+					const RowProperties *	rp,
 					int			col );
 
 extern int docRowPropertiesMakeColWider( RowProperties *	rp,
 					int			col,
 					int			wider );
 
-extern void docRowPropertyDifference(
-				PropertyMask *			pRpDifPask,
+extern int docRowPropertyDifference(
+				struct PropertyMask *		pRpDifMask,
+				struct PropertyMask *		pCpDifMask,
 				const RowProperties *		rp1,
-				const PropertyMask *		rpCmpMask,
+				const struct PropertyMask *	rpCmpMask,
+				const struct PropertyMask *	cpCmpMask,
 				const RowProperties *		rp2,
-				const DocumentAttributeMap *	dam );
+				int				colTo,
+				int				colCount,
+				const struct DocumentAttributeMap * dam );
 
-extern int docCellRight(	int *			pColspan,
-				const RowProperties *	rp,
-				int			col );
-
-extern void docRowMaskToCellMask(	PropertyMask *		cellMask,
-					const PropertyMask *	rowMask );
-
-extern void docRowMaskApplyCellMask(	PropertyMask *		rowMask,
-					const PropertyMask *	cellMask );
+extern void docRowPropertiesSetCellDefaults(
+				struct CellProperties *		cp,
+				const RowProperties *		rp );
 
 #   endif	/*  DOC_ROW_PROPS_H  */

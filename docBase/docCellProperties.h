@@ -7,8 +7,8 @@
 #   ifndef	DOC_CELL_PROPS_H
 #   define	DOC_CELL_PROPS_H
 
-#  include	"docItemShading.h"
-#   include	"docDocumentAttributeMap.h"
+struct PropertyMask;
+struct DocumentAttributeMap;
 
 /************************************************************************/
 /*									*/
@@ -27,21 +27,62 @@ typedef enum CellMergePos
 
 typedef struct CellProperties
     {
-    int			cpRightBoundaryTwips;
+			/**
+			 *  The width of the cell. The rtf readers/writers 
+			 *  translate back and forth between right boundary 
+			 *  and width.
+			 */
+    int			cpWide;
 
-    /**/
+			/**
+			 *  The top border of the cell.
+			 */
     int			cpTopBorderNumber;
+
+			/**
+			 *  The left border of the cell.
+			 *  In right-to-left rows, left and right border 
+			 *  are swapped.
+			 */
     int			cpLeftBorderNumber;
+
+			/**
+			 *  The right border of the cell.
+			 *  In right-to-left rows, left and right border 
+			 *  are swapped.
+			 */
     int			cpRightBorderNumber;
+
+			/**
+			 *  The bottom border of the cell.
+			 */
     int			cpBottomBorderNumber;
 
     int			cpShadingNumber;
 
     int			cpPreferredWidth;
 
+			/**
+			 *  Padding at the top of the cell. 
+			 *  Is only used if cpTopPaddingUnit == 3.
+			 *  NOTE that for compatibility with MS-Word 
+			 *  2003 and 2010, the RTF reader and writer 
+			 *  swap left and top padding.
+			 */
     short int		cpTopPadding;
+			/**
+			 *  Padding at the left of the cell. 
+			 *  MS-Word swaps left and top padding in the RTF 
+			 *  file.
+			 */
     short int		cpLeftPadding;
+			/**
+			 *  Padding at the right of the cell. 
+			 */
     short int		cpRightPadding;
+			/**
+			 *  Padding at the bottom of the cell. 
+			 */
     short int		cpBottomPadding;
 
 			/* TableAutoFormatUnit */
@@ -66,13 +107,11 @@ typedef struct CellProperties
 		( (cp)->cpHorizontalMerge == CELLmergeFOLLOW || \
 		  (cp)->cpVerticalMerge == CELLmergeFOLLOW )
 
-#   define	docCleanCellProperties( cp ) ( ( *(cp)= *(cp) ), 0 )
-
 typedef enum CellProperty
     {
     CLprop_NONE= -1,
 
-    CLpropCELLX= 0,
+    CLpropWIDTH= 0,
 
     CLpropTOP_BORDER,
     CLpropLEFT_BORDER,
@@ -102,7 +141,10 @@ typedef enum CellProperty
 
     CLpropNO_SHADING,
 
-    CLprop_COUNT
+# define CLprop_COUNT CLprop_NOT_SUPPORTED
+    CLprop_NOT_SUPPORTED,
+
+    CLprop_FULL_COUNT
     } CellProperty;
 
 /************************************************************************/
@@ -143,23 +185,23 @@ typedef enum CellInstanceProperty
 
 extern void docInitCellProperties(	CellProperties *	cp );
 
-extern int docUpdCellProperties(PropertyMask *			pCpDonePask,
+extern int docUpdCellProperties(struct PropertyMask *		pCpDoneMask,
 				CellProperties *		cp,
-				const PropertyMask *		cpSetMask,
+				const struct PropertyMask *	cpSetMask,
 				const CellProperties *		cpSet,
-				const DocumentAttributeMap *	dam );
+				const struct DocumentAttributeMap * dam );
 
 extern void docCellPropertyDifference(	
-				PropertyMask *			pDifMask,
+				struct PropertyMask *		pDifMask,
 				const CellProperties *		cp1,
-				const PropertyMask *		cpCmpMask,
+				const struct PropertyMask *	cpCmpMask,
 				const CellProperties *		cp2,
-				const DocumentAttributeMap *	dam );
+				const struct DocumentAttributeMap * dam );
 
 extern int docCopyCellProperties(	
 				CellProperties *		cpTo,
 				const CellProperties *		cpFrom,
-				const DocumentAttributeMap *	dam );
+				const struct DocumentAttributeMap * dam );
 
 extern int docSetCellProperty(		CellProperties *	cp,
 					int			prop,

@@ -22,9 +22,14 @@
 /*									*/
 /************************************************************************/
 
+# ifdef __GNUC__
+# pragma GCC diagnostic push
+# pragma GCC diagnostic ignored "-Wunused-parameter"
+# endif
+
 static int docCollectNodeStatistics(
 				struct BufferItem *		node,
-				const DocumentSelection *	ds,
+				const struct DocumentSelection * ds,
 				const struct BufferItem *	bodySectNode,
 				void *				voiddocs )
     {
@@ -44,15 +49,20 @@ static int docCollectNodeStatistics(
     return 0;
     }
 
-void docCollectDocumentStatistics(	DocumentStatistics *	ds,
-					const BufferDocument *	bd )
+# ifdef __GNUC__
+# pragma GCC diagnostic pop
+# endif
+
+void docCollectDocumentStatistics(	DocumentStatistics *		ds,
+					const struct BufferDocument *	bd )
     {
-    const int	flags= 0;
+    const int	flags= FLAGtsSCAN_SECTION_HEADERS_FOOTERS|FLAGtsSCAN_BODY_SEPARATORS;
 
     docInitDocumentStatistics( ds );
 
-    if  ( docScanTreeNode( (BufferDocument *)bd, bd->bdBody.dtRoot,
+    if  ( docScanTreeNode( (struct BufferDocument *)bd, bd->bdBody.dtRoot,
 				    docCollectNodeStatistics, (NodeVisitor)0,
+				    (TreeVisitor)0, (TreeVisitor)0, 
 				    flags, (void *)ds ) )
 	{ LDEB(1);	}
 

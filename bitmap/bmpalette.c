@@ -1,7 +1,6 @@
 #   include	"bitmapConfig.h"
 
 #   include	"bmintern.h"
-#   include	<stdlib.h>
 #   include	<string.h>
 #   include	<appDebugon.h>
 
@@ -135,6 +134,11 @@ int bmExpandRGB8Palette(	unsigned char *		to,
     return 0;
     }
 
+# ifdef __GNUC__
+# pragma GCC diagnostic push
+# pragma GCC diagnostic ignored "-Wunused-parameter"
+# endif
+
 int bmExpandPaletteImage(	RasterImage *			riOut,
 				const RasterImage *		riIn,
 				int				ignoredInt )
@@ -206,6 +210,10 @@ int bmExpandPaletteImage(	RasterImage *			riOut,
 
     return rval;
     }
+
+# ifdef __GNUC__
+# pragma GCC diagnostic pop
+# endif
 
 /************************************************************************/
 /*									*/

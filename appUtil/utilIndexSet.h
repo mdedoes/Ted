@@ -38,6 +38,7 @@ typedef int (*IndexSetForOne)(		int		val,
 /************************************************************************/
 
 extern void utilInitIndexSet(		IndexSet *		is );
+extern void utilEmptyIndexSet(		IndexSet *		is );
 extern void utilCleanIndexSet(		IndexSet *		is );
 
 extern int utilCopyIndexSet(		IndexSet *		to,
@@ -62,6 +63,10 @@ extern int utilIndexSetRemoveAll(	IndexSet *		res,
 					const IndexSet *	is2 );
 
 extern int utilIndexSetForAll(		const IndexSet *	is,
+					IndexSetForOne		forOne,
+					void *			through );
+
+extern int utilIndexSetForAllBwd(	const IndexSet *	is,
 					IndexSetForOne		forOne,
 					void *			through );
 

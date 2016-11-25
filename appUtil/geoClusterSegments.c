@@ -10,10 +10,10 @@
 #   undef	y1
 
 #   include	"geo2DInteger.h"
-#   include	<geoQuadTree.h>
-#   include	<geoAffineTransform.h>
-#   include	<geoLineFitter.h>
-#   include	<geoClusterSegments.h>
+#   include	"geoQuadTree.h"
+#   include	"geoAffineTransform.h"
+#   include	"geoLineFitter.h"
+#   include	"geoClusterSegments.h"
 #   include	<appDebugon.h>
 
 /************************************************************************/
@@ -54,6 +54,11 @@ static void geoCleanSegmentCluster(	SegmentCluster *	sc )
     return;
     }
 
+# ifdef __GNUC__
+# pragma GCC diagnostic push
+# pragma GCC diagnostic ignored "-Wunused-parameter"
+# endif
+
 static int geoFreeSegmentCluster(	int *			pDelete,
 					int			x0,
 					int			y0,
@@ -67,6 +72,10 @@ static int geoFreeSegmentCluster(	int *			pDelete,
 
     return 0;
     }
+
+# ifdef __GNUC__
+# pragma GCC diagnostic pop
+# endif
 
 /************************************************************************/
 
@@ -325,6 +334,11 @@ static int bmClusterCandidate(		int *			pDelete,
     return 0;
     }
 
+# ifdef __GNUC__
+# pragma GCC diagnostic push
+# pragma GCC diagnostic ignored "-Wunused-parameter"
+# endif
+
 static int bmGrowCluster(		int *			pDelete,
 					int			x,
 					int			y,
@@ -352,6 +366,15 @@ static int bmGrowCluster(		int *			pDelete,
     return 0;
     }
 
+# ifdef __GNUC__
+# pragma GCC diagnostic pop
+# endif
+
+# ifdef __GNUC__
+# pragma GCC diagnostic push
+# pragma GCC diagnostic ignored "-Wunused-parameter"
+# endif
+
 static int bmPrintAllSegments(		int *			pDelete,
 					int			x,
 					int			y,
@@ -377,6 +400,15 @@ static int bmPrintAllSegments(		int *			pDelete,
 
     return 0;
     }
+
+# ifdef __GNUC__
+# pragma GCC diagnostic pop
+# endif
+
+# ifdef __GNUC__
+# pragma GCC diagnostic push
+# pragma GCC diagnostic ignored "-Wunused-parameter"
+# endif
 
 static int geoPrintClusterSegments(	int *			pDelete,
 					int			x,
@@ -404,6 +436,10 @@ return 0;
 
     return 0;
     }
+
+# ifdef __GNUC__
+# pragma GCC diagnostic pop
+# endif
 
 # if 0
 static int geoPrintCluster(		int *			pDelete,

@@ -11,9 +11,10 @@
 #   include	<string.h>
 
 #   include	"sioBase85.h"
+#   include	"sioGeneral.h"
 #   include	"utilBase85.h"
-#   include	<appDebugon.h>
 
+#   include	<appDebugon.h>
 
 /************************************************************************/
 /*									*/
@@ -118,7 +119,7 @@ static int sioInBase85ReadBytes(	void *		voidbis,
 
 	memcpy( buffer, bis->bisBytes, todo );
 
-	buffer += todo; done += todo;
+	/* buffer += todo; */ done += todo;
 
 	memmove( bis->bisBytes, bis->bisBytes+ todo, bis->bisCount- todo );
 	bis->bisCount -= todo;
@@ -138,12 +139,11 @@ static int sioInBase85ReadBytes(	void *		voidbis,
 static int sioInBase85Close(	void *	voidbis )
     {
     Base85InputStream *		bis= (Base85InputStream *)voidbis;
-    int				c;
 
     /*  1  */
     if  ( ! bis->bisFoundEnd )
 	{
-	c= sioInGetByte( bis->bisSisBase85 );
+	int c= sioInGetByte( bis->bisSisBase85 );
 	while( c != EOF			&&
 	       c != '~'			)
 	    { c= sioInGetByte( bis->bisSisBase85 );	}

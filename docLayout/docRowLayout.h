@@ -7,8 +7,11 @@
 #   ifndef	DOC_ROW_LAYOUT_H
 #   define	DOC_ROW_LAYOUT_H
 
-#   include	<docBuf.h>
-#   include	<docBlockOrnaments.h>
+struct BorderProperties;
+struct BlockOrnaments;
+struct BufferDocument;
+struct DocumentRectangle;
+struct BufferItem;
 
 /************************************************************************/
 /*									*/
@@ -17,12 +20,12 @@
 /************************************************************************/
 
 extern void docGetCellOrnaments(
-			BlockOrnaments *		cellOrnaments,
-			DocumentRectangle *		drOutside,
-			DocumentRectangle *		drInside,
-			const DocumentRectangle *	drCell,
-			const BufferDocument *		bd,
-			const struct BufferItem *	rowBi,
+			struct BlockOrnaments *		cellOrnaments,
+			struct DocumentRectangle *	drOutside,
+			struct DocumentRectangle *	drInside,
+			const struct DocumentRectangle * drCell,
+			const struct BufferDocument *	bd,
+			const struct BufferItem *	rowNode,
 			int				col,
 			int				atRowTop,
 			int				atRowBottom,
@@ -30,16 +33,15 @@ extern void docGetCellOrnaments(
 
 extern void docLayoutCalculateRowTopInset(
 				int *				pInset,
-				const BufferDocument *		bd,
-				const struct BufferItem *	rowBi,
+				const struct BufferDocument *	bd,
+				const struct BufferItem *	rowNode,
 				int				atRowTop );
 
-extern void docGetCellBottomBorder(
-				BorderProperties *		pBpBottom,
+extern const struct BorderProperties * docGetCellBottomBorder(
 				int *				pBpBottomNr,
 				int *				pUseBelow,
-				const BufferDocument *		bd,
-				const struct BufferItem *	rowBi,
+				const struct BufferDocument *	bd,
+				const struct BufferItem *	rowNode,
 				int				col,
 				int				atRowBottom );
 

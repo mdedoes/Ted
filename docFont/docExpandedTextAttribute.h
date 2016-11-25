@@ -8,9 +8,11 @@
 #   define	DOC_EXPANDED_TEXT_ATTRIBUTE_H
 
 #   include	<textAttribute.h>
-#   include	"utilDocFontList.h"
 #   include	<utilColor.h>
-#   include	<utilPalette.h>
+
+struct PropertyMask;
+struct DocumentFontList;
+struct ColorPalette;
 
 typedef struct ExpandedTextAttribute
     {
@@ -37,29 +39,29 @@ extern int docExpandedTextAttributeSetFontName(
 				const char *			fontName );
 
 extern int docUpdateExpandedTextAttribute(
-				PropertyMask *			pDoneMask,
+				struct PropertyMask *		pDoneMask,
 				ExpandedTextAttribute *		etaTo,
 				const ExpandedTextAttribute *	etaFrom,
-				const PropertyMask *		setMask );
+				const struct PropertyMask *	setMask );
 
 extern int docCopyExpandedTextAttribute(
 				ExpandedTextAttribute *		etaTo,
 				const ExpandedTextAttribute *	etaFrom );
 
 extern int docExpandTextAttribute(
-				PropertyMask *			pDoneMask,
+				struct PropertyMask *		pDoneMask,
 				ExpandedTextAttribute *		etaTo,
 				const TextAttribute *		taFrom,
-				const PropertyMask *		setMask,
-				const DocumentFontList *	dfl,
-				const ColorPalette *		cp );
+				const struct PropertyMask *	setMask,
+				const struct DocumentFontList *	dfl,
+				const struct ColorPalette *	cp );
 
 extern void docIndirectTextAttribute(
-				PropertyMask *			pDoneMask,
+				struct PropertyMask *		pDoneMask,
 				TextAttribute *			taTo,
 				const ExpandedTextAttribute *	etaFrom,
-				const PropertyMask *		setMask,
-				DocumentFontList *		dfl,
-				ColorPalette *			cp );
+				const struct PropertyMask *	setMask,
+				struct DocumentFontList *	dfl,
+				struct ColorPalette *		cp );
 
 #   endif	/*  DOC_EXPANDED_TEXT_ATTRIBUTE_H  */

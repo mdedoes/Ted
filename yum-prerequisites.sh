@@ -10,4 +10,5 @@ yum install \
     libpng-devel \
     gtk2-devel \
     libpaper-devel \
+    libenchant-devel \
     rpm-build

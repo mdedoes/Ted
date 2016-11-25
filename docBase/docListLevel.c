@@ -13,14 +13,14 @@
 #   include	<string.h>
 #   include	<stdio.h>
 
-#   include	<utilBase26.h>
-#   include	<utilRoman.h>
+#   include	<numbersBase26.h>
+#   include	<numbersRoman.h>
 #   include	<uniUtf8.h>
 
-#   include	<appDebugon.h>
-
 #   include	"docListLevel.h"
-#   include	"docParaNumber.h"
+#   include	"docParaProperties.h"
+
+#   include	<appDebugon.h>
 
 void docInitDocumentListLevel(	ListLevel *	ll )
     {
@@ -49,7 +49,7 @@ void docInitDocumentListLevel(	ListLevel *	ll )
     ll->llFirstIndentTwips= 0;
     utilPropMaskClear( &(ll->llParaPropertyMask) );
 
-    utilInitTextAttribute( &(ll->llTextAttribute) );
+    textInitTextAttribute( &(ll->llTextAttribute) );
     utilPropMaskClear( &(ll->llTextAttributeMask) );
     }
 
@@ -65,7 +65,7 @@ int docListLevelApplyTextAttribute(	ListLevel *		ll,
 					const PropertyMask *	taSetMask,
 					const TextAttribute *	taSet )
     {
-    utilUpdateTextAttribute( (PropertyMask *)0, &(ll->llTextAttribute),
+    textUpdateTextAttribute( (PropertyMask *)0, &(ll->llTextAttribute),
 							taSetMask, taSet );
     utilPropMaskOr( &(ll->llTextAttributeMask),
 				    &(ll->llTextAttributeMask), taSetMask );
@@ -202,7 +202,7 @@ int docListLevelSetStyle(	ListLevel *			ll,
     utilPropMaskClear( &doneMask );
 
     ll->llTextAttributeMask= *taSetMask;
-    utilUpdateTextAttribute( &doneMask, &(ll->llTextAttribute),
+    textUpdateTextAttribute( &doneMask, &(ll->llTextAttribute),
 							    taSetMask, taSet );
     }
 
@@ -461,13 +461,13 @@ int docListLevelFormatLevelNumber(	char *	target,
 	    break;
 
 	case DOCpnUCRM:
-	    if  ( utilRomanString( target, maxsize, val, 1 ) )
+	    if  ( numbersRomanString( target, maxsize, val, 1 ) )
 		{ LDEB(val); return -1;	}
 	    step= strlen( target );
 	    break;
 
 	case DOCpnLCRM:
-	    if  ( utilRomanString( target, maxsize, val, 0 ) )
+	    if  ( numbersRomanString( target, maxsize, val, 0 ) )
 		{ LDEB(val); return -1;	}
 	    step= strlen( target );
 	    break;
@@ -476,7 +476,7 @@ int docListLevelFormatLevelNumber(	char *	target,
 	    if  ( val == 0 )
 		{ strcpy( target, "+" ); }
 	    else{
-		if  ( utilBase26String( target, maxsize, val, 1 ) )
+		if  ( numbersBase26String( target, maxsize, val, 1 ) )
 		    { LDEB(val); return -1;	}
 		}
 	    step= strlen( target );
@@ -486,7 +486,7 @@ int docListLevelFormatLevelNumber(	char *	target,
 	    if  ( val == 0 )
 		{ strcpy( target, "+" ); }
 	    else{
-		if  ( utilBase26String( target, maxsize, val, 0 ) )
+		if  ( numbersBase26String( target, maxsize, val, 0 ) )
 		    { LDEB(val); return -1;	}
 		}
 	    step= strlen( target );
@@ -502,6 +502,16 @@ int docListLevelFormatLevelNumber(	char *	target,
 	case 23:
 	    step= uniPutUtf8( target, 0xb7 );
 	    target[step]= '\0';
+	    break;
+
+	case 45:
+	    if  ( val == 0 )
+		{ strcpy( target, "0" ); }
+	    else{
+		if  ( numbersHebrewString( target, maxsize, val ) )
+		    { LDEB(val); return -1;	}
+		}
+	    step= strlen( target );
 	    break;
 
 	case 255:

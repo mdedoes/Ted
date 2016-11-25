@@ -1,5 +1,6 @@
 #    include "bmWmfIo.h"
 #    include <sioEndian.h>
+#    include <sioGeneral.h>
 
 int bmMetaReadWmfHeader(	WmfHeader *		wh,
 				SimpleInputStream *	sis )

@@ -327,6 +327,11 @@ static int sioOutPrintf_di(	SimpleOutputStream *	sos,
 /*									*/
 /************************************************************************/
 
+# ifdef __GNUC__
+# pragma GCC diagnostic push
+# pragma GCC diagnostic ignored "-Wunused-parameter"
+# endif
+
 static int sioOutPrintf_efg(	SimpleOutputStream *	sos,
 				unsigned int		flags,
 				int			minWidth,
@@ -368,6 +373,11 @@ static int sioOutPrintf_efg(	SimpleOutputStream *	sos,
     return emitted;
     }
 
+# ifdef __GNUC__
+# pragma GCC diagnostic pop
+# endif
+
+
 /************************************************************************/
 /*									*/
 /*  %c and %% conversions.						*/
@@ -377,6 +387,11 @@ static int sioOutPrintf_efg(	SimpleOutputStream *	sos,
 /*  3)  Emit trailing spaces.						*/
 /*									*/
 /************************************************************************/
+
+# ifdef __GNUC__
+# pragma GCC diagnostic push
+# pragma GCC diagnostic ignored "-Wunused-parameter"
+# endif
 
 static int sioOutPrintf_c(	SimpleOutputStream *	sos,
 				unsigned int		flags,
@@ -414,6 +429,10 @@ static int sioOutPrintf_c(	SimpleOutputStream *	sos,
 
     return emitted;
     }
+
+# ifdef __GNUC__
+# pragma GCC diagnostic pop
+# endif
 
 /************************************************************************/
 /*									*/

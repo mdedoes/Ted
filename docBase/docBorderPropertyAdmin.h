@@ -7,13 +7,13 @@
 #   ifndef	DOC_BORDER_PROPERTY_ADMIN_H
 #   define	DOC_BORDER_PROPERTY_ADMIN_H
 
-#   include	"docBorderProperties.h"
-#   include	<utilIntegerValueNode.h>
-#   include	<utilNumberedPropertiesAdmin.h>
+struct BorderProperties;
+struct NumberedPropertiesList;
 
-typedef void (*BorderPropertiesFunction)( const BorderProperties * bp,
-					int			n,
-					void *			through );
+typedef void (*BorderPropertiesFunction)(
+			const struct BorderProperties *		bp,
+			int					n,
+			void *					through );
 
 /************************************************************************/
 /*									*/
@@ -21,28 +21,29 @@ typedef void (*BorderPropertiesFunction)( const BorderProperties * bp,
 /*									*/
 /************************************************************************/
 
-extern void docInitBorderPropertyList(	NumberedPropertiesList *	bpl );
+extern void docInitBorderPropertyList(	struct NumberedPropertiesList *	bpl );
 
-extern int docBorderPropertiesNumberImpl( NumberedPropertiesList *	bpl,
-					const BorderProperties *	bp );
+extern int docBorderPropertiesNumberImpl(
+			struct NumberedPropertiesList *		bpl,
+			const struct BorderProperties *		bp );
 
 extern void docForAllBorderProperties(
-				const NumberedPropertiesList *	bpl,
-				BorderPropertiesFunction	f,
-				void *				through );
+			const struct NumberedPropertiesList *	bpl,
+			BorderPropertiesFunction		f,
+			void *					through );
 
-extern void docGetBorderPropertiesByNumberImpl(
-					BorderProperties *		bp,
-					const NumberedPropertiesList *	bpl,
-					int				n );
+extern const struct BorderProperties * docGetBorderPropertiesByNumberImpl(
+			const struct NumberedPropertiesList *	bpl,
+			int					n );
 
-extern int docBorderNumberIsBorderImpl(	const NumberedPropertiesList *	bpl,
-					int				n );
+extern int docBorderNumberIsBorderImpl(
+			const struct NumberedPropertiesList *	bpl,
+			int					n );
 
 extern int docMergeBorderPropertiesLists(
-				int **				pBorderMap,
-				const int *			colorMap,
-				NumberedPropertiesList *	bplTo,
-				const NumberedPropertiesList *	bplFrom );
+			int **					pBorderMap,
+			const int *				colorMap,
+			struct NumberedPropertiesList *		bplTo,
+			const struct NumberedPropertiesList *	bplFrom );
 
 #   endif	/*  DOC_BORDER_PROPERTY_ADMIN_H	*/

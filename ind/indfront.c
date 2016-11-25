@@ -5,6 +5,7 @@
 #   include	"ind.h"
 #   include	<uniUtf8.h>
 #   include	"indlocal.h"
+#   include	"indguess.h"
 #   include	<appDebugon.h>
 
 /************************************************************************/
@@ -14,6 +15,11 @@ typedef struct DumpThrough
     char *	dtOutbuf;
     int		dtLevel;
     } DumpThrough;
+
+# ifdef __GNUC__
+# pragma GCC diagnostic push
+# pragma GCC diagnostic ignored "-Wunused-parameter"
+# endif
 
 static int indDumpAcceptingLink(	void *		vdt,
 					int		dir,
@@ -39,6 +45,10 @@ static int indDumpAcceptingLink(	void *		vdt,
 
     return 0;
     }
+
+# ifdef __GNUC__
+# pragma GCC diagnostic pop
+# endif
 
 void indDump(	void *		voidind )
     {

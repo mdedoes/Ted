@@ -1,32 +1,16 @@
 #   include	"bitmapConfig.h"
 
-#   include	"bmintern.h"
+#   include	"bmformats.h"
 #   include	<stdio.h>
 #   include	<ctype.h>
 #   include	<string.h>
 #   include	<stdlib.h>
 #   include	<sioFileio.h>
+#   include	<sioGeneral.h>
+#   include	<utilMemoryBuffer.h>
+#   include	"bmFlipBits.h"
 
 #   include	<appDebugon.h>
-
-static unsigned char BMXBMflip[256];
-
-static void bmXbmSetFlip( void )
-    {
-    int	i;
-
-    for ( i= 0; i < 256; i++ )
-	{
-	BMXBMflip[i]=	( ( i & 0x80 ) >> 7 )	|
-			( ( i & 0x40 ) >> 5 )   |
-			( ( i & 0x20 ) >> 3 )   |
-			( ( i & 0x10 ) >> 1 )   |
-			( ( i & 0x08 ) << 1 )   |
-			( ( i & 0x04 ) << 3 )   |
-			( ( i & 0x02 ) << 5 )   |
-			( ( i & 0x01 ) << 7 )   ;
-	}
-    }
 
 /************************************************************************/
 /*  Read an X bitmap file.						*/
@@ -252,7 +236,12 @@ static int XReadBitmapFileData (
 
 #define BYTES_PER_OUTPUT_LINE 12
 
-int bmWriteXbmFile(	const MemoryBuffer *		filename,
+# ifdef __GNUC__
+# pragma GCC diagnostic push
+# pragma GCC diagnostic ignored "-Wunused-parameter"
+# endif
+
+int bmWriteXbmFile(	const struct MemoryBuffer *	filename,
 			const unsigned char *		buffer,
 			const BitmapDescription *	bd,
 			int				privateFormat )
@@ -274,7 +263,7 @@ int bmWriteXbmFile(	const MemoryBuffer *		filename,
     if  ( ! sos )
 	{ XDEB(sos); return -1;	}
 
-    bmXbmSetFlip();
+    bmInitFlipBits();
 
 /* #>>>>>>>>>>>>>>>>>>> begin FROM X*/
 
@@ -298,13 +287,18 @@ int bmWriteXbmFile(	const MemoryBuffer *		filename,
     c = *ptr;
     if (c<0)
       c += 256;
-    sioOutPrintf(sos, "0x%02x", BMXBMflip[c]);
+    sioOutPrintf(sos, "0x%02x", BM_FLIPPED_BITS[c]);
   }
   sioOutPrintf(sos, "};\n");
 
   sioOutClose(sos);
   return(BitmapSuccess);
 }
+
+# ifdef __GNUC__
+# pragma GCC diagnostic pop
+# endif
+
 /* #<<<<<<<<<<<<<<<<<<< end   FROM X*/
 
 int bmCanWriteXbmFile(	const BitmapDescription *	bd,
@@ -325,7 +319,7 @@ int bmCanWriteXbmFile(	const BitmapDescription *	bd,
 /*									*/
 /************************************************************************/
 
-int bmReadXbmFile(	const MemoryBuffer *	filename,
+int bmReadXbmFile(	const struct MemoryBuffer *	filename,
 			unsigned char **	pBuffer,
 			BitmapDescription *	bd,
 			int *			pPrivateFormat )
@@ -359,10 +353,10 @@ int bmReadXbmFile(	const MemoryBuffer *	filename,
 
     *pPrivateFormat= 11;
 
-    bmXbmSetFlip();
+    bmInitFlipBits();
     s= *pBuffer;
     for ( width = 0; width < bd->bdBufferLength; width++ )
-	{ *s= BMXBMflip[*s]; s++; }
+	{ *s= BM_FLIPPED_BITS[*s]; s++; }
 
     return 0;
     }

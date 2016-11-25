@@ -16,7 +16,16 @@
 #   include	<docTreeType.h>
 #   include	<docTreeNode.h>
 #   include	<docNodeTree.h>
+#   include	<docParaNodeProperties.h>
+#   include	<docRowProperties.h>
+#   include	<docPropVal.h>
+#   include	<docFrameProperties.h>
+#   include	<docDocumentProperties.h>
+#   include	<docSectProperties.h>
+#   include	<docParaProperties.h>
+#   include	<docCellProperties.h>
 
+#   include	<docDebug.h>
 #   include	<appDebugon.h>
 
 /************************************************************************/
@@ -38,18 +47,59 @@ void docLayoutInitBlockFrame(	BlockFrame *	bf )
     docInitNotesReservation( &(bf->bfNotesReservation) );
     }
 
+# ifdef __GNUC__
+# pragma GCC diagnostic push
+# pragma GCC diagnostic ignored "-Wunused-parameter"
+# endif
+
 void docLayoutCleanBlockFrame(	BlockFrame *	bf )
     {
     }
 
+# ifdef __GNUC__
+# pragma GCC diagnostic pop
+# endif
+
 void docInitNotesReservation(	NotesReservation *	nr )
     {
-    nr->nrDfFirstFootnote= (DocumentField *)0;
+    nr->nrDfFirstFootnote= (struct DocumentField *)0;
     nr->nrFootnoteCount= 0;
-    nr->nrFootnoteSectBi= (const struct BufferItem *)0;
+    nr->nrFootnoteSectNode= (const struct BufferItem *)0;
 
     nr->nrFtnsepHeight= 0;
     nr->nrFootnoteHeight= 0;
+    }
+
+/************************************************************************/
+
+static void docBlockFramePageGeometry(	DocumentGeometry *		dg,
+					const DocumentProperties *	dp,
+					const SectionProperties *	sp,
+					int				page )
+    {
+    if  ( sp->spDocumentGeometry.dgMirrorMargins )
+	{
+	if  ( dp->dpHasFacingPages && page % 2 )
+	    {
+	    dg->dgMargins.roLeftOffset= sp->spDocumentGeometry.dgMargins.roRightOffset;
+	    dg->dgMargins.roRightOffset= sp->spDocumentGeometry.dgMargins.roLeftOffset;
+	    }
+	}
+    else{
+	if  ( dp->dpHasFacingPages && page % 2 )
+	    {
+	    dg->dgMargins.roRightOffset += sp->spDocumentGeometry.dgGutterTwips;
+	    }
+	else{
+	    dg->dgMargins.roLeftOffset += sp->spDocumentGeometry.dgGutterTwips;
+	    }
+	}
+
+    /*  Should be irrelevant: */
+    dg->dgMirrorMargins= 0;
+    dg->dgGutterTwips= 0;
+
+    return;
     }
 
 /************************************************************************/
@@ -67,44 +117,31 @@ void docInitNotesReservation(	NotesReservation *	nr )
 /*									*/
 /************************************************************************/
 
-void docBlockFrameTwips(	BlockFrame *			bf,
-				BufferItem *			node,
-				BufferDocument *		bd,
+void docSectionBlockFrameTwips(	BlockFrame *			bf,
+				const struct BufferItem *	node,
+				const struct BufferItem *	bodySectNode,
+				struct BufferDocument *		bd,
 				int				page,
 				int				column )
     {
-    DocumentTree *		dt;
+    struct DocumentTree *	dt;
     int				useColumns= 0;
 
     int				newFrame;
     int				prevY1;
 
-    BufferItem *		sectNode;
-    BufferItem *		bodySectNode;
-    const NotesProperties *	npEndnotes= &(bd->bdProperties.dpNotesProps.fepEndnotesProps);
+    const struct BufferItem *	sectNode;
 
     const SectionProperties *	sp;
 
-    sectNode= docGetSectNode( node );
+    sectNode= docGetSectNode( (struct BufferItem *)node );
     if  ( ! sectNode )
 	{ XDEB(sectNode); return;	}
 
-    sp= &(sectNode->biSectProperties);
-
-    if  ( docGetRootOfSelectionScope( (DocumentTree **)0, &bodySectNode, bd,
-					&(sectNode->biSectSelectionScope) ) )
-	{ LDEB(1); return;	}
-
-    if  ( sectNode->biTreeType == DOCinENDNOTE		&&
-	  npEndnotes->npPlacement == FTNplaceDOC_END	)
-	{
-	const BufferItem *	rootNode= bd->bdBody.dtRoot;
-
-	bodySectNode= rootNode->biChildren[rootNode->biChildCount- 1];
-	}
+    sp= sectNode->biSectProperties;
 
     newFrame= page != bf->bfPage ||
-	( bf->bfNotesReservation.nrFootnoteSectBi == bodySectNode &&
+	( bf->bfNotesReservation.nrFootnoteSectNode == bodySectNode &&
 						    column != bf->bfColumn );
 
     if  ( sectNode->biTreeType != DOCinBODY && ! bodySectNode )
@@ -113,46 +150,21 @@ void docBlockFrameTwips(	BlockFrame *			bf,
     if  ( sectNode->biTreeType != DOCinBODY	&&
 	  sectNode->biTreeType != DOCinSHPTXT	&&
 	  bodySectNode				)
-	{ sp= &(bodySectNode->biSectProperties);	}
+	{ sp= bodySectNode->biSectProperties;	}
 
     bf->bfPageGeometry= sp->spDocumentGeometry;
 
     bf->bfPage= page;
     bf->bfColumn= column;
 
-    bf->bfContentRect.drX0= bf->bfPageGeometry.dgLeftMarginTwips;
+    bf->bfContentRect.drX0= bf->bfPageGeometry.dgMargins.roLeftOffset;
     bf->bfContentRect.drX1= bf->bfPageGeometry.dgPageWideTwips-
-					bf->bfPageGeometry.dgRightMarginTwips;
+					bf->bfPageGeometry.dgMargins.roRightOffset;
 
     if  ( sectNode->biTreeType != DOCinSHPTXT )
 	{
-	const DocumentProperties *	dp= &(bd->bdProperties);
-
-	if  ( sp->spDocumentGeometry.dgMirrorMargins )
-	    {
-	    if  ( dp->dpHasFacingPages && page % 2 )
-		{
-		bf->bfPageGeometry.dgLeftMarginTwips=
-				    sp->spDocumentGeometry.dgRightMarginTwips;
-		bf->bfPageGeometry.dgRightMarginTwips=
-				    sp->spDocumentGeometry.dgLeftMarginTwips;
-		}
-	    }
-	else{
-	    if  ( dp->dpHasFacingPages && page % 2 )
-		{
-		bf->bfPageGeometry.dgRightMarginTwips +=
-					sp->spDocumentGeometry.dgGutterTwips;
-		}
-	    else{
-		bf->bfPageGeometry.dgLeftMarginTwips +=
-					sp->spDocumentGeometry.dgGutterTwips;
-		}
-	    }
-
-	/*  Should be irrelevant: */
-	bf->bfPageGeometry.dgMirrorMargins= 0;
-	bf->bfPageGeometry.dgGutterTwips= 0;
+	docBlockFramePageGeometry( &(bf->bfPageGeometry),
+						bd->bdProperties, sp, page );
 	}
 
     useColumns= docTreeInColumnType( sectNode->biTreeType );
@@ -185,18 +197,18 @@ void docBlockFrameTwips(	BlockFrame *			bf,
 	case DOCinAFTNSEPC:
 	case DOCinAFTNCN:
 
-	    dt= (DocumentTree *)0;
-	    docWhatPageHeader( &dt, &isEmpty, sectNode, page, bd );
+	    dt= (struct DocumentTree *)0;
+	    docLayoutWhatPageHeader( &dt, &isEmpty, sectNode, page, bd );
 
 	    /*  1 Reserved!!  */
 	    if  ( dt && dt->dtRoot )
 		{ bf->bfContentRect.drY0= dt->dtY1ReservedTwips;	}
 	    else{
-		bf->bfContentRect.drY0= bf->bfPageGeometry.dgTopMarginTwips;	
+		bf->bfContentRect.drY0= bf->bfPageGeometry.dgMargins.roTopOffset;	
 		}
 
-	    dt= (DocumentTree *)0;
-	    docWhatPageFooter( &dt, &isEmpty, sectNode, page, bd );
+	    dt= (struct DocumentTree *)0;
+	    docLayoutWhatPageFooter( &dt, &isEmpty, sectNode, page, bd );
 
 	    /*  2 Reserved!!  */
 	    if  ( dt && dt->dtRoot )
@@ -206,7 +218,7 @@ void docBlockFrameTwips(	BlockFrame *			bf,
 	    else{
 		bf->bfContentRect.drY1=
 			    bf->bfPageGeometry.dgPageHighTwips-
-			    bf->bfPageGeometry.dgBottomMarginTwips;
+			    bf->bfPageGeometry.dgMargins.roBottomOffset;
 		}
 
 	    /*
@@ -217,22 +229,21 @@ void docBlockFrameTwips(	BlockFrame *			bf,
 
 	    break;
 
-	case DOCinFIRST_HEADER:
-	case DOCinLEFT_HEADER:
-	case DOCinRIGHT_HEADER:
-
-	case DOCinFIRST_FOOTER:
-	case DOCinLEFT_FOOTER:
-	case DOCinRIGHT_FOOTER:
+	case DOCinFIRST_HEADER:	case DOCinFIRST_FOOTER:
+	case DOCinLEFT_HEADER:	case DOCinLEFT_FOOTER:
+	case DOCinRIGHT_HEADER:	case DOCinRIGHT_FOOTER:
+	case DOCinLAST_HEADER:	case DOCinLAST_FOOTER:
 
 	    if  ( column != 0 )
 		{
 		SLLDEB(docTreeTypeStr(sectNode->biTreeType),page,column);
+		/* Unused
 		column= 0;
+		*/
 		}
 
 	    dt= docSectionHeaderFooter( bodySectNode, (unsigned char *)0,
-				&(bd->bdProperties), sectNode->biTreeType );
+				bd->bdProperties, sectNode->biTreeType );
 	    if  ( ! dt )
 		{ XDEB(dt); return;	}
 
@@ -242,10 +253,10 @@ void docBlockFrameTwips(	BlockFrame *			bf,
 
 	case DOCinSHPTXT:
 
-	    bf->bfContentRect.drY0= bf->bfPageGeometry.dgTopMarginTwips;
+	    bf->bfContentRect.drY0= bf->bfPageGeometry.dgMargins.roTopOffset;
 	    bf->bfContentRect.drY1=
 			    bf->bfPageGeometry.dgPageHighTwips-
-			    bf->bfPageGeometry.dgBottomMarginTwips;
+			    bf->bfPageGeometry.dgMargins.roBottomOffset;
 	    break;
 
 	default:
@@ -262,24 +273,56 @@ void docBlockFrameTwips(	BlockFrame *			bf,
     return;
     }
 
-void docParaBlockFrameTwips(	BlockFrame *		bf,
-				BufferItem *		paraNode,
-				BufferDocument *	bd,
-				int			page,
-				int			column )
+void docBlockFrameTwips(	BlockFrame *			bf,
+				const struct BufferItem *	node,
+				struct BufferDocument *		bd,
+				int				page,
+				int				column )
+    {
+    struct BufferItem *		bodySectNode;
+    struct BufferItem *		sectNode;
+
+    const NotesProperties *	npEndnotes= &(bd->bdProperties->dpNotesProps.fepEndnotesProps);
+
+    sectNode= docGetSectNode( (struct BufferItem *)node );
+    if  ( ! sectNode )
+	{ XDEB(sectNode); return;	}
+
+    if  ( sectNode->biTreeType == DOCinENDNOTE		&&
+	  npEndnotes->npPlacement == FTNplaceDOC_END	)
+	{
+	const struct BufferItem *	rootNode= bd->bdBody.dtRoot;
+
+	bodySectNode= rootNode->biChildren[rootNode->biChildCount- 1];
+	}
+
+    if  ( docGetRootOfSelectionScope( (struct DocumentTree **)0,
+					&bodySectNode, bd,
+					&(sectNode->biSectSelectionScope) ) )
+	{ LDEB(1); return;	}
+
+    docSectionBlockFrameTwips( bf, node, bodySectNode, bd, page, column );
+    }
+
+void docParaBlockFrameTwips(	BlockFrame *			bf,
+				struct BufferItem *		paraNode,
+				const struct BufferItem *	bodySectNode,
+				struct BufferDocument *		bd,
+				int				page,
+				int				column )
     {
     if  ( paraNode->biLevel != DOClevPARA )
 	{ LDEB(paraNode->biLevel);	}
     else{
-	FrameProperties	fp;
+	const FrameProperties *	fp;
 
-	docGetFramePropertiesByNumber( &fp, bd, paraNode->biParaFrameNumber );
-	if  ( DOCisFRAME( &fp ) )
+	fp= docParaNodeGetFrameProperties( (int *)0, paraNode, bd );
+	if  ( DOCisFRAME( fp ) )
 	    {
 	    BlockFrame		bfPage;
 	    LayoutPosition	lpScratch;
 
-	    int			frameHigh= fp.fpHighTwips;
+	    int			frameHigh= fp->fpHighTwips;
 
 	    if  ( frameHigh < 0 )
 		{ frameHigh= -frameHigh;	}
@@ -290,7 +333,7 @@ void docParaBlockFrameTwips(	BlockFrame *		bf,
 	    docLayoutInitBlockFrame( &bfPage );
 
 	    docBlockFrameTwips( &bfPage, paraNode, bd, page, column );
-	    docLayoutSetTextFrame( bf, &lpScratch, &bfPage, &fp, frameHigh );
+	    docLayoutSetTextFrame( bf, &lpScratch, &bfPage, fp, frameHigh );
 
 	    docLayoutCleanBlockFrame( &bfPage );
 
@@ -298,94 +341,33 @@ void docParaBlockFrameTwips(	BlockFrame *		bf,
 	    }
 	}
 
-    docBlockFrameTwips( bf, paraNode, bd, page, column );
-    }
-
-void docParaBlockFrameRectangle( DocumentRectangle *	dr,
-				BufferItem *		paraNode,
-				BufferDocument *	bd,
-				int			page,
-				int			column )
-    {
-    BlockFrame	bf;
-
-    docLayoutInitBlockFrame( &bf );
-    docBlockFrameTwips( &bf, paraNode, bd, page, column );
-
-    *dr= bf.bfContentRect;
-
-    docLayoutCleanBlockFrame( &bf );
-    }
-
-/************************************************************************/
-/*									*/
-/*  Shift a cell frame for all cells that surround its table. In	*/
-/*  practice, this code is only activated for nested tables.		*/
-/*									*/
-/************************************************************************/
-
-static void docShiftCellFrame(	ParagraphFrame *	pf,
-				const BufferItem *	rowNode )
-    {
-    int			nrInParent= rowNode->biNumberInParent;
-    const BufferItem *	parentBi= rowNode->biParent;
-
-    while( parentBi )
-	{
-	if  ( parentBi->biLevel == DOClevROW )
-	    {
-	    const RowProperties *	rp= &(parentBi->biRowProperties);
-	    int				x0;
-
-	    if  ( nrInParent == 0 )
-		{ x0= rowNode->biRowLeftIndentTwips;			}
-	    else{ x0= rp->rpCells[nrInParent-1].cpRightBoundaryTwips;	}
-
-	    x0 += rp->rpHalfGapWidthTwips;
-
-	    pf->pfParaContentRect.drX0 += x0;
-	    pf->pfParaContentRect.drX1 += x0;
-	    pf->pfCellContentRect.drX0 += x0;
-	    pf->pfCellContentRect.drX1 += x0;
-	    pf->pfCellRect.drX0 += x0;
-	    pf->pfCellRect.drX1 += x0;
-	    pf->pfRedrawX0Twips += x0;
-	    pf->pfRedrawX1Twips += x0;
-	    }
-
-	nrInParent= parentBi->biNumberInParent;
-	parentBi= parentBi->biParent;
-	}
+    docSectionBlockFrameTwips( bf, paraNode, bodySectNode, bd, page, column );
     }
 
 /************************************************************************/
 
-static void docGetCellWidth(	DocumentRectangle *		drCell,
-				int *				pLeftMargin,
-				int *				pRightMargin,
-				const BufferItem *		cellNode,
+static int docGetCellXRange(	DocumentRectangle *		drCellFrame,
+				DocumentRectangle *		drCellContent,
+				const struct BufferItem *	cellNode,
 				const RowProperties *		rp,
-				const BlockFrame *		bf )
+				const DocumentRectangle *	drRowParent )
     {
     int				col= cellNode->biNumberInParent;
     const CellProperties *	cp= rp->rpCells+ col;
 
-    int				leftMargin= rp->rpHalfGapWidthTwips;
-    int				rightMargin= rp->rpHalfGapWidthTwips;
-
-    int				x0= bf->bfContentRect.drX0;
-    int				x1= bf->bfContentRect.drX1;
+    int				headGap= rp->rpHalfGapWidthTwips;
+    int				tailGap= rp->rpHalfGapWidthTwips;
 
     switch( rp->rpLeftCellPaddingUnit )
 	{
 	case TRautoNONE:
 	    break;
 	case TRautoTWIPS:
-	    leftMargin= rp->rpLeftCellPadding;
+	    headGap= rp->rpLeftCellPadding;
 	    break;
 	default:
 	    LDEB(rp->rpLeftCellPaddingUnit);
-	    break;
+	    return -1;
 	}
 
     switch( cp->cpLeftPaddingUnit )
@@ -393,11 +375,11 @@ static void docGetCellWidth(	DocumentRectangle *		drCell,
 	case TRautoNONE:
 	    break;
 	case TRautoTWIPS:
-	    leftMargin= cp->cpLeftPadding;
+	    headGap= cp->cpLeftPadding;
 	    break;
 	default:
 	    LDEB(cp->cpLeftPaddingUnit);
-	    break;
+	    return -1;
 	}
 
     switch( rp->rpRightCellPaddingUnit )
@@ -405,11 +387,11 @@ static void docGetCellWidth(	DocumentRectangle *		drCell,
 	case TRautoNONE:
 	    break;
 	case TRautoTWIPS:
-	    rightMargin= rp->rpRightCellPadding;
+	    tailGap= rp->rpRightCellPadding;
 	    break;
 	default:
 	    LDEB(rp->rpRightCellPaddingUnit);
-	    break;
+	    return -1;
 	}
 
     switch( cp->cpRightPaddingUnit )
@@ -417,32 +399,95 @@ static void docGetCellWidth(	DocumentRectangle *		drCell,
 	case TRautoNONE:
 	    break;
 	case TRautoTWIPS:
-	    rightMargin= cp->cpRightPadding;
+	    tailGap= cp->cpRightPadding;
 	    break;
 	default:
 	    LDEB(cp->cpRightPaddingUnit);
-	    break;
+	    return -1;
 	}
 
-    if  ( col == 0 )
-	{ x0 += rp->rpLeftIndentTwips;		}
-    else{ x0 += cp[-1].cpRightBoundaryTwips;	}
-
-    x1= bf->bfContentRect.drX0+ cp->cpRightBoundaryTwips;
-    if  ( cp->cpHorizontalMerge == CELLmergeHEAD )
+    if  ( rp->rpRToL )
 	{
-	int		colspan= 1;
-	int		x11= docCellRight( &colspan, rp, col );
-
-	x1= bf->bfContentRect.drX0+ x11;
+	if  ( drCellFrame )
+	    {
+	    drCellFrame->drX0= drRowParent->drX1- cellNode->biCellTailX;
+	    drCellFrame->drX1= drRowParent->drX1- cellNode->biCellHeadX;
+	    }
+	if  ( drCellContent )
+	    {
+	    drCellContent->drX0= drRowParent->drX1- cellNode->biCellTailX+
+									tailGap;
+	    drCellContent->drX1= drRowParent->drX1- cellNode->biCellHeadX-
+									headGap;
+	    }
+	}
+    else{
+	if  ( drCellFrame )
+	    {
+	    drCellFrame->drX0= drRowParent->drX0+ cellNode->biCellHeadX;
+	    drCellFrame->drX1= drRowParent->drX0+ cellNode->biCellTailX;
+	    }
+	if  ( drCellContent )
+	    {
+	    drCellContent->drX0= drRowParent->drX0+ cellNode->biCellHeadX+
+									headGap;
+	    drCellContent->drX1= drRowParent->drX0+ cellNode->biCellTailX-
+									tailGap;
+	    }
 	}
 
-    drCell->drX0= x0;
-    drCell->drX1= x1;
-    *pLeftMargin= leftMargin;
-    *pRightMargin= rightMargin;
+    return 0;
+    }
 
-    return;
+/************************************************************************/
+/*									*/
+/*  Determine the frame in which a table row is to be formatted.	*/
+/*									*/
+/*  For nested tables, we go into recursion to do the same for the	*/
+/*  cell that holds the row etc. We expect table nesting to be shallow,	*/
+/*  so this is not a performance problem.				*/
+/*									*/
+/************************************************************************/
+
+static int docRowParentFrame(	DocumentRectangle *		drRowParent,
+				const struct BufferItem *	rowNode,
+				const BlockFrame *		bf )
+    {
+    const struct BufferItem *	parentNode= rowNode->biParent;
+    const struct BufferItem *	parentRow;
+
+    DocumentRectangle		drParentContent;
+
+    if  ( ! parentNode )
+	{ XDEB(parentNode); return -1;	}
+
+    switch( parentNode->biLevel )
+	{
+	case DOClevCELL:
+	    break;
+
+	case DOClevSECT:
+	    *drRowParent= bf->bfContentRect;
+	    return 0;
+
+	default:
+	    SDEB(docLevelStr(parentNode->biLevel));
+	    return -1;
+	}
+
+    parentRow= parentNode->biParent;
+    if  ( ! parentRow || ! docIsRowNode( parentRow ) )
+	{ XDEB(parentRow); return -1;	}
+
+    if  ( docRowParentFrame( &drParentContent, parentRow, bf ) )
+	{ LDEB(1); return -1;	}
+
+    if  ( docGetCellXRange( (DocumentRectangle *)0, drRowParent,
+				    parentNode, parentRow->biRowProperties,
+				    &drParentContent ) )
+	{ LDEB(1); return -1;	}
+
+    return 0;
     }
 
 /************************************************************************/
@@ -453,77 +498,71 @@ static void docGetCellWidth(	DocumentRectangle *		drCell,
 /*									*/
 /************************************************************************/
 
-void docCellFrameTwips(		ParagraphFrame *	pf,
-				const BlockFrame *	bf,
-				const BufferItem *	cellNode )
+void docCellFrameTwips(		ParagraphFrame *		pf,
+				const BlockFrame *		bf,
+				const struct BufferItem *	cellNode )
     {
-    const BufferItem *		rowNode= cellNode->biParent;
-    const RowProperties *	rp= &(rowNode->biRowProperties);
+    const struct BufferItem *	rowNode= cellNode->biParent;
+    const RowProperties *	rp= rowNode->biRowProperties;
 
-    int				leftMargin;
-    int				rightMargin;
-
-    pf->pfRedrawX0Twips= bf->bfContentRect.drX0;
-    pf->pfRedrawX1Twips= bf->bfContentRect.drX1;
+    DocumentRectangle		drRowParent;
 
     pf->pfCellRect.drY0= INT_MIN;
     pf->pfCellRect.drY1= INT_MAX;
     pf->pfCellRect.drX0= bf->bfContentRect.drX0;
     pf->pfCellRect.drX1= bf->bfContentRect.drX1;
 
-    if  ( ! docIsRowNode( rowNode ) )
-	{ LDEB(rowNode->biRowCellCount); return;	}
-
-    docGetCellWidth( &(pf->pfCellRect), &leftMargin, &rightMargin,
-							cellNode, rp, bf );
-
-    if  ( rowNode->biRowCellCount < 1 )
-	{ LDEB(rowNode->biRowCellCount);	}
-    else{
-	pf->pfRedrawX0Twips= -rowNode->biRowLeftIndentTwips;
-	pf->pfRedrawX1Twips=
-		rp->rpCells[rowNode->biRowCellCount-1].cpRightBoundaryTwips;
-	}
-
-    if  ( rowNode->biRowHeightTwips < 0 )
+    if  ( rp->rpHeightTwips < 0 )
 	{
 	pf->pfCellRect.drY0= rowNode->biTopPosition.lpPageYTwips;
-	pf->pfCellRect.drY1= pf->pfCellRect.drY0- rowNode->biRowHeightTwips;
+	pf->pfCellRect.drY1= pf->pfCellRect.drY0- rp->rpHeightTwips;
 	}
 
     pf->pfCellContentRect= pf->pfCellRect;
-    pf->pfCellContentRect.drX0 += leftMargin;
-    pf->pfCellContentRect.drX1 -= rightMargin;
+    pf->pfParaContentRect= pf->pfCellContentRect;
 
-    docShiftCellFrame( pf, rowNode );
+    if  ( rp->rpCellCount < 1 )
+	{ LDEB(rp->rpCellCount); return;	}
+
+    if  ( docRowParentFrame( &drRowParent, rowNode, bf ) )
+	{ LDEB(1); return;	}
+
+    if  ( docGetCellXRange( &(pf->pfCellRect), &(pf->pfCellContentRect),
+						cellNode, rp, &drRowParent ) )
+	{ LDEB(1);	}
+
+    pf->pfParentContentRect= drRowParent;
+    pf->pfParaContentRect= pf->pfCellContentRect;
 
     return;
     }
 
-void docParagraphFrameTwips(	ParagraphFrame *	pf,
-				const BlockFrame *	bf,
-				const BufferItem *	paraNode )
+void docParagraphFrameTwips(	ParagraphFrame *		pf,
+				const BlockFrame *		bf,
+				const struct BufferItem *	paraNode )
     {
+    const	ParagraphProperties *	pp= paraNode->biParaProperties;
+
     if  ( paraNode->biLevel != DOClevPARA )
 	{ SDEB(docLevelStr(paraNode->biLevel));	}
 
-    if  ( paraNode->biParaTableNesting > 0 )
+    if  ( paraNode->biParaProperties->ppTableNesting > 0 )
 	{ docCellFrameTwips( pf, bf, paraNode->biParent );	}
     else{
-	pf->pfRedrawX0Twips= bf->bfContentRect.drX0;
-	pf->pfRedrawX1Twips= bf->bfContentRect.drX1;
-
 	pf->pfCellRect.drY0= INT_MIN;
 	pf->pfCellRect.drY1= INT_MAX;
 	pf->pfCellRect.drX0= bf->bfContentRect.drX0;
 	pf->pfCellRect.drX1= bf->bfContentRect.drX1;
 
 	pf->pfCellContentRect= pf->pfCellRect;
+	pf->pfParentContentRect= bf->bfContentRect;
 	}
 
     pf->pfParaContentRect= pf->pfCellContentRect;
-    pf->pfParaContentRect.drX0 += paraNode->biParaLeftIndentTwips;
-    pf->pfParaContentRect.drX1 -= paraNode->biParaRightIndentTwips;
+
+    /*  Indpendent of pp->ppRToL: */
+    pf->pfParaContentRect.drX0 += pp->ppLeftIndentTwips;
+    pf->pfParaContentRect.drX1 -= pp->ppRightIndentTwips;
 
     return;
     }
@@ -536,11 +575,11 @@ void docParagraphFrameTwips(	ParagraphFrame *	pf,
 
 void docCellRectangleTwips(	DocumentRectangle *		drCell,
 				const BlockFrame *		bf,
-				const BufferItem *		cellNode )
+				const struct BufferItem *	cellNode )
     {
     ParagraphFrame		pf;
-    const BufferItem *		rowNode= cellNode->biParent;
-    const BufferItem *		sectNode= docGetSectNode( (BufferItem *)rowNode );
+    const struct BufferItem *	rowNode= cellNode->biParent;
+    const struct BufferItem *	sectNode= docGetSectNode( (struct BufferItem *)rowNode );
     const LayoutPosition *	lpTop;
     LayoutPosition		lpBelow;
 
@@ -549,9 +588,8 @@ void docCellRectangleTwips(	DocumentRectangle *		drCell,
     lpTop= &(rowNode->biTopPosition);
     docGetCellBottom( &lpBelow, cellNode );
 
-    if  ( bf->bfPage > lpTop->lpPage			||
-	  ( bf->bfPage == lpTop->lpPage		&&
-	    bf->bfColumn > lpTop->lpColumn	)	)
+    if  ( docCompareLayoutPositionToFrame( lpTop,
+					bf->bfPage, bf->bfColumn ) < 0 )
 	{
 	if  ( sectNode->biTopPosition.lpPage == bf->bfPage )
 	    {
@@ -565,9 +603,8 @@ void docCellRectangleTwips(	DocumentRectangle *		drCell,
 	pf.pfCellRect.drY0= lpTop->lpPageYTwips;
 	}
 
-    if  ( bf->bfPage < lpBelow.lpPage			||
-	  ( bf->bfPage == lpBelow.lpPage	&&
-	    bf->bfColumn < lpBelow.lpColumn	)	)
+    if  ( docCompareLayoutPositionToFrame( &lpBelow,
+					bf->bfPage, bf->bfColumn ) > 0 )
 	{
 	if  ( sectNode->biBelowPosition.lpPage == bf->bfPage )
 	    {
@@ -596,19 +633,20 @@ void docCellRectangleTwips(	DocumentRectangle *		drCell,
 
 void docLayoutSectColumnTop(	LayoutPosition *	lpTop,
 				BlockFrame *		bf,
-				BufferItem *		bodySectNode,
-				BufferDocument *	bd )
+				struct BufferItem *	bodySectNode,
+				struct BufferDocument *	bd )
     {
     if  ( bodySectNode->biTreeType != DOCinBODY )
 	{ SDEB(docTreeTypeStr(bodySectNode->biTreeType));	}
 
-    docBlockFrameTwips( bf, bodySectNode, bd, lpTop->lpPage, lpTop->lpColumn );
+    docSectionBlockFrameTwips( bf, bodySectNode, bodySectNode, bd,
+					    lpTop->lpPage, lpTop->lpColumn );
 
     lpTop->lpPageYTwips= bf->bfContentRect.drY0;
     lpTop->lpAtTopOfColumn= 1;
 
     /*  1  */
-    if  ( DOC_SECTnodeBELOW_PREVIOUS( bodySectNode )		&&
+    if  ( bodySectNode->biSectBreakKind == DOCibkNONE		&&
 	  lpTop->lpPage == bodySectNode->biTopPosition.lpPage	&&
 	  bodySectNode->biSectColumnCount > 1			&&
 	  lpTop->lpColumn > 0					)

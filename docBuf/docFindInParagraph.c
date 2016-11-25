@@ -8,13 +8,13 @@
 
 #   include	<ctype.h>
 
-#   include	<appDebugon.h>
-
+#   include	<textRegexp.h>
 #   include	"docBuf.h"
 #   include	"docTreeNode.h"
 #   include	"docFind.h"
+#   include	"docSelect.h"
 
-#   include	<reg.h>
+#   include	<appDebugon.h>
 
 /************************************************************************/
 /*									*/
@@ -24,13 +24,19 @@
 
 int docFindSetPattern(		void **			pProg,
 				const char *		pattern,
-				int			useRegex )
+				int			useRegex,
+				int			asWord,
+				int			caseSensitive )
     {
     regProg *			prog= (regProg *)0;
     int				options= 0;
 
     if  ( ! useRegex )
 	{ options |= REGflagESCAPE_REGEX;	}
+    if  ( asWord )
+	{ options |= REGflagAS_WORD;		}
+    if  ( ! caseSensitive )
+	{ options |= REGflagCASE_INSENSITIVE;	}
 
     if  ( pattern )
 	{
@@ -52,9 +58,15 @@ int docFindSetPattern(		void **			pProg,
 /*									*/
 /************************************************************************/
 
-int docFindParaFindNext(	DocumentSelection *		ds,
-				BufferItem *			paraBi,
-				BufferDocument *		bd,
+# ifdef __GNUC__
+# pragma GCC diagnostic push
+# pragma GCC diagnostic ignored "-Wunused-parameter"
+# endif
+
+int docFindParaFindNext(	struct DocumentSelection *	ds,
+				struct BufferItem *		paraNode,
+				struct BufferDocument *		bd,
+				struct DocumentTree *		tree,
 				const DocumentPosition *	dpFrom,
 				void *				through )
     {
@@ -66,25 +78,34 @@ int docFindParaFindNext(	DocumentSelection *		ds,
     int			from;
     int			past;
 
-    if  (  docParaStrlen( paraBi ) == 0 )
+    if  (  docParaStrlen( paraNode ) == 0 )
 	{ return 1;	}
 
-    res= regFindLeftToRight( &em, prog,
-		    (char *)docParaString( paraBi, 0 ),
-		    dpFrom->dpStroff, docParaStrlen( paraBi ) );
+    res= regFindLeftToRight( &em, prog, docParaString( paraNode, 0 ),
+		    dpFrom->dpStroff, docParaStrlen( paraNode ) );
 
     if  ( ! res )
 	{ return 1;	}
 
     regGetFullMatch( &from, &past, &em );
-    docSetParaSelection( ds, paraBi, direction, from, past- from );
+    docSetParaSelection( ds, paraNode, direction, from, past- from );
 
     return 0;
     }
 
-int docFindParaFindPrev(	DocumentSelection *		ds,
-				BufferItem *			paraBi,
-				BufferDocument *		bd,
+# ifdef __GNUC__
+# pragma GCC diagnostic pop
+# endif
+
+# ifdef __GNUC__
+# pragma GCC diagnostic push
+# pragma GCC diagnostic ignored "-Wunused-parameter"
+# endif
+
+int docFindParaFindPrev(	struct DocumentSelection *	ds,
+				struct BufferItem *		paraNode,
+				struct BufferDocument *		bd,
+				struct DocumentTree *		tree,
 				const DocumentPosition *	dpFrom,
 				void *				through )
     {
@@ -96,19 +117,22 @@ int docFindParaFindPrev(	DocumentSelection *		ds,
     int			from;
     int			past;
 
-    if  (  docParaStrlen( paraBi ) == 0 )
+    if  (  docParaStrlen( paraNode ) == 0 )
 	{ return 1;	}
 
-    res= regFindRightToLeft( &em, prog,
-		    (char *)docParaString( paraBi, 0 ),
-		    dpFrom->dpStroff, docParaStrlen( paraBi ) );
+    res= regFindRightToLeft( &em, prog, docParaString( paraNode, 0 ),
+		    dpFrom->dpStroff, docParaStrlen( paraNode ) );
 
     if  ( ! res )
 	{ return 1;	}
 
     regGetFullMatch( &from, &past, &em );
-    docSetParaSelection( ds, paraBi, direction, from, past- from );
+    docSetParaSelection( ds, paraNode, direction, from, past- from );
 
     return 0;
     }
+
+# ifdef __GNUC__
+# pragma GCC diagnostic pop
+# endif
 

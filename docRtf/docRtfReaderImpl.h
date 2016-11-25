@@ -7,18 +7,38 @@
 #   ifndef		RTF_READER_IMPL_H
 #   define		RTF_READER_IMPL_H
 
-#   include	<docBuf.h>
-#   include	<docNoteProperties.h>
-#   include	<sioGeneral.h>
-#   include	<docTabStop.h>
+#   include	<textAttribute.h>
+#   include	<docItemShading.h>
+#   include	<docParaProperties.h>
 #   include	<docTabStopList.h>
-#   include	<docListOverride.h>
-#   include	<docDocumentList.h>
+#   include	<docFrameProperties.h>
+#   include	<utilMemoryBuffer.h>
+#   include	<docSelectionScope.h>
+#   include	<docCellProperties.h>
+#   include	<docSectProperties.h>
+#   include	<docRowProperties.h>
 #   include	<docBorderProperties.h>
-#   include	"docRtfTextConverter.h"
 #   include	"docRtfControlWord.h"
+#   include	<docStyle.h>
+#   include	<docDocumentProperties.h>
+#   include	<docTabStop.h>
+#   include	<docDocumentList.h>
+#   include	<docListOverride.h>
+#   include	<fontEncodedFont.h>
+#   include	<utilPagedList.h>
+#   include	<docPictureProperties.h>
+#   include	<docEditRange.h>
+#   include	<docNoteProperties.h>
+#   include	<fontDocFont.h>
+#   include	<docFormField.h>
 
+struct BufferDocument;
+struct DocumentTree;
 struct RtfReader;
+struct SimpleInputStream;
+struct RtfTreeStack;
+struct BufferItem;
+
 typedef struct RtfReader RtfReader;
 
 /************************************************************************/
@@ -27,21 +47,53 @@ typedef struct RtfReader RtfReader;
 /*									*/
 /************************************************************************/
 
-struct RtfFieldStackLevel;
-
 typedef struct RtfReadingState
     {
     int				rrsBytesPerUnicode;
     int				rrsUnicodeBytesToSkip;
 
+				/**
+				 *  The text attribute of text to insert 
+				 *  into the current paragraph. The font 
+				 *  number in the attribute is in terms 
+				 *  of the text buffer. NOT in terms of the 
+				 *  font number in the file that we are 
+				 *  reading.
+				 */
     TextAttribute		rrsTextAttribute;
-				    /************************************/
-				    /*  Font number is in buffer terms.	*/
-				    /*  NOT in file terms.		*/
-				    /************************************/
+
+				/**
+				 *  The RTF/MS-Windows character set of the 
+				 *  text that we read. It is determined by 
+				 *  the font in the input file. It determines 
+				 *  how the native characters of the input are 
+				 *  translated to UTF-8 in the memory buffer.
+				 */
     int				rrsTextCharset;
+
+				/**
+				 * 0: Text will display with left-to-right 
+				 *    precedence (the default)
+				 * 1: Text will display with right-to-left 
+				 *    precedence
+				 */
+    unsigned char		rrsTextRToL;
+
+				/**
+				 *  The shading (if any) of the text that 
+				 *  we are reading. It is resolved to an 
+				 *  integer every time a run of text is 
+				 *  inserted in the document.
+				 */
     ItemShading			rrsTextShading;
+				/**
+				 *  Optimize the translation of the current 
+				 *  text shading to a number: Only do so 
+				 *  after a tag that changes the shading has 
+				 *  been handled.
+				 */
     int				rrsTextShadingChanged;
+
     ParagraphProperties		rrsParagraphProperties;
     TabStopList			rrsTabStopList;
     ItemShading			rrsParagraphShading;
@@ -49,24 +101,44 @@ typedef struct RtfReadingState
 
     MemoryBuffer		rrsSavedText;
 
+				/**
+				 *  Pick up a width tag: Used in NeXTGraphics
+				 */
+    int				rrsWidth;
+				/**
+				 *  Pick up a height tag: Used in NeXTGraphics
+				 */
+    int				rrsHeight;
+
+				/**
+				 *  Use a linked list to implement the 
+				 *  stack of states.
+				 */
     struct RtfReadingState *	rrsPrev;
     } RtfReadingState;
 
-typedef int (*RtfAddTextParticule)(	struct RtfReader *	rr,
+typedef int (*RtfGotText)(		struct RtfReader *	rr,
 					const char *		text,
 					int			len );
 
 struct RtfReader
     {
-    RtfReadingState *		rrcState;
-    RtfAddTextParticule		rrcAddParticule;
-    SimpleInputStream *		rrcSis;
+				/**
+				 *  The reading state. Keep track of 
+				 *  text and paragraph properties inside
+				 *  { }.
+				 */
+    RtfReadingState *		rrState;
 
 				/**
-				 *  Type of BufferItem. Still retated 
-				 *  to the depth in the document
+				 *  Keep track of separate document trees 
+				 *  such as headers/footers/separators/notes
+				 *  and shapes.
 				 */
-    int				rrcLevel;
+    struct RtfTreeStack *	rrTreeStack;
+
+    RtfGotText			rrGotText;
+    struct SimpleInputStream *	rrInputStream;
 
 				/**
 				 *  Incremented/Decremented around groups 
@@ -75,12 +147,12 @@ struct RtfReader
 				 *  to only complain about the unknown group 
 				 *  and to shut up about its contents.
 				 */
-    int				rrcInIgnoredGroup;
+    int				rrInIgnoredGroup;
 
 				/**
 				 *  Complain about unknown control words
 				 */
-    int				rrcComplainUnknown;
+    int				rrComplainUnknown;
 
 				/**
 				 *  Character that could not be unread
@@ -88,38 +160,55 @@ struct RtfReader
 				 */
     int				rrcCharacterAhead;
 
-    int				rrcAfterNoteref;
-
     int				rrReadFlags;
 
+				/**
+				 *  The current position in the input.
+				 */
     int				rrCurrentLine;
+				/**
+				 *  The current position in the document that 
+				 *  we are collecting.
+				 */
     struct BufferDocument *	rrDocument;
-    struct DocumentTree *	rrcTree;
-    struct BufferItem *		rrcNode;
-				/****************************************/
-				/*  The current position in the input.	*/
-				/****************************************/
-				/****************************************/
-				/*  Text attributes of the current pos.	*/
-				/****************************************/
+
+				/**
+				 *  The properties of the row frame (If any) 
+				 *  that we are collecting.
+				 */
     FrameProperties		rrcRowFrameProperties;
 
-    CellProperties		rrcCellProperties;
-    PropertyMask		rrcCellPropertyMask;
-    ItemShading			rrcCellShading;
+				/**
+				 *  The properties of the cell (If any) 
+				 *  that we are collecting. Also keep track 
+				 *  of the properties that have been explicitly
+				 *  set.
+				 */
+    CellProperties		rrCellProperties;
+    PropertyMask		rrCellPropertyMask;
+    ItemShading			rrCellShading;
 
-    SectionProperties		rrcSectionProperties;
+    SectionProperties		rrSectionProperties;
     PropertyMask		rrcSectionPropertyMask;
-    int				rrcSectionColumn;
 
-    RowProperties		rrcRowProperties;
-    PropertyMask		rrcRowPropertyMask;
-    ItemShading			rrcRowShading;
+				/**
+				 *  The section column that we are currently 
+				 *  collecting properties for.
+				 */
+    int				rrSectionColumn;
 
-    BorderProperties		rrcBorderProperties;
+    PropertyMask		rrRowPropertyMask;
+    ItemShading			rrRowShading;
+
+				/**
+				 *  The border properties that we collect
+				 *  after a border keyword.
+				 */
+    BorderProperties		rrBorderProperties;
 
     struct DrawingShape *	rrDrawingShape;
     const RtfControlWord *	rrShapeProperty;
+
     MemoryBuffer		rrShapePropertyName;
     MemoryBuffer		rrShapePropertyValue;
 
@@ -130,20 +219,14 @@ struct RtfReader
 				     *  document. It is abused to hold the 
 				     *  new properties in a property change.
 				     */
-    DocumentStyle		rrcStyle;
-    DocumentProperties		rrcDocumentProperties;
-    PropertyMask		rrcDocPropertyMask;
+    DocumentStyle		rrStyle;
+    DocumentProperties		rrDocumentProperties;
+    PropertyMask		rrDocPropertyMask;
     TabStop			rrcTabStop;
     RGB8Color			rrcColor;
     int				rrcGotComponent;
-    struct tm			rrcTm;
+    struct tm			rrTm;
     unsigned char *		rrcInfoText;
-    SelectionScope		rrcSelectionScope;
-
-    ParagraphNumber		rrcParagraphNumber;
-    ItemShading			rrcParagraphNumberTextShading;
-    ParagraphNumber *		rrcParagraphNumbers;
-    int				rrcParagraphNumberCount;
 
     DocumentList		rrcDocumentList;
     ListLevel			rrcDocumentListLevel;
@@ -156,50 +239,83 @@ struct RtfReader
 				/****************************************/
 				/*  Document properties.		*/
 				/****************************************/
-    DocumentFont		rrcCurrentFont;
-    EncodedFont			rrcCurrentEncodedFont;
-    PagedList			rrcEncodedFontList;
+				/**
+				 *  For reading the font table.
+				 */
+    DocumentFont		rrCurrentFont;
+    EncodedFont			rrCurrentEncodedFont;
+    PagedList			rrEncodedFontList;
 
-    int				rrcDefaultFont;
-    int				rrcDefaultFontDbch;
-    int				rrcDefaultFontLoch;
-    int				rrcDefaultFontHich;
-    int				rrcDefaultFontBi;
+    int				rrDefaultFont;
+    int				rrDefaultFontDbch;
+    int				rrDefaultFontLoch;
+    int				rrDefaultFontHich;
+    int				rrDefaultFontBi;
 
-				/****************************************/
-				/*  For reading the font table.		*/
-				/*  Style sheet.			*/
-				/****************************************/
-    int				rrcInsertedObjectNr;
-    PictureProperties		rrcPictureProperties;
-    PropertyMask		rrcPicturePropMask;
+				/**
+				 *  The object that we are currently 
+				 *  collecting. Its particule has not 
+				 *  yet been inserted into the document.
+				 */
+    struct InsertedObject *	rrInsertedObject;
+
+				/**
+				 *  Current Picture Properties.
+				 */
+    PictureProperties		rrPictureProperties;
+				/**
+				 *  Keep track of changes to the current
+				 *  picture properties.
+				 */
+    PropertyMask		rrPicturePropMask;
+
+				/**
+				 *  The name of the bookmark start 
+				 *  or end that we are reading.
+				 */
     MemoryBuffer		rrcBookmark;
-    struct RtfFieldStackLevel *	rrcFieldStack;
-    int				rrcLastFieldNumber;
-				/****************************************/
-				/*  For reading 'objects' and pictures.	*/
-				/*  For reading 'fields'.		*/
-				/****************************************/
-    int				rrAfterParaHeadField;
-    int				rrParagraphBreakOverride;
-    int				rrcGotDocGeometry;
-				/****************************************/
-				/*  For coping with the way word saves	*/
-				/*  {\pntext ... }			*/
-				/****************************************/
 
+				/**
+				 *  For coping with the way word saves
+				 *  {\pntext ... }
+				 */
+    unsigned char		rrAfterParaHeadField;
+				/**
+				 *  We just met a reference to a foot/end note.
+				 */
+    unsigned char		rrAfterNoteref;
+				/**
+				 *  We just met an inline shape
+				 *  (shp:f_pseudoInline)
+				 */
+    unsigned char		rrAfterInlineShape;
+
+				/**
+				 *  The object number of the inline shape that 
+				 *  we just encountered
+				 */
+    int				rrInlineShapeObjectNumber;
+
+    int				rrParagraphBreakOverride;
+
+    unsigned char		rrGotDocGeometry;
+
+				/**
+				 *  The text converter that is used to 
+				 *  convert control strings in the input 
+				 *  file.
+				 */
     struct TextConverter *	rrRtfTextConverter;
-    struct TextConverter *	rrTextTextConverter;
 
 				/**
 				 * Only used for reading Undo/Redo traces.
 				 * -1: old; 1: new
 				 */
-    int				rrcTraceReadWhat;
-    int				rrcTraceCommand;
-    int				rrcTraceSelectionPosition;
+    int				rrTraceReadWhat;
+    int				rrTraceCommand;
+    int				rrTraceSelectionPosition;
     int				rrcTraceFieldKind;
-    int				rrcTraceInProps;
+    int				rrTraceInProps;
 
     SelectionScope		rrcTraceOldSelectionScope;
     EditRange			rrcTraceOldRange;
@@ -218,8 +334,10 @@ struct RtfReader
     int				rrcTraceNewPage;
     int				rrcTraceNewColumn;
 
-    NoteProperties		rrcNoteProperties;
-    PropertyMask		rrcNotePropertyMask;
+    NoteProperties		rrNoteProperties;
+    PropertyMask		rrNotePropertyMask;
+
+    FormField			rrFormField;
     };
 
 /************************************************************************/
@@ -244,11 +362,11 @@ struct RtfReader
 /*									*/
 /************************************************************************/
 
-#   define RTF_TEXT_GROUP( s, id, co ) \
-		RTF_DEST_CO( s, id, docRtfApplyDocEncodedTextGroup, co )
+#   define RTF_TEXT_GROUP( s, sc, id, co ) \
+		RTF_DEST_CO( s, sc, id, docRtfApplyDocEncodedTextGroup, co )
 
-#   define RTF_BYTE_GROUP( s, id, co ) \
-		RTF_DEST_CO( s, id, docRtfApplyRawBytesGroup, co )
+#   define RTF_BYTE_GROUP( s, sc, id, co ) \
+		RTF_DEST_CO( s, sc, id, docRtfApplyRawBytesGroup, co )
 
 /************************************************************************/
 
@@ -272,7 +390,6 @@ typedef enum RtfLookupId
 /*									*/
 /************************************************************************/
 
-extern RtfControlWord	docRtfDocumentGroups[];
 extern const char DOC_RTF_LENIENT_MESSAGE[];
 
 /************************************************************************/
@@ -282,12 +399,6 @@ extern const char DOC_RTF_LENIENT_MESSAGE[];
 /************************************************************************/
 
 extern void docRtfPopReadingState(	RtfReader *		rr );
-
-extern const RtfControlWord * docRtfFindPropertyWord(
-					const char *		controlWord );
-
-extern const RtfControlWord * docRtfFindShapePropertyWord(
-					const char *		controlWord );
 
 extern int docRtfFindControl(	RtfReader *		rr,
 				int *			pC,
@@ -370,7 +481,6 @@ extern int docRtfRememberProperty(	const RtfControlWord *	rcw,
 					int			arg,
 					RtfReader *		rr );
 
-extern int docRtfPopScopeFromFieldStack( RtfReader *		rr );
 extern int docRtfPopParaFromFieldStack( RtfReader *		rr,
 					int			paraNr );
 
@@ -396,7 +506,11 @@ extern int docRtfRememberTextProperty(	const RtfControlWord *	rcw,
 					int			arg,
 					RtfReader *		rr );
 
-extern int docRtfRememberPntextProperty( const RtfControlWord *	rcw,
+extern int docRtfRememberTextDirection( const RtfControlWord *	rcw,
+					int			arg,
+					RtfReader *		rr );
+
+extern int docRtfGotCellX(		const RtfControlWord *	rcw,
 					int			arg,
 					RtfReader *		rr );
 
@@ -443,7 +557,7 @@ extern int docRtfReadGroup(	const RtfControlWord *	rcw,
 				int			arg,
 				RtfReader *		rr,
 				const RtfControlWord *	groupWords,
-				RtfAddTextParticule	addParticule,
+				RtfGotText		gotText,
 				RtfCommitGroup		commitGroup );
 
 extern int docRtfReadGroupX(	const RtfControlWord *	rcw,
@@ -452,7 +566,7 @@ extern int docRtfReadGroupX(	const RtfControlWord *	rcw,
 				int			arg,
 				RtfReader *		rr,
 				const RtfControlWord *	groupWords,
-				RtfAddTextParticule	addParticule,
+				RtfGotText		gotText,
 				RtfCommitGroup		commitGroup );
 
 extern int docRtfSkipGroup(	const RtfControlWord *	groupRcw,
@@ -464,7 +578,7 @@ extern int docRtfConsumeGroup(	const RtfControlWord *	applyFirst,
 				int			arg,
 				RtfReader *		rr,
 				const RtfControlWord *	groupWords,
-				RtfAddTextParticule	addParticule );
+				RtfGotText		gotText );
 
 extern int docRtfReadPict(	const RtfControlWord *	rcw,
 				int			arg,
@@ -487,7 +601,7 @@ extern int docRtfReadShape(	const RtfControlWord *	rcw,
 				int			arg,
 				RtfReader *		rr );
 
-extern int docRtfTextParticule(	RtfReader *		rr,
+extern int docRtfGotText(	RtfReader *		rr,
 				const char *		text,
 				int			len );
 
@@ -507,7 +621,15 @@ extern int docRtfReadExtTree(	const RtfControlWord *	rcw,
 				int			arg,
 				RtfReader *		rr );
 
-extern int docRtfReadFootnote(	const RtfControlWord *	rcw,
+extern int docRtfReadNote(	const RtfControlWord *	rcw,
+				int			arg,
+				RtfReader *		rr );
+
+extern int docRtfReadNeXTGraphic(
+				const RtfControlWord *	rcw,
+				int			arg,
+				RtfReader *		rr );
+extern int docRtfNeXTDimension( const RtfControlWord *	rcw,
 				int			arg,
 				RtfReader *		rr );
 
@@ -519,7 +641,7 @@ extern int docRtfBkmkEnd(	const RtfControlWord *	rcw,
 				int			arg,
 				RtfReader *		rr );
 
-extern DocumentField * docRtfSpecialField(
+extern struct DocumentField * docRtfSpecialField(
 				int			fieldKind,
 				const char *		fieldinst,
 				int			fieldsize,
@@ -553,6 +675,9 @@ extern int docRtfFontProperty(	const RtfControlWord *		rcw,
 				int				arg,
 				RtfReader *			rr );
 
+extern int docRtfCommitFontDest(	const RtfControlWord *	rcw,
+					RtfReader *		rrc );
+
 extern int docRtfObjectProperty(	const RtfControlWord *	rcw,
 					int			arg,
 					RtfReader *		rr );
@@ -573,10 +698,6 @@ extern int docRtfTextSpecialParticule(	const RtfControlWord *	rcw,
 					int			arg,
 					RtfReader *		rr );
 
-extern int docRtfTextBidiMark(		const RtfControlWord *	rcw,
-					int			arg,
-					RtfReader *		rr );
-
 extern int docRtfDrawingObjectProperty(	const RtfControlWord *	rcw,
 					int			arg,
 					RtfReader *		rr );
@@ -590,17 +711,13 @@ extern int docRtfShpProperty(		const RtfControlWord *	rcw,
 					int			arg,
 					RtfReader *		rr );
 
-extern int docRtfPnProperty(		const RtfControlWord *	rcw,
-					int			arg,
-					RtfReader *		rr );
-
 extern int docRtfHierarchy(		const RtfControlWord *	rcw,
 					int			arg,
 					RtfReader *		rr );
 
 extern int docRtfReadDocumentTree(	const RtfControlWord *	rcw,
-					DocumentTree *		dt,
-					int *			pExtItKind,
+					struct DocumentTree *	dt,
+					int *			pTreeType,
 					RtfReader *		rr,
 					int			ignoreEmpty,
 					const SelectionScope *	ss );
@@ -641,19 +758,14 @@ extern int docRtfDocTimeGroup(		const RtfControlWord *  rcw,
 extern void docRtfRefreshTextShading(	RtfReader *		rr,
 					RtfReadingState *	rrs );
 
-extern int docRtfRefreshParagraphProperties(	BufferDocument *	bd,
+extern int docRtfRefreshParagraphProperties(	struct BufferDocument *	bd,
 						RtfReadingState *	rrs );
 
 extern int docRtfSetParaProperties(	ParagraphProperties *	pp,
-					BufferDocument *	bd,
-					int			mindTable,
-					RtfReadingState *	rrs,
-					int			breakOverride );
+					struct BufferDocument *	bd,
+					RtfReadingState *	rrs );
 
-extern int docRtfAdaptToParaProperties(	struct BufferItem *	paraNode,
-					BufferDocument *	bd,
-					RtfReadingState *	rrs,
-					int			breakOverride );
+extern int docRtfAdaptToParaProperties(	RtfReader *		rr );
 
 extern void docRtfSetForRow(		struct BufferItem *	node );
 
@@ -661,15 +773,7 @@ extern void docRtfResetParagraphProperties(
 					RtfReadingState *	rrs );
 
 extern void docRtfResetTextAttribute(	RtfReadingState *	rrs,
-					BufferDocument *	bd );
-
-extern int docRtfSkipPn(	const RtfControlWord *	rcw,
-				int			arg,
-				RtfReader *		rr );
-
-extern int docRtfReadPnseclvl(	const RtfControlWord *	rcw,
-				int			arg,
-				RtfReader *		rr );
+					struct BufferDocument *	bd );
 
 extern int docRtfRememberFieldProperty(	const RtfControlWord *	rcw,
 					int			arg,
@@ -695,7 +799,7 @@ extern int docRtfReadTimeField(	const RtfControlWord *	rcw,
 extern struct BufferItem *	docRtfGetParaNode(	RtfReader *	rr );
 extern struct BufferItem *	docRtfGetSectNode(	RtfReader *	rr );
 
-extern int docRtfFinishCurrentNode(	const RtfControlWord *	rcw,
+extern int docRtfFinishCurrentTree(	const RtfControlWord *	rcw,
 					RtfReader *		rr );
 
 extern void docRtfRestartFont(			RtfReader *	rr );
@@ -772,12 +876,50 @@ extern int docRtfCommitListStyleName(	const RtfControlWord *	rcw,
 
 extern void docRtfResetCellProperties(	RtfReader *		rr );
 
-extern void docRtfReadSetupTextConverters(	RtfReader *	rr );
+extern int docRtfReadSetupTextConverters(	RtfReader *	rr );
 
-extern RtfReader * docRtfOpenReader(		SimpleInputStream *	sis,
-						BufferDocument *	bd,
-						int			flags );
+extern RtfReader * docRtfOpenReader(	struct SimpleInputStream *	sis,
+					struct BufferDocument *		bd,
+					int				flags );
 
-extern void docRtfCloseReader(			RtfReader *		rr );
+extern void docRtfCloseReader(		RtfReader *		rr );
+
+extern int docRtfReadFldrslt(		const RtfControlWord *	rcw,
+					int			arg,
+					RtfReader *		rr );
+
+extern int docRtfReadFldinst(		const RtfControlWord *	rcw,
+					int			arg,
+					RtfReader *		rr );
+
+extern int docRtfReadFormField(		const RtfControlWord *	rcw,
+					int			arg,
+					RtfReader *		rr );
+
+extern int docRtfReadDataField(		const RtfControlWord *	rcw,
+					int			arg,
+					RtfReader *		rr );
+
+extern int docRtfRememberFormFieldProperty(
+					const RtfControlWord *	rcw,
+					int			arg,
+					RtfReader *		rr );
+
+extern int docRtfCommitFormFieldText(	const RtfControlWord *	rcw,
+					RtfReader *		rrc );
+
+extern int docRtfStartParagraph(	RtfReader *		rr );
+
+extern int docRtfCloseParagraph(	RtfReader *		rr,
+					struct BufferItem *	paraNode );
+
+extern int docRtfReadByte(		RtfReader *		rr );
+extern int docRtfUngetLastRead(		RtfReader *		rr );
+extern int docRtfCheckAtEOF(		RtfReader *		rr );
+
+extern int docRtfReadStartObject(	struct InsertedObject ** pIo,
+					RtfReader *		rr );
+
+extern int docRtfInsideShapeField(	RtfReader *		rr );
 
 #   endif	/*	RTF_READER_IMPL_H	*/

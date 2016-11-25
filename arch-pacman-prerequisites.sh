@@ -8,4 +8,5 @@ pacman -S \
     libpng		\
     gtk2		\
     libpaper		\
+    libenchant		\
     desktop-file-utils

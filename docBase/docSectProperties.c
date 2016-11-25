@@ -58,6 +58,7 @@ static const int DocSectIntProps[]=
     DGpropMARGMIR,
     SPpropSTYLE,
     SPpropTITLEPG,
+    SPpropENDPG,
     SPpropBREAK_KIND,
     SPpropNUMBER_STYLE,
     SPpropNUMBER_HYPHEN,
@@ -203,9 +204,9 @@ int docUpdSectProperties(	PropertyMask *			pSpDoneMask,
 		    scTo->scColumnWidthTwips= scFrom->scColumnWidthTwips;
 		    PROPmaskADD( &doneMask, SPpropCOLUMNS );
 		    }
-		if  ( scTo->scSpaceToRightTwips != scFrom->scSpaceToRightTwips )
+		if  ( scTo->scSpaceAfterTwips != scFrom->scSpaceAfterTwips )
 		    {
-		    scTo->scSpaceToRightTwips= scFrom->scSpaceToRightTwips;
+		    scTo->scSpaceAfterTwips= scFrom->scSpaceAfterTwips;
 		    PROPmaskADD( &doneMask, SPpropCOLUMNS );
 		    }
 		}
@@ -271,7 +272,7 @@ void docSectPropertyDifference( PropertyMask *			pDiffMask,
 		{
 		if  ( sc1->scColumnWidthTwips != sc2->scColumnWidthTwips )
 		    { PROPmaskADD( &diffMask, SPpropCOLUMNS );	}
-		if  ( sc1->scSpaceToRightTwips != sc2->scSpaceToRightTwips )
+		if  ( sc1->scSpaceAfterTwips != sc2->scSpaceAfterTwips )
 		    { PROPmaskADD( &diffMask, SPpropCOLUMNS ); }
 		}
 	    if  ( sc1->scColumnWidthTwips != sc2->scColumnWidthTwips )
@@ -307,6 +308,7 @@ void docInitSectionProperties(	SectionProperties *	sp )
     sp->spLineBetweenColumns= 0;
 
     sp->spHasTitlePage= 0;
+    sp->spHasEndPage= 0;
     sp->spBreakKind= DOCibkPAGE;
     sp->spPageNumberStyle= DOCpgnDEC;
     sp->spPageNumberHyphen= DOCpgnhPGNHNSH;
@@ -337,14 +339,14 @@ int docSectionPropertiesSetColumnCount(	SectionProperties *	sp,
 
 	if  ( sp->spColumnCount == 1 )
 	    {
-	    sc->scSpaceToRightTwips= 0;
+	    sc->scSpaceAfterTwips= 0;
 	    sc->scColumnWidthTwips= 0;
 	    }
 
 	sc= sp->spColumns+ sp->spColumnCount;
 	while( sp->spColumnCount < n )
 	    {
-	    sc->scSpaceToRightTwips= 0;
+	    sc->scSpaceAfterTwips= 0;
 	    sc->scColumnWidthTwips= 0;
 
 	    sc++; sp->spColumnCount++;
@@ -366,8 +368,6 @@ int docSectionPropertiesSetColumnCount(	SectionProperties *	sp,
 int docCopySectionProperties(	SectionProperties *		to,
 				const SectionProperties *	from )
     {
-    int		i;
-
     if  ( docSectionPropertiesSetColumnCount( to, from->spColumnCount ) )
 	{ LDEB(from->spColumnCount); return -1;	}
 
@@ -379,18 +379,22 @@ int docCopySectionProperties(	SectionProperties *		to,
     to->spLineBetweenColumns= from->spLineBetweenColumns;
 
     to->spHasTitlePage= from->spHasTitlePage;
+    to->spHasEndPage= from->spHasEndPage;
     to->spBreakKind= from->spBreakKind;
     to->spPageNumberStyle= from->spPageNumberStyle;
     to->spPageNumberHyphen= from->spPageNumberHyphen;
     to->spRestartPageNumbers= from->spRestartPageNumbers;
+    to->spRToL= from->spRToL;
 
     to->spStartPageNumber= from->spStartPageNumber;
 
     /* docSectionPropertiesSetColumnCount() has allocated the memory */
     if  ( from->spColumnCount > 1 )
 	{
-	for ( i= 0; i < from->spColumnCount; i++ )
-	    { to->spColumns[i]= from->spColumns[i];	}
+	int		col;
+
+	for ( col= 0; col < from->spColumnCount; col++ )
+	    { to->spColumns[col]= from->spColumns[col];	}
 	}
 
     to->spNotesProperties= from->spNotesProperties;
@@ -408,8 +412,7 @@ int docSectSetEqualColumnWidth(	SectionProperties *	sp )
     int				pageWide;
     int				colWide;
 
-    pageWide= dg->dgPageWideTwips-
-			    dg->dgLeftMarginTwips- dg->dgRightMarginTwips;
+    pageWide= geoContentWide( dg );
 
     if  ( sp->spColumnCount < 2 )
 	{ return pageWide;	}
@@ -421,7 +424,7 @@ int docSectSetEqualColumnWidth(	SectionProperties *	sp )
     for ( col= 0; col < sp->spColumnCount; sc++, col++ )
 	{
 	sc->scColumnWidthTwips= 0;
-	sc->scSpaceToRightTwips= 0;
+	sc->scSpaceAfterTwips= 0;
 	}
 
     return colWide;
@@ -435,8 +438,7 @@ int docSectSetExplicitColumnWidth(	SectionProperties *	sp )
     int				pageWide;
     int				colWide;
 
-    pageWide= dg->dgPageWideTwips-
-			    dg->dgLeftMarginTwips- dg->dgRightMarginTwips;
+    pageWide= geoContentWide( dg );
 
     if  ( sp->spColumnCount < 2 )
 	{ LDEB(sp->spColumnCount); return -1;	}
@@ -451,7 +453,7 @@ int docSectSetExplicitColumnWidth(	SectionProperties *	sp )
     for ( col= 0; col < sp->spColumnCount; sc++, col++ )
 	{
 	sc->scColumnWidthTwips= colWide;
-	sc->scSpaceToRightTwips= sp->spColumnSpacingTwips;
+	sc->scSpaceAfterTwips= sp->spColumnSpacingTwips;
 	}
 
     return 0;
@@ -466,20 +468,23 @@ int docSectSetExplicitColumnWidth(	SectionProperties *	sp )
 /*									*/
 /************************************************************************/
 
-void docSectGetColumnX(		int *				pXLine,
+void docSectGetColumnX(		int *				pXLineBefore,
 				int *				pX0,
 				int *				pX1,
 				const SectionProperties *	sp,
 				const DocumentGeometry *	dgPage,
 				int				column )
     {
-    int				x0= dgPage->dgLeftMarginTwips;
-    int				col;
+    int		used= 0;
+    int		col;
+
+    int		colWide;
+    int		halfGap;
 
     if  ( sp->spColumnCount < 2 )
 	{
-	*pX0= dgPage->dgLeftMarginTwips;
-	*pX1= dgPage->dgPageWideTwips- dgPage->dgRightMarginTwips;
+	*pX0= dgPage->dgMargins.roLeftOffset;
+	*pX1= dgPage->dgPageWideTwips- dgPage->dgMargins.roRightOffset;
 	return;
 	}
 
@@ -488,39 +493,48 @@ void docSectGetColumnX(		int *				pXLine,
 	if  ( sp->spColumns[col].scColumnWidthTwips == 0 )
 	    { break;	}
 
-	x0 += sp->spColumns[col].scColumnWidthTwips;
-	x0 += sp->spColumns[col].scSpaceToRightTwips;
+	used += sp->spColumns[col].scColumnWidthTwips;
+	used += sp->spColumns[col].scSpaceAfterTwips;
 	}
 
     if  ( col < column || sp->spColumns[column].scColumnWidthTwips == 0 )
 	{
 	int		pageWide;
-	int		colWide;
 
-	pageWide= dgPage->dgPageWideTwips-
-			dgPage->dgLeftMarginTwips- dgPage->dgRightMarginTwips;
+	pageWide= geoContentWide( dgPage );
 
 	colWide= ( pageWide- ( sp->spColumnCount- 1 )*
 			sp->spColumnSpacingTwips )/ sp->spColumnCount;
+	halfGap= sp->spColumnSpacingTwips/ 2;
 
-	x0= dgPage->dgLeftMarginTwips+
-			    column* ( colWide+ sp->spColumnSpacingTwips );
-
-	*pXLine= x0- sp->spColumnSpacingTwips/ 2;
-	*pX0= x0;
-	*pX1= x0+ colWide;
+	used= column* ( colWide+ sp->spColumnSpacingTwips );
 	}
     else{
+	colWide= sp->spColumns[column].scColumnWidthTwips;
+
 	if  ( column == 0 )
-	    {
-	    *pXLine= x0- sp->spColumnSpacingTwips/ 2;
-	    }
-	else{
-	    *pXLine= x0- sp->spColumns[column-1].scSpaceToRightTwips/ 2;
-	    }
+	    { halfGap= sp->spColumnSpacingTwips/ 2;			}
+	else{ halfGap= sp->spColumns[column-1].scSpaceAfterTwips/ 2;	}
+	}
+
+    if  ( sp->spRToL )
+	{
+	int		x1;
+
+	x1= dgPage->dgPageWideTwips- dgPage->dgMargins.roRightOffset- used;
+
+	*pX0= x1- colWide;
+	*pX1= x1;
+	*pXLineBefore= x1+ halfGap;
+	return;
+	}
+    else{
+	int		x0= dgPage->dgMargins.roLeftOffset+ used;
 
 	*pX0= x0;
-	*pX1= x0+ sp->spColumns[column].scColumnWidthTwips;
+	*pX1= x0+ colWide;
+	*pXLineBefore= x0- halfGap;
+	return;
 	}
 
     return;
@@ -548,16 +562,16 @@ int docSetSectionProperty(	SectionProperties *	sp,
 	    break;
 
 	case DGpropLEFT_MARGIN:
-	    dg->dgLeftMarginTwips= arg;
+	    dg->dgMargins.roLeftOffset= arg;
 	    break;
 	case DGpropRIGHT_MARGIN:
-	    dg->dgRightMarginTwips= arg;
+	    dg->dgMargins.roRightOffset= arg;
 	    break;
 	case DGpropTOP_MARGIN:
-	    dg->dgTopMarginTwips= arg;
+	    dg->dgMargins.roTopOffset= arg;
 	    break;
 	case DGpropBOTTOM_MARGIN:
-	    dg->dgBottomMarginTwips= arg;
+	    dg->dgMargins.roBottomOffset= arg;
 	    break;
 
 	case DGpropHEADER_POSITION:
@@ -582,6 +596,9 @@ int docSetSectionProperty(	SectionProperties *	sp,
 
 	case SPpropTITLEPG:
 	    sp->spHasTitlePage= ( arg != 0 );
+	    break;
+	case SPpropENDPG:
+	    sp->spHasEndPage= ( arg != 0 );
 	    break;
 
 	case SPpropBREAK_KIND:
@@ -697,13 +714,13 @@ int docGetSectionProperty(	const SectionProperties *	sp,
 	    return dg->dgPageHighTwips;
 
 	case DGpropLEFT_MARGIN:
-	    return dg->dgLeftMarginTwips;
+	    return dg->dgMargins.roLeftOffset;
 	case DGpropRIGHT_MARGIN:
-	    return dg->dgRightMarginTwips;
+	    return dg->dgMargins.roRightOffset;
 	case DGpropTOP_MARGIN:
-	    return dg->dgTopMarginTwips;
+	    return dg->dgMargins.roTopOffset;
 	case DGpropBOTTOM_MARGIN:
-	    return dg->dgBottomMarginTwips;
+	    return dg->dgMargins.roBottomOffset;
 
 	case DGpropHEADER_POSITION:
 	    return dg->dgHeaderPositionTwips;
@@ -720,6 +737,8 @@ int docGetSectionProperty(	const SectionProperties *	sp,
 
 	case SPpropTITLEPG:
 	    return sp->spHasTitlePage;
+	case SPpropENDPG:
+	    return sp->spHasEndPage;
 
 	case SPpropBREAK_KIND:
 	    return sp->spBreakKind;
@@ -753,51 +772,41 @@ int docGetSectionProperty(	const SectionProperties *	sp,
 	case SPpropFOOTNOTE_STARTNR:
 	    return docGetNotesProperty( &(sp->spNotesProperties.fepFootnotesProps),
 						NOTESpropSTARTNR );
-	    return 0;
 	case SPpropFOOTNOTE_JUSTIFICATION:
 	    return docGetNotesProperty( &(sp->spNotesProperties.fepFootnotesProps),
 						NOTESpropJUSTIFICATION );
-	    return 0;
 	/* No
 	case SPpropFOOTNOTE_PLACEMENT:
 	    return docGetNotesProperty( &(sp->spNotesProperties.fepFootnotesProps),
 						NOTESpropPLACEMENT );
-	    return 0;
 	*/
 	case SPpropFOOTNOTE_RESTART:
 	    return docGetNotesProperty( &(sp->spNotesProperties.fepFootnotesProps),
 						NOTESpropRESTART );
-	    return 0;
 	case SPpropFOOTNOTE_STYLE:
 	    return docGetNotesProperty( &(sp->spNotesProperties.fepFootnotesProps),
 						NOTESpropSTYLE );
-	    return 0;
 
 	/* ENDNOTE */
 	case SPpropENDNOTE_STARTNR:
 	    return docGetNotesProperty( &(sp->spNotesProperties.fepEndnotesProps),
 						NOTESpropSTARTNR );
-	    return 0;
 	/* No
 	case SPpropENDNOTE_JUSTIFICATION:
 	    return docGetNotesProperty( &(sp->spNotesProperties.fepEndnotesProps),
 						NOTESpropJUSTIFICATION );
-	    return 0;
 	*/
 	/* No
 	case SPpropENDNOTE_PLACEMENT:
 	    return docGetNotesProperty( &(sp->spNotesProperties.fepEndnotesProps),
 						NOTESpropPLACEMENT );
-	    return 0;
 	*/
 	case SPpropENDNOTE_RESTART:
 	    return docGetNotesProperty( &(sp->spNotesProperties.fepEndnotesProps),
 						NOTESpropRESTART );
-	    return 0;
 	case SPpropENDNOTE_STYLE:
 	    return docGetNotesProperty( &(sp->spNotesProperties.fepEndnotesProps),
 						NOTESpropSTYLE );
-	    return 0;
 
 
 	default:
@@ -832,8 +841,7 @@ static int docSectColsSumOthers( int *				pVictim,
     int				victim;
     int				left;
 
-    pageWide= dg->dgPageWideTwips-
-			dg->dgLeftMarginTwips- dg->dgRightMarginTwips;
+    pageWide= geoContentWide( dg );
 
     for ( i= 0; i < sp->spColumnCount- 1; i++ )
 	{
@@ -841,7 +849,7 @@ static int docSectColsSumOthers( int *				pVictim,
 	    { continue;	}
 
 	sumOthers += sp->spColumns[i].scColumnWidthTwips;
-	sumOthers += sp->spColumns[i].scSpaceToRightTwips;
+	sumOthers += sp->spColumns[i].scSpaceAfterTwips;
 	}
 
     if  ( i != col )
@@ -877,8 +885,7 @@ static int docSectReserveWidth(	SectionProperties *	sp,
     const DocumentGeometry *	dg= &(sp->spDocumentGeometry);
     int				pageWide;
 
-    pageWide= dg->dgPageWideTwips-
-			dg->dgLeftMarginTwips- dg->dgRightMarginTwips;
+    pageWide= geoContentWide( dg );
 
     if  ( sumValues > pageWide )
 	{
@@ -914,8 +921,7 @@ static void docSectGetEqualWidths(
     int				ncol= sp->spColumnCount;
     int				ngap= sp->spColumnCount- 1;
 
-    pageWide= dg->dgPageWideTwips-
-			    dg->dgLeftMarginTwips- dg->dgRightMarginTwips;
+    pageWide= geoContentWide( dg );
 
     colWide=    ( pageWide- ngap* sp->spColumnSpacingTwips )/ ncol;
     maxColWide= ( pageWide- ngap* MIN_GAP_WIDE )/ ncol;
@@ -961,7 +967,7 @@ int docSectGetColumnSpacing(	int *				pMinValue,
 	docSectColsSumOthers( (int *)0, &maxValue,
 			sp, col, sp->spColumns[col].scColumnWidthTwips );
 
-	value= sp->spColumns[col].scSpaceToRightTwips;
+	value= sp->spColumns[col].scSpaceAfterTwips;
 	}
 
     if  ( pMaxValue )
@@ -1013,7 +1019,7 @@ int docSectSetColumnSpacing(	SectionProperties *	sp,
 	if  ( docSectReserveWidth( sp, victim, sumOthers+ newValue ) )
 	    { LLDEB(sumOthers,newValue); return -1;	}
 
-	sp->spColumns[col].scSpaceToRightTwips= newValue;
+	sp->spColumns[col].scSpaceAfterTwips= newValue;
 	}
 
     return 0;
@@ -1043,7 +1049,7 @@ int docSectGetColumnWidth(	int *				pMinValue,
 	}
     else{
 	docSectColsSumOthers( (int *)0, &maxValue,
-			sp, col, sp->spColumns[col].scSpaceToRightTwips );
+			sp, col, sp->spColumns[col].scSpaceAfterTwips );
 
 	value= sp->spColumns[col].scColumnWidthTwips;
 	}
@@ -1082,8 +1088,7 @@ int docSectSetColumnWidth(	SectionProperties *	sp,
 	if  ( newValue < MIN_COL_WIDE || newValue > maxValue )
 	    { LLDEB(newValue,maxValue); return -1;	}
 
-	pageWide= dg->dgPageWideTwips-
-			    dg->dgLeftMarginTwips- dg->dgRightMarginTwips;
+	pageWide= geoContentWide( dg );
 
 	gapWide= ( pageWide- ( sp->spColumnCount* newValue ) )/ 
 						    ( sp->spColumnCount- 1 );
@@ -1097,7 +1102,7 @@ int docSectSetColumnWidth(	SectionProperties *	sp,
 	int		sumOthers;
 
 	sumOthers= docSectColsSumOthers( &victim, &maxValue,
-			    sp, col, sp->spColumns[col].scSpaceToRightTwips );
+			    sp, col, sp->spColumns[col].scSpaceAfterTwips );
 
 	if  ( newValue < MIN_COL_WIDE || newValue > maxValue )
 	    { LLDEB(newValue,maxValue); return -1;	}

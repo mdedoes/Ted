@@ -7,7 +7,8 @@
 
 #   include	<ctype.h>
 
-#   include	"psFontMetrics.h"
+#   include	"psFontInfo.h"
+#   include	"psTextExtents.h"
 #   include	<uniUtf8.h>
 #   include	<ucdGeneralCategory.h>
 
@@ -42,7 +43,20 @@ int psCalculateStringExtents(	DocumentRectangle *	dr,
 
     const AfmCharMetric *	prev= (const AfmCharMetric *)0;
 
-    const IndexMapping *	glyphMap= &(afi->afiUnicodeToGlyphMapping);
+    const IndexMapping *	glyphMap= &(afi->afiCodeToGlyphMapping);
+
+    if  ( afi->afiMetricsDeferred )
+	{
+	if  ( afi->afiResolveMetrics )
+	    {
+	    if  ( (*afi->afiResolveMetrics)( (AfmFontInfo *)afi ) )
+		{ SLDEB(afi->afiFullName,afi->afiMetricsDeferred); return -1; }
+	    }
+	else{
+	    SLDEB(afi->afiFullName,afi->afiMetricsDeferred);
+	    return -1;
+	    }
+	}
 
     if  ( off < len )
 	{

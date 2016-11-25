@@ -9,6 +9,8 @@
 
 #   include	"appFrameConfig.h"
 
+#   if USE_GTK
+
 #   include	<stddef.h>
 #   include	<stdlib.h>
 #   include	<string.h>
@@ -16,26 +18,55 @@
 
 #   include	<appSystem.h>
 
-#   include	"appFrame.h"
+#   include	"appEditApplication.h"
+#   include	"appAppFront.h"
+#   include	"appDocFront.h"
+#   include	"appEditDocument.h"
 #   include	"appQuestion.h"
 #   include	"appFileChooser.h"
+#   include	<guiWidgetsGtk.h>
+
+#   include	<utilFileExtension.h>
 
 #   include	<appDebugon.h>
 
-#   ifdef USE_GTK
+/************************************************************************/
+/*									*/
+/*  Get/Set the file name.						*/
+/*									*/
+/************************************************************************/
 
-# ifndef GTK_FILE_CHOOSER
-#	define	HAS_DIRECTORY			0
-#	define	MAKE_SELECTION			1
-#	define	MAKE_CHOOSER			0
-#	define	GtkFileChooser			GtkFileSelection
-#	define	gtk_file_chooser_set_filename	gtk_file_selection_set_filename 
-#	define	gtk_file_chooser_get_filename	gtk_file_selection_get_filename 
-# else
-#	define	HAS_DIRECTORY			1
-#	define	MAKE_SELECTION			0
-#	define	MAKE_CHOOSER			1
-# endif
+int appChooserImplGetFilename(	const AppChooserInformation *	aci,
+				MemoryBuffer *			filename )
+    {
+    GtkFileChooser *	gfs= GTK_FILE_CHOOSER( aci->aciWidget );
+    const gchar *	fnm;
+
+    fnm= gtk_file_chooser_get_filename( gfs );
+    if  ( fnm )
+	{
+	if  ( utilMemoryBufferSetString( filename, fnm ) )
+	    { LDEB(1); return -1;	}
+	}
+    else{
+	utilEmptyMemoryBuffer( filename );
+	}
+
+    return 0;
+    }
+
+int appChooserImplSetFilename(	AppChooserInformation *	aci,
+				const MemoryBuffer *	filename )
+    {
+    GtkFileChooser *	gfs= GTK_FILE_CHOOSER( aci->aciWidget );
+
+    gtk_file_chooser_set_filename( gfs,
+		    (const gchar *)utilMemoryBufferGetString( filename ) );
+    gtk_file_chooser_set_current_name( gfs,
+		    (const gchar *)utilMemoryBufferGetString( filename ) );
+
+    return 0;
+    }
 
 /************************************************************************/
 /*									*/
@@ -56,14 +87,14 @@ static void appChooserDestroyed(APP_WIDGET	fileChooser,
 
 static void appInitAci(		AppChooserInformation *	aci )
     {
-    appInitOptionmenu( &(aci->aciFilterOptionmenu) );
+    guiInitOptionmenu( &(aci->aciFilterOptionmenu) );
 
     aci->aciApplication= (EditApplication *)0;
     aci->aciDocument= (EditDocument *)0;
     utilInitMemoryBuffer( &(aci->aciFilename) );
     aci->aciThrough= (void *)0;
     aci->aciOpenDocument= (APP_OPEN_DOCUMENT)0;
-    aci->aciExtensions= (AppFileExtension *)0;
+    aci->aciExtensions= (struct AppFileExtension *)0;
     aci->aciExtensionCount= 0;
     aci->aciOption= (APP_WIDGET)0;
     aci->aciRelativeTo= (APP_WIDGET)0;
@@ -72,7 +103,6 @@ static void appInitAci(		AppChooserInformation *	aci )
     aci->aciResources= (const AppFileChooserResources *)0;
     }
 
-#   if HAS_DIRECTORY
 static void appChooserSetDirectory(	const MemoryBuffer *	filename,
 					GtkFileChooser *	gfs )
     {
@@ -80,7 +110,7 @@ static void appChooserSetDirectory(	const MemoryBuffer *	filename,
 
     utilInitMemoryBuffer( &dir );
 
-    if  ( appDirectoryOfFileName( &dir, filename ) )
+    if  ( fileDirectoryOfFileName( &dir, filename ) )
 	{ LDEB(1); return;	}
 
     if  ( ! utilMemoryBufferIsEmpty( &dir ) )
@@ -93,64 +123,27 @@ static void appChooserSetDirectory(	const MemoryBuffer *	filename,
 
     return;
     }
-#   endif /* HAS_DIRECTORY */
 
-static void appFileChooserSetFilter( AppChooserInformation *	aci,
-				     int			filter )
+static GtkFileFilter * appFileChooserImplBuildFilter(
+				const AppFileExtension *	afe )
     {
-    GtkFileChooser *		gfs= GTK_FILE_CHOOSER( aci->aciWidget );
-    GtkFileFilter *		fileFilter;
-    const AppFileExtension *	afe= aci->aciExtensions+ filter;
+    GtkFileFilter *	newFilter= (GtkFileFilter *)0;
 
-    fileFilter= gtk_file_filter_new();
-    gtk_file_filter_add_pattern( fileFilter, afe->afeFilter );
-    gtk_file_filter_set_name( fileFilter, afe->afeDescription );
-    gtk_file_chooser_set_filter( gfs, fileFilter );
+    newFilter= gtk_file_filter_new();
+    gtk_file_filter_add_pattern( newFilter, afe->afeFilter );
+    gtk_file_filter_set_name( newFilter, afe->afeDescription );
+
+    return newFilter;
     }
 
-/************************************************************************/
-/*									*/
-/*  Change the extension of the file name.				*/
-/*									*/
-/************************************************************************/
-
-static void appChooserSetFileExtension(	const MemoryBuffer *	filename,
-					const char *		newExtension,
-					GtkFileChooser *	gfs,
-					int			selectFile )
+static void appFileChooserImplChangeFilter(	AppChooserInformation *	aci,
+						int			format )
     {
-    MemoryBuffer	oldExtension;
-    MemoryBuffer	newFileName;
+    GtkFileChooser *		gfs= GTK_FILE_CHOOSER( aci->aciWidget );
+    const AppFileExtension *	afe= aci->aciExtensions+ format;
+    GtkFileFilter *		newFilter= appFileChooserImplBuildFilter( afe );
 
-    utilInitMemoryBuffer( &oldExtension );
-    utilInitMemoryBuffer( &newFileName );
-
-    if  ( appFileGetFileExtension( &oldExtension, filename ) )
-	{ goto ready;	}
-
-    if  ( ! utilMemoryBufferEqualsString( &oldExtension, newExtension ) )
-	{
-	const char *	s;
-
-	if  ( utilCopyMemoryBuffer( &newFileName, filename ) )
-	    { LDEB(1); goto ready;	}
-	if  ( appFileSetExtension( &newFileName, newExtension ) )
-	    { LDEB(1); goto ready;	}
-
-	s= utilMemoryBufferGetString( &newFileName );
-
-	if  ( selectFile )
-	    { gtk_file_chooser_set_filename( gfs, s );	}
-
-	gtk_file_chooser_set_current_name( gfs, s );
-	}
-
-  ready:
-
-    utilCleanMemoryBuffer( &oldExtension );
-    utilCleanMemoryBuffer( &newFileName );
-
-    return;
+    gtk_file_chooser_set_filter( gfs, newFilter );
     }
 
 /************************************************************************/
@@ -159,7 +152,6 @@ static void appChooserSetFileExtension(	const MemoryBuffer *	filename,
 /*									*/
 /************************************************************************/
 
-#   if	MAKE_CHOOSER
 static int appMakeFileChooser(	AppChooserInformation **	pAci,
 				GtkFileChooserAction		action,
 				const gchar *			actionText,
@@ -175,7 +167,7 @@ static int appMakeFileChooser(	AppChooserInformation **	pAci,
 	if  ( GTK_IS_WINDOW( relative ) )
 	    { break;	}
 
-	relative= relative->parent;
+	relative= gtk_widget_get_parent( relative );
 	}
 
     aci= (AppChooserInformation *)malloc( sizeof(AppChooserInformation) );
@@ -189,7 +181,7 @@ static int appMakeFileChooser(	AppChooserInformation **	pAci,
     if  ( option )
 	{
 	/* needs not to be freed for GTK */
-	title= appGetTextFromMenuOption( option );
+	title= guiGetTextFromMenuOption( option );
 	}
 
     aci->aciWidget= gtk_file_chooser_dialog_new( title,
@@ -199,70 +191,19 @@ static int appMakeFileChooser(	AppChooserInformation **	pAci,
 					actionText, GTK_RESPONSE_ACCEPT,
 					NULL);
 
-    gtk_signal_connect( GTK_OBJECT(  aci->aciWidget ), "destroy_event",
-			GTK_SIGNAL_FUNC( appChooserDestroyed ), (void *)aci );
+    g_signal_connect( G_OBJECT(  aci->aciWidget ), "destroy_event",
+			(GCallback)( appChooserDestroyed ), (void *)aci );
 
     aci->aciApplication= ea;
 
     if  ( option )
 	{
-	appSetShellTitle( aci->aciWidget, option, ea->eaApplicationName );
+	guiSetDialogTitle( aci->aciWidget, option, ea->eaApplicationName );
 	}
 
     *pAci= aci;
     return 0;
     }
-#   endif /*	MAKE_CHOOSER  */
-
-#   if	MAKE_SELECTION
-
-/************************************************************************/
-/*									*/
-/*  Callback for cancel buttons on choosers.				*/
-/*									*/
-/************************************************************************/
-
-static int appMakeFileSelection(AppChooserInformation **	pAci,
-				APP_WIDGET			relative,
-				EditApplication *		ea,
-				APP_WIDGET			option )
-    {
-    AppChooserInformation *	aci;
-    const char *		title= "<@v@>";
-
-    GtkFileSelection *		gfs;
-
-    aci= (AppChooserInformation *)malloc( sizeof(AppChooserInformation) );
-    if  ( ! aci )
-	{ XDEB(aci); return -1;	}
-
-    appInitAci( aci );
-
-    appFileChooserGetTexts( ea, aci );
-
-    if  ( option )
-	{
-	/* needs not to be freed for GTK */
-	title= appGetTextFromMenuOption( option );
-	}
-
-    aci->aciWidget= gtk_file_selection_new( title );
-    gfs= GTK_FILE_SELECTION( aci->aciWidget );
-
-    gtk_file_selection_hide_fileop_buttons( gfs );
-
-    appSetShellTitle( aci->aciWidget, option, ea->eaApplicationName );
-
-    gtk_signal_connect( GTK_OBJECT( gfs ), "destroy_event",
-			GTK_SIGNAL_FUNC( appChooserDestroyed ), (void *)aci );
-
-    aci->aciApplication= ea;
-
-    *pAci= aci;
-    return 0;
-    }
-
-#   endif  /*	MAKE_SELECTION */
 
 /************************************************************************/
 /*									*/
@@ -276,10 +217,10 @@ static int appRunFileChooser(	EditApplication *		ea,
 				APP_WIDGET			relative )
     {
     int		rval= ACIrespNONE;
-    int		response;
 
 #   ifdef GTK_FILE_CHOOSER
-    response= gtk_dialog_run( GTK_DIALOG( aci->aciWidget ) );
+
+    int response= gtk_dialog_run( GTK_DIALOG( aci->aciWidget ) );
     switch( response )
 	{
 	case GTK_RESPONSE_ACCEPT:
@@ -321,27 +262,17 @@ static void appFileChooserOpenFile(	AppChooserInformation *	aci,
 					APP_OPEN_DOCUMENT	openDocument,
 					void *			through )
     {
-    int			ret;
-    const char *	extension= (const char *)0;
-
-    ret= appChooserSaveFilename( aci, filename, extension );
-
-    if  ( ! ret )
-	{
-	ret= appFileChooserTestNameForOpen( aci );
-	if  ( ret )
-	    { LDEB(1);	}
-	}
+    int ret= appFileChooserTestNameForOpen( aci, filename );
+    if  ( ret )
+	{ LDEB(1);	}
 
     if  ( ! ret && (*openDocument)( aci->aciApplication,
 					through, aci->aciRelativeTo,
-					aci->aciOption, &(aci->aciFilename) ) )
+					aci->aciOption, filename ) )
 	{ LDEB(1);	}
 
     return;
     }
-
-#   if MAKE_CHOOSER
 
 static void appFileChooserOpenFiles(	AppChooserInformation *	aci,
 					GtkFileChooser *	gfs,
@@ -381,49 +312,6 @@ static void appFileChooserOpenFiles(	AppChooserInformation *	aci,
     return;
     }
 
-#   endif
-
-#   if MAKE_SELECTION
-
-static void appFileChooserOpenFiles(	AppChooserInformation *	aci,
-					APP_WIDGET		option,
-					GtkFileChooser *	gfs,
-					APP_OPEN_DOCUMENT	openDocument,
-					void *			through )
-    {
-#   if GTK_MAJOR_VERSION >= 2
-    gchar **	filenames;
-    gchar **	fn;
-
-    fn= filenames= gtk_file_selection_get_selections( gfs );
-    if  ( filenames )
-	{
-	while( fn[0] )
-	    {
-	    gchar *		filename= *fn;
-
-	    appFileChooserOpenFile( aci, filename, openDocument, through );
-
-	    fn++;
-	    }
-
-	g_strfreev( filenames );
-	}
-#   else
-
-    gchar * filename= gtk_file_selection_get_filename( gfs );
-    if  ( filename )
-	{
-	appFileChooserOpenFile( aci, filename, openDocument, through );
-	}
-
-#   endif
-
-    return;
-    }
-
-#   endif
-
 void appRunOpenChooser( APP_WIDGET			option,
 			APP_WIDGET			relative,
 			int				extensionCount,
@@ -438,7 +326,6 @@ void appRunOpenChooser( APP_WIDGET			option,
     GtkFileChooser *		gfs;
     AppChooserInformation *	aci= (AppChooserInformation *)0;
 
-#   if MAKE_CHOOSER
     int				withFilter= extensionCount > 0;
 
     if  ( appMakeFileChooser( &aci, GTK_FILE_CHOOSER_ACTION_OPEN,
@@ -467,9 +354,7 @@ void appRunOpenChooser( APP_WIDGET			option,
 	    if  ( ! FILE_CHOOSER_CAN_OPEN( afe ) )
 		{ continue;	}
 
-	    fileFilter= gtk_file_filter_new();
-	    gtk_file_filter_add_pattern( fileFilter, afe->afeFilter );
-	    gtk_file_filter_set_name( fileFilter, afe->afeDescription );
+	    fileFilter= appFileChooserImplBuildFilter( afe );
 
 	    gtk_file_chooser_add_filter( gfs, fileFilter );
 
@@ -482,20 +367,6 @@ void appRunOpenChooser( APP_WIDGET			option,
 	if  ( defaultFileFilter )
 	    { gtk_file_chooser_set_filter( gfs, defaultFileFilter );	}
 	}
-#   endif /* MAKE_CHOOSER */
-
-#   if MAKE_SELECTION
-
-    if  ( appMakeFileSelection( &aci, relative, ea, option ) )
-	{ LDEB(1); return;	}
-
-    gfs= GTK_FILE_SELECTION( aci->aciWidget );
-
-#   if GTK_MAJOR_VERSION >= 2
-    gtk_file_selection_set_select_multiple( gfs, TRUE );
-#   endif
-
-#   endif /*  MAKE_SELECTION  */
 
     if  ( dir && ! utilMemoryBufferIsEmpty( dir ) )
 	{
@@ -550,106 +421,34 @@ APP_MENU_CALLBACK_H( appDocFileOpen, option, voided, e )
 			appChooserOpenDocument, ea, (void *)ea );
     }
 
-static int appChooserGetFileName(	MemoryBuffer *		fileName,
-					GtkFileChooser *	gfs )
-    {
-    const gchar *	filename;
-
-#   if MAKE_CHOOSER
-    filename= gtk_file_chooser_get_filename( gfs );
-#   endif
-
-#   if MAKE_SELECTION
-    filename= gtk_file_selection_get_filename( gfs );
-#   endif
-
-    if  ( utilMemoryBufferSetString( fileName, filename ) )
-	{ LDEB(1); return -1;	}
-
-    return 0;
-    }
-
-static int appSaveChooserSave(	AppChooserInformation *	aci,
-				APP_WIDGET		relative,
-				unsigned int		useFlags,
-				GtkFileChooser *	gfs,
-				EditDocument *		ed )
-    {
-    int			rval= 0;
-    EditApplication *	ea= ed->edApplication;
-
-    int			format= -1;
-    const char *	extension= (const char *)0;
-    int			ret;
-    int			resp;
-    int			suggestStdout= 0;
-
-    MemoryBuffer	filename;
-
-    utilInitMemoryBuffer( &filename );
-
-    if  ( appChooserGetFileName( &filename, gfs ) )
-	{ LDEB(1); rval= -1; goto ready;	}
-
-    format= appDocumentGetSaveFormat( &suggestStdout, ea, &filename,
-				ed->edPrivateData, useFlags, ed->edFormat );
-
-    if  ( format >= 0 && format < ea->eaFileExtensionCount )
-	{ extension= ea->eaFileExtensions[format].afeExtension; }
-
-    ret= appChooserSaveFilename( aci, &filename, extension );
-    if  ( ret )
-	{ SDEB(extension); rval= -1; goto ready;	}
-
-    resp= appFileChooserTestNameForWrite( aci );
-
-    if  ( resp == ACIrespSAVE )
-	{
-	if  ( (*aci->aciSaveDocument)( ed, aci->aciThrough,
-				    aci->aciRelativeTo, aci->aciOption,
-				    format, &(aci->aciFilename) ) )
-	    { LDEB(format); rval= -1; goto ready;	}
-	}
-
-  ready:
-
-    utilCleanMemoryBuffer( &filename );
-
-    return rval;
-    }
-
-static void appFileFilterChosen(	int		ext,
+static void appFileFormatChosen(	int		formatChosen,
 					void *		voidaci )
     {
     AppChooserInformation *	aci= (AppChooserInformation *)voidaci;
-    GtkFileChooser *		gfs= GTK_FILE_CHOOSER( aci->aciWidget );
-    const AppFileExtension *	afe= aci->aciExtensions;
-    char *			fnm;
 
-    MemoryBuffer		filename;
+    MemoryBuffer		fileSelected;
 
-    utilInitMemoryBuffer( &filename );
+    utilInitMemoryBuffer( &fileSelected );
 
-    fnm= gtk_file_chooser_get_filename( gfs );
+    appChooserImplGetFilename( aci, &fileSelected );
 
-    if  ( fnm )
-	{
-	const int	selectFile= 0;
-	const char *	newExtension= afe[ext].afeExtension;
+    appFileChooserImplChangeFilter( aci, formatChosen );
+    appChooserChangeFilenameExtension( aci, &fileSelected, formatChosen );
 
-	if  ( utilMemoryBufferSetString( &filename, fnm ) )
-	    { LDEB(1); goto ready;	}
+    appChooserImplSetFilename( aci, &fileSelected );
 
-	appFileChooserSetFilter( aci, ext );
-	appChooserSetFileExtension( &filename, newExtension, gfs, selectFile );
-	}
+    aci->aciFormat= formatChosen;
 
-  ready:
-
-    utilCleanMemoryBuffer( &filename );
+    utilCleanMemoryBuffer( &fileSelected );
 
     return;
     }
+
+/************************************************************************/
+/*									*/
+/*  Build the option menu with filters.					*/
+/*									*/
+/************************************************************************/
 
 static void appFillSaveFilter(	AppChooserInformation *	aci,
 				unsigned int		useFlags,
@@ -673,26 +472,16 @@ static void appFillSaveFilter(	AppChooserInformation *	aci,
     afe= ea->eaFileExtensions;
     for ( i= 0; i < ea->eaFileExtensionCount; afe++, i++ )
 	{
-	APP_WIDGET	filterWidget;
-
-	filterWidget= appAddItemToOptionmenu( aom, afe->afeDescription );
+	guiAddItemToOptionmenu( aom, afe->afeDescription );
 
 	if  ( appDocumentTestCanSave( ea, afe, ed->edPrivateData,
 							    useFlags, i ) )
 	    {
 	    const int	visible= 0;
 
-	    guiShowMenuOption( filterWidget, visible );
+	    guiOptionMenuEnablePosition( aom, i, visible );
 	    continue;
 	    }
-
-	/*
-	fileFilter= gtk_file_filter_new();
-	gtk_file_filter_add_pattern( fileFilter, afe->afeFilter );
-	gtk_file_filter_set_name( fileFilter, afe->afeDescription );
-
-	gtk_file_chooser_add_filter( gfs, fileFilter );
-	*/
 
 	if  ( defaultFilterIndex < 0 || i == ed->edFormat )
 	    { defaultFilterIndex= i;	}
@@ -700,8 +489,9 @@ static void appFillSaveFilter(	AppChooserInformation *	aci,
 
     if  ( defaultFilterIndex >= 0 )
 	{
-	appFileChooserSetFilter( aci, defaultFilterIndex );
-	appSetOptionmenu( aom, defaultFilterIndex );
+	appFileChooserImplChangeFilter( aci, defaultFilterIndex );
+	guiSetOptionmenu( aom, defaultFilterIndex );
+	aci->aciFormat= defaultFilterIndex;
 	}
 
     return;
@@ -709,7 +499,6 @@ static void appFillSaveFilter(	AppChooserInformation *	aci,
 
 int appRunSaveChooser(	APP_WIDGET		option,
 			APP_WIDGET		relative,
-			unsigned int		useFlags,
 			APP_SAVE_DOCUMENT	saveDocument,
 			EditDocument *		ed,
 			void *			through )
@@ -719,13 +508,16 @@ int appRunSaveChooser(	APP_WIDGET		option,
     GtkFileChooser *		gfs;
     AppChooserInformation *	aci= (AppChooserInformation *)0;
 
-#   if  MAKE_CHOOSER
+    MemoryBuffer		filename;
 
+    utilInitMemoryBuffer( &filename );
+
+    {
     int				withFilter= ea->eaFileExtensionCount > 0;
 
     if  ( appMakeFileChooser( &aci, GTK_FILE_CHOOSER_ACTION_SAVE,
 				    GTK_STOCK_SAVE, relative, ea, option ) )
-	{ return ACIrespFAILURE;	}
+	{ response= ACIrespFAILURE; goto ready;	}
 
     gfs= GTK_FILE_CHOOSER( aci->aciWidget );
 
@@ -733,40 +525,22 @@ int appRunSaveChooser(	APP_WIDGET		option,
 	{
 	AppOptionmenu *	aom= &(aci->aciFilterOptionmenu);
 
-	aom->aomPulldown= gtk_menu_new();
-	aom->aomInplace= gtk_option_menu_new();
-	aom->aomCallback= appFileFilterChosen;
-	aom->aomTarget= (void *)aci;
-
-	gtk_option_menu_set_menu( GTK_OPTION_MENU( aom->aomInplace ),
-							    aom->aomPulldown );
+	guiMakeOptionmenuGtk( &(aci->aciFilterOptionmenu),
+					appFileFormatChosen, (void *)aci );
 
 	gtk_file_chooser_set_extra_widget( gfs, aom->aomInplace );
 
-	appFillSaveFilter( aci, useFlags, ed );
+	appFillSaveFilter( aci, APPFILE_CAN_SAVE, ed );
 	}
 
     if  ( ! utilMemoryBufferIsEmpty( &(ed->edFilename) ) )
 	{
-	const char *	fnm= utilMemoryBufferGetString( &(ed->edFilename) );
-
-	gtk_file_chooser_set_filename( gfs, fnm );
-	gtk_file_chooser_set_current_name( gfs, fnm );
+	appChooserImplSetFilename( aci, &(ed->edFilename) );
 	appChooserSetDirectory( &(ed->edFilename), gfs );
 	}
 
     gtk_file_chooser_set_do_overwrite_confirmation( gfs, TRUE );
-
-#   endif /* MAKE_CHOOSER */
-
-#   if MAKE_SELECTION
-
-    if  ( appMakeFileSelection( &aci, relative, ea, option ) )
-	{ LDEB(1); return ACIrespFAILURE;	}
-
-    gfs= GTK_FILE_SELECTION( aci->aciWidget );
-
-#   endif /*  MAKE_SELECTION  */
+    }
 
     aci->aciOption= option;
     aci->aciRelativeTo= relative;
@@ -776,10 +550,13 @@ int appRunSaveChooser(	APP_WIDGET		option,
 
     response= appRunFileChooser( ea, ACIrespSAVE, aci, relative );
 
+    if  ( appChooserImplGetFilename( aci, &filename ) )
+	{ LDEB(1); response= ACIrespFAILURE;	}
+
     switch( response )
 	{
 	case ACIrespSAVE:
-	    appSaveChooserSave( aci, relative, useFlags, gfs, ed );
+	    appSaveChooserSave( aci, relative, ed, &filename );
 	    break;
 
 	case ACIrespCANCEL:
@@ -792,6 +569,10 @@ int appRunSaveChooser(	APP_WIDGET		option,
 
     gtk_widget_destroy( aci->aciWidget );
 
+  ready:
+
+    utilCleanMemoryBuffer( &filename );
+
     return response;
     }
 
@@ -800,46 +581,6 @@ int appRunSaveChooser(	APP_WIDGET		option,
 /*  Run Filechooser for print to file.					*/
 /*									*/
 /************************************************************************/
-
-static int appSaveChooserPrint(	AppChooserInformation *	aci,
-				const char *		extension )
-    {
-    int			rval= 0;
-    GtkFileChooser *	gfs= GTK_FILE_CHOOSER( aci->aciWidget );
-    const int		format= -1;
-
-    const gchar *	fnm;
-    int			ret;
-    int			resp;
-
-    MemoryBuffer	filename;
-
-    utilInitMemoryBuffer( &filename );
-
-    fnm= gtk_file_chooser_get_filename( gfs );
-    if  ( utilMemoryBufferSetString( &filename, fnm ) )
-	{ LDEB(1); rval= -1; goto ready;	}
-    ret= appChooserSaveFilename( aci, &filename, extension );
-    if  ( ret )
-	{ SSDEB(fnm,extension); rval= -1; goto ready;	}
-
-    resp= appFileChooserTestNameForWrite( aci );
-
-    if  ( resp == ACIrespSAVE )
-	{
-	if  ( (*aci->aciSaveDocument)( aci->aciDocument, aci->aciThrough,
-				    aci->aciRelativeTo, aci->aciOption,
-				    format, &(aci->aciFilename) ) )
-	    { SLDEB(fnm,format); rval= -1; goto ready;	}
-	}
-
-  ready:
-
-    utilCleanMemoryBuffer( &filename );
-
-    return rval;
-    }
-
 
 int appRunPrintToFileChooser(	APP_WIDGET		option,
 				APP_WIDGET		relative,
@@ -851,14 +592,27 @@ int appRunPrintToFileChooser(	APP_WIDGET		option,
     int				response= ACIrespNONE;
     GtkFileChooser *		gfs;
     AppChooserInformation *	aci= (AppChooserInformation *)0;
-    const char * const		psExt= "ps";
 
-#   if MAKE_CHOOSER
+    MemoryBuffer		filename;
+
+    utilInitMemoryBuffer( &filename );
+
     if  ( appMakeFileChooser( &aci, GTK_FILE_CHOOSER_ACTION_SAVE,
 				    GTK_STOCK_SAVE, relative, ea, option ) )
 	{ LDEB(1); return ACIrespFAILURE;	}
 
     gfs= GTK_FILE_CHOOSER( aci->aciWidget );
+
+    aci->aciOption= option;
+    aci->aciRelativeTo= relative;
+    aci->aciDocument= ed;
+    aci->aciApplication= ed->edApplication;
+    aci->aciThrough= through;
+    aci->aciSaveDocument= printDocument;
+
+    aci->aciExtensions= ea->eaFileExtensions;
+    aci->aciExtensionCount= ea->eaFileExtensionCount;
+    aci->aciFormat= ed->edFormat;
 
     {
     GtkFileFilter *		fileFilter= (GtkFileFilter *)0;
@@ -871,43 +625,26 @@ int appRunPrintToFileChooser(	APP_WIDGET		option,
 
     if  ( ! utilMemoryBufferIsEmpty( &(ed->edFilename) ) )
 	{
-	const int	selectFile= 1;
-	appChooserSetFileExtension( &(ed->edFilename), psExt, gfs, selectFile );
-	appChooserSetDirectory( &(ed->edFilename), gfs );
+	if  ( appPrintChooserFileName( aci, &filename,
+					aci->aciDocument, &(ed->edFilename) ) )
+	    { LDEB(1); goto ready;	}
+
+	appChooserImplSetFilename( aci, &filename );
+	appChooserSetDirectory( &filename, gfs );
 	}
 
     gtk_file_chooser_set_do_overwrite_confirmation( gfs, TRUE );
-
-#   endif
-
-#   if MAKE_SELECTION
-
-    if  ( appMakeFileSelection( &aci, relative, ea, option ) )
-	{ LDEB(1); return ACIrespFAILURE;	}
-
-    gfs= GTK_FILE_SELECTION( aci->aciWidget );
-
-    if  ( ! utilMemoryBufferIsEmpty( &(ed->edFilename) ) )
-	{
-	const int	selectFile= 1;
-	appChooserSetFileExtension( &(ed->edFilename), psExt, gfs, selectFile );
-	}
-
-#   endif
-
-    aci->aciOption= option;
-    aci->aciRelativeTo= relative;
-    aci->aciDocument= ed;
-    aci->aciApplication= ed->edApplication;
-    aci->aciThrough= through;
-    aci->aciSaveDocument= printDocument;
 
     response= appRunFileChooser( ea, ACIrespSAVE, aci, relative );
 
     switch( response )
 	{
 	case ACIrespSAVE:
-	    appSaveChooserPrint( aci, psExt );
+	    if  ( appChooserImplGetFilename( aci, &filename ) )
+		{ LDEB(1); response= ACIrespFAILURE;	}
+	    else{
+		appSaveChooserPrint( aci, &filename );
+		}
 	    break;
 
 	case ACIrespCANCEL:
@@ -919,6 +656,10 @@ int appRunPrintToFileChooser(	APP_WIDGET		option,
 	}
 
     gtk_widget_destroy( aci->aciWidget );
+
+  ready:
+
+    utilCleanMemoryBuffer( &filename );
 
     return response;
     }

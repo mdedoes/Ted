@@ -6,14 +6,15 @@
 
 #   include	"docEditConfig.h"
 
-#   include	<stdio.h>
-
-#   include	<appDebugon.h>
-
 #   include	<docExpandedTextAttribute.h>
-
 #   include	<docBuf.h>
 #   include	"docDocumentCopyJob.h"
+#   include	"docEditOperation.h"
+#   include	<docDocumentProperties.h>
+#   include	<utilPropMask.h>
+#   include	<docAttributes.h>
+
+#   include	<appDebugon.h>
 
 /************************************************************************/
 /*									*/
@@ -75,7 +76,7 @@ int docMapTextAttributeNumber(	DocumentCopyJob *	dcj,
     if  ( attributeNumberFrom == dcj->dcjCurrentTextAttributeNumberFrom )
 	{ return dcj->dcjCurrentTextAttributeNumberTo;	}
 
-    docGetTextAttributeByNumber( &taFrom, dcj->dcjSourceDocument,
+    taFrom= *docGetTextAttributeByNumber( dcj->dcjSourceDocument,
 							attributeNumberFrom );
 
     docMapTextAttribute( &taTo, &taFrom, dcj );
@@ -92,8 +93,8 @@ int docMapTextAttributeNumber(	DocumentCopyJob *	dcj,
     }
 
 int docMapTextAttributeNumberFromTo(
-				BufferDocument *	bdTo,
-				const BufferDocument *	bdFrom,
+				struct BufferDocument *	bdTo,
+				const struct BufferDocument *	bdFrom,
 				int			attributeNumberFrom )
     {
     int				rval= -1;
@@ -106,20 +107,20 @@ int docMapTextAttributeNumberFromTo(
 
     docInitExpandedTextAttribute( &eta );
 
-    docGetTextAttributeByNumber( &ta, bdFrom, attributeNumberFrom );
+    ta= *docGetTextAttributeByNumber( bdFrom, attributeNumberFrom );
 
     utilPropMaskFill( &setMask, TAprop_COUNT );
     utilPropMaskClear( &doneMask );
     docExpandTextAttribute( &doneMask, &eta, &ta, &setMask,
-				    bdFrom->bdProperties.dpFontList,
-				    bdFrom->bdProperties.dpColorPalette );
+				    bdFrom->bdProperties->dpFontList,
+				    bdFrom->bdProperties->dpColorPalette );
 
     utilPropMaskFill( &setMask, TAprop_COUNT );
     utilPropMaskClear( &doneMask );
 
     docIndirectTextAttribute( &doneMask, &ta, &eta, &setMask,
-				    bdTo->bdProperties.dpFontList,
-				    bdTo->bdProperties.dpColorPalette );
+				    bdTo->bdProperties->dpFontList,
+				    bdTo->bdProperties->dpColorPalette );
 
     rval= docTextAttributeNumber( bdTo, &ta );
 

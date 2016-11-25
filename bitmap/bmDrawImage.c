@@ -239,6 +239,11 @@ static void bmDrawOrRowLeft(	unsigned char *		bufTo,
 /*				*/
 /********************************/
 
+# ifdef __GNUC__
+# pragma GCC diagnostic push
+# pragma GCC diagnostic ignored "-Wunused-parameter"
+# endif
+
 static void bmDrawOrRowEq(	unsigned char *		bufTo,
 				const unsigned char *	bufIn,
 				const int		colTo0,
@@ -299,6 +304,10 @@ static void bmDrawOrRowEq(	unsigned char *		bufTo,
 
     return;
     }
+
+# ifdef __GNUC__
+# pragma GCC diagnostic pop
+# endif
 
 /************************************************************************/
 /*									*/

@@ -1,6 +1,6 @@
 /************************************************************************/
 /*									*/
-/*  Save a BufferDocument into an HTML file.				*/
+/*  Save a struct BufferDocument into an HTML file.				*/
 /*  Depending on the parameters, this is either an HTML file with	*/
 /*  a directory for the images, or a MHTML (rfc2112,rfc2557) aggregate.	*/
 /*  RFC 2557 was never validated.					*/
@@ -14,7 +14,6 @@
 #   include	<ctype.h>
 
 #   include	<sioGeneral.h>
-#   include	<docBuf.h>
 #   include	<docField.h>
 #   include	"docHtmlWriteImpl.h"
 #   include	"docWriteCss.h"
@@ -22,229 +21,250 @@
 #   include	<docTreeNode.h>
 #   include	<psShading.h>
 #   include	<docTextParticule.h>
+#   include	<docDocumentField.h>
+#   include	<docFieldKind.h>
+#   include	<docPropVal.h>
+#   include	<docItemShading.h>
+#   include	<utilPropMask.h>
+#   include	<docScanner.h>
+#   include	<docTextRun.h>
+#   include	<docSelect.h>
+#   include	<docParaScanner.h>
+#   include	<docAttributes.h>
 
+#   include	<docDebug.h>
 #   include	<appDebugon.h>
 
-static int docHtmlSaveParticules( const BufferItem *		paraNode,
-				int *				pNoteRefCount,
-				int				part,
-				int				partUpto,
-				HtmlWritingContext *		hwc )
+typedef struct HtmlParagraphWriter
     {
-    XmlWriter *				xw= &(hwc->hwcXmlWriter);
-    int					done= 0;
-    int					noteRefCount= 0;
+    HtmlWritingContext *	hpwHtmlWriter;
+    int				hpwNoteRefCount;
+    unsigned char		hpwAfterSpace;
+    } HtmlParagraphWriter;
 
-    int					afterSpace= 0;
+static int docHtmlSaveObject(	const VisitParticule *	vp,
+				struct InsertedObject *	io,
+				void *			vhpw )
+    {
+    HtmlParagraphWriter *	hpw= (HtmlParagraphWriter *)vhpw;
+    HtmlWritingContext *	hwc= hpw->hpwHtmlWriter;
+    int				pictureDone= 0;
 
-    TextParticule *			tp= paraNode->biParaParticules+ part;
-    int					stroff= tp->tpStroff;
-    unsigned char *			s= docParaString( paraNode, stroff );
+    if  ( docHtmlSaveImgElement( &pictureDone, hwc,
+		    vp->vpTextParticule->tpObjectNumber,
+		    vp->vpParaNode, io ) < 0 )
+	{ LXDEB(vp->vpTextParticule->tpObjectNumber,io);	}
 
-    TextAttribute			ta;
+    if  ( ! pictureDone )
+	{ docHtmlPutString( " ", hwc );	}
 
-    const DocumentField *		df;
-    const FieldKindInformation *	fki;
-
-    int					len;
-
-    BufferDocument *			bd= hwc->hwcDocument;
-
-    while( part < partUpto )
-	{
-	int	textAttrNr;
-
-	textAttrNr= docGetEffectiveTextAttributes( &ta, bd, paraNode, part );
-
-	switch( tp->tpKind )
-	    {
-	    case DOCkindTAB:
-		docHtmlPutString( " ", hwc );
-		afterSpace= 1;
-		s++; stroff++;
-		break;
-
-	    case DOCkindSPAN:
-		docHtmlChangeAttributes( hwc, textAttrNr );
-
-		if  ( afterSpace && xw->xwColumn+ tp->tpStrlen > 76 )
-		    { docHtmlNewLine( hwc );	}
-
-		len= tp->tpStroff+ tp->tpStrlen- stroff;
-
-		if  ( ! hwc->hwcInHyperlink	||
-		      ! hwc->hwcInPageref	||
-		      hwc->hwcBytesInLink == 0	)
-		    {
-		    docHtmlEscapeCharacters( hwc, (char *)s, len );
-
-		    if  ( hwc->hwcInHyperlink )
-			{ hwc->hwcBytesInLink += len;	}
-		    }
-
-		s += len;
-		stroff += len;
-
-		afterSpace= 0;
-		if  ( tp->tpStrlen > 0 && s[-1] == ' ' )
-		    { afterSpace= 1;	}
-		break;
-
-	    case DOCkindOBJECT:
-		{
-		int			pictureDone= 0;
-		InsertedObject *	io;
-
-		io= docGetObject( bd, tp->tpObjectNumber );
-		if  ( ! io )
-		    { LXDEB(tp->tpObjectNumber,io); return -1;	}
-
-		if  ( docHtmlSaveImgElement( &pictureDone, hwc,
-					tp->tpObjectNumber, paraNode, io ) < 0 )
-		    { XDEB(io);	}
-
-		if  ( ! pictureDone )
-		    { docHtmlPutString( " ", hwc );	}
-		}
-
-		afterSpace= 0; s++; stroff++;
-		break;
-
-	    case DOCkindFIELDHEAD:
-		df= docGetFieldByNumber( &(bd->bdFieldList),
-						    tp->tpObjectNumber );
-		fki= DOC_FieldKinds+ df->dfKind;
-
-		if  ( fki->fkiIsFieldInRtf		&&
-		      fki->fkiLevel == DOClevSPAN	)
-		    {
-		    docHtmlStartField( df, hwc, paraNode, textAttrNr );
-		    }
-
-		if  ( df->dfKind == DOCfkBOOKMARK )
-		    {
-		    docHtmlStartField( df, hwc, paraNode, textAttrNr );
-		    }
-
-		if  ( df->dfKind == DOCfkCHFTN )
-		    {
-		    int		count;
-		    int		closed;
-		    char	scratch[20+1];
-
-		    count= docCountParticulesInField( paraNode, &closed,
-							    part, partUpto );
-
-		    docHtmlStartField( df, hwc, paraNode, textAttrNr );
-
-		    if  ( paraNode->biTreeType == DOCinBODY )
-			{
-			sprintf( scratch, "%d", hwc->hwcNoteRefCount+ 1 );
-			hwc->hwcNoteRefCount++;
-			noteRefCount++;
-			}
-		    else{
-			sprintf( scratch, "%d", hwc->hwcNoteDefCount+ 1 );
-			hwc->hwcNoteDefCount++;
-			}
-
-		    docHtmlPutString( scratch, hwc );
-
-		    if  ( hwc->hwcInHyperlink )
-			{ hwc->hwcBytesInLink += strlen( scratch );	}
-
-		    done= count+ 1;
-		    stroff= tp[done].tpStroff; s= docParaString( paraNode, stroff );
-
-		    if  ( paraNode->biTreeType == DOCinBODY	&&
-			  hwc->hwcInlineNotes			)
-			{
-			if  ( utilIndexMappingAppend( &(hwc->hwcDeferredNotes),
-					    (int *)0, tp->tpObjectNumber ) )
-			    { LDEB(tp->tpObjectNumber);	}
-			}
-
-		    break;
-		    }
-
-		s += tp->tpStrlen; stroff += tp->tpStrlen; /* += 0 */
-		done= 1;
-		break;
-
-	    case DOCkindFIELDTAIL:
-		df= docGetFieldByNumber( &(bd->bdFieldList),
-						    tp->tpObjectNumber );
-		fki= DOC_FieldKinds+ df->dfKind;
-
-		if  ( df->dfKind == DOCfkCHFTN )
-		    {
-		    docHtmlFinishField( df, hwc );
-		    }
-
-		if  ( df->dfKind == DOCfkBOOKMARK )
-		    { docHtmlFinishField( df, hwc ); }
-
-		if  ( fki->fkiIsFieldInRtf		&&
-		      fki->fkiLevel == DOClevSPAN	)
-		    { docHtmlFinishField( df, hwc ); }
-
-		s += tp->tpStrlen; stroff += tp->tpStrlen; /* += 0 */
-		done= 1;
-		break;
-
-	    case DOCkindLINEBREAK:
-	    case DOCkindPAGEBREAK:
-	    case DOCkindCOLUMNBREAK:
-		docHtmlPutString( "<br/>", hwc );
-		docHtmlNewLine( hwc );
-		afterSpace= 0;
-		s += tp->tpStrlen; stroff += tp->tpStrlen; /* += 1 */
-		break;
-
-	    case DOCkindOPT_HYPH:
-	    case DOCkindLTR_MARK:
-	    case DOCkindRTL_MARK:
-		s += tp->tpStrlen; stroff += tp->tpStrlen;
-		break;
-
-	    default:
-		LSDEB(tp->tpKind,docKindStr(tp->tpKind));
-		s += tp->tpStrlen; stroff += tp->tpStrlen;
-		break;
-	    }
-
-	done++; part++; tp++;
-	}
-
-    docHtmlChangeAttributes( hwc, -1 );
-
-    *pNoteRefCount += noteRefCount;
-    return done;
+    hpw->hpwAfterSpace= 0;
+    return SCANadviceOK;
     }
 
-static void docHtmlStartParagraphBody(	const BufferItem *	paraNode,
-					int *			pBulletTab,
-					const char *		tag,
-					int			fontHeight,
-					HtmlWritingContext *	hwc )
+static int docHtmlSaveParticule( const VisitParticule *	vp,
+				void *			vhpw )
     {
-    const BufferDocument *		bd= hwc->hwcDocument;
+    HtmlParagraphWriter *	hpw= (HtmlParagraphWriter *)vhpw;
+    HtmlWritingContext *	hwc= hpw->hpwHtmlWriter;
 
-    XmlWriter *				xw= &(hwc->hwcXmlWriter);
-    SimpleOutputStream *		sos= xw->xwSos;
+    const TextParticule *	tp= vp->vpTextParticule;
 
-    ItemShading				is;
+    switch( tp->tpKind )
+	{
+	case TPkindTAB:
+	    docHtmlPutString( " ", hwc );
+	    hpw->hpwAfterSpace= 1;
+	    break;
 
-    int					hasBullet= 0;
-    int					part= 0;
+	case TPkindOBJECT:
+	    LDEB(tp->tpKind); return -1;
 
-    docGetItemShadingByNumber( &is, bd, paraNode->biParaShadingNumber );
+	case TPkindFIELDHEAD:
+	    LDEB(tp->tpKind); return -1;
 
-    if  ( hwc->hwcSupportsBullets				&&
-	  paraNode->biParaLeftIndentTwips >=  100		&&
-	  paraNode->biParaFirstIndentTwips <= 100		)
+	case TPkindFIELDTAIL:
+	    LDEB(tp->tpKind); return -1;
+	    break;
+
+	case TPkindLINEBREAK:
+	case TPkindPAGEBREAK:
+	case TPkindCOLUMNBREAK:
+	    docHtmlPutString( "<br/>", hwc );
+	    docHtmlNewLine( hwc );
+	    hpw->hpwAfterSpace= 0;
+	    break;
+
+	case TPkindOPT_HYPH:
+	case TPkindLTR_MARK:
+	case TPkindRTL_MARK:
+	    break;
+
+	default:
+	    LSDEB(tp->tpKind,docKindStr(tp->tpKind));
+	    break;
+	}
+
+    return SCANadviceOK;
+    }
+
+static int docHtmlSaveFieldTail( const VisitParticule *	vp,
+				const DocumentField *	df,
+				HtmlParagraphWriter *	hpw )
+
+    {
+    HtmlWritingContext *		hwc= hpw->hpwHtmlWriter;
+    const FieldKindInformation *	fki;
+
+    fki= DOC_FieldKinds+ df->dfKind;
+
+    if  ( df->dfKind == DOCfkCHFTN )
+	{ docHtmlFinishField( df, hwc );	}
+
+    if  ( df->dfKind == DOCfkBOOKMARK )
+	{ docHtmlFinishField( df, hwc ); 	}
+
+    if  ( fki->fkiIsFieldInRtf		&&
+	  fki->fkiLevel == DOClevSPAN	)
+	{ docHtmlFinishField( df, hwc ); 	}
+
+    return SCANadviceOK;
+    }
+
+static int docHtmlSaveFieldHead( const VisitParticule *	vp,
+				const DocumentField *	df,
+				HtmlParagraphWriter *	hpw )
+
+    {
+    HtmlWritingContext *		hwc= hpw->hpwHtmlWriter;
+
+    const FieldKindInformation *	fki= DOC_FieldKinds+ df->dfKind;
+
+    if  ( fki->fkiIsFieldInRtf		&&
+	  fki->fkiLevel == DOClevSPAN	)
+	{
+	docHtmlStartField( df, hwc, vp->vpParaNode, vp->vpTextAttributeNr );
+	}
+
+    if  ( df->dfKind == DOCfkBOOKMARK )
+	{
+	docHtmlStartField( df, hwc, vp->vpParaNode, vp->vpTextAttributeNr );
+	}
+
+    if  ( df->dfKind == DOCfkCHFTN )
+	{
+	char		scratch[20+1];
+
+	docHtmlStartField( df, hwc, vp->vpParaNode, vp->vpTextAttributeNr );
+
+	if  ( vp->vpParaNode->biTreeType == DOCinBODY )
+	    {
+	    sprintf( scratch, "%d", hwc->hwcNoteRefCount+ 1 );
+	    hwc->hwcNoteRefCount++;
+	    hpw->hpwNoteRefCount++;
+	    }
+	else{
+	    sprintf( scratch, "%d", hwc->hwcNoteDefCount+ 1 );
+	    hwc->hwcNoteDefCount++;
+	    }
+
+	docHtmlPutString( scratch, hwc );
+
+	if  ( hwc->hwcInHyperlink )
+	    { hwc->hwcBytesInLink += strlen( scratch );	}
+
+	if  ( vp->vpParaNode->biTreeType == DOCinBODY	&&
+	      hwc->hwcInlineNotes			)
+	    {
+	    if  ( utilIndexMappingAppend( &(hwc->hwcDeferredNotes),
+			    (int *)0, vp->vpTextParticule->tpObjectNumber ) )
+		{ LDEB(vp->vpTextParticule->tpObjectNumber);	}
+	    }
+
+	return SCANadviceSKIP;
+	}
+
+    return SCANadviceOK;
+    }
+
+static int docHtmlSaveField(	const VisitParticule *	vp,
+				DocumentField *		df,
+				void *			vhpw )
+    {
+    if  ( vp->vpTextParticule->tpKind == TPkindFIELDHEAD )
+	{
+	return docHtmlSaveFieldHead( vp, df, (HtmlParagraphWriter *)vhpw );
+	}
+
+    if  ( vp->vpTextParticule->tpKind == TPkindFIELDTAIL )
+	{
+	return docHtmlSaveFieldTail( vp, df, (HtmlParagraphWriter *)vhpw );
+	}
+
+    LDEB(vp->vpTextParticule->tpKind); return -1;
+    }
+
+static int docHtmlSaveRun(	const TextRun *			tr,
+				void *				vhpw )
+    {
+    HtmlParagraphWriter *	hpw= (HtmlParagraphWriter *)vhpw;
+    HtmlWritingContext *	hwc= hpw->hpwHtmlWriter;
+    XmlWriter *			xw= &(hwc->hwcXmlWriter);
+
+    const BufferItem *		paraNode= tr->trParaNode;
+    const char *		s= docParaString( paraNode, tr->trStroff );
+
+    docHtmlChangeAttributes( hwc, tr->trTextAttributeNr );
+
+    if  ( hpw->hpwAfterSpace && xw->xwColumn+ tr->trStrlen > 76 )
+	{ docHtmlNewLine( hwc );	}
+
+    if  ( ! hwc->hwcInHyperlink	||
+	  ! hwc->hwcInPageref	||
+	  hwc->hwcBytesInLink == 0	)
+	{
+	docHtmlEscapeCharacters( hwc, s, tr->trStrlen );
+
+	if  ( hwc->hwcInHyperlink )
+	    { hwc->hwcBytesInLink += tr->trStrlen;	}
+	}
+
+    hpw->hpwAfterSpace= 0;
+    if  ( docParaPastLastNonBlank( paraNode, tr->trStroff,
+					    tr->trStroff+ tr->trStrlen ) <
+					    tr->trStroff+ tr->trStrlen )
+	{ hpw->hpwAfterSpace= 1;	}
+
+    return SCANadviceOK;
+    }
+
+static void docHtmlStartParagraphBody(
+				const struct BufferItem * const paraNode,
+				int *				pBulletTail,
+				int *				pBodyHead,
+				const char *			tag,
+				int				fontHeight,
+				HtmlWritingContext *		hwc )
+    {
+    const ParagraphProperties *	pp= paraNode->biParaProperties;
+    const struct BufferDocument *	bd= hwc->hwcDocument;
+
+    XmlWriter *			xw= &(hwc->hwcXmlWriter);
+    SimpleOutputStream *	sos= xw->xwSos;
+
+    const ItemShading *		is;
+
+    int				bulletTail= -1;
+    int				bodyHead= -1;
+
+    is= docGetItemShadingByNumber( bd, pp->ppShadingNumber );
+
+    if  ( hwc->hwcSupportsBullets		&&
+	  pp->ppLeftIndentTwips >=  100		&&
+	  pp->ppFirstIndentTwips <= 100		)
 	{
 	int			x;
+	int			part= 0;
 	const TextParticule *	tp;
 
 	x= 0;
@@ -252,12 +272,15 @@ static void docHtmlStartParagraphBody(	const BufferItem *	paraNode,
 	tp= paraNode->biParaParticules;
 	for ( part= 0; part < paraNode->biParaParticuleCount; tp++, part++ )
 	    {
-	    x += tp->tpTwipsWide;
+	    x += tp->tpWide;
 
-	    if  ( tp->tpKind == DOCkindTAB )
+	    if  ( tp->tpKind == TPkindTAB )
 		{
-		if  ( x <= paraNode->biParaLeftIndentTwips )
-		    { hasBullet= 1;	}
+		if  ( x <= pp->ppLeftIndentTwips )
+		    {
+		    bulletTail= tp->tpStroff;
+		    bodyHead= tp->tpStroff+ tp->tpStrlen;
+		    }
 		break;
 		}
 	    }
@@ -267,51 +290,51 @@ static void docHtmlStartParagraphBody(	const BufferItem *	paraNode,
     docHtmlPutString( tag, hwc );
     docHtmlPutString( " style=\"", hwc );
 
-    if  ( paraNode->biParaLeftIndentTwips <= -100	||
-	  paraNode->biParaLeftIndentTwips >=  100	)
+    if  ( pp->ppLeftIndentTwips <= -100	||
+	  pp->ppLeftIndentTwips >=  100	)
 	{
 	docHtmlPutString( "padding-left:", hwc );
 	sioOutPrintf( sos, "%dpt;",
-		    ( paraNode->biParaLeftIndentTwips+ 10 )/ 20 );
+		    ( pp->ppLeftIndentTwips+ 10 )/ 20 );
 	xw->xwColumn += 6;
 	}
 
-    if  ( ( paraNode->biParaFirstIndentTwips <= -100	||
-	    paraNode->biParaFirstIndentTwips >=  100	)	)
+    if  ( ( pp->ppFirstIndentTwips <= -100	||
+	    pp->ppFirstIndentTwips >=  100	)	)
 	{
 	docHtmlPutString( "text-indent:", hwc );
-	sioOutPrintf( sos, "%dpt;", paraNode->biParaFirstIndentTwips/ 20 );
+	sioOutPrintf( sos, "%dpt;", pp->ppFirstIndentTwips/ 20 );
 	xw->xwColumn += 6;
 	}
 
-    if  ( is.isPattern == DOCspSOLID )
-	{ docCssEmitBackgroundStyle( &(xw->xwColumn), sos, bd, &is ); }
+    if  ( is->isPattern == DOCspSOLID )
+	{ docCssEmitBackgroundStyle( &(xw->xwColumn), sos, bd, is ); }
 
     docCssEmitBorderStyleByNumber( &(xw->xwColumn), sos, bd,
-		    "border-top", paraNode->biParaTopBorderNumber );
+		    "border-top", pp->ppTopBorderNumber );
     docCssEmitBorderStyleByNumber( &(xw->xwColumn), sos, bd,
-		    "border-left", paraNode->biParaLeftBorderNumber );
+		    "border-left", pp->ppLeftBorderNumber );
     docCssEmitBorderStyleByNumber( &(xw->xwColumn), sos, bd,
-		    "border-right", paraNode->biParaRightBorderNumber );
+		    "border-right", pp->ppRightBorderNumber );
     docCssEmitBorderStyleByNumber( &(xw->xwColumn), sos, bd,
-		    "border-bottom", paraNode->biParaBottomBorderNumber );
+		    "border-bottom", pp->ppBottomBorderNumber );
 
-    if  ( paraNode->biParaSpaceBeforeTwips > 0 )
+    if  ( pp->ppSpaceBeforeTwips > 0 )
 	{
 	docHtmlPutString( "margin-top:", hwc );
 	sioOutPrintf( sos, "%dpt;",
-			( paraNode->biParaSpaceBeforeTwips+ 10 )/ 20 );
+			( pp->ppSpaceBeforeTwips+ 10 )/ 20 );
 	xw->xwColumn += 6;
 	}
-    if  ( paraNode->biParaSpaceAfterTwips > 0 )
+    if  ( pp->ppSpaceAfterTwips > 0 )
 	{
 	docHtmlPutString( "margin-bottom:", hwc );
 	sioOutPrintf( sos, "%dpt;",
-			( paraNode->biParaSpaceAfterTwips+ 10 )/ 20 );
+			( pp->ppSpaceAfterTwips+ 10 )/ 20 );
 	xw->xwColumn += 6;
 	}
 
-    switch( paraNode->biParaAlignment )
+    switch( pp->ppAlignment )
 	{
 	case DOCthaLEFT:
 	    break;
@@ -328,22 +351,21 @@ static void docHtmlStartParagraphBody(	const BufferItem *	paraNode,
 	    break;
 
 	default:
-	    LDEB(paraNode->biParaAlignment);
+	    LDEB(pp->ppAlignment);
 	    break;
 	}
 
     docHtmlPutString( "\"", hwc );
     docHtmlPutString( ">", hwc );
 
-    if  ( paraNode->biParaSpaceBeforeTwips > fontHeight/ 2 )
+    if  ( pp->ppSpaceBeforeTwips > fontHeight/ 2 )
 	{
 	docHtmlPutString( "&#160;<br/>", hwc );
 	docHtmlNewLine( hwc );
 	}
 
-    if  ( hasBullet )
-	{ *pBulletTab= part;		}
-    else{ *pBulletTab= -1;		}
+    *pBulletTail= bulletTail;
+    *pBodyHead= bodyHead;
 
     return;
     }
@@ -356,21 +378,29 @@ static void docHtmlStartParagraphBody(	const BufferItem *	paraNode,
 /*									*/
 /************************************************************************/
 
-int docHtmlSaveParaNode(	HtmlWritingContext *		hwc,
-				const BufferItem *		paraNode,
-				const BufferItem *		bodySectBi,
-				const DocumentSelection *	ds )
+int docHtmlSaveParaNode( HtmlWritingContext *			hwc,
+			struct BufferItem *			paraNode,
+			const struct BufferItem *		bodySectNode,
+			const struct DocumentSelection *	ds )
     {
-    int				part= 0;
-    int				noteRefCount= 0;
+    const struct TextAttribute *	ta;
+    int					fontHeight;
 
-    TextAttribute		ta;
-    int				fontHeight;
+    PropertyMask			ppSetMask;
+    int					bulletTail= -1;
+    int					bodyHead= -1;
 
-    PropertyMask		ppSetMask;
-    int				bulletTab= 0;
+    struct BufferDocument *		bd= hwc->hwcDocument;
 
-    BufferDocument *		bd= hwc->hwcDocument;
+    HtmlParagraphWriter			hpw;
+    DocumentSelection			dsPara;
+    const int				flags= 0;
+
+    docInitDocumentSelection( &dsPara );
+
+    hpw.hpwHtmlWriter= hwc;
+    hpw.hpwNoteRefCount= 0;
+    hpw.hpwAfterSpace= 0;
 
     if  ( paraNode->biParaParticuleCount == 0		||
 	  docParaStrlen( paraNode ) == 0		)
@@ -380,47 +410,67 @@ int docHtmlSaveParaNode(	HtmlWritingContext *		hwc,
 	return 0;
 	}
 
-    part= 0;
-    docGetEffectiveTextAttributes( &ta, bd, paraNode, part );
+    docGetEffectiveTextAttributes( &ta, bd, paraNode, 0 );
 
-    fontHeight= 10* ta.taFontSizeHalfPoints;
+    fontHeight= TA_FONT_SIZE_TWIPS( ta );
 
-    docHtmlStartParagraphBody( paraNode, &bulletTab, "div", fontHeight, hwc );
+    docHtmlStartParagraphBody( paraNode, &bulletTail, &bodyHead,
+						    "div", fontHeight, hwc );
 
-    if  ( bulletTab >= 0 )
+    if  ( bulletTail >= 0 && bodyHead >= 0 )
 	{
+	const int	direction= 1;
+
+	docSetParaSelection( &dsPara, paraNode, direction, 0, bulletTail );
+
 	docHtmlPutString( "<div", hwc );
 	docHtmlWriteStringAttribute( hwc, "style", "float: left;" );
 	docHtmlPutString( ">", hwc );
 
-	if  ( docHtmlSaveParticules( paraNode, &noteRefCount, 0,
-						    bulletTab, hwc ) < 0 )
-	    { LDEB(bulletTab); return -1;	}
+	if  ( docScanParagraphLogicalOrder( bd, paraNode, &dsPara, flags,
+			    docHtmlSaveParticule,
+			    docHtmlSaveField,
+			    docHtmlSaveRun,
+			    docHtmlSaveObject,
+			    (TabVisitor)0,
+			    &hpw ) < 0 )
+	    { LLDEB(bulletTail,bodyHead); return -1;	}
+
+	docHtmlChangeAttributes( hwc, -1 );
 
 	docHtmlPutString( "</div>", hwc );		
 	docHtmlPutString( "<div", hwc );
 	docHtmlWriteStringAttribute( hwc, "style", "text-indent: 0;" );
 	docHtmlPutString( ">", hwc );
 
-	part= bulletTab+ 1;
+	docSetParaSelection( &dsPara, paraNode, direction,
+					bodyHead, docParaStrlen( paraNode ) );
+	ds= &dsPara;
 	}
 
-    if  ( docHtmlSaveParticules( paraNode, &noteRefCount, part,
-				paraNode->biParaParticuleCount, hwc ) < 0 )
-	{ LDEB(part); return -1;	}
+    if  ( docScanParagraphLogicalOrder( bd, paraNode, ds, flags,
+			    docHtmlSaveParticule,
+			    docHtmlSaveField,
+			    docHtmlSaveRun,
+			    docHtmlSaveObject,
+			    (TabVisitor)0,
+			    &hpw ) < 0 )
+	{ LDEB(1); return -1;	}
+
+    docHtmlChangeAttributes( hwc, -1 );
 
     if  ( hwc->hwcInlineNotes		&&
-	  noteRefCount > 0		&&
+	  hpw.hpwNoteRefCount > 0	&&
 	  hwc->hwcTableNesting == 0	)
 	{
 	if  ( docHtmlSaveDeferredNotes( hwc ) )
-	    { LDEB(noteRefCount); return -1;	}
+	    { LDEB(hpw.hpwNoteRefCount); return -1;	}
 	}
 
-    if  ( bulletTab >= 0 )
+    if  ( bulletTail >= 0 && bodyHead >= 0 )
 	{ docHtmlPutString( "</div>", hwc );		}
 
-    if  ( paraNode->biParaSpaceAfterTwips > fontHeight/ 2 )
+    if  ( paraNode->biParaProperties->ppSpaceAfterTwips > fontHeight/ 2 )
 	{ docHtmlPutString( "<br/>&#160;</div>", hwc );	}
     else{
 	docHtmlPutString( "</div>", hwc );		
@@ -431,9 +481,9 @@ int docHtmlSaveParaNode(	HtmlWritingContext *		hwc,
     utilPropMaskFill( &ppSetMask, PPprop_FULL_COUNT );
 
     if  ( docUpdParaProperties( (PropertyMask *)0,
-				    &(hwc->hwcParagraphProperties),
-				    &ppSetMask, &(paraNode->biParaProperties),
-				    (const DocumentAttributeMap *)0 ) )
+			    &(hwc->hwcParagraphProperties),
+			    &ppSetMask, paraNode->biParaProperties,
+			    (const struct DocumentAttributeMap *)0 ) )
 	{ LDEB(1);	}
 
     return 0;

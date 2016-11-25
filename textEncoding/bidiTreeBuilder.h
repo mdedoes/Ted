@@ -6,34 +6,13 @@
 /*									*/
 /************************************************************************/
 
-#   ifndef		TEXT_BIDI_TREE_BUILDER_H
-#   define		TEXT_BIDI_TREE_BUILDER_H
+#   ifndef		BIDI_TREE_BUILDER_H
+#   define		BIDI_TREE_BUILDER_H
 
-#   include		"bidiTree.h"
-
-typedef struct BidiTreeBuilder
-    {
-			/**
-			 *  The root (bottom node) of the tree.
-			 */
-    BidiNode *		btbBottomNode;
-
-			/**
-			 *  The current explicit node.
-			 *  (Initially, this is the root node.)
-			 */
-    BidiNode *		btbExplicitNode;
-
-			/**
-			 *  The insertion point. (Like a C string offset)
-			 */
-    int			btbOffset;
-
-			/**
-			 *  The higest level run found on the way.
-			 */
-    int			btbHighestLevel;
-    } BidiTreeBuilder;
+struct BidiTreeBuilder;
+struct BidiNode;
+struct BidiRun;
+struct BidiScanner;
 
 /************************************************************************/
 /*									*/
@@ -41,17 +20,55 @@ typedef struct BidiTreeBuilder
 /*									*/
 /************************************************************************/
 
-extern void bidiInitTreeBuilder(	BidiTreeBuilder *	btb );
+extern struct BidiTreeBuilder * bidiOpenTreeBuilder( void );
 
-extern void bidiStartTreeBuilder(	BidiTreeBuilder *	btb,
-					BidiNode *		bottom,
-					int			embedding,
-					int			level );
+extern int bidiFinishTreeBuilder(
+				struct BidiScanner *		bs,
+				struct BidiTreeBuilder *	btb,
+				int				upto );
 
-extern int bidiTreeBuilderAddRun(	BidiTreeBuilder *	btb,
-					int			embedding,
-					int			level,
-					int			from,
-					int			upto );
+extern void bidiCloseTreeBuilder(
+				struct BidiTreeBuilder *	btb );
 
-#   endif	/*	TEXT_BIDI_TREE_BUILDER_H	*/
+extern void bidiStartTreeBuilder(
+				struct BidiTreeBuilder *	btb,
+				int				bottomLevel );
+
+extern int bidiTreeBuilderStartExistingTree(
+				struct BidiTreeBuilder *	btb,
+				struct BidiNode *		bottomNode,
+				int				byteOffset );
+
+extern int bidiTreeBuilderAddRun(
+				struct BidiTreeBuilder *	btb,
+				int				initiator,
+				int				level,
+				int				from,
+				int				upto );
+
+extern int bidiTreeBuilderHandleImplicitClass(
+				const struct BidiScanner *	bs,
+				struct BidiTreeBuilder * 	btb,
+				int				klass,
+				int				offset );
+
+extern int bidiTreeBuilderCloseExplicitRun(
+				const struct BidiScanner *	bs,
+				struct BidiTreeBuilder *	btb,
+				int				eor,
+				int				upto );
+
+extern int bidiTreeLevelSwitchToIsolateLevel(
+				const struct BidiScanner *	bs,
+				struct BidiTreeBuilder *	btb,
+				int				level,
+				int				offset );
+
+extern struct BidiNode * bidiTreeBuilderGetRootNode(
+				struct BidiTreeBuilder *	btb );
+
+extern int bidiTreeBuilderGetCurrentRun(
+				struct BidiRun *		br,
+				struct BidiTreeBuilder *	btb );
+
+#   endif	/*	BIDI_TREE_BUILDER_H	*/

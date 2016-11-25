@@ -7,29 +7,23 @@
 #   include	"tedConfig.h"
 
 #   include	<stddef.h>
-#   include	<stdio.h>
 #   include	<ctype.h>
 
-#   include	"tedApp.h"
-#   include	"tedAppResources.h"
-
-#   include	<appSpellTool.h>
 #   include	<docFind.h>
-#   include	<docTreeNode.h>
 #   include	"tedFind.h"
-#   include	"tedFindTool.h"
-#   include	"tedSpellTool.h"
-#   include	"tedToolFront.h"
 #   include	"tedSelect.h"
 #   include	"tedDocument.h"
-#   include	<ind.h>
+#   include	<tedDocFront.h>
+#   include	<tedAppFront.h>
+#   include	<appEditApplication.h>
+#   include	<appEditDocument.h>
 
 #   include	<appDebugon.h>
 
 int tedDocFindNext(	EditDocument *	ed )
     {
     TedDocument *		td= (TedDocument *)ed->edPrivateData;
-    BufferDocument *		bd= td->tdDocument;
+    struct BufferDocument *	bd= td->tdDocument;
 
     int				ret;
 
@@ -43,7 +37,7 @@ int tedDocFindNext(	EditDocument *	ed )
 	{ XDEB(td->tdFindProg); return -1;	}
 
     if  ( tedGetSelection( &ds, &sg, &sd,
-			    (DocumentTree **)0, (struct BufferItem **)0, ed ) )
+		    (struct DocumentTree **)0, (struct BufferItem **)0, ed ) )
 	{ LDEB(1); return -1;	}
 
     docInitDocumentSelection( &dsNew );
@@ -67,7 +61,7 @@ int tedDocFindNext(	EditDocument *	ed )
 int tedDocFindPrev(	EditDocument *	ed )
     {
     TedDocument *		td= (TedDocument *)ed->edPrivateData;
-    BufferDocument *		bd= td->tdDocument;
+    struct BufferDocument *		bd= td->tdDocument;
 
     int				ret;
 
@@ -81,7 +75,8 @@ int tedDocFindPrev(	EditDocument *	ed )
 	{ XDEB(td->tdFindProg); return -1;	}
 
     if  ( tedGetSelection( &ds, &sg, &sd,
-				(DocumentTree **)0, (BufferItem **)0, ed ) )
+			(struct DocumentTree **)0,
+			(struct BufferItem **)0, ed ) )
 	{ LDEB(1); return -1;	}
 
     docInitDocumentSelection( &dsNew );
@@ -102,54 +97,14 @@ int tedDocFindPrev(	EditDocument *	ed )
     return ret;
     }
 
-int tedFindToolSetPattern(	void *		voidea,
-				const char *	pattern,
-				int		useRegex )
-    {
-    EditApplication *		ea= (EditApplication *)voidea;
-    EditDocument *		ed= ea->eaCurrentDocument;
-    TedAppResources *		tar= (TedAppResources *)ea->eaResourceData;
-    TedDocument *		td;
-
-    if  ( ! ed )
-	{ XDEB(ed); return -1;	}
-
-    td= (TedDocument *)ed->edPrivateData;
-
-    tar->tarFindPattern= (char *)0;
-
-    return docFindSetPattern( &(td->tdFindProg), pattern, useRegex );
-    }
-
-void tedShowFindTool(	EditDocument *		ed )
-    {
-    EditApplication *	ea= ed->edApplication;
-    TedDocument *	td= (TedDocument *)ed->edPrivateData;
-    TedAppResources *	tar= (TedAppResources *)ea->eaResourceData;
-
-    /*  To get the correct title  */
-    tedShowFormatTool( td->tdToolsFormatToolOption, ea );
-    tedAdaptFormatToolToDocument( ed, 0 );
-
-    tedFormatShowFindPage( ea );
-
-    if  ( tar->tarFindPattern )
-	{
-	tedFormatSetFindPattern( ea, tar->tarFindPattern, tar->tarFindRegex );
-	}
-
-    return;
-    }
-
 int tedSpellFindNext(	void *			voidea,
 			MemoryBuffer *		mbGuess,
-			const SpellChecker *	spc,
-			SpellDictionary *	spd )
+			struct SpellScanJob *	ssj )
     {
     EditApplication *		ea= (EditApplication *)voidea;
     EditDocument *		ed= ea->eaCurrentDocument;
     TedDocument *		td;
-    BufferDocument *		bd;
+    struct BufferDocument *	bd;
 
     int				ret;
 
@@ -166,13 +121,13 @@ int tedSpellFindNext(	void *			voidea,
     bd= td->tdDocument;
 
     if  ( tedGetSelection( &ds, &sg, &sd,
-				(DocumentTree **)0, (BufferItem **)0, ed ) )
+				(struct DocumentTree **)0, (struct BufferItem **)0, ed ) )
 	{ LDEB(1); return -1;	}
 
     docInitDocumentSelection( &dsNew );
 
     ret= docFindFindNextInDocument( &dsNew, &(ds.dsTail), bd,
-					docSpellParaFindNext, (void *)spd );
+					docSpellParaFindNext, (void *)ssj );
 
     if  ( ret < 0 )
 	{ LDEB(ret); return -1;	}
@@ -183,10 +138,7 @@ int tedSpellFindNext(	void *			voidea,
 
 	tedSetSelection( ed, &dsNew, lastLine, (int *)0, (int *)0 );
 
-	if  ( mbGuess && utilMemoryBufferGetRange(
-			mbGuess, &(dsNew.dsTail.dpNode->biParaStringBuffer),
-			dsNew.dsHead.dpStroff,
-			dsNew.dsTail.dpStroff- dsNew.dsHead.dpStroff ) )
+	if  ( mbGuess && docCollectReference( mbGuess, &dsNew, bd ) )
 	    { LDEB(1); return -1;	}
 	}
 

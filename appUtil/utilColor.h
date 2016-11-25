@@ -44,7 +44,7 @@ typedef struct	RGB16Color
     unsigned short	rgb16Red;
     unsigned short	rgb16Green;
     unsigned short	rgb16Blue;
-    unsigned char	rgb16Alpha;
+    unsigned short	rgb16Alpha;
     } RGB16Color;
 
 typedef enum RGBAColorComponent
@@ -76,6 +76,10 @@ typedef enum RGBAColorComponent
 # define utilRGB8SolidBlack( a ) { \
 			    (a)->rgb8Red= (a)->rgb8Green= (a)->rgb8Blue= 0; \
 			    (a)->rgb8Alpha= 255;	}
+
+# define utilRGB8SolidRGB( a, r, g, b ) { \
+		(a)->rgb8Red= (r); (a)->rgb8Green= (r); (a)->rgb8Blue= (b); \
+		(a)->rgb8Alpha= 255;	}
 
 /************************************************************************/
 /*									*/

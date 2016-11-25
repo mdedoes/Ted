@@ -10,6 +10,8 @@
 #   include	"textEncodingConfig.h"
 
 #   include	"uniAlternatives.h"
+#   include	<utilIndexMapping.h>
+#   include	<utilIndexSet.h>
 #   include	<appDebugon.h>
 
 typedef struct AlternativeChar

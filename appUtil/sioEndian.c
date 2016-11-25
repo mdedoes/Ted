@@ -4,6 +4,8 @@
 
 #   include	"sioEndian.h"
 #   include	"utilEndian.h"
+#   include	"sioGeneral.h"
+
 #   include	<appDebugon.h>
 
 /************************************************************************/

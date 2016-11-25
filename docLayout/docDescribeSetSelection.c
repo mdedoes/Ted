@@ -6,7 +6,12 @@
 #   include	<docNodeTree.h>
 #   include	"docScreenLayout.h"
 #   include	"docDescribeSetSelection.h"
+#   include	"docLayoutDocumentTree.h"
+#   include	<docSelect.h>
+#   include	<docBuf.h>
+#   include	<geoRectangle.h>
 
+#   include	<docDebug.h>
 #   include	<appDebugon.h>
 
 /************************************************************************/
@@ -17,19 +22,19 @@
 /************************************************************************/
 
 int docDescribeSetSelection(
-			DocumentTree **			pTreeSet,
-			BufferItem **			pBodySectNodeSet,
+			struct DocumentTree **		pTreeSet,
+			struct BufferItem **		pBodySectNodeSet,
 			DocumentRectangle *		drExternalSet,
 			int *				pRedrawOldTree,
 			int *				pRedrawNewTree,
 			LayoutContext *			lc,
-			BufferDocument *		bd,
+			struct BufferDocument *		bd,
 			const DocumentSelection *	dsOld,
 			const DocumentSelection *	dsSet )
     {
-    BufferItem *	rootNodeSet;
-    BufferItem *	bodySectNodeSet;
-    DocumentTree *	treeSet;
+    struct BufferItem *	rootNodeSet;
+    struct BufferItem *	bodySectNodeSet;
+    struct DocumentTree *	treeSet;
 
     int			sameRoot;
     int			bodySectNr= -1;
@@ -51,13 +56,11 @@ int docDescribeSetSelection(
 	case DOCinBODY:
 	    break;
 
-	case DOCinFIRST_HEADER:
-	case DOCinLEFT_HEADER:
-	case DOCinRIGHT_HEADER:
+	case DOCinFIRST_HEADER:	case DOCinFIRST_FOOTER:
+	case DOCinLEFT_HEADER:	case DOCinLEFT_FOOTER:
+	case DOCinRIGHT_HEADER:	case DOCinRIGHT_FOOTER:
+	case DOCinLAST_HEADER:	case DOCinLAST_FOOTER:
 
-	case DOCinFIRST_FOOTER:
-	case DOCinLEFT_FOOTER:
-	case DOCinRIGHT_FOOTER:
 	    if  ( ! sameRoot )
 		{ redrawTreeOld= 1;	}
 	    break;
@@ -99,19 +102,16 @@ int docDescribeSetSelection(
 	    bodySectNr= bodySectNodeSet->biNumberInParent;
 	    break;
 
-	case DOCinFIRST_HEADER:
-	case DOCinLEFT_HEADER:
-	case DOCinRIGHT_HEADER:
-
-	case DOCinFIRST_FOOTER:
-	case DOCinLEFT_FOOTER:
-	case DOCinRIGHT_FOOTER:
+	case DOCinFIRST_HEADER:	case DOCinFIRST_FOOTER:
+	case DOCinLEFT_HEADER:	case DOCinLEFT_FOOTER:
+	case DOCinRIGHT_HEADER:	case DOCinRIGHT_FOOTER:
+	case DOCinLAST_HEADER:	case DOCinLAST_FOOTER:
 
 	    {
 	    const int		page= treeSet->dtPageSelectedUpon;
 	    const int		column= 0; /* irrelevant */
 	    int			changed= 0;
-	    DocumentTree *	tree= (DocumentTree *)0;
+	    struct DocumentTree *	tree= (struct DocumentTree *)0;
 
 	    if  ( ! sameRoot )
 		{ redrawTreeSet= 1;	}
@@ -139,7 +139,7 @@ int docDescribeSetSelection(
 
 	    if  ( redrawTreeSet )
 		{
-		if  ( docGetBoxAroundTree( drExternalSet, bodySectNodeSet,
+		if  ( docGetBoxAroundTree( drExternalSet,
 				    treeSet, justUsed, page, column, lc ) )
 		    {
 		    LDEB(rootNodeSet->biTreeType);
@@ -154,7 +154,7 @@ int docDescribeSetSelection(
 	case DOCinFOOTNOTE:
 	case DOCinENDNOTE:
 	    {
-	    DocumentTree *		tree= (DocumentTree *)0;
+	    struct DocumentTree *		tree= (struct DocumentTree *)0;
 
 	    if  ( docGetTreeOfNode( &tree, &bodySectNodeSet, bd, rootNodeSet ) )
 		{ LDEB(1); return -1;	}
@@ -166,7 +166,7 @@ int docDescribeSetSelection(
 
 		redrawTreeSet= 1;
 
-		if  ( docGetBoxAroundTree( drExternalSet, bodySectNodeSet,
+		if  ( docGetBoxAroundTree( drExternalSet,
 				    treeSet, justUsed, page, column, lc ) )
 		    {
 		    LSDEB(rootNodeSet->biTreeType,
@@ -201,7 +201,7 @@ int docDescribeSetSelection(
 	    if  ( changed )
 		{ redrawTreeSet= 1;	}
 
-	    if  ( docGetBoxAroundTree( drExternalSet, bodySectNodeSet,
+	    if  ( docGetBoxAroundTree( drExternalSet,
 				    treeSet, justUsed, page, column, lc ) )
 		{
 		LDEB(rootNodeSet->biTreeType);

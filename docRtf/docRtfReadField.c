@@ -12,13 +12,22 @@
 #   include	<stdio.h>
 #   include	<ctype.h>
 
-#   include	<appDebugon.h>
-
 #   include	"docRtfReaderImpl.h"
+#   include	"docRtfReadTreeStack.h"
+#   include	"docRtfFindProperty.h"
 #   include	<docField.h>
-#   include	<docParaParticules.h>
 #   include	<docTreeType.h>
 #   include	<docBookmarkField.h>
+#   include	<docDocumentField.h>
+#   include	<docFieldKind.h>
+#   include	<docFieldStack.h>
+#   include	<docSelect.h>
+#   include	<docTreeNode.h>
+#   include	<docParaBuilder.h>
+#   include	<docFields.h>
+#   include	<docBuf.h>
+
+#   include	<appDebugon.h>
 
 /************************************************************************/
 /*									*/
@@ -28,14 +37,73 @@
 /*									*/
 /************************************************************************/
 
-typedef struct RtfFieldStackLevel
+/************************************************************************/
+/*									*/
+/*  While reading the field instructions, we have treated the fields	*/
+/*  inside the field instructions like ordinary fields.			*/
+/*									*/
+/*  But in the fields inside the instructions of another field we abuse	*/
+/*  epParaNr/epStroff for the number of the instruction component in	*/
+/*  the parent and the offset in the component. Fix the administration	*/
+/*  here.								*/
+/*									*/
+/************************************************************************/
+
+static int docFixInstructionFieldPositions(	const DocumentField *	df )
     {
-    DocumentField *		rfslField;
-    SelectionScope		rfslSelectionScope;
-    EditPosition		rfslStartPosition;
-    int				rfslParticule;
-    struct RtfFieldStackLevel *	rfslPrev;
-    } RtfFieldStackLevel;
+    int		comp= df->dfInstructions.fiComponentCount- 1;
+    int		field;
+
+    const InstructionsComponent *	ic;
+
+    ic= df->dfInstructions.fiComponents+ comp;
+
+    for ( field= df->dfInstructionFields.cfChildCount- 1; field >= 0; field-- )
+	{
+	DocumentField * dfCh= df->dfInstructionFields.cfChildren[field];
+
+	while( ic->icOffset > dfCh->dfTailPosition.epStroff )
+	    { comp--; ic--; }
+
+	if  ( comp < 0 )
+	    {
+	    LLLLDEB(field,dfCh->dfTailPosition.epStroff,comp,ic->icOffset);
+	    return -1;
+	    }
+	dfCh->dfTailPosition.epParaNr= comp;
+	dfCh->dfTailPosition.epStroff -= ic->icOffset;
+
+	while( ic->icOffset > dfCh->dfHeadPosition.epStroff )
+	    { comp--; ic--; }
+
+	if  ( comp < 0 )
+	    {
+	    LLLLDEB(field,dfCh->dfHeadPosition.epStroff,comp,ic->icOffset);
+	    return -1;
+	    }
+	dfCh->dfHeadPosition.epParaNr= comp;
+	dfCh->dfHeadPosition.epStroff -= ic->icOffset;
+	}
+
+    return 0;
+    }
+
+/************************************************************************/
+/*									*/
+/*  Are we inside a SHAPE field?					*/
+/*									*/
+/************************************************************************/
+
+int docRtfInsideShapeField(	RtfReader *	rr )
+    {
+    if  ( ! rr->rrTreeStack						||
+	  ! rr->rrTreeStack->rtsFieldStack				||
+	  ! rr->rrTreeStack->rtsFieldStack->fslField			||
+	  rr->rrTreeStack->rtsFieldStack->fslField->dfKind != DOCfkSHAPE )
+	{ return 0;	}
+
+    return 1;
+    }
 
 /************************************************************************/
 /*									*/
@@ -43,261 +111,256 @@ typedef struct RtfFieldStackLevel
 /*									*/
 /************************************************************************/
 
-static int docRtfReadFldrslt(	const RtfControlWord *	rcw,
-				int			arg,
-				RtfReader *	rrc )
+int docRtfReadFldrslt(	const RtfControlWord *	rcw,
+			int			arg,
+			RtfReader *		rr )
     {
     int			res;
+    int			piece= rr->rrTreeStack->rtsFieldPiece;
 
-    res= docRtfReadGroup( rcw, 0, 0, rrc,
+    rr->rrTreeStack->rtsFieldPiece= FSpieceFLDRSLT;
+
+    res= docRtfReadGroup( rcw, 0, 0, rr,
 				docRtfDocumentGroups,
-				docRtfTextParticule, (RtfCommitGroup)0 );
+				docRtfGotText, (RtfCommitGroup)0 );
 
     if  ( res )
 	{ SLDEB(rcw->rcwWord,res);	}
+
+    rr->rrTreeStack->rtsFieldPiece= piece;
 
     return res;
     }
 
 static int docRtfCommitFldinst(	const RtfControlWord *	rcw,
-				RtfReader *		rrc )
+				RtfReader *		rr )
     {
-    RtfFieldStackLevel *	rfsl= rrc->rrcFieldStack;
-    DocumentField *		df= rfsl->rfslField;
-    int				kind;
+    int			rval= 0;
+    FieldStackLevel *	fsl= rr->rrTreeStack->rtsFieldStack;
+    DocumentField *	df;
+    int			fieldKind;
 
-    char *			text= (char *)0;
-    int				size;
-    const int			removeSemicolon= 0;
+    char *		instBytes= (char *)0;
+    int			instSize;
+    const int		removeSemicolon= 0;
+    int			keepSpace= 1;
 
-    if  ( ! rfsl )
-	{ XDEB(rfsl); return 0;	}
+    if  ( ! fsl )
+	{ XDEB(fsl); goto ready;	}
 
-    df= rfsl->rfslField;
+    df= fsl->fslField;
 
-    if  ( docRtfStoreSavedText( &text, &size, rrc, removeSemicolon ) )
-	{ LDEB(1); return -1;	}
-    if  ( docSetFieldInst( df, text, size ) )
-	{ LDEB(size); return -1;	}
+    if  ( docRtfStoreSavedText( &instBytes, &instSize, rr, removeSemicolon ) )
+	{ LDEB(1); rval= -1; goto ready;	}
 
-    if  ( text )
-	{ free( text );		}
+    fieldKind= docFieldKindFromInstructions( &keepSpace, instBytes, instSize );
+    if  ( fieldKind >= 0 )
+	{ df->dfKind= fieldKind;	}
+    if  ( docSetFieldInst( df, keepSpace, instBytes, instSize ) )
+	{ LDEB(instSize); rval= -1; goto ready;	}
 
-    kind= docFieldKindFromInstructions( df );
-    if  ( kind >= 0 )
-	{ df->dfKind= kind;	}
+    if  ( docFixInstructionFieldPositions( df ) )
+	{ LDEB(1); rval= -1; goto ready;	}
 
-    return 0;
+  ready:
+
+    if  ( instBytes )
+	{ free( instBytes );		}
+
+    return rval;
     }
 
-/************************************************************************/
-/*									*/
-/*  Move a bookmark inside the field instructions to the exterior.	*/
-/*									*/
-/************************************************************************/
-
-# if 0
-static int docRtfBkmkStartX(	const RtfControlWord *		rcw,
-				int				arg,
-				RtfReader *		rrc )
+int docRtfReadFldinst(	const RtfControlWord *	rcw,
+			int			arg,
+			RtfReader *		rr )
     {
-    RtfFieldStackLevel *	here;
-    RtfFieldStackLevel *	prev;
-    RtfFieldStackLevel *	prpr;
+    int			res;
+    int			piece= rr->rrTreeStack->rtsFieldPiece;
 
-    if  ( docRtfBkmkStart( rcw, arg, rrc ) )
-	{ LDEB(1); return -1;	}
+    rr->rrTreeStack->rtsFieldPiece= FSpieceFLDINST;
 
-    here= rrc->rrcFieldStack;
-    if  ( ! here )
-	{ XDEB(here); return -1;	}
-    prev= rrc->rrcFieldStack->rfslPrev;
-    if  ( ! prev )
-	{ XDEB(prev); return -1;	}
-    prpr= rrc->rrcFieldStack->rfslPrev->rfslPrev;
-
-    here->rfslStartPosition= prev->rfslStartPosition;
-    here->rfslField->dfHeadPosition= here->rfslStartPosition;
-
-    rrc->rrcFieldStack= prev;
-    rrc->rrcFieldStack->rfslPrev= here;
-    rrc->rrcFieldStack->rfslPrev->rfslPrev= prpr;
-
-    return 0;
-    }
-
-static int docRtfReadFieldX(	const RtfControlWord *	rcw,
-				int			arg,
-				RtfReader *		rrc )
-    {
-    int		res;
-
-    res= docRtfReadField( rcw, arg, rrc );
-
-    return res;
-    }
-
-# endif
-
-static RtfControlWord	docRtfFldinstGroups[]=
-    {
-#	if 0
-	RTF_DEST_XX( "bkmkstart",	FPpropFLDINST,	docRtfBkmkStartX ),
-	RTF_DEST_XX( "field",		RTFidFIELD,	docRtfReadFieldX ),
-#	endif
-
-	{ (char *)0, 0, 0 }
-    };
-
-static int docRtfReadFldinst(	const RtfControlWord *	rcw,
-				int			arg,
-				RtfReader *	rrc )
-    {
-    int		res;
-
-    res= docRtfReadGroup( rcw, 0, 0, rrc, docRtfFldinstGroups,
+    res= docRtfReadGroup( rcw, 0, 0, rr, (RtfControlWord *)0,
 						docRtfSaveDocEncodedText,
 						docRtfCommitFldinst );
 
     if  ( res )
 	{ SLDEB(rcw->rcwWord,res);	}
 
+    rr->rrTreeStack->rtsFieldPiece= piece;
+
     return res;
     }
 
-static RtfControlWord	docRtfFieldGroups[]=
-{
-    RTF_DEST_XX( "fldrslt",	FPpropFLDRSLT,	docRtfReadFldrslt ),
-    RTF_DEST_XX( "fldinst",	FPpropFLDINST,	docRtfReadFldinst ),
-
-    { (char *)0, 0, 0 }
-};
-
-static int docRtfReadPushField(		int *			pPart,
-					DocumentField **	pField,
-					int			kind,
-					RtfReader *		rrc,
-					const char *		fieldinst,
-					int			size )
+static int docRtfReadPushResultField(	DocumentField **	pField,
+					RtfReader *		rr,
+					int			fieldKind,
+					const char *		instBytes,
+					int			instSize )
     {
     int				rval= 0;
-    BufferDocument *		bd= rrc->rrDocument;
-    BufferItem *		paraNode;
-    int				part;
+    RtfTreeStack *		rts= rr->rrTreeStack;
+    struct BufferItem *		paraNode;
 
-    RtfReadingState *		rrs= rrc->rrcState;
-    RtfFieldStackLevel *	rfsl= (RtfFieldStackLevel *)0;
+    RtfReadingState *		rrs= rr->rrState;
+    struct DocumentField *	df= (struct DocumentField *)0;
 
-    paraNode= docRtfGetParaNode( rrc );
+    paraNode= docRtfGetParaNode( rr );
     if  ( ! paraNode )
 	{ XDEB(paraNode); rval= -1; goto ready; }
 
-    part= paraNode->biParaParticuleCount;
-
-    rfsl= (RtfFieldStackLevel *)malloc( sizeof(RtfFieldStackLevel) );
-    if  ( ! rfsl )
-	{ XDEB(rfsl); rval= -1; goto ready;	}
-
-    rfsl->rfslSelectionScope= rrc->rrcSelectionScope;
-    rfsl->rfslStartPosition.epParaNr= docNumberOfParagraph( paraNode );
-    rfsl->rfslStartPosition.epStroff= docParaStrlen( paraNode );
-    rfsl->rfslParticule= paraNode->biParaParticuleCount;
-    rfsl->rfslPrev= rrc->rrcFieldStack;
-
-    rfsl->rfslField= docClaimField( &(bd->bdFieldList) );
-    if  ( ! rfsl->rfslField )
-	{ XDEB(rfsl->rfslField); rval= -1; goto ready;	}
-    rfsl->rfslField->dfKind= kind;
-    rfsl->rfslField->dfSelectionScope= rfsl->rfslSelectionScope;
-    rfsl->rfslField->dfHeadPosition= rfsl->rfslStartPosition;
-
     if  ( rrs->rrsTextShadingChanged )
-	{ docRtfRefreshTextShading( rrc, rrs );	}
+	{ docRtfRefreshTextShading( rr, rrs );	}
 
-    if  ( docInsertAdminParticule( bd, paraNode,
-					    rfsl->rfslParticule,
-					    rfsl->rfslStartPosition.epStroff,
-					    rfsl->rfslField->dfFieldNumber,
-					    DOCkindFIELDHEAD,
-					    &(rrs->rrsTextAttribute) ) )
+    df= docParaBuilderAppendFieldHead( rts->rtsParagraphBuilder,
+					    &(rrs->rrsTextAttribute),
+					    fieldKind, instBytes, instSize );
+
+    if  ( ! df )
+	{ XDEB(df); rval= -1; goto ready;	}
+
+    if  ( docFieldStackPushLevel( &(rts->rtsFieldStack), df, FSpieceFLDRSLT ) )
 	{ LDEB(1); rval= -1; goto ready;	}
 
-    rrc->rrcAfterNoteref= 0;
-    rrc->rrAfterParaHeadField= 0;
+    rr->rrAfterNoteref= 0;
+    rr->rrAfterParaHeadField= 0;
+    rr->rrAfterInlineShape= 0;
+    rr->rrInlineShapeObjectNumber= -1;
 
-    if  ( size > 0 )
-	{
-	if  ( docSetFieldInst( rfsl->rfslField, fieldinst, size ) )
-	    { LDEB(size); rval= -1; goto ready;	}
-	}
-
-    *pField= rfsl->rfslField;
-    *pPart= part;
-    rrc->rrcFieldStack= rfsl; rfsl= (RtfFieldStackLevel *)0; /* steal */
+    *pField= df; df= (struct DocumentField *)0; /* steal */
 
   ready:
 
-    if  ( rfsl )
-	{ free( rfsl );	}
+    if  ( df )
+	{ docDeleteFieldFromDocument( rr->rrDocument, df );	}
 
     return rval;
     }
 
-static int docRtfTerminateField(	const RtfFieldStackLevel *	rfsl,
-					RtfReader *			rrc )
+static int docRtfReadPushInstructionsField(
+					DocumentField **	pField,
+					RtfReader *		rr )
     {
-    BufferItem *	bi= rrc->rrcNode;
-    RtfReadingState *	rrs= rrc->rrcState;
-    BufferDocument *	bd= rrc->rrDocument;
+    int				rval= 0;
+    RtfTreeStack *		rts= rr->rrTreeStack;
+    RtfReadingState *		rrs= rr->rrState;
+    struct BufferDocument *	bd= rr->rrDocument;
 
-    int			paraNr;
-    int			stroff;
-    int			part;
+    DocumentField *	df;
 
-    EditPosition	epTail;
+    df= docClaimField( &(bd->bdFieldList) );
+    if  ( ! df )
+	{ XDEB(df); rval= -1; goto ready;	}
+    df->dfKind= DOCfkUNKNOWN;
+    df->dfSelectionScope= rr->rrTreeStack->rtsSelectionScope; /* needed to pop it */
+    df->dfHeadPosition.epParaNr= 0; /* fix later on */
+    df->dfHeadPosition.epStroff= rrs->rrsSavedText.mbSize; /* fix later on */
 
-    if  ( ! bi )
-	{ XDEB(bi); return -1;	}
-    if  ( bi->biLevel != DOClevPARA )
+    if  ( docRtfSaveDocEncodedText( rr, "{", 1 ) )
+	{ LDEB(1); rval= -1; goto ready;	}
+
+    if  ( docFieldStackPushLevel( &(rts->rtsFieldStack),
+							df, FSpieceFLDINST ) )
+	{ LDEB(1); rval= -1; goto ready;	}
+
+    rr->rrAfterNoteref= 0;
+    rr->rrAfterParaHeadField= 0;
+    rr->rrAfterInlineShape= 0;
+    rr->rrInlineShapeObjectNumber= -1;
+
+    *pField= df;
+
+  ready:
+
+    return rval;
+    }
+
+/************************************************************************/
+/*									*/
+/*  Terminate the top field on the field stack and pop it from the	*/
+/*  stack.								*/
+/*									*/
+/************************************************************************/
+
+static int docRtfTerminateTopResultField(	RtfReader *		rr,
+						DocumentField *		df )
+    {
+    struct BufferItem *		node= rr->rrTreeStack->rtsNode;
+    RtfReadingState *		rrs= rr->rrState;
+    RtfTreeStack *		rts= rr->rrTreeStack;
+
+    if  ( ! node )
+	{ XDEB(node); return -1;	}
+    if  ( node->biLevel != DOClevPARA )
 	{
 	DocumentPosition	dp;
 
-	if  ( docTailPosition( &dp, bi ) )
-	    { XDEB(bi); return -1;	}
+	if  ( docTailPosition( &dp, node ) )
+	    { XDEB(node); return -1;	}
 
-	bi= dp.dpNode;
+	if  ( docParaBuilderStartExistingParagraph(
+			rts->rtsParagraphBuilder, dp.dpNode, dp.dpStroff ) )
+	    { LDEB(1); return -1;	}
 	}
 
     if  ( rrs->rrsTextShadingChanged )
-	{ docRtfRefreshTextShading( rrc, rrs );	}
+	{ docRtfRefreshTextShading( rr, rrs );	}
 
-    paraNr= docNumberOfParagraph( bi );
-    stroff= docParaStrlen( bi );
-    part= bi->biParaParticuleCount;
-
-    if  ( docInsertAdminParticule( bd, bi, part, stroff,
-					    rfsl->rfslField->dfFieldNumber,
-					    DOCkindFIELDTAIL,
-					    &(rrs->rrsTextAttribute) ) )
+    if  ( docParaBuilderAppendFieldTail( rts->rtsParagraphBuilder,
+					    &(rrs->rrsTextAttribute), df ) )
 	{ LDEB(1); return -1;	}
 
-    epTail.epParaNr= paraNr;
-    epTail.epStroff= stroff;
-    docSetFieldTail( rfsl->rfslField, &epTail );
+    rr->rrTreeStack->rtsLastFieldNumber= df->dfFieldNumber;
+    rr->rrAfterNoteref= 0;
+    rr->rrAfterParaHeadField= 0;
+    rr->rrAfterInlineShape= 0;
+    rr->rrInlineShapeObjectNumber= -1;
 
-    if  ( rfsl->rfslPrev )
+    return 0;
+    }
+
+static int docRtfTerminateTopInstructionField(	RtfReader *		rr,
+						DocumentField *		df )
+    {
+    RtfReadingState *	rrs= rr->rrState;
+
+    if  ( docRtfSaveDocEncodedText( rr, "}", 1 ) )
+	{ LDEB(1); return -1;	}
+
+    df->dfTailPosition.epParaNr= 0; /* fix later on */
+    df->dfTailPosition.epStroff= rrs->rrsSavedText.mbSize; /* fix later on */
+
+    return 0;
+    }
+
+static int docRtfTerminateTopField(	RtfReader *		rr )
+    {
+    RtfTreeStack *	rts= rr->rrTreeStack;
+
+    if  ( ! rts->rtsFieldStack )
+	{ XDEB(rts->rtsFieldStack); return -1;	}
+
+    switch( rts->rtsFieldStack->fslPiece )
 	{
-	if  ( docAddChildToField( rfsl->rfslField, rfsl->rfslPrev->rfslField ) )
-	    { LDEB(1); return -1;	}
-	}
-    else{
-	if  ( docAddRootFieldToTree( rrc->rrcTree, rfsl->rfslField ) )
-	    { LDEB(1); return -1;	}
+	case FSpieceFLDINST:
+	    if  ( docRtfTerminateTopInstructionField( rr,
+					rts->rtsFieldStack->fslField ) )
+		{ LDEB(1); return -1;	}
+	    break;
+
+	case FSpieceFLDRSLT:
+	    if  ( docRtfTerminateTopResultField( rr,
+					rts->rtsFieldStack->fslField ) )
+		{ LDEB(1); return -1;	}
+	    break;
+
+	default:
+	    LDEB(rts->rtsFieldStack->fslPiece);
+	    return -1;
 	}
 
-    rrc->rrcLastFieldNumber= rfsl->rfslField->dfFieldNumber;
-    rrc->rrcAfterNoteref= 0;
-    rrc->rrAfterParaHeadField= 0;
+    if  ( docFieldStackPopLevel( &(rts->rtsFieldStack),
+					    rr->rrTreeStack->rtsTree ) )
+	{ LDEB(1); return -1;	}
 
     return 0;
     }
@@ -312,93 +375,73 @@ static int docRtfTerminateField(	const RtfFieldStackLevel *	rfsl,
 /************************************************************************/
 
 static int docRtfPopFieldFromFieldStack(	DocumentField *		df,
-						RtfReader *	rrc )
+						RtfReader *		rr )
     {
-    RtfFieldStackLevel *	rfsl;
+    RtfTreeStack *	rts= rr->rrTreeStack;
 
-    rfsl= rrc->rrcFieldStack;
-    while( rfsl )
+    {
+    FieldStackLevel *	fsl;
+
+    fsl= rts->rtsFieldStack;
+    while( fsl )
 	{
-	if  ( rfsl->rfslField == df )
+	if  ( fsl->fslField == df )
 	    { break;	}
 
-	rfsl= rfsl->rfslPrev;
+	fsl= fsl->fslPrev;
 	}
 
-    if  ( ! rfsl )
+    if  ( ! fsl )
 	{ return 0;	}
+    }
 
-    rfsl= rrc->rrcFieldStack;
-    while( rfsl )
+    while( rts->rtsFieldStack )
 	{
-	int	last= ( rfsl->rfslField == df );
+	int	found= ( rts->rtsFieldStack->fslField == df );
 
-	if  ( docRtfTerminateField( rfsl, rrc ) )
+	if  ( docRtfTerminateTopField( rr ) )
 	    { LDEB(1); return -1;	}
 
-	rrc->rrcFieldStack= rfsl->rfslPrev;
-	free( rfsl );
-
-	if  ( last )
+	if  ( found )
 	    { break;	}
-
-	rfsl= rrc->rrcFieldStack;
 	}
 
     return 0;
     }
 
-int docRtfPopScopeFromFieldStack(	RtfReader *	rrc )
+int docRtfPopTreeFromFieldStack(	RtfReader *	rr,
+					RtfTreeStack *	rts )
     {
-    RtfFieldStackLevel *	rfsl;
-
-    rfsl= rrc->rrcFieldStack;
-    while( rfsl )
+    while( rts->rtsFieldStack )
 	{
-	if  ( ! docSelectionSameScope( &(rfsl->rfslSelectionScope),
-						&(rrc->rrcSelectionScope) ) )
-	    { break;	}
-
-	if  ( docRtfTerminateField( rfsl, rrc ) )
+	if  ( docRtfTerminateTopField( rr ) )
 	    { LDEB(1); return -1;	}
-
-	rrc->rrcFieldStack= rfsl->rfslPrev;
-	free( rfsl );
-	rfsl= rrc->rrcFieldStack;
 	}
 
     return 0;
     }
 
-int docRtfPopParaFromFieldStack(	RtfReader *	rrc,
-					int			paraNr )
+int docRtfPopParaFromFieldStack(	RtfReader *	rr,
+					int		paraNr )
     {
-    RtfFieldStackLevel *	rfsl;
+    RtfTreeStack *	rts= rr->rrTreeStack;
 
-    rfsl= rrc->rrcFieldStack;
-    while( rfsl )
+    while( rts->rtsFieldStack )
 	{
 	const FieldKindInformation *	fki;
+	DocumentField *			df= rts->rtsFieldStack->fslField;
 
-	if  ( ! docSelectionSameScope( &(rfsl->rfslSelectionScope),
-						&(rrc->rrcSelectionScope) ) )
+	if  ( df->dfHeadPosition.epParaNr != paraNr )
 	    { break;	}
 
-	if  ( rfsl->rfslField->dfHeadPosition.epParaNr != paraNr )
+	if  ( df->dfKind >= DOC_FieldKindCount	)
 	    { break;	}
-
-	if  ( rfsl->rfslField->dfKind >= DOC_FieldKindCount	)
-	    { break;	}
-	fki= DOC_FieldKinds+ rfsl->rfslField->dfKind;
+	fki= DOC_FieldKinds+ df->dfKind;
 	if  ( fki->fkiLevel != DOClevSPAN )
 	    { break;	}
 
-	if  ( docRtfTerminateField( rfsl, rrc ) )
+	if  ( docRtfTerminateTopField( rr ) )
 	    { LDEB(1); return -1;	}
-
-	rrc->rrcFieldStack= rfsl->rfslPrev;
-	free( rfsl );
-	rfsl= rrc->rrcFieldStack;
 	}
 
     return 0;
@@ -406,26 +449,45 @@ int docRtfPopParaFromFieldStack(	RtfReader *	rrc,
 
 int docRtfReadField(	const RtfControlWord *	rcw,
 			int			arg,
-			RtfReader *	rrc )
+			RtfReader *		rr )
     {
-    int			res;
-
-    int			startParticule;
+    int			res= -1;
     DocumentField *	df= (DocumentField *)0;
 
-    /*  docRtfReadPushField() adjusts level */
-    if  ( docRtfReadPushField( &startParticule, &df, DOCfkUNKNOWN, rrc,
-							(char *)0, 0 ) )
-	{ SDEB(rcw->rcwWord); return -1;	}
+    int			savedPiece= rr->rrTreeStack->rtsFieldPiece;
 
-    res= docRtfReadGroup( rcw, 0, 0, rrc,
-				docRtfFieldGroups,
+    rr->rrTreeStack->rtsFieldPiece= FSpieceFIELD;
+
+    switch( savedPiece )
+	{
+	case FSpieceFLDINST:
+	    if  ( docRtfReadPushInstructionsField( &df, rr ) )
+		{ SDEB(rcw->rcwWord); goto ready;	}
+	    break;
+
+	default:
+	    LDEB(savedPiece);
+	case FSpieceFLDRSLT:
+	    /*  docRtfReadPushResultField() adjusts level */
+	    if  ( docRtfReadPushResultField( &df, rr,
+					    DOCfkUNKNOWN, (char *)0, 0 ) )
+		{ SDEB(rcw->rcwWord); goto ready;	}
+	    break;
+	}
+
+
+    res= docRtfReadGroup( rcw, 0, 0, rr,
+				(RtfControlWord *)0,
 				docRtfIgnoreText, (RtfCommitGroup)0 );
     if  ( res )
 	{ SLDEB(rcw->rcwWord,res);	}
 
-    if  ( docRtfPopFieldFromFieldStack( df, rrc ) )
-	{ LDEB(df->dfFieldNumber); return -1;	}
+    if  ( docRtfPopFieldFromFieldStack( df, rr ) )
+	{ LDEB(df->dfFieldNumber); goto ready;	}
+
+  ready:
+
+    rr->rrTreeStack->rtsFieldPiece= savedPiece;
 
     return res;
     }
@@ -438,51 +500,50 @@ int docRtfReadField(	const RtfControlWord *	rcw,
 
 int docRtfLookupWord(		const RtfControlWord *	rcw,
 				int			arg,
-				RtfReader *		rrc )
+				RtfReader *		rr )
     {
-    RtfFieldStackLevel *	rfsl= rrc->rrcFieldStack;
-    char			scratch[40];
+    FieldStackLevel *	fsl= rr->rrTreeStack->rtsFieldStack;
+    char		scratch[40];
 
-    int				startParticule;
-    DocumentField *		df= (DocumentField *)0;
+    DocumentField *	df= (DocumentField *)0;
 
-    const char *		fieldinst= (const char *)0;
-    int				size= 0;
+    const char *	instBytes= (const char *)0;
+    int			instSize= 0;
 
     switch( rcw->rcwID )
 	{
 	case RTFlookupTCF:
 	case RTFlookupTCL:
-	    while( rfsl					&&
-		   rfsl->rfslField->dfKind != DOCfkTC	&&
-		   rfsl->rfslField->dfKind != DOCfkTCN	)
-		{ rfsl= rfsl->rfslPrev;	}
-	    if  ( ! rfsl )
-		{ SXDEB(rcw->rcwWord,rfsl); return 0;	}
+	    while( fsl					&&
+		   fsl->fslField->dfKind != DOCfkTC	&&
+		   fsl->fslField->dfKind != DOCfkTCN	)
+		{ fsl= fsl->fslPrev;	}
+	    if  ( ! fsl )
+		{ SXDEB(rcw->rcwWord,fsl); return 0;	}
 	    break;
 
 	case RTFlookupXEF:
 	case RTFlookupBXE:
 	case RTFlookupIXE:
-	    while( rfsl					&&
-		   rfsl->rfslField->dfKind != DOCfkXE	)
-		{ rfsl= rfsl->rfslPrev;	}
-	    if  ( ! rfsl )
-		{ SXDEB(rcw->rcwWord,rfsl); return 0;	}
+	    while( fsl					&&
+		   fsl->fslField->dfKind != DOCfkXE	)
+		{ fsl= fsl->fslPrev;	}
+	    if  ( ! fsl )
+		{ SXDEB(rcw->rcwWord,fsl); return 0;	}
 	    break;
 
 	case RTFlookupTC:
-	    /*  docRtfReadPushField() adjusts level */
-	    if  ( docRtfReadPushField( &startParticule, &df, DOCfkTC, rrc,
-							    fieldinst, size ) )
-		{ LDEB(1); return -1;	}
+	    /*  docRtfReadPushResultField() adjusts level */
+	    if  ( docRtfReadPushResultField( &df, rr,
+					DOCfkTC, instBytes, instSize ) )
+		{ SDEB(rcw->rcwWord); return -1;	}
 	    return 0;
 
 	case RTFlookupTCN:
-	    /*  docRtfReadPushField() adjusts level */
-	    if  ( docRtfReadPushField( &startParticule, &df, DOCfkTCN, rrc,
-							    fieldinst, size ) )
-		{ LDEB(1); return -1;	}
+	    /*  docRtfReadPushResultField() adjusts level */
+	    if  ( docRtfReadPushResultField( &df, rr,
+					DOCfkTCN, instBytes, instSize ) )
+		{ SDEB(rcw->rcwWord); return -1;	}
 	    return 0;
 
 	default:
@@ -495,7 +556,7 @@ int docRtfLookupWord(		const RtfControlWord *	rcw,
 	case RTFlookupTCF:
 	case RTFlookupTCL:
 	    sprintf( scratch, "\\%s%d", rcw->rcwWord, arg );
-	    if  ( docAddToFieldData( rfsl->rfslField,
+	    if  ( docAddToFieldData( fsl->fslField,
 						scratch, strlen( scratch ) ) )
 		{ SDEB(rcw->rcwWord); return -1;	}
 	    return 0;
@@ -503,7 +564,7 @@ int docRtfLookupWord(		const RtfControlWord *	rcw,
 	case RTFlookupBXE:
 	case RTFlookupIXE:
 	    sprintf( scratch, "\\%s", rcw->rcwWord );
-	    if  ( docAddToFieldData( rfsl->rfslField,
+	    if  ( docAddToFieldData( fsl->fslField,
 						scratch, strlen( scratch ) ) )
 		{ SDEB(rcw->rcwWord); return -1;	}
 	    return 0;
@@ -515,16 +576,15 @@ int docRtfLookupWord(		const RtfControlWord *	rcw,
 
 int docRtfLookupEntry(		const RtfControlWord *	rcw,
 				int			arg,
-				RtfReader *	rrc )
+				RtfReader *		rr )
     {
     int			res;
 
     int			fieldKind;
 
-    int			startParticule;
     DocumentField *	df= (DocumentField *)0;
 
-    const char *	fieldinst= (const char *)0;
+    const char *	instBytes= (const char *)0;
     int			size= 0;
 
     switch( rcw->rcwID )
@@ -545,19 +605,18 @@ int docRtfLookupEntry(		const RtfControlWord *	rcw,
 	    SDEB(rcw->rcwWord); return -1;
 	}
 
-    /*  docRtfReadPushField() adjusts level */
-    if  ( docRtfReadPushField( &startParticule, &df, fieldKind, rrc,
-							fieldinst, size ) )
+    /*  docRtfReadPushResultField() adjusts level */
+    if  ( docRtfReadPushResultField( &df, rr, fieldKind, instBytes, size ) )
 	{ SDEB(rcw->rcwWord); return -1;	}
 
-    res= docRtfReadGroup( rcw, 0, 0, rrc,
+    res= docRtfReadGroup( rcw, 0, 0, rr,
 				(RtfControlWord *)0,
-				docRtfTextParticule, (RtfCommitGroup)0 );
+				docRtfGotText, (RtfCommitGroup)0 );
 
     if  ( res )
 	{ SLDEB(rcw->rcwWord,res);	}
 
-    if  ( docRtfPopFieldFromFieldStack( df, rrc ) )
+    if  ( docRtfPopFieldFromFieldStack( df, rr ) )
 	{ SDEB(rcw->rcwWord); return -1;	}
 
     return res;
@@ -570,48 +629,50 @@ int docRtfLookupEntry(		const RtfControlWord *	rcw,
 /************************************************************************/
 
 static int docRtfCommitBookmarkName(	const RtfControlWord *	rcw,
-					RtfReader *		rrc )
+					RtfReader *		rr )
     {
-    if  ( docRtfMemoryBufferAppendText( &(rrc->rrcBookmark), rrc ) )
-	{ LDEB(1); return -1;	}
+    int			rval= 0;
 
-    if  ( rrc->rrcBookmark.mbSize > DOCmaxBOOKMARK )
+    if  ( docRtfMemoryBufferAppendText( &(rr->rrcBookmark), rr ) )
+	{ LDEB(1); rval= -1; goto ready;	}
+
+    if  ( rr->rrcBookmark.mbSize > DOCmaxBOOKMARK )
 	{
-	LLDEB(rrc->rrcBookmark.mbSize,DOCmaxBOOKMARK);
-	utilMemoryBufferSetSize( &(rrc->rrcBookmark), DOCmaxBOOKMARK );
+	LLDEB(rr->rrcBookmark.mbSize,DOCmaxBOOKMARK);
+	utilMemoryBufferSetSize( &(rr->rrcBookmark), DOCmaxBOOKMARK );
 	}
 
-    return 0;
+  ready:
+
+    return rval;
     }
 
 int docRtfBkmkStart(	const RtfControlWord *		rcw,
 			int				arg,
-			RtfReader *		rrc )
+			RtfReader *			rr )
     {
     int			res;
 
-    int			startParticule;
     DocumentField *	df= (DocumentField *)0;
 
-    const char *	fieldinst= (const char *)0;
+    const char *	instBytes= (const char *)0;
     int			size= 0;
 
-    utilMemoryBufferSetSize( &(rrc->rrcBookmark), 0 );
+    utilMemoryBufferSetSize( &(rr->rrcBookmark), 0 );
 
-    /*  docRtfReadPushField() adjusts level */
-    if  ( docRtfReadPushField( &startParticule, &df, DOCfkBOOKMARK, rrc,
-							    fieldinst, size ) )
+    /*  docRtfReadPushResultField() adjusts level */
+    if  ( docRtfReadPushResultField( &df, rr,
+					DOCfkBOOKMARK, instBytes, size ) )
 	{ LDEB(1); return -1;	}
 
-    res= docRtfReadGroup( rcw, 0, 0, rrc,
-						(RtfControlWord *)0,
+    res= docRtfReadGroup( rcw, 0, 0, rr, (RtfControlWord *)0,
 						docRtfSaveDocEncodedText,
 						docRtfCommitBookmarkName );
 
     if  ( res )
 	{ SLDEB(rcw->rcwWord,res); return res;	}
 
-    if  ( docSetBookmarkField( &(df->dfInstructions), &(rrc->rrcBookmark) ) )
+    if  ( docSetBookmarkField( &(df->dfInstructions), &(rr->rrcBookmark) ) )
 	{ LDEB(1); return -1;	}
     df->dfKind= DOCfkBOOKMARK;
 
@@ -622,9 +683,9 @@ int docRtfBkmkStart(	const RtfControlWord *		rcw,
 
 int docRtfBkmkEnd(	const RtfControlWord *	rcw,
 			int			arg,
-			RtfReader *	rrc )
+			RtfReader *		rr )
     {
-    BufferDocument *	bd= rrc->rrDocument;
+    struct BufferDocument *	bd= rr->rrDocument;
 
     int			res;
     int			fieldNumber;
@@ -633,12 +694,12 @@ int docRtfBkmkEnd(	const RtfControlWord *	rcw,
 
     /*  do not push the field */
 
-    utilMemoryBufferSetSize( &(rrc->rrcBookmark), 0 );
+    utilMemoryBufferSetSize( &(rr->rrcBookmark), 0 );
 
-    if  ( ! docRtfGetParaNode( rrc ) )
+    if  ( ! docRtfGetParaNode( rr ) )
 	{ SDEB(rcw->rcwWord); return -1; }
 
-    res= docRtfReadGroup( rcw, 0, 0, rrc, (RtfControlWord *)0,
+    res= docRtfReadGroup( rcw, 0, 0, rr, (RtfControlWord *)0,
 						docRtfSaveDocEncodedText,
 						docRtfCommitBookmarkName );
 
@@ -646,11 +707,11 @@ int docRtfBkmkEnd(	const RtfControlWord *	rcw,
 	{ SLDEB(rcw->rcwWord,res); return res;	}
 
     fieldNumber= docFindBookmarkField( &df, &(bd->bdFieldList),
-							&(rrc->rrcBookmark) );
+							&(rr->rrcBookmark) );
     if  ( fieldNumber < 0 )
-	{ /*SDEB((char *)rrc->rrcBookmarkName);*/ return 0;	}
+	{ /*SDEB((char *)rr->rrcBookmarkName);*/ return 0;	}
 
-    if  ( docRtfPopFieldFromFieldStack( df, rrc ) )
+    if  ( docRtfPopFieldFromFieldStack( df, rr ) )
 	{ LDEB(fieldNumber);	}
 
     return res;
@@ -664,17 +725,16 @@ int docRtfBkmkEnd(	const RtfControlWord *	rcw,
 
 DocumentField * docRtfSpecialField(
 				int			fieldKind,
-				const char *		fieldinst,
-				int			fieldsize,
+				const char *		instBytes,
+				int			instSize,
 				const char *		fieldRslt,
-				RtfReader *	rrc )
+				RtfReader *		rr )
     {
-    int			startParticule;
     DocumentField *	df;
 
-    /*  docRtfReadPushField() adjusts level */
-    if  ( docRtfReadPushField( &startParticule, &df, fieldKind, rrc,
-						    fieldinst, fieldsize ) )
+    /*  docRtfReadPushResultField() adjusts level */
+    if  ( docRtfReadPushResultField( &df, rr,
+					fieldKind, instBytes, instSize ) )
 	{ LDEB(1); return (DocumentField *)0;	}
 
     if  ( fieldRslt )
@@ -682,11 +742,11 @@ DocumentField * docRtfSpecialField(
 	/*  fieldRslt is an ascii string from the Ted source code here,	*/
 	/*  so its encoding is irrelevant.				*/
 
-	if  ( docRtfTextParticule( rrc, fieldRslt, strlen( fieldRslt ) ) )
+	if  ( docRtfGotText( rr, fieldRslt, strlen( fieldRslt ) ) )
 	    { LDEB(2); return (DocumentField *)0;	}
 	}
 
-    if  ( docRtfPopFieldFromFieldStack( df, rrc ) )
+    if  ( docRtfPopFieldFromFieldStack( df, rr ) )
 	{ LDEB(1); return (DocumentField *)0;	}
 
     return df;
@@ -701,10 +761,10 @@ DocumentField * docRtfSpecialField(
 
 int docRtfTextSpecialToField(	const RtfControlWord *	rcw,
 				int			arg,
-				RtfReader *		rrc )
+				RtfReader *		rr )
     {
-    const char *		fieldinst= (const char *)"?";
-    int				fieldsize= 1;
+    const char *		instBytes= (const char *)"?";
+    int				instSize= 1;
     const char *		fieldRslt= (const char *)"?";
 
     int				afterNoteref= 0;
@@ -712,31 +772,31 @@ int docRtfTextSpecialToField(	const RtfControlWord *	rcw,
     switch( rcw->rcwID )
 	{
 	case DOCfkPAGE:
-	    fieldinst= " PAGE ";
-	    fieldsize= 6;
+	    instBytes= " PAGE ";
+	    instSize= 6;
 	    break;
 	case DOCfkDATE:
-	    fieldinst= " DATE \\* MERGEFORMAT ";
-	    fieldsize= 21;
+	    instBytes= " DATE \\* MERGEFORMAT ";
+	    instSize= 21;
 	    break;
 	case DOCfkTIME:
-	    fieldinst= " TIME \\* MERGEFORMAT ";
-	    fieldsize= 21;
+	    instBytes= " TIME \\* MERGEFORMAT ";
+	    instSize= 21;
 	    break;
 	case DOCfkSECTION:
-	    fieldinst= " SECTION ";
-	    fieldsize= 9;
+	    instBytes= " SECTION ";
+	    instSize= 9;
 	    break;
 
 	case DOCfkCHFTN:
-	    fieldinst= " -CHFTN ";
-	    fieldsize= 8;
+	    instBytes= " -CHFTN ";
+	    instSize= 8;
 	    fieldRslt= (const char *)"1";
 	    afterNoteref= 1;
 	    break;
 	case DOCfkCHATN:
-	    fieldinst= " -CHATN ";
-	    fieldsize= 8;
+	    instBytes= " -CHATN ";
+	    instSize= 8;
 	    fieldRslt= (const char *)"!";
 	    afterNoteref= 1;
 	    break;
@@ -746,11 +806,13 @@ int docRtfTextSpecialToField(	const RtfControlWord *	rcw,
 	}
 
     if  ( ! docRtfSpecialField( rcw->rcwID,
-				    fieldinst, fieldsize, fieldRslt, rrc ) )
+				    instBytes, instSize, fieldRslt, rr ) )
 	{ SDEB(rcw->rcwWord); return -1;	}
 
-    rrc->rrcAfterNoteref= afterNoteref;
-    rrc->rrAfterParaHeadField= afterNoteref != 0;
+    rr->rrAfterNoteref= afterNoteref;
+    rr->rrAfterParaHeadField= afterNoteref != 0;
+    rr->rrAfterInlineShape= 0;
+    rr->rrInlineShapeObjectNumber= -1;
 
     return 0;
     }
@@ -763,42 +825,41 @@ int docRtfTextSpecialToField(	const RtfControlWord *	rcw,
 
 int docRtfReadTextField(	const RtfControlWord *	rcw,
 				int			arg,
-				RtfReader *		rrc )
+				RtfReader *		rr )
     {
     int			res;
 
-    int			startParticule;
     DocumentField *	df= (DocumentField *)0;
 
-    const char *	fieldinst= (const char *)0;
-    int			size= 0;
+    const char *	instBytes= (const char *)0;
+    int			instSize= 0;
 
 #   if 0
     /*  Will be added later on, as the table nesting is given inside */
     /*  the field, we have a problem if we start the paragraph now. */
     if  ( rcw->rcwID == DOCfkLISTTEXT )
 	{
-	rrc->rrAfterParaHeadField= 1;
-	return docRtfSkipGroup( rcw, arg, rrc );
+	rr->rrAfterParaHeadField= 1;
+	return docRtfSkipGroup( rcw, arg, rr );
 	}
 #   endif
 
-    /*  docRtfReadPushField() adjusts level */
-    if  ( docRtfReadPushField( &startParticule, &df, rcw->rcwID, rrc,
-							    fieldinst, size ) )
+    /*  docRtfReadPushResultField() adjusts level */
+    if  ( docRtfReadPushResultField( &df, rr,
+					rcw->rcwID, instBytes, instSize ) )
 	{ SDEB(rcw->rcwWord); return -1;	}
 
-    res= docRtfReadGroup( rcw, 0, 0, rrc,
+    res= docRtfReadGroup( rcw, 0, 0, rr,
 				docRtfDocumentGroups,
-				docRtfTextParticule, (RtfCommitGroup)0 );
+				docRtfGotText, (RtfCommitGroup)0 );
     if  ( res )
 	{ SLDEB(rcw->rcwWord,res);	}
 
-    if  ( docRtfPopFieldFromFieldStack( df, rrc ) )
+    if  ( docRtfPopFieldFromFieldStack( df, rr ) )
 	{ LDEB(1);	}
 
     if  ( rcw->rcwID == DOCfkLISTTEXT )
-	{ rrc->rrAfterParaHeadField= 1;	}
+	{ rr->rrAfterParaHeadField= 1;	}
 
     return res;
     }
@@ -811,14 +872,14 @@ int docRtfReadTextField(	const RtfControlWord *	rcw,
 
 int docRtfRememberFieldProperty(	const RtfControlWord *	rcw,
 					int			arg,
-					RtfReader *		rrc )
+					RtfReader *		rr )
     {
-    RtfFieldStackLevel *	rfsl= rrc->rrcFieldStack;
+    FieldStackLevel *	fsl= rr->rrTreeStack->rtsFieldStack;
 
-    if  ( ! rfsl )
-	{ SXDEB(rcw->rcwWord,rrc->rrcFieldStack); return 0;	}
+    if  ( ! fsl )
+	{ SXDEB(rcw->rcwWord,fsl); return 0;	}
 
-    if  ( docSetFieldProperty( rfsl->rfslField, rcw->rcwID, arg ) )
+    if  ( docSetFieldProperty( fsl->fslField, rcw->rcwID, arg ) )
 	{ SLDEB(rcw->rcwWord,arg); return 0;	}
 
     return 0;
@@ -832,29 +893,146 @@ int docRtfRememberFieldProperty(	const RtfControlWord *	rcw,
 
 int docRtfRememberNoteProperty(	const RtfControlWord *	rcw,
 				int			arg,
-				RtfReader *		rrc )
+				RtfReader *		rr )
     {
     switch( rcw->rcwID )
 	{
+	RtfTreeStack *	rts;
+
 	case NOTEpropTREE_TYPE:
-	    if  ( rrc->rrcSelectionScope.ssTreeType != DOCinFOOTNOTE )
-		{ LLDEB(rrc->rrcSelectionScope.ssTreeType,DOCinFOOTNOTE); }
+	    rts= rr->rrTreeStack;
+
+	    if  ( rts->rtsSelectionScope.ssTreeType != DOCinFOOTNOTE )
+		{ LLDEB(rts->rtsSelectionScope.ssTreeType,DOCinFOOTNOTE); }
 	    else{
-		rrc->rrcSelectionScope.ssTreeType= rcw->rcwEnumValue;
-		rrc->rrcNoteProperties.npTreeType= rcw->rcwEnumValue;
+		rts->rtsSelectionScope.ssTreeType= rcw->rcwEnumValue;
+		rr->rrNoteProperties.npTreeType= rcw->rcwEnumValue;
 		}
 	    break;
 
 	case NOTEpropAUTO_NUMBER:
-	    rrc->rrcNoteProperties.npAutoNumber= arg != 0;
+	    rr->rrNoteProperties.npAutoNumber= arg != 0;
 	    break;
 
 	default:
 	    SDEB(rcw->rcwWord); return -1;
 	}
 
-    PROPmaskADD( &(rrc->rrcNotePropertyMask), rcw->rcwID );
+    PROPmaskADD( &(rr->rrNotePropertyMask), rcw->rcwID );
 
     return 0;
+    }
+
+/************************************************************************/
+/*									*/
+/*  Handle a NeXTGraphic as an IncludePicture field			*/
+/*									*/
+/************************************************************************/
+
+static int docRtfCommitNeXTGraphicName(	const RtfControlWord *	rcw,
+					RtfReader *		rr )
+    {
+    int			rval= 0;
+
+    RtfReadingState *	rrs= rr->rrState;
+    FieldStackLevel *	fsl= rr->rrTreeStack->rtsFieldStack;
+    MemoryBuffer	mbName;
+
+    utilInitMemoryBuffer( &mbName );
+
+    if  ( ! fsl )
+	{ SXDEB(rcw->rcwWord,fsl); goto ready;	}
+
+    if  ( docRtfMemoryBufferAppendText( &mbName, rr ) )
+	{ SXDEB(rcw->rcwWord,fsl); goto ready;	}
+
+    while( mbName.mbSize > 0 && mbName.mbBytes[mbName.mbSize- 1] == ' ' )
+	{  mbName.mbSize--;	}
+
+    if  ( docFieldInstructionsAddComponent(
+			&(fsl->fslField->dfInstructions), &mbName ) )
+	{ SDEB(rcw->rcwWord); goto ready;	}
+
+    if  ( rrs->rrsWidth > 0 )
+	{
+	if  ( docFieldInstructionsAddIntFlag(
+					&(fsl->fslField->dfInstructions),
+					'w', rrs->rrsWidth ) )
+	    { SDEB(rcw->rcwWord); goto ready;	}
+	}
+
+    if  ( rrs->rrsHeight > 0 )
+	{
+	if  ( docFieldInstructionsAddIntFlag(
+					&(fsl->fslField->dfInstructions),
+					'h', rrs->rrsHeight ) )
+	    { SDEB(rcw->rcwWord); goto ready;	}
+	}
+
+  ready:
+
+    utilCleanMemoryBuffer( &mbName );
+
+    return rval;
+    }
+
+int docRtfNeXTDimension(	const RtfControlWord *	rcw,
+				int			arg,
+				RtfReader *		rr )
+    {
+    RtfReadingState *	rrs= rr->rrState;
+
+    switch( rcw->rcwID )
+	{
+	case PIPpropPICTWIPS_WIDE:
+	    rrs->rrsWidth= arg;
+	    return 0;
+
+	case PIPpropPICTWIPS_HIGH:
+	    rrs->rrsHeight= arg;
+	    return 0;
+
+	default:
+	    SLDEB(rcw->rcwWord,arg); return -1;
+	}
+    }
+
+int docRtfReadNeXTGraphic(	const RtfControlWord *	rcw,
+				int			arg,
+				RtfReader *		rr )
+    {
+    int			res;
+
+    DocumentField *	df= (DocumentField *)0;
+
+    const char *	instBytes= rcw->rcwWord;
+    int			instSize= strlen( rcw->rcwWord );
+
+    /*  docRtfReadPushResultField() adjusts level */
+    if  ( docRtfReadPushResultField( &df, rr,
+					rcw->rcwID, instBytes, instSize ) )
+	{ SDEB(rcw->rcwWord); return -1;	}
+
+    res= docRtfReadGroup( rcw, 0, 0, rr, (RtfControlWord *)0,
+						docRtfSaveDocEncodedText,
+						docRtfCommitNeXTGraphicName );
+    if  ( res )
+	{ SLDEB(rcw->rcwWord,res);	}
+
+    if  ( docRtfPopFieldFromFieldStack( df, rr ) )
+	{ LDEB(1);	}
+
+    {
+    int		c= docRtfReadByte( rr );
+
+    if  ( c != 0xac )
+	{
+	XDEB(c);
+	if  ( c > 0 )
+	    { docRtfUngetLastRead( rr );	}
+	}
+    }
+
+    return res;
     }
 

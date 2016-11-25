@@ -14,6 +14,7 @@
 #   include     <sys/socket.h>
 
 #   include     "sioHttp.h"
+#   include     "sioGeneral.h"
 #   include	"utilMemoryBuffer.h"
 
 #   include     <appDebugon.h>

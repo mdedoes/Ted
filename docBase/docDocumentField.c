@@ -11,6 +11,8 @@
 #   include	<appDebugon.h>
 
 #   include	"docDocumentField.h"
+#   include	"docFieldKind.h"
+#   include	"docFieldProperty.h"
 
 /************************************************************************/
 /*									*/
@@ -22,7 +24,10 @@ void docCleanDocumentField(	DocumentField *		df )
     {
     utilCleanMemoryBuffer( &(df->dfData) );
     docCleanFieldInstructions( &(df->dfInstructions) );
-    docCleanChildFields( &(df->dfChildFields) );
+    docCleanChildFields( &(df->dfResultFields) );
+
+    /* Only frees the array of children */
+    docCleanChildFields( &(df->dfInstructionFields) );
 
     return;
     }
@@ -65,7 +70,7 @@ void docInitDocumentField(	DocumentField *	df )
     df->dfLocked= 0;
     df->dfPrivate= 0;
 
-    docInitChildFields( &(df->dfChildFields) );
+    docInitChildFields( &(df->dfResultFields) );
     df->dfParent= (DocumentField *)0;
     df->dfNumberInParent= 0;
 
@@ -73,6 +78,8 @@ void docInitDocumentField(	DocumentField *	df )
     df->dfNoteIndex= -1;
 
     df->dfPage= -1;
+
+    docInitChildFields( &(df->dfInstructionFields) );
     }
 
 /************************************************************************/
@@ -80,7 +87,7 @@ void docInitDocumentField(	DocumentField *	df )
 /*  Copy the properties of a field.					*/
 /*									*/
 /*  Only properties that have an application meaning are copied. The	*/
-/*  set is determined by what can appaer in RTF.			*/
+/*  set is determined by what can appear in RTF.			*/
 /*									*/
 /************************************************************************/
 
@@ -108,10 +115,12 @@ int docCopyFieldProperties(	DocumentField *		dfTo,
     }
 
 int docSetFieldInst(	DocumentField *		df,
-			const char *		bytes,
-			int			size )
+			int			keepSpace,
+			const char *		instBytes,
+			int			instSize )
     {
-    return docSetFieldInstructions( &(df->dfInstructions), bytes, size );
+    return docSetFieldInstructions( &(df->dfInstructions),
+					    keepSpace, instBytes, instSize );
     }
 
 int docAddToFieldData(	DocumentField *		df,
@@ -182,12 +191,12 @@ DocumentField * docGetNextField(	const ChildFields *	rootFields,
 	else{ return rootFields->cfChildren[0];	}
 	}
 
-    if  ( df->dfChildFields.cfChildCount > 0 )
-	{ return df->dfChildFields.cfChildren[0];	}
+    if  ( df->dfResultFields.cfChildCount > 0 )
+	{ return df->dfResultFields.cfChildren[0];	}
 
     while( df->dfParent )
 	{
-	parentFields= &(df->dfParent->dfChildFields);
+	parentFields= &(df->dfParent->dfResultFields);
 
 	if  ( df->dfNumberInParent < parentFields->cfChildCount- 1 )
 	    { return parentFields->cfChildren[df->dfNumberInParent+ 1];	}
@@ -217,14 +226,14 @@ DocumentField * docGetPrevField(	const ChildFields *	rootFields,
 	    { return df->dfParent;	}
 
 	if  ( df->dfParent )
-	    { parentFields= &(df->dfParent->dfChildFields);		}
+	    { parentFields= &(df->dfParent->dfResultFields);		}
 	else{ parentFields= rootFields;				}
 
 	df= parentFields->cfChildren[df->dfNumberInParent- 1];
 	}
 
-    while( df->dfChildFields.cfChildCount > 0 )
-	{ df= df->dfChildFields.cfChildren[df->dfChildFields.cfChildCount- 1]; }
+    while( df->dfResultFields.cfChildCount > 0 )
+	{ df= df->dfResultFields.cfChildren[df->dfResultFields.cfChildCount- 1]; }
 
     return df;
     }

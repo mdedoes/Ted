@@ -10,6 +10,7 @@
 
 #   include	"docDocumentField.h"
 #   include	"docDateField.h"
+#   include	"docFieldKind.h"
 
 void docInitDateField(	DateField *	dtf )
     {

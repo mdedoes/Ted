@@ -7,13 +7,14 @@
 #   ifndef	SIO_PIPE_H
 #   define	SIO_PIPE_H
 
-#   include     "sioGeneral.h"
-#   include     "utilMemoryBuffer.h"
+struct SimpleInputStream;
+struct SimpleOutputStream;
+struct MemoryBuffer;
 
-extern SimpleInputStream * sioInPipeOpen(
-				const MemoryBuffer *	command );
+extern struct SimpleInputStream * sioInPipeOpen(
+				const struct MemoryBuffer *	command );
 
-extern SimpleOutputStream * sioOutPipeOpen(
-				const MemoryBuffer *	command );
+extern struct SimpleOutputStream * sioOutPipeOpen(
+				const struct MemoryBuffer *	command );
 
 #   endif

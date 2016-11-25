@@ -1,10 +1,13 @@
 #   include	"bitmapConfig.h"
 
-#   include	<stdlib.h>
-
 #   include	"bitmap.h"
 
 #   include	<appDebugon.h>
+
+# ifdef __GNUC__
+# pragma GCC diagnostic push
+# pragma GCC diagnostic ignored "-Wunused-parameter"
+# endif
 
 static void bmAverageMono8Row(	const BitmapDescription *	bdOut,
 				const BitmapDescription *	bdIn,
@@ -57,6 +60,10 @@ static void bmAverageMono8Row(	const BitmapDescription *	bdOut,
     return;
     }
 
+# ifdef __GNUC__
+# pragma GCC diagnostic pop
+# endif
+
 static void bmAverageMono8Image(
 				const BitmapDescription *	bdOut,
 				const BitmapDescription *	bdIn,
@@ -87,6 +94,11 @@ static void bmAverageMono8Image(
 
     return;
     }
+
+# ifdef __GNUC__
+# pragma GCC diagnostic push
+# pragma GCC diagnostic ignored "-Wunused-parameter"
+# endif
 
 static void bmAverageRgb24Row(	const BitmapDescription *	bdOut,
 				const BitmapDescription *	bdIn,
@@ -146,6 +158,10 @@ static void bmAverageRgb24Row(	const BitmapDescription *	bdOut,
 
     return;
     }
+
+# ifdef __GNUC__
+# pragma GCC diagnostic pop
+# endif
 
 static void bmAverageRgb24Image(
 				const BitmapDescription *	bdOut,

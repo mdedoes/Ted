@@ -6,10 +6,6 @@
 
 #   include	"docEditConfig.h"
 
-#   include	<stdio.h>
-
-#   include	<appDebugon.h>
-
 #   include	<docBuf.h>
 #   include	<docDebug.h>
 #   include	<docParaString.h>
@@ -18,7 +14,16 @@
 #   include	"docEdit.h"
 #   include	"docEditImpl.h"
 #   include	<docField.h>
-#   include	<docParaParticules.h>
+#   include	<docDocumentField.h>
+#   include	"docEditOperation.h"
+#   include	"docDocumentCopyJob.h"
+#   include	<docTreeNode.h>
+#   include	<docTextParticule.h>
+#   include	<docParaProperties.h>
+#   include	<docObjects.h>
+#   include	<docFields.h>
+
+#   include	<appDebugon.h>
 
 #   define	DEB_PARTICULES		0
 #   define	SHOW_SELECTION_RANGE	0
@@ -56,7 +61,7 @@ int docReplaceSelection(	EditOperation *			eo,
 	{ LDEB(1);	}
 
     if  ( eo->eoHeadDp.dpStroff == 0			&&
-	  eo->eoHeadDp.dpNode->biParaListOverride > 0	)
+	  eo->eoHeadDp.dpNode->biParaProperties->ppListOverride > 0	)
 	{
 	if  ( docRemoveParagraphFromList( eo->eoHeadDp.dpNode,
 						eo->eoTree, eo->eoDocument ) )
@@ -68,9 +73,9 @@ int docReplaceSelection(	EditOperation *			eo,
 	{
 	DocumentPosition	tailDp= eo->eoTailDp;
 
-	if  ( eo->eoHeadDp.dpNode->biParaTableNesting > 0		&&
-	      eo->eoTailDp.dpNode->biParaTableNesting == 0	)
-	    { docFlattenRow( eo->eoHeadDp.dpNode );	}
+	if  ( eo->eoHeadDp.dpNode->biParaProperties->ppTableNesting > 0	&&
+	      eo->eoTailDp.dpNode->biParaProperties->ppTableNesting == 0 )
+	    { docFlattenRow( eo->eoHeadDp.dpNode, eo->eoDocument );	}
 
 	/*  2  */
 	if  ( docParaReplaceText( eo, paraNrBegin, &tailDp,
@@ -81,9 +86,7 @@ int docReplaceSelection(	EditOperation *			eo,
 	/*  3  */
 	if  ( eo->eoTailDp.dpStroff < docParaStrlen( eo->eoTailDp.dpNode ) )
 	    {
-	    const int	copyFields= 1;
-
-	    if  ( docSet1DocumentCopyJob( &dcjTail, eo, copyFields ) )
+	    if  ( docSet1DocumentCopyJob( &dcjTail, eo, CFH_STEAL ) )
 		{ LDEB(1); rval= -1; goto ready;	}
 
 	    /*  tail of EO is after insert */
@@ -156,7 +159,7 @@ int docDeleteSelection(	EditOperation *			eo )
 /************************************************************************/
 
 int docEditCleanParticules(	EditOperation *		eo,
-				BufferItem *		paraBi,
+				struct BufferItem *	paraNode,
 				int			partFrom,
 				int			partUpto )
     {
@@ -164,39 +167,37 @@ int docEditCleanParticules(	EditOperation *		eo,
     TextParticule *	tp;
 
     /*  11  */
-    tp= paraBi->biParaParticules+ partFrom;
+    tp= paraNode->biParaParticules+ partFrom;
     for ( part= partFrom; part < partUpto; tp++, part++ )
 	{
 #	if DEB_PARTICULES
 	const int	indent= 0;
-	docListParticule( indent, "OLD", part, paraBi, tp );
+	docListParticule( indent, "OLD", part, paraNode, tp );
 #	endif
 
-	if  ( eo->eoCloseObject )
-	    { (*eo->eoCloseObject)( eo->eoDocument, tp ); }
+	docResetParticuleObjects( eo->eoDocument, tp, 1 );
 
-	docCleanParticuleObject( eo->eoDocument, tp );
-
-	if  ( tp->tpKind == DOCkindFIELDHEAD	||
-	      tp->tpKind == DOCkindFIELDTAIL	)
+	if  ( tp->tpKind == TPkindFIELDHEAD	||
+	      tp->tpKind == TPkindFIELDTAIL	)
 	    {
 	    /* Not yet deleted? */
 	    if  ( tp->tpObjectNumber >= 0 )
 		{
 		const DocumentField *	df;
+
 		df= docGetFieldByNumber( &(eo->eoDocument->bdFieldList),
 						    tp->tpObjectNumber );
 		if  ( df && df->dfFieldNumber >= 0 )
 		    {
 		    LSLDEB(part,docKindStr(tp->tpKind),df->dfFieldNumber);
-		    docListFieldParticule( 0, "FLD", part, paraBi, tp, df );
+		    docListFieldParticule( 0, "FLD", part, paraNode, tp, df );
 		    return -1;
 		    }
 		}
 	    }
 
 	tp->tpObjectNumber= -1;
-	tp->tpKind= DOCkindUNKNOWN;
+	tp->tpKind= TPkindUNKNOWN;
 	}
 
     return 0;
@@ -209,16 +210,16 @@ int docEditCleanParticules(	EditOperation *		eo,
 /*									*/
 /************************************************************************/
 
-static int docIsIndentationParticule(	const BufferItem *	bi,
+static int docIsIndentationParticule(	const struct BufferItem *	node,
 					const TextParticule *	tp )
     {
-    const unsigned char *	s= docParaString( bi, tp->tpStroff );
-    int				i;
+    const char *	s= docParaString( node, tp->tpStroff );
+    int			i;
 
-    if  ( tp->tpKind == DOCkindTAB )
+    if  ( tp->tpKind == TPkindTAB )
 	{ return 1;	}
 
-    if  ( tp->tpKind != DOCkindSPAN )
+    if  ( tp->tpKind != TPkindSPAN )
 	{ return 0;	}
 
     for ( i= 0; i < tp->tpStrlen; i++ )
@@ -239,25 +240,24 @@ static int docIsIndentationParticule(	const BufferItem *	bi,
 int docMergeParagraphsInSelection(	EditOperation *	eo )
     {
     int				rval= 0;
-    BufferDocument *		bd= eo->eoDocument;
+    struct BufferDocument *		bd= eo->eoDocument;
 
-    BufferItem *		biTo;
-    BufferItem *		biFrom;
+    struct BufferItem *		biTo;
+    struct BufferItem *		nodeFrom;
 
     DocumentCopyJob		dcj;
-    const int			copyFields= 0;
 
     docInitDocumentCopyJob( &dcj );
 
-    if  ( docSet1DocumentCopyJob( &dcj, eo, copyFields ) )
+    if  ( docSet1DocumentCopyJob( &dcj, eo, CFH_STEAL ) )
 	{ LDEB(1); rval= -1; goto ready;	}
 
     biTo= eo->eoHeadDp.dpNode;
     if  ( ! biTo )
 	{ XDEB(biTo); rval= -1; goto ready;	}
-    biFrom= docNextParagraph( biTo );
-    if  ( ! biFrom )
-	{ XDEB(biFrom); rval= -1; goto ready;	}
+    nodeFrom= docNextParagraph( biTo );
+    if  ( ! nodeFrom )
+	{ XDEB(nodeFrom); rval= -1; goto ready;	}
 
     for (;;)
 	{
@@ -266,7 +266,7 @@ int docMergeParagraphsInSelection(	EditOperation *	eo )
 	int	particulesInserted= 0;
 	int	charactersCopied= 0;
 
-	if  ( biFrom->biParaListOverride > 0 )
+	if  ( nodeFrom->biParaProperties->ppListOverride > 0 )
 	    {
 	    DocumentField *	dfHead= (DocumentField *)0;
 	    DocumentSelection	dsInsideHead;
@@ -276,29 +276,28 @@ int docMergeParagraphsInSelection(	EditOperation *	eo )
 
 	    if  ( docDelimitParaHeadField( &dfHead,
 					&dsInsideHead, &dsAroundHead,
-					&partBegin, &partEnd, biFrom, bd ) )
-		{ LDEB(biFrom->biParaListOverride);	}
+					&partBegin, &partEnd, nodeFrom, bd ) )
+		{ LDEB(1);	}
 	    else{
 		if  ( partFrom <= partEnd )
 		    { partFrom= partEnd+ 1;	}
 		}
 	    }
 
-	while( partFrom < biFrom->biParaParticuleCount- 1		&&
-	       docIsIndentationParticule( biFrom,
-				biFrom->biParaParticules+ partFrom )	)
+	while( partFrom < nodeFrom->biParaParticuleCount- 1		&&
+	       docIsIndentationParticule( nodeFrom,
+				nodeFrom->biParaParticules+ partFrom )	)
 	    { partFrom++; }
 
-	if  ( partFrom < biFrom->biParaParticuleCount )
+	if  ( partFrom < nodeFrom->biParaParticuleCount )
 	    {
 	    int			toCount= biTo->biParaParticuleCount;
 	    int			toStrlen= docParaStrlen( biTo );
-	    const unsigned char *
-				toString= docParaString( biTo, 0 ); /*SHAME*/
+	    const char *	toString= docParaString( biTo, 0 ); /*SHAME*/
 
 	    if  ( toCount > 0						&&
 		  biTo->biParaParticules[toCount-1].tpKind ==
-							DOCkindSPAN	&&
+							TPkindSPAN	&&
 		  toString[toStrlen-1] != ' '				)
 		{
 		int		stroffShift= 0;
@@ -310,19 +309,19 @@ int docMergeParagraphsInSelection(	EditOperation *	eo )
 		biTo->biParaParticules[toCount-1].tpStrlen++;
 		}
 
-	    if  ( docCopyParticules( &dcj, biTo, biFrom,
+	    if  ( docCopyParticules( &dcj, biTo, nodeFrom,
 			biTo->biParaParticuleCount, partFrom,
-			biFrom->biParaParticuleCount- partFrom,
+			nodeFrom->biParaParticuleCount- partFrom,
 			&particulesInserted, &charactersCopied ) )
-		{ LDEB(biFrom->biParaParticuleCount); rval= -1; goto ready; }
+		{ LDEB(nodeFrom->biParaParticuleCount); rval= -1; goto ready; }
 	    }
 
-	if  ( biFrom == eo->eoTailDp.dpNode )
+	if  ( nodeFrom == eo->eoTailDp.dpNode )
 	    { break;	}
 
-	biFrom= docNextParagraph( biFrom );
-	if  ( ! biFrom )
-	    { XDEB(biFrom); rval= -1; goto ready;	}
+	nodeFrom= docNextParagraph( nodeFrom );
+	if  ( ! nodeFrom )
+	    { XDEB(nodeFrom); rval= -1; goto ready;	}
 	}
 
     biTo= eo->eoHeadDp.dpNode;

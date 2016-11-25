@@ -1,33 +1,34 @@
 /************************************************************************/
 /*									*/
 /*  Read the various document tables of an RTF text file into a		*/
-/*  BufferDocument.							*/
+/*  struct BufferDocument.							*/
 /*									*/
 /************************************************************************/
 
 #   include	"docRtfConfig.h"
 
 #   include	<string.h>
-#   include	<stdio.h>
 #   include	<ctype.h>
-
-#   include	<appDebugon.h>
 
 #   include	<textOfficeCharset.h>
 #   include	"docRtfReaderImpl.h"
 #   include	"docRtfTagEnum.h"
+#   include	<docBuf.h>
+#   include	<fontDocFontList.h>
+
+#   include	<appDebugon.h>
 
 /************************************************************************/
 
-void docRtfRestartFont(		RtfReader *	rrc )
+void docRtfRestartFont(		RtfReader *	rr )
     {
-    docCleanDocumentFont( &(rrc->rrcCurrentFont) );
-    docInitDocumentFont( &(rrc->rrcCurrentFont) );
-    docRtfInitEncodedFont( &(rrc->rrcCurrentEncodedFont) );
-    if  ( rrc->rrDocument )
+    fontCleanDocumentFont( &(rr->rrCurrentFont) );
+    fontInitDocumentFont( &(rr->rrCurrentFont) );
+    fontInitEncodedFont( &(rr->rrCurrentEncodedFont) );
+    if  ( rr->rrDocument )
 	{
-	rrc->rrcCurrentEncodedFont.ecCharset=
-			    rrc->rrDocument->bdProperties.dpDocumentCharset;
+	rr->rrCurrentEncodedFont.ecCharset=
+			    rr->rrDocument->bdProperties->dpDocumentCharset;
 	}
 
     return ;
@@ -39,150 +40,129 @@ void docRtfRestartFont(		RtfReader *	rrc )
 /*									*/
 /************************************************************************/
 
-static int docRtfCommitFaltName(	const RtfControlWord *	rcw,
-					RtfReader *		rrc )
+int docRtfCommitFontDest(	const RtfControlWord *	rcw,
+				RtfReader *		rr )
     {
-    const int	removeSemicolon= 0;
-    int		size= 0;
+    const int		removeSemicolon= 0;
+    RtfReadingState *	rrs= rr->rrState;
 
-    if  ( docRtfStoreSavedText( &(rrc->rrcCurrentFont.dfAltName), &size,
-						    rrc, removeSemicolon ) )
-	{ LDEB(1); return -1; }
-
-    return 0;
-    }
-
-static int docRtfCommitFontPanoseText(	const RtfControlWord *	rcw,
-					RtfReader *	rrc )
-    {
-    RtfReadingState *	rrs= rrc->rrcState;
-
-    if  ( rrs->rrsSavedText.mbSize != FONTlenPANOSE )
+    switch( rcw->rcwID )
 	{
-	LLDEB(rrs->rrsSavedText.mbSize,FONTlenPANOSE);
-	utilEmptyMemoryBuffer( &(rrs->rrsSavedText) );
-	return 0;
+	case DFpropALT_NAME:
+	    if  ( docRtfMemoryBufferSetText( &(rr->rrCurrentFont.dfAltName),
+						    rr, removeSemicolon ) )
+		{ LDEB(1); return -1; }
+	    return 0;
+
+	case DFpropPANOSE:
+	    if  ( rrs->rrsSavedText.mbSize != FONTlenPANOSE )
+		{
+		LLDEB(rrs->rrsSavedText.mbSize,FONTlenPANOSE);
+		utilEmptyMemoryBuffer( &(rrs->rrsSavedText) );
+		return 0;
+		}
+
+	    memcpy( rr->rrCurrentFont.dfPanose,
+				rrs->rrsSavedText.mbBytes,
+				rrs->rrsSavedText.mbSize );
+	    utilEmptyMemoryBuffer( &(rrs->rrsSavedText) );
+
+	    rr->rrCurrentFont.dfPanose[FONTlenPANOSE]= '\0';
+	    return 0;
+
+	case DFpropFONT_FILE:
+	    if  ( docRtfMemoryBufferSetText( &(rr->rrCurrentFont.dfFontFile),
+						    rr, removeSemicolon ) )
+		{ LDEB(1); return -1; }
+	    return 0;
+
+	case DFpropFONT_BYTES:
+	    if  ( docRtfMemoryBufferSetText( &(rr->rrCurrentFont.dfFontBytes),
+						    rr, removeSemicolon ) )
+		{ LDEB(1); return -1; }
+	    return 0;
+
+	default:
+	    LSDEB(rcw->rcwID,rcw->rcwWord);
+	    return -1;
 	}
 
-    memcpy( rrc->rrcCurrentFont.dfPanose,
-			rrs->rrsSavedText.mbBytes,
-			rrs->rrsSavedText.mbSize );
-    utilEmptyMemoryBuffer( &(rrs->rrsSavedText) );
-
-    rrc->rrcCurrentFont.dfPanose[FONTlenPANOSE]= '\0';
-
-    return 0;
     }
 
-static int docRtfAddCurrentFontToList(	RtfReader *	rrc )
+static int docRtfAddCurrentFontToList(	RtfReader *	rr )
     {
     int		rval= 0;
     const int	removeSemicolon= 1;
-    int		size= 0;
 
-    if  ( docRtfStoreSavedText( &(rrc->rrcCurrentFont.dfName), &size,
-						    rrc, removeSemicolon ) )
+    if  ( docRtfMemoryBufferSetText( &(rr->rrCurrentFont.dfName),
+						    rr, removeSemicolon ) )
 	{ LDEB(1); rval= -1; goto ready; }
 
-    if  ( rrc->rrcCurrentFont.dfName && rrc->rrcCurrentFont.dfName[0] == '@' )
+    if  ( utilMemoryBufferIndexOf( &(rr->rrCurrentFont.dfName), '@' ) == 0 )
 	{
-	if  ( docFontSetFamilyName( &(rrc->rrcCurrentFont),
-					    rrc->rrcCurrentFont.dfName+ 1 ) )
-	    { LDEB(1); return -1;	}
+	utilMemoryBufferReplaceBytes( &(rr->rrCurrentFont.dfName), 0, 1,
+						(const unsigned char *)0, 0 );
 	}
 
-    if  ( rrc->rrcCurrentFont.dfName )
+    if  ( ! utilMemoryBufferIsEmpty( &(rr->rrCurrentFont.dfName) ) )
 	{
-	DocumentProperties *	dp= &(rrc->rrDocument->bdProperties);
+	DocumentProperties *	dp= rr->rrDocument->bdProperties;
 	DocumentFontList *	dfl= dp->dpFontList;
-	DocumentFont *		df;
 
-	EncodedFont *		efIn= &(rrc->rrcCurrentEncodedFont);
-	EncodedFont *		efOut;
-
-	if  ( ! strcmp( rrc->rrcCurrentFont.dfName, "ZapfDingbats" ) )
-	    {
-	    if  ( docFontSetFamilyName( &(rrc->rrcCurrentFont),
-							"ITC Zapf Dingbats" ) )
-		{ LDEB(1); return -1;	}
-	    }
-	if  ( ! strcmp( rrc->rrcCurrentFont.dfName, "ZapfChancery" ) )
-	    {
-	    if  ( docFontSetFamilyName( &(rrc->rrcCurrentFont),
-							"ITC Zapf Chancery" ) )
-		{ LDEB(1); return -1;	}
-	    }
-
-	utilRemoveCharsetFromFontName( &(rrc->rrcCurrentFont),
-							    efIn->ecCharset );
-
-	efIn->ecBufFontNumber= docGetFontByName( dfl,
-						rrc->rrcCurrentFont.dfName );
-	if  ( efIn->ecBufFontNumber < 0 )
-	    {
-	    SLDEB(rrc->rrcCurrentFont.dfName,efIn->ecBufFontNumber);
-	    rval= -1; goto ready;
-	    }
-
-	df= docFontListGetFontByNumber( dfl, efIn->ecBufFontNumber );
-	if  ( ! df )
-	    { SXDEB(rrc->rrcCurrentFont.dfName,df); rval= -1; goto ready; }
-
-	if  ( docCopyDocumentFont( df, &(rrc->rrcCurrentFont) ) )
+	if  ( fontAddEncodedFontToList( dfl,
+					&(rr->rrEncodedFontList),
+					&(rr->rrCurrentFont),
+					&(rr->rrCurrentEncodedFont) ) )
 	    { LDEB(1); rval= -1; goto ready;	}
-	df->dfDocFontNumber= efIn->ecBufFontNumber;
-
-	efOut= (EncodedFont *)utilPagedListClaimItem(
-			&(rrc->rrcEncodedFontList), efIn->ecFileFontNumber );
-	if  ( ! efOut )
-	    { LXDEB(efIn->ecFileFontNumber,efOut); rval= -1; goto ready; }
-	*efOut= *efIn;
 	}
 
   ready:
 
-    docRtfRestartFont( rrc );
+    docRtfRestartFont( rr );
 
     return rval;
     }
 
-static int docRtfFontName(	RtfReader *		rrc,
+static int docRtfFontName(	RtfReader *		rr,
 				const char *		name,
 				int			len )
     {
-    if  ( docRtfSaveDocEncodedText( rrc, name, len ) )
+    if  ( docRtfSaveDocEncodedText( rr, name, len ) )
 	{ LDEB(len); return -1;	}
 
-    if  ( rrc->rrcCurrentEncodedFont.ecFileFontNumber < 0 )
-	{ LDEB(rrc->rrcCurrentEncodedFont.ecFileFontNumber); return 0;	}
+    if  ( rr->rrCurrentEncodedFont.efFileFontNumber < 0 )
+	{ LDEB(rr->rrCurrentEncodedFont.efFileFontNumber); return 0;	}
 
-    if  ( docRtfAddCurrentFontToList( rrc ) )
+    if  ( docRtfAddCurrentFontToList( rr ) )
 	{ LDEB(len); return -1;	}
 
     return 0;
     }
 
 static int docRtfCommitCurrentFont(	const RtfControlWord *	rcw,
-					RtfReader *	rrc )
-    { return docRtfAddCurrentFontToList( rrc );	}
+					RtfReader *		rr )
+    { return docRtfAddCurrentFontToList( rr );	}
 
 int docRtfFontProperty(		const RtfControlWord *	rcw,
 				int			arg,
-				RtfReader *		rrc )
+				RtfReader *		rr )
     {
     switch( rcw->rcwID )
 	{
 	case DFpropFAMILY_STYLE:
-	    rrc->rrcCurrentFont.dfStyleInt= arg;
+	    rr->rrCurrentFont.dfStyleInt= arg;
 	    break;
 	case DFpropCHARSET:
-	    rrc->rrcCurrentEncodedFont.ecCharset= arg;
+	    rr->rrCurrentEncodedFont.ecCharset= arg;
 	    break;
 	case DFpropCODEPAGE:
-	    rrc->rrcCurrentEncodedFont.ecCodepage= arg;
+	    rr->rrCurrentEncodedFont.ecCodepage= arg;
 	    break;
 	case DFpropPITCH:
-	    rrc->rrcCurrentFont.dfPitch= arg;
+	    rr->rrCurrentFont.dfPitch= arg;
+	    break;
+	case DFpropFONT_TYPE:
+	    rr->rrCurrentFont.dfEmbeddedType= arg;
 	    break;
 
 	default:
@@ -192,26 +172,18 @@ int docRtfFontProperty(		const RtfControlWord *	rcw,
     return 0;
     }
 
-static RtfControlWord	docRtfFontGroupGroups[]=
-    {
-    RTF_TEXT_GROUP( "panose",	DFpropPANOSE,	docRtfCommitFontPanoseText ),
-    RTF_TEXT_GROUP( "falt",	DFpropALT_NAME,	docRtfCommitFaltName ),
-
-    { (char *)0, 0, 0 }
-    };
-
 static int docRtfFontGroup(	const RtfControlWord *	rcw,
 				int			arg,
-				RtfReader *		rrc )
+				RtfReader *		rr )
     {
-    docRtfRestartFont( rrc );
+    docRtfRestartFont( rr );
 
-    rrc->rrcCurrentEncodedFont.ecFileFontNumber= arg;
+    rr->rrCurrentEncodedFont.efFileFontNumber= arg;
 
-    if  ( docRtfReadGroup( rcw, 0, 0, rrc,
-					    docRtfFontGroupGroups,
-					    docRtfSaveDocEncodedText,
-					    docRtfCommitCurrentFont ) )
+    if  ( docRtfReadGroup( rcw, 0, 0, rr,
+				    (RtfControlWord *)0,
+				    docRtfSaveDocEncodedText,
+				    docRtfCommitCurrentFont ) )
 	{ SLDEB(rcw->rcwWord,arg); return -1;	}
 
     return 0;
@@ -219,14 +191,14 @@ static int docRtfFontGroup(	const RtfControlWord *	rcw,
 
 static int docRtfThemeFontGroup(	const RtfControlWord *	rcw,
 					int			arg,
-					RtfReader *	rrc )
+					RtfReader *		rr )
     {
-    docRtfRestartFont( rrc );
+    docRtfRestartFont( rr );
 
-    if  ( docRtfReadGroup( rcw, 0, 0, rrc,
-					    docRtfFontGroupGroups,
-					    docRtfSaveDocEncodedText,
-					    docRtfCommitCurrentFont ) )
+    if  ( docRtfReadGroup( rcw, 0, 0, rr,
+				    (RtfControlWord *)0,
+				    docRtfSaveDocEncodedText,
+				    docRtfCommitCurrentFont ) )
 	{ SLDEB(rcw->rcwWord,arg); return -1;	}
 
     return 0;
@@ -234,60 +206,61 @@ static int docRtfThemeFontGroup(	const RtfControlWord *	rcw,
 
 static RtfControlWord	docRtfFontTableGroups[]=
     {
-	RTF_DEST_XX( "f",	RTFidF,	docRtfFontGroup ),
-	RTF_DEST_XX( "flomajor",RTFidF,	docRtfThemeFontGroup ),
-	RTF_DEST_XX( "fhimajor",RTFidF,	docRtfThemeFontGroup ),
-	RTF_DEST_XX( "fdbmajor",RTFidF,	docRtfThemeFontGroup ),
-	RTF_DEST_XX( "fbimajor",RTFidF,	docRtfThemeFontGroup ),
-	RTF_DEST_XX( "flominor",RTFidF,	docRtfThemeFontGroup ),
-	RTF_DEST_XX( "fhiminor",RTFidF,	docRtfThemeFontGroup ),
-	RTF_DEST_XX( "fdbminor",RTFidF,	docRtfThemeFontGroup ),
-	RTF_DEST_XX( "fbiminor",RTFidF,	docRtfThemeFontGroup ),
+	RTF_DEST_XX( "f",	RTCscopeFONT, RTFidF,	docRtfFontGroup ),
+
+	RTF_DEST_XX( "flomajor",RTCscopeTHEME_FONT, RTFidF,	docRtfThemeFontGroup ),
+	RTF_DEST_XX( "fhimajor",RTCscopeTHEME_FONT, RTFidF,	docRtfThemeFontGroup ),
+	RTF_DEST_XX( "fdbmajor",RTCscopeTHEME_FONT, RTFidF,	docRtfThemeFontGroup ),
+	RTF_DEST_XX( "fbimajor",RTCscopeTHEME_FONT, RTFidF,	docRtfThemeFontGroup ),
+	RTF_DEST_XX( "flominor",RTCscopeTHEME_FONT, RTFidF,	docRtfThemeFontGroup ),
+	RTF_DEST_XX( "fhiminor",RTCscopeTHEME_FONT, RTFidF,	docRtfThemeFontGroup ),
+	RTF_DEST_XX( "fdbminor",RTCscopeTHEME_FONT, RTFidF,	docRtfThemeFontGroup ),
+	RTF_DEST_XX( "fbiminor",RTCscopeTHEME_FONT, RTFidF,	docRtfThemeFontGroup ),
 
 	{ (char *)0, 0, 0 }
     };
 
 static int docRtfCommitFontTable(	const RtfControlWord *	rcw,
-					RtfReader *		rrc )
+					RtfReader *		rr )
     {
-    BufferDocument *		bd= rrc->rrDocument;
-    DocumentProperties *	dp= &(bd->bdProperties);
+    struct BufferDocument *		bd= rr->rrDocument;
+    DocumentProperties *	dp= bd->bdProperties;
 
     int				charset;
 
-    if  ( rrc->rrcDefaultFont >= 0 )
+    if  ( rr->rrDefaultFont >= 0 )
 	{
-	if  ( docRtfReadMapFont( rrc, &(dp->dpDefaultFont), &charset,
-					    rrc->rrcDefaultFont ) < 0 )
-	    { LDEB(rrc->rrcDefaultFont);	}
+	if  ( docRtfReadMapFont( rr, &(dp->dpDefaultFont), &charset,
+					    rr->rrDefaultFont ) < 0 )
+	    { LDEB(rr->rrDefaultFont);	}
 	}
 
-    if  ( rrc->rrcDefaultFontDbch >= 0 )
+    if  ( rr->rrDefaultFontDbch >= 0 )
 	{
-	if  ( docRtfReadMapFont( rrc, &(dp->dpDefaultFontDbch), &charset,
-					    rrc->rrcDefaultFontDbch ) < 0 )
-	    { LDEB(rrc->rrcDefaultFontDbch);	}
+	if  ( docRtfReadMapFont( rr, &(dp->dpDefaultFontDbch), &charset,
+					    rr->rrDefaultFontDbch ) < 0 )
+	    { LDEB(rr->rrDefaultFontDbch);	}
 	}
 
-    if  ( rrc->rrcDefaultFontLoch >= 0 )
+    if  ( rr->rrDefaultFontLoch >= 0 )
 	{
-	if  ( docRtfReadMapFont( rrc, &(dp->dpDefaultFontLoch), &charset,
-					    rrc->rrcDefaultFontLoch ) < 0 )
-	    { LDEB(rrc->rrcDefaultFontLoch);	}
+	if  ( docRtfReadMapFont( rr, &(dp->dpDefaultFontLoch), &charset,
+					    rr->rrDefaultFontLoch ) < 0 )
+	    { LDEB(rr->rrDefaultFontLoch);	}
 	}
 
-    if  ( rrc->rrcDefaultFontHich >= 0 )
+    if  ( rr->rrDefaultFontHich >= 0 )
 	{
-	if  ( docRtfReadMapFont( rrc, &(dp->dpDefaultFontHich), &charset,
-					    rrc->rrcDefaultFontHich ) < 0 )
-	    { LDEB(rrc->rrcDefaultFontHich);	}
+	if  ( docRtfReadMapFont( rr, &(dp->dpDefaultFontHich), &charset,
+					    rr->rrDefaultFontHich ) < 0 )
+	    { LDEB(rr->rrDefaultFontHich);	}
 	}
 
-    if  ( rrc->rrcDefaultFontBi >= 0 )
+    if  ( rr->rrDefaultFontBi >= 0 )
 	{
-	if  ( docRtfReadMapFont( rrc, &(dp->dpDefaultFontBi), &charset,
-						rrc->rrcDefaultFontBi ) < 0 )
-	    { LDEB(rrc->rrcDefaultFontBi);	}
+	if  ( docRtfReadMapFont( rr, &(dp->dpDefaultFontBi), &charset,
+						rr->rrDefaultFontBi ) < 0 )
+	    { LDEB(rr->rrDefaultFontBi);	}
 	}
 
     return 0;
@@ -295,39 +268,36 @@ static int docRtfCommitFontTable(	const RtfControlWord *	rcw,
 
 int docRtfFontTable(	const RtfControlWord *	rcw,
 			int			arg,
-			RtfReader *		rrc )
+			RtfReader *		rr )
     {
-    if  ( docRtfReadGroup( rcw, 0, 0, rrc,
-						docRtfFontTableGroups,
-						docRtfFontName,
-						docRtfCommitFontTable ) )
+    DocumentProperties *	dp= rr->rrDocument->bdProperties;
+    DocumentFontList *		dfl= dp->dpFontList;
+    int				f;
+
+    if  ( docRtfReadGroup( rcw, 0, 0, rr,
+	    docRtfFontTableGroups, docRtfFontName, docRtfCommitFontTable ) )
 	{ SLDEB(rcw->rcwWord,arg); return -1;	}
+
+    for ( f= 0; f < dfl->dflFontCount; f++ )
+	{
+	DocumentFont *	df= fontFontListGetFontByNumber( dfl, f );
+
+	if  ( ! df || df->dfDocFontNumber < 0 )
+	    { continue;	}
+
+	fontDetermineEncoding( df );
+	}
 
     return 0;
     }
 
 /************************************************************************/
 
-int docRtfReadMapFont(	const RtfReader *		rrc,
+int docRtfReadMapFont(	const RtfReader *		rr,
 			int *				pDocFontNum,
 			int *				pCharset,
 			int				fileFontNum )
     {
-    EncodedFont *	ef;
-
-    if  ( fileFontNum < 0 )
-	{ LDEB(fileFontNum); return -1;	}
-
-    ef= (EncodedFont *)utilPagedListGetItemByNumber(
-				    &(rrc->rrcEncodedFontList), fileFontNum );
-    if  ( ! ef )
-	{ return 1;	}
-
-    if  ( ef->ecCodepage >= 0 )
-	{ LDEB(ef->ecCodepage);	}
-
-    *pDocFontNum= ef->ecBufFontNumber;
-    *pCharset= ef->ecCharset;
-
-    return 0;
+    return fontMapFileFont( &(rr->rrEncodedFontList),
+					pDocFontNum, pCharset, fileFontNum );
     }

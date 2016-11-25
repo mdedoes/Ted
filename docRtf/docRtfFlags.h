@@ -11,6 +11,7 @@
 					/********************************/
 					/* Read/Write flags		*/
 					/********************************/
+
 					/**
 					 * The RTF file is in UTF8. This is 
 					 * for internal purposes.
@@ -26,12 +27,22 @@
 #   define	RTFflagSAVE_SOMETHING	0x020
 #   define	RTFflagOMIT_TEXT	0x040
 #   define	RTFflagOMIT_PARAS	0x080
+
+					/**
+					 *  Be sure to emit the document 
+					 *  properties. Currently, (Ted 2.24)
+					 *  this flag is only used to save 
+					 *  the initial NEW document in a 
+					 *  trace.
+					 */
+#   define	RTFflagSAVE_DOC_PROPS	0x100
+
 					/**
 					 *  Emit the row and the cell for 
 					 *  selections that are constrained to 
 					 *  a single table cell.
 					 */
-#   define	RTFflagEMIT_CELL	0x100
+#   define	RTFflagEMIT_CELL	0x200
 
 					/********************************/
 					/* Read flags			*/
@@ -41,6 +52,6 @@
 					 * RTF. E.G: Do not fail on unmatched 
 					 * braces.
 					 */
-#   define	RTFflagLENIENT		0x200
+#   define	RTFflagLENIENT		0x400
 
 #    endif	/*  DOC_RTF_FLAGS_H	*/

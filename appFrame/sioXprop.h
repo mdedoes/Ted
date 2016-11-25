@@ -4,22 +4,20 @@
 /*									*/
 /************************************************************************/
 
-#   include	"appGuiBase.h"
+#   include	<guiBase.h>
 
-#   include	<sioGeneral.h>
+#   if ! USE_HEADLESS
 
-# ifdef __cplusplus
-extern "C"
-    {
-# endif
+struct SimpleInputStream;
+struct SimpleOutputStream;
 
-extern SimpleInputStream * sioInOpenPaste(	APP_WIDGET		w,
-						APP_SELECTION_EVENT *	event );
+extern struct SimpleInputStream * sioInOpenPaste(
+					APP_WIDGET		w,
+					APP_SELECTION_EVENT *	event );
 
-extern SimpleOutputStream * sioOutOpenCopy(	APP_WIDGET		w,
-						APP_SELECTION_EVENT *	event );
+extern struct SimpleOutputStream * sioOutOpenCopy(
+					APP_WIDGET		w,
+					APP_SELECTION_EVENT *	event );
 
-# ifdef __cplusplus
-    }
 # endif
 

@@ -12,6 +12,7 @@
 #   include	<appDebugon.h>
 
 #   include	"psFontName.h"
+#   include	"psFontInfo.h"
 
 /************************************************************************/
 /*									*/
@@ -354,7 +355,6 @@ int psFontInfoMoveWidthToFamilyName(	AfmFontInfo *	afi )
 	if  ( familyIsPrefix )
 	    {
 	    char *	full;
-	    char *	to;
 	    char *	from= afi->afiFullName+ familyLength;
 
 	    while( widthStart > 0 && afi->afiFullName[widthStart- 1] == ' ' )
@@ -362,10 +362,12 @@ int psFontInfoMoveWidthToFamilyName(	AfmFontInfo *	afi )
 	    while( afi->afiFullName[widthStart+ widthLength] == ' ' )
 		{ widthLength++;	}
 
-	    full= (char *)malloc( fullLength+ 2+ 1 );
+	    full= (char *)malloc( fullLength+ 2+ widthLength+ 1 );
 	    if  ( ! full )
 		{ XDEB(full); return -1;	}
 	    else{
+		char *	to;
+
 		strcpy( full, afi->afiFamilyName );
 		to= full+ strlen( full );
 

@@ -9,9 +9,10 @@
 #   include	<stdlib.h>
 #   include	<string.h>
 
-#   include	<appDebugon.h>
-
 #   include	"docFieldInstructions.h"
+#   include	<utilMemoryBufferPrintf.h>
+
+#   include	<appDebugon.h>
 
 /************************************************************************/
 /*									*/
@@ -26,8 +27,8 @@ static void docInitInstructionsComponent(	InstructionsComponent *	ic )
     {
     utilInitMemoryBuffer( &(ic->icBuffer) );
 
-    ic->icIsFlag= 0;
-    ic->icIsQuoted= 0;
+    ic->icType= INSTRtypeVALUE;
+    ic->icOffset= -1;
     }
 
 static int docCopyInstructionsComponent( InstructionsComponent *	to,
@@ -36,8 +37,8 @@ static int docCopyInstructionsComponent( InstructionsComponent *	to,
     if  ( utilCopyMemoryBuffer( &(to->icBuffer), &(from->icBuffer) ) )
 	{ LDEB(1); return -1;	}
 
-    to->icIsFlag= from->icIsFlag;
-    to->icIsQuoted= from->icIsQuoted;
+    to->icType= from->icType;
+    to->icOffset= from->icOffset;
 
     return 0;
     }
@@ -105,7 +106,7 @@ int docAllocateComponents(	FieldInstructions *		fi,
 /*  Copy the properties of a field.					*/
 /*									*/
 /*  Only properties that have an application meaning are copied. The	*/
-/*  set is determined by what can appaer in RTF.			*/
+/*  set is determined by what can appear in RTF.			*/
 /*									*/
 /************************************************************************/
 
@@ -137,10 +138,11 @@ int docCopyFieldInstructions(	FieldInstructions *		fiTo,
 
 static int docSplitFieldInstructions(
 				InstructionsComponent *		ic,
-				const char *			bytes,
-				int				count )
+				int				keepSpace,
+				const char *			instBytes,
+				int				instSize )
     {
-    const char *	from= bytes;
+    const char *	from= instBytes;
     int			offset= 0;
     int			n= 0;
 
@@ -148,19 +150,39 @@ static int docSplitFieldInstructions(
 	{
 	int		size= 0;
 	const char *	head= from;
-	int		quoted= 0;
-	int		flag= 0;
+	int		type= INSTRtypeVALUE;
 
 	int		unmatchedQuote= 0;
+	int		headOffset;
 
-	while( offset < count && *from == ' ' )
+	while( offset < instSize && *from == ' ' )
 	    { offset++; from++;	}
 
-	if  ( offset >= count )
+	if  ( offset >= instSize )
 	    { break;	}
 
+	headOffset= offset;
+
+	/* Silly = (Formula) field */
+	if  ( n == 0 && from[0] == '=' )
+	    {
+	    if  ( ic )
+		{
+		if  ( utilMemoryBufferSetBytes( &(ic->icBuffer),
+					    (const unsigned char *)from, 1 ) )
+		    { LDEB(1); return -1;	}
+
+		ic->icType= INSTRtypeVALUE;
+		ic->icOffset= headOffset;
+		ic++;
+		}
+
+	    offset += 1; from += 1; n++;
+	    continue;
+	    }
+
 	if  ( from[0] == '\\'		&&
-	      offset < count- 1		&&
+	      offset < instSize- 1		&&
 	      from[1] != ' '		)
 	    {
 	    if  ( ic )
@@ -169,38 +191,64 @@ static int docSplitFieldInstructions(
 					    (const unsigned char *)from, 2 ) )
 		    { LDEB(1); return -1;	}
 
-		ic->icIsFlag= 1;
-		ic->icIsQuoted= 0;
+		ic->icType= INSTRtypeFLAG;
+		ic->icOffset= headOffset;
 		ic++;
 		}
 
-	    offset += 2;  from += 2; n++;
+	    offset += 2; from += 2; n++;
 	    continue;
 	    }
 
 	if  ( from[0] == '"' )
 	    {
 	    offset++; from++;
+	    headOffset++;
 
 	    if  ( from[0] == '"' )
 		{ offset++; from++; continue; }
 
 	    head= from;
-	    quoted= 1;
-	    flag= 0;
-	    while( offset < count && *from != '"' )
+	    type= INSTRtypeQUOTED_VALUE;
+	    while( offset < instSize && *from != '"' )
 		{ size++; offset++; from++;	}
 
-	    if  ( offset >= count )
-		{ SLLDEB(bytes,offset,count); unmatchedQuote= 1;	}
+	    if  ( offset >= instSize )
+		{ SLLDEB(instBytes,offset,instSize); unmatchedQuote= 1;	}
 	    else{ offset++; from++;					}
 	    }
 	else{
 	    head= from;
-	    quoted= 0;
-	    flag= *from == '\\';
-	    while( offset < count && *from != ' ' )
-		{ size++; offset++; from++;	}
+
+	    if  ( *from == '\\' )
+		{ type= INSTRtypeFLAG;	}
+	    else{ type= INSTRtypeVALUE;	}
+
+	    while( offset < instSize )
+		{
+		const char *	f;
+		int		o;
+		int		s;
+
+		while( offset < instSize && *from != ' ' )
+		    { size++; offset++; from++;	}
+
+		if  ( offset >= instSize		||
+		      n == 0			||
+		      ! keepSpace		||
+		      type == INSTRtypeFLAG	)
+		    { break;	}
+
+		f= from; o= offset; s= size;
+		while( o < instSize && *f == ' ' )
+		    { s++; o++; f++;	}
+
+		if  ( o >= instSize		||
+		      *f == '\\'		)
+		    { break;	}
+
+		from= f; offset= o; size= s; /* type= INSTRtypeQUOTED_VALUE; */
+		}
 	    }
 
 	if  ( ic )
@@ -213,8 +261,8 @@ static int docSplitFieldInstructions(
 		  utilMemoryBufferAppendString( &(ic->icBuffer), "\"" )	)
 		{ LDEB(unmatchedQuote); return -1;	}
 
-	    ic->icIsFlag= flag;
-	    ic->icIsQuoted= quoted;
+	    ic->icType= type;
+	    ic->icOffset= headOffset;
 	    ic++;
 	    }
 
@@ -225,19 +273,22 @@ static int docSplitFieldInstructions(
     }
 
 int docSetFieldInstructions(	FieldInstructions *	fi,
-				const char *		bytes,
-				int			size )
+				int			keepSpace,
+				const char *		instBytes,
+				int			instSize )
     {
     int		n;
 
-    n= docSplitFieldInstructions( (InstructionsComponent *)0, bytes, size );
+    n= docSplitFieldInstructions( (InstructionsComponent *)0,
+					    keepSpace, instBytes, instSize );
     if  ( n < 0 )
 	{ LDEB(n); return -1;	}
 
     if  ( docAllocateComponents( fi, n ) )
 	{ LDEB(n); return -1;	}
 
-    n= docSplitFieldInstructions( fi->fiComponents, bytes, size );
+    n= docSplitFieldInstructions( fi->fiComponents,
+					    keepSpace, instBytes, instSize );
     if  ( n < 0 )
 	{ LDEB(n); return -1;	}
 
@@ -269,8 +320,10 @@ static int docFieldSetComponentBuffer(	InstructionsComponent *	ic,
     if  ( utilCopyMemoryBuffer( &(ic->icBuffer), mb ) )
 	{ LDEB(1); return -1;	}
 
-    ic->icIsFlag= 0;
-    ic->icIsQuoted= docFieldMustBeQuoted( ic );
+    if  ( docFieldMustBeQuoted( ic ) )
+	{ ic->icType= INSTRtypeQUOTED_VALUE;	}
+    else{ ic->icType= INSTRtypeVALUE;		}
+    ic->icOffset= -1;
 
     return 0;
     }
@@ -293,8 +346,8 @@ int docFieldInstructionsAddFlag(	FieldInstructions *	fi,
     if  ( utilMemoryBufferSetBytes( &(ic->icBuffer), scratch, 2 ) )
 	{ LDEB(2); return -1;	}
 
-    ic->icIsFlag= 1;
-    ic->icIsQuoted= 0;
+    ic->icType= INSTRtypeFLAG;
+    ic->icOffset= -1;
 
     return 0;
     }
@@ -310,8 +363,8 @@ int docStartFieldInstructions(	FieldInstructions *	fi,
 				(const unsigned char *)kindName, kindSize ) )
 	{ LDEB(kindSize); return -1;	}
 
-    fi->fiComponents[0].icIsFlag= 0;
-    fi->fiComponents[0].icIsQuoted= 0;
+    fi->fiComponents[0].icType= INSTRtypeVALUE;
+    fi->fiComponents[0].icOffset= 0;
 
     return 0;
     }
@@ -344,8 +397,8 @@ int docFieldInstructionsAddArgFlag(	FieldInstructions *	fi,
     if  ( utilMemoryBufferSetBytes( &(ic->icBuffer), scratch, 2 ) )
 	{ LDEB(2); return -1;	}
 
-    ic->icIsFlag= 1;
-    ic->icIsQuoted= 0;
+    ic->icType= INSTRtypeFLAG;
+    ic->icOffset= -1;
 
     ic++;
 
@@ -353,6 +406,26 @@ int docFieldInstructionsAddArgFlag(	FieldInstructions *	fi,
 	{ LDEB(1); return -1;	}
 
     return 0;
+    }
+
+int docFieldInstructionsAddIntFlag(	FieldInstructions *	fi,
+					int			flag,
+					int			value )
+    {
+    int			rval= 0;
+    MemoryBuffer	valueName;
+
+    utilInitMemoryBuffer( &valueName );
+
+    utilMemoryBufferPrintf( &valueName, "%d", value );
+
+    rval= docFieldInstructionsAddArgFlag( fi, flag, &valueName );
+
+    /* ready: */
+
+    utilCleanMemoryBuffer( &valueName );
+
+    return rval;
     }
 
 int docFieldInstructionsAddComponent(	FieldInstructions *	fi,
@@ -377,7 +450,7 @@ int docComponentIsFlag(		const FieldInstructions *	fi,
     {
     const InstructionsComponent *	ic= fi->fiComponents+ comp;
 
-    if  ( ! ic->icIsFlag )
+    if  ( ic->icType != INSTRtypeFLAG )
 	{ return 0;	}
     if  ( ic->icBuffer.mbSize != 2 )
 	{ return 0;	}

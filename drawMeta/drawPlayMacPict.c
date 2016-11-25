@@ -3,17 +3,19 @@
 #   include	<stddef.h>
 #   include	<stdlib.h>
 #   include	<string.h>
+#   include	<math.h>
 
 #   include	"drawWinMetaImpl.h"
 #   include	"drawMacPictImpl.h"
-#   include	<utilMatchFont.h>
+#   include	"drawMacPict.h"
+#   include	<fontMatchFont.h>
 #   include	<sioEndian.h>
 #   include	<uniLegacyEncoding.h>
 #   include	<uniUtf8.h>
 #   include	<psDocumentFontStyle.h>
 #   include	<bmio.h>
-
-#   include	<math.h>
+#   include	<sioGeneral.h>
+#   include	<fontDocFont.h>
 
 #   include	<appDebugon.h>
 
@@ -346,16 +348,16 @@ static int appMacPictAddFont(		DeviceContext *		dc,
 
     DocumentFont	dfNew;
 
-    docInitDocumentFont( &dfNew );
+    fontInitDocumentFont( &dfNew );
 
-    if  ( docFontSetFamilyName( &dfNew, name ) )
+    if  ( fontSetFamilyName( &dfNew, name ) )
 	{ LDEB(1); rval= -1; goto ready;	}
 
     fontStyle= psFontFamilyStyle( name );
-    if  ( docFontSetFamilyStyle( &dfNew, fontStyle ) )
+    if  ( fontSetFamilyStyle( &dfNew, fontStyle ) )
 	{ SLDEB(name,fontStyle); rval= -1; goto ready; }
 
-    fontNum= docMergeFontIntoFontlist( &(dc->dcFontList), &dfNew );
+    fontNum= fontMergeFontIntoList( &(dc->dcFontList), &dfNew );
     if  ( fontNum < 0 )
 	{ SLDEB(name,fontNum); rval= -1; goto ready; }
 
@@ -363,11 +365,12 @@ static int appMacPictAddFont(		DeviceContext *		dc,
 	{
 	dc->dcFont.lfTextAttribute.taFontNumber= fontNum;
 	dc->dcFont.lfPrivateFont= -1;
-	dc->dcAfi= (AfmFontInfo *)0;
+	dc->dcAfi= (struct AfmFontInfo *)0;
 	}
 
   ready:
-    docCleanDocumentFont( &dfNew );
+
+    fontCleanDocumentFont( &dfNew );
 
     return rval;
     }
@@ -377,16 +380,17 @@ static int appMacPictGetFontName(	DeviceContext *		dc,
     {
     int			rval= 0;
 
-    int			dataLength= sioEndianGetBeInt16( sis );
-    int			oldFontId= sioEndianGetBeInt16( sis );
-    int			nameLength= sioInGetByte( sis );
+    int			dataLength;
+    int			nameLength;
     int			nbytes= 5;
 
     int			i;
     char *		to;
     char *		fontName= (char *)0;
 
-    oldFontId= oldFontId; /*  Avoid compiler warning */
+    dataLength= sioEndianGetBeInt16( sis );
+    /* oldFontId= */ sioEndianGetBeInt16( sis );
+    nameLength= sioInGetByte( sis );
 
     fontName= to= (char *)malloc( nameLength+ 1 );
     if  ( ! fontName || ! to )
@@ -481,14 +485,14 @@ static int appMacPictGetTxFace(		DeviceContext *		dc,
 	{
 	dc->dcFont.lfTextAttribute.taFontIsBold= isBold;
 	dc->dcFont.lfPrivateFont= -1;
-	dc->dcAfi= (AfmFontInfo *)0;
+	dc->dcAfi= (struct AfmFontInfo *)0;
 	}
 
     if  ( dc->dcFont.lfTextAttribute.taFontIsSlanted != isSlanted )
 	{
 	dc->dcFont.lfTextAttribute.taFontIsSlanted= isSlanted;
 	dc->dcFont.lfPrivateFont= -1;
-	dc->dcAfi= (AfmFontInfo *)0;
+	dc->dcAfi= (struct AfmFontInfo *)0;
 	}
 
     return 0;
@@ -761,8 +765,6 @@ static int appMacPictGetLongComment(	DeviceContext *		dc,
     int		kind= sioEndianGetBeInt16( sis );
     int		size= sioEndianGetBeInt16( sis );
 
-    kind= kind;
-
     PICTDEB(appDebug( "LongComment( %d:%s, %d, .. )\n",
 	    kind, appMacPictCommentName( kind ), size ));
 
@@ -835,7 +837,7 @@ static int appMacPictGetTxSize(		DeviceContext *		dc,
     if  ( dc->dcFont.lfHeight != size )
 	{
 	dc->dcFont.lfPrivateFont= -1;
-	dc->dcAfi= (AfmFontInfo *)0;
+	dc->dcAfi= (struct AfmFontInfo *)0;
 	dc->dcFont.lfHeight= size;
 	dc->dcFont.lfWidth= ( 65* size )/ 100;
 	}
@@ -1039,6 +1041,11 @@ static int appMacPictSetPatternBrush(	DeviceContext *		dc,
     return 0;
     }
 
+# ifdef __GNUC__
+# pragma GCC diagnostic push
+# pragma GCC diagnostic ignored "-Wunused-parameter"
+# endif
+
 static int appMacPictSetPattern(	DeviceContext *		dc,
 					void *			through,
 					int			brushHandle,
@@ -1097,6 +1104,10 @@ static int appMacPictSetPattern(	DeviceContext *		dc,
 
     return 0;
     }
+
+# ifdef __GNUC__
+# pragma GCC diagnostic pop
+# endif
 
 /************************************************************************/
 
@@ -1969,12 +1980,11 @@ int appMacPictPlayPict( DeviceContext *			dc,
 
 	    case MACPICT_ShortComment:
 		{
-		int	kind= sioEndianGetBeInt16( sis );
+		/* kind= */ sioEndianGetBeInt16( sis );
 
 		PICTDEB(appDebug( "ShortComment( %d:%s )\n",
 				kind, appMacPictCommentName( kind ) ));
 
-		kind= kind;
 		}
 		continue;
 
@@ -2115,10 +2125,8 @@ int appMacPictPlayPict( DeviceContext *			dc,
 
 	    case MACPICT_Origin:
 		{
-		int	dh= sioEndianGetBeUint16( sis );
-		int	dv= sioEndianGetBeUint16( sis );
-
-		dh= dh; dv= dv;
+		/* dh= */ sioEndianGetBeUint16( sis );
+		/* dv= */ sioEndianGetBeUint16( sis );
 
 		PICTDEB(appDebug( "Origin(%d,%d)\n", dh, dv ));
 		}

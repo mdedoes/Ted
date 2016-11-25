@@ -8,9 +8,10 @@
 #   ifndef		UTIL_PROPERTIES_H
 #   define		UTIL_PROPERTIES_H
 
-#   include	"utilMemoryBuffer.h"
+struct MemoryBuffer;
 
-extern int utilPropertiesReadFile(	void *			tree,
-					const MemoryBuffer *	filename );
+extern int utilPropertiesReadFile(
+				void *				tree,
+				const struct MemoryBuffer *	filename );
 
 #   endif	/*	UTIL_PROPERTIES_H	*/

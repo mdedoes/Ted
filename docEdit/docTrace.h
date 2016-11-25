@@ -7,10 +7,10 @@
 #   ifndef	DOC_TRACE_H
 #   define	DOC_TRACE_H
 
-#   include	<docBuf.h>
-
-#   include	"docEditOperation.h"
-#   include	"docEditStep.h"
+struct PictureProperties;
+struct EditOperation;
+struct EditStep;
+struct BufferItem;
 
 /************************************************************************/
 /*									*/
@@ -18,16 +18,16 @@
 /*									*/
 /************************************************************************/
 
-extern int docReinsertNodes(	EditOperation *			eo,
+extern int docReinsertNodes(	struct EditOperation *		eo,
 				struct BufferItem *		parentTo,
 				const struct BufferItem *	parentFrom,
 				int				to,
-				const EditStep *		es );
+				const struct EditStep *		es );
 
-extern const DocumentField * docTraceGetFromField(
-						const EditStep * 	es );
+extern const struct DocumentField * docTraceGetFromField(
+				const struct EditStep * 	es );
 
-extern const PictureProperties * docTraceGetFromPictureProps(
-						const EditStep * 	es );
+extern const struct PictureProperties * docTraceGetFromPictureProps(
+				const struct EditStep * 	es );
 
 #    endif	/*  DOC_TRACE_H	*/

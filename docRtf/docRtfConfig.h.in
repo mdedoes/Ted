@@ -11,7 +11,4 @@
    byte first (like Motorola and SPARC, unlike Intel and VAX).  */
 #undef WORDS_BIGENDIAN
 
-/* Define if you have the strerror function.  */
-#undef HAVE_STRERROR
-
 #   endif	/*  DOC_RTF_CONFIG_H  */

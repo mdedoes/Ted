@@ -7,16 +7,19 @@
 #   include	"tedConfig.h"
 
 #   include	<stddef.h>
-#   include	<stdio.h>
 #   include	<ctype.h>
 
 #   include	"tedEdit.h"
 #   include	"tedSelect.h"
-#   include	"tedDocFront.h"
+#   include	<tedDocFront.h>
 #   include	<docRtfTrace.h>
 #   include	<docEditImpl.h>
 #   include	<docTreeNode.h>
 #   include	<docEditCommand.h>
+#   include	<docSelectionDescription.h>
+#   include	<docSelectionGeometry.h>
+#   include	<docBuf.h>
+#   include	<docRtfFlags.h>
 
 #   include	<appDebugon.h>
 
@@ -30,14 +33,14 @@ static int tedEditDeleteSelectedRows(
 				DocumentPosition *		dpNew,
 				int *				pSide,
 				const DocumentSelection *	dsRows,
-				BufferItem *			rowNode0,
-				BufferItem *			rowNode1,
+				struct BufferItem *		rowNode0,
+				struct BufferItem *		rowNode1,
 				TedEditOperation *		teo )
     {
     int				rval= 0;
     EditOperation *		eo= &(teo->teoEo);
 
-    BufferItem *		parentNode;
+    struct BufferItem *		parentNode;
     int				child0;
     int				child1;
 
@@ -93,7 +96,7 @@ static int tedDeleteRowsFromTableOperation(
 
     int				rval= 0;
 
-    BufferItem *		parentNode;
+    struct BufferItem *		parentNode;
 
     int				col;
     int				row;
@@ -104,8 +107,8 @@ static int tedDeleteRowsFromTableOperation(
 
     int				allChildren= 0;
 
-    BufferItem *		rowNode0;
-    BufferItem *		rowNode1;
+    struct BufferItem *		rowNode0;
+    struct BufferItem *		rowNode1;
 
     DocumentSelection		dsTraced;
 
@@ -127,7 +130,7 @@ static int tedDeleteRowsFromTableOperation(
 
     if  ( rowNode0->biNumberInParent == 0 )
 	{
-	BufferItem *	parentNode= rowNode0->biParent;
+	struct BufferItem *	parentNode= rowNode0->biParent;
 
 	if  ( rowNode1->biNumberInParent == parentNode->biChildCount -1 )
 	    { allChildren= 1;	}
@@ -149,7 +152,7 @@ static int tedDeleteRowsFromTableOperation(
 	if  ( tedDeleteSelectionImpl( teo ) )
 	    { LDEB(allChildren); goto ready;	}
 
-	docFlattenRow( eo->eoTailDp.dpNode );
+	docFlattenRow( eo->eoTailDp.dpNode, eo->eoDocument );
 	}
     else{
 	int			side;
@@ -174,7 +177,9 @@ static int tedDeleteRowsFromTableOperation(
 
 	if  ( teo->teoEditTrace )
 	    {
-	    if  ( docRtfTraceOldContentsLow( eo, &dsRows, 0 ) )
+	    const int	flags= RTFflagEMIT_CELL;
+
+	    if  ( docRtfTraceOldContentsLow( eo, &dsRows, flags ) )
 		{ LDEB(1); goto ready;	}
 	    }
 
@@ -211,7 +216,7 @@ static int tedDeleteRowsFromTableOperation(
 /*									*/
 /************************************************************************/
 
-static int tedDeleteRowsFromTable(	EditDocument *		ed,
+static int tedDeleteRowsFromTable(	struct EditDocument *	ed,
 					int			command,
 					int			row0,
 					int			row1,
@@ -224,7 +229,8 @@ static int tedDeleteRowsFromTable(	EditDocument *		ed,
 
     const int			fullWidth= 1;
 
-    tedStartEditOperation( &teo, &sg, &sd, ed, fullWidth, traced );
+    if  ( tedStartEditOperation( &teo, &sg, &sd, ed, fullWidth, traced ) )
+	{ LDEB(1); rval= -1; goto ready;	}
 
     if  ( tedDeleteRowsFromTableOperation( &teo, command, row0, row1 ) )
 	{ LDEB(1); rval= -1; goto ready;	}
@@ -242,25 +248,28 @@ static int tedDeleteRowsFromTable(	EditDocument *		ed,
 /*									*/
 /************************************************************************/
 
-int tedDocDeleteTable(	EditDocument *		ed,
+int tedDocDeleteTable(	struct EditDocument *	ed,
 			int			traced )
     {
     DocumentSelection		ds;
     SelectionGeometry		sg;
     SelectionDescription	sd;
 
-    TableRectangle		tr;
-
     if  ( tedGetSelection( &ds, &sg, &sd,
-				(DocumentTree **)0, (BufferItem **)0, ed  ) )
+		    (struct DocumentTree **)0, (struct BufferItem **)0, ed  ) )
 	{ LDEB(1); return -1;	}
 
-    if  ( docGetTableRectangle( &tr, &ds ) )
-	{ LDEB(1); return -1;	}
+    if  ( ! sd.sdInOneTable )
+	{ LDEB(sd.sdInOneTable); return -1;	}
 
     if  ( tedDeleteRowsFromTable( ed, EDITcmdDELETE_TABLE,
-					    tr.trRow00, tr.trRow11, traced ) )
-	{ LLDEB(tr.trRow00,tr.trRow11); return -1;	}
+					    sd.sdTableRectangle.trRow00,
+					    sd.sdTableRectangle.trRow11,
+					    traced ) )
+	{
+	LLDEB(sd.sdTableRectangle.trRow00,sd.sdTableRectangle.trRow11);
+	return -1;
+	}
 
     return 0;
     }
@@ -271,25 +280,28 @@ int tedDocDeleteTable(	EditDocument *		ed,
 /*									*/
 /************************************************************************/
 
-int tedDocDeleteRow(	EditDocument *		ed,
+int tedDocDeleteRows(	struct EditDocument *		ed,
 			int			traced )
     {
     DocumentSelection		ds;
     SelectionGeometry		sg;
     SelectionDescription	sd;
 
-    TableRectangle		tr;
-
     if  ( tedGetSelection( &ds, &sg, &sd,
-				(DocumentTree **)0, (BufferItem **)0, ed  ) )
+				(struct DocumentTree **)0,
+				(struct BufferItem **)0, ed  ) )
 	{ LDEB(1); return -1;	}
 
-    if  ( docGetTableRectangle( &tr, &ds ) )
-	{ LDEB(1); return -1;	}
+    if  ( ! sd.sdInOneTable )
+	{ LDEB(sd.sdInOneTable); return -1;	}
 
     if  ( tedDeleteRowsFromTable( ed, EDITcmdDELETE_ROW,
-					    tr.trRow0, tr.trRow1, traced ) )
-	{ LLDEB(tr.trRow00,tr.trRow11); return -1;	}
+				    sd.sdTableRectangle.trRow0,
+				    sd.sdTableRectangle.trRow1, traced ) )
+	{
+	LLDEB(sd.sdTableRectangle.trRow00,sd.sdTableRectangle.trRow11);
+	return -1;
+	}
 
     return 0;
     }
@@ -309,8 +321,8 @@ static int tedDeleteColumnsFromRowsOperation(
     {
     EditOperation *		eo= &(teo->teoEo);
 
-    BufferItem *		parentNode;
-    BufferItem *		rowBi;
+    struct BufferItem *		parentNode;
+    struct BufferItem *		rowNode;
 
     int				col;
     int				row;
@@ -333,16 +345,16 @@ static int tedDeleteColumnsFromRowsOperation(
     tedEditIncludeRowsInRedraw( teo, parentNode, delRow0, delRow1 );
 
     docInitDocumentPosition( &dpNew );
-    rowBi= parentNode->biChildren[delRow1];
-    if  ( delCol1 >= rowBi->biChildCount- 1			||
-	  docTailPosition( &dpNew, rowBi->biChildren[delCol1] )	||
+    rowNode= parentNode->biChildren[delRow1];
+    if  ( delCol1 >= rowNode->biChildCount- 1			||
+	  docTailPosition( &dpNew, rowNode->biChildren[delCol1] )	||
 	  docNextPosition( &dpNew )				)
 	{
 	docInitDocumentPosition( &dpNew );
 	side= -1;
-	rowBi= parentNode->biChildren[delRow0];
+	rowNode= parentNode->biChildren[delRow0];
 	if  ( delCol0 <= 0						||
-	      docHeadPosition( &dpNew, rowBi->biChildren[delCol0] )	||
+	      docHeadPosition( &dpNew, rowNode->biChildren[delCol0] )	||
 	      docPrevPosition( &dpNew )					)
 	    { docInitDocumentPosition( &dpNew ); }
 	}
@@ -380,8 +392,8 @@ static int tedDeleteColumnsFromRowsOperation(
 /*									*/
 /************************************************************************/
 
-int tedDocDeleteColumn(	EditDocument *		ed,
-			int			traced )
+int tedDocDeleteColumns(	struct EditDocument *		ed,
+				int			traced )
     {
     int				rval= 0;
 
@@ -390,22 +402,27 @@ int tedDocDeleteColumn(	EditDocument *		ed,
     SelectionGeometry		sg;
     SelectionDescription	sd;
 
-    TableRectangle		tr;
-
     const int			fullWidth= 1;
 
     tedStartEditOperation( &teo, &sg, &sd, ed, fullWidth, traced );
 
     if  ( tedGetSelection( &ds, &sg, &sd,
-			    (DocumentTree **)0, (BufferItem **)0, ed  ) )
+			    (struct DocumentTree **)0,
+			    (struct BufferItem **)0, ed  ) )
 	{ LDEB(1); rval= -1; goto ready;	}
 
-    if  ( docGetTableRectangle( &tr, &ds ) )
-	{ LDEB(1); rval= -1; goto ready;	}
+    if  ( ! sd.sdInOneTable )
+	{ LDEB(sd.sdInOneTable); return -1;	}
 
     if  ( tedDeleteColumnsFromRowsOperation( &teo,
-			    tr.trRow00, tr.trRow11, tr.trCol0, tr.trCol1 ) )
-	{ LLDEB(tr.trRow00,tr.trRow11); rval= -1; goto ready;	}
+			    sd.sdTableRectangle.trRow00,
+			    sd.sdTableRectangle.trRow11,
+			    sd.sdTableRectangle.trCol0,
+			    sd.sdTableRectangle.trCol1 ) )
+	{
+	LLDEB(sd.sdTableRectangle.trRow00,sd.sdTableRectangle.trRow11);
+	rval= -1; goto ready;
+	}
 
   ready:
 
@@ -413,77 +430,3 @@ int tedDocDeleteColumn(	EditDocument *		ed,
 
     return rval;
     }
-
-/************************************************************************/
-/*									*/
-/*  Delete a slice from a table. Either horizontal or vertical or both:	*/
-/*  the table as a whole.						*/
-/*									*/
-/*  1)  See whether the current selection is a table slice.		*/
-/*  2)  If it is a row slice (Whole rows) delete the rows. This covers	*/
-/*	deleteing the whole table as well. [ Handling it in the column	*/
-/*	branch would leave empty rows.]					*/
-/*  3)  If it is a column slice (Whole columns) delete the columns.	*/
-/*  4)  Impossible!							*/
-/*									*/
-/************************************************************************/
-
-int tedDeleteTableSliceSelection(	EditDocument *		ed,
-					int			traced )
-    {
-    int				rval= 0;
-
-    TedEditOperation		teo;
-    SelectionGeometry		sg;
-    SelectionDescription	sd;
-
-    int				ret;
-
-    const int			fullWidth= 1;
-
-    if  ( ed->edIsReadonly )
-	{ return 1;	}
-
-    tedStartEditOperation( &teo, &sg, &sd, ed, fullWidth, traced );
-
-    /*  1  */
-    if  ( ! sd.sdInOneTable || ! sd.sdTableRectangle.trIsTableSlice )
-	{ rval= 1; goto ready;	}
-
-    /*  2  */
-    if  ( sd.sdTableRectangle.trIsRowSlice )
-	{
-	ret= tedDeleteRowsFromTableOperation( &teo, EDITcmdDELETE_ROW,
-						sd.sdTableRectangle.trRow0,
-						sd.sdTableRectangle.trRow1 );
-	if  ( ret )
-	    { LDEB(ret); rval= -1; goto ready;	}
-
-	goto ready;
-	}
-
-    /*  3  */
-    if  ( sd.sdTableRectangle.trIsColSlice )
-	{
-	ret= tedDeleteColumnsFromRowsOperation( &teo,
-						sd.sdTableRectangle.trRow0,
-						sd.sdTableRectangle.trRow1,
-						sd.sdTableRectangle.trCol0,
-						sd.sdTableRectangle.trCol1 );
-	if  ( ret )
-	    { LDEB(ret); rval= -1; goto ready;	}
-
-	goto ready;
-	}
-
-    /*  4  */
-    LLDEB(sd.sdTableRectangle.trIsRowSlice,sd.sdTableRectangle.trIsColSlice);
-    rval= -1;
-
-  ready:
-
-    tedCleanEditOperation( &teo );
-
-    return rval;
-    }
-

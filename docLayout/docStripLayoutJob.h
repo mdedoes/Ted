@@ -20,6 +20,7 @@
 /************************************************************************/
 
 struct ParagraphLayoutJob;
+struct LayoutJob;
 
 typedef struct ParagraphLayoutPosition
     {
@@ -50,6 +51,7 @@ typedef struct ParagraphLayoutPosition
 
 typedef struct ParagraphLayoutJob
     {
+    const struct LayoutJob *	pljLayoutJob;
     int				pljChildUpto;
 
     LayoutPosition		cljMergedCellBelowPosion;
@@ -78,10 +80,12 @@ extern void docCleanParagraphLayoutJob( ParagraphLayoutJob *		plj );
 
 extern int docParagraphLayoutPosClaimChildren(
 					ParagraphLayoutPosition *	plj,
+					const struct LayoutJob *	lj,
 					int				count );
 
 extern void docBeginParagraphLayoutProgress(
 					ParagraphLayoutJob *	plj,
+					const struct LayoutJob *	lj,
 					int			child,
 					int			line,
 					int			part,

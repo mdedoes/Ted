@@ -13,10 +13,18 @@
 #   ifndef		DOC_HTML_WRITE_IMPL_H
 #   define		DOC_HTML_WRITE_IMPL_H
 
-#   include		"docHtmlWrite.h"
 #   include		<xmlWriter.h>
 #   include		<docBlockFrame.h>
 #   include		<docStripFrame.h>
+#   include		<docParaProperties.h>
+#   include		<textAttribute.h>
+#   include		<utilIndexMapping.h>
+
+struct InsertedObject;
+struct DocumentField;
+struct ItemShading;
+struct DocumentSelection;
+struct DocumentTree;
 
 			/**
 			 * Map sizes: Assume 96 dpi
@@ -34,26 +42,26 @@
 
 struct HtmlWritingContext;
 
-typedef SimpleOutputStream * (*HtmlOpenImageStream)(
+typedef struct SimpleOutputStream * (*HtmlOpenImageStream)(
 					struct HtmlWritingContext *	hwc,
 					int				n,
-					const InsertedObject *		io,
+					const struct InsertedObject *	io,
 					const char *			mimeT,
 					const char *			ext );
 
-typedef int (*HtmlGetImageSrc)(		MemoryBuffer *			target,
+typedef int (*HtmlGetImageSrc)(		struct MemoryBuffer *		target,
 					struct HtmlWritingContext *	hwc,
 					int				n,
-					const InsertedObject *		io,
+					const struct InsertedObject *	io,
 					const char *			ext );
 
-typedef int (*HtmlGetCssName)(		MemoryBuffer *			target,
+typedef int (*HtmlGetCssName)(		struct MemoryBuffer *		target,
 					struct HtmlWritingContext *	hwc );
 typedef struct HtmlWritingContext
     {
     XmlWriter			hwcXmlWriter;
 
-    const LayoutContext *	hwcLayoutContext;
+    const struct LayoutContext * hwcLayoutContext;
     BlockFrame			hwcBlockFrame;
     ParagraphFrame		hwcParagraphFrame;
 
@@ -61,7 +69,7 @@ typedef struct HtmlWritingContext
     HtmlGetImageSrc		hwcGetImageSrc;
     HtmlGetCssName		hwcGetCssName;
     void *			hwcPrivate;
-    BufferDocument *		hwcDocument;
+    struct BufferDocument *	hwcDocument;
 
     IndexMapping		hwcDeferredNotes;
 
@@ -105,11 +113,11 @@ extern void docHtmlPutString(		const char *		s,
 extern void docHtmlNewLine(		HtmlWritingContext *	hwc );
 
 extern int docHtmlSaveImgElement(
-				int *			pDone,
-				HtmlWritingContext *	hwc,
-				int			n,
-				const struct BufferItem *	paraBi,
-				InsertedObject *	io );
+				int *				pDone,
+				HtmlWritingContext *		hwc,
+				int				n,
+				const struct BufferItem *	paraNode,
+				struct InsertedObject *		io );
 
 extern int docHtmlSaveImages(	HtmlWritingContext *		hwc );
 
@@ -129,28 +137,28 @@ extern void docHtmlEscapeCharacters(	HtmlWritingContext *	hwc,
 					const char *		ss,
 					int			len );
 
-extern int docHtmlStartField(	const DocumentField *		df,
+extern int docHtmlStartField(	const struct DocumentField *	df,
 				HtmlWritingContext *		hwc,
-				const struct BufferItem *	bi,
+				const struct BufferItem *	node,
 				int				attNr );
 
-extern int docHtmlFinishField(	const DocumentField *		df,
+extern int docHtmlFinishField(	const struct DocumentField *	df,
 				HtmlWritingContext *		hwc );
 
 extern int docHtmlSaveParaNode( HtmlWritingContext *		hwc,
-				const struct BufferItem *	paraBi,
+				struct BufferItem *		paraNode,
 				const struct BufferItem *	bodySectNode,
-				const DocumentSelection *	ds );
+				const struct DocumentSelection *	ds );
 
 extern int docHtmlSaveDocumentStyles(	HtmlWritingContext *	hwc,
-					SimpleOutputStream *	sos );
+					struct SimpleOutputStream *	sos );
 
 extern int docHtmlSaveSelection(	HtmlWritingContext *		hwc,
-					DocumentTree *			dt,
-					const DocumentSelection *	ds );
+					struct DocumentTree *		dt,
+					const struct DocumentSelection *	ds );
 
 extern void docHtmlEmitBackgroundProperty(
-					const ItemShading *	is,
+					const struct ItemShading *	is,
 					HtmlWritingContext *	hwc );
 
 extern int docHtmlStartDocument(	HtmlWritingContext *	hwc );
@@ -158,24 +166,24 @@ extern int docHtmlFinishDocument(	HtmlWritingContext *	hwc );
 
 extern int docHtmlSaveNotes(		HtmlWritingContext *	hwc );
 
-extern int docHtmlObjectSaveHow(int *			pType,
-				const char **		pMimeType,
-				const char **		pExt,
-				const MemoryBuffer **	pObjectData,
-				const InsertedObject *	io );
+extern int docHtmlObjectSaveHow(int *				pType,
+				const char **			pMimeType,
+				const char **			pExt,
+				const struct MemoryBuffer **	pObjectData,
+				const struct InsertedObject *	io );
 
 extern int docHtmlSaveDeferredNotes(	HtmlWritingContext *		hwc );
 
-extern int docHtmlStartNote(	const DocumentField *		df,
+extern int docHtmlStartNote(	const struct DocumentField *	df,
 				HtmlWritingContext *		hwc,
-				const struct BufferItem *	bi,
+				const struct BufferItem *	node,
 				int				attNr );
 
 extern int docHtmlStartAnchor(	HtmlWritingContext *		hwc,
 				int				isNote,
-				const MemoryBuffer *		fileName,
-				const MemoryBuffer *		markName,
-				const MemoryBuffer *		refName,
+				const struct MemoryBuffer *	fileName,
+				const struct MemoryBuffer *	markName,
+				const struct MemoryBuffer *	refName,
 				const char *			title,
 				int				titleSize );
 

@@ -10,7 +10,11 @@
 #   include	"docNotes.h"
 #   include	"docRecalculateFields.h"
 #   include	<docTreeType.h>
-#   include	<docDocumentNote.h>
+#   include	<docDocumentField.h>
+#   include	"docDocumentNote.h"
+#   include	<docFieldKind.h>
+#   include	<docNotesProperties.h>
+#   include	<docDocumentProperties.h>
 
 #   include	<appDebugon.h>
 
@@ -38,8 +42,8 @@ static void docRenumberNote(	DocumentNote *		dn,
     {
     const NotesProperties *	np;
 
-    if  ( NOTE_IS_DELETED( dn ) )
-	{ LDEB(df->dfFieldNumber); return;	}
+    if  ( ! dn )
+	{ LXDEB(df->dfFieldNumber,dn); return;	}
 
     if  ( ! dn->dnNoteProperties.npAutoNumber )
 	{
@@ -105,9 +109,9 @@ static void docRenumberNote(	DocumentNote *		dn,
 /************************************************************************/
 
 void docRenumberNotes(		int *			pChanged,
-				BufferDocument *	bd )
+				struct BufferDocument *	bd )
     {
-    const DocumentProperties *	dp= &(bd->bdProperties);
+    const DocumentProperties *	dp= bd->bdProperties;
     RenumberNotes		rn;
 
     DocumentField *		df;

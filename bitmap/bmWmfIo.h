@@ -1,18 +1,19 @@
 #   include	"bmWmf.h"
-#   include	<sioGeneral.h>
+
+struct SimpleInputStream;
 
 extern int bmMetaReadWmfHeader(		WmfHeader *		wh,
-					SimpleInputStream *	sis );
+					struct SimpleInputStream *	sis );
 
 extern int bmWmfReadRectangle(		DocumentRectangle *		dr,
-					SimpleInputStream *		sis );
+					struct SimpleInputStream *		sis );
 
 extern int bmWmfReadHWYXRectangle(	DocumentRectangle *		dr,
-					SimpleInputStream *		sis );
+					struct SimpleInputStream *		sis );
 
 extern int bmMetaReadWmfFileHeader(	unsigned long *		pKey,
 					WmfFileHeader *		wfh,
-					SimpleInputStream *	sis );
+					struct SimpleInputStream *	sis );
 
-extern int bmWmfGetColor(		SimpleInputStream *	sis,
+extern int bmWmfGetColor(		struct SimpleInputStream *	sis,
 					RGB8Color *		rgb8 );

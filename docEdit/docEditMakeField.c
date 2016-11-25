@@ -6,51 +6,26 @@
 
 #   include	"docEditConfig.h"
 
-#   include	<stdio.h>
-
-#   include	<appDebugon.h>
-
 #   include	<docBuf.h>
 #   include	<docTreeNode.h>
 #   include	<docTextParticule.h>
 #   include	<docTreeScanner.h>
+#   include	<docScanner.h>
 #   include	<docParaParticules.h>
 #   include	"docEdit.h"
+#   include	"docEditOperation.h"
+#   include	<docFields.h>
 
-int docEditSurroundTextSelectionByField(
-				EditOperation *			eo,
-				DocumentField **		pDf,
-				DocumentSelection *		dsInside,
-				DocumentSelection *		dsAround,
-				int *				pHeadPart,
-				int *				pTailPart,
-				const PropertyMask *		taSetMask,
-				const TextAttribute *		taSet,
-				int				fieldKind,
-				const FieldInstructions *	fi )
-    {
-    BufferDocument *	bd= eo->eoDocument;
-    DocumentTree *	dt= eo->eoTree;
-    DocumentField *	df;
-
-    DocumentSelection	ds;
-
-    docEditOperationGetSelection( &ds, eo );
-
-    if  ( docSurroundTextSelectionByField( bd, dt, &ds, &df,
-				dsInside, dsAround, pHeadPart, pTailPart,
-				taSetMask, taSet, fieldKind, fi ) )
-	{ LDEB(fieldKind); return -1;	}
-
-    docSetEditPosition( &(eo->eoSelectedRange.erTail), &(dsAround->dsTail) );
-    docSetEditPosition( &(eo->eoAffectedRange.erTail), &(dsAround->dsTail) );
-
-    *pDf= df; return 0;
-    }
+#   include	<appDebugon.h>
 
 /************************************************************************/
 
-static int docEditForgetFields(	BufferItem *			node,
+# ifdef __GNUC__
+# pragma GCC diagnostic push
+# pragma GCC diagnostic ignored "-Wunused-parameter"
+# endif
+
+static int docEditForgetFields(	struct BufferItem *		node,
 				const DocumentSelection *	ds,
 				const struct BufferItem *	bodySectNode,
 				void *				voideo )
@@ -79,51 +54,58 @@ static int docEditForgetFields(	BufferItem *			node,
 	tp= node->biParaParticules+ partFrom;
 	for ( part= partFrom; part < partUpto; tp++, part++ )
 	    {
-	    if  ( tp->tpKind == DOCkindFIELDHEAD	||
-		  tp->tpKind == DOCkindFIELDTAIL	)
+	    if  ( tp->tpKind == TPkindFIELDHEAD	||
+		  tp->tpKind == TPkindFIELDTAIL	)
 		{
 		tp->tpObjectNumber= -1;
 		}
 	    }
 	}
 
-    return ADVICEtsOK;
+    return SCANadviceOK;
     }
 
-int docDeleteFieldsInRange(	EditOperation *		eo,
-				DocumentSelection *	dsBalanced )
+# ifdef __GNUC__
+# pragma GCC diagnostic pop
+# endif
+
+static int docDeleteFieldsInRange(	EditOperation *		eo,
+					DocumentSelection *	dsBalanced )
     {
     int			updateFlags= 0;
     int			flags= 0;
 
     EditRange		erBalanced;
 
-    DocumentField *	dfLeft;
-    DocumentField *	dfRight;
+    if  ( ! eo->eoIsFieldBalanced )
+	{
+	struct DocumentField *	dfLeft;
+	struct DocumentField *	dfRight;
 
-    int			headMoved= 0;
-    int			tailMoved= 0;
+	int			headMoved= 0;
+	int			tailMoved= 0;
 
-    int * const		pHeadPart= (int *)0;
-    int * const		pTailPart= (int *)0;
+	int * const		pHeadPart= (int *)0;
+	int * const		pTailPart= (int *)0;
 
-    if  ( docBalanceFieldSelection( &dfLeft, &dfRight,
+	if  ( docBalanceFieldSelection( &dfLeft, &dfRight,
 			    &headMoved, &tailMoved, pHeadPart, pTailPart,
 			    &(dsBalanced->dsHead), &(dsBalanced->dsTail),
 			    eo->eoTree, eo->eoDocument ) )
-	{ LDEB(1); return -1;	}
+	    { LDEB(1); return -1;	}
+	}
 
     docSetEditRange( &erBalanced, dsBalanced );
 
     if  ( docDeleteFieldRange( &updateFlags, eo->eoDocument,
-				    &erBalanced, &(eo->eoTree->dtRootFields),
-				    dfLeft, dfRight ) )
+				&erBalanced, &(eo->eoTree->dtRootFields) ) )
 	{ LDEB(1);	}
 
     eo->eoFieldUpdate |= updateFlags;
 
     docScanSelection( eo->eoDocument, dsBalanced,
 				    docEditForgetFields, (NodeVisitor)0,
+				    (TreeVisitor)0, (TreeVisitor)0, 
 				    flags, (void *)eo );
 
     return 0;
@@ -152,5 +134,24 @@ int docEditDeleteFieldsForBlockDelete(	EditOperation *			eo,
 	{ LDEB(1); return -1;	}
 
     return rval;
+    }
+
+/************************************************************************/
+/*									*/
+/*  Delete all fields that are embedded in the content that we will	*/
+/*  replace in this edit operation.					*/
+/*									*/
+/************************************************************************/
+
+int docEditDeleteReplacedFields(	EditOperation *		eo )
+    {
+    DocumentSelection	ds;
+
+    docSetRangeSelection( &ds, &(eo->eoHeadDp), &(eo->eoTailDp), 1 );
+
+    if  ( docDeleteFieldsInRange( eo, &ds ) )
+	{ LDEB(1); return -1;	}
+
+    return 0;
     }
 

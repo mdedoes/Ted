@@ -7,7 +7,12 @@
 #   ifndef		DOC_LAYOUT_OBJECT_H
 #   define		DOC_LAYOUT_OBJECT_H
 
-#   include		<docBuf.h>
+#   include		<geoRectangle.h>
+
+struct InsertedObject;
+struct BufferDocument;
+struct BufferItem;
+struct PictureProperties;
 
 /************************************************************************/
 /*									*/
@@ -15,27 +20,27 @@
 /*									*/
 /************************************************************************/
 
-extern int docGetBitmapForObject(	InsertedObject *	io );
-
 extern int docCheckObjectLayout(	int *			pFixed,
-					InsertedObject *	io );
-
-extern int docGetBitmapForObjectData(
-				int				kind,
-				RasterImage *			ri,
-				const MemoryBuffer *		mb );
+					struct InsertedObject *	io );
 
 extern void docLayoutScaleObjectToFitParagraphFrame(
 				int *				pChanged,
-				InsertedObject *		io,
+				struct InsertedObject *		io,
 				int				pageHigh,
 				const DocumentRectangle *	drParaFrame );
 
 extern void docScaleObjectToParagraph(
-				BufferDocument *		bd,
-				struct BufferItem *		paraBi,
+				struct BufferDocument *		bd,
+				struct BufferItem *		paraNode,
 				double				xfac,
-				InsertedObject *		io );
+				struct InsertedObject *		io );
+
+extern void docObjectGetPageRect( struct DocumentRectangle *	drDest,
+				const struct InsertedObject *	io,
+				int				x0Twips,
+				int				baselineTwips );
+
+extern void docObjectGetSourceRect(	struct DocumentRectangle *	drSrc,
+					const struct PictureProperties * pip );
 
 #   endif	/*	DOC_LAYOUT_OBJECT_H	*/
-

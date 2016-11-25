@@ -10,19 +10,31 @@
 #   include	<ctype.h>
 #   include	<string.h>
 
-#   include	<appDebugon.h>
-
 #   include	<sioFd.h>
 #   include	<utilMD5.h>
 
 #   include	"docRtfTrace.h"
 #   include	"docEditCommand.h"
+#   include	"docEditOperation.h"
+#   include	"docEditTrace.h"
 
 #   include	<docRtfTraceImpl.h>
 #   include	<docRtfWriterImpl.h>
 #   include	<docRtfFlags.h>
 #   include	<docRtfTags.h>
 #   include	<docTreeType.h>
+#   include	<docDocumentField.h>
+#   include	<docSelect.h>
+#   include	<docNoteProperties.h>
+#   include	<docDocumentProperties.h>
+#   include	<utilPropMask.h>
+#   include	<sioGeneral.h>
+#   include	<docTreeNode.h>
+#   include	<docCellProperties.h>
+#   include	<docFields.h>
+#   include	<docBuf.h>
+
+#   include	<appDebugon.h>
 
 /************************************************************************/
 /*									*/
@@ -39,28 +51,37 @@ static int docRtfTraceContents(	RtfWriter *			rw,
     int			saveContents= 0;
 
     if  ( ! docIsIBarSelection( ds )			||
-	  ( rw->rwSaveFlags & RTFflagSAVE_SOMETHING )	)
+	  ( rw->rwSaveFlags & RTFflagSAVE_SOMETHING )	||
+	  ( rw->rwSaveFlags & RTFflagSAVE_DOC_PROPS )	)
 	{ saveContents= 1;	}
 
     if  ( saveContents )
 	{
+	struct BufferDocument *		bd= rw->rwDocument;
+	const DocumentProperties *	dp= bd->bdProperties;
+
 	docRtfWriteNextLine( rw );
 	docRtfWriteDestinationBegin( rw, tag );
 
-#	if 0
-	Why?
-	{
-	PropertyMask	dpSaveMask;
+	if  ( rw->rwSaveFlags & RTFflagSAVE_DOC_PROPS )
+	    {
+	    PropertyMask	dpSaveMask;
+	    int			fet;
 
-	if  ( docRtfDocPropMask( &dpSaveMask,
-					&(rw->rwDocument->bdProperties) ) )
-	    { LDEB(1); rval= -1; goto ready;	}
+	    if  ( docRtfDocPropMask( &dpSaveMask, dp ) )
+		{ LDEB(1); rval= -1; goto ready;	}
 
-	if  ( docRtfSaveDocumentProperties( rw, &dpSaveMask,
-					&(rw->rwDocument->bdProperties) ) )
-	    { LDEB(1); rval= -1; goto ready;	}
-	}
-#	endif
+	    if  ( bd->bdStyleSheet.dssStyleCount > 0 )
+		{ PROPmaskADD( &dpSaveMask, DPpropSTYLESHEET );	}
+
+	    if  ( docRtfWriteBuildFontAdmin( rw ) )
+		{ LDEB(1); rval= -1; goto ready;	}
+
+	    fet= docRtfWriteGetFet( &dpSaveMask, bd );
+
+	    if  ( docRtfSaveDocumentProperties( rw, fet, &dpSaveMask, dp ) )
+		{ LDEB(1); rval= -1; goto ready;	}
+	    }
 
 	if  ( ds )
 	    {
@@ -69,8 +90,6 @@ static int docRtfTraceContents(	RtfWriter *			rw,
 	    }
 
 	docRtfWriteSwitchToPlain( rw );
-	docCleanParagraphProperties( &(rw->rwcParagraphProperties) );
-	docInitParagraphProperties( &(rw->rwcParagraphProperties) );
 
 	if  ( docRtfWriteSelection( rw, ds ) )
 	    { LDEB(1); rval= -1; goto ready;	}
@@ -104,7 +123,7 @@ int docRtfTraceNewProperties(	EditOperation *			eo,
 				const RowProperties *		rpSet,
 
 				const PropertyMask *		spSetMask,
-				const SectionProperties *	spSet,
+				const struct SectionProperties * spSet,
 
 				const PropertyMask *		dpSetMask,
 				const DocumentProperties *	dpSet )
@@ -139,9 +158,9 @@ int docRtfTraceNewProperties(	EditOperation *			eo,
 	}
     if  ( cpSetMask )
 	{
-	const int	shiftLeft= 0;
+	const int	leftOffset= 0;
 
-	docRtfSaveCellProperties( rw, cpSetMask, cpSet, shiftLeft );
+	docRtfSaveCellProperties( rw, cpSetMask, cpSet, leftOffset );
 	}
 
     docRtfWriteTag( rw, RTFtag_pard );
@@ -171,7 +190,7 @@ static int docRtfTraceImageProperties(
 				EditOperation *			eo,
 				const char *			tag,
 				const PropertyMask *		pipSetMask,
-				const PictureProperties *	pipSet )
+				const struct PictureProperties * pipSet )
     {
     RtfWriter *	rw= eo->eoTraceWriter;
 
@@ -190,24 +209,22 @@ static int docRtfTraceImageProperties(
 int docRtfTraceOldImageProperties(
 				EditOperation *			eo,
 				const PropertyMask *		pipSetMask,
-				const PictureProperties *	pipSet )
+				const struct PictureProperties * pipSet )
     {
-    return docRtfTraceImageProperties( eo, RTFtag_OTX,
-							pipSetMask, pipSet );
+    return docRtfTraceImageProperties( eo, RTFtag_OTX, pipSetMask, pipSet );
     }
 
 int docRtfTraceNewImageProperties(
 				EditOperation *			eo,
 				const PropertyMask *		pipSetMask,
-				const PictureProperties *	pipSet )
+				const struct PictureProperties * pipSet )
     {
-    return docRtfTraceImageProperties( eo, RTFtag_NTX,
-							pipSetMask, pipSet );
+    return docRtfTraceImageProperties( eo, RTFtag_NTX, pipSetMask, pipSet );
     }
 
-static int docRtfTraceList(	EditOperation *		eo,
-				const char *		tag,
-				const DocumentList *	dl )
+static int docRtfTraceList(	EditOperation *			eo,
+				const char *			tag,
+				const struct DocumentList *	dl )
     {
     RtfWriter *	rw= eo->eoTraceWriter;
 
@@ -222,13 +239,13 @@ static int docRtfTraceList(	EditOperation *		eo,
     }
 
 int docRtfTraceOldList(		EditOperation *			eo,
-				const DocumentList *		dl )
+				const struct DocumentList *	dl )
     {
     return docRtfTraceList( eo, RTFtag_OTX, dl );
     }
 
 int docRtfTraceNewList(		EditOperation *			eo,
-				const DocumentList *		dl )
+				const struct DocumentList *	dl )
     {
     return docRtfTraceList( eo, RTFtag_NTX, dl );
     }
@@ -369,6 +386,12 @@ int docRtfTraceOldContents(	DocumentSelection *		ds,
 	    docSelectWholeSection( ds, direction );
 	    return docRtfTraceOldContentsLow( eo, ds, flags );
 	    break;
+
+	case DOClevBODY:
+	    docSelectWholeBody( ds, eo->eoDocument );
+	    return docRtfTraceOldContentsLow( eo, ds, flags );
+	    break;
+
 	default:
 	    LDEB(level); return -1;
 	}
@@ -398,8 +421,10 @@ int docRtfTraceOldProperties(	DocumentSelection *		ds,
 	{ rpSetMask= (const PropertyMask *)0;	}
     if  ( spSetMask && utilPropMaskIsEmpty( spSetMask ) )
 	{ spSetMask= (const PropertyMask *)0;	}
+    /* Unused
     if  ( dpSetMask && utilPropMaskIsEmpty( dpSetMask ) )
 	{ dpSetMask= (const PropertyMask *)0;	}
+    */
 
     if  ( taSetMask )
 	{ flags |= RTFflagSAVE_SOMETHING;	}
@@ -434,25 +459,25 @@ int docRtfTraceOldProperties(	DocumentSelection *		ds,
     }
 
 int docRtfTraceHeaderFooter(	EditOperation *			eo,
-				const DocumentTree *		dt )
+				struct DocumentTree *		tree )
     {
     RtfWriter *	rw= eo->eoTraceWriter;
 
     docRtfWriteNextLine( rw );
     docRtfWriteDestinationBegin( rw, RTFtag_OTX );
 
-    if  ( dt->dtPageSelectedUpon >= 0 )
+    if  ( tree->dtPageSelectedUpon >= 0 )
 	{
 	docRtfWriteArgTag( eo->eoTraceWriter, RTFtag_OPG,
-						    dt->dtPageSelectedUpon );
-	if  ( dt->dtColumnSelectedIn >= 0 )
+						    tree->dtPageSelectedUpon );
+	if  ( tree->dtColumnSelectedIn >= 0 )
 	    {
 	    docRtfWriteArgTag( eo->eoTraceWriter, RTFtag_OCO,
-						    dt->dtColumnSelectedIn );
+						    tree->dtColumnSelectedIn );
 	    }
 	}
 
-    if  ( docRtfSaveHeaderFooter( rw, dt ) )
+    if  ( docRtfSaveHeaderFooter( rw, tree ) )
 	{ LDEB(1); return -1;	}
 
     docRtfWriteTag( rw, RTFtag_pard );
@@ -678,9 +703,7 @@ int docTraceStartReplace(	DocumentSelection *		dsTraced,
 
 int docTraceExtendReplace(	EditOperation *			eo,
 				EditTrace *			et,
-				int				command,
-				int				level,
-				unsigned int			flags )
+				int				command )
     {
     int			rval= 0;
     const TraceStep *	ts;
@@ -723,7 +746,7 @@ int docTraceExtendReplace(	EditOperation *			eo,
 /************************************************************************/
 
 static int docRtfTraceFieldImpl(	EditOperation *			eo,
-					const DocumentField *		df,
+					const struct DocumentField *	df,
 					const char *			tag )
     {
     RtfWriter *	rw= 	eo->eoTraceWriter;
@@ -762,7 +785,7 @@ int docRtfTraceFieldKind(	EditOperation *			eo,
     }
 
 int docRtfTraceOldField(	EditOperation *			eo,
-				const DocumentField *		df )
+				const struct DocumentField *	df )
 
     {
     docRtfTraceFieldKind( eo, df->dfKind );
@@ -771,7 +794,7 @@ int docRtfTraceOldField(	EditOperation *			eo,
     }
 
 int docRtfTraceNewField(	EditOperation *			eo,
-				const DocumentField *		df )
+				const struct DocumentField *	df )
     { return docRtfTraceFieldImpl( eo, df, RTFtag_NTX );	}
 
 /************************************************************************/
@@ -819,7 +842,8 @@ int docRtfTraceVersion(		int			command,
 				const MemoryBuffer *	filename,
 				const char *		digest64,
 				const struct tm *	revtim,
-				EditTrace *		et )
+				EditTrace *		et,
+				struct BufferDocument *	bd )
     {
     int			rval= 0;
 
@@ -830,6 +854,8 @@ int docRtfTraceVersion(		int			command,
     const int		addSemicolon= 0;
 
     docInitEditOperation( &eo );
+
+    eo.eoDocument= bd;
 
     if  ( docTraceStartStepLow( &eo, et, command, fieldKind ) )
 	{ LDEB(command); rval= -1; goto ready;	}
@@ -856,6 +882,18 @@ int docRtfTraceVersion(		int			command,
 	}
 
     docRtfWriteDestinationEnd( rw );
+
+    if  ( bd )
+	{
+	if  ( command != EDITcmd_NEW )
+	    { LDEB(command); rval= -1; goto ready;	}
+
+	rw->rwSaveFlags |= RTFflagSAVE_DOC_PROPS;
+
+	if  ( docRtfTraceContents( rw, RTFtag_NTX,
+					    (const DocumentSelection *)0 ) )
+	    { LDEB(1); rval= -1; goto ready;	}
+	}
 
     if  ( docRtfTraceCloseTrace( &eo, et ) )
 	{ LDEB(command); rval= -1; goto ready;	}

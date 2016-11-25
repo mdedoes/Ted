@@ -8,20 +8,19 @@
 #   define		DRAW_WIN_META_IMPL_H
 
 #   include	<bitmap.h>
-#   include	<utilDocFont.h>
-#   include	<sioGeneral.h>
 
 #   include	<bmWmf.h>
 #   include	<utilMemoryBuffer.h>
-#   include	<textConverterImpl.h>
 #   include	<geo2DInteger.h>
 #   include	<geoAffineTransform.h>
-#   include	<utilDocFontList.h>
-#   include	<utilMatchFont.h>
-#   include	<psPostScriptFontList.h>
+#   include	<fontDocFontList.h>
+#   include	<textAttribute.h>
 #   include	"drawMetafile.h"
 
 struct DrawingSurface;
+struct SimpleInputStream;
+struct AfmFontInfo;
+struct TextConverter;
 
 typedef struct LogicalBrush
     {
@@ -72,6 +71,9 @@ typedef struct LogicalFont
     unsigned char	lfPitchAndFamily;
 #   define		LF_CHARS	32
 #   define		LF_BYTES	(3*LF_CHARS)
+			/**
+			 *  Space for the name. Allocate 3 bytes/character
+			 */
     char		lfFaceNameUtf8[LF_BYTES+1];
 
     /************************************/
@@ -119,7 +121,7 @@ struct DeviceContext;
 
 typedef int (*MetaGetPoints)(		struct DeviceContext *	dc,
 					int			count,
-					SimpleInputStream *	sis );
+					struct SimpleInputStream *	sis );
 
 /************************************************************************/
 
@@ -188,7 +190,7 @@ typedef int (*MetaDrawString)(		struct DeviceContext *	dc,
 					void *			through,
 					int			x,
 					int			y,
-					const MemoryBuffer *	text );
+					const struct MemoryBuffer *	text );
 
 typedef int (*MetaPatBlt)(	struct DeviceContext *		dc,
 				void *				through,
@@ -275,7 +277,7 @@ typedef struct DeviceContext
     int					dcFillPattern;
 
     DocumentFontList			dcFontList;
-    TextConverter			dcTextConverter;
+    struct TextConverter *		dcTextConverter;
     MemoryBuffer			dcCollectedText;
 
     LogicalPen				dcPen;
@@ -312,7 +314,7 @@ typedef struct DeviceContext
     int					dcPointCount;
     int *				dcCounts;
 
-    const AfmFontInfo *			dcAfi;
+    const struct AfmFontInfo *		dcAfi;
     int					dcFontEncoding;
 
     int					dcMacPictVersion;
@@ -409,7 +411,7 @@ extern int appWinMetaRememberFontInList(DeviceContext *		dc,
 
 extern int appMetaReadBitmapImage(	int *			pSkip,
 					RasterImage **	pAbi,
-					SimpleInputStream *	sis,
+					struct SimpleInputStream *	sis,
 					int			expectBytes );
 
 extern int appMetaSetTextAlign(	DeviceContext *		dc,
@@ -420,18 +422,18 @@ extern int appMetaRestoreDC(		DeviceContext *		dc );
 
 extern int appMetaExcludeClipRect(	DeviceContext *		dc,
 					int			recordSize,
-					SimpleInputStream *	sis );
+					struct SimpleInputStream *	sis );
 
 extern int appMetaIntersectClipRect(	DeviceContext *		dc,
 					int			recordSize,
-					SimpleInputStream *	sis );
+					struct SimpleInputStream *	sis );
 
 extern int appWinMetaGetPoints16(	DeviceContext *		dc,
 					int			count,
-					SimpleInputStream *	sis );
+					struct SimpleInputStream *	sis );
 extern int appWinMetaGetPoints32(	DeviceContext *		dc,
 					int			count,
-					SimpleInputStream *	sis );
+					struct SimpleInputStream *	sis );
 
 extern int appMetaPlayWmf(		DeviceContext *		dc,
 					void *			through );
@@ -440,7 +442,7 @@ extern int appMetaPlayEmf(		DeviceContext *		dc,
 					void *			through );
 
 extern int appMetaDrawRasterImage(
-				SimpleInputStream *		sis,
+				struct SimpleInputStream *		sis,
 				void *				through,
 				int				expectBytes,
 				DeviceContext *			dc,
@@ -477,12 +479,12 @@ extern int appWinMetaOutputSize(	DeviceContext *		dc,
 
 extern int appWinMetaReadUtf16Text(	DeviceContext *		dc,
 					int			expectChars,
-					SimpleInputStream *	sis );
+					struct SimpleInputStream *	sis );
 
 extern int appWinMetaReadLegacyText(	DeviceContext *		dc,
 					int			count,
 					int			expectBytes,
-					SimpleInputStream *	sis );
+					struct SimpleInputStream *	sis );
 
 extern int appMacPictPlayPict(		DeviceContext *		dc,
 					void *			through );

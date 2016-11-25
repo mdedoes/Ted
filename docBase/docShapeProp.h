@@ -2,6 +2,9 @@
 /*									*/
 /*  Properties of shapes.						*/
 /*									*/
+/*  Properties that do not hold a numeric value come before the numeric	*/
+/*  ones.								*/
+/*									*/
 /************************************************************************/
 
 #   ifndef	DOC_SHAPE_PROP_H
@@ -9,18 +12,45 @@
 
 typedef enum DrawingShapeProperty
     {
-			    /****************************/
-			    /*  Strings			*/
-			    /****************************/
+	    /**
+	     *  String
+	     */
     DSHPprop_wzName,
     DSHPprop_wzDescription,
     DSHPprop_gtextUNICODE,
     DSHPprop_gtextFont,
     DSHPprop_pibName,
-			    /****************************/
-			    /*  Picture			*/
-			    /****************************/
+
+	    /**
+	     *  Picture
+	     */
     DSHPprop_pib,
+
+	    /**
+	     *  Geometry: Paths
+	     */
+    DSHPprop_pVerticies,
+    DSHPprop_pWrapPolygonVertices,
+    DSHPprop_pSegmentInfo,
+    DSHPprop_pFragments,
+    DSHPprop_pGuides,
+    DSHPprop_pInscribe,
+    DSHPprop_pAdjustHandles,
+
+	    /**
+	     *  Image to fill the shape
+	     */
+    DSHPprop_fillBlip,
+    DSHPprop_fillBlipName,
+    DSHPprop_lineFillBlipName,
+
+	    /**
+	     *  Custom or preset color ramps for graduated fills on shapes.
+	     *  [Array)
+	     */
+    DSHPprop_fillShadeColors,
+
+# define DSHPprop__FIRST_NUMERIC (DSHPprop_fillShadeColors+1)
 
 			    /********************************************/
 			    /*   Number/Flag: Position.			*/
@@ -75,15 +105,28 @@ typedef enum DrawingShapeProperty
     DSHPprop_fPreferRelativeSize,
     DSHPprop_fPrint,
 
-    /* ? */
+			    /**
+			     *  The shape is pseudo-inline, meaning it behaves 
+			     *  like an inline image as far as positioning 
+			     *  goes, but has the features of shapes.
+			     */
     DSHPprop_fPseudoInline,
 
-				/****************************************/
-				/*  Text box.				*/
-				/****************************************/
+			    /**
+			     *  Text box left padding
+			     */
     DSHPprop_dxTextLeft,
+			    /**
+			     *  Text box top padding
+			     */
     DSHPprop_dyTextTop,
+			    /**
+			     *  Text box right padding
+			     */
     DSHPprop_dxTextRight,
+			    /**
+			     *  Text box bottom padding
+			     */
     DSHPprop_dyTextBottom,
 
     DSHPprop_scaleText,
@@ -97,6 +140,10 @@ typedef enum DrawingShapeProperty
     DSHPprop_fAutoTextMargin,
     DSHPprop_fRotateText,
     DSHPprop_fSelectText,
+			    /**
+			     *  Text box: Resize the shape to fit around 
+			     *  its text.
+			     */
     DSHPprop_fFitShapeToText,
     DSHPprop_fFitTextToShape,
 
@@ -133,14 +180,6 @@ typedef enum DrawingShapeProperty
     DSHPprop_adjust8Value,
     DSHPprop_adjust9Value,
     DSHPprop_adjust10Value,
-
-    DSHPprop_pVerticies,
-    DSHPprop_pWrapPolygonVertices,
-    DSHPprop_pSegmentInfo,
-    DSHPprop_pFragments,
-    DSHPprop_pGuides,
-    DSHPprop_pInscribe,
-    DSHPprop_pAdjustHandles,
 			    /********************************************/
 			    /*  Number/Flag: Grouped			*/
 			    /********************************************/
@@ -205,10 +244,6 @@ typedef enum DrawingShapeProperty
     DSHPprop_fillBackColor,
     DSHPprop_fillCrMod,
 
-    DSHPprop_fillBlip,
-    DSHPprop_fillBlipName,
-    DSHPprop_fillShadeColors,
-
 			    /********************************************/
 			    /*  Number/Flag: Line.			*/
 			    /********************************************/
@@ -222,6 +257,7 @@ typedef enum DrawingShapeProperty
 
     DSHPprop_lineStyle,
     DSHPprop_lineDashing,
+    DSHPprop_lineDashStyle,
     DSHPprop_lineStartArrowhead,
     DSHPprop_lineEndArrowhead,
     DSHPprop_lineStartArrowWidth,
@@ -264,14 +300,10 @@ typedef enum DrawingShapeProperty
     DSHPprop_fRightInsetPen,
     DSHPprop_fBottomInsetPen,
 
-    DSHPprop_lineFillBlipName,
-    DSHPprop_lineDashStyle,
-
     DSHPprop_lineColor,
     DSHPprop_lineBackColor,
     DSHPprop_lineCrMod,
 
-    /*  ? */
     DSHPprop_lineOpacity,
     DSHPprop_lineblipflags,
 
@@ -294,7 +326,16 @@ typedef enum DrawingShapeProperty
     DSHPprop_shadowOriginX,
     DSHPprop_shadowOriginY,
 
+    DSHPprop_shadowColorExt,
+    DSHPprop_shadowColorExtCMY,
+    DSHPprop_shadowColorExtK,
+    DSHPprop_shadowColorExtMod,
+    DSHPprop_shadowHighlightExt,
+    DSHPprop_shadowHighlightExtCMY,
+    DSHPprop_shadowHighlightExtK,
+    DSHPprop_shadowHighlightExtMod,
     DSHPprop_fShadow,
+
     DSHPprop_fshadowObscured,
     DSHPprop_fShadowOK,
 
@@ -327,6 +368,7 @@ typedef enum DrawingShapeProperty
     DSHPprop_gtextFShadow,
     DSHPprop_gtextFSmallcaps,
     DSHPprop_gtextFStrikethrough,
+
     DSHPprop_pibFlags,
     DSHPprop_pictureGray,
     DSHPprop_pictureBiLevel,
@@ -566,14 +608,6 @@ typedef enum DrawingShapeProperty
     DSHPprop_lineTopStyle,
     DSHPprop_lineTopType,
     DSHPprop_lineTopWidth,
-    DSHPprop_shadowColorExt,
-    DSHPprop_shadowColorExtCMY,
-    DSHPprop_shadowColorExtK,
-    DSHPprop_shadowColorExtMod,
-    DSHPprop_shadowHighlightExt,
-    DSHPprop_shadowHighlightExtCMY,
-    DSHPprop_shadowHighlightExtK,
-    DSHPprop_shadowHighlightExtMod,
 			    /****************************/
 			    /*  Color			*/
 			    /****************************/
@@ -591,7 +625,7 @@ typedef enum DrawingShapeProperty
     DSHPprop_sizerelv,
     DSHPprop_pctHoriz,
 
-    DSHPprop_COUNT
+    DSHPprop__COUNT
     } DrawingShapeProperty;
 
 #   endif	/*  DOC_SHAPE_PROP_H	*/

@@ -1,8 +1,8 @@
 #   ifndef	UTIL_NUP_H
 #   define	UTIL_NUP_H
 
-#   include	<geo2DInteger.h>
-#   include	<utilDocumentGeometry.h>
+#   include	<geoRectangle.h>
+#   include	<geoDocumentPageSetup.h>
 #   include	<geoAffineTransform.h>
 
 /************************************************************************/
@@ -21,11 +21,10 @@ typedef struct NupSchema
     int				nsXShift;
     } NupSchema;
 
-/************************************************************************/
-/*									*/
-/*  Geometry specifications for a print job.				*/
-/*									*/
-/************************************************************************/
+/**
+ *  Geometry specifications for a print job
+ *  This is about the way pages are printed on shetts of paper.
+ */
 
 typedef struct PrintGeometry
     {

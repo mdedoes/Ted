@@ -1,21 +1,9 @@
 #   include	"bitmapConfig.h"
 
 #   include	"bmRender.h"
-#   include	<stdlib.h>
 #   include	<appDebugon.h>
 
 # define N(r,g,b) ( 6* 6* ( (r)/ 43 )+ 6* ( (g)/ 43 )+ ( (b) / 43 ) )
-
-/************************************************************************/
-/*									*/
-/*  Map an image to the so called web safe palette.			*/
-/*									*/
-/************************************************************************/
-
-static void bmWebSafeCleanupAllocator(	ColorAllocator *	ca )
-    {
-    return;
-    }
 
 /************************************************************************/
 /*									*/
@@ -32,7 +20,7 @@ static int bmWebSafeSetAllocator(	ColorAllocator *	ca,
 	{ LDEB(bitsPerPixel); return -1;	}
 
     ca->caSystemAllocator= sysAllocator;
-    ca->caSystemCleanup= bmWebSafeCleanupAllocator;
+    ca->caSystemCleanup= (SystemCleanup)0;
     ca->caAllocationType= CA_ALLOCATOR;
 
     return 0;
@@ -43,6 +31,11 @@ static int bmWebSafeSetAllocator(	ColorAllocator *	ca,
 /*  Allocate a 'Web Safe' color.					*/
 /*									*/
 /************************************************************************/
+
+# ifdef __GNUC__
+# pragma GCC diagnostic push
+# pragma GCC diagnostic ignored "-Wunused-parameter"
+# endif
 
 static int bmToWebSafeAllocateColor(	AllocatorColor *	ac,
 					ColorAllocator *	ca,
@@ -58,6 +51,10 @@ static int bmToWebSafeAllocateColor(	AllocatorColor *	ac,
     return 0;
     }
 
+# ifdef __GNUC__
+# pragma GCC diagnostic pop
+# endif
+
 /************************************************************************/
 /*									*/
 /*  Convert an image to the web safe palette.				*/
@@ -70,6 +67,11 @@ static int bmToWebSafeAllocateColor(	AllocatorColor *	ac,
 /*  7)	Cleanup.							*/
 /*									*/
 /************************************************************************/
+
+# ifdef __GNUC__
+# pragma GCC diagnostic push
+# pragma GCC diagnostic ignored "-Wunused-parameter"
+# endif
 
 int bmToWebSafe(	RasterImage *			riOut,
 			const RasterImage *		riIn,
@@ -159,7 +161,7 @@ int bmToWebSafe(	RasterImage *			riOut,
     /*  5  */
     if  ( bmFillImage( &ca, bitmapUnit, swapBitmapBytes, swapBitmapBits,
 			dither, ri.riBytes, &(ri.riDescription),
-			riIn, (const DocumentRectangle *)0 ) )
+			riIn, (const struct DocumentRectangle *)0 ) )
 	{ LDEB(1); rval= -1; goto ready;	}
 
     /* steal */
@@ -173,3 +175,8 @@ int bmToWebSafe(	RasterImage *			riOut,
 
     return rval;
     }
+
+# ifdef __GNUC__
+# pragma GCC diagnostic pop
+# endif
+

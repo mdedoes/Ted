@@ -7,47 +7,36 @@
 #   ifndef	DOC_LAYOUT_H
 #   define	DOC_LAYOUT_H
 
-#   include	<docBuf.h>
-#   include	<docEditRange.h>
-#   include	<utilIndexMapping.h>
-#   include	"docParticuleData.h"
-#   include	<docStripFrame.h>
-#   include	"docStripLayoutJob.h"
-#   include	"docLayoutDocumentTree.h"
-#   include	<docBlockFrame.h>
 #   include	"layoutContext.h"
-#   include	"docSelectionGeometry.h"
 
-/************************************************************************/
-
-#   define	includeRectangleY( dr1, dr2 ) \
-		{ \
-		if  ( (dr1)->drY0 > (dr2)->drY0 )  \
-		    { (dr1)->drY0=  (dr2)->drY0; } \
-		if  ( (dr1)->drY1 < (dr2)->drY1 )  \
-		    { (dr1)->drY1=  (dr2)->drY1; } \
-		}
-
-/************************************************************************/
-/*									*/
-/*  Reasons why the formatter stops.					*/
-/*									*/
-/************************************************************************/
-
-typedef enum FormatterResult
-    {
-    FORMATstopREADY= 0,
-    FORMATstopFRAME_FULL,
-    FORMATstopNEXT_FRAME,
-    FORMATstopBLOCK_FULL,
-
-    FORMATstopCOLUMN_BREAK,
-    FORMATstopPAGE_BREAK,
-
-    FORMATstopPARTIAL,
-
-    FORMATstop_COUNT
-    } FormatterResult;
+struct BufferItem;
+struct BufferDocument;
+struct DocumentTree;
+struct SectionProperties;
+struct TextAttribute;
+struct ParagraphLayoutJob;
+struct LayoutJob;
+struct DocumentPosition;
+struct DocumentSelection;
+struct DocumentProperties;
+struct PositionGeometry;
+struct AfmFontInfo;
+struct DocumentRectangle;
+struct ParticuleData;
+struct TextLine;
+struct DocumentNote;
+struct DrawingShape;
+struct FrameProperties;
+struct EditRange;
+struct ParagraphFrame;
+struct LayoutPosition;
+struct ParagraphLayoutPosition;
+struct BlockOrigin;
+struct BlockFrame;
+struct NotesReservation;
+struct TextRun;
+struct LineLayoutJob;
+struct LineRun;
 
 /************************************************************************/
 /*									*/
@@ -55,44 +44,38 @@ typedef enum FormatterResult
 /*									*/
 /************************************************************************/
 
-struct LayoutJob;
-
-typedef int (*LAYOUT_SCREEN_LINE)( 
-				const struct TextLine *		tl,
-				const struct BufferItem *	paraNode,
-				const LayoutContext *		lc,
-				const ParagraphFrame *		ffPixels,
-				ParticuleData *			pd );
+typedef int (*SCREEN_LAYOUT_LINE)( 
+				struct TextLine *		tl,
+				struct LineLayoutJob *		llj );
 
 typedef int (*START_SCREEN_PARAGRAPH)(
 				struct BufferItem *		node,
-				const ParagraphFrame *		pf,
+				const struct ParagraphFrame *	pf,
 				const LayoutContext *		lc );
 
 /************************************************************************/
 /*									*/
 /*  A Layout Job.							*/
 /*									*/
-/*  A)	The rectangle that is to be redrawn on the screen. Coordinates	*/
-/*	are in pixels, but relative to the document as a whole. ( Not	*/
-/*	dependent on the position of the scrollbars. ) In non		*/
-/*	interactive layout jobs this is a NULL pointer.			*/
-/*  B)	Drawing data for font information, scaling from wips to pixels	*/
-/*	etc.								*/
-/*  C)	The document as a whole.					*/
-/*  D)	The Node in the document tree that initiated the layout job.	*/
-/*									*/
-/*  E)	The current position on paper of the layout job.		*/
-/*									*/
-/*  F)	Indirection for screen calculations when laying out the		*/
-/*	document.							*/
-/*									*/
 /************************************************************************/
 
 typedef struct LayoutJob
     {
-    DocumentRectangle *		ljChangedRectanglePixels;	/*  A	*/
-    struct BufferItem *		ljChangedNode;			/*  D	*/
+				/**
+				 * Receives the rectangle that is to be 
+				 * redrawn on the screen. Coordinates are 
+				 * in pixels, but relative to the document as 
+				 * a whole. ( Not dependent on the position of 
+				 * the scrollbars. ) In non interactive layout 
+				 * jobs this is a NULL pointer.
+				 */
+    struct DocumentRectangle *	ljChangedRectanglePixels;
+
+				/**
+				 * The node that initiated the layout process.
+				 */
+    struct BufferItem *		ljChangedNode;
+
     LayoutContext		ljContext;
     int				ljReachedDocumentBottom;
 
@@ -101,8 +84,12 @@ typedef struct LayoutJob
 
     const struct BufferItem *	ljBodySectNode;
 
-    START_SCREEN_PARAGRAPH	ljStartScreenParagraph;		/*  F	*/
-    LAYOUT_SCREEN_LINE		ljLayoutScreenLine;		/*  F	*/
+				/**
+				 * Indirection for screen calculations when 
+				 * laying out the document.
+				 */
+    START_SCREEN_PARAGRAPH	ljStartScreenParagraph;
+    SCREEN_LAYOUT_LINE		ljScreenLayoutLine;
     } LayoutJob;
 
 /************************************************************************/
@@ -114,12 +101,16 @@ typedef struct LayoutJob
 extern void docInitLayoutJob(		LayoutJob *	lj );
 extern void docCleanLayoutJob(		LayoutJob *	lj );
 
-extern int docLayoutLineBox(	struct TextLine *		tl,
-				struct BufferItem *		node,
+extern void docStartLayoutLine(	struct LineRun *		lr,
+				struct LineLayoutJob *		llj,
+				struct BufferItem *		paraNode,
 				int				part,
 				const LayoutContext *		lc,
-				ParticuleData *			pd,
-				const ParagraphFrame *		pf );
+				struct ParticuleData *		pd,
+				const struct ParagraphFrame *	pf );
+
+extern int docLayoutLineBox(	struct LineRun *		lr,
+				struct LineLayoutJob *		llj );
 
 extern int docLayoutParagraphLineExtents(
 				int *				pFontSize,
@@ -129,434 +120,475 @@ extern int docLayoutParagraphLineExtents(
 extern int docLayoutNodeAndParents(	struct BufferItem *	node,
 					LayoutJob *		lj );
 
-extern int docAdjustParaLayout(		struct BufferItem *	node,
+extern int docAdjustParaLayout(		struct BufferItem *	paraNode,
 					int			afterReplace,
 					int			stroffFrom,
 					int			stroffShift,
 					int			stroffUpto,
 					LayoutJob *		lj );
 
-extern void docLayoutColumnTop(	LayoutPosition *		lpTop,
-				BlockFrame *			bf,
+extern void docLayoutColumnTop(	struct LayoutPosition *		lpTop,
+				struct BlockFrame *		bf,
 				struct BufferItem *		bodySectNode,
 				const LayoutJob *		lj );
 
-extern int docLayoutDocumentTree( DocumentTree *	ei,
-				DocumentRectangle *	drChanged,
-				int			page,
-				int			column,
-				int			y0Twips,
-				const struct BufferItem *	bodySectNode,
-				const LayoutContext *	lc,
-				INIT_LAYOUT_EXTERNAL	initLayoutExternal,
-				int			adjustDocument );
-
 extern int docLayoutStripChildren(
 				int *				pStopCode,
-				ParagraphLayoutJob *		plj,
-				BlockFrame *			bf,
-				const LayoutJob *		lj,
+				struct ParagraphLayoutJob *	plj,
+				struct BlockFrame *		bf,
 				struct BufferItem *		cellNode );
 
 extern int docLayoutStackedStrip( struct BufferItem *		cellNode,
-				BlockFrame *			bf,
-				const LayoutJob *		lj,
-				ParagraphLayoutJob *		plj );
+				struct BlockFrame *		bf,
+				struct ParagraphLayoutJob *	plj );
 
-extern void docLayoutToNextColumn(	LayoutPosition *		lpTop,
-					BlockFrame *			bf,
+extern void docLayoutToNextColumn(	struct LayoutPosition *		lpTop,
+					struct BlockFrame *		bf,
 					struct BufferItem *		node,
 					const LayoutJob *		lj );
 
-extern int docLayoutRowNode(	int *			pStopCode,
-				LayoutPosition *	lpBelow,
-				const LayoutPosition *	lpTop,
-				struct BufferItem *	rowBi,
-				BlockFrame *		bf,
-				int			stayInThisColumn,
-				const LayoutJob *	lj );
+extern void docLayoutToNextPage(	struct LayoutPosition *		lpTop,
+					struct BlockFrame *		bf,
+					struct BufferItem *		node,
+					const LayoutJob *		lj );
+
+extern int docLayoutToFirstColumn(	struct LayoutPosition *		lpTop,
+					struct BlockFrame *		bf,
+					struct BufferItem *		node,
+					const LayoutJob *		lj );
+
+extern int docLayoutToEvenPage(		struct LayoutPosition *		lpTop,
+					struct BlockFrame *		bf,
+					struct BufferItem *		node,
+					const LayoutJob *		lj );
+
+extern int docLayoutToOddPage(		struct LayoutPosition *		lpTop,
+					struct BlockFrame *		bf,
+					struct BufferItem *		node,
+					const LayoutJob *		lj );
+
+extern int docLayoutRowNode(
+			int *				pStopCode,
+			struct LayoutPosition *		lpBelow,
+			const struct LayoutPosition *	lpTop,
+			struct BufferItem *		rowNode,
+			struct BlockFrame *		bf,
+			int				inNewFrame,
+			int				stayInThisColumn,
+			const LayoutJob *		lj );
 
 extern void docCommitStripLayout(
 				int *				pAdvanced,
 				int				advanceAnyway,
-				ParagraphLayoutJob *		plj,
+				struct ParagraphLayoutJob *	plj,
 				int				page,
 				int				column,
 				const struct BufferItem *	cellNode );
 
 extern void docFindStripLayoutOrigin(
-				ParagraphLayoutJob *		plj,
+				struct ParagraphLayoutJob *	plj,
 				int				page,
 				int				column,
 				const struct BufferItem *	cellNode );
 
-extern void docLayoutBlockFrame( BlockFrame *			bf,
+extern void docLayoutBlockFrame( struct BlockFrame *		bf,
 				struct BufferItem *		node,
 				const LayoutJob *		lj,
 				int				page,
 				int				column );
 
-extern int docLayoutFootnotesForColumn(	LayoutPosition *	lpBelowNotes,
-					const LayoutPosition *	lpBelowText,
-					const BlockFrame *	refBf,
-					int			belowText,
-					const LayoutJob *	refLj );
+extern int docLayoutFootnotesForColumn(
+				struct LayoutPosition *		lpBelowNotes,
+				const struct LayoutPosition *	lpBelowText,
+				const struct BlockFrame *	refBf,
+				int				belowText,
+				const LayoutJob *		refLj );
 
 extern int docLayoutCollectParaFootnoteHeight(
-			NotesReservation *		nr,
+			struct NotesReservation *	nr,
 			int				referringPage,
 			int				referringColumn,
-			BufferDocument *		bd,
+			struct BufferDocument *		bd,
 			const struct BufferItem *	bodySectNode,
 			const struct BufferItem *	paraNode,
 			int				partFrom,
 			int				partUpto );
 
 extern int docCollectFootnotesFromColumn(
-			BlockFrame *			bf,
-			const DocumentPosition *	dpHere,
+			struct BlockFrame *			bf,
+			const struct DocumentPosition *	dpHere,
 			int				partHere,
-			BufferDocument *		bd,
+			struct BufferDocument *		bd,
 			int				referringPage,
 			int				referringColumn );
 
 extern int docNoteSeparatorRectangle(
-				DocumentRectangle *		drExtern,
-				DocumentTree **			pEiNoteSep,
+				struct DocumentRectangle *	drExtern,
+				struct DocumentTree **		pEiNoteSep,
 				int *				pY0Twips,
 				const struct DocumentNote *	dnFirstNote,
 				int				treeType,
+				const struct BufferItem *	bodySectNode,
 				const LayoutContext *		lc );
 
 extern int docGetBoxAroundTree(
-				DocumentRectangle *		dr,
-				const struct BufferItem *	bodySectNode,
-				const DocumentTree *		ei,
+				struct DocumentRectangle *	dr,
+				const struct DocumentTree *	ei,
 				int				justUsed,
 				int				page,
 				int				column,
 				const LayoutContext *		lc );
 
-extern int docTreePrelayout(		DocumentTree *		ei,
-					const struct BufferItem *	bodySectNode,
+extern int docTreePrelayout(	struct DocumentTree *		ei,
+				const struct BufferItem *	bodySectNode,
+				LayoutJob *			lj );
+
+extern int docLayoutNodeImplementation(
+				struct LayoutPosition *		lpBelow,
+				const struct LayoutPosition *	lpTop,
+				struct BufferItem *		node,
+				struct BlockFrame *		bf,
+				LayoutJob *			lj );
+
+extern int docSectHeaderFooterPrelayout( struct BufferItem *	sectNode,
 					LayoutJob *		lj );
 
-extern int docLayoutNodeImplementation(	LayoutPosition *	lpBelow,
-					const LayoutPosition *	lpTop,
-					struct BufferItem *	node,
-					BlockFrame *		bf,
-					LayoutJob *		lj );
+extern int docLayoutEndnotesForSection(
+				struct LayoutPosition *		lpBelow,
+				const struct LayoutPosition *	lpTop,
+				int				sect,
+				struct BlockFrame *			bf,
+				LayoutJob *			lj );
 
-extern int docSectHeaderFooterPrelayout(	struct BufferItem *	sectNode,
-						LayoutJob *	lj );
-
-extern int docLayoutEndnotesForSection(	LayoutPosition *	lpBelow,
-					const LayoutPosition *	lpTop,
-					int			sect,
-					BlockFrame *		bf,
-					LayoutJob *		lj );
-
-extern int docLayoutEndnotesForDocument(	LayoutPosition *	lpBelow,
-						const LayoutPosition *	lpTop,
-						BlockFrame *		bf,
-						LayoutJob *		lj );
+extern int docLayoutEndnotesForDocument(
+				struct LayoutPosition *		lpBelow,
+				const struct LayoutPosition *	lpTop,
+				struct BlockFrame *			bf,
+				LayoutJob *			lj );
 
 extern int docLayoutParaLines(	int *				pStopCode,
 				int				isRedo,
-				const ParagraphFrame *		pf,
-				LayoutPosition *		lpHere,
+				const struct ParagraphFrame *	pf,
+				struct LayoutPosition *		lpHere,
 				int *				pLine,
-				BlockFrame *			bf,
+				struct BlockFrame *			bf,
 				const LayoutJob *		lj,
 				struct BufferItem *		paraNode,
 				int				part );
 
-extern int docLayoutSectChildren(	LayoutPosition *	lpBelow,
-					const LayoutPosition *	lpTop,
-					struct BufferItem *	sectNode,
-					int			from,
-					BlockFrame *		bf,
-					LayoutJob *		lj );
-
-extern int docLayoutSectNode(	LayoutPosition *		lpBelow,
-				const LayoutPosition *		lpTop,
+extern int docLayoutSectChildren( struct LayoutPosition *	lpBelow,
+				const struct LayoutPosition *	lpTop,
 				struct BufferItem *		sectNode,
-				BlockFrame *			bf,
+				int				from,
+				struct BlockFrame *			bf,
 				LayoutJob *			lj );
 
-extern int docLayoutTableSlice( LayoutPosition *	lpBelow,
-				const LayoutPosition *	lpTop,
-				struct BufferItem *	parentNode,
-				int			from,
-				int			upto,
-				BlockFrame *		bf,
-				LayoutJob *		lj );
+extern int docLayoutSectNode(	struct LayoutPosition *		lpBelow,
+				const struct LayoutPosition *	lpTop,
+				struct BufferItem *		sectNode,
+				struct BlockFrame *			bf,
+				LayoutJob *			lj );
 
-extern void docResetExternalTreeLayout(	BufferDocument *	bd );
+extern int docLayoutTableSlice( struct LayoutPosition *		lpBelow,
+				const struct LayoutPosition *	lpTop,
+				struct BufferItem *		parentNode,
+				int				from,
+				int				upto,
+				struct BlockFrame *		bf,
+				LayoutJob *			lj );
+
+extern void docResetExternalTreeLayout(
+				struct BufferDocument *		bd );
 
 extern void docDrawingShapeInvalidateTextLayout(
 				struct DrawingShape *		ds );
 
-extern void docShapePageY(	LayoutPosition *	lpShapeTop,
-				LayoutPosition *	lpBelowShape,
-				BlockFrame *		bfShape,
+extern void docShapePageY(	struct LayoutPosition *	lpShapeTop,
+				struct LayoutPosition *	lpBelowShape,
+				struct BlockFrame *		bfShape,
 				const struct DrawingShape *	ds,
 				const struct BufferItem *	paraNode,
-				const LayoutPosition *	lpLineTop,
-				const BlockFrame *	bf );
+				const struct LayoutPosition *	lpLineTop,
+				const struct BlockFrame *	bf );
 
 extern void docShapePageRectangle(
-				LayoutPosition *	lpShapeTop,
-				LayoutPosition *	lpBelowShape,
+				struct LayoutPosition *	lpShapeTop,
+				struct LayoutPosition *	lpBelowShape,
 				int *			pX0,
 				int *			pX1,
 				const struct DrawingShape *	ds,
 				const struct BufferItem *	paraNode,
-				const LayoutPosition *	lpLineTop,
-				const ParagraphFrame *	pfRef,
-				const BlockFrame *	bfRef,
+				const struct LayoutPosition *	lpLineTop,
+				const struct ParagraphFrame *	pfRef,
+				const struct BlockFrame *	bfRef,
 				int			xChar );
 
-extern int docShapeCheckTextLayout(
-			struct DrawingShape *		ds,
-			const DocumentRectangle *	drTwips,
-			DocumentRectangle *		drChanged,
-			const struct BufferItem *	bodySectNode,
-			int				page,
-			int				column,
-			const LayoutContext *		lc,
-			INIT_LAYOUT_EXTERNAL		initLayoutExternal );
-
-extern int docLayoutInvalidateRange(	DocumentSelection *	dsLayout,
-					BufferDocument *	bd,
-					const DocumentTree *	ei,
-					EditRange *		er );
+extern int docLayoutInvalidateRange(
+			struct DocumentSelection *	dsLayout,
+			struct BufferDocument *		bd,
+			const struct DocumentTree *	ei,
+			struct EditRange *		er );
 
 extern void docRedoParaStripLayout(
 				const LayoutJob *		lj,
-				BlockFrame *			bf,
-				const LayoutPosition *		lpFrom,
+				struct BlockFrame *		bf,
+				const struct LayoutPosition *	lpFrom,
 				struct BufferItem *		cellNode,
 				int				paraFrom,
 				int				paraUpto );
-
-extern int docCheckPageOfSelectedTree(
-				int *			pChanged,
-				struct BufferItem **	pBodySectNode,
-				DocumentRectangle *	drChanged,
-				DocumentTree *		selRootEi,
-				const LayoutContext *	lc,
-				INIT_LAYOUT_EXTERNAL	initLayoutExternal );
 
 extern int docSectNotesPrelayout(
 				int				sect,
 				const struct BufferItem *	bodySectNode,
 				LayoutJob *			lj );
 
-extern void docLayoutSetNodeBottom(	int *			pChanged,
-					struct BufferItem *	node,
-					const LayoutPosition *	lp,
-					const LayoutContext *	lc,
-					DocumentRectangle *	drChanged );
+extern void docLayoutSetNodeBottom(
+				int *				pChanged,
+				struct BufferItem *		node,
+				const struct LayoutPosition *		lp,
+				const LayoutContext *		lc,
+				struct DocumentRectangle *	drChanged );
 
 extern void docLayoutSetBottomPosition(
-				int *				pChanged,
-				LayoutPosition *		lpBelow,
-				const LayoutPosition *		lp,
-				const LayoutContext *		lc,
-				DocumentRectangle *		drChanged );
+			int *					pChanged,
+			struct LayoutPosition *			lpBelow,
+			const struct LayoutPosition *		lp,
+			const LayoutContext *			lc,
+			struct DocumentRectangle *		drChanged );
 
-extern int docLayoutGetInitialFrame(	BlockFrame *		bf,
-					const LayoutJob *	lj,
-					const LayoutPosition *	lpHere,
-					struct BufferItem *	node );
+extern int docLayoutGetInitialFrame(
+			struct BlockFrame *			bf,
+			const LayoutJob *			lj,
+			const struct LayoutPosition *		lpHere,
+			struct BufferItem *			node );
 
-extern void docLayoutStartNodeLayout(	struct BufferItem *	node,
-					const LayoutJob *	lj,
-					const LayoutPosition *	lpHere );
+extern void docLayoutStartNodeLayout(
+			struct BufferItem *			node,
+			const LayoutJob *			lj,
+			const struct LayoutPosition *		lpHere );
 
-extern void docLayoutFinishNodeLayout(	int *			pChanged,
-					struct BufferItem *	node,
-					const LayoutJob *	lj,
-					const LayoutPosition *	lpHere );
+extern void docLayoutFinishNodeLayout(
+			int *					pChanged,
+			struct BufferItem *			node,
+			const LayoutJob *			lj,
+			const struct LayoutPosition *		lpHere );
 
 extern int docLayoutFinishSectNode(
-				LayoutPosition *		lpBelow,
-				const LayoutPosition *		lpTop,
-				struct BufferItem *		sectNode,
-				BlockFrame *			bf,
-				LayoutJob *			lj );
+			struct LayoutPosition *			lpBelow,
+			const struct LayoutPosition *		lpTop,
+			struct BufferItem *			sectNode,
+			struct BlockFrame *			bf,
+			LayoutJob *				lj );
 
-extern void docLayoutCalculateParaTopInset(
-				const BufferDocument *		bd,
-				struct BufferItem *		paraNode );
+extern const struct AfmFontInfo * docLayoutGetAfi(
+			int *					pTextAttrNr,
+			const struct TextAttribute **		pTa,
+			unsigned char *				pLineFlags,
+			const LayoutContext *			lc,
+			const struct BufferItem *		paraNode,
+			int					part );
 
-extern void docLayoutCalculateParaBottomInset(
-				const BufferDocument *		bd,
-				struct BufferItem *		paraNode );
+extern int docLayoutTextExtents(
+			struct DocumentRectangle *		drText,
+			const struct TextAttribute *		ta,
+			const struct AfmFontInfo *		afi,
+			const char *				from,
+			int					len );
 
-extern const AfmFontInfo * docLayoutGetAfi(
-			int *				pTextAttrNr,
-			TextAttribute *			ta,
-			unsigned char *			pLineFlags,
-			const LayoutContext *		lc,
-			const struct BufferItem *	paraNode,
-			int				part );
-
-extern int docLayoutFontAscDesc( const struct BufferItem *	paraNode,
-				TextAttribute *			ta,
-				DocumentRectangle *		drAscDesc,
-				int *				pBorder,
-				const LayoutContext *		lc,
-				int				part );
-
-extern int docLayoutStringExtents(	int *			pWidth,
-					int *			pDecWidth,
-					DocumentRectangle *	dr,
-					const TextAttribute *	ta,
-					int			sizeTwips,
-					const BufferDocument *	bd,
-					const AfmFontInfo *	afi,
-					const char *		printString,
-					int			len );
-
-extern int docLayoutInlineObject( TextAttribute *		ta,
-				BufferDocument *		bd,
-				const struct BufferItem *	paraNode,
-				int				part,
-				InsertedObject *		io,
-				DocumentRectangle *		drWord,
-				int *				pWordBorder,
-				int *				pX1,
-				int				x0 );
-
-extern void docLayoutCalculateAfterRowTopInset(	struct BufferItem *	belowBi,
-						const BufferDocument *	bd );
+extern int docLayoutTextExtentsInParticule(
+			struct DocumentRectangle *		drText,
+			const struct LayoutContext *		lc,
+			const struct BufferItem *		paraNode,
+			int					part,
+			const char *				from,
+			int					len );
 
 extern int docLayoutStartParagraph(
 			const LayoutJob *		lj,
 			int *				pStopCode,
 			struct BufferItem *		paraNode,
-			const BlockFrame *		bf,
-			ParagraphLayoutPosition *	plp );
+			const struct BlockFrame *		bf,
+			struct ParagraphLayoutPosition *	plp );
 
 extern void docLayoutFinishFrame(
-			const FrameProperties *		fp,
-			BlockFrame *			bfTextFrame,
-			const BlockFrame *		bfFlow,
-			const LayoutJob *		lj,
-			const ParagraphLayoutPosition *	plpFlow,
-			struct BufferItem *		cellNode,
-			int				paraFrom,
-			int				paraUpto );
+			const struct FrameProperties *		fp,
+			struct BlockFrame *			bfTextFrame,
+			const struct BlockFrame *		bfFlow,
+			const LayoutJob *			lj,
+			const struct ParagraphLayoutPosition *	plpFlow,
+			struct BufferItem *			cellNode,
+			int					paraFrom,
+			int					paraUpto );
 
 extern int docLayoutParagraphInStrip(
-			int *				pStopCode,
-			ParagraphLayoutPosition *	plp,
-			BlockFrame *			bf,
-			const LayoutJob *		lj,
-			int				cellTopInset,
-			struct BufferItem *		paraNode );
+			int *					pStopCode,
+			struct ParagraphLayoutPosition *	plp,
+			struct BlockFrame *			bf,
+			const LayoutJob *			lj,
+			int					cellTopInset,
+			int					isRedo,
+			struct BufferItem *			paraNode );
 
 extern int docLayoutRowInStrip(
-			int *				pStopCode,
-			ParagraphLayoutPosition *	plp,
-			BlockFrame *			bf,
-			const LayoutJob *		lj,
-			int				cellTopInset,
-			struct BufferItem *		paraNode );
+			int *					pStopCode,
+			struct ParagraphLayoutPosition *	plp,
+			struct BlockFrame *			bf,
+			const LayoutJob *			lj,
+			struct BufferItem *			paraNode );
 
-extern int docAdjustParentLayout(	const LayoutPosition *	lpTop,
-					struct BufferItem *	node,
-					BlockFrame *		bf,
-					LayoutJob *		lj );
+extern int docAdjustParentLayout(
+				const struct LayoutPosition *	lpTop,
+				struct BufferItem *		node,
+				struct BlockFrame *		bf,
+				LayoutJob *			lj );
 
-extern int docLayoutCellNode(	LayoutPosition *	lpBelow,
-				const LayoutPosition *	lpTop,
-				struct BufferItem *	cellNode,
-				int			from,
-				BlockFrame *		bf,
-				LayoutJob *		lj );
+extern int docLayoutCellNode(	struct LayoutPosition *		lpBelow,
+				const struct LayoutPosition *	lpTop,
+				struct BufferItem *		cellNode,
+				int				from,
+				struct BlockFrame *		bf,
+				LayoutJob *			lj );
 
 extern void docRowLayoutRowspanAdmin(
 				struct BufferItem *		cellNode,
-				const struct BufferItem *	rowBi,
-				const struct BufferItem *	nextRowBi,
+				const struct BufferItem *	rowNode,
+				const struct BufferItem *	nextRowNode,
 				int				nextRow,
-				const CellProperties *		cp,
-				int				l,
-				int				r,
-				ParagraphLayoutJob *		plj );
+				struct ParagraphLayoutJob *	plj );
 
 extern void docCellStripFrame(	struct BufferItem *		cellNode,
-				const BlockFrame *		bf,
-				ParagraphLayoutJob *		plj );
+				const struct BlockFrame *	bf,
+				struct ParagraphLayoutJob *	plj );
 
-extern void docGetPixelRect(	DocumentRectangle *		drPixels,
+extern void docLineTextRectangleTwips(
+				struct DocumentRectangle *	drLineTwips,
+				const struct LayoutPosition *	lpTop,
+				const struct LayoutPosition *	lpBottom,
+				const struct TextLine *		tl,
+				const struct ParagraphFrame *	pf );
+
+extern void docLineFrameRectanglePixels(
+				struct DocumentRectangle *	drLineFramePix,
+				const struct LayoutPosition *	lpTop,
+				const struct LayoutPosition *	lpBottom,
+				const struct TextLine *		tl,
+				const struct BlockOrigin *	bo,
+				const struct ParagraphFrame *	pf,
+				const struct LayoutContext *	lc );
+
+extern void docGetPixelRect(	struct DocumentRectangle *	drPixels,
 				const LayoutContext *		lc,
-				const DocumentRectangle *	drTwips,
+				const struct DocumentRectangle * drTwips,
 				int				page );
 
 extern void docGetPixelRectForPos(
-				DocumentRectangle *		drPixels,
+				struct DocumentRectangle *	drPixels,
 				const LayoutContext *		lc,
 				int				x0Twips,
 				int				x1Twips,
-				const LayoutPosition *		lpTop,
-				const LayoutPosition *		lpBottom );
+				const struct LayoutPosition *	lpTop,
+				const struct LayoutPosition *	lpBottom );
 
 extern void docGetPageRectPixels(
-				DocumentRectangle *		drPixels,
+				struct DocumentRectangle *	drPixels,
 				const LayoutContext *		lc,
 				int				page );
 
 extern void docGetPixelRectangleForPages(
-				DocumentRectangle *		drPixels,
+				struct DocumentRectangle *	drPixels,
 				const LayoutContext *		lc,
 				int				page0,
 				int				page1 );
 
 extern void docPixelRectangleForPositions(
-				DocumentRectangle *		drPixels,
-				const PositionGeometry *	pgB,
-				const PositionGeometry *	pgE,
+				struct DocumentRectangle *	drPixels,
+				const struct PositionGeometry *	pgB,
+				const struct PositionGeometry *	pgE,
 				const LayoutContext *		lc );
 
-extern int docLayoutScapsScreenFont(	const LayoutContext *	lc,
-					const TextAttribute *	ta );
+extern int docLayoutScapsScreenFont(	const LayoutContext *		lc,
+					const struct TextAttribute *	ta );
 
-extern void docNodeRectangle(	DocumentRectangle *	drPixels,
-				struct BufferItem *	node,
-				const LayoutContext *	lc,
-				const BlockOrigin *	bo );
+extern void docNodeRectangle(	struct DocumentRectangle *	drPixels,
+				const struct BufferItem *	node,
+				const LayoutContext *		lc,
+				const struct BlockOrigin *	bo );
 
-extern int docGetFirstSectionOnPage(	BufferDocument *	bd,
+extern int docGetFirstSectionOnPage(	struct BufferDocument *	bd,
 					int			page );
 
-extern int docFindHeaderFooterForY(	DocumentTree **		pTree,
+extern int docFindHeaderFooterForY(	struct DocumentTree **	pTree,
 					struct BufferItem **	pSelSectNode,
 					int *			pColumn,
 					const LayoutContext *	lc,
 					struct BufferItem *	bodySectNode,
-					BufferDocument *	bd,
+					struct BufferDocument *	bd,
 					int			page,
 					int			docY );
 
-extern void docPageRectsPixels(	DocumentRectangle *	drOutside,
-				DocumentRectangle *	drInside,
-				double			xfac,
+extern void docPageRectsPixels(	struct DocumentRectangle *	drOutside,
+				struct DocumentRectangle *	drInside,
+				double				xfac,
 				const struct BufferItem *	bodySectNode,
-				const BufferDocument *	bd );
-
-extern int docSectColumnsAreBalanced(
-				const struct BufferItem *	sectNode );
+				const struct BufferDocument *	bd );
 
 extern int docAdjustLayoutToChangedTree(
-				LayoutPosition *		lpHere,
+				struct LayoutPosition *		lpHere,
 				struct BufferItem *		node,
 				LayoutJob *			lj );
 
-extern void docLayoutAdjustFrame(	BlockFrame *			bf,
-					const struct BufferItem *	node );
+extern void docLayoutAdjustFrame( struct BlockFrame *		bf,
+				const struct BufferItem *	node );
+
+extern int docLayoutSelectedRoot(	const LayoutContext *	lc,
+					struct DocumentTree *	treeFound,
+					struct BufferItem *	rootNodeFound,
+					struct BufferItem *	bodySectNodeSet,
+					int			page,
+					int			column );
+
+extern int docLayoutGetSectBreakKind(
+				const struct SectionProperties *	sp,
+				const struct DocumentProperties *	dp );
+
+extern int docLayoutLineXOfPosition(
+				int *				pDocXPixels,
+				int *				pDocXTwips,
+				const struct DocumentPosition *	dp,
+				const struct LayoutContext *	lc,
+				const struct ParagraphFrame *	pf,
+				struct BufferItem *		paraNode,
+				struct TextLine *		tl );
+
+extern const struct AfmFontInfo * docDocLayoutGetFontInfo(
+				const struct LayoutContext *	lc,
+				const struct TextAttribute *	ta );
+
+extern int docLayoutMakeOutput(
+			const char **			pPrintString,
+			char **				pScratchString,
+			int **				pSegments,
+			int *				pSegmentCount,
+			int *				pFullScreenFont,
+			int *				pScapsScreenFont,
+			const struct AfmFontInfo **	pAfi,
+			int *				pFullSizeTwips,
+			int *				pScapsSizeTwips,
+			const struct TextRun *		tr,
+			int				mirror,
+			const struct LayoutContext *	lc,
+			const char *			outputString,
+			int				len );
+
+extern int docGetScreenWidth(
+			const struct LayoutContext *	lc,
+			int				xPixels,
+			int				yPixels,
+			int				fullScreenFont,
+			int				scapsScreenFont,
+			const char *			outputString,
+			const int			outputLength,
+			const int *			segments,
+			int				segmentCount );
 
 #   endif	/*  DOC_LAYOUT_H  */

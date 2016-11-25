@@ -6,13 +6,16 @@
 #   include	<docBlockOrnaments.h>
 #   include	<docPageGrid.h>
 #   include	<docTreeNode.h>
+#   include	<docBorderProperties.h>
+#   include	<docStripFrame.h>
+#   include	<docBlockFrame.h>
 
 #   include	<appDebugon.h>
 
 /************************************************************************/
 
 static void docRowRectangleTwips(	DocumentRectangle *	drRow,
-					const BufferItem *	rowNode,
+					const struct BufferItem *	rowNode,
 					const BlockFrame *	bf )
     {
     int			col;
@@ -40,7 +43,7 @@ static void docRowRectangleTwips(	DocumentRectangle *	drRow,
 /************************************************************************/
 
 void docNodeRectangle(	DocumentRectangle *		drPixels,
-			BufferItem *			node,
+			const struct BufferItem *	node,
 			const LayoutContext *		lc,
 			const BlockOrigin *		bo )
     {

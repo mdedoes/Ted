@@ -47,7 +47,8 @@ static int bmGraySetAllocator(		ColorAllocator *	ca,
     mask= ( 1 << bitsPerPixel )- 1;
     divi= ( 255* 256 )/mask;
 
-    fresh= (unsigned int *)realloc( ca->caSystemPrivate, 2* sizeof(int) );
+    fresh= (unsigned int *)realloc( ca->caSystemPrivate,
+						2* sizeof(unsigned int) );
     if  ( ! fresh )
 	{ XDEB(fresh); return -1;	}
 
@@ -87,6 +88,7 @@ static int bmToGrayAllocateWBColor(	AllocatorColor *	ac,
     ac->acRed= 257* r;
     ac->acGreen= 257* g;
     ac->acBlue= 257* b;
+    ac->acAlpha= 0xffff;
     ac->acColorNumber= val;
 
     return 0;
@@ -108,6 +110,7 @@ static int bmToGrayAllocateBWColor(	AllocatorColor *	ac,
     ac->acRed= 257* r;
     ac->acGreen= 257* g;
     ac->acBlue= 257* b;
+    ac->acAlpha= 0xffff;
     ac->acColorNumber= mask- val;
 
     return 0;
@@ -176,6 +179,11 @@ int bmSetColorAllocatorForWBImage(	ColorAllocator *		ca,
 /*									*/
 /************************************************************************/
 
+# ifdef __GNUC__
+# pragma GCC diagnostic push
+# pragma GCC diagnostic ignored "-Wunused-parameter"
+# endif
+
 int bmToGrayscale(	RasterImage *			riOut,
 			const RasterImage *		riIn,
 			int				ignoredInt )
@@ -243,7 +251,7 @@ int bmToGrayscale(	RasterImage *			riOut,
     /*  5  */
     if  ( bmFillImage( &ca, bitmapUnit, swapBitmapBytes, swapBitmapBits,
 			dither, ri.riBytes, &(ri.riDescription),
-			riIn, (const DocumentRectangle *)0 ) )
+			riIn, (const struct DocumentRectangle *)0 ) )
 	{ LDEB(1); rval= -1; goto ready;	}
 
     /* steal */
@@ -257,3 +265,8 @@ int bmToGrayscale(	RasterImage *			riOut,
 
     return rval;
     }
+
+# ifdef __GNUC__
+# pragma GCC diagnostic pop
+# endif
+

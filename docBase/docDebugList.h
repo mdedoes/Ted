@@ -7,10 +7,11 @@
 #   ifndef	DOC_DEBUG_LIST_H
 #   define	DOC_DEBUG_LIST_H
 
-#   include	"docDocumentList.h"
-#   include	"docListOverride.h"
-#   include	"docListOverrideTable.h"
-#   include	"docListTable.h"
+struct DocumentList;
+struct ListOverrideLevel;
+struct ListOverrideTable;
+struct ListOverride;
+struct DocumentListTable;
 
 /************************************************************************/
 /*									*/
@@ -19,17 +20,17 @@
 /************************************************************************/
 
 extern void docListDocumentList(	int				n,
-					const DocumentList *		dl );
+					const struct DocumentList *		dl );
 
 extern void docListListOverrideLevel(	int				n,
-					const ListOverrideLevel *	lol );
+					const struct ListOverrideLevel *	lol );
 
 extern void docListListOverrideTable(	int				n,
-					const ListOverrideTable *	lot );
+					const struct ListOverrideTable *	lot );
 
 extern void docListListOverride(	int				n,
-					const ListOverride *		lo );
+					const struct ListOverride *		lo );
 
-extern void docListDocumentListTable( const DocumentListTable *		dlt );
+extern void docListDocumentListTable( const struct DocumentListTable *		dlt );
 
 #   endif	/*	DOC_DEBUG_LIST_H	*/

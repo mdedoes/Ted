@@ -1,47 +1,63 @@
 /************************************************************************/
 /*									*/
-/*  Select positions in a document, based on their geometric  position.	*/
+/*  Select positions in a document, based on their geometric position.	*/
 /*									*/
 /************************************************************************/
 
 #   ifndef	DOC_SELECT_LAYOUT_H
 #   define	DOC_SELECT_LAYOUT_H
 
-#   include	<docBuf.h>
+struct DocumentPosition;
+struct BufferDocument;
+struct BufferItem;
+struct BlockOrigin;
+struct LayoutPosition;
 
-extern int docGetTopOfColumn(	DocumentPosition *		dp,
+extern int docGetTopOfColumn(	struct DocumentPosition *	dp,
 				int *				pLineTop,
 				int *				pPartTop,
-				BufferDocument *		bd,
+				struct BufferDocument *		bd,
 				int				page,
 				int				column );
 
 extern int docGetFirstInColumnForNode(
-				DocumentPosition *		dp,
+				struct DocumentPosition *	dp,
 				int *				pLineTop,
 				int *				pPartTop,
-				struct BufferItem *		bi,
+				struct BufferItem *		node,
 				int				page,
 				int				column );
 
-extern int docGetBottomOfColumn(DocumentPosition *		dp,
+extern int docGetBottomOfColumn(struct DocumentPosition *	dp,
 				int *				pPartBot,
-				BufferDocument *		bd,
+				struct BufferDocument *		bd,
 				int				page,
 				int				column );
 
 extern int docGetLastInColumnForNode(
-				DocumentPosition *		dp,
+				struct DocumentPosition *	dp,
 				int *				pLineBot,
 				int *				pPartBot,
-				struct BufferItem *		bi,
+				struct BufferItem *		node,
 				int				page,
 				int				column );
 
-extern int docPositionNearHeadFoot( DocumentPosition *		dpNew,
+extern int docPositionNearHeadFoot( struct DocumentPosition *	dpNew,
 				int				treeType,
 				struct BufferItem *		bodySectNode,
-				BufferDocument *		bd,
+				struct BufferDocument *		bd,
 				int				page );
+
+extern int docParaFindLastLineInFrame(
+				const struct BufferItem *	paraNode,
+				int				lineFrom,
+				const struct LayoutPosition *	lpThisFrame,
+				const struct BlockOrigin *	bo );
+
+extern int docParaFindFirstLineInFrame(
+				const struct BufferItem *	paraNode,
+				int				lineFrom,
+				const struct LayoutPosition *	lpThisFrame,
+				const struct BlockOrigin *	bo );
 
 #   endif	/*  DOC_SELECT_LAYOUT_H  */

@@ -8,6 +8,7 @@
 
 #   include	"sioPipe.h"
 #   include	"utilMemoryBuffer.h"
+#   include	"sioGeneral.h"
 
 #   include	<stdarg.h>
 #   include	<stdio.h>

@@ -5,8 +5,8 @@
 #   include	<string.h>
 
 #   include	"tedRuler.h"
-#   include	<appFrame.h>
 #   include	<appRuler.h>
+#   include	<geoRectangle.h>
 #   include	<guiWidgetDrawingSurface.h>
 #   include	<guiDrawingWidget.h>
 
@@ -32,11 +32,16 @@ typedef struct TedBottomRuler
     int			tbrPageStringLength;
     } TedBottomRuler;
 
-void * tedMakeBottomRuler(	const PostScriptFontList *	psfl,
-				int			height,
-				int			leftRulerWidth,
-				int			rightRulerWidth,
-				const char *		pageFormat )
+# ifdef __GNUC__
+# pragma GCC diagnostic push
+# pragma GCC diagnostic ignored "-Wunused-parameter"
+# endif
+
+void * tedMakeBottomRuler(	const struct PostScriptFontList * psfl,
+				int				height,
+				int				leftRulerWidth,
+				int				rightRulerWidth,
+				const char *			pageFormat )
     {
     TedBottomRuler *		tbr;
     RulerData *			rd;
@@ -86,6 +91,10 @@ void * tedMakeBottomRuler(	const PostScriptFontList *	psfl,
 
     return (void *)tbr;
     }
+
+# ifdef __GNUC__
+# pragma GCC diagnostic pop
+# endif
 
 APP_EVENT_HANDLER_H( tedBottomRulerConfigure, w, voidtbr, event )
     {
@@ -244,7 +253,7 @@ static void tedDrawBottomRuler(	APP_WIDGET		w,
     drawNoClipping( ds );
     }
 
-APP_EVENT_HANDLER_H( tedRedrawBottomRuler, w, voidtbr, event )
+APP_REDRAW_HANDLER_H( tedRedrawBottomRuler, w, voidtbr, event )
     {
     TedBottomRuler *	tbr= (TedBottomRuler *)voidtbr;
     RulerData *		rd= &(tbr->tbrRulerData);
@@ -264,7 +273,12 @@ APP_EVENT_HANDLER_H( tedRedrawBottomRuler, w, voidtbr, event )
 				    fontSizeHintPixels, magnification, w );
 	}
 
-    guiCollectExposures( &drClip, w, event );
+    guiStartDrawing( &drClip, rd->rdDrawingSurface, w, event );
     geoShiftRectangle( &drClip, ox, oy );
+
+    drawSetLineAttributes( rd->rdDrawingSurface,
+			1, LineStyleSolid, LineCapProjecting, LineJoinMiter,
+			(const unsigned char *)0, 0 );
+
     tedDrawBottomRuler( w, tbr, &drClip );
     }

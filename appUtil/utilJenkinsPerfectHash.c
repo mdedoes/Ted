@@ -252,6 +252,11 @@ final:			output, code for the final hash
 
 */
 
+# ifdef __GNUC__
+# pragma GCC diagnostic push
+# pragma GCC diagnostic ignored "-Wunused-parameter"
+# endif
+
 static void initnorm(	key      *keys,
 			int      keyCount,
 			ub4       alen,
@@ -304,6 +309,10 @@ static void initnorm(	key      *keys,
 	    }
 	}
 }
+
+# ifdef __GNUC__
+# pragma GCC diagnostic pop
+# endif
 
 /* 
  * Run a hash function on the key to get a and b 
@@ -1124,6 +1133,11 @@ hashform *form;            user directives
 
 */
 
+# ifdef __GNUC__
+# pragma GCC diagnostic push
+# pragma GCC diagnostic ignored "-Wunused-parameter"
+# endif
+
 static int make_c(	const char *		cOutput,
 			const char *		cInclude,
 			const char *		procName,
@@ -1402,6 +1416,10 @@ static int make_c(	const char *		cOutput,
 
     return 0;
 }
+
+# ifdef __GNUC__
+# pragma GCC diagnostic pop
+# endif
 
 /*
 ------------------------------------------------------------------------------

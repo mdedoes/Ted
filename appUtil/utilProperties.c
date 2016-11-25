@@ -14,6 +14,7 @@
 #   include	<ctype.h>
 
 #   include	"sioFileio.h"
+#   include	"sioGeneral.h"
 #   include	"utilTree.h"
 #   include	"utilProperties.h"
 
@@ -34,11 +35,11 @@
 /*									*/
 /************************************************************************/
 
-int utilPropertiesReadFile(		void *			tree,
-					const MemoryBuffer *	filename )
+int utilPropertiesReadFile(	void *				tree,
+				const struct MemoryBuffer *	filename )
     {
     int			rval= 0;
-    SimpleInputStream *	sis= (SimpleInputStream *)0;
+    struct SimpleInputStream *	sis= (struct SimpleInputStream *)0;
     int			c;
 
     unsigned char *	name=(unsigned char *)0;

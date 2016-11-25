@@ -8,10 +8,12 @@
 #   include	<bmEmfIo.h>
 #   include	<sioEndian.h>
 #   include	<uniUtf8.h>
+#   include	<sioGeneral.h>
 
 #   include	<appDebugon.h>
 
-# if 0
+# define LIST_WMF_CALLS 0
+# if LIST_WMF_CALLS
 #    define	WMFDEB(x)	(x)
 # else
 #    define	WMFDEB(x)	/*nothing*/
@@ -324,8 +326,10 @@ static int appEmfReadBrush(	DeviceContext *		dc,
     LogicalBrush *	lb= &(mfo->mfoSpecific.mfsLogicalBrush);
     int			done= 0;
 
+#   if LIST_WMF_CALLS
     const char *	style;
     const char *	hatch;
+#   endif
 
     if  ( ob < 0 || ob >= dc->dcObjectCount )
 	{ LLDEB(ob,dc->dcObjectCount); return -1;	}
@@ -342,30 +346,41 @@ static int appEmfReadBrush(	DeviceContext *		dc,
     switch( lb->lbStyle )
 	{
 	case BS_SOLID:
+#	    if LIST_WMF_CALLS
 	    style= "SOLID";
+#	    endif
 	    bmEmfReadRgb8Color( &(lb->lbColor), sis ); done += 4;
 	    lb->lbHatch= sioEndianGetLeInt32( sis ); done += 4;
 	    break;
 	case BS_HOLLOW:
+#	    if LIST_WMF_CALLS
 	    style= "HOLLOW";
+#	    endif
 	    bmEmfReadRgb8Color( &(lb->lbColor), sis ); done += 4;
 	    lb->lbHatch= sioEndianGetLeInt32( sis ); done += 4;
 	    break;
 	case BS_HATCHED:
+#	    if LIST_WMF_CALLS
 	    style= "HATCHED";
+#	    endif
 	    bmEmfReadRgb8Color( &(lb->lbColor), sis ); done += 4;
 	    lb->lbHatch= sioEndianGetLeInt32( sis ); done += 4;
 	    break;
 	case BS_PATTERN:
+#	    if LIST_WMF_CALLS
 	    style= "PATTERN";
+#	    endif
 	    bmEmfReadRgb8Color( &(lb->lbColor), sis ); done += 4;
 	    lb->lbHatch= sioEndianGetLeInt32( sis ); done += 4;
 	    break;
 	default:
+#	    if LIST_WMF_CALLS
 	    style= "?-?";
+#	    endif
 	    LDEB(dc->dcObjects[ob].mfoLogicalBrush.lbStyle);
 	}
 
+#   if LIST_WMF_CALLS
     switch( lb->lbHatch )
 	{
 	case HS_HORIZONTAL:	hatch= "HORIZONTAL";	break;
@@ -378,11 +393,10 @@ static int appEmfReadBrush(	DeviceContext *		dc,
 	    hatch= "?-?";
 	    break;
 	}
+#   endif
 
     WMFDEB(appDebug("CreateBrushIndirect(%s,%s) ob=%d\n",
 						    style, hatch, ob ));
-
-    style= style; hatch= hatch; /* use them */
 
     return done;
     }
@@ -578,8 +592,6 @@ static int appEmfReadLogFontExDv(	DeviceContext *		dc,
     if  ( step < 0 )
 	{ LDEB(step); return -1;	}
     done += step;
-
-    expectBytes -= done;
 
     step= appEmfReadDesignVector( dc, sis );
     if  ( step < 0 )
@@ -785,7 +797,7 @@ static int appEmfSelectStockObject(	DeviceContext *	dc,
 	    lf.lfWeight= 500;
 	    lf.lfPrivateFont= -1;
 	    strcpy( lf.lfFaceNameUtf8, "Courier" );
-	    if  ( docGetFontByName( &(dc->dcFontList), lf.lfFaceNameUtf8 ) < 0 )
+	    if  ( fontListGetFontByName( &(dc->dcFontList), lf.lfFaceNameUtf8 ) < 0 )
 		{ LDEB(1);	}
 	    if  ( (*dc->dcSelectFontObject)( dc, through, &lf ) )
 		{ XDEB(arg); return -1;		}
@@ -801,7 +813,7 @@ static int appEmfSelectStockObject(	DeviceContext *	dc,
 	    lf.lfWeight= 500;
 	    lf.lfPrivateFont= -1;
 	    strcpy( lf.lfFaceNameUtf8, "Helvetica" );
-	    if  ( docGetFontByName( &(dc->dcFontList), lf.lfFaceNameUtf8 ) < 0 )
+	    if  ( fontListGetFontByName( &(dc->dcFontList), lf.lfFaceNameUtf8 ) < 0 )
 		{ LDEB(1);	}
 	    if  ( (*dc->dcSelectFontObject)( dc, through, &lf ) )
 		{ XDEB(arg); return -1;		}
@@ -1979,7 +1991,6 @@ int appMetaPlayEmf(	DeviceContext *			dc,
 		    { LDEB(1); return -1;	}
 
 		continue;
-		goto checkSize;
 
 	    case EMR_PIE:
 		WMFDEB(appDebug("Pie()\n"));
@@ -1995,7 +2006,6 @@ int appMetaPlayEmf(	DeviceContext *			dc,
 		    { LDEB(1); return -1;	}
 
 		continue;
-		goto checkSize;
 
 	    case EMR_EXTTEXTOUTW:
 		{

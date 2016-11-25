@@ -1,15 +1,19 @@
 #   include	"bitmapConfig.h"
 
+#   if		USE_LIBJPEG	/*	{{	*/
+
 #   include	<stdlib.h>
 #   include	<stdio.h>
-#   include	<sioFileio.h>
-#   include	"bmintern.h"
-#   include	"bmio.h"
 #   include	<time.h>
 
 #   include	<jpeglib.h>
 #   include	<setjmp.h>
 #   include	<jerror.h>
+
+#   include	"bmformats.h"
+#   include	"bmio.h"
+#   include	<sioGeneral.h>
+#   include	<sioFileio.h>
 
 #   include	<appDebugon.h>
 
@@ -98,10 +102,19 @@ static void bmJpegStartInputSource(	j_decompress_ptr	cinfo )
     return;
     }
 
+# ifdef __GNUC__
+# pragma GCC diagnostic push
+# pragma GCC diagnostic ignored "-Wunused-parameter"
+# endif
+
 static void bmJpegTerminateInputSource(	j_decompress_ptr	cinfo )
     {
     return;
     }
+
+# ifdef __GNUC__
+# pragma GCC diagnostic pop
+# endif
 
 static boolean bmJpegFillInputBuffer(	j_decompress_ptr	cinfo )
     {
@@ -456,11 +469,11 @@ int bmJpegReadJfif(	BitmapDescription *	bd,
     return 0;
     }
 
-int bmReadJpegFile(	const MemoryBuffer *	filename,
-			unsigned char **	pBuffer,
-			BitmapDescription *	bd,
-			int *			pPrivateFormat )
-    {
+int bmReadJpegFile(	const struct MemoryBuffer *	filename,
+			unsigned char **		pBuffer,
+			BitmapDescription *		bd,
+			int *				pPrivateFormat )
+    	{
     SimpleInputStream *		sis;
 
     sis= sioInFileioOpen( filename );
@@ -539,6 +552,11 @@ static int read_JPEG_file(	BmJpegInputSource * bjis )
 /*									*/
 /************************************************************************/
 
+# ifdef __GNUC__
+# pragma GCC diagnostic push
+# pragma GCC diagnostic ignored "-Wunused-parameter"
+# endif
+
 int bmCanWriteJpegFile(	const BitmapDescription *	bd,
 			int				privateFormat )
     {
@@ -559,6 +577,10 @@ int bmCanWriteJpegFile(	const BitmapDescription *	bd,
 
     return 0;
     }
+
+# ifdef __GNUC__
+# pragma GCC diagnostic pop
+# endif
 
 /************************************************************************/
 /*									*/
@@ -855,7 +877,12 @@ int bmJpegWriteJfif(	const BitmapDescription *	bd,
     return rval;
     }
 
-int bmWriteJpegFile(	const MemoryBuffer *		filename,
+# ifdef __GNUC__
+# pragma GCC diagnostic push
+# pragma GCC diagnostic ignored "-Wunused-parameter"
+# endif
+
+int bmWriteJpegFile(	const struct MemoryBuffer *	filename,
 			const unsigned char *		buffer,
 			const BitmapDescription *	bd,
 			int				privateFormat )
@@ -873,6 +900,10 @@ int bmWriteJpegFile(	const MemoryBuffer *		filename,
 
     return 0;
     }
+
+# ifdef __GNUC__
+# pragma GCC diagnostic pop
+# endif
 
 static int write_JPEG_file(	BmJpegOutputDestination *	bjod )
     {
@@ -910,3 +941,4 @@ static int write_JPEG_file(	BmJpegOutputDestination *	bjod )
     return 0;
     }
 
+#   endif		/*	USE_LIBJPEG	}}	*/

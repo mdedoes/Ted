@@ -10,17 +10,29 @@
 #   include	"docBuf.h"
 #   include	"docRecalculateFields.h"
 
+#   include	<docDocumentField.h>
+#   include	<docFieldKind.h>
+
 #   include	<appDebugon.h>
 
 /************************************************************************/
 
-static int utilTreeRestartSequence(	const char *		key,
+# ifdef __GNUC__
+# pragma GCC diagnostic push
+# pragma GCC diagnostic ignored "-Wunused-parameter"
+# endif
+
+static int docTreeRestartSequence(	const char *		key,
 					void *			val,
 					void *			through )
     {
     *(int *)val= 0;
     return 0;
     }
+
+# ifdef __GNUC__
+# pragma GCC diagnostic pop
+# endif
 
 /************************************************************************/
 /*									*/
@@ -40,7 +52,7 @@ int docRenumberSeqFields(	int *			pChanged,
 	const int	stopOnFailure= 1;
 
 	if  ( utilTreeForAll( bd->bdSeqFieldIdentifiers, stopOnFailure,
-					utilTreeRestartSequence, (void *)0 ) )
+					docTreeRestartSequence, (void *)0 ) )
 	    { LDEB(1); return -1;	}
 	}
 
@@ -61,7 +73,9 @@ int docRenumberSeqFields(	int *			pChanged,
 	df= docGetNextField( &(dt->dtRootFields), df );
 	}
 
-    *pChanged= changed;
+    if  ( pChanged )
+	{ *pChanged= changed;	}
+
     return 0;
     }
 

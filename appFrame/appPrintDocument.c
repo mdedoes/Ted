@@ -23,10 +23,13 @@
 
 #   include	<appPaper.h>
 #   include	<appSystem.h>
-#   include	"appFrame.h"
+#   include	"appEditApplication.h"
+#   include	"appEditDocument.h"
 
 #   include	"appPrintJob.h"
 #   include	<psNup.h>
+#   include	<sioGeneral.h>
+#   include	<utilPrinter.h>
 
 #   include	<appDebugon.h>
 
@@ -48,13 +51,15 @@ int appCallPrintFunction(	SimpleOutputStream *		sos,
     EditApplication *	ea= pj->pjApplication;
     int			rval= 0;
 
-    /*  1  */
+    if  ( ea->eaPreparePrint					&&
+	  (*ea->eaPreparePrint)( pj, pj->pjPrintGeometry )	)
+	{ LDEB(1); return -1;	}
+
     setlocale( LC_NUMERIC, "C" );
 
     if  ( (*ea->eaPrintDocument)( sos, pj, pj->pjPrintGeometry ) )
 	{ LDEB(1); rval= -1;	}
 
-    /*  1  */
     setlocale( LC_NUMERIC, "" );
 
     return rval;
@@ -179,7 +184,7 @@ int appPrintDocument(	int				printer,
 
     if  ( ! utilMemoryBufferIsEmpty( &scratchName ) )
 	{
-	if  ( appRemoveFile( &scratchName ) )
+	if  ( fileRemoveFile( &scratchName ) )
 	    { SDEB(pd->pdCommand); rval= -1;	}
 	}
 
@@ -243,30 +248,17 @@ static int appPrintJobForCommand(	PrintJob *		pj,
     {
     int			rval= 0;
     MemoryBuffer	filename;
-    const int		readOnly= 1;
-    int			suggestStdin= 0;
-    int			formatHint= -1;
+    const int		refuseStdin= 0;
 
     utilInitMemoryBuffer( &filename );
 
     if  ( utilMemoryBufferSetString( &filename, fromName ) )
 	{ LDEB(1); rval= -1; goto ready;	}
 
-    if  ( ea->eaMakePrivateData	)
-	{
-	pj->pjPrivateData= (*ea->eaMakePrivateData)();
-	if  ( ! pj->pjPrivateData )
-	    { XDEB(pj->pjPrivateData); rval= -1; goto ready; }
-	}
-
-    formatHint= appDocumentGetOpenFormat( &suggestStdin,
-			ea->eaFileExtensions, ea->eaFileExtensionCount,
-			&filename, formatHint );
-
-    if  ( (*ea->eaOpenDocument)( ea, pj->pjPrivateData, &(pj->pjFormat),
-			    ea->eaToplevel.atTopWidget, (APP_WIDGET)0,
-			    readOnly, suggestStdin, formatHint, &filename ) )
-	{ SDEB((char *)fromName); rval= -1; goto ready; }
+    pj->pjPrivateData= appOpenDocumentInput( ea, &(pj->pjFormat),
+					    (int *)0, refuseStdin, &filename );
+    if  ( ! pj->pjPrivateData )
+	{ XDEB(pj->pjPrivateData); rval= -1; goto ready; }
 
     pj->pjDrawingSurface= (DrawingSurface)0;
     pj->pjApplication= ea;

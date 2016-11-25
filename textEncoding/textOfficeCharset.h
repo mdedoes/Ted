@@ -9,7 +9,8 @@
 #   define	TEXT_OFFICE_CHARSET_H
 
 #  include	<utilIndexMapping.h>
-#  include	<utilIndexSet.h>
+
+struct IndexSet;
 
 /************************************************************************/
 /*									*/
@@ -113,20 +114,21 @@ typedef struct OfficeCharset
 /*									*/
 /************************************************************************/
 
-extern const OfficeCharset * utilGetOfficeCharsetByCharset(
+extern const OfficeCharset * textGetOfficeCharsetByCharset(
 						int *		pIdx,
 						int		charset );
 
-extern const OfficeCharset * utilGetOfficeCharsetByIndex(
+extern const OfficeCharset * textGetOfficeCharsetByIndex(
 						int		charsetIdx );
 
-extern const OfficeCharset * utilGetOfficeCharsetBySuffix(
+extern const OfficeCharset * textGetOfficeCharsetBySuffix(
 						int *		pIdx,
 						const char *	fontname );
 
-extern int utilOfficeCharsetCodeForUnicode(	int		charsetIdx,
+extern int textOfficeCharsetCodeForUnicode(	int		charsetIdx,
 						int		unicode );
 
-extern const IndexSet * utilOfficeCharsetGetCodeSet(	int	charsetIdx );
+extern const struct IndexSet * textOfficeCharsetGetCodeSet(
+						int		charsetIdx );
 
 #   endif

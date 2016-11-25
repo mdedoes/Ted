@@ -367,6 +367,11 @@ int bmMorphoSetSimpleSe(	RasterImage *		riOut )
 /*									*/
 /************************************************************************/
 
+# ifdef __GNUC__
+# pragma GCC diagnostic push
+# pragma GCC diagnostic ignored "-Wunused-parameter"
+# endif
+
 int bmMorphoDilateSimple(	RasterImage *			riOut,
 				const RasterImage *		riIn,
 				int				ignoredInt )
@@ -392,6 +397,15 @@ int bmMorphoDilateSimple(	RasterImage *			riOut,
 
     return rval;
     }
+
+# ifdef __GNUC__
+# pragma GCC diagnostic pop
+# endif
+
+# ifdef __GNUC__
+# pragma GCC diagnostic push
+# pragma GCC diagnostic ignored "-Wunused-parameter"
+# endif
 
 int bmMorphoErodeSimple(	RasterImage *			riOut,
 				const RasterImage *		riIn,
@@ -431,6 +445,10 @@ int bmMorphoErodeSimple(	RasterImage *			riOut,
 
     return rval;
     }
+
+# ifdef __GNUC__
+# pragma GCC diagnostic pop
+# endif
 
 /************************************************************************/
 /*									*/

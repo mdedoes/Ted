@@ -6,8 +6,6 @@
 
 #   include	"docEditConfig.h"
 
-#   include	<stddef.h>
-#   include	<stdio.h>
 #   include	<ctype.h>
 #   include	<limits.h>
 
@@ -16,6 +14,18 @@
 #   include	"docEditImpl.h"
 #   include	<docTextParticule.h>
 #   include	<docNodeTree.h>
+#   include	<textAttribute.h>
+#   include	<docRowNodeProperties.h>
+#   include	<docTreeScanner.h>
+#   include	<docRowProperties.h>
+#   include	<docParaNodeProperties.h>
+#   include	<docParaProperties.h>
+#   include	<docBuf.h>
+#   include	<utilPropMask.h>
+#   include	"docEditOperation.h"
+#   include	<docCellProperties.h>
+#   include	<docBorderProperties.h>
+#   include	<docAttributes.h>
 
 #   include	<appDebugon.h>
 
@@ -29,15 +39,16 @@
 /*									*/
 /************************************************************************/
 
-static int docCopyRowColumnAttributes(	BufferItem *		rowBi,
-					const BufferItem *	refRowBi )
+static int docCopyRowColumnAttributes(	struct BufferItem *		rowNode,
+					const struct BufferItem *	refRowNode,
+					const struct BufferDocument *	bd )
     {
     int		colCount;
     int		col;
 
-    if  ( rowBi->biChildCount < refRowBi->biChildCount )
-	{ colCount= rowBi->biChildCount;	}
-    else{ colCount= refRowBi->biChildCount;	}
+    if  ( rowNode->biChildCount < refRowNode->biChildCount )
+	{ colCount= rowNode->biChildCount;	}
+    else{ colCount= refRowNode->biChildCount;	}
 
     for ( col= 0; col < colCount; col++ )
 	{
@@ -49,9 +60,9 @@ static int docCopyRowColumnAttributes(	BufferItem *		rowBi,
 
 	PropertyMask		ppSetMask;
 
-	if  ( docHeadPosition( &dp, rowBi->biChildren[col] ) )
+	if  ( docHeadPosition( &dp, rowNode->biChildren[col] ) )
 	    { continue;	}
-	if  ( docHeadPosition( &dpRef, refRowBi->biChildren[col] ) )
+	if  ( docHeadPosition( &dpRef, refRowNode->biChildren[col] ) )
 	    { continue;	}
 
 	utilPropMaskClear( &ppSetMask );
@@ -61,10 +72,8 @@ static int docCopyRowColumnAttributes(	BufferItem *		rowBi,
 	PROPmaskUNSET( &ppSetMask, PPpropOUTLINELEVEL );
 	PROPmaskUNSET( &ppSetMask, PPpropLISTLEVEL );
 
-	if  ( docUpdParaProperties( (PropertyMask *)0,
-				&(dp.dpNode->biParaProperties),
-				&ppSetMask, &(dpRef.dpNode->biParaProperties),
-				(const DocumentAttributeMap *)0 ) )
+	if  ( docParaNodeSetProperties( dp.dpNode,
+			&ppSetMask, dpRef.dpNode->biParaProperties, bd ) )
 	    { LDEB(1); return -1;	}
 
 	tp= dp.dpNode->biParaParticules;
@@ -84,10 +93,10 @@ static int docCopyRowColumnAttributes(	BufferItem *		rowBi,
 
 int docInsertTableRows(		DocumentSelection *	dsRows,
 				EditOperation *		eo,
-				BufferItem *		parentBi,
-				const BufferItem *	refRowBi,
+				struct BufferItem *		parentNode,
+				const struct BufferItem *	refRowNode,
 				const RowProperties *	rp,
-				int			textAttributeNumber,
+				int			textAttributeNr,
 				int			n,
 				int			paraNr,
 				int			rows )
@@ -99,16 +108,16 @@ int docInsertTableRows(		DocumentSelection *	dsRows,
 
     for ( row= 0; row < rows; n++, row++ )
 	{
-	BufferItem *		rowBi= (BufferItem *)0;
+	struct BufferItem *		rowNode= (struct BufferItem *)0;
 
 	const int		sectShift= 0;
 	const int		stroffShift= 0;
 	const int		paraShift= rp->rpCellCount;
 
-	rowBi= docInsertRowNode( eo->eoDocument, parentBi, n, rp,
-						    textAttributeNumber );
-	if  ( ! rowBi )
-	    { XDEB(rowBi); return -1;	}
+	rowNode= docInsertRowNode( eo->eoDocument, parentNode, n, rp,
+						    textAttributeNr );
+	if  ( ! rowNode )
+	    { XDEB(rowNode); return -1;	}
 
 	if  ( paraNr == 1 )
 	    {
@@ -124,14 +133,14 @@ int docInsertTableRows(		DocumentSelection *	dsRows,
 
 	paraNr += rp->rpCellCount;
 
-	if  ( refRowBi						&&
-	      docCopyRowColumnAttributes( rowBi, refRowBi )	)
+	if  ( refRowNode						&&
+	      docCopyRowColumnAttributes( rowNode, refRowNode, eo->eoDocument )	)
 	    { LDEB(1); return -1;	}
 
-	docEditIncludeNodeInReformatRange( eo, rowBi );
+	docEditIncludeNodeInReformatRange( eo, rowNode );
 	}
 
-    docDelimitTables( parentBi, recursively );
+    docDelimitTables( parentNode, recursively );
 
     {
     const int		direction= 1;
@@ -139,9 +148,9 @@ int docInsertTableRows(		DocumentSelection *	dsRows,
     DocumentSelection	dsNew;
     EditRange		erRows;
 
-    if  ( docHeadPosition( &(dsNew.dsHead), parentBi->biChildren[row0] ) )
+    if  ( docHeadPosition( &(dsNew.dsHead), parentNode->biChildren[row0] ) )
 	{ LDEB(row0);	}
-    if  ( docTailPosition( &(dsNew.dsTail), parentBi->biChildren[n-1] ) )
+    if  ( docTailPosition( &(dsNew.dsTail), parentNode->biChildren[n-1] ) )
 	{ LDEB(n-1);	}
 
     docSetRangeSelection( dsRows, &(dsNew.dsHead), &(dsNew.dsTail), direction );
@@ -160,37 +169,32 @@ int docInsertTableRows(		DocumentSelection *	dsRows,
 /*									*/
 /************************************************************************/
 
-static BufferItem * docInsertCellInRow(
-				BufferDocument *	bd,
-				BufferItem *		rowBi,
+static struct BufferItem * docInsertCellInRow(
+				struct BufferDocument *	bd,
+				struct BufferItem *		rowNode,
 				int			col,
-				const CellProperties *	cp,
-				int			textAttributeNumber )
+				int			after,
+				const struct CellProperties *	cp,
+				int			textAttributeNr )
     {
-    RowProperties *	rp;
+    struct BufferItem *	cellNode;
+    struct BufferItem *	paraNode;
 
-    BufferItem *	cellBi;
-    BufferItem *	paraBi;
+    cellNode= docInsertNode( bd, rowNode, col+ after, DOClevCELL );
+    if  ( ! cellNode )
+	{ LXDEB(col,cellNode); return (struct BufferItem *)0;	}
 
-    const int		shiftTail= 0; /* Do not shift others */
+    if  ( docInsertColumnInRowNode( rowNode, col,
+			    cp, bd, (const struct DocumentAttributeMap *)0 ) )
+	{ LDEB(col); return (struct BufferItem *)0;	}
 
-    rp= &(rowBi->biRowProperties);
+    paraNode= docAppendParagraph( bd, cellNode, textAttributeNr );
+    if  ( ! paraNode )
+	{ XDEB(paraNode); return (struct BufferItem *)0;	}
 
-    if  ( docInsertRowColumn( rp, col, shiftTail,
-				    cp, (const DocumentAttributeMap *)0 ) )
-	{ LDEB(col); return (BufferItem *)0;	}
+    docSetParaTableNesting( paraNode, bd );
 
-    cellBi= docInsertNode( bd, rowBi, col, DOClevCELL );
-    if  ( ! cellBi )
-	{ LXDEB(col,cellBi); return (BufferItem *)0;	}
-
-    paraBi= docInsertEmptyParagraph( bd, cellBi, textAttributeNumber );
-    if  ( ! paraBi )
-	{ XDEB(paraBi); return (BufferItem *)0;	}
-
-    docSetParaTableNesting( paraBi );
-
-    return paraBi;
+    return paraNode;
     }
 
 /************************************************************************/
@@ -199,69 +203,93 @@ static BufferItem * docInsertCellInRow(
 /*									*/
 /************************************************************************/
 
-int docSplitColumnInRows(	BufferItem **		pNewParaBi,
+int docSplitColumnInRows(	struct BufferItem **		pNewParaNode,
 				EditOperation *		eo,
-				BufferItem *		parentBi,
+				struct BufferItem *		parentNode,
 				int			row0,
 				int			row,
 				int			row1,
 				int			col,
 				int			after )
     {
-    BufferDocument *		bd= eo->eoDocument;
+    int				rval= 0;
+    struct BufferDocument *		bd= eo->eoDocument;
 
-    BufferItem *		newParaBi= (BufferItem *)0;
+    struct BufferItem *		newParaNode= (struct BufferItem *)0;
 
-    BufferItem *		rowBi;
+    struct BufferItem *		rowNode;
 
     const int			recursively= 0;
+
+    PropertyMask		rpSetMask;
+    PropertyMask		cpSetMask;
+
+    RowProperties		newRp;
+
+    docInitRowProperties( &newRp );
+
+    utilPropMaskClear( &rpSetMask );
+    PROPmaskADD( &rpSetMask, RPprop_CELL_PROPS );
+    utilPropMaskClear( &cpSetMask );
+    PROPmaskADD( &cpSetMask, CLpropWIDTH );
 
     if  ( after )
 	{ after= 1;	}
 
     while( row0 <= row1 )
 	{
-	RowProperties *		rp;
+	struct BufferItem *		cellNode;
+	struct BufferItem *		paraNode;
+	int			colTo;
+	int			colCount;
 
-	CellProperties *	oldCp;
-	CellProperties		newCp;
+	int			textAttributeNr;
 
-	int			left;
-	int			middle;
+	rowNode= parentNode->biChildren[row0];
 
-	BufferItem *		cellBi;
-	BufferItem *		paraBi;
+	{
+	const RowProperties *	oldRp;
+	oldRp= rowNode->biRowProperties;
 
-	int			textAttributeNumber;
+	if  ( docCopyRowProperties( &newRp, oldRp,
+				    (const struct DocumentAttributeMap *)0 ) )
+	    { LDEB(1); rval= -1; goto ready;	}
 
-	rowBi= parentBi->biChildren[row0];
-	rp= &(rowBi->biRowProperties);
+	newRp.rpCells[col].cpWide /= 2;
 
-	oldCp= rp->rpCells+ col;
+	if  ( docInsertRowColumn( &newRp, col+ 1, &(newRp.rpCells[col]),
+				    (const struct DocumentAttributeMap *)0 ) )
+	    { LDEB(1); rval= -1; goto ready;	}
 
-	left= docColumnLeft( rp, col );
-	middle= ( rp->rpCells[col].cpRightBoundaryTwips+ left )/ 2;
+	newRp.rpCells[col+ 1].cpWide=
+		    oldRp->rpCells[col].cpWide- newRp.rpCells[col].cpWide;
+	}
 
-	newCp= *oldCp;
-	if  ( after )
-	    { oldCp->cpRightBoundaryTwips= middle;	}
-	else{ newCp. cpRightBoundaryTwips= middle;	}
+	cellNode= rowNode->biChildren[col];
+	paraNode= cellNode->biChildren[0];
+	textAttributeNr= paraNode->biParaParticules[0].tpTextAttrNr;
 
-	cellBi= rowBi->biChildren[col];
-	paraBi= cellBi->biChildren[0];
-	textAttributeNumber= paraBi->biParaParticules[0].tpTextAttrNr;
+	paraNode= docInsertCellInRow( bd, rowNode, col, after,
+				&(newRp.rpCells[col]), textAttributeNr );
 
-	paraBi= docInsertCellInRow( bd, rowBi, col+ after, &newCp,
-							textAttributeNumber );
+	colTo= 0;
+	colCount= newRp.rpCellCount;
+
+	if  ( docChangeRowNodeProperties( (PropertyMask *)0, (PropertyMask *)0,
+				    rowNode, &rpSetMask, &cpSetMask, &newRp,
+				    colTo, colCount, bd,
+				    (const struct DocumentAttributeMap *)0 ) )
+	    { LDEB(col); rval= -1; goto ready;	}
+
 	if  ( row0 == row )
-	    { newParaBi= paraBi;	}
+	    { newParaNode= paraNode;	}
 
 	{
 	const int	stroffFrom= 0;
 	const int	stroffShift= 0;
 	const int	sectShift= 0;
 
-	const int	paraNr= docNumberOfParagraph( paraBi );
+	const int	paraNr= docNumberOfParagraph( paraNode );
 	const int	paraShift= 1;
 
 	docEditShiftReferences( eo, &(eo->eoSelectionScope),
@@ -269,15 +297,20 @@ int docSplitColumnInRows(	BufferItem **		pNewParaBi,
 					sectShift, paraShift, stroffShift );
 	}
 
-	docEditIncludeNodeInReformatRange( eo, rowBi );
+	docEditIncludeNodeInReformatRange( eo, rowNode );
 
 	row0++;
 	}
 
-    docDelimitTables( parentBi, recursively );
+    docDelimitTables( parentNode, recursively );
 
-    *pNewParaBi= newParaBi;
-    return 0;
+    *pNewParaNode= newParaNode;
+
+  ready:
+
+    docCleanRowProperties( &newRp );
+
+    return rval;
     }
 
 /************************************************************************/
@@ -287,7 +320,7 @@ int docSplitColumnInRows(	BufferItem **		pNewParaBi,
 /************************************************************************/
 
 int docDeleteColumnsFromRows(	EditOperation *	eo,
-				BufferItem *	parentBi,
+				struct BufferItem *	parentNode,
 				int		delRow0,
 				int		delRow1,
 				int		delCol0,
@@ -301,13 +334,13 @@ int docDeleteColumnsFromRows(	EditOperation *	eo,
 
     for ( row= delRow0; row <= delRow1; row++ )
 	{
-	BufferItem *		rowBi= parentBi->biChildren[row];
+	struct BufferItem *		rowNode= parentNode->biChildren[row];
 	DocumentSelection	dsCols;
 
 	docInitDocumentSelection( &dsCols );
-	if  ( docHeadPosition( &dsCols.dsHead, rowBi->biChildren[delCol0] ) )
+	if  ( docHeadPosition( &dsCols.dsHead, rowNode->biChildren[delCol0] ) )
 	    { LDEB(1); rval= -1; goto ready;	}
-	if  ( docTailPosition( &dsCols.dsTail, rowBi->biChildren[delCol1] ) )
+	if  ( docTailPosition( &dsCols.dsTail, rowNode->biChildren[delCol1] ) )
 	    { LDEB(1); rval= -1; goto ready;	}
 
 	if  ( docEditDeleteFieldsForBlockDelete( eo, &dsCols ) )
@@ -316,7 +349,7 @@ int docDeleteColumnsFromRows(	EditOperation *	eo,
 
     for ( row= delRow0; row <= delRow1; row++ )
 	{
-	BufferItem *	rowBi= parentBi->biChildren[row];
+	struct BufferItem *	rowNode= parentNode->biChildren[row];
 
 	int		sectionsDeleted= 0;
 	int		firstParaDeleted= -1;
@@ -324,12 +357,12 @@ int docDeleteColumnsFromRows(	EditOperation *	eo,
 
 	docEditDeleteNodes( eo, &sectionsDeleted,
 					&firstParaDeleted, &paragraphsDeleted,
-					rowBi, delCol0, count );
+					rowNode, delCol0, count );
 
-	docEditIncludeNodeInReformatRange( eo, rowBi );
+	docEditIncludeNodeInReformatRange( eo, rowNode );
 	}
 
-    docDelimitTables( parentBi, recursively );
+    docDelimitTables( parentNode, recursively );
 
   ready:
 
@@ -342,19 +375,31 @@ int docDeleteColumnsFromRows(	EditOperation *	eo,
 /*									*/
 /************************************************************************/
 
-static void docRefreshTableNesting(	BufferItem *	node )
-    {
-    if  ( docIsParaNode( node ) )
-	{ docSetParaTableNesting( node );	}
-    else{
-	int		ch;
+# ifdef __GNUC__
+# pragma GCC diagnostic push
+# pragma GCC diagnostic ignored "-Wunused-parameter"
+# endif
 
-	for ( ch= 0; ch < node->biChildCount; ch++ )
-	    { docRefreshTableNesting( node->biChildren[ch] );	}
-	}
+static int docRefreshTableNesting(
+				struct BufferItem *			node,
+				const DocumentSelection *	ds,
+				const struct BufferItem *	bodySectNode,
+				void *				vbd )
+    {
+    const struct BufferDocument *	bd= (const struct BufferDocument *)vbd;
+
+    if  ( docIsParaNode( node ) )
+	{ docSetParaTableNesting( node, bd );	}
+
+    return 0;
     }
 
-void docFlattenRow(		BufferItem *		node )
+# ifdef __GNUC__
+# pragma GCC diagnostic pop
+# endif
+
+void docFlattenRow(		struct BufferItem *		node,
+				struct BufferDocument *	bd )
     {
     /* nearest row. NOT a real one! */
     node= docGetRowLevelNode( node );
@@ -362,10 +407,12 @@ void docFlattenRow(		BufferItem *		node )
     if  ( ! node )
 	{ XDEB(node);	}
     else{
-	docCleanRowProperties( &(node->biRowProperties) );
-	docInitRowProperties( &(node->biRowProperties) );
+	docRowNodeResetRowProperties( node, bd );
 
-	docRefreshTableNesting( node );
+	docScanTreeNode( bd, node,
+		docRefreshTableNesting, (NodeVisitor)0,
+		(TreeVisitor)0, (TreeVisitor)0, 
+		0, (void *)bd );
 	}
     }
 
@@ -375,8 +422,8 @@ void docFlattenRow(		BufferItem *		node )
 /*									*/
 /************************************************************************/
 
-int docFillTableDocument(	BufferDocument *	bdTable,
-				BufferItem *		parentNode,
+int docFillTableDocument(	struct BufferDocument *	bdTable,
+				struct BufferItem *	parentNode,
 				int			textAttrNr,
 				int			wide,
 				int			rows,
@@ -384,24 +431,44 @@ int docFillTableDocument(	BufferDocument *	bdTable,
     {
     int				rval= 0;
     int				row;
+    int				col;
 
-    TextAttribute		ta;
+    const TextAttribute *	ta;
 
     RowProperties		rp;
+    CellProperties *		cp;
+    BorderProperties		bp;
+    int				borderPropertiesNumber;
 
     docInitRowProperties( &rp );
+    docInitBorderProperties( &bp );
 
-    docGetTextAttributeByNumber( &ta, bdTable, textAttrNr );
+    bp.bpStyle= DOCbsS;
+    bp.bpPenWideTwips= 15;
 
-    if  ( docEqualWidthColumns( &rp, columns, wide, ta.taFontSizeHalfPoints ) )
+    borderPropertiesNumber= docBorderPropertiesNumber( bdTable, &bp );
+    if  ( borderPropertiesNumber < 0 )
+	{ LDEB(borderPropertiesNumber); rval= -1; goto ready;	}
+
+    ta= docGetTextAttributeByNumber( bdTable, textAttrNr );
+
+    if  ( docEqualWidthColumns( &rp, columns, wide, ta->taFontSizeHalfPoints ) )
 	{ LDEB(columns); rval= -1; goto ready;	}
+
+    cp= rp.rpCells;
+    for ( col= 0; col < rp.rpCellCount; cp++, col++ )
+	{
+	cp->cpTopBorderNumber= borderPropertiesNumber;
+	cp->cpLeftBorderNumber= borderPropertiesNumber;
+	cp->cpRightBorderNumber= borderPropertiesNumber;
+	cp->cpBottomBorderNumber= borderPropertiesNumber;
+	}
 
     for ( row= 0; row < rows; row++ )
 	{
-	BufferItem *		rowNode= (BufferItem *)0;
+	struct BufferItem *		rowNode= (struct BufferItem *)0;
 
-	rowNode= docInsertRowNode( bdTable, parentNode, row, &rp,
-							    textAttrNr );
+	rowNode= docInsertRowNode( bdTable, parentNode, row, &rp, textAttrNr );
 	if  ( ! rowNode )
 	    { XDEB(rowNode); rval= -1; goto ready;	}
 	}
@@ -409,6 +476,7 @@ int docFillTableDocument(	BufferDocument *	bdTable,
   ready:
 
     docCleanRowProperties( &rp );
+    docCleanBorderProperties( &bp );
 
     return rval;
     }

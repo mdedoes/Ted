@@ -17,16 +17,16 @@
 /*									*/
 /************************************************************************/
 
-#   include	"psFontInfo.h"
-
 #   ifndef	PS_FONT_FAMILY_H
 #   define	PS_FONT_FAMILY_H
+
+struct AfmFontInfo;
 
 typedef struct PsFontFamily
     {
     char *			psfFontFamilyName;		/*  1	*/
     char *			psfFontFamilyName_Orig;		/*  2	*/
-    AfmFontInfo **		psfFaces;			/*  3	*/
+    struct AfmFontInfo **	psfFaces;			/*  3	*/
     short int			psfFaceCount;
     unsigned char		psfHasFixedWidth;		/*  4	*/
     unsigned char		psfHasProportionalWidth;	/*  4	*/
@@ -42,7 +42,7 @@ typedef struct PsFontFamily
 extern void psInitFontFamily(		PsFontFamily *		psf );
 extern void psFreeFontFamily(		PsFontFamily *		psf );
 
-extern PsFontFamily * psFontFamilyFromFaces(	AfmFontInfo **	afis,
+extern PsFontFamily * psFontFamilyFromFaces(	struct AfmFontInfo **	afis,
 						int *		pConsumed,
 						int		count );
 

@@ -12,83 +12,22 @@
 #   include	"docFieldInstructions.h"
 #   include	"docSelectionScope.h"
 #   include	"docEditRange.h"
+#   include	"docChildFields.h"
 
-typedef enum FieldKind
-    {
-    DOCfkUNKNOWN= 0,
-    DOCfkHYPERLINK,
-    DOCfkXE,
-    DOCfkTC,
-    DOCfkTCN,
-    DOCfkBOOKMARK,
-    DOCfkSEQ,
-    DOCfkSECTION,
-    DOCfkSECTIONPAGES,
-    DOCfkPAGE,
-    DOCfkPAGEREF,
-    DOCfkNUMPAGES,
-    DOCfkREF,
-
-    DOCfkCREATEDATE,
-    DOCfkSAVEDATE,
-    DOCfkPRINTDATE,
-    DOCfkDATE,
-    DOCfkTIME,
-
-    DOCfkAUTHOR,
-    DOCfkCOMMENTS,
-    DOCfkDOCCOMM,
-    DOCfkKEYWORDS,
-    DOCfkSUBJECT,
-    DOCfkTITLE,
-    DOCfkFILENAME,
-
-    DOCfkMERGEFIELD,
-    DOCfkFORMTEXT,
-    DOCfkFORMCHECKBOX,
-
-    DOCfkSYMBOL,
-	    /**
-	      *  A note reference in the body of the document, or the 
-	      *  note number at the head of the note.
-	      */
-    DOCfkCHFTN,
-	    /**
-	      *  An annotation reference in the document. Only partially 
-	      *  implemented. (MdD May 2010)
-	      */
-    DOCfkCHATN,
-
-	    /**
-	      *  The bullet or number at the head of a numbered paragraph
-	      *  that is calculated programmatically.
-	      */
-    DOCfkLISTTEXT,
-
-    DOCfkINCLUDEPICTURE,
-
-    DOCfkTOC,
-
-    DOCfk_COUNT
-    } FieldKind;
-
-    /**
-      *  Field type that potentially has a note.
-      */
-#   define docFieldHasNote(t) ( (t) == DOCfkCHFTN || (t) == DOCfkCHATN )
-
-struct DocumentField;
-
-typedef struct ChildFields
-    {
-    struct DocumentField **	cfChildren;
-    int				cfChildCount;
-    } ChildFields;
+struct SimpleLocale;
 
 typedef struct DocumentField
     {
+				/**
+				 *  The kind of field: DOCfkXXXX
+				 */
     unsigned char		dfKind;
+
+				/**
+				 *  Field data. Unused by Ted.
+				 */
     MemoryBuffer		dfData;
+
 				/**
 				  *  The instructions of the field.
 				  */
@@ -101,16 +40,26 @@ typedef struct DocumentField
 				  *  the head position of the field.
 				  */
     SelectionScope		dfSelectionScope;
+
 				/**
-				  *  The position of the head particule of 
-				  *  the field.
+				  *  The position in the document of the head 
+				  *  particule of the field. For instruction 
+				  *  fields, dfHeadPosition is ABUSED to hold 
+				  *  the number of the instructions component 
+				  *  in the parent  and the offset inside the 
+				  *  component.
 				  */
     EditPosition		dfHeadPosition;
+
 				/**
-				  *  The position of the tail particule of 
-				  *  the field.
+				  *  The position in the document of the tail 
+				  *  particule of the field. For instruction 
+				  *  fields, dfTailPosition holds the number of 
+				  *  the instructions component in the parent 
+				  *  and the offset inside the component.
 				  */
     EditPosition		dfTailPosition;
+
 				/*
 				 * If a field spans part of a table,
 				 * these can be used to give the first/last 
@@ -119,6 +68,7 @@ typedef struct DocumentField
 				 */
     short			dfFirstColumn;
     short			dfLastColumn;
+
 				/*
 				 * Flags that reflect the status of the 
 				 * field content.
@@ -127,17 +77,31 @@ typedef struct DocumentField
     unsigned char		dfEdited;
     unsigned char		dfLocked;
     unsigned char		dfPrivate;
-					/********************************/
-					/*  Fields have a hierarchy.	*/
-					/********************************/
-    ChildFields			dfChildFields;
+
+				/**
+				 *  The children of the field in the field 
+				 *  hierarchy. E.G: The hyperlinks inside a 
+				 *  table of contents field.
+				 */
+    ChildFields			dfResultFields;
+
+				/**
+				 *  The parent of this field (If any)
+				 */
     struct DocumentField *	dfParent;
+
+				/**
+				 *  The index of this field in the ChildFields 
+				 *  of its parent.
+				 */
     int				dfNumberInParent;
+
 				/**
 				 * The index of the field.
 				 * ABUSED to keep a linked list of free fields
 				 */
     int				dfFieldNumber;
+
 				/**
 				 *  Reference to the note of a chftn field.
 				 *
@@ -146,27 +110,22 @@ typedef struct DocumentField
 				 *  from 1.]
 				 */
     int				dfNoteIndex;
+
 				/**
-				 * Make it possible to refer
-				 * the page number of a field.
+				 *  Make it possible to refer to the page 
+				 *  number of a field.
 				 */
     int				dfPage;
+
+				/**
+				 *  The fields that occur inside the 
+				 *  instructions of the field. In 
+				 *  = (Formula) and IF fields, the expression
+				 *  uses fields inside the instructions to 
+				 *  refer to a variety of values.
+				 */
+    ChildFields			dfInstructionFields;
     } DocumentField;
-
-typedef enum FieldProperty
-    {
-    FPpropFIRST_COLUMN= 0,
-    FPpropLAST_COLUMN,
-    FPpropDIRTY,
-    FPpropEDITED,
-    FPpropLOCKED,
-    FPpropPRIVATE,
-
-    FPpropFLDRSLT,
-    FPpropFLDINST,
-
-    FPprop_COUNT
-    } FieldProperty;
 
 # define docGetBodySectNrOfField( df ) \
 		((df)->dfSelectionScope.ssTreeType == DOCinBODY? \
@@ -202,14 +161,13 @@ extern DocumentField * docGetNextFieldInSection(
 					DocumentField *		df );
 
 extern void docInitDocumentField(	DocumentField *		df );
-extern void docInitChildFields(		ChildFields *		cf );
-extern void docCleanChildFields(	ChildFields *		cf );
 
 extern void docCleanDocumentField(	DocumentField *		df );
 
 extern int docSetFieldInst(		DocumentField *		df,
-					const char *		bytes,
-					int			size );
+					int			keepSpace,
+					const char *		instBytes,
+					int			instSize );
 
 extern int docAddToFieldData(		DocumentField *		df,
 					const char *		bytes,
@@ -239,19 +197,31 @@ extern DocumentField * docFindTypedChildField(
 extern void docSetFieldTail(		DocumentField *		dfPa,
 					const EditPosition *	epTail );
 
-extern int docAddChildToField(		DocumentField *		dfCh,
-					DocumentField *		dfPa );
+extern void docSetFieldHead(		DocumentField *		dfPa,
+					const EditPosition *	epHead );
+
+extern int docAddResultChildToField(	DocumentField *		dfPa,
+					DocumentField *		dfCh );
+
+extern int docAddInstructionsChildToField(
+					DocumentField *		dfPa,
+					DocumentField *		dfCh );
 
 extern int docInsertFieldInTree(	ChildFields *		cf,
 					DocumentField *		df );
 
 extern DocumentField *	docFieldGetCommonParent(
-					DocumentField *		dfLeft,
-					DocumentField *		dfRight );
+					DocumentField *	dfLeft,
+					DocumentField *	dfRight );
 
 extern int docFieldFormatInteger( MemoryBuffer *		mbResult,
 				int				format,
 				int				value );
+
+extern int docFieldFormatNumber( MemoryBuffer *			mbResult,
+				const MemoryBuffer *		picture,
+				double				value,
+				const struct SimpleLocale *	sl );
 
 extern int docCopyFieldProperties(	DocumentField *		dfTo,
 					const DocumentField *	dfFrom );
@@ -268,5 +238,16 @@ extern DocumentField * docFindFieldInRange(
 					const ChildFields *	cf,
 					int			lastOne,
 					int			kind );
+
+extern void docShiftChildFieldReferences( const ChildFields *	cf,
+					int			sectFrom,
+					int			paraFrom,
+					int			stroffFrom,
+					int			sectShift,
+					int			paraShift,
+					int			stroffShift );
+
+extern const DocumentField * docGetLocationParent(
+					const DocumentField *	df );
 
 #   endif /*  DOC_DOCUMENT_FIELD_H  */

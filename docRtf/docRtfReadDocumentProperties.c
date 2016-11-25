@@ -10,13 +10,14 @@
 #   include	<ctype.h>
 #   include	<stdlib.h>
 
-#   include	<appDebugon.h>
-
-#   include	<appUnit.h>
+#   include	<utilDateTime.h>
 #   include	<textOfficeCharset.h>
 #   include	<textConverter.h>
 #   include	"docRtfReaderImpl.h"
-#   include	"docRtfTagEnum.h"
+#   include	<docBuf.h>
+#   include	<docDocumentProperties.h>
+
+#   include	<appDebugon.h>
 
 /************************************************************************/
 /*									*/
@@ -59,7 +60,6 @@ static int docRtfSetAnsicpg(	struct TextConverter *	tc,
 	case 1250: case 1251: case 1252: case 1253:
 	case 1254: case 1255: case 1256: case 1257:
 	case 1258:
-	    /* sprintf( scratch, "WINDOWS-%d", ansicpg ); */ /* GNU? */
 	    sprintf( scratch, "CP%d", ansicpg );
 	    textConverterSetNativeEncodingName( tc, scratch );
 	    return 0;
@@ -86,30 +86,28 @@ static int docRtfSetAnsicpg(	struct TextConverter *	tc,
 /************************************************************************/
 
 static int docRtfReadSetDocumentCharset(
-				RtfReader *		rrc,
+				RtfReader *		rr,
 				int			arg )
     {
-    struct TextConverter *	tc= rrc->rrRtfTextConverter;
-
     switch( arg )
 	{
 	case DOCcharsetANSI:
-	    if  ( docRtfSetAnsicpg( tc, 1252 ) )
+	    if  ( docRtfSetAnsicpg( rr->rrRtfTextConverter, 1252 ) )
 		{ LDEB(arg); return -1;	}
 	    return 0;
 
 	case DOCcharsetPC:
-	    if  ( docRtfSetAnsicpg( tc, 437 ) )
+	    if  ( docRtfSetAnsicpg( rr->rrRtfTextConverter, 437 ) )
 		{ LDEB(arg); return -1;	}
 	    return 0;
 
 	case DOCcharsetPCA:
-	    if  ( docRtfSetAnsicpg( tc, 850 ) )
+	    if  ( docRtfSetAnsicpg( rr->rrRtfTextConverter, 850 ) )
 		{ LDEB(arg); return -1;	}
 	    return 0;
 
 	case DOCcharsetMAC:
-	    if  ( docRtfSetAnsicpg( tc, 10000 ) )
+	    if  ( docRtfSetAnsicpg( rr->rrRtfTextConverter, 10000 ) )
 		{ LDEB(arg); return -1;	}
 	    return 0;
 
@@ -120,45 +118,45 @@ static int docRtfReadSetDocumentCharset(
 
 int docRtfRememberDocProperty(	const RtfControlWord *	rcw,
 				int			arg,
-				RtfReader *		rrc )
+				RtfReader *		rr )
     {
-    SectionProperties *		sp= &(rrc->rrcSectionProperties);
+    SectionProperties *		sp= &(rr->rrSectionProperties);
 
     int				charset= -1;
 
     switch( rcw->rcwID )
 	{
 	case DGpropLEFT_MARGIN:
-	    sp->spDocumentGeometry.dgLeftMarginTwips= arg;
-	    rrc->rrcGotDocGeometry= 1;
+	    sp->spDocumentGeometry.dgMargins.roLeftOffset= arg;
+	    rr->rrGotDocGeometry= 1;
 	    break;
 	case DGpropTOP_MARGIN:
-	    sp->spDocumentGeometry.dgTopMarginTwips= arg;
-	    rrc->rrcGotDocGeometry= 1;
+	    sp->spDocumentGeometry.dgMargins.roTopOffset= arg;
+	    rr->rrGotDocGeometry= 1;
 	    break;
 	case DGpropRIGHT_MARGIN:
-	    sp->spDocumentGeometry.dgRightMarginTwips= arg;
-	    rrc->rrcGotDocGeometry= 1;
+	    sp->spDocumentGeometry.dgMargins.roRightOffset= arg;
+	    rr->rrGotDocGeometry= 1;
 	    break;
 	case DGpropBOTTOM_MARGIN:
-	    sp->spDocumentGeometry.dgBottomMarginTwips= arg;
+	    sp->spDocumentGeometry.dgMargins.roBottomOffset= arg;
 	    break;
 	case DGpropPAGE_WIDTH:
 	    sp->spDocumentGeometry.dgPageWideTwips= arg;
-	    rrc->rrcGotDocGeometry= 1;
+	    rr->rrGotDocGeometry= 1;
 	    break;
 	case DGpropPAGE_HEIGHT:
 	    sp->spDocumentGeometry.dgPageHighTwips= arg;
-	    rrc->rrcGotDocGeometry= 1;
+	    rr->rrGotDocGeometry= 1;
 	    break;
 	case DGpropGUTTER:
 	    sp->spDocumentGeometry.dgGutterTwips= arg;
-	    rrc->rrcGotDocGeometry= 1;
+	    rr->rrGotDocGeometry= 1;
 	    break;
 	case DGpropMARGMIR:
 	    arg= arg != 0;
 	    sp->spDocumentGeometry.dgMirrorMargins= arg;
-	    rrc->rrcGotDocGeometry= 1;
+	    rr->rrGotDocGeometry= 1;
 	    break;
 
 	case DPpropFACING_PAGES:
@@ -178,42 +176,42 @@ int docRtfRememberDocProperty(	const RtfControlWord *	rcw,
 	    break;
 
 	case DPpropDEFF:
-	    rrc->rrcDefaultFont= arg;
-	    if  ( docRtfReadMapFont( rrc, &arg, &charset,
-						rrc->rrcDefaultFont ) < 0 )
+	    rr->rrDefaultFont= arg;
+	    if  ( docRtfReadMapFont( rr, &arg, &charset,
+						rr->rrDefaultFont ) < 0 )
 		{ SLDEB(rcw->rcwWord,arg);	}
 	    break;
 	case DPpropSTSHFDBCH:
-	    rrc->rrcDefaultFontDbch= arg;
-	    if  ( docRtfReadMapFont( rrc, &arg, &charset,
-						rrc->rrcDefaultFontDbch ) < 0 )
+	    rr->rrDefaultFontDbch= arg;
+	    if  ( docRtfReadMapFont( rr, &arg, &charset,
+						rr->rrDefaultFontDbch ) < 0 )
 		{ SLDEB(rcw->rcwWord,arg);	}
 	    break;
 	case DPpropSTSHFLOCH:
-	    rrc->rrcDefaultFontLoch= arg;
-	    if  ( docRtfReadMapFont( rrc, &arg, &charset,
-						rrc->rrcDefaultFontLoch ) < 0 )
+	    rr->rrDefaultFontLoch= arg;
+	    if  ( docRtfReadMapFont( rr, &arg, &charset,
+						rr->rrDefaultFontLoch ) < 0 )
 		{ SLDEB(rcw->rcwWord,arg);	}
 	    break;
 	case DPpropSTSHFHICH:
-	    rrc->rrcDefaultFontHich= arg;
-	    if  ( docRtfReadMapFont( rrc, &arg, &charset,
-						rrc->rrcDefaultFontHich ) < 0 )
+	    rr->rrDefaultFontHich= arg;
+	    if  ( docRtfReadMapFont( rr, &arg, &charset,
+						rr->rrDefaultFontHich ) < 0 )
 		{ SLDEB(rcw->rcwWord,arg);	}
 	    break;
 	case DPpropSTSHFBI:
-	    rrc->rrcDefaultFontBi= arg;
-	    if  ( docRtfReadMapFont( rrc, &arg, &charset,
-						rrc->rrcDefaultFontBi ) < 0 )
+	    rr->rrDefaultFontBi= arg;
+	    if  ( docRtfReadMapFont( rr, &arg, &charset,
+						rr->rrDefaultFontBi ) < 0 )
 		{ SLDEB(rcw->rcwWord,arg);	}
 	    break;
 
 	case DPpropDOC_CHARSET:
-	    if  ( docRtfReadSetDocumentCharset( rrc, arg ) )
+	    if  ( docRtfReadSetDocumentCharset( rr, arg ) )
 		{ SLDEB(rcw->rcwWord,arg); return 0;	}
 	    break;
 	case DPpropANSICPG:
-	    if  ( docRtfSetAnsicpg( rrc->rrRtfTextConverter, arg ) )
+	    if  ( docRtfSetAnsicpg( rr->rrRtfTextConverter, arg ) )
 		{ SLDEB(rcw->rcwWord,arg); return 0;	}
 	    break;
 
@@ -223,14 +221,14 @@ int docRtfRememberDocProperty(	const RtfControlWord *	rcw,
 	case DPpropRIGHT_BORDER:
 	case DPpropHEAD_BORDER:
 	case DPpropFOOT_BORDER:
-	    arg= docRtfReadGetBorderNumber( rrc );
+	    arg= docRtfReadGetBorderNumber( rr );
 	    if  ( arg < 0 )
 		{ SLDEB(rcw->rcwWord,arg); return -1;	}
 	    break;
 
 	case DPpropNOTETYPES:
 	    docInitFootEndNotesProperties(
-			    &(rrc->rrDocument->bdProperties.dpNotesProps) );
+			    &(rr->rrDocument->bdProperties->dpNotesProps) );
 	    break;
 
 	case DPprop_IGNORED:
@@ -240,18 +238,18 @@ int docRtfRememberDocProperty(	const RtfControlWord *	rcw,
 	    break;
 	}
 
-    if  ( rrc->rrcTraceInProps )
+    if  ( rr->rrTraceInProps )
 	{
 	/*  Working copy for undo */
-	if  ( docSetDocumentProperty( &(rrc->rrcDocumentProperties),
+	if  ( docSetDocumentProperty( &(rr->rrDocumentProperties),
 						    rcw->rcwID, arg ) < 0 )
 	    { SLDEB(rcw->rcwWord,arg); return 0;	}
 
-	PROPmaskADD( &(rrc->rrcDocPropertyMask), rcw->rcwID );
+	PROPmaskADD( &(rr->rrDocPropertyMask), rcw->rcwID );
 	}
     else{
 	/*  Document */
-	if  ( docSetDocumentProperty( &(rrc->rrDocument->bdProperties),
+	if  ( docSetDocumentProperty( rr->rrDocument->bdProperties,
 						    rcw->rcwID, arg ) < 0 )
 	    { SLDEB(rcw->rcwWord,arg); return 0;	}
 	}
@@ -266,7 +264,7 @@ int docRtfRememberDocProperty(	const RtfControlWord *	rcw,
 /************************************************************************/
 
 int docRtfCommitDocPropText(	const RtfControlWord *	rcw,
-				RtfReader *		rrc )
+				RtfReader *		rr )
     {
     int		rval= 0;
     const int	removeSemicolon= rcw->rcwID == DPpropGENERATOR;
@@ -274,19 +272,19 @@ int docRtfCommitDocPropText(	const RtfControlWord *	rcw,
     char *	text= (char *)0;
     int		size;
 
-    if  ( docRtfStoreSavedText( &text, &size, rrc, removeSemicolon ) )
+    if  ( docRtfStoreSavedText( &text, &size, rr, removeSemicolon ) )
 	{ SDEB(rcw->rcwWord); rval= -1; goto ready;	}
 
-    if  ( rrc->rrcTraceInProps )
+    if  ( rr->rrTraceInProps )
 	{
-	if  ( docSetDocumentPropertyString( &(rrc->rrcDocumentProperties),
+	if  ( docSetDocumentPropertyString( &(rr->rrDocumentProperties),
 						    rcw->rcwID, text, size ) )
 	    { SDEB(rcw->rcwWord); rval= -1; goto ready;	}
 
-	PROPmaskADD( &(rrc->rrcDocPropertyMask), rcw->rcwID );
+	PROPmaskADD( &(rr->rrDocPropertyMask), rcw->rcwID );
 	}
     else{
-	if  ( docSetDocumentPropertyString( &(rrc->rrDocument->bdProperties),
+	if  ( docSetDocumentPropertyString( rr->rrDocument->bdProperties,
 						    rcw->rcwID, text, size ) )
 	    { SDEB(rcw->rcwWord); rval= -1; goto ready;	}
 	}
@@ -307,25 +305,25 @@ int docRtfCommitDocPropText(	const RtfControlWord *	rcw,
 
 int docRtfDocTimeGroup(	const RtfControlWord *	rcw,
 			int			arg,
-			RtfReader *		rrc )
+			RtfReader *		rr )
     {
-    utilInvalidateTime( &(rrc->rrcTm) );
+    utilInvalidateTime( &(rr->rrTm) );
 
-    if  ( docRtfReadGroup( rcw, 0, 0, rrc,
+    if  ( docRtfReadGroup( rcw, 0, 0, rr,
 		(RtfControlWord *)0, docRtfRefuseText, (RtfCommitGroup)0 ) )
 	{ SLDEB(rcw->rcwWord,arg); return -1;	}
 
-    if  ( rrc->rrcTraceInProps )
+    if  ( rr->rrTraceInProps )
 	{
-	if  ( docSetDocumentPropertyTime( &(rrc->rrcDocumentProperties),
-						rcw->rcwID, &(rrc->rrcTm) ) )
+	if  ( docSetDocumentPropertyTime( &(rr->rrDocumentProperties),
+						rcw->rcwID, &(rr->rrTm) ) )
 	    { SDEB(rcw->rcwWord); return -1;	}
 
-	PROPmaskADD( &(rrc->rrcDocPropertyMask), rcw->rcwID );
+	PROPmaskADD( &(rr->rrDocPropertyMask), rcw->rcwID );
 	}
     else{
-	if  ( docSetDocumentPropertyTime( &(rrc->rrDocument->bdProperties),
-						rcw->rcwID, &(rrc->rrcTm) ) )
+	if  ( docSetDocumentPropertyTime( rr->rrDocument->bdProperties,
+						rcw->rcwID, &(rr->rrTm) ) )
 	    { SDEB(rcw->rcwWord); return -1;	}
 	}
 
@@ -340,50 +338,52 @@ int docRtfDocTimeGroup(	const RtfControlWord *	rcw,
 
 int docRtfReadTimeField(	const RtfControlWord *	rcw,
 				int			arg,
-				RtfReader *		rrc )
+				RtfReader *		rr )
     {
-    switch( rcw->rcwID )
-	{
-	case RTFidHR:
-	    rrc->rrcTm.tm_hour= arg;
-	    break;
-	case RTFidMIN:
-	    rrc->rrcTm.tm_min= arg;
-	    break;
-	case RTFidSEC:
-	    rrc->rrcTm.tm_sec= arg;
-	    break;
-	case RTFidDY:
-	    rrc->rrcTm.tm_mday= arg;
-	    break;
-	case RTFidMO:
-	    rrc->rrcTm.tm_mon= arg- 1;
-	    break;
-	case RTFidYR:
-	    rrc->rrcTm.tm_year= arg- 1900;
-	    break;
-	}
+    if  ( utilDateTimeSetField( &(rr->rrTm), rcw->rcwID, arg ) )
+	{ SLDEB(rcw->rcwWord,arg); return -1;	}
 
     return 0;
     }
 
 /************************************************************************/
 /*									*/
-/*  Remember fields from dates and times.				*/
+/*  Remember whether the current selection is open or not.		*/
 /*									*/
 /************************************************************************/
 
 int docRtfSelectionOpen(	const RtfControlWord *	rcw,
 				int			arg,
-				RtfReader *		rrc )
+				RtfReader *		rr )
     {
-    DocumentProperties *	dp= &(rrc->rrDocument->bdProperties);
+    DocumentProperties *	dp= rr->rrDocument->bdProperties;
 
     dp->dpHasOpenEnd= 1;
 
-    if  ( docRtfReadGroup( rcw, 0, 0, rrc, (RtfControlWord *)0,
-				(RtfAddTextParticule)0, (RtfCommitGroup)0 ) )
+    if  ( docRtfReadGroup( rcw, 0, 0, rr, (RtfControlWord *)0,
+					(RtfGotText)0, (RtfCommitGroup)0 ) )
 	{ SLDEB(rcw->rcwWord,arg); return -1;	}
 
     return 0;
     }
+
+/************************************************************************/
+/*									*/
+/*  Read 'info' group.							*/
+/*									*/
+/************************************************************************/
+
+int docRtfReadInfo(		const RtfControlWord *	rcw,
+				int			arg,
+				RtfReader *		rrc )
+    {
+    int		res;
+
+    res= docRtfReadGroup( rcw, 0, 0, rrc,
+		    (RtfControlWord *)0, docRtfIgnoreText, (RtfCommitGroup)0 );
+    if  ( res )
+	{ SLDEB(rcw->rcwWord,res);	}
+
+    return res;
+    }
+

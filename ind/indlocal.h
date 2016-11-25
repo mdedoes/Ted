@@ -1,3 +1,6 @@
+#   ifndef	IND_LOCAL_H
+#   define	IND_LOCAL_H
+
 #   include	"ind.h"
 
 #   define	TNfUSED		1
@@ -135,28 +138,17 @@ extern int indINDgetUtf16(	int *				paccept,
 				int				tn,
 				const unsigned short *		key );
 
-extern int	indINDstep(	int *				pTrans,
+extern int indINDstep(		int *				pTrans,
 				IND *				ind,
 				int				tn,
 				int				sym );
-
-extern int indINDguess(		IND *				ind,
-				const unsigned short *		ucods,
-				int				len,
-				SpellGuessContext *		sgc,
-				int				how );
 
 extern int indWRDget(		IND *			ind,
 				int *			pWhatWasShifted,
 				const char *		word,
 				int			asPrefix );
 
-extern int indWRDguess(	IND *				ind,
-			unsigned short *		ucods,
-			int				ulen,
-			SpellGuessContext *		sgc );
-
-extern IND *	indINDrenumber( IND * ind );
+extern IND * indINDrenumber( IND * ind );
 
 extern void indINDcount( IND *	ind );
 extern int indITwalk( IND *	ind );
@@ -171,3 +163,4 @@ extern int indINDaddSuffix(	IND *		ind,
 				int		tnTo,
 				int		tnSuf );
 
+#   endif	/* IND_LOCAL_H */

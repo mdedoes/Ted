@@ -10,11 +10,12 @@
 #   include	<stdio.h>
 #   include	<ctype.h>
 
-#   include	<appDebugon.h>
-
 #   include	"docRtfWriterImpl.h"
 #   include	<docListLevel.h>
 #   include	<docDocumentList.h>
+#   include	<docListTable.h>
+
+#   include	<appDebugon.h>
 
 /************************************************************************/
 /*									*/
@@ -152,9 +153,8 @@ int docRtfWriteListProps(	RtfWriter *		rw,
     {
     const int		addSemicolon= 1;
 
-    docRtfWriteDocEncodedStringDestination( rw, "listname",
-			    (const char *)dl->dlListName.mbBytes,
-			    dl->dlListName.mbSize, addSemicolon );
+    docRtfWriteDocEncodedBufferDestination( rw, "listname",
+					&(dl->dlListName), addSemicolon );
     }
 
     if  ( dl->dlListStyleID != -1 )

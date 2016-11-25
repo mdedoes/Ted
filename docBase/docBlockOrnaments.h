@@ -8,8 +8,9 @@
 #   define	DOC_BLOCK_ORNAMENTS_H
 
 #   include	<utilPropMask.h>
-#   include	"docBorderProperties.h"
-#   include	"docItemShading.h"
+
+struct BorderProperties;
+struct ItemShading;
 
 typedef enum DrawOrnament
     {
@@ -30,18 +31,58 @@ typedef enum DrawOrnament
 
 typedef struct BlockOrnaments
     {
-    PropertyMask	boPropMask;	/*  Flags from DrawOrnament	*/
+					/**
+					 *  Flags from DrawOrnament
+					 */
+    PropertyMask			boPropMask;
 
-    int			boTopBorderNumber;
-    int			boLeftBorderNumber;
-    int			boRightBorderNumber;
-    int			boBottomBorderNumber;
+					/**
+					 *  Top border number.
+					 */
+    int					boTopBorderNumber;
 
-    BorderProperties	boTopBorder;
-    BorderProperties	boLeftBorder;
-    BorderProperties	boRightBorder;
-    BorderProperties	boBottomBorder;
-    ItemShading		boShading;
+					/**
+					 *  Left border number. (geometric)
+					 *
+					 *  This the geometric left. It is 
+					 *  the responsibility of the setter 
+					 *  to swap left and right border of 
+					 *  the cells in a right-to-left table 
+					 *  row.
+					 */
+    int					boLeftBorderNumber;
+
+					/**
+					 *  Right border number. (geometric)
+					 */
+    int					boRightBorderNumber;
+
+					/**
+					 *  Bottom border number.
+					 */
+    int					boBottomBorderNumber;
+
+					/**
+					 *  Top border properties.
+					 */
+    const struct BorderProperties *	boTopBorder;
+
+					/**
+					 *  Left border properties. (geometric)
+					 */
+    const struct BorderProperties *	boLeftBorder;
+
+					/**
+					 *  Right border properties. (geometric)
+					 */
+    const struct BorderProperties *	boRightBorder;
+
+					/**
+					 *  Bottom border properties.
+					 */
+    const struct BorderProperties *	boBottomBorder;
+
+    const struct ItemShading *		boShading;
     } BlockOrnaments;
 
 /************************************************************************/

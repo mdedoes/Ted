@@ -9,25 +9,29 @@
 
 #   include	<stdlib.h>
 
-#   include	<appDebugon.h>
-
 #   include	"docBuf.h"
 #   include	"docNotes.h"
 #   include	"docShape.h"
 #   include	"docTreeNode.h"
 #   include	"docNodeTree.h"
 #   include	<docTreeType.h>
-#   include	<docDocumentNote.h>
+#   include	"docDocumentNote.h"
+#   include	<docDocumentField.h>
+#   include	<docPropVal.h>
+#   include	<docSectProperties.h>
+#   include	"docFields.h"
+
+#   include	<appDebugon.h>
 
 /************************************************************************/
 /*									*/
-/*  Initialise an DocumentTree.						*/
+/*  Initialise an struct DocumentTree.						*/
 /*									*/
 /************************************************************************/
 
-void docInitDocumentTree(	DocumentTree *	dt )
+void docInitDocumentTree(	struct DocumentTree *	dt )
     {
-    dt->dtRoot= (BufferItem *)0;
+    dt->dtRoot= (struct BufferItem *)0;
     dt->dtPageFormattedFor= -1;
     dt->dtColumnFormattedFor= -1;
 
@@ -46,8 +50,8 @@ void docInitDocumentTree(	DocumentTree *	dt )
     return;
     }
 
-void docCleanDocumentTree(	BufferDocument *	bd,
-				DocumentTree *		dt )
+void docCleanDocumentTree(	struct BufferDocument *	bd,
+				struct DocumentTree *	dt )
     {
     int		updateFlags= 0;
 
@@ -62,7 +66,7 @@ void docCleanDocumentTree(	BufferDocument *	bd,
     return;
     }
 
-void docInvalidateTreeLayout(	DocumentTree *	dt )
+void docInvalidateTreeLayout(	struct DocumentTree *	dt )
     {
     dt->dtPageFormattedFor= -1;
     dt->dtColumnFormattedFor= -1;
@@ -78,8 +82,8 @@ void docInvalidateTreeLayout(	DocumentTree *	dt )
 /*									*/
 /************************************************************************/
 
-void docEraseDocumentTree(	BufferDocument *	bd,
-				DocumentTree *		dt )
+void docEraseDocumentTree(	struct BufferDocument *	bd,
+				struct DocumentTree *		dt )
     {
     int		resY0= dt->dtY0ReservedTwips;
     int		resY1= dt->dtY1ReservedTwips;
@@ -99,7 +103,7 @@ void docEraseDocumentTree(	BufferDocument *	bd,
 /*  									*/
 /************************************************************************/
 
-int docAddRootFieldToTree(	DocumentTree *		dt,
+int docAddRootFieldToTree(	struct DocumentTree *	dt,
 				DocumentField *		dfCh )
     {
     if  ( docInsertChildField( (DocumentField *)0,
@@ -113,32 +117,36 @@ int docAddRootFieldToTree(	DocumentTree *		dt,
 
 /************************************************************************/
 /*									*/
-/*  Make a new 'External Item' E.G. A section Header/Footer or a	*/
-/*  Footnote/Endnote.							*/
+/*  Make a new 'Document Tree' I.E. A tree in the document that is not	*/
+/*  part of the regular flow of the document. Examples are:		*/
+/*  - (Section) page headers and footers.				*/
+/*  - Endnotes and Footnotes						*/
+/*  - Note separators.							*/
+/*  - The text inside shapes.						*/
 /*									*/
 /************************************************************************/
 
-int docMakeDocumentTree(	BufferDocument *		bd,
-				DocumentTree *			dt,
-				const SelectionScope *		ss,
-				const SectionProperties *	sp )
+int docMakeDocumentTree(	struct BufferDocument *			bd,
+				struct DocumentTree *			tree,
+				const SelectionScope *			ss,
+				const struct SectionProperties *	sp )
     {
-    BufferItem *	bi= (BufferItem *)0;
+    struct BufferItem *	node= (struct BufferItem *)0;
     const int		numberInParent= 0;
 
-    bi= (BufferItem *)malloc( sizeof(BufferItem) );
-    if  ( ! bi )
-	{ XDEB(bi); return -1;	}
+    node= (struct BufferItem *)malloc( sizeof(struct BufferItem) );
+    if  ( ! node )
+	{ XDEB(node); return -1;	}
 
-    docInitNode( bi, (BufferItem *)0, bd, numberInParent,
-					DOClevSECT, ss->ssTreeType );
+    docInitNode( node, (struct BufferItem *)0, bd, numberInParent,
+						DOClevSECT, ss->ssTreeType );
 
-    if  ( docCopySectionProperties( &(bi->biSectProperties), sp ) )
-	{ LDEB(1); docFreeNode( bd, dt, bi ); return -1; }
+    if  ( docCopySectionProperties( node->biSectProperties, sp ) )
+	{ LDEB(1); docFreeNode( bd, tree, node ); return -1; }
 
-    bi->biSectBreakKind= DOCibkNONE;
-    bi->biSectSelectionScope= *ss;
-    dt->dtRoot= bi;
+    node->biSectBreakKind= DOCibkNONE;
+    node->biSectSelectionScope= *ss;
+    tree->dtRoot= node;
 
     return 0;
     }
@@ -149,36 +157,36 @@ int docMakeDocumentTree(	BufferDocument *		bd,
 /*									*/
 /************************************************************************/
 
-BufferItem * docMakeExternalParagraph(
-			BufferDocument *		bd,
-			DocumentTree *			dt,
+struct BufferItem * docStartDocumentTree(
+			struct BufferDocument *		bd,
+			struct DocumentTree *		tree,
 			int				treeType,
-			const BufferItem *		bodyNode,
+			const struct BufferItem *	bodyNode,
 			int				ownerNumber,
 			int				txtAttrNr )
     {
-    BufferItem *		paraNode= (BufferItem *)0;
-    BufferItem *		sectNode= (BufferItem *)0;
+    struct BufferItem *		paraNode= (struct BufferItem *)0;
+    struct BufferItem *		sectNode= (struct BufferItem *)0;
 
-    sectNode= docMakeTreeRoot( bd, dt, bodyNode, ownerNumber, treeType );
+    sectNode= docMakeTreeRoot( bd, tree, bodyNode, ownerNumber, treeType );
     if  ( ! sectNode )
-	{ XDEB(sectNode); return (BufferItem *)0;	}
+	{ XDEB(sectNode); return (struct BufferItem *)0;	}
 
-    paraNode= docInsertEmptyParagraph( bd, dt->dtRoot, txtAttrNr );
+    paraNode= docAppendParagraph( bd, tree->dtRoot, txtAttrNr );
     if  ( ! paraNode )
 	{
 	XDEB(paraNode);
-	docCleanDocumentTree( bd, dt );
-	docInitDocumentTree( dt );
+	docCleanDocumentTree( bd, tree );
+	docInitDocumentTree( tree );
 	}
 
     return paraNode;
     }
 
-BufferItem * docMakeTreeRoot(
-			BufferDocument *		bd,
-			DocumentTree *			dt,
-			const BufferItem *		bodyNode,
+struct BufferItem * docMakeTreeRoot(
+			struct BufferDocument *		bd,
+			struct DocumentTree *		dt,
+			const struct BufferItem *	bodyNode,
 			int				ownerNumber,
 			int				treeType )
     {
@@ -195,14 +203,12 @@ BufferItem * docMakeTreeRoot(
 	case DOCinBODY:
 	    LDEB(treeType); goto ready;
 
-	case DOCinFIRST_HEADER:
-	case DOCinLEFT_HEADER:
-	case DOCinRIGHT_HEADER:
-	case DOCinFIRST_FOOTER:
-	case DOCinLEFT_FOOTER:
-	case DOCinRIGHT_FOOTER:
+	case DOCinFIRST_HEADER:	case DOCinFIRST_FOOTER:
+	case DOCinLEFT_HEADER:	case DOCinLEFT_FOOTER:
+	case DOCinRIGHT_HEADER:	case DOCinRIGHT_FOOTER:
+	case DOCinLAST_HEADER:	case DOCinLAST_FOOTER:
 
-	    bodyNode= docGetSectNode( (BufferItem *)bodyNode );
+	    bodyNode= docGetSectNode( (struct BufferItem *)bodyNode );
 	    if  ( ! bodyNode )
 		{ XDEB(bodyNode); goto ready;	}
 
@@ -212,7 +218,7 @@ BufferItem * docMakeTreeRoot(
 	case DOCinFOOTNOTE:
 	case DOCinENDNOTE:
 
-	    bodyNode= docGetSectNode( (BufferItem *)bodyNode );
+	    bodyNode= docGetSectNode( (struct BufferItem *)bodyNode );
 	    if  ( ! bodyNode )
 		{ XDEB(bodyNode); goto ready;	}
 
@@ -260,15 +266,15 @@ BufferItem * docMakeTreeRoot(
 /*									*/
 /************************************************************************/
 
-int docGetRootOfSelectionScope(	DocumentTree **		pTree,
-				BufferItem **		pBodySectNode,
-				BufferDocument *	bd,
-				const SelectionScope *	ss )
+int docGetRootOfSelectionScope(	struct DocumentTree **		pTree,
+				struct BufferItem **		pBodySectNode,
+				struct BufferDocument *		bd,
+				const SelectionScope *		ss )
     {
     const DocumentFieldList *	dfl= &(bd->bdFieldList);
     const int			fieldCount= dfl->dflPagedList.plItemCount;
-    BufferItem *		bodySectNode= (BufferItem *)0;
-    DocumentTree *		dt;
+    struct BufferItem *		bodySectNode= (struct BufferItem *)0;
+    struct DocumentTree *	dt;
 
     DocumentField *		dfNote;
     DocumentNote *		dn;
@@ -281,19 +287,17 @@ int docGetRootOfSelectionScope(	DocumentTree **		pTree,
 	    dt= &(bd->bdBody);
 	    break;
 
-	case DOCinFIRST_HEADER:
-	case DOCinLEFT_HEADER:
-	case DOCinRIGHT_HEADER:
+	case DOCinFIRST_HEADER:	case DOCinFIRST_FOOTER:
+	case DOCinLEFT_HEADER:	case DOCinLEFT_FOOTER:
+	case DOCinRIGHT_HEADER:	case DOCinRIGHT_FOOTER:
+	case DOCinLAST_HEADER:	case DOCinLAST_FOOTER:
 
-	case DOCinFIRST_FOOTER:
-	case DOCinLEFT_FOOTER:
-	case DOCinRIGHT_FOOTER:
 	    bodySectNode= docGetBodySectNodeOfScope( ss, bd );
 	    if  ( ! bodySectNode )
 		{ XDEB(bodySectNode); return -1;	}
 
 	    dt= docSectionHeaderFooter( bodySectNode, (unsigned char *)0,
-					&(bd->bdProperties), ss->ssTreeType );
+					bd->bdProperties, ss->ssTreeType );
 	    if  ( ! dt )
 		{ LXDEB(ss->ssTreeType,dt); return -1;	}
 
@@ -328,7 +332,7 @@ int docGetRootOfSelectionScope(	DocumentTree **		pTree,
 	    dt= docDocumentNoteSeparator( bd, ss->ssTreeType );
 	    if  ( ! dt )
 		{ LXDEB(ss->ssTreeType,dt); return -1;	}
-	    bodySectNode= (BufferItem *)0;
+	    bodySectNode= (struct BufferItem *)0;
 	    /* HACK */
 	    if  ( bd->bdBody.dtRoot->biChildCount > 0 )
 		{ bodySectNode= bd->bdBody.dtRoot->biChildren[0];	}

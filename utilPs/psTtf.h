@@ -7,9 +7,10 @@
 #   ifndef	PS_TTF_H
 #   define	PS_TTF_H
 
-#   include	<sioGeneral.h>
-#   include	<utilMemoryBuffer.h>
-#   include	"psFontInfo.h"
+struct SimpleInputStream;
+struct SimpleOutputStream;
+struct MemoryBuffer;
+struct AfmFontInfo;
 
 /************************************************************************/
 /*									*/
@@ -17,17 +18,15 @@
 /*									*/
 /************************************************************************/
 
-extern int psTtfToPt42(		SimpleOutputStream *	sosPf42,
-				const MemoryBuffer *	fontFileName,
-				SimpleInputStream *	sisTtf );
+extern int psTtfToPt42(		struct SimpleOutputStream *	sosPf42,
+				struct SimpleInputStream *	sisTtf );
 
-extern int psTtcToPt42(		SimpleOutputStream *	sosPf42,
-				const MemoryBuffer *	fontFileName,
-				int			fontFileIndex,
-				SimpleInputStream *	sisTtf );
+extern int psTtcToPt42(		struct SimpleOutputStream *	sosPf42,
+				int				fontFileIndex,
+				struct SimpleInputStream *	sisTtf );
 
-extern int psTtfToAfi(		AfmFontInfo *		afi,
-				const MemoryBuffer *	fontFileName,
-				SimpleInputStream *	sisTtf );
+extern int psTtfToAfi(		struct AfmFontInfo *		afi,
+				const struct MemoryBuffer *	fontFileName,
+				struct SimpleInputStream *	sisTtf );
 
 #   endif

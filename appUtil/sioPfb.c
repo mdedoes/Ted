@@ -11,6 +11,8 @@
 
 #   include	"sioPfb.h"
 #   include	"sioEndian.h"
+#   include	"sioGeneral.h"
+
 #   include	<appDebugon.h>
 
 

@@ -7,16 +7,19 @@
 #   include	"tedConfig.h"
 
 #   include	<stddef.h>
-#   include	<stdio.h>
 #   include	<ctype.h>
 
 #   include	"tedEdit.h"
-#   include	"tedDocFront.h"
+#   include	<tedDocFront.h>
 #   include	<docRtfTrace.h>
 #   include	<docParaParticules.h>
 #   include	<docTreeType.h>
 #   include	<docNodeTree.h>
 #   include	<docEditCommand.h>
+#   include	<docTreeNode.h>
+#   include	<docTextParticule.h>
+#   include	<docSelectionGeometry.h>
+#   include	<docSelectionDescription.h>
 
 #   include	<appDebugon.h>
 
@@ -27,14 +30,14 @@
 /*									*/
 /************************************************************************/
 
-int tedDocInsertParagraph(	EditDocument *		ed,
+int tedDocInsertParagraph(	struct EditDocument *	ed,
 				int			after,
 				int			traced )
     {
     int				rval= 0;
 
-    BufferItem *		paraBi;
-    int				textAttributeNumber;
+    struct BufferItem *		paraNode;
+    int				textAttributeNr;
 
     TedEditOperation		teo;
     EditOperation *		eo= &(teo.teoEo);
@@ -59,24 +62,24 @@ int tedDocInsertParagraph(	EditDocument *		ed,
 
     if  ( after )
 	{
-	paraBi= eo->eoTailDp.dpNode;
-	if  ( ! paraBi )
-	    { XDEB(paraBi); rval= -1; goto ready;	}
+	paraNode= eo->eoTailDp.dpNode;
+	if  ( ! paraNode )
+	    { XDEB(paraNode); rval= -1; goto ready;	}
 
-	textAttributeNumber= paraBi->biParaParticules[
-			paraBi->biParaParticuleCount-1].tpTextAttrNr;
+	textAttributeNr= paraNode->biParaParticules[
+			paraNode->biParaParticuleCount-1].tpTextAttrNr;
 	}
     else{
-	paraBi= eo->eoHeadDp.dpNode;
-	if  ( ! paraBi )
-	    { XDEB(paraBi); rval= -1; goto ready;	}
+	paraNode= eo->eoHeadDp.dpNode;
+	if  ( ! paraNode )
+	    { XDEB(paraNode); rval= -1; goto ready;	}
 
-	textAttributeNumber= paraBi->biParaParticules[0].tpTextAttrNr;
+	textAttributeNr= paraNode->biParaParticules[0].tpTextAttrNr;
 	}
 
-    tedEditIncludeNodeInRedraw( &teo, paraBi );
+    tedEditIncludeNodeInRedraw( &teo, paraNode );
 
-    if  ( docInsertParagraph( eo, &dpNew, paraBi, after, textAttributeNumber ) )
+    if  ( docInsertParagraph( eo, &dpNew, paraNode, after, textAttributeNr ) )
 	{ LDEB(1); rval= -1; goto ready;	}
 
     docSetIBarRange( &(eo->eoAffectedRange), &dpNew );
@@ -114,10 +117,10 @@ int tedEditInsertSection(	DocumentPosition *	dpBeforeSplit,
 				int			split,
 				int			after )
     {
-    BufferItem *		paraNode;
-    BufferItem *		sectNode;
+    struct BufferItem *		paraNode;
+    struct BufferItem *		sectNode;
 
-    int				textAttributeNumber;
+    int				textAttributeNr;
 
     EditOperation *		eo= &(teo->teoEo);
 
@@ -131,7 +134,7 @@ int tedEditInsertSection(	DocumentPosition *	dpBeforeSplit,
 	if  ( ! sectNode )
 	    { XDEB(sectNode); return -1;	}
 
-	textAttributeNumber= paraNode->biParaParticules[
+	textAttributeNr= paraNode->biParaParticules[
 			paraNode->biParaParticuleCount-1].tpTextAttrNr;
 	}
     else{
@@ -143,13 +146,13 @@ int tedEditInsertSection(	DocumentPosition *	dpBeforeSplit,
 	if  ( ! sectNode )
 	    { XDEB(sectNode); return -1;	}
 
-	textAttributeNumber= paraNode->biParaParticules[0].tpTextAttrNr;
+	textAttributeNr= paraNode->biParaParticules[0].tpTextAttrNr;
 	}
 
     tedEditIncludeNodeInRedraw( teo, sectNode );
 
     if  ( docInsertSection( eo, dpBeforeSplit, dpAfterSplit, paraNode,
-					split, after, textAttributeNumber ) )
+					split, after, textAttributeNr ) )
 	{ LLDEB(split,after); return -1;	}
 
     return 0;
@@ -161,7 +164,7 @@ int tedEditInsertSection(	DocumentPosition *	dpBeforeSplit,
 /*									*/
 /************************************************************************/
 
-int tedDocInsertSection(	EditDocument *		ed,
+int tedDocInsertSection(	struct EditDocument *	ed,
 				int			after,
 				int			traced )
     {
@@ -237,14 +240,15 @@ int tedDocInsertSection(	EditDocument *		ed,
 /*									*/
 /************************************************************************/
 
-int tedDocAddRowToTable(	EditDocument *		ed,
+int tedDocAddRowToTable(	struct EditDocument *	ed,
 				int			after,
 				int			traced )
     {
     int				rval= 0;
-    BufferItem *		paraBi;
-    BufferItem *		parentNode;
-    BufferItem *		refRowBi;
+    struct BufferItem *		paraNode;
+    struct BufferItem *		parentNode;
+    struct BufferItem *		refRowNode;
+    const struct RowProperties * refRp;
 
     int				col;
     int				row;
@@ -261,7 +265,7 @@ int tedDocAddRowToTable(	EditDocument *		ed,
     DocumentPosition		dpRef;
     int				part;
     int				paraNr;
-    int				textAttributeNumber;
+    int				textAttributeNr;
 
     DocumentSelection		dsRows;
 
@@ -275,32 +279,33 @@ int tedDocAddRowToTable(	EditDocument *		ed,
     tedStartEditOperation( &teo, &sg, &sd, ed, fullWidth, traced );
 
     if  ( after )
-	{ command= EDITcmdINSERT_ROW;	}
-    else{ command= EDITcmdAPPEND_ROW;	}
+	{ command= EDITcmdAPPEND_ROW;	}
+    else{ command= EDITcmdINSERT_ROW;	}
 
     if  ( tedEditStartStep( &teo, command ) )
 	{ LDEB(1); rval= -1; goto ready;	}
 
     if  ( after )
-	{ paraBi= eo->eoTailDp.dpNode;	}
-    else{ paraBi= eo->eoHeadDp.dpNode;	}
+	{ paraNode= eo->eoTailDp.dpNode;	}
+    else{ paraNode= eo->eoHeadDp.dpNode;	}
 
     /*  2  */
-    if  ( docDelimitTable( paraBi, &parentNode, &col, &row0, &row, &row1 ) )
+    if  ( docDelimitTable( paraNode, &parentNode, &col, &row0, &row, &row1 ) )
 	{ LDEB(1); rval= -1; goto ready;	}
 
     /*  3  */
-    refRowBi= parentNode->biChildren[row];
+    refRowNode= parentNode->biChildren[row];
+    refRp= refRowNode->biRowProperties;
     if  ( after )
 	{
-	if  ( docTailPosition( &dpRef, refRowBi ) )
+	if  ( docTailPosition( &dpRef, refRowNode ) )
 	    { LDEB(row); rval= -1; goto ready;	}
 	if  ( docFindParticuleOfPosition( &part, (int *)0,
 						    &dpRef, PARAfindFIRST ) )
 	    { LDEB(dpRef.dpStroff); rval= -1; goto ready;	}
 	}
     else{
-	if  ( docHeadPosition( &dpRef, refRowBi ) )
+	if  ( docHeadPosition( &dpRef, refRowNode ) )
 	    { LDEB(row); rval= -1; goto ready;	}
 	if  ( docFindParticuleOfPosition( &part, (int *)0,
 						    &dpRef, PARAfindLAST ) )
@@ -309,12 +314,11 @@ int tedDocAddRowToTable(	EditDocument *		ed,
 
     /*  4  */
     paraNr= docNumberOfParagraph( dpRef.dpNode )+ after;
-    textAttributeNumber= dpRef.dpNode->biParaParticules[part].tpTextAttrNr;
+    textAttributeNr= dpRef.dpNode->biParaParticules[part].tpTextAttrNr;
 
     /*  5  */
-    if  ( docInsertTableRows( &dsRows, eo, parentNode, refRowBi,
-			    &(refRowBi->biRowProperties),
-			    textAttributeNumber, row+ after, paraNr, rows ) )
+    if  ( docInsertTableRows( &dsRows, eo, parentNode, refRowNode, refRp,
+			    textAttributeNr, row+ after, paraNr, rows ) )
 	{ LDEB(row+after); rval= -1; goto ready;	}
     
     /*  5  */

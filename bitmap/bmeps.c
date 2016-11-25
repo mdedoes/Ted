@@ -6,11 +6,12 @@
 
 #   include	<sioFileio.h>
 
-#   include	"bmintern.h"
+#   include	"bmformats.h"
 #   include	"bmBitmapPrinter.h"
 
 #   include	<psPrint.h>
 #   include	<utilMemoryBufferPrintf.h>
+#   include	<sioGeneral.h>
 
 #   include	<appDebugon.h>
 
@@ -19,6 +20,11 @@
 /*  We do our best to print anything.					*/
 /*									*/
 /************************************************************************/
+
+# ifdef __GNUC__
+# pragma GCC diagnostic push
+# pragma GCC diagnostic ignored "-Wunused-parameter"
+# endif
 
 int bmCanWriteEpsFile(	const BitmapDescription *	bd,
 			int				privateFormat )
@@ -32,6 +38,9 @@ int bmCanWriteEpsFile(	const BitmapDescription *	bd,
 	}
     }
 
+# ifdef __GNUC__
+# pragma GCC diagnostic pop
+# endif
 
 /************************************************************************/
 /*									*/
@@ -80,7 +89,7 @@ static int bmWriteEps(	SimpleOutputStream *		sos,
 	{ psImageQualityDistillerparams( sos );     }
 
     /*  5  */
-    if  ( bmPsPrintBitmap( sos, privateFormat, 1.0, 1.0, 0, 0,
+    if  ( bmPsPrintBitmap( sos, 1.0, 1.0, 0, 0,
 				    (const DocumentRectangle *)0,
 				    useFilters, indexedImages, bd, buffer ) )
 	{ LDEB(1); return -1;	}
@@ -141,9 +150,23 @@ void bmStartEpsFile(	SimpleOutputStream *		sos,
 
 # include <sioPipe.h>
 
+# ifdef __GNUC__
+# pragma GCC diagnostic push
+# pragma GCC diagnostic ignored "-Wunused-parameter"
+# endif
+
 int bmCanWritePdfFile(	const BitmapDescription *	bd,
 			int				privateFormat )
     { return bmCanWriteEpsFile( bd, 2 );	}
+
+# ifdef __GNUC__
+# pragma GCC diagnostic pop
+# endif
+
+# ifdef __GNUC__
+# pragma GCC diagnostic push
+# pragma GCC diagnostic ignored "-Wunused-parameter"
+# endif
 
 int bmWritePdfFile(	const MemoryBuffer *		filename,
 			const unsigned char *		buffer,
@@ -192,3 +215,8 @@ int bmWritePdfFile(	const MemoryBuffer *		filename,
 
     return rval;
     }
+
+# ifdef __GNUC__
+# pragma GCC diagnostic pop
+# endif
+

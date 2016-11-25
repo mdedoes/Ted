@@ -717,6 +717,7 @@ int bmTextureMap(	ColorAllocator *		ca,
 /*									*/
 /************************************************************************/
 
+# if 0
 int bmTextureMapInverse( ColorAllocator *		ca,
 			int				swapBitmapUnit,
 			int				swapBitmapBytes,
@@ -742,3 +743,4 @@ int bmTextureMapInverse( ColorAllocator *		ca,
     return 0;
     }
 
+# endif

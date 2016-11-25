@@ -8,16 +8,23 @@
 
 #   include	<stdlib.h>
 
-#   include	<appDebugon.h>
-
 #   include	"docBuf.h"
 #   include	"docNotes.h"
 #   include	"docNodeTree.h"
 #   include	"docField.h"
 #   include	"docParaString.h"
-#   include	"docParaParticules.h"
 #   include	<docTreeType.h>
-#   include	<docDocumentNote.h>
+#   include	"docDocumentNote.h"
+#   include	<docDocumentField.h>
+#   include	<docFieldKind.h>
+#   include	<textAttribute.h>
+#   include	"docSelect.h"
+#   include	"docTreeNode.h"
+#   include	<docTextParticule.h>
+#   include	"docAttributes.h"
+
+#   include	"docDebug.h"
+#   include	<appDebugon.h>
 
 /************************************************************************/
 /*									*/
@@ -38,7 +45,7 @@ void docInitNote(		DocumentNote *		dn )
     return;
     }
 
-void docCleanNote(		BufferDocument *	bd,
+void docCleanNote(		struct BufferDocument *	bd,
 				DocumentNote *		dn )
     {
     docCleanDocumentTree( bd, &(dn->dnDocumentTree) );
@@ -49,7 +56,7 @@ void docCleanNote(		BufferDocument *	bd,
 
 /************************************************************************/
 /*									*/
-/*  Insert a Footnote/Endnote in a BufferItem.				*/
+/*  Insert a Footnote/Endnote in a struct BufferItem.				*/
 /*									*/
 /*  1)  Look for a note or the place to insert a new one.		*/
 /*	NOTE that positions with a negative paragraph number are always	*/
@@ -88,347 +95,51 @@ static void docSetNote(		DocumentNote *		fresh,
 /************************************************************************/
 
 int docInsertNote(			DocumentNote **		pDn,
-					BufferDocument *	bd,
+					struct BufferDocument *	bd,
 					DocumentField *		dfNote,
 					int			autoNumber )
     {
     NotesList *		nl= &(bd->bdNotesList);
-    DocumentNote *	fresh;
+    DocumentNote **	fresh;
 
     int			i;
 
-    fresh= (DocumentNote *)realloc( nl->nlNotes,
-				( nl->nlNoteCount+ 1 )* sizeof(DocumentNote) );
+    fresh= (DocumentNote **)realloc( nl->nlNotes,
+			    ( nl->nlNoteCount+ 1 )* sizeof(DocumentNote *) );
     if  ( ! fresh )
 	{ LXDEB(nl->nlNoteCount,fresh); return -1;	}
     nl->nlNotes= fresh;
 
     for ( i= 0; i < nl->nlNoteCount; i++ )
 	{
-	if  ( NOTE_IS_DELETED( &(fresh[i]) ) )
+	if  ( ! fresh[i] )
 	    { break;	}
 	}
 
-    docSetNote( fresh+ i, autoNumber );
+    fresh[i]= malloc( sizeof(DocumentNote) );
+    if  ( ! fresh[i] )
+	{ XDEB(fresh[i]); return -1;	}
+
+    docSetNote( fresh[i], autoNumber );
     
     if  ( i >= nl->nlNoteCount )
 	{ nl->nlNoteCount++;	}
 
     dfNote->dfNoteIndex= i;
-    *pDn= fresh+ i; return i;
+    *pDn= fresh[i]; return i;
     }
 
-/************************************************************************/
-/*									*/
-/*  Return the first note on a page.					*/
-/*									*/
-/************************************************************************/
-
-DocumentField * docGetFirstNoteFromColumn(
-				DocumentNote **		pDn,
-				const BufferDocument *	bd,
-				int			page,
-				int			column,
-				int			treeType )
+void docDeleteNote(		struct BufferDocument *	bd,
+				int			noteIndex )
     {
-    DocumentField *	dfNote;
-    DocumentNote *	dn;
-
-    dfNote= docGetFirstNoteOfDocument( &dn, bd, treeType );
-    while( dfNote )
+    if  ( bd->bdNotesList.nlNotes[noteIndex] )
 	{
-	if  ( dn->dnReferringPage > page )
-	    { break;	}
-
-	if  ( dn->dnReferringPage == page )
-	    {
-	    if  ( dn->dnReferringColumn > column )
-		{ break;	}
-
-	    if  ( dn->dnReferringColumn == column )
-		{ *pDn= dn; return dfNote;	}
-	    }
-
-	dfNote= docGetNextNoteInDocument( &dn, bd, dfNote, treeType );
+	docCleanNote( bd, bd->bdNotesList.nlNotes[noteIndex] );
+	free( bd->bdNotesList.nlNotes[noteIndex] );
+	bd->bdNotesList.nlNotes[noteIndex]= (DocumentNote *)0;
 	}
 
-    return (DocumentField *)0;
-    }
-
-DocumentField * docGetFirstNoteInColumn(
-				DocumentNote **		pDn,
-				const BufferDocument *	bd,
-				int			page,
-				int			column,
-				int			treeType )
-    {
-    DocumentField *	dfNote;
-    DocumentNote *	dn;
-
-    dfNote= docGetFirstNoteOfDocument( &dn, bd, treeType );
-    while( dfNote )
-	{
-	DocumentTree *	dt= &(dn->dnDocumentTree);
-
-	if  ( dt->dtPageFormattedFor > page )
-	    { break;	}
-
-	if  ( dt->dtPageFormattedFor == page )
-	    {
-	    if  ( dt->dtColumnFormattedFor > column )
-		{ break;	}
-
-	    if  ( dt->dtColumnFormattedFor == column )
-		{ *pDn= dn; return dfNote;	}
-	    }
-
-	dfNote= docGetNextNoteInDocument( &dn, bd, dfNote, treeType );
-	}
-
-    return (DocumentField *)0;
-    }
-
-DocumentField * docGetLastNoteInColumn(
-				DocumentNote **		pDn,
-				const BufferDocument *	bd,
-				int			page,
-				int			column,
-				int			treeType )
-    {
-    DocumentField *	dfRet= (DocumentField *)0;
-    DocumentNote *	dnRet= (DocumentNote *)0;
-
-    DocumentField *	dfNote;
-    DocumentNote *	dn;
-
-    dfNote= docGetFirstNoteOfDocument( &dn, bd, treeType );
-    while( dfNote )
-	{
-	DocumentTree *	dt= &(dn->dnDocumentTree);
-
-	if  ( dt->dtPageFormattedFor > page )
-	    { break;	}
-
-	if  ( dt->dtPageFormattedFor == page )
-	    {
-	    if  ( dt->dtColumnFormattedFor > column )
-		{ break;	}
-
-	    if  ( dt->dtColumnFormattedFor == column )
-		{ dnRet= dn; dfRet= dfNote;	}
-	    }
-
-	dfNote= docGetNextNoteInDocument( &dn, bd, dfNote, treeType );
-	}
-
-    *pDn= dnRet;
-    return dfRet;
-    }
-
-DocumentField * docGetFirstNoteOnPage(
-				DocumentNote **		pDn,
-				const BufferDocument *	bd,
-				int			page,
-				int			treeType )
-    {
-    DocumentField *	dfNote;
-    DocumentNote *	dn;
-
-    dfNote= docGetFirstNoteOfDocument( &dn, bd, treeType );
-    while( dfNote )
-	{
-	DocumentTree *	dt= &(dn->dnDocumentTree);
-
-	if  ( dt->dtPageFormattedFor > page )
-	    { break;	}
-
-	if  ( dt->dtPageFormattedFor == page )
-	    { *pDn= dn; return dfNote;	}
-
-	dfNote= docGetNextNoteInDocument( &dn, bd, dfNote, treeType );
-	}
-
-    return (DocumentField *)0;
-    }
-
-static DocumentField * docGetNextSectionNote(
-				DocumentField *		df,
-				DocumentNote **		pDn,
-				const BufferDocument *	bd,
-				int			sect,
-				int			treeType )
-    {
-    const ChildFields *		rootFields= &(bd->bdBody.dtRootFields);
-
-    while( df )
-	{
-	if  ( docFieldHasNote( df->dfKind ) )
-	    {
-	    DocumentNote *	dn= docGetNoteOfField( df, bd );
-
-	    if  ( ! dn )
-		{ XDEB(dn); 	}
-	    else{
-		if  ( treeType < 0					||
-		      dn->dnNoteProperties.npTreeType == treeType	)
-		    { *pDn= dn; return df;	}
-		}
-	    }
-
-	df= docGetNextFieldInSection( rootFields, sect, df );
-	}
-
-    return (DocumentField *)0;
-    }
-
-DocumentField * docGetFirstNoteOfSection(
-				DocumentNote **		pDn,
-				const BufferDocument *	bd,
-				int			sect,
-				int			treeType )
-    {
-    const ChildFields *		rootFields= &(bd->bdBody.dtRootFields);
-    DocumentField *		df;
-
-    if  ( sect < 0 )
-	{ return docGetFirstNoteOfDocument(  pDn, bd, treeType ); }
-
-    df= docGetFirstFieldOfSection( rootFields, sect );
-    return docGetNextSectionNote( df, pDn, bd, sect, treeType );
-    }
-
-DocumentField * docGetNextNoteInSection(
-				DocumentNote **		pDn,
-				const BufferDocument *	bd,
-				int			sect,
-				DocumentField *		df,
-				int			treeType )
-    {
-    const ChildFields *		rootFields= &(bd->bdBody.dtRootFields);
-
-    if  ( sect < 0 )
-	{ return docGetNextNoteInDocument(  pDn, bd, df, treeType ); }
-
-    df= docGetNextFieldInSection( rootFields, sect, df );
-    return docGetNextSectionNote( df, pDn, bd, sect, treeType );
-    }
-
-static DocumentField * docGetNextDocumentNote(
-					DocumentField *		df,
-					DocumentNote **		pDn,
-					const BufferDocument *	bd,
-					int			treeType )
-    {
-    const ChildFields *		rootFields= &(bd->bdBody.dtRootFields);
-
-    while( df )
-	{
-	if  ( docFieldHasNote( df->dfKind ) )
-	    {
-	    DocumentNote *	dn= docGetNoteOfField( df, bd );
-
-	    if  ( ! dn )
-		{ XDEB(dn);	}
-	    else{
-		if  ( treeType < 0					||
-		      dn->dnNoteProperties.npTreeType == treeType	)
-		    {
-		    if  ( pDn )
-			{ *pDn= dn;	}
-		    return df;
-		    }
-		}
-	    }
-
-	df= docGetNextField( rootFields, df );
-	}
-
-    return (DocumentField *)0;
-    }
-
-DocumentField * docGetFirstNoteOfDocument(
-				DocumentNote **		pDn,
-				const BufferDocument *	bd,
-				int			treeType )
-    {
-    const ChildFields *		rootFields= &(bd->bdBody.dtRootFields);
-    DocumentField *		df;
-
-    df= docGetFirstField( rootFields );
-
-    return docGetNextDocumentNote( df, pDn, bd, treeType );
-    }
-
-DocumentField * docGetNextNoteInDocument(
-				DocumentNote **		pDn,
-				const BufferDocument *	bd,
-				DocumentField *		df,
-				int			treeType )
-    {
-    const ChildFields *		rootFields= &(bd->bdBody.dtRootFields);
-
-    df= docGetNextField( rootFields, df );
-
-    return docGetNextDocumentNote( df, pDn, bd, treeType );
-    }
-
-static DocumentField * docGetPrevDocumentNote(
-					DocumentField *		df,
-					DocumentNote **		pDn,
-					const BufferDocument *	bd,
-					int			treeType )
-    {
-    const ChildFields *		rootFields= &(bd->bdBody.dtRootFields);
-
-    while( df )
-	{
-	if  ( docFieldHasNote( df->dfKind ) )
-	    {
-	    DocumentNote *	dn= docGetNoteOfField( df, bd );
-
-	    if  ( ! dn )
-		{ XDEB(dn); 	}
-	    else{
-		if  ( treeType < 0					||
-		      dn->dnNoteProperties.npTreeType == treeType	)
-		    {
-		    if  ( pDn )
-			{ *pDn= dn;	}
-		    return df;
-		    }
-		}
-	    }
-
-	df= docGetPrevField( rootFields, df );
-	}
-
-    return (DocumentField *)0;
-    }
-
-DocumentField * docGetLastNoteOfDocument(
-				DocumentNote **		pDn,
-				const BufferDocument *	bd,
-				int			treeType )
-    {
-    const ChildFields *		rootFields= &(bd->bdBody.dtRootFields);
-    DocumentField *		df;
-
-    df= docGetLastField( rootFields );
-
-    return docGetPrevDocumentNote( df, pDn, bd, treeType );
-    }
-
-DocumentField * docGetPrevNoteInDocument(
-				DocumentNote **		pDn,
-				const BufferDocument *	bd,
-				DocumentField *		df,
-				int			treeType )
-    {
-    const ChildFields *		rootFields= &(bd->bdBody.dtRootFields);
-
-    df= docGetPrevField( rootFields, df );
-
-    return docGetPrevDocumentNote( df, pDn, bd, treeType );
+    return;
     }
 
 /************************************************************************/
@@ -441,7 +152,7 @@ DocumentField * docGetPrevNoteInDocument(
 DocumentField * docGetSelectedNote(
 				DocumentNote **			pDn,
 				int *				pSelInNote,
-				BufferDocument *		bd,
+				struct BufferDocument *		bd,
 				const DocumentSelection *	ds )
     {
     DocumentField *		dfNote= (DocumentField *)0;
@@ -452,14 +163,14 @@ DocumentField * docGetSelectedNote(
     if  ( ds->dsSelectionScope.ssTreeType == DOCinFOOTNOTE	||
 	  ds->dsSelectionScope.ssTreeType == DOCinENDNOTE	)
 	{
-	BufferItem *		bi= ds->dsHead.dpNode;
+	struct BufferItem *		node= ds->dsHead.dpNode;
 	int			ownerNumber;
 
-	bi= docGetSectNode( ds->dsHead.dpNode );
-	if  ( ! bi )
-	    { XDEB(bi); return (DocumentField *)0;		}
+	node= docGetSectNode( ds->dsHead.dpNode );
+	if  ( ! node )
+	    { XDEB(node); return (DocumentField *)0;		}
 
-	ownerNumber= bi->biSectSelectionScope.ssOwnerNumber;
+	ownerNumber= node->biSectSelectionScope.ssOwnerNumber;
 	dfNote= docGetFieldByNumber( &(bd->bdFieldList), ownerNumber );
 	dn= docGetNoteOfField( dfNote, bd );
 	if  ( ! dn )
@@ -510,18 +221,19 @@ DocumentField * docGetSelectedNote(
 
 /************************************************************************/
 
-int docCheckSeparatorItemForNoteType(	BufferDocument *	bd,
+int docCheckSeparatorExistenceForNoteType(
+					struct BufferDocument *	bd,
 					int			noteTreeType )
     {
     switch( noteTreeType )
 	{
 	case DOCinFOOTNOTE:
-	    if  ( docCheckNoteSeparatorItem( bd, DOCinFTNSEP ) )
+	    if  ( docCheckNoteSeparatorExistence( bd, DOCinFTNSEP ) )
 		{ LDEB(noteTreeType); return -1; }
 	    break;
 
 	case DOCinENDNOTE:
-	    if  ( docCheckNoteSeparatorItem( bd, DOCinAFTNSEP ) )
+	    if  ( docCheckNoteSeparatorExistence( bd, DOCinAFTNSEP ) )
 		{ LDEB(noteTreeType); return -1; }
 	    break;
 
@@ -538,31 +250,32 @@ int docCheckSeparatorItemForNoteType(	BufferDocument *	bd,
 /*									*/
 /************************************************************************/
 
-DocumentTree *	docDocumentNoteSeparator(	BufferDocument *	bd,
-						int			treeType )
+struct DocumentTree *	docDocumentNoteSeparator(
+					BufferDocument *	bd,
+					int			treeType )
     {
     switch( treeType )
 	{
 	case DOCinFTNSEP:
-	    return &(bd->bdEiFtnsep);
+	    return &(bd->bdFtnsep);
 
 	case DOCinFTNSEPC:
-	    return &(bd->bdEiFtnsepc);
+	    return &(bd->bdFtnsepc);
 
 	case DOCinFTNCN:
-	    return &(bd->bdEiFtncn);
+	    return &(bd->bdFtncn);
 
 	case DOCinAFTNSEP:
-	    return &(bd->bdEiAftnsep);
+	    return &(bd->bdAftnsep);
 
 	case DOCinAFTNSEPC:
-	    return &(bd->bdEiAftnsepc);
+	    return &(bd->bdAftnsepc);
 
 	case DOCinAFTNCN:
-	    return &(bd->bdEiAftncn);
+	    return &(bd->bdAftncn);
 
 	default:
-	    LDEB(treeType); return (DocumentTree *)0;
+	    LDEB(treeType); return (struct DocumentTree *)0;
 	}
     }
 
@@ -575,27 +288,28 @@ DocumentTree *	docDocumentNoteSeparator(	BufferDocument *	bd,
 /*									*/
 /************************************************************************/
 
-int docCheckNoteSeparatorItem(		BufferDocument *	bd,
-					int			sepTreeType )
+int docCheckNoteSeparatorExistence(
+				struct BufferDocument *	bd,
+				int			sepTreeType )
     {
-    DocumentTree *	dt;
+    struct DocumentTree *	dt;
     int			particuleKind;
 
     switch( sepTreeType )
 	{
 	case DOCinFTNSEP:
 	case DOCinAFTNSEP:
-	    particuleKind= DOCkindCHFTNSEP;
+	    particuleKind= TPkindCHFTNSEP;
 	    break;
 
 	case DOCinFTNSEPC:
 	case DOCinAFTNSEPC:
-	    particuleKind= DOCkindCHFTNSEPC;
+	    particuleKind= TPkindCHFTNSEPC;
 	    break;
 
 	default:
 	    LDEB(sepTreeType);
-	    particuleKind= DOCkindCHFTNSEP;
+	    particuleKind= TPkindCHFTNSEP;
 	    break;
 	}
 
@@ -608,10 +322,10 @@ int docCheckNoteSeparatorItem(		BufferDocument *	bd,
 	const int		ownerNumber= -1;
 	int			txtAttrNr;
 
-	BufferItem *		paraNode;
+	struct BufferItem *		paraNode;
 	TextAttribute		ta;
 
-	utilInitTextAttribute( &ta );
+	textInitTextAttribute( &ta );
 	ta.taFontNumber= -1; /*  1  */
 	ta.taFontSizeHalfPoints= 24;
 
@@ -619,7 +333,7 @@ int docCheckNoteSeparatorItem(		BufferDocument *	bd,
 	if  ( txtAttrNr < 0 )
 	    { LDEB(txtAttrNr); return -1;	}
 
-	paraNode= docMakeExternalParagraph( bd, dt, sepTreeType,
+	paraNode= docStartDocumentTree( bd, dt, sepTreeType,
 				bd->bdBody.dtRoot, ownerNumber, txtAttrNr );
 	if  ( ! paraNode )
 	    { XDEB(paraNode);	}
@@ -645,7 +359,7 @@ int docCheckNoteSeparatorItem(		BufferDocument *	bd,
 /************************************************************************/
 
 DocumentNote *	docGetNoteOfField(	const DocumentField *	dfNote,
-					const BufferDocument *	bd )
+					const struct BufferDocument *	bd )
     {
     const NotesList *	nl= &(bd->bdNotesList);
 
@@ -664,7 +378,7 @@ DocumentNote *	docGetNoteOfField(	const DocumentField *	dfNote,
 	    return (DocumentNote *)0;
 	    }
 
-	return nl->nlNotes+ dfNote->dfNoteIndex;
+	return nl->nlNotes[dfNote->dfNoteIndex];
 	}
 
     if  ( dfNote->dfSelectionScope.ssTreeType == DOCinFOOTNOTE		||
@@ -683,7 +397,7 @@ DocumentNote *	docGetNoteOfField(	const DocumentField *	dfNote,
 	    return (DocumentNote *)0;
 	    }
 
-	return nl->nlNotes+ dfOwner->dfNoteIndex;
+	return nl->nlNotes[dfOwner->dfNoteIndex];
 	}
 
     LDEB(dfNote->dfSelectionScope.ssTreeType);

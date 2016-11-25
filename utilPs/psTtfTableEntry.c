@@ -3,8 +3,10 @@
 
 #   include	"psTtfTableEntry.h"
 
-#   include	<appDebugon.h>
 #   include	<sioEndian.h>
+#   include	<sioGeneral.h>
+
+#   include	<appDebugon.h>
 
 void utilInitTrueTypeTableEntry(	TrueTypeTableEntry *	ttte )
     {

@@ -12,9 +12,10 @@
 #   include	<ctype.h>
 
 #   include	"tedEdit.h"
-#   include	"tedDocFront.h"
+#   include	<tedDocFront.h>
 #   include	"tedSelect.h"
 #   include	"tedLayout.h"
+#   include	"docScreenObjects.h"
 #   include	"tedDocument.h"
 #   include	<docRtfTrace.h>
 #   include	<docObjectProperties.h>
@@ -24,7 +25,13 @@
 #   include	<docLayoutObject.h>
 #   include	<docTextParticule.h>
 #   include	<docEditCommand.h>
+#   include	<docObjectIo.h>
 #   include	<bmio.h>
+#   include	<appEditDocument.h>
+#   include	<sioGeneral.h>
+#   include	<docObject.h>
+#   include	<docObjects.h>
+#   include	<docBuf.h>
 
 #   include	<appDebugon.h>
 
@@ -46,7 +53,7 @@ static int tedReplaceSelectionWithObject(
     if  ( tedEditDeleteSelection( teo ) )
 	{ LDEB(1); return -1;	}
 
-    tp= docEditParaSpecialParticule( eo, DOCkindOBJECT );
+    tp= docEditParaSpecialParticule( eo, TPkindOBJECT );
     if  ( ! tp )
 	{ PDEB(tp); return -1;	}
     tp->tpObjectNumber= objectNr;
@@ -81,7 +88,7 @@ int tedObjectSetImagePropertiesImpl(
     EditOperation *		eo= &(teo->teoEo);
 
     const LayoutContext *	lc= &(teo->teoLayoutContext);
-    BufferDocument *		bd= lc->lcDocument;
+    struct BufferDocument *	bd= lc->lcDocument;
     double			xfac= lc->lcPixelsPerTwip;
 
     PictureProperties *		pipTo= &(io->ioPictureProperties);
@@ -109,10 +116,10 @@ int tedObjectSetImagePropertiesImpl(
 
     docScaleObjectToParagraph( bd, dpObj->dpNode, xfac, io );
 
-    tp->tpTwipsWide= ( io->ioScaleXUsed* io->ioTwipsWide )/ 100;
+    tp->tpWide= ( io->ioScaleXUsed* io->ioTwipsWide )/ 100;
     docObjectSetPixelSize( io, xfac );
 
-    if  ( tedReopenObject( tp, &(teo->teoLayoutContext) ) )
+    if  ( docReopenScreenObject( tp, &(teo->teoLayoutContext) ) )
 	{ LDEB(1); return -1;	}
 
     docSetParagraphAdjust( eo, dpObj->dpNode, stroffShift,
@@ -191,11 +198,12 @@ int tedDocSetImageProperties(	EditDocument *			ed,
 				const PictureProperties *	pipSet,
 				int				traced )
     {
-    InsertedObject *		io;
-    DocumentPosition		dpObj;
-    int				partObj;
+    InsertedObject *			io;
+    DocumentPosition			dpObj;
+    const struct PositionGeometry *	pgObj;
+    int					partObj;
 
-    if  ( tedGetObjectSelection( ed, &partObj, &dpObj, &io ) )
+    if  ( tedGetObjectSelection( &pgObj, &partObj, &dpObj, &io, ed ) )
 	{ LDEB(1); return -1;	}
 
     tedObjectSetImageProperties( ed, io, &dpObj, partObj,
@@ -258,14 +266,14 @@ static void tedScaleObjectToSelectedParagraph(	EditDocument *		ed,
 						InsertedObject *	io )
     {
     double			xfac= lc->lcPixelsPerTwip;
-    BufferDocument *		bd= lc->lcDocument;
+    struct BufferDocument *		bd= lc->lcDocument;
 
     DocumentSelection		ds;
     SelectionGeometry		sg;
     SelectionDescription	sd;
 
     if  ( tedGetSelection( &ds, &sg, &sd,
-				(DocumentTree **)0, (BufferItem **)0, ed ) )
+				(struct DocumentTree **)0, (struct BufferItem **)0, ed ) )
 	{ LDEB(1); return;	}
 
     docScaleObjectToParagraph( bd, ds.dsHead.dpNode, xfac, io );
@@ -279,16 +287,14 @@ static void tedScaleObjectToSelectedParagraph(	EditDocument *		ed,
 /*									*/
 /************************************************************************/
 
-int tedObjectOpenImage(	EditApplication *	ea,
-			void *			voided,
-			APP_WIDGET		relative,
-			APP_WIDGET		option,
-			const MemoryBuffer *	filename )
+int tedDocInsertImageFile(	EditDocument *		ed,
+				APP_WIDGET		relative,
+				APP_WIDGET		option,
+				const MemoryBuffer *	filename )
     {
     int				rval= 0;
-    EditDocument *		ed= (EditDocument *)voided;
     TedDocument *		td= (TedDocument *)ed->edPrivateData;
-    BufferDocument *		bd= td->tdDocument;
+    struct BufferDocument *	bd= td->tdDocument;
 
     TedEditOperation		teo;
     SelectionGeometry		sg;
@@ -323,7 +329,7 @@ int tedObjectOpenImage(	EditApplication *	ea,
     io->ioBliptag= appGetTimestamp();
     */
 
-    if  ( tedOpenObject( io, &(teo.teoLayoutContext) ) )
+    if  ( docScreenOpenObject( io, &(teo.teoLayoutContext) ) )
 	{ LDEB(1);	}
 
     io->ioScaleXSet= io->ioScaleXUsed;
@@ -352,13 +358,13 @@ int tedObjectOpenImage(	EditApplication *	ea,
 /************************************************************************/
 
 InsertedObject * tedObjectMakeRasterObject(
-					int *			pObjectNumber,
-					EditDocument *		ed,
-					BufferItem *		bi,
-					const LayoutContext *	lc,
-					RasterImage *		ri )
+				int *			pObjectNumber,
+				EditDocument *		ed,
+				struct BufferItem *	node,
+				const LayoutContext *	lc,
+				RasterImage *		ri )
     {
-    BufferDocument *		bd= lc->lcDocument;
+    struct BufferDocument *		bd= lc->lcDocument;
 
     InsertedObject *		io;
     PictureProperties *		pip;
@@ -368,9 +374,9 @@ InsertedObject * tedObjectMakeRasterObject(
     SimpleOutputStream *	sosHex;
 
     int				objectNumber;
-    int				includedAsBitmap= 0;
+    int				includesAsRaster= 0;
 
-    const char *		typeId="";
+    const char *		contentType="?";
 
     io= docClaimObject( &objectNumber, bd );
     if  ( ! io )
@@ -388,39 +394,36 @@ InsertedObject * tedObjectMakeRasterObject(
 	{ XDEB(sosHex); return (InsertedObject *)0;	}
 
     if  ( ri->riFormat >= 0 )
-	{ typeId= bmFileFormats[ri->riFormat].bffFileType->bftTypeId; }
+	{ contentType= bmGetContentTypeOfFormat( ri->riFormat );	}
 
-    if  ( ri->riFormat >= 0			&&
-	  ! includedAsBitmap			&&
-	  ! strcmp( typeId, "pngFile" )		)
+    if  ( ! includesAsRaster			&&
+	  ! strcmp( contentType, "image/png" )	)
 	{
 	if  ( bmPngWritePng( &(ri->riDescription), ri->riBytes, sosHex ) )
 	    { LDEB(1); return (InsertedObject *)0;	}
 
 	io->ioKind= DOCokPICTPNGBLIP;
 	pip->pipType= DOCokPICTPNGBLIP;
-	includedAsBitmap= 1;
+	includesAsRaster= 1;
 	}
 
-    if  ( ri->riFormat >= 0				&&
-	  ! includedAsBitmap				&&
-	  ( ! strcmp( typeId, "jpgFile" )	||
-	    ! strcmp( typeId, "jpegFile" )	)	)
+    if  ( ! includesAsRaster			&&
+	  ! strcmp( contentType, "image/jpeg" )	)
 	{
 	if  ( bmJpegWriteJfif( &ri->riDescription, ri->riBytes, sosHex ) )
 	    { LDEB(1); return (InsertedObject *)0;	}
 
 	io->ioKind= DOCokPICTJPEGBLIP;
 	pip->pipType= DOCokPICTJPEGBLIP;
-	includedAsBitmap= 1;
+	includesAsRaster= 1;
 	}
 
-    if  ( ! includedAsBitmap )
+    if  ( ! includesAsRaster )
 	{
 	if  ( bmWmfWriteWmf( &(ri->riDescription), ri->riBytes, sosHex ) )
 	    { LDEB(1); return (InsertedObject *)0;	}
 
-	pip->pipMetafileIsBitmap= 1;
+	pip->pipMetafileIsRaster= 1;
 	pip->pipMetafileBitmapBpp= ri->riDescription.bdBitsPerPixel;
 
 	io->ioKind= DOCokPICTWMETAFILE;

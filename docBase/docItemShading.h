@@ -7,9 +7,10 @@
 #   ifndef	DOC_ITEM_SHADING_H
 #   define	DOC_ITEM_SHADING_H
 
-#   include	<utilPropMask.h>
 #   include	<utilColor.h>
-#   include	<utilPalette.h>
+
+struct PropertyMask;
+struct ColorPalette;
 
 /************************************************************************/
 /*									*/
@@ -75,28 +76,28 @@ extern void docInitItemShading(		ItemShading *		is );
 extern void docInitExpandedItemShading(	ExpandedItemShading *	eis );
 
 extern void docUpdateItemShading(
-				PropertyMask *			pIsDoneMask,
-				ItemShading *			isTo,
-				const PropertyMask *		isSetMask,
-				const ItemShading *		isFrom,
-				const int *			colorMap );
+			struct PropertyMask *			pIsDoneMask,
+			ItemShading *				isTo,
+			const struct PropertyMask *		isSetMask,
+			const ItemShading *			isFrom,
+			const int *				colorMap );
 
 extern void docUpdateExpandedItemShading(
-				PropertyMask *			pIsDoneMask,
-				ExpandedItemShading *		eisTo,
-				const PropertyMask *		isSetMask,
-				const ExpandedItemShading *	eisFrom );
+			struct PropertyMask *			pIsDoneMask,
+			ExpandedItemShading *			eisTo,
+			const struct PropertyMask *		isSetMask,
+			const ExpandedItemShading *		eisFrom );
 
 extern void docExpandItemShading(	ExpandedItemShading *	eis,
 					const ItemShading *	is,
-					const ColorPalette *	cp );
+					const struct ColorPalette *	cp );
 
 extern int docIndirectItemShading(
-				PropertyMask *			pDoneMask,
-				ItemShading *			is,
-				const PropertyMask *		setMask,
-				const ExpandedItemShading *	eis,
-				ColorPalette *			cp );
+			struct PropertyMask *			pDoneMask,
+			ItemShading *				is,
+			const struct PropertyMask *		setMask,
+			const ExpandedItemShading *		eis,
+			struct ColorPalette *			cp );
 
 extern int docSetShadingProperty(	ItemShading *		is,
 					int			prop,

@@ -7,6 +7,8 @@
 #   include	<sioEndian.h>
 #   include	<uniUtf8.h>
 #   include	<textConverter.h>
+#   include	<sioGeneral.h>
+#   include	<textOfficeCharset.h>
 
 #   include	<appDebugon.h>
 
@@ -53,18 +55,28 @@ int appWinMetaReadUtf16Text(	DeviceContext *		dc,
     return done;
     }
 
-static int appWinMetaProduceUtf8(	void *		voiddc,
+# ifdef __GNUC__
+# pragma GCC diagnostic push
+# pragma GCC diagnostic ignored "-Wunused-parameter"
+# endif
+
+static int appWinMetaCollectTextUtf8(	void *		voiddc,
 					int		produced,
 					const char *	bytes,
 					int		count )
     {
     DeviceContext *	dc= (DeviceContext *)voiddc;
 
-    if  ( utilMemoryBufferAppendBytes( &(dc->dcCollectedText), (unsigned char *)bytes, count ) )
+    if  ( utilMemoryBufferAppendBytes( &(dc->dcCollectedText),
+					    (unsigned char *)bytes, count ) )
 	{ LDEB(count); return -1;	}
 
     return count;
     }
+
+# ifdef __GNUC__
+# pragma GCC diagnostic pop
+# endif
 
 int appWinMetaReadLegacyText(	DeviceContext *		dc,
 				int			count,
@@ -74,58 +86,62 @@ int appWinMetaReadLegacyText(	DeviceContext *		dc,
     int				rval= 0;
     int				nbytes;
     int				done= 0;
-    const OfficeCharset *	oc;
     char *			buf= (char *)0;
     int				idx;
 
+    const char *		encodingName= "CP1252";
+
     utilEmptyMemoryBuffer( &(dc->dcCollectedText) );
 
-    oc= utilGetOfficeCharsetByCharset( &idx, dc->dcFont.lfCharSet );
+    {
+    const OfficeCharset *	oc;
 
-    if  ( ! oc || ! oc->ocEncodingName )
-	{
+    oc= textGetOfficeCharsetByCharset( &idx, dc->dcFont.lfCharSet );
+
+    if  ( oc && oc->ocEncodingName )
+	{ encodingName= oc->ocEncodingName;	}
+    else{
 	if  ( dc->dcFont.lfCharSet != FONTcharsetDEFAULT )
 	    { LPDEB(dc->dcFont.lfCharSet,oc);	}
+	}
+    }
 
-	for ( nbytes= 0; nbytes < count; nbytes++ )
-	    {
-	    int		step;
-	    char	scratch[6+1];
-	    int		c= sioInGetByte( sis ); done += 1;
+    {
+    int	consumed= 0;
+    int	produced= 0;
 
-	    if  ( c == 0 )
-		{ nbytes++; break;	}
-
-	    step= uniPutUtf8( scratch, c );
-	    if  ( step < 1 || step > 3 )
-		{ XLDEB(c,step); break;	}
-
-	    if  ( utilMemoryBufferAppendBytes( &(dc->dcCollectedText),
-				    (const unsigned char *)scratch, step ) )
-		{ LDEB(step); rval= -1; goto ready;	}
+    /* Do at setup time! */
+    if  ( ! dc->dcTextConverter )
+	{
+	dc->dcTextConverter= textOpenTextConverter();
+	if  ( ! dc->dcTextConverter )
+	    { XDEB(dc->dcTextConverter);	}
+	else{
+	    textConverterSetProduce( dc->dcTextConverter,
+						appWinMetaCollectTextUtf8 );
 	    }
 	}
+
+    textConverterSetNativeEncodingName( dc->dcTextConverter, encodingName );
+
+    buf= (char *)malloc( count+ 1 );
+    if  ( ! buf )
+	{ LPDEB(count,buf); rval= -1; goto ready;	}
+
+    if  ( sioInReadBytes( sis, (unsigned char *)buf, count ) != count )
+	{ LDEB(count); rval= -1; goto ready;	}
+    nbytes= count; done += count;
+    buf[count]= '\0';
+
+    if  ( ! dc->dcTextConverter )
+	{ XDEB(dc->dcTextConverter);	}
     else{
-	int	consumed= 0;
-	int	produced= 0;
-
-	textConverterSetNativeEncodingName( &(dc->dcTextConverter),
-							oc->ocEncodingName );
-	/* Do at setup time! */
-	dc->dcTextConverter.tcProduce= appWinMetaProduceUtf8;
-
-	buf= (char *)malloc( count+ 1 );
-	if  ( ! buf )
-	    { LPDEB(count,buf); rval= -1; goto ready;	}
-
-	if  ( sioInReadBytes( sis, (unsigned char *)buf, count ) != count )
-	    { LDEB(count); rval= -1; goto ready;	}
-	nbytes= count; done += count;
-	buf[count]= '\0';
-
-	textConverterConvertToUtf8( &(dc->dcTextConverter), (void *)dc,
-					&consumed, produced, buf, count );
+	textConverterConvertToUtf8( dc->dcTextConverter, (void *)dc,
+					    &consumed, produced, buf, count );
+	if  ( consumed != count )
+	    { SLLDEB(encodingName,consumed,count);	}
 	}
+    }
 
     while( nbytes < expectBytes )
 	{

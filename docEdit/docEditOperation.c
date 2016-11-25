@@ -8,20 +8,28 @@
 
 #   include	<stdio.h>
 
-#   include	<appDebugon.h>
-
 #   include	"docEditOperation.h"
 #   include	<docField.h>
 #   include	<docNotes.h>
 #   include	<docNodeTree.h>
 #   include	<docRtfWriter.h>
 #   include	<docParaParticules.h>
+#   include	<docDocumentField.h>
+#   include	<docTreeNode.h>
+#   include	<docTextParticule.h>
+#   include	<sioGeneral.h>
+#   include	<docFields.h>
+#   include	<docBuf.h>
+#   include	<docParaBuilder.h>
+
+#   include	<appDebugon.h>
 
 void docInitEditOperation(	EditOperation *	eo )
     {
     docInitSelectionScope( &(eo->eoSelectionScope) );
-    eo->eoBodySectNode= (BufferItem *)0;
-    eo->eoBottomField= (DocumentField *)0;
+    eo->eoBodySectNode= (struct BufferItem *)0;
+    eo->eoBottomField= (struct DocumentField *)0;
+    eo->eoIsFieldBalanced= 0;
 
     eo->eoIBarSelectionOld= 0;
     eo->eoMultiParagraphSelectionOld= 0;
@@ -43,20 +51,20 @@ void docInitEditOperation(	EditOperation *	eo )
     eo->eoFieldUpdate= FIELDdoNOTHING;
     eo->eoReformatNeeded= REFORMAT_NOTHING;
 
-    eo->eoDocument= (BufferDocument *)0;
-    eo->eoTree= (DocumentTree *)0;
-    eo->eoCloseObject= (DOC_CLOSE_OBJECT)0;
+    eo->eoDocument= (struct BufferDocument *)0;
+    eo->eoTree= (struct DocumentTree *)0;
 
     docInitDocumentPosition( &(eo->eoHeadDp) );
-
     docInitDocumentPosition( &(eo->eoTailDp) );
+
+    eo->eoParagraphBuilder= (struct ParagraphBuilder *)0;
 
     eo->eoCol0= -1;
     eo->eoCol1= -1;
 
     docInitDocumentPosition( &(eo->eoLastDp) );
 
-    eo->eoTraceStream= (SimpleOutputStream *)0;
+    eo->eoTraceStream= (struct SimpleOutputStream *)0;
     eo->eoTraceWriter= (struct RtfWriter *)0;
     return;
     }
@@ -64,6 +72,9 @@ void docInitEditOperation(	EditOperation *	eo )
 void docCleanEditOperation(	EditOperation *	eo )
     {
     utilCleanIndexSet( &(eo->eoNoteFieldsAdded) );
+
+    if  ( eo->eoParagraphBuilder )
+	{ docCloseParagraphBuilder( eo->eoParagraphBuilder );	}
 
     if  ( eo->eoTraceWriter )
 	{ docRtfCloseWriter( eo->eoTraceWriter );	}
@@ -124,7 +135,8 @@ static void docIncludePositionInReformat(	EditOperation *		eo,
     return;
     }
 
-static void docSetInitialRange(		EditOperation *			eo,
+static void docEditOperationSetInitialRange(
+					EditOperation *			eo,
 					const DocumentSelection *	ds )
     {
     docSetEditPosition( &(eo->eoReformatRange.erHead), &(ds->dsHead) );
@@ -143,9 +155,9 @@ static void docSetInitialRange(		EditOperation *			eo,
     }
 
 void docEditIncludeNodeInReformatRange(	EditOperation *		eo,
-					BufferItem *		bi )
+					struct BufferItem *		node )
     {
-    const BufferItem *	sectNode= (const BufferItem *)0;
+    const struct BufferItem *	sectNode= (const struct BufferItem *)0;
 
     if  ( eo->eoReformatNeeded < REFORMAT_RANGE )
 	{
@@ -158,7 +170,7 @@ void docEditIncludeNodeInReformatRange(	EditOperation *		eo,
     eo->eoParaAdjustStroffShift= 0;
     eo->eoParaAdjustStroffUpto= 0;
 
-    sectNode= docGetSectNode( bi );
+    sectNode= docGetSectNode( node );
 
     if  ( ! sectNode							||
 	  docSelectionSameScope( &(eo->eoSelectionScope),
@@ -173,7 +185,7 @@ void docEditIncludeNodeInReformatRange(	EditOperation *		eo,
 	docInitDocumentPosition( &dpFirst );
 	docInitDocumentPosition( &dpLast );
 
-	if  ( docHeadPosition( &dpFirst, bi ) )
+	if  ( docHeadPosition( &dpFirst, node ) )
 	    { LDEB(1);	}
 	else{
 	    EditPosition	epFirst;
@@ -182,7 +194,7 @@ void docEditIncludeNodeInReformatRange(	EditOperation *		eo,
 	    docIncludePositionInReformat( eo, &epFirst );
 	    }
 
-	if  ( docTailPosition( &dpLast, bi ) )
+	if  ( docTailPosition( &dpLast, node ) )
 	    { LDEB(1);	}
 	else{
 	    EditPosition	epLast;
@@ -203,7 +215,7 @@ void docEditIncludeNodeInReformatRange(	EditOperation *		eo,
     }
 
 void docEditIncludeRowsInReformatRange(	EditOperation *		eo,
-					BufferItem *		parentNode,
+					struct BufferItem *	parentNode,
 					int			row0,
 					int			row1 )
     {
@@ -224,7 +236,7 @@ void docEditIncludeRowsInReformatRange(	EditOperation *		eo,
 /************************************************************************/
 
 void docSetParagraphAdjust(	EditOperation *		eo,
-				BufferItem *		paraNode,
+				struct BufferItem *		paraNode,
 				int			stroffShift,
 				int			stroffUpto )
     {
@@ -261,7 +273,7 @@ void docSetParagraphAdjust(	EditOperation *		eo,
     }
 
 void docExtendParagraphAdjust(	EditOperation *		eo,
-				BufferItem *		paraNode,
+				struct BufferItem *	paraNode,
 				int			stroffShift )
     {
     int			paraNr;
@@ -291,7 +303,7 @@ void docEditOperationGetSelection(		DocumentSelection *	dsNew,
     docSetRangeSelection( dsNew, &(eo->eoHeadDp), &(eo->eoTailDp), direction );
     }
 
-DocumentField * docEditOperationGetSelectedNote(
+struct DocumentField * docEditOperationGetSelectedNote(
 					struct DocumentNote **	pDn,
 					int *			pSelInNote,
 					const EditOperation *	eo )
@@ -320,14 +332,16 @@ DocumentField * docEditOperationGetSelectedNote(
 /*									*/
 /************************************************************************/
 
-int docStartEditOperation(	EditOperation *			eo,
-				const DocumentSelection *	ds,
-				BufferDocument *		bd )
+int docStartEditOperation(
+			EditOperation *			eo,
+			const DocumentSelection *	ds,
+			struct BufferDocument *		bd,
+			struct DocumentField *		bottomField )
     {
-    const BufferItem *		paraNode;
+    const struct BufferItem *	paraNode;
 
-    DocumentField *		dfLeft;
-    DocumentField *		dfRight;
+    struct DocumentField *	dfLeft;
+    struct DocumentField *	dfRight;
     int				beginMoved= 0;
     int				endMoved= 0;
     int				headPart= -1;
@@ -356,7 +370,7 @@ int docStartEditOperation(	EditOperation *			eo,
 
     while( ( multiPara || tailPart > headPart )			&&
 	   tailPart > 0						&&
-	   tp[tailPart-1].tpKind != DOCkindSPAN			&&
+	   tp[tailPart-1].tpKind != TPkindSPAN			&&
 	   tp[tailPart-1].tpStrlen == 0				&&
 	   tp[tailPart-1].tpStroff == dsBal.dsTail.dpStroff	)
 	{ tailPart--;	}
@@ -365,10 +379,11 @@ int docStartEditOperation(	EditOperation *			eo,
     eo->eoSelectionScope= dsBal.dsSelectionScope;
 
     if  ( docGetRootOfSelectionScope( &(eo->eoTree),
-			    (BufferItem **)0, bd, &(eo->eoSelectionScope) ) )
+			    (struct BufferItem **)0,
+			    bd, &(eo->eoSelectionScope) ) )
 	{ LDEB(1); return -1;	}
 
-    docSetInitialRange( eo, &dsBal );
+    docEditOperationSetInitialRange( eo, &dsBal );
 
     /*  2  */
     if  ( docBalanceFieldSelection( &dfLeft, &dfRight,
@@ -377,12 +392,24 @@ int docStartEditOperation(	EditOperation *			eo,
 			    eo->eoTree, bd ) )
 	{ LDEB(1); return -1;	}
 
-    eo->eoBottomField= docFieldGetCommonParent( dfLeft, dfRight );
-
     /*  3  */
-    eo->eoHeadDp= dsBal.dsHead;
-    eo->eoTailDp= dsBal.dsTail;
-    eo->eoLastDp= dsBal.dsTail;
+    if  ( bottomField )
+	{
+	eo->eoHeadDp= ds->dsHead;
+	eo->eoTailDp= ds->dsTail;
+	eo->eoLastDp= ds->dsTail;
+
+	eo->eoIsFieldBalanced= 1;
+	eo->eoBottomField= bottomField;
+	}
+    else{
+	eo->eoHeadDp= dsBal.dsHead;
+	eo->eoTailDp= dsBal.dsTail;
+	eo->eoLastDp= dsBal.dsTail;
+
+	eo->eoIsFieldBalanced= 0;
+	eo->eoBottomField= docFieldGetCommonParent( dfLeft, dfRight );
+	}
 
     eo->eoCol0= ds->dsCol0;
     eo->eoCol1= ds->dsCol1;
@@ -407,8 +434,11 @@ int docStartEditOperation(	EditOperation *			eo,
 	    }
 	}
 
+    eo->eoParagraphBuilder= docOpenParagraphBuilder( eo->eoDocument,
+				    &(eo->eoSelectionScope), eo->eoTree );
+
 #   if 0
-    docListNode(0,eo->eoHeadDp.dpNode,0);
+    LDEB(0); docListNode(0,eo->eoHeadDp.dpNode,0);
     if  ( eo->eoTailDp.dpNode != eo->eoHeadDp.dpNode )
 	{ docListNode(0,eo->eoTailDp.dpNode,0); }
 #   endif
@@ -417,7 +447,7 @@ int docStartEditOperation(	EditOperation *			eo,
     }
 
 int docMoveEditOperationToBodySect(	EditOperation *		eo,
-					BufferItem *		bodySectNode )
+					struct BufferItem *	bodySectNode )
     {
     DocumentSelection		dsSect;
     int				direction= 0;

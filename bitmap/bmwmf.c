@@ -1,13 +1,17 @@
 #   include	"bitmapConfig.h"
 
+#   include	"bmformats.h"
 #   include	"bmintern.h"
 #   include	"bmio.h"
-#   include	<appDebugon.h>
 #   include	<sioFileio.h>
 #   include	<sioEndian.h>
+#   include	<sioGeneral.h>
+#   include	<utilMemoryBuffer.h>
 
 #   include	"bmbmp.h"
 #   include	"bmWmf.h"
+
+#   include	<appDebugon.h>
 
 /************************************************************************/
 /*									*/
@@ -231,6 +235,11 @@ int bmCanWriteWmfFile( const BitmapDescription *	bd,
 			int				privateFormat )
     { return bmCanWriteBmpFile( bd, privateFormat ); }
 
+# ifdef __GNUC__
+# pragma GCC diagnostic push
+# pragma GCC diagnostic ignored "-Wunused-parameter"
+# endif
+
 int bmWriteWmfFile(	const MemoryBuffer *		filename,
 			const unsigned char *		buffer,
 			const BitmapDescription *	bd,
@@ -250,4 +259,8 @@ int bmWriteWmfFile(	const MemoryBuffer *		filename,
 
     return 0;
     }
+
+# ifdef __GNUC__
+# pragma GCC diagnostic pop
+# endif
 

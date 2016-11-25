@@ -9,10 +9,20 @@
 #   include	<stddef.h>
 
 #   include	<uniUtf8.h>
-#   include	"docListFonts.h"
 #   include	<docDocumentList.h>
 #   include	<docListOverride.h>
+#   include	<docStyle.h>
+#   include	<fontDocFontList.h>
 #   include	"docTreeNode.h"
+#   include	"docBuf.h"
+#   include	<docDocumentProperties.h>
+#   include	<docListAdmin.h>
+#   include	<fontDocFont.h>
+#   include	"docAttributes.h"
+#   include	"docTextRun.h"
+#   include	"docTreeScanner.h"
+#   include	"docParaScanner.h"
+#   include	<docScanner.h>
 
 #   include	<appDebugon.h>
 
@@ -25,15 +35,16 @@
 
 typedef struct GetCharsUsed
     {
+    struct BufferDocument *		gcuDocument;
     DocumentFontList *			gcuDocumentFontList;
     } GetCharsUsed;
 
-static int docCharsUsedGotSpan(	BufferDocument *		bd,
-				BufferItem *			paraNode,
-				int				textAttrNr,
-				const TextAttribute *		ta,
-				int				from,
-				int				upto,
+# ifdef __GNUC__
+# pragma GCC diagnostic push
+# pragma GCC diagnostic ignored "-Wunused-parameter"
+# endif
+
+static int docCharsUsedGotSpan(	const TextRun *			tr,
 				void *				through )
     {
     GetCharsUsed *		gcu= (GetCharsUsed *)through;
@@ -41,7 +52,10 @@ static int docCharsUsedGotSpan(	BufferDocument *		bd,
     const char *		s;
 
     DocumentFont *		df;
-    int				fontNumber= ta->taFontNumber;
+    int				fontNumber= tr->trTextAttribute->taFontNumber;
+
+    int				from;
+    int				upto;
 
     if  ( fontNumber < 0			||
 	  fontNumber >= dfl->dflFontCount	)
@@ -49,20 +63,22 @@ static int docCharsUsedGotSpan(	BufferDocument *		bd,
 	if  ( fontNumber >= dfl->dflFontCount )
 	    { LLDEB(fontNumber,dfl->dflFontCount);	}
 
-	fontNumber= docGetDefaultFont( bd );
+	fontNumber= docGetDefaultFont( gcu->gcuDocument );
 	}
 
-    df= docFontListGetFontByNumber( dfl, fontNumber );
+    df= fontFontListGetFontByNumber( dfl, fontNumber );
     if  ( ! df )
 	{ LXDEB(fontNumber,df); return -1;	}
 
-    if  ( from == upto )
+    if  ( tr->trStrlen == 0 )
 	{
 	if  ( utilIndexSetAdd( &(df->dfUnicodesUsed), 0x20 ) )
 	    { XDEB(0x20); return -1;	}
 	}
 
-    s= (const char *)docParaString( paraNode, from );
+    from= tr->trStroff;
+    upto= tr->trStroff+ tr->trStrlen;
+    s= docParaString( tr->trParaNode, from );
     while( from < upto )
 	{
 	unsigned short			symbol;
@@ -84,13 +100,17 @@ static int docCharsUsedGotSpan(	BufferDocument *		bd,
     return 0;
     }
 
-static int docInludeFontOfAttribute(	const BufferDocument *	bd,
+# ifdef __GNUC__
+# pragma GCC diagnostic pop
+# endif
+
+static int docInludeFontOfAttribute(	const struct BufferDocument *	bd,
 					const TextAttribute *	ta )
     {
-    const DocumentFontList *		dfl= bd->bdProperties.dpFontList;
-    DocumentFont *		df;
+    const DocumentFontList *		dfl= bd->bdProperties->dpFontList;
+    DocumentFont *			df;
 
-    df= docFontListGetFontByNumber( dfl, ta->taFontNumber );
+    df= fontFontListGetFontByNumber( dfl, ta->taFontNumber );
     if  ( ! df )
 	{ LXDEB(ta->taFontNumber,df); return -1;	}
 
@@ -100,18 +120,22 @@ static int docInludeFontOfAttribute(	const BufferDocument *	bd,
     return 0;
     }
 
-static int docCharsListObject(	const BufferDocument *	bd,
-				BufferItem *		paraNode,
-				const TextAttribute *	ta,
-				void *			through )
+# ifdef __GNUC__
+# pragma GCC diagnostic push
+# pragma GCC diagnostic ignored "-Wunused-parameter"
+# endif
+
+static int docCharsListObject(	const VisitParticule *		vp,
+				struct InsertedObject *		io,
+				void *				through )
     {
     GetCharsUsed *		gcu= (GetCharsUsed *)through;
     DocumentFontList *		dfl= gcu->gcuDocumentFontList;
     DocumentFont *		df;
 
-    df= docFontListGetFontByNumber( dfl, ta->taFontNumber );
+    df= fontFontListGetFontByNumber( dfl, vp->vpTextAttribute->taFontNumber );
     if  ( ! df )
-	{ LXDEB(ta->taFontNumber,df); return -1;	}
+	{ LXDEB(vp->vpTextAttribute->taFontNumber,df); return -1;	}
 
     if  ( utilIndexSetAdd( &(df->dfUnicodesUsed), 0x20 ) )
 	{ XDEB(0x20); return -1;	}
@@ -119,35 +143,50 @@ static int docCharsListObject(	const BufferDocument *	bd,
     return 0;
     }
 
-int docGetCharsUsed(	BufferDocument *		bd )
+# ifdef __GNUC__
+# pragma GCC diagnostic pop
+# endif
+
+int docGetCharsUsed(	struct BufferDocument *		bd )
     {
     int				i;
-    DocumentFontList *		dfl= bd->bdProperties.dpFontList;
+    DocumentFontList *		dfl= bd->bdProperties->dpFontList;
 
-    const DocumentProperties *	dp= &(bd->bdProperties);
+    const DocumentProperties *	dp= bd->bdProperties;
     const ListAdmin *		la= dp->dpListAdmin;
     const DocumentListTable *	dlt= &(la->laListTable);
     const ListOverrideTable *	lot= &(la->laListOverrideTable);
 
-    ScanDocumentFonts		sdf;
     GetCharsUsed		gcu;
 
     const DocumentList *	dl;
     const ListOverride *	lo;
 
-    utilDocFontListClearCharsUsed( dfl );
-    docInitScanDocumentFonts( &sdf );
+    int				ret;
 
+    const int			treeFlags=
+					FLAGtsSCAN_SECTION_HEADERS_FOOTERS|
+					FLAGtsSCAN_BODY_SEPARATORS|
+					FLAGtsSCAN_FOOT_END_NOTES;
+
+    const int			paraFlags= FLAGpsSCAN_COMBINE_LINES|
+					FLAGpsSCAN_EMPTY_SPANS|
+					FLAGpsSCAN_SHAPE_TEXTS;
+
+    fontListClearCharsUsed( dfl );
+
+    gcu.gcuDocument= bd;
     gcu.gcuDocumentFontList= dfl;
 
-    sdf.sdfListObjectFonts= (DocListObjectFonts)0;
-    sdf.sdfDocListSpanFont= docCharsUsedGotSpan;
-    sdf.sdfListObject= docCharsListObject;
-    sdf.sdfThrough= &gcu;
-
     /*  a  */
-    if  ( docListDocumentFonts( bd, &sdf ) )
-	{ LDEB(1); return -1;;	}
+    ret= docScanParagraphsLogicalOrder( bd,
+			    (const struct DocumentSelection *)0,
+			    treeFlags, paraFlags,
+			    (ParticuleVisitor)0, (ParaFieldVisitor)0,
+			    docCharsUsedGotSpan, docCharsListObject,
+			    (TabVisitor)0, (void *)&gcu );
+    if  ( ret != SCANadviceOK )
+	{ LLDEB(ret,SCANadviceOK); return -1;	}
 
     for ( i= 0; i < bd->bdStyleSheet.dssStyleCount; i++ )
 	{

@@ -36,9 +36,10 @@ extern int docMakeOverrideForEveryList(	ListAdmin *	la );
 
 extern int docMergeListAdmins(	ListAdmin *			laTo,
 				const ListAdmin *		laFrom,
-				const int *			lsUsed,
+				const unsigned char *		lsUsed,
 				int *				lsMap,
-				const int *			listUsed,
+				const unsigned char *		listUsed,
+				int *				listIndexMap,
 				const int *			fontMap,
 				const int *			colorMap,
 				const int *			rulerMap );

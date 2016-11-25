@@ -15,9 +15,55 @@
 #   include	<bmEmfIo.h>
 #   include	<geoUnits.h>
 
-#   include	<appDebugon.h>
 #   include	"docObject.h"
+#   include	"docObjectIo.h"
 #   include	"docObjectProperties.h"
+#   include	<bmObjectReader.h>
+#   include	<sioGeneral.h>
+#   include	<sioUtil.h>
+
+#   include	<appDebugon.h>
+
+/************************************************************************/
+
+static int docSizeFromEmfObject(	InsertedObject *	io,
+					const EmfHeader *	eh )
+    {
+    PictureProperties *		pip= &(io->ioPictureProperties);
+    const DocumentRectangle *	dr;
+
+    dr= &(eh->ehFrame);
+
+    if  ( dr->drX1 > dr->drX0 )
+	{
+	pip->pipTwipsWide= ( TWIPS_PER_M* ( dr->drX1- dr->drX0 ) )/ 100000;
+	}
+    else{
+	pip->pipTwipsWide= ( TWIPS_PER_M* ( dr->drX0- dr->drX1 ) )/ 100000;
+	}
+
+    if  ( dr->drY1 > dr->drY0 )
+	{
+	pip->pipTwipsHigh= ( TWIPS_PER_M* ( dr->drY1- dr->drY0 ) )/ 100000;
+	}
+    else{
+	pip->pipTwipsHigh= ( TWIPS_PER_M* ( dr->drY0- dr->drY1 ) )/ 100000;
+	}
+
+    io->ioTwipsWide= pip->pipTwipsWide;
+    io->ioTwipsHigh= pip->pipTwipsHigh;
+
+    dr= &(eh->ehBounds);
+    if  ( dr->drX1 > dr->drX0 )
+	{ pip->pip_xWinExt= dr->drX1- dr->drX0;	}
+    else{ pip->pip_xWinExt= dr->drX0- dr->drX1;	}
+
+    if  ( dr->drY1 > dr->drY0 )
+	{ pip->pip_yWinExt= dr->drY1- dr->drY0;	}
+    else{ pip->pip_yWinExt= dr->drY0- dr->drY1;	}
+
+    return 0;
+    }
 
 /************************************************************************/
 /*									*/
@@ -82,18 +128,8 @@ int docReadEmfObject(		InsertedObject *	io,
     if  ( bmMetaWriteEmfHeader( &eh, sosMeta ) < 0 )
 	{ LDEB(1); rval= -1; goto ready;	}
 
-    for (;;)
-	{
-	unsigned char		buf[4096];
-	int			done;
-
-	done= sioInReadBytes( sisIn, buf, 4096 );
-	if  ( done < 1 )
-	    { break;	}
-
-	if  ( sioOutWriteBytes( sosMeta, buf, done ) != done )
-	    { LDEB(done); rval= -1; goto ready;	}
-	}
+    if  ( sioCopyStream( sosMeta, sisIn ) )
+	{ LDEB(1); rval= -1; goto ready;	}
 
      sioOutClose( sosMeta ); sosMeta= (SimpleOutputStream *)0; /*flush,steal*/
      sioOutClose( sosMem ); sosMem= (SimpleOutputStream *)0; /*flush,steal*/
@@ -113,6 +149,33 @@ int docReadEmfObject(		InsertedObject *	io,
 	{ sioOutClose( sosMem );	}
     if  ( sisIn )
 	{ sioInClose( sisIn );	}
+
+    return rval;
+    }
+
+int docReadEmfSize(		InsertedObject *	io,
+				const MemoryBuffer *	mb )
+    {
+    int			rval= 0;
+
+    EmfHeader		eh;
+
+    ObjectReader	or;
+
+    bmInitObjectReader( &or );
+
+    if  ( bmOpenObjectReader( &or, mb ) )
+	{ LDEB(1); rval= -1; goto ready;	}
+
+    if  ( bmMetaReadEmfHeader( &eh, or.orSisHex ) < 0 )
+	{ LDEB(1); rval= -1; goto ready;	}
+
+    if  ( docSizeFromEmfObject( io, &eh ) )
+	{ LDEB(1); rval= -1; goto ready;	}
+
+  ready:
+
+    bmCleanObjectReader( &or );
 
     return rval;
     }

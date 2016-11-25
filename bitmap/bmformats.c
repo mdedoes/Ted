@@ -1,8 +1,11 @@
 #   include	"bitmapConfig.h"
 
-#   include	"bmintern.h"
+#   include	"bmformats.h"
+#   include	"bmformat.h"
 #   include	<string.h>
 #   include	<appSystem.h>
+#   include	<utilMemoryBuffer.h>
+
 #   include	<appDebugon.h>
 
 #   if	USE_LIBTIFF
@@ -15,7 +18,7 @@ static BitmapFileType	bmTiffFile=
     bmReadTiffFile,
     "tiff",
     "*.tiff",
-    "tiffFile",
+    "image/tiff",
     "Tagged Image Format ( *.tiff )",
     };
 
@@ -26,11 +29,11 @@ static BitmapFileType	bmTifFile=
     bmReadTiffFile,
     "tif",
     "*.tif",
-    "tifFile",
+    "image/tiff",
     "Tagged Image Format ( *.tif )",
     };
 
-#   endif	/*	TIFF_FOUND	*/
+#   endif	/* USE_LIBTIFF */
 
 static BitmapFileType	bmBmpFile=
     {
@@ -39,7 +42,7 @@ static BitmapFileType	bmBmpFile=
     bmReadBmpFile,
     "bmp",
     "*.bmp",
-    "bmpFile",
+    "image/bmp",
     "Microsoft Bitmap ( *.bmp )",
     };
 
@@ -50,7 +53,7 @@ static BitmapFileType	bmIcoFile=
     bmReadIcoFile,
     "ico",
     "*.ico",
-    "icoFile",
+    "image/x-icon",
     "Microsoft Icon ( *.ico )",
     };
 
@@ -61,9 +64,11 @@ static BitmapFileType	bmXwdFile=
     bmReadXwdFile,
     "xwd",
     "*.xwd",
-    "xwdFile",
+    "image/x-xwindowdump",
     "X-Window Dump ( *.xwd )",
     };
+
+#   if	USE_LIBJPEG
 
 static BitmapFileType	bmJpgFile=
     {
@@ -72,7 +77,7 @@ static BitmapFileType	bmJpgFile=
     bmReadJpegFile,
     "jpg",
     "*.jpg",
-    "jpgFile",
+    "image/jpeg",
     "JPEG ( *.jpg )",
     };
 
@@ -83,9 +88,11 @@ static BitmapFileType	bmJpegFile=
     bmReadJpegFile,
     "jpeg",
     "*.jpeg",
-    "jpegFile",
+    "image/jpeg",
     "JPEG ( *.jpeg )",
     };
+
+#   endif /* USE_LIBJPEG */
 
 static BitmapFileType	bmGifFile=
     {
@@ -94,7 +101,7 @@ static BitmapFileType	bmGifFile=
     bmReadGifFile,
     "gif",
     "*.gif",
-    "gifFile",
+    "image/gif",
     "Compuserve GIF ( *.gif )",
     };
 
@@ -105,7 +112,7 @@ static BitmapFileType	bmEpsFile=
     NULL, /* bmReadEpsFile, */
     "eps",
     "*.eps",
-    "epsFile",
+    "application/postscript",
     "Encapsulated Postscript ( *.eps )",
     };
 
@@ -116,7 +123,7 @@ static BitmapFileType	bmPdfFile=
     NULL, /* bmReadPdfFile, */
     "pdf",
     "*.pdf",
-    "pdfFile",
+    "application/pdf",
     "Acrobat PDF ( *.pdf )",
     };
 
@@ -127,7 +134,7 @@ static BitmapFileType	bmRtfFile=
     NULL, /* bmReadRtfFile, */
     "rtf",
     "*.rtf",
-    "rtfFile",
+    "application/rtf",
     "Rich Text Format ( *.rtf )",
     };
 
@@ -138,7 +145,7 @@ static BitmapFileType	bmXbmFile=
     bmReadXbmFile,
     "xbm",
     "*.xbm",
-    "xbmFile",
+    "image/x-xbitmap",
     "X-Windows bitmap ( *.xbm )",
     };
 
@@ -149,9 +156,11 @@ static BitmapFileType	bmWmfFile=
     NULL, /* bmReadWmfFile, */
     "wmf",
     "*.wmf",
-    "wmfFile",
+    "application/x-msmetafile",
     "Windows Meta File ( *.wmf )",
     };
+
+#   if USE_LIBPNG
 
 static BitmapFileType	bmPngFile=
     {
@@ -160,11 +169,14 @@ static BitmapFileType	bmPngFile=
     bmReadPngFile,
     "png",
     "*.png",
-    "pngFile",
+    "image/png",
     "Portable Network Graphics ( *.png )",
     };
 
+#   endif /* USE_LIBPNG */
+
 #   if USE_LIBXPM
+
 static BitmapFileType	bmXpmFile=
     {
     bmWriteXpmFile,
@@ -172,10 +184,10 @@ static BitmapFileType	bmXpmFile=
     bmReadXpmFile,
     "xpm",
     "*.xpm",
-    "xpmFile",
+    "image/x-xpixmap",
     "X11 Pixmap ( *.xpm )",
     };
-#   endif /* USE_XPM */
+#   endif /* USE_LIBXPM */
 
 static BitmapFileType	bmPgmFile=
     {
@@ -184,7 +196,7 @@ static BitmapFileType	bmPgmFile=
     bmReadPbmFile,
     "pgm",
     "*.pgm",
-    "pgmFile",
+    "image/x-portable-graymap",
     "Portable Gray Map ( *.pgm )",
     };
 
@@ -195,7 +207,7 @@ static BitmapFileType	bmPbmFile=
     bmReadPbmFile,
     "pbm",
     "*.pbm",
-    "pbmFile",
+    "image/x-portable-bitmap",
     "Portable Bitmap ( *.pbm )",
     };
 
@@ -206,7 +218,7 @@ static BitmapFileType	bmPpmFile=
     bmReadPbmFile,
     "ppm",
     "*.ppm",
-    "ppmFile",
+    "image/x-portable-pixmap",
     "Portable Pixmap ( *.ppm )",
     };
 
@@ -217,7 +229,7 @@ static BitmapFileType	bmPnmFile=
     bmReadPbmFile,
     "pnm",
     "*.pnm",
-    "pnmFile",
+    "image/x-portable-anymap",
     "Portable Anymap ( *.pnm )",
     };
 
@@ -228,15 +240,34 @@ static BitmapFileType	bmWbmpFile=
     bmReadWbmpFile,
     "wbmp",
     "*.wbmp",
-    "wbmpFile",
+    "image/vnd.wap.wbmp",
     "WAP Wireless Bitmap Format ( *.wbmp )",
     };
 
+#   if USE_LIBWEBP
+
+static BitmapFileType	bmWebpFile=
+    {
+    bmWriteWebpFile,
+    bmCanWriteWebpFile,
+    bmReadWebpFile,
+    "webp",
+    "*.webp",
+    "image/webp",
+    "Google WEBP ( *.webp )",
+    };
+
+#   endif
+
 BitmapFileType * bmFileTypes[]=
     {
+#   if USE_LIBPNG
     &bmPngFile,
+#   endif
+#   if USE_LIBJPEG
     &bmJpegFile,
     &bmJpgFile,
+#   endif
     &bmBmpFile,
     &bmGifFile,
     &bmXwdFile,
@@ -248,6 +279,9 @@ BitmapFileType * bmFileTypes[]=
 #   if USE_LIBTIFF
     &bmTiffFile,
     &bmTifFile,
+#   endif
+#   if USE_LIBWEBP
+    &bmWebpFile,
 #   endif
 #   if USE_LIBXPM
     &bmXpmFile,
@@ -307,11 +341,20 @@ BitmapFileFormat	bmFileFormats[]=
 			    COMPRESSION_THUNDERSCAN,	&bmTiffFile },
 	{ "TIFF  JPEG", "tiffJpegFile",
 			    COMPRESSION_JPEG,		&bmTiffFile },
-#	endif /* TIFF_FOUND */
+#	endif /* USE_LIBTIFF */
+
 #	if USE_LIBXPM
 	{ "XPM  X11 Pixmap File", "xpm1File",
 			    0,				&bmXpmFile },
 #	endif /* USE_XPM */
+
+#	if USE_LIBWEBP
+	{ "WEBP  Lossy", "webpLossyFile",
+			    1,				&bmWebpFile },
+	{ "WEBP  Lossless", "webpLosslessFile",
+			    2,				&bmWebpFile },
+#	endif
+
 	{ "PGM  Gray Map (Text)", "pgm2File",
 			    2,				&bmPgmFile },
 	{ "PGM  Gray Map (Raw)", "pgm5File",
@@ -341,15 +384,18 @@ const int bmNumberOfFileTypes= sizeof(bmFileTypes)/sizeof(BitmapFileType *);
 
 
 static int bmTestWrite(		const BitmapDescription *	bd,
-				const MemoryBuffer *		ext,
+				const struct MemoryBuffer *	ext,
 				const BitmapFileFormat *	bff )
     {
+    const BitmapFileType *	bft= bff->bffFileType;
+
     if  ( ! utilMemoryBufferIsEmpty( ext ) &&
-	  strcmp( bff->bffFileType->bftFileExtension, utilMemoryBufferGetString( ext ) ) )
+	  strcmp( bft->bftFileExtension, utilMemoryBufferGetString( ext ) ) )
 	{ return -1;	}
-    if  ( ! bff->bffFileType->bftWrite )
+
+    if  ( ! bft->bftWrite )
 	{ return -1;	}
-    if  ( (*bff->bffFileType->bftCanWrite) ( bd, bff->bffPrivate ) )
+    if  ( (*bft->bftTestCanWrite) ( bd, bff->bffPrivate ) )
 	{ return -1;	}
 
     return 0;
@@ -368,17 +414,16 @@ int bmSuggestFormat(	const MemoryBuffer *		filename,
 
     utilInitMemoryBuffer( &ext );
 
-    if  ( appFileGetFileExtension( &ext, filename ) )
+    if  ( fileGetFileExtension( &ext, filename ) )
 	{ LDEB(1); format= -1; goto ready;	}
 
     if  ( utilMemoryBufferIsEmpty( &ext )		||
 	  format < 0					||
 	  bmTestWrite( bd, &ext, bmFileFormats+ format ) )
 	{
-	int			i;
-	BitmapFileFormat *	bff;
+	int				i;
+	const BitmapFileFormat *	bff= bmFileFormats;
 
-	bff= bmFileFormats;
 	for ( i= 0; i < bmNumberOfFileFormats; bff++, i++ )
 	    {
 	    if  ( ! bmTestWrite( bd, &ext, bff ) )
@@ -396,3 +441,37 @@ int bmSuggestFormat(	const MemoryBuffer *		filename,
     return format;
     }
 
+int bmCanSaveAsContentType(	const BitmapDescription *	bd,
+				const char *			contentType )
+    {
+    int				i;
+    const BitmapFileFormat *	bff= bmFileFormats;
+
+    for ( i= 0; i < bmNumberOfFileFormats; bff++, i++ )
+	{
+	const BitmapFileType *	bft= bff->bffFileType;
+
+	if  ( ! bft->bftWrite )
+	    { continue;	}
+
+	if  ( strcmp( bft->bftContentType, contentType ) )
+	    { continue;	}
+
+	if  ( ! (*bft->bftTestCanWrite) ( bd, bff->bffPrivate ) )
+	    { return 1;	}
+	}
+
+    return 0;
+    }
+
+const char * bmGetContentTypeOfFormat(	int			fileFormat )
+    {
+    const BitmapFileFormat *	bff;
+
+    if  ( fileFormat < 0 || fileFormat >= bmNumberOfFileFormats )
+	{ LLDEB(fileFormat,bmNumberOfFileFormats); return (const char *)0; }
+
+    bff= bmFileFormats+ fileFormat;
+
+    return bff->bffFileType->bftContentType;
+    }

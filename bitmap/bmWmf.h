@@ -8,7 +8,7 @@
 #   define		BM_WMF_H
 
 #   include	"bmcolor.h"
-#   include	<geo2DInteger.h>
+#   include	<geoRectangle.h>
 
 typedef enum
     {

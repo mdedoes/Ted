@@ -6,13 +6,15 @@
 
 #   include	"docRtfConfig.h"
 
-#   include	<stdio.h>
 #   include	<ctype.h>
-
-#   include	<appDebugon.h>
 
 #   include	"docRtfWriterImpl.h"
 #   include	"docRtfTags.h"
+#   include	<docPropVal.h>
+#   include	<docCellProperties.h>
+#   include	<utilPropMask.h>
+
+#   include	<appDebugon.h>
 
 /************************************************************************/
 /*									*/
@@ -20,10 +22,10 @@
 /*									*/
 /************************************************************************/
 
-void docRtfSaveCellProperties(		RtfWriter *		rw,
-					const PropertyMask *	cpSetMask,
-					const CellProperties *	cpSet,
-					int			shiftLeft )
+void docRtfSaveCellProperties(	RtfWriter *			rw,
+				const struct PropertyMask *	cpSetMask,
+				const CellProperties *		cpSet,
+				int				leftOffset )
     {
     const int			anyway= 0;
 
@@ -122,12 +124,10 @@ void docRtfSaveCellProperties(		RtfWriter *		rw,
 			    DOCrtf_CellTextFlowTagCount, TXflow_COUNT );
 	}
 
-    /*  LAST! */
-    if  ( PROPmaskISSET( cpSetMask, CLpropCELLX ) )
-	{
-	docRtfWriteArgTag( rw, "cellx",
-				    cpSet->cpRightBoundaryTwips- shiftLeft );
-	}
+    /*  LAST! and always. value > 0 triggers the mask in the reader */
+    if  ( PROPmaskISSET( cpSetMask, CLpropWIDTH ) )
+	{ docRtfWriteArgTag( rw, RTFtag_cellx, leftOffset+ cpSet->cpWide ); }
+    else{ docRtfWriteArgTag( rw, RTFtag_cellx, 0 );			}
 
     docRtfWriteNextLine( rw );
     }

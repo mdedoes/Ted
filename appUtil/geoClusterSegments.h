@@ -1,8 +1,9 @@
 #   include	<stdio.h>
 
-#   include	<geoQuadTree.h>
-#   include	<geoAffineTransform.h>
-#   include	<geoLineFitter.h>
+#   include	"geoQuadTree.h"
+#   include	"geoAffineTransform.h"
+#   include	"geoLineFitter.h"
+#   include	"geoRectangle.h"
 
 /************************************************************************/
 /*									*/
@@ -10,9 +11,11 @@
 /*									*/
 /************************************************************************/
 
+struct LineSegment2DI;
+
 typedef struct SegmentCluster
     {
-    LineSegment2DI *	scSegments;
+    struct LineSegment2DI *	scSegments;
     int			scSegmentCount;
     DocumentRectangle	scRectangle;
     int			scX0;

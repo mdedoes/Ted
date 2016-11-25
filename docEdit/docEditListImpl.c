@@ -8,11 +8,14 @@
 
 #   include	<stdlib.h>
 
-#   include	<appDebugon.h>
-
 #   include	<docBuf.h>
 #   include	<docDocumentList.h>
 #   include	"docEditImpl.h"
+#   include	<docListTable.h>
+#   include	<docListAdmin.h>
+#   include	<docDocumentProperties.h>
+
+#   include	<appDebugon.h>
 
 /************************************************************************/
 /*									*/
@@ -160,11 +163,11 @@ static int docDefaultList(	DocumentList *			dlTo,
 int docNewList(			const DocumentList **		pDl,
 				const struct ListOverride **	pLo,
 				int				lsExample,
-				BufferDocument *		bd,
+				struct BufferDocument *		bd,
 				const PropertyMask *		taSetMask,
 				const TextAttribute *		taSet )
     {
-    DocumentProperties *	dp= &(bd->bdProperties);
+    DocumentProperties *	dp= bd->bdProperties;
     ListAdmin *			la= dp->dpListAdmin;
     DocumentListTable *		dlt= &(la->laListTable);
     ListOverrideTable *		lot= &(la->laListOverrideTable);

@@ -29,6 +29,9 @@ extern const int appDebugZero;
 extern int appDebugSetFile(	const char *	filename,
 				const char *	mode );
 
+extern void appDebugStackTrace(	const char *	file,
+				int		line );
+
 # ifdef APP_DEBUG
 #	include <ctype.h>
 #	define	APP_DEB(x)	(x)
@@ -109,6 +112,17 @@ extern int appDebugSetFile(	const char *	filename,
 			    #c1, DEBC(c1),			\
 			    #l2, DEBL(l2),			\
 			    #s3, DEBS(s3)			))
+
+# define CLSLDEB(c1,l2,s3,l4) APP_DEB(appDebug( "%s(%3d)"	\
+			    DFMC				\
+			    DFML				\
+			    DFMS				\
+			    DFML				\
+			    "\n", __FILE__, __LINE__,		\
+			    #c1, DEBC(c1),			\
+			    #l2, DEBL(l2),			\
+			    #s3, DEBS(s3),			\
+			    #l4, DEBL(l4)			))
 
 # define CLLDEB(c1,l2,l3) APP_DEB(appDebug( "%s(%3d)"		\
 			    DFMC				\
@@ -398,6 +412,15 @@ extern int appDebugSetFile(	const char *	filename,
 			    #l2, DEBL(l2),			\
 			    #l3, DEBL(l3)			))
 
+# define SLCDEB(s1,l2,c3) APP_DEB(appDebug( "%s(%3d)"		\
+			    DFMS				\
+			    DFML				\
+			    DFMC				\
+			    "\n", __FILE__, __LINE__,		\
+			    #s1, DEBS(s1),			\
+			    #l2, DEBL(l2),			\
+			    #c3, DEBC(c3)			))
+
 # define SXLDEB(s1,l2,l3) APP_DEB(appDebug( "%s(%3d)"		\
 			    DFMS				\
 			    DFMX				\
@@ -415,6 +438,19 @@ extern int appDebugSetFile(	const char *	filename,
 			    #s1, DEBS(s1),			\
 			    #l2, DEBL(l2),			\
 			    #l3, DEBX(l3)			))
+
+# define SLXLLDEB(s1,l2,l3,l4,l5) APP_DEB(appDebug( "%s(%3d)"	\
+			    DFMS				\
+			    DFML				\
+			    DFMX				\
+			    DFML				\
+			    DFML				\
+			    "\n", __FILE__, __LINE__,		\
+			    #s1, DEBS(s1),			\
+			    #l2, DEBL(l2),			\
+			    #l3, DEBX(l3),			\
+			    #l4, DEBL(l4),			\
+			    #l5, DEBL(l5)			))
 
 # define SXXDEB(s1,l2,l3) APP_DEB(appDebug( "%s(%3d)"		\
 			    DFMS				\
@@ -529,6 +565,19 @@ extern int appDebugSetFile(	const char *	filename,
 			    #s2, DEBS(s2),			\
 			    #l3, DEBL(l3),			\
 			    #l4, DEBL(l4)			))
+
+# define LSLLLDEB(l1,s2,l3,l4,l5) APP_DEB(appDebug( "%s(%3d)"	\
+			    DFML				\
+			    DFMS				\
+			    DFML				\
+			    DFML				\
+			    DFML				\
+			    "\n", __FILE__, __LINE__,		\
+			    #l1, DEBL(l1),			\
+			    #s2, DEBS(s2),			\
+			    #l3, DEBL(l3),			\
+			    #l4, DEBL(l4),			\
+			    #l5, DEBL(l5)			))
 
 # define LSFFDEB(l1,s2,d3,d4) APP_DEB(appDebug( "%s(%3d)"	\
 			    DFML				\
@@ -734,6 +783,41 @@ extern int appDebugSetFile(	const char *	filename,
 			    #l3, DEBL(l3),			\
 			    #l4, DEBL(l4)			))
 
+# define LXLLDEB(l1,l2,l3,l4) APP_DEB(appDebug( "%s(%3d)"	\
+			    DFML				\
+			    DFMX				\
+			    DFML				\
+			    DFML				\
+			    "\n", __FILE__, __LINE__,		\
+			    #l1, DEBL(l1),			\
+			    #l2, DEBX(l2),			\
+			    #l3, DEBL(l3),			\
+			    #l4, DEBL(l4)			))
+
+# define LLXLLDEB(l1,l2,l3,l4,l5) APP_DEB(appDebug( "%s(%3d)"	\
+			    DFML				\
+			    DFML				\
+			    DFMX				\
+			    DFML				\
+			    DFML				\
+			    "\n", __FILE__, __LINE__,		\
+			    #l1, DEBL(l1),			\
+			    #l2, DEBL(l2),			\
+			    #l3, DEBX(l3),			\
+			    #l4, DEBL(l4),			\
+			    #l5, DEBL(l5)			))
+
+# define XLLLDEB(l1,l2,l3,l4) APP_DEB(appDebug( "%s(%3d)"	\
+			    DFMX				\
+			    DFML				\
+			    DFML				\
+			    DFML				\
+			    "\n", __FILE__, __LINE__,		\
+			    #l1, DEBX(l1),			\
+			    #l2, DEBL(l2),			\
+			    #l3, DEBL(l3),			\
+			    #l4, DEBL(l4)			))
+
 # define LXXLDEB(l1,l2,l3,l4) APP_DEB(appDebug( "%s(%3d)"	\
 			    DFML				\
 			    DFMX				\
@@ -779,6 +863,19 @@ extern int appDebugSetFile(	const char *	filename,
 			    #l2, DEBX(l2),			\
 			    #l3, DEBL(l3),			\
 			    #l4, DEBL(l4)			))
+
+# define XXLLLDEB(l1,l2,l3,l4,l5) APP_DEB(appDebug( "%s(%3d)"	\
+			    DFMX				\
+			    DFMX				\
+			    DFML				\
+			    DFML				\
+			    DFML				\
+			    "\n", __FILE__, __LINE__,		\
+			    #l1, DEBX(l1),			\
+			    #l2, DEBX(l2),			\
+			    #l3, DEBL(l3),			\
+			    #l4, DEBL(l4),			\
+			    #l5, DEBL(l5)			))
 
 # define LLXXDEB(l1,l2,l3,l4) APP_DEB(appDebug( "%s(%3d)"	\
 			    DFML				\
@@ -834,6 +931,32 @@ extern int appDebugSetFile(	const char *	filename,
 			    #l1, DEBL(l1),			\
 			    #l2, DEBL(l2),			\
 			    #l3, DEBL(l3),			\
+			    #l4, DEBL(l4),			\
+			    #l5, DEBL(l5)			))
+
+# define LLSLLDEB(l1,l2,s3,l4,l5) APP_DEB(appDebug( "%s(%3d)"	\
+			    DFML				\
+			    DFML				\
+			    DFMS				\
+			    DFML				\
+			    DFML				\
+			    "\n", __FILE__, __LINE__,		\
+			    #l1, DEBL(l1),			\
+			    #l2, DEBL(l2),			\
+			    #s3, DEBS(s3),			\
+			    #l4, DEBL(l4),			\
+			    #l5, DEBL(l5)			))
+
+# define LLCLLDEB(l1,l2,c3,l4,l5) APP_DEB(appDebug( "%s(%3d)"	\
+			    DFML				\
+			    DFML				\
+			    DFMC				\
+			    DFML				\
+			    DFML				\
+			    "\n", __FILE__, __LINE__,		\
+			    #l1, DEBL(l1),			\
+			    #l2, DEBL(l2),			\
+			    #c3, DEBC(c3),			\
 			    #l4, DEBL(l4),			\
 			    #l5, DEBL(l5)			))
 
@@ -1112,10 +1235,21 @@ extern int appDebugSetFile(	const char *	filename,
 			    DFMS				\
 			    DFML				\
 			    "\n", __FILE__, __LINE__,		\
-			    #l1, DEBS(l1),			\
-			    #l2, DEBS(l2),			\
-			    #s3, DEBL(s3),			\
+			    #l1, DEBL(l1),			\
+			    #l2, DEBL(l2),			\
+			    #s3, DEBS(s3),			\
 			    #l4, DEBL(l4)			))
+
+# define LLSXDEB(l1,l2,s3,l4) APP_DEB(appDebug( "%s(%3d)"	\
+			    DFML				\
+			    DFML				\
+			    DFMS				\
+			    DFMX				\
+			    "\n", __FILE__, __LINE__,		\
+			    #l1, DEBL(l1),			\
+			    #l2, DEBL(l2),			\
+			    #s3, DEBS(s3),			\
+			    #l4, DEBX(l4)			))
 
 # define SSSDEB(s1,s2,s3) APP_DEB(appDebug( "%s(%3d)"		\
 			    DFMS				\
@@ -1133,6 +1267,17 @@ extern int appDebugSetFile(	const char *	filename,
 			    DFMS				\
 			    "\n", __FILE__, __LINE__,		\
 			    #l1, DEBL(l1),			\
+			    #s2, DEBS(s2),			\
+			    #s3, DEBS(s3),			\
+			    #s4, DEBS(s4)			))
+
+# define FSSSDEB(d1,s2,s3,s4) APP_DEB(appDebug( "%s(%3d)"	\
+			    DFMD				\
+			    DFMS				\
+			    DFMS				\
+			    DFMS				\
+			    "\n", __FILE__, __LINE__,		\
+			    #d1, DEBD(d1),			\
 			    #s2, DEBS(s2),			\
 			    #s3, DEBS(s3),			\
 			    #s4, DEBS(s4)			))
@@ -1167,6 +1312,15 @@ extern int appDebugSetFile(	const char *	filename,
 			    DFMS				\
 			    "\n", __FILE__, __LINE__,		\
 			    #l1, DEBL(l1),			\
+			    #s2, DEBS(s2),			\
+			    #s3, DEBS(s3)			))
+
+# define FSSDEB(d1,s2,s3) APP_DEB(appDebug( "%s(%3d)"	\
+			    DFMD				\
+			    DFMS				\
+			    DFMS				\
+			    "\n", __FILE__, __LINE__,		\
+			    #d1, DEBD(d1),			\
 			    #s2, DEBS(s2),			\
 			    #s3, DEBS(s3)			))
 

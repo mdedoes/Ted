@@ -1,37 +1,30 @@
 /************************************************************************/
 /*									*/
-/*  Ted: Handle user input.						*/
+/*  Ted: Handle user input from the keyboard.				*/
 /*									*/
 /************************************************************************/
 
 #   include	"tedConfig.h"
 
 #   include	<stddef.h>
-#   include	<stdio.h>
 #   include	<ctype.h>
 
-#   include	"tedApp.h"
-#   include	"tedLayout.h"
+#   include	"tedDraw.h"
 #   include	"tedSelect.h"
 #   include	"tedDocument.h"
-#   include	"tedDocFront.h"
-#   include	"tedEdit.h"
-#   include	<docSelectLayout.h>
-#   include	<docTreeType.h>
-#   include	<docParaParticules.h>
-#   include	<docNodeTree.h>
+#   include	<tedDocFront.h>
 #   include	<docEditCommand.h>
-
-#   include	<appGuiKeys.h>
+#   include	"tedDocMenu.h"
+#   include	"tedEdit.h"
+#   include	<guiKeys.h>
+#   include	<appEditDocument.h>
+#   include	"tedKeyboard.h"
 
 #   include	<appDebugon.h>
 
 /************************************************************************/
 /*									*/
 /*  Just log events that pass by for debugging purposes.		*/
-/*									*/
-/*  NOTE the silly constuction to do away with the 'unused' compiler	*/
-/*	 warning.							*/
 /*									*/
 /************************************************************************/
 
@@ -44,30 +37,19 @@ static void tedLogEvent(	Widget		w,
     {
     EditDocument *		ed= (EditDocument *)voided;
 
+    if  ( ! event )
+	{ return;	}
+
     appDebug( "EVENT \"%s\": %s\n",
 			ed->edTitle, APP_X11EventNames[event->type] );
 
     *pRefused= 1;
-
-    if  ( ! event )
-	{ return;	}
-    if  ( ! event )
-	{ tedLogEvent( w, voided, event, pRefused );	}
     }
 
 #   endif
 
-/************************************************************************/
-/*									*/
-/*  Handle keyboard input.						*/
-/*									*/
-/*  a)  Handle miscelaneous keysyms as keysyms, even if they have a	*/
-/*	string representation.						*/
-/*									*/
-/************************************************************************/
-
-static void tedInputSetSelectedPosition(
-				EditDocument *			ed,
+void tedInputSetSelectedPosition(
+				struct EditDocument *		ed,
 				const DocumentPosition *	dp,
 				int				lastLine )
     {
@@ -79,8 +61,7 @@ static void tedInputSetSelectedPosition(
     return;
     }
 
-static void tedInputChangeSelection(
-				EditDocument *			ed,
+void tedInputChangeSelection(	struct EditDocument *		ed,
 				unsigned int			keyState,
 				const DocumentSelection *	dsOrig,
 				const DocumentPosition *	dpSet,
@@ -103,40 +84,13 @@ static void tedInputChangeSelection(
 
 /************************************************************************/
 /*									*/
-/*  Delete a selection as the result of a BackSpace or Delete key with	*/
-/*  an IBar selection.							*/
-/*									*/
-/************************************************************************/
-
-static int tedInputSetIBarDelete( EditDocument *		ed,
-				int				headAtLineHead,
-				const DocumentPosition *	dpHead,
-				const DocumentPosition *	dpTail )
-    {
-    DocumentSelection	ds;
-
-    docSetRangeSelection( &ds, dpHead, dpTail, 1 );
-
-    if  ( ! docSelectionInsideParagraph( &ds ) )
-	{
-	docTailPosition( &(ds.dsHead), ds.dsHead.dpNode );
-	docHeadPosition( &(ds.dsTail), ds.dsTail.dpNode );
-	}
-
-    tedSetSelectionLow( ed, &ds, headAtLineHead, (int *)0, (int *)0 );
-
-    return 0;
-    }
-
-/************************************************************************/
-/*									*/
 /*  Navigation based on a Right arrow key.				*/
 /*									*/
 /************************************************************************/
 
-static int tedMoveRightOnKey(	DocumentPosition *	dpNew,
-				BufferDocument *	bd,
-				int			keyState )
+int tedMoveRightOnKey(	DocumentPosition *	dpNew,
+			struct BufferDocument *	bd,
+			int			keyState )
     {
     if  ( keyState & KEY_CONTROL_MASK )
 	{
@@ -157,9 +111,9 @@ static int tedMoveRightOnKey(	DocumentPosition *	dpNew,
 /*									*/
 /************************************************************************/
 
-static int tedMoveLeftOnKey(	DocumentPosition *	dpNew,
-				BufferDocument *	bd,
-				int			keyState )
+int tedMoveLeftOnKey(	DocumentPosition *	dpNew,
+			struct BufferDocument *	bd,
+			int			keyState )
     {
     if  ( keyState & KEY_CONTROL_MASK )
 	{
@@ -183,23 +137,37 @@ static int tedMoveLeftOnKey(	DocumentPosition *	dpNew,
 /*									*/
 /************************************************************************/
 
-static int tedStartEdit(	EditDocument *		ed )
+static int tedRefuseEdit(	struct EditDocument *		ed )
     {
-    TedDocument *		td= (TedDocument *)ed->edPrivateData;
+#   ifdef NOT_USE_MOTIF
+    const AppDrawingData *	add= &(ed->edDocumentWidget.dwDrawingData);
 
-    if  ( ! tedHasSelection( ed ) || ! td->tdSelectionDescription.sdCanReplace )
+    XBell( add->addDisplay, 0 );
+#   endif
+
+#   if USE_GTK
+    gdk_beep();
+#   endif
+
+    return 1;
+    }
+
+static int tedStartEdit(	struct EditDocument *		ed,
+				const SelectionDescription *	sd,
+				int				editCommand )
+    {
+    if  ( ! sd->sdIsSet )
+	{ return tedRefuseEdit( ed );	}
+
+    if  ( editCommand >= 0 )
 	{
-#	ifdef NOT_USE_MOTIF
-	const AppDrawingData *	add= &(ed->edDocumentWidget.dwDrawingData);
+	unsigned char	cmdEnabled[EDITcmd_COUNT];
 
-	XBell( add->addDisplay, 0 );
-#	endif
+	docEnableEditCommands( cmdEnabled, sd );
 
-#	ifdef USE_GTK
-	gdk_beep();
-#	endif
+	if  ( ! cmdEnabled[editCommand] )
+	    { return tedRefuseEdit( ed );	}
 
-	return 1;
 	}
 
     tedStopCursorBlink( ed );
@@ -220,594 +188,50 @@ void tedDocGotKey(	void *			voided,
     {
     EditDocument *		ed= (EditDocument *)voided;
 
-    TedDocument *		td= (TedDocument *)ed->edPrivateData;
-    BufferDocument *		bd= td->tdDocument;
-
     DocumentSelection		ds;
     SelectionGeometry		sg;
     SelectionDescription	sd;
 
-    DocumentTree *		ei;
-    BufferItem *		bodySectNode;
+    struct DocumentTree *	tree;
+    struct BufferItem *		bodySectNode;
 
-    const int			traced= td->tdTraced;
+    TedKeyHandler		keyHandler;
+    int				editCommand;
 
-    int				res;
-
-    LayoutContext		lc;
-    int				headAtLineHead;
-    int				headAtLineTail;
-    int				headAfterBreak;
-
-    int				deleteCommand= EDITcmdDELETE_SELECTION;
-
-    layoutInitContext( &lc );
-    tedSetScreenLayoutContext( &lc, ed );
-
-    if  ( tedStartEdit( ed ) )
-	{ goto ready;	}
-
-    if  ( tedGetSelection( &ds, &sg, &sd, &ei, &bodySectNode, ed ) )
+    if  ( tedGetSelection( &ds, &sg, &sd, &tree, &bodySectNode, ed ) )
 	{ LDEB(1); goto ready;	}
-
-    headAtLineHead= ( sg.sgHead.pgPositionFlags & POSflagLINE_HEAD ) != 0;
-    headAtLineTail= ( sg.sgHead.pgPositionFlags & POSflagLINE_TAIL ) != 0;
-    headAfterBreak= ( sg.sgHead.pgPositionFlags & POSflagPART_AFTER_BREAK ) != 0;
-    /*
-    tailAtLineHead= ( sg.sgTail.pgPositionFlags & POSflagLINE_HEAD ) != 0;
-    */
-
 
     /* only interested in these 2 */
     state= state & ( KEY_CONTROL_MASK|KEY_SHIFT_MASK);
 
-    switch( keySym )
+    keyHandler= tedKeyGetMoveHandler( ed, keySym, state, &ds, &sd );
+    if  ( keyHandler )
 	{
-	DocumentPosition		dpNew;
-	const PositionGeometry *	pgRef;
+	if  ( ! tedStartEdit( ed, &sd, -1 ) )
+	    { (*keyHandler)( ed, keySym, state, &ds, &sd, &sg );	}
 
-#	ifdef KEY_ISO_Left_Tab
-	case  KEY_ISO_Left_Tab:
-	    if  ( ds.dsHead.dpNode				&&
-		  ds.dsHead.dpNode->biParaTableNesting > 0	&&
-		  ! ( state & KEY_CONTROL_MASK )	)
-		{ goto shiftTab;	}
-	    else{ goto ready;		}
-#	endif
-
-	case KEY_i:
-	    if  ( state != KEY_CONTROL_MASK )
-		{ goto unknown; }
-	    /*FALLTHROUGH*/
-	case KEY_Tab:
-	    if  ( ds.dsHead.dpNode				&&
-		  ds.dsHead.dpNode->biParaTableNesting > 0	&&
-		  ! ( state & KEY_CONTROL_MASK )	)
-		{
-		if  ( state & KEY_SHIFT_MASK )
-		    {
-		  shiftTab:
-		    if  ( docGotoFirstPosition( &dpNew,
-				    ds.dsHead.dpNode->biParent )	||
-			  docGotoPrevPosition( &dpNew )			)
-			{ goto ready;	}
-		    }
-		else{
-		    if  ( docGotoLastPosition( &dpNew,
-				    ds.dsHead.dpNode->biParent )	||
-			  docGotoNextPosition( &dpNew )			)
-			{ goto ready;	}
-		    }
-
-		{
-		    const int	lastLine= 0;
-
-		    tedInputSetSelectedPosition( ed, &dpNew, lastLine );
-		}
-
-		goto ready;
-		}
-
-	    if  ( state & KEY_SHIFT_MASK )
-		{ goto ready;	}
-
-	    if  ( ! sd.sdCanReplace )
-		{ goto ready;	}
-
-	    {
-	    const int		redoLayout= 0;
-
-	    tedEditInsertSpecialParticule( ed,
-			    DOCkindTAB, EDITcmdREPLACE, redoLayout, traced );
-	    }
-
-	    goto ready;
-
-	case KEY_j: case KEY_m:
-	    if  ( state != KEY_CONTROL_MASK )
-		{ goto unknown; }
-	    /*FALLTHROUGH*/
-	case KEY_KP_Enter:
-	case KEY_Return:
-	    if  ( ! sd.sdCanReplace )
-		{ goto ready;	}
-
-	    tedDocSplitParagraph( ed,
-			    state == KEY_CONTROL_MASK	&&
-			    keySym != KEY_j		&&
-			    keySym != KEY_m,
-			    traced );
-	    goto ready;
-
-	case KEY_KP_Delete:
-	case KEY_Delete:
-
-	    res= tedDeleteTableSliceSelection( ed, traced );
-	    if  ( res < 0 )
-		{ LDEB(res); goto ready;	}
-	    if  ( res == 0 )
-		{ goto ready;		}
-
-	    if  ( ! sd.sdCanReplace )
-		{ goto ready;	}
-
-	    if  ( sd.sdIsIBarSelection )
-		{
-		dpNew= ds.dsTail;
-
-		if  ( tedMoveRightOnKey( &dpNew, bd, state ) )
-		    { goto ready;	}
-
-		if  ( ( ds.dsHead.dpNode->biParaTableNesting > 0	||
-		        dpNew.dpNode->biParaTableNesting > 0	)	&&
-		      ! docPositionsInsideCell( &(ds.dsHead), &dpNew ) )
-		    {
-		    const int		keyState= 0;
-		    const int		lastLine= 1;
-
-		    tedInputChangeSelection( ed, keyState,
-						    &ds, &dpNew, lastLine );
-		    goto ready;
-		    }
-
-		tedInputSetIBarDelete( ed, headAtLineHead,
-						    &(ds.dsHead), &dpNew );
-
-		deleteCommand= EDITcmdDELETE_SELECTION_DEL;
-		}
-
-	    tedDocDeleteSelection( ed, deleteCommand, traced );
-
-	    goto ready;
-
-	case KEY_BackSpace:
-
-	    res= tedDeleteTableSliceSelection( ed, traced );
-	    if  ( res < 0 )
-		{ LDEB(res); goto ready;	}
-	    if  ( res == 0 )
-		{ goto ready;		}
-
-	    if  ( ! sd.sdCanReplace )
-		{ goto ready;	}
-
-	    if  ( sd.sdIsIBarSelection )
-		{
-		dpNew= ds.dsHead;
-
-		if  ( tedMoveLeftOnKey( &dpNew, bd, state ) )
-		    { goto ready;	}
-
-		if  ( ( dpNew.dpNode->biParaTableNesting > 0		||
-		        ds.dsTail.dpNode->biParaTableNesting > 0	) &&
-		      ! docPositionsInsideCell( &dpNew, &(ds.dsTail) )	)
-		    {
-		    const int		keyState= 0;
-		    const int		lastLine= 1;
-
-		    tedInputChangeSelection( ed, keyState,
-						    &ds, &dpNew, lastLine );
-		    goto ready;
-		    }
-
-		tedInputSetIBarDelete( ed, headAtLineHead,
-							&dpNew, &(ds.dsTail) );
-
-		deleteCommand= EDITcmdDELETE_SELECTION_BS;
-		}
-
-	    tedDocDeleteSelection( ed, deleteCommand, traced );
-
-	    goto ready;
-
-	case KEY_KP_Home:
-	case KEY_Home:
-	    if  ( ( state & KEY_CONTROL_MASK ) )
-		{
-		if  ( docGotoFirstPosition( &dpNew, bd->bdBody.dtRoot ) )
-		    { goto ready;	}
-		}
-	    else{
-		if  ( ( state & KEY_SHIFT_MASK ) && ds.dsDirection >= 0 )
-		    {
-		    dpNew= ds.dsTail;
-
-		    if  ( docLineHead( &dpNew, sg.sgTail.pgPositionFlags ) )
-			{ goto ready;	}
-		    }
-		else{
-		    dpNew= ds.dsHead;
-
-		    if  ( docLineHead( &dpNew, sg.sgHead.pgPositionFlags ) )
-			{ goto ready;	}
-		    }
-		}
-
-	    docAvoidParaHeadField( &dpNew, (int *)0, bd );
-
-	    {
-	    const int	lastLine= 1;
-
-	    tedInputChangeSelection( ed, state, &ds, &dpNew, lastLine );
-	    }
-	    goto ready;
-
-	case KEY_KP_End:
-	case KEY_End:
-	    if  ( ( state & KEY_CONTROL_MASK ) )
-		{
-		if  ( docGotoLastPosition( &dpNew, bd->bdBody.dtRoot ) )
-		    { goto ready;	}
-		}
-	    else{
-		if  ( ! ( state & KEY_SHIFT_MASK ) || ds.dsDirection >= 0 )
-		    {
-		    dpNew= ds.dsTail;
-
-		    if  ( docLineTail( &dpNew, sg.sgHead.pgPositionFlags ) )
-			{ goto ready;	}
-		    }
-		else{
-		    dpNew= ds.dsHead;
-
-		    if  ( docLineTail( &dpNew, sg.sgTail.pgPositionFlags ) )
-			{ goto ready;	}
-		    }
-		}
-
-	    {
-	    const int	lastLine= 0;
-
-	    tedInputChangeSelection( ed, state, &ds, &dpNew, lastLine );
-	    }
-	    goto ready;
-
-	case KEY_KP_Left:
-	case KEY_Left:
-	    if  ( ! state			&&
-		  sd.sdIsIBarSelection		&&
-		  ds.dsHead.dpStroff > 0	&&
-		  headAtLineHead		&&
-		  ! headAfterBreak		&&
-		  ! headAtLineTail		)
-		{
-		const int	lastLine= 0;
-
-		/*  To same position on previous line */
-		tedInputChangeSelection( ed, state,
-						&ds, &(ds.dsHead), lastLine );
-		goto ready;
-		}
-
-	    if  ( ( state & KEY_SHIFT_MASK ) && ds.dsDirection >= 0 )
-		{ dpNew= ds.dsTail;	}
-	    else{ dpNew= ds.dsHead;	}
-
-	    if  ( state != 0		||
-		  ! sd.sdIsListBullet	||
-		  sd.sdIsIBarSelection	)
-		{
-		if  ( tedMoveLeftOnKey( &dpNew, bd, state ) )
-		    { goto ready;	}
-		}
-
-	    {
-	    const int	lastLine= 1;
-
-	    tedInputChangeSelection( ed, state, &ds, &dpNew, lastLine );
-	    }
-	    goto ready;
-
-	case KEY_KP_Right:
-	case KEY_Right:
-	    if  ( ! state						&&
-		  sd.sdIsIBarSelection					&&
-		  ds.dsHead.dpStroff < docParaStrlen( ds.dsHead.dpNode ) &&
-		  headAtLineTail				&&
-		  ! headAtLineHead				)
-		{
-		const int	lastLine= 1;
-
-		/*  To same position on next line */
-		tedInputChangeSelection( ed, state,
-						&ds, &ds.dsHead, lastLine );
-		goto ready;
-		}
-
-	    if  ( ! ( state & KEY_SHIFT_MASK ) || ds.dsDirection >= 0 )
-		{ dpNew= ds.dsTail;	}
-	    else{ dpNew= ds.dsHead;	}
-
-	    if  ( state != 0 || sd.sdIsIBarSelection )
-		{
-		if  ( tedMoveRightOnKey( &dpNew, bd, state ) )
-		    { goto ready;	}
-		}
-
-	    {
-	    const int	lastLine= 0;
-
-	    tedInputChangeSelection( ed, state, &ds, &dpNew, lastLine );
-	    }
-	    goto ready;
-
-	case KEY_KP_Up:
-	case KEY_Up:
-	    if  ( ! ( state & KEY_SHIFT_MASK ) || ds.dsDirection >= 0 )
-		{ pgRef= &(sg.sgTail); dpNew= ds.dsTail;	}
-	    else{ pgRef= &(sg.sgHead); dpNew= ds.dsHead;	}
-
-	    if  ( state & KEY_CONTROL_MASK )
-		{
-		if  ( dpNew.dpStroff == 0 )
-		    {
-		    dpNew.dpNode= docPrevParagraph( dpNew.dpNode );
-		    if  ( ! dpNew.dpNode )
-			{ goto ready;	}
-
-		    if  ( docGotoFirstPosition( &dpNew, dpNew.dpNode ) )
-			{ goto ready;	}
-		    }
-		else{
-		    if  ( docGotoFirstPosition( &dpNew, dpNew.dpNode ) )
-			{ goto ready;	}
-		    }
-		}
-	    else{
-		if  ( tedArrowUp( &dpNew, pgRef, &lc ) )
-		    { goto ready;	}
-		}
-
-	    {
-	    const int	lastLine= headAtLineHead;
-
-	    tedInputChangeSelection( ed, state, &ds, &dpNew, lastLine );
-	    }
-	    goto ready;
-
-	case KEY_KP_Down:
-	case KEY_Down:
-	    if  ( ! ( state & KEY_SHIFT_MASK ) || ds.dsDirection >= 0 )
-		{ pgRef= &(sg.sgTail); dpNew= ds.dsTail;	}
-	    else{ pgRef= &(sg.sgHead); dpNew= ds.dsHead;	}
-
-	    if  ( state & KEY_CONTROL_MASK )
-		{
-		if  ( dpNew.dpStroff < docParaStrlen( dpNew.dpNode )	&&
-		      ( state & KEY_SHIFT_MASK )			)
-		    {
-		    if  ( docGotoLastPosition( &dpNew, dpNew.dpNode ) )
-			{ goto ready;	}
-		    }
-		else{
-		    dpNew.dpNode= docNextParagraph( dpNew.dpNode );
-		    if  ( ! dpNew.dpNode )
-			{ goto ready;	}
-
-		    if  ( docGotoFirstPosition( &dpNew, dpNew.dpNode ) )
-			{ goto ready;	}
-		    }
-		}
-	    else{
-		if  ( tedArrowDown( &dpNew, pgRef, &lc ) )
-		    { goto ready;	}
-		}
-
-	    {
-	    const int	lastLine= headAtLineHead;
-
-	    tedInputChangeSelection( ed, state, &ds, &dpNew, lastLine );
-	    }
-	    goto ready;
-
-	case KEY_KP_Prior:
-	case KEY_Prior:
-	    if  ( ( state & KEY_SHIFT_MASK ) && ds.dsDirection >= 0 )
-		{ dpNew= ds.dsTail;	}
-	    else{ dpNew= ds.dsHead;	}
-
-	    if  ( dpNew.dpNode->biTreeType != DOCinBODY )
-		{
-		int		page= -1;
-		int		column= -1;
-
-		if  ( ! docPrevSimilarRoot( &dpNew, &page, &column, bd ) )
-		    {
-		    const int		lastLine= 0;
-		    DocumentTree *	dtPrev= (DocumentTree *)0;
-		    BufferItem *	bodySectNode;
-
-		    if  ( docGetTreeOfNode( &dtPrev, &bodySectNode,
-							bd, dpNew.dpNode ) )
-			{ LDEB(1); goto ready;	}
-
-		    if  ( dtPrev && dtPrev->dtPageSelectedUpon < 0 && page >= 0 )
-			{
-			dtPrev->dtPageSelectedUpon= page;
-			dtPrev->dtColumnSelectedIn= column;
-			}
-
-		    docAvoidParaHeadField( &dpNew, (int *)0, bd );
-
-		    tedInputSetSelectedPosition( ed, &dpNew, lastLine );
-		    }
-
-		goto ready;
-		}
-
-	    if  ( docGotoPrevPosition( &dpNew )				&&
-		  docGotoFirstPosition( &dpNew, bd->bdBody.dtRoot )	)
-		{ goto ready;	}
-
-	    {
-		PositionGeometry	pg;
-		const int		lastLine= 1;
-		int			partNew;
-		int			lineNew;
-
-		int			page;
-
-		tedPositionGeometry( &pg, &dpNew, PARAfindFIRST, &lc );
-
-		page= pg.pgTopPosition.lpPage;
-		while( page >= 0 )
-		    {
-		    int		res;
-
-		    res= docGetTopOfColumn( &dpNew, &lineNew, &partNew,
-								bd, page, 0 );
-		    if  ( res < 0 )
-			{ LDEB(res); goto ready;	}
-		    if  ( res == 0 )
-			{
-			tedInputChangeSelection( ed, state,
-						    &ds, &dpNew, lastLine );
-			goto ready;
-			}
-
-		    page--;
-		    }
-	    }
-	    goto ready;
-
-	case KEY_KP_Next:
-	case KEY_Next:
-	    if  ( ! ( state & KEY_SHIFT_MASK ) || ds.dsDirection >= 0 )
-		{ dpNew= ds.dsTail;	}
-	    else{ dpNew= ds.dsHead;	}
-
-	    if  ( dpNew.dpNode->biTreeType != DOCinBODY )
-		{
-		int		page= -1;
-		int		column= -1;
-
-		if  ( ! docNextSimilarRoot( &dpNew, &page, &column, bd ) )
-		    {
-		    const int		lastLine= 0;
-		    DocumentTree *	dtNext= (DocumentTree *)0;
-		    BufferItem *	bodySectNode;
-
-		    if  ( docGetTreeOfNode( &dtNext, &bodySectNode,
-							bd, dpNew.dpNode ) )
-			{ LDEB(1); goto ready;	}
-
-		    if  ( dtNext && dtNext->dtPageSelectedUpon < 0 && page >= 0 )
-			{
-			dtNext->dtPageSelectedUpon= page;
-			dtNext->dtColumnSelectedIn= column;
-			}
-
-		    docAvoidParaHeadField( &dpNew, (int *)0, bd );
-
-		    tedInputSetSelectedPosition( ed, &dpNew, lastLine );
-		    }
-
-		goto ready;
-		}
-
-	    {
-		PositionGeometry	pg;
-		const int		lastLine= 1;
-		int			partNew;
-		int			lineNew;
-
-		int			page;
-		BufferItem *		bodyNode= bd->bdBody.dtRoot;
-
-		tedPositionGeometry( &pg, &dpNew, PARAfindLAST, &lc );
-
-		page= pg.pgTopPosition.lpPage+ 1;
-		while( page <= bodyNode->biBelowPosition.lpPage )
-		    {
-		    int		res;
-
-		    res= docGetTopOfColumn( &dpNew, &lineNew, &partNew,
-								bd, page, 0 );
-		    if  ( res < 0 )
-			{ LDEB(res); goto ready;	}
-		    if  ( res == 0 )
-			{
-			tedInputChangeSelection( ed, state, &ds, &dpNew, lastLine );
-			goto ready;
-			}
-
-		    page++;
-		    }
-
-		page= bodyNode->biBelowPosition.lpPage;
-		res= docGetBottomOfColumn( &dpNew, &partNew, bd, page, 0 );
-		if  ( res == 0 )
-		    {
-		    tedInputChangeSelection( ed, state, &ds, &dpNew, lastLine );
-		    goto ready;
-		    }
-	    }
-	    goto ready;
-
-	case KEY_Insert:
-	case KEY_KP_Insert:
-	    td->tdOverstrike= ! td->tdOverstrike;
-
-	    if  ( tedHasIBarSelection( ed ) )
-		{
-		tedSetSelectionLow( ed, &ds, headAtLineHead,
-							(int *)0, (int *)0 );
-		}
-	    break;
-
-#	if 0
-	case KEY_y:
-	    docListNode(0,ds.dsHead.dpNode);
-	    break;
-#	endif
-
-	case KEY_Shift_L:
-	case KEY_Shift_R:
-	case KEY_Alt_L:
-	case KEY_Alt_R:
-	case KEY_Control_L:
-	case KEY_Control_R:
-	case KEY_Caps_Lock:
-	case KEY_Num_Lock:
-#	ifdef XK_ISO_Level3_Shift
-	case XK_ISO_Level3_Shift:
-#	endif
-
-	    goto ready;
-
-	default: unknown:
-#	    ifdef USE_GTK
-#		if GTK_MAJOR_VERSION < 2
-		gtk_accel_group_activate( ed->edToplevel.atAccelGroup,
-							    keySym, state );
-#		else
-		gtk_accel_groups_activate(
-			    G_OBJECT( ed->edToplevel.atAccelGroup ),
-							    keySym, state );
-#		endif
-#	    endif
-	    goto ready;
+	goto ready;
 	}
+
+    keyHandler= tedKeyGetEditHandler( &editCommand,
+					    ed, keySym, state, &ds, &sd );
+    if  ( keyHandler )
+	{
+	if  ( ! tedStartEdit( ed, &sd, editCommand ) )
+	    { (*keyHandler)( ed, keySym, state, &ds, &sd, &sg );	}
+
+	goto ready;
+	}
+
+#   if USE_GTK
+#	if GTK_MAJOR_VERSION < 2
+	gtk_accel_group_activate( ed->edToplevel.atAccelGroup,
+							    keySym, state );
+#	else
+	gtk_accel_groups_activate(
+		    G_OBJECT( ed->edToplevel.atAccelGroup ), keySym, state );
+#	endif
+#   endif
 
   ready:
 
@@ -823,7 +247,17 @@ void tedDocGotString(		void *			voided,
     {
     EditDocument *		ed= (EditDocument *)voided;
 
-    if  ( tedStartEdit( ed ) )
+    DocumentSelection		ds;
+    SelectionGeometry		sg;
+    SelectionDescription	sd;
+
+    struct DocumentTree *	tree;
+    struct BufferItem *		bodySectNode;
+
+    if  ( tedGetSelection( &ds, &sg, &sd, &tree, &bodySectNode, ed ) )
+	{ LDEB(1); goto ready;	}
+
+    if  ( tedStartEdit( ed, &sd, EDITcmdREPLACE ) )
 	{ goto ready;	}
 
     if  ( tedDocReplaceSelectionTyping( ed, str, length ) )
@@ -837,15 +271,15 @@ void tedDocGotString(		void *			voided,
 
 APP_EVENT_HANDLER_H( tedScrollEventHandler, w, voided, scrollEvent )
     {
-    EditDocument *	ed= (EditDocument *)voided;
-    int			direction= SCROLL_DIRECTION_FROM_EVENT( scrollEvent );
+    struct EditDocument *	ed= (struct EditDocument *)voided;
+    int				direction= SCROLL_DIRECTION_FROM_EVENT( scrollEvent );
 
 
     tedStopCursorBlink( ed );
 
     switch( direction )
 	{
-#	ifdef USE_MOTIF
+#	if USE_MOTIF
 	case Button1:
 	case Button2:
 	case Button3:
@@ -859,6 +293,15 @@ APP_EVENT_HANDLER_H( tedScrollEventHandler, w, voided, scrollEvent )
 	case SCROLL_DOWN:
 	    appMouseWheelDown( ed );
 	    break;
+
+#	if USE_GTK
+#	if GTK_MAJOR_VERSION >= 3
+	case GDK_SCROLL_SMOOTH:
+	    /* Picked up by the scrollbar */
+	    break;
+
+#	endif
+#	endif
 
 	default:
 	    LLDEB(scrollEvent->type,direction);

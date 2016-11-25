@@ -7,30 +7,44 @@
 #   include	"docEditConfig.h"
 
 #   include	<stddef.h>
-#   include	<stdio.h>
 #   include	<ctype.h>
 #   include	<stdlib.h>
 
 #   include	"docEdit.h"
 #   include	<docTreeScanner.h>
+#   include	<docScanner.h>
 #   include	<docTreeNode.h>
 #   include	<docNodeTree.h>
 #   include	"docEditSetProperties.h"
+#   include	<docRowProperties.h>
+#   include	<docSelect.h>
+#   include	"docDocumentCopyJob.h"
+#   include	"docEditOperation.h"
+#   include	<utilPropMask.h>
+#   include	<docCellProperties.h>
+#   include	<docBuf.h>
 
+#   include	<docDebug.h>
 #   include	<appDebugon.h>
 
 /************************************************************************/
 
+typedef struct CollectedNode
+    {
+    int			cnDirection;
+    struct BufferItem *	cnNode;
+    } CollectedNode;
+
 typedef struct CollectNodes
     {
     int			cnNodeCount;
-    BufferItem **	cnNodes;
+    CollectedNode *	cnNodes;
     } CollectNodes;
 
 static void docInitCollectNodes(	CollectNodes *	cn )
     {
     cn->cnNodeCount= 0;
-    cn->cnNodes= (BufferItem **)0;
+    cn->cnNodes= (CollectedNode *)0;
 
     return;
     }
@@ -43,24 +57,56 @@ static void docCleanCollectNodes(	CollectNodes *	cn )
     return;
     }
 
-static int docCopyPropsCollectNode(
-				BufferItem *			node,
+# ifdef __GNUC__
+# pragma GCC diagnostic push
+# pragma GCC diagnostic ignored "-Wunused-parameter"
+# endif
+
+static int docCopyPropsCollectEnterNode(
+				struct BufferItem *		node,
 				const DocumentSelection *	ds,
-				const BufferItem *		bodySectNode,
+				const struct BufferItem *	bodySectNode,
 				void *				through )
     {
     CollectNodes *	cn= (CollectNodes *)through;
 
     if  ( cn->cnNodes )
-	{ cn->cnNodes[cn->cnNodeCount++]= node;	}
-    else{ cn->cnNodeCount++;			}
+	{
+	cn->cnNodes[cn->cnNodeCount].cnDirection= +1;
+	cn->cnNodes[cn->cnNodeCount].cnNode= node;
+	cn->cnNodeCount++;
+	}
+    else{ cn->cnNodeCount++;	}
 
-    return ADVICEtsOK;
+    return SCANadviceOK;
     }
 
+static int docCopyPropsCollectLeaveNode(
+				struct BufferItem *		node,
+				const DocumentSelection *	ds,
+				const struct BufferItem *	bodySectNode,
+				void *				through )
+    {
+    CollectNodes *	cn= (CollectNodes *)through;
+
+    if  ( cn->cnNodes )
+	{
+	cn->cnNodes[cn->cnNodeCount].cnDirection= -1;
+	cn->cnNodes[cn->cnNodeCount].cnNode= node;
+	cn->cnNodeCount++;
+	}
+    else{ cn->cnNodeCount++;	}
+
+    return SCANadviceOK;
+    }
+
+# ifdef __GNUC__
+# pragma GCC diagnostic pop
+# endif
+
 static int docCopyPropsCollectNodes(	CollectNodes *			cn,
-					BufferDocument *		bd,
-					DocumentTree *			tree,
+					struct BufferDocument *		bd,
+					struct DocumentTree *		tree,
 					const DocumentSelection *	ds )
     {
     const int			flags= FLAGtsSCAN_MERGED_CELLS;
@@ -68,21 +114,25 @@ static int docCopyPropsCollectNodes(	CollectNodes *			cn,
     if  ( ds )
 	{
 	if  ( docScanSelection( bd, ds,
-			docCopyPropsCollectNode, (NodeVisitor)0,
-			flags, (void *)cn ) < 0 )
+			    docCopyPropsCollectEnterNode,
+			    docCopyPropsCollectLeaveNode,
+			    (TreeVisitor)0, (TreeVisitor)0, 
+			    flags, (void *)cn ) < 0 )
 	    { LDEB(1); return -1;	}
 	}
     else{
 	if  ( docScanTree( bd, tree,
-			docCopyPropsCollectNode, (NodeVisitor)0,
-			flags, (void *)cn ) < 0 )
+			    docCopyPropsCollectEnterNode,
+			    docCopyPropsCollectLeaveNode,
+			    (TreeVisitor)0, (TreeVisitor)0, 
+			    flags, (void *)cn ) < 0 )
 	    { LDEB(1); return -1;	}
 	}
 
     if  ( cn->cnNodeCount > 0 )
 	{
-	cn->cnNodes= (BufferItem **)malloc(
-				    cn->cnNodeCount* sizeof(BufferItem *) );
+	cn->cnNodes= (CollectedNode *)malloc(
+				    cn->cnNodeCount* sizeof(CollectedNode) );
 	if  ( ! cn->cnNodes )
 	    { LXDEB(cn->cnNodeCount,cn->cnNodes); return -1;	}
 
@@ -91,17 +141,81 @@ static int docCopyPropsCollectNodes(	CollectNodes *			cn,
 	if  ( ds )
 	    {
 	    if  ( docScanSelection( bd, ds,
-			docCopyPropsCollectNode, (NodeVisitor)0,
-			flags, (void *)cn ) < 0 )
+			    docCopyPropsCollectEnterNode,
+			    docCopyPropsCollectLeaveNode,
+			    (TreeVisitor)0, (TreeVisitor)0, 
+			    flags, (void *)cn ) < 0 )
 		{ LDEB(cn->cnNodeCount); return -1;	}
 	    }
 	else{
 	    if  ( docScanTree( bd, tree,
-			docCopyPropsCollectNode, (NodeVisitor)0,
-			flags, (void *)cn ) < 0 )
+			    docCopyPropsCollectEnterNode,
+			    docCopyPropsCollectLeaveNode,
+			    (TreeVisitor)0, (TreeVisitor)0, 
+			    flags, (void *)cn ) < 0 )
 		{ LDEB(cn->cnNodeCount); return -1;	}
 	    }
 	}
+
+    return 0;
+    }
+
+/************************************************************************/
+
+static int docStartCopyRowNodeProperties(
+				SetProperties *			setProps,
+				struct BufferItem *		rowNodeTo,
+				const struct BufferItem *	rowNodeFrom )
+    {
+    const RowProperties *	oldRpTo= rowNodeTo->biRowProperties;
+    const RowProperties *	rpFrom= rowNodeFrom->biRowProperties;
+    const DocumentAttributeMap * dam0= (const DocumentAttributeMap *)0;
+
+    int colTo= setProps->spTableRectangle.trCol0;
+    int colCount= setProps->spTableRectangle.trCol1- colTo+ 1;
+
+    /* Do not map attributes here: Are in 'to' format */
+    if  ( docCopyRowProperties( &(setProps->spCurrentRowProperties),
+							    oldRpTo, dam0 ) )
+	{ LDEB(rpFrom->rpCellCount); return -1;	}
+
+    /* Map attributes from 'from' to 'to' format */
+    if  ( setProps->sp_rpSetMask )
+	{
+	if  ( docUpdRowProperties(
+			(struct PropertyMask *)0, (struct PropertyMask *)0,
+			&(setProps->spCurrentRowProperties),
+			setProps->sp_rpSetMask, setProps->sp_cpSetMask,
+			rpFrom, colTo, colCount, setProps->spAttributeMap ) )
+	    { LDEB(rpFrom->rpCellCount); return -1;	}
+	}
+
+    return 0;
+    }
+
+static int docCopyCellNodeProperties(
+				SetProperties *			setProps,
+				struct BufferItem *		cellNodeTo,
+				const struct BufferItem *	cellNodeFrom )
+    {
+    const CellProperties *	cpFrom;
+    int				col;
+    CellProperties *		cpTo;
+
+    cpFrom= cellNodeFrom->biCellProperties;
+    if  ( ! cpFrom )
+	{ SXDEB(docLevelStr(cellNodeFrom->biLevel),cpFrom); return -1;	}
+
+    col= cellNodeTo->biNumberInParent;
+    if  ( col >= setProps->spCurrentRowProperties.rpCellCount )
+	{ LLDEB(col,setProps->spCurrentRowProperties.rpCellCount); return -1; }
+
+    cpTo= &(setProps->spCurrentRowProperties.rpCells[col]);
+
+    /* Map attributes from 'from' to 'to' format */
+    if  ( docUpdCellProperties( (struct PropertyMask *)0, cpTo,
+		setProps->sp_cpSetMask, cpFrom, setProps->spAttributeMap ) )
+	{ LDEB(col); return -1;	}
 
     return 0;
     }
@@ -112,53 +226,58 @@ static int docCopyPropsCollectNodes(	CollectNodes *			cn,
 /*									*/
 /************************************************************************/
 
-static int docCopyNodeProperties(
+static int docCopyNodePropertiesEnter(
 				SetProperties *			setProps,
 				const DocumentSelection *	dsTo,
-				BufferItem *			nodeTo,
-				const BufferItem *		nodeFrom )
+				struct BufferItem *		nodeTo,
+				const struct BufferItem *	nodeFrom )
     {
     switch( nodeTo->biLevel )
 	{
 	case DOClevPARA:
 	    setProps->spGotPara++;
 
+	    if  ( setProps->sp_taSetMask && ! setProps->sp_taSet )
+		{ XXDEB(setProps->sp_taSetMask,setProps->sp_taSet); return -1; }
+
 	    if  ( docEditChangeParaProperties( setProps, dsTo, nodeTo,
-					(const TextAttribute *)0,
-					&(nodeFrom->biParaProperties ) ) )
+				    setProps->sp_taSet,
+				    nodeFrom->biParaProperties ) )
 		{ LDEB(nodeTo->biLevel); return -1;	}
 	    break;
 
 	case DOClevCELL:
 	    if  ( docIsRowNode( nodeTo->biParent ) )
 		{
-		const RowProperties *	rpFrom;
-		const CellProperties *	cpFrom;
+		if  ( ! setProps->spEnteredRow )
+		    {
+		    if  ( docStartCopyRowNodeProperties( setProps,
+							nodeTo->biParent,
+							nodeFrom->biParent ) )
+			{ LDEB(nodeTo->biLevel); return -1;	}
+
+		    setProps->spEnteredRow++;
+		    }
+
+		if  ( setProps->sp_cpSetMask				&&
+		      docCopyCellNodeProperties( setProps, nodeTo, nodeFrom ) )
+		    { LDEB(1); return -1;	}
 
 		setProps->spGotCell++;
-
-		cpFrom= docGetCellProperties( &rpFrom, nodeFrom );
-		if  ( ! cpFrom )
-		    { XDEB(cpFrom); return -1;	}
-
-		if  ( ! CELL_MERGED( cpFrom ) )
-		    {
-		    if  ( docEditChangeCellProperties( setProps, dsTo,
-							    nodeTo, cpFrom ) )
-			{ LDEB(nodeTo->biLevel); return -1;	}
-		    }
 		}
 	    break;
+
 	case DOClevROW:
 	    if  ( docIsRowNode( nodeTo ) )
 		{
-		setProps->spGotRow++;
-
-		if  ( docEditChangeRowProperties( setProps, dsTo, nodeTo,
-					    &(nodeFrom->biRowProperties ) ) )
+		if  ( docStartCopyRowNodeProperties( setProps,
+							nodeTo, nodeFrom ) )
 		    { LDEB(nodeTo->biLevel); return -1;	}
+
+		setProps->spEnteredRow++;
 		}
 	    break;
+
 	case DOClevSECT:
 	    if  ( setProps->sp_spSetMask )
 		{
@@ -166,12 +285,12 @@ static int docCopyNodeProperties(
 
 		if  ( docEditUpdSectProperties( eo, setProps->sp_spDoneMask,
 					    nodeTo, setProps->sp_spSetMask,
-					    &(nodeFrom->biSectProperties),
-					    setProps->spAttributeMap ) )
+					    nodeFrom->biSectProperties ) )
 		    { XDEB(setProps->sp_spSetMask); return -1;	}
 		}
 	    setProps->spGotSect++;
 	    break;
+
 	default:
 	     SDEB(docLevelStr(nodeTo->biLevel));
 	     return -1;
@@ -179,6 +298,67 @@ static int docCopyNodeProperties(
 
     return 0;
     }
+
+# ifdef __GNUC__
+# pragma GCC diagnostic push
+# pragma GCC diagnostic ignored "-Wunused-parameter"
+# endif
+
+static int docCopyNodePropertiesLeave(
+				SetProperties *			setProps,
+				const DocumentSelection *	dsTo,
+				struct BufferItem *		nodeTo,
+				const struct BufferItem *	nodeFrom )
+    {
+    switch( nodeTo->biLevel )
+	{
+	case DOClevPARA:
+	    break;
+
+	case DOClevCELL:
+	    break;
+
+	case DOClevROW:
+	    if  ( docIsRowNode( nodeTo ) )
+		{
+		PropertyMask		rpSetMask;
+
+		utilPropMaskClear( &rpSetMask );
+		if  ( setProps->sp_rpSetMask )
+		    { rpSetMask= *setProps->sp_rpSetMask;	}
+
+		if  ( setProps->sp_cpSetMask )
+		    { PROPmaskADD( &rpSetMask, RPprop_CELL_PROPS );	}
+
+		/* prevent crashes, and other inconsistencies */
+		if  ( PROPmaskISSET( &rpSetMask, RPprop_CELL_COUNT ) )
+		    {
+		    LDEB(RPprop_CELL_COUNT);
+		    PROPmaskUNSET( &rpSetMask, RPprop_CELL_COUNT );
+		    }
+
+		if  ( docEditChangeRowProperties( setProps,
+						    nodeTo, &rpSetMask ) )
+		    { LDEB(nodeTo->biLevel); return -1;	}
+
+		setProps->spLeftRow++;
+		}
+	    break;
+
+	case DOClevSECT:
+	    break;
+
+	default:
+	     SDEB(docLevelStr(nodeTo->biLevel));
+	     return -1;
+	}
+
+    return 0;
+    }
+
+# ifdef __GNUC__
+# pragma GCC diagnostic pop
+# endif
 
 /************************************************************************/
 /*									*/
@@ -190,20 +370,12 @@ int docCopySelectionProperties(
 			DocumentCopyJob *		dcj,
 			const DocumentSelection *	dsTo,
 			const DocumentSelection *	dsFrom,
-
-			PropertyMask *			selPpDoneMask,
+			const struct TextAttribute *	taSet,
+			const PropertyMask *		taSetMask,
 			const PropertyMask *		ppSetMask,
-
-			PropertyMask *			selCpDoneMask,
 			const PropertyMask *		cpSetMask,
-
-			PropertyMask *			selRpDoneMask,
 			const PropertyMask *		rpSetMask,
-
-			PropertyMask *			selSpDoneMask,
 			const PropertyMask *		spSetMask,
-
-			PropertyMask *			docDpDoneMask,
 			const PropertyMask *		dpSetMask )
 
     {
@@ -216,18 +388,21 @@ int docCopySelectionProperties(
 
     docInitCollectNodes( &cnTo );
     docInitCollectNodes( &cnFrom );
+    docEditInitSetProperties( &setProps );
 
-    if  ( ! dsFrom->dsHead.dpNode || ! dsFrom->dsTail.dpNode )
+    if  ( ! docSelectionIsSet( dsFrom ) )
 	{
 	XXDEB(dsFrom->dsHead.dpNode,dsFrom->dsTail.dpNode);
 	rval= -1; goto ready;
 	}
-    if  ( ! dsTo->dsHead.dpNode || ! dsTo->dsTail.dpNode )
+    if  ( ! docSelectionIsSet( dsTo ) )
 	{
 	XXDEB(dsTo->dsHead.dpNode,dsTo->dsTail.dpNode);
 	rval= -1; goto ready;
 	}
 
+    if  ( taSetMask && utilPropMaskIsEmpty( taSetMask ) )
+	{ taSetMask= (const PropertyMask *)0;	}
     if  ( ppSetMask && utilPropMaskIsEmpty( ppSetMask ) )
 	{ ppSetMask= (const PropertyMask *)0;	}
     if  ( cpSetMask && utilPropMaskIsEmpty( cpSetMask ) )
@@ -243,30 +418,13 @@ int docCopySelectionProperties(
     setProps.spRedoParaLayout= 1;
     setProps.spAttributeMap= &(dcj->dcjAttributeMap);
 
-    setProps.spGotPara= 0;
-    setProps.spGotCell= 0;
-    setProps.spGotRow= 0;
-    setProps.spGotSect= 0;
+    setProps.sp_taSet= taSet;
 
-    setProps.sp_taDoneMask= (PropertyMask *)0;
-    setProps.sp_taSetMask= (const PropertyMask *)0;
-    setProps.sp_taSet= (const TextAttribute *)0;
-
-    setProps.sp_ppDoneMask= selPpDoneMask;
+    setProps.sp_taSetMask= taSetMask;
     setProps.sp_ppSetMask= ppSetMask;
-    setProps.sp_ppSet= (const ParagraphProperties *)0;
-
-    setProps.sp_cpDoneMask= selCpDoneMask;
     setProps.sp_cpSetMask= cpSetMask;
-    setProps.sp_cpSet= (const CellProperties *)0;
-
-    setProps.sp_rpDoneMask= selRpDoneMask;
     setProps.sp_rpSetMask= rpSetMask;
-    setProps.sp_rpSet= (const RowProperties *)0;
-
-    setProps.sp_spDoneMask= selSpDoneMask;
     setProps.sp_spSetMask= spSetMask;
-    setProps.sp_spSet= (const SectionProperties *)0;
 
     if  ( cpSetMask || rpSetMask )
 	{
@@ -278,12 +436,12 @@ int docCopySelectionProperties(
 	}
 
     if  ( dpSetMask							&&
-	  docChangeDocumentProperties( eo, docDpDoneMask,
-			    dpSetMask, &(dcj->dcjSourceDocument->bdProperties),
+	  docChangeDocumentProperties( eo, (PropertyMask *)0,
+			    dpSetMask, dcj->dcjSourceDocument->bdProperties,
 			    setProps.spAttributeMap )	)
 	{ LDEB(1); rval= -1; goto ready;	}
 
-    if  ( ppSetMask || cpSetMask || rpSetMask || spSetMask )
+    if  ( taSetMask || ppSetMask || cpSetMask || rpSetMask || spSetMask )
 	{
 	int		n;
 
@@ -303,54 +461,80 @@ int docCopySelectionProperties(
 
 	for ( n= 0; n < cnTo.cnNodeCount; n++ )
 	    {
-	    if  ( cnTo.cnNodes[n]->biLevel != cnFrom.cnNodes[n]->biLevel )
+	    if  ( cnTo.cnNodes[n].cnNode->biLevel !=
+				      cnFrom.cnNodes[n].cnNode->biLevel )
 		{
-		SDEB(docLevelStr(cnTo.cnNodes[n]->biLevel));
-		SDEB(docLevelStr(cnFrom.cnNodes[n]->biLevel));
+		SDEB(docLevelStr(cnTo.cnNodes[n].cnNode->biLevel));
+		SDEB(docLevelStr(cnFrom.cnNodes[n].cnNode->biLevel));
 		rval= -1; goto ready;
 		}
 
-	    if  ( docCopyNodeProperties( &setProps, dsTo,
-					cnTo.cnNodes[n], cnFrom.cnNodes[n] ) )
-		{ LDEB(n); rval= -1; goto ready;	}
+	    if  ( cnTo.cnNodes[n].cnDirection > 0 )
+		{
+		if  ( docCopyNodePropertiesEnter( &setProps, dsTo,
+					cnTo.cnNodes[n].cnNode,
+					cnFrom.cnNodes[n].cnNode ) )
+		    { LDEB(n); rval= -1; goto ready;	}
+		}
+
+	    if  ( cnTo.cnNodes[n].cnDirection < 0 )
+		{
+		if  ( docCopyNodePropertiesLeave( &setProps, dsTo,
+					cnTo.cnNodes[n].cnNode,
+					cnFrom.cnNodes[n].cnNode ) )
+		    { LDEB(n); rval= -1; goto ready;	}
+		}
 	    }
 	}
 
-    if  ( cpSetMask && ! setProps.spGotCell )
+    if  ( ( rpSetMask || cpSetMask ) && ! setProps.spEnteredRow )
 	{
-	BufferItem *	cellNodeTo= docGetCellNode( dsTo->dsHead.dpNode );
-	BufferItem *	cellNodeFrom= docGetCellNode( dsFrom->dsHead.dpNode );
-
-	if  ( ! cellNodeTo || ! cellNodeFrom )
-	    { XXDEB(cellNodeTo,cellNodeFrom); rval= -1; goto ready;	}
-
-	if  ( docCopyNodeProperties( &setProps, dsTo,
-						cellNodeTo, cellNodeFrom ) )
-	    { XDEB(cpSetMask); rval= -1; goto ready;	}
-	}
-
-    if  ( rpSetMask && ! setProps.spGotRow )
-	{
-	BufferItem *	rowNodeTo= docGetRowNode( dsTo->dsHead.dpNode );
-	BufferItem *	rowNodeFrom= docGetRowNode( dsFrom->dsHead.dpNode );
+	struct BufferItem *	rowNodeTo= docGetRowNode( dsTo->dsHead.dpNode );
+	struct BufferItem *	rowNodeFrom= docGetRowNode( dsFrom->dsHead.dpNode );
 
 	if  ( ! rowNodeTo || ! rowNodeFrom )
 	    { XXDEB(rowNodeTo,rowNodeFrom); rval= -1; goto ready;	}
 
-	if  ( docCopyNodeProperties( &setProps, dsTo,
+	if  ( docCopyNodePropertiesEnter( &setProps, dsTo,
+						rowNodeTo, rowNodeFrom ) )
+	    { XDEB(rpSetMask); rval= -1; goto ready;	}
+	}
+
+    if  ( cpSetMask && ! setProps.spGotCell )
+	{
+	struct BufferItem *	cellNodeTo= docGetCellNode( dsTo->dsHead.dpNode );
+	struct BufferItem *	cellNodeFrom= docGetCellNode( dsFrom->dsHead.dpNode );
+
+	if  ( ! cellNodeTo || ! cellNodeFrom )
+	    { XXDEB(cellNodeTo,cellNodeFrom); rval= -1; goto ready;	}
+
+	if  ( docCopyNodePropertiesEnter( &setProps, dsTo,
+						cellNodeTo, cellNodeFrom ) )
+	    { XDEB(cpSetMask); rval= -1; goto ready;	}
+	}
+
+    if  ( ( rpSetMask || cpSetMask ) && ! setProps.spLeftRow )
+	{
+	struct BufferItem *	rowNodeTo= docGetRowNode( dsTo->dsHead.dpNode );
+	struct BufferItem *	rowNodeFrom= docGetRowNode( dsFrom->dsHead.dpNode );
+
+	if  ( ! rowNodeTo || ! rowNodeFrom )
+	    { XXDEB(rowNodeTo,rowNodeFrom); rval= -1; goto ready;	}
+
+	if  ( docCopyNodePropertiesLeave( &setProps, dsTo,
 						rowNodeTo, rowNodeFrom ) )
 	    { XDEB(rpSetMask); rval= -1; goto ready;	}
 	}
 
     if  ( spSetMask && ! setProps.spGotSect )
 	{
-	BufferItem *	sectNodeTo= docGetSectNode( dsTo->dsHead.dpNode );
-	BufferItem *	sectNodeFrom= docGetSectNode( dsFrom->dsHead.dpNode );
+	struct BufferItem *	sectNodeTo= docGetSectNode( dsTo->dsHead.dpNode );
+	struct BufferItem *	sectNodeFrom= docGetSectNode( dsFrom->dsHead.dpNode );
 
 	if  ( ! sectNodeTo || ! sectNodeFrom )
 	    { XXDEB(sectNodeTo,sectNodeFrom); rval= -1; goto ready;	}
 
-	if  ( docCopyNodeProperties( &setProps, dsTo,
+	if  ( docCopyNodePropertiesEnter( &setProps, dsTo,
 						sectNodeTo, sectNodeFrom ) )
 	    { XDEB(spSetMask); rval= -1; goto ready;	}
 	}
@@ -359,6 +543,7 @@ int docCopySelectionProperties(
 
     docCleanCollectNodes( &cnTo );
     docCleanCollectNodes( &cnFrom );
+    docEditCleanSetProperties( &setProps );
 
     return rval;
     }

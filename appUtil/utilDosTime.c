@@ -21,7 +21,7 @@ void utilDosTimeDate(		int *		pTime,
 				int *		pDate,
 				const long	unixTime )
     {
-    time_t	unixTime_t;
+    time_t	unixTime_t= unixTime;
 
     struct tm	struct_tm= *localtime( &unixTime_t );
 

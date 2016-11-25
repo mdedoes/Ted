@@ -1,7 +1,7 @@
 @name ted
 @comment @display Ted, An easy rich text processor
 @comment Maintainer: Mark de Does <mark@mdedoes.com>
-@comment Version: 2.23
+@comment Version: 2.23h
 
 @comment use pkg_info -E -x '.*tiff.*' to find dependencies
 @pkgdep @PCRE_VERSION@
@@ -75,9 +75,6 @@ share/Ted/afm/Times-Roman.afm
 share/Ted/afm/ZapfChancery-MediumItalic.afm
 share/Ted/afm/ZapfDingbats.afm
 
-share/Ted/dfa/en_US.dfa
-share/Ted/TedDocument-en_US.rtf
-
 @mode 755
 share/Ted/examples/rtf2ps.sh
 share/Ted/examples/rtf2pdf.sh
@@ -91,10 +88,15 @@ share/Ted/examples/fixOpenOfficeRtf.sh
 share/Ted/doc/Ted.1
 share/Ted/doc/rtf2ps.1
 share/Ted/doc/rtf2pdf.1
+share/Ted/doc/TedDocument-en_US.rtf
+share/Ted/doc/TedDocument-fr_FR.rtf
+share/Ted/doc/TedDocument-de_DE.rtf
+share/Ted/doc/TedDocument-mg_MG.rtf
 
 share/Ted/ps/gsfontmetrics.ps
 share/Ted/ps/gslibpath.ps
 share/Ted/ps/gslsfonts.ps
+share/Ted/ps/pdfautoprint.ps
 
 share/Ted/fontsdocs/font.rtf
 share/Ted/fontsdocs/font-i.rtf
@@ -105,15 +107,34 @@ share/Ted/fontsdocs/checkfontsdocs.sh
 
 @mode 644
 share/Ted/Ted.png
+share/Ted/Ted48.png
+share/icons/hicolor/48x48/apps/Ted.png
 share/Ted/varia/Ted.mailcap
 share/Ted/varia/Ted.desktop
 share/Ted/varia/base35.fonts.conf
 share/Ted/varia/base35.rtf
-share/Ted/varia/ted-2.23.lsm
+share/Ted/varia/ted-2.23h.lsm
 share/Ted/varia/README
 
 share/Ted/config/ted.gtkrc-2.0
 share/Ted/config/Ted.properties.sample
+share/Ted/config/Ted-cs_CZ.properties
+share/Ted/config/Ted-da_DK.properties
+share/Ted/config/Ted-de_DE.properties
+share/Ted/config/Ted-pt_BR.properties
+share/Ted/config/Ted-fr_FR.properties
+share/Ted/config/Ted-hu_HU.properties
+share/Ted/config/Ted-mg_MG.properties
+share/Ted/config/Ted-oc_FR.properties
+share/Ted/config/Ted-eu_FR.properties
+share/Ted/config/Ted-it_IT.properties
+share/Ted/config/Ted-nl_NL.properties
+share/Ted/config/Ted-sk_SK.properties
+share/Ted/config/Ted-nb_NO.properties
+share/Ted/config/Ted-pl_PL.properties
+share/Ted/config/Ted-es_ES.properties
+share/Ted/config/Ted-es_AR.properties
+share/Ted/config/Ted-fi_FI.properties
 
 @dirrm share/Ted/afm
 @dirrm share/Ted/dfa

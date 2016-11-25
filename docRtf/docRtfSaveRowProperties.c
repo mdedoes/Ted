@@ -6,13 +6,16 @@
 
 #   include	"docRtfConfig.h"
 
-#   include	<stdio.h>
 #   include	<ctype.h>
-
-#   include	<appDebugon.h>
 
 #   include	"docRtfWriterImpl.h"
 #   include	"docRtfTags.h"
+#   include	<docFrameProperties.h>
+#   include	<docCellProperties.h>
+#   include	<utilPropMask.h>
+#   include	<docAttributes.h>
+
+#   include	<appDebugon.h>
 
 /************************************************************************/
 /*									*/
@@ -27,9 +30,8 @@ void docRtfSaveRowProperties(		RtfWriter *		rw,
 					int			col1 )
     {
     const int			anyway= 0;
-    FrameProperties		fp;
 
-    const DocumentAttributeMap * const dam0= (const DocumentAttributeMap *)0;
+    const struct DocumentAttributeMap * const dam0= (const struct DocumentAttributeMap *)0;
 
     if  ( PROPmaskISSET( rpSetMask, RPpropROW_NUMBER ) )
 	{ docRtfWriteArgTag( rw, "irow", rpSet->rpRowNumber ); }
@@ -103,10 +105,12 @@ void docRtfSaveRowProperties(		RtfWriter *		rw,
     /**/
     if  ( PROPmaskISSET( rpSetMask, RPpropFRAME ) )
 	{
-	docGetFramePropertiesByNumber( &fp,
-			    rw->rwDocument, rpSet->rpFrameNumber );
-	if  ( DOCisFRAME( &fp ) )
-	    { docRtfSaveRowFrameProperties( rw, &fp );	}
+	const FrameProperties *	fp;
+
+	fp= docGetFramePropertiesByNumber(
+					rw->rwDocument, rpSet->rpFrameNumber );
+	if  ( DOCisFRAME( fp ) )
+	    { docRtfSaveRowFrameProperties( rw, fp );	}
 	}
 
     /**/
@@ -123,32 +127,32 @@ void docRtfSaveRowProperties(		RtfWriter *		rw,
 	  PROPmaskISSET( rpSetMask, RPpropTRSPDL )	)
 	{
 	docRtfSaveAutoSpace( rw,
-			"trspdfl", rpSet->rpLeftDefaultCellSpacingUnit,
-			"trspdl", rpSet->rpLeftDefaultCellSpacing );
+			"trspdfl", rpSet->rpLeftCellSpacingUnit,
+			"trspdl", rpSet->rpLeftCellSpacing );
 	}
 
     if  ( PROPmaskISSET( rpSetMask, RPpropTRSPDFR )	||
 	  PROPmaskISSET( rpSetMask, RPpropTRSPDR )	)
 	{
 	docRtfSaveAutoSpace( rw,
-			"trspdfr", rpSet->rpRightDefaultCellSpacingUnit,
-			"trspdr", rpSet->rpRightDefaultCellSpacing );
+			"trspdfr", rpSet->rpRightCellSpacingUnit,
+			"trspdr", rpSet->rpRightCellSpacing );
 	}
 
     if  ( PROPmaskISSET( rpSetMask, RPpropTRSPDFT )	||
 	  PROPmaskISSET( rpSetMask, RPpropTRSPDT )	)
 	{
 	docRtfSaveAutoSpace( rw,
-			"trspdft", rpSet->rpTopDefaultCellSpacingUnit,
-			"trspdt", rpSet->rpTopDefaultCellSpacing );
+			"trspdft", rpSet->rpTopCellSpacingUnit,
+			"trspdt", rpSet->rpTopCellSpacing );
 	}
 
     if  ( PROPmaskISSET( rpSetMask, RPpropTRSPDFB )	||
 	  PROPmaskISSET( rpSetMask, RPpropTRSPDB )	)
 	{
 	docRtfSaveAutoSpace( rw,
-			"trspdfb", rpSet->rpBottomDefaultCellSpacingUnit,
-			"trspdb", rpSet->rpBottomDefaultCellSpacing );
+			"trspdfb", rpSet->rpBottomCellSpacingUnit,
+			"trspdb", rpSet->rpBottomCellSpacing );
 	}
 
     /**/
@@ -202,25 +206,19 @@ void docRtfSaveRowProperties(		RtfWriter *		rw,
 	}
 
     /**/
-    if  ( PROPmaskISSET( rpSetMask, RPpropCELL_LAYOUT )	||
-	  PROPmaskISSET( rpSetMask, RPpropCELL_PROPS )	)
+    if  ( PROPmaskISSET( rpSetMask, RPprop_CELL_COUNT )	||
+	  PROPmaskISSET( rpSetMask, RPprop_CELL_PROPS )	)
 	{
-	int			shiftLeft= 0;
+	int			leftOffset= rpSet->rpLeftIndentTwips;
 	PropertyMask		cpAllMask;
 	const CellProperties *	cp= rpSet->rpCells;
 	int			col;
 	CellProperties		cpRef;
 
 	docInitCellProperties( &cpRef );
+	docRowPropertiesSetCellDefaults( &cpRef, rpSet );
 
-	docRowMaskToCellMask( &cpAllMask, rpSetMask );
-	if  ( rw->rwCpExtraMask )
-	    { utilPropMaskOr( &cpAllMask, &cpAllMask, rw->rwCpExtraMask ); }
-
-	if  ( col0 > 0 )
-	    {
-	    shiftLeft= docColumnLeft( rpSet, col0 )- docColumnLeft( rpSet, 0 );
-	    }
+	utilPropMaskFill( &cpAllMask, CLprop_COUNT );
 
 	for ( col= 0; col < rpSet->rpCellCount; cp++, col++ )
 	    {
@@ -234,11 +232,12 @@ void docRtfSaveRowProperties(		RtfWriter *		rw,
 		docCellPropertyDifference( &cpSetMask, &cpRef, &cpAllMask,
 								    cp, dam0 );
 
-		docRtfSaveCellProperties( rw, &cpSetMask, cp, shiftLeft );
+		docRtfSaveCellProperties( rw, &cpSetMask, cp, leftOffset );
+		leftOffset += cp->cpWide;
 		}
 	    }
 
-	docCleanCellProperties( &cpRef );
+	/*docCleanCellProperties( &cpRef );*/
 	}
 
     return;

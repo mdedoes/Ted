@@ -3,6 +3,9 @@
 #   include	<stdlib.h>
 
 #   include	"indlocal.h"
+#   include	"indguess.h"
+#   include	"indSpellChecker.h"
+#   include	"indIndSpellDictionary.h"
 #   include	<ucd.h>
 
 #   include	<appDebugoff.h>
@@ -82,7 +85,8 @@ static int indSpelRememberGuess(	const GuessContext *	gc,
     {
     SpellGuessContext *		sgc= gc->gcSpellGuessContext;
     IndGuessList *		igl= sgc->sgcGuessList;
-    SpellCheckContext *		scc= sgc->sgcCheckContext;
+    SpellDictionary *		sd= sgc->sgcDictionary;
+    IndSpellDictionary *	isd= (IndSpellDictionary *)sd->sdBackend;
 
     int				accepted;
     char			copy[100];
@@ -90,8 +94,8 @@ static int indSpelRememberGuess(	const GuessContext *	gc,
     if  ( indShiftWord( copy, gc->gcTarget, len, gc->gcShiftHow ) )
 	{ LDEB(how); return 0;	}
 
-    if  ( scc->sccForgotInd					&&
-	  indGetUtf8( &accepted, scc->sccForgotInd, copy ) >= 0	&&
+    if  ( isd->isdForgotInd					&&
+	  indGetUtf8( &accepted, isd->isdForgotInd, copy ) >= 0	&&
 	  accepted						)
 	{ return 0;	}
 
@@ -104,7 +108,6 @@ static int indSpelRememberGuess(	const GuessContext *	gc,
 /************************************************************************/
 
 static int indGuessAcceptToEndCost(	const GuessContext *	gc,
-					int			to,
 					int			from )
     {
     int		cost;
@@ -288,7 +291,7 @@ static void indIndGuessForNode(	const GuessContext *		gc,
 	/*  0  */
 	if  ( node->tn_flags & TNfACCEPTS )
 	    {
-	    cost= indGuessAcceptToEndCost( gc, to, from );
+	    cost= indGuessAcceptToEndCost( gc, from );
 
 #	    if LOG_GUESSES
 	    indGuessLogTo( "-", gc, to );
@@ -412,24 +415,22 @@ int indINDguess(	IND *				ind,
     }
 
 int indCollectGuesses(		IndGuessList *		igl,
-				SpellCheckContext *	scc,
+				SpellDictionary *	sd,
 				const char *		word )
     {
+    IndSpellDictionary *	isd= (IndSpellDictionary *)sd->sdBackend;
     SpellGuessContext		sgc;
 
     int				limit;
 
     sgc.sgcGuessList= igl;
-    sgc.sgcCheckContext= scc;
+    sgc.sgcDictionary= sd;
 
-    indCleanGuessList( igl );
-    indInitGuessList( igl );
+    if  ( isd->isdStaticInd )
+	{ indGuessWord( isd->isdStaticInd, word, &sgc );	}
 
-    if  ( scc->sccStaticInd )
-	{ indGuessWord( scc->sccStaticInd, word, &sgc );	}
-
-    if  ( scc->sccLearntInd )
-	{ indGuess( scc->sccLearntInd, word, &sgc, INDhASIS );	}
+    if  ( isd->isdLearntInd )
+	{ indGuess( isd->isdLearntInd, word, &sgc, INDhASIS );	}
 
     indSortGuesses( igl );
 
@@ -444,3 +445,14 @@ int indCollectGuesses(		IndGuessList *		igl,
     }
 
 /*********************/
+
+void indInitSpellGuessContext(	SpellGuessContext *		sgc,
+				IndGuessList *			igl,
+				struct SpellDictionary *	sd )
+    {
+    sgc->sgcGuessList= igl;
+    sgc->sgcDictionary= sd;
+
+    return;
+    }
+

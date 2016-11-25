@@ -6,13 +6,14 @@
 
 #   include	"docBufConfig.h"
 
-#   include	<string.h>
-
-#   include	<appDebugon.h>
-
 #   include	"docBuf.h"
 #   include	"docShape.h"
 #   include	"docParaParticules.h"
+#   include	<docObject.h>
+#   include	"docObjects.h"
+#   include	<docTextParticule.h>
+
+#   include	<appDebugon.h>
 
 /************************************************************************/
 /*									*/
@@ -20,7 +21,7 @@
 /*									*/
 /************************************************************************/
 
-static void docCleanObject(	BufferDocument *	bd,
+static void docCleanObject(	struct BufferDocument *	bd,
 				InsertedObject *	io )
     {
     if  ( io->ioDrawingShape )
@@ -37,7 +38,7 @@ static void docCleanObject(	BufferDocument *	bd,
 /*									*/
 /************************************************************************/
 
-void docDeleteObject(		BufferDocument *	bd,
+void docDeleteObject(		struct BufferDocument *	bd,
 				int			n )
     {
     InsertedObject *	io;
@@ -56,10 +57,10 @@ void docDeleteObject(		BufferDocument *	bd,
     return;
     }
 
-void docCleanParticuleObject(	BufferDocument *	bd,
+void docCleanParticuleObject(	struct BufferDocument *	bd,
 				TextParticule *		tp )
     {
-    if  ( tp->tpKind != DOCkindOBJECT )
+    if  ( tp->tpKind != TPkindOBJECT )
 	{ return;	}
 
     docDeleteObject( bd, tp->tpObjectNumber );
@@ -67,7 +68,7 @@ void docCleanParticuleObject(	BufferDocument *	bd,
     return;
     }
 
-InsertedObject * docClaimObjectCopy(	BufferDocument *	bd,
+InsertedObject * docClaimObjectCopy(	struct BufferDocument *	bd,
 					int *			pNr,
 					const InsertedObject *	ioFrom )
     {
@@ -78,26 +79,10 @@ InsertedObject * docClaimObjectCopy(	BufferDocument *	bd,
     if  ( ! ioTo )
 	{ XDEB(ioTo); return (InsertedObject *)0;	}
 
-    if  ( ioFrom->ioObjectName						&&
-	  docSetObjectName( ioTo, ioFrom->ioObjectName,
-			    strlen( (char *)ioFrom->ioObjectName ) )	)
-	{
-	LDEB(1);
-	docDeleteObject( bd, objectNumber );
-	return (InsertedObject *)0;
-	}
-
-    if  ( ioFrom->ioObjectClass						&&
-	  docSetObjectClass( ioTo, ioFrom->ioObjectClass,
-			    strlen( (char *)ioFrom->ioObjectClass ) )	)
-	{
-	LDEB(1);
-	docDeleteObject( bd, objectNumber );
-	return (InsertedObject *)0;
-	}
-
     if  ( utilCopyMemoryBuffer( &ioTo->ioObjectData, &ioFrom->ioObjectData ) ||
-	  utilCopyMemoryBuffer( &ioTo->ioResultData, &ioFrom->ioResultData ) )
+	  utilCopyMemoryBuffer( &ioTo->ioResultData, &ioFrom->ioResultData ) ||
+	  utilCopyMemoryBuffer( &ioTo->ioObjectName, &ioFrom->ioObjectName ) ||
+	  utilCopyMemoryBuffer( &ioTo->ioObjectClass, &ioFrom->ioObjectClass ) )
 	{
 	LDEB(1);
 	docDeleteObject( bd, objectNumber );

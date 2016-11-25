@@ -6,17 +6,17 @@
 
 #   include	"appFrameConfig.h"
 
+#   if USE_MOTIF
+
 #   include	<stddef.h>
-#   include	<stdio.h>
 #   include	<stdlib.h>
 
+#   include	<bitmap.h>
 #   include	"appImage.h"
 
 #   include	<appDebugon.h>
 
-#   ifdef USE_MOTIF
-
-#   include	"drawUtilMotif.h"
+#   include	<drawUtilMotif.h>
 
 static int appGetIndexedColors(	XColor **	pColors,
 				Display *	display,
@@ -119,7 +119,7 @@ static int appGetCalculatedColors(	XColor **		pColors,
 
 static int appGetRGB8Description(	BitmapDescription *	bd,
 					double			pixelsPerTwip,
-					const APP_IMAGE *	xim,
+					const XImage *		xim,
 					int			count )
     {
     int		bitsPerPixel;
@@ -154,7 +154,7 @@ static int appGetRGB8Description(	BitmapDescription *	bd,
 
 static int appGetRGBDescription(	BitmapDescription *	bd,
 					double			pixelsPerTwip,
-					const APP_IMAGE *	xim )
+					const XImage *		xim )
     {
     bd->bdPixelsWide= xim->width;
     bd->bdPixelsHigh= xim->height;
@@ -207,8 +207,8 @@ static int appGetRGB8Palette(	XColor *	xc,
 /*									*/
 /************************************************************************/
 
-int appGetImageMotif(	RasterImage *	abi,
-			const APP_IMAGE *	xim,
+int appGetImageMotif(	RasterImage *		abi,
+			const XImage *		xim,
 			Display *		display )
     {
     int			bitsPerPixel;
@@ -450,7 +450,7 @@ int appGetImageMotif(	RasterImage *	abi,
     return 0;
     }
 
-int appImgPastePixmap(		RasterImage *	abi,
+int appImgPastePixmap(		RasterImage *		abi,
 				APP_WIDGET		w,
 				APP_SELECTION_EVENT *	event )
     {
@@ -458,7 +458,7 @@ int appImgPastePixmap(		RasterImage *	abi,
     int			ret;
 
     APP_WINDOW		pmap;
-    APP_IMAGE *		xim;
+    XImage *		xim;
 
     Atom		typeFound;
     int			formatFound;

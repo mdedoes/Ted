@@ -26,12 +26,11 @@ void docInitParagraphFrame(	ParagraphFrame *	pf )
     geoInitRectangle( &(pf->pfCellContentRect) );
     geoInitRectangle( &(pf->pfCellRect) );
 
+    geoInitRectangle( &(pf->pfParentContentRect) );
+
     pf->pfParaContentRect.drY1= INT_MAX/ 2;
     pf->pfCellContentRect.drY1= INT_MAX/ 2;
     pf->pfCellRect.drY1= INT_MAX/ 2;
-
-    pf->pfRedrawX0Twips= -1;
-    pf->pfRedrawX1Twips= -1;
     }
 
 void docInitParagraphLayoutPosition( ParagraphLayoutPosition *	plp )
@@ -72,6 +71,8 @@ void docStripLayoutNextChild(	ParagraphLayoutPosition *	plp )
 
 void docInitParagraphLayoutJob(	ParagraphLayoutJob *	plj )
     {
+    plj->pljLayoutJob= (struct LayoutJob *)0;
+
     plj->pljChildUpto= 0;
 
     /**/
@@ -84,6 +85,7 @@ void docInitParagraphLayoutJob(	ParagraphLayoutJob *	plj )
     }
 
 int docParagraphLayoutPosClaimChildren(	ParagraphLayoutPosition *	plp,
+					const struct LayoutJob *	lj,
 					int				n )
     {
     ParagraphLayoutJob *	p;
@@ -94,6 +96,8 @@ int docParagraphLayoutPosClaimChildren(	ParagraphLayoutPosition *	plp,
 	{
 	docCleanParagraphLayoutJob( p );
 	docInitParagraphLayoutJob( p );
+
+	p->pljLayoutJob= lj;
 	}
 
     if  ( n > 0 )
@@ -104,7 +108,10 @@ int docParagraphLayoutPosClaimChildren(	ParagraphLayoutPosition *	plp,
 	plp->pspChildren= p;
 
 	for ( i= 0; i < n; p++, i++ )
-	    { docInitParagraphLayoutJob( p );	}
+	    {
+	    docInitParagraphLayoutJob( p );
+	    p->pljLayoutJob= lj;
+	    }
 	}
 
     plp->pspChildCount= n;
@@ -131,13 +138,17 @@ void docCleanParagraphLayoutJob(	ParagraphLayoutJob *	plj )
     docCleanParagraphLayoutPos( &(plj->pljPos0) );
     }
 
-void docBeginParagraphLayoutProgress(	ParagraphLayoutJob *	plj,
-					int			child,
-					int			line,
-					int			part,
-					int			paraUpto,
-					const LayoutPosition *	lp )
+void docBeginParagraphLayoutProgress(	
+				ParagraphLayoutJob *		plj,
+				const struct LayoutJob *	lj,
+				int				child,
+				int				line,
+				int				part,
+				int				paraUpto,
+				const LayoutPosition *		lp )
     {
+    plj->pljLayoutJob= lj;
+
     plj->pljPos.pspChild= child;
     plj->pljPos.pspChildAdvanced= ( part > 0 );
     plj->pljPos.pspLine= line;

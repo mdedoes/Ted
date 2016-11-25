@@ -7,16 +7,12 @@
 #   include	"docLayoutConfig.h"
 
 #   include	<stddef.h>
-#   include	<stdio.h>
 #   include	<stdlib.h>
 
-#   include	<sioGeneral.h>
-#   include	<textUtf8Util.h>
-
-#   include	<psFontMetrics.h>
 #   include	"docPsPrintImpl.h"
 #   include	"docDraw.h"
-#   include	"docLayout.h"
+#   include	"docDrawLine.h"
+#   include	<docTextRun.h>
 #   include	<docTreeType.h>
 #   include	<docTreeNode.h>
 #   include	<docTextLine.h>
@@ -24,119 +20,30 @@
 #   include	<docBookmarkField.h>
 #   include	<utilMemoryBufferPrintf.h>
 #   include	<docNotes.h>
+#   include	<docDocumentField.h>
+#   include	<docFieldKind.h>
+#   include	<psTextExtents.h>
+#   include	"docParticuleData.h"
+#   include	<psPrint.h>
+#   include	<docFields.h>
 
+#   include	<docDebug.h>
 #   include	<appDebugon.h>
 
+# ifdef __GNUC__
+# pragma GCC diagnostic push
+# pragma GCC diagnostic ignored "-Wunused-parameter"
+# endif
 
-/************************************************************************/
-/*									*/
-/*  Print a string.							*/
-/*									*/
-/************************************************************************/
-
-static void docPsPrintString(	const DrawTextLine *		dtl,
-				int				baseline,
-				const ParticuleData *		pd,
-				int				textAttr,
-				const TextAttribute *		ta,
-				const unsigned char *		s,
-				int				len )
-    {
-    PrintingState *		ps= (PrintingState *)dtl->dtlThrough;
-    DrawingContext *		dc= dtl->dtlDrawingContext;
-    int				fontSizeTwips= 10* ta->taFontSizeHalfPoints;
-
-    if  ( len > 0 )
-	{
-	int			y;
-
-	docDrawSetFont( dc, (void *)ps, textAttr, ta );
-	docDrawSetColorNumber( dc, (void *)ps, ta->taTextColorNumber );
-
-	y= baseline;
-
-	if  ( ta->taSuperSub == TEXTvaSUPERSCRIPT )
-	    { psGetSuperBaseline( &y, baseline, fontSizeTwips, pd->pdAfi ); }
-
-	if  ( ta->taSuperSub == TEXTvaSUBSCRIPT )
-	    { psGetSubBaseline( &y, baseline, fontSizeTwips, pd->pdAfi ); }
-
-	psMoveShowString( ps, s, len,
-			pd->pdX0+ pd->pdLeftBorderWidth+ dtl->dtlXShift, y );
-
-	ps->psLastPageMarked= ps->psPagesPrinted;
-	}
-
-    return;
-    }
-
-static void psPrintSegment(	const DrawTextLine *		dtl,
-				int				textAttr,
-				const TextAttribute *		ta,
-				const unsigned char *		s,
-				int				len )
-    {
-    PrintingState *		ps= (PrintingState *)dtl->dtlThrough;
-    DrawingContext *		dc= dtl->dtlDrawingContext;
-
-    docDrawSetFont( dc, (void *)ps, textAttr, ta );
-    psShowString( ps, s, len );
-    return;
-    }
-
-static void psPrintSegments(	const DrawTextLine *		dtl,
-				int				baseLine,
-				const ParticuleData *		pd,
-				int				textAttr,
-				const TextAttribute *		ta,
-				const unsigned char *		s,
-				const int *			segments,
-				int				segmentCount )
-    {
-    TextAttribute		taN= *ta;
-    int				seg;
-
-    taN.taSmallCaps= 0;
-
-    if  ( segments[0] > 0 )
-	{
-	docPsPrintString( dtl, baseLine, pd, textAttr, &taN, s, segments[0] );
-	s += segments[0];
-
-	psPrintSegment( dtl, textAttr, ta, s, segments[1] );
-	s += segments[1];
-	}
-    else{
-	docPsPrintString( dtl, baseLine, pd, textAttr, ta, s, segments[1] );
-	s += segments[1];
-	}
-
-    for ( seg= 1; seg < segmentCount; seg++ )
-	{
-	if  ( segments[2* seg+ 0] > 0 )
-	    {
-	    psPrintSegment( dtl, textAttr, &taN, s, segments[2* seg+ 0] );
-	    s += segments[2* seg+ 0];
-	    }
-
-	if  ( segments[2* seg+ 1] > 0 )
-	    {
-	    psPrintSegment( dtl, textAttr, ta, s, segments[2* seg+ 1] );
-	    s += segments[2* seg+ 1];
-	    }
-	}
-
-    return;
-    }
-
-int docPsPrintRunUnderline(		const DrawTextLine *	dtl,
-					int			part,
-					int			upto,
-					int			textAttrNr,
-					const TextAttribute *	ta,
-					int			x0Twips,
-					int			x1Twips,
-					const LayoutPosition *	baseLine )
+int docPsPrintRunUnderline(	const DrawTextLine *	dtl,
+				int			part,
+				int			upto,
+				int			direction,
+				int			textAttrNr,
+				const TextAttribute *	ta,
+				int			x0Twips,
+				int			x1Twips,
+				const LayoutPosition *	baseLine )
     {
     const ParticuleData *	pd= dtl->dtlParticuleData;
 
@@ -144,7 +51,9 @@ int docPsPrintRunUnderline(		const DrawTextLine *	dtl,
     int				h;
 
     psUnderlineGeometry( &y0, &h, baseLine->lpPageYTwips,
-			10* ta->taFontSizeHalfPoints, pd[part].pdAfi );
+				TA_FONT_SIZE_TWIPS( ta ), pd[part].pdAfi );
+    if  ( h < 10 )
+	{ h=  10;	}
 
     docDrawSetColorNumber( dtl->dtlDrawingContext, dtl->dtlThrough,
 						    ta->taTextColorNumber );
@@ -155,13 +64,14 @@ int docPsPrintRunUnderline(		const DrawTextLine *	dtl,
     }
 
 int docPsPrintRunStrikethrough(	const DrawTextLine *	dtl,
-					int			part,
-					int			upto,
-					int			textAttrNr,
-					const TextAttribute *	ta,
-					int			x0Twips,
-					int			x1Twips,
-					const LayoutPosition *	baseLine )
+				int			part,
+				int			upto,
+				int			direction,
+				int			textAttrNr,
+				const TextAttribute *	ta,
+				int			x0Twips,
+				int			x1Twips,
+				const LayoutPosition *	baseLine )
     {
     const ParticuleData *	pd= dtl->dtlParticuleData;
 
@@ -169,7 +79,9 @@ int docPsPrintRunStrikethrough(	const DrawTextLine *	dtl,
     int				h;
 
     psStrikethroughGeometry( &y0, &h, baseLine->lpPageYTwips,
-			10* ta->taFontSizeHalfPoints, pd[part].pdAfi );
+				TA_FONT_SIZE_TWIPS( ta ), pd[part].pdAfi );
+    if  ( h < 10 )
+	{ h=  10;	}
 
     docDrawSetColorNumber( dtl->dtlDrawingContext, dtl->dtlThrough,
 						    ta->taTextColorNumber );
@@ -179,64 +91,157 @@ int docPsPrintRunStrikethrough(	const DrawTextLine *	dtl,
     return 0;
     }
 
+# ifdef __GNUC__
+# pragma GCC diagnostic pop
+# endif
+
+/************************************************************************/
+/*									*/
+/*  Print a string.							*/
+/*									*/
+/************************************************************************/
+
+static void docPsPrintString(	const DrawTextLine *		dtl,
+				const ParticuleData *		pd,
+				int				baseline,
+				int				x0Twips,
+				int				textAttrNr,
+				const TextAttribute *		ta,
+				const char *			s,
+				int				len )
+    {
+    PrintingState *		ps= (PrintingState *)dtl->dtlThrough;
+    DrawingContext *		dc= dtl->dtlDrawingContext;
+    int				fontSizeTwips= TA_FONT_SIZE_TWIPS( ta );
+
+    if  ( len > 0 )
+	{
+	int			y;
+
+	docDrawSetFont( dc, (void *)ps, textAttrNr, ta );
+	docDrawSetColorNumber( dc, (void *)ps, ta->taTextColorNumber );
+
+	y= baseline;
+
+	if  ( ta->taSuperSub == TEXTvaSUPERSCRIPT )
+	    { psGetSuperBaseline( &y, baseline, fontSizeTwips, pd->pdAfi ); }
+
+	if  ( ta->taSuperSub == TEXTvaSUBSCRIPT )
+	    { psGetSubBaseline( &y, baseline, fontSizeTwips, pd->pdAfi ); }
+
+	psMoveShowString( ps, s, len, x0Twips+ pd->pdLeftBorderWidth, y );
+
+	ps->psLastPageMarked= ps->psPagesPrinted;
+	}
+
+    return;
+    }
+
+static void docPsPrintSegment(	const DrawTextLine *		dtl,
+				int				textAttrNr,
+				const TextAttribute *		ta,
+				const char *			s,
+				int				len )
+    {
+    PrintingState *		ps= (PrintingState *)dtl->dtlThrough;
+    DrawingContext *		dc= dtl->dtlDrawingContext;
+
+    docDrawSetFont( dc, (void *)ps, textAttrNr, ta );
+    psShowString( ps, s, len );
+    return;
+    }
+
+static void docPsPrintSegments(	const DrawTextLine *		dtl,
+				const ParticuleData *		pd,
+				int				baseLine,
+				int				x0Twips,
+				int				textAttrNr,
+				const TextAttribute *		ta,
+				const char *			s,
+				const int *			segments,
+				int				segmentCount )
+    {
+    TextAttribute		taN= *ta;
+    int				seg;
+
+    taN.taSmallCaps= 0;
+
+    if  ( segments[0] > 0 )
+	{
+	docPsPrintString( dtl, pd, baseLine, x0Twips,
+				    textAttrNr, &taN, s, segments[0] );
+	s += segments[0];
+
+	docPsPrintSegment( dtl, textAttrNr, ta, s, segments[1] );
+	s += segments[1];
+	}
+    else{
+	docPsPrintString( dtl, pd, baseLine, x0Twips,
+				    textAttrNr, ta, s, segments[1] );
+	s += segments[1];
+	}
+
+    for ( seg= 1; seg < segmentCount; seg++ )
+	{
+	if  ( segments[2* seg+ 0] > 0 )
+	    {
+	    docPsPrintSegment( dtl, textAttrNr, &taN, s, segments[2* seg+ 0] );
+	    s += segments[2* seg+ 0];
+	    }
+
+	if  ( segments[2* seg+ 1] > 0 )
+	    {
+	    docPsPrintSegment( dtl, textAttrNr, ta, s, segments[2* seg+ 1] );
+	    s += segments[2* seg+ 1];
+	    }
+	}
+
+    return;
+    }
+
 /************************************************************************/
 /*									*/
 /*  Print a series of particules with the same attributes.		*/
 /*									*/
 /************************************************************************/
 
-int docPsPrintSpan(		const DrawTextLine *	dtl,
-				int			part,
-				int			count,
+int docPsPrintTextRun(		const TextRun *		tr,
+				int			x0Twips,
+				int			x1Twips,
+				const DrawTextLine *	dtl,
 				const LayoutPosition *	baseLine,
-				int			textAttrNr,
-				const TextAttribute *	ta,
-				const char *		printString,
-				int			nbLen )
+				const char *		outputString )
     {
     PrintingState *		ps= (PrintingState *)dtl->dtlThrough;
     int				rval= 0;
 
+    const char *		printString= outputString;
     char *			scratchString= (char *)0;
     int *			segments= (int *)0;
     int				segmentCount= 0;
 
     int				spanBaseline= baseLine->lpPageYTwips;
+    const ParticuleData *	pd= dtl->dtlParticuleData+ tr->trPartFrom;
 
-    const ParticuleData *	pd= dtl->dtlParticuleData+ part;
+    if  ( psMakeOutputString( &printString, &scratchString,
+				    &segments, &segmentCount,
+				    tr->trTextAttribute, tr->trDirection,
+				    outputString, tr->trStrlen ) )
+	{ LDEB(tr->trStrlen); rval= -1; goto ready;	}
 
-    if  ( ta->taSmallCaps || ta->taCapitals )
+    if  ( segmentCount > 0 )
 	{
-	if  ( docMakeCapsString( &scratchString, &segments, &segmentCount,
-						ta, printString, nbLen ) )
-	    { LDEB(nbLen); rval= -1; goto ready;	}
-
-	printString= scratchString;
-	}
-
-    if  ( 0 )
-	{
-	scratchString= malloc( nbLen+ 1 );
-	if  ( ! scratchString )
-	    { XDEB(scratchString); rval= -1; goto ready;	}
-
-	if  ( textMirrorUtf8String( scratchString, printString, nbLen ) )
-	    { LDEB(nbLen); rval= -1; goto ready;	}
-
-	printString= scratchString;
-	}
-
-    if  (  ta->taSmallCaps && ! ta->taCapitals )
-	{
-	psPrintSegments( dtl, spanBaseline, pd, textAttrNr, ta,
-			(unsigned char *)printString, segments, segmentCount );
+	docPsPrintSegments( dtl, pd, spanBaseline, x0Twips,
+				tr->trTextAttributeNr, tr->trTextAttribute,
+				printString, segments, segmentCount );
 	}
     else{
-	docPsPrintString( dtl, spanBaseline, pd, textAttrNr, ta,
-					(unsigned char *)printString, nbLen );
+	docPsPrintString( dtl, pd, spanBaseline, x0Twips,
+				tr->trTextAttributeNr, tr->trTextAttribute,
+				printString, tr->trStrlen );
 	}
 
-    ps->psLinkParticulesDone += count;
+    ps->psLinkParticulesDone += ( tr->trPartUpto- tr->trPartFrom );
 
   ready:
 
@@ -247,6 +252,11 @@ int docPsPrintSpan(		const DrawTextLine *	dtl,
 
     return rval;
     }
+
+# ifdef __GNUC__
+# pragma GCC diagnostic push
+# pragma GCC diagnostic ignored "-Wunused-parameter"
+# endif
 
 int docPsPrintFtnsep(		const DrawTextLine *	dtl,
 				int			part,
@@ -266,7 +276,7 @@ int docPsPrintFtnsep(		const DrawTextLine *	dtl,
     int				y0;
     int				h;
 
-    fontSizeTwips= 10* ta->taFontSizeHalfPoints;
+    fontSizeTwips= TA_FONT_SIZE_TWIPS( ta );
 
     xHeight= ( fontSizeTwips+ 1 )/ 2;
 
@@ -279,28 +289,32 @@ int docPsPrintFtnsep(		const DrawTextLine *	dtl,
     return 0;
     }
 
+# ifdef __GNUC__
+# pragma GCC diagnostic pop
+# endif
+
 /************************************************************************/
 /*									*/
 /*  Start a field							*/
 /*									*/
 /************************************************************************/
 
-int docPsPrintStartField(	const DrawTextLine *	dtl,
-				int			part,
-				const DocumentField *	df )
+int docPsPrintStartField(	const DrawTextLine *		dtl,
+				int				part,
+				int				x0Twips,
+				const struct DocumentField *	df )
     {
     int				rval= 0;
 
     PrintingState *		ps= (PrintingState *)dtl->dtlThrough;
     DrawingContext *		dc= dtl->dtlDrawingContext;
     const LayoutContext *	lc= &(dc->dcLayoutContext);
-    const BufferDocument *	bd= lc->lcDocument;
+    const struct BufferDocument *	bd= lc->lcDocument;
 
     const TextLine *		tl= dtl->dtlTextLine;
     int				lineTop= tl->tlTopPosition.lpPageYTwips;
 
-    const BufferItem *		paraNode= dtl->dtlParaNode;
-    const ParticuleData *	pd= dtl->dtlParticuleData+ part;
+    const struct BufferItem *	paraNode= dtl->dtlParaNode;
 
     const MemoryBuffer *	mbBookmark;
 
@@ -328,7 +342,7 @@ int docPsPrintStartField(	const DrawTextLine *	dtl,
 	int			cnt;
 	int			closed;
 
-	cnt= docCountParticulesInField( paraNode, &closed, part,
+	cnt= docCountParticulesInFieldFwd( paraNode, &closed, part,
 					paraNode->biParaParticuleCount );
 	if  ( cnt < 0 )
 	    { LDEB(cnt); }
@@ -360,7 +374,7 @@ int docPsPrintStartField(	const DrawTextLine *	dtl,
 
 	ps->psInsideLink= 1;
 	ps->psLinkParticulesDone= 0;
-	ps->psLinkRectLeft= pd->pdX0;
+	ps->psLinkRectLeft= x0Twips;
 
 	goto ready;
 	}
@@ -371,7 +385,7 @@ int docPsPrintStartField(	const DrawTextLine *	dtl,
 	    {
 	    ps->psInsideLink= 1;
 	    ps->psLinkParticulesDone= 0;
-	    ps->psLinkRectLeft= pd->pdX0;
+	    ps->psLinkRectLeft= x0Twips;
 
 	    if  ( utilCopyMemoryBuffer( &(ps->psLinkFile), &(hf.hfFile) ) )
 		{ LDEB(1); rval= -1; goto ready;	}
@@ -389,98 +403,64 @@ int docPsPrintStartField(	const DrawTextLine *	dtl,
     return rval;
     }
 
+# ifdef __GNUC__
+# pragma GCC diagnostic push
+# pragma GCC diagnostic ignored "-Wunused-parameter"
+# endif
+
 int docPsPrintFinishField(	const DrawTextLine *	dtl,
 				int			part,
+				int			x1Twips,
 				const DocumentField *	df )
     {
     PrintingState *		ps= (PrintingState *)dtl->dtlThrough;
-    const ParticuleData *	pd= dtl->dtlParticuleData+ part;
-
-    const TextLine *		tl= dtl->dtlTextLine;
-    int				lineTop= tl->tlTopPosition.lpPageYTwips;
-    int				lineHeight= tl->tlDescY1- tl->tlAscY0;
 
     if  ( ps->psInsideLink )
 	{
-	psFlushLink( ps, pd->pdX0, pd->pdVisibleBBox.drX1,
-					    lineTop, lineHeight );
+	const TextLine *	tl= dtl->dtlTextLine;
+	int			lineTop= tl->tlTopPosition.lpPageYTwips;
+
+	psFlushLink( ps, x1Twips, lineTop, dtl->dtlLineHeight );
 	ps->psInsideLink= 0;
 	}
 
     return 0;
     }
 
+# ifdef __GNUC__
+# pragma GCC diagnostic pop
+# endif
+
 /************************************************************************/
 /*									*/
-/*  Layout and print successive lines of a paragraph.			*/
+/*  Print the lines in the paragraph.					*/
 /*									*/
 /************************************************************************/
 
-int docPsPrintTextLine(		BufferItem *			paraNode,
-				int				line,
-				const ParagraphFrame *		pf,
-				const DocumentRectangle *	drLine,
-				void *				vps,
-				DrawingContext *		dc,
-				const BlockOrigin *		bo )
+int docPsPrintStartTextLine(	struct DrawTextLine *		dtl,
+				int				x0Twips )
     {
-    const LayoutContext *	lc= &(dc->dcLayoutContext);
-    PrintingState *		ps= (PrintingState *)vps;
-
-    const TextLine *		tl= paraNode->biParaLines+ line;
-    int				part= tl->tlFirstParticule;
-
-    int				done= 0;
-    int				accepted;
-    TextLine			boxLine;
-
-    ParticuleData *		pd;
-
-    int				xTwips;
-    DrawTextLine		dtl;
-
-    docInitDrawTextLine( &dtl );
-
-    if  ( docPsClaimParticuleData( paraNode->biParaParticuleCount, &pd ) )
-	{ LDEB(paraNode->biParaParticuleCount); return -1;	}
-
-    boxLine= *tl;
-    accepted= docLayoutLineBox( &boxLine, paraNode, part, lc, pd+ part, pf );
-
-    if  ( accepted < 1 )
-	{ LDEB(accepted); return -1;	}
-
-    docSetDrawTextLine( &dtl, vps, dc, tl, paraNode, bo, pf, drLine );
-    dtl.dtlParticuleData= pd;
-    dtl.dtlDrawParticulesSeparately= paraNode->biParaAlignment == DOCthaJUSTIFIED;
+    PrintingState *		ps= (PrintingState *)dtl->dtlThrough;
 
     if  ( ps->psInsideLink )
-	{ ps->psLinkRectLeft= pd->pdX0;	}
+	{ ps->psLinkRectLeft= dtl->dtlX;	}
 
-    done= 0;
-    xTwips= pf->pfParaContentRect.drX0+ tl->tlLineIndent;
-    while( done < dtl.dtlTextLine->tlParticuleCount )
+    return 0;
+    }
+
+int docPsPrintFinishTextLine(	const struct DrawTextLine *	dtl,
+				int				x1Twips )
+    {
+    PrintingState *		ps= (PrintingState *)dtl->dtlThrough;
+
+    if  ( ps->psInsideLink )
 	{
-	int		drawn;
+	TextLine *	tl= dtl->dtlTextLine;
+	int		lineTop= tl->tlTopPosition.lpPageYTwips;
 
-	drawn= docDrawLineParticules( &dtl, &xTwips, part );
-	if  ( drawn < 1 )
-	    { LDEB(drawn); return -1;	}
-
-	done += drawn; part += drawn;
+	psFlushLink( ps, x1Twips, lineTop, dtl->dtlLineHeight );
 	}
 
-    if  ( done > 0 && ps->psInsideLink )
-	{
-	int			lineTop= tl->tlTopPosition.lpPageYTwips;
-	int			lineHeight= tl->tlDescY1- tl->tlAscY0;
-
-	const ParticuleData *	ppd= dtl.dtlParticuleData+ done- 1;
-
-	psFlushLink( ps, ppd->pdX0, ppd->pdVisibleBBox.drX1,
-						    lineTop, lineHeight );
-	}
-
-    return accepted;
+    return 0;
     }
 

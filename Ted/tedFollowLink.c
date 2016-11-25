@@ -8,9 +8,14 @@
 
 #   include	<sioMemory.h>
 #   include	<appSystem.h>
-#   include	"tedApp.h"
-#   include	"tedDocFront.h"
+#   include	<tedDocFront.h>
 #   include	"tedDocument.h"
+#   include	<docDocumentProperties.h>
+#   include	<appEditApplication.h>
+#   include	<appGuiApplication.h>
+#   include	<appEditDocument.h>
+#   include	<sioGeneral.h>
+#   include	<docBuf.h>
 
 #   include	<appDebugon.h>
 
@@ -154,8 +159,8 @@ int tedDocFollowLink(	APP_WIDGET		option,
     char *			scratch= (char *)0;
 
     TedDocument *		tdFrom= (TedDocument *)edFrom->edPrivateData;
-    BufferDocument *		bdFrom= tdFrom->tdDocument;
-    const DocumentProperties *	dpFrom= &(bdFrom->bdProperties);
+    struct BufferDocument *	bdFrom= tdFrom->tdDocument;
+    const DocumentProperties *	dpFrom= bdFrom->bdProperties;
 
     MemoryBuffer		base;
     MemoryBuffer		file;
@@ -189,7 +194,7 @@ int tedDocFollowLink(	APP_WIDGET		option,
 	baseProtocolSize= 0;
 	baseIsAbsolute= 0;
 
-	if  ( appDirectoryOfFileName( &base, &(edFrom->edFilename) ) )
+	if  ( fileDirectoryOfFileName( &base, &(edFrom->edFilename) ) )
 	    { LDEB(1); rval= -1; goto ready;	}
 	}
 

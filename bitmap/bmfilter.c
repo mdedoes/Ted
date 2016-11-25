@@ -501,6 +501,11 @@ static int bmFilterOperation(
 /*									*/
 /************************************************************************/
 
+# ifdef __GNUC__
+# pragma GCC diagnostic push
+# pragma GCC diagnostic ignored "-Wunused-parameter"
+# endif
+
 int bmFilterSobel(	RasterImage *			riOut,
 			const RasterImage *		riIn,
 			int				ignoredInt )
@@ -509,6 +514,15 @@ int bmFilterSobel(	RasterImage *			riOut,
 
     return bmFilterOperation( riOut, riIn, flip, bmSobel );
     }
+
+# ifdef __GNUC__
+# pragma GCC diagnostic pop
+# endif
+
+# ifdef __GNUC__
+# pragma GCC diagnostic push
+# pragma GCC diagnostic ignored "-Wunused-parameter"
+# endif
 
 int bmFilterLaplace(	RasterImage *			riOut,
 			const RasterImage *		riIn,
@@ -519,6 +533,15 @@ int bmFilterLaplace(	RasterImage *			riOut,
     return bmFilterOperation( riOut, riIn, flip, bmLaplace );
     }
 
+# ifdef __GNUC__
+# pragma GCC diagnostic pop
+# endif
+
+# ifdef __GNUC__
+# pragma GCC diagnostic push
+# pragma GCC diagnostic ignored "-Wunused-parameter"
+# endif
+
 int bmFilterSmoothe(	RasterImage *			riOut,
 			const RasterImage *		riIn,
 			int				ignoredInt )
@@ -527,6 +550,10 @@ int bmFilterSmoothe(	RasterImage *			riOut,
 
     return bmFilterOperation( riOut, riIn, flip, bmSmoothe );
     }
+
+# ifdef __GNUC__
+# pragma GCC diagnostic pop
+# endif
 
 /************************************************************************/
 /*									*/
@@ -610,6 +637,11 @@ static int bmBlurAverage(	FillJob *			fj,
     return 0;
     }
 
+# ifdef __GNUC__
+# pragma GCC diagnostic push
+# pragma GCC diagnostic ignored "-Wunused-parameter"
+# endif
+
 int bmFilterBlur(	RasterImage *			riOut,
 			const RasterImage *		riIn,
 			int				ignoredInt )
@@ -669,6 +701,10 @@ int bmFilterBlur(	RasterImage *			riOut,
     return rval;
     }
 
+# ifdef __GNUC__
+# pragma GCC diagnostic pop
+# endif
+
 static int bmBlurRelative(	FillJob *			fj,
 				const RasterImage *		riIn,
 				const BitmapDescription *	bdBlur,
@@ -676,7 +712,6 @@ static int bmBlurRelative(	FillJob *			fj,
 				ColorValue *			cvUp,
 				unsigned char *			bufDown,
 				const unsigned char *		bufUp,
-				GetSourceRow			getRowIn,
 				GetSourceRow			getRowBlur,
 				PutScreenRow			putRowBlur )
     {
@@ -766,6 +801,11 @@ static int bmBlurRelative(	FillJob *			fj,
     return 0;
     }
 
+# ifdef __GNUC__
+# pragma GCC diagnostic push
+# pragma GCC diagnostic ignored "-Wunused-parameter"
+# endif
+
 int bmFilterRelative(	RasterImage *			riOut,
 			const RasterImage *		riIn,
 			int				ignoredInt )
@@ -804,7 +844,7 @@ int bmFilterRelative(	RasterImage *			riOut,
 
     if  ( bmBlurRelative( &fj, riIn, &(riDown.riDescription), cvDown, cvUp,
 					riDown.riBytes, riUp.riBytes,
-					getRowIn, getRowBlur, putRow ) )
+					getRowBlur, putRow ) )
 	{ LDEB(1); rval= -1; goto ready;	}
 
     /*  steal */
@@ -824,3 +864,8 @@ int bmFilterRelative(	RasterImage *			riOut,
 
     return rval;
     }
+
+# ifdef __GNUC__
+# pragma GCC diagnostic pop
+# endif
+

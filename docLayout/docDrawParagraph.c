@@ -1,6 +1,9 @@
 #   include	"docLayoutConfig.h"
 
 #   include	"docDraw.h"
+#   include	"docDrawPara.h"
+#   include	"docSelectLayout.h"
+#   include	"docLayout.h"
 #   include	<docPageGrid.h>
 #   include	<docTreeType.h>
 #   include	<docTreeNode.h>
@@ -8,7 +11,15 @@
 #   include	<docTextLine.h>
 #   include	"docParagraphLayout.h"
 #   include	<docTextParticule.h>
+#   include	<docRowProperties.h>
+#   include	<docStripFrame.h>
+#   include	<docParaProperties.h>
+#   include	<docBlockFrame.h>
+#   include	<docSelect.h>
+#   include	<docScanner.h>
+#   include	<docBlockOrnaments.h>
 
+#   include	<docDebug.h>
 #   include	<appDebugon.h>
 
 /************************************************************************/
@@ -25,27 +36,30 @@
 
 static int docDrawParaOrnaments( void *				through,
 				const ParagraphDrawingStrip *	pds,
-				const BufferItem *		paraNode,
+				const struct BufferItem * const	paraNode,
 				const ParagraphFrame *		pf,
 				DrawingContext *		dc,
 				const BlockOrigin *		bo )
     {
-    const LayoutContext *	lc= &(dc->dcLayoutContext);
-    const BufferDocument *	bd= lc->lcDocument;
+    const LayoutContext *		lc= &(dc->dcLayoutContext);
+    const struct BufferDocument *	bd= lc->lcDocument;
 
-    LayoutPosition		lpTop;
-    LayoutPosition		lpBelow;
+    LayoutPosition			lpTop;
+    LayoutPosition			lpBelow;
 
-    BlockOrnaments		ornaments;
-    DocumentRectangle		drPara;
-    DocumentRectangle		drOutside;
-    DocumentRectangle		drInside;
+    BlockOrnaments			ornaments;
+    DocumentRectangle			drPara;
+    DocumentRectangle			drOutside;
+    DocumentRectangle			drInside;
+
+    int					paraLeftIndentTwips;
 
     docInitBlockOrnaments( &ornaments );
 
     drPara= pf->pfParaContentRect;
-    if  ( paraNode->biParaFirstIndentTwips < 0 )
-	{ drPara.drX0 += paraNode->biParaFirstIndentTwips;	}
+    paraLeftIndentTwips= paraNode->biParaProperties->ppLeftIndentTwips;
+    if  ( paraLeftIndentTwips < 0 )
+	{ drPara.drX0 += paraLeftIndentTwips;	}
 
     docShiftPosition( &lpTop, bo, &(pds->pdsShadeTop) );
     docShiftPosition( &lpBelow, bo, &(pds->pdsShadeBelow) );
@@ -53,15 +67,18 @@ static int docDrawParaOrnaments( void *				through,
     drPara.drY0= lpTop.lpPageYTwips;
     drPara.drY1= lpBelow.lpPageYTwips;
 
-    if  ( paraNode->biParaTableNesting > 0 )
+    if  ( paraNode->biParaProperties->ppTableNesting > 0 )
 	{
-	const BufferItem *	rowBi= docGetRowNode( (BufferItem *)paraNode );
+	const BufferItem *	rowNode;
 
-	if  ( ! rowBi )
-	    { XDEB(rowBi);	}
+	rowNode= docGetRowNode( (BufferItem *)paraNode );
+	if  ( ! rowNode )
+	    { XDEB(rowNode);	}
 	else{
-	    int	x0= pf->pfParaContentRect.drX0- rowBi->biRowHalfGapWidthTwips;
-	    int	x1= pf->pfParaContentRect.drX1+ rowBi->biRowHalfGapWidthTwips;
+	    const RowProperties * rp= rowNode->biRowProperties;
+
+	    int	x0= pf->pfParaContentRect.drX0- rp->rpHalfGapWidthTwips;
+	    int	x1= pf->pfParaContentRect.drX1+ rp->rpHalfGapWidthTwips;
 
 	    if  ( drPara.drX0 < x0 )
 		{ drPara.drX0=  x0;	}
@@ -73,78 +90,86 @@ static int docDrawParaOrnaments( void *				through,
     docGetParaOrnaments( &ornaments, &drOutside, &drInside, &drPara,
 			bd, paraNode, pds->pdsAtParaTop, pds->pdsAtParaBottom );
 
-    if  ( (*dc->dcDrawOrnaments)( &ornaments, lpTop.lpPage,
+    if  ( ! utilPropMaskIsEmpty( &(ornaments.boPropMask) ) )
+	{
+	if  ( (*dc->dcDrawOrnaments)( &ornaments, lpTop.lpPage,
 						&drOutside, &drInside,
 						through, dc ) )
-	{ LDEB(1); return -1;	}
+	    { LDEB(1); return -1;	}
+	}
 
     return 0;
     }
 
 /************************************************************************/
 /*									*/
-/*  Count the number of lines that fit on the current page.		*/
+/*  Count the number of lines on the current page.			*/
 /*									*/
 /************************************************************************/
 
 static int docDelimitParagraphDrawingStrip(
 			ParagraphDrawingStrip *		pds,
-			const BufferItem *		paraNode,
+			const struct BufferItem *	paraNode,
 			int				countAfter,
 			const LayoutPosition *		lpShadeTop,
 			int				lineFrom,
 			const LayoutPosition *		lpThisFrame,
 			const BlockOrigin *		bo )
     {
-    const TextLine *	tl;
-    LayoutPosition	lp;
-
     int			line= lineFrom;
     int			atTop= lineFrom == 0;
     int			atBottom= 0;
-    int			afterPageBreak= 0;
 
     LayoutPosition	lpBelow= *lpShadeTop;
+    int			lineUpto= paraNode->biParaLineCount;
 
-    tl= paraNode->biParaLines+ line;
-    while( line < paraNode->biParaLineCount )
+    line= docParaFindLastLineInFrame( paraNode, lineFrom, lpThisFrame, bo );
+    if  ( line < lineFrom )
 	{
-	docShiftPosition( &lp, bo, &(tl->tlTopPosition) );
-
-	if  ( DOC_COLUMN_AFTER( &lp, lpThisFrame ) )
-	    { break;	}
-	if  ( DOC_COLUMN_AFTER( lpThisFrame, &lp ) )
-	    { line++; tl++; continue;	}
-
-	lp.lpPageYTwips += tl->tlLineStride;
-	lp.lpAtTopOfColumn= 0;
-
-	docLayoutPushBottomDown( &lpBelow, &lp );
-
-	afterPageBreak= paraNode->biParaParticules[
-		    tl->tlFirstParticule+ tl->tlParticuleCount -1].tpKind ==
-		    DOCkindPAGEBREAK;
-
-	line++; tl++;
+	/*
+	LLLLDEB(lpThisFrame->lpPage,lpThisFrame->lpColumn,line,lineFrom);
+	docListNode(0,paraNode,0);
+	*/
+	return 1;
 	}
 
-    if  ( line == paraNode->biParaLineCount )
+    if  ( line < paraNode->biParaLineCount )
 	{
-	if  ( ! afterPageBreak )
+	const TextLine *	tl= paraNode->biParaLines+ line;
+
+	docTextLineGetShiftedNextLineTop( &lpBelow, bo, tl );
+
+	if  ( line+ 1 == paraNode->biParaLineCount )
 	    {
-	    lp= paraNode->biBelowPosition;
+	    int		afterPageBreak;
 
-	    if  ( ! countAfter )
-		{ lp.lpPageYTwips -= paraNode->biParaSpaceAfterTwips;	}
+	    afterPageBreak= paraNode->biParaParticules[
+			tl->tlFirstParticule+ tl->tlParticuleCount -1].tpKind ==
+			TPkindPAGEBREAK;
 
-	    docLayoutPushBottomDownShifted( &lpBelow, &lp, bo );
+	    if  ( ! afterPageBreak )
+		{
+		LayoutPosition	lp;
+
+		docShiftPosition( &lp, bo, &(paraNode->biBelowPosition) );
+
+		if  ( ! countAfter )
+		    {
+		    lp.lpPageYTwips -=
+				paraNode->biParaProperties->ppSpaceAfterTwips;
+		    }
+
+		docLayoutPushBottomDown( &lpBelow, &lp );
+		}
+
+	    atBottom= 1;
 	    }
 
-	atBottom= 1;
+	lineUpto= line+ 1;
 	}
 
     pds->pdsLineFrom= lineFrom;
-    pds->pdsLineUpto= line;
+    pds->pdsLineUpto= lineUpto;
     pds->pdsAtParaTop= atTop;
     pds->pdsAtParaBottom= atBottom;
 
@@ -158,7 +183,7 @@ static int docDelimitParagraphDrawingStrip(
 
 int docDrawParagraphStrip(		void *			through,
 					ParagraphDrawingStrip *	pds,
-					BufferItem *		paraNode,
+					struct BufferItem *	paraNode,
 					int			countAfter,
 					const LayoutPosition *	lpShadeTop,
 					int			lineFrom,
@@ -167,9 +192,14 @@ int docDrawParagraphStrip(		void *			through,
 					const LayoutPosition *	lpThisFrame,
 					const BlockOrigin *	bo )
     {
-    if  ( docDelimitParagraphDrawingStrip( pds, paraNode, countAfter,
-				    lpShadeTop, lineFrom, lpThisFrame, bo ) )
-	{ LDEB(1); return -1;	}
+    int		ret;
+
+    ret= docDelimitParagraphDrawingStrip( pds, paraNode, countAfter,
+				    lpShadeTop, lineFrom, lpThisFrame, bo );
+    if  ( ret < 0 )
+	{ LDEB(ret); return -1;	}
+    if  ( ret > 0 ) /* nothing to draw */
+	{ return 0;	}
 
     if  ( pds->pdsLineUpto > lineFrom && dc->dcDrawOrnaments )
 	{
@@ -177,7 +207,7 @@ int docDrawParagraphStrip(		void *			through,
 	    { LDEB(1); return -1;	}
 	}
 
-    if  ( docDrawTextLines( through, pds, paraNode, pf, dc, bo ) )
+    if  ( docDrawTextLines( through, pds, paraNode, pf, dc, bo ) < 0 )
 	{ LDEB(lpThisFrame->lpPage); return -1;	}
 
     return 0;
@@ -185,14 +215,14 @@ int docDrawParagraphStrip(		void *			through,
 
 /************************************************************************/
 /*									*/
-/*  Print a node in the BufferItem hierarchy.				*/
+/*  Print a node in the node hierarchy of the document tree.		*/
 /*									*/
 /*  1)  The last page is finished by the caller.			*/
 /*									*/
 /************************************************************************/
 
 int docDrawParaNode(		LayoutPosition *		lpBelow,
-				BufferItem *			paraNode,
+				struct BufferItem *		paraNode,
 				void *				through,
 				DrawingContext *		dc,
 				const BlockOrigin *		bo )
@@ -202,14 +232,15 @@ int docDrawParaNode(		LayoutPosition *		lpBelow,
     int				line= 0;
 
     const LayoutContext *	lc= &(dc->dcLayoutContext);
-    BufferDocument *		bd= lc->lcDocument;
+    struct BufferDocument *	bd= lc->lcDocument;
 
     BlockFrame			bf;
     LayoutPosition		lpTop;
     LayoutPosition		lpShadeTop;
 
     docLayoutInitBlockFrame( &bf );
-    docParaBlockFrameTwips( &bf, paraNode, bd, paraNode->biTopPosition.lpPage,
+    docParaBlockFrameTwips( &bf, paraNode, dc->dcBodySectNode, bd,
+					    paraNode->biTopPosition.lpPage,
 					    paraNode->biTopPosition.lpColumn );
 
     docParagraphFrameTwips( &pf, &bf, paraNode );
@@ -218,7 +249,10 @@ int docDrawParaNode(		LayoutPosition *		lpBelow,
     lpShadeTop= lpTop;
 
     if  ( ! lpShadeTop.lpAtTopOfColumn )
-	{ lpShadeTop.lpPageYTwips += paraNode->biParaSpaceBeforeTwips; }
+	{
+	lpShadeTop.lpPageYTwips +=
+			    paraNode->biParaProperties->ppSpaceBeforeTwips;
+	}
 
     while( line < paraNode->biParaLineCount )
 	{
@@ -228,7 +262,11 @@ int docDrawParaNode(		LayoutPosition *		lpBelow,
 
 	if  ( docDrawParagraphStrip( through, &pds, paraNode, countAfter,
 			    &lpShadeTop, line, &pf, dc, &lpTop, bo ) )
-	    { LDEB(line); rval= -1; goto ready;	}
+	    {
+	    LLDEB(docNumberOfParagraph(paraNode),line);
+	    LLDEB(lpTop.lpPage,lpTop.lpColumn);
+	    rval= -1; goto ready;
+	    }
 
 	line= pds.pdsLineUpto;
 	if  ( lpBelow )
@@ -240,10 +278,11 @@ int docDrawParaNode(		LayoutPosition *		lpBelow,
 if  ( paraNode->biTreeType == DOCinSHPTXT )
     { break;	}
 
-	if  ( DOC_COLUMN_AFTER( &(paraNode->biBelowPosition), &lpTop ) )
+	if  ( docCompareLayoutPositionFrames( &(paraNode->biBelowPosition),
+								&lpTop ) > 0 )
 	    {
 	    int			ret;
-	    BufferItem *	bodyNode= paraNode;
+	    struct BufferItem *	bodyNode= paraNode;
 
 	    if  ( paraNode->biTreeType != DOCinBODY )
 		{
@@ -269,8 +308,11 @@ if  ( paraNode->biTreeType == DOCinSHPTXT )
 
     if  ( lpBelow && line >= paraNode->biParaLineCount )
 	{
-	docLayoutPushBottomDownShifted( lpBelow, &(paraNode->biBelowPosition),
-									bo );
+	LayoutPosition	lp;
+
+	docShiftPosition( &lp, bo, &(paraNode->biBelowPosition) );
+
+	docLayoutPushBottomDown( lpBelow, &lp );
 	}
 
   ready:
@@ -278,5 +320,126 @@ if  ( paraNode->biTreeType == DOCinSHPTXT )
     docLayoutCleanBlockFrame( &bf );
 
     return rval;
+    }
+
+/************************************************************************/
+/*									*/
+/*  Draw a series of text lines in a paragraph.				*/
+/*									*/
+/*  1)  For all lines that apply: Those in paraNode in the current	*/
+/*	page/column combination.					*/
+/*  2)  If the line is on a subsequent page.. stop.			*/
+/*  3)  Is line is on a page/column before the pages/column to draw?	*/
+/*  4)  Is the line in the rectangle to redraw?				*/
+/*	As this is inside a column, a line that is outside the clipping	*/
+/*	rectangle vertically is out of range inside this column.	*/
+/*  5)  Printing a page range.. and not in range?			*/
+/*  6)  Drawing a selection? E.G. To highlight it?			*/
+/*									*/
+/************************************************************************/
+
+int docDrawTextLines(	void *				through,
+			const ParagraphDrawingStrip *	pds,
+			struct BufferItem *		paraNode,
+			const ParagraphFrame *		pf,
+			DrawingContext *		dc,
+			const BlockOrigin *		bo )
+    {
+    const LayoutContext *	lc= &(dc->dcLayoutContext);
+    int				pastSelectionEnd= 0;
+
+    int				line= pds->pdsLineFrom;
+    TextLine *			tl= paraNode->biParaLines+ line;
+
+    if  ( pds->pdsShadeTop.lpPage != pds->pdsShadeBelow.lpPage		||
+	  pds->pdsShadeTop.lpColumn != pds->pdsShadeBelow.lpColumn	)
+	{
+	LLDEB(pds->pdsShadeTop.lpPage,pds->pdsShadeBelow.lpPage);
+	LLDEB(pds->pdsShadeTop.lpColumn,pds->pdsShadeBelow.lpColumn);
+	}
+
+    /*  1  */
+    while( line < paraNode->biParaLineCount )
+	{
+	int			beforeSelectionBegin= 0;
+
+	LayoutPosition		lpTop;
+	LayoutPosition		lpNextLine;
+	DocumentRectangle	drLineFramePixels;
+	int			res;
+
+	docTextLineGetShiftedTop( &lpTop, bo, tl );
+	docTextLineGetShiftedNextLineTop( &lpNextLine, bo, tl );
+
+	docLineFrameRectanglePixels( &drLineFramePixels, &lpTop, &lpNextLine,
+							tl, bo, pf, lc );
+
+	/*  2  */
+	if  ( docCompareLayoutPositionFrames( &lpTop,
+						&(pds->pdsShadeTop) ) > 0 )
+	    { break;	}
+	/*  3  */
+	if  ( docCompareLayoutPositionFrames( &lpTop,
+						&(pds->pdsShadeTop) ) < 0 )
+	    { beforeSelectionBegin= 1;	}
+
+	/*  4  */
+	if  ( dc->dcClipRect )
+	    {
+	    if  ( drLineFramePixels.drY0 > dc->dcClipRect->drY1 )
+		{ pastSelectionEnd= 1;	}
+	    if  ( drLineFramePixels.drY1 < dc->dcClipRect->drY0 )
+		{ beforeSelectionBegin= 1;	}
+	    }
+
+	/*  5  */
+	if  ( dc->dcFirstPage >= 0			&&
+	      pds->pdsShadeTop.lpPage < dc->dcFirstPage	)
+	    { beforeSelectionBegin= 1;	}
+
+	/*  6  */
+	if  ( dc->dcSelection						&&
+	      ! beforeSelectionBegin					&&
+	      ! pastSelectionEnd					&&
+	      ( paraNode == dc->dcSelection->dsHead.dpNode	||
+	        paraNode == dc->dcSelection->dsTail.dpNode	)	)
+	    {
+	    const DocumentSelection *	ds= dc->dcSelection;
+
+	    DocumentSelection		dsLine;
+
+	    docLineSelection( &dsLine, paraNode, line );
+
+	    if  ( paraNode == ds->dsTail.dpNode				&&
+		  docComparePositions( &(dsLine.dsHead), &(ds->dsTail) ) > 0 )
+		{ pastSelectionEnd= 1;	}
+
+	    if  ( paraNode == ds->dsHead.dpNode				&&
+		  docComparePositions( &(dsLine.dsTail), &(ds->dsHead) ) < 0 )
+		{ beforeSelectionBegin= 1;	}
+	    }
+
+	/****************************************************************/
+	/*  Do not clip here: The find code might want to look for	*/
+	/*  lines in the immediate proximity of a mouse click.		*/
+	/****************************************************************/
+	if  ( beforeSelectionBegin	||
+	      pastSelectionEnd		||
+	      ! dc->dcStartTextLine	)
+	    { res= SCANadviceSKIP;		}
+	else{
+	    res= docDrawTextLine( paraNode, tl, pf, &drLineFramePixels,
+							    through, dc, bo );
+	    }
+
+	if  ( res < 0 )
+	    { LDEB(res); return -1; }
+	if  ( res == SCANadviceSTOP )
+	    { return res;	}
+
+	line++; tl++;
+	}
+
+    return 0;
     }
 

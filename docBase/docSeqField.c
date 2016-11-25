@@ -11,6 +11,7 @@
 #   include	"docSeqField.h"
 #   include	"docFieldFormat.h"
 #   include	"docDocumentField.h"
+#   include	"docFieldKind.h"
 
 /************************************************************************/
 
@@ -18,7 +19,7 @@ void docInitSeqField(	SeqField *	sf )
     {
     sf->sfIncrement= 1;
     sf->sfHidden= 0;
-    sf->sfNumberFormat= MERGE_ARABIC;
+    sf->sfNumberFormat= FIELDformatARABIC;
 
     sf->sfResetTo= -1;
     sf->sfStyle= -1;
@@ -98,16 +99,17 @@ int docGetSeqField(		SeqField *			sf,
 	if  ( docComponentIsFlag( fi, comp, 'n' ) )
 	    { sf->sfIncrement= 1; continue;	}
 
-	if  ( ! ic->icIsFlag		&&
-	      str == SEQ_Identifier	)
+	if  ( ic->icType != INSTRtypeFLAG	&&
+	      str == SEQ_Identifier		)
 	    {
 	    if  ( utilCopyMemoryBuffer( &(sf->sfIdentifier), &(ic->icBuffer) ) )
 		{ LDEB(comp);	}
+
 	    str++; continue;
 	    }
 
-	if  ( ! ic->icIsFlag		&&
-	      str == SEQ_Bookmark	)
+	if  ( ic->icType != INSTRtypeFLAG	&&
+	      str == SEQ_Bookmark		)
 	    {
 	    if  ( utilCopyMemoryBuffer( &(sf->sfBookmark), &(ic->icBuffer) ) )
 		{ LDEB(comp);	}

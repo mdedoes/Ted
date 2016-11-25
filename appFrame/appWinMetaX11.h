@@ -5,11 +5,12 @@
 /************************************************************************/
 
 #   include	<drawDrawingSurface.h>
-#   include	<drawMetafile.h>
 
-typedef int (*MetafilePlayX11)(	void **			pPrivate,
-				DrawingSurface		ds,
-				const MetafilePlayer *	player );
+struct MetafilePlayer;
+
+typedef int (*MetafilePlayX11)(	void **				pPrivate,
+				DrawingSurface			ds,
+				const struct MetafilePlayer *	player );
 
 /************************************************************************/
 /*									*/
@@ -17,15 +18,15 @@ typedef int (*MetafilePlayX11)(	void **			pPrivate,
 /*									*/
 /************************************************************************/
 
-extern int appMetaPlayWmfX11(	void **			pPrivate,
-				DrawingSurface		ds,
-				const MetafilePlayer *	player );
+extern int appMetaPlayWmfX11(	void **				pPrivate,
+				DrawingSurface			ds,
+				const struct MetafilePlayer *	player );
 
-extern int appMetaPlayEmfX11(	void **			pPrivate,
-				DrawingSurface		ds,
-				const MetafilePlayer *	player );
+extern int appMetaPlayEmfX11(	void **				pPrivate,
+				DrawingSurface			ds,
+				const struct MetafilePlayer *	player );
 
 extern int appMacPictPlayFileX11( void **			pPrivate,
-				DrawingSurface		ds,
-				const MetafilePlayer *	player );
+				DrawingSurface			ds,
+				const struct MetafilePlayer *	player );
 

@@ -24,7 +24,7 @@ extern int bmFillImage(		ColorAllocator *		ca,
 				unsigned char *			bufferOut,
 				const BitmapDescription *	bdOut,
 				const RasterImage *		riIn,
-				const DocumentRectangle *	drSel );
+				const struct DocumentRectangle * drSel );
 
 extern int bmTextureMap(	ColorAllocator *		ca,
 				int				swapBitmapUnit,

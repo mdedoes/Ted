@@ -6,9 +6,8 @@
 
 #   include	<drawDrawingSurface.h>
 #   include	<appRuler.h>
-#   include	<docTabStop.h>
 #   include	<docTabStopList.h>
-#   include	"tedColumnSeparator.h"
+#   include	<docRulerColumnSeparator.h>
 
 typedef struct TedTopRuler
     {
@@ -20,8 +19,9 @@ typedef struct TedTopRuler
 				 *  separators. It is not possible to shift
 				 *  a column separator out of this area.
 				 */
-    int			ttrBlockFrameX0;
-    int			ttrBlockFrameX1;
+    int			ttrTableColumnX0;
+    int			ttrTableColumnX1;
+
 				/**
 				 *  Area that can be used to set tabs
 				 *  It is not possible to drag a tab
@@ -30,6 +30,7 @@ typedef struct TedTopRuler
 				 */
     int			ttrParaFrameX0;
     int			ttrParaFrameX1;
+
 				 /**
 				  *  Page margins from document or section.
 				  */
@@ -44,11 +45,20 @@ typedef struct TedTopRuler
     int			ttrLeftIndent;		/*  pixels		*/
     int			ttrRightIndent;		/*  pixels		*/
 
+			    /**
+			     *  Tab stop list for the tabs stops that are 
+			     *  displayed.
+			     */
     TabStopList		ttrTabStopList;
-    int			ttrTabKind;		/************************/
-						/*  alignment for fresh	*/
-						/*  tabs.		*/
-						/************************/
+
+			    /**
+			     *  Alignment for fresh tab stops.
+			     */
+    int			ttrTabKind;
+
+			    /**
+			     *  Table columns in Pixels
+			     */
     int			ttrColumnCount;
     ColumnSeparator *	ttrColumns;
     } TedTopRuler;
@@ -64,21 +74,21 @@ extern void tedTopRulerDrawTicks(	TedTopRuler *		ttr,
 					int			c0,
 					int			c1 );
 
-extern void tedHangingButtonRect(	DocumentRectangle *	drButton,
+extern void tedHangingButtonRect(	struct DocumentRectangle * drButton,
 					int			value,
 					const RulerData *	rd );
 
 extern void tedRulerDrawHangingButton(	int			value,
 					const RulerData *	rd );
 
-extern void tedStandingButtonRect(	DocumentRectangle *	drButton,
+extern void tedStandingButtonRect(	struct DocumentRectangle * drButton,
 					int			value,
 					const RulerData *	rd );
 
 extern void tedRulerDrawStandingButton(	int			value,
 					const RulerData *	rd );
 
-extern void tedRulerColumnControlRect(	DocumentRectangle *	drButton,
+extern void tedRulerColumnControlRect(	struct DocumentRectangle * drButton,
 					int			x0,
 					int			x1,
 					const RulerData *	rd );
@@ -88,7 +98,7 @@ extern void tedRulerDrawColumnControl(	int			x0,
 					int			ox,
 					const RulerData *	rd );
 
-extern void tedTabSymbolRect(		DocumentRectangle *	drButton,
+extern void tedTabSymbolRect(		struct DocumentRectangle *	drButton,
 					int			tabX,
 					const RulerData *	rd );
 
@@ -96,7 +106,7 @@ extern void tedRulerDrawTab(		const RulerData *	rd,
 					int			tabX,
 					int			kind );
 
-extern void tedTabButtonRectangle(	DocumentRectangle *	drButton,
+extern void tedTabButtonRectangle(	struct DocumentRectangle *	drButton,
 					int			x,
 					const RulerData *	rd );
 
@@ -104,7 +114,7 @@ extern void tedDrawTabButton(		const RulerData *	rd,
 					int			kind );
 
 
-extern void tedRulerActiveRect(		DocumentRectangle *	drActive,
+extern void tedRulerActiveRect(		struct DocumentRectangle *	drActive,
 					const TedTopRuler * 	ttr );
 
 extern int tedRulerMakeDrawingSurface(	TedTopRuler *		ttr,

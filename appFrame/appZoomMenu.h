@@ -7,9 +7,13 @@
 #   ifndef		APP_ZOOM_MENU_H
 #   define		APP_ZOOM_MENU_H
 
-#   include	"appGuiBase.h"
-#   include	"appFrame.h"
-#   include	<geo2DInteger.h>
+#   include	<guiBase.h>
+
+#   if ! USE_HEADLESS
+
+struct EditDocument;
+struct AppMenu;
+struct DocumentRectangle;
 
 #   define	ZOOM_COUNT	7
 
@@ -19,21 +23,20 @@ extern void appZoomChangeFactor( APP_WIDGET		option,
 				int			optionCount,
 				int *			pLogSqrt2Magnification,
 				double *		pMagnification,
-				DocumentRectangle *	drSelected );
+				struct DocumentRectangle *	drSelected );
 
 extern void appUpdateZoomMenu(	APP_WIDGET	menu,
 				APP_WIDGET *	options,
 				int		optionCount,
 				int		logs2mag );
 
-extern void appMakeZoomMenu(	EditApplication *	ea,
-				EditDocument *		ed,
+void appMakeZoomMenu(		struct EditDocument *	ed,
 				APP_WIDGET *		pZoomMenu,
+				APP_WIDGET *		options,
 				APP_WIDGET		menubar,
 				int			logSqrt2Magnification,
-				const char *		zoomText,
-				AppMenuItem *		optionItems,
-				APP_WIDGET *		options,
-				int			optionCount );
+				struct AppMenu *	am );
+
+#   endif
 
 #   endif	/*	APP_ZOOM_MENU_H	*/

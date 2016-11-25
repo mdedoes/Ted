@@ -1,6 +1,6 @@
 /************************************************************************/
 /*									*/
-/*  Text Editor Buffer structure.					*/
+/*  Manage notes in a document.						*/
 /*									*/
 /************************************************************************/
 
@@ -15,11 +15,9 @@
 
 struct DocumentNote;
 struct BufferDocument;
-struct BufferItem;
 struct DocumentField;
-struct TextLine;
-struct TextParticule;
 struct DocumentSelection;
+struct BufferItem;
 
 /************************************************************************/
 /*									*/
@@ -32,14 +30,14 @@ extern int docInsertNote(	struct DocumentNote **		pDn,
 				struct DocumentField *		dfNote,
 				int				autoNumber );
 
+extern void docDeleteNote(	struct BufferDocument *		bd,
+				int				noteIndex );
+
 extern struct DocumentField * docGetSelectedNote(
 			struct DocumentNote **			pDn,
 			int *					pSelInNote,
 			struct BufferDocument *			bd,
 			const struct DocumentSelection *	ds );
-
-extern void docCleanNote(	struct BufferDocument *		bd,
-				struct DocumentNote *		dn );
 
 extern struct DocumentField * docGetFirstNoteFromColumn(
 				struct DocumentNote **		pDn,
@@ -106,5 +104,28 @@ extern struct DocumentField * docGetPrevNoteInDocument(
 extern struct DocumentNote *	docGetNoteOfField(
 				const struct DocumentField *	dfNote,
 				const struct BufferDocument *	bd );
+
+extern int docExtractFixedTextNote(
+				struct DocumentNote *		dn,
+				struct BufferDocument *		bd,
+				struct BufferItem *		ownerNode,
+				int				fixedStroff,
+				int				fixedStrlen,
+				const char * const		instBytes,
+				const int			instSize );
+
+extern int docNoteIncludeFixedTextInField(
+				int *				pFixedStroff,
+				int *				pFixedStrlen,
+				struct BufferItem *		ownerNode,
+				struct DocumentField *		dfNote );
+
+extern int docCheckNoteSeparatorExistence(
+				struct BufferDocument *		bd,
+				int				sepTreeType );
+
+extern int docCheckSeparatorExistenceForNoteType(
+				struct BufferDocument *		bd,
+				int				noteTreeType );
 
 #   endif

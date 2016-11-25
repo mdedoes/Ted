@@ -1,59 +1,20 @@
 #   ifndef	TED_DOCUMENT_H
 #   define	TED_DOCUMENT_H
 
-#   include	<textAttribute.h>
 #   include	<docSelect.h>
-#   include	<docSelectionGeometry.h>
 #   include	<docSelectionDescription.h>
+#   include	<docSelectionGeometry.h>
 #   include	<utilIndexMapping.h>
-#   include	<appFrame.h>
 #   include	<docEditTrace.h>
 #   include	<docRecalculateFields.h>
+#   include	<bitmap.h>
+#   include	<guiWidgets.h>
+#   include	<docResizeHandles.h>
 
 struct TedDocument;
-
-#   define	RESIZE_BLOCK		10
-
-typedef enum ResizeHandle
-    {
-    RESIZE_BOTTOM_LEFT= 0,
-    RESIZE_BOTTOM_MIDDLE,
-    RESIZE_BOTTOM_RIGHT,
-
-    RESIZE_MIDDLE_LEFT,
-    RESIZE_MIDDLE_RIGHT,
-
-    RESIZE_TOP_LEFT,
-    RESIZE_TOP_MIDDLE,
-    RESIZE_TOP_RIGHT,
-
-    RESIZE_COUNT
-    } ResizeHandle;
-
-/************************************************************************/
-/*									*/
-/*  Supported document formats.						*/
-/*  Match the array with extensions in tedMain.c.			*/
-/*									*/
-/************************************************************************/
-
-typedef enum TedDocumentKind
-    {
-    TEDdockindRTF= 0,
-    TEDdockindTEXT_OPEN,
-    TEDdockindTEXT_SAVE_WIDE,
-    TEDdockindTEXT_SAVE_FOLDED,
-    TEDdockindHTML_FILES,
-    TEDdockindEML,
-    TEDdockindEPUB,
-    TEDdockindPS,
-    TEDdockindSVG,
-    TEDdockindPDF,
-    TEDdockindTRACE,
-    TEDdockindALL_FILES,
-
-    TEDdockind_COUNT
-    } TedDocumentKind;
+struct EditDocument;
+struct SimpleLocale;
+struct BufferDocument;
 
 /************************************************************************/
 /*									*/
@@ -66,7 +27,14 @@ typedef struct TedDocument
     struct BufferDocument *	tdDocument;
 
     unsigned char		tdTraced;
+
+				    /**
+				     *  If this is true, an attempt is made 
+				     *  to activate overstrike. by selecting 
+				     *  and replacing the next character.
+				     */
     unsigned char		tdOverstrike;
+
 				    /**
 				     *  The name of the document that is 
 				     *  recovered. This is to smuggle the 
@@ -106,6 +74,8 @@ typedef struct TedDocument
     int				tdPageGapPixels;
 
     EditTrace			tdEditTrace;
+
+    const struct SimpleLocale *	tdLocale;
 
     APP_WIDGET			tdFileOpenOption;
     APP_WIDGET			tdFileSaveOption;
@@ -209,12 +179,12 @@ typedef struct TedDocument
 
     void *			tdFindProg;
 
-#   ifdef USE_MOTIF
+#   if USE_MOTIF
     XtIntervalId		tdHideIBarId;
     XtIntervalId		tdShowIBarId;
 #   endif
 
-#   ifdef USE_GTK
+#   if USE_GTK
     guint			tdHideIBarId;
     guint			tdShowIBarId;
 #   endif
@@ -249,7 +219,23 @@ extern const char TedTraceExtension[];
 /************************************************************************/
 
 extern int tedFirstRecalculateFields(	RecalculateFields *	rf,
-					DOC_CLOSE_OBJECT	closeObject,
-					BufferDocument *	bd );
+					struct BufferDocument *	bd );
+
+extern int tedObjectDrag(	APP_WIDGET			w,
+				struct EditDocument *		ed,
+				APP_EVENT *			downEvent );
+
+extern void tedFreeDocument(		void *			voidtd,
+					int			format );
+
+extern void tedManagePrimarySelection(	struct EditDocument *		ed );
+
+extern void tedSetTracedChangedFlag(	struct EditDocument *		ed );
+
+extern void tedRedoDocumentLayout(	struct EditDocument *		ed );
+
+extern void tedUndrawIBar(		const struct EditDocument *	ed );
+
+extern void tedMoveObjectWindows(	struct EditDocument *		ed );
 
 #   endif	/*  TED_DOCUMENT_H	*/

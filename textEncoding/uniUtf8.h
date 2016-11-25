@@ -8,6 +8,11 @@
     extern "C"  {
 #   endif
 
+		/**
+		 *  Test a byte value: Is it inside a UTF-8 sequence?
+		 */
+#   define	UNI_UTF8_INTERN(b)	( ( (b) & 0xc0 ) == 0x80 )
+
 /************************************************************************/
 
 extern int uni_GetUtf8(		unsigned short *	pSymbol,

@@ -1,12 +1,21 @@
 #   include	"docBufConfig.h"
 
-#   include	"docBuf.h"
+#   include	<stdio.h>
+
 #   include	"docTreeNode.h"
-#   include	"docDebug.h"
 #   include	<docTextParticule.h>
 #   include	<docTextLine.h>
-#   include	<appDebugon.h>
 #   include	"docNodeTree.h"
+#   include	<docRowProperties.h>
+#   include	<docParaProperties.h>
+#   include	"docSelect.h"
+#   include	"docParaParticules.h"
+#   include	<bidiTree.h>
+#   include	<uniUtf8.h>
+#   include	<bidiScanner.h>
+
+#   include	"docDebug.h"
+#   include	<appDebugon.h>
 
 #   define	LIST_PARA_STRING	1
 #   define	LIST_PARTICULES		1
@@ -15,7 +24,7 @@
 
 #   define	IS			2
 
-static int docCheckGroupLeft(	const BufferItem *	node )
+static int docCheckGroupLeft(	const struct BufferItem *	node )
     {
     int		rval= 0;
 
@@ -68,9 +77,9 @@ static int docCheckChild(	const BufferItem *	parent,
 	    int d= docCompareLayoutPositions( &(child->biTopPosition), lpTop );
 	    const char * direction= (char *)0;
 	    if  ( d > 0 )
-		{ direction= "ABOVE";	}
-	    if  ( d < 0 )
 		{ direction= "BELOW";	}
+	    if  ( d < 0 )
+		{ direction= "ABOVE";	}
 
 	    if  ( direction )
 		{
@@ -143,11 +152,12 @@ static int docCheckChild(	const BufferItem *	parent,
     if  ( child->biLevel == DOClevPARA )
 	{
 	int	tableNesting= docTableNesting( child );
+	int	nodeTableNesting= child->biParaProperties->ppTableNesting;
 
-	if  ( tableNesting != child->biParaTableNesting )
+	if  ( tableNesting != nodeTableNesting )
 	    {
 	    SDEB("#######");
-	    LLDEB(tableNesting,child->biParaTableNesting);
+	    LLDEB(tableNesting,nodeTableNesting);
 	    rval= -1;
 	    }
 	}
@@ -162,8 +172,70 @@ static int docCheckChild(	const BufferItem *	parent,
     return rval;
     }
 
-int docCheckNode(	const BufferItem *	node,
-			int			checkGeometry )
+static int docCheckParaNode(	const struct BufferItem *	paraNode )
+    {
+    int				rval= 0;
+
+    int				part;
+    const TextParticule *	tp;
+    int				stroff;
+    int				tableNesting= docTableNesting( paraNode );
+    int				nodeTableNesting;
+
+    nodeTableNesting= paraNode->biParaProperties->ppTableNesting;
+
+    if  ( paraNode->biLeftParagraphs != paraNode->biNumberInParent+ 1 )
+	{
+	appDebug( "############## %s:\n",
+				    docLevelStr(paraNode->biLevel) );
+	LLDEB(paraNode->biLeftParagraphs,paraNode->biNumberInParent+1);
+	}
+
+    if  ( tableNesting != nodeTableNesting )
+	{
+	SDEB("#######");
+	LLDEB(tableNesting,nodeTableNesting);
+	rval= -1;
+	}
+
+    stroff= 0;
+    tp= paraNode->biParaParticules;
+    for ( part= 0; part < paraNode->biParaParticuleCount; tp++, part++ )
+	{
+	if  ( tp->tpStroff > docParaStrlen( paraNode )	||
+	      tp->tpStroff != stroff			)
+	    {
+	    appDebug( "############## %s:\n",
+				    docLevelStr(paraNode->biLevel) );
+	    LLLLDEB(part,tp->tpStroff,stroff,docParaStrlen(paraNode));
+	    rval= -1;
+	    }
+
+	stroff= tp->tpStroff+ tp->tpStrlen;
+	if  ( stroff < 0			||
+	      stroff >  docParaStrlen( paraNode )	)
+	    {
+	    appDebug( "############## %s:\n",
+				    docLevelStr(paraNode->biLevel) );
+	    LLLLDEB(part,stroff,tp->tpStrlen,docParaStrlen(paraNode));
+	    rval= -1;
+	    }
+	}
+
+    if  ( stroff != docParaStrlen( paraNode ) )
+	{
+	appDebug( "############## %s:\n",
+				    docLevelStr(paraNode->biLevel) );
+	LLDEB(stroff,docParaStrlen(paraNode));
+	rval= -1;
+	}
+
+    return rval;
+    }
+
+int docCheckNode(	const struct BufferItem *	node,
+			const struct BufferDocument *	bd,
+			int				checkGeometry )
     {
     int			i;
     int			rval= 0;
@@ -172,68 +244,22 @@ int docCheckNode(	const BufferItem *	node,
 
     if  ( node->biLevel == DOClevPARA )
 	{
-	int			part;
-	const TextParticule *	tp;
-	int			stroff;
-	int			tableNesting= docTableNesting( node );
-
-	if  ( node->biLeftParagraphs != node->biNumberInParent+ 1 )
-	    {
-	    appDebug( "############## %s:\n",
-					docLevelStr(node->biLevel) );
-	    LLDEB(node->biLeftParagraphs,node->biNumberInParent+1);
-	    }
-
-	if  ( tableNesting != node->biParaTableNesting )
-	    {
-	    SDEB("#######");
-	    LLDEB(tableNesting,node->biParaTableNesting);
-	    rval= -1;
-	    }
-
-	stroff= 0;
-	tp= node->biParaParticules;
-	for ( part= 0; part < node->biParaParticuleCount; tp++, part++ )
-	    {
-	    if  ( tp->tpStroff > docParaStrlen( node )	||
-		  tp->tpStroff != stroff		)
-		{
-		appDebug( "############## %s:\n",
-					docLevelStr(node->biLevel) );
-		LLLLDEB(part,tp->tpStroff,stroff,docParaStrlen(node));
-		rval= -1;
-		}
-
-	    stroff= tp->tpStroff+ tp->tpStrlen;
-	    if  ( stroff < 0			||
-		  stroff >  docParaStrlen( node )	)
-		{
-		appDebug( "############## %s:\n",
-					docLevelStr(node->biLevel) );
-		LLLLDEB(part,stroff,tp->tpStrlen,docParaStrlen(node));
-		rval= -1;
-		}
-	    }
-	if  ( stroff != docParaStrlen( node ) )
-	    {
-	    appDebug( "############## %s:\n",
-					docLevelStr(node->biLevel) );
-	    LLDEB(stroff,docParaStrlen(node));
-	    rval= -1;
-	    }
+	if  ( docCheckParaNode( node ) )
+	    { LDEB(1); rval= -1;	}
 	}
     else{
 	if  ( node->biChildCount < 1 )
 	    { SLDEB("#######",node->biChildCount);	}
 	}
 
-    if  ( node->biLevel == DOClevROW )
+    if  ( node->biLevel == DOClevROW && docIsRowNode( node ) )
 	{
-	if  ( docIsRowNode( node )			&&
-	      node->biRowCellCount != node->biChildCount	)
+	const RowProperties *	rp= node->biRowProperties;
+
+	if  ( rp->rpCellCount != node->biChildCount )
 	    {
 	    appDebug( "############## %s:\n", docLevelStr(node->biLevel) );
-	    LLDEB(node->biRowCellCount,node->biChildCount);
+	    LLDEB(rp->rpCellCount,node->biChildCount);
 	    }
 	}
 
@@ -247,18 +273,18 @@ int docCheckNode(	const BufferItem *	node,
 	    DocumentPosition	dp;
 	    docInitDocumentPosition( &dp );
 
-	    if  ( ! docHeadPosition( &dp, (BufferItem *)node ) )
+	    if  ( ! docHeadPosition( &dp, (struct BufferItem *)node ) )
 		{
-		const BufferItem *	paraBi= dp.dpNode;
+		const struct BufferItem *	paraNode= dp.dpNode;
 		int			n= 1;
 
 		for (;;)
 		    {
-		    if  ( docNumberOfParagraph( paraBi ) != n )
-			{ LLDEB(docNumberOfParagraph(paraBi),n); rval= -1; }
+		    if  ( docNumberOfParagraph( paraNode ) != n )
+			{ LLDEB(docNumberOfParagraph(paraNode),n); rval= -1; }
 
-		    paraBi= docNextParagraph( (BufferItem *)paraBi );
-		    if  ( ! paraBi )
+		    paraNode= docNextParagraph( (struct BufferItem *)paraNode );
+		    if  ( ! paraNode )
 			{ break;	}
 		    n++;
 		    }
@@ -277,35 +303,42 @@ int docCheckNode(	const BufferItem *	node,
 	if  ( ! docIsRowNode( node ) )
 	    { lpHere= lpBelowChild;	}
 
-	if  ( docCheckNode( node->biChildren[i], checkGeometry ) )
+	if  ( docCheckNode( node->biChildren[i], bd, checkGeometry ) )
 	    { rval= -1;	}
 	}
 
     return rval;
     }
 
-int docCheckRootNode(	const BufferItem *	node,
-			int			checkGeometry )
+int docCheckRootNode(	const struct BufferItem *		node,
+			const struct BufferDocument *	bd,
+			int				checkGeometry )
     {
     while( node->biParent )
 	{ node= node->biParent;	}
 
-    return docCheckNode( node, checkGeometry );
+    return docCheckNode( node, bd, checkGeometry );
     }
 
-static void docListChildren(	int			indent,
-				const BufferItem *	node,
-				int			checkGeometry )
+static void docListChildren(	int				indent,
+				const struct BufferItem *	node,
+				int				checkGeometry )
     {
     int			i;
 
-    LayoutPosition	lp;
+    LayoutPosition	lpHere;
 
-    lp= node->biTopPosition;
+    lpHere= node->biTopPosition;
 
     for ( i= 0; i < node->biChildCount; i++ )
 	{
-	docCheckChild( node, node->biChildren[i], i, &lp, &lp, checkGeometry );
+	LayoutPosition	lpBelowChild= lpHere;
+
+	docCheckChild( node, node->biChildren[i], i,
+				    &lpHere, &lpBelowChild, checkGeometry );
+
+	if  ( ! docIsRowNode( node ) )
+	    { lpHere= lpBelowChild;	}
 
 	docListNode( indent+ 1, node->biChildren[i], checkGeometry );
 	}
@@ -313,60 +346,144 @@ static void docListChildren(	int			indent,
     if  ( node->biChildCount > 0 )
 	{ docCheckGroupLeft( node );	}
 
-    if  ( checkGeometry						&&
+    if  ( checkGeometry							&&
 	  ! docIsRowNode( node )					&&
-	  ! DOC_SAME_POSITION( &(node->biBelowPosition), &lp )	)
+	  ! DOC_SAME_POSITION( &(node->biBelowPosition), &lpHere )	)
 	{
 	appDebug( "############## %s :\n", docLevelStr(node->biLevel) );
 
-	LLDEB(node->biBelowPosition.lpPage,lp.lpPage);
-	LLDEB(node->biBelowPosition.lpColumn,lp.lpColumn);
-	LLDEB(node->biBelowPosition.lpPageYTwips,lp.lpPageYTwips);
+	LLDEB(node->biBelowPosition.lpPage,lpHere.lpPage);
+	LLDEB(node->biBelowPosition.lpColumn,lpHere.lpColumn);
+	LLDEB(node->biBelowPosition.lpPageYTwips,lpHere.lpPageYTwips);
 	}
     }
 
-static void docListParaNode(	int			indent,
-				const BufferItem *	node )
+/************************************************************************/
+/*									*/
+/*  List the text of a paragraph.					*/
+/*									*/
+/************************************************************************/
+
+# if LIST_PARA_STRING
+
+static void docListParaString(	int				indent,
+				const struct BufferItem *	paraNode,
+				int				stroffFrom,
+				int				stroffUpto )
     {
-    int				i;
-    const TextLine *		tl;
-    LayoutPosition		lpHere;
+    int		stroff= stroffFrom;
 
-    int				stroff;
-    const TextParticule *	tp;
-
-    appDebug( "%*s{ NR= %d TN=%d brk=%s %d particules, %d lines\n",
-				    IS* indent+ IS, "",
-				    docNumberOfParagraph( node ),
-				    node->biParaTableNesting,
-				    docBreakKindStr( node->biParaBreakKind ),
-				    node->biParaParticuleCount,
-				    node->biParaLineCount );
-
-#   if LIST_PARA_STRING
-    {
-    int		length= docParaStrlen( node );
-
-    stroff= 0;
-    while( stroff < length )
+    while( stroff < stroffUpto )
 	{
-	int		l= length- stroff;
+	int		todo= 0;
 
-	if  ( l > 60 )
-	    { l= 60; }
+	const char *	str= docParaString( paraNode, stroff );
+
+	while( stroff+ todo < stroffUpto )
+	    {
+	    unsigned short	symbol;
+	    int			step= uniGetUtf8( &symbol, str+ todo );
+
+	    if  ( step < 1 )
+		{
+		LDEB(step);
+		todo= stroffUpto- stroff;
+
+		if  ( todo > 60 )
+		    { todo= 60; }
+
+		break;
+		}
+
+	    todo += step;
+	    if  ( todo >= 60 )
+		{ break;	}
+	    }
 
 	appDebug( "%*s\"%.*s\"\n",
 			IS* indent+ IS, "",
-			(int)l, (char *)docParaString( node, stroff ) );
+			todo, docParaString( paraNode, stroff ) );
 
-	stroff += l;
+	stroff += todo;
 	}
     }
-#   endif
 
-    stroff= 0;
-    tp= node->biParaParticules;
-    for ( i= 0; i < node->biParaParticuleCount; tp++, i++ )
+# endif
+
+/************************************************************************/
+/*									*/
+/*  List the lines in a paragraph.					*/
+/*									*/
+/************************************************************************/
+
+static void docListParaLines(
+			int				indent,
+			const struct BufferItem *	paraNode,
+			int				checkGeometry )
+    {
+    int				line;
+    const TextLine *		tl;
+    LayoutPosition		lpHere;
+
+    tl= paraNode->biParaLines;
+    lpHere= paraNode->biTopPosition;
+    for ( line= 0; line < paraNode->biParaLineCount; tl++, line++ )
+	{
+	int	listLine= LIST_LINES || ( line == 0 && LIST_FIRST_LINE );
+
+	if  ( checkGeometry						&&
+	      docCompareLayoutPositions( &(tl->tlTopPosition),
+							&lpHere ) < 0	)
+	    {
+	    appDebug( "###### Line= %d\n", line );
+	    LDEB(line);
+	    listLine= 1;
+	    }
+
+	lpHere= tl->tlTopPosition;
+	lpHere.lpPageYTwips += tl->tlLineStride;
+
+	if  ( checkGeometry						&&
+	      docCompareLayoutPositions( &(paraNode->biBelowPosition),
+							&lpHere ) < 0	)
+	    {
+	    appDebug( "###### Line= %d\n", line );
+	    LDEB(line);
+	    listLine= 1;
+	    }
+
+	if  ( listLine )
+	    { docListTextLine( IS* indent+ IS, "LINE", line, paraNode, tl ); }
+	}
+    }
+
+/************************************************************************/
+/*									*/
+/*  List a range of particules.						*/
+/*									*/
+/************************************************************************/
+
+static void docListParaParticules(
+				int				indent,
+				const struct BufferItem *	paraNode,
+				int				partFrom,
+				int				partUpto )
+    {
+    int				part;
+    const TextParticule *	tp;
+    int				stroff;
+
+    if  ( partFrom == 0 )
+	{
+	tp= paraNode->biParaParticules;
+	stroff= 0;
+	}
+    else{
+	tp= paraNode->biParaParticules+ partFrom;
+	stroff= tp->tpStroff;
+	}
+
+    for ( part= partFrom; part < partUpto; tp++, part++ )
 	{
 	int		list= LIST_PARTICULES;
 	const char *	label= "PART";
@@ -375,64 +492,280 @@ static void docListParaNode(	int			indent,
 	    { list= 1; label= "####";	}
 
 	if  ( list )
-	    { docListParticule( IS* indent+ IS, label, i, node, tp ); }
+	    { docListParticule( IS* indent+ IS, label, part, paraNode, tp ); }
 
 	stroff= tp->tpStroff+ tp->tpStrlen;
 	}
 
-    if  ( stroff != docParaStrlen( node ) )
+    if  ( partUpto == paraNode->biParaParticuleCount	&&
+	  stroff != docParaStrlen( paraNode )		)
 	{
-	SLLDEB("####",stroff,docParaStrlen( node ) );
-	if  ( node->biParaParticuleCount > 0 )
+	SLLDEB("####",stroff,docParaStrlen( paraNode ) );
+	if  ( paraNode->biParaParticuleCount > 0 )
 	    {
-	    i= node->biParaParticuleCount- 1;
-	    tp= node->biParaParticules+ i;
-	    docListParticule( IS* indent+ IS, "####", i, node, tp );
+	    part= paraNode->biParaParticuleCount- 1;
+	    tp= paraNode->biParaParticules+ part;
+	    docListParticule( IS* indent+ IS, "####", part, paraNode, tp );
+	    }
+	}
+    }
+
+typedef struct ParaScan
+    {
+    const BufferItem *	psParaNode;
+    int			psIndent;
+    int			psBytesScanned;
+    int			psParticulesScanned;
+    } ParaScan;
+
+static int docGotParaBidiLevel(		void *		vps,
+					int		initiator,
+					int		level,
+					int		stroffFrom,
+					int		stroffUpto )
+    {
+    int				rval= 0;
+
+    ParaScan *			ps= (ParaScan *)vps;
+    int				partFrom;
+    int				partUpto;
+
+    int				headFlags= 0;
+    int				tailFlags= 0;
+
+    const TextParticule *	tpHead;
+    const TextParticule *	tpTail;
+
+    DocumentPosition		dp;
+
+    dp.dpNode= (struct BufferItem *)ps->psParaNode;
+    dp.dpStroff= stroffFrom;
+    if  ( docFindParticuleOfPosition( &partFrom, &headFlags,
+						&dp, PARAfindLAST ) )
+	{ SLDEB("####",stroffFrom); rval= -1;	}
+
+    dp.dpNode= (struct BufferItem *)ps->psParaNode;
+    dp.dpStroff= stroffUpto;
+    if  ( docFindParticuleOfPosition( &partUpto, &tailFlags,
+						&dp, PARAfindPAST ) )
+	{ SLDEB("####",stroffUpto); rval= -1;	}
+
+    if  ( rval )
+	{
+	appDebug( "%*sLEVEL= %d STROFF %3d..%3d ####\n",
+					    IS* ps->psIndent+ IS, "", level,
+					    stroffFrom, stroffUpto );
+
+#	if LIST_PARA_STRING
+	docListParaString( ps->psIndent+ 1, ps->psParaNode,
+					    stroffFrom, stroffUpto );
+#	endif
+
+	return 0;
+	}
+    else{
+	appDebug( "%*sLEVEL= %d STROFF %3d..%3d PART %3d..%3d\n",
+					    IS* ps->psIndent+ IS, "", level,
+					    stroffFrom, stroffUpto,
+					    partFrom, partUpto );
+
+#	if LIST_PARA_STRING
+	docListParaString( ps->psIndent+ 1, ps->psParaNode,
+					    stroffFrom, stroffUpto );
+#	endif
+	}
+
+    tpHead= ps->psParaNode->biParaParticules+ partFrom;
+    if  ( ! ( headFlags & POSflagPART_HEAD )	||
+	  tpHead->tpStroff != stroffFrom	)
+	{ SLXLLDEB("####",partFrom,headFlags,tpHead->tpStroff,stroffFrom); }
+
+    if  ( partUpto == ps->psParaNode->biParaParticuleCount )
+	{
+	tpTail= ps->psParaNode->biParaParticules+ partUpto- 1;
+
+	if  ( ! ( tailFlags & POSflagPARA_TAIL )			||
+	      tpTail->tpStroff+ tpTail->tpStrlen != stroffUpto		)
+	    {
+	    SLXLLDEB("####",partUpto,tailFlags,
+				tpTail->tpStroff+tpTail->tpStrlen,stroffUpto);
+	    }
+	}
+    else{
+	tpTail= ps->psParaNode->biParaParticules+ partUpto;
+
+	if  ( ! ( tailFlags & POSflagPART_HEAD )	||
+	      tpTail->tpStroff != stroffUpto		)
+	    { SLXLLDEB("####",partUpto,tailFlags,tpTail->tpStroff,stroffUpto); }
+	}
+
+    docListParaParticules( ps->psIndent+ 1,
+				    ps->psParaNode, partFrom, partUpto );
+
+    ps->psBytesScanned += stroffUpto- stroffFrom;
+    ps->psParticulesScanned += partUpto- partFrom;
+
+    return 0;
+    }
+
+static void docListParaNode(	int				indent,
+				const struct BufferItem *	paraNode,
+				int				checkGeometry )
+    {
+    const ParagraphProperties *	pp= paraNode->biParaProperties;
+    int				listFlat= 0;
+    struct BufferItem *		rowNode;
+    int				tableNesting= 0;
+
+    appDebug( "%*s{ NR= %d TN=%d brk=%s %d bytes %d particules, %d lines\n",
+			    IS* indent+ IS, "",
+			    docNumberOfParagraph( paraNode ),
+			    pp->ppTableNesting,
+			    docBreakKindStr( pp->ppBreakKind ),
+			    docParaStrlen( paraNode ),
+			    paraNode->biParaParticuleCount,
+			    paraNode->biParaLineCount );
+
+    rowNode= docGetRowNode( (BufferItem *)paraNode );
+    if  ( rowNode )
+	{
+	DocumentPosition	dp;
+
+	if  ( docHeadPosition( &dp, rowNode ) )
+	    { SXDEB("####",rowNode);	}
+	else{
+	    if  ( dp.dpNode == paraNode )
+		{
+		if  ( rowNode->biRowProperties->rp_Keepfollow !=
+				paraNode->biParaProperties->ppKeepWithNext )
+		    {
+		    SLLDEB("####",rowNode->biRowProperties->rp_Keepfollow,
+				paraNode->biParaProperties->ppKeepWithNext);
+		    }
+		}
+	    }
+
+	tableNesting++;
+	rowNode= docGetRowNode( rowNode->biParent );
+	while( rowNode )
+	    {
+	    tableNesting++;
+	    rowNode= docGetRowNode( rowNode->biParent );
 	    }
 	}
 
-    tl= node->biParaLines;
-    lpHere= node->biTopPosition;
-    for ( i= 0; i < node->biParaLineCount; tl++, i++ )
+    if  ( paraNode->biParaProperties->ppTableNesting != tableNesting )
 	{
-	int	listLine= LIST_LINES || ( i == 0 && LIST_FIRST_LINE );
-
-	if  ( docCompareLayoutPositions( &(tl->tlTopPosition),
-							&lpHere ) < 0 )
-	    {
-	    appDebug( "###### Line= %d\n", i );
-	    LDEB(i);
-	    listLine= 1;
-	    }
-
-	lpHere= tl->tlTopPosition;
-	lpHere.lpPageYTwips += tl->tlLineStride;
-
-	if  ( docCompareLayoutPositions( &(node->biBelowPosition),
-							&lpHere ) < 0 )
-	    {
-	    appDebug( "###### Line= %d\n", i );
-	    LDEB(i);
-	    listLine= 1;
-	    }
-
-	if  ( listLine )
-	    { docListTextLine( IS* indent+ IS, "LINE", i, node, tl ); }
+	SLLDEB("####",paraNode->biParaProperties->ppTableNesting,tableNesting);
 	}
+
+#   if LIST_PARA_STRING
+    docListParaString( indent, paraNode, 0, docParaStrlen( paraNode ) );
+#   endif
+
+    if  ( 0 && paraNode->biParaBidiRoot && paraNode->biParaParticuleCount > 1 )
+	{
+	BidiScanner	bs;
+	ParaScan	ps;
+	int		paraStrlen= docParaStrlen( paraNode );
+
+	ps.psParaNode= paraNode;
+	ps.psIndent= indent;
+	ps.psBytesScanned= 0;
+	ps.psParticulesScanned= 0;
+
+	bidiInitScanner( &bs );
+	bs.bsThrough= (void *)&ps;
+	bs.bsGotRun= docGotParaBidiLevel;
+
+	if  ( bidiTraverseNodeDisplayOrder( paraNode->biParaBidiRoot, &bs,
+							0, paraStrlen ) )
+	    { listFlat= 1;	}
+
+	if  ( ps.psBytesScanned != paraStrlen )
+	    {
+	    SLLDEB("####",ps.psBytesScanned,paraStrlen);
+	    listFlat= 1;
+	    }
+	if  ( paraStrlen > 0						&&
+	      ps.psParticulesScanned != paraNode->biParaParticuleCount 	)
+	    {
+	    SLLDEB("####",ps.psParticulesScanned,
+					paraNode->biParaParticuleCount);
+	    listFlat= 1;
+	    }
+
+	if  ( listFlat )
+	    { bidiListNode(paraNode->biParaBidiRoot,(const MemoryBuffer *)0); }
+	}
+    else{ listFlat= 1;	}
+
+    if  ( listFlat )
+	{
+	const int	partFrom= 0;
+	const int	partUpto= paraNode->biParaParticuleCount;
+
+	docListParaParticules( indent, paraNode, partFrom, partUpto );
+	}
+
+    docListParaLines( indent, paraNode, checkGeometry );
 
     return;
     }
 
-void docListNode(	int			indent,
-			const BufferItem *	node,
-			int			checkGeometry )
+static void docListRowNodeSpecific(
+				int				indent,
+				const struct BufferItem *	rowNode )
+    {
+    const RowProperties *	rp= rowNode->biRowProperties;
+
+    if  ( rowNode->biRowTableFirst >= 0			||
+	  rowNode->biRowTablePast >= 0				||
+	  rowNode->biRowPastHeaderRow >= 0			)
+	{
+	appDebug(
+	    "%*s  Table Head: %d .. %d Body %d .. %d\n",
+		    IS* indent+ IS, "",
+		    rowNode->biRowTableFirst,
+		    rowNode->biRowPastHeaderRow,
+		    rowNode->biRowPastHeaderRow,
+		    rowNode->biRowTablePast );
+
+	if  ( rowNode->biRowTableFirst		>=
+	      rowNode->biParent->biChildCount	)
+	    {
+	    SLLDEB("####",
+		    rowNode->biRowTableFirst,
+		    rowNode->biParent->biChildCount);
+	    }
+	if  ( rowNode->biRowTablePast > rowNode->biParent->biChildCount )
+	    {
+	    SLLDEB("####",
+		    rowNode->biRowTablePast,
+		    rowNode->biParent->biChildCount);
+	    }
+	if  ( rowNode->biRowPastHeaderRow > rowNode->biRowTablePast )
+	    {
+	    SLLDEB("####",
+		    rowNode->biRowPastHeaderRow,
+		    rowNode->biRowTablePast);
+	    }
+	}
+
+    if  ( rowNode->biChildCount != rp->rpCellCount )
+	{ SLLDEB("####", rowNode->biChildCount,rp->rpCellCount); }
+    }
+
+void docListNode(	int				indent,
+			const struct BufferItem *	node,
+			int				checkGeometry )
     {
     int				i;
 
     for ( i= 0; i < indent; i++ )
 	{ appDebug( "%-*s", IS, "." );	}
 
-    appDebug( "NODE %4d 0x%08lx: %s(%s) LEFT= %d PG: %d:%d..%d:%d\n",
+    appDebug( "NODE %4d 0x%08lx: %s(%s) LEFT= %d P%d/C%d/Y%d..P%d/C%d/Y%d\n",
 			    node->biNumberInParent,
 			    (unsigned long)node,
 			    docLevelStr( node->biLevel ),
@@ -440,8 +773,10 @@ void docListNode(	int			indent,
 			    node->biLeftParagraphs,
 			    node->biTopPosition.lpPage,
 			    node->biTopPosition.lpColumn,
+			    node->biTopPosition.lpPageYTwips,
 			    node->biBelowPosition.lpPage,
-			    node->biBelowPosition.lpColumn );
+			    node->biBelowPosition.lpColumn,
+			    node->biBelowPosition.lpPageYTwips );
 
     switch( node->biLevel )
 	{
@@ -456,42 +791,24 @@ void docListNode(	int			indent,
 	    break;
 
 	case DOClevROW:
+	    {
+	    const RowProperties *	rp= node->biRowProperties;
+
 	    appDebug( "%*s{ %s %4d children %d cells\n", IS* indent+ IS, "",
 				docIsRowNode(node)?"T:":"--",
 				node->biChildCount,
-				node->biRowCellCount );
+				docIsRowNode(node)?rp->rpCellCount:0 );
 
-	    if  ( node->biRowTableFirst >= 0	||
-		  node->biRowTablePast >= 0	||
-		  node->biRowTableHeaderRow >= 0	)
-		{
-		appDebug( "%*s  Table %d .. %d Header@%d\n", IS* indent+ IS, "",
-						node->biRowTableFirst,
-						node->biRowTablePast,
-						node->biRowTableHeaderRow );
-
-		if  ( node->biRowTableFirst >= node->biParent->biChildCount )
-		    {
-		    SLLDEB("####",
-			    node->biRowTableFirst,node->biParent->biChildCount);
-		    }
-		if  ( node->biRowTablePast > node->biParent->biChildCount )
-		    {
-		    SLLDEB("####",
-			    node->biRowTablePast,node->biParent->biChildCount);
-		    }
-		}
-
-	    if  ( docIsRowNode( node )				&&
-		  node->biChildCount != node->biRowCellCount	)
-		{ SLLDEB("####", node->biChildCount,node->biRowCellCount); }
+	    if  ( docIsRowNode( node ) )
+		{ docListRowNodeSpecific( indent, node );	}
 
 	    docListChildren( indent, node, checkGeometry );
+	    }
 
 	    break;
 
 	case DOClevPARA:
-	    docListParaNode( indent, node );
+	    docListParaNode( indent, node, checkGeometry );
 	    break;
 
 	case DOClevOUT:
@@ -504,9 +821,9 @@ void docListNode(	int			indent,
     return;
     }
 
-void docListRootNode(	int			indent,
-			const BufferItem *	node,
-			int			checkGeometry )
+void docListRootNode(	int				indent,
+			const struct BufferItem *	node,
+			int				checkGeometry )
     {
     while( node->biParent )
 	{ node= node->biParent;	}
@@ -514,5 +831,30 @@ void docListRootNode(	int			indent,
     docListNode( indent, node, checkGeometry );
 
     return;
+    }
+
+const char * docLevelStr( int level )
+    {
+    static char	scratch[12];
+
+    switch( level )
+	{
+	case DOClevANY:		return "ANY ";
+	case DOClevOUT:		return "OUT ";
+
+	case DOClevBODY:	return "BODY";
+	case DOClevSECT:	return "SECT";
+	case DOClevROW:		return "ROW ";
+	case DOClevCELL:	return "CELL";
+	case DOClevPARA:	return "PARA";
+	case DOClevSPAN:	return "SPAN";
+
+	case DOClevCOLUMN:	return "COLM";
+	case DOClevTABLE:	return "TABL";
+
+	default:
+	    sprintf( scratch, "%-4d", level );
+	    return scratch;
+	}
     }
 

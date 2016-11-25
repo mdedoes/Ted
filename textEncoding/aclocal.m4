@@ -1,125 +1,250 @@
 #####################################################################
 ##
+##   Look for pcre
+##
+#####################################################################
+
+AC_DEFUN(AC_PATH_PCRE,
+[
+    echo Checking for pcre...
+
+    PCRE_CFLAGS=
+    PCRE_LIBS=
+
+    PCRE_HEADERS_FOUND=NO
+    PCRE_LIBS_FOUND=NO
+    PCRE_FOUND=0
+
+    if  ( pkg-config libpcre --cflags ) > /dev/null 2>&1
+    then
+	PCRE_CFLAGS=`pkg-config libpcre --cflags`
+	PCRE_HEADERS_FOUND=YES
+    fi
+
+    if  ( pkg-config libpcre --libs ) > /dev/null 2>&1
+    then
+	PCRE_LIBS=`pkg-config libpcre --libs`
+	PCRE_LIBS_FOUND=YES
+    fi
+
+    ########  The hard way
+    if test $PCRE_HEADERS_FOUND = NO -o $PCRE_LIBS_FOUND = NO
+    then
+	h_so_tmp="$$.h_so_tmp"
+	trap "rm -f $h_so_tmp" 0
+	for h_so in \
+	    "/usr/include pcre.h /usr/lib64 pcre" \
+	    "/usr/include pcre.h /usr/lib pcre" \
+	    "/usr/local/include pcre.h /usr/local/lib pcre" \
+	    "/usr/local/include pcre.h /usr/lib pcre" \
+	    "/usr/pkg/include pcre.h /usr/pkg/lib pcre" \
+	    "/usr/include/pcre pcre.h /usr/lib/pcre pcre" \
+	    "/usr/local/include/pcre pcre.h /usr/local/lib/pcre pcre" \
+	    "/usr/apps/include pcre.h /usr/apps/lib pcre"
+	do
+	    echo $h_so
+	done > ${h_so_tmp}
+	while read hd h sod so
+	do
+	    if  test -f $hd/$h -a \
+		\( ${sod} = - -o -f ${sod}/lib${so}.so \
+		              -o -f ${sod}/lib${so}.dylib \)
+	    then
+		case $hd in
+		/usr/include)
+		    : ok
+		    ;;
+		*)
+		    PCRE_CFLAGS=-I${hd}
+		    ;;
+		esac
+
+		case $sod in
+		/usr/lib|/lib|-)
+		    PCRE_LIBS=-l${so}
+		    ;;
+		*)
+		    PCRE_LIBS="-L${sod} -l${so}"
+		    ;;
+		esac
+
+		PCRE_HEADERS_FOUND=YES
+		PCRE_LIBS_FOUND=YES
+		break
+	    fi
+	done < ${h_so_tmp}
+    fi
+    ########
+
+    #echo Includes : $PCRE_CFLAGS
+    #echo Libraries: $PCRE_LIBS
+
+    if  test $PCRE_HEADERS_FOUND = NO
+    then
+	PCRE_FOUND=0
+	AC_DEFINE(HAVE_PCRE,0)
+    else
+	PCRE_FOUND=1
+	AC_DEFINE(HAVE_PCRE,1)
+
+	if  test "$PCRE_CFLAGS" = "-I/usr/include"
+	then
+	    PCRE_CFLAGS=
+	fi
+    fi
+
+    AC_SUBST(PCRE_CFLAGS)dnl
+    AC_SUBST(PCRE_LIBS)dnl
+    AC_SUBST(PCRE_FOUND)dnl
+])
+#####################################################################
+##
 ##   Look for iconv
 ##
 #####################################################################
 
 AC_DEFUN(AC_PATH_ICONV,
 [
-    echo Checking for iconv...
+    echo Checking for libiconv...
 
-    ICONV_CFLAGS=
-    ICONV_LIBS=
-    ICONV_STATIC_REF=
-    ICONV_SHARED_REF=
+    LIBICONV_CFLAGS=
+    LIBICONV_LIBS=
 
-    ICONV_FOUND=0
+    LIBICONV_HEADERS_FOUND=NO
+    LIBICONV_LIBS_FOUND=NO
+    LIBICONV_FOUND=0
 
-    ac_iconv_includes=${ac_iconv_includes:-NO}
-    ac_iconv_libraries=${ac_iconv_libraries:-NO}
-    ac_iconv_static_lib=NO
-    ac_iconv_shared_lib=NO
-
-    if  test $ac_iconv_includes = "NO"
+    if  ( pkg-config libiconv --cflags ) > /dev/null 2>&1
     then
-	# Includes
-	for ac_dir in			\
-	    /usr/include		\
-	    /usr/local/include		\
-	    /usr/pkg/include		\
-	    /usr/local/include/iconv	\
-	    /usr/apps/include		\
-	    ../iconv
+	LIBICONV_CFLAGS=`pkg-config libiconv --cflags`
+	LIBICONV_HEADERS_FOUND=YES
+    fi
+
+    if  ( pkg-config libiconv --libs ) > /dev/null 2>&1
+    then
+	LIBICONV_LIBS=`pkg-config libiconv --libs`
+	LIBICONV_LIBS_FOUND=YES
+    fi
+
+    ########  The hard way
+    if test $LIBICONV_HEADERS_FOUND = NO -o $LIBICONV_LIBS_FOUND = NO
+    then
+	h_so_tmp="$$.h_so_tmp"
+	trap "rm -f $h_so_tmp" 0
+	for h_so in \
+	    "/usr/include iconv.h - iconv" \
+	    "/usr/local/include iconv.h /usr/local/lib iconv" \
+	    "/usr/local/include/iconv iconv.h /usr/local/lib/iconv iconv" \
+	    "/usr/pkg/include iconv.h /usr/pkg/lib iconv" \
+	    "/usr/apps/include iconv.h /usr/apps/lib iconv"
 	do
-	if  test -r "$ac_dir/iconv.h"
-	    then
-		ac_iconv_includes=$ac_dir
-		break
-	    fi
-	done
-    fi
-
-    if  test $ac_iconv_libraries = "NO"
-    then
-	# Libraries
-	for ac_dir in			\
-	    /usr/lib			\
-	    /usr/local/lib		\
-	    /usr/pkg/lib		\
-	    /usr/local/lib/iconv	\
-	    /usr/apps/lib		\
-	    ../iconv
+	    echo $h_so
+	done > ${h_so_tmp}
+	while read hd h sod so
 	do
-	found=no
-
-	if  test -r "$ac_dir/iconv.a"
+	    if  test -f $hd/$h -a \
+		\( ${sod} = - -o -f ${sod}/lib${so}.so \
+		              -o -f ${sod}/lib${so}.dylib \)
 	    then
-		ac_iconv_libraries=$ac_dir
-		ac_iconv_static_lib=$ac_dir/iconv.a
-		found=yes
+		case $hd in
+		/usr/include)
+		    : ok
+		    ;;
+		*)
+		    LIBICONV_CFLAGS=-I${hd}
+		    ;;
+		esac
+
+		case $sod in
+		/usr/lib|/lib|-)
+		    LIBICONV_LIBS=-l${so}
+		    ;;
+		*)
+		    LIBICONV_LIBS="-L${sod} -l${so}"
+		    ;;
+		esac
+
+		LIBICONV_HEADERS_FOUND=YES
+		LIBICONV_LIBS_FOUND=YES
 		break
 	    fi
-
-	if  test -r "$ac_dir/iconv.so"
-	    then
-		ac_iconv_libraries=$ac_dir
-		ac_iconv_shared_lib=$ac_dir/iconv.so
-		found=yes
-		break
-	    fi
-
-	if  test -r "$ac_dir/iconv.dylib"
-	    then
-		ac_iconv_libraries=$ac_dir
-		ac_iconv_shared_lib=$ac_dir/iconv.dylib
-		found=yes
-		break
-	    fi
-
-	if  test $found = yes
-	    then
-		break
-	    fi
-
-	done
+	done < ${h_so_tmp}
     fi
 
-    #echo Includes : $ac_iconv_includes
-    #echo Libraries: $ac_iconv_libraries
+    AC_ARG_WITH( LIBICONV,
+	[ --with-LIBICONV Use libiconv if available],
+	[
+	    if  test $withval = yes
+	    then
+		USE_LIBICONV=YES
+	    else
+		USE_LIBICONV=NO
+	    fi
+	],
+	[
+	    USE_LIBICONV=TEST;
+	])
 
-    if  test $ac_iconv_includes = NO
-    then
-	ICONV_FOUND=0
-	AC_DEFINE(HAVE_ICONV,0)
-    else
-	ICONV_FOUND=1
-	AC_DEFINE(HAVE_ICONV,1)
-	ICONV_CFLAGS=-I$ac_iconv_includes
+    case $LIBICONV_HEADERS_FOUND.$LIBICONV_LIBS_FOUND in
+	YES.YES)
+	    LIBICONV_FOUND=1
+	    HAVE_LIBICONV=YES
+	    ;;
+	*)
+	    LIBICONV_FOUND=0
+	    # Try for ourselves
+	    am_save_CFLAGS="$CFLAGS"
+	    $CFLAGS="$CFLAGS $LIBICONV_CFLAGS"
+	    AC_TRY_COMPILE([#include <iconv.h>],
+	      [iconv_open("UTF-8","ISO-8859-1");],
+		HAVE_LIBICONV=YES,HAVE_LIBICONV=NO,)
+	    $CFLAGS="$am_save_CFLAGS"
+	    ;;
+    esac
 
-	if  test "$ICONV_CFLAGS" = "-I/usr/include"
-	then
-	    ICONV_CFLAGS=
-	fi
-    fi
+    case $HAVE_LIBICONV.$USE_LIBICONV in
+	YES.TEST|YES.YES)
+	    echo 'Using libiconv'
+	    AC_DEFINE(HAVE_LIBICONV,1)
+	    AC_DEFINE(USE_LIBICONV,1)
+	    USE_LIBICONV=YES
+	    ;;
+	YES.NO)
+	    echo 'Avoiding libiconv'
+	    AC_DEFINE(HAVE_LIBICONV,1)
+	    AC_DEFINE(USE_LIBICONV,0)
+	    LIBICONV_CFLAGS=
+	    LIBICONV_LIBS=
+	    ;;
+	NO.TEST)
+	    echo 'No libiconv'
+	    AC_DEFINE(HAVE_LIBICONV,0)
+	    AC_DEFINE(USE_LIBICONV,0)
+	    USE_LIBICONV=NO
+	    LIBICONV_CFLAGS=
+	    LIBICONV_LIBS=
+	    ;;
+	NO.YES)
+	    echo '##### No libiconv found'
+	    AC_DEFINE(HAVE_LIBICONV,0)
+	    AC_DEFINE(USE_LIBICONV,0)
+	    ;;
+	*)
+	    ;;
+    esac
 
-    if  test $ac_iconv_libraries != NO
-    then
-	ICONV_LIBS="-L$ac_iconv_libraries"
+    # Do we need the loader flags?
+    case $USE_LIBICONV in
+	YES)
+	    # Trying to link without -liconv
+	    AC_TRY_LINK([#include <iconv.h>],
+	      [iconv_open("UTF-8","ISO-8859-1");],
+		LIBICONV_LIBS=,,)
+	    ;;
+	*)
+	    ;;
+    esac
 
-	if  test $ac_iconv_static_lib != NO
-	then
-	    ICONV_STATIC_REF="$ac_iconv_static_lib"
-	else
-	    ICONV_STATIC_REF="$ICONV_LIBS -liconv"
-	fi
-
-    ICONV_SHARED_REF="$ICONV_LIBS -liconv"
-
-    fi
-
-    AC_SUBST(ICONV_CFLAGS)dnl
-    AC_SUBST(ICONV_LIBS)dnl
-    AC_SUBST(ICONV_STATIC_REF)dnl
-    AC_SUBST(ICONV_SHARED_REF)dnl
-    AC_SUBST(ICONV_FOUND)dnl
+    AC_SUBST(LIBICONV_CFLAGS)dnl
+    AC_SUBST(LIBICONV_LIBS)dnl
 ])

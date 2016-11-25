@@ -7,10 +7,8 @@
 #   ifndef	DOC_PARA_STRING_H
 #   define	DOC_PARA_STRING_H
 
-#   include	"docBuf.h"
-#   include	"docTreeNode.h"
-
-struct TextConverter;
+struct BufferItem;
+struct ParagraphBuilder;
 
 /************************************************************************/
 /*									*/
@@ -18,47 +16,30 @@ struct TextConverter;
 /*									*/
 /************************************************************************/
 
-extern int docParaAppendText(	BufferDocument *	bd,
-				BufferItem *		paraBi,
-				const TextAttribute *	ta,
-				struct TextConverter *	tc,
-				const char *		text,
-				int			len );
+extern int docRedivideStringInParticules(
+				struct ParagraphBuilder *	pb );
+
+extern int docParaStringReplace( int *				pSizeShift,
+				struct BufferItem *		paraNode,
+				int				stroffBegin,
+				int				stroffTail,
+				const char *			addedString,
+				int				addedStrlen );
 
 extern int docParaDivideAppendedText(
-				BufferItem *		paraBi,
-				int			textAttributeNumber,
-				int			stroff,
-				int			upto );
+				struct ParagraphBuilder *	pb,
+				int				textAttrNr,
+				int				stroff,
+				int				upto );
 
-extern int docRedivideStringInParticules(
-				BufferItem *		bi,
-				int			strOff,
-				int			strLen,
-				int			part,
-				int			partsFree,
-				int			textAttributeNumber );
+extern int docParaNextStroff(	const struct BufferItem *	paraNode,
+				int				stroff );
 
-extern int docParaStringReplace(	int *			pSizeShift,
-					BufferItem *		bi,
-					int			stroffBegin,
-					int			stroffTail,
-					const char *		addedString,
-					int			addedStrlen );
+extern int docParaPrevStroff(	const struct BufferItem *	paraNode,
+				int				stroff );
 
-extern int docParaFixStroff(	const BufferItem *	paraBi,
-				int			stroff );
+extern int docParaFirstStroff(	const struct BufferItem *	paraNode );
 
-extern int docParaNextStroff(	const BufferItem *	paraBi,
-				int			stroff );
-
-extern int docParaPrevStroff(	const BufferItem *	paraBi,
-				int			stroff );
-
-extern int docParaFirstStroff(	const BufferItem *	paraBi );
-
-extern int docParaLastStroff(	const BufferItem *	paraBi );
-
-extern void docParaSetupTextConverter(	struct TextConverter *	tc );
+extern int docParaLastStroff(	const struct BufferItem *	paraNode );
 
 #   endif

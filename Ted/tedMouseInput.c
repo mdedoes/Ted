@@ -7,33 +7,34 @@
 #   include	"tedConfig.h"
 
 #   include	<stddef.h>
-#   include	<stdio.h>
 #   include	<ctype.h>
 
-#   include	<docScreenLayout.h>
-#   include	"tedApp.h"
+#   include	"tedDraw.h"
 #   include	"tedSelect.h"
-#   include	"tedDocFront.h"
+#   include	<tedDocFront.h>
+#   include	"tedDocMenu.h"
 #   include	"tedLayout.h"
 #   include	"tedDocument.h"
-#   include	"tedToolFront.h"
+#   include	<tedToolFront.h>
 #   include	<docField.h>
 #   include	<docHyperlinkField.h>
-#   include	<docTreeType.h>
-#   include	<guiWidgetDrawingSurface.h>
 #   include	<guiDrawingWidget.h>
 #   include	<docParaParticules.h>
+#   include	<docFieldKind.h>
+#   include	<docLayout.h>
+#   include	<appEditDocument.h>
+#   include	<appGuiDocument.h>
+#   include	<appEditApplication.h>
+#   include	<docBuf.h>
+#   include	<appDocFront.h>
 
-#   include	<appGuiKeys.h>
+#   include	<guiKeys.h>
 
 #   include	<appDebugon.h>
 
 /************************************************************************/
 /*									*/
 /*  Just log events that pass by for debugging purposes.		*/
-/*									*/
-/*  NOTE the silly constuction to do away with the 'unused' compiler	*/
-/*	 warning.							*/
 /*									*/
 /************************************************************************/
 
@@ -46,13 +47,13 @@ static void tedLogEvent(	Widget		w,
     {
     EditDocument *		ed= (EditDocument *)voided;
 
+    if  ( ! event )
+	{ return;	}
+
     appDebug( "EVENT \"%s\": %s\n",
 			ed->edTitle, APP_X11EventNames[event->type] );
 
     *pRefused= 1;
-
-    if  ( ! event )
-	{ return;	}
     }
 
 #   endif
@@ -68,9 +69,10 @@ typedef struct DraggingContext
     int				dcMouseX;
     int				dcMouseY;
     DocumentPosition		dcAnchorPosition;
-    BufferItem *		dcSelRootNode;
-    EditDocument *		dcEd;
-    DocumentTree *		dcTree;
+    struct BufferItem *		dcSelRootNode;
+    struct BufferItem *		dcSelBodySectNode;
+    struct EditDocument *	dcEd;
+    struct DocumentTree *	dcTree;
     LayoutContext		dcLayoutContext;
     } DraggingContext;
 
@@ -87,139 +89,18 @@ static int tedExtendSelectionToXY( DraggingContext *		dc )
     EditDocument *		ed= dc->dcEd;
 
     DocumentPosition		dpTo;
-    PositionGeometry		pgTo;
 
     int				ox= ed->edVisibleRect.drX0;
     int				oy= ed->edVisibleRect.drY0;
 
-    int				pageFound;
-    int				columnFound;
-
     dpTo= dc->dcAnchorPosition;
 
-    if  ( tedFindPosition( &dpTo, &pgTo, &pageFound, &columnFound,
-			    dc->dcSelRootNode,
+    if  ( tedFindPosition( &dpTo, dc->dcSelRootNode, dc->dcSelBodySectNode,
 			    lc, dc->dcMouseX+ ox, dc->dcMouseY+ oy ) )
 	{ /*LLDEB(mouseX,mouseY);*/ return 0; }
 
     if  ( tedExtendSelectionToPosition( ed, &(dc->dcAnchorPosition), &dpTo ) )
 	{ return -1;	}
-
-    return 0;
-    }
-
-/************************************************************************/
-/*									*/
-/*  Supposing te click is in a diffrent document tree, reformat that	*/
-/*  tree for the context of the click to determine where the location	*/
-/*  of the click in the document hierarchy.				*/
-/*									*/
-/************************************************************************/
-
-static int tedLayoutSelectedRoot(	const LayoutContext *	lc,
-					DocumentTree *		treeFound,
-					BufferItem *		rootNodeFound,
-					BufferItem *		bodySectBiSet,
-					int			page,
-					int			column )
-    {
-    DocumentPosition		dp;
-    int				inHeadFoot;
-    DocumentRectangle		drChanged;
-
-    docInitDocumentPosition( &dp );
-
-    inHeadFoot= rootNodeFound->biTreeType;
-
-    switch( inHeadFoot )
-	{
-	case DOCinBODY:
-	    break;
-
-	case DOCinFOOTNOTE:
-	case DOCinENDNOTE:
-	    if  ( ! treeFound )
-		{ XDEB(treeFound); return 1;	}
-	    else{
-		treeFound->dtPageSelectedUpon= page;
-		treeFound->dtColumnSelectedIn= column;
-		}
-	    break;
-
-	case DOCinFIRST_HEADER:
-	case DOCinLEFT_HEADER:
-	case DOCinRIGHT_HEADER:
-
-	case DOCinFIRST_FOOTER:
-	case DOCinLEFT_FOOTER:
-	case DOCinRIGHT_FOOTER:
-
-	    if  ( ! treeFound )
-		{ XDEB(treeFound); return 1;	}
-	    else{
-		treeFound->dtPageSelectedUpon= page;
-		treeFound->dtColumnSelectedIn= 0;
-
-		if  ( treeFound->dtPageFormattedFor != page )
-		    {
-		    const int	column0= 0;
-		    const int	adjustDocument= 0;
-
-		    /*  We do not expect the tree to change height here	*/
-		    if  ( docLayoutDocumentTree( treeFound, &drChanged,
-				page, column0, treeFound->dtY0UsedTwips,
-				bodySectBiSet, lc,
-				docStartScreenLayoutForTree, adjustDocument ) )
-			{ LDEB(page); return 1; }
-		    }
-		}
-	    break;
-
-	case DOCinFTNSEP:
-	case DOCinFTNSEPC:
-	case DOCinFTNCN:
-	case DOCinAFTNSEP:
-	case DOCinAFTNSEPC:
-	case DOCinAFTNCN:
-
-	    if  ( ! treeFound )
-		{ XDEB(treeFound); return 1;	}
-	    else{
-		int			changed= 0;
-		DocumentRectangle	drExternalSetX;
-		BufferItem *		bodySectBiSetX;
-
-		treeFound->dtPageSelectedUpon= page;
-		treeFound->dtColumnSelectedIn= column;
-
-		if  ( docCheckPageOfSelectedTree( &changed, &bodySectBiSetX,
-				    &drExternalSetX, treeFound, lc,
-				    docStartScreenLayoutForTree ) )
-		    { LDEB(1);	}
-
-		if  ( changed )
-		    { geoUnionRectangle( &drChanged, &drChanged, &drExternalSetX ); }
-		}
-	    break;
-
-	case DOCinSHPTXT:
-	    if  ( treeFound )
-		{
-		treeFound->dtPageSelectedUpon= page;
-		treeFound->dtColumnSelectedIn= column;
-		}
-	    break;
-
-	default:
-	    LDEB(rootNodeFound->biTreeType);
-
-	    if  ( treeFound )
-		{
-		treeFound->dtPageSelectedUpon= page;
-		treeFound->dtColumnSelectedIn= column;
-		}
-	    break;
-	}
 
     return 0;
     }
@@ -244,17 +125,19 @@ static void tedHandleMultiClick(EditDocument *			ed,
 
     if  ( seq > 2 )
 	{
-	int		partLineHead;
-	int		partLineTail;
+	int		line= 0;
 
-	docLineSelection( &dsNew, &partLineHead, &partLineTail,
-					    dpClick->dpNode, pgClick->pgLine );
+	if  ( docGetLineOfPosition( &line, dpClick, pgClick->pgPositionFlags ) )
+	    { LDEB(1); return;	}
+
+	docLineSelection( &dsNew, dpClick->dpNode, line );
 	}
     else{ dsNew= *dsWord;	}
 
     /*  Caller describes and adapts tools */
-    tedSetSelectionLow( ed, &dsNew, pgClick->pgPositionFlags & POSflagLINE_HEAD,
-							(int *)0, (int *)0 );
+    tedSetSelectionLow( ed, &dsNew,
+		    pgClick->pgPositionFlags & POSflagLINE_HEAD,
+		    (int *)0, (int *)0 );
 
     }
 
@@ -267,25 +150,25 @@ static void tedHandleMultiClick(EditDocument *			ed,
 static int tedSelectObject(	EditDocument *			ed,
 				const LayoutContext *		lc,
 				const DocumentSelection *	dsWord,
+				const PositionGeometry *	pgClick,
+				int				afterObject,
 				int				docX )
     {
-    BufferDocument *		bd= lc->lcDocument;
+    TedDocument *		td= (TedDocument *)ed->edPrivateData;
+    struct BufferDocument *	bd= lc->lcDocument;
 
     int				partObject;
     DocumentPosition		dpObject;
-    InsertedObject *		io;
+    struct InsertedObject *	io;
 
-    if  ( ! docGetObjectSelection( dsWord, bd, &partObject, &dpObject, &io ) )
+    if  ( ! docGetObjectSelection( &partObject, &dpObject, &io, bd, dsWord ) )
 	{
 	DocumentRectangle	drObject;
-	PositionGeometry	pgObject;
 	int			marg= 0;
 	int			wide;
 
-	tedPositionGeometry( &pgObject, &dpObject, PARAfindLAST, lc );
-
-	tedGetObjectRectangle( &drObject, (Point2DI *)0,
-						    io, &pgObject, lc, ed );
+	tedGetObjectRectangle( &drObject, (struct Point2DI *)0,
+				    io, pgClick, lc, afterObject, td );
 
 	wide= drObject.drX1- drObject.drX0+ 1;
 	if  ( wide > 10 )
@@ -298,7 +181,7 @@ static int tedSelectObject(	EditDocument *			ed,
 	    {
 	    /*  Caller describes and adapts tools */
 	    tedSetSelectionLow( ed, dsWord,
-				pgObject.pgPositionFlags & POSflagLINE_HEAD,
+				pgClick->pgPositionFlags & POSflagLINE_HEAD,
 				(int *)0, (int *)0 );
 	    return 0;
 	    }
@@ -326,7 +209,7 @@ static int tedFindMousePosition( APP_WIDGET			w,
 				APP_EVENT *			downEvent )
     {
     TedDocument *		td= (TedDocument *)ed->edPrivateData;
-    BufferDocument *		bd= td->tdDocument;
+    struct BufferDocument *	bd= td->tdDocument;
 
     int				ox= ed->edVisibleRect.drX0;
     int				oy= ed->edVisibleRect.drY0;
@@ -344,9 +227,8 @@ static int tedFindMousePosition( APP_WIDGET			w,
     int				seq;
     unsigned int		keyState= 0;
 
-    int				page;
-    int				column;
-    BufferItem *		rootNodeFound;
+    struct BufferItem *		rootNodeFound;
+    struct BufferItem *		bodySectNodeFound;
 
     if  ( guiGetCoordinatesFromMouseButtonEvent( &mouseX, &mouseY,
 					    &button, &upDown, &seq, &keyState,
@@ -354,7 +236,7 @@ static int tedFindMousePosition( APP_WIDGET			w,
 	{ LDEB(1); return 1;	}
 
     /********************************************************************/
-    /*  Cope with GTK that returns events for clicks in the ruler and	*/
+    /*  Cope with GTK, that returns events for clicks in the ruler and	*/
     /*  in the menu bar.						*/
     /********************************************************************/
     if  ( mouseX < 0 || mouseY < 0 )
@@ -376,30 +258,38 @@ static int tedFindMousePosition( APP_WIDGET			w,
     dc->dcSelRootNode= bd->bdBody.dtRoot;
     dc->dcTree= &(bd->bdBody);
 
-    if  ( tedFindRootForPosition( &(dc->dcAnchorPosition), pgClick,
-					    &(dc->dcTree), &rootNodeFound,
-					    &page, &column, ed, docX, docY ) )
+    if  ( tedFindPositionForCoordinates( &(dc->dcAnchorPosition), pgClick,
+			    &(dc->dcTree), &rootNodeFound, &bodySectNodeFound,
+			    ed, docX, docY ) )
 	{ /*LLDEB(docX,docY);*/ return 1;	}
 
     dc->dcSelRootNode= rootNodeFound;
+    dc->dcSelBodySectNode= bodySectNodeFound;
 
     sameRoot= docSelectionSameRoot( dsOld, rootNodeFound );
     if  ( sameRoot )
 	{
-	sameInstance= docSelectionSameInstance( dc->dcTree, page, column );
+	sameInstance= docSelectionSameInstance( dc->dcTree,
+					pgClick->pgTopPosition.lpPage,
+					pgClick->pgTopPosition.lpColumn );
 	}
 
     if  ( ! sameRoot || ! sameInstance )
 	{
-	SelectionScope	ss;
-	BufferItem *	bodySectNode;
+	SelectionScope		ss;
+	struct BufferItem *	bodySectNode;
 
 	docGetSelectionScope( &ss, rootNodeFound );
-	bodySectNode= docGetBodySectNodeOfScope( &ss, bd );
 
-	if  ( tedLayoutSelectedRoot( &(dc->dcLayoutContext),
-		    dc->dcTree, rootNodeFound, bodySectNode, page, column ) )
-	    { LDEB(page); return 1;	}
+	if  ( docGetRootOfSelectionScope( (struct DocumentTree **)0,
+						    &bodySectNode, bd, &ss ) )
+	    { LDEB(pgClick->pgTopPosition.lpPage); return 1;	}
+
+	if  ( docLayoutSelectedRoot( &(dc->dcLayoutContext), dc->dcTree,
+					rootNodeFound, bodySectNode,
+					pgClick->pgTopPosition.lpPage,
+					pgClick->pgTopPosition.lpColumn ) )
+	    { LDEB(pgClick->pgTopPosition.lpPage); return 1;	}
 
 	guiExposeDrawingWidget( ed->edDocumentWidget.dwWidget );
 	}
@@ -411,62 +301,6 @@ static int tedFindMousePosition( APP_WIDGET			w,
     *pKeyState= keyState;
 
     return 0;
-    }
-
-/************************************************************************/
-/*									*/
-/*  Avoid readonly fields.						*/
-/*									*/
-/************************************************************************/
-
-static void tedAvoidReadonlyField(	DraggingContext *	dc,
-					PositionGeometry *	pgClick,
-					int			docX )
-    {
-    DocumentField *		dfHead;
-    DocumentField *		dfTail;
-    int				headMoved= 0;
-    int				tailMoved= 0;
-    int				headPart= -1;
-    int				tailPart= -1;
-
-    DocumentPosition		dpHead= dc->dcAnchorPosition;
-    DocumentPosition		dpTail= dc->dcAnchorPosition;
-
-    docBalanceFieldSelection( &dfHead, &dfTail, &headMoved, &tailMoved,
-					    &headPart, &tailPart,
-					    &dpHead, &dpTail, dc->dcTree,
-					    dc->dcLayoutContext.lcDocument );
-
-    if  ( headMoved )
-	{
-	PositionGeometry	pg;
-
-	tedPositionGeometry( &pg, &dpHead, PARAfindLAST, &(dc->dcLayoutContext) );
-
-	if  ( docX <= pg.pgXPixels )
-	    {
-	    dc->dcAnchorPosition= dpHead;
-	    *pgClick= pg;
-	    return;
-	    }
-	}
-
-    if  ( tailMoved )
-	{
-	PositionGeometry	pg;
-
-	tedPositionGeometry( &pg, &dpTail, PARAfindFIRST, &(dc->dcLayoutContext) );
-
-	if  ( docX >= pg.pgXPixels )
-	    {
-	    dc->dcAnchorPosition= dpTail;
-	    *pgClick= pg;
-	    return;
-	    }
-	}
-
-    return;
     }
 
 /************************************************************************/
@@ -483,9 +317,9 @@ static int tedSelectMousePosition(
 				APP_EVENT *			downEvent )
     {
     TedDocument *		td= (TedDocument *)ed->edPrivateData;
-    BufferDocument *		bd= td->tdDocument;
+    struct BufferDocument *		bd= td->tdDocument;
 
-    int				docX;
+    int				docX= 0;
 
     int				sameRoot= 1;
     int				sameInstance= 1;
@@ -503,19 +337,18 @@ static int tedSelectMousePosition(
     PositionGeometry		pgClick;
     DocumentSelection		dsWord;
     int				wordIsObject= 0;
+    int				afterObject= 0;
 
     if  ( tedGetSelection( &dsOld, &sg, &sd,
-			    (DocumentTree **)0, (BufferItem **)0, ed ) )
+		    (struct DocumentTree **)0, (struct BufferItem **)0, ed ) )
 	{ LDEB(1); return 1;	}
 
     if  ( tedFindMousePosition( w, ed, dc, &dsOld, &sameRoot, &sameInstance,
 				&pgClick, &docX, &seq, &keyState, downEvent ) )
 	{ return 1;	}
 
-    tedAvoidReadonlyField( dc, &pgClick, docX );
-
-    docWordSelection( &dsWord, &wordIsObject, &(dc->dcAnchorPosition) );
-
+    docWordSelection( &dsWord, &wordIsObject, &afterObject,
+						&(dc->dcAnchorPosition) );
     if  ( seq > 1 )
 	{
 	tedHandleMultiClick( ed, &dsWord,
@@ -536,8 +369,8 @@ static int tedSelectMousePosition(
     docAvoidParaHeadField( &(dc->dcAnchorPosition), (int *)0, bd );
 
     if  ( wordIsObject							&&
-	  ! tedSelectObject( ed, &(dc->dcLayoutContext),
-						      &dsWord, docX )	)
+	  ! tedSelectObject( ed, &(dc->dcLayoutContext), 
+				&dsWord, &pgClick, afterObject, docX )	)
 	{ goto ready;	}
 
     if  ( ! docIsIBarSelection( &dsOld )				||
@@ -591,7 +424,9 @@ static APP_EVENT_HANDLER_H( tedInputDragMouseMove, w, vdc, event )
     return;
     }
 
-static APP_TIMER_HANDLER( tedTick, voiddc )
+static void tedTick(	void *		voiddc,
+			int		mouseX,
+			int		mouseY )
     {
     DraggingContext *		dc= (DraggingContext *)voiddc;
     EditDocument *		ed= dc->dcEd;
@@ -599,16 +434,8 @@ static APP_TIMER_HANDLER( tedTick, voiddc )
     int				ox= ed->edVisibleRect.drX0;
     int				oy= ed->edVisibleRect.drY0;
 
-    int				mouseX;
-    int				mouseY;
-
     int				scrolledX= 0;
     int				scrolledY= 0;
-
-    DocumentRectangle		drMouse;
-
-    guiGetCoordinatesRelativeToWidget( &mouseX, &mouseY,
-					    ed->edDocumentWidget.dwWidget );
 
     if  ( mouseX < -ox )
 	{ mouseX=  -ox;	}
@@ -619,12 +446,7 @@ static APP_TIMER_HANDLER( tedTick, voiddc )
     if  ( mouseY > ed->edFullRect.drY1- oy )
 	{ mouseY=  ed->edFullRect.drY1- oy;	}
 
-    drMouse.drX0= mouseX+ ox;
-    drMouse.drX1= mouseX+ ox;
-    drMouse.drY0= mouseY+ oy;
-    drMouse.drY1= mouseY+ oy;
-
-    appScrollToRectangle( ed, &drMouse, &scrolledX, &scrolledY );
+    appScrollToPosition( &scrolledX, &scrolledY, ed, mouseX+ ox, mouseY+ oy );
 
     if  ( scrolledX || scrolledY )
 	{
@@ -632,12 +454,7 @@ static APP_TIMER_HANDLER( tedTick, voiddc )
 	    { LDEB(1);	}
 	}
 
-#   ifdef USE_MOTIF
     return;
-#   endif
-#   ifdef USE_GTK
-    return 0;
-#   endif
     }
 
 static void tedButton1Pressed(	APP_WIDGET			w,
@@ -645,7 +462,7 @@ static void tedButton1Pressed(	APP_WIDGET			w,
 				APP_EVENT *			downEvent )
     {
     TedDocument *		td= (TedDocument *)ed->edPrivateData;
-    BufferDocument *		bd= td->tdDocument;
+    struct BufferDocument *	bd= td->tdDocument;
 
     DraggingContext		dc;
     unsigned int		keyState;
@@ -656,6 +473,8 @@ static void tedButton1Pressed(	APP_WIDGET			w,
 
     docInitHyperlinkField( &hf );
 
+    guiFocusToWidget( ed->edDocumentWidget.dwWidget );
+
     if  ( tedSelectMousePosition( &keyState, w, ed, &dc, downEvent ) )
 	{ goto ready;	}
 
@@ -663,7 +482,7 @@ static void tedButton1Pressed(	APP_WIDGET			w,
 
     if  ( ed->edFileReadOnly || ( keyState & KEY_CONTROL_MASK ) )
 	{
-	DocumentField *		dfHyperlink;
+	struct DocumentField *		dfHyperlink;
 
 	dfHyperlink= docFindTypedFieldForPosition( bd,
 				&(dc.dcAnchorPosition), DOCfkHYPERLINK, 0 );
@@ -679,7 +498,7 @@ static void tedButton1Pressed(	APP_WIDGET			w,
 	    }
 	}
 
-    appRunDragLoop( w, ed->edApplication, downEvent,
+    guiRunDragLoop( w, ed->edApplication->eaContext, downEvent,
 				(APP_EVENT_HANDLER_T)0, tedInputDragMouseMove,
 				TED_DRAG_INTERVAL, tedTick, (void *)&dc );
 
@@ -732,10 +551,9 @@ static void tedButton3Pressed(	APP_WIDGET			w,
     SelectionGeometry		sg;
     SelectionDescription	sd;
 
-    int				page;
-    int				column;
-    DocumentTree *		treeFound= (DocumentTree *)0;
-    BufferItem *		rootNodeFound;
+    struct DocumentTree *	treeFound= (struct DocumentTree *)0;
+    struct BufferItem *		rootNodeFound;
+    struct BufferItem *		bodySectNodeFound;
 
     LayoutContext		lc;
     DocumentPosition		dpClick;
@@ -744,7 +562,7 @@ static void tedButton3Pressed(	APP_WIDGET			w,
     tedSetScreenLayoutContext( &lc, ed );
 
     if  ( tedGetSelection( &dsOld, &sg, &sd,
-				(DocumentTree **)0, (BufferItem **)0, ed ) )
+		    (struct DocumentTree **)0, (struct BufferItem **)0, ed ) )
 	{ LDEB(1); return;	}
 
     if  ( guiGetCoordinatesFromMouseButtonEvent( &mouseX, &mouseY,
@@ -760,9 +578,9 @@ static void tedButton3Pressed(	APP_WIDGET			w,
     docX= mouseX+ ox;
     docY= mouseY+ oy;
 
-    if  ( tedFindRootForPosition( &dpClick, (PositionGeometry *)0,
-					    &treeFound, &rootNodeFound,
-					    &page, &column, ed, docX, docY ) )
+    if  ( tedFindPositionForCoordinates( &dpClick, (PositionGeometry *)0,
+				&treeFound, &rootNodeFound, &bodySectNodeFound,
+				ed, docX, docY ) )
 	{ LLDEB(docX,docY); return;	}
 
     otherRoot= ! docSelectionSameRoot( &dsOld, rootNodeFound );
@@ -786,7 +604,7 @@ static void tedButton3Pressed(	APP_WIDGET			w,
 	    { return;	}
 	}
 
-    tedShowFormatTool( td->tdToolsFormatToolOption, ed->edApplication );
+    tedAppShowFormatTool( td->tdToolsFormatToolOption, ed->edApplication );
 
     tedAdaptFormatToolToDocument( ed, 1 );
 
@@ -803,8 +621,8 @@ APP_EVENT_HANDLER_H( tedMouseButtonPressed, w, voided, downEvent )
     switch( button )
 	{
 	case MOUSE_BUTTON_1:
-#	    ifdef USE_MOTIF
-	    if  ( ! ed->edFileReadOnly		&&
+#	    if USE_MOTIF
+	    if  ( ! ed->edIsReadonly		&&
 		  downEvent->xbutton.subwindow	)
 		{
 		int	res= tedObjectDrag( w, ed, downEvent );
@@ -814,8 +632,8 @@ APP_EVENT_HANDLER_H( tedMouseButtonPressed, w, voided, downEvent )
 		}
 #	    endif
 
-#	    ifdef USE_GTK
-	    if  ( ! ed->edFileReadOnly )
+#	    if USE_GTK
+	    if  ( ! ed->edIsReadonly )
 		{
 		int	res= tedObjectDrag( w, ed, downEvent );
 
@@ -835,13 +653,13 @@ APP_EVENT_HANDLER_H( tedMouseButtonPressed, w, voided, downEvent )
 	    tedButton3Pressed( w, ed, downEvent );
 	    break;
 
-#	ifdef USE_MOTIF
+#	if USE_MOTIF
 	case Button4:
 	case Button5:
 	    break;
 #	endif
 
-#	ifdef USE_GTK
+#	if USE_GTK
 #	if GTK_MAJOR_VERSION < 2
 
 	case SCROLL_UP:

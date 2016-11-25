@@ -8,10 +8,12 @@
 
 #   include	<ctype.h>
 
-#   include	<appDebugon.h>
-
 #   include	"docEditStep.h"
 #   include	"docIntermediaryDocument.h"
+#   include	<docTreeNode.h>
+#   include	<docBuf.h>
+
+#   include	<appDebugon.h>
 
 /************************************************************************/
 /*									*/
@@ -43,7 +45,7 @@ void docInitEditStep(	EditStep *	es )
 
     es->esSelectionPosition= SELposTAIL;
 
-    es->esSourceDocument= (BufferDocument *)0;
+    es->esSourceDocument= (struct BufferDocument *)0;
     es->esSourceIsIntermediary= 0;
 
     docInitDocumentStyle( &(es->esNewStyle) );
@@ -65,7 +67,7 @@ void docCleanEditStep(	EditStep *	es )
 	if  ( es->esSourceIsIntermediary )
 	    {
 	    /* Shallow copies: Do not clean! */
-	    docInitDocumentProperties( &(es->esSourceDocument->bdProperties) );
+	    docInitDocumentProperties( es->esSourceDocument->bdProperties );
 
 	    docFreeIntermediaryDocument( es->esSourceDocument );
 	    }
@@ -84,20 +86,20 @@ void docCleanEditStep(	EditStep *	es )
     return;
     }
 
-BufferDocument * docEditStepMakeSourceDocument(	EditStep *		es,
-						const BufferDocument *	bdRef )
+struct BufferDocument * docEditStepMakeSourceDocument(	EditStep *		es,
+						const struct BufferDocument *	bdRef )
     {
-    BufferDocument *	bd;
+    struct BufferDocument *	bd;
 
     if  ( es->esSourceDocument )
-	{ XDEB(es->esSourceDocument); return (BufferDocument *)0;	}
+	{ XDEB(es->esSourceDocument); return (struct BufferDocument *)0;	}
 
     bd= docNewDocument( bdRef );
     if  ( ! bd )
-	{ XDEB(bd); return (BufferDocument *)0;	}
+	{ XDEB(bd); return (struct BufferDocument *)0;	}
 
     es->esSourceDocument= bd;
-    es->esSourceIsIntermediary= ( bdRef != (BufferDocument *)0 );
+    es->esSourceIsIntermediary= ( bdRef != (struct BufferDocument *)0 );
 
     return es->esSourceDocument;
     }

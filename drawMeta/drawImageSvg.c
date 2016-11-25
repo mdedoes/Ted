@@ -5,9 +5,12 @@
 
 #   include	"drawImageSvg.h"
 #   include	<sioBase64.h>
-#   include	<sioMemory.h>
-#   include	<sioHex.h>
 #   include	<bmio.h>
+#   include	<bmObjectReader.h>
+#   include	<svgWriter.h>
+#   include	<bitmap.h>
+#   include	<sioGeneral.h>
+#   include	<sioUtil.h>
 
 #   include	<appDebugon.h>
 
@@ -38,31 +41,31 @@ static int drawSvgStartImage(	SvgWriter *			sw,
 /************************************************************************/
 
 int drawRasterImageSvg(		SvgWriter *			sw,
-				const RasterImage *		abiSrc,
+				const RasterImage *		riSrc,
 				const DocumentRectangle *	drSrc,
 				const DocumentRectangle *	drDest )
     {
     int				rval= 0;
     XmlWriter *			xw= &(sw->swXmlWriter);
-    const RasterImage *	abi= abiSrc;
+    const RasterImage *	ri= riSrc;
 
-    RasterImage		abiDest;
+    RasterImage		riDest;
 
     SimpleOutputStream *	sosBase64= (SimpleOutputStream *)0;
 
-    bmInitRasterImage( &abiDest );
+    bmInitRasterImage( &riDest );
 
     if  ( drSrc )
 	{
 	if  ( drSrc->drX0 != 0					||
 	      drSrc->drY0 != 0					||
-	      drSrc->drX1 != abiSrc->riDescription.bdPixelsWide- 1	||
-	      drSrc->drY1 != abiSrc->riDescription.bdPixelsHigh- 1	)
+	      drSrc->drX1 != riSrc->riDescription.bdPixelsWide- 1	||
+	      drSrc->drY1 != riSrc->riDescription.bdPixelsHigh- 1	)
 	    {
-	    if  ( bmSelect( &abiDest, abiSrc, drSrc ) )
+	    if  ( bmSelect( &riDest, riSrc, drSrc ) )
 		{ LDEB(1); rval= -1; goto ready;	}
 
-	    abi= &abiDest;
+	    ri= &riDest;
 	    }
 	}
 
@@ -74,7 +77,7 @@ int drawRasterImageSvg(		SvgWriter *			sw,
     sosBase64= sioOutBase64Open( xw->xwSos );
     if  ( ! sosBase64 )
 	{ XDEB(sosBase64); rval= -1; goto ready;	}
-    if  ( bmPngWritePng( &(abi->riDescription), abi->riBytes, sosBase64 ) )
+    if  ( bmPngWritePng( &(ri->riDescription), ri->riBytes, sosBase64 ) )
 	{ XDEB(sosBase64); rval= -1; goto ready;	}
     sioOutClose( sosBase64 ); sosBase64= (SimpleOutputStream *)0;
     xmlPutString( "\"", xw );
@@ -85,7 +88,7 @@ int drawRasterImageSvg(		SvgWriter *			sw,
 
   ready:
 
-    bmCleanRasterImage( &abiDest );
+    bmCleanRasterImage( &riDest );
 
     if  ( sosBase64 )
 	{ sioOutClose( sosBase64 );	}
@@ -102,18 +105,16 @@ int drawRasterImageSvg(		SvgWriter *			sw,
 
 int drawRasterImageSvgFromData(	SvgWriter *			sw,
 				const char *			contentType,
-				const MemoryBuffer *		mb,
+				const struct MemoryBuffer *	mb,
 				const DocumentRectangle *	drDest )
     {
     int				rval= 0;
     XmlWriter *			xw= &(sw->swXmlWriter);
 
     SimpleOutputStream *	sosBase64= (SimpleOutputStream *)0;
-    SimpleInputStream *		sisMem= (SimpleInputStream *)0;
-    SimpleInputStream *		sisHex= (SimpleInputStream *)0;
+    ObjectReader		or;
 
-    int				done;
-    unsigned char		buf[1024];
+    bmInitObjectReader( &or );
 
     drawSvgStartImage( sw, drDest );
 
@@ -126,18 +127,11 @@ int drawRasterImageSvgFromData(	SvgWriter *			sw,
     if  ( ! sosBase64 )
 	{ XDEB(sosBase64); rval= -1; goto ready;	}
 
-    sisMem= sioInMemoryOpen( mb );
-    if  ( ! sisMem )
-	{ XDEB(sisMem); rval= -1; goto ready;	}
-    sisHex= sioInHexOpen( sisMem );
-    if  ( ! sisHex )
-	{ XDEB(sisHex); rval= -1; goto ready;	}
+    if  ( bmOpenObjectReader( &or, mb ) )
+	{ LDEB(1); rval= -1; goto ready;	}
 
-    while( ( done= sioInReadBytes( sisHex, buf, sizeof(buf) ) ) > 0 )
-	{
-	if  ( sioOutWriteBytes( sosBase64, buf, done ) != done )
-	    { LDEB(done);	}
-	}
+    if  ( sioCopyStream( sosBase64, or.orSisHex ) )
+	{ LDEB(1); rval= -1; goto ready;	}
 
     sioOutClose( sosBase64 ); sosBase64= (SimpleOutputStream *)0;
     xmlPutString( "\"", xw );
@@ -148,10 +142,8 @@ int drawRasterImageSvgFromData(	SvgWriter *			sw,
 
   ready:
 
-    if  ( sisHex )
-	{ sioInClose( sisHex );	}
-    if  ( sisMem )
-	{ sioInClose( sisMem );	}
+    bmCleanObjectReader( &or );
+
     if  ( sosBase64 )
 	{ sioOutClose( sosBase64 );	}
 

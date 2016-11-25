@@ -1,3 +1,24 @@
+Ted (2.23e) tbd; urgency=medium
+  * New upstream release.
+    See http://ftp.nluug.nl/pub/editors/ted/announce.html
+    - Use Enchant (http://http://www.abisource.com/projects/enchant/) 
+      for spell checking rather than a self-invented wheel.
+    - Include translations in the general package and eliminate the 
+      localized packages
+    - Remember the language inside the document and support multiple languages
+      inside the same document.
+    - Make it possible to exclude parts of the text from spell checking.
+    - Spelling/Language part brushed up.
+    - Command line calls to concatinate (RTF and other) documents.
+    - New Footnotes/Endnotes derive formatting from the previous one.
+    - Formula fields.
+    - Use much less memory in some cases.
+    - New tables now have borders around the cells.
+    - Preparations for GTK3.
+    - Fixup images without size information.
+    - Many-many annoying bugs fixed.
+ -- Mark de Does <mark@mdedoes.com>  Sun, 09 Mar 2014 09:00:00 +0100
+
 Ted (2.23) tbd; urgency=medium
   * New upstream release.
     See http://ftp.nluug.nl/pub/editors/ted/announce.html
@@ -96,7 +117,7 @@ Ted (2.11) tbd; urgency=medium
     See http://ftp.nluug.nl/pub/editors/ted/announce.html
     - Footnotes and endnotes.
     - Detailed manipulation of the tabulator settings with a 'Tabs' tool.
- -- Mark de Does <mark@mdedoes.com>  Sun, 01 Mar 2002 09:00:00 +0100
+ -- Mark de Does <mark@mdedoes.com>  Fri, 01 Mar 2002 09:00:00 +0100
 
 Ted (2.10) tbd; urgency=medium
   * New upstream release.
@@ -114,7 +135,7 @@ Ted (2.9) tbd; urgency=medium
     - The improvements in WMF drawing and support for PAGEREF fields make 
       the pdf files from the printed postscript very similar to the RTF 
       original.
- -- Mark de Does <mark@mdedoes.com>  Mon, 31 Jan 2001 09:00:00 +0100
+ -- Mark de Does <mark@mdedoes.com>  Wed, 31 Jan 2001 09:00:00 +0100
 
 Ted (2.8) tbd; urgency=medium
   * New upstream release.
@@ -124,7 +145,7 @@ Ted (2.8) tbd; urgency=medium
     - The spelling packages have been renamed since Ted 2.6 to comply 
       with naming conventions. If rpm complains about conflicts, please 
       remove the conflicting old package using the command rpm -e old_package.
- -- Mark de Does <mark@mdedoes.com>  Tue, 15 Apr 2000 09:00:00 +0100
+ -- Mark de Does <mark@mdedoes.com>  Sat, 15 Apr 2000 09:00:00 +0100
 
 Ted (2.7) tbd; urgency=medium
   * New upstream release.

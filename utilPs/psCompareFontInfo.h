@@ -8,7 +8,7 @@
 #   ifndef	PS_CMP_FONT_INFO_H
 #   define	PS_CMP_FONT_INFO_H
 
-#   include	"psFontInfo.h"
+struct AfmFontInfo;
 
 /************************************************************************/
 /*									*/
@@ -24,7 +24,7 @@ extern int psFontCompareInfosExcludingFamily(	const void *	voidpafi1,
 
 extern void psFontFaceDistance(		int *			pDifCount,
 					double *		pDistance,
-					const AfmFontInfo *	afi1,
+					const struct AfmFontInfo *	afi1,
 					int			isSlanted,
 					int			weight );
 

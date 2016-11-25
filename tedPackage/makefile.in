@@ -12,8 +12,8 @@ PREFIX=		@PREFIX@
 
 #
 #		Name of the binary arrchive
-VERSION=	2.23
-BINDIST=	ted-2.23-$(PLATFORM)
+VERSION=	2.23h
+BINDIST=	ted-2.23h-$(PLATFORM)
 TGZ=		$(BINDIST).tar.gz
 #
 #
@@ -30,6 +30,7 @@ PKGEXEC_PREFIX=	$(PKGDESTDIR)@Q_EXEC_PREFIX@
 PKGDATADIR=	$(PKGDESTDIR)@Q_DATADIR@
 PKGBINDIR=	$(PKGDESTDIR)@Q_BINDIR@
 PKGMANDIR=	$(PKGDATADIR)/man/man1
+PKGICONDIR=	$(PKGDATADIR)/icons/hicolor/48x48/apps
 
 PKGEXEC_BIN=	$(PKGBINDIR)/Ted
 
@@ -112,7 +113,10 @@ package.shared:	../Ted/Ted $(PKGDATAFILES)
 ########################################################################
 
 install: # run as a script
-	cat $(TGZ) | ( DESTDIR=$${DESTDIR:-/} && cd $${DESTDIR} && umask 0 && tar xvfz - )
+	gzip -d < $(TGZ) | ( DESTDIR=$${DESTDIR:-/} && cd $${DESTDIR} && umask 0 && tar xvf - )
+
+postinstall:
+	sh @Q_DATADIR@/Ted/examples/postinstall.sh
 
 ########################################################################
 #
@@ -192,11 +196,23 @@ datadir:	README		\
 	chmod 755 $(PKGDIRS)
 	:
 	( cd $(PKGDATADIR)/Ted && umask 0 && tar xvf - ) < TedDatadir.tar
-	cp $(PKGDATADIR)/Ted/TedDocument-en_US.rtf TedDocument-en_US.rtf
+	cp $(PKGDATADIR)/Ted/doc/TedDocument-en_US.rtf TedDocument-en_US.rtf
 	( umask 022 && mkdir -p $(PKGMANDIR) )
 	sh ./customize.sh $(CUSTOMIZE_ARGS) < $(PKGDATADIR)/Ted/doc/Ted.1 | \
-					    gzip -9 > $(PKGMANDIR)/Ted.1.gz
+					    gzip -n -9 > $(PKGMANDIR)/Ted.1.gz
 	chmod 644 $(PKGMANDIR)/Ted.1.gz
+	:
+	set -e; for pr in $(PKGDATADIR)/Ted/config/*.properties \
+		    $(PKGDATADIR)/Ted/config/Ted.properties.sample ;\
+	do \
+	    sh ./customize.sh $(CUSTOMIZE_ARGS) < $$pr > scratch.properties ;\
+	    cp scratch.properties $$pr ;\
+	done
+	rm -f scratch.properties
+	:
+	( umask 022 && mkdir -p $(PKGICONDIR) )
+	cp $(PKGDATADIR)/Ted/Ted48.png $(PKGICONDIR)/Ted.png
+	chmod 644 $(PKGICONDIR)/Ted.png
 	:
 	cp $(PKGLSMNAME) $(PKGTEDVARIADIR)/$(PKGLSMNAME)
 	cp Ted.desktop $(PKGDESKTOPDIR)/Ted.desktop

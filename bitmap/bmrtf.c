@@ -1,11 +1,13 @@
 #   include	"bitmapConfig.h"
 
-#   include	"bmintern.h"
+#   include	"bmformats.h"
 #   include	"bmio.h"
-#   include	<appDebugon.h>
 #   include	<sioFileio.h>
 #   include	<sioHex.h>
 #   include	<geoUnits.h>
+#   include	<sioGeneral.h>
+
+#   include	<appDebugon.h>
 
 /************************************************************************/
 /*									*/
@@ -13,8 +15,7 @@
 /*									*/
 /************************************************************************/
 
-static int bmRtfStartRtf(	const BitmapDescription *	bd,
-				const char *			type,
+static int bmRtfStartRtf(	const char *			type,
 				SimpleOutputStream *		sos )
     {
     sioOutPrintf( sos, "{\\rtf1\\ansi\r\n" );
@@ -53,7 +54,7 @@ int bmRtfWritePngRtf(		const BitmapDescription *	bd,
     SimpleOutputStream *	sosHex= (SimpleOutputStream *)0;
     const int			lastNl= 1;
 
-    bmRtfStartRtf( bd, "\\pngblip", sos );
+    bmRtfStartRtf( "\\pngblip", sos );
     bmRtfImageSize( bd, sos );
 
     sosHex= sioOutHexOpenFolded( sos, 72, lastNl );
@@ -76,7 +77,7 @@ int bmRtfWriteJfifRtf(		const BitmapDescription *	bd,
     SimpleOutputStream *	sosHex= (SimpleOutputStream *)0;
     const int			lastNl= 1;
 
-    bmRtfStartRtf( bd, "\\jpegblip", sos );
+    bmRtfStartRtf( "\\jpegblip", sos );
     bmRtfImageSize( bd, sos );
 
     sosHex= sioOutHexOpenFolded( sos, 72, lastNl );
@@ -103,7 +104,7 @@ int bmRtfWriteWmfRtf(		const BitmapDescription *	bd,
     if  ( ! sosHex )
 	{ XDEB(sosHex); return -1;	}
 
-    bmRtfStartRtf( bd, "\\wmetafile8\\picbmp", sos );
+    bmRtfStartRtf( "\\wmetafile8\\picbmp", sos );
     sioOutPrintf( sos, "\\picbpp%d", bd->bdBitsPerPixel );
     bmRtfImageSize( bd, sos );
 
@@ -148,7 +149,7 @@ int bmCanWriteRtfFile(	const BitmapDescription *	bd,
 	}
     }
 
-int bmWriteRtfFile(	const MemoryBuffer *		filename,
+int bmWriteRtfFile(	const struct MemoryBuffer *	filename,
 			const unsigned char *		buffer,
 			const BitmapDescription *	bd,
 			int				privateFormat )

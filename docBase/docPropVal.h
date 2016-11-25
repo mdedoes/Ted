@@ -10,48 +10,6 @@
 
 /************************************************************************/
 /*									*/
-/*  Levels of document item tree nesting.				*/
-/*									*/
-/************************************************************************/
-
-typedef enum ItemLevel
-    {
-			/************************************************/
-			/*  Ignore; Garbage values.			*/
-			/************************************************/
-    DOClevANY,
-    DOClevOUT,
-			/************************************************/
-			/*  Different kinds of BufferItems.		*/
-			/************************************************/
-    DOClevBODY,
-    DOClevSECT,
-    DOClevROW,
-    DOClevCELL,
-    DOClevPARA,
-			/************************************************/
-			/*  Not really a level: Plain text.		*/
-			/************************************************/
-    DOClevSPAN,
-			/************************************************/
-			/*  Not really a level: To be investigated	*/
-			/*  Values currently only used in the RTF	*/
-			/*  parser for tags that it ignores or handles	*/
-			/*  in a special way.				*/
-			/************************************************/
-    DOClevNESTCELL,
-    DOClevNESTROW,
-			/************************************************/
-    DOClevNONESTTABLES,
-			/************************************************/
-    DOClevCOLUMN,
-    DOClevTABLE,
-
-    DOClev_COUNT
-    } ItemLevel;
-
-/************************************************************************/
-/*									*/
 /*  Breaks before sections. DOCibkNONE, DOCibkCOL and DOCibkPAGE are	*/
 /*  also used for paragraphs.						*/
 /*									*/
@@ -62,14 +20,18 @@ typedef enum ItemBreak
     DOCibkNONE= 0,
     DOCibkCOL,
     DOCibkPAGE,
-#   define DOCibkpara_COUNT DOCibkEVEN
+    /*
+     *  Only used for sections in documents with different odd
+     *  and even pages.
+     */
     DOCibkEVEN,
     DOCibkODD,
 
     DOCibk_COUNT
     } ItemBreak;
 
-#   define	DOCibksect_COUNT DOCibk_COUNT
+#   define DOCibkpara_COUNT DOCibkEVEN
+#   define DOCibksect_COUNT DOCibk_COUNT
 
 /************************************************************************/
 /*									*/
@@ -79,9 +41,33 @@ typedef enum ItemBreak
 
 typedef enum TextHorizontalAlignment
     {
+	/**
+	 *  The alignment of the paragraph is the same as the paragraph 
+	 *  direction. [MS-Word displays the paragraph direction in the
+	 *  paragraph tool. I.E 'Left' in a left-to-right paragraph and 
+	 *  'Right' in a right-to-left paragraph.
+	 */
     DOCthaLEFT= 0,
+
+	/**
+	 *  The alignment of the paragraph is the opposite of the paragraph 
+	 *  direction. [MS-Word displays the opposite paragraph direction in 
+	 *  the paragraph tool. I.E 'Right' in a left-to-right paragraph and 
+	 *  'Left' in a right-to-left paragraph.
+	 */
     DOCthaRIGHT,
+
+	/**
+	 *  Text is centered in the paragraph frame
+	 */
     DOCthaCENTERED,
+
+	/**
+	 *  Text is justified. I.E all lines get extra space to have 
+	 *  a left- and a right hand side margin. The last (incomplete) 
+	 *  line is left aligned for left-to-right paragraphs and it 
+	 *  is right aligned for right-to-left paragraphs
+	 */
     DOCthaJUSTIFIED,
 
     DOCtha_COUNT

@@ -7,12 +7,11 @@
 #   include	"tedConfig.h"
 
 #   include	<stddef.h>
-#   include	<stdio.h>
 #   include	<ctype.h>
 
 #   include	"tedEdit.h"
 #   include	"tedSelect.h"
-#   include	"tedDocFront.h"
+#   include	<tedDocFront.h>
 #   include	"tedDocument.h"
 #   include	<docRtfTrace.h>
 #   include	<docSelect.h>
@@ -25,6 +24,13 @@
 #   include	<docEditCommand.h>
 #   include	<docRtfTraceImpl.h>
 #   include	<docParaParticules.h>
+#   include	<docDocumentField.h>
+#   include	<docFieldKind.h>
+#   include	<docDebug.h>
+#   include	<docDocumentCopyJob.h>
+#   include	<docEditStep.h>
+#   include	<appEditDocument.h>
+#   include	<docBuf.h>
 
 #   include	<appDebugon.h>
 
@@ -42,15 +48,15 @@ static int tedRepeatInsertHeaderFooter(	EditDocument *		ed,
 					int			traced )
     {
     TedDocument *		td= (TedDocument *)ed->edPrivateData;
-    BufferDocument *		bd= td->tdDocument;
-    DocumentProperties *	dp= &(bd->bdProperties);
+    struct BufferDocument *	bd= td->tdDocument;
+    DocumentProperties *	dp= bd->bdProperties;
 
     DocumentSelection		ds;
     SelectionGeometry		sg;
     SelectionDescription	sd;
 
-    DocumentTree *		dt;
-    BufferItem *		bodySectNode;
+    struct DocumentTree *		dt;
+    struct BufferItem *		bodySectNode;
     int				treeType= es->esNewSelectionScope.ssTreeType;
 
     if  ( tedGetSelection( &ds, &sg, &sd, &dt, &bodySectNode, ed ) )
@@ -82,15 +88,15 @@ static int tedRepeatDeleteHeaderFooter(	EditDocument *		ed,
 					int			traced )
     {
     TedDocument *		td= (TedDocument *)ed->edPrivateData;
-    BufferDocument *		bd= td->tdDocument;
-    DocumentProperties *	dp= &(bd->bdProperties);
+    struct BufferDocument *		bd= td->tdDocument;
+    DocumentProperties *	dp= bd->bdProperties;
 
     DocumentSelection		ds;
     SelectionGeometry		sg;
     SelectionDescription	sd;
 
-    DocumentTree *		dt;
-    BufferItem *		bodySectNode;
+    struct DocumentTree *		dt;
+    struct BufferItem *		bodySectNode;
     int				treeType= es->esOldSelectionScope.ssTreeType;
 
     if  ( tedGetSelection( &ds, &sg, &sd, &dt, &bodySectNode, ed ) )
@@ -218,7 +224,7 @@ static int tedRepeatSetField(	EditDocument *		ed,
 
 static int tedRepeatUpdProps(	EditDocument *		ed,
 				const EditStep *	es,
-				int			traced )
+				int			isRepeat )
     {
     int				rval= 0;
 
@@ -230,17 +236,57 @@ static int tedRepeatUpdProps(	EditDocument *		ed,
     DocumentSelection		ds;
 
     const int			fullWidth= 0;
+    int				level= es->esPropLevel;
 
-    tedStartEditOperation( &teo, &sg, &sd, ed, fullWidth, traced );
+    const int			direction= 0;
+    const PropertyMask *	rowMask= &(es->esNewStyle.dsRowMask);
+
+    tedStartEditOperation( &teo, &sg, &sd, ed, fullWidth, isRepeat );
 
     docEditOperationGetSelection( &ds, eo );
 
+    switch( es->esCommand )
+	{
+	case EDITcmdUPD_SPAN_PROPS:
+	case EDITcmdUPD_PARA_PROPS:
+	case EDITcmdUPD_SECT_PROPS:
+	case EDITcmdUPD_SECTDOC_PROPS:
+	case EDITcmdUPD_DOC_PROPS:
+	    level= es->esPropLevel;
+	    break;
+
+	case EDITcmdUPD_CELL_PROPS:
+	    rowMask= (const PropertyMask *)0;
+	    level= es->esPropLevel;
+	    break;
+
+	case EDITcmdUPD_TABLE_PROPS:
+	    level= DOClevTABLE;
+	    docSelectWholeTable( &ds );
+	    break;
+
+	case EDITcmdUPD_ROW_PROPS:
+	    level= DOClevROW;
+	    docSelectRow( &ds, direction, 1 ); /* allColumns=1 */
+	    break;
+
+	case EDITcmdUPD_COLUMN_PROPS:
+	    rowMask= (const PropertyMask *)0;
+	    level= DOClevCOLUMN;
+	    docSelectWholeCell( &ds, direction, 1 ); /* allRows= 1 */
+	    break;
+
+	default:
+	    LDEB(es->esCommand);
+	    return -1;
+	}
+
     if  ( tedEditChangeSelectionProperties( &teo, &ds,
-		es->esPropLevel, es->esCommand,
+		level, es->esCommand,
 		&(es->esNewStyle.dsTextMask), &(es->esNewStyle.dsTextAttribute),
 		&(es->esNewStyle.dsParaMask), &(es->esNewStyle.dsParaProps),
 		&(es->esNewStyle.dsCellMask), &(es->esNewStyle.dsCellProps),
-		&(es->esNewStyle.dsRowMask), &(es->esNewStyle.dsRowProps),
+		rowMask, &(es->esNewStyle.dsRowProps),
 		&(es->esNewStyle.dsSectMask), &(es->esNewStyle.dsSectProps),
 		&(es->esNewDocPropMask), &(es->esNewDocProps) ) )
 	{ LDEB(1); rval= -1; goto ready;	}
@@ -262,7 +308,7 @@ static int tedRepeatUpdObject(	EditDocument *		ed,
 				const EditStep *	es,
 				int			traced )
     {
-    const PictureProperties *	pipFrom;
+    const struct PictureProperties *	pipFrom;
 
     pipFrom= docTraceGetFromPictureProps( es );
     if  ( ! pipFrom )
@@ -328,10 +374,12 @@ static int tedRepeatInsertTable(	EditDocument *		ed,
 					const EditStep *	es,
 					int			traced )
     {
-    DocumentPosition	dp;
-    BufferItem *	rowNode;
+    DocumentPosition		dp;
+    struct BufferItem *		rowNode;
+    const struct BufferDocument *	bdSrc= es->esSourceDocument;
+    const RowProperties *	rpSrc;
 
-    if  ( docHeadPosition( &dp, es->esSourceDocument->bdBody.dtRoot ) )
+    if  ( docHeadPosition( &dp, bdSrc->bdBody.dtRoot ) )
 	{ LDEB(1); return -1;	}
 
     rowNode= docGetRowNode( dp.dpNode );
@@ -344,14 +392,16 @@ static int tedRepeatInsertTable(	EditDocument *		ed,
 	if  ( ! rowNode )
 	    {
 	    XDEB(rowNode);
-	    docListNode(0,es->esSourceDocument->bdBody.dtRoot,0);
+	    docListNode(0,bdSrc->bdBody.dtRoot,0);
 	    return -1;
 	    }
 	}
 
+    rpSrc= rowNode->biRowProperties;
+
     return tedInsertTable( ed,
 			    rowNode->biRowTablePast- rowNode->biRowTableFirst,
-			    rowNode->biRowCellCount, traced );
+			    rpSrc->rpCellCount, traced );
     }
 
 /************************************************************************/
@@ -416,7 +466,7 @@ int tedDocRepeat(	EditDocument *		ed )
     int				rval= 0;
     TedDocument *		td= (TedDocument *)ed->edPrivateData;
     EditTrace *			et= &(td->tdEditTrace);
-    BufferDocument *		bd= td->tdDocument;
+    struct BufferDocument *		bd= td->tdDocument;
 
     EditStep			es;
     const int			direction= 1;
@@ -486,11 +536,11 @@ int tedDocRepeat(	EditDocument *		ed )
 		{ LDEB(es.esCommand); rval= -1; goto ready;	}
 	    break;
 	case EDITcmdDELETE_COLUMN:
-	    if  ( tedDocDeleteColumn( ed, isRepeat ) )
+	    if  ( tedDocDeleteColumns( ed, isRepeat ) )
 		{ LDEB(es.esCommand); rval= -1; goto ready;	}
 	    break;
 	case EDITcmdDELETE_ROW:
-	    if  ( tedDocDeleteRow( ed, isRepeat ) )
+	    if  ( tedDocDeleteRows( ed, isRepeat ) )
 		{ LDEB(es.esCommand); rval= -1; goto ready;	}
 	    break;
 	case EDITcmdDELETE_TABLE:
@@ -560,10 +610,25 @@ int tedDocRepeat(	EditDocument *		ed )
 
 	case EDITcmdUPD_SPAN_PROPS:
 	case EDITcmdUPD_PARA_PROPS:
-	case EDITcmdUPD_TABLE_PROPS:
+	case EDITcmdUPD_CELL_PROPS:
 	case EDITcmdUPD_SECT_PROPS:
 	case EDITcmdUPD_SECTDOC_PROPS:
 	case EDITcmdUPD_DOC_PROPS:
+	    if  ( tedRepeatUpdProps( ed, &es, isRepeat ) )
+		{ LDEB(es.esCommand); rval= -1; goto ready;	}
+	    break;
+
+	case EDITcmdUPD_TABLE_PROPS:
+	    if  ( tedRepeatUpdProps( ed, &es, isRepeat ) )
+		{ LDEB(es.esCommand); rval= -1; goto ready;	}
+	    break;
+
+	case EDITcmdUPD_ROW_PROPS:
+	    if  ( tedRepeatUpdProps( ed, &es, isRepeat ) )
+		{ LDEB(es.esCommand); rval= -1; goto ready;	}
+	    break;
+
+	case EDITcmdUPD_COLUMN_PROPS:
 	    if  ( tedRepeatUpdProps( ed, &es, isRepeat ) )
 		{ LDEB(es.esCommand); rval= -1; goto ready;	}
 	    break;
@@ -578,7 +643,8 @@ int tedDocRepeat(	EditDocument *		ed )
 	    break;
 
 	case EDITcmdUPD_LIST:
-	    if  ( tedDocChangeCurrentList( ed, &(es.esDocumentList), isRepeat ) )
+	    if  ( tedDocChangeCurrentList( ed,
+				    &(es.esDocumentList), isRepeat ) )
 		{ LDEB(es.esCommand); rval= -1; goto ready;	}
 	    break;
 	case EDITcmdSET_NEW_LIST:

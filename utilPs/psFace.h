@@ -18,8 +18,10 @@
 #   ifndef	UTIL_POSTSCRIPT_FACE_H
 #   define	UTIL_POSTSCRIPT_FACE_H
 
-#   include	"psFontInfo.h"
-#   include	"textAttribute.h"
+#   include	<utilMemoryBuffer.h>
+
+struct AfmFontInfo;
+struct TextAttribute;
 
 #   define	FACElenID	24
 
@@ -40,7 +42,7 @@ typedef struct FaceReference
 
 typedef struct PostScriptFace
     {
-    const AfmFontInfo *	psfAfi;				/*  3		*/
+    const struct AfmFontInfo *	psfAfi;			/*  3		*/
 
     FaceReference *	psfReferences;
     int			psfReferenceCount;
@@ -88,8 +90,8 @@ typedef struct PostScriptTypeList
 /************************************************************************/
 
 extern int psRememberPostsciptFace(	PostScriptTypeList *	pstl,
-					const AfmFontInfo *	afi,
-					const TextAttribute *	ta,
+					const struct AfmFontInfo *	afi,
+					const struct TextAttribute *	ta,
 					const char *		prefix,
 					int			appearsInText );
 

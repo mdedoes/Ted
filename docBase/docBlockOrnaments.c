@@ -19,11 +19,11 @@ void docInitBlockOrnaments(	BlockOrnaments *	bo )
     bo->boRightBorderNumber= -1;
     bo->boBottomBorderNumber= -1;
 
-    docInitBorderProperties( &(bo->boTopBorder) );
-    docInitBorderProperties( &(bo->boLeftBorder) );
-    docInitBorderProperties( &(bo->boRightBorder) );
-    docInitBorderProperties( &(bo->boBottomBorder) );
+    bo->boTopBorder= (const struct BorderProperties *)0;
+    bo->boLeftBorder= (const struct BorderProperties *)0;
+    bo->boRightBorder= (const struct BorderProperties *)0;
+    bo->boBottomBorder= (const struct BorderProperties *)0;
 
-    docInitItemShading( &(bo->boShading) );
+    bo->boShading= (const struct ItemShading *)0;
     }
 

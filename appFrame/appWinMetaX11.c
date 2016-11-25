@@ -1,33 +1,34 @@
 #   include	"appFrameConfig.h"
 
+#   if ! USE_HEADLESS
+
+#   if USE_GTK
+#   define	USE_GDK_DEPRECATED
+#   include	<guiBase.h>
+#   endif /* GTK */
+
 #   include	<stddef.h>
 #   include	<stdlib.h>
+#   include	<math.h>
 
 #   include	<drawWinMetaImpl.h>
 #   include	<drawMacPictImpl.h>
 #   include	"appWinMetaX11.h"
 #   include	<bmEmfIo.h>
 #   include	<bmWmfIo.h>
-#   include	"drawDrawingSurfaceImpl.h"
-#   include	"drawUtilGtk.h"
-
-#   include	<math.h>
+#   include	<drawDrawingSurfaceImpl.h>
+#   include	<drawUtilGdk.h>
+#   include	<sioGeneral.h>
 
 #   include	<appDebugon.h>
 
 typedef struct DeviceContextX11
     {
     DrawingSurface	dcxDrawingSurface;
-    AppColors *		dcxColors;
 
     int			dcxPixelsWide;
     int			dcxPixelsHigh;
 
-    APP_COLOR_RGB	dcxPenColor;
-    APP_COLOR_RGB	dcxBrushColor;
-
-    APP_COLOR_RGB	dcxBkColor;
-    APP_COLOR_RGB	dcxTextColor;
     int			dcxFillTiled;
     int			dcxFillHatched;
 
@@ -115,30 +116,6 @@ static int appMetaSetDeviceDefaultsX11(	DeviceContextX11 *	dcx,
 
     drawSetForegroundColorBlack( ds );
 
-    if  ( appColorRgb( &(dcx->dcxPenColor), ds->dsColors,
-					    dc->dcPen.lpColor.rgb8Red,
-					    dc->dcPen.lpColor.rgb8Green,
-					    dc->dcPen.lpColor.rgb8Blue ) )
-	{ LDEB(1); return -1;	}
-
-    if  ( appColorRgb( &(dcx->dcxBrushColor), ds->dsColors,
-					    dc->dcBrush.lbColor.rgb8Red,
-					    dc->dcBrush.lbColor.rgb8Green,
-					    dc->dcBrush.lbColor.rgb8Blue ) )
-	{ LDEB(1); return -1;	}
-
-    if  ( appColorRgb( &(dcx->dcxBkColor), ds->dsColors,
-					    dc->dcBkColor.rgb8Red,
-					    dc->dcBkColor.rgb8Green,
-					    dc->dcBkColor.rgb8Blue ) )
-	{ LDEB(1); return -1;	}
-
-    if  ( appColorRgb( &(dcx->dcxTextColor), ds->dsColors,
-					    dc->dcTextColor.rgb8Red,
-					    dc->dcTextColor.rgb8Green,
-					    dc->dcTextColor.rgb8Blue ) )
-	{ LDEB(1); return -1;	}
-
     return 0;
     }
 
@@ -154,29 +131,25 @@ static int appMetaSelectBrushObjectX11(	DeviceContext *		dc,
 	case BS_SOLID:
 	    dc->dcFillInsides= 1;
 
-	    if  ( appColorRgb( &(dcx->dcxBrushColor), ds->dsColors,
-					    lb->lbColor.rgb8Red,
-					    lb->lbColor.rgb8Green,
-					    lb->lbColor.rgb8Blue ) )
-		{ LDEB(1);  return -1;	}
-
-#	    ifdef USE_MOTIF
+#	    if USE_MOTIF
 	    XSetFillStyle( ds->dsDisplay, ds->dsGc, FillSolid );
 #	    endif
-#	    ifdef USE_GTK
+
+#	    if DRAW_GDK
 	    gdk_gc_set_fill( ds->dsGc, GDK_SOLID );
 #	    endif
 
 	    dcx->dcxFillTiled= 0;
 	    dcx->dcxFillHatched= 0;
-	    drawSetSystemColor( ds, &(dcx->dcxBrushColor) );
+	    drawSetForegroundColor( ds, &(dc->dcBrush.lbColor) );
 	    break;
 
 	case BS_HOLLOW:
-#	    ifdef USE_MOTIF
+#	    if USE_MOTIF
 	    XSetFillStyle( ds->dsDisplay, ds->dsGc, FillSolid );
 #	    endif
-#	    ifdef USE_GTK
+
+#	    if DRAW_GDK
 	    gdk_gc_set_fill( ds->dsGc, GDK_SOLID );
 #	    endif
 
@@ -199,19 +172,14 @@ static int appMetaSelectBrushObjectX11(	DeviceContext *		dc,
 		drPixmap.drX1= wide- 1;
 		drPixmap.drY1= high- 1;
 
-		if  ( appColorRgb( &(dcx->dcxBrushColor), ds->dsColors,
-						lb->lbColor.rgb8Red,
-						lb->lbColor.rgb8Green,
-						lb->lbColor.rgb8Blue ) )
-		    { LDEB(1);  return -1;	}
-
 		lb->lbTilePixmap= drawMakeDrawingSurfaceForParent( ds,
 								wide, high );
 
 		drawSetForegroundColorWhite( lb->lbTilePixmap );
 		drawFillRectangle( lb->lbTilePixmap, &drPixmap );
 
-		drawSetSystemColor( lb->lbTilePixmap, &(dcx->dcxBrushColor) );
+		drawSetForegroundColor( lb->lbTilePixmap,
+						&(dc->dcBrush.lbColor) );
 
 		switch( lb->lbHatch )
 		    {
@@ -247,11 +215,12 @@ static int appMetaSelectBrushObjectX11(	DeviceContext *		dc,
 		    }
 		}
 
-#	    ifdef USE_MOTIF
+#	    if USE_MOTIF
 	    XSetTile( ds->dsDisplay, ds->dsGc,
 					lb->lbTilePixmap->dsDrawable );
 #	    endif
-#	    ifdef USE_GTK
+
+#	    if DRAW_GDK
 	    gdk_gc_set_tile( ds->dsGc, lb->lbTilePixmap->dsDrawable );
 #	    endif
 
@@ -290,10 +259,11 @@ static int appMetaSelectPatternBrushObjectX11(	DeviceContext *		dc,
 	    { XDEB(pb->pbTilePixmap); return -1;	}
 	}
 
-#   ifdef USE_MOTIF
+#   if USE_MOTIF
     XSetTile( ds->dsDisplay, ds->dsGc, pb->pbTilePixmap->dsDrawable );
 #   endif
-#   ifdef USE_GTK
+
+#   if DRAW_GDK
     gdk_gc_set_tile( ds->dsGc, pb->pbTilePixmap->dsDrawable );
 #   endif
 
@@ -314,9 +284,9 @@ static int appMetaSelectFontObjectX11(	DeviceContext *		dc,
 
     if  ( lf->lfPrivateFont < 0 )
 	{
-	int			pixelSize;
-	const AfmFontInfo *	afi;
-	const IndexSet *	unicodesWanted;
+	int				pixelSize;
+	const struct AfmFontInfo *	afi;
+	const IndexSet *		unicodesWanted;
 
 	afi= (*player->mpGetFontForAttribute)( &unicodesWanted,
 				    &(lf->lfTextAttribute), &(dc->dcFontList),
@@ -436,7 +406,6 @@ static int appMetaSelectPenObjectX11(	DeviceContext *		dc,
     {
     DeviceContextX11 *		dcx= (DeviceContextX11 *)through;
     DrawingSurface		ds= dcx->dcxDrawingSurface;
-    AppColors *			ac= dcx->dcxColors;
     int				outputWidth;
 
     outputWidth= appWinMetaOutputSize( dc, lp->lpWidth );
@@ -445,15 +414,7 @@ static int appMetaSelectPenObjectX11(	DeviceContext *		dc,
 			lp->lpStyle, lp->lpWidth, outputWidth );
 
     if  ( dc->dcDrawBorders )
-	{
-	if  ( appColorRgb( &dcx->dcxPenColor, ac,
-					    lp->lpColor.rgb8Red,
-					    lp->lpColor.rgb8Green,
-					    lp->lpColor.rgb8Blue ) )
-		{ LDEB(1);  return -1;	}
-
-	drawSetSystemColor( ds, &(dcx->dcxPenColor) );
-	}
+	{ drawSetForegroundColor( ds, &(dc->dcPen.lpColor) );	}
 
     dc->dcPen= *lp;
 
@@ -488,8 +449,8 @@ static int appMetaDrawRoundedRectangleX11(
 				DeviceContext *			dc,
 				void *				through,
 				const DocumentRectangle *	dr,
-				int				wide,
-				int				high,
+				int				rx,
+				int				ry,
 				int				fillInside,
 				int				drawBorder )
     {
@@ -498,14 +459,14 @@ static int appMetaDrawRoundedRectangleX11(
 
     if  ( fillInside )
 	{
-	drawSetSystemColor( ds, &(dcx->dcxBrushColor) );
-	drawFillRoundedRect( ds, dr, wide, high );
+	drawSetForegroundColor( ds, &(dc->dcBrush.lbColor) );
+	drawFillRoundedRect( ds, dr, rx, ry );
 	}
 
     if  ( drawBorder )
 	{
-	drawSetSystemColor( ds, &(dcx->dcxPenColor) );
-	drawRoundedRect( ds, dr, wide, high );
+	drawSetForegroundColor( ds, &(dc->dcPen.lpColor) );
+	drawRoundedRect( ds, dr, rx, ry );
 	}
 
     return 0;
@@ -587,7 +548,7 @@ static int appMetaDrawArcX11(	DeviceContext *			dc,
 
     if  ( drawBorder )
 	{
-	drawSetSystemColor( ds, &(dcx->dcxPenColor) );
+	drawSetForegroundColor( ds, &(dc->dcPen.lpColor) );
 	drawArc( ds, &arc );
 	}
 
@@ -613,7 +574,7 @@ static int appMetaDrawChordX11(	DeviceContext *			dc,
 
     if  ( drawBorder )
 	{
-	drawSetSystemColor( ds, &(dcx->dcxPenColor) );
+	drawSetForegroundColor( ds, &(dc->dcPen.lpColor) );
 
 	/* WRONG */
 	drawArc( ds, &arc );
@@ -641,13 +602,13 @@ static int appMetaDrawPieX11(	DeviceContext *			dc,
 
     if  ( fillInside )
 	{
-	drawSetSystemColor( ds, &(dcx->dcxBrushColor) );
+	drawSetForegroundColor( ds, &(dc->dcBrush.lbColor) );
 	drawFillArc( ds, &arc );
 	}
 
     if  ( drawBorder )
 	{
-	drawSetSystemColor( ds, &(dcx->dcxPenColor) );
+	drawSetForegroundColor( ds, &(dc->dcPen.lpColor) );
 	drawArc( ds, &arc );
 	}
 
@@ -672,43 +633,46 @@ static int appMetaDrawEllipseX11(
 
     if  ( fillInside )
 	{
-	drawSetSystemColor( ds, &(dcx->dcxBrushColor) );
+	drawSetForegroundColor( ds, &(dc->dcBrush.lbColor) );
 	drawFillArc( ds, &arc );
 	}
 
     if  ( drawBorder )
 	{
-	drawSetSystemColor( ds, &(dcx->dcxPenColor) );
+	drawSetForegroundColor( ds, &(dc->dcPen.lpColor) );
 	drawArc( ds, &arc );
 	}
 
     return 0;
     }
 
-static void appMeta_SetFillX11(		DeviceContextX11 *	dcx,
+static void appMeta_SetFillX11(		DeviceContext *		dc,
+					DeviceContextX11 *	dcx,
 					int			before )
     {
     DrawingSurface	ds= dcx->dcxDrawingSurface;
 
     if  ( before )
-	{ drawSetSystemColor( ds, &(dcx->dcxBrushColor) );	}
+	{ drawSetForegroundColor( ds, &(dc->dcBrush.lbColor) );	}
 
     if  ( dcx->dcxFillTiled && before )
 	{
-#	ifdef USE_MOTIF
+#	if USE_MOTIF
 	XSetFillStyle( ds->dsDisplay, ds->dsGc, FillTiled );
 #	endif
-#	ifdef USE_GTK
+
+#	if DRAW_GDK
 	gdk_gc_set_fill( ds->dsGc, GDK_TILED );
 #	endif
 	}
 
     if  ( dcx->dcxFillTiled && ! before )
 	{
-#	ifdef USE_MOTIF
+#	if USE_MOTIF
 	XSetFillStyle( ds->dsDisplay, ds->dsGc, FillSolid );
 #	endif
-#	ifdef USE_GTK
+
+#	if DRAW_GDK
 	gdk_gc_set_fill( ds->dsGc, GDK_SOLID );
 #	endif
 	}
@@ -733,16 +697,16 @@ static int appMeta_PolyPolygonX11(	DeviceContext *		dc,
 	{
 	if  ( fillInsides )
 	    {
-	    appMeta_SetFillX11( dcx, 1 );
+	    appMeta_SetFillX11( dc, dcx, 1 );
 
 	    drawFillPolygon( ds, points, pointCounts[poly] );
 
-	    appMeta_SetFillX11( dcx, 0 );
+	    appMeta_SetFillX11( dc, dcx, 0 );
 	    }
 
 	if  ( drawBorders )
 	    {
-	    drawSetSystemColor( ds, &(dcx->dcxPenColor) );
+	    drawSetForegroundColor( ds, &(dc->dcPen.lpColor) );
 
 	    drawLines( ds, points, pointCounts[poly], closePath );
 	    }
@@ -854,12 +818,12 @@ static int appMetaDrawStringX11(	DeviceContext *		dc,
 
     if  ( dc->dcBkMode == OPAQUE )
 	{
-	drawSetSystemColor( ds, &(dcx->dcxBkColor) );
+	drawSetForegroundColor( ds, &(dc->dcBkColor) );
 
 	drawFillRectangle( ds, &drText );
 	}
 
-    drawSetSystemColor( ds, &(dcx->dcxTextColor) );
+    drawSetForegroundColor( ds, &(dc->dcTextColor) );
     drawString( ds, x0, y0, dcx->dcxScreenFont, s, len );
 
     if  ( dc->dcFont.lfTextAttribute.taTextIsUnderlined )
@@ -908,7 +872,7 @@ static int appMetaPatBltX11(	DeviceContext *			dc,
 
     if  ( dc->dcFillInsides )
 	{
-	drawSetSystemColor( ds, &(dcx->dcxBrushColor) );
+	drawSetForegroundColor( ds, &(dc->dcBrush.lbColor) );
 	drawFillRectangle( ds, &drHere );
 	}
 
@@ -919,26 +883,30 @@ static int appMetaSetPolyFillModeX11(	DeviceContext *		dc,
 					void *			through,
 					int			mode )
     {
+#   if DRAW_X11 || DRAW_GDK
     DeviceContextX11 *	dcx= (DeviceContextX11 *)through;
     DrawingSurface	ds= dcx->dcxDrawingSurface;
+#   endif
 
     switch( mode )
 	{
 	case ALTERNATE:
-#	    ifdef USE_MOTIF
+#	    if DRAW_X11
 	    XSetFillRule( ds->dsDisplay, ds->dsGc, EvenOddRule );
 #	    endif
-#	    ifdef USE_GTK
-	    appDrawGtkSetXFillRule( ds->dsGc, GDK_EVEN_ODD_RULE );
+
+#	    if DRAW_GDK
+	    drawGdkSetXFillRule( ds->dsGc, GDK_EVEN_ODD_RULE );
 #	    endif
 	    break;
 
 	case WINDING:
-#	    ifdef USE_MOTIF
+#	    if DRAW_X11
 	    XSetFillRule( ds->dsDisplay, ds->dsGc, WindingRule );
 #	    endif
-#	    ifdef USE_GTK
-	    appDrawGtkSetXFillRule( ds->dsGc, GDK_WINDING_RULE );
+
+#	    if DRAW_GDK
+	    drawGdkSetXFillRule( ds->dsGc, GDK_WINDING_RULE );
 #	    endif
 	    break;
 
@@ -978,11 +946,7 @@ static int appMetaSetTextColorX11(	DeviceContext *		dc,
 					int			g,
 					int			b )
     {
-    DeviceContextX11 *	dcx= (DeviceContextX11 *)through;
-    AppColors *		ac= dcx->dcxColors;
-
-    if  ( appColorRgb( &(dcx->dcxTextColor), ac, r, g, b ) )
-	{ LDEB(1);  return -1;	}
+    utilRGB8SolidRGB( &(dc->dcTextColor), r, g, b );
 
     return 0;
     }
@@ -993,11 +957,7 @@ static int appMetaSetBkColorX11(	DeviceContext *		dc,
 					int			g,
 					int			b )
     {
-    DeviceContextX11 *	dcx= (DeviceContextX11 *)through;
-    AppColors *		ac= dcx->dcxColors;
-
-    if  ( appColorRgb( &(dcx->dcxBkColor), ac, r, g, b ) )
-	{ LDEB(1);  return -1;	}
+    utilRGB8SolidRGB( &(dc->dcBkColor), r, g, b );
 
     return 0;
     }
@@ -1023,7 +983,6 @@ static int appMetaStartX11DeviceContext(
 
     dcx->dcxFillTiled= 0;
     dcx->dcxFillHatched= 0;
-    dcx->dcxColors= ds->dsColors;
 
     appMetaFillBackgroundX11( dcx );
 
@@ -1184,3 +1143,4 @@ int appMacPictPlayFileX11(	void **			pPrivate,
     return 0;
     }
 
+#   endif

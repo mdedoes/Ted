@@ -7,17 +7,26 @@
 #   ifndef	SIO_MEMORY_H
 #   define	SIO_MEMORY_H
 
-#   include	"sioGeneral.h"
-#   include	"utilMemoryBuffer.h"
+struct SimpleInputStream;
+struct SimpleOutputStream;
+struct MemoryBuffer;
 
-extern SimpleInputStream * sioInMemoryOpen(	const MemoryBuffer *	mb );
+extern struct SimpleInputStream * sioInMemoryOpen(
+					const struct MemoryBuffer *	mb );
 
-extern SimpleInputStream * sioInMemoryOpenFrom(	const MemoryBuffer *	mb,
-						int			from );
+extern struct SimpleInputStream * sioInMemoryOpenFrom(
+					const struct MemoryBuffer *	mb,
+					int				from );
 
-extern SimpleOutputStream * sioOutMemoryOpen(	MemoryBuffer *		mb );
+extern struct SimpleInputStream * sioInMemoryArrayOpen(
+					const struct MemoryBuffer *	mb,
+					int				count );
 
-extern SimpleOutputStream * sioOutMemoryOpenTo(	MemoryBuffer *		mb,
-						int			to );
+extern struct SimpleOutputStream * sioOutMemoryOpen(
+					struct MemoryBuffer *		mb );
+
+extern struct SimpleOutputStream * sioOutMemoryOpenTo(
+					struct MemoryBuffer *		mb,
+					int				to );
 
 #   endif

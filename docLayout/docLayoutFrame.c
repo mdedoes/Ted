@@ -6,9 +6,11 @@
 
 #   include	"docLayoutConfig.h"
 
-#   include	<stddef.h>
-
 #   include	<docPageGrid.h>
+#   include	<docLayoutPosition.h>
+#   include	<docBlockFrame.h>
+#   include	<docStripFrame.h>
+#   include	<docFrameProperties.h>
 
 #   include	<appDebugon.h>
 
@@ -136,9 +138,9 @@ void docLayoutFrameX(		BlockFrame *			bfTextFrame,
     switch( xRefProp )
 	{
 	case FXrefMARGIN:
-	    xRef= bfRef->bfPageGeometry.dgLeftMarginTwips;
+	    xRef= bfRef->bfPageGeometry.dgMargins.roLeftOffset;
 	    xRight= bfRef->bfPageGeometry.dgPageWideTwips-
-				    bfRef->bfPageGeometry.dgRightMarginTwips;
+				    bfRef->bfPageGeometry.dgMargins.roRightOffset;
 
 	    switch( xPosProp )
 		{
@@ -214,7 +216,7 @@ void docLayoutFrameX(		BlockFrame *			bfTextFrame,
 			{ xRel=  -xRef;	}
 		    break;
 		case FXposXL:
-		    xRef= bfRef->bfPageGeometry.dgLeftMarginTwips;
+		    xRef= bfRef->bfPageGeometry.dgMargins.roLeftOffset;
 		    xRel= -frameWide;
 		    break;
 		case FXposXC:
@@ -223,7 +225,7 @@ void docLayoutFrameX(		BlockFrame *			bfTextFrame,
 		    break;
 		case FXposXR:
 		    xRef= bfRef->bfPageGeometry.dgPageWideTwips-
-				    bfRef->bfPageGeometry.dgRightMarginTwips;
+				    bfRef->bfPageGeometry.dgMargins.roRightOffset;
 		    xRel= 0;
 		    break;
 		case FXposXI: case FXposXO: default:
@@ -382,10 +384,6 @@ void docLayoutFrameY(		BlockFrame *			bfTextFrame,
 				int				frameHighProp,
 				int				frameHighVal )
     {
-    /*
-    const DocumentGeometry *	dg= &(bfRef->bfPageGeometry);
-    */
-
     int				yRef= 0;
     int				yRel= 0;
     int				yBot= 0;
@@ -395,7 +393,7 @@ void docLayoutFrameY(		BlockFrame *			bfTextFrame,
 	case FYrefMARGIN:
 	    yRef= bfRef->bfContentRect.drY0;
 	    yBot= bfRef->bfPageGeometry.dgPageHighTwips-
-				    bfRef->bfPageGeometry.dgBottomMarginTwips;
+				    bfRef->bfPageGeometry.dgMargins.roBottomOffset;
 	    switch( yPosProp )
 		{
 		case FYposYGIVEN:

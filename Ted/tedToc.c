@@ -7,10 +7,9 @@
 #   include	"tedConfig.h"
 
 #   include	<stddef.h>
-#   include	<stdio.h>
 
 #   include	"tedEdit.h"
-#   include	"tedDocFront.h"
+#   include	<tedDocFront.h>
 #   include	"tedDocument.h"
 #   include	<docRtfTrace.h>
 #   include	"tedLayout.h"
@@ -19,6 +18,11 @@
 #   include	<docTreeNode.h>
 #   include	<docRecalculateTocField.h>
 #   include	<docEditCommand.h>
+#   include	<docFieldKind.h>
+#   include	<docTocField.h>
+#   include	<docFieldInstructions.h>
+#   include	<docFields.h>
+#   include	<docBuf.h>
 
 #   include	<appDebugon.h>
 
@@ -30,7 +34,7 @@
 
 int tedRefreshTocField(		DocumentSelection *	dsAroundToc,
 				TedEditOperation *	teo,
-				DocumentField *		dfToc )
+				struct DocumentField *	dfToc )
     {
     const LayoutContext *	lc= &(teo->teoLayoutContext);
     EditOperation *		eo= &(teo->teoEo);
@@ -49,15 +53,15 @@ int tedRefreshTocField(		DocumentSelection *	dsAroundToc,
 
     {
     int			page= 0;
-    BufferDocument *	bd= eo->eoDocument;
+    struct BufferDocument *	bd= eo->eoDocument;
     RecalculateFields	rf;
 
     docInitRecalculateFields( &rf );
 
     rf.rfDocument= bd;
-    rf.rfCloseObject= lc->lcCloseObject;
     rf.rfUpdateFlags= FIELDdoDOC_FORMATTED|FIELDdoDOC_COMPLETE|FIELDdoDOC_INFO;
     rf.rfFieldsUpdated= 0;
+    rf.rfLocale= lc->lcLocale;
 
     rf.rfBodySectNode= bd->bdBody.dtRoot->biChildren[0];
 
@@ -93,7 +97,7 @@ int tedRefreshTocField(		DocumentSelection *	dsAroundToc,
 /*									*/
 /************************************************************************/
 
-void tedDocAddTocField(		EditDocument *		ed,
+void tedDocAddTocField(		struct EditDocument *	ed,
 				const TocField *	tf,
 				int			traced )
     {
@@ -112,7 +116,7 @@ void tedDocAddTocField(		EditDocument *		ed,
     int				headPart;
     int				tailPart;
 
-    DocumentField *		dfToc;
+    struct DocumentField *	dfToc;
     DocumentSelection		dsTraced;
 
     FieldInstructions		fi;
@@ -124,7 +128,7 @@ void tedDocAddTocField(		EditDocument *		ed,
     if  ( docTocFieldSetTocInstructions( &fi, tf ) )
 	{ LDEB(1); goto ready;	}
 
-    utilInitTextAttribute( &taSet );
+    textInitTextAttribute( &taSet );
     utilPropMaskClear( &taSetMask );
 
     tedStartEditOperation( &teo, &sg, &sd, ed, fullWidth, traced );
@@ -138,8 +142,7 @@ void tedDocAddTocField(		EditDocument *		ed,
 
     if  ( tedDocReplaceSelectionWithField( &teo, &dfToc,
 					&headPart, &tailPart,
-					&dsInsideToc,
-					&dsAroundToc,
+					&dsInsideToc, &dsAroundToc,
 					&fi, DOCfkTOC,
 					&taSetMask, &taSet ) )
 	{ LDEB(1); goto ready;	}
@@ -173,7 +176,7 @@ void tedDocAddTocField(		EditDocument *		ed,
 /*									*/
 /************************************************************************/
 
-int tedDocSetTocField(		EditDocument *		ed,
+int tedDocSetTocField(		struct EditDocument *	ed,
 				const TocField *	tf,
 				int			traced )
     {
@@ -184,7 +187,7 @@ int tedDocSetTocField(		EditDocument *		ed,
     SelectionGeometry		sg;
     SelectionDescription	sd;
 
-    DocumentField *		dfToc;
+    struct DocumentField *	dfToc;
 
     FieldInstructions		fi;
 

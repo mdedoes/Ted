@@ -203,7 +203,8 @@ void psSetUtf8ShowImplementation(	SimpleOutputStream *	sos )
 
 void psSetMvsImplementation(		SimpleOutputStream *	sos )
     {
-    sioOutPrintf( sos, "\n/mvs { moveto utf8show } bind def\n" );
+    sioOutPrintf( sos, "\n/mvsu { moveto utf8show } bind def\n" );
+    sioOutPrintf( sos,   "/mvsf { moveto show } bind def\n" );
     }
 
 static const char * psStartStdCodePageImplementation[]=

@@ -2,12 +2,14 @@
 
 #   include	<stdio.h>
 
-#   include	"docBuf.h"
-#   include	"docDebug.h"
 #   include	"docField.h"
 #   include	<docTreeType.h>
 #   include	<docObjectProperties.h>
 #   include	<docTextParticule.h>
+#   include	<textAttribute.h>
+#   include	<docPropVal.h>
+
+#   include	"docDebug.h"
 #   include	<appDebugon.h>
 
 const char * docKindStr( int kind )
@@ -16,47 +18,22 @@ const char * docKindStr( int kind )
 
     switch( kind )
 	{
-	case DOCkindSPAN:		return "SPAN";
-	case DOCkindTAB:		return "TAB ";
-	case DOCkindOBJECT:		return "OBJ ";
-	case DOCkindFIELDHEAD:		return "<FLD";
-	case DOCkindFIELDTAIL:		return "FLD>";
-	case DOCkindLINEBREAK:		return "LINE";
-	case DOCkindPAGEBREAK:		return "PAGE";
-	case DOCkindCOLUMNBREAK:	return "COL ";
-	case DOCkindCHFTNSEP:		return "SEP ";
-	case DOCkindCHFTNSEPC:		return "SEPC";
-	case DOCkindOPT_HYPH:		return "HYPH";
-	case DOCkindLTR_MARK:		return "LTR ";
-	case DOCkindRTL_MARK:		return "RTL ";
+	case TPkindSPAN:		return "SPAN";
+	case TPkindTAB:		return "TAB ";
+	case TPkindOBJECT:		return "OBJ ";
+	case TPkindFIELDHEAD:		return "<FLD";
+	case TPkindFIELDTAIL:		return "FLD>";
+	case TPkindLINEBREAK:		return "LINE";
+	case TPkindPAGEBREAK:		return "PAGE";
+	case TPkindCOLUMNBREAK:	return "COL ";
+	case TPkindCHFTNSEP:		return "SEP ";
+	case TPkindCHFTNSEPC:		return "SEPC";
+	case TPkindOPT_HYPH:		return "HYPH";
+	case TPkindLTR_MARK:		return "LTR ";
+	case TPkindRTL_MARK:		return "RTL ";
 
 	default:
 	    sprintf( scratch, "%-4d", kind );
-	    return scratch;
-	}
-    }
-
-const char * docLevelStr( int level )
-    {
-    static char	scratch[12];
-
-    switch( level )
-	{
-	case DOClevANY:		return "ANY ";
-	case DOClevOUT:		return "OUT ";
-
-	case DOClevBODY:	return "BODY";
-	case DOClevSECT:	return "SECT";
-	case DOClevROW:		return "ROW ";
-	case DOClevCELL:	return "CELL";
-	case DOClevPARA:	return "PARA";
-	case DOClevSPAN:	return "SPAN";
-
-	case DOClevCOLUMN:	return "COLM";
-	case DOClevTABLE:	return "TABL";
-
-	default:
-	    sprintf( scratch, "%-4d", level );
 	    return scratch;
 	}
     }
@@ -72,10 +49,12 @@ const char * docTreeTypeStr( int treeType )
 	case DOCinFIRST_HEADER:		return "FIRST_HEADER";
 	case DOCinLEFT_HEADER:		return "LEFT_HEADER";
 	case DOCinRIGHT_HEADER:		return "RIGHT_HEADER";
+	case DOCinLAST_HEADER:		return "LAST_HEADER";
 
 	case DOCinFIRST_FOOTER:		return "FIRST_FOOTER";
 	case DOCinLEFT_FOOTER:		return "LEFT_FOOTER";
 	case DOCinRIGHT_FOOTER:		return "RIGHT_FOOTER";
+	case DOCinLAST_FOOTER:		return "LAST_FOOTER";
 
 	case DOCinFOOTNOTE:		return "FOOTNOTE";
 	case DOCinENDNOTE:		return "ENDNOTE";
@@ -89,6 +68,7 @@ const char * docTreeTypeStr( int treeType )
 	case DOCinAFTNCN:		return "AFTNCN";
 
 	case DOCinSHPTXT:		return "SHPTXT";
+	case DOCinFIELD_INSTRUCTIONS:	return "FLDINST";
 
 	default:
 	    sprintf( scratch, "%d", treeType );
@@ -174,32 +154,6 @@ const char * docParticuleFlagsStr(	int	flags )
 
     *(to)= '\0';
     return scratch;
-    }
-
-void docLogRectangle(	const char *			label,
-			const DocumentRectangle *	dr )
-    {
-    appDebug( "%s: [%4d+%4d=%4d]x[%4d+%4d=%4d]\n", label,
-		dr->drX0, dr->drX1- dr->drX0+ 1, dr->drX1,
-		dr->drY0, dr->drY1- dr->drY0+ 1, dr->drY1 );
-
-    return;
-    }
-
-void docLogRectangles(	const char *			label1,
-			const DocumentRectangle *	dr1,
-			const char *			label2,
-			const DocumentRectangle *	dr2 )
-    {
-    appDebug( "%s: [%4d+%4d]x[%4d+%4d] %s [%4d+%4d]x[%4d+%4d]\n",
-		label1,
-		dr1->drX0, dr1->drX1- dr1->drX0+ 1,
-		dr1->drY0, dr1->drY1- dr1->drY0+ 1,
-		label2,
-		dr2->drX0, dr2->drX1- dr2->drX0+ 1,
-		dr2->drY0, dr2->drY1- dr2->drY0+ 1 );
-
-    return;
     }
 
 const char * docBreakKindStr( int kind )

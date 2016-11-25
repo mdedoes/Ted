@@ -43,6 +43,7 @@ extern void docCleanListOverride(	ListOverride *		lo );
 
 extern int docCopyListOverride(	ListOverride *			to,
 				const ListOverride *		from,
+				const int *			listIndexMap,
 				const int *			fontMap,
 				const int *			colorMap,
 				const int *			rulerMap );

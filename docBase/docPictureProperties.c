@@ -43,7 +43,7 @@ void docInitPictureProperties(	PictureProperties *	pip )
     pip->pipBmBytesPerRow= 0;
 
     pip->pipPictureIsWordArt= 0;
-    pip->pipMetafileIsBitmap= 0;
+    pip->pipMetafileIsRaster= 0;
     pip->pipPictIsScaled= 0;
 
     return;
@@ -200,7 +200,7 @@ int docSetPictureProperty(	PictureProperties *	pip,
 	    pip->pipPictureIsWordArt= val != 0;
 	    break;
 	case PIPpropPICBMP:
-	    pip->pipMetafileIsBitmap= val != 0;
+	    pip->pipMetafileIsRaster= val != 0;
 	    break;
 	case PIPpropPICSCALED:
 	    pip->pipPictIsScaled= val != 0;
@@ -262,7 +262,7 @@ int docGetPictureProperty(	const PictureProperties *	pip,
 	case PIPpropDEFSHP:
 	    return pip->pipPictureIsWordArt;
 	case PIPpropPICBMP:
-	    return pip->pipMetafileIsBitmap;
+	    return pip->pipMetafileIsRaster;
 	case PIPpropPICSCALED:
 	    return pip->pipPictIsScaled;
 

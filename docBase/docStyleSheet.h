@@ -7,13 +7,14 @@
 #   ifndef	DOC_STYLE_SHEET_H
 #   define	DOC_STYLE_SHEET_H
 
-#   include	"docStyle.h"
+struct DocumentStyle;
+struct DocumentAttributeMap;
 
 typedef struct DocumentStyleSheet
     {
-    DocumentStyle **	dssStyles;
-    int			dssStyleCount;
-    void *		dssStylesByName;
+    struct DocumentStyle **	dssStyles;
+    int				dssStyleCount;
+    void *			dssStylesByName;
     } DocumentStyleSheet;
 
 /************************************************************************/
@@ -22,21 +23,21 @@ typedef struct DocumentStyleSheet
 /*									*/
 /************************************************************************/
 
-extern DocumentStyle * docInsertStyle(
+extern struct DocumentStyle * docInsertStyle(
 				DocumentStyleSheet *		dss,
 				int				n,
-				const DocumentStyle *		dsFrom,
-				const DocumentAttributeMap *	dam );
+				const struct DocumentStyle *	dsFrom,
+				const struct DocumentAttributeMap *	dam );
 
 extern void docInitStyleSheet(	DocumentStyleSheet *	dss );
 extern void docCleanStyleSheet(	DocumentStyleSheet *	dss );
 
-extern DocumentStyle * docGetStyleByName(
+extern struct DocumentStyle * docGetStyleByName(
 				const DocumentStyleSheet *	dss,
 				const char *			styleName );
 
 extern int docCopyStyleSheet(	DocumentStyleSheet *		to,
 				const DocumentStyleSheet *	from,
-				const DocumentAttributeMap *	dam );
+				const struct DocumentAttributeMap *	dam );
 
 #   endif	/*  DOC_STYLE_SHEET_H  */

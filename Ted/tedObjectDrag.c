@@ -7,20 +7,22 @@
 #   include	"tedConfig.h"
 
 #   include	<stddef.h>
-#   include	<stdio.h>
 #   include	<ctype.h>
 #   include	<limits.h>
 
-#   include	"tedApp.h"
 #   include	"tedEdit.h"
 #   include	"tedLayout.h"
 #   include	"tedSelect.h"
 #   include	"tedDocument.h"
 #   include	<docPageGrid.h>
 #   include	<geoGrid.h>
-#   include	<guiWidgetDrawingSurface.h>
 #   include	<guiDrawingWidget.h>
-#   include	<docParaParticules.h>
+#   include	<docObject.h>
+#   include	<docTreeNode.h>
+#   include	<appEditApplication.h>
+#   include	<appEditDocument.h>
+#   include	<docBlockFrame.h>
+#   include	<geo2DInteger.h>
 
 #   include	<appDebugon.h>
 
@@ -32,22 +34,23 @@
 
 typedef struct TedObjectDrag
     {
-    EditDocument *	todEd;
-    LayoutContext	todLayoutContext;
+    struct EditDocument *		todEd;
+    LayoutContext			todLayoutContext;
 
-    InsertedObject *	todIo;
-    DocumentPosition	todDp;
-    PositionGeometry	todPg;
-    int			todParticule;
+    InsertedObject *			todIo;
+    DocumentPosition			todDp;
+    const struct PositionGeometry *	todPg;
+    int					todAfterObject;
+    int					todParticule;
 
-    int			todMouseX0;
-    int			todMouseX1;
-    int			todMouseY0;
-    int			todMouseY1;
+    int					todMouseX0;
+    int					todMouseX1;
+    int					todMouseY0;
+    int					todMouseY1;
 
-    int			todMouseX;
-    int			todMouseY;
-    int			todCorner;
+    int					todMouseX;
+    int					todMouseY;
+    int					todCorner;
     } TedObjectDrag;
 
 /************************************************************************/
@@ -82,8 +85,8 @@ static void tedObjectHandleMove(	TedObjectDrag *		tod,
 
     /*  1  */
     tedGetObjectRectangle( &drFrom, (Point2DI *)0,
-					tod->todIo, &(tod->todPg),
-					&(tod->todLayoutContext), ed );
+			tod->todIo, tod->todPg,
+			&(tod->todLayoutContext), tod->todAfterObject, td );
 
     if  ( mouseXc < tod->todMouseX0- ox )
 	{ mouseXc=  tod->todMouseX0- ox;	}
@@ -140,8 +143,8 @@ static void tedObjectHandleMove(	TedObjectDrag *		tod,
 	DocumentRectangle	drExp;
 
 	tedGetObjectRectangle( &drTo, (Point2DI *)0,
-					tod->todIo, &(tod->todPg),
-					&(tod->todLayoutContext), ed );
+			tod->todIo, tod->todPg,
+			&(tod->todLayoutContext), tod->todAfterObject, td );
 
 	geoUnionRectangle( &drExp, &drFrom, &drTo );
 	geoShiftRectangle( &drExp, -ox, -oy );
@@ -229,7 +232,7 @@ int tedObjectDrag(		APP_WIDGET	w,
     {
     EditApplication *		ea= ed->edApplication;
     TedDocument *		td= (TedDocument *)ed->edPrivateData;
-    BufferDocument *		bd= td->tdDocument;
+    struct BufferDocument *	bd= td->tdDocument;
 
     int				ox= ed->edVisibleRect.drX0;
     int				oy= ed->edVisibleRect.drY0;
@@ -250,6 +253,7 @@ int tedObjectDrag(		APP_WIDGET	w,
     layoutInitContext( &(tod.todLayoutContext) );
     tedSetScreenLayoutContext( &(tod.todLayoutContext), ed );
     tod.todCorner= -1;
+    tod.todAfterObject= 0;
 
     /*  1  */
     if  ( guiGetCoordinatesFromMouseButtonEvent(
@@ -260,16 +264,13 @@ int tedObjectDrag(		APP_WIDGET	w,
 
     /*  2  */
     docInitDocumentPosition( &(tod.todDp) );
-    if  ( tedGetObjectSelection( ed,
-			&(tod.todParticule), &(tod.todDp), &(tod.todIo) ) )
+    if  ( tedGetObjectSelection( &(tod.todPg), &(tod.todParticule),
+					&(tod.todDp), &(tod.todIo), ed ) )
 	{ return 2;	}
 
     /*  3  */
-    tedPositionGeometry( &(tod.todPg), &(tod.todDp),
-					PARAfindLAST, &(tod.todLayoutContext) );
-
-    tedGetObjectRectangle( &drObj, xp, tod.todIo, &(tod.todPg),
-					    &(tod.todLayoutContext), ed );
+    tedGetObjectRectangle( &drObj, xp, tod.todIo, tod.todPg,
+			    &(tod.todLayoutContext), tod.todAfterObject, td );
 
     /*  4  */
     if  ( seq > 1					||
@@ -308,12 +309,14 @@ int tedObjectDrag(		APP_WIDGET	w,
 
     {
     BlockFrame		bf;
-    BufferItem *	paraBi= tod.todDp.dpNode;
+    struct BufferItem *	paraNode= tod.todDp.dpNode;
     int			frameWide;
     int			frameHigh;
 
-    docBlockFrameTwips( &bf, paraBi, bd, paraBi->biTopPosition.lpPage,
-					    paraBi->biTopPosition.lpColumn );
+    docLayoutInitBlockFrame( &bf );
+
+    docBlockFrameTwips( &bf, paraNode, bd, paraNode->biTopPosition.lpPage,
+					    paraNode->biTopPosition.lpColumn );
 
     frameWide= bf.bfContentRect.drX1- bf.bfContentRect.drX0;
     frameHigh= bf.bfContentRect.drY1- bf.bfContentRect.drY0;
@@ -364,12 +367,14 @@ int tedObjectDrag(		APP_WIDGET	w,
 	    tod.todMouseY1= INT_MAX;
 	    break;
 	}
+
+    docLayoutCleanBlockFrame( &bf );
     }
 
-    appRunDragLoop( w, ea, downEvent,
+    guiRunDragLoop( w, ea->eaContext, downEvent,
 				tedObjectDragMouseUp,
 				tedObjectDragMouseMove,
-				0, (APP_TIMER_CALLBACK)0,
+				0, (APP_DRAG_TIMER_CALLBACK)0,
 				(void *)&tod );
 
     /*  7  */
@@ -385,8 +390,8 @@ int tedObjectDrag(		APP_WIDGET	w,
 
 	utilPropMaskClear( &pipSetMask );
 
-	tedGetObjectRectangle( &drResized, (Point2DI *)0, io, &(tod.todPg),
-						&(tod.todLayoutContext), ed );
+	tedGetObjectRectangle( &drResized, (Point2DI *)0, io, tod.todPg,
+			&(tod.todLayoutContext), tod.todAfterObject, td );
 
 	/*  8  */
 	if  ( td->tdObjectCornerMovedX != 0 )
@@ -451,10 +456,8 @@ int tedObjectDrag(		APP_WIDGET	w,
 		}
 
 	    tedObjectSetImageProperties( ed, io, &(tod.todDp), tod.todParticule,
-						&pipSetMask, &pipFrom, ((TedDocument *)ed->edPrivateData)->tdTraced );
-
-	    tedPositionGeometry( &(tod.todPg), &(tod.todDp),
-					PARAfindLAST, &(tod.todLayoutContext) );
+				&pipSetMask, &pipFrom,
+				((TedDocument *)ed->edPrivateData)->tdTraced );
 	    }
 	}
 
@@ -465,8 +468,6 @@ int tedObjectDrag(		APP_WIDGET	w,
     td->tdObjectCornerMovedY= 0;
     td->tdScaleChangedX= 0;
     td->tdScaleChangedY= 0;
-
-    tedSetObjectWindows( ed, &(tod.todPg), tod.todIo, &(tod.todLayoutContext) );
 
     return 0;
     }

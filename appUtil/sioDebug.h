@@ -7,14 +7,15 @@
 /*									*/
 /************************************************************************/
 
-#   include	"sioGeneral.h"
+struct SimpleInputStream;
+struct SimpleOutputStream;
 
-extern SimpleInputStream * sioInDebugOpen(
-					SimpleInputStream *	sisIn );
+extern struct SimpleInputStream * sioInDebugOpen(
+				struct SimpleInputStream *	sisIn );
 
-extern SimpleOutputStream * sioOutDebugOpen(
-					SimpleOutputStream *	sosOut );
+extern struct SimpleOutputStream * sioOutDebugOpen(
+				struct SimpleOutputStream *	sosOut );
 
 
-extern SimpleOutputStream * sioOutAppDebugOpen( void );
+extern struct SimpleOutputStream * sioOutAppDebugOpen( void );
 

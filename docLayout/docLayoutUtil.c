@@ -6,15 +6,22 @@
 
 #   include	"docLayoutConfig.h"
 
-#   include	<stddef.h>
 #   include	<limits.h>
+#   include	<stdio.h>
 
 #   include	"docLayout.h"
+#   include	"docLayoutStopCode.h"
 #   include	<docPageGrid.h>
 #   include	<docTreeType.h>
 #   include	<docTreeNode.h>
 #   include	<docNodeTree.h>
 #   include	<docTreeScanner.h>
+#   include	<docScanner.h>
+#   include	<docSelect.h>
+#   include	<docBuf.h>
+#   include	<docBlockFrame.h>
+#   include	<docEditRange.h>
+#   include	<docDocumentProperties.h>
 
 #   include	<appDebugon.h>
 
@@ -26,7 +33,7 @@
 
 void docInitLayoutJob(	LayoutJob *	lj )
     {
-    lj->ljChangedRectanglePixels= (DocumentRectangle *)0;
+    lj->ljChangedRectanglePixels= (struct DocumentRectangle *)0;
     layoutInitContext( &(lj->ljContext) );
     lj->ljChangedNode= (struct BufferItem *)0;
     lj->ljReachedDocumentBottom= 0;
@@ -37,15 +44,24 @@ void docInitLayoutJob(	LayoutJob *	lj )
     lj->ljBodySectNode= (const struct BufferItem *)0;
 
     lj->ljStartScreenParagraph= (START_SCREEN_PARAGRAPH)0;
-    lj->ljLayoutScreenLine= (LAYOUT_SCREEN_LINE)0;
+    lj->ljScreenLayoutLine= (SCREEN_LAYOUT_LINE)0;
 
     return;
     }
+
+# ifdef __GNUC__
+# pragma GCC diagnostic push
+# pragma GCC diagnostic ignored "-Wunused-parameter"
+# endif
 
 void docCleanLayoutJob(	LayoutJob *	lj )
     {
     return;
     }
+
+# ifdef __GNUC__
+# pragma GCC diagnostic pop
+# endif
 
 /************************************************************************/
 /*									*/
@@ -53,17 +69,26 @@ void docCleanLayoutJob(	LayoutJob *	lj )
 /*									*/
 /************************************************************************/
 
+# ifdef __GNUC__
+# pragma GCC diagnostic push
+# pragma GCC diagnostic ignored "-Wunused-parameter"
+# endif
+
 static int docInvalidateChangedLayout(
-				BufferItem *			node,
-				const DocumentSelection *	ds,
-				const BufferItem *		bodySectNode,
+				struct BufferItem *			node,
+				const struct DocumentSelection *	ds,
+				const struct BufferItem *		bodySectNode,
 				void *				through )
     {
     if  ( node->biLevel == DOClevPARA )
 	{ docInvalidateParagraphLayout( node );	}
 
-    return ADVICEtsOK;
+    return SCANadviceOK;
     }
+
+# ifdef __GNUC__
+# pragma GCC diagnostic pop
+# endif
 
 /************************************************************************/
 /*									*/
@@ -71,10 +96,10 @@ static int docInvalidateChangedLayout(
 /*									*/
 /************************************************************************/
 
-int docLayoutInvalidateRange(	DocumentSelection *	dsLayout,
-				BufferDocument *	bd,
-				const DocumentTree *	ei,
-				EditRange *		er )
+int docLayoutInvalidateRange(	struct DocumentSelection *	dsLayout,
+				struct BufferDocument *	bd,
+				const struct DocumentTree *	tree,
+				EditRange *			er )
     {
     const int		direction= 1;
     const int		flags= 0;
@@ -88,9 +113,9 @@ int docLayoutInvalidateRange(	DocumentSelection *	dsLayout,
 	}
 
     {
-    BufferItem *	headNode;
+    struct BufferItem *	headNode;
 
-    headNode= docGetParagraphByNumber( ei, er->erHead.epParaNr );
+    headNode= docGetParagraphByNumber( tree, er->erHead.epParaNr );
 
     if  ( headNode )
 	{
@@ -99,15 +124,15 @@ int docLayoutInvalidateRange(	DocumentSelection *	dsLayout,
 	}
     else{
 	/*LXDEB(er->erHead.epParaNr,headNode);*/
-	if  ( docHeadPosition( &dpHead, ei->dtRoot ) )
+	if  ( docHeadPosition( &dpHead, tree->dtRoot ) )
 	    { LDEB(er->erHead.epParaNr); return -1;	}
 	}
     }
 
     {
-    BufferItem *	tailNode;
+    struct BufferItem *	tailNode;
 
-    tailNode= docGetParagraphByNumber( ei, er->erTail.epParaNr );
+    tailNode= docGetParagraphByNumber( tree, er->erTail.epParaNr );
 
     if  ( tailNode )
 	{
@@ -116,7 +141,7 @@ int docLayoutInvalidateRange(	DocumentSelection *	dsLayout,
 	}
     else{
 	/* LXDEB(er->erTail.epParaNr,tailNode); */
-	if  ( docTailPosition( &dpTail, ei->dtRoot ) )
+	if  ( docTailPosition( &dpTail, tree->dtRoot ) )
 	    { LDEB(er->erTail.epParaNr); return -1;		}
 	}
     }
@@ -124,8 +149,10 @@ int docLayoutInvalidateRange(	DocumentSelection *	dsLayout,
     docInitDocumentSelection( dsLayout );
     docSetRangeSelection( dsLayout, &dpHead, &dpTail, direction );
 
-    if  ( docScanSelection( bd, dsLayout, docInvalidateChangedLayout,
-				    (NodeVisitor)0, flags, (void *)0 ) < 0 )
+    if  ( docScanSelection( bd, dsLayout,
+			    docInvalidateChangedLayout, (NodeVisitor)0,
+			    (TreeVisitor)0, (TreeVisitor)0, 
+			    flags, (void *)0 ) < 0 )
 	{ LDEB(1); return -1;	}
 
     return 0;
@@ -136,7 +163,6 @@ int docLayoutInvalidateRange(	DocumentSelection *	dsLayout,
 /*  Determine the frame when a formatting task is (re) started for a	*/
 /*  buffer item.							*/
 /*									*/
-/*  2)  Calculate the frame in which the text is to be laid out.	*/
 /*  3)  If the preceding paragraph ends on the same page where this	*/
 /*	nodes begins, reserve space for the footnotes upto the		*/
 /*	beginning of this block and subtract the footnote height from	*/
@@ -144,24 +170,22 @@ int docLayoutInvalidateRange(	DocumentSelection *	dsLayout,
 /*									*/
 /************************************************************************/
 
-int docLayoutGetInitialFrame(		BlockFrame *		bf,
+static int docLayoutGetInitialFrameImpl(
+					BlockFrame *		bf,
 					const LayoutJob *	lj,
 					const LayoutPosition *	lpHere,
-					BufferItem *		node )
+					struct BufferItem *	node )
     {
     const LayoutContext *	lc= &(lj->ljContext);
-    BufferDocument *		bd= lc->lcDocument;
-    const BufferItem *		prevParaBi= (const BufferItem *)0;
-
-    /*  2  */
-    docBlockFrameTwips( bf, node, bd, lpHere->lpPage, lpHere->lpColumn );
+    struct BufferDocument *	bd= lc->lcDocument;
+    const struct BufferItem *	prevParaNode= (const struct BufferItem *)0;
 
     /*  3  */
     if  ( node->biTreeType == DOCinBODY )
-	{ prevParaBi= docPrevParagraph( node );	}
+	{ prevParaNode= docPrevParagraph( node );	}
 
-    if  ( prevParaBi						&&
-	  prevParaBi->biBelowPosition.lpPage >= lpHere->lpPage	)
+    if  ( prevParaNode							&&
+	  prevParaNode->biBelowPosition.lpPage >= lpHere->lpPage	)
 	{
 	DocumentPosition		dpHere;
 	int				partHere;
@@ -176,6 +200,28 @@ int docLayoutGetInitialFrame(		BlockFrame *		bf,
 	}
 
     return 0;
+    }
+
+int docLayoutGetInitialFrame(		BlockFrame *		bf,
+					const LayoutJob *	lj,
+					const LayoutPosition *	lpHere,
+					struct BufferItem *	node )
+    {
+    const LayoutContext *	lc= &(lj->ljContext);
+    struct BufferDocument *	bd= lc->lcDocument;
+
+    /*  2  */
+    if  ( lj->ljBodySectNode )
+	{
+	docSectionBlockFrameTwips( bf, node, lj->ljBodySectNode,
+				    bd, lpHere->lpPage, lpHere->lpColumn );
+	}
+    else{
+	XDEB(lj->ljBodySectNode);
+	docBlockFrameTwips( bf, node, bd, lpHere->lpPage, lpHere->lpColumn );
+	}
+
+    return docLayoutGetInitialFrameImpl( bf, lj, lpHere, node );
     }
 
 /************************************************************************/
@@ -224,7 +270,7 @@ void docLayoutSetBottomPosition( int *				pChanged,
     }
 
 void docLayoutSetNodeBottom(	int *			pChanged,
-				BufferItem *		node,
+				struct BufferItem *		node,
 				const LayoutPosition *	lp,
 				const LayoutContext *	lc,
 				DocumentRectangle *	drChanged )
@@ -240,7 +286,7 @@ void docLayoutSetNodeBottom(	int *			pChanged,
 /*									*/
 /************************************************************************/
 
-void docLayoutStartNodeLayout(	BufferItem *		node,
+void docLayoutStartNodeLayout(	struct BufferItem *		node,
 				const LayoutJob *	lj,
 				const LayoutPosition *	lpHere )
     {
@@ -272,7 +318,7 @@ void docLayoutStartNodeLayout(	BufferItem *		node,
     }
 
 void docLayoutFinishNodeLayout(	int *			pChanged,
-				BufferItem *		node,
+				struct BufferItem *		node,
 				const LayoutJob *	lj,
 				const LayoutPosition *	lpHere )
     {
@@ -288,15 +334,15 @@ void docLayoutFinishNodeLayout(	int *			pChanged,
 /*									*/
 /************************************************************************/
 
-int docGetFirstSectionOnPage(		BufferDocument *	bd,
+int docGetFirstSectionOnPage(		struct BufferDocument *	bd,
 					int			page )
     {
-    BufferItem *		bodyNode= bd->bdBody.dtRoot;
+    struct BufferItem *		bodyNode= bd->bdBody.dtRoot;
     int				sectNr;
 
     for ( sectNr= 0; sectNr < bodyNode->biChildCount; sectNr++ )
 	{
-	const BufferItem *	bodySectNode= bodyNode->biChildren[sectNr];
+	const struct BufferItem *	bodySectNode= bodyNode->biChildren[sectNr];
 
 	if  ( bodySectNode->biTopPosition.lpPage <= page	&&
 	      bodySectNode->biBelowPosition.lpPage >= page	)
@@ -313,8 +359,8 @@ int docGetFirstSectionOnPage(		BufferDocument *	bd,
 /*									*/
 /************************************************************************/
 
-void docLayoutAdjustFrame(	BlockFrame *		bf,
-				const BufferItem *	node )
+void docLayoutAdjustFrame(	BlockFrame *			bf,
+				const struct BufferItem *	node )
     {
     /*  4  */
     if  ( node->biTreeType == DOCinFOOTNOTE		||
@@ -327,4 +373,54 @@ void docLayoutAdjustFrame(	BlockFrame *		bf,
 	}
 
     return;
+    }
+
+/************************************************************************/
+/*									*/
+/*  Get the font information for a text attribute value.		*/
+/*									*/
+/************************************************************************/
+
+const struct AfmFontInfo * docDocLayoutGetFontInfo(
+				const LayoutContext *		lc,
+				const struct TextAttribute *	ta )
+    {
+    struct BufferDocument *	bd= lc->lcDocument;
+    struct DocumentFontList *	dfl= bd->bdProperties->dpFontList;
+    const struct AfmFontInfo *	afi;
+    const struct IndexSet *	unicodesWanted;
+
+    const struct PostScriptFontList *	psfl= lc->lcPostScriptFontList;
+
+    afi= (*lc->lcGetFontForAttribute)( &unicodesWanted, ta, dfl, psfl );
+    if  ( ! afi )
+	{ XDEB(afi);	}
+
+    return afi;
+    }
+
+/************************************************************************/
+/*									*/
+/*  String representation of stop codes.				*/
+/*									*/
+/************************************************************************/
+
+const char *	docLayoutStopCodeStr(	int	stopCode )
+    {
+    static char	scratch[20];
+
+    switch( stopCode )
+	{
+	case FORMATstopREADY:		return "READY";
+	case FORMATstopNEXT_FRAME:	return "NEXT_FRAME";
+	case FORMATstopFRAME_FULL:	return "FRAME_FULL";
+	case FORMATstopBLOCK_FULL:	return "BLOCK_FULL";
+	case FORMATstopCOLUMN_BREAK:	return "COLUMN_BREAK";
+	case FORMATstopPAGE_BREAK:	return "PAGE_BREAK";
+	case FORMATstopPARTIAL:		return "PARTIAL";
+
+	default:
+	    sprintf( scratch, "%d", stopCode );
+	    return scratch;
+	}
     }

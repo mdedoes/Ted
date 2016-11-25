@@ -7,20 +7,27 @@
 #   include	"docRtfConfig.h"
 
 #   include	<stdlib.h>
-#   include	<stdio.h>
 #   include	<ctype.h>
 
-#   include	<appDebugon.h>
-
 #   include	"docRtfReaderImpl.h"
+#   include	"docRtfReadTreeStack.h"
 #   include	"docRtfTags.h"
-#   include	"docRtfShpTab.h"
+#   include	"docRtfShapeTab.h"
+#   include	"docRtfFindProperty.h"
 #   include	<docShape.h>
+#   include	<docShapeType.h>
 #   include	<docShapeProp.h>
 #   include	<docObjectProperties.h>
 #   include	<docTreeType.h>
 #   include	<docNodeTree.h>
-#   include	<docParaParticules.h>
+#   include	<docObject.h>
+#   include	<docTreeNode.h>
+#   include	<docBuf.h>
+#   include	<docParaBuilder.h>
+#   include	<docObjects.h>
+#   include	<geo2DInteger.h>
+
+#   include	<appDebugon.h>
 
 /************************************************************************/
 
@@ -324,7 +331,7 @@ int docRtfShpArray(	const RtfControlWord *	rcw,
 /*									*/
 /************************************************************************/
 
-static int docRtfSaveShapeData(	RtfReader *	rr,
+static int docRtfSaveShapeData(	RtfReader *		rr,
 				const char *		text,
 				int			len )
     {
@@ -333,7 +340,7 @@ static int docRtfSaveShapeData(	RtfReader *	rr,
     if  ( ! ds )
 	{ XDEB(ds); return 0;	}
 
-    if  ( rr->rrcInIgnoredGroup > 0 )
+    if  ( rr->rrInIgnoredGroup > 0 )
 	{ return 0;	}
 
     if  ( utilMemoryBufferSetBytes( &(ds->dsPictureData),
@@ -354,8 +361,8 @@ static int docRtfReadShapePicture(	const RtfControlWord *	rcw,
 
     docRtfPushReadingState( rr, &internRrs );
 
-    utilPropMaskClear( &(rr->rrcPicturePropMask) );
-    docInitPictureProperties( &(rr->rrcPictureProperties) );
+    utilPropMaskClear( &(rr->rrPicturePropMask) );
+    docInitPictureProperties( &(rr->rrPictureProperties) );
 
     rval= docRtfConsumeGroup( (const RtfControlWord *)0, 0, -1, rr,
 			    (const RtfControlWord *)0, docRtfSaveShapeData );
@@ -376,7 +383,7 @@ int docRtfShpPicture(	const RtfControlWord *	rcw,
 
     if  ( ! ds )
 	{ XDEB(ds);						}
-    else{ ds->dsPictureProperties= rr->rrcPictureProperties;	}
+    else{ ds->dsPictureProperties= rr->rrPictureProperties;	}
 
     return 0;
     }
@@ -385,21 +392,26 @@ int docRtfShpString(	const RtfControlWord *	rcw,
 			int			arg,
 			RtfReader *		rr )
     {
-    const int	removeSemicolon= 0;
-    char *	text= (char *)0;
-    int		size;
+    DrawingShape *	ds= rr->rrDrawingShape;
+    int			rval= 0;
+
+    const int		removeSemicolon= 0;
+    char *		text= (char *)0;
+    int			size;
 
     if  ( docRtfStoreSavedText( &text, &size, rr, removeSemicolon ) )
-	{ LDEB(1); return -1;	}
+	{ LDEB(1); rval= -1; goto ready;	}
 
-    /*
-    SSDEB(rcw->rcwWord,text);
-    */
+    if  ( docSetShapeDrawingStringProperty( &(ds->dsDrawing),
+						rcw->rcwID, text, size ) )
+	{ SLDEB(rcw->rcwWord,size); rval= -1; goto ready;	}
+
+  ready:
 
     if  ( text )
 	{ free( text );	}
 
-    return 0;
+    return rval;
     }
 
 static int docRtfShpGetNumber(	long *			pVal,
@@ -416,6 +428,9 @@ static int docRtfShpGetNumber(	long *			pVal,
 
     if  ( docRtfStoreSavedText( &text, &size, rr, removeSemicolon ) )
 	{ LDEB(1); rval= -1; goto ready;	}
+
+    if  ( ! text )
+	{ XDEB(text); rval= -1; goto ready;	}
 
     from= text;
     while( isspace( *from ) )
@@ -451,77 +466,6 @@ int docRtfShapeNumber(		const RtfControlWord *	rcw,
 
     if  ( docSetShapeDrawingProperty( &(ds->dsDrawing), rcw->rcwID, val ) )
 	{ SLDEB(rcw->rcwWord,val);	}
-
-    return 0;
-    }
-
-int docRtfShpColor(	const RtfControlWord *	rcw,
-			int			arg,
-			RtfReader *		rr )
-    {
-    DrawingShape *	ds= rr->rrDrawingShape;
-    ShapeDrawing *	sd;
-    long		val;
-    RGB8Color		rgb8;
-
-    if  ( docRtfShpGetNumber( &val, rr ) )
-	{ SDEB(rcw->rcwWord); return -1;	}
-
-    if  ( ! ds )
-	{ SXDEB(rcw->rcwWord,ds); return 0;	}
-    sd= &(ds->dsDrawing);
-
-    utilInitRGB8Color( &rgb8 );
-    rgb8.rgb8Red= val & 255; val /= 256;
-    rgb8.rgb8Green= val & 255; val /= 256;
-    rgb8.rgb8Blue= val & 255; val /= 256;
-
-    switch( rcw->rcwID )
-	{
-	case DSHPprop_fillColor:
-	    sd->sdFillColor= rgb8;
-	    break;
-	case DSHPprop_fillBackColor:
-	    sd->sdFillBackColor= rgb8;
-	    break;
-	case DSHPprop_fillCrMod:
-	    sd->sdFillCrModColor= rgb8;
-	    break;
-
-	case DSHPprop_lineColor:
-	    sd->sdLineColor= rgb8;
-	    break;
-	case DSHPprop_lineBackColor:
-	    sd->sdLineBackColor= rgb8;
-	    break;
-	case DSHPprop_lineCrMod:
-	    sd->sdLineCrModColor= rgb8;
-	    break;
-
-	case DSHPprop_shadowColor:
-	    sd->sdShadowColor= rgb8;
-	    break;
-	case DSHPprop_shadowHighlight:
-	    sd->sdShadowHighlightColor= rgb8;
-	    break;
-	case DSHPprop_shadowCrMod:
-	    sd->sdShadowCrModColor= rgb8;
-	    break;
-	case DSHPprop_c3DExtrusionColor:
-	    sd->sdShadowc3DExtrusionColor= rgb8;
-	    break;
-	case DSHPprop_c3DCrMod:
-	    sd->sdShadowc3DCrModColor= rgb8;
-	    break;
-
-	case DSHPprop_pictureTransparent:
-	    /* ? */
-	    break;
-
-	default:
-	    SDEB(rcw->rcwWord);
-	    break;
-	}
 
     return 0;
     }
@@ -612,7 +556,7 @@ int docRtfShapePropertyName(	const RtfControlWord *	rcw,
 
 static RtfControlWord	docRtfReadPictValueGroups[]=
     {
-	RTF_DEST_XX( RTFtag_pict,	0,	docRtfReadShapePicture ),
+	RTF_DEST_XX( RTFtag_pict, RTCscopeSHAPE, 0, docRtfReadShapePicture ),
 
 	{ (char *)0, 0, 0 }
     };
@@ -634,10 +578,10 @@ int docRtfShapePropertyValue(	const RtfControlWord *	rcw,
 
 static RtfControlWord	docRtfShpinstGroups[]=
     {
-	RTF_DEST_XX( "shptxt",	DOCinSHPTXT,	docRtfShpText ),
-	RTF_DEST_XX( "sp",	1,		docRtfShapeProperty ),
-	RTF_DEST_XX( "shpgrp",	SHPtyGROUP,	docRtfReadChildShape ),
-	RTF_DEST_XX( "shp",	SHPtyUNKNOWN,	docRtfReadChildShape ),
+	RTF_DEST_XX( "shptxt",	RTCscopeSHAPE, DOCinSHPTXT,	docRtfShpText ),
+	RTF_DEST_XX( "sp",	RTCscopeSHAPE, 1,		docRtfShapeProperty ),
+	RTF_DEST_XX( "shpgrp",	RTCscopeSHAPE, SHPtyGROUP,	docRtfReadChildShape ),
+	RTF_DEST_XX( "shp",	RTCscopeSHAPE, SHPtyUNKNOWN,	docRtfReadChildShape ),
 
 	{ (char *)0, 0, 0 }
     };
@@ -666,40 +610,42 @@ static int docRtfShprslt(	const RtfControlWord *	rcw,
 				int			arg,
 				RtfReader *		rr )
     {
-    int		res= 0;
+    int			rval= 0;
 
-    BufferItem *	sectBi;
+    struct BufferItem *	sectNode;
     SelectionScope	ss;
     int			treeType= DOCinSHPTXT;
     const int		ignoreEmpty= 0;
 
     DocumentTree	dt;
 
-    rr->rrcInIgnoredGroup++;
+    rr->rrInIgnoredGroup++;
 
     docInitDocumentTree( &dt );
     docInitSelectionScope( &ss );
 
-    sectBi= docGetSectNode( rr->rrcNode );
-    if  ( ! sectBi )
-	{ XDEB(sectBi); res= -1; goto ready;	}
+    if  ( ! rr->rrTreeStack )
+	{ XDEB(rr->rrTreeStack); rval= -1; goto ready;	}
+    sectNode= docGetSectNode( rr->rrTreeStack->rtsNode );
+    if  ( ! sectNode )
+	{ XDEB(sectNode); rval= -1; goto ready;	}
 
     ss.ssTreeType= DOCinSHPTXT;
     ss.ssSectNr= 0;
-    ss.ssOwnerSectNr= sectBi->biNumberInParent;
+    ss.ssOwnerSectNr= sectNode->biNumberInParent;
 
     if  ( docRtfReadDocumentTree( rcw, &dt, &treeType,
 						rr, ignoreEmpty, &ss ) )
-	{ SDEB(rcw->rcwWord); res= -1; goto ready;	}
+	{ SDEB(rcw->rcwWord); rval= -1; goto ready;	}
 
     docSetTreeTypeOfNode( dt.dtRoot, treeType );
 
   ready:
 
     docCleanDocumentTree( rr->rrDocument, &dt );
-    rr->rrcInIgnoredGroup--;
+    rr->rrInIgnoredGroup--;
 
-    return res;
+    return rval;
     }
 
 /************************************************************************/
@@ -714,81 +660,82 @@ static int docRtfReadShapeIntern(	DrawingShape **		pDs,
 					RtfReader *		rr,
 					const RtfControlWord *	shapeGroups )
     {
-    int			res;
-    DrawingShape *	parent= rr->rrDrawingShape;
-    DrawingShape *	ds= (DrawingShape *)0;
+    int				rval= 0;
+
+    RtfReadingState *		rrs= rr->rrState;
+    RtfTreeStack *		rts= rr->rrTreeStack;
+
+    DrawingShape *		dsSave= rr->rrDrawingShape;
+    DrawingShape *		ds= (DrawingShape *)0;
+
+    InsertedObject *		io= (InsertedObject *)0;
+    int				objectNumber= -1;
+
+    const struct BufferItem *	bodySectNode;
 
     if  ( ! docRtfGetParaNode( rr ) )
-	{ SDEB(rcw->rcwWord); return -1; }
+	{ SDEB(rcw->rcwWord); rval= -1; goto ready; }
 
-    if  ( ! rr->rrcInIgnoredGroup )
+    ds= docClaimDrawingShape( &(rr->rrDocument->bdShapeList) );
+    if  ( ! ds )
+	{ XDEB(ds); rval= -1; goto ready;	}
+
+    ds->dsDrawing.sdShapeType= rcw->rcwID;
+
+    bodySectNode= docGetBodySectNode( rr->rrTreeStack->rtsNode,
+							rr->rrDocument );
+    if  ( ! bodySectNode )
+	{ XDEB(bodySectNode); rval= -1; goto ready;	}
+
+    ds->dsSelectionScope.ssTreeType= DOCinSHPTXT;
+    ds->dsSelectionScope.ssSectNr= 0;
+    ds->dsSelectionScope.ssOwnerSectNr= bodySectNode->biNumberInParent;
+    ds->dsSelectionScope.ssOwnerNumber= ds->dsShapeNumber;
+
+    rr->rrDrawingShape= ds;
+
+    if  ( docRtfReadGroup( rcw, 0, 0, rr,
+			shapeGroups, docRtfIgnoreText, (RtfCommitGroup)0 ) )
+	{ SDEB(rcw->rcwWord); rval= -1; goto ready;	}
+
+    if  ( rrs->rrsTextShadingChanged )
+	{ docRtfRefreshTextShading( rr, rrs );	}
+
+    objectNumber= docRtfReadStartObject( &io, rr );
+    if  ( objectNumber < 0 )
+	{ LDEB(objectNumber); rval= -1; goto ready;	}
+
+    io->ioKind= DOCokDRAWING_SHAPE;
+    io->ioDrawingShape= ds; ds= (DrawingShape *)0; /* steal */
+    io->ioInline= 0;
+
+    if  ( docParagraphBuilderAppendObject( rts->rtsParagraphBuilder,
+			    objectNumber, &(rrs->rrsTextAttribute) ) < 0 )
+	{ LDEB(objectNumber); rval= -1; goto ready;	}
+
+    if  ( io->ioDrawingShape->dsDrawing.sd_fPseudoInline )
 	{
-	const BufferItem *		bodySectBi;
-
-	ds= docClaimDrawingShape( &(rr->rrDocument->bdShapeList) );
-	if  ( ! ds )
-	    { XDEB(ds); return -1;	}
-
-	ds->dsDrawing.sdShapeType= rcw->rcwID;
-
-	bodySectBi= docGetBodySectNode( rr->rrcNode, rr->rrDocument );
-	if  ( ! bodySectBi )
-	    { XDEB(bodySectBi); return -1;	}
-
-	ds->dsSelectionScope.ssTreeType= DOCinSHPTXT;
-	ds->dsSelectionScope.ssSectNr= 0;
-	ds->dsSelectionScope.ssOwnerSectNr= bodySectBi->biNumberInParent;
-	ds->dsSelectionScope.ssOwnerNumber= ds->dsShapeNumber;
-
-	rr->rrDrawingShape= ds;
+	rr->rrAfterInlineShape= 1;
+	rr->rrInlineShapeObjectNumber= objectNumber;
+	io->ioInline= 1;
 	}
 
-    res= docRtfReadGroup( rcw, 0, 0, rr,
-			shapeGroups, docRtfIgnoreText, (RtfCommitGroup)0 );
+    if  ( pDs )
+	{ *pDs= io->ioDrawingShape;	}
 
-    if  ( res )
-	{
-	SLDEB(rcw->rcwWord,res);
-	if  ( ds )
-	    { docDeleteDrawingShape( rr->rrDocument, ds );	}
-	}
-    else{
-	if  ( ! rr->rrcInIgnoredGroup )
-	    {
-	    BufferItem *	paraBi= rr->rrcNode;
-	    TextParticule *	tp;
-	    RtfReadingState *	rrs= rr->rrcState;
+    objectNumber= -1; /* steal */
 
-	    if  ( rrs->rrsTextShadingChanged )
-		{ docRtfRefreshTextShading( rr, rrs );	}
+  ready:
 
-	    tp= docAppendObject( rr->rrDocument, paraBi,
-						    &(rrs->rrsTextAttribute) );
-	    if  ( ! tp )
-		{
-		LDEB(paraBi->biParaParticuleCount);
-		docDeleteDrawingShape( rr->rrDocument, ds );
-		res= -1;
-		}
-	    else{
-		InsertedObject *	io;
+    if  ( objectNumber >= 0 )
+	{ docDeleteObject( rr->rrDocument, objectNumber );	}
 
-		io= docGetObject( rr->rrDocument, tp->tpObjectNumber );
-		if  ( ! io )
-		    { LXDEB(tp->tpObjectNumber,io); res= -1;	}
-		else{
-		    io->ioKind= DOCokDRAWING_SHAPE;
-		    io->ioDrawingShape= ds;
-		    io->ioInline= 0;
-		    }
+    if  ( ds )
+	{ docDeleteDrawingShape( rr->rrDocument, ds );	}
 
-		}
-	    *pDs= ds;
-	    }
-	}
+    rr->rrDrawingShape= dsSave;
 
-    rr->rrDrawingShape= parent;
-    return res;
+    return rval;
     }
 
 /************************************************************************/
@@ -799,11 +746,11 @@ static int docRtfReadShapeIntern(	DrawingShape **		pDs,
 
 static RtfControlWord	docRtfShapeGroups[]=
     {
-	RTF_DEST_XX( "shptxt",	DOCinSHPTXT,	docRtfShpText ),
-	RTF_DEST_XX( "shprslt",	DOCinSHPTXT,	docRtfShprslt ),
-	RTF_DEST_XX( "shpgrp",	SHPtyGROUP,	docRtfReadChildShape ),
-	RTF_DEST_XX( "shp",	SHPtyUNKNOWN,	docRtfReadChildShape ),
-	RTF_DEST_XX( "shpinst",	SHPtyUNKNOWN,	docRtfShpinst ),
+	RTF_DEST_XX( "shptxt",	RTCscopeSHAPE, DOCinSHPTXT,	docRtfShpText ),
+	RTF_DEST_XX( "shprslt",	RTCscopeSHAPE, DOCinSHPTXT,	docRtfShprslt ),
+	RTF_DEST_XX( "shpgrp",	RTCscopeSHAPE, SHPtyGROUP,	docRtfReadChildShape ),
+	RTF_DEST_XX( "shp",	RTCscopeSHAPE, SHPtyUNKNOWN,	docRtfReadChildShape ),
+	RTF_DEST_XX( "shpinst",	RTCscopeSHAPE, SHPtyUNKNOWN,	docRtfShpinst ),
 
 	{ (char *)0, 0, 0, }
     };
@@ -816,7 +763,7 @@ static int docRtfReadChildShape(	const RtfControlWord *	rcw,
     DrawingShape *	parent= rr->rrDrawingShape;
     DrawingShape *	ds;
 
-    if  ( ! rr->rrcInIgnoredGroup )
+    if  ( ! rr->rrInIgnoredGroup )
 	{
 	ds= docClaimShapeInParent( &(rr->rrDocument->bdShapeList),
 						    parent, -1, rcw->rcwID );
@@ -845,12 +792,15 @@ int docRtfReadShape(			const RtfControlWord *	rcw,
 					int			arg,
 					RtfReader *		rr )
     {
+    int			rval= 0;
     DrawingShape *	ds= (DrawingShape *)0;
 
     if  ( ! docRtfGetParaNode( rr ) )
 	{ SDEB(rcw->rcwWord); return -1; }
 
-    return docRtfReadShapeIntern( &ds, rcw, arg, rr, docRtfShapeGroups );
+    rval= docRtfReadShapeIntern( &ds, rcw, arg, rr, docRtfShapeGroups );
+
+    return rval;
     }
 
 /************************************************************************/
@@ -893,25 +843,22 @@ static int docRtfDrawingObjectToShape(	DrawingShape *	ds )
 
 static RtfControlWord	docRtfDoGroups[]=
     {
-	RTF_DEST_XX( "dptxbxtext",	DOCinSHPTXT,	docRtfShpText ),
+	RTF_DEST_XX( "dptxbxtext", RTCscopeANY, DOCinSHPTXT, docRtfShpText ),
 
 	{ (char *)0, 0, 0 }
     };
 
 int docRtfReadDrawingObject(	const RtfControlWord *	rcw,
 				int			arg,
-				RtfReader *	rr )
+				RtfReader *		rr )
     {
     DrawingShape *	ds= (DrawingShape *)0;
 
     if  ( docRtfReadShapeIntern( &ds, rcw, arg, rr, docRtfDoGroups ) )
 	{ SDEB(rcw->rcwWord);	}
 
-    if  ( ! rr->rrcInIgnoredGroup )
-	{
-	if  ( docRtfDrawingObjectToShape( ds ) )
-	    { LDEB(1);	}
-	}
+    if  ( docRtfDrawingObjectToShape( ds ) )
+	{ LDEB(1);	}
 
     return 0;
     }

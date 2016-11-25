@@ -7,11 +7,12 @@
 #   include	"appFrameConfig.h"
 
 #   include	<stddef.h>
-#   include	<stdio.h>
 
 #   include	<utilFontmap.h>
-#   include	"appFrame.h"
-#   include	"appMatchFont.h"
+#   include	"appEditApplication.h"
+#   include	<drawMatchFont.h>
+#   include	<utilPrinter.h>
+#   include	<utilMemoryBuffer.h>
 
 #   include	<appDebugon.h>
 
@@ -37,12 +38,12 @@ int appPostScriptFontCatalog(		EditApplication *	ea )
     if  ( ea->eaPostScriptFontList.psflFamilyCount > 0 )
 	{ goto ready;	}
 
-#   ifdef USE_FONTCONFIG
+#   if USE_FONTCONFIG
     ea->eaPostScriptFontList.psflAvoidFontconfig= ea->eaAvoidFontconfigInt > 0;
 
     if  ( ! ea->eaPostScriptFontList.psflAvoidFontconfig )
 	{
-	appFcListFonts( &(ea->eaPostScriptFontList) );
+	drawFcListFonts( &(ea->eaPostScriptFontList) );
 
 	if  ( ea->eaPostScriptFontList.psflFamilyCount > 0 )
 	    { goto ready;	}
@@ -95,4 +96,3 @@ int appGetPrintDestinations(		EditApplication *	ea )
 
     return 0;
     }
-

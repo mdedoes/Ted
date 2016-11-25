@@ -7,12 +7,11 @@
 #   include	"tedConfig.h"
 
 #   include	<stddef.h>
-#   include	<stdio.h>
 #   include	<ctype.h>
 
 #   include	"tedEdit.h"
 #   include	"tedSelect.h"
-#   include	"tedDocFront.h"
+#   include	<tedDocFront.h>
 #   include	"tedLayout.h"
 #   include	"tedDocument.h"
 #   include	<docTrace.h>
@@ -26,22 +25,41 @@
 #   include	<docListOverride.h>
 #   include	<docEditCommand.h>
 #   include	<docRtfTraceImpl.h>
+#   include	<docDocumentField.h>
+#   include	<docFieldKind.h>
+#   include	<docRowNodeProperties.h>
+#   include	<docDocumentCopyJob.h>
+#   include	<docEditStep.h>
+#   include	<docDocumentProperties.h>
+#   include	<appEditDocument.h>
+#   include	<docListAdmin.h>
+#   include	<docFields.h>
+#   include	<docBuf.h>
+#   include	<docEditImpl.h>
 
+#   include	<docDebug.h>
 #   include	<appDebugon.h>
 
 #   define	VALIDATE_TREE	0
 
+typedef struct UndoOperation
+    {
+    TedEditOperation		uoEditOperation;
+    SelectionGeometry		uoSelectionGeometry;
+    SelectionDescription	uoSelectionDescription;
+    const EditStep *		uoEditStep;
+    } UndoOperation;
+
 /************************************************************************/
 
-static int tedStartUndoOperation( TedEditOperation *	teo,
-				SelectionGeometry *	sg,
-				SelectionDescription *	sd,
+static int tedStartUndoOperation( UndoOperation *	uo,
 				EditDocument *		ed,
 				const EditStep *	es )
     {
+    TedEditOperation *		teo= &(uo->uoEditOperation);
     EditOperation *		eo= &(teo->teoEo);
     TedDocument *		td= (TedDocument *)ed->edPrivateData;
-    BufferDocument *		bd= td->tdDocument;
+    struct BufferDocument *	bd= td->tdDocument;
 
     DocumentSelection		ds;
     DocumentSelection		dsGeo;
@@ -50,7 +68,7 @@ static int tedStartUndoOperation( TedEditOperation *	teo,
 
 #   if VALIDATE_TREE
     {
-    const BufferDocument *	bd= td->tdDocument;
+    const struct BufferDocument *	bd= td->tdDocument;
     LDEB(1);
     if  ( docCheckNode( &(bd->bdItem) ) )
 	{ LDEB(2); docListNode( 0, &(bd->bdItem) ); abort(); }
@@ -61,10 +79,12 @@ static int tedStartUndoOperation( TedEditOperation *	teo,
     teo->teoEditDocument= ed;
     teo->teoEditTrace= (EditTrace *)0;
     tedSetScreenLayoutContext( &(teo->teoLayoutContext), ed );
-    eo->eoCloseObject= teo->teoLayoutContext.lcCloseObject;
+
+    docInitSelectionGeometry( &(uo->uoSelectionGeometry) );
+    docInitSelectionDescription( &(uo->uoSelectionDescription) );
 
     {
-    BufferItem *	bodySectNode;
+    struct BufferItem *	bodySectNode;
 
     if  ( docGetRootOfSelectionScope( &(eo->eoTree), &bodySectNode,
 					    bd, &(es->esNewSelectionScope) ) )
@@ -85,18 +105,18 @@ static int tedStartUndoOperation( TedEditOperation *	teo,
 	{
 	EditRange	er= es->esNewEditRange;
 
-	docAvoidMergedTail( &dsGeo, &er );
+	docAvoidMergedCellTail( &dsGeo, &er );
 	}
 
-    tedSelectionGeometry( sg, &dsGeo, eo->eoBodySectNode, lastLine,
-						&(teo->teoLayoutContext) );
-    docDescribeSelection( sd, &ds, bd,
-				    sg->sgHead.pgTopPosition.lpPage,
-				    sg->sgTail.pgTopPosition.lpPage,
-				    ed->edDocumentId,
-				    ed->edFileReadOnly );
+    docSelectionGeometry( &(uo->uoSelectionGeometry),
+					&dsGeo, eo->eoBodySectNode, lastLine,
+					&(teo->teoLayoutContext) );
+    docDescribeSelection( &(uo->uoSelectionDescription), &ds, bd,
+			uo->uoSelectionGeometry.sgHead.pgTopPosition.lpPage,
+			uo->uoSelectionGeometry.sgTail.pgTopPosition.lpPage,
+			ed->edDocumentId, ed->edFileReadOnly );
 
-    if  ( docStartEditOperation( eo, &ds, bd ) )
+    if  ( docStartEditOperation( eo, &ds, bd, (struct DocumentField *)0 ) )
 	{ LDEB(1); return -1;	}
 
 		/*
@@ -110,15 +130,18 @@ static int tedStartUndoOperation( TedEditOperation *	teo,
     teo->teoSavedTextAttributeNumber=
 			td->tdSelectionDescription.sdTextAttributeNumber;
 
-    eo->eoIBarSelectionOld= sd->sdIsIBarSelection;
-    eo->eoMultiParagraphSelectionOld= ! sd->sdIsSingleParagraph;
+    eo->eoIBarSelectionOld= uo->uoSelectionDescription.sdIsIBarSelection;
+    eo->eoMultiParagraphSelectionOld=
+			! uo->uoSelectionDescription.sdIsSingleParagraph;
 
-    tedIncludeRectangleInChange( teo, &(sg->sgRectangle) );
+    tedIncludeRectangleInChange( teo,
+			    &(uo->uoSelectionGeometry.sgRectangle) );
     teo->teoChangedRect.drX1= ed->edFullRect.drX1;
 
     if  ( fullWidth )
 	{ teo->teoChangedRect.drX0= ed->edFullRect.drX0; }
 
+    uo->uoEditStep= es;
     return 0;
     }
 
@@ -136,10 +159,10 @@ static int tedUndoFinishOld(	TedEditOperation *	teo,
     {
     EditOperation *		eo= &(teo->teoEo);
 
-    DocumentTree *		dt;
+    struct DocumentTree *		dt;
     DocumentSelection		dsNew;
 
-    if  ( docGetRootOfSelectionScope( &dt, (BufferItem **)0,
+    if  ( docGetRootOfSelectionScope( &dt, (struct BufferItem **)0,
 				eo->eoDocument, &(es->esOldSelectionScope) ) )
 	{ LDEB(1); return -1;	}
 
@@ -164,25 +187,21 @@ static int tedUndoFinishOld(	TedEditOperation *	teo,
 /*									*/
 /************************************************************************/
 
-static int tedUndoReplace(	TedEditOperation *	teo,
-				EditDocument *		ed,
-				const EditStep *	es,
+static int tedUndoReplace(	UndoOperation *		uo,
 				int			posWhere,
 				int			copyTailParaProps )
     {
     int				rval= 0;
 
+    TedEditOperation *		teo= &(uo->uoEditOperation);
     EditOperation *		eo= &(teo->teoEo);
-    SelectionGeometry		sg;
-    SelectionDescription	sd;
+    const EditStep *		es= uo->uoEditStep;
 
     DocumentPosition		dpFrom;
 
     DocumentCopyJob		dcj;
 
     docInitDocumentCopyJob( &dcj );
-
-    tedStartUndoOperation( teo, &sg, &sd, ed, es );
 
     if  ( ! docHeadPosition( &dpFrom, es->esSourceDocument->bdBody.dtRoot ) )
 	{
@@ -231,23 +250,19 @@ static int tedUndoReplace(	TedEditOperation *	teo,
 /*									*/
 /************************************************************************/
 
-static int tedUndoDeletePara(	TedEditOperation *	teo,
-				EditDocument *		ed,
-				const EditStep *	es )
+static int tedUndoDeletePara(	UndoOperation *		uo )
     {
     int				rval= 0;
 
+    TedEditOperation *		teo= &(uo->uoEditOperation);
     EditOperation *		eo= &(teo->teoEo);
-    SelectionGeometry		sg;
-    SelectionDescription	sd;
+    const EditStep *		es= uo->uoEditStep;
 
     DocumentPosition		dpFrom;
 
-    BufferItem *		parentTo;
+    struct BufferItem *		parentTo;
     int				to;
-    BufferItem *		parentFrom;
-
-    tedStartUndoOperation( teo, &sg, &sd, ed, es );
+    struct BufferItem *		parentFrom;
 
     if  ( docHeadPosition( &dpFrom, es->esSourceDocument->bdBody.dtRoot ) )
 	{ LDEB(1); rval= -1; goto ready;	}
@@ -273,27 +288,23 @@ static int tedUndoDeletePara(	TedEditOperation *	teo,
 /*									*/
 /************************************************************************/
 
-static int tedUndoDeleteColumn(	TedEditOperation *	teo,
-				EditDocument *		ed,
-				const EditStep *	es )
+static int tedUndoDeleteColumn(	UndoOperation *		uo )
     {
     int				rval= 0;
 
+    TedEditOperation *		teo= &(uo->uoEditOperation);
     EditOperation *		eo= &(teo->teoEo);
-    SelectionGeometry		sg;
-    SelectionDescription	sd;
+    const EditStep *		es= uo->uoEditStep;
 
     DocumentPosition		dpFrom;
 
     int				colFrom;
     int				rowFrom, row0From, row1From;
-    BufferItem *		parentFrom;
+    struct BufferItem *		parentFrom;
 
     int				colTo;
     int				rowTo, row0To, row1To;
-    BufferItem *		parentTo;
-
-    tedStartUndoOperation( teo, &sg, &sd, ed, es );
+    struct BufferItem *		parentTo;
 
     if  ( docHeadPosition( &dpFrom, es->esSourceDocument->bdBody.dtRoot ) )
 	{ LDEB(1); rval= -1; goto ready;	}
@@ -312,8 +323,8 @@ static int tedUndoDeleteColumn(	TedEditOperation *	teo,
     rowTo= row0To;
     for ( rowFrom= row0From; rowFrom <= row1From; rowTo++, rowFrom++ )
 	{
-	BufferItem *	rowNodeTo= parentTo->biChildren[rowTo];
-	BufferItem *	rowNodeFrom= parentFrom->biChildren[rowFrom];
+	struct BufferItem *	rowNodeTo= parentTo->biChildren[rowTo];
+	struct BufferItem *	rowNodeFrom= parentFrom->biChildren[rowFrom];
 
 	if  ( docReinsertNodes( eo, rowNodeTo, rowNodeFrom, colTo, es ) )
 	    { LDEB(colTo); rval= -1; goto ready;	}
@@ -333,30 +344,26 @@ static int tedUndoDeleteColumn(	TedEditOperation *	teo,
 /*									*/
 /************************************************************************/
 
-static int tedUndoDeleteRow(	TedEditOperation *	teo,
-				EditDocument *		ed,
-				const EditStep *	es )
+static int tedUndoDeleteRow(	UndoOperation *		uo )
     {
     int				rval= 0;
 
+    TedEditOperation *		teo= &(uo->uoEditOperation);
     EditOperation *		eo= &(teo->teoEo);
-    SelectionGeometry		sg;
-    SelectionDescription	sd;
+    const EditStep *		es= uo->uoEditStep;
 
     DocumentPosition		dpFrom;
 
-    BufferItem *		parentTo;
+    struct BufferItem *		parentTo;
     int				to;
-    BufferItem *		parentFrom;
+    struct BufferItem *		parentFrom;
 
-    BufferItem *		rowNodeFrom;
-    BufferItem *		rowNodeTo;
+    struct BufferItem *		rowNodeFrom;
+    struct BufferItem *		rowNodeTo;
 
     DocumentCopyJob		dcj;
 
     docInitDocumentCopyJob( &dcj );
-
-    tedStartUndoOperation( teo, &sg, &sd, ed, es );
 
     if  ( docHeadPosition( &dpFrom, es->esSourceDocument->bdBody.dtRoot ) )
 	{ LDEB(1); rval= -1; goto ready;	}
@@ -401,26 +408,22 @@ static int tedUndoDeleteRow(	TedEditOperation *	teo,
 /*									*/
 /************************************************************************/
 
-static int tedUndoDeleteSect(	TedEditOperation *	teo,
-				EditDocument *		ed,
-				const EditStep *	es )
+static int tedUndoDeleteSect(	UndoOperation *		uo )
     {
     int				rval= 0;
 
+    TedEditOperation *		teo= &(uo->uoEditOperation);
     EditOperation *		eo= &(teo->teoEo);
-    SelectionGeometry		sg;
-    SelectionDescription	sd;
+    const EditStep *		es= uo->uoEditStep;
 
     DocumentPosition		dpFrom;
 
-    BufferItem *		parentTo;
+    struct BufferItem *		parentTo;
     int				to;
-    BufferItem *		parentFrom;
+    struct BufferItem *		parentFrom;
 
-    BufferItem *		sectNodeFrom;
-    BufferItem *		sectNodeTo;
-
-    tedStartUndoOperation( teo, &sg, &sd, ed, es );
+    struct BufferItem *		sectNodeFrom;
+    struct BufferItem *		sectNodeTo;
 
     if  ( docHeadPosition( &dpFrom, es->esSourceDocument->bdBody.dtRoot ) )
 	{ LDEB(1); rval= -1; goto ready;	}
@@ -448,7 +451,7 @@ static int tedUndoDeleteSect(	TedEditOperation *	teo,
 
 static int tedUndoInsertNode(	TedEditOperation *	teo,
 				const EditStep *	es,
-				BufferItem *		node )
+				struct BufferItem *		node )
     {
     EditOperation *		eo= &(teo->teoEo);
 
@@ -477,17 +480,13 @@ static int tedUndoInsertNode(	TedEditOperation *	teo,
     return 0;
     }
 
-static int tedUndoInsertPara(	TedEditOperation *	teo,
-				EditDocument *		ed,
-				const EditStep *	es )
+static int tedUndoInsertPara(	UndoOperation *		uo )
     {
     int				rval= 0;
 
+    TedEditOperation *		teo= &(uo->uoEditOperation);
     EditOperation *		eo= &(teo->teoEo);
-    SelectionGeometry		sg;
-    SelectionDescription	sd;
-
-    tedStartUndoOperation( teo, &sg, &sd, ed, es );
+    const EditStep *		es= uo->uoEditStep;
 
     if  ( tedUndoInsertNode( teo, es, eo->eoHeadDp.dpNode ) )
 	{ LDEB(1); rval= -1; goto ready;	}
@@ -497,19 +496,15 @@ static int tedUndoInsertPara(	TedEditOperation *	teo,
     return rval;
     }
 
-static int tedUndoInsertSect(	TedEditOperation *	teo,
-				EditDocument *		ed,
-				const EditStep *	es )
+static int tedUndoInsertSect(	UndoOperation *		uo )
     {
     int				rval= 0;
 
+    TedEditOperation *		teo= &(uo->uoEditOperation);
     EditOperation *		eo= &(teo->teoEo);
-    SelectionGeometry		sg;
-    SelectionDescription	sd;
+    const EditStep *		es= uo->uoEditStep;
 
-    BufferItem *		sectNode;
-
-    tedStartUndoOperation( teo, &sg, &sd, ed, es );
+    struct BufferItem *		sectNode;
 
     sectNode= docGetSectNode( eo->eoHeadDp.dpNode );
     if  ( ! sectNode )
@@ -523,19 +518,15 @@ static int tedUndoInsertSect(	TedEditOperation *	teo,
     return rval;
     }
 
-static int tedUndoInsertRow(	TedEditOperation *	teo,
-				EditDocument *		ed,
-				const EditStep *	es )
+static int tedUndoInsertRow(	UndoOperation *		uo )
     {
     int				rval= 0;
 
+    TedEditOperation *		teo= &(uo->uoEditOperation);
     EditOperation *		eo= &(teo->teoEo);
-    SelectionGeometry		sg;
-    SelectionDescription	sd;
+    const EditStep *		es= uo->uoEditStep;
 
-    BufferItem *		rowNode;
-
-    tedStartUndoOperation( teo, &sg, &sd, ed, es );
+    struct BufferItem *		rowNode;
 
     rowNode= docGetRowNode( eo->eoHeadDp.dpNode );
     if  ( ! rowNode )
@@ -549,23 +540,33 @@ static int tedUndoInsertRow(	TedEditOperation *	teo,
     return rval;
     }
 
-static int tedUndoInsertColumn(	TedEditOperation *	teo,
-				EditDocument *		ed,
-				const EditStep *	es )
+static int tedUndoInsertColumn(	UndoOperation *		uo )
     {
     int				rval= 0;
 
+    TedEditOperation *		teo= &(uo->uoEditOperation);
     EditOperation *		eo= &(teo->teoEo);
-    SelectionGeometry		sg;
-    SelectionDescription	sd;
+    const EditStep *		es= uo->uoEditStep;
 
-    BufferItem *		parentNode;
+    struct BufferItem *		parentNode;
     int				col;
     int				row;
     int				row0;
     int				row1;
 
-    tedStartUndoOperation( teo, &sg, &sd, ed, es );
+    RowProperties		rpSet;
+    PropertyMask		rpSetMask;
+    PropertyMask		cpSetMask;
+
+    const DocumentAttributeMap * const dam0= (const DocumentAttributeMap *)0;
+
+    docInitRowProperties( &rpSet );
+    utilPropMaskClear( &rpSetMask );
+    PROPmaskADD( &rpSetMask, RPprop_CELL_COUNT );
+    PROPmaskADD( &rpSetMask, RPprop_CELL_PROPS );
+
+    utilPropMaskClear( &cpSetMask );
+    PROPmaskADD( &cpSetMask, CLpropWIDTH );
 
     if  ( docDelimitTable( eo->eoHeadDp.dpNode, &parentNode,
 						&col, &row0, &row, &row1 ) )
@@ -575,41 +576,64 @@ static int tedUndoInsertColumn(	TedEditOperation *	teo,
 
     for ( row= row0; row <= row1; row++ )
 	{
-	BufferItem *	rowNode= parentNode->biChildren[row];
-	int		wide;
+	struct BufferItem *	rowNode= parentNode->biChildren[row];
+	int			wide;
 
-	int		sectionsDeleted= 0;
-	int		firstParaDeleted= -1;
-	int		paragraphsDeleted= 0;
+	const int		count= 1;
 
-	wide= docColumnWidth( &(rowNode->biRowProperties), col );
+	int			sectionsDeleted= 0;
+	int			firstParaDeleted= -1;
+	int			paragraphsDeleted= 0;
+
+	{
+	const RowProperties *	rpOld;
+
+	/*
+	const struct BufferItem *	cellNode= rowNode->biChildren[col];
+	wide= cellNode->biCellRight- cellNode->biCellLeft;
+	*/
+
+	rpOld= rowNode->biRowProperties;
+	wide= rpOld->rpCells[col].cpWide;
+
+	if  ( docCopyRowProperties( &rpSet, rpOld, dam0 ) )
+	    { LDEB(1); rval= -1; goto ready;	}
+	}
 
 	docEditDeleteNodes( eo, &sectionsDeleted,
 			    &firstParaDeleted, &paragraphsDeleted,
-			    rowNode, col, 1 );
+			    rowNode, col, count );
+
+	docDeleteColumnsFromRow( &rpSet, col, count );
 
 	switch( es->esSelectionPosition )
 	    {
 	    case SELposBEFORE:
-		docRowPropertiesMakeColWider(
-				&(rowNode->biRowProperties), col, wide );
+		docRowPropertiesMakeColWider( &rpSet, col, wide );
 		break;
 
 	    case SELposAFTER:
-		docRowPropertiesMakeColWider(
-				&(rowNode->biRowProperties), col- 1, wide );
+		docRowPropertiesMakeColWider( &rpSet, col- 1, wide );
 		break;
 
 	    default:
 		LDEB(es->esSelectionPosition);
 		break;
 	    }
+
+	if  ( docChangeRowNodeProperties( (PropertyMask *)0, (PropertyMask *)0,
+				    rowNode, &rpSetMask, &cpSetMask, &rpSet,
+				    0, rpSet.rpCellCount,
+				    eo->eoDocument, dam0 ) )
+	    { LDEB(wide); rval= -1; goto ready;	}
 	}
 
     if  ( tedUndoFinishOld( teo, es ) )
 	{ LDEB(1); rval= -1; goto ready;	}
 
   ready:
+
+    docCleanRowProperties( &rpSet );
 
     return rval;
     }
@@ -623,20 +647,15 @@ static int tedUndoInsertColumn(	TedEditOperation *	teo,
 /*									*/
 /************************************************************************/
 
-static int tedUndoInsertHeaderFooter(	TedEditOperation *	teo,
-					EditDocument *		ed,
-					const EditStep *	es )
+static int tedUndoInsertHeaderFooter(	UndoOperation *		uo )
     {
     int				rval= 0;
 
+    TedEditOperation *		teo= &(uo->uoEditOperation);
     EditOperation *		eo= &(teo->teoEo);
-    SelectionGeometry		sg;
-    SelectionDescription	sd;
+    const EditStep *		es= uo->uoEditStep;
 
-    DocumentTree * 		dtHdFt;
-
-    tedStartUndoOperation( teo, &sg, &sd, ed, es );
-    dtHdFt= eo->eoTree;
+    struct DocumentTree * 		dtHdFt= eo->eoTree;
 
     docMoveEditOperationToBodySect( eo, eo->eoBodySectNode );
 
@@ -662,29 +681,25 @@ static int tedUndoInsertHeaderFooter(	TedEditOperation *	teo,
 /*									*/
 /************************************************************************/
 
-static int tedUndoDeleteHeaderFooter(	TedEditOperation *	teo,
-					EditDocument *		ed,
-					const EditStep *	es )
+static int tedUndoDeleteHeaderFooter(	UndoOperation *		uo )
     {
     int				rval= 0;
 
+    TedEditOperation *		teo= &(uo->uoEditOperation);
     EditOperation *		eo= &(teo->teoEo);
-    SelectionGeometry		sg;
-    SelectionDescription	sd;
+    const EditStep *		es= uo->uoEditStep;
 
     DocumentPosition		dpFrom;
 
     int				i;
-    const DocumentTree *	dtFrom= (const DocumentTree *)0;
+    const struct DocumentTree *	dtFrom= (const struct DocumentTree *)0;
     int				fromCount;
 
-    DocumentTree *		dtTo= (DocumentTree *)0;
+    struct DocumentTree *		dtTo= (struct DocumentTree *)0;
     const int			ownerNumber= -1;
     const int			to= 0;
 
-    BufferItem *		sectNodeFrom;
-
-    tedStartUndoOperation( teo, &sg, &sd, ed, es );
+    struct BufferItem *		sectNodeFrom;
 
     /*  1  */
     if  ( docHeadPosition( &dpFrom, es->esSourceDocument->bdBody.dtRoot ) )
@@ -695,11 +710,11 @@ static int tedUndoDeleteHeaderFooter(	TedEditOperation *	teo,
     fromCount= 0;
     for ( i= 0; i < DOC_HeaderFooterTypeCount; i++ )
 	{
-	const DocumentTree *	dt;
+	const struct DocumentTree *	dt;
 
 	dt= docSectionHeaderFooter( sectNodeFrom, (unsigned char *)0,
-					    &(es->esSourceDocument->bdProperties),
-					    DOC_HeaderFooterTypes[i] );
+					es->esSourceDocument->bdProperties,
+					DOC_HeaderFooterTypes[i] );
 
 	if  ( dt && dt->dtRoot )
 	    { dtFrom= dt; fromCount++;	}
@@ -712,7 +727,7 @@ static int tedUndoDeleteHeaderFooter(	TedEditOperation *	teo,
 
     /*  2  */
     dtTo= docSectionHeaderFooter( eo->eoBodySectNode, (unsigned char *)0,
-					    &(eo->eoDocument->bdProperties),
+					    eo->eoDocument->bdProperties,
 					    dtFrom->dtRoot->biTreeType );
     if  ( ! dtTo || dtTo->dtRoot )
 	{ XDEB(dtTo); rval= -1; goto ready;	}
@@ -749,15 +764,13 @@ static int tedUndoDeleteHeaderFooter(	TedEditOperation *	teo,
     return rval;
     }
 
-static int tedUndoUpdateField(		TedEditOperation *	teo,
-					EditDocument *		ed,
-					const EditStep *	es )
+static int tedUndoUpdateField(		UndoOperation *		uo )
     {
     int				rval= 0;
 
+    TedEditOperation *		teo= &(uo->uoEditOperation);
     EditOperation *		eo= &(teo->teoEo);
-    SelectionGeometry		sg;
-    SelectionDescription	sd;
+    const EditStep *		es= uo->uoEditStep;
 
     const int			lastOne= 0;
 
@@ -765,8 +778,6 @@ static int tedUndoUpdateField(		TedEditOperation *	teo,
     DocumentField *		dfTo;
 
     DocumentSelection		dsAround;
-
-    tedStartUndoOperation( teo, &sg, &sd, ed, es );
 
     dfFrom= docTraceGetFromField( es );
     if  ( ! dfFrom )
@@ -801,15 +812,13 @@ static int tedUndoUpdateField(		TedEditOperation *	teo,
 /*									*/
 /************************************************************************/
 
-static int tedUndoSetField(		TedEditOperation *	teo,
-					EditDocument *		ed,
-					const EditStep *	es )
+static int tedUndoSetField(		UndoOperation *		uo )
     {
     int				rval= 0;
 
+    TedEditOperation *		teo= &(uo->uoEditOperation);
     EditOperation *		eo= &(teo->teoEo);
-    SelectionGeometry		sg;
-    SelectionDescription	sd;
+    const EditStep *		es= uo->uoEditStep;
 
     DocumentField *		df;
 
@@ -819,8 +828,6 @@ static int tedUndoSetField(		TedEditOperation *	teo,
     DocumentSelection		dsAroundField;
     int				headPart;
     int				tailPart;
-
-    tedStartUndoOperation( teo, &sg, &sd, ed, es );
 
     df= docFindChildField( &(eo->eoTree->dtRootFields),
 				    &(es->esNewEditRange.erHead), lastOne );
@@ -843,15 +850,13 @@ static int tedUndoSetField(		TedEditOperation *	teo,
     return rval;
     }
 
-static int tedUndoDelField(		TedEditOperation *	teo,
-					EditDocument *		ed,
-					const EditStep *	es )
+static int tedUndoDelField(		UndoOperation *		uo )
     {
     int				rval= 0;
 
+    TedEditOperation *		teo= &(uo->uoEditOperation);
     EditOperation *		eo= &(teo->teoEo);
-    SelectionGeometry		sg;
-    SelectionDescription	sd;
+    const EditStep *		es= uo->uoEditStep;
 
     const DocumentField *	dfFrom;
     DocumentField *		dfTo;
@@ -860,8 +865,6 @@ static int tedUndoDelField(		TedEditOperation *	teo,
     DocumentSelection		dsAround;
     int				headPart;
     int				tailPart;
-
-    tedStartUndoOperation( teo, &sg, &sd, ed, es );
 
     dfFrom= docTraceGetFromField( es );
     if  ( ! dfFrom )
@@ -897,12 +900,19 @@ static int tedUndoUpdPropsImpl(	TedEditOperation *	teo,
 
     int				haveTextUpdate;
     int				haveNodeUpdate;
+    int				targetIsIbar;
 
     DocumentSelection		dsTo;
     DocumentSelection		dsFrom;
     const int			direction= 1;
 
+    const PropertyMask *	taSetMask= (const PropertyMask *)0;
+    const TextAttribute *	taSet= (const TextAttribute *)0;
+    TextAttribute		ta;
+
+
     docInitDocumentCopyJob( &dcj );
+    textInitTextAttribute( &ta );
 
     if  ( docSetTraceDocumentCopyJob( &dcj, eo, es->esSourceDocument ) )
 	{ LDEB(1); rval= -1; goto ready;	}
@@ -924,34 +934,72 @@ static int tedUndoUpdPropsImpl(	TedEditOperation *	teo,
     docSetRangeSelection( &dsTo, &(eo->eoHeadDp), &(eo->eoTailDp), direction );
     docSelectWholeBody( &dsFrom, es->esSourceDocument );
 
+    /*  Do not base on source: a text-only change results in a 1 space doc */
+    targetIsIbar= docIsIBarSelection( &dsTo );
+    if  ( targetIsIbar )
+	{
+	if  ( ! docSelectionSingleParagraph( &dsFrom )			||
+	      dsFrom.dsTail.dpStroff > dsFrom.dsHead.dpStroff+ 1	)
+	    {
+	    LDEB(docSelectionSingleParagraph(&dsFrom));
+	    LLDEB(dsFrom.dsTail.dpStroff,dsFrom.dsHead.dpStroff);
+	    }
+	else{
+	    docSetIBarSelection( &dsFrom, &(dsFrom.dsHead) );
+
+	    docGetSelectionAttributes( &ta, (PropertyMask *)0,
+					    es->esSourceDocument, &dsFrom );
+
+	    taSet= &ta;
+	    taSetMask= &(es->esNewStyle.dsTextMask);
+	    }
+	}
+
     if  ( haveTextUpdate )
 	{
-	if  ( haveNodeUpdate )
+	if  ( haveNodeUpdate || targetIsIbar )
 	    {
 	    if  ( docCopySelectionProperties( &dcj, &dsTo, &dsFrom,
-		    (PropertyMask *)0, &(es->esNewStyle.dsParaMask), /* pp */
-		    (PropertyMask *)0, &(es->esNewStyle.dsCellMask), /* cp */
-		    (PropertyMask *)0, &(es->esNewStyle.dsRowMask), /* rp */
-		    (PropertyMask *)0, &(es->esNewStyle.dsSectMask), /* sp */
-		    (PropertyMask *)0, &(es->esNewDocPropMask) ) ) /* dp */
+		    taSet, taSetMask, /* ta */
+		    &(es->esNewStyle.dsParaMask), /* pp */
+		    &(es->esNewStyle.dsCellMask), /* cp */
+		    &(es->esNewStyle.dsRowMask), /* rp */
+		    &(es->esNewStyle.dsSectMask), /* sp */
+		    &(es->esNewDocPropMask) ) ) /* dp */
 		{ LDEB(1); rval= -1; goto ready;	}
 	    }
 
 	/*  Do not copy paragraph properties */
 
-	if  ( tedIncludeDocument( teo, &dcj ) )
-	    { LDEB(1); rval= -1; goto ready;	}
+	if  ( targetIsIbar )
+	    {
+	    TextAttribute	ta;
+
+	    ta= teo->teoSavedTextAttribute;
+	    textUpdateTextAttribute( (struct PropertyMask *)0, &ta,
+					&(es->esNewStyle.dsTextMask),
+					&(es->esNewStyle.dsTextAttribute) );
+	    }
+	else{
+	    if  ( tedIncludeDocument( teo, &dcj ) )
+		{ LDEB(1); rval= -1; goto ready;	}
+	    }
 	}
     else{
 	if  ( haveNodeUpdate )
 	    {
 	    if  ( docCopySelectionProperties( &dcj, &dsTo, &dsFrom,
-		    (PropertyMask *)0, &(es->esNewStyle.dsParaMask), /* pp */
-		    (PropertyMask *)0, &(es->esNewStyle.dsCellMask), /* cp */
-		    (PropertyMask *)0, &(es->esNewStyle.dsRowMask), /* rp */
-		    (PropertyMask *)0, &(es->esNewStyle.dsSectMask), /* sp */
-		    (PropertyMask *)0, &(es->esNewDocPropMask) ) ) /* dp */
-		{ LDEB(1); rval= -1; goto ready;	}
+		    (const TextAttribute *)0, (const PropertyMask *)0,
+		    &(es->esNewStyle.dsParaMask), /* pp */
+		    &(es->esNewStyle.dsCellMask), /* cp */
+		    &(es->esNewStyle.dsRowMask), /* rp */
+		    &(es->esNewStyle.dsSectMask), /* sp */
+		    &(es->esNewDocPropMask) ) ) /* dp */
+		{
+		LDEB(1);
+		docListNode(0,es->esSourceDocument->bdBody.dtRoot,0);
+		rval= -1; goto ready;
+		}
 	    }
 	}
 
@@ -968,16 +1016,12 @@ static int tedUndoUpdPropsImpl(	TedEditOperation *	teo,
 /*									*/
 /************************************************************************/
 
-static int tedUndoUpdProps(	TedEditOperation *	teo,
-				EditDocument *		ed,
-				const EditStep *	es )
+static int tedUndoUpdProps(	UndoOperation *		uo )
     {
     int				rval= 0;
 
-    SelectionGeometry		sg;
-    SelectionDescription	sd;
-
-    tedStartUndoOperation( teo, &sg, &sd, ed, es );
+    TedEditOperation *		teo= &(uo->uoEditOperation);
+    const EditStep *		es= uo->uoEditStep;
 
     if  ( tedUndoUpdPropsImpl( teo, es ) )
 	{ LDEB(1); rval= -1; goto ready;	}
@@ -996,15 +1040,13 @@ static int tedUndoUpdProps(	TedEditOperation *	teo,
 /*									*/
 /************************************************************************/
 
-static int tedUndoShiftIndent(	TedEditOperation *	teo,
-				EditDocument *		ed,
-				const EditStep *	es )
+static int tedUndoShiftIndent(	UndoOperation *		uo )
     {
     int				rval= 0;
 
+    TedEditOperation *		teo= &(uo->uoEditOperation);
     EditOperation *		eo= &(teo->teoEo);
-    SelectionGeometry		sg;
-    SelectionDescription	sd;
+    const EditStep *		es= uo->uoEditStep;
 
     DocumentCopyJob		dcj;
 
@@ -1019,8 +1061,6 @@ static int tedUndoShiftIndent(	TedEditOperation *	teo,
     PROPmaskADD( &ppSetMask, PPpropLEFT_INDENT );
     PROPmaskADD( &ppSetMask, PPpropFIRST_INDENT );
 
-    tedStartUndoOperation( teo, &sg, &sd, ed, es );
-
     docInitDocumentCopyJob( &dcj );
 
     if  ( docSetTraceDocumentCopyJob( &dcj, eo, es->esSourceDocument ) )
@@ -1033,11 +1073,12 @@ static int tedUndoShiftIndent(	TedEditOperation *	teo,
     docSelectWholeBody( &dsFrom, es->esSourceDocument );
 
     if  ( docCopySelectionProperties( &dcj, &dsTo, &dsFrom,
-	    (PropertyMask *)0, &ppSetMask, /* pp */
-	    (PropertyMask *)0, (PropertyMask *)0, /* cp */
-	    (PropertyMask *)0, (PropertyMask *)0, /* rp */
-	    (PropertyMask *)0, (PropertyMask *)0, /* sp */
-	    (PropertyMask *)0, (PropertyMask *)0 ) ) /* dp */
+	    (const TextAttribute *)0, (const PropertyMask *)0,
+	    &ppSetMask, /* pp */
+	    (const PropertyMask *)0, /* cp */
+	    (const PropertyMask *)0, /* rp */
+	    (const PropertyMask *)0, /* sp */
+	    (const PropertyMask *)0 ) ) /* dp */
 	{ LDEB(1); rval= -1; goto ready;	}
 
     tedEditFinishRange( teo,
@@ -1056,28 +1097,26 @@ static int tedUndoShiftIndent(	TedEditOperation *	teo,
 /*									*/
 /************************************************************************/
 
-static int tedUndoUpdObject(	TedEditOperation *	teo,
-				EditDocument *		ed,
-				const EditStep *	es )
+static int tedUndoUpdObject(	UndoOperation *		uo )
     {
-    const PictureProperties *	pipFrom;
+    const struct PictureProperties *	pipFrom;
 
-    int				partObjTo;
-    DocumentPosition		dpObjTo;
-    InsertedObject *		ioTo;
+    int					partObjTo;
+    DocumentPosition			dpObjTo;
+    const struct PositionGeometry *	pgObjTo;
+    struct InsertedObject *		ioTo;
 
-    int				rval= 0;
+    int					rval= 0;
 
-    SelectionGeometry		sg;
-    SelectionDescription	sd;
-
-    tedStartUndoOperation( teo, &sg, &sd, ed, es );
+    TedEditOperation *			teo= &(uo->uoEditOperation);
+    const EditStep *			es= uo->uoEditStep;
 
     pipFrom= docTraceGetFromPictureProps( es );
     if  ( ! pipFrom )
 	{ XDEB(pipFrom); rval= -1; goto ready;	}
 
-    if  ( tedGetObjectSelection( ed, &partObjTo, &dpObjTo, &ioTo ) )
+    if  ( tedGetObjectSelection( &pgObjTo, &partObjTo, &dpObjTo, &ioTo,
+							teo->teoEditDocument ) )
 	{ LDEB(1); rval= -1; goto ready;	}
 
     if  ( tedObjectSetImagePropertiesImpl( teo, ioTo, &dpObjTo, partObjTo,
@@ -1098,15 +1137,13 @@ static int tedUndoUpdObject(	TedEditOperation *	teo,
 /*									*/
 /************************************************************************/
 
-static int tedUndoUpdNote(	TedEditOperation *	teo,
-				EditDocument *		ed,
-				const EditStep *	es )
+static int tedUndoUpdNote(	UndoOperation *		uo )
     {
     int				rval= 0;
 
+    TedEditOperation *		teo= &(uo->uoEditOperation);
     EditOperation *		eo= &(teo->teoEo);
-    SelectionGeometry		sg;
-    SelectionDescription	sd;
+    const EditStep *		es= uo->uoEditStep;
 
     int				selInNote= 0;
 
@@ -1114,8 +1151,6 @@ static int tedUndoUpdNote(	TedEditOperation *	teo,
     const DocumentNote *	dnFrom= (DocumentNote *)0;
     DocumentField *		dfTo= (DocumentField *)0;
     DocumentNote *		dnTo= (DocumentNote *)0;
-
-    tedStartUndoOperation( teo, &sg, &sd, ed, es );
 
     dfFrom= docTraceGetFromField( es );
     if  ( ! dfFrom )
@@ -1128,7 +1163,7 @@ static int tedUndoUpdNote(	TedEditOperation *	teo,
     if  ( ! dfTo )
 	{ XDEB(dfTo); rval= -1; goto ready;	}
 
-    if  ( tedChangeNoteImpl( eo, dfTo, dnTo, selInNote,
+    if  ( docEditChangeNote( eo, dfTo, dnTo, selInNote,
 						&(es->esNotePropMask),
 						&(dnFrom->dnNoteProperties) ) )
 	{ LDEB(1); rval= -1; goto ready;	}
@@ -1147,26 +1182,24 @@ static int tedUndoUpdNote(	TedEditOperation *	teo,
 /*									*/
 /************************************************************************/
 
-static int tedUndoUpdList(	TedEditOperation *	teo,
-				EditDocument *		ed,
-				const EditStep *	es )
+static int tedUndoUpdList(	UndoOperation *		uo )
     {
-    int				rval= 0;
+    int					rval= 0;
 
-    struct ListOverride *	lo;
-    DocumentList *		dl;
+    struct ListOverride *		lo;
+    DocumentList *			dl;
 
-    EditOperation *		eo= &(teo->teoEo);
-    SelectionGeometry		sg;
-    SelectionDescription	sd;
+    TedEditOperation *			teo= &(uo->uoEditOperation);
+    EditOperation *			eo= &(teo->teoEo);
+    const EditStep *			es= uo->uoEditStep;
+    const SelectionDescription *	sd= &(uo->uoSelectionDescription);
 
-    tedStartUndoOperation( teo, &sg, &sd, ed, es );
+    if  ( ! sd->sdHasLists		||
+	  sd->sdListOverride < 1	)
+	{ LLDEB(sd->sdHasLists,sd->sdListOverride); return -1;	}
 
-    if  ( ! sd.sdHasLists		||
-	  sd.sdListOverride < 1	)
-	{ LLDEB(sd.sdHasLists,sd.sdListOverride); return -1;	}
-
-    if  ( docGetListOfParagraph( &lo, &dl, sd.sdListOverride, eo->eoDocument ) )
+    if  ( docGetListOfParagraph( &lo, &dl,
+				    sd->sdListOverride, eo->eoDocument ) )
 	{ LDEB(1); return -1;	}
 
     if  ( docEditChangeList( eo, dl, lo, &(es->esDocumentList) ) )
@@ -1186,33 +1219,31 @@ static int tedUndoUpdList(	TedEditOperation *	teo,
 /*									*/
 /************************************************************************/
 
-static int tedUndoSetNewList(	TedEditOperation *	teo,
-				EditDocument *		ed,
-				const EditStep *	es )
+static int tedUndoSetNewList(	UndoOperation *		uo )
     {
-    int				rval= 0;
+    int					rval= 0;
 
-    struct ListOverride *	lo;
-    DocumentList *		dl;
+    struct ListOverride *		lo;
+    DocumentList *			dl;
 
-    EditOperation *		eo= &(teo->teoEo);
-    SelectionGeometry		sg;
-    SelectionDescription	sd;
+    TedEditOperation *			teo= &(uo->uoEditOperation);
+    EditOperation *			eo= &(teo->teoEo);
+    const EditStep *			es= uo->uoEditStep;
+    const SelectionDescription *	sd= &(uo->uoSelectionDescription);
 
-    tedStartUndoOperation( teo, &sg, &sd, ed, es );
+    if  ( ! sd->sdHasLists	||
+	  sd->sdListOverride < 1	)
+	{ LLDEB(sd->sdHasLists,sd->sdListOverride); return -1;	}
 
-    if  ( ! sd.sdHasLists	||
-	  sd.sdListOverride < 1	)
-	{ LLDEB(sd.sdHasLists,sd.sdListOverride); return -1;	}
-
-    if  ( docGetListOfParagraph( &lo, &dl, sd.sdListOverride, eo->eoDocument ) )
+    if  ( docGetListOfParagraph( &lo, &dl,
+				    sd->sdListOverride, eo->eoDocument ) )
 	{ LDEB(1); return -1;	}
 
     if  ( tedUndoUpdPropsImpl( teo, es ) )
 	{ LDEB(1); rval= -1; goto ready;	}
 
     {
-    ListAdmin *		la= eo->eoDocument->bdProperties.dpListAdmin;
+    ListAdmin *		la= eo->eoDocument->bdProperties->dpListAdmin;
 
     if  ( docDocumentListTableDeleteList( &(la->laListTable),
 							    lo->loListIndex ) )
@@ -1237,26 +1268,23 @@ static int tedUndoSetNewList(	TedEditOperation *	teo,
 /*									*/
 /************************************************************************/
 
-static int tedUndoShiftRows(	TedEditOperation *	teo,
-				EditDocument *		ed,
-				const EditStep *	es )
+static int tedUndoShiftRows(	UndoOperation *		uo )
     {
-    int				rval= 0;
+    int					rval= 0;
 
-    SelectionGeometry		sg;
-    SelectionDescription	sd;
+    TedEditOperation *			teo= &(uo->uoEditOperation);
+    const EditStep *			es= uo->uoEditStep;
+    const SelectionDescription *	sd= &(uo->uoSelectionDescription);
 
-    const int			move= 1;
-    int				rowsdown= 0;
+    const int				move= 1;
+    int					rowsdown= 0;
 
     /*  It is an undo: swap rows down */
     if  ( es->esCommand == EDITcmdSHIFT_ROWS_DOWN )
 	{ rowsdown= -1;	}
     else{ rowsdown=  1;	}
 
-    tedStartUndoOperation( teo, &sg, &sd, ed, es );
-
-    if  ( tedDocRollRowsInTableImpl( teo, &(sd.sdTableRectangle),
+    if  ( tedDocRollRowsInTableImpl( teo, &(sd->sdTableRectangle),
 							    move, rowsdown ) )
 	{ LDEB(1); rval= -1; goto ready;	}
 
@@ -1277,18 +1305,20 @@ static int tedUndoShiftRows(	TedEditOperation *	teo,
 void tedDocUndo(	EditDocument *	ed )
     {
     TedDocument *		td= (TedDocument *)ed->edPrivateData;
-    BufferDocument *		bd= td->tdDocument;
+    struct BufferDocument *		bd= td->tdDocument;
     EditTrace *			et= &(td->tdEditTrace);
 
-    TedEditOperation		teo;
+    UndoOperation		uo;
     EditStep			es;
     const int			direction= -1;
 
     docInitEditStep( &es );
-    tedInitEditOperation( &teo );
+    tedInitEditOperation( &(uo.uoEditOperation) );
 
     if  ( docEditReadTraceStep( &es, (int *)0, direction, et, bd ) )
 	{ LDEB(1); goto ready;	}
+
+    tedStartUndoOperation( &uo, ed, &es );
 
     switch( es.esCommand )
 	{
@@ -1300,72 +1330,72 @@ void tedDocUndo(	EditDocument *	ed )
 	case EDITcmdSPLIT_SECT:
 	case EDITcmdINS_NOTE:
 	case EDITcmdINSERT_TABLE:
-	    if  ( tedUndoReplace( &teo, ed, &es, SELposALL, 1 ) )
+	    if  ( tedUndoReplace( &uo, SELposALL, 1 ) )
 		{ LDEB(es.esCommand); goto ready;	}
 	    break;
 
 	case EDITcmdDELETE_SELECTION_DEL:
-	    if  ( tedUndoReplace( &teo, ed, &es, SELposHEAD, 1 ) )
+	    if  ( tedUndoReplace( &uo, SELposHEAD, 1 ) )
 		{ LDEB(es.esCommand); goto ready;	}
 	    break;
 
 	case EDITcmdDELETE_SELECTION_BS:
-	    if  ( tedUndoReplace( &teo, ed, &es, SELposTAIL, 1 ) )
+	    if  ( tedUndoReplace( &uo, SELposTAIL, 1 ) )
 		{ LDEB(es.esCommand); goto ready;	}
 	    break;
 
 
 	case EDITcmdDELETE_PARA:
-	    if  ( tedUndoDeletePara( &teo, ed, &es ) )
+	    if  ( tedUndoDeletePara( &uo ) )
 		{ LDEB(es.esCommand); goto ready;	}
 	    break;
 	case EDITcmdDELETE_COLUMN:
-	    if  ( tedUndoDeleteColumn( &teo, ed, &es ) )
+	    if  ( tedUndoDeleteColumn( &uo ) )
 		{ LDEB(es.esCommand); goto ready;	}
 	    break;
 	case EDITcmdDELETE_ROW:
 	case EDITcmdDELETE_TABLE:
-	    if  ( tedUndoDeleteRow( &teo, ed, &es ) )
+	    if  ( tedUndoDeleteRow( &uo ) )
 		{ LDEB(es.esCommand); goto ready;	}
 	    break;
 	case EDITcmdDELETE_SECT:
-	    if  ( tedUndoDeleteSect( &teo, ed, &es ) )
+	    if  ( tedUndoDeleteSect( &uo ) )
 		{ LDEB(es.esCommand); goto ready;	}
 	    break;
 	case EDITcmdDELETE_HEADER:
 	case EDITcmdDELETE_FOOTER:
-	    if  ( tedUndoDeleteHeaderFooter( &teo, ed, &es ) )
+	    if  ( tedUndoDeleteHeaderFooter( &uo ) )
 		{ LDEB(es.esCommand); goto ready;	}
 	    break;
 
 	case EDITcmdINSERT_PARA:
 	case EDITcmdAPPEND_PARA:
-	    if  ( tedUndoInsertPara( &teo, ed, &es ) )
+	    if  ( tedUndoInsertPara( &uo ) )
 		{ LDEB(es.esCommand); goto ready;	}
 	    break;
 	case EDITcmdINSERT_COLUMN:
 	case EDITcmdAPPEND_COLUMN:
-	    if  ( tedUndoInsertColumn( &teo, ed, &es ) )
+	    if  ( tedUndoInsertColumn( &uo ) )
 		{ LDEB(es.esCommand); goto ready;	}
 	    break;
 	case EDITcmdINSERT_ROW:
 	case EDITcmdAPPEND_ROW:
-	    if  ( tedUndoInsertRow( &teo, ed, &es ) )
+	    if  ( tedUndoInsertRow( &uo ) )
 		{ LDEB(es.esCommand); goto ready;	}
 	    break;
 	case EDITcmdINSERT_SECT:
 	case EDITcmdAPPEND_SECT:
-	    if  ( tedUndoInsertSect( &teo, ed, &es ) )
+	    if  ( tedUndoInsertSect( &uo ) )
 		{ LDEB(es.esCommand); goto ready;	}
 	    break;
 	case EDITcmdINSERT_HEADER:
 	case EDITcmdINSERT_FOOTER:
-	    if  ( tedUndoInsertHeaderFooter( &teo, ed, &es ) )
+	    if  ( tedUndoInsertHeaderFooter( &uo ) )
 		{ LDEB(es.esCommand); goto ready;	}
 	    break;
 
 	case EDITcmdUPD_FIELD:
-	    if  ( tedUndoUpdateField( &teo, ed, &es ) )
+	    if  ( tedUndoUpdateField( &uo ) )
 		{ LDEB(es.esCommand); goto ready;	}
 	    break;
 
@@ -1373,11 +1403,11 @@ void tedDocUndo(	EditDocument *	ed )
 	case EDITcmdSET_BOOKMARK:
 	    if  ( utilPropMaskIsEmpty( &(es.esNewStyle.dsTextMask) ) )
 		{
-		if  ( tedUndoSetField( &teo, ed, &es ) )
+		if  ( tedUndoSetField( &uo ) )
 		    { LDEB(es.esCommand); goto ready;	}
 		}
 	    else{
-		if  ( tedUndoReplace( &teo, ed, &es, SELposALL, 0 ) )
+		if  ( tedUndoReplace( &uo, SELposALL, 0 ) )
 		    { LDEB(es.esCommand); goto ready;	}
 		}
 	    break;
@@ -1385,11 +1415,11 @@ void tedDocUndo(	EditDocument *	ed )
 	case EDITcmdDEL_FIELD:
 	    if  ( utilPropMaskIsEmpty( &(es.esNewStyle.dsTextMask) ) )
 		{
-		if  ( tedUndoDelField( &teo, ed, &es ) )
+		if  ( tedUndoDelField( &uo ) )
 		    { LDEB(es.esCommand); goto ready;	}
 		}
 	    else{
-		if  ( tedUndoReplace( &teo, ed, &es, SELposALL, 0 ) )
+		if  ( tedUndoReplace( &uo, SELposALL, 0 ) )
 		    { LDEB(es.esCommand); goto ready;	}
 		}
 	    break;
@@ -1397,40 +1427,43 @@ void tedDocUndo(	EditDocument *	ed )
 	case EDITcmdUPD_SPAN_PROPS:
 	case EDITcmdUPD_PARA_PROPS:
 	case EDITcmdUPD_TABLE_PROPS:
+	case EDITcmdUPD_ROW_PROPS:
+	case EDITcmdUPD_COLUMN_PROPS:
+	case EDITcmdUPD_CELL_PROPS:
 	case EDITcmdUPD_SECT_PROPS:
 	case EDITcmdUPD_SECTDOC_PROPS:
 	case EDITcmdUPD_DOC_PROPS:
-	    if  ( tedUndoUpdProps( &teo, ed, &es ) )
+	    if  ( tedUndoUpdProps( &uo ) )
 		{ LDEB(es.esCommand); goto ready;	}
 	    break;
 
 	case EDITcmdUPD_OBJECT:
-	    if  ( tedUndoUpdObject( &teo, ed, &es ) )
+	    if  ( tedUndoUpdObject( &uo ) )
 		{ LDEB(es.esCommand); goto ready;	}
 	    break;
 	case EDITcmdUPD_NOTE:
-	    if  ( tedUndoUpdNote( &teo, ed, &es ) )
+	    if  ( tedUndoUpdNote( &uo ) )
 		{ LDEB(es.esCommand); goto ready;	}
 	    break;
 
 	case EDITcmdUPD_LIST:
-	    if  ( tedUndoUpdList( &teo, ed, &es ) )
+	    if  ( tedUndoUpdList( &uo ) )
 		{ LDEB(es.esCommand); goto ready;	}
 	    break;
 	case EDITcmdSET_NEW_LIST:
-	    if  ( tedUndoSetNewList( &teo, ed, &es ) )
+	    if  ( tedUndoSetNewList( &uo ) )
 		{ LDEB(es.esCommand); goto ready;	}
 	    break;
 
 	case EDITcmdSHIFT_ROWS_DOWN:
 	case EDITcmdSHIFT_ROWS_UP:
-	    if  ( tedUndoShiftRows( &teo, ed, &es ) )
+	    if  ( tedUndoShiftRows( &uo ) )
 		{ LDEB(es.esCommand); goto ready;	}
 	    break;
 
 	case EDITcmdSHIFT_RIGHT:
 	case EDITcmdSHIFT_LEFT:
-	    if  ( tedUndoShiftIndent( &teo, ed, &es ) )
+	    if  ( tedUndoShiftIndent( &uo ) )
 		{ LDEB(es.esCommand); goto ready;	}
 	    break;
 
@@ -1444,12 +1477,12 @@ void tedDocUndo(	EditDocument *	ed )
 
     et->etIndex= es.esTraceIndex;
 
-    tedFinishEditOperation( &teo );
+    tedFinishEditOperation( &(uo.uoEditOperation) );
 
   ready:
 
     docCleanEditStep( &es );
-    tedCleanEditOperation( &teo );
+    tedCleanEditOperation( &(uo.uoEditOperation) );
 
     return;
     }

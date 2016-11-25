@@ -1,15 +1,20 @@
 #   include	"tedConfig.h"
 
 #   include	<stddef.h>
-#   include	<stdio.h>
 
-#   include	<appMatchFont.h>
+#   include	<drawMatchFont.h>
 
-#   include	"tedApp.h"
 #   include	"tedEdit.h"
 #   include	"tedLayout.h"
+#   include	"docScreenObjects.h"
 #   include	"tedDocument.h"
 #   include	<docScreenLayout.h>
+#   include	<docObject.h>
+#   include	<appEditApplication.h>
+#   include	<appEditDocument.h>
+#   include	<docLayout.h>
+#   include	<docNodeTree.h>
+#   include	<geo2DInteger.h>
 
 #   include	<appDebugon.h>
 
@@ -21,7 +26,7 @@
 /************************************************************************/
 
 int tedAdjustParagraphLayout(	TedEditOperation *		teo,
-				DocumentTree *			dt )
+				struct DocumentTree *		dt )
     {
     EditOperation *		eo= &(teo->teoEo);
     int				paraNr= eo->eoParaAdjustParagraphNumber;
@@ -59,7 +64,7 @@ int tedAdjustParagraphLayout(	TedEditOperation *		teo,
 				stroffFrom, stroffShift, stroffUpto, &lj ) )
 	{ LDEB(1); return -1;	}
 
-    if  ( tedOpenNodeObjects( paraNode, &(teo->teoLayoutContext) ) )
+    if  ( docOpenNodeObjects( paraNode, &(teo->teoLayoutContext) ) )
 	{ LDEB(1); return -1;	}
 
     if  ( lj.ljReachedDocumentBottom )
@@ -70,22 +75,22 @@ int tedAdjustParagraphLayout(	TedEditOperation *		teo,
 
 /************************************************************************/
 
-void tedSetDocumentLayoutContext( LayoutContext *		lc,
-				DrawingSurface			ds,
-				const PostScriptFontList *	psfl,
-				struct TedDocument *		td )
+void tedSetDocumentLayoutContext( LayoutContext *			lc,
+				DrawingSurface				ds,
+				const struct PostScriptFontList *	psfl,
+				struct TedDocument *			td )
     {
     lc->lcDrawingSurface= ds;
     lc->lcPostScriptFontList= psfl;
     lc->lcDocument= td->tdDocument;
     lc->lcAttributeToScreenFont= &(td->tdAttributeToScreenFont);
 
-    lc->lcCloseObject= docScreenCloseObject;
-
-    lc->lcGetFontForAttribute= appGetFontInfoForAttribute;
+    lc->lcGetFontForAttribute= drawGetFontInfoForAttribute;
 
     lc->lcPixelsPerTwip= td->tdPixelsPerTwip;
     lc->lcPageGapPixels= td->tdPageGapPixels;
+
+    lc->lcLocale= td->tdLocale;
     }
 
 void tedSetScreenLayoutContext(	LayoutContext *		lc,
@@ -106,7 +111,7 @@ void tedSetScreenLayoutContext(	LayoutContext *		lc,
 
 /************************************************************************/
 /*									*/
-/*  Draw the eight blocks around a selected object.			*/
+/*  Get the positions of the eight blocks around a selected object.	*/
 /*									*/
 /************************************************************************/
 
@@ -115,17 +120,28 @@ void tedGetObjectRectangle(	DocumentRectangle *		drObject,
 				const InsertedObject *		io,
 				const PositionGeometry *	pg,
 				const LayoutContext *		lc,
-				const EditDocument *		ed )
+				int				afterObject,
+				const TedDocument *		td )
     {
-    const TedDocument *		td= (TedDocument *)ed->edPrivateData;
+    if  ( afterObject )
+	{
+	docGetPixelRectForPos( drObject, lc,
+			    pg->pgXTwips- io->ioTwipsWide, pg->pgXTwips,
+			    &(pg->pgTopPosition), &(pg->pgBaselinePosition) );
 
-    docGetPixelRectForPos( drObject, lc,
+	/* Do not trust pg->pgXTwips yet */
+	drObject->drX1= pg->pgXPixels;
+	drObject->drX0= drObject->drX1- io->ioPixelsWide+ 1;
+	}
+    else{
+	docGetPixelRectForPos( drObject, lc,
 			    pg->pgXTwips, pg->pgXTwips+ io->ioTwipsWide,
-			    &(pg->pgTopPosition), &(pg->pgBasePosition) );
+			    &(pg->pgTopPosition), &(pg->pgBaselinePosition) );
 
-    /* Do not trust pg->pgXTwips yet */
-    drObject->drX0= pg->pgXPixels;
-    drObject->drX1= drObject->drX0+ io->ioPixelsWide- 1;
+	/* Do not trust pg->pgXTwips yet */
+	drObject->drX0= pg->pgXPixels;
+	drObject->drX1= drObject->drX0+ io->ioPixelsWide- 1;
+	}
 
     switch( td->tdObjectResizeCorner )
 	{

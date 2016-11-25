@@ -9,10 +9,12 @@
 #   include	<bmWmfIo.h>
 #   include	<bmio.h>
 #   include	<uniUtf8.h>
+#   include	<sioGeneral.h>
 
 #   include	<appDebugon.h>
 
-# if 0
+# define LIST_WMF_CALLS 0
+# if LIST_WMF_CALLS
 #    define	WMFDEB(x)	(x)
 # else
 #    define	WMFDEB(x)	/*nothing*/
@@ -40,7 +42,6 @@ static int appWmfGetObjectSlot(	DeviceContext *	dc )
 /************************************************************************/
 
 static int appWmfGetCounts(	SimpleInputStream *	sis,
-				int			recordSize,
 				int *			pPolyCount,
 				int *			pPointCount,
 				int **			pCounts,
@@ -73,14 +74,13 @@ static int appWmfGetCounts(	SimpleInputStream *	sis,
 
 static int appWmfDrawPolyPolygon(	SimpleInputStream *	sis,
 					void *			through,
-					int			recordSize,
 					DeviceContext *		dc )
     {
     int			polyCount;
     int			pointCount;
     int *		pointCounts;
 
-    if  ( appWmfGetCounts( sis, recordSize,
+    if  ( appWmfGetCounts( sis,
 				&polyCount, &pointCount, &pointCounts, dc ) )
 	{ LDEB(1); return -1;	}
 
@@ -153,13 +153,14 @@ static int appWmfCreatePenIndirect(	DeviceContext *		dc,
     }
 
 static int appWmfCreateBrushIndirect(	DeviceContext *		dc,
-					int			recordSize,
 					SimpleInputStream *	sis )
     {
     int			ob;
     LogicalBrush *	lb;
+#   if LIST_WMF_CALLS
     const char *	hatch="";
     const char *	style="";
+#   endif
 
     for ( ob= 0; ob < dc->dcObjectCount; ob++ )
 	{
@@ -177,22 +178,30 @@ static int appWmfCreateBrushIndirect(	DeviceContext *		dc,
     switch( lb->lbStyle )
 	{
 	case BS_SOLID:
+#	    if LIST_WMF_CALLS
 	    style= "SOLID";
+#	    endif
 	    bmWmfGetColor( sis, &(lb->lbColor) );
 	    lb->lbHatch= sioEndianGetLeInt16( sis );
 	    break;
 	case BS_HOLLOW:
+#	    if LIST_WMF_CALLS
 	    style= "HOLLOW";
+#	    endif
 	    bmWmfGetColor( sis, &(lb->lbColor) );
 	    lb->lbHatch= sioEndianGetLeInt16( sis );
 	    break;
 	case BS_HATCHED:
+#	    if LIST_WMF_CALLS
 	    style= "HATCHED";
+#	    endif
 	    bmWmfGetColor( sis, &(lb->lbColor) );
 	    lb->lbHatch= sioEndianGetLeInt16( sis );
 	    break;
 	case BS_PATTERN:
+#	    if LIST_WMF_CALLS
 	    style= "PATTERN";
+#	    endif
 	    bmWmfGetColor( sis, &(lb->lbColor) );
 	    lb->lbHatch= sioEndianGetLeInt16( sis );
 	    break;
@@ -200,6 +209,7 @@ static int appWmfCreateBrushIndirect(	DeviceContext *		dc,
 	    LDEB(dc->dcObjects[ob].mfoLogicalBrush.lbStyle);
 	}
 
+#   if LIST_WMF_CALLS
     switch( lb->lbHatch )
 	{
 	case HS_HORIZONTAL:	hatch= "HORIZONTAL";	break;
@@ -211,11 +221,10 @@ static int appWmfCreateBrushIndirect(	DeviceContext *		dc,
 	default:
 	    break;
 	}
+#   endif
 
     WMFDEB(appDebug("CreateBrushIndirect(%s,%s) ob=%d\n",
 						    style, hatch, ob ));
-
-    style= style; hatch= hatch; /* use them */
 
     return 0;
     }
@@ -227,7 +236,8 @@ static int appWmfCreateFontIndirect(	DeviceContext *		dc,
     int				ob;
     LogicalFont *		lf;
 
-    int				count;
+    int				chars;
+    int				bytes;
     int				i;
     int				expectBytes;
     int				bytesDone= 0;
@@ -254,8 +264,8 @@ static int appWmfCreateFontIndirect(	DeviceContext *		dc,
 
     memset( lf->lfFaceNameUtf8, 0, sizeof(lf->lfFaceNameUtf8) );
     expectBytes= bytesLeft- bytesDone;
-    count= 0;
-    for ( i= 0; i < expectBytes; i++ )
+    chars= bytes= 0;
+    for ( i= 0; i < expectBytes && chars < LF_CHARS; i++ )
 	{
 	int	step;
 	int	c= sioInGetByte( sis ); bytesDone++;
@@ -263,13 +273,13 @@ static int appWmfCreateFontIndirect(	DeviceContext *		dc,
 	if  ( c == 0 )
 	    { break; 	}
 
-	step= uniPutUtf8( lf->lfFaceNameUtf8+ count, c );
+	step= uniPutUtf8( lf->lfFaceNameUtf8+ bytes, c );
 	if  ( step < 1 )
 	    { XLDEB(c,step); break;	}
-	count += step;
+	chars++; bytes += step;
 	}
 
-    lf->lfFaceNameUtf8[count]= '\0';
+    lf->lfFaceNameUtf8[bytes]= '\0';
 
     while( bytesDone < bytesLeft )
 	{
@@ -283,7 +293,8 @@ static int appWmfCreateFontIndirect(	DeviceContext *		dc,
     if  ( appWinMetaRememberFontInList( dc, &(lf->lfTextAttribute), lf ) )
 	{ SDEB(lf->lfFaceNameUtf8); return -1;	}
 
-    WMFDEB(appDebug("CreateFontIndirect() -> %d\n", ob ));
+    WMFDEB(appDebug("CreateFontIndirect( \"%s\" ) -> %d\n",
+						lf->lfFaceNameUtf8, ob ));
     return bytesDone;
     }
 
@@ -350,7 +361,6 @@ static int appWmfReadTextObject(SimpleInputStream *	sis,
     }
 
 static int appWmfTextOut(	SimpleInputStream *	sis,
-				int			recordSize,
 				int *			pX0,
 				int *			pY0,
 				DeviceContext *		dc )
@@ -416,7 +426,7 @@ static int appWmfCreatePatternBrush(	DeviceContext *		dc,
     if  ( pb->pbUsage != 0 )
 	{
 	LLDEB(pb->pbType,pb->pbUsage);
-	for ( done= done; done < recordSize; done++ )
+	for ( ; done < recordSize; done++ )
 	    { (void) sioEndianGetLeInt16( sis ); }
 	WMFDEB(appDebug("CreatePatternBrush(...) ob=%d? recordSize=%d\n",
 							    ob, recordSize ));
@@ -452,7 +462,7 @@ static int appWmfCreatePatternBrush(	DeviceContext *		dc,
 	    break;
 	default:
 	    LLDEB(pb->pbType,pb->pbUsage);
-	    for ( done= done; done < recordSize; done++ )
+	    for ( ; done < recordSize; done++ )
 		{ (void) sioEndianGetLeInt16( sis ); }
 	    WMFDEB(appDebug("CreatePatternBrush(...) ob=%d? recordSize=%d\n",
 							    ob, recordSize ));
@@ -475,7 +485,6 @@ static int appWmfCreatePatternBrush(	DeviceContext *		dc,
 /************************************************************************/
 
 static int appMetaScaleViewportExt(	DeviceContext *		dc,
-					int			recordSize,
 					SimpleInputStream *	sis )
     {
     int				yd;
@@ -506,7 +515,6 @@ static int appMetaScaleViewportExt(	DeviceContext *		dc,
     }
 
 static int appMetaScaleWindowExt(	DeviceContext *		dc,
-					int			recordSize,
 					SimpleInputStream *	sis )
     {
     int				yd;
@@ -857,7 +865,7 @@ int appMetaPlayWmf(	DeviceContext *			dc,
 		goto checkSize;
 
 	    case META_CREATEBRUSHINDIRECT:
-		if  ( appWmfCreateBrushIndirect( dc, recordSize, sis ) )
+		if  ( appWmfCreateBrushIndirect( dc, sis ) )
 		    { LDEB(recordSize); return -1;	}
 		continue;
 
@@ -1098,7 +1106,7 @@ int appMetaPlayWmf(	DeviceContext *			dc,
 		goto checkSize;
 
 	    case META_TEXTOUT:
-		step= appWmfTextOut( sis, recordSize, &x0, &y0, dc );
+		step= appWmfTextOut( sis, &x0, &y0, dc );
 		if  ( step < 0 )
 		    { LDEB(step); return -1;		}
 		bytesDone += step;
@@ -1311,7 +1319,6 @@ int appMetaPlayWmf(	DeviceContext *			dc,
 		dc->dcObjects[arg].mfoType= MFtypeREGION;
 		WMFDEB(appDebug("CreateRegion() -> %d\n", arg));
 		goto skipArguments;
-		continue;
 
 	    case META_SETPIXEL:
 		{
@@ -1348,16 +1355,16 @@ int appMetaPlayWmf(	DeviceContext *			dc,
 		goto checkSize;
 
 	    case META_POLYPOLYGON:
-		if  ( appWmfDrawPolyPolygon( sis, through, recordSize, dc ) )
+		if  ( appWmfDrawPolyPolygon( sis, through, dc ) )
 		    { LDEB(1); return -1;	}
 		continue;
 
 	    case META_SCALEVIEWPORTEXT:
-		appMetaScaleViewportExt( dc, recordSize, sis );
+		appMetaScaleViewportExt( dc, sis );
 		continue;
 
 	    case META_SCALEWINDOWEXT:
-		appMetaScaleWindowExt( dc, recordSize, sis );
+		appMetaScaleWindowExt( dc, sis );
 		continue;
 
 	    case META_SETRELABS: /* MUST be ignored */

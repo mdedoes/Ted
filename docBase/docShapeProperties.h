@@ -7,7 +7,9 @@
 #   ifndef	DOC_SHAPE_PROPERTIES_H
 #   define	DOC_SHAPE_PROPERTIES_H
 
-#   include	<geo2DInteger.h>
+#   include	<geoRectangle.h>
+
+struct PropertyMask;
 
 /************************************************************************/
 /*									*/
@@ -134,9 +136,13 @@ extern int docSetShapeProperty(		ShapeProperties *	sp,
 					int			prop,
 					int			value );
 
-extern void docPlaceRootShapeRect(	DocumentRectangle *	drTwips,
-					const ShapeProperties *	sp,
-					int			x0,
-					int			y0 );
+extern int docGetShapeProperty(	const ShapeProperties *		sp,
+				int				prop );
+
+extern void docShapePropertyDifference(
+				struct PropertyMask *		spDifMask,
+				const ShapeProperties *		spTo,
+				const struct PropertyMask *	spCmpMask,
+				const ShapeProperties *		spFrom );
 
 #   endif	/*  DOC_SHAPE_PROPERTIES_H	*/

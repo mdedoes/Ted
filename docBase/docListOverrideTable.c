@@ -122,6 +122,7 @@ int docListOverrideTableAddOverride(	ListOverride **		pLo,
 
 int docMergeListOverrideIntoTable(	ListOverrideTable *	lot,
 					const ListOverride *	loSet,
+					const int *		listIndexMap,
 					const int *		fontMap,
 					const int *		colorMap,
 					const int *		rulerMap )
@@ -142,8 +143,10 @@ int docMergeListOverrideIntoTable(	ListOverrideTable *	lot,
     if  ( ls < 0 )
 	{ LLDEB(ls,lot->lotOverrideCount); return -1;	}
 
-    if  ( docCopyListOverride( lo, loSet, fontMap, colorMap, rulerMap ) )
+    if  ( docCopyListOverride( lo, loSet,
+				listIndexMap, fontMap, colorMap, rulerMap ) )
 	{ LDEB(ls); return -1;	}
+    lo->loIndex= ls;
 
     return ls;
     }
@@ -151,6 +154,7 @@ int docMergeListOverrideIntoTable(	ListOverrideTable *	lot,
 int docListOverrideTableSetOverride(
 				ListOverrideTable *		lot,
 				const ListOverride *		loSet,
+				const int *			listIndexMap,
 				const int *			fontMap,
 				const int *			colorMap,
 				const int *			rulerMap )
@@ -160,8 +164,13 @@ int docListOverrideTableSetOverride(
 
     if  ( ls >= lot->lotOverrideCount )
 	{
+	int		listIndex= loSet->loListIndex;
+
+	if  ( listIndexMap )
+	    { listIndex= listIndexMap[listIndex];	}
+
 	ls= docListOverrideTableAddOverride( &lo, lot,
-				    ls, loSet->loListID, loSet->loListIndex );
+					ls, loSet->loListID, listIndex );
 	if  ( ls < 0 )
 	    { LLDEB(ls,lot->lotOverrideCount); return -1;	}
 	}
@@ -169,7 +178,8 @@ int docListOverrideTableSetOverride(
 	lo= lot->lotOverrides+ ls;
 	}
 
-    if  ( docCopyListOverride( lo, loSet, fontMap, colorMap, rulerMap ) )
+    if  ( docCopyListOverride( lo, loSet,
+			    listIndexMap, fontMap, colorMap, rulerMap ) )
 	{ LDEB(ls); return -1;	}
 
     return ls;

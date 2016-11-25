@@ -7,11 +7,10 @@
 #   ifndef	DOC_RTF_RW_H
 #   define	DOC_RTF_RW_H
 
-#   include	<stdio.h>
-#   include	<time.h>
-
-#   include	<docBuf.h>
-#   include	<sioGeneral.h>
+struct DocumentSelection;
+struct BufferDocument;
+struct SimpleInputStream;
+struct SimpleOutputStream;
 
 /************************************************************************/
 /*									*/
@@ -19,17 +18,17 @@
 /*									*/
 /************************************************************************/
 
-extern int docWriteRtfMail(	SimpleOutputStream *		sos,
+extern int docWriteRtfMail(	struct SimpleOutputStream *	sos,
 				const char *			mimeBoundary,
-				BufferDocument *		bd );
+				struct BufferDocument *		bd );
 
-extern int docRtfSaveDocument(	SimpleOutputStream *		sos,
-				BufferDocument *		bd,
-				const DocumentSelection *	bs,
+extern int docRtfSaveDocument(	struct SimpleOutputStream *	sos,
+				struct BufferDocument *		bd,
+				const struct DocumentSelection * bs,
 				int				flags );
 
-extern BufferDocument *	docRtfReadFile(
-				SimpleInputStream *		sis,
+extern struct BufferDocument *	docRtfReadFile(
+				struct SimpleInputStream *	sis,
 				unsigned int			flags );
 
 #    endif	/*  DOC_RTF_RW_H	*/

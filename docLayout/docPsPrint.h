@@ -7,11 +7,10 @@
 #   ifndef		DOC_PS_PRINT_H
 #   define		DOC_PS_PRINT_H
 
-#   include	<sioGeneral.h>
-#   include	"layoutContext.h"
-#   include	<docBuf.h>
-
 struct PrintGeometry;
+struct SimpleOutputStream;
+struct MemoryBuffer;
+struct LayoutContext;
 
 /************************************************************************/
 /*									*/
@@ -20,14 +19,14 @@ struct PrintGeometry;
 /************************************************************************/
 
 extern int docPsPrintDocument(
-			SimpleOutputStream *		sos,
+			struct SimpleOutputStream *	sos,
 			const char *			title,
 			const char *			applicationName,
 			const char *			applicationReference,
-			const MemoryBuffer *		fontDirectory,
+			const struct MemoryBuffer *	fontDirectory,
 			double				shadingMesh,
 			int				emitOutline,
-			const LayoutContext *		lc,
+			const struct LayoutContext *	lc,
 			const struct PrintGeometry *	pg );
 
 #   endif	/*	DOC_PS_PRINT_H	*/

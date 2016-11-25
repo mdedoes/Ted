@@ -1,17 +1,23 @@
 /************************************************************************/
-/*  Editor, File actions.						*/
+/*									*/
+/*  Application framework: Copy/Paste logic. GTK specific code.		*/
+/*									*/
 /************************************************************************/
 
 #   include	"appFrameConfig.h"
 
-#   include	<stddef.h>
-#   include	<stdio.h>
+#   if	USE_GTK
 
-#   include	"appFrame.h"
+#   include	<stddef.h>
+
+#   include	"appEditApplication.h"
+#   include	"appEditDocument.h"
+#   include	"appGuiDocument.h"
+#   include	"appAppFront.h"
+#   include	"appDocFront.h"
+#   include	"appSelectionType.h"
 
 #   include	<appDebugon.h>
-
-#   ifdef	USE_GTK
 
 # define ADEB(a) SDEB(((a)==0?"None":gdk_atom_name((a))))
 
@@ -83,7 +89,7 @@ static int appGetResponseType(	AppSelectionType **		pAst,
 /*									*/
 /************************************************************************/
 
-APP_EVENT_HANDLER_H( appAppGotPasteCall, w, voided, event )
+APP_EVENT_HANDLER_H( appAppGotPasteCall, w, voidea, event )
     {
 LDEB(1); return;
     }
@@ -205,6 +211,10 @@ void appDocGotPasteReplyGtk(	GtkWidget *		w,
     AppSelectionTargetType *	astt;
     int				targetFound;
 
+    APP_ATOM			selection;
+
+    selection=  gtk_selection_data_get_selection( gsd );
+
 #   ifdef LIST_TARGET_TYPES
     if  ( gsd->target == targets_atom )
 	{
@@ -219,20 +229,22 @@ boe
 	}
 #   endif
 
+
     if  ( appGetResponseType( &ast, &astt, &targetFound,
-					    ea->eaDocSelectionTypes,
-					    ea->eaDocSelectionTypeCount,
-					    gsd->selection, gsd->target ) )
+				ea->eaDocSelectionTypes,
+				ea->eaDocSelectionTypeCount,
+				selection,
+				gtk_selection_data_get_target( gsd ) ) )
 	{ LDEB(1); return;	}
 
-    if  ( ! gsd->type )
+    if  ( ! gtk_selection_data_get_data_type( gsd ) )
 	{
 	ea->eaGotPaste= -1;
 
 	if  ( targetFound < ast->astTargetTypeCount- 1 )
 	    {
 	    if  ( ! gtk_selection_convert( w,
-			/*  selection	*/  gsd->selection,
+			/*  selection	*/  selection,
 			/*  target	*/  astt[1].asttTargetAtom,
 					    time ) )
 		{ LDEB(1); return;	}
@@ -272,14 +284,14 @@ int appAppAskForPaste(		EditApplication *	ea,
     int		rval;
     guint	id;
 
-    id= gtk_signal_connect( GTK_OBJECT( ea->eaToplevel.atTopWidget ),
+    id= g_signal_connect( G_OBJECT( ea->eaToplevel.atTopWidget ),
 					"selection_received",
-					(GtkSignalFunc)appAppGotPasteReplyGtk,
+					(GCallback)appAppGotPasteReplyGtk,
 					(void *)ea );
 
     rval= appAskForPaste( ea->eaToplevel.atTopWidget, ea, selection );
 
-    gtk_signal_disconnect( GTK_OBJECT( ea->eaToplevel.atTopWidget ), id );
+    g_signal_handler_disconnect( G_OBJECT( ea->eaToplevel.atTopWidget ), id );
 
     return rval;
     }
@@ -301,9 +313,10 @@ APP_GIVE_COPY( appDocReplyToCopyRequest, w, gsd, voided )
     int				targetFound;
 
     if  ( appGetResponseType( &ast, &astt, &targetFound,
-					    ea->eaDocSelectionTypes,
-					    ea->eaDocSelectionTypeCount,
-					    gsd->selection, gsd->target ) )
+				    ea->eaDocSelectionTypes,
+				    ea->eaDocSelectionTypeCount,
+				    gtk_selection_data_get_selection( gsd ),
+				    gtk_selection_data_get_target( gsd ) ) )
 	{ LDEB(1); return;	}
 
     if  ( ! astt->asttGiveCopy )
@@ -438,6 +451,5 @@ void appAllocateCopyPasteTargetAtoms(	EditApplication *	ea )
 
     return;
     }
-
 
 #   endif

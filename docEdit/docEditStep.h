@@ -7,8 +7,13 @@
 #   ifndef	DOC_EDIT_STEP_H
 #   define	DOC_EDIT_STEP_H
 
-#   include	<docBuf.h>
 #   include	<docDocumentList.h>
+#   include	<docStyle.h>
+#   include	<docSelectionScope.h>
+#   include	<docDocumentProperties.h>
+#   include	<docEditRange.h>
+
+struct BufferDocument;
 
 /************************************************************************/
 /*									*/
@@ -76,7 +81,7 @@ typedef struct EditStep
 			 *   document are shallow copies of the parent 
 			 *   document.
 			 */
-    BufferDocument *	esSourceDocument;
+    struct BufferDocument *	esSourceDocument;
     int			esSourceIsIntermediary;
 
 			/**
@@ -121,11 +126,11 @@ typedef struct EditStep
 /*									*/
 /************************************************************************/
 
-extern void docInitEditStep(	EditStep *		es );
-extern void docCleanEditStep(	EditStep *		es );
+extern void docInitEditStep(	struct EditStep *		es );
+extern void docCleanEditStep(	struct EditStep *		es );
 
-extern BufferDocument * docEditStepMakeSourceDocument(
-						EditStep *		es,
-						const BufferDocument *	bdRef );
+extern struct BufferDocument * docEditStepMakeSourceDocument(
+					struct EditStep *		es,
+					const struct BufferDocument *	bdRef );
 
 #    endif	/*  DOC_EDIT_STEP_H	*/

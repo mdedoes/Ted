@@ -8,13 +8,14 @@
 /*									*/
 /************************************************************************/
 
-#   include	"sioGeneral.h"
+struct SimpleInputStream;
+struct SimpleOutputStream;
 
-extern SimpleInputStream * sioInMD5Open(
-					unsigned char *		digest,
-					SimpleInputStream *	sisIn );
+extern struct SimpleInputStream * sioInMD5Open(
+				unsigned char *			digest,
+				struct SimpleInputStream *	sisIn );
 
-extern SimpleOutputStream * sioOutMD5Open(
-					unsigned char *		digest,
-					SimpleOutputStream *	sosOut );
+extern struct SimpleOutputStream * sioOutMD5Open(
+				unsigned char *			digest,
+				struct SimpleOutputStream *	sosOut );
 

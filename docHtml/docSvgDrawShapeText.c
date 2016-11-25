@@ -11,6 +11,7 @@
 
 #   include	<docDraw.h>
 #   include	<docShape.h>
+#   include	<svgWriter.h>
 #   include	"docSvgDrawImpl.h"
 #   include	"docHtmlWriteImpl.h"
 
@@ -26,7 +27,7 @@
 /************************************************************************/
 
 int docSvgDrawShapeText(	const DocumentRectangle *	drHere,
-				const struct BufferItem *	bodySectBi,
+				const struct BufferItem *	bodySectNode,
 				int				page,
 				int				column,
 				DrawingShape *			ds,
@@ -77,7 +78,7 @@ int docSvgDrawShapeText(	const DocumentRectangle *	drHere,
     xmlNewLine( xw );
 
     if  ( docHtmlSaveSelection( &hwc, &(ds->dsDocumentTree),
-					    (const DocumentSelection *)0 ) )
+					(const struct DocumentSelection *)0 ) )
 	{ LDEB(1); rval= -1; goto ready;	}
 
     xmlPutString( "</body>", xw );
@@ -88,7 +89,7 @@ int docSvgDrawShapeText(	const DocumentRectangle *	drHere,
     xmlPutString( "<g>", xw );
     xmlNewLine( xw );
 
-    if  ( docDrawShapeText( drHere, bodySectBi, page, column, ds, dc, vsw ) )
+    if  ( docDrawShapeText( drHere, bodySectNode, page, column, ds, dc, vsw ) )
 	{ LDEB(1); rval= -1; goto ready;	}
 
     xmlPutString( "</g>", xw );

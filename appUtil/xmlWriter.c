@@ -8,10 +8,10 @@
 
 #   include	<stdio.h>
 #   include	<string.h>
-
 #   include	"sioGeneral.h"
-
 #   include	"xmlWriter.h"
+#   include	"utilColor.h"
+#   include	"utilMemoryBuffer.h"
 
 /************************************************************************/
 
@@ -55,8 +55,8 @@ void xmlNewLine(	XmlWriter *	xw )
     }
 
 void xmlWriteStringAttribute(	XmlWriter *		xw,
-					const char *		name,
-					const char *		value )
+				const char *		name,
+				const char *		value )
     {
     if  ( xw->xwColumn > 1				&&
 	  xw->xwColumn+ 1+ strlen( name )+ 1+ 3 > 76	)
@@ -66,6 +66,23 @@ void xmlWriteStringAttribute(	XmlWriter *		xw,
     sioOutPutString( name, xw->xwSos ); (xw->xwColumn) += strlen( name );
     sioOutPutString( "=\"", xw->xwSos ); (xw->xwColumn) += 2;
     xmlEscapeCharacters( xw, value, strlen( value ) );
+    sioOutPutString( "\"", xw->xwSos ); (xw->xwColumn) += 1;
+
+    return;
+    }
+
+void xmlWriteBufferAttribute(	XmlWriter *		xw,
+				const char *		name,
+				const MemoryBuffer *	value )
+    {
+    if  ( xw->xwColumn > 1				&&
+	  xw->xwColumn+ 1+ strlen( name )+ 1+ 3 > 76	)
+	{ sioOutPutString( "\n", xw->xwSos ); xw->xwColumn= 0;	}
+    else{ sioOutPutString( " ", xw->xwSos ); (xw->xwColumn)++;	}
+
+    sioOutPutString( name, xw->xwSos ); (xw->xwColumn) += strlen( name );
+    sioOutPutString( "=\"", xw->xwSos ); (xw->xwColumn) += 2;
+    xmlEscapeCharacters( xw, (const char *)value->mbBytes, value->mbSize );
     sioOutPutString( "\"", xw->xwSos ); (xw->xwColumn) += 1;
 
     return;

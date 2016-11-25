@@ -6,13 +6,12 @@
 
 #   include	"docEditConfig.h"
 
-#   include	<stdio.h>
-
 #   include	<appDebugon.h>
 
 #   include	<docBuf.h>
 #   include	<docField.h>
 #   include	<docDocumentList.h>
+#   include	"docEditOperation.h"
 #   include	"docEdit.h"
 
 /************************************************************************/

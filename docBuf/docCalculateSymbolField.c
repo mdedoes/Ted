@@ -6,15 +6,20 @@
 
 #   include	"docBufConfig.h"
 
-#   include	<appDebugon.h>
-
 #   include	<docSymbolField.h>
 #   include	<uniLegacyEncoding.h>
 #   include	<uniUtf8.h>
+#   include	<textAttribute.h>
 
 #   include	"docBuf.h"
+#   include	"docParaBuilderImpl.h"
 #   include	"docRecalculateFields.h"
 #   include	"docEvalField.h"
+#   include	<docDocumentProperties.h>
+#   include	<utilPropMask.h>
+#   include	<fontDocFontList.h>
+
+#   include	<appDebugon.h>
 
 /************************************************************************/
 /*									*/
@@ -22,10 +27,15 @@
 /*									*/
 /************************************************************************/
 
+# ifdef __GNUC__
+# pragma GCC diagnostic push
+# pragma GCC diagnostic ignored "-Wunused-parameter"
+# endif
+
 int docCalculateSymbolFieldString(
 				int *				pCalculated,
 				MemoryBuffer *			mbResult,
-				const DocumentField *		df,
+				const struct DocumentField *	df,
 				const RecalculateFields *	rf )
     {
     int			rval= 0;
@@ -79,6 +89,10 @@ int docCalculateSymbolFieldString(
     return rval;
     }
 
+# ifdef __GNUC__
+# pragma GCC diagnostic pop
+# endif
+
 /************************************************************************/
 /*									*/
 /*  Evaluate Footnote number fields.					*/
@@ -87,15 +101,14 @@ int docCalculateSymbolFieldString(
 
 int docRecalculateParaSymbolTextParticules(
 				int *				pCalculated,
-				int *				pPartShift,
 				int *				pStroffShift,
-				struct BufferItem *		paraBi,
-				int				part,
-				int				partCount,
-				DocumentField *			df,
-				const RecalculateFields *	rf )
+				struct ParagraphBuilder *	pb,
+				struct DocumentField *		df,
+				const RecalculateFields *	rf,
+				int				partHead,
+				int				partCount )
     {
-    int			rval= 0;
+    int			partTail= partHead+ partCount;
 
     char *		allocated= (char *)0;
     SymbolField		sf;
@@ -105,11 +118,11 @@ int docRecalculateParaSymbolTextParticules(
     if  ( docFieldGetSymbol( &sf, df ) )
 	{ LDEB(1); *pCalculated= 0; goto ready;	}
 
-    rval= docRecalculateParaStringTextParticules( pCalculated,
-		    pPartShift, pStroffShift, paraBi, part, partCount, df, rf );
+    partTail= docRecalculateParaStringTextParticules( pCalculated, pStroffShift,
+					pb, df, rf, partHead, partCount );
 
-    if  ( rval )
-	{ LDEB(rval); goto ready;	}
+    if  ( partTail <= partHead )
+	{ LLDEB(partHead,partTail); goto ready;	}
 
     if  ( *pCalculated )
 	{
@@ -117,18 +130,18 @@ int docRecalculateParaSymbolTextParticules(
 	PropertyMask		taSetMask;
 
 	utilPropMaskClear( &taSetMask );
-	utilInitTextAttribute( &taSet );
+	textInitTextAttribute( &taSet );
 
 	if  ( ! utilMemoryBufferIsEmpty( &(sf.sfFontName) ) )
 	    {
 	    int				fontNumber;
-	    DocumentProperties *	dp= &(rf->rfDocument->bdProperties);
+	    DocumentProperties *	dp= rf->rfDocument->bdProperties;
 
 	    allocated= utilMemoryStrdup( &(sf.sfFontName) );
 	    if  ( ! allocated )
-		{ XDEB(allocated); rval= -1; goto ready;	}
+		{ XDEB(allocated); partTail= -1; goto ready;	}
 
-	    fontNumber= docGetFontByName( dp->dpFontList, allocated );
+	    fontNumber= fontListGetFontByName( dp->dpFontList, allocated );
 	    if  ( fontNumber < 0 )
 		{ SLDEB(allocated,fontNumber);	}
 	    else{
@@ -146,10 +159,10 @@ int docRecalculateParaSymbolTextParticules(
 	if  ( ! utilPropMaskIsEmpty( &taSetMask ) )
 	    {
 	    if  ( docChangeParticuleAttributes( (int *)0, (PropertyMask *)0,
-				    rf->rfDocument, paraBi,
-				    part+ 1, part+ 1+ partCount+ *pPartShift,
+				    rf->rfDocument, pb->pbParaNode,
+				    partHead+ 1, partTail,
 				    &taSet, &taSetMask ) )
-		{ LDEB(part); rval= -1; goto ready;	}
+		{ LLDEB(partHead,partTail); partTail= -1; goto ready;	}
 	    }
 	}
 
@@ -157,5 +170,5 @@ int docRecalculateParaSymbolTextParticules(
 
     docCleanSymbolField( &sf );
 
-    return rval;
+    return partTail;
     }

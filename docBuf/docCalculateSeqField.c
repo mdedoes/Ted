@@ -15,12 +15,18 @@
 #   include	<docSeqField.h>
 #   include	<utilTree.h>
 #   include	"docRecalculateFields.h"
+#   include	<docDocumentField.h>
 
 /************************************************************************/
 /*									*/
 /*  Return the number of a seq field to be inserted in the document.	*/
 /*									*/
 /************************************************************************/
+
+# ifdef __GNUC__
+# pragma GCC diagnostic push
+# pragma GCC diagnostic ignored "-Wunused-parameter"
+# endif
 
 int docCalculateSeqFieldString( int *				pCalculated,
 				MemoryBuffer *			mbResult,
@@ -49,6 +55,10 @@ int docCalculateSeqFieldString( int *				pCalculated,
     return rval;
     }
 
+# ifdef __GNUC__
+# pragma GCC diagnostic pop
+# endif
+
 /************************************************************************/
 /*									*/
 /*  Calculate the number of a seq field.				*/
@@ -57,7 +67,7 @@ int docCalculateSeqFieldString( int *				pCalculated,
 
 int docRenumberSeqField( 	int *				pChanged,
 				DocumentField *			df,
-				BufferDocument *		bd )
+				struct BufferDocument *		bd )
     {
     int			rval= 0;
     int			changed= 0;
@@ -79,7 +89,7 @@ int docRenumberSeqField( 	int *				pChanged,
 	}
 
     pVal= (int *)utilTreeGetEQ( bd->bdSeqFieldIdentifiers, (const char **)0,
-				    utilMemoryBufferGetString( &(sf.sfIdentifier) ) );
+			    utilMemoryBufferGetString( &(sf.sfIdentifier) ) );
     if  ( ! pVal)
 	{
 	pVal= (int *)malloc( sizeof(int) );
@@ -88,8 +98,8 @@ int docRenumberSeqField( 	int *				pChanged,
 	else{
 	    *pVal= 0; changed= 1;
 	    if  ( utilTreeStoreValue( bd->bdSeqFieldIdentifiers,
-			    (void **)0, (const char **)0,
-			    utilMemoryBufferGetString( &(sf.sfIdentifier) ), pVal ) )
+		    (void **)0, (const char **)0,
+		    utilMemoryBufferGetString( &(sf.sfIdentifier) ), pVal ) )
 		{ LDEB(1); free( pVal ); rval= -1; goto ready; }
 	    }
 	} 

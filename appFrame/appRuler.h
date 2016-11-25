@@ -7,9 +7,11 @@
 #   ifndef	APP_RULER_H
 #   define	APP_RULER_H
 
-#   include	"appGuiBase.h"
+#   include	<guiBase.h>
 #   include	<drawDrawingSurface.h>
-#   include	<psPostScriptFontList.h>
+#   include	<utilColor.h>
+
+struct PostScriptFontList;
 
 typedef struct RulerData
     {
@@ -57,7 +59,7 @@ typedef struct RulerData
 
     int				rdScreenFont;
     DrawingSurface		rdDrawingSurface;
-    const PostScriptFontList *	rdPostScriptFontList;
+    const struct PostScriptFontList *	rdPostScriptFontList;
 
     int				rdBackgroundExplicit;
 
@@ -116,7 +118,7 @@ extern void appInitRulerData(		RulerData *	rd );
 extern void appCleanRulerData(		RulerData *	rd );
 
 extern void appRulerDrawBackground(	RulerData *			rd,
-					const DocumentRectangle *	drBck );
+					const struct DocumentRectangle * drBck );
 
 extern void appRulerMakeDrawingSurface( RulerData *	rd,
 					int		vertical,
@@ -139,11 +141,11 @@ extern void appRulerTagText(		char *		to,
 					double		units );
 
 extern void appScrollHorizontalRuler(	RulerData *		rd,
-					DocumentRectangle *	drClip,
+					struct DocumentRectangle *	drClip,
 					int			d );
 
 void appScrollVerticalRuler(		RulerData *		rd,
-					DocumentRectangle *	drClip,
+					struct DocumentRectangle *	drClip,
 					int			d );
 
 extern void appHorizontalRulerGetSizeFromConfigureEvent(

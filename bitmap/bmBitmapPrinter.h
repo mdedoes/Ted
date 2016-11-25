@@ -7,8 +7,9 @@
 #   ifndef	MB_BITMAP_PRINTER_H
 #   define	MB_BITMAP_PRINTER_H
 
-#   include	"bitmap.h"
-#   include	"bmio.h"
+struct SimpleOutputStream;
+struct BitmapDescription;
+struct DocumentRectangle;
 
 /************************************************************************/
 /*									*/
@@ -20,24 +21,23 @@ typedef struct BitmapPrinter
     {
     int				bpUseFilters;
     int				bpIndexedImages;
-    SimpleOutputStream *	bpOutput;
-    SimpleOutputStream *	bpHexed;
-    SimpleOutputStream *	bpBase85;
-    SimpleOutputStream *	bpFlate;
+    struct SimpleOutputStream *	bpOutput;
+    struct SimpleOutputStream *	bpHexed;
+    struct SimpleOutputStream *	bpBase85;
+    struct SimpleOutputStream *	bpFlate;
     } BitmapPrinter;
 
 extern int bmPsOpenBitmapPrinter(
 				BitmapPrinter *			bp,
-				SimpleOutputStream *		sos,
-				const BitmapDescription *	bd,
+				struct SimpleOutputStream *	sos,
 				int				useFilters,
 				int				indexedImages );
 
 extern void bmCloseBitmapPrinter(	BitmapPrinter *		bp );
 
-extern void bmStartEpsFile(	SimpleOutputStream *		sos,
+extern void bmStartEpsFile(	struct SimpleOutputStream *	sos,
 				const char *			filename,
-				const BitmapDescription *	bd );
+				const struct BitmapDescription *	bd );
 
 /************************************************************************/
 /*									*/
@@ -45,34 +45,32 @@ extern void bmStartEpsFile(	SimpleOutputStream *		sos,
 /*									*/
 /************************************************************************/
 
-extern int bmPsPrintBitmap(	SimpleOutputStream *		sos,
-				int				level,
+extern int bmPsPrintBitmap(	struct SimpleOutputStream *	sos,
 				double				xscale,
 				double				yscale,
 				int				ox,
 				int				oy,
-				const DocumentRectangle *	drSrc,
+				const struct DocumentRectangle *	drSrc,
 				int				useFilters,
 				int				indexedImages,
-				const BitmapDescription *	bd,
+				const struct BitmapDescription *	bd,
 				const unsigned char *		buffer );
 
-extern int bmPsPrintBitmapImage( SimpleOutputStream *		sos,
-				int				level,
+extern int bmPsPrintRasterImage( struct SimpleOutputStream *	sos,
 				double				xscale,
 				double				yscale,
 				int				ox,
 				int				oy,
-				const DocumentRectangle *	drSrc,
+				const struct DocumentRectangle *	drSrc,
 				int				onWhite,
 				int				useFilters,
 				int				indexedImages,
-				const BitmapDescription *	bd,
+				const struct BitmapDescription *	bd,
 				const unsigned char *		buffer );
 
 extern void bmPsWriteImageInstructions(
-				SimpleOutputStream *		sos,
-				const BitmapDescription *	bd,
+				struct SimpleOutputStream *	sos,
+				const struct BitmapDescription *	bd,
 				int				onWhite,
 				int				wide,
 				int				high,
@@ -80,11 +78,11 @@ extern void bmPsWriteImageInstructions(
 				int				indexedImages );
 
 extern int bmPsWriteBitmapData(	BitmapPrinter *			bp,
-				const DocumentRectangle *	drSrc,
-				const BitmapDescription *	bd,
+				const struct DocumentRectangle *	drSrc,
+				const struct BitmapDescription *	bd,
 				const unsigned char *		inputBuffer );
 
-extern int bmPsRowStringSize(	const BitmapDescription *	bd,
+extern int bmPsRowStringSize(	const struct BitmapDescription *	bd,
 				int				pixelsWide,
 				int				indexedImages );
 

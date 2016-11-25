@@ -1,6 +1,6 @@
 /************************************************************************/
 /*									*/
-/*  Save a BufferDocument into an HTML file.				*/
+/*  Save a struct BufferDocument into an HTML file.				*/
 /*									*/
 /*  Writes RTF attributes as CSS styles.				*/
 /*									*/
@@ -16,14 +16,15 @@
 #   include	<docBuf.h>
 #   include	"docHtmlWriteImpl.h"
 #   include	"docWriteCss.h"
+#   include	<docDocumentProperties.h>
 
 #   include	<appDebugon.h>
 
 static int docHtmlSaveBodyStyle(	HtmlWritingContext *	hwc,
 					SimpleOutputStream *	sos )
     {
-    const BufferDocument *	bd= hwc->hwcDocument;
-    const DocumentProperties *	dp= &(bd->bdProperties);
+    const struct BufferDocument *	bd= hwc->hwcDocument;
+    const DocumentProperties *	dp= bd->bdProperties;
     const DocumentGeometry *	dg= &(dp->dpGeometry);
 
     char			scratch[40];
@@ -34,31 +35,31 @@ static int docHtmlSaveBodyStyle(	HtmlWritingContext *	hwc,
 	{ sioOutPutString( "  background-color: #ffffff;\n", sos );	}
     sioOutPutString( "  color: #000000;\n", sos );
 
-    if  ( dg->dgTopMarginTwips > 300 )
+    if  ( dg->dgMargins.roTopOffset > 300 )
 	{
 	sprintf( scratch, "  margin-top: %dpt;\n",
-					dg->dgTopMarginTwips/ 20 );
+					dg->dgMargins.roTopOffset/ 20 );
 	sioOutPutString( scratch, sos );
 	}
 
-    if  ( dg->dgLeftMarginTwips > 300 )
+    if  ( dg->dgMargins.roLeftOffset > 300 )
 	{
 	sprintf( scratch, "  margin-left: %dpt;\n",
-					dg->dgLeftMarginTwips/ 20 );
+					dg->dgMargins.roLeftOffset/ 20 );
 	sioOutPutString( scratch, sos );
 	}
 
-    if  ( dg->dgRightMarginTwips > 300 )
+    if  ( dg->dgMargins.roRightOffset > 300 )
 	{
 	sprintf( scratch, "  margin-right: %dpt;\n",
-					dg->dgRightMarginTwips/ 20 );
+					dg->dgMargins.roRightOffset/ 20 );
 	sioOutPutString( scratch, sos );
 	}
 
-    if  ( dg->dgBottomMarginTwips > 300 )
+    if  ( dg->dgMargins.roBottomOffset > 300 )
 	{
 	sprintf( scratch, "  margin-bottom: %dpt;\n",
-					dg->dgBottomMarginTwips/ 20 );
+					dg->dgMargins.roBottomOffset/ 20 );
 	sioOutPutString( scratch, sos );
 	}
 

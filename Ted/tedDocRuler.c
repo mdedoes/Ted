@@ -8,153 +8,126 @@
 
 #   include	<stddef.h>
 #   include	<stdlib.h>
-#   include	<stdio.h>
 #   include	<ctype.h>
 
 #   include	<docPageGrid.h>
-#   include	<docParaRulerAdmin.h>
-#   include	<geoGrid.h>
 #   include	<guiDrawingWidget.h>
 
-#   include	"tedApp.h"
 #   include	"tedSelect.h"
 #   include	"tedAppResources.h"
-#   include	"tedDocFront.h"
+#   include	<tedDocFront.h>
 #   include	"tedRuler.h"
 #   include	"tedLayout.h"
 #   include	"tedDocument.h"
-#   include	"tedToolFront.h"
+#   include	<tedToolFront.h>
 #   include	<docTreeNode.h>
 #   include	<docNodeTree.h>
-#   include	<docTextLine.h>
+#   include	<docTabStopList.h>
+#   include	<docRowProperties.h>
+#   include	<docParaNodeProperties.h>
+#   include	<docParaProperties.h>
+#   include	<docLayout.h>
+#   include	<appEditApplication.h>
+#   include	<appEditDocument.h>
+#   include	<docBuf.h>
+#   include	<docBlockFrame.h>
+#   include	<docStripFrame.h>
+#   include	<docRulerColumnSeparator.h>
+#   include	<docScreenRuler.h>
 
 #   include	<appDebugon.h>
 
-/************************************************************************/
-/*									*/
-/*  Obtain the separator positions for a table.				*/
-/*									*/
-/************************************************************************/
-
-static int tedGetColumns(	BufferItem *			paraNode,
-				const LayoutContext *		lc,
+static int tedUpdateTableColumns( 
+				EditDocument *			ed,
+				const DocumentSelection *	ds,
 				const BlockFrame *		bf,
-				ColumnSeparator **		pCs,
-				int *				pCsCount )
+				const LayoutContext *		lc,
+				int				csCountNew,
+				const ColumnSeparator *		csNew )
     {
-    double			xfac= lc->lcPixelsPerTwip;
-    static ColumnSeparator *	cs;
-    ColumnSeparator *		fresh;
+    int				rval= 0;
 
-    BufferItem *		rowNode;
-    CellProperties *		cp;
+    int				csCountOld;
+    ColumnSeparator *		csOld;
+    int				colX0;
+    int				colX1;
 
-    int				i;
+    int				changed= 0;
 
-    int				rg2p;
+    struct BufferItem *		parentNode;
+    struct BufferItem *		rowNode;
 
-    rowNode= docGetRowNode( paraNode );
-    if  ( ! rowNode )
-	{ XDEB(rowNode); return -1;	}
+    const RowProperties *	rpOld;
+    RowProperties		rpSet;
 
-    fresh= (ColumnSeparator *)realloc( cs, ( rowNode->biRowCellCount+ 1 )*
-					sizeof( ColumnSeparator ) );
-    if  ( ! fresh )
-	{ LXDEB(rowNode->biRowCellCount,fresh); return -1;	}
-    cs= fresh;
+    int				col;
+    int				row;
+    int				row0;
+    int				row1;
 
-    rg2p= COORDtoGRID( xfac, rowNode->biRowHalfGapWidthTwips );
+    PropertyMask		rpSetMask;
+    PropertyMask		cpSetMask;
+    const CellProperties *	cpSet= (const CellProperties *)0;
 
-    cp= rowNode->biRowCells;
-    for ( i= 0; i < rowNode->biRowCellCount; fresh++, cp++, i++ )
-	{
-	const BufferItem *	cellBi= rowNode->biChildren[i];
-
-	ParagraphFrame		pf;
-
-	docCellFrameTwips( &pf, bf, cellBi );
-
-	if  ( i == 0 )
-	    {
-	    fresh[0].csX0= COORDtoGRID( xfac, pf.pfCellRect.drX0 )- rg2p;
-	    fresh[0].csX1= COORDtoGRID( xfac, pf.pfCellRect.drX0 )+ rg2p;
-	    }
-
-	fresh[1].csX0= COORDtoGRID( xfac, pf.pfCellRect.drX1 )- rg2p;
-	fresh[1].csX1= COORDtoGRID( xfac, pf.pfCellRect.drX1 )+ rg2p;
-	}
-
-    *pCs= cs; *pCsCount= rowNode->biRowCellCount+ 1; return 0;
-    }
-
-static int tedUpdateTableColumns(	EditDocument *		ed,
-					BufferItem *		paraNode,
-					const BlockFrame *	bf,
-					const LayoutContext *	lc,
-					int			csCountNew,
-					const ColumnSeparator *	csNew )
-    {
-    int			rval= 0;
-
-    double		xfac= lc->lcPixelsPerTwip;
-
-    int			csCount;
-    ColumnSeparator *	cs;
-
-    int			changed= 0;
-
-    BufferItem *	parentNode;
-    BufferItem *	rowNode;
-
-    RowProperties	rpSet;
-
-    int			row;
-    int			row0;
-    int			row1;
-
-    const DocumentAttributeMap * const dam0= (const DocumentAttributeMap *)0;
+    const struct DocumentAttributeMap * const dam0= (const struct DocumentAttributeMap *)0;
 
     docInitRowProperties( &rpSet );
+    utilPropMaskClear( &rpSetMask );
+    utilPropMaskClear( &cpSetMask );
 
-    if  ( docDelimitTable( paraNode, &parentNode, (int *)0,
-							&row0, &row, &row1 ) )
+    if  ( docDelimitTable( ds->dsHead.dpNode, &parentNode,
+					    &col, &row0, &row, &row1 ) )
 	{ LDEB(1); rval= -1; goto ready;	}
-
-    if  ( tedGetColumns( paraNode, lc, bf, &cs, &csCount ) )
-	{ LDEB(1); rval= -1; goto ready;	}
-
-    if  ( csCountNew != csCount )
-	{ LLDEB(csCountNew,csCount); rval= -1; goto ready;	}
 
     rowNode= parentNode->biChildren[row0];
-    if  ( docCopyRowProperties( &rpSet, &(rowNode->biRowProperties), dam0 ) )
+    if  ( docRowGetRulerColumnsPixels( &colX0, &colX1, &csOld, &csCountOld,
+							    rowNode, lc, bf ) )
 	{ LDEB(1); rval= -1; goto ready;	}
 
-    if  ( csNew[0].csX0 != cs[0].csX0 )
+    if  ( csCountNew != csCountOld )
+	{ LLDEB(csCountNew,csCountOld); rval= -1; goto ready;	}
+
+    rpOld= rowNode->biRowProperties;
+    if  ( docCopyRowProperties( &rpSet, rpOld, dam0 ) )
+	{ LDEB(1); rval= -1; goto ready;	}
+
+    if  ( csNew[0].csX0 != csOld[0].csX0 )
 	{
-	int	rowLeftIndentPixels;
+	if  ( docRowGetRulerColumnTwips( &rpSet, lc, 0, csOld, csNew ) )
+	    { LDEB(0); rval= -1; goto ready;	}
 
-	rowLeftIndentPixels= COORDtoGRID( xfac, rowNode->biRowLeftIndentTwips );
-
-	rowLeftIndentPixels += ( csNew[0].csX0- cs[0].csX0 );
-	rpSet.rpLeftIndentTwips= GRIDtoCOORD( rowLeftIndentPixels, xfac );
-
+	PROPmaskADD( &rpSetMask, RPpropLEFT_INDENT );
 	changed= 1;
 	}
     else{
-	CellProperties *	cp= rpSet.rpCells;
-	int			csi;
+	int		sep;
 
-	for ( csi= 1; csi < csCount; cp++, csi++ )
+	for ( sep= 1; sep < csCountOld; sep++ )
 	    {
-	    if  ( csNew[csi].csX0 != cs[csi].csX0 )
+	    if  ( csNew[sep].csX0 != csOld[sep].csX0 )
 		{
-		int	rightBoundaryPixels=
-				COORDtoGRID( xfac, cp->cpRightBoundaryTwips );
+		/* HACK: select the relevant column (only) */
+		if  ( sep != ds->dsCol0+ 1 || sep != ds->dsCol1+ 1 )
+		    {
+		    int			scrolledX= 0;
+		    int			scrolledY= 0;
+		    DocumentPosition	dpCol;
+		    DocumentSelection	dsCol;
 
-		rightBoundaryPixels += ( csNew[csi].csX0- cs[csi].csX0 );
-		cp->cpRightBoundaryTwips=
-				GRIDtoCOORD( rightBoundaryPixels, xfac );
+		    if  ( docHeadPosition( &dpCol,
+					    rowNode->biChildren[sep-1] ) )
+			{ LLDEB(sep,col); rval= -1; goto ready;	}
+		    docSetIBarSelection( &dsCol, &dpCol );
+
+		    tedSetSelectionLow( ed, &dsCol, 0, &scrolledX, &scrolledY );
+		    }
+
+		if  ( docRowGetRulerColumnTwips( &rpSet, lc,
+							sep, csOld, csNew ) )
+		    { LDEB(sep); rval= -1; goto ready;	}
+
+		cpSet= &(rpSet.rpCells[sep-1]);
+		PROPmaskADD( &cpSetMask, CLpropWIDTH );
 		changed= 1;
 		break;
 		}
@@ -163,25 +136,11 @@ static int tedUpdateTableColumns(	EditDocument *		ed,
 
     if  ( changed )
 	{
-	const int		wholeRow= 1;
+	const int		wholeRow= 0;
 	const int		wholeColumn= 1;
 
-	PropertyMask		rpDifMask;
-	PropertyMask		rpCmpMask;
-
-	TedDocument *		td= (TedDocument *)ed->edPrivateData;
-
-	utilPropMaskClear( &rpDifMask );
-	utilPropMaskClear( &rpCmpMask );
-
-	utilPropMaskFill( &rpCmpMask, RPprop_COUNT );
-
-	docRowPropertyDifference( &rpDifMask, &rpSet, &rpCmpMask,
-					    &(rowNode->biRowProperties), dam0 );
-
 	tedDocSetTableProperties( ed, wholeRow, wholeColumn,
-			(const PropertyMask *)0, (const CellProperties *)0,
-			&rpDifMask, &rpSet, td->tdTraced );
+				&cpSetMask, cpSet, &rpSetMask, &rpSet );
 	}
 
   ready:
@@ -197,64 +156,11 @@ static int tedUpdateTableColumns(	EditDocument *		ed,
 /*									*/
 /************************************************************************/
 
-static int tedGetRulerTwips(
-			const LayoutContext *		lc,
-			const BlockFrame *		bf,
-			const ParagraphFrame *		pf,
-			BufferDocument *		bd,
-			ParagraphProperties *		ppNew,
-			int				firstIndentPixels,
-			int				leftIndentPixels,
-			int				rightIndentPixels,
-			const TabStopList *		tslNew )
-    {
-    int				rval= 0;
-    double			xfac= lc->lcPixelsPerTwip;
-
-    int				pfX0Pixels;
-    int				pfX1Pixels;
-
-    TabStopList			tsl;
-    TabStopList			tslOld;
-
-    docInitTabStopList( &tslOld );
-
-    pfX0Pixels= COORDtoGRID( xfac, pf->pfCellContentRect.drX0 );
-    pfX1Pixels= COORDtoGRID( xfac, pf->pfCellContentRect.drX1 );
-
-    leftIndentPixels -= pfX0Pixels;
-    ppNew->ppLeftIndentTwips= GRIDtoCOORD( leftIndentPixels, xfac );
-
-    firstIndentPixels -= pfX0Pixels;
-    firstIndentPixels -= leftIndentPixels;
-    ppNew->ppFirstIndentTwips= GRIDtoCOORD( firstIndentPixels, xfac );
-
-    rightIndentPixels= pfX1Pixels- rightIndentPixels;
-    ppNew->ppRightIndentTwips= GRIDtoCOORD( rightIndentPixels, xfac );
-
-    docGetTabStopListByNumber( &tsl, bd, ppNew->ppTabStopListNumber );
-
-    if  ( docCopyTabStopList( &tslOld, &tsl ) )
-	{ LDEB(1); rval= -1; goto ready;	}
-
-    if  ( docRulerMergeTabs( &tslOld, pfX0Pixels, xfac, tslNew ) )
-	{ LDEB(1); rval= -1; goto ready;	}
-
-    ppNew->ppTabStopListNumber= docTabStopListNumber( bd, &tslOld );
-
-  ready:
-
-    docCleanTabStopList( &tslOld );
-
-    return rval;
-    }
-
 static APP_EVENT_HANDLER_H( tedTopRulerButtonDown, w, voided, downEvent )
     {
     EditDocument *		ed= (EditDocument *)voided;
     TedDocument *		td= (TedDocument *)ed->edPrivateData;
-    BufferDocument *		bd= td->tdDocument;
-    BufferItem *		paraNode;
+    struct BufferDocument *	bd= td->tdDocument;
 
     int				leftIndentNew;
     int				firstIndentNew;
@@ -276,12 +182,8 @@ static APP_EVENT_HANDLER_H( tedTopRulerButtonDown, w, voided, downEvent )
     DocumentSelection		ds;
     SelectionGeometry		sg;
     SelectionDescription	sd;
-    const TextLine *		tl;
-
-    DocumentRectangle *		drParaContent= &(pf.pfParaContentRect);
 
     LayoutContext		lc;
-    double			xfac;
 
     int				button;
     int				upDown;
@@ -290,9 +192,12 @@ static APP_EVENT_HANDLER_H( tedTopRulerButtonDown, w, voided, downEvent )
     int				mouseX;
     int				mouseY;
 
+    struct BufferItem *		bodySectNode;
 
     docInitParagraphProperties( &ppNew );
     docInitTabStopList( &tslNew );
+
+    docLayoutInitBlockFrame( &bf );
 
     if  ( ed->edFileReadOnly )
 	{ goto ready;	}
@@ -311,77 +216,76 @@ static APP_EVENT_HANDLER_H( tedTopRulerButtonDown, w, voided, downEvent )
 	    break;
 
 	case 3:
-	    prop= tedTopRulerFindMouse( &seq, w, mouseX, mouseY, ed );
+	    prop= tedTopRulerFindMouse( &seq, mouseX, mouseY, ed );
 	    switch( prop )
 		{
 		case PPpropTAB_STOPS:
 		case PPprop_TAB_KIND_BUTTON:
-		    tedShowFormatTool( td->tdToolsFormatToolOption,
+		    tedAppShowFormatTool( td->tdToolsFormatToolOption,
 							ed->edApplication );
 		    tedAdaptFormatToolToDocument( ed, 0 );
-		    tedFormatShowParaTabsPage( ed->edApplication );
+		    tedAppFormatShowParaTabsPage( ed->edApplication );
 		    goto ready;
 
 		case PPpropLEFT_INDENT:
 		case PPpropFIRST_INDENT:
 		case PPpropRIGHT_INDENT:
-		    tedShowFormatTool( td->tdToolsFormatToolOption,
+		    tedAppShowFormatTool( td->tdToolsFormatToolOption,
 							ed->edApplication );
 		    tedAdaptFormatToolToDocument( ed, 0 );
-		    tedFormatShowParaLayoutPage( ed->edApplication );
+		    tedAppFormatShowParaLayoutPage( ed->edApplication );
 		    goto ready;
 
 		case PPprop_COLUMNS:
-		    tedShowFormatTool( td->tdToolsFormatToolOption,
+		    tedAppShowFormatTool( td->tdToolsFormatToolOption,
 							ed->edApplication );
 		    if  ( seq == 0 )
 			{
 			if  ( tedDocSelectColumn( ed, seq ) )
 			    { LDEB(seq); goto ready;	}
 
-			tedFormatShowTablePage( ed->edApplication );
+			tedAppFormatShowTablePage( ed->edApplication );
 			}
 		    else{
 			if  ( tedDocSelectColumn( ed, seq- 1 ) )
 			    { LDEB(seq); goto ready;	}
 
-			tedFormatShowColumnPage( ed->edApplication );
+			tedAppFormatShowColumnPage( ed->edApplication );
 			}
 		    goto ready;
 
 		default:
 		    /* LDEB(prop); */ goto ready;
 		}
-	    break;
+	    /*break;*/
 
 	default:
 	    goto ready;
 	}
 
     tedSetScreenLayoutContext( &lc, ed );
-    xfac= lc.lcPixelsPerTwip;
 
-    if  ( tedGetSelection( &ds, &sg, &sd,
-				(DocumentTree **)0, (BufferItem **)0, ed ) )
+    if  ( tedGetSelection( &ds, &sg, &sd, (struct DocumentTree **)0,
+							&bodySectNode, ed ) )
 	{ LDEB(1); goto ready;	}
-    paraNode= ds.dsHead.dpNode;
-    tl= paraNode->biParaLines+ sg.sgHead.pgLine;
 
-    utilPropMaskClear( &ppSetMask );
+    docSectionBlockFrameTwips( &bf, ds.dsHead.dpNode, bodySectNode, bd,
+			    sg.sgHead.pgTopPosition.lpPage,
+			    sg.sgHead.pgTopPosition.lpColumn );
 
-    docBlockFrameTwips( &bf, paraNode, bd, tl->tlTopPosition.lpPage,
-					    tl->tlTopPosition.lpColumn );
+    docParagraphFrameTwips( &pf, &bf, ds.dsHead.dpNode );
 
-    docParagraphFrameTwips( &pf, &bf, paraNode );
-
-    leftIndentNew= COORDtoGRID( xfac, drParaContent->drX0 );
-    firstIndentNew= COORDtoGRID( xfac, drParaContent->drX0+
-					    paraNode->biParaFirstIndentTwips );
-    rightIndentNew= COORDtoGRID( xfac, drParaContent->drX1 );
+    if  ( docParaGetRulerPixels(
+			    (int *)0, (int *)0,
+			    &firstIndentNew, &leftIndentNew, &rightIndentNew,
+			    &lc, ds.dsHead.dpNode->biParaProperties, &pf ) )
+	{ LDEB(1); goto ready;	}
 
     prop= tedTopRulerTrackMouse(
 			    &firstIndentNew, &leftIndentNew, &rightIndentNew,
 			    &tslNew, &csCountNew, &csNew, w, downEvent, ed );
+
+    utilPropMaskClear( &ppSetMask );
 
     switch( prop )
 	{
@@ -391,28 +295,23 @@ static APP_EVENT_HANDLER_H( tedTopRulerButtonDown, w, voided, downEvent )
 
 	case PPpropLEFT_INDENT:
 	case PPpropFIRST_INDENT:
-	    PROPmaskADD( &ppSetMask, PPpropLEFT_INDENT );
-	    PROPmaskADD( &ppSetMask, PPpropFIRST_INDENT );
-	    break;
-
 	case PPpropRIGHT_INDENT:
 	case PPpropTAB_STOPS:
 	    PROPmaskADD( &ppSetMask, prop );
 	    break;
 
 	case PPprop_COLUMNS:
-	    tedUpdateTableColumns( ed, paraNode, &bf, &lc, csCountNew, csNew );
+	    tedUpdateTableColumns( ed, &ds, &bf, &lc, csCountNew, csNew );
 	    goto ready;
 	default:
 	    LDEB(prop); goto ready;
 	}
 
-    if  ( docUpdParaProperties( (PropertyMask *)0, &ppNew, &ppSetMask,
-					    &(paraNode->biParaProperties),
-					    (const DocumentAttributeMap *)0 ) )
+    if  ( docCopyParagraphProperties( &ppNew,
+				ds.dsHead.dpNode->biParaProperties ) )
 	{ LDEB(1); goto ready;	}
 
-    if  ( tedGetRulerTwips( &lc, &bf, &pf, bd, &ppNew,
+    if  ( docParaGetRulerTwips( &lc, &bf, &pf, bd, &ppNew,
 			    firstIndentNew, leftIndentNew, rightIndentNew,
 			    &tslNew ) )
 	{ LDEB(1); goto ready;	}
@@ -424,7 +323,7 @@ static APP_EVENT_HANDLER_H( tedTopRulerButtonDown, w, voided, downEvent )
   ready:
 
     docCleanParagraphProperties( &ppNew );
-    docInitTabStopList( &tslNew );
+    docCleanTabStopList( &tslNew );
 
     return;
     }
@@ -439,107 +338,97 @@ void tedDocAdaptTopRuler(	EditDocument *			ed,
 				const DocumentSelection *	ds,
 				const SelectionGeometry *	sg,
 				const SelectionDescription *	sd,
-				const BufferItem *		bodySectNode )
+				const struct BufferItem *	bodySectNode )
     {
     TedDocument *		td= (TedDocument *)ed->edPrivateData;
-    BufferDocument *		bd= td->tdDocument;
+    struct BufferDocument *	bd= td->tdDocument;
 
-    int				leftIndent;
-    int				firstIndent;
-    int				rightIndent;
+    int				leftIndentPixels;
+    int				firstIndentPixels;
+    int				rightIndentPixels;
 
     BlockFrame			bf;
     ParagraphFrame		pf;
 
-    int				bfX0Pixels;
-    int				bfX1Pixels;
     int				pfX0Pixels;
     int				pfX1Pixels;
 
     DocumentRectangle		drOutside;
     DocumentRectangle		drInside;
 
-    BufferItem *		paraNode= ds->dsHead.dpNode;
-    const TextLine *		tl;
+    struct BufferItem *		paraNode= ds->dsHead.dpNode;
 
-    TabStopList			tsl;
+    TabStopList			tslPixels;
 
     LayoutContext		lc;
-    double			xfac;
 
     docLayoutInitBlockFrame( &bf );
+    docInitTabStopList( &tslPixels );
 
     tedSetScreenLayoutContext( &lc, ed );
-    xfac= lc.lcPixelsPerTwip;
 
     if  ( ! ed->edTopRuler )
 	{ goto ready;	}
-    if  ( sg->sgHead.pgLine >= paraNode->biParaLineCount )
-	{ LLDEB(sg->sgHead.pgLine,paraNode->biParaLineCount); return;	}
 
-    docGetTabStopListByNumber( &tsl, bd, paraNode->biParaTabStopListNumber );
-
-    tl= paraNode->biParaLines+ sg->sgHead.pgLine;
-    docBlockFrameTwips( &bf, paraNode, bd,
-					tl->tlTopPosition.lpPage,
-					tl->tlTopPosition.lpColumn );
+    docSectionBlockFrameTwips( &bf, paraNode, bodySectNode, bd,
+			    sg->sgHead.pgTopPosition.lpPage,
+			    sg->sgHead.pgTopPosition.lpColumn );
 
     docParagraphFrameTwips( &pf, &bf, paraNode );
 
-    bfX0Pixels= COORDtoGRID( xfac, bf.bfContentRect.drX0 );
-    bfX1Pixels= COORDtoGRID( xfac, bf.bfContentRect.drX1 );
+    if  ( docParaGetRulerPixels(
+		    &pfX0Pixels, &pfX1Pixels,
+		    &firstIndentPixels, &leftIndentPixels, &rightIndentPixels,
+		    &lc, ds->dsHead.dpNode->biParaProperties, &pf ) )
+	{ LDEB(1); goto ready;	}
 
-    pfX0Pixels= COORDtoGRID( xfac, pf.pfCellContentRect.drX0 );
-    pfX1Pixels= COORDtoGRID( xfac, pf.pfCellContentRect.drX1 );
+    docPageRectsPixels( &drOutside, &drInside,
+				    lc.lcPixelsPerTwip, bodySectNode, bd );
 
-    leftIndent= COORDtoGRID( xfac, pf.pfParaContentRect.drX0 );
-    firstIndent= COORDtoGRID( xfac, pf.pfParaContentRect.drX0+
-					paraNode->biParaFirstIndentTwips );
-    rightIndent= COORDtoGRID( xfac, pf.pfParaContentRect.drX1 );
-
-    docPageRectsPixels( &drOutside, &drInside, xfac, bodySectNode, bd );
+    if  ( docParaGetTabStopsPixels( &tslPixels,
+				paraNode->biParaProperties, &pf, &lc, 
+				docParaNodeGetTabStopList( paraNode, bd ) ) )
+	{ LDEB(1); goto ready;	}
 
     tedAdaptTopRuler( ed->edTopRuler, ed->edTopRulerWidget,
 		drOutside.drX0, drOutside.drX1,		/*  doc */
 		drInside.drX0, drInside.drX1,		/*  marg */
-		firstIndent, leftIndent, rightIndent,
-		&tsl, pfX0Pixels, xfac );
+		firstIndentPixels, leftIndentPixels, rightIndentPixels,	/*ind*/
+		pfX0Pixels, pfX1Pixels, &tslPixels );
 
-    if  ( paraNode->biParaTableNesting > 0 )
+    if  ( paraNode->biParaProperties->ppTableNesting > 0	&&
+	  sd->sdInOneTable					)
 	{
-	int			csCount;
-	ColumnSeparator *	cs;
+	struct BufferItem *	rowNode;
+	int			csCount= 0;
+	ColumnSeparator *	cs= (ColumnSeparator *)0;
 
-	BufferItem *		parentBi;
+	int			bfX0Pixels;
+	int			bfX1Pixels;
 
-	int			col;
-	int			row;
-	int			row0;
-	int			row1;
+	rowNode= docGetRowNode( paraNode );
+	if  ( ! rowNode )
+	    { XDEB(rowNode); goto ready;	}
 
-	if  ( docDelimitTable( paraNode, &parentBi, &col, &row0, &row, &row1 ) )
-	    { LDEB(1); goto ready;	}
-
-	if  ( tedGetColumns( paraNode, &lc, &bf, &cs, &csCount ) )
+	if  ( docRowGetRulerColumnsPixels( &bfX0Pixels, &bfX1Pixels,
+							&cs, &csCount,
+							rowNode, &lc, &bf ) )
 	    { LDEB(1); goto ready;	}
 
 	tedSetRulerColumns( ed->edTopRulerWidget, ed->edTopRuler,
-				    bfX0Pixels,
-				    bfX1Pixels,
-				    pfX0Pixels,
-				    pfX1Pixels,
-				    cs, csCount );
+				    bfX0Pixels, bfX1Pixels, cs, csCount );
+
+	if  ( cs )
+	    { free( cs );	}
 	}
     else{
 	tedSetRulerColumns( ed->edTopRulerWidget, ed->edTopRuler,
-				    bfX0Pixels,
-				    bfX1Pixels,
-				    pfX0Pixels,
-				    pfX1Pixels,
-				    (ColumnSeparator *)0, 0 );
+				    -1, -1, (ColumnSeparator *)0, 0 );
 	}
 
   ready:
+
+    docCleanTabStopList( &tslPixels );
     docLayoutCleanBlockFrame( &bf );
 
     return;
@@ -556,7 +445,7 @@ int tedDocSetTopRuler(	EditDocument *	ed )
     {
     EditApplication *		ea= ed->edApplication;
     TedDocument *		td= (TedDocument *)ed->edPrivateData;
-    BufferDocument *		bd= td->tdDocument;
+    struct BufferDocument *		bd= td->tdDocument;
 
     int				topRulerHeight= ed->edTopRulerHighPixels;
     int				unitInt= ea->eaUnitInt;
@@ -564,7 +453,7 @@ int tedDocSetTopRuler(	EditDocument *	ed )
     DocumentRectangle		drOutside;
     DocumentRectangle		drInside;
 
-    const BufferItem *		bodySectNode= bd->bdBody.dtRoot->biChildren[0];
+    const struct BufferItem *	bodySectNode= bd->bdBody.dtRoot->biChildren[0];
 
     docPageRectsPixels( &drOutside, &drInside,
 					td->tdPixelsPerTwip, bodySectNode, bd );
@@ -593,7 +482,7 @@ int tedDocSetTopRuler(	EditDocument *	ed )
     guiDrawSetButtonPressHandler( ed->edTopRulerWidget,
 					tedTopRulerButtonDown, (void *)ed );
 
-#   ifdef USE_GTK
+#   if USE_GTK
     gtk_widget_add_events( ed->edTopRulerWidget, GDK_POINTER_MOTION_MASK );
 #   endif
 

@@ -14,9 +14,11 @@
 #   include	"psTtf.h"
 #   include	"psReadWriteFontInfo.h"
 #   include	<utilIndexMapping.h>
-#   include	<appDebugon.h>
-
 #   include	"psTtfIntern.h"
+#   include	"psFontInfo.h"
+#   include	<sioGeneral.h>
+
+#   include	<appDebugon.h>
 
 /************************************************************************/
 /*									*/
@@ -26,7 +28,7 @@
 /*									*/
 /************************************************************************/
 
-static void utilTtfWriteCharStrings(	SimpleOutputStream *	sos,
+static void utilTtfWriteCharStrings(	struct SimpleOutputStream *	sos,
 					const AfmFontInfo *	afi )
     {
     int				g;
@@ -60,14 +62,14 @@ static void utilTtfWriteCharStrings(	SimpleOutputStream *	sos,
 /*									*/
 /************************************************************************/
 
-static long utilTtfWriteTableByteArray(	SimpleOutputStream *	sos,
+static long utilTtfWriteTableByteArray(	struct SimpleOutputStream *	sos,
 					long			filePos,
 					const char *		tag,
 					const unsigned char *	bytes,
 					unsigned long		count,
 					int			pad )
     {
-    SimpleOutputStream *	sosHex= (SimpleOutputStream *)0;
+    struct SimpleOutputStream *	sosHex= (struct SimpleOutputStream *)0;
 
     const int			wide= 72;
     const int			lastNL= 0;
@@ -97,7 +99,7 @@ static long utilTtfWriteTableByteArray(	SimpleOutputStream *	sos,
 
     if  ( sioOutPutByte( '\0', sosHex ) < 0 )
 	{ filePos= -1; goto ready;	}
-    sioOutClose( sosHex ); sosHex= (SimpleOutputStream *)0;
+    sioOutClose( sosHex ); sosHex= (struct SimpleOutputStream *)0;
     sioOutPrintf( sos, ">\n" );
 
   ready:
@@ -301,7 +303,7 @@ static long psTtfGlyphChunk(	int *				pPad,
     return upto;
     }
 
-static int utilTtfWriteT42Sfnts(	SimpleOutputStream *	sos,
+static int utilTtfWriteT42Sfnts(	struct SimpleOutputStream *	sos,
 					const char *		debFontName,
 					const TrueTypeFont *	ttf )
     {
@@ -310,7 +312,7 @@ static int utilTtfWriteT42Sfnts(	SimpleOutputStream *	sos,
     TrueTypeTableEntry *	ttte= ttf->ttfTables;
     long			filePos;
     int				tableCount;
-    SimpleOutputStream *	sosHex= (SimpleOutputStream *)0;
+    struct SimpleOutputStream *	sosHex= (struct SimpleOutputStream *)0;
 
     const int			wide= 72;
     const int			lastNL= 0;
@@ -475,7 +477,7 @@ static int utilTtfWriteT42Sfnts(	SimpleOutputStream *	sos,
 
     if  ( sioOutPutByte( '\0', sosHex ) < 0 )
 	{ rval= -1; goto ready;	}
-    sioOutClose( sosHex ); sosHex= (SimpleOutputStream *)0;
+    sioOutClose( sosHex ); sosHex= (struct SimpleOutputStream *)0;
     sioOutPrintf( sos, ">\n" );
 
     ttte= ttf->ttfTables;
@@ -626,7 +628,7 @@ static int utilTtfWriteT42Sfnts(	SimpleOutputStream *	sos,
 /*									*/
 /************************************************************************/
 
-static void psWriteFontEncoding(	SimpleOutputStream *	sos,
+static void psWriteFontEncoding(	struct SimpleOutputStream *	sos,
 					const AfmFontInfo *	afi )
     {
     int		glyph;
@@ -645,7 +647,7 @@ static void psWriteFontEncoding(	SimpleOutputStream *	sos,
 	}
     }
 
-static int utilTtfWriteT42(	SimpleOutputStream *	sos,
+static int utilTtfWriteT42(	struct SimpleOutputStream *	sos,
 				const AfmFontInfo *	afi,
 				const TrueTypeFont *	ttf )
     {
@@ -682,7 +684,7 @@ static int utilTtfWriteT42(	SimpleOutputStream *	sos,
     return 0;
     }
 
-static int psTtfWriteT42File(	SimpleOutputStream *	sosPf42,
+static int psTtfWriteT42File(	struct SimpleOutputStream *	sosPf42,
 				const TrueTypeFont *	ttf )
     {
     int				rval= 0;
@@ -709,9 +711,8 @@ static int psTtfWriteT42File(	SimpleOutputStream *	sosPf42,
 /*									*/
 /************************************************************************/
 
-int psTtfToPt42(		SimpleOutputStream *	sosPf42,
-				const MemoryBuffer *	fontFileName,
-				SimpleInputStream *	sisTtf )
+int psTtfToPt42(		struct SimpleOutputStream *	sosPf42,
+				struct SimpleInputStream *	sisTtf )
     {
     int				rval= 0;
     TrueTypeFont		ttf;
@@ -730,10 +731,9 @@ int psTtfToPt42(		SimpleOutputStream *	sosPf42,
     return rval;
     }
 
-int psTtcToPt42(		SimpleOutputStream *	sosPf42,
-				const MemoryBuffer *	fontFileName,
+int psTtcToPt42(		struct SimpleOutputStream *	sosPf42,
 				int			fontFileIndex,
-				SimpleInputStream *	sisTtf )
+				struct SimpleInputStream *	sisTtf )
     {
     int				rval= 0;
     TrueTypeFont		ttf;

@@ -8,16 +8,14 @@
 
 #   include	"psPostScriptFontList.h"
 #   include	"psReadWriteFontInfo.h"
+#   include	"psFontInfo.h"
 #   include	<sioFileio.h>
+#   include	<sioGeneral.h>
 #   include	<appSystem.h>
 
 #   include	<appDebugon.h>
 
-#   ifdef __VMS
-    static const char * const		afmExtension= "AFM";
-#   else
-    static const char * const		afmExtension= "afm";
-#   endif
+static const char * const	afmExtension= "afm";
 
 static const char * PS_LocalAfmDir= "localfonts";
 
@@ -46,7 +44,7 @@ static int psRememberAfmFile(	const MemoryBuffer *	filename,
 				const AfmCatalog *	ac )
     {
     int				rval= 0;
-    SimpleInputStream *		sisAfm= (SimpleInputStream *)0;
+    struct SimpleInputStream *	sisAfm= (struct SimpleInputStream *)0;
     int				res;
 
     AfmFontInfo *		afi= (AfmFontInfo *)0;
@@ -77,11 +75,7 @@ static int psRememberAfmFile(	const MemoryBuffer *	filename,
     if  ( utilCopyMemoryBuffer( &(afi->afiAfmFileName), filename ) )
 	{ LDEB(1); goto ready;	}
 
-    if  ( psGetUnicodesFromGlyphNames( afi ) )
-	{ SDEB(afi->afiFullName);	}
-    if  ( psGetAlternateGlyphs( afi ) )
-	{ SDEB(afi->afiFullName);	}
-    if  ( psResolveFallbackGlyph( afi ) )
+    if  ( psGetCodeToGlyphMapping( afi ) )
 	{ SDEB(afi->afiFullName);	}
 
     /*  Free memory: metrics are reread when the font is really used */
@@ -138,7 +132,7 @@ static int psLocalDirectoryName( MemoryBuffer *		localDirectory,
     if  ( utilMemoryBufferSetString( &local, PS_LocalAfmDir ) )
 	{ LDEB(1); rval= -1; goto ready;	}
 
-    if  ( appAbsoluteName( localDirectory,
+    if  ( fileAbsoluteName( localDirectory,
 			    &local, relativeIsFile, afmDirectory ) < 0 )
 	{ SDEB(PS_LocalAfmDir); rval= -1; goto ready;	}
 
@@ -189,7 +183,7 @@ int psFontCatalog(	PostScriptFontList *	psfl,
     /*  1  */
     setlocale( LC_NUMERIC, "C" );
 
-    if  ( ! appTestDirectory( &localDirectory ) )
+    if  ( ! fileTestDirectory( &localDirectory ) )
 	{
 	j= appForAllFiles( &localDirectory, afmExtension,
 						&ac, psGotLocalAfmFile );
@@ -225,15 +219,15 @@ int psSaveAfms(		const PostScriptFontList *	psfl,
 
     MemoryBuffer		localDirectory;
 
-    SimpleOutputStream *	sosAfm= (SimpleOutputStream *)0;
+    struct SimpleOutputStream *	sosAfm= (struct SimpleOutputStream *)0;
 
     utilInitMemoryBuffer( &localDirectory );
 
     if  ( psLocalDirectoryName( &localDirectory, afmDirectory ) )
 	{ LDEB(1); rval= -1; goto ready;	}
 
-    if  ( appTestDirectory( &localDirectory )	&&
-	  appMakeDirectory( &localDirectory )	)
+    if  ( fileTestDirectory( &localDirectory )	&&
+	  fileMakeDirectory( &localDirectory )	)
 	{ LDEB(1); rval= -1; goto ready;	}
 
     for ( i= 0; i < psfl->psflInfoCount; i++ )
@@ -250,7 +244,7 @@ int psSaveAfms(		const PostScriptFontList *	psfl,
 	if  ( psWriteAfmFile( sosAfm, omitKernPairs, afi ) )
 	    { SDEB(afi->afiFontName); rval= -1; goto ready;	}
 
-	sioOutClose( sosAfm ); sosAfm= (SimpleOutputStream *)0;
+	sioOutClose( sosAfm ); sosAfm= (struct SimpleOutputStream *)0;
 	}
 
   ready:
@@ -266,7 +260,7 @@ int psSaveAfms(		const PostScriptFontList *	psfl,
 int psGetDeferredMetrics(	AfmFontInfo *		afi )
     {
     int			rval= 0;
-    SimpleInputStream *	sisAfm= (SimpleInputStream *)0;
+    struct SimpleInputStream *	sisAfm= (struct SimpleInputStream *)0;
     int			afmFlags= 0;
 
     int			res;
@@ -301,11 +295,7 @@ int psGetDeferredMetrics(	AfmFontInfo *		afi )
 
     afi->afiMetricsDeferred= 0;
 
-    if  ( psGetUnicodesFromGlyphNames( afi ) )
-	{ SDEB(afi->afiFullName);	}
-    if  ( psGetAlternateGlyphs( afi ) )
-	{ SDEB(afi->afiFullName);	}
-    if  ( psResolveFallbackGlyph( afi ) )
+    if  ( psGetCodeToGlyphMapping( afi ) )
 	{ SDEB(afi->afiFullName);	}
 
   ready:

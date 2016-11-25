@@ -12,8 +12,9 @@
 #   include	<string.h>
 
 #   include	"sioBlocked.h"
-#   include	<appDebugon.h>
+#   include	"sioGeneral.h"
 
+#   include	<appDebugon.h>
 
 typedef struct BlockedInputStream
     {

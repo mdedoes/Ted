@@ -8,18 +8,20 @@
 
 #   include	<ctype.h>
 
+#   include	"docBuf.h"
+#   include	"docSelect.h"
+#   include	"docFields.h"
+
 #   include	<appDebugon.h>
 
-#   include	"docBuf.h"
-
-int docFindBookmarkInDocument(	DocumentSelection *	dsInside,
-				int *			pHeadPart,
-				int *			pTailPart,
-				const BufferDocument *	bd,
-				const MemoryBuffer *	markName )
+int docFindBookmarkInDocument(	struct DocumentSelection *	dsInside,
+				int *				pHeadPart,
+				int *				pTailPart,
+				const struct BufferDocument *	bd,
+				const struct MemoryBuffer *	markName )
     {
-    int			i;
-    DocumentField *	df;
+    int				i;
+    struct DocumentField *	df;
 
     i= docFindBookmarkField( &df, &(bd->bdFieldList), markName );
     if  ( i >= 0 )

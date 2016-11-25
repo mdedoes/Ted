@@ -8,9 +8,9 @@ AC_PROG_RANLIB
 AC_HEADER_STDC
 
 AC_PATH_ICONV
+AC_PATH_PCRE
 
 dnl Checks for typedefs, structures, and compiler characteristics.
-AC_C_CONST
 
 AC_C_BIGENDIAN
 AC_CHECK_SIZEOF(short)

@@ -4,10 +4,11 @@
 /*									*/
 /************************************************************************/
 
-#   include	<sioGeneral.h>
+struct SimpleInputStream;
+struct SimpleOutputStream;
 
-extern int sioInGetUtf8(	SimpleInputStream *	sis );
+extern int sioInGetUtf8(	struct SimpleInputStream *	sis );
 
-extern int sioOutPutUtf8(	int			symbol,
-				SimpleOutputStream *	sos );
+extern int sioOutPutUtf8(	int				symbol,
+				struct SimpleOutputStream *	sos );
 

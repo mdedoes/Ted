@@ -4,10 +4,13 @@
 /*									*/
 /************************************************************************/
 
-#   include	<appFrame.h>
-#   include	"tedColumnSeparator.h"
+#   include	<guiBase.h>
 
 struct TabStopList;
+struct EditDocument;
+struct RGB8Color;
+struct PostScriptFontList;
+struct ColumnSeparator;
 
 /************************************************************************/
 /*									*/
@@ -15,23 +18,23 @@ struct TabStopList;
 /*									*/
 /************************************************************************/
 
-extern int tedDocSetLeftRuler(		EditDocument *	ed );
-extern int tedDocSetRightRuler(		EditDocument *	ed );
-extern int tedDocSetTopRuler(		EditDocument *	ed );
-extern int tedDocSetBottomRuler(	EditDocument *	ed );
+extern int tedDocSetLeftRuler(		struct EditDocument *	ed );
+extern int tedDocSetRightRuler(		struct EditDocument *	ed );
+extern int tedDocSetTopRuler(		struct EditDocument *	ed );
+extern int tedDocSetBottomRuler(	struct EditDocument *	ed );
 
 extern void tedVerticalRulerSetBackground( void *		voidrd,
-					const RGB8Color *	back );
+					const struct RGB8Color *	back );
 extern void tedTopRulerSetBackground(	void *			voidttr,
-					const RGB8Color *	back );
+					const struct RGB8Color *	back );
 extern void tedBottomRulerSetBackground( void *			voidtbr,
-					const RGB8Color *	back );
+					const struct RGB8Color *	back );
 
 extern void * tedMakeTopRuler(
 			int				height,
 			double				magnifiedPixelsPerTwip,
 			double				magnification,
-			const PostScriptFontList *	psfl,
+			const struct PostScriptFontList *	psfl,
 
 			int				leftRulerWidth,
 			int				rightRulerWidth,
@@ -46,7 +49,7 @@ extern void * tedMakeTopRuler(
 			int				whatUnit );
 
 extern void * tedMakeBottomRuler(
-			const PostScriptFontList *	psfl,
+			const struct PostScriptFontList *	psfl,
 			int				height,
 			int				leftRulerWidth,
 			int				rightRulerWidth,
@@ -56,8 +59,8 @@ extern void tedFreeVerticalRuler(	void *		voidrd );
 extern void tedFreeTopRuler(		void *		voidttr );
 extern void tedFreeBottomRuler(		void *		voidtlr );
 
-extern APP_EVENT_HANDLER_H( tedRedrawTopRuler, w, voidttr, event );
-extern APP_EVENT_HANDLER_H( tedRedrawBottomRuler, w, voidtlr, event );
+extern APP_REDRAW_HANDLER_H( tedRedrawTopRuler, w, voidttr, event );
+extern APP_REDRAW_HANDLER_H( tedRedrawBottomRuler, w, voidtlr, event );
 
 extern void tedScrollTopRuler(		void *			voidttr,
 					APP_WIDGET		w,
@@ -69,34 +72,33 @@ extern void tedSetTopRulerRange(	void *			voidttr,
 					int			docVisX0,
 					int			docVisX1 );
 
-extern void tedAdaptTopRuler(		void *			voidttr,
-					APP_WIDGET		w,
-					int			docX0,
-					int			docX1,
-					int			marginC0,
-					int			marginC1,
-					int			firstIndent,
-					int			leftIndent,
-					int			rightIndent,
-					const struct TabStopList *	tslSet,
-					int			x0GeometryPx,
-					double			xfac );
+extern void tedAdaptTopRuler(	void *			voidttr,
+				APP_WIDGET		w,
+				int			docX0,
+				int			docX1,
+				int			marginC0,
+				int			marginC1,
+				int			firstIndent,
+				int			leftIndent,
+				int			rightIndent,
+				int			paraFrameX0,
+				int			paraFrameX1,
+				const struct TabStopList *	tslSet );
 
 extern int tedTopRulerFindMouse(	int *			pIndex,
-					APP_WIDGET		w,
 					int			mouseX,
 					int			mouseY,
-					EditDocument *		ed );
+					struct EditDocument *		ed );
 
 extern int tedTopRulerTrackMouse( 	int *			pFirstIndent,
 					int *			pLeftIndent,
 					int *			pRightIndent,
 					struct TabStopList *	tsl,
 					int *			pCsCount,
-					ColumnSeparator **	pCs,
+					struct ColumnSeparator **	pCs,
 					APP_WIDGET		w,
 					APP_EVENT *		downEvent,
-					EditDocument *		ed );
+					struct EditDocument *		ed );
 
 extern APP_EVENT_HANDLER_H( tedTopRulerConfigure, w, voidttr, event );
 extern APP_EVENT_HANDLER_H( tedBottomRulerConfigure, w, voidtlr, event );
@@ -105,9 +107,7 @@ extern int tedSetRulerColumns(	APP_WIDGET		w,
 				void *			voidttr,
 				int			bfX0Pixels,
 				int			bfX1Pixels,
-				int			pfX0Pixels,
-				int			pfX1Pixels,
-				ColumnSeparator *	cs,
+				const struct ColumnSeparator *	cs,
 				int			csCount );
 
 extern void tedSetBottomRulerValues(

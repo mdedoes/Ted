@@ -7,15 +7,18 @@
 #   include	"tedConfig.h"
 
 #   include	<stddef.h>
-#   include	<stdio.h>
 #   include	<ctype.h>
-#   include	<sioGeneral.h>
 
-#   include	"tedAppFront.h"
-#   include	"tedDocFront.h"
+#   include	<tedAppFront.h>
+#   include	<tedDocFront.h>
+#   include	"tedDocMenu.h"
 #   include	"tedDocument.h"
-
 #   include	"tedApp.h"
+#   include	<appEditApplication.h>
+#   include	<appGuiApplication.h>
+#   include	<appEditDocument.h>
+#   include	<textMsLocale.h>
+#   include	<docParaProperties.h>
 
 #   include	<appDebugon.h>
 
@@ -26,8 +29,24 @@
 /*									*/
 /************************************************************************/
 
-void tedAppReplace(	void *		voidea,
-			const char *	word )
+int tedAppReplace(	void *		voidea,
+			const char *	replacement )
+    {
+    int			rval;
+    EditApplication *	ea= (EditApplication *)voidea;
+    EditDocument *	ed= ea->eaCurrentDocument;
+
+    if  ( ! ed )
+	{ XDEB(ed); return -1;	}
+
+    rval= tedDocReplace( ed, replacement );
+
+    appShowShellWidget( ea, ed->edToplevel.atTopWidget );
+
+    return rval;
+    }
+
+void tedAppDoNotSpellCheck(	void *		voidea )
     {
     EditApplication *	ea= (EditApplication *)voidea;
     EditDocument *	ed= ea->eaCurrentDocument;
@@ -35,18 +54,68 @@ void tedAppReplace(	void *		voidea,
     if  ( ! ed )
 	{ XDEB(ed); return;	}
 
-    (void) tedDocReplace( ed, word );
+    (void) tedDocChangeTextAttributeValue( ed, TApropNOPROOF, 1 );
 
+    appShowShellWidget( ea, ed->edToplevel.atTopWidget );
     return;
     }
 
-int tedAppSelectCurrentFrame(	EditApplication *	ea )
+void tedAppSetLocale(	void *		voidea,
+			const char *	localeTag )
+    {
+    EditApplication *	ea= (EditApplication *)voidea;
+    EditDocument *	ed= ea->eaCurrentDocument;
+    int			lcId;
+
+    if  ( ! ed )
+	{ XDEB(ed); return;	}
+
+    lcId= textMatchMsLocaleIdByTag( localeTag );
+    if  ( lcId < 0 )
+	{ SLDEB(localeTag,lcId); return;	}
+
+    (void) tedDocChangeTextAttributeValue( ed, TApropLOCALE, lcId );
+
+    appShowShellWidget( ea, ed->edToplevel.atTopWidget );
+    return;
+    }
+
+int tedAppSelectWholeSection(	struct EditApplication *	ea,
+				int				direction )
     {
     EditDocument *		ed= ea->eaCurrentDocument;
     if  ( ! ed )
 	{ XDEB(ed); return -1;	}
 
-    return tedDocSelectCurrentFrame( ed );
+    tedDocSelectWholeSection( ed, direction );
+    appShowShellWidget( ea, ed->edToplevel.atTopWidget );
+
+    return 0;
+    }
+
+int tedAppSelectWholeParagraph(	struct EditApplication *	ea,
+				int				direction )
+    {
+    EditDocument *		ed= ea->eaCurrentDocument;
+    if  ( ! ed )
+	{ XDEB(ed); return -1;	}
+
+    tedDocSelectWholeParagraph( ed, direction );
+    appShowShellWidget( ea, ed->edToplevel.atTopWidget );
+
+    return 0;
+    }
+
+void tedAppSelectCurrentFrame(	EditApplication *	ea )
+    {
+    EditDocument *		ed= ea->eaCurrentDocument;
+    if  ( ! ed )
+	{ XDEB(ed); return;	}
+
+    tedDocSelectCurrentFrame( ed );
+    appShowShellWidget( ea, ed->edToplevel.atTopWidget );
+
+    return;
     }
 
 void tedAppSelectWholeCell(	EditApplication *	ea,
@@ -58,6 +127,7 @@ void tedAppSelectWholeCell(	EditApplication *	ea,
 	{ XDEB(ed); return;	}
 
     tedDocSelectWholeCell( ed, direction, allRows );
+    appShowShellWidget( ea, ed->edToplevel.atTopWidget );
     }
 
 void tedAppSelectRow(		EditApplication *	ea,
@@ -69,6 +139,7 @@ void tedAppSelectRow(		EditApplication *	ea,
 	{ XDEB(ed); return;	}
 
     tedDocSelectRow( ed, direction, allColumns );
+    appShowShellWidget( ea, ed->edToplevel.atTopWidget );
     }
 
 void tedAppSelectTable(		EditApplication *	ea )
@@ -78,6 +149,7 @@ void tedAppSelectTable(		EditApplication *	ea )
 	{ XDEB(ed); return;	}
 
     tedDocSelectTable( ed );
+    appShowShellWidget( ea, ed->edToplevel.atTopWidget );
     }
 
 void tedAppGotoNoteDef(		EditApplication *	ea )
@@ -87,67 +159,73 @@ void tedAppGotoNoteDef(		EditApplication *	ea )
 	{ XDEB(ed); return;	}
 
     tedDocGotoNoteDef( ed );
+    appShowShellWidget( ea, ed->edToplevel.atTopWidget );
     }
 
-int tedAppDeleteCurrentFrame(	EditApplication *	ea )
+void tedAppDeleteCurrentFrame(	EditApplication *	ea )
     {
     EditDocument *		ed= ea->eaCurrentDocument;
 
     if  ( ! ed )
-	{ XDEB(ed); return -1;	}
+	{ XDEB(ed); return;	}
 
-    return tedDocDeleteCurrentFrame( ed,
+    tedDocDeleteCurrentFrame( ed,
 			((TedDocument *)ed->edPrivateData)->tdTraced );
+    appShowShellWidget( ea, ed->edToplevel.atTopWidget );
     }
 
-int tedAppDeleteSelectedParagraphs(	EditApplication *	ea )
+void tedAppDeleteSelectedParagraphs(	EditApplication *	ea )
     {
     EditDocument *		ed= ea->eaCurrentDocument;
 
     if  ( ! ed )
-	{ XDEB(ed); return -1;	}
+	{ XDEB(ed); return;	}
 
-    return tedDocDeleteSelectedParagraphs( ed,
+    tedDocDeleteSelectedParagraphs( ed,
 			((TedDocument *)ed->edPrivateData)->tdTraced );
+    appShowShellWidget( ea, ed->edToplevel.atTopWidget );
     }
 
-int tedAppDeleteSelectedSections(	EditApplication *	ea )
+void tedAppDeleteSelectedSections(	EditApplication *	ea )
     {
     EditDocument *		ed= ea->eaCurrentDocument;
 
     if  ( ! ed )
-	{ XDEB(ed); return -1;	}
+	{ XDEB(ed); return;	}
 
-    return tedDocDeleteSelectedSections( ed,
+    tedDocDeleteSelectedSections( ed,
 			((TedDocument *)ed->edPrivateData)->tdTraced );
+    appShowShellWidget( ea, ed->edToplevel.atTopWidget );
     }
 
-int tedAppInsertParagraph(	EditApplication *	ea,
+void tedAppInsertParagraph(	EditApplication *	ea,
 				int			after )
     {
     EditDocument *		ed= ea->eaCurrentDocument;
 
     if  ( ! ed )
-	{ XDEB(ed); return -1;	}
+	{ XDEB(ed); return;	}
 
-    return tedDocInsertParagraph( ed, after,
+    tedDocInsertParagraph( ed, after,
 			((TedDocument *)ed->edPrivateData)->tdTraced );
+    appShowShellWidget( ea, ed->edToplevel.atTopWidget );
     }
 
-int tedAppInsertSection(	EditApplication *	ea,
+void tedAppInsertSection(	EditApplication *	ea,
 				int			after )
     {
     EditDocument *		ed= ea->eaCurrentDocument;
 
     if  ( ! ed )
-	{ XDEB(ed); return -1;	}
+	{ XDEB(ed); return;	}
 
-    return tedDocInsertSection( ed, after,
+    tedDocInsertSection( ed, after,
 			((TedDocument *)ed->edPrivateData)->tdTraced );
+    appShowShellWidget( ea, ed->edToplevel.atTopWidget );
     }
 
 void tedAppSetTocField(		EditApplication *	ea,
-				const TocField *	tf )
+				const struct TocField *	tf )
     {
     EditDocument *	ed= ea->eaCurrentDocument;
 
@@ -155,10 +233,11 @@ void tedAppSetTocField(		EditApplication *	ea,
 	{ XDEB(ed);	}
 
     tedDocSetTocField( ed, tf, ((TedDocument *)ed->edPrivateData)->tdTraced );
+    appShowShellWidget( ea, ed->edToplevel.atTopWidget );
     }
 
 void tedAppAddTocField(		EditApplication *	ea,
-				const TocField *	tf )
+				const struct TocField *	tf )
     {
     EditDocument *	ed= ea->eaCurrentDocument;
 
@@ -166,6 +245,7 @@ void tedAppAddTocField(		EditApplication *	ea,
 	{ XDEB(ed);	}
 
     tedDocAddTocField( ed, tf, ((TedDocument *)ed->edPrivateData)->tdTraced );
+    appShowShellWidget( ea, ed->edToplevel.atTopWidget );
     }
 
 void tedAppDeleteTocField(	EditApplication *	ea )
@@ -176,32 +256,35 @@ void tedAppDeleteTocField(	EditApplication *	ea )
 	{ XDEB(ed); return;	}
 
     tedDocDeleteTocField( ed, ((TedDocument *)ed->edPrivateData)->tdTraced );
+    appShowShellWidget( ea, ed->edToplevel.atTopWidget );
     }
 
-int tedAppSetHyperlink(	EditApplication *	ea,
-			const HyperlinkField *	hf )
+void tedAppSetHyperlink(	EditApplication *	ea,
+			const struct HyperlinkField *	hf )
     {
     EditDocument *	ed= ea->eaCurrentDocument;
 
     if  ( ! ed )
-	{ XDEB(ed); return -1;	}
+	{ XDEB(ed); return;	}
 
-    return tedDocSetHyperlink( ed, hf,
+    tedDocSetHyperlink( ed, hf,
 			((TedDocument *)ed->edPrivateData)->tdTraced );
+    appShowShellWidget( ea, ed->edToplevel.atTopWidget );
     }
 
-int tedAppRemoveHyperlink(	EditApplication *	ea )
+void tedAppRemoveHyperlink(	EditApplication *	ea )
     {
     EditDocument *	ed= ea->eaCurrentDocument;
 
     if  ( ! ed )
-	{ XDEB(ed); return -1;	}
+	{ XDEB(ed); return;	}
 
-    return tedDocRemoveHyperlink( ed,
+    tedDocRemoveHyperlink( ed,
 			((TedDocument *)ed->edPrivateData)->tdTraced );
+    appShowShellWidget( ea, ed->edToplevel.atTopWidget );
     }
 
-int tedAppFindBookmarkField(	DocumentField **		pDf,
+int tedAppFindBookmarkField(	struct DocumentField **		pDf,
 				EditApplication *		ea,
 				const MemoryBuffer *		markName )
     {
@@ -210,30 +293,36 @@ int tedAppFindBookmarkField(	DocumentField **		pDf,
     if  ( ! ed )
 	{ XDEB(ed); return -1;	}
 
-    return tedDocFindBookmarkField( pDf, ed, markName );
+    if  ( tedDocFindBookmarkField( pDf, ed, markName ) )
+	{ return -1;	}
+
+    appShowShellWidget( ea, ed->edToplevel.atTopWidget );
+    return 0;
     }
 
-int tedAppSetBookmark(	EditApplication *	ea,
+void tedAppSetBookmark(	EditApplication *	ea,
 			const MemoryBuffer *	markName )
     {
     EditDocument *	ed= ea->eaCurrentDocument;
 
     if  ( ! ed )
-	{ XDEB(ed); return -1;	}
+	{ XDEB(ed); return;	}
 
-    return tedDocSetBookmark( ed, markName,
+    tedDocSetBookmark( ed, markName,
 			((TedDocument *)ed->edPrivateData)->tdTraced );
+    appShowShellWidget( ea, ed->edToplevel.atTopWidget );
     }
 
-int tedAppRemoveBookmark(	EditApplication *	ea )
+void tedAppRemoveBookmark(	EditApplication *	ea )
     {
     EditDocument *	ed= ea->eaCurrentDocument;
 
     if  ( ! ed )
-	{ XDEB(ed); return -1;	}
+	{ XDEB(ed); return;	}
 
-    return tedDocRemoveBookmark( ed,
+    tedDocRemoveBookmark( ed,
 			((TedDocument *)ed->edPrivateData)->tdTraced );
+    appShowShellWidget( ea, ed->edToplevel.atTopWidget );
     }
 
 int tedAppGoToBookmark(	EditApplication *	ea,
@@ -244,7 +333,12 @@ int tedAppGoToBookmark(	EditApplication *	ea,
     if  ( ! ed )
 	{ XDEB(ed); return -1;	}
 
-    return tedDocGoToBookmark( ed, markName );
+    if  ( tedDocGoToBookmark( ed, markName ) )
+	{ return -1;	}
+
+    appShowShellWidget( ea, ed->edToplevel.atTopWidget );
+
+    return 0;
     }
 
 void tedAppSetParaOutlineLevel(	EditApplication *	ea,
@@ -255,9 +349,9 @@ void tedAppSetParaOutlineLevel(	EditApplication *	ea,
     if  ( ! ed )
 	{ XDEB(ed); return;	}
 
-    tedDocSetParaOutlineLevel( ed, level,
-			((TedDocument *)ed->edPrivateData)->tdTraced );
+    tedDocChangeParagraphPropertyValue( ed, PPpropOUTLINELEVEL, level );
 
+    appShowShellWidget( ea, ed->edToplevel.atTopWidget );
     return;
     }
 
@@ -269,6 +363,7 @@ void tedAppDeleteTable(	EditApplication *	ea )
 	{ XDEB(ed); return;	}
 
     tedDocDeleteTable( ed, ((TedDocument *)ed->edPrivateData)->tdTraced );
+    appShowShellWidget( ea, ed->edToplevel.atTopWidget );
     }
 
 void tedAppDeleteRow(	EditApplication *	ea )
@@ -278,7 +373,8 @@ void tedAppDeleteRow(	EditApplication *	ea )
     if  ( ! ed )
 	{ XDEB(ed); return;	}
 
-    tedDocDeleteRow( ed, ((TedDocument *)ed->edPrivateData)->tdTraced );
+    tedDocDeleteRows( ed, ((TedDocument *)ed->edPrivateData)->tdTraced );
+    appShowShellWidget( ea, ed->edToplevel.atTopWidget );
     }
 
 void tedAppDeleteColumn(	EditApplication *	ea )
@@ -288,7 +384,8 @@ void tedAppDeleteColumn(	EditApplication *	ea )
     if  ( ! ed )
 	{ XDEB(ed); return;	}
 
-    tedDocDeleteColumn( ed, ((TedDocument *)ed->edPrivateData)->tdTraced );
+    tedDocDeleteColumns( ed, ((TedDocument *)ed->edPrivateData)->tdTraced );
+    appShowShellWidget( ea, ed->edToplevel.atTopWidget );
     }
 
 void tedAppAddRowToTable(	EditApplication *	ea,
@@ -302,6 +399,7 @@ void tedAppAddRowToTable(	EditApplication *	ea,
     tedDocAddRowToTable( ed, after,
 			((TedDocument *)ed->edPrivateData)->tdTraced );
 
+    appShowShellWidget( ea, ed->edToplevel.atTopWidget );
     return;
     }
 
@@ -316,6 +414,7 @@ void tedAppAddColumnToTable(	EditApplication *	ea,
     tedDocAddColumnToTable( ed, after,
 			((TedDocument *)ed->edPrivateData)->tdTraced );
 
+    appShowShellWidget( ea, ed->edToplevel.atTopWidget );
     return;
     }
 
@@ -330,6 +429,7 @@ void tedAppDeleteHeaderFooter(		EditApplication *	ea,
     tedDocDeleteHeaderFooter( ed, treeType,
 			((TedDocument *)ed->edPrivateData)->tdTraced );
 
+    appShowShellWidget( ea, ed->edToplevel.atTopWidget );
     return;
     }
 
@@ -345,93 +445,103 @@ void tedAppEditHeaderFooter(		EditApplication *	ea,
 
     tedDocEditHeaderFooter( ed, relative, option, treeType );
 
+    appShowShellWidget( ea, ed->edToplevel.atTopWidget );
     return;
     }
 
-int tedAppChangeParagraphProperties(
+void tedAppChangeParagraphProperties(
 				EditApplication *		ea,
 				const PropertyMask *		ppSetMask,
-				const ParagraphProperties *	ppNew )
+				const struct ParagraphProperties * ppNew )
     {
     EditDocument *		ed= ea->eaCurrentDocument;
 
     if  ( ! ed )
-	{ XDEB(ed); return -1;	}
+	{ XDEB(ed); return;	}
 
-    return tedDocChangeParagraphProperties( ed, ppSetMask, ppNew,
+    tedDocChangeParagraphProperties( ed, ppSetMask, ppNew,
 			((TedDocument *)ed->edPrivateData)->tdTraced );
+
+    appShowShellWidget( ea, ed->edToplevel.atTopWidget );
     }
 
-int tedAppChangeSectionProperties(
+void tedAppChangeSectionProperties(
 				EditApplication *		ea,
 				const PropertyMask *		spSetMask,
-				const SectionProperties *	spNew )
+				const struct SectionProperties *	spNew )
     {
     EditDocument *		ed= ea->eaCurrentDocument;
 
     if  ( ! ed )
-	{ XDEB(ed); return -1;	}
+	{ XDEB(ed); return;	}
 
-    return tedDocChangeSectionProperties( ed, spSetMask, spNew,
+    tedDocChangeSectionProperties( ed, spSetMask, spNew,
 			((TedDocument *)ed->edPrivateData)->tdTraced );
+    appShowShellWidget( ea, ed->edToplevel.atTopWidget );
     }
 
-int tedAppChangeAllSectionProperties(
-				EditApplication *		ea,
-				const PropertyMask *		spSetMask,
-				const SectionProperties *	spNew,
-				const PropertyMask *		dpSetMask,
-				const DocumentProperties *	dpSet )
+void tedAppChangeAllSectionProperties(
+			EditApplication *			ea,
+			const PropertyMask *			spSetMask,
+			const struct SectionProperties *	spNew,
+			const PropertyMask *			dpSetMask,
+			const struct DocumentProperties *	dpSet )
     {
-    EditDocument *		ed= ea->eaCurrentDocument;
+    EditDocument *	ed= ea->eaCurrentDocument;
 
     if  ( ! ed )
-	{ XDEB(ed); return -1;	}
+	{ XDEB(ed); return;	}
 
-    return tedDocChangeAllSectionProperties( ed,
+    tedDocChangeAllSectionProperties( ed,
 				spSetMask, spNew, dpSetMask, dpSet,
 				((TedDocument *)ed->edPrivateData)->tdTraced );
+
+    appShowShellWidget( ea, ed->edToplevel.atTopWidget );
     }
 
-int tedAppSetParagraphTabs(	EditApplication *		ea,
+void tedAppSetParagraphTabs(	EditApplication *		ea,
 				const struct TabStopList *	tsl )
     {
-    EditDocument *		ed= ea->eaCurrentDocument;
+    EditDocument *	ed= ea->eaCurrentDocument;
 
     if  ( ! ed )
-	{ XDEB(ed); return -1;	}
+	{ XDEB(ed); return;	}
 
-    return tedDocSetParagraphTabs( ed, tsl,
+    tedDocSetParagraphTabs( ed, tsl,
 			((TedDocument *)ed->edPrivateData)->tdTraced );
+    appShowShellWidget( ea, ed->edToplevel.atTopWidget );
     }
 
-int tedAppSetDocumentProperties( EditApplication *		ea,
-				const PropertyMask *		dpSetMask,
-				const DocumentProperties *	dpSet )
+void tedAppSetDocumentProperties(
+			EditApplication *			ea,
+			const PropertyMask *			dpSetMask,
+			const struct DocumentProperties *	dpSet )
+    {
+    EditDocument *	ed= ea->eaCurrentDocument;
+
+    if  ( ! ed )
+	{ XDEB(ed); return;	}
+
+    tedDocSetDocumentProperties( ed, dpSetMask, dpSet );
+
+    appShowShellWidget( ea, ed->edToplevel.atTopWidget );
+    }
+
+void tedAppSetNewList(	EditApplication *		ea )
     {
     EditDocument *		ed= ea->eaCurrentDocument;
 
     if  ( ! ed )
-	{ XDEB(ed); return -1;	}
+	{ XDEB(ed); return;	}
 
-    return tedDocSetDocumentProperties( ed, dpSetMask, dpSet,
-			((TedDocument *)ed->edPrivateData)->tdTraced );
-    }
+    tedDocSetNewList( ed, ((TedDocument *)ed->edPrivateData)->tdTraced );
 
-int tedAppSetNewList(	EditApplication *		ea )
-    {
-    EditDocument *		ed= ea->eaCurrentDocument;
-
-    if  ( ! ed )
-	{ XDEB(ed); return -1;	}
-
-    return tedDocSetNewList( ed,
-			((TedDocument *)ed->edPrivateData)->tdTraced );
+    appShowShellWidget( ea, ed->edToplevel.atTopWidget );
     }
 
 void tedAppSetImageProperties(	EditApplication *		ea,
 				const PropertyMask *		pipSetMask,
-				const PictureProperties *	pip )
+				const struct PictureProperties *	pip )
     {
     EditDocument *	ed= ea->eaCurrentDocument;
 
@@ -441,12 +551,13 @@ void tedAppSetImageProperties(	EditApplication *		ea,
     tedDocSetImageProperties( ed, pipSetMask, pip,
 			((TedDocument *)ed->edPrivateData)->tdTraced );
 
+    appShowShellWidget( ea, ed->edToplevel.atTopWidget );
     return;
     }
 
 void tedAppChangeCurrentNote(	EditApplication *	ea,
 				const PropertyMask *	npSetMask,
-				const NoteProperties *	npSet )
+				const struct NoteProperties *	npSet )
     {
     EditDocument *	ed= ea->eaCurrentDocument;
 
@@ -456,6 +567,7 @@ void tedAppChangeCurrentNote(	EditApplication *	ea,
     tedDocChangeCurrentNote( ed, npSetMask, npSet,
 			((TedDocument *)ed->edPrivateData)->tdTraced );
 
+    appShowShellWidget( ea, ed->edToplevel.atTopWidget );
     return;
     }
 
@@ -468,6 +580,7 @@ void tedAppGotoNoteRef(		EditApplication *	ea )
 
     tedDocGotoNoteRef( ed );
 
+    appShowShellWidget( ea, ed->edToplevel.atTopWidget );
     return;
     }
 
@@ -480,6 +593,7 @@ void tedAppNextNote(		EditApplication *	ea )
 
     tedDocNextNote( ed );
 
+    appShowShellWidget( ea, ed->edToplevel.atTopWidget );
     return;
     }
 
@@ -492,27 +606,29 @@ void tedAppPrevNote(		EditApplication *	ea )
 
     tedDocPrevNote( ed );
 
+    appShowShellWidget( ea, ed->edToplevel.atTopWidget );
     return;
     }
 
-int tedAppShiftRowsInTable(	EditApplication *	ea,
+void tedAppShiftRowsInTable(	EditApplication *	ea,
 				int			direction )
     {
     EditDocument *	ed= ea->eaCurrentDocument;
 
     if  ( ! ed )
-	{ XDEB(ed); return -1;	}
+	{ XDEB(ed); return;	}
 
-    return tedDocShiftRowsInTable( ed, direction );
+    tedDocShiftRowsInTable( ed, direction );
+    appShowShellWidget( ea, ed->edToplevel.atTopWidget );
     }
 
-void tedAppSetTableProperties(	EditApplication *	ea,
-				int			wholeRow,
-				int			wholeColumn,
-				const PropertyMask *	cpSetMask,
-				const CellProperties *	cpSet,
-				const PropertyMask *	rpSetMask,
-				const RowProperties *	rpSet )
+void tedAppSetTableProperties(	EditApplication *		ea,
+				int				wholeRow,
+				int				wholeColumn,
+				const PropertyMask *		cpSetMask,
+				const struct CellProperties *	cpSet,
+				const PropertyMask *		rpSetMask,
+				const struct RowProperties *	rpSet )
     {
     EditDocument *	ed= ea->eaCurrentDocument;
 
@@ -520,8 +636,9 @@ void tedAppSetTableProperties(	EditApplication *	ea,
 	{ XDEB(ed); return;	}
 
     tedDocSetTableProperties( ed, wholeRow, wholeColumn,
-				cpSetMask, cpSet, rpSetMask, rpSet,
-				((TedDocument *)ed->edPrivateData)->tdTraced );
+				cpSetMask, cpSet, rpSetMask, rpSet );
+
+    appShowShellWidget( ea, ed->edToplevel.atTopWidget );
 
     return;
     }
@@ -536,19 +653,25 @@ int tedAppFollowLink(	APP_WIDGET		option,
     if  ( ! ed )
 	{ XDEB(ed); return -1;	}
 
-    return tedDocFollowLink( option, ed, fileName, markName );
+    if  ( tedDocFollowLink( option, ed, fileName, markName ) )
+	{ return -1;	}
+
+    appShowShellWidget( ea, ed->edToplevel.atTopWidget );
+
+    return 0;
     }
 
-int tedAppChangeCurrentList(	EditApplication *		ea,
+void tedAppChangeCurrentList(	EditApplication *		ea,
 				const struct DocumentList *	dlNew )
     {
     EditDocument *		ed= ea->eaCurrentDocument;
 
     if  ( ! ed )
-	{ XDEB(ed); return -1;	}
+	{ XDEB(ed); return;	}
 
-    return tedDocChangeCurrentList( ed, dlNew,
+    tedDocChangeCurrentList( ed, dlNew,
 			((TedDocument *)ed->edPrivateData)->tdTraced );
+    appShowShellWidget( ea, ed->edToplevel.atTopWidget );
     }
 
 int tedAppFindNext(		void *		voidea )
@@ -559,7 +682,12 @@ int tedAppFindNext(		void *		voidea )
     if  ( ! ed )
 	{ XDEB(ed); return -1;	}
 
-    return tedDocFindNext( ed );
+    if  ( tedDocFindNext( ed ) )
+	{ return 1;	}
+
+    appShowShellWidget( ea, ed->edToplevel.atTopWidget );
+
+    return 0;
     }
 
 int tedAppFindPrev(		void *		voidea )
@@ -570,12 +698,17 @@ int tedAppFindPrev(		void *		voidea )
     if  ( ! ed )
 	{ XDEB(ed); return -1;	}
 
-    return tedDocFindPrev( ed );
+    if  ( tedDocFindPrev( ed ) )
+	{ return 1;	}
+
+    appShowShellWidget( ea, ed->edToplevel.atTopWidget );
+
+    return 0;
     }
 
 int tedAppListFontToolSet(	void *				voidea,
 				const PropertyMask *		taSetMask,
-				const ExpandedTextAttribute *	etaSet )
+				const struct ExpandedTextAttribute *	etaSet )
     {
     EditApplication *		ea= (EditApplication *)voidea;
     EditDocument *		ed= ea->eaCurrentDocument;
@@ -583,12 +716,17 @@ int tedAppListFontToolSet(	void *				voidea,
     if  ( ! ed )
 	{ XDEB(ed); return -1;	}
 
-    return tedDocListFontToolSet( ed, taSetMask, etaSet );
+    if  ( tedDocListFontToolSet( ed, taSetMask, etaSet ) )
+	{ LDEB(1); return -1;	}
+
+    appShowShellWidget( ea, ed->edToplevel.atTopWidget );
+
+    return 0;
     }
 
 int tedAppFontToolSet(		void *				voidea,
 				const PropertyMask *		taSetMask,
-				const ExpandedTextAttribute *	etaSet )
+				const struct ExpandedTextAttribute *	etaSet )
     {
     EditApplication *		ea= (EditApplication *)voidea;
     EditDocument *		ed= ea->eaCurrentDocument;
@@ -596,6 +734,84 @@ int tedAppFontToolSet(		void *				voidea,
     if  ( ! ed )
 	{ XDEB(ed); return -1;	}
 
-    return tedDocFontToolSet( ed, taSetMask, etaSet );
+    if  ( tedDocFontToolSet( ed, taSetMask, etaSet ) )
+	{ LDEB(1); return -1;	}
+
+    appShowShellWidget( ea, ed->edToplevel.atTopWidget );
+
+    return 0;
+    }
+
+int tedAppFindToolSetPattern(	void *		voidea,
+				const char *	pattern,
+				int		useRegex,
+				int		asWord,
+				int		caseSensitive )
+    {
+    EditApplication *		ea= (EditApplication *)voidea;
+    EditDocument *		ed= ea->eaCurrentDocument;
+
+    if  ( ! ed )
+	{ XDEB(ed); return -1;	}
+
+    tedDocFindToolSetPattern( (void *)ed,
+				pattern, useRegex, asWord, caseSensitive );
+
+    appShowShellWidget( ea, ed->edToplevel.atTopWidget );
+
+    return 0;
+    }
+
+void tedAppInsertStringWithAttribute(	EditApplication *	ea,
+					const char *		word,
+					int			len,
+					const TextAttribute *	taSet,
+					const PropertyMask *	taSetMask )
+    {
+    EditDocument *		ed= ea->eaCurrentDocument;
+
+    if  ( ! ed )
+	{ XDEB(ed); return;	}
+
+    tedDocInsertStringWithAttribute( ed, word, len, taSet, taSetMask, 
+				((TedDocument *)ed->edPrivateData)->tdTraced );
+
+    appShowShellWidget( ea, ed->edToplevel.atTopWidget );
+    return;
+    }
+
+struct BufferDocument * tedFormatCurDoc( EditDocument **	pEd,
+					int *			pTraced,
+					EditApplication *	ea )
+    {
+    EditDocument *		ed= ea->eaCurrentDocument;
+
+    TedDocument *		td;
+    struct BufferDocument *		bd;
+
+    if  ( ! ed )
+	{ XDEB(ed); return (struct BufferDocument *)0;	}
+
+    td= (TedDocument *)ed->edPrivateData;
+    bd= td->tdDocument;
+
+    if  ( pTraced )
+	{ *pTraced= td->tdTraced;	}
+
+    *pEd= ed; return bd;
+    }
+
+
+/************************************************************************/
+/*									*/
+/*  Display the online manual.						*/
+/*									*/
+/************************************************************************/
+
+APP_MENU_CALLBACK_H( tedAppManual, option, voidea, e )
+    {
+    EditApplication *	ea= (EditApplication *)voidea;
+
+    tedManual( option, ea, ea->eaToplevel.atTopWidget );
     }
 

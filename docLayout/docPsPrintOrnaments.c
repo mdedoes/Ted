@@ -12,6 +12,15 @@
 #   include	"docDraw.h"
 #   include	"docPsPrintImpl.h"
 #   include	<psShading.h>
+#   include	<docBorderProperties.h>
+#   include	<docItemShading.h>
+#   include	<docBlockOrnaments.h>
+#   include	<docDocumentProperties.h>
+#   include	<sioGeneral.h>
+#   include	<utilPalette.h>
+#   include	<docBuf.h>
+#   include	<psPrint.h>
+#   include	<docAttributes.h>
 
 #   include	<appDebugon.h>
 
@@ -26,7 +35,7 @@
 /*									*/
 /************************************************************************/
 
-static void psSolidBorderProc(	SimpleOutputStream *		sos,
+static void psSolidBorderProc(	struct SimpleOutputStream *		sos,
 				const char *			name )
     {
     sioOutPrintf( sos, "%% x y w h\n" );
@@ -38,7 +47,7 @@ static void psSolidBorderProc(	SimpleOutputStream *		sos,
     return;
     }
 
-static void psDashHorBorderProc( SimpleOutputStream *		sos,
+static void psDashHorBorderProc( struct SimpleOutputStream *		sos,
 				const char *			name,
 				const unsigned char *		dashes,
 				int				dashCount )
@@ -96,7 +105,7 @@ static void psDashHorBorderProc( SimpleOutputStream *		sos,
     sioOutPrintf( sos, "  } bind def\n" );
     }
 
-static void psDashVerBorderProc( SimpleOutputStream *		sos,
+static void psDashVerBorderProc( struct SimpleOutputStream *		sos,
 				const char *			name,
 				const unsigned char *		dashes,
 				int				dashCount )
@@ -159,7 +168,7 @@ static const unsigned char PSborderDOT[]=	{ 20, 20 };
 static const unsigned char PSborderDASHD[]=	{ 60, 40, 20, 40 };
 static const unsigned char PSborderDASHDD[]=	{ 60, 40, 20, 40, 20, 40 };
 
-void psDefineBorderProcs(	SimpleOutputStream *	sos )
+void psDefineBorderProcs(	struct SimpleOutputStream *	sos )
     {
     psSolidBorderProc( sos, "h-brdrs" );
 
@@ -287,6 +296,11 @@ static int docPsPrintHorizontalBorder(
 /*									*/
 /************************************************************************/
 
+# ifdef __GNUC__
+# pragma GCC diagnostic push
+# pragma GCC diagnostic ignored "-Wunused-parameter"
+# endif
+
 int docPsPrintOrnaments(	const BlockOrnaments *		bo,
 				int				page,
 				const DocumentRectangle *	drOutside,
@@ -296,8 +310,8 @@ int docPsPrintOrnaments(	const BlockOrnaments *		bo,
     {
     PrintingState *		ps= (PrintingState *)through;
     const LayoutContext *	lc= &(dc->dcLayoutContext);
-    const BufferDocument *	bd= lc->lcDocument;
-    const DocumentProperties *	dp= &(bd->bdProperties);
+    const struct BufferDocument *	bd= lc->lcDocument;
+    const DocumentProperties *	dp= bd->bdProperties;
 
     int				done= 0;
 
@@ -307,7 +321,7 @@ int docPsPrintOrnaments(	const BlockOrnaments *		bo,
 	RGB8Color		rgb8;
 
 	if  ( docGetSolidRgbShadeOfItem( &isFilled, &rgb8,
-						bd, &(bo->boShading) ) )
+						bd, bo->boShading ) )
 	    { LDEB(1);	}
 
 	if  ( isFilled )
@@ -322,17 +336,17 @@ int docPsPrintOrnaments(	const BlockOrnaments *		bo,
 	    dc->dcCurrentColorSet= 0;
 	    }
 
-	if  ( bo->boShading.isPattern != DOCspSOLID )
+	if  ( bo->boShading->isPattern != DOCspSOLID )
 	    {
 	    RGB8Color			cf;
-	    SimpleOutputStream *	sos= ps->psSos;
+	    struct SimpleOutputStream *	sos= ps->psSos;
 
 	    utilInitRGB8Color( &cf );
 	    cf.rgb8Red= cf.rgb8Green= cf.rgb8Blue= 0;
 
-	    if  ( bo->boShading.isForeColor > 0			&&
-		  bo->boShading.isForeColor < dp->dpColorPalette->cpColorCount )
-		{ cf= dp->dpColorPalette->cpColors[bo->boShading.isForeColor]; }
+	    if  ( bo->boShading->isForeColor > 0			&&
+		  bo->boShading->isForeColor < dp->dpColorPalette->cpColorCount )
+		{ cf= dp->dpColorPalette->cpColors[bo->boShading->isForeColor]; }
 
 	    docDrawSetColorRgb( dc, (void *)ps, &cf );
 
@@ -341,8 +355,15 @@ int docPsPrintOrnaments(	const BlockOrnaments *		bo,
 			    drInside->drX1- drInside->drX0+ 1,
 			    drInside->drY1- drInside->drY0+ 1 );
 
-	    sioOutPrintf( sos, "%s\n",
-				PsShadingNames[bo->boShading.isPattern] );
+	    if  ( ps->psRotateSheetGrid )
+		{
+		sioOutPrintf( sos, "%s\n",
+				PsShadingNames_90[bo->boShading->isPattern] );
+		}
+	    else{
+		sioOutPrintf( sos, "%s\n",
+				PsShadingNames[bo->boShading->isPattern] );
+		}
 	    }
 	}
 
@@ -352,7 +373,7 @@ int docPsPrintOrnaments(	const BlockOrnaments *		bo,
 
 	drBorder.drY1= drInside->drY0- 1;
 
-	docPsPrintHorizontalBorder( &(bo->boTopBorder), &drBorder, ps, dc );
+	docPsPrintHorizontalBorder( bo->boTopBorder, &drBorder, ps, dc );
 	done= 1;
 	}
 
@@ -364,7 +385,7 @@ int docPsPrintOrnaments(	const BlockOrnaments *		bo,
 	drBorder.drY1= drInside->drY1;
 	drBorder.drX1= drInside->drX0- 1;
 
-	docPsPrintVerticalBorder( &(bo->boLeftBorder), &drBorder, ps, dc );
+	docPsPrintVerticalBorder( bo->boLeftBorder, &drBorder, ps, dc );
 	done= 1;
 	}
 
@@ -376,7 +397,7 @@ int docPsPrintOrnaments(	const BlockOrnaments *		bo,
 	drBorder.drY1= drInside->drY1;
 	drBorder.drX0= drInside->drX1+ 1;
 
-	docPsPrintVerticalBorder( &(bo->boRightBorder), &drBorder, ps, dc );
+	docPsPrintVerticalBorder( bo->boRightBorder, &drBorder, ps, dc );
 	done= 1;
 	}
 
@@ -386,7 +407,7 @@ int docPsPrintOrnaments(	const BlockOrnaments *		bo,
 
 	drBorder.drY0= drInside->drY1+ 1;
 
-	docPsPrintHorizontalBorder( &(bo->boBottomBorder), &drBorder, ps, dc );
+	docPsPrintHorizontalBorder( bo->boBottomBorder, &drBorder, ps, dc );
 	done= 1;
 	}
 
@@ -412,4 +433,8 @@ int docPsPrintOrnaments(	const BlockOrnaments *		bo,
 
     return 0;
     }
+
+# ifdef __GNUC__
+# pragma GCC diagnostic pop
+# endif
 

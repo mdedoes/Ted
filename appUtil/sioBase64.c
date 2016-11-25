@@ -11,9 +11,10 @@
 #   include	<string.h>
 
 #   include	"sioBase64.h"
+#   include	"sioGeneral.h"
 #   include	"utilBase64.h"
-#   include	<appDebugon.h>
 
+#   include	<appDebugon.h>
 
 /************************************************************************/
 /*									*/
@@ -109,7 +110,10 @@ static int sioInBase64ReadBytes(	void *		voidbis,
 
 	memcpy( buffer, bis->bisBytes, todo );
 
-	buffer += todo; done += todo;
+	/* Unused
+	buffer += todo;
+	*/
+	done += todo;
 
 	memmove( bis->bisBytes, bis->bisBytes+ todo, bis->bisCount- todo );
 	bis->bisCount -= todo;

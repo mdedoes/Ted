@@ -1,10 +1,5 @@
 #   include	"appUtilConfig.h"
 
-#   include	"sioSmtp.h"
-#   include	"sioMemory.h"
-#   include	"sioBase64.h"
-#   include	"utilMemoryBuffer.h"
-
 #   include	<stdlib.h>
 #   include	<stdarg.h>
 #   include	<stdio.h>
@@ -18,6 +13,12 @@
 #   include	<sys/utsname.h>
 #   include	<netdb.h>
 
+#   include	"sioSmtp.h"
+#   include	"sioMemory.h"
+#   include	"sioBase64.h"
+#   include	"sioGeneral.h"
+#   include	"utilMemoryBuffer.h"
+
 #   include	<appDebugon.h>
 
 #   ifdef	NeXT
@@ -29,11 +30,7 @@
 #	endif
 #   endif
 
-#   ifdef __VMS
-#	define	HAVE_PW_GECOS	0
-#   else
-#	define	HAVE_PW_GECOS	1
-#   endif
+#   define	HAVE_PW_GECOS	1
 
 /************************************************************************/
 /*									*/

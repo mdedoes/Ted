@@ -4,7 +4,7 @@
 /*									*/
 /************************************************************************/
 
-#   include	<geo2DInteger.h>
+#   include	<geoRectangle.h>
 
 typedef enum EmrRecordType
 {

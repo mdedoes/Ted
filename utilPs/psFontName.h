@@ -7,7 +7,7 @@
 #   ifndef	PS_FONT_NAME_H
 #   define	PS_FONT_NAME_H
 
-#   include	"psFontInfo.h"
+struct AfmFontInfo;
 
 /************************************************************************/
 /*									*/
@@ -30,7 +30,7 @@ extern int psRemoveWidthFromName(	char *			target,
 					int *			pWidth,
 					const char *		name );
 
-extern int psFontInfoMoveWidthToFamilyName(	AfmFontInfo *	afi );
+extern int psFontInfoMoveWidthToFamilyName(	struct AfmFontInfo *	afi );
 
 extern const char * psWidthStr(		int			width );
 extern const char * psWeightStr(	int			weight );

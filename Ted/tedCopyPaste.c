@@ -11,23 +11,27 @@
 #   include	<stdio.h>
 #   include	<ctype.h>
 
-#   include	"tedApp.h"
 #   include	"tedSelect.h"
 #   include	"tedAppResources.h"
 #   include	"tedCopyPasteImpl.h"
 #   include	"tedEdit.h"
 #   include	"tedDocument.h"
-#   include	"tedDocFront.h"
+#   include	<tedDocFront.h>
+#   include	"tedDocMenu.h"
+#   include	"tedCopyPaste.h"
 #   include	<docRtfReadWrite.h>
 #   include	<docPlainReadWrite.h>
-#   include	<appImage.h>
 #   include	<docRtfFlags.h>
 #   include	<docEditCommand.h>
-
 #   include	<sioMemory.h>
 #   include	<sioXprop.h>
 #   include	<sioFileio.h>
 #   include	<bmio.h>
+#   include	<appEditApplication.h>
+#   include	<appEditDocument.h>
+#   include	<sioGeneral.h>
+#   include	<docBuf.h>
+#   include	<appDocFront.h>
 
 #   include	<appDebugon.h>
 
@@ -40,17 +44,47 @@ void tedDocCut(			EditDocument *	ed )
     SelectionDescription	sd;
 
     if  ( tedGetSelection( &ds, &sg, &sd,
-			    (DocumentTree **)0, (struct BufferItem **)0, ed ) )
+			    (struct DocumentTree **)0,
+			    (struct BufferItem **)0, ed ) )
 	{ return;	}
 
     if  ( ! sd.sdIsTableSlice && ! sd.sdCanReplace )
 	{ LLDEB(sd.sdIsTableSlice,sd.sdCanReplace); return;	}
 
+    /*  Nothing to copy -> Nothing to cut */
+    if  ( sd.sdIsIBarSelection )
+	{ return;	}
+
     if  ( tedDocCopySelection( ed ) )
 	{ LDEB(1); return;	}
 
     if  ( sd.sdIsTableSlice )
-	{ tedDeleteTableSliceSelection( ed, td->tdTraced );	}
+	{
+	const TableRectangle *	tr= &(sd.sdTableRectangle);
+
+	if  ( tr->trIsWholeTable )
+	    {
+	    if  ( tedDocDeleteTable( ed, td->tdTraced ) )
+		{ LDEB(tr->trIsWholeTable); return;	}
+	    }
+	else{
+	    if  ( tr->trIsRowSlice )
+		{
+		if  ( tedDocDeleteRows( ed, td->tdTraced ) )
+		    { LDEB(tr->trIsRowSlice); return;	}
+		}
+	    else{
+		if  ( tr->trIsColumnSlice )
+		    {
+		    if  ( tedDocDeleteColumns( ed, td->tdTraced ) )
+			{ LDEB(tr->trIsColumnSlice); return;	}
+		    }
+		else{
+		    LLDEB(tr->trIsRowSlice,tr->trIsColumnSlice); return;
+		    }
+		}
+	    }
+	}
     else{
 	tedDocDeleteSelection( ed, EDITcmdDELETE_SELECTION, td->tdTraced );
 	}
@@ -70,11 +104,9 @@ void tedDocCopy(		EditDocument *	ed )
     SelectionGeometry		sg;
     SelectionDescription	sd;
 
-    const int			scrolledX= 0;
-    const int			scrolledY= 0;
-
     if  ( tedGetSelection( &ds, &sg, &sd,
-			    (DocumentTree **)0, (struct BufferItem **)0, ed ) )
+			    (struct DocumentTree **)0,
+			    (struct BufferItem **)0, ed ) )
 	{ return;	}
 
     if  ( tedDocCopySelection( ed ) )
@@ -82,7 +114,7 @@ void tedDocCopy(		EditDocument *	ed )
 
     td->tdVisibleSelectionCopied= 1;
 
-    appDocExposeRectangle( ed, &(sg.sgRectangle), scrolledX, scrolledY );
+    tedExposeCurrentSelection( ed );
 
     if  ( appDocOwnSelection( ed, "CLIPBOARD",
 		TedClipboardTextTargets, TedClipboardTextTargetCount ) )
@@ -109,18 +141,14 @@ void tedClipboardLost(	APP_WIDGET			w,
     SelectionDescription	sd;
 
     if  ( tedGetSelection( &ds, &sg, &sd,
-			    (DocumentTree **)0, (struct BufferItem **)0, ed ) )
+			    (struct DocumentTree **)0,
+			    (struct BufferItem **)0, ed ) )
 	{ return;	}
 
     td->tdVisibleSelectionCopied= 0;
 
-    if  ( tedHasSelection( ed ) && ! sd.sdIsIBarSelection )
-	{
-	const int	scrolledX= 0;
-	const int	scrolledY= 0;
-
-	appDocExposeRectangle( ed, &(sg.sgRectangle), scrolledX, scrolledY );
-	}
+    if  ( sd.sdIsSet && ! sd.sdIsIBarSelection )
+	{ tedExposeCurrentSelection( ed );	}
     }
 
 void tedPrimaryLost(	APP_WIDGET			w,
@@ -184,7 +212,7 @@ static void tedCopyString(	const MemoryBuffer *	mb,
     {
     SimpleOutputStream *	sos;
 
-    BufferDocument *		bd;
+    struct BufferDocument *		bd;
     SimpleInputStream *		sis;
 
     const unsigned int		rtfFlags= 0;
@@ -350,16 +378,16 @@ APP_GIVE_COPY( tedCopyRulerTed, w, event, voided )
 /*									*/
 /************************************************************************/
 
-typedef BufferDocument * (*TED_READ) (
+typedef struct BufferDocument * (*TED_READ) (
 				SimpleInputStream *		sis,
 				EditApplication *		ea,
 				const DocumentGeometry *	dg );
 
 typedef int	(*TED_INCLUDE) (	EditDocument *		ed,
-					BufferDocument *	bd,
+					struct BufferDocument *	bd,
 					int			traced );
 
-static BufferDocument * tedPasteRtfReadFile(
+static struct BufferDocument * tedPasteRtfReadFile(
 				SimpleInputStream *		sis,
 				EditApplication *		ea,
 				const DocumentGeometry *	dg )
@@ -369,7 +397,7 @@ static BufferDocument * tedPasteRtfReadFile(
     return docRtfReadFile( sis, rtfFlags );
     }
 
-static BufferDocument * tedPastePlainReadFile(
+static struct BufferDocument * tedPastePlainReadFile(
 				SimpleInputStream *		sis,
 				EditApplication *		ea,
 				const DocumentGeometry *	dg )
@@ -390,7 +418,7 @@ static int tedPasteClipboardGeneric(	APP_WIDGET		w,
     TedDocument *		td= (TedDocument *)ed->edPrivateData;
 
     SimpleInputStream *		sis= (SimpleInputStream *)0;
-    BufferDocument *		bd= (BufferDocument *)0;
+    struct BufferDocument *		bd= (struct BufferDocument *)0;
 
     TedAppResources *		tar= (TedAppResources *)ea->eaResourceData;
 
@@ -562,7 +590,7 @@ void tedCopyFont( EditDocument *	ed )
     const int			rtfFlags= RTFflagNO_BOOKMARKS|RTFflagSAVE_SOMETHING;
 
     if  ( tedGetSelection( &ds, &sg, &sd,
-			    (DocumentTree **)0, (struct BufferItem **)0, ed ) )
+			    (struct DocumentTree **)0, (struct BufferItem **)0, ed ) )
 	{ LDEB(1); return;	}
 
     /*  2  */
@@ -611,7 +639,7 @@ void tedCopyRuler( EditDocument *	ed )
     const int			rtfFlags= RTFflagNO_BOOKMARKS;
 
     if  ( tedGetSelection( &ds, &sg, &sd,
-			(DocumentTree **)0, (struct BufferItem **)0, ed ) )
+			(struct DocumentTree **)0, (struct BufferItem **)0, ed ) )
 	{ LDEB(1); return;	}
 
     /*  1  */

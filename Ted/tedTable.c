@@ -7,19 +7,22 @@
 #   include	"tedConfig.h"
 
 #   include	<stddef.h>
-#   include	<stdio.h>
 #   include	<ctype.h>
 
 #   include	"tedEdit.h"
-#   include	"tedDocFront.h"
+#   include	<tedDocFront.h>
 #   include	"tedDocument.h"
 #   include	<docIntermediaryDocument.h>
 #   include	<docRtfTrace.h>
-#   include	<docPageGrid.h>
 #   include	<docTreeNode.h>
 #   include	<docParaParticules.h>
 #   include	<docEditCommand.h>
+#   include	<docDocumentCopyJob.h>
+#   include	<appEditDocument.h>
+#   include	<docBuf.h>
+#   include	<docNodeTree.h>
 
+#   include	<docDebug.h>
 #   include	<appDebugon.h>
 
 /************************************************************************/
@@ -48,8 +51,8 @@ int tedInsertTable(		EditDocument *		ed,
     int				rval= 0;
     TedDocument *		td= (TedDocument *)ed->edPrivateData;
 
-    BufferDocument *		bdTable= (BufferDocument *)0;
-    BufferItem *		sectNodeTable;
+    struct BufferDocument *	bdTable= (struct BufferDocument *)0;
+    struct BufferItem *		sectNodeTable;
     int				textAttrNr;
     int				wide;
 
@@ -60,8 +63,6 @@ int tedInsertTable(		EditDocument *		ed,
 
     DocumentCopyJob		dcj;
 
-    int				headFlags;
-    int				tailFlags;
     int				posWhere= SELposHEAD;
 
     const int			fullWidth= 1;
@@ -70,15 +71,8 @@ int tedInsertTable(		EditDocument *		ed,
 
     tedStartEditOperation( &teo, &sg, &sd, ed, fullWidth, traced );
 
-    if  ( docFindParticuleOfPosition( (int *)0, &headFlags,
-					    &(eo->eoHeadDp), PARAfindFIRST ) )
-	{ LDEB(1); rval= -1; goto ready;	}
-    if  ( docFindParticuleOfPosition( (int *)0, &tailFlags,
-					    &(eo->eoTailDp), PARAfindPAST ) )
-	{ LDEB(1); rval= -1; goto ready;	}
-
-    if  ( ( headFlags & POSflagPARA_HEAD )	&&
-	  ( tailFlags & POSflagPARA_TAIL )	&&
+    if  ( ( sd.sdHeadFlags & POSflagPARA_HEAD )	&&
+	  ( sd.sdPastFlags & POSflagPARA_TAIL )	&&
 	  ! docNextPosition( &(eo->eoTailDp)  )	)
 	{
 	eo->eoLastDp= eo->eoTailDp;
@@ -87,20 +81,9 @@ int tedInsertTable(		EditDocument *		ed,
 	eo->eoAffectedRange.erTail= eo->eoReformatRange.erTail;
 	}
 
-    if  ( headFlags & POSflagPARA_HEAD )
+    if  ( sd.sdHeadFlags & POSflagPARA_HEAD )
 	{ posWhere= SELposHEAD;	}
     else{ posWhere= SELposNEXT;	}
-
-    {
-    DocumentRectangle		dr;
-
-    docParaBlockFrameRectangle( &dr, eo->eoHeadDp.dpNode,
-				eo->eoDocument,
-				eo->eoHeadDp.dpNode->biTopPosition.lpPage,
-				eo->eoHeadDp.dpNode->biTopPosition.lpColumn );
-
-    wide= dr.drX1- dr.drX0;
-    }
 
     bdTable= docIntermediaryDocument( &sectNodeTable, eo->eoDocument );
     if  ( ! bdTable )
@@ -110,6 +93,8 @@ int tedInsertTable(		EditDocument *		ed,
 			    td->tdSelectionDescription.sdTextAttributeNumber );
     if  ( textAttrNr < 0 )
 	{ LDEB(textAttrNr); rval= -1; goto ready;	}
+
+    wide= sg.sgHead.pgParentFrameX1- sg.sgHead.pgParentFrameX0;
 
     if  ( docFillTableDocument( bdTable, sectNodeTable, textAttrNr,
 						    wide, rows, columns ) )
@@ -151,7 +136,7 @@ int tedDocRollRowsInTableImpl(	TedEditOperation *		teo,
     EditOperation *		eo= &(teo->teoEo);
     int				rval= 0;
 
-    BufferItem *		parentNode;
+    struct BufferItem *		parentNode;
 
     int				col;
     int				row;
@@ -255,7 +240,7 @@ int tedDocRollRowsInTableImpl(	TedEditOperation *		teo,
 
 static int tedSplitColumnInRows(	TedEditOperation *	teo,
 					DocumentPosition *	dpNew,
-					BufferItem *		sectBi,
+					struct BufferItem *		parentNode,
 					int			row0,
 					int			row,
 					int			row1,
@@ -263,18 +248,18 @@ static int tedSplitColumnInRows(	TedEditOperation *	teo,
 					int			after )
     {
     EditOperation *		eo= &(teo->teoEo);
-    BufferItem *		newParaBi= (BufferItem *)0;
+    struct BufferItem *		newParaNode= (struct BufferItem *)0;
     const int			recursively= 0;
 
-    tedEditIncludeRowsInRedraw( teo, sectBi, row0, row1 );
+    tedEditIncludeRowsInRedraw( teo, parentNode, row0, row1 );
 
-    if  ( docSplitColumnInRows( &newParaBi, eo,
-				    sectBi, row0, row, row1, col, after ) )
+    if  ( docSplitColumnInRows( &newParaNode, eo,
+				    parentNode, row0, row, row1, col, after ) )
 	{ LDEB(1); return -1;	}
 
-    docDelimitTables( sectBi, recursively );
+    docDelimitTables( parentNode, recursively );
 
-    if  ( docHeadPosition( dpNew, newParaBi ) )
+    if  ( docHeadPosition( dpNew, newParaNode ) )
 	{ LDEB(1); return -1;	}
 
     return 0;
@@ -285,7 +270,7 @@ int tedDocAddColumnToTable(	EditDocument *		ed,
 				int			traced )
     {
     int				rval= 0;
-    BufferItem *		sectBi;
+    struct BufferItem *		parentNode;
 
     int				col;
     int				row;
@@ -301,24 +286,24 @@ int tedDocAddColumnToTable(	EditDocument *		ed,
 
     const int			fullWidth= 1;
 
-    tedStartEditOperation( &teo, &sg, &sd, ed, fullWidth, traced );
+    int				editCmd;
+    int				selPos;
 
     if  ( after )
-	{
-	if  ( tedEditStartStep( &teo, EDITcmdAPPEND_COLUMN ) )
-	    { LDEB(1); rval= -1; goto ready;	}
-	}
-    else{
-	if  ( tedEditStartStep( &teo, EDITcmdINSERT_COLUMN ) )
-	    { LDEB(1); rval= -1; goto ready;	}
-	}
+	{ editCmd= EDITcmdAPPEND_COLUMN; selPos= SELposAFTER;	}
+    else{ editCmd= EDITcmdINSERT_COLUMN; selPos= SELposBEFORE;	}
 
-    if  ( docDelimitTable( eo->eoHeadDp.dpNode, &sectBi,
+    tedStartEditOperation( &teo, &sg, &sd, ed, fullWidth, traced );
+
+    if  ( tedEditStartStep( &teo, editCmd ) )
+	{ LDEB(editCmd); rval= -1; goto ready;	}
+
+    if  ( docDelimitTable( eo->eoHeadDp.dpNode, &parentNode,
 					    &col, &row0, &row, &row1 ) )
 	{ LDEB(1); rval= -1; goto ready;	}
 
     if  ( tedSplitColumnInRows( &teo, &dpNew,
-				    sectBi, row0, row, row1, col, after ) )
+				    parentNode, row0, row, row1, col, after ) )
 	{ LDEB(1); rval= -1; goto ready;	}
 
     docSetIBarRange( &(eo->eoAffectedRange), &dpNew );
@@ -326,13 +311,7 @@ int tedDocAddColumnToTable(	EditDocument *		ed,
     tedEditFinishSelectionTail( &teo );
 
     if  ( teo.teoEditTrace )
-	{
-	const SelectionScope * const s0= (const SelectionScope *)0;
-
-	if  ( after )
-	    { docRtfTraceNewPosition( eo, s0, SELposAFTER );	}
-	else{ docRtfTraceNewPosition( eo, s0, SELposBEFORE );	}
-	}
+	{ docRtfTraceNewPosition( eo, (const SelectionScope *)0, selPos ); }
 
     tedFinishEditOperation( &teo );
 

@@ -7,13 +7,15 @@
 #   ifndef		GUI_DRAWING_SURFACE_H
 #   define		GUI_DRAWING_SURFACE_H
 
-#   include		<utilColor.h>
-#   include		<geo2DInteger.h>
-#   include		<geoAffineTransform.h>
-#   include		<psFontInfo.h>
-#   include		<bitmap.h>
-
+struct IndexSet;
 struct DrawingSurface;
+struct RasterImage;
+struct RGB8Color;
+struct AfmFontInfo;
+struct DocumentRectangle;
+struct Point2DI;
+struct Arc2DI;
+
 typedef struct DrawingSurface * DrawingSurface;
 
 /************************************************************************/
@@ -59,17 +61,17 @@ typedef enum LineJoin
 extern void drawFreeDrawingSurface(	DrawingSurface		ds );
 
 extern int drawSetForegroundColor(	DrawingSurface		ds,
-					const RGB8Color *	rgb8 );
+					const struct RGB8Color *	rgb8 );
 
 extern void drawFillRectangle(	DrawingSurface			ds,
-				const DocumentRectangle *	drLogical );
+				const struct DocumentRectangle *	drLogical );
 extern void drawRectangle(	DrawingSurface			ds,
-				const DocumentRectangle *	drLogical );
+				const struct DocumentRectangle *	drLogical );
 
 extern int drawOpenScreenFont(	DrawingSurface			ds,
-				const AfmFontInfo *		afi,
+				const struct AfmFontInfo *	afi,
 				int				pixelSize,
-				const IndexSet *		unicodesWanted);
+				const struct IndexSet *		unicodesWanted);
 
 extern DrawingSurface drawMakeDrawingSurfaceForParent(
 				DrawingSurface			parent,
@@ -78,15 +80,15 @@ extern DrawingSurface drawMakeDrawingSurfaceForParent(
 
 extern DrawingSurface drawMakeDrawingSurfaceForImageAndParent(
 				DrawingSurface			parent,
-				const RasterImage *		abi,
-				const DocumentRectangle *	drSrc,
+				const struct RasterImage *	ri,
+				const struct DocumentRectangle *	drSrc,
 				int				wide,
 				int				high );
 
 extern int drawRasterImage(	DrawingSurface			ds,
-				const DocumentRectangle *	drDest,
-				const RasterImage *		abi,
-				const DocumentRectangle *	drSrc );
+				const struct DocumentRectangle *	drDest,
+				const struct RasterImage *	ri,
+				const struct DocumentRectangle *	drSrc );
 
 extern int drawString(		DrawingSurface			ds,
 				int				x0,
@@ -116,21 +118,21 @@ extern int drawLine(		DrawingSurface			ds,
 				int				y1 );
 
 extern int drawLines(		DrawingSurface			ds,
-				const Point2DI *		points,
+				const struct Point2DI *		points,
 				int				count,
 				int				close );
 
 extern int drawFillPolygon(	DrawingSurface			ds,
-				const Point2DI *		points,
+				const struct Point2DI *		points,
 				int				count );
 
 extern void drawArc(		DrawingSurface			ds,
-				const Arc2DI *			arc );
+				const struct Arc2DI *		arc );
 
 extern void drawFillArc(	DrawingSurface			ds,
-				const Arc2DI *			arc );
+				const struct Arc2DI *		arc );
 
-extern int drawGetTextExtents(	DocumentRectangle *		drText,
+extern int drawGetTextExtents(	struct DocumentRectangle *		drText,
 				const DrawingSurface		ds,
 				int				x0,
 				int				y0,
@@ -138,7 +140,7 @@ extern int drawGetTextExtents(	DocumentRectangle *		drText,
 				const char *			s,
 				int				len );
 
-extern int drawGetSymbolExtents( DocumentRectangle *	drText,
+extern int drawGetSymbolExtents( struct DocumentRectangle *	drText,
 				DrawingSurface		ds,
 				int			x0,
 				int			y0,
@@ -163,14 +165,14 @@ extern int drawSetForegroundColorWhite(		DrawingSurface	ds );
 extern int drawSetForegroundColorBlack(		DrawingSurface	ds );
 
 extern int drawRoundedRect(	DrawingSurface			ds,
-				const DocumentRectangle *	dr,
-				int				w,
-				int				h );
+				const struct DocumentRectangle *	dr,
+				int				rx,
+				int				ry );
 
 extern int drawFillRoundedRect(	DrawingSurface			ds,
-				const DocumentRectangle *	dr,
-				int				w,
-				int				h );
+				const struct DocumentRectangle *	dr,
+				int				rx,
+				int				ry );
 
 extern int drawGetSubBaseline(	int *			pSubBaseline,
 				const DrawingSurface	ds,
@@ -183,7 +185,7 @@ extern int drawGetSuperBaseline(int *			pSuperBaseline,
 				int			baselinePixels );
 
 extern void drawSetClipRect(	DrawingSurface			ds,
-				const DocumentRectangle *	drClip );
+				const struct DocumentRectangle *	drClip );
 
 extern void drawNoClipping(	DrawingSurface			ds );
 
@@ -191,6 +193,6 @@ extern void drawChildSurface(	DrawingSurface			ds,
 				const DrawingSurface		child,
 				int				xDest,
 				int				yDest,
-				const DocumentRectangle *	drChild );
+				const struct DocumentRectangle *	drChild );
 
 #   endif	/*	GUI_DRAWING_SURFACE_H	*/

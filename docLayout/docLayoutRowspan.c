@@ -7,10 +7,12 @@
 
 #   include	"docLayoutConfig.h"
 
-#   include	<stddef.h>
-
 #   include	"docLayout.h"
+#   include	"docStripLayoutJob.h"
 #   include	<docTreeNode.h>
+#   include	<docRowProperties.h>
+#   include	<docCellProperties.h>
+#   include	<docBuf.h>
 
 #   include	<appDebugon.h>
 
@@ -23,11 +25,10 @@
 /*									*/
 /************************************************************************/
 
-static void docLayoutTopOfRowspan(	ParagraphLayoutJob *	plj,
-					BufferItem *		cellNode,
-					const BufferItem *	rowNode,
-					int			l,
-					int			r )
+static void docLayoutTopOfRowspan(
+				ParagraphLayoutJob *		plj,
+				struct BufferItem * const	cellNode,
+				const struct BufferItem *	rowNode )
     {
     int		topRow;
     int		row= rowNode->biNumberInParent;
@@ -38,19 +39,20 @@ static void docLayoutTopOfRowspan(	ParagraphLayoutJob *	plj,
 	  topRow >= rowNode->biRowTableFirst;
 	  topRow-- )
 	{
-	int			colspan;
 	int			topCol;
-	const BufferItem *	topRowNode;
+	const struct BufferItem *	topRowNode;
+	const RowProperties *	topRp;
 	const CellProperties *	topCp;
 
 	/*  2  */
 	topRowNode= rowNode->biParent->biChildren[topRow];
+	topRp= topRowNode->biRowProperties;
 
-	topCol= docGetMatchingCell( &colspan, topRowNode, l, r );
+	topCol= docGetMatchingCell( topRowNode, cellNode );
 	if  ( topCol < 0 )
 	    { LDEB(topCol); continue;	}
 
-	topCp= topRowNode->biRowCells+ topCol;
+	topCp= topRp->rpCells+ topCol;
 	switch( topCp->cpVerticalMerge )
 	    {
 	    case CELLmergeFOLLOW:
@@ -58,7 +60,7 @@ static void docLayoutTopOfRowspan(	ParagraphLayoutJob *	plj,
 
 	    case CELLmergeHEAD:
 		{
-		const BufferItem *	topCellNode= topRowNode->biChildren[topCol];
+		const struct BufferItem *	topCellNode= topRowNode->biChildren[topCol];
 
 		cellNode->biCellMergedCellTopRow= topRow;
 		cellNode->biCellMergedCellTopCol= topCol;
@@ -91,28 +93,27 @@ static void docLayoutTopOfRowspan(	ParagraphLayoutJob *	plj,
 /*									*/
 /************************************************************************/
 
-void docRowLayoutRowspanAdmin(	BufferItem *			cellNode,
-				const BufferItem *		rowNode,
-				const BufferItem *		nextRowBi,
+void docRowLayoutRowspanAdmin(	struct BufferItem *			cellNode,
+				const struct BufferItem *		rowNode,
+				const struct BufferItem *		nextRowNode,
 				int				nextRow,
-				const CellProperties *		cp,
-				int				l,
-				int				r,
 				ParagraphLayoutJob *		plj )
 
     {
+    const CellProperties * const	cp= cellNode->biCellProperties;
+
     if  ( nextRow < rowNode->biRowTablePast )
 	{
-	int			nextColspan= 1;
 	int			nextCol;
 
-	nextCol= docGetMatchingCell( &nextColspan, nextRowBi, l, r );
-
+	nextCol= docGetMatchingCell( nextRowNode, cellNode );
 	if  ( nextCol >= 0 )
 	    {
+	    const RowProperties *	nextRp;
 	    const CellProperties *	nextCp;
 
-	    nextCp= &(nextRowBi->biRowCells[nextCol]);
+	    nextRp= nextRowNode->biRowProperties;
+	    nextCp= &(nextRp->rpCells[nextCol]);
 
 	    /*  3  */
 	    if  ( cp->cpVerticalMerge == CELLmergeHEAD		&&
@@ -125,17 +126,17 @@ void docRowLayoutRowspanAdmin(	BufferItem *			cellNode,
 	    /*  4  */
 	    if  ( cp->cpVerticalMerge == CELLmergeFOLLOW	&&
 		  nextCp->cpVerticalMerge != CELLmergeFOLLOW	)
-		{ docLayoutTopOfRowspan( plj, cellNode, rowNode, l, r ); }
+		{ docLayoutTopOfRowspan( plj, cellNode, rowNode ); }
 	    }
 	else{
 	    if  ( cp->cpVerticalMerge == CELLmergeFOLLOW )
-		{ docLayoutTopOfRowspan( plj, cellNode, rowNode, l, r ); }
+		{ docLayoutTopOfRowspan( plj, cellNode, rowNode ); }
 	    }
 	}
     else{
 	/*  4  */
 	if  ( cp->cpVerticalMerge == CELLmergeFOLLOW )
-	    { docLayoutTopOfRowspan( plj, cellNode, rowNode, l, r );	}
+	    { docLayoutTopOfRowspan( plj, cellNode, rowNode );	}
 	}
     }
 

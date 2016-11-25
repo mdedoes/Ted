@@ -7,13 +7,13 @@
 #   ifndef		XML_WRITER_H
 #   define		XML_WRITER_H
 
-#   include		"sioGeneral.h"
-#   include		"utilColor.h"
-#   include		"utilMemoryBuffer.h"
+struct SimpleOutputStream;
+struct RGB8Color;
+struct MemoryBuffer;
 
 typedef struct XmlWriter
     {
-    SimpleOutputStream *	xwSos;
+    struct SimpleOutputStream *	xwSos;
     int				xwCrlf;
     int				xwColumn;
     } XmlWriter;
@@ -29,11 +29,15 @@ extern void xmlInitXmlWriter(		XmlWriter *		xw );
 extern void xmlPutString(		const char *		s,
 					XmlWriter *		xw );
 
-extern void xmlNewLine(		XmlWriter *		xw );
+extern void xmlNewLine(			XmlWriter *		xw );
 
 extern void xmlWriteStringAttribute(	XmlWriter *		xw,
 					const char *		name,
 					const char *		value );
+
+extern void xmlWriteBufferAttribute(	XmlWriter *		xw,
+					const char *		name,
+					const struct MemoryBuffer *	mb );
 
 extern void xmlWriteIntAttribute(	XmlWriter *		xw,
 					const char *		name,
@@ -41,14 +45,14 @@ extern void xmlWriteIntAttribute(	XmlWriter *		xw,
 
 extern void xmlWriteRgb8Attribute(	XmlWriter *		xw,
 					const char *		name,
-					const RGB8Color *	rgb8 );
+					const struct RGB8Color *	rgb8 );
 
 extern void xmlEscapeCharacters(	XmlWriter *		xw,
 					const char *		ss,
 					int			len );
 
 extern void xmlEscapeBuffer(		XmlWriter *		xw,
-					const MemoryBuffer *	mb );
+					const struct MemoryBuffer *	mb );
 
 #   endif	/*	XML_WRITER_H	*/
 

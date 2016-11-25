@@ -1,17 +1,20 @@
 #   include	"appFrameConfig.h"
 
+#   include	<guiBase.h>
+
+#   if USE_MOTIF
+
 #   include	<stdlib.h>
 #   include	<stdio.h>
 
-#   include	"appFrame.h"
-
-#   include	<appDebugon.h>
-
-#   ifdef USE_MOTIF
-
 #   include	<X11/Xatom.h>
 #   include	<Xm/MwmUtil.h>
-#   include	<Xm/Protocols.h>
+
+#   include	"appEditApplication.h"
+#   include	"appAppFront.h"
+#   include	<guiWidgets.h>
+
+#   include	<appDebugon.h>
 
 # define LOG_X_REQUESTS 0
 # if LOG_X_REQUESTS
@@ -233,17 +236,16 @@ int appGuiInitApplication(	EditApplication *	ea,
 							NULL, NULL, NULL );
     ea->eaDocumentCursor= (Cursor)0;
 
-    /*  3  */
-    ea->eaCloseAtom= XmInternAtom( XtDisplay( ea->eaToplevel.atTopWidget ),
-					(char *)"WM_DELETE_WINDOW", False );
-
     ea->eaArgc= argc;
     ea->eaArgv= argv;
 
-    appSetCloseCallback( ea->eaToplevel.atTopWidget, ea,
+    /*  3  */
+    guiSetCloseCallback( ea->eaToplevel.atTopWidget,
 						appAppWmClose, (void *)ea );
 
     XtRealizeWidget( ea->eaToplevel.atTopWidget );
+
+    appSetNamedWindowIcon( ea,  ea->eaToplevel.atTopWidget, ea->eaMainIcon );
 
     *pArgc= argc;
     *pArgv= argv;

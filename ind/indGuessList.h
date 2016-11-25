@@ -9,7 +9,7 @@
 
 typedef struct IndGuessScore
     {
-    unsigned char *	igsWord;
+    char *		igsWord;
     int			igsScore;
     } IndGuessScore;
 

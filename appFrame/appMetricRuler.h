@@ -4,9 +4,14 @@
 /*									*/
 /************************************************************************/
 
-#   include	"appFrame.h"
-#   include	"appRuler.h"
-#   include	<geo2DInteger.h>
+#   include	<guiBase.h>
+#   include	<drawDrawingSurface.h>
+
+struct EditApplication;
+struct EditDocument;
+struct PostScriptFontList;
+struct DocumentRectangle;
+struct RulerData;
 
 /************************************************************************/
 /*									*/
@@ -18,7 +23,7 @@ extern void * appMakeMetricRuler(
 			int				sizeAcross,
 			double				magnifiedPixelsPerTwip,
 			double				magnification,
-			const PostScriptFontList *	psfl,
+			const struct PostScriptFontList *	psfl,
 
 			int				minUnused,
 			int				maxUnused,
@@ -32,8 +37,8 @@ extern void * appMakeMetricRuler(
 
 extern void appFreeMetricRuler(	void *		voidmr );
 
-extern APP_EVENT_HANDLER_H( appRedrawHorizontalMetricRuler, w, voidmr, event );
-extern APP_EVENT_HANDLER_H( appRedrawVerticalMetricRuler, w, voidmr, event );
+extern APP_REDRAW_HANDLER_H( appRedrawHorizontalMetricRuler, w, voidmr, event );
+extern APP_REDRAW_HANDLER_H( appRedrawVerticalMetricRuler, w, voidmr, event );
 
 extern APP_EVENT_HANDLER_H( appHorizontalRulerConfigure, w, voidmr, event );
 extern APP_EVENT_HANDLER_H( appVerticalRulerConfigure, w, voidmr, event );
@@ -42,19 +47,19 @@ extern void appHorizontalRulerTrackMouse( int *		pX0pixels,
 					int *			pX1pixels,
 					int *			pChanged,
 					APP_WIDGET		w,
-					EditApplication *	ea,
+					struct EditApplication *	ea,
 					APP_EVENT *		downEvent,
 					void *			voidmr,
-					EditDocument *		ed );
+					struct EditDocument *		ed );
 
 extern void  appVerticalRulerTrackMouse( int *			pY0pixels,
 					int *			pY1pixels,
 					int *			pChanged,
 					APP_WIDGET		w,
-					EditApplication *	ea,
+					struct EditApplication *	ea,
 					APP_EVENT *		downEvent,
 					void *			voidmr,
-					EditDocument *		ed );
+					struct EditDocument *		ed );
 
 extern void appScrollHorMetricRuler(	void *			voidmr,
 					APP_WIDGET		w,
@@ -84,50 +89,52 @@ extern void appAdaptMetricRuler(	APP_WIDGET	w,
 					void *		voidmr,
 					int		documentC1 );
 
-extern void appDocSetMetricTopRuler(	EditDocument *	ed,
+extern void appDocSetMetricTopRuler(	struct EditDocument *	ed,
 					int		topRulerHeight,
 					double		magnification,
 					int		unitInt,
 					APP_EVENT_HANDLER_T	mouseDown );
 
-extern void appDocSetMetricLeftRuler(	EditDocument *	ed,
+extern void appDocSetMetricLeftRuler(	struct EditDocument *	ed,
 					int		topRulerHeight,
 					double		magnification,
 					int		unitInt,
 					APP_EVENT_HANDLER_T	mouseDown );
 
 extern void appDrawRectangleSelection(
-				DocumentRectangle *		drClip,
-				DocumentRectangle *		drSelected,
+				struct DocumentRectangle *	drClip,
+				struct DocumentRectangle *	drSelected,
 				DrawingSurface			ds,
-				const DocumentRectangle *	drScreen,
+				const struct DocumentRectangle * drScreen,
 				int				ox,
 				int				oy );
 
 extern void appRemoveRectangleSelection(
-				const DocumentRectangle *	drVisible,
-				DocumentRectangle *		drSelected,
+				const struct DocumentRectangle * drVisible,
+				struct DocumentRectangle *	drSelected,
 				APP_WIDGET			w );
 
-extern void appSetHorRectangleSelection( DocumentRectangle *	drVisible,
-					DocumentRectangle *	drSelected,
-					int			x0Screen,
-					int			x1Screen,
-					APP_WIDGET		w );
+extern void appSetHorRectangleSelection(
+				struct DocumentRectangle *	drVisible,
+				struct DocumentRectangle *	drSelected,
+				int				x0Screen,
+				int				x1Screen,
+				APP_WIDGET			w );
 
-extern void appSetVertRectangleSelection( DocumentRectangle *	drVisible,
-					DocumentRectangle *	drSelected,
-					int			y0Screen,
-					int			y1Screen,
-					APP_WIDGET		w );
+extern void appSetVertRectangleSelection(
+				struct DocumentRectangle *	drVisible,
+				struct DocumentRectangle *	drSelected,
+				int				y0Screen,
+				int				y1Screen,
+				APP_WIDGET			w );
 
-extern void appMetricRulerDrawHair(	EditDocument *		ed );
+extern void appMetricRulerDrawHair(	struct EditDocument *		ed );
 
-extern void appMetricRulerExposeValue(	EditDocument *          ed );
-extern void appMetricRulerChangeValue(	EditDocument *          ed,
+extern void appMetricRulerExposeValue(	struct EditDocument *          ed );
+extern void appMetricRulerChangeValue(	struct EditDocument *          ed,
 					int			newValue );
 
-extern void appHorizontalRulerDrawMark(	RulerData *		rd,
+extern void appHorizontalRulerDrawMark(	struct RulerData *	rd,
 					int			fontBottom,
 					int			tagY0,
 					int			tagY1,

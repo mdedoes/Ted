@@ -6,12 +6,13 @@
 
 #   include	"docRtfConfig.h"
 
-#   include	<stdio.h>
 #   include	<ctype.h>
 
-#   include	<appDebugon.h>
-
 #   include	"docRtfReaderImpl.h"
+#   include	"docRtfReadTreeStack.h"
+#   include	"docRtfFindProperty.h"
+
+#   include	<appDebugon.h>
 
 /************************************************************************/
 /*									*/
@@ -19,71 +20,77 @@
 /*									*/
 /************************************************************************/
 
-static void docRtfResetRowProperties(	RtfReader *	rrc )
+static void docRtfResetRowProperties(	RtfReader *	rr )
     {
-    RowProperties *	rp= &(rrc->rrcRowProperties);
+    docCleanRowProperties( &(rr->rrTreeStack->rtsRowProperties) );
+    docInitRowProperties(  &(rr->rrTreeStack->rtsRowProperties) );
+    rr->rrTreeStack->rtsRowCellX=
+			rr->rrTreeStack->rtsRowProperties.rpLeftIndentTwips;
 
-    docCleanRowProperties( rp );
-    docInitRowProperties(  rp );
-    utilPropMaskClear( &(rrc->rrcRowPropertyMask) );
-    docInitItemShading(  &(rrc->rrcRowShading) );
+    utilPropMaskClear( &(rr->rrRowPropertyMask) );
+    docInitItemShading(  &(rr->rrRowShading) );
 
-    docRtfResetCellProperties( rrc );
+    docRtfResetCellProperties( rr );
     }
 
 int docRtfRememberRowShadingProperty(	const RtfControlWord *	rcw,
 					int			arg,
-					RtfReader *	rrc )
+					RtfReader *		rr )
     {
-    if  ( docSetShadingProperty( &(rrc->rrcRowShading), rcw->rcwID, arg ) < 0 )
+    if  ( docSetShadingProperty( &(rr->rrRowShading), rcw->rcwID, arg ) < 0 )
 	{ SLDEB(rcw->rcwWord,arg); return -1;	}
 
-    PROPmaskADD( &(rrc->rrcRowPropertyMask), RPpropSHADING );
+    PROPmaskADD( &(rr->rrRowPropertyMask), RPpropSHADING );
+    PROPmaskADD( &(rr->rrStyle.dsRowMask), RPpropSHADING );
 
     return 0;
     }
 
 int docRtfRememberRowProperty(		const RtfControlWord *	rcw,
 					int			arg,
-					RtfReader *		rrc )
+					RtfReader *		rr )
     {
-    RowProperties *	rp= &(rrc->rrcRowProperties);
+    RowProperties *	rp= &(rr->rrTreeStack->rtsRowProperties);
 
     switch( rcw->rcwID )
 	{
 	case RPprop_NONE:
-	    docRtfResetRowProperties( rrc );
+	    docRtfResetRowProperties( rr );
 	    return 0;
 
 	case RPpropTOP_BORDER:
-	    arg= docRtfReadGetBorderNumber( rrc );
+	    arg= docRtfReadGetBorderNumber( rr );
 	    if  ( arg < 0 )
 		{ LDEB(arg); return -1;	}
 	    break;
 	case RPpropBOTTOM_BORDER:
-	    arg= docRtfReadGetBorderNumber( rrc );
+	    arg= docRtfReadGetBorderNumber( rr );
 	    if  ( arg < 0 )
 		{ LDEB(arg); return -1;	}
 	    break;
 	case RPpropLEFT_BORDER:
-	    arg= docRtfReadGetBorderNumber( rrc );
+	    arg= docRtfReadGetBorderNumber( rr );
 	    if  ( arg < 0 )
 		{ LDEB(arg); return -1;	}
 	    break;
 	case RPpropRIGHT_BORDER:
-	    arg= docRtfReadGetBorderNumber( rrc );
+	    arg= docRtfReadGetBorderNumber( rr );
 	    if  ( arg < 0 )
 		{ LDEB(arg); return -1;	}
 	    break;
 	case RPpropHORIZ_BORDER:
-	    arg= docRtfReadGetBorderNumber( rrc );
+	    arg= docRtfReadGetBorderNumber( rr );
 	    if  ( arg < 0 )
 		{ LDEB(arg); return -1;	}
 	    break;
 	case RPpropVERT_BORDER:
-	    arg= docRtfReadGetBorderNumber( rrc );
+	    arg= docRtfReadGetBorderNumber( rr );
 	    if  ( arg < 0 )
 		{ LDEB(arg); return -1;	}
+	    break;
+
+	case RPpropLEFT_INDENT:
+	    rr->rrTreeStack->rtsRowCellX= arg;
 	    break;
 
 	case RPprop_IGNORED:
@@ -93,7 +100,8 @@ int docRtfRememberRowProperty(		const RtfControlWord *	rcw,
     if  ( docSetRowProperty( rp, rcw->rcwID, arg ) < 0 )
 	{ SLDEB(rcw->rcwWord,arg); return -1;	}
 
-    PROPmaskADD( &(rrc->rrcRowPropertyMask), rcw->rcwID );
+    PROPmaskADD( &(rr->rrRowPropertyMask), rcw->rcwID );
+    PROPmaskADD( &(rr->rrStyle.dsRowMask), rcw->rcwID );
 
     return 0;
     }
@@ -106,38 +114,44 @@ int docRtfRememberRowProperty(		const RtfControlWord *	rcw,
 
 int docRtfReadRowProperties(	const RtfControlWord *	rcw,
 				int			arg,
-				RtfReader *		rrc )
+				RtfReader *		rr )
     {
     int			rval= 0;
 
     RowProperties	savedRp;
+    int			savedCx;
     CellProperties	savedCp;
     ItemShading		savedRowShading;
     ItemShading		savedCellShading;
 
-    savedRp= rrc->rrcRowProperties;
-    savedCp= rrc->rrcCellProperties;
-    savedRowShading= rrc->rrcRowShading;
-    savedCellShading= rrc->rrcCellShading;
+    savedRp= rr->rrTreeStack->rtsRowProperties;
+    savedCx= rr->rrTreeStack->rtsRowCellX;
+    savedCp= rr->rrCellProperties;
+    savedRowShading= rr->rrRowShading;
+    savedCellShading= rr->rrCellShading;
 
-    docInitRowProperties( &(rrc->rrcRowProperties) );
-    docInitCellProperties( &(rrc->rrcCellProperties) );
-    docInitItemShading(  &(rrc->rrcRowShading) );
-    docInitItemShading(  &(rrc->rrcCellShading) );
+    docInitRowProperties( &(rr->rrTreeStack->rtsRowProperties) );
+    docInitCellProperties( &(rr->rrCellProperties) );
+    rr->rrTreeStack->rtsRowCellX=
+			rr->rrTreeStack->rtsRowProperties.rpLeftIndentTwips;
 
-    if  ( docRtfReadGroup( rcw, 0, 0, rrc,
-	    docRtfDocumentGroups, docRtfTextParticule, (RtfCommitGroup)0 ) )
+    docInitItemShading(  &(rr->rrRowShading) );
+    docInitItemShading(  &(rr->rrCellShading) );
+
+    if  ( docRtfReadGroup( rcw, 0, 0, rr,
+	    docRtfDocumentGroups, docRtfGotText, (RtfCommitGroup)0 ) )
 	{ SDEB(rcw->rcwWord); rval= -1; goto ready;	}
 
   ready:
 
-    docCleanRowProperties( &(rrc->rrcRowProperties) );
-    docCleanCellProperties( &(rrc->rrcCellProperties) );
+    docCleanRowProperties( &(rr->rrTreeStack->rtsRowProperties) );
+    /*docCleanCellProperties( &(rr->rrCellProperties) );*/
 
-    rrc->rrcRowProperties= savedRp;
-    rrc->rrcCellProperties= savedCp;
-    rrc->rrcRowShading= savedRowShading;
-    rrc->rrcCellShading= savedCellShading;
+    rr->rrTreeStack->rtsRowProperties= savedRp;
+    rr->rrTreeStack->rtsRowCellX= savedCx;
+    rr->rrCellProperties= savedCp;
+    rr->rrRowShading= savedRowShading;
+    rr->rrCellShading= savedCellShading;
 
     return rval;
     }

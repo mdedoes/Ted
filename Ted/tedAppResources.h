@@ -1,8 +1,8 @@
-#   include	<appFrame.h>
-#   include	<appInspector.h>
-
 #   ifndef	TED_APP_RESOURCES_H
 #   define	TED_APP_RESOURCES_H
+
+struct AppFileExtension;
+struct EditDocument;
 
 /************************************************************************/
 /*									*/
@@ -22,17 +22,6 @@ typedef struct TedAppResources
     char *			tarHeadFootNotReachable;
     char *			tarCannotRecover;
 
-    char *			tarAppFileMenuText;
-    char *			tarAppWinMenuText;
-    char *			tarDocFileMenuText;
-    char *			tarDocEditMenuText;
-    char *			tarDocInsertMenuText;
-    char *			tarDocWinMenuText;
-    char *			tarDocFontMenuText;
-    char *			tarDocFormatMenuText;
-    char *			tarDocToolMenuText;
-    char *			tarDocTableMenuText;
-    char *			tarHelpMenuText;
     char *			tarAppHelpFileName;
 
     char *			tarSelectionColor;
@@ -44,9 +33,6 @@ typedef struct TedAppResources
 				/****************************************/
     char *			tarShowTableGridString;
     int				tarShowTableGridInt;
-
-    char *			tarAutoHyphenateString;
-    int				tarAutoHyphenateInt;
 
     char *			tarShadingMeshTwipsString;
     double			tarShadingMeshPointsDouble;
@@ -70,14 +56,13 @@ typedef struct TedAppResources
 				/*  Global data.			*/
 				/****************************************/
 
-    AppInspector *		tarInspector;
-    EditDocument *		tarManualDocument;
+    struct EditDocument *	tarManualDocument;
 
 				/****************************************/
 				/*  To open images:			*/
 				/*  From a file chooser.		*/
 				/****************************************/
-    AppFileExtension *		tarOpenImageExtensions;
+    struct AppFileExtension *	tarOpenImageExtensions;
     int				tarOpenImageExtensionCount;
 
 				/****************************************/

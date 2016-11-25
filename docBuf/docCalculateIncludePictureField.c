@@ -9,45 +9,54 @@
 #   include	<appSystem.h>
 #   include	"docBuf.h"
 #   include	"docEvalField.h"
-#   include	"docParaParticules.h"
 #   include	"docRecalculateFields.h"
 #   include	<docIncludePictureField.h>
+#   include	<docObjectIo.h>
+#   include	<docTextParticule.h>
+#   include	"docTreeNode.h"
+#   include	<docDocumentProperties.h>
+#   include	<docFieldKind.h>
+#   include	<docDocumentField.h>
+#   include	<docObject.h>
+#   include	"docObjects.h"
+#   include	"docParaBuilderImpl.h"
+#   include	"docParaBuilder.h"
 
 #   include	<appDebugon.h>
 
 /************************************************************************/
 /*									*/
 /*  Evaluate an 'INCLUDEPICTURE' field.					*/
+/*  Also used for 'NeXTGraphic' fields.					*/
 /*									*/
 /************************************************************************/
 
 int docRecalculateIncludePictureField(
 				int *				pCalculated,
-				int *				pPartShift,
 				int *				pStroffShift,
-				BufferItem *			paraBi,
-				int				part,
-				int				partCount,
-				DocumentField *			df,
-				const RecalculateFields *	rf )
+				struct ParagraphBuilder *	pb,
+				struct DocumentField *		df,
+				const RecalculateFields *	rf,
+				int				partHead,
+				int				partCount )
     {
-    int				rval= 0;
+    int				partTail= partHead+ partCount;
     IncludePictureField		ipf;
 
-    const DocumentProperties *	dp= &(rf->rfDocument->bdProperties);
+    const DocumentProperties *	dp= rf->rfDocument->bdProperties;
 
     TextParticule *		tp;
 
-    InsertedObject *		io;
+    struct InsertedObject *	io;
     int				objectNumber;
 
-    int				oldPartCount= paraBi->biParaParticuleCount;
-    int				oldStrlen= docParaStrlen( paraBi );
+    BufferItem *		paraNode= pb->pbParaNode;
+    int				oldStrlen= docParaStrlen( paraNode );
     int				stroff;
 
     int				stroffShift= 0;
 
-    int				textAttributeNumber;
+    int				textAttrNr;
     int				res= -1;
 
     MemoryBuffer		fullName;
@@ -57,16 +66,13 @@ int docRecalculateIncludePictureField(
     docInitIncludePictureField( &ipf );
 
     if  ( docGetIncludePictureField( &ipf, df ) )
-	{ LDEB(1); rval= -1; goto ready;	}
+	{ LDEB(1); partTail= -1; goto ready;	}
 
-    tp= paraBi->biParaParticules+ part+ 1;
+    tp= paraNode->biParaParticules+ partHead+ 1;
 
     if  ( partCount == 1		&&
-	  tp->tpKind == DOCkindOBJECT	)
+	  tp->tpKind == TPkindOBJECT	)
 	{ *pCalculated= 0; goto ready; }
-
-    if  ( docGetIncludePictureField( &ipf, df ) )
-	{ LDEB(1); rval= -1; goto ready;	}
 
     if  ( ipf.ipfFilename.mbSize < 1 )
 	{ LDEB(ipf.ipfFilename.mbSize); *pCalculated= 0; goto ready; }
@@ -74,14 +80,14 @@ int docRecalculateIncludePictureField(
     {
     const int		relativeIsFile= 1;
 
-    if  ( appAbsoluteName( &fullName, &(ipf.ipfFilename),
+    if  ( fileAbsoluteName( &fullName, &(ipf.ipfFilename),
 				    relativeIsFile, &(dp->dpFilename) ) < 0 )
-	{ LDEB(1); *pCalculated= 0; rval= -1; goto ready; }
+	{ LDEB(1); *pCalculated= 0; partTail= -1; goto ready; }
     }
 
     io= docClaimObject( &objectNumber, rf->rfDocument );
     if  ( ! io )
-	{ XDEB(io); rval= -1; goto ready;	}
+	{ XDEB(io); partTail= -1; goto ready;	}
 
     res= docReadFileObject( &fullName, io );
     
@@ -90,40 +96,68 @@ int docRecalculateIncludePictureField(
 	docDeleteObject( rf->rfDocument, objectNumber );
 
 	if  ( docFieldReplaceContents( &stroff,
-		&stroffShift, &textAttributeNumber, paraBi, part, partCount,
+		&stroffShift, &textAttrNr, paraNode, partHead, partCount,
 		    *pStroffShift,
 		    (const char *)fullName.mbBytes, fullName.mbSize, rf ) )
-	    { LDEB(1); rval= -1; goto ready;	}
+	    { LDEB(1); partTail= -1; goto ready;	}
 
-	tp= docInsertTextParticule( paraBi, part+ 1, stroff, fullName.mbSize,
-				    DOCkindSPAN, textAttributeNumber );
+	tp= docParaGraphBuilderInsertSpanParticule( pb,
+			partHead+ 1, stroff, fullName.mbSize, textAttrNr );
 	if  ( ! tp )
-	    { XDEB(tp); rval= -1; goto ready;	}
+	    { XDEB(tp); partTail= -1; goto ready;	}
+	partTail= partHead+ 1;
 	}
     else{
+	if  ( df->dfKind == DOCfkNEXTGRAPHIC )
+	    {
+	    const PictureProperties *	pip= &(io->ioPictureProperties);
+
+	    if  ( ipf.ipfTwipsWide > 0			&&
+		  io->ioTwipsWide != ipf.ipfTwipsWide	)
+		{
+		io->ioTwipsWide= ipf.ipfTwipsWide;
+
+		if  ( pip->pipTwipsWide > 0 )
+		    {
+		    io->ioScaleXSet= ( 100* io->ioTwipsWide )/
+							pip->pipTwipsWide;
+		    }
+		}
+
+	    if  ( ipf.ipfTwipsHigh > 0			&&
+		  io->ioTwipsHigh != ipf.ipfTwipsHigh	)
+		{
+		io->ioTwipsHigh= ipf.ipfTwipsHigh;
+		if  ( pip->pipTwipsHigh > 0 )
+		    {
+		    io->ioScaleYSet= ( 100* io->ioTwipsHigh )/
+							pip->pipTwipsHigh;
+		    }
+		}
+	    }
+
 	if  ( docFieldReplaceContents( &stroff,
-			&stroffShift, &textAttributeNumber,
-			paraBi, part, partCount,
+			&stroffShift, &textAttrNr,
+			paraNode, partHead, partCount,
 			*pStroffShift, " ", 1, rf ) )
-	    { LDEB(1); rval= -1; goto ready;	}
+	    { LDEB(1); partTail= -1; goto ready;	}
 
-	tp= docInsertTextParticule( paraBi, part+ 1, stroff, 1,
-				    DOCkindOBJECT, textAttributeNumber );
+	tp= docParaGraphBuilderInsertObjectParticule( pb,
+			partHead+ 1, stroff, 1, textAttrNr, objectNumber );
 	if  ( ! tp )
-	    { XDEB(tp); rval= -1; goto ready;	}
+	    { XDEB(tp); partTail= -1; goto ready;	}
 
-	tp->tpObjectNumber= objectNumber;
+	partTail= partHead+ 1;
 	}
 
     *pCalculated= 1;
-    *pPartShift= paraBi->biParaParticuleCount- oldPartCount;
-    *pStroffShift= docParaStrlen( paraBi )- oldStrlen;
+    *pStroffShift= docParaStrlen( paraNode )- oldStrlen;
 
   ready:
 
     docCleanIncludePictureField( &ipf );
     utilCleanMemoryBuffer( &fullName );
 
-    return rval;
+    return partTail;
     }
 

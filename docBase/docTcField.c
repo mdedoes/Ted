@@ -10,10 +10,10 @@
 #   include	<string.h>
 #   include	<ctype.h>
 
-
 #   include	<appDebugon.h>
 
 #   include	"docDocumentField.h"
+#   include	"docFieldKind.h"
 
 /************************************************************************/
 /*									*/

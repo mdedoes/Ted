@@ -12,7 +12,7 @@
 
 #   include	<appDebugon.h>
 
-#   include	"docBuf.h"
+#   include	"docTableRectangle.h"
 
 /************************************************************************/
 /*									*/
@@ -32,7 +32,7 @@ void docInitTableRectangle(	TableRectangle *	tr )
     tr->trRow11= -1;
 
     tr->trIsRowSlice= 0;
-    tr->trIsColSlice= 0;
+    tr->trIsColumnSlice= 0;
     tr->trIsTableSlice= 0;
     tr->trIsWholeTable= 0;
     tr->trIsSingleCell= 0;

@@ -14,9 +14,6 @@
 /* Define if you have the socket function.  */
 #undef HAVE_SOCKET
 
-/* Define if you have the strerror function.  */
-#undef HAVE_STRERROR
-
 /* Define if you have the uname function.  */
 #undef HAVE_UNAME
 
@@ -63,5 +60,6 @@
 #   undef	USE_LIBTIFF
 #   undef	USE_LIBPNG
 #   undef	USE_LIBXPM
+#   undef	USE_LIBWEBP
 
 #   endif	/*  BITMAP_CONFIG_H  */

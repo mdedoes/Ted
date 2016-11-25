@@ -1,7 +1,5 @@
 #   include	"bitmapConfig.h"
 
-#   include	<stdlib.h>
-
 #   include	"bmGrayHisto.h"
 
 #   include	"bmRender.h"
@@ -79,6 +77,11 @@ static void bmThresholdFillHistogram8(
 /*									*/
 /************************************************************************/
 
+# ifdef __GNUC__
+# pragma GCC diagnostic push
+# pragma GCC diagnostic ignored "-Wunused-parameter"
+# endif
+
 int bmThreshold(	RasterImage *			riOut,
 			const RasterImage *		riIn,
 			int				ignoredInt )
@@ -143,7 +146,7 @@ int bmThreshold(	RasterImage *			riOut,
 	bmThresholdJohannsen( &th );
 	}
     else{
-	bmThresholdJohannsen( &th );
+	bmThresholdKapur( &th );
 	}
 
     /*  5  */
@@ -165,7 +168,7 @@ int bmThreshold(	RasterImage *			riOut,
     /*  7  */
     if  ( bmFillImage( &ca, bitmapUnit, swapBitmapBytes, swapBitmapBits,
 			dither, ri.riBytes, &(ri.riDescription),
-			riIn, (const DocumentRectangle *)0 ) )
+			riIn, (const struct DocumentRectangle *)0 ) )
 	{ LDEB(1); rval= -1; goto ready;	}
 
     /* steal */
@@ -178,3 +181,8 @@ int bmThreshold(	RasterImage *			riOut,
 
     return rval;
     }
+
+# ifdef __GNUC__
+# pragma GCC diagnostic pop
+# endif
+

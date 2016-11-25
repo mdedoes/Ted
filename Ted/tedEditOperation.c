@@ -7,22 +7,31 @@
 #   include	"tedConfig.h"
 
 #   include	<stddef.h>
-#   include	<stdio.h>
 #   include	<ctype.h>
 
 #   include	<docScreenLayout.h>
 #   include	<docField.h>
 #   include	"tedEdit.h"
 #   include	"tedLayout.h"
+#   include	"docScreenObjects.h"
+#   include	"tedDraw.h"
 #   include	"tedSelect.h"
 #   include	"tedDocument.h"
-#   include	"tedApp.h"
+#   include	<tedDocFront.h>
 #   include	<docTreeType.h>
 #   include	<docTreeNode.h>
 #   include	<docRecalculateFields.h>
 #   include	<docRtfTrace.h>
 #   include	<docDocumentNote.h>
 #   include	<docNotes.h>
+#   include	<docDocumentField.h>
+#   include	<docFieldKind.h>
+#   include	<docLayoutDocumentTree.h>
+#   include	<docLayout.h>
+#   include	<appEditDocument.h>
+#   include	<appGuiDocument.h>
+#   include	<docBuf.h>
+#   include	<docNodeTree.h>
 
 #   include	<appDebugon.h>
 
@@ -35,23 +44,23 @@
 /************************************************************************/
 
 static int tedEditRedoTreeLayout(	TedEditOperation *	teo,
-					BufferItem *		bodySectNode,
-					DocumentTree *		dt )
+					struct BufferItem *	bodySectNode,
+					struct DocumentTree *	tree )
     {
-    const int		page= dt->dtPageFormattedFor;
-    const int		column= dt->dtColumnFormattedFor;
+    const int		page= tree->dtPageFormattedFor;
+    const int		column= tree->dtColumnFormattedFor;
     const int		adjustDocument= 1;
 
-    docInvalidateTreeLayout( dt );
+    docInvalidateTreeLayout( tree );
 
-    if  ( docLayoutDocumentTree( dt, &(teo->teoChangedRect),
-			    page, column, dt->dtY0UsedTwips,
+    if  ( docLayoutDocumentTree( tree, &(teo->teoChangedRect),
+			    page, column, tree->dtY0UsedTwips,
 			    bodySectNode, 
 			    &(teo->teoLayoutContext),
 			    docStartScreenLayoutForTree, adjustDocument ) )
 	{ LDEB(1); return -1;	}
 
-    if  ( tedOpenTreeObjects( dt, &(teo->teoLayoutContext) ) )
+    if  ( docOpenTreeObjects( tree, &(teo->teoLayoutContext) ) )
 	{ LDEB(1); return -1;	}
 
     return 0;
@@ -61,7 +70,7 @@ static int tedEditRedoTreeLayout(	TedEditOperation *	teo,
 
 static int tedEditRecalculateTextLevelFields(	EditOperation *		eo,
 						RecalculateFields *	rf,
-						DocumentTree *		tree )
+						struct DocumentTree *		tree )
     {
     rf->rfSelectedTree= eo->eoTree;
     rf->rfSelHead= eo->eoSelectedRange.erHead;
@@ -82,22 +91,24 @@ static int tedEditRecalculateTextLevelFields(	EditOperation *		eo,
 /*									*/
 /************************************************************************/
 
-static int tedEditRedoRangeLayout(	TedEditOperation *	teo,
-					DocumentTree *		tree,
-					BufferItem *		bodySectNode )
+static int tedEditRedoRangeLayout(
+			TedEditOperation *		teo,
+			struct DocumentTree *		tree,
+			struct BufferItem *		bodySectNode )
     {
     EditOperation *		eo= &(teo->teoEo);
-    BufferDocument *		bd= eo->eoDocument;
+    struct BufferDocument *		bd= eo->eoDocument;
     EditRange *			er= &(eo->eoReformatRange);
 
-    BufferItem *		selRootNode;
+    struct BufferItem *		selRootNode;
     DocumentSelection		dsLayout;
 
     if  ( docLayoutInvalidateRange( &dsLayout, bd, tree, er ) )
 	{ LDEB(1); return -1;	}
 
-    selRootNode= docGetSelectionRoot( (DocumentTree **)0,
-					(BufferItem **)0, bd, &dsLayout );
+    selRootNode= docGetSelectionRoot( (struct DocumentTree **)0,
+					(struct BufferItem **)0,
+					bd, &dsLayout );
     if  ( ! selRootNode )
 	{ XDEB(selRootNode); return -1;	}
 
@@ -121,7 +132,7 @@ static int tedEditRedoRangeLayout(	TedEditOperation *	teo,
 					    &(teo->teoChangedRect) ) )
 	    { LDEB(1);	}
 
-	if  ( tedOpenNodeObjects( selRootNode, &(teo->teoLayoutContext) ) )
+	if  ( docOpenNodeObjects( selRootNode, &(teo->teoLayoutContext) ) )
 	    { LDEB(1); return -1;	}
 
 	if  ( reachedBottom )
@@ -144,19 +155,21 @@ static int tedEditRefreshLayout(	TedEditOperation *	teo )
     {
     const LayoutContext  *	lc= &(teo->teoLayoutContext);
     EditOperation *		eo= &(teo->teoEo);
-    BufferDocument *		bd= eo->eoDocument;
+    struct BufferDocument *		bd= eo->eoDocument;
     EditRange *			er= &(eo->eoReformatRange);
 
     EditDocument *		ed= teo->teoEditDocument;
 
     RecalculateFields		rf;
 
-    DocumentTree *		tree;
-    BufferItem *		bodySectNode;
+    struct DocumentTree *		tree;
+    struct BufferItem *		bodySectNode;
     int				reachedBottom= 0;
 
     DocumentPosition		dpLast;
     int				lastParaNr;
+
+    DocumentSelection		dsLayout;
 
     if  ( docGetRootOfSelectionScope( &tree, &bodySectNode,
 						bd, &(eo->eoSelectionScope) ) )
@@ -178,18 +191,19 @@ static int tedEditRefreshLayout(	TedEditOperation *	teo )
 	}
 
 #   if LOG_RELAYOUT
-    docLogRectangle( "EDITED", &(teo->teoChangedRect) );
+    geoLogRectangle( "EDITED", &(teo->teoChangedRect) );
 #   endif
 
     docInitRecalculateFields( &rf );
 
     rf.rfDocument= bd;
     rf.rfTree= tree;
+    rf.rfSelectionScope= &(eo->eoSelectionScope);
     rf.rfSelectedTree= tree;
-    rf.rfCloseObject= lc->lcCloseObject;
     rf.rfUpdateFlags= eo->eoFieldUpdate;
     rf.rfFieldsUpdated= 0;
     rf.rfBodySectNode= bodySectNode;
+    rf.rfLocale= lc->lcLocale;
 
     if  ( ( eo->eoFieldUpdate & FIELDdoCHFTN ) != 0		||
 	  utilIndexSetGetFirst( &(eo->eoNoteFieldsAdded) ) >= 0	||
@@ -232,15 +246,13 @@ static int tedEditRefreshLayout(	TedEditOperation *	teo )
 
     switch( eo->eoReformatNeeded )
 	{
-	DocumentSelection	dsLayout;
-
 	case REFORMAT_ADJUST_PARAGRAPH:
 	    if  ( eo->eoParaAdjustParagraphNumber < 0	||
 		  tedAdjustParagraphLayout( teo, tree )	)
 		{ LDEB(eo->eoParaAdjustParagraphNumber); }
 
 #	    if LOG_RELAYOUT
-	    docLogRectangle( "ADJPAR", &(teo->teoChangedRect) );
+	    geoLogRectangle( "ADJPAR", &(teo->teoChangedRect) );
 #	    endif
 	    break;
 
@@ -250,7 +262,7 @@ static int tedEditRefreshLayout(	TedEditOperation *	teo )
 		{ LDEB(1); return -1;	}
 
 #	    if LOG_RELAYOUT
-	    docLogRectangle( "RANGE-", &(teo->teoChangedRect) );
+	    geoLogRectangle( "RANGE-", &(teo->teoChangedRect) );
 #	    endif
 	    break;
 
@@ -262,11 +274,11 @@ static int tedEditRefreshLayout(	TedEditOperation *	teo )
 				    &(teo->teoChangedRect) ) )
 		{ LDEB(1);	}
 
-	    if  ( tedOpenNodeObjects( eo->eoBodySectNode,
+	    if  ( docOpenNodeObjects( eo->eoBodySectNode,
 						&(teo->teoLayoutContext) ) )
 		{ LDEB(1); return -1;	}
 #	    if LOG_RELAYOUT
-	    docLogRectangle( "SECT--", &(teo->teoChangedRect) );
+	    geoLogRectangle( "SECT--", &(teo->teoChangedRect) );
 #	    endif
 	    break;
 
@@ -278,12 +290,12 @@ static int tedEditRefreshLayout(	TedEditOperation *	teo )
 						&(teo->teoLayoutContext) ) )
 		{ LDEB(1); return -1;	}
 
-	    if  ( tedOpenNodeObjects( bd->bdBody.dtRoot, lc ) )
+	    if  ( docOpenNodeObjects( bd->bdBody.dtRoot, lc ) )
 		{ LDEB(1); return -1;	}
 
 	    tedIncludeRectangleInChange( teo, &(ed->edFullRect) );
 #	    if LOG_RELAYOUT
-	    docLogRectangle( "DOC---", &(teo->teoChangedRect) );
+	    geoLogRectangle( "DOC---", &(teo->teoChangedRect) );
 #	    endif
 
 	    break;
@@ -313,7 +325,7 @@ static int tedEditRedoNoteLayout(	int			fieldNr,
     TedEditOperation *		teo= (TedEditOperation *)voidteo;
     EditOperation *		eo= &(teo->teoEo);
     const LayoutContext  *	lc= &(teo->teoLayoutContext);
-    BufferDocument *		bd= lc->lcDocument;
+    struct BufferDocument *	bd= lc->lcDocument;
     DocumentField *		df;
     DocumentNote *		dn;
 
@@ -329,7 +341,7 @@ static int tedEditRedoNoteLayout(	int			fieldNr,
     if  ( ! dn )
 	{ XDEB(dn); return -1;	}
 
-    if  ( docCheckSeparatorItemForNoteType( bd,
+    if  ( docCheckSeparatorExistenceForNoteType( bd,
 					dn->dnNoteProperties.npTreeType ) )
 	{ LDEB(1); return -1;	}
 
@@ -338,15 +350,16 @@ static int tedEditRedoNoteLayout(	int			fieldNr,
 
     rf.rfDocument= bd;
     rf.rfTree= &(dn->dnDocumentTree);
-    rf.rfCloseObject= teo->teoLayoutContext.lcCloseObject;
+    rf.rfSelectionScope= &(dn->dnDocumentTree.dtRoot->biSectSelectionScope);
     rf.rfUpdateFlags= fieldUpdMask;
     rf.rfFieldsUpdated= 0;
+    rf.rfLocale= lc->lcLocale;
 
     if  ( tedEditRecalculateTextLevelFields( eo, &rf, &(dn->dnDocumentTree) ) )
 	{ XDEB(fieldUpdMask);	}
 
     /*  NO! Is just to setup the note.
-    docEditIncludeNodeInReformatRange( eo, dn->dnDocumentTree.dtRoot );
+    docEditIncludeNodeInReformatRange( eo, dn->dnstruct DocumentTree.dtRoot );
     */
 
     /*  Exclude from Edit operation: In another tree */
@@ -367,10 +380,10 @@ static void tedEditRefreshScreenRectangle(	TedEditOperation *	teo )
     {
     EditDocument *		ed= teo->teoEditDocument;
     const LayoutContext  *	lc= &(teo->teoLayoutContext);
-    BufferDocument *		bd= lc->lcDocument;
+    struct BufferDocument *		bd= lc->lcDocument;
 
     DocumentRectangle		drFull;
-    BufferItem *		rootNode= bd->bdBody.dtRoot;
+    struct BufferItem *		rootNode= bd->bdBody.dtRoot;
 
     docGetPixelRectangleForPages( &drFull,
 					&(teo->teoLayoutContext),
@@ -450,12 +463,10 @@ static int tedEditFinishIBarSelection2(
 			    const DocumentPosition *	dpNew )
     {
     EditDocument *		ed= teo->teoEditDocument;
-    BufferDocument *		bd= teo->teoEo.eoDocument;
+    struct BufferDocument *	bd= teo->teoEo.eoDocument;
 
     int				scrolledX= 0;
     int				scrolledY= 0;
-
-    const int			lastLine= 0;
 
     /*  1  */
     if  ( teo->teoRefreshScreenRectangle )
@@ -468,6 +479,8 @@ static int tedEditFinishIBarSelection2(
 
     if  ( dpNew->dpNode )
 	{
+	const int		lastLine= 0;
+
 	DocumentPosition	dpIbar;
 
 	/*  2  */
@@ -576,7 +589,6 @@ static int tedEditFinishSelection2(	TedEditOperation *		teo,
     return 0;
     }
 
-
 int tedEditFinishSelection(	TedEditOperation *		teo,
 				const DocumentSelection *	dsNew )
     {
@@ -684,7 +696,7 @@ int tedStartEditOperation(	TedEditOperation *	teo,
     {
     EditOperation *		eo= &(teo->teoEo);
     TedDocument *		td= (TedDocument *)ed->edPrivateData;
-    BufferDocument *		bd= td->tdDocument;
+    struct BufferDocument *	bd= td->tdDocument;
 
     DocumentSelection		ds;
 
@@ -701,13 +713,12 @@ int tedStartEditOperation(	TedEditOperation *	teo,
     /**/
     teo->teoEditDocument= ed;
     tedSetScreenLayoutContext( &(teo->teoLayoutContext), ed );
-    eo->eoCloseObject= teo->teoLayoutContext.lcCloseObject;
 
     if  ( tedGetSelection( &ds, sg, sd,
 				&(eo->eoTree), &(eo->eoBodySectNode), ed ) )
 	{ LDEB(1); return -1;	}
 
-    if  ( docStartEditOperation( eo, &ds, bd ) )
+    if  ( docStartEditOperation( eo, &ds, bd, (DocumentField *)0 ) )
 	{ LDEB(1); return -1;	}
 
     teo->teoSavedTextAttribute= td->tdSelectionDescription.sdTextAttribute;
@@ -790,12 +801,12 @@ int tedFinishEditOperation(		TedEditOperation *	teo )
 
 /************************************************************************/
 /*									*/
-/*  Widen redraw rectangle to whole BufferItems.			*/
+/*  Widen redraw rectangle to whole struct BufferItems.			*/
 /*									*/
 /************************************************************************/
 
 int tedEditIncludeNodeInRedraw(	TedEditOperation *	teo,
-				const BufferItem *	bi )
+				const struct BufferItem *	node )
     {
     EditDocument *		ed= teo->teoEditDocument;
     const LayoutContext  *	lc= &(teo->teoLayoutContext);
@@ -803,13 +814,13 @@ int tedEditIncludeNodeInRedraw(	TedEditOperation *	teo,
 
     drLocal.drX0= ed->edFullRect.drX0;
     drLocal.drX1= ed->edFullRect.drX1;
-    drLocal.drY0= docLayoutYPixels( lc, &(bi->biTopPosition) )- 1;
-    drLocal.drY1= docLayoutYPixels( lc, &(bi->biBelowPosition) )- 1;
+    drLocal.drY0= docLayoutYPixels( lc, &(node->biTopPosition) )- 1;
+    drLocal.drY1= docLayoutYPixels( lc, &(node->biBelowPosition) )- 1;
 
-    if  ( docIsRowNode( bi ) )
+    if  ( docIsRowNode( node ) )
 	{
 	drLocal.drY1=
-		docLayoutYPixels( lc, &(bi->biRowBelowAllCellsPosition) )- 1;
+		docLayoutYPixels( lc, &(node->biRowBelowAllCellsPosition) )- 1;
 	}
 
     tedIncludeRectangleInChange( teo, &drLocal );
@@ -818,13 +829,13 @@ int tedEditIncludeNodeInRedraw(	TedEditOperation *	teo,
     }
 
 int tedEditIncludeRowsInRedraw(	TedEditOperation *	teo,
-				const BufferItem *	parentNode,
+				const struct BufferItem *	parentNode,
 				int			row0,
 				int			row1 )
     {
     EditDocument *		ed= teo->teoEditDocument;
     const LayoutContext  *	lc= &(teo->teoLayoutContext);
-    const BufferItem *		rowNode;
+    const struct BufferItem *		rowNode;
     DocumentRectangle		drLocal;
 
     drLocal.drX0= ed->edFullRect.drX0;

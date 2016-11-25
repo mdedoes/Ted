@@ -5,10 +5,11 @@
 /*									*/
 /************************************************************************/
 
-#   include	"sioGeneral.h"
+struct SimpleInputStream;
+struct SimpleOutputStream;
 
-extern SimpleInputStream * sioInQuotedPrintableOpen(
-					    SimpleInputStream * sisQuoted );
+extern struct SimpleInputStream * sioInQuotedPrintableOpen(
+				    struct SimpleInputStream * sisQuoted );
 
-extern SimpleOutputStream * sioOutQuotedPrintableOpen(
-					    SimpleOutputStream * sosQuoted );
+extern struct SimpleOutputStream * sioOutQuotedPrintableOpen(
+				    struct SimpleOutputStream * sosQuoted );

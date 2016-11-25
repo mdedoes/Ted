@@ -17,7 +17,10 @@
 #   include	"appSystem.h"
 #   include	"appPaper.h"
 #   include	"geoString.h"
-#   include	<sioFileio.h>
+#   include	"sioFileio.h"
+#   include	"sioGeneral.h"
+#   include	"utilMemoryBuffer.h"
+
 #   include	<appDebugon.h>
 
 #   if USE_LIBPAPER
@@ -353,7 +356,7 @@ const char * utilPaperDefaultSize( void )
 	goto ready;
 	}
 
-    if  ( ! appTestFileExists( &sizeFile ) )
+    if  ( ! fileTestFileExists( &sizeFile ) )
 	{
 	sis= sioInFileioOpen( &sizeFile );
 	if  ( ! sis )

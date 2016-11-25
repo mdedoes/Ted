@@ -7,9 +7,9 @@
 #   ifndef	APP_SYSTEM_H
 #   define	APP_SYSTEM_H
 
-#   include	<utilMemoryBuffer.h>
+struct MemoryBuffer;
 
-typedef int (*FILE_CALLBACK)	(	const MemoryBuffer *	name,
+typedef int (*FILE_CALLBACK)	(	const struct MemoryBuffer *	name,
 					void *			through );
 
 typedef void (*APP_COMPLAIN)(		void *		through,
@@ -46,40 +46,33 @@ typedef void (*APP_COMPLAIN)(		void *		through,
 /*									*/
 /************************************************************************/
 
-extern int appHomeDirectory(	MemoryBuffer *	mb );
-extern int appCurrentDirectory(	MemoryBuffer *	mb );
+extern int fileHomeDirectory(	struct MemoryBuffer *	mb );
+extern int fileCurrentDirectory(	struct MemoryBuffer *	mb );
 
-extern int appTestDirectory(	const MemoryBuffer *	dir );
-extern int appTestFileWritable( const MemoryBuffer *	file );
-extern int appTestFileExists( const MemoryBuffer *	mb );
-extern int appTestFileReadable( const MemoryBuffer *	file );
+extern int fileTestDirectory(	const struct MemoryBuffer *	dir );
+extern int fileTestFileWritable( const struct MemoryBuffer *	file );
+extern int fileTestFileExists( const struct MemoryBuffer *	mb );
+extern int fileTestFileReadable( const struct MemoryBuffer *	file );
 
-extern int appMakeDirectory(	const MemoryBuffer *	dir );
-extern int appMakeDirectories(	const MemoryBuffer *	dir );
+extern int fileMakeDirectory(	const struct MemoryBuffer *	dir );
+extern int fileMakeDirectories(	const struct MemoryBuffer *	dir );
 
 extern long appGetTimestamp( void );
 
 extern int appMakeUniqueString(	char *		target,
 				unsigned int	maxlen );
 
-extern int appFileNameIsAbsolute( const char *	filename );
+extern int fileRemoveFile(	const struct MemoryBuffer *	filename );
+extern int appRenameFile(	const struct MemoryBuffer *	newName,
+				const struct MemoryBuffer *	oldName );
 
-extern int appAbsoluteName(	MemoryBuffer *		absolute,
-				const MemoryBuffer *	relative,
-				int			relativeIsFile,
-				const MemoryBuffer *	nameRelativeTo );
+extern int appCopyFile(		const struct MemoryBuffer *	newName,
+				const struct MemoryBuffer *	oldName );
 
-extern int appRemoveFile(	const MemoryBuffer *	filename );
-extern int appRenameFile(	const MemoryBuffer *	newName,
-				const MemoryBuffer *	oldName );
-
-extern int appCopyFile(		const MemoryBuffer *	newName,
-				const MemoryBuffer *	oldName );
-
-extern int appForAllFiles(	const MemoryBuffer *	dir,
-				const char *		ext,
-				void *			through,
-				FILE_CALLBACK		callback );
+extern int appForAllFiles(	const struct MemoryBuffer *	dir,
+				const char *			ext,
+				void *				through,
+				FILE_CALLBACK			callback );
 
 extern int appOpenSocket(	const char *		hostName,
 				const char *		portName,
@@ -93,18 +86,28 @@ extern int appAcceptSocket(	int			lfd,
 				void *			through,
 				APP_COMPLAIN		complain );
 
-extern int appFileGetFileExtension(	MemoryBuffer *		extension,
-					const MemoryBuffer *	filename );
+extern int fileGetFileExtension(	struct MemoryBuffer *		extension,
+					const struct MemoryBuffer *	filename );
 
-extern int appFileGetRelativeName(	MemoryBuffer *		relative,
-					const MemoryBuffer *	filename );
+extern int fileGetRelativeName(	struct MemoryBuffer *		relative,
+					const struct MemoryBuffer *	filename );
 
-extern int appDirectoryOfFileName(	MemoryBuffer *		dir,
-					const MemoryBuffer *	name );
+extern int fileGetBaseName(		struct MemoryBuffer *		relative,
+					const struct MemoryBuffer *	filename );
 
-extern int appFileSetExtension(		MemoryBuffer *		filename,
+extern int fileDirectoryOfFileName(	struct MemoryBuffer *		dir,
+					const struct MemoryBuffer *	name );
+
+extern int fileChangeExtension(	struct MemoryBuffer *		filename,
 					const char *		extension );
-extern int appFileAddExtension(		MemoryBuffer *		filename,
+extern int fileAddExtension(	struct MemoryBuffer *		filename,
 					const char *		extension );
+
+extern int fileNameIsAbsolute(	const char *		filename );
+
+extern int fileAbsoluteName(		struct MemoryBuffer *		absolute,
+					const struct MemoryBuffer *	relative,
+					int			relativeIsFile,
+					const struct MemoryBuffer *	nameRelativeTo );
 
 #   endif	/*  APP_SYSTEM_H	*/

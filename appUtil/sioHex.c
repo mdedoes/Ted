@@ -12,6 +12,8 @@
 #   include	<stdlib.h>
 
 #   include	"sioHex.h"
+#   include	"sioGeneral.h"
+
 #   include	<appDebugon.h>
 
 
@@ -31,8 +33,17 @@ static unsigned char		SioHexIndices[256];
 /*									*/
 /************************************************************************/
 
+# ifdef __GNUC__
+# pragma GCC diagnostic push
+# pragma GCC diagnostic ignored "-Wunused-parameter"
+# endif
+
 static int sioInHexClose( void *	voids )
     { return 0;	}
+
+# ifdef __GNUC__
+# pragma GCC diagnostic pop
+# endif
 
 static int sioInHexReadBytes(	void *		voidsis,
 				unsigned char *	buffer,

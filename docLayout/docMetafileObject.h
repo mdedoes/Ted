@@ -8,8 +8,10 @@
 #   define		DOC_METAFILE_OBJECT_H
 
 #   include		<drawMetafile.h>
-#   include		<docBuf.h>
-#   include		"layoutContext.h"
+
+struct PictureProperties;
+struct SimpleInputStream;
+struct LayoutContext;
 
 /************************************************************************/
 /*									*/
@@ -18,9 +20,9 @@
 /************************************************************************/
 
 extern int docSetMetafilePlayer( MetafilePlayer *		mp,
-				SimpleInputStream *		sisMeta,
-				const LayoutContext *		lc,
-				const PictureProperties *	pip,
+				struct SimpleInputStream *	sisMeta,
+				const struct LayoutContext *	lc,
+				const struct PictureProperties * pip,
 				int				pixelsWide,
 				int				pixelsHigh );
 

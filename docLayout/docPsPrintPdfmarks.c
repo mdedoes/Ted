@@ -10,12 +10,15 @@
 #   include	<stddef.h>
 #   include	<stdio.h>
 #   include	<string.h>
+#   include	<time.h>
 
 #   include	<psPrint.h>
 #   include	<docCalculateToc.h>
 #   include	<docEvalField.h>
 #   include	"docPsPrintImpl.h"
 #   include	<utilMemoryBufferPrintf.h>
+#   include	<docDocumentProperties.h>
+#   include	<sioGeneral.h>
 
 #   include	<appDebugon.h>
 
@@ -29,12 +32,13 @@ static void psSaveInfo(		const char *		tag,
 				const char *		info,
 				PrintingState *		ps )
     {
+    const int		utf8= 1;
+
     if  ( ! info )
 	{ return;	}
 
     sioOutPrintf( ps->psSos, "  %s (", tag );
-    psPrintString( ps->psSos, (unsigned char *)info, strlen( info ),
-								ps->ps7Bits );
+    psPrintString( ps->psSos, info, strlen( info ), ps->ps7Bits, utf8 );
     sioOutPrintf( ps->psSos, ")\n" );
     }
 
@@ -45,10 +49,9 @@ static void psSaveMbInfo(	const char *		tag,
     if  ( utilMemoryBufferIsEmpty( info ) )
 	{ return;	}
 
-    sioOutPrintf( ps->psSos, "  %s (", tag );
-    psPrintString( ps->psSos, (unsigned char *)info->mbBytes, info->mbSize,
-								ps->ps7Bits );
-    sioOutPrintf( ps->psSos, ")\n" );
+    sioOutPrintf( ps->psSos, "  %s ", tag );
+    psPrintPdfMarkStringValue( ps, info );
+    sioOutPrintf( ps->psSos, "\n" );
     }
 
 static void psSaveDate(		const char *		tag,
@@ -102,7 +105,7 @@ int docPsDocinfoPdfmark( PrintingState *		ps,
 /************************************************************************/
 
 static int docPsOutlinePdfmark(	PrintingState *		ps,
-				BufferDocument *	bd,
+				struct BufferDocument *	bd,
 				const TocEntry *	te,
 				int			closeLevel,
 				int			count )
@@ -163,7 +166,7 @@ static int docPsOutlinePdfmark(	PrintingState *		ps,
 /************************************************************************/
 
 int docPsOutlinePdfmarks(	PrintingState *		ps,
-				BufferDocument *	bd )
+				struct BufferDocument *	bd )
     {
     int			rval= 0;
 

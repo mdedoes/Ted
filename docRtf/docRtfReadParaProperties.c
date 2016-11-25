@@ -1,19 +1,24 @@
 /************************************************************************/
 /*									*/
-/*  Read/Write paragraph properties to/from RTF.			*/
+/*  Read paragraph properties from RTF.					*/
 /*									*/
 /************************************************************************/
 
 #   include	"docRtfConfig.h"
 
-#   include	<stdio.h>
 #   include	<ctype.h>
 
-#   include	<appDebugon.h>
-
 #   include	"docRtfReaderImpl.h"
+#   include	"docRtfReadTreeStack.h"
 #   include	<docTreeNode.h>
 #   include	<docNodeTree.h>
+#   include	<docRowNodeProperties.h>
+#   include	<docBuf.h>
+#   include	<docParaProperties.h>
+#   include	<docAttributes.h>
+#   include	<docParaBuilder.h>
+
+#   include	<appDebugon.h>
 
 /************************************************************************/
 /*									*/
@@ -23,26 +28,27 @@
 
 int docRtfRememberParaShadingProperty(	const RtfControlWord *	rcw,
 					int			arg,
-					RtfReader *	rrc )
+					RtfReader *		rr )
     {
-    RtfReadingState *		rrs= rrc->rrcState;
+    RtfReadingState *		rrs= rr->rrState;
 
     if  ( docSetShadingProperty( &(rrs->rrsParagraphShading),
 						    rcw->rcwID, arg ) < 0 )
 	{ SLDEB(rcw->rcwWord,arg); return -1;	}
 
-    /*
+    /* Kept on the style only
     PROPmaskADD( &(rrs->rrsParaPropertyMask), PPpropSHADING );
     */
+    PROPmaskADD( &(rr->rrStyle.dsParaMask), PPpropSHADING );
 
     return 0;
     }
 
 int docRtfRememberParagraphProperty(	const RtfControlWord *	rcw,
 					int			arg,
-					RtfReader *		rrc )
+					RtfReader *		rr )
     {
-    RtfReadingState *		rrs= rrc->rrcState;
+    RtfReadingState *		rrs= rr->rrState;
     ParagraphProperties *	pp= &(rrs->rrsParagraphProperties);
 
     switch( rcw->rcwID )
@@ -52,11 +58,11 @@ int docRtfRememberParagraphProperty(	const RtfControlWord *	rcw,
 	    return 0;
 
 	case PPpropSTYLE:
-	    rrc->rrcStyle.dsLevel= DOClevPARA;
+	    rr->rrStyle.dsLevel= DOClevPARA;
 	    break;
 
 	case PPpropLISTOVERRIDE:
-	    rrc->rrcListOverride.loIndex= arg;
+	    rr->rrcListOverride.loIndex= arg;
 	    break;
 
 	case PPpropTOP_BORDER:
@@ -66,7 +72,7 @@ int docRtfRememberParagraphProperty(	const RtfControlWord *	rcw,
 	case PPprop_BOX_BORDER:
 	case PPpropBETWEEN_BORDER:
 	case PPpropBAR_BORDER:
-	    arg= docRtfReadGetBorderNumber( rrc );
+	    arg= docRtfReadGetBorderNumber( rr );
 	    if  ( arg < 0 )
 		{ SLDEB(rcw->rcwWord,arg); return -1;	}
 	    break;
@@ -75,17 +81,14 @@ int docRtfRememberParagraphProperty(	const RtfControlWord *	rcw,
     if  ( docSetParaProperty( pp, rcw->rcwID, arg ) < 0 )
 	{ SLDEB(rcw->rcwWord,arg); return -1;	}
 
-    PROPmaskADD( &(rrc->rrcStyle.dsParaMask), rcw->rcwID );
+    PROPmaskADD( &(rr->rrStyle.dsParaMask), rcw->rcwID );
 
     switch( rcw->rcwID )
 	{
 	case PPprop_IN_TABLE:  /* intbl */
-	    if  ( rrc->rrDocument && pp->ppTableNesting > 0 )
-		{ rrc->rrDocument->bdProperties.dpContainsTables= 1;	}
-	    break;
 	case PPpropTABLE_NESTING:  /* itap */
-	    if  ( rrc->rrDocument && pp->ppTableNesting > 0 )
-		{ rrc->rrDocument->bdProperties.dpContainsTables= 1;	}
+	    if  ( rr->rrDocument && pp->ppTableNesting > 0 )
+		{ rr->rrDocument->bdProperties->dpContainsTables= 1;	}
 	    break;
 	}
 
@@ -99,7 +102,7 @@ int docRtfRememberParagraphProperty(	const RtfControlWord *	rcw,
 /*									*/
 /************************************************************************/
 
-int docRtfRefreshParagraphProperties(	BufferDocument *	bd,
+int docRtfRefreshParagraphProperties(	struct BufferDocument *	bd,
 					RtfReadingState *	rrs )
     {
     rrs->rrsParagraphProperties.ppShadingNumber= docItemShadingNumber( bd,
@@ -121,12 +124,11 @@ int docRtfRefreshParagraphProperties(	BufferDocument *	bd,
 /************************************************************************/
 
 int docRtfSetParaProperties(	ParagraphProperties *	pp,
-				BufferDocument *	bd,
-				int			mindTable,
-				RtfReadingState *	rrs,
-				int			breakOverride )
+				struct BufferDocument *	bd,
+				RtfReadingState *	rrs )
     {
-    PropertyMask		ppSetMask;
+    PropertyMask	ppSetMask;
+    const int		mindTable= 1;
 
     docRtfRefreshParagraphProperties( bd, rrs );
 
@@ -141,41 +143,39 @@ int docRtfSetParaProperties(	ParagraphProperties *	pp,
 				    (const DocumentAttributeMap *)0 ) )
 	{ LDEB(1); return -1;	}
 
-    if  ( breakOverride >= 0 )
-	{ pp->ppBreakKind= breakOverride;	}
-
     return 0;
     }
 
-int docRtfAdaptToParaProperties(	struct BufferItem *	paraNode,
-					BufferDocument *	bd,
-					RtfReadingState *	rrs,
-					int			breakOverride )
+int docRtfAdaptToParaProperties(	RtfReader *		rr )
     {
-    const int		mindTable= 1;
-    BufferItem *	rowNode;
+    RtfReadingState *	rrs= rr->rrState;
+    RtfTreeStack *	rts= rr->rrTreeStack;
+    struct BufferItem *	paraNode= rr->rrTreeStack->rtsNode;
+    struct BufferItem *	rowNode;
 
-    if  ( docRtfSetParaProperties( &(paraNode->biParaProperties),
-					bd, mindTable, rrs, breakOverride ) )
+    docRtfRefreshParagraphProperties( rr->rrDocument, rrs );
+
+    if  ( docParaBuilderSetParagraphProperties( rts->rtsParagraphBuilder,
+					    &(rrs->rrsParagraphProperties),
+					    rr->rrParagraphBreakOverride ) )
 	{ LDEB(1); return -1;	}
 
     rowNode= docGetRowLevelNode( paraNode );
-    if  ( paraNode->biParaTableNesting > 0 )
+    if  ( paraNode->biParaProperties->ppTableNesting > 0 )
 	{
 	if  ( ! rowNode->biRowForTable )
 	    {
-	    BufferItem *	cellNode= paraNode->biParent;
+	    struct BufferItem *	cellNode= paraNode->biParent;
 
 	    if  ( paraNode->biNumberInParent > 0	||
 		  cellNode->biNumberInParent > 0	)
 		{
-		if  ( docSplitGroupNodeAtLevel( bd,
-			    (BufferItem **)0, (BufferItem **)0, cellNode,
-			    paraNode->biNumberInParent, DOClevROW ) )
+		if  ( docSplitGroupNodeAtLevel( rr->rrDocument,
+			    (struct BufferItem **)0, (struct BufferItem **)0,
+			    cellNode, paraNode->biNumberInParent, DOClevROW ) )
 		    { LDEB(1); return -1;	}
 
-		docCleanRowProperties( &(rowNode->biRowProperties) );
-		docInitRowProperties( &(rowNode->biRowProperties) );
+		docRowNodeResetRowProperties( rowNode, rr->rrDocument );
 		}
 
 	    docRtfSetForRow( paraNode );
@@ -190,7 +190,8 @@ int docRtfAdaptToParaProperties(	struct BufferItem *	paraNode,
 		}
 	    else{
 		LDEB(rowNode->biChildCount);
-		LLDEB(paraNode->biParaTableNesting,rowNode->biRowForTable);
+		LLDEB(paraNode->biParaProperties->ppTableNesting,
+						    rowNode->biRowForTable);
 		}
 	    }
 	}

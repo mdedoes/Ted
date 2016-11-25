@@ -6,11 +6,11 @@
 
 #   include	"docBaseConfig.h"
 
-#   include	<stdlib.h>
+#   include	"docBorderPropertyAdmin.h"
+#   include	"docBorderProperties.h"
+#   include	<utilNumberedPropertiesAdmin.h>
 
 #   include	<appDebugon.h>
-
-#   include	"docBorderPropertyAdmin.h"
 
 /************************************************************************/
 /*									*/
@@ -29,6 +29,8 @@ void docInitBorderPropertyList(	NumberedPropertiesList *	bpl )
 
 		    BRDRprop_COUNT,
 		    (NumberedPropertiesGetProperty)docGetBorderProperty,
+		    (NumberedPropertiesCopyProperties)0,
+		    (NumberedPropertiesGetNumber)docBorderPropertiesNumberImpl,
 
 		    sizeof(BorderProperties),
 		    (InitPagedListItem)docInitBorderProperties,
@@ -49,17 +51,22 @@ void docInitBorderPropertyList(	NumberedPropertiesList *	bpl )
 /*									*/
 /************************************************************************/
 
-void docGetBorderPropertiesByNumberImpl( BorderProperties *		bp,
+const BorderProperties * docGetBorderPropertiesByNumberImpl(
 					const NumberedPropertiesList *	bpl,
 					int				n )
     {
     void *	vbp= utilPagedListGetItemByNumber( &(bpl->nplPagedList), n );
 
     if  ( ! vbp )
-	{ LXDEB(n,vbp); docInitBorderProperties( bp ); return; }
+	{
+	static BorderProperties	defBp;
 
-    *bp= *((BorderProperties *)vbp);
-    return;
+	LXDEB(n,vbp);
+	docInitBorderProperties( &defBp );
+	return &defBp;
+	}
+
+    return (BorderProperties *)vbp;
     }
 
 /************************************************************************/
@@ -71,14 +78,14 @@ void docGetBorderPropertiesByNumberImpl( BorderProperties *		bp,
 int docBorderNumberIsBorderImpl(	const NumberedPropertiesList *	bpl,
 					int				n )
     {
-    BorderProperties	bp;
+    const BorderProperties *	bp;
 
     if  ( n < 0 )
 	{ return 0;	}
 
-    docGetBorderPropertiesByNumberImpl( &bp, bpl, n );
+    bp= docGetBorderPropertiesByNumberImpl( bpl, n );
 
-    return DOCisBORDER( &bp );
+    return DOCisBORDER( bp );
     }
 
 /************************************************************************/
@@ -118,48 +125,30 @@ int docBorderPropertiesNumberImpl( NumberedPropertiesList *		bpl,
     return utilGetPropertyNumber( bpl, make, (void *)bp );
     }
 
+static int docTranslateBorderProperties(
+				void *				vbpTo,
+				const void *			vbpFrom,
+				void *				vcolorMap )
+    {
+    BorderProperties *		bpTo= (BorderProperties *)vbpTo;
+    const BorderProperties *	bpFrom= (const BorderProperties *)vbpFrom;
+    const int *			colorMap= (const int *)vcolorMap;
+
+    *bpTo= *bpFrom;
+    if  ( bpFrom->bpColor > 0 && colorMap )
+	{ bpTo->bpColor= colorMap[bpFrom->bpColor];	}
+
+    return 0;
+    }
+
 int docMergeBorderPropertiesLists(
 				int **				pBorderMap,
 				const int *			colorMap,
 				NumberedPropertiesList *	bplTo,
 				const NumberedPropertiesList *	bplFrom )
     {
-    int		fromCount= bplFrom->nplPagedList.plItemCount;
-
-    if  ( fromCount > 0 )
-	{
-	int		n;
-	int *		borderMap= (int *)malloc( fromCount* sizeof(int) );
-
-	if  ( ! borderMap )
-	    { LXDEB(fromCount,borderMap); return -1; }
-
-	for ( n= 0; n < fromCount; n++ )
-	    { borderMap[n]= -1;	}
-
-	for ( n= 0; n < fromCount; n++ )
-	    {
-	    int			to;
-	    void *      	vbp;
-	    BorderProperties	bp;
-
-	    vbp= utilPagedListGetItemByNumber( &(bplFrom->nplPagedList), n );
-	    if  ( ! vbp )
-		{ continue;	}
-
-	    bp= *((BorderProperties *)vbp);
-	    if  ( bp.bpColor > 0 && colorMap )
-		{ bp.bpColor= colorMap[bp.bpColor];	}
-
-	    to= docBorderPropertiesNumberImpl( bplTo, &bp );
-	    if  ( to < 0 )
-		{ LDEB(to); free( borderMap ); return -1;	}
-	    borderMap[n]= to;
-	    }
-
-	*pBorderMap= borderMap;
-	}
-
-    return 0;
+    return docMergeNumberedPropertiesLists( pBorderMap, bplTo, bplFrom,
+				    docTranslateBorderProperties,
+				    (void *)colorMap );
     }
 

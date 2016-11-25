@@ -6,11 +6,12 @@
 
 #   include	"docBufConfig.h"
 
-#   include	<appDebugon.h>
-
-#   include	"docBuf.h"
 #   include	"docTreeNode.h"
 #   include	"docNodeTree.h"
+#   include	"docSelect.h"
+#   include	<docParaProperties.h>
+
+#   include	<appDebugon.h>
 
 /************************************************************************/
 /*									*/
@@ -66,13 +67,13 @@ void docSetRangeSelection(	DocumentSelection *		ds,
     dsHere.dsCol0= -1;
     dsHere.dsCol1= -1;
 
-    if  ( dpHead->dpNode->biParaTableNesting > 0	&&
-	  dpTail->dpNode->biParaTableNesting > 0	)
+    if  ( dpHead->dpNode->biParaProperties->ppTableNesting > 0	&&
+	  dpTail->dpNode->biParaProperties->ppTableNesting > 0	)
 	{
-	BufferItem *	cellNode0= docGetCellNode( dpHead->dpNode );
-	BufferItem *	cellNode1= docGetCellNode( dpTail->dpNode );
-	BufferItem *	rowNode0= cellNode0->biParent;
-	BufferItem *	rowNode1= cellNode1->biParent;
+	struct BufferItem *	cellNode0= docGetCellNode( dpHead->dpNode );
+	struct BufferItem *	cellNode1= docGetCellNode( dpTail->dpNode );
+	struct BufferItem *	rowNode0= cellNode0->biParent;
+	struct BufferItem *	rowNode1= cellNode1->biParent;
 
 	if  ( rowNode0->biParent == rowNode1->biParent			&&
 	      rowNode0->biRowTableFirst >= 0				&&
@@ -110,10 +111,10 @@ void docSetRangeSelection(	DocumentSelection *		ds,
 
 int docIsIBarSelection( const DocumentSelection *		ds )
     {
-    if  ( ! ds->dsHead.dpNode )
+    if  ( ! ds || ! docSelectionIsSet( ds ) )
 	{ return 0;	}
 
-    if  ( ds->dsHead.dpNode != ds->dsTail.dpNode )
+    if  ( ! docSelectionSingleParagraph( ds ) )
 	{ return 0;	}
 
     if  ( ds->dsHead.dpStroff != ds->dsTail.dpStroff )
@@ -124,10 +125,10 @@ int docIsIBarSelection( const DocumentSelection *		ds )
 
 int docIsParaSelection( const DocumentSelection *		ds )
     {
-    if  ( ! ds->dsHead.dpNode )
+    if  ( ! ds || ! docSelectionIsSet( ds ) )
 	{ return 0;	}
 
-    if  ( ds->dsHead.dpNode != ds->dsTail.dpNode )
+    if  ( ! docSelectionSingleParagraph( ds ) )
 	{ return 0;	}
 
     return 1;
@@ -161,7 +162,8 @@ void docConstrainSelectionToOneParagraph( int *			pHeadMoved,
 	if  ( ds->dsAnchor.dpNode != ds->dsHead.dpNode )
 	    { ds->dsAnchor= ds->dsHead;	}
 
-	*pHeadMoved= 1; *pTailMoved= 0;
+	*pHeadMoved= 1;
+	*pTailMoved= 0;
 	return;
 	}
     else{
@@ -172,7 +174,8 @@ void docConstrainSelectionToOneParagraph( int *			pHeadMoved,
 	if  ( ds->dsAnchor.dpNode != ds->dsTail.dpNode )
 	    { ds->dsAnchor= ds->dsTail;	}
 
-	*pHeadMoved= 0; *pTailMoved= 1;
+	*pHeadMoved= 0;
+	*pTailMoved= 1;
 	return;
 	}
 
@@ -186,7 +189,7 @@ void docConstrainSelectionToOneParagraph( int *			pHeadMoved,
 /************************************************************************/
 
 void docSetParaSelection(	DocumentSelection *	ds,
-				BufferItem *		paraNode,
+				struct BufferItem *	paraNode,
 				int			direction,
 				int			stroff,
 				int			length )
@@ -217,7 +220,7 @@ void docSetParaSelection(	DocumentSelection *	ds,
 /************************************************************************/
 
 int docSetNodeSelection(	DocumentSelection *	ds,
-				BufferItem *		node )
+				struct BufferItem *	node )
     {
     const int		direction= 1;
     DocumentPosition	dpHead;

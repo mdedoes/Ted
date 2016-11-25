@@ -1,10 +1,11 @@
 #   include	"bmEmfIo.h"
 #   include	<sioEndian.h>
+#   include	<sioGeneral.h>
 
 #   include	<appDebugon.h>
 
 int bmMetaReadEmfHeader(	EmfHeader *		eh,
-				SimpleInputStream *	sis )
+				struct SimpleInputStream *	sis )
     {
     int			done= 0;
     unsigned long	recordType;
@@ -52,7 +53,7 @@ int bmMetaReadEmfHeader(	EmfHeader *		eh,
     }
 
 int bmEmfReadRectangle(	DocumentRectangle *		dr,
-			SimpleInputStream *		sis )
+			struct SimpleInputStream *		sis )
     {
     int		done= 0;
 
@@ -65,7 +66,7 @@ int bmEmfReadRectangle(	DocumentRectangle *		dr,
     }
 
 int bmEmfReadXYWHRectangle(	DocumentRectangle *		dr,
-				SimpleInputStream *		sis )
+				struct SimpleInputStream *		sis )
     {
     int		done= 0;
     int		w;
@@ -83,7 +84,7 @@ int bmEmfReadXYWHRectangle(	DocumentRectangle *		dr,
     }
 
 int bmEmfReadRgb8Color(	RGB8Color *			rgb8,
-			SimpleInputStream *		sis )
+			struct SimpleInputStream *		sis )
     {
     int		done= 0;
 
@@ -96,7 +97,7 @@ int bmEmfReadRgb8Color(	RGB8Color *			rgb8,
     }
 
 int bmEmfReadAffineTransform2D(	AffineTransform2D *		at,
-				SimpleInputStream *		sis )
+				struct SimpleInputStream *		sis )
     {
     int		done= 0;
 
@@ -112,7 +113,7 @@ int bmEmfReadAffineTransform2D(	AffineTransform2D *		at,
     }
 
 int bmMetaWriteEmfHeader(	const EmfHeader *	eh,
-				SimpleOutputStream *	sos )
+				struct SimpleOutputStream *	sos )
     {
     const int	recordType= 1;
     int		done= 0;

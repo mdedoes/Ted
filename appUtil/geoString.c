@@ -11,7 +11,7 @@
 
 #   include	<appDebugon.h>
 
-#   include	"appUnit.h"
+#   include	"geoUnit.h"
 #   include	"geoString.h"
 
 /************************************************************************/
@@ -20,11 +20,11 @@
 /*									*/
 /************************************************************************/
 
-static void appGeoLengthNumberToString(	char *		target,
+static void geoLengthNumberToString(	char *		target,
 					int		twips,
 					int		unitInt )
     {
-    double		units= appUnitFromTwips( twips, unitInt );
+    double		units= geoUnitFromTwips( twips, unitInt );
 
     if  ( (int)units == units || units > 100 || units < -100 )
 	{
@@ -41,13 +41,13 @@ void geoLengthToString(	char *		target,
 			int		twips,
 			int		unitInt )
     {
-    const char *	unitString= appUnitTypeString( unitInt );
+    const char *	unitString= geoUnitTypeString( unitInt );
 
     char		numberString[40];
     char *		s;
     int			l;
 
-    appGeoLengthNumberToString( numberString, twips, unitInt );
+    geoLengthNumberToString( numberString, twips, unitInt );
 
     s= numberString;
     while( *s == ' ' )
@@ -72,7 +72,7 @@ void geoRectangleToString(	char *		target,
 				int		heightTwips,
 				int		unitInt )
     {
-    const char *	unitString= appUnitTypeString( unitInt );
+    const char *	unitString= geoUnitTypeString( unitInt );
 
     char		widthString[40];
     char		heightString[40];
@@ -80,7 +80,7 @@ void geoRectangleToString(	char *		target,
     char *		hs;
     int			l;
 
-    appGeoLengthNumberToString( widthString, widthTwips, unitInt );
+    geoLengthNumberToString( widthString, widthTwips, unitInt );
     ws= widthString;
     while( *ws == ' ' )
 	{ ws++;	}
@@ -88,7 +88,7 @@ void geoRectangleToString(	char *		target,
     while( l > 0 && ws[l-1] == ' ' )
 	{ l--; ws[l]= '\0';	}
 
-    appGeoLengthNumberToString( heightString, heightTwips, unitInt );
+    geoLengthNumberToString( heightString, heightTwips, unitInt );
     hs= heightString;
     while( *hs == ' ' )
 	{ hs++;	}
@@ -127,28 +127,28 @@ int geoRectangleFromString(		const char *	s,
     int		h_nom;
     int		h_div;
 
-    got= sscanf( s, "%lg x %lg%s", &width, &height, scratch );
+    got= sscanf( s, "%lg x %lg%30s", &width, &height, scratch );
 
     if  ( got == 2 )
 	{
-	*pWidth= (int)appUnitToTwips( width, defaultUnitInt );
-	*pHeight= (int)appUnitToTwips( height, defaultUnitInt );
+	*pWidth= (int)geoUnitToTwips( width, defaultUnitInt );
+	*pHeight= (int)geoUnitToTwips( height, defaultUnitInt );
 	return 0;
 	}
 
     if  ( got == 3 )
 	{
-	unitInt= appUnitTypeInt( scratch );
+	unitInt= geoUnitTypeInt( scratch );
 
 	if  ( unitInt >= 0 )
 	    {
-	    *pWidth= (int)appUnitToTwips( width, unitInt );
-	    *pHeight= (int)appUnitToTwips( height, unitInt );
+	    *pWidth= (int)geoUnitToTwips( width, unitInt );
+	    *pHeight= (int)geoUnitToTwips( height, unitInt );
 	    return 0;
 	    }
 	}
 
-    got= sscanf( s, "%d %d/%d x %d %d/%d%s",
+    got= sscanf( s, "%d %d/%d x %d %d/%d%30s",
 				&w_ival, &w_nom, &w_div,
 				&h_ival, &h_nom, &h_div, scratch );
     if  ( got == 6 )
@@ -156,8 +156,8 @@ int geoRectangleFromString(		const char *	s,
 	width= w_ival+ (double)w_nom/(double)w_div;
 	height= h_ival+ (double)h_nom/(double)h_div;
 
-	*pWidth= (int)appUnitToTwips( width, defaultUnitInt );
-	*pHeight= (int)appUnitToTwips( height, defaultUnitInt );
+	*pWidth= (int)geoUnitToTwips( width, defaultUnitInt );
+	*pHeight= (int)geoUnitToTwips( height, defaultUnitInt );
 	return 0;
 	}
 
@@ -165,60 +165,60 @@ int geoRectangleFromString(		const char *	s,
 	{
 	width= w_ival+ (double)w_nom/(double)w_div;
 	height= h_ival+ (double)h_nom/(double)h_div;
-	unitInt= appUnitTypeInt( scratch );
+	unitInt= geoUnitTypeInt( scratch );
 
 	if  ( unitInt >= 0 )
 	    {
-	    *pWidth= (int)appUnitToTwips( width, unitInt );
-	    *pHeight= (int)appUnitToTwips( height, unitInt );
+	    *pWidth= (int)geoUnitToTwips( width, unitInt );
+	    *pHeight= (int)geoUnitToTwips( height, unitInt );
 	    return 0;
 	    }
 	}
 
-    got= sscanf( s, "%lg x %d %d/%d%s",
+    got= sscanf( s, "%lg x %d %d/%d%30s",
 				&width, &h_ival, &h_nom, &h_div, scratch );
     if  ( got == 4 )
 	{
 	height= h_ival+ (double)h_nom/(double)h_div;
 
-	*pWidth= (int)appUnitToTwips( width, defaultUnitInt );
-	*pHeight= (int)appUnitToTwips( height, defaultUnitInt );
+	*pWidth= (int)geoUnitToTwips( width, defaultUnitInt );
+	*pHeight= (int)geoUnitToTwips( height, defaultUnitInt );
 	return 0;
 	}
 
     if  ( got == 5 )
 	{
 	height= h_ival+ (double)h_nom/(double)h_div;
-	unitInt= appUnitTypeInt( scratch );
+	unitInt= geoUnitTypeInt( scratch );
 
 	if  ( unitInt >= 0 )
 	    {
-	    *pWidth= (int)appUnitToTwips( width, unitInt );
-	    *pHeight= (int)appUnitToTwips( height, unitInt );
+	    *pWidth= (int)geoUnitToTwips( width, unitInt );
+	    *pHeight= (int)geoUnitToTwips( height, unitInt );
 	    return 0;
 	    }
 	}
 
-    got= sscanf( s, "%d %d/%d x %lg%s",
+    got= sscanf( s, "%d %d/%d x %lg%30s",
 				&w_ival, &w_nom, &w_div, &height, scratch );
     if  ( got == 4 )
 	{
 	width= w_ival+ (double)w_nom/(double)w_div;
 
-	*pWidth= (int)appUnitToTwips( width, defaultUnitInt );
-	*pHeight= (int)appUnitToTwips( height, defaultUnitInt );
+	*pWidth= (int)geoUnitToTwips( width, defaultUnitInt );
+	*pHeight= (int)geoUnitToTwips( height, defaultUnitInt );
 	return 0;
 	}
 
     if  ( got == 5 )
 	{
 	width= w_ival+ (double)w_nom/(double)w_div;
-	unitInt= appUnitTypeInt( scratch );
+	unitInt= geoUnitTypeInt( scratch );
 
 	if  ( unitInt >= 0 )
 	    {
-	    *pWidth= (int)appUnitToTwips( width, unitInt );
-	    *pHeight= (int)appUnitToTwips( height, unitInt );
+	    *pWidth= (int)geoUnitToTwips( width, unitInt );
+	    *pHeight= (int)geoUnitToTwips( height, unitInt );
 	    return 0;
 	    }
 	}
@@ -245,11 +245,11 @@ int geoLengthFromString(	const char *	s,
     int		nomi;
     int		divi;
 
-    got= sscanf( s, "%lg%s", &value, scratch );
+    got= sscanf( s, "%lg%30s", &value, scratch );
 
     if  ( got == 1 )
 	{
-	value= appUnitToTwips( value, defaultUnitInt );
+	value= geoUnitToTwips( value, defaultUnitInt );
 	if  ( value < 0 )
 	    { *pValue= value- 0.499;	}
 	else{ *pValue= value+ 0.499;	}
@@ -258,11 +258,11 @@ int geoLengthFromString(	const char *	s,
 
     if  ( got == 2 )
 	{
-	unitInt= appUnitTypeInt( scratch );
+	unitInt= geoUnitTypeInt( scratch );
 
 	if  ( unitInt >= 0 )
 	    {
-	    value= appUnitToTwips( value, unitInt );
+	    value= geoUnitToTwips( value, unitInt );
 	    if  ( value < 0 )
 		{ *pValue= value- 0.499;	}
 	    else{ *pValue= value+ 0.499;	}
@@ -270,12 +270,12 @@ int geoLengthFromString(	const char *	s,
 	    }
 	}
 
-    got= sscanf( s, "%d %d/%d%s", &ival, &nomi, &divi, scratch );
+    got= sscanf( s, "%d %d/%d%30s", &ival, &nomi, &divi, scratch );
 
     if  ( got == 3 )
 	{
 	value= ival+ (double)nomi/(double)divi;
-	value= appUnitToTwips( value, defaultUnitInt );
+	value= geoUnitToTwips( value, defaultUnitInt );
 	if  ( value < 0 )
 	    { *pValue= value- 0.499;	}
 	else{ *pValue= value+ 0.499;	}
@@ -285,12 +285,12 @@ int geoLengthFromString(	const char *	s,
 
     if  ( got == 4 )
 	{
-	unitInt= appUnitTypeInt( scratch );
+	unitInt= geoUnitTypeInt( scratch );
 
 	if  ( unitInt >= 0 )
 	    {
 	    value= ival+ (double)nomi/(double)divi;
-	    value= appUnitToTwips( value, unitInt );
+	    value= geoUnitToTwips( value, unitInt );
 	    if  ( value < 0 )
 		{ *pValue= value- 0.499;	}
 	    else{ *pValue= value+ 0.499;	}
@@ -298,12 +298,12 @@ int geoLengthFromString(	const char *	s,
 	    }
 	}
 
-    got= sscanf( s, "%d/%d%s", &nomi, &divi, scratch );
+    got= sscanf( s, "%d/%d%30s", &nomi, &divi, scratch );
 
     if  ( got == 2 )
 	{
 	value= (double)nomi/(double)divi;
-	value= appUnitToTwips( value, defaultUnitInt );
+	value= geoUnitToTwips( value, defaultUnitInt );
 	if  ( value < 0 )
 	    { *pValue= value- 0.499;	}
 	else{ *pValue= value+ 0.499;	}
@@ -312,12 +312,12 @@ int geoLengthFromString(	const char *	s,
 
     if  ( got == 3 )
 	{
-	unitInt= appUnitTypeInt( scratch );
+	unitInt= geoUnitTypeInt( scratch );
 
 	if  ( unitInt >= 0 )
 	    {
 	    value= (double)nomi/(double)divi;
-	    value= appUnitToTwips( value, unitInt );
+	    value= geoUnitToTwips( value, unitInt );
 	    if  ( value < 0 )
 		{ *pValue= value- 0.499;	}
 	    else{ *pValue= value+ 0.499;	}

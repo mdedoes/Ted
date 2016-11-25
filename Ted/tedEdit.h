@@ -9,10 +9,30 @@
 #   define		TED_EDIT_H
 
 #   include	<docEdit.h>
-#   include	<docEditTrace.h>
 #   include	<layoutContext.h>
-#   include	<docSelectionGeometry.h>
-#   include	<docSelectionDescription.h>
+#   include	<docEditOperation.h>
+#   include	<geoRectangle.h>
+#   include	<textAttribute.h>
+
+struct RasterImage;
+struct InsertedObject;
+struct PictureProperties;
+struct DocumentField;
+struct FieldInstructions;
+struct ParagraphProperties;
+struct CellProperties;
+struct RowProperties;
+struct SectionProperties;
+struct TableRectangle;
+struct DocumentCopyJob;
+struct DocumentProperties;
+struct SelectionDescription;
+struct EditTrace;
+struct SelectionGeometry;
+struct PropertyMask;
+struct DocumentSelection;
+struct DocumentTree;
+struct BufferDocument;
 
 #   define	LOG_RELAYOUT	0
 
@@ -37,7 +57,7 @@ typedef struct TedEditOperation
 				 *   The edit trace. Only set of the 
 				 *   edit operation is to be traced.
 				 */
-    EditTrace *			teoEditTrace;
+    struct EditTrace *		teoEditTrace;
     } TedEditOperation;
 
 /************************************************************************/
@@ -48,12 +68,12 @@ typedef struct TedEditOperation
 
 extern int tedAdjustParagraphLayout(
 				TedEditOperation *		teo,
-				DocumentTree *			dt );
+				struct DocumentTree *		dt );
 
 extern int tedStartEditOperation(
 				TedEditOperation *		teo,
-				SelectionGeometry *		sg,
-				SelectionDescription *		sd,
+				struct SelectionGeometry *	sg,
+				struct SelectionDescription *	sd,
 				struct EditDocument *		ed,
 				int				fullWidth,
 				int				traced );
@@ -67,7 +87,7 @@ extern int tedEditFinishSelectionHeadNext( TedEditOperation *		teo );
 
 extern int tedEditFinishSelection(
 				TedEditOperation *		teo,
-				const DocumentSelection *	dsNew );
+				const struct DocumentSelection *	dsNew );
 
 extern int tedEditFinishRange(	TedEditOperation *		teo,
 				int				col0,
@@ -89,57 +109,58 @@ extern int tedEditReplaceSelection(
 extern int tedEditDeleteSelection(	TedEditOperation *	teo );
 
 extern int tedEditIncludeNodeInRedraw(	TedEditOperation *		teo,
-					const struct BufferItem *	bi );
+					const struct BufferItem *	node );
 
 extern int tedEditIncludeRowsInRedraw(	TedEditOperation *		teo,
-					const struct BufferItem *	sectBi,
+					const struct BufferItem *	sectNode,
 					int				row0,
 					int				row1 );
 
-extern int tedChangeParticuleAttributes( PropertyMask *		pTaAllMask,
+extern int tedChangeParticuleAttributes( struct PropertyMask *	pTaAllMask,
 					const LayoutContext *	lc,
-					struct BufferItem *	bi,
+					struct BufferItem *	node,
 					int			partFrom,
 					int			partUpto,
 					const TextAttribute *	taSet,
-					const PropertyMask *	taSetMask );
+					const struct PropertyMask *	taSetMask );
 
 extern void tedIncludeRectangleInChange( TedEditOperation *		teo,
 					const DocumentRectangle *	dr );
 
 extern int tedDocReplaceSelectionWithField(
 				    TedEditOperation *		teo,
-				    DocumentField **		pDf,
+				    struct DocumentField **	pDf,
 				    int *			pHeadPart,
 				    int *			pTailPart,
-				    DocumentSelection *		dsInside,
-				    DocumentSelection *		dsAround,
-				    const FieldInstructions *	fi,
+				    struct DocumentSelection *		dsInside,
+				    struct DocumentSelection *		dsAround,
+				    const struct FieldInstructions *	fi,
 				    int				fieldKind,
-				    const PropertyMask *	taSetMask,
+				    const struct PropertyMask *	taSetMask,
 				    const TextAttribute *	taSet );
 
-extern int tedLayoutNodeOfField(	TedEditOperation *	teo,
-					DocumentSelection *	dsAround,
-					unsigned int		whenMask );
+extern int tedLayoutNodeOfField(
+			TedEditOperation *			teo,
+			const struct DocumentSelection *	dsAround,
+			unsigned int				whenMask );
 
 extern int tedDocFlattenTypedField(
 				struct EditDocument *		ed,
 				int				fieldType,
-				const PropertyMask *		taSetMask,
+				const struct PropertyMask *	taSetMask,
 				const TextAttribute *		taSet,
 				int				traced );
 
 extern int tedReplaceSelectionWithRasterImage(
 				struct EditDocument *		ed,
-				RasterImage *			ri,
+				struct RasterImage *		ri,
 				int				traced );
 
 extern int tedIncludeDocument(		TedEditOperation *	teo,
-					DocumentCopyJob *	dcj );
+					struct DocumentCopyJob *	dcj );
 
 extern int tedEditIncludeDocument(	TedEditOperation *	teo,
-					DocumentCopyJob *	dcj,
+					struct DocumentCopyJob *	dcj,
 					int			command,
 					int			posWhere );
 
@@ -152,89 +173,82 @@ extern int tedEditInsertSection(	DocumentPosition *	dpBeforeSplit,
 extern int tedDeleteSelectionImpl(	TedEditOperation *	teo );
 
 extern int tedFlattenFieldImpl(	TedEditOperation *		teo,
-				DocumentSelection *		dsExInside,
-				const DocumentSelection *	dsAroundField,
+				struct DocumentSelection *		dsExInside,
+				const struct DocumentSelection *	dsAroundField,
 				int				headPart,
 				int				tailPart,
-				DocumentField *			df );
+				struct DocumentField *		df );
 
 extern int tedEditChangeSelectionProperties(
 				TedEditOperation *		teo,
-				const DocumentSelection *	ds,
+				const struct DocumentSelection *	ds,
 				int				level,
 				int				command,
 
-				const PropertyMask *		taSetMask,
+				const struct PropertyMask *	taSetMask,
 				const TextAttribute *		taSet,
 
-				const PropertyMask *		ppSetMask,
-				const ParagraphProperties *	ppSet,
+				const struct PropertyMask *	ppSetMask,
+				const struct ParagraphProperties *	ppSet,
 
-				const PropertyMask *		cpSetMask,
-				const CellProperties *		cpSet,
+				const struct PropertyMask *	cpSetMask,
+				const struct CellProperties *	cpSet,
 
-				const PropertyMask *		rpSetMask,
-				const RowProperties *		rpSet,
+				const struct PropertyMask *	rpSetMask,
+				const struct RowProperties *	rpSet,
 
-				const PropertyMask *		spSetMask,
-				const SectionProperties *	spSet,
+				const struct PropertyMask *	spSetMask,
+				const struct SectionProperties * spSet,
 
-				const PropertyMask *		dpSetMask,
-				const DocumentProperties *	dpSet );
+				const struct PropertyMask *	dpSetMask,
+				const struct DocumentProperties * dpSet );
 
 extern int tedEditChangeSelectionPropertiesImpl(
 				TedEditOperation *		teo,
-				const DocumentSelection *	ds,
+				const struct DocumentSelection *	ds,
 
-				const PropertyMask *		taSetMask,
+				const struct PropertyMask *	taSetMask,
 				const TextAttribute *		taSet,
 
-				const PropertyMask *		ppSetMask,
-				const ParagraphProperties *	ppSet,
+				const struct PropertyMask *	ppSetMask,
+				const struct ParagraphProperties * ppSet,
 
-				const PropertyMask *		cpSetMask,
-				const CellProperties *		cpSet,
+				const struct PropertyMask *	cpSetMask,
+				const struct CellProperties *	cpSet,
 
-				const PropertyMask *		rpSetMask,
-				const RowProperties *		rpSet,
+				const struct PropertyMask *	rpSetMask,
+				const struct RowProperties *	rpSet,
 
-				const PropertyMask *		spSetMask,
-				const SectionProperties *	spSet,
+				const struct PropertyMask *	spSetMask,
+				const struct SectionProperties * spSet,
 
-				const PropertyMask *		dpSetMask,
-				const DocumentProperties *	dpSet );
+				const struct PropertyMask *	dpSetMask,
+				const struct DocumentProperties * dpSet );
 
 extern int tedObjectSetImagePropertiesImpl(
 				TedEditOperation *		teo,
-				InsertedObject *		io,
+				struct InsertedObject *		io,
 				const DocumentPosition *	dpObj,
 				int				partObj,
-				const PropertyMask *		pipSetMask,
-				const PictureProperties *	pipSet );
-
-extern int tedChangeNoteImpl(	EditOperation *			eo,
-				DocumentField *			dfNote,
-				struct DocumentNote *		dn,
-				int				selInNote,
-				const PropertyMask *		npSetMask,
-				const struct NoteProperties *	npSet );
+				const struct PropertyMask *	pipSetMask,
+				const struct PictureProperties * pipSet );
 
 extern int tedDocRollRowsInTableImpl(
 				TedEditOperation *		teo,
-				const TableRectangle  *		tr,
+				const struct TableRectangle  *	tr,
 				int				move,
 				int				rowsdown );
 
 extern int tedDocUpdField(	TedEditOperation *		teo,
-				DocumentField *			df,
-				const FieldInstructions *	fi );
+				struct DocumentField *		df,
+				const struct FieldInstructions *	fi );
 
 extern int tedDocSetField(	TedEditOperation *		teo,
-				const DocumentSelection *	ds,
+				const struct DocumentSelection *	ds,
 				int				command,
 				int				fieldKind,
-				const FieldInstructions *	fi,
-				const PropertyMask *		taSetMask,
+				const struct FieldInstructions * fi,
+				const struct PropertyMask *	taSetMask,
 				const TextAttribute *		taSet );
 
 extern int tedMergeParagraphsInSelection(
@@ -245,12 +259,9 @@ extern int tedEditShiftRowsInTable(	struct EditDocument *	ed,
 					int			direction,
 					int			traced );
 
-extern int tedRefreshTocField(	DocumentSelection *	dsAroundToc,
+extern int tedRefreshTocField(	struct DocumentSelection *	dsAroundToc,
 				TedEditOperation *	teo,
-				DocumentField *		dfToc );
-
-extern int tedDeleteTableSliceSelection( struct EditDocument *	ed,
-					int			traced );
+				struct DocumentField *	dfToc );
 
 extern int tedDocReplaceSelection(	struct EditDocument *	ed,
 					int			command,
@@ -268,11 +279,11 @@ extern int tedDocDeleteSelection(	struct EditDocument *	ed,
 
 extern int tedObjectSetImageProperties(
 				struct EditDocument *		ed,
-				InsertedObject *		io,
+				struct InsertedObject *		io,
 				const DocumentPosition *	dpObject,
 				int				partObject,
-				const PropertyMask *		pipSetMask,
-				const PictureProperties *	pipFrom,
+				const struct PropertyMask *	pipSetMask,
+				const struct PictureProperties * pipFrom,
 				int				traced );
 
 extern int tedInsertTable(		struct EditDocument *	ed,
@@ -280,7 +291,7 @@ extern int tedInsertTable(		struct EditDocument *	ed,
 					int			columns,
 					int			traced );
 
-extern int tedEditStartReplace(	DocumentSelection *	dsTraced,
+extern int tedEditStartReplace(	struct DocumentSelection *	dsTraced,
 				TedEditOperation *	teo,
 				int			command,
 				int			level,
@@ -294,13 +305,6 @@ extern int tedEditStartTypedStep(	TedEditOperation *	teo,
 
 extern int tedFinishEditOperation(	TedEditOperation *	teo );
 
-extern void tedDocInsertStringWithAttribute(
-					struct EditDocument *	ed,
-					const char *		bytes,
-					int			size,
-					const TextAttribute *	taSet,
-					const PropertyMask *	taSetMask,
-					int			traced );
 
 extern void tedEditInsertSpecialParticule(
 				struct EditDocument *		ed,
@@ -313,11 +317,11 @@ extern int tedInsertPageNumber( struct EditDocument *		ed,
 				int				traced );
 
 extern int tedIncludePlainDocument(	struct EditDocument *	ed,
-					BufferDocument *	bdFrom,
+					struct BufferDocument *	bdFrom,
 					int			traced );
 
 extern int tedIncludeRtfDocument(	struct EditDocument *	ed,
-					BufferDocument *	bdFrom,
+					struct BufferDocument *	bdFrom,
 					int			traced );
 
 #   endif	/*	TED_EDIT_H	*/

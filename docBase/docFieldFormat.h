@@ -7,7 +7,8 @@
 #   ifndef DOC_FIELD_FORMAT_H
 #   define DOC_FIELD_FORMAT_H
 
-#   include	"docFieldInstructions.h"
+struct InstructionsComponent;
+struct FieldInstructions;
 
 /************************************************************************/
 /*									*/
@@ -17,32 +18,32 @@
 
 typedef enum FieldFormat
     {
-    MERGE_ASIS= 0,
+    FIELDformatASIS= 0,
 
 	    /* Case conversion */
-    MERGE_LOWER,
-    MERGE_UPPER,
-    MERGE_FIRSTCAP,
-    MERGE_CAPS,
+    FIELDformatLOWER,
+    FIELDformatUPPER,
+    FIELDformatFIRSTCAP,
+    FIELDformatCAPS,
 
 	    /* Number formatting */
-    MERGE_ALPHABETIC_UPPER,	/*  Depends on first letter	*/
-    MERGE_ARABIC,
-    MERGE_CARDTEXT,
-    MERGE_DOLLARTEXT,
-    MERGE_HEX_UPPER,		/*  Depends on first letter	*/
-    MERGE_ORDINAL,
-    MERGE_ORDTEXT,
-    MERGE_ROMAN_UPPER,		/*  Depends on first letter	*/
+    FIELDformatALPHABETIC_UPPER,	/*  Depends on first letter	*/
+    FIELDformatARABIC,
+    FIELDformatCARDTEXT,
+    FIELDformatDOLLARTEXT,
+    FIELDformatHEX_UPPER,		/*  Depends on first letter	*/
+    FIELDformatORDINAL,
+    FIELDformatORDTEXT,
+    FIELDformatROMAN_UPPER,		/*  Depends on first letter	*/
 
-    MERGE_CHARFORMAT,
-    MERGE_MERGEFORMAT,
+    FIELDformatCHARFORMAT,
+    FIELDformatMERGEFORMAT,
 
-    MERGE_ALPHABETIC_LOWER,	/*  Depends on first letter	*/
-    MERGE_HEX_LOWER,		/*  Depends on first letter	*/
-    MERGE_ROMAN_LOWER,		/*  Depends on first letter	*/
+    FIELDformatALPHABETIC_LOWER,	/*  Depends on first letter	*/
+    FIELDformatHEX_LOWER,		/*  Depends on first letter	*/
+    FIELDformatROMAN_LOWER,		/*  Depends on first letter	*/
 
-    MERGE__COUNT
+    FIELDformat_COUNT
     } FieldFormat;
 
 /************************************************************************/
@@ -51,10 +52,11 @@ typedef enum FieldFormat
 /*									*/
 /************************************************************************/
 
-extern int docFieldFormatInt(	const InstructionsComponent *	ic );
+extern int docFieldFormatInt(
+			const struct InstructionsComponent *	ic );
 
 extern int docFieldInstructionsAddFormat(
-				FieldInstructions *		fi,
-				int				format );
+			struct FieldInstructions *		fi,
+			int					format );
 
 #   endif /*  DOC_FIELD_FORMAT_H  */

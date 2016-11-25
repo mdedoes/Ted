@@ -32,7 +32,7 @@ static void bmSqueeze_8_4(	const unsigned char *	fr,
     if  ( col < wide )
 	{
 	memset( s, 0, 8 );
-	memcpy( s, fr, wide- col ); fr= s;
+	memcpy( s, fr, wide- col ); /* fr= s; */
 
 	*to=	( ( fr[0] & 0x0f ) << 4 )	|
 		( ( fr[1] & 0x0f )      )	;
@@ -58,7 +58,7 @@ static void bmSqueeze_8_2(	const unsigned char *	fr,
     if  ( col < wide )
 	{
 	memset( s, 0, 8 );
-	memcpy( s, fr, wide- col ); fr= s;
+	memcpy( s, fr, wide- col ); /* fr= s; */
 
 	*to=	( ( fr[0] & 0x03 ) << 6 )	|
 		( ( fr[1] & 0x03 ) << 4 )	|
@@ -89,7 +89,7 @@ static void bmSqueeze_8_1(	const unsigned char *	fr,
     if  ( col < wide )
 	{
 	memset( s, 0, 8 );
-	memcpy( s, fr, wide- col ); fr= s;
+	memcpy( s, fr, wide- col ); /* fr= s; */
 
 	*to=	( ( fr[0] & 0x01 ) << 7 )	|
 		( ( fr[1] & 0x01 ) << 6 )	|
@@ -120,8 +120,7 @@ static void bmSqueeze_4_2(	const unsigned char *	fr,
     if  ( col < wide )
 	{
 	memset( s, 0, 8 );
-	memcpy( s, fr, ( wide- col+ 1 )/2 );
-	fr= s;
+	memcpy( s, fr, ( wide- col+ 1 )/2 ); /* fr= s; */
 
 	*to=	( ( fr[0] & 0x30 ) << 2 )	|
 		( ( fr[0] & 0x03 ) << 6 )	|
@@ -152,8 +151,7 @@ static void bmSqueeze_4_1(	const unsigned char *	fr,
     if  ( col < wide )
 	{
 	memset( s, 0, 8 );
-	memcpy( s, fr, ( wide- col+ 1 )/2 );
-	fr= s;
+	memcpy( s, fr, ( wide- col+ 1 )/2 ); /* fr= s; */
 
 	*to=	( ( fr[0] & 0x10 ) << 3 )	|
 		( ( fr[0] & 0x01 ) << 6 )	|
@@ -188,8 +186,7 @@ static void bmSqueeze_2_1(	const unsigned char *	fr,
     if  ( col < wide )
 	{
 	memset( s, 0, 8 );
-	memcpy( s, fr, ( wide- col+ 3 )/4 );
-	fr= s;
+	memcpy( s, fr, ( wide- col+ 3 )/4 ); /* fr= s; */
 
 	*to=	( ( fr[0] & 0x40 ) << 1 )	|
 		( ( fr[0] & 0x10 ) << 2 )	|

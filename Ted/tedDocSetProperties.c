@@ -7,17 +7,21 @@
 #   include	"tedConfig.h"
 
 #   include	<stddef.h>
-#   include	<stdio.h>
 #   include	<ctype.h>
 
-#   include	<docLayout.h>
 #   include	"tedEdit.h"
-#   include	"tedDocFront.h"
+#   include	<tedDocFront.h>
 #   include	"tedLayout.h"
 #   include	"tedDocument.h"
 #   include	<docRtfTrace.h>
-#   include	<docParaRulerAdmin.h>
 #   include	<docEditCommand.h>
+#   include	<docParaProperties.h>
+#   include	<docSectProperties.h>
+#   include	<docDocumentProperties.h>
+#   include	<appEditDocument.h>
+#   include	<docTreeNode.h>
+#   include	<docAttributes.h>
+#   include	<docBuf.h>
 
 #   include	<appDebugon.h>
 
@@ -38,10 +42,10 @@ int tedEditChangeSelectionPropertiesImpl(
 				const ParagraphProperties *	ppSet,
 
 				const PropertyMask *		cpSetMask,
-				const CellProperties *		cpSet,
+				const struct CellProperties *	cpSet,
 
 				const PropertyMask *		rpSetMask,
-				const RowProperties *		rpSet,
+				const struct RowProperties *	rpSet,
 
 				const PropertyMask *		spSetMask,
 				const SectionProperties *	spSet,
@@ -51,7 +55,7 @@ int tedEditChangeSelectionPropertiesImpl(
     {
     int				rval = 0;
     EditOperation *		eo= &(teo->teoEo);
-    BufferDocument *		bd= eo->eoDocument;
+    struct BufferDocument *		bd= eo->eoDocument;
 
     PropertyMask		selTaDoneMask;
     PropertyMask		selPpDoneMask;
@@ -95,7 +99,7 @@ int tedEditChangeSelectionPropertiesImpl(
 
 	utilPropMaskClear( &taDoneMask );
 
-	utilUpdateTextAttribute( &taDoneMask, &(teo->teoSavedTextAttribute),
+	textUpdateTextAttribute( &taDoneMask, &(teo->teoSavedTextAttribute),
 							    taSetMask, taSet );
 	if  ( ! utilPropMaskIsEmpty( &taDoneMask ) )
 	    {
@@ -124,6 +128,10 @@ int tedEditChangeSelectionPropertiesImpl(
 	    { teo->teoRefreshScreenRectangle= 1;	}
 	}
 
+    if  ( PROPmaskISSET( &docDpDoneMask, DPpropDEFLANG )	&&
+	  bd->bdProperties->dpDefaultLocaleId > 0		)
+	{ bd->bdLocaleId= dpSet->dpDefaultLocaleId;	}
+
   ready:
 
     return rval;
@@ -148,10 +156,10 @@ int tedEditChangeSelectionProperties(
 				const ParagraphProperties *	ppSet,
 
 				const PropertyMask *		cpSetMask,
-				const CellProperties *		cpSet,
+				const struct CellProperties *	cpSet,
 
 				const PropertyMask *		rpSetMask,
-				const RowProperties *		rpSet,
+				const struct RowProperties *	rpSet,
 
 				const PropertyMask *		spSetMask,
 				const SectionProperties *	spSet,
@@ -219,7 +227,7 @@ int tedEditChangeSelectionProperties(
 	    { LDEB(1); return -1;	}
 
 	if  ( dsNew.dsCol0 >= 0 && dsNew.dsCol1 >= 0 )
-	    { docAvoidMergedTail( &dsNew, er );	}
+	    { docAvoidMergedCellTail( &dsNew, er );	}
 	}
 
     docSetEditRange( &(eo->eoAffectedRange), &dsTraced );
@@ -237,7 +245,7 @@ int tedEditChangeSelectionProperties(
 	{
 	EditDocument *		ed= teo->teoEditDocument;
 	TedDocument *		td= (TedDocument *)ed->edPrivateData;
-	BufferDocument *	bd= td->tdDocument;
+	struct BufferDocument *	bd= td->tdDocument;
 	SelectionDescription *	sd= &(td->tdSelectionDescription);
 	TextAttribute *		ta= &(sd->sdTextAttribute);
 
@@ -245,7 +253,7 @@ int tedEditChangeSelectionProperties(
 
 	utilPropMaskClear( &taDoneMask );
 
-	utilUpdateTextAttribute( &taDoneMask, ta, taSetMask, taSet );
+	textUpdateTextAttribute( &taDoneMask, ta, taSetMask, taSet );
 
 	if  ( ! utilPropMaskIsEmpty( &taDoneMask ) )
 	    {
@@ -276,10 +284,10 @@ static int tedDocChangeSelectionProperties(
 				const ParagraphProperties *	ppSet,
 
 				const PropertyMask *		cpSetMask,
-				const CellProperties *		cpSet,
+				const struct CellProperties *	cpSet,
 
 				const PropertyMask *		rpSetMask,
-				const RowProperties *		rpSet,
+				const struct RowProperties *	rpSet,
 
 				const PropertyMask *		spSetMask,
 				const SectionProperties *	spSet,
@@ -335,8 +343,8 @@ int tedDocChangeSectionProperties( EditDocument *		ed,
     if  ( tedDocChangeSelectionProperties( ed, EDITcmdUPD_SECT_PROPS,
 		    (const PropertyMask *)0, (const TextAttribute *)0,
 		    (const PropertyMask *)0, (const ParagraphProperties *)0,
-		    (const PropertyMask *)0, (const CellProperties *)0,
-		    (const PropertyMask *)0, (const RowProperties *)0,
+		    (const PropertyMask *)0, (const struct CellProperties *)0,
+		    (const PropertyMask *)0, (const struct RowProperties *)0,
 		    spSetMask, spSet,
 		    (const PropertyMask *)0, (const DocumentProperties *)0,
 		    traced ) )
@@ -354,8 +362,8 @@ int tedDocChangeParagraphProperties(
     if  ( tedDocChangeSelectionProperties( ed, EDITcmdUPD_PARA_PROPS,
 		    (const PropertyMask *)0, (const TextAttribute *)0,
 		    ppSetMask, ppSet,
-		    (const PropertyMask *)0, (const CellProperties *)0,
-		    (const PropertyMask *)0, (const RowProperties *)0,
+		    (const PropertyMask *)0, (const struct CellProperties *)0,
+		    (const PropertyMask *)0, (const struct RowProperties *)0,
 		    (const PropertyMask *)0, (const SectionProperties *)0,
 		    (const PropertyMask *)0, (const DocumentProperties *)0,
 		    traced ) )
@@ -377,8 +385,8 @@ void tedDocChangeTextAttribute(		EditDocument *		ed,
     if  ( tedDocChangeSelectionProperties( ed, EDITcmdUPD_SPAN_PROPS,
 		    taSetMask, taSet,
 		    (const PropertyMask *)0, (const ParagraphProperties *)0,
-		    (const PropertyMask *)0, (const CellProperties *)0,
-		    (const PropertyMask *)0, (const RowProperties *)0,
+		    (const PropertyMask *)0, (const struct CellProperties *)0,
+		    (const PropertyMask *)0, (const struct RowProperties *)0,
 		    (const PropertyMask *)0, (const SectionProperties *)0,
 		    (const PropertyMask *)0, (const DocumentProperties *)0,
 		    traced ) )
@@ -393,17 +401,17 @@ void tedDocChangeTextAttribute(		EditDocument *		ed,
 /*									*/
 /************************************************************************/
 
-int tedDocSetTableProperties(	EditDocument *		ed,
-				int			wholeRow,
-				int			wholeColumn,
-				const PropertyMask *	cpSetMask,
-				const CellProperties *	cpSet,
-				const PropertyMask *	rpSetMask,
-				const RowProperties *	rpSet,
-				int			traced )
+int tedDocSetTableProperties(	EditDocument *			ed,
+				int				wholeRow,
+				int				wholeColumn,
+				const PropertyMask *		cpSetMask,
+				const struct CellProperties *	cpSet,
+				const PropertyMask *		rpSetMask,
+				const struct RowProperties *	rpSet )
     {
     int				rval= 0;
 
+    TedDocument *		td= (TedDocument *)ed->edPrivateData;
     TedEditOperation		teo;
     EditOperation *		eo= &(teo.teoEo);
     SelectionGeometry		sg;
@@ -416,7 +424,7 @@ int tedDocSetTableProperties(	EditDocument *		ed,
 
     const int			fullWidth= 1;
 
-    tedStartEditOperation( &teo, &sg, &sd, ed, fullWidth, traced );
+    tedStartEditOperation( &teo, &sg, &sd, ed, fullWidth, td->tdTraced );
 
     docInitDocumentSelection( &ds );
 
@@ -425,13 +433,13 @@ int tedDocSetTableProperties(	EditDocument *		ed,
     if  ( wholeRow )
 	{
 	if  ( wholeColumn )
-	    { level= DOClevTABLE;	}
-	else{ level= DOClevROW;		}
+	    { command= EDITcmdUPD_TABLE_PROPS; level= DOClevTABLE;	}
+	else{ command= EDITcmdUPD_ROW_PROPS; level= DOClevROW;		}
 	}
     else{
 	if  ( wholeColumn )
-	    { level= DOClevCOLUMN;	}
-	else{ level= DOClevCELL;	}
+	    { command= EDITcmdUPD_COLUMN_PROPS; level= DOClevCOLUMN;	}
+	else{ command= EDITcmdUPD_CELL_PROPS; level= DOClevCELL;	}
 	}
 
     if  ( tedEditChangeSelectionProperties( &teo, &ds,
@@ -441,7 +449,7 @@ int tedDocSetTableProperties(	EditDocument *		ed,
 		    cpSetMask, cpSet, rpSetMask, rpSet,
 		    (const PropertyMask *)0, (const SectionProperties *)0,
 		    (const PropertyMask *)0, (const DocumentProperties *)0 ) )
-	{ LDEB(1); rval= -1; goto ready;	}
+	{ XDEB(cpSetMask); rval= -1; goto ready;	}
 
   ready:
 
@@ -456,12 +464,12 @@ int tedDocSetTableProperties(	EditDocument *		ed,
 /*									*/
 /************************************************************************/
 
-int tedDocSetParagraphTabs(	EditDocument *		ed,
-				const TabStopList *	tsl,
-				int			traced )
+int tedDocSetParagraphTabs(	EditDocument *			ed,
+				const struct TabStopList *	tsl,
+				int				traced )
     {
     TedDocument *		td= (TedDocument *)ed->edPrivateData;
-    BufferDocument *		bd= td->tdDocument;
+    struct BufferDocument *		bd= td->tdDocument;
 
     ParagraphProperties		ppSet;
     PropertyMask		ppSetMask;
@@ -512,11 +520,11 @@ int tedDocChangeAllSectionProperties(
 	{ LDEB(1); rval= -1; goto ready;	}
 
     if  ( tedEditChangeSelectionProperties( &teo, &ds,
-		    DOClevSECT, EDITcmdUPD_SECTDOC_PROPS,
+		    DOClevBODY, EDITcmdUPD_SECTDOC_PROPS,
 		    (const PropertyMask *)0, (const TextAttribute *)0,
 		    (const PropertyMask *)0, (const ParagraphProperties *)0,
-		    (const PropertyMask *)0, (const CellProperties *)0,
-		    (const PropertyMask *)0, (const RowProperties *)0,
+		    (const PropertyMask *)0, (const struct CellProperties *)0,
+		    (const PropertyMask *)0, (const struct RowProperties *)0,
 		    spSetMask, spSet, dpSetMask, dpSet ) )
 	{ LDEB(1); rval= -1; goto ready;	}
 
@@ -535,14 +543,15 @@ int tedDocChangeAllSectionProperties(
 
 int tedDocSetDocumentProperties( EditDocument *			ed,
 				const PropertyMask *		dpSetMask,
-				const DocumentProperties *	dpSet,
-				int				traced )
+				const DocumentProperties *	dpSet )
     {
+    int		traced= ((TedDocument *)ed->edPrivateData)->tdTraced;
+
     if  ( tedDocChangeSelectionProperties( ed, EDITcmdUPD_DOC_PROPS,
 		    (const PropertyMask *)0, (const TextAttribute *)0,
 		    (const PropertyMask *)0, (const ParagraphProperties *)0,
-		    (const PropertyMask *)0, (const CellProperties *)0,
-		    (const PropertyMask *)0, (const RowProperties *)0,
+		    (const PropertyMask *)0, (const struct CellProperties *)0,
+		    (const PropertyMask *)0, (const struct RowProperties *)0,
 		    (const PropertyMask *)0, (const SectionProperties *)0,
 		    dpSetMask, dpSet,
 		    traced ) )
@@ -552,57 +561,30 @@ int tedDocSetDocumentProperties( EditDocument *			ed,
     }
 
 /************************************************************************/
-/*									*/
-/*  Menu options to change paragraph alignment.				*/
-/*									*/
-/************************************************************************/
 
-void tedDocFormatSetParaAlignment(	EditDocument *		ed,
-					int			align,
-					int			traced )
+int tedDocChangeParagraphPropertyValue(
+				EditDocument *			ed,
+				int				prop,
+				int				value )
     {
+    int		traced= ((TedDocument *)ed->edPrivateData)->tdTraced;
+
     ParagraphProperties		ppSet;
     PropertyMask		ppSetMask;
 
     utilPropMaskClear( &ppSetMask );
-    PROPmaskADD( &ppSetMask, PPpropALIGNMENT );
+    PROPmaskADD( &ppSetMask, prop );
 
     docInitParagraphProperties( &ppSet );
-    ppSet.ppAlignment= align;
+    if  ( docSetParaProperty( &ppSet, prop, value ) )
+	{ LLDEB(prop,value); return -1;	}
 
     if  ( tedDocChangeParagraphProperties( ed, &ppSetMask, &ppSet, traced ) )
 	{ LDEB(1);	}
 
     docCleanParagraphProperties( &ppSet );
 
-    return;
-    }
-
-/************************************************************************/
-/*									*/
-/*  Menu options to change paragraph alignment.				*/
-/*									*/
-/************************************************************************/
-
-void tedDocSetParaOutlineLevel(		EditDocument *		ed,
-					int			level,
-					int			traced )
-    {
-    ParagraphProperties		ppSet;
-    PropertyMask		ppSetMask;
-
-    utilPropMaskClear( &ppSetMask );
-    PROPmaskADD( &ppSetMask, PPpropOUTLINELEVEL );
-
-    docInitParagraphProperties( &ppSet );
-    ppSet.ppOutlineLevel= level;
-
-    if  ( tedDocChangeParagraphProperties( ed, &ppSetMask, &ppSet, traced ) )
-	{ LDEB(1);	}
-
-    docCleanParagraphProperties( &ppSet );
-
-    return;
+    return 0;
     }
 
 /************************************************************************/
@@ -626,11 +608,12 @@ void tedDocSetPageLayout(	EditDocument *			ed,
 
     utilUpdDocumentGeometry( (PropertyMask *)0, &(spSet.spDocumentGeometry),
 							    dgSetMask, dgSet );
-    utilUpdDocumentGeometry( (PropertyMask *)0, &(dpSet.dpGeometry),
-							    dgSetMask, dgSet );
 
     if  ( wholeDocument )
 	{
+	utilUpdDocumentGeometry( (PropertyMask *)0, &(dpSet.dpGeometry),
+							    dgSetMask, dgSet );
+
 	if  ( tedDocChangeAllSectionProperties( ed,
 						dgSetMask, &spSet,
 						dgSetMask, &dpSet,

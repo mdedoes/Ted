@@ -10,8 +10,6 @@
 #   include	<string.h>
 #   include	<stdio.h>
 
-#   include	<appDebugon.h>
-
 #   include	"docBuf.h"
 #   include	"docTreeNode.h"
 #   include	"docField.h"
@@ -19,8 +17,33 @@
 #   include	<docTextParticule.h>
 #   include	<docBookmarkField.h>
 #   include	"docParaString.h"
-#   include	"docParaParticules.h"
 #   include	"docNodeTree.h"
+#   include	<docDocumentField.h>
+#   include	<docFieldKind.h>
+#   include	<docParaProperties.h>
+#   include	"docSelect.h"
+#   include	"docNotes.h"
+#   include	"docFields.h"
+#   include	"docParaBuilder.h"
+#   include	"docParaBuilderImpl.h"
+
+#   include	"docDebug.h"
+#   include	<appDebugon.h>
+
+/************************************************************************/
+
+void docDeleteFieldFromDocument(	struct BufferDocument *	bd,
+					DocumentField *		df )
+    {
+    if  ( docFieldHasNote( df->dfKind ) && df->dfNoteIndex >= 0 )
+	{
+	docDeleteNote( bd, df->dfNoteIndex );
+	}
+
+    docDeleteFieldFromList( &(bd->bdFieldList), df );
+
+    return;
+    }
 
 /************************************************************************/
 /*									*/
@@ -29,20 +52,20 @@
 /************************************************************************/
 
 DocumentField * docFindFieldForPosition(
-				BufferDocument *		bd,
+				struct BufferDocument *		bd,
 				const DocumentPosition *	dp )
     {
-    EditPosition	ep;
-    DocumentTree *	dt;
-    BufferItem *	bodySectBi;
-    const int		lastOne= 0;
+    EditPosition		ep;
+    struct DocumentTree *	tree;
+    struct BufferItem *		bodySectNode;
+    const int			lastOne= 0;
 
     docSetEditPosition( &ep, dp );
 
-    if  ( docGetTreeOfNode( &dt, &bodySectBi, bd, dp->dpNode ) )
+    if  ( docGetTreeOfNode( &tree, &bodySectNode, bd, dp->dpNode ) )
 	{ LDEB(1); return (DocumentField *)0;	}
 
-    return docFindChildField( &(dt->dtRootFields), &ep, lastOne );
+    return docFindChildField( &(tree->dtRootFields), &ep, lastOne );
     }
 
 /************************************************************************/
@@ -52,21 +75,21 @@ DocumentField * docFindFieldForPosition(
 /************************************************************************/
 
 DocumentField * docFindTypedFieldForPosition(
-				BufferDocument *		bd,
+				struct BufferDocument *		bd,
 				const DocumentPosition *	dp,
 				int				kind,
 				int				lastOne )
     {
-    EditPosition	ep;
-    DocumentTree *	dt;
-    DocumentField *	dfInner;
+    EditPosition		ep;
+    struct DocumentTree *	tree;
+    DocumentField *		dfInner;
 
     docSetEditPosition( &ep, dp );
 
-    if  ( docGetTreeOfNode( &dt, (BufferItem **)0, bd, dp->dpNode ) )
+    if  ( docGetTreeOfNode( &tree, (struct BufferItem **)0, bd, dp->dpNode ) )
 	{ LDEB(1); return (DocumentField *)0;	}
 
-    dfInner= docFindChildField( &(dt->dtRootFields), &ep, lastOne );
+    dfInner= docFindChildField( &(tree->dtRootFields), &ep, lastOne );
 
     while( dfInner && docEditPositionInField( dfInner, &ep ) )
 	{
@@ -80,7 +103,7 @@ DocumentField * docFindTypedFieldForPosition(
 	    df= df->dfParent;
 	    }
 
-	dfInner= docGetNextField( &(dt->dtRootFields), dfInner );
+	dfInner= docGetNextField( &(tree->dtRootFields), dfInner );
 	}
 
     return (DocumentField *)0;
@@ -93,15 +116,15 @@ DocumentField * docFindTypedFieldInSelection(
 			    int					lastOne )
     {
     EditRange		er;
-    DocumentTree *	dt;
+    struct DocumentTree *	tree;
 
     docSetEditRange( &er, ds );
 
-    if  ( docGetRootOfSelectionScope( &dt, (BufferItem **)0,
+    if  ( docGetRootOfSelectionScope( &tree, (struct BufferItem **)0,
 					    bd, &(ds->dsSelectionScope) ) )
 	{ LDEB(1); return (DocumentField *)0;	}
 
-    return docFindFieldInRange( &er, &(dt->dtRootFields), lastOne, kind );
+    return docFindFieldInRange( &er, &(tree->dtRootFields), lastOne, kind );
     }
 
 /************************************************************************/
@@ -111,21 +134,21 @@ DocumentField * docFindTypedFieldInSelection(
 /************************************************************************/
 
 int docSuggestNewBookmarkName(	MemoryBuffer *			markName,
-				const BufferDocument *		bd,
+				const struct BufferDocument *	bd,
 				const DocumentSelection *	ds )
     {
     int			rval= 0;
-    const BufferItem *	paraBi= ds->dsHead.dpNode;
+    const struct BufferItem *	paraNode= ds->dsHead.dpNode;
     int			stroff= ds->dsHead.dpStroff;
 
-    if  ( paraBi )
+    if  ( paraNode )
 	{
-	const char *	s= (const char *)docParaString( paraBi, stroff );
+	const char *	s= docParaString( paraNode, stroff );
 	int		stroffTail;
 
-	if  ( paraBi == ds->dsTail.dpNode )
+	if  ( paraNode == ds->dsTail.dpNode )
 	    { stroffTail= ds->dsTail.dpStroff;	}
-	else{ stroffTail= docParaStrlen( paraBi );	}
+	else{ stroffTail= docParaStrlen( paraNode );	}
 
 	if  ( docBookmarkFromText( markName, s, stroffTail- stroff ) )
 	    { LDEB(1); return -1;	}
@@ -141,8 +164,8 @@ int docSuggestNewBookmarkName(	MemoryBuffer *			markName,
 
 /************************************************************************/
 
-int docMakeBookmarkUnique(	const BufferDocument *	bd,
-				MemoryBuffer *		markName )
+int docMakeBookmarkUnique(	const struct BufferDocument *	bd,
+				MemoryBuffer *			markName )
     {
     DocumentField *	df;
     const DocumentFieldList *	dfl= &(bd->bdFieldList);
@@ -172,220 +195,65 @@ int docMakeBookmarkUnique(	const BufferDocument *	bd,
 
 /************************************************************************/
 /*									*/
-/*  Derive field kind from field instructions.				*/
+/*  Derive field kind from the unparsed field instructions.		*/
 /*									*/
 /************************************************************************/
 
-int docFieldKindFromInstructions(	const DocumentField *	df )
+int docFieldKindFromInstructions(	int *			pKeepSpace,
+					const char *		text,
+					int			size )
     {
-    const FieldInstructions *	fi= &(df->dfInstructions);
+    char *	to;
+    int		len;
 
-    char *			s;
-    char *			p;
-    int				n;
-    int				i;
+    char	scratch[30];
 
+    int					kind;
     const FieldKindInformation *	fki;
 
-    if  ( fi->fiComponentCount < 1 )
-	{ LDEB(fi->fiComponentCount); return -1;	}
+    while( size > 0 && *text == ' ' )
+	{ size--; text++;	}
 
-    s= (char *) fi->fiComponents[0].icBuffer.mbBytes;
-    n= fi->fiComponents[0].icBuffer.mbSize;
     /* Cope with OpenOffice that inserts backslashes before the instructions */
-    while( n > 0 && *s == '\\' )
-	{ n--; s++;	}
+    while( size > 0 && *text == '\\' )
+	{ size--; text++;	}
 
-    i= 0; p= s;
-    while( i < n && isalpha( *p ) )
+    len= 0; to= scratch;
+    while( len < size && len < sizeof(scratch)- 1 && ! isspace( *text ) )
 	{
-	if  ( islower( *p ) )
-	    { *p= toupper( *p );	}
-	i++; p++;
+	if  ( islower( *text ) )
+	    { *to= toupper( *text );	}
+	else{ *to= *text;		}
+
+	len++; to++; text++;
+
+	if  ( to[-1] == '=' )
+	    { break;	}
 	}
+    *to= '\0';
 
     if  ( DOC_FieldKindCount != DOCfk_COUNT )
 	{ LLDEB(DOC_FieldKindCount,DOCfk_COUNT); return -1;	}
 
-    /* LSDEB(p-s,(char *)s); */
-
     fki= DOC_FieldKinds;
-    for ( i= 0; i < DOC_FieldKindCount; fki++, i++ )
+    for ( kind= 0; kind < DOC_FieldKindCount; fki++, kind++ )
 	{
 	if  ( ! fki->fkiIsFieldInRtf )
 	    { continue;	}
 
-	if  ( ! strncmp( s, fki->fkiLabel, p- s )	&&
-	      ! fki->fkiLabel[p- s]			)
-	    { return i;	}
+	if  ( ! strcmp( fki->fkiLabel, scratch ) )
+	    {
+	    if  ( pKeepSpace )
+		{ *pKeepSpace= fki->fkiKeepInstructionsSpace;	}
+
+	    return kind;
+	    }
 	}
 
     return -1;
     }
 
-/************************************************************************/
-/*									*/
-/*  Shift fields in an edit operation.					*/
-/*  NOTE that we depend on the paragraph number only for shifting the	*/
-/*  section number: Only the body has more than one section and there	*/
-/*  is a colose relationship in that case.				*/
-/*									*/
-/*  1)	For (BODY) fields that span sections, the section number is	*/
-/*	that of the head position of the field.				*/
-/*									*/
-/************************************************************************/
-
-static void docShiftFieldStart(		DocumentField *		df,
-					int			sectFrom,
-					int			paraFrom,
-					int			stroffFrom,
-					int			sectShift,
-					int			paraShift,
-					int			stroffShift )
-    {
-    /*  earlier paragraph  */
-    if  ( df->dfHeadPosition.epParaNr < paraFrom )
-	{ return;	}
-
-    /*  later paragraph  */
-    if  ( df->dfHeadPosition.epParaNr > paraFrom )
-	{
-	df->dfHeadPosition.epParaNr += paraShift;
-	/*  1  */
-	if  ( df->dfSelectionScope.ssTreeType == DOCinBODY )
-	    { df->dfSelectionScope.ssSectNr += sectShift;	}
-
-	return;
-	}
-
-    /* Same paragraph */
-    if  ( df->dfHeadPosition.epStroff < stroffFrom )
-	{ return;	}
-    if  ( df->dfHeadPosition.epStroff > stroffFrom )
-	{
-	df->dfHeadPosition.epParaNr += paraShift;
-	df->dfHeadPosition.epStroff += stroffShift;
-	/*  1  */
-	if  ( df->dfSelectionScope.ssTreeType == DOCinBODY )
-	    { df->dfSelectionScope.ssSectNr += sectShift;	}
-
-	return;
-	}
-
-    return;
-    }
-
-static void docShiftFieldEnd(		DocumentField *		df,
-					int			sectFrom,
-					int			paraFrom,
-					int			stroffFrom,
-					int			sectShift,
-					int			paraShift,
-					int			stroffShift )
-    {
-    /*  earlier paragraph  */
-    if  ( df->dfTailPosition.epParaNr < paraFrom )
-	{ return;	}
-
-    /*  later paragraph  */
-    if  ( df->dfTailPosition.epParaNr > paraFrom )
-	{
-	df->dfTailPosition.epParaNr += paraShift;
-	/*  1
-	if  ( df->dfSelectionScope.ssTreeType == DOCinBODY )
-	    { df->dfSelectionScope.ssSectNr += sectShift;	}
-	*/
-
-	return;
-	}
-
-    /* Same paragraph */
-    if  ( df->dfTailPosition.epStroff < stroffFrom )
-	{ return;	}
-    if  ( df->dfTailPosition.epStroff > stroffFrom )
-	{
-	df->dfTailPosition.epParaNr += paraShift;
-	df->dfTailPosition.epStroff += stroffShift;
-	/*  1
-	if  ( df->dfSelectionScope.ssTreeType == DOCinBODY )
-	    { df->dfSelectionScope.ssSectNr += sectShift;	}
-	*/
-
-	return;
-	}
-
-    return;
-    }
-
-/************************************************************************/
-/*									*/
-/*  Shift fields.							*/
-/*									*/
-/************************************************************************/
-
-static void docShiftChildFieldReferences(
-					const ChildFields *	cf,
-					int			sectFrom,
-					int			paraFrom,
-					int			stroffFrom,
-					int			sectShift,
-					int			paraShift,
-					int			stroffShift )
-    {
-    int			l;
-    int			r;
-    int			m;
-
-    DocumentField *	df;
-
-    if  ( cf->cfChildCount == 0 )
-	{ return;	}
-
-    l= 0; r= cf->cfChildCount; m= ( l+ r )/ 2;
-    while( l < m )
-	{
-	df= cf->cfChildren[m];
-
-	if  ( df->dfTailPosition.epParaNr < paraFrom )
-	    { l= m;	}
-	else{ r= m;	}
-
-	m= ( l+ r )/ 2;
-	}
-
-    df= cf->cfChildren[m];
-    if  ( df->dfTailPosition.epParaNr < paraFrom )
-	{ m++;	}
-
-    for ( m= m; m < cf->cfChildCount; m++ )
-	{
-	DocumentField *	dfc= cf->cfChildren[m];
-
-	if  ( dfc->dfFieldNumber < 0 )
-	    { LDEB(dfc->dfFieldNumber); continue;	}
-
-	if  ( dfc->dfSelectionScope.ssTreeType == DOCinBODY		&&
-	      dfc->dfSelectionScope.ssOwnerSectNr >= 0			&&
-	      dfc->dfSelectionScope.ssOwnerSectNr > sectFrom		)
-	    { dfc->dfSelectionScope.ssOwnerSectNr += sectShift;		}
-
-	docShiftFieldStart( dfc, sectFrom, paraFrom, stroffFrom,
-					sectShift, paraShift, stroffShift );
-	docShiftFieldEnd( dfc, sectFrom, paraFrom, stroffFrom,
-					sectShift, paraShift, stroffShift );
-
-	if  ( dfc->dfChildFields.cfChildCount > 0 )
-	    {
-	    docShiftChildFieldReferences( &(dfc->dfChildFields),
-					sectFrom, paraFrom, stroffFrom,
-					sectShift, paraShift, stroffShift );
-	    }
-	}
-
-    return;
-    }
-
-int docShiftFieldReferences(		DocumentTree *		dt,
+int docShiftFieldReferences(		struct DocumentTree *	tree,
 					int			sectFrom,
 					int			paraFrom,
 					int			stroffFrom,
@@ -396,7 +264,7 @@ int docShiftFieldReferences(		DocumentTree *		dt,
     /*
     appDebug( "docShiftFieldReferences( %s,"
 		" para:%d+%d, stroff:%d+%d )\n",
-	    docTreeTypeStr( dt->dtRoot?dt->dtRoot->biTreeType:-1 ),
+	    docTreeTypeStr( tree->dtRoot?tree->dtRoot->biTreeType:-1 ),
 	    paraFrom, paraShift, stroffFrom, stroffShift );
     */
 
@@ -404,7 +272,7 @@ int docShiftFieldReferences(		DocumentTree *		dt,
     if  ( paraFrom < 1 )
 	{ LDEB(paraFrom); return -1;	}
 
-    docShiftChildFieldReferences( &(dt->dtRootFields),
+    docShiftChildFieldReferences( &(tree->dtRootFields),
 					sectFrom, paraFrom, stroffFrom,
 					sectShift, paraShift, stroffShift );
     return 0;
@@ -418,32 +286,32 @@ int docShiftFieldReferences(		DocumentTree *		dt,
 /************************************************************************/
 
 static void docDeleteFieldChildren(	int *			pUpdateFlags,
-					BufferDocument *	bd,
-					DocumentField *		dfp )
+					struct BufferDocument *	bd,
+					DocumentField *		dfPa )
     {
-    if  ( dfp->dfKind == DOCfkLISTTEXT )
+    if  ( dfPa->dfKind == DOCfkLISTTEXT )
 	{ (*pUpdateFlags) |= FIELDdoLISTTEXT;	}
-    if  ( dfp->dfKind == DOCfkSEQ )
+    if  ( dfPa->dfKind == DOCfkSEQ )
 	{ (*pUpdateFlags) |= FIELDdoSEQ;	}
-    if  ( docFieldHasNote( dfp->dfKind ) && dfp->dfNoteIndex >= 0 )
+    if  ( docFieldHasNote( dfPa->dfKind ) && dfPa->dfNoteIndex >= 0 )
 	{ (*pUpdateFlags) |= FIELDdoCHFTN;	}
 
-    docDeleteChildFields( pUpdateFlags, bd, &(dfp->dfChildFields) );
+    docDeleteChildFields( pUpdateFlags, bd, &(dfPa->dfResultFields) );
     return;
     }
 
 void docDeleteChildFields(	int *			pUpdateFlags,
-				BufferDocument *	bd,
+				struct BufferDocument *	bd,
 				ChildFields *		cf )
     {
     int		i;
 
     for ( i= 0; i < cf->cfChildCount; i++ )
 	{
-	DocumentField *	dfc= cf->cfChildren[i];
+	DocumentField *	dfCh= cf->cfChildren[i];
 
-	docDeleteFieldChildren( pUpdateFlags, bd, dfc );
-	docDeleteFieldFromDocument( bd, dfc );
+	docDeleteFieldChildren( pUpdateFlags, bd, dfCh );
+	docDeleteFieldFromDocument( bd, dfCh );
 	}
 
     docCleanChildFields( cf );
@@ -454,20 +322,20 @@ void docDeleteChildFields(	int *			pUpdateFlags,
 /*									*/
 /*  Delete a field from a document and remove all references.		*/
 /*									*/
-/*  NOTE The shortcut that optimizes a lot of superfluous calls.	*/
+/*  NOTE The shortcut that optimizes many superfluous calls.		*/
 /*									*/
 /************************************************************************/
 
-int docDeleteFieldFromParent(	DocumentTree *			dt,
+int docDeleteFieldFromParent(	struct DocumentTree *		tree,
 				DocumentField *			df )
     {
     ChildFields *	cf;
 
     if  ( df->dfParent )
-	{ cf= &(df->dfParent->dfChildFields);	}
-    else{ cf= &(dt->dtRootFields);		}
+	{ cf= &(df->dfParent->dfResultFields);	}
+    else{ cf= &(tree->dtRootFields);		}
 
-    if  ( df->dfChildFields.cfChildCount == 0	&&
+    if  ( df->dfResultFields.cfChildCount == 0	&&
 	  cf->cfChildCount == 1			)
 	{ cf->cfChildCount--;	}
     else{
@@ -491,11 +359,9 @@ int docDeleteFieldFromParent(	DocumentTree *			dt,
 /************************************************************************/
 
 int docDeleteFieldRange(	int *			pUpdateFlags,
-				BufferDocument *	bd,
+				struct BufferDocument *	bd,
 				const EditRange *	er,
-				ChildFields *		rootFields,
-				DocumentField *		dfLeft,
-				DocumentField *		dfRight )
+				ChildFields *		rootFields )
     {
     int			rval= 0;
     int			i;
@@ -533,9 +399,7 @@ int docDeleteFieldRange(	int *			pUpdateFlags,
 
 	if  ( bcm < 0 || ecm > 0 )
 	    {
-	    docDeleteFieldRange( pUpdateFlags, bd, er,
-						    &(df->dfChildFields),
-						    dfLeft, dfRight );
+	    docDeleteFieldRange( pUpdateFlags, bd, er, &(df->dfResultFields) );
 	    }
 	else{
 	    if  ( df->dfKind == DOCfkLISTTEXT )
@@ -573,79 +437,74 @@ int docDeleteFieldRange(	int *			pUpdateFlags,
 /*									*/
 /************************************************************************/
 
-int docInsertParaHeadField(	DocumentField **	pDfHead,
-				DocumentSelection *	dsInsideHead,
-				DocumentSelection *	dsAroundHead,
-				int *			pHeadPart,
-				int *			pTailPart,
-				BufferItem *		paraBi,
-				BufferDocument *	bd,
-				DocumentTree *		dt,
-				int			fieldKind,
-				int			textAttrNr )
+int docInsertParaHeadField(	DocumentField **		pDfHead,
+				DocumentSelection *		dsInsideHead,
+				DocumentSelection *		dsAroundHead,
+				int *				pHeadPart,
+				int *				pTailPart,
+				struct ParagraphBuilder *	pb,
+				int				fieldKind,
+				int				textAttrNr )
     {
+    BufferItem *		paraNode= pb->pbParaNode;
+    BufferDocument *		bd= pb->pbDocument;
+
     DocumentField *		df;
     TextParticule *		tpText;
     int				stroffShift= 0;
     int				head= 0;
     const int			stroffHead= 0;
-    int				wasEmpty= ( docParaStrlen( paraBi ) == 0 );
+    int				wasEmpty= ( docParaStrlen( paraNode ) == 0 );
+
     DocumentFieldList *		dfl= &(bd->bdFieldList);
 
-    DocumentSelection		dsField;
-
-    while( head+ 1 < paraBi->biParaParticuleCount			&&
-	   paraBi->biParaParticules[head+ 1].tpStroff == stroffHead	&&
-	   paraBi->biParaParticules[head+ 1].tpKind == DOCkindFIELDHEAD &&
+    while( head+ 1 < paraNode->biParaParticuleCount			&&
+	   paraNode->biParaParticules[head+ 1].tpStroff == stroffHead	&&
+	   paraNode->biParaParticules[head+ 1].tpKind == TPkindFIELDHEAD &&
 	   docGetFieldKindByNumber( dfl,
-	     paraBi->biParaParticules[head+ 1].tpObjectNumber==DOCfkBOOKMARK ) )
+	     paraNode->biParaParticules[head+ 1].tpObjectNumber==DOCfkBOOKMARK ) )
 	{ head++;	}
 
     /*  4  */
-    if  ( docParaStringReplace( &stroffShift, paraBi,
-			    stroffHead, stroffHead, (const char *)"?", 1 ) )
-	{ LDEB(docParaStrlen(paraBi)); return -1; }
+    if  ( docParaStringReplace( &stroffShift, paraNode,
+			stroffHead, stroffHead, "?", 1 ) )
+	{ LDEB(docParaStrlen(paraNode)); return -1; }
 
-    if  ( paraBi->biParaParticuleCount > 0 && wasEmpty )
+    if  ( paraNode->biParaParticuleCount > 0 && wasEmpty )
 	{
-	tpText= paraBi->biParaParticules;
-	if  ( tpText->tpKind != DOCkindSPAN )
+	tpText= paraNode->biParaParticules;
+	if  ( tpText->tpKind != TPkindSPAN )
 	    { SDEB(docKindStr(tpText->tpKind)); return -1;	}
 
 	tpText->tpStrlen= 1;
-
-	if  ( docShiftParticuleOffsets( bd, paraBi, head+ 1,
-				paraBi->biParaParticuleCount, stroffShift ) )
-	    { LDEB(stroffShift); }
+	tpText->tpTextAttrNr= textAttrNr;
 	}
     else{
-	tpText= docInsertTextParticule( paraBi, head,
-			    stroffHead, 1, DOCkindSPAN, textAttrNr );
+	tpText= docParaGraphBuilderInsertSpanParticule( pb, head,
+			    stroffHead, 1, textAttrNr );
 	if  ( ! tpText )
-	    { LXDEB(paraBi->biParaParticuleCount,tpText); return -1; }
-
-	if  ( docShiftParticuleOffsets( bd, paraBi, head+ 1,
-				paraBi->biParaParticuleCount, stroffShift ) )
-	    { LDEB(stroffShift); }
+	    { LXDEB(paraNode->biParaParticuleCount,tpText); return -1; }
 	}
 
-    docSetParaSelection( &dsField, paraBi, 1, stroffHead, stroffShift );
+    if  ( docParagraphBuilderShiftOffsets( pb,
+				    head+ 1, stroffHead, stroffShift ) )
+	{ LDEB(stroffShift); }
 
     /*  2,3  */
-    df= docMakeField( bd, dt, &dsField, head, head+ 1, textAttrNr, textAttrNr );
+    df= docMakeTextLevelField( pb, stroffHead, stroffHead+ stroffShift,
+					head, head+ 1,
+					textAttrNr, fieldKind );
     if  ( ! df )
 	{ XDEB(df); return -1;	}
 
-    df->dfKind= fieldKind;
-
     /*  4  */
-    if  ( paraBi->biParaParticuleCount == head+ 3 )
+    if  ( paraNode->biParaParticuleCount == head+ 3 )
 	{
-	tpText= docInsertTextParticule( paraBi, head+ 3,
-					docParaStrlen( paraBi ), 0,
-					DOCkindSPAN, textAttrNr );
+	tpText= docParaGraphBuilderInsertSpanParticule( pb, head+ 3,
+					docParaStrlen( paraNode ), 0,
+					textAttrNr );
 	if  ( ! tpText )
-	    { LXDEB(paraBi->biParaParticuleCount,tpText); return -1; }
+	    { LXDEB(paraNode->biParaParticuleCount,tpText); return -1; }
 	}
 
     if  ( docDelimitFieldInDoc( dsInsideHead, dsAroundHead,
@@ -656,89 +515,51 @@ int docInsertParaHeadField(	DocumentField **	pDfHead,
     return 0;
     }
 
-DocumentField * docMakeField(	BufferDocument *		bd,
-				DocumentTree *			dt,
-				const DocumentSelection *	dsInput,
-				int				part0,
-				int				part1,
-				int				attr0,
-				int				attr1 )
+/************************************************************************/
+/*									*/
+/*  Make a text level field. I.E. a field in a single paragraph.	*/
+/*									*/
+/************************************************************************/
+
+DocumentField * docMakeTextLevelField(
+				struct ParagraphBuilder *	pb,
+				int				headStroff,
+				int				tailStroff,
+				int				headPart,
+				int				tailPart,
+				int				textAttrNr,
+				int				fieldKind )
     {
-    int			paraNr0= docNumberOfParagraph( dsInput->dsHead.dpNode );
-    int			paraNr1;
-    const BufferItem *	sectBi0;
+    BufferDocument *		bd= pb->pbDocument;
 
-    DocumentField *	rval= (DocumentField *)0;
-    DocumentField *	df;
-    int			singleParagraph= 0;
+    const struct BufferItem *	sectNode;
 
-    int			stroff0;
-    int			stroff1;
+    DocumentField *		rval= (DocumentField *)0;
+    DocumentField *		df;
 
     df= docClaimField( &(bd->bdFieldList) );
     if  ( ! df )
 	{ XDEB(df); goto ready;	}
     df->dfKind= DOCfkUNKNOWN;
 
-    sectBi0= docGetSectNode( dsInput->dsHead.dpNode );
-    if  ( ! sectBi0 )
-	{ XDEB(sectBi0); goto ready;	}
+    sectNode= docGetSectNode( pb->pbParaNode );
+    if  ( ! sectNode )
+	{ XXDEB(pb->pbParaNode,sectNode); goto ready;	}
 
-    if  ( dsInput->dsTail.dpNode == dsInput->dsHead.dpNode )
-	{ singleParagraph= 1; paraNr1= paraNr0;	}
-    else{
-	const BufferItem *	sectBi1;
+    if  ( docParaBuilderInsertFieldParticules( &headStroff, &tailStroff, pb,
+		    headPart, tailPart, textAttrNr, df->dfFieldNumber ) )
+	{ LLDEB(headStroff,tailStroff); goto ready;	}
 
-	singleParagraph= 0;
-	paraNr1= docNumberOfParagraph( dsInput->dsTail.dpNode );
+    df->dfSelectionScope= sectNode->biSectSelectionScope;
+    df->dfHeadPosition.epParaNr= pb->pbParaNr;
+    df->dfHeadPosition.epStroff= headStroff;
+    df->dfTailPosition.epParaNr= pb->pbParaNr;
+    df->dfTailPosition.epStroff= tailStroff;
 
-	sectBi1= docGetSectNode( dsInput->dsTail.dpNode );
-	if  ( ! sectBi1 )
-	    { XDEB(sectBi1); goto ready;	}
-
-	if  ( sectBi1 != sectBi0 )
-	    { XXDEB(sectBi0,sectBi1); goto ready;	}
-	}
-
-    {
-    TextParticule *	tp;
-
-    tp= docMakeSpecialParticule( dsInput->dsTail.dpNode, part1,
-		    dsInput->dsTail.dpStroff, DOCkindFIELDTAIL, attr1 );
-    if  ( ! tp )
-	{ XDEB(tp); goto ready;	}
-    tp->tpObjectNumber= df->dfFieldNumber;
-    stroff1= tp->tpStroff;
-
-    docShiftParticuleOffsets( bd, dsInput->dsTail.dpNode, part1+ 1,
-		dsInput->dsTail.dpNode->biParaParticuleCount, tp->tpStrlen );
-    }
-
-    {
-    TextParticule *	tp;
-
-    tp= docMakeSpecialParticule( dsInput->dsHead.dpNode, part0,
-		    dsInput->dsHead.dpStroff, DOCkindFIELDHEAD, attr0 );
-    if  ( ! tp )
-	{ XDEB(tp); goto ready;	}
-    tp->tpObjectNumber= df->dfFieldNumber;
-    stroff0= tp->tpStroff;
-
-    docShiftParticuleOffsets( bd, dsInput->dsHead.dpNode, part0+ 1,
-		dsInput->dsHead.dpNode->biParaParticuleCount, tp->tpStrlen );
-
-    if  ( singleParagraph )
-	{ stroff1 += tp->tpStrlen;	}
-    }
-
-    df->dfSelectionScope= sectBi0->biSectSelectionScope;
-    df->dfHeadPosition.epParaNr= paraNr0;
-    df->dfHeadPosition.epStroff= stroff0;
-    df->dfTailPosition.epParaNr= paraNr1;
-    df->dfTailPosition.epStroff= stroff1;
-
-    if  ( docInsertFieldInTree( &(dt->dtRootFields), df ) )
+    if  ( docInsertFieldInTree( &(pb->pbTree->dtRootFields), df ) )
 	{ LDEB(1); goto ready;	}
+
+    df->dfKind= fieldKind;
 
     rval= df; df= (DocumentField *)0; /* steal */
 
@@ -756,29 +577,28 @@ DocumentField * docMakeField(	BufferDocument *		bd,
 /*									*/
 /************************************************************************/
 
-int docParaHeadFieldKind(	const BufferItem *	paraBi,
-				const BufferDocument *	bd )
+int docParaHeadFieldKind(	const struct BufferItem *	paraNode )
     {
     int		fieldKind= -1;
 
-    if  ( paraBi->biTreeType == DOCinFOOTNOTE	||
-	  paraBi->biTreeType == DOCinENDNOTE	)
+    if  ( paraNode->biTreeType == DOCinFOOTNOTE	||
+	  paraNode->biTreeType == DOCinENDNOTE	)
 	{
-	BufferItem *		bi= docGetSectNode( paraBi->biParent );
-	if  ( ! bi )
-	    { XDEB(bi); return -1;		}
+	struct BufferItem *	node= docGetSectNode( paraNode->biParent );
+	if  ( ! node )
+	    { XDEB(node); return -1;		}
 	else{
 	    DocumentPosition	dp;
 
-	    if  ( docHeadPosition( &dp, bi ) )
+	    if  ( docHeadPosition( &dp, node ) )
 		{ LDEB(1); return -1;	}
 
-	    if  ( dp.dpNode == paraBi )
+	    if  ( dp.dpNode == paraNode )
 		{ fieldKind= DOCfkCHFTN;	}
 	    }
 	}
 
-    if  ( paraBi->biParaListOverride > 0 )
+    if  ( paraNode->biParaProperties->ppListOverride > 0 )
 	{ fieldKind= DOCfkLISTTEXT;	}
 
     return fieldKind;

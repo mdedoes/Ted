@@ -4,11 +4,25 @@
 /*									*/
 /************************************************************************/
 
-#   include	<sioGeneral.h>
-#   include	<psPrint.h>
-#   include	<docBuf.h>
-#   include	"docDraw.h"
-#   include	"docParticuleData.h"
+struct PictureProperties;
+struct InsertedObject;
+struct DocumentField;
+struct BlockOrnaments;
+struct DocumentProperties;
+struct SimpleOutputStream;
+struct MemoryBuffer;
+struct PostScriptTypeList;
+struct DrawTextLine;
+struct LayoutPosition;
+struct BufferDocument;
+struct LayoutContext;
+struct DrawingContext;
+struct DrawingShape;
+struct TextRun;
+struct TextAttribute;
+struct DocumentRectangle;
+struct PrintingState;
+struct AffineTransform2D;
 
 /************************************************************************/
 /*									*/
@@ -17,111 +31,115 @@
 /************************************************************************/
 
 extern int docPsPrintGetDocumentFonts(
-				PostScriptTypeList *		pstl,
-				const LayoutContext *		lc );
+				struct PostScriptTypeList *	pstl,
+				const struct LayoutContext *	lc );
 
-extern int docPsListImageFonts( PostScriptTypeList *		pstl,
-				const PictureProperties *	pip,
-				const MemoryBuffer *		mb,
-				const LayoutContext *		lc,
+extern int docPsListImageFonts( struct PostScriptTypeList *	pstl,
+				const struct PictureProperties * pip,
+				const struct MemoryBuffer *	mb,
+				const struct LayoutContext *	lc,
 				const char *			prefix );
 
-extern int docPsPrintTab(	const DrawTextLine *		dtl,
+extern int docPsPrintTab(	const struct DrawTextLine *	dtl,
 				int				part,
 				int				textAttrNr,
-				const TextAttribute *		ta,
+				const struct TextAttribute *	ta,
 				int				leader,
 				int				x0Twips,
 				int				x1Twips,
-				const LayoutPosition *		baseLine );
+				const struct LayoutPosition *	baseLine );
 
-extern void docPsSaveTabLeaderProcedures(	SimpleOutputStream *	sos );
+extern void docPsSaveTabLeaderProcedures(
+				struct SimpleOutputStream *	sos );
 
 extern int docPsPrintDrawDrawingShape(
-				const DocumentRectangle *	drTwips,
+				const struct DocumentRectangle * drTwips,
 				int				page,
 				struct DrawingShape *		ds,
-				DrawingContext *		dc,
+				struct DrawingContext *		dc,
 				void *				vps );
 
-extern int docPsPrintObject(	const DrawTextLine *		dtl,
+extern int docPsPrintInlineObject(
+				const struct DrawTextLine *	dtl,
 				int				part,
-				InsertedObject *		io,
-				int				x0Twips,
-				int				x1Twips,
-				const LayoutPosition *		baseLine );
+				struct InsertedObject *		io,
+				const struct DocumentRectangle * drTwips,
+				const struct LayoutPosition *	baseLine );
 
-extern int docPsPrintShapeImage( PrintingState *		ps,
-				DrawingContext *		dc,
+extern int docPsPrintShapeImage( struct PrintingState *		ps,
+				struct DrawingContext *		dc,
 				struct DrawingShape *		ds,
-				const DocumentRectangle *	drTwips,
-				const AffineTransform2D *	at );
+				const struct DocumentRectangle * drTwips,
+				const struct AffineTransform2D * at );
 
-extern int docPsPrintTextLine(	struct BufferItem *		paraBi,
-				int				line,
-				const ParagraphFrame *		pf,
-				const DocumentRectangle *	drLine,
-				void *				vps,
-				DrawingContext *		dc,
-				const BlockOrigin *		bo );
+extern int docPsPrintStartTextLine(
+				struct DrawTextLine *		dtl,
+				int				x0Twips );
 
-extern int docPsPrintStartField(	const DrawTextLine *	dtl,
-					int			part,
-					const DocumentField *	df );
+extern int docPsPrintFinishTextLine(
+				const struct DrawTextLine *	dtl,
+				int				x1Twips );
 
-extern int docPsPrintFinishField(	const DrawTextLine *	dtl,
-					int			part,
-					const DocumentField *	df );
+extern int docPsPrintStartField( const struct DrawTextLine *	dtl,
+				int				part,
+				int				x0Twips,
+				const struct DocumentField *	df );
 
-extern int docPsPrintFtnsep(	const DrawTextLine *		dtl,
+extern int docPsPrintFinishField( const struct DrawTextLine *	dtl,
+				int				part,
+				int				x1Twips,
+				const struct DocumentField *	df );
+
+extern int docPsPrintFtnsep(	const struct DrawTextLine *	dtl,
 				int				part,
 				int				textAttrNr,
-				const TextAttribute *		ta,
+				const struct TextAttribute *	ta,
 				int				x0Twips,
 				int				x1Twips,
-				const LayoutPosition *		baseLine );
+				const struct LayoutPosition *	baseLine );
 
-extern int docPsPrintSpan(	const DrawTextLine *		dtl,
+extern int docPsPrintTextRun(	const struct TextRun *		tr,
+				int				x0Twips,
+				int				x1Twips,
+				const struct DrawTextLine *	dtl,
+				const struct LayoutPosition *	baseLine,
+				const char *			outputString );
+
+extern int docPsPrintRunUnderline( const struct DrawTextLine *	dtl,
 				int				part,
-				int				count,
-				const LayoutPosition *		baseLine,
+				int				upto,
+				int				direction,
 				int				textAttrNr,
-				const TextAttribute *		ta,
-				const char *			printString,
-				int				nbLen );
+				const struct TextAttribute *	ta,
+				int				x0Twips,
+				int				x1Twips,
+				const struct LayoutPosition *	baseLine );
 
-extern int docPsPrintRunUnderline(	const DrawTextLine *	dtl,
-					int			part,
-					int			upto,
-					int			textAttrNr,
-					const TextAttribute *	ta,
-					int			x0Twips,
-					int			x1Twips,
-					const LayoutPosition *	baseLine );
+extern int docPsPrintRunStrikethrough(
+				const struct DrawTextLine *	dtl,
+				int				part,
+				int				upto,
+				int				direction,
+				int				textAttrNr,
+				const struct TextAttribute *	ta,
+				int				x0Twips,
+				int				x1Twips,
+				const struct LayoutPosition *	baseLine );
 
-extern int docPsPrintRunStrikethrough(	const DrawTextLine *	dtl,
-					int			part,
-					int			upto,
-					int			textAttrNr,
-					const TextAttribute *	ta,
-					int			x0Twips,
-					int			x1Twips,
-					const LayoutPosition *	baseLine );
+extern void psDefineBorderProcs( struct SimpleOutputStream *	sos );
 
-extern void psDefineBorderProcs(	SimpleOutputStream *	sos );
-
-extern int docPsPrintOrnaments(	const BlockOrnaments *		bo,
+extern int docPsPrintOrnaments(	const struct BlockOrnaments *	bo,
 				int				page,
-				const DocumentRectangle *	drOutside,
-				const DocumentRectangle *	drInside,
+				const struct DocumentRectangle * drOutside,
+				const struct DocumentRectangle * drInside,
 				void *				through,
 				struct DrawingContext *		dc );
 
-extern int docPsDocinfoPdfmark( PrintingState *		ps,
+extern int docPsDocinfoPdfmark( struct PrintingState *		ps,
 			const char *			applicationName,
 			const char *			applicationReference,
-			const DocumentProperties *	dp );
+			const struct DocumentProperties *	dp );
 
-extern int docPsOutlinePdfmarks(	PrintingState *		ps,
-					BufferDocument *	bd );
+extern int docPsOutlinePdfmarks(	struct PrintingState *		ps,
+					struct BufferDocument *	bd );
 

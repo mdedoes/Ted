@@ -26,6 +26,7 @@
 #   include	<sys/utsname.h>
 
 #   include	"appSystem.h"
+#   include	"utilMemoryBuffer.h"
 
 #   include	<appDebugon.h>
 
@@ -56,7 +57,7 @@
 /*									*/
 /************************************************************************/
 
-int appHomeDirectory(	MemoryBuffer *	mb )
+int fileHomeDirectory(	MemoryBuffer *	mb )
     {
     struct passwd *	pwd;
 
@@ -78,7 +79,7 @@ int appHomeDirectory(	MemoryBuffer *	mb )
 /*									*/
 /************************************************************************/
 
-int appCurrentDirectory(	MemoryBuffer *	mb )
+int fileCurrentDirectory(	MemoryBuffer *	mb )
     {
     char	scratch[PATH_MAX+ 1];
 
@@ -119,7 +120,7 @@ int appCurrentDirectory(	MemoryBuffer *	mb )
 /************************************************************************/
 
 #if USE_STAT
-int appTestDirectory(	const MemoryBuffer *	dir )
+int fileTestDirectory(	const MemoryBuffer *	dir )
     {
     struct stat	st;
 
@@ -137,7 +138,7 @@ int appTestDirectory(	const MemoryBuffer *	dir )
     return 0;
     }
 #else
-int appTestDirectory(	const MemoryBuffer *	dir )
+int fileTestDirectory(	const MemoryBuffer *	dir )
     {
     char	scratch[1001];
 
@@ -151,7 +152,7 @@ int appTestDirectory(	const MemoryBuffer *	dir )
 #endif
 
 #if USE_ACCESS
-int appTestFileWritable( const MemoryBuffer *	file )
+int fileTestFileWritable( const MemoryBuffer *	file )
     {
     if  ( access( utilMemoryBufferGetString( file ), W_OK ) )
 	{ return -1;	}
@@ -159,7 +160,7 @@ int appTestFileWritable( const MemoryBuffer *	file )
     return 0;
     }
 #else
-int appTestFileWritable( const MemoryBuffer *	file )
+int fileTestFileWritable( const MemoryBuffer *	file )
     {
     char	scratch[1001];
 
@@ -173,7 +174,7 @@ int appTestFileWritable( const MemoryBuffer *	file )
 #endif
 
 #if USE_ACCESS
-int appTestFileReadable( const MemoryBuffer *	file )
+int fileTestFileReadable( const MemoryBuffer *	file )
     {
     if  ( access( utilMemoryBufferGetString( file ), R_OK ) )
 	{ return -1;	}
@@ -181,7 +182,7 @@ int appTestFileReadable( const MemoryBuffer *	file )
     return 0;
     }
 #else
-int appTestFileReadable( const MemoryBuffer *	file )
+int fileTestFileReadable( const MemoryBuffer *	file )
     {
     char	scratch[1001];
 
@@ -195,7 +196,7 @@ int appTestFileReadable( const MemoryBuffer *	file )
 #endif
 
 #if USE_STAT
-int appTestFileExists(	const MemoryBuffer *	mb )
+int fileTestFileExists(	const MemoryBuffer *	mb )
     {
     struct stat	st;
 
@@ -213,7 +214,7 @@ int appTestFileExists(	const MemoryBuffer *	mb )
     return 0;
     }
 #else
-int appTestFileExists(	const MemoryBuffer *	mb )
+int fileTestFileExists(	const MemoryBuffer *	mb )
     {
     char	scratch[1001];
 
@@ -232,7 +233,7 @@ int appTestFileExists(	const MemoryBuffer *	mb )
 /*									*/
 /************************************************************************/
 
-int appMakeDirectory(	const MemoryBuffer *	dir )
+int fileMakeDirectory(	const MemoryBuffer *	dir )
     {
     if  ( mkdir( utilMemoryBufferGetString( dir ), 0777 ) )
 	{ SSDEB(utilMemoryBufferGetString(dir),strerror(errno)); return -1; }
@@ -240,7 +241,7 @@ int appMakeDirectory(	const MemoryBuffer *	dir )
     return 0;
     }
 
-static int appMakeDirectoriesX(	const char *	dir )
+static int fileMakeDirectoriesX(	const char *	dir )
     {
     if  ( mkdir( dir, 0777 ) )
 	{
@@ -248,7 +249,7 @@ static int appMakeDirectoriesX(	const char *	dir )
 	    {
 	    char *	scratch= strdup( dir );
 	    char *	slash;
-	    int		rval= 0;;
+	    int		rval= 0;
 
 	    if  ( ! scratch )
 		{ XDEB(scratch); return -1;	}
@@ -259,7 +260,7 @@ static int appMakeDirectoriesX(	const char *	dir )
 	    else{
 		*slash= '\0';
 
-		if  ( appMakeDirectoriesX( scratch ) )
+		if  ( fileMakeDirectoriesX( scratch ) )
 		    { SDEB(scratch); rval= -1;	}
 		else{
 		    if  ( mkdir( dir, 0777 ) )
@@ -276,8 +277,8 @@ static int appMakeDirectoriesX(	const char *	dir )
     return 0;
     }
 
-int appMakeDirectories(	const MemoryBuffer *	dir )
-    { return appMakeDirectoriesX( utilMemoryBufferGetString( dir ) );	}
+int fileMakeDirectories(	const MemoryBuffer *	dir )
+    { return fileMakeDirectoriesX( utilMemoryBufferGetString( dir ) );	}
 
 /************************************************************************/
 /*									*/
@@ -340,7 +341,7 @@ int appMakeUniqueString(	char *		target,
 
     if  ( maxlen > 10 )
 	{
-	char *			nodename;
+	char *			nodename= (char *)0;
 	struct hostent *	hp;
 
 #	if HAVE_UNAME
@@ -370,7 +371,7 @@ int appMakeUniqueString(	char *		target,
 	if  ( strlen( nodename ) < maxlen )
 	    {
 	    *target= '@';
-	    maxlen -= 1; target += 1;
+	    /* maxlen -= 1; */ target += 1;
 	    strcpy( target, nodename );
 	    }
 	}
@@ -384,7 +385,7 @@ int appMakeUniqueString(	char *		target,
 /*									*/
 /************************************************************************/
 
-int appRemoveFile(	const MemoryBuffer *	filename )
+int fileRemoveFile(	const MemoryBuffer *	filename )
     {
     const char *	fn= utilMemoryBufferGetString( filename );
 
@@ -559,13 +560,6 @@ int appForAllFiles(	const MemoryBuffer *	dir,
 	{
 	char *		dot= strrchr( de->d_name, '.' );
 
-#	ifdef __VMS
-	char *	semicolon= strrchr( de->d_name, ';' );
-
-	if  ( semicolon )
-	    { *semicolon= '\0';	}
-#	endif
-
 	if  ( ! strcmp( de->d_name, "." ) )
 	    { de= readdir( d ); continue;	}
 	if  ( ! strcmp( de->d_name, ".." ) )
@@ -580,7 +574,7 @@ int appForAllFiles(	const MemoryBuffer *	dir,
 	    if  ( utilMemoryBufferSetString( &relative, de->d_name ) )
 		{ LDEB(1); rval= -1; goto ready;	}
 
-	    if  ( appAbsoluteName( &absolute, &relative,
+	    if  ( fileAbsoluteName( &absolute, &relative,
 						relativeIsFile, dir ) < 0 )
 		{ LDEB(1); rval= -1; goto ready;	}
 

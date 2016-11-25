@@ -4,11 +4,14 @@
 
 #   include	"drawMetafilePsList.h"
 #   include	"drawWinMetaImpl.h"
-#   include	<utilMatchFont.h>
+#   include	<fontMatchFont.h>
 #   include	<bmWmfIo.h>
 #   include	<bmEmfIo.h>
 #   include	"drawMacPictImpl.h"
 #   include	<sioGeneral.h>
+#   include	<psFace.h>
+#   include	<psPostScriptFontList.h>
+#   include	<psFontInfo.h>
 
 #   include	<appDebugon.h>
 
@@ -30,6 +33,11 @@ typedef struct ListMetaFonts
     PostScriptTypeList *	lmfPstl;
     const char *		lmfPrefix;
     } ListMetaFonts;
+
+# ifdef __GNUC__
+# pragma GCC diagnostic push
+# pragma GCC diagnostic ignored "-Wunused-parameter"
+# endif
 
 static int appDrawMetaBitmapImagePsList(
 				DeviceContext *			dc,
@@ -95,6 +103,10 @@ static int appMetaDrawArcPsList(DeviceContext *			dc,
 				int				drawBorder )
     { return 0;	}
 
+# ifdef __GNUC__
+# pragma GCC diagnostic pop
+# endif
+
 static int appMetaSelectFontObjectPsList( DeviceContext *	dc,
 					void *			through,
 					LogicalFont *		lf )
@@ -118,6 +130,11 @@ static int appMetaSelectFontObjectPsList( DeviceContext *	dc,
 
     return 0;
     }
+
+# ifdef __GNUC__
+# pragma GCC diagnostic push
+# pragma GCC diagnostic ignored "-Wunused-parameter"
+# endif
 
 static int appMetaSelectPatternBrushObjectPsList( DeviceContext *	dc,
 						void *			through,
@@ -156,6 +173,10 @@ static int appMetaSetPolyFillModePsList( DeviceContext *	dc,
 					void *			through,
 					int			mode )
     { return 0;	}
+
+# ifdef __GNUC__
+# pragma GCC diagnostic pop
+# endif
 
 static int appMetaStartPsList(	DeviceContext *			dc,
 				int				objectCount,

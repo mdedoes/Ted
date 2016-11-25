@@ -7,17 +7,18 @@
 
 #   include	"docLayoutConfig.h"
 
-#   include	<appDebugon.h>
-
 #   include	<docBuf.h>
 #   include	"docSelectLayout.h"
 #   include	<docTreeType.h>
+#   include	<docSelect.h>
 
-int docPositionNearHeadFoot(	DocumentPosition *	dpNew,
-				int			treeType,
-				struct BufferItem *	bodySectNode,
-				BufferDocument *	bd,
-				int			page )
+#   include	<appDebugon.h>
+
+int docPositionNearHeadFoot(	struct DocumentPosition *	dpNew,
+				int				treeType,
+				struct BufferItem *		bodySectNode,
+				struct BufferDocument *		bd,
+				int				page )
     {
     int			part;
     int			line;
@@ -30,6 +31,7 @@ int docPositionNearHeadFoot(	DocumentPosition *	dpNew,
 	case DOCinFIRST_HEADER:
 	case DOCinLEFT_HEADER:
 	case DOCinRIGHT_HEADER:
+	case DOCinLAST_HEADER:
 	    if  ( docGetFirstInColumnForNode( dpNew, &line, &part,
 						bodySectNode, page, column ) )
 		{
@@ -43,6 +45,7 @@ int docPositionNearHeadFoot(	DocumentPosition *	dpNew,
 	case DOCinFIRST_FOOTER:
 	case DOCinLEFT_FOOTER:
 	case DOCinRIGHT_FOOTER:
+	case DOCinLAST_FOOTER:
 	    if  ( docGetLastInColumnForNode( dpNew, &line, &part,
 						bodySectNode, page, column ) )
 		{

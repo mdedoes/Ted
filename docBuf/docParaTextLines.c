@@ -8,11 +8,13 @@
 
 #   include	<stdlib.h>
 
-#   include	<appDebugon.h>
-
-#   include	"docBuf.h"
 #   include	"docParaParticules.h"
+#   include	"docSelect.h"
+#   include	"docTreeNode.h"
+#   include	<docTextLine.h>
+
 #   include	"docDebug.h"
+#   include	<appDebugon.h>
 
 /************************************************************************/
 /*									*/
@@ -20,29 +22,29 @@
 /*									*/
 /************************************************************************/
 
-TextLine * docInsertTextLine(	BufferItem *	bi,
+TextLine * docInsertTextLine(	struct BufferItem *	node,
 				int		line )
     {
     TextLine *		tl;
     int			newSize;
 
-    if  ( bi->biParaLineCount % 10 )
-	{ newSize= bi->biParaLineCount+  1; }
-    else{ newSize= bi->biParaLineCount+ 11; }
+    if  ( node->biParaLineCount % 10 )
+	{ newSize= node->biParaLineCount+  1; }
+    else{ newSize= node->biParaLineCount+ 11; }
 
     newSize *= sizeof(TextLine);
 
-    tl= (TextLine *)realloc( bi->biParaLines, newSize );
+    tl= (TextLine *)realloc( node->biParaLines, newSize );
     if  ( ! tl )
-	{ LXDEB(bi->biParaLineCount,tl); return (TextLine *)0; }
-    bi->biParaLines= tl;
+	{ LXDEB(node->biParaLineCount,tl); return (TextLine *)0; }
+    node->biParaLines= tl;
 
     if  ( line == -1 )
-	{ line= bi->biParaLineCount; }
+	{ line= node->biParaLineCount; }
     else{
 	int		i;
 
-	for ( i= bi->biParaLineCount; i > line; i-- )
+	for ( i= node->biParaLineCount; i > line; i-- )
 	    { tl[i]= tl[i-1];	}
 	}
 
@@ -50,8 +52,32 @@ TextLine * docInsertTextLine(	BufferItem *	bi,
 
     docInitTextLine( tl );
 
-    bi->biParaLineCount++;
+    node->biParaLineCount++;
     return tl;
+    }
+
+/************************************************************************/
+
+void docSetLineFlags(		int *				pFlags,
+				const struct BufferItem *	paraNode,
+				int				stroff,
+				const struct TextLine *		tl )
+    {
+    const int		paraStrlen= docParaStrlen( paraNode );
+
+    *pFlags= 0;
+
+    if  ( stroff == tl->tlStroff )
+	{ *pFlags |= POSflagLINE_HEAD; }
+    if  ( stroff == tl->tlStroff+ tl->tlStrlen )
+	{ *pFlags |= POSflagLINE_TAIL; }
+
+    if  ( stroff == 0 )
+	{ *pFlags |= POSflagPARA_HEAD; }
+    if  ( stroff == paraStrlen )
+	{ *pFlags |= POSflagPARA_TAIL; }
+
+    return;
     }
 
 /************************************************************************/
@@ -68,7 +94,7 @@ int docFindLineOfPosition(	int *				pLine,
 				const DocumentPosition *	dp,
 				int				lastOne )
     {
-    const BufferItem *	paraNode= dp->dpNode;
+    const struct BufferItem *	paraNode= dp->dpNode;
     const int		stroff= dp->dpStroff;
 
     int			l= 0;
@@ -147,21 +173,28 @@ int docFindLineOfPosition(	int *				pLine,
 
     if  ( pFlags )
 	{
-	const TextLine *	tl= paraNode->biParaLines+ m;
-
-	*pFlags= 0;
-
-	if  ( stroff == tl->tlStroff )
-	    { *pFlags |= POSflagLINE_HEAD; }
-	if  ( stroff == tl->tlStroff+ tl->tlStrlen )
-	    { *pFlags |= POSflagLINE_TAIL; }
-
-	if  ( stroff == 0 )
-	    { *pFlags |= POSflagPARA_HEAD; }
-	if  ( stroff == paraStrlen )
-	    { *pFlags |= POSflagPARA_TAIL; }
+	tl= paraNode->biParaLines+ m;
+	docSetLineFlags( pFlags, paraNode, stroff, tl );
 	}
 
     return 0;
     }
 
+/************************************************************************/
+
+int docGetLineOfPosition(	int *				pLine,
+				const DocumentPosition *	dp,
+				int				positionFlags )
+    {
+    if  ( positionFlags & POSflagLINE_TAIL )
+	{
+	if  ( docFindLineOfPosition( pLine, (int *)0, dp, PARAfindFIRST ) )
+	    { LDEB(dp->dpStroff); return -1;	}
+	}
+    else{
+	if  ( docFindLineOfPosition( pLine, (int *)0, dp, PARAfindLAST ) )
+	    { LDEB(dp->dpStroff); return -1;	}
+	}
+
+    return 0;
+    }

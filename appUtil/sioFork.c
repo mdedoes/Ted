@@ -10,8 +10,9 @@
 #   include	<stdlib.h>
 
 #   include	"sioFork.h"
-#   include	<appDebugon.h>
+#   include	"sioGeneral.h"
 
+#   include	<appDebugon.h>
 
 /************************************************************************/
 /*									*/

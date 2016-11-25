@@ -15,6 +15,8 @@
 #   include	<utilTree.h>
 #   include	"psFace.h"
 #   include	"psGlyphs.h"
+#   include	"psFontInfo.h"
+#   include	"textAttribute.h"
 
 #   include	<appDebugon.h>
 
@@ -51,7 +53,7 @@ static void psFindFontEncodingPages(
     {
     const AfmFontInfo *		afi= psf->psfAfi;
 
-    if  ( utilIndexMappingForAll( &(afi->afiUnicodeToGlyphMapping),
+    if  ( utilIndexMappingForAll( &(afi->afiCodeToGlyphMapping),
 					    psForOneUnicode, (void *)psf ) )
 	{ SDEB(afi->afiFontName);	}
 
@@ -189,6 +191,11 @@ void psInitPostScriptFaceList( PostScriptTypeList *	pstl )
     return;
     }
 
+# ifdef __GNUC__
+# pragma GCC diagnostic push
+# pragma GCC diagnostic ignored "-Wunused-parameter"
+# endif
+
 static int utilFreePostScriptFace(	const char *	key,
 					void *		vpsf,
 					void *		through )
@@ -207,6 +214,10 @@ static int utilFreePostScriptFace(	const char *	key,
 
     return 0;
     }
+
+# ifdef __GNUC__
+# pragma GCC diagnostic pop
+# endif
 
 void psCleanPostScriptFaceList( PostScriptTypeList *	pstl )
     {

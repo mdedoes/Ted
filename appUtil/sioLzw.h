@@ -8,12 +8,13 @@
 /*									*/
 /************************************************************************/
 
-#   include	"sioGeneral.h"
+struct SimpleInputStream;
+struct SimpleOutputStream;
 
-extern SimpleInputStream * sioInLzwGifOpen(
-					SimpleInputStream *	sisLzw,
-					int			codeSize );
+extern struct SimpleInputStream * sioInLzwGifOpen(
+				struct SimpleInputStream *	sisLzw,
+				int				codeSize );
 
-extern SimpleOutputStream * sioOutLzwGifOpen(
-					SimpleOutputStream *	sosLzw,
-					int			codeSize );
+extern struct SimpleOutputStream * sioOutLzwGifOpen(
+				struct SimpleOutputStream *	sosLzw,
+				int				codeSize );

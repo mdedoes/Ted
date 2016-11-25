@@ -10,8 +10,10 @@
 #   include	<sioMemory.h>
 #   include	<geoUnits.h>
 
+#   include	"bmformats.h"
 #   include	"bmbmp.h"
 #   include	"bmio.h"
+#   include	<sioGeneral.h>
 
 #   include	<appDebugon.h>
 
@@ -162,8 +164,8 @@ int bmpReadImageHeader(	BmpImageHeader *	bih,
 	    /*  4  */
 	    bih->bihCompression= 0;
 	    bih->bihBufferLength= 0;
-	    bih->bihXResolution= POINTS_PER_M;
-	    bih->bihYResolution= POINTS_PER_M;
+	    bih->bihXResolution= (long)POINTS_PER_M;
+	    bih->bihYResolution= (long)POINTS_PER_M;
 	    bih->bihColorCount= colorCount;
 	    bih->bihImportantColors= colorCount;
 
@@ -1638,6 +1640,11 @@ int bmWriteBmpFile(	const MemoryBuffer *		filename,
     return rval;
     }
 
+# ifdef __GNUC__
+# pragma GCC diagnostic push
+# pragma GCC diagnostic ignored "-Wunused-parameter"
+# endif
+
 int bmCanWriteBmpFile( const BitmapDescription *	bd,
 			int				privateFormat )
     {
@@ -1646,4 +1653,8 @@ int bmCanWriteBmpFile( const BitmapDescription *	bd,
 
     return 0;
     }
+
+# ifdef __GNUC__
+# pragma GCC diagnostic pop
+# endif
 

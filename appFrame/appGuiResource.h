@@ -9,7 +9,7 @@
 #   ifndef	APP_GUI_RESOURCE_H
 #   define	APP_GUI_RESOURCE_H
 
-#   ifdef USE_GTK
+#   if USE_GTK
 #	define USE_OWN_RESOURCE	1
 #   else
 #	define USE_OWN_RESOURCE	1
@@ -19,6 +19,9 @@
 #   include	<X11/Xlib.h>
 #   include	<X11/Intrinsic.h>
 #   endif
+
+struct EditApplication;
+struct MemoryBuffer;
 
 /************************************************************************/
 /*									*/
@@ -81,4 +84,46 @@ typedef struct AppConfigurableResource
 
 #   endif
 
+/************************************************************************/
+/*									*/
+/*  Routine declarations.						*/
+/*									*/
+/************************************************************************/
+
+extern const char * appGetProperty(
+				struct EditApplication *	ea,
+				const char *			name );
+
+extern void appGuiGetResourceValues(
+				int *				pGotResources,
+				struct EditApplication *	ea,
+				void *				pValues,
+				AppConfigurableResource *	acr,
+				int				acrCount );
+
+extern void appSetResourceDefaults(
+				struct EditApplication *	ea,
+				AppConfigurableResource *	acr,
+				int				acrCount );
+
+extern int appReadSystemProperties(
+				struct EditApplication *	ea );
+
+extern int appReadUserProperties(
+				struct EditApplication *	ea );
+
+extern int appSetUserProperty(	struct EditApplication *	ea,
+				const char *			name,
+				const char *			value );
+
+extern int appSetSystemProperty( struct EditApplication *	ea,
+				const char *			name,
+				const char *			value );
+
+extern int appReadOverrideProperties(
+				struct EditApplication *	ea,
+				const struct MemoryBuffer *	filename );
+
+/************************************************************************/
+/*									*/
 #   endif	/* APP_GUI_RESOURCE_H */

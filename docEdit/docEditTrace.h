@@ -11,10 +11,11 @@
 #   include	<utilMemoryBuffer.h>
 #   include	<docEditRange.h>
 #   include	<utilMD5.h>
-#   include	<sioGeneral.h>
 
 struct EditStep;
 struct BufferDocument;
+struct IndexMapping;
+struct SimpleInputStream;
 
 typedef struct TraceStep
     {
@@ -105,7 +106,7 @@ typedef struct EditTrace
     } EditTrace;
 
 typedef int (*HandleEditStep)(	const TraceStep *	ts,
-				const struct EditStep *	es,
+				struct EditStep *	es,
 				int			step,
 				void *			through );
 
@@ -132,6 +133,10 @@ extern int docEditTraceSetDocumentName(	EditTrace *		et,
 					const MemoryBuffer *	documentName,
 					const char *		extension );
 
+extern int docEditTraceTraceFileName(	MemoryBuffer *		traceName,
+					const MemoryBuffer *	documentName,
+					const char *		extension );
+
 extern int docEditTraceOpenTrace(	EditTrace *		et,
 					int			restart,
 					int			exclusive );
@@ -142,12 +147,10 @@ extern int docEditGetTraceStep(	const TraceStep **		pTs,
 				const EditTrace *		et,
 				int				from );
 
-extern int docRtfScanEditTrace(	const EditTrace *		et,
-				SimpleInputStream *		sis,
+extern int docRtfScanEditTrace(	struct SimpleInputStream *	sis,
 				HandleEditStep			handleStep,
 				void *				through,
-				int				readOld,
-				int				readNew,
+				const struct IndexMapping *	readWhats,
 				const struct BufferDocument *	bdRef );
 
 extern int docEditTraceTryRelative(	EditTrace *		et,

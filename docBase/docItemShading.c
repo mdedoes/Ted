@@ -7,11 +7,11 @@
 #   include	"docBaseConfig.h"
 
 #   include	<utilPalette.h>
-
-#   include	<appDebugon.h>
-
 #   include	"docItemShading.h"
 #   include	<psShading.h>
+#   include	<utilPropMask.h>
+
+#   include	<appDebugon.h>
 
 /************************************************************************/
 /*									*/
@@ -218,7 +218,7 @@ void docExpandItemShading(	ExpandedItemShading *	eis,
     if  ( is->isBackColor == 0 )
 	{
 	eis->eisBackColorExplicit= 0;
-	utilInitRGB8Color( &(eis->eisBackColor) );
+	utilRGB8SolidWhite( &(eis->eisBackColor) );
 	}
     else{
 	if  ( is->isBackColor < 0			||

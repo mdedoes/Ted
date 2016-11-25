@@ -4,8 +4,9 @@
 /*									*/
 /************************************************************************/
 
-#   include	"utilMemoryBuffer.h"
-#   include	"sioGeneral.h"
+struct SimpleOutputStream;
+struct SimpleInputStream;
+struct MemoryBuffer;
 
 /************************************************************************/
 /*									*/
@@ -26,24 +27,24 @@
 /*									*/
 /************************************************************************/
 
-extern SimpleOutputStream * sioOutFdOpen( int		fd );
+extern struct SimpleOutputStream * sioOutFdOpen( int		fd );
 
-extern SimpleInputStream * sioInFdOpen( int		fd );
+extern struct SimpleInputStream * sioInFdOpen( int		fd );
 
-extern int sioFdOpenFile(		const MemoryBuffer *	filename,
-					int			read,
-					int			write,
-					int			append,
-					int			create,
-					int			exclusive );
+extern int sioFdOpenFile(	const struct MemoryBuffer *	filename,
+				int				read,
+				int				write,
+				int				append,
+				int				create,
+				int				exclusive );
 
 extern int sioFdCloseFile(		int			fd );
 
-extern SimpleOutputStream * sioOutFdOpenAt(
+extern struct SimpleOutputStream * sioOutFdOpenAt(
 				    int				fd,
 				    long			offset );
 
-extern SimpleInputStream * sioInFdOpenAt(
+extern struct SimpleInputStream * sioInFdOpenAt(
 				    int				fd,
 				    long			offset );
 

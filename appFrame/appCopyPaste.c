@@ -4,11 +4,13 @@
 
 #   include	"appFrameConfig.h"
 
+#   if  ! USE_HEADLESS
+
 #   include	<stddef.h>
-#   include	<stdio.h>
 #   include	<string.h>
 
-#   include	"appFrame.h"
+#   include	"appEditApplication.h"
+#   include	"appSelectionType.h"
 
 #   include	<appDebugon.h>
 
@@ -32,3 +34,4 @@ const AppSelectionType * appDocGetSelectionType(
     return ast;
     }
 
+#  endif

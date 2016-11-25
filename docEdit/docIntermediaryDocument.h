@@ -7,8 +7,8 @@
 #   ifndef		DOC_ITERMEDIATE_DOC_H
 #   define		DOC_ITERMEDIATE_DOC_H
 
-#   include		<docBuf.h>
-#   include		<docDebug.h>
+struct BufferItem;
+struct BufferDocument;
 
 /************************************************************************/
 /*									*/
@@ -16,11 +16,11 @@
 /*									*/
 /************************************************************************/
 
-extern BufferDocument * docIntermediaryDocument(
-				struct BufferItem **		pSectBi,
-				const BufferDocument *		bdFrom );
+extern struct BufferDocument * docIntermediaryDocument(
+				struct BufferItem **		pSectNode,
+				const struct BufferDocument *	bdFrom );
 
 extern void docFreeIntermediaryDocument(
-				BufferDocument *		bd );
+				struct BufferDocument *		bd );
 
 #   endif	/*	DOC_ITERMEDIATE_DOC_H	*/

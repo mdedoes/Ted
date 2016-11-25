@@ -39,7 +39,7 @@ extern void * utilPagedListGetItemByNumber(
 					const PagedList *	pl,
 					int			n );
 
-extern void utilPagedListDeleteItemByNumber(
+extern int utilPagedListDeleteItemByNumber(
 					PagedList *		pl,
 					int			n );
 
@@ -49,6 +49,7 @@ extern void * utilPagedListClaimItem(	PagedList *		pl,
 extern int utilPagedListSetSize(	PagedList *		pl,
 					int			n );
 
+extern void utilEmptyPagedList(		PagedList *		pl );
 extern void utilInitPagedList(		PagedList *		pl );
 extern void utilCleanPagedList(		PagedList *		pl );
 
@@ -64,6 +65,10 @@ extern void * utilPagedListClaimNewItem(	int *			pN,
 						PagedList *		pl );
 
 extern int utilPagedListForAll(		const PagedList *	pl,
+					PagedListForAllFun	fun,
+					void *			through );
+
+extern int utilPagedListForAllBwd(	const PagedList *	pl,
 					PagedListForAllFun	fun,
 					void *			through );
 

@@ -7,18 +7,19 @@
 
 #   include	"docLayoutConfig.h"
 
-#   include	<stddef.h>
-#   include	<stdio.h>
-
 #   include	<drawMetafilePsList.h>
-#   include	"docParticuleData.h"
 #   include	"docPsPrintImpl.h"
-#   include	<docListFonts.h>
-#   include	<sioHex.h>
-#   include	<sioMemory.h>
 #   include	<docObjectProperties.h>
-#   include	<docTreeNode.h>
+#   include	<bmObjectReader.h>
+#   include	<docObject.h>
 #   include	"docMetafileObject.h"
+#   include	<psFace.h>
+#   include	"layoutContext.h"
+#   include	"docLayout.h"
+#   include	<docTextRun.h>
+#   include	<docTreeScanner.h>
+#   include	<docParaScanner.h>
+#   include	<docScanner.h>
 
 #   include	<appDebugon.h>
 
@@ -35,7 +36,7 @@
 /*									*/
 /************************************************************************/
 
-int docPsListImageFonts(	PostScriptTypeList *		pstl,
+int docPsListImageFonts(	struct PostScriptTypeList *	pstl,
 				const PictureProperties *	pip,
 				const MemoryBuffer *		mb,
 				const LayoutContext *		lc,
@@ -44,10 +45,11 @@ int docPsListImageFonts(	PostScriptTypeList *		pstl,
     int				rval= 0;
     MetafileWriteListPs		listFontsPs;
 
-    SimpleInputStream *		sisMem= (SimpleInputStream *)0;
-    SimpleInputStream *		sisMeta= (SimpleInputStream *)0;
+    ObjectReader		or;
 
     MetafilePlayer		mp;
+
+    bmInitObjectReader( &or );
 
     switch( pip->pipType )
 	{
@@ -67,24 +69,17 @@ int docPsListImageFonts(	PostScriptTypeList *		pstl,
 	    LDEB(pip->pipType); goto ready;
 	}
 
-    sisMem= sioInMemoryOpen( mb );
-    if  ( ! sisMem )
-	{ XDEB(sisMem); rval= -1; goto ready;	}
+    if  ( bmOpenObjectReader( &or, mb ) )
+	{ LDEB(1); rval= -1; goto ready;	}
 
-    sisMeta= sioInHexOpen( sisMem );
-    if  ( ! sisMeta )
-	{ XDEB(sisMeta); rval= -1; goto ready;	}
-
-    docSetMetafilePlayer( &mp, sisMeta, lc, pip, 0, 0 );
+    docSetMetafilePlayer( &mp, or.orSisHex, lc, pip, 0, 0 );
 
     if  ( (*listFontsPs)( pstl, &mp, prefix ) )
 	{ LDEB(1); rval= -1; goto ready;	}
 
   ready:
-    if  ( sisMeta )
-	{ sioInClose( sisMeta );	}
-    if  ( sisMem )
-	{ sioInClose( sisMem );	}
+
+    bmCleanObjectReader( &or );
 
     return rval;
     }
@@ -94,7 +89,7 @@ int docPsListImageFonts(	PostScriptTypeList *		pstl,
 typedef struct GetDocumentFonts
     {
     const LayoutContext *		gdfLayoutContext;
-    PostScriptTypeList *		gdfPostScriptTypeList;
+    struct PostScriptTypeList *		gdfPostScriptTypeList;
     } GetDocumentFonts;
 
 /************************************************************************/
@@ -105,7 +100,7 @@ static int docPsListObjectFonts( const InsertedObject *		io,
     {
     GetDocumentFonts *		gdf= (GetDocumentFonts *)through;
     const LayoutContext *	lc= gdf->gdfLayoutContext;
-    PostScriptTypeList *	pstl= gdf->gdfPostScriptTypeList;
+    struct PostScriptTypeList *	pstl= gdf->gdfPostScriptTypeList;
 
     switch( io->ioKind )
 	{
@@ -144,53 +139,75 @@ static int docPsListObjectFonts( const InsertedObject *		io,
 	}
     }
 
-static int docPsPrintGotSpan(	BufferDocument *		bd,
-				BufferItem *			paraNode,
-				int				textAttrNr,
-				const TextAttribute *		ta,
-				int				from,
-				int				upto,
+# ifdef __GNUC__
+# pragma GCC diagnostic push
+# pragma GCC diagnostic ignored "-Wunused-parameter"
+# endif
+
+static int docPsPrintGotSpan(	const TextRun *			tr,
 				void *				through )
     {
     GetDocumentFonts *		gdf= (GetDocumentFonts *)through;
     const LayoutContext *	lc= gdf->gdfLayoutContext;
-    const DocumentFontList *	dfl= bd->bdProperties.dpFontList;
-    PostScriptTypeList *	pstl= gdf->gdfPostScriptTypeList;
-    const IndexSet *		unicodesWanted;
+    struct PostScriptTypeList *	pstl= gdf->gdfPostScriptTypeList;
 
-    const AfmFontInfo *		afi;
+    const struct AfmFontInfo *	afi;
 
     const int			appearsInText= 1;
 
-    afi= (*lc->lcGetFontForAttribute)( &unicodesWanted,
-					ta, dfl, lc->lcPostScriptFontList );
+    afi= docDocLayoutGetFontInfo( lc, tr->trTextAttribute );
     if  ( ! afi )
 	{ XDEB(afi); return -1;	}
 
-    if  ( psRememberPostsciptFace( pstl, afi, ta, "f", appearsInText ) )
+    if  ( psRememberPostsciptFace( pstl, afi, tr->trTextAttribute,
+						    "f", appearsInText ) )
 	{ LDEB(1); return -1;	}
 
-    return 0;
+    return SCANadviceOK;
     }
 
-int docPsPrintGetDocumentFonts(	PostScriptTypeList *		pstl,
+static int docPsPrintGotObject(
+			const struct VisitParticule *		vp,
+			struct InsertedObject *			io,
+			void *					through )
+    {
+    if  ( docPsListObjectFonts( io, "f", through ) )
+	{ LDEB(1); return -1;	}
+
+    return SCANadviceOK;
+    }
+
+# ifdef __GNUC__
+# pragma GCC diagnostic pop
+# endif
+
+int docPsPrintGetDocumentFonts(	struct PostScriptTypeList *	pstl,
 				const LayoutContext *		lc )
     {
-    ScanDocumentFonts		sdf;
+    int				ret;
     GetDocumentFonts		gdf;
 
-    docInitScanDocumentFonts( &sdf );
+    const int			treeFlags=
+					FLAGtsSCAN_SECTION_HEADERS_FOOTERS|
+					FLAGtsSCAN_BODY_SEPARATORS|
+					FLAGtsSCAN_FOOT_END_NOTES;
+
+    const int			paraFlags= FLAGpsSCAN_COMBINE_LINES|
+					FLAGpsSCAN_EMPTY_SPANS|
+					FLAGpsSCAN_SHAPE_TEXTS;
 
     gdf.gdfPostScriptTypeList= pstl;
     gdf.gdfLayoutContext= lc;
 
-    sdf.sdfListObjectFonts= docPsListObjectFonts;
-    sdf.sdfDocListSpanFont= docPsPrintGotSpan;
-    sdf.sdfThrough= &gdf;
-
     /*  a  */
-    if  ( docListDocumentFonts( lc->lcDocument, &sdf ) )
-	{ LDEB(1); return -1;;	}
+    ret= docScanParagraphsLogicalOrder( lc->lcDocument,
+			    (const struct DocumentSelection *)0,
+			    treeFlags, paraFlags,
+			    (ParticuleVisitor)0, (ParaFieldVisitor)0,
+			    docPsPrintGotSpan, docPsPrintGotObject,
+			    (TabVisitor)0, (void *)&gdf );
+    if  ( ret != SCANadviceOK )
+	{ LLDEB(ret,SCANadviceOK); return -1;	}
 
     return 0;
     }
