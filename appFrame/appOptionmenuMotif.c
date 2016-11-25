@@ -1,0 +1,323 @@
+#   include	"appFrameConfig.h"
+
+#   include	<stdlib.h>
+#   include	<stdio.h>
+
+#   include	"appFrame.h"
+#   include	"appSystem.h"
+#   include	<appGeoString.h>
+
+#   ifdef USE_MOTIF
+
+#   include	<Xm/RowColumn.h>
+#   include	<Xm/PushB.h>
+#   include	<Xm/PushBG.h>
+#   include	<Xm/PanedW.h>
+
+#   include	<appDebugon.h>
+
+/************************************************************************/
+/*									*/
+/*  Get around Motif's ridiculous resize behavior.			*/
+/*									*/
+/************************************************************************/
+
+void appOptionmenuSetWidthMotif(	Widget		menu,
+					int		newWidth )
+    {
+    Dimension		parentMarginWidth= 0;
+
+    Widget		pulldown;
+    Widget		buttonGadget;
+
+    XtWidgetGeometry	xwg;
+
+    /*
+    SDEB(XtClass(menu)->core_class.class_name);
+    */
+
+    XtVaGetValues( menu,
+			XmNsubMenuId,		&pulldown,
+			NULL );
+
+    XtVaGetValues( XtParent( pulldown ),
+			XmNmarginWidth,		&parentMarginWidth,
+			NULL );
+
+    if  ( newWidth < 2* parentMarginWidth )
+	{ LLDEB(newWidth,parentMarginWidth); return;	}
+
+    XtVaSetValues( pulldown,
+			XmNwidth,		newWidth-
+						2* parentMarginWidth,
+			NULL );
+
+    buttonGadget= XmOptionButtonGadget( menu );
+
+    XtQueryGeometry( buttonGadget, NULL, &xwg );
+
+    XtResizeWidget( buttonGadget, newWidth, xwg.height, xwg.border_width );
+
+    return;
+    }
+
+void appOptionmenuRefreshWidth(	AppOptionmenu *		aom )
+    {
+    Dimension		width;
+
+    XtVaGetValues( aom->aomInplace,
+			    XmNwidth,		&width,
+			    NULL );
+
+    appOptionmenuSetWidthMotif( aom->aomInplace, width );
+
+    return;
+    }
+
+/************************************************************************/
+/*									*/
+/*  Make a pulldown that is usable as a child of a form.		*/
+/*									*/
+/************************************************************************/
+
+static void appMenuConfigure(	Widget		w,
+				void *		through,
+				XEvent *	event,
+				Boolean *	pRefused )
+    {
+    XConfigureEvent *		cevent= &(event->xconfigure);
+
+    if  ( cevent->type != ConfigureNotify )
+	{ return;	}
+
+    appOptionmenuSetWidthMotif( w, cevent->width );
+
+    *pRefused= 1;
+
+    return;
+    }
+
+void appMakeOptionmenuInColumn(		AppOptionmenu *	aom,
+					Widget		column )
+    {
+    Widget			pulldown;
+    Widget			menu;
+
+    Widget			labelGadget;
+    Widget			buttonGadget;
+
+    Arg				al[20];
+    int				ac= 0;
+
+    ac= 0;
+    /*
+    No! is counter productive..
+    XtSetArg( al[ac], XmNresizeWidth,		False ); ac++;
+    */
+    XtSetArg( al[ac], XmNskipAdjust,		True ); ac++;
+    /*
+    Does not make any difference..
+    XtSetArg( al[ac], XmNallowShellResize,	False ); ac++;
+    */
+
+    pulldown= XmCreatePulldownMenu( column, WIDGET_NAME, al, ac );
+
+    ac= 0;
+    XtSetArg( al[ac], XmNsubMenuId,		pulldown ); ac++;
+
+    XtSetArg( al[ac], XmNmarginHeight,		0 ); ac++;
+    XtSetArg( al[ac], XmNmarginWidth,		0 ); ac++;
+    XtSetArg( al[ac], XmNspacing,		0 ); ac++;
+    XtSetArg( al[ac], XmNentryBorder,		0 ); ac++;
+    XtSetArg( al[ac], XmNskipAdjust,		True ); ac++;
+    XtSetArg( al[ac], XmNallowResize,		True ); ac++;
+    XtSetArg( al[ac], XmNresizeHeight,		True ); ac++;
+
+    menu= XmCreateOptionMenu( column, WIDGET_NAME, al, ac );
+    XtAddEventHandler( menu, StructureNotifyMask, False,
+					appMenuConfigure, (void *)0 );
+
+    labelGadget= XmOptionLabelGadget( menu );
+    buttonGadget= XmOptionButtonGadget( menu );
+
+    XtUnmanageChild( labelGadget );
+    XtManageChild( buttonGadget );
+
+    XtVaSetValues( buttonGadget,
+			XmNalignment,		XmALIGNMENT_BEGINNING,
+			NULL );
+
+    XtManageChild( menu );
+
+    appMotifTurnOfSashTraversal( column );
+
+    aom->aomPulldown= pulldown; aom->aomInplace= menu; return;
+    }
+
+void appMakeOptionmenuInRow(		AppOptionmenu *	aom,
+					Widget		row,
+					int		column,
+					int		colspan )
+    {
+    Widget			pulldown;
+    Widget			menu;
+
+    Widget			labelGadget;
+    Widget			buttonGadget;
+
+    Arg				al[20];
+    int				ac= 0;
+
+    ac= 0;
+    XtSetArg( al[ac], XmNtopAttachment,		XmATTACH_FORM ); ac++;
+    XtSetArg( al[ac], XmNtopOffset,		0 ); ac++;
+
+    XtSetArg( al[ac], XmNleftAttachment,	XmATTACH_POSITION ); ac++;
+    XtSetArg( al[ac], XmNleftPosition,		column ); ac++;
+
+    XtSetArg( al[ac], XmNrightAttachment,	XmATTACH_POSITION ); ac++;
+    XtSetArg( al[ac], XmNrightPosition,		column+ colspan ); ac++;
+
+    /*
+    No! is counter productive..
+    XtSetArg( al[ac], XmNresizeWidth,		False ); ac++;
+    */
+
+    pulldown= XmCreatePulldownMenu( row, WIDGET_NAME, al, ac );
+
+    ac= 0;
+    XtSetArg( al[ac], XmNtopAttachment,		XmATTACH_FORM ); ac++;
+    XtSetArg( al[ac], XmNtopOffset,		0 ); ac++;
+
+    XtSetArg( al[ac], XmNleftAttachment,	XmATTACH_POSITION ); ac++;
+    XtSetArg( al[ac], XmNleftPosition,		column ); ac++;
+
+    XtSetArg( al[ac], XmNrightAttachment,	XmATTACH_POSITION ); ac++;
+    XtSetArg( al[ac], XmNrightPosition,		column+ colspan ); ac++;
+
+    XtSetArg( al[ac], XmNsubMenuId,		pulldown ); ac++;
+
+    XtSetArg( al[ac], XmNmarginHeight,		0 ); ac++;
+    XtSetArg( al[ac], XmNmarginWidth,		0 ); ac++;
+    XtSetArg( al[ac], XmNspacing,		0 ); ac++;
+    XtSetArg( al[ac], XmNentryBorder,		0 ); ac++;
+
+    menu= XmCreateOptionMenu( row, WIDGET_NAME, al, ac );
+    XtAddEventHandler( menu, StructureNotifyMask, False,
+					appMenuConfigure, (void *)0 );
+
+    labelGadget= XmOptionLabelGadget( menu );
+    buttonGadget= XmOptionButtonGadget( menu );
+
+    XtUnmanageChild( labelGadget );
+    XtManageChild( buttonGadget );
+
+    XtVaSetValues( buttonGadget,
+			XmNalignment,		XmALIGNMENT_BEGINNING,
+			NULL );
+
+    XtManageChild( menu );
+
+    aom->aomPulldown= pulldown; aom->aomInplace= menu; return;
+    }
+
+/************************************************************************/
+/*									*/
+/*  Add an option to a pulldown.					*/
+/*									*/
+/************************************************************************/
+
+APP_WIDGET appAddItemToOptionmenu(	AppOptionmenu *		aom,
+					const char *		label,
+					XtCallbackProc		callBack,
+					void *			target )
+    {
+    Widget	fresh;
+
+    fresh= XmCreatePushButtonGadget( aom->aomPulldown,
+						    (char *)label, NULL, 0 );
+
+    if  ( callBack )
+	{ XtAddCallback( fresh, XmNactivateCallback, callBack, target ); }
+
+    XtManageChild( fresh );
+
+    return fresh;
+    }
+
+/************************************************************************/
+/*									*/
+/*  Select a particular option in an option menu.			*/
+/*									*/
+/************************************************************************/
+
+void appSetOptionmenu(	AppOptionmenu *	aom,
+			int		num )
+    {
+    WidgetList		children;
+    Cardinal		childCount= 0;
+
+    XtVaGetValues( aom->aomPulldown,
+		    XmNchildren,	&children,
+		    XmNnumChildren,	&childCount,
+		    NULL );
+
+    if  ( num >= 0 && num < (int)childCount )
+	{
+	XtVaSetValues( aom->aomInplace,
+			XmNmenuHistory,	children[num],
+			NULL );
+	}
+    else{
+	XtVaSetValues( aom->aomInplace,
+			XmNmenuHistory,	(Widget)0,
+			NULL );
+	}
+
+    return;
+    }
+
+void appEmptyOptionmenu(	AppOptionmenu *		aom )
+    {
+    appEmptyParentWidget( aom->aomPulldown );
+    }
+
+void appGuiEnableOptionmenu(	AppOptionmenu *		aom,
+				int			sensitive )
+    {
+    XtSetSensitive( aom->aomInplace, sensitive != 0 );
+    }
+
+void appInitOptionmenu(		AppOptionmenu *		aom )
+    {
+    aom->aomPulldown= (APP_WIDGET)0;
+    aom->aomInplace= (APP_WIDGET)0;
+    }
+
+int appGuiGetOptionmenuItemIndexMotif(	AppOptionmenu *	aom,
+					Widget		w )
+    {
+    short		pos= -1;
+
+    XtVaGetValues( w,	XmNpositionIndex,	&pos,
+			NULL );
+
+    return pos;
+    }
+
+void appOptionmenuItemSetVisibility(	APP_WIDGET	w,
+					int		visible )
+    {
+    visible= ( visible != 0 );
+
+    if  ( XtIsManaged( w ) == visible )
+	{ return;	}
+
+    if  ( visible )
+	{ XtManageChild( w );	}
+    else{ XtUnmanageChild( w );	}
+
+    return;
+    }
+
+#   endif
