@@ -6,13 +6,15 @@
 
 #   include	"tedConfig.h"
 
-#   include	<stdlib.h>
 #   include	<stdio.h>
 #   include	<stddef.h>
-#   include	<limits.h>
 
-#   include	"tedApp.h"
-#   include	"tedFormatTool.h"
+#   include	"tedPageLayoutTool.h"
+#   include	<docTreeType.h>
+#   include	<guiToolUtil.h>
+#   include	<docTreeNode.h>
+#   include	<docNodeTree.h>
+#   include	<docEditCommand.h>
 
 #   include	<appDebugon.h>
 
@@ -22,28 +24,29 @@
 /*									*/
 /************************************************************************/
 
-void tedFormatToolRefreshPageLayoutTool(
-				PageLayoutTool *		plt,
+void tedRefreshPageLayoutTool(	PageLayoutTool *		plt,
 				int *				pEnabled,
 				int *				pPref,
 				InspectorSubject *		is,
 				const DocumentSelection *	ds,
-				const DocumentProperties *	dp )
+				const SelectionDescription *	sd,
+				const BufferDocument *		bd,
+				const unsigned char *		cmdEnabled )
     {
-    BufferItem *			sectBi;
+    const BufferItem *		bodySectNode;
+    const DocumentProperties *	dp= &(bd->bdProperties);
 
-    sectBi= ds->dsBegin.dpBi;
-    while( sectBi && sectBi->biLevel > DOClevSECT )
-	{ sectBi= sectBi->biParent;	}
+    bodySectNode= docGetBodySectNode( ds->dsHead.dpNode, bd );
+    if  ( ! bodySectNode )
+	{ XDEB(bodySectNode); *pEnabled= 0; return;	}
 
-    if  ( ! sectBi )
-	{ XDEB(sectBi); return;	}
+    plt->pltCanChangeSelection= cmdEnabled[EDITcmdUPD_SECT_PROPS];
+    plt->pltCanChangeDocument= cmdEnabled[EDITcmdUPD_SECTDOC_PROPS];
 
-    appPageLayoutPageRefresh( plt, pEnabled, is,
-		    &(sectBi->biSectDocumentGeometry), &(dp->dpGeometry) );
+    appPageLayoutPageRefresh( plt, is,
+		&(bodySectNode->biSectDocumentGeometry), &(dp->dpGeometry) );
 
-    if  ( ds->dsSelectionScope.ssInExternalItem != DOCinBODY )
-	{ *pEnabled= 0;	}
+    *pEnabled= sd->sdInTreeType == DOCinBODY;
 
     return;
     }
@@ -76,7 +79,6 @@ void tedFormatFillPageLayoutPage(
 /************************************************************************/
 
 void tedFormatFinishPageLayoutPage(	PageLayoutTool *		plt,
-					TedFormatTool *			tft,
 					const PageLayoutPageResources *	plpr )
     {
     appPageLayoutPageFinishPage( plt, plpr );
@@ -90,8 +92,7 @@ void tedFormatFinishPageLayoutPage(	PageLayoutTool *		plt,
 
 void tedFormatCleanPageLayoutTool(	PageLayoutTool *	plt )
     {
-    appCleanPaperChooser( &(plt->pltPaperChooser) );
-    appCleanDrawingData( &(plt->pltDrawingData) );
+    appCleanPageLayoutTool( plt );
 
     return;
     }

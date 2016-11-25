@@ -15,7 +15,7 @@
 #   include	<utilTree.h>
 #   include	<utilProperties.h>
 
-#   include	<appFrame.h>
+#   include	"appFrame.h"
 
 #   include	<appDebugon.h>
 
@@ -28,39 +28,55 @@
 
 int appReadUserProperties(	EditApplication *	ea )
     {
-    char		relative[35+1];
+    int			rval= 0;
+
+    char		local[35+1];
     const char		format[]= ".%s.properties";
-    char		homeDirectory[250];
-    char		absolute[550];
     const int		relativeIsFile= 0;
     const int		ownKeys= 1;
 
-    if  ( sizeof(format)+ strlen( ea->eaApplicationName ) > sizeof( relative ) )
+    MemoryBuffer	homeDirectory;
+    MemoryBuffer	relative;
+    MemoryBuffer	absolute;
+
+    utilInitMemoryBuffer( &homeDirectory );
+    utilInitMemoryBuffer( &relative );
+    utilInitMemoryBuffer( &absolute );
+
+    if  ( sizeof(format)+ strlen( ea->eaApplicationName ) > sizeof( local ) )
 	{
-	SSLDEB(format,ea->eaApplicationName, sizeof(relative));
-	return -1;
+	SSLDEB(format,ea->eaApplicationName, sizeof(local));
+	rval= -1; goto ready;
 	}
 
-    sprintf( relative, format, ea->eaApplicationName );
+    sprintf( local, format, ea->eaApplicationName );
+    if  ( utilMemoryBufferSetString( &relative, local ) )
+	{ rval= -1; goto ready;	}
 
-    if  ( appHomeDirectory( homeDirectory, sizeof(homeDirectory) ) < 0 )
-	{ LDEB(1); return -1;	}
+    if  ( appHomeDirectory( &homeDirectory ) < 0 )
+	{ LDEB(1); rval= -1; goto ready;	}
 
-    if  ( appAbsoluteName( absolute, sizeof(absolute)- 1,
-			    relative, relativeIsFile, homeDirectory ) < 0 )
-	{ SSDEB(relative,homeDirectory); return -1; }
+    if  ( appAbsoluteName( &absolute,
+			    &relative, relativeIsFile, &homeDirectory ) < 0 )
+	{ SDEB(local); rval= -1; goto ready; }
 
-    if  ( appTestFileExists( absolute ) )
-	{ return 0;	}
+    if  ( appTestFileExists( &absolute ) )
+	{ goto ready;	}
 
     ea->eaUserProperties= utilTreeMakeTree( ownKeys );
     if  ( ! ea->eaUserProperties )
-	{ XDEB(ea->eaUserProperties); return -1;	}
+	{ XDEB(ea->eaUserProperties); rval= -1; goto ready;	}
 
-    if  ( utilPropertiesReadFile( ea->eaUserProperties, absolute ) )
-	{ SDEB(absolute); return -1;	}
+    if  ( utilPropertiesReadFile( ea->eaUserProperties, &absolute ) )
+	{ LDEB(1); rval= -1; goto ready;	}
 
-    return 0;
+  ready:
+
+    utilCleanMemoryBuffer( &homeDirectory );
+    utilCleanMemoryBuffer( &relative );
+    utilCleanMemoryBuffer( &absolute );
+
+    return rval;
     }
 
 /************************************************************************/
@@ -71,41 +87,67 @@ int appReadUserProperties(	EditApplication *	ea )
 
 int appReadSystemProperties(	EditApplication *	ea )
     {
-    char		relative[35+1];
+    int			rval= 0;
+
+    char		local[35+1];
     const char		format[]= "%s.properties";
-    char		installDirectory[250];
-    char		absolute[550];
     const int		relativeIsFile= 0;
     const int		ownKeys= 1;
 
-    if  ( sizeof(format)+ strlen( ea->eaApplicationName ) > sizeof( relative ) )
+    MemoryBuffer	pkgDirectory;
+    MemoryBuffer	appRelative;
+    MemoryBuffer	appDirectory;
+    MemoryBuffer	relative;
+    MemoryBuffer	absolute;
+
+    utilInitMemoryBuffer( &pkgDirectory );
+    utilInitMemoryBuffer( &appRelative );
+    utilInitMemoryBuffer( &appDirectory );
+    utilInitMemoryBuffer( &relative );
+    utilInitMemoryBuffer( &absolute );
+
+    if  ( sizeof(format)+ strlen( ea->eaApplicationName ) > sizeof( local ) )
 	{
-	SSLDEB(format,ea->eaApplicationName, sizeof(relative));
-	return -1;
+	SSLDEB(format,ea->eaApplicationName, sizeof(local));
+	rval= -1; goto ready;
 	}
 
-    sprintf( relative, format, ea->eaApplicationName );
+    sprintf( local, format, ea->eaApplicationName );
+    if  ( utilMemoryBufferSetString( &relative, local ) )
+	{ rval= -1; goto ready;	}
 
-    if  ( appAbsoluteName( installDirectory, sizeof(installDirectory)- 1,
-						ea->eaApplicationName,
-						relativeIsFile, PKGDIR ) < 0 )
-	{ SSDEB(ea->eaApplicationName,PKGDIR); return -1; }
+    if  ( utilMemoryBufferSetString( &pkgDirectory, PKGDIR ) )
+	{ rval= -1; goto ready;	}
+    if  ( utilMemoryBufferSetString( &appRelative, ea->eaApplicationName ) )
+	{ rval= -1; goto ready;	}
 
-    if  ( appAbsoluteName( absolute, sizeof(absolute)- 1,
-			    relative, relativeIsFile, installDirectory ) < 0 )
-	{ SSDEB(relative,installDirectory); return -1; }
+    if  ( appAbsoluteName( &appDirectory, &appRelative,
+					relativeIsFile, &pkgDirectory ) < 0 )
+	{ SSDEB(ea->eaApplicationName,PKGDIR); rval= -1; goto ready; }
 
-    if  ( appTestFileExists( absolute ) )
-	{ return 0;	}
+    if  ( appAbsoluteName( &absolute,
+			    &relative, relativeIsFile, &appDirectory ) < 0 )
+	{ LDEB(1); rval= -1; goto ready; }
+
+    if  ( appTestFileExists( &absolute ) )
+	{ goto ready;	}
 
     ea->eaSystemProperties= utilTreeMakeTree( ownKeys );
     if  ( ! ea->eaSystemProperties )
-	{ XDEB(ea->eaSystemProperties); return -1;	}
+	{ XDEB(ea->eaSystemProperties); rval= -1; goto ready;	}
 
-    if  ( utilPropertiesReadFile( ea->eaSystemProperties, absolute ) )
-	{ SDEB(absolute); return -1;	}
+    if  ( utilPropertiesReadFile( ea->eaSystemProperties, &absolute ) )
+	{ LDEB(1); rval= -1; goto ready;	}
 
-    return 0;
+  ready:
+
+    utilCleanMemoryBuffer( &pkgDirectory );
+    utilCleanMemoryBuffer( &appRelative );
+    utilCleanMemoryBuffer( &appDirectory );
+    utilCleanMemoryBuffer( &relative );
+    utilCleanMemoryBuffer( &absolute );
+
+    return rval;
     }
 
 /************************************************************************/

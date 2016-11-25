@@ -13,13 +13,18 @@
 
 #   include	<appDebugon.h>
 
-#   include	<appFrame.h>
-#   include	"appUnit.h"
-#   include	"appGeoString.h"
+#   include	"appFrame.h"
 #   include	"appPaperChooser.h"
-#   include	"appPaper.h"
+#   include	<psNup.h>
+#   include	"appPrintJob.h"
+#   include	"guiToolUtil.h"
+#   include	"guiWidgetDrawingSurface.h"
+#   include	"guiDrawingWidget.h"
+#   include	"guiDrawPage.h"
+#   include	"drawDrawingSurfacePrivate.h"
+#   include	"guiTextUtil.h"
 
-#   define	DRH_MM	40
+#   define	DRH_MM		32
 
 /************************************************************************/
 /*									*/
@@ -37,11 +42,11 @@
 
 typedef struct PlacementSpecification
     {
-    int		psGridRows;
-    int		psGridCols;
-    int		psGridHorizontal;
-    int		psScalePagesToFit;
-    char *	psOptionText;
+    int			psGridRows;
+    int			psGridCols;
+    int			psGridHorizontal;
+    int			psScalePagesToFit;
+    const char *	psOptionText;
     } PlacementSpecification;
 
 typedef enum PlacementSpecificationNumber
@@ -74,7 +79,6 @@ typedef struct AppPrintDialogResources
     char *			apdrCancelText;
     char *			apdrPrintText;
 
-    char *			apdrFaxText;
     char *			apdrPrintToFileText;
     char *			apdrVisiblePrinterCountText;
     char *			apdrPrintersUpText;
@@ -123,9 +127,6 @@ static AppConfigurableResource APP_PrintDialogresourceTable[]=
 	    offsetof(AppPrintDialogResources,apdrPrintToFileText),
 	    "Print to File" ),
 
-    APP_RESOURCE( "printDialogFax",
-	    offsetof(AppPrintDialogResources,apdrFaxText),
-	    "Fax" ),
     APP_RESOURCE( "printDialogPaperSize",
 	    offsetof(AppPrintDialogResources,apdrPaperSizeText),
 	    "Paper Size" ),
@@ -169,7 +170,7 @@ static AppConfigurableResource APP_PrintDialogresourceTable[]=
 
     APP_RESOURCE( "printDialogRotate90",
 	    offsetof(AppPrintDialogResources,apdrRotate90Text),
-	    "Rotate 90\260" ), /* \260 is the degree sign */
+	    "Rotate 90\302\260" ), /* \302\260 is the utf8 degree sign 0xb0 */
     APP_RESOURCE( "printDialogCenterH",
 	    offsetof(AppPrintDialogResources,apdrCenterHText),
 	    "Center Horizontally" ),
@@ -230,8 +231,12 @@ typedef struct AppPrintDialog
     const AppPrintDialogResources *	apdResources;
     AppDialog				apdDialog;
 
+    APP_WIDGET				apdButtonRow;
     APP_WIDGET				apdPrintButton;
     APP_WIDGET				apdCancelButton;
+
+    APP_WIDGET				apdPrinterFrame;
+    APP_WIDGET				apdSelectionFrame;
 
     AppOptionmenu			apdPrinterOptionmenu;
     AppOptionmenu			apdPlacementOptionmenu;
@@ -243,12 +248,13 @@ typedef struct AppPrintDialog
 
     int					apdUnitType;
     PaperChooser			apdPaperChooser;
-
-    APP_WIDGET				apdFaxNumberText;
+    double				apdPixelsPerTwip;
+    int					apdPageHighMm;
 
     APP_WIDGET				apdPageDrawing;
-    AppDrawingData			apdDrawingData;
-    APP_FONT *				apdFontStruct;
+    DrawingSurface			apdDrawingSurface;
+    RGB8Color				apdBackgroundColor;
+    int					apdScreenFont;
 
     APP_WIDGET				apdSelectionOptions[PRINTselCOUNT];
     APP_WIDGET				apdPageFromTextWidget;
@@ -267,9 +273,7 @@ typedef struct AppPrintDialog
     int					apdOptionNrChosen;
     int					apdVisiblePrinterCount;
 
-    int					apdActivateFaxOptions;
     int					apdToFileOptionNr;
-    int					apdFaxOptionNr;
     int					apdUpOptionNr;
     int					apdFirstPrinterOptionNr;
     int					apdDownOptionNr;
@@ -375,9 +379,9 @@ static void appPrintDialogMenuRange(	AppPrintDialog *	apd )
 	}
 
     /*  6  */
-    appGuiEnableWidget(
+    guiEnableWidget(
 		    apd->apdPrinterOptions[apd->apdUpOptionNr], gotBefore );
-    appGuiEnableWidget(
+    guiEnableWidget(
 		    apd->apdPrinterOptions[apd->apdDownOptionNr], gotAfter );
 
     appOptionmenuRefreshWidth( &(apd->apdPrinterOptionmenu) );
@@ -399,40 +403,8 @@ static void appPrintDialogShowFromTo(	AppPrintDialog *	apd,
     appIntegerToTextWidget( apd->apdPageFromTextWidget, fromPage );
     appIntegerToTextWidget( apd->apdPageToTextWidget, toPage );
 
-    appEnableText( apd->apdPageFromTextWidget, enabled );
-    appEnableText( apd->apdPageToTextWidget, enabled );
-
-    return;
-    }
-
-/************************************************************************/
-/*									*/
-/*  Fax number changed.							*/
-/*									*/
-/************************************************************************/
-
-static void appPrintCheckFaxNumber(	AppPrintDialog *	apd )
-    {
-    char *	faxNumber;
-    char *	s;
-
-    s= faxNumber= appGetStringFromTextWidget( apd->apdFaxNumberText );
-
-    while( *s == ' ' )
-	{ s++;	}
-
-    appGuiEnableWidget( apd->apdPrintButton, *s != '\0' );
-
-    appFreeStringFromTextWidget( faxNumber );
-
-    return;
-    }
-
-static APP_TXTYPING_CALLBACK_H( appPrintFaxChanged, w, voidapd )
-    {
-    AppPrintDialog *	apd= (AppPrintDialog *)voidapd;
-
-    appPrintCheckFaxNumber( apd );
+    guiEnableText( apd->apdPageFromTextWidget, enabled );
+    guiEnableText( apd->apdPageToTextWidget, enabled );
 
     return;
     }
@@ -445,47 +417,14 @@ static APP_TXTYPING_CALLBACK_H( appPrintFaxChanged, w, voidapd )
 
 static void appPrinterAdaptToDestination(	AppPrintDialog *	apd )
     {
-    if  ( apd->apdOptionNrChosen == apd->apdFaxOptionNr )
-	{
-	if  ( apd->apdFaxNumberText )
-	    {
-	    appEnableText( apd->apdFaxNumberText, 1 );
+    guiEnableWidget( apd->apdPrintButton, 1 );
 
-	    appPrintCheckFaxNumber( apd );
-	    }
-	}
-    else{
-	if  ( apd->apdFaxNumberText )
-	    {
-	    appEnableText( apd->apdFaxNumberText, 0 );
-	    }
-
-	appGuiEnableWidget( apd->apdPrintButton, 1 );
-
-	appGuiSetDefaultButtonForDialog( &(apd->apdDialog),
-						    apd->apdPrintButton );
-	}
+    appGuiSetDefaultButtonForDialog( &(apd->apdDialog), apd->apdPrintButton );
     }
 
-static APP_OITEM_CALLBACK_H( appDestinationChosen, w, voidapd )
+
+static void appPrintersUpChosen( AppPrintDialog *	apd )
     {
-    AppPrintDialog *	apd= (AppPrintDialog *)voidapd;
-    short		n= -1;
-
-    n= appGuiGetOptionmenuItemIndex( &(apd->apdPrinterOptionmenu), w );
-    if  ( n < 0 || n >= apd->apdPrintOptionCount )
-	{ LLDEB(n,apd->apdPrintOptionCount); return;	}
-
-    apd->apdOptionNrChosen= n;
-
-    appPrinterAdaptToDestination( apd );
-
-    return;
-    }
-
-static APP_OITEM_CALLBACK_H( appPrintersUpChosen, w, voidapd )
-    {
-    AppPrintDialog *	apd= (AppPrintDialog *)voidapd;
     int			printerChosen;
 
     apd->apdFirstVisiblePrinter -= apd->apdVisiblePrinterCount;
@@ -501,9 +440,8 @@ static APP_OITEM_CALLBACK_H( appPrintersUpChosen, w, voidapd )
     return;
     }
 
-static APP_OITEM_CALLBACK_H( appPrintersDownChosen, w, voidapd )
+static void appPrintersDownChosen(	AppPrintDialog *	apd )
     {
-    AppPrintDialog *	apd= (AppPrintDialog *)voidapd;
     int			printerChosen;
 
     apd->apdFirstVisiblePrinter += apd->apdVisiblePrinterCount;
@@ -525,6 +463,33 @@ static APP_OITEM_CALLBACK_H( appPrintersDownChosen, w, voidapd )
     return;
     }
 
+static void appDestinationChosen(	int		n,
+					void *		voidapd )
+    {
+    AppPrintDialog *	apd= (AppPrintDialog *)voidapd;
+
+    if  ( n < 0 || n >= apd->apdPrintOptionCount )
+	{ LLDEB(n,apd->apdPrintOptionCount); return;	}
+
+    if  ( n == apd->apdUpOptionNr )
+	{
+	appPrintersUpChosen( apd );
+	return;
+	}
+
+    if  ( n == apd->apdDownOptionNr )
+	{
+	appPrintersDownChosen( apd );
+	return;
+	}
+
+    apd->apdOptionNrChosen= n;
+
+    appPrinterAdaptToDestination( apd );
+
+    return;
+    }
+
 /************************************************************************/
 /*									*/
 /*  Refresh placement drawing.						*/
@@ -534,12 +499,10 @@ static APP_OITEM_CALLBACK_H( appPrintersDownChosen, w, voidapd )
 static void appPrintDialogRefreshPlacementDrawing(
 					    AppPrintDialog *	apd )
     {
-    AppDrawingData *	add= &(apd->apdDrawingData);
-
     if  ( ! apd->apdPageDrawing )
 	{ return;	}
 
-    appExposeRectangle( add, 0, 0, 0, 0 );
+    guiExposeDrawingWidget( apd->apdPageDrawing );
     }
 
 /************************************************************************/
@@ -615,13 +578,13 @@ static void appPrintDialogRefreshCustomTransform(
     if  ( appPrintDialogPrintGeometry( &customTransformRelevant, &pg, apd ) )
 	{ LDEB(1);	}
 
-    utilNupFitPagesToSheet( &fitsWithoutRot, &fitsWithRot,
+    psNupFitPagesToSheet( &fitsWithoutRot, &fitsWithRot,
 					    &pg, &(apd->apdDocumentGeometry) );
 
     if  ( ! customTransformRelevant )
 	{
-	appGuiEnableWidget( apd->apdRotate90Toggle, 0 );
-	appGuiEnableWidget( apd->apdCenterHToggle, 0 );
+	guiEnableWidget( apd->apdRotate90Toggle, 0 );
+	guiEnableWidget( apd->apdCenterHToggle, 0 );
 
 	appGuiSetToggleState( apd->apdRotate90Toggle, 0 );
 	appGuiSetToggleState( apd->apdCenterHToggle, 0 );
@@ -633,8 +596,8 @@ static void appPrintDialogRefreshCustomTransform(
 	    { fitsCentered= fitsWithRot;	}
 	else{ fitsCentered= fitsWithoutRot;	}
 
-	appGuiEnableWidget( apd->apdRotate90Toggle, fitsWithRot );
-	appGuiEnableWidget( apd->apdCenterHToggle, fitsCentered );
+	guiEnableWidget( apd->apdRotate90Toggle, fitsWithRot );
+	guiEnableWidget( apd->apdCenterHToggle, fitsCentered );
 
 	appGuiSetToggleState( apd->apdRotate90Toggle,
 				    fitsWithRot && apd->apdRotate90Chosen );
@@ -651,12 +614,11 @@ static void appPrintDialogRefreshCustomTransform(
 /*									*/
 /************************************************************************/
 
-static APP_OITEM_CALLBACK_H( appPrintDialogPlacementChosen, w, voidapd )
+static void appPrintDialogPlacementChosen(	int		i,
+						void *		voidapd )
     {
     AppPrintDialog *	apd= (AppPrintDialog *)voidapd;
-    int			i;
 
-    i= appGuiGetOptionmenuItemIndex( &(apd->apdPlacementOptionmenu), w );
     if  ( i < 0 || i >= PSnum__COUNT )
 	{ LLDEB(i,PSnum__COUNT); return;	}
 
@@ -676,18 +638,15 @@ static APP_OITEM_CALLBACK_H( appPrintDialogPlacementChosen, w, voidapd )
 /*									*/
 /************************************************************************/
 
-static APP_OITEM_CALLBACK_H( appSelectionChosen, w, voidapd )
+static void appSelectionChosen(		int		n,
+					void *		voidapd )
     {
     AppPrintDialog *	apd= (AppPrintDialog *)voidapd;
-    int			n;
 
 #   ifdef USE_MOTIF
-    XSetInputFocus( XtDisplay( apd->apdDialog.adTopWidget ),
-				    XtWindow( apd->apdDialog.adTopWidget ),
-				    RevertToNone, CurrentTime );
+    appGuiMotifSetFocusToWindow( apd->apdDialog.adTopWidget );
 #   endif
 
-    n= appGuiGetOptionmenuItemIndex( &(apd->apdSelectionOptionmenu), w );
     if  ( n < 0 || n >= PRINTselCOUNT )
 	{ LLDEB(n,PRINTselCOUNT); return;	}
 
@@ -702,14 +661,11 @@ static APP_OITEM_CALLBACK_H( appSelectionChosen, w, voidapd )
 	    return;
 
 	case PRINTselPAGE_RANGE:
-	    appEnableText( apd->apdPageFromTextWidget, 1 );
-	    appEnableText( apd->apdPageToTextWidget, 1 );
+	    guiEnableText( apd->apdPageFromTextWidget, 1 );
+	    guiEnableText( apd->apdPageToTextWidget, 1 );
 	    apd->apdSelectionChosen= n;
 
-#	    ifdef USE_MOTIF
-	    XmProcessTraversal( apd->apdPageFromTextWidget,
-							XmTRAVERSE_CURRENT );
-#	    endif
+	    appGuiFocusToWidget( apd->apdPageFromTextWidget );
 	    return;
 
 	case PRINTselCURRENT_PAGE:
@@ -929,7 +885,6 @@ static APP_TOGGLE_CALLBACK_H( appPrintDialogBackwardToggled, w, voidapd, e )
 static APP_EVENT_HANDLER_H( appPrintDialogDrawPage, w, voidapd, exposeEvent )
     {
     AppPrintDialog *		apd= (AppPrintDialog *)voidapd;
-    AppDrawingData *		add= &(apd->apdDrawingData);
 
     int				customTransformRelevant= 1;
     PrintGeometry		pg;
@@ -944,8 +899,11 @@ static APP_EVENT_HANDLER_H( appPrintDialogDrawPage, w, voidapd, exposeEvent )
     if  ( appPrintDialogPrintGeometry( &customTransformRelevant, &pg, apd ) )
 	{ LDEB(1);	}
 
-    appDrawNupDiagram( apd->apdPageDrawing, add, apd->apdFontStruct, DRH_MM,
-					    &(apd->apdDocumentGeometry), &pg );
+    appDrawNupDiagram( apd->apdPageDrawing, apd->apdDrawingSurface,
+				&(apd->apdBackgroundColor),
+				apd->apdScreenFont,
+				apd->apdPixelsPerTwip,
+				&(apd->apdDocumentGeometry), &pg );
     }
 
 /************************************************************************/
@@ -954,14 +912,13 @@ static APP_EVENT_HANDLER_H( appPrintDialogDrawPage, w, voidapd, exposeEvent )
 /*									*/
 /*  1)  Empty option menu. It should already be empty.			*/
 /*  2)  Insert print to file option.					*/
-/*  3)  Insert fax option.						*/
 /*  4)  Insert printers up option.					*/
 /*  5)  Insert options for the actual printers.				*/
 /*  6)  Insert printers down option.					*/
 /*									*/
 /************************************************************************/
 
-static void appPrintDialogFillPrinterMenu(
+static int appPrintDialogFillPrinterMenu(
 				const AppPrintDialogResources *	apdr,
 				AppPrintDialog *		apd,
 				int				printerCount,
@@ -983,8 +940,7 @@ static void appPrintDialogFillPrinterMenu(
     {
     apd->apdPrinterOptions[opt]= appAddItemToOptionmenu(
 					&(apd->apdPrinterOptionmenu),
-					apdr->apdrPrintToFileText,
-					appDestinationChosen, (void *)apd );
+					apdr->apdrPrintToFileText );
 
     if  ( optionChosen < 0 )
 	{ optionChosen= opt;	}
@@ -992,57 +948,34 @@ static void appPrintDialogFillPrinterMenu(
     apd->apdToFileOptionNr= opt++;
     }
 
-    /*  3  */
-    {
-    apd->apdPrinterOptions[opt]= appAddItemToOptionmenu(
-					&(apd->apdPrinterOptionmenu),
-					apdr->apdrFaxText,
-					appDestinationChosen, (void *)apd );
-
-    if  ( ! apd->apdActivateFaxOptions )
-	{ appGuiEnableWidget( apd->apdPrinterOptions[opt], 0 ); }
-
-    apd->apdFaxOptionNr= opt++;
-    }
-
     /*  4  */
     {
     int		ltxt= strlen( apdr->apdrPrintersUpText );
     int		lval= strlen( apdr->apdrVisiblePrinterCountText );
     char *	scratch;
+    int		pos;
+
 
     scratch= malloc( ltxt+ lval+ 1 );
     if  ( ! scratch )
+	{ LLXDEB(ltxt,lval,scratch); return -1;	}
+
+    for ( pos= 0; pos < ltxt; pos++ )
 	{
-	LLXDEB(ltxt,lval,scratch);
-	apd->apdPrinterOptions[opt]= appAddItemToOptionmenu(
-					&(apd->apdPrinterOptionmenu),
-					apdr->apdrPrintersUpText,
-					appPrintersUpChosen, (void *)apd );
-	}
-    else{
-	int	pos;
-
-	for ( pos= 0; pos < ltxt; pos++ )
-	    {
-	    if  ( apdr->apdrPrintersUpText[pos+ 0] == '%'	&&
-		  apdr->apdrPrintersUpText[pos+ 1] == 'd'	)
-		{ break;	}
-	    }
-
-	strncpy( scratch, apdr->apdrPrintersUpText, pos );
-	strncpy( scratch+ pos, apdr->apdrVisiblePrinterCountText, lval );
-
-	if  ( pos < ltxt )
-	    { strcpy( scratch+ pos+ lval ,apdr->apdrPrintersUpText+ pos+ 2 ); }
-	else{ strcpy( scratch+ pos+ lval ,apdr->apdrPrintersUpText+ pos );    }
-	apd->apdPrinterOptions[opt]= appAddItemToOptionmenu(
-					&(apd->apdPrinterOptionmenu),
-					scratch,
-					appPrintersUpChosen, (void *)apd );
-	free( scratch );
+	if  ( apdr->apdrPrintersUpText[pos+ 0] == '%'	&&
+	      apdr->apdrPrintersUpText[pos+ 1] == 'd'	)
+	    { break;	}
 	}
 
+    strncpy( (char *)scratch, apdr->apdrPrintersUpText, pos );
+    strncpy( (char *)scratch+ pos, apdr->apdrVisiblePrinterCountText, lval );
+
+    if  ( pos < ltxt )
+	{ strcpy( scratch+ pos+ lval, apdr->apdrPrintersUpText+ pos+ 2 ); }
+    else{ strcpy( scratch+ pos+ lval, apdr->apdrPrintersUpText+ pos );    }
+    apd->apdPrinterOptions[opt]= appAddItemToOptionmenu(
+				    &(apd->apdPrinterOptionmenu), scratch );
+    free( scratch );
     apd->apdUpOptionNr= opt++;
     }
 
@@ -1051,10 +984,8 @@ static void appPrintDialogFillPrinterMenu(
 
     for ( prt= 0; prt < printerCount; pd++, opt++, prt++ )
 	{
-	apd->apdPrinterOptions[opt]=
-			appAddItemToOptionmenu( &(apd->apdPrinterOptionmenu),
-			pd->pdPrinterName, appDestinationChosen,
-			(void *)apd );
+	apd->apdPrinterOptions[opt]= appAddItemToOptionmenu(
+			    &(apd->apdPrinterOptionmenu), pd->pdPrinterName );
 
 	if  ( prt == defaultPrinter )
 	    {
@@ -1073,40 +1004,29 @@ static void appPrintDialogFillPrinterMenu(
     int		ltxt= strlen( apdr->apdrPrintersDownText );
     int		lval= strlen( apdr->apdrVisiblePrinterCountText );
     char *	scratch;
+    int		pos;
 
     scratch= malloc( ltxt+ lval+ 1 );
     if  ( ! scratch )
+	{ LLXDEB(ltxt,lval,scratch); return -1;	}
+
+    for ( pos= 0; pos < ltxt; pos++ )
 	{
-	LLXDEB(ltxt,lval,scratch);
-	apd->apdPrinterOptions[opt]= appAddItemToOptionmenu(
-					&(apd->apdPrinterOptionmenu),
-					apdr->apdrPrintersDownText,
-					appPrintersDownChosen, (void *)apd );
-	}
-    else{
-	int	pos;
-
-	for ( pos= 0; pos < ltxt; pos++ )
-	    {
-	    if  ( apdr->apdrPrintersDownText[pos+ 0] == '%'	&&
-		  apdr->apdrPrintersDownText[pos+ 1] == 'd'	)
-		{ break;	}
-	    }
-
-	strncpy( scratch, apdr->apdrPrintersDownText, pos );
-	strncpy( scratch+ pos, apdr->apdrVisiblePrinterCountText, lval );
-
-	if  ( pos < ltxt )
-	    { strcpy( scratch+ pos+ lval ,apdr->apdrPrintersDownText+ pos+ 2 ); }
-	else{ strcpy( scratch+ pos+ lval ,apdr->apdrPrintersDownText+ pos );    }
-
-	apd->apdPrinterOptions[opt]= appAddItemToOptionmenu(
-					&(apd->apdPrinterOptionmenu),
-					scratch,
-					appPrintersDownChosen, (void *)apd );
-	free( scratch );
+	if  ( apdr->apdrPrintersDownText[pos+ 0] == '%'	&&
+	      apdr->apdrPrintersDownText[pos+ 1] == 'd'	)
+	    { break;	}
 	}
 
+    strncpy( scratch, apdr->apdrPrintersDownText, pos );
+    strncpy( scratch+ pos, apdr->apdrVisiblePrinterCountText, lval );
+
+    if  ( pos < ltxt )
+	{ strcpy( scratch+ pos+ lval ,apdr->apdrPrintersDownText+ pos+ 2 ); }
+    else{ strcpy( scratch+ pos+ lval ,apdr->apdrPrintersDownText+ pos );    }
+
+    apd->apdPrinterOptions[opt]= appAddItemToOptionmenu(
+				    &(apd->apdPrinterOptionmenu), scratch );
+    free( scratch );
     apd->apdDownOptionNr= opt++;
     }
 
@@ -1120,6 +1040,8 @@ static void appPrintDialogFillPrinterMenu(
     appPrintDialogMenuRange( apd );
 
     appOptionmenuRefreshWidth( &(apd->apdPrinterOptionmenu) );
+
+    return 0;
     }
 
 /************************************************************************/
@@ -1141,9 +1063,7 @@ static void appPrintDialogFillPlacementMenu( AppPrintDialog *	apd )
     for ( i= 0; i < PSnum__COUNT; ps++, i++ )
 	{
 	apd->apdPlacementOptionWidgets[i]= appAddItemToOptionmenu(
-				&(apd->apdPlacementOptionmenu),
-				ps->psOptionText,
-				appPrintDialogPlacementChosen, (void *)apd );
+			&(apd->apdPlacementOptionmenu), ps->psOptionText );
 	}
 
     apd->apdPlacementChosen= 0;
@@ -1173,16 +1093,13 @@ static void appPrintDialogFillSelectionMenu( AppPrintDialog *	apd )
 
     apd->apdSelectionOptions[PRINTselAll_PAGES]= appAddItemToOptionmenu(
 					    &(apd->apdSelectionOptionmenu),
-					    apdr->apdrAllPagesText,
-					    appSelectionChosen, (void *)apd );
+					    apdr->apdrAllPagesText );
     apd->apdSelectionOptions[PRINTselPAGE_RANGE]= appAddItemToOptionmenu(
 					    &(apd->apdSelectionOptionmenu),
-					    apdr->apdrPageRangeText,
-					    appSelectionChosen, (void *)apd );
+					    apdr->apdrPageRangeText );
     apd->apdSelectionOptions[PRINTselCURRENT_PAGE]= appAddItemToOptionmenu(
 					    &(apd->apdSelectionOptionmenu),
-					    apdr->apdrCurrentPageText,
-					    appSelectionChosen, (void *)apd );
+					    apdr->apdrCurrentPageText );
 
     apd->apdSelectionChosen= PRINTselAll_PAGES;
 
@@ -1203,7 +1120,7 @@ static APP_CLOSE_CALLBACK_H( appClosePrintDialog, w, voidapd )
     {
     AppPrintDialog *	apd= (AppPrintDialog *)voidapd;
 
-    appGuiBreakDialog( &(apd->apdDialog), AQDrespCANCEL );
+    appGuiBreakDialog( &(apd->apdDialog), AQDrespCLOSED );
 
     return;
     }
@@ -1234,22 +1151,17 @@ static APP_WIDGET appPrintDialogMakePrinterFrame(
     APP_WIDGET	row;
 
     const int	heightResizable= 0;
-    const int	textEnabled= 0;
-    const int	textColumn= 1;
-    const int	textColspan= 1;
+
+    const int	column= 0;
+    const int	colspan= 2;
 
     appMakeColumnFrameInColumn( &printerFrame, &frameColumn,
 						parent, apdr->apdrPrinterText );
 
     row= appMakeRowInColumn( frameColumn, 2, heightResizable );
 
-    appMakeOptionmenuInRow( &(apd->apdPrinterOptionmenu), row, 0, 1 );
-
-    appMakeTextInRow( &(apd->apdFaxNumberText), row, textColumn,
-					    textColspan, 15, textEnabled );
-
-    appGuiSetTypingCallbackForText( apd->apdFaxNumberText,
-					    appPrintFaxChanged, (void *)apd );
+    appMakeOptionmenuInRow( &(apd->apdPrinterOptionmenu), row, column, colspan,
+					appDestinationChosen, (void *)apd );
 
     return printerFrame;
     }
@@ -1274,22 +1186,29 @@ static APP_WIDGET appPrintDialogMakePlacementFrame(
     appMakeColumnFrameInColumn( &placementFrame, &frameColumn, parent,
 						    apdr->apdrPlacementText );
 
-    appMakeOptionmenuInColumn( &(apd->apdPlacementOptionmenu), frameColumn );
+    appMakeOptionmenuInColumn( &(apd->apdPlacementOptionmenu), frameColumn,
+				appPrintDialogPlacementChosen, (void *)apd );
 
     apd->apdCustomTransformRow=
 			appMakeRowInColumn( frameColumn, 2, heightResizable );
     apd->apdRotate90Toggle= appMakeToggleInRow( apd->apdCustomTransformRow,
-				apdr->apdrRotate90Text,
-				appPrintDialogRotate90Toggled, (void *)apd, 0 );
+			    apdr->apdrRotate90Text,
+			    appPrintDialogRotate90Toggled, (void *)apd, 0, 1 );
     apd->apdCenterHToggle= appMakeToggleInRow( apd->apdCustomTransformRow,
-				apdr->apdrCenterHText,
-				appPrintDialogCenterHToggled, (void *)apd, 1 );
+			    apdr->apdrCenterHText,
+			    appPrintDialogCenterHToggled, (void *)apd, 1, 1 );
 
     apd->apdPageDrawing= (APP_WIDGET)0;
+
+    apd->apdPageHighMm= DRH_MM;
+    apd->apdPixelsPerTwip= ( apd->apdPageHighMm* ea->eaPixelsPerTwip )/
+								A3_MM_HIGH;
+
     if  ( apdr->apdrShowPlacementDrawingInt >= 0 )
 	{
-	apd->apdPageDrawing= appMakePageDrawing( parent, ea, DRH_MM,
-					appPrintDialogDrawPage, (void *)apd );
+	apd->apdPageDrawing= appMakePageDrawing( parent,
+				ea->eaPixelsPerTwip, apd->apdPageHighMm,
+				appPrintDialogDrawPage, (void *)apd );
 	}
 
     return placementFrame;
@@ -1325,7 +1244,8 @@ static APP_WIDGET appPrintDialogMakeSelectionFrame(
     appMakeColumnFrameInColumn( &selectionFrame, &frameColumn, parent,
 						    apdr->apdrSelectionText );
 
-    appMakeOptionmenuInColumn( &(apd->apdSelectionOptionmenu), frameColumn );
+    appMakeOptionmenuInColumn( &(apd->apdSelectionOptionmenu), frameColumn,
+					    appSelectionChosen, (void *)apd );
 
     /**/
     pageSelectionRow= appMakeRowInColumn( frameColumn, 2, heightResizable );
@@ -1333,10 +1253,10 @@ static APP_WIDGET appPrintDialogMakeSelectionFrame(
     appMakeColumnInRow( &leftColumn, pageSelectionRow, 0, colspan );
     appMakeColumnInRow( &rightColumn, pageSelectionRow, 1, colspan );
 
-    appMakeLabelAndTextRow( &row, &fromLabel, &(apd->apdPageFromTextWidget),
+    guiToolMakeLabelAndTextRow( &row, &fromLabel, &(apd->apdPageFromTextWidget),
 			leftColumn, apdr->apdrFromPageText, 8, textEnabled );
 
-    appMakeLabelAndTextRow( &row, &toLabel, &(apd->apdPageToTextWidget),
+    guiToolMakeLabelAndTextRow( &row, &toLabel, &(apd->apdPageToTextWidget),
 			rightColumn, apdr->apdrToPageText, 8, textEnabled );
 
     /**/
@@ -1351,11 +1271,11 @@ static APP_WIDGET appPrintDialogMakeSelectionFrame(
 	apd->apdOddFacesOnlyToggle= appMakeToggleInRow(
 			    apd->apdFaceSelectionRow,
 			    apdr->apdrOddFacesOnly,
-			    appPrintDialogOddOnlyToggled, (void *)apd, 0 );
+			    appPrintDialogOddOnlyToggled, (void *)apd, 0, 1 );
 	apd->apdEvenFacesOnlyToggle= appMakeToggleInRow(
 			    apd->apdFaceSelectionRow,
 			    apdr->apdrEvenFacesOnly,
-			    appPrintDialogEvenOnlyToggled, (void *)apd, 1 );
+			    appPrintDialogEvenOnlyToggled, (void *)apd, 1, 1 );
 	}
 
     /**/
@@ -1370,11 +1290,11 @@ static APP_WIDGET appPrintDialogMakeSelectionFrame(
 	apd->apdDirectionForwardToggle= appMakeToggleInRow(
 			    apd->apdFaceDirectionRow,
 			    apdr->apdrFacesForward,
-			    appPrintDialogForwardToggled, (void *)apd, 0 );
+			    appPrintDialogForwardToggled, (void *)apd, 0, 1 );
 	apd->apdDirectionBackwardToggle= appMakeToggleInRow(
 			    apd->apdFaceDirectionRow,
 			    apdr->apdrFacesBackward,
-			    appPrintDialogBackwardToggled, (void *)apd, 1 );
+			    appPrintDialogBackwardToggled, (void *)apd, 1, 1 );
 	}
 
     return selectionFrame;
@@ -1393,14 +1313,15 @@ static APP_WIDGET appPrintDialogMakeButtonRow(
     {
     APP_WIDGET		row;
     const int		heightResizable= 0;
+    const int		colspan= 1;
 
     row= appMakeRowInColumn( parent, 2, heightResizable );
 
     appMakeButtonInRow( &(apd->apdPrintButton), row, apdr->apdrPrintText,
-			appPrintDialogPrintPushed, (void *)apd, 0, 1 );
+		    appPrintDialogPrintPushed, (void *)apd, 0, colspan, 1 );
 
     appMakeButtonInRow( &(apd->apdCancelButton), row, apdr->apdrCancelText,
-			appPrintDialogCancelPushed, (void *)apd, 1, 0 );
+		    appPrintDialogCancelPushed, (void *)apd, 1, colspan, 0 );
 
     appGuiSetCancelButtonForDialog( &(apd->apdDialog),
 						    apd->apdCancelButton );
@@ -1418,18 +1339,14 @@ static AppPrintDialog * appMakePrintDialog( EditApplication *	ea,
 					APP_WIDGET		printOption,
 					const char *		pixmapName )
     {
-    AppPrintDialog *	apd;
+    AppPrintDialog *		apd;
     
-    APP_WIDGET		printerFrame;
-    APP_WIDGET		selectionFrame;
-    APP_WIDGET		paned;
-    APP_WIDGET		buttonRow;
+    APP_WIDGET			paned;
 
-    int			i;
+    int				i;
 
-    int			high;
-    int			wide;
-    int			d;
+    int				high;
+    int				wide;
 
     static int				gotResources;
     static AppPrintDialogResources	apdr;
@@ -1437,10 +1354,6 @@ static AppPrintDialog * appMakePrintDialog( EditApplication *	ea,
     APP_BITMAP_IMAGE	iconPixmap= (APP_BITMAP_IMAGE)0;
     APP_BITMAP_MASK	iconMask= (APP_BITMAP_MASK)0;
     
-    char		name[128];
-
-    const double	magnification= 1.0;
-
     if  ( appGetImagePixmap( ea, pixmapName, &iconPixmap, &iconMask )  )
 	{ SDEB(pixmapName); return (AppPrintDialog *)0;	}
 
@@ -1466,7 +1379,7 @@ static AppPrintDialog * appMakePrintDialog( EditApplication *	ea,
     apd->apdCenterHToggle= (APP_WIDGET)0;
     apd->apdResources= &apdr;
 
-    appInitDrawingData( &(apd->apdDrawingData) );
+    apd->apdDrawingSurface= (DrawingSurface)0;
 
     if  ( ! gotResources )
 	{
@@ -1510,10 +1423,6 @@ static AppPrintDialog * appMakePrintDialog( EditApplication *	ea,
     if  ( apd->apdVisiblePrinterCount < 1 )
 	{ apd->apdVisiblePrinterCount= 15;	}
 
-    if  ( ea->eaFaxCommand && ea->eaFaxCommand[0] )
-	{ apd->apdActivateFaxOptions= 1;	}
-    else{ apd->apdActivateFaxOptions= 0;	}
-
     if  ( apdr.apdrDefaultPrinter && apdr.apdrDefaultPrinter[0] )
 	{
 	PrintDestination *	pd= ea->eaPrintDestinations;
@@ -1529,7 +1438,6 @@ static AppPrintDialog * appMakePrintDialog( EditApplication *	ea,
     apd->apdPrinterCount= 0;
     apd->apdPrintOptionCount= 0;
     apd->apdToFileOptionNr= -1;
-    apd->apdFaxOptionNr= -1;
     apd->apdUnitType= ea->eaUnitInt;
 
     appInitPaperChooser( &(apd->apdPaperChooser) );
@@ -1543,7 +1451,7 @@ static AppPrintDialog * appMakePrintDialog( EditApplication *	ea,
     appSetShellTitle( apd->apdDialog.adTopWidget,
 					printOption, ea->eaApplicationName );
 
-    printerFrame= appPrintDialogMakePrinterFrame( paned, &apdr, apd );
+    apd->apdPrinterFrame= appPrintDialogMakePrinterFrame( paned, &apdr, apd );
 
     appMakePaperChooserWidgets( paned, apdr.apdrPaperSizeText,
 					    apd->apdUnitType,
@@ -1552,8 +1460,8 @@ static AppPrintDialog * appMakePrintDialog( EditApplication *	ea,
 					    (void *)apd );
 
     appPrintDialogMakePlacementFrame( paned, ea, &apdr, apd );
-    selectionFrame= appPrintDialogMakeSelectionFrame( paned, &apdr, apd );
-    buttonRow= appPrintDialogMakeButtonRow( paned, &apdr, apd );
+    apd->apdSelectionFrame= appPrintDialogMakeSelectionFrame( paned, &apdr, apd );
+    apd->apdButtonRow= appPrintDialogMakeButtonRow( paned, &apdr, apd );
 
     appPrintDialogFillPrinterMenu( &apdr, apd,
 				    ea->eaPrintDestinationCount,
@@ -1566,9 +1474,9 @@ static AppPrintDialog * appMakePrintDialog( EditApplication *	ea,
     appPaperChooserFillMenu( &(apd->apdPaperChooser),
 					    apdr.apdrCustomPaperSizeText );
 
-    appGuiShowDialog( &(apd->apdDialog), ed->edToplevel.atTopWidget );
+    appGuiShowDialog( ea, &(apd->apdDialog), ed->edToplevel.atTopWidget );
 
-    appPaperChooserRetreshMenuWidth( &(apd->apdPaperChooser) );
+    appPaperChooserRefreshMenuWidth( &(apd->apdPaperChooser) );
 
     appOptionmenuRefreshWidth( &(apd->apdPrinterOptionmenu) );
     appOptionmenuRefreshWidth( &(apd->apdPlacementOptionmenu) );
@@ -1576,38 +1484,63 @@ static AppPrintDialog * appMakePrintDialog( EditApplication *	ea,
 
     if  ( apd->apdPageDrawing )
 	{
-	AppDrawingData *	add= &(apd->apdDrawingData);
+	apd->apdDrawingSurface= guiDrawingSurfaceForNativeWidget(
+			    apd->apdPageDrawing,
+			    ea->eaPostScriptFontList.psflAvoidFontconfig );
 
-	if  ( appSetDrawingDataForWidget( apd->apdPageDrawing,
-							magnification, add ) )
-	    { LDEB(1);	}
+	guiDrawGetSizeOfWidget( &wide, &high, apd->apdPageDrawing );
 
-	appDrawGetSizeOfWidget( &wide, &high, apd->apdPageDrawing );
+	apd->apdScreenFont= drawOpenDefaultFont( apd->apdDrawingSurface,
+					    &(ea->eaPostScriptFontList),
+					    apd->apdPageDrawing, high/ 12 );
+	if  ( apd->apdScreenFont < 0 )
+	    { LLDEB(high/12,apd->apdScreenFont); }
 
-	d= high/ 24;
-
-	for ( i= 0; i <= d; i++ )
-	    {
-	    /**/
-	    sprintf( name, ea->eaPrintDialogFont, high/ 12- i );
-	    apd->apdFontStruct= appDrawOpenFont( add, name );
-
-	    if  ( apd->apdFontStruct )
-		{ appDrawSetFont( add, apd->apdFontStruct ); break; }
-
-	    /**/
-	    sprintf( name, ea->eaPrintDialogFont, high/ 12+ i );
-	    apd->apdFontStruct= appDrawOpenFont( add, name );
-
-	    if  ( apd->apdFontStruct )
-		{ appDrawSetFont( add, apd->apdFontStruct ); break; }
-	    }
-
-	if  ( ! apd->apdFontStruct )
-	    { SLXDEB(ea->eaPrintDialogFont,high/12,apd->apdFontStruct);	}
+	guiGetBackgroundColor( &(apd->apdBackgroundColor),
+							apd->apdPageDrawing );
 	}
 
     return apd;
+    }
+
+/************************************************************************/
+/*									*/
+/*  Actually execute the print command.					*/
+/*									*/
+/************************************************************************/
+
+static void appPrintDialogPrint(	EditDocument *		ed,
+					APP_WIDGET		printOption,
+					PrintJob *		pj,
+					PrintGeometry *		pg,
+					AppPrintDialog *	apd )
+    {
+    int					customTransformRelevant= 1;
+
+    if  ( apd->apdPlacementChosen < 0			||
+	  apd->apdPlacementChosen >= PSnum__COUNT	)
+	{ LLDEB(apd->apdPlacementChosen,PSnum__COUNT); return; }
+
+    if  ( appPrintDialogPrintGeometry( &customTransformRelevant, pg, apd ) )
+	{ return; }
+
+    pg->pgFirstPage= apd->apdFirstPageChosen;
+    pg->pgLastPage= apd->apdLastPageChosen;
+
+    if  ( apd->apdOptionNrChosen == apd->apdToFileOptionNr )
+	{
+	appDocPrintToFile( printOption, apd->apdDialog.adTopWidget, ed, pg );
+	}
+    else{
+	int		printer;
+
+	printer= apd->apdOptionNrChosen- apd->apdFirstPrinterOptionNr;
+
+	if  ( appPrintDocument( printer, pj ) )
+	    { LDEB(apd->apdOptionNrChosen); }
+	}
+
+    return;
     }
 
 /************************************************************************/
@@ -1616,7 +1549,6 @@ static AppPrintDialog * appMakePrintDialog( EditApplication *	ea,
 /*									*/
 /*  1)	Make or just show it.						*/
 /*  2)	Default destination is set by appMakePrintDialog().		*/
-/*  3)	Make Fax View by Martin Vermeer happy.				*/
 /*									*/
 /************************************************************************/
 
@@ -1636,9 +1568,8 @@ void appRunPrintDialog(			EditDocument *		ed,
     PrintGeometry			pg;
 
     int					i;
-    int					customTransformRelevant= 1;
 
-    appPrintJobForEditDocument( &pj, ed );
+    appPrintJobForEditDocument( &pj, ed, &pg );
 
     /*  1  */
     if  ( ! apd )
@@ -1649,26 +1580,12 @@ void appRunPrintDialog(			EditDocument *		ed,
 	    { XDEB(apd); return;	}
 
 	ea->eaPrintDialog= (void *)apd;
-
-	/*  2  */
-
-	/*  3  */
-	if  ( apd->apdActivateFaxOptions )
-	    {
-	    const char *	faxNumber= getenv( "APP_FAX_TO" );
-
-	    if  ( faxNumber )
-		{
-		appStringToTextWidget( apd->apdFaxNumberText, faxNumber );
-		apd->apdOptionNrChosen= apd->apdFaxOptionNr;
-		}
-	    }
 	}
     else{
 	appSetShellTitle( apd->apdDialog.adTopWidget, printOption,
 						    ea->eaApplicationName );
 
-	appGuiShowDialog( &(apd->apdDialog), ed->edToplevel.atTopWidget );
+	appGuiShowDialog( ea, &(apd->apdDialog), ed->edToplevel.atTopWidget );
 	}
 
     apdr= apd->apdResources;
@@ -1685,12 +1602,12 @@ void appRunPrintDialog(			EditDocument *		ed,
     apd->apdPrintEvenFacesOnly= 0;
     apd->apdPrintSheetsReverse= 0;
 
-    utilInitPrintGeometry( &pg );
+    psInitPrintGeometry( &pg );
     appApplicationSettingsToPrintGeometry( &pg, ea );
     pg.pgSheetGeometry= apd->apdPrinterGeometry;
 
-    if  ( ea->eaSuggestNup )
-	{ (*ea->eaSuggestNup)( &pg, ed->edPrivateData );	}
+    if  ( ea->eaSuggestPageSetup )
+	{ (*ea->eaSuggestPageSetup)( &pg, ed->edPrivateData );	}
 
     for ( i= 0; i < PSnum__COUNT; i++ )
 	{
@@ -1711,7 +1628,7 @@ void appRunPrintDialog(			EditDocument *		ed,
 						apd->apdSelectionChosen );
     appPrintDialogShowFromTo( apd, 1, apd->apdPageCount, 0 );
 
-    appGuiEnableWidget( apd->apdSelectionOptions[PRINTselCURRENT_PAGE],
+    guiEnableWidget( apd->apdSelectionOptions[PRINTselCURRENT_PAGE],
 			    ( apd->apdFirstSelectedPage >= 0	&&
 			      apd->apdLastSelectedPage >= 0	)	);
 
@@ -1750,66 +1667,19 @@ void appRunPrintDialog(			EditDocument *		ed,
 
     appGuiRunDialog( &(apd->apdDialog), AQDrespNONE, ea );
 
-    if  ( apd->apdPlacementChosen < 0			||
-	  apd->apdPlacementChosen >= PSnum__COUNT	)
-	{
-	LLDEB(apd->apdPlacementChosen,PSnum__COUNT);
-	appGuiHideDialog( &(apd->apdDialog) );
-	goto ready;
-	}
-
-    if  ( appPrintDialogPrintGeometry( &customTransformRelevant, &pg, apd ) )
-	{ appGuiHideDialog( &(apd->apdDialog) ); goto ready; }
-
     switch( apd->apdDialog.adResponse )
 	{
 	case AQDrespOK:
-	    pg.pgFirstPage= apd->apdFirstPageChosen;
-	    pg.pgLastPage= apd->apdLastPageChosen;
-
-	    if  ( apd->apdOptionNrChosen == apd->apdToFileOptionNr )
-		{
-		appDocPrintToFile( printOption, apd->apdDialog.adTopWidget,
-						ed, &pg );
-		}
-	    else{
-		if  ( apd->apdOptionNrChosen == apd->apdFaxOptionNr )
-		    {
-		    char *	faxNumber;
-		    char *	s;
-
-		    s= faxNumber=
-			appGetStringFromTextWidget( apd->apdFaxNumberText );
-
-		    while( *s == ' ' )
-			{ s++;	}
-
-		    if  ( ! *s )
-			{ SDEB(faxNumber);	}
-		    else{
-			if  ( appFaxDocument( ed, s, &pg ) )
-			    { SDEB(faxNumber);	}
-			}
-
-		    appFreeStringFromTextWidget( faxNumber );
-		    }
-		else{
-		    int		printer;
-
-		    printer=
-			apd->apdOptionNrChosen- apd->apdFirstPrinterOptionNr;
-
-		    if  ( appPrintDocument( printer, &pj, &pg ) )
-			{ LDEB(apd->apdOptionNrChosen); }
-		    }
-		}
-
+	    appPrintDialogPrint( ed, printOption, &pj, &pg, apd );
 	    appGuiHideDialog( &(apd->apdDialog) );
 	    goto ready;
 
 	default:
 	    LDEB(apd->apdDialog.adResponse);
 	    goto error;
+
+	case AQDrespCLOSED:
+	    goto ready;
 
 	case AQDrespCANCEL:
 	error:
@@ -1818,6 +1688,6 @@ void appRunPrintDialog(			EditDocument *		ed,
 	}
 
   ready:
-    utilCleanPrintGeometry( &pg );
+    psCleanPrintGeometry( &pg );
     return;
     }

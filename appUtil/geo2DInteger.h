@@ -15,22 +15,70 @@ typedef struct DocumentRectangle
     int		drY1;
     } DocumentRectangle;
 
-#   define RECTDEB(dr) appDebug( "%s(%3d): %s= [%d..%d x %d..%d]\n",	\
+#   define RECTDEB(dr) appDebug(					\
+			    "%s(%3d) %s= [%d..%d x %d..%d]\n",		\
 			    __FILE__, __LINE__, #dr,			\
 			    (dr)->drX0, (dr)->drX1,			\
 			    (dr)->drY0, (dr)->drY1 )
 
 typedef struct Point2DI
     {
-    int		p2diX;
-    int		p2diY;
+    int		x;
+    int		y;
     } Point2DI;
 
-# define geo2DIPointInBox( p, b ) \
-		    ( (p)->p2diX >= (b)->drX0 && \
-		      (p)->p2diX <= (b)->drX1 && \
-		      (p)->p2diY >= (b)->drY0 && \
-		      (p)->p2diY <= (b)->drY1 )
+/**
+  * A two dimensional arc
+  */
+typedef struct Arc2DI
+    {
+			/**
+			  * The rectangle that holds the full ellipse
+			  */
+    DocumentRectangle	a2diRect;
+			/**
+			 * The start angle relative to the 3-o-clock angle 
+			 * in 64th of a degree counter clock wise.
+			 */
+    int			a2diAngleFrom;
+			/**
+			 * The change of angle relative to a2diAngleFrom 
+			 * Also counter clock wise and also in 64th of a degree.
+			 */
+    int			a2diAngleStep;
+    } Arc2DI;
+
+typedef struct LineSegment2DI
+    {
+    int		ls2diX0;
+    int		ls2diY0;
+    int		ls2diX1;
+    int		ls2diY1;
+    } LineSegment2DI;
+
+# define geo2DIXYInBox( x, y, b ) \
+		    ( (x) >= (b)->drX0 && \
+		      (x) <= (b)->drX1 && \
+		      (y) >= (b)->drY0 && \
+		      (y) <= (b)->drY1 )
+
+# define geo2DIPointInBox( p, b ) geo2DIXYInBox( (p)->x, (p)->y, (b) )
+
+# define geo2DIBoxAroundXY( x, y, b ) \
+    { \
+    if  ( (b)->drX0 > (x) ) { (b)->drX0=  (x);	} \
+    if  ( (b)->drY0 > (y) ) { (b)->drY0=  (y);	} \
+    if  ( (b)->drX1 < (x) ) { (b)->drX1=  (x);	} \
+    if  ( (b)->drY1 < (y) ) { (b)->drY1=  (y);	} \
+    }
+
+# define geoShiftRectangle( dr, ox, oy ) \
+    { \
+    (dr)->drX0 += (ox); \
+    (dr)->drX1 += (ox); \
+    (dr)->drY0 += (oy); \
+    (dr)->drY1 += (oy); \
+    }
 
 /************************************************************************/
 /*									*/
@@ -38,13 +86,14 @@ typedef struct Point2DI
 /*									*/
 /************************************************************************/
 
-extern void docInitRectangle(	DocumentRectangle *		dr );
+extern void geoInitRectangle(		DocumentRectangle *		dr );
+extern void geoInvalidateRectangle(	DocumentRectangle *		dr );
 
 extern void geoUnionRectangle(	DocumentRectangle *		dr,
 				const DocumentRectangle *	dr1,
 				const DocumentRectangle *	dr2	);
 
-extern void docNormalizeRectangle(
+extern void geoNormalizeRectangle(
 				DocumentRectangle *		drTo,
 				const DocumentRectangle *	drFrom );
 
@@ -77,5 +126,8 @@ extern int geo2DIClipSegmentToRectangle(
 				double *			pXp1,
 				const Point2DI			vp[2],
 				const DocumentRectangle *	dr );
+
+extern int geo2DISurface(	Point2DI *			points,
+				int				n );
 
 #   endif	/*	GEO_2D_INTEGER_H */

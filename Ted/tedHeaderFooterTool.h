@@ -7,6 +7,12 @@
 #   ifndef	TED_HEADER_FOOTER_TOOL_H
 #   define	TED_HEADER_FOOTER_TOOL_H
 
+#   include	<docBuf.h>
+#   include	<appFrame.h>
+#   include	<appInspector.h>
+#   include	<docSelectionDescription.h>
+#   include	<docSelectionGeometry.h>
+
 /************************************************************************/
 /*									*/
 /*  A Header/Footer Tool. I.E. The header footer page on the 'Format	*/
@@ -16,22 +22,22 @@
 
 typedef struct HeaderFooterPageResources
     {
-    char *		hfprSectionHeaderText;
-    char *		hfprSectionNumberText;
-    char *		hfprTitlepgText;
+    const char *	hfprSectionHeaderText;
+    const char *	hfprSectionNumberText;
+    const char *	hfprTitlepgText;
 
-    char *		hfprDocumentHeaderText;
-    char *		hfprFacingpText;
-    char *		hfprChangeDocText;
-    char *		hfprRevertDocText;
+    const char *	hfprDocumentHeaderText;
+    const char *	hfprFacingpText;
+    const char *	hfprChangeDocText;
+    const char *	hfprRevertDocText;
 
-    char *		hfprPagesHeaderText;
-    char *		hfprPagesOptionTexts[PAGES__COUNT];
+    const char *	hfprPagesHeaderText;
+    const char *	hfprPagesOptionTexts[PAGES__COUNT];
 
-    char *		hfprDeleteHeaderText;
-    char *		hfprEditHeaderText;
-    char *		hfprDeleteFooterText;
-    char *		hfprEditFooterText;
+    const char *	hfprDeleteHeaderText;
+    const char *	hfprEditHeaderText;
+    const char *	hfprDeleteFooterText;
+    const char *	hfprEditFooterText;
     } HeaderFooterPageResources;
 
 typedef struct HeaderFooterTool
@@ -42,13 +48,23 @@ typedef struct HeaderFooterTool
 
     int					hftSectionNumber;
 
+    unsigned char			hftCanInsertHeader;
+    unsigned char			hftCanDeleteHeader;
+    unsigned char			hftCanInsertFooter;
+    unsigned char			hftCanDeleteFooter;
+
     DocumentProperties			hftDocPropertiesChosen;
     DocumentProperties			hftDocPropertiesSet;
 
     SectionProperties			hftSectPropertiesChosen;
     SectionProperties			hftSectPropertiesSet;
     int					hftPagesChosen;
+    int					hftInTreeType;
     unsigned char			hftPagesOptionsEnabled[PAGES__COUNT];
+    unsigned char			hftPagesHeaderExists[PAGES__COUNT];
+    unsigned char			hftPagesFooterExists[PAGES__COUNT];
+    unsigned char			hftPagesHeaderApplies[PAGES__COUNT];
+    unsigned char			hftPagesFooterApplies[PAGES__COUNT];
 
     APP_WIDGET				hftSectionFrame;
     APP_WIDGET				hftSectionPaned;
@@ -79,7 +95,7 @@ typedef struct HeaderFooterTool
 /*									*/
 /************************************************************************/
 
-extern void tedFormatToolRefreshHeaderFooterTool(
+extern void tedRefreshHeaderFooterTool(
 				HeaderFooterTool *		hft,
 				int *				pEnabled,
 				int *				pPref,
@@ -87,12 +103,26 @@ extern void tedFormatToolRefreshHeaderFooterTool(
 				const DocumentSelection *	ds,
 				const SelectionDescription *	sd,
 				const SelectionGeometry *	sg,
-				BufferDocument *		bd );
+				BufferDocument *		bd,
+				const unsigned char *		cmdEnabled );
 
 extern void tedFormatToolGetHeaderFooterResourceTable( EditApplication * ea,
 					HeaderFooterPageResources *	hfpr,
 					InspectorSubjectResources *	isr );
 
 extern void tedFormatCleanHeaderFooterTool(	HeaderFooterTool *	hft );
+
+extern void tedFormatFillHeaderFooterChoosers( HeaderFooterTool *	hft,
+				    const HeaderFooterPageResources *	hfpr );
+
+extern void tedFormatFinishHeaderFooterPage( HeaderFooterTool *		hft,
+				    const HeaderFooterPageResources *	hfpr );
+
+extern void tedFormatFillHeaderFooterPage(
+			HeaderFooterTool *			hft,
+			const HeaderFooterPageResources *	hfpr,
+			InspectorSubject *			is,
+			APP_WIDGET				pageWidget,
+			const InspectorSubjectResources *	isr );
 
 #   endif	/*  TED_HEADER_FOOTER_TOOL_H */

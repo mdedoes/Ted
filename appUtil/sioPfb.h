@@ -5,6 +5,6 @@
 /*									*/
 /************************************************************************/
 
-#   include	<sioGeneral.h>
+#   include	"sioGeneral.h"
 
 extern SimpleInputStream * sioInPfbOpen(	SimpleInputStream * sisPfb );

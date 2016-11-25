@@ -1,19 +1,15 @@
 #   include	"appFrameConfig.h"
 
-#   include	<stdlib.h>
 #   include	<stdio.h>
 
-#   include	"appFrame.h"
-#   include	"appSystem.h"
-#   include	<appGeoString.h>
+#   include	"guiWidgets.h"
+
+#   include	<appDebugon.h>
 
 #   ifdef USE_MOTIF
 
 #   include	<X11/Xatom.h>
 #   include	<Xm/Text.h>
-#   include	<Xm/PanedW.h>
-
-#   include	<appDebugon.h>
 
 /************************************************************************/
 /*									*/
@@ -21,8 +17,8 @@
 /*									*/
 /************************************************************************/
 
-static char *	APP_PasteTranslationString=
-    "Ctrl <Key>v: copy-primary()\n"	/*  PASTE	*/
+static const char *	APP_PasteTranslationString=
+    "Ctrl <Key>v: copy-clipboard()\n"	/*  PASTE	*/
     "Ctrl <Key>c: copy-clipboard()\n"	/*  COPY	*/
     "Ctrl <Key>x: cut-clipboard()\n"	/*  CUT		*/
     ;
@@ -79,6 +75,16 @@ void appMakeTextInRow(		Widget *		pText,
 	XtSetArg( al[ac], XmNforeground,		blackPixel ); ac++;
 	}
     else{
+	Pixel		background;
+	Pixel		foreground;
+
+	XtVaGetValues( row,
+			XmNbackground,			&background,
+			XmNforeground,			&foreground,
+			NULL );
+
+	XtSetArg( al[ac], XmNbackground,		background ); ac++;
+	XtSetArg( al[ac], XmNforeground,		foreground ); ac++;
 	XtSetArg( al[ac], XmNeditable,			False ); ac++;
 	XtSetArg( al[ac], XmNtraversalOn,		False ); ac++;
 	XtSetArg( al[ac], XmNcursorPositionVisible,	False ); ac++;
@@ -136,6 +142,16 @@ void appMakeTextInColumn(	Widget *	pText,
 	XtSetArg( al[ac], XmNforeground,		blackPixel ); ac++;
 	}
     else{
+	Pixel		background;
+	Pixel		foreground;
+
+	XtVaGetValues( column,
+			XmNbackground,			&background,
+			XmNforeground,			&foreground,
+			NULL );
+
+	XtSetArg( al[ac], XmNbackground,		background ); ac++;
+	XtSetArg( al[ac], XmNforeground,		foreground ); ac++;
 	XtSetArg( al[ac], XmNeditable,			False ); ac++;
 	XtSetArg( al[ac], XmNtraversalOn,		False ); ac++;
 	XtSetArg( al[ac], XmNcursorPositionVisible,	False ); ac++;
@@ -186,7 +202,7 @@ void appStringToTextWidget(		Widget		w,
 /*									*/
 /************************************************************************/
 
-void appEnableText(		Widget		text,
+void guiEnableText(		Widget		text,
 				int		enabled )
     {
     if  ( enabled )
@@ -219,6 +235,20 @@ void appEnableText(		Widget		text,
 			    XmNcursorPositionVisible,	False,
 			    NULL );
 	}
+    }
+
+/************************************************************************/
+/*									*/
+/*  Select text in a text entry box.					*/
+/*									*/
+/************************************************************************/
+
+void appTextSelectContents(		APP_WIDGET	w,
+					int		from,
+					int		upto )
+    {
+    XmTextSetSelection( w, from, upto, CurrentTime );
+    return;
     }
 
 /************************************************************************/

@@ -6,17 +6,78 @@
 
 #   include	"appUtilConfig.h"
 
-#   include	<sioPipe.h>
+#   include	"sioPipe.h"
+#   include	"utilMemoryBuffer.h"
 
-#   include	<stdlib.h>
 #   include	<stdarg.h>
 #   include	<stdio.h>
-#   include	<string.h>
 #   include	<signal.h>
 
-#   include	<errno.h>
-
 #   include	<appDebugon.h>
+
+/************************************************************************/
+/*									*/
+/*  Simple io streams from and to commands using popen().		*/
+/*									*/
+/************************************************************************/
+
+static int sioPipeClose(	void *	voidf )
+    {
+    int		rval;
+    void	(*prevSigPipeHandler)( int );
+
+    prevSigPipeHandler= signal( SIGPIPE, SIG_IGN );
+
+    rval= pclose( (FILE *)voidf );
+
+    signal( SIGPIPE, prevSigPipeHandler );
+
+    return rval;
+    }
+
+/************************************************************************/
+/*									*/
+/*  Open an input stream from a command using popen().			*/
+/*									*/
+/************************************************************************/
+
+static int sioInPipeReadBytes(		void *			voidf,
+					unsigned char *		buffer,
+					unsigned int		count )
+    {
+    int		rval;
+
+    rval= fread( buffer, 1, count, (FILE *)voidf );
+
+    return rval;
+    }
+
+SimpleInputStream * sioInPipeOpen(	const MemoryBuffer *	command )
+    {
+    SimpleInputStream *		sis= (SimpleInputStream *)0;
+    FILE *			f= (FILE *)0;
+
+    if  ( utilMemoryBufferIsEmpty( command ) )
+	{ LDEB(command->mbSize); goto ready;	}
+
+    f= popen( utilMemoryBufferGetString( command ), "r" );
+    if  ( ! f )
+	{ XDEB(f); goto ready;	}
+
+    sis= sioInOpen( (void *)f, sioInPipeReadBytes, sioPipeClose );
+    if  ( ! sis )
+	{ XDEB(sis); goto ready;	}
+
+    f= (FILE *)0; /* steal */
+
+  ready:
+
+    if  ( f )
+	{ pclose( f );	}
+
+    return sis;
+    }
+
 
 /************************************************************************/
 /*									*/
@@ -40,40 +101,33 @@ static int sioOutPipeWriteBytes(	void *			voidf,
     return rval;
     }
 
-static int sioPipeClose(	void *	voidf )
-    {
-    int		rval;
-    void	(*prevSigPipeHandler)( int );
-
-    prevSigPipeHandler= signal( SIGPIPE, SIG_IGN );
-
-    rval= pclose( (FILE *)voidf );
-
-    signal( SIGPIPE, prevSigPipeHandler );
-
-    return rval;
-    }
-
-SimpleOutputStream * sioOutPipeOpen(	const char *	command )
+SimpleOutputStream * sioOutPipeOpen(	const MemoryBuffer *	command )
     {
     SimpleOutputStream *	sos= (SimpleOutputStream *)0;
-    FILE *			f;
+    FILE *			f= (FILE *)0;
 
     void			(*prevSigPipeHandler)( int );
 
     prevSigPipeHandler= signal( SIGPIPE, SIG_IGN );
 
-    f= popen( command, "w" );
-    if  ( ! f )
-	{ SXDEB(command,f); goto ready;	}
+    if  ( utilMemoryBufferIsEmpty( command ) )
+	{ LDEB(command->mbSize); goto ready;	}
 
-    sos= sioOutOpen( (void *)f, sioOutPipeWriteBytes,
-						(SIOoutSEEK)0, sioPipeClose );
+    f= popen( utilMemoryBufferGetString( command ), "w" );
+    if  ( ! f )
+	{ XDEB(f); goto ready;	}
+
+    sos= sioOutOpen( (void *)f, sioOutPipeWriteBytes, sioPipeClose );
 
     if  ( ! sos )
-	{ SXDEB(command,sos); pclose( f ); goto ready;	}
+	{ XDEB(sos); goto ready;	}
+
+    f= (FILE *)0; /* steal */
 
   ready:
+
+    if  ( f )
+	{ pclose( f );	}
 
     signal( SIGPIPE, prevSigPipeHandler );
 

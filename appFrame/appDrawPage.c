@@ -10,12 +10,14 @@
 #   include	<stdio.h>
 #   include	<stdlib.h>
 #   include	<string.h>
-#   include	<appDebugon.h>
 
-#   include	<appFrame.h>
-#   include	"appUnit.h"
-#   include	<appGeoString.h>
-#   include	<utilPs.h>
+#   include	<appDebugon.h>
+#   include	<geoUnits.h>
+
+#   include	"guiWidgets.h"
+#   include	"guiDrawPage.h"
+#   include	"guiDrawingWidget.h"
+#   include	<psNup.h>
 
 /************************************************************************/
 /*									*/
@@ -23,53 +25,53 @@
 /*									*/
 /************************************************************************/
 
-static void appDrawTextPattern(	AppDrawingData *		add,
-				int				numX1,
-				int				numY1,
-				int				textX0,
-				int				textX1,
-				int				textY0,
-				int				textY1 )
+static void appDrawTextPattern(	DrawingSurface			ds,
+				const DocumentRectangle *	drNum,
+				const DocumentRectangle *	drText )
     {
-    int			y;
+    double		wide= drText->drX1- drText->drX0+ 1;
+    DocumentRectangle	drWord;
 
-    y= textY0+ 2;
-    while( y < textY1- 1 )
+    drWord.drY0= drWord.drY1= drText->drY0+ 2;
+
+    while( drWord.drY0 < drText->drY1- 1 )
 	{
-	int	x;
-	int	c;
+	int	wordCount;
 
-	if  ( y <= numY1 )
-	    { x= numX1+ 1;	}
-	else{ x= textX0+ 1;	}
+	if  ( drNum && drWord.drY0 <= drNum->drY1 )
+	    { drWord.drX0= drNum->drX1+ 1;	}
+	else{ drWord.drX0= drText->drX0+ 1;	}
 
-	c= (int)( 5+ (75.0* rand() )/ (RAND_MAX+ 1.0 ) );
-
-	while( c > 0 )
+	wordCount= (int)( 5+ (75.0* rand() )/ (RAND_MAX+ 1.0 ) );
+	while( wordCount > 0 )
 	    {
-	    int	l;
+	    int		wordLength;
 
-	    l= (int) ( (1.0* (textX1- textX0)* rand() )/ (RAND_MAX+ 1.0 ) );
-	    l= 2+ l/10;
+	    wordLength= (int) ( (wide* rand() )/ (RAND_MAX+ 1.0 ) );
+	    wordLength= 2+ wordLength/10;
+	    drWord.drX1= drWord.drX0+ wordLength- 1;
 
-	    if  ( x+ l >= textX1- 1 )
+	    if  ( drWord.drX1 >= drText->drX1- 1 )
 		{
-		y += 2;
+		drWord.drY0 += 2;
+		drWord.drY1 += 2;
 
-		if  ( y <= numY1 )
-		    { x= numX1+ 1;	}
-		else{ x= textX0+ 1;	}
-
-		if  ( y >= textY1- 1 )
+		if  ( drWord.drY0 >= drText->drY1- 1 )
 		    { break;	}
+
+		if  ( drNum && drWord.drY0 <= drNum->drY1 )
+		    { drWord.drX0= drNum->drX1+ 1;	}
+		else{ drWord.drX0= drText->drX0+ 1;	}
+		drWord.drX1= drWord.drX0+ wordLength- 1;
 		}
 
-	    appDrawDrawRectangle( add, x, y, l, 0 );
+	    drawFillRectangle( ds, &drWord );
 
-	    x += l+ 2; c--;
+	    drWord.drX0 += wordLength+ 2; wordCount--;
 	    }
 
-	y += 4;
+	drWord.drY0 += 4;
+	drWord.drY1 += 4;
 	}
 
     return;
@@ -81,61 +83,68 @@ static void appDrawTextPattern(	AppDrawingData *		add,
 /*									*/
 /************************************************************************/
 
-static void appDrawTextPage(	AppDrawingData *		add,
-				int				textX0,
-				int				textX1,
-				int				textY0,
-				int				textY1 )
+static void appDrawTextPage(	DrawingSurface			ds,
+				const RGB8Color	*		backColor,
+				const DocumentRectangle *	drText )
     {
-    appDrawSetForegroundColor( add, &(add->addBackColor) );
-    appDrawDrawRectangle( add,
-	    textX0- 1, textY0- 1, textX1- textX0+ 1, textY1- textY0+ 1 );
+    DocumentRectangle	drAround= *drText;
 
-    appDrawSetForegroundBlack( add );
-    appDrawTextPattern( add, textX0, textY0,
-				    textX0, textX1, textY0, textY1 );
+    drAround.drX0--;
+    drAround.drY0--;
+    drAround.drX1++;
+    drAround.drY1++;
+
+    drawSetForegroundColor( ds, backColor );
+    drawRectangle( ds, &drAround );
+
+    drawSetForegroundColorBlack( ds );
+    appDrawTextPattern( ds, (const DocumentRectangle *)0, drText );
 
     return;
     }
 
-static void appDrawNupTextPage(	AppDrawingData *		add,
-				APP_FONT *			xfs,
+static void appDrawNupTextPage(	DrawingSurface			ds,
+				const RGB8Color	*		backColor,
+				int				screenFont,
 				const char *			label,
-				int				textX0,
-				int				textX1,
-				int				textY0,
-				int				textY1 )
+				const DocumentRectangle *	drText )
     {
-    if  ( xfs )
+    if  ( screenFont >= 0 )
 	{
-	int				numWide;
-	int				numHigh;
-
 	int				l= strlen( label );
-	int				fontAscent;
-	int				fontDescent;
+	DocumentRectangle		drLabel;
+	DocumentRectangle		drAround= *drText;
+	int				shift;
+	int				desc;
 
-	appDrawTextExtents( &numWide, &fontAscent, &fontDescent,
-						    add, xfs, label, l );
+	drAround.drX0--;
+	drAround.drY0--;
+	drAround.drX1++;
+	drAround.drY1++;
 
-	numHigh= fontAscent+ fontDescent;
+	drawGetTextExtents( &drLabel, ds, drText->drX0, drText->drY0,
+						    screenFont, label, l );
+	geoNormalizeRectangle( &drLabel, &drLabel );
 
-	appDrawSetForegroundColor( add, &(add->addBackColor) );
-	appDrawDrawRectangle( add,
-		textX0- 1, textY0- 1, textX1- textX0+ 1, textY1- textY0+ 1 );
+	desc= drLabel.drY1- drText->drY0;
+	shift= drText->drY0- drLabel.drY0;
+	drLabel.drY0 += shift;
+	drLabel.drY1 += shift;
 
-	appDrawSetForegroundBlack( add );
+	drLabel.drX1 += 2;
+	drLabel.drY1 -= desc;
+	drLabel.drY1 += 2;
 
+	drawSetForegroundColor( ds, backColor );
+	drawRectangle( ds, &drAround );
 
-	appDrawDrawString( add, textX0+ 2, textY0+ fontAscent+ 3,
-								label, l );
-
-	appDrawTextPattern( add, textX0+ numWide+ 2, textY0+ numHigh+ 2,
-				    textX0, textX1, textY0, textY1 );
+	drawSetForegroundColorBlack( ds );
+	drawString( ds, drText->drX0+ 1, drText->drY0+ shift,
+						    screenFont, label, l );
+	appDrawTextPattern( ds, &drLabel, drText );
 	}
     else{
-	appDrawTextPage( add, textX0, textX1, textY0, textY1 );
-
+	appDrawTextPage( ds, backColor, drText );
 	}
     }
 
@@ -145,19 +154,21 @@ static void appDrawNupTextPage(	AppDrawingData *		add,
 /*									*/
 /************************************************************************/
 
-static void appDrawPageSheet(	int				sheetX0,
-				int				sheetX1,
-				int				sheetY0,
-				int				sheetY1,
-				AppDrawingData *		add )
+static void appDrawPageSheet(	const DocumentRectangle *	drSheet,
+				DrawingSurface			ds )
     {
-    appDrawSetForegroundWhite( add );
-    appDrawFillRectangle( add, sheetX0, sheetY0,
-					sheetX1- sheetX0, sheetY1- sheetY0 );
+    DocumentRectangle	drAround= *drSheet;
 
-    appDrawSetForegroundBlack( add );
-    appDrawDrawRectangle( add, sheetX0- 1, sheetY0- 1,
-					sheetX1- sheetX0, sheetY1- sheetY0 );
+    drawSetForegroundColorWhite( ds );
+    drawFillRectangle( ds, drSheet );
+
+    drAround.drX0--;
+    drAround.drY0--;
+    drAround.drX1++;
+    drAround.drY1++;
+
+    drawSetForegroundColorBlack( ds );
+    drawRectangle( ds, &drAround );
 
     return;
     }
@@ -169,54 +180,57 @@ static void appDrawPageSheet(	int				sheetX0,
 /*  1)  Perform calculations relative to the centre, to avoid assymetry	*/
 /*	from rounding when margins are identical.			*/
 /*									*/
+/*  pixelsPerTwip is the application pixel density. It is relates to	*/
+/*	the applications intention to draw the page at a certain scale.	*/
+/*									*/
 /************************************************************************/
 
 void appDrawPageDiagram(	APP_WIDGET			w,
-				AppDrawingData *		add,
-				double				widgetHighMm,
+				DrawingSurface			ds,
+				const RGB8Color	*		backColor,
+				double				pixelsPerTwip,
 				const DocumentGeometry *	dg )
     {
     int				wide;
     int				high;
-    double			fac;
-
-    int				sheetX0;
-    int				sheetX1;
-    int				sheetY0;
-    int				sheetY1;
 
     int				sheetWidePixels;
     int				sheetHighPixels;
 
-    int				textX0;
-    int				textX1;
-    int				textY0;
-    int				textY1;
+    DocumentRectangle		drAll;
+    DocumentRectangle		drSheet;
+    DocumentRectangle		drText;
 
-    appDrawGetSizeOfWidget( &wide, &high, w );
+    guiDrawGetSizeOfWidget( &wide, &high, w );
+    drAll.drX0= 0;
+    drAll.drY0= 0;
+    drAll.drX1= wide- 1;
+    drAll.drY1= high- 1;
 
-    appDrawSetForegroundColor( add, &(add->addBackColor) );
-    appDrawFillRectangle( add, 0, 0, wide, high );
+    drawSetForegroundColor( ds, backColor );
+    drawFillRectangle( ds, &drAll );
 
-    fac= ( 2.54* high )/( widgetHighMm* 20.0* 72.27 );
+    sheetWidePixels= pixelsPerTwip* dg->dgPageWideTwips;
+    sheetHighPixels= pixelsPerTwip* dg->dgPageHighTwips;
 
-    sheetWidePixels= fac* dg->dgPageWideTwips;
-    sheetHighPixels= fac* dg->dgPageHighTwips;
+    drSheet.drX0= wide/2- ( sheetWidePixels/ 2 );
+    drSheet.drY0= high/2- ( sheetHighPixels/ 2 );
+    drSheet.drX1= wide/2+ ( sheetWidePixels/ 2 );
+    drSheet.drY1= high/2+ ( sheetHighPixels/ 2 );
 
-    sheetX0= wide/2- ( sheetWidePixels/ 2 );
-    sheetY0= high/2- ( sheetHighPixels/ 2 );
-    sheetX1= wide/2+ ( sheetWidePixels/ 2 );
-    sheetY1= high/2+ ( sheetHighPixels/ 2 );
-
-    appDrawPageSheet( sheetX0, sheetX1, sheetY0, sheetY1, add );
+    appDrawPageSheet( &drSheet, ds );
 
     /*  1  */
-    textX0= wide/2- fac* ( dg->dgPageWideTwips/2- dg->dgLeftMarginTwips );
-    textX1= wide/2+ fac* ( dg->dgPageWideTwips/2- dg->dgRightMarginTwips );
-    textY0= high/2- fac* ( dg->dgPageHighTwips/2- dg->dgTopMarginTwips );
-    textY1= high/2+ fac* ( dg->dgPageHighTwips/2- dg->dgBottomMarginTwips );
+    drText.drX0= wide/2- pixelsPerTwip*
+			    ( dg->dgPageWideTwips/2- dg->dgLeftMarginTwips );
+    drText.drX1= wide/2+ pixelsPerTwip*
+			    ( dg->dgPageWideTwips/2- dg->dgRightMarginTwips );
+    drText.drY0= high/2- pixelsPerTwip*
+			    ( dg->dgPageHighTwips/2- dg->dgTopMarginTwips );
+    drText.drY1= high/2+ pixelsPerTwip*
+			    ( dg->dgPageHighTwips/2- dg->dgBottomMarginTwips );
 
-    appDrawTextPage( add, textX0, textX1, textY0, textY1 );
+    appDrawTextPage( ds, backColor, &drText );
 
     return;
     }
@@ -235,12 +249,12 @@ void appDrawPageDiagram(	APP_WIDGET			w,
 
 #   define	ARROWD	16
 
-static void appDrawDirectionArrow(	AppDrawingData *	add,
+static void appDrawDirectionArrow(	DrawingSurface			ds,
 					int			rotate,
 					int			x0,
 					int			y0 )
     {
-    static APP_POINT	offsets[8]=
+    static Point2DI	offsets[8]=
 	{
 	    { -STEMW,	+STEML,	},
 	    { +STEMW,	+STEML,	},
@@ -252,7 +266,7 @@ static void appDrawDirectionArrow(	AppDrawingData *	add,
 	    { -STEMW,	+STEML,	},
 	};
 
-    APP_POINT	points[8];
+    Point2DI	points[8];
     int		i;
 
     if  ( rotate )
@@ -271,34 +285,35 @@ static void appDrawDirectionArrow(	AppDrawingData *	add,
 	    }
 	}
 
-    appDrawSetForegroundWhite( add );
+    drawSetForegroundColorWhite( ds );
 
-    appDrawFillPolygon( add, points, 8 );
+    drawFillPolygon( ds, points, 8 );
 
-    appDrawSetForegroundBlack( add );
+    drawSetForegroundColorBlack( ds );
 
-    appDrawDrawLines( add, points, 8 );
+    drawLines( ds, points, 8, 0 );
     }
 
-static void appDrawDirectionArrows(	AppDrawingData *	add,
+static void appDrawDirectionArrows(	DrawingSurface		ds,
 					int			rotate,
-					int			sheetX0,
-					int			sheetX1,
-					int			sheetY0,
-					int			sheetY1 )
+					const DocumentRectangle * drSheet )
     {
     if  ( rotate )
 	{
-	appDrawDirectionArrow( add, rotate,
-				( sheetX0+ sheetX1 )/ 2, sheetY0- ARROWD );
-	appDrawDirectionArrow( add, rotate,
-				( sheetX0+ sheetX1 )/ 2, sheetY1+ ARROWD );
+	appDrawDirectionArrow( ds, rotate,
+				    ( drSheet->drX0+ drSheet->drX1 )/ 2,
+				    drSheet->drY0- ARROWD );
+	appDrawDirectionArrow( ds, rotate,
+				    ( drSheet->drX0+ drSheet->drX1 )/ 2,
+				    drSheet->drY1+ ARROWD );
 	}
     else{
-	appDrawDirectionArrow( add, rotate,
-				sheetX0- ARROWD, ( sheetY0+ sheetY1 )/ 2 );
-	appDrawDirectionArrow( add, rotate,
-				sheetX1+ ARROWD, ( sheetY0+ sheetY1 )/ 2 );
+	appDrawDirectionArrow( ds, rotate,
+				    drSheet->drX0- ARROWD,
+				    ( drSheet->drY0+ drSheet->drY1 )/ 2 );
+	appDrawDirectionArrow( ds, rotate,
+				    drSheet->drX1+ ARROWD,
+				    ( drSheet->drY0+ drSheet->drY1 )/ 2 );
 	}
     }
 
@@ -306,6 +321,9 @@ static void appDrawDirectionArrows(	AppDrawingData *	add,
 /*									*/
 /*  Draw a schematic view of the distribution of pages on a sheet of	*/
 /*  paper.								*/
+/*									*/
+/*  pixelsPerTwip is the application pixel density. It is relates to	*/
+/*	the applications intention to draw the page at a certain scale.	*/
 /*									*/
 /*  1)  When no scaling or moving is required: Use appDrawPageDiagram()	*/
 /*	saves work, and is more focused at looking nice.		*/
@@ -318,20 +336,15 @@ static void appDrawDirectionArrows(	AppDrawingData *	add,
 /************************************************************************/
 
 void appDrawNupDiagram(	APP_WIDGET			w,
-			AppDrawingData *		add,
-			APP_FONT *			xfs,
-			double				widgetHighMm,
+			DrawingSurface			ds,
+			const RGB8Color	*		backColor,
+			int				screenFont,
+			double				pixelsPerTwip,
 			const DocumentGeometry *	dgPage,
 			const PrintGeometry *		pg )
     {
     int				wide= 0;
     int				high= 0;
-    double			fac;
-
-    int				sheetX0;
-    int				sheetX1;
-    int				sheetY0;
-    int				sheetY1;
 
     int				sheetWidePixels;
     int				sheetHighPixels;
@@ -341,72 +354,65 @@ void appDrawNupDiagram(	APP_WIDGET			w,
     int				y0;
     int				y1;
 
-    int				textX0;
-    int				textX1;
-    int				textY0;
-    int				textY1;
-
     int				rotatePages;
     int				rotateSheet;
 
-    int				textWideTwips;
-    int				textHighTwips;
+    DocumentRectangle		drAll;
+    DocumentRectangle		drSheet;
+    DocumentRectangle		drText;
 
     const DocumentGeometry *	dgSheet= &(pg->pgSheetGeometry);
 
     NupSchema			ns;
     AffineTransform2D		atPage;
 
-    utilInitNupSchema( &ns );
+    psInitNupSchema( &ns );
 
     /*  1  */
     if  ( pg->pgGridRows* pg->pgGridCols == 1			&&
 	  dgSheet->dgPageWideTwips == dgPage->dgPageWideTwips	&&
 	  dgSheet->dgPageHighTwips == dgPage->dgPageHighTwips	)
 	{
-	appDrawPageDiagram( w, add, widgetHighMm, dgPage );
+	appDrawPageDiagram( w, ds, backColor, pixelsPerTwip, dgPage );
 	goto ready;
 	}
 
-    appDrawGetSizeOfWidget( &wide, &high, w );
+    guiDrawGetSizeOfWidget( &wide, &high, w );
+    drAll.drX0= 0;
+    drAll.drY0= 0;
+    drAll.drX1= wide- 1;
+    drAll.drY1= high- 1;
 
-    appDrawSetForegroundColor( add, &(add->addBackColor) );
-    appDrawFillRectangle( add, 0, 0, wide, high );
+    drawSetForegroundColor( ds, backColor );
+    drawFillRectangle( ds, &drAll );
 
-    fac= ( 2.54* high )/( widgetHighMm* 20.0* 72.27 );
+    sheetWidePixels= pixelsPerTwip* dgSheet->dgPageWideTwips+ 0.49;
+    sheetHighPixels= pixelsPerTwip* dgSheet->dgPageHighTwips+ 0.49;
 
-    sheetWidePixels= fac* dgSheet->dgPageWideTwips+ 0.49;
-    sheetHighPixels= fac* dgSheet->dgPageHighTwips+ 0.49;
-
-    if  ( utilNupGetBaseTranform( &atPage, &rotatePages, pg, dgPage, fac ) )
+    if  ( utilNupGetBaseTranform( &atPage, &rotatePages, pg, dgPage,
+							    pixelsPerTwip ) )
 	{ LDEB(1); goto ready;	}
 
     rotateSheet= rotatePages;
-    if  ( utilNupSetSchema( &ns, rotateSheet, &atPage, pg, fac, dgPage ) )
+    if  ( utilNupSetSchema( &ns, rotateSheet, &atPage, pg,
+						    pixelsPerTwip, dgPage ) )
 	{ LLDEB(pg->pgGridRows,pg->pgGridCols); goto ready;	}
 
     if  ( rotateSheet )
 	{
-	sheetX0= wide/2- ( sheetHighPixels/ 2 );
-	sheetY0= high/2- ( sheetWidePixels/ 2 );
-	sheetX1= wide/2+ ( sheetHighPixels/ 2 );
-	sheetY1= high/2+ ( sheetWidePixels/ 2 );
+	drSheet.drX0= wide/2- ( sheetHighPixels/ 2 );
+	drSheet.drY0= high/2- ( sheetWidePixels/ 2 );
+	drSheet.drX1= wide/2+ ( sheetHighPixels/ 2 );
+	drSheet.drY1= high/2+ ( sheetWidePixels/ 2 );
 	}
     else{
-	sheetX0= wide/2- ( sheetWidePixels/ 2 );
-	sheetY0= high/2- ( sheetHighPixels/ 2 );
-	sheetX1= wide/2+ ( sheetWidePixels/ 2 );
-	sheetY1= high/2+ ( sheetHighPixels/ 2 );
+	drSheet.drX0= wide/2- ( sheetWidePixels/ 2 );
+	drSheet.drY0= high/2- ( sheetHighPixels/ 2 );
+	drSheet.drX1= wide/2+ ( sheetWidePixels/ 2 );
+	drSheet.drY1= high/2+ ( sheetHighPixels/ 2 );
 	}
 
-    appDrawPageSheet( sheetX0, sheetX1, sheetY0, sheetY1, add );
-
-    textWideTwips= dgPage->dgPageWideTwips-
-				dgPage->dgLeftMarginTwips-
-				dgPage->dgRightMarginTwips;
-    textHighTwips= dgPage->dgPageHighTwips-
-				dgPage->dgTopMarginTwips-
-				dgPage->dgBottomMarginTwips;
+    appDrawPageSheet( &drSheet, ds );
 
     if  ( pg->pgGridRows* pg->pgGridCols == 1 )
 	{
@@ -427,20 +433,20 @@ void appDrawNupDiagram(	APP_WIDGET			w,
 	if  ( rotatePages )
 	    {
 	    /*  3  */
-	    textX0= sheetX0+ y0;
-	    textX1= sheetX0+ y1;
-	    textY0= sheetY0+ x0;
-	    textY1= sheetY0+ x1;
+	    drText.drX0= drSheet.drX0+ y0;
+	    drText.drX1= drSheet.drX0+ y1;
+	    drText.drY0= drSheet.drY0+ x0;
+	    drText.drY1= drSheet.drY0+ x1;
 	    }
 	else{
-	    textX0= sheetX0+ x0+ 1;
-	    textX1= sheetX0+ x1;
+	    drText.drX0= drSheet.drX0+ x0+ 1;
+	    drText.drX1= drSheet.drX0+ x1;
 	    /*  2  */
-	    textY0= sheetY1- y0;
-	    textY1= sheetY1- y1;
+	    drText.drY0= drSheet.drY1- y0;
+	    drText.drY1= drSheet.drY1- y1;
 	    }
 
-	appDrawTextPage( add, textX0, textX1, textY0, textY1 );
+	appDrawTextPage( ds, backColor, &drText );
 	}
     else{
 	int		i;
@@ -467,30 +473,28 @@ void appDrawNupDiagram(	APP_WIDGET			w,
 	    if  ( rotatePages )
 		{
 		/*  3  */
-		textX0= sheetX0+ y0;
-		textX1= sheetX0+ y1;
-		textY0= sheetY0+ x0;
-		textY1= sheetY0+ x1;
+		drText.drX0= drSheet.drX0+ y0;
+		drText.drX1= drSheet.drX0+ y1;
+		drText.drY0= drSheet.drY0+ x0;
+		drText.drY1= drSheet.drY0+ x1;
 		}
 	    else{
-		textX0= sheetX0+ x0+ 1;
-		textX1= sheetX0+ x1;
+		drText.drX0= drSheet.drX0+ x0+ 1;
+		drText.drX1= drSheet.drX0+ x1;
 		/*  2  */
-		textY0= sheetY1- y0;
-		textY1= sheetY1- y1;
+		drText.drY0= drSheet.drY1- y0;
+		drText.drY1= drSheet.drY1- y1;
 		}
 
-	    appDrawNupTextPage( add, xfs,
-			    scratch, textX0, textX1, textY0, textY1 );
+	    appDrawNupTextPage( ds, backColor, screenFont, scratch, &drText );
 	    }
 	}
 
-    appDrawDirectionArrows( add, rotateSheet,
-			    sheetX0, sheetX1, sheetY0, sheetY1 );
+    appDrawDirectionArrows( ds, rotateSheet, &drSheet );
 
   ready:
 
-    utilCleanNupSchema( &ns );
+    psCleanNupSchema( &ns );
 
     return;
     }
@@ -499,31 +503,29 @@ void appDrawNupDiagram(	APP_WIDGET			w,
 /*									*/
 /*  Make the location for the schematic drawing of the page.		*/
 /*									*/
+/*  pixelsPerTwip is the physical pixel density. It bears no relation	*/
+/*	to the scale at which we want to draw the page.			*/
+/*									*/
 /************************************************************************/
 
 APP_WIDGET appMakePageDrawing(	APP_WIDGET			parent,
-				EditApplication *		ea,
-				int				mmHigh,
+				double				pixelsPerTwip,
+				int				widgetHighMm,
 				APP_EVENT_HANDLER_T		redraw,
 				void *				through )
     {
-    APP_WIDGET	drawing;
+    APP_WIDGET		drawing;
 
-    double	horPixPerMM;
-    double	verPixPerMM;
-    double	xfac;
-    double	yfac;
+    const double	pixPerMM= TWIPS_PER_MM* pixelsPerTwip;
+    const int		pixelsWide= -1;
+    const int		heightResizable= 1;
+    int			pixelsHigh;
 
-    const int	wide= -1;
-    const int	heightResizable= 1;
-    int		high;
-
-    appGetFactors( ea, &horPixPerMM, &verPixPerMM, &xfac, &yfac );
-
-    high= ( mmHigh* verPixPerMM )+ 0.5;
+    pixelsHigh= ( widgetHighMm* pixPerMM )+ 0.5;
 
     appGuiMakeDrawingAreaInColumn( &drawing, parent,
-				wide, high, heightResizable, redraw, through );
+					pixelsWide, pixelsHigh,
+					heightResizable, redraw, through );
 
     return drawing;
     }

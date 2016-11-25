@@ -886,11 +886,11 @@ static int scanFillRow_32_FromRGB(	unsigned char *		cto,
 	d2= 2* fj->fjToWide;
 	e= e2- fj->fjToWide;
 
-	r= g= b= n= 0;
+	r= 0; g= 0; b= 0; n= 0;
 
 	for ( col= 0; col < fj->fjToWide; cor++, col++ )
 	    {
-	    r= g= b= n= 0;
+	    r= 0; g= 0; b= 0; n= 0;
 
 	    while( e >= 0 )
 		{
@@ -904,7 +904,7 @@ static int scanFillRow_32_FromRGB(	unsigned char *		cto,
 
 	    if  ( n == 0 )
 		{
-		r= g= b= n= 0;
+		r= 0; g= 0; b= 0; n= 0;
 
 		if  ( fj->fjDither )
 		    {
@@ -959,7 +959,7 @@ static int scanFillRow_32_FromRGB(	unsigned char *		cto,
 	d2= 2* fj->fjFrWide;
 	e= e2- fj->fjFrWide;
 
-	r= g= b= n= 0;
+	r= 0; g= 0; b= 0; n= 0;
 
 	for ( col= 0; col < fj->fjFrWide; val++, cor++, col++ )
 	    {
@@ -972,7 +972,7 @@ static int scanFillRow_32_FromRGB(	unsigned char *		cto,
 
 		if  ( n == 0 )
 		    {
-		    r= g= b= n= 0;
+		    r= 0; g= 0; b= 0; n= 0;
 
 		    if  ( fj->fjDither )
 			{

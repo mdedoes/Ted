@@ -1,4 +1,5 @@
-#   include	<utilCgiEcho.h>
+#   include	"utilCgiEcho.h"
+#   include	"utilTree.h"
 
 #   include	<appDebugon.h>
 
@@ -8,41 +9,45 @@
 /*									*/
 /************************************************************************/
 
-void utilCgiEchoTaggedValueList(	TaggedValueList *	tvl,
-					const char *		label,
-					SimpleOutputStream *	sos )
+static int utilCgiEchoValue(	const char *		key,
+				void *			val,
+				void *			through )
     {
-    int			i;
-    const TaggedValue *	tv;
+    SimpleOutputStream *	sos= (SimpleOutputStream *)through;
+    char *			value= (char *)val;
 
-    sioOutPutString( "<TABLE>\r\n", sos );
+    sioOutPutString( "<tr><td>", sos );
+
+    sioOutPutString( key, sos );
+    sioOutPutString( "</td>\r\n<td>", sos );
+
+    if  ( value )
+	{ sioOutPutString( value, sos );	}
+    else{ sioOutPutString( "&#160;", sos );	}
+
+    sioOutPutString( "</td></tr>\r\n", sos );
+
+    return 0;
+    }
+
+void utilCgiEchoValueList(	void *			tree,
+				const char *		label,
+				SimpleOutputStream *	sos )
+    {
+    const int		stopOnFailure= 0;
+
+    sioOutPutString( "<table>\r\n", sos );
 
     if  ( label && label[0] )
 	{
-	sioOutPutString( "<TR><TD COLSPAN=2><B>", sos );
+	sioOutPutString( "<tr><td colspan=\"2\"><b>", sos );
 	sioOutPutString( label, sos );
-	sioOutPutString( "</B></TD></TR>\r\n", sos );
+	sioOutPutString( "</b></td></tr>\r\n", sos );
 	}
 
-    tv= tvl->tvlValues;
-    for ( i= 0; i < tvl->tvlCount; tv++, i++ )
-	{
-	sioOutPutString( "<TR><TD>", sos );
+    utilTreeForAll( tree, stopOnFailure, utilCgiEchoValue, (void *)sos );
 
-	if  ( tv->tvName )
-	    { sioOutPutString( tv->tvName, sos );	}
-	else{ sioOutPutString( "&nbsp;", sos );		}
-
-	sioOutPutString( "</TD>\r\n<TD>", sos );
-
-	if  ( tv->tvValue )
-	    { sioOutPutString( tv->tvValue, sos );	}
-	else{ sioOutPutString( "&nbsp;", sos );		}
-
-	sioOutPutString( "</TD></TR>\r\n", sos );
-	}
-
-    sioOutPutString( "</TABLE>\r\n", sos );
+    sioOutPutString( "</table>\r\n", sos );
 
     return;
     }
@@ -52,23 +57,23 @@ void utilCgiEchoRequest(		const CGIRequest *	cgir,
     {
     if  ( cgir->cgirHeaderValues )
 	{
-	utilCgiEchoTaggedValueList( cgir->cgirHeaderValues, "Headers", sos );
+	utilCgiEchoValueList( cgir->cgirHeaderValues, "Headers", sos );
 	}
 
     if  ( cgir->cgirEnvironmentValues )
 	{
-	utilCgiEchoTaggedValueList( cgir->cgirEnvironmentValues,
+	utilCgiEchoValueList( cgir->cgirEnvironmentValues,
 							"Environment", sos );
 	}
 
     if  ( cgir->cgirQueryValues )
 	{
-	utilCgiEchoTaggedValueList( cgir->cgirQueryValues, "Query", sos );
+	utilCgiEchoValueList( cgir->cgirQueryValues, "Query", sos );
 	}
 
     if  ( cgir->cgirCookies )
 	{
-	utilCgiEchoTaggedValueList( cgir->cgirCookies, "Cookies", sos );
+	utilCgiEchoValueList( cgir->cgirCookies, "Cookies", sos );
 	}
 
     return;

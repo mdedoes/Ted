@@ -2,17 +2,11 @@
 
 #   include	<stdlib.h>
 #   include	<stdio.h>
-#   include	<string.h>
 
-#   define	y0	math_y0
-#   define	y1	math_y1
-#   include	<math.h>
-#   undef	y0
-#   undef	y1
-
-#   include	<sioStdio.h>
+#   include	<sioFileio.h>
 
 #   include	"bmintern.h"
+#   include	"bmio.h"
 #   include	<appDebugon.h>
 
 #   include	"bm_gif_lib.h"
@@ -25,20 +19,119 @@ int _GifError = 0;
 /*									*/
 /************************************************************************/
 
+
+static int bmGifReadImageBuffer(BitmapDescription *	bd,
+				GifFileType *		gft,
+				unsigned char *		buffer,
+				int			tc,
+				int			interlaced )
+    {
+    int			row;
+
+    int			wide= bd->bdPixelsWide;
+    int			bpr= bd->bdBytesPerRow;
+
+    int			ft= 0;
+    int			cc;
+
+    if  ( interlaced )
+	{
+	for ( row= 0; row < bd->bdPixelsHigh; row += 8 )
+	    {
+	    if  ( bmGifGetPixels( gft, &ft, buffer+ row* bpr, wide, tc ) !=
+								    GIF_OK )
+		{ LDEB(row); return -1; }
+	    }
+	for ( row= 4; row < bd->bdPixelsHigh; row += 8 )
+	    {
+	    if  ( bmGifGetPixels( gft, &ft, buffer+ row* bpr, wide, tc ) !=
+								    GIF_OK )
+		{ LDEB(row); return -1; }
+	    }
+	for ( row= 2; row < bd->bdPixelsHigh; row += 4 )
+	    {
+	    if  ( bmGifGetPixels( gft, &ft, buffer+ row* bpr, wide, tc ) !=
+								    GIF_OK )
+		{ LDEB(row); return -1; }
+	    }
+	for ( row= 1; row < bd->bdPixelsHigh; row += 2 )
+	    {
+	    if  ( bmGifGetPixels( gft, &ft, buffer+ row* bpr, wide, tc ) !=
+								    GIF_OK )
+		{ LDEB(row); return -1; }
+	    }
+	}
+    else{
+	for ( row= 0; row < bd->bdPixelsHigh; row++ )
+	    {
+	    if  ( bmGifGetPixels( gft, &ft, buffer+ row* bpr, wide, tc ) !=
+								    GIF_OK )
+		{ LDEB(row); return -1; }
+	    }
+	}
+
+    if  ( ! ft )
+	{ bd->bdHasAlpha= 0;	}
+
+    cc= 0;
+    if  ( bd->bdHasAlpha )
+	{
+	for ( row= 0; row < bd->bdPixelsHigh; row++ )
+	    {
+	    unsigned char *	to=   buffer+ row* bpr+ bpr-  1;
+	    unsigned char *	from= buffer+ row* bpr+ wide- 1;
+	    int		col;
+
+	    for ( col= 0; col < bd->bdPixelsWide; col++ )
+		{
+		if  ( *from == tc )
+		    { *(to--)= 0x00; }
+		else{ *(to--)= 0xff; }
+
+		if  ( *from >= cc )
+		    { cc= *from+ 1;	}
+
+		*(to--)= *(from--);
+		}
+	    }
+	}
+    else{
+	for ( row= 0; row < bd->bdPixelsHigh; row++ )
+	    {
+	    unsigned char *	from= buffer+ row* bpr+ bpr-  1;
+	    int		col;
+
+	    for ( col= 0; col < bd->bdPixelsWide; col++ )
+		{
+		if  ( *from >= cc )
+		    { cc= *from+ 1;	}
+
+		from--;
+		}
+	    }
+	}
+
+    bd->bdPalette.cpColorCount= cc;
+
+    return 0;
+    }
+
 int bmGifReadGif(		BitmapDescription *	bd,
 				unsigned char **	pBuffer,
 				SimpleInputStream *	sis )
     {
-    GifFileType *	gft;
+    int			rval= 0;
+
+    GifFileType *	gft= (GifFileType *)0;
     GifImageDesc *	gid;
-    int			transparent= -1;
+    int			transparentColor= -1;
     int			gotImage= 0;
 
     unsigned char *	buffer= (unsigned char *)0;
 
     gft= DGifOpenFileHandle( sis );
     if  ( ! gft )
-	{ XDEB(gft); return -1;	}
+	{ XDEB(gft); rval= -1; goto ready;	}
 
     gid= &(gft->gftCurrentImageDescriptor);
 
@@ -46,17 +139,13 @@ int bmGifReadGif(		BitmapDescription *	bd,
 	{
 	GifRecordType		grt;
 	unsigned int		row;
-	int			bpr;
-	int			wide;
-
-	int			cc;
 
 	GifColorMap *		gcm;
 	const RGB8Color *	rgb8From;
 	RGB8Color *		rgb8To;
 
 	if  ( bmGifGetRecordType( gft, &grt ) != GIF_OK )
-	    { LDEB(1); DGifCloseFile( gft ); return -1;	}
+	    { LDEB(1); rval= -1; goto ready;	}
 
 	switch( grt )
 	    {
@@ -72,10 +161,10 @@ int bmGifReadGif(		BitmapDescription *	bd,
 		gotImage= 1;
 
 		if  ( DGifGetImageDesc( gft ) != GIF_OK )
-		    { LDEB(1); DGifCloseFile( gft ); return -1; }
+		    { LDEB(1); rval= -1; goto ready; }
 		bd->bdPixelsWide= gid->Width;
 		bd->bdPixelsHigh= gid->Height;
-		if  ( transparent >= 0 )
+		if  ( transparentColor >= 0 )
 		    { bd->bdHasAlpha= 1;	}
 		else{ bd->bdHasAlpha= 0;	}
 		bd->bdUnit= BMunINCH;
@@ -87,121 +176,36 @@ int bmGifReadGif(		BitmapDescription *	bd,
 		    { bd->bdBitsPerPixel= 16;	}
 		else{ bd->bdBitsPerPixel= 8;	}
 		bd->bdColorEncoding= BMcoRGB8PALETTE;
-		bd->bdColorCount= 256;
-		bd->bdRGB8Palette= (RGB8Color *)0;
+		if  ( utilPaletteSetCount( &(bd->bdPalette), 256 ) )
+		    { LDEB(256); rval= -1; goto ready;	}
 
 		if  ( bmCalculateSizes( bd ) )
-		    { LDEB(1); return -1;	}
+		    { LDEB(1); rval= -1; goto ready;	}
 
 		buffer= (unsigned char *)malloc( bd->bdBufferLength );
 		if  ( ! buffer )
-		    {
-		    LLDEB(bd->bdBufferLength,buffer);
-		    DGifCloseFile( gft ); return -1;
-		    }
-
-		bd->bdRGB8Palette= (RGB8Color *)
-					malloc( 256* sizeof( RGB8Color ) );
-		if  ( ! bd->bdRGB8Palette )
-		    {
-		    LLDEB(256,bd->bdRGB8Palette);
-		    free( buffer ); DGifCloseFile( gft ); return -1;
-		    }
-
-		wide= bd->bdPixelsWide;
-		bpr= bd->bdBytesPerRow;
-		if  ( gid->Interlace )
-		    {
-		    for ( row= 0; row < bd->bdPixelsHigh; row += 8 )
-			{
-			if  ( bmGifGetPixels( gft, buffer+ row* bpr, wide ) !=
-								    GIF_OK )
-			    { LDEB(row); DGifCloseFile( gft ); return -1; }
-			}
-		    for ( row= 4; row < bd->bdPixelsHigh; row += 8 )
-			{
-			if  ( bmGifGetPixels( gft, buffer+ row* bpr, wide ) !=
-								    GIF_OK )
-			    { LDEB(row); DGifCloseFile( gft ); return -1; }
-			}
-		    for ( row= 2; row < bd->bdPixelsHigh; row += 4 )
-			{
-			if  ( bmGifGetPixels( gft, buffer+ row* bpr, wide ) !=
-								    GIF_OK )
-			    { LDEB(row); DGifCloseFile( gft ); return -1; }
-			}
-		    for ( row= 1; row < bd->bdPixelsHigh; row += 2 )
-			{
-			if  ( bmGifGetPixels( gft, buffer+ row* bpr, wide ) !=
-								    GIF_OK )
-			    { LDEB(row); DGifCloseFile( gft ); return -1; }
-			}
-		    }
-		else{
-		    for ( row= 0; row < bd->bdPixelsHigh; row++ )
-			{
-			if  ( bmGifGetPixels( gft, buffer+ row* bpr, wide ) !=
-								    GIF_OK )
-			    { LDEB(row); DGifCloseFile( gft ); return -1; }
-			}
-		    }
+		    { LLDEB(bd->bdBufferLength,buffer); rval= -1; goto ready; }
 
 		if  ( gid->gidImageColorMap.gcmColorCount > 0 )
 		    { gcm= &(gid->gidImageColorMap);		  }
 		else{ gcm= &(gft->gftScreenDescriptor.gsdScreenColorMap); }
 
-		bd->bdColorCount= gcm->gcmColorCount;
+		bd->bdPalette.cpColorCount= gcm->gcmColorCount;
 
 		rgb8From= gcm->gcmColors;
-		rgb8To= bd->bdRGB8Palette;
-		for ( row= 0; row < bd->bdColorCount;
+		rgb8To= bd->bdPalette.cpColors;
+		for ( row= 0; row < bd->bdPalette.cpColorCount;
 					    rgb8From++, rgb8To++, row++ )
 		    {
 		    rgb8To->rgb8Red= rgb8From->rgb8Red;
 		    rgb8To->rgb8Green= rgb8From->rgb8Green;
 		    rgb8To->rgb8Blue= rgb8From->rgb8Blue;
-		    rgb8To->rgb8Alpha= 255* ( row != transparent );
+		    rgb8To->rgb8Alpha= 255* ( row != transparentColor );
 		    }
 
-		cc= 0;
-		if  ( bd->bdHasAlpha )
-		    {
-		    for ( row= 0; row < bd->bdPixelsHigh; row++ )
-			{
-			unsigned char *	to=   buffer+ row* bpr+ bpr-  1;
-			unsigned char *	from= buffer+ row* bpr+ wide- 1;
-			int		col;
-
-			for ( col= 0; col < bd->bdPixelsWide; col++ )
-			    {
-			    if  ( *from == transparent )
-				{ *(to--)= 0x00; }
-			    else{ *(to--)= 0xff; }
-
-			    if  ( *from >= cc )
-				{ cc= *from+ 1;	}
-
-			    *(to--)= *(from--);
-			    }
-			}
-		    }
-		else{
-		    for ( row= 0; row < bd->bdPixelsHigh; row++ )
-			{
-			unsigned char *	from= buffer+ row* bpr+ bpr-  1;
-			int		col;
-
-			for ( col= 0; col < bd->bdPixelsWide; col++ )
-			    {
-			    if  ( *from >= cc )
-				{ cc= *from+ 1;	}
-
-			    from--;
-			    }
-			}
-		    }
-
-		bd->bdColorCount= cc;
+		if  ( bmGifReadImageBuffer( bd, gft, buffer,
+					transparentColor, gid->Interlace ) )
+		    { LDEB(1); rval= -1; goto ready;	}
 
 		continue;
 
@@ -213,13 +217,13 @@ int bmGifReadGif(		BitmapDescription *	bd,
 
 		if  ( DGifGetExtension( gft, &extensionType, extension )
 								    != GIF_OK )
-		    { LDEB(1); DGifCloseFile( gft ); return -1; }
+		    { LDEB(1); rval= -1; goto ready; }
 
 		switch( extensionType )
 		    {
 		    case GRAPHICS_EXT_FUNC_CODE:
 			if  ( extension[1] & 0x1 )
-			    { transparent= extension[4];	}
+			    { transparentColor= extension[4];	}
 			break;
 
 		    case COMMENT_EXT_FUNC_CODE:
@@ -244,7 +248,7 @@ int bmGifReadGif(		BitmapDescription *	bd,
 		    {
 		    if  ( DGifGetExtensionNext( gft, &got, extension )
 								!= GIF_OK )
-			{ LDEB(1); DGifCloseFile( gft ); return -1; }
+			{ LDEB(1); rval= -1; goto ready; }
 		    }
 		}
 		continue;
@@ -255,37 +259,41 @@ int bmGifReadGif(		BitmapDescription *	bd,
 	break;
 	}
 
-    DGifCloseFile( gft );
-
-    if  ( ! bd->bdHasAlpha					&&
-	  ! bmMakeMonochrome( bd, bd->bdRGB8Palette, buffer )	)
-	{ bd->bdRGB8Palette= (RGB8Color *)0;	}
+    /* Try to make monochrome */
+    if  ( ! bd->bdHasAlpha )
+	{ bmMakeMonochrome( bd, buffer );	}
 
     /*
     *pPrivateFormat= privateFormat;
     */
-    *pBuffer= buffer;
+    *pBuffer= buffer; buffer= (unsigned char *)0;
 
-    return 0;
+  ready:
+
+    if  ( gft )
+	{ DGifCloseFile( gft );	}
+    if  ( buffer )
+	{ free( buffer );	}
+
+    return rval;
     }
 
-int bmReadGifFile(	const char *		filename,
+int bmReadGifFile(	const MemoryBuffer *	filename,
 			unsigned char **	pBuffer,
 			BitmapDescription *	bd,
-			int *			pPrivateFormat,
-			double *		pCompressionFactor )
+			int *			pPrivateFormat )
     {
     SimpleInputStream *	sis;
 
-    sis= sioInStdioOpen( filename );
+    sis= sioInFileioOpen( filename );
     if  ( ! sis )
-	{ SXDEB(filename,sis); return -1;	}
+	{ XDEB(sis); return -1;	}
 
     if  ( bmGifReadGif( bd, pBuffer, sis ) )
-	{ SDEB(filename); sioInClose( sis ); return -1;	}
+	{ LDEB(1); sioInClose( sis ); return -1;	}
 
     *pPrivateFormat= 87;
-    
+
     sioInClose( sis );
     return 0;
     }
@@ -330,13 +338,26 @@ int bmGifWriteGif(		const BitmapDescription *	bd,
 	    if  ( bmMakeGrayPalette( bd, &(gcm.gcmColorCount), gcm.gcmColors ) )
 		{ LDEB(bd->bdBitsPerPixel); return -1;	}
 
+	    if  ( bd->bdHasAlpha )
+		{
+		if  ( gcm.gcmColorCount >= 256 )
+		    { LDEB(gcm.gcmColorCount); return -1;	}
+
+		gcm.gcmColors[gcm.gcmColorCount].rgb8Red= 255;
+		gcm.gcmColors[gcm.gcmColorCount].rgb8Green= 255;
+		gcm.gcmColors[gcm.gcmColorCount].rgb8Blue= 255;
+		gcm.gcmColors[gcm.gcmColorCount].rgb8Alpha= 0;
+
+		transparentColor= gcm.gcmColorCount++;
+		}
+
 	    gcm.gcmBitsPerPixel= bd->bdBitsPerPixel;
 
 	    break;
 
 	case BMcoRGB8PALETTE:
 	    bpcolor= 1;
-	    while( ( 1 << bpcolor ) < bd->bdColorCount )
+	    while( ( 1 << bpcolor ) < bd->bdPalette.cpColorCount )
 		{ bpcolor++;	}
 
 	    if  ( bpcolor > 8 )
@@ -349,18 +370,18 @@ int bmGifWriteGif(		const BitmapDescription *	bd,
 	    gcm.gcmBitsPerPixel= bpcolor;
 	    gcm.gcmColorCount= 1 << gcm.gcmBitsPerPixel;
 
-	    for ( row= 0; row < bd->bdColorCount; row++ )
+	    for ( row= 0; row < bd->bdPalette.cpColorCount; row++ )
 		{
-		gcm.gcmColors[row]= bd->bdRGB8Palette[row];
+		gcm.gcmColors[row]= bd->bdPalette.cpColors[row];
 
-		if  ( transparentColor < 0			&&
-		      bd->bdRGB8Palette[row].rgb8Alpha == 0	)
+		if  ( transparentColor < 0				&&
+		      bd->bdPalette.cpColors[row].rgb8Alpha == 0	)
 		    { transparentColor= backgroundColor= row;	}
 		}
 
 	    if  ( bd->bdHasAlpha && transparentColor < 0 )
 		{
-		transparentColor= bd->bdColorCount;
+		transparentColor= bd->bdPalette.cpColorCount;
 
 		if  ( gcm.gcmBitsPerPixel < 8			&&
 		      transparentColor >= gcm.gcmColorCount	)
@@ -473,23 +494,22 @@ int bmGifWriteGif(		const BitmapDescription *	bd,
     return 0;
     }
 
-int bmWriteGifFile(	const char *			filename,
+int bmWriteGifFile(	const MemoryBuffer *		filename,
 			const unsigned char *		buffer,
 			const BitmapDescription *	bd,
-			int				privateFormat,
-			double				compressionFactor )
+			int				privateFormat )
     {
     SimpleOutputStream *	sos;
 
-    if  ( bmCanWriteGifFile( bd, privateFormat, compressionFactor ) )
+    if  ( bmCanWriteGifFile( bd, privateFormat ) )
 	{ LDEB(1); return -1;	}
 
-    sos= sioOutStdioOpen( filename );
+    sos= sioOutFileioOpen( filename );
     if  ( ! sos )
-	{ SXDEB(filename,sos); return -1;	}
+	{ XDEB(sos); return -1;	}
 
     if  ( bmGifWriteGif( bd, buffer, sos ) )
-	{ SDEB(filename); sioOutClose( sos ); return -1;	}
+	{ LDEB(1); sioOutClose( sos ); return -1;	}
     
     sioOutClose( sos );
     return 0;
@@ -500,8 +520,7 @@ int bmWriteGifFile(	const char *			filename,
 /************************************************************************/
 
 int bmCanWriteGifFile(	const BitmapDescription *	bd,
-			int				privateFormat,
-			double				compressionFactor )
+			int				privateFormat )
     {
     if  ( bd->bdBitsPerPixel <= 8 )
 	{ return 0;	}

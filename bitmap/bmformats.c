@@ -2,8 +2,11 @@
 
 #   include	"bmintern.h"
 #   include	<string.h>
-#   include	<tiffio.h>
+#   include	<appSystem.h>
 #   include	<appDebugon.h>
+
+#   if	USE_LIBTIFF
+#	include	<tiffio.h>
 
 static BitmapFileType	bmTiffFile=
     {
@@ -26,6 +29,8 @@ static BitmapFileType	bmTifFile=
     "tifFile",
     "Tagged Image Format ( *.tif )",
     };
+
+#   endif	/*	TIFF_FOUND	*/
 
 static BitmapFileType	bmBmpFile=
     {
@@ -104,6 +109,28 @@ static BitmapFileType	bmEpsFile=
     "Encapsulated Postscript ( *.eps )",
     };
 
+static BitmapFileType	bmPdfFile=
+    {
+    bmWritePdfFile,
+    bmCanWritePdfFile,
+    NULL, /* bmReadPdfFile, */
+    "pdf",
+    "*.pdf",
+    "pdfFile",
+    "Acrobat PDF ( *.pdf )",
+    };
+
+static BitmapFileType	bmRtfFile=
+    {
+    bmWriteRtfFile,
+    bmCanWriteRtfFile,
+    NULL, /* bmReadRtfFile, */
+    "rtf",
+    "*.rtf",
+    "rtfFile",
+    "Rich Text Format ( *.rtf )",
+    };
+
 static BitmapFileType	bmXbmFile=
     {
     bmWriteXbmFile,
@@ -137,17 +164,7 @@ static BitmapFileType	bmPngFile=
     "Portable Network Graphics ( *.png )",
     };
 
-static BitmapFileType	bmPcxFile=
-    {
-    bmWritePcxFile,
-    bmCanWritePcxFile,
-    bmReadPcxFile,
-    "pcx",
-    "*.pcx",
-    "pcxFile",
-    "Zsoft PC Paintbrush ( *.pcx )",
-    };
-
+#   if USE_LIBXPM
 static BitmapFileType	bmXpmFile=
     {
     bmWriteXpmFile,
@@ -158,6 +175,7 @@ static BitmapFileType	bmXpmFile=
     "xpmFile",
     "X11 Pixmap ( *.xpm )",
     };
+#   endif /* USE_XPM */
 
 static BitmapFileType	bmPgmFile=
     {
@@ -192,6 +210,17 @@ static BitmapFileType	bmPpmFile=
     "Portable Pixmap ( *.ppm )",
     };
 
+static BitmapFileType	bmPnmFile=
+    {
+    NULL,
+    NULL,
+    bmReadPbmFile,
+    "pnm",
+    "*.pnm",
+    "pnmFile",
+    "Portable Anymap ( *.pnm )",
+    };
+
 static BitmapFileType	bmWbmpFile=
     {
     bmWriteWbmpFile,
@@ -203,19 +232,6 @@ static BitmapFileType	bmWbmpFile=
     "WAP Wireless Bitmap Format ( *.wbmp )",
     };
 
-# if 0
-static BitmapFileType	bmSgiFile=
-    {
-    bmWriteSgiFile,
-    NULL,
-    bmReadSgiFile,
-    "sgi",
-    "*.sgi",
-    "sgiFile",
-    "SGI Image File ( *.sgi )",
-    };
-# endif
-
 BitmapFileType * bmFileTypes[]=
     {
     &bmPngFile,
@@ -225,15 +241,21 @@ BitmapFileType * bmFileTypes[]=
     &bmGifFile,
     &bmXwdFile,
     &bmEpsFile,
+    &bmPdfFile,
+    &bmRtfFile,
     &bmXbmFile,
     &bmIcoFile,
+#   if USE_LIBTIFF
     &bmTiffFile,
     &bmTifFile,
-    &bmPcxFile,
+#   endif
+#   if USE_LIBXPM
     &bmXpmFile,
+#   endif
     &bmPgmFile,
     &bmPbmFile,
     &bmPpmFile,
+    &bmPnmFile,
     &bmWbmpFile,
     &bmWmfFile,
     };
@@ -258,10 +280,13 @@ BitmapFileFormat	bmFileFormats[]=
 			    1,				&bmEpsFile },
 	{ "EPS  Encapsulated Postscript (Level 2)", "eps2File",
 			    2,				&bmEpsFile },
+	{ "PDF  Acrobat Portable Document Format", "pdf2File",
+			    12,				&bmPdfFile },
 	{ "XBM  X/11 Bitmap File", "xbm11File",
 			    11,				&bmXbmFile },
 	{ "ICO  Microsoft 3.x Windows Icon", "ico3File",
 			    40,				&bmIcoFile },
+#	if USE_LIBTIFF
 	{ "TIFF  No compression", "tiffPlainFile",
 			    COMPRESSION_NONE,		&bmTiffFile },
 	{ "TIFF  CCITT run length", "tiffCcittRleFile",
@@ -282,10 +307,11 @@ BitmapFileFormat	bmFileFormats[]=
 			    COMPRESSION_THUNDERSCAN,	&bmTiffFile },
 	{ "TIFF  JPEG", "tiffJpegFile",
 			    COMPRESSION_JPEG,		&bmTiffFile },
-	{ "PCX  Zsoft PC Paintbrush file", "pcx1File",
-			    0,				&bmPcxFile },
+#	endif /* TIFF_FOUND */
+#	if USE_LIBXPM
 	{ "XPM  X11 Pixmap File", "xpm1File",
 			    0,				&bmXpmFile },
+#	endif /* USE_XPM */
 	{ "PGM  Gray Map (Text)", "pgm2File",
 			    2,				&bmPgmFile },
 	{ "PGM  Gray Map (Raw)", "pgm5File",
@@ -302,12 +328,71 @@ BitmapFileFormat	bmFileFormats[]=
 			    0,				&bmWbmpFile },
 	{ "WMF  Windows Meta File", "wmfFile",
 			    0,				&bmWmfFile },
-	/*
-	{ "SGI Image File", "sgiFile",
-			    0,				&bmSgiFile },
-	*/
+	{ "RTF  Rich Text Format (\\pngblip)", "rtfPngFile",
+			    0,				&bmRtfFile },
+	{ "RTF  Rich Text Format (\\jpegblip)", "rtfJpegFile",
+			    1,				&bmRtfFile },
+	{ "RTF  Rich Text Format (\\wmetafile)", "rtfWmfFile",
+			    2,				&bmRtfFile },
     };
 
 const int bmNumberOfFileFormats= sizeof(bmFileFormats)/sizeof(BitmapFileFormat);
 const int bmNumberOfFileTypes= sizeof(bmFileTypes)/sizeof(BitmapFileType *);
+
+
+static int bmTestWrite(		const BitmapDescription *	bd,
+				const MemoryBuffer *		ext,
+				const BitmapFileFormat *	bff )
+    {
+    if  ( ! utilMemoryBufferIsEmpty( ext ) &&
+	  strcmp( bff->bffFileType->bftFileExtension, utilMemoryBufferGetString( ext ) ) )
+	{ return -1;	}
+    if  ( ! bff->bffFileType->bftWrite )
+	{ return -1;	}
+    if  ( (*bff->bffFileType->bftCanWrite) ( bd, bff->bffPrivate ) )
+	{ return -1;	}
+
+    return 0;
+    }
+
+int bmSuggestFormat(	const MemoryBuffer *		filename,
+			int				suggestedFormat,
+			const BitmapDescription *	bd )
+    {
+    int				format= suggestedFormat;
+
+    MemoryBuffer		ext;
+
+    if  ( format >= bmNumberOfFileFormats )
+	{ LLDEB(format,bmNumberOfFileFormats); format= -1; goto ready;	}
+
+    utilInitMemoryBuffer( &ext );
+
+    if  ( appFileGetFileExtension( &ext, filename ) )
+	{ LDEB(1); format= -1; goto ready;	}
+
+    if  ( utilMemoryBufferIsEmpty( &ext )		||
+	  format < 0					||
+	  bmTestWrite( bd, &ext, bmFileFormats+ format ) )
+	{
+	int			i;
+	BitmapFileFormat *	bff;
+
+	bff= bmFileFormats;
+	for ( i= 0; i < bmNumberOfFileFormats; bff++, i++ )
+	    {
+	    if  ( ! bmTestWrite( bd, &ext, bff ) )
+		{ format= i; break; }
+	    }
+
+	if  ( i == bmNumberOfFileFormats )
+	    { SLLDEB(utilMemoryBufferGetString(&ext),i,bmNumberOfFileFormats); }
+	}
+
+  ready:
+
+    utilCleanMemoryBuffer( &ext );
+
+    return format;
+    }
 

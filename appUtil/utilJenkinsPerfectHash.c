@@ -1149,6 +1149,8 @@ static int make_c(	const char *		cOutput,
     unsigned int	bMask= blen- 1;
     ub4			tabMask= 0;
 
+    const char *	mapType= "syntax error";
+
     /*  2  */
     f= fopen( cOutput, "w" );
     if  ( ! f )
@@ -1305,11 +1307,15 @@ static int make_c(	const char *		cOutput,
     }
 #   endif
 
+    if  ( hCount < 32768 )
+	{ mapType= "short";	}
+    else{ mapType= "int";	}
+
     if  ( indexName )
 	{
 	fprintf(f, "/* map back array */\n\n");
 
-	fprintf( f, "static int mapBack[]=\n" );
+	fprintf( f, "static %s mapBack[]=\n", mapType );
 	fprintf( f, "    {\n" );
 
 	for ( i= 0; i < hCount; i++ )
@@ -1382,7 +1388,8 @@ static int make_c(	const char *		cOutput,
 	fprintf(f, "    ub4 rsl= %s( key, len );\n", procName );
 	fprintf( f, "\n" );
 
-	fprintf( f, "    if  ( rsl >= sizeof(mapBack)/sizeof(int) )\n" );
+	fprintf( f, "    if  ( rsl >= sizeof(mapBack)/sizeof(%s) )\n", 
+								mapType );
 	fprintf( f, "\t{ return -1;	}\n" );
 	fprintf( f, "\n" );
 
@@ -1402,12 +1409,12 @@ External interface
 ------------------------------------------------------------------------------
 */
 
-extern int utilJenkinsPerfectHash(	const unsigned char **	keyStrings,
-					int			keyStringCount,
-					const char *		cOutput,
-					const char *		cInclude,
-					const char *		procName,
-					const char *		indexName )
+int utilJenkinsPerfectHash(	const unsigned char **	keyStrings,
+				int			keyStringCount,
+				const char *		cOutput,
+				const char *		cInclude,
+				const char *		procName,
+				const char *		indexName )
     {
     int		rval= 0;
     hashform	form;

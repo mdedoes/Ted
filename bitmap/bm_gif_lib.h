@@ -17,7 +17,7 @@
 #define _GIF_LIB_H
 
 #   include	<sioGeneral.h>
-#   include	<bmcolor.h>
+#   include	"bmcolor.h"
 
 /*************************/
 /*************************/
@@ -53,7 +53,6 @@
 #define GIF87_STAMP	"GIF87a"        /* First chars in file - GIF stamp.  */
 #define GIF89_STAMP	"GIF89a"        /* First chars in file - GIF stamp.  */
 
-typedef	unsigned char	GifPixelType;
 typedef unsigned char	GifByteType;
 
 typedef struct GifColorMap
@@ -150,7 +149,11 @@ int EGifPutScreenDesc(GifFileType *GifFile,
 int EGifPutImageDesc(GifFileType *GifFile,
 	int GifLeft, int GifTop, int Width, int GifHeight, int GifInterlace,
 	const GifColorMap * gcm);
-int bmGifPutPixels(GifFileType *GifFile, const GifPixelType *GifLine, int GifLineLen);
+
+extern int bmGifPutPixels(	GifFileType *		GifFile,
+				const unsigned char *	buffer,
+				int			count );
+
 int EGifPutComment(GifFileType *GifFile, const char *GifComment);
 int EGifPutExtensionFirst(GifFileType *GifFile, int GifExtCode, int GifExtLen,
                            const void * GifExtension);
@@ -183,12 +186,14 @@ GifFileType *DGifOpenFileHandle(	SimpleInputStream *	sis );
 int bmGifGetRecordType(GifFileType *GifFile, GifRecordType *GifType);
 int DGifGetImageDesc(GifFileType *GifFile);
 
-extern int bmGifGetPixels(	GifFileType *	GifFile,
-				GifPixelType *	GifLine,
-				int		GifLineLen );
-
 int DGifGetComment(GifFileType *GifFile, char *GifComment);
 int DGifCloseFile(GifFileType *GifFile);
+
+extern int bmGifGetPixels(	GifFileType *	gft,
+				int *		pFoundTransparent,
+				unsigned char *	buffer,
+				int		count,
+				int		transparentColor );
 
 extern int DGifGetExtension(		GifFileType *	GifFile,
 					int *		ExtCode,

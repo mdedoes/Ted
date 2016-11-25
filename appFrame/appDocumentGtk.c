@@ -10,12 +10,10 @@
 
 #   include	<stddef.h>
 #   include	<stdio.h>
-#   include	<stdlib.h>
-#   include	<string.h>
-
-#   include	<locale.h>
 
 #   include	"appFrame.h"
+#   include	"guiWidgetDrawingSurface.h"
+#   include	"guiDrawingWidget.h"
 
 #   include	<appDebugon.h>
 
@@ -42,9 +40,8 @@ static APP_EVENT_HANDLER_H( appDocTopConfigure, w, voided, event )
     {
     EditDocument *	ed= (EditDocument *)voided;
 
-    if  ( event->type == GDK_MAP && ed->edShellExtraWidth < 0 )
+    if  ( event->type == GDK_MAP )
 	{
-	appDocumentCalculateExtraSize( ed );
 	ed->edMapped= 1;
 	}
 
@@ -61,27 +58,33 @@ static APP_EVENT_HANDLER_H( appDocTopConfigure, w, voided, event )
 /*									*/
 /************************************************************************/
 
-static int appDocMakeMainWindow(	EditDocument *		ed,
-					EditApplication *	ea )
+static int appDocMakeMainWindow(	EditDocument *		ed )
     {
+    int			rval= 0;
+    EditApplication *	ea= ed->edApplication;
+
     APP_BITMAP_IMAGE	pixmap= (APP_BITMAP_IMAGE)0;
     APP_BITMAP_MASK	mask= (APP_BITMAP_MASK)0;
 
-    const char *	fullTitle;
-    const char *	fullIconName;
-
     const int		spacing= 0;
+
+    MemoryBuffer	fullTitle;
+    MemoryBuffer	iconName;
+
+    utilInitMemoryBuffer( &fullTitle );
+    utilInitMemoryBuffer( &iconName );
 
     if  ( ea->eaDocumentIcon						&&
 	  appGetImagePixmap( ea, ea->eaDocumentIcon, &pixmap, &mask )	)
-	{ SDEB(ea->eaDocumentIcon); return -1;	}
+	{ SDEB(ea->eaDocumentIcon); rval= -1; goto ready;	}
 
-    if  ( appFormatDocumentTitle( &fullTitle, &fullIconName, ea, ed->edTitle ) )
-	{ SDEB(ed->edTitle); return -1;	}
+    if  ( appFormatDocumentTitle( &fullTitle, &iconName, ea, &(ed->edTitle) ) )
+	{ LDEB(1); rval= -1; goto ready;	}
 
     ed->edToplevel.atTopWidget= gtk_window_new( GTK_WINDOW_TOPLEVEL );
 
-    gtk_window_set_title( GTK_WINDOW( ed->edToplevel.atTopWidget ), fullTitle );
+    gtk_window_set_title( GTK_WINDOW( ed->edToplevel.atTopWidget ),
+				    utilMemoryBufferGetString( &fullTitle ) );
 
     gtk_window_set_position( GTK_WINDOW( ed->edToplevel.atTopWidget ),
 						GTK_WIN_POS_CENTER );
@@ -94,7 +97,7 @@ static int appDocMakeMainWindow(	EditDocument *		ed,
 					ed->edToplevel.atTopWidget->window,
 					pixmap, mask );
     gdk_window_set_icon_name( ed->edToplevel.atTopWidget->window,
-								fullIconName );
+				    utilMemoryBufferGetString( &iconName ) );
 
     appSetCloseCallback( ed->edToplevel.atTopWidget, ea,
 					appDocFileCloseCallback, (void *)ed );
@@ -124,11 +127,15 @@ static int appDocMakeMainWindow(	EditDocument *		ed,
 
     appDocFillMenu( ed );
 
-    return 0;
+  ready:
+
+    utilCleanMemoryBuffer( &fullTitle );
+    utilCleanMemoryBuffer( &iconName );
+
+    return rval;
     }
 
-static int appDocMakeScrolledWindow(	EditDocument *		ed,
-					EditApplication *	ea )
+static int appDocMakeScrolledWindow(	EditDocument *		ed )
     {
     ed->edScrolledWindow= gtk_table_new( 2, 2, FALSE );
 
@@ -174,26 +181,24 @@ static int appDocMakeScrolledWindow(	EditDocument *		ed,
 int appMakeDocumentWidget(	EditApplication *	ea,
 				EditDocument *		ed )
     {
-    APP_WIDGET		form;
-
     appDocumentRulerWidth( ea, ed );
 
     /*  2  */
-    form= gtk_table_new( 3, 3, FALSE );
+    ed->edWorkWidget= gtk_table_new( 3, 3, FALSE );
 
     gtk_table_attach( GTK_TABLE( ed->edScrolledWindow ),
-			form,
+			ed->edWorkWidget,
 			0, 1,
 			0, 1,
 			GTK_FILL | GTK_EXPAND | GTK_SHRINK,
 			GTK_FILL | GTK_EXPAND | GTK_SHRINK,
 			0, 0 );
 
-    gtk_widget_show( form );
+    gtk_widget_show( ed->edWorkWidget );
 
     ed->edTopRulerWidget= gtk_drawing_area_new();
 
-    gtk_table_attach( GTK_TABLE( form ),
+    gtk_table_attach( GTK_TABLE( ed->edWorkWidget ),
 			ed->edTopRulerWidget,
 			0, 3,
 			0, 1,
@@ -205,7 +210,7 @@ int appMakeDocumentWidget(	EditApplication *	ea,
 
     ed->edBottomRulerWidget= gtk_drawing_area_new();
 
-    gtk_table_attach( GTK_TABLE( form ),
+    gtk_table_attach( GTK_TABLE( ed->edWorkWidget ),
 			ed->edBottomRulerWidget,
 			0, 3,
 			2, 3,
@@ -217,7 +222,7 @@ int appMakeDocumentWidget(	EditApplication *	ea,
 
     ed->edLeftRulerWidget= gtk_drawing_area_new();
 
-    gtk_table_attach( GTK_TABLE( form ),
+    gtk_table_attach( GTK_TABLE( ed->edWorkWidget ),
 			ed->edLeftRulerWidget,
 			0, 1,
 			1, 2,
@@ -229,7 +234,7 @@ int appMakeDocumentWidget(	EditApplication *	ea,
 
     ed->edRightRulerWidget= gtk_drawing_area_new();
 
-    gtk_table_attach( GTK_TABLE( form ),
+    gtk_table_attach( GTK_TABLE( ed->edWorkWidget ),
 			ed->edRightRulerWidget,
 			2, 3,
 			1, 2,
@@ -239,29 +244,29 @@ int appMakeDocumentWidget(	EditApplication *	ea,
 
     gtk_widget_show( ed->edRightRulerWidget );
 
-    ed->edDocumentWidget= gtk_drawing_area_new();
+    ed->edDocumentWidget.dwWidget= gtk_drawing_area_new();
 
-    gtk_table_attach( GTK_TABLE( form ),
-			ed->edDocumentWidget,
+    gtk_table_attach( GTK_TABLE( ed->edWorkWidget ),
+			ed->edDocumentWidget.dwWidget,
 			1, 2,
 			1, 2,
 			GTK_FILL | GTK_EXPAND | GTK_SHRINK,
 			GTK_FILL | GTK_EXPAND | GTK_SHRINK,
 			0, 0 );
 
-    gtk_widget_show( ed->edDocumentWidget );
+    gtk_widget_show( ed->edDocumentWidget.dwWidget );
 
-    GTK_WIDGET_SET_FLAGS( ed->edDocumentWidget, GTK_CAN_FOCUS );
+    GTK_WIDGET_SET_FLAGS( ed->edDocumentWidget.dwWidget, GTK_CAN_FOCUS );
     gtk_window_set_focus( GTK_WINDOW( ed->edToplevel.atTopWidget ),
-						    ed->edDocumentWidget );
+					    ed->edDocumentWidget.dwWidget );
 
     return 0;
     }
 
-static int appDocMakeToolbar(	EditDocument *		ed,
-				EditApplication *	ea )
+static int appDocMakeToolbar(	EditDocument *		ed )
     {
 #   if 0
+    EditApplication *	ea= ed->edApplication;
     Arg			al[20];
     int			ac= 0;
 
@@ -286,15 +291,16 @@ static int appDocMakeToolbar(	EditDocument *		ed,
 int appFinishDocumentWindow(	EditDocument *		ed )
     {
     EditApplication *	ea= ed->edApplication;
+    DocumentWidget *	dw= &(ed->edDocumentWidget);
 
     /*  3  */
-    if  ( appDocMakeMainWindow( ed, ea )		||
-	  appDocMakeToolbar( ed, ea )			||
-	  appDocMakeScrolledWindow( ed, ea )		||
+    if  ( appDocMakeMainWindow( ed )			||
+	  appDocMakeToolbar( ed )			||
+	  appDocMakeScrolledWindow( ed )		||
 	  (*ea->eaMakeDocumentWidget)( ea, ed )		)
 	{ LDEB(1); return -1; }
 
-    gtk_signal_connect( GTK_OBJECT( ed->edDocumentWidget ),
+    gtk_signal_connect( GTK_OBJECT( dw->dwWidget ),
 				    "configure_event",
 				    (GtkSignalFunc)appDocConfigure,
 				    (void *)ed );
@@ -304,97 +310,22 @@ int appFinishDocumentWindow(	EditDocument *		ed )
 				    (GtkSignalFunc)appDocTopConfigure,
 				    (void *)ed );
 
-    gtk_signal_connect( GTK_OBJECT( ed->edDocumentWidget ),
+    gtk_signal_connect( GTK_OBJECT( dw->dwWidget ),
 				    "selection_clear_event",
 				    (GtkSignalFunc)appDocCopyPasteHandler,
 				    (void *)ed );
 
-    gtk_signal_connect( GTK_OBJECT( ed->edDocumentWidget ),
+    gtk_signal_connect( GTK_OBJECT( dw->dwWidget ),
+				    "selection_received",
+				    (GtkSignalFunc)appDocGotPasteReplyGtk,
+				    (void *)ed );
+
+    gtk_signal_connect( GTK_OBJECT( dw->dwWidget ),
 				    "selection_get",
 				    (GtkSignalFunc)appDocReplyToCopyRequest,
 				    (void *)ed );
 
     return 0;
-    }
-
-/************************************************************************/
-/*									*/
-/*  Prevent the Shell that contains a document from being resized	*/
-/*  beyond normal limits.						*/
-/*									*/
-/************************************************************************/
-
-void appSetShellConstraints(	EditDocument *		ed )
-    {
-    int			wide;
-    int			high;
-
-    gint		flags= 0;
-    int			shrink= 0;
-    gint		maxWidth;
-    gint		maxHeight;
-
-    AppDrawingData *	add= &(ed->edDrawingData);
-
-    appDrawGetSizeOfWidget( &wide, &high, ed->edToplevel.atTopWidget );
-
-    maxWidth= add->addBackRect.drX1- add->addBackRect.drX0;
-    maxHeight= add->addBackRect.drY1- add->addBackRect.drY0;
-
-    if  ( ed->edShellExtraWidth >= 0 )
-	{
-	GtkRequisition		gr;
-
-	maxWidth= add->addBackRect.drX1- add->addBackRect.drX0;
-	maxWidth += ed->edShellExtraWidth;
-
-	gr.width= gr.height= 0;
-	gtk_widget_get_child_requisition( ed->edMenuBar, &gr );
-	if  ( maxWidth < gr.width )
-	    { maxWidth=  gr.width;	}
-
-	flags |= GDK_HINT_MAX_SIZE;
-
-	if  ( wide > maxWidth )
-	    {
-	    wide= maxWidth; shrink= 1;
-	    ed->edVisibleRect.drX1 += maxWidth- wide;
-	    }
-	}
-
-    if  ( ed->edShellExtraHeight >= 0 )
-	{
-	maxHeight= add->addBackRect.drY1- add->addBackRect.drY0;
-
-	if  ( maxHeight < add->addPaperRect.drY1- add->addPaperRect.drY0 )
-	    { maxHeight=  add->addPaperRect.drY1- add->addPaperRect.drY0; }
-
-	maxHeight += ed->edShellExtraHeight;
-
-	flags |= GDK_HINT_MAX_SIZE;
-
-	if  ( high > maxHeight )
-	    {
-	    high= maxHeight; shrink= 1;
-	    ed->edVisibleRect.drY1 += maxHeight- high;
-	    }
-	}
-
-    if  ( flags )
-	{
-	gdk_window_set_hints( ed->edToplevel.atTopWidget->window,
-							0, 0,
-							wide, high,
-							maxWidth, maxHeight,
-							flags );
-	}
-    if  ( shrink )
-	{
-	gdk_window_resize( ed->edToplevel.atTopWidget->window,
-							wide, high );
-	}
-
-    return;
     }
 
 /************************************************************************/
@@ -406,18 +337,12 @@ void appSetShellConstraints(	EditDocument *		ed )
 /*									*/
 /************************************************************************/
 
-int appFinishDocumentSetup(	EditApplication *	ea,
-				EditDocument *		ed )
+int appFinishDocumentSetup(	EditDocument *		ed )
     {
-    AppDrawingData *	add= &(ed->edDrawingData);
+    EditApplication *	ea= ed->edApplication;
+    DocumentWidget *	dw= &(ed->edDocumentWidget);
 
-    ed->edInputContext= 0;
-
-    appSetDrawingDataForWidget( ed->edDocumentWidget,
-					    ea->eaMagnification, add );
-
-    appDrawSetRedrawHandler( ed->edDocumentWidget,
-					    appDocExposeHandler, (void *)ed );
+    guiDrawSetRedrawHandler( dw->dwWidget, appDocExposeHandler, (void *)ed );
 
     if  ( ea->eaObserveFocus )
 	{
@@ -426,22 +351,28 @@ int appFinishDocumentSetup(	EditApplication *	ea,
 	appGuiSetFocusChangeHandler( ed->edToplevel.atTopWidget,
 					    ea->eaObserveFocus, (void *)ed );
 #	else
-	appGuiSetFocusChangeHandler( ed->edDocumentWidget,
+	appGuiSetFocusChangeHandler( dw->dwWidget,
 					    ea->eaObserveFocus, (void *)ed );
 #	endif
 	}
 
     if  ( ea->eaDocumentMouseHandler )
 	{
-	appDrawSetButtonPressHandler( ed->edDocumentWidget,
+	guiDrawSetButtonPressHandler( dw->dwWidget,
 				    ea->eaDocumentMouseHandler, (void *)ed );
+
+	gtk_widget_add_events( dw->dwWidget, GDK_POINTER_MOTION_MASK );
 	}
 
-    if  ( ea->eaDocumentKeyboardHandler )
+    if  ( ea->eaDocumentScrollHandler )
 	{
-	appDrawSetKeyboardHandler( ed->edDocumentWidget,
-				ea->eaDocumentKeyboardHandler, (void *)ed );
+	guiDrawSetScrollHandler( dw->dwWidget,
+				    ea->eaDocumentScrollHandler, (void *)ed );
 	}
+
+    dw->dwOwner= (void *)ed;
+    dw->dwGotString= ea->eaDocGotString;
+    dw->dwGotKey= ea->eaDocGotKey;
 
     gtk_signal_connect( GTK_OBJECT( ed->edVerticalAdjustment ),
 			    "value_changed", 
@@ -452,6 +383,8 @@ int appFinishDocumentSetup(	EditApplication *	ea,
 			    "value_changed", 
 			    (GtkSignalFunc)appDocHorizontalScrollbarCallback,
 			    (void *)ed );
+
+    appDocumentSetInputContext( ea->eaInputMethod, dw );
 
     return 0;
     }
@@ -519,7 +452,7 @@ void appRemoveWindowsOption(	APP_WIDGET		menu,
 
 void appRenameWindowsOption(		APP_WIDGET		menu,
 					EditDocument *		ed,
-					const char *		title )
+					const MemoryBuffer *	title )
     {
     GList *	glf;
     GList *	gl;
@@ -534,7 +467,10 @@ void appRenameWindowsOption(		APP_WIDGET		menu,
 	voided= gtk_object_get_user_data( GTK_OBJECT( child ) );
 
 	if  ( voided == (void *)ed )
-	    { appGuiSetToggleItemLabel( child, title ); }
+	    {
+	    appGuiSetToggleItemLabel( child,
+				utilMemoryBufferGetString( title ) );
+	    }
 
 	gl= gl->next;
 	}

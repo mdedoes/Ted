@@ -8,7 +8,6 @@
 #   include	"appUtilConfig.h"
 
 #   include	<stdlib.h>
-#   include	<string.h>
 
 #   include	"sioQuotedPrintable.h"
 #   include	<appDebugon.h>
@@ -42,7 +41,7 @@ typedef struct QuotedInputStream
 
 static int sioInQuotedReadBytes(	void *		voidqis,
 					unsigned char *	buffer,
-					int		count )
+					unsigned int	count )
     {
     QuotedInputStream *		qis= (QuotedInputStream *)voidqis;
     int				done= 0;
@@ -54,7 +53,7 @@ static int sioInQuotedReadBytes(	void *		voidqis,
 	{
 	int			c;
 
-	c= sioInGetCharacter( qis->qisSisQuoted );
+	c= sioInGetByte( qis->qisSisQuoted );
 	if  ( c == EOF )
 	    { qis->qisExhausted= 1; break;	}
 
@@ -66,7 +65,7 @@ static int sioInQuotedReadBytes(	void *		voidqis,
 
 	if  ( c == '\r' )
 	    {
-	    c= sioInGetCharacter( qis->qisSisQuoted );
+	    c= sioInGetByte( qis->qisSisQuoted );
 	    if  ( c != '\n' )
 		{ *(buffer++)= '\r'; done++;	}
 
@@ -82,7 +81,7 @@ static int sioInQuotedReadBytes(	void *		voidqis,
 	    int		x1;
 	    int		x2;
 
-	    x1= sioInGetCharacter( qis->qisSisQuoted );
+	    x1= sioInGetByte( qis->qisSisQuoted );
 
 	    switch( x1 )
 		{
@@ -90,7 +89,7 @@ static int sioInQuotedReadBytes(	void *		voidqis,
 		    continue;
 
 		case '\r':
-		    x2= sioInGetCharacter( qis->qisSisQuoted );
+		    x2= sioInGetByte( qis->qisSisQuoted );
 		    if  ( x2 != '\n' )
 			{
 			CDEB(x2);
@@ -155,7 +154,7 @@ SimpleInputStream * sioInQuotedPrintableOpen(
 
     if  ( SioHexIndices[0] == 0 )
 	{
-	int	i;
+	unsigned int	i;
 
 	for ( i= 0; i < sizeof(SioHexIndices); i++ )
 	    { SioHexIndices[i]= 0xff;	}
@@ -204,19 +203,24 @@ typedef struct QuotedOutputStream
 
 static int sioOutQuotedClose(	void *	voidqos )
     {
+    int				rval= 0;
     QuotedOutputStream *	qos= (QuotedOutputStream *)voidqos;
 
     /*  1  */
     if  ( qos->qosColumn > 0 )
 	{
-	sioOutPutCharacter( '=',  qos->qosSosQuoted );
-	sioOutPutCharacter( '\r', qos->qosSosQuoted );
-	sioOutPutCharacter( '\n', qos->qosSosQuoted );
+	if  ( sioOutPutByte( '=',  qos->qosSosQuoted ) < 0 )
+	    { rval= -1;	}
+	if  ( sioOutPutByte( '\r', qos->qosSosQuoted ) < 0 )
+	    { rval= -1;	}
+	if  ( sioOutPutByte( '\n', qos->qosSosQuoted ) < 0 )
+	    { rval= -1;	}
+
 	qos->qosColumn= 0;
 	}
 
     free( qos );
-    return 0;
+    return rval;
     }
 
 /************************************************************************/
@@ -225,29 +229,35 @@ static int sioOutQuotedClose(	void *	voidqos )
 /*									*/
 /************************************************************************/
 
-static void sioOutQuotedBreakLine(	QuotedOutputStream *	qos )
+static int sioOutQuotedBreakLine(	QuotedOutputStream *	qos )
     {
-    sioOutPutCharacter( '=',  qos->qosSosQuoted );
-    sioOutPutCharacter( '\r', qos->qosSosQuoted );
-    sioOutPutCharacter( '\n', qos->qosSosQuoted );
+    if  ( sioOutPutByte( '=',  qos->qosSosQuoted ) < 0 )
+	{ return -1;	}
+    if  ( sioOutPutByte( '\r', qos->qosSosQuoted ) < 0 )
+	{ return -1;	}
+    if  ( sioOutPutByte( '\n', qos->qosSosQuoted ) < 0 )
+	{ return -1;	}
 
     qos->qosColumn= 0;
     qos->qosAfterWhiteSpace= 0;
 
-    return;
+    return 0;
     }
 
-static void sioOutQoutedEmitHex(	QuotedOutputStream *	qos,
+static int sioOutQoutedEmitHex(	QuotedOutputStream *	qos,
 					int			c )
     {
-    sioOutPutCharacter( '=', qos->qosSosQuoted );
-    sioOutPutCharacter( SioHexDigits[( c >> 4 ) & 0x0f], qos->qosSosQuoted );
-    sioOutPutCharacter( SioHexDigits[( c >> 0 ) & 0x0f], qos->qosSosQuoted );
+    if  ( sioOutPutByte( '=', qos->qosSosQuoted ) < 0 )
+	{ return -1;	}
+    if  ( sioOutPutByte( SioHexDigits[( c >> 4 ) & 0x0f], qos->qosSosQuoted ) < 0 )
+	{ return -1;	}
+    if  ( sioOutPutByte( SioHexDigits[( c >> 0 ) & 0x0f], qos->qosSosQuoted ) < 0 )
+	{ return -1;	}
 
     qos->qosColumn += 3;
     qos->qosAfterWhiteSpace= 0;
 
-    return;
+    return 0;
     }
 
 static int sioOutQuotedWriteBytes(	void *			voidqos,
@@ -300,7 +310,8 @@ static int sioOutQuotedWriteBytes(	void *			voidqos,
 	    { qos->qosAfterWhiteSpace= 1;	}
 	else{ qos->qosAfterWhiteSpace= 0;	}
 
-	sioOutPutCharacter( *buffer, qos->qosSosQuoted );
+	if  ( sioOutPutByte( *buffer, qos->qosSosQuoted ) < 0 )
+	    { LDEB(1); return -1;	}
 
 	qos->qosColumn += 1;
 	buffer++; done++; continue;
@@ -323,8 +334,7 @@ SimpleOutputStream * sioOutQuotedPrintableOpen(
     qos->qosColumn= 0;
     qos->qosAfterWhiteSpace= 0;
 
-    sos= sioOutOpen( (void *)qos, sioOutQuotedWriteBytes,
-					    (SIOoutSEEK)0, sioOutQuotedClose );
+    sos= sioOutOpen( (void *)qos, sioOutQuotedWriteBytes, sioOutQuotedClose );
 
     if  ( ! sos )
 	{ XDEB(sos); free( qos ); return (SimpleOutputStream *)0; }

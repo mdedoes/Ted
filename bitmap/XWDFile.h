@@ -26,6 +26,24 @@ in this Software without prior written authorization from the X Consortium.
 
 */
 
+typedef unsigned long CARD32;
+typedef unsigned short CARD16;
+typedef unsigned char CARD8;
+
+# define B32 /*nothing*/
+# define B16 /*nothing*/
+# define B8 /*nothing*/
+
+#define StaticGray		0
+#define GrayScale		1
+#define StaticColor		2
+#define PseudoColor		3
+#define TrueColor		4
+#define DirectColor		5
+
+#define LSBFirst		0
+#define MSBFirst		1
+
 /*
  * XWDFile.h	MIT Project Athena, X Window system window raster
  *		image dumper, dump file format header file.

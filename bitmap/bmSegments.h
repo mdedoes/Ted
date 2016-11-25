@@ -1,9 +1,6 @@
 #   ifndef		BM_SEGMENTS_H
 #   define		BM_SEGMENTS_H
 
-#   include	<stdio.h>
-#   include	<stddef.h>
-#   include	<stdlib.h>
 #   include	"bitmap.h"
 
 typedef struct DataRun
@@ -42,10 +39,7 @@ typedef struct SegmentNode
 
 typedef struct BitmapSegment
     {
-    short int			bsX0;
-    short int			bsX1;
-    short int			bsY0;
-    short int			bsY1;
+    DocumentRectangle		bsRect;
     short int			bsNodeCount;
     short int			bsEdgeCount;
     SegmentNode **		bsNodes;

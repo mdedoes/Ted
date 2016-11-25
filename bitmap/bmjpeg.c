@@ -2,13 +2,14 @@
 
 #   include	<stdlib.h>
 #   include	<stdio.h>
-#   include	<sioStdio.h>
+#   include	<sioFileio.h>
 #   include	"bmintern.h"
+#   include	"bmio.h"
 #   include	<time.h>
 
 #   include	<jpeglib.h>
 #   include	<setjmp.h>
-#   include	"jerror.h"
+#   include	<jerror.h>
 
 #   include	<appDebugon.h>
 
@@ -81,8 +82,6 @@ typedef my_destination_mgr * my_dest_ptr;
 static int write_JPEG_file (	BmJpegOutputDestination *	bjod );
 
 /**/
-
-static void my_error_exit (j_common_ptr cinfo);
 
 /************************************************************************/
 /*									*/
@@ -157,7 +156,8 @@ static void bmJpegSkipInputData(	j_decompress_ptr	cinfo,
 /*									*/
 /************************************************************************/
 
-static int bmJpegGetReadParameters( struct jpeg_decompress_struct * cinfo )
+static int bmJpegGetReadParameters(
+				struct jpeg_decompress_struct *	cinfo )
     {
     BmJpegInputSource *		bjis= (BmJpegInputSource *)cinfo->src;
 
@@ -169,6 +169,36 @@ static int bmJpegGetReadParameters( struct jpeg_decompress_struct * cinfo )
 	{
 	case 0:
 	    /* LDEB(cinfo->density_unit); */
+	    if  ( cinfo->X_density == 1 && cinfo->Y_density == 1 )
+		{
+		int		xd;
+		int		yd;
+
+		if  ( cinfo->image_width >= cinfo->image_height )
+		    {
+		    xd= ( 100* cinfo->image_width  )/ 16;
+		    yd= ( 100* cinfo->image_height )/ 12;
+		    }
+		else{
+		    xd= ( 100* cinfo->image_width  )/ 12;
+		    yd= ( 100* cinfo->image_height )/ 16;
+		    }
+
+		if  ( xd > yd )	{ yd= xd;	}
+		else		{ xd= yd;	}
+
+		if  ( xd > 80 )
+		    {
+		    xd= 100* ( ( xd+ 20 )/ 100 );
+		    yd= 100* ( ( yd+ 20 )/ 100 );
+
+		    bjis->bjisBd.bdUnit= BMunM;
+		    bjis->bjisBd.bdXResolution= xd;
+		    bjis->bjisBd.bdYResolution= yd;
+		    break;
+		    }
+		}
+
 	    if  ( cinfo->X_density < 5 || cinfo->Y_density < 5 )
 		{
 	      pixel_density:
@@ -238,15 +268,20 @@ static int bmJpegGetReadParameters( struct jpeg_decompress_struct * cinfo )
 	    break;
 
 	case JCS_UNKNOWN:
+	    LLDEB(JCS_UNKNOWN,cinfo->out_color_space); return -1;
 	case JCS_YCbCr:
+	    LLDEB(JCS_YCbCr,cinfo->out_color_space); return -1;
 	case JCS_YCCK:
+	    LLDEB(JCS_YCCK,cinfo->out_color_space); return -1;
 	case JCS_CMYK:
-	    LDEB(cinfo->out_color_space);
-	    return -1;
-
+	    /*  Illegal Inverted CMYK file from photoshop.	*/
+	    LLDEB(JCS_CMYK,cinfo->out_color_space);
+	    bjis->bjisBd.bdColorEncoding= BMcoRGB;
+	    bjis->bjisBd.bdSamplesPerPixel= 3;
+	    bjis->bjisBd.bdBitsPerPixel= 3* bjis->bjisBd.bdBitsPerSample;
+	    break;
 	default:
-	    LDEB(cinfo->out_color_space);
-	    return -1;
+	    LDEB(cinfo->out_color_space); return -1;
 	}
 
     bjis->bjisBd.bdBytesPerRow= (	bjis->bjisBd.bdPixelsWide*
@@ -326,10 +361,48 @@ static int bmJpegRememberScanline( JSAMPARRAY			pixel_data,
 		}
 	    break;
 
+	case JCS_CMYK:
+	    /************************************************************/
+	    /*  Illegal Inverted CMYK file from photoshop.		*/
+	    /*  Very much approximate: only to get the image on screen.	*/
+	    /*  Ted tries to emit the image to PostScript as jpeg	*/
+	    /*  anyway. (Though jfif requires YCbCr)			*/
+	    /************************************************************/
+	    switch( bjis->bjisBd.bdBitsPerSample )
+		{
+		case 8:
+		    to= bjis->bjisBitmapBuffer+
+			bjis->bjisBd.bdBytesPerRow*
+					    (bjis->bjisRowsReceived++);
+
+		    ptr0 = pixel_data[0];
+
+		    for ( col = 0; col < cinfo->image_width; col++ )
+			{
+			int	c= 255- GETJSAMPLE(*(ptr0++));
+			int	m= 255- GETJSAMPLE(*(ptr0++));
+			int	y= 255- GETJSAMPLE(*(ptr0++));
+			int	k= 255- GETJSAMPLE(*(ptr0++));
+
+			c= c- (c*k)/255+ k;
+			m= m- (m*k)/255+ k;
+			y= y- (y*k)/255+ k;
+
+			*(to++)= 255- c; /* red */
+			*(to++)= 255- m; /* green */
+			*(to++)= 255- y; /* blue */
+			}
+		    break;
+
+		default:
+		    LDEB(bjis->bjisBd.bdBitsPerSample); 
+		    return -1;
+		}
+	    break;
+
 	case JCS_UNKNOWN:
 	case JCS_YCbCr:
 	case JCS_YCCK:
-	case JCS_CMYK:
 	    LDEB(cinfo->out_color_space);
 	    return -1;
 	    break;
@@ -383,20 +456,19 @@ int bmJpegReadJfif(	BitmapDescription *	bd,
     return 0;
     }
 
-int bmReadJpegFile(	const char *		filename,
+int bmReadJpegFile(	const MemoryBuffer *	filename,
 			unsigned char **	pBuffer,
 			BitmapDescription *	bd,
-			int *			pPrivateFormat,
-			double *		pCompressionFactor )
+			int *			pPrivateFormat )
     {
     SimpleInputStream *		sis;
 
-    sis= sioInStdioOpen( filename );
+    sis= sioInFileioOpen( filename );
     if  ( ! sis )
-	{ SXDEB(filename,sis); return -1;	}
+	{ XDEB(sis); return -1;	}
 
     if  ( bmJpegReadJfif( bd, pBuffer, sis ) )
-	{ SDEB(filename); sioInClose( sis ); return -1; }
+	{ LDEB(1); sioInClose( sis ); return -1; }
 
     *pPrivateFormat= 1;
 
@@ -434,7 +506,12 @@ static int read_JPEG_file(	BmJpegInputSource * bjis )
 
     (void) jpeg_read_header( &cinfo, TRUE );
 
-    bmJpegGetReadParameters( &cinfo );
+    if  ( bmJpegGetReadParameters( &cinfo ) )
+	{
+	LDEB(1);
+	jpeg_destroy_decompress( &cinfo );
+	return 0;
+	}
 
     jpeg_start_decompress( &cinfo );
 
@@ -463,8 +540,7 @@ static int read_JPEG_file(	BmJpegInputSource * bjis )
 /************************************************************************/
 
 int bmCanWriteJpegFile(	const BitmapDescription *	bd,
-			int				PrivateFormat,
-			double				CompressionFactor )
+			int				privateFormat )
     {
     if  ( bd->bdBitsPerSample != 8 )
 	{ /* LDEB(bd->bdBitsPerSample); */ return -1;	}
@@ -603,7 +679,7 @@ static int bmJpegCompressRow(	struct jpeg_compress_struct *	cinfo,
 	case BMcoRGB8PALETTE:
 	    bmExpandRGB8Palette( bjod->bjodScratchBuffer, from,
 				    bd->bdPixelsWide, bd->bdBitsPerPixel,
-				    bd->bdRGB8Palette, bd->bdHasAlpha );
+				    &(bd->bdPalette), bd->bdHasAlpha );
 
 	    row_pointer[0]= (JSAMPROW)bjod->bjodScratchBuffer;
 	    res= jpeg_write_scanlines( cinfo, row_pointer, 1 );
@@ -734,7 +810,7 @@ int bmJpegWriteJfif(	const BitmapDescription *	bd,
     switch( bd->bdColorEncoding )
 	{
 	case BMcoBLACKWHITE:
-	    bjod.bjodScratchBuffer= malloc( bd->bdBytesPerRow );
+	    bjod.bjodScratchBuffer= (unsigned char *)malloc( bd->bdBytesPerRow );
 	    if  ( ! bjod.bjodScratchBuffer )
 		{
 		LXDEB(bd->bdBytesPerRow,bjod.bjodScratchBuffer);
@@ -743,7 +819,8 @@ int bmJpegWriteJfif(	const BitmapDescription *	bd,
 	    break;
 
 	case BMcoRGB8PALETTE:
-	    bjod.bjodScratchBuffer= malloc( 3* bd->bdPixelsWide );
+	    bjod.bjodScratchBuffer=
+			(unsigned char *)malloc( 3* bd->bdPixelsWide );
 	    if  ( ! bjod.bjodScratchBuffer )
 		{
 		LXDEB(bd->bdBytesPerRow,bjod.bjodScratchBuffer);
@@ -754,7 +831,7 @@ int bmJpegWriteJfif(	const BitmapDescription *	bd,
 	case BMcoRGB:
 	    if  ( bd->bdHasAlpha )
 		{
-		bjod.bjodScratchBuffer= malloc( 3* bd->bdPixelsWide );
+		bjod.bjodScratchBuffer= (unsigned char *)malloc( 3* bd->bdPixelsWide );
 		if  ( ! bjod.bjodScratchBuffer )
 		    {
 		    LXDEB(bd->bdBytesPerRow,bjod.bjodScratchBuffer);
@@ -778,28 +855,26 @@ int bmJpegWriteJfif(	const BitmapDescription *	bd,
     return rval;
     }
 
-int bmWriteJpegFile(	const char *			filename,
+int bmWriteJpegFile(	const MemoryBuffer *		filename,
 			const unsigned char *		buffer,
 			const BitmapDescription *	bd,
-			int				privateFormat,
-			double				compressionFactor )
+			int				privateFormat )
     {
     SimpleOutputStream *	sos;
 
-    sos= sioOutStdioOpen( filename );
+    sos= sioOutFileioOpen( filename );
     if  ( ! sos )
-	{ SXDEB(filename,sos); return -1;	}
+	{ XDEB(sos); return -1;	}
 
     if  ( bmJpegWriteJfif( bd, buffer, sos ) )
-	{ SDEB(filename); sioOutClose( sos ); return -1; }
+	{ LDEB(1); sioOutClose( sos ); return -1; }
 
     sioOutClose( sos );
 
     return 0;
     }
 
-static int
-write_JPEG_file(	BmJpegOutputDestination *	bjod )
+static int write_JPEG_file(	BmJpegOutputDestination *	bjod )
     {
     struct jpeg_compress_struct		cinfo;
     struct jpeg_error_mgr		jerr;

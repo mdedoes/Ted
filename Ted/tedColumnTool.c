@@ -6,16 +6,21 @@
 
 #   include	"tedConfig.h"
 
-#   include	<stdlib.h>
 #   include	<stdio.h>
 #   include	<stddef.h>
-#   include	<limits.h>
 
-#   include	<appGeoString.h>
 #   include	<appUnit.h>
 
-#   include	"tedApp.h"
-#   include	"tedFormatTool.h"
+#   include	"tedAppFront.h"
+#   include	"tedColumnTool.h"
+#   include	"tedToolUtil.h"
+#   include	"tedDocFront.h"
+#   include	<guiToolUtil.h>
+#   include	<guiTextUtil.h>
+#   include	<docTreeNode.h>
+#   include	<docNodeTree.h>
+#   include	<appFrame.h>
+#   include	<docEditCommand.h>
 
 #   include	<appDebugon.h>
 
@@ -27,168 +32,155 @@
 
 static void tedFormatToolRefreshColumnPage(	ColumnTool *	ct )
     {
-    RowProperties *		rp= &(ct->ctPropertiesChosen);
-    CellProperties *		cp;
+    CellProperties *		cp= &(ct->ctPropertiesChosen);
     const TableRectangle *	tr= &(ct->ctTableRectangle);
 
-    int				width;
-    char			scratch[50];
+    EditDocument *		ed;
+    int				traced;
+    BufferDocument *		bd= tedFormatCurDoc( &ed, &traced, ct->ctApplication );
 
-    EditApplication *		ea= ct->ctApplication;
-    EditDocument *		ed= ea->eaCurrentDocument;
+    if  ( ! bd )
+	{ XDEB(bd); return;	}
 
-    TedDocument *		td;
-    BufferDocument *		bd;
-    DocumentProperties *	dp;
+    appIntervalToTextWidget( ct->ctColumnText,
+				    tr->trCol0+ 1,
+				    tr->trCol1+ 1 );
 
-    if  ( ! ed )
-	{ XDEB(ed); return;	}
+    appLengthToTextWidget( ct->ctWidthText, ct->ctWidthChosen, UNITtyPOINTS );
 
-    td= (TedDocument *)ed->edPrivateData;
-    bd= td->tdDocument;
-    dp= &(bd->bdProperties);
+    guiEnableText( ct->ctWidthText,
+			    ct->ctCanChange && tr->trCol0 == tr->trCol1 );
 
-    appIntegerToTextWidget( ct->ctNumberText, tr->trCol0+ 1 );
+    guiEnableWidget( ct->ctBordersFrame, ct->ctCanChange );
+    tedEnableBorderTool( &(ct->ctLeftBorderTool), ct->ctCanChange );
+    tedEnableBorderTool( &(ct->ctRightBorderTool), ct->ctCanChange );
 
-    if  ( tr->trCol0 == 0 )
-	{
-	width= rp->rpCells[tr->trCol0  ].cpRightBoundaryTwips-
-						    rp->rpLeftIndentTwips;
-	}
-    else{
-	width= rp->rpCells[tr->trCol0  ].cpRightBoundaryTwips-
-			    rp->rpCells[tr->trCol0-1].cpRightBoundaryTwips;
-	}
-
-    appGeoLengthToString( scratch, width, UNITtyPOINTS );
-    appStringToTextWidget( ct->ctWidthText, scratch );
-
-    cp= rp->rpCells;
-
-    tedBorderToolSetProperties( &(ct->ctLeftBorderTool), dp,
-					&(cp[tr->trCol0].cpLeftBorder) );
-    tedBorderToolSetProperties( &(ct->ctRightBorderTool), dp,
-					&(cp[tr->trCol0].cpRightBorder) );
+    tedBorderToolSetPropertiesByNumber( &(ct->ctLeftBorderTool), bd,
+						    cp->cpLeftBorderNumber );
+    tedBorderToolSetPropertiesByNumber( &(ct->ctRightBorderTool), bd,
+						    cp->cpRightBorderNumber );
     }
 
-void tedFormatToolRefreshColumnTool(
-				ColumnTool *			ct,
+void tedRefreshColumnTool(	ColumnTool *			ct,
 				int *				pEnabled,
 				int *				pPref,
 				InspectorSubject *		is,
-				const DocumentSelection *	ds )
+				const DocumentSelection *	ds,
+				const SelectionGeometry *	sg,
+				const SelectionDescription *	sd,
+				const unsigned char *		cmdEnabled )
     {
-    const RowProperties *	rp;
-    const DocumentGeometry *	dg;
-
     const BufferItem *		rowBi;
-    const BufferItem *		sectBi;
+    const RowProperties *	rp;
 
-    TableRectangle *		tr= &(ct->ctTableRectangle);
+    const DocumentAttributeMap * const dam0= (const DocumentAttributeMap *)0;
 
-    if  ( docGetTableRectangle( tr, ds )	||
-	  tr->trCol1 != tr->trCol0		)
+    if  ( ! sd->sdInOneTable )
 	{
-	docInitTableRectangle( tr );
+	docInitTableRectangle( &(ct->ctTableRectangle) );
 	*pEnabled= 0; return;
 	}
+    ct->ctTableRectangle= sd->sdTableRectangle;
 
-    rowBi= ds->dsBegin.dpBi;
-    rowBi= rowBi->biParent;
-    rowBi= rowBi->biParent;
-    sectBi= rowBi->biParent;
-
-    dg= &(sectBi->biSectDocumentGeometry);
-
-    ct->ctPageRight= dg->dgPageWideTwips-
-			    dg->dgLeftMarginTwips- dg->dgRightMarginTwips;
-    ct->ctPageLeftMargin= dg->dgLeftMarginTwips;
-
+    rowBi= docGetRowNode( ds->dsHead.dpNode );
+    if  ( ! rowBi )
+	{ XDEB(rowBi); *pEnabled= 0; return;	}
     rp= &(rowBi->biRowProperties);
 
-    if  ( docCopyRowProperties( &(ct->ctPropertiesChosen),
-						    rp, (const int *)0 ) )
-	{ LDEB(1); return;	}
-    if  ( docCopyRowProperties( &(ct->ctPropertiesSet),
-						    rp, (const int *)0 ) )
+    ct->ctBlockFrameWide= sg->sgHead.pgBlockFrameX1-
+						sg->sgHead.pgBlockFrameX0;
+
+    docSetCellRectangleProperties( &(ct->ctPropertiesSet), rowBi,
+					    &(ct->ctTableRectangle), dam0 );
+
+    if  ( docCopyCellProperties( &(ct->ctPropertiesChosen),
+					&(ct->ctPropertiesSet), dam0 ) )
 	{ LDEB(1); return;	}
 
-    appGuiEnableWidget( is->isPrevButton,
-				ct->ctTableRectangle.trCol0 > 0 );
-    appGuiEnableWidget( is->isNextButton,
-				ct->ctTableRectangle.trCol1 <
-				ct->ctTableRectangle.trCol11 );
+    ct->ctWidthSet= docColumnWidth( rp, ct->ctTableRectangle.trCol0 );
+    ct->ctWidthChosen= ct->ctWidthSet;
+
+    ct->ctHalfGapWidthTwips= rp->rpHalfGapWidthTwips;
+
+    guiEnableWidget( is->isPrevButton, ct->ctTableRectangle.trCol0 > 0 );
+    guiEnableWidget( is->isNextButton,
+		ct->ctTableRectangle.trCol1 < ct->ctTableRectangle.trCol11 );
+
+    ct->ctCanChange= cmdEnabled[EDITcmdUPD_TABLE_PROPS];
 
     tedFormatToolRefreshColumnPage( ct );
 
-    appGuiEnableWidget( is->isDeleteButton, rp->rpCellCount > 1 );
+    guiEnableWidget( ct->ctColumnRow, ct->ctCanChange );
+    guiEnableWidget( ct->ctWidthRow, ct->ctCanChange );
+
+    guiEnableWidget( is->isDeleteButton, cmdEnabled[EDITcmdDELETE_COLUMN] );
+
+    guiEnableWidget( is->isInsertButton, cmdEnabled[EDITcmdINSERT_COLUMN] );
+    guiEnableWidget( is->isAppendButton, cmdEnabled[EDITcmdAPPEND_COLUMN] );
+
+    guiEnableWidget( is->isRevertButton, ct->ctCanChange );
+    guiEnableWidget( is->isApplyButton, ct->ctCanChange );
 
     *pEnabled= 1;
     return;
     }
 
-static int tedFormatToolGetColumnWidth(	const RowProperties *	rp,
-					int			col0,
-					int			pageRight,
-					int *			pValue,
-					int *			pShift,
-					APP_WIDGET		w )
+/************************************************************************/
+/*									*/
+/*  Retrieve the width of the column(s) from the width widget.		*/
+/*									*/
+/************************************************************************/
+
+static int tedFormatToolGetColumnWidth(	ColumnTool *		ct )
     {
-    int				width;
+    CellProperties *		cpChosen= &(ct->ctPropertiesChosen);
+
+    int				width= ct->ctWidthChosen;
     int				changed;
 
-    const CellProperties *	cp= &(rp->rpCells[col0]);
-    int				rightRight;
-
-    int				right;
-    int				d;
-
-    const int			minValue= 1;
+    const int			minValue= 20* 5+ 2* ct->ctHalfGapWidthTwips;
     const int			adaptToMin= 0;
-    const int			maxValue= INT_MAX;
-    const int			adaptToMax= 0;
-    
-    right= cp->cpRightBoundaryTwips;
-    if  ( col0 == 0 )
-	{ width= right- rp->rpLeftIndentTwips;		}
-    else{ width= right- cp[-1].cpRightBoundaryTwips;	}
+    const int			maxValue= ct->ctBlockFrameWide;
+    const int			adaptToMax= 1;
 
-    if  ( appGetLengthFromTextWidget( w, &width, &changed, UNITtyPOINTS,
+    /*  2  */
+    if  ( appGetLengthFromTextWidget( ct->ctWidthText,
+				&width, &changed, UNITtyPOINTS,
 				minValue, adaptToMin, maxValue, adaptToMax ) )
 	{ return -1; }
 
-    if  ( col0 == 0 )
-	{ right= rp->rpLeftIndentTwips+ width;		}
-    else{ right= cp[-1].cpRightBoundaryTwips+ width;	}
-
-    d= right- cp->cpRightBoundaryTwips;
-
-    rightRight= rp->rpCells[rp->rpCellCount-1].cpRightBoundaryTwips;
-    rightRight -= rp->rpHalfGapWidthTwips;
-
-    if  ( rightRight+ d >= pageRight )
+    if  ( changed )
 	{
-	char		scratch[50];
+	int	left= ct->ctPropertiesSet.cpRightBoundaryTwips- ct->ctWidthSet;
 
-	d= pageRight- rightRight;
-	right= cp->cpRightBoundaryTwips+ d;
+	ct->ctWidthChosen= width;
 
-	if  ( col0 == 0 )
-	    { width= right- rp->rpLeftIndentTwips;		}
-	else{ width= right- cp[-1].cpRightBoundaryTwips;	}
-
-	width -= 10;
-
-	if  ( width <= 0 )
-	    { appRefuseTextValue( w ); return -1;	}
-
-	appGeoLengthToString( scratch, width, UNITtyPOINTS );
-	appStringToTextWidget( w, scratch );
-	appRefuseTextValue( w );
-	return 1;
+	cpChosen->cpRightBoundaryTwips= left+ ct->ctWidthChosen;
 	}
 
-    *pValue= width; *pShift= d; return 0;
+    return 0;
+    }
+
+/************************************************************************/
+
+static int tedColumnToolGetChosen(	ColumnTool *		ct,
+					BufferDocument *	bd )
+    {
+    CellProperties *		cpChosen= &(ct->ctPropertiesChosen);
+    int				res;
+
+    res= tedFormatToolGetColumnWidth( ct );
+    if  ( res != 0 )
+	{ return -1;	}
+
+    if  ( tedBorderToolGetNumber( &(cpChosen->cpLeftBorderNumber), (int *)0,
+					    &(ct->ctLeftBorderTool), bd ) )
+	{ return -1;	}
+    if  ( tedBorderToolGetNumber( &(cpChosen->cpRightBorderNumber), (int *)0,
+					    &(ct->ctRightBorderTool), bd ) )
+	{ return -1;	}
+
+    return 0;
     }
 
 /************************************************************************/
@@ -200,93 +192,42 @@ static int tedFormatToolGetColumnWidth(	const RowProperties *	rp,
 static APP_BUTTON_CALLBACK_H( tedTableChangeColumnPushed, w, voidct )
     {
     ColumnTool *		ct= (ColumnTool *)voidct;
-    RowProperties *		rp= &(ct->ctPropertiesChosen);
-    const TableRectangle *	tr= &(ct->ctTableRectangle);
 
-    int				col;
+    CellProperties *		cpChosen= &(ct->ctPropertiesChosen);
 
-    int				d;
-    int				width;
-    int				res;
+    PropertyMask		cpCmpMask;
+    PropertyMask		cpDifMask;
 
-    TableRectangle		trChange;
+    const int			wholeRow= 0;
+    const int			wholeColumn= 1;
 
-    BorderProperties		bp;
-
-    PropertyMask		rpSetMask;
-    PropertyMask		cpSetMask;
-    PropertyMask		bpSetMask;
+    const DocumentAttributeMap * const dam0= (const DocumentAttributeMap *)0;
 
     /**/
-    EditApplication *		ea= ct->ctApplication;
-    EditDocument *		ed= ea->eaCurrentDocument;
+    EditDocument *		ed;
+    int				traced;
+    BufferDocument *		bd= tedFormatCurDoc( &ed, &traced, ct->ctApplication );
 
-    TedDocument *		td;
-    BufferDocument *		bd;
-    DocumentProperties *	dp;
+    if  ( ! bd )
+	{ XDEB(bd); return;	}
 
-    if  ( ! ed )
-	{ XDEB(ed); return;	}
-
-    td= (TedDocument *)ed->edPrivateData;
-    bd= td->tdDocument;
-    dp= &(bd->bdProperties);
-
-    /**/
-
-    PROPmaskCLEAR( &rpSetMask );
-    PROPmaskCLEAR( &cpSetMask );
-
-    docInitBorderProperties( &bp );
-
-    /****/
-    res= tedFormatToolGetColumnWidth( rp, tr->trCol0,
-			    ct->ctPageRight, &width, &d, ct->ctWidthText );
-    if  ( res != 0 )
-	{ goto ready;	}
-    PROPmaskADD( &cpSetMask, CLpropRIGHT_BOUNDARY );
-
-    /****/
-    PROPmaskCLEAR( &bpSetMask );
-    if  ( tedBorderToolGetProperties( &bp, &bpSetMask,
-					    &(ct->ctLeftBorderTool), dp ) )
+    if  ( tedColumnToolGetChosen( ct, bd ) )
 	{ goto ready;	}
 
-    if  ( ! utilPropMaskIsEmpty( &bpSetMask ) )
-	{
-	docRowSetLeftBorderInCols( rp, tr->trCol0, tr->trCol1,
-							    &bpSetMask, &bp );
-	PROPmaskADD( &cpSetMask, CLpropLEFT_BORDER );
-	}
+    utilPropMaskClear( &cpCmpMask );
+    utilPropMaskClear( &cpDifMask );
+    utilPropMaskFill( &cpCmpMask, CLprop_COUNT );
 
-    /****/
-    PROPmaskCLEAR( &bpSetMask );
-    if  ( tedBorderToolGetProperties( &bp, &bpSetMask,
-					    &(ct->ctRightBorderTool), dp ) )
-	{ goto ready;	}
+    docCellPropertyDifference( &cpDifMask, &(ct->ctPropertiesSet),
+						&cpCmpMask, cpChosen, dam0 );
 
-    if  ( ! utilPropMaskIsEmpty( &bpSetMask ) )
-	{
-	docRowSetRightBorderInCols( rp, tr->trCol0, tr->trCol1,
-							    &bpSetMask, &bp );
-	PROPmaskADD( &cpSetMask, CLpropRIGHT_BORDER );
-	}
-
-    {
-    CellProperties *		cp;
-
-    cp= &(rp->rpCells[tr->trCol0]);
-    for ( col= tr->trCol0; col < rp->rpCellCount; cp++, col++ )
-	{ cp->cpRightBoundaryTwips += d; }
-    }
-
-    trChange= *tr;
-    docExpandTableRectangleToWholeColumns( &trChange );
-
-    tedAppSetTableProperties( ct->ctApplication, &trChange,
-						&rpSetMask, &cpSetMask, rp );
+    tedDocSetTableProperties( ed, wholeRow, wholeColumn,
+			&cpDifMask, cpChosen,
+			(const PropertyMask *)0, (const RowProperties *)0,
+			traced );
 
   ready:
+
     docCleanBorderProperties( &bp );
 
     return;
@@ -294,10 +235,12 @@ static APP_BUTTON_CALLBACK_H( tedTableChangeColumnPushed, w, voidct )
 
 static APP_BUTTON_CALLBACK_H( tedFormatRevertColumnPushed, w, voidct )
     {
-    ColumnTool *	ct= (ColumnTool *)voidct;
+    ColumnTool *		ct= (ColumnTool *)voidct;
 
-    docCopyRowProperties( &(ct->ctPropertiesChosen),
-				    &(ct->ctPropertiesSet), (const int *)0 );
+    const DocumentAttributeMap * const dam0= (const DocumentAttributeMap *)0;
+
+    docCopyCellProperties( &(ct->ctPropertiesChosen), &(ct->ctPropertiesSet),
+									dam0 );
 
     tedFormatToolRefreshColumnPage( ct );
 
@@ -313,20 +256,11 @@ static APP_BUTTON_CALLBACK_H( tedFormatRevertColumnPushed, w, voidct )
 static APP_TXACTIVATE_CALLBACK_H( tedColumnWidthChanged, w, voidct )
     {
     ColumnTool *		ct= (ColumnTool *)voidct;
-    RowProperties *		rp= &(ct->ctPropertiesChosen);
-    const TableRectangle *	tr= &(ct->ctTableRectangle);
 
-    int				d;
-    int				width;
-
-    if  ( ! tedFormatToolGetColumnWidth( rp, tr->trCol0,
-			    ct->ctPageRight, &width, &d, ct->ctWidthText ) )
+    if  ( ! tedFormatToolGetColumnWidth( ct ) )
 	{
-	char	scratch[50];
-
-	appGeoLengthToString( scratch, width, UNITtyPOINTS );
-
-	appStringToTextWidget( ct->ctWidthText, scratch );
+	appLengthToTextWidget( ct->ctWidthText,
+					ct->ctWidthChosen, UNITtyPOINTS );
 	}
     }
 
@@ -340,23 +274,11 @@ static APP_BUTTON_CALLBACK_H( tedColumnPreviousColumn, w, voidct )
     {
     ColumnTool *	ct= (ColumnTool *)voidct;
     EditApplication *	ea= ct->ctApplication;
-    EditDocument *	ed= ea->eaCurrentDocument;
-    TedDocument *	td;
 
-    TableRectangle	tr;
+    const int		direction= -1;
+    const int		allRows= 1;
 
-    if  ( ! ed )
-	{ XDEB(ed); return;	}
-
-    tr= ct->ctTableRectangle;
-    td= (TedDocument *)ed->edPrivateData;
-
-    docExpandTableRectangleToWholeColumns( &tr );
-
-    if  ( docShiftTableRectangleByColumns( &tr, -1 ) )
-	{ return;	}
-
-    tedAppSetTableSelection( ed, &tr );
+    tedAppSelectWholeCell( ea, direction, allRows );
 
     return;
     }
@@ -365,20 +287,11 @@ static APP_BUTTON_CALLBACK_H( tedTableSelectColumn, w, voidct )
     {
     ColumnTool *	ct= (ColumnTool *)voidct;
     EditApplication *	ea= ct->ctApplication;
-    EditDocument *	ed= ea->eaCurrentDocument;
-    TedDocument *	td;
 
-    TableRectangle	tr;
+    const int		direction= 0;
+    const int		allRows= 1;
 
-    if  ( ! ed )
-	{ XDEB(ed); return;	}
-
-    tr= ct->ctTableRectangle;
-    td= (TedDocument *)ed->edPrivateData;
-
-    docExpandTableRectangleToWholeColumns( &tr );
-
-    tedAppSetTableSelection( ed, &tr );
+    tedAppSelectWholeCell( ea, direction, allRows );
 
     return;
     }
@@ -387,23 +300,11 @@ static APP_BUTTON_CALLBACK_H( tedColumnNextColumn, w, voidct )
     {
     ColumnTool *	ct= (ColumnTool *)voidct;
     EditApplication *	ea= ct->ctApplication;
-    EditDocument *	ed= ea->eaCurrentDocument;
-    TedDocument *	td;
 
-    TableRectangle	tr;
+    const int		direction= 1;
+    const int		allRows= 1;
 
-    if  ( ! ed )
-	{ XDEB(ed); return;	}
-
-    tr= ct->ctTableRectangle;
-    td= (TedDocument *)ed->edPrivateData;
-
-    docExpandTableRectangleToWholeColumns( &tr );
-
-    if  ( docShiftTableRectangleByColumns( &tr, +1 ) )
-	{ return;	}
-
-    tedAppSetTableSelection( ed, &tr );
+    tedAppSelectWholeCell( ea, direction, allRows );
 
     return;
     }
@@ -417,16 +318,9 @@ static APP_BUTTON_CALLBACK_H( tedColumnNextColumn, w, voidct )
 static APP_BUTTON_CALLBACK_H( tedTableDeleteColumn, w, voidct )
     {
     ColumnTool *		ct= (ColumnTool *)voidct;
-    const TableRectangle *	tr= &(ct->ctTableRectangle);
     EditApplication *		ea= ct->ctApplication;
-    EditDocument *		ed= ea->eaCurrentDocument;
 
-    if  ( ! ed )
-	{ XDEB(ed); return;	}
-
-    if  ( tedDeleteColumnsFromRows( ed,
-		tr->trRow00, tr->trRow11, tr->trCol0, tr->trCol1 ) )
-	{ LLDEB(tr->trRow00,tr->trRow11); return;	}
+    tedAppDeleteColumn( ea );
 
     return;
     }
@@ -442,14 +336,9 @@ static APP_BUTTON_CALLBACK_H( tedTableInsertColumn, w, voidct )
     ColumnTool *	ct= (ColumnTool *)voidct;
     EditApplication *	ea= ct->ctApplication;
 
-    EditDocument *	ed= ea->eaCurrentDocument;
+    const int		after= 0;
 
-    if  ( ! ed )
-	{ XDEB(ed); return;	}
-
-    tedInsertColumnInTable( ed );
-
-    appDocumentChanged( ed, 1 );
+    tedAppAddColumnToTable( ea, after );
     }
 
 static APP_BUTTON_CALLBACK_H( tedTableAppendColumn, w, voidct )
@@ -457,14 +346,9 @@ static APP_BUTTON_CALLBACK_H( tedTableAppendColumn, w, voidct )
     ColumnTool *	ct= (ColumnTool *)voidct;
     EditApplication *	ea= ct->ctApplication;
 
-    EditDocument *	ed= ea->eaCurrentDocument;
+    const int		after= 1;
 
-    if  ( ! ed )
-	{ XDEB(ed); return;	}
-
-    tedAppendColumnToTable( ed );
-
-    appDocumentChanged( ed, 1 );
+    tedAppAddColumnToTable( ea, after );
     }
 
 /************************************************************************/
@@ -495,6 +379,29 @@ static void tedColumnToolGotColor(	void *			voidct,
     }
 
 /************************************************************************/
+
+static void tedColumnToolMakeBorderFrame(
+				ColumnTool *			ct,
+				const ColumnPageResources *	cpr,
+				AppInspector *			ai,
+				int				subjectPage,
+				APP_WIDGET			pageWidget )
+    {
+    appMakeColumnFrameInColumn( &(ct->ctBordersFrame), &(ct->ctBordersPaned),
+						pageWidget, cpr->cprBorders );
+
+    tedMakeBorderTool( &(ct->ctLeftBorderTool), ai, ct->ctBordersPaned,
+		cpr->cprLeftBorder, &(cpr->cprBorderToolResources),
+		subjectPage, CLpropLEFT_BORDER );
+
+    tedMakeBorderTool( &(ct->ctRightBorderTool), ai, ct->ctBordersPaned,
+		cpr->cprRightBorder, &(cpr->cprBorderToolResources),
+		subjectPage, CLpropRIGHT_BORDER );
+
+    return;
+    }
+
+/************************************************************************/
 /*									*/
 /*  Make a column tool, I.E. the 'Column' page of the format tool.	*/
 /*									*/
@@ -508,53 +415,50 @@ void tedFormatFillColumnPage(	ColumnTool *			ct,
 				APP_WIDGET			pageWidget,
 				const InspectorSubjectResources * isr )
     {
-    APP_WIDGET	widthLabel;
-    APP_WIDGET	columnLabel;
-
-    APP_WIDGET	row= (APP_WIDGET)0;
-
     const int	textColumns= 10;
 
     /**/
     ct->ctPageResources= cpr;
 
+    ct->ctCanChange= 1;
+
     is->isPrivate= ct;
     is->isGotColor= tedColumnToolGotColor;
 
     /**/
-    appMakeLabelAndTextRow( &row, &columnLabel, &(ct->ctNumberText),
+    guiToolMakeLabelAndTextRow( &(ct->ctColumnRow),
+			    &(ct->ctColumnLabel), &(ct->ctColumnText),
 			    pageWidget, isr->isrSubjectName, textColumns, 0 );
 
-    appMakeLabelAndTextRow( &row, &widthLabel, &(ct->ctWidthText),
-			pageWidget, cpr->cprWidth, textColumns, 1 );
+    guiToolMakeLabelAndTextRow( &(ct->ctWidthRow),
+			    &(ct->ctWidthLabel), &(ct->ctWidthText),
+			    pageWidget, cpr->cprWidth, textColumns, 1 );
 
     appGuiSetGotValueCallbackForText( ct->ctWidthText,
 					tedColumnWidthChanged, (void *)ct );
 
-    tedMakeBorderTool( &(ct->ctLeftBorderTool), ai, pageWidget,
-		cpr->cprLeftBorder, &(cpr->cprBorderToolResources),
-		subjectPage, CLpropLEFT_BORDER );
+    tedColumnToolMakeBorderFrame( ct, cpr, ai, subjectPage, pageWidget );
 
-    tedMakeBorderTool( &(ct->ctRightBorderTool), ai, pageWidget,
-		cpr->cprRightBorder, &(cpr->cprBorderToolResources),
-		subjectPage, CLpropRIGHT_BORDER );
-
-    appInspectorMakeButtonRow( &row, pageWidget,
+    guiToolMake2BottonRow( &(is->isNextPrevRow), pageWidget,
 		    &(is->isPrevButton), &(is->isNextButton),
 		    isr->isrPrevButtonText, isr->isrNextButtonText,
 		    tedColumnPreviousColumn, tedColumnNextColumn, ct );
 
-    appInspectorMakeButtonRow( &row, pageWidget,
+    {
+    APP_WIDGET	row;
+
+    guiToolMake2BottonRow( &row, pageWidget,
 		    &(is->isSelectButton), &(is->isDeleteButton),
 		    isr->isrSelectButtonText, isr->isrDeleteButtonText,
 		    tedTableSelectColumn, tedTableDeleteColumn, ct );
 
-    appInspectorMakeButtonRow( &row, pageWidget,
+    guiToolMake2BottonRow( &row, pageWidget,
 		    &(is->isInsertButton), &(is->isAppendButton),
 		    isr->isrInsertButtonText, isr->isrAppendButtonText,
 		    tedTableInsertColumn, tedTableAppendColumn, ct );
+    }
 
-    appInspectorMakeButtonRow( &row, pageWidget,
+    guiToolMake2BottonRow( &(is->isApplyRow), pageWidget,
 		    &(is->isRevertButton), &(is->isApplyButton),
 		    isr->isrRevert, isr->isrApplyToSubject,
 		    tedFormatRevertColumnPushed, tedTableChangeColumnPushed,
@@ -570,11 +474,14 @@ void tedColumnToolFillChoosers(	ColumnTool *			ct,
     }
 
 void tedFormatFinishColumnPage(		ColumnTool *			ct,
-					TedFormatTool *			tft,
 					const ColumnPageResources *	cpr )
     {
-    tedFinishBorderTool( &(ct->ctLeftBorderTool) );
-    tedFinishBorderTool( &(ct->ctRightBorderTool) );
+    const PostScriptFontList *	psfl;
+
+    psfl= &(ct->ctApplication->eaPostScriptFontList);
+
+    tedFinishBorderTool( &(ct->ctLeftBorderTool), psfl );
+    tedFinishBorderTool( &(ct->ctRightBorderTool), psfl );
     }
 
 /************************************************************************/
@@ -591,13 +498,18 @@ void tedInitColumnTool(	ColumnTool *	ct )
 
     docInitTableRectangle( &(ct->ctTableRectangle) );
 
-    ct->ctPageRight= 0;
-    ct->ctPageLeftMargin= 0;
+    ct->ctBlockFrameWide= 0;
 
-    docInitRowProperties( &(ct->ctPropertiesSet) );
-    docInitRowProperties( &(ct->ctPropertiesChosen) );
+    docInitCellProperties( &(ct->ctPropertiesSet) );
+    docInitCellProperties( &(ct->ctPropertiesChosen) );
 
-    ct->ctNumberText= (APP_WIDGET)0;
+    ct->ctWidthSet= 0;
+    ct->ctWidthChosen= 0;
+    ct->ctHalfGapWidthTwips= 0;
+
+    ct->ctCanChange= 0;
+
+    ct->ctColumnText= (APP_WIDGET)0;
     ct->ctWidthText= (APP_WIDGET)0;
 
     tedInitBorderTool( &(ct->ctLeftBorderTool) );
@@ -608,8 +520,8 @@ void tedInitColumnTool(	ColumnTool *	ct )
 
 void tedCleanColumnTool(	ColumnTool *	ct )
     {
-    docCleanRowProperties( &(ct->ctPropertiesSet) );
-    docCleanRowProperties( &(ct->ctPropertiesChosen) );
+    docCleanCellProperties( &(ct->ctPropertiesSet) );
+    docCleanCellProperties( &(ct->ctPropertiesChosen) );
 
     tedCleanBorderTool( &(ct->ctLeftBorderTool) );
     tedCleanBorderTool( &(ct->ctRightBorderTool) );
@@ -661,12 +573,15 @@ static AppConfigurableResource TED_TedColumnToolResourceTable[]=
 		"Width" ),
 
     /**/
-    APP_RESOURCE( "tableToolColumnLeftBorder",
+    APP_RESOURCE( "tableToolColumnBorders",
+		offsetof(ColumnPageResources,cprBorders),
+		"Borders" ),
+    APP_RESOURCE( "tableToolColumnBorderLeft",
 		offsetof(ColumnPageResources,cprLeftBorder),
-		"Left Border" ),
-    APP_RESOURCE( "tableToolColumnRightBorder",
+		"Left" ),
+    APP_RESOURCE( "tableToolColumnBorderRight",
 		offsetof(ColumnPageResources,cprRightBorder),
-		"Right Border" ),
+		"Right" ),
 
     /**/
     APP_RESOURCE( "formatToolColumnBorderWidth",

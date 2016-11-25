@@ -6,15 +6,17 @@
 
 #   include	"tedConfig.h"
 
-#   include	<stdlib.h>
 #   include	<stdio.h>
 #   include	<stddef.h>
 
-#   include	<appGeoString.h>
-#   include	<appUnit.h>
-
-#   include	"tedApp.h"
-#   include	"tedFormatTool.h"
+#   include	"tedTableTool.h"
+#   include	"tedAppFront.h"
+#   include	"tedToolUtil.h"
+#   include	<guiToolUtil.h>
+#   include	<guiTextUtil.h>
+#   include	<docTreeNode.h>
+#   include	<docNodeTree.h>
+#   include	<docEditCommand.h>
 
 #   include	<appDebugon.h>
 
@@ -28,58 +30,64 @@ static void tedFormatToolRefreshTablePage(	TableTool *	tt )
     {
     RowProperties *	rp= &(tt->ttPropertiesChosen);
 
-    char		scratch[50];
-
-    appGeoLengthToString( scratch, rp->rpHalfGapWidthTwips, UNITtyPOINTS );
-    appStringToTextWidget( tt->ttCellMarginText, scratch );
-
-    appGeoLengthToString( scratch, rp->rpLeftIndentTwips, UNITtyPOINTS );
-    appStringToTextWidget( tt->ttLeftIndentText, scratch );
+    tedRefreshRowMarginsTool( &(tt->ttMarginsTool), rp, tt->ttCanChange );
     }
 
-void tedFormatToolRefreshTableTool(
-			    TableTool *			tt,
-			    int *			pEnabled,
-			    int *			pPref,
-			    InspectorSubject *		is,
-			    const DocumentSelection *	ds )
+void tedRefreshTableTool(	TableTool *			tt,
+				int *				pEnabled,
+				int *				pPref,
+				InspectorSubject *		is,
+				const DocumentSelection *	ds,
+				const SelectionGeometry *	sg,
+				const SelectionDescription *	sd,
+				BufferDocument *		bd,
+				const unsigned char *		cmdEnabled )
     {
-    const RowProperties *	rp;
-    const DocumentGeometry *	dg;
+    BufferItem *		rowNode;
 
-    const BufferItem *		rowBi;
-    const BufferItem *		sectBi;
+    const DocumentAttributeMap * const dam0= (const DocumentAttributeMap *)0;
 
-    if  ( docGetTableRectangle( &(tt->ttTableRectangle), ds ) )
-	{
-	docInitTableRectangle( &(tt->ttTableRectangle) );
-	*pEnabled= 0; return;
-	}
+    if  ( ! sd->sdInOneTable )
+	{ *pEnabled= 0; return;	}
 
-    rowBi= ds->dsBegin.dpBi;
-    rowBi= rowBi->biParent;
-    rowBi= rowBi->biParent;
-    sectBi= rowBi->biParent;
+    tt->ttTableRectangle= sd->sdTableRectangle;
 
-    dg= &(sectBi->biSectDocumentGeometry);
+    rowNode= docGetRowNode( ds->dsHead.dpNode );
+    if  ( ! rowNode )
+	{ XDEB(rowNode); *pEnabled= 0; return;	}
 
-    tt->ttPageRight= dg->dgPageWideTwips-
-			    dg->dgLeftMarginTwips- dg->dgRightMarginTwips;
-    tt->ttPageLeftMargin= dg->dgLeftMarginTwips;
+    tedRowMarginToolGetMargins( &(tt->ttMarginsTool), rowNode, bd );
 
-    rp= &(rowBi->biRowProperties);
-
-    if  ( docCopyRowProperties( &(tt->ttPropertiesChosen),
-						    rp, (const int *)0 ) )
-	{ LDEB(1); return;	}
     if  ( docCopyRowProperties( &(tt->ttPropertiesSet),
-						    rp, (const int *)0 ) )
+					&(rowNode->biRowProperties), dam0 ) )
 	{ LDEB(1); return;	}
+    if  ( docCopyRowProperties( &(tt->ttPropertiesChosen),
+					&(tt->ttPropertiesSet), dam0 ) )
+	{ LDEB(1); return;	}
+
+    tt->ttCanChange= cmdEnabled[EDITcmdUPD_TABLE_PROPS];
 
     tedFormatToolRefreshTablePage( tt );
 
+    guiEnableWidget( is->isDeleteButton, cmdEnabled[EDITcmdDELETE_TABLE] );
+
+    guiEnableWidget( is->isRevertButton, tt->ttCanChange );
+    guiEnableWidget( is->isApplyButton, tt->ttCanChange );
+
     *pEnabled= 1;
     return;
+    }
+
+/************************************************************************/
+
+static int tedTableToolGetChosen(	TableTool *		tt )
+    {
+    RowProperties *		rpChosen= &(tt->ttPropertiesChosen);
+
+    if  ( tedRowMarginToolGetValues( rpChosen, &(tt->ttMarginsTool) ) )
+	{ return -1;	}
+
+    return 0;
     }
 
 /************************************************************************/
@@ -91,33 +99,29 @@ void tedFormatToolRefreshTableTool(
 static APP_BUTTON_CALLBACK_H( tedTableChangeTablePushed, w, voidtt )
     {
     TableTool *			tt= (TableTool *)voidtt;
-    RowProperties *		rp= &(tt->ttPropertiesChosen);
-    const TableRectangle *	tr= &(tt->ttTableRectangle);
+    RowProperties *		rpChosen= &(tt->ttPropertiesChosen);
 
-    int				width;
-    int				res;
+    PropertyMask		rpCmpMask;
+    PropertyMask		rpDifMask;
 
-    PropertyMask		rpSetMask;
-    PropertyMask		cpSetMask;
+    const int			wholeRow= 1;
+    const int			wholeColumn= 1;
 
-    PROPmaskCLEAR( &rpSetMask );
-    PROPmaskCLEAR( &cpSetMask );
+    const DocumentAttributeMap * const dam0= (const DocumentAttributeMap *)0;
 
-    res= tedFormatToolGetRowLeftIndent( rp, tt->ttPageLeftMargin,
-					    &width, tt->ttLeftIndentText );
-    if  ( res != 0 )
+    if  ( tedTableToolGetChosen( tt ) )
 	{ return;	}
-    rp->rpLeftIndentTwips= width;
-    PROPmaskADD( &rpSetMask, RPpropLEFT_INDENT );
 
-    res= tedFormatToolGetGapWidth( rp, &width, tt->ttCellMarginText );
-    if  ( res != 0 )
-	{ return;	}
-    rp->rpHalfGapWidthTwips= width;
-    PROPmaskADD( &rpSetMask, RPpropGAP_WIDTH );
+    utilPropMaskClear( &rpCmpMask );
+    utilPropMaskClear( &rpDifMask );
+    utilPropMaskFill( &rpCmpMask, RPprop_FULL_COUNT );
 
-    tedAppSetTableProperties( tt->ttApplication, tr,
-					    &rpSetMask, &cpSetMask, rp );
+    docRowPropertyDifference( &rpDifMask, &(tt->ttPropertiesSet),
+						&rpCmpMask, rpChosen, dam0 );
+
+    tedAppSetTableProperties( tt->ttApplication, wholeRow, wholeColumn,
+			(const PropertyMask *)0, (const CellProperties *)0,
+			&rpDifMask, rpChosen );
 
     return;
     }
@@ -126,8 +130,8 @@ static APP_BUTTON_CALLBACK_H( tedFormatRevertTablePushed, w, voidtt )
     {
     TableTool *	tt= (TableTool *)voidtt;
 
-    docCopyRowProperties( &(tt->ttPropertiesChosen),
-				    &(tt->ttPropertiesSet), (const int *)0 );
+    docCopyRowProperties( &(tt->ttPropertiesChosen), &(tt->ttPropertiesSet),
+				(const DocumentAttributeMap *)0 );
 
     tedFormatToolRefreshTablePage( tt );
 
@@ -144,17 +148,9 @@ static APP_BUTTON_CALLBACK_H( tedFormatRevertTablePushed, w, voidtt )
 static APP_TXACTIVATE_CALLBACK_H( tedTableCellMarginChanged, w, voidtt )
     {
     TableTool *		tt= (TableTool *)voidtt;
-    RowProperties *	rp= &(tt->ttPropertiesChosen);
 
-    int			value;
-
-    if  ( ! tedFormatToolGetGapWidth( rp, &value, tt->ttCellMarginText ) )
-	{
-	char	scratch[50];
-
-	appGeoLengthToString( scratch, value, UNITtyPOINTS );
-	appStringToTextWidget( tt->ttCellMarginText, scratch );
-	}
+    tedMarginToolCheckCellMargin( &(tt->ttMarginsTool),
+					    &(tt->ttPropertiesChosen) );
     }
 
 /************************************************************************/
@@ -167,18 +163,9 @@ static APP_TXACTIVATE_CALLBACK_H( tedTableCellMarginChanged, w, voidtt )
 static APP_TXACTIVATE_CALLBACK_H( tedTableLeftIndentChanged, w, voidtt )
     {
     TableTool *		tt= (TableTool *)voidtt;
-    RowProperties *	rp= &(tt->ttPropertiesChosen);
 
-    int			value;
-
-    if  ( ! tedFormatToolGetRowLeftIndent( rp, tt->ttPageLeftMargin, &value,
-						    tt->ttLeftIndentText ) )
-	{
-	char	scratch[50];
-
-	appGeoLengthToString( scratch, value, UNITtyPOINTS );
-	appStringToTextWidget( tt->ttLeftIndentText, scratch );
-	}
+    tedMarginToolCheckLeftIndent( &(tt->ttMarginsTool),
+						&(tt->ttPropertiesChosen) );
     }
 
 /************************************************************************/
@@ -191,12 +178,8 @@ static APP_BUTTON_CALLBACK_H( tedTableDeleteTable, w, voidtt )
     {
     TableTool *			tt= (TableTool *)voidtt;
     EditApplication *		ea= tt->ttApplication;
-    EditDocument *		ed= ea->eaCurrentDocument;
 
-    const TableRectangle *	tr= &(tt->ttTableRectangle);
-
-    if  ( tedDeleteRowsFromTable( ed, tr->trRow00, tr->trRow11 ) )
-	{ LLDEB(tr->trRow00,tr->trRow11); return;	}
+    tedAppDeleteTable( ea );
 
     return;
     }
@@ -205,19 +188,8 @@ static APP_BUTTON_CALLBACK_H( tedTableSelectTable, w, voidtt )
     {
     TableTool *			tt= (TableTool *)voidtt;
     EditApplication *		ea= tt->ttApplication;
-    EditDocument *		ed= ea->eaCurrentDocument;
-    TedDocument *		td;
 
-    TableRectangle		trSet= tt->ttTableRectangle;
-
-    if  ( ! ed )
-	{ XDEB(ed); return;	}
-
-    td= (TedDocument *)ed->edPrivateData;
-
-    docExpandTableRectangleToWholeTable( &trSet );
-
-    tedAppSetTableSelection( ed, &trSet );
+    tedAppSelectTable( ea );
     }
 
 /************************************************************************/
@@ -232,15 +204,11 @@ void tedFormatFillTablePage(	TableTool *			tt,
 				APP_WIDGET			pageWidget,
 				const InspectorSubjectResources * isr )
     {
-    APP_WIDGET	widthLabel;
-    APP_WIDGET	leftLabel;
-
     APP_WIDGET	row= (APP_WIDGET )0;
-
-    const int	textColumns= 10;
 
     /**/
     tt->ttPageResources= tpr;
+    tt->ttCanChange= 1;
 
     /**/
     docInitTableRectangle( &(tt->ttTableRectangle) );
@@ -249,26 +217,18 @@ void tedFormatFillTablePage(	TableTool *			tt,
     docInitRowProperties( &(tt->ttPropertiesChosen) );
 
     /**************/
-    appMakeLabelAndTextRow( &row, &leftLabel, &(tt->ttLeftIndentText),
-			pageWidget, tpr->tprLeftIndent, textColumns, 1 );
-
-    appGuiSetGotValueCallbackForText( tt->ttLeftIndentText,
-				tedTableLeftIndentChanged, (void *)tt );
-
-    /**************/
-    appMakeLabelAndTextRow( &row, &widthLabel, &(tt->ttCellMarginText),
-		    pageWidget, tpr->tprCellMargin, textColumns, 1 );
-
-    appGuiSetGotValueCallbackForText( tt->ttCellMarginText,
-				tedTableCellMarginChanged, (void *)tt );
+    tedFormatFillRowMarginsTool( &(tt->ttMarginsTool),
+			&(tpr->tprMarginsResources),
+			tedTableLeftIndentChanged, tedTableCellMarginChanged,
+			(void *)tt, pageWidget );
 
     /**************/
-    appInspectorMakeButtonRow( &row, pageWidget,
+    guiToolMake2BottonRow( &row, pageWidget,
 		&(is->isSelectButton), &(is->isDeleteButton),
 		isr->isrSelectButtonText, isr->isrDeleteButtonText,
 		tedTableSelectTable, tedTableDeleteTable, (void *)tt );
 
-    appInspectorMakeButtonRow( &row, pageWidget,
+    guiToolMake2BottonRow( &(is->isApplyRow), pageWidget,
 		&(is->isRevertButton), &(is->isApplyButton),
 		isr->isrRevert, isr->isrApplyToSubject,
 		tedFormatRevertTablePushed, tedTableChangeTablePushed,
@@ -324,11 +284,11 @@ static AppConfigurableResource TED_TedTableToolResourceTable[]=
     {
     /**/
     APP_RESOURCE( "tableToolCellMargin",
-		    offsetof(TablePageResources,tprCellMargin),
-		    "Cell Margin" ),
+		offsetof(TablePageResources,tprMarginsResources.rmtrCellMargin),
+		"Cell Margin" ),
     APP_RESOURCE( "tableToolLeftIndent",
-		    offsetof(TablePageResources,tprLeftIndent),
-		    "Left Margin" ),
+		offsetof(TablePageResources,tprMarginsResources.rmtrLeftIndent),
+		"Left Margin" ),
     };
 
 void tedFormatToolGetTableResourceTable( EditApplication *		ea,

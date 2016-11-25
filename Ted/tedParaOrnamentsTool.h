@@ -9,6 +9,8 @@
 
 #   include	"tedBorderTool.h"
 #   include	"tedShadingTool.h"
+#   include	<docSelectionDescription.h>
+#   include	<docSelectionGeometry.h>
 
 /************************************************************************/
 /*									*/
@@ -22,6 +24,7 @@ typedef struct ParagraphOrnamentsPageResources
     ShadingToolResources	poprShadingResources;
     BorderToolResources		poprBorderToolResources;
 
+    char *			poprBorders;
     char *			poprTopBorder;
     char *			poprBottomBorder;
     char *			poprLeftBorder;
@@ -43,6 +46,10 @@ typedef struct ParagraphOrnamentsTool
     ParagraphProperties				potPropertiesSet;
     ParagraphProperties				potPropertiesChosen;
 
+    unsigned char				potCanChange;
+
+    APP_WIDGET					potBordersFrame;
+    APP_WIDGET					potBordersPaned;
     BorderTool					potTopBorderTool;
     BorderTool					potBottomBorderTool;
     BorderTool					potLeftBorderTool;
@@ -62,7 +69,7 @@ extern void tedFormatToolGetParaOrnamentsResourceTable(
 				    ParagraphOrnamentsPageResources *	plpr,
 				    InspectorSubjectResources *		isr );
 
-extern void tedFormatFillParagraphOrnamentsChoosers(
+extern void tedParaOrnamentsToolFillChoosers(
 				ParagraphOrnamentsTool *		pot,
 				const ParagraphOrnamentsPageResources *	popr );
 
@@ -75,16 +82,23 @@ extern void tedFormatFillParagraphOrnamentsPage(
 			APP_WIDGET				pgW,
 			const InspectorSubjectResources *	isr );
 
-extern void tedFormatToolRefreshParaOrnamentsTool(
+extern void tedRefreshParaOrnamentsTool(
 				ParagraphOrnamentsTool *	pot,
 				int *				pEnabled,
 				int *				pPref,
 				InspectorSubject *		is,
-				const DocumentSelection *	bs );
+				const DocumentSelection *	ds,
+				const SelectionGeometry *	sg,
+				const SelectionDescription *	sd,
+				const unsigned char *		cmdEnabled );
 
 extern void tedInitParaOrnamentsTool(
 				ParagraphOrnamentsTool *	pot );
 extern void tedCleanParaOrnamentsTool(
 				ParagraphOrnamentsTool *	pot );
+
+extern void tedFormatFinishParaOrnamentsPage(
+				ParagraphOrnamentsTool *		pot,
+				const ParagraphOrnamentsPageResources *	popr );
 
 #   endif	/*  TED_PARA_ORNAMENTS_TOOL_H */

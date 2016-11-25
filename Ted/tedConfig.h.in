@@ -4,40 +4,35 @@
 /* Define to empty if the keyword does not work.  */
 #undef const
 
-/* Define if you have the ANSI C header files.  */
 #undef STDC_HEADERS
 
-/* Define if your processor stores words with the most significant
-   byte first (like Motorola and SPARC, unlike Intel and VAX).  */
 #undef WORDS_BIGENDIAN
 
-/* Define if you have the socket function.  */
 #undef HAVE_SOCKET
-
-/* Define if you have the strerror function.  */
 #undef HAVE_STRERROR
-
-/* Define if you have the uname function.  */
 #undef HAVE_UNAME
-
-/* Define if you have the <fcntl.h> header file.  */
 #undef HAVE_FCNTL_H
-
-/* Define if you have the <sys/time.h> header file.  */
 #undef HAVE_SYS_TIME_H
-
-/* Define if you have the <unistd.h> header file.  */
 #undef HAVE_UNISTD_H
-
 
 #   undef	MY_PLATFORM
 #   undef	MY_HOST_DATE
+
+#if 0
+/* Irrelevant: only used via appFrame */
+#undef HAVE_FT2
+#undef HAVE_XFT
+#undef HAVE_FONTCONFIG
+#endif
+
+# include <appFrameConfig.h>
 
 /************************************************************************/
 /*									*/
 /*  Locations of application related files				*/
 /*									*/
 /*  DOCUMENT_DIR:	Location of the manual file.			*/
+/*  PSSCRIPT_DIR:	Location of postscript jobs for configuration.	*/
 /*									*/
 /************************************************************************/
 
@@ -58,6 +53,9 @@
 #   ifndef	DOCUMENT_DIR
 #	define	DOCUMENT_DIR	PKGDIR "/Ted/"
 #   endif
+#   ifndef	PSSCRIPT_DIR
+#	define	PSSCRIPT_DIR	PKGDIR "/Ted/"
+#   endif
 
 /************************************************************************/
 /*									*/
@@ -67,5 +65,6 @@
 
 #   undef	USE_MOTIF
 #   undef	USE_GTK
+#   undef	USE_QT
 
 #   endif	/*	TED_CONFIG_H	*/

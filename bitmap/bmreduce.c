@@ -1,7 +1,8 @@
 #   include	"bitmapConfig.h"
 
-#   include	"bmintern.h"
+#   include	"bmRender.h"
 #   include	<string.h>
+#   include	<stdlib.h>
 #   include	<appDebugon.h>
 
 /************************************************************************/
@@ -67,7 +68,7 @@ typedef struct ColorReducer
     {
     HashBucket **		crHashTable;
     HistogramEntry *		crHistogram;
-    RGB8Color *			crPalette;
+    const ColorPalette *	crPalette;	/*  Borrowed from target */
     CutNode *			crCutNodes;
     int				crColorsCounted;
     } ColorReducer;
@@ -144,7 +145,7 @@ static void bmInitColorReducer(	ColorReducer *	cr )
     {
     cr->crHashTable= (HashBucket **)0;
     cr->crHistogram= (HistogramEntry *)0;
-    cr->crPalette= (RGB8Color *)0;
+    cr->crPalette= (ColorPalette *)0;
     cr->crCutNodes= (CutNode *)0;
 
     return;
@@ -152,8 +153,6 @@ static void bmInitColorReducer(	ColorReducer *	cr )
 
 static void bmCleanColorReducer( ColorReducer *	cr )
     {
-    if  ( cr->crPalette )
-	{ free( cr->crPalette );		}
     if  ( cr->crHistogram )
 	{ free( cr->crHistogram );		}
     if  ( cr->crCutNodes )
@@ -162,21 +161,6 @@ static void bmCleanColorReducer( ColorReducer *	cr )
 	{ bmFreeColorHash( cr->crHashTable );	}
 
     return;
-    }
-
-static int bmAllocateReducerPalette(	ColorReducer *	cr,
-					int		count )
-    {
-    RGB8Color *	fresh;
-
-    fresh= (RGB8Color *)realloc( cr->crPalette, count* sizeof(RGB8Color) );
-    if  ( ! fresh )
-	{ LLDEB(count,fresh); return -1;	}
-
-    cr->crPalette= fresh;
-    memset( cr->crPalette, 0, count* sizeof(RGB8Color) );
-
-    return 0;
     }
 
 static int bmAllocateCutNodes(		ColorReducer *	cr,
@@ -729,9 +713,18 @@ static int bmFindColors(	ColorReducer *		cr,
 	    N  += he->heCount;
 	    }
 
-	cr->crPalette[i].rgb8Red= sR/ N;
-	cr->crPalette[i].rgb8Green= sG/ N;
-	cr->crPalette[i].rgb8Blue= sB/ N;
+	if  ( N == 0 )
+	    {
+	    LDEB(N);
+	    cr->crPalette->cpColors[i].rgb8Red= 0;
+	    cr->crPalette->cpColors[i].rgb8Green= 0;
+	    cr->crPalette->cpColors[i].rgb8Blue= 0;
+	    }
+	else{
+	    cr->crPalette->cpColors[i].rgb8Red= sR/ N;
+	    cr->crPalette->cpColors[i].rgb8Green= sG/ N;
+	    cr->crPalette->cpColors[i].rgb8Blue= sB/ N;
+	    }
 
 #	if LOG_PALETTE
 	appDebug( "BOX %3d: "
@@ -795,9 +788,9 @@ static int bmReduceAllocateColorCut(	AllocatorColor *	ac,
 	    case CN_LEAF:
 		i= cn[i].cnLeft;
 
-		ac->acRed= 257* cr->crPalette[i].rgb8Red;
-		ac->acGreen= 257* cr->crPalette[i].rgb8Green;
-		ac->acBlue= 257* cr->crPalette[i].rgb8Blue;
+		ac->acRed= 257* cr->crPalette->cpColors[i].rgb8Red;
+		ac->acGreen= 257* cr->crPalette->cpColors[i].rgb8Green;
+		ac->acBlue= 257* cr->crPalette->cpColors[i].rgb8Blue;
 		ac->acColorNumber= i;
 		return 0;
 
@@ -834,9 +827,9 @@ static int bmReduceAllocateColorHash(	AllocatorColor *	ac,
 	{ XDEB(hashBucket); i= 0;	}
     else{ i= hashBucket->hbNumber;	}
 
-    ac->acRed= 257* cr->crPalette[i].rgb8Red;
-    ac->acGreen= 257* cr->crPalette[i].rgb8Green;
-    ac->acBlue= 257* cr->crPalette[i].rgb8Blue;
+    ac->acRed= 257* cr->crPalette->cpColors[i].rgb8Red;
+    ac->acGreen= 257* cr->crPalette->cpColors[i].rgb8Green;
+    ac->acBlue= 257* cr->crPalette->cpColors[i].rgb8Blue;
     ac->acColorNumber= i;
 
     return 0;
@@ -864,14 +857,15 @@ static void bmReduceCleanupAllocator(	ColorAllocator *	ca )
 /*									*/
 /************************************************************************/
 
-static int bmHashColors24(	HashBucket ***		pHashTable,
+static int bmHashColorsRGB8(	HashBucket ***		pHashTable,
 				int *			pColorCount,
 				int			pixelsHigh,
 				int			pixelsWide,
 				int			bytesPerRow,
+				int			hasAlpha,
 				const unsigned char *	bufIn,
 				int			maxcolors,
-				unsigned int		mask		)
+				unsigned int		mask )
     {
     unsigned int		r;
     unsigned int		g;
@@ -903,6 +897,9 @@ static int bmHashColors24(	HashBucket ***		pHashTable,
 	    {
 	    r= *(from++) & mask; g= *(from++) & mask; b= *(from++) & mask;
 	    hash= ppm_hash( r, g, b );
+
+	    if  ( hasAlpha )
+		{ from++;	}
 
 	    if  ( hash < 0 || hash >= HASH_SIZE )
 		{ LLDEB(hash,HASH_SIZE); return -1; }
@@ -974,7 +971,7 @@ static void bmHashToPalette(	ColorReducer *		cr )
 
 	while( hashBucket )
 	    {
-	    cr->crPalette[hashBucket->hbNumber]=
+	    cr->crPalette->cpColors[hashBucket->hbNumber]=
 					hashBucket->hbHistogramEntry.heColor;
 
 	    hashBucket= hashBucket->hbNext;
@@ -1003,18 +1000,17 @@ static void bmHashToPalette(	ColorReducer *		cr )
 /*									*/
 /************************************************************************/
 
-int bmColorReduce(	BitmapDescription *		bdOut,
-			const BitmapDescription *	bdIn,
-			unsigned char **		pBufOut,
-			const unsigned char *		bufferIn,
+int bmColorReduce(	RasterImage *			riOut,
+			const RasterImage *		riIn,
 			int				maxcolors )
     {
+    const BitmapDescription *	bdIn= &(riIn->riDescription);
     int				rval= 0;
 
     int				row;
     int				i;
 
-    unsigned char		mask;
+    unsigned char		mask= 0xff;
 
     ColorAllocator		ca;
     ColorReducer *		cr;
@@ -1029,9 +1025,12 @@ int bmColorReduce(	BitmapDescription *		bdOut,
     int				swapBitmapBits= 0;
     const int			dither= 0;
 
-    bmInitColorAllocator( &ca );
+    RasterImage			ri;
 
-    cr= malloc( sizeof( ColorReducer ) );
+    bmInitColorAllocator( &ca );
+    bmInitRasterImage( &ri );
+
+    cr= (ColorReducer *)malloc( sizeof( ColorReducer ) );
     if  ( ! cr )
 	{ XDEB(cr); rval= -1; goto ready;	}
 
@@ -1049,20 +1048,24 @@ int bmColorReduce(	BitmapDescription *		bdOut,
     else{ bitsPerPixel= 8;	}
 
     /*  0  */
-    if  ( bmAllocateReducerPalette( cr, maxcolors ) )
+    if  ( utilPaletteSetCount( &(ri.riDescription.bdPalette), maxcolors ) )
 	{ LDEB(maxcolors); rval= -1; goto ready;	}
+
+    cr->crPalette= &(ri.riDescription.bdPalette);
 
     /*  1, 2  */
     switch( bdIn->bdBitsPerPixel )
 	{
 	case 24:
+	case 32:
 	    for ( i= 0; i < 8; i++ )
 		{
 		mask= ~( 0xff >> ( 8- i ) );
 
-		row= bmHashColors24( &(cr->crHashTable), &colorCount,
+		row= bmHashColorsRGB8( &(cr->crHashTable), &colorCount,
 				bdIn->bdPixelsHigh, bdIn->bdPixelsWide,
-				bdIn->bdBytesPerRow, bufferIn, 32768, mask );
+				bdIn->bdBytesPerRow, bdIn->bdHasAlpha,
+				riIn->riBytes, 32768, mask );
 		if  ( row < 0 )
 		    { LDEB(row); rval= -1; goto ready;	}
 		if  ( row == 0 )
@@ -1101,27 +1104,28 @@ int bmColorReduce(	BitmapDescription *		bdOut,
 	}
 
     /*  6  */
-    bdOut->bdPixelsWide= bdIn->bdPixelsWide;
-    bdOut->bdPixelsHigh= bdIn->bdPixelsHigh;
+    ri.riDescription.bdPixelsWide= bdIn->bdPixelsWide;
+    ri.riDescription.bdPixelsHigh= bdIn->bdPixelsHigh;
 
-    bdOut->bdBitsPerSample= bdIn->bdBitsPerSample;
-    bdOut->bdSamplesPerPixel= 3;
-    bdOut->bdBitsPerPixel= bitsPerPixel;
-    bdOut->bdBytesPerRow= ( bdOut->bdBitsPerPixel* bdOut->bdPixelsWide+ 7 )/8;
-    bdOut->bdBufferLength= bdOut->bdPixelsHigh* bdOut->bdBytesPerRow;
+    ri.riDescription.bdBitsPerSample= bdIn->bdBitsPerSample;
+    ri.riDescription.bdSamplesPerPixel= 3;
+    ri.riDescription.bdBitsPerPixel= bitsPerPixel;
 
-    bdOut->bdXResolution= bdIn->bdXResolution;
-    bdOut->bdYResolution= bdIn->bdYResolution;
-    bdOut->bdUnit= bdIn->bdUnit;
+    ri.riDescription.bdXResolution= bdIn->bdXResolution;
+    ri.riDescription.bdYResolution= bdIn->bdYResolution;
+    ri.riDescription.bdUnit= bdIn->bdUnit;
 
-    bdOut->bdColorEncoding= BMcoRGB8PALETTE;
-    bdOut->bdColorCount= colorsFound;
+    ri.riDescription.bdColorEncoding= BMcoRGB8PALETTE;
+    ri.riDescription.bdPalette.cpColorCount= colorsFound;
 
-    bdOut->bdHasAlpha= 0;
+    ri.riDescription.bdHasAlpha= 0;
 
-    *pBufOut= malloc( bdOut->bdBufferLength );
-    if  ( ! *pBufOut )
-	{ LLDEB( bdOut->bdBufferLength,*pBufOut); rval= -1; goto ready; }
+    if  ( bmCalculateSizes( &(ri.riDescription) ) )
+	{ LDEB(1); rval= -1; goto ready;	}
+
+    ri.riBytes= (unsigned char *)malloc( ri.riDescription.bdBufferLength );
+    if  ( ! ri.riBytes )
+	{ LLDEB(ri.riDescription.bdBufferLength,ri.riBytes); rval= -1; goto ready; }
 
     /*  7  */
     if  ( cr->crCutNodes )
@@ -1129,14 +1133,16 @@ int bmColorReduce(	BitmapDescription *		bdOut,
     else{ ca.caSystemAllocator= bmReduceAllocateColorHash;	}
 
     if  ( bmFillImage( &ca, bitmapUnit, swapBitmapBytes, swapBitmapBits,
-				dither, *pBufOut, bufferIn, bdOut, bdIn ) )
+			dither, ri.riBytes, &(ri.riDescription),
+			riIn, (const DocumentRectangle *)0 ) )
 	{ LDEB(1); rval= -1; goto ready;	}
 
-    bdOut->bdRGB8Palette= cr->crPalette; /*  steal */
-    cr->crPalette= (RGB8Color *)0;
+    /* steal */
+    *riOut= ri; bmInitRasterImage( &ri );
 
   ready:
 
+    bmCleanRasterImage( &ri );
     bmCleanColorAllocator( &ca ); /* also frees cr */
 
     return rval;
@@ -1162,7 +1168,7 @@ int bmSetColorAllocatorForPaletteImage(	ColorAllocator *		ca,
     if  ( bd->bdColorEncoding != BMcoRGB8PALETTE )
 	{ LLDEB(bd->bdColorEncoding,BMcoRGB8PALETTE); rval= -1; goto ready; }
 
-    cr= malloc( sizeof( ColorReducer ) );
+    cr= (ColorReducer *)malloc( sizeof( ColorReducer ) );
     if  ( ! cr )
 	{ XDEB(cr); rval= -1; goto ready;	}
 
@@ -1172,59 +1178,57 @@ int bmSetColorAllocatorForPaletteImage(	ColorAllocator *		ca,
     ca->caAllocationType= CA_ALLOCATOR;
     ca->caSystemCleanup= bmReduceCleanupAllocator;
 
-    if  ( bmAllocateReducerPalette( cr, bd->bdColorCount ) )
-	{ LDEB(bd->bdColorCount); rval= -1; goto ready;	}
+    cr->crPalette= &(bd->bdPalette);
 
-    if  ( bmAllocateCutNodes( cr, bd->bdColorCount ) )
-	{ LDEB(bd->bdColorCount); rval= -1; goto ready;	}
+    if  ( bmAllocateCutNodes( cr, bd->bdPalette.cpColorCount ) )
+	{ LDEB(bd->bdPalette.cpColorCount); rval= -1; goto ready;	}
 
-    if  ( bmAllocateHistogram( cr, bd->bdColorCount ) )
-	{ LDEB(bd->bdColorCount); rval= -1; goto ready;	}
+    if  ( bmAllocateHistogram( cr, bd->bdPalette.cpColorCount ) )
+	{ LDEB(bd->bdPalette.cpColorCount); rval= -1; goto ready;	}
 
-    boxes= (ColorBox *)malloc( bd->bdColorCount* sizeof(ColorBox) );
+    boxes= (ColorBox *)malloc( bd->bdPalette.cpColorCount* sizeof(ColorBox) );
     if  ( ! boxes )
-	{ LLDEB(bd->bdColorCount,boxes); return -1; }
+	{ LLDEB(bd->bdPalette.cpColorCount,boxes); return -1; }
 
-    map= (int *)malloc( bd->bdColorCount* sizeof(int) );
+    map= (int *)malloc( bd->bdPalette.cpColorCount* sizeof(int) );
     if  ( ! map )
-	{ LLDEB(bd->bdColorCount,map); return -1; }
+	{ LLDEB(bd->bdPalette.cpColorCount,map); return -1; }
 
-    for ( i= 0; i < bd->bdColorCount; i++ )
+    for ( i= 0; i < bd->bdPalette.cpColorCount; i++ )
 	{
-	cr->crPalette[i]= bd->bdRGB8Palette[i];
-
-	cr->crHistogram[i].heColor= bd->bdRGB8Palette[i];
+	cr->crHistogram[i].heColor= bd->bdPalette.cpColors[i];
 	cr->crHistogram[i].heCount= 1;
 
 	map[i]= -1;
 	}
 
     boxCount= bmFindCuts( boxes, cr->crCutNodes, cr->crHistogram,
-							    bd->bdColorCount,
-							    bd->bdColorCount,
-							    bd->bdColorCount );
+						bd->bdPalette.cpColorCount,
+						bd->bdPalette.cpColorCount,
+						bd->bdPalette.cpColorCount );
 
-    if  ( boxCount != bd->bdColorCount )
-	{ LLDEB(boxCount,bd->bdColorCount); rval= -1; goto ready;	}
+    if  ( boxCount != bd->bdPalette.cpColorCount )
+	{ LLDEB(boxCount,bd->bdPalette.cpColorCount); rval= -1; goto ready; }
 
     ca->caSystemAllocator= bmReduceAllocateColorCut;
 
-    for ( i= 0; i < bd->bdColorCount; i++ )
+    for ( i= 0; i < bd->bdPalette.cpColorCount; i++ )
 	{
 	AllocatorColor	ac;
 
 	bmReduceAllocateColorCut( &ac, ca,
-				    bd->bdRGB8Palette[i].rgb8Red,
-				    bd->bdRGB8Palette[i].rgb8Green,
-				    bd->bdRGB8Palette[i].rgb8Blue );
+				    bd->bdPalette.cpColors[i].rgb8Red,
+				    bd->bdPalette.cpColors[i].rgb8Green,
+				    bd->bdPalette.cpColors[i].rgb8Blue );
 
-	if  ( ac.acColorNumber < 0 || ac.acColorNumber >= bd->bdColorCount )
+	if  ( /*ac.acColorNumber < 0				||*/
+	      ac.acColorNumber >= bd->bdPalette.cpColorCount	)
 	    { LLDEB(i,ac.acColorNumber);	}
 
 	map[ac.acColorNumber]= i;
 	}
 
-    for ( i= 0; i < 2* bd->bdColorCount; i++ )
+    for ( i= 0; i < 2* bd->bdPalette.cpColorCount; i++ )
 	{
 	if  ( cr->crCutNodes[i].cnComponent != CN_LEAF )
 	    { continue;	}
@@ -1233,21 +1237,21 @@ int bmSetColorAllocatorForPaletteImage(	ColorAllocator *		ca,
 	}
 
 #   if 0
-    for ( i= 0; i < bd->bdColorCount; i++ )
+    for ( i= 0; i < bd->bdPalette.cpColorCount; i++ )
 	{
 	AllocatorColor	ac;
 
 	bmReduceAllocateColorCut( &ac, ca,
-				    bd->bdRGB8Palette[i].rgb8Red,
-				    bd->bdRGB8Palette[i].rgb8Green,
-				    bd->bdRGB8Palette[i].rgb8Blue );
+				    bd->bdPalette.cpColors[i].rgb8Red,
+				    bd->bdPalette.cpColors[i].rgb8Green,
+				    bd->bdPalette.cpColors[i].rgb8Blue );
 
 	if  ( ac.acColorNumber != i )
 	    {
 	    LLDEB(i,ac.acColorNumber);
-	    LDEB(bd->bdRGB8Palette[i].rgb8Red);
-	    LDEB(bd->bdRGB8Palette[i].rgb8Green);
-	    LDEB(bd->bdRGB8Palette[i].rgb8Blue);
+	    LDEB(bd->bdPalette.cpColors[i].rgb8Red);
+	    LDEB(bd->bdPalette.cpColors[i].rgb8Green);
+	    LDEB(bd->bdPalette.cpColors[i].rgb8Blue);
 	    }
 	}
 #   endif

@@ -1,71 +1,120 @@
 CC=@CC@
 
 WFLAGS=	-Wall			\
+	-Wextra			\
+	-Winit-self		\
 	-pedantic		\
 	-Wpointer-arith		\
+	-Wno-format-y2k		\
 	-Wstrict-prototypes	\
 	-Wmissing-declarations	\
+	-Wmissing-prototypes	\
 	-Wnested-externs	\
-	-Wshadow		\
-	-Wmissing-prototypes
+	-Wuninitialized		\
+	-Wundef			\
+	-Wwrite-strings		\
+	-Wold-style-definition	\
+	-Wno-missing-field-initializers	\
+	-Wredundant-decls	\
+	-Wno-unused-parameter	\
+	-Wno-sign-compare
 
-CFLAGS=				\
-	    @CFLAGS@ 		\
+INCLUDES=			\
 	    -I.			\
+	    -I../textEncoding	\
 	    -I../appUtil	\
 	    -I../include
 
-#CFLAGS	= $(WFLAGS) -g -O2 -I. -I../appUtil -I../include
+CFLAGS=				\
+	    @CFLAGS@ 		\
+	    $(INCLUDES)
 
-# 17 lines
+#CFLAGS	= $(WFLAGS) -g -O2 $(INCLUDES)
+
+# 17!!obs
 OBS	=	\
 		indword.o\
 		indutil.o\
+		indSpellChecker.o\
+		indSetupIndChecker.o\
+		indScanStream.o\
 		indscan.o\
 		indrenum.o\
 		indnode.o\
 		indmini.o\
-		indlist.o\
 		indlink.o\
-		inditem.o\
 		indind.o\
+		indGuessList.o\
 		indguess.o\
 		indfront.o\
-		inddeb.o\
-		indScanStream.o\
-		indAffix.o
+		inddeb.o
 
 LIB=	../lib/ind.a
 
 $(LIB):	$(OBS)
 	ar r $@ $(OBS) && @RANLIB@ $@
 
-# deps -I. -I../appUtil -I../include
+duplicates:
+	nm *.o | grep -w [Tt] | \
+	while read addr t name; do echo $$name; done | sort | uniq -c | sort -n
+
+includes:
+	includes.sh indConfig.h $(INCLUDES)
+
+# deps -I. -I../textEncoding -I../appUtil -I../include
 ######################################## !! sh
 
-indAffix.o: \
-    indAffix.c \
-    ../include/charnames.h \
-    ../include/appDebugon.h \
-    ../include/appDebug.h \
-    indAffix.h
+indGuessList.o: \
+    indGuessList.c \
+    indConfig.h \
+    indGuessList.h \
+    ../include/appDebugoff.h \
+    ../include/appDebug.h
 
 indScanStream.o: \
     indScanStream.c \
     indConfig.h \
+    ../textEncoding/ucd.h \
     indScanStream.h \
     ../appUtil/sioGeneral.h \
     ind.h \
-    ../include/charnames.h \
+    indSpellChecker.h \
+    indGuessList.h \
+    ../appUtil/utilMemoryBuffer.h \
     ../include/appDebugon.h \
     ../include/appDebug.h
+
+indSetupIndChecker.o: \
+    indSetupIndChecker.c \
+    ../include/appDebugon.h \
+    ../include/appDebug.h \
+    ../appUtil/appSystem.h \
+    ../appUtil/utilMemoryBuffer.h \
+    ../appUtil/sioFileio.h \
+    ../appUtil/utilMemoryBuffer.h \
+    ../appUtil/sioGeneral.h \
+    indSpellChecker.h \
+    indGuessList.h \
+    ind.h \
+    ../appUtil/sioGeneral.h
+
+indSpellChecker.o: \
+    indSpellChecker.c \
+    ../include/appDebugon.h \
+    ../include/appDebug.h \
+    indSpellChecker.h \
+    indGuessList.h \
+    ../appUtil/utilMemoryBuffer.h
 
 inddeb.o: \
     inddeb.c \
     indConfig.h \
     indlocal.h \
     ind.h \
-    ../appUtil/utilEndian.h \
+    ../appUtil/sioGeneral.h \
+    indSpellChecker.h \
+    indGuessList.h \
+    ../appUtil/utilMemoryBuffer.h \
     ../include/appDebugoff.h \
     ../include/appDebug.h
 
@@ -73,8 +122,12 @@ indfront.o: \
     indfront.c \
     indConfig.h \
     ind.h \
+    ../appUtil/sioGeneral.h \
+    indSpellChecker.h \
+    indGuessList.h \
+    ../appUtil/utilMemoryBuffer.h \
+    ../textEncoding/uniUtf8.h \
     indlocal.h \
-    ../appUtil/utilEndian.h \
     ../include/appDebugon.h \
     ../include/appDebug.h
 
@@ -83,8 +136,11 @@ indguess.o: \
     indConfig.h \
     indlocal.h \
     ind.h \
-    ../appUtil/utilEndian.h \
-    ../include/charnames.h \
+    ../appUtil/sioGeneral.h \
+    indSpellChecker.h \
+    indGuessList.h \
+    ../appUtil/utilMemoryBuffer.h \
+    ../textEncoding/ucd.h \
     ../include/appDebugoff.h \
     ../include/appDebug.h
 
@@ -93,33 +149,24 @@ indind.o: \
     indConfig.h \
     indlocal.h \
     ind.h \
-    ../appUtil/utilEndian.h \
+    ../appUtil/sioGeneral.h \
+    indSpellChecker.h \
+    indGuessList.h \
+    ../appUtil/utilMemoryBuffer.h \
     ../include/appDebugon.h \
-    ../include/appDebug.h
-
-inditem.o: \
-    inditem.c \
-    indConfig.h \
-    indlocal.h \
-    ind.h \
-    ../appUtil/utilEndian.h \
-    ../include/appDebugoff.h \
-    ../include/appDebug.h
+    ../include/appDebug.h \
+    ../appUtil/utilEndian.h
 
 indlink.o: \
     indlink.c \
     indConfig.h \
     indlocal.h \
     ind.h \
-    ../appUtil/utilEndian.h \
-    ../include/appDebugoff.h \
-    ../include/appDebug.h
-
-indlist.o: \
-    indlist.c \
-    indConfig.h \
-    ind.h \
-    ../include/appDebugoff.h \
+    ../appUtil/sioGeneral.h \
+    indSpellChecker.h \
+    indGuessList.h \
+    ../appUtil/utilMemoryBuffer.h \
+    ../include/appDebugon.h \
     ../include/appDebug.h
 
 indmini.o: \
@@ -127,15 +174,24 @@ indmini.o: \
     indConfig.h \
     indlocal.h \
     ind.h \
-    ../appUtil/utilEndian.h
+    ../appUtil/sioGeneral.h \
+    indSpellChecker.h \
+    indGuessList.h \
+    ../appUtil/utilMemoryBuffer.h \
+    ../include/appDebugon.h \
+    ../include/appDebug.h
 
 indnode.o: \
     indnode.c \
     indConfig.h \
+    ../textEncoding/uniUtf8.h \
     indlocal.h \
     ind.h \
-    ../appUtil/utilEndian.h \
-    ../include/appDebugoff.h \
+    ../appUtil/sioGeneral.h \
+    indSpellChecker.h \
+    indGuessList.h \
+    ../appUtil/utilMemoryBuffer.h \
+    ../include/appDebugon.h \
     ../include/appDebug.h
 
 indrenum.o: \
@@ -143,18 +199,22 @@ indrenum.o: \
     indConfig.h \
     indlocal.h \
     ind.h \
-    ../appUtil/utilEndian.h \
+    ../appUtil/sioGeneral.h \
+    indSpellChecker.h \
+    indGuessList.h \
+    ../appUtil/utilMemoryBuffer.h \
     ../include/appDebugoff.h \
     ../include/appDebug.h
 
 indscan.o: \
     indscan.c \
     indConfig.h \
-    ../include/charnames.h \
     indlocal.h \
     ind.h \
-    ../appUtil/utilEndian.h \
-    ../appUtil/utilFontEncoding.h \
+    ../appUtil/sioGeneral.h \
+    indSpellChecker.h \
+    indGuessList.h \
+    ../appUtil/utilMemoryBuffer.h \
     ../include/appDebugon.h \
     ../include/appDebug.h
 
@@ -162,6 +222,10 @@ indutil.o: \
     indutil.c \
     indConfig.h \
     ind.h \
+    ../appUtil/sioGeneral.h \
+    indSpellChecker.h \
+    indGuessList.h \
+    ../appUtil/utilMemoryBuffer.h \
     ../include/appDebugon.h \
     ../include/appDebug.h
 
@@ -169,9 +233,13 @@ indword.o: \
     indword.c \
     indConfig.h \
     ind.h \
+    ../appUtil/sioGeneral.h \
+    indSpellChecker.h \
+    indGuessList.h \
+    ../appUtil/utilMemoryBuffer.h \
+    ../textEncoding/uniUtf8.h \
+    ../textEncoding/ucd.h \
     indlocal.h \
-    ../appUtil/utilEndian.h \
-    ../include/charnames.h \
     ../include/appDebugon.h \
     ../include/appDebug.h
 

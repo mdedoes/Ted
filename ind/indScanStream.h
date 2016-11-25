@@ -2,7 +2,7 @@
 #   define	IND_SCAN_STREAM_H
 
 #   include	<sioGeneral.h>
-#   include	<ind.h>
+#   include	"ind.h"
 
 /************************************************************************/
 /*									*/

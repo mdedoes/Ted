@@ -3,169 +3,222 @@
 #   include	<stdlib.h>
 #   include	<stdio.h>
 
-#   include	"appFrame.h"
+#   include	"guiWidgets.h"
+
+#   include	<appDebugon.h>
+#   include	<uniUtf8.h>
 
 #   ifdef USE_MOTIF
 
 #   include	<X11/Xatom.h>
 #   include	<X11/keysym.h>
 
-#   include	<charnames.h>
-#   include	<appDebugon.h>
-
-		/* old typo */
-#   ifndef	XK_Greek_IOTAdieresis
-#	define	XK_Greek_IOTAdieresis	XK_Greek_IOTAdiaeresis
-#   endif
-
-static int appGuiKeysymCludge(		unsigned char *		buf,
-					APP_KEY_VALUE		key )
+static void appGuiDebugKey(	const char *		how,
+				XKeyPressedEvent *	keyEvent,
+				APP_KEY_VALUE		keysym,
+				unsigned char *		b )
     {
-#   ifdef XK_EuroSign
-    if  ( key == XK_EuroSign )
-	{ buf[0]= ISO15_Euro; buf[1]= '\0'; return 1; }
-#   endif
+    const char *	keyString= XKeysymToString( keysym );
+    int			state= keyEvent->state;
 
-    /*  Latin 2  */
-    if  ( ( key & 0xffffff00 ) == 0x100 )
-	{ buf[0]= key & 0xff; buf[1]= '\0'; return 1; }
+    if  ( ! keyString )
+	{ keyString= "<Unknown>";	}
 
-    /*  Greek  */
-    if  ( ( key & 0xffffff00 ) == 0x700 )
+    appDebug( "KEY: %s (%s%s%s%s%s%s%s%s<Key>%s): ",
+		APP_X11EventNames[keyEvent->type],
+		(state&KEY_SHIFT_MASK)?"Shift":"",
+		(state&KEY_CONTROL_MASK)?"Ctrl":"",
+		(state&LockMask)?"Lock":"",
+		(state&Mod1Mask)?"Mod1":"",
+		(state&Mod2Mask)?"Mod2":"",
+		(state&Mod3Mask)?"Mod3":"",
+		(state&Mod4Mask)?"Mod4":"",
+		(state&Mod5Mask)?"Mod5":"",
+		keyString );
+
+    if  ( b && b[0] )
+	{ appDebug( "XLookup%s -> \"%s\" (0x%02x)\n", how, b, b[0] );	}
+    else{ appDebug( "XLookup%s -|\n", how );				}
+    }
+
+static void appGuiHandleKeysym(		DocumentWidget *	dw,
+					unsigned char *		scratch,
+					APP_KEY_VALUE		keysym,
+					int			state )
+    {
+    if  ( keysym != 0			&&
+	  ( keysym & 0xff00 ) != 0xff00 )
 	{
-	if  ( key >= 0xc1 )
-	    { buf[0]= key & 0xff; buf[1]= '\0'; return 1; }
+	int	unicode= appKeysymX11ToUnicode( keysym );
 
-	switch( key )
+	if  ( unicode >= 0 )
 	    {
-	    case XK_Greek_ALPHAaccent:
-		 buf[0]= ISO7_Alphatonos; buf[1]= '\0'; return 1;
-	    case XK_Greek_EPSILONaccent:
-		 buf[0]= ISO7_Epsilontonos; buf[1]= '\0'; return 1;
-	    case XK_Greek_ETAaccent:
-		 buf[0]= ISO7_Etatonos; buf[1]= '\0'; return 1;
-	    case XK_Greek_IOTAaccent:
-		 buf[0]= ISO7_Iotatonos; buf[1]= '\0'; return 1;
-	    case XK_Greek_IOTAdieresis:
-		 buf[0]= ISO7_Iotadieresis; buf[1]= '\0'; return 1;
-	    case XK_Greek_OMICRONaccent:
-		 buf[0]= ISO7_Omicrontonos; buf[1]= '\0'; return 1;
-	    case XK_Greek_UPSILONaccent:
-		 buf[0]= ISO7_Upsilontonos; buf[1]= '\0'; return 1;
-	    case XK_Greek_UPSILONdieresis:
-		 buf[0]= ISO7_Upsilondieresis; buf[1]= '\0'; return 1;
-	    case XK_Greek_OMEGAaccent:
-		 buf[0]= ISO7_Omegatonos; buf[1]= '\0'; return 1;
-
-	    case XK_Greek_accentdieresis:
-		 buf[0]= ISO7_dieresistonos; buf[1]= '\0'; return 1;
-
-	    case XK_Greek_alphaaccent:
-		 buf[0]= ISO7_alphatonos; buf[1]= '\0'; return 1;
-	    case XK_Greek_epsilonaccent:
-		 buf[0]= ISO7_epsilontonos; buf[1]= '\0'; return 1;
-	    case XK_Greek_etaaccent:
-		 buf[0]= ISO7_etatonos; buf[1]= '\0'; return 1;
-	    case XK_Greek_iotaaccent:
-		 buf[0]= ISO7_iotatonos; buf[1]= '\0'; return 1;
-	    case XK_Greek_iotadieresis:
-		 buf[0]= ISO7_iotadieresis; buf[1]= '\0'; return 1;
-	    case XK_Greek_iotaaccentdieresis:
-		 buf[0]= ISO7_iotadieresistonos; buf[1]= '\0'; return 1;
-	    case XK_Greek_omicronaccent:
-		 buf[0]= ISO7_omicrontonos; buf[1]= '\0'; return 1;
-	    case XK_Greek_upsilonaccent:
-		 buf[0]= ISO7_upsilontonos; buf[1]= '\0'; return 1;
-	    case XK_Greek_upsilondieresis:
-		 buf[0]= ISO7_upsilondieresis; buf[1]= '\0'; return 1;
-	    case XK_Greek_upsilonaccentdieresis:
-		 buf[0]= ISO7_upsilondieresistonos; buf[1]= '\0'; return 1;
-	    case XK_Greek_omegaaccent:
-		 buf[0]= ISO7_omegatonos; buf[1]= '\0'; return 1;
-	    default:
-		break;
+	    int	step= uniPutUtf8( scratch, unicode );
+	    if  ( step < 1 )
+		{ LLDEB(unicode,step);	}
+	    else{
+		scratch[step]= '\0';
+		(*dw->dwGotString)( dw->dwOwner, (char *)scratch, step );
+		return;
+		}
 	    }
 	}
 
-    return 0;
+    (*dw->dwGotKey)( dw->dwOwner, keysym, state );
+
+    return;
     }
 
-void appGuiGetStringFromKeyboardEvent(	APP_INPUT_CONTEXT	ic,
-					APP_WIDGET		w,
-					APP_EVENT *		event,
-					int *			pGotString,
-					int *			pGotKey,
-					unsigned int *		pState,
-					unsigned char *		buf,
-					int			capacity,
-					APP_KEY_VALUE *		pKey )
+static APP_EVENT_HANDLER_H( appKeyPressed, w, voiddw, event )
     {
-    int			gotString;
-    XKeyPressedEvent *	keyEvent= &(event->xkey);
+    DocumentWidget *		dw= (DocumentWidget *)voiddw;
+
+    APP_KEY_VALUE		keysym;
+    int				gotString;
+    XKeyPressedEvent *		keyEvent= &(event->xkey);
+
+    unsigned char		scratch[12+1];
+
+    static int			debugKeys= 0;
+
+    if  ( debugKeys == 0 )
+	{
+	if  ( getenv( "TED_DEBUG_KEYS" ) )
+	    { debugKeys=  1;	}
+	else{ debugKeys= -1;	}
+	}
 
     if  ( event->type != KeyPress )
-	{ LLDEB(event->type,KeyPress); *pGotString= 0; return;	}
+	{ LLDEB(event->type,KeyPress); return;	}
 
-    if  ( ic )
+    keysym= 0;
+    scratch[0]= '\0';
+
+    if  ( dw->dwInputContext )
 	{
 	Status	status;
 
-	gotString= XmbLookupString( ic, keyEvent, (char *)buf, capacity- 1,
-							    pKey, &status );
+	gotString= XmbLookupString( dw->dwInputContext, keyEvent,
+				(char *)scratch, sizeof(scratch)- 1,
+				&keysym, &status );
 	switch( status )
 	    {
 	    case XBufferOverflow:
-		LDEB(status);
-		*pGotString= 0;
-		*pGotKey= 0;
-		return;
-
+		LSDEB(status,"XBufferOverflow"); return;
 	    case XLookupNone:
-		*pGotString= 0;
-		*pGotKey= 0;
-		return;
-
-	    case XLookupBoth:
-		buf[gotString]= '\0';
-		*pGotString= gotString;
-		*pGotKey= 1;
-		*pState= keyEvent->state;
-		return;
-
+		LSDEB(status,"XLookupNone"); return;
 	    case XLookupChars:
-		buf[gotString]= '\0';
-		*pGotString= gotString;
-		*pGotKey= 0;
-		*pState= keyEvent->state;
-		return;
+		LSDEB(status,"XLookupChars"); return;
+	    default:
+		LSDEB(status,"default"); return;
 
 	    case XLookupKeySym:
-		*pGotString= 0;
-		*pGotKey= 1;
-		*pState= keyEvent->state;
-
-		if  ( appGuiKeysymCludge( buf, *pKey ) )
-		    { *pGotString= 1; }
-
+	    case XLookupBoth:
+		scratch[0]= '\0';
+		appGuiHandleKeysym( dw, scratch, keysym, keyEvent->state );
+		if  ( debugKeys > 0 )
+		    {
+		    appGuiDebugKey( status==XLookupBoth?"Both":"KeySym",
+						keyEvent, keysym, scratch );
+		    }
 		return;
 	    }
 	}
     else{
-	gotString= XLookupString( keyEvent, (char *)buf, capacity- 1,
-					    pKey, (XComposeStatus *)0 );
+	gotString= XLookupString( keyEvent,
+				(char *)scratch, sizeof(scratch)- 1,
+				&keysym, (XComposeStatus *)0 );
 
-	if  ( gotString > 0 )
-	    { buf[gotString]= '\0';	}
-	*pGotString= gotString;
-	*pGotKey= 1;
-	*pState= keyEvent->state;
-
-	if  ( ! gotString && appGuiKeysymCludge( buf, *pKey ) )
-	    { *pGotString= 1; }
+	scratch[0]= '\0';
+	appGuiHandleKeysym( dw, scratch, keysym, keyEvent->state );
+	if  ( debugKeys > 0 )
+	    { appGuiDebugKey( ":NoIm", keyEvent, keysym, scratch );	}
 
 	return;
 	}
 
+    }
+
+/************************************************************************/
+/*									*/
+/*  Set an old-fashined X11 Input style for accented characters etc.	*/
+/*									*/
+/************************************************************************/
+
+static XIMStyle	appXimPreferences[]=
+    {
+    XIMPreeditCallbacks,
+    XIMPreeditPosition,
+    XIMPreeditArea,
+    XIMPreeditNothing,
+    XIMStatusCallbacks,
+    XIMStatusArea,
+    XIMStatusNothing,
+    };
+
+void appDocumentSetInputContext(	APP_INPUT_METHOD	im,
+					DocumentWidget *	dw )
+    {
+    XtAddEventHandler( dw->dwWidget, KeyPressMask, False,
+						appKeyPressed, (void *)dw );
+
+    if  ( im )
+	{
+	XIMStyles *	availableStyles= (XIMStyles *)0;
+	XIMStyle	supportedStyles;
+	XIMStyle	likedStyle;
+	int		style;
+
+	XGetIMValues( im,
+		XNQueryInputStyle, &availableStyles,
+		NULL );
+
+	supportedStyles=	XIMPreeditArea		|
+				XIMPreeditNothing	|
+				XIMPreeditNone		|
+				XIMStatusArea		|
+				XIMStatusNothing	|
+				XIMStatusNone		;
+
+	likedStyle= 0;
+	for ( style= 0; style < availableStyles->count_styles; style++ )
+	    {
+	    XIMStyle	foundStyle= availableStyles->supported_styles[style];
+	    unsigned	j;
+
+	    if  ( ( supportedStyles & foundStyle ) != foundStyle )
+		{ continue;	}
+
+	    if  ( ! likedStyle )
+		{ likedStyle= foundStyle; continue;	}
+
+	    for ( j= 0; j < sizeof(appXimPreferences)/sizeof(XIMStyle); j++ )
+		{
+		if  (   ( foundStyle & appXimPreferences[j] )	&&
+		      ! ( likedStyle & appXimPreferences[j] )	)
+		    { likedStyle= foundStyle; break;	}
+		}
+	    }
+
+	if  ( likedStyle )
+	    {
+	    dw->dwInputContext= XCreateIC( im,
+		XNClientWindow,		XtWindow( dw->dwWidget ),
+		XNInputStyle,		likedStyle,
+		/*
+		XNPeeditAttributes,	attributeList,
+		XNStatusAttributes,	attributeList,
+		*/
+		NULL );
+	    }
+	else{ dw->dwInputContext= (XIC)0;	}
+
+	if  ( availableStyles )
+	    { XFree( availableStyles );	}
+	}
+    else{ dw->dwInputContext= (XIC)0;	}
+
+    return;
     }
 
 #   endif

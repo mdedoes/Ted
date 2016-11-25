@@ -1,17 +1,23 @@
 #   include	"indConfig.h"
 
+#   include	<stdlib.h>
+
 #   include	"indlocal.h"
+#   include	<appDebugon.h>
 
 /*  #define	LOG(x) x */
 #define	LOG(x)
 
 /************************************************************************/
+/*									*/
 /*  Minimise an index.							*/
 /*  For the algorithm:							*/
 /*  AHO, Alfred V. & Ravi SETHI & Jeffrey D. ULLMAN, "Compilers		*/
 /*	Principles, Techniques, and Tools", Addison- Wesley, Reading MA,*/
 /*	1986, ISBN 0-201-10194-7. p 142.				*/
+/*									*/
 /************************************************************************/
+
 static int	indPartition(	IND *	ind,
 				int *	clas,
 				int *	part,
@@ -23,7 +29,7 @@ static int	indPartition(	IND *	ind,
     int	*	oldGend= (int *)malloc( gend[ngroup-1]* sizeof( int ) );
 
     if  ( ! oldGend )
-	{ LOG(appDebug("nomem %s(%d)\n", __FILE__, __LINE__ )); return -1; }
+	{ XDEB(oldGend); return -1; }
 
     for (;;)
 	{
@@ -110,15 +116,6 @@ static int	indPartition(	IND *	ind,
 			    }
 			}
 		    }
-#		ifdef APP_DEBUG
-		appDebug( "\tGROUP %5d.%5d: %6d ... %6d\n",
-		    group, ngroup, ff, first+ 1 );
-		appDebug( "\t\t" );
-		while( ff <= first )
-		    { appDebug( " %4d", part[ff++] );	}
-		appDebug( "\n" );
-#		endif
-
 		gend[ngroup++]= ++first;
 		}
 	    }
@@ -135,10 +132,8 @@ static int	indPartition(	IND *	ind,
 	    first= past;
 	    past= gend[group];
 
-#	    ifdef APP_DEBUG
-	    appDebug( "TURN %3d CLASS %6d: %6d..%6d (%6d members)\n",
-		    turn, group, first, past, past- first );
-#	    endif
+	    LOG(appDebug( "TURN %3d CLASS %6d: %6d..%6d (%6d members)\n",
+		    turn, group, first, past, past- first ) );
 
 	    while( first < past )
 		{ clas[part[first++]]= group; }
@@ -146,118 +141,6 @@ static int	indPartition(	IND *	ind,
 
 	turn++;
 	}
-    }
-
-/************************************************************************/
-/*  Compact the classification of states in an automaton.		*/
-/*  The result is a refinement of the classification of the accepting	*/
-/*  states.								*/
-/************************************************************************/
-static IND *	INDminiInd;
-
-static int indItsCmp(	const void *	vtn1,
-			const void *	vtn2 )
-    {
-    int		nit1;
-    int		nit2;
-    int		nit;
-    int		i;
-    int *	it1;
-    int *	it2;
-
-    const int *	tn1= (const int *)vtn1;
-    const int *	tn2= (const int *)vtn2;
-
-    (void)indITget( INDminiInd, *tn1, &nit1, &it1 );
-    (void)indITget( INDminiInd, *tn2, &nit2, &it2 );
-
-    if  ( nit1 > nit2 )
-	{ nit= nit2;	}
-    else{ nit= nit1;	}
-
-    for ( i= 0; i < nit; i++ )
-	{
-	if  ( it1[i] > it2[i] )
-	    { return  1;	}
-	if  ( it1[i] < it2[i] )
-	    { return -1;	}
-	}
-
-    if  ( nit1 > nit2 )
-	{ return  1;	}
-    if  ( nit1 < nit2 )
-        { return -1;	}
-
-    return 0;
-    }
-
-static int indClassify(	IND *	ind,
-			int *	clas,
-			int *	part,
-			int *	pngroup,
-			int *	gend )
-    {
-    int		ngroup= *pngroup;
-    int	*	oldGend= (int *)malloc( gend[ngroup-1]* sizeof( int ) );
-
-    int		oldNgroup;
-    int		group;
-    int		first, past;
-    int		i;
-
-    if  ( ! oldGend )
-	{ LOG(appDebug("nomem %s(%d)\n", __FILE__, __LINE__ )); return -1; }
-
-    INDminiInd= ind;
-
-    for ( group= 0; group < ngroup; group++ )
-	{ oldGend[group]= gend[group]; }
-    oldNgroup= ngroup;
-    ngroup= 0;
-
-    past= 0;
-    for ( group= 0; group < oldNgroup; group++ )
-	{
-	first= past; past= oldGend[group];
-LOG(appDebug("GROUP %3d: %6d .. %6d: %4d MEMBERS\n",
-	    group, first, past, past- first ));
-	qsort( part+ first, past- first, sizeof(int), indItsCmp );
-	for ( i= first; i < past- 1; i++ )
-	    {
-	    int	ff= i+ 1;
-
-	    int	res= indItsCmp( part+ first, part+ ff );
-	    if  ( res > 0 )
-		{
-		free( (char *)oldGend );
-		LOG(appDebug("Chaos: %d after %d\n", first, ff ));
-		return -1;
-		}
-	    if  ( res < 0 )
-		{
-LOG(appDebug("   BREAK AT %6d\n", ff ));
-		gend[ngroup++]= first= ff;
-		}
-	    }
-	gend[ngroup++]= past;
-	}
-
-    past= 0;
-    for ( group= 0; group < ngroup; group++ )
-	{
-	first= past;
-	past= gend[group];
-
-	LOG(appDebug( "ITEMS: CLASS %6d: %6d..%6d (%6d members)\n",
-		group, first, past, past- first ));
-
-	while( first < past )
-	    { clas[part[first++]]= group; }
-	}
-
-    *pngroup= ngroup;
-    free( (char *)oldGend );
-    return 0;
     }
 
 /************************************************************************/
@@ -273,6 +156,7 @@ LOG(appDebug("   BREAK AT %6d\n", ff ));
 /*  clas)	Is the array with the classification of the states in	*/
 /*		the original automaton.					*/
 /************************************************************************/
+
 IND *	indINDmini( IND *	ind )
     {
     TrieNode *	node;
@@ -282,44 +166,36 @@ IND *	indINDmini( IND *	ind )
     int *	gend= (int *)0;
     int		ngroup;
     int		l, r;
-    int		first, ff, past;
+    int		first, past;
 
     IND *	rval= indINDmake( 0 );
     if  ( ! rval )
-	{ LOG(appDebug("indINDmake\n")); return rval;	}
+	{ XDEB(rval); return rval;	}
 
-#   ifdef APP_DEBUG
-    indINDprint( ind );
-#   endif
+    LOG(indINDprint( ind ));
 
-    part= (int *)malloc( ind->ind_nnode* sizeof(int) );
+    part= (int *)malloc( ind->indNodeCount* sizeof(int) );
     if  ( ! part )
 	{ LOG(appDebug("nomem %s(%d)\n", __FILE__, __LINE__ )); goto failure; }
-    clas= (int *)malloc( ind->ind_nnode* sizeof(int) );
+    clas= (int *)malloc( ind->indNodeCount* sizeof(int) );
     if  ( ! clas )
 	{ LOG(appDebug("nomem %s(%d)\n", __FILE__, __LINE__ )); goto failure; }
-    gend= (int *)malloc( ind->ind_nnode* sizeof(int) );
+    gend= (int *)malloc( ind->indNodeCount* sizeof(int) );
     if  ( ! gend )
 	{ LOG(appDebug("nomem %s(%d)\n", __FILE__, __LINE__ )); goto failure; }
 
     /********************/
     /*  Step 1		*/
     /********************/
-    l= 0; r= ind->ind_nnode;
-    for ( tn= 0; tn < ind->ind_nnode; tn++ )
+    l= 0; r= ind->indNodeCount;
+    for ( tn= 0; tn < ind->indNodeCount; tn++ )
 	{
 	node= NODE(ind,tn);
 	if  ( node->tn_flags & TNfACCEPTS )
 	    { clas[tn]= 0; part[l++]= tn;	}
 	else{ clas[tn]= 1; part[--r]= tn;	}
 	}
-    ngroup= 2; gend[0]= l; gend[1]= ind->ind_nnode;
-
-    /********************************************/
-    /*  Classify according to sets of items	*/
-    /********************************************/
-    if  ( indClassify( ind, clas, part, &ngroup, gend ) )
-	{ LOG(appDebug("Classify\n")); goto failure;	}
+    ngroup= 2; gend[0]= l; gend[1]= ind->indNodeCount;
 
     /********************/
     /*  Step 2,3	*/
@@ -327,7 +203,7 @@ IND *	indINDmini( IND *	ind )
     if  ( indPartition( ind, clas, part, &ngroup, gend ) )
 	{ LOG(appDebug("Partition\n")); goto failure;	}
 
-#   ifdef APP_DEBUG
+#   if 0
     l= 0; past= 0;
     for ( r= 0; r < ngroup; r++ )
 	{
@@ -346,7 +222,7 @@ IND *	indINDmini( IND *	ind )
     l= 0; past= 0;
     for ( r= 0; r < ngroup; r++ )
 	{
-	ff= first= past; past= gend[r];
+	first= past; past= gend[r];
 
 	while( first < past )
 	    {
@@ -374,15 +250,14 @@ IND *	indINDmini( IND *	ind )
 	    first++;
 	    }
 	if  ( first < past )
-	    { gend[l++]= gend[r];			}
+	    { gend[l++]= gend[r];				}
 	else{ LOG(appDebug( "GROUP %6d IS DEAD\n", r ));	}
 	}
     ngroup= l;
 
-    /****************************/
-    /*  Allocate nodes and	*/
-    /*  renumber groups.	*/
-    /****************************/
+    /********************************************/
+    /*  Allocate nodes and renumber groups.	*/
+    /********************************************/
     past= 0;
     for ( r= 0; r < ngroup; r++ )
 	{
@@ -391,7 +266,7 @@ IND *	indINDmini( IND *	ind )
 
 	l= indTNmake( rval );
 	if  ( l < 0 )
-	    { LOG(appDebug("indTNmake\n")); goto failure;	}
+	    { LDEB(l); goto failure;	}
 
 	while( first < past )
 	    { clas[part[first++]]= l; }
@@ -399,16 +274,14 @@ IND *	indINDmini( IND *	ind )
 
     LOG(appDebug( "%6d GROUPS\n", ngroup ));
 
-    /****************************/
-    /*  Set connections.	*/
-    /*  Set Flags.		*/
-    /****************************/
+    /********************************************/
+    /*  Set connections. Set Flags.		*/
+    /********************************************/
     rval->ind_start= clas[ind->ind_start];
     past= 0;
     for ( r= 0; r < ngroup; r++ )
 	{
 	int		transitions;
-	int		items;
 	TrieNode *	newn;
 
 	first= past; past= gend[r];
@@ -421,7 +294,7 @@ IND *	indINDmini( IND *	ind )
 	    {
 	    transitions= indTLalloc( rval, -1, node->tn_ntrans );
 	    if  ( transitions < 0 )
-		{ LOG(appDebug("indTLalloc\n")); goto failure;	}
+		{ LDEB(transitions); goto failure;	}
 	    for ( l= 0; l < node->tn_ntrans; l++ )
 		{
 		TrieLink *	link= LINK(ind,node->tn_transitions+ l);
@@ -430,31 +303,14 @@ IND *	indINDmini( IND *	ind )
 		}
 	    }
 	else{ transitions= -1;	}
-	if  ( node->tn_nitem > 0 )
-	    {
-	    int	*	oldit= ITEMS(ind,node->tn_items);
-	    int	*	newit;
-
-	    items= indITalloc( rval, -1, node->tn_nitem );
-	    if  ( items < 0 )
-		{ LOG(appDebug("indITalloc\n")); goto failure;	}
-
-	    newit= ITEMS(rval,items);
-	    for ( l= 0; l < node->tn_nitem; l++ )
-		{ newit[l]= oldit[l]; }
-	    }
-	else{ items= -1;	}
 
 	newn->tn_transitions= transitions;
 	newn->tn_ntrans= node->tn_ntrans;
-	newn->tn_items= items;
-	newn->tn_nitem= node->tn_nitem;
 	newn->tn_flags |= node->tn_flags;
+	newn->tn_flags |= TNfREAD_ONLY;
 	}
 
-#   ifdef APP_DEBUG
-    indINDprint( rval );
-#   endif
+    LOG(indINDprint( rval ));
 
     free( (char *)part );
     free( (char *)clas );

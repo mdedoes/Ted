@@ -65,11 +65,15 @@ extern 		int	utilGetLeInt16(FILE *);
 extern		long	utilGetLeInt32(FILE *);
 extern unsigned int	utilGetLeUint16(FILE *);
 extern unsigned long	utilGetLeUint32(FILE *);
+extern double		utilGetLeDouble64(FILE *);
+extern float		utilGetLeFloat32(FILE *);
 
 extern 		int	utilGetBeInt16(FILE *);
 extern		long	utilGetBeInt32(FILE *);
 extern unsigned int	utilGetBeUint16(FILE *);
 extern unsigned long	utilGetBeUint32(FILE *);
+extern double		utilGetBeDouble64(FILE *);
+extern float		utilGetBeFloat32(FILE *);
 
 extern void	utilPutLeInt16(int, FILE *);
 extern void	utilPutLeInt32(long, FILE *);
@@ -95,5 +99,10 @@ extern void utilEndianStoreBeInt32( long	l, unsigned char *	b );
 extern void utilEndianStoreLeInt32( long	l, unsigned char *	b );
 extern void utilEndianStoreBeInt16( int		i, unsigned char *	b );
 extern void utilEndianStoreLeInt16( int		i, unsigned char *	b );
+
+extern void utilEndianStoreBeUint32( unsigned long l, unsigned char *	b );
+extern void utilEndianStoreLeUint32( unsigned long l, unsigned char *	b );
+extern void utilEndianStoreBeUint16( unsigned int i, unsigned char *	b );
+extern void utilEndianStoreLeUint16( unsigned int i, unsigned char *	b );
 
 #   endif	/* UTIL_ENDIAN_H */

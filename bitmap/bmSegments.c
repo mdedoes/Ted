@@ -1,6 +1,6 @@
 #   include	"bitmapConfig.h"
 
-#   include	<string.h>
+#   include	<stdlib.h>
 #   include	"bmSegments.h"
 #   include	"bmintern.h"
 #   include	<appDebugon.h>
@@ -57,12 +57,12 @@ static int bmRememberSegmentNode(	BitmapSegment *		bs,
     nw[bs->bsNodeCount++]= sn;
 
     if  ( bs->bsNodeCount <= 1 )
-	{ bs->bsY0= bs->bsY1= row; }
+	{ bs->bsRect.drY0= bs->bsRect.drY1= row; }
     else{
-	if  ( bs->bsY0 > row	)
-	    { bs->bsY0 = row;	}
-	if  ( bs->bsY1 < row	)
-	    { bs->bsY1 = row;	}
+	if  ( bs->bsRect.drY0 > row	)
+	    { bs->bsRect.drY0 = row;	}
+	if  ( bs->bsRect.drY1 < row	)
+	    { bs->bsRect.drY1 = row;	}
 	}
 
     return 0;
@@ -93,22 +93,22 @@ static int bmRememberSegmentEdge(	BitmapSegment *		bs,
     dr= se->seRuns;
     if  ( bs->bsEdgeCount <= 1 )
 	{
-	bs->bsX0= dr->drX0;
-	bs->bsX1= dr->drXp- 1;
+	bs->bsRect.drX0= dr->drX0;
+	bs->bsRect.drX1= dr->drXp- 1;
 	}
 
     for ( i= 0; i < se->seRunCount; dr++, i++ )
 	{
-	if  ( bs->bsX0 >  dr->drX0	)
-	    { bs->bsX0 =  dr->drX0;	}
-	if  ( bs->bsX1 <  dr->drXp- 1	)
-	    { bs->bsX1 =  dr->drXp- 1;	}
+	if  ( bs->bsRect.drX0 >  dr->drX0	)
+	    { bs->bsRect.drX0 =  dr->drX0;	}
+	if  ( bs->bsRect.drX1 <  dr->drXp- 1	)
+	    { bs->bsRect.drX1 =  dr->drXp- 1;	}
 	}
 
     /*
     appDebug( "........ [%4d..%4d x %4d..%4d]\n",
-					bs->bsX0, bs->bsX1,
-					bs->bsY0, bs->bsY1 );
+					bs->bsRect.drX0, bs->bsRect.drX1,
+					bs->bsRect.drY0, bs->bsRect.drY1 );
     */
 
     return 0;
@@ -274,15 +274,15 @@ static int bmAddRunToSegmentEdge(	BitmapSegment *		bs,
     dr->drXp= xp;
     dr->drRepeatCount= 1;
 
-    if  ( bs->bsX0 >  x0	)
-	{ bs->bsX0 =  x0;	}
-    if  ( bs->bsX1 <  xp- 1	)
-	{ bs->bsX1 =  xp- 1;	}
+    if  ( bs->bsRect.drX0 >  x0	)
+	{ bs->bsRect.drX0 =  x0;	}
+    if  ( bs->bsRect.drX1 <  xp- 1	)
+	{ bs->bsRect.drX1 =  xp- 1;	}
 
     /*
     appDebug( "........ [%4d..%4d x %4d..%4d]\n",
-					bs->bsX0, bs->bsX1,
-					bs->bsY0, bs->bsY1 );
+					bs->bsRect.drX0, bs->bsRect.drX1,
+					bs->bsRect.drY0, bs->bsRect.drY1 );
     */
 
     return 0;
@@ -364,7 +364,7 @@ static BitmapSegment * bmNewSegment( void )
 	return (BitmapSegment *)0;
 	}
 
-    bs->bsX0= bs->bsX1= bs->bsY0= bs->bsY1= -1;
+    bs->bsRect.drX0= bs->bsRect.drX1= bs->bsRect.drY0= bs->bsRect.drY1= -1;
 
     bs->bsNodeCount= bs->bsEdgeCount= 0;
 
@@ -1062,8 +1062,8 @@ int bcComponents(	BitmapSegment ***		pSegments,
 	if  ( ! comps[beg].ci_compo )
 	    { continue;	}
 
-	wide= comps[beg].ci_compo->bsX1- comps[beg].ci_compo->bsX0+ 1;
-	high= comps[beg].ci_compo->bsY1- comps[beg].ci_compo->bsY0+ 1;
+	wide= comps[beg].ci_compo->bsRect.drX1- comps[beg].ci_compo->bsRect.drX0+ 1;
+	high= comps[beg].ci_compo->bsRect.drY1- comps[beg].ci_compo->bsRect.drY0+ 1;
 
 	if  ( wide < 5 && high < 5 )
 	    { rejected= 1;	}
@@ -1094,15 +1094,17 @@ int bcComponents(	BitmapSegment ***		pSegments,
     return 0;
 
 failure:
-    for ( beg= 0; beg < nco; beg++ )
-	{ bmFreeSegment( comps[beg].ci_compo ); }
-
     if  ( lu1 )
 	{ free( lu1 );		}
     if  ( lu2 )
 	{ free( lu2 );		}
     if  ( comps )
-	{ free( comps );	}
+	{
+	for ( beg= 0; beg < nco; beg++ )
+	    { bmFreeSegment( comps[beg].ci_compo ); }
+
+	free( comps );
+	}
 
     return -1;
     }
@@ -1119,16 +1121,16 @@ int bmcDrawComponent(	const BitmapSegment *	bs,
 
 #   if 0
     bmDrawBox( buffer, bd,
-	bs->bsX0- col0, row0,
-	bs->bsX1- col0, row0+ bs->bsY1- bs->bsY0,
+	bs->bsRect.drX0- col0, row0,
+	bs->bsRect.drX1- col0, row0+ bs->bsRect.drY1- bs->bsRect.drY0,
 	1, colorEncoding );
     bmDrawLine( buffer, bd,
-	bs->bsX0- col0, row0,
-	bs->bsX1- col0, row0+ bs->bsY1- bs->bsY0,
+	bs->bsRect.drX0- col0, row0,
+	bs->bsRect.drX1- col0, row0+ bs->bsRect.drY1- bs->bsRect.drY0,
 	2 );
     bmDrawLine( buffer, bd,
-	bs->bsX0- col0, row0+ bs->bsY1- bs->bsY0,
-	bs->bsX1- col0, row0,
+	bs->bsRect.drX0- col0, row0+ bs->bsRect.drY1- bs->bsRect.drY0,
+	bs->bsRect.drX1- col0, row0,
 	2 );
 
     return 0;
@@ -1137,7 +1139,7 @@ int bmcDrawComponent(	const BitmapSegment *	bs,
     se= bs->bsEdges;
     for ( i= 0; i < bs->bsEdgeCount; i++, se++ )
 	{
-	int		row= se[0]->seFrom->snY0- bs->bsY0+ row0;
+	int		row= se[0]->seFrom->snY0- bs->bsRect.drY0+ row0;
 	DataRun *	dr= se[0]->seRuns;
 
 	for ( j= 0; j < se[0]->seRunCount; j++, dr++ )
@@ -1163,7 +1165,7 @@ int bmcDrawComponent(	const BitmapSegment *	bs,
 
 int bmComponentBitmap(	unsigned char **		pBuffer,
 			BitmapDescription *		bdout,
-			BitmapSelection *		bsel,
+			DocumentRectangle *		drSel,
 			const BitmapDescription *	bdin,
 			const void *			voidbs )
     {
@@ -1174,9 +1176,9 @@ int bmComponentBitmap(	unsigned char **		pBuffer,
 
     int				colorEncoding= bdin->bdColorEncoding;
 
-    resbd.bdPixelsWide= bs->bsX1- bs->bsX0+ 1;
+    resbd.bdPixelsWide= bs->bsRect.drX1- bs->bsRect.drX0+ 1;
     resbd.bdPixelsWide= ( ( resbd.bdPixelsWide+ byte- 1 )/ byte ) * byte;
-    resbd.bdPixelsHigh= bs->bsY1- bs->bsY0+ 1;
+    resbd.bdPixelsHigh= bs->bsRect.drY1- bs->bsRect.drY0+ 1;
 
     resbd.bdBytesPerRow= resbd.bdPixelsWide/ byte;
 
@@ -1190,7 +1192,7 @@ int bmComponentBitmap(	unsigned char **		pBuffer,
 
 	if  ( bmcDrawComponent(	bs,
 				buffer,
-				bs->bsX0, 0,
+				bs->bsRect.drX0, 0,
 				resbd.bdBytesPerRow,
 				colorEncoding ) )
 	    { free( buffer ); return -1;	}
@@ -1200,10 +1202,7 @@ int bmComponentBitmap(	unsigned char **		pBuffer,
 
     *bdout= resbd;
 
-    bsel->bsX0= bs->bsX0;
-    bsel->bsY0= bs->bsY0;
-    bsel->bsPixelsWide= resbd.bdPixelsWide;
-    bsel->bsPixelsHigh= resbd.bdPixelsHigh;
+    *drSel= bs->bsRect;
 
     return 0;
     }

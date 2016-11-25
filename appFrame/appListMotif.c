@@ -1,19 +1,15 @@
 #   include	"appFrameConfig.h"
 
-#   include	<stdlib.h>
 #   include	<stdio.h>
 
-#   include	"appFrame.h"
-#   include	"appSystem.h"
-#   include	<appGeoString.h>
+#   include	"guiWidgets.h"
+
+#   include	<appDebugon.h>
 
 #   ifdef USE_MOTIF
 
 #   include	<X11/Xatom.h>
-#   include	<Xm/PanedW.h>
 #   include	<Xm/List.h>
-
-#   include	<appDebugon.h>
 
 /************************************************************************/
 /*									*/
@@ -24,7 +20,8 @@
 void appGuiMakeListInColumn(	Widget *		pList,
 				Widget			column,
 				int			visibleItems,
-				XtCallbackProc		callback,
+				APP_LIST_CALLBACK_T	callback,
+				APP_BUTTON_CALLBACK_T	actionCallback,
 				void *			through )
     {
     Widget		list;
@@ -47,7 +44,14 @@ void appGuiMakeListInColumn(	Widget *		pList,
 
     if  ( callback )
 	{
-	XtAddCallback( list, XmNbrowseSelectionCallback, callback, through );
+	XtAddCallback( list, XmNbrowseSelectionCallback,
+						callback, through );
+	}
+
+    if  ( actionCallback )
+	{
+	XtAddCallback( list, XmNdefaultActionCallback,
+						actionCallback, through );
 	}
 
     appMotifTurnOfSashTraversal( column );
@@ -63,16 +67,80 @@ void appGuiEmptyListWidget(	Widget			list )
     return;
     }
 
+void appGuiDeletePositionFromListWidget(	APP_WIDGET	list,
+						int		pos )
+    {
+    XmListDeletePos( list, pos+ 1 );
+    }
+
+void appGuiReplaceValueInListWidget(	APP_WIDGET	list,
+					int		pos,
+					const char *	value )
+    {
+    int *	selected= (int *)0;
+    int		selectedCount= 0;
+    int		selectNew= 0;
+
+    XmString	labelString;
+
+    if  ( XmListGetSelectedPos( list, &selected, &selectedCount ) )
+	{
+	int		i;
+
+	for ( i= 0; i < selectedCount; i++ )
+	    {
+	    if  ( selected[i] == pos+ 1 )
+		{ selectNew= 1; break;	}
+	    }
+	}
+
+    labelString= XmStringCreateLocalized( (char *)value );
+
+    if  ( selectNew )
+	{
+	XmListAddItem( list, labelString, pos+ 1 );	
+	XmListDeselectPos( list, pos+ 1 );
+	}
+    else{ XmListAddItemUnselected( list, labelString, pos+ 1 );	}
+
+    XmStringFree( labelString );
+
+    XmListDeletePos( list, pos+ 2 );
+    }
+
 void appGuiAddValueToListWidget(	Widget		list,
+					int		pos,
 					const char *	value )
     {
     XmString	labelString;
 
     labelString= XmStringCreateLocalized( (char *)value );
 
-    XmListAddItemUnselected( list, labelString, 0 );
+    if  ( pos < 0 )
+	{ XmListAddItemUnselected( list, labelString, 0 );	}
+    else{ XmListAddItemUnselected( list, labelString, pos+ 1 );	}
 
     XmStringFree( labelString );
+
+    return;
+    }
+
+static void appGuiScrollListToPosMotif(		APP_WIDGET	list,
+						int		pp1 )
+    {
+    int		firstVisible;
+    int		nVisible;
+
+    /* If the selected item is not visible, scroll the list */
+    XtVaGetValues( list,
+		XmNtopItemPosition,	&firstVisible,
+		XmNvisibleItemCount,	&nVisible,
+		NULL);
+
+    if  ( pp1 < firstVisible )
+	{ XmListSetPos( list, pp1 );			}
+    if  ( pp1 >= firstVisible+ nVisible )
+	{ XmListSetPos( list, pp1- nVisible+ 1 );	}
 
     return;
     }
@@ -80,7 +148,33 @@ void appGuiAddValueToListWidget(	Widget		list,
 void appGuiSelectPositionInListWidget(		APP_WIDGET	list,
 						int		position )
     {
-    XmListSelectPos( list, position+ 1, False );
+    int		pp1= position+ 1;	/*  Silly Motif counts from 1	*/
+
+    XmListSelectPos( list, pp1, False );
+
+    /* If the selected item is not visible, scroll the list */
+    appGuiScrollListToPosMotif( list, pp1 );
+
+    return;
+    }
+
+void appGuiSelectValueInListWidget(		APP_WIDGET	list,
+						const char *	value )
+    {
+    XmString	labelString;
+    int *	selected= (int *)0;
+    int		selectedCount= 0;
+
+    labelString= XmStringCreateLocalized( (char *)value );
+
+    XmListSelectItem( list, labelString, False );
+
+    XmStringFree( labelString );
+
+    if  ( XmListGetSelectedPos( list, &selected, &selectedCount ) )
+	{
+	appGuiScrollListToPosMotif( list, selected[0] );
+	}
 
     return;
     }

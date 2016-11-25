@@ -8,24 +8,19 @@
 
 #   include	<stddef.h>
 #   include	<stdio.h>
-#   include	<stdlib.h>
-
-#   include	<locale.h>
 
 #   include	"appFrame.h"
+#   include	"guiDrawingWidget.h"
+
+#   include	<appDebugon.h>
 
 #   ifdef USE_MOTIF
 
-#   include	<Xm/ToggleB.h>
-#   include	<Xm/RowColumn.h>
-#   include	<Xm/Protocols.h>
 #   include	<Xm/Form.h>
 #   include	<Xm/ScrolledW.h>
 #   include	<Xm/DrawingA.h>
 #   include	<Xm/PanedW.h>
 #   include	<Xm/ScrollBar.h>
-
-#   include	<appDebugon.h>
 
 /************************************************************************/
 /*									*/
@@ -45,9 +40,8 @@ static void appDocTopConfigure(	APP_WIDGET		w,
     {
     EditDocument *	ed= (EditDocument *)voided;
 
-    if  ( event->type == MapNotify && ed->edShellExtraWidth < 0 )
+    if  ( event->type == MapNotify )
 	{
-	appDocumentCalculateExtraSize( ed );
 	ed->edMapped= 1;
 	}
 
@@ -76,9 +70,11 @@ static void appDocTopConfigure(	APP_WIDGET		w,
 /*									*/
 /************************************************************************/
 
-static int appDocMakeMainWindow(	EditDocument *		ed,
-					EditApplication *	ea )
+static int appDocMakeMainWindow(	EditDocument *		ed )
     {
+    int			rval= 0;
+    EditApplication *	ea= ed->edApplication;
+
     Arg			al[20];
     int			ac;
     Pixmap		pixmap= (Pixmap)0;
@@ -86,22 +82,30 @@ static int appDocMakeMainWindow(	EditDocument *		ed,
 
     Display *		display= XtDisplay( ea->eaToplevel.atTopWidget );
 
-    const char *	fullTitle;
-    const char *	fullIconName;
-
     int			maxWidth= ( 4* ea->eaScreenPixelsWide )/ 5;
     int			maxHeight= ( 4* ea->eaScreenPixelsHigh )/ 5;
+
+    MemoryBuffer	fullTitle;
+    MemoryBuffer	iconName;
+
+    utilInitMemoryBuffer( &fullTitle );
+    utilInitMemoryBuffer( &iconName );
 
     if  ( ea->eaDocumentIcon						&&
 	  appGetImagePixmap( ea, ea->eaDocumentIcon, &pixmap, &mask )	)
 	{ SDEB(ea->eaDocumentIcon); return -1;	}
 
-    if  ( appFormatDocumentTitle( &fullTitle, &fullIconName, ea, ed->edTitle ) )
-	{ SDEB(ed->edTitle); return -1;	}
+    if  ( appFormatDocumentTitle( &fullTitle, &iconName, ea, &(ed->edTitle) ) )
+	{
+	SDEB(utilMemoryBufferGetString(&(ed->edTitle)));
+	rval= -1; goto ready;
+	}
 
     ac= 0;
-    XtSetArg( al[ac], XmNtitle,			fullTitle ); ac++;
-    XtSetArg( al[ac], XmNiconName,		fullIconName ); ac++;
+    XtSetArg( al[ac], XmNtitle,			utilMemoryBufferGetString(
+							&fullTitle ) ); ac++;
+    XtSetArg( al[ac], XmNiconName,		utilMemoryBufferGetString(
+							&iconName ) ); ac++;
     XtSetArg( al[ac], XmNdeleteResponse,	XmDO_NOTHING ); ac++;
     XtSetArg( al[ac], XmNallowShellResize,	True ); ac++;
     XtSetArg( al[ac], XmNuseAsyncGeometry,	True ); ac++;
@@ -145,12 +149,18 @@ static int appDocMakeMainWindow(	EditDocument *		ed,
 
     appDocFillMenu( ed );
 
-    return 0;
+  ready:
+
+    utilCleanMemoryBuffer( &fullTitle );
+    utilCleanMemoryBuffer( &iconName );
+
+    return rval;
     }
 
-static int appDocMakeScrolledWindow(	EditDocument *		ed,
-					EditApplication *	ea )
+static int appDocMakeScrolledWindow(	EditDocument *		ed )
     {
+    EditApplication *	ea= ed->edApplication;
+
     Arg			al[20];
     int			ac= 0;
     
@@ -200,8 +210,6 @@ int appMakeDocumentWidget(	EditApplication *	ea,
     Arg			al[20];
     int			ac= 0;
 
-    APP_WIDGET		form;
-
     Display *		display= XtDisplay( ea->eaToplevel.atTopWidget );
     int			screen= DefaultScreen( display );
     Pixel		blackPixel= BlackPixel( display, screen );
@@ -209,7 +217,7 @@ int appMakeDocumentWidget(	EditApplication *	ea,
     appDocumentRulerWidth( ea, ed );
 
     /*  2  */
-    form= XmCreateForm( ed->edScrolledWindow, WIDGET_NAME, al, ac );
+    ed->edWorkWidget= XmCreateForm( ed->edScrolledWindow, WIDGET_NAME, al, ac );
 
     /*  3  */
     ac= 0;
@@ -222,9 +230,10 @@ int appMakeDocumentWidget(	EditApplication *	ea,
     XtSetArg( al[ac],	XmNrightAttachment,	XmATTACH_FORM ); ac++;
     XtSetArg( al[ac],	XmNrightOffset,		0 ); ac++;
     XtSetArg( al[ac],	XmNbottomAttachment,	XmATTACH_OPPOSITE_FORM ); ac++;
-    XtSetArg( al[ac],	XmNbottomOffset,	-ed->edTopRulerHeightPixels ); ac++;
+    XtSetArg( al[ac],	XmNbottomOffset,	-ed->edTopRulerHighPixels ); ac++;
 
-    ed->edTopRulerWidget= XmCreateDrawingArea( form, WIDGET_NAME, al, ac );
+    ed->edTopRulerWidget=
+		XmCreateDrawingArea( ed->edWorkWidget, WIDGET_NAME, al, ac );
 
     /*  4  */
     ac= 0;
@@ -233,13 +242,14 @@ int appMakeDocumentWidget(	EditApplication *	ea,
     XtSetArg( al[ac],	XmNleftAttachment,	XmATTACH_FORM ); ac++;
     XtSetArg( al[ac],	XmNleftOffset,		0 ); ac++;
     XtSetArg( al[ac],	XmNtopAttachment,	XmATTACH_OPPOSITE_FORM ); ac++;
-    XtSetArg( al[ac],	XmNtopOffset,		-ed->edBottomRulerHeightPixels ); ac++;
+    XtSetArg( al[ac],	XmNtopOffset,		-ed->edBottomRulerHighPixels ); ac++;
     XtSetArg( al[ac],	XmNrightAttachment,	XmATTACH_FORM ); ac++;
     XtSetArg( al[ac],	XmNrightOffset,		0 ); ac++;
     XtSetArg( al[ac],	XmNbottomAttachment,	XmATTACH_FORM ); ac++;
     XtSetArg( al[ac],	XmNbottomOffset,	0 ); ac++;
 
-    ed->edBottomRulerWidget= XmCreateDrawingArea( form, WIDGET_NAME, al, ac );
+    ed->edBottomRulerWidget=
+		XmCreateDrawingArea( ed->edWorkWidget, WIDGET_NAME, al, ac );
 
     /*  5  */
     ac= 0;
@@ -254,20 +264,21 @@ int appMakeDocumentWidget(	EditApplication *	ea,
     XtSetArg( al[ac],	XmNtopOffset,		0 ); ac++;
 
     XtSetArg( al[ac],	XmNrightAttachment,	XmATTACH_OPPOSITE_FORM ); ac++;
-    XtSetArg( al[ac],	XmNrightOffset,		-ed->edLeftRulerWidthPixels ); ac++;
+    XtSetArg( al[ac],	XmNrightOffset,		-ed->edLeftRulerWidePixels ); ac++;
 
     XtSetArg( al[ac],	XmNbottomAttachment,	XmATTACH_WIDGET ); ac++;
     XtSetArg( al[ac],	XmNbottomWidget,	ed->edBottomRulerWidget ); ac++;
     XtSetArg( al[ac],	XmNbottomOffset,	0 ); ac++;
 
-    ed->edLeftRulerWidget= XmCreateDrawingArea( form, WIDGET_NAME, al, ac );
+    ed->edLeftRulerWidget=
+		XmCreateDrawingArea( ed->edWorkWidget, WIDGET_NAME, al, ac );
 
     /*  6  */
     ac= 0;
     XtSetArg( al[ac],	XmNforeground,		blackPixel ); ac++;
     XtSetArg( al[ac],	XmNtraversalOn,		False ); ac++;
     XtSetArg( al[ac],	XmNleftAttachment,	XmATTACH_OPPOSITE_FORM ); ac++;
-    XtSetArg( al[ac],	XmNleftOffset,		-ed->edRightRulerWidthPixels ); ac++;
+    XtSetArg( al[ac],	XmNleftOffset,		-ed->edRightRulerWidePixels ); ac++;
     XtSetArg( al[ac],	XmNtopAttachment,	XmATTACH_WIDGET ); ac++;
     XtSetArg( al[ac],	XmNtopWidget,		ed->edTopRulerWidget ); ac++;
     XtSetArg( al[ac],	XmNtopOffset,		0 ); ac++;
@@ -277,7 +288,8 @@ int appMakeDocumentWidget(	EditApplication *	ea,
     XtSetArg( al[ac],	XmNbottomWidget,	ed->edBottomRulerWidget ); ac++;
     XtSetArg( al[ac],	XmNbottomOffset,	0 ); ac++;
 
-    ed->edRightRulerWidget= XmCreateDrawingArea( form, WIDGET_NAME, al, ac );
+    ed->edRightRulerWidget=
+	    XmCreateDrawingArea( ed->edWorkWidget, WIDGET_NAME, al, ac );
 
     /*  7  */
     ac= 0;
@@ -299,25 +311,33 @@ int appMakeDocumentWidget(	EditApplication *	ea,
     XtSetArg( al[ac],	XmNbottomWidget,	ed->edBottomRulerWidget ); ac++;
     XtSetArg( al[ac],	XmNbottomOffset,	0 ); ac++;
 
-    ed->edDocumentWidget= XmCreateDrawingArea( form, WIDGET_NAME, al, ac );
+    ed->edDocumentWidget.dwWidget=
+		XmCreateDrawingArea( ed->edWorkWidget, WIDGET_NAME, al, ac );
 
-    XtAddCallback( ed->edDocumentWidget,
+    XtAddCallback( ed->edDocumentWidget.dwWidget,
 		XmNdestroyCallback, appDestroyEditDocument, (void *)ed );
 
     XtManageChild( ed->edTopRulerWidget );
     XtManageChild( ed->edLeftRulerWidget );
     XtManageChild( ed->edRightRulerWidget );
     XtManageChild( ed->edBottomRulerWidget );
-    XtManageChild( ed->edDocumentWidget );
-    XtManageChild( form );
+    XtManageChild( ed->edDocumentWidget.dwWidget );
+    XtManageChild( ed->edWorkWidget );
+
+    /* Not needed
+    XmScrolledWindowSetAreas( ed->edScrolledWindow,
+					ed->edHorizontalScrollbar,
+					ed->edVerticalScrollbar,
+					ed->edWorkWidget );
+    */
 
     return 0;
     }
 
-static int appDocMakeToolbar(	EditDocument *		ed,
-				EditApplication *	ea )
+static int appDocMakeToolbar(	EditDocument *		ed )
     {
 #   if 0
+    EditApplication *	ea= ed->edApplication;
     Arg			al[20];
     int			ac= 0;
 
@@ -344,25 +364,26 @@ int appFinishDocumentWindow(	EditDocument *		ed )
     EditApplication *	ea= ed->edApplication;
 
     /*  3  */
-    if  ( appDocMakeMainWindow( ed, ea )		||
-	  appDocMakeToolbar( ed, ea )			||
-	  appDocMakeScrolledWindow( ed, ea )		||
+    if  ( appDocMakeMainWindow( ed )			||
+	  appDocMakeToolbar( ed )			||
+	  appDocMakeScrolledWindow( ed )		||
 	  (*ea->eaMakeDocumentWidget)( ea, ed )		)
 	{ LDEB(1); return -1; }
 
-    XtAddEventHandler( ed->edDocumentWidget, StructureNotifyMask, False,
+    XtAddEventHandler( ed->edDocumentWidget.dwWidget,
+					StructureNotifyMask, False,
 					appDocConfigure, (void *)ed );
     XtAddEventHandler( ed->edToplevel.atTopWidget, StructureNotifyMask, False,
 					appDocTopConfigure, (void *)ed );
 
     /*  4  */
-    XtAddEventHandler( ed->edDocumentWidget,
+    XtAddEventHandler( ed->edDocumentWidget.dwWidget,
 		    PropertyChangeMask, True, appDocCopyPasteHandler, ed );
 
     XtManageChild( ed->edVerticalScrollbar );
     XtManageChild( ed->edHorizontalScrollbar );
 
-    XtManageChild( ed->edDocumentWidget );
+    XtManageChild( ed->edDocumentWidget.dwWidget );
     XtManageChild( ed->edScrolledWindow );
 
     if  ( ed->edToolbar )
@@ -373,179 +394,44 @@ int appFinishDocumentWindow(	EditDocument *		ed )
     return 0;
     }
 
-/************************************************************************/
-/*									*/
-/*  Prevent the Shell that contains a document from being resized	*/
-/*  beyond normal limits.						*/
-/*									*/
-/************************************************************************/
-
-void appSetShellConstraints(	EditDocument *		ed )
+int appFinishDocumentSetup(	EditDocument *		ed )
     {
-    int			wide;
-    int			high;
+    EditApplication *	ea= ed->edApplication;
+    DocumentWidget *	dw= &(ed->edDocumentWidget);
 
-    Arg			al[20];
-    int			ac= 0;
-
-    AppDrawingData *	add= &(ed->edDrawingData);
-
-    appDrawGetSizeOfWidget( &wide, &high, ed->edToplevel.atTopWidget );
-
-    if  ( ed->edShellExtraWidth >= 0 )
-	{
-	XtWidgetGeometry	preferred;
-
-	int			maxWidth;
-
-	maxWidth= add->addBackRect.drX1- add->addBackRect.drX0;
-	maxWidth += ed->edShellExtraWidth;
-
-	XtQueryGeometry( ed->edMenuBar, (XtWidgetGeometry *)0, &preferred );
-	if  ( maxWidth < preferred.width+ preferred.border_width )
-	    { maxWidth=  preferred.width+ preferred.border_width;	}
-
-	XtSetArg( al[ac],	XmNmaxWidth,	maxWidth ); ac++;
-
-	if  ( wide > maxWidth )
-	    {
-	    XtSetArg( al[ac],	XmNwidth,	maxWidth ); ac++;
-
-	    ed->edVisibleRect.drX1 += maxWidth- wide;
-	    }
-	}
-
-    if  ( ed->edShellExtraHeight >= 0 )
-	{
-	int	maxHeight;
-
-	maxHeight= add->addBackRect.drY1- add->addBackRect.drY0;
-
-	if  ( maxHeight < add->addPaperRect.drY1- add->addPaperRect.drY0 )
-	    { maxHeight=  add->addPaperRect.drY1- add->addPaperRect.drY0; }
-
-	maxHeight += ed->edShellExtraHeight;
-
-	XtSetArg( al[ac],	XmNmaxHeight,	maxHeight ); ac++;
-
-	if  ( high > maxHeight )
-	    {
-	    XtSetArg( al[ac],	XmNheight,	maxHeight ); ac++;
-
-	    ed->edVisibleRect.drY1 += maxHeight- high;
-	    }
-	}
-
-    if  ( ac > 0 )
-	{ XtSetValues( ed->edToplevel.atTopWidget, al, ac );	}
-
-    return;
-    }
-
-/************************************************************************/
-/*									*/
-/*  Finish the setup of the document after it is realised.		*/
-/*									*/
-/************************************************************************/
-
-static XIMStyle	appXimPreferences[]=
-    {
-    XIMPreeditCallbacks,
-    XIMPreeditPosition,
-    XIMPreeditArea,
-    XIMPreeditNothing,
-    XIMStatusCallbacks,
-    XIMStatusArea,
-    XIMStatusNothing,
-    };
-
-int appFinishDocumentSetup(	EditApplication *	ea,
-				EditDocument *		ed )
-    {
-    AppDrawingData *	add= &(ed->edDrawingData);
-
-    appSetDrawingDataForWidget( ed->edDocumentWidget,
-					    ea->eaMagnification, add );
-
-    appDrawSetRedrawHandler( ed->edDocumentWidget,
+    guiDrawSetRedrawHandler( dw->dwWidget,
 					appDocExposeHandler, (void *)ed );
 
     if  ( ea->eaObserveFocus )
 	{
-	appGuiSetFocusChangeHandler( ed->edDocumentWidget,
+	appGuiSetFocusChangeHandler( dw->dwWidget,
 					    ea->eaObserveFocus, (void *)ed );
 	}
 
     if  ( ea->eaDocumentMouseHandler )
 	{
-	appDrawSetButtonPressHandler( ed->edDocumentWidget,
+	guiDrawSetButtonPressHandler( dw->dwWidget,
 				ea->eaDocumentMouseHandler, (void *)ed );
 	}
 
-    if  ( ea->eaDocumentKeyboardHandler )
+    if  ( ea->eaDocumentScrollHandler )
 	{
-	appDrawSetKeyboardHandler( ed->edDocumentWidget,
-			    ea->eaDocumentKeyboardHandler, (void *)ed );
+	guiDrawSetScrollHandler( dw->dwWidget,
+				    ea->eaDocumentScrollHandler, (void *)ed );
 	}
+
+    dw->dwOwner= (void *)ed;
+    dw->dwGotString= ea->eaDocGotString;
+    dw->dwGotKey= ea->eaDocGotKey;
 
     if  ( ea->eaDocumentCursor )
 	{
-	XDefineCursor( XtDisplay( ed->edDocumentWidget ),
-		    XtWindow( ed->edDocumentWidget ), ea->eaDocumentCursor );
+	XDefineCursor( XtDisplay( dw->dwWidget ),
+				XtWindow( ed->edDocumentWidget.dwWidget ),
+				ea->eaDocumentCursor );
 	}
 
-    if  ( ea->eaInputMethod )
-	{
-	XIMStyles *	availableStyles;
-	XIMStyle	supportedStyles;
-	XIMStyle	likedStyle;
-	int		style;
-
-	XGetIMValues( ea->eaInputMethod,
-		XNQueryInputStyle, &availableStyles,
-		NULL );
-
-	supportedStyles=	XIMPreeditArea		|
-				XIMPreeditNothing	|
-				XIMPreeditNone		|
-				XIMStatusArea		|
-				XIMStatusNothing	|
-				XIMStatusNone		;
-
-	likedStyle= 0;
-	for ( style= 0; style < availableStyles->count_styles; style++ )
-	    {
-	    XIMStyle	foundStyle= availableStyles->supported_styles[style];
-	    unsigned	j;
-
-	    if  ( ( supportedStyles & foundStyle ) != foundStyle )
-		{ continue;	}
-
-	    if  ( ! likedStyle )
-		{ likedStyle= foundStyle; continue;	}
-
-	    for ( j= 0; j < sizeof(appXimPreferences)/sizeof(XIMStyle); j++ )
-		{
-		if  (   ( foundStyle & appXimPreferences[j] )	&&
-		      ! ( likedStyle & appXimPreferences[j] )	)
-		    { likedStyle= foundStyle; break;	}
-		}
-	    }
-
-	if  ( likedStyle )
-	    {
-	    ed->edInputContext= XCreateIC( ea->eaInputMethod,
-		XNClientWindow,		XtWindow( ed->edDocumentWidget ),
-		XNInputStyle,		likedStyle,
-		/*
-		XNPeeditAttributes,	attributeList,
-		XNStatusAttributes,	attributeList,
-		*/
-		NULL );
-	    }
-	else{ ed->edInputContext= (XIC)0;	}
-	}
-    else{ ed->edInputContext= (XIC)0;	}
+    appDocumentSetInputContext( ea->eaInputMethod, dw );
 
     return 0;
     }
@@ -615,7 +501,7 @@ void appRemoveWindowsOption(	APP_WIDGET		menu,
 
 void appRenameWindowsOption(		APP_WIDGET		menu,
 					EditDocument *		ed,
-					const char *		title )
+					const MemoryBuffer *	title )
     {
     WidgetList		children;
     Cardinal		childCount;
@@ -636,7 +522,10 @@ void appRenameWindowsOption(		APP_WIDGET		menu,
 			NULL );
 
 	if  ( voided == (void *)ed )
-	    { appGuiSetToggleItemLabel( children[i], title );	}
+	    {
+	    appGuiSetToggleItemLabel( children[i],
+					utilMemoryBufferGetString( title ) );
+	    }
 	}
     }
 

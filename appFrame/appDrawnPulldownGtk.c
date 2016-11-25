@@ -1,15 +1,14 @@
 #   include	"appFrameConfig.h"
 
-#   include	<stdlib.h>
 #   include	<stdio.h>
 
-#   include	"appFrame.h"
-#   include	"appSystem.h"
-#   include	<appGeoString.h>
-
-#   ifdef USE_GTK
+#   include	"guiWidgets.h"
+#   include	"appDrawnPulldown.h"
+#   include	"guiDrawingWidget.h"
 
 #   include	<appDebugon.h>
+
+#   ifdef USE_GTK
 
 /************************************************************************/
 /*									*/
@@ -57,7 +56,7 @@ static APP_EVENT_HANDLER_H( appDrawnPulldownPulldown, w, voidadp, mouseEvent )
 
     /******/
 
-    if  ( appGetCoordinatesFromMouseButtonEvent( &mouseX, &mouseY,
+    if  ( guiGetCoordinatesFromMouseButtonEvent( &mouseX, &mouseY,
 					    &button, &upDown, &seq, &keyState,
 					    w, mouseEvent ) )
 	{ appDrawnPulldownPopdown( w ); return;	}
@@ -80,6 +79,9 @@ static APP_EVENT_HANDLER_H( appDrawnPulldownPulldown, w, voidadp, mouseEvent )
 #   else
     gtk_window_move( GTK_WINDOW( adp->adpPulldownShell ), screenX, screenY );
 #   endif
+
+    if  ( adp->adpPulldown )
+	{ (*adp->adpPulldown)( adp->adpThrough );	}
 
     /* code borrowed from gtkcombo.c: */
 
@@ -115,7 +117,7 @@ static APP_EVENT_HANDLER_H( appDrawnPulldownMouseUpDown, w, voidadp, mouseEvent 
     unsigned int	keyState= 0;
 
     /**/
-    if  ( appGetCoordinatesFromMouseButtonEvent( &mouseX, &mouseY,
+    if  ( guiGetCoordinatesFromMouseButtonEvent( &mouseX, &mouseY,
 					    &button, &upDown, &seq, &keyState,
 					    w, mouseEvent ) )
 	{ appDrawnPulldownPopdown( w ); return;	}
@@ -166,27 +168,25 @@ static APP_EVENT_HANDLER_H( appDrawnPulldownMouseUpDown, w, voidadp, mouseEvent 
 /*									*/
 /************************************************************************/
 
-static void appFinishDrawnPulldown(	AppDrawnPulldown *	adp,
-					APP_EVENT_HANDLER_T	redrawInplace,
-					APP_EVENT_HANDLER_T	redrawPulldown,
-					APP_EVENT_HANDLER_T	clickedPulldown,
-					void *			through )
+static void appFinishDrawnPulldown(
+				AppDrawnPulldown *		adp,
+				APP_EVENT_HANDLER_T		redrawInplace,
+				APP_EVENT_HANDLER_T		redrawPulldown,
+				APP_EVENT_HANDLER_T		clickedPulldown,
+				AppDrawnPulldownPuldown		pullDown,
+				void *				through )
     {
     adp->adpClickHandler= clickedPulldown;
+    adp->adpPulldown= pullDown;
     adp->adpThrough= through;
 
     /******/
 
     if  ( redrawInplace )
 	{
-	appDrawSetRedrawHandler( adp->adpInplaceDrawing, 
+	guiDrawSetRedrawHandler( adp->adpInplaceDrawing, 
 						redrawInplace, through );
 	}
-
-    /*
-    XtAddCallback( adp->adpInplaceDrawing, XmNresizeCallback,
-				    appGuiSendExposeForResize, (void *)0 );
-    */
 
     /******/
 
@@ -202,14 +202,9 @@ static void appFinishDrawnPulldown(	AppDrawnPulldown *	adp,
 
     if  ( redrawPulldown )
 	{
-	appDrawSetRedrawHandler( adp->adpPulldownDrawing,
+	guiDrawSetRedrawHandler( adp->adpPulldownDrawing,
 						redrawPulldown, through );
 	}
-
-    /*
-    XtAddCallback( adp->adpPulldownDrawing, XmNresizeCallback,
-				    appGuiSendExposeForResize, (void *)0 );
-    */
 
     /******/
     gtk_widget_add_events( adp->adpPulldownShell, 
@@ -243,12 +238,14 @@ static void appFinishDrawnPulldown(	AppDrawnPulldown *	adp,
 /*									*/
 /************************************************************************/
 
-void appMakeDrawnPulldownInColumn(	AppDrawnPulldown *	adp,
-					APP_EVENT_HANDLER_T	redrawInplace,
-					APP_EVENT_HANDLER_T	redrawPulldown,
-					APP_EVENT_HANDLER_T	clickedPulldown,
-					APP_WIDGET		column,
-					void *			through )
+void appMakeDrawnPulldownInColumn(
+				AppDrawnPulldown *		adp,
+				APP_EVENT_HANDLER_T		redrawInplace,
+				APP_EVENT_HANDLER_T		redrawPulldown,
+				APP_EVENT_HANDLER_T		clickedPulldown,
+				AppDrawnPulldownPuldown		pullDown,
+				APP_WIDGET			column,
+				void *				through )
     {
     gboolean	expand= FALSE;
     gboolean	fill= TRUE;
@@ -260,20 +257,21 @@ void appMakeDrawnPulldownInColumn(	AppDrawnPulldown *	adp,
 
     gtk_widget_show( adp->adpInplaceDrawing );
 
-    appFinishDrawnPulldown( adp,
-		    redrawInplace, redrawPulldown, clickedPulldown, through );
+    appFinishDrawnPulldown( adp, redrawInplace, redrawPulldown,
+					clickedPulldown, pullDown, through );
 
     return;
     }
 
-void appMakeDrawnPulldownInRow(		AppDrawnPulldown *	adp,
-					APP_EVENT_HANDLER_T	redrawInplace,
-					APP_EVENT_HANDLER_T	redrawPulldown,
-					APP_EVENT_HANDLER_T	clickedPulldown,
-					APP_WIDGET		row,
-					int			column,
-					int			colspan,
-					void *			through )
+void appMakeDrawnPulldownInRow(	AppDrawnPulldown *		adp,
+				APP_EVENT_HANDLER_T		redrawInplace,
+				APP_EVENT_HANDLER_T		redrawPulldown,
+				APP_EVENT_HANDLER_T		clickedPulldown,
+				AppDrawnPulldownPuldown		pullDown,
+				APP_WIDGET			row,
+				int				column,
+				int				colspan,
+				void *				through )
     {
     adp->adpInplaceDrawing= gtk_drawing_area_new();
 
@@ -290,25 +288,22 @@ void appMakeDrawnPulldownInRow(		AppDrawnPulldown *	adp,
 
     gtk_widget_show( adp->adpInplaceDrawing );
 
-    appFinishDrawnPulldown( adp,
-		    redrawInplace, redrawPulldown, clickedPulldown, through );
+    appFinishDrawnPulldown( adp, redrawInplace, redrawPulldown,
+					clickedPulldown, pullDown, through );
 
     return;
     }
 
 void appGuiEnableDrawnPulldown(	AppDrawnPulldown *	adp,
-				int			sensitive )
+				int			enabled )
     {
-    gtk_widget_set_sensitive( adp->adpInplaceDrawing, sensitive != 0 );
-    }
+    if  ( adp->adpEnabled != enabled )
+	{
+	adp->adpEnabled= enabled;
+	gtk_widget_set_sensitive( adp->adpInplaceDrawing, enabled != 0 );
 
-void appInitDrawnPulldown(		AppDrawnPulldown *		adp )
-    {
-    adp->adpPulldownShell= (APP_WIDGET)0;
-    adp->adpPulldownDrawing= (APP_WIDGET)0;
-    adp->adpInplaceDrawing= (APP_WIDGET)0;
-    adp->adpClickHandler= (APP_EVENT_HANDLER_T)0;
-    adp->adpThrough= (void *)0;
+	appExposeDrawnPulldownInplace( adp );
+	}
     }
 
 void appGuiSetDrawnPulldownHeight(	AppDrawnPulldown *	adp,
@@ -368,7 +363,7 @@ int appGuiDrawnPulldownGetStrip(
 
     inplaceHeight= adp->adpInplaceDrawing->allocation.height;
 
-    if  ( appGetCoordinatesFromMouseButtonEvent( &mouseX, &mouseY,
+    if  ( guiGetCoordinatesFromMouseButtonEvent( &mouseX, &mouseY,
 					    &button, &upDown, &seq, &keyState,
 					    w, mouseEvent ) )
 	{ return -1;	}

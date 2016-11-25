@@ -1,16 +1,14 @@
 #   include	"bitmapConfig.h"
 
-#   include	<string.h>
 #   include	<stdlib.h>
-#   include	<stdio.h>
 #   include	"bitmap.h"
 #   include	<appDebugon.h>
+#   include	<appSystem.h>
 
-int bmWrite(	const char *			filename,
+int bmWrite(	const MemoryBuffer *		filename,
 		const unsigned char *		buffer,
 		const BitmapDescription *	bd,
-		int				fileFormat,
-		double				compressionFactor )
+		int				fileFormat )
     {
     if  ( ! bmFileFormats[fileFormat].bffFileType->bftWrite )
 	{
@@ -22,21 +20,17 @@ int bmWrite(	const char *			filename,
 			filename,
 			buffer,
 			bd,
-			bmFileFormats[fileFormat].bffPrivate,
-			compressionFactor			);
+			bmFileFormats[fileFormat].bffPrivate );
     }
 
 int bmCanWrite( const BitmapDescription *	bd,
-		int				fileFormat,
-		double				compressionFactor )
+		int				fileFormat )
     {
     if  ( ! bmFileFormats[fileFormat].bffFileType->bftWrite )
 	{ return -1;	}
 
     return (*bmFileFormats[fileFormat].bffFileType->bftCanWrite)(
-			bd,
-			bmFileFormats[fileFormat].bffPrivate,
-			compressionFactor			);
+			bd, bmFileFormats[fileFormat].bffPrivate );
     }
 
 /************************************************************************/
@@ -45,36 +39,40 @@ int bmCanWrite( const BitmapDescription *	bd,
 /*									*/
 /************************************************************************/
 
-int bmRead(	const char *		filename,
+int bmRead(	const MemoryBuffer *	filename,
 		unsigned char **	pBuffer,
 		BitmapDescription *	bd,
-		int *			pFileFormat,
-		double *		pCompressionFactor )
+		int *			pFileFormat )
     {
-    int		fileType;
-    int		privateType;
-    int		fileFormat;
-    char *	extension= strrchr( filename, '.' );
+    int			rval= -1;
+    int			fileType;
+    int			privateType;
+    int			fileFormat;
 
-    if  ( ! extension )
-	{ LDEB(extension); return -1; }
-    extension++;
+    MemoryBuffer	extension;
+    unsigned char *	buffer= (unsigned char *)0;
+
+
+    utilInitMemoryBuffer( &extension );
+
+    appFileGetFileExtension( &extension, filename );
+    if  ( utilMemoryBufferIsEmpty( &extension ) )
+	{
+	SLDEB(utilMemoryBufferGetString(filename),extension.mbSize);
+	goto ready;
+	}
 
     for ( fileType= 0; fileType < bmNumberOfFileTypes; fileType++ )
 	{
 	if  ( ! bmFileTypes[fileType]->bftRead )
 	    { continue;	}
 
-	if  ( ! strcmp( extension, bmFileTypes[fileType]->bftFileExtension ) )
+	if  ( utilMemoryBufferEqualsString( &extension,
+				bmFileTypes[fileType]->bftFileExtension ) )
 	    {
-	    unsigned char *	buffer;
-
-	    if  ( (*bmFileTypes[fileType]->bftRead)(	filename,
-							&buffer,
-							bd,
-							&privateType,
-							pCompressionFactor ) )
-		{ LDEB(fileType); return -1;	}
+	    if  ( (*bmFileTypes[fileType]->bftRead)( filename,
+						&buffer, bd, &privateType ) )
+		{ LDEB(fileType); break;	}
 
 	    for (	fileFormat= 0;
 			fileFormat < bmNumberOfFileFormats;
@@ -84,12 +82,23 @@ int bmRead(	const char *		filename,
 		      bmFileTypes[fileType]->bftRead			&&
 		      bmFileFormats[fileFormat].bffPrivate	==
 		      privateType					)
-		    { *pBuffer= buffer; *pFileFormat= fileFormat; return 0; }
+		    {
+		    *pBuffer= buffer; buffer= (unsigned char *)0; /* steal */
+		    *pFileFormat= fileFormat;
+		    rval= 0; goto ready;
+		    }
 		}
 
-	    LDEB(privateType); free( buffer ); return -1;
+	    SLDEB(utilMemoryBufferGetString(filename),privateType); break;
 	    }
 	}
 
-    SDEB(extension); return -1;
+  ready:
+
+    if  ( buffer )
+	{ free( buffer );	}
+
+    utilCleanMemoryBuffer( &extension );
+
+    return rval;
     }

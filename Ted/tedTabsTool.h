@@ -9,6 +9,13 @@
 #   ifndef	TED_TABS_TOOL_H
 #   define	TED_TABS_TOOL_H
 
+#   include	<appFrame.h>
+#   include	<appInspector.h>
+#   include	<docBuf.h>
+#   include	<docTabStop.h>
+#   include	<docSelectionDescription.h>
+#   include	<docSelectionGeometry.h>
+
 /************************************************************************/
 /*									*/
 /*  Resources for the 'Tabs' page.					*/
@@ -17,24 +24,24 @@
 
 typedef struct TabsPageResources
     {
-    char *		tprDefaultTabStopsLabel;
-    char *		tprDefaultTabStopsEvery;
-    char *		tprDefaultTabStopsRevert;
-    char *		tprDefaultTabStopsApply;
+    const char *	tprDefaultTabStopsLabel;
+    const char *	tprDefaultTabStopsEvery;
+    const char *	tprDefaultTabStopsRevert;
+    const char *	tprDefaultTabStopsApply;
 
-    char *		tprPositions;
+    const char *	tprPositions;
 
-    char *		tprTabStop;
+    const char *	tprTabStop;
 
-    char *		tprPosition;
+    const char *	tprPosition;
 
-    char *		tprAlignment;
-    char *		tprAlignmentOptionTexts[DOCta_COUNT];
+    const char *	tprAlignment;
+    const char *	tprAlignmentOptionTexts[DOCta_COUNT];
 
-    char *		tprLeader;
-    char *		tprLeaderOptionTexts[DOCtl_COUNT];
+    const char *	tprLeader;
+    const char *	tprLeaderOptionTexts[DOCtl_COUNT];
 
-    char *		tprTooCloseMessage;
+    const char *	tprTooCloseMessage;
     } TabsPageResources;
 
 /************************************************************************/
@@ -49,13 +56,14 @@ typedef struct TabsTool
     AppInspector *		ttInspector;
     const TabsPageResources *	ttPageResources;
 
-    int				ttUnitType;
+    int				ttUnitInt;
+    unsigned char		ttCanChange;
 
     DocumentProperties		ttDocPropertiesSet;
     DocumentProperties		ttDocPropertiesChosen;
 
-    ParagraphProperties		ttParaPropertiesSet;
-    ParagraphProperties		ttParaPropertiesChosen;
+    TabStopList			ttTabStopsSet;
+    TabStopList			ttTabStopsChosen;
 
     TabStop			ttTabStopValue;
     int				ttTabStopNumber;
@@ -75,6 +83,10 @@ typedef struct TabsTool
 
     APP_WIDGET			ttTabPositionText;
 
+    APP_WIDGET			ttDeleteTabButton;
+    APP_WIDGET			ttInsertTabButton;
+    APP_WIDGET			ttChangeTabButton;
+
     AppOptionmenu		ttAlignmentOptionmenu;
     APP_WIDGET			ttAlignmentItems[DOCta_COUNT];
 
@@ -92,13 +104,16 @@ extern void tedFormatToolGetTabsResourceTable(	EditApplication *	ea,
 					TabsPageResources *		spr,
 					InspectorSubjectResources *	isr );
 
-extern void tedFormatToolRefreshTabsTool(
+extern void tedRefreshTabsTool(
 				TabsTool *			tt,
 				int *				pEnabled,
 				int *				pPref,
 				InspectorSubject *		is,
 				const DocumentSelection *	bs,
-				const DocumentProperties *	dp );
+				const SelectionGeometry *	sg,
+				const SelectionDescription *	sd,
+				const BufferDocument *		bd,
+				const unsigned char *		cmdEnabled );
 
 extern void tedFormatFillTabsPage( TabsTool *			tt,
 				const TabsPageResources *	tpr,

@@ -11,11 +11,9 @@
 
 #   include	"appUtilConfig.h"
 
-#   include	<stdlib.h>
 #   include	<string.h>
-#   include	<stdio.h>
 
-#   include	<appSystem.h>
+#   include	"appSystem.h"
 
 #   include	<appDebugon.h>
 
@@ -26,30 +24,137 @@
 /*									*/
 /************************************************************************/
 
-const char * appFileExtensionOfName(	const char *	filename )
+int appFileGetFileExtension(	MemoryBuffer *		extension,
+				const MemoryBuffer *	filename )
     {
+    const char *	all= utilMemoryBufferGetString( filename );
     const char *	slash;
     const char *	dot;
 
-    slash= strrchr( filename, '/' );
+    slash= strrchr( all, '/' );
     if  ( slash )
 	{ dot= strrchr( slash+ 1, '.' );	}
-    else{ dot= strrchr( filename, '.' );	}
+    else{ dot= strrchr( all, '.' );		}
 
     if  ( ! dot )
-	{ return dot;		}
-    else{ return dot+ 1;	}
+	{ utilEmptyMemoryBuffer( extension );	}
+    else{
+	int	off= dot- all+ 1;
+	int	len= filename->mbSize- off;
+
+	if  ( utilMemoryBufferGetRange( extension, filename, off, len ) )
+	    { LDEB(1); return -1;	}
+	}
+
+    return 0;
     }
 
-const char * appRelativeName(	const char *	filename )
+static int appFileSetExtensionX(	MemoryBuffer *		filename,
+					const char *		extension,
+					int			replace )
     {
+    const char *	all= utilMemoryBufferGetString( filename );
+    const char *	dot= (const char *)0;
+
+    int			from;
+    int			extlen= 0;
+
+    if  ( utilMemoryBufferIsEmpty( filename ) )
+	{ LDEB(filename->mbSize); return -1;	}
+
+    if  ( replace )
+	{
+	const char *	slash;
+
+	slash= strrchr( all, '/' );
+
+	if  ( slash )
+	    { dot= strrchr( slash+ 1, '.' );	}
+	else{ dot= strrchr( all, '.' );		}
+	}
+
+    if  ( ! dot )
+	{
+	if  ( extension && extension[0] )
+	    {
+	    if  ( utilMemoryBufferAppendBytes( filename, (unsigned char *)".", 1 ) )
+		{ LDEB(1); return -1;	}
+
+	    extlen= strlen( extension );
+	    }
+
+	from= filename->mbSize;
+	}
+    else{
+	if  ( extension && extension[0] )
+	    {
+	    from= dot- all+ 1;
+	    extlen= strlen( extension );
+	    }
+	else{ from= dot- all;		}
+	}
+
+    if  ( utilMemoryBufferReplaceBytes( filename, from, filename->mbSize,
+				(const unsigned char *)extension, extlen ) )
+	{ LDEB(1); return -1;	}
+
+    return 0;
+    }
+
+int appFileSetExtension(		MemoryBuffer *		filename,
+					const char *		extension )
+    {
+    return appFileSetExtensionX( filename, extension, 1 );
+    }
+
+int appFileAddExtension(		MemoryBuffer *		filename,
+					const char *		extension )
+    {
+    return appFileSetExtensionX( filename, extension, 0 );
+    }
+
+int appFileGetRelativeName(	MemoryBuffer *		relative,
+				const MemoryBuffer *	filename )
+    {
+    const char *	all= utilMemoryBufferGetString( filename );
     const char *	slash;
 
-    slash= strrchr( filename, '/' );
-    if  ( slash )
-	{ return slash+ 1;	}
-    else{ return filename;	}
+    slash= strrchr( all, '/' );
+
+    if  ( ! slash )
+	{
+	if  ( utilCopyMemoryBuffer( relative, filename ) )
+	    { LDEB(1); return -1;	}
+	}
+    else{
+	int	off= slash- all+ 1;
+	int	len= filename->mbSize- off;
+
+	if  ( utilMemoryBufferGetRange( relative, filename, off, len ) )
+	    { LDEB(1); return -1;	}
+	}
+
+    return 0;
     }
+
+int appDirectoryOfFileName(	MemoryBuffer *		dir,
+				const MemoryBuffer *	name )
+    {
+    const char *	all= utilMemoryBufferGetString( name );
+    const char *	slash= strrchr( all, '/' );
+
+    if  ( ! slash )
+	{ utilEmptyMemoryBuffer( dir );	}
+    else{
+	if  ( utilMemoryBufferGetRange( dir, name, 0, slash- all ) )
+	    { LDEB(1); return -1;	}
+	}
+
+    return 0;
+    }
+
+int appFileNameIsAbsolute( const char *	filename )
+    { return filename[0] == '/';	}
 
 /************************************************************************/
 /*									*/
@@ -78,147 +183,127 @@ const char * appRelativeName(	const char *	filename )
 /************************************************************************/
 
 /*  a  */
-static int utilFileNameCatenate(	char *		path,
-					int		pathLen,
-					int		addSlash,
-					const char *	relative,
-					int		relLen )
+static int utilFileNameCatenate(	MemoryBuffer *		path,
+					const MemoryBuffer *	relative,
+					int			relLen )
     {
-#   ifndef __VMS
+    const char *	r= utilMemoryBufferGetString( relative );
+    const char *	p= utilMemoryBufferGetString( path );
+    int			rOff= 0;
+    int			pLen= path->mbSize;
 
     /*  b  */
-    while( pathLen > 0 )
+    while( rOff < relLen )
 	{
-	if  ( ! strncmp( relative, "./", 2 ) )
-	    {
-	    relative += 2;
-	    relLen -= 2;
-	    continue;
-	    }
+	if  ( ! strncmp( r, "./", 2 ) )
+	    { r += 2; rOff += 2; continue; }
 
-	if  ( ! strncmp( relative, "../", 3 ) )
+	if  ( ! strncmp( r, "../", 3 ) )
 	    {
 	    int			lastSlash= -1;
 	    int			i;
 
-	    for ( i= 0; i < pathLen- 1; i++ )
+	    for ( i= 0; i < pLen- 1; i++ )
 		{
-		if  ( path[i] == '/' )
+		if  ( p[i] == '/' )
 		    { lastSlash= i;	}
 		}
 
 	    if  ( lastSlash < 0 )
 		{ break; }
 
-	    pathLen= lastSlash+ 1;
-	    relative += 3;
-	    relLen -= 3;
+	    pLen= lastSlash+ 1;
+	    r += 3; rOff += 3;
 	    continue;
 	    }
 
 	break;
 	}
-#   endif
 
-    /*
-    if  ( pathLen > 0 && path[pathLen- 1] != '/' )
-	{ path[pathLen++]= '/';	}
-    */
-    if  ( addSlash )
-	{ path[pathLen++]= '/';	}
+    if  ( pLen > 0 && p[pLen- 1] != '/' )
+	{
+	if  ( utilMemoryBufferReplaceBytes( path, pLen, path->mbSize,
+						(unsigned char *)"/", 1 ) )
+	    { LDEB(1); return -1;	}
 
-    memcpy( path+ pathLen, relative, relLen );
-    path[pathLen+ relLen]= '\0';
+	pLen= path->mbSize;
+	}
 
-    return pathLen+ relLen;
+    if  ( utilMemoryBufferReplaceBytes( path, pLen, path->mbSize,
+			    relative->mbBytes+ rOff, relLen- rOff ) )
+	{ LDEB(relLen); return -1;	}
+
+    return path->mbSize;
     }
 
-int appAbsoluteName(	char *		absolute,
-			int		len,
-			const char *	filename,
-			int		relativeIsFile,
-			const char *	nameRelativeTo )
+extern int appAbsoluteName(	MemoryBuffer *		absolute,
+				const MemoryBuffer *	relative,
+				int			relativeIsFile,
+				const MemoryBuffer *	nameRelativeTo )
     {
-    int			fileLen= 0;
-    int			rootLen= 0;
+    int			rval= -1;
     int			relLen= 0;
-    int			absLen;
-    int			addSlash= 0;
 
-    const char *	slash;
-
-    fileLen= strlen( filename );
+    if  ( ! relative || utilMemoryBufferIsEmpty( relative ) )
+	{ XDEB(relative); rval= -1; goto ready;	}
 
     /*  1  */
-    if  ( filename[0] == '/' )
+    if  ( relative->mbBytes[0] == '/' )
 	{
-	if  ( fileLen > len )
-	    { SLDEB(filename,len); return -1;	}
+	if  ( utilCopyMemoryBuffer( absolute, relative ) )
+	    { LDEB(1); rval= -1; goto ready;	}
 
-	strcpy( absolute, filename );
-	return fileLen;
+	rval= absolute->mbSize; goto ready;
 	}
 
     /*  2  */
-    if  ( nameRelativeTo )
+    if  ( nameRelativeTo && ! utilMemoryBufferIsEmpty( nameRelativeTo ) )
 	{
 	if  ( relativeIsFile )
 	    {
-	    slash= strrchr( nameRelativeTo, '/' );
+	    int slash= utilMemoryBufferLastIndexOf( nameRelativeTo, '/' );
 
-	    if  ( slash )
-		{ relLen= slash- nameRelativeTo+ 1;	}
+	    if  ( slash >= 0 )
+		{ relLen= slash;	}
 	    }
 	else{
-	    addSlash= 1;
-	    relLen= strlen( nameRelativeTo );
+	    relLen= nameRelativeTo->mbSize;
 	    }
-	}
 
-    /*  3  */
-    if  ( relLen > 0 && nameRelativeTo[0] == '/' )
-	{
-	if  ( relLen+ addSlash+ fileLen > len )
-	    { LLLDEB(relLen,fileLen,len); return -1;	}
+	/*  3  */
+	if  ( relLen > 0 && nameRelativeTo->mbBytes[0] == '/' )
+	    {
+	    if  ( utilMemoryBufferSetBytes( absolute,
+					    nameRelativeTo->mbBytes, relLen ) )
+		{ LDEB(relLen); rval= -1; goto ready;	}
 
-	strncpy( absolute, nameRelativeTo, relLen );
-	absLen= relLen;
-	absLen= utilFileNameCatenate( absolute, absLen, addSlash,
-							filename, fileLen );
-	return absLen;
+	    if  ( utilFileNameCatenate( absolute,
+					    relative, relative->mbSize ) < 0 )
+		{ LDEB(1); rval= -1; goto ready;	}
+
+	    rval= absolute->mbSize; goto ready;
+	    }
 	}
 
     /*  4  */
-    rootLen= appCurrentDirectory( absolute, len- fileLen- 2 );
-    if  ( rootLen < 1 )
-	{ LSDEB(rootLen,filename); return -1;	}
-
-    if  ( rootLen+ 2 >= len )
-	{ LLDEB(rootLen,len); return -1;	}
-
-#   ifndef __VMS
-    /*  5  */
-    if  ( rootLen > 1 )
-	{
-	absolute[rootLen++]= '/';
-	absolute[rootLen  ]= '\0';
-	}
-#   endif
-
-    if  ( rootLen+ relLen+ fileLen > len )
-	{ LLLLDEB(rootLen,relLen,fileLen,len); return -1;	}
+    if  ( appCurrentDirectory( absolute ) < 0 )
+	{ LDEB(1); rval= -1; goto ready;	}
 
     /*  6  */
-    absLen= rootLen;
     if  ( relLen > 0 )
 	{
-	absLen= utilFileNameCatenate( absolute, absLen, 0,
-						    nameRelativeTo, relLen );
+	if  ( utilFileNameCatenate( absolute, nameRelativeTo, relLen ) < 0 )
+	    { LDEB(relLen); rval= -1; goto ready;	}
 	}
 
-    absLen= utilFileNameCatenate( absolute, absLen, 0,
-						    filename, fileLen );
-    return absLen;
+    if  ( utilFileNameCatenate( absolute, relative, relative->mbSize ) < 0 )
+	{ LDEB(1); rval= -1; goto ready;	}
+
+    rval= absolute->mbSize;
+
+  ready:
+
+    return rval;
     }
 
 # if 0

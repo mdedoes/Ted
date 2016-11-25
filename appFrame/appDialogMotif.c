@@ -1,11 +1,10 @@
 #   include	"appFrameConfig.h"
 
-#   include	<stdlib.h>
 #   include	<stdio.h>
 
 #   include	"appFrame.h"
-#   include	"appSystem.h"
-#   include	<appGeoString.h>
+
+#   include	<appDebugon.h>
 
 #   ifdef USE_MOTIF
 
@@ -14,8 +13,6 @@
 #   include	<Xm/MwmUtil.h>
 #   include	<Xm/Protocols.h>
 #   include	<Xm/DialogS.h>
-
-#   include	<appDebugon.h>
 
 /************************************************************************/
 /*									*/
@@ -39,8 +36,7 @@ static void appDialogSetFocus(		Widget			w,
     {
     if  ( event->type == MapNotify )
 	{
-	XSetInputFocus( XtDisplay( w ), XtWindow( w ),
-					    RevertToNone, CurrentTime );
+	appGuiMotifSetFocusToWindow( w );
 
 	/*
 	XtRemoveEventHandler( w, StructureNotifyMask, False,
@@ -51,6 +47,8 @@ static void appDialogSetFocus(		Widget			w,
     *pRefused= 1; return;
     }
 
+#   define FIX_DIALOG_SIZE 0
+#   if FIX_DIALOG_SIZE
 /*  2  */
 static void appFixDialogSize(	Widget			w,
 				void *			through,
@@ -75,6 +73,7 @@ static void appFixDialogSize(	Widget			w,
 
     return;
     }
+#   endif
 
 /************************************************************************/
 /*									*/
@@ -88,7 +87,7 @@ void appMakeVerticalDialog(	AppDialog *		ad,
 				APP_CLOSE_CALLBACK_T	closeCallback,
 				APP_DESTROY_CALLBACK_T	destroyCallback,
 				void *			through,
-				char *			widgetName )
+				const char *		widgetName )
     {
     Widget		shell;
     Widget		dialog;
@@ -123,12 +122,12 @@ void appMakeVerticalDialog(	AppDialog *		ad,
 	{ XtSetArg( al[ac], XmNmwmDecorations,	hints.decorations ); ac++; }
 
     shell= XmCreateDialogShell( ea->eaToplevel.atTopWidget,
-							widgetName, al, ac );
+						(char *)widgetName, al, ac );
 
     if  ( closeCallback && ea->eaCloseAtom > 0 )
 	{
 	XmAddWMProtocolCallback( shell, ea->eaCloseAtom,
-						    closeCallback, through );
+						closeCallback, through );
 	}
 
     if  ( destroyCallback )
@@ -137,7 +136,7 @@ void appMakeVerticalDialog(	AppDialog *		ad,
 						destroyCallback, through );
 	}
 
-#   if 0
+#   if FIX_DIALOG_SIZE
     See Above
     XtAddEventHandler( shell, StructureNotifyMask, False,
 						appFixDialogSize, through );
@@ -191,7 +190,7 @@ void appGuiRunDialog(			AppDialog *		ad,
 			NULL );
 
     if  ( defaultButton )
-	{ XmProcessTraversal( defaultButton, XmTRAVERSE_CURRENT ); }
+	{ appGuiFocusToWidget( defaultButton ); }
 #   endif
 
     XtAddGrab( ad->adTopWidget, True, False );
@@ -272,7 +271,17 @@ static void appRelativeMapCallback(	Widget		w,
     XtRemoveCallback( w, XmNmapCallback, appRelativeMapCallback, voidRelative );
     }
 
-void appGuiShowDialog(			AppDialog *		ad,
+/************************************************************************/
+/*									*/
+/*  Show a shell widget. Because of the RIDICULOUS and ABSURD situation	*/
+/*  the you cannot rely on a shell window to be visible after we tell	*/
+/*  it to become visible, we handle a series of events in a loop until	*/
+/*  it becomes visible.							*/
+/*									*/
+/************************************************************************/
+
+void appGuiShowDialog(			EditApplication *	ea,
+					AppDialog *		ad,
 					Widget			relative )
     {
     if  ( relative )
@@ -282,9 +291,12 @@ void appGuiShowDialog(			AppDialog *		ad,
 	}
 
     XtManageChild( ad->adDialog );
+    XSync( XtDisplay( ad->adDialog ), False );
 
     if  ( relative )
 	{ appDialogRelative( relative, ad->adDialog );	}
+
+    appGuiMotifWaitForWindow( XtParent( ad->adDialog ), ea->eaContext );
     }
 
 void appGuiHideDialog(			AppDialog *		ad )

@@ -1,20 +1,17 @@
 #   include	"appFrameConfig.h"
 
-#   include	<stdlib.h>
 #   include	<stdio.h>
 
-#   include	"appFrame.h"
-#   include	"appSystem.h"
-#   include	<appGeoString.h>
+#   include	"guiWidgetsImpl.h"
+#   include	"guiWidgets.h"
+#   include	"guiOptionmenu.h"
+
+#   include	<appDebugon.h>
 
 #   ifdef USE_MOTIF
 
 #   include	<Xm/RowColumn.h>
-#   include	<Xm/PushB.h>
 #   include	<Xm/PushBG.h>
-#   include	<Xm/PanedW.h>
-
-#   include	<appDebugon.h>
 
 #   define	RECLAIM_FOCUS	0
 
@@ -24,7 +21,7 @@
 /*									*/
 /************************************************************************/
 
-void appOptionmenuSetWidthMotif(	Widget		menu,
+static void appOptionmenuSetWidthMotif(	Widget		menu,
 					int		newWidth )
     {
     Dimension		parentMarginWidth= 0;
@@ -67,6 +64,9 @@ void appOptionmenuRefreshWidth(	AppOptionmenu *		aom )
     {
     Dimension		width;
 
+    if  ( ! aom->aomInplace )
+	{ XDEB(aom->aomInplace); return;	}
+
     XtVaGetValues( aom->aomInplace,
 			    XmNwidth,		&width,
 			    NULL );
@@ -78,28 +78,34 @@ void appOptionmenuRefreshWidth(	AppOptionmenu *		aom )
 
 /************************************************************************/
 /*									*/
+/*  Dispatch the callback for an option menu and..			*/
+/*									*/
 /*  Reclaim focus that drifted away.					*/
 /*  This is to work around a bug in the Xfce window manager (Oct 2004).	*/
 /*									*/
 /************************************************************************/
 
-# if RECLAIM_FOCUS
-
-static void appRefocusOptionmenuMotif(	Widget			w,
+static void appOptionMenuMotifCallback(	Widget			w,
 					void *			voidaom,
 					void *			pbcs )
     {
     AppOptionmenu *	aom= (AppOptionmenu *)voidaom;
+    short		idx= -1;
 
-    if  ( XtDisplay( aom->aomInplace ) )
-	{
-	XSetInputFocus( XtDisplay( aom->aomInplace ),
-						XtWindow( aom->aomInplace ),
-						RevertToNone, CurrentTime );
-	}
+    XtVaGetValues( w,	XmNpositionIndex,	&idx,
+			NULL );
+    if  ( idx < 0 )
+	{ LDEB(idx); return;	}
+
+    if  ( aom->aomCallback )
+	{ (*aom->aomCallback)( idx, aom->aomTarget ); }
+
+#   if RECLAIM_FOCUS
+    appGuiMotifSetFocusToWindow( aom->aomInplace );
+#   endif
+
+    return;
     }
-
-# endif
 
 /************************************************************************/
 /*									*/
@@ -147,11 +153,13 @@ void appFinishOptionmenuMotif(	Widget		menu,
     return;
     }
 
-void appMakeOptionmenuInColumn(		AppOptionmenu *	aom,
-					Widget		column )
+void appMakeOptionmenuInColumn(	AppOptionmenu *		aom,
+				APP_WIDGET		column,
+				OptionmenuCallback	callBack,
+				void *			target )
     {
     Widget			pulldown;
-    Widget			menu;
+    Widget			inplace;
 
     Arg				al[20];
     int				ac= 0;
@@ -182,24 +190,29 @@ void appMakeOptionmenuInColumn(		AppOptionmenu *	aom,
     XtSetArg( al[ac], XmNallowResize,		True ); ac++;
     XtSetArg( al[ac], XmNresizeHeight,		True ); ac++;
 
-    menu= XmCreateOptionMenu( column, WIDGET_NAME, al, ac );
+    inplace= XmCreateOptionMenu( column, WIDGET_NAME, al, ac );
 
-    appFinishOptionmenuMotif( menu, pulldown );
+    appFinishOptionmenuMotif( inplace, pulldown );
 
-    XtManageChild( menu );
+    XtManageChild( inplace );
 
     appMotifTurnOfSashTraversal( column );
 
-    aom->aomPulldown= pulldown; aom->aomInplace= menu; return;
+    aom->aomPulldown= pulldown;
+    aom->aomInplace= inplace;
+    aom->aomCallback= callBack;
+    aom->aomTarget= target;
     }
 
-void appMakeOptionmenuInRow(		AppOptionmenu *	aom,
-					Widget		row,
-					int		column,
-					int		colspan )
+void appMakeOptionmenuInRow(		AppOptionmenu *		aom,
+					APP_WIDGET		row,
+					int			column,
+					int			colspan,
+					OptionmenuCallback	callBack,
+					void *			target )
     {
     Widget			pulldown;
-    Widget			menu;
+    Widget			inplace;
 
     Arg				al[20];
     int				ac= 0;
@@ -240,13 +253,18 @@ void appMakeOptionmenuInRow(		AppOptionmenu *	aom,
     XtSetArg( al[ac], XmNspacing,		0 ); ac++;
     XtSetArg( al[ac], XmNentryBorder,		0 ); ac++;
 
-    menu= XmCreateOptionMenu( row, WIDGET_NAME, al, ac );
+    inplace= XmCreateOptionMenu( row, WIDGET_NAME, al, ac );
 
-    appFinishOptionmenuMotif( menu, pulldown );
+    appFinishOptionmenuMotif( inplace, pulldown );
 
-    XtManageChild( menu );
+    XtManageChild( inplace );
 
-    aom->aomPulldown= pulldown; aom->aomInplace= menu; return;
+    aom->aomPulldown= pulldown;
+    aom->aomInplace= inplace;
+    aom->aomCallback= callBack;
+    aom->aomTarget= target;
+
+    return;
     }
 
 /************************************************************************/
@@ -256,9 +274,7 @@ void appMakeOptionmenuInRow(		AppOptionmenu *	aom,
 /************************************************************************/
 
 APP_WIDGET appAddItemToOptionmenu(	AppOptionmenu *		aom,
-					const char *		label,
-					XtCallbackProc		callBack,
-					void *			target )
+					const char *		label )
     {
     Widget		fresh;
 
@@ -294,8 +310,11 @@ APP_WIDGET appAddItemToOptionmenu(	AppOptionmenu *		aom,
 	XmStringFree( labelString );
 	}
 
-    if  ( callBack )
-	{ XtAddCallback( fresh, XmNactivateCallback, callBack, target ); }
+    if  ( aom->aomCallback )
+	{
+	XtAddCallback( fresh, XmNactivateCallback,
+				    appOptionMenuMotifCallback, (void *)aom );
+	}
 
 #   if RECLAIM_FOCUS
     XtAddCallback( fresh, XmNactivateCallback,
@@ -307,6 +326,13 @@ APP_WIDGET appAddItemToOptionmenu(	AppOptionmenu *		aom,
     aom->aomOptionsVisible++;
 
     return fresh;
+    }
+
+void appDeleteItemFromOptionmenu(	AppOptionmenu *		aom,
+					APP_WIDGET		option )
+    {
+    XtDestroyWidget( option );
+    aom->aomOptionsVisible--;
     }
 
 /************************************************************************/
@@ -408,17 +434,10 @@ void appInitOptionmenu(		AppOptionmenu *		aom )
     aom->aomPulldown= (APP_WIDGET)0;
     aom->aomInplace= (APP_WIDGET)0;
 
+    aom->aomCallback= (OptionmenuCallback)0;
+    aom->aomTarget= (void *)0;
+
     aom->aomOptionsVisible= 0;
-    }
-
-int appGuiGetOptionmenuItemIndexMotif(	AppOptionmenu *	aom,
-					Widget		w )
-    {
-    short		pos= -1;
-
-    XtVaGetValues( w,	XmNpositionIndex,	&pos,
-			NULL );
-    return pos;
     }
 
 void appOptionmenuItemSetVisibility(	APP_WIDGET	w,

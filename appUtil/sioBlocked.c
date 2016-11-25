@@ -25,7 +25,7 @@ typedef struct BlockedInputStream
 
 static int sioInBlockedReadBytes(	void *		voidbis,
 					unsigned char *	buffer,
-					int		count )
+					unsigned int	count )
     {
     BlockedInputStream *	bis= (BlockedInputStream *)voidbis;
     int				done= 0;
@@ -56,7 +56,7 @@ static int sioInBlockedReadBytes(	void *		voidbis,
 
 	bis->bisOffset= 1;
 
-	todo= sioInGetCharacter( bis->bisBlocked );
+	todo= sioInGetByte( bis->bisBlocked );
 	if  ( todo == EOF )
 	    { LDEB(todo); bis->bisExhausted= 1; return -1;	}
 
@@ -174,7 +174,8 @@ static int sioOutBlockedClose(	void *	voidbos )
 	    { LDEB(bos->bosBytes[0]); rval= -1;	}
 	}
 
-    sioOutPutCharacter( '\0', bos->bosSosBlocked );
+    if  ( sioOutPutByte( '\0', bos->bosSosBlocked ) < 0 )
+	{ rval= -1;	}
 
     free( bos );
 
@@ -233,8 +234,7 @@ SimpleOutputStream * sioOutBlockedOpen(	SimpleOutputStream *	sosBlocked )
     bos->bosSosBlocked= sosBlocked;
     bos->bosBytes[0]= 0;
 
-    sos= sioOutOpen( (void *)bos, sioOutBlockedWriteBytes,
-					(SIOoutSEEK)0, sioOutBlockedClose );
+    sos= sioOutOpen( (void *)bos, sioOutBlockedWriteBytes, sioOutBlockedClose );
 
     if  ( ! sos )
 	{ XDEB(sos); free( bos ); return (SimpleOutputStream *)0; }

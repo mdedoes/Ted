@@ -1,12 +1,11 @@
 #   include	"bitmapConfig.h"
 
-#   include	<bmGrayHisto.h>
+#   include	<stdlib.h>
 
-#   include	"bmintern.h"
-#   include	<string.h>
+#   include	"bmGrayHisto.h"
+
+#   include	"bmRender.h"
 #   include	<appDebugon.h>
-
-#   include	<math.h>
 
 /************************************************************************/
 /*									*/
@@ -80,18 +79,14 @@ static void bmThresholdFillHistogram8(
 /*									*/
 /************************************************************************/
 
-int bmThreshold(	BitmapDescription *		bdOut,
-			const BitmapDescription *	bdIn,
-			unsigned char **		pBufOut,
-			const unsigned char *		bufferIn,
+int bmThreshold(	RasterImage *			riOut,
+			const RasterImage *		riIn,
 			int				ignoredInt )
     {
+    const BitmapDescription *	bdIn= &(riIn->riDescription);
     int				rval= 0;
 
-    BitmapDescription		bd;
-    int				bytesPerRow;
-
-    unsigned char *		buffer= (unsigned char *)0;
+    RasterImage			ri;
 
     ColorAllocator		ca;
     ThresholderHistogram	th;
@@ -100,6 +95,8 @@ int bmThreshold(	BitmapDescription *		bdOut,
     int				swapBitmapBytes= 0;
     int				swapBitmapBits= 0;
     const int			dither= 0;
+
+    bmInitRasterImage( &ri );
 
     /*  1  */
     bmInitColorAllocator( &ca );
@@ -125,7 +122,7 @@ int bmThreshold(	BitmapDescription *		bdOut,
     switch( bdIn->bdBitsPerSample )
 	{
 	case 8:
-	    bmThresholdFillHistogram8( &th, bdIn, bufferIn );
+	    bmThresholdFillHistogram8( &th, bdIn, riIn->riBytes );
 	    break;
 
 	default:
@@ -150,38 +147,35 @@ int bmThreshold(	BitmapDescription *		bdOut,
 	}
 
     /*  5  */
-    bmInitDescription( &bd );
-    bmCopyDescription( &bd, bdIn );
+    if  ( bmCopyDescription( &(ri.riDescription), bdIn ) )
+	{ LDEB(1); rval= -1; goto ready;	}
 
-    bd.bdBitsPerSample= 1;
-    bd.bdSamplesPerPixel= 1;
-    bd.bdBitsPerPixel= 1;
+    ri.riDescription.bdBitsPerSample= 1;
+    ri.riDescription.bdSamplesPerPixel= 1;
+    ri.riDescription.bdBitsPerPixel= 1;
+    ri.riDescription.bdColorEncoding= BMcoWHITEBLACK;
 
-    bd.bdColorEncoding= BMcoWHITEBLACK;
-
-    bytesPerRow= ( bd.bdPixelsWide+ 7 )/ 8;
-    bd.bdBytesPerRow= bytesPerRow;
-    bd.bdBufferLength= bd.bdPixelsHigh* bytesPerRow;
+    if  ( bmCalculateSizes( &(ri.riDescription) ) )
+	{ LDEB(1); rval= -1; goto ready;	}
 
     /*  6  */
-    buffer= (unsigned char *)malloc( bd.bdBufferLength );
-    if  ( ! buffer )
-	{ LLDEB(bd.bdBufferLength,buffer); rval= -1; goto ready; }
+    ri.riBytes= (unsigned char *)malloc( ri.riDescription.bdBufferLength );
+    if  ( ! ri.riBytes )
+	{ LLDEB(ri.riDescription.bdBufferLength,ri.riBytes); rval= -1; goto ready; }
 
     /*  7  */
     if  ( bmFillImage( &ca, bitmapUnit, swapBitmapBytes, swapBitmapBits,
-				dither, buffer, bufferIn, &bd, bdIn ) )
+			dither, ri.riBytes, &(ri.riDescription),
+			riIn, (const DocumentRectangle *)0 ) )
 	{ LDEB(1); rval= -1; goto ready;	}
 
-    *pBufOut= buffer;
-    *bdOut= bd;
+    /* steal */
+    *riOut= ri; bmInitRasterImage( &ri );
 
   ready:
 
-    if  ( rval && buffer )
-	{ free( buffer );	}
-    if  ( rval )
-	{ bmCleanDescription( &bd );	}
+    bmCleanRasterImage( &ri );
+    bmCleanColorAllocator( &ca );
 
     return rval;
     }

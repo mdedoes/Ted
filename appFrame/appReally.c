@@ -6,9 +6,10 @@
 
 #   include	<stddef.h>
 #   include	<stdio.h>
-#   include	<stdlib.h>
 
-#   include	<appFrame.h>
+#   include	"appFrame.h"
+#   include	"appQuestion.h"
+#   include	"appFileChooser.h"
 
 #   include	<appDebugon.h>
 
@@ -27,13 +28,9 @@ void appRunReallyCloseDialog(	APP_WIDGET			option,
     AppFileMessageResources *	afmr= &(ea->eaFileMessageResources);
 
     rcc= appQuestionRunSubjectYesNoCancelDialog( ea,
-						ed->edToplevel.atTopWidget,
-						option,
-						ed->edTitle,
-						afmr->afmrReallyCloseQuestion,
-						afmr->afmrReallyCloseSaveIt,
-						afmr->afmrReallyCloseDontSave,
-						afmr->afmrReallyCloseCancel );
+				ed->edToplevel.atTopWidget, option,
+				utilMemoryBufferGetString( &(ed->edTitle) ),
+				afmr->afmrReallyCloseQuestion );
 
     switch( rcc )
 	{
@@ -41,32 +38,30 @@ void appRunReallyCloseDialog(	APP_WIDGET			option,
 	    if  ( ! ea->eaSaveDocument )
 		{ XDEB(ea->eaSaveDocument); return;	}
 
-	    if  ( ! ed->edFilename )
+	    if  ( utilMemoryBufferIsEmpty( &(ed->edFilename) ) )
 		{
-#		ifdef USE_MOTIF
-		appDocFileSaveAs( option, (void *)ed, (void *)0 ); return;
-#		endif
-#		ifdef USE_GTK
-		appDocFileSaveAs( (GtkMenuItem *)option, (void *)ed ); return;
-#		endif
-		XDEB(ed->edFilename); return;
+		appRunSaveChooser( option, ed->edToplevel.atTopWidget,
+					APPFILE_CAN_SAVE, appDocSaveDocument,
+					ed, ed->edPrivateData );
+		return;
 		}
 	    else{
-		const int	interactive= 1;
-
-		if  ( ! appDocSaveDocumentByName( ed, option, interactive,
-					    ed->edFormat, ed->edFilename ) )
+		if  ( ! appDocSaveDocument( ed, (void *)0,
+					    ed->edToplevel.atTopWidget, option,
+					    ed->edFormat, &(ed->edFilename) ) )
 		    { appDocumentChanged( ed, 0 ); }
 		}
 
 	    if  ( ! ed->edHasBeenChanged )
-		{ appCloseDocument( ea, ed );	}
+		{ appCloseDocument( ed );	}
 	    break;
 
 	case AQDrespNO:
-	    appCloseDocument( ea, ed );
+	    appCloseDocument( ed );
 	    break;
+
 	case AQDrespCANCEL:
+	case AQDrespCLOSED:
 	    break;
 	default:
 	    LDEB(rcc); break;
@@ -88,10 +83,6 @@ int appRunReallyQuitDialog(	APP_WIDGET			option,
     AppFileMessageResources *	afmr= &(ea->eaFileMessageResources);
 
     return appQuestionRunYesNoCancelDialog( ea,
-					relative,
-					option,
-					afmr->afmrReallyQuitQuestion,
-					afmr->afmrReallyQuitReview,
-					afmr->afmrReallyQuitAnyway,
-					afmr->afmrReallyQuitCancel );
+					relative, option,
+					afmr->afmrReallyQuitQuestion );
     }

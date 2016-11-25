@@ -7,11 +7,13 @@
 #   include	<stdlib.h>
 #   include	<stdio.h>
 #   include	<stddef.h>
-#   include	<string.h>
 
 #   include	<appDebugon.h>
 
+#   include	<guiTextUtil.h>
 #   include	"tedApp.h"
+#   include	"tedDocFront.h"
+#   include	"tedDocument.h"
 
 #   define	DRH_CM	4.5
 
@@ -49,6 +51,7 @@ typedef struct PropertyDialog
     {
     AppDialog			dpdDialog;
 
+    APP_WIDGET			dpdButtonRow;
     APP_WIDGET			dpdOkButton;
 
     APP_WIDGET			dpdGeneratorWidget;
@@ -144,7 +147,7 @@ static APP_TXTYPING_CALLBACK_H( tedPropertyChanged, w, voiddpd )
     {
     PropertyDialog *	dpd= (PropertyDialog *)voiddpd;
 
-    appGuiEnableWidget( dpd->dpdOkButton, 1 );
+    guiEnableWidget( dpd->dpdOkButton, 1 );
 
     appGuiSetDefaultButtonForDialog( &(dpd->dpdDialog), dpd->dpdOkButton );
 
@@ -185,7 +188,7 @@ static APP_CLOSE_CALLBACK_H( tedClosePropertyDialog, w, voiddpd )
     {
     PropertyDialog *	dpd= (PropertyDialog *)voiddpd;
 
-    appGuiBreakDialog( &(dpd->dpdDialog), AQDrespCANCEL );
+    appGuiBreakDialog( &(dpd->dpdDialog), AQDrespCLOSED );
 
     return;
     }
@@ -308,14 +311,15 @@ static APP_WIDGET tedPropsDialogMakeButtonRow(
     APP_WIDGET	row;
     APP_WIDGET	cancelButton;
     const int	heightResizable= 0;
+    const int	colspan= 1;
 
     row= appMakeRowInColumn( parent, 2, heightResizable );
 
     appMakeButtonInRow( &(dpd->dpdOkButton), row, dppr->dpprOkText,
-				tedPropertiesOkPushed, (void *)dpd, 0, 1 );
+		    tedPropertiesOkPushed, (void *)dpd, 0, colspan, 1 );
 
     appMakeButtonInRow( &(cancelButton), row, dppr->dpprCancelText, 
-			    tedPropertiesCancelPushed, (void *)dpd, 1, 0 );
+		    tedPropertiesCancelPushed, (void *)dpd, 1, colspan, 0 );
 
     appGuiSetCancelButtonForDialog( &(dpd->dpdDialog), cancelButton );
 
@@ -337,7 +341,6 @@ static PropertyDialog * tedMakePropertyDialog( EditDocument *	ed,
     
     APP_WIDGET		paned;
     APP_WIDGET		separator;
-    APP_WIDGET		buttonForm;
 
     APP_BITMAP_IMAGE	iconPixmap= (APP_BITMAP_IMAGE)0;
     APP_BITMAP_MASK	iconMask= (APP_BITMAP_MASK)0;
@@ -374,50 +377,11 @@ static PropertyDialog * tedMakePropertyDialog( EditDocument *	ed,
 
     appGuiInsertSeparatorInColumn( &separator, paned );
 
-    buttonForm= tedPropsDialogMakeButtonRow( paned, dpd, &dppr );
+    dpd->dpdButtonRow= tedPropsDialogMakeButtonRow( paned, dpd, &dppr );
 
-    appGuiShowDialog( &(dpd->dpdDialog), ed->edToplevel.atTopWidget );
+    appGuiShowDialog( ea, &(dpd->dpdDialog), ed->edToplevel.atTopWidget );
 
     return dpd;
-    }
-
-/************************************************************************/
-
-static int tedPropChangeProperty(	int *			pChanged,
-					unsigned char **	pValue,
-					APP_WIDGET		textWidget )
-    {
-    char *	oldValue= (char *)*pValue;
-    char *	newValue;
-    char *	saved= (char *)0;
-
-    newValue= appGetStringFromTextWidget( textWidget );
-
-    if  ( ! oldValue || ! oldValue[0] )
-	{
-	if  ( ! newValue[0] )
-	    { appFreeStringFromTextWidget( newValue ); return 0;	}
-	}
-    else{
-	if  ( ! strcmp( oldValue, newValue ) )
-	    { appFreeStringFromTextWidget( newValue ); return 0;	}
-	}
-
-    if  ( newValue[0] )
-	{
-	saved= strdup( newValue );
-	if  ( ! saved )
-	    { XDEB(saved); return -1;	}
-	}
-
-    appFreeStringFromTextWidget( newValue );
-
-    if  ( oldValue )
-	{ free( oldValue );	}
-
-    *pChanged= 1; *pValue= (unsigned char *)saved;
-
-    return 0;
     }
 
 /************************************************************************/
@@ -428,16 +392,6 @@ static int tedPropChangeProperty(	int *			pChanged,
 /*  2)	Set the default content.					*/
 /*									*/
 /************************************************************************/
-
-static void tedPropToWidget(	APP_WIDGET			w,
-				const unsigned char *		prop )
-    {
-    if  ( prop )
-	{ appStringToTextWidget( w, (char *)prop );	}
-    else{ appStringToTextWidget( w, "" );		}
-
-    return;
-    }
 
 static void tedDateToWidget(	APP_WIDGET			w,
 				const struct tm *		tm )
@@ -464,14 +418,21 @@ int tedRunPropertyDialog(	EditDocument *			ed,
 				const char *			pixmapName )
     {
     int				rval= 0;
-    int				changed= 0;
 
     PropertyDialog *		dpd= TED_PropertyDialog;
 
     EditApplication *		ea= ed->edApplication;
     TedDocument *		td= (TedDocument *)ed->edPrivateData;
     BufferDocument *		bd= td->tdDocument;
-    DocumentProperties *	dp= &(bd->bdProperties);
+    const DocumentProperties *	dpSet= &(bd->bdProperties);
+
+    DocumentProperties		dpChosen;
+
+    PropertyMask		dpDifMask;
+    PropertyMask		dpCmpMask;
+
+
+    docInitDocumentProperties( &dpChosen );
 
     /*  1  */
     if  ( ! dpd )
@@ -479,28 +440,37 @@ int tedRunPropertyDialog(	EditDocument *			ed,
 	dpd= TED_PropertyDialog= tedMakePropertyDialog( ed, option,
 								pixmapName );
 	if  ( ! dpd )
-	    { XDEB(dpd); return -1;	}
+	    { XDEB(dpd); rval= -1; goto ready;	}
 
 	}
     else{
 	appSetShellTitle( dpd->dpdDialog.adTopWidget,
 					    option, ea->eaApplicationName );
 
-	appGuiShowDialog( &(dpd->dpdDialog), ed->edToplevel.atTopWidget );
+	appGuiShowDialog( ea, &(dpd->dpdDialog), ed->edToplevel.atTopWidget );
 	}
 
-    tedPropToWidget( dpd->dpdGeneratorWidget, dp->dpGenerator );
-    tedPropToWidget( dpd->dpdTitleWidget, dp->dpTitle );
-    tedPropToWidget( dpd->dpdAuthorWidget, dp->dpAuthor );
-    tedPropToWidget( dpd->dpdCompanyWidget, dp->dpCompany );
-    tedPropToWidget( dpd->dpdSubjectWidget, dp->dpSubject );
-    tedPropToWidget( dpd->dpdKeywordsWidget, dp->dpKeywords );
-    tedPropToWidget( dpd->dpdDoccommWidget, dp->dpDoccomm );
-    tedPropToWidget( dpd->dpdHlinkbaseWidget, dp->dpHlinkbase );
+    guiBufferToText( dpd->dpdGeneratorWidget, &(dpSet->dpGeneratorRead) );
+    guiBufferToText( dpd->dpdTitleWidget, &(dpSet->dpTitle) );
+    guiBufferToText( dpd->dpdAuthorWidget, &(dpSet->dpAuthor) );
+    guiBufferToText( dpd->dpdCompanyWidget, &(dpSet->dpCompany) );
+    guiBufferToText( dpd->dpdSubjectWidget, &(dpSet->dpSubject) );
+    guiBufferToText( dpd->dpdKeywordsWidget, &(dpSet->dpKeywords) );
+    guiBufferToText( dpd->dpdDoccommWidget, &(dpSet->dpDoccomm) );
+    guiBufferToText( dpd->dpdHlinkbaseWidget, &(dpSet->dpHlinkbase) );
 
-    tedDateToWidget( dpd->dpdCreatimWidget, &(dp->dpCreatim) );
-    tedDateToWidget( dpd->dpdRevtimWidget, &(dp->dpRevtim) );
-    tedDateToWidget( dpd->dpdPrintimWidget, &(dp->dpPrintim) );
+    guiEnableText( dpd->dpdGeneratorWidget, ! ed->edIsReadonly );
+    guiEnableText( dpd->dpdTitleWidget, ! ed->edIsReadonly );
+    guiEnableText( dpd->dpdAuthorWidget, ! ed->edIsReadonly );
+    guiEnableText( dpd->dpdCompanyWidget, ! ed->edIsReadonly );
+    guiEnableText( dpd->dpdSubjectWidget, ! ed->edIsReadonly );
+    guiEnableText( dpd->dpdKeywordsWidget, ! ed->edIsReadonly );
+    guiEnableText( dpd->dpdDoccommWidget, ! ed->edIsReadonly );
+    guiEnableText( dpd->dpdHlinkbaseWidget, ! ed->edIsReadonly );
+
+    tedDateToWidget( dpd->dpdCreatimWidget, &(dpSet->dpCreatim) );
+    tedDateToWidget( dpd->dpdRevtimWidget, &(dpSet->dpRevtim) );
+    tedDateToWidget( dpd->dpdPrintimWidget, &(dpSet->dpPrintim) );
 
     appIntegerToTextWidget( dpd->dpdPageCountWidget, ds->dsPageCount );
     appIntegerToTextWidget( dpd->dpdParaCountWidget, ds->dsParagraphCount );
@@ -508,54 +478,77 @@ int tedRunPropertyDialog(	EditDocument *			ed,
     appIntegerToTextWidget( dpd->dpdWordCountWidget, ds->dsWordCount );
     appIntegerToTextWidget( dpd->dpdCharCountWidget, ds->dsCharacterCount );
 
-    appGuiEnableWidget( dpd->dpdOkButton, 0 );
+    guiEnableWidget( dpd->dpdOkButton, ed->edIsReadonly );
 
     appGuiRunDialog( &(dpd->dpdDialog), AQDrespNONE, ea );
 
     switch( dpd->dpdDialog.adResponse )
 	{
 	case AQDrespOK:
+	    if  ( ed->edIsReadonly )
+		{ appGuiHideDialog( &(dpd->dpdDialog) ); goto ready;	}
 	    break;
+
 	default:
 	    LDEB(dpd->dpdDialog.adResponse);
 	    /*FALLTHROUGH*/
 	case AQDrespCANCEL:
 	    appGuiHideDialog( &(dpd->dpdDialog) );
-	    return -1;
+	    rval= -1; goto ready;
+
+	case AQDrespCLOSED:
+	    rval= -1; goto ready;
 	}
 
     appGuiHideDialog( &(dpd->dpdDialog) );
 
-    if  ( tedPropChangeProperty( &changed, &(dp->dpTitle),
+    if  ( appBufferFromTextWidget( &(dpChosen.dpTitle),
 						dpd->dpdTitleWidget ) )
-	{ LDEB(1); return -1;	}
+	{ LDEB(1); rval= -1; goto ready;	}
 
-    if  ( tedPropChangeProperty( &changed, &(dp->dpAuthor),
+    if  ( appBufferFromTextWidget( &(dpChosen.dpAuthor),
 						dpd->dpdAuthorWidget ) )
-	{ LDEB(1); return -1;	}
+	{ LDEB(1); rval= -1; goto ready;	}
 
-    if  ( tedPropChangeProperty( &changed, &(dp->dpCompany),
+    if  ( appBufferFromTextWidget( &(dpChosen.dpCompany),
 						dpd->dpdCompanyWidget ) )
-	{ LDEB(1); return -1;	}
+	{ LDEB(1); rval= -1; goto ready;	}
 
-    if  ( tedPropChangeProperty( &changed, &(dp->dpSubject),
+    if  ( appBufferFromTextWidget( &(dpChosen.dpSubject),
 						dpd->dpdSubjectWidget ) )
-	{ LDEB(1); return -1;	}
+	{ LDEB(1); rval= -1; goto ready;	}
 
-    if  ( tedPropChangeProperty( &changed, &(dp->dpKeywords),
+    if  ( appBufferFromTextWidget( &(dpChosen.dpKeywords),
 						dpd->dpdKeywordsWidget ) )
-	{ LDEB(1); return -1;	}
+	{ LDEB(1); rval= -1; goto ready;	}
 
-    if  ( tedPropChangeProperty( &changed, &(dp->dpDoccomm),
+    if  ( appBufferFromTextWidget( &(dpChosen.dpDoccomm),
 						dpd->dpdDoccommWidget ) )
-	{ LDEB(1); return -1;	}
+	{ LDEB(1); rval= -1; goto ready;	}
 
-    if  ( tedPropChangeProperty( &changed, &(dp->dpHlinkbase),
+    if  ( appBufferFromTextWidget( &(dpChosen.dpHlinkbase),
 						dpd->dpdHlinkbaseWidget ) )
-	{ LDEB(1); return -1;	}
+	{ LDEB(1); rval= -1; goto ready;	}
 
-    if  ( changed )
-	{ appDocumentChanged( ed, 1 ); }
+    utilPropMaskClear( &dpCmpMask );
+    utilPropMaskClear( &dpDifMask );
+
+    PROPmaskADD( &dpCmpMask, DPpropTITLE );
+    PROPmaskADD( &dpCmpMask, DPpropSUBJECT );
+    PROPmaskADD( &dpCmpMask, DPpropKEYWORDS );
+    PROPmaskADD( &dpCmpMask, DPpropDOCCOMM );
+    PROPmaskADD( &dpCmpMask, DPpropAUTHOR );
+    PROPmaskADD( &dpCmpMask, DPpropCOMPANY );
+    PROPmaskADD( &dpCmpMask, DPpropHLINKBASE );
+
+    docDocumentPropertyDifference( &dpDifMask, dpSet, &dpCmpMask, &dpChosen );
+
+    if  ( tedDocSetDocumentProperties( ed, &dpDifMask, &dpChosen, td->tdTraced ) )
+	{ LDEB(1);	}
+
+  ready:
+
+    docCleanDocumentProperties( &dpChosen );
 
     return rval;
     }

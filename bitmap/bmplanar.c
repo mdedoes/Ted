@@ -1,5 +1,7 @@
 #   include	"bitmapConfig.h"
 
+#   include	<string.h>
+
 #   include	"bmintern.h"
 
 #   include	<appDebugon.h>
@@ -24,7 +26,6 @@ int bmPlanarToChunky(	unsigned char *			to,
     int				pos;
     int				by;
 
-    int				samplesPerByte;
     int				bytesPerComponent;
     unsigned char		mask;
     unsigned int		v;
@@ -68,12 +69,6 @@ int bmPlanarToChunky(	unsigned char *			to,
     if  ( 8 % bd->bdBitsPerSample != 0 )
 	{ LDEB(bd->bdBitsPerSample); return -1; }
 
-/*
-memcpy( to, from, bd->bdBufferLength );
-return 0;
-*/
-
-    samplesPerByte= 8/ bd->bdBitsPerSample;
     mask= 1;
     for ( spl= 0; spl < bd->bdBitsPerSample; spl++ )
 	{ mask= 2* mask;	}

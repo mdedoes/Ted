@@ -1,245 +1,304 @@
 #   include	"indConfig.h"
 
-#   include	<ind.h>
+#   include	<stdlib.h>
+
+#   include	"ind.h"
+#   include	<uniUtf8.h>
+#   include	<ucd.h>
 #   include	"indlocal.h"
-#   include	<charnames.h>
 #   include	<appDebugon.h>
 
 /************************************************************************/
+
+static int indGetCapModes(	int *			pTshift,
+				int *			pHshift,
+				int *			pFshift,
+				int *			pTail,
+				unsigned short *	ucods,
+				int			ulen )
+    {
+    int		tshift= INDhASIS;
+    int		hshift= INDhALLUP;
+    int		fshift= INDhALLUP;
+    int		tail= 0;
+    int		i;
+
+    if  ( ! ucdIsLu( ucods[0] ) )
+	{
+	*pTshift= INDhASIS;
+	*pHshift= INDhASIS;
+	*pFshift= INDhASIS;
+	*pTail= ulen;
+	return 0;
+	}
+
+    if  ( ulen > 1 && ucods[0] == 'I' && ucods[1] == 'J' )
+	{
+	tail= 2;
+	tshift= INDhIJTAILUP; hshift= INDhIJUP;
+	/* IJMUIDEN, IJsco */
+	}
+    else{
+	tail= 1;
+	tshift= INDhTAILUP; hshift= INDhFIRSTUP;
+	/* EDAM, Knudde */
+	}
+
+    /************************************************************/
+    /*  Inspect tail to determine shift kinds.			*/
+    /*  If it is in upper case, shift it down.			*/
+    /************************************************************/
+    for ( i= tail; i < ulen; i++ )
+	{
+	if  ( ucdIsL( ucods[i] ) )
+	    {
+	    if  ( ! ucdIsLu( ucods[i] ) )
+		{
+		tshift= INDhASIS;
+		fshift= INDhASIS;
+		if  ( ! ucdIsLl( ucods[i] ) )
+		    { hshift= INDhASIS;	}
+		}
+	    }
+	}
+
+    if  ( tshift != INDhASIS )
+	{
+	for ( i= tail; i < ulen; i++ )
+	    {
+	    if  ( ucdIsLu( ucods[i] ) )
+		{ ucods[i]= ucdToLower( ucods[i] );	}
+	    }
+	}
+
+    *pTshift= tshift;
+    *pHshift= hshift;
+    *pFshift= fshift;
+    *pTail= tail;
+    return 1;
+    }
+
+/************************************************************************/
+/*									*/
 /*  See whether a word is accepted.					*/
-/*  As this is a utility routine for spelling checking, the following	*/
-/*  attempts are made to accept it when it is not quite acceptable:	*/
+/*									*/
+/*  This is a utility routine for spelling checking. Some variations	*/
+/*  in capitalization are tried.					*/
+/*									*/
 /************************************************************************/
 
 int indWRDget(	IND *			ind,
 		int *			pWhatWasShifted,
 		const unsigned char *	word,
-		int			asPrefix,
-		const unsigned char *	charKinds,
-		const unsigned char *	charShifts )
+		int			asPrefix )
     {
-    static unsigned char *	copy;
+    int				rval= -1;
 
-    int				l;
-    const unsigned char *	r;
-    unsigned char *		s;
+    unsigned short *		ucods= (unsigned short *)0;
+    char *			shifted= (char *)0;
+
+    int				ulen;
     int				accepted;
     int				tn;
 
-    tn= indINDget( &accepted, ind, -1, word );
+    int				tshift;
+    int				hshift;
+    int				fshift;
+    int				tail;
+
+    if  ( ind->ind_start < 0 )
+	{ LDEB(ind->ind_start); rval= -1; goto ready;	}
+
+    tn= indINDgetUtf8( &accepted, ind, ind->ind_start, word );
     if  ( tn >= 0 && ( accepted || asPrefix ) )
-	{ *pWhatWasShifted= INDhASIS; return 0;	}
+	{ *pWhatWasShifted= INDhASIS; rval= 0; goto ready;	}
 
-    l= strlen( (char *)word );
-    copy= realloc( copy, l+ 2 );
+    ucods= uniUtf8ToUnicodes( &ulen, word );
+    if  ( ! ucods )
+	{ XDEB(ucods); rval= -1; goto ready;	}
 
-    if  ( ! copy )
-	{ LDEB(copy); return -1;	}
+    if  ( ulen < 1 )
+	{ LDEB(ulen); rval= -1; goto ready;	}
 
-    strcpy( (char *)copy, (const char *)word );
-
-    if  ( charKinds[ word[0] ] & CHARisUPPER )
+    if  ( indGetCapModes( &tshift, &hshift, &fshift, &tail, ucods, ulen ) )
 	{
-	if  ( word[0] == 'I' && word[1] == 'J' )
+	int		i;
+
+	shifted= (char *)malloc( 4* ulen+ 1 );
+	if  ( ! shifted )
+	    { LXDEB(ulen,shifted); rval= -1; goto ready;	}
+
+	/****************************************************************/
+	/*  Try tail shifted down.					*/
+	/*  NOTE: that the head is in upper case anyway.		*/
+	/****************************************************************/
+	if  ( tshift != INDhASIS )
 	    {
-	    copy[0]= 'i'; copy[1]= 'j';
-	    if  ( indINDget( &accepted, ind, -1, copy ) >= 0	&&
+	    indShiftWord( shifted, ucods, ulen, INDhASIS );
+
+	    if  ( indINDgetUtf8( &accepted, ind, ind->ind_start,
+				(unsigned char *)shifted ) >= 0	&&
 		  ( accepted || asPrefix )			)
-		{ *pWhatWasShifted= INDhIJUP; return 0;	}
-	    }
-	else{
-	    if  ( ! ( charKinds[ word[1] ] & CHARisUPPER ) )
-		{
-		copy[0]= charShifts[ word[0] ];
-		if  ( indINDget( &accepted, ind, -1, copy ) >= 0	&&
-		      ( accepted || asPrefix )			)
-		    { *pWhatWasShifted= INDhFIRSTUP; return 0;	}
-		}
+		{ *pWhatWasShifted= tshift; rval= 0; goto ready;	}
 	    }
 
-	/************************************************/
-	/*  Shift down.					*/
-	/************************************************/
-	r= word; s= copy;
-	while( *r && ( charKinds[ *r ] & CHARisUPPER ) )
+	/****************************************************************/
+	/*  Try head shifted down.					*/
+	/*  This is only activated if the tail is in lower case		*/
+	/****************************************************************/
+	if  ( hshift != INDhASIS )
 	    {
-	    *s= charShifts[*r];
-	    s++; r++;
+	    for ( i= 0; i < tail; i++ )
+		{ ucods[i]= ucdToLower( ucods[i] );	}
+
+	    indShiftWord( shifted, ucods, ulen, INDhASIS );
+
+	    if  ( indINDgetUtf8( &accepted, ind, ind->ind_start,
+			    (unsigned char *)shifted ) >= 0	&&
+		  ( accepted || asPrefix )			)
+		{ *pWhatWasShifted= hshift; rval= 0; goto ready;	}
 	    }
 
-	/************************************************/
-	/*  Not completely in upper case		*/
-	/************************************************/
-	if  ( *r )
-	    { return -1; }
-
-	/************************************************/
-	/*  Try shift down.				*/
-	/************************************************/
-	if  ( indINDget( &accepted, ind, -1, copy ) >= 0	&&
-	      ( accepted || asPrefix )			)
-	    { *pWhatWasShifted= INDhALLUP; return 0;	}
-
-	/************************************************/
-	/*  Try tail shifted down.			*/
-	/************************************************/
-	if  ( word[0] == 'I' && word[1] == 'J' )
+	/****************************************************************/
+	/*  Try fully shifted down.					*/
+	/*  This is only activated if head and tail are in lower case	*/
+	/****************************************************************/
+	if  ( fshift != INDhASIS )
 	    {
-	    copy[0]= word[0]; copy[1]= word[1];
-	    if  ( indINDget( &accepted, ind, -1, copy ) >= 0	&&
+	    /* already shifted */
+
+	    if  ( indINDgetUtf8( &accepted, ind, ind->ind_start,
+			    (unsigned char *)shifted ) >= 0	&&
 		  ( accepted || asPrefix )			)
-		{ *pWhatWasShifted= INDhIJTAILUP; return 0;	}
-	    }
-	else{
-	    copy[0]= word[0];
-	    if  ( indINDget( &accepted, ind, -1, copy ) >= 0	&&
-		  ( accepted || asPrefix )			)
-		{ *pWhatWasShifted= INDhTAILUP; return 0;	}
+		{ *pWhatWasShifted= fshift; rval= 0; goto ready;	}
 	    }
 	}
 
-    return -1;
+  ready:
+    if  ( ucods )
+	{ free( ucods );	}
+    if  ( shifted )
+	{ free( shifted );	}
+
+    return rval;
     }
 
 /************************************************************************/
+/*									*/
 /*  Generate guesses for a word.					*/
+/*									*/
 /************************************************************************/
-int	indWRDguess(	IND *				ind,
-			const unsigned char *		word,
-			SpellGuessContext *		sgc,
-			const GuessSubstitution *	typos,
-			int				count,
-			const unsigned char *		charKinds,
-			const unsigned char *		charShifts )
+
+int indWRDguess(	IND *				ind,
+			unsigned short *		ucods,
+			int				ulen,
+			SpellGuessContext *		sgc )
     {
-    int				l;
-    static unsigned char *	copy;
+    int				rval= 0;
 
-    const unsigned char *	r;
-    unsigned char *		s;
+    int				tshift;
+    int				hshift;
+    int				fshift;
+    int				tail;
 
-    l= strlen( (char *)word );
-    copy= realloc( copy, l+ 2 );
-    if  ( ! copy )
-	{ LDEB(copy); return -1;	}
-    strcpy( (char *)copy, (const char *)word );
-
-    if  ( charKinds[ word[0] ] & CHARisUPPER )
+    if  ( indGetCapModes( &tshift, &hshift, &fshift, &tail, ucods, ulen ) )
 	{
-	if  ( word[0] == 'I' && word[1] == 'J' )
+	int		i;
+
+	if  ( tshift != INDhASIS )
 	    {
-	    copy[0]= 'i'; copy[1]= 'j';
-	    indINDguess( ind, copy, sgc, INDhIJUP,
-				    typos, count, charKinds, charShifts );
-	    }
-	else{
-	    if  ( ! ( charKinds[ word[1] ] & CHARisUPPER ) )
-		{
-		copy[0]= charShifts[ word[0] ];
-		indINDguess( ind, copy, sgc, INDhFIRSTUP,
-				    typos, count, charKinds, charShifts );
-		}
+	    indINDguess( ind, ucods, ulen, sgc, tshift );
 	    }
 
-	/************************************************/
-	/*  Shift down.					*/
-	/************************************************/
-	r= word; s= copy;
-	while( *r && ( charKinds[ *r ] & CHARisUPPER ) )
+	if  ( hshift != INDhASIS )
 	    {
-	    *s= charShifts[*r];
-	    s++; r++;
+	    for ( i= 0; i < tail; i++ )
+		{ ucods[i]= ucdToLower( ucods[i] );	}
+
+	    indINDguess( ind, ucods, ulen, sgc, hshift );
 	    }
 
-	/************************************************/
-	/*  Not completely in upper case		*/
-	/************************************************/
-	if  ( *r )
-	    { return 0; }
-
-	/************************************************/
-	/*  Try shift down.				*/
-	/************************************************/
-	indINDguess( ind, copy, sgc, INDhALLUP,
-				    typos, count, charKinds, charShifts );
-
-	/************************************************/
-	/*  Try tail shifted down.			*/
-	/************************************************/
-	if  ( word[0] == 'I' && word[1] == 'J' )
+	if  ( fshift != INDhASIS )
 	    {
-	    copy[0]= word[0]; copy[1]= word[1];
-	    indINDguess( ind, copy, sgc, INDhIJTAILUP,
-				    typos, count, charKinds, charShifts );
-	    }
-	else{
-	    copy[0]= word[0];
-	    indINDguess( ind, copy, sgc, INDhTAILUP,
-				    typos, count, charKinds, charShifts );
+	    indINDguess( ind, ucods, ulen, sgc, fshift );
 	    }
 	}
     else{
-	indINDguess( ind, word, sgc, INDhASIS,
-				    typos, count, charKinds, charShifts );
+	indINDguess( ind, ucods, ulen, sgc, INDhASIS );
 	}
 
-    return 0;
+    return rval;
     }
 
-int	indShiftWord(	unsigned char *		copy,
-			const unsigned char *	word,
-			int			how,
-			const unsigned char *	charKinds,
-			const unsigned char *	charShifts )
-    {
-    int	i;
+/************************************************************************/
+/*									*/
+/*  Shift an array unicodes to the correct case pattern.		*/
+/*  Convert to UTF-8 in the mean time.					*/
+/*									*/
+/************************************************************************/
 
-    strcpy( (char *)copy, (const char *)word );
+int indShiftWord(	char *				target,
+			const unsigned short *		ucods,
+			int				ulen,
+			int				how )
+    {
+    int			from= 0;
+    int			i;
+    unsigned char *	to= (unsigned char *)target;
 
     switch( how )
 	{
 	case	INDhASIS:
 	    break;
+
 	case	INDhFIRSTUP:
-	    if  ( charKinds[ copy[0] ] & CHARisLOWER )
-		{ copy[0]= charShifts[ copy[0] ]; }
+	    if  ( ucdIsLl( ucods[0] ) )
+		{
+		int	step= uniPutUtf8( to, ucdToUpper( ucods[0] ) );
+
+		if  ( step < 1 )
+		    { LLDEB(ucods[0],step); return -1;	}
+
+		to += step;
+		from++;
+		}
 	    break;
+
 	case	INDhIJUP:
-	    if  ( copy[0] == 'i' && copy[1] == 'j' )
-		{ copy[0]= 'I'; copy[1]= 'J';	}
+	    if  ( ulen > 1 && ucods[0] == 'i' && ucods[1] == 'j' )
+		{
+		*(to++)= 'I'; *(to++)= 'J';
+		from= 2;
+		}
 	    break;
+
 	case	INDhALLUP:
-	    i= 0;
-	    while( copy[i] )
-		{
-		if  ( charKinds[ copy[i] ] & CHARisLOWER )
-		    { copy[i]= charShifts[ copy[i] ]; }
-		i++;
-		}
-	    break;
 	case	INDhTAILUP:
-	    i= 0;
-	    while( copy[i] )
-		{
-		if  ( charKinds[ copy[i] ] & CHARisLOWER )
-		    { copy[i]= charShifts[ copy[i] ]; }
-		i++;
-		}
-	    break;
 	case	INDhIJTAILUP:
-	    if  ( copy[0] != 'I' || copy[1] != 'J' )
-		{ SDEB((char *)copy); return -1;	}
-	    i= 2;
-	    while( copy[i] )
+	    for ( i= 0; i < ulen; i++ )
 		{
-		if  ( charKinds[ copy[i] ] & CHARisLOWER )
-		    { copy[i]= charShifts[ copy[i] ]; }
-		i++;
+		int	step= uniPutUtf8( to, ucdToUpper( ucods[i] ) );
+
+		if  ( step < 1 )
+		    { LLDEB(ucods[i],step); return -1;	}
+		to += step;
 		}
-	    break;
+	    *to= '\0';
+	    return 0;
+
 	default:
 	    LDEB(how); return -1;
 	}
+
+    for ( i= from; i < ulen; i++ )
+	{
+	int	step= uniPutUtf8( to, ucods[i] );
+
+	if  ( step < 1 )
+	    { LLDEB(ucods[i],step); return -1;	}
+	to += step;
+	}
+    *to= '\0';
 
     return 0;
     }

@@ -1,8 +1,9 @@
 #   ifndef	APP_PAPER_CHOOSER_H
 #   define	APP_PAPER_CHOOSER_H
 
-#   include	<appFrame.h>
+#   include	"guiOptionmenu.h"
 #   include	<utilPropMask.h>
+#   include	<utilDocumentGeometry.h>
 
 /************************************************************************/
 /*									*/
@@ -45,7 +46,7 @@ typedef struct PaperChooser
     int				pcProgrammatic;
     } PaperChooser;
 
-# define appPaperChooserRetreshMenuWidth( pc ) \
+# define appPaperChooserRefreshMenuWidth( pc ) \
 			    appOptionmenuRefreshWidth( &((pc)->pcOptionmenu) )
 
 /************************************************************************/
@@ -81,5 +82,8 @@ extern void appPaperChooserAddOrientationToggles( PaperChooser * pc,
 
 extern void appInitPaperChooser(	PaperChooser *		pc );
 extern void appCleanPaperChooser(	PaperChooser *		pc );
+
+extern void appEnablePaperChooser(	PaperChooser *		pc,
+					int			enabled );
 
 #   endif	/*  APP_PAPER_CHOOSER_H  */

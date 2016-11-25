@@ -1,15 +1,12 @@
 #   include	"appFrameConfig.h"
 
-#   include	<stdlib.h>
 #   include	<stdio.h>
 
-#   include	"appFrame.h"
-#   include	"appSystem.h"
-#   include	<appGeoString.h>
-
-#   ifdef USE_GTK
+#   include	"guiWidgets.h"
 
 #   include	<appDebugon.h>
+
+#   ifdef USE_GTK
 
 /************************************************************************/
 /*									*/
@@ -23,14 +20,16 @@ void appMakeLabelInRow(		APP_WIDGET *		pLabel,
 				int			colspan,
 				const char *		labelText )
     {
-    GtkWidget *		label= gtk_label_new( labelText );
+    GtkWidget *		evbox= gtk_event_box_new();
+    GtkWidget *		labelw= gtk_label_new( labelText );
 
-    gtk_label_set_line_wrap( GTK_LABEL( label ), FALSE );
-    gtk_label_set_justify( GTK_LABEL( label ), GTK_JUSTIFY_LEFT );
-    gtk_misc_set_alignment( GTK_MISC( label ), 0.0, 0.5 );
+    gtk_label_set_line_wrap( GTK_LABEL( labelw ), FALSE );
+    gtk_label_set_justify( GTK_LABEL( labelw ), GTK_JUSTIFY_LEFT );
+    gtk_misc_set_alignment( GTK_MISC( labelw ), 0.0, 0.5 );
 
+    gtk_container_add( GTK_CONTAINER( evbox ), labelw );
     gtk_table_attach( GTK_TABLE( row ),
-			label,
+			evbox,
 			column, column+ colspan,
 			0, 1,
 			GTK_FILL | GTK_EXPAND | GTK_SHRINK,
@@ -40,56 +39,70 @@ void appMakeLabelInRow(		APP_WIDGET *		pLabel,
 			*/
 			ROW_XPADDING_GTK, ROW_YPADDING_GTK+ 2 );
 
-    gtk_widget_show( label );
+    gtk_widget_show( labelw );
+    gtk_widget_show( evbox );
 
-    *pLabel= label;
+    *pLabel= evbox;
 
     return;
     }
+
+void appMakeLabelInHBox(	APP_WIDGET *		pLabel,
+				APP_WIDGET		hbox,
+				const char *		labelText )
+    {
+    GtkWidget *		evbox= gtk_event_box_new();
+    GtkWidget *		labelw= gtk_label_new( labelText );
+
+    gtk_label_set_line_wrap( GTK_LABEL( labelw ), FALSE );
+    gtk_label_set_justify( GTK_LABEL( labelw ), GTK_JUSTIFY_LEFT );
+    gtk_misc_set_alignment( GTK_MISC( labelw ), 0.0, 0.5 );
+
+    gtk_container_add( GTK_CONTAINER( evbox ), labelw );
+    gtk_box_pack_start( GTK_BOX( hbox ), evbox, FALSE, FALSE, 0 );
+
+    gtk_widget_show( labelw );
+    gtk_widget_show( evbox );
+
+    *pLabel= evbox;
+
+    return;
+    }
+
 
 void appMakeLabelInColumn(	APP_WIDGET *		pLabel,
 				APP_WIDGET		column,
 				const char *		labelText )
     {
-    GtkWidget *		label= gtk_label_new( labelText );
+    GtkWidget *		evbox= gtk_event_box_new();
+    GtkWidget *		labelw= gtk_label_new( labelText );
 
-    gtk_box_pack_start( GTK_BOX( column ), label, FALSE, TRUE, 0 );
+    gtk_label_set_line_wrap( GTK_LABEL( labelw ), FALSE );
+    gtk_label_set_justify( GTK_LABEL( labelw ), GTK_JUSTIFY_LEFT );
+    gtk_misc_set_alignment( GTK_MISC( labelw ), 0.0, 0.5 );
 
-    gtk_label_set_line_wrap( GTK_LABEL( label ), FALSE );
-    gtk_label_set_justify( GTK_LABEL( label ), GTK_JUSTIFY_LEFT );
-    gtk_misc_set_alignment( GTK_MISC( label ), 0.0, 0.5 );
+    gtk_container_add( GTK_CONTAINER( evbox ), labelw );
+    gtk_box_pack_start( GTK_BOX( column ), evbox, FALSE, TRUE, 0 );
 
-    gtk_widget_show( label );
+    gtk_widget_show( labelw );
+    gtk_widget_show( evbox );
 
-    *pLabel= label;
-    }
-
-void appGuiChangeLabelText(	APP_WIDGET	labelWidget,
-				const char *	label )
-    {
-    gtk_label_set_text( GTK_LABEL( labelWidget ), label );
-    
+    *pLabel= evbox;
     return;
     }
 
-/************************************************************************/
-/*									*/
-/*  Get the font of a label widget.					*/
-/*									*/
-/************************************************************************/
-
-APP_FONT * appGuiGetLabelFont(	APP_WIDGET	w )
+void appGuiChangeLabelText(	APP_WIDGET		evbox,
+				const char *		labelt )
     {
-    GtkStyle *	gs= gtk_widget_get_style( w );
-    GdkFont *	gf;
-
-#   if GTK_MAJOR_VERSION < 2
-    gf= gs->font;
+#   if GTK_MAJOR_VERSION >= 2
+    GtkWidget *		labelw= gtk_bin_get_child( GTK_BIN( evbox ) );
 #   else
-    gf= gtk_style_get_font( gs );
+    GtkWidget *		labelw= GTK_BIN( evbox )->child;
 #   endif
 
-    return gf;
+    gtk_label_set_text( GTK_LABEL( labelw ), (char *)labelt );
+    
+    return;
     }
 
 #   endif

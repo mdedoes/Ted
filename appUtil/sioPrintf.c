@@ -6,12 +6,12 @@
 
 #   include	"appUtilConfig.h"
 
-#   include	<stdlib.h>
 #   include	<string.h>
 #   include	<stdarg.h>
 #   include	<limits.h>
 
 #   include	"sioGeneral.h"
+#   include	"sioVPrintf.h"
 #   include	<appDebugon.h>
 
 /************************************************************************/
@@ -20,8 +20,8 @@
 /*									*/
 /************************************************************************/
 
-static const char	SIO_PrintfLowerDigits[16]= "0123456789abcdef";
-static const char	SIO_PrintfUpperDigits[16]= "0123456789ABCDEF";
+static const char	SIO_PrintfLowerDigits[16+1]= "0123456789abcdef";
+static const char	SIO_PrintfUpperDigits[16+1]= "0123456789ABCDEF";
 
 # define FLAG_LEFT		0x0001
 # define FLAG_SIGNED		0x0002
@@ -213,7 +213,7 @@ static int sioOutPrintf_dixou(	SimpleOutputStream *	sos,
 	{ stack[totStacked++]= '-';		}
     else{
 	/*  5  */
-	if  ( sign >= 0 && ( flags & FLAG_SIGNED ) )
+	if  ( flags & FLAG_SIGNED )
 	    { stack[totStacked++]= '+';	}
 	else{
 	    /*  6  */
@@ -228,24 +228,45 @@ static int sioOutPrintf_dixou(	SimpleOutputStream *	sos,
 	if  ( ( flags & FLAG_ZEROPAD ) && ! ( flags & FLAG_HAS_PRECISION ) )
 	    {
 	    while( totStacked > digStacked )
-		{ sioOutPutCharacter( stack[--totStacked], sos ); emitted++; }
+		{
+		if  ( sioOutPutByte( stack[--totStacked], sos ) < 0 )
+		    { return -1;	}
+		emitted++;
+		}
 
 	    while( emitted+ totStacked < minWidth )
-		{ sioOutPutCharacter( '0', sos ); emitted++; }
+		{
+		if  ( sioOutPutByte( '0', sos ) < 0 )
+		    { return -1;	}
+		emitted++;
+		}
 	    }
 	else{
 	    while( emitted+ totStacked < minWidth )
-		{ sioOutPutCharacter( ' ', sos ); emitted++; }
+		{
+		if  ( sioOutPutByte( ' ', sos ) < 0 )
+		    { return -1;	}
+		emitted++;
+		}
 	    }
 	}
 
     /*  8  */
     while( totStacked > 0 )
-	{ sioOutPutCharacter( stack[--totStacked], sos ); emitted++; }
+	{
+	if  ( sioOutPutByte( stack[--totStacked], sos ) < 0 )
+	    { return -1;	}
+	emitted++;
+	}
 
     /*  9  */
     while( emitted < minWidth )
-	{ sioOutPutCharacter( ' ', sos ); emitted++; }
+	{
+	if  ( sioOutPutByte( ' ', sos ) < 0 )
+	    { return -1;	}
+
+	emitted++;
+	}
 
     return emitted;
     }
@@ -337,7 +358,12 @@ static int sioOutPrintf_efg(	SimpleOutputStream *	sos,
 
     /*  4  */
     while( sv[emitted] )
-	{ sioOutPutCharacter( sv[emitted], sos ); emitted++; }
+	{
+	if  ( sioOutPutByte( sv[emitted], sos ) < 0 )
+	    { return -1;	}
+
+	emitted++;
+	}
 
     return emitted;
     }
@@ -364,16 +390,27 @@ static int sioOutPrintf_c(	SimpleOutputStream *	sos,
     if  ( ! ( flags & FLAG_LEFT ) )
 	{
 	while( emitted+ 1 < minWidth )
-	    { sioOutPutCharacter( ' ', sos ); emitted++; }
+	    {
+	    if  ( sioOutPutByte( ' ', sos ) < 0 )
+		{ return -1;	}
+
+	    emitted++;
+	    }
 	}
 
     /*  2  */
-    sioOutPutCharacter( c, sos );
+    if  ( sioOutPutByte( c, sos ) < 0 )
+	{ return -1;	}
     emitted++;
 
     /*  3  */
     while( emitted < minWidth )
-	{ sioOutPutCharacter( ' ', sos ); emitted++; }
+	{
+	if  ( sioOutPutByte( ' ', sos ) < 0 )
+	    { return -1;	}
+
+	emitted++;
+	}
 
     return emitted;
     }
@@ -413,20 +450,32 @@ static int sioOutPrintf_s(	SimpleOutputStream *	sos,
 
 	/*  2  */
 	while( emitted < leading )
-	    { sioOutPutCharacter( ' ', sos ); emitted++; }
+	    {
+	    if  ( sioOutPutByte( ' ', sos ) < 0 )
+		{ return -1;	}
+
+	    emitted++;
+	    }
 	}
 
     /*  3  */
     s= value;
     while( *s && s- value < precision )
 	{
-	sioOutPutCharacter( *s, sos );
+	if  ( sioOutPutByte( *s, sos ) < 0 )
+	    { return -1;	}
+
 	s++; emitted++;
 	}
 
     /*  4  */
     while( emitted < minWidth )
-	{ sioOutPutCharacter( ' ', sos ); emitted++; }
+	{
+	if  ( sioOutPutByte( ' ', sos ) < 0 )
+	    { return -1;	}
+
+	emitted++;
+	}
 
     return emitted;
     }
@@ -444,14 +493,11 @@ static int sioOutPrintf_s(	SimpleOutputStream *	sos,
 /*									*/
 /************************************************************************/
 
-int sioOutPrintf(	SimpleOutputStream *	sos,
+int sioOutVPrintf(	SimpleOutputStream *	sos,
 			const char *		format,
-			... )
+			va_list			ap )
     {
     int		emitted= 0;
-    va_list	valist;
-
-    va_start( valist, format );
 
     /*  1  */
     while( format[0] )
@@ -469,7 +515,9 @@ int sioOutPrintf(	SimpleOutputStream *	sos,
 	/*  2  */
 	while( format[0] && format[0] != '%' )
 	    {
-	    sioOutPutCharacter( format[0], sos );
+	    if  ( sioOutPutByte( format[0], sos ) < 0 )
+		{ LDEB(1); return -1;	}
+
 	    format++; emitted++;
 	    }
 
@@ -484,7 +532,7 @@ int sioOutPrintf(	SimpleOutputStream *	sos,
 	/*  4  */
 	if  ( flags & FLAG_WIDTH_INDIR )
 	    {
-	    minWidth= va_arg( valist, int );
+	    minWidth= va_arg( ap, int );
 
 	    if  ( minWidth < 0 )
 		{ minWidth= 0; }
@@ -493,7 +541,7 @@ int sioOutPrintf(	SimpleOutputStream *	sos,
 	/*  5  */
 	if  ( flags & FLAG_PREC_INDIR )
 	    {
-	    precision= va_arg( valist, int );
+	    precision= va_arg( ap, int );
 
 	    if  ( precision < 0 )
 		{ flags &= ~FLAG_HAS_PRECISION; precision= 0; }
@@ -506,16 +554,16 @@ int sioOutPrintf(	SimpleOutputStream *	sos,
 		    {
 		    res= sioOutPrintf_di( sos, flags, minWidth, precision,
 					    10, SIO_PrintfLowerDigits,
-					    va_arg( valist, long ) );
+					    va_arg( ap, long ) );
 		    }
 		else{
 		    res= sioOutPrintf_di( sos, flags, minWidth, precision,
 					    10, SIO_PrintfLowerDigits,
-					    (long)( va_arg( valist, int ) ) );
+					    (long)( va_arg( ap, int ) ) );
 		    }
 
 		if  ( res < 0 )
-		    { LDEB(res); emitted= -1; goto ready;	}
+		    { LDEB(res); return -1;	}
 
 		emitted += res;
 		break;
@@ -527,16 +575,16 @@ int sioOutPrintf(	SimpleOutputStream *	sos,
 		    {
 		    res= sioOutPrintf_xou( sos, flags, minWidth, precision,
 			    8, SIO_PrintfLowerDigits, altPrefixRev,
-			    va_arg( valist, unsigned long ) );
+			    va_arg( ap, unsigned long ) );
 		    }
 		else{
 		    res= sioOutPrintf_xou( sos, flags, minWidth, precision,
 			    8, SIO_PrintfLowerDigits, altPrefixRev,
-			    (unsigned long)( va_arg( valist, unsigned int ) ) );
+			    (unsigned long)( va_arg( ap, unsigned int ) ) );
 		    }
 
 		if  ( res < 0 )
-		    { LDEB(res); emitted= -1; goto ready;	}
+		    { LDEB(res); return -1;	}
 
 		emitted += res;
 		break;
@@ -548,16 +596,16 @@ int sioOutPrintf(	SimpleOutputStream *	sos,
 		    {
 		    res= sioOutPrintf_xou( sos, flags, minWidth, precision,
 			    10, SIO_PrintfLowerDigits, altPrefixRev,
-			    va_arg( valist, unsigned long ) );
+			    va_arg( ap, unsigned long ) );
 		    }
 		else{
 		    res= sioOutPrintf_xou( sos, flags, minWidth, precision,
 			    10, SIO_PrintfLowerDigits, altPrefixRev,
-			    (unsigned long)( va_arg( valist, unsigned int ) ) );
+			    (unsigned long)( va_arg( ap, unsigned int ) ) );
 		    }
 
 		if  ( res < 0 )
-		    { LDEB(res); emitted= -1; goto ready;	}
+		    { LDEB(res); return -1;	}
 
 		emitted += res;
 		break;
@@ -569,8 +617,8 @@ int sioOutPrintf(	SimpleOutputStream *	sos,
 		altPrefixRev= "x0";
 
 		if  ( flags & FLAG_LONG )
-		    { value= va_arg( valist, unsigned long );	}
-		else{ value= (unsigned long)va_arg( valist, unsigned int ); }
+		    { value= va_arg( ap, unsigned long );	}
+		else{ value= (unsigned long)va_arg( ap, unsigned int ); }
 
 		if  ( value == 0 )
 		    { altPrefixRev= "";	}
@@ -580,7 +628,7 @@ int sioOutPrintf(	SimpleOutputStream *	sos,
 		}
 
 		if  ( res < 0 )
-		    { LDEB(res); emitted= -1; goto ready;	}
+		    { LDEB(res); return -1;	}
 
 		emitted += res;
 		break;
@@ -592,8 +640,8 @@ int sioOutPrintf(	SimpleOutputStream *	sos,
 		altPrefixRev= "X0";
 
 		if  ( flags & FLAG_LONG )
-		    { value= va_arg( valist, unsigned long );	}
-		else{ value= (unsigned long)va_arg( valist, unsigned int ); }
+		    { value= va_arg( ap, unsigned long );	}
+		else{ value= (unsigned long)va_arg( ap, unsigned int ); }
 
 		if  ( value == 0 )
 		    { altPrefixRev= "";	}
@@ -603,7 +651,7 @@ int sioOutPrintf(	SimpleOutputStream *	sos,
 		}
 
 		if  ( res < 0 )
-		    { LDEB(res); emitted= -1; goto ready;	}
+		    { LDEB(res); return -1;	}
 
 		emitted += res;
 		break;
@@ -612,28 +660,28 @@ int sioOutPrintf(	SimpleOutputStream *	sos,
 	    case 'e': case 'E':
 	    case 'g': case 'G':
 		res= sioOutPrintf_efg( sos, flags, minWidth, precision,
-				    format, past, va_arg( valist, double ) );
+				    format, past, va_arg( ap, double ) );
 
 		if  ( res < 0 )
-		    { LDEB(res); emitted= -1; goto ready;	}
+		    { LDEB(res); return -1;	}
 
 		emitted += res;
 		break;
 
 	    case 'c':
 		res= sioOutPrintf_c( sos, flags, minWidth, precision,
-						    va_arg( valist, int ) );
+						    va_arg( ap, int ) );
 		if  ( res < 0 )
-		    { LDEB(res); emitted= -1; goto ready;	}
+		    { LDEB(res); return -1;	}
 
 		emitted += res;
 		break;
 
 	    case 's':
 		res= sioOutPrintf_s( sos, flags, minWidth, precision,
-					    va_arg( valist, const char * ) );
+					    va_arg( ap, const char * ) );
 		if  ( res < 0 )
-		    { LDEB(res); emitted= -1; goto ready;	}
+		    { LDEB(res); return -1;	}
 
 		emitted += res;
 		break;
@@ -642,21 +690,21 @@ int sioOutPrintf(	SimpleOutputStream *	sos,
 		flags |= FLAG_ALTERNATE;
 		res= sioOutPrintf_xou( sos, flags, minWidth, precision,
 				16, SIO_PrintfLowerDigits, "0x",
-				(unsigned long)va_arg( valist, void * ) );
+				(unsigned long)va_arg( ap, void * ) );
 
 		if  ( res < 0 )
-		    { LDEB(res); emitted= -1; goto ready;	}
+		    { LDEB(res); return -1;	}
 
 		emitted += res;
 		break;
 
 	    case 'n':
 		if  ( flags & FLAG_SHORT )
-		    { *(va_arg( valist, short * ))= emitted;	}
+		    { *(va_arg( ap, short * ))= emitted;	}
 		else{
 		    if  ( flags & FLAG_LONG )
-			{ *(va_arg( valist, long * ))= emitted;	}
-		    else{ *(va_arg( valist, int * ))= emitted;	}
+			{ *(va_arg( ap, long * ))= emitted;	}
+		    else{ *(va_arg( ap, int * ))= emitted;	}
 		    }
 
 		break;
@@ -667,7 +715,7 @@ int sioOutPrintf(	SimpleOutputStream *	sos,
 
 		res= sioOutPrintf_c( sos, flags, minWidth, precision, '%' );
 		if  ( res < 0 )
-		    { LDEB(res); emitted= -1; goto ready;	}
+		    { LDEB(res); return -1;	}
 
 		emitted += res;
 		break;
@@ -676,7 +724,8 @@ int sioOutPrintf(	SimpleOutputStream *	sos,
 		CDEB(conversion);
 		while( format < past )
 		    {
-		    sioOutPutCharacter( format[0], sos );
+		    if  ( sioOutPutByte( format[0], sos ) < 0 )
+			{ return -1;	}
 		    format++; emitted++;
 		    }
 		break;
@@ -685,8 +734,21 @@ int sioOutPrintf(	SimpleOutputStream *	sos,
 	format= past;
 	}
 
-  ready:
+    return emitted;
+    }
+
+int sioOutPrintf(	SimpleOutputStream *	sos,
+			const char *		format,
+			... )
+    {
+    int		emitted= 0;
+    va_list	valist;
+
+    va_start( valist, format );
+
+    emitted= sioOutVPrintf( sos, format, valist );
 
     va_end( valist );
+
     return emitted;
     }

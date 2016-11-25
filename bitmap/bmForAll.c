@@ -1,7 +1,6 @@
 #   include	"bitmapConfig.h"
 
 #   include	"bmintern.h"
-#   include	<string.h>
 
 #   include	<appDebugon.h>
 
@@ -9,6 +8,8 @@
 /*									*/
 /*  Call a function for all pixels that have value '1' in a bitmap	*/
 /*  image. [Or '0'.. when invertMaskIn == 0xff.].			*/
+/*  To do something for all black pixels in an image, pass 0x00 for	*/
+/*  BMcoBLACKWHITE and 0xff for BMcoWHITEBLACK images.			*/
 /*									*/
 /*  Used inside morphology code and to extract features from the	*/
 /*  result.								*/
@@ -21,14 +22,14 @@
 /*									*/
 /************************************************************************/
 
-void bmForAll1Pixels(		const BitmapDescription *	bdIn,
-				const unsigned char *		bufIn,
+int bmForAll1Pixels(		const RasterImage *		riIn,
 				unsigned char			invertMaskIn,
 				void *				through,
 				BM_PIX_FUN			pixFun )
     {
-    int			rowIn;
-    unsigned char	lastMaskIn;
+    const BitmapDescription *	bdIn= &(riIn->riDescription);
+    int				row;
+    unsigned char		lastMaskIn;
 
     int			col;
 
@@ -38,18 +39,17 @@ void bmForAll1Pixels(		const BitmapDescription *	bdIn,
     /*  1  */
     lastMaskIn= 0xff;
     lastMaskIn >>= ( bdIn->bdPixelsWide % 8 );
-    lastMaskIn <<= ( bdIn->bdPixelsWide % 8 );
+    lastMaskIn= ~lastMaskIn;
 
-    for ( rowIn= 0; rowIn < bdIn->bdPixelsHigh; rowIn++ )
+    for ( row= 0; row < bdIn->bdPixelsHigh; row++ )
 	{
-	const unsigned char *	rowBufIn= bufIn+ rowIn* bdIn->bdBytesPerRow;
+	const unsigned char *	from= riIn->riBytes+ row* bdIn->bdBytesPerRow;
 
-	for ( col= 0; col < bdIn->bdPixelsWide; rowBufIn++, col += 8 )
+	for ( col= 0; col < bdIn->bdPixelsWide; from++, col += 8 )
 	    {
-	    unsigned char	val= ( rowBufIn[0] ^ invertMaskIn );
-
+	    unsigned char	val= ( from[0] ^ invertMaskIn );
 	    unsigned char	mask= 0x80;
-	    int		pix;
+	    int			pix;
 
 	    if  ( col+ 8 >= bdIn->bdPixelsWide )
 		{ val &= lastMaskIn;	}
@@ -63,11 +63,12 @@ void bmForAll1Pixels(		const BitmapDescription *	bdIn,
 		if  ( ! ( val & mask ) )
 		    { continue;	}
 
-		(*pixFun)( through, rowIn, colIn );
+		if  ( (*pixFun)( through, row, colIn ) )
+		    { LLDEB(row,colIn); return -1; }
 		}
 	    }
 	}
 
-    return;
+    return 0;
     }
 

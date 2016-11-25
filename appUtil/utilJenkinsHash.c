@@ -14,7 +14,7 @@ Source is http://burtleburtle.net/bob/c/lookupa.c
 */
 
 #   include	"appUtilConfig.h"
-#   include	<utilJenkinsHash.h>
+#   include	"utilJenkinsHash.h"
 
 #   define	ub4	UtilUint32
 #   define	ub1	unsigned char

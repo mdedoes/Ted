@@ -1,7 +1,6 @@
 /************************************************************************/
 /*									*/
 /*  Ted, Screen drawing and forcing drawing through			*/
-/*  appExposeRectangle().						*/
 /*									*/
 /************************************************************************/
 
@@ -12,288 +11,302 @@
 #   include	<stdio.h>
 
 #   include	"tedApp.h"
-#   include	"tedLayout.h"
 #   include	"tedDraw.h"
+#   include	"tedLayout.h"
+#   include	<docTabStop.h>
+#   include	<drawScreenFontUtil.h>
+#   include	<geoGrid.h>
+#   include	<docParaParticules.h>
+#   include	<docNodeTree.h>
 
 #   include	<appDebugon.h>
 
-# define DRDEB(dr) APP_DEB(appDebug( "%s(%3d) %s=[%4d..%4d,%4d..%4d]\n", \
-			     __FILE__, __LINE__, #dr, \
-			     (dr)->drX0, (dr)->drX1, (dr)->drY0, (dr)->drY1 ))
+static void tedDrawParticuleLine(	DrawingContext *	dc,
+					ScreenDrawingData *	sdd,
+					const BufferItem *	paraNode,
+					int			head,
+					int			past,
+					int			textColorNr,
+					int			x0,
+					int			y0,
+					int			h )
+    {
+    const LayoutContext *	lc= &(dc->dcLayoutContext);
+    const TextParticule *	tp= paraNode->biParaParticules;
+    /*
+    DocumentPosition		dpHead;
+    PositionGeometry		pgHead;
+    */
+    DocumentPosition		dpTail;
+    PositionGeometry		pgTail;
+
+    DocumentRectangle		drFill;
+
+    docSetDocumentPosition( &dpTail, (BufferItem *)paraNode,
+				tp[past- 1].tpStroff+ tp[past- 1].tpStrlen );
+    tedPositionGeometry( &pgTail, &dpTail, PARAfindFIRST, lc );
+
+    drFill.drX0= x0;
+    drFill.drX1= pgTail.pgXPixels;
+    drFill.drY0= y0;
+    drFill.drY1= y0+ h- 1;
+
+    if  ( drFill.drX1 > drFill.drX0 )
+	{
+	docDrawSetColorNumber( dc, (void *)sdd, textColorNr );
+
+	geoShiftRectangle( &drFill, -lc->lcOx, -lc->lcOy );
+	drawFillRectangle( lc->lcDrawingSurface, &drFill );
+	}
+
+    return;
+    }
+
+int tedDrawRunUnderline(		const DrawTextLine *	dtl,
+					int			part,
+					int			upto,
+					int			textAttrNr,
+					const TextAttribute *	ta,
+					int			x0Twips,
+					int			x1Twips,
+					const LayoutPosition *	baseLine )
+    {
+    ScreenDrawingData *		sdd= (ScreenDrawingData *)dtl->dtlThrough;
+    DrawingContext *		dc= dtl->dtlDrawingContext;
+    const LayoutContext *	lc= &(dc->dcLayoutContext);
+
+    const BufferItem *		paraNode= dtl->dtlParaNode;
+    const TextParticule *	tp= paraNode->biParaParticules;
+
+    int				baselinePixels;
+    int				x0FrameShifted;
+    int				screenFont;
+    int				x0;
+    int				y0;
+    int				h;
+
+    baselinePixels= docLayoutYPixels( lc, baseLine );
+    x0FrameShifted= docLayoutXPixels( lc,
+	    dtl->dtlParagraphFrame->pfParaContentRect.drX0+ dtl->dtlXShift );
+
+    screenFont= utilIndexMappingGet( lc->lcAttributeToScreenFont, textAttrNr );
+
+    x0= x0FrameShifted+ tp[part].tpXContentXPixels;
+    drawFontUnderlineGeometry( &h, &y0,
+			    lc->lcDrawingSurface, screenFont, baselinePixels );
+
+    tedDrawParticuleLine( dc, sdd, paraNode, part, upto,
+					ta->taTextColorNumber, x0, y0, h );
+
+    return 0;
+    }
+
+int tedDrawRunStrikethrough(	const DrawTextLine *	dtl,
+					int			part,
+					int			upto,
+					int			textAttrNr,
+					const TextAttribute *	ta,
+					int			x0Twips,
+					int			x1Twips,
+					const LayoutPosition *	baseLine )
+    {
+    ScreenDrawingData *		sdd= (ScreenDrawingData *)dtl->dtlThrough;
+    DrawingContext *		dc= dtl->dtlDrawingContext;
+    const LayoutContext *	lc= &(dc->dcLayoutContext);
+
+    const BufferItem *		paraNode= dtl->dtlParaNode;
+    const TextParticule *	tp= paraNode->biParaParticules;
+
+    int				baselinePixels;
+    int				x0FrameShifted;
+    int				screenFont;
+    int				x0;
+    int				y0;
+    int				h;
+
+    baselinePixels= docLayoutYPixels( lc, baseLine );
+    x0FrameShifted= docLayoutXPixels( lc,
+	    dtl->dtlParagraphFrame->pfParaContentRect.drX0+ dtl->dtlXShift );
+
+    screenFont= utilIndexMappingGet( lc->lcAttributeToScreenFont, textAttrNr );
+
+    x0= x0FrameShifted+ tp[part].tpXContentXPixels;
+    drawFontStrikethroughGeometry( &h, &y0,
+			    lc->lcDrawingSurface, screenFont, baselinePixels );
+
+    tedDrawParticuleLine( dc, sdd, paraNode, part, upto,
+					ta->taTextColorNumber, x0, y0, h );
+
+    return 0;
+    }
 
 /************************************************************************/
 /*									*/
-/*  Draw a text item.							*/
+/*  Draw a tab.								*/
 /*									*/
 /*  1)  Tabs need not to be drawn.					*/
 /*									*/
 /************************************************************************/
 
-static int tedDrawTab(	const BufferItem *	bi,
-			const TextParticule *	tp,
-			int			baseLine,
-			ScreenDrawingData *	sdd,
-			DrawingContext *	dc )
+int tedDrawTab(		const DrawTextLine *		dtl,
+			int				part,
+			int				textAttrNr,
+			const TextAttribute *		ta,
+			int				leader,
+			int				x0Twips,
+			int				x1Twips,
+			const LayoutPosition *		baseLine )
     {
-    AppDrawingData *		add= dc->dcDrawingData;
-    const DrawScreenFontList *	apfl= &(add->addScreenFontList);
-    const BufferDocument *	bd= dc->dcDocument;
-    const TabStopList *		tsl= &(bi->biParaTabStopList);
-    const TabStop *		ts= tsl->tslTabStops+ tp->tpObjectNumber;
-    const ScreenFontList *	sfl= sdd->sddScreenFontList;
+    ScreenDrawingData *		sdd= (ScreenDrawingData *)dtl->dtlThrough;
+    DrawingContext *		dc= dtl->dtlDrawingContext;
+    const LayoutContext *	lc= &(dc->dcLayoutContext);
+    double			xfac= lc->lcPixelsPerTwip;
+    const BufferItem *		paraNode= dtl->dtlParaNode;
+    const TextParticule *	tp= paraNode->biParaParticules+ part;
 
-    int				x0;
-    int				x1;
-
-    int				textAttr;
     int				screenFont;
-    DrawScreenFont *		dsf;
-    TextAttribute		ta;
 
-    textAttr= tp->tpTextAttributeNumber;
+    int				pixelsWide;
+    int				pixelSize;
+    int				baselinePixels;
+    int				x0FrameShifted;
 
-    utilGetTextAttributeByNumber( &ta, &(bd->bdTextAttributeList), textAttr );
+    DocumentRectangle		drSpan= dtl->dtlLineRectangle;
 
-    switch( ts->tsLeader )
+    baselinePixels= docLayoutYPixels( lc, baseLine );
+    x0FrameShifted= docLayoutXPixels( lc,
+	    dtl->dtlParagraphFrame->pfParaContentRect.drX0+ dtl->dtlXShift );
+
+    pixelsWide= COORDtoGRID( xfac, tp->tpTwipsWide );
+    drSpan.drX0= x0FrameShifted+ tp->tpXContentXPixels;
+    drSpan.drX1= x0FrameShifted+ tp->tpXContentXPixels+ pixelsWide- 1;
+
+    if  ( dc->dcClipRect						&&
+	  ! geoIntersectRectangle( (DocumentRectangle *)0,
+					    dc->dcClipRect, &drSpan )	)
+	{ return 0;	}
+
+    screenFont= utilIndexMappingGet( lc->lcAttributeToScreenFont, textAttrNr );
+
+    pixelSize= COORDtoGRID( xfac, 2* ta->taFontSizeHalfPoints );
+
+    switch( leader )
 	{
 	case DOCtlNONE:
 	    break;
 
 	case DOCtlDOTS:
 
-	    if  ( textAttr >= sfl->sflAttributeToScreenCount	||
-		  sfl->sflAttributeToScreen[textAttr] < 0	)
-		{ LDEB(textAttr); return -1;	}
+	    if  ( screenFont < 0 )
+		{ LLDEB(textAttrNr,screenFont); return -1;	}
 
-	    screenFont= sfl->sflAttributeToScreen[textAttr];
-	    dsf= apfl->apflFonts+ screenFont;
+	    drSpan.drX0 += pixelSize/ 4;
+	    drSpan.drX1 -= pixelSize/ 2;
+	    drSpan.drX0= 3* ( ( drSpan.drX0+ 2 )/ 3 );
 
-	    x0= tp->tpX0+ dsf->apfFullSizePixels/ 4;
-	    x1= tp->tpX0+ tp->tpPixelsWide- dsf->apfFullSizePixels/ 2;
-
-	    x0= 3* ( ( x0+ 2 )/ 3 );
-
-	    if  ( x1 <= x0 )
+	    if  ( drSpan.drX1 <= drSpan.drX0 )
 		{ return 0;	}
 
-	    if  ( ta.taFontIsBold )
+	    if  ( ta->taFontIsBold )
 		{
 		static const unsigned char	boldDot[]= { 2, 1 };
 
-		appDrawSetLineAttributes( add,
-			2, LINEstyleON_OFF_DASH, LINEcapBUTT, LINEjoinMITER,
+		drawSetLineAttributes( lc->lcDrawingSurface,
+			2, LineStyleSingleDash, LineCapButt, LineJoinMiter,
 			boldDot, sizeof( boldDot ) );
 		}
 	    else{
 		static const unsigned char	dot[]= { 1, 2 };
 
-		appDrawSetLineAttributes( add,
-			1, LINEstyleON_OFF_DASH, LINEcapBUTT, LINEjoinMITER,
+		drawSetLineAttributes( lc->lcDrawingSurface,
+			1, LineStyleSingleDash, LineCapButt, LineJoinMiter,
 			dot, sizeof( dot ) );
 		}
 
-	    docDrawSetColorNumber( dc, sdd, ta.taTextColorNumber );
+	    docDrawSetColorNumber( dc, sdd, ta->taTextColorNumber );
 
-	    appDrawDrawLine( add,
-				    x0- sdd->sddOx, baseLine- sdd->sddOy,
-				    x1- sdd->sddOx, baseLine- sdd->sddOy );
+	    drawLine( lc->lcDrawingSurface,
+			    drSpan.drX0- lc->lcOx, baselinePixels- lc->lcOy,
+			    drSpan.drX1- lc->lcOx, baselinePixels- lc->lcOy );
 
 	    break;
 
 	case DOCtlUNDERLINE:
-	    if  ( textAttr >= sfl->sflAttributeToScreenCount	||
-		  sfl->sflAttributeToScreen[textAttr] < 0	)
-		{ LDEB(textAttr); return -1;	}
+	    if  ( screenFont < 0 )
+		{ LLDEB(textAttrNr,screenFont); return -1;	}
 
-	    screenFont= sfl->sflAttributeToScreen[textAttr];
-	    dsf= apfl->apflFonts+ screenFont;
-
-	    x0= tp->tpX0+ dsf->apfFullSizePixels/ 4;
-	    x1= tp->tpX0+ tp->tpPixelsWide- dsf->apfFullSizePixels/ 2;
-
-	    if  ( x1 <= x0 )
+	    drSpan.drX0 += pixelSize/ 4;
+	    drSpan.drX1 -= pixelSize/ 2;
+	    if  ( drSpan.drX1 <= drSpan.drX0 )
 		{ return 0;	}
 
-	    if  ( ta.taFontIsBold )
+	    if  ( ta->taFontIsBold )
 		{
-		appDrawSetLineAttributes( add,
-				2, LINEstyleSOLID, LINEcapBUTT, LINEjoinMITER,
+		drawSetLineAttributes( lc->lcDrawingSurface,
+				2, LineStyleSolid, LineCapButt, LineJoinMiter,
 				(const unsigned char *)0, 0 );
 		}
 	    else{
-		appDrawSetLineAttributes( add,
-				1, LINEstyleSOLID, LINEcapBUTT, LINEjoinMITER,
+		drawSetLineAttributes( lc->lcDrawingSurface,
+				1, LineStyleSolid, LineCapButt, LineJoinMiter,
 				(const unsigned char *)0, 0 );
 		}
 
-	    docDrawSetColorNumber( dc, sdd, ta.taTextColorNumber );
+	    docDrawSetColorNumber( dc, sdd, ta->taTextColorNumber );
 
-	    appDrawDrawLine( add, x0- sdd->sddOx, baseLine- sdd->sddOy,
-				    x1- sdd->sddOx, baseLine- sdd->sddOy );
+	    drawLine( lc->lcDrawingSurface,
+			    drSpan.drX0- lc->lcOx, baselinePixels- lc->lcOy,
+			    drSpan.drX1- lc->lcOx, baselinePixels- lc->lcOy );
 
 	    break;
 
 	case DOCtlHYPH:
-	    if  ( textAttr >= sfl->sflAttributeToScreenCount	||
-		  sfl->sflAttributeToScreen[textAttr] < 0	)
-		{ LDEB(textAttr); return -1;	}
+	    if  ( screenFont < 0 )
+		{ LLDEB(textAttrNr,screenFont); return -1;	}
 
-	    screenFont= sfl->sflAttributeToScreen[textAttr];
-	    dsf= apfl->apflFonts+ screenFont;
+	    drSpan.drX0 += pixelSize/ 4;
+	    drSpan.drX1 -= pixelSize/ 2;
+	    drSpan.drX0= 7* ( ( drSpan.drX0+ 6 )/ 7 );
 
-	    x0= tp->tpX0+ dsf->apfFullSizePixels/ 4;
-	    x1= tp->tpX0+ tp->tpPixelsWide- dsf->apfFullSizePixels/ 2;
-
-	    x0= 7* ( ( x0+ 6 )/ 7 );
-
-	    if  ( x1 <= x0 )
+	    if  ( drSpan.drX1 <= drSpan.drX0 )
 		{ return 0;	}
 
-	    if  ( ta.taFontIsBold )
+	    if  ( ta->taFontIsBold )
 		{
 		static const unsigned char	boldDash[]= { 4, 3 };
 
-		appDrawSetLineAttributes( add,
-			2, LINEstyleON_OFF_DASH, LINEcapBUTT, LINEjoinMITER,
+		drawSetLineAttributes( lc->lcDrawingSurface,
+			2, LineStyleSingleDash, LineCapButt, LineJoinMiter,
 			boldDash, sizeof( boldDash ) );
 		}
 	    else{
 		static const unsigned char	dash[]= { 3, 4 };
 
-		appDrawSetLineAttributes( add,
-			1, LINEstyleON_OFF_DASH, LINEcapBUTT, LINEjoinMITER,
+		drawSetLineAttributes( lc->lcDrawingSurface,
+			1, LineStyleSingleDash, LineCapButt, LineJoinMiter,
 			dash, sizeof( dash ) );
 		}
 
-	    docDrawSetColorNumber( dc, sdd, ta.taTextColorNumber );
+	    docDrawSetColorNumber( dc, sdd, ta->taTextColorNumber );
 
-	    appDrawDrawLine( add,
-				    x0- sdd->sddOx, baseLine- sdd->sddOy,
-				    x1- sdd->sddOx, baseLine- sdd->sddOy );
-
-	    break;
+	    drawLine( lc->lcDrawingSurface,
+			    drSpan.drX0- lc->lcOx, baselinePixels- lc->lcOy,
+			    drSpan.drX1- lc->lcOx, baselinePixels- lc->lcOy );
 
 	    break;
 
 	case DOCtlTHICK:
-	    LDEB(ts->tsLeader);
+	    LDEB(leader);
 	    break;
 	case DOCtlEQUAL:
-	    LDEB(ts->tsLeader);
+	    LDEB(leader);
 	    break;
 	default:
-	    LDEB(ts->tsLeader);
+	    LDEB(leader);
 	    break;
 	}
 
     return 0;
-    }
-
-static void tedDrawParticuleUnderlines(	DrawingContext *	dc,
-					ScreenDrawingData *	sdd,
-					const TextParticule *	tp,
-					int			drawn,
-					const DrawScreenFont *	dsf,
-					int			baseLine )
-    {
-    AppDrawingData *		add= dc->dcDrawingData;
-    const BufferDocument *	bd= dc->dcDocument;
-    int				i;
-
-    i= 0;
-    while( i < drawn )
-	{
-	TextAttribute	ta;
-	int		x0;
-	int		x1;
-	int		y0;
-	int		h;
-
-	utilGetTextAttributeByNumber( &ta, &(bd->bdTextAttributeList),
-						tp[i].tpTextAttributeNumber );
-	if  ( ! ta.taTextIsUnderlined )
-	    { i++; continue;	}
-
-	x1= x0= tp[i].tpX0;
-	y0= baseLine+ dsf->apfUnderLinePositionPixels;
-	h= dsf->apfUnderlineThicknessPixels;
-
-	while( i < drawn )
-	    {
-	    utilGetTextAttributeByNumber( &ta, &(bd->bdTextAttributeList),
-						tp[i].tpTextAttributeNumber );
-	    if  ( ! ta.taTextIsUnderlined )
-		{ break;	}
-
-	    x1= tp[i].tpX0+ tp[i].tpPixelsWide;
-	    i++;
-	    }
-
-	if  ( x1 > x0 )
-	    {
-	    docDrawSetColorNumber( dc, (void *)sdd, ta.taTextColorNumber );
-
-	    appDrawFillRectangle( add,
-			    x0- sdd->sddOx, y0- sdd->sddOy, x1- x0, h );
-	    }
-	}
-
-    return;
-    }
-
-static void tedDrawParticuleStrikethrough(
-					DrawingContext *	dc,
-					ScreenDrawingData *	sdd,
-					const TextParticule *	tp,
-					int			drawn,
-					const DrawScreenFont *	dsf,
-					int			baseLine )
-    {
-    AppDrawingData *		add= dc->dcDrawingData;
-    const BufferDocument *	bd= dc->dcDocument;
-    int				i;
-
-    i= 0;
-    while( i < drawn )
-	{
-	TextAttribute	ta;
-	int		x0;
-	int		x1;
-	int		y0;
-	int		h;
-
-	utilGetTextAttributeByNumber( &ta, &(bd->bdTextAttributeList),
-						tp[i].tpTextAttributeNumber );
-	if  ( ! ta.taHasStrikethrough )
-	    { i++; continue;	}
-
-	x1= x0= tp[i].tpX0;
-	if  ( dsf->apfXHeightPixels > 1 )
-	    { y0= baseLine- dsf->apfXHeightPixels/ 2;	}
-	else{ y0= baseLine- dsf->apfFullSizePixels/ 4;	}
-	h= dsf->apfUnderlineThicknessPixels;
-
-	while( i < drawn )
-	    {
-	    utilGetTextAttributeByNumber( &ta, &(bd->bdTextAttributeList),
-						tp[i].tpTextAttributeNumber );
-	    if  ( ! ta.taHasStrikethrough )
-		{ break;	}
-
-	    x1= tp[i].tpX0+ tp[i].tpPixelsWide;
-	    i++;
-	    }
-
-	if  ( x1 > x0 )
-	    {
-	    docDrawSetColorNumber( dc, (void *)sdd, ta.taTextColorNumber );
-
-	    appDrawFillRectangle( add,
-			    x0- sdd->sddOx, y0- sdd->sddOy, x1- x0, h );
-	    }
-	}
-
-    return;
     }
 
 /************************************************************************/
@@ -302,55 +315,66 @@ static void tedDrawParticuleStrikethrough(
 /*									*/
 /************************************************************************/
 
-static void tedDrawChftnsep(	DrawingContext *	dc,
-				int			pShift,
-				int			xShift,
-				int			yShift,
-				void *			vsdd,
-				const TextParticule *	tp,
-				const TextLine *	tl )
+int tedDrawChftnsep(	const DrawTextLine *		dtl,
+			int				part,
+			int				textAttrNr,
+			const TextAttribute *		ta,
+			int				x0Twips,
+			int				x1Twips,
+			const LayoutPosition *		baseLine )
     {
-    ScreenDrawingData *		sdd= (ScreenDrawingData *)vsdd;
-    const ScreenFontList *	sfl= sdd->sddScreenFontList;
-    AppDrawingData *		add= dc->dcDrawingData;
-    const DrawScreenFontList *	apfl= &(add->addScreenFontList);
-    const BufferDocument *	bd= dc->dcDocument;
+    ScreenDrawingData *		sdd= (ScreenDrawingData *)dtl->dtlThrough;
+    DrawingContext *		dc= dtl->dtlDrawingContext;
+    const LayoutContext *	lc= &(dc->dcLayoutContext);
+    double			xfac= lc->lcPixelsPerTwip;
 
-    int				baseLine;
-    int				y;
-    const DrawScreenFont *	dsf;
+    const BufferItem *		paraNode= dtl->dtlParaNode;
+    const TextParticule *	tp= paraNode->biParaParticules+ part;
 
-    int				textAttr;
+    int				y0;
+    int				h;
+    int				baselinePixels;
+    int				pixelsWide;
+
     int				screenFont;
-    TextAttribute		ta;
+    int				x0FrameShifted;
+    DocumentRectangle		drSpan= dtl->dtlLineRectangle;
 
-    baseLine= TL_BASE_PIXELS_SH( add, tl, pShift, yShift );
+    baselinePixels= docLayoutYPixels( lc, baseLine );
+    x0FrameShifted= docLayoutXPixels( lc,
+	    dtl->dtlParagraphFrame->pfParaContentRect.drX0+ dtl->dtlXShift );
 
-    appDrawSetLineAttributes( add,
-			    1, LINEstyleSOLID, LINEcapBUTT, LINEjoinMITER,
+    pixelsWide= COORDtoGRID( xfac, tp->tpTwipsWide );
+    drSpan.drX0= x0FrameShifted+ tp->tpXContentXPixels;
+    drSpan.drX1= x0FrameShifted+ tp->tpXContentXPixels+ pixelsWide- 1;
+
+    if  ( dc->dcClipRect						&&
+	  ! geoIntersectRectangle( (DocumentRectangle *)0,
+					    dc->dcClipRect, &drSpan )	)
+	{ return 0;	}
+
+    drawSetLineAttributes( lc->lcDrawingSurface,
+			    1, LineStyleSolid, LineCapButt, LineJoinMiter,
 			    (const unsigned char *)0, 0 );
-    y= baseLine;
 
-    textAttr= tp->tpTextAttributeNumber;
-    if  ( textAttr >= sfl->sflAttributeToScreenCount	||
-	  sfl->sflAttributeToScreen[textAttr] < 0	)
-	{ LDEB(textAttr); return;	}
+    screenFont= utilIndexMappingGet( lc->lcAttributeToScreenFont, textAttrNr );
+    if  ( screenFont < 0 )
+	{ LLDEB(textAttrNr,screenFont); return 0;	}
 
-    screenFont= sfl->sflAttributeToScreen[textAttr];
-    dsf= apfl->apflFonts+ screenFont;
+    drawFontStrikethroughGeometry( &h, &y0, lc->lcDrawingSurface,
+						screenFont, baselinePixels );
 
-    y -= ( dsf->apfXHeightPixels )/ 2;
+    pixelsWide= COORDtoGRID( xfac, tp->tpTwipsWide );
 
-    utilGetTextAttributeByNumber( &ta, &(bd->bdTextAttributeList),
-						tp->tpTextAttributeNumber );
+    drSpan.drY0= y0;
+    drSpan.drY1= y0+ h- 1;
 
-    docDrawSetColorNumber( dc, (void *)sdd, ta.taTextColorNumber );
+    docDrawSetColorNumber( dc, (void *)sdd, ta->taTextColorNumber );
 
-    appDrawDrawLine( add,
-	    tp->tpX0- sdd->sddOx, y- sdd->sddOy,
-	    tp->tpX0+ tp->tpPixelsWide- sdd->sddOx, y- sdd->sddOy );
+    geoShiftRectangle( &drSpan, -lc->lcOx, -lc->lcOy );
+    drawFillRectangle( lc->lcDrawingSurface, &drSpan );
 
-    return;
+    return 0;
     }
 
 /************************************************************************/
@@ -359,261 +383,204 @@ static void tedDrawChftnsep(	DrawingContext *	dc,
 /*									*/
 /************************************************************************/
 
-static void tedDrawSegments(	DrawingContext *		dc,
-				AppDrawingData *		add,
-				int				x,
-				int				y,
-				const DrawScreenFont *		dsf,
-				const unsigned char *		s,
-				const int *			segments,
-				int				segmentCount )
+static void tedDrawSegments(	DrawingContext *	dc,
+				int			x,
+				int			y,
+				int			fullScreenFont,
+				int			scapsScreenFont,
+				const char *		s,
+				const int *		segments,
+				int			segmentCount )
     {
+    const LayoutContext *	lc= &(dc->dcLayoutContext);
     int				seg;
 
-    int				wide;
-    int				fontAscent;
-    int				fontDescent;
-
-    int				scaps= 0;
+    DocumentRectangle		drText;
 
     for ( seg= 0; seg < segmentCount; seg++ )
 	{
 	if  ( segments[2* seg+ 0] > 0 )
 	    {
-	    if  ( scaps )
-		{
-		appDrawSetFont( add, dsf->apfFontStruct );
-		scaps= 0;
-		}
+	    drawString( lc->lcDrawingSurface,
+					x, y, fullScreenFont,
+					s, segments[2* seg+ 0] );
 
-	    appDrawDrawString( add, x, y, (char *)s, segments[2* seg+ 0] );
-
-	    appDrawTextExtents( &wide, &fontAscent, &fontDescent,
-				    add, dsf->apfFontStruct,
-				    (const char *)s, segments[2* seg+ 0] );
+	    drawGetTextExtents( &drText, lc->lcDrawingSurface,
+					x, y, fullScreenFont,
+					s, segments[2* seg+ 0] );
 
 	    s += segments[2* seg+ 0];
-	    x += wide;
+	    x= drText.drX1+ 1;
 	    }
 
 	if  ( segments[2* seg+ 1] > 0 )
 	    {
-	    if  ( ! scaps )
-		{
-		appDrawSetFont( add, dsf->apfScapsFontStruct );
-		scaps= 1;
-		}
+	    drawString( lc->lcDrawingSurface,
+					x, y, scapsScreenFont,
+					s, segments[2* seg+ 1] );
 
-	    appDrawSetFont( add, dsf->apfScapsFontStruct );
-
-	    appDrawDrawString( add, x, y, (char *)s, segments[2* seg+ 1] );
-
-	    appDrawTextExtents( &wide, &fontAscent, &fontDescent,
-				    add, dsf->apfScapsFontStruct,
-				    (const char *)s, segments[2* seg+ 1] );
+	    drawGetTextExtents( &drText, lc->lcDrawingSurface,
+					x, y, scapsScreenFont,
+					s, segments[2* seg+ 1] );
 
 	    s += segments[2* seg+ 1];
-	    x += wide;
+	    x= drText.drX1+ 1;
 	    }
 	}
-
-    if  ( scaps )
-	{ dc->dcCurrentTextAttributeSet= 0;	}
 
     return;
     }
 
 /************************************************************************/
-/*									*/
-/*  Draw a series of particules.					*/
-/*									*/
-/*  1)  Only explicit tabs need to be drawn: Implicit ones have no	*/
-/*	leader.								*/
-/*  2)  MS-Word draws underlined tabs!					*/
-/*									*/
-/************************************************************************/
 
-static int tedDrawParticules(	DrawingContext *	dc,
-				int			pShift,
-				int			xShift,
-				int			yShift,
-				void *			vsdd,
-				const BufferItem *	paraBi,
-				int			part,
-				int			count,
-				const TextLine *	tl,
-				int			baseLine )
+int tedDrawSpan(	const DrawTextLine *		dtl,
+			int				part,
+			int				count,
+			const LayoutPosition *		baseLine,
+			int				textAttrNr,
+			const TextAttribute *		ta,
+			const char *			printString,
+			int				nbLen )
     {
-    ScreenDrawingData *		sdd= (ScreenDrawingData *)vsdd;
-    const ScreenFontList *	sfl= sdd->sddScreenFontList;
-    AppDrawingData *		add= dc->dcDrawingData;
-    const DrawScreenFontList *	apfl= &(add->addScreenFontList);
-    const BufferDocument *	bd= dc->dcDocument;
-    const TextParticule *	tp= paraBi->biParaParticules+ part;
-    const TabStopList *		tsl= &(paraBi->biParaTabStopList);
+    int				rval= 0;
 
-    int				drawn;
-    int				len;
+    ScreenDrawingData *		sdd= (ScreenDrawingData *)dtl->dtlThrough;
+    DrawingContext *		dc= dtl->dtlDrawingContext;
+    const LayoutContext *	lc= &(dc->dcLayoutContext);
 
-    int				textAttr;
-    int				screenFont;
-    TextAttribute		ta;
-    const DrawScreenFont *	dsf;
+    char *			upperString= (char *)0;
+    int *			segments= (int *)0;
+    int				segmentCount= 0;
 
-    /*  1  */
-    switch( tp->tpKind )
-	{ 
-	case DOCkindTAB:
-	    /*  1  */
-	    if  ( tp->tpObjectNumber >= 0			&&
-		  tp->tpObjectNumber < tsl->tslTabStopCount	)
-		{
-		if  ( tedDrawTab( paraBi, tp, baseLine, sdd, dc ) )
-		    { LDEB(1);	}
-		}
+    int				baselinePixels;
+    int				fullScreenFont;
+    int				y;
 
-	    drawn= 1;
+    int				x0FrameShifted;
 
-	    /*  2  */
-	    textAttr= tp->tpTextAttributeNumber;
-	    if  ( textAttr >= sfl->sflAttributeToScreenCount	||
-		  sfl->sflAttributeToScreen[textAttr] < 0	)
-		{ LDEB(textAttr); return -1;	}
+    const BufferItem *		paraNode= dtl->dtlParaNode;
+    const TextLine *		tl= dtl->dtlTextLine;
+    const TextParticule *	tp= paraNode->biParaParticules+ part;
 
-	    screenFont= sfl->sflAttributeToScreen[textAttr];
-	    dsf= apfl->apflFonts+ screenFont;
+    int				spanX0;
 
-	    tedDrawParticuleUnderlines( dc, sdd, tp, drawn, dsf, baseLine );
-	    tedDrawParticuleStrikethrough( dc, sdd, tp, drawn, dsf, baseLine );
+    baselinePixels= docLayoutYPixels( lc, baseLine );
+    x0FrameShifted= docLayoutXPixels( lc,
+	    dtl->dtlParagraphFrame->pfParaContentRect.drX0+ dtl->dtlXShift );
+    spanX0= x0FrameShifted+ tp->tpXContentXPixels;
 
-	    return drawn;
+    if  ( dc->dcClipRect						&&
+	  part+ count < tl->tlFirstParticule+ tl->tlParticuleCount	)
+	{
+	const TextParticule *	tpp= paraNode->biParaParticules+ part+ count;
+	DocumentRectangle	drSpan= dtl->dtlLineRectangle;
 
-	case DOCkindTEXT:
+	drSpan.drX0= spanX0;
+	drSpan.drX1= x0FrameShifted+ tpp->tpXContentXPixels;
+
+	if  ( ! geoIntersectRectangle( (DocumentRectangle *)0,
+					    dc->dcClipRect, &drSpan )	)
+	    { return 0;	}
+	}
+
+    fullScreenFont= utilIndexMappingGet( lc->lcAttributeToScreenFont,
+						    textAttrNr );
+    if  ( fullScreenFont < 0 )
+	{ LLDEB(textAttrNr,fullScreenFont); rval= -1; goto ready;	}
+
+    if  ( ta->taSmallCaps || ta->taCapitals )
+	{
+	if  ( docMakeCapsString( &upperString, &segments, &segmentCount,
+						    ta, printString, nbLen ) )
+	    { LDEB(nbLen); rval= -1; goto ready;	}
+
+	printString= upperString;
+	}
+
+    switch( ta->taSuperSub )
+	{
+	case DOCfontSUPERSCRIPT:
+	    drawFontGetSuperBaseline( &y, baselinePixels,
+				    lc->lcDrawingSurface, fullScreenFont );
 	    break;
 
-	case DOCkindFIELDSTART:
-	case DOCkindFIELDEND:
-	case DOCkindXE:
-	case DOCkindTC:
-	case DOCkindLINEBREAK:
-	case DOCkindPAGEBREAK:
-	case DOCkindCOLUMNBREAK:
-	case DOCkindNOTE:
-	    return drawn= 1;
-
-	case DOCkindOBJECT:
-	    if  ( tedDrawObject( paraBi, tp, baseLine,
-					    sdd->sddOx, sdd->sddOy, add ) )
-		{ LDEB(1); return -1;	}
-
-	    return drawn= 1;
-
-	case DOCkindCHFTNSEP:
-	case DOCkindCHFTNSEPC:
-	    tedDrawChftnsep( dc, pShift, xShift, yShift, vsdd, tp, tl );
-
-	    return drawn= 1;
-
+	case DOCfontSUBSCRIPT:
+	    drawFontGetSubBaseline( &y, baselinePixels,
+				    lc->lcDrawingSurface, fullScreenFont );
 	default:
-	    LDEB(tp->tpKind); return -1;
+	    LDEB(ta->taSuperSub);
+	case DOCfontREGULAR:
+	    y= baselinePixels;
+	    break;
 	}
 
-    {
-    const int	separate= 1;
+    docDrawSetFont( dc, (void *)sdd, textAttrNr, ta );
+    docDrawSetColorNumber( dc, (void *)sdd, ta->taTextColorNumber );
 
-    docDrawDelimitString( &len, &drawn, &ta,
-					bd, paraBi, part, count, separate );
-    }
-
-    {
-    textAttr= tp->tpTextAttributeNumber;
-    if  ( textAttr >= sfl->sflAttributeToScreenCount	||
-	  sfl->sflAttributeToScreen[textAttr] < 0	)
-	{ LLDEB(textAttr,sfl->sflAttributeToScreenCount); return -1;	}
-
-    screenFont= sfl->sflAttributeToScreen[textAttr];
-    dsf= apfl->apflFonts+ screenFont;
-    }
-
-    if  ( len > 0 )
+    if  ( ta->taSmallCaps && ! ta->taCapitals )
 	{
-	const unsigned char *	printString= paraBi->biParaString+ tp->tpStroff;
-	unsigned char *		upperString= (unsigned char *)0;
-	int *			segments= (int *)0;
-	int			segmentCount= 0;
+	int	scapsScreenFont;
 
-	int			y= baseLine;
+	scapsScreenFont= docLayoutScapsScreenFont( lc, ta );
+	if  ( scapsScreenFont < 0 )
+	    { LDEB(scapsScreenFont); rval= -1; goto ready;	}
 
-	if  ( ta.taSmallCaps || ta.taCapitals )
-	    {
-	    if  ( docMakeCapsString( &upperString, &segments, &segmentCount,
-						bd, &ta, printString, len ) )
-		{ LDEB(len); return -1;	}
-
-	    printString= upperString;
-	    }
-
-	if  ( ta.taSuperSub == DOCfontSUPERSCRIPT )
-	    { y -= ( 8* dsf->apfAscentPixels+ 15 )/ 16;		}
-
-	if  ( ta.taSuperSub == DOCfontSUBSCRIPT )
-	    { y += ( 6* dsf->apfDescentPixels+ 15 )/ 16;	}
-
-	docDrawSetFont( dc, vsdd, textAttr, &ta );
-	docDrawSetColorNumber( dc, (void *)sdd, ta.taTextColorNumber );
-
-	if  ( ta.taSmallCaps && ! ta.taCapitals )
-	    {
-	    tedDrawSegments( dc, add, tp->tpX0- sdd->sddOx, y- sdd->sddOy,
-				    dsf, printString, segments, segmentCount );
-	    }
-	else{
-	    appDrawDrawString( add, tp->tpX0- sdd->sddOx, y- sdd->sddOy,
-					    (char *)printString, len );
-	    }
-
-	/*
-	appDebug( "[%3d,%3d] -- %.*s\n", y, tp->tpX0, len, printString );
-	*/
-
-	if  ( upperString )
-	    { free( upperString );	}
-	if  ( segments )
-	    { free( segments );	}
+	tedDrawSegments( dc, spanX0- lc->lcOx, y- lc->lcOy,
+					fullScreenFont, scapsScreenFont,
+					printString, segments, segmentCount );
+	}
+    else{
+	drawString( lc->lcDrawingSurface,
+				spanX0- lc->lcOx, y- lc->lcOy,
+					fullScreenFont, printString, nbLen );
 	}
 
-    tedDrawParticuleUnderlines( dc, sdd, tp, drawn, dsf, baseLine );
-    tedDrawParticuleStrikethrough( dc, sdd, tp, drawn, dsf, baseLine );
+    /*
+    appDebug( "[%3d,%3d] -- %.*s\n", y, x0, len, printString );
+    */
 
-    return drawn;
+  ready:
+
+    if  ( upperString )
+	{ free( upperString );	}
+    if  ( segments )
+	{ free( segments );	}
+
+    return rval;
     }
 
-int tedDrawTextLine(		const BufferItem *		bi,
+int tedDrawTextLine(		BufferItem *			paraNode,
 				int				line,
 				const ParagraphFrame *		pf,
+				const DocumentRectangle *	drLine,
 				void *				vsdd,
 				DrawingContext *		dc,
-				int				pShift,
-				int				xShift,
-				int				yShift )
+				const BlockOrigin *		bo )
     {
-    AppDrawingData *		add= dc->dcDrawingData;
-
-    const TextLine *		tl= bi->biParaLines+ line;
+    const TextLine *		tl= paraNode->biParaLines+ line;
     int				part= tl->tlFirstParticule;
     int				done;
 
-    int				baseline;
+    int				xTwips;
+    DrawTextLine		dtl;
 
-    baseline= TL_BASE_PIXELS_SH( add, tl, pShift, yShift );
+    docInitDrawTextLine( &dtl );
+
+    if  ( dc->dcClipRect						&&
+	  ! geoIntersectRectangle( (DocumentRectangle *)0,
+					    dc->dcClipRect, drLine )	)
+	{ return tl->tlParticuleCount;	}
+
+    docSetDrawTextLine( &dtl, vsdd, dc, tl, paraNode, bo, pf, drLine );
+    dtl.dtlDrawParticulesSeparately= 1;
 
     done= 0;
+    xTwips= pf->pfParaContentRect.drX0+ tl->tlLineIndent;
     while( done < tl->tlParticuleCount )
 	{
 	int		drawn;
 
-	drawn= tedDrawParticules( dc, pShift, xShift, yShift, vsdd, bi, part,
-				tl->tlParticuleCount- done, tl, baseline );
+	drawn= docDrawLineParticules( &dtl, &xTwips, part );
 	if  ( drawn < 1 )
 	    { LDEB(drawn); return -1;	}
 
@@ -633,28 +600,27 @@ int tedDrawTextLine(		const BufferItem *		bi,
 /*	width of the table cell.					*/
 /*  3)  Where to we start the selected rectangle? (left)		*/
 /*  4)  Where to we end the selected rectangle? (right)			*/
-/*  5)  Do the line and the selection overlap. The two separate tests	*/
-/*	reject the situation where only the begin or end position of	*/
-/*	the line is in the selection.					*/
-/*	Either the begin of the selection must be before the end of the	*/
-/*	line or the end of the selection must be after the end of the	*/
-/*	line.								*/
+/*  5)  Do the line and the selection overlap?				*/
+/*	We do not have to consider I-Bar selections, so that is the	*/
+/*	case if the selection begins before the end of the line and	*/
+/*	ends after the begin of the line.				*/
+/*	Include the line of an empty paragraph at either end of the	*/
+/*	selection.							*/
 /*  6)  Intersect with clipping rectangle.				*/
 /*									*/
 /************************************************************************/
 
 static int tedLineRectangle(	DocumentRectangle *		drRedraw,
 				int *				pInSelection,
-				const BufferItem *		bi,
+				BufferItem *			paraNode,
 				DrawingContext *		dc,
 				ScreenDrawingData *		sdd,
 				int				line,
-				const ParagraphFrame *		pf )
+				const DocumentRectangle *	drParaContent )
     {
-    const DocumentSelection *	ds= dc->dcDocumentSelection;
+    const LayoutContext *	lc= &(dc->dcLayoutContext);
+    const DocumentSelection *	ds= dc->dcSelection;
     const SelectionGeometry *	sg= dc->dcSelectionGeometry;
-    const DocumentRectangle *	drClip= dc->dcClipRect;
-    const ScreenFontList *	sfl= sdd->sddScreenFontList;
 
     DocumentSelection	dsLine;
     SelectionGeometry	sgLine;
@@ -663,25 +629,30 @@ static int tedLineRectangle(	DocumentRectangle *		drRedraw,
     DocumentRectangle	drLine;
 
     int			tableRectangle;
-    int			cmp_SeLe;
-    int			cmp_SbLb;
-    int			cmp_SbLe;
-    int			cmp_SeLb;
+    int			cmp_ShLh;
+    int			cmp_StLh;
+    int			cmp_ShLt;
+    int			cmp_StLt;
+    int			is_StPh;
+    int			is_ShPt;
 
     int			partLineBegin;
     int			partLineEnd;
 
-    int			inSelection;
+    int			inSelection= 0;
+
+    if  ( ! docSelectionSameRoot( ds, paraNode ) )
+	{ return 0;	}
 
     /*  1  */
-    docLineSelection( &dsLine, &partLineBegin, &partLineEnd, bi, line );
-    tedSelectionGeometry( &sgLine, &dsLine, lastLine,
-				    dc->dcDocument, dc->dcDrawingData, sfl );
+    docLineSelection( &dsLine, &partLineBegin, &partLineEnd, paraNode, line );
+    tedSelectionGeometry( &sgLine, &dsLine,
+		docGetBodySectNode( paraNode, lc->lcDocument ), lastLine, lc );
 
-    if  ( sgLine.sgBegin.pgLine != line )
-	{ LLDEB(sgLine.sgBegin.pgLine,line);	}
-    if  ( sgLine.sgEnd.pgLine != line )
-	{ LLDEB(sgLine.sgEnd.pgLine,line);	}
+    if  ( sgLine.sgHead.pgLine != line )
+	{ LLDEB(sgLine.sgHead.pgLine,line);	}
+    if  ( sgLine.sgTail.pgLine != line )
+	{ LLDEB(sgLine.sgTail.pgLine,line);	}
 
     drLine= sgLine.sgRectangle;
 
@@ -689,82 +660,97 @@ static int tedLineRectangle(	DocumentRectangle *		drRedraw,
     tableRectangle= 0;
     if  ( ds->dsCol0 >= 0						&&
 	  ds->dsCol1 >= 0						&&
-	  ! docPositionsInsideCell( &(ds->dsBegin), &(ds->dsEnd) )	)
+	  ! docPositionsInsideCell( &(ds->dsHead), &(ds->dsTail) )	)
 	{ tableRectangle= 1; }
 
-    cmp_SbLb= docComparePositions( &(ds->dsBegin), &(dsLine.dsBegin) );
-    cmp_SeLb= docComparePositions( &(ds->dsEnd), &(dsLine.dsBegin) );
-    cmp_SbLe= docComparePositions( &(ds->dsBegin), &(dsLine.dsEnd) );
-    cmp_SeLe= docComparePositions( &(ds->dsEnd), &(dsLine.dsEnd) );
+    cmp_ShLh= docComparePositions( &(ds->dsHead), &(dsLine.dsHead) );
+    cmp_StLh= docComparePositions( &(ds->dsTail), &(dsLine.dsHead) );
+    cmp_ShLt= docComparePositions( &(ds->dsHead), &(dsLine.dsTail) );
+    cmp_StLt= docComparePositions( &(ds->dsTail), &(dsLine.dsTail) );
+
+    is_StPh= ( sg->sgTail.pgPositionFlags & POSflagPARA_HEAD ) != 0;
+    is_ShPt= ( sg->sgHead.pgPositionFlags & POSflagPARA_TAIL ) != 0;
 
     /*  3  */
-    if  ( cmp_SbLb <= 0 || ( cmp_SbLb == 0 && tableRectangle ) )
+    if  ( cmp_ShLh <= 0 || ( cmp_ShLh == 0 && tableRectangle ) )
 	{
-	drLine.drX0= pf->pfX0Pixels;	
+	int	x0Twips= drParaContent->drX0;
 
-	if  ( cmp_SbLb == 0 )
+	if  ( paraNode->biParaFirstIndentTwips < 0 )
+	    { x0Twips += paraNode->biParaFirstIndentTwips;	}
+
+	drLine.drX0= docLayoutXPixels( lc, x0Twips );
+
+	if  ( cmp_ShLh == 0 )
 	    {
+	    x0Twips= drParaContent->drX0;
+
 	    if  ( line == 0 )
-		{ drLine.drX0= pf->pfX0FirstLinePixels;	}
-	    else{ drLine.drX0= pf->pfX0TextLinesPixels;	}
+		{ x0Twips += paraNode->biParaFirstIndentTwips;	}
+
+	    drLine.drX0= docLayoutXPixels( lc, x0Twips );
 	    }
 	}
-    else{ drLine.drX0= sg->sgBegin.pgXPixels;	}
+    else{ drLine.drX0= sg->sgHead.pgXPixels;	}
 
     /*  4  */
-    if  ( cmp_SeLe > 0 || ( cmp_SeLe == 0 && tableRectangle ) )
-	{ drLine.drX1= pf->pfX1Pixels;		}
-    else{ drLine.drX1= sg->sgEnd.pgXPixels;	}
+    if  ( cmp_StLt > 0 || ( cmp_StLt == 0 && tableRectangle ) )
+	{ drLine.drX1= docLayoutXPixels( lc, drParaContent->drX1 );	}
+    else{ drLine.drX1= sg->sgTail.pgXPixels;				}
 
     /*  5  */
     inSelection= 0;
-    if  ( cmp_SbLe < 0 && cmp_SeLb > 0 )
+
+    if  ( docParaStrlen( ds->dsTail.dpNode ) == 0	&&
+	  cmp_StLh == 0					)
+	{ cmp_StLh=  1;	}
+    if  ( docParaStrlen( ds->dsHead.dpNode ) == 0	&&
+	  cmp_ShLt == 0					)
+	{ cmp_ShLt= -1;	}
+
+    if  ( ( cmp_ShLt <  0 && cmp_StLh > 0 )		|| /* Overlap	   */
+	  ( cmp_ShLt <= 0 && cmp_StLt > 0 && is_ShPt )	|| /* head at tail */
+	  ( cmp_StLh <= 0 && cmp_ShLh < 0 && is_StPh )	)  /* tail at head */
 	{ inSelection= 1;	}
 
-    if  ( ds->dsEnd  .dpBi->biParaStrlen == 0	&&
-	  cmp_SeLb == 0				)
-	{ cmp_SeLb=  1;	}
-    if  ( ds->dsBegin.dpBi->biParaStrlen == 0	&&
-	  cmp_SbLe == 0				)
-	{ cmp_SbLe= -1;	}
-    if  ( cmp_SbLe < 0 && cmp_SeLb > 0 )
-	{ inSelection= 1;	}
+    /*  Highlight tail of selection at line head  */
+    if  ( ( cmp_StLh == 0 && cmp_ShLh < 0 )	)	/* tail at head	*/
+	{ drLine.drX0 -= 3;	}
 
     /*  6  */
-    if  ( ! drClip || geoIntersectRectangle( drRedraw, drClip, &drLine ) )
+    if  ( ! dc->dcClipRect						||
+	  geoIntersectRectangle( drRedraw, dc->dcClipRect, &drLine )	)
 	{ *pInSelection= inSelection; return 1;	}
     else{ return 0;	}
     }
 
-int tedDrawTextReverse(		const BufferItem *		bi,
+int tedDrawTextReverse(		BufferItem *			paraNode,
 				int				line,
 				const ParagraphFrame *		pf,
+				const DocumentRectangle *	drLine,
 				void *				vsdd,
 				DrawingContext *		dc,
-				int				pShift,
-				int				xShift,
-				int				yShift )
+				const BlockOrigin *		bo )
     {
+    const LayoutContext *	lc= &(dc->dcLayoutContext);
     ScreenDrawingData *		sdd= (ScreenDrawingData *)vsdd;
-    AppDrawingData *		add= dc->dcDrawingData;
 
     DocumentRectangle		drRedraw;
     int				done;
     int				inSelection;
 
-    if  ( tedLineRectangle( &drRedraw, &inSelection, bi, dc, sdd, line, pf ) )
+    if  ( tedLineRectangle( &drRedraw, &inSelection, paraNode, dc, sdd, line,
+						    &(pf->pfParaContentRect) ) )
 	{
-	drRedraw.drX0 -= sdd->sddOx;
-	drRedraw.drX1 -= sdd->sddOx;
-	drRedraw.drY0 -= sdd->sddOy;
-	drRedraw.drY1 -= sdd->sddOy;
+	geoShiftRectangle( &drRedraw, -lc->lcOx, -lc->lcOy );
+	drawSetClipRect( lc->lcDrawingSurface, &drRedraw );
 
-	appDrawSetClipRect( add, &drRedraw );
+	done= tedDrawTextLine( paraNode, line, pf, drLine, vsdd, dc, bo );
 
-	done= tedDrawTextLine( bi, line, pf, vsdd, dc, pShift, xShift, yShift );
+	tedOriginalClipping( dc, sdd );
 	}
     else{
-	TextLine *	tl= bi->biParaLines+ line;
+	TextLine *	tl= paraNode->biParaLines+ line;
 
 	done= tl->tlParticuleCount;
 	}
@@ -772,49 +758,39 @@ int tedDrawTextReverse(		const BufferItem *		bi,
     return done;
     }
 
-int tedDrawTextSelected(	const BufferItem *		bi,
+int tedDrawTextSelected(	BufferItem *			paraNode,
 				int				line,
 				const ParagraphFrame *		pf,
+				const DocumentRectangle *	drLine,
 				void *				vsdd,
 				DrawingContext *		dc,
-				int				pShift,
-				int				xShift,
-				int				yShift )
+				const BlockOrigin *		bo )
     {
+    const LayoutContext *	lc= &(dc->dcLayoutContext);
     ScreenDrawingData *		sdd= (ScreenDrawingData *)vsdd;
-    AppDrawingData *		add= dc->dcDrawingData;
 
     DocumentRectangle		drRedraw;
     int				done;
     int				inSelection;
 
-    if  ( tedLineRectangle( &drRedraw, &inSelection, bi, dc, sdd, line, pf ) )
+    if  ( tedLineRectangle( &drRedraw, &inSelection, paraNode, dc, sdd, line,
+						    &(pf->pfParaContentRect) ) )
 	{
-	drRedraw.drX0 -= sdd->sddOx;
-	drRedraw.drX1 -= sdd->sddOx;
-	drRedraw.drY0 -= sdd->sddOy;
-	drRedraw.drY1 -= sdd->sddOy;
-
-	appDrawSetClipRect( add, &drRedraw );
+	geoShiftRectangle( &drRedraw, -lc->lcOx, -lc->lcOy );
+	drawSetClipRect( lc->lcDrawingSurface, &drRedraw );
 
 	if  ( inSelection )
 	    {
-	    docDrawSetColorRgb( dc, (void *)sdd,
-				sdd->sddBackColor.rgb8Red,
-				sdd->sddBackColor.rgb8Green,
-				sdd->sddBackColor.rgb8Blue );
-
-	    appDrawFillRectangle( add,
-		    drRedraw.drX0,
-		    drRedraw.drY0,
-		    drRedraw.drX1- drRedraw.drX0+ 1,
-		    drRedraw.drY1- drRedraw.drY0+ 1 );
+	    docDrawSetColorRgb( dc, (void *)sdd, &(sdd->sddBehindColor) );
+	    drawFillRectangle( lc->lcDrawingSurface, &drRedraw );
 	    }
 
-	done= tedDrawTextLine( bi, line, pf, vsdd, dc, pShift, xShift, yShift );
+	done= tedDrawTextLine( paraNode, line, pf, drLine, vsdd, dc, bo );
+
+	tedOriginalClipping( dc, sdd );
 	}
     else{
-	TextLine *	tl= bi->biParaLines+ line;
+	TextLine *	tl= paraNode->biParaLines+ line;
 
 	done= tl->tlParticuleCount;
 	}

@@ -32,7 +32,7 @@ typedef struct Base85InputStream
 
 static int sioInBase85ReadBytes(	void *		voidbis,
 					unsigned char *	buffer,
-					int		count )
+					unsigned int	count )
     {
     Base85InputStream *		bis= (Base85InputStream *)voidbis;
     int				done= 0;
@@ -56,21 +56,21 @@ static int sioInBase85ReadBytes(	void *		voidbis,
 	for ( n= 0; n < 5; n++ )
 	    {
 	    /*  1,2  */
-	    d[n]= sioInGetCharacter( bis->bisSisBase85 );
+	    d[n]= sioInGetByte( bis->bisSisBase85 );
 
 	    while( d[n] == ' '			||
 		   d[n] == '\t'			||
 		   d[n] == '\r'			||
 		   d[n] == '\n'			||
 		   d[n] == '\f'			)
-		{ d[n]= sioInGetCharacter( bis->bisSisBase85 );	}
+		{ d[n]= sioInGetByte( bis->bisSisBase85 );	}
 
 	    if  ( d[n] == EOF )
 		{ LDEB(d[n]); bis->bisFoundEnd= 1; return -1;	}
 
 	    if  ( d[n] == '~' )
 		{
-		int	c= sioInGetCharacter( bis->bisSisBase85 );
+		int	c= sioInGetByte( bis->bisSisBase85 );
 
 		if  ( c != '>' )
 		    { CCDEB(d[n],c); bis->bisFoundEnd= 1; return -1; }
@@ -143,14 +143,14 @@ static int sioInBase85Close(	void *	voidbis )
     /*  1  */
     if  ( ! bis->bisFoundEnd )
 	{
-	c= sioInGetCharacter( bis->bisSisBase85 );
+	c= sioInGetByte( bis->bisSisBase85 );
 	while( c != EOF			&&
 	       c != '~'			)
-	    { c= sioInGetCharacter( bis->bisSisBase85 );	}
+	    { c= sioInGetByte( bis->bisSisBase85 );	}
 
 	if  ( c == '~' )
 	    {
-	    int	c2= sioInGetCharacter( bis->bisSisBase85 );
+	    int	c2= sioInGetByte( bis->bisSisBase85 );
 
 	    if  ( c2 != '>' )
 		{ CCDEB(c,c2);	}
@@ -211,6 +211,7 @@ typedef struct Base85OutputStream
 
 static int sioOutBase85Close(	void *	voidbos )
     {
+    int				rval= 0;
     Base85OutputStream *	bos= (Base85OutputStream *)voidbos;
 
     /*  1  */
@@ -235,19 +236,26 @@ static int sioOutBase85Close(	void *	voidbos )
 	    {
 	    if  ( bos->bosColumn >= 72 )
 		{
-		sioOutPutCharacter( '\n', bos->bosSosBase85 );
+		if  ( sioOutPutByte( '\n', bos->bosSosBase85 ) < 0 )
+		    { rval= -1;	}
 		bos->bosColumn= 0;
 		}
 
-	    sioOutPutCharacter( d[i], bos->bosSosBase85 );
+	    if  ( sioOutPutByte( d[i], bos->bosSosBase85 ) < 0 )
+		{ rval= -1;	}
 	    }
 	}
 
-    sioOutPutCharacter( '~', bos->bosSosBase85 );
-    sioOutPutCharacter( '>', bos->bosSosBase85 );
-    sioOutPutCharacter( '\n', bos->bosSosBase85 );
+    if  ( sioOutPutByte( '~', bos->bosSosBase85 ) < 0 )
+	{ rval= -1;	}
+    if  ( sioOutPutByte( '>', bos->bosSosBase85 ) < 0 )
+	{ rval= -1;	}
+    if  ( sioOutPutByte( '\n', bos->bosSosBase85 ) < 0 )
+	{ rval= -1;	}
 
-    free( bos ); return 0;
+    free( bos );
+
+    return rval;
     }
 
 /************************************************************************/
@@ -290,11 +298,14 @@ static int sioOutBase85WriteBytes(	void *			voidbos,
 	/*  3  */
 	if  ( bos->bosColumn >= 72 )
 	    {
-	    sioOutPutCharacter( '\n', bos->bosSosBase85 );
+	    if  ( sioOutPutByte( '\n', bos->bosSosBase85 ) < 0 )
+		{ return -1;	}
 	    bos->bosColumn= 0;
 	    }
 
-	sioOutPutCharacter( d[i], bos->bosSosBase85 ); bos->bosColumn++;
+	if  ( sioOutPutByte( d[i], bos->bosSosBase85 ) < 0 )
+	    { return -1;	}
+	bos->bosColumn++;
 	}
 
     bos->bosCount= 0;
@@ -309,11 +320,15 @@ static int sioOutBase85WriteBytes(	void *			voidbos,
 	    /*  3  */
 	    if  ( bos->bosColumn >= 72 )
 		{
-		sioOutPutCharacter( '\n', bos->bosSosBase85 );
+		if  ( sioOutPutByte( '\n', bos->bosSosBase85 ) < 0 )
+		    { return -1;	}
 		bos->bosColumn= 0;
 		}
 
-	    sioOutPutCharacter( d[i], bos->bosSosBase85 ); bos->bosColumn++;
+	    if  ( sioOutPutByte( d[i], bos->bosSosBase85 ) < 0 )
+		{ return -1;	}
+
+	    bos->bosColumn++;
 	    }
 
 	buffer += 4; done += 4;
@@ -339,8 +354,7 @@ SimpleOutputStream * sioOutBase85Open(	SimpleOutputStream *	sosBase85 )
     bos->bosCount= 0;
     bos->bosColumn= 0;
 
-    sos= sioOutOpen( (void *)bos, sioOutBase85WriteBytes,
-					    (SIOoutSEEK)0, sioOutBase85Close );
+    sos= sioOutOpen( (void *)bos, sioOutBase85WriteBytes, sioOutBase85Close );
 
     if  ( ! sos )
 	{ XDEB(sos); free( bos ); return (SimpleOutputStream *)0; }

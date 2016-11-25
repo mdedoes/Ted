@@ -9,181 +9,55 @@
 #   include	<stddef.h>
 #   include	<stdlib.h>
 #   include	<stdio.h>
-#   include	<string.h>
 #   include	<ctype.h>
 
 #   include	"tedApp.h"
+#   include	"tedSelect.h"
+#   include	"tedAppResources.h"
+#   include	"tedCopyPasteImpl.h"
 #   include	"tedEdit.h"
+#   include	"tedDocument.h"
+#   include	"tedDocFront.h"
+#   include	<docRtfReadWrite.h>
+#   include	<docPlainReadWrite.h>
+#   include	<appImage.h>
+#   include	<docRtfFlags.h>
+#   include	<docEditCommand.h>
 
 #   include	<sioMemory.h>
 #   include	<sioXprop.h>
+#   include	<sioFileio.h>
+#   include	<bmio.h>
 
 #   include	<appDebugon.h>
-
-/************************************************************************/
-/*									*/
-/*  Edit menu actions.							*/
-/*									*/
-/*  8)  Also put a copied picture on the clipboard that 'xv' implements	*/
-/*	on the root window.						*/
-/*									*/
-/************************************************************************/
-
-static void tedFinishTextCopy(	TedDocument *			td,
-				AppDrawingData *		add,
-				const DocumentSelection *	ds )
-    {
-    BufferDocument *		bd= td->tdDocument;
-    const ScreenFontList *	sfl= &(td->tdScreenFontList);
-    SelectionGeometry		sg;
-    const int			lastLine= 1;
-
-    tedSelectionGeometry( &sg, ds, lastLine, bd, add, sfl );
-
-    td->tdCopiedSelectionClosed= 1;
-
-    if  ( ds->dsEnd.dpStroff < ds->dsEnd.dpBi->biParaStrlen )
-	{ td->tdCopiedSelectionClosed= 0;	}
-
-    if  ( docIsParaSelection( ds )		&&
-	  sg.sgBegin.pgLine == sg.sgEnd.pgLine	)
-	{ td->tdCopiedSelectionClosed= 0;	}
-
-    appCleanBitmapImage( &(td->tdCopiedImage) );
-    appInitBitmapImage( &(td->tdCopiedImage) );
-
-    return;
-    }
-
-static int tedDocCopySelection(	EditDocument *	ed )
-    {
-    EditApplication *		ea= ed->edApplication;
-    TedDocument *		td= (TedDocument *)ed->edPrivateData;
-    AppDrawingData *		add= &(ed->edDrawingData);
-
-    DocumentPosition		dpObject;
-    int				partObject;
-    InsertedObject *		io;
-
-    SimpleOutputStream *	sos;
-
-    const int			saveBookmarks= 0;
-
-    DocumentSelection		ds;
-    SelectionGeometry		sg;
-    SelectionDescription	sd;
-
-    if  ( ! tedHasSelection( td ) || tedHasIBarSelection( td ) )
-	{ return -1; }
-
-    if  ( tedGetSelection( &ds, &sg, &sd, td ) )
-	{ return -1;	}
-
-    sos= sioOutMemoryOpen( &(td->tdCopiedSelection) );
-    if  ( ! sos )
-	{ XDEB(sos); return -1;    }
-
-    if  ( docRtfSaveDocument( sos, td->tdDocument, &ds, saveBookmarks ) )
-	{ LDEB(1); sioOutClose( sos ); return -1;	}
-
-    if  ( sioOutClose( sos ) )
-	{ LDEB(1); return -1;	}
-
-    tedFinishTextCopy( td, add, &ds );
-
-    docInitDocumentPosition( &dpObject );
-
-    if  ( ea->eaSupportXvCopyPaste					&&
-	  sd.sdIsObjectSelection					&&
-	  ! docGetObjectSelection( &ds, &partObject, &dpObject, &io )	&&
-	  ! tedSaveObjectPicture( &(td->tdCopiedImage), io )	)
-	{
-	/*  8  */
-	if  ( appImgPutXvClipboard( &(td->tdCopiedImage.abiBitmap),
-		td->tdCopiedImage.abiBuffer, ea->eaToplevel.atTopWidget ) )
-	    { LDEB(1);	}
-	}
-
-    if  ( appDocOwnSelection( ed, "PRIMARY",
-			TedPrimaryTextTargets, TedPrimaryTextTargetCount ) )
-	{ LDEB(1); return -1;	}
-
-    return 0;
-    }
-
-/************************************************************************/
-/*									*/
-/*  Copy a part of the document, in practice, a bookmark as a link	*/
-/*									*/
-/************************************************************************/
-
-int tedCopyAsLink(	EditDocument *			ed,
-			const DocumentSelection *	ds,
-			int				asRef,
-			int				asPageref,
-			const char *			fileName,
-			const char *			markName,
-			int				markSize )
-    {
-    SimpleOutputStream *	sos;
-    TedDocument *		td= (TedDocument *)ed->edPrivateData;
-    AppDrawingData *		add= &(ed->edDrawingData);
-
-    int				fileSize= 0;
-
-    if  ( fileName )
-	{ fileSize= strlen( fileName );	}
-
-    sos= sioOutMemoryOpen( &(td->tdCopiedSelection) );
-    if  ( ! sos )
-	{ XDEB(sos); return -1;    }
-
-    if  ( docRtfSaveSelectionAsLink( sos, td->tdDocument, ds,
-				asRef, asPageref,
-				(const unsigned char *)fileName, fileSize,
-				(const unsigned char *)markName, markSize ) )
-	{ LDEB(1); sioOutClose( sos ); return -1;	}
-
-    if  ( sioOutClose( sos ) )
-	{ LDEB(1); return -1;	}
-
-    tedFinishTextCopy( td, add, ds );
-
-    if  ( appDocOwnSelection( ed, "PRIMARY",
-		    TedPrimaryTextTargets, TedPrimaryTextTargetCount ) )
-	{ LDEB(1); return -1;	}
-
-    return 0;
-    }
 
 void tedDocCut(			EditDocument *	ed )
     {
     TedDocument *		td= (TedDocument *)ed->edPrivateData;
 
-    int				isTableSlice= 0;
-    int				isRowSlice= 0;
-    int				isColSlice= 0;
-    TableRectangle		tr;
-
     DocumentSelection		ds;
     SelectionGeometry		sg;
     SelectionDescription	sd;
 
-    if  ( tedGetSelection( &ds, &sg, &sd, td ) )
+    if  ( tedGetSelection( &ds, &sg, &sd,
+			    (DocumentTree **)0, (struct BufferItem **)0, ed ) )
 	{ return;	}
 
-    if  ( ! docGetTableSliceSelection( &isRowSlice, &isColSlice, &tr, &ds ) )
-	{ isTableSlice= 1;	}
-
-    if  ( ! isTableSlice && ! td->tdCanReplaceSelection )
-	{ LDEB(td->tdCanReplaceSelection); return;	}
+    if  ( ! sd.sdIsTableSlice && ! sd.sdCanReplace )
+	{ LLDEB(sd.sdIsTableSlice,sd.sdCanReplace); return;	}
 
     if  ( tedDocCopySelection( ed ) )
 	{ LDEB(1); return;	}
 
-    if  ( isTableSlice )
-	{ tedDeleteTableSliceSelection( ed );				}
-    else{ tedDocReplaceSelection( ed, (const unsigned char *)0, 0 );	}
+    if  ( sd.sdIsTableSlice )
+	{ tedDeleteTableSliceSelection( ed, td->tdTraced );	}
+    else{
+	tedDocDeleteSelection( ed, EDITcmdDELETE_SELECTION, td->tdTraced );
+	}
+
+    if  ( appDocOwnSelection( ed, "CLIPBOARD",
+		TedClipboardTextTargets, TedClipboardTextTargetCount ) )
+	{ LDEB(1); 	}
 
     return;
     }
@@ -199,7 +73,8 @@ void tedDocCopy(		EditDocument *	ed )
     const int			scrolledX= 0;
     const int			scrolledY= 0;
 
-    if  ( tedGetSelection( &ds, &sg, &sd, td ) )
+    if  ( tedGetSelection( &ds, &sg, &sd,
+			    (DocumentTree **)0, (struct BufferItem **)0, ed ) )
 	{ return;	}
 
     if  ( tedDocCopySelection( ed ) )
@@ -208,6 +83,10 @@ void tedDocCopy(		EditDocument *	ed )
     td->tdVisibleSelectionCopied= 1;
 
     appDocExposeRectangle( ed, &(sg.sgRectangle), scrolledX, scrolledY );
+
+    if  ( appDocOwnSelection( ed, "CLIPBOARD",
+		TedClipboardTextTargets, TedClipboardTextTargetCount ) )
+	{ LDEB(1);	}
 
     return;
     }
@@ -218,7 +97,7 @@ void tedDocCopy(		EditDocument *	ed )
 /*									*/
 /************************************************************************/
 
-void tedPrimaryLost(	APP_WIDGET			w,
+void tedClipboardLost(	APP_WIDGET			w,
 			void *				voided,
 			APP_EVENT *			event )
     {
@@ -229,12 +108,13 @@ void tedPrimaryLost(	APP_WIDGET			w,
     SelectionGeometry		sg;
     SelectionDescription	sd;
 
-    if  ( tedGetSelection( &ds, &sg, &sd, td ) )
+    if  ( tedGetSelection( &ds, &sg, &sd,
+			    (DocumentTree **)0, (struct BufferItem **)0, ed ) )
 	{ return;	}
 
     td->tdVisibleSelectionCopied= 0;
 
-    if  ( tedHasSelection( td ) && ! sd.sdIsIBarSelection )
+    if  ( tedHasSelection( ed ) && ! sd.sdIsIBarSelection )
 	{
 	const int	scrolledX= 0;
 	const int	scrolledY= 0;
@@ -243,20 +123,32 @@ void tedPrimaryLost(	APP_WIDGET			w,
 	}
     }
 
+void tedPrimaryLost(	APP_WIDGET			w,
+			void *				voided,
+			APP_EVENT *			event )
+    {
+    EditDocument *		ed= (EditDocument *)voided;
+    TedDocument *		td= (TedDocument *)ed->edPrivateData;
+
+    td->tdOwnsPrimarySelection= 0;
+
+    return;
+    }
+
 /************************************************************************/
 /*									*/
 /*  Return the selection to a requestor.				*/
 /*									*/
 /************************************************************************/
 
-APP_GIVE_COPY( tedCopyPrimaryRtf, w, event, voided )
+APP_GIVE_COPY( tedCopyClipboardRtf, w, event, voided )
     {
     EditDocument *	ed= (EditDocument *)voided;
     TedDocument *	td= (TedDocument *)ed->edPrivateData;
 
     SimpleOutputStream *	sos;
 
-    if  ( td->tdCopiedSelection.mbSize == 0 )
+    if  ( utilMemoryBufferIsEmpty( &(td->tdCopiedSelection) ) )
 	{ LDEB(td->tdCopiedSelection.mbSize); return; }
 
     sos= sioOutOpenCopy( w, event );
@@ -269,18 +161,59 @@ APP_GIVE_COPY( tedCopyPrimaryRtf, w, event, voided )
 
     sioOutClose( sos );
 
-#   if 0
-    sos= sioOutStdioOpen( "/tmp/copied.rtf" );
-    XDEB(sos);
-    if  ( sos )
+    if  ( getenv( "TED_SAVE_COPIES" ) )
 	{
-	if  ( sioOutWriteBytes( sos, td->tdCopiedSelection.mbBytes,
-				    td->tdCopiedSelection.mbSize ) <= 0 )
-	    { LDEB(td->tdCopiedSelection.mbSize); }
+	sos= sioOutFileioOpenS( "/tmp/returned.rtf" );
+	if  ( sos )
+	    {
+	    if  ( sioOutWriteBytes( sos, td->tdCopiedSelection.mbBytes,
+					td->tdCopiedSelection.mbSize ) <= 0 )
+		{ LDEB(td->tdCopiedSelection.mbSize); }
 
-	sioOutClose( sos );
+	    sioOutClose( sos );
+	    }
 	}
-#   endif
+
+    return;
+    }
+
+static void tedCopyString(	const MemoryBuffer *	mb,
+				APP_WIDGET		w,
+				APP_SELECTION_EVENT *	event,
+				EditDocument *		ed )
+    {
+    SimpleOutputStream *	sos;
+
+    BufferDocument *		bd;
+    SimpleInputStream *		sis;
+
+    const unsigned int		rtfFlags= 0;
+
+    if  ( utilMemoryBufferIsEmpty( mb ) )
+	{ LDEB(mb->mbSize); return; }
+
+    sos= sioOutOpenCopy( w, event );
+    if  ( ! sos )
+	{ XDEB(sos); return;	}
+
+    sis= sioInMemoryOpen( mb );
+    if  ( ! sis )
+	{ XDEB(sis); sioOutClose( sos ); return;	}
+
+    bd= docRtfReadFile( sis, rtfFlags );
+    sioInClose( sis );
+
+    if  ( ! bd )
+	{ XDEB(bd); sioOutClose( sos ); return; }
+
+    if  ( getenv( "TED_SAVE_COPIES" ) )
+	{ tedSaveSelectionTxtToFile( bd, "/tmp/returned.txt" );	}
+
+    if  ( docPlainSaveDocument( sos, bd, (DocumentSelection *)0, 0 ) )
+	{ LDEB(1);	}
+
+    docFreeDocument( bd );
+    sioOutClose( sos );
 
     return;
     }
@@ -288,92 +221,72 @@ APP_GIVE_COPY( tedCopyPrimaryRtf, w, event, voided )
 APP_GIVE_COPY( tedCopyPrimaryString, w, event, voided )
     {
     EditDocument *		ed= (EditDocument *)voided;
-    TedDocument *		td= (TedDocument *)ed->edPrivateData;
-    EditApplication *		ea= ed->edApplication;
 
-    SimpleOutputStream *	sos;
+    DocumentSelection		ds;
+    SelectionDescription	sd;
 
-    BufferDocument *		bd;
-    SimpleInputStream *		sis;
-    int				res;
+    MemoryBuffer		mb;
 
-    if  ( td->tdCopiedSelection.mbSize == 0 )
-	{ LDEB(td->tdCopiedSelection.mbSize); return; }
+    utilInitMemoryBuffer( &mb );
 
-    sos= sioOutOpenCopy( w, event );
-    if  ( ! sos )
-	{ XDEB(sos); return;	}
+    if  ( ! tedDocSaveSelectionRtf( &mb, &ds, &sd, ed ) )
+	{ tedCopyString( &mb, w, event, ed );	}
 
-    sis= sioInMemoryOpen( &td->tdCopiedSelection );
-    if  ( ! sis )
-	{ XDEB(sis); sioOutClose( sos ); return;	}
-
-    bd= docRtfReadFile( sis, &(ea->eaPostScriptFontList),
-				td->tdDocument->bdProperties.dpAnsiCodepage );
-
-    sioInClose( sis );
-
-    if  ( ! bd )
-	{ XDEB(bd); sioOutClose( sos ); return; }
-
-    res= docPlainSaveDocument( sos, bd,
-				    (DocumentSelection *)0,
-				    0, td->tdCopiedSelectionClosed );
-
-    docFreeDocument( bd );
-
-    if  ( res )
-	{ LDEB(res); sioOutClose( sos ); return; }
-
-    sioOutClose( sos );
+    utilCleanMemoryBuffer( &mb );
 
     return;
     }
 
-APP_GIVE_COPY( tedCopyPrimaryPng, w, event, voided )
+APP_GIVE_COPY( tedCopyClipboardString, w, event, voided )
     {
     EditDocument *		ed= (EditDocument *)voided;
     TedDocument *		td= (TedDocument *)ed->edPrivateData;
 
-    SimpleOutputStream *	sos;
+    tedCopyString( &(td->tdCopiedSelection), w, event, ed );
+    return;
+    }
 
-    if  ( ! td->tdCopiedImage.abiBuffer )
-	{ XDEB(td->tdCopiedImage.abiBuffer); return;	}
+static int tedCopyImageFile(	APP_WIDGET		w,
+				APP_SELECTION_EVENT *	event,
+				void *			voided,
+				bmWriteBitmap		writeBitmap )
+    {
+    int				rval= 0;
+    EditDocument *		ed= (EditDocument *)voided;
+    TedDocument *		td= (TedDocument *)ed->edPrivateData;
+
+    SimpleOutputStream *	sos= (SimpleOutputStream *)0;
+
+    if  ( ! td->tdCopiedImage.riBytes )
+	{ XDEB(td->tdCopiedImage.riBytes); rval= -1; goto ready;	}
 
     sos= sioOutOpenCopy( w, event );
     if  ( ! sos )
-	{ XDEB(sos); return;	}
+	{ XDEB(sos); rval= -1; goto ready;	}
 
-    if  ( bmPngWritePng( &(td->tdCopiedImage.abiBitmap),
-					td->tdCopiedImage.abiBuffer, sos ) )
-	{ LDEB(1); sioOutClose( sos ); return;	}
+    if  ( (*writeBitmap)( &(td->tdCopiedImage.riDescription),
+					td->tdCopiedImage.riBytes, sos ) )
+	{ LDEB(1); rval= -1; goto ready;	}
 
-    sioOutClose( sos );
+  ready:
+    if  ( sos )
+	{ sioOutClose( sos );	}
+
+    return rval;
+    }
+
+APP_GIVE_COPY( tedCopyClipboardPng, w, event, voided )
+    {
+    if  ( tedCopyImageFile( w, event, voided, bmPngWritePng ) )
+	{ LDEB(1);	}
 
     return;
     }
 
-APP_GIVE_COPY( tedCopyPrimaryPixmap, w, event, voided )
+APP_GIVE_COPY( tedCopyClipboardJfif, w, event, voided )
     {
-    EditDocument *	ed= (EditDocument *)voided;
-    AppDrawingData *	add= &(ed->edDrawingData);
-    TedDocument *	td= (TedDocument *)ed->edPrivateData;
-
-    APP_BITMAP_IMAGE	pixmapCopied;
-
-    int			wide= td->tdCopiedImage.abiBitmap.bdPixelsWide;
-    int			high= td->tdCopiedImage.abiBitmap.bdPixelsHigh;
-
-    if  ( appImgMakePixmap( add,
-			    &pixmapCopied, wide, high,
-			    &(ed->edColors), &(td->tdCopiedImage) ) )
-	{
-	appCleanBitmapImage( &(td->tdCopiedImage) );
-	appInitBitmapImage( &(td->tdCopiedImage) );
-	return;
-	}
-
-    appCopyPixmapValue( event, pixmapCopied );
+    if  ( tedCopyImageFile( w, event, voided, bmJpegWriteJfif ) )
+	{ LDEB(1);	}
 
     return;
     }
@@ -385,7 +298,7 @@ APP_GIVE_COPY( tedCopyFontTed, w, event, voided )
 
     SimpleOutputStream *	sos;
 
-    if  ( td->tdCopiedFont.mbSize == 0 )
+    if  ( utilMemoryBufferIsEmpty( &(td->tdCopiedFont) ) )
 	{ LDEB(td->tdCopiedFont.mbSize); return; }
 
     sos= sioOutOpenCopy( w, event );
@@ -415,7 +328,7 @@ APP_GIVE_COPY( tedCopyRulerTed, w, event, voided )
 
     SimpleOutputStream *	sos;
 
-    if  ( td->tdCopiedRuler.mbSize == 0 )
+    if  ( utilMemoryBufferIsEmpty( &(td->tdCopiedRuler) ) )
 	{ LDEB(td->tdCopiedRuler.mbSize); return; }
 
     sos= sioOutOpenCopy( w, event );
@@ -440,44 +353,44 @@ APP_GIVE_COPY( tedCopyRulerTed, w, event, voided )
 typedef BufferDocument * (*TED_READ) (
 				SimpleInputStream *		sis,
 				EditApplication *		ea,
-				int				ansiCodepage,
 				const DocumentGeometry *	dg );
 
 typedef int	(*TED_INCLUDE) (	EditDocument *		ed,
-					BufferDocument *	bd );
+					BufferDocument *	bd,
+					int			traced );
 
 static BufferDocument * tedPasteRtfReadFile(
 				SimpleInputStream *		sis,
 				EditApplication *		ea,
-				int				ansiCodepage,
 				const DocumentGeometry *	dg )
     {
-    return docRtfReadFile( sis, &(ea->eaPostScriptFontList), ansiCodepage );
+    const unsigned int	rtfFlags= 0;
+
+    return docRtfReadFile( sis, rtfFlags );
     }
 
 static BufferDocument * tedPastePlainReadFile(
 				SimpleInputStream *		sis,
 				EditApplication *		ea,
-				int				ansiCodepage,
 				const DocumentGeometry *	dg )
     {
     int		longestPara;
 
-    return docPlainReadFile( sis, &longestPara,
-					DOCcharsetANSI, ansiCodepage, dg );
+    return docPlainReadFile( sis, &longestPara, dg );
     }
 
-static void tedPastePrimaryGeneric(	APP_WIDGET		w,
+static int tedPasteClipboardGeneric(	APP_WIDGET		w,
 					EditDocument *		ed,
 					APP_SELECTION_EVENT *	event,
 					TED_READ		readDoc,
 					TED_INCLUDE		includeDoc )
     {
+    int				rval= 0;
     EditApplication *		ea= ed->edApplication;
+    TedDocument *		td= (TedDocument *)ed->edPrivateData;
 
-    SimpleInputStream *		sis;
-
-    BufferDocument *		bd;
+    SimpleInputStream *		sis= (SimpleInputStream *)0;
+    BufferDocument *		bd= (BufferDocument *)0;
 
     TedAppResources *		tar= (TedAppResources *)ea->eaResourceData;
 
@@ -485,264 +398,268 @@ static void tedPastePrimaryGeneric(	APP_WIDGET		w,
 
     sis= sioInOpenPaste( w, event );
     if  ( ! sis )
-	{ XDEB(sis); return;	}
+	{ XDEB(sis); rval= -1; goto ready;	}
 
-    bd= (*readDoc)( sis, ea, tar->tarDefaultAnsicpgInt,
-					&(ea->eaDefaultDocumentGeometry) );
-
-    sioInClose( sis );
+    bd= (*readDoc)( sis, ea, &(ea->eaDefaultDocumentGeometry) );
 
     if  ( ! bd )
-	{ XDEB( bd ); return; }
+	{ XDEB( bd ); rval= -1; goto ready; }
 
-    if  ( (*includeDoc)( ed, bd ) )
-	{ LDEB(1); docFreeDocument( bd ); return;	}
+    if  ( getenv( "TED_SAVE_COPIES" ) )
+	{
+	const int			rtfFlags= 0;
+	const DocumentSelection * const	ds= (const DocumentSelection *)0;
 
-    docFreeDocument( bd );
+	tedSaveSelectionToFile( bd, ds, rtfFlags, "/tmp/included.rtf" );
+	}
 
-    appDocumentChanged( ed, 1 );
+    if  ( (*includeDoc)( ed, bd, td->tdTraced ) )
+	{ LDEB(1); rval= -1; goto ready;	}
 
-    return;
+  ready:
+
+    if  ( bd )
+	{ docFreeDocument( bd );	}
+    if  ( sis )
+	{ sioInClose( sis );		}
+
+    return rval;
     }
 
-APP_PASTE_REPLY( tedPastePrimaryRtf, w, event, voided )
+APP_PASTE_REPLY( tedPasteClipboardRtf, w, event, voided )
     {
     EditDocument *	ed= (EditDocument *)voided;
 
-    tedPastePrimaryGeneric( w, ed, event,
+    tedPasteClipboardGeneric( w, ed, event,
 			    tedPasteRtfReadFile, tedIncludeRtfDocument );
+
+    }
+
+APP_PASTE_REPLY( tedPasteClipboardString, w, event, voided )
+    {
+    EditDocument *	ed= (EditDocument *)voided;
+
+    tedPasteClipboardGeneric( w, ed, event,
+			    tedPastePlainReadFile, tedIncludePlainDocument );
     }
 
 APP_PASTE_REPLY( tedPastePrimaryString, w, event, voided )
     {
     EditDocument *	ed= (EditDocument *)voided;
 
-    tedPastePrimaryGeneric( w, ed, event,
+    tedPasteClipboardGeneric( w, ed, event,
 			    tedPastePlainReadFile, tedIncludePlainDocument );
     }
 
-APP_PASTE_REPLY( tedPastePrimaryPng, w, event, voided )
+static int tedPasteImageFile(	APP_WIDGET		w,
+				APP_SELECTION_EVENT *	event,
+				EditDocument *		ed,
+				bmReadBitmap		readBitmap,
+				const char *		nameHint )
     {
-    EditDocument *	ed= (EditDocument *)voided;
+    int			rval= 0;
     TedDocument *	td= (TedDocument *)ed->edPrivateData;
 
-    SimpleInputStream *	sis;
+    SimpleInputStream *	sis= (SimpleInputStream *)0;
+    RasterImage *	ri= (RasterImage *)0;
 
-    AppBitmapImage *	abi;
+    MemoryBuffer	filename;
 
-    if  ( ! td->tdCanReplaceSelection )
-	{ LDEB(td->tdCanReplaceSelection); return;	}
+    utilInitMemoryBuffer( &filename );
 
-    abi= (AppBitmapImage *)malloc( sizeof(AppBitmapImage) );
-    if  ( ! abi )
-	{ XDEB(abi); return;	}
-    appInitBitmapImage( abi );
+    if  ( ! td->tdSelectionDescription.sdCanReplace )
+	{ LDEB(td->tdSelectionDescription.sdCanReplace); rval= -1; goto ready;	}
+
+    if  ( utilMemoryBufferSetString( &filename, nameHint ) )
+	{ SDEB(nameHint); rval= -1; goto ready;	}
+
+    ri= (RasterImage *)malloc( sizeof(RasterImage) );
+    if  ( ! ri )
+	{ XDEB(ri); rval= -1; goto ready;	}
+    bmInitRasterImage( ri );
 
     sis= sioInOpenPaste( w, event );
     if  ( ! sis )
-	{ XDEB(sis); return;	}
+	{ XDEB(sis); rval= -1; goto ready;	}
 
-    if  ( bmPngReadPng( &(abi->abiBitmap), &(abi->abiBuffer), sis ) )
-	{ LDEB(1); return;	}
-
-    sioInClose( sis );
-
-    if  ( tedReplaceSelectionWithBitmapImage( ed, abi ) )
-	{ LDEB(1); return; }
-
-    return;
-    }
-
-APP_PASTE_REPLY( tedPastePrimaryPixmap, w, event, voided )
-    {
-    EditDocument *	ed= (EditDocument *)voided;
-    TedDocument *	td= (TedDocument *)ed->edPrivateData;
-
-    AppBitmapImage *	abi;
-
-    if  ( ! td->tdCanReplaceSelection )
-	{ LDEB(td->tdCanReplaceSelection); return;	}
-
-    abi= (AppBitmapImage *)malloc( sizeof(AppBitmapImage) );
-    if  ( ! abi )
-	{ XDEB(abi); return;	}
-    appInitBitmapImage( abi );
-
-    if  ( appImgPastePixmap( abi, w, event ) )
-	{ LDEB(1); return;	}
-
-    if  ( tedReplaceSelectionWithBitmapImage( ed, abi ) )
-	{ LDEB(1); return; }
-
-    return;
-    }
-
-APP_PASTE_REPLY( tedPasteFontTed, w, event, voided )
-    {
-    EditDocument *	ed= (EditDocument *)voided;
-
-#   define		FONTSIZ	200
-
-    SimpleInputStream *		sis;
-
-    char			attrString[FONTSIZ+1];
-    int				l;
-
-    sis= sioInOpenPaste( w, event );
-    if  ( ! sis )
-	{ XDEB(sis); return;	}
-
-    if  ( ! sioInGetString( attrString, FONTSIZ, sis ) )
-	{ LDEB(1); sioInClose( sis ); return; }
-
-    l= strlen( attrString );
-    if  ( l > 0 && attrString[l-1] == '\n' )
-	{ attrString[l-1]= '\0';	}
-
-    if  ( tedAppChangeSelectionAttributeString( ed, attrString ) )
-	{
-	SDEB(attrString);
-	sioInClose( sis );
-	return;
-	}
-
-    sioInClose( sis );
-
-    appDocumentChanged( ed, 1 );
-
-    return;
-    }
-
-static int tedApplyPastedRuler(		EditDocument *		ed,
-					BufferDocument *	bdFrom )
-    {
-    EditApplication *		ea= ed->edApplication;
-    const PostScriptFontList *	psfl= &(ea->eaPostScriptFontList);
-
-    int				rval= 0;
-
-    TedDocument *		tdTo= (TedDocument *)ed->edPrivateData;
-    BufferDocument *		bdTo= tdTo->tdDocument;
-
-    DocumentPosition		dp;
-
-    TextAttribute		taSet;
-    ParagraphProperties		ppSetMapped;
-
-    PropertyMask		taSetMask;
-    PropertyMask		ppUpdMask;
-    PropertyMask		spUpdMask;
-    PropertyMask		ppMappedMask;
-
-    DocumentCopyJob		dcj;
-
-    docInitDocumentCopyJob( &dcj );
-    docInitParagraphProperties( &ppSetMapped );
-
-    if  ( docSet2DocumentCopyJob( &dcj, bdTo, bdFrom, psfl, ed->edFilename ) )
+    if  ( (*readBitmap)( &(ri->riDescription), &(ri->riBytes), sis ) )
 	{ LDEB(1); rval= -1; goto ready;	}
+    ri->riFormat= bmSuggestFormat( &(filename),
+					ri->riFormat, &(ri->riDescription) );
 
-    if  ( docFirstPosition( &dp, &(bdFrom->bdItem) ) )
-	{ LDEB(1); rval= -1; goto ready;	}
-
-    PROPmaskCLEAR( &taSetMask );
-    PROPmaskCLEAR( &spUpdMask );
-    PROPmaskCLEAR( &ppMappedMask );
-
-    utilInitTextAttribute( &taSet );
-
-    PROPmaskCLEAR( &ppUpdMask );
-    PROPmaskADD( &ppUpdMask, PPpropLEFT_INDENT );
-    PROPmaskADD( &ppUpdMask, PPpropFIRST_INDENT );
-    PROPmaskADD( &ppUpdMask, PPpropRIGHT_INDENT );
-    PROPmaskADD( &ppUpdMask, PPpropALIGNMENT );
-    PROPmaskADD( &ppUpdMask, PPpropTAB_STOPS );
-
-    PROPmaskADD( &ppUpdMask, PPpropLISTOVERRIDE );
-    PROPmaskADD( &ppUpdMask, PPpropOUTLINELEVEL );
-    PROPmaskADD( &ppUpdMask, PPpropLISTLEVEL );
-
-    if  ( docUpdParaProperties( &ppMappedMask, &ppSetMapped,
-				    &ppUpdMask, &(dp.dpBi->biParaProperties),
-				    dcj.dcjColorMap, dcj.dcjListStyleMap ) )
+    if  ( tedReplaceSelectionWithRasterImage( ed, ri, td->tdTraced ) )
 	{ LDEB(1); rval= -1; goto ready; }
 
-    if  ( tedChangeSelectionProperties( ed,
-				    &taSetMask, &taSet,
-				    &ppUpdMask, &ppSetMapped,
-				    &spUpdMask, (SectionProperties *)0 ) )
-	{ LDEB(1); rval= -1; goto ready; }
+    ri= (RasterImage *)0; /* stolen */
 
   ready:
 
-    docCleanParagraphProperties( &ppSetMapped );
-    docCleanDocumentCopyJob( &dcj );
+    utilCleanMemoryBuffer( &filename );
+
+    if  ( ri )
+	{ bmFreeRasterImage( ri );	}
+    if  ( sis )
+	{ sioInClose( sis );	}
 
     return rval;
     }
+
+APP_PASTE_REPLY( tedPasteClipboardPng, w, event, voided )
+    {
+    if  ( tedPasteImageFile( w, event, (EditDocument *)voided,
+						bmPngReadPng, "some.png" ) )
+	{ LDEB(1);	}
+
+    return;
+    }
+
+APP_PASTE_REPLY( tedPasteClipboardJfif, w, event, voided )
+    {
+    if  ( tedPasteImageFile( w, event, (EditDocument *)voided,
+						bmJpegReadJfif, "some.jpeg" ) )
+	{ LDEB(1);	}
+
+    return;
+    }
+
+/************************************************************************/
 
 APP_PASTE_REPLY( tedPasteRulerTed, w, event, voided )
     {
     EditDocument *	ed= (EditDocument *)voided;
 
-    tedPastePrimaryGeneric( w, ed, event,
+    tedPasteClipboardGeneric( w, ed, event,
 			    tedPasteRtfReadFile, tedApplyPastedRuler );
     return;
     }
 
 /************************************************************************/
+
+APP_PASTE_REPLY( tedPasteFontTed, w, event, voided )
+    {
+    EditDocument *	ed= (EditDocument *)voided;
+
+    tedPasteClipboardGeneric( w, ed, event,
+			    tedPasteRtfReadFile, tedApplyPastedFont );
+    return;
+    }
+
+/************************************************************************/
 /*									*/
-/*  Custom 'Paste' functionality.					*/
-/*									*/
-/*  1)  The regular X11 manner.						*/
-/*  2)  Try to get a possible 'paste' from xv. This is just to make it	*/
-/*	possible to cooperate with John Bradley's XV. As XV is a little	*/
-/*	outdated, only support this if the appropriate resource is set.	*/
+/*  'Copy Font' menu option.						*/
 /*									*/
 /************************************************************************/
 
-void tedDocEditPaste(		APP_WIDGET	option,
-				void *		voided,
-				void *		voidpbcs )
+void tedCopyFont( EditDocument *	ed )
     {
-    EditDocument *			ed= (EditDocument *)voided;
-    EditApplication *			ea= ed->edApplication;
-    TedDocument *			td= (TedDocument *)ed->edPrivateData;
+    TedDocument *		td= (TedDocument *)ed->edPrivateData;
+    SimpleOutputStream *	sos;
 
-    int					res;
-    BitmapDescription			bd;
-    unsigned char *			buffer;
+    DocumentSelection		ds;
+    SelectionGeometry		sg;
+    SelectionDescription	sd;
 
-    if  ( ! td->tdCanReplaceSelection )
-	{ LDEB(td->tdCanReplaceSelection); return;	}
+    const int			rtfFlags= RTFflagNO_BOOKMARKS|RTFflagSAVE_SOMETHING;
 
-    /*  1  */
-    res= appDocAskForPaste( ed, "PRIMARY" );
-    if  ( ! res )
-	{ return;	}
+    if  ( tedGetSelection( &ds, &sg, &sd,
+			    (DocumentTree **)0, (struct BufferItem **)0, ed ) )
+	{ LDEB(1); return;	}
 
     /*  2  */
-    if  ( ea->eaSupportXvCopyPaste					&&
-	  ! appImgGetXvClipboard( &bd, &buffer,
-					ea->eaToplevel.atTopWidget )	)
+    sos= sioOutMemoryOpen( &(td->tdCopiedFont) );
+    if  ( ! sos )
+	{ XDEB(sos); return;	}
+
+    if  ( docRtfSaveDocument( sos, td->tdDocument, &ds, rtfFlags ) )
+	{ LDEB(1); sioOutClose( sos ); return;	}
+
+    if  ( sioOutClose( sos ) )
+	{ LDEB(1); return;	}
+
+    if  ( getenv( "TED_SAVE_COPIES" ) )
 	{
-	AppBitmapImage *	abi;
+	tedSaveSelectionToFile( td->tdDocument, &ds,
+					rtfFlags, "/tmp/savedfont.rtf" );
+	}
 
-	abi= (AppBitmapImage *)malloc( sizeof(AppBitmapImage) );
-	if  ( ! abi )
-	    { XDEB(abi); return;	}
-	appInitBitmapImage( abi );
+    appDocOwnSelection( ed, "RTFFONT", TedFontTargets, TedFontTargetCount );
+    }
 
-	if  ( bmCopyDescription( &(abi->abiBitmap), &bd ) )
-	    { bmCleanDescription( &bd ); return; }
+/************************************************************************/
+/*									*/
+/*  Callbacks for the Copy/Paste ruler menu options.			*/
+/*									*/
+/*  1)  The ruler paste is a selection paste with the selection		*/
+/*	constrained to the last position of the first paragraph in the	*/
+/*	selection.							*/
+/*  2)  Remember the bytes expecting that someone will ask for them.	*/
+/*  3)  Tell that we have a ruler paste available.			*/
+/*									*/
+/************************************************************************/
 
-	bmCleanDescription( &bd );
-	abi->abiBuffer= buffer;
+void tedCopyRuler( EditDocument *	ed )
+    {
+    TedDocument *		td= (TedDocument *)ed->edPrivateData;
+    SimpleOutputStream *	sos;
 
-	if  ( tedReplaceSelectionWithBitmapImage( ed, abi ) )
-	    { LDEB(1); return; }
+    DocumentSelection		ds;
+    SelectionGeometry		sg;
+    SelectionDescription	sd;
 
-	return;
+    DocumentSelection		dsPara;
+
+    const int			rtfFlags= RTFflagNO_BOOKMARKS;
+
+    if  ( tedGetSelection( &ds, &sg, &sd,
+			(DocumentTree **)0, (struct BufferItem **)0, ed ) )
+	{ LDEB(1); return;	}
+
+    /*  1  */
+    dsPara= ds;
+    docTailPosition( &(dsPara.dsHead), dsPara.dsHead.dpNode );
+    docSetIBarSelection( &dsPara, &(dsPara.dsHead) );
+
+    /*  2  */
+    sos= sioOutMemoryOpen( &(td->tdCopiedRuler) );
+    if  ( ! sos )
+	{ XDEB(sos); return;	}
+
+    if  ( docRtfSaveDocument( sos, td->tdDocument, &dsPara, rtfFlags ) )
+	{ LDEB(1); sioOutClose( sos ); return;	}
+
+    if  ( sioOutClose( sos ) )
+	{ LDEB(1); return;	}
+
+    if  ( getenv( "TED_SAVE_COPIES" ) )
+	{
+	tedSaveSelectionToFile( td->tdDocument, &dsPara,
+					rtfFlags, "/tmp/savedruler.rtf" );
+	}
+
+    /*  2  */
+    appDocOwnSelection( ed, "RTFRULER", TedRulerTargets, TedRulerTargetCount );
+    }
+
+/************************************************************************/
+
+void tedManagePrimarySelection(	EditDocument *		ed )
+    {
+    TedDocument *		td= (TedDocument *)ed->edPrivateData;
+
+    if  ( ! tedHasIBarSelection( ed ) )
+	{
+	if  ( appDocOwnSelection( ed, "PRIMARY",
+					    TedPrimaryTargets,
+					    TedPrimaryTargetCount ) )
+	    { LDEB(1);				}
+	else{ td->tdOwnsPrimarySelection= 1;	}
+	}
+    else{
+	if  ( td->tdOwnsPrimarySelection )
+	    {
+	    appDocReleaseSelection( ed, "PRIMARY" );
+	    td->tdOwnsPrimarySelection= 0;
+	    }
 	}
 
     return;

@@ -8,17 +8,11 @@
 #   include	<stdio.h>
 #   include	<stdlib.h>
 
-#   define	y0	math_y0
-#   define	y1	math_y1
-#   include	<math.h>
-#   undef	y0
-#   undef	y1
-
-#   include	"appDraw.h"
-
 #   include	<appDebugon.h>
 
 #   ifdef	USE_GTK
+
+#   include	"drawUtilGtk.h"
 
 /************************************************************************/
 /*									*/
@@ -211,8 +205,7 @@ int appColorNamed(	APP_COLOR_RGB *		xc,
 			exact.red/257, exact.green/257, exact.blue/257 );
     }
 
-int appAllocateColors(	AppDrawingData *	add,
-			AppColors *		acSys )
+static int appAllocateColors(	AppColors *		acSys )
     {
     GdkVisual *		vis= gdk_visual_get_system();
     GdkColormap *	cmap= gdk_colormap_get_system();
@@ -305,6 +298,7 @@ int appAllocateColors(	AppDrawingData *	add,
     return 0;
     }
 
+# if 0
 void appCleanColors(	AppColors *		acSys )
     {
     int			i;
@@ -336,6 +330,7 @@ void appCleanColors(	AppColors *		acSys )
 
     bmCleanColorAllocator( ca );
     }
+# endif
 
 void appInitColors(	AppColors *	acSys )
     {
@@ -364,6 +359,23 @@ int appColorFindRgb(	APP_COLOR_RGB *	xc,
     xc->pixel= acRet.acColorNumber;
 
     return 0;
+    }
+
+static AppColors * APP_TheColors= (AppColors *)0;
+
+AppColors *	guiGetColorsGtk( void )
+    {
+    if  ( ! APP_TheColors )
+	{
+	APP_TheColors= malloc( sizeof(AppColors) );
+	if  ( ! APP_TheColors )
+	    { XDEB(APP_TheColors); return (AppColors *)0;	}
+
+	appInitColors( APP_TheColors );
+	appAllocateColors( APP_TheColors );
+	}
+
+    return APP_TheColors;
     }
 
 #   endif

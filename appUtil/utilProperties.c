@@ -5,7 +5,7 @@
 /*									*/
 /************************************************************************/
 
-#   include	<appUtilConfig.h>
+#   include	"appUtilConfig.h"
 
 #   include	<stdio.h>
 #   include	<stddef.h>
@@ -13,9 +13,9 @@
 #   include	<string.h>
 #   include	<ctype.h>
 
-#   include	<sioStdio.h>
-#   include	<utilTree.h>
-#   include	<utilProperties.h>
+#   include	"sioFileio.h"
+#   include	"utilTree.h"
+#   include	"utilProperties.h"
 
 #   include	<appDebugon.h>
 
@@ -34,8 +34,8 @@
 /*									*/
 /************************************************************************/
 
-int utilPropertiesReadFile(		void *		tree,
-					const char *	filename )
+int utilPropertiesReadFile(		void *			tree,
+					const MemoryBuffer *	filename )
     {
     int			rval= 0;
     SimpleInputStream *	sis= (SimpleInputStream *)0;
@@ -47,9 +47,9 @@ int utilPropertiesReadFile(		void *		tree,
     int			valueSize= 0;
 
     /*  1  */
-    sis= sioInStdioOpen( filename );
+    sis= sioInFileioOpen( filename );
     if  ( ! sis )
-	{ SXDEB(filename,sis); rval= -1; goto ready;	}
+	{ XDEB(sis); rval= -1; goto ready;	}
 
     /*  2  */
     for (;;)
@@ -62,28 +62,29 @@ int utilPropertiesReadFile(		void *		tree,
 	void *		prevValue= (char *)0;
 
 	/*  3  */
-	c= sioInGetCharacter( sis );
+	c= sioInGetByte( sis );
 	while( isspace( c ) )
-	    { c= sioInGetCharacter( sis ); }
+	    { c= sioInGetByte( sis ); }
 	if  ( c == EOF )
 	    { break;	}
 
 	/*  4  */
 	if  ( c == '!' || c == '#' )
 	    {
-	    c= sioInGetCharacter( sis );
+	    c= sioInGetByte( sis );
 	    while( c != '\n' )
 		{
 		if  ( c == EOF )
 		    { CDEB(c); goto ready;	}
 		if  ( c == '\r' )
 		    {
+		    c= sioInGetByte( sis );
 		    if  ( c != '\n' )
 			{ CDEB(c); goto ready;	}
 		    break;
 		    }
 
-		c= sioInGetCharacter( sis );
+		c= sioInGetByte( sis );
 		}
 
 	    continue;
@@ -106,7 +107,7 @@ int utilPropertiesReadFile(		void *		tree,
 		{
 		unsigned char *		fresh;
 
-		fresh= realloc( name, nameSize+ 30+ 1 );
+		fresh= (unsigned char *)realloc( name, nameSize+ 30+ 1 );
 		if  ( ! fresh )
 		    { LXDEB(nameSize,fresh); rval= -1; goto ready;	}
 		name= fresh;
@@ -115,20 +116,20 @@ int utilPropertiesReadFile(		void *		tree,
 
 	    name[ns++]= c;
 	    name[ns  ]= '\0';
-	    c= sioInGetCharacter( sis );
+	    c= sioInGetByte( sis );
 	    }
 
 	while( isspace( c ) )
-	    { c= sioInGetCharacter( sis );	}
+	    { c= sioInGetByte( sis );	}
 	if  ( c != ':' && c != '=' )
 	    { CDEB(c); rval= -1; goto ready;	}
 	if  ( ns == 0 )
 	    { LSDEB(ns,(char *)name); rval= -1; goto ready; }
 
 	/*  6  */
-	c= sioInGetCharacter( sis );
+	c= sioInGetByte( sis );
 	while( isspace( c ) )
-	    { c= sioInGetCharacter( sis );	}
+	    { c= sioInGetByte( sis );	}
 
 	for (;;)
 	    {
@@ -136,7 +137,7 @@ int utilPropertiesReadFile(		void *		tree,
 		{
 		unsigned char *		fresh;
 
-		fresh= realloc( value, valueSize+ 50+ 1 );
+		fresh= (unsigned char *)realloc( value, valueSize+ 50+ 1 );
 		if  ( ! fresh )
 		    { LXDEB(valueSize,fresh); rval= -1; goto ready;	}
 		value= fresh;
@@ -154,11 +155,11 @@ int utilPropertiesReadFile(		void *		tree,
 	    if  ( ! isspace( c ) )
 		{ vp= vs;	}
 
-	    c= sioInGetCharacter( sis );
+	    c= sioInGetByte( sis );
 	    }
 
 	if  ( c == '\r' )
-	    { c= sioInGetCharacter( sis );	}
+	    { c= sioInGetByte( sis );	}
 	if  ( c != '\n' )
 	    { CDEB(c); rval= -1; goto ready;	}
 

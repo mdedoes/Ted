@@ -36,7 +36,7 @@ static int sioInHexClose( void *	voids )
 
 static int sioInHexReadBytes(	void *		voidsis,
 				unsigned char *	buffer,
-				int		count )
+				unsigned int	count )
     {
     SimpleInputStream *	sis= (SimpleInputStream *)voidsis;
     int			done= 0;
@@ -45,10 +45,10 @@ static int sioInHexReadBytes(	void *		voidsis,
 	{
 	int		c;
 
-	c= sioInGetCharacter( sis );
+	c= sioInGetByte( sis );
 
 	while( c == ' ' || c == '\r' || c == '\n' )
-	    { c= sioInGetCharacter( sis );	}
+	    { c= sioInGetByte( sis );	}
 
 	if  ( c == EOF )
 	    { return done;	}
@@ -58,12 +58,12 @@ static int sioInHexReadBytes(	void *		voidsis,
 	    else{ buffer[0]= SioHexIndices[c];			}
 	    }
 
-	c= sioInGetCharacter( sis );
+	c= sioInGetByte( sis );
 
 	buffer[0] *= 16;
 
 	while( c == ' ' || c == '\r' || c == '\n' )
-	    { c= sioInGetCharacter( sis );	}
+	    { c= sioInGetByte( sis );	}
 
 	if  ( c == EOF )
 	    { LDEB(c); return -1;			}
@@ -85,7 +85,7 @@ SimpleInputStream * sioInHexOpen(	SimpleInputStream *	sisHex )
 
     if  ( SioHexIndices[0] == 0 )
 	{
-	int	i;
+	unsigned int	i;
 
 	for ( i= 0; i < sizeof(SioHexIndices); i++ )
 	    { SioHexIndices[i]= 0xff;	}
@@ -122,18 +122,20 @@ typedef struct HexOutputStream
 
 static int sioOutHexClose( void *	voidhos )
     {
+    int				rval= 0;
     HexOutputStream *		hos= (HexOutputStream *)voidhos;
     SimpleOutputStream *	sos= hos->hosSosHex;
 
     if  ( hos->hosWide > 0 && hos->hosLastNl && hos->hosColumn > 0 )
 	{
-	sioOutPutCharacter( '\n', sos );
+	if  ( sioOutPutByte( '\n', sos ) < 0 )
+	    { rval= -1;	}
 	hos->hosColumn= 0;
 	}
 
     free( hos );
 
-    return 0;
+    return rval;
     }
 
 static int sioOutHexWriteBytes(	void *			voidhos,
@@ -148,12 +150,15 @@ static int sioOutHexWriteBytes(	void *			voidhos,
 	{
 	if  ( hos->hosWide > 0 && hos->hosColumn >= hos->hosWide )
 	    {
-	    sioOutPutCharacter( '\n', sos );
+	    if  ( sioOutPutByte( '\n', sos ) < 0 )
+		{ return -1;	}
 	    hos->hosColumn= 0;
 	    }
 
-	sioOutPutCharacter( SioHexDigitsL[ ( (*buffer) >> 4 ) & 0x0f ], sos );
-	sioOutPutCharacter( SioHexDigitsL[ ( (*buffer) >> 0 ) & 0x0f ], sos );
+	if  ( sioOutPutByte( SioHexDigitsL[ ( (*buffer) >> 4 ) & 0x0f ], sos ) < 0 )
+	    { return -1;	}
+	if  ( sioOutPutByte( SioHexDigitsL[ ( (*buffer) >> 0 ) & 0x0f ], sos ) < 0 )
+	    { return -1;	}
 
 	if  ( hos->hosWide > 0 )
 	    { hos->hosColumn += 2;	}
@@ -164,26 +169,12 @@ static int sioOutHexWriteBytes(	void *			voidhos,
     return count;
     }
 
-static int sioHexSeek(		void *			voidhos,
-				long			pos )
-    {
-    HexOutputStream *		hos= (HexOutputStream *)voidhos;
-
-    if  ( hos->hosWide > 0 )
-	{ LDEB(hos->hosWide); return -1;	}
-
-    if  ( sioOutSeek( hos->hosSosHex, 2* pos ) )
-	{ LDEB(0); return -1;	}
-
-    return 0;
-    }
-
 SimpleOutputStream * sioOutHexOpenFolded(
 				    SimpleOutputStream *	sosHex,
 				    int				wide,
 				    int				lastNl )
     {
-    HexOutputStream *		hos= malloc( sizeof(HexOutputStream) );
+    HexOutputStream *		hos= (HexOutputStream *)malloc( sizeof(HexOutputStream) );
     SimpleOutputStream *	sos;
 
     if  ( ! hos )
@@ -194,8 +185,7 @@ SimpleOutputStream * sioOutHexOpenFolded(
     hos->hosLastNl= lastNl;
     hos->hosColumn= 0;
 
-    sos= sioOutOpen( (void *)hos, sioOutHexWriteBytes,
-						sioHexSeek, sioOutHexClose );
+    sos= sioOutOpen( (void *)hos, sioOutHexWriteBytes, sioOutHexClose );
 
     if  ( ! sos )
 	{ XDEB(sos); free( hos ); return (SimpleOutputStream *)0; }

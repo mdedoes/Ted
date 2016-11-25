@@ -6,7 +6,6 @@
 
 #   include	"appFrameConfig.h"
 
-#   include	<stdlib.h>
 #   include	<stdio.h>
 #   include	<stddef.h>
 #   include	<string.h>
@@ -15,13 +14,19 @@
 #   include	<appDebugon.h>
 
 #   include	<appUnit.h>
-#   include	<appGeoString.h>
+#   include	<geoString.h>
 #   include	<utilPropMask.h>
-#   include	<utilTree.h>
+#   include	<textAttributeUtil.h>
 
-#   include	<appFrame.h>
-#   include	<appFontTool.h>
-#   include	"appDraw.h"
+#   include	"appFrame.h"
+#   include	"guiToolUtil.h"
+#   include	"appMatchFont.h"
+
+#   include	"appFontTool.h"
+#   include	"guiWidgetDrawingSurface.h"
+#   include	"guiDrawingWidget.h"
+#   include	"drawDrawingSurfacePrivate.h"
+#   include	"guiTextUtil.h"
 
 /************************************************************************/
 /*									*/
@@ -55,11 +60,40 @@ static const int EditFontToolSizeCount=
 /************************************************************************/
 
 static void appFontToolFormatSize(	char *		scratch,
-					int		sizeHalfPoints )
+					int		halfPoints )
     {
-    if  ( sizeHalfPoints % 2 )
-	{ sprintf( scratch, "%d.5", sizeHalfPoints/ 2 );	}
-    else{ sprintf( scratch, "%d", sizeHalfPoints/ 2 );		}
+    if  ( halfPoints % 2 )
+	{ sprintf( scratch, "%d.5", halfPoints/ 2 );	}
+    else{ sprintf( scratch, "%d", halfPoints/ 2 );	}
+    }
+
+/************************************************************************/
+/*									*/
+/*  Find an existing face of the font.					*/
+/*									*/
+/************************************************************************/
+
+static int appFontToolFindExistingFace(	const ExpandedTextAttribute *	etaC,
+					const DocumentFont *		df )
+    {
+    int			i;
+    /*
+    TextAttribute *	taC= &(etaC->etaTextAttribute);
+    */
+
+    for ( i= 0; i < FONTface_COUNT; i++ )
+	{
+	if  ( df->dfPsFontInfo[i] )
+	    {
+	    /*
+	    taC->taFontIsBold= FACE_BOLD( i );
+	    taC->taFontIsSlanted= FACE_SLANTED( i );
+	    */
+	    return i;
+	    }
+	}
+
+    return -1;
     }
 
 /************************************************************************/
@@ -71,7 +105,7 @@ static void appFontToolFormatSize(	char *		scratch,
 static APP_EVENT_HANDLER_H( appFontRedraw, w, voidafc, exposeEvent )
     {
     AppFontChooser *			afc= (AppFontChooser *)voidafc;
-    AppDrawingData *			add= &(afc->afcDrawingData);
+    DrawingSurface			ds= afc->afcDrawingSurface;
 
     DocumentRectangle			drClip;
 
@@ -80,37 +114,39 @@ static APP_EVENT_HANDLER_H( appFontRedraw, w, voidafc, exposeEvent )
     int					wide;
     int					high;
 
-    int					textWide;
-    int					fontAscent;
-    int					fontDescent;
-
-    const int				ox= 0;
-    const int				oy= 0;
+    DocumentRectangle			drWidget;
+    DocumentRectangle			drText;
 
     int					l= strlen( afc->afcChoiceText );
 
-    appCollectExposures( &drClip, add, ox, oy, exposeEvent );
+    guiCollectExposures( &drClip, afc->afcSampleDrawing, exposeEvent );
 
-    appDrawSetForegroundWhite( add );
-    appDrawFillRectangle( add, drClip.drX0, drClip.drY0,
-					    drClip.drX1- drClip.drX0+ 1,
-					    drClip.drY1- drClip.drY0+ 1 );
+    drawSetClipRect( ds, &drClip );
 
-    if  ( ! afc->afcFont )
-	{ /*SXDEB(afc->afcChoiceText,afc->afcFont);*/ return;	}
+    drawSetForegroundColorWhite( ds );
+    drawFillRectangle( ds, &drClip );
 
-    appDrawSetForegroundBlack( add );
+    if  ( afc->afcScreenFont < 0 )
+	{ /*SLDEB(afc->afcChoiceText,afc->afcScreenFont);*/ return;	}
 
-    appDrawGetSizeOfWidget( &wide, &high, w );
+    drawSetForegroundColorBlack( ds );
 
-    appDrawTextExtents( &textWide, &fontAscent, &fontDescent,
-				add, afc->afcFont, afc->afcChoiceText, l );
+    guiDrawGetSizeOfWidget( &wide, &high, w );
+    drWidget.drX0= 0;
+    drWidget.drX1= wide- 1;
+    drWidget.drY0= 0;
+    drWidget.drY1= high- 1;
 
-    y= ( high- fontAscent- fontDescent+ 1 )/ 2;
-    y= y+ fontAscent;
-    x= wide/ 2- textWide/2;
+    x= y= 0;
+    drawGetTextExtents( &drText, ds, x, y,
+			afc->afcScreenFont, afc->afcChoiceText, l );
 
-    appDrawDrawString( add, x, y, afc->afcChoiceText, l );
+    y= ( drWidget.drY1+ drWidget.drY0 )/ 2- ( drText.drY1+ drText.drY0+ 1 )/2;
+    x= ( drWidget.drX1+ drWidget.drX0 )/ 2- ( drText.drX1+ drText.drX0+ 1 )/2;
+
+    drawString( ds, x, y, afc->afcScreenFont, afc->afcChoiceText, l );
+
+    drawNoClipping( ds );
 
     return;
     }
@@ -149,7 +185,7 @@ static void appFontShowSizeInText(
     {
     char	scratch[80];
 
-    if  ( fontSizeHalfPoints > 0 )
+    if  ( fontSizeHalfPoints >= 0 )
 	{
 	appFontToolFormatSize( scratch, fontSizeHalfPoints );
 	appStringToTextWidget( afc->afcSizeText, scratch );
@@ -163,7 +199,7 @@ static void appFontShowSizeInText(
 
 /************************************************************************/
 /*									*/
-/*  Get currently selected font.					*/
+/*  Get the size of the currently selected font.			*/
 /*									*/
 /************************************************************************/
 
@@ -172,7 +208,8 @@ static int appFontToolGetSize(	int *			pFontSizeHalfPoints,
 				AppFontChooser *	afc )
     {
     ExpandedTextAttribute *	eta= &(afc->afcTextAttributeChosen);
-    int				sizeHalfPoints= eta->etaFontSizeHalfPoints;
+    TextAttribute *		ta= &(eta->etaTextAttribute);
+    int				sizeHalfPoints= ta->taFontSizeHalfPoints;
 
     char *		val;
     char *		s;
@@ -184,12 +221,16 @@ static int appFontToolGetSize(	int *			pFontSizeHalfPoints,
 
     int			isEmpty;
 
-    s= val= appGetStringFromTextWidget( afc->afcSizeText );
-    while( isspace( *s ) )
-	{ s++;	}
-    isEmpty= ! *s;
+    if  ( afc->afcSizeText )
+	{
+	s= val= appGetStringFromTextWidget( afc->afcSizeText );
+	while( isspace( *s ) )
+	    { s++;	}
+	isEmpty= ! *s;
 
-    appFreeStringFromTextWidget( val );
+	appFreeStringFromTextWidget( val );
+	}
+    else{ isEmpty= 1;	}
 
     if  ( isEmpty )
 	{ sizeHalfPoints= -1;	}
@@ -228,7 +269,81 @@ static int appFontToolGetSize(	int *			pFontSizeHalfPoints,
     return 0;
     }
 
-static int appFontGetCurrent(	DocumentFont **		pDf,
+/************************************************************************/
+/*									*/
+/*  Get the current baseline shift.					*/
+/*									*/
+/************************************************************************/
+
+static int appFontToolGetBaseline(
+				int *			pBaselineHalfPoints,
+				int *			pEmpty,
+				int			anyway,
+				AppFontChooser *	afc )
+    {
+    ExpandedTextAttribute *	eta= &(afc->afcTextAttributeChosen);
+    TextAttribute *		ta= &(eta->etaTextAttribute);
+    int				baselineHalfPoints= ta->taBaselineShiftHalfPoints;
+
+    char *		val;
+    char *		s;
+
+    const int		minValue= INT_MIN;
+    const int		adaptToMin= 0;
+    const int		maxValue= INT_MAX;
+    const int		adaptToMax= 0;
+
+    if  ( afc->afcBaselineText )
+	{
+	s= val= appGetStringFromTextWidget( afc->afcBaselineText );
+	while( isspace( *s ) )
+	    { s++;	}
+	*pEmpty= ! *s;
+
+	appFreeStringFromTextWidget( val );
+	}
+    else{ *pEmpty= 1;	}
+
+    if  ( *pEmpty )
+	{ baselineHalfPoints= -1;	}
+    else{
+	int		changed= 0;
+	int		baselineTwips= baselineHalfPoints;
+
+	if  ( baselineTwips > 0 )
+	    { baselineTwips *= 10;	}
+
+	if  ( appGetLengthFromTextWidget( afc->afcBaselineText,
+				&baselineTwips, &changed, UNITtyPOINTS,
+				minValue, adaptToMin, maxValue, adaptToMax ) )
+	    {
+	    if  ( anyway )
+		{ baselineHalfPoints= -1;	}
+	    else{ return -1;			}
+	    }
+	else{
+	    char	scratch[80];
+
+	    if  ( baselineTwips < 0 )
+		{ baselineHalfPoints= ( baselineTwips- 5 )/ 10;	}
+	    else{ baselineHalfPoints= ( baselineTwips+ 5 )/ 10;	}
+
+	    appFontToolFormatSize( scratch, baselineHalfPoints );
+
+	    val= appGetStringFromTextWidget( afc->afcBaselineText );
+
+	    if  ( strcmp( val, scratch ) )
+		{ appStringToTextWidget( afc->afcBaselineText, scratch ); }
+
+	    appFreeStringFromTextWidget( val );
+	    }
+	}
+
+    *pBaselineHalfPoints= baselineHalfPoints;
+    return 0;
+    }
+
+static int appFontGetCurrent(	int *			pFamily,
 				int *			pFace,
 				int *			pFontSizeHalfPoints,
 				int			anyway,
@@ -237,7 +352,7 @@ static int appFontGetCurrent(	DocumentFont **		pDf,
     ExpandedTextAttribute *		etaC= &(afc->afcTextAttributeChosen);
     const PropertyMask *		chosenMask= &(afc->afcChosenMask);
 
-    DocumentFont *			df= (DocumentFont *)0;
+    DocumentFontList *			dfl= &(afc->afcDocumentFontList);
 
     int					fontChosen= -1;
     int					faceChosen= afc->afcFaceChosen;
@@ -247,9 +362,12 @@ static int appFontGetCurrent(	DocumentFont **		pDf,
     if  ( appFontToolGetSize( &sizeHalfPoints, anyway, afc ) )
 	{ return -1;	}
 
-    if  ( PROPmaskISSET( chosenMask, TApropDOC_FONT_NUMBER )	&&
-	  etaC->etaFontNumber >= 0				)
-	{ fontChosen= etaC->etaFontNumber; }
+    if  ( PROPmaskISSET( chosenMask, TApropFONT_NUMBER )	&&
+	  afc->afcFontSortIndexChosen >= 0			)
+	{
+	fontChosen= utilDocumentFontListGetArrayIndex( dfl,
+						afc->afcFontSortIndexChosen );
+	}
 
     if  ( fontChosen < 0 && anyway )
 	{ fontChosen= 0; }
@@ -258,29 +376,18 @@ static int appFontGetCurrent(	DocumentFont **		pDf,
     if  ( sizeHalfPoints < 0 && anyway )
 	{ sizeHalfPoints= 24; }
 
-    if  ( fontChosen >= 0 )
+    if  ( anyway && fontChosen >= 0 )
 	{
-	df= afc->afcDocumentFontList.dflFonts+ fontChosen;
+	DocumentFont *	df;
 
-	if  ( df->dfPsFaceNumber[faceChosen] < 0 )
-	    {
-	    int		i;
+	df= docFontListGetFontByNumber( dfl, fontChosen );
 
-	    for ( i= 0; i < FONTface_COUNT; i++ )
-		{
-		if  ( df->dfPsFaceNumber[i] >= 0 )
-		    {
-		    faceChosen= i;
-		    etaC->etaFontIsBold= FACE_BOLD( i );
-		    etaC->etaFontIsSlanted= FACE_SLANTED( i );
-		    break;
-		    }
-		}
-	    }
+	if  ( df && ( faceChosen < 0 || ! df->dfPsFontInfo[faceChosen] ) )
+	    { faceChosen= appFontToolFindExistingFace( etaC, df );	}
 	}
 
-    if  ( pDf )
-	{ *pDf= df;		}
+    if  ( pFamily )
+	{ *pFamily= fontChosen;	}
     if  ( pFace )
 	{ *pFace= faceChosen;	}
     if  ( pFontSizeHalfPoints )
@@ -297,7 +404,7 @@ static int appFontGetCurrent(	DocumentFont **		pDf,
 
 static void appFontFormatCurrent(	char *			target,
 					AppFontChooser *	afc,
-					const DocumentFont *	df,
+					const char *		familyName,
 					int			face,
 					int			sizeHalfPoints )
     {
@@ -305,18 +412,19 @@ static void appFontFormatCurrent(	char *			target,
     char		faceName[40];
     char		sizeStr[40];
 
-    faceName[0]= '?';
+    faceName[0]= '*';
     faceName[1]= '\0';
 
     sizeStr[0]= '*';
     sizeStr[1]= '\0';
 
-    if  ( df )
-	{ familyText= df->dfName;	}
+    if  ( familyName )
+	{ familyText= familyName;	}
 
     if  ( face >= 0		&&
 	  face < FONTface_COUNT &&
-	  strlen( afc->afcResources.aftrFaces[face] ) < sizeof(faceName) )
+	  strlen( (char *)afc->afcResources.aftrFaces[face] ) <
+							sizeof(faceName) )
 	{ strcpy( faceName, afc->afcResources.aftrFaces[face] ); }
 
     if  ( sizeHalfPoints > 0 )
@@ -340,82 +448,78 @@ static void appFontFormatCurrent(	char *			target,
 static void appFontShowExampleOfCurrent(	AppFontChooser *	afc )
     {
     const ExpandedTextAttribute *	etaC= &(afc->afcTextAttributeChosen);
-    AppDrawingData *			add= &(afc->afcDrawingData);
-    const DocumentFontList *		dfl= &(afc->afcDocumentFontList);
+    DrawingSurface			ds= afc->afcDrawingSurface;
+    DocumentFontList *			dfl= &(afc->afcDocumentFontList);
+    int					pixelSize;
 
-    DocumentFont *	df= (DocumentFont *)0;
-    int			fontSizeHalfPoints= -1;
-    int			face;
+    const PostScriptFontList *		psfl= afc->afcPostScriptFontList;
+    const AfmFontInfo *			afi;
+    const IndexSet *			unicodesWanted;
 
-    int			physicalFont;
+    int					fontSizeHalfPoints= -1;
+
+    int					family= -1;
+    int					face= -1;
+
+    int			screenFont;
 
     TextAttribute	ta;
     PropertyMask	taSetMask;
     PropertyMask	taDoneMask;
 
-    PROPmaskCLEAR( &taSetMask );
+    utilPropMaskClear( &taSetMask );
     utilInitTextAttribute( &ta );
 
-    PROPmaskADD( &taSetMask, TApropDOC_FONT_NUMBER );
+    PROPmaskADD( &taSetMask, TApropFONT_NUMBER );
     PROPmaskADD( &taSetMask, TApropFONTSIZE );
     PROPmaskADD( &taSetMask, TApropFONTBOLD );
     PROPmaskADD( &taSetMask, TApropFONTSLANTED );
 
-    docIndirectTextAttribute( &taDoneMask, &ta, etaC, &taSetMask,
-							(RGB8Color **)0, 0 );
+    utilPropMaskAnd( &taSetMask, &taSetMask, &(afc->afcChosenMask) );
 
-    if  ( afc->afcFont )
-	{
-	/*
-	appDrawFreeFont( &(afc->afcDrawingData), afc->afcFont );
-	*/
-	afc->afcFont= (APP_FONT *)0;
-	}
+    docIndirectTextAttribute( &taDoneMask, &ta, etaC, &taSetMask, dfl,
+							(ColorPalette *)0 );
 
-    appFontGetCurrent( &df, &face, &fontSizeHalfPoints, 0, afc );
+    afc->afcScreenFont= -1;
 
-    appFontFormatCurrent( afc->afcChoiceText, afc,
-				    df, face, fontSizeHalfPoints );
+    appFontGetCurrent( &family, &face, &fontSizeHalfPoints, 0, afc );
 
-    appFontGetCurrent( &df, &face, &fontSizeHalfPoints, 1, afc );
-    if  ( ta.taFontNumber < 0 && df )
-	{ ta.taFontNumber= df->dfDocFontNumber; }
+    appFontFormatCurrent( afc->afcChoiceText, afc, etaC->etaFontName,
+						face, fontSizeHalfPoints );
+    appFontGetCurrent( &family, &face, &fontSizeHalfPoints, 1, afc );
+    if  ( ta.taFontNumber < 0 )
+	{ ta.taFontNumber= family; }
     if  ( ta.taFontNumber < 0 )
 	{ ta.taFontNumber= 0; }
+    if  ( ta.taFontSizeHalfPoints <= 0 )
+	{ ta.taFontSizeHalfPoints= fontSizeHalfPoints; }
 
-    physicalFont= appOpenScreenFont( add, dfl, &ta );
-    if  ( physicalFont < 0 )
-	{ LDEB(physicalFont);	}
+    afi= appGetFontInfoForAttribute( &unicodesWanted, &ta, dfl, psfl );
+    if  ( afi )
+	{ appGuiChangeLabelText( afc->afcPsName, afi->afiFontName );	}
+    else{ appGuiChangeLabelText( afc->afcPsName, "<?>" );		}
+
+    pixelSize= textGetPixelSize( afc->afcPixelsPerTwip, &ta );
+    screenFont= drawOpenScreenFont( ds, afi, pixelSize, unicodesWanted );
+    if  ( screenFont < 0 )
+	{ LDEB(screenFont);	}
     else{
-	const DrawScreenFontList *	apfl= &(add->addScreenFontList);
-	const PostScriptFontList *	psfl= add->addPostScriptFontList;
-	const AppFontFamily *		psf;
-	const AppFontTypeface *		pst;
-	DrawScreenFont *		dsf;
+	afc->afcScreenFont= screenFont;
 
-	dsf= apfl->apflFonts+ physicalFont;
-	afc->afcFont= dsf->apfFontStruct;
-
-	appDrawSetFont( add, dsf->apfFontStruct );
-
-	psf= psfl->psflFamilies+ dsf->apfPsFamilyNumber;
-	pst= psf->affFaces+ dsf->apfFaceIndex;
-
-	if  ( appFontXFont( afc->afcX11ChoiceText, add , psf,
-			dsf->apfFontEncoding, pst, dsf->apfFullSizePixels ) )
-	    { LDEB(1);	}
+	if  ( drawFontImplementationName( afc->afcScreenChoiceText,
+					    sizeof(afc->afcScreenChoiceText),
+					    ds, afc->afcScreenFont ) )
+	    { appGuiChangeLabelText( afc->afcScreenName, "<?>" );	}
 	else{
-	    AfmFontInfo *	afi= pst->aftFontInfo;
-
-	    appGuiChangeLabelText( afc->afcX11Name, afc->afcX11ChoiceText );
-	    appGuiChangeLabelText( afc->afcPsName, afi->afiFontName );
+	    appGuiChangeLabelText( afc->afcScreenName,
+						afc->afcScreenChoiceText );
 	    }
 	}
 
-    appExposeRectangle( add, 0, 0, 0, 0 );
+    guiExposeDrawingWidget( afc->afcSampleDrawing );
 
-    appGuiEnableWidget( afc->afcSetButton,
-				! utilPropMaskIsEmpty( &(afc->afcChosenMask) ) );
+    guiEnableWidget( afc->afcApplyButton,
+			    ! utilPropMaskIsEmpty( &(afc->afcChosenMask) ) );
 
     return;
     }
@@ -432,36 +536,20 @@ static void appFontShowExampleOfCurrent(	AppFontChooser *	afc )
 static int appFontToolGetFaceNumber(	AppFontChooser *	afc )
     {
     const ExpandedTextAttribute *	etaC= &(afc->afcTextAttributeChosen);
+    const TextAttribute *		taC= &(etaC->etaTextAttribute);
     const PropertyMask *		chosenMask= &(afc->afcChosenMask);
 
     if  ( PROPmaskISSET( chosenMask, TApropFONTBOLD )		&&
 	  PROPmaskISSET( chosenMask, TApropFONTSLANTED )	)
-	{ return FACE_INDEX(etaC->etaFontIsSlanted,etaC->etaFontIsBold); }
+	{ return FACE_INDEX(taC->taFontIsSlanted,taC->taFontIsBold); }
 
     return -1;
     }
 
-static void appFontReflectFamily(	AppFontChooser *	afc,
-					int			charsetIdx )
+static void appFontReflectFamily(	AppFontChooser *	afc )
     {
-    AppEncodingMenu *			aem= &(afc->afcEncodingMenu);
-    const ExpandedTextAttribute *	etaC= &(afc->afcTextAttributeChosen);
-    const PropertyMask *		chosenMask= &(afc->afcChosenMask);
-    const DocumentFont *		df= (const DocumentFont *)0;
-
-    const DocumentFontList *		dfl= &(afc->afcDocumentFontList);
-    DocumentFontFamily *		dff;
-
     int					face;
     int					set;
-
-    dff= dfl->dflFamilies+ afc->afcFontFamilyChosen;
-
-    appEncodingMenuSetEncoding( aem, dff, charsetIdx );
-
-    if  ( PROPmaskISSET( chosenMask, TApropDOC_FONT_NUMBER )	&&
-	  etaC->etaFontNumber >= 0				)
-	{ df= dfl->dflFonts+ etaC->etaFontNumber; }
 
     appGuiEmptyListWidget( afc->afcFaceList );
 
@@ -474,16 +562,12 @@ static void appFontReflectFamily(	AppFontChooser *	afc,
     set= 0;
     for ( face= 0; face < FONTface_COUNT; face++ )
 	{
-	if  ( ! df				||
-	      df->dfPsFaceNumber[face] >= 0	)
-	    {
-	    appGuiAddValueToListWidget( afc->afcFaceList,
+	appGuiAddValueToListWidget( afc->afcFaceList, -1,
 					afc->afcResources.aftrFaces[face] );
 
-	    afc->afcFaceMapFwd[set]= face;
-	    afc->afcFaceMapBck[face]= set;
-	    set++;
-	    }
+	afc->afcFaceMapFwd[set]= face;
+	afc->afcFaceMapBck[face]= set;
+	set++;
 	}
 
     afc->afcFaceChosen= appFontToolGetFaceNumber( afc );
@@ -509,69 +593,55 @@ static void appFontReflectFamily(	AppFontChooser *	afc,
 /*  3)	Set the encoding menu.						*/
 /*  4)	Select the correct font face in the list widget.		*/
 /*  5)	Display the font size.						*/
-/*  6)	Update the color chooser.					*/
 /*  7)	Set underline toggle.						*/
 /*  8)	Set strikethrough toggle.					*/
 /*  9)	Set the superscript toggle.					*/
 /*  10)	Set the subscript toggle.					*/
 /*  11)	Set the smallcaps toggle.					*/
 /*  12)	Set the capitals toggle.					*/
-/*  13)	Show an example of the current font.				*/
+/*  15)	Show an example of the current font.				*/
 /*									*/
 /************************************************************************/
 
 static void appFontReflectProperties(	AppFontChooser *	afc )
     {
-    int					family;
-    int					charsetIdx= -1;
+    int					fontIndex;
     int					face;
 
-    AppEncodingMenu *			aem= &(afc->afcEncodingMenu);
     const ExpandedTextAttribute *	etaC= &(afc->afcTextAttributeChosen);
+    const TextAttribute *		taC= &(etaC->etaTextAttribute);
     const PropertyMask *		chosenMask= &(afc->afcChosenMask);
 
-    const DocumentFontList *		dfl= &(afc->afcDocumentFontList);
-    const DocumentFont *		df= (const DocumentFont *)0;
+    DocumentFontList *			dfl= &(afc->afcDocumentFontList);
     int					set;
 
     /*  1  */
-    family= -1;
+    fontIndex= -1;
 
-    if  ( PROPmaskISSET( chosenMask, TApropDOC_FONT_NUMBER )	&&
-	  etaC->etaFontNumber >= 0				)
+    if  ( PROPmaskISSET( chosenMask, TApropFONT_NUMBER )	&&
+	  etaC->etaFontName					)
 	{
-	df= dfl->dflFonts+ etaC->etaFontNumber;
-	family= df->dfDocFamilyIndex;
+	int fontNumber= docGetFontByName( dfl, etaC->etaFontName );
 
-	charsetIdx= df->dfCharsetIndex;
+	if  ( fontNumber >= 0 )
+	    { fontIndex= utilDocumentFontListGetSortIndex( dfl, fontNumber ); }
 	}
 
     /*  2  */
-    if  ( afc->afcFontFamilyChosen != family )
+    if  ( afc->afcFontSortIndexChosen != fontIndex )
 	{
-	afc->afcFontFamilyChosen= family;
+	afc->afcFontSortIndexChosen= fontIndex;
 
-	if  ( afc->afcFontFamilyChosen >= 0 )
+	if  ( afc->afcFontSortIndexChosen >= 0 )
 	    {
 	    appGuiSelectPositionInListWidget( afc->afcFamilyList,
-						    afc->afcFontFamilyChosen );
+					afc->afcFontSortIndexChosen );
 	    }
 	else{
 	    appGuiRemoveSelectionFromListWidget( afc->afcFamilyList );
 	    }
 
-	appFontReflectFamily( afc, charsetIdx );
-	}
-
-    /*  3  */
-    if  ( PROPmaskISSET( chosenMask, TApropDOC_FONT_NUMBER )	&&
-	  afc->afcFontFamilyChosen >= 0				)
-	{
-	DocumentFontFamily *	dff;
-
-	dff= dfl->dflFamilies+ afc->afcFontFamilyChosen;
-
-	appEncodingMenuSetEncoding( aem, dff, charsetIdx );
+	appFontReflectFamily( afc );
 	}
 
     /*  4  */
@@ -594,58 +664,63 @@ static void appFontReflectProperties(	AppFontChooser *	afc )
     int		fontSizeHalfPoints= -1;
 
     if  ( PROPmaskISSET( chosenMask, TApropFONTSIZE ) )
-	{ fontSizeHalfPoints= etaC->etaFontSizeHalfPoints;	}
+	{ fontSizeHalfPoints= taC->taFontSizeHalfPoints;	}
 
     appFontShowSizeInList( afc, fontSizeHalfPoints );
     appFontShowSizeInText( afc, fontSizeHalfPoints );
     }
 
-    /*  6  */
-    if  ( PROPmaskISSET( &(afc->afcChosenMask), TApropTEXT_COLOR ) )
+    {
+    if  ( PROPmaskISSET( chosenMask, TApropBASELINE_SHIFT ) )
 	{
-	appColorChooserSetColor( &(afc->afcTextColorChooser),
-						etaC->etaTextColorExplicit,
-						&(etaC->etaTextColor) );
+	char	scratch[80];
+
+	appFontToolFormatSize( scratch, taC->taBaselineShiftHalfPoints );
+
+	appStringToTextWidget( afc->afcBaselineText, scratch );
 	}
-    else{ appColorChooserUnset( &(afc->afcTextColorChooser) );	}
+    else{
+	appStringToTextWidget( afc->afcBaselineText, "" );
+	}
+    }
 
     /*  7  */
     set= 0;
     if  ( PROPmaskISSET( &(afc->afcChosenMask), TApropTEXTUNDERLINED ) )
-	{ set= etaC->etaTextIsUnderlined;	}
+	{ set= taC->taTextIsUnderlined;	}
     appGuiSetToggleState( afc->afcUnderlinedToggle, set );
 
     /*  8  */
     set= 0;
     if  ( PROPmaskISSET( &(afc->afcChosenMask), TApropSTRIKETHROUGH ) )
-	{ set= etaC->etaHasStrikethrough;	}
+	{ set= taC->taHasStrikethrough;	}
     appGuiSetToggleState( afc->afcStrikethroughToggle, set );
 
     /*  9  */
     set= 0;
     if  ( PROPmaskISSET( &(afc->afcChosenMask), TApropSUPERSUB ) )
-	{ set= etaC->etaSuperSub == DOCfontSUPERSCRIPT;	}
+	{ set= taC->taSuperSub == DOCfontSUPERSCRIPT;	}
     appGuiSetToggleState( afc->afcSuperscriptToggle, set );
 
     /*  10  */
     set= 0;
     if  ( PROPmaskISSET( &(afc->afcChosenMask), TApropSUPERSUB ) )
-	{ set= etaC->etaSuperSub == DOCfontSUBSCRIPT;	}
+	{ set= taC->taSuperSub == DOCfontSUBSCRIPT;	}
     appGuiSetToggleState( afc->afcSubscriptToggle, set );
 
     /*  11  */
     set= 0;
     if  ( PROPmaskISSET( &(afc->afcChosenMask), TApropSMALLCAPS ) )
-	{ set= etaC->etaSmallCaps;	}
+	{ set= taC->taSmallCaps;	}
     appGuiSetToggleState( afc->afcSmallcapsToggle, set );
 
     /*  12  */
     set= 0;
     if  ( PROPmaskISSET( &(afc->afcChosenMask), TApropCAPITALS ) )
-	{ set= etaC->etaCapitals;	}
+	{ set= taC->taCapitals;	}
     appGuiSetToggleState( afc->afcCapitalsToggle, set );
 
-    /*  13  */
+    /*  15  */
     appFontShowExampleOfCurrent( afc );
 
     return;
@@ -666,6 +741,7 @@ static APP_TOGGLE_CALLBACK_H( appFontUnderlinedToggled, w, voidafc, voidtbcs )
     {
     AppFontChooser *		afc= (AppFontChooser *)voidafc;
     ExpandedTextAttribute *	etaC= &(afc->afcTextAttributeChosen);
+    TextAttribute *		taC= &(etaC->etaTextAttribute);
     int				set;
 
     set= appGuiGetToggleStateFromCallback( w, voidtbcs );
@@ -675,10 +751,10 @@ static APP_TOGGLE_CALLBACK_H( appFontUnderlinedToggled, w, voidafc, voidtbcs )
 	{ return;	}
 
     PROPmaskADD( &(afc->afcChosenMask), TApropTEXTUNDERLINED );
-    etaC->etaTextIsUnderlined= ( set != 0 );
+    taC->taTextIsUnderlined= ( set != 0 );
 
-    appGuiEnableWidget( afc->afcSetButton,
-				! utilPropMaskIsEmpty( &(afc->afcChosenMask) ) );
+    guiEnableWidget( afc->afcApplyButton,
+			    ! utilPropMaskIsEmpty( &(afc->afcChosenMask) ) );
 
     return;
     }
@@ -687,6 +763,7 @@ static APP_TOGGLE_CALLBACK_H( appFontStrikethroughToggled, w, voidafc, voidtbcs 
     {
     AppFontChooser *		afc= (AppFontChooser *)voidafc;
     ExpandedTextAttribute *	etaC= &(afc->afcTextAttributeChosen);
+    TextAttribute *		taC= &(etaC->etaTextAttribute);
     int				set;
 
     set= appGuiGetToggleStateFromCallback( w, voidtbcs );
@@ -696,10 +773,10 @@ static APP_TOGGLE_CALLBACK_H( appFontStrikethroughToggled, w, voidafc, voidtbcs 
 	{ return;	}
 
     PROPmaskADD( &(afc->afcChosenMask), TApropSTRIKETHROUGH );
-    etaC->etaHasStrikethrough= ( set != 0 );
+    taC->taHasStrikethrough= ( set != 0 );
 
-    appGuiEnableWidget( afc->afcSetButton,
-				! utilPropMaskIsEmpty( &(afc->afcChosenMask) ) );
+    guiEnableWidget( afc->afcApplyButton,
+			    ! utilPropMaskIsEmpty( &(afc->afcChosenMask) ) );
 
     return;
     }
@@ -708,6 +785,7 @@ static APP_TOGGLE_CALLBACK_H( appFontSuperscriptToggled, w, voidafc, voidtbcs )
     {
     AppFontChooser *		afc= (AppFontChooser *)voidafc;
     ExpandedTextAttribute *	etaC= &(afc->afcTextAttributeChosen);
+    TextAttribute *		taC= &(etaC->etaTextAttribute);
     int				set;
 
     set= appGuiGetToggleStateFromCallback( w, voidtbcs );
@@ -722,21 +800,21 @@ static APP_TOGGLE_CALLBACK_H( appFontSuperscriptToggled, w, voidafc, voidtbcs )
 	{
 	int		resetOther= 0;
 
-	if  ( etaC->etaSuperSub == DOCfontSUBSCRIPT )
+	if  ( taC->taSuperSub == DOCfontSUBSCRIPT )
 	    { resetOther= 1;	}
 
-	etaC->etaSuperSub= DOCfontSUPERSCRIPT;
+	taC->taSuperSub= DOCfontSUPERSCRIPT;
 
 	if  ( resetOther )
 	    { appGuiSetToggleState( afc->afcSubscriptToggle, 0 );	}
 	}
     else{
-	if  ( etaC->etaSuperSub == DOCfontSUPERSCRIPT )
-	    { etaC->etaSuperSub= DOCfontREGULAR;	}
+	if  ( taC->taSuperSub == DOCfontSUPERSCRIPT )
+	    { taC->taSuperSub= DOCfontREGULAR;	}
 	}
 
-    appGuiEnableWidget( afc->afcSetButton,
-				! utilPropMaskIsEmpty( &(afc->afcChosenMask) ) );
+    guiEnableWidget( afc->afcApplyButton,
+			    ! utilPropMaskIsEmpty( &(afc->afcChosenMask) ) );
 
     return;
     }
@@ -745,6 +823,7 @@ static APP_TOGGLE_CALLBACK_H( appFontSubscriptToggled, w, voidafc, voidtbcs )
     {
     AppFontChooser *		afc= (AppFontChooser *)voidafc;
     ExpandedTextAttribute *	etaC= &(afc->afcTextAttributeChosen);
+    TextAttribute *		taC= &(etaC->etaTextAttribute);
     int				set;
 
     set= appGuiGetToggleStateFromCallback( w, voidtbcs );
@@ -759,21 +838,21 @@ static APP_TOGGLE_CALLBACK_H( appFontSubscriptToggled, w, voidafc, voidtbcs )
 	{
 	int		resetOther= 0;
 
-	if  ( etaC->etaSuperSub == DOCfontSUPERSCRIPT )
+	if  ( taC->taSuperSub == DOCfontSUPERSCRIPT )
 	    { resetOther= 1;	}
 
-	etaC->etaSuperSub= DOCfontSUBSCRIPT;
+	taC->taSuperSub= DOCfontSUBSCRIPT;
 
 	if  ( resetOther )
 	    { appGuiSetToggleState( afc->afcSubscriptToggle, 0 );	}
 	}
     else{
-	if  ( etaC->etaSuperSub == DOCfontSUBSCRIPT )
-	    { etaC->etaSuperSub= DOCfontREGULAR;	}
+	if  ( taC->taSuperSub == DOCfontSUBSCRIPT )
+	    { taC->taSuperSub= DOCfontREGULAR;	}
 	}
 
-    appGuiEnableWidget( afc->afcSetButton,
-				! utilPropMaskIsEmpty( &(afc->afcChosenMask) ) );
+    guiEnableWidget( afc->afcApplyButton,
+			    ! utilPropMaskIsEmpty( &(afc->afcChosenMask) ) );
 
     return;
     }
@@ -782,6 +861,7 @@ static APP_TOGGLE_CALLBACK_H( appFontSmallcapsToggled, w, voidafc, voidtbcs )
     {
     AppFontChooser *		afc= (AppFontChooser *)voidafc;
     ExpandedTextAttribute *	etaC= &(afc->afcTextAttributeChosen);
+    TextAttribute *		taC= &(etaC->etaTextAttribute);
     int				set;
 
     set= appGuiGetToggleStateFromCallback( w, voidtbcs );
@@ -796,24 +876,24 @@ static APP_TOGGLE_CALLBACK_H( appFontSmallcapsToggled, w, voidafc, voidtbcs )
 	{
 	int		resetOther= 0;
 
-	if  ( etaC->etaCapitals )
+	if  ( taC->taCapitals )
 	    { resetOther= 1;	}
 
-	etaC->etaSmallCaps= 1;
+	taC->taSmallCaps= 1;
 
 	if  ( resetOther )
 	    {
-	    etaC->etaCapitals= 0;
-	    appGuiSetToggleState( afc->afcCapitalsToggle, etaC->etaCapitals );
+	    taC->taCapitals= 0;
+	    appGuiSetToggleState( afc->afcCapitalsToggle, taC->taCapitals );
 	    PROPmaskADD( &(afc->afcChosenMask), TApropCAPITALS );
 	    }
 	}
     else{
-	etaC->etaSmallCaps= 0;
+	taC->taSmallCaps= 0;
 	}
 
-    appGuiEnableWidget( afc->afcSetButton,
-				! utilPropMaskIsEmpty( &(afc->afcChosenMask) ) );
+    guiEnableWidget( afc->afcApplyButton,
+			    ! utilPropMaskIsEmpty( &(afc->afcChosenMask) ) );
 
     return;
     }
@@ -822,6 +902,7 @@ static APP_TOGGLE_CALLBACK_H( appFontCapitalsToggled, w, voidafc, voidtbcs )
     {
     AppFontChooser *		afc= (AppFontChooser *)voidafc;
     ExpandedTextAttribute *	etaC= &(afc->afcTextAttributeChosen);
+    TextAttribute *		taC= &(etaC->etaTextAttribute);
     int				set;
 
     set= appGuiGetToggleStateFromCallback( w, voidtbcs );
@@ -836,28 +917,27 @@ static APP_TOGGLE_CALLBACK_H( appFontCapitalsToggled, w, voidafc, voidtbcs )
 	{
 	int		resetOther= 0;
 
-	if  ( etaC->etaSmallCaps )
+	if  ( taC->taSmallCaps )
 	    { resetOther= 1;	}
 
-	etaC->etaCapitals= 1;
+	taC->taCapitals= 1;
 
 	if  ( resetOther )
 	    {
-	    etaC->etaSmallCaps= 0;
-	    appGuiSetToggleState( afc->afcSmallcapsToggle, etaC->etaSmallCaps );
+	    taC->taSmallCaps= 0;
+	    appGuiSetToggleState( afc->afcSmallcapsToggle, taC->taSmallCaps );
 	    PROPmaskADD( &(afc->afcChosenMask), TApropSMALLCAPS );
 	    }
 	}
     else{
-	etaC->etaCapitals= 0;
+	taC->taCapitals= 0;
 	}
 
-    appGuiEnableWidget( afc->afcSetButton,
-				! utilPropMaskIsEmpty( &(afc->afcChosenMask) ) );
+    guiEnableWidget( afc->afcApplyButton,
+			    ! utilPropMaskIsEmpty( &(afc->afcChosenMask) ) );
 
     return;
     }
-
 
 /************************************************************************/
 /*									*/
@@ -869,103 +949,47 @@ static APP_LIST_CALLBACK_H( appFontFamilyChosen, w, voidafc, voidlcs )
     {
     AppFontChooser *		afc= (AppFontChooser *)voidafc;
     ExpandedTextAttribute *	etaC= &(afc->afcTextAttributeChosen);
-    const DocumentFontList *	dfl= &(afc->afcDocumentFontList);
-    AppEncodingMenu *		aem= &(afc->afcEncodingMenu);
+    DocumentFontList *		dfl= &(afc->afcDocumentFontList);
 
-    int				family;
-    int				fontNumber= etaC->etaFontNumber;
+    int				fontIndex;
     int				changed= 0;
 
-    const DocumentFontFamily *	dff;
     const DocumentFont *	df;
 
-    family= appGuiGetPositionFromListCallback( w, voidlcs );
-    if  ( family < 0 || family >= dfl->dflFamilyCount )
-	{ LLDEB(family,dfl->dflFamilyCount); return;	}
-
-    dff= dfl->dflFamilies+ family;
-
-    fontNumber= etaC->etaFontNumber;
-    if  ( appEncodingMenuAdaptToFamily( &fontNumber, aem, dff ) )
+    if  ( afc->afcInProgrammaticChange > 0 )
 	{ return;	}
 
-    if  ( etaC->etaFontNumber != fontNumber )
-	{ etaC->etaFontNumber= fontNumber; changed= 1;	}
+    fontIndex= appGuiGetPositionFromListCallback( w, voidlcs );
+    if  ( fontIndex < 0 || fontIndex >= dfl->dflFontCount )
+	{ LLDEB(fontIndex,dfl->dflFontCount); return;	}
 
-    if  ( ! PROPmaskISSET( &(afc->afcChosenMask), TApropDOC_FONT_NUMBER ) )
+    df= utilDocumentFontListGetFontBySortIndex( dfl, fontIndex );
+    if  ( ! df )
+	{ XDEB(df); return;	}
+
+    if  ( docExpandedTextAttributeSetFontName( etaC, &changed, df->dfName ) )
+	{ SDEB(df->dfName); return;	}
+
+    if  ( ! PROPmaskISSET( &(afc->afcChosenMask), TApropFONT_NUMBER ) )
 	{ changed= 1;	}
 
-    afc->afcFontFamilyChosen= family;
-    PROPmaskADD( &(afc->afcChosenMask), TApropDOC_FONT_NUMBER );
+    afc->afcFontSortIndexChosen= fontIndex;
+    PROPmaskADD( &(afc->afcChosenMask), TApropFONT_NUMBER );
 
-    df= dfl->dflFonts+ fontNumber;
     if  ( afc->afcFaceChosen >= 0			&&
-	  df->dfPsFaceNumber[afc->afcFaceChosen] < 0	)
+	  ! df->dfPsFontInfo[afc->afcFaceChosen]	)
 	{
-	int	i;
+	int	faceChosen;
 
-	for ( i= 0; i < FONTface_COUNT; i++ )
-	    {
-	    if  ( df->dfPsFaceNumber[i] >= 0 )
-		{
-		afc->afcFaceChosen= i;
-		etaC->etaFontIsBold= FACE_BOLD( afc->afcFaceChosen );
-		etaC->etaFontIsSlanted= FACE_SLANTED( afc->afcFaceChosen );
-		break;
-		}
-	    }
+	faceChosen= appFontToolFindExistingFace( etaC, df );
+	if  ( faceChosen >= 0 )
+	    { afc->afcFaceChosen= faceChosen;	}
 	}
 
     if  ( changed )
 	{
-	appFontReflectFamily( afc, df->dfCharsetIndex );
-
+	appFontReflectFamily( afc );
 	appFontShowExampleOfCurrent( afc );
-	}
-
-    return;
-    }
-
-/************************************************************************/
-/*									*/
-/*  A font style has been chosen					*/
-/*									*/
-/************************************************************************/
-
-static APP_OITEM_CALLBACK_H( appFontEncodingChosen, w, voidafc )
-    {
-    int				charsetIdx;
-    AppFontChooser *		afc= (AppFontChooser *)voidafc;
-    int				changed= 0;
-
-    charsetIdx= appGuiGetOptionmenuItemIndex(
-			&(afc->afcEncodingMenu.aemEncodingOptionmenu), w );
-    if  ( charsetIdx < 0 || charsetIdx >= CHARSETidxCOUNT )
-	{ LLDEB(charsetIdx,CHARSETidxCOUNT); return;	}
-
-    if  ( afc->afcFontFamilyChosen >= 0 )
-	{
-	AppEncodingMenu *		aem= &(afc->afcEncodingMenu);
-	ExpandedTextAttribute *		etaC= &(afc->afcTextAttributeChosen);
-	const DocumentFontList *	dfl= &(afc->afcDocumentFontList);
-	const DocumentFontFamily *	dff;
-	int				fontNumber= etaC->etaFontNumber;
-
-	dff= dfl->dflFamilies+ afc->afcFontFamilyChosen;
-
-	if  ( appEncodingMenuAdaptToCharsetIndex( &fontNumber, aem,
-							    dff, charsetIdx ) )
-	    { return;	}
-
-	if  ( etaC->etaFontNumber != fontNumber )
-	    { etaC->etaFontNumber= fontNumber; changed= 1; }
-
-	if  ( changed )
-	    {
-
-	    PROPmaskADD( &(afc->afcChosenMask), TApropDOC_FONT_NUMBER );
-	    appFontShowExampleOfCurrent( afc );
-	    }
 	}
 
     return;
@@ -981,9 +1005,13 @@ static APP_LIST_CALLBACK_H( appFontFaceChosen, w, voidafc, voidlcs )
     {
     AppFontChooser *		afc= (AppFontChooser *)voidafc;
     ExpandedTextAttribute *	etaC= &(afc->afcTextAttributeChosen);
+    TextAttribute *		taC= &(etaC->etaTextAttribute);
     PropertyMask *		chosenMask= &(afc->afcChosenMask);
 
     int				i;
+
+    if  ( afc->afcInProgrammaticChange > 0 )
+	{ return;	}
 
     i= appGuiGetPositionFromListCallback( w, voidlcs );
     if  ( i == afc->afcFaceChosen )
@@ -994,8 +1022,8 @@ static APP_LIST_CALLBACK_H( appFontFaceChosen, w, voidafc, voidlcs )
 
     afc->afcFaceChosen= afc->afcFaceMapFwd[i];
 
-    etaC->etaFontIsBold= ( afc->afcFaceChosen & 0x01 ) != 0;
-    etaC->etaFontIsSlanted= ( afc->afcFaceChosen & 0x02 ) != 0;
+    taC->taFontIsBold= FACE_BOLD( afc->afcFaceChosen );
+    taC->taFontIsSlanted= FACE_SLANTED( afc->afcFaceChosen );
 
     PROPmaskADD( chosenMask, TApropFONTBOLD );
     PROPmaskADD( chosenMask, TApropFONTSLANTED );
@@ -1015,20 +1043,21 @@ static APP_LIST_CALLBACK_H( appFontSizeChosen, w, voidafc, voidlcs )
     {
     AppFontChooser *		afc= (AppFontChooser *)voidafc;
     ExpandedTextAttribute *	etaC= &(afc->afcTextAttributeChosen);
+    TextAttribute *		taC= &(etaC->etaTextAttribute);
 
     int				i;
 
-    char			scratch[80];
+    if  ( afc->afcInProgrammaticChange > 0 )
+	{ return;	}
 
     i= appGuiGetPositionFromListCallback( w, voidlcs );
     if  ( i < 0 || i >= EditFontToolSizeCount )
 	{ LLDEB(i,EditFontToolSizeCount); return; }
 
-    etaC->etaFontSizeHalfPoints= EditFontToolSizesHalfPoints[i];
+    taC->taFontSizeHalfPoints= EditFontToolSizesHalfPoints[i];
     PROPmaskADD( &(afc->afcChosenMask), TApropFONTSIZE );
 
-    appFontToolFormatSize( scratch, etaC->etaFontSizeHalfPoints );
-    appStringToTextWidget( afc->afcSizeText, scratch );
+    appFontShowSizeInText( afc, taC->taFontSizeHalfPoints );
 
     appFontShowExampleOfCurrent( afc );
 
@@ -1045,6 +1074,7 @@ static APP_TXACTIVATE_CALLBACK_H( appFontToolSizeChanged, w, voidafc )
     {
     AppFontChooser *		afc= (AppFontChooser *)voidafc;
     ExpandedTextAttribute *	etaC= &(afc->afcTextAttributeChosen);
+    TextAttribute *		taC= &(etaC->etaTextAttribute);
 
     const int			anyway= 0;
     int				sizeHalfPoints;
@@ -1054,7 +1084,7 @@ static APP_TXACTIVATE_CALLBACK_H( appFontToolSizeChanged, w, voidafc )
 
     if  ( sizeHalfPoints > 0 )
 	{
-	etaC->etaFontSizeHalfPoints= sizeHalfPoints;
+	taC->taFontSizeHalfPoints= sizeHalfPoints;
 	PROPmaskADD( &(afc->afcChosenMask), TApropFONTSIZE );
 	}
     else{
@@ -1076,7 +1106,8 @@ static APP_TXACTIVATE_CALLBACK_H( appFontToolSizeChanged, w, voidafc )
 static APP_TXTYPING_CALLBACK_H( appFontToolSizeTyped, w, voidafc )
     {
     AppFontChooser *		afc= (AppFontChooser *)voidafc;
-    ExpandedTextAttribute *	eta= &(afc->afcTextAttributeChosen);
+    ExpandedTextAttribute *	etaC= &(afc->afcTextAttributeChosen);
+    TextAttribute *		taC= &(etaC->etaTextAttribute);
 
     int				fontSizeHalfPoints= -1;
     int				fontSizeTwips= -1;
@@ -1085,7 +1116,7 @@ static APP_TXTYPING_CALLBACK_H( appFontToolSizeTyped, w, voidafc )
 
     s= appGetStringFromTextWidget( afc->afcSizeText );
 
-    if  ( ! appGeoLengthFromString( s, UNITtyPOINTS, &fontSizeTwips ) )
+    if  ( ! geoLengthFromString( s, UNITtyPOINTS, &fontSizeTwips ) )
 	{
 	fontSizeHalfPoints= ( fontSizeTwips+ 5 )/ 10;
 	PROPmaskADD( &(afc->afcChosenMask), TApropFONTSIZE );
@@ -1096,108 +1127,10 @@ static APP_TXTYPING_CALLBACK_H( appFontToolSizeTyped, w, voidafc )
 
     appFreeStringFromTextWidget( s );
 
-    if  ( eta->etaFontSizeHalfPoints != fontSizeHalfPoints )
+    if  ( taC->taFontSizeHalfPoints != fontSizeHalfPoints )
 	{ appFontShowSizeInList( afc, fontSizeHalfPoints );	}
 
     return;
-    }
-
-/************************************************************************/
-/*									*/
-/*  A text color was selected.						*/
-/*									*/
-/************************************************************************/
-
-static void appFontTextColorChosen(
-				ColorChooser *			cc,
-				int				which,
-				void *				voidafc,
-				int				choice,
-				const RGB8Color *		rgb8Set )
-    {
-    AppFontChooser *		afc= (AppFontChooser *)voidafc;
-    ExpandedTextAttribute *	eta= &(afc->afcTextAttributeChosen);
-    int				changed= 0;
-
-    /*  1  */
-    if  ( choice == CHOICEccMORE )
-	{
-	if  ( which == TApropTEXT_COLOR )
-	    {
-	    appInspectorShowRgbPage( afc->afcInspector,
-			    afc->afcSubjectPage, which, &(eta->etaTextColor) );
-	    return;
-	    }
-
-	LLDEB(CHOICEccMORE,which);
-	return;
-	}
-
-    /*  2  */
-    if  ( which == TApropTEXT_COLOR )
-	{
-	int		explicit= choice != CHOICEccDEFAULT;
-
-	PropertyMask	doneMask;
-
-	PROPmaskCLEAR( &doneMask );
-
-	appColorChooserColorChosen( &doneMask, &changed,
-			&(eta->etaTextColor), &(eta->etaTextColorExplicit),
-			rgb8Set, explicit, TApropTEXT_COLOR );
-
-	PROPmaskADD( &(afc->afcChosenMask), TApropTEXT_COLOR );
-
-	appColorChooserSetColor( &(afc->afcTextColorChooser),
-							explicit, rgb8Set );
-
-	appGuiEnableWidget( afc->afcSetButton,
-				! utilPropMaskIsEmpty( &(afc->afcChosenMask) ) );
-
-	return;
-	}
-
-    LDEB(which); return;
-    }
-
-static void appFontGotExplicitColor(	void *			voidafc,
-					int 			which,
-					const RGB8Color *	rgb8Set )
-    {
-    AppFontChooser *		afc= (AppFontChooser *)voidafc;
-    ExpandedTextAttribute *	eta= &(afc->afcTextAttributeChosen);
-    int				changed= 0;
-
-    if  ( which == TApropTEXT_COLOR )
-	{
-	const int			explicit= 1;
-
-	PropertyMask		doneMask;
-
-	PROPmaskCLEAR( &doneMask );
-
-	appColorChooserColorChosen( &doneMask, &changed,
-		    &(eta->etaTextColor), &(eta->etaTextColorExplicit),
-		    rgb8Set, explicit, TApropTEXT_COLOR );
-
-	if  ( ! PROPmaskISSET( &(afc->afcChosenMask),
-						    TApropTEXT_COLOR )	||
-	      changed							)
-	    {
-	    appColorChooserSetColor( &(afc->afcTextColorChooser),
-					    eta->etaTextColorExplicit,
-					    &(eta->etaTextColor) );
-	    }
-
-	PROPmaskADD( &(afc->afcChosenMask), TApropTEXT_COLOR );
-
-	appGuiEnableWidget( afc->afcSetButton,
-				! utilPropMaskIsEmpty( &(afc->afcChosenMask) ) );
-
-	return;
-	}
-
-    LDEB(which); return;
     }
 
 /************************************************************************/
@@ -1208,19 +1141,13 @@ static void appFontGotExplicitColor(	void *			voidafc,
 
 void appFontChooserCleanPage( AppFontChooser *	afc )
     {
-    /*
-    if  ( afc->afcFont )
-	{ appDrawFreeFont( &(afc->afcDrawingData), afc->afcFont );	}
-    */
-
     docCleanExpandedTextAttribute( &(afc->afcTextAttributeSet) );
     docCleanExpandedTextAttribute( &(afc->afcTextAttributeChosen) );
 
     docCleanFontList( &(afc->afcDocumentFontList) );
 
-    appCleanDrawingData( &(afc->afcDrawingData) );
-
-    appCleanColorChooser( &(afc->afcTextColorChooser) );
+    if  ( afc->afcDrawingSurface )
+	{ drawFreeDrawingSurface( afc->afcDrawingSurface );	}
 
     return;
     }
@@ -1235,11 +1162,6 @@ static void appFontMakeChooseForm(	APP_WIDGET			parent,
 					const AppFontToolResources *	aftr,
 					AppFontChooser *		afc )
     {
-    APP_WIDGET		column;
-    APP_WIDGET		label;
-
-    APP_WIDGET		chooseRow;
-
     const int		heightResizable= 1;
 
     const int		familyPosition= 0;
@@ -1250,7 +1172,9 @@ static void appFontMakeChooseForm(	APP_WIDGET			parent,
     const int		sizeColspan= 2;
     const int		colcount= sizePosition+ sizeColspan;
 
-    chooseRow= appMakeRowInColumn( parent, colcount, heightResizable );
+    const int		listHeight= 6;
+
+    afc->afcChooseRow= appMakeRowInColumn( parent, colcount, heightResizable );
 
     /********************************************************************/
     /*									*/
@@ -1258,37 +1182,37 @@ static void appFontMakeChooseForm(	APP_WIDGET			parent,
     /*									*/
     /********************************************************************/
 
-    appMakeColumnInRow( &column, chooseRow, familyPosition, familyColspan );
+    appMakeColumnInRow( &(afc->afcFamilyColumn), afc->afcChooseRow,
+						familyPosition, familyColspan );
 
-    appMakeLabelInColumn( &label, column, aftr->aftrFamily );
+    appMakeLabelInColumn( &(afc->afcFamilyLabel), afc->afcFamilyColumn, aftr->aftrFamily );
 
-    appGuiMakeListInColumn( &(afc->afcFamilyList), column, 9,
-					    appFontFamilyChosen, (void *)afc );
+    appGuiMakeListInColumn( &(afc->afcFamilyList), afc->afcFamilyColumn, listHeight,
+		appFontFamilyChosen, (APP_BUTTON_CALLBACK_T)0, (void *)afc );
 
     /***/
 
-    appMakeColumnInRow( &column, chooseRow, facePosition, faceColspan );
+    appMakeColumnInRow( &(afc->afcFaceColumn), afc->afcChooseRow,
+						facePosition, faceColspan );
 
-    appMakeLabelInColumn( &label, column, aftr->aftrFace );
+    appMakeLabelInColumn( &(afc->afcFaceLabel), afc->afcFaceColumn, aftr->aftrFace );
 
-    appGuiMakeListInColumn( &(afc->afcFaceList), column, 9,
-					    appFontFaceChosen, (void *)afc );
-
-    appMakeOptionmenuInColumn( &(afc->afcEncodingMenu.aemEncodingOptionmenu),
-								    column );
+    appGuiMakeListInColumn( &(afc->afcFaceList), afc->afcFaceColumn, listHeight,
+		appFontFaceChosen, (APP_BUTTON_CALLBACK_T)0, (void *)afc );
 
     {
-    const int		textColumns= 5;
+    const int		textColumns= 4;
     const int		textEnabled= 1;
 
-    appMakeColumnInRow( &column, chooseRow, sizePosition, sizeColspan );
+    appMakeColumnInRow( &(afc->afcSizeColumn), afc->afcChooseRow,
+						sizePosition, sizeColspan );
 
-    appMakeLabelInColumn( &label, column, aftr->aftrSize );
+    appMakeLabelInColumn( &(afc->afcSizeLabel), afc->afcSizeColumn, aftr->aftrSize );
 
-    appGuiMakeListInColumn( &(afc->afcSizeList),
-				column, 10, appFontSizeChosen, (void *)afc );
+    appGuiMakeListInColumn( &(afc->afcSizeList), afc->afcSizeColumn, listHeight- 3,
+		appFontSizeChosen, (APP_BUTTON_CALLBACK_T)0, (void *)afc );
 
-    appMakeTextInColumn( &(afc->afcSizeText), column,
+    appMakeTextInColumn( &(afc->afcSizeText), afc->afcSizeColumn,
 						textColumns, textEnabled );
 
     appGuiSetGotValueCallbackForText( afc->afcSizeText,
@@ -1309,18 +1233,17 @@ static void appFontMakeChooseForm(	APP_WIDGET			parent,
 
 static void appFontMakePreviewDrawing(	APP_WIDGET		parent,
 					AppFontChooser *	afc,
-					double			xfac,
 					int			twipsSize )
     {
     const int		wide= -1;
-    int			high= 1.3* ( xfac* twipsSize )+ 0.5;
+    int			high= 1.15* ( afc->afcPixelsPerTwip* twipsSize )+ 0.5;
     const int		heightResizable= 0;
 
     appGuiMakeDrawingAreaInColumn( &(afc->afcSampleDrawing), parent,
 		    wide, high, heightResizable, appFontRedraw, (void *)afc );
 
     
-    appMakeLabelInColumn( &(afc->afcX11Name), parent, "?" );
+    appMakeLabelInColumn( &(afc->afcScreenName), parent, "?" );
     appMakeLabelInColumn( &(afc->afcPsName), parent, "?" );
 
     return;
@@ -1335,23 +1258,41 @@ static void appFontMakePreviewDrawing(	APP_WIDGET		parent,
 static APP_BUTTON_CALLBACK_H( appFontSetPushed, w, voidafc )
     {
     AppFontChooser *		afc= (AppFontChooser *)voidafc;
+    ExpandedTextAttribute *	etaC= &(afc->afcTextAttributeChosen);
+    TextAttribute *		taC= &(etaC->etaTextAttribute);
 
     int				sizeHalfPoints;
+    int				baselineHalfPoints;
+    int				empty= 1;
     const int			anyway= 1;
 
     if  ( ! afc->afcSetFont )
 	{ XDEB(afc->afcSetFont); return;	}
 
+    /**/
     if  ( appFontToolGetSize( &sizeHalfPoints, anyway, afc ) )
 	{ return;	}
 
     if  ( sizeHalfPoints < 0 )
 	{ PROPmaskUNSET( &(afc->afcChosenMask), TApropFONTSIZE );	}
-    else{ PROPmaskADD( &(afc->afcChosenMask), TApropFONTSIZE );		}
+    else{
+	PROPmaskADD( &(afc->afcChosenMask), TApropFONTSIZE );
+	taC->taFontSizeHalfPoints= sizeHalfPoints;
+	}
 
-    (*afc->afcSetFont)( afc->afcTarget,
-			    &(afc->afcTextAttributeChosen),
-			    &(afc->afcChosenMask) );
+    /**/
+    if  ( appFontToolGetBaseline( &baselineHalfPoints, &empty, anyway, afc ) )
+	{ return;	}
+
+    if  ( empty )
+	{ PROPmaskUNSET( &(afc->afcChosenMask), TApropBASELINE_SHIFT ); }
+    else{
+	taC->taBaselineShiftHalfPoints= baselineHalfPoints;
+	PROPmaskADD( &(afc->afcChosenMask), TApropBASELINE_SHIFT );
+	}
+
+    /**/
+    (*afc->afcSetFont)( afc->afcApplication, &(afc->afcChosenMask), etaC );
 
     return;
     }
@@ -1371,7 +1312,9 @@ static APP_BUTTON_CALLBACK_H( appFontRevertPushed, w, voidafc )
 
     afc->afcChosenMask= afc->afcSetMask;
 
+    afc->afcInProgrammaticChange++;
     appFontReflectProperties( afc );
+    afc->afcInProgrammaticChange--;
 
     return;
     }
@@ -1384,77 +1327,104 @@ static APP_BUTTON_CALLBACK_H( appFontRevertPushed, w, voidafc )
 /*									*/
 /************************************************************************/
 
-static int appFontSetCurrentFont( AppFontChooser *		afc,
+static int appFontToolSetCurrentFont(
+				AppFontChooser *		afc,
 				const PropertyMask *		newMask,
 				const ExpandedTextAttribute *	etaNew )
     {
-    ExpandedTextAttribute *	etaC= &(afc->afcTextAttributeChosen);
     ExpandedTextAttribute *	etaS= &(afc->afcTextAttributeSet);
+    ExpandedTextAttribute *	etaC= &(afc->afcTextAttributeChosen);
 
     PropertyMask		doneMask;
 
-    PROPmaskCLEAR( &doneMask );
+    docCleanExpandedTextAttribute( etaS );
+    docInitExpandedTextAttribute( etaS );
+
+    afc->afcFontSortIndexChosen= -1;
+    afc->afcFaceChosen= -1;
+
+    utilPropMaskClear( &doneMask );
     docUpdateExpandedTextAttribute( &doneMask, etaS, etaNew, newMask );
     docCopyExpandedTextAttribute( etaC, etaS );
 
     afc->afcSetMask= *newMask;
     afc->afcChosenMask= afc->afcSetMask;
 
+    afc->afcInProgrammaticChange++;
     appFontReflectProperties( afc );
+    afc->afcInProgrammaticChange--;
 
     return 0;
     }
 
-int appFontExpandCurrentFont(	AppFontChooser *		afc,
+int appFontToolShowCurrentFont(	AppFontChooser *		afc,
 				const PropertyMask *		newMask,
 				const TextAttribute *		taNew,
 				unsigned int			documentId,
+				int				canChange,
 				const DocumentFontList *	dfl,
-				const RGB8Color *		colors,
-				int				colorCount )
+				const ColorPalette *		cp )
     {
+    int				rval= 0;
     DocumentFontList *		dflTo= &(afc->afcDocumentFontList);
 
     PropertyMask		doneMask;
     ExpandedTextAttribute	eta;
 
     docInitExpandedTextAttribute( &eta );
-    PROPmaskCLEAR( &doneMask );
+    utilPropMaskClear( &doneMask );
+
+    afc->afcInProgrammaticChange++;
 
     if  ( afc->afcCurrentDocumentId != documentId )
 	{
-	const int			avoidZero= 1;
-
-	DocumentFontFamily *		dff;
 	int				i;
 
 	if  ( docCopyFontList( dflTo, dfl ) )
-	    { LDEB(1); return -1; }
+	    { LDEB(1); rval= -1; goto ready; }
 
+	appGuiRemoveSelectionFromListWidget( afc->afcFamilyList );
 	appGuiEmptyListWidget( afc->afcFamilyList );
 
-	dff=  dflTo->dflFamilies;
-	for ( i= 0; i < dflTo->dflFamilyCount; dff++, i++ )
+	for ( i= 0; i < dflTo->dflFontCount; i++ )
 	    {
-	    appGuiAddValueToListWidget( afc->afcFamilyList,
-						    dff->dffFamilyName );
+	    const DocumentFont *	df;
+
+	    df= utilDocumentFontListGetFontBySortIndex( dflTo, i );
+	    if  ( ! df )
+		{ XDEB(df); continue;	}
+
+	    appGuiAddValueToListWidget( afc->afcFamilyList, -1, df->dfName );
 	    }
 
-	appColorChooserSuggestPalette( &(afc->afcTextColorChooser),
-					    avoidZero, colors, colorCount );
+	afc->afcFontSortIndexChosen= -1;
+	afc->afcFaceChosen= -1;
 
 	afc->afcCurrentDocumentId= documentId;
 	}
 
-    docExpandTextAttribute( &doneMask, &eta, taNew, newMask, dflTo,
-						    colors, colorCount );
+    docExpandTextAttribute( &doneMask, &eta, taNew, newMask, dflTo, cp );
 
-    if  ( appFontSetCurrentFont( afc, newMask, &eta ) )
+    if  ( appFontToolSetCurrentFont( afc, newMask, &eta ) )
 	{ LDEB(1);	}
+
+    afc->afcCanChange= canChange;
+
+    guiEnableWidget( afc->afcChooseRow, afc->afcCanChange );
+    guiEnableWidget( afc->afcToggleRow1, afc->afcCanChange );
+    guiEnableWidget( afc->afcToggleRow2, afc->afcCanChange );
+    guiEnableWidget( afc->afcApplyRow, afc->afcCanChange );
+    guiEnableWidget( afc->afcBaselineRow, afc->afcCanChange );
+    guiEnableText( afc->afcBaselineText, afc->afcCanChange );
+    guiEnableText( afc->afcSizeText, afc->afcCanChange );
+
+  ready:
 
     docCleanExpandedTextAttribute( &eta );
 
-    return 0;
+    afc->afcInProgrammaticChange--;
+
+    return rval;
     }
 
 /************************************************************************/
@@ -1472,28 +1442,30 @@ void appFontToolFillPage(	AppFontChooser *		afc,
     {
     int				i;
     int				pos;
-    APP_WIDGET			row;
     APP_WIDGET			sep;
 
     EditApplication *		ea= afc->afcApplication;
 
-    appInitDrawingData( &(afc->afcDrawingData) );
+    afc->afcPixelsPerTwip= 0;
+    afc->afcDrawingSurface= (DrawingSurface)0;
 
-    afc->afcDrawingData.addPostScriptFontList= &(ea->eaPostScriptFontList);
+    afc->afcPostScriptFontList= &(ea->eaPostScriptFontList);
 
-    afc->afcFont= (APP_FONT *)0;
+    afc->afcInProgrammaticChange= 0;
+    afc->afcFamilyList= (APP_WIDGET)0;
+    afc->afcFaceList= (APP_WIDGET)0;
+    afc->afcSizeList= (APP_WIDGET)0;
+    afc->afcSizeText= (APP_WIDGET)0;
+
+    afc->afcScreenFont= -1;
     afc->afcChoiceText[0]= '\0';
-    afc->afcX11ChoiceText[0]= '\0';
+    afc->afcScreenChoiceText[0]= '\0';
 
-    afc->afcTarget= (void *)ea;
     afc->afcSetFont= (FontChooserSetFont)0;
     afc->afcSubjectPage= subjectPage;
     afc->afcResources= *aftr;
 
     is->isPrivate= (void *)afc;
-    is->isGotColor= appFontGotExplicitColor;
-
-    appInitColorChooser( &(afc->afcTextColorChooser) );
 
     for ( i= 0; i < FONTface_COUNT; i++ )
 	{
@@ -1501,17 +1473,13 @@ void appFontToolFillPage(	AppFontChooser *		afc,
 	afc->afcFaceMapBck[i]= -1;
 	}
 
-    {
-    double			horPixPerMM;
-    double			verPixPerMM;
-    double			xfac;
-    double			yfac;
+    afc->afcPixelsPerTwip= ea->eaMagnification* ea->eaPixelsPerTwip;
 
+    {
+    const int			textColumns= 10;
     const int			twipsSize= 20* 48;
 
-    appGetFactors( ea, &horPixPerMM, &verPixPerMM, &xfac, &yfac );
-
-    appFontMakePreviewDrawing( pageWidget, afc, xfac, twipsSize );
+    appFontMakePreviewDrawing( pageWidget, afc, twipsSize );
 
     appGuiInsertSeparatorInColumn( &sep, pageWidget );
 
@@ -1519,49 +1487,51 @@ void appFontToolFillPage(	AppFontChooser *		afc,
 
     appGuiInsertSeparatorInColumn( &sep, pageWidget );
 
-    appMakeLabelAndColorChooserRow( &(afc->afcColorRow),
-		    &(afc->afcTextColorLabel),
-		    &(afc->afcTextColorChooser),
-		    pageWidget, aftr->aftrTextColor,
-		    &(aftr->aftrTextColorChooserResources),
-		    appFontTextColorChosen, TApropTEXT_COLOR, (void *)afc );
-
-    appInspectorMakeToggleRow( &row, pageWidget,
+    guiToolMake3ToggleRow( &(afc->afcToggleRow1), pageWidget,
 					&(afc->afcUnderlinedToggle),
-					&(afc->afcStrikethroughToggle),
-					aftr->aftrTextUnderlined,
-					aftr->aftrTextStrikethrough,
-					appFontUnderlinedToggled,
-					appFontStrikethroughToggled,
-					(void *)afc );
-
-    appInspectorMakeToggleRow( &row, pageWidget,
 					&(afc->afcSuperscriptToggle),
-					&(afc->afcSubscriptToggle),
+					&(afc->afcSmallcapsToggle),
+
+					aftr->aftrTextUnderlined,
 					aftr->aftrSuperscript,
-					aftr->aftrSubscript,
+					aftr->aftrSmallcaps,
+
+					appFontUnderlinedToggled,
 					appFontSuperscriptToggled,
-					appFontSubscriptToggled,
+					appFontSmallcapsToggled,
 					(void *)afc );
 
-    appInspectorMakeToggleRow( &row, pageWidget,
-					&(afc->afcSmallcapsToggle),
+    guiToolMake3ToggleRow( &(afc->afcToggleRow2), pageWidget,
+					&(afc->afcStrikethroughToggle),
+					&(afc->afcSubscriptToggle),
 					&(afc->afcCapitalsToggle),
-					aftr->aftrSmallcaps,
+
+					aftr->aftrTextStrikethrough,
+					aftr->aftrSubscript,
 					aftr->aftrCapitals,
-					appFontSmallcapsToggled,
+
+					appFontStrikethroughToggled,
+					appFontSubscriptToggled,
 					appFontCapitalsToggled,
 					(void *)afc );
 
+    guiToolMakeLabelAndTextRow( &(afc->afcBaselineRow),
+					&(afc->afcBaselineLabel),
+					&(afc->afcBaselineText), pageWidget,
+					aftr->aftrBaseline, textColumns, 1 );
+
+    /**/
+
     appGuiInsertSeparatorInColumn( &sep, pageWidget );
 
-    appInspectorMakeButtonRow( &(afc->afcButtonRow), pageWidget,
+    guiToolMake2BottonRow( &(is->isApplyRow), pageWidget,
 			&(is->isRevertButton), &(is->isApplyButton),
 			isr->isrRevert, isr->isrApplyToSubject,
 			appFontRevertPushed, appFontSetPushed, afc );
 
+    afc->afcApplyRow= is->isApplyRow;
     afc->afcRevertButton= is->isRevertButton;
-    afc->afcSetButton= is->isApplyButton;
+    afc->afcApplyButton= is->isApplyButton;
     }
 
     docInitExpandedTextAttribute( &(afc->afcTextAttributeSet) );
@@ -1570,10 +1540,10 @@ void appFontToolFillPage(	AppFontChooser *		afc,
     docInitFontList( &(afc->afcDocumentFontList) );
     afc->afcCurrentDocumentId= 0;
 
-    PROPmaskCLEAR( &(afc->afcChosenMask) );
-    PROPmaskCLEAR( &(afc->afcSetMask) );
+    utilPropMaskClear( &(afc->afcChosenMask) );
+    utilPropMaskClear( &(afc->afcSetMask) );
 
-    afc->afcFontFamilyChosen= -2;
+    afc->afcFontSortIndexChosen= -2;
     afc->afcFaceChosen= -2;
 
     /**/
@@ -1585,7 +1555,7 @@ void appFontToolFillPage(	AppFontChooser *		afc,
 
 	appFontToolFormatSize( scratch, EditFontToolSizesHalfPoints[pos] );
 
-	appGuiAddValueToListWidget( afc->afcSizeList, scratch );
+	appGuiAddValueToListWidget( afc->afcSizeList, -1, scratch );
 	}
     /**/
 
@@ -1601,25 +1571,15 @@ void appFontToolFillPage(	AppFontChooser *		afc,
 void appFontToolFillChoosers(	AppFontChooser *		afc,
 				const AppFontToolResources *	aftr )
     {
-    appEncodingMenuFillOptionmenu( aftr->aftrEncodings,
-				    appFontEncodingChosen, (void *)afc,
-				    &(afc->afcEncodingMenu) );
-
     return;
     }
 
 void appFontToolFinishPage(	AppFontChooser *		afc,
 				const AppFontToolResources *	aftr )
     {
-    EditApplication *	ea= afc->afcApplication;
-
-    appOptionmenuRefreshWidth( &(afc->afcEncodingMenu.aemEncodingOptionmenu) );
-
-    appSetDrawingDataForWidget( afc->afcSampleDrawing,
-				ea->eaMagnification, &(afc->afcDrawingData) );
-
-    appFinishColorChooser( &(afc->afcTextColorChooser),
-				appGuiGetLabelFont( afc->afcTextColorLabel ) );
+    afc->afcDrawingSurface= guiDrawingSurfaceForNativeWidget(
+			    afc->afcSampleDrawing,
+			    afc->afcPostScriptFontList->psflAvoidFontconfig );
 
     return;
     }
@@ -1655,10 +1615,6 @@ static AppConfigurableResource APP_FontToolResourceTable[]=
 		offsetof(AppFontToolResources,aftrFaces[FONTfaceBOLD_SLANTED]),
 		"Bold Italic" ),
 
-    APP_RESOURCE( "fontToolTextColor",
-		offsetof(AppFontToolResources,aftrTextColor),
-		"Text Color" ),
-
     APP_RESOURCE( "fontToolTextUnderlined",
 		offsetof(AppFontToolResources,aftrTextUnderlined),
 		"Underlined" ),
@@ -1680,15 +1636,9 @@ static AppConfigurableResource APP_FontToolResourceTable[]=
 		offsetof(AppFontToolResources,aftrCapitals),
 		"All caps" ),
 
-    APP_RESOURCE( "fontToolTextColorChooserAutomatic",
-	offsetof(AppFontToolResources,aftrTextColorChooserResources.
-							ccrAutomaticColor),
-	"Automatic" ),
-    APP_RESOURCE( "fontToolTextColorChooserMoreColors",
-	offsetof(AppFontToolResources,aftrTextColorChooserResources.
-							ccrMoreColors),
-	"More Colors..." ),
-
+    APP_RESOURCE( "fontToolBaseline",
+		offsetof(AppFontToolResources,aftrBaseline),
+		"Raise" ),
     };
 
 void appFontToolGetResourceTable(	EditApplication *		ea,
@@ -1703,8 +1653,6 @@ void appFontToolGetResourceTable(	EditApplication *		ea,
 				sizeof(APP_FontToolResourceTable)/
 				sizeof(AppConfigurableResource) );
 	}
-
-    appEncodingMenuGetOptionTexts( aftr->aftrEncodings, ea );
 
     return;
     }

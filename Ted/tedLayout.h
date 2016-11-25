@@ -1,50 +1,113 @@
 /************************************************************************/
 /*									*/
-/*  Header file for geometry/formatting/drawing related functionality	*/
+/*  Ted: data structures and routines for on screen interactive		*/
+/*  editing.								*/
 /*									*/
 /************************************************************************/
 
-#   ifndef	TED_LAYOUT_H
-#   define	TED_LAYOUT_H
+#   ifndef		TED_LAYOUT_H
+#   define		TED_LAYOUT_H
 
-#   include	"docBuf.h"
-#   include	"docLayout.h"
-#   include	"docScreenFontList.h"
+#   include	<docLayout.h>
+#   include	<docSelectionDescription.h>
+#   include	<drawDrawingSurface.h>
+
+struct EditDocument;
+struct TedDocument;
 
 /************************************************************************/
 /*									*/
-/*  Routine declarations.						*/
+/*  Routine Declarations:						*/
 /*									*/
 /************************************************************************/
 
-extern int tedTextWidth(		const DrawScreenFont *		apf,
-					const TextAttribute *		ta,
-					const BufferDocument *		bd,
-					const AppDrawingData *		add,
-					const unsigned char *		s,
-					int				len );
+extern void tedSetScreenLayoutContext(	LayoutContext *		lc,
+					struct EditDocument *	ed );
 
-extern void tedParagraphFramePixels( 	ParagraphFrame *	pf,
-					const AppDrawingData *	add,
-					const BufferItem *	bi );
+extern void tedSetDocumentLayoutContext( LayoutContext *	lc,
+				DrawingSurface			ds,
+				const PostScriptFontList *	psfl,
+				struct TedDocument *		td );
 
-extern int tedCheckPageOfSelectedExtItem(
-				    int *			pChanged,
-				    DocumentRectangle *		drChanged,
-				    BufferDocument *		bd,
-				    ExternalItem *		selRootEi,
-				    AppDrawingData *		add,
-				    ScreenFontList *		sfl );
+extern int tedFindPosition(	DocumentPosition *		dp,
+				PositionGeometry *		pg,
+				int *				pPage,
+				int *				pColumn,
+				struct BufferItem *		selRootNode,
+				const LayoutContext *		lc,
+				int				docXPixels,
+				int				docY );
 
-extern int tedOpenScreenFont(	
-			BufferDocument *		bd,
-			AppDrawingData *		add,
-			ScreenFontList *		sfl,
-			int				attributeNumber );
+extern int tedFindPositionInLine(
+				DocumentPosition *		dp,
+				PositionGeometry *		pg,
+				const LayoutContext *		lc,
+				const struct BufferItem *	paraNode,
+				int				line,
+				int				docXPixels );
 
-extern int tedInitLayoutExternalItem(
-				LayoutJob *			lj,
-				ExternalItem *			ei,
-				int				page );
+extern void tedPositionGeometry(PositionGeometry *		pg,
+				const DocumentPosition *	dp,
+				int				lastOne,
+				const LayoutContext *		lc );
 
-#   endif	/*  TED_LAYOUT_H	*/
+extern void tedSelectionGeometry(
+				SelectionGeometry *		sg,
+				const DocumentSelection *	ds,
+				const struct BufferItem *	bodySectNode,
+				int				lastLine,
+				const LayoutContext *		lc );
+
+extern int tedArrowDown(	DocumentPosition *		bp,
+				const PositionGeometry *	pg,
+				const LayoutContext *		lc );
+
+extern int tedArrowUp(		DocumentPosition *		bp,
+				const PositionGeometry *	pg,
+				const LayoutContext *		lc );
+
+extern int tedLayoutDocumentBody(	int *			pReachedBottom,
+					const LayoutContext *	lc );
+
+extern void tedGetObjectRectangle(
+				DocumentRectangle *		drObject,
+				Point2DI *			xp,
+				const InsertedObject *		io,
+				const PositionGeometry *	pg,
+				const LayoutContext *		lc,
+				const struct EditDocument *	ed );
+
+extern void tedSetObjectWindows(struct EditDocument *		ed,
+				const PositionGeometry *	pg,
+				const InsertedObject *		io,
+				const LayoutContext *		lc );
+
+extern int tedOpenNodeObjects(	struct BufferItem *	bi,
+				const LayoutContext *	lc );
+
+extern int tedOpenTreeObjects(	DocumentTree *		ei,
+					const LayoutContext *	lc );
+
+extern int tedReopenObject(	struct TextParticule *		tp,
+				const LayoutContext *		lc );
+
+extern InsertedObject * tedObjectMakeRasterObject(
+					int *			pObjectNumber,
+				    	struct EditDocument *	ed,
+					struct BufferItem *	bi,
+					const LayoutContext *	lc,
+					RasterImage *		ri );
+
+extern int tedOpenObject(	InsertedObject *	io,
+				const LayoutContext *	lc );
+
+extern void tedDocAdaptTopRuler( struct EditDocument *		ed,
+				const DocumentSelection *	ds,
+				const SelectionGeometry *	sg,
+				const SelectionDescription *	sd,
+				const struct BufferItem *	bodySectNode );
+
+extern int tedGetParaLineHeight(	int *			pLineHeight,
+					struct EditDocument *	ed );
+
+#   endif	/*	TED_LAYOUT_H	*/

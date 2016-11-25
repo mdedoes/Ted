@@ -6,14 +6,14 @@
 
 #   include	"tedConfig.h"
 
-#   include	<stdlib.h>
 #   include	<stdio.h>
 #   include	<stddef.h>
 
-#   include	"tedApp.h"
-#   include	"tedFormatTool.h"
-
+#   include	"tedShadingTool.h"
+#   include	<docItemShadingAdmin.h>
 #   include	<appDebugon.h>
+#   include	<guiToolUtil.h>
+#   include	<guiTextUtil.h>
 
 #   define	SHOW_PATTERN	0
 
@@ -29,7 +29,7 @@ static void tedShadingToolShowLevel(	ShadingTool *		st,
     if  ( ! st->stLevelText )
 	{ return;	}
 
-    appEnableText( st->stLevelText, is->isPattern == DOCspSOLID );
+    guiEnableText( st->stLevelText, is->isPattern == DOCspSOLID );
 
     if  ( is->isPattern == DOCspSOLID )
 	{
@@ -41,12 +41,27 @@ static void tedShadingToolShowLevel(	ShadingTool *		st,
     }
 
 /************************************************************************/
+
+void tedEnableShadingTool(		ShadingTool *		st,
+					int			enabled )
+    {
+    ExpandedItemShading *	eis= &(st->stShadingChosen);
+
+    if  ( st->stFrame )
+	{ guiEnableWidget( st->stFrame, enabled );		}
+    else{ guiEnableWidget( st->stRow, enabled );		}
+
+    appEnableColorChooser( &(st->stBackColorChooser), enabled );
+    appShowColorChooser( &(st->stBackColorChooser), eis->eisBackColorExplicit );
+    }
+
+/************************************************************************/
 /*									*/
 /*  Set the current shading in a shading tool.				*/
 /*									*/
 /************************************************************************/
 
-void tedSetShadingTool(			ShadingTool *			st,
+static void tedSetShadingTool(		ShadingTool *			st,
 					const DocumentProperties *	dp,
 					const ItemShading *		is )
     {
@@ -56,20 +71,23 @@ void tedSetShadingTool(			ShadingTool *			st,
     tedShadingToolShowLevel( st, is );
 
     /**/
-    docExpandItemShading( eis, is, dp->dpColors, dp->dpColorCount );
+    docExpandItemShading( eis, is, &(dp->dpColorPalette) );
 
     /**/
     appColorChooserSuggestPalette( &(st->stBackColorChooser),
-				avoidZero, dp->dpColors, dp->dpColorCount );
+					    avoidZero, &(dp->dpColorPalette) );
     appColorChooserSetColor( &(st->stBackColorChooser),
 				    eis->eisBackColorExplicit,
 				    &(eis->eisBackColor) );
+    appGuiSetToggleState( st->stOnOffToggle, eis->eisBackColorExplicit );
+    appShowColorChooser( &(st->stBackColorChooser),
+				    eis->eisBackColorExplicit );
 
     /**/
     if  ( st->stForeColorChooser.ccFilled )
 	{
 	appColorChooserSuggestPalette( &(st->stForeColorChooser),
-				avoidZero, dp->dpColors, dp->dpColorCount );
+					    avoidZero, &(dp->dpColorPalette) );
 
 	appColorChooserSetColor( &(st->stForeColorChooser),
 				eis->eisForeColorExplicit,
@@ -79,10 +97,26 @@ void tedSetShadingTool(			ShadingTool *			st,
     /**/
     if  ( st->stShowPattern )
 	{
-	appExposeRectangle( &(st->stPatternInplaceDrawingData), 0, 0, 0, 0 );
+	appExposeDrawnPulldownInplace( &(st->stPatternPulldown) );
 	}
 
-    PROPmaskCLEAR( &(st->stShadingChanged) );
+    utilPropMaskClear( &(st->stShadingChanged) );
+
+    return;
+    }
+
+void tedSetShadingToolByNumber(		ShadingTool *			st,
+					const BufferDocument *		bd,
+					int				num )
+    {
+    const DocumentProperties *		dp= &(bd->bdProperties);
+    const NumberedPropertiesList *	isl= &(bd->bdItemShadingList);
+
+    ItemShading			is;
+
+    docGetItemShadingByNumber( &is, isl, num );
+
+    tedSetShadingTool( st, dp, &is );
 
     return;
     }
@@ -102,14 +136,13 @@ static void tedDrawShadedBox(	AppDrawingData *		add,
     {
     if  ( pattern != DOCspSOLID )
 	{
-	tedDrawShadedRectangle( add, st->stPatternPixmaps, pattern,
-			    drI->drX0, drI->drY0, drI->drX1, drI->drY1 );
+	tedDrawShadedRectangle( add, st->stPatternPixmaps, pattern, drI );
 	}
 
-    appDrawDrawLine( add, drI->drX0, drI->drY0, drI->drX1, drI->drY0 );
-    appDrawDrawLine( add, drI->drX1, drI->drY0, drI->drX1, drI->drY1 );
-    appDrawDrawLine( add, drI->drX1, drI->drY1, drI->drX0, drI->drY1 );
-    appDrawDrawLine( add, drI->drX0, drI->drY1, drI->drX0, drI->drY0 );
+    drawLine( add, drI->drX0, drI->drY0, drI->drX1, drI->drY0 );
+    drawLine( add, drI->drX1, drI->drY0, drI->drX1, drI->drY1 );
+    drawLine( add, drI->drX1, drI->drY1, drI->drX0, drI->drY1 );
+    drawLine( add, drI->drX0, drI->drY1, drI->drX0, drI->drY0 );
 
     return;
     }
@@ -124,16 +157,16 @@ static APP_EVENT_HANDLER_H( tedShadingRedrawInplace, w, voidst, exposeEvent )
 
     DocumentRectangle	drI;
 
-    appDrawnPulldownDrawArrow( &wide, &high, w, add );
+    appDrawnPulldownDrawArrow( &wide, &high, w, &(xx) );
 
     drI.drX0= 3; drI.drX1= wide- 3;
     drI.drY0= 3; drI.drY1= high- 3;
 
-    appDrawSetForegroundWhite( add );
-    appDrawFillRectangle( add, drI.drX0, drI.drY0,
+    drawSetForegroundColorWhite( add );
+    drawFillRectangle( add, drI.drX0, drI.drY0,
 			    drI.drX1- drI.drX0+ 1, drI.drY1- drI.drY0+ 1 );
 
-    appDrawSetForegroundBlack( add );
+    drawSetForegroundColorBlack( add );
 
     tedDrawShadedBox( add, st, st->stShadingChosen.eisPattern, &drI );
 
@@ -164,22 +197,22 @@ static APP_EVENT_HANDLER_H( tedShadingRedrawPulldown, w, voidst, exposeEvent )
 	st->stPulldownDrawingDataSet= 1;
 	}
 
-    appDrawGetSizeOfWidget( &pulldownWide, &pulldownHigh, w );
-    appDrawGetSizeOfWidget( &inplaceWide, &inplaceHigh,
+    guiDrawGetSizeOfWidget( &pulldownWide, &pulldownHigh, w );
+    guiDrawGetSizeOfWidget( &inplaceWide, &inplaceHigh,
 				    st->stPatternPulldown.adpInplaceDrawing );
 
-    appCollectExposures( &drClip, add, ox, oy, exposeEvent );
+    guiCollectExposures( &drClip, add, ox, oy, exposeEvent );
 
     appDrawSetForegroundWhite( add );
 
-    appDrawFillRectangle( add, drClip.drX0, drClip.drY0,
+    drawFillRectangle( add, drClip.drX0, drClip.drY0,
 					    drClip.drX1- drClip.drX0+ 1,
 					    drClip.drY1- drClip.drY0+ 1 );
 
-    appDrawSetForegroundBlack( add );
-    appDrawDrawRectangle( add, 0, 0, pulldownWide- 1, pulldownHigh- 1 );
+    drawSetForegroundBlack( add );
+    drawRectangle( add, 0, 0, pulldownWide- 1, pulldownHigh- 1 );
 
-    for ( i= DOCspSOLID+ 1; i < DOCsp_COUNT; i++ )
+    for ( i= DOCspSOLID+ 1; i < PSshd_COUNT; i++ )
 	{
 	DocumentRectangle	drI;
 	DocumentRectangle	drX;
@@ -232,20 +265,20 @@ static APP_EVENT_HANDLER_H( tedShadingClickedPulldown, w, voidst, mouseEvent )
 				&(st->stPatternPulldown), w, mouseEvent ) )
 	{ return;	}
 
-    if  ( pattern < 0 || pattern >= DOCsp_COUNT )
-	{ LLDEB(pattern,DOCsp_COUNT); return;	}
+    if  ( pattern < 0 || pattern >= PSshd_COUNT )
+	{ LLDEB(pattern,PSshd_COUNT); return;	}
 
     if  ( eis->eisPattern != pattern )
 	{
 	PropertyMask	isSetMask;
 
-	PROPmaskCLEAR( &isSetMask );
+	utilPropMaskClear( &isSetMask );
 	PROPmaskADD( &isSetMask, ISpropPATTERN );
 	PROPmaskADD( &(st->stShadingChanged), ISpropPATTERN );
 
 	eis->eisPattern= pattern;
 
-	appExposeRectangle( &(st->stPatternInplaceDrawingData), 0, 0, 0, 0 );
+	guiExposeDrawingWidget( &(st->stPatternInplaceDrawingData) );
 
 	if  ( st->stCallback )
 	    {
@@ -256,6 +289,30 @@ static APP_EVENT_HANDLER_H( tedShadingClickedPulldown, w, voidst, mouseEvent )
     return;
     }
 # endif
+
+/************************************************************************/
+
+static APP_TOGGLE_CALLBACK_H( tedShadeToggled, w, voidst, voidtbcs )
+    {
+    ShadingTool *		st= (ShadingTool *)voidst;
+    ExpandedItemShading *	eis= &(st->stShadingChosen);
+
+    int				set;
+
+    set= appGuiGetToggleStateFromCallback( w, voidtbcs );
+
+    eis->eisBackColorExplicit= set != 0;
+    appShowColorChooser( &(st->stBackColorChooser), set );
+
+    PROPmaskADD( &(st->stShadingChanged), ISpropBACK_COLOR );
+
+    if  ( set )
+	{
+	appColorChooserSetColor( &(st->stBackColorChooser),
+					    eis->eisBackColorExplicit,
+					    &(eis->eisBackColor) );
+	}
+    }
 
 /************************************************************************/
 /*									*/
@@ -328,7 +385,7 @@ void tedShadeSetExplicitColorChoice(
 				int				which,
 				const RGB8Color *		rgb8Set )
     {
-    const int			explicit= 1;
+    const int			colorExplicit= 1;
     ExpandedItemShading *	eis= &(st->stShadingChosen);
     int				changed= 0;
 
@@ -337,7 +394,7 @@ void tedShadeSetExplicitColorChoice(
 	{
 	appColorChooserColorChosen( &(st->stShadingChanged), &changed,
 			&(eis->eisBackColor), &(eis->eisBackColorExplicit),
-			rgb8Set, explicit, ISpropBACK_COLOR );
+			rgb8Set, colorExplicit, ISpropBACK_COLOR );
 
 	if  ( changed )
 	    {
@@ -354,7 +411,7 @@ void tedShadeSetExplicitColorChoice(
 	{
 	appColorChooserColorChosen( &(st->stShadingChanged), &changed,
 			&(eis->eisForeColor), &(eis->eisForeColorExplicit),
-			rgb8Set, explicit, ISpropFORE_COLOR );
+			rgb8Set, colorExplicit, ISpropFORE_COLOR );
 
 	if  ( changed && st->stForeColorChooser.ccFilled )
 	    {
@@ -381,22 +438,20 @@ void tedInitShadingTool(		ShadingTool *		st )
 
     st->stFrame= (APP_WIDGET)0;
     st->stPaned= (APP_WIDGET)0;
+    st->stRow= (APP_WIDGET)0;
 
     st->stPatternLabel= (APP_WIDGET)0;
     st->stLevelLabel= (APP_WIDGET)0;
     st->stBackLabel= (APP_WIDGET)0;
     st->stForeLabel= (APP_WIDGET)0;
 
+    st->stOnOffToggle= (APP_WIDGET)0;
+
     st->stShowPattern= 0;
     appInitDrawnPulldown( &(st->stPatternPulldown) );
 
-    appInitDrawingData( &(st->stPatternInplaceDrawingData) );
-    appInitDrawingData( &(st->stPatternPulldownDrawingData) );
-
-    for ( i= 0; i < DOCsp_COUNT; i++ )
-	{ st->stPatternPixmaps[i]= (APP_BITMAP_IMAGE)0;	}
-
-    st->stPulldownDrawingDataSet= 0;
+    for ( i= 0; i < PSshd_COUNT; i++ )
+	{ st->stPatternPixmaps[i]= (DrawingSurface)0;	}
 
     st->stLevelText= (APP_WIDGET)0;
 
@@ -416,18 +471,15 @@ void tedInitShadingTool(		ShadingTool *		st )
 
 void tedCleanShadingTool(		ShadingTool *		st )
     {
-    AppDrawingData *	add= &(st->stPatternInplaceDrawingData);
-
     int			i;
 
-    for ( i= 0; i < DOCsp_COUNT; i++ )
+    for ( i= 0; i < PSshd_COUNT; i++ )
 	{
 	if  ( st->stPatternPixmaps[i] )
-	    { appDrawFreePixmap( add, st->stPatternPixmaps[i] );	}
+	    { drawFreeDrawingSurface( st->stPatternPixmaps[i] );	}
 	}
 
-    appCleanDrawingData( &(st->stPatternInplaceDrawingData) );
-    appCleanDrawingData( &(st->stPatternPulldownDrawingData) );
+    appCleanDrawnPulldown( &(st->stPatternPulldown) );
 
     appCleanColorChooser( &(st->stForeColorChooser) );
     appCleanColorChooser( &(st->stBackColorChooser) );
@@ -446,7 +498,8 @@ void tedFormatMakeShadingTool(	ShadingTool *			st,
 				TedShadingToolCallback		callback,
 				void *				target )
     {
-    APP_WIDGET	row;
+    const int	shadingHasAutomaticColor= 0;
+    APP_WIDGET	parent= pageWidget;
 
     /*
     const int	heightResizable= 0;
@@ -471,14 +524,19 @@ void tedFormatMakeShadingTool(	ShadingTool *			st,
     st->stBackWhich= backWhich;
     st->stForeWhich= foreWhich;
 
+    docInitExpandedItemShading( &(st->stShadingChosen) );
+
     /****/
-    title= (const char *)0;
-    appMakeColumnFrameInColumn( &(st->stFrame),
+    if  ( title )
+	{
+	appMakeColumnFrameInColumn( &(st->stFrame),
 					&(st->stPaned), pageWidget, title );
+	parent= st->stPaned;
+	}
 
     /****/
 #   if SHOW_PATTERN
-    row= appMakeRowInColumn( st->stPaned, 2, heightResizable );
+    row= appMakeRowInColumn( parent, 2, heightResizable );
 
     appMakeLabelInRow( &(st->stPatternLabel), row,
 				labelColumn, labelColspan, str->strPattern );
@@ -495,8 +553,8 @@ void tedFormatMakeShadingTool(	ShadingTool *			st,
 
     /****/
 #   if 0
-    appMakeLabelAndTextRow( &row, &(st->stLevelLabel), &(st->stLevelText),
-				st->stPaned, str->strLevel, textColumns, 1 );
+    guiToolMakeLabelAndTextRow( &row, &(st->stLevelLabel), &(st->stLevelText),
+				parent, str->strLevel, textColumns, 1 );
 #   else
     st->stLevelLabel= (APP_WIDGET)0;
     st->stLevelText= (APP_WIDGET)0;
@@ -509,17 +567,26 @@ void tedFormatMakeShadingTool(	ShadingTool *			st,
 	}
 
     /****/
-    appMakeLabelAndColorChooserRow( &row, &(st->stBackLabel),
+#   if 0
+    appMakeLabelAndColorChooserRow( &(st->stRow), &(st->stBackLabel),
 			    &(st->stBackColorChooser),
-			    st->stPaned, str->strBackColor,
+			    parent, str->strBackColor,
 			    &(str->strBackColorChooserResources),
 			    tedShadeColorChosen, backWhich, (void *)st );
+#   else
+    appMakeToggleAndColorChooserRow( &(st->stRow), &(st->stOnOffToggle),
+			    &(st->stBackColorChooser), shadingHasAutomaticColor,
+			    parent, str->strBackColor,
+			    &(str->strBackColorChooserResources),
+			    tedShadeToggled, tedShadeColorChosen,
+			    backWhich, (void *)st );
+#   endif
 
     /****/
 #   if 0
-    appMakeLabelAndColorChooserRow( &row, &(st->stForeLabel),
+    appMakeLabelAndColorChooserRow( &(st->stRow2), &(st->stForeLabel),
 			    &(st->stForeColorChooser),
-			    st->stPaned, str->strForeColor,
+			    parent, str->strForeColor,
 			    &(str->strForeColorChooserResources),
 			    tedShadeColorChosen, foreWhich, (void *)st );
 #   endif
@@ -527,24 +594,32 @@ void tedFormatMakeShadingTool(	ShadingTool *			st,
     return;
     }
 
-void tedFinishShadingTool(	ShadingTool *		st )
+void tedFinishShadingTool(	ShadingTool *			st,
+				const PostScriptFontList *	psfl )
     {
     if  ( st->stShowPattern )
 	{
-	appSetDrawingDataForWidget( st->stPatternPulldown.adpInplaceDrawing,
-				    1.0, &(st->stPatternInplaceDrawingData) );
+	if  ( appFinishDrawnPulldownInplace( &(st->stPatternPulldown) ) )
+	    { LDEB(1); return;	}
 
-	appGuiSetDrawnPulldownStrips( &(st->stPatternPulldown), DOCsp_COUNT );
+	appGuiSetDrawnPulldownStrips( &(st->stPatternPulldown), PSshd_COUNT );
 	}
 
     /**/
-    appFinishColorChooser( &(st->stBackColorChooser),
-				    appGuiGetLabelFont( st->stBackLabel ) );
+    if  ( st->stBackLabel )
+	{
+	appFinishColorChooser( &(st->stBackColorChooser),
+						    psfl, st->stBackLabel );
+	}
+    else{
+	appFinishColorChooser( &(st->stBackColorChooser),
+						    psfl, st->stOnOffToggle );
+	}
 
     if  ( st->stForeColorChooser.ccFilled )
 	{
-	appFinishColorChooser( &(st->stForeColorChooser) ,
-				    appGuiGetLabelFont( st->stForeLabel ) );
+	appFinishColorChooser( &(st->stForeColorChooser),
+						    psfl, st->stForeLabel );
 	}
 
     return;
@@ -562,7 +637,8 @@ void tedFinishShadingTool(	ShadingTool *		st )
 /*									*/
 /************************************************************************/
 
-int tedShadingToolGetShading(	ExpandedItemShading *	eisSet,
+static int tedShadingToolGetShading(
+				ExpandedItemShading *	eisSet,
 				PropertyMask *		pSetMask,
 				const ShadingTool *	st )
     {
@@ -601,6 +677,65 @@ int tedShadingToolGetShading(	ExpandedItemShading *	eisSet,
 	{ eisSet->eisLevel= 100* level; }
 
     *pSetMask= st->stShadingChanged;
+
+    return 0;
+    }
+
+int tedShadingToolGetShadingNumber(	int *			pNum,
+					PropertyMask *		isSetMask,
+					const ShadingTool *	st,
+					BufferDocument *	bd )
+    {
+    DocumentProperties *	dp= &(bd->bdProperties);
+    int				num;
+
+    ItemShading			is;
+    ExpandedItemShading		eis;
+
+    docInitExpandedItemShading( &eis );
+
+    if  ( tedShadingToolGetShading( &eis, isSetMask, st ) )
+	{ LDEB(1); return -1;	}
+
+    docGetItemShadingByNumber( &is, &(bd->bdItemShadingList), *pNum );
+
+    if  ( ! utilPropMaskIsEmpty( isSetMask ) )
+	{
+	PropertyMask	isDoneMask;
+
+	utilPropMaskClear( &isDoneMask );
+
+	if  ( docIndirectItemShading( &isDoneMask, &is, isSetMask, &eis,
+						    &(dp->dpColorPalette) ) )
+	    { LDEB(1); return -1;	}
+	}
+
+    num= docItemShadingNumber( &(bd->bdItemShadingList), &is );
+    if  ( num < 0 )
+	{ LDEB(num); return -1;	}
+
+    *pNum= num;
+    return 0;
+    }
+
+/************************************************************************/
+/*									*/
+/*  Retrieve the shading for a table rectangle from a shading tool.	*/
+/*									*/
+/************************************************************************/
+
+int tedFormatToolGetCellShading(	CellProperties *	cp,
+					BufferDocument *	bd,
+					ShadingTool *		st )
+    {
+    PropertyMask		isSetMask;
+
+    utilPropMaskClear( &isSetMask );
+
+    /*  1  */
+    if  ( tedShadingToolGetShadingNumber( &(cp->cpShadingNumber), &isSetMask,
+								    st, bd  ) )
+	{ LDEB(1); return -1;	}
 
     return 0;
     }

@@ -3,12 +3,15 @@
 #   include	<stdlib.h>
 #   include	<stdio.h>
 #   include	<string.h>
+
+#   include	"appFrame.h"
+#   include	"guiWidgetsGtk.h"
+#   include	"guiWidgetsImpl.h"
+#   include	"guiDrawingWidget.h"
+
 #   include	<appDebugon.h>
 
 #   ifdef USE_GTK
-
-#   include	"appFrame.h"
-#   include	<appGeoString.h>
 
 /************************************************************************/
 /*									*/
@@ -78,25 +81,27 @@ int appGuiInitApplication(	EditApplication *	ea,
 
     gtk_set_locale();
 
+    gtk_rc_add_default_file( CONFDIR "/ted.gtkrc-2.0" );
+
     gtk_init( &argc, &argv );
 
     gWindow= gtk_window_new( GTK_WINDOW_TOPLEVEL );
     ea->eaToplevel.atTopWidget= gWindow;
 
     /* user can't minimize or maximize */
-    gtk_window_set_policy (GTK_WINDOW (gWindow), FALSE, FALSE, FALSE);
-    gtk_window_set_position (GTK_WINDOW (gWindow), GTK_WIN_POS_CENTER);
+    gtk_window_set_policy( GTK_WINDOW( gWindow), FALSE, FALSE, FALSE);
+    gtk_window_set_position( GTK_WINDOW( gWindow), GTK_WIN_POS_CENTER);
 
     appSetCloseCallback( gWindow, ea, appAppWmClose, (void*)ea );
 
     /* 
      * Facilities for making menu option accelerators.
      */
-    gAccelGroup = gtk_accel_group_new();
+    gAccelGroup= gtk_accel_group_new();
     ea->eaToplevel.atAccelGroup= gAccelGroup;
 
 #   if GTK_MAJOR_VERSION < 2
-    gtk_accel_group_attach (gAccelGroup, GTK_OBJECT (gWindow));
+    gtk_accel_group_attach( gAccelGroup, GTK_OBJECT( gWindow));
 #   else
     gtk_window_add_accel_group( GTK_WINDOW( gWindow ), gAccelGroup );
 #   endif
@@ -161,12 +166,9 @@ void appGuiInsertMenubarInColumn(	APP_WIDGET *	pMenubar,
 /*									*/
 /************************************************************************/
 
-void appGetFactors(	EditApplication *	ea,
-			double *		pHorPixPerMM,
-			double *		pVerPixPerMM,
-			double *		pXfac,
-			double *		pYfac )
+void appGetPixelsPerTwip( EditApplication *	ea )
     {
+#   if 0
     double		horPixPerMM;
     double		verPixPerMM;
     double		xfac;
@@ -178,11 +180,10 @@ void appGetFactors(	EditApplication *	ea,
     xfac=  ( 25.4/ ( 20.0* 72.0 ) )* horPixPerMM;
     yfac=  ( 25.4/ ( 20.0* 72.0 ) )* verPixPerMM;
 
-    *pHorPixPerMM= horPixPerMM;
-    *pVerPixPerMM= verPixPerMM;
-
-    *pXfac= ea->eaMagnification* xfac;
-    *pYfac= ea->eaMagnification* yfac;
+    ea->eaPixelsPerTwip= xfac;
+#   else
+    ea->eaPixelsPerTwip= 96.0/ ( 20* 72 );
+#   endif
 
     return;
     }
@@ -195,8 +196,8 @@ void appGetFactors(	EditApplication *	ea,
 /*									*/
 /************************************************************************/
 
-void appGuiEnableWidget(	APP_WIDGET		w,
-				int			on_off )
+void guiEnableWidget(	APP_WIDGET		w,
+			int			on_off )
     {
     gtk_widget_set_sensitive( w, on_off != 0 );
     }
@@ -242,130 +243,19 @@ void appSetShellTitle(	APP_WIDGET		shell,
     }
 
 void appGuiSetShellTitle(	APP_WIDGET		shell,
-				const char *		fullTitle )
+				const MemoryBuffer *	fullTitle )
     {
-    gtk_window_set_title( GTK_WINDOW( shell ), fullTitle );
+    gtk_window_set_title( GTK_WINDOW( shell ),
+				    utilMemoryBufferGetString( fullTitle ) );
 
     return;
     }
 
 void appGuiSetIconTitle(	APP_WIDGET		shell,
-				const char *		fullIconName )
+				const MemoryBuffer *	iconName )
     {
-    gdk_window_set_icon_name( shell->window, fullIconName );
-    return;
-    }
-
-void appGuiLowerShellWidget(	APP_WIDGET	shell )
-    {
-    gdk_window_lower( shell->window );
-
-    return;
-    }
-
-/************************************************************************/
-/*									*/
-/*  Change the label/state of a toggle button.				*/
-/*									*/
-/************************************************************************/
-
-void appGuiSetToggleLabel(	APP_WIDGET		toggle,
-				const char *		text )
-    {
-    if  ( ! appGuiGtkSetChildLabel( toggle, text ) )
-	{ SDEB(text);	}
-    }
-
-void appGuiSetToggleState(	APP_WIDGET		toggle,
-				int			set )
-    {
-    gtk_toggle_button_set_active( GTK_TOGGLE_BUTTON( toggle ), set != 0 );
-    }
-
-int appGuiGetToggleState(	APP_WIDGET		toggle )
-    {
-    return gtk_toggle_button_get_active( GTK_TOGGLE_BUTTON( toggle ) ) != 0;
-    }
-
-int appGuiGetToggleStateFromCallbackGtk( GtkToggleButton *	toggle )
-    {
-    return gtk_toggle_button_get_active( toggle ) != 0;
-    }
-
-APP_WIDGET appMakeToggleInRow(	APP_WIDGET		row,
-				const char *		text,
-				APP_TOGGLE_CALLBACK_T	callback,
-				void *			through,
-				int			position )
-    {
-    GtkWidget *	toggle= gtk_check_button_new_with_label( text );
-
-    gtk_table_attach( GTK_TABLE( row ),
-			toggle,
-			position, position+ 1,
-			0, 1,
-			GTK_FILL | GTK_EXPAND | GTK_SHRINK,
-			GTK_FILL | GTK_EXPAND | GTK_SHRINK,
-			ROW_XPADDING_GTK, ROW_YPADDING_GTK );
-
-    gtk_widget_show( toggle );
-
-    gtk_signal_connect( GTK_OBJECT( toggle ), "toggled",
-					    (GtkSignalFunc)callback, through );
-
-    return toggle;
-    }
-
-/************************************************************************/
-/*									*/
-/*  Make a row in a column: Rows are implemented as..			*/
-/*									*/
-/************************************************************************/
-
-APP_WIDGET appMakeRowInColumn(	APP_WIDGET	column,
-				int		columnCount,
-				int		heightResizable )
-    {
-    gboolean	expand= FALSE;
-    gboolean	fill= TRUE;
-
-    GtkWidget *	row= gtk_table_new( 1, columnCount, TRUE );
-
-    if  ( heightResizable )
-	{ expand= TRUE;	}
-
-    gtk_box_pack_start( GTK_BOX( column ), row, expand, fill, 0 );
-
-    gtk_widget_show( row );
-
-    return row;
-    }
-
-void appMakeButtonInRow(	APP_WIDGET *		pButton,
-				APP_WIDGET		row,
-				const char *		text,
-				APP_BUTTON_CALLBACK_T	callback,
-				void *			through,
-				int			position,
-				int			showAsDefault )
-    {
-    GtkWidget *		button= gtk_button_new_with_label( text );
-
-    gtk_table_attach( GTK_TABLE( row ),
-			button,
-			position, position+ 1,
-			0, 1,
-			GTK_FILL | GTK_EXPAND | GTK_SHRINK,
-			GTK_FILL | GTK_EXPAND | GTK_SHRINK,
-			ROW_XPADDING_GTK, ROW_YPADDING_GTK );
-
-    gtk_widget_show( button );
-
-    gtk_signal_connect( GTK_OBJECT( button ), "clicked",
-					(GtkSignalFunc)callback, through );
-
-    *pButton= button;
-
+    gdk_window_set_icon_name( shell->window,
+				    utilMemoryBufferGetString( iconName ) );
     return;
     }
 
@@ -399,16 +289,11 @@ void appGuiGetScrollbarValues(		int *		pValue,
     return;
     }
 
-void appGuiChangeButtonText(	APP_WIDGET	button,
-				const char *	label )
-    {
-    if  ( ! appGuiGtkSetChildLabel( button, label ) )
-	{ SDEB(label);	}
-    }
-
-void appShowShellWidget(		APP_WIDGET		shell )
+void appShowShellWidget(		EditApplication *	ea,
+					APP_WIDGET		shell )
     {
     gtk_widget_show( shell );
+    gtk_window_present( GTK_WINDOW( shell ) );
     gdk_window_raise( shell->window );
     }
 
@@ -442,26 +327,6 @@ void appGuiInsertSeparatorInColumn(	APP_WIDGET *	pSeparator,
     return;
     }
 
-void appMakeColumnInRow(	APP_WIDGET *	pColumn,
-				APP_WIDGET	row,
-				int		position,
-				int		colspan )
-    {
-    GtkWidget *		column= gtk_vbox_new( FALSE, COLUMN_SPACING_GTK );
-
-    gtk_table_attach( GTK_TABLE( row ),
-			column,
-			position, position+ colspan,
-			0, 1,
-			GTK_FILL | GTK_EXPAND | GTK_SHRINK,
-			GTK_FILL | GTK_EXPAND | GTK_SHRINK,
-			ROW_XPADDING_GTK, ROW_YPADDING_GTK );
-
-    gtk_widget_show( column );
-
-    *pColumn= column;
-    }
-
 void appGuiMakeDrawingAreaInColumn( APP_WIDGET *		pDrawing,
 				    APP_WIDGET			column,
 				    int				wide,
@@ -491,7 +356,7 @@ void appGuiMakeDrawingAreaInColumn( APP_WIDGET *		pDrawing,
     *pDrawing= drawing;
 
     if  ( redraw )
-	{ appDrawSetRedrawHandler( drawing, redraw, through );	}
+	{ guiDrawSetRedrawHandler( drawing, redraw, through );	}
 
     return;
     }
@@ -529,7 +394,9 @@ void appMakeVerticalTool(	APP_WIDGET *		pShell,
 
     gtk_widget_show( column );
 
-    *pShell= shell; *pColumn= column; return;
+    *pShell= shell;
+    *pColumn= column;
+    return;
     }
 
 /************************************************************************/
@@ -597,9 +464,10 @@ void appMakeColumnFrameInColumn(	APP_WIDGET *		pFrame,
 /************************************************************************/
 
 int appGuiSetFrameTitle(		APP_WIDGET		frame,
-					const unsigned char *	title )
+					const char *		title )
     {
-    gtk_frame_set_label( GTK_FRAME( frame ), title );
+    gtk_frame_set_label( GTK_FRAME( frame ), (const char *)title );
+    return 0;
     }
 
 /************************************************************************/
@@ -625,8 +493,7 @@ void appMakeRowFrameInColumn(	APP_WIDGET *		pFrame,
     *pFrame= frame; *pRow= row; return;
     }
 
-int appGuiGetScrollbarValueFromCallback( APP_WIDGET		scrollbar,
-					void *			voidcbs )
+int appGuiGetScrollbarValueFromCallbackGtk( APP_WIDGET		scrollbar )
     {
     GtkAdjustment *	adjustment= (GtkAdjustment *)scrollbar;
 
@@ -666,22 +533,9 @@ typedef struct DragLoop
     guint			dlUpId;
     guint			dlDownId;
     guint			dlMoveId;
+
+    GtkWidget *			dlWidget;
     } DragLoop;
-
-static int appDragTick(	void *		vdl )
-    {
-    DragLoop *		dl= (DragLoop *)vdl;
-
-    (*dl->dlTimerHandler)( dl->dlThrough );
-
-    if  ( dl->dlTimerHandler && dl->dlTimerInterval > 0 )
-	{
-	dl->dlIntervalId= gtk_timeout_add( dl->dlTimerInterval,
-						    appDragTick, (void *)dl );
-	}
-
-    return 0;
-    }
 
 static void appDragMouseUp(		APP_WIDGET		w,
 					APP_EVENT *		event,
@@ -695,7 +549,7 @@ static void appDragMouseUp(		APP_WIDGET		w,
 	dl->dlIntervalId= 0;
 	}
 
-    if  ( dl->dlUpHandler )
+    if  ( event && dl->dlUpHandler )
 	{ (*dl->dlUpHandler)( w, event, dl->dlThrough );	}
 
     gtk_main_quit();
@@ -707,8 +561,44 @@ static void appDragMouseMove(		APP_WIDGET		w,
     {
     DragLoop *		dl= (DragLoop *)vdl;
 
+    if  ( ! ( event->motion.state & GDK_BUTTON1_MASK ) )
+	{
+	/* really happens: XXDEB(event->motion.state,GDK_BUTTON1_MASK); */
+	appDragMouseUp( w, event, vdl );
+	return;
+	}
+
     if  ( dl->dlMoveHandler )
 	{ (*dl->dlMoveHandler)( w, event, dl->dlThrough );	}
+    }
+
+static int appDragTick(	void *		vdl )
+    {
+    DragLoop *		dl= (DragLoop *)vdl;
+
+    gint		winX;
+    gint		winY;
+    GdkModifierType	mask= 0;
+
+    gdk_window_get_pointer( dl->dlWidget->window, &winX, &winY, &mask );
+
+    if  ( ! ( mask & GDK_BUTTON1_MASK ) )
+	{
+	/* really happens: XXDEB(mask,GDK_BUTTON1_MASK); */
+	appDragMouseUp( dl->dlWidget, (APP_EVENT *)0, vdl );
+	return 0;
+	}
+
+    if  ( dl->dlTimerHandler )
+	{ (*dl->dlTimerHandler)( dl->dlThrough );	}
+
+    if  ( dl->dlTimerInterval > 0 )
+	{
+	dl->dlIntervalId= gtk_timeout_add( dl->dlTimerInterval,
+						    appDragTick, (void *)dl );
+	}
+
+    return 0;
     }
 
 void appRunDragLoop(	APP_WIDGET		w,
@@ -729,6 +619,10 @@ void appRunDragLoop(	APP_WIDGET		w,
     dl.dlThrough= through;
 
     dl.dlIntervalId= 0;
+    dl.dlWidget= w;
+
+    if  ( dl.dlTimerInterval == 0 )
+	{ dl.dlTimerInterval= 200;	}
 
     gtk_widget_add_events( w,
 			GDK_BUTTON_RELEASE_MASK | GDK_BUTTON1_MOTION_MASK );
@@ -746,7 +640,7 @@ void appRunDragLoop(	APP_WIDGET		w,
 					    (GtkSignalFunc)appDragMouseMove,
 					    (void *)&dl );
 
-    if  ( dl.dlTimerHandler && dl.dlTimerInterval > 0 )
+    if  ( dl.dlTimerInterval > 0 )
 	{
 	dl.dlIntervalId= gtk_timeout_add( dl.dlTimerInterval,
 						appDragTick, (void *)&dl );
@@ -771,33 +665,6 @@ void appRunDragLoop(	APP_WIDGET		w,
     gtk_signal_disconnect( GTK_OBJECT( w ), dl.dlUpId );
     gtk_signal_disconnect( GTK_OBJECT( w ), dl.dlDownId );
     gtk_signal_disconnect( GTK_OBJECT( w ), dl.dlMoveId );
-
-    return;
-    }
-
-void appGuiGetStringFromKeyboardEvent(	APP_INPUT_CONTEXT	ic,
-					APP_WIDGET		w,
-					APP_EVENT *		event,
-					int *			pGotString,
-					int *			pGotKey,
-					unsigned int *		pState,
-					unsigned char *		buf,
-					int			capacity,
-					APP_KEY_VALUE *		pKey )
-    {
-    GdkEventKey *	keyEvent= &(event->key);
-    int			got;
-
-    got= keyEvent->length;
-    if  ( got > capacity )
-	{ got=  capacity;	}
-
-    strncpy( buf, keyEvent->string, got );
-
-    *pGotString= got;
-    *pGotKey= 1;
-    *pState= keyEvent->state;
-    *pKey= keyEvent->keyval;
 
     return;
     }
@@ -903,6 +770,49 @@ int appGuiGtkGetChildLabel(	char **			pLabel,
 	}
 
     return rval;
+    }
+
+void appGuiFocusToWidget(	APP_WIDGET		w )
+    {
+    gtk_widget_grab_focus( w );
+    }
+
+void appGuiGtkListTree(		int			indent,
+				APP_WIDGET		w )
+    {
+    GType		type= GTK_WIDGET_TYPE( w );
+    const char *	typeName;
+    const char *	instanceName= gtk_widget_get_name( w );
+
+    typeName= g_type_name( type );
+    appDebug( "%*s%s%s%s (%d..%d x %d..%d)\n", 2* indent, "",
+				typeName,
+				( instanceName?" ":"" ),
+				( instanceName?instanceName:"" ),
+				w->allocation.x,
+				w->allocation.x+ w->allocation.width,
+				w->allocation.y,
+				w->allocation.y+ w->allocation.height );
+
+    if  ( GTK_IS_CONTAINER( w ) )
+	{
+	GList *	glf;
+	GList *	gl;
+
+	gl= glf= gtk_container_children( GTK_CONTAINER( w ) );
+
+	while( gl )
+	    {
+	    appGuiGtkListTree( indent+ 1, (GtkWidget *)gl->data );
+
+	    gl= gl->next;
+	    }
+
+	if  ( glf )
+	    { g_list_free( glf );	}
+	}
+
+    return;
     }
 
 #   endif

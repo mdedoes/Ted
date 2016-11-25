@@ -3,49 +3,42 @@
 #   include	<stddef.h>
 #   include	<stdlib.h>
 #   include	<stdio.h>
-#   include	<string.h>
 #   include	<ctype.h>
 
-#   include	<sioStdio.h>
-#   include	<appSystem.h>
-#   include	<utilMatchFont.h>
-
-#   include	<appSpellTool.h>
+#   include	<utilOfficeCharset.h>
+#   include	<appQuestion.h>
 
 #   include	"tedApp.h"
+#   include	"tedSelect.h"
 #   include	"tedRuler.h"
+#   include	"tedAppResources.h"
+#   include	"tedLayout.h"
+#   include	"tedDocument.h"
+#   include	"tedDocFront.h"
 
-#   include	"docLayout.h"
-#   include	"docEdit.h"
-#   include	"docFind.h"
+#   include	<docDebug.h>
+#   include	<docScreenLayout.h>
+#   include	<docFind.h>
+#   include	<docField.h>
+#   include	<docParaParticules.h>
+#   include	<docRecalculateTocField.h>
+#   include	<docNodeTree.h>
+#   include	<docEditCommand.h>
+
+#   include	<guiDrawingWidget.h>
+#   include	<psNup.h>
 
 #   include	<appDebugon.h>
-
-#   ifdef USE_MOTIF
-#	include	<X11/cursorfont.h>
-#   endif
 
 #   define VALIDATE_TREE	0
 
 /************************************************************************/
 /*									*/
-/*  Ted, callbacks for the DrawingArea.					*/
+/*  Extension of the trace file.					*/
 /*									*/
 /************************************************************************/
 
-void tedDrawRectangle(	APP_WIDGET		w,
-			EditDocument *		ed,
-			DocumentRectangle *	drClip,
-			int			ox,
-			int			oy )
-    {
-    TedDocument *		td= (TedDocument *)ed->edPrivateData;
-    AppDrawingData *		add= &(ed->edDrawingData);
-    AppColors *			ac= &(ed->edColors);
-
-    /*  2,3,4  */
-    tedRedrawRectangle( w, td, drClip, add, ac, ox, oy );
-    }
+const char TedTraceExtension[]= "Ted";
 
 /************************************************************************/
 /*									*/
@@ -55,55 +48,99 @@ void tedDrawRectangle(	APP_WIDGET		w,
 
 void tedMoveObjectWindows(	EditDocument *		ed )
     {
-    AppDrawingData *		add= &(ed->edDrawingData);
-    TedDocument *		td= (TedDocument *)ed->edPrivateData;
-    BufferDocument *		bd= td->tdDocument;
-
     InsertedObject *		io;
 
-    int				ox= ed->edVisibleRect.drX0;
-    int				oy= ed->edVisibleRect.drY0;
-
-    DocumentPosition		dpObject;
+    DocumentPosition		dpObj;
     PositionGeometry		pg;
-    int				part;
-    const int			lastOne= 1;
+    int				partObj;
 
-    docInitDocumentPosition( &dpObject );
+    LayoutContext		lc;
 
-    if  ( tedGetObjectSelection( td, &part, &dpObject, &io ) )
+    layoutInitContext( &lc );
+    tedSetScreenLayoutContext( &lc, ed );
+
+    docInitDocumentPosition( &dpObj );
+
+    if  ( tedGetObjectSelection( ed, &partObj, &dpObj, &io ) )
 	{ LDEB(1); return;	}
 
-    tedPositionGeometry( &pg, &dpObject,
-				lastOne, bd, add, &(td->tdScreenFontList) );
+    tedPositionGeometry( &pg, &dpObj, PARAfindLAST, &lc );
 
-    tedSetObjectWindows( ed, &pg, io, ox, oy );
+    tedSetObjectWindows( ed, &pg, io, &lc );
     }
 
-void tedDocHorizontalScrollbarCallback(	APP_WIDGET	w,
-					void *		voided,
-					void *		voidscbs )
+/************************************************************************/
+/*									*/
+/*  Make a document readOnly.						*/
+/*									*/
+/************************************************************************/
+
+void tedMakeDocumentReadonly(	EditDocument *	ed,
+				int		readonly )
     {
-    EditDocument *		ed= (EditDocument *)voided;
-    TedDocument *		td= (TedDocument *)ed->edPrivateData;
+    TedDocument *	td= (TedDocument *)ed->edPrivateData;
+    const int		visible= ! readonly;
 
-    appDocHorizontalScrollbarCallback( w, voided, voidscbs );
+    guiShowMenuOption( td->tdFileSaveOption, visible );
 
-    if  ( td->tdSelectionDescription.sdIsObjectSelection )
-	{ tedMoveObjectWindows( ed );	}
-    }
+    guiShowMenuOption( td->tdCutOption, visible );
+    guiShowMenuOption( td->tdPasteOption, visible );
+    guiShowMenuOption( td->tdUndoOption, visible );
+    guiShowMenuOption( td->tdRepeatOption, visible );
 
-void tedDocVerticalScrollbarCallback(	APP_WIDGET	w,
-					void *		voided,
-					void *		voidscbs )
-    {
-    EditDocument *		ed= (EditDocument *)voided;
-    TedDocument *		td= (TedDocument *)ed->edPrivateData;
+    guiShowMenuOption( td->tdInsPictOption, visible );
+    guiShowMenuOption( td->tdInsSymbolOption, visible );
+    guiShowMenuOption( td->tdInsFileOption, visible );
+    guiShowMenuOption( td->tdInsInsertFootnoteOption, visible );
+    guiShowMenuOption( td->tdInsInsertEndnoteOption, visible );
+    guiShowMenuOption( td->tdInsInsertChftnsepOption, visible );
+    guiShowMenuOption( td->tdInsInsertTableOption, visible );
+    guiShowMenuOption( td->tdInsInsertPageNumberOption, visible );
 
-    appDocVerticalScrollbarCallback( w, voided, voidscbs );
+    guiShowMenuOption( td->tdTabInsertTableOption, visible );
+    guiShowMenuOption( td->tdTabAddRowOption, visible );
+    guiShowMenuOption( td->tdTabAddColumnOption, visible );
+    guiShowMenuOption( td->tdTabInsertSeparator, visible );
 
-    if  ( td->tdSelectionDescription.sdIsObjectSelection )
-	{ tedMoveObjectWindows( ed );	}
+    guiShowMenuOption( td->tdTabDeleteTableOption, visible );
+    guiShowMenuOption( td->tdTabDeleteRowOption, visible );
+    guiShowMenuOption( td->tdTabDeleteColumnOption, visible );
+    guiShowMenuOption( td->tdTabDeleteSeparator, visible );
+
+    guiShowMenuOption( td->tdInsInsertLineBreakOption, visible );
+    guiShowMenuOption( td->tdInsInsertPageBreakOption, visible );
+    guiShowMenuOption( td->tdInsInsertColumnBreakOption, visible );
+    guiShowMenuOption( td->tdInsInsertSectBreakOption, visible );
+
+    guiShowMenuOption( td->tdFontBoldOption, visible );
+    guiShowMenuOption( td->tdFontItalicOption, visible );
+    guiShowMenuOption( td->tdFontUnderlinedOption, visible );
+    guiShowMenuOption( td->tdFontSuperscriptOption, visible );
+    guiShowMenuOption( td->tdFontSubscriptOption, visible );
+    guiShowMenuOption( td->tdFontToggleSeparator, visible );
+    guiShowMenuOption( td->tdFontPasteOption, visible );
+
+    guiShowMenuOption( td->tdFormatOneParaOption, visible );
+    guiShowMenuOption( td->tdFormatOneParaSeparator, visible );
+
+    guiShowMenuOption( td->tdFormatPasteRulerOption, visible );
+    guiShowMenuOption( td->tdFormatIncreaseIndentOption, visible );
+    guiShowMenuOption( td->tdFormatDecreaseIndentOption, visible );
+    guiShowMenuOption( td->tdFormatRulerSeparator, visible );
+
+    guiShowMenuOption( td->tdFormatAlignLeftOption, visible );
+    guiShowMenuOption( td->tdFormatAlignRightOption, visible );
+    guiShowMenuOption( td->tdFormatAlignCenterOption, visible );
+    guiShowMenuOption( td->tdFormatAlignJustifyOption, visible );
+    guiShowMenuOption( td->tdFormatAlignSeparator, visible );
+
+    guiShowMenuOption( td->tdToolsFontOption, visible );
+    guiShowMenuOption( td->tdToolsSpellingOption, visible );
+    guiShowMenuOption( td->tdToolsPageLayoutOption, visible );
+    guiShowMenuOption( td->tdToolsSymbolOption, visible );
+
+    /* Oops wrong call */
+    guiShowMenuOption( td->tdInsertMenuButton, visible );
     }
 
 /************************************************************************/
@@ -121,169 +158,147 @@ void tedDocVerticalScrollbarCallback(	APP_WIDGET	w,
 int tedFinishDocumentSetup(	EditDocument *		ed )
     {
     EditApplication *		ea= ed->edApplication;
-    AppDrawingData *		add= &(ed->edDrawingData);
-    AppColors *			ac= &(ed->edColors);
 
     TedDocument *		td= (TedDocument *)ed->edPrivateData;
     BufferDocument *		bd= td->tdDocument;
     DocumentProperties *	dp= &(bd->bdProperties);
 
     const TedAppResources *	tar= (TedAppResources *)ea->eaResourceData;
-    const char *		selColorName= tar->tarSelectionColor;
-    const char *		xselColorName= tar->tarCopiedSelectionColor;
-    /*
-    char *			tableColorName= "gray80";
-    */
+
+    LayoutContext		lc;
+
+    int				luma;
+    int				chroma;
+    int				hue;
+
+    layoutInitContext( &lc );
+    tedSetScreenLayoutContext( &lc, ed );
 
     {
     DocumentPosition		dpFirst;
+    const BufferItem *		bodySectNode= (const BufferItem *)0;
 
     /*  1  */
-    if  ( ! docFirstDocumentPosition( &dpFirst, bd ) )
+    if  ( ! docGotoFirstPosition( &dpFirst, bd->bdBody.dtRoot ) )
 	{
-	const int			lastOne= 1;
 	const int			lastLine= 0;
-	int				part;
-	const TextParticule *		tp;
-	ScreenFontList *		sfl;
-
-	sfl= &(td->tdScreenFontList);
+	BufferItem *			bodyNode= bd->bdBody.dtRoot;
 
 	if  ( tar->tarFindPattern					&&
-	      ! tedFindSetPattern( ed,
+	      ! docFindSetPattern( &(td->tdFindProg),
 			    tar->tarFindPattern, tar->tarFindRegex )	&&
-	      ! docFindFindNextInDocument( &(td->tdDocumentSelection),
+	      ! docFindFindNextInDocument( &(td->tdSelection),
 		    &dpFirst, bd,
-		    docFindParaFindNext, (void *)td->tdFindProg )	)
-	    {
-	    dpFirst= td->tdDocumentSelection.dsBegin;
-	    }
+		    docFindParaFindNext, td->tdFindProg )	)
+	    { bodySectNode= docGetBodySectNode( dpFirst.dpNode, bd );	}
 	else{
-	    docSetIBarSelection( &(td->tdDocumentSelection), &dpFirst );
+	    docAvoidParaHeadField( &dpFirst, (int *)0, bd );
+
+	    docSetIBarSelection( &(td->tdSelection), &dpFirst );
+	    bodySectNode= bodyNode->biChildren[0];
 	    }
 
 	tedSelectionGeometry( &(td->tdSelectionGeometry),
-			     &(td->tdDocumentSelection), lastLine,
-			     bd, add, &(td->tdScreenFontList) );
+			     &(td->tdSelection), bodySectNode, lastLine,
+			     &lc );
 
-
-	if  ( docFindParticuleOfPosition( &part, &dpFirst, lastOne ) )
-	    { LDEB(dpFirst.dpStroff); return -1;	}
-
-	tp= dpFirst.dpBi->biParaParticules+ part;
-
-	utilGetTextAttributeByNumber( &(td->tdCurrentTextAttribute),
-						&(bd->bdTextAttributeList),
-						tp->tpTextAttributeNumber );
-	td->tdCurrentTextAttributeNumber= tp->tpTextAttributeNumber;
-
-	td->tdCurrentScreenFont= -1;
-	if  ( td->tdCurrentTextAttributeNumber <
-	      sfl->sflAttributeToScreenCount )
-	    {
-	    td->tdCurrentScreenFont=
-		sfl->sflAttributeToScreen[td->tdCurrentTextAttributeNumber];
-	    }
-
-	docDescribeSelection( &(td->tdSelectionDescription),
-				    &(td->tdDocumentSelection),
-				    bd, ed->edDocumentId, ed->edIsReadonly );
+	tedDescribeSelection( ed );
 	}
-    else{ docListItem( 0, &(bd->bdItem) );	}
+    else{ docListNode( 0, bd->bdBody.dtRoot, 0 );	}
 
     /*  2  */
     if  ( dp->dpIsDocumentTemplate )
 	{
-	appSetDocumentFilename( ed, (const char *)0 );
+	appSetDocumentFilename( ed, (const MemoryBuffer *)0 );
 	dp->dpIsDocumentTemplate= 0;
 	}
 
 #   if VALIDATE_TREE
     LDEB(1);
-    if  ( docCheckItem( &(bd->bdItem) ) )
-	{ LDEB(2); docListItem( 0, &(bd->bdItem) ); abort();	}
+    if  ( docCheckNode( bodyNode ) )
+	{ LDEB(2); docListNode( 0, bodyNode ); abort();	}
 #   endif
 
     }
 
-    if  ( appFinishDocumentSetup( ea, ed ) )
+    if  ( appFinishDocumentSetup( ed ) )
 	{ LDEB(1); return -1;	}
 
-    if  ( appAllocateColors( add, ac ) )
-	{ LDEB(1); return -1;	}
-
-    if  ( ed->edColors.acAllocator.caDepth < 4 )
+    /*
+    if  ( dw->dwColors.acAllocator.caDepth < 4 )
+    */
+    if  ( 0 )
 	{
-	if  ( appColorRgb( &(td->tdFieldColor), &(ed->edColors), 0, 0, 0 ) )
-	    { LDEB(1); return -1;	}
+	td->tdDrawMonochrome= 1;
 
-	td->tdSelColor.rgb8Red= 0;
-	td->tdSelColor.rgb8Green= 0;
-	td->tdSelColor.rgb8Blue= 0;
-
-	td->tdCopiedSelColor.rgb8Red= 0;
-	td->tdCopiedSelColor.rgb8Green= 0;
-	td->tdCopiedSelColor.rgb8Blue= 0;
-
-	td->tdTableColor.rgb8Red= 0;
-	td->tdTableColor.rgb8Green= 0;
-	td->tdTableColor.rgb8Blue= 0;
+	utilRGB8SolidBlack( &(td->tdSelColor) );
+	utilRGB8SolidBlack( &(td->tdCopiedSelColor) );
+	utilRGB8SolidBlack( &(td->tdTableColor) );
 	}
     else{
-	APP_COLOR_RGB	acSel;
-	APP_COLOR_RGB	acCopiedSel;
+	td->tdDrawMonochrome= 0;
 
-	if  ( appColorNamed( &acSel, &ed->edColors, selColorName ) )
-	    {
-	    if  ( appColorFindRgb( &acSel, &(ed->edColors), 176, 196, 222 ) )
-		{ SDEB(selColorName); return -1;	}
-	    }
+	td->tdSelColor.rgb8Red= 176;
+	td->tdSelColor.rgb8Green= 196;
+	td->tdSelColor.rgb8Blue= 222;
 
-	if  ( appColorNamed( &acCopiedSel, &(ed->edColors), xselColorName ) )
-	    {
-	    if  ( appColorFindRgb( &acCopiedSel,
-					    &(ed->edColors), 176, 176, 176 ) )
-		{ SDEB(xselColorName); return -1;	}
-	    }
+	td->tdCopiedSelColor.rgb8Red= 176;
+	td->tdCopiedSelColor.rgb8Green= 176;
+	td->tdCopiedSelColor.rgb8Blue= 176;
 
-	if  ( appColorRgb( &(td->tdFieldColor), &ed->edColors, 0, 0, 200 ) )
-	    {
-	    if  ( appColorFindRgb( &(td->tdFieldColor),
-					       &(ed->edColors), 0, 0, 255 ) )
-		{ LDEB(1); return -1;	}
-	    }
-
-#	ifdef USE_MOTIF
-	td->tdSelColor.rgb8Red= acSel.red/ 256;
-	td->tdSelColor.rgb8Green= acSel.green/ 256;
-	td->tdSelColor.rgb8Blue= acSel.blue/ 256;
-
-	td->tdCopiedSelColor.rgb8Red= acCopiedSel.red/ 256;
-	td->tdCopiedSelColor.rgb8Green= acCopiedSel.green/ 256;
-	td->tdCopiedSelColor.rgb8Blue= acCopiedSel.blue/ 256;
-
-	td->tdTableColor.rgb8Red= add->addBackColor.red/ 256;
-	td->tdTableColor.rgb8Green= add->addBackColor.green/ 256;
-	td->tdTableColor.rgb8Blue= add->addBackColor.blue/ 256;
-#	endif
-
-#	ifdef USE_GTK
-	td->tdSelColor.rgb8Red= acSel.red/ 256;
-	td->tdSelColor.rgb8Green= acSel.green/ 256;
-	td->tdSelColor.rgb8Blue= acSel.blue/ 256;
-
-	td->tdCopiedSelColor.rgb8Red= acCopiedSel.red/ 256;
-	td->tdCopiedSelColor.rgb8Green= acCopiedSel.green/ 256;
-	td->tdCopiedSelColor.rgb8Blue= acCopiedSel.blue/ 256;
-
-	td->tdTableColor.rgb8Red= add->addBackColor.red/ 256;
-	td->tdTableColor.rgb8Green= add->addBackColor.green/ 256;
-	td->tdTableColor.rgb8Blue= add->addBackColor.blue/ 256;
-#	endif
+	td->tdTableColor.rgb8Red= 192;
+	td->tdTableColor.rgb8Green= 192;
+	td->tdTableColor.rgb8Blue= 192;
 	}
 
-    if  ( tedOpenItemObjects( &(bd->bdItem), bd, &(ed->edColors),
-						    &(ed->edDrawingData) ) )
+    if  ( utilRGB8LumaChromaHue( &luma, &chroma, &hue,
+						&(ed->edBackgroundColor) ) )
+	{ LDEB(1);	}
+    else{
+	const int	maxLuma= 220;
+	const int	minLuma= 64;
+	int		changed= 0;
+
+	/*  Must be possible to distinguish background from white */
+	if  ( luma > maxLuma )
+	    { luma= maxLuma; changed= 1;	}
+	if  ( luma < minLuma )
+	    { luma= minLuma; changed= 1;	}
+
+	/*? td->tdTableColor= ed->edBackgroundColor; */
+
+	if  ( changed )
+	    {
+	    if  ( utilRGB8FromLumaChromaHue( &(ed->edBackgroundColor),
+							luma, chroma, hue ) )
+		{ LLLDEB(luma,chroma,hue);	}
+
+	    /*? td->tdTableColor= ed->edBackgroundColor; */
+
+	    if  ( ed->edTopRuler )
+		{
+		tedTopRulerSetBackground( ed->edTopRuler,
+						&(ed->edBackgroundColor) );
+		}
+	    if  ( ed->edLeftRuler )
+		{
+		tedVerticalRulerSetBackground( ed->edLeftRuler,
+						&(ed->edBackgroundColor) );
+		}
+	    if  ( ed->edRightRuler )
+		{
+		tedVerticalRulerSetBackground( ed->edRightRuler,
+						&(ed->edBackgroundColor) );
+		}
+	    if  ( ed->edBottomRuler )
+		{
+		tedBottomRulerSetBackground( ed->edBottomRuler,
+						&(ed->edBackgroundColor) );
+		}
+	    }
+	}
+
+    if  ( tedOpenTreeObjects( &(bd->bdBody), &lc ) )
 	{ LDEB(1);	}
 
     td->tdDrawTableGrid= tar->tarShowTableGridInt;
@@ -291,11 +306,68 @@ int tedFinishDocumentSetup(	EditDocument *		ed )
     appGuiSetToggleItemState( td->tdDrawTableGridOption,
 						td->tdDrawTableGrid >= 0 );
 
-    if  ( ed->edIsReadonly )
-	{ tedMakeDocumentReadonly( ed );	}
+    if  ( ! utilMemoryBufferIsEmpty( &(td->tdRecoveredName) ) )
+	{
+	const EditTrace *	et= &(td->tdEditTrace);
+	const int		direction= 1;
+	int			n= et->etBase;
+	int			lastEdit= -1;
+	const TraceStep *	ts;
 
-    if  ( tedHasSelection( td ) )
-	{ tedAdaptToolsToSelection( ed );	}
+	while( n < et->etCount )
+	    {
+	    int		isRepeat= 0;
+
+	    n= docEditGetTraceStep( &ts, &isRepeat, direction, et, n+ 1 );
+	    if  ( n < 0 || n >= et->etCount || isRepeat )
+		{ break;	}
+
+	    if  ( ts->tsCommand < EDITcmd_EDIT_COUNT		&&
+		  ts->tsCommand != EDITcmdEXTEND_REPLACE	)
+		{ lastEdit= n;	}
+	    }
+
+	while( et->etIndex < lastEdit )
+	    {
+	    if  ( tedDocRepeat( ed ) )
+		{ LLDEB(et->etIndex,lastEdit); break; }
+	    }
+
+	td->tdTraced= 1;
+
+	appSetDocumentFilename( ed, &(td->tdRecoveredName) );
+	appSetDocumentTitle( ed, &(td->tdRecoveredName) );
+
+	tedSetTracedChangedFlag( ed );
+	guiShowMenuOption( td->tdFileUnlockOption, 0 );
+	guiShowMenuOption( td->tdFileRecoverOption, 0 );
+	}
+    else{
+	if  ( td->tdEditTrace.etTraceStatus == TRACING_EXIST )
+	    {
+	    guiShowMenuOption( td->tdFileUnlockOption, 1 );
+	    guiShowMenuOption( td->tdFileRecoverOption,
+						td->tdEditTrace.etBase >= 0 );
+
+	    if  ( ed->edFormat == TEDdockindTRACE )
+		{ guiShowMenuOption( td->tdFileSaveAsOption, 0 );	}
+
+	    ed->edIsReadonly= 1;
+	    }
+	else{
+	    guiShowMenuOption( td->tdFileUnlockOption, 0 );
+	    guiShowMenuOption( td->tdFileRecoverOption, 0 );
+	    }
+	}
+
+    if  ( ed->edIsReadonly )
+	{ tedMakeDocumentReadonly( ed, ed->edIsReadonly );	}
+
+    if  ( tedHasSelection( ed ) )
+	{
+	tedDescribeSelection( ed );
+	tedAdaptToolsToSelection( ed );
+	}
 
     return 0;
     }
@@ -310,9 +382,6 @@ void tedDocumentFirstVisible(	EditDocument *	ed )
     {
     TedDocument *		td= (TedDocument *)ed->edPrivateData;
     DocumentRectangle		dr= ed->edVisibleRect;
-
-    int				pScrolledX= 0;
-    int				pScrolledY= 0;
 
     if  ( td->tdSelectionGeometry.sgRectangle.drX1 > dr.drX1 )
 	{
@@ -329,8 +398,7 @@ void tedDocumentFirstVisible(	EditDocument *	ed )
 	dr.drY1 += sh;
 	}
 
-    appScrollToRectangle( ed, dr.drX0, dr.drY0, dr.drX1, dr.drY1,
-						    &pScrolledX, &pScrolledY );
+    appScrollToRectangle( ed, &dr, (int *)0, (int *)0 );
 
     return;
     }
@@ -350,8 +418,7 @@ void tedDocumentFirstVisible(	EditDocument *	ed )
 /************************************************************************/
 
 void tedFreeDocument(		void *			voidtd,
-				int			format,
-				AppDrawingData *	add )
+				int			format )
     {
     TedDocument *	td= (TedDocument *)voidtd;
 
@@ -359,28 +426,22 @@ void tedFreeDocument(		void *			voidtd,
 
     if  ( td->tdDocument )
 	{
-	BufferDocument *	bd= td->tdDocument;
-	int			noteCount= 0;
-	int			bulletsDeleted= 0;
-	int			paragraphCount= 0;
-
-	docCleanItemObjects( &noteCount, &bulletsDeleted, &paragraphCount,
-					    bd, &(bd->bdItem),
-					    (void *)add, tedCloseObject );
-
-	docFreeDocument( bd );
+	docCleanDocumentObjects( td->tdDocument, docScreenCloseObject );
+	docFreeDocument( td->tdDocument );
 	}
 
-    docCleanScreenFontList( &(td->tdScreenFontList) );
+    utilCleanMemoryBuffer( &(td->tdRecoveredName) );
+
+    utilCleanIndexMapping( &(td->tdAttributeToScreenFont) );
+    docCleanEditTrace( &(td->tdEditTrace) );
 
     utilCleanMemoryBuffer( &(td->tdCopiedSelection) );
     utilCleanMemoryBuffer( &(td->tdCopiedFont) );
     utilCleanMemoryBuffer( &(td->tdCopiedRuler) );
 
-    appCleanBitmapImage( &(td->tdCopiedImage) );
+    bmCleanRasterImage( &(td->tdCopiedImage) );
 
-    if  ( td->tdFindProg )
-	{ free( td->tdFindProg );	}
+    docFindSetPattern( &(td->tdFindProg), (const char *)0, 0 );
 
     free( td );
     }
@@ -391,142 +452,11 @@ int tedMakeDocumentWidget(	EditApplication *	ea,
     if  ( appMakeDocumentWidget( ea, ed ) )
 	{ LDEB(1); return -1;	}
 
-    if  ( ! ea->eaDocumentCursor )
-	{
-#	ifdef USE_MOTIF
-	ea->eaDocumentCursor= XCreateFontCursor(
-			    XtDisplay( ea->eaToplevel.atTopWidget), XC_xterm );
-	if  ( ! ea->eaDocumentCursor )
-	    { LDEB(ea->eaDocumentCursor);	}
-#	endif
-
-#	ifdef USE_GTK
-	ea->eaDocumentCursor= gdk_cursor_new( GDK_XTERM );
-	if  ( ! ea->eaDocumentCursor )
-	    { XDEB(ea->eaDocumentCursor);	}
-#	endif
-	}
+    if  ( ! ea->eaDocumentCursor	&&
+	  tedMakeDocumentCursor( ea )	)
+	{ LDEB(1);	}
 
     return 0;
-    }
-
-/************************************************************************/
-/*									*/
-/*  Find out whether a document uses just one code page.		*/
-/*									*/
-/************************************************************************/
-
-static int tedDetermineCodepage(	BufferDocument *	bd )
-    {
-    const DocumentFontList *	dfl= &(bd->bdProperties.dpFontList);
-    const DocumentFont *	df;
-    int				font;
-
-    int				encoding= -1;
-    int				encodingCount= 0;
-
-    df= dfl->dflFonts;
-    for ( font= 0; font < dfl->dflFontCount; df++, font++ )
-	{
-	if  ( ! df->dfUsed )
-	    { continue;	}
-	if  ( ! df->dfOfficeCharsetMapping )
-	    { XDEB(df->dfOfficeCharsetMapping); continue;	}
-
-	if  ( encoding < 0 )
-	    {
-	    encoding= df->dfOfficeCharsetMapping->ocmPsFontEncoding;
-	    encodingCount= 1;
-	    }
-	else{
-	    if  ( encoding != df->dfOfficeCharsetMapping->ocmPsFontEncoding )
-		{ encodingCount++; }
-	    }
-	}
-
-    if  ( encodingCount != 1 )
-	{ return -1;	}
-
-    return utilWindowsCodepageFromEncoding( encoding );
-    }
-
-/************************************************************************/
-/*									*/
-/*  Make a new empty document.						*/
-/*									*/
-/************************************************************************/
-
-int tedNewDocument(	EditApplication *	ea,
-			EditDocument *		ed,
-			const char *		filename )
-    {
-    TedDocument *		td= (TedDocument *)ed->edPrivateData;
-    BufferDocument *		bd;
-    DocumentProperties *	dp;
-    TextAttribute		ta;
-
-    time_t			now;
-
-    TedAppResources *		tar= (TedAppResources *)ea->eaResourceData;
-    int				rval= 0;
-
-    tedDetermineDefaultSettings( tar );
-
-    if  ( appPostScriptFontCatalog( ea ) )
-	{ SDEB(ea->eaAfmDirectory); return -1;	}
-
-    bd= docNewFile( &ta, ea->eaDefaultFont,
-				    DOCcharsetANSI, tar->tarDefaultAnsicpgInt,
-				    &(ea->eaPostScriptFontList),
-				    &(ea->eaDefaultDocumentGeometry) );
-    if  ( ! bd )
-	{ XDEB(bd); rval= -1; goto ready;	}
-
-    ed->edFormat= TEDdockindRTF; /* rtf */
-    td->tdDocument= bd;
-    dp= &(bd->bdProperties);
-
-    {
-    int		l= 0;
-
-    l += strlen( ea->eaNameAndVersion );
-    l += 2;
-    l += strlen( ea->eaReference );
-    l += 2;
-    l += 1;
-
-    dp->dpGenerator= malloc( l );
-    if  ( ! dp->dpGenerator )
-	{ LXDEB(l,dp->dpGenerator);	}
-    else{
-	sprintf( (char *)dp->dpGenerator, "%s (%s);",
-				ea->eaNameAndVersion, ea->eaReference );
-	}
-    }
-
-    /*  2  */
-    if  ( appPostScriptFontCatalog( ea ) )
-	{ SDEB(ea->eaAfmDirectory); return -1;	}
-
-    if  ( filename )
-	{
-	const char *	ext= appFileExtensionOfName( filename );
-
-	if  ( ext && ! strcmp( ext, "rtf" ) )
-	    { ed->edFormat= TEDdockindRTF;	}
-	if  ( ext && ! strcmp( ext, "txt" ) )
-	    { ed->edFormat= TEDdockindTEXT_SAVE_FOLDED;	}
-	}
-
-    if  ( ea->eaAuthor )
-	{ dp->dpAuthor= (unsigned char *)strdup( ea->eaAuthor ); }
-
-    now= time( (time_t *)0 );
-    dp->dpCreatim= *localtime( &now );
-
-  ready:
-
-    return rval;
     }
 
 /************************************************************************/
@@ -540,34 +470,67 @@ int tedNewDocument(	EditApplication *	ea,
 /*									*/
 /************************************************************************/
 
-int tedLayoutDocument(		void *				privateData,
+int tedFirstRecalculateFields(	RecalculateFields *	rf,
+				DOC_CLOSE_OBJECT	closeObject,
+				BufferDocument *	bd )
+    {
+    const int			page= 0;
+
+    rf->rfDocument= bd;
+    rf->rfCloseObject= closeObject;
+    rf->rfUpdateFlags= FIELDdoDOC_INFO|FIELDdoDOC_COMPLETE|FIELDdoCHFTN;
+    rf->rfFieldsUpdated= 0;
+
+    rf->rfBodySectNode= bd->bdBody.dtRoot->biChildren[0];
+
+    if  ( docRecalculateTocFields( rf ) )
+	{ LDEB(1); return -1;	}
+
+    if  ( docRecalculateTextLevelFieldsInDocumentTree( rf, &(bd->bdBody),
+				    bd->bdBody.dtRoot->biChildren[0], page ) )
+	{ LDEB(1); return -1;	}
+
+    return 0;
+    }
+
+int tedLayoutDocument(		DocumentRectangle *		drScreen,
+				DocumentRectangle *		drVisible,
+				void *				privateData,
 				int				format,
-				AppDrawingData *		add,
+				DrawingSurface			ds,
+				const PostScriptFontList *	psfl,
 				const DocumentGeometry *	dgDef )
     {
     TedDocument *		td= (TedDocument *)privateData;
     BufferDocument *		bd= td->tdDocument;
-    const DocumentProperties *	dp= &(bd->bdProperties);
-    const DocumentGeometry *	dgDoc= &(dp->dpGeometry);
 
+    const int			page= 0;
     int				noteNumbersChanged= 0;
+    int				reachedBottom= 0;
 
     RecalculateFields		rf;
+    LayoutContext		lc;
+
+    DocumentRectangle		drOutside;
+    DocumentRectangle		drInside;
+
+    BufferItem *		rootNode= bd->bdBody.dtRoot;
 
     docInitRecalculateFields( &rf );
+    layoutInitContext( &lc );
 
-    rf.rfBd= bd;
-    rf.rfVoidadd= (void *)add;
-    rf.rfCloseObject= tedCloseObject;
-    rf.rfUpdateFlags= FIELDdoDOC_INFO|FIELDdoDOC_COMPLETE|FIELDdoCHFTN;
-    rf.rfFieldsUpdated= 0;
+    docPageRectsPixels( &drOutside, &drInside, td->tdPixelsPerTwip,
+						rootNode->biChildren[0], bd );
 
-    tedScreenRectangles( add, dgDoc );
+    *drScreen= drOutside;
+    *drVisible= drOutside;
 
-    if  ( docRecalculateTextLevelFields( &rf, &(bd->bdItem) ) )
-	{ LDEB(1); return -1;	}
+    tedSetDocumentLayoutContext( &lc, ds, psfl, td );
 
-    if  ( tedLayoutDocumentTree( td, add ) )
+    if  ( tedFirstRecalculateFields( &rf, docScreenCloseObject, bd ) )
+	{ LDEB(page); return -1;	}
+
+    if  ( tedLayoutDocumentBody( &reachedBottom, &lc ) )
 	{ LDEB(1); return -1;	}
 
     docRenumberNotes( &noteNumbersChanged, bd );
@@ -578,96 +541,22 @@ int tedLayoutDocument(		void *				privateData,
     if  ( noteNumbersChanged )
 	{ rf.rfUpdateFlags |= FIELDdoCHFTN;	}
 
-    if  ( docRecalculateTextLevelFields( &rf, &(bd->bdItem) ) )
+    if  ( docRecalculateTextLevelFieldsInDocumentTree( &rf, &(bd->bdBody),
+					    rootNode->biChildren[0], page ) )
 	{ LDEB(1); return -1;	}
 
-    if  ( rf.rfFieldsUpdated > 0 && tedLayoutDocumentTree( td, add ) )
+    if  ( rf.rfFieldsUpdated > 0				&&
+	  tedLayoutDocumentBody( &reachedBottom, &lc )	)
 	{ LDEB(1); return -1;	}
 
-    /*  8  */
-    if  ( bd->bdProperties.dpAnsiCodepage < 0 )
-	{
-	bd->bdProperties.dpAnsiCodepage= tedDetermineCodepage( bd );
+    docGetPixelRectangleForPages( drScreen, &lc,
+					rootNode->biTopPosition.lpPage,
+					rootNode->biBelowPosition.lpPage );
 
-	/*  9  */
-	if  ( bd->bdProperties.dpAnsiCodepage == 1252 )
-	    { bd->bdProperties.dpAnsiCodepage= -1;	}
-	}
+    /* LDEB(1); docListNode(0,rootNode,1); */
 
     return 0;
     }
-
-/************************************************************************/
-/*									*/
-/*  Save a document.							*/
-/*									*/
-/************************************************************************/
-
-int tedSaveDocument(	const void *		privateData,
-			int			format,
-			const char *		applicationId,
-			const char *		documentTitle,
-			const char *		filename )
-    {
-    TedDocument *		td= (TedDocument *)privateData;
-    BufferDocument *		bd= td->tdDocument;
-    DocumentProperties *	dp= &(bd->bdProperties);
-    SimpleOutputStream *	sos;
-
-    const int			saveBookmarks= 1;
-
-    const int			asMimeAggr= 0;
-
-    time_t			now;
-
-    sos= sioOutStdioOpen( filename );
-    if  ( ! sos )
-	{ /* SXDEB(filename,sos); */ return -1;	}
-
-    switch( format )
-	{
-	case TEDdockindRTF:
-	    now= time( (time_t *)0 );
-	    dp->dpRevtim= *localtime( &now );
-
-	    if  ( docRtfSaveDocument( sos, bd, (const DocumentSelection *)0,
-							    saveBookmarks ) )
-		{ SDEB(filename); sioOutClose( sos ); return -1;	}
-	    break;
-
-	case TEDdockindTEXT_OPEN:
-	    LDEB(format);
-	    /*FALLTHROUGH*/
-
-	case TEDdockindTEXT_SAVE_FOLDED:
-	    if  ( docPlainSaveDocument( sos, bd,
-					    (const DocumentSelection *)0,
-					    1, 1 ) )
-		{ SDEB(filename); sioOutClose( sos ); return -1;	}
-	    break;
-
-	case TEDdockindTEXT_SAVE_WIDE:
-	    if  ( docPlainSaveDocument( sos, bd,
-					    (const DocumentSelection *)0,
-					    0, 1 ) )
-		{ SDEB(filename); sioOutClose( sos ); return -1;	}
-	    break;
-
-	case TEDdockindHTML_FILES:
-	    if  ( docHtmlSaveDocument( sos, bd, asMimeAggr,
-						(const char *)0, filename ) )
-		{ SDEB(filename); sioOutClose( sos ); return -1;	}
-	    break;
-
-	default:
-	    LDEB(format); return -1;
-	}
-
-    sioOutClose( sos );
-    
-    return 0;
-    }
-
 
 /************************************************************************/
 /*									*/
@@ -675,7 +564,7 @@ int tedSaveDocument(	const void *		privateData,
 /*									*/
 /************************************************************************/
 
-void * tedMakePrivateData()
+void * tedMakePrivateData( void )
     {
     int			i;
     TedDocument *	td;
@@ -685,21 +574,54 @@ void * tedMakePrivateData()
 	{ XDEB(td); return (void *)0;	}
 
     docInitSelectionDescription( &(td->tdSelectionDescription) );
+    td->tdBodySectionNumber= -1;
 
     td->tdDocument= (BufferDocument *)0;
     utilInitTextAttribute( &(td->tdCurrentTextAttribute) );
     td->tdCurrentTextAttributeNumber= -1;
     td->tdCurrentScreenFont= -1;
 
-    docInitScreenFontList( &(td->tdScreenFontList) );
+    utilInitMemoryBuffer( &(td->tdRecoveredName) );
+
+    td->tdPageGapTwips= 0;
+
+    td->tdTraced= 0;
+    td->tdOverstrike= 0;
+
+    utilInitIndexMapping( &(td->tdAttributeToScreenFont) );
+    docInitEditTrace( &(td->tdEditTrace) );
 
     td->tdFormatMenu= (APP_WIDGET)0;
     td->tdFormatMenuButton= (APP_WIDGET)0;
     td->tdFormatOneParaOption= (APP_WIDGET)0;
+    td->tdFormatOneParaSeparator= (APP_WIDGET)0;
 
-    td->tdCopyWidget= (APP_WIDGET)0;
-    td->tdCutWidget= (APP_WIDGET)0;
-    td->tdPasteWidget= (APP_WIDGET)0;
+    td->tdFormatPasteRulerOption= (APP_WIDGET)0;
+    td->tdFormatIncreaseIndentOption= (APP_WIDGET)0;
+    td->tdFormatDecreaseIndentOption= (APP_WIDGET)0;
+    td->tdFormatRulerSeparator= (APP_WIDGET)0;
+
+    td->tdFormatAlignLeftOption= (APP_WIDGET)0;
+    td->tdFormatAlignRightOption= (APP_WIDGET)0;
+    td->tdFormatAlignCenterOption= (APP_WIDGET)0;
+    td->tdFormatAlignJustifyOption= (APP_WIDGET)0;
+    td->tdFormatAlignSeparator= (APP_WIDGET)0;
+
+    td->tdFileOpenOption= (APP_WIDGET)0;
+    td->tdFileSaveOption= (APP_WIDGET)0;
+    td->tdFileSaveAsOption= (APP_WIDGET)0;
+    td->tdFileUnlockOption= (APP_WIDGET)0;
+    td->tdFileRecoverOption= (APP_WIDGET)0;
+    td->tdFilePropertiesOption= (APP_WIDGET)0;
+    td->tdFileCloseOption= (APP_WIDGET)0;
+    td->tdFileQuitSeparator= (APP_WIDGET)0;
+    td->tdFileQuitOption= (APP_WIDGET)0;
+
+    td->tdCopyOption= (APP_WIDGET)0;
+    td->tdUndoOption= (APP_WIDGET)0;
+    td->tdRepeatOption= (APP_WIDGET)0;
+    td->tdCutOption= (APP_WIDGET)0;
+    td->tdPasteOption= (APP_WIDGET)0;
 
     td->tdInsertMenu= (APP_WIDGET)0;
     td->tdInsertMenuButton= (APP_WIDGET)0;
@@ -715,6 +637,7 @@ void * tedMakePrivateData()
     td->tdInsInsertPageNumberOption= (APP_WIDGET)0;
     td->tdInsInsertLineBreakOption= (APP_WIDGET)0;
     td->tdInsInsertPageBreakOption= (APP_WIDGET)0;
+    td->tdInsInsertColumnBreakOption= (APP_WIDGET)0;
     td->tdInsInsertSectBreakOption= (APP_WIDGET)0;
 
     td->tdTableMenu= (APP_WIDGET)0;
@@ -723,14 +646,17 @@ void * tedMakePrivateData()
     td->tdTabInsertTableOption= (APP_WIDGET)0;
     td->tdTabAddRowOption= (APP_WIDGET)0;
     td->tdTabAddColumnOption= (APP_WIDGET)0;
+    td->tdTabInsertSeparator= (APP_WIDGET)0;
 
-    td->tdSelectTableWidget= (APP_WIDGET)0;
-    td->tdSelectRowWidget= (APP_WIDGET)0;
-    td->tdSelectColumnOption= (APP_WIDGET)0;
+    td->tdTabSelectTableOption= (APP_WIDGET)0;
+    td->tdTabSelectRowOption= (APP_WIDGET)0;
+    td->tdTabSelectColumnOption= (APP_WIDGET)0;
+    td->tdTabSelectSeparator= (APP_WIDGET)0;
 
-    td->tdDeleteTableWidget= (APP_WIDGET)0;
-    td->tdDeleteRowWidget= (APP_WIDGET)0;
-    td->tdDeleteColumnOption= (APP_WIDGET)0;
+    td->tdTabDeleteTableOption= (APP_WIDGET)0;
+    td->tdTabDeleteRowOption= (APP_WIDGET)0;
+    td->tdTabDeleteColumnOption= (APP_WIDGET)0;
+    td->tdTabDeleteSeparator= (APP_WIDGET)0;
 
     td->tdDrawTableGridOption= (APP_WIDGET)0;
 
@@ -741,24 +667,32 @@ void * tedMakePrivateData()
     td->tdFontUnderlinedOption= (APP_WIDGET)0;
     td->tdFontSuperscriptOption= (APP_WIDGET)0;
     td->tdFontSubscriptOption= (APP_WIDGET)0;
+    td->tdFontToggleSeparator= (APP_WIDGET)0;
+    td->tdFontPasteOption= (APP_WIDGET)0;
 
     td->tdToolsMenu= (APP_WIDGET)0;
     td->tdToolsMenuButton= (APP_WIDGET)0;
+    td->tdToolsFormatToolOption= (APP_WIDGET)0;
 
-    docInitDocumentSelection( &(td->tdDocumentSelection) );
+    td->tdToolsFontOption= (APP_WIDGET)0;
+    td->tdToolsFindOption= (APP_WIDGET)0;
+    td->tdToolsSpellingOption= (APP_WIDGET)0;
+    td->tdToolsPageLayoutOption= (APP_WIDGET)0;
+    td->tdToolsSymbolOption= (APP_WIDGET)0;
+
+    docInitDocumentSelection( &(td->tdSelection) );
     docInitSelectionGeometry( &(td->tdSelectionGeometry) );
 
     td->tdVisibleSelectionCopied= 0;
-    td->tdCanReplaceSelection= 0;
 
-    td->tdCopiedSelectionClosed= 0;
     utilInitMemoryBuffer( &(td->tdCopiedSelection) );
     utilInitMemoryBuffer( &(td->tdCopiedFont) );
     utilInitMemoryBuffer( &(td->tdCopiedRuler) );
 
-    appInitBitmapImage( &(td->tdCopiedImage) );
+    bmInitRasterImage( &(td->tdCopiedImage) );
 
     td->tdFindProg= (void *)0;
+    td->tdOwnsPrimarySelection= 0;
 
 #   ifdef USE_MOTIF
     td->tdHideIBarId= (XtIntervalId)0;
@@ -779,6 +713,8 @@ void * tedMakePrivateData()
     td->tdScaleChangedY= 0;
 
     td->tdDrawTableGrid= 1;
+    td->tdDrawMonochrome= 0;
+    td->tdInProgrammaticChange= 0;
 
     return (void *)td;
     }
@@ -789,16 +725,10 @@ void * tedMakePrivateData()
 /*									*/
 /************************************************************************/
 
-APP_EVENT_HANDLER_H( tedObserveFocus, w, voided, event )
+void tedObserveFocus(	EditDocument *	ed,
+			int		inout )
     {
-    EditDocument *	ed= (EditDocument *)voided;
-    TedDocument *	td= (TedDocument *)ed->edPrivateData;
     EditApplication *	ea= ed->edApplication;
-
-    int			inout= 0;
-
-    if  ( appDrawGetInoutFromFocusEvent( &inout, w, event ) )
-	{ return;	}
 
     if  ( inout > 0 )
 	{
@@ -806,78 +736,29 @@ APP_EVENT_HANDLER_H( tedObserveFocus, w, voided, event )
 	    {
 	    appSetCurrentDocument( ea, ed );
 
-	    if  ( ea->eaFindTool && ed->edIsReadonly )
-		{ appFindToolEnableReplace( ea->eaFindTool, 0 ); }
-
-	    if  ( ea->eaSpellTool )
-		{ appEnableSpellTool( ea->eaSpellTool, ! ed->edIsReadonly ); }
-
 	    tedAdaptPageToolToDocument( ea, ed );
 
 	    tedAdaptFormatToolToDocument( ed, 0 );
 	    }
 
-	if  ( tedHasIBarSelection( td ) )
+	if  ( tedHasIBarSelection( ed ) )
 	    { tedStartCursorBlink( ed );	}
 	}
 
     if  ( inout < 0 )
 	{ tedStopCursorBlink( ed ); }
+
+    return;
     }
 
-/************************************************************************/
-/*									*/
-/*  Print a document to PostScript.					*/
-/*									*/
-/************************************************************************/
-
-int tedPrintDocument(	SimpleOutputStream *		sos,
-			const PrintJob *		pj,
-			const PrintGeometry *		pg )
-    {
-    EditApplication *		ea= pj->pjApplication;
-    TedDocument *		td= (TedDocument *)pj->pjPrivateData;
-    BufferDocument *		bd= td->tdDocument;
-    DocumentProperties *	dp= &(bd->bdProperties);
-
-    time_t			now;
-
-    RecalculateFields		rf;
-
-    docInitRecalculateFields( &rf );
-
-    rf.rfBd= bd;
-    rf.rfVoidadd= (void *)pj->pjDrawingData;
-    rf.rfCloseObject= tedCloseObject;
-    rf.rfUpdateFlags= FIELDdoDOC_FORMATTED|FIELDdoDOC_COMPLETE|FIELDdoDOC_INFO;
-    rf.rfFieldsUpdated= 0;
-
-    now= time( (time_t *)0 );
-    dp->dpPrintim= *localtime( &now );
-
-    if  ( docRecalculateTextLevelFields( &rf, &(bd->bdItem) ) )
-	{ LDEB(1); return -1;	}
-
-    if  ( rf.rfFieldsUpdated > 0				&&
-	  tedLayoutDocumentTree( td, pj->pjDrawingData )	)
-	{ LDEB(1); return -1;	}
-
-    if  ( docPsPrintDocument( sos, pj->pjTitle, ea->eaApplicationName,
-				ea->eaReference, ea->eaFontDirectory,
-				pj->pjDrawingData,
-				td->tdDocument, pg,
-				tedCloseObject ) )
-	{ LDEB(1); return -1;	}
-
-    return 0;
-    }
-
-void tedSuggestNup(	PrintGeometry *	pg,
-			void *		privateData )
+void tedSuggestPageSetup(	PrintGeometry *	pg,
+				void *		privateData )
     {
     TedDocument *		td= (TedDocument *)privateData;
     BufferDocument *		bd= td->tdDocument;
     DocumentProperties *	dp= &(bd->bdProperties);
+
+    pg->pgSheetGeometry= dp->dpGeometry;
 
     if  ( dp->dpTwoOnOne )
 	{
@@ -890,158 +771,19 @@ void tedSuggestNup(	PrintGeometry *	pg,
     return;
     }
 
-/************************************************************************/
-/*									*/
-/*  Open a document.							*/
-/*									*/
-/*  1)  Open an input stream.						*/
-/*  2)  Try to read as RTF.						*/
-/*  3)  If this fails, try as plain text.				*/
-/*									*/
-/************************************************************************/
-
-int tedOpenDocumentFile(	EditApplication *	ea,
-				int *			pFormat,
-				BufferDocument **	pBd,
-				const char *		filename,
-				APP_WIDGET		relative,
-				APP_WIDGET		option )
+void tedSetTracedChangedFlag(	EditDocument *	ed )
     {
-    const char *		ext;
-    SimpleInputStream *		sis;
+    const TedDocument *	td= (TedDocument *)ed->edPrivateData;
+    const EditTrace *	et= &(td->tdEditTrace);
+    int			changed;
 
-    BufferDocument *		bd;
-    int				triedRtf= 0;
+    if  ( ! td->tdTraced )
+	{ LDEB(td->tdTraced); return;	}
 
-    int				resp;
-    AppFileMessageResources *	afmr= &(ea->eaFileMessageResources);
-    TedAppResources *		tar= (TedAppResources *)ea->eaResourceData;
+    changed= et->etIndex < et->etBase || et->etIndex > et->etBase+ 1;
 
-    int				longestPara;
+    appDocumentChanged( ed, changed );
 
-    tedDetermineDefaultSettings( tar );
-
-    if  ( appPostScriptFontCatalog( ea ) )
-	{ SDEB(ea->eaAfmDirectory); return -1;	}
-
-    ext= appFileExtensionOfName( filename );
-
-    /*  1  */
-    sis= sioInStdioOpen( filename );
-    if  ( ! sis )
-	{
-	appQuestionRunSubjectErrorDialog( ea, relative, option,
-					filename, afmr->afmrFileNoAccess );
-
-	return -1;
-	}
-
-    if  ( ext && ! strcmp( ext, "rtf" ) )
-	{
-	/*  2  */
-	bd= docRtfReadFile( sis, &(ea->eaPostScriptFontList),
-						tar->tarDefaultAnsicpgInt );
-
-	sioInClose( sis );
-	
-	if  ( bd )
-	    {
-	    *pFormat= TEDdockindRTF; *pBd= bd;
-
-	    utilFontlistSetPreferredEncodings( &(bd->bdProperties.dpFontList) );
-
-	    if  ( docPropertiesSetFilename( &(bd->bdProperties), filename ) )
-		{ LDEB(1);	}
-
-	    return 0;
-	    }
-	else{
-	    resp= appQuestionRunSubjectOkCancelDialog( ea,
-				    relative, option,
-				    filename, tar->tarFileNotRtf,
-				    (char *)0, (char *)0 );
-
-	    if  ( resp != AQDrespOK )
-		{ return -1;	}
-
-	    triedRtf= 1;
-	    }
-	}
-
-    if  ( ext && ! strcmp( ext, "txt" ) )
-	{
-	bd= docPlainReadFile( sis, &longestPara,
-				    DOCcharsetANSI, tar->tarDefaultAnsicpgInt,
-				    &(ea->eaDefaultDocumentGeometry) );
-
-	sioInClose( sis );
-
-	if  ( bd )
-	    {
-	    *pBd= bd;
-
-	    if  ( longestPara > 76 )
-		{ *pFormat= TEDdockindTEXT_SAVE_WIDE;		}
-	    else{ *pFormat= TEDdockindTEXT_SAVE_FOLDED;		}
-
-	    if  ( docPropertiesSetFilename( &(bd->bdProperties), filename ) )
-		{ LDEB(1);	}
-
-	    return 0;
-	    }
-	else{ SXDEB(filename,bd); return -1;	}
-	}
-
-    /*  2  */
-    if  ( ! triedRtf )
-	{
-	bd= docRtfReadFile( sis, &(ea->eaPostScriptFontList),
-						tar->tarDefaultAnsicpgInt );
-	if  ( bd )
-	    {
-	    *pFormat= TEDdockindRTF; *pBd= bd;
-	    
-	    utilFontlistSetPreferredEncodings( &(bd->bdProperties.dpFontList) );
-
-	    if  ( docPropertiesSetFilename( &(bd->bdProperties), filename ) )
-		{ LDEB(1);	}
-
-	    return 0;
-	    }
-
-	resp= appQuestionRunSubjectOkCancelDialog( ea,
-					ea->eaToplevel.atTopWidget, option,
-					filename, tar->tarFileNotRtf,
-					(char *)0, (char *)0 );
-
-	if  ( resp != AQDrespOK )
-	    { return -1;	}
-	}
-
-    sis= sioInStdioOpen( filename );
-    if  ( ! sis )
-	{ SXDEB(filename,sis); return -1;	}
-
-    bd= docPlainReadFile( sis, &longestPara,
-				    DOCcharsetANSI, tar->tarDefaultAnsicpgInt,
-				    &(ea->eaDefaultDocumentGeometry) );
-
-    sioInClose( sis );
-
-    if  ( bd )
-	{
-	*pBd= bd;
-
-	if  ( longestPara > 76 )
-	    { *pFormat= TEDdockindTEXT_SAVE_WIDE;		}
-	else{ *pFormat= TEDdockindTEXT_SAVE_FOLDED;		}
-
-	if  ( docPropertiesSetFilename( &(bd->bdProperties), filename ) )
-	    { LDEB(1);	}
-
-	return 0;
-	}
-
-    SXDEB(filename,bd); return -1;
+    return;
     }
 

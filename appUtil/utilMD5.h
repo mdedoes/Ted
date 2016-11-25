@@ -31,8 +31,11 @@ documentation and/or software.
 #   ifndef	UTIL_MD5_H
 #   define	UTIL_MD5_H
 
-#   include	<appUtilConfig.h>
-#   include	<string.h>
+#   include	"appUtilConfig.h"
+
+#   define	MD5_DIGEST_SIZE_BITS		128
+#   define	MD5_DIGEST_SIZE_BYTES		16
+#   define	MD5_DIGEST_SIZE_BASE64		(((16+2)/3)*4+ 1) /* 24+ 1 */
 
 typedef struct MD5Context
     {
@@ -40,7 +43,7 @@ typedef struct MD5Context
     UtilUint32		md5cCount[2];		/*  number of bits,	*/
 						/*  modulo 2^64 (lsb	*/
 						/*  first)		*/
-    unsigned char	md5cBuffer[64];		/* input buffer		*/
+    unsigned char	md5cBuffer[64];		/*  input buffer	*/
     } MD5Context;
 
 extern void utilMD5Init(	MD5Context *	md5c );
@@ -49,13 +52,15 @@ extern void utilMD5Update(	MD5Context *		md5c,
 				const unsigned char *	bytes,
 				unsigned int		count );
 
-extern void utilMD5Final(	unsigned char *	digest,
+extern void utilMD5Final(	unsigned char	digest[MD5_DIGEST_SIZE_BYTES],
 				MD5Context *	md5c );
 
-extern void utilMD5Base64(	char *			digestBase64,
-				const unsigned char *	digest );
+extern void utilMD5ToBase64(
+		char			digestBase64[MD5_DIGEST_SIZE_BASE64],
+		const unsigned char	digest[MD5_DIGEST_SIZE_BYTES] );
 
-extern int utilMD5FromBase64(	unsigned char *		digest,
-				const char *		digestBase64 );
+extern int utilMD5FromBase64(
+		unsigned char		digest[MD5_DIGEST_SIZE_BYTES],
+		const char		digestBase64[MD5_DIGEST_SIZE_BASE64] );
 
 #   endif	/*  UTIL_MD5_H  */

@@ -6,14 +6,18 @@
 
 #   include	<ctype.h>
 
-#   include	<X11/xpm.h>
-
 #   include	<appDebugon.h>
 
 #   include	"bmintern.h"
 
+#   if USE_LIBXPM
+
+#   include	<X11/xpm.h>
+
 /************************************************************************/
+/*									*/
 /*  Characters approximately in gray scale order.			*/
+/*									*/
 /************************************************************************/
 
 static char	BMXPMBytes[]=
@@ -166,28 +170,32 @@ static int bmXpmPaletteColor(	const char *	c_color,
 /*									*/
 /************************************************************************/
 
-int bmReadXpmFile(	const char *		filename,
+int bmReadXpmFile(	const MemoryBuffer *	filename,
 			unsigned char **	pBuffer,
 			BitmapDescription *	bd,
-			int *			pPrivateFormat,
-			double *		pCompressionFactor )
+			int *			pPrivateFormat )
     {
+    int			rval= 0;
+
     int			ret;
     unsigned int	row;
     unsigned int	col;
-    unsigned char *	buffer;
+    unsigned char *	buffer= (unsigned char *)0;
     
     XpmImage		image;
 
     int			bitsPerPixel= 8;
 
-    ret= XpmReadFileToXpmImage( (char *)filename, &image, (XpmInfo *)0 );
+    const char *	fn= utilMemoryBufferGetString( filename );
 
+    memset( &image, 0, sizeof(image) );
+
+    ret= XpmReadFileToXpmImage( (char *)fn, &image, (XpmInfo *)0 );
     if  ( ret != XpmSuccess )
-	{ SSDEB(filename,XpmGetErrorString(ret)); return -1;	}
+	{ SSDEB(fn,XpmGetErrorString(ret)); rval= -1; goto ready;	}
 
     if  ( image.ncolors > 256* 256 )
-	{ LDEB(image.ncolors); XpmFreeXpmImage( &image ); return -1;	}
+	{ LDEB(image.ncolors); rval= -1; goto ready;	}
 
     bd->bdPixelsWide= image.width;
     bd->bdPixelsHigh= image.height;
@@ -206,28 +214,19 @@ int bmReadXpmFile(	const char *		filename,
 	    bd->bdBufferLength= bd->bdPixelsHigh* bd->bdBytesPerRow;
 	    bd->bdColorEncoding= BMcoRGB8PALETTE;
 	    bd->bdHasAlpha= 0;
-	    bd->bdColorCount= image.ncolors;
-	    bd->bdRGB8Palette= (RGB8Color *)
-			    malloc( bd->bdColorCount* sizeof( RGB8Color ) );
-	    if  ( ! bd->bdRGB8Palette )
-		{
-		LXDEB(bd->bdColorCount,bd->bdRGB8Palette);
-		XpmFreeXpmImage( &image );
-		return -1;
-		}
+	    if  ( utilPaletteSetCount( &(bd->bdPalette), image.ncolors ) )
+		{ LDEB(image.ncolors); rval= -1; goto ready; }
 
 	    for ( col= 0; col < image.ncolors; col++ )
 		{
 		int		transparent= 0;
 
 		if  ( bmXpmPaletteColor( image.colorTable[col].c_color,
-						&transparent,
-						bd->bdRGB8Palette+ col ) )
+				&transparent, bd->bdPalette.cpColors+ col ) )
 		    {
 		    SSDEB(image.colorTable[col].string,
 					    image.colorTable[col].c_color);
-		    XpmFreeXpmImage( &image );
-		    return -1;
+		    rval= -1; goto ready;
 		    }
 
 		if  ( transparent && ! bd->bdHasAlpha )
@@ -239,25 +238,22 @@ int bmReadXpmFile(	const char *		filename,
 
 	    if  ( bmCalculateSizes( bd ) )
 		{
-		LXDEB(bd->bdColorCount,bd->bdRGB8Palette);
-		XpmFreeXpmImage( &image );
-		return -1;
+		LDEB(bd->bdPalette.cpColorCount);
+		rval= -1; goto ready;
 		}
 
 	    buffer= (unsigned char *)malloc( bd->bdBufferLength );
 	    if  ( ! buffer )
 		{
 		LXDEB(bd->bdBufferLength,buffer);
-		XpmFreeXpmImage( &image );
-		return -1;
+		rval= -1; goto ready;
 		}
 	    break;
 
 	default:
 	    LDEB(bitsPerPixel);
 	    LLDEB(image.cpp,image.ncolors);
-	    XpmFreeXpmImage( &image );
-	    return -1;
+	    rval= -1; goto ready;
 	}
 
     bd->bdXResolution= bd->bdYResolution= 1;
@@ -280,9 +276,7 @@ int bmReadXpmFile(	const char *		filename,
 		}
 	    else{
 		LDEB(bd->bdHasAlpha);
-		free( buffer );
-		XpmFreeXpmImage( &image );
-		return -1;
+		rval= -1; goto ready;
 		}
 
 	    break;
@@ -311,22 +305,18 @@ int bmReadXpmFile(	const char *		filename,
 		    int	c= *(from++);
 
 		    *(to++)= c;
-		    *(to++)= bd->bdRGB8Palette[c].rgb8Alpha;
+		    *(to++)= bd->bdPalette.cpColors[c].rgb8Alpha;
 		    }
 		}
 	    break;
 
 	case 32:
 	    if  ( ! bd->bdHasAlpha )
-		{
-		LDEB(bd->bdHasAlpha);
-		free( buffer );
-		XpmFreeXpmImage( &image );
-		return -1;
-		}
+		{ LDEB(bd->bdHasAlpha); rval= -1; goto ready; }
 	    else{
 		const unsigned int *	from;
 		unsigned char *		to;
+		ColorPalette * 		cp= &(bd->bdPalette);
 
 		/* expand palette and alpha */
 		from= image.data;
@@ -336,17 +326,13 @@ int bmReadXpmFile(	const char *		filename,
 		    {
 		    int	c= *(from++);
 
-		    *(to++)= bd->bdRGB8Palette[c].rgb8Red;
-		    *(to++)= bd->bdRGB8Palette[c].rgb8Green;
-		    *(to++)= bd->bdRGB8Palette[c].rgb8Blue;
-		    *(to++)= bd->bdRGB8Palette[c].rgb8Alpha;
+		    *(to++)= cp->cpColors[c].rgb8Red;
+		    *(to++)= cp->cpColors[c].rgb8Green;
+		    *(to++)= cp->cpColors[c].rgb8Blue;
+		    *(to++)= cp->cpColors[c].rgb8Alpha;
 		    }
 
-		if  ( bd->bdRGB8Palette )
-		    {
-		    free( bd->bdRGB8Palette );
-		    bd->bdRGB8Palette= (RGB8Color *)0;
-		    }
+		utilPaletteSetCount( cp, 0 );
 
 		bd->bdColorEncoding= BMcoRGB;
 		bd->bdHasAlpha= 1;
@@ -357,17 +343,20 @@ int bmReadXpmFile(	const char *		filename,
 	    break;
 
 	default:
-	    free( buffer );
-	    XpmFreeXpmImage( &image );
-	    LLDEB(bd->bdBitsPerPixel,image.cpp); return -1;
+	    LLDEB(bd->bdBitsPerPixel,image.cpp); rval= -1; goto ready;
 	}
+
+    *pBuffer= buffer; buffer= (unsigned char *)0;
+    *pPrivateFormat= 0;
+
+  ready:
 
     XpmFreeXpmImage( &image );
 
-    *pBuffer= buffer;
-    *pPrivateFormat= 0;
+    if  ( buffer )
+	{ free( buffer );	}
 
-    return 0;
+    return rval;
     }
 
 /************************************************************************/
@@ -452,11 +441,10 @@ static int bmXpmSetColor(	XpmColor *	xpmc,
     return 0;
     }
 
-int bmWriteXpmFile(	const char *			filename,
+int bmWriteXpmFile(	const MemoryBuffer *		filename,
 			const unsigned char *		buffer,
 			const BitmapDescription *	bd,
-			int				privateFormat,
-			double				compressionFactor )
+			int				privateFormat )
     {
     int				ret;
     unsigned int		col;
@@ -468,10 +456,14 @@ int bmWriteXpmFile(	const char *			filename,
     unsigned int *		to;
     const unsigned char *	from;
 
+    const char *		fn= utilMemoryBufferGetString( filename );
+
+    const ColorPalette * 	cp= &(bd->bdPalette);
+
     if  ( bd->bdColorEncoding == BMcoRGB8PALETTE )
 	{
-	if  ( bd->bdColorCount >= sizeof(BMXPMBytes) )
-	    { LLDEB(bd->bdColorCount,sizeof(BMXPMBytes)); return -1; }
+	if  ( cp->cpColorCount >= sizeof(BMXPMBytes) )
+	    { LLDEB(cp->cpColorCount,sizeof(BMXPMBytes)); return -1; }
 	}
     else{
 	if  ( bd->bdColorEncoding == BMcoBLACKWHITE	||
@@ -492,27 +484,27 @@ int bmWriteXpmFile(	const char *			filename,
 
     switch( bd->bdColorEncoding )
 	{
-	unsigned int	cp;
+	unsigned int	col;
 
 	case BMcoRGB8PALETTE:
 	    image.cpp= charactersPerPixel;
-	    image.ncolors= bd->bdColorCount;
+	    image.ncolors= cp->cpColorCount;
 	    ret= image.width* image.height* sizeof( unsigned int );
 	    image.data= (unsigned int *)malloc( ret );
 	    if  ( ! image.data )
 		{ LXDEB(ret,image.data); return -1;	}
 
 	    if  ( bmXpmAllocColors( &image, image.ncolors ) )
-		{ LDEB(bd->bdColorCount); bmXpmClean( &image ); return -1; }
+		{ LDEB(cp->cpColorCount); bmXpmClean( &image ); return -1; }
 
-	    for ( cp= 0; cp < image.ncolors; cp++ )
+	    for ( col= 0; col < image.ncolors; col++ )
 		{
-		if  ( bmXpmSetColor( image.colorTable+ cp, charactersPerPixel,
-					BMXPMBytes+ cp,
-					bd->bdRGB8Palette[cp].rgb8Red,
-					bd->bdRGB8Palette[cp].rgb8Green,
-					bd->bdRGB8Palette[cp].rgb8Blue ) )
-		    { XDEB(image.colorTable[cp].c_color); return -1;	}
+		if  ( bmXpmSetColor( image.colorTable+ col, charactersPerPixel,
+					BMXPMBytes+ col,
+					cp->cpColors[col].rgb8Red,
+					cp->cpColors[col].rgb8Green,
+					cp->cpColors[col].rgb8Blue ) )
+		    { XDEB(image.colorTable[col].c_color); return -1;	}
 		}
 
 	    break;
@@ -527,19 +519,19 @@ int bmWriteXpmFile(	const char *			filename,
 		{ LXDEB(ret,image.data); return -1;	}
 
 	    if  ( bmXpmAllocColors( &image, image.ncolors ) )
-		{ LDEB(bd->bdColorCount); bmXpmClean( &image ); return -1; }
+		{ LDEB(image.ncolors); bmXpmClean( &image ); return -1; }
 
-	    for ( cp= 0; cp < image.ncolors; cp++ )
+	    for ( col= 0; col < image.ncolors; col++ )
 		{
-		int	gray= ( 255* cp )/ ( image.ncolors- 1 );
+		int	gray= ( 255* col )/ ( image.ncolors- 1 );
 
 		if  ( bd->bdColorEncoding == BMcoBLACKWHITE )
 		    { gray= 255- gray;	}
 
-		if  ( bmXpmSetColor( image.colorTable+ cp, charactersPerPixel,
-					BMXPMBytes+ cp,
+		if  ( bmXpmSetColor( image.colorTable+ col, charactersPerPixel,
+					BMXPMBytes+ col,
 					gray, gray, gray ) )
-		    { XDEB(image.colorTable[cp].c_color); return -1;	}
+		    { XDEB(image.colorTable[col].c_color); return -1;	}
 		}
 
 	    break;
@@ -615,10 +607,9 @@ int bmWriteXpmFile(	const char *			filename,
 	    LDEB(bd->bdBitsPerPixel); return -1;
 	}
 
-
-    ret= XpmWriteFileFromXpmImage( (char *)filename, &image, (XpmInfo *)0 );
+    ret= XpmWriteFileFromXpmImage( (char *)fn, &image, (XpmInfo *)0 );
     if  ( ret != XpmSuccess )
-	{ SSDEB(filename,XpmGetErrorString(ret)); ret= -1;	}
+	{ SSDEB(fn,XpmGetErrorString(ret)); ret= -1;	}
     else{ ret= 0;	}
 
     bmXpmClean( &image );
@@ -626,9 +617,8 @@ int bmWriteXpmFile(	const char *			filename,
     return ret;
     }
 
-int bmCanWriteXpmFile( const BitmapDescription *	bd,
-			int				privateFormat,
-			double				compressionFactor )
+int bmCanWriteXpmFile(	const BitmapDescription *	bd,
+			int				privateFormat )
     {
     if  ( bd->bdColorEncoding == BMcoBLACKWHITE	||
 	  bd->bdColorEncoding == BMcoWHITEBLACK	)
@@ -640,8 +630,10 @@ int bmCanWriteXpmFile( const BitmapDescription *	bd,
     if  ( bd->bdColorEncoding != BMcoRGB8PALETTE )
 	{ return -1;	}
 
-    if  ( bd->bdColorCount >= sizeof(BMXPMBytes) )
-	{ LLDEB(bd->bdColorCount,sizeof(BMXPMBytes)); return -1; }
+    if  ( bd->bdPalette.cpColorCount >= sizeof(BMXPMBytes) )
+	{ LLDEB(bd->bdPalette.cpColorCount,sizeof(BMXPMBytes)); return -1; }
 
     return 0;
     }
+
+#   endif

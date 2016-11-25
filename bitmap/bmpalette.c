@@ -1,8 +1,8 @@
 #   include	"bitmapConfig.h"
 
 #   include	"bmintern.h"
-#   include	<limits.h>
-#   include	<float.h>
+#   include	<stdlib.h>
+#   include	<string.h>
 #   include	<appDebugon.h>
 
 /************************************************************************/
@@ -21,7 +21,7 @@ int bmExpandRGB8Palette(	unsigned char *		to,
 				const unsigned char *	from,
 				int			pixelsWide,
 				int			bitsPerPixel,
-				const RGB8Color *	palette,
+				const ColorPalette *	cp,
 				int			hasAlpha )
     {
     unsigned char	f1, f2;
@@ -42,7 +42,7 @@ int bmExpandRGB8Palette(	unsigned char *		to,
 		{
 		*(to--)= *(from--);
 		f1= *(from--);
-		setBytes(to,palette,f1);
+		setBytes(to,cp->cpColors,f1);
 		pixelsWide--;
 		}
 	    break;
@@ -54,7 +54,7 @@ int bmExpandRGB8Palette(	unsigned char *		to,
 		    {
 		    f1= *(from--);
 		    *(to--)= ( ( f1 & 0x0f ) << 4 ) | ( f1 & 0x0f );
-		    f2= ( f1 >> 4 ) & 0x0f;	setBytes(to,palette,f2);
+		    f2= ( f1 >> 4 ) & 0x0f;	setBytes(to,cp->cpColors,f2);
 		    pixelsWide--;
 		    }
 		}
@@ -62,7 +62,7 @@ int bmExpandRGB8Palette(	unsigned char *		to,
 		while( pixelsWide > 0 )
 		    {
 		    f1= *(from--);
-		    setBytes(to,palette,f1);
+		    setBytes(to,cp->cpColors,f1);
 		    pixelsWide--;
 		    }
 		}
@@ -74,8 +74,10 @@ int bmExpandRGB8Palette(	unsigned char *		to,
 	    while( pixelsWide > 0 )
 		{
 		f1= *(from--);
-		f2=   f1        & 0x0f;	setBytes(to,palette,f2);
-		f2= ( f1 >> 4 ) & 0x0f;	setBytes(to,palette,f2);
+		f2=   f1        & 0x0f;	setBytes(to,cp->cpColors,f2);
+		if  ( pixelsWide == 1 )
+		    { break;	}
+		f2= ( f1 >> 4 ) & 0x0f;	setBytes(to,cp->cpColors,f2);
 		pixelsWide -= 2;
 		}
 	    break;
@@ -86,14 +88,14 @@ int bmExpandRGB8Palette(	unsigned char *		to,
 		while( pixelsWide > 0 )
 		    {
 		    f1= *(from--);
-		    f2=   f1        & 0x01;	setAlpha(to,palette,f2);
-		    f2= ( f1 >> 1 ) & 0x01;	setBytes(to,palette,f2);
-		    f2= ( f1 >> 2 ) & 0x01;	setAlpha(to,palette,f2);
-		    f2= ( f1 >> 3 ) & 0x01;	setBytes(to,palette,f2);
-		    f2= ( f1 >> 4 ) & 0x01;	setAlpha(to,palette,f2);
-		    f2= ( f1 >> 5 ) & 0x01;	setBytes(to,palette,f2);
-		    f2= ( f1 >> 6 ) & 0x01;	setAlpha(to,palette,f2);
-		    f2= ( f1 >> 7 ) & 0x01;	setBytes(to,palette,f2);
+		    f2=   f1        & 0x01;	setAlpha(to,cp->cpColors,f2);
+		    f2= ( f1 >> 1 ) & 0x01;	setBytes(to,cp->cpColors,f2);
+		    f2= ( f1 >> 2 ) & 0x01;	setAlpha(to,cp->cpColors,f2);
+		    f2= ( f1 >> 3 ) & 0x01;	setBytes(to,cp->cpColors,f2);
+		    f2= ( f1 >> 4 ) & 0x01;	setAlpha(to,cp->cpColors,f2);
+		    f2= ( f1 >> 5 ) & 0x01;	setBytes(to,cp->cpColors,f2);
+		    f2= ( f1 >> 6 ) & 0x01;	setAlpha(to,cp->cpColors,f2);
+		    f2= ( f1 >> 7 ) & 0x01;	setBytes(to,cp->cpColors,f2);
 		    pixelsWide -= 4;
 		    }
 		}
@@ -101,10 +103,10 @@ int bmExpandRGB8Palette(	unsigned char *		to,
 		while( pixelsWide > 0 )
 		    {
 		    f1= *(from--);
-		    f2=   f1        & 0x03;	setBytes(to,palette,f2);
-		    f2= ( f1 >> 2 ) & 0x03;	setBytes(to,palette,f2);
-		    f2= ( f1 >> 4 ) & 0x03;	setBytes(to,palette,f2);
-		    f2= ( f1 >> 6 ) & 0x03;	setBytes(to,palette,f2);
+		    f2=   f1        & 0x03;	setBytes(to,cp->cpColors,f2);
+		    f2= ( f1 >> 2 ) & 0x03;	setBytes(to,cp->cpColors,f2);
+		    f2= ( f1 >> 4 ) & 0x03;	setBytes(to,cp->cpColors,f2);
+		    f2= ( f1 >> 6 ) & 0x03;	setBytes(to,cp->cpColors,f2);
 		    pixelsWide -= 4;
 		    }
 		}
@@ -114,14 +116,14 @@ int bmExpandRGB8Palette(	unsigned char *		to,
 	    while( pixelsWide > 0 )
 		{
 		f1= *(from--);
-		f2=   f1        & 0x01;	setBytes(to,palette,f2);
-		f2= ( f1 >> 1 ) & 0x01;	setBytes(to,palette,f2);
-		f2= ( f1 >> 2 ) & 0x01;	setBytes(to,palette,f2);
-		f2= ( f1 >> 3 ) & 0x01;	setBytes(to,palette,f2);
-		f2= ( f1 >> 4 ) & 0x01;	setBytes(to,palette,f2);
-		f2= ( f1 >> 5 ) & 0x01;	setBytes(to,palette,f2);
-		f2= ( f1 >> 6 ) & 0x01;	setBytes(to,palette,f2);
-		f2= ( f1 >> 7 ) & 0x01;	setBytes(to,palette,f2);
+		f2=   f1        & 0x01;	setBytes(to,cp->cpColors,f2);
+		f2= ( f1 >> 1 ) & 0x01;	setBytes(to,cp->cpColors,f2);
+		f2= ( f1 >> 2 ) & 0x01;	setBytes(to,cp->cpColors,f2);
+		f2= ( f1 >> 3 ) & 0x01;	setBytes(to,cp->cpColors,f2);
+		f2= ( f1 >> 4 ) & 0x01;	setBytes(to,cp->cpColors,f2);
+		f2= ( f1 >> 5 ) & 0x01;	setBytes(to,cp->cpColors,f2);
+		f2= ( f1 >> 6 ) & 0x01;	setBytes(to,cp->cpColors,f2);
+		f2= ( f1 >> 7 ) & 0x01;	setBytes(to,cp->cpColors,f2);
 		pixelsWide -= 8;
 		}
 	    break;
@@ -133,18 +135,19 @@ int bmExpandRGB8Palette(	unsigned char *		to,
     return 0;
     }
 
-int bmExpandPaletteImage(	BitmapDescription *		bdOut,
-				const BitmapDescription *	bdIn,
-				unsigned char **		pBufOut,
-				const unsigned char *		bufIn,
+int bmExpandPaletteImage(	RasterImage *			riOut,
+				const RasterImage *		riIn,
 				int				ignoredInt )
     {
+    const BitmapDescription *	bdIn= &(riIn->riDescription);
+    int				rval= 0;
     int				row;
     const unsigned char *	from;
     unsigned char *		to;
 
-    BitmapDescription	bd;
-    unsigned char *	buffer;
+    RasterImage			ri;
+
+    bmInitRasterImage( &ri );
 
     switch( bdIn->bdColorEncoding )
 	{
@@ -152,7 +155,7 @@ int bmExpandPaletteImage(	BitmapDescription *		bdOut,
 	case BMcoWHITEBLACK:
 	case BMcoRGB:
 	    LDEB(bdIn->bdColorEncoding);
-	    return -1;
+	    rval= -1; goto ready;
 
 	case BMcoRGB8PALETTE:
 	    break;
@@ -161,49 +164,45 @@ int bmExpandPaletteImage(	BitmapDescription *		bdOut,
     /************************************************************/
     /*  Derive properties of output bitmap from input.		*/
     /************************************************************/
-    bmInitDescription( &bd );
-    bmCopyDescription( &bd, bdIn );
+    if  ( bmCopyDescription( &(ri.riDescription), bdIn ) )
+	{ LDEB(1); rval= -1; goto ready;	}
 
-    bd.bdColorEncoding= BMcoRGB;
-    bd.bdBitsPerSample= 8;
+    ri.riDescription.bdColorEncoding= BMcoRGB;
+    ri.riDescription.bdBitsPerSample= 8;
     /*  Done by copy..
-    bd.bdHasAlpha= bdIn->bdHasAlpha;
+    ri.riDescription.bdHasAlpha= bdIn->bdHasAlpha;
     */
 
-    if  ( bmCalculateSizes( &bd ) )
-	{ LDEB(1); return -1;	}
+    if  ( bmCalculateSizes( &(ri.riDescription) ) )
+	{ LDEB(1); rval= -1; goto ready;	}
 
     /************************************************************/
     /*  Allocate new buffer.					*/
     /************************************************************/
-    buffer= (unsigned char *)malloc( bd.bdBufferLength );
-    if  ( ! buffer )
-	{
-	LLDEB(bd.bdBufferLength,buffer);
-	bmCleanDescription( &bd );
-	return -1;
-	}
+    ri.riBytes= (unsigned char *)malloc( ri.riDescription.bdBufferLength );
+    if  ( ! ri.riBytes )
+	{ LLDEB(ri.riDescription.bdBufferLength,ri.riBytes); rval= -1; goto ready; }
 
-    from= bufIn; to= buffer;
+    from= riIn->riBytes; to= ri.riBytes;
     for ( row= 0; row < bdIn->bdPixelsHigh; row++ )
 	{
 	if  ( bmExpandRGB8Palette( to, from,
 				    bdIn->bdPixelsWide, bdIn->bdBitsPerPixel,
-				    bdIn->bdRGB8Palette, bdIn->bdHasAlpha ) )
-	    {
-	    LDEB(1);
-	    bmCleanDescription( &bd ); free( buffer );
-	    return -1;
-	    }
+				    &(bdIn->bdPalette), bdIn->bdHasAlpha ) )
+	    { LDEB(1); rval= -1; goto ready;	}
 
 	from += bdIn->bdBytesPerRow;
-	to += bd.bdBytesPerRow;
+	to += ri.riDescription.bdBytesPerRow;
 	}
 
-    *pBufOut= buffer;
-    *bdOut= bd;
+    /* steal */
+    *riOut= ri; bmInitRasterImage( &ri );
 
-    return 0;
+  ready:
+
+    bmCleanRasterImage( &ri );
+
+    return rval;
     }
 
 /************************************************************************/
@@ -223,13 +222,12 @@ int bmMakeGrayPalette(		const BitmapDescription *	bd,
 	{
 	case BMcoRGB8PALETTE:
 	    LDEB(bd->bdColorEncoding); return -1;
-	    break;
 
 	case BMcoBLACKWHITE:
-	    switch( bd->bdBitsPerPixel )
+	    switch( bd->bdBitsPerSample )
 		{
 		case 1: case 2: case 4: case 8:
-		    colorCount= 1 << bd->bdBitsPerPixel;
+		    colorCount= 1 << bd->bdBitsPerSample;
 
 		    for ( i= 0; i < colorCount; i++ )
 			{
@@ -243,15 +241,15 @@ int bmMakeGrayPalette(		const BitmapDescription *	bd,
 		    *pColorCount= colorCount; return 0;
 
 		default:
-		    LLDEB(bd->bdColorEncoding,bd->bdBitsPerPixel);
+		    LLDEB(bd->bdColorEncoding,bd->bdBitsPerSample);
 		    return -1;
 		}
 
 	case BMcoWHITEBLACK:
-	    switch( bd->bdBitsPerPixel )
+	    switch( bd->bdBitsPerSample )
 		{
 		case 1: case 2: case 4: case 8:
-		    colorCount= 1 << bd->bdBitsPerPixel;
+		    colorCount= 1 << bd->bdBitsPerSample;
 
 		    for ( i= 0; i < colorCount; i++ )
 			{
@@ -264,14 +262,12 @@ int bmMakeGrayPalette(		const BitmapDescription *	bd,
 		    *pColorCount= colorCount; return 0;
 
 		default:
-		    LLDEB(bd->bdColorEncoding,bd->bdBitsPerPixel);
+		    LLDEB(bd->bdColorEncoding,bd->bdBitsPerSample);
 		    return -1;
 		}
-	    break;
 
 	case BMcoRGB:
 	    LDEB(bd->bdColorEncoding); return -1;
-	    break;
 
 	default:
 	    LDEB(bd->bdColorEncoding); return -1;
@@ -470,4 +466,21 @@ int bmInflateTo8bitGray(	unsigned char *			to,
 	default:
 	    LDEB(bitsPerPixel); return -1;
 	}
+    }
+
+/************************************************************************/
+/*									*/
+/*  Find/Allocate a color in the palette of a palette image. Only do so	*/
+/*  if there is space in the palette.					*/
+/*									*/
+/************************************************************************/
+
+int bmPaletteColor(	BitmapDescription *		bd,
+			int				r,
+			int				g,
+			int				b,
+			int				a )
+    {
+    return utilPaletteColorIndex( &(bd->bdPalette), 1<<bd->bdBitsPerPixel,
+								r, g, b, a );
     }

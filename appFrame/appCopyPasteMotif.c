@@ -10,7 +10,7 @@
 #   include	<stdio.h>
 #   include	<stdlib.h>
 
-#   include	<appFrame.h>
+#   include	"appFrame.h"
 
 #   include	<appDebugon.h>
 
@@ -81,6 +81,8 @@ static void appDocGotPasteReply(	Widget			w,
 
     Display *			display= XtDisplay( w );
 
+    char *			propertyName= (char *)0;
+
     /*
     appDebug( "PASTE " );
     appDebug( "selection= %s target= %s, property= %s\n",
@@ -98,7 +100,11 @@ static void appDocGotPasteReply(	Widget			w,
 				    selEvent->selection, selEvent->target ) )
 	{ LDEB(1); return;	}
 
-    if  ( selEvent->property == None )
+    if  ( selEvent->property != None )
+	{ propertyName= XGetAtomName( display, selEvent->property ); }
+
+    if  ( selEvent->property == None				||
+	  ( propertyName && ! strcmp( propertyName, "NONE" ) )	)
 	{
 	ea->eaGotPaste= -1;
 
@@ -249,7 +255,8 @@ APP_GIVE_COPY( appDocReplyToCopyRequest, w, event, voided )
 	{
 #	define		FST		( 2* 10L )
 
-	Atom *		atomPairs;
+	unsigned char *	vatomPairs;
+	Atom *		xatomPairs;
 
 	int		ret;
 	int		i;
@@ -263,20 +270,24 @@ APP_GIVE_COPY( appDocReplyToCopyRequest, w, event, voided )
 		reqEvent->property,
 		0L, FST, False, AnyPropertyType,
 		&typeFound, &formatFound,
-		&itemsReturned, &itemsLeft, (unsigned char **)&atomPairs );
+		&itemsReturned, &itemsLeft, &vatomPairs );
+
+	xatomPairs= (Atom *)vatomPairs;
 
 	if  ( ret != Success )
 	    { LLDEB(ret,Success); goto refuse;	}
 
 	if  ( itemsLeft > 0 )
 	    {
-	    XFree( atomPairs );
+	    XFree( vatomPairs );
 
 	    ret= XGetWindowProperty( display, reqEvent->requestor,
 		    reqEvent->property,
 		    0L, FST+ itemsLeft, False, AnyPropertyType,
 		    &typeFound, &formatFound,
-		    &itemsReturned, &itemsLeft, (unsigned char **)&atomPairs );
+		    &itemsReturned, &itemsLeft, &vatomPairs );
+
+	    xatomPairs= (Atom *)vatomPairs;
 	    }
 
 	if  ( ret != Success )
@@ -295,20 +306,20 @@ APP_GIVE_COPY( appDocReplyToCopyRequest, w, event, voided )
 	    if  ( appGetResponseType( &ast, &astt, &targetFound,
 					ea->eaDocSelectionTypes,
 					ea->eaDocSelectionTypeCount,
-					reqEvent->selection, atomPairs[i] ) )
+					reqEvent->selection, xatomPairs[i] ) )
 		{ LDEB(1); goto refuse;	}
 
 	    if  ( ! astt->asttGiveCopy )
 		{ XDEB(astt->asttGiveCopy); goto refuse;	}
 
 	    evPaste.xselection.requestor= response.xselection.requestor;
-	    evPaste.xselection.property= atomPairs[i+1];
-	    evPaste.xselection.target= atomPairs[i];
+	    evPaste.xselection.property= xatomPairs[i+1];
+	    evPaste.xselection.target= xatomPairs[i];
 
 	    (*astt->asttGiveCopy)( w, ed, &evPaste, pRefused );
 	    }
 
-	XFree( atomPairs );
+	XFree( vatomPairs );
 	XSendEvent( display, response.xselection.requestor, False, 0L,
 								&response );
 	return;
@@ -422,12 +433,14 @@ APP_EVENT_HANDLER_H( appDocCopyPasteHandler, w, voided, event )
 	case NoExpose:
 	    break;
 
+	case ClientMessage:
 	default:
 	    {
 	    EditDocument *	ed= (EditDocument *)voided;
 
 	    appDebug( "SELECTION \"%s\": %s\n",
-			    ed->edTitle, APP_X11EventNames[event->type] );
+			    utilMemoryBufferGetString( &(ed->edTitle) ),
+			    APP_X11EventNames[event->type] );
 	    *pRefused= True;
 	    }
 	    break;
@@ -471,27 +484,38 @@ void appAppGotPasteCall(	Widget		w,
     return;
     }
 
+int appDocReleaseSelection(	EditDocument *			ed,
+				const char *			selection )
+    {
+    EditApplication *		ea= ed->edApplication;
+    Display *			display= XtDisplay( ed->edDocumentWidget.dwWidget );
+    const AppSelectionType *	ast;
+
+    ast= appDocGetSelectionType( ea, selection );
+    if  ( ! ast )
+	{ SXDEB(selection,ast); return -1;	}
+
+    XSetSelectionOwner( display, ast->astSelectionAtom, None, CurrentTime );
+
+    return 0;
+    }
+
 int appDocOwnSelection(		EditDocument *			ed,
 				const char *			selection,
 				AppSelectionTargetType * 	targets,
 				int				targetCount )
     {
     int				i;
-    AppSelectionType *		ast;
+    const AppSelectionType *	ast;
 
     EditApplication *		ea= ed->edApplication;
-    Display *			display= XtDisplay( ed->edDocumentWidget );
-    Window			win= XtWindow( ed->edDocumentWidget );
+    Display *			display= XtDisplay( ed->edDocumentWidget.dwWidget );
+    Window			win= XtWindow( ed->edDocumentWidget.dwWidget );
 
-    ast= ea->eaDocSelectionTypes;
-    for ( i= 0; i < ea->eaDocSelectionTypeCount; ast++, i++ )
-	{
-	if  ( ! strcmp( ast->astSelectionString, selection ) )
-	    { break;	}
-	}
 
-    if  ( i >= ea->eaDocSelectionTypeCount )
-	{ SDEB(selection); return -1; }
+    ast= appDocGetSelectionType( ea, selection );
+    if  ( ! ast )
+	{ SXDEB(selection,ast); return -1;	}
 
     if  ( ast->astTargetTypeCount == 0 )
 	{ SLDEB(selection,ast->astTargetTypeCount); return -1;	}
@@ -501,8 +525,8 @@ int appDocOwnSelection(		EditDocument *			ed,
 	if  ( targets[i].asttTargetAtom == None )
 	    {
 	    targets[i].asttTargetAtom=
-				XInternAtom( XtDisplay( ed->edDocumentWidget ),
-				targets[i].asttTargetString, False );
+		    XInternAtom( XtDisplay( ed->edDocumentWidget.dwWidget ),
+		    targets[i].asttTargetString, False );
 
 	    if  ( ! targets[i].asttTargetAtom )
 		{
@@ -540,23 +564,16 @@ static int appAskForPaste(	Widget			w,
 				EditApplication *	ea,
 				const char *		selection )
     {
-    int				i;
-    AppSelectionType *	ast;
+    const AppSelectionType *	ast;
 
     Display *			display= XtDisplay( w );
     Window			win= XtWindow( w );
 
     ea->eaGotPaste= 0;
 
-    ast= ea->eaDocSelectionTypes;
-    for ( i= 0; i < ea->eaDocSelectionTypeCount; ast++, i++ )
-	{
-	if  ( ! strcmp( ast->astSelectionString, selection ) )
-	    { break;	}
-	}
-
-    if  ( i >= ea->eaDocSelectionTypeCount )
-	{ SDEB(selection); return -1; }
+    ast= appDocGetSelectionType( ea, selection );
+    if  ( ! ast )
+	{ SXDEB(selection,ast); return -1;	}
 
     if  ( ast->astTargetTypeCount == 0 )
 	{ SLDEB(selection,ast->astTargetTypeCount); return -1;	}
@@ -595,7 +612,7 @@ static int appAskForPaste(	Widget			w,
 int appDocAskForPaste(		EditDocument *		ed,
 				const char *		selection )
     {
-    return appAskForPaste( ed->edDocumentWidget,
+    return appAskForPaste( ed->edDocumentWidget.dwWidget,
 				    ed->edApplication, selection );
     }
 				

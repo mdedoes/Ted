@@ -6,6 +6,9 @@
 
 #   include	<appSystem.h>
 
+#   include	"drawUtilGtk.h"
+#   include	"drawImpl.h"
+
 #   include	<appDebugon.h>
 
 /************************************************************************/
@@ -20,20 +23,10 @@
 
 #   ifdef USE_GTK
 
-
 #   include	<gdk/gdkx.h>
-#   define	GTK_AND_X11_INCLUDES	1
-
 #   include	<X11/Xresource.h>
 
 #   include	"appFrame.h"
-#   include	<appGeoString.h>
-
-void appIconifyShellWidget(		APP_WIDGET		shell )
-    {
-    XIconifyWindow( GDK_DISPLAY(),
-	GDK_WINDOW_XWINDOW( shell->window ), DefaultScreen( GDK_DISPLAY() ) );
-    }
 
 void appCopyPixmapValue(	APP_SELECTION_EVENT *	gsd,
 				APP_BITMAP_IMAGE	pixmapCopied )
@@ -85,7 +78,7 @@ void appDrawGtkSetXFillRule(	GdkGC *		gc,
 /*									*/
 /************************************************************************/
 
-#   define	NAML	256
+#   define	NAML	500
 
 void appGuiGetResourceValuesGtkX(
 				EditApplication *		ea,
@@ -101,13 +94,19 @@ void appGuiGetResourceValuesGtkX(
     int				hl;
 
     static const char		xdefs[]= ".Xdefaults";
+    /*
     const int			xdefl= sizeof( xdefs )- 1;
+    */
 
     static const char		xlibs[]= "/usr/lib/X11";
     const int			xlibl= sizeof( xlibs )- 1;
 
     static const char		adefs[]= "app-defaults";
     const int			adefl= sizeof( adefs )- 1;
+
+    MemoryBuffer		home;
+
+    utilInitMemoryBuffer( &home );
 
     if  ( ! initialized )
 	{
@@ -149,7 +148,7 @@ void appGuiGetResourceValuesGtkX(
 	/*  5: PATH.. TODO  */
 	db= (XrmDatabase)0;
 	rms= getenv( "XAPPLRESDIR" );
-	if  ( rms && strlen( rms )+ 1+ strlen( lang )+ 1+ appl <= NAML )
+	if  ( lang && rms && strlen( rms )+ 1+ strlen( lang )+ 1+ appl <= NAML )
 	    {
 	    sprintf( name, "%s/%s/%s", rms, lang, ea->eaApplicationName );
 	    db= XrmGetFileDatabase( name );
@@ -157,9 +156,11 @@ void appGuiGetResourceValuesGtkX(
 
 	if  ( ! db )
 	    {
-	    hl= appHomeDirectory( name, NAML- appl- 1 );
+	    appHomeDirectory( &home );
+	    hl= home.mbSize;
 	    if  ( hl > 0 )
 		{
+		strcpy( name, utilMemoryBufferGetString( &home ) );
 		name[hl]= '/'; hl++;
 		strcpy( name+ hl, ea->eaApplicationName );
 
@@ -180,8 +181,8 @@ void appGuiGetResourceValuesGtkX(
 		{ XrmMergeDatabases( db, &dbX );	}
 	    }
 	else{
-	    hl= appHomeDirectory( name, NAML- xdefl- 1 );
-
+	    appHomeDirectory( &home );
+	    hl= home.mbSize;
 	    if  ( hl > 0 )
 		{
 		name[hl]= '/'; hl++;
@@ -248,7 +249,50 @@ void appGuiGetResourceValuesGtkX(
 	    }
 	}
 
+    utilCleanMemoryBuffer( &home );
+
     return;
     }
-				
+
+# ifdef USE_XFT
+
+XftDraw * appGtkXftDrawCreate(	GdkDrawable *		drawable,
+				AppXftColorList *	axcl )
+    {
+    GdkVisual *		gdk_vis= gdk_visual_get_system();
+    GdkColormap *	gdk_cmap= gdk_colormap_get_system();
+
+    Drawable		x_drawable;
+    XftDraw *		xftDraw;
+
+    if  ( ! drawable )
+	{ XDEB(drawable); return (XftDraw *)0;	}
+
+    axcl->axclDisplay= GDK_WINDOW_XDISPLAY( drawable );
+
+#   if GTK_MAJOR_VERSION >= 2
+
+    x_drawable= GDK_WINDOW_XID( drawable );
+    axcl->axclVisual= gdk_x11_visual_get_xvisual( gdk_vis );
+    axcl->axclColormap= gdk_x11_colormap_get_xcolormap( gdk_cmap );
+
+#   else
+
+    x_drawable= GDK_WINDOW_XWINDOW( drawable );
+    axcl->axclVisual= GDK_VISUAL_XVISUAL( gdk_vis );
+    axcl->axclColormap= GDK_COLORMAP_XCOLORMAP( gdk_cmap );
+
+#   endif
+
+    xftDraw= XftDrawCreate( axcl->axclDisplay, x_drawable,
+				    axcl->axclVisual, axcl->axclColormap );
+
+    if  ( ! xftDraw )
+	{ XDEB(xftDraw);	}
+
+    return xftDraw;
+    }
+
+# endif
+
 #   endif

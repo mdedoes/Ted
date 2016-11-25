@@ -7,10 +7,9 @@
 
 #   include	"indConfig.h"
 
-#   include	<charnames.h>
+#   include	<stdlib.h>
 
 #   include	"indlocal.h"
-#   include	<utilFontEncoding.h>
 #   include	<appDebugon.h>
 
 /****************************************************************/
@@ -92,8 +91,7 @@ void indCleanSpellGuessContext(	SpellGuessContext *	sgc )
 /************************************************************************/
 
 int	indNewPossibility(	SpellScanJob *		ssj,
-				int			position,
-				int			firstCharacter )
+				int			position )
     {
     PossibleWord *	next= ssj->ssjPossibleWords;
     PossibleWord *	pw= (PossibleWord *)malloc(sizeof(PossibleWord));
@@ -102,12 +100,11 @@ int	indNewPossibility(	SpellScanJob *		ssj,
 	{ XDEB(pw); return -1;	}
 
     pw->pwStartAt= position;
-    pw->pwInsertionPoint= 1;
+    pw->pwInsertionPoint= 0;
     pw->pwRejectedAt= -1;
     pw->pwAcceptedAt= -1;
     pw->pwNext= next;
-    pw->pwForm[0]= firstCharacter;
-    pw->pwForm[1]= '\0';
+    pw->pwForm[0]= '\0';
 
     ssj->ssjPossibleWords= pw;
 
@@ -119,7 +116,7 @@ int	indNewPossibility(	SpellScanJob *		ssj,
 /****************************************************************/
 
 void indAddCharacterToPossibilities(	SpellScanJob *	ssj,
-					int		c	)
+					int		c )
     {
     PossibleWord *	pw= ssj->ssjPossibleWords;
 
@@ -153,7 +150,7 @@ void indAddCharacterToPossibilities(	SpellScanJob *	ssj,
 /************************************************************************/
 
 /*  1  */
-static int indCheckWord(	const unsigned char *	word,
+static int indCheckWord(	const char *		word,
 				SpellCheckContext *	scc,
 				int			asPrefix )
     {
@@ -166,19 +163,18 @@ static int indCheckWord(	const unsigned char *	word,
     if  ( ! asPrefix && scc->sccForgotInd )
 	{
 	/*  a  */
-	if  ( indGet( &accepted, scc->sccForgotInd, word ) >= 0	&&
-	      accepted						)
+	if  ( indGetUtf8( &accepted, scc->sccForgotInd, word ) >= 0	&&
+	      accepted							)
 	    { return -1;	}
 	}
 
     /*  b  */
-    if  ( ! indGetWord( &ignoredHow, scc->sccStaticInd, word, asPrefix,
-				    scc->sccCharKinds, scc->sccCharShifts ) )
+    if  ( ! indGetWord( &ignoredHow, scc->sccStaticInd, word, asPrefix ) )
 	{ return 0;	}
 
     /*  c  */
     if  ( scc->sccLearntInd &&
-	  indGet( &accepted, scc->sccLearntInd, word ) >= 0	&&
+	  indGetUtf8( &accepted, scc->sccLearntInd, word ) >= 0	&&
 	  ( accepted || asPrefix )				)
 	{ return 0; }
 
@@ -189,9 +185,7 @@ static int indCheckWord(	const unsigned char *	word,
 int indCountPossibilities(	SpellScanJob *		ssj,
 				SpellCheckContext *	scc,
 				int			position,
-				int			nextPosition,
-				int			rejectPrefices,
-				int			nextCharacter )
+				int			rejectPrefices )
     {
     PossibleWord *	pw= ssj->ssjPossibleWords;
     int			count= 0;
@@ -221,18 +215,12 @@ int indCountPossibilities(	SpellScanJob *		ssj,
 
 	    if  ( ! rejectedAsPrefix )
 		{
-		pw->pwForm[pw->pwInsertionPoint  ]= nextCharacter;
-		pw->pwForm[pw->pwInsertionPoint+1]= '\0';
 		rejectedAsPrefix= indCheckWord( pw->pwForm, scc, 1 );
 		/* SLDEB(pw->pwForm,rejected); */
 		pw->pwForm[pw->pwInsertionPoint  ]= '\0';
 
 		if  ( rejectedAsPrefix )
-		    {
-		    if  ( rejectedAsWord )
-			{ pw->pwRejectedAt= position;		}
-		    else{ pw->pwRejectedAt= nextPosition;	}
-		    }
+		    { pw->pwRejectedAt= position;	}
 		}
 
 	    if  ( ! rejectedAsWord || ! rejectedAsPrefix )
@@ -257,9 +245,9 @@ void	indLogPossibilities(	SpellScanJob *	ssj	)
 
     while( pw )
 	{
-	appDebug( "\"%s\": Start %d Rejected %d Accepted %d\r\n",
-			pw->pwForm,
-			pw->pwStartAt, pw->pwRejectedAt, pw->pwAcceptedAt );
+	appDebug( "Start %d Rejected %d Accepted %d \"%s\" \r\n",
+			pw->pwStartAt, pw->pwRejectedAt, pw->pwAcceptedAt,
+			pw->pwForm );
 
 	pw= pw->pwNext;
 	}
@@ -271,6 +259,10 @@ void	indLogPossibilities(	SpellScanJob *	ssj	)
 /*									*/
 /*  Cleanup routine: Remove rejected possibilities.			*/
 /*									*/
+/*  1)  Scan the list opto the first possibility that has not yet been	*/
+/*	rejected.							*/
+/*  2)  Also remove rejected alternatives from the rest of the list.	*/
+/*									*/
 /************************************************************************/
 
 void indRejectPossibilities(	int *			pAcceptedPos,
@@ -281,6 +273,7 @@ void indRejectPossibilities(	int *			pAcceptedPos,
     PossibleWord *	rval= pw;
     PossibleWord *	next;
 
+    /*  1  */
     while( rval						&&
 	   rval->pwRejectedAt != -1			&&
 	   rval->pwRejectedAt >= rval->pwAcceptedAt	)
@@ -295,6 +288,7 @@ void indRejectPossibilities(	int *			pAcceptedPos,
 	rval= next;
 	}
 
+    /*  2  */
     if  ( rval )
 	{
 	pw= rval;
@@ -302,7 +296,7 @@ void indRejectPossibilities(	int *			pAcceptedPos,
 	    {
 	    next= pw->pwNext;
 
-	    while( next					&&
+	    while( next						&&
 		   next->pwRejectedAt != -1			&&
 		   next->pwRejectedAt >= next->pwAcceptedAt	)
 		{
@@ -365,75 +359,4 @@ PossibleWord * indMaximalPossibility(	SpellScanJob *	ssj	)
 	}
 
     return rval;
-    }
-
-/************************************************************************/
-/*									*/
-/*  Initialise character classification.				*/
-/*									*/
-/************************************************************************/
-
-void indSpellIso1CharacterKinds(	SpellCheckContext *	scc )
-    {
-    int		i;
-
-    memset( scc->sccCharKinds, 0, 256 );
-    for ( i= 0; i < 256; i++ )
-	{ scc->sccCharShifts[i]= i; }
-
-    utilSetLatin1CharacterKinds( scc->sccCharKinds, scc->sccCharShifts );
-
-    return;
-    }
-
-void indSpellIso2CharacterKinds(	SpellCheckContext *	scc )
-    {
-    int		i;
-
-    memset( scc->sccCharKinds, 0, 256 );
-    for ( i= 0; i < 256; i++ )
-	{ scc->sccCharShifts[i]= i; }
-
-    utilSetLatin2CharacterKinds( scc->sccCharKinds, scc->sccCharShifts );
-
-    return;
-    }
-
-void indSpellIso5CharacterKinds(	SpellCheckContext *	scc )
-    {
-    int		i;
-
-    memset( scc->sccCharKinds, 0, 256 );
-    for ( i= 0; i < 256; i++ )
-	{ scc->sccCharShifts[i]= i; }
-
-    utilSetLatin5CharacterKinds( scc->sccCharKinds, scc->sccCharShifts );
-
-    return;
-    }
-
-void indSpellIso7CharacterKinds(	SpellCheckContext *	scc )
-    {
-    int		i;
-
-    memset( scc->sccCharKinds, 0, 256 );
-    for ( i= 0; i < 256; i++ )
-	{ scc->sccCharShifts[i]= i; }
-
-    utilSetLatin7CharacterKinds( scc->sccCharKinds, scc->sccCharShifts );
-
-    return;
-    }
-
-void indSpellKoi8rCharacterKinds(	SpellCheckContext *	scc )
-    {
-    int		i;
-
-    memset( scc->sccCharKinds, 0, 256 );
-    for ( i= 0; i < 256; i++ )
-	{ scc->sccCharShifts[i]= i; }
-
-    utilSetKoi8rCharacterKinds( scc->sccCharKinds, scc->sccCharShifts );
-
-    return;
     }

@@ -35,7 +35,7 @@ typedef struct DebugedInputStream
 
 static int sioInDebugReadBytes(	void *		voiddis,
 				unsigned char *	buffer,
-				int		count )
+				unsigned int	count )
     {
     DebugedInputStream *	dis= (DebugedInputStream *)voiddis;
     int				done= 0;
@@ -65,7 +65,7 @@ SimpleInputStream * sioInDebugOpen(	SimpleInputStream *	sisIn )
     SimpleInputStream *		sis;
     DebugedInputStream *		dis;
 
-    dis= malloc( sizeof(DebugedInputStream) );
+    dis= (DebugedInputStream *)malloc( sizeof(DebugedInputStream) );
     if  ( ! dis )
 	{ XDEB(dis); return (SimpleInputStream *)0;	}
 
@@ -109,14 +109,13 @@ SimpleOutputStream * sioOutDebugOpen(	SimpleOutputStream *	sosOut )
     SimpleOutputStream *	sos;
     DebuggingOutputStream *	dos;
 
-    dos= malloc( sizeof(DebugedInputStream) );
+    dos= (DebuggingOutputStream *)malloc( sizeof(DebuggingOutputStream) );
     if  ( ! dos )
 	{ XDEB(dos); return (SimpleOutputStream *)0;	}
 
     dos->dosSosOut= sosOut;
 
-    sos= sioOutOpen( (void *)dos, sioOutDebugWriteBytes,
-						(SIOoutSEEK)0, sioDebugClose );
+    sos= sioOutOpen( (void *)dos, sioOutDebugWriteBytes, sioDebugClose );
 
     if  ( ! sos )
 	{ XDEB(sos); free( dos ); return (SimpleOutputStream *)0; }
@@ -130,19 +129,18 @@ SimpleOutputStream * sioOutDebugOpen(	SimpleOutputStream *	sosOut )
 /*									*/
 /************************************************************************/
 
-SimpleOutputStream * sioOutAppDebugOpen()
+SimpleOutputStream * sioOutAppDebugOpen( void )
     {
     SimpleOutputStream *	sos;
     DebuggingOutputStream *	dos;
 
-    dos= malloc( sizeof(DebugedInputStream) );
+    dos= (DebuggingOutputStream *)malloc( sizeof(DebuggingOutputStream) );
     if  ( ! dos )
 	{ XDEB(dos); return (SimpleOutputStream *)0;	}
 
     dos->dosSosOut= (SimpleOutputStream *)0;
 
-    sos= sioOutOpen( (void *)dos, sioOutDebugWriteBytes,
-						(SIOoutSEEK)0, sioDebugClose );
+    sos= sioOutOpen( (void *)dos, sioOutDebugWriteBytes, sioDebugClose );
 
     if  ( ! sos )
 	{ XDEB(sos); free( dos ); return (SimpleOutputStream *)0; }

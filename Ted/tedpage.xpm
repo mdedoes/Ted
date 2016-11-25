@@ -1,5 +1,5 @@
 /* XPM */
-static char * tedpage_xpm[] = {
+static const char * tedpage_xpm[] = {
 "64 64 6 1",
 " 	c #FFFFFFFFFFFF",
 ".	c #51515151FBFB",

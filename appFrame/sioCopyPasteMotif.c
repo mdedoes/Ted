@@ -8,7 +8,7 @@
 
 #   include	<stdlib.h>
 
-#   include	<sioXprop.h>
+#   include	"sioXprop.h"
 
 #   include	<appDebugon.h>
 
@@ -17,7 +17,7 @@
 #   include	<X11/Xlib.h>
 #   include	<X11/Xatom.h>
 
-static Atom	XA_XV_CLIPBOARD= None;
+# define ADEB(d,a) SDEB(((a)==None?"None":XGetAtomName((d),(a))))
 
 /************************************************************************/
 /*									*/
@@ -52,7 +52,7 @@ static int sioXpropPasteClose(	void *	voidxps )
 
 static int sioInXpropReadBytes(	void *		voidxps,
 				unsigned char *	buffer,
-				int		count )
+				unsigned int	count )
     {
     XpropPasteStream *	xps= (XpropPasteStream *)voidxps;
 
@@ -117,40 +117,6 @@ SimpleInputStream * sioInOpenPaste(	APP_WIDGET	w,
     return sis;
     }
 
-SimpleInputStream * sioInOpenXvPaste(	APP_WIDGET	w )
-    {
-    Display *			display= XtDisplay( w );
-    int				screen= DefaultScreen( display );
-
-    SimpleInputStream *		sis;
-    XpropPasteStream *		xps;
-
-    if  ( XA_XV_CLIPBOARD == None )
-	{
-	XA_XV_CLIPBOARD= XInternAtom( display, "XV_CLIPBOARD", False );
-	if  ( XA_XV_CLIPBOARD == None )
-	    { XDEB(XA_XV_CLIPBOARD); return (SimpleInputStream *)0;	}
-	}
-
-    xps= (XpropPasteStream *)malloc( sizeof( XpropPasteStream ) );
-    if  ( ! xps )
-	{ XDEB(xps); return (SimpleInputStream *)0;	}
-
-    xps->xpsDisplay= display;
-    xps->xpsWindow= XRootWindow( display, screen );
-    xps->xpsProperty= XA_XV_CLIPBOARD;
-    xps->xpsOffset= 0L;
-    xps->xpsExhausted= 0;
-    xps->xpsDeleteOnClose= 0;
-
-    sis= sioInOpen( (void *)xps, sioInXpropReadBytes, sioXpropPasteClose );
-
-    if  ( ! sis )
-	{ XDEB(sis); free( xps ); return (SimpleInputStream *)0; }
-
-    return sis;
-    }
-
 /************************************************************************/
 /*									*/
 /*  Output.. Copy.							*/
@@ -205,42 +171,7 @@ SimpleOutputStream * sioOutOpenCopy(	APP_WIDGET		w,
     xcs->xcsTarget= selEvent->target;
     xcs->xcsPropMode= PropModeReplace;
 
-    sos= sioOutOpen( (void *)xcs, sioOutCopyWriteBytes,
-					    (SIOoutSEEK)0, sioXpropCopyClose );
-
-    if  ( ! sos )
-	{ XDEB(sos); free( xcs ); return (SimpleOutputStream *)0; }
-
-    return sos;
-    }
-
-SimpleOutputStream * sioOutOpenXvCopy(	APP_WIDGET		w )
-    {
-    Display *			display= XtDisplay( w );
-    int				screen= DefaultScreen( display );
-
-    SimpleOutputStream *	sos;
-    XpropCopyStream *		xcs;
-
-    if  ( ! XA_XV_CLIPBOARD )
-	{
-	XA_XV_CLIPBOARD= XInternAtom( display, "XV_CLIPBOARD", False );
-	if  ( ! XA_XV_CLIPBOARD  )
-	    { XDEB(XA_XV_CLIPBOARD); return (SimpleOutputStream *)0;	}
-	}
-
-    xcs= (XpropCopyStream *)malloc( sizeof( XpropCopyStream ) );
-    if  ( ! xcs )
-	{ XDEB(xcs); return (SimpleOutputStream *)0;	}
-
-    xcs->xcsDisplay= XtDisplay( w );
-    xcs->xcsRequestor= XRootWindow( display, screen );
-    xcs->xcsProperty= XA_XV_CLIPBOARD;
-    xcs->xcsTarget= XA_STRING;
-    xcs->xcsPropMode= PropModeReplace;
-
-    sos= sioOutOpen( (void *)xcs, sioOutCopyWriteBytes,
-					    (SIOoutSEEK)0, sioXpropCopyClose );
+    sos= sioOutOpen( (void *)xcs, sioOutCopyWriteBytes, sioXpropCopyClose );
 
     if  ( ! sos )
 	{ XDEB(sos); free( xcs ); return (SimpleOutputStream *)0; }

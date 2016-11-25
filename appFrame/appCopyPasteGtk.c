@@ -6,16 +6,36 @@
 
 #   include	<stddef.h>
 #   include	<stdio.h>
-#   include	<stdlib.h>
-#   include	<string.h>
 
-#   include	<appFrame.h>
+#   include	"appFrame.h"
 
 #   include	<appDebugon.h>
 
 #   ifdef	USE_GTK
 
-# define ADEB(ev,a) SDEB(((a)==0?"None":gdk_atom_name((a))))
+# define ADEB(a) SDEB(((a)==0?"None":gdk_atom_name((a))))
+
+/************************************************************************/
+
+/* # define LIST_TARGET_TYPES */
+
+# ifdef LIST_TARGET_TYPES
+static GdkAtom targets_atom = GDK_NONE;
+
+static void appAskForTargetTypes(	GtkWidget *		widget,
+					const char *		selection )
+    {
+    GdkAtom	selectionAtom= gdk_atom_intern( selection, TRUE );
+
+    if  ( targets_atom == GDK_NONE )
+	{
+	targets_atom= gdk_atom_intern( "TARGETS", FALSE );
+	}
+
+    gtk_selection_convert (widget, selectionAtom, targets_atom,
+							     GDK_CURRENT_TIME);
+    }
+# endif
 
 /************************************************************************/
 /*									*/
@@ -68,25 +88,35 @@ APP_EVENT_HANDLER_H( appAppGotPasteCall, w, voided, event )
 LDEB(1); return;
     }
 
+int appDocReleaseSelection(	EditDocument *			ed,
+				const char *			selection )
+    {
+    EditApplication *		ea= ed->edApplication;
+    const AppSelectionType *	ast;
+
+    ast= appDocGetSelectionType( ea, selection );
+    if  ( ! ast )
+	{ SXDEB(selection,ast); return -1;	}
+
+    if  ( ! gtk_selection_owner_set( NULL, ast->astSelectionAtom,
+							GDK_CURRENT_TIME ) )
+	{ return -1;	}
+
+    return 0;
+    }
+
 int appDocOwnSelection(		EditDocument *			ed,
 				const char *			selection,
 				AppSelectionTargetType * 	targets,
 				int				targetCount )
     {
     int				i;
-    AppSelectionType *		ast;
-
     EditApplication *		ea= ed->edApplication;
+    const AppSelectionType *	ast;
 
-    ast= ea->eaDocSelectionTypes;
-    for ( i= 0; i < ea->eaDocSelectionTypeCount; ast++, i++ )
-	{
-	if  ( ! strcmp( ast->astSelectionString, selection ) )
-	    { break;	}
-	}
-
-    if  ( i >= ea->eaDocSelectionTypeCount )
-	{ SDEB(selection); return -1; }
+    ast= appDocGetSelectionType( ea, selection );
+    if  ( ! ast )
+	{ SXDEB(selection,ast); return -1;	}
 
     if  ( ast->astTargetTypeCount == 0 )
 	{ SLDEB(selection,ast->astTargetTypeCount); return -1;	}
@@ -106,7 +136,7 @@ int appDocOwnSelection(		EditDocument *			ed,
 		}
 	    }
 
-	gtk_selection_add_target( ed->edDocumentWidget,
+	gtk_selection_add_target( ed->edDocumentWidget.dwWidget,
 						ast->astSelectionAtom,
 						targets[i].asttTargetAtom,
 						0 );
@@ -115,7 +145,7 @@ int appDocOwnSelection(		EditDocument *			ed,
     ed->edTargetTypes= targets;
     ed->edTargetTypeCount= targetCount;
 
-    if  ( ! gtk_selection_owner_set( ed->edDocumentWidget,
+    if  ( ! gtk_selection_owner_set( ed->edDocumentWidget.dwWidget,
 						    ast->astSelectionAtom,
 						    GDK_CURRENT_TIME ) )
 	{ return -1;	}
@@ -133,23 +163,20 @@ static int appAskForPaste(	APP_WIDGET		w,
 				EditApplication *	ea,
 				const char *		selection )
     {
-    int				i;
-    AppSelectionType *	ast;
+    const AppSelectionType *	ast;
 
     ea->eaGotPaste= 0;
 
-    ast= ea->eaDocSelectionTypes;
-    for ( i= 0; i < ea->eaDocSelectionTypeCount; ast++, i++ )
-	{
-	if  ( ! strcmp( ast->astSelectionString, selection ) )
-	    { break;	}
-	}
-
-    if  ( i >= ea->eaDocSelectionTypeCount )
-	{ SDEB(selection); return -1; }
+    ast= appDocGetSelectionType( ea, selection );
+    if  ( ! ast )
+	{ SXDEB(selection,ast); return -1;	}
 
     if  ( ast->astTargetTypeCount == 0 )
 	{ SLDEB(selection,ast->astTargetTypeCount); return -1;	}
+
+#   ifdef LIST_TARGET_TYPES
+    appAskForTargetTypes( w, selection );
+#   endif
 
     if  ( ! gtk_selection_convert( w,
 		/*  selection	*/  ast->astSelectionAtom,
@@ -166,10 +193,10 @@ static int appAskForPaste(	APP_WIDGET		w,
     return 0;
     }
 
-static void appDocGotPasteReply(	GtkWidget *		w,
-					GtkSelectionData *	gsd,
-					guint			time,
-					void *			voided )
+void appDocGotPasteReplyGtk(	GtkWidget *		w,
+				GtkSelectionData *	gsd,
+				guint			time,
+				void *			voided )
     {
     EditDocument *		ed= (EditDocument *)voided;
     EditApplication *		ea= ed->edApplication;
@@ -177,6 +204,20 @@ static void appDocGotPasteReply(	GtkWidget *		w,
     AppSelectionType *		ast;
     AppSelectionTargetType *	astt;
     int				targetFound;
+
+#   ifdef LIST_TARGET_TYPES
+    if  ( gsd->target == targets_atom )
+	{
+	int		t;
+	GdkAtom *	atoms= (GdkAtom *)gsd->data;
+
+	for ( t= 0; t < gsd->length/sizeof(GdkAtom); t++ )
+	    {
+boe
+	    ADEB(atoms[t]);
+	    }
+	}
+#   endif
 
     if  ( appGetResponseType( &ast, &astt, &targetFound,
 					    ea->eaDocSelectionTypes,
@@ -206,7 +247,7 @@ static void appDocGotPasteReply(	GtkWidget *		w,
 	}
     }
 
-static void appAppGotPaste(	GtkWidget *		w,
+void appAppGotPasteReplyGtk(	GtkWidget *		w,
 				GtkSelectionData *	gsd,
 				guint			time,
 				void *			voidea )
@@ -220,20 +261,8 @@ ea->eaGotPaste= 1;
 int appDocAskForPaste(		EditDocument *		ed,
 				const char *		selection )
     {
-    int		rval;
-    guint	id;
-
-    id= gtk_signal_connect( GTK_OBJECT( ed->edDocumentWidget ),
-					"selection_received",
-					(GtkSignalFunc)appDocGotPasteReply,
-					(void *)ed );
-
-    rval= appAskForPaste( ed->edDocumentWidget,
+    return appAskForPaste( ed->edDocumentWidget.dwWidget,
 					ed->edApplication, selection );
-
-    gtk_signal_disconnect( GTK_OBJECT( ed->edDocumentWidget ), id );
-
-    return rval;
     }
 
 /*  2  */
@@ -244,9 +273,9 @@ int appAppAskForPaste(		EditApplication *	ea,
     guint	id;
 
     id= gtk_signal_connect( GTK_OBJECT( ea->eaToplevel.atTopWidget ),
-						"selection_received",
-						(GtkSignalFunc)appAppGotPaste,
-						(void *)ea );
+					"selection_received",
+					(GtkSignalFunc)appAppGotPasteReplyGtk,
+					(void *)ea );
 
     rval= appAskForPaste( ea->eaToplevel.atTopWidget, ea, selection );
 
@@ -280,7 +309,7 @@ APP_GIVE_COPY( appDocReplyToCopyRequest, w, gsd, voided )
     if  ( ! astt->asttGiveCopy )
 	{ XDEB(astt->asttGiveCopy); return;	}
 
-    (*astt->asttGiveCopy)( w, gsd, info, time, voided );
+    (*astt->asttGiveCopy)( w, gsd, info, tim, voided );
 
     return;
     }
@@ -311,7 +340,7 @@ static void appDocForgetCopiedSelection(	APP_WIDGET		w,
 	}
 
     if  ( i >= ea->eaDocSelectionTypeCount )
-	{ ADEB(ev,clrEvent->selection); return; }
+	{ ADEB(clrEvent->selection); return; }
 
     if  ( ast->astForgetCopy )
 	{ (*ast->astForgetCopy)( w, voided, event );	}
@@ -329,11 +358,11 @@ APP_EVENT_HANDLER_H( appDocCopyPasteHandler, w, voided, event )
     {
     switch( event->type )
 	{
-#	if 0
+	/*
 	case GDK_SELECTION_NOTIFY:
-	    appDocGotPasteReply( w, voided, event );
+	    appDocGotPasteReplyGtk( w, event, time, voided );
 	    break;
-#	endif
+	*/
 
 	case GDK_SELECTION_CLEAR:
 	    appDocForgetCopiedSelection( w, voided, event );

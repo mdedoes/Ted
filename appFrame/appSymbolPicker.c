@@ -10,91 +10,309 @@
 #   include	<stdio.h>
 #   include	<stddef.h>
 
-#   include	<appSymbolPicker.h>
-#   include	<appEncodingMenu.h>
-#   include	<appDraw.h>
+#   include	<ucdBlock.h>
+#   include	<uniUtf8.h>
+#   include	<utilMemoryBuffer.h>
+#   include	<textAttributeUtil.h>
+
+#   include	"appMatchFont.h"
+#   include	"appSymbolPicker.h"
+#   include	"guiWidgetDrawingSurface.h"
+#   include	"guiDrawingWidget.h"
+#   include	"guiToolUtil.h"
 
 #   include	<appDebugon.h>
 
+#   define	FONT_SIZE	10
+#   define	MIN_CELLS_WIDE	8
+#   define	MIN_CELLS_HIGH	6
+
 /************************************************************************/
 /*									*/
-/*  Resources for the Symbol Picker.					*/
+/*  Geometry calculations.						*/
 /*									*/
 /************************************************************************/
 
-typedef struct AppSymbolPickerResources
+static void appSymbolPickerGetDimensions(
+				int *			pPixelsWide,
+				int *			pPixelsHigh,
+				SymbolPicker *		sp,
+				int			cellsWide,
+				int			cellsHigh )
     {
-    char *	asprInsert;
-    char *	asprLower;
-    char *	asprClose;
-    char *	asprFont;
-    char *	asprNone;
-    char *	asprEncodings[CHARSETidxCOUNT];
-    } AppSymbolPickerResources;
+    *pPixelsWide= cellsWide* ( sp->spCellSizePixels+ 1 )+ 1;
+    *pPixelsHigh= cellsHigh* ( sp->spCellSizePixels+ 1 )+ 1;
 
-static AppConfigurableResource APP_SymbolPickerResourceTable[]=
+    *pPixelsHigh += 2* ( sp->spCellSizePixels+ 1 );
+
+    return;
+    }
+
+static void appSymbolPickerCalculateGridSize(
+				SymbolPicker *		sp,
+				int			pixelsWide,
+				int			pixelsHigh )
     {
-    APP_RESOURCE( "symbolPickerFont",
-		offsetof(AppSymbolPickerResources,asprFont),
-		"Font, Encoding" ),
-    APP_RESOURCE( "symbolPickerNone",
-		offsetof(AppSymbolPickerResources,asprNone),
-		"None" ),
-    APP_RESOURCE( "symbolPickerInsert",
-		offsetof(AppSymbolPickerResources,asprInsert),
-		"Insert" ),
-    APP_RESOURCE( "symbolPickerLower",
-		offsetof(AppSymbolPickerResources,asprLower),
-		"Lower" ),
-    APP_RESOURCE( "symbolPickerClose",
-		offsetof(AppSymbolPickerResources,asprClose),
-		"Close" ),
-    };
+    pixelsHigh -= 2* ( sp->spCellSizePixels+ 1 );
+
+    sp->spCellsWide= ( pixelsWide- 1 )/ ( sp->spCellSizePixels+ 1 );
+    sp->spCellsHigh= ( pixelsHigh- 1 )/ ( sp->spCellSizePixels+ 1 );
+
+    return;
+    }
+
+static void appSymbolRectangle(		DocumentRectangle *	drSym,
+					const SymbolPicker *	sp,
+					int			row,
+					int			col )
+    {
+    drSym->drX0= col* ( sp->spCellSizePixels+ 1 )+ 1;
+    drSym->drX1= drSym->drX0+ sp->spCellSizePixels- 1;
+
+    drSym->drY0= row* ( sp->spCellSizePixels+ 1 )+ 1;
+    drSym->drY1= drSym->drY0+ sp->spCellSizePixels- 1;
+
+    return;
+    }
+
+static void appSymbolStringRectangle(	DocumentRectangle *	drString,
+					SymbolPicker *		sp )
+    {
+    int		pixelsWide;
+    int		pixelsHigh;
+
+    guiDrawGetSizeOfWidget( &pixelsWide, &pixelsHigh, sp->spSymbolDrawing );
+
+    if  ( sp->spCellsWide == 0 || sp->spCellsHigh == 0 )
+	{
+	appSymbolPickerCalculateGridSize( sp, pixelsWide, pixelsHigh );
+	}
+
+    drString->drX0= 0;
+    drString->drX1= pixelsWide- 1;
+    drString->drY0= ( sp->spCellsHigh* ( sp->spCellSizePixels+ 1 ) )+ 1;
+    drString->drY1= pixelsHigh- 1;
+
+    return;
+    }
+
+static void appSymbolGetStringOrigin(
+			    int *			pX,
+			    int *			pY,
+			    const DocumentRectangle *	drString,
+			    const SymbolPicker *	sp )
+    {
+    *pX= drString->drX0+ sp->spCellSizePixels/ 2;
+    *pY= ( drString->drY0+ drString->drY1+ sp->spCellSizePixels )/ 2;
+    return;
+    }
 
 /************************************************************************/
 /*									*/
-/*  Represents a symbol picker.						*/
+/*  Translation back and forth between cell and symbol.			*/
 /*									*/
 /************************************************************************/
 
-typedef struct AppSymbolPicker
+static int appSymbolGetSymbol(		SymbolPicker *		sp,
+					int			row,
+					int			col )
     {
-    EditApplication *		aspApplication;
-    unsigned int		aspCurrentDocumentId;
+    const IndexSet *	is;
 
-    AppSymbolPickerResources *	aspResources;
+    int			sym;
+    int			i;
+    int			upto= row* sp->spCellsWide+ col+ 1;
 
-    APP_WIDGET			aspTopWidget;
-    APP_WIDGET			aspMainWidget;
+    if  ( ! sp->spFontInfo )
+	{ XDEB(sp->spFontInfo); return -1; }
 
-    APP_WIDGET			aspFontFrame;
-    AppOptionmenu		aspFontOptionmenu;
-    AppEncodingMenu		aspEncodingMenu;
+    is= &(sp->spFontInfo->afiUnicodesProvided);
+    sym= sp->spSymbolOffset- 1;
 
-    APP_WIDGET			aspSymbolDrawing;
-    APP_WIDGET			aspInsertButton;
-    APP_WIDGET			aspLowerButton;
-    APP_WIDGET			aspCloseButton;
+    for ( i= 0; i < upto; i++ )
+	{
+	sym= utilIndexSetGetNext( is, sym );
+	if  ( sym < 0 )
+	    { return -1;	}
+	}
 
-    AppToolDestroy		aspDestroy;
-    SymbolPickerInsert		aspInsert;
-    void *			aspTarget;
+    return sym;
+    }
 
-    int				aspSymbolSelected;
+static int appSymbolGetRowCol(		int *			pRow,
+					int *			pCol,
+					SymbolPicker *		sp,
+					int			symbol )
+    {
+    const IndexSet *	is;
+    int			step;
+    int			from;
 
-    DocumentFontList		aspDocumentFontList;
-    TextAttribute		aspTextAttribute;
-    int				aspFontFamilyChosen;
+    if  ( ! sp->spFontInfo )
+	{ XDEB(sp->spFontInfo); *pRow= *pCol= 0; return 1; }
 
-    APP_FONT *			aspFont;
-    AppDrawingData		aspDrawingData;
-    int				aspCellSizePixels;
-    int				aspCellsWide;
-    int				aspCellsHigh;
+    is= &(sp->spFontInfo->afiUnicodesProvided);
+    step= 0;
+    from= sp->spSymbolOffset- 1;
+    while( step < sp->spCellsWide* sp->spCellsHigh )
+	{
+	from= utilIndexSetGetNext( is, from );
+	if  ( from < 0 )
+	    { break;	}
 
-    APP_WIDGET *		aspFontFamilyOpts;
-    int				aspFontFamilyOptCount;
-    } AppSymbolPicker;
+	if  ( from == symbol )
+	    {
+	    *pRow= step/ sp->spCellsWide;
+	    *pCol= step% sp->spCellsWide;
+
+	    return 0;
+	    }
+
+	step++;
+	}
+
+    *pRow= *pCol= 0; return 1;
+    }
+
+/************************************************************************/
+
+static int appSymbolPickerNextPageOffset(	SymbolPicker *	sp )
+    {
+    const IndexSet *	is;
+    int			sym;
+    int			step;
+
+    int			block= ucdGetBlock( sp->spSymbolOffset );
+
+    if  ( ! sp->spFontInfo )
+	{ XDEB(sp->spFontInfo); return -1;	}
+
+    is= &(sp->spFontInfo->afiUnicodesProvided);
+
+    sym= sp->spSymbolOffset;
+    for ( step= 0; step < sp->spCellsHigh* sp->spCellsWide; step++ )
+	{
+	sym= utilIndexSetGetNext( is, sym );
+	if  ( sym < 0 )
+	    { break;	}
+	if  ( sym > UCD_Blocks[block].ubLast )
+	    { break;	}
+	}
+
+    return sym;
+    }
+
+static int appSymbolPickerPrevPageOffset(	SymbolPicker *	sp )
+    {
+    const IndexSet *	is;
+    int			sym;
+    int			step;
+    int			block;
+
+    if  ( ! sp->spFontInfo )
+	{ XDEB(sp->spFontInfo); return -1;	}
+
+    is= &(sp->spFontInfo->afiUnicodesProvided);
+
+    sym= utilIndexSetGetPrev( is, sp->spSymbolOffset );
+    if  ( sym < 0 )
+	{ return -1;	}
+    block= ucdGetBlock( sym );
+
+    for ( step= 0; step < sp->spCellsHigh* sp->spCellsWide; step++ )
+	{
+	if  ( sym < UCD_Blocks[block].ubFirst )
+	    { break;	}
+
+	sym= utilIndexSetGetPrev( is, sym );
+	if  ( sym < 0 )
+	    { break;	}
+	}
+
+    if  ( sym >= 0 || block == 0 )
+	{
+	sym= utilIndexSetGetNext( is, sym );
+	if  ( sym < 0 )
+	    { LDEB(sym); return -1;	}
+	}
+
+    return sym;
+    }
+
+/************************************************************************/
+
+static int appSymbolSetBlockOffset(	SymbolPicker *	sp,
+					int		sym )
+    {
+    sp->spSymbolOffset= sym;
+    guiExposeDrawingWidget( sp->spSymbolDrawing );
+
+    guiEnableWidget( sp->spNextPageButton,
+			    appSymbolPickerNextPageOffset( sp ) >= 0 );
+    guiEnableWidget( sp->spPrevPageButton,
+			    appSymbolPickerPrevPageOffset( sp ) >= 0 );
+
+    return ucdGetBlock( sp->spSymbolOffset );
+    }
+
+static APP_BUTTON_CALLBACK_H( appSymbolPickerNextPage, w, voidsp )
+    {
+    SymbolPicker *	sp= (SymbolPicker *)voidsp;
+    int			sym;
+    int			block;
+
+    sym= appSymbolPickerNextPageOffset( sp );
+    if  ( sym < 0 )
+	{ LDEB(sym); return;	}
+
+    block= appSymbolSetBlockOffset( sp, sym );
+    appSetOptionmenu( &(sp->spBlockOptionmenu), block );
+
+    return;
+    }
+
+static APP_BUTTON_CALLBACK_H( appSymbolPickerPrevPage, w, voidsp )
+    {
+    SymbolPicker *	sp= (SymbolPicker *)voidsp;
+    int			sym;
+    int			block;
+
+    sym= appSymbolPickerPrevPageOffset( sp );
+    if  ( sym < 0 )
+	{ LDEB(sym); return;	}
+
+    block= appSymbolSetBlockOffset( sp, sym );
+    appSetOptionmenu( &(sp->spBlockOptionmenu), block );
+
+    return;
+    }
+
+/************************************************************************/
+
+static void appSymbolPickerClear(	SymbolPicker *	sp )
+    {
+    int		sym;
+    int		row;
+    int		col;
+
+    sym= sp->spSymbolSelected;
+    if  ( sym >= 0 && ! appSymbolGetRowCol( &row, &col, sp, sym ) )
+	{
+	DocumentRectangle	drSym;
+
+	appSymbolRectangle( &drSym, sp, row, col );
+	guiExposeDrawingWidgetRectangle( sp->spSymbolDrawing, &drSym );
+	}
+
+    utilCleanMemoryBuffer( &(sp->spCollectedString) );
+    utilInitMemoryBuffer( &(sp->spCollectedString) );
+    sp->spPreviousSize= 0;
+
+    sp->spSymbolSelected= -1;
+
+    guiEnableWidget( sp->spClearButton, 0 );
+    guiEnableWidget( sp->spInsertButton, 0 );
+    }
 
 /************************************************************************/
 /*									*/
@@ -105,59 +323,154 @@ typedef struct AppSymbolPicker
 /*									*/
 /************************************************************************/
 
-static int appSymbolAdaptDrawingToFont(		AppSymbolPicker *	asp )
+static int appSymbolAdaptDrawingToFont(		SymbolPicker *	sp )
     {
-    AppDrawingData *		add= &(asp->aspDrawingData);
-    const DocumentFontList *	dfl= &(asp->aspDocumentFontList);
-    TextAttribute *		ta= &(asp->aspTextAttribute);
-    int				physicalFont;
+    DrawingSurface		ds= sp->spDrawingSurface;
+    DocumentFontList *		dfl= &(sp->spDocumentFontList);
+    TextAttribute *		ta= &(sp->spTextAttribute);
+    int				pixelSize;
+    int				screenFont;
+    const IndexSet *		unicodesWanted;
 
-    if  ( asp->aspFontFamilyChosen < 0 )
-	{ LDEB(asp->aspFontFamilyChosen); return -1;	}
+    const PostScriptFontList *	psfl= sp->spPostScriptFontList;
 
-    if  ( asp->aspFont )
-	{
-	/*  No! managed by the drawing data
-	appDrawFreeFont( add, asp->aspFont );
-	*/
-	asp->aspFont= (APP_FONT *)0;
-	}
+    if  ( sp->spFontFamilyChosen < 0 )
+	{ LDEB(sp->spFontFamilyChosen); return -1;	}
 
-    physicalFont= appOpenScreenFont( add, dfl, ta );
-    if  ( physicalFont < 0 )
-	{ LDEB(physicalFont);	}
+    if  ( sp->spScreenFont >= 0 )
+	{ sp->spScreenFont= -1;	}
+
+    sp->spFontInfo= appGetFontInfoForAttribute( &unicodesWanted,
+							    ta, dfl, psfl );
+    if  ( ! sp->spFontInfo )
+	{ XDEB(sp->spFontInfo); return -1;	}
+
+    pixelSize= textGetPixelSize( sp->spPixelsPerTwip, ta );
+    screenFont= drawOpenScreenFont( ds, sp->spFontInfo,
+						pixelSize, unicodesWanted );
+    if  ( screenFont < 0 )
+	{ LDEB(screenFont);	}
     else{
-	const DrawScreenFontList *	apfl= &(add->addScreenFontList);
-	DrawScreenFont *		apf;
-
-	apf= apfl->apflFonts+ physicalFont;
-	asp->aspFont= apf->apfFontStruct;
-
-	appDrawSetFont( add, apf->apfFontStruct );
+	sp->spScreenFont= screenFont;
 	}
 
-    appExposeRectangle( add, 0, 0, 0, 0 );
+    guiExposeDrawingWidget( sp->spSymbolDrawing );
 
-    asp->aspSymbolSelected= -1;
-    appGuiEnableWidget( asp->aspInsertButton, 0 );
+    sp->spSymbolSelected= -1;
 
     return 0;
     }
 
-static int appSymbolAdaptToFamily(  AppSymbolPicker *	asp )
+/************************************************************************/
+/*									*/
+/*  Find out what unicode blocks apply for the current font.		*/
+/*									*/
+/************************************************************************/
+
+static void appSymbolAdaptBlockMenuToFont(	SymbolPicker *	sp )
     {
-    const DocumentFontList *	dfl= &(asp->aspDocumentFontList);
+    const IndexSet *	is;
+    int			block;
+    int			sym;
 
-    if  ( asp->aspFontFamilyChosen < 0 )
-	{ LDEB(asp->aspFontFamilyChosen); return -1;	}
+    int			fontBlock= -1;
 
-    appEncodingMenuAdaptToFamilyEncodings( &(asp->aspEncodingMenu),
-			    dfl->dflFamilies+ asp->aspFontFamilyChosen );
+    if  ( ! sp->spFontInfo )
+	{ XDEB(sp->spFontInfo); return;	}
 
-    if  ( appSymbolAdaptDrawingToFont( asp ) )
-	{ LDEB(asp->aspFontFamilyChosen); return -1;	}
+    is= &(sp->spFontInfo->afiUnicodesProvided);
+
+    block= 0; sym= -1;
+    while( block < sp->spUnicodeBlockOptCount )
+	{
+	sym= utilIndexSetGetNext( is, sym );
+	if  ( sym < 0 )
+	    { break;	}
+
+	while( block < sp->spUnicodeBlockOptCount	&&
+	       UCD_Blocks[block].ubLast < sym		)
+	    {
+	    guiEnableWidget( sp->spUnicodeBlockOpts[block], 0 );
+	    appGuiSetWidgetVisible( sp->spUnicodeBlockOpts[block], 0 );
+	    block++;
+	    }
+
+	if  ( block >= sp->spUnicodeBlockOptCount )
+	    { break;	}
+
+	guiEnableWidget( sp->spUnicodeBlockOpts[block], 1 );
+	appGuiSetWidgetVisible( sp->spUnicodeBlockOpts[block], 1 );
+	sym= UCD_Blocks[block].ubLast;
+
+	if  ( UCD_Blocks[block].ubFirst <= sp->spSymbolOffset )
+	    { fontBlock= block;	}
+	else{
+	    if  ( fontBlock < 0 )
+		{ fontBlock= block;	}
+	    }
+
+	block++;
+	}
+
+    while( block < sp->spUnicodeBlockOptCount )
+	{
+	guiEnableWidget( sp->spUnicodeBlockOpts[block], 0 );
+	appGuiSetWidgetVisible( sp->spUnicodeBlockOpts[block], 0 );
+	block++;
+	}
+
+    appSetOptionmenu( &(sp->spBlockOptionmenu), fontBlock );
+    if  ( fontBlock >= 0 )
+	{
+	if  ( sp->spSymbolOffset < UCD_Blocks[fontBlock].ubFirst	||
+	      sp->spSymbolOffset > UCD_Blocks[fontBlock].ubLast	)
+	    { appSymbolSetBlockOffset( sp, UCD_Blocks[fontBlock].ubFirst ); }
+	else{
+	    /* To enable/disable buttons */
+	    appSymbolSetBlockOffset( sp, sp->spSymbolOffset );
+	    }
+	}
+
+    appOptionmenuRefreshWidth( &(sp->spBlockOptionmenu) );
+
+    return;
+    }
+
+/************************************************************************/
+/*									*/
+/*  A font family has been selected: Adapt the rest of the picker to it.*/
+/*									*/
+/************************************************************************/
+
+static int appSymbolAdaptToFamily(  SymbolPicker *	sp )
+    {
+    if  ( sp->spFontFamilyChosen < 0 )
+	{ LDEB(sp->spFontFamilyChosen); return -1;	}
+
+    if  ( appSymbolAdaptDrawingToFont( sp ) )
+	{ LDEB(sp->spFontFamilyChosen); return -1;	}
+
+    appSymbolPickerClear( sp );
+
+    appSymbolAdaptBlockMenuToFont( sp );
 
     return 0;
+    }
+
+/************************************************************************/
+/*									*/
+/*  Force the string to be redrawn.					*/
+/*									*/
+/************************************************************************/
+
+static void appSymbolPickerExposeString(	SymbolPicker *	sp )
+    {
+    DocumentRectangle		drExpose;
+
+    appSymbolStringRectangle( &drExpose, sp );
+    guiExposeDrawingWidgetRectangle( sp->spSymbolDrawing, &drExpose );
+
+    return;
     }
 
 /************************************************************************/
@@ -166,36 +479,17 @@ static int appSymbolAdaptToFamily(  AppSymbolPicker *	asp )
 /*									*/
 /************************************************************************/
 
-static void appDestroySymbolPicker(	AppSymbolPicker *	asp )
+void appCleanSymbolPicker(	SymbolPicker *	sp )
     {
+    docCleanFontList( &(sp->spDocumentFontList) );
 
-    if  ( asp->aspDestroy )
-	{ (*asp->aspDestroy)( asp->aspTarget );	}
+    if  ( sp->spDrawingSurface )
+	{ drawFreeDrawingSurface( sp->spDrawingSurface );	}
 
-    /* No! managed by the drawing data
-    if  ( asp->aspFont )
-	{ appDrawFreeFont( &(asp->aspDrawingData), asp->aspFont );	}
-    */
-
-    docCleanFontList( &(asp->aspDocumentFontList) );
-
-    appCleanDrawingData( &(asp->aspDrawingData) );
-
-    if  ( asp->aspFontFamilyOpts )
-	{ free( asp->aspFontFamilyOpts );	}
-
-    appDestroyShellWidget( asp->aspTopWidget );
-
-    free( (void *)asp );
-
-    return;
-    }
-
-static APP_CLOSE_CALLBACK_H( appCloseSymbolPicker, w, voidasp )
-    {
-    AppSymbolPicker *	asp= (AppSymbolPicker *)voidasp;
-
-    appDestroySymbolPicker( asp );
+    if  ( sp->spFontFamilyOpts )
+	{ free( sp->spFontFamilyOpts );	}
+    if  ( sp->spUnicodeBlockOpts )
+	{ free( sp->spUnicodeBlockOpts );	}
 
     return;
     }
@@ -206,48 +500,73 @@ static APP_CLOSE_CALLBACK_H( appCloseSymbolPicker, w, voidasp )
 /*									*/
 /************************************************************************/
 
-static void appSymbolPickerInsertSymbol(	AppSymbolPicker *	asp )
+static void appSymbolPickerInsert(	SymbolPicker *	sp )
     {
-    PropertyMask	setMask;
+    PropertyMask		setMask;
 
-    PROPmaskCLEAR( &setMask );
+    const unsigned char *	bytes;
+    int				size= 0;
 
-    if  ( asp->aspSymbolSelected < 0 || ! asp->aspInsert )
-	{ LXDEB(asp->aspSymbolSelected,asp->aspInsert); return;	}
+    utilPropMaskClear( &setMask );
 
-    if  ( asp->aspFontFamilyChosen >= 0 )
-	{ PROPmaskADD( &setMask, TApropDOC_FONT_NUMBER );	}
+    if  ( sp->spSymbolSelected < 0 || ! sp->spInsert )
+	{ LXDEB(sp->spSymbolSelected,sp->spInsert); return;	}
 
-    (*asp->aspInsert)( asp->aspTarget, asp->aspSymbolSelected,
-				    &(asp->aspTextAttribute), &setMask );
+    if  ( sp->spFontFamilyChosen >= 0 )
+	{ PROPmaskADD( &setMask, TApropFONT_NUMBER );	}
+
+    bytes= utilMemoryBufferGetBytes( &size, &(sp->spCollectedString) );
+    if  ( ! bytes || size == 0 )
+	{ LXDEB(size,bytes);	}
+    else{
+	(*sp->spInsert)( sp->spTarget, (char *)bytes, size,
+					&(sp->spTextAttribute), &setMask );
+	}
 
     return;
     }
 
-static APP_BUTTON_CALLBACK_H( appSymbolInsertPushed, w, voidasp )
+static APP_BUTTON_CALLBACK_H( appSymbolInsertPushed, w, voidsp )
     {
-    AppSymbolPicker *	asp= (AppSymbolPicker *)voidasp;
+    SymbolPicker *	sp= (SymbolPicker *)voidsp;
 
-    appSymbolPickerInsertSymbol( asp );
+    appSymbolPickerInsert( sp );
+    appSymbolPickerClear( sp );
+    appSymbolPickerExposeString( sp );
     
     return;
     }
 
-static APP_BUTTON_CALLBACK_H( appSymbolLowerPushed, w, voidasp )
+static APP_BUTTON_CALLBACK_H( appSymbolClearPushed, w, voidsp )
     {
-    AppSymbolPicker *	asp= (AppSymbolPicker *)voidasp;
+    SymbolPicker *	sp= (SymbolPicker *)voidsp;
 
-    appGuiLowerShellWidget( asp->aspTopWidget );
-    
+    appSymbolPickerClear( sp );
+    appSymbolPickerExposeString( sp );
+
     return;
     }
 
-static APP_BUTTON_CALLBACK_H( appSymbolClosePushed, w, voidasp )
-    {
-    AppSymbolPicker *	asp= (AppSymbolPicker *)voidasp;
+/************************************************************************/
+/*									*/
+/*  Adapt to resize event.						*/
+/*									*/
+/************************************************************************/
 
-    appDestroySymbolPicker( asp );
-    
+static APP_EVENT_HANDLER_H( appSymbolPickerConfigure, w, voidsp, event )
+    {
+    SymbolPicker *	sp= (SymbolPicker *)voidsp;
+    /*
+    int			wide;
+    int			high;
+
+    if  ( guiDrawGetSizeFromConfigureEvent( &wide, &high, w, event ) )
+	{ return;	}
+    */
+
+    sp->spCellsWide= 0;
+    sp->spCellsHigh= 0;
+
     return;
     }
 
@@ -257,56 +576,82 @@ static APP_BUTTON_CALLBACK_H( appSymbolClosePushed, w, voidasp )
 /*									*/
 /************************************************************************/
 
-static void appSymbolDrawSymbol(	AppSymbolPicker *	asp,
+static void appSymbolDrawSymbol(	SymbolPicker *		sp,
 					int			sym,
 					int			x0,
 					int			y0 )
     {
-    AppDrawingData *			add= &(asp->aspDrawingData);
-    char				scratch[2];
+    DrawingSurface		ds= sp->spDrawingSurface;
 
-    int					wide;
-    int					fontAscent;
-    int					fontDescent;
+    int				x= 0;
+    int				y= 0;
 
-    int					x;
-    int					y;
+    DocumentRectangle		drCell;
+    DocumentRectangle		drText;
 
-    scratch[0]= sym;
-    scratch[1]= '\0';
+    drCell.drX0= x0;
+    drCell.drX1= x0+ sp->spCellSizePixels- 1;
+    drCell.drY0= y0;
+    drCell.drY1= y0+ sp->spCellSizePixels- 1;
 
-    appDrawTextExtents( &wide, &fontAscent, &fontDescent,
-					    add, asp->aspFont, scratch, 1 );
+    x= y= 0;
+    drawGetSymbolExtents( &drText, ds, x, y, sp->spScreenFont, sym );
 
-    y= ( asp->aspCellSizePixels- fontAscent- fontDescent+ 1 )/ 2;
-    y= y0+ y+ fontAscent;
-    x= x0+ asp->aspCellSizePixels/ 2- wide/2;
+    y= ( drCell.drY1+ drCell.drY0 )/ 2- ( drText.drY1+ drText.drY0+ 1 )/2;
+    x= ( drCell.drX1+ drCell.drX0 )/ 2- ( drText.drX1+ drText.drX0+ 1 )/2;
 
-    appDrawDrawString( add, x, y, scratch, 1 );
-
-    return;
-    }
-
-static void appSymbolRectangle(		DocumentRectangle *	drSym,
-					const AppSymbolPicker *	asp,
-					int			row,
-					int			col )
-    {
-    drSym->drX0= col* ( asp->aspCellSizePixels+ 1 )+ 1;
-    drSym->drX1= drSym->drX0+ asp->aspCellSizePixels- 1;
-
-    drSym->drY0= row* ( asp->aspCellSizePixels+ 1 )+ 1;
-    drSym->drY1= drSym->drY0+ asp->aspCellSizePixels- 1;
+    drawSymbol( ds, x, y, sp->spScreenFont, sym );
 
     return;
     }
 
-static APP_EVENT_HANDLER_H( appSymbolRedraw, w, voidasp, exposeEvent )
+static void appSymbolRedrawSymbols(	SymbolPicker *			sp,
+					const DocumentRectangle *	drClip )
     {
-    AppSymbolPicker *			asp= (AppSymbolPicker *)voidasp;
-    AppDrawingData *			add= &(asp->aspDrawingData);
+    const IndexSet *	is;
+    int			sym;
 
-    DocumentRectangle			drClip;
+    int			row;
+    int			col;
+
+    if  ( ! sp->spFontInfo )
+	{ XDEB(sp->spFontInfo); return; }
+
+    is= &(sp->spFontInfo->afiUnicodesProvided);
+    sym= sp->spSymbolOffset- 1;
+
+    for ( row= 0; row < sp->spCellsHigh; row++ )
+	{
+	for ( col= 0; col < sp->spCellsWide; col++ )
+	    {
+	    DocumentRectangle	drSym;
+	    DocumentRectangle	drIgn;
+
+	    appSymbolRectangle( &drSym, sp, row, col );
+
+	    sym= utilIndexSetGetNext( is, sym );
+	    if  ( sym < 0 )
+		{ break;	}
+
+	    if  ( ! geoIntersectRectangle( &drIgn, &drSym, drClip )	||
+		  sym == sp->spSymbolSelected				)
+		{ continue;	}
+
+	    appSymbolDrawSymbol( sp, sym, drSym.drX0, drSym.drY0 );
+	    }
+
+	if  ( sym < 0 )
+	    { break;	}
+	}
+
+    return;
+    }
+
+static void appSymbolRedrawGrid(	SymbolPicker *			sp,
+					const DocumentRectangle *	drClip )
+    {
+    DrawingSurface			ds= sp->spDrawingSurface;
+
     DocumentRectangle			drSym;
     DocumentRectangle			drIgn;
 
@@ -314,114 +659,141 @@ static APP_EVENT_HANDLER_H( appSymbolRedraw, w, voidasp, exposeEvent )
     int					row;
     int					sym;
 
-    int					x0;
-    int					y0;
-    int					wide;
-    int					high;
+    int					rowSelected= -1;
+    int					colSelected= -1;
 
-    const int				ox= 0;
-    const int				oy= 0;
+    RGB8Color				disabledColor;
 
-    if  ( ! asp->aspFont )
-	{ XDEB(asp->aspFont); return;	}
+    DocumentRectangle			drLine;
 
-    appCollectExposures( &drClip, add, ox, oy, exposeEvent );
+    disabledColor.rgb8Red= 127;
+    disabledColor.rgb8Green= 127;
+    disabledColor.rgb8Blue= 127;
+    disabledColor.rgb8Alpha= 255;
 
-    appDrawSetForegroundColor( add, &(add->addBackColor) );
-    appDrawFillRectangle( add, drClip.drX0, drClip.drY0,
-					    drClip.drX1- drClip.drX0+ 1,
-					    drClip.drY1- drClip.drY0+ 1 );
-
-    appDrawSetForegroundBlack( add );
-
-    y0= 0;
-    wide= 1;
-    high= asp->aspCellsHigh* ( asp->aspCellSizePixels+ 1 )+ 1;
-
-    for ( col= 0; col <= asp->aspCellsWide; col++ )
+    sym= sp->spSymbolSelected;
+    if  ( sym >= 0 && ! appSymbolGetRowCol( &row, &col, sp, sym ) )
 	{
-	x0= col* ( asp->aspCellSizePixels+ 1 );
-
-	appDrawFillRectangle( add, x0, y0, wide, high );
+	rowSelected= row;
+	colSelected= col;
 	}
 
-    x0= 0;
-    wide= asp->aspCellsWide* ( asp->aspCellSizePixels+ 1 )+ 1;
-    high= 1;
+    if  ( sp->spEnabled )
+	{ drawSetForegroundColorBlack( ds );		}
+    else{ drawSetForegroundColor( ds, &disabledColor );	}
 
-    for ( row= 0; row <= asp->aspCellsHigh; row++ )
+    drLine.drY0= 0;
+    drLine.drY1= sp->spCellsHigh* ( sp->spCellSizePixels+ 1 );
+
+    for ( col= 0; col <= sp->spCellsWide; col++ )
 	{
-	y0= row* ( asp->aspCellSizePixels+ 1 );
-
-	appDrawFillRectangle( add, x0, y0, wide, high );
+	drLine.drX0= drLine.drX1= col* ( sp->spCellSizePixels+ 1 );
+	drawFillRectangle( ds, &drLine );
 	}
 
-    appDrawSetForegroundWhite( add );
+    drLine.drX0= 0;
+    drLine.drX1= sp->spCellsWide* ( sp->spCellSizePixels+ 1 );
 
-    wide= high= asp->aspCellSizePixels;
-    for ( row= 0; row < asp->aspCellsHigh; row++ )
+    for ( row= 0; row <= sp->spCellsHigh; row++ )
 	{
-	for ( col= 0; col < asp->aspCellsWide; col++ )
+	drLine.drY0= drLine.drY1= row* ( sp->spCellSizePixels+ 1 );
+	drawFillRectangle( ds, &drLine );
+	}
+
+    drawSetForegroundColorWhite( ds );
+
+    for ( row= 0; row < sp->spCellsHigh; row++ )
+	{
+	for ( col= 0; col < sp->spCellsWide; col++ )
 	    {
-	    appSymbolRectangle( &drSym, asp, row, col );
+	    appSymbolRectangle( &drSym, sp, row, col );
 
-	    sym= row* asp->aspCellsWide+ col;
-
-	    if  ( ! geoIntersectRectangle( &drSym, &drSym, &drClip )	||
-		  ! appCharExistsInFont( asp->aspFont, sym )		||
-		  sym == asp->aspSymbolSelected				)
+	    if  ( ! geoIntersectRectangle( &drSym, &drSym, drClip )	||
+		  ( row == rowSelected && col == colSelected )		)
 		{ continue;	}
 
-	    appDrawFillRectangle( add, drSym.drX0, drSym.drY0,
-					    drSym.drX1- drSym.drX0+ 1,
-					    drSym.drY1- drSym.drY0+ 1 );
+	    drawFillRectangle( ds, &drSym );
 	    }
 	}
 
-    appDrawSetForegroundBlack( add );
+    if  ( sp->spEnabled )
+	{ drawSetForegroundColorBlack( ds );		}
+    else{ drawSetForegroundColor( ds, &disabledColor );	}
 
-    wide= high= asp->aspCellSizePixels;
-    for ( row= 0; row < asp->aspCellsHigh; row++ )
+    appSymbolRedrawSymbols( sp, drClip );
+
+    sym= sp->spSymbolSelected;
+    if  ( sym >= 0 && rowSelected >= 0 && colSelected >= 0 )
 	{
-	for ( col= 0; col < asp->aspCellsWide; col++ )
+	appSymbolRectangle( &drSym, sp, rowSelected, colSelected );
+
+	if  ( geoIntersectRectangle( &drIgn, &drSym, drClip ) )
 	    {
-	    appSymbolRectangle( &drSym, asp, row, col );
+	    if  ( sp->spEnabled )
+		{ drawSetForegroundColorBlack( ds );		}
+	    else{ drawSetForegroundColor( ds, &disabledColor );	}
 
-	    sym= row* asp->aspCellsWide+ col;
+	    drawFillRectangle( ds, &drSym );
 
-	    if  ( ! geoIntersectRectangle( &drIgn, &drSym, &drClip )	||
-		  ! appCharExistsInFont( asp->aspFont, sym )		||
-		  sym == asp->aspSymbolSelected				)
-		{ continue;	}
+	    drawSetForegroundColorWhite( ds );
 
-	    appSymbolDrawSymbol( asp, sym, drSym.drX0, drSym.drY0 );
+	    appSymbolDrawSymbol( sp, sym, drSym.drX0, drSym.drY0 );
 	    }
 	}
 
-    sym= asp->aspSymbolSelected;
-    if  ( sym >= 0						&&
-	  appCharExistsInFont( asp->aspFont, sym )		)
+    appSymbolStringRectangle( &drSym, sp );
+    if  ( geoIntersectRectangle( &drIgn, &drSym, drClip ) )
 	{
-	row= sym/ asp->aspCellsWide;
-	col= sym% asp->aspCellsWide;
+	const unsigned char *	bytes;
+	int			size;
 
-	appSymbolRectangle( &drSym, asp, row, col );
-
-	if  ( geoIntersectRectangle( &drIgn, &drSym, &drClip ) )
+	bytes= utilMemoryBufferGetBytes( &size, &(sp->spCollectedString) );
+	if  ( bytes && size > 0 )
 	    {
-	    appDrawSetForegroundBlack( add );
+	    int		x, y;
 
-	    appDrawFillRectangle( add, drSym.drX0, drSym.drY0,
-					    drSym.drX1- drSym.drX0+ 1,
-					    drSym.drY1- drSym.drY0+ 1 );
+	    if  ( sp->spEnabled )
+		{ drawSetForegroundColorBlack( ds );		}
+	    else{ drawSetForegroundColor( ds, &disabledColor );	}
 
-	    appDrawSetForegroundWhite( add );
+	    appSymbolGetStringOrigin( &x, &y, &drSym, sp );
 
-	    appSymbolDrawSymbol( asp, sym, drSym.drX0, drSym.drY0 );
+	    drawString( ds, x, y, sp->spScreenFont, (char *)bytes, size );
 	    }
 	}
 
-    appDrawNoClipping( add );
+    return;
+    }
+
+static APP_EVENT_HANDLER_H( appSymbolRedraw, w, voidsp, exposeEvent )
+    {
+    SymbolPicker *			sp= (SymbolPicker *)voidsp;
+    DrawingSurface			ds= sp->spDrawingSurface;
+
+    DocumentRectangle			drClip;
+
+    if  ( sp->spCellsWide == 0 || sp->spCellsHigh == 0 )
+	{
+	int		pixelsWide;
+	int		pixelsHigh;
+
+	guiDrawGetSizeOfWidget( &pixelsWide, &pixelsHigh, w );
+
+	appSymbolPickerCalculateGridSize( sp, pixelsWide, pixelsHigh );
+	}
+
+    if  ( sp->spScreenFont < 0 )
+	{ LDEB(sp->spScreenFont); return;	}
+
+    guiCollectExposures( &drClip, sp->spSymbolDrawing, exposeEvent );
+
+    drawSetClipRect( ds, &drClip );
+
+    drawSetForegroundColor( ds, &(sp->spBackgroundColor) );
+    drawFillRectangle( ds, &drClip );
+    appSymbolRedrawGrid( sp, &drClip );
+
+    drawNoClipping( ds );
 
     return;
     }
@@ -432,16 +804,16 @@ static APP_EVENT_HANDLER_H( appSymbolRedraw, w, voidasp, exposeEvent )
 /*									*/
 /************************************************************************/
 
-static APP_EVENT_HANDLER_H( appSymbolMousePress, w, voidasp, downEvent )
+static APP_EVENT_HANDLER_H( appSymbolMousePress, w, voidsp, downEvent )
     {
-    AppSymbolPicker *	asp= (AppSymbolPicker *)voidasp;
+    SymbolPicker *	sp= (SymbolPicker *)voidsp;
 
     int			x;
     int			y;
     int			row;
     int			col;
     int			sym;
-    int			sameAsPrevious;
+    int			sameAsPrevious= 0;
 
     int			oldRow= -1;
     int			oldCol= -1;
@@ -453,53 +825,73 @@ static APP_EVENT_HANDLER_H( appSymbolMousePress, w, voidasp, downEvent )
 
     DocumentRectangle	drExpose;
 
-    sym= asp->aspSymbolSelected;
-    if  ( sym >= 0 )
-	{
-	oldRow= sym/ asp->aspCellsWide;
-	oldCol= sym% asp->aspCellsWide;
-	}
+    if  ( ! sp->spEnabled )
+	{ return;	}
 
-    if  ( appGetCoordinatesFromMouseButtonEvent(
+    if  ( sp->spSymbolSelected >= 0 )
+	{ appSymbolGetRowCol( &oldRow, &oldCol, sp, sp->spSymbolSelected ); }
+
+    if  ( guiGetCoordinatesFromMouseButtonEvent(
 		    &x, &y, &button, &upDown, &seq, &keyState, w, downEvent ) )
 	{ return;	}
 
     if  ( upDown < 1 || button != 1 )
 	{ return;	}
 
-    row= y/ ( asp->aspCellSizePixels+ 1 );
-    col= x/ ( asp->aspCellSizePixels+ 1 );
-    sym= row* asp->aspCellsWide+ col;
+    row= y/ ( sp->spCellSizePixels+ 1 );
+    col= x/ ( sp->spCellSizePixels+ 1 );
+    sym= appSymbolGetSymbol( sp, row, col );
 
-    if  ( ! appCharExistsInFont( asp->aspFont, sym ) )
-	{ return;	}
+    if  ( sym >= 0 )
+	{
+	unsigned char	scratch[10];
+	int		step;
 
-    sameAsPrevious= asp->aspSymbolSelected == sym;
-    asp->aspSymbolSelected= sym;
+	sameAsPrevious= sp->spSymbolSelected == sym;
+	sp->spSymbolSelected= sym;
 
-    appGuiEnableWidget( asp->aspInsertButton, 1 );
+	if  ( seq == 1 || ! sameAsPrevious )
+	    {
+	    step= uniPutUtf8( scratch, sp->spSymbolSelected );
+	    if  ( step < 1 )
+		{ LDEB(step);	}
+	    else{
+		sp->spPreviousSize= sp->spCollectedString.mbSize;
+
+		if  ( utilMemoryBufferAppendBytes( &(sp->spCollectedString),
+							    scratch, step ) )
+		    { LDEB(step);	}
+
+		guiEnableWidget( sp->spClearButton, sp->spEnabled );
+		guiEnableWidget( sp->spInsertButton, sp->spEnabled );
+		}
+	    }
+	}
 
     if  ( oldRow >= 0 && oldCol >= 0 )
 	{
-	appSymbolRectangle( &drExpose, asp, oldRow, oldCol );
-
-	appExposeRectangle( &(asp->aspDrawingData),
-					    drExpose.drX0,
-					    drExpose.drY0,
-					    drExpose.drX1- drExpose.drX0+ 1,
-					    drExpose.drY1- drExpose.drY0+ 1 );
+	appSymbolRectangle( &drExpose, sp, oldRow, oldCol );
+	guiExposeDrawingWidgetRectangle( sp->spSymbolDrawing, &drExpose );
 	}
 
-    appSymbolRectangle( &drExpose, asp, row, col );
+    appSymbolRectangle( &drExpose, sp, row, col );
+    guiExposeDrawingWidgetRectangle( sp->spSymbolDrawing, &drExpose );
 
-    appExposeRectangle( &(asp->aspDrawingData),
-					    drExpose.drX0,
-					    drExpose.drY0,
-					    drExpose.drX1- drExpose.drX0+ 1,
-					    drExpose.drY1- drExpose.drY0+ 1 );
+    appSymbolPickerExposeString( sp );
 
     if  ( sameAsPrevious && seq == 2 )
-	{ appSymbolPickerInsertSymbol( asp );	}
+	{
+#	ifdef USE_GTK
+	/* Silly GTK sends 3 events for a double click and we can only
+	 * know in the 3rd one that the second one was superfluous
+	 */
+	utilMemoryBufferSetSize( &(sp->spCollectedString), sp->spPreviousSize );
+#	endif
+
+	appSymbolPickerInsert( sp );
+	appSymbolPickerClear( sp );
+	appSymbolPickerExposeString( sp );
+	}
 
     return;
     }
@@ -507,82 +899,51 @@ static APP_EVENT_HANDLER_H( appSymbolMousePress, w, voidasp, downEvent )
 /************************************************************************/
 /*									*/
 /*  1)  A font family was selected by the user.				*/
-/*  2)  A font encoding was selected by the user.			*/
+/*  2)  A unicode block was selected by the user.			*/
 /*									*/
 /************************************************************************/
 
 /*  1  */
-static APP_OITEM_CALLBACK_H( appSymbolFontFamilyChosen, w, voidasp )
+static void appSymbolFontFamilyChosen(	int		sortIndex,
+					void *		voidsp )
     {
-    int				fam;
-    AppSymbolPicker *		asp= (AppSymbolPicker *)voidasp;
-    AppEncodingMenu *		aem= &(asp->aspEncodingMenu);
-    const DocumentFontList *	dfl= &(asp->aspDocumentFontList);
-    const DocumentFontFamily *	dff;
-    int				changed= 0;
+    SymbolPicker *	sp= (SymbolPicker *)voidsp;
+    DocumentFontList *	dfl= &(sp->spDocumentFontList);
+    TextAttribute *	ta= &(sp->spTextAttribute);
 
-    TextAttribute *		ta= &(asp->aspTextAttribute);
-    int				fontNumber= ta->taFontNumber;
+    int			changed= 0;
+    int			fontNumber;
 
-    fam= appGuiGetOptionmenuItemIndex( &(asp->aspFontOptionmenu), w );
-    if  ( fam < 0 || fam >= dfl->dflFamilyCount )
-	{ LLDEB(fam,dfl->dflFamilyCount); return;	}
+    if  ( sortIndex < 0 || sortIndex >= dfl->dflFontCount )
+	{ LLDEB(sortIndex,dfl->dflFontCount); return;	}
 
-    dff= dfl->dflFamilies+ fam;
-
-    if  ( appEncodingMenuAdaptToFamily( &fontNumber, aem, dff ) )
-	{ return;	}
+    fontNumber= utilDocumentFontListGetArrayIndex( dfl, sortIndex );
 
     if  ( ta->taFontNumber != fontNumber )
 	{ ta->taFontNumber= fontNumber; changed= 1;	}
 
     if  ( changed )
 	{
-	asp->aspFontFamilyChosen= fam;
+	sp->spFontFamilyChosen= fontNumber;
 
-	if  ( appSymbolAdaptToFamily( asp ) )
-	    { LDEB(fam);	}
+	if  ( appSymbolAdaptToFamily( sp ) )
+	    { LDEB(fontNumber);	}
 	}
 
     return;
     }
 
-/*  2  */
-static APP_OITEM_CALLBACK_H( appSymbolFontEncodingChosen, w, voidasp )
+/*  1  */
+static void appSymbolUnicodeBlockChosen(	int		block,
+						void *		voidsp )
     {
-    int				charsetIdx;
-    AppSymbolPicker *		asp= (AppSymbolPicker *)voidasp;
-    int				changed= 0;
+    SymbolPicker *		sp= (SymbolPicker *)voidsp;
 
-    charsetIdx= appGuiGetOptionmenuItemIndex(
-			&(asp->aspEncodingMenu.aemEncodingOptionmenu), w );
-    if  ( charsetIdx < 0 || charsetIdx >= CHARSETidxCOUNT )
-	{ LLDEB(charsetIdx,CHARSETidxCOUNT); return;	}
+    if  ( block < 0 || block >= sp->spUnicodeBlockOptCount )
+	{ LLDEB(block,sp->spUnicodeBlockOptCount); return;	}
 
-    if  ( asp->aspFontFamilyChosen >= 0 )
-	{
-	AppEncodingMenu *		aem= &(asp->aspEncodingMenu);
-	const DocumentFontList *	dfl= &(asp->aspDocumentFontList);
-	const DocumentFontFamily *	dff;
-
-	TextAttribute *			ta= &(asp->aspTextAttribute);
-	int				fontNumber= ta->taFontNumber;
-
-	dff= dfl->dflFamilies+ asp->aspFontFamilyChosen;
-
-	if  ( appEncodingMenuAdaptToCharsetIndex( &fontNumber, aem, dff,
-								charsetIdx ) )
-	    { return;	}
-
-	if  ( ta->taFontNumber != fontNumber )
-	    { ta->taFontNumber= fontNumber; changed= 1; }
-
-	if  ( changed )
-	    {
-	    if  ( appSymbolAdaptDrawingToFont( asp ) )
-		{ LDEB(asp->aspFontFamilyChosen);	}
-	    }
-	}
+    if  ( sp->spSymbolOffset != UCD_Blocks[block].ubFirst )
+	{ appSymbolSetBlockOffset( sp, UCD_Blocks[block].ubFirst );	}
 
     return;
     }
@@ -594,26 +955,18 @@ static APP_OITEM_CALLBACK_H( appSymbolFontEncodingChosen, w, voidasp )
 /************************************************************************/
 
 static void appSymbolMakeFontPart(	APP_WIDGET			parent,
-					AppSymbolPickerResources *	aspr,
-					AppSymbolPicker *		asp )
+					const SymbolPickerResources *	spr,
+					SymbolPicker *			sp )
     {
-    APP_WIDGET	row;
+    appMakeColumnFrameInColumn( &(sp->spFontFrame), &(sp->spFontPaned),
+							parent, spr->sprFont );
 
-    const int	fontColumn= 0;
-    const int	fontColspan= 1;
-    const int	encodingColumn= fontColumn+ fontColspan;
-    const int	encodingColspan= 1;
-    const int	columnCount= encodingColumn+ encodingColspan;
-
-    appMakeRowFrameInColumn( &(asp->aspFontFrame),
-					    &row, parent,
-					    columnCount, aspr->asprFont );
-
-    appMakeOptionmenuInRow( &(asp->aspFontOptionmenu), row,
-					    fontColumn, fontColspan );
-
-    appMakeOptionmenuInRow( &(asp->aspEncodingMenu.aemEncodingOptionmenu),
-					row, encodingColumn, encodingColspan );
+    appMakeOptionmenuInColumn( &(sp->spFontOptionmenu),
+					    sp->spFontPaned,
+					    appSymbolFontFamilyChosen, sp );
+    appMakeOptionmenuInColumn( &(sp->spBlockOptionmenu),
+					    sp->spFontPaned,
+					    appSymbolUnicodeBlockChosen, sp );
 
     return;
     }
@@ -624,63 +977,63 @@ static void appSymbolMakeFontPart(	APP_WIDGET			parent,
 /*									*/
 /************************************************************************/
 
-static void appSymbolMakeSymbolPart(	APP_WIDGET		parent,
-					double			xfac,
-					AppSymbolPickerResources * aspr,
-					AppSymbolPicker *	asp )
+static void appSymbolMakeSymbolPart(
+				APP_WIDGET		parent,
+				SymbolPicker *		sp )
     {
     int				wide;
     int				high;
 
-    const int		twipsSize= 20* 10;
-    const int		heightResizable= 0;
+    const int			twipsSize= 20* FONT_SIZE;
+    const int			heightResizable= 1;
 
-    asp->aspCellSizePixels= 1.5* ( xfac* twipsSize )+ 0.5;
-    asp->aspCellsWide= 32;
-    asp->aspCellsHigh= 8;
+    sp->spCellSizePixels= 1.5* ( sp->spPixelsPerTwip* twipsSize )+ 0.5;
 
-    wide= asp->aspCellsWide* ( asp->aspCellSizePixels+ 1 )+ 1;
-    high= asp->aspCellsHigh* ( asp->aspCellSizePixels+ 1 )+ 1;
+    appSymbolPickerGetDimensions( &wide, &high, sp,
+					MIN_CELLS_WIDE, MIN_CELLS_HIGH );
 
-    appGuiMakeDrawingAreaInColumn( &(asp->aspSymbolDrawing), parent,
-		wide, high, heightResizable, appSymbolRedraw, (void *)asp );
+    appGuiMakeDrawingAreaInColumn( &(sp->spSymbolDrawing), parent,
+		wide, high, heightResizable, appSymbolRedraw, (void *)sp );
 
-    appDrawSetButtonPressHandler( asp->aspSymbolDrawing,
-				    appSymbolMousePress, (void *)asp );
+    guiDrawSetButtonPressHandler( sp->spSymbolDrawing,
+				    appSymbolMousePress, (void *)sp );
+
+    guiDrawSetConfigureHandler( sp->spSymbolDrawing,
+				    appSymbolPickerConfigure, (void *)sp );
 
     return;
     }
 
 /************************************************************************/
 /*									*/
-/*  Make the button part of the symbol picker.				*/
+/*  Fill the list of unicode blocks.					*/
 /*									*/
 /************************************************************************/
 
-static APP_WIDGET appSymbolMakeButtonRow(
-				    APP_WIDGET			parent,
-				    AppSymbolPickerResources *	aspr,
-				    AppSymbolPicker *		asp )
+static int appSymbolFillBlockMenu(	SymbolPicker *		sp )
     {
-    APP_WIDGET		row;
-    const int		heightResizable= 0;
-    const int		showAsDefault= 0;
+    int		block;
 
-    row= appMakeRowInColumn( parent, 3, heightResizable );
+    sp->spUnicodeBlockOpts= malloc( UCD_BlockCount* sizeof(APP_WIDGET) );
+    if  ( ! sp->spUnicodeBlockOpts )
+	{ LXDEB(UCD_BlockCount,sp->spUnicodeBlockOpts); return -1;	}
 
-    appMakeButtonInRow( &(asp->aspInsertButton), row,
-			    aspr->asprInsert, appSymbolInsertPushed,
-			    (void *)asp, 0, showAsDefault );
+    for ( block= 0; block < UCD_BlockCount; block++ )
+	{ sp->spUnicodeBlockOpts[block]= (APP_WIDGET)0;	}
 
-    appMakeButtonInRow( &(asp->aspLowerButton), row,
-			    aspr->asprLower, appSymbolLowerPushed,
-			    (void *)asp, 1, showAsDefault );
+    for ( block= 0; block < UCD_BlockCount; block++ )
+	{
+	if  ( UCD_Blocks[block].ubLast > 0xffff )
+	    { break;	}
 
-    appMakeButtonInRow( &(asp->aspCloseButton), row,
-			    aspr->asprClose, appSymbolClosePushed,
-			    (void *)asp, 2, showAsDefault );
+	sp->spUnicodeBlockOpts[block]= appAddItemToOptionmenu(
+				&(sp->spBlockOptionmenu), 
+				UCD_Blocks[block].ubDescription );
+	}
 
-    return row;
+    sp->spUnicodeBlockOptCount= block;
+
+    return 0;
     }
 
 /************************************************************************/
@@ -690,51 +1043,56 @@ static APP_WIDGET appSymbolMakeButtonRow(
 /************************************************************************/
 
 /*  1  */
-static void appSymbolFillFontMenu(	AppSymbolPickerResources *	aspr,
-					AppSymbolPicker *		asp )
+static void appSymbolFillFontMenu(
+				int *				pEnabled,
+				const SymbolPickerResources *	spr,
+				SymbolPicker *		sp )
     {
-    int				fam;
-    const DocumentFontList *	dfl= &(asp->aspDocumentFontList);
-    const DocumentFontFamily *	dff;
+    int			fam;
+    DocumentFontList *	dfl= &(sp->spDocumentFontList);
+    int			fontsAdded= 0;
 
-    appEmptyOptionmenu( &(asp->aspFontOptionmenu) );
+    appEmptyOptionmenu( &(sp->spFontOptionmenu) );
 
-    if  ( asp->aspFontFamilyOptCount < dfl->dflFamilyCount+ 1 )
+    if  ( sp->spFontFamilyOptCount < dfl->dflFontCount+ 1 )
 	{
 	APP_WIDGET *	opts;
 
-	opts= realloc( asp->aspFontFamilyOpts,
-				(dfl->dflFamilyCount+ 1)* sizeof(APP_WIDGET) );
+	opts= realloc( sp->spFontFamilyOpts,
+				(dfl->dflFontCount+ 1)* sizeof(APP_WIDGET) );
 	if  ( ! opts )
 	    { XDEB(opts); return;	}
 
-	asp->aspFontFamilyOpts= opts;
-	asp->aspFontFamilyOptCount= dfl->dflFamilyCount;
+	sp->spFontFamilyOpts= opts;
+	sp->spFontFamilyOptCount= dfl->dflFontCount;
 	}
 
-    dff= dfl->dflFamilies;
-    for ( fam= 0; fam < dfl->dflFamilyCount; dff++, fam++ )
+    for ( fam= 0; fam < dfl->dflFontCount; fam++ )
 	{
-	asp->aspFontFamilyOpts[fam]= appAddItemToOptionmenu(
-				    &(asp->aspFontOptionmenu),
-				    dff->dffFamilyName,
-				    appSymbolFontFamilyChosen, (void *)asp );
+	const DocumentFont *	df;
+
+	df= utilDocumentFontListGetFontBySortIndex( dfl, fam );
+	if  ( ! df )
+	    { continue;	}
+
+	sp->spFontFamilyOpts[fam]= appAddItemToOptionmenu(
+				    &(sp->spFontOptionmenu), df->dfName );
+	fontsAdded++;
 	}
 
-    if  ( dfl->dflFamilyCount == 0 )
+    if  ( fontsAdded == 0 )
 	{
-	asp->aspFontFamilyOpts[0]= appAddItemToOptionmenu(
-				&(asp->aspFontOptionmenu), aspr->asprNone,
-				appSymbolFontFamilyChosen, (void *)asp );
-
-	appGuiEnableWidget( asp->aspTopWidget, 0 );
+	sp->spFontFamilyOpts[0]= appAddItemToOptionmenu(
+				&(sp->spFontOptionmenu), spr->sprNone );
 	}
-    else{ appGuiEnableWidget( asp->aspTopWidget, 1 );	}
 
-    asp->aspFontFamilyChosen= 0;
-    appSetOptionmenu( &(asp->aspFontOptionmenu), 0 );
+    *pEnabled= fontsAdded;
 
-    appOptionmenuRefreshWidth( &(asp->aspFontOptionmenu) );
+    sp->spFontFamilyChosen= 0;
+    sp->spFontInfo= (const AfmFontInfo *)0;
+    appSetOptionmenu( &(sp->spFontOptionmenu), 0 );
+
+    appOptionmenuRefreshWidth( &(sp->spFontOptionmenu) );
 
     return;
     }
@@ -742,125 +1100,130 @@ static void appSymbolFillFontMenu(	AppSymbolPickerResources *	aspr,
 
 /************************************************************************/
 /*									*/
-/*  Make a Symbol Picker Tool.						*/
+/*  Bookkeeping.							*/
 /*									*/
 /************************************************************************/
 
-void * appMakeSymbolPicker(	APP_WIDGET		symbolOption,
-				EditApplication *	ea,
-				const char *		widgetName,
-				APP_BITMAP_IMAGE	iconPixmap,
-				APP_BITMAP_MASK		iconMask,
-				SymbolPickerInsert	insert,
-				AppToolDestroy		destroy,
-				void *			target )
+void appInitSymbolPicker(	SymbolPicker *	sp )
     {
-    AppSymbolPicker *			asp;
-    
-    APP_WIDGET				buttonForm;
+    sp->spApplication= (EditApplication *)0;
+    sp->spInspector= (AppInspector *)0;
 
-    const int				userResizable= 0;
+    sp->spCurrentDocumentId= -1;
 
-    double				horPixPerMM;
-    double				verPixPerMM;
-    double				xfac;
-    double				yfac;
+    sp->spResources= (SymbolPickerResources *)0;
 
-    static AppSymbolPickerResources	aspr;
-    static int				gotResources;
+    appInitOptionmenu( &(sp->spFontOptionmenu) );
+    appInitOptionmenu( &(sp->spBlockOptionmenu) );
 
-    if  ( ! gotResources )
-	{
-	appEncodingMenuGetOptionTexts( aspr.asprEncodings, ea );
+    sp->spFontFrame= (APP_WIDGET)0;
+    sp->spFontPaned= (APP_WIDGET)0;
+    sp->spSymbolDrawing= (APP_WIDGET)0;
 
-	appGuiGetResourceValues( &gotResources, ea, (void *)&aspr,
-					APP_SymbolPickerResourceTable,
-					sizeof(APP_SymbolPickerResourceTable)/
-					sizeof(AppConfigurableResource) );
-	}
+    sp->spNextPageButton= (APP_WIDGET)0;
+    sp->spPrevPageButton= (APP_WIDGET)0;
+    sp->spClearButton= (APP_WIDGET)0;
+    sp->spInsertButton= (APP_WIDGET)0;
 
-    if  ( appPostScriptFontCatalog( ea ) )
-	{ SDEB(ea->eaAfmDirectory);	}
+    sp->spInsert= (SymbolPickerInsert)0;
+    sp->spTarget= (void *)0;
 
-    appGetFactors( ea, &horPixPerMM, &verPixPerMM, &xfac, &yfac );
+    sp->spSymbolSelected= -1;
+    sp->spSymbolOffset= 0;
 
-    asp= (AppSymbolPicker *)malloc( sizeof(AppSymbolPicker) );
-    if  ( ! asp )
-	{ XDEB(asp); return (void *)0;	}
+    docInitFontList( &(sp->spDocumentFontList) );
+    utilInitTextAttribute( &(sp->spTextAttribute) );
+    sp->spFontFamilyChosen= -1;
+    sp->spFontInfo= (AfmFontInfo *)0;
 
-    asp->aspApplication= ea;
-    asp->aspCurrentDocumentId= 0;
-    docInitFontList( &(asp->aspDocumentFontList) );
+    sp->spPixelsPerTwip= 0;
+    sp->spDrawingSurface= (DrawingSurface)0;
+    sp->spScreenFont= -1;
+    sp->spCellSizePixels= 0;
+    sp->spCellsWide= 0;
+    sp->spCellsHigh= 0;
 
-    asp->aspResources= &aspr;
+    sp->spFontFamilyOpts= (APP_WIDGET *)0;
+    sp->spFontFamilyOptCount= 0;
+    sp->spUnicodeBlockOpts= (APP_WIDGET *)0;
+    sp->spUnicodeBlockOptCount= 0;
 
-    appInitOptionmenu( &(asp->aspFontOptionmenu) );
-
-    asp->aspTopWidget= (APP_WIDGET)0;
-    asp->aspSymbolDrawing= (APP_WIDGET)0;
-    asp->aspInsertButton= (APP_WIDGET)0;
-
-    asp->aspDestroy= destroy;
-    asp->aspInsert= insert;
-    asp->aspTarget= target;
-
-    asp->aspSymbolSelected= -1;
-    asp->aspFontFamilyChosen= -1;
-    asp->aspFontFamilyOpts= (APP_WIDGET *)0;
-    asp->aspFontFamilyOptCount= 0;
-
-    asp->aspFont= (APP_FONT *)0;
-    appInitDrawingData( &(asp->aspDrawingData) );
-
-    asp->aspDrawingData.addPostScriptFontList= &(ea->eaPostScriptFontList);
-
-    utilInitTextAttribute( &(asp->aspTextAttribute) );
-
-    appMakeVerticalTool( &(asp->aspTopWidget), &(asp->aspMainWidget), ea,
-			    iconPixmap, iconMask, widgetName, userResizable,
-			    symbolOption, appCloseSymbolPicker, (void *)asp );
-
-    appSymbolMakeFontPart( asp->aspMainWidget, &aspr, asp );
-
-    appSymbolMakeSymbolPart( asp->aspMainWidget, xfac, &aspr, asp );
-    buttonForm= appSymbolMakeButtonRow( asp->aspMainWidget, &aspr, asp );
-
-    appSymbolFillFontMenu( &aspr, asp );
-    appEncodingMenuFillOptionmenu( aspr.asprEncodings,
-				    appSymbolFontEncodingChosen, (void *)asp,
-				    &(asp->aspEncodingMenu) );
-
-
-#   ifdef USE_MOTIF
-    XtRealizeWidget( asp->aspTopWidget );
-#   endif
-
-#   ifdef USE_GTK
-    gtk_widget_realize( asp->aspSymbolDrawing );
-#   endif
-
-    appOptionmenuRefreshWidth( &(asp->aspFontOptionmenu) );
-    appOptionmenuRefreshWidth( &(asp->aspEncodingMenu.aemEncodingOptionmenu) );
-
-    appSetDrawingDataForWidget( asp->aspSymbolDrawing,
-				ea->eaMagnification, &(asp->aspDrawingData) );
-
-    appShowShellWidget( asp->aspTopWidget );
-
-    return (void *)asp;
+    utilInitMemoryBuffer( &(sp->spCollectedString) );
+    sp->spPreviousSize= 0;
     }
 
 /************************************************************************/
 /*									*/
-/*  Draw a symbol picker to front.					*/
+/*  Make a Symbol Picker Tool.						*/
 /*									*/
 /************************************************************************/
 
-void appShowSymbolPicker(	void *	voidasp	)
+void appFillSymbolPicker(	SymbolPicker *			sp,
+				const SymbolPickerResources *	spr,
+				AppInspector *			ai,
+				int				subjectPage,
+				InspectorSubject *		is,
+				APP_WIDGET			pageWidget,
+				const InspectorSubjectResources * isr )
     {
-    AppSymbolPicker *		asp= (AppSymbolPicker *)voidasp;
+    EditApplication *		ea= sp->spApplication;
 
-    appShowShellWidget( asp->aspTopWidget );
+    sp->spResources= spr;
+    sp->spPostScriptFontList= &(ea->eaPostScriptFontList);
+    sp->spEnabled= 1;
+
+    utilInitTextAttribute( &(sp->spTextAttribute) );
+    appSymbolMakeFontPart( pageWidget, spr, sp );
+
+    sp->spPixelsPerTwip= ea->eaMagnification* ea->eaPixelsPerTwip;
+
+    appSymbolMakeSymbolPart( pageWidget, sp );
+
+    guiToolMake2BottonRow( &(is->isNextPrevRow), pageWidget,
+			    &(is->isPrevButton), &(is->isNextButton),
+			    isr->isrPrevButtonText, isr->isrNextButtonText,
+			    appSymbolPickerPrevPage, appSymbolPickerNextPage,
+			    (void *)sp );
+
+    guiToolMake2BottonRow( &(is->isApplyRow), pageWidget,
+			    &(is->isRevertButton), &(is->isApplyButton),
+			    isr->isrRevert, isr->isrApplyToSubject,
+			    appSymbolClearPushed, appSymbolInsertPushed,
+			    (void *)sp );
+
+    sp->spNextPageButton= is->isNextButton;
+    sp->spPrevPageButton= is->isPrevButton;
+    sp->spClearButton= is->isRevertButton;
+    sp->spInsertButton= is->isApplyButton;
+
+    guiEnableWidget( sp->spClearButton, 0 );
+    guiEnableWidget( sp->spInsertButton, 0 );
+
+    return;
+    }
+
+void appSymbolPickerFillChoosers(	SymbolPicker *			sp,
+					const SymbolPickerResources *	spr )
+    {
+    int		enabled= 1;
+
+    appSymbolFillFontMenu( &enabled, spr, sp );
+    appSymbolFillBlockMenu( sp );
+
+    return;
+    }
+
+void appFinishSymbolPicker(		SymbolPicker *			sp,
+					const SymbolPickerResources *	spr )
+    {
+    appOptionmenuRefreshWidth( &(sp->spFontOptionmenu) );
+    appOptionmenuRefreshWidth( &(sp->spBlockOptionmenu) );
+
+    sp->spDrawingSurface= guiDrawingSurfaceForNativeWidget(
+			    sp->spSymbolDrawing,
+			    sp->spPostScriptFontList->psflAvoidFontconfig );
+
+    guiGetBackgroundColor( &(sp->spBackgroundColor), sp->spSymbolDrawing );
     }
 
 /************************************************************************/
@@ -870,70 +1233,151 @@ void appShowSymbolPicker(	void *	voidasp	)
 /************************************************************************/
 
 int appAdaptSymbolPickerToFontFamily(
-				void *				voidasp,
+				void *				voidsp,
 				unsigned int			documentId,
 				const DocumentFontList *	dflFrom,
-				const TextAttribute *		taNew,
-				const PropertyMask *		newMask )
+				const PropertyMask *		taSetMask,
+				const TextAttribute *		taSet )
     {
-    AppSymbolPicker *		asp= (AppSymbolPicker *)voidasp;
-    DocumentFontList *		dfl= &(asp->aspDocumentFontList);
-    AppEncodingMenu *		aem= &(asp->aspEncodingMenu);
+    SymbolPicker *		sp= (SymbolPicker *)voidsp;
+    DocumentFontList *		dfl= &(sp->spDocumentFontList);
     int				rval= 0;
-    const DocumentFont *	df= dfl->dflFonts;
+    int				familyIndex= sp->spFontFamilyChosen;
 
     PropertyMask		doneMask;
 
-    if  ( asp->aspCurrentDocumentId != documentId )
+    if  ( sp->spCurrentDocumentId != documentId )
 	{
+	int		enabled= 1;
+
 	if  ( docCopyFontList( dfl, dflFrom ) )
 	    { LDEB(1); return -1; }
 
-	appSymbolFillFontMenu( asp->aspResources, asp );
+	appSymbolFillFontMenu( &enabled, sp->spResources, sp );
 
-	asp->aspCurrentDocumentId= documentId;
+	sp->spCurrentDocumentId= documentId;
+	familyIndex= -1;
 	}
 
-    PROPmaskCLEAR( &doneMask );
-    utilUpdateTextAttribute( &doneMask, &(asp->aspTextAttribute),
-							    taNew, newMask );
+    utilPropMaskClear( &doneMask );
+    utilUpdateTextAttribute( &doneMask, &(sp->spTextAttribute),
+							    taSetMask, taSet );
 
-    asp->aspTextAttribute.taFontSizeHalfPoints= 20;
-    asp->aspTextAttribute.taFontIsBold= 0;
-    asp->aspTextAttribute.taFontIsSlanted= 0;
+    sp->spTextAttribute.taFontSizeHalfPoints= 2* FONT_SIZE;
+    sp->spTextAttribute.taFontIsBold= 0;
+    sp->spTextAttribute.taFontIsSlanted= 0;
 
-    if  ( asp->aspTextAttribute.taFontNumber >= 0 )
+    if  ( sp->spTextAttribute.taFontNumber >= 0 )
 	{
-	df= dfl->dflFonts+ asp->aspTextAttribute.taFontNumber;
-	asp->aspFontFamilyChosen= df->dfDocFamilyIndex;
+	const DocumentFont *	df= (const DocumentFont *)0;
+
+	df= docFontListGetFontByNumber( dfl,
+				    sp->spTextAttribute.taFontNumber );
+	if  ( df )
+	    { sp->spFontFamilyChosen= df->dfDocFontNumber;	}
+	}
+    else{
+	sp->spTextAttribute.taFontNumber= 0;
 	}
 
-    if  ( asp->aspFontFamilyChosen < 0 )
+    if  ( sp->spFontFamilyChosen < 0 )
 	{
-	asp->aspFontFamilyChosen= 0; 
-	asp->aspTextAttribute.taFontNumber= 0;
-	df= dfl->dflFonts+ asp->aspTextAttribute.taFontNumber;
+	sp->spFontFamilyChosen= 0; 
+	sp->spTextAttribute.taFontNumber= 0;
 	}
 
-    if  ( appSymbolAdaptToFamily( asp ) )
-	{ LDEB(asp->aspFontFamilyChosen); rval= -1;	}
+    if  ( sp->spFontFamilyChosen != familyIndex )
+	{
+	int	sortIndex;
+	if  ( appSymbolAdaptToFamily( sp ) )
+	    { LDEB(sp->spFontFamilyChosen); rval= -1;	}
 
-    appSetOptionmenu( &(asp->aspFontOptionmenu),
-					    asp->aspFontFamilyChosen );
+	sortIndex= utilDocumentFontListGetSortIndex( dfl,
+					    sp->spFontFamilyChosen );
 
-    appEncodingMenuSetEncoding( aem,
-			    dfl->dflFamilies+ asp->aspFontFamilyChosen,
-			    df->dfCharsetIndex );
+	appSetOptionmenu( &(sp->spFontOptionmenu), sortIndex );
+	}
 
     return rval;
     }
 
-void appEnableSymbolPicker(	void *	voidasp,
-				int	enabled )
+void appEnableSymbolPicker(	SymbolPicker *		sp,
+				int			enabled )
     {
-    AppSymbolPicker *	asp= (AppSymbolPicker *)voidasp;
+    if  ( sp->spEnabled != enabled )
+	{
+	sp->spEnabled= enabled;
+	guiExposeDrawingWidget( sp->spSymbolDrawing );
 
-    appGuiEnableWidget( asp->aspMainWidget, enabled != 0 );
+	guiEnableWidget( sp->spClearButton, sp->spEnabled );
+	guiEnableWidget( sp->spInsertButton, sp->spEnabled );
+
+	appGuiEnableOptionmenu( &(sp->spFontOptionmenu), sp->spEnabled );
+	}
+
+    return;
+    }
+
+/************************************************************************/
+/*									*/
+/*  Resources for the Symbol Picker.					*/
+/*									*/
+/************************************************************************/
+
+static AppConfigurableResource APP_SymbolSubjectResourceTable[]=
+    {
+    APP_RESOURCE( "symbolPickerSymbol",
+		offsetof(InspectorSubjectResources,isrSubjectName),
+		"Symbol" ),
+    APP_RESOURCE( "symbolPickerInsert",
+		offsetof(InspectorSubjectResources,isrApplyToSubject),
+		"Insert" ),
+    APP_RESOURCE( "symbolPickerClear",
+		offsetof(InspectorSubjectResources,isrRevert),
+		"Clear" ),
+    APP_RESOURCE( "symbolPickerNextPage",
+		offsetof(InspectorSubjectResources,isrNextButtonText),
+		"Forward" ),
+    APP_RESOURCE( "symbolPickerPrevPage",
+		offsetof(InspectorSubjectResources,isrPrevButtonText),
+		"Backward" ),
+    };
+
+static AppConfigurableResource APP_SymbolPickerResourceTable[]=
+    {
+    APP_RESOURCE( "symbolPickerFont",
+		offsetof(SymbolPickerResources,sprFont),
+		"Font" ),
+    APP_RESOURCE( "symbolPickerBlock",
+		offsetof(SymbolPickerResources,sprBlock),
+		"Block" ),
+    APP_RESOURCE( "symbolPickerNone",
+		offsetof(SymbolPickerResources,sprNone),
+		"None" ),
+    };
+
+void appSymbolPickerGetResourceTable(	EditApplication *		ea,
+					SymbolPickerResources *		spr,
+					InspectorSubjectResources *	isr )
+    {
+    static int	gotToolResources= 0;
+    static int	gotSubjectResources= 0;
+
+    if  ( ! gotToolResources )
+	{
+	appGuiGetResourceValues( &gotToolResources, ea, (void *)spr,
+					APP_SymbolPickerResourceTable,
+					sizeof(APP_SymbolPickerResourceTable)/
+					sizeof(AppConfigurableResource) );
+	}
+
+    if  ( ! gotSubjectResources )
+	{
+	appGuiGetResourceValues( &gotSubjectResources, ea, (void *)isr,
+				APP_SymbolSubjectResourceTable,
+				sizeof(APP_SymbolSubjectResourceTable)/
+				sizeof(AppConfigurableResource) );
+	}
 
     return;
     }

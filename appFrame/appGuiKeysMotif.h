@@ -6,8 +6,6 @@
 
 # ifdef USE_MOTIF
 
-#   include	<X11/keysym.h>
-
 #  ifdef XK_ISO_Left_Tab
 #   define KEY_ISO_Left_Tab	XK_ISO_Left_Tab
 #  endif
@@ -31,6 +29,28 @@
 #	define KEY_Delete	XK_Delete
 #	define KEY_BackSpace	XK_BackSpace
 #   endif
+
+#   define KEY_0		XK_0
+#   define KEY_1		XK_1
+#   define KEY_2		XK_2
+#   define KEY_3		XK_3
+#   define KEY_4		XK_4
+#   define KEY_5		XK_5
+#   define KEY_6		XK_6
+#   define KEY_7		XK_7
+#   define KEY_8		XK_8
+#   define KEY_9		XK_9
+
+#   define KEY_KP_0		XK_KP_0
+#   define KEY_KP_1		XK_KP_1
+#   define KEY_KP_2		XK_KP_2
+#   define KEY_KP_3		XK_KP_3
+#   define KEY_KP_4		XK_KP_4
+#   define KEY_KP_5		XK_KP_5
+#   define KEY_KP_6		XK_KP_6
+#   define KEY_KP_7		XK_KP_7
+#   define KEY_KP_8		XK_KP_8
+#   define KEY_KP_9		XK_KP_9
 
 #   define KEY_KP_Home		XK_KP_Home
 #   define KEY_Home		XK_Home
@@ -62,5 +82,17 @@
 #   define KEY_Insert		XK_Insert
 #   define KEY_KP_Insert	XK_KP_Insert
 #   define KEY_Num_Lock		XK_Num_Lock
+
+#   define MOUSE_BUTTON_FROM_EVENT(e) (e)->xbutton.button
+#   define MOUSE_BUTTON_1	Button1
+#   define MOUSE_BUTTON_2	Button2
+#   define MOUSE_BUTTON_3	Button3
+#   define MOUSE_BUTTON_4	Button4
+#   define MOUSE_BUTTON_5	Button5
+
+#   define SCROLL_DIRECTION_FROM_EVENT(e) (e)->xbutton.button
+#   define SCROLL_UP		Button4
+#   define SCROLL_DOWN		Button5
+
 # endif
 

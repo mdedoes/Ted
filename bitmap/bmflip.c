@@ -1,11 +1,12 @@
 #   include	"bitmapConfig.h"
 
-#   include	<utilAffineTransform.h>
+#   include	<geoAffineTransform.h>
 #   include	<geo2DInteger.h>
 
 #   include	"bmintern.h"
 
 #   include	<string.h>
+#   include	<stdlib.h>
 
 #   define	y0	math_y0
 #   define	y1	math_y1
@@ -198,32 +199,45 @@ static void bmFlip24Bits(	unsigned char *		to,
 /*									*/
 /************************************************************************/
 
-int bmVerticalFlip(	BitmapDescription *		bdOut,
-			const BitmapDescription *	bdIn,
-			unsigned char **		pBufOut,
-			const unsigned char *		bufIn,
+int bmVerticalFlip(	RasterImage *			riOut,
+			const RasterImage *		riIn,
 			int				ignoredInt )
     {
-    const unsigned char *	from;
-    unsigned char *		to;
-    unsigned int		row;
-    unsigned char * 		bufOut;
+    int				rval= 0;
+    const BitmapDescription *	bdIn= &(riIn->riDescription);
 
-    bufOut= (unsigned char *)malloc( bdIn->bdBufferLength );
-    if  ( ! bufOut )
-	{ LLDEB(bdIn->bdBufferLength,bufOut); return -1;	}
+    unsigned int		row;
+
+    RasterImage			ri;
+
+    bmInitRasterImage( &ri );
+
+    if  ( bmCopyDescription( &(ri.riDescription), bdIn ) )
+	{ LDEB(1); rval= -1; goto ready;	}
+
+    ri.riBytes= (unsigned char *)malloc( ri.riDescription.bdBufferLength );
+    if  ( ! ri.riBytes )
+	{ LLDEB(ri.riDescription.bdBufferLength,ri.riBytes); rval= -1; goto ready; }
 
     for ( row= 0; row < bdIn->bdPixelsHigh; row++ )
 	{
-	from= bufIn+ row* bdIn->bdBytesPerRow;
-	to= bufOut+ ( bdIn->bdPixelsHigh- row -1 )* bdIn->bdBytesPerRow;
+	const unsigned char *	from;
+	unsigned char *		to;
+
+	from= riIn->riBytes+ row* bdIn->bdBytesPerRow;
+	to= ri.riBytes+ ( bdIn->bdPixelsHigh- row -1 )* bdIn->bdBytesPerRow;
 
 	memcpy( to, from, bdIn->bdBytesPerRow );
 	}
 
-    bmCopyDescription( bdOut, bdIn ); *pBufOut= bufOut;
+    /* steal */
+    *riOut= ri; bmInitRasterImage( &ri );
 
-    return 0;
+  ready:
+
+    bmCleanRasterImage( &ri );
+
+    return rval;
     }
 
 /************************************************************************/
@@ -232,23 +246,28 @@ int bmVerticalFlip(	BitmapDescription *		bdOut,
 /*									*/
 /************************************************************************/
 
-int bmUpsideDown(	BitmapDescription *		bdOut,
-			const BitmapDescription *	bdIn,
-			unsigned char **		pBufOut,
-			const unsigned char *		bufIn,
+int bmRotate180(	RasterImage *			riOut,
+			const RasterImage *		riIn,
 			int				ignoredInt )
     {
-    const unsigned char *	from;
-    unsigned char *		to;
+    int				rval= 0;
+    const BitmapDescription *	bdIn= &(riIn->riDescription);
+
     unsigned int		row;
     int				pixelsPerByte= 8/ bdIn->bdBitsPerPixel;
-    unsigned char * 		bufOut;
     void			(*flip)( unsigned char *,
 					const unsigned char *, int, int );
 
-    bufOut= (unsigned char *)malloc( bdIn->bdBufferLength );
-    if  ( ! bufOut )
-	{ LLDEB(bdIn->bdBufferLength,bufOut); return -1;	}
+    RasterImage			ri;
+
+    bmInitRasterImage( &ri );
+
+    if  ( bmCopyDescription( &(ri.riDescription), bdIn ) )
+	{ LDEB(1); rval= -1; goto ready;	}
+
+    ri.riBytes= (unsigned char *)malloc( ri.riDescription.bdBufferLength );
+    if  ( ! ri.riBytes )
+	{ LLDEB(ri.riDescription.bdBufferLength,ri.riBytes); rval= -1; goto ready; }
 
     switch( bdIn->bdBitsPerPixel )
 	{
@@ -263,20 +282,28 @@ int bmUpsideDown(	BitmapDescription *		bdOut,
 	case 24:
 	    flip= bmFlip24Bits;	break;
 	default:
-	    LDEB(bdIn->bdBitsPerPixel); return -1;
+	    LDEB(bdIn->bdBitsPerPixel); rval= -1; goto ready;
 	}
 
     for ( row= 0; row < bdIn->bdPixelsHigh; row++ )
 	{
-	from= bufIn+ row* bdIn->bdBytesPerRow;
-	to= bufOut+ ( bdIn->bdPixelsHigh- row -1 )* bdIn->bdBytesPerRow;
+	const unsigned char *	from;
+	unsigned char *		to;
+
+	from= riIn->riBytes+ row* bdIn->bdBytesPerRow;
+	to= ri.riBytes+ ( bdIn->bdPixelsHigh- row -1 )* bdIn->bdBytesPerRow;
 
 	(*flip)( to, from, bdIn->bdPixelsWide, pixelsPerByte );
 	}
 
-    bmCopyDescription( bdOut, bdIn ); *pBufOut= bufOut;
+    /* steal */
+    *riOut= ri; bmInitRasterImage( &ri );
 
-    return 0;
+  ready:
+
+    bmCleanRasterImage( &ri );
+
+    return rval;
     }
 
 /************************************************************************/
@@ -285,23 +312,28 @@ int bmUpsideDown(	BitmapDescription *		bdOut,
 /*									*/
 /************************************************************************/
 
-int bmHorizontalFlip(	BitmapDescription *		bdOut,
-			const BitmapDescription *	bdIn,
-			unsigned char **		pBufOut,
-			const unsigned char *		bufIn,
+int bmHorizontalFlip(	RasterImage *			riOut,
+			const RasterImage *		riIn,
 			int				ignoredInt )
     {
-    const unsigned char *	from;
-    unsigned char *		to;
+    int				rval= 0;
+    const BitmapDescription *	bdIn= &(riIn->riDescription);
+
     unsigned int		row;
     int				pixelsPerByte= 8/ bdIn->bdBitsPerPixel;
-    unsigned char * 		bufOut;
     void			(*flip)( unsigned char *,
 					const unsigned char *, int, int );
 
-    bufOut= (unsigned char *)malloc( bdIn->bdBufferLength );
-    if  ( ! bufOut )
-	{ LLDEB(bdIn->bdBufferLength,bufOut); return -1;	}
+    RasterImage			ri;
+
+    bmInitRasterImage( &ri );
+
+    if  ( bmCopyDescription( &(ri.riDescription), bdIn ) )
+	{ LDEB(1); rval= -1; goto ready;	}
+
+    ri.riBytes= (unsigned char *)malloc( ri.riDescription.bdBufferLength );
+    if  ( ! ri.riBytes )
+	{ LLDEB(ri.riDescription.bdBufferLength,ri.riBytes); rval= -1; goto ready; }
 
     switch( bdIn->bdBitsPerPixel )
 	{
@@ -316,19 +348,28 @@ int bmHorizontalFlip(	BitmapDescription *		bdOut,
 	case 24:
 	    flip= bmFlip24Bits;	break;
 	default:
-	    LDEB(bdIn->bdBitsPerPixel); return -1;
+	    LDEB(bdIn->bdBitsPerPixel); rval= -1; goto ready;
 	}
 
     for ( row= 0; row < bdIn->bdPixelsHigh; row++ )
 	{
-	from= bufIn+ row* bdIn->bdBytesPerRow;
-	to= bufOut+ row* bdIn->bdBytesPerRow;
+	const unsigned char *	from;
+	unsigned char *		to;
+
+	from= riIn->riBytes+ row* bdIn->bdBytesPerRow;
+	to= ri.riBytes+ row* bdIn->bdBytesPerRow;
+
 	(*flip)( to, from, bdIn->bdPixelsWide, pixelsPerByte );
 	}
 
-    bmCopyDescription( bdOut, bdIn ); *pBufOut= bufOut;
+    /* steal */
+    *riOut= ri; bmInitRasterImage( &ri );
 
-    return 0;
+  ready:
+
+    bmCleanRasterImage( &ri );
+
+    return rval;
     }
 
 /************************************************************************/
@@ -337,17 +378,16 @@ int bmHorizontalFlip(	BitmapDescription *		bdOut,
 /*									*/
 /************************************************************************/
 
-int bmRotate90(	BitmapDescription *		bdOut,
-		const BitmapDescription *	bdIn,
-		unsigned char **		pBufOut,
-		const unsigned char *		bufIn,
-		int				angle )
+int bmRotate90(		RasterImage *			riOut,
+			const RasterImage *		riIn,
+			int				angle )
     {
+    int				rval= 0;
+    const BitmapDescription *	bdIn= &(riIn->riDescription);
+
     const unsigned char *	from;
     unsigned char *		to;
     unsigned int		row, col;
-    unsigned char * 		bufOut;
-    BitmapDescription		bd;
 
     int				s;
     int				shift;
@@ -355,41 +395,43 @@ int bmRotate90(	BitmapDescription *		bdOut,
     unsigned char		mr;
     int				step;
 
+    RasterImage			ri;
+
+    bmInitRasterImage( &ri );
+
     switch( angle )
 	{
 	case 0:
-	    if  ( bmCopyDescription( &bd, bdIn ) )
-		{ LDEB(1); return -1;	}
+	    if  ( bmCopyRasterImage( riOut, riIn ) )
+		{ LDEB(1); rval= -1; goto ready;	}
+	    goto ready;
 
-	    bufOut= (unsigned char *)malloc( bd.bdBufferLength );
-	    if  ( ! bufOut )
-		{ LLDEB(bd.bdBufferLength,bufOut); return -1;	}
-
-	    memcpy( bufOut, bufIn, bd.bdBufferLength );
-
-	    *bdOut= bd; *pBufOut= bufOut;
-	    return 0;
 	case 180:
-	    return bmUpsideDown( bdOut, bdIn, pBufOut, bufIn, angle );
+	    if  ( bmRotate180( riOut, riIn, angle ) )
+		{ LDEB(180); rval= -1; goto ready;	}
+	    goto ready;
 
 	case 270:
 	case 90:
 	    break;
 
 	default:
-	    LDEB(angle); return -1;
+	    LDEB(angle); rval= -1; goto ready;
 	}
 
 
-    bmCopyDescription( &bd, bdIn );
-    bd.bdPixelsWide= bdIn->bdPixelsHigh;
-    bd.bdPixelsHigh= bdIn->bdPixelsWide;
-    bd.bdBytesPerRow= ( bd.bdPixelsWide* bdIn->bdBitsPerPixel+ 7 )/ 8;
-    bd.bdBufferLength= bd.bdPixelsHigh* bd.bdBytesPerRow;
+    if  ( bmCopyDescription( &(ri.riDescription), bdIn ) )
+	{ LDEB(1); rval= -1; goto ready;	}
 
-    bufOut= (unsigned char *)malloc( bd.bdBufferLength );
-    if  ( ! bufOut )
-	{ LLDEB(bd.bdBufferLength,bufOut); return -1;	}
+    ri.riDescription.bdPixelsWide= bdIn->bdPixelsHigh;
+    ri.riDescription.bdPixelsHigh= bdIn->bdPixelsWide;
+
+    if  ( bmCalculateSizes( &(ri.riDescription) ) )
+	{ LDEB(1); rval= -1; goto ready;	}
+
+    ri.riBytes= (unsigned char *)malloc( ri.riDescription.bdBufferLength );
+    if  ( ! ri.riBytes )
+	{ LLDEB(ri.riDescription.bdBufferLength,ri.riBytes); rval= -1; goto ready; }
 
     switch( bdIn->bdBitsPerPixel )
 	{
@@ -402,26 +444,26 @@ int bmRotate90(	BitmapDescription *		bdOut,
 	case  1:
 	    m |= 0x80;
 
-	    memset( bufOut, 0, bd.bdBufferLength );
+	    memset( ri.riBytes, 0, ri.riDescription.bdBufferLength );
 	    step= 8/ bdIn->bdBitsPerPixel;
 
 	    if  ( angle == 90 )
 		{
-		for ( row= 0; row < bd.bdPixelsHigh; row++ )
+		for ( row= 0; row < ri.riDescription.bdPixelsHigh; row++ )
 		    {
-		    int		toRow= bd.bdPixelsHigh- row- 1;
+		    int		toRow= ri.riDescription.bdPixelsHigh- row- 1;
 
 		    mr= m >> bdIn->bdBitsPerPixel* ( row % step );
 
 		    for ( s= 0; s < row % step; s++ )
 			{
-			to= bufOut+ toRow* bd.bdBytesPerRow;
-			from= bufIn+ row/step+ s* bdIn->bdBytesPerRow;
+			to= ri.riBytes+ toRow* ri.riDescription.bdBytesPerRow;
+			from= riIn->riBytes+ row/step+ s* bdIn->bdBytesPerRow;
 
 			shift= row % step- s;
 			shift *= bdIn->bdBitsPerPixel;
 
-			for ( col= s; col < bd.bdPixelsWide; col += step )
+			for ( col= s; col < ri.riDescription.bdPixelsWide; col += step )
 			    {
 			    *(to++) |= ( *from & mr ) << shift;
 			    from += step* bdIn->bdBytesPerRow;
@@ -430,13 +472,13 @@ int bmRotate90(	BitmapDescription *		bdOut,
 
 		    for ( s= row % step; s < step; s++ )
 			{
-			to= bufOut+ toRow* bd.bdBytesPerRow;
-			from= bufIn+ row/step+ s* bdIn->bdBytesPerRow;
+			to= ri.riBytes+ toRow* ri.riDescription.bdBytesPerRow;
+			from= riIn->riBytes+ row/step+ s* bdIn->bdBytesPerRow;
 
 			shift= s- row % step;
 			shift *= bdIn->bdBitsPerPixel;
 
-			for ( col= s; col < bd.bdPixelsWide; col += step )
+			for ( col= s; col < ri.riDescription.bdPixelsWide; col += step )
 			    {
 			    *(to++) |= ( *from & mr ) >> shift;
 			    from += step* bdIn->bdBytesPerRow;
@@ -446,57 +488,57 @@ int bmRotate90(	BitmapDescription *		bdOut,
 		}
 	    else{
 		/*270*/
-		for ( row= 0; row < bd.bdPixelsHigh; row++ )
+		for ( row= 0; row < ri.riDescription.bdPixelsHigh; row++ )
 		    {
 		    mr= m >> bdIn->bdBitsPerPixel* ( row % step );
 
 		    for ( s= 0; s < row % step; s++ )
 			{
-			int ri= bdIn->bdPixelsHigh- 1;
+			int r= bdIn->bdPixelsHigh- 1;
 
-			to= bufOut+ row* bd.bdBytesPerRow;
-			from= bufIn+ ( bdIn->bdPixelsHigh- 1 )*
+			to= ri.riBytes+ row* ri.riDescription.bdBytesPerRow;
+			from= riIn->riBytes+ ( bdIn->bdPixelsHigh- 1 )*
 							bdIn->bdBytesPerRow;
 			from -= s* bdIn->bdBytesPerRow;
-			ri -= s;
+			r -= s;
 			from += row/ step;
 
 			shift= row % step- s;
 			shift *= bdIn->bdBitsPerPixel;
 
-			for ( col= 0; col < bd.bdPixelsWide; col += step )
+			for ( col= 0; col < ri.riDescription.bdPixelsWide; col += step )
 			    {
-			    if  ( ri < 0 )
+			    if  ( r < 0 )
 				{ break;	}
 
 			    *(to++) |= ( *from & mr ) << shift;
 			    from -= step* bdIn->bdBytesPerRow;
-			    ri -= step;
+			    r -= step;
 			    }
 			}
 
 		    for ( s= row % step; s < step; s++ )
 			{
-			int ri= bdIn->bdPixelsHigh- 1;
+			int r= bdIn->bdPixelsHigh- 1;
 
-			to= bufOut+ row* bd.bdBytesPerRow;
-			from= bufIn+ ( bdIn->bdPixelsHigh- 1 )*
+			to= ri.riBytes+ row* ri.riDescription.bdBytesPerRow;
+			from= riIn->riBytes+ ( bdIn->bdPixelsHigh- 1 )*
 							bdIn->bdBytesPerRow;
 			from -= s* bdIn->bdBytesPerRow;
-			ri -= s;
+			r -= s;
 			from += row/ step;
 
 			shift= s- row % step;
 			shift *= bdIn->bdBitsPerPixel;
 
-			for ( col= 0; col < bd.bdPixelsWide; col += step )
+			for ( col= 0; col < ri.riDescription.bdPixelsWide; col += step )
 			    {
-			    if  ( ri < 0 )
+			    if  ( r < 0 )
 				{ break;	}
 
 			    *(to++) |= ( *from & mr ) >> shift;
 			    from -= step* bdIn->bdBytesPerRow;
-			    ri -= step;
+			    r -= step;
 			    }
 			}
 		    }
@@ -506,23 +548,23 @@ int bmRotate90(	BitmapDescription *		bdOut,
 	case  8:
 	    if  ( angle == 90 )
 		{
-		for ( row= 0; row < bd.bdPixelsHigh; row++ )
+		for ( row= 0; row < ri.riDescription.bdPixelsHigh; row++ )
 		    {
-		    from= bufIn+ row;
-		    to= bufOut+ ( bd.bdPixelsHigh- row- 1 )* bd.bdBytesPerRow;
+		    from= riIn->riBytes+ row;
+		    to= ri.riBytes+ ( ri.riDescription.bdPixelsHigh- row- 1 )* ri.riDescription.bdBytesPerRow;
 
-		    for ( col= 0; col < bd.bdPixelsWide; col++ )
+		    for ( col= 0; col < ri.riDescription.bdPixelsWide; col++ )
 			{ *(to++)= *from; from += bdIn->bdBytesPerRow; }
 		    }
 		}
 	    else{
 		/*270*/
-		for ( row= 0; row < bd.bdPixelsHigh; row++ )
+		for ( row= 0; row < ri.riDescription.bdPixelsHigh; row++ )
 		    {
-		    from= bufIn+ row;
-		    to= bufOut+ ( row+ 1 )* bd.bdBytesPerRow- 1;
+		    from= riIn->riBytes+ row;
+		    to= ri.riBytes+ ( row+ 1 )* ri.riDescription.bdBytesPerRow- 1;
 
-		    for ( col= 0; col < bd.bdPixelsWide; col++ )
+		    for ( col= 0; col < ri.riDescription.bdPixelsWide; col++ )
 			{ *(to--)= *from; from += bdIn->bdBytesPerRow; }
 		    }
 		}
@@ -531,12 +573,12 @@ int bmRotate90(	BitmapDescription *		bdOut,
 	case 24:
 	    if  ( angle == 90 )
 		{
-		for ( row= 0; row < bd.bdPixelsHigh; row++ )
+		for ( row= 0; row < ri.riDescription.bdPixelsHigh; row++ )
 		    {
-		    from= bufIn+ 3* row;
-		    to= bufOut+ ( bd.bdPixelsHigh- row- 1 )* bd.bdBytesPerRow;
+		    from= riIn->riBytes+ 3* row;
+		    to= ri.riBytes+ ( ri.riDescription.bdPixelsHigh- row- 1 )* ri.riDescription.bdBytesPerRow;
 
-		    for ( col= 0; col < bd.bdPixelsWide; col++ )
+		    for ( col= 0; col < ri.riDescription.bdPixelsWide; col++ )
 			{
 			*(to++)= from[0]; *(to++)= from[1]; *(to++)= from[2];
 			from += bdIn->bdBytesPerRow;
@@ -544,12 +586,12 @@ int bmRotate90(	BitmapDescription *		bdOut,
 		    }
 		}
 	    else{
-		for ( row= 0; row < bd.bdPixelsHigh; row++ )
+		for ( row= 0; row < ri.riDescription.bdPixelsHigh; row++ )
 		    {
-		    from= bufIn+ 3* row;
-		    to= bufOut+ ( row+ 1 )* bd.bdBytesPerRow- 3;
+		    from= riIn->riBytes+ 3* row;
+		    to= ri.riBytes+ ( row+ 1 )* ri.riDescription.bdBytesPerRow- 3;
 
-		    for ( col= 0; col < bd.bdPixelsWide; col++ )
+		    for ( col= 0; col < ri.riDescription.bdPixelsWide; col++ )
 			{
 			to[0]= from[0]; to[1]= from[1]; to[2]= from[2];
 			to -= 3; from += bdIn->bdBytesPerRow;
@@ -558,12 +600,17 @@ int bmRotate90(	BitmapDescription *		bdOut,
 		}
 	    break;
 	default:
-	    LDEB(bdIn->bdBitsPerPixel); return -1;
+	    LDEB(bdIn->bdBitsPerPixel); rval= -1; goto ready;
 	}
 
-    *bdOut= bd; *pBufOut= bufOut;
+    /* steal */
+    *riOut= ri; bmInitRasterImage( &ri );
 
-    return 0;
+  ready:
+
+    bmCleanRasterImage( &ri );
+
+    return rval;
     }
 
 /************************************************************************/
@@ -601,7 +648,6 @@ static void bmShearRow8Bit(	unsigned char *			rowBufOut,
     int		colIn0;
     int		colIn1;
     int		colIn;
-    int		colTo0;
 
     int		prev[5];
 
@@ -611,7 +657,6 @@ static void bmShearRow8Bit(	unsigned char *			rowBufOut,
 
     if  ( colShift < 0 )
 	{ colIn0= -colShift; }
-    colTo0= colIn0+ colShift;
 
     if  ( colIn1+ colShift >= bdOut->bdPixelsWide )
 	{ colIn1= bdOut->bdPixelsWide- colShift- 1; }
@@ -711,25 +756,25 @@ static int bmShearRows(		unsigned char *			bufOut,
 				const BitmapDescription *	bdOut,
 				int				shear,
 				const DocumentRectangle *	drOut,
-				const BitmapDescription *	bdIn,
-				const unsigned char *		bufIn,
+				const RasterImage *		riIn,
 				ShearRow			shearRow )
     {
+    const BitmapDescription *	bdIn= &(riIn->riDescription);
     int				row;
 
     int				fl;
     int				colShift;
-
-    unsigned char *		rowBufOut;
-    const unsigned char *	rowBufIn;
 
     if  ( bdOut->bdPixelsHigh != bdIn->bdPixelsHigh )
 	{ LLDEB(bdOut->bdPixelsHigh,bdIn->bdPixelsHigh); return -1; }
 
     for ( row= 0; row < bdIn->bdPixelsHigh; row++ )
 	{
+	unsigned char *		rowBufOut;
+	const unsigned char *	rowBufIn;
+
 	rowBufOut= bufOut+ row* bdOut->bdBytesPerRow;
-	rowBufIn= bufIn+ row* bdIn->bdBytesPerRow;
+	rowBufIn= riIn->riBytes+ row* bdIn->bdBytesPerRow;
 
 	fl= ( 255* shear* row )/ (int)bdIn->bdPixelsHigh;
 	colShift= ( shear* row )/ (int)bdIn->bdPixelsHigh;
@@ -750,20 +795,20 @@ static int bmShearCols(		unsigned char *			bufOut,
 				const BitmapDescription *	bdOut,
 				int				shear,
 				const DocumentRectangle *	drOut,
-				const BitmapDescription *	bdIn,
-				const unsigned char *		bufIn,
+				const RasterImage *		riIn,
 				ShearCol			shearCol )
     {
+    const BitmapDescription *	bdIn= &(riIn->riDescription);
     int				col;
-
-    int				fl;
-    int				rowShift;
 
     if  ( bdOut->bdPixelsWide != bdIn->bdPixelsWide )
 	{ LLDEB(bdOut->bdPixelsWide,bdIn->bdPixelsWide); return -1; }
 
     for ( col= 0; col < bdIn->bdPixelsWide; col++ )
 	{
+	int			fl;
+	int			rowShift;
+
 	fl= ( 255* shear* col )/ (int)bdIn->bdPixelsWide;
 	rowShift= ( shear* col )/ (int)bdIn->bdPixelsWide;
 
@@ -773,7 +818,7 @@ static int bmShearCols(		unsigned char *			bufOut,
 
 	rowShift -= drOut->drY0;
 
-	(*shearCol)( bufOut, bufIn, bdIn, bdOut, col, rowShift, fl );
+	(*shearCol)( bufOut, riIn->riBytes, bdIn, bdOut, col, rowShift, fl );
 	}
 
     return 0;
@@ -800,26 +845,26 @@ static void bmTransformRectangle(
 
     for ( i= 0; i < 4; i++ )
 	{
-	to[i].p2diX= AT2_X( from[i].p2diX- drFrom->drX0,
-					    from[i].p2diY- drFrom->drY0, at );
-	to[i].p2diY= AT2_Y( from[i].p2diX- drFrom->drX0,
-					    from[i].p2diY- drFrom->drY0, at );
+	to[i].x= AT2_X( from[i].x- drFrom->drX0,
+					    from[i].y- drFrom->drY0, at );
+	to[i].y= AT2_Y( from[i].x- drFrom->drX0,
+					    from[i].y- drFrom->drY0, at );
 	}
 
-    drTo->drX0= drTo->drX1= to[0].p2diX;
-    drTo->drY0= drTo->drY1= to[0].p2diY;
+    drTo->drX0= drTo->drX1= to[0].x;
+    drTo->drY0= drTo->drY1= to[0].y;
 
     for ( i= 1; i < 4; i++ )
 	{
-	if  ( drTo->drX0 > to[i].p2diX )
-	    { drTo->drX0=  to[i].p2diX;	}
-	if  ( drTo->drY0 > to[i].p2diY )
-	    { drTo->drY0=  to[i].p2diY;	}
+	if  ( drTo->drX0 > to[i].x )
+	    { drTo->drX0=  to[i].x;	}
+	if  ( drTo->drY0 > to[i].y )
+	    { drTo->drY0=  to[i].y;	}
 
-	if  ( drTo->drX1 < to[i].p2diX )
-	    { drTo->drX1=  to[i].p2diX;	}
-	if  ( drTo->drY1 < to[i].p2diY )
-	    { drTo->drY1=  to[i].p2diY;	}
+	if  ( drTo->drX1 < to[i].x )
+	    { drTo->drX1=  to[i].x;	}
+	if  ( drTo->drY1 < to[i].y )
+	    { drTo->drY1=  to[i].y;	}
 	}
 
     bd->bdPixelsWide= drTo->drX1- drTo->drX0+ 1;
@@ -865,12 +910,11 @@ static void bmTransformRectangle(
 /*									*/
 /************************************************************************/
 
-int bmRotate(	BitmapDescription *		bdOut,
-		const BitmapDescription *	bdIn,
-		unsigned char **		pBufOut,
-		const unsigned char *		bufIn,
+int bmRotate(	RasterImage *			riOut,
+		const RasterImage *		riIn,
 		double				theta )
     {
+    const BitmapDescription *	bdIn= &(riIn->riDescription);
     int				rval= 0;
 
     int				rot90;
@@ -897,16 +941,20 @@ int bmRotate(	BitmapDescription *		bdOut,
     int				shearB;
     int				shearA;
 
-    BitmapDescription		bdC;
-    BitmapDescription		bdB;
-    BitmapDescription		bdA;
-
-    unsigned char *		bufC= (unsigned char *)0;
-    unsigned char *		bufB= (unsigned char *)0;
-    unsigned char *		bufA= (unsigned char *)0;
+    RasterImage			riC;
+    RasterImage			riB;
+    RasterImage			riA;
 
     ShearRow			shearRow= (ShearRow)0;
     ShearCol			shearCol= (ShearCol)0;
+
+    bmInitRasterImage( &riC );
+    bmInitRasterImage( &riB );
+    bmInitRasterImage( &riA );
+
+    geoIdentityAffineTransform2D( &C );
+    geoIdentityAffineTransform2D( &B );
+    geoIdentityAffineTransform2D( &A );
 
     switch( bdIn->bdColorEncoding )
 	{
@@ -921,7 +969,7 @@ int bmRotate(	BitmapDescription *		bdOut,
 
 		default:
 		    LLDEB(bdIn->bdColorEncoding,bdIn->bdBitsPerPixel);
-		    return -1;
+		    rval= -1; goto ready;
 		}
 	    break;
 
@@ -935,27 +983,19 @@ int bmRotate(	BitmapDescription *		bdOut,
 
 		default:
 		    LLDEB(bdIn->bdColorEncoding,bdIn->bdBitsPerPixel);
-		    return -1;
+		    rval= -1; goto ready;
 		}
 	    break;
 
 	case BMcoRGB8PALETTE:
 	    LDEB(bdIn->bdColorEncoding);
-	    return -1;
+	    rval= -1; goto ready;
 	    break;
 
 	default:
 	    LDEB(bdIn->bdColorEncoding);
-	    return -1;
+	    rval= -1; goto ready;
 	}
-
-    bmInitDescription( &bdC );
-    bmInitDescription( &bdB );
-    bmInitDescription( &bdA );
-
-    utilIdentityAffineTransform2D( &C );
-    utilIdentityAffineTransform2D( &B );
-    utilIdentityAffineTransform2D( &A );
 
     /*********/
     /*  0 1  */
@@ -964,10 +1004,10 @@ int bmRotate(	BitmapDescription *		bdOut,
     drIn.drX0= 0; drIn.drX1= bdIn->bdPixelsWide- 1;
     drIn.drY0= 0; drIn.drY1= bdIn->bdPixelsHigh- 1;
 
-    rectIn[0].p2diX= 0;		rectIn[0].p2diY= 0;
-    rectIn[1].p2diX= drIn.drX1; rectIn[1].p2diY= 0;
-    rectIn[2].p2diX= drIn.drX1; rectIn[2].p2diY= drIn.drY1;
-    rectIn[3].p2diX= 0;		rectIn[3].p2diY= drIn.drY1;
+    rectIn[0].x= 0;		rectIn[0].y= 0;
+    rectIn[1].x= drIn.drX1;	rectIn[1].y= 0;
+    rectIn[2].x= drIn.drX1;	rectIn[2].y= drIn.drY1;
+    rectIn[3].x= 0;		rectIn[3].y= drIn.drY1;
 
     /*  1  */
     while( theta < -M_PI/4 )
@@ -985,17 +1025,20 @@ int bmRotate(	BitmapDescription *		bdOut,
     A.at2Ayx= a;
 
     /*  2  */
-    bmCopyDescription( &bdC, bdIn );
-    bmTransformRectangle( &bdC, rectC, &drC, &C, rectIn, &drIn );
+    if  ( bmCopyDescription( &(riC.riDescription), bdIn ) )
+	{ LDEB(1); rval= -1; goto ready;	}
+
+    bmTransformRectangle( &(riC.riDescription), rectC, &drC, &C,
+							rectIn, &drIn );
 
     shearC= c* bdIn->bdPixelsHigh;
 
-    bufC= malloc( bdC.bdBufferLength );
-    if  ( ! bufC )
-	{ LLDEB(bdC.bdBufferLength,bufC);	}
-    memset( bufC, 0, bdC.bdBufferLength );
+    riC.riBytes= (unsigned char *)malloc( riC.riDescription.bdBufferLength );
+    if  ( ! riC.riBytes )
+	{ LLDEB(riC.riDescription.bdBufferLength,riC.riBytes); rval= -1; goto ready;	}
+    memset( riC.riBytes, 0, riC.riDescription.bdBufferLength );
 
-    if  ( bmShearRows( bufC, &bdC, shearC, &drC, bdIn, bufIn, shearRow ) )
+    if  ( bmShearRows( riC.riBytes, &(riC.riDescription), shearC, &drC, riIn, shearRow ) )
 	{ LDEB(1); rval= -1; goto ready; }
 
 #   define	RET_C	0
@@ -1012,20 +1055,20 @@ int bmRotate(	BitmapDescription *		bdOut,
 #   endif
 
     /*  3  */
-    bmCopyDescription( &bdB, &bdC );
-    bmTransformRectangle( &bdB, rectB, &drB, &B, rectC, &drC );
+    if  ( bmCopyDescription( &(riB.riDescription), &(riC.riDescription) ) )
+	{ LDEB(1); rval= -1; goto ready;	}
+    bmTransformRectangle( &(riB.riDescription), rectB, &drB, &B, rectC, &drC );
 
-    shearB= b* bdC.bdPixelsWide;
+    shearB= b* riC.riDescription.bdPixelsWide;
 
-    bufB= malloc( bdB.bdBufferLength );
-    if  ( ! bufB )
-	{ LLDEB(bdB.bdBufferLength,bufB);	}
-    memset( bufB, 0, bdB.bdBufferLength );
+    riB.riBytes= (unsigned char *)malloc( riB.riDescription.bdBufferLength );
+    if  ( ! riB.riBytes )
+	{ LLDEB(riB.riDescription.bdBufferLength,riB.riBytes); rval= -1; goto ready;	}
+    memset( riB.riBytes, 0, riB.riDescription.bdBufferLength );
 
-    if  ( bmShearCols( bufB, &bdB, shearB, &drB, &bdC, bufC, shearCol ) )
+    if  ( bmShearCols( riB.riBytes, &(riB.riDescription), shearB, &drB,
+							    &riC, shearCol ) )
 	{ LDEB(1); rval= -1; goto ready; }
-
-    free( bufC ); bufC= (unsigned char *)0;
 
 #   define	RET_B	0
 #   if		RET_B
@@ -1041,45 +1084,35 @@ int bmRotate(	BitmapDescription *		bdOut,
 #   endif
 
     /*  4  */
-    bmCopyDescription( &bdA, &bdB );
-    bmTransformRectangle( &bdA, rectA, &drA, &A, rectB, &drB );
+    if  ( bmCopyDescription( &(riA.riDescription), &(riB.riDescription) ) )
+	{ LDEB(1); rval= -1; goto ready;	}
+    bmTransformRectangle( &(riA.riDescription), rectA, &drA, &A, rectB, &drB );
 
-    shearA= a* bdB.bdPixelsHigh;
+    shearA= a* riB.riDescription.bdPixelsHigh;
 
-    bufA= malloc( bdA.bdBufferLength );
-    if  ( ! bufA )
-	{ LLDEB(bdA.bdBufferLength,bufA);	}
-    memset( bufA, 0, bdA.bdBufferLength );
+    riA.riBytes= (unsigned char *)malloc( riA.riDescription.bdBufferLength );
+    if  ( ! riA.riBytes )
+	{ LLDEB(riA.riDescription.bdBufferLength,riA.riBytes); rval= -1; goto ready;	}
+    memset( riA.riBytes, 0, riA.riDescription.bdBufferLength );
 
-    if  ( bmShearRows( bufA, &bdA, shearA, &drA, &bdB, bufB, shearRow ) )
+    if  ( bmShearRows( riA.riBytes, &(riA.riDescription), shearA, &drA, &riB, shearRow ) )
 	{ LDEB(1); rval= -1; goto ready; }
-
-    free( bufB ); bufB= (unsigned char *)0;
 
     if  ( rot90 != 0 )
 	{
-	if  ( bmRotate90( bdOut, &bdA, pBufOut, bufA, 90* rot90 ) )
+	if  ( bmRotate90( riOut, &riA, 90* rot90 ) )
 	    { LDEB(rot90); rval= -1; goto ready; }
 	}
     else{
 	/*  steal */
-	bmCopyDescription( bdOut, &bdA );
-	*pBufOut= bufA;
-	bufA= (unsigned char *)0;
+	*riOut= riA; bmInitRasterImage( &riA );
 	}
 
   ready:
 
-    if  ( bufC )
-	{ free( bufC );	}
-    if  ( bufB )
-	{ free( bufB );	}
-    if  ( bufA )
-	{ free( bufA );	}
-
-    bmCleanDescription( &bdC );
-    bmCleanDescription( &bdB );
-    bmCleanDescription( &bdA );
+    bmCleanRasterImage( &riC );
+    bmCleanRasterImage( &riB );
+    bmCleanRasterImage( &riA );
 
     return rval;
     }

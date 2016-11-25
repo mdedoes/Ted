@@ -8,7 +8,6 @@
 
 #   include	<stddef.h>
 #   include	<stdio.h>
-#   include	<stdlib.h>
 
 #   include	"appFrame.h"
 #   include	<appDebugon.h>
@@ -34,7 +33,7 @@ APP_WIDGET appSetMenuItem(	APP_WIDGET		menu,
     Arg			al[20];
     int			ac= 0;
 
-    labelString= XmStringCreateLocalized( ami->amiItemText );
+    labelString= XmStringCreateLocalized( (char *)ami->amiItemText );
 
     XtSetArg( al[ac], XmNlabelString, labelString ); ac++;
 
@@ -43,7 +42,7 @@ APP_WIDGET appSetMenuItem(	APP_WIDGET		menu,
 
     if  ( ami->amiKeyText )
 	{
-	acceleratorString= XmStringCreateLocalized( ami->amiKeyText );
+	acceleratorString= XmStringCreateLocalized( (char *)ami->amiKeyText );
 
 	XtSetArg( al[ac], XmNacceleratorText, acceleratorString ); ac++;
 	}
@@ -94,7 +93,7 @@ APP_WIDGET appSetToggleMenuItem(	APP_WIDGET		menu,
     Arg			al[20];
     int			ac= 0;
 
-    labelString= XmStringCreateLocalized( ami->amiItemText );
+    labelString= XmStringCreateLocalized( (char *)ami->amiItemText );
 
     XtSetArg( al[ac], XmNlabelString,		labelString ); ac++;
     XtSetArg( al[ac], XmNvisibleWhenOff,	True ); ac++;
@@ -115,7 +114,7 @@ APP_WIDGET appSetToggleMenuItem(	APP_WIDGET		menu,
     if  ( ami->amiKeyText )
 	{
 	acceleratorString=
-		    XmStringCreateLocalized( ami->amiKeyText );
+		    XmStringCreateLocalized( (char *)ami->amiKeyText );
 
 	XtSetArg( al[ac], XmNacceleratorText, acceleratorString ); ac++;
 	}
@@ -233,6 +232,20 @@ char *	appGetTextFromMenuOption(	Widget		w )
 /*  2  */
 void appFreeTextFromMenuOption(	char *		s )
     { XtFree( s );	}
+
+/************************************************************************/
+/*									*/
+/*  Hide a menu option.							*/
+/*									*/
+/************************************************************************/
+
+void guiShowMenuOption(		APP_WIDGET		w,
+				int			visible )
+    {
+    if  ( visible )
+	{ XtManageChild( w );	}
+    else{ XtUnmanageChild( w );	}
+    }
 
 #   endif
 

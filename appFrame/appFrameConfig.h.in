@@ -1,23 +1,16 @@
-/* config.h.in.  Generated automatically from configure.in by autoheader.  */
+#   ifndef		APP_FRAME_CONFIG_H
+#   define		APP_FRAME_CONFIG_H
 
-/* Define to empty if the keyword does not work.  */
-#undef const
+#   include		<appUtilConfig.h>
 
-/* Define if you have the ANSI C header files.  */
-#undef STDC_HEADERS
-
-/* Define if your processor stores words with the most significant
-   byte first (like Motorola and SPARC, unlike Intel and VAX).  */
-#undef WORDS_BIGENDIAN
-
-#undef HAVE_SOCKET
 #undef HAVE_MKSTEMP
-#undef HAVE_STRERROR
-#undef HAVE_UNAME
 
-#undef HAVE_FCNTL_H
-#undef HAVE_SYS_TIME_H
-#undef HAVE_UNISTD_H
+#undef HAVE_FT2
+#undef HAVE_XFT
+#undef HAVE_FONTCONFIG
+
+#undef USE_XFT
+#undef USE_FONTCONFIG
 
 /************************************************************************/
 /*									*/
@@ -40,11 +33,15 @@
 #   endif
 
 #   ifndef	AFMDIR
-#	define	AFMDIR	PKGDIR "/afm"
+#	define	AFMDIR	PKGDIR "/Ted/afm"
 #   endif
 
 #   ifndef 	INDDIR
-#	define	INDDIR	PKGDIR "/ind"
+#	define	INDDIR	PKGDIR "/Ted/dfa"
+#   endif
+
+#   ifndef 	CONFDIR
+#	define	CONFDIR	PKGDIR "/Ted/config"
 #   endif
 
 /************************************************************************/
@@ -55,3 +52,6 @@
 
 #   undef	USE_MOTIF
 #   undef	USE_GTK
+#   undef	USE_QT
+
+#   endif	/*	APP_FRAME_CONFIG_H	*/

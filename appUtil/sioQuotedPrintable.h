@@ -5,7 +5,7 @@
 /*									*/
 /************************************************************************/
 
-#   include	<sioGeneral.h>
+#   include	"sioGeneral.h"
 
 extern SimpleInputStream * sioInQuotedPrintableOpen(
 					    SimpleInputStream * sisQuoted );

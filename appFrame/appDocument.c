@@ -9,14 +9,18 @@
 #   include	<stddef.h>
 #   include	<stdio.h>
 #   include	<stdlib.h>
-#   include	<string.h>
 
 #   include	<appSystem.h>
-#   include	<utilFontmap.h>
-#   include	<utilT1Entries.h>
 #   include	"appFrame.h"
+#   include	"appQuestion.h"
+#   include	"guiWidgetDrawingSurface.h"
+#   include	"guiDrawingWidget.h"
+#   include	"appFileChooser.h"
+#   include	"utilMemoryBufferPrintf.h"
 
 #   include	<appDebugon.h>
+
+#   define	LOG_REDRAWS	0
 
 /************************************************************************/
 /*									*/
@@ -24,60 +28,30 @@
 /*									*/
 /************************************************************************/
 
-int appDocSaveDocumentByName(		EditDocument *		ed,
-					APP_WIDGET		option,
-					int			interactive,
-					int			format,
-					const char *		filename )
-    {
-    EditApplication *		ea= ed->edApplication;
-
-    if  ( (*ea->eaSaveDocument)( ed->edPrivateData, format,
-			    ea->eaNameAndVersion, ed->edTitle, filename ) )
-	{
-	if  ( interactive )
-	    {
-	    appReportSaveFailure( ea, option,
-				    ed->edToplevel.atTopWidget, filename );
-	    }
-
-	return -1;
-	}
-
-    return 0;
-    }
-
-APP_MENU_CALLBACK_H( appDocFileSave, option, voided, call_data )
+APP_MENU_CALLBACK_H( appDocFileSave, option, voided, e )
     {
     EditDocument *		ed= (EditDocument *)voided;
     EditApplication *		ea= ed->edApplication;
-    APP_WIDGET			woption= (APP_WIDGET)option;
 
-    int				interactive= 1;
+    APP_WIDGET			relative= ed->edToplevel.atTopWidget;
 
     if  ( ! ea->eaSaveDocument )
 	{ XDEB(ea->eaSaveDocument); return;	}
 
-    if  ( ! ed->edFilename		||
-	  ed->edFileReadOnly		||
-	  ed->edFormat < 0		)
+    if  ( utilMemoryBufferIsEmpty( &(ed->edFilename) )	||
+	  ed->edFileReadOnly				||
+	  ed->edFormat < 0				)
 	{
-#	ifdef USE_MOTIF
-	appDocFileSaveAs( option, voided, (void *)0 ); return;
-#	endif
-#	ifdef USE_GTK
-	appDocFileSaveAs( option, voided ); return;
-#	endif
-	XDEB(ed->edFilename); return;
+	appRunSaveChooser( option, ed->edToplevel.atTopWidget,
+			    APPFILE_CAN_SAVE, appDocSaveDocument,
+			    ed, ed->edPrivateData );
+
+	return;
 	}
 
-    if  ( appDocSaveDocumentByName( ed, woption, interactive,
-					    ed->edFormat, ed->edFilename ) )
-	{
-	appReportSaveFailure( ea, woption,
-				ed->edToplevel.atTopWidget, ed->edFilename );
-	}
-    else{ appDocumentChanged( ed, 0 ); }
+    if  ( ! appDocSaveDocument( ed, (void *)0, relative, option,
+					    ed->edFormat, &(ed->edFilename) ) )
+	{ appDocumentChanged( ed, 0 ); }
 
     return;
     }
@@ -93,16 +67,14 @@ APP_MENU_CALLBACK_H( appDocFileSave, option, voided, call_data )
 /*									*/
 /************************************************************************/
 
-APP_MENU_CALLBACK_H( appDocFileClose, option, voided, call_data )
+APP_MENU_CALLBACK_H( appDocFileClose, option, voided, e )
     {
     EditDocument *	ed= (EditDocument *)voided;
-    EditApplication *	ea= ed->edApplication;
-    APP_WIDGET		woption= (APP_WIDGET)option;
 
     if  ( ed->edHasBeenChanged )
-	{ appRunReallyCloseDialog( woption, ed ); return; }
+	{ appRunReallyCloseDialog( option, ed ); return; }
 
-    appCloseDocument( ea, ed );
+    appCloseDocument( ed );
 
     return;
     }
@@ -110,59 +82,31 @@ APP_MENU_CALLBACK_H( appDocFileClose, option, voided, call_data )
 APP_CLOSE_CALLBACK_H( appDocFileCloseCallback, w, voided )
     {
     EditDocument *	ed= (EditDocument *)voided;
-    EditApplication *	ea= ed->edApplication;
 
     if  ( ed->edHasBeenChanged )
-	{ appRunReallyCloseDialog( (APP_WIDGET)0, ed ); return; }
+	{ appRunReallyCloseDialog( ed->edFileCloseOption, ed ); return; }
 
-    appCloseDocument( ea, ed );
+    appCloseDocument( ed );
     }
 
-APP_MENU_CALLBACK_H( appDocFileNew, option, voided, call_data )
-    {
-    EditDocument *	ed= (EditDocument *)voided;
-    EditApplication *	ea= ed->edApplication;
-    const char * const	filename= (const char *)0;
-
-    if  ( appNewDocument( ea, filename ) )
-	{ SDEB(filename); }
-
-    return;
-    }
-
-APP_MENU_CALLBACK_H( appDocFileQuit, option, voided, call_data )
-    {
-    EditDocument *	ed= (EditDocument *)voided;
-    EditApplication *	ea= ed->edApplication;
-    APP_WIDGET		woption= (APP_WIDGET)option;
-
-    appQuitApplication( woption, ed->edToplevel.atTopWidget, ea );
-
-    return;
-    }
-
-APP_MENU_CALLBACK_H( appDocFileMini, option, voided, call_data )
-    {
-    EditDocument *		ed= (EditDocument *)voided;
-
-    appIconifyShellWidget( ed->edToplevel.atTopWidget );
-
-    return;
-    }
-
-APP_MENU_CALLBACK_H( appDocFileHide, option, voided, call_data )
+APP_MENU_CALLBACK_H( appDocFileNew, option, voided, e )
     {
     EditDocument *		ed= (EditDocument *)voided;
     EditApplication *		ea= ed->edApplication;
+    const MemoryBuffer *	filename= (const MemoryBuffer *)0;
 
-    if  ( ed->edIsVisible )
-	{
-	appHideShellWidget( ed->edToplevel.atTopWidget );
+    if  ( appNewDocument( ea, filename ) )
+	{ LDEB(1); }
 
-	ed->edIsVisible= 0;
+    return;
+    }
 
-	appDocVisible( ea, ed, ed->edIsVisible );
-	}
+APP_MENU_CALLBACK_H( appDocFileQuit, option, voided, e )
+    {
+    EditDocument *	ed= (EditDocument *)voided;
+    EditApplication *	ea= ed->edApplication;
+
+    appQuitApplication( option, ed->edToplevel.atTopWidget, ea );
 
     return;
     }
@@ -170,17 +114,17 @@ APP_MENU_CALLBACK_H( appDocFileHide, option, voided, call_data )
 void appReportSaveFailure(	EditApplication *	ea,
 				APP_WIDGET		option,
 				APP_WIDGET		relative,
-				const char *		filename )
+				const MemoryBuffer *	filename )
     {
     AppFileMessageResources *	afmr= &(ea->eaFileMessageResources);
 
     if  ( appTestFileWritable( filename ) )
 	{
-	appQuestionRunSubjectErrorDialog( ea, relative, option,
+	appQuestionRunFilenameErrorDialog( ea, relative, option,
 					filename, afmr->afmrFileNotWritable );
 	}
     else{
-	appQuestionRunSubjectErrorDialog( ea, relative, option,
+	appQuestionRunFilenameErrorDialog( ea, relative, option,
 					filename, afmr->afmrFileNotWritable );
 	}
     }
@@ -191,30 +135,28 @@ void appReportSaveFailure(	EditApplication *	ea,
 /*									*/
 /************************************************************************/
 
-void appDocAbout(	APP_WIDGET	option,
-			void *		voided,
-			void *		call_data )
+APP_MENU_CALLBACK_H( appDocAbout, option, voided, e )
     {
     EditDocument *		ed= (EditDocument *)voided;
     EditApplication *		ea= ed->edApplication;
 
     ea->eaMainVisibleAsAbout= 1;
 
-    appShowShellWidget( ea->eaToplevel.atTopWidget );
+    appShowShellWidget( ea, ea->eaToplevel.atTopWidget );
 
     return;
     }
 
 /************************************************************************/
 /*									*/
-/*  Callback for the item in the files menu.				*/
+/*  Callback for the option in the files menu.				*/
 /*									*/
 /************************************************************************/
 
 void appMakeDocVisible(	EditApplication *	ea,
 			EditDocument *		ed )
     {
-    appShowShellWidget( ed->edToplevel.atTopWidget );
+    appShowShellWidget( ea, ed->edToplevel.atTopWidget );
 
     if  ( ! ed->edIsVisible )
 	{
@@ -226,7 +168,7 @@ void appMakeDocVisible(	EditApplication *	ea,
 
 void appDocToFront(	APP_WIDGET	option,
 			void *		voided,
-			void *		call_data )
+			void *		e )
     {
     EditDocument *		ed= (EditDocument *)voided;
     EditApplication *		ea= ed->edApplication;
@@ -244,153 +186,116 @@ void appDocToFront(	APP_WIDGET	option,
 /*									*/
 /************************************************************************/
 
-APP_MENU_CALLBACK_H( appDocEditCopy, option, voided, call_data )
+APP_MENU_CALLBACK_H( appDocEditCopy, option, voided, e )
     {
     EditDocument *			ed= (EditDocument *)voided;
     EditApplication *			ea= ed->edApplication;
 
     if  ( ! ea->eaDocCopy )
-	{ SXDEB(ed->edFilename,ea->eaDocCopy); return;	}
+	{ XDEB(ea->eaDocCopy); return;	}
 
     (*ea->eaDocCopy)( ed ); return;
     }
 
-APP_MENU_CALLBACK_H( appDocEditCut, option, voided, call_data )
+APP_MENU_CALLBACK_H( appDocEditCut, option, voided, e )
     {
     EditDocument *			ed= (EditDocument *)voided;
     EditApplication *			ea= ed->edApplication;
 
     if  ( ! ea->eaDocCut )
-	{ SXDEB(ed->edFilename,ea->eaDocCut); return;	}
+	{ XDEB(ea->eaDocCut); return;	}
 
     (*ea->eaDocCut)( ed ); return;
     }
 
-APP_MENU_CALLBACK_H( appDocEditPaste, option, voided, call_data )
-    {
-    EditDocument *			ed= (EditDocument *)voided;
-
-    appDocAskForPaste( ed, "PRIMARY" );
-    }
-
-APP_MENU_CALLBACK_H( appDocEditSelAll, option, voided, call_data )
+APP_MENU_CALLBACK_H( appDocEditSelAll, option, voided, e )
     {
     EditDocument *			ed= (EditDocument *)voided;
     EditApplication *			ea= ed->edApplication;
 
     if  ( ! ea->eaDocSelAll )
-	{ SXDEB(ed->edFilename,ea->eaDocSelAll); return;	}
+	{ XDEB(ea->eaDocSelAll); return;	}
 
     ea->eaDocSelAll( ed ); return;
     }
 
-/************************************************************************/
-/*									*/
-/*  Close a a document.							*/
-/*									*/
-/************************************************************************/
-
-void appCloseDocument(	EditApplication *	ea,
-			EditDocument *		ed )
-    {
-    appRemoveDocument( ea, ed );
-
-    /* No! is done by the widget destroy callback
-    if  ( ed->edPrivateData )
-	{
-	(*ea->eaFreeDocument)( ed->edPrivateData, ed->edFormat,
-						    &(ed->edDrawingData) );
-	ed->edPrivateData= (void *)0;
-	}
-    */
-
-    appDestroyShellWidget( ed->edToplevel.atTopWidget );
-
-    /* No! is done by the widget destroy callback
-    appFreeDocument( ea, ed );
-    */
-
-    return;
-    }
-
 int appSetDocumentFilename(	EditDocument *		ed,
-				const char *		filename )
+				const MemoryBuffer *	filename )
     {
-    char *			s= (char *)0;
-
     if  ( filename )
 	{
-	s= strdup( filename );
-	if  ( ! s )
-	    { XDEB(s); return -1;	}
+	if  ( utilCopyMemoryBuffer( &(ed->edFilename), filename ) )
+	    { LDEB(1); return -1;	}
 	}
-
-    if  ( ed->edFilename )
-	{ free( ed->edFilename );	}
-    ed->edFilename= s;
+    else{ utilEmptyMemoryBuffer( &(ed->edFilename) );	}
 
     return 0;
     }
 
-int appFormatDocumentTitle(	const char **		pWindowTitle,
-				const char **		pIconTitle,
+int appFormatDocumentTitle(	MemoryBuffer *		windowTitle,
+				MemoryBuffer *		iconTitle,
 				EditApplication *	ea,
-				const char *		title )
+				const MemoryBuffer *	title )
     {
-    const char *		baseName;
+    int			rval= 0;
 
-    int				len;
-    static char *		fullTitle;
-    static char *		fullIconName;
+    MemoryBuffer	baseName;
 
-    baseName= strrchr( title, '/' );
-    if  ( baseName )
-	{ baseName++;		}
-    else{ baseName= title;	}
+    utilInitMemoryBuffer( &baseName );
 
-    len= strlen( ea->eaApplicationName )+ 2+ strlen( title )+ 1;
-    fullTitle= (char *)realloc( fullTitle, len );
-    if  ( ! fullTitle )
-	{ LXDEB(len,fullTitle); return -1;	}
+    if  ( appFileGetRelativeName( &baseName, title ) < 0 )
+	{ LDEB(1); rval= -1; goto ready;	}
 
-    len= strlen( ea->eaApplicationName )+ 2+ strlen( baseName )+ 1;
-    fullIconName= (char *)realloc( fullIconName, len );
-    if  ( ! fullIconName )
-	{ LXDEB(len,fullIconName); return -1;	}
+    if  ( utilMemoryBufferSetString( windowTitle, ea->eaApplicationName ) )
+	{ LDEB(1); rval= -1; goto ready;	}
+    if  ( utilMemoryBufferAppendString( windowTitle, ": " ) )
+	{ LDEB(1); rval= -1; goto ready;	}
+    if  ( utilMemoryAppendBuffer( windowTitle, title ) )
+	{ LDEB(1); rval= -1; goto ready;	}
 
-    sprintf( fullTitle, "%s: %s", ea->eaApplicationName, title );
-    sprintf( fullIconName, "%s: %s", ea->eaApplicationName, baseName );
+    if  ( utilMemoryBufferSetString( iconTitle, ea->eaApplicationName ) )
+	{ LDEB(1); rval= -1; goto ready;	}
+    if  ( utilMemoryBufferAppendString( iconTitle, ": " ) )
+	{ LDEB(1); rval= -1; goto ready;	}
+    if  ( utilMemoryAppendBuffer( iconTitle, &baseName ) )
+	{ LDEB(1); rval= -1; goto ready;	}
 
-    *pWindowTitle= fullTitle; *pIconTitle= fullIconName; return 0;
+  ready:
+
+    utilCleanMemoryBuffer( &baseName );
+
+    return rval;
     }
 
 int appSetDocumentTitle(	EditDocument *		ed,
-				const char *		title )
+				const MemoryBuffer *	title )
     {
+    int				rval= 0;
     EditApplication *		ea= ed->edApplication;
 
-    char *			s;
+    MemoryBuffer		fullTitle;
+    MemoryBuffer		iconName;
 
-    const char *		fullTitle;
-    const char *		fullIconName;
+    utilInitMemoryBuffer( &fullTitle );
+    utilInitMemoryBuffer( &iconName );
 
-    s= strdup( title );
-    if  ( ! s )
-	{ XDEB(s); return -1;	}
+    if  ( utilCopyMemoryBuffer( &(ed->edTitle), title ) )
+	{ LDEB(1); rval= -1; goto ready;	}
 
-    if  ( ed->edTitle )
-	{ free( ed->edTitle );	}
-    ed->edTitle= s;
+    if  ( appFormatDocumentTitle( &fullTitle, &iconName, ea, &(ed->edTitle) ) )
+	{ LDEB(1); rval= -1; goto ready;	}
 
-    if  ( appFormatDocumentTitle( &fullTitle, &fullIconName, ea, ed->edTitle ) )
-	{ SDEB(ed->edTitle); return -1;	}
+    appGuiSetShellTitle( ed->edToplevel.atTopWidget, &fullTitle );
+    appGuiSetIconTitle( ed->edToplevel.atTopWidget, &iconName );
 
-    appGuiSetShellTitle( ed->edToplevel.atTopWidget, fullTitle );
-    appGuiSetIconTitle( ed->edToplevel.atTopWidget, fullIconName );
+    appRenameDocumentOptions( ed->edApplication, ed, &(ed->edTitle) );
 
-    appRenameDocumentOptions( ed->edApplication, ed, ed->edTitle );
+  ready:
 
-    return 0;
+    utilCleanMemoryBuffer( &fullTitle );
+    utilCleanMemoryBuffer( &iconName );
+
+    return rval;
     }
 
 
@@ -400,8 +305,21 @@ int appSetDocumentTitle(	EditDocument *		ed,
 /*									*/
 /************************************************************************/
 
-void appFreeDocument(		EditApplication *	ea,
-				EditDocument *		ed )
+static void appCleanDocumentWidget(	DocumentWidget *	dw )
+    {
+#   ifdef USE_MOTIF
+    if  ( dw->dwInputContext )
+	{ XDestroyIC( dw->dwInputContext ); }
+#   endif
+
+#   if defined(USE_GTK) && defined(GTK_TYPE_IM_CONTEXT)
+    if  ( dw->dwInputContext )
+	{ g_object_unref( dw->dwInputContext ); }
+#   endif
+    }
+
+static void appCleanDocument(		EditApplication *	ea,
+					EditDocument *		ed )
     {
     if  ( ed->edLeftRuler )
 	{ (*ea->eaFreeLeftRuler)( ed->edLeftRuler ); }
@@ -412,40 +330,50 @@ void appFreeDocument(		EditApplication *	ea,
     if  ( ed->edBottomRuler )
 	{ (*ea->eaFreeBottomRuler)( ed->edBottomRuler ); }
 
-    if  ( ed->edFilename )
-	{ free( ed->edFilename );	}
-    if  ( ed->edTitle )
-	{ free( ed->edTitle );	}
+    utilCleanMemoryBuffer( &(ed->edFilename) );
+    utilCleanMemoryBuffer( &(ed->edTitle) );
 
-    if  ( ed->edCheckpointFilename )
-	{
-	if  ( appRemoveFile( ed->edCheckpointFilename ) )
-	    { SDEB(ed->edCheckpointFilename);	}
+    appCleanDocumentWidget( &(ed->edDocumentWidget) );
+    if  ( ed->edDrawingSurface )
+	{ drawFreeDrawingSurface( ed->edDrawingSurface ); }
 
-	free( ed->edCheckpointFilename );
-	}
+    return;
+    }
 
-#   ifdef USE_MOTIF
-    if  ( ed->edInputContext )
-	{ XDestroyIC( ed->edInputContext ); }
-#   endif
-
-    appCleanDrawingData( &(ed->edDrawingData) );
-    appCleanColors( &(ed->edColors) );
-
+static void appFreeDocument(		EditApplication *	ea,
+					EditDocument *		ed )
+    {
+    appCleanDocument( ea, ed );
     free( ed );
 
     return;
     }
 
-void appInitEditDocument(	EditApplication *	ea,
-				EditDocument *		ed )
+static void appInitDocumentWidget(	DocumentWidget *	dw )
+    {
+    dw->dwWidget= (APP_WIDGET)0;
+
+#   ifdef USE_MOTIF
+    dw->dwInputContext= (XIC)0;
+#   endif
+
+#   ifdef USE_GTK
+#	ifdef GTK_TYPE_IM_CONTEXT
+	dw->dwInputContext= (GtkIMContext *)0;
+#	else
+	dw->dwInputContext= 0;
+#	endif
+#   endif
+    }
+
+static void appInitEditDocument(	EditApplication *	ea,
+					EditDocument *		ed )
     {
     ed->edApplication= ea;
 
-    ed->edFilename= (char *)0;
-    ed->edTitle= (char *)0;
-    ed->edCheckpointFilename= (char *)0;
+    utilInitMemoryBuffer( &(ed->edFilename) );
+    utilInitMemoryBuffer( &(ed->edTitle) );
+
     ed->edFormat= -1;
     ed->edFileReadOnly= 0;
 
@@ -453,6 +381,7 @@ void appInitEditDocument(	EditApplication *	ea,
     ed->edMainWindow= (APP_WIDGET)0;
 	ed->edFileMenu= (APP_WIDGET)0;
 	ed->edFileMenuButton= (APP_WIDGET)0;
+	    ed->edFileCloseOption= (APP_WIDGET)0;
 	ed->edEditMenu= (APP_WIDGET)0;
 	ed->edEditMenuButton= (APP_WIDGET)0;
 	ed->edWindowMenu= (APP_WIDGET)0;
@@ -464,7 +393,9 @@ void appInitEditDocument(	EditApplication *	ea,
     ed->edScrolledWindow= (APP_WIDGET)0;
 	ed->edVerticalScrollbar= (APP_WIDGET)0;
 	ed->edHorizontalScrollbar= (APP_WIDGET)0;
-	ed->edDocumentWidget= (APP_WIDGET)0;
+	ed->edWorkWidget= (APP_WIDGET)0;
+	appInitDocumentWidget( &(ed->edDocumentWidget) );
+	ed->edDrawingSurface= (DrawingSurface)0;
 
 	ed->edLeftRulerWidget= (APP_WIDGET)0;
 	ed->edTopRulerWidget= (APP_WIDGET)0;
@@ -476,165 +407,92 @@ void appInitEditDocument(	EditApplication *	ea,
 	ed->edRightRuler= (void *)0;
 	ed->edBottomRuler= (void *)0;
 
-#   ifdef USE_MOTIF
-    ed->edInputContext= (XIC)0;
-#   endif
-
-    ed->edLeftRulerWidthPixels= 0;
-    ed->edTopRulerHeightPixels= 0;
-    ed->edRightRulerWidthPixels= 0;
-    ed->edBottomRulerHeightPixels= 0;
+    ed->edLeftRulerWidePixels= 0;
+    ed->edTopRulerHighPixels= 0;
+    ed->edRightRulerWidePixels= 0;
+    ed->edBottomRulerHighPixels= 0;
 
     ed->edHasBeenChanged= 0;
     ed->edIsReadonly= 0;
     ed->edIsVisible= 0;
 
-    ed->edShellExtraWidth= -1;
-    ed->edShellExtraHeight= -1;
-
-    appInitColors( &(ed->edColors) );
-    appInitDrawingData( &(ed->edDrawingData) );
-
     ed->edMapped= 0;
     ed->edNotYetDrawn= 1;
 
+    appInitSelectRectangle( &(ed->edSelectRectangle) );
     return;
     }
 
-int appMakeDocumentWindow(	EditDocument **		pEd,
-				EditApplication *	ea,
-				int			read_only,
-				const char *		title,
-				const char *		filename )
+int appMakeDocumentWindow(		EditDocument **		pEd,
+					EditApplication *	ea,
+					int			readOnly,
+					const MemoryBuffer *	title,
+					const MemoryBuffer *	filename )
     {
-    char			scratch[100];
+    int				rval= 0;
+    EditDocument *		ed= (EditDocument *)0;
 
-    EditDocument *		ed;
+    MemoryBuffer		scratch;
 
-    if  ( ! title )
+    utilInitMemoryBuffer( &scratch );
+
+    if  ( ! title || utilMemoryBufferIsEmpty( title ) )
 	{
 	static int			count= 1;
 
 	AppFileMessageResources *	afmr= &(ea->eaFileMessageResources);
 
-	sprintf( scratch, afmr->afmrNamelessTitleFormat, count++ );
-	title= scratch;
+	utilMemoryBufferPrintf( &scratch,
+				    afmr->afmrNamelessTitleFormat, count++ );
+	title= &scratch;
 	}
 
     /*  1  */
     ed= (EditDocument *)malloc( sizeof(EditDocument) );
     if  ( ! ed )
-	{ XDEB(ed); return -1;	}
+	{ XDEB(ed); rval= -1; goto ready;	}
 
     appInitEditDocument( ea, ed );
 
     ea->eaNextDocumentId++; /* Never 0 */
     ed->edDocumentId= ea->eaNextDocumentId;
 
-    if  ( filename )
-	{ ed->edFilename= strdup( filename );	}
-    else{ ed->edFilename= (char *)0;		}
+    if  ( filename && utilCopyMemoryBuffer( &(ed->edFilename), filename ) )
+	{ LDEB(1); rval= -1; goto ready;	}
 
-    ed->edIsReadonly= read_only;
-    ed->edTitle= strdup( title );
+    ed->edIsReadonly= readOnly;
+    if  ( utilCopyMemoryBuffer( &(ed->edTitle), title ) )
+	{ LDEB(1); rval= -1; goto ready;	}
 
     if  ( ea->eaMakePrivateData	)
 	{
 	ed->edPrivateData= (*ea->eaMakePrivateData)();
 	if  ( ! ed->edPrivateData )
-	    { XDEB(ed->edPrivateData); appFreeDocument( ea, ed ); return -1; }
+	    { XDEB(ed->edPrivateData); rval= -1; goto ready; }
 	}
 
     if  ( appFinishDocumentWindow( ed ) )
-	{ appFreeDocument( ea, ed ); return -1; }
+	{ LDEB(1); rval= -1; goto ready; }
 
-    *pEd= ed; return 0;
+    *pEd= ed; ed= (EditDocument *)0; /* steal */
+
+  ready:
+
+    utilCleanMemoryBuffer( &scratch );
+
+    if  ( ed )
+	{ appFreeDocument( ea, ed ); }
+
+    return rval;
     }
 
 int appSetupDocument(	EditApplication *	ea,
 			EditDocument *		ed )
     {
-    AppDrawingData *		add= &(ed->edDrawingData);
-
-    double			screenPixelsPerMM;
-    double			verPixPerMM;
-    double			xfac;
-    double			yfac;
+    DocumentWidget *		dw= &(ed->edDocumentWidget);
 
     int				wide;
     int				high;
-
-    appGetFactors( ea, &screenPixelsPerMM, &verPixPerMM, &xfac, &yfac );
-
-    appSetDrawingEnvironment( add, ea->eaMagnification, xfac,
-			screenPixelsPerMM,
-			&(ea->eaPostScriptFontList),
-			ea->eaToplevel.atTopWidget );
-
-    add->addPageGapPixels= (int)( ea->eaPageGapMM* verPixPerMM );
-
-    if  ( (*ea->eaLayoutDocument)( ed->edPrivateData, ed->edFormat,
-					&(ed->edDrawingData),
-					&(ea->eaDefaultDocumentGeometry) ) )
-	{ SDEB(ed->edFilename); return -1; }
-
-    appSetShellConstraints( ed );
-
-    wide= add->addPaperRect.drX1- add->addPaperRect.drX0;
-    high= add->addPaperRect.drY1- add->addPaperRect.drY0;
-
-    if  ( wide > ( 4* ea->eaScreenPixelsWide )/ 5 )
-	{ wide=( 4* ea->eaScreenPixelsWide )/ 5; }
-    if  ( high > ( 4* ea->eaScreenPixelsHigh )/ 5 )
-	{ high=( 4* ea->eaScreenPixelsHigh )/ 5; }
-
-#   ifdef USE_MOTIF
-    XtVaSetValues( ed->edDocumentWidget,
-			    XmNborderWidth,		0,
-			    XmNshadowThickness,		0,
-			    XmNwidth,			wide,
-			    XmNheight,			high,
-			    NULL );
-#   endif
-
-#   ifdef USE_GTK
-    gtk_drawing_area_size( GTK_DRAWING_AREA( ed->edTopRulerWidget ),
-					ed->edLeftRulerWidthPixels+
-					wide+
-					ed->edRightRulerWidthPixels,
-					ed->edTopRulerHeightPixels );
-    gtk_drawing_area_size( GTK_DRAWING_AREA( ed->edLeftRulerWidget ),
-					ed->edLeftRulerWidthPixels, high );
-
-
-    gtk_drawing_area_size( GTK_DRAWING_AREA( ed->edDocumentWidget ),
-								wide, high );
-
-    gtk_drawing_area_size( GTK_DRAWING_AREA( ed->edRightRulerWidget ),
-					ed->edRightRulerWidthPixels, high );
-    gtk_drawing_area_size( GTK_DRAWING_AREA( ed->edBottomRulerWidget ),
-					ed->edLeftRulerWidthPixels+
-					wide+
-					ed->edRightRulerWidthPixels,
-					ed->edBottomRulerHeightPixels );
-
-    gtk_object_set_user_data( GTK_OBJECT( ed->edDocumentWidget ), (void *)ed );
-#   endif
-
-    ed->edVisibleRect.drX0= add->addPaperRect.drX0;
-    ed->edVisibleRect.drY0= add->addPaperRect.drY0;
-    ed->edVisibleRect.drX1= add->addPaperRect.drX1;
-    ed->edVisibleRect.drY1= add->addPaperRect.drY1;
-
-    if  ( ea->eaSetTopRuler		&&
-	  (*ea->eaSetTopRuler)( ed )	)
-	{ SDEB(ed->edFilename);	}
-
-    if  ( ea->eaSetLeftRuler		&&
-	  (*ea->eaSetLeftRuler)( ed )	)
-	{ SDEB(ed->edFilename);	}
-
-    appDocSetScrollbarValues( ed );
 
 #   ifdef USE_MOTIF
     XtRealizeWidget( ed->edToplevel.atTopWidget );
@@ -644,17 +502,174 @@ int appSetupDocument(	EditApplication *	ea,
     gtk_widget_realize( ed->edToplevel.atTopWidget );
 #   endif
 
-    if  ( ea->eaFinishDocumentSetup && (*ea->eaFinishDocumentSetup)( ed ) )
-	{ SDEB(ed->edFilename); return -1; }
+    ed->edDrawingSurface= guiDrawingSurfaceForNativeWidget(
+					    ed->edDocumentWidget.dwWidget,
+					    ea->eaAvoidFontconfig );
+    if  ( ! ed->edDrawingSurface )
+	{ PDEB(ed->edDrawingSurface); appFreeDocument( ea, ed ); return -1; }
 
-    appShowShellWidget( ed->edToplevel.atTopWidget );
+    if  ( (*ea->eaLayoutDocument)( &(ed->edFullRect),
+					&(ed->edVisibleRect),
+					ed->edPrivateData, ed->edFormat,
+					ed->edDrawingSurface,
+					&(ea->eaPostScriptFontList),
+					&(ea->eaDefaultDocumentGeometry) ) )
+	{ LDEB(1); return -1; }
+
+    wide= ed->edVisibleRect.drX1- ed->edVisibleRect.drX0;
+    high= ed->edVisibleRect.drY1- ed->edVisibleRect.drY0;
+
+    if  ( wide > ( 4* ea->eaScreenPixelsWide )/ 5 )
+	{ wide=  ( 4* ea->eaScreenPixelsWide )/ 5; }
+    if  ( high > ( 4* ea->eaScreenPixelsHigh )/ 5 )
+	{ high=  ( 4* ea->eaScreenPixelsHigh )/ 5; }
+
+#   ifdef USE_MOTIF
+    {
+    Dimension docW= -1, docH= -1;
+    Dimension topW= -1, topH= -1;
+
+    XtVaSetValues( dw->dwWidget,
+			    XmNborderWidth,		0,
+			    XmNshadowThickness,		0,
+			    XmNwidth,			wide,
+			    XmNheight,			high,
+			    NULL );
+
+    /*
+     * Cope with the fact that Motif performs the geometry calculations
+     * when the widget is realised (And that we need to realize the widget 
+     * before we perform the layout of the document.)
+     */
+
+    XtVaGetValues( dw->dwWidget,
+			    XmNwidth,			&docW,
+			    XmNheight,			&docH,
+			    NULL );
+    XtVaGetValues( ed->edToplevel.atTopWidget,
+			    XmNwidth,			&topW,
+			    XmNheight,			&topH,
+			    NULL );
+
+    if  ( docW != wide && docH != high && topW > docW && topH > docH )
+	{
+	XtVaSetValues( ed->edToplevel.atTopWidget,
+			    XmNwidth,			wide+ ( topW- docW ),
+			    XmNheight,			high+ ( topH- docH ),
+			    NULL );
+	}
+    }
+#   endif
+
+#   ifdef USE_GTK
+    gtk_drawing_area_size( GTK_DRAWING_AREA( ed->edTopRulerWidget ),
+					ed->edLeftRulerWidePixels+
+					wide+
+					ed->edRightRulerWidePixels,
+					ed->edTopRulerHighPixels );
+    gtk_drawing_area_size( GTK_DRAWING_AREA( ed->edLeftRulerWidget ),
+					ed->edLeftRulerWidePixels, high );
+
+
+    gtk_drawing_area_size( GTK_DRAWING_AREA( dw->dwWidget ), wide, high );
+
+    gtk_drawing_area_size( GTK_DRAWING_AREA( ed->edRightRulerWidget ),
+					    ed->edRightRulerWidePixels, high );
+    gtk_drawing_area_size( GTK_DRAWING_AREA( ed->edBottomRulerWidget ),
+					ed->edLeftRulerWidePixels+
+					wide+
+					ed->edRightRulerWidePixels,
+					ed->edBottomRulerHighPixels );
+
+    gtk_object_set_user_data( GTK_OBJECT( dw->dwWidget ), (void *)ed );
+#   endif
+
+    if  ( ea->eaSetTopRuler		&&
+	  (*ea->eaSetTopRuler)( ed )	)
+	{ LDEB(1);	}
+
+    if  ( ea->eaSetLeftRuler		&&
+	  (*ea->eaSetLeftRuler)( ed )	)
+	{ LDEB(1);	}
+
+    if  ( ea->eaSetRightRuler		&&
+	  (*ea->eaSetRightRuler)( ed )	)
+	{ LDEB(1);	}
+
+    if  ( ea->eaSetBottomRuler		&&
+	  (*ea->eaSetBottomRuler)( ed )	)
+	{ LDEB(1);	}
+
+    guiGetBackgroundColor( &(ed->edBackgroundColor), dw->dwWidget );
+
+    appDocSetScrollbarValues( ed );
+
+    ed->edHasBeenChanged= 0;  /*  Can be changed in eaFinishDocumentSetup */
+
+    if  ( ea->eaFinishDocumentSetup && (*ea->eaFinishDocumentSetup)( ed ) )
+	{ LDEB(1); return -1; }
+
+    appShowShellWidget( ea, ed->edToplevel.atTopWidget );
 
     ed->edIsVisible= 1;
-    ed->edHasBeenChanged= 0;
 
     appDocVisible( ea, ed, ed->edIsVisible );
 
     return 0;
+    }
+
+/************************************************************************/
+/*									*/
+/*  Close a a document.							*/
+/*									*/
+/************************************************************************/
+
+void appCloseDocument(	EditDocument *		ed )
+    {
+    EditApplication *	ea= ed->edApplication;
+
+    appRemoveDocument( ea, ed );
+
+    /* Is done by the widget destroy callback for GTK: */
+#   ifdef USE_MOTIF
+    if  ( ed->edPrivateData )
+	{
+	(*ea->eaFreeDocument)( ed->edPrivateData, ed->edFormat );
+	ed->edPrivateData= (void *)0;
+	}
+#   endif
+
+    appCleanDocument( ea, ed );
+    appDestroyShellWidget( ed->edToplevel.atTopWidget );
+
+    /* Is done by the widget destroy callback that is called asynchronuously */
+#   if 0
+    free( ed );
+#   endif
+
+    return;
+    }
+
+/************************************************************************/
+/*									*/
+/*  Destroy callback on a document widget.				*/
+/*									*/
+/************************************************************************/
+
+APP_DESTROY_CALLBACK_H( appDestroyEditDocument, w, voided )
+    {
+    EditDocument *		ed= (EditDocument *)voided;
+    EditApplication *		ea= ed->edApplication;
+
+    if  ( ed->edPrivateData )
+	{
+	(*ea->eaFreeDocument)( ed->edPrivateData, ed->edFormat );
+	ed->edPrivateData= (void *)0;
+	}
+
+    free( ed );
+
+    return;
     }
 
 /************************************************************************/
@@ -712,24 +727,22 @@ void appDocFillMenu(	EditDocument *		ed )
 EditDocument * appOpenDocument(	EditApplication *	ea,
 				APP_WIDGET		relative,
 				APP_WIDGET		option,
-				int			read_only,
-				const char *		filename )
+				int			readOnly,
+				const MemoryBuffer *	filename )
     {
     EditDocument *		ed;
     int				fileReadonly= 0;
     AppFileMessageResources *	afmr= &(ea->eaFileMessageResources);
 
-    if  ( read_only )
+    if  ( readOnly )
 	{ fileReadonly= 1;	}
     else{
 	if  ( appTestFileReadable( filename ) )
 	    {
-	    int	resp;
+	    int			resp;
 
-	    resp= appQuestionRunSubjectOkCancelDialog( ea,
-					relative, option,
-					filename, afmr->afmrFileReadOnly,
-					(char *)0, (char *)0 );
+	    resp= appQuestionRunFilenameOkCancelDialog( ea, relative, option,
+					    filename, afmr->afmrFileReadOnly );
 
 	    if  ( resp != AQDrespOK )
 		{ return (EditDocument *)0;	}
@@ -739,17 +752,17 @@ EditDocument * appOpenDocument(	EditApplication *	ea,
 	}
 
     /*  1,3,4  */
-    if  ( appMakeDocumentWindow( &ed, ea, read_only, filename, filename ) )
-	{ SDEB(filename); return (EditDocument *)0;	}
+    if  ( appMakeDocumentWindow( &ed, ea, readOnly, filename, filename ) )
+	{ LDEB(1); return (EditDocument *)0;	}
 
     ed->edFileReadOnly= fileReadonly;
 
     if  ( (*ea->eaOpenDocument)( ea, ed->edPrivateData, &(ed->edFormat),
-						relative, option, filename ) )
+				    relative, option, readOnly, filename ) )
 	{ return (EditDocument *)0; }
 
     if  ( appSetupDocument( ea, ed ) )
-	{ SDEB(filename); return (EditDocument *)0; }
+	{ LDEB(1); return (EditDocument *)0; }
 
     appSetDocument( ea, ed );
 
@@ -757,16 +770,16 @@ EditDocument * appOpenDocument(	EditApplication *	ea,
     }
 
 int appNewDocument(	EditApplication *	ea,
-			const char *		filename )
+			const MemoryBuffer *	filename )
     {
-    const int			read_only= 0;
-    const char *		title= filename;
+    const int			readOnly= 0;
+    const char *		title= (const char *)0;
 
     EditDocument *		ed;
 
     /*  1,3,4  */
-    if  ( appMakeDocumentWindow( &ed, ea, read_only, title, filename ) )
-	{ SDEB(filename); return -1;	}
+    if  ( appMakeDocumentWindow( &ed, ea, readOnly, filename, filename ) )
+	{ LDEB(1); return -1;	}
 
     if  ( (*ea->eaNewDocument)( ea, ed, filename ) )
 	{ SDEB(title); return -1; }
@@ -781,155 +794,6 @@ int appNewDocument(	EditApplication *	ea,
 
 /************************************************************************/
 /*									*/
-/*  Find out whether a document can be saved in a certain format.		*/
-/*									*/
-/************************************************************************/
-
-int appDocumentTestCanSave(	EditApplication *		ea,
-				const AppFileExtension *	afe,
-				void *				privateData,
-				unsigned int			useFlags,
-				int				format )
-    {
-    if  ( ( afe->afeUseFlags & useFlags ) != useFlags )
-	{ return -1;	}
-
-    if  ( ea->eaCanSaveDocument					&&
-	  (*ea->eaCanSaveDocument)( privateData, format )	)
-	{ return -1;	}
-
-    return 0;
-    }
-
-int appDocumentGetSaveFormat(	EditApplication *		ea,
-				const char *			filename,
-				void *				privateData,
-				unsigned int			useFlags,
-				int				format )
-    {
-    const char *	ext;
-    AppFileExtension *	afe;
-    int			i;
-
-    ext= appFileExtensionOfName( filename );
-
-    if  ( format >= 0 && format < ea->eaFileExtensionCount )
-	{
-	afe= ea->eaFileExtensions+ format;
-
-	if  ( ! appDocumentTestCanSave( ea, afe, privateData,
-							useFlags, format ) )
-	    {
-	    if  ( ! ext					||
-		  ! afe->afeExtension			||
-		  ! strcmp( ext, afe->afeExtension )	)
-		{ return format;	}
-	    }
-	}
-
-    afe= ea->eaFileExtensions;
-    for ( i= 0; i < ea->eaFileExtensionCount; afe++, i++ )
-	{
-	if  ( appDocumentTestCanSave( ea, afe, privateData, useFlags, i ) )
-	    { continue;	}
-
-	if  ( ! ext					||
-	      ! afe->afeExtension			||
-	      ! strcmp( ext, afe->afeExtension )	)
-	    { return i;	}
-	}
-
-    return -1;
-    }
-
-/************************************************************************/
-/*									*/
-/*  File Conversion entry point. ea is supposed to be initialized.	*/
-/*  Depending on the application this routine may or mar not work with	*/
-/*  an EditApplication struct that is not initialized.			*/
-/*									*/
-/************************************************************************/
-
-int appFileConvert(	EditApplication *	ea,
-			const char *		fromName,
-			const char *		toName )
-    {
-    int			interactive= ( ea->eaToplevel.atTopWidget != NULL );
-
-    void *		privateData= (void *)0;
-    int			fromFormat= -1;
-    int			toFormat;
-
-    if  ( ! strcmp( fromName, toName ) )
-	{ SSDEB(fromName,toName); return -1;	}
-
-    if  ( ea->eaMakePrivateData	)
-	{
-	privateData= (*ea->eaMakePrivateData)();
-	if  ( ! privateData )
-	    { XDEB(privateData); return -1; }
-	}
-
-    if  ( (*ea->eaOpenDocument)( ea, privateData, &fromFormat,
-						ea->eaToplevel.atTopWidget,
-						(APP_WIDGET)0, fromName ) )
-	{ SDEB(fromName); return -1; }
-
-    toFormat= appDocumentGetSaveFormat( ea, toName, privateData,
-						APPFILE_CAN_SAVE, fromFormat );
-
-    if  ( toFormat >= 0 )
-	{
-	if  ( (*ea->eaSaveDocument)( privateData, toFormat,
-				ea->eaNameAndVersion, toName, toName ) )
-	    {
-	    if  ( interactive )
-		{
-		appReportSaveFailure( ea, (APP_WIDGET)0,
-					ea->eaToplevel.atTopWidget, toName );
-		}
-
-	    (*ea->eaFreeDocument)( privateData, fromFormat,
-						    (AppDrawingData *)0 );
-	    return -1;
-	    }
-
-	(*ea->eaFreeDocument)( privateData, fromFormat,
-						    (AppDrawingData *)0 );
-	return 0;
-	}
-
-    SSLDEB(fromName,toName,toFormat);
-    (*ea->eaFreeDocument)( privateData, fromFormat, (AppDrawingData *)0 );
-    return -1;
-    }
-
-
-/************************************************************************/
-/*									*/
-/*  Destroy callback on a document widget.				*/
-/*									*/
-/************************************************************************/
-
-APP_DESTROY_CALLBACK_H( appDestroyEditDocument, w, voided )
-    {
-    EditDocument *		ed= (EditDocument *)voided;
-    EditApplication *		ea= ed->edApplication;
-
-    if  ( ed->edPrivateData )
-	{
-	(*ea->eaFreeDocument)( ed->edPrivateData, ed->edFormat,
-						    &(ed->edDrawingData) );
-	ed->edPrivateData= (void *)0;
-	}
-
-    appFreeDocument( ea, ed );
-
-    return;
-    }
-
-/************************************************************************/
-/*									*/
 /*  Redraw a rectangle in the document widget.				*/
 /*									*/
 /************************************************************************/
@@ -937,7 +801,6 @@ APP_DESTROY_CALLBACK_H( appDestroyEditDocument, w, voided )
 APP_EVENT_HANDLER_H( appDocExposeHandler, w, voided, exposeEvent )
     {
     EditDocument *		ed= (EditDocument *)voided;
-    AppDrawingData *		add= &(ed->edDrawingData);
     EditApplication *		ea= ed->edApplication;
 
     int				ox= ed->edVisibleRect.drX0;
@@ -952,12 +815,15 @@ APP_EVENT_HANDLER_H( appDocExposeHandler, w, voided, exposeEvent )
     ed->edNotYetDrawn= 0;
 
     /*  1  */
-    appCollectExposures( &drClip, add, ox, oy, exposeEvent );
+    guiCollectExposures( &drClip, ed->edDocumentWidget.dwWidget, exposeEvent );
+    drawSetClipRect( ed->edDrawingSurface, &drClip );
+
+    geoShiftRectangle( &drClip, ox, oy );
 
     /*  2,3,4  */
-    (*ea->eaDrawRectangle)( w, ed, &drClip, ox, oy );
+    (*ea->eaDrawRectangle)( ed, &drClip, ox, oy );
 
-    appDrawNoClipping( add );
+    drawNoClipping( ed->edDrawingSurface );
 
     return;
     }
@@ -969,6 +835,9 @@ APP_EVENT_HANDLER_H( appDocExposeHandler, w, voided, exposeEvent )
 /*  Cause the smallest rectangle that contains the selection to be	*/
 /*  redrawn.								*/
 /*									*/
+/*  drChanged is a rectangle in the document (pixel) coordinate system.	*/
+/*  it is shifted to accomodate for the scrollbars.			*/
+/*									*/
 /************************************************************************/
 
 void appDocExposeRectangle(	const EditDocument *		ed,
@@ -979,17 +848,13 @@ void appDocExposeRectangle(	const EditDocument *		ed,
     DocumentRectangle		drExpose;
     DocumentRectangle		drScrolled;
 
-    const AppDrawingData *	add= &(ed->edDrawingData);
     const DocumentRectangle *	drVisible= &(ed->edVisibleRect);
 
     if  ( ! drChanged )
-	{ appExposeRectangle( add, 0, 0, 0, 0 ); return; }
+	{ guiExposeDrawingWidget( ed->edDocumentWidget.dwWidget ); return; }
 
     drScrolled= *drChanged;
-    drScrolled.drX0 -= scrolledX;
-    drScrolled.drX1 -= scrolledX;
-    drScrolled.drY0 -= scrolledY;
-    drScrolled.drY1 -= scrolledY;
+    geoShiftRectangle( &drScrolled, -scrolledX, -scrolledY );
 
     if  ( scrolledX != 0 )
 	{
@@ -1005,50 +870,80 @@ void appDocExposeRectangle(	const EditDocument *		ed,
 
     geoUnionRectangle( &drScrolled, &drScrolled, drChanged );
 
-    drExpose.drX0= drVisible->drX0;
-    drExpose.drY0= drVisible->drY0;
-    drExpose.drX1= drVisible->drX1;
-    drExpose.drY1= drVisible->drY1;
+    drExpose= *drVisible;
 
     if  ( geoIntersectRectangle( &drExpose, &drExpose, &drScrolled ) )
 	{
-	int	ox= drVisible->drX0;
-	int	oy= drVisible->drY0;
+	geoShiftRectangle( &drExpose, -drVisible->drX0, -drVisible->drY0 );
+
+	if  ( drExpose.drX0 < 0 )
+	    { drExpose.drX0=  0;	}
+	if  ( drExpose.drY0 < 0 )
+	    { drExpose.drY0=  0;	}
 
 #	if LOG_REDRAWS
 	docLogRectangle( "CLEAR!", &drExpose );
 #	endif
 
-	appExposeRectangle( add,
-				    drExpose.drX0- ox,
-				    drExpose.drY0- oy,
-				    drExpose.drX1- drExpose.drX0+ 1,
-				    drExpose.drY1- drExpose.drY0+ 1 );
+	if  ( drExpose.drX1 >= drExpose.drX0 && drExpose.drY1 >= drExpose.drY0 )
+	    {
+	    guiExposeDrawingWidgetRectangle( ed->edDocumentWidget.dwWidget,
+								    &drExpose );
+	    }
 	}
     }
 
-int appPostScriptFontCatalog(		EditApplication *	ea )
+void appInitSelectRectangle(	SelectRectangle *	sr )
     {
-    const int		mapNames= 1;
+    sr->srDirection= DOCselNONE;
 
-    if  ( ea->eaPostScriptFontList.psflFamilyCount > 0 )
-	{ return 0;	}
+    geoInitRectangle( &(sr->srSelected) );
+    geoInitRectangle( &(sr->srLTM) );
+    geoInitRectangle( &(sr->srRBM) );
+    }
 
-    if  ( psFontCatalog( &(ea->eaPostScriptFontList), ea->eaAfmDirectory ) )
-	{ SDEB(ea->eaAfmDirectory); return -1;	}
+/************************************************************************/
+/*									*/
+/*  Callback from the 'Save As' action of the filechooser.		*/
+/*									*/
+/************************************************************************/
 
-    if  ( ea->eaGhostscriptFontmap			&&
-	  ! ea->eaGhostscriptMappingsRead		)
+int appDocSaveDocument(	EditDocument *		ed,
+			void *			through,
+			APP_WIDGET		relative,
+			APP_WIDGET		option,
+			int			format,
+			const MemoryBuffer *	filename )
+    {
+    EditApplication *	ea= ed->edApplication;
+    const int		suggestStdout= 0;
+
+    int			canOpen= appFileCanOpen( ea, format );
+    int			isDocName= canOpen;
+
+    if  ( (*ea->eaSaveDocument)( ea, ed->edDrawingSurface,
+				ed->edPrivateData, format, &(ed->edTitle),
+				suggestStdout, filename, isDocName ) )
 	{
-	if  ( utilFontmapReadMap( ea->eaGhostscriptFontmap ) )
-	    { SDEB(ea->eaGhostscriptFontmap); return -1;	}
+	appReportSaveFailure( ea, option, relative, filename );
+	return -1;
+	}
 
-	if  ( utilSetT1EntriesForFonts( ea->eaGhostscriptFontToXmapping,
-				    mapNames, &(ea->eaPostScriptFontList) ) )
-	    { SDEB(ea->eaGhostscriptFontToXmapping); return -1; }
+    if  ( canOpen )
+	{
+	appDocumentChanged( ed, 0 );
+	ed->edFileReadOnly= 0;
+	ed->edFormat= format;
 
-	ea->eaGhostscriptMappingsRead= 1;
+	if  ( ! utilEqualMemoryBuffer( &(ed->edFilename), filename ) )
+	    {
+	    if  ( appSetDocumentFilename( ed, filename ) )
+		{ LDEB(1);	}
+	    if  ( appSetDocumentTitle( ed, filename ) )
+		{ LDEB(1);	}
+	    }
 	}
 
     return 0;
     }
+

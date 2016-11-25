@@ -1,6 +1,5 @@
-#   include	<sioGeneral.h>
-#   include	<appTagval.h>
-#   include	<appCgiIn.h>
+#   include	"sioGeneral.h"
+#   include	"appCgiIn.h"
 
 /************************************************************************/
 /*									*/
@@ -8,7 +7,7 @@
 /*									*/
 /************************************************************************/
 
-extern void utilCgiEchoTaggedValueList(	TaggedValueList *	tvl,
+extern void utilCgiEchoValueList(	void *			tree,
 					const char *		label,
 					SimpleOutputStream *	sos );
 

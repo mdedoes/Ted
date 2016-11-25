@@ -7,7 +7,7 @@
 #   ifndef		UTIL_BASE64_H
 #   define		UTIL_BASE64_H
 
-extern const unsigned char	UTIL_Base64Digits[];
+extern const char	UTIL_Base64Digits[];
 
 #   define	util_Base64Make(d,b)				\
 			(d)[0]=	( ( (b)[0] & 0xfc ) >> 2 ) ;	\

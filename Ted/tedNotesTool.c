@@ -6,16 +6,18 @@
 
 #   include	"tedConfig.h"
 
-#   include	<stdlib.h>
 #   include	<stdio.h>
 #   include	<stddef.h>
 #   include	<limits.h>
 
-#   include	<appGeoString.h>
-#   include	"docEvalField.h"
-
-#   include	"tedApp.h"
-#   include	"tedFormatTool.h"
+#   include	"tedNotesTool.h"
+#   include	"tedAppFront.h"
+#   include	<docTreeType.h>
+#   include	<guiToolUtil.h>
+#   include	<guiTextUtil.h>
+#   include	<docTreeNode.h>
+#   include	<docNodeTree.h>
+#   include	<docEditCommand.h>
 
 #   include	<appDebugon.h>
 
@@ -32,11 +34,7 @@ static const int TED_FootnoteRestarts[]=
     FTN_RST_PER_PAGE,
     };
 
-static const int TED_FootnotePositions[]=
-    {
-    FTN_POS_BELOW_TEXT,
-    FTN_POS_PAGE_BOTTOM,
-    };
+static const int TED_FootnoteRestartCount= sizeof(TED_FootnoteRestarts)/sizeof(int);
 
 static const int TED_EndnoteRestarts[]=
     {
@@ -44,11 +42,18 @@ static const int TED_EndnoteRestarts[]=
     FTN_RST_PER_SECTION,
     };
 
-static const int TED_EndnotePositions[]=
+static const int TED_EndnoteRestartCount= sizeof(TED_EndnoteRestarts)/sizeof(int);
+
+static const int TED_EndnotePlacements[]=
     {
-    FTN_POS_SECT_END,
-    FTN_POS_DOC_END,
+    /*
+    FTNplacePAGE_END,
+    */
+    FTNplaceSECT_END,
+    FTNplaceDOC_END,
     };
+
+static const int TED_EndnotePlacementCount= sizeof(TED_EndnotePlacements)/sizeof(int);
 
 /************************************************************************/
 /*									*/
@@ -58,216 +63,167 @@ static const int TED_EndnotePositions[]=
 
 static void tedSetNotesMenu(	AppOptionmenu *		aom,
 				int			val,
-				APP_WIDGET *		options )
+				const int *		values,
+				int			valueCount )
     {
-    int		n= 0;
     int		i;
 
-    for ( i= 0; i < val; i++ )
+    for ( i= 0; i < valueCount; i++ )
 	{
-	if  ( options[i] )
-	    { n++;	}
+	if  ( values[i] == val )
+	    { appSetOptionmenu( aom, i ); return;	}
 	}
 
-    appSetOptionmenu( aom, n );
-
+    LLDEB(val,valueCount);
+    appSetOptionmenu( aom, -1 );
     return;
     }
 
-static void tedNotesRefreshNotesStartNumber(	NotePropertiesTool *	npt,
+static void tedNotesRefreshNotesStartNumber(	NotesTool *		nt,
 						const NotesProperties *	np )
     {
     if  ( np->npRestart == FTN_RST_CONTINUOUS )
 	{
-	appIntegerToTextWidget( npt->nptStartNumberText, np->npStartNumber );
-	appEnableText( npt->nptStartNumberText, 1 );
+	appIntegerToTextWidget( nt->ntStartNumberText, np->npStartNumber );
+	guiEnableText( nt->ntStartNumberText, 1 );
 	}
     else{
-	appStringToTextWidget( npt->nptStartNumberText, "" );
-	appEnableText( npt->nptStartNumberText, 0 );
+	appStringToTextWidget( nt->ntStartNumberText, "" );
+	guiEnableText( nt->ntStartNumberText, 0 );
 	}
 
     return;
     }
 
-static void tedNotesRefreshNotePropertiesTool(	NotePropertiesTool *	npt,
-						const NotesProperties *	np )
+static void tedNotesRefreshNotePropertiesTool(
+					NotesTool *		nt,
+					const NotesProperties *	np,
+					const int *		restarts,
+					int			restartCount,
+					const int *		placements,
+					int			placementCount )
     {
-    tedNotesRefreshNotesStartNumber( npt, np );
+    tedNotesRefreshNotesStartNumber( nt, np );
 
-    tedSetNotesMenu( &(npt->nptPositionOptionmenu),
-					    np->npPosition,
-					    npt->nptPositionOptions );
-    tedSetNotesMenu( &(npt->nptRestartOptionmenu),
+    if  ( placements )
+	{
+	guiEnableWidget( nt->ntPlacementRow,
+			nt->ntCanChangeSelection || nt->ntCanChangeDocument );
+	appGuiEnableOptionmenu( &(nt->ntPlacementOptionmenu),
+			nt->ntCanChangeSelection || nt->ntCanChangeDocument );
+	tedSetNotesMenu( &(nt->ntPlacementOptionmenu),
+					    np->npPlacement,
+					    placements, placementCount );
+	}
+    else{
+	if  ( nt->ntPlacementOptionmenu.aomInplace )
+	    {
+	    guiEnableWidget( nt->ntPlacementRow, 0 );
+	    appGuiEnableOptionmenu( &(nt->ntPlacementOptionmenu), 0 );
+	    appSetOptionmenu( &(nt->ntPlacementOptionmenu), -1 );
+	    }
+	}
+
+    tedSetNotesMenu( &(nt->ntRestartOptionmenu),
 					    np->npRestart,
-					    npt->nptRestartOptions );
-    appSetOptionmenu( &(npt->nptStyleOptionmenu),
+					    restarts, restartCount );
+
+    appSetOptionmenu( &(nt->ntJustifyOptionmenu),
+					    np->npJustification );
+    appSetOptionmenu( &(nt->ntStyleOptionmenu),
 					    np->npNumberStyle );
 
     return;
     }
 
-static void tedNotesToolRefreshDocWidgets(	NotesTool *	nt )
+static void tedNotesToolRefreshNotesWidgets(	NotesTool *	nt )
     {
-    DocumentProperties *	dp= &(nt->ntPropertiesChosen);
+    if  ( nt->ntNoteTreeType == DOCinFOOTNOTE )
+	{
+	tedNotesRefreshNotePropertiesTool( nt,
+			&(nt->ntNotesPropertiesChosen.fepFootnotesProps),
+			TED_FootnoteRestarts,
+			TED_FootnoteRestartCount,
+			(int *)0, 0 );
+	}
 
-    tedNotesRefreshNotePropertiesTool( &(nt->ntFootnotePropertiesTool),
-						&(dp->dpFootnoteProperties) );
-
-    tedNotesRefreshNotePropertiesTool( &(nt->ntEndnotePropertiesTool),
-						&(dp->dpEndnoteProperties) );
+    if  ( nt->ntNoteTreeType == DOCinENDNOTE )
+	{
+	tedNotesRefreshNotePropertiesTool( nt,
+			&(nt->ntNotesPropertiesChosen.fepEndnotesProps),
+			TED_EndnoteRestarts,
+			TED_EndnoteRestartCount,
+			TED_EndnotePlacements,
+			TED_EndnotePlacementCount );
+	}
 
     return;
     }
 
-static void tedNotesToolRefreshNoteWidgets(	NotesTool *	nt )
-    {
-    int		enabled= 0;
-
-    if  ( nt->ntNoteKindChosen == DOCinFOOTNOTE )
-	{ enabled= 1;	}
-    if  ( nt->ntNoteKindChosen == DOCinENDNOTE )
-	{ enabled= 1;	}
-
-    appGuiEnableWidget( nt->ntCurrentNoteFrame, enabled );
-
-    appGuiEnableWidget( nt->ntToNoteRefButton, nt->ntInsideNote );
-    appGuiEnableWidget( nt->ntToNoteButton, ! nt->ntInsideNote );
-
-    appGuiSetToggleState( nt->ntFootnoteToggle,
-				nt->ntNoteKindChosen == DOCinFOOTNOTE );
-
-    appGuiSetToggleState( nt->ntEndnoteToggle,
-				nt->ntNoteKindChosen == DOCinENDNOTE );
-
-    appGuiSetToggleState( nt->ntFixedTextToggle, nt->ntFixedTextChosen );
-
-    appEnableText( nt->ntFixedTextText, nt->ntFixedTextChosen );
-    appStringToTextWidget( nt->ntFixedTextText, (char *)nt->ntNoteTextChosen );
-
-    return;
-    }
-
-void tedFormatToolRefreshNotesTool(
-				NotesTool *			nt,
+void tedRefreshNotesTool(	NotesTool *			nt,
 				int *				pEnabled,
 				int *				pPref,
 				InspectorSubject *		is,
 				const DocumentSelection *	ds,
-				BufferDocument *		bd )
+				const SelectionDescription *	sd,
+				BufferDocument *		bd,
+				const unsigned char *		cmdEnabled )
     {
     const DocumentProperties *	dp= &(bd->bdProperties);
 
-    PropertyMask		chgMask;
-    PropertyMask		updMask;
-
-    int				enabled= 0;
-    int				noteIndex= -1;
-    int				noteFieldNr= -1;
-
-    nt->ntInsideNote= 0;
-    nt->ntNoteKindSet= DOCinBODY;
-    nt->ntFixedTextSet= 0;
-
-    nt->ntNoteTextSet[0]= '\0';
-    nt->ntNoteTextChosen[0]= '\0';
-
-    nt->ntNoteNumber= 0;
+    const BufferItem *		bodySectNode= (BufferItem *)0;
 
     if  ( ds )
 	{
-	DocumentNote *		dn= (DocumentNote *)0;
-
-	noteIndex= docGetSelectedNote( &dn, &noteFieldNr,
-						nt->ntNoteTextSet,
-						sizeof(nt->ntNoteTextSet)- 1,
-						bd, ds );
-	if  ( noteIndex >= 0 )
-	    {
-	    nt->ntNoteKindSet= dn->dnExternalItemKind;
-	    nt->ntNoteNumber= dn->dnNoteNumber;
-
-	    if  ( ds->dsSelectionScope.ssInExternalItem == DOCinFOOTNOTE  ||
-		  ds->dsSelectionScope.ssInExternalItem == DOCinENDNOTE   )
-		{ nt->ntInsideNote= 1;	}
-
-	    if  ( noteFieldNr < 0 )
-		{ nt->ntFixedTextSet= 1;	}
-
-	    (*pPref) += 4;
-	    }
+	bodySectNode= docGetBodySectNode( ds->dsHead.dpNode, bd );
+	if  ( ! bodySectNode )
+	    { XDEB(bodySectNode);	}
 	}
 
-    nt->ntNoteKindChosen=  nt->ntNoteKindSet;
-    nt->ntFixedTextChosen=  nt->ntFixedTextSet;
-    strcpy( (char *)nt->ntNoteTextChosen, (char *)nt->ntNoteTextSet );
+    nt->ntNotesPropertiesSetDocument= dp->dpNotesProps;
+    nt->ntNotesPropertiesSetSelection= dp->dpNotesProps;
 
-    PROPmaskCLEAR( &updMask );
-
-    PROPmaskADD( &updMask, DPpropFOOTNOTE_POSITION );
-    PROPmaskADD( &updMask, DPpropFOOTNOTE_RESTART );
-    PROPmaskADD( &updMask, DPpropFOOTNOTE_STYLE );
-    PROPmaskADD( &updMask, DPpropFOOTNOTE_STARTNR );
-
-    PROPmaskADD( &updMask, DPpropENDNOTE_POSITION );
-    PROPmaskADD( &updMask, DPpropENDNOTE_RESTART );
-    PROPmaskADD( &updMask, DPpropENDNOTE_STYLE );
-    PROPmaskADD( &updMask, DPpropENDNOTE_STARTNR );
-
-    PROPmaskCLEAR( &chgMask );
-
-    if  ( docUpdDocumentProperties( &chgMask, &(nt->ntPropertiesChosen),
-							&updMask, dp ) )
-	{ LDEB(1); return;	}
-    if  ( docUpdDocumentProperties( &chgMask, &(nt->ntPropertiesSet),
-							&updMask, dp ) )
-	{ LDEB(1); return;	}
-
-    if  ( ! nt->ntFixedTextSet			&&
-	  nt->ntNoteKindSet != DOCinBODY	)
+    if  ( bodySectNode )
 	{
-	if  ( docFormatChftnField( nt->ntNoteTextChosen,
-					sizeof(nt->ntNoteTextChosen)- 1,
-					&(nt->ntPropertiesChosen),
-					nt->ntNoteNumber,
-					nt->ntNoteKindChosen ) )
-	    { LDEB(1); nt->ntNoteTextChosen[0]= '\0';	}
-
-	strcpy( (char *)nt->ntNoteTextSet, (char *)nt->ntNoteTextChosen );
+	nt->ntNotesPropertiesSetSelection=
+			    bodySectNode->biSectProperties.spNotesProperties;
 	}
 
-    tedNotesToolRefreshDocWidgets( nt );
-    tedNotesToolRefreshNoteWidgets( nt );
+    nt->ntNotesPropertiesChosen= nt->ntNotesPropertiesSetSelection;
 
-    if  ( ds->dsSelectionScope.ssInExternalItem == DOCinBODY		||
-	  noteIndex >= 0						)
-	{ enabled= 1;	}
+    nt->ntCanChangeSelection= cmdEnabled[EDITcmdUPD_SECT_PROPS];
+    nt->ntCanChangeDocument= cmdEnabled[EDITcmdUPD_SECTDOC_PROPS];
 
-    *pEnabled= enabled;
-    return;
-    }
+    tedNotesToolRefreshNotesWidgets( nt );
 
-/************************************************************************/
-/*									*/
-/*  Jump back and forth between a note and its reference.		*/
-/*									*/
-/************************************************************************/
+    guiEnableWidget( nt->ntJustifyRow,
+			nt->ntCanChangeSelection || nt->ntCanChangeDocument );
+    if  ( nt->ntPlacementRow )
+	{
+	guiEnableWidget( nt->ntPlacementRow,
+			nt->ntCanChangeSelection || nt->ntCanChangeDocument );
+	}
 
-static APP_BUTTON_CALLBACK_H( tedNotesToolToNoteRef, w, voidnt )
-    {
-    NotesTool *			nt= (NotesTool *)voidnt;
+    guiEnableWidget( nt->ntRestartRow,
+			nt->ntCanChangeSelection || nt->ntCanChangeDocument );
+    guiEnableWidget( nt->ntStyleRow,
+			nt->ntCanChangeSelection || nt->ntCanChangeDocument );
+    guiEnableWidget( nt->ntStartNumberRow,
+			nt->ntCanChangeSelection || nt->ntCanChangeDocument );
+    guiEnableText( nt->ntStartNumberText,
+			nt->ntCanChangeSelection || nt->ntCanChangeDocument );
 
-    tedAppGotoNoteRef( nt->ntApplication );
+    guiEnableWidget( nt->ntRevertSelectionWidget,
+			nt->ntCanChangeSelection || nt->ntCanChangeDocument );
+    guiEnableWidget( nt->ntChangeSelectionWidget,
+			nt->ntCanChangeSelection || nt->ntCanChangeDocument );
 
-    return;
-    }
+    guiEnableWidget( is->isRevertButton,
+			nt->ntCanChangeSelection || nt->ntCanChangeDocument );
+    guiEnableWidget( is->isApplyButton,
+			nt->ntCanChangeSelection || nt->ntCanChangeDocument );
 
-static APP_BUTTON_CALLBACK_H( tedNotesToolToNote, w, voidnt )
-    {
-    NotesTool *			nt= (NotesTool *)voidnt;
-
-    tedAppEditNote( nt->ntApplication );
-
+    *pEnabled= 1;
     return;
     }
 
@@ -277,12 +233,12 @@ static APP_BUTTON_CALLBACK_H( tedNotesToolToNote, w, voidnt )
 /*									*/
 /************************************************************************/
 
-static int tedNotesToolGetStartNumber(	NotePropertiesTool *	npt,
+static int tedNotesToolGetStartNumber(	NotesTool *		nt,
 					NotesProperties *	np )
     {
     if  ( np->npRestart == FTN_RST_CONTINUOUS )
 	{
-	if  ( appGetIntegerFromTextWidget( npt->nptStartNumberText,
+	if  ( appGetIntegerFromTextWidget( nt->ntStartNumberText,
 				    &(np->npStartNumber), 1, 0, INT_MAX, 0 ) )
 	    { return -1;	}
 	}
@@ -292,29 +248,12 @@ static int tedNotesToolGetStartNumber(	NotePropertiesTool *	npt,
 
 static APP_TXACTIVATE_CALLBACK_H( tedNotesFootRestartChanged, w, voidnt )
     {
-    NotesTool *			nt= (NotesTool *)voidnt;
-    DocumentProperties *	dp= &(nt->ntPropertiesChosen);
-    NotePropertiesTool *	npt= &(nt->ntFootnotePropertiesTool);
-    NotesProperties *		np= &(dp->dpFootnoteProperties);
+    NotesTool *		nt= (NotesTool *)voidnt;
+    NotesProperties *	np= &(nt->ntNotesPropertiesChosen.fepFootnotesProps);
 
     if  ( np->npRestart != FTN_RST_CONTINUOUS		||
-	  tedNotesToolGetStartNumber( npt, np )		)
+	  tedNotesToolGetStartNumber( nt, np )		)
 	{ return;	}
-
-    if  ( ! nt->ntFixedTextChosen		&&
-	  nt->ntNoteKindChosen == DOCinFOOTNOTE	)
-	{
-	if  ( docFormatChftnField( nt->ntNoteTextChosen,
-					sizeof(nt->ntNoteTextChosen)- 1,
-					&(nt->ntPropertiesChosen),
-					nt->ntNoteNumber,
-					nt->ntNoteKindChosen ) )
-	    { LDEB(1); nt->ntNoteTextChosen[0]= '\0';	}
-	else{
-	    appStringToTextWidget( nt->ntFixedTextText,
-					    (char *)nt->ntNoteTextChosen );
-	    }
-	}
 
     return;
     }
@@ -322,245 +261,238 @@ static APP_TXACTIVATE_CALLBACK_H( tedNotesFootRestartChanged, w, voidnt )
 static APP_TXACTIVATE_CALLBACK_H( tedNotesEndRestartChanged, w, voidnt )
     {
     NotesTool *			nt= (NotesTool *)voidnt;
-    DocumentProperties *	dp= &(nt->ntPropertiesChosen);
-    NotePropertiesTool *	npt= &(nt->ntEndnotePropertiesTool);
-    NotesProperties *		np= &(dp->dpEndnoteProperties);
+    NotesProperties *		np= &(nt->ntNotesPropertiesChosen.fepEndnotesProps);
 
     if  ( np->npRestart != FTN_RST_CONTINUOUS		||
-	  tedNotesToolGetStartNumber( npt, np )		)
+	  tedNotesToolGetStartNumber( nt, np )		)
 	{ return;	}
 
-    if  ( ! nt->ntFixedTextChosen		&&
-	  nt->ntNoteKindChosen == DOCinENDNOTE	)
-	{
-	if  ( docFormatChftnField( nt->ntNoteTextChosen,
-					sizeof(nt->ntNoteTextChosen)- 1,
-					&(nt->ntPropertiesChosen),
-					nt->ntNoteNumber,
-					nt->ntNoteKindChosen ) )
-	    { LDEB(1); nt->ntNoteTextChosen[0]= '\0';	}
-	else{
-	    appStringToTextWidget( nt->ntFixedTextText,
-					    (char *)nt->ntNoteTextChosen );
-	    }
-	}
-
     return;
     }
 
-static APP_BUTTON_CALLBACK_H( tedChangeNotesPushed, w, voidnt )
+static int tedNotesToolSetProperties(	NotesTool *	nt,
+					int		wholeDocument )
+    {
+    int				rval= 0;
+
+    PropertyMask		dpSetMask;
+    PropertyMask		spSetMask;
+
+    DocumentProperties		dpNew;
+    SectionProperties		spNew;
+
+    docInitSectionProperties( &spNew );
+    docInitDocumentProperties( &dpNew );
+
+    utilPropMaskClear( &dpSetMask );
+    utilPropMaskClear( &spSetMask );
+
+    if  ( nt->ntNoteTreeType == DOCinFOOTNOTE )
+	{
+	tedNotesToolGetStartNumber( nt,
+		    &(nt->ntNotesPropertiesChosen.fepFootnotesProps) );
+	}
+
+    if  ( nt->ntNoteTreeType == DOCinENDNOTE )
+	{
+	tedNotesToolGetStartNumber( nt,
+		    &(nt->ntNotesPropertiesChosen.fepEndnotesProps) );
+	}
+
+    /**/
+    dpNew.dpNotesProps= nt->ntNotesPropertiesChosen;
+    spNew.spNotesProperties= nt->ntNotesPropertiesChosen;
+
+    {
+    PropertyMask	cmpMask;
+
+    utilPropMaskClear( &cmpMask );
+    docFillDocNotesMask( &cmpMask );
+
+    docFootEndNotesPropertyDifference( &dpSetMask,
+				&(dpNew.dpNotesProps), &cmpMask,
+				&(nt->ntNotesPropertiesSetDocument),
+				DOCdocNOTE_PROP_MAP );
+
+    }
+
+    {
+    PropertyMask	cmpMask;
+
+    utilPropMaskClear( &cmpMask );
+    docFillSectNotesMask( &cmpMask );
+
+    docFootEndNotesPropertyDifference( &spSetMask,
+				&(spNew.spNotesProperties), &cmpMask,
+				&(nt->ntNotesPropertiesSetSelection),
+				DOCsectNOTE_PROP_MAP );
+    }
+
+    if  ( wholeDocument )
+	{
+	if  ( tedAppChangeAllSectionProperties( nt->ntApplication,
+							&spSetMask, &spNew,
+							&dpSetMask, &dpNew ) )
+	    { LDEB(1); rval= -1; goto ready;	}
+	}
+    else{
+	if  ( tedAppChangeSectionProperties( nt->ntApplication,
+							&spSetMask, &spNew ) )
+	    { LDEB(1); rval= -1; goto ready;	}
+	}
+
+  ready:
+
+    docCleanSectionProperties( &spNew );
+    docCleanDocumentProperties( &dpNew );
+
+    return rval;
+    }
+
+static APP_BUTTON_CALLBACK_H( tedNotesToolChangeDocumentPushed, w, voidnt )
     {
     NotesTool *			nt= (NotesTool *)voidnt;
-    DocumentProperties *	dp= &(nt->ntPropertiesChosen);
+    const int			wholeDocument= 1;
 
-    PropertyMask		dpUpdMask;
-    PropertyMask		spUpdMask;
-
-    SectionProperties		sp;
-
-    docInitSectionProperties( &sp );
-
-    PROPmaskCLEAR( &dpUpdMask );
-
-    PROPmaskADD( &dpUpdMask, DPpropFOOTNOTE_POSITION );
-    PROPmaskADD( &dpUpdMask, DPpropFOOTNOTE_RESTART );
-    PROPmaskADD( &dpUpdMask, DPpropFOOTNOTE_STYLE );
-    PROPmaskADD( &dpUpdMask, DPpropFOOTNOTE_STARTNR );
-
-    PROPmaskADD( &dpUpdMask, DPpropENDNOTE_POSITION );
-    PROPmaskADD( &dpUpdMask, DPpropENDNOTE_RESTART );
-    PROPmaskADD( &dpUpdMask, DPpropENDNOTE_STYLE );
-    PROPmaskADD( &dpUpdMask, DPpropENDNOTE_STARTNR );
-
-    PROPmaskCLEAR( &spUpdMask );
-
-    PROPmaskADD( &spUpdMask, SPpropFOOTNOTE_POSITION );
-    PROPmaskADD( &spUpdMask, SPpropFOOTNOTE_RESTART );
-    PROPmaskADD( &spUpdMask, SPpropFOOTNOTE_STYLE );
-    PROPmaskADD( &spUpdMask, SPpropFOOTNOTE_STARTNR );
-
-    /* No! PROPmaskADD( &spUpdMask, SPpropENDNOTE_POSITION ); */
-    PROPmaskADD( &spUpdMask, SPpropENDNOTE_RESTART );
-    PROPmaskADD( &spUpdMask, SPpropENDNOTE_STYLE );
-    PROPmaskADD( &spUpdMask, SPpropENDNOTE_STARTNR );
-
-    /**/
-
-    if  ( tedAppChangeAllSectionProperties( nt->ntApplication,
-							&spUpdMask, &sp ) )
-	{ LDEB(1);	}
-
-    /**/
-
-    tedNotesToolGetStartNumber( &(nt->ntFootnotePropertiesTool),
-						&(dp->dpFootnoteProperties) );
-
-    tedNotesToolGetStartNumber( &(nt->ntEndnotePropertiesTool),
-						&(dp->dpEndnoteProperties) );
-
-    tedAppSetDocumentProperties( nt->ntApplication, dp, &dpUpdMask );
-
-    /**/
-
-    docCleanSectionProperties( &sp );
-
-    return;
+    tedNotesToolSetProperties( nt, wholeDocument );
     }
 
-static APP_BUTTON_CALLBACK_H( tedRevertNotesPushed, w, voidnt )
-    {
-    NotesTool *		nt= (NotesTool *)voidnt;
-
-    PropertyMask	chgMask;
-    PropertyMask	updMask;
-
-    PROPmaskCLEAR( &updMask );
-
-    PROPmaskADD( &updMask, DPpropFOOTNOTE_POSITION );
-    PROPmaskADD( &updMask, DPpropFOOTNOTE_RESTART );
-    PROPmaskADD( &updMask, DPpropFOOTNOTE_STYLE );
-    PROPmaskADD( &updMask, DPpropFOOTNOTE_STARTNR );
-
-    PROPmaskADD( &updMask, DPpropENDNOTE_POSITION );
-    PROPmaskADD( &updMask, DPpropENDNOTE_RESTART );
-    PROPmaskADD( &updMask, DPpropENDNOTE_STYLE );
-    PROPmaskADD( &updMask, DPpropENDNOTE_STARTNR );
-
-    PROPmaskCLEAR( &chgMask );
-
-    if  ( docUpdDocumentProperties( &chgMask, &(nt->ntPropertiesChosen),
-					&updMask, &(nt->ntPropertiesSet) ) )
-	{ LDEB(1); return;	}
-
-    tedNotesToolRefreshDocWidgets( nt );
-
-    return;
-    }
-
-/************************************************************************/
-/*									*/
-/*  Set/Revert buttons for the current note have been pushed.		*/
-/*									*/
-/************************************************************************/
-
-static APP_BUTTON_CALLBACK_H( tedChangeNotePushed, w, voidnt )
+static APP_BUTTON_CALLBACK_H( tedNotesToolChangeSelectionPushed, w, voidnt )
     {
     NotesTool *			nt= (NotesTool *)voidnt;
+    const int			wholeDocument= 0;
 
-    char *			fixedText= (char *)0;
+    tedNotesToolSetProperties( nt, wholeDocument );
+    }
 
-    fixedText= appGetStringFromTextWidget( nt->ntFixedTextText );
+static APP_BUTTON_CALLBACK_H( tedNotesToolRevertDocumentPushed, w, voidnt )
+    {
+    NotesTool *		nt= (NotesTool *)voidnt;
 
-    tedChangeCurrentNote( nt->ntApplication, ! nt->ntFixedTextChosen,
-						(unsigned char *)fixedText,
-						nt->ntNoteKindChosen );
-
-    appFreeStringFromTextWidget( fixedText );
+    nt->ntNotesPropertiesChosen= nt->ntNotesPropertiesSetDocument;
+    tedNotesToolRefreshNotesWidgets( nt );
 
     return;
     }
 
-static APP_BUTTON_CALLBACK_H( tedRevertNotePushed, w, voidnt )
+static APP_BUTTON_CALLBACK_H( tedNotesToolRevertSelectionPushed, w, voidnt )
     {
     NotesTool *		nt= (NotesTool *)voidnt;
 
-    nt->ntNoteKindChosen= nt->ntNoteKindSet;
-    nt->ntFixedTextChosen= nt->ntFixedTextSet;
-
-    strcpy( (char *)nt->ntNoteTextChosen, (char *)nt->ntNoteTextSet );
-
-    tedNotesToolRefreshNoteWidgets( nt );
+    nt->ntNotesPropertiesChosen= nt->ntNotesPropertiesSetSelection;
+    tedNotesToolRefreshNotesWidgets( nt );
 
     return;
     }
 
 /************************************************************************/
 /*									*/
-/*  One of the toggles to decide whether the current note is a footnote	*/
-/*  or endnote has been toggled.					*/
+/*  Menu callbacks.							*/
 /*									*/
 /************************************************************************/
 
-static APP_TOGGLE_CALLBACK_H( tedFootnoteToggled, w, voidnt, voidtbcs )
+static void tedFootnoteStyleChosen(	int		n,
+					void *		voidnt )
     {
     NotesTool *		nt= (NotesTool *)voidnt;
+    NotesProperties *	np= &(nt->ntNotesPropertiesChosen.fepFootnotesProps);
 
-    int			set;
+    if  ( n < 0 || n >= FTNstyle_COUNT )
+	{ LDEB(n); return;	}
 
-    set= appGuiGetToggleStateFromCallback( w, voidtbcs );
-
-    if  ( set && nt->ntNoteKindChosen != DOCinFOOTNOTE )
-	{
-	nt->ntNoteKindChosen= DOCinFOOTNOTE;
-
-	if  ( ! nt->ntFixedTextChosen )
-	    {
-	    if  ( docFormatChftnField( nt->ntNoteTextChosen,
-					    sizeof(nt->ntNoteTextChosen)- 1,
-					    &(nt->ntPropertiesChosen),
-					    nt->ntNoteNumber,
-					    nt->ntNoteKindChosen ) )
-		{ LDEB(1); nt->ntNoteTextChosen[0]= '\0';	}
-	    }
-
-	tedNotesToolRefreshNoteWidgets( nt );
-	}
+    np->npNumberStyle= n;
 
     return;
     }
 
-static APP_TOGGLE_CALLBACK_H( tedEndnoteToggled, w, voidnt, voidtbcs )
+static void tedEndnoteStyleChosen(	int		n,
+					void *		voidnt )
     {
     NotesTool *		nt= (NotesTool *)voidnt;
+    NotesProperties *	np= &(nt->ntNotesPropertiesChosen.fepEndnotesProps);
 
-    int			set;
+    if  ( n < 0 || n >= FTNstyle_COUNT )
+	{ LDEB(n); return;	}
 
-    set= appGuiGetToggleStateFromCallback( w, voidtbcs );
-
-    if  ( set && nt->ntNoteKindChosen != DOCinENDNOTE )
-	{
-	nt->ntNoteKindChosen= DOCinENDNOTE;
-	
-	if  ( ! nt->ntFixedTextChosen )
-	    {
-	    if  ( docFormatChftnField( nt->ntNoteTextChosen,
-					    sizeof(nt->ntNoteTextChosen)- 1,
-					    &(nt->ntPropertiesChosen),
-					    nt->ntNoteNumber,
-					    nt->ntNoteKindChosen ) )
-		{ LDEB(1); nt->ntNoteTextChosen[0]= '\0';	}
-	    }
-
-	tedNotesToolRefreshNoteWidgets( nt );
-	}
+    np->npNumberStyle= n;
 
     return;
     }
 
-static APP_TOGGLE_CALLBACK_H( tedFixedNoteTextToggled, w, voidnt, voidtbcs )
+static void tedFootnoteRestartChosen(	int		n,
+					void *		voidnt )
     {
     NotesTool *		nt= (NotesTool *)voidnt;
+    NotesProperties *	np= &(nt->ntNotesPropertiesChosen.fepFootnotesProps);
 
-    int			set;
+    if  ( n < 0 || n >= TED_FootnoteRestartCount )
+	{ LLDEB(n,TED_FootnoteRestartCount); return;	}
 
-    set= appGuiGetToggleStateFromCallback( w, voidtbcs );
+    np->npRestart= TED_FootnoteRestarts[n];
 
-    if  ( nt->ntFixedTextChosen != set )
-	{
-	if  ( ! set )
-	    {
-	    if  ( docFormatChftnField( nt->ntNoteTextChosen,
-					sizeof(nt->ntNoteTextChosen)- 1,
-					&(nt->ntPropertiesChosen),
-					nt->ntNoteNumber,
-					nt->ntNoteKindChosen ) )
-		{ LDEB(1); nt->ntNoteTextChosen[0]= '\0';	}
-	    }
+    tedNotesRefreshNotesStartNumber( nt, np );
 
-	nt->ntFixedTextChosen= set;
-	}
+    return;
+    }
 
-    tedNotesToolRefreshNoteWidgets( nt );
+static void tedEndnoteRestartChosen(	int		n,
+					void *		voidnt )
+    {
+    NotesTool *		nt= (NotesTool *)voidnt;
+    NotesProperties *	np= &(nt->ntNotesPropertiesChosen.fepEndnotesProps);
+
+    if  ( n < 0 || n >= TED_EndnoteRestartCount )
+	{ LLDEB(n,TED_EndnoteRestartCount); return;	}
+
+    np->npRestart= TED_EndnoteRestarts[n];
+
+    tedNotesRefreshNotesStartNumber( nt, np );
+
+    return;
+    }
+
+static void tedEndnotePlacementChosen(	int		n,
+					void *		voidnt )
+    {
+    NotesTool *		nt= (NotesTool *)voidnt;
+    NotesProperties *	np= &(nt->ntNotesPropertiesChosen.fepEndnotesProps);
+
+    if  ( n < 0 || n >= TED_EndnotePlacementCount )
+	{ LLDEB(n,TED_EndnotePlacementCount); return;	}
+
+    if  ( TED_EndnotePlacements[n] < 0			||
+	  TED_EndnotePlacements[n] >= FTNplace_COUNT	)
+	{ LDEB(TED_EndnotePlacements[n]); return;	}
+
+    np->npPlacement= TED_EndnotePlacements[n];
+
+    return;
+    }
+
+static void tedFootnoteJustifyChosen(	int		n,
+					void *		voidnt )
+    {
+    NotesTool *		nt= (NotesTool *)voidnt;
+    NotesProperties *	np= &(nt->ntNotesPropertiesChosen.fepFootnotesProps);
+
+    if  ( n < 0 || n >= FTNjustify_COUNT )
+	{ LDEB(n); return;	}
+
+    np->npJustification= n;
+
+    return;
+    }
+
+static void tedEndnoteJustifyChosen(	int		n,
+					void *		voidnt )
+    {
+    NotesTool *		nt= (NotesTool *)voidnt;
+    NotesProperties *	np= &(nt->ntNotesPropertiesChosen.fepEndnotesProps);
+
+    if  ( n < 0 || n >= FTNjustify_COUNT )
+	{ LDEB(n); return;	}
+
+    np->npJustification= n;
 
     return;
     }
@@ -575,35 +507,47 @@ static void tedNotesMakeNotePropertiesTool(
 				APP_WIDGET			pageWidget,
 				const char *			title,
 				NotesTool *			nt,
-				NotePropertiesTool *		npt,
 				const NotesPageResources *	npr,
-				APP_TXACTIVATE_CALLBACK_T	callBack )
+				APP_TXACTIVATE_CALLBACK_T	startCB,
+				OptionmenuCallback		justifyCB,
+				OptionmenuCallback		placementCB,
+				OptionmenuCallback		restartCB,
+				OptionmenuCallback		styleCB )
     {
-    APP_WIDGET	rowLabel;
-    APP_WIDGET	row= (APP_WIDGET )0;
     const int	textColumns= 6;
 
+    guiToolMakeLabelAndMenuRow( &(nt->ntJustifyRow), &(nt->ntJustifyOptionmenu),
+			    &(nt->ntJustifyLabel),
+			    pageWidget, npr->nprJustifyText,
+			    justifyCB, (void *)nt );
 
-    appMakeColumnFrameInColumn( &(npt->nptFrame),
-				    &(npt->nptPaned), pageWidget, title );
+    if  ( placementCB )
+	{
+	guiToolMakeLabelAndMenuRow( &(nt->ntPlacementRow),
+			    &(nt->ntPlacementOptionmenu),
+			    &(nt->ntPlacementLabel),
+			    pageWidget, npr->nprPositionText,
+			    placementCB, (void *)nt );
+	}
 
-    appInspectorMakeMenuRow( &row, &(npt->nptPositionOptionmenu),
-			    &rowLabel, npt->nptPaned, npr->nprPositionText );
+    guiToolMakeLabelAndMenuRow( &(nt->ntRestartRow), &(nt->ntRestartOptionmenu),
+			    &(nt->ntRestartLabel),
+			    pageWidget, npr->nprRestartText,
+			    restartCB, (void *)nt );
 
-    appInspectorMakeMenuRow( &row, &(npt->nptRestartOptionmenu),
-			    &rowLabel, npt->nptPaned, npr->nprRestartText );
+    guiToolMakeLabelAndMenuRow( &(nt->ntStyleRow), &(nt->ntStyleOptionmenu),
+			    &(nt->ntStyleLabel), pageWidget, npr->nprStyleText,
+			    styleCB, (void *)nt );
 
-    appInspectorMakeMenuRow( &row, &(npt->nptStyleOptionmenu),
-				&rowLabel, npt->nptPaned, npr->nprStyleText );
-
-    appMakeLabelAndTextRow( &row, &rowLabel, &(npt->nptStartNumberText),
-			npt->nptPaned, npr->nprFirstNumberText,
+    guiToolMakeLabelAndTextRow( &(nt->ntStartNumberRow),
+			&(nt->ntStartNumberLabel), &(nt->ntStartNumberText),
+			pageWidget, npr->nprFirstNumberText,
 			textColumns, 1 );
 
-    if  ( callBack )
+    if  ( startCB )
 	{
-	appGuiSetGotValueCallbackForText( npt->nptStartNumberText,
-						    callBack, (void *)nt );
+	appGuiSetGotValueCallbackForText( nt->ntStartNumberText,
+						    startCB, (void *)nt );
 	}
 
     return;
@@ -613,302 +557,107 @@ void tedFormatFillNotesPage(	NotesTool *			nt,
 				const NotesPageResources *	npr,
 				InspectorSubject *		is,
 				APP_WIDGET			pageWidget,
-				const InspectorSubjectResources * isr )
+				const InspectorSubjectResources * isr,
+				int				treeType )
     {
     APP_WIDGET	row= (APP_WIDGET )0;
 
-    const int	textColumns= 6;
-
     /**/
     nt->ntPageResources= npr;
+    nt->ntInProgrammaticChange= 0;
 
-    /**/
-    docInitDocumentProperties( &(nt->ntPropertiesSet) );
-    docInitDocumentProperties( &(nt->ntPropertiesChosen) );
+    nt->ntRevertSelectionWidget= (APP_WIDGET)0;
+    nt->ntChangeSelectionWidget= (APP_WIDGET)0;
 
-    /**/
-    appMakeColumnFrameInColumn( &(nt->ntCurrentNoteFrame),
-			    &(nt->ntCurrentNotePaned),
-			    pageWidget, npr->nprCurrentNoteText );
 
-    appInspectorMakeToggleRow( &row, nt->ntCurrentNotePaned,
-		    &(nt->ntFootnoteToggle), &(nt->ntEndnoteToggle),
-		    npr->nprFootnoteText, npr->nprEndnoteText,
-		    tedFootnoteToggled,
-		    tedEndnoteToggled, (void *)nt );
+    docInitFootEndNotesProperties( &(nt->ntNotesPropertiesSetDocument) );
+    docInitFootEndNotesProperties( &(nt->ntNotesPropertiesSetSelection) );
+    docInitFootEndNotesProperties( &(nt->ntNotesPropertiesChosen) );
 
-    appMakeToggleAndTextRow( &row, &(nt->ntFixedTextToggle),
-		    &(nt->ntFixedTextText), nt->ntCurrentNotePaned,
-		    npr->nprFixedTextText,
-		    tedFixedNoteTextToggled, (void *)nt,
-		    textColumns, 1 );
-
-    appInspectorMakeButtonRow( &row, nt->ntCurrentNotePaned,
-		&(nt->ntToNoteRefButton), &(nt->ntToNoteButton),
-		npr->nprToNoteRefText, npr->nprToNoteText,
-		tedNotesToolToNoteRef, tedNotesToolToNote,
-		(void *)nt );
-
-    appInspectorMakeButtonRow( &row, nt->ntCurrentNotePaned,
-		&(nt->ntRevertNoteButton), &(nt->ntChangeNoteButton),
-		npr->nprRevertNoteText, npr->nprChangeNoteText,
-		tedRevertNotePushed, tedChangeNotePushed,
-		(void *)nt );
+    nt->ntNoteTreeType= treeType;
 
     /**************/
 
-    tedNotesMakeNotePropertiesTool( pageWidget, npr->nprFootnotesText, nt,
-					&(nt->ntFootnotePropertiesTool),
-					npr, tedNotesFootRestartChanged );
-    tedNotesMakeNotePropertiesTool( pageWidget, npr->nprEndnotesText, nt,
-					&(nt->ntEndnotePropertiesTool),
-					npr, tedNotesEndRestartChanged );
+    if  ( nt->ntNoteTreeType == DOCinFOOTNOTE )
+	{
+	tedNotesMakeNotePropertiesTool( pageWidget, npr->nprFootnotesText, nt,
+					npr, tedNotesFootRestartChanged,
+					tedFootnoteJustifyChosen,
+					(OptionmenuCallback)0,
+					tedFootnoteRestartChosen,
+					tedFootnoteStyleChosen );
+	}
+
+    if  ( nt->ntNoteTreeType == DOCinENDNOTE )
+	{
+	tedNotesMakeNotePropertiesTool( pageWidget, npr->nprEndnotesText, nt,
+					npr, tedNotesEndRestartChanged,
+					tedEndnoteJustifyChosen,
+					tedEndnotePlacementChosen,
+					tedEndnoteRestartChosen,
+					tedEndnoteStyleChosen );
+	}
 
     /**************/
 
-    appInspectorMakeButtonRow( &row, pageWidget,
-		&(is->isRevertButton), &(is->isApplyButton),
-		isr->isrRevert, isr->isrApplyToSubject,
-		tedRevertNotesPushed, tedChangeNotesPushed,
-		(void *)nt );
+    guiToolMake2BottonRow( &row, pageWidget,
+				&(nt->ntRevertSelectionWidget),
+				&(nt->ntChangeSelectionWidget),
+				npr->nprRevertSelectionText,
+				npr->nprChangeSelectionText,
+				tedNotesToolRevertSelectionPushed,
+				tedNotesToolChangeSelectionPushed,
+				(void *)nt );
 
-    return;
-    }
-
-/************************************************************************/
-/*									*/
-/*  Finish the Notes page.						*/
-/*									*/
-/************************************************************************/
-
-static APP_OITEM_CALLBACK_H( tedFootnoteStyleChosen, w, voidnt )
-    {
-    NotesTool *			nt= (NotesTool *)voidnt;
-    DocumentProperties *	dp= &(nt->ntPropertiesChosen);
-
-    NotePropertiesTool *	npt= &(nt->ntFootnotePropertiesTool);
-    NotesProperties *		np= &(dp->dpFootnoteProperties);
-
-    int				n;
-
-    n= appGuiGetOptionmenuItemIndex( &(npt->nptStyleOptionmenu), w );
-    if  ( n < 0 || n >= FTNstyle_COUNT )
-	{ LDEB(n); return;	}
-
-    np->npNumberStyle= n;
-
-    if  ( ! nt->ntFixedTextChosen		&&
-	  nt->ntNoteKindChosen == DOCinFOOTNOTE	)
-	{
-	if  ( docFormatChftnField( nt->ntNoteTextChosen,
-					sizeof(nt->ntNoteTextChosen)- 1,
-					&(nt->ntPropertiesChosen),
-					nt->ntNoteNumber,
-					nt->ntNoteKindChosen ) )
-	    { LDEB(1); nt->ntNoteTextChosen[0]= '\0';	}
-	else{
-	    appStringToTextWidget( nt->ntFixedTextText,
-					    (char *)nt->ntNoteTextChosen );
-	    }
-	}
-
-    return;
-    }
-
-static APP_OITEM_CALLBACK_H( tedEndnoteStyleChosen, w, voidnt )
-    {
-    NotesTool *			nt= (NotesTool *)voidnt;
-    DocumentProperties *	dp= &(nt->ntPropertiesChosen);
-
-    NotePropertiesTool *	npt= &(nt->ntEndnotePropertiesTool);
-    NotesProperties *		np= &(dp->dpEndnoteProperties);
-
-    int				n;
-
-    n= appGuiGetOptionmenuItemIndex( &(npt->nptStyleOptionmenu), w );
-    if  ( n < 0 || n >= FTNstyle_COUNT )
-	{ LDEB(n); return;	}
-
-    np->npNumberStyle= n;
-
-    if  ( ! nt->ntFixedTextChosen		&&
-	  nt->ntNoteKindChosen == DOCinENDNOTE	)
-	{
-	if  ( docFormatChftnField( nt->ntNoteTextChosen,
-					sizeof(nt->ntNoteTextChosen)- 1,
-					&(nt->ntPropertiesChosen),
-					nt->ntNoteNumber,
-					nt->ntNoteKindChosen ) )
-	    { LDEB(1); nt->ntNoteTextChosen[0]= '\0';	}
-	else{
-	    appStringToTextWidget( nt->ntFixedTextText,
-					    (char *)nt->ntNoteTextChosen );
-	    }
-	}
-
-    return;
-    }
-
-static APP_OITEM_CALLBACK_H( tedFootnoteRestartChosen, w, voidnt )
-    {
-    NotesTool *			nt= (NotesTool *)voidnt;
-    DocumentProperties *	dp= &(nt->ntPropertiesChosen);
-
-    NotePropertiesTool *	npt= &(nt->ntFootnotePropertiesTool);
-    NotesProperties *		np= &(dp->dpFootnoteProperties);
-
-    int				n;
-
-    n= appGuiGetOptionmenuItemIndex( &(npt->nptRestartOptionmenu), w );
-    if  ( n < 0 || n >= sizeof(TED_FootnoteRestarts)/sizeof(int) )
-	{ LLDEB(n,sizeof(TED_FootnoteRestarts)/sizeof(int)); return;	}
-
-    np->npRestart= TED_FootnoteRestarts[n];
-
-    tedNotesRefreshNotesStartNumber( npt, np );
-
-    if  ( ! nt->ntFixedTextChosen		&&
-	  nt->ntNoteKindChosen == DOCinFOOTNOTE	)
-	{
-	if  ( docFormatChftnField( nt->ntNoteTextChosen,
-					sizeof(nt->ntNoteTextChosen)- 1,
-					&(nt->ntPropertiesChosen),
-					nt->ntNoteNumber,
-					nt->ntNoteKindChosen ) )
-	    { LDEB(1); nt->ntNoteTextChosen[0]= '\0';	}
-	else{
-	    appStringToTextWidget( nt->ntFixedTextText,
-					    (char *)nt->ntNoteTextChosen );
-	    }
-	}
-    return;
-    }
-
-static APP_OITEM_CALLBACK_H( tedEndnoteRestartChosen, w, voidnt )
-    {
-    NotesTool *			nt= (NotesTool *)voidnt;
-    DocumentProperties *	dp= &(nt->ntPropertiesChosen);
-
-    NotePropertiesTool *	npt= &(nt->ntEndnotePropertiesTool);
-    NotesProperties *		np= &(dp->dpEndnoteProperties);
-
-    int				n;
-
-    n= appGuiGetOptionmenuItemIndex( &(npt->nptRestartOptionmenu), w );
-    if  ( n < 0 || n >= sizeof(TED_EndnoteRestarts)/sizeof(int) )
-	{ LLDEB(n,sizeof(TED_EndnoteRestarts)/sizeof(int)); return;	}
-
-    np->npRestart= TED_EndnoteRestarts[n];
-
-    tedNotesRefreshNotesStartNumber( npt, np );
-
-    if  ( ! nt->ntFixedTextChosen		&&
-	  nt->ntNoteKindChosen == DOCinENDNOTE	)
-	{
-	if  ( docFormatChftnField( nt->ntNoteTextChosen,
-					sizeof(nt->ntNoteTextChosen)- 1,
-					&(nt->ntPropertiesChosen),
-					nt->ntNoteNumber,
-					nt->ntNoteKindChosen ) )
-	    { LDEB(1); nt->ntNoteTextChosen[0]= '\0';	}
-	else{
-	    appStringToTextWidget( nt->ntFixedTextText,
-					    (char *)nt->ntNoteTextChosen );
-	    }
-	}
-
-    return;
-    }
-
-static APP_OITEM_CALLBACK_H( tedFootnotePositionChosen, w, voidnt )
-    {
-    NotesTool *			nt= (NotesTool *)voidnt;
-    DocumentProperties *	dp= &(nt->ntPropertiesChosen);
-
-    NotePropertiesTool *	npt= &(nt->ntFootnotePropertiesTool);
-    NotesProperties *		np= &(dp->dpFootnoteProperties);
-
-    int				n;
-
-    n= appGuiGetOptionmenuItemIndex( &(npt->nptPositionOptionmenu), w );
-    if  ( n < 0 || n >= sizeof(TED_FootnotePositions)/sizeof(int) )
-	{ LLDEB(n,sizeof(TED_FootnotePositions)/sizeof(int)); return;	}
-
-    np->npPosition= TED_FootnotePositions[n];
-
-    return;
-    }
-
-static APP_OITEM_CALLBACK_H( tedEndnotePositionChosen, w, voidnt )
-    {
-    NotesTool *			nt= (NotesTool *)voidnt;
-    DocumentProperties *	dp= &(nt->ntPropertiesChosen);
-
-    NotePropertiesTool *	npt= &(nt->ntEndnotePropertiesTool);
-    NotesProperties *		np= &(dp->dpEndnoteProperties);
-
-    int				n;
-
-    n= appGuiGetOptionmenuItemIndex( &(npt->nptPositionOptionmenu), w );
-    if  ( n < 0 || n >= sizeof(TED_EndnotePositions)/sizeof(int) )
-	{ LLDEB(n,sizeof(TED_EndnotePositions)/sizeof(int)); return;	}
-
-    np->npPosition= TED_EndnotePositions[n];
-    if  ( n < 0 || n >= FTN_POS__COUNT )
-	{ LDEB(n); return;	}
+    guiToolMake2BottonRow( &(is->isApplyRow), pageWidget,
+				&(is->isRevertButton),
+				&(is->isApplyButton),
+				isr->isrRevert,
+				isr->isrApplyToSubject,
+				tedNotesToolRevertDocumentPushed,
+				tedNotesToolChangeDocumentPushed,
+				(void *)nt );
 
     return;
     }
 
 static void tedNotePropertiesToolFillStyleChooser(
 				NotesTool *			nt,
-				APP_OITEM_CALLBACK_T		callBack,
-				NotePropertiesTool *		npt,
 				const NotesPageResources *	npr )
     {
-    int		i;
+    appFillInspectorMenu( FTNjustify_COUNT, FTNjustifyBELOW_TEXT,
+		    nt->ntJustifyOptions, npr->nprJustifyMenuTexts,
+		    &(nt->ntJustifyOptionmenu) );
 
     appFillInspectorMenu( FTNstyle_COUNT, FTNstyleNAR,
-		    npt->nptStyleOptions, npr->nprNumberStyleMenuTexts,
-		    &(npt->nptStyleOptionmenu),
-		    callBack, (void *)nt );
-
-    for ( i= 0; i < FTN_POS__COUNT; i++ )
-	{ npt->nptPositionOptions[i]= (APP_WIDGET)0;	}
-
-    for ( i= 0; i < FTN_RST__COUNT; i++ )
-	{ npt->nptRestartOptions[i]= (APP_WIDGET)0;	}
+		    nt->ntStyleOptions, npr->nprNumberStyleMenuTexts,
+		    &(nt->ntStyleOptionmenu) );
 
     return;
     }
 
 static void tedNotePropertiesToolFillChoosers(
 			NotesTool *			nt,
-			NotePropertiesTool *		npt,
 			const NotesPageResources *	npr,
 			const int *			restarts,
 			int				restartCount,
-			APP_OITEM_CALLBACK_T		restartChosen,
-			const int *			positions,
-			int				positionCount,
-			APP_OITEM_CALLBACK_T		positionChosen )
+			const int *			placements,
+			int				placementCount )
     {
     int		i;
 
     for ( i= 0; i < restartCount; i++ )
 	{
-	npt->nptRestartOptions[i]=
-		appAddItemToOptionmenu( &(npt->nptRestartOptionmenu),
-			npr->nprRestartMenuTexts[restarts[i]],
-			restartChosen, (void *)nt );
+	nt->ntRestartOptions[i]=
+		appAddItemToOptionmenu( &(nt->ntRestartOptionmenu),
+			npr->nprRestartMenuTexts[restarts[i]] );
 	}
 
-    for ( i= 0; i < positionCount; i++ )
+    for ( i= 0; i < placementCount; i++ )
 	{
-	npt->nptPositionOptions[i]=
-		appAddItemToOptionmenu( &(npt->nptPositionOptionmenu),
-			npr->nprPositionMenuTexts[positions[i]],
-			positionChosen, (void *)nt );
+	nt->ntPlacementOptions[i]=
+		appAddItemToOptionmenu( &(nt->ntPlacementOptionmenu),
+			npr->nprPlacementMenuTexts[placements[i]] );
 	}
 
     return;
@@ -917,52 +666,42 @@ static void tedNotePropertiesToolFillChoosers(
 void tedFormatFillNotesChoosers(	NotesTool *			nt,
 					const NotesPageResources *	npr )
     {
-    tedNotePropertiesToolFillStyleChooser( nt, tedFootnoteStyleChosen,
-				    &(nt->ntFootnotePropertiesTool), npr );
+    tedNotePropertiesToolFillStyleChooser( nt, npr );
 
-    tedNotePropertiesToolFillStyleChooser( nt, tedEndnoteStyleChosen,
-				    &(nt->ntEndnotePropertiesTool), npr );
-
-    tedNotePropertiesToolFillChoosers( nt,
-				&(nt->ntFootnotePropertiesTool), npr,
-
+    if  ( nt->ntNoteTreeType == DOCinFOOTNOTE )
+	{
+	tedNotePropertiesToolFillChoosers( nt, npr,
 				TED_FootnoteRestarts,
-				sizeof(TED_FootnoteRestarts)/sizeof(int),
-				tedFootnoteRestartChosen,
+				TED_FootnoteRestartCount,
+				(int *)0, 0 );
+	}
 
-				TED_FootnotePositions,
-				sizeof(TED_FootnotePositions)/sizeof(int),
-				tedFootnotePositionChosen );
-
-    tedNotePropertiesToolFillChoosers( nt,
-				&(nt->ntEndnotePropertiesTool), npr,
-
+    if  ( nt->ntNoteTreeType == DOCinENDNOTE )
+	{
+	tedNotePropertiesToolFillChoosers( nt, npr,
 				TED_EndnoteRestarts,
-				sizeof(TED_EndnoteRestarts)/sizeof(int),
-				tedEndnoteRestartChosen,
-
-				TED_EndnotePositions,
-				sizeof(TED_EndnotePositions)/sizeof(int),
-				tedEndnotePositionChosen );
-
-    }
-
-static void tedFinishNotePropertiesTool(
-				NotePropertiesTool *		npt )
-    {
-    appOptionmenuRefreshWidth( &(npt->nptPositionOptionmenu) );
-    appOptionmenuRefreshWidth( &(npt->nptRestartOptionmenu) );
-    appOptionmenuRefreshWidth( &(npt->nptStyleOptionmenu) );
-
-    return;
+				TED_EndnoteRestartCount,
+				TED_EndnotePlacements,
+				TED_EndnotePlacementCount );
+	}
     }
 
 void tedFormatFinishNotesPage(		NotesTool *			nt,
-					TedFormatTool *			tft,
 					const NotesPageResources *	npr )
     {
-    tedFinishNotePropertiesTool( &(nt->ntFootnotePropertiesTool) );
-    tedFinishNotePropertiesTool( &(nt->ntEndnotePropertiesTool) );
+    if  ( nt->ntJustifyOptionmenu.aomInplace )
+	{ appOptionmenuRefreshWidth( &(nt->ntJustifyOptionmenu) );	}
+
+    if  ( nt->ntPlacementOptionmenu.aomInplace )
+	{ appOptionmenuRefreshWidth( &(nt->ntPlacementOptionmenu) );	}
+
+    if  ( nt->ntRestartOptionmenu.aomInplace )
+	{ appOptionmenuRefreshWidth( &(nt->ntRestartOptionmenu) );	}
+
+    if  ( nt->ntStyleOptionmenu.aomInplace )
+	{ appOptionmenuRefreshWidth( &(nt->ntStyleOptionmenu) );	}
+
+    return;
     }
 
 /************************************************************************/
@@ -973,8 +712,53 @@ void tedFormatFinishNotesPage(		NotesTool *			nt,
 
 void tedFormatCleanNotesTool(	NotesTool *	nt )
     {
-    docCleanDocumentProperties( &(nt->ntPropertiesSet) );
-    docCleanDocumentProperties( &(nt->ntPropertiesChosen) );
+    /* clean ntNotesPropertiesSetDocument */
+    /* clean ntNotesPropertiesSetSelection */
+    /* clean ntNotesPropertiesChosen */
+
+    return;
+    }
+
+void tedFormatInitNotesTool(	NotesTool *		nt )
+    {
+    int		i;
+
+    nt->ntNoteTreeType= DOCinBODY;
+
+    nt->ntApplication= (EditApplication *)0;
+    nt->ntInspector= (AppInspector *)0;
+    nt->ntPageResources= (NotesPageResources *)0;
+
+    nt->ntInProgrammaticChange= 0;
+
+    docInitFootEndNotesProperties( &(nt->ntNotesPropertiesSetDocument) );
+    docInitFootEndNotesProperties( &(nt->ntNotesPropertiesSetSelection) );
+    docInitFootEndNotesProperties( &(nt->ntNotesPropertiesChosen) );
+
+    nt->ntRevertSelectionWidget= (APP_WIDGET)0;
+    nt->ntChangeSelectionWidget= (APP_WIDGET)0;
+
+    nt->ntJustifyRow= (APP_WIDGET)0;
+    appInitOptionmenu( &(nt->ntJustifyOptionmenu) );
+    for ( i= 0; i < FTNjustify_COUNT; i++ )
+	{ nt->ntJustifyOptions[i]= (APP_WIDGET)0;	}
+
+    nt->ntPlacementRow= (APP_WIDGET)0;
+    appInitOptionmenu( &(nt->ntPlacementOptionmenu) );
+    for ( i= 0; i < FTNplace_COUNT; i++ )
+	{ nt->ntPlacementOptions[i]= (APP_WIDGET)0;	}
+
+    nt->ntRestartRow= (APP_WIDGET)0;
+    appInitOptionmenu( &(nt->ntRestartOptionmenu) );
+    for ( i= 0; i < FTN_RST__COUNT; i++ )
+	{ nt->ntRestartOptions[i]= (APP_WIDGET)0;	}
+
+    nt->ntStyleRow= (APP_WIDGET)0;
+    appInitOptionmenu( &(nt->ntStyleOptionmenu) );
+    for ( i= 0; i < FTNstyle_COUNT; i++ )
+	{ nt->ntStyleOptions[i]= (APP_WIDGET)0;	}
+
+    nt->ntStartNumberText= (APP_WIDGET)0;
 
     return;
     }
@@ -993,16 +777,26 @@ static AppConfigurableResource TED_TedNotesSubjectResourceTable[]=
     APP_RESOURCE( "formatToolChangeNotes",
 		offsetof(InspectorSubjectResources,isrApplyToSubject),
 		"Apply to Document" ),
-    APP_RESOURCE( "tableToolRevert",
+    APP_RESOURCE( "tableToolRevertDocumentNotesProperties",
 		offsetof(InspectorSubjectResources,isrRevert),
-		"Revert" ),
+		"Revert to Document" ),
     };
 
 static AppConfigurableResource TED_TedNotesToolResourceTable[]=
     {
+    APP_RESOURCE( "tableToolRevertSection",
+		offsetof(NotesPageResources,nprRevertSelectionText),
+		"Revert to Selection" ),
+    APP_RESOURCE( "tableToolChangeSelection",
+		offsetof(NotesPageResources,nprChangeSelectionText),
+		"Apply to Selection" ),
+    /**/
+#   if 0
     APP_RESOURCE( "formatToolThisNote",
 		offsetof(NotesPageResources,nprCurrentNoteText),
 		"This Note" ),
+#   endif
+
     APP_RESOURCE( "formatToolFootnotes",
 		offsetof(NotesPageResources,nprFootnotesText),
 		"Footnotes" ),
@@ -1011,35 +805,12 @@ static AppConfigurableResource TED_TedNotesToolResourceTable[]=
 		"Endnotes" ),
 
     /**/
-    APP_RESOURCE( "formatToolNoteIsFootnote",
-		offsetof(NotesPageResources,nprFootnoteText),
-		"Footnote" ),
-    APP_RESOURCE( "formatToolNoteIsEndnote",
-		offsetof(NotesPageResources,nprEndnoteText),
-		"Endnote" ),
-
-    APP_RESOURCE( "formatToolNoteHasFixedText",
-		offsetof(NotesPageResources,nprFixedTextText),
-		"Fixed Text" ),
-
-    APP_RESOURCE( "formatToolToNoteRef",
-		offsetof(NotesPageResources,nprToNoteRefText),
-		"Find Note" ),
-    APP_RESOURCE( "formatToolToNote",
-		offsetof(NotesPageResources,nprToNoteText),
-		"Edit Note" ),
-
-    APP_RESOURCE( "formatToolRevertNote",
-		offsetof(NotesPageResources,nprRevertNoteText),
-		"Revert" ),
-    APP_RESOURCE( "formatToolChangeNote",
-		offsetof(NotesPageResources,nprChangeNoteText),
-		"Apply to Note" ),
-
-    /**/
     APP_RESOURCE( "formatToolNotesFirstNumber",
 		offsetof(NotesPageResources,nprFirstNumberText),
 		"First Number" ),
+    APP_RESOURCE( "formatToolNotesJustify",
+		offsetof(NotesPageResources,nprJustifyText),
+		"Justify" ),
     APP_RESOURCE( "formatToolNotesPosition",
 		offsetof(NotesPageResources,nprPositionText),
 		"Position" ),
@@ -1079,17 +850,18 @@ static AppConfigurableResource TED_TedNotesToolResourceTable[]=
 	offsetof(NotesPageResources,nprRestartMenuTexts[FTN_RST_PER_PAGE]),
 	"Per Page" ),
     /**/
-    APP_RESOURCE( "formatToolNotePositionSectEnd",
-	offsetof(NotesPageResources,nprPositionMenuTexts[FTN_POS_SECT_END]),
+    APP_RESOURCE( "formatToolNotePlacementSectEnd",
+	offsetof(NotesPageResources,nprPlacementMenuTexts[FTNplaceSECT_END]),
 	"End of Section" ),
-    APP_RESOURCE( "formatToolNotePositionDocEnd",
-	offsetof(NotesPageResources,nprPositionMenuTexts[FTN_POS_DOC_END]),
+    APP_RESOURCE( "formatToolNotePlacementDocEnd",
+	offsetof(NotesPageResources,nprPlacementMenuTexts[FTNplaceDOC_END]),
 	"End of Document" ),
-    APP_RESOURCE( "formatToolNotePositionBelowText",
-	offsetof(NotesPageResources,nprPositionMenuTexts[FTN_POS_BELOW_TEXT]),
+
+    APP_RESOURCE( "formatToolNoteJustifyBelowText",
+	offsetof(NotesPageResources,nprJustifyMenuTexts[FTNjustifyBELOW_TEXT]),
 	"Below Text" ),
-    APP_RESOURCE( "formatToolNotePositionPageBottom",
-	offsetof(NotesPageResources,nprPositionMenuTexts[FTN_POS_PAGE_BOTTOM]),
+    APP_RESOURCE( "formatToolNoteJustifyPageBottom",
+	offsetof(NotesPageResources,nprJustifyMenuTexts[FTNjustifyPAGE_BOTTOM]),
 	"Page Bottom" ),
     };
 

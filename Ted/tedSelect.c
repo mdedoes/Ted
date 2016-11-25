@@ -7,80 +7,18 @@
 #   include	"tedConfig.h"
 
 #   include	<stddef.h>
-#   include	<stdlib.h>
 #   include	<stdio.h>
 #   include	<ctype.h>
-#   include	<limits.h>
 
-#   include	"docLayout.h"
 #   include	"tedApp.h"
+#   include	"tedAppFront.h"
+#   include	"tedSelect.h"
 #   include	"tedLayout.h"
+#   include	"tedDocument.h"
+#   include	<docDescribeSetSelection.h>
+#   include	<docParaParticules.h>
 
 #   include	<appDebugon.h>
-
-/************************************************************************/
-/*									*/
-/*  Is the selection a position between two chars?			*/
-/*									*/
-/************************************************************************/
-
-int tedHasIBarSelection(	const TedDocument *   td )
-    {
-    return docIsIBarSelection( &(td->tdDocumentSelection) );
-
-    return 0;
-    }
-
-int tedHasSelection(	const TedDocument *   td )
-    {
-    const DocumentSelection *	ds= &(td->tdDocumentSelection);
-
-    if  ( ds->dsBegin.dpBi )
-	{ return 1;	}
-
-    return 0;
-    }
-
-int tedGetSelection(	DocumentSelection *	ds,
-			SelectionGeometry *	sg,
-			SelectionDescription *	sd,
-			TedDocument *		td )
-    {
-    const DocumentSelection *	dss= &(td->tdDocumentSelection);
-
-    if  ( ! dss->dsBegin.dpBi )
-	{ return 1;	}
-
-    *ds= td->tdDocumentSelection;
-    *sg= td->tdSelectionGeometry;
-    *sd= td->tdSelectionDescription;
-
-    return 0;
-    }
-
-/************************************************************************/
-/*									*/
-/*  Determine the derived properties such as line number and		*/
-/*  coordinates of the current selection.				*/
-/*									*/
-/************************************************************************/
-
-void tedDelimitCurrentSelection(	TedDocument *		td,
-					AppDrawingData *	add )
-    {
-    BufferDocument *		bd= td->tdDocument;
-    const ScreenFontList *	sfl= &(td->tdScreenFontList);
-    int				isIBar;
-
-    isIBar= docIsIBarSelection( &(td->tdDocumentSelection) );
-
-    tedSelectionGeometry( &(td->tdSelectionGeometry),
-			&(td->tdDocumentSelection),
-			isIBar && td->tdSelectionGeometry.sgBegin.pgAtLineHead,
-			bd, add, sfl );
-
-    return;
-    }
 
 /************************************************************************/
 /*									*/
@@ -88,27 +26,70 @@ void tedDelimitCurrentSelection(	TedDocument *		td,
 /*									*/
 /************************************************************************/
 
-int tedGetObjectSelection(	TedDocument *   	td,
-				int *			pPart,
-				DocumentPosition *	dpObject,
-				InsertedObject **	pIo )
+int tedGetObjectSelection(	const EditDocument *		ed,
+				int *				pPartObj,
+				DocumentPosition *		dpObj,
+				InsertedObject **		pIo )
     {
-    return docGetObjectSelection( &(td->tdDocumentSelection),
-							pPart, dpObject, pIo );
+    const TedDocument *		td= (const TedDocument *)ed->edPrivateData;
+    const BufferDocument *	bd= td->tdDocument;
+    int				rval;
+
+    rval= docGetObjectSelection( &(td->tdSelection),
+					    bd, pPartObj, dpObj, pIo );
+    if  ( rval )
+	{ return rval;	}
+
+    return 0;
     }
 
+/************************************************************************/
+/*									*/
+/*  Scroll the slection into view.					*/
+/*									*/
+/************************************************************************/
 
-static void tedScrollToPosition(EditDocument *			ed,
-				const PositionGeometry *	pg,
+static void tedScrollToPositions(EditDocument *			ed,
+				const PositionGeometry *	pgB,
+				const PositionGeometry *	pgE,
+				const LayoutContext *		lc,
 				int *				pScrolledX,
 				int *				pScrolledY )
     {
-    AppDrawingData *		add= &(ed->edDrawingData);
+    DocumentRectangle		drPixels;
 
-    appScrollToRectangle( ed,
-			pg->pgXPixels, PG_TOP_PIXELS( add, pg ),
-			pg->pgXPixels, pg->pgY1Pixels,
-			pScrolledX, pScrolledY );
+    docPixelRectangleForPositions( &drPixels, pgB, pgE, lc );
+
+    appScrollToRectangle( ed, &drPixels, pScrolledX, pScrolledY );
+
+    return;
+    }
+
+/************************************************************************/
+/*									*/
+/*  Scroll a selection into view.					*/
+/*									*/
+/************************************************************************/
+
+void tedScrollToSelection(	EditDocument *		ed,
+				int *			pScrolledX,
+				int *			pScrolledY )
+    {
+    DocumentSelection		dsDoc;
+    SelectionGeometry		sgDoc;
+    SelectionDescription	sdDoc;
+
+    LayoutContext		lc;
+
+    layoutInitContext( &lc );
+    tedSetScreenLayoutContext( &lc, ed );
+
+    if  ( tedGetSelection( &dsDoc, &sgDoc, &sdDoc,
+			    (DocumentTree **)0, (BufferItem **)0, ed ) )
+	{ LDEB(1); return;	}
+
+    tedScrollToPositions( ed, &(sgDoc.sgHead), &(sgDoc.sgTail),
+					    &lc, pScrolledX, pScrolledY );
 
     return;
     }
@@ -127,12 +108,12 @@ static void tedScrollToPosition(EditDocument *			ed,
 static int tedExtendSelectionIntoTable(	EditDocument *		ed,
 					DocumentPosition *	dpEnd )
     {
-    BufferItem *	cellBi= dpEnd->dpBi->biParent;
-    BufferItem *	rowBi=	cellBi->biParent;
+    BufferItem *	cellNode= dpEnd->dpNode->biParent;
+    BufferItem *	rowNode= cellNode->biParent;
 
-    int			col1= rowBi->biChildCount -1;
+    int			col1= rowNode->biChildCount -1;
 
-    docLastPosition( dpEnd, rowBi->biChildren[col1] );
+    docTailPosition( dpEnd, rowNode->biChildren[col1] );
 
     return 0;
     }
@@ -149,67 +130,68 @@ static int tedExtendSelectionIntoTable(	EditDocument *		ed,
 /************************************************************************/
 
 static int tedExtendSelectionFromTable(	EditDocument *		ed,
-					DocumentPosition *	dpBegin,
-					DocumentPosition *	dpEnd,
+					DocumentPosition *	dpHead,
+					DocumentPosition *	dpTail,
 					int *			pCol0,
 					int *			pCol1 )
     {
-    BufferItem *	cellBi= dpBegin->dpBi->biParent;
-    BufferItem *	rowBi=	cellBi->biParent;
-    BufferItem *	sectBi= rowBi->biParent;
+    BufferItem *	hCellNode= dpHead->dpNode->biParent;
+    BufferItem *	hRowNode= hCellNode->biParent;
+    BufferItem *	hParentNode= hRowNode->biParent;
 
-    BufferItem *	endRowBi= dpEnd->dpBi->biParent->biParent;
+    BufferItem *	tRowNode= dpTail->dpNode->biParent->biParent;
+    BufferItem *	tParentNode= tRowNode->biParent;
 
-    int			row1= rowBi->biNumberInParent;
+    int			row1= hRowNode->biNumberInParent;
 
     int			col0= -1;
     int			col1= -1;
 
     /*  1  */
-    if  ( dpEnd->dpBi->biParent->biParent->biParent != sectBi )
+    if  ( tParentNode != hParentNode )
 	{
-	docFirstPosition( dpBegin, rowBi->biChildren[0] );
+	docHeadPosition( dpHead, hRowNode->biChildren[0] );
 
-	if  ( dpEnd->dpBi->biParaInTable )
-	    { tedExtendSelectionIntoTable( ed, dpEnd ); }
+	if  ( dpTail->dpNode->biParaTableNesting > 0 )
+	    { tedExtendSelectionIntoTable( ed, dpTail ); }
 
 	return 0;
 	}
 
     /*  2  */
-    while( row1 < rowBi->biRowTablePast- 1 )
+    while( row1 < hRowNode->biRowTablePast- 1 )
 	{
-	if  ( endRowBi == sectBi->biChildren[row1] )
+	if  ( tRowNode == hParentNode->biChildren[row1] )
 	    { break;	}
 
 	row1++;
 	}
 
-    if  ( endRowBi == sectBi->biChildren[row1] )
+    if  ( tRowNode == hParentNode->biChildren[row1] )
 	{
-	if  ( dpEnd->dpBi->biParent->biNumberInParent <
-					    cellBi->biNumberInParent )
+	if  ( dpTail->dpNode->biParent->biNumberInParent <
+					    hCellNode->biNumberInParent )
 	    {
-	    col0= dpEnd->dpBi->biParent->biNumberInParent;
-	    col1= dpBegin->dpBi->biParent->biNumberInParent;
+	    col0= dpTail->dpNode->biParent->biNumberInParent;
+	    col1= dpHead->dpNode->biParent->biNumberInParent;
 
-	    docFirstPosition( dpBegin, rowBi->biChildren[col0] );
-	    rowBi= dpEnd->dpBi->biParent->biParent;
-	    docLastPosition( dpEnd, rowBi->biChildren[col1] );
+	    docHeadPosition( dpHead, hRowNode->biChildren[col0] );
+	    hRowNode= dpTail->dpNode->biParent->biParent;
+	    docTailPosition( dpTail, hRowNode->biChildren[col1] );
 	    }
 	else{
-	    docFirstPosition( dpBegin, dpBegin->dpBi->biParent );
-	    docLastPosition( dpEnd, dpEnd->dpBi->biParent );
+	    docHeadPosition( dpHead, dpHead->dpNode->biParent );
+	    docTailPosition( dpTail, dpTail->dpNode->biParent );
 	    }
 
-	col0= dpBegin->dpBi->biParent->biNumberInParent;
-	col1= dpEnd->dpBi->biParent->biNumberInParent;
+	col0= dpHead->dpNode->biParent->biNumberInParent;
+	col1= dpTail->dpNode->biParent->biNumberInParent;
 	}
     else{
-	docFirstPosition( dpBegin, rowBi->biChildren[0] );
+	docHeadPosition( dpHead, hRowNode->biChildren[0] );
 
-	if  ( dpEnd->dpBi->biParaInTable )
-	    { tedExtendSelectionIntoTable( ed, dpEnd ); }
+	if  ( dpTail->dpNode->biParaTableNesting > 0 )
+	    { tedExtendSelectionIntoTable( ed, dpTail ); }
 
 	return 0;
 	}
@@ -229,9 +211,9 @@ static int tedExtendSelectionFromTable(	EditDocument *		ed,
 static void tedSetExtendedSelection(
 				EditDocument *			ed,
 				int				exposeSelection,
-				int				col0,
-				int				col1,
+				const DocumentRectangle *	drOldSel,
 				int				direction,
+				const BufferItem *		bodySectNode,
 				const DocumentPosition *	dpExposeBegin,
 				const DocumentPosition *	dpExposeEnd,
 				const DocumentPosition *	dpTo,
@@ -239,9 +221,6 @@ static void tedSetExtendedSelection(
 				const DocumentPosition *	dpEnd )
     {
     TedDocument *		td= (TedDocument *)ed->edPrivateData;
-    BufferDocument *		bd= td->tdDocument;
-    const ScreenFontList *	sfl= &(td->tdScreenFontList);
-    AppDrawingData *		add= &(ed->edDrawingData);
 
     DocumentSelection		dsExpose;
 
@@ -255,58 +234,67 @@ static void tedSetExtendedSelection(
     int				scrolledY= 0;
     const int			lastLine= 0;
 
-    docSetRangeSelection( &dsExpose, dpExposeBegin, dpExposeEnd, 1, -1, -1 );
+    LayoutContext		lc;
+    int				lastOne= (direction>0)?PARAfindLAST:PARAfindFIRST;
 
-    tedPositionGeometry( &pgTo, dpTo, direction > 0, bd, add, sfl );
+    layoutInitContext( &lc );
+    tedSetScreenLayoutContext( &lc, ed );
 
-    tedScrollToPosition( ed, &pgTo, &scrolledX, &scrolledY );
+    docSetRangeSelection( &dsExpose, dpExposeBegin, dpExposeEnd, 1 );
+
+    tedPositionGeometry( &pgTo, dpTo, lastOne, &lc );
+
+    tedScrollToPositions( ed, &pgTo, &pgTo, &lc, &scrolledX, &scrolledY );
 
     if  ( exposeSelection )
 	{
-	if  ( tedGetSelection( &dsDoc, &sgDoc, &sdDoc, td ) )
-	    { LDEB(1); return;	}
-
-	appDocExposeRectangle( ed, &(sgDoc.sgRectangle), scrolledX, scrolledY );
+	appDocExposeRectangle( ed, drOldSel, scrolledX, scrolledY );
 	}
 
-    tedExposeSelection( ed, &dsExpose, scrolledX, scrolledY );
+    tedExposeSelection( ed, &dsExpose, bodySectNode, scrolledX, scrolledY );
 
-    docSetRangeSelection( &(td->tdDocumentSelection), dpBegin, dpEnd,
-						    direction, col0, col1 );
+    docSetRangeSelection( &(td->tdSelection), dpBegin, dpEnd, direction );
     tedSelectionGeometry( &(td->tdSelectionGeometry),
-			&(td->tdDocumentSelection), lastLine, bd, add, sfl );
+				    &(td->tdSelection), bodySectNode,
+				    lastLine, &lc );
 
     /*  1  */
     td->tdSelectionDescription.sdIsIBarSelection=
-			docIsIBarSelection( &(td->tdDocumentSelection) );
+				docIsIBarSelection( &(td->tdSelection) );
 
     if  ( exposeSelection )
 	{
-	if  ( tedGetSelection( &dsDoc, &sgDoc, &sdDoc, td ) )
+	if  ( tedGetSelection( &dsDoc, &sgDoc, &sdDoc,
+				(DocumentTree **)0, (BufferItem **)0, ed ) )
 	    { LDEB(1); return;	}
 
 	appDocExposeRectangle( ed, &(sgDoc.sgRectangle), scrolledX, scrolledY );
 	}
+
+    tedManagePrimarySelection( ed );
 
     return;
     }
 
-static void tedBalanceFieldSelection(	EditDocument *		ed,
+static void tedBalanceFieldSelection(	BufferDocument *	bd,
+					DocumentTree *		ei,
 					int *			pBalanced,
 					DocumentPosition *	dpBegin,
 					DocumentPosition *	dpEnd )
     {
+    DocumentField *		dfLeft;
+    DocumentField *		dfRight;
     int				beginMoved= 0;
     int				endMoved= 0;
+    int				headPart= -1;
+    int				tailPart= -1;
 
-    TedDocument *		td= (TedDocument *)ed->edPrivateData;
-
-    docBalanceFieldSelection( &beginMoved, &endMoved, td->tdDocument,
-							    dpBegin, dpEnd );
+    docBalanceFieldSelection( &dfLeft, &dfRight, &beginMoved, &endMoved,
+						    &headPart, &tailPart,
+						    dpBegin, dpEnd, ei, bd );
 
     if  ( beginMoved )
 	{ *pBalanced= 1;	}
-
     if  ( endMoved )
 	{ *pBalanced= 1;	}
 
@@ -342,15 +330,18 @@ int tedExtendSelectionToPosition(
     SelectionGeometry		sgDoc;
     SelectionDescription	sdDoc;
 
+    DocumentTree *		ei;
+    BufferItem *		bodySectNode;
+
     dpFrom= *dpAnchor;
     dpTo= *dpFound;
 
-    if  ( tedGetSelection( &dsDoc, &sgDoc, &sdDoc, td ) )
+    if  ( tedGetSelection( &dsDoc, &sgDoc, &sdDoc, &ei, &bodySectNode, ed ) )
 	{ LDEB(1); return -1;	}
 
     directionToAnchor= docComparePositions( &dpTo, dpAnchor );
-    directionBeginAnchor= docComparePositions( &(dsDoc.dsBegin), dpAnchor );
-    directionEndAnchor= docComparePositions( &(dsDoc.dsEnd), dpAnchor );
+    directionBeginAnchor= docComparePositions( &(dsDoc.dsHead), dpAnchor );
+    directionEndAnchor= docComparePositions( &(dsDoc.dsTail), dpAnchor );
 
     /********************/
     /*  Before anchor.	*/
@@ -361,18 +352,18 @@ int tedExtendSelectionToPosition(
 
 	if  ( docPositionsInsideCell( &dpTo, &dpFrom ) )
 	    {
-	    if  ( dpFrom.dpBi->biParaInTable )
-		{ col0= col1= dpFrom.dpBi->biParent->biNumberInParent;	}
+	    if  ( dpFrom.dpNode->biParaTableNesting > 0 )
+		{ col0= col1= dpFrom.dpNode->biParent->biNumberInParent; }
 	    }
 	else{
-	    if  ( dpTo.dpBi->biParaInTable )
+	    if  ( dpTo.dpNode->biParaTableNesting > 0 )
 		{
 		if  ( tedExtendSelectionFromTable( ed, &dpTo, &dpFrom,
 							    &col0, &col1 ) )
 		    { LDEB(1); return -1;	}
 		}
 	    else{
-		if  ( dpFrom.dpBi->biParaInTable )
+		if  ( dpFrom.dpNode->biParaTableNesting > 0 )
 		    {
 		    if  ( tedExtendSelectionIntoTable( ed, &dpFrom ) )
 			{ LDEB(1); return -1;	}
@@ -380,10 +371,10 @@ int tedExtendSelectionToPosition(
 		}
 	    }
 
-	tedBalanceFieldSelection( ed, &balanced, &dpTo, &dpFrom );
+	tedBalanceFieldSelection( td->tdDocument, ei, &balanced, &dpTo, &dpFrom );
 
-	directionToBegin= docComparePositions( &dpTo, &(dsDoc.dsBegin) );
-	cellChanged= ! docPositionsInsideCell( &dpTo, &(dsDoc.dsBegin) );
+	directionToBegin= docComparePositions( &dpTo, &(dsDoc.dsHead) );
+	cellChanged= ! docPositionsInsideCell( &dpTo, &(dsDoc.dsHead) );
 
 	/****************************************/
 	/*  Undraw selection after the anchor.	*/
@@ -406,10 +397,12 @@ int tedExtendSelectionToPosition(
 				balanced		||
 				cellChanged		;
 
-	    tedSetExtendedSelection( ed, exposeSelection, col0, col1, dir,
-				&dpTo, &(dsDoc.dsBegin),
+	    tedSetExtendedSelection( ed, exposeSelection, &(sgDoc.sgRectangle),
+				dir, bodySectNode,
+				&dpTo, &(dsDoc.dsHead),
 				&dpTo, &dpTo, &dpFrom );
 
+	    td->tdVisibleSelectionCopied= 0;
 	    return 0;
 	    }
 
@@ -423,10 +416,12 @@ int tedExtendSelectionToPosition(
 				balanced		||
 				cellChanged		;
 
-	    tedSetExtendedSelection( ed, exposeSelection, col0, col1, dir,
-				    &(dsDoc.dsBegin), &dpTo,
+	    tedSetExtendedSelection( ed, exposeSelection, &(sgDoc.sgRectangle),
+				    dir, bodySectNode,
+				    &(dsDoc.dsHead), &dpTo,
 				    &dpTo, &dpTo, &dpFrom );
 
+	    td->tdVisibleSelectionCopied= 0;
 	    return 0;
 	    }
 
@@ -442,18 +437,18 @@ int tedExtendSelectionToPosition(
 
 	if  ( docPositionsInsideCell( &dpTo, &dpFrom ) )
 	    {
-	    if  ( dpFrom.dpBi->biParaInTable )
-		{ col0= col1= dpFrom.dpBi->biParent->biNumberInParent;	}
+	    if  ( dpFrom.dpNode->biParaTableNesting > 0 )
+		{ col0= col1= dpFrom.dpNode->biParent->biNumberInParent;	}
 	    }
 	else{
-	    if  ( dpFrom.dpBi->biParaInTable )
+	    if  ( dpFrom.dpNode->biParaTableNesting > 0 )
 		{
 		if  ( tedExtendSelectionFromTable( ed, &dpFrom, &dpTo,
 							    &col0, &col1 ) )
 		    { LDEB(1); return -1;	}
 		}
 	    else{
-		if  ( dpTo.dpBi->biParaInTable )
+		if  ( dpTo.dpNode->biParaTableNesting > 0 )
 		    {
 		    if  ( tedExtendSelectionIntoTable( ed, &dpTo ) )
 			{ LDEB(1); return -1;	}
@@ -461,10 +456,10 @@ int tedExtendSelectionToPosition(
 		}
 	    }
 
-	tedBalanceFieldSelection( ed, &balanced, &dpFrom, &dpTo );
+	tedBalanceFieldSelection( td->tdDocument, ei, &balanced, &dpFrom, &dpTo );
 
-	directionToEnd= docComparePositions( &dpTo, &(dsDoc.dsEnd) );
-	cellChanged= ! docPositionsInsideCell( &dpTo, &(dsDoc.dsEnd) );
+	directionToEnd= docComparePositions( &dpTo, &(dsDoc.dsTail) );
+	cellChanged= ! docPositionsInsideCell( &dpTo, &(dsDoc.dsTail) );
 
 	/****************************************/
 	/*  Undraw selection before the anchor.	*/
@@ -487,10 +482,12 @@ int tedExtendSelectionToPosition(
 				balanced			||
 				cellChanged			;
 
-	    tedSetExtendedSelection( ed, exposeSelection, col0, col1, dir,
-				    &(dsDoc.dsEnd), &dpTo,
+	    tedSetExtendedSelection( ed, exposeSelection, &(sgDoc.sgRectangle),
+				    dir, bodySectNode,
+				    &(dsDoc.dsTail), &dpTo,
 				    &dpTo, &dpFrom, &dpTo );
 
+	    td->tdVisibleSelectionCopied= 0;
 	    return 0;
 	    }
 
@@ -504,10 +501,12 @@ int tedExtendSelectionToPosition(
 				balanced			||
 				cellChanged			;
 
-	    tedSetExtendedSelection( ed, exposeSelection, col0, col1, dir,
-				    &dpTo, &(dsDoc.dsEnd),
+	    tedSetExtendedSelection( ed, exposeSelection, &(sgDoc.sgRectangle),
+				    dir, bodySectNode,
+				    &dpTo, &(dsDoc.dsTail),
 				    &dpTo, &dpFrom, &dpTo );
 
+	    td->tdVisibleSelectionCopied= 0;
 	    return 0;
 	    }
 
@@ -521,7 +520,7 @@ int tedExtendSelectionToPosition(
 	dpFrom= *dpAnchor;
 	dpTo= *dpAnchor;
 
-	tedBalanceFieldSelection( ed, &balanced, &dpFrom, &dpTo );
+	tedBalanceFieldSelection( td->tdDocument, ei, &balanced, &dpFrom, &dpTo );
 
 	/****************************************/
 	/*  Undraw selection before the anchor.	*/
@@ -539,39 +538,16 @@ int tedExtendSelectionToPosition(
 				directionEndAnchor > 0		||
 				balanced			;
 
-	tedSetExtendedSelection( ed, exposeSelection, col0, col1, dir,
+	tedSetExtendedSelection( ed, exposeSelection, &(sgDoc.sgRectangle),
+				dir, bodySectNode,
 				&dpFrom, &dpTo,
 				&dpFrom, &dpFrom, &dpTo );
+
+	td->tdVisibleSelectionCopied= 0;
+	return 0;
 	}
 
     return 0;
-    }
-
-int tedExtendSelectionToXY(	EditDocument *			ed,
-				BufferItem *			rootBi,
-				const DocumentPosition *	dpAnchor,
-				int				mouseX,
-				int				mouseY )
-    {
-    TedDocument *		td= (TedDocument *)ed->edPrivateData;
-    BufferDocument *		bd= td->tdDocument;
-    const ScreenFontList *	sfl= &(td->tdScreenFontList);
-    const AppDrawingData *	add= &(ed->edDrawingData);
-
-    DocumentPosition		dpTo;
-    PositionGeometry		pgTo;
-    int				partTo;
-
-    int				ox= ed->edVisibleRect.drX0;
-    int				oy= ed->edVisibleRect.drY0;
-
-    dpTo= *dpAnchor;
-
-    if  ( tedFindPosition( &dpTo, &pgTo, &partTo, bd, rootBi,
-					add, sfl, mouseX+ ox, mouseY+ oy ) )
-	{ /*LLDEB(mouseX,mouseY);*/ return 0; }
-
-    return tedExtendSelectionToPosition( ed, dpAnchor, &dpTo );
     }
 
 /************************************************************************/
@@ -580,150 +556,49 @@ int tedExtendSelectionToXY(	EditDocument *			ed,
 /*									*/
 /************************************************************************/
 
+static int tedArrowFindPositionInLine(	DocumentPosition *	dp,
+					const LayoutContext *	lc,
+					int			line,
+					int			docXPixels )
+    {
+    PositionGeometry	pg;
+
+    docInitPositionGeometry( &pg );
+
+    if  ( tedFindPositionInLine( dp, &pg, lc, dp->dpNode, line, docXPixels ) )
+	{ LDEB(docXPixels); return -1;	}
+
+    return 0;
+    }
+
 int tedArrowUp(		DocumentPosition *		dp,
 			const PositionGeometry *	pg,
-			const BufferDocument *		bd,
-			const AppDrawingData *		add,
-			const ScreenFontList *		sfl )
+			const LayoutContext *		lc )
     {
-    TextLine *		tl;
-    int			part;
-    int			stroff;
+    int			line;
 
-    int			x;
-    int			baseline;
-
-    if  ( docLineUp( &tl, dp, pg->pgLine ) )
+    if  ( docLineUp( &line, dp, pg->pgLine ) )
 	{ return -1;	}
 
-    baseline= TL_BASE_PIXELS( add, tl );
-
-    part= tedFindParticule( tl, dp->dpBi->biParaParticules,
-						    pg->pgXPixels, baseline );
-    if  ( part < 0 )
-	{ LDEB(part); return -1;	}
-
-    stroff= tedFindStringOffset( bd, dp->dpBi, part, add, sfl, &x,
-						    pg->pgXPixels, baseline );
-    if  ( stroff < 0 )
-	{ LDEB(stroff); return -1;	}
-
-    dp->dpStroff= stroff;
+    if  ( tedArrowFindPositionInLine( dp, lc, line, pg->pgXPixels ) )
+	{ LDEB(pg->pgXPixels); return -1;	}
 
     return 0;
     }
 
 int tedArrowDown(	DocumentPosition *		dp,
 			const PositionGeometry *	pg,
-			const BufferDocument *		bd,
-			const AppDrawingData *		add,
-			const ScreenFontList *		sfl )
+			const LayoutContext *		lc )
     {
-    TextLine *		tl;
-    int			part;
-    int			stroff;
+    int			line;
 
-    int			x;
-    int			baseline;
-
-    if  ( docLineDown( &tl, dp, pg->pgLine ) )
+    if  ( docLineDown( &line, dp, pg->pgLine ) )
 	{ return -1;	}
 
-    baseline= TL_BASE_PIXELS( add, tl );
-
-    part= tedFindParticule( tl, dp->dpBi->biParaParticules,
-						    pg->pgXPixels, baseline );
-    if  ( part < 0 )
-	{ LDEB(part); return -1;	}
-
-    stroff= tedFindStringOffset( bd, dp->dpBi, part, add, sfl, &x,
-						    pg->pgXPixels, baseline );
-    if  ( stroff < 0 )
-	{ LDEB(stroff); return -1;	}
-
-    dp->dpStroff= stroff;
+    if  ( tedArrowFindPositionInLine( dp, lc, line, pg->pgXPixels ) )
+	{ LDEB(pg->pgXPixels); return -1;	}
 
     return 0;
-    }
-
-/************************************************************************/
-/*									*/
-/*  Scroll a selection into view.					*/
-/*									*/
-/************************************************************************/
-
-void tedScrollToSelection(	EditDocument *		ed,
-				int *			pScrolledX,
-				int *			pScrolledY )
-    {
-    const AppDrawingData *	add= &(ed->edDrawingData);
-    TedDocument *		td= (TedDocument *)ed->edPrivateData;
-
-    DocumentSelection		dsDoc;
-    SelectionGeometry		sgDoc;
-    SelectionDescription	sdDoc;
-
-    if  ( tedGetSelection( &dsDoc, &sgDoc, &sdDoc, td ) )
-	{ LDEB(1); return;	}
-
-    appScrollToRectangle( ed,
-		    sgDoc.sgBegin.pgXPixels,
-		    PG_TOP_PIXELS( add, &(sgDoc.sgBegin) ),
-		    sgDoc.sgEnd.pgXPixels, sgDoc.sgEnd.pgY1Pixels,
-		    pScrolledX, pScrolledY );
-
-    return;
-    }
-
-/************************************************************************/
-/*									*/
-/*  Remember the text attribute of the beginning of the selection.	*/
-/*									*/
-/*  NOTE that for I-Bar selections, in case of ambiguity, there is a	*/
-/*	preference for the attribute of the particule before the	*/
-/*	current position.						*/
-/*									*/
-/************************************************************************/
-
-static void tedSetCurrentTextAttribute(	TedDocument *			td,
-					int				IBar,
-					const DocumentPosition *	dp )
-    {
-    BufferDocument *		bd= td->tdDocument;
-    const ScreenFontList *	sfl= &(td->tdScreenFontList);
-    BufferItem *		bi= dp->dpBi;
-
-    const int			lastOne= 1;
-    int				part;
-    const TextParticule *	tp= bi->biParaParticules;
-    int				textAttr;
-
-    if  ( docFindParticuleOfPosition( &part, dp, lastOne ) )
-	{ LDEB(dp->dpStroff); return;	}
-
-    tp= bi->biParaParticules+ part;
-
-    if  ( IBar				&&
-	  part > 0			&&
-	  dp->dpStroff == tp->tpStroff	&&
-	  tp[-1].tpKind == DOCkindTEXT	)
-	{ tp--; }
-
-    utilGetTextAttributeByNumber( &(td->tdCurrentTextAttribute),
-						&(bd->bdTextAttributeList),
-						tp->tpTextAttributeNumber );
-
-    td->tdCurrentTextAttributeNumber= tp->tpTextAttributeNumber;
-    td->tdCurrentScreenFont= -1;
-
-    textAttr= tp->tpTextAttributeNumber;
-    if  ( textAttr >= sfl->sflAttributeToScreenCount	||
-	  sfl->sflAttributeToScreen[textAttr] < 0	)
-	{ LDEB(textAttr); return;	}
-
-    td->tdCurrentScreenFont= sfl->sflAttributeToScreen[textAttr];
-
-    return;
     }
 
 /************************************************************************/
@@ -749,18 +624,14 @@ static void tedSetCurrentTextAttribute(	TedDocument *			td,
 /*									*/
 /************************************************************************/
 
-void tedSetSelection(	EditDocument *			ed,
-			const DocumentSelection *	dsSet,
-			int				lastLine,
-			int *				pScrolledX,
-			int *				pScrolledY )
+void tedSetSelectionLow(	EditDocument *			ed,
+				const DocumentSelection *	dsSet,
+				int				lastLine,
+				int *				pScrolledX,
+				int *				pScrolledY )
     {
-    EditApplication *		ea= ed->edApplication;
-
     TedDocument *		td= (TedDocument *)ed->edPrivateData;
     BufferDocument *		bd= td->tdDocument;
-    ScreenFontList *		sfl= &(td->tdScreenFontList);
-    AppDrawingData *		add= &(ed->edDrawingData);
     int				hadSelection;
 
     DocumentSelection		dsOld;
@@ -770,263 +641,182 @@ void tedSetSelection(	EditDocument *			ed,
     DocumentSelection		dsNew;
     SelectionGeometry		sgNew;
 
-    int				beginMoved= 0;
-    int				endMoved= 0;
+    int				balanced= 0;
 
     DocumentRectangle		drExpose;
-
-    int				redrawExternalItemOld= 0;
-
-    ExternalItem *		eiSet= (ExternalItem *)0;
+    DocumentTree *		treeSet= (DocumentTree *)0;
     BufferItem *		bodySectBiSet= (BufferItem *)0;
 
-    BufferItem *		rootBiSet;
     DocumentRectangle		drExternalSet;
-    int				redrawExternalItemSet= 0;
+    int				bodySectNr= -1;
 
-    int				otherRoot;
+    int				redrawTreeOld= 0;
+    int				redrawTreeSet= 0;
 
-    const int			justUsed= 0;
+    int				scrolledX= 0;
+    int				scrolledY= 0;
 
-    if  ( tedGetSelection( &dsOld, &sgOld, &sdOld, td ) )
+    LayoutContext		lc;
+
+    layoutInitContext( &lc );
+    tedSetScreenLayoutContext( &lc, ed );
+
+    td->tdEditTrace.etTyping= TYPING_NO;
+
+    if  ( tedGetSelection( &dsOld, &sgOld, &sdOld,
+				(DocumentTree **)0, (BufferItem **)0, ed ) )
 	{ LDEB(1); return;	}
 
     /*  0  */
     if  ( sdOld.sdIsObjectSelection )
 	{ tedHideObjectWindows( ed );	}
 
-    rootBiSet= docGetSelectionRoot( &eiSet, &bodySectBiSet, bd, dsSet );
-    if  ( ! rootBiSet )
-	{ XDEB(rootBiSet); return;	}
-
-    otherRoot= ! docSelectionSameRoot( &dsOld, rootBiSet );
-
-    /******/
-    switch( dsOld.dsSelectionScope.ssInExternalItem )
-	{
-	case DOCinBODY:
-	    break;
-
-	case DOCinSECT_HEADER:
-	case DOCinFIRST_HEADER:
-	case DOCinLEFT_HEADER:
-	case DOCinRIGHT_HEADER:
-	case DOCinSECT_FOOTER:
-	case DOCinFIRST_FOOTER:
-	case DOCinLEFT_FOOTER:
-	case DOCinRIGHT_FOOTER:
-	    if  ( otherRoot )
-		{ redrawExternalItemOld= 1;	}
-	    break;
-
-	case DOCinFOOTNOTE:
-	case DOCinENDNOTE:
-	    if  ( otherRoot )
-		{ redrawExternalItemOld= 1;	}
-	    break;
-
-	case DOCinFTNSEP:
-	case DOCinFTNSEPC:
-	case DOCinFTNCN:
-	case DOCinAFTNSEP:
-	case DOCinAFTNSEPC:
-	case DOCinAFTNCN:
-	    if  ( otherRoot )
-		{ redrawExternalItemOld= 1;	}
-	    break;
-
-	default:
-	    LDEB(dsOld.dsSelectionScope.ssInExternalItem);
-	    break;
-	}
-
-    /******/
-    switch( rootBiSet->biInExternalItem )
-	{
-	case DOCinBODY:
-	    break;
-
-	case DOCinSECT_HEADER:
-	case DOCinFIRST_HEADER:
-	case DOCinLEFT_HEADER:
-	case DOCinRIGHT_HEADER:
-	case DOCinSECT_FOOTER:
-	case DOCinFIRST_FOOTER:
-	case DOCinLEFT_FOOTER:
-	case DOCinRIGHT_FOOTER:
-
-	    {
-	    const int		page= eiSet->eiPageSelectedUpon;
-	    int			changed= 0;
-	    ExternalItem *	ei= (ExternalItem *)0;
-	    BufferItem *	bodySectBiSet;
-
-	    if  ( otherRoot )
-		{ redrawExternalItemSet= 1;	}
-
-	    if  ( docGetHeaderFooter( &ei, &bodySectBiSet, dsSet, bd,
-					    rootBiSet->biInExternalItem ) )
-		{ LDEB(rootBiSet->biInExternalItem);	}
-
-	    /*
-	    page= docSectionHeaderFooterFirstPage( &exists, bodySectBiSet,
-					rootBiSet->biInExternalItem, dp );
-
-	    if  ( page < 0 || ! exists )
-		{ LLDEB(page,exists); return;	}
-	    */
-
-	    if  ( tedCheckPageOfSelectedExtItem( &changed, &drExternalSet,
-							bd, eiSet, add, sfl ) )
-		{ LDEB(1);	}
-
-	    if  ( changed )
-		{ redrawExternalItemSet= 1;	}
-
-	    if  ( redrawExternalItemSet )
-		{
-		if  ( docGetExternalItemBox( &drExternalSet, bodySectBiSet,
-					    eiSet, justUsed, page, bd, add ) )
-		    {
-		    LDEB(rootBiSet->biInExternalItem);
-		    redrawExternalItemSet= 0;
-		    }
-		}
-	    break;
-	    }
-
-	case DOCinFOOTNOTE:
-	case DOCinENDNOTE:
-	    if  ( otherRoot )
-		{
-		BufferItem *		bodySectBiSet= (BufferItem *)0;
-		ExternalItem *		ei= (ExternalItem *)0;
-		const int		page= eiSet->eiPageFormattedFor;
-
-		redrawExternalItemSet= 1;
-
-		if  ( docGetExternalItem( &ei, &bodySectBiSet, bd, rootBiSet ) )
-		    { LDEB(1); return;	}
-
-		if  ( docGetExternalItemBox( &drExternalSet, bodySectBiSet,
-					    eiSet, justUsed, page, bd, add ) )
-		    {
-		    LSDEB(rootBiSet->biInExternalItem,
-			docExternalKindStr(rootBiSet->biInExternalItem));
-		    redrawExternalItemSet= 0;
-		    }
-		}
-	    break;
-
-	case DOCinFTNSEP:
-	case DOCinFTNSEPC:
-	case DOCinFTNCN:
-	case DOCinAFTNSEP:
-	case DOCinAFTNSEPC:
-	case DOCinAFTNCN:
-	    {
-	    const int		page= eiSet->eiPageSelectedUpon;
-	    int			changed= 0;
-	    BufferItem * const	bodySectBiSet= (BufferItem *)0;
-
-	    if  ( otherRoot )
-		{ redrawExternalItemSet= 1;	}
-
-	    if  ( tedCheckPageOfSelectedExtItem( &changed, &drExternalSet,
-							bd, eiSet, add, sfl ) )
-		{ LDEB(1);	}
-
-	    if  ( changed )
-		{ redrawExternalItemSet= 1;	}
-
-	    if  ( docGetExternalItemBox( &drExternalSet, bodySectBiSet,
-					eiSet, justUsed, page, bd, add ) )
-		{
-		LDEB(rootBiSet->biInExternalItem);
-		redrawExternalItemSet= 0;
-		}
-	    }
-	    break;
-
-	default:
-	    LDEB(rootBiSet->biInExternalItem);
-	    break;
-	}
+    bodySectNr= docDescribeSetSelection( &treeSet, &bodySectBiSet,
+			    &drExternalSet,
+			    &redrawTreeOld, &redrawTreeSet,
+			    &lc, bd, &dsOld, dsSet );
+    if  ( bodySectNr < 0 )
+	{ LDEB(bodySectNr); return;	}
 
     /*  A  */
     dsNew= *dsSet;
-    docBalanceFieldSelection( &beginMoved, &endMoved, td->tdDocument,
-					    &(dsNew.dsBegin), &(dsNew.dsEnd) );
 
-    hadSelection= tedHasSelection( td );
+    if  ( td->tdOverstrike			&&
+	  docIsIBarSelection( &dsNew )		)
+	{
+	DocumentPosition	dp= dsNew.dsHead;
+	const int		direction= 1;
+
+	if  ( ! docGotoNextPosition( &dp )	&&
+	      dp.dpNode == dsNew.dsHead.dpNode	)
+	    {
+	    docSetRangeSelection( &dsNew, &(dsSet->dsHead), &dp, direction );
+	    }
+	}
+
+    tedBalanceFieldSelection( td->tdDocument, treeSet, &balanced,
+					    &(dsNew.dsHead), &(dsNew.dsTail) );
+
+    hadSelection= tedHasSelection( ed );
     if  ( hadSelection )
 	{
 	/*  1  */
 	drExpose= sgOld.sgRectangle;
 
-	if  ( redrawExternalItemOld )
-	    { geoUnionRectangle( &drExpose, &drExpose, &(add->addBackRect) ); }
+	if  ( redrawTreeOld )
+	    { geoUnionRectangle( &drExpose, &drExpose, &(ed->edFullRect) ); }
 
 	/*  2  */
 	if  ( sdOld.sdIsIBarSelection )
 	    { tedStopCursorBlink( ed ); }
 
-	appDocExposeRectangle( ed, &drExpose, *pScrolledX, *pScrolledY );
+	appDocExposeRectangle( ed, &drExpose, scrolledX, scrolledY );
 	}
 
     /*  5  */
-    if  ( dsNew.dsBegin.dpBi->biParaInTable			&&
-	  dsNew.dsEnd.dpBi->biParaInTable			&&
-	  dsNew.dsBegin.dpBi->biParent->biParent ==
-			dsNew.dsEnd.dpBi->biParent->biParent	)
+    if  ( dsNew.dsHead.dpNode->biParaTableNesting > 0		&&
+	  dsNew.dsTail.dpNode->biParaTableNesting > 0		&&
+	  dsNew.dsHead.dpNode->biParent->biParent ==
+			dsNew.dsTail.dpNode->biParent->biParent	)
 	{
-	dsNew.dsCol0= dsNew.dsBegin.dpBi->biParent->biNumberInParent;
-	dsNew.dsCol1= dsNew.dsEnd.dpBi->biParent->biNumberInParent;
+	dsNew.dsCol0= dsNew.dsHead.dpNode->biParent->biNumberInParent;
+	dsNew.dsCol1= dsNew.dsTail.dpNode->biParent->biNumberInParent;
 	}
 
     /*  5  */
-    tedSelectionGeometry( &sgNew, &dsNew, lastLine, bd, add, sfl );
+    if  ( ! bodySectBiSet )
+	{ XDEB(bodySectBiSet);	}
+
+    tedSelectionGeometry( &sgNew, &dsNew, bodySectBiSet, lastLine, &lc );
     td->tdVisibleSelectionCopied= 0;
-    td->tdDocumentSelection= dsNew;
+    td->tdSelection= dsNew;
     td->tdSelectionGeometry= sgNew;
 
+    treeSet->dtPageSelectedUpon= dsNew.dsHead.dpNode->biTopPosition.lpPage;
+    treeSet->dtColumnSelectedIn= dsNew.dsHead.dpNode->biTopPosition.lpColumn;
+
     /*  3  */
-    tedScrollToSelection( ed, pScrolledX, pScrolledY );
+    tedScrollToSelection( ed, &scrolledX, &scrolledY );
 
     if  ( hadSelection )
 	{
 	/*  4  */
 	drExpose= sgOld.sgRectangle;
 
-	if  ( redrawExternalItemOld )
-	    { geoUnionRectangle( &drExpose, &drExpose, &(add->addBackRect) ); }
+	if  ( redrawTreeOld )
+	    { geoUnionRectangle( &drExpose, &drExpose, &(ed->edFullRect) ); }
 
-	appDocExposeRectangle( ed, &drExpose, *pScrolledX, *pScrolledY );
+	appDocExposeRectangle( ed, &drExpose, scrolledX, scrolledY );
 	}
 
     /*  6  */
     drExpose= sgNew.sgRectangle;
 
-    if  ( redrawExternalItemSet )
+    if  ( redrawTreeSet )
 	{ geoUnionRectangle( &drExpose, &drExpose, &drExternalSet ); }
 
-    appDocExposeRectangle( ed, &drExpose, *pScrolledX, *pScrolledY );
+    appDocExposeRectangle( ed, &drExpose, scrolledX, scrolledY );
 
-    if  ( tedHasIBarSelection( td ) )
-	{ tedSetCurrentTextAttribute( td, 1, &(dsNew.dsBegin) ); }
-    else{ tedSetCurrentTextAttribute( td, 0, &(dsNew.dsBegin) ); }
-
-    if  ( ea->eaFindTool )
-	{ appFindToolEnableReplace( ea->eaFindTool, 0 );	}
-
-    docDescribeSelection( &(td->tdSelectionDescription),
-				&(td->tdDocumentSelection),
-				bd, ed->edDocumentId, ed->edIsReadonly );
+    tedDescribeSelection( ed );
 
     if  ( td->tdSelectionDescription.sdIsObjectSelection )
 	{ tedMoveObjectWindows( ed );	}
 
+    td->tdBodySectionNumber= bodySectNr;
+
+    tedManagePrimarySelection( ed );
+
+    if  ( pScrolledX )
+	{ *pScrolledX= scrolledX;	}
+    if  ( pScrolledY )
+	{ *pScrolledY= scrolledY;	}
+
     return;
+    }
+
+void tedSetSelection(	EditDocument *			ed,
+			const DocumentSelection *	dsSet,
+			int				lastLine,
+			int *				pScrolledX,
+			int *				pScrolledY )
+    {
+    tedSetSelectionLow( ed, dsSet, lastLine, pScrolledX, pScrolledY );
+
+    /* in tedSetSelectionLow(): tedDescribeSelection() */
+    tedAdaptToolsToSelection( ed );
+
+    return;
+    }
+
+/************************************************************************/
+/*									*/
+/*  Collect a description of the current selection.			*/
+/*									*/
+/*  Remember the text attribute of the beginning of the selection.	*/
+/*									*/
+/************************************************************************/
+
+void tedDescribeSelection(	EditDocument *			ed )
+    {
+    TedDocument *		td= (TedDocument *)ed->edPrivateData;
+    BufferDocument *		bd= td->tdDocument;
+    const IndexMapping *	a2s= &(td->tdAttributeToScreenFont);
+
+    docDescribeSelection( &(td->tdSelectionDescription),
+			&(td->tdSelection), bd,
+			td->tdSelectionGeometry.sgHead.pgTopPosition.lpPage,
+			td->tdSelectionGeometry.sgTail.pgTopPosition.lpPage,
+			ed->edDocumentId, ed->edIsReadonly );
+
+    td->tdCurrentTextAttribute=
+			    td->tdSelectionDescription.sdTextAttribute;
+    td->tdCurrentTextAttributeNumber=
+			    td->tdSelectionDescription.sdTextAttributeNumber;
+    td->tdCurrentScreenFont= utilIndexMappingGet( a2s,
+			    td->tdCurrentTextAttributeNumber );
+
+    if  ( td->tdCurrentScreenFont < 0 )
+	{ LLDEB(td->tdCurrentTextAttributeNumber,td->tdCurrentScreenFont); }
     }
 
 void tedSetSelectedPosition(	EditDocument *			ed,
@@ -1046,41 +836,6 @@ void tedSetSelectedPosition(	EditDocument *			ed,
     return;
     }
 
-int tedSelectItemHome(		EditDocument *			ed,
-				BufferItem *			rootBi,
-				int *				pScrolledX,
-				int *				pScrolledY )
-    {
-    TedDocument *	td= (TedDocument *)ed->edPrivateData;
-    BufferDocument *	bd= td->tdDocument;
-
-    DocumentPosition	dp;
-    const int		lastLine= 0;
-
-    if  ( docFirstPosition( &dp, rootBi ) )
-	{ LDEB(1); return -1;	}
-
-    if  ( docParaHeadFieldKind( dp.dpBi, bd ) >= 0 )
-	{
-	int			fieldNr= -1;
-	int			partBegin= -1;
-	int			partEnd= -1;
-	int			stroffBegin= -1;
-	int			stroffEnd= -1;
-
-	if  ( ! docDelimitParaHeadField( &fieldNr, &partBegin, &partEnd,
-				    &stroffBegin, &stroffEnd, dp.dpBi, bd ) )
-	    {
-	    if  ( docSetDocumentPosition( &dp, dp.dpBi, stroffEnd ) )
-		{ LDEB(stroffEnd); return -1;	}
-	    }
-	}
-
-    tedSetSelectedPosition( ed, &dp, lastLine, pScrolledX, pScrolledY );
-
-    return 0;
-    }
-
 /************************************************************************/
 /*									*/
 /*  Set an I Bar selection and cause the I Bar to be drawn.		*/
@@ -1088,64 +843,22 @@ int tedSelectItemHome(		EditDocument *			ed,
 /************************************************************************/
 
 int tedSetIBarSelection(		EditDocument *		ed,
-					BufferItem *		bi,
-					int			stroff,
+					const DocumentPosition * dp,
 					int			lastLine,
 					int *			pScrolledX,
 					int *			pScrolledY )
     {
     TedDocument *	td= (TedDocument *)ed->edPrivateData;
 
-    DocumentPosition	dp;
-
     td->tdVisibleSelectionCopied= 0;
 
     if  ( td->tdSelectionDescription.sdIsObjectSelection )
 	{ tedHideObjectWindows( ed );	}
 
-    if  ( docSetDocumentPosition( &dp, bi, stroff ) )
-	{ LDEB(stroff); return -1;	}
-
-    tedSetSelectedPosition( ed, &dp, lastLine, pScrolledX, pScrolledY );
-
-    tedAdaptToolsToSelection( ed );
+    tedSetSelectedPosition( ed, dp, lastLine, pScrolledX, pScrolledY );
 
     return 0;
     }
-
-/************************************************************************/
-/*									*/
-/*  'Select All' from the 'Edit' menu.					*/
-/*									*/
-/************************************************************************/
-
-void tedDocSelAll(		EditDocument *	ed )
-    {
-    TedDocument *		td= (TedDocument *)ed->edPrivateData;
-    BufferDocument *		bd= td->tdDocument;
-
-    DocumentSelection		dsNew;
-    SelectionGeometry		sg;
-    SelectionDescription	sd;
-
-    int				scrolledX= 0;
-    int				scrolledY= 0;
-
-    const int			lastLine= 0;
-
-    if  ( tedGetSelection( &dsNew, &sg, &sd, td ) )
-	{ docInitDocumentSelection( &dsNew );	}
-
-    if  ( docSelectAll( &dsNew, bd ) )
-	{ LDEB(1); return;	}
-
-    tedSetSelection( ed, &dsNew, lastLine, &scrolledX, &scrolledY );
-
-    tedAdaptToolsToSelection( ed );
-
-    return;
-    }
-
 
 /************************************************************************/
 /*									*/
@@ -1158,47 +871,33 @@ void tedDocSelAll(		EditDocument *	ed )
 /*									*/
 /************************************************************************/
 
-int tedSelectWholeParagraph(	EditApplication *	ea,
+int tedAppSelectWholeParagraph(	EditApplication *	ea,
 				int			direction )
     {
     EditDocument *		ed= ea->eaCurrentDocument;
-    TedDocument *		td= (TedDocument *)ed->edPrivateData;
-    BufferItem *		bi;
 
     DocumentSelection		dsNew;
     SelectionGeometry		sg;
     SelectionDescription	sd;
 
-    int				scrolledX= 0;
-    int				scrolledY= 0;
+    int				ret;
 
     const int			lastLine= 0;
 
-    if  ( tedGetSelection( &dsNew, &sg, &sd, td ) )
+    if  ( ! ed )
+	{ XDEB(ed); return -1;	}
+
+    if  ( tedGetSelection( &dsNew, &sg, &sd,
+				(DocumentTree **)0, (BufferItem **)0, ed ) )
 	{ LDEB(1); return -1;	}
 
-    bi= dsNew.dsBegin.dpBi;
-    if  ( ! bi )
-	{ XDEB(bi); return -1;	}
-
-    if  ( direction > 0 )
-	{ bi= docNextParagraph( bi );	}
-    if  ( direction < 0 )
-	{ bi= docPrevParagraph( bi );	}
-
-    if  ( ! bi )
+    ret= docSelectWholeParagraph( &dsNew, direction );
+    if  ( ret < 0 )
+	{ LDEB(ret); return -1;	}
+    if  ( ret > 0 )
 	{ return -1;	}
 
-    if  ( direction == 0 )
-	{ direction= 1;	}
-
-    docInitDocumentSelection( &dsNew );
-
-    docSetParaSelection( &dsNew, bi, direction, 0, bi->biParaStrlen );
-
-    tedSetSelection( ed, &dsNew, lastLine, &scrolledX, &scrolledY );
-
-    tedAdaptToolsToSelection( ed );
+    tedSetSelection( ed, &dsNew, lastLine, (int *)0, (int *)0 );
 
     return 0;
     }
@@ -1214,12 +913,10 @@ int tedSelectWholeParagraph(	EditApplication *	ea,
 /*									*/
 /************************************************************************/
 
-int tedSelectWholeSection(	EditApplication *	ea,
+int tedAppSelectWholeSection(	EditApplication *	ea,
 				int			direction )
     {
     EditDocument *		ed= ea->eaCurrentDocument;
-    TedDocument *		td= (TedDocument *)ed->edPrivateData;
-    BufferDocument *		bd= td->tdDocument;
 
     DocumentSelection		dsNew;
     SelectionGeometry		sg;
@@ -1229,13 +926,16 @@ int tedSelectWholeSection(	EditApplication *	ea,
 
     int				scrolledX= 0;
     int				scrolledY= 0;
-
     const int			lastLine= 0;
 
-    if  ( tedGetSelection( &dsNew, &sg, &sd, td ) )
+    if  ( ! ed )
+	{ XDEB(ed); return -1;	}
+
+    if  ( tedGetSelection( &dsNew, &sg, &sd,
+				(DocumentTree **)0, (BufferItem **)0, ed ) )
 	{ LDEB(1); return -1;	}
 
-    ret= docSelectWholeSection( &dsNew, bd, direction );
+    ret= docSelectWholeSection( &dsNew, direction );
     if  ( ret < 0 )
 	{ LDEB(ret); return -1;	}
     if  ( ret > 0 )
@@ -1243,143 +943,6 @@ int tedSelectWholeSection(	EditApplication *	ea,
 
     tedSetSelection( ed, &dsNew, lastLine, &scrolledX, &scrolledY );
 
-    tedAdaptToolsToSelection( ed );
-
     return 0;
     }
 
-/************************************************************************/
-/*									*/
-/*  Adapt tools and rulers to the current position.			*/
-/*									*/
-/************************************************************************/
-
-static void tedAdaptOptions(	TedDocument *			td,
-				const SelectionDescription *	sd )
-    {
-    appGuiEnableWidget( td->tdCopyWidget,
-				! sd->sdIsIBarSelection );
-
-    appGuiEnableWidget( td->tdCutWidget,
-				! sd->sdIsIBarSelection		&&
-				( sd->sdCanReplace	||
-				  sd->sdIsTableSlice	)	);
-
-    appGuiEnableWidget( td->tdPasteWidget, sd->sdCanReplace );
-
-    appGuiEnableWidget( td->tdInsPictOption, sd->sdCanReplace );
-    appGuiEnableWidget( td->tdInsFileOption, sd->sdCanReplace );
-    appGuiEnableWidget( td->tdInsSymbolOption, sd->sdCanReplace );
-
-    appGuiEnableWidget( td->tdFormatOneParaOption,
-			    ! sd->sdIsSingleParagraph	&&
-			    sd->sdIsSingleCell );
-
-    appGuiEnableWidget( td->tdInsInsertFootnoteOption,
-				    sd->sdCanReplace		&&
-				    sd->sdIsSingleParagraph	&&
-				    sd->sdInDocumentBody	&&
-				    ! sd->sdBeginInTableHeader	&&
-				    ! sd->sdBeginInField	);
-
-    appGuiEnableWidget( td->tdInsInsertEndnoteOption,
-				    sd->sdCanReplace		&&
-				    sd->sdIsSingleParagraph	&&
-				    sd->sdInDocumentBody	&&
-				    ! sd->sdBeginInTableHeader	&&
-				    ! sd->sdBeginInField	);
-
-    appGuiEnableWidget( td->tdInsHyperlinkOption,
-				    sd->sdIsSingleParagraph		&&
-				    ( sd->sdBeginInHyperlink	||
-				      ! sd->sdIsIBarSelection	)	);
-
-    appGuiEnableWidget( td->tdInsBookmarkOption,
-				    sd->sdIsSingleParagraph		&&
-				    ( sd->sdBeginInBookmark	||
-				      ! sd->sdBeginInField	)	);
-
-    appGuiEnableWidget( td->tdInsInsertChftnsepOption,
-				    sd->sdCanReplace			&&
-				    sd->sdIsSingleParagraph		&&
-				    sd->sdInExternalItem == DOCinFTNSEP	);
-
-    appGuiEnableWidget( td->tdInsInsertTableOption,
-				    sd->sdCanReplace			&&
-				    sd->sdIsSingleParagraph		&&
-				    ! sd->sdBeginInTable		);
-    appGuiEnableWidget( td->tdTabInsertTableOption,
-				    sd->sdCanReplace			&&
-				    sd->sdIsSingleParagraph		&&
-				    ! sd->sdBeginInTable		);
-
-    appGuiEnableWidget( td->tdInsInsertPageNumberOption, 
-				    sd->sdCanReplace		&&
-				    sd->sdIsSingleParagraph	&&
-				    sd->sdInHeaderFooter	);
-
-    appGuiEnableWidget( td->tdInsInsertLineBreakOption,
-				    sd->sdCanReplace		&&
-				    sd->sdIsSingleParagraph	);
-    appGuiEnableWidget( td->tdInsInsertPageBreakOption,
-				    sd->sdCanReplace		&&
-				    sd->sdIsSingleParagraph	&&
-				    sd->sdInDocumentBody	&&
-				    ! sd->sdBeginInTable	);
-    appGuiEnableWidget( td->tdInsInsertSectBreakOption,
-				    sd->sdCanReplace		&&
-				    sd->sdIsSingleParagraph	&&
-				    sd->sdInDocumentBody	&&
-				    ! sd->sdBeginInTable	);
-
-    appGuiEnableWidget( td->tdTabAddRowOption,
-				    sd->sdCanReplace		&&
-				    sd->sdBeginInTable		);
-    appGuiEnableWidget( td->tdTabAddColumnOption,
-				    sd->sdCanReplace		&&
-				    sd->sdBeginInTable		);
-
-    appGuiEnableWidget( td->tdSelectTableWidget, sd->sdBeginInTable );
-    appGuiEnableWidget( td->tdSelectRowWidget, sd->sdBeginInTable );
-    appGuiEnableWidget( td->tdSelectColumnOption, sd->sdBeginInTable );
-
-    appGuiEnableWidget( td->tdDeleteTableWidget,
-				    ! sd->sdDocumentReadonly	&&
-				    sd->sdBeginInTable		);
-    appGuiEnableWidget( td->tdDeleteRowWidget,
-				    ! sd->sdDocumentReadonly	&&
-				    sd->sdBeginInTable		);
-    appGuiEnableWidget( td->tdDeleteColumnOption,
-				    ! sd->sdIsRowSlice		&&
-				    ! sd->sdDocumentReadonly	&&
-				    sd->sdBeginInTable		);
-
-    return;
-    }
-
-void tedAdaptToolsToSelection(	EditDocument *		ed )
-    {
-    EditApplication *		ea= ed->edApplication;
-    TedAppResources *		tar= (TedAppResources *)ea->eaResourceData;
-    TedDocument *		td= (TedDocument *)ed->edPrivateData;
-
-    const DocumentPosition *	dpBegin= &(td->tdDocumentSelection.dsBegin);
-
-    tedDocAdaptHorizontalRuler( ed, dpBegin->dpBi );
-
-    tedAdaptFontIndicatorsToSelection( ea, ed );
-
-    tedAdaptOptions( td, &(td->tdSelectionDescription) );
-
-    td->tdCanReplaceSelection= td->tdSelectionDescription.sdCanReplace;
-
-    if  ( tar->tarInspector )
-	{
-	const int	choosePage= 0;
-
-	tedFormatToolAdaptToSelection( tar->tarInspector, ed, choosePage,
-					    &(td->tdDocumentSelection),
-					    &(td->tdSelectionGeometry),
-					    &(td->tdSelectionDescription) );
-	}
-    }

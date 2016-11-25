@@ -12,7 +12,7 @@ const unsigned char	UTIL_Base85Digits[]=
 			    "[\\]^_`"
 			    "abcdefghijklmnopqrstu";
 
-const int *	utilBase85GetIndexArray( void )
+const int * utilBase85GetIndexArray( void )
     {
     static int UTIL_Base85IndexArray[256];
 

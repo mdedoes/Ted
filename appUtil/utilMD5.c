@@ -29,9 +29,10 @@ These notices must be retained in any copies of any part of this
 documentation and/or software.
  */
 
+#    include <string.h>
 #    include "utilMD5.h"
 #    include "utilBase64.h"
-#    include "appDebugon.h"
+#    include <appDebugon.h>
 
 /* Constants for MD5Transform routine.
  */
@@ -192,7 +193,7 @@ void utilMD5Update(	MD5Context *		md5c,
 /*									*/
 /************************************************************************/
 
-void utilMD5Final(	unsigned char *	digest,
+void utilMD5Final(	unsigned char	digest[MD5_DIGEST_SIZE_BYTES],
 			MD5Context *	md5c )
     {
     unsigned char		bits[8];
@@ -373,8 +374,9 @@ static void utilMD5Decode(	UtilUint32 *		output,
 /*									*/
 /************************************************************************/
 
-void utilMD5Base64(		char *			digestBase64,
-				const unsigned char *	digest )
+void utilMD5ToBase64(
+		char			digestBase64[MD5_DIGEST_SIZE_BASE64],
+		const unsigned char	digest[MD5_DIGEST_SIZE_BYTES] )
     {
     unsigned char		digest18[18];
 
@@ -405,8 +407,9 @@ void utilMD5Base64(		char *			digestBase64,
     return;
     }
 
-int utilMD5FromBase64(		unsigned char *		x_digest,
-				const char *		digestBase64 )
+int utilMD5FromBase64(
+		unsigned char		digest[MD5_DIGEST_SIZE_BYTES],
+		const char		digestBase64[MD5_DIGEST_SIZE_BASE64] )
     {
     int			done= 0;
     const int *		ida= utilBase64GetIndexArray();
@@ -461,7 +464,7 @@ int utilMD5FromBase64(		unsigned char *		x_digest,
     if  ( digestBase64[0] && digestBase64[0] != '=' )
 	{ SDEB(digestBase64); return -1;	}
 
-    memcpy( x_digest, target, 16 );
+    memcpy( digest, target, 16 );
 
     return 0;
     }

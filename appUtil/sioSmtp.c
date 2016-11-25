@@ -1,22 +1,20 @@
 #   include	"appUtilConfig.h"
 
-#   include	<sioSmtp.h>
-#   include	<sioMemory.h>
-#   include	<sioBase64.h>
-#   include	<utilMemoryBuffer.h>
+#   include	"sioSmtp.h"
+#   include	"sioMemory.h"
+#   include	"sioBase64.h"
+#   include	"utilMemoryBuffer.h"
 
 #   include	<stdlib.h>
 #   include	<stdarg.h>
 #   include	<stdio.h>
-#   include	<string.h>
 #   include	<time.h>
-#   include	<sys/time.h>
 #   include	<sys/types.h>
 #   include	<sys/socket.h>
 #   include	<pwd.h>
 #   include	<unistd.h>
-#   include	<fcntl.h>
 #   include	<errno.h>
+#   include	<string.h>
 #   include	<sys/utsname.h>
 #   include	<netdb.h>
 
@@ -68,9 +66,6 @@ static int mmWriteCRLF(		int			fd,
 static int sioOutSmtpWriteBytes( void *			voidmc,
 				const unsigned char *	buf,
 				int			len );
-
-static int sioOutSmtpSeek(	void *			voidmc,
-				long			pos );
 
 static int sioOutSmtpClose(	void *			voidmc );
 
@@ -187,9 +182,11 @@ SimpleOutputStream * sioOutSmtpOpen(	const char *	mailHost,
     const char *		nodename= (const char *)0;
 
     int				haveEsmtp= 1;
-    int				haveAuth= 0;
     int				haveAuthLogin= 0;
+    /*
+    int				haveAuth= 0;
     int				haveAuthPlain= 0;
+    */
 
     SimpleOutputStream *	sos;
 
@@ -306,7 +303,7 @@ SimpleOutputStream * sioOutSmtpOpen(	const char *	mailHost,
 
 	if  ( tail- head == 4 && ! strncmp( head, "AUTH", 4 ) )
 	    {
-	    haveAuth= 1;
+	    /* haveAuth= 1; */
 
 	    while( *tail && isspace( *tail ) )
 		{ tail++;	}
@@ -322,8 +319,10 @@ SimpleOutputStream * sioOutSmtpOpen(	const char *	mailHost,
 
 		if  ( tail- head == 5 && ! strncmp( head, "LOGIN", 5 ) )
 		    { haveAuthLogin= 1;	}
+		/*
 		if  ( tail- head == 5 && ! strncmp( head, "PLAIN", 5 ) )
 		    { haveAuthPlain= 1;	}
+		*/
 
 		while( *tail && isspace( *tail ) )
 		    { tail++;	}
@@ -505,8 +504,7 @@ SimpleOutputStream * sioOutSmtpOpen(	const char *	mailHost,
     if  ( mmWriteCRLF( mc->mcFd, "\n", through, complain )		)
 	{ LDEB(1); goto mmAbort;	}
 
-    sos= sioOutOpen( (void *)mc, sioOutSmtpWriteBytes,
-					    sioOutSmtpSeek, sioOutSmtpClose );
+    sos= sioOutOpen( (void *)mc, sioOutSmtpWriteBytes, sioOutSmtpClose );
 
     if  ( ! sos )
 	{ XDEB(sos); goto mmAbort;	}
@@ -530,16 +528,6 @@ SimpleOutputStream * sioOutSmtpOpen(	const char *	mailHost,
 
 /************************************************************************/
 /*									*/
-/*  Refuse to seek.							*/
-/*									*/
-/************************************************************************/
-
-static int sioOutSmtpSeek(	void *	voidmc,
-				long	pos )
-    { LDEB(pos); return -1;	}
-
-/************************************************************************/
-/*									*/
 /*  Send the next part of the mail body					*/
 /*									*/
 /************************************************************************/
@@ -557,8 +545,8 @@ static int sioOutSmtpWriteBytes(	void *			voidmc,
     while( todo > 0 )
 	{
 	past= (const unsigned char *)memchr( start, '\n', todo );
-	if  ( ! past )
-	    { todo-= past- start;				}
+	if  ( past )
+	    { todo -= past- start;				}
 	else{ past= start+ todo; todo= 0;			}
 
 	if  ( past > start )
@@ -834,7 +822,7 @@ char *	sioSmtpGuessMailAddress( void )
     if  ( ! nodename )
 	{ XDEB(nodename); return (char *)0;	}
 
-#   ifdef  UTSNAME_DOMAIN
+#   if defined(UTSNAME_DOMAIN) && ! defined(__cplusplus)
     if  ( un.UTSNAME_DOMAIN[0] && strcmp( un.UTSNAME_DOMAIN, "(none)" ) )
 	{ domainname= un.UTSNAME_DOMAIN;	}
 #   endif

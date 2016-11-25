@@ -1,12 +1,6 @@
 #   ifndef	BM_INTERN_H
 #   define	BM_INTERN_H
 
-#   include	<stdio.h>
-#   include	<stddef.h>
-#   include	<stdlib.h>
-
-#   include	<string.h>
-
 #   include	"bitmap.h"
 
 /************************************************************************/
@@ -24,224 +18,150 @@ extern unsigned char	Bmc7Masks[8];
 /*									*/
 /************************************************************************/
 
-extern int bmReadTiffFile(	const char *		filename,
+extern int bmReadTiffFile(	const MemoryBuffer *	filename,
 				unsigned char **	pBuffer,
 				BitmapDescription *	bd,
-				int *			pPrivateFormat,
-				double *		pCompressionFactor );
+				int *			pPrivateFormat );
 
-extern int bmWriteTiffFile(	const char *		filename,
+extern int bmWriteTiffFile(	const MemoryBuffer *	filename,
 				const unsigned char *	buffer,
 				const BitmapDescription *	bd,
-				int			privateFormat,
-				double			compressionFactor );
+				int			privateFormat );
 
 extern int bmCanWriteTiffFile( const BitmapDescription *	bd,
-				int			privateFormat,
-				double			compressionFactor );
+				int			privateFormat );
 
-extern int bmReadBmpFile(	const char *		filename,
+extern int bmReadBmpFile(	const MemoryBuffer *	filename,
 				unsigned char **	pBuffer,
 				BitmapDescription *	bd,
-				int *			pPrivateFormat,
-				double *		pCompressionFactor );
+				int *			pPrivateFormat );
 
-extern int bmReadWbmpFile(	const char *		filename,
+extern int bmReadWbmpFile(	const MemoryBuffer *	filename,
 				unsigned char **	pBuffer,
 				BitmapDescription *	bd,
-				int *			pPrivateFormat,
-				double *		pCompressionFactor );
+				int *			pPrivateFormat );
 
-extern int bmReadIcoFile(	const char *		filename,
+extern int bmReadIcoFile(	const MemoryBuffer *	filename,
 				unsigned char **	pBuffer,
 				BitmapDescription *	bd,
-				int *			pPrivateFormat,
-				double *		pCompressionFactor );
+				int *			pPrivateFormat );
 
 extern int bmCanWriteBmpFile( const BitmapDescription *	bd,
-				int			privateFormat,
-				double			compressionFactor );
+				int			privateFormat );
 
 extern int bmCanWriteWbmpFile( const BitmapDescription *	bd,
-				int			privateFormat,
-				double			compressionFactor );
+				int			privateFormat );
 
 extern int bmCanWriteIcoFile( const BitmapDescription *	bd,
-				int			privateFormat,
-				double			compressionFactor );
+				int			privateFormat );
 
-extern int bmWriteBmpFile(	const char *		filename,
+extern int bmWriteBmpFile(	const MemoryBuffer *	filename,
 				const unsigned char *	buffer,
 				const BitmapDescription * bd,
-				int			privateFormat,
-				double			compressionFactor );
+				int			privateFormat );
 
-extern int bmWriteWbmpFile(	const char *		filename,
+extern int bmWriteWbmpFile(	const MemoryBuffer *	filename,
 				const unsigned char *	buffer,
 				const BitmapDescription * bd,
-				int			privateFormat,
-				double			compressionFactor );
+				int			privateFormat );
 
-extern int bmWriteIcoFile(	const char *		filename,
+extern int bmWriteIcoFile(	const MemoryBuffer *	filename,
 				const unsigned char *	buffer,
 				const BitmapDescription * bd,
-				int			privateFormat,
-				double			compressionFactor );
+				int			privateFormat );
 
-extern int bmReadXwdFile(	const char *		filename,
+extern int bmReadXwdFile(	const MemoryBuffer *	filename,
 				unsigned char **	pBuffer,
 				BitmapDescription *	bd,
-				int *			pPrivateFormat,
-				double *		pCompressionFactor );
+				int *			pPrivateFormat );
 
-extern int bmWriteXwdFile(	const char *		filename,
+extern int bmWriteXwdFile(	const MemoryBuffer *	filename,
 				const unsigned char *	buffer,
 				const BitmapDescription * bd,
-				int			privateFormat,
-				double			compressionFactor );
+				int			privateFormat );
 
-extern int bmReadSgiFile(	const char *		filename,
+extern int bmReadGifFile(	const MemoryBuffer *	filename,
 				unsigned char **	pBuffer,
 				BitmapDescription *	bd,
-				int *			pPrivateFormat,
-				double *		pCompressionFactor );
+				int *			pPrivateFormat );
 
-extern int bmWriteSgiFile(	const char *		filename,
-				const unsigned char *	buffer,
-				const BitmapDescription * bd,
-				int			privateFormat,
-				double			compressionFactor );
+extern int bmCanWriteEpsFile(	const BitmapDescription *	bd,
+				int			privateFormat );
 
-extern int bmCanWriteGifFile( const BitmapDescription *	bd,
-				int			privateFormat,
-				double			compressionFactor );
+extern int bmCanWritePdfFile(	const BitmapDescription *	bd,
+				int			privateFormat );
 
-extern int bmReadGifFile(	const char *		filename,
-				unsigned char **	pBuffer,
-				BitmapDescription *	bd,
-				int *			pPrivateFormat,
-				double *		pCompressionFactor );
-
-extern int bmWriteGifFile(	const char *		filename,
+extern int bmWriteEpsFile(	const MemoryBuffer *	filename,
 				const unsigned char *	buffer,
 				const BitmapDescription *	bd,
-				int			privateFormat,
-				double			compressionFactor );
+				int			privateFormat );
 
-extern int bmCanWriteEpsFile( const BitmapDescription *	bd,
-				int			privateFormat,
-				double			compressionFactor );
-
-extern int bmWriteEpsFile(	const char *		filename,
+extern int bmWritePdfFile(	const MemoryBuffer *	filename,
 				const unsigned char *	buffer,
 				const BitmapDescription *	bd,
-				int			privateFormat,
-				double			compressionFactor );
-extern int bmReadJpegFile(	const char *		filename,
+				int			privateFormat );
+
+extern int bmReadJpegFile(	const MemoryBuffer *	filename,
 				unsigned char **	pBuffer,
 				BitmapDescription *	bd,
-				int *			pPrivateFormat,
-				double *		pCompressionFactor );
+				int *			pPrivateFormat );
 
-extern int bmCanWriteJpegFile( const BitmapDescription *	bd,
-				int			privateFormat,
-				double			compressionFactor );
-
-extern int bmWriteJpegFile(	const char *		filename,
-				const unsigned char *	buffer,
-				const BitmapDescription *	bd,
-				int			privateFormat,
-				double			compressionFactor );
-
-extern int bmReadXbmFile(	const char *		filename,
+extern int bmReadXbmFile(	const MemoryBuffer *	filename,
 				unsigned char **	pBuffer,
 				BitmapDescription *	bd,
-				int *			pPrivateFormat,
-				double *		pCompressionFactor );
+				int *			pPrivateFormat );
 
 extern int bmCanWriteXbmFile( const BitmapDescription *	bd,
-				int			privateFormat,
-				double			compressionFactor );
+				int			privateFormat );
 
-extern int bmWriteXbmFile(	const char *		filename,
+extern int bmWriteXbmFile(	const MemoryBuffer *	filename,
 				const unsigned char *	buffer,
 				const BitmapDescription *	bd,
-				int			privateFormat,
-				double			compressionFactor );
+				int			privateFormat );
 
 extern int bmCanWriteWmfFile( const BitmapDescription *	bd,
-				int			privateFormat,
-				double			compressionFactor );
+				int			privateFormat );
 
-extern int bmWriteWmfFile(	const char *		filename,
+extern int bmWriteWmfFile(	const MemoryBuffer *	filename,
 				const unsigned char *	buffer,
 				const BitmapDescription *	bd,
-				int			privateFormat,
-				double			compressionFactor );
+				int			privateFormat );
 
-extern int bmReadPngFile(	const char *		filename,
+extern int bmReadPngFile(	const MemoryBuffer *	filename,
 				unsigned char **	pBuffer,
 				BitmapDescription *	bd,
-				int *			pPrivateFormat,
-				double *		pCompressionFactor );
+				int *			pPrivateFormat );
 
-extern int bmCanWritePngFile( const BitmapDescription *	bd,
-				int			privateFormat,
-				double			compressionFactor );
-
-extern int bmWritePngFile(	const char *		filename,
+extern int bmWritePngFile(	const MemoryBuffer *	filename,
 				const unsigned char *	buffer,
 				const BitmapDescription *	bd,
-				int			privateFormat,
-				double			compressionFactor );
+				int			privateFormat );
 
-extern int bmReadPcxFile(	const char *		filename,
+extern int bmReadXpmFile(	const MemoryBuffer *	filename,
 				unsigned char **	pBuffer,
 				BitmapDescription *	bd,
-				int *			pPrivateFormat,
-				double *		pCompressionFactor );
-
-extern int bmCanWritePcxFile( const BitmapDescription *	bd,
-				int			privateFormat,
-				double			compressionFactor );
-
-extern int bmWritePcxFile(	const char *		filename,
-				const unsigned char *	buffer,
-				const BitmapDescription *	bd,
-				int			privateFormat,
-				double			compressionFactor );
-
-extern int bmReadXpmFile(	const char *		filename,
-				unsigned char **	pBuffer,
-				BitmapDescription *	bd,
-				int *			pPrivateFormat,
-				double *		pCompressionFactor );
+				int *			pPrivateFormat );
 
 extern int bmCanWriteXpmFile( const BitmapDescription *	bd,
-				int			privateFormat,
-				double			compressionFactor );
+				int			privateFormat );
 
-extern int bmWriteXpmFile(	const char *		filename,
+extern int bmWriteXpmFile(	const MemoryBuffer *	filename,
 				const unsigned char *	buffer,
 				const BitmapDescription *	bd,
-				int			privateFormat,
-				double			compressionFactor );
+				int			privateFormat );
 
-extern int bmReadPbmFile(	const char *		filename,
+extern int bmReadPbmFile(	const MemoryBuffer *	filename,
 				unsigned char **	pBuffer,
 				BitmapDescription *	bd,
-				int *			pPrivateFormat,
-				double *		pCompressionFactor );
+				int *			pPrivateFormat );
 
 extern int bmCanWritePbmFile( const BitmapDescription *	bd,
-				int			privateFormat,
-				double			compressionFactor );
+				int			privateFormat );
 
-extern int bmWritePbmFile(	const char *		filename,
+extern int bmWritePbmFile(	const MemoryBuffer *	filename,
 				const unsigned char *	buffer,
 				const BitmapDescription *	bd,
-				int			privateFormat,
-				double			compressionFactor );
+				int			privateFormat );
 
 extern int bmFillBlock(	unsigned char *		buffer,
 			int			x0,
@@ -251,7 +171,9 @@ extern int bmFillBlock(	unsigned char *		buffer,
 			int			bytesPerRow );
 
 extern unsigned char *	bmBackgroundBuffer(	int	bufferLength,
-						int	colorEncoding	);
+						int	colorEncoding );
+extern unsigned char *	bmForegroundBuffer(	int	bufferLength,
+						int	colorEncoding );
 
 extern int bmMakeGrayPalette(	const BitmapDescription *	bd,
 				int *				pColorCount,
@@ -270,23 +192,16 @@ extern int bmInflateTo8bitGray(
 			int				pixelsWide );
 
 extern int bmMakeMonochrome(		BitmapDescription *	bd,
-					RGB8Color *		palette,
 					unsigned char *		buffer );
-
-extern int bmSetColorAllocatorForPaletteImage(
-					ColorAllocator *		ca,
-					const BitmapDescription *	bd );
-
-extern int bmSetColorAllocatorForBWImage(
-					ColorAllocator *		ca,
-					const BitmapDescription *	bd );
-
-extern int bmSetColorAllocatorForWBImage(
-					ColorAllocator *		ca,
-					const BitmapDescription *	bd );
 
 extern int bmPlanarToChunky(		unsigned char *			to,
 					const unsigned char *		from,
 					const BitmapDescription *	bd );
+
+extern int bmPaletteColor(	BitmapDescription *		bd,
+				int				r,
+				int				g,
+				int				b,
+				int				a );
 
 #   endif /*  BM_INTERN_H	*/

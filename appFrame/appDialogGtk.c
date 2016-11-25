@@ -1,17 +1,14 @@
 #   include	"appFrameConfig.h"
 
-#   include	<stdlib.h>
 #   include	<stdio.h>
 
 #   include	"appFrame.h"
-#   include	"appSystem.h"
-#   include	<appGeoString.h>
+
+#   include	<appDebugon.h>
 
 #   ifdef USE_GTK
 
 #   include	<gdk/gdkkeysyms.h>
-
-#   include	<appDebugon.h>
 
 /************************************************************************/
 /*									*/
@@ -25,7 +22,7 @@ void appMakeVerticalDialog(	AppDialog *		ad,
 				APP_CLOSE_CALLBACK_T	closeCallback,
 				APP_DESTROY_CALLBACK_T	destroyCallback,
 				void *			through,
-				char *			widgetName )
+				const char *		widgetName )
     {
     APP_WIDGET		shell;
     APP_WIDGET		column;
@@ -113,10 +110,15 @@ void appGuiRunDialog(			AppDialog *		ad,
     if  ( ad->adCloseId )
 	{
 	gtk_signal_disconnect( GTK_OBJECT( ad->adTopWidget ), ad->adCloseId );
+
+	if  ( ad->adResponse == AQDrespCLOSED )
+	    { appGuiHideDialog( ad );			}
+
 	ad->adCloseId= 0;
 	}
 
-    gtk_window_set_modal( GTK_WINDOW( ad->adTopWidget ), FALSE );
+    if  ( ad->adResponse != AQDrespCLOSED )
+	{ gtk_window_set_modal( GTK_WINDOW( ad->adTopWidget ), FALSE );	}
 
     return;
     }
@@ -148,7 +150,8 @@ void appGuiSetCancelButtonForDialog(	AppDialog *		ad,
 					keyCode, keyMask, GTK_ACCEL_VISIBLE );
     }
 
-void appGuiShowDialog(			AppDialog *		ad,
+void appGuiShowDialog(			EditApplication *	ea,
+					AppDialog *		ad,
 					APP_WIDGET		relative )
     {
     gint		x;

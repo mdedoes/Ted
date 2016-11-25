@@ -39,16 +39,22 @@ static int bmGifWriteColorMap(	GifFileType *		gft,
     rgb8= gcm->gcmColors;
     for ( i= 0; i < gcm->gcmColorCount && i < count; rgb8++, i++ )
 	{
-	sioOutPutCharacter( rgb8->rgb8Red, gft->gftSos );
-	sioOutPutCharacter( rgb8->rgb8Green, gft->gftSos );
-	sioOutPutCharacter( rgb8->rgb8Blue, gft->gftSos );
+	if  ( sioOutPutByte( rgb8->rgb8Red, gft->gftSos ) < 0 )
+	    { return -1;	}
+	if  ( sioOutPutByte( rgb8->rgb8Green, gft->gftSos ) < 0 )
+	    { return -1;	}
+	if  ( sioOutPutByte( rgb8->rgb8Blue, gft->gftSos ) < 0 )
+	    { return -1;	}
 	}
 
     for ( i= gcm->gcmColorCount; i < count; rgb8++, i++ )
 	{
-	sioOutPutCharacter( 255, gft->gftSos );
-	sioOutPutCharacter( 255, gft->gftSos );
-	sioOutPutCharacter( 255, gft->gftSos );
+	if  ( sioOutPutByte( 255, gft->gftSos ) < 0 )
+	    { return -1;	}
+	if  ( sioOutPutByte( 255, gft->gftSos ) < 0 )
+	    { return -1;	}
+	if  ( sioOutPutByte( 255, gft->gftSos ) < 0 )
+	    { return -1;	}
 	}
 
     return 0;
@@ -154,9 +160,12 @@ int EGifPutScreenDesc(	GifFileType *		gft,
 	}
     gsd->gsdPackedFields |= ( bitsPerPixel -1 ) << 4;
 
-    sioOutPutCharacter( gsd->gsdPackedFields, gft->gftSos );
-    sioOutPutCharacter( gsd->gsdScreenBackgroundColor, gft->gftSos );
-    sioOutPutCharacter( gsd->gsdScreenAspectRatio, gft->gftSos );
+    if  ( sioOutPutByte( gsd->gsdPackedFields, gft->gftSos ) < 0 )
+	{ return GIF_ERROR;	}
+    if  ( sioOutPutByte( gsd->gsdScreenBackgroundColor, gft->gftSos ) < 0 )
+	{ return GIF_ERROR;	}
+    if  ( sioOutPutByte( gsd->gsdScreenAspectRatio, gft->gftSos ) < 0 )
+	{ return GIF_ERROR;	}
 
     /*  3  */
     if  ( gcm && gcm->gcmColorCount > 0 )
@@ -278,7 +287,8 @@ int EGifPutImageDesc(	GifFileType *		gft,
 	{ gid->gidImageColorMap= *gcm;	}
 
     /*  3  */
-    sioOutPutCharacter( ',', gft->gftSos );
+    if  ( sioOutPutByte( ',', gft->gftSos ) < 0 )
+	{ return GIF_ERROR;	}
     sioEndianPutLeInt16( gid->Left, gft->gftSos );
     sioEndianPutLeInt16( gid->Top, gft->gftSos );
     sioEndianPutLeInt16( gid->Width, gft->gftSos );
@@ -294,7 +304,8 @@ int EGifPutImageDesc(	GifFileType *		gft,
 	{
 	flags |= 0x40;
 	}
-    sioOutPutCharacter( flags, gft->gftSos );
+    if  ( sioOutPutByte( flags, gft->gftSos ) < 0 )
+	{ return GIF_ERROR;	}
 
     /*  4  */
     if  ( gcm && gcm->gcmColorCount > 0 )
@@ -325,7 +336,8 @@ int EGifPutImageDesc(	GifFileType *		gft,
 
     /*  7  */
     codeSize= ( codeSize < 2 ? 2 : codeSize );
-    sioOutPutCharacter( codeSize, gft->gftSos );
+    if  ( sioOutPutByte( codeSize, gft->gftSos ) < 0 )
+	{ return GIF_ERROR;	}
 
     if  ( bmGifSetupCompress( gft, codeSize ) )
 	{ LDEB(1); return GIF_ERROR;	}
@@ -346,7 +358,7 @@ int EGifPutImageDesc(	GifFileType *		gft,
 /************************************************************************/
 
 int bmGifPutPixels(		GifFileType *		gft,
-				const GifPixelType *	Line,
+				const unsigned char *	Line,
 				int			LineLen )
 {
     /*  1  */
@@ -417,15 +429,19 @@ int EGifPutExtensionFirst(	GifFileType *	gft,
 
     if  ( ExtCode == 0 )
 	{
-	sioOutPutCharacter( ExtLen, gft->gftSos );
+	if  ( sioOutPutByte( ExtLen, gft->gftSos ) < 0 )
+	    { return GIF_ERROR;	}
 	}
     else{
-	sioOutPutCharacter( '!', gft->gftSos );
-	sioOutPutCharacter( ExtCode, gft->gftSos );
-	sioOutPutCharacter( ExtLen, gft->gftSos );
+	if  ( sioOutPutByte( '!', gft->gftSos ) < 0 )
+	    { return GIF_ERROR;	}
+	if  ( sioOutPutByte( ExtCode, gft->gftSos ) < 0 )
+	    { return GIF_ERROR;	}
+	if  ( sioOutPutByte( ExtLen, gft->gftSos ) < 0 )
+	    { return GIF_ERROR;	}
 	}
 
-    if  ( sioOutWriteBytes( gft->gftSos, Extension, ExtLen ) != ExtLen )
+    if  ( sioOutWriteBytes( gft->gftSos, (unsigned char *)Extension, ExtLen ) != ExtLen )
 	{ LDEB(ExtLen); return GIF_ERROR;	}
 
     return GIF_OK;
@@ -447,9 +463,10 @@ int EGifPutExtensionNext(	GifFileType *	gft,
 	return GIF_ERROR;
 	}
 
-    sioOutPutCharacter( ExtLen, gft->gftSos );
+    if  ( sioOutPutByte( ExtLen, gft->gftSos ) < 0 )
+	{ return GIF_ERROR;	}
 
-    if  ( sioOutWriteBytes( gft->gftSos, Extension, ExtLen ) != ExtLen )
+    if  ( sioOutWriteBytes( gft->gftSos, (unsigned char *)Extension, ExtLen ) != ExtLen )
 	{ LDEB(ExtLen); return GIF_ERROR;	}
 
     return GIF_OK;
@@ -471,12 +488,14 @@ int EGifPutExtensionLast(	GifFileType *	gft,
 	return GIF_ERROR;
 	}
 
-    sioOutPutCharacter( ExtLen, gft->gftSos );
+    if  ( sioOutPutByte( ExtLen, gft->gftSos ) < 0 )
+	{ return GIF_ERROR;	}
 
-    if  ( sioOutWriteBytes( gft->gftSos, Extension, ExtLen ) != ExtLen )
+    if  ( sioOutWriteBytes( gft->gftSos, (unsigned char *)Extension, ExtLen ) != ExtLen )
 	{ LDEB(ExtLen); return GIF_ERROR;	}
 
-    sioOutPutCharacter( '\0', gft->gftSos );
+    if  ( sioOutPutByte( '\0', gft->gftSos ) < 0 )
+	{ return GIF_ERROR;	}
 
     return GIF_OK;
 }
@@ -499,18 +518,23 @@ int EGifPutExtension(	GifFileType *	gft,
 
     if  ( ExtCode == 0 )
 	{
-	sioOutPutCharacter( ExtLen, gft->gftSos );
+	if  ( sioOutPutByte( ExtLen, gft->gftSos ) < 0 )
+	    { return GIF_ERROR;	}
 	}
     else{
-	sioOutPutCharacter( '!', gft->gftSos );
-	sioOutPutCharacter( ExtCode, gft->gftSos );
-	sioOutPutCharacter( ExtLen, gft->gftSos );
+	if  ( sioOutPutByte( '!', gft->gftSos ) < 0 )
+	    { return GIF_ERROR;	}
+	if  ( sioOutPutByte( ExtCode, gft->gftSos ) < 0 )
+	    { return GIF_ERROR;	}
+	if  ( sioOutPutByte( ExtLen, gft->gftSos ) < 0 )
+	    { return GIF_ERROR;	}
 	}
 
-    if  ( sioOutWriteBytes( gft->gftSos, Extension, ExtLen ) != ExtLen )
+    if  ( sioOutWriteBytes( gft->gftSos, (unsigned char *)Extension, ExtLen ) != ExtLen )
 	{ LDEB(ExtLen); return GIF_ERROR;	}
 
-    sioOutPutCharacter( '\0', gft->gftSos );
+    if  ( sioOutPutByte( '\0', gft->gftSos ) < 0 )
+	{ return GIF_ERROR;	}
 
     return GIF_OK;
 }
@@ -533,7 +557,10 @@ int EGifCloseFile(	GifFileType *	gft )
 	}
 
     if  ( gft->gftSos )
-	{ sioOutPutCharacter( ';', gft->gftSos );	}
+	{
+	if  ( sioOutPutByte( ';', gft->gftSos ) < 0 )
+	    { rval= GIF_ERROR;	}
+	}
 
     bmGifCleanupCompress( gft );
 

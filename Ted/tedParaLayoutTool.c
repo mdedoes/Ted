@@ -6,16 +6,21 @@
 
 #   include	"tedConfig.h"
 
-#   include	<stdlib.h>
 #   include	<stdio.h>
 #   include	<stddef.h>
 #   include	<limits.h>
 
-#   include	<appGeoString.h>
 #   include	<appUnit.h>
 
-#   include	"tedApp.h"
-#   include	"tedFormatTool.h"
+#   include	"tedParaLayoutTool.h"
+#   include	"tedAppFront.h"
+#   include	"tedToolUtil.h"
+#   include	"tedLayout.h"
+#   include	<docTreeType.h>
+#   include	<guiToolUtil.h>
+#   include	<guiTextUtil.h>
+#   include	<docTreeNode.h>
+#   include	<docEditCommand.h>
 
 #   include	<appDebugon.h>
 
@@ -25,122 +30,138 @@
 /*									*/
 /************************************************************************/
 
-static void tedFormatToolRefreshSpaceAround(	APP_WIDGET	text,
+static void tedFormatToolRefreshSpaceAround(	APP_WIDGET	row,
 						APP_WIDGET	toggle,
-						int		space )
+						APP_WIDGET	text,
+						int		space,
+						int		canChange )
     {
-    char		scratch[50];
-
     if  ( space == 0 )
 	{
 	appStringToTextWidget( text, "" );
-	appEnableText( text, 0 );
+	guiEnableText( text, 0 );
 
 	appGuiSetToggleState( toggle, 0 );
 	}
     else{
-	appGeoLengthToString( scratch, space, UNITtyPOINTS );
-	appStringToTextWidget( text, scratch );
-	appEnableText( text, 1 );
+	appLengthToTextWidget( text, space, UNITtyPOINTS );
+	guiEnableWidget( row, canChange );
+	guiEnableText( text, canChange );
 
 	appGuiSetToggleState( toggle, 1 );
 	}
+
+    guiEnableWidget( toggle, canChange );
     }
 
 static void tedFormatToolRefreshParagraphPage(	ParagraphLayoutTool *	plt )
     {
     ParagraphProperties *	pp= &(plt->ptPropertiesChosen);
 
-    char		scratch[50];
+    guiEnableWidget( plt->pltListLevelRow, plt->pltCanChange );
+    guiEnableWidget( plt->pltAlignmentRow, plt->pltCanChange );
 
     if  ( pp->ppListOverride > 0 )
 	{
-	appIntegerToTextWidget( plt->ptListLevelText, pp->ppListLevel+ 1 );
+	appIntegerToTextWidget( plt->pltListLevelText, pp->ppListLevel+ 1 );
 
-	appEnableText( plt->ptFirstIndentText, 0 );
-	appEnableText( plt->ptLeftIndentText, 0 );
+	guiEnableText( plt->ptFirstIndentText, 0 );
+	guiEnableText( plt->ptLeftIndentText, 0 );
 	}
     else{
-	appStringToTextWidget( plt->ptListLevelText, "" );
+	appStringToTextWidget( plt->pltListLevelText, "" );
 
-	appEnableText( plt->ptFirstIndentText, 1 );
-	appEnableText( plt->ptLeftIndentText, 1 );
+	guiEnableText( plt->ptFirstIndentText, plt->pltCanChange );
+	guiEnableText( plt->ptLeftIndentText, plt->pltCanChange );
 	}
 
-    appGeoLengthToString( scratch,
+    guiEnableWidget( plt->ptFirstIndentRow, plt->pltCanChange );
+    guiEnableWidget( plt->ptLeftIndentRow, plt->pltCanChange );
+
+    appLengthToTextWidget( plt->ptFirstIndentText,
 	    pp->ppLeftIndentTwips+ pp->ppFirstIndentTwips, UNITtyPOINTS );
-    appStringToTextWidget( plt->ptFirstIndentText, scratch );
 
-    appGeoLengthToString( scratch, pp->ppLeftIndentTwips, UNITtyPOINTS );
-    appStringToTextWidget( plt->ptLeftIndentText, scratch );
+    appLengthToTextWidget( plt->ptLeftIndentText,
+				    pp->ppLeftIndentTwips, UNITtyPOINTS );
 
-    appGeoLengthToString( scratch, pp->ppRightIndentTwips, UNITtyPOINTS );
-    appStringToTextWidget( plt->ptRightIndentText, scratch );
+    guiEnableWidget( plt->ptRightIndentRow, plt->pltCanChange );
+    guiEnableText( plt->ptRightIndentText, plt->pltCanChange );
+    appLengthToTextWidget( plt->ptRightIndentText,
+				    pp->ppRightIndentTwips, UNITtyPOINTS );
 
-    tedFormatToolRefreshSpaceAround( plt->ptSpaceAboveText,
-			    plt->ptSpaceAboveToggle, pp->ppSpaceBeforeTwips );
+    tedFormatToolRefreshSpaceAround( plt->pltSpaceAboveRow,
+					    plt->pltSpaceAboveToggle,
+					    plt->pltSpaceAboveText,
+					    pp->ppSpaceBeforeTwips,
+					    plt->pltCanChange );
 
-    tedFormatToolRefreshSpaceAround( plt->ptSpaceBelowText,
-			    plt->ptSpaceBelowToggle, pp->ppSpaceAfterTwips );
+    tedFormatToolRefreshSpaceAround( plt->pltSpaceBelowRow,
+					    plt->pltSpaceBelowToggle,
+					    plt->pltSpaceBelowText,
+					    pp->ppSpaceAfterTwips,
+					    plt->pltCanChange );
 
+    tedFormatEnableHeightChooser( &(plt->ptLineDistChooser),
+						plt->pltCanChange );
     tedFormatRefreshHeightChooser( &(plt->ptLineDistChooser),
 						pp->ppLineSpacingTwips );
 
-    appSetOptionmenu( &(plt->ptAlignOptionmenu), pp->ppAlignment );
+    appGuiEnableOptionmenu( &(plt->pltAlignOptionmenu), plt->pltCanChange );
+    appSetOptionmenu( &(plt->pltAlignOptionmenu), pp->ppAlignment );
 
-    appGuiSetToggleState( plt->ptOnNewPageToggle, pp->ppStartsOnNewPage );
+    appGuiSetToggleState( plt->ptOnNewPageToggle,
+					pp->ppBreakKind == DOCibkPAGE );
+    guiEnableWidget( plt->ptKeepOnPageToggle, plt->pltCanChange );
     appGuiSetToggleState( plt->ptKeepOnPageToggle, pp->ppKeepOnPage );
 
+    guiEnableWidget( plt->ptWidowControlToggle, plt->pltCanChange );
     appGuiSetToggleState( plt->ptWidowControlToggle, pp->ppWidowControl );
+
+    guiEnableWidget( plt->ptKeepWithNextToggle, plt->pltCanChange );
     appGuiSetToggleState( plt->ptKeepWithNextToggle, pp->ppKeepWithNext );
 
     return;
     }
 
-
-void tedFormatToolRefreshParaLayoutTool(
-				ParagraphLayoutTool *		plt,
+void tedRefreshParaLayoutTool(	ParagraphLayoutTool *		plt,
 				int *				pEnabled,
 				int *				pPref,
 				InspectorSubject *		is,
-				const DocumentSelection *	ds )
+				const DocumentSelection *	ds,
+				const SelectionGeometry *	sg,
+				const SelectionDescription *	sd,
+				const unsigned char *		cmdEnabled )
     {
     const ParagraphProperties *		pp;
 
-    PropertyMask			ppChgMask;
-    PropertyMask			ppUpdMask;
+    PropertyMask			ppSetMask;
 
-    BufferItem *			bi= ds->dsBegin.dpBi;
+    BufferItem *			paraNode= ds->dsHead.dpNode;
 
-    const int * const			colorMap= (const int *)0;
-    const int * const			listStyleMap= (const int *)0;
+    pp= &(paraNode->biParaProperties);
 
-    pp= &(bi->biParaProperties);
+    utilPropMaskClear( &ppSetMask );
+    utilPropMaskFill( &ppSetMask, PPprop_FULL_COUNT );
+    PROPmaskUNSET( &ppSetMask, PPpropTABLE_NESTING );
 
-    PROPmaskCLEAR( &ppUpdMask );
-    utilPropMaskFill( &ppUpdMask, PPprop_COUNT );
-    PROPmaskUNSET( &ppUpdMask, PPpropIN_TABLE );
-
-    PROPmaskCLEAR( &ppChgMask );
-
-    if  ( docUpdParaProperties( &ppChgMask, &(plt->ptPropertiesChosen),
-				    &ppUpdMask, pp, colorMap, listStyleMap ) )
+    if  ( docUpdParaProperties( (PropertyMask *)0, &(plt->ptPropertiesChosen),
+					    &ppSetMask, pp,
+					    (const DocumentAttributeMap *)0 ) )
 	{ LDEB(1); return ;	}
 
-    PROPmaskCLEAR( &ppChgMask );
-
-    if  ( docUpdParaProperties( &ppChgMask, &(plt->ptPropertiesSet),
-				    &ppUpdMask, pp, colorMap, listStyleMap ) )
+    if  ( docUpdParaProperties( (PropertyMask *)0, &(plt->ptPropertiesSet),
+					    &ppSetMask, pp,
+					    (const DocumentAttributeMap *)0 ) )
 	{ LDEB(1); return ;	}
 
-    appGuiEnableWidget( plt->ptOnNewPageToggle,
-			bi->biInExternalItem == DOCinBODY &&
-			! pp->ppInTable );
+    plt->pltCanChange= cmdEnabled[EDITcmdUPD_PARA_PROPS];
 
-    appGuiEnableWidget( is->isPrevButton,
-				docPrevParagraph( bi ) != (BufferItem *)0 );
-    appGuiEnableWidget( is->isNextButton,
-				docNextParagraph( bi ) != (BufferItem *)0 );
+    guiEnableWidget( plt->ptOnNewPageToggle,
+				    plt->pltCanChange &&
+				    paraNode->biTreeType == DOCinBODY &&
+				    pp->ppTableNesting == 0 );
+
+    tedRefreshParaSubjectControls( is, ds, sg, sd, cmdEnabled );
 
     tedFormatToolRefreshParagraphPage( plt );
 
@@ -158,20 +179,15 @@ static APP_BUTTON_CALLBACK_H( tedFormatParaRevertPushed, w, voidplt )
     {
     ParagraphLayoutTool *	plt= (ParagraphLayoutTool *)voidplt;
 
-    PropertyMask		ppChgMask;
-    PropertyMask		ppUpdMask;
+    PropertyMask		ppSetMask;
 
-    const int * const		colorMap= (const int *)0;
-    const int * const		listStyleMap= (const int *)0;
+    utilPropMaskClear( &ppSetMask );
+    utilPropMaskFill( &ppSetMask, PPprop_FULL_COUNT );
+    PROPmaskUNSET( &ppSetMask, PPpropTABLE_NESTING );
 
-    PROPmaskCLEAR( &ppChgMask );
-
-    PROPmaskCLEAR( &ppUpdMask );
-    utilPropMaskFill( &ppUpdMask, PPprop_COUNT );
-
-    docUpdParaProperties( &ppChgMask, &(plt->ptPropertiesChosen),
-					&ppUpdMask, &(plt->ptPropertiesSet),
-					colorMap, listStyleMap );
+    docUpdParaProperties( (PropertyMask *)0, &(plt->ptPropertiesChosen),
+					&ppSetMask, &(plt->ptPropertiesSet),
+					(const DocumentAttributeMap *)0 );
 
     tedFormatToolRefreshParagraphPage( plt );
 
@@ -196,7 +212,6 @@ static APP_TXACTIVATE_CALLBACK_H( tedParaFirstIndentChanged, w, voidplt )
 
     tedFormatValidateDimension( &lipfi, &changed,
 					    plt->ptFirstIndentText, lipfi );
-
     return;
     }
 
@@ -237,7 +252,7 @@ static APP_TXACTIVATE_CALLBACK_H( tedParaSpaceAboveChanged, w, voidplt )
     int				changed;
 
     tedFormatValidateDimension( &value, &changed,
-			    plt->ptSpaceAboveText, pp->ppSpaceBeforeTwips );
+			    plt->pltSpaceAboveText, pp->ppSpaceBeforeTwips );
 
     return;
     }
@@ -251,7 +266,7 @@ static APP_TXACTIVATE_CALLBACK_H( tedParaSpaceBelowChanged, w, voidplt )
     int				changed;
 
     tedFormatValidateDimension( &value, &changed,
-			    plt->ptSpaceBelowText, pp->ppSpaceAfterTwips );
+			    plt->pltSpaceBelowText, pp->ppSpaceAfterTwips );
 
     return;
     }
@@ -264,9 +279,8 @@ static APP_TXACTIVATE_CALLBACK_H( tedParaLineDistanceChanged, w, voidplt )
     int				value;
     int				changed;
 
-    tedFormatValidateDimension( &value, &changed,
-					    plt->ptLineDistChooser.hcText,
-					    pp->ppLineSpacingTwips );
+    tedHeightToolValidateDimension( &value, &changed,
+			&(plt->ptLineDistChooser), pp->ppLineSpacingTwips );
 
     return;
     }
@@ -282,7 +296,7 @@ static APP_BUTTON_CALLBACK_H( tedFormatPrevPara, w, voidplt )
     ParagraphLayoutTool *	plt= (ParagraphLayoutTool *)voidplt;
     EditApplication *		ea= plt->ptApplication;
 
-    tedSelectWholeParagraph( ea, -1 );
+    tedAppSelectWholeParagraph( ea, -1 );
 
     return;
     }
@@ -292,7 +306,7 @@ static APP_BUTTON_CALLBACK_H( tedFormatNextPara, w, voidplt )
     ParagraphLayoutTool *	plt= (ParagraphLayoutTool *)voidplt;
     EditApplication *		ea= plt->ptApplication;
 
-    tedSelectWholeParagraph( ea, 1 );
+    tedAppSelectWholeParagraph( ea, 1 );
 
     return;
     }
@@ -302,35 +316,35 @@ static APP_BUTTON_CALLBACK_H( tedFormatSelectPara, w, voidplt )
     ParagraphLayoutTool *	plt= (ParagraphLayoutTool *)voidplt;
     EditApplication *		ea= plt->ptApplication;
 
-    tedSelectWholeParagraph( ea, 0 );
+    tedAppSelectWholeParagraph( ea, 0 );
 
     return;
     }
 
-static APP_BUTTON_CALLBACK_H( tedFormatDeletePara, w, voidplt )
+static APP_BUTTON_CALLBACK_H( tedLayoutDeletePara, w, voidplt )
     {
     ParagraphLayoutTool *	plt= (ParagraphLayoutTool *)voidplt;
     EditApplication *		ea= plt->ptApplication;
 
-    tedDeleteCurrentParagraph( ea );
+    tedAppDeleteSelectedParagraphs( ea );
     }
 
-static APP_BUTTON_CALLBACK_H( tedFormatInsertPara, w, voidplt )
+static APP_BUTTON_CALLBACK_H( tedLayoutInsertPara, w, voidplt )
     {
     ParagraphLayoutTool *	plt= (ParagraphLayoutTool *)voidplt;
     EditApplication *		ea= plt->ptApplication;
 
-    tedInsertParagraph( ea, 0 );
+    tedAppInsertParagraph( ea, 0 );
 
     return;
     }
 
-static APP_BUTTON_CALLBACK_H( tedFormatAppendPara, w, voidplt )
+static APP_BUTTON_CALLBACK_H( tedLayoutAppendPara, w, voidplt )
     {
     ParagraphLayoutTool *	plt= (ParagraphLayoutTool *)voidplt;
     EditApplication *		ea= plt->ptApplication;
 
-    tedInsertParagraph( ea, 1 );
+    tedAppInsertParagraph( ea, 1 );
 
     return;
     }
@@ -371,11 +385,15 @@ static int tedFormatToolGetSpaceAround(		int *		pValue,
     *pChanged= changed; *pValue=value; return 0;
     }
 
-static APP_BUTTON_CALLBACK_H( tedFormatChangePara, w, voidplt )
+/************************************************************************/
+/*									*/
+/*  Retrieve values from controls.					*/
+/*									*/
+/************************************************************************/
+
+static int tedParaLayoutGetChosen(	ParagraphLayoutTool *	plt )
     {
-    ParagraphLayoutTool *	plt= (ParagraphLayoutTool *)voidplt;
-    EditApplication *		ea= plt->ptApplication;
-    ParagraphProperties *	pp= &(plt->ptPropertiesChosen);
+    ParagraphProperties *	ppChosen= &(plt->ptPropertiesChosen);
 
     int				li;
     int				lipfi;
@@ -383,58 +401,79 @@ static APP_BUTTON_CALLBACK_H( tedFormatChangePara, w, voidplt )
     int				value;
     int				changed;
 
-    PropertyMask		ppUpdMask;
-
+    const int			minValue= 0;
     const int			maxValue= INT_MAX;
     const int			adaptToMax= 0;
 
-    PROPmaskCLEAR( &ppUpdMask );
-    utilPropMaskFill( &ppUpdMask, PPprop_COUNT );
-    PROPmaskUNSET( &ppUpdMask, PPpropIN_TABLE );
-    PROPmaskUNSET( &ppUpdMask, PPpropTAB_STOPS );
-    PROPmaskUNSET( &ppUpdMask, PPpropTOP_BORDER );
-    PROPmaskUNSET( &ppUpdMask, PPpropBOTTOM_BORDER );
-
-    lipfi= pp->ppLeftIndentTwips+ pp->ppFirstIndentTwips;
+    lipfi= ppChosen->ppLeftIndentTwips+ ppChosen->ppFirstIndentTwips;
     if  ( appGetLengthFromTextWidget( plt->ptFirstIndentText,
 					&lipfi, &changed, UNITtyPOINTS,
 					INT_MIN, 0, maxValue, adaptToMax ) )
-	{ return;	}
+	{ return -1;	}
 
-    li= pp->ppLeftIndentTwips;
+    li= ppChosen->ppLeftIndentTwips;
     if  ( appGetLengthFromTextWidget( plt->ptLeftIndentText,
 					&li, &changed, UNITtyPOINTS,
-					1, 1, maxValue, adaptToMax ) )
-	{ return;	}
+					minValue, 1, maxValue, adaptToMax ) )
+	{ return -1;	}
 
-    pp->ppLeftIndentTwips= li;
-    pp->ppFirstIndentTwips= lipfi- li;
+    ppChosen->ppLeftIndentTwips= li;
+    ppChosen->ppFirstIndentTwips= lipfi- li;
 
-    value= pp->ppRightIndentTwips;
+    value= ppChosen->ppRightIndentTwips;
     if  ( appGetLengthFromTextWidget( plt->ptRightIndentText,
 					&value, &changed, UNITtyPOINTS,
-					1, 1, maxValue, adaptToMax ) )
-	{ return;	}
-    pp->ppRightIndentTwips= value;
+					minValue, 1, maxValue, adaptToMax ) )
+	{ return -1;	}
+    ppChosen->ppRightIndentTwips= value;
 
-    value= pp->ppLineSpacingTwips;
+    value= ppChosen->ppLineSpacingTwips;
     if  ( tedFormatToolGetHeight( &value, &(plt->ptLineDistChooser) ) )
-	{ return;	}
-    pp->ppLineSpacingTwips= value;
+	{ return -1;	}
+    ppChosen->ppLineSpacingTwips= value;
 
-    value= pp->ppSpaceBeforeTwips;
+    value= ppChosen->ppSpaceBeforeTwips;
     if  ( tedFormatToolGetSpaceAround( &value, &changed,
-		    plt->ptSpaceAboveText, plt->ptSpaceAboveToggle, value ) )
-	{ return;	}
-    pp->ppSpaceBeforeTwips= value;
+		    plt->pltSpaceAboveText, plt->pltSpaceAboveToggle, value ) )
+	{ return -1;	}
+    ppChosen->ppSpaceBeforeTwips= value;
 
-    value= pp->ppSpaceAfterTwips;
+    value= ppChosen->ppSpaceAfterTwips;
     if  ( tedFormatToolGetSpaceAround( &value, &changed,
-		    plt->ptSpaceBelowText, plt->ptSpaceBelowToggle, value ) )
-	{ return;	}
-    pp->ppSpaceAfterTwips= value;
+		    plt->pltSpaceBelowText, plt->pltSpaceBelowToggle, value ) )
+	{ return -1;	}
+    ppChosen->ppSpaceAfterTwips= value;
 
-    if  ( tedAppChangeParagraphProperties( ea, &ppUpdMask, pp ) )
+    return 0;
+    }
+
+/************************************************************************/
+/*									*/
+/*  Change paragraph layout.						*/
+/*									*/
+/************************************************************************/
+
+static APP_BUTTON_CALLBACK_H( tedLayoutChangePara, w, voidplt )
+    {
+    ParagraphLayoutTool *	plt= (ParagraphLayoutTool *)voidplt;
+    EditApplication *		ea= plt->ptApplication;
+    const ParagraphProperties *	ppSet= &(plt->ptPropertiesSet);
+    const ParagraphProperties *	ppChosen= &(plt->ptPropertiesChosen);
+
+    PropertyMask		ppDifMask;
+    PropertyMask		ppCmpMask;
+
+    if  ( tedParaLayoutGetChosen( plt ) )
+	{ return;	}
+
+    utilPropMaskClear( &ppCmpMask );
+    utilPropMaskClear( &ppDifMask );
+    utilPropMaskFill( &ppCmpMask, PPprop_FULL_COUNT );
+    PROPmaskUNSET( &ppCmpMask, PPpropTABLE_NESTING );
+
+    docParaPropertyDifference( &ppDifMask, ppSet, &ppCmpMask, ppChosen );
+
+    if  ( tedAppChangeParagraphProperties( ea, &ppDifMask, ppChosen ) )
 	{ LDEB(1);	}
 
     return;
@@ -475,8 +514,11 @@ static APP_TOGGLE_CALLBACK_H( tedFormatSpaceAboveToggled, w, voidplt, voidtbcs )
 	pp->ppSpaceBeforeTwips= 0;
 	}
 
-    tedFormatToolRefreshSpaceAround( plt->ptSpaceAboveText,
-		    plt->ptSpaceAboveToggle, pp->ppSpaceBeforeTwips );
+    tedFormatToolRefreshSpaceAround( plt->pltSpaceAboveRow,
+					    plt->pltSpaceAboveToggle,
+					    plt->pltSpaceAboveText,
+					    pp->ppSpaceBeforeTwips,
+					    plt->pltCanChange );
 
     return;
     }
@@ -510,22 +552,23 @@ static APP_TOGGLE_CALLBACK_H( tedFormatSpaceBelowToggled, w, voidplt, voidtbcs )
 	pp->ppSpaceAfterTwips= 0;
 	}
 
-    tedFormatToolRefreshSpaceAround( plt->ptSpaceBelowText,
-		    plt->ptSpaceBelowToggle, pp->ppSpaceAfterTwips );
+    tedFormatToolRefreshSpaceAround( plt->pltSpaceBelowRow,
+						plt->pltSpaceBelowToggle,
+						plt->pltSpaceBelowText,
+						pp->ppSpaceAfterTwips,
+						plt->pltCanChange );
 
     return;
     }
 
-static APP_OITEM_CALLBACK_H( tedParaAlignmentChosen, w, voidplt )
+static void tedParaAlignmentChosen(	int		alignment,
+					void *		voidplt )
     {
     ParagraphLayoutTool *		plt= (ParagraphLayoutTool *)voidplt;
     ParagraphProperties *		pp= &(plt->ptPropertiesChosen);
 
-    int					alignment;
-
-    alignment= appGuiGetOptionmenuItemIndex( &(plt->ptAlignOptionmenu), w );
-    if  ( alignment < 0 || alignment >= DOCia_COUNT )
-	{ LLDEB(alignment,DOCia_COUNT); return;	}
+    if  ( alignment < 0 || alignment >= DOCtha_COUNT )
+	{ LLDEB(alignment,DOCtha_COUNT); return;	}
 
     pp->ppAlignment= alignment;
 
@@ -538,11 +581,11 @@ static APP_OITEM_CALLBACK_H( tedParaAlignmentChosen, w, voidplt )
 /*									*/
 /************************************************************************/
 
-static APP_OITEM_CALLBACK_H( tedParaLineDistChosen, w, voidplt )
+static void tedParaLineDistChosen(	int		how,
+					void *		voidplt )
     {
     ParagraphLayoutTool *	plt= (ParagraphLayoutTool *)voidplt;
     HeightChooser *		hc= &(plt->ptLineDistChooser);
-    int				how;
 
     int				defaultValue;
 
@@ -552,7 +595,6 @@ static APP_OITEM_CALLBACK_H( tedParaLineDistChosen, w, voidplt )
     if  ( defaultValue == 0 )
 	{ defaultValue= 240;	}
 
-    how= appGuiGetOptionmenuItemIndex( &(hc->hcOptionmenu), w );
     if  ( how < 0 || how >= HC__COUNT )
 	{ LDEB(how); return;	}
 
@@ -570,7 +612,9 @@ static APP_TOGGLE_CALLBACK_H( tedParaOnNewPageToggled, w, voidplt, voidtbcs )
 
     set= appGuiGetToggleStateFromCallback( w, voidtbcs );
 
-    pp->ppStartsOnNewPage= ( set != 0 ) && ! pp->ppInTable;
+    pp->ppBreakKind= DOCibkNONE;
+    if  ( ( set != 0 ) && pp->ppTableNesting == 0 )
+	{ pp->ppBreakKind= DOCibkPAGE;	}
 
     return;
     }
@@ -630,13 +674,6 @@ void tedFormatFillParagraphLayoutPage(
 			APP_WIDGET				pageWidget,
 			const InspectorSubjectResources *	isr )
     {
-    APP_WIDGET		firstLabel;
-    APP_WIDGET		leftLabel;
-    APP_WIDGET		rightLabel;
-    APP_WIDGET		alignLabel;
-
-    APP_WIDGET		row;
-
     const int		textColumns= 10;
 
     /**/
@@ -647,88 +684,100 @@ void tedFormatFillParagraphLayoutPage(
     docInitParagraphProperties( &(plt->ptPropertiesChosen) );
 
     /**/
-    appMakeLabelAndTextRow( &row, &firstLabel, &(plt->ptListLevelText),
+    guiToolMakeLabelAndTextRow( &(plt->pltListLevelRow),
+		    (APP_WIDGET *)0, &(plt->pltListLevelText),
 		    pageWidget, plpr->plprParaListLevel, textColumns, 0 );
 
     /**/
-    appMakeLabelAndTextRow( &row, &firstLabel, &(plt->ptFirstIndentText),
+    guiToolMakeLabelAndTextRow( &(plt->ptFirstIndentRow),
+		    &(plt->ptFirstIndentLabel), &(plt->ptFirstIndentText),
 		    pageWidget, plpr->plprParaFirstIndent, textColumns, 1 );
 
     appGuiSetGotValueCallbackForText( plt->ptFirstIndentText,
 				    tedParaFirstIndentChanged, (void *)plt );
     /**/
-    appMakeLabelAndTextRow( &row, &leftLabel, &(plt->ptLeftIndentText),
+    guiToolMakeLabelAndTextRow( &(plt->ptLeftIndentRow),
+		    &(plt->ptLeftIndentLabel), &(plt->ptLeftIndentText),
 		    pageWidget, plpr->plprParaLeftIndent, textColumns, 1 );
 
     appGuiSetGotValueCallbackForText( plt->ptLeftIndentText,
 				    tedParaLeftIndentChanged, (void *)plt );
     /**/
-    appMakeLabelAndTextRow( &row, &rightLabel, &(plt->ptRightIndentText),
+    guiToolMakeLabelAndTextRow( &(plt->ptRightIndentRow),
+		    &(plt->ptRightIndentLabel), &(plt->ptRightIndentText),
 		    pageWidget, plpr->plprParaRightIndent, textColumns, 1 );
 
     appGuiSetGotValueCallbackForText( plt->ptRightIndentText,
 				    tedParaRightIndentChanged, (void *)plt );
     /**/
-    appInspectorMakeMenuRow( &row, &(plt->ptAlignOptionmenu),
-		    &alignLabel, pageWidget, plpr->pprParaAlignment );
+    guiToolMakeLabelAndMenuRow( &(plt->pltAlignmentRow),
+			&(plt->pltAlignOptionmenu), &(plt->pltAlignmentLabel),
+			pageWidget, plpr->pprParaAlignment,
+			tedParaAlignmentChosen, (void *)plt );
 
     /**/
-    tedFormatMakeHeightRow( &row, (void *)plt, pageWidget,
-		    &(plt->ptLineDistChooser), tedParaLineDistanceChanged );
+    tedFormatMakeHeightRow( (void *)plt, pageWidget,
+						&(plt->ptLineDistChooser),
+						tedParaLineDistanceChanged,
+						tedParaLineDistChosen );
 
     /**/
-    appMakeToggleAndTextRow( &row, &(plt->ptSpaceAboveToggle),
-		    &(plt->ptSpaceAboveText), pageWidget,
-		    plpr->pprParaSpaceAbove,
+    guiToolMakeToggleAndTextRow( &(plt->pltSpaceAboveRow),
+		    &(plt->pltSpaceAboveToggle), &(plt->pltSpaceAboveText),
+		    pageWidget, plpr->pprParaSpaceAbove,
 		    tedFormatSpaceAboveToggled, (void *)plt,
 		    textColumns, 1 );
 
-    appGuiSetGotValueCallbackForText( plt->ptSpaceAboveText,
+    appGuiSetGotValueCallbackForText( plt->pltSpaceAboveText,
 				    tedParaSpaceAboveChanged, (void *)plt );
     /**/
-    appMakeToggleAndTextRow( &row, &(plt->ptSpaceBelowToggle),
-		    &(plt->ptSpaceBelowText), pageWidget,
-		    plpr->pprParaSpaceBelow,
+    guiToolMakeToggleAndTextRow( &(plt->pltSpaceBelowRow),
+		    &(plt->pltSpaceBelowToggle), &(plt->pltSpaceBelowText),
+		    pageWidget, plpr->pprParaSpaceBelow,
 		    tedFormatSpaceBelowToggled, (void *)plt,
 		    textColumns, 1 );
 
-    appGuiSetGotValueCallbackForText( plt->ptSpaceBelowText,
+    appGuiSetGotValueCallbackForText( plt->pltSpaceBelowText,
 				    tedParaSpaceBelowChanged, (void *)plt );
 
     /**/
-    appInspectorMakeToggleRow( &row, pageWidget,
+    guiToolMake2ToggleRow( &(plt->pltPageRow), pageWidget,
 		    &(plt->ptOnNewPageToggle), &(plt->ptKeepOnPageToggle),
 		    plpr->pprOnNewPage, plpr->pprOnOnePage,
 		    tedParaOnNewPageToggled,
-		    tedParaKeepOnPageToggled, (void *)plt );
+		    tedParaKeepOnPageToggled, (void *)plt, (void *)plt );
 
     /**/
-    appInspectorMakeToggleRow( &row, pageWidget,
+    guiToolMake2ToggleRow( &(plt->pltKeepRow), pageWidget,
 		    &(plt->ptWidowControlToggle), &(plt->ptKeepWithNextToggle),
 		    plpr->pprWidctrl, plpr->pprKeepWithNext,
 		    tedParaWidowControlToggled,
-		    tedParaKeepWithNextToggled, (void *)plt );
+		    tedParaKeepWithNextToggled, (void *)plt, (void *)plt );
 
     /**/
-    appInspectorMakeButtonRow( &row, pageWidget,
+    guiToolMake2BottonRow( &(is->isNextPrevRow), pageWidget,
 			&(is->isPrevButton), &(is->isNextButton),
 			isr->isrPrevButtonText, isr->isrNextButtonText,
 			tedFormatPrevPara, tedFormatNextPara, plt );
 
-    appInspectorMakeButtonRow( &row, pageWidget,
+    {
+    APP_WIDGET	row;
+
+    guiToolMake2BottonRow( &row, pageWidget,
 			&(is->isSelectButton), &(is->isDeleteButton),
 			isr->isrSelectButtonText, isr->isrDeleteButtonText,
-			tedFormatSelectPara, tedFormatDeletePara, plt );
+			tedFormatSelectPara, tedLayoutDeletePara, plt );
 
-    appInspectorMakeButtonRow( &row, pageWidget,
+    guiToolMake2BottonRow( &row, pageWidget,
 			&(is->isInsertButton), &(is->isAppendButton),
 			isr->isrInsertButtonText, isr->isrAppendButtonText,
-			tedFormatInsertPara, tedFormatAppendPara, plt );
+			tedLayoutInsertPara, tedLayoutAppendPara, plt );
+    }
 
-    appInspectorMakeButtonRow( &row, pageWidget,
+    guiToolMake2BottonRow( &(is->isApplyRow), pageWidget,
 			&(is->isRevertButton), &(is->isApplyButton),
 			isr->isrRevert, isr->isrApplyToSubject,
-			tedFormatParaRevertPushed, tedFormatChangePara, plt );
+			tedFormatParaRevertPushed, tedLayoutChangePara, plt );
 
     return;
     }
@@ -739,32 +788,28 @@ void tedFormatFillParagraphLayoutPage(
 /*									*/
 /************************************************************************/
 
-void tedFormatFillParagraphLayoutChoosers(
+void tedParaLayoutToolFillChoosers(
 			    ParagraphLayoutTool *			plt,
 			    const ParagraphLayoutPageResources *	plpr )
     {
     tedFormatFillHeightChooser( &(plt->ptLineDistChooser),
-					    tedParaLineDistChosen, plt,
 					    plpr->pprParaLineDistFree,
 					    plpr->pprParaLineDistAtLeast,
 					    plpr->pprParaLineDistExactly );
 
-    appFillInspectorMenu( DOCia_COUNT, DOCiaLEFT,
-			plt->ptAlignItems, plpr->pprParaAlignMenuTexts,
-			&(plt->ptAlignOptionmenu),
-			tedParaAlignmentChosen, (void *)plt );
+    appFillInspectorMenu( DOCtha_COUNT, DOCthaLEFT,
+			plt->pltAlignItems, plpr->pprParaAlignMenuTexts,
+			&(plt->pltAlignOptionmenu) );
 
     return;
     }
 
-void tedFormatFinishParaLayoutPage(
-				ParagraphLayoutTool *			plt,
-				TedFormatTool *				tft,
+void tedFinishParaLayoutPage(	ParagraphLayoutTool *			plt,
 				const ParagraphLayoutPageResources *	plpr )
     {
     appOptionmenuRefreshWidth( &(plt->ptLineDistChooser.hcOptionmenu) );
 
-    appOptionmenuRefreshWidth( &(plt->ptAlignOptionmenu) );
+    appOptionmenuRefreshWidth( &(plt->pltAlignOptionmenu) );
 
     return;
     }
@@ -842,19 +887,19 @@ static AppConfigurableResource TED_TedParagraphToolResourceTable[]=
 	"Alignment" ),
     APP_RESOURCE( "formatToolParaAlignLeft",
 	offsetof(ParagraphLayoutPageResources,
-				    pprParaAlignMenuTexts[DOCiaLEFT]),
+				    pprParaAlignMenuTexts[DOCthaLEFT]),
 	"Left" ),
     APP_RESOURCE( "formatToolParaAlignRight",
 	offsetof(ParagraphLayoutPageResources,
-				    pprParaAlignMenuTexts[DOCiaRIGHT]),
+				    pprParaAlignMenuTexts[DOCthaRIGHT]),
 	"Right" ),
     APP_RESOURCE( "formatToolParaAlignCentered",
 	offsetof(ParagraphLayoutPageResources,
-				    pprParaAlignMenuTexts[DOCiaCENTERED]),
+				    pprParaAlignMenuTexts[DOCthaCENTERED]),
 	"Centered" ),
     APP_RESOURCE( "formatToolParaAlignJustified",
 	offsetof(ParagraphLayoutPageResources,
-				    pprParaAlignMenuTexts[DOCiaJUSTIFIED]),
+				    pprParaAlignMenuTexts[DOCthaJUSTIFIED]),
 	"Justified" ),
 
     /**/

@@ -8,7 +8,7 @@
 /*									*/
 /************************************************************************/
 
-#   include	<sioGeneral.h>
+#   include	"sioGeneral.h"
 
 extern SimpleInputStream * sioInLzwGifOpen(
 					SimpleInputStream *	sisLzw,

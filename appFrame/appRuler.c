@@ -5,6 +5,9 @@
 /************************************************************************/
 
 #   include	"appFrameConfig.h"
+#   include	"guiWidgetDrawingSurface.h"
+#   include	"guiDrawingWidget.h"
+#   include	"drawDrawingSurfacePrivate.h"
 
 #   include	<stdio.h>
 #   include	<string.h>
@@ -16,7 +19,7 @@
 #   undef	y1
 
 #   include	<appUnit.h>
-#   include	<appRuler.h>
+#   include	"appRuler.h"
 
 #   include	<appDebugon.h>
 
@@ -24,182 +27,190 @@
 #	define	M_LN10	2.30258509299404568402
 #   endif
 
+#   define	SHOW_SCROLLS	0
+
 void appInitRulerData(	RulerData *	rd )
     {
-    rd->rdFontName= (const char *)0;
-
     rd->rdSizeAcross= 0;
     rd->rdSizeAlong= 0;
     rd->rdFontHeight= 0;
 
     rd->rdMinUsed= 0;
-    rd->rdMaxUsed= 0;
     rd->rdExtraAfterMaxUsed= 0;
 
     rd->rdDocumentC0= 0;
     rd->rdDocumentC1= 0;
     rd->rdVisibleC0= 0;
     rd->rdVisibleC1= 0;
-    rd->rdRulerC1= 0;
 
-    rd->rdFontStruct= (APP_FONT *)0;
-    appInitVerticalXFont( &(rd->rdVerticalFont) );
-    appInitDrawingData( &(rd->rdDrawingData) );
-    rd->rdDrawingDataAllocated= 0;
-#   ifdef USE_MOTIF
-    rd->rdBackStipple= None;
-#   endif
+    rd->rdScreenFont= -1;
+    rd->rdDrawingSurface= (DrawingSurface)0;
+    rd->rdPostScriptFontList= (const PostScriptFontList *)0;
+
+    rd->rdBackgroundExplicit= 0;
+
+    utilInitRGB8Color( &(rd->rdSelectedColor) );
+    utilInitRGB8Color( &(rd->rdBackgroundColor) );
+    utilInitRGB8Color( &(rd->rdForegroundColor) );
+    utilInitRGB8Color( &(rd->rdTopShadowColor) );
+    utilInitRGB8Color( &(rd->rdBottomShadowColor) );
+
+    rd->rdUnit= -1;
+    rd->rdTicksPerTag= 0;
+    rd->rdTicksPerText= 0;
+    rd->rdUnitsPerTick= 0.0;
+
+    rd->rdTwipsPerUnit= 0.0;
+    rd->rdMagnifiedPixelsPerTwip= 0.0;
 
     return;
     }
 
 void appCleanRulerData(	RulerData *	rd )
     {
-    if  ( rd->rdFontStruct )
-	{ appDrawFreeFont( &(rd->rdDrawingData), rd->rdFontStruct );	}
-
-    appCleanVerticalXFont( &(rd->rdVerticalFont), &(rd->rdDrawingData) );
-
-#   ifdef USE_MOTIF
-    if  ( rd->rdBackStipple )
-	{
-	XFreePixmap( rd->rdDrawingData.addDisplay, rd->rdBackStipple );
-	}
-#   endif
-
-    appCleanDrawingData( &(rd->rdDrawingData) );
+    if  ( rd->rdDrawingSurface )
+	{ drawFreeDrawingSurface( rd->rdDrawingSurface );	}
 
     return;
     }
 
-void appRulerDrawBackground(	RulerData *	rd,
-				int		x,
-				int		y,
-				int		wide,
-				int		high )
+void appHorizontalRulerGetSizeFromConfigureEvent( RulerData *	rd,
+						APP_WIDGET	w,
+						APP_EVENT *	event )
     {
-    AppDrawingData *	add= &(rd->rdDrawingData);
+    int			wide;
+    int			high;
 
-    appDrawSetForegroundColor( add, &(add->addBackColor) );
+    if  ( guiDrawGetSizeFromConfigureEvent( &wide, &high, w, event ) )
+	{ return;	}
 
-#   ifdef USE_MOTIF
-    if  ( rd->rdBackStipple )
-	{ XSetFillStyle( add->addDisplay, add->addGc, FillStippled ); }
-#   endif
-
-    appDrawFillRectangle( add, x, y, wide, high );
-
-#   ifdef USE_MOTIF
-    if  ( rd->rdBackStipple )
-	{ XSetFillStyle( add->addDisplay, add->addGc, FillSolid ); }
-#   endif
+    rd->rdSizeAlong= wide;
+    rd->rdSizeAcross= high;
 
     return;
     }
 
-void appRulerAllocateDrawingData(	RulerData *		rd,
-					int			vertical,
-					int			fontHeight,
-					double			magnification,
-					APP_WIDGET		w )
+void appHorizontalRulerGetSizeFromWidget( 	RulerData *	rd,
+						APP_WIDGET	w )
     {
-    AppDrawingData *	add= &(rd->rdDrawingData);
-    char		name[128];
+    int			wide;
+    int			high;
 
-    rd->rdFontHeight= fontHeight;
+    if  ( guiDrawGetSizeOfWidget( &wide, &high, w ) )
+	{ return;	}
 
-    if  ( appSetDrawingDataForWidget( w, magnification, add ) )
-	{ LDEB(1);	}
+    rd->rdSizeAlong= wide;
+    rd->rdSizeAcross= high;
 
-    appDrawSetLineAttributes( add,
-			1, LINEstyleSOLID, LINEcapPROJECTING, LINEjoinMITER,
+    return;
+    }
+
+void appVerticalRulerGetSizeFromConfigureEvent( RulerData *	rd,
+						APP_WIDGET	w,
+						APP_EVENT *	event )
+    {
+    int			wide;
+    int			high;
+
+    if  ( guiDrawGetSizeFromConfigureEvent( &wide, &high, w, event ) )
+	{ return;	}
+
+    rd->rdSizeAlong= high;
+    rd->rdSizeAcross= wide;
+
+    return;
+    }
+
+void appVerticalRulerGetSizeFromWidget( 	RulerData *	rd,
+						APP_WIDGET	w )
+    {
+    int			wide;
+    int			high;
+
+    if  ( guiDrawGetSizeOfWidget( &wide, &high, w ) )
+	{ return;	}
+
+    rd->rdSizeAlong= high;
+    rd->rdSizeAcross= wide;
+
+    return;
+    }
+
+void appRulerDrawBackground(	RulerData *			rd,
+				const DocumentRectangle *	drBack )
+    {
+    DrawingSurface	ds= rd->rdDrawingSurface;
+
+    drawSetForegroundColor( ds, &(rd->rdBackgroundColor) );
+
+    drawFillRectangle( ds, drBack );
+
+    return;
+    }
+
+void appRulerMakeDrawingSurface( RulerData *		rd,
+				int			vertical,
+				int			fontSizeHintPixels,
+				double			magnification,
+				APP_WIDGET		w )
+    {
+    rd->rdFontHeight= fontSizeHintPixels;
+
+    rd->rdDrawingSurface= guiDrawingSurfaceForNativeWidget( w,
+			    rd->rdPostScriptFontList->psflAvoidFontconfig );
+
+    drawSetLineAttributes( rd->rdDrawingSurface,
+			1, LineStyleSolid, LineCapProjecting, LineJoinMiter,
 			(const unsigned char *)0, 0 );
 
-    if  ( rd->rdFontName )
+    if  ( ! rd->rdBackgroundExplicit )
 	{
-	sprintf( name, rd->rdFontName, fontHeight );
-
-	rd->rdFontStruct= appDrawOpenFont( add, name );
-	}
-    else{ strcpy( name, "(None)" );	}
-
-    if  ( ! rd->rdFontStruct )
-	{
-	SXDEB(name,rd->rdFontStruct);
-	sprintf( name, "-*-*-medium-r-*-*-%d-*-*-*-m-*-iso8859-*",
-							    fontHeight );
-
-	rd->rdFontStruct= appDrawOpenFont( add, name );
+	guiGetBackgroundColor( &(rd->rdBackgroundColor), w );
+	guiGetForegroundColor( &(rd->rdForegroundColor), w );
+	guiGetTopShadowColor( &(rd->rdTopShadowColor), w );
+	guiGetBottomShadowColor( &(rd->rdBottomShadowColor), w );
+	rd->rdSelectedColor= rd->rdBottomShadowColor;
 	}
 
-    if  ( vertical							&&
-	  rd->rdFontStruct						&&
-	  appOpenVerticalXFont( &(rd->rdVerticalFont), add, name, -1,
-						&(add->addBackColor) )	)
-	{ SDEB(name);	}
-
-    if  ( rd->rdFontStruct )
-	{ appDrawSetFont( add, rd->rdFontStruct );	}
-    else{ SXDEB(name,rd->rdFontStruct);			}
-
-#   ifdef USE_MOTIF
-    if  ( DefaultDepth( add->addDisplay, add->addScreen ) <= 2 )
-	{
-	int		i;
-
-	for ( i= 0; i < 16; i++ )
-	    {
-	    memset( name+ 8* i+ 0, 0xaa, 4 );
-	    memset( name+ 8* i+ 4, 0x55, 4 );
-	    }
-
-	rd->rdBackStipple= XCreateBitmapFromData( add->addDisplay,
-					    add->addDrawable, name, 32, 32 );
-	if  ( ! rd->rdBackStipple )
-	    { XDEB(rd->rdBackStipple);	}
-
-	appDrawBlackColor( add, &(add->addBackColor) );
-
-	XSetStipple( add->addDisplay, add->addGc, rd->rdBackStipple );
-	}
-#   endif
-
-    rd->rdDrawingDataAllocated= 1;
+    rd->rdScreenFont= drawOpenDefaultFont( rd->rdDrawingSurface,
+						    rd->rdPostScriptFontList,
+						    w, fontSizeHintPixels );
+    if  ( rd->rdScreenFont < 0 )
+	{ LLDEB(fontSizeHintPixels,rd->rdScreenFont);	}
 
     return;
     }
 
-int appRulerTextWidth(	RulerData *	rd,
-			const char *	s,
-			int		len )
+void appRulerSetBackground(	RulerData *		rd,
+				const RGB8Color *	back )
     {
-    if  ( rd->rdFontStruct )
+    rd->rdBackgroundExplicit= 1;
+
+    rd->rdBackgroundColor= *back;
+
+    utilGetForegroundColor( &(rd->rdForegroundColor), back );
+    utilGetTopShadowColor( &(rd->rdTopShadowColor), back );
+    utilGetBottomShadowColor( &(rd->rdBottomShadowColor), back );
+    rd->rdSelectedColor= rd->rdBottomShadowColor;
+    }
+
+int appRulerTextWidth(	RulerData *		rd,
+			const char *		s,
+			int			len )
+    {
+    if  ( rd->rdScreenFont >= 0 )
 	{
-	AppDrawingData *	add= &(rd->rdDrawingData);
+	DocumentRectangle	drText;
 
-	int			wide;
-	int			fontAscent;
-	int			fontDescent;
+	const int		x= 0;
+	const int		y= 0;
 
-	appDrawTextExtents( &wide, &fontAscent, &fontDescent, add,
-						rd->rdFontStruct, s, len );
+	drawGetTextExtents( &drText, rd->rdDrawingSurface, x, y,
+						rd->rdScreenFont, s, len );
 
-	return  wide;
+	return drText.drX1- drText.drX0+ 1;
 	}
     else{ return  (6*rd->rdFontHeight*len)/10;			}
-    }
-
-void appRulerDrawVerticalString(	RulerData *	rd,
-					int		x,
-					int		y,
-					char *		s,
-					int		len )
-    {
-    AppDrawingData *	add= &(rd->rdDrawingData);
-
-    appDrawVerticalString( &(rd->rdVerticalFont), add, x, y, s, len );
-
-    return;
     }
 
 /************************************************************************/
@@ -299,50 +310,76 @@ void appRulerTagText(	char *		to,
     return;
     }
 
+# if SHOW_SCROLLS
+static void appShowCopy(	DrawingSurface			ds,
+				int				x,
+				int				y,
+				const DocumentRectangle *	drSrc )
+    {
+    RGB8Color		blue;
+    DocumentRectangle	drTarget;
+
+    blue.rgb8Red= 0;
+    blue.rgb8Green= 0;
+    blue.rgb8Blue= 255;
+
+    drTarget= *drSrc;
+
+    geoShiftRectangle( &drTarget, x- drSrc->drX0, y- drSrc->drY0 );
+    drTarget.drX1--;
+    drTarget.drY1--;
+
+    drawSetForegroundColor( ds, &blue );
+    drawRectangle( ds, &drTarget );
+
+    return;
+    }
+# endif
+
 void appScrollHorizontalRuler(		RulerData *		rd,
 					DocumentRectangle *	drClip,
-					int			d )
+					int			srcolledX )
     {
-    int				wide= rd->rdMaxUsed+ 1;
-    int				high= rd->rdSizeAcross;
+    int			maxUsed= rd->rdSizeAlong- rd->rdExtraAfterMaxUsed;
+    DrawingSurface	ds= rd->rdDrawingSurface;
 
-    AppDrawingData *		add= &(rd->rdDrawingData);
+    DocumentRectangle	drAll;
+    DocumentRectangle	drSrc;
 
-    int				x0;
+    rd->rdVisibleC0 += srcolledX;
+    rd->rdVisibleC1 += srcolledX;
 
-    rd->rdVisibleC0 += d;
-    rd->rdVisibleC1 += d;
+    drAll.drX0= rd->rdMinUsed;
+    drAll.drX1= maxUsed;
+    drAll.drY0= 0;
+    drAll.drY1= rd->rdSizeAcross- 1;
 
-    x0= rd->rdMinUsed;
+    *drClip= drAll;
+    drSrc= drAll;
 
-    drClip->drY0= 0;
-    drClip->drY1= high;
-
-    if  ( d > 0 )
+    if  ( srcolledX > 0 )
 	{
-	if  ( wide > d )
-	    {
-	    appDrawMoveArea( add, d+ x0, 0, wide- d- x0, high, x0, 0 );
+	drSrc.drX0=   drAll.drX0+ srcolledX;
+	drClip->drX0= drAll.drX1- srcolledX+ 1;
 
-	    drClip->drX0= rd->rdVisibleC1- d;
-	    drClip->drX1= rd->rdVisibleC1;
-	    }
-	else{
-	    drClip->drX0= rd->rdVisibleC0;
-	    drClip->drX1= rd->rdVisibleC1;
+	if  ( drSrc.drX0 <= drSrc.drX1 )
+	    {
+	    drawMoveArea( ds, drAll.drX0, drAll.drY0, &drSrc );
+#	    if SHOW_SCROLLS
+	    appShowCopy( ds, drAll.drX0, drAll.drY0, &drSrc );
+#	    endif
 	    }
 	}
     else{
-	if  ( high+ d > 0 )
-	    {
-	    appDrawMoveArea( add, x0, 0, wide+ d- x0, high, x0- d, 0 );
+	drSrc.drX1=   drAll.drX1+ srcolledX;
+	drClip->drX1= drAll.drX0- srcolledX- 1;
 
-	    drClip->drX0= rd->rdVisibleC0;
-	    drClip->drX1= rd->rdVisibleC0- d;
-	    }
-	else{
-	    drClip->drX0= rd->rdVisibleC0;
-	    drClip->drX1= rd->rdVisibleC1;
+	if  ( drSrc.drX0 <= drSrc.drX1 )
+	    {
+	    drawMoveArea( ds, drAll.drX0- srcolledX, drAll.drY0, &drSrc );
+#	    if SHOW_SCROLLS
+	    appShowCopy( ds, drAll.drX0- srcolledX, drAll.drY0, &drSrc );
+#	    endif
 	    }
 	}
 
@@ -351,30 +388,38 @@ void appScrollHorizontalRuler(		RulerData *		rd,
 
 void appScrollVerticalRuler(		RulerData *		rd,
 					DocumentRectangle *	drClip,
-					int			d )
+					int			scrolledY )
     {
-    int				high= rd->rdMaxUsed+ 1;
-    int				wide= rd->rdSizeAcross;
+    int			maxUsed= rd->rdSizeAlong- rd->rdExtraAfterMaxUsed;
+    int			high= maxUsed+ 1;
+    int			wide= rd->rdSizeAcross;
 
-    AppDrawingData *		add= &(rd->rdDrawingData);
+    DrawingSurface	ds= rd->rdDrawingSurface;
 
-    int				y0;
+    int			y0;
 
-    rd->rdVisibleC0 += d;
-    rd->rdVisibleC1 += d;
+    rd->rdVisibleC0 += scrolledY;
+    rd->rdVisibleC1 += scrolledY;
 
     y0= rd->rdMinUsed;
 
     drClip->drX0= 0;
     drClip->drX1= wide;
 
-    if  ( d > 0 )
+    if  ( scrolledY > 0 )
 	{
-	if  ( high > d )
+	if  ( high > scrolledY )
 	    {
-	    appDrawMoveArea( add, 0, d+ y0, wide, high- d- y0, 0, y0 );
+	    DocumentRectangle	drSrc;
 
-	    drClip->drY0= rd->rdVisibleC1- d;
+	    drSrc.drX0= 0;
+	    drSrc.drX1= rd->rdSizeAcross- 1;
+	    drSrc.drY0= scrolledY+ y0;
+	    drSrc.drY1= maxUsed;
+
+	    drawMoveArea( ds, 0, y0, &drSrc );
+
+	    drClip->drY0= rd->rdVisibleC1- scrolledY;
 	    drClip->drY1= rd->rdVisibleC1;
 	    }
 	else{
@@ -383,12 +428,19 @@ void appScrollVerticalRuler(		RulerData *		rd,
 	    }
 	}
     else{
-	if  ( high+ d > 0 )
+	if  ( high+ scrolledY > 0 )
 	    {
-	    appDrawMoveArea( add, 0, y0, wide, high+ d- y0, 0, y0- d );
+	    DocumentRectangle	drSrc;
+
+	    drSrc.drX0= 0;
+	    drSrc.drX1= rd->rdSizeAcross- 1;
+	    drSrc.drY0= y0;
+	    drSrc.drY1= high+ scrolledY;
+
+	    drawMoveArea( ds, 0, y0- scrolledY, &drSrc );
 
 	    drClip->drY0= rd->rdVisibleC0;
-	    drClip->drY1= rd->rdVisibleC0- d;
+	    drClip->drY1= rd->rdVisibleC0- scrolledY;
 	    }
 	else{
 	    drClip->drY0= rd->rdVisibleC0;

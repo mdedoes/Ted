@@ -19,7 +19,7 @@
 /*  Extract the scheme part from a URL.					*/
 /*									*/
 /*  Of failure return -1. Otherwise return the number of characters	*/
-/*  consumed including the colon such that url+ rval ponts to the	*/
+/*  consumed including the colon such that url+ rval points to the	*/
 /*  scheme specific part.						*/
 /*									*/
 /************************************************************************/

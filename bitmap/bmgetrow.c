@@ -2,7 +2,6 @@
 
 #   include	"bmintern.h"
 #   include	"bmgetrow.h"
-#   include	<string.h>
 #   include	<appDebugon.h>
 
 /************************************************************************/
@@ -39,13 +38,15 @@ static void bmGetPaletteSourceRow(	ColorValue *			cv,
 					int				colPIn,
 					const BitmapDescription *	bdIn )
     {
-    int			col;
-    unsigned		mask;
+    int				col;
+    unsigned			mask;
 
-    int			pos;
-    int			past;
-    int			pixelsPerByte;
-    unsigned char	scratch[8];
+    int				pos;
+    int				past;
+    int				pixelsPerByte;
+    unsigned char		scratch[8];
+
+    const ColorPalette *	cp= &(bdIn->bdPalette);
 
     cv += col0Out;
 
@@ -56,9 +57,9 @@ static void bmGetPaletteSourceRow(	ColorValue *			cv,
 
 	    for ( col= col0In; col < colPIn; from++, cv++, col++ )
 		{
-		cv->cvR += bdIn->bdRGB8Palette[*from].rgb8Red;
-		cv->cvG += bdIn->bdRGB8Palette[*from].rgb8Green;
-		cv->cvB += bdIn->bdRGB8Palette[*from].rgb8Blue;
+		cv->cvR += cp->cpColors[*from].rgb8Red;
+		cv->cvG += cp->cpColors[*from].rgb8Green;
+		cv->cvB += cp->cpColors[*from].rgb8Blue;
 		cv->cvN++;
 		}
 	    return;
@@ -84,9 +85,9 @@ static void bmGetPaletteSourceRow(	ColorValue *			cv,
 		pos= past- col0In;
 		for ( col= col0In; col < past; pos++, cv++, col++ )
 		    {
-		    cv->cvR += bdIn->bdRGB8Palette[scratch[pos]].rgb8Red;
-		    cv->cvG += bdIn->bdRGB8Palette[scratch[pos]].rgb8Green;
-		    cv->cvB += bdIn->bdRGB8Palette[scratch[pos]].rgb8Blue;
+		    cv->cvR += cp->cpColors[scratch[pos]].rgb8Red;
+		    cv->cvG += cp->cpColors[scratch[pos]].rgb8Green;
+		    cv->cvB += cp->cpColors[scratch[pos]].rgb8Blue;
 		    cv->cvN++;
 		    }
 
@@ -104,9 +105,9 @@ static void bmGetPaletteSourceRow(	ColorValue *			cv,
 		    {
 		    int		val= ( *from >> shift ) & mask;
 
-		    cv->cvR += bdIn->bdRGB8Palette[val].rgb8Red;
-		    cv->cvG += bdIn->bdRGB8Palette[val].rgb8Green;
-		    cv->cvB += bdIn->bdRGB8Palette[val].rgb8Blue;
+		    cv->cvR += cp->cpColors[val].rgb8Red;
+		    cv->cvG += cp->cpColors[val].rgb8Green;
+		    cv->cvB += cp->cpColors[val].rgb8Blue;
 		    cv->cvN++;
 		    }
 		}
@@ -118,9 +119,9 @@ static void bmGetPaletteSourceRow(	ColorValue *			cv,
 		pos= 0;
 		for ( ; col < colPIn; pos++, cv++, col++ )
 		    {
-		    cv->cvR += bdIn->bdRGB8Palette[scratch[pos]].rgb8Red;
-		    cv->cvG += bdIn->bdRGB8Palette[scratch[pos]].rgb8Green;
-		    cv->cvB += bdIn->bdRGB8Palette[scratch[pos]].rgb8Blue;
+		    cv->cvR += cp->cpColors[scratch[pos]].rgb8Red;
+		    cv->cvG += cp->cpColors[scratch[pos]].rgb8Green;
+		    cv->cvB += cp->cpColors[scratch[pos]].rgb8Blue;
 		    cv->cvN++;
 		    }
 		}
@@ -135,9 +136,9 @@ static void bmGetPaletteSourceRow(	ColorValue *			cv,
 
 	    for ( col= col0In; col < colPIn; psh++, cv++, col++ )
 		{
-		cv->cvR += bdIn->bdRGB8Palette[*psh].rgb8Red;
-		cv->cvG += bdIn->bdRGB8Palette[*psh].rgb8Green;
-		cv->cvB += bdIn->bdRGB8Palette[*psh].rgb8Blue;
+		cv->cvR += cp->cpColors[*psh].rgb8Red;
+		cv->cvG += cp->cpColors[*psh].rgb8Green;
+		cv->cvB += cp->cpColors[*psh].rgb8Blue;
 		cv->cvN++;
 		}
 
@@ -152,9 +153,9 @@ static void bmGetPaletteSourceRow(	ColorValue *			cv,
 
 	    for ( col= col0In; col < colPIn; plo++, cv++, col++ )
 		{
-		cv->cvR += bdIn->bdRGB8Palette[*plo].rgb8Red;
-		cv->cvG += bdIn->bdRGB8Palette[*plo].rgb8Green;
-		cv->cvB += bdIn->bdRGB8Palette[*plo].rgb8Blue;
+		cv->cvR += cp->cpColors[*plo].rgb8Red;
+		cv->cvG += cp->cpColors[*plo].rgb8Green;
+		cv->cvB += cp->cpColors[*plo].rgb8Blue;
 		cv->cvN++;
 		}
 
@@ -179,8 +180,10 @@ static void bmGetPaletteSourceRowAlpha(	ColorValue *			cv,
 					int				colPIn,
 					const BitmapDescription *	bdIn )
     {
-    int		col;
-    unsigned	mask;
+    int				col;
+    unsigned			mask;
+
+    const ColorPalette *	cp= &(bdIn->bdPalette);
 
     cv += col0Out;
 
@@ -194,9 +197,9 @@ static void bmGetPaletteSourceRowAlpha(	ColorValue *			cv,
 
 	    for ( col= col0In; col < colPIn; psh += 2, cv++, col++ )
 		{
-		cv->cvR += bdIn->bdRGB8Palette[*psh].rgb8Red;
-		cv->cvG += bdIn->bdRGB8Palette[*psh].rgb8Green;
-		cv->cvB += bdIn->bdRGB8Palette[*psh].rgb8Blue;
+		cv->cvR += cp->cpColors[*psh].rgb8Red;
+		cv->cvG += cp->cpColors[*psh].rgb8Green;
+		cv->cvB += cp->cpColors[*psh].rgb8Blue;
 		cv->cvN++;
 		}
 	    }
@@ -209,9 +212,9 @@ static void bmGetPaletteSourceRowAlpha(	ColorValue *			cv,
 		{
 		if  ( from[1] )
 		    {
-		    cv->cvR += bdIn->bdRGB8Palette[*from].rgb8Red;
-		    cv->cvG += bdIn->bdRGB8Palette[*from].rgb8Green;
-		    cv->cvB += bdIn->bdRGB8Palette[*from].rgb8Blue;
+		    cv->cvR += cp->cpColors[*from].rgb8Red;
+		    cv->cvG += cp->cpColors[*from].rgb8Green;
+		    cv->cvB += cp->cpColors[*from].rgb8Blue;
 		    }
 		else{
 		    /* why not white?*/
@@ -234,9 +237,9 @@ static void bmGetPaletteSourceRowAlpha(	ColorValue *			cv,
 		    {
 		    int		val= ( *from >> 4 ) & mask;
 
-		    cv->cvR += bdIn->bdRGB8Palette[val].rgb8Red;
-		    cv->cvG += bdIn->bdRGB8Palette[val].rgb8Green;
-		    cv->cvB += bdIn->bdRGB8Palette[val].rgb8Blue;
+		    cv->cvR += cp->cpColors[val].rgb8Red;
+		    cv->cvG += cp->cpColors[val].rgb8Green;
+		    cv->cvB += cp->cpColors[val].rgb8Blue;
 		    }
 		else{
 		    /* why not white?*/

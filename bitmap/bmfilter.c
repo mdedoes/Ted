@@ -3,13 +3,7 @@
 #   include	"bmintern.h"
 #   include	"bmgetrow.h"
 #   include	"bmputrow.h"
-#   include	<string.h>
-
-#   define	y0	math_y0
-#   define	y1	math_y1
-#   include	<math.h>
-#   undef	y0
-#   undef	y1
+#   include	<stdlib.h>
 
 #   include	<appDebugon.h>
 
@@ -290,19 +284,23 @@ static void bmBlur(		ColorValue *			cvTo,
 /*									*/
 /*  Apply a 3x3 filter to the image.					*/
 /*									*/
+/*  1)  Collect this and revious row from the first row of the input	*/
+/*	image.								*/
+/*  2)  Collect next row from the second row of the input image.	*/
+/*									*/
 /************************************************************************/
 
-static int bmFilter3Row(	const BitmapDescription *	bdOut,
-				const BitmapDescription *	bdIn,
-				unsigned char *			bufOut,
-				const unsigned char *		bufIn,
+static int bmFilter3Row(	unsigned char *			bufOut,
 				ColorValue *			cvOut,
+				const BitmapDescription *	bdOut,
+				const RasterImage *		riIn,
 				FillJob *			fj,
 				int				flip,
 				GetSourceRow			getRow,
 				PutScreenRow			putRow,
 				BM_FILTER_OP			how )
     {
+    const BitmapDescription *	bdIn= &(riIn->riDescription);
     int				rval= 0;
 
     int				rowTo;
@@ -311,10 +309,11 @@ static int bmFilter3Row(	const BitmapDescription *	bdOut,
     const unsigned char *	from;
     unsigned char *		to;
 
+    /*  1  */
     if  ( flip )
 	{ rowFrom= bdIn->bdPixelsHigh- 1;	}
     else{ rowFrom= 0;				}
-    from= bufIn+ rowFrom* bdIn->bdBytesPerRow;
+    from= riIn->riBytes+ rowFrom* bdIn->bdBytesPerRow;
 
     bmInitColorRow( fj->fjPrevRow+ 1, fj->fjFrWide );
     bmInitColorRow( fj->fjThisRow+ 1, fj->fjFrWide );
@@ -322,15 +321,25 @@ static int bmFilter3Row(	const BitmapDescription *	bdOut,
     (*getRow)( fj->fjPrevRow+ 1, 0, from, 0, bdIn->bdPixelsWide, bdIn );
     (*getRow)( fj->fjThisRow+ 1, 0, from, 0, bdIn->bdPixelsWide, bdIn );
 
+    fj->fjPrevRow[0]= fj->fjPrevRow[1];
+    fj->fjPrevRow[bdOut->bdPixelsWide]= fj->fjPrevRow[bdOut->bdPixelsWide-1];
+    fj->fjThisRow[0]= fj->fjThisRow[1];
+    fj->fjThisRow[bdOut->bdPixelsWide]= fj->fjThisRow[bdOut->bdPixelsWide-1];
+
+    /*  2  */
     rowTo= 0;
     if  ( flip )
 	{ rowFrom= bdIn->bdPixelsHigh- rowTo- 2;	}
     else{ rowFrom= rowTo+ 1;				}
-    from= bufIn+ rowFrom* bdIn->bdBytesPerRow;
+    from= riIn->riBytes+ rowFrom* bdIn->bdBytesPerRow;
 
     bmInitColorRow( fj->fjNextRow+ 1, fj->fjFrWide );
     (*getRow)( fj->fjNextRow+ 1, 0, from, 0, bdIn->bdPixelsWide, bdIn );
 
+    fj->fjNextRow[0]= fj->fjNextRow[1];
+    fj->fjNextRow[bdOut->bdPixelsWide]= fj->fjNextRow[bdOut->bdPixelsWide-1];
+
+    /*  3  */
     for ( rowTo= 0; rowTo < bdOut->bdPixelsHigh- 1; rowTo++ )
 	{
 	ColorValue *	swap;
@@ -338,11 +347,11 @@ static int bmFilter3Row(	const BitmapDescription *	bdOut,
 	if  ( flip )
 	    { rowFrom= bdIn->bdPixelsHigh- rowTo- 2;	}
 	else{ rowFrom= rowTo+ 1;			}
-	from= bufIn+ rowFrom* bdIn->bdBytesPerRow;
+	from= riIn->riBytes+ rowFrom* bdIn->bdBytesPerRow;
 
 	to= bufOut+ rowTo* bdOut->bdBytesPerRow;
 	(*how)( cvOut+ 1, fj );
-	if  ( (*putRow )( to, fj, cvOut+ 1 ) )
+	if  ( (*putRow)( to, fj, cvOut+ 1 ) )
 	    { LDEB(1); rval= -1; goto ready;	}
 
 	swap= fj->fjPrevRow; fj->fjPrevRow= fj->fjThisRow;
@@ -350,10 +359,16 @@ static int bmFilter3Row(	const BitmapDescription *	bdOut,
 
 	bmInitColorRow( fj->fjNextRow+ 1, fj->fjFrWide );
 	(*getRow)( fj->fjNextRow+ 1, 0, from, 0, bdIn->bdPixelsWide, bdIn );
+
+	fj->fjNextRow[0]= fj->fjNextRow[1];
+	fj->fjNextRow[bdOut->bdPixelsWide]=
+					fj->fjNextRow[bdOut->bdPixelsWide-1];
 	}
 
     bmInitColorRow( fj->fjThisRow+ 1, fj->fjFrWide );
     (*getRow)( fj->fjThisRow+ 1, 0, from, 0, bdIn->bdPixelsWide, bdIn );
+    fj->fjThisRow[0]= fj->fjThisRow[1];
+    fj->fjThisRow[bdOut->bdPixelsWide]= fj->fjThisRow[bdOut->bdPixelsWide-1];
 
     to= bufOut+ rowTo* bdOut->bdBytesPerRow;
     (*how)( cvOut+ 1, fj );
@@ -369,11 +384,15 @@ static int bmFilter3Row(	const BitmapDescription *	bdOut,
 /*									*/
 /*  Perform a filter operation.						*/
 /*									*/
+/*  1)  Copy input image description. Use 8 bits per sample however.	*/
+/*  2)  Calculate memory requirements etc.				*/
+/*  3)  Allocate output image buffer.					*/
+/*  4)  Allocate color accumulator for the scan.			*/
+/*									*/
 /************************************************************************/
 
 static int bmStartFilterOperation(
-				BitmapDescription *		bd,
-				unsigned char **		pBufOut,
+				RasterImage *			riOut,
 				ColorValue **			pCvOut,
 				ColorAllocator *		ca,
 				PutScreenRow *			pPutRow,
@@ -388,36 +407,35 @@ static int bmStartFilterOperation(
     const int		swapBitmapBits= 0;
     const int		dither= 0;
 
-    /**/
-
-    if  ( bmCopyDescription( bd, bdIn ) )
+    /*  1  */
+    if  ( bmCopyDescription( &(riOut->riDescription), bdIn ) )
 	{ LDEB(1); return -1;	}
 
-    /**/
+    riOut->riDescription.bdBitsPerSample= 8;
 
-    bd->bdBitsPerSample= 8;
-
-    if  ( bmCalculateSizes( bd ) )
+    /*  2  */
+    if  ( bmCalculateSizes( &(riOut->riDescription) ) )
 	{ LDEB(1); return -1;	}
 
-    *pBufOut= malloc( bd->bdBufferLength );
-    if  ( ! *pBufOut )
-	{ LXDEB(bd->bdBufferLength,*pBufOut); return -1;	}
+    /*  3  */
+    riOut->riBytes= (unsigned char *)malloc(riOut->riDescription.bdBufferLength );
+    if  ( ! riOut->riBytes )
+	{ LXDEB(riOut->riDescription.bdBufferLength,riOut->riBytes); return -1;	}
 
-    *pCvOut= malloc( ( bd->bdPixelsWide+ 2 )* sizeof(ColorValue) );
+    /*  4  */
+    *pCvOut= (ColorValue *)malloc( ( riOut->riDescription.bdPixelsWide+ 2 )* sizeof(ColorValue) );
     if  ( ! *pCvOut )
-	{ LXDEB(bd->bdPixelsWide,*pCvOut); return -1;	}
+	{ LXDEB(riOut->riDescription.bdPixelsWide,*pCvOut); return -1;	}
 
-    /**/
-
-    if  ( bmSetColorAllocatorForImage( ca, bd ) )
+    /*  5  */
+    if  ( bmSetColorAllocatorForImage( ca, &(riOut->riDescription) ) )
 	{ LDEB(1); return -1;	}
 
     /**/
 
     if  ( bmGetPutRow( pPutRow, &scratchSize, ca,
-					    swapBitmapUnit, swapBitmapBytes,
-					    swapBitmapBits, bd ) )
+				    swapBitmapUnit, swapBitmapBytes,
+				    swapBitmapBits, &(riOut->riDescription) ) )
 	{ LDEB(1); return -1;	}
 
     if  ( bmGetGetRow( pGetRow, bdIn ) )
@@ -425,9 +443,9 @@ static int bmStartFilterOperation(
 
     /**/
 
-    if  ( bmSetFillJob( fj, ca,
-			    bdIn->bdPixelsWide, bd->bdPixelsWide,
-			    scratchSize, dither ) )
+    if  ( bmSetFillJob( fj, ca, bdIn->bdPixelsWide,
+					    riOut->riDescription.bdPixelsWide,
+					    scratchSize, dither ) )
 	{ LDEB(scratchSize); return -1;	}
 
 
@@ -435,52 +453,43 @@ static int bmStartFilterOperation(
     }
 
 static int bmFilterOperation(
-			BitmapDescription *		bdOut,
-			const BitmapDescription *	bdIn,
-			unsigned char **		pBufOut,
-			const unsigned char *		bufIn,
-			int				flip,
-			BM_FILTER_OP			how )
+			RasterImage *		riOut,
+			const RasterImage *	riIn,
+			int			flip,
+			BM_FILTER_OP		how )
     {
+    const BitmapDescription *	bdIn= &(riIn->riDescription);
     int				rval= 0;
 
-    unsigned char *		bufOut= (unsigned char *)0;
     ColorValue *		cvOut= (ColorValue *)0;
-
     PutScreenRow		putRow= (PutScreenRow)0;
     GetSourceRow		getRow= (GetSourceRow)0;
 
+    RasterImage			ri;
     FillJob			fj;
-    BitmapDescription		bd;
     ColorAllocator		ca;
 
-    bmInitDescription( &bd );
+    bmInitRasterImage( &ri );
     bmInitFillJob( &fj );
     bmInitColorAllocator( &ca );
 
-    if  ( bmStartFilterOperation( &bd, &bufOut, &cvOut, &ca,
+    if  ( bmStartFilterOperation( &ri, &cvOut, &ca,
 					    &putRow, &getRow, &fj, bdIn ) )
 	{ LDEB(1); rval= -1; goto ready;	}
 
-    if  ( bmFilter3Row( &bd, bdIn, bufOut, bufIn,
-				cvOut, &fj, flip, getRow, putRow, how ) )
+    if  ( bmFilter3Row( ri.riBytes, cvOut, &(ri.riDescription), riIn, 
+					    &fj, flip, getRow, putRow, how ) )
 	{ LDEB(1); rval= -1; goto ready;	}
 	    
-    if  ( bmCopyDescription( bdOut, &bd ) )
-	{ LDEB(1); rval= -1; goto ready;	}
-
     /*  steal */
-    *pBufOut= bufOut; bufOut= (unsigned char *)0;
+    *riOut= ri; bmInitRasterImage( &ri );
 
   ready:
 
     if  ( cvOut )
 	{ free( cvOut );	}
 
-    if  ( bufOut )
-	{ free( bufOut );	}
-
-    bmCleanDescription( &bd );
+    bmCleanRasterImage( &ri );
     bmCleanFillJob( &fj );
     bmCleanColorAllocator( &ca );
 
@@ -493,37 +502,31 @@ static int bmFilterOperation(
 /*									*/
 /************************************************************************/
 
-int bmFilterSobel(	BitmapDescription *		bdOut,
-			const BitmapDescription *	bdIn,
-			unsigned char **		pBufOut,
-			const unsigned char *		bufIn,
+int bmFilterSobel(	RasterImage *			riOut,
+			const RasterImage *		riIn,
 			int				ignoredInt )
     {
     const int		flip= 0;
 
-    return bmFilterOperation( bdOut, bdIn, pBufOut, bufIn, flip, bmSobel );
+    return bmFilterOperation( riOut, riIn, flip, bmSobel );
     }
 
-int bmFilterLaplace(	BitmapDescription *		bdOut,
-			const BitmapDescription *	bdIn,
-			unsigned char **		pBufOut,
-			const unsigned char *		bufIn,
+int bmFilterLaplace(	RasterImage *			riOut,
+			const RasterImage *		riIn,
 			int				ignoredInt )
     {
     const int		flip= 0;
 
-    return bmFilterOperation( bdOut, bdIn, pBufOut, bufIn, flip, bmLaplace );
+    return bmFilterOperation( riOut, riIn, flip, bmLaplace );
     }
 
-int bmFilterSmoothe(	BitmapDescription *		bdOut,
-			const BitmapDescription *	bdIn,
-			unsigned char **		pBufOut,
-			const unsigned char *		bufIn,
+int bmFilterSmoothe(	RasterImage *			riOut,
+			const RasterImage *		riIn,
 			int				ignoredInt )
     {
     const int		flip= 0;
 
-    return bmFilterOperation( bdOut, bdIn, pBufOut, bufIn, flip, bmSmoothe );
+    return bmFilterOperation( riOut, riIn, flip, bmSmoothe );
     }
 
 /************************************************************************/
@@ -533,9 +536,8 @@ int bmFilterSmoothe(	BitmapDescription *		bdOut,
 /************************************************************************/
 
 static int bmStartBlurOperation(
-				BitmapDescription *		bdBlur,
-				unsigned char **		pBufDown,
-				unsigned char **		pBufUp,
+				RasterImage *			riDown,
+				RasterImage *			riUp,
 				ColorValue **			pCvDown,
 				ColorValue **			pCvUp,
 				ColorAllocator *		ca,
@@ -545,19 +547,18 @@ static int bmStartBlurOperation(
 				FillJob *			fj,
 				const BitmapDescription *	bdIn )
     {
-    if  ( bmStartFilterOperation( bdBlur, pBufDown, pCvDown, ca,
+    if  ( bmStartFilterOperation( riDown, pCvDown, ca,
 				    pPutRowBlur, pGetRowIn, fj, bdIn ) )
 	{ LDEB(1); return -1;	}
 
-    *pBufUp= malloc( bdBlur->bdBufferLength );
-    if  ( ! *pBufUp )
-	{ LXDEB(bdBlur->bdBufferLength,*pBufUp); return -1;	}
+    if  ( bmCopyRasterImage( riUp, riDown ) )
+	{ LDEB(1); return -1;	}
 
-    *pCvUp= malloc( ( bdBlur->bdPixelsWide+ 2 )* sizeof(ColorValue) );
+    *pCvUp= (ColorValue *)malloc( ( riUp->riDescription.bdPixelsWide+ 2 )* sizeof(ColorValue) );
     if  ( ! *pCvUp )
-	{ LXDEB(bdBlur->bdPixelsWide,*pCvUp); return -1;	}
+	{ LXDEB(riUp->riDescription.bdPixelsWide,*pCvUp); return -1;	}
 
-    if  ( bmGetGetRow( pGetRowBlur, bdBlur ) )
+    if  ( bmGetGetRow( pGetRowBlur, &(riDown->riDescription) ) )
 	{ LDEB(1); return -1; }
 
     return 0;
@@ -610,17 +611,14 @@ static int bmBlurAverage(	FillJob *			fj,
     return 0;
     }
 
-int bmFilterBlur(	BitmapDescription *		bdOut,
-			const BitmapDescription *	bdIn,
-			unsigned char **		pBufOut,
-			const unsigned char *		bufIn,
+int bmFilterBlur(	RasterImage *			riOut,
+			const RasterImage *		riIn,
 			int				ignoredInt )
     {
     int				rval= 0;
+    const BitmapDescription *	bdIn= &(riIn->riDescription);
 
-    unsigned char *		bufDown= (unsigned char *)0;
     ColorValue *		cvDown= (ColorValue *)0;
-    unsigned char *		bufUp= (unsigned char *)0;
     ColorValue *		cvUp= (ColorValue *)0;
 
     PutScreenRow		putRow= (PutScreenRow)0;
@@ -628,35 +626,34 @@ int bmFilterBlur(	BitmapDescription *		bdOut,
     GetSourceRow		getRowBlur= (GetSourceRow)0;
 
     FillJob			fj;
-    BitmapDescription		bdDown;
+    RasterImage			riDown;
+    RasterImage			riUp;
     ColorAllocator		ca;
 
-    bmInitDescription( &bdDown );
+    bmInitRasterImage( &riDown );
+    bmInitRasterImage( &riUp );
     bmInitFillJob( &fj );
     bmInitColorAllocator( &ca );
 
-    if  ( bmStartBlurOperation( &bdDown, &bufDown, &bufUp, &cvDown, &cvUp,
+    if  ( bmStartBlurOperation( &riDown, &riUp, &cvDown, &cvUp,
 			    &ca, &putRow, &getRowIn, &getRowBlur, &fj, bdIn ) )
 	{ LDEB(1); rval= -1; goto ready;	}
 
-    if  ( bmFilter3Row( &bdDown, bdIn, bufDown, bufIn, cvDown,
+    if  ( bmFilter3Row( riDown.riBytes, cvDown, &(riDown.riDescription), riIn,
 					    &fj, 0, getRowIn, putRow, bmBlur ) )
 	{ LDEB(1); rval= -1; goto ready;	}
 
-    if  ( bmFilter3Row( &bdDown, bdIn, bufUp, bufIn, cvUp,
+    if  ( bmFilter3Row( riUp.riBytes, cvUp, &(riUp.riDescription), riIn,
 					    &fj, 1, getRowIn, putRow, bmBlur ) )
 	{ LDEB(1); rval= -1; goto ready;	}
 
-    if  ( bmBlurAverage( &fj, &bdDown, cvDown, cvUp, bufDown, bufUp,
-							getRowBlur, putRow ) )
-	{ LDEB(1); rval= -1; goto ready;	}
-
-    if  ( bmCopyDescription( bdOut, &bdDown ) )
+    if  ( bmBlurAverage( &fj, &(riDown.riDescription),
+				cvDown, cvUp, riDown.riBytes, riUp.riBytes,
+				getRowBlur, putRow ) )
 	{ LDEB(1); rval= -1; goto ready;	}
 
     /*  steal */
-    *pBufOut= bufDown;
-    bufDown= (unsigned char *)0;
+    *riOut= riDown; bmInitRasterImage( &riDown );
 
   ready:
 
@@ -665,12 +662,8 @@ int bmFilterBlur(	BitmapDescription *		bdOut,
     if  ( cvDown )
 	{ free( cvDown );	}
 
-    if  ( bufUp )
-	{ free( bufUp );	}
-    if  ( bufDown )
-	{ free( bufDown );	}
-
-    bmCleanDescription( &bdDown );
+    bmCleanRasterImage( &riDown );
+    bmCleanRasterImage( &riUp );
     bmCleanFillJob( &fj );
     bmCleanColorAllocator( &ca );
 
@@ -678,18 +671,18 @@ int bmFilterBlur(	BitmapDescription *		bdOut,
     }
 
 static int bmBlurRelative(	FillJob *			fj,
-				const BitmapDescription *	bdIn,
+				const RasterImage *		riIn,
 				const BitmapDescription *	bdBlur,
 				ColorValue *			cvDown,
 				ColorValue *			cvUp,
-				const unsigned char *		bufIn,
 				unsigned char *			bufDown,
 				const unsigned char *		bufUp,
 				GetSourceRow			getRowIn,
 				GetSourceRow			getRowBlur,
 				PutScreenRow			putRowBlur )
     {
-    int		row;
+    const BitmapDescription *	bdIn= &(riIn->riDescription);
+    int				row;
 
     for ( row= 0; row < bdBlur->bdPixelsHigh; row++ )
 	{
@@ -705,7 +698,7 @@ static int bmBlurRelative(	FillJob *			fj,
 
 	to= bufDown+ row* bdBlur->bdBytesPerRow;
 	fru= bufUp+ ( bdBlur->bdPixelsHigh- row- 1 )* bdBlur->bdBytesPerRow;
-	fri= bufIn+ row* bdIn->bdBytesPerRow;
+	fri= riIn->riBytes+ row* bdIn->bdBytesPerRow;
 
 	cvi= fj->fjThisRow+ 1;
 	cvd= cvDown+ 1;
@@ -774,17 +767,14 @@ static int bmBlurRelative(	FillJob *			fj,
     return 0;
     }
 
-int bmFilterRelative(	BitmapDescription *		bdOut,
-			const BitmapDescription *	bdIn,
-			unsigned char **		pBufOut,
-			const unsigned char *		bufIn,
+int bmFilterRelative(	RasterImage *			riOut,
+			const RasterImage *		riIn,
 			int				ignoredInt )
     {
     int				rval= 0;
+    const BitmapDescription *	bdIn= &(riIn->riDescription);
 
-    unsigned char *		bufDown= (unsigned char *)0;
     ColorValue *		cvDown= (ColorValue *)0;
-    unsigned char *		bufUp= (unsigned char *)0;
     ColorValue *		cvUp= (ColorValue *)0;
 
     PutScreenRow		putRow= (PutScreenRow)0;
@@ -792,36 +782,34 @@ int bmFilterRelative(	BitmapDescription *		bdOut,
     GetSourceRow		getRowBlur= (GetSourceRow)0;
 
     FillJob			fj;
-    BitmapDescription		bdDown;
+    RasterImage			riDown;
+    RasterImage			riUp;
     ColorAllocator		ca;
 
-    bmInitDescription( &bdDown );
+    bmInitRasterImage( &riDown );
+    bmInitRasterImage( &riUp );
     bmInitFillJob( &fj );
     bmInitColorAllocator( &ca );
 
-    if  ( bmStartBlurOperation( &bdDown, &bufDown, &bufUp, &cvDown, &cvUp,
+    if  ( bmStartBlurOperation( &riDown, &riUp, &cvDown, &cvUp,
 			    &ca, &putRow, &getRowIn, &getRowBlur, &fj, bdIn ) )
 	{ LDEB(1); rval= -1; goto ready;	}
 
-    if  ( bmFilter3Row( &bdDown, bdIn, bufDown, bufIn, cvDown,
+    if  ( bmFilter3Row( riDown.riBytes, cvDown, &(riDown.riDescription), riIn,
 					    &fj, 0, getRowIn, putRow, bmBlur ) )
 	{ LDEB(1); rval= -1; goto ready;	}
 
-    if  ( bmFilter3Row( &bdDown, bdIn, bufUp, bufIn, cvUp,
+    if  ( bmFilter3Row( riUp.riBytes, cvUp, &(riUp.riDescription), riIn,
 					    &fj, 1, getRowIn, putRow, bmBlur ) )
 	{ LDEB(1); rval= -1; goto ready;	}
 
-    if  ( bmBlurRelative( &fj, bdIn, &bdDown, cvDown, cvUp,
-					    bufIn, bufDown, bufUp,
-					    getRowIn, getRowBlur, putRow ) )
-	{ LDEB(1); rval= -1; goto ready;	}
-
-    if  ( bmCopyDescription( bdOut, &bdDown ) )
+    if  ( bmBlurRelative( &fj, riIn, &(riDown.riDescription), cvDown, cvUp,
+					riDown.riBytes, riUp.riBytes,
+					getRowIn, getRowBlur, putRow ) )
 	{ LDEB(1); rval= -1; goto ready;	}
 
     /*  steal */
-    *pBufOut= bufDown;
-    bufDown= (unsigned char *)0;
+    *riOut= riDown; bmInitRasterImage( &riDown );
 
   ready:
 
@@ -830,12 +818,8 @@ int bmFilterRelative(	BitmapDescription *		bdOut,
     if  ( cvDown )
 	{ free( cvDown );	}
 
-    if  ( bufUp )
-	{ free( bufUp );	}
-    if  ( bufDown )
-	{ free( bufDown );	}
-
-    bmCleanDescription( &bdDown );
+    bmCleanRasterImage( &riDown );
+    bmCleanRasterImage( &riUp );
     bmCleanFillJob( &fj );
     bmCleanColorAllocator( &ca );
 

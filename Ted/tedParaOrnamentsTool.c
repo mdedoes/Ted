@@ -6,16 +6,16 @@
 
 #   include	"tedConfig.h"
 
-#   include	<stdlib.h>
 #   include	<stdio.h>
 #   include	<stddef.h>
-#   include	<limits.h>
 
-#   include	<appGeoString.h>
-#   include	<appUnit.h>
-
-#   include	"tedApp.h"
-#   include	"tedFormatTool.h"
+#   include	"tedParaOrnamentsTool.h"
+#   include	"tedAppFront.h"
+#   include	"tedDocFront.h"
+#   include	"tedToolUtil.h"
+#   include	<guiToolUtil.h>
+#   include	<docTreeNode.h>
+#   include	<docEditCommand.h>
 
 #   include	<appDebugon.h>
 
@@ -29,77 +29,72 @@ static void tedFormatToolRefreshParaOrnamentsPage(
 					ParagraphOrnamentsTool *	pot )
     {
     ParagraphProperties *	pp= &(pot->potPropertiesChosen);
-    EditApplication *		ea= pot->potApplication;
-    EditDocument *		ed= ea->eaCurrentDocument;
+    EditDocument *		ed;
+    int				traced;
+    BufferDocument *		bd= tedFormatCurDoc( &ed, &traced, pot->potApplication );
 
-    TedDocument *		td;
-    BufferDocument *		bd;
-    DocumentProperties *	dp;
+    if  ( ! bd )
+	{ XDEB(bd); return;	}
 
-    if  ( ! ed )
-	{ XDEB(ed); return;	}
+    guiEnableWidget( pot->potBordersFrame, pot->potCanChange );
+    tedEnableBorderTool( &(pot->potTopBorderTool), pot->potCanChange );
+    tedEnableBorderTool( &(pot->potBottomBorderTool), pot->potCanChange );
+    tedEnableBorderTool( &(pot->potLeftBorderTool), pot->potCanChange );
+    tedEnableBorderTool( &(pot->potRightBorderTool), pot->potCanChange );
 
-    td= (TedDocument *)ed->edPrivateData;
-    bd= td->tdDocument;
-    dp= &(bd->bdProperties);
+    tedBorderToolSetPropertiesByNumber( &(pot->potTopBorderTool), bd,
+						pp->ppTopBorderNumber );
+    tedBorderToolSetPropertiesByNumber( &(pot->potBottomBorderTool), bd,
+						pp->ppBottomBorderNumber );
+    tedBorderToolSetPropertiesByNumber( &(pot->potLeftBorderTool), bd,
+						pp->ppLeftBorderNumber );
+    tedBorderToolSetPropertiesByNumber( &(pot->potRightBorderTool), bd,
+						pp->ppRightBorderNumber );
 
-    tedBorderToolSetProperties( &(pot->potTopBorderTool), dp,
-						&(pp->ppTopBorder) );
-    tedBorderToolSetProperties( &(pot->potBottomBorderTool), dp,
-						&(pp->ppBottomBorder) );
-    tedBorderToolSetProperties( &(pot->potLeftBorderTool), dp,
-						&(pp->ppLeftBorder) );
-    tedBorderToolSetProperties( &(pot->potRightBorderTool), dp,
-						&(pp->ppRightBorder) );
-
-    tedSetShadingTool( &(pot->potShadingTool), dp, &(pp->ppShading) );
+    tedEnableShadingTool( &(pot->potShadingTool), pot->potCanChange );
+    tedSetShadingToolByNumber( &(pot->potShadingTool),
+						bd, pp->ppShadingNumber );
 
     return;
     }
 
 
-void tedFormatToolRefreshParaOrnamentsTool(
+void tedRefreshParaOrnamentsTool(
 				ParagraphOrnamentsTool *	pot,
 				int *				pEnabled,
 				int *				pPref,
 				InspectorSubject *		is,
-				const DocumentSelection *	ds )
+				const DocumentSelection *	ds,
+				const SelectionGeometry *	sg,
+				const SelectionDescription *	sd,
+				const unsigned char *		cmdEnabled )
     {
     const ParagraphProperties *		pp;
 
-    PropertyMask			ppChgMask;
-    PropertyMask			ppUpdMask;
+    PropertyMask			ppSetMask;
 
-    BufferItem *			bi= ds->dsBegin.dpBi;
-
-    const int * const			colorMap= (const int *)0;
-    const int * const			listStyleMap= (const int *)0;
+    BufferItem *			bi= ds->dsHead.dpNode;
 
     pp= &(bi->biParaProperties);
 
-    PROPmaskCLEAR( &ppUpdMask );
-    utilPropMaskFill( &ppUpdMask, PPprop_COUNT );
-    PROPmaskUNSET( &ppUpdMask, PPpropIN_TABLE );
-    PROPmaskUNSET( &ppUpdMask, PPpropTAB_STOPS );
+    utilPropMaskClear( &ppSetMask );
+    utilPropMaskFill( &ppSetMask, PPprop_FULL_COUNT );
+    PROPmaskUNSET( &ppSetMask, PPpropTABLE_NESTING );
+    PROPmaskUNSET( &ppSetMask, PPpropTAB_STOPS );
 
-    PROPmaskCLEAR( &ppChgMask );
-
-    if  ( docUpdParaProperties( &ppChgMask, &(pot->potPropertiesChosen),
-					    &ppUpdMask, pp,
-					    colorMap, listStyleMap ) )
+    if  ( docUpdParaProperties( (PropertyMask *)0, &(pot->potPropertiesChosen),
+					    &ppSetMask, pp,
+					    (const DocumentAttributeMap *)0 ) )
 	{ LDEB(1); return ;	}
 
-    PROPmaskCLEAR( &ppChgMask );
-
-    if  ( docUpdParaProperties( &ppChgMask, &(pot->potPropertiesSet),
-					    &ppUpdMask, pp,
-					    colorMap, listStyleMap ) )
+    if  ( docUpdParaProperties( (PropertyMask *)0, &(pot->potPropertiesSet),
+					    &ppSetMask, pp,
+					    (const DocumentAttributeMap *)0 ) )
 	{ LDEB(1); return ;	}
 
-    appGuiEnableWidget( is->isPrevButton,
-				docPrevParagraph( bi ) != (BufferItem *)0 );
-    appGuiEnableWidget( is->isNextButton,
-				docNextParagraph( bi ) != (BufferItem *)0 );
+    pot->potCanChange= cmdEnabled[EDITcmdUPD_PARA_PROPS];
+
+    tedRefreshParaSubjectControls( is, ds, sg, sd, cmdEnabled );
 
     tedFormatToolRefreshParaOrnamentsPage( pot );
 
@@ -117,20 +112,14 @@ static APP_BUTTON_CALLBACK_H( tedFormatParaRevertPushed, w, voidpot )
     {
     ParagraphOrnamentsTool *	pot= (ParagraphOrnamentsTool *)voidpot;
 
-    PropertyMask		ppChgMask;
-    PropertyMask		ppUpdMask;
+    PropertyMask		ppSetMask;
 
-    const int * const		colorMap= (const int *)0;
-    const int * const		listStyleMap= (const int *)0;
+    utilPropMaskClear( &ppSetMask );
+    utilPropMaskFill( &ppSetMask, PPprop_FULL_COUNT );
 
-    PROPmaskCLEAR( &ppChgMask );
-
-    PROPmaskCLEAR( &ppUpdMask );
-    utilPropMaskFill( &ppUpdMask, PPprop_COUNT );
-
-    docUpdParaProperties( &ppChgMask, &(pot->potPropertiesChosen),
-			&ppUpdMask, &(pot->potPropertiesSet),
-			colorMap, listStyleMap );
+    docUpdParaProperties( (PropertyMask *)0, &(pot->potPropertiesChosen),
+				    &ppSetMask, &(pot->potPropertiesSet),
+				    (const DocumentAttributeMap *)0 );
 
     tedFormatToolRefreshParaOrnamentsPage( pot );
 
@@ -148,7 +137,7 @@ static APP_BUTTON_CALLBACK_H( tedFormatPrevPara, w, voidpot )
     ParagraphOrnamentsTool *	pot= (ParagraphOrnamentsTool *)voidpot;
     EditApplication *		ea= pot->potApplication;
 
-    tedSelectWholeParagraph( ea, -1 );
+    tedAppSelectWholeParagraph( ea, -1 );
 
     return;
     }
@@ -158,7 +147,7 @@ static APP_BUTTON_CALLBACK_H( tedFormatNextPara, w, voidpot )
     ParagraphOrnamentsTool *	pot= (ParagraphOrnamentsTool *)voidpot;
     EditApplication *		ea= pot->potApplication;
 
-    tedSelectWholeParagraph( ea, 1 );
+    tedAppSelectWholeParagraph( ea, 1 );
 
     return;
     }
@@ -168,7 +157,7 @@ static APP_BUTTON_CALLBACK_H( tedFormatSelectPara, w, voidpot )
     ParagraphOrnamentsTool *	pot= (ParagraphOrnamentsTool *)voidpot;
     EditApplication *		ea= pot->potApplication;
 
-    tedSelectWholeParagraph( ea, 0 );
+    tedAppSelectWholeParagraph( ea, 0 );
 
     return;
     }
@@ -178,7 +167,7 @@ static APP_BUTTON_CALLBACK_H( tedFormatDeletePara, w, voidpot )
     ParagraphOrnamentsTool *	pot= (ParagraphOrnamentsTool *)voidpot;
     EditApplication *		ea= pot->potApplication;
 
-    tedDeleteCurrentParagraph( ea );
+    tedAppDeleteSelectedParagraphs( ea );
     }
 
 static APP_BUTTON_CALLBACK_H( tedFormatInsertPara, w, voidpot )
@@ -186,7 +175,7 @@ static APP_BUTTON_CALLBACK_H( tedFormatInsertPara, w, voidpot )
     ParagraphOrnamentsTool *	pot= (ParagraphOrnamentsTool *)voidpot;
     EditApplication *		ea= pot->potApplication;
 
-    tedInsertParagraph( ea, 0 );
+    tedAppInsertParagraph( ea, 0 );
 
     return;
     }
@@ -196,7 +185,7 @@ static APP_BUTTON_CALLBACK_H( tedFormatAppendPara, w, voidpot )
     ParagraphOrnamentsTool *	pot= (ParagraphOrnamentsTool *)voidpot;
     EditApplication *		ea= pot->potApplication;
 
-    tedInsertParagraph( ea, 1 );
+    tedAppInsertParagraph( ea, 1 );
 
     return;
     }
@@ -214,85 +203,54 @@ static APP_BUTTON_CALLBACK_H( tedFormatChangePara, w, voidpot )
     ParagraphProperties *	pp= &(pot->potPropertiesChosen);
 
     PropertyMask		ppSetMask;
-    PropertyMask		xxSetMask;
+    int				changed;
 
     /**/
-    EditApplication *		ea= pot->potApplication;
-    EditDocument *		ed= ea->eaCurrentDocument;
+    EditDocument *		ed;
+    int				traced;
+    BufferDocument *		bd= tedFormatCurDoc( &ed, &traced, pot->potApplication );
 
-    TedDocument *		td;
-    BufferDocument *		bd;
-    DocumentProperties *	dp;
-
-    if  ( ! ed )
-	{ XDEB(ed); return;	}
-
-    td= (TedDocument *)ed->edPrivateData;
-    bd= td->tdDocument;
-    dp= &(bd->bdProperties);
+    if  ( ! bd )
+	{ XDEB(bd); return;	}
 
     /**/
-    PROPmaskCLEAR( &ppSetMask );
+    utilPropMaskClear( &ppSetMask );
     PROPmaskADD( &ppSetMask, PPpropTOP_BORDER );
     PROPmaskADD( &ppSetMask, PPpropBOTTOM_BORDER );
     PROPmaskADD( &ppSetMask, PPpropLEFT_BORDER );
     PROPmaskADD( &ppSetMask, PPpropRIGHT_BORDER );
 
-    PROPmaskADD( &ppSetMask, PPpropSHADE_FORE_COLOR );
-    PROPmaskADD( &ppSetMask, PPpropSHADE_BACK_COLOR );
-    PROPmaskADD( &ppSetMask, PPpropSHADE_LEVEL );
-    PROPmaskADD( &ppSetMask, PPpropSHADE_PATTERN );
+    PROPmaskADD( &ppSetMask, PPpropSHADING );
 
     /**/
-    PROPmaskCLEAR( &xxSetMask );
-    if  ( tedBorderToolGetProperties( &(pp->ppTopBorder), &xxSetMask,
-					    &(pot->potTopBorderTool), dp ) )
-	{ return;	}
-    PROPmaskCLEAR( &xxSetMask );
-    if  ( tedBorderToolGetProperties( &(pp->ppBottomBorder), &xxSetMask,
-					    &(pot->potBottomBorderTool), dp ) )
-	{ return;	}
-    PROPmaskCLEAR( &xxSetMask );
-    if  ( tedBorderToolGetProperties( &(pp->ppLeftBorder), &xxSetMask,
-					    &(pot->potLeftBorderTool), dp ) )
-	{ return;	}
-    PROPmaskCLEAR( &xxSetMask );
-    if  ( tedBorderToolGetProperties( &(pp->ppRightBorder), &xxSetMask,
-					    &(pot->potRightBorderTool), dp ) )
-	{ return;	}
+    if  ( tedBorderToolGetNumber( &(pp->ppTopBorderNumber), &changed,
+					    &(pot->potTopBorderTool), bd ) )
+	{ LDEB(1); return;	}
+    if  ( tedBorderToolGetNumber( &(pp->ppBottomBorderNumber), &changed,
+					    &(pot->potBottomBorderTool), bd ) )
+	{ LDEB(1); return;	}
+    if  ( tedBorderToolGetNumber( &(pp->ppLeftBorderNumber), &changed,
+					    &(pot->potLeftBorderTool), bd ) )
+	{ LDEB(1); return;	}
+    if  ( tedBorderToolGetNumber( &(pp->ppRightBorderNumber), &changed,
+					    &(pot->potRightBorderTool), bd ) )
+	{ LDEB(1); return;	}
 
     {
     PropertyMask		isSetMask;
 
-    ExpandedItemShading		eis;
+    utilPropMaskClear( &isSetMask );
 
-    docInitExpandedItemShading( &eis );
-
-    PROPmaskCLEAR( &isSetMask );
-
-    if  ( tedShadingToolGetShading( &eis, &isSetMask,
-						    &(pot->potShadingTool) ) )
+    if  ( tedShadingToolGetShadingNumber( &(pp->ppShadingNumber), &isSetMask,
+						&(pot->potShadingTool), bd ) )
 	{ return;	}
 
     if  ( ! utilPropMaskIsEmpty( &isSetMask ) )
-	{
-	PropertyMask	isDoneMask;
-
-	PROPmaskCLEAR( &isDoneMask );
-
-	if  ( docIndirectItemShading( &isDoneMask,
-				    &(pp->ppShading), &isSetMask, &eis,
-				    &(dp->dpColors), &(dp->dpColorCount) ) )
-	    { LDEB(1); return;	}
-
-	docShadingMaskToParagraphMask( &isSetMask, &isSetMask );
-
-	utilPropMaskOr( &ppSetMask, &ppSetMask, &isSetMask );
-	}
+	{ PROPmaskADD( &ppSetMask, PPpropSHADING );	}
     }
 
     /**/
-    if  ( tedDocChangeParagraphProperties( ed, &ppSetMask, pp ) )
+    if  ( tedDocChangeParagraphProperties( ed, &ppSetMask, pp, traced ) )
 	{ LDEB(1);	}
 
     return;
@@ -303,6 +261,10 @@ static APP_BUTTON_CALLBACK_H( tedFormatChangePara, w, voidpot )
 /*  Callback from the general color chooser: a color was chosen.	*/
 /*									*/
 /************************************************************************/
+
+/* values are arbitrary but cannot be equal to real PPpropSOMETHING values */
+# define PPprop_SHADE_FORE_COLOR PPprop_FULL_COUNT+ 1
+# define PPprop_SHADE_BACK_COLOR PPprop_FULL_COUNT+ 2
 
 static void tedParaOrnamentsGotColor(	void *			voidpot,
 					int 			which,
@@ -329,7 +291,7 @@ static void tedParaOrnamentsGotColor(	void *			voidpot,
 					&(pot->potRightBorderTool), rgb8 );
 	    break;
 
-	case PPpropBOX_BORDER:
+	case PPprop_BOX_BORDER:
 	    LDEB(which); return;
 	    break;
 	case PPpropBETWEEN_BORDER:
@@ -339,8 +301,8 @@ static void tedParaOrnamentsGotColor(	void *			voidpot,
 	    LDEB(which); return;
 	    break;
 
-	case PPpropSHADE_BACK_COLOR:
-	case PPpropSHADE_FORE_COLOR:
+	case PPprop_SHADE_BACK_COLOR:
+	case PPprop_SHADE_FORE_COLOR:
 	    tedShadeSetExplicitColorChoice( &(pot->potShadingTool),
 							    which, rgb8 );
 	    break;
@@ -348,6 +310,34 @@ static void tedParaOrnamentsGotColor(	void *			voidpot,
 	default:
 	    LDEB(which); return;
 	}
+    }
+
+/************************************************************************/
+
+static void tedParaOrnamentsToolMakeBorderFrame(
+			ParagraphOrnamentsTool *		pot,
+			const ParagraphOrnamentsPageResources *	popr,
+			AppInspector *				ai,
+			int					subjectPage,
+			APP_WIDGET				pageWidget )
+    {
+    appMakeColumnFrameInColumn( &(pot->potBordersFrame),
+		    &(pot->potBordersPaned), pageWidget, popr->poprBorders );
+
+    tedMakeBorderTool( &(pot->potTopBorderTool), ai, pot->potBordersPaned,
+	    popr->poprTopBorder, &(popr->poprBorderToolResources),
+	    subjectPage, PPpropTOP_BORDER );
+    tedMakeBorderTool( &(pot->potBottomBorderTool), ai, pot->potBordersPaned,
+	    popr->poprBottomBorder, &(popr->poprBorderToolResources),
+	    subjectPage, PPpropBOTTOM_BORDER );
+    tedMakeBorderTool( &(pot->potLeftBorderTool), ai, pot->potBordersPaned,
+	    popr->poprLeftBorder, &(popr->poprBorderToolResources),
+	    subjectPage, PPpropLEFT_BORDER );
+    tedMakeBorderTool( &(pot->potRightBorderTool), ai, pot->potBordersPaned,
+	    popr->poprRightBorder, &(popr->poprBorderToolResources),
+	    subjectPage, PPpropRIGHT_BORDER );
+
+    return;
     }
 
 /************************************************************************/
@@ -377,43 +367,34 @@ void tedFormatFillParagraphOrnamentsPage(
     docInitParagraphProperties( &(pot->potPropertiesChosen) );
 
     /**/
-    tedMakeBorderTool( &(pot->potTopBorderTool), ai, pageWidget,
-	    popr->poprTopBorder, &(popr->poprBorderToolResources),
-	    subjectPage, PPpropTOP_BORDER );
-    tedMakeBorderTool( &(pot->potBottomBorderTool), ai, pageWidget,
-	    popr->poprBottomBorder, &(popr->poprBorderToolResources),
-	    subjectPage, PPpropBOTTOM_BORDER );
-    tedMakeBorderTool( &(pot->potLeftBorderTool), ai, pageWidget,
-	    popr->poprLeftBorder, &(popr->poprBorderToolResources),
-	    subjectPage, PPpropLEFT_BORDER );
-    tedMakeBorderTool( &(pot->potRightBorderTool), ai, pageWidget,
-	    popr->poprRightBorder, &(popr->poprBorderToolResources),
-	    subjectPage, PPpropRIGHT_BORDER );
+    tedParaOrnamentsToolMakeBorderFrame( pot, popr,
+					    ai, subjectPage, pageWidget );
 
     /**/
     tedFormatMakeShadingTool( &(pot->potShadingTool), ai, pageWidget,
-		popr->poprShading, &(popr->poprShadingResources),
-		subjectPage, PPpropSHADE_FORE_COLOR, PPpropSHADE_BACK_COLOR,
+		/* popr->poprShading, */ (const char *)0,
+		&(popr->poprShadingResources),
+		subjectPage, PPprop_SHADE_FORE_COLOR, PPprop_SHADE_BACK_COLOR,
 		(TedShadingToolCallback)0, (void *)pot );
 
 
     /**/
-    appInspectorMakeButtonRow( &row, pageWidget,
+    guiToolMake2BottonRow( &(is->isNextPrevRow), pageWidget,
 			&(is->isPrevButton), &(is->isNextButton),
 			isr->isrPrevButtonText, isr->isrNextButtonText,
 			tedFormatPrevPara, tedFormatNextPara, pot );
 
-    appInspectorMakeButtonRow( &row, pageWidget,
+    guiToolMake2BottonRow( &row, pageWidget,
 			&(is->isSelectButton), &(is->isDeleteButton),
 			isr->isrSelectButtonText, isr->isrDeleteButtonText,
 			tedFormatSelectPara, tedFormatDeletePara, pot );
 
-    appInspectorMakeButtonRow( &row, pageWidget,
+    guiToolMake2BottonRow( &row, pageWidget,
 			&(is->isInsertButton), &(is->isAppendButton),
 			isr->isrInsertButtonText, isr->isrAppendButtonText,
 			tedFormatInsertPara, tedFormatAppendPara, pot );
 
-    appInspectorMakeButtonRow( &row, pageWidget,
+    guiToolMake2BottonRow( &(is->isApplyRow), pageWidget,
 			&(is->isRevertButton), &(is->isApplyButton),
 			isr->isrRevert, isr->isrApplyToSubject,
 			tedFormatParaRevertPushed, tedFormatChangePara, pot );
@@ -427,7 +408,7 @@ void tedFormatFillParagraphOrnamentsPage(
 /*									*/
 /************************************************************************/
 
-void tedFormatFillParagraphOrnamentsChoosers(
+void tedParaOrnamentsToolFillChoosers(
 			    ParagraphOrnamentsTool *			pot,
 			    const ParagraphOrnamentsPageResources *	popr )
     {
@@ -436,15 +417,18 @@ void tedFormatFillParagraphOrnamentsChoosers(
 
 void tedFormatFinishParaOrnamentsPage(
 			    ParagraphOrnamentsTool *			pot,
-			    TedFormatTool *				tft,
 			    const ParagraphOrnamentsPageResources *	popr )
     {
-    tedFinishBorderTool( &(pot->potTopBorderTool) );
-    tedFinishBorderTool( &(pot->potBottomBorderTool) );
-    tedFinishBorderTool( &(pot->potLeftBorderTool) );
-    tedFinishBorderTool( &(pot->potRightBorderTool) );
+    const PostScriptFontList *	psfl;
 
-    tedFinishShadingTool( &(pot->potShadingTool) );
+    psfl= &(pot->potApplication->eaPostScriptFontList);
+
+    tedFinishBorderTool( &(pot->potTopBorderTool), psfl );
+    tedFinishBorderTool( &(pot->potBottomBorderTool), psfl );
+    tedFinishBorderTool( &(pot->potLeftBorderTool), psfl );
+    tedFinishBorderTool( &(pot->potRightBorderTool), psfl );
+
+    tedFinishShadingTool( &(pot->potShadingTool), psfl );
 
     return;
     }
@@ -529,18 +513,21 @@ static AppConfigurableResource TED_TedParagraphSubjectResourceTable[]=
 static AppConfigurableResource TED_TedParagraphToolResourceTable[]=
     {
     /**/
-    APP_RESOURCE( "formatToolParaTopBorder",
+    APP_RESOURCE( "formatToolParaBorders",
+	offsetof(ParagraphOrnamentsPageResources,poprBorders),
+	"Borders" ),
+    APP_RESOURCE( "formatToolParaBorderTop",
 	offsetof(ParagraphOrnamentsPageResources,poprTopBorder),
-	"Top Border" ),
-    APP_RESOURCE( "formatToolParaBottomBorder",
+	"Top" ),
+    APP_RESOURCE( "formatToolParaBorderBottom",
 	offsetof(ParagraphOrnamentsPageResources,poprBottomBorder),
-	"Bottom Border" ),
-    APP_RESOURCE( "formatToolParaLeftBorder",
+	"Bottom" ),
+    APP_RESOURCE( "formatToolParaBorderLeft",
 	offsetof(ParagraphOrnamentsPageResources,poprLeftBorder),
-	"Left Border" ),
-    APP_RESOURCE( "formatToolParaRightBorder",
+	"Left" ),
+    APP_RESOURCE( "formatToolParaBorderRight",
 	offsetof(ParagraphOrnamentsPageResources,poprRightBorder),
-	"Right Border" ),
+	"Right" ),
 
     /**/
     APP_RESOURCE( "formatToolParaBorderWidth",

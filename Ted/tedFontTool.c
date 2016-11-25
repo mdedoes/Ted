@@ -9,13 +9,16 @@
 
 #   include	"tedConfig.h"
 
-#   include	<stdlib.h>
 #   include	<stdio.h>
 #   include	<stddef.h>
-#   include	<limits.h>
 
-#   include	"tedApp.h"
-#   include	"tedFormatTool.h"
+#   include	"tedFontTool.h"
+#   include	"tedAppResources.h"
+#   include	"tedAppFront.h"
+#   include	<guiToolUtil.h>
+#   include	<docListOverride.h>
+#   include	<docDocumentList.h>
+#   include	<docEditCommand.h>
 
 #   include	<appDebugon.h>
 
@@ -31,104 +34,48 @@ void tedRefreshFontTool(	AppFontChooser *		afc,
 				InspectorSubject *		is,
 				const DocumentSelection *	ds,
 				const SelectionDescription *	sd,
-				EditDocument *			ed )
+				const BufferDocument *		bd,
+				int				documentId,
+				const unsigned char *		cmdEnabled )
     {
-    const TedDocument *		td= (TedDocument *)ed->edPrivateData;
-    BufferDocument *		bd= td->tdDocument;
     const DocumentProperties *	dp= &(bd->bdProperties);
     const DocumentFontList *	dfl= &(dp->dpFontList);
 
-    PropertyMask		updMask;
-
-    TextAttribute		ta;
+    if  ( sd->sdIsObjectSelection )
+	{ *pEnabled= 0; return;	}
 
     if  ( sd->sdIsListBullet )
-	{ *pEnabled= 0; return; }
-
-    (*pPref)++;
-
-    PROPmaskCLEAR( &updMask );
-
-    utilInitTextAttribute( &ta );
-
-    if  ( sd->sdIsIBarSelection )
 	{
-	ta= td->tdCurrentTextAttribute;
-	utilPropMaskFill( &updMask, TAprop_COUNT );
+	ListOverride *		lo;
+	DocumentList *		dl;
+	ListLevel *		ll;
+
+	afc->afcSetFont= tedAppListFontToolSet;
+
+	if  ( docGetListOfParagraph( &lo, &dl, sd->sdListOverride, bd ) )
+	    { LDEB(1); *pEnabled= 0; return;	}
+	ll= &(dl->dlLevels[sd->sdListLevel]);
+
+	if  ( appFontToolShowCurrentFont( afc, &(ll->llTextAttributeMask),
+				    &(ll->llTextAttribute), documentId,
+				    cmdEnabled[EDITcmdUPD_LIST],
+				    dfl, &(dp->dpColorPalette) ) )
+	    { LDEB(1);	}
+
+	*pEnabled= 1;
 	}
     else{
-	docGetSelectionAttributes( bd, ds, &updMask, &ta );
+	afc->afcSetFont= tedAppFontToolSet;
+	(*pPref)++;
+
+	if  ( appFontToolShowCurrentFont( afc, &(sd->sdTextAttributeMask),
+				    &(sd->sdTextAttribute), documentId,
+				    cmdEnabled[EDITcmdUPD_SPAN_PROPS],
+				    dfl, &(dp->dpColorPalette) ) )
+	    { LDEB(1);	}
+
+	*pEnabled= 1;
 	}
-
-    if  ( appFontExpandCurrentFont( afc, &updMask, &ta,
-				    ed->edDocumentId,
-				    dfl, dp->dpColors, dp->dpColorCount ) )
-	{ LDEB(1);	}
-
-    *pEnabled= 1;
-
-    return;
-    }
-
-/************************************************************************/
-/*									*/
-/*  Intermediary routine to refresh the list font tool.			*/
-/*									*/
-/************************************************************************/
-
-void tedRefreshListFontTool(	AppFontChooser *		afc,
-				int *				pEnabled,
-				int *				pPref,
-				InspectorSubject *		is,
-				const DocumentSelection *	ds,
-				const SelectionDescription *	sd,
-				BufferDocument *		bd )
-    {
-    const DocumentProperties *	dp= &(bd->bdProperties);
-    const DocumentFontList *	dfl= &(dp->dpFontList);
-
-    ListOverride *		lo;
-    DocumentList *		dl;
-    ListNumberTreeNode *	root;
-
-    int				startPath[DLmaxLEVELS+1];
-    int				formatPath[DLmaxLEVELS+1];
-    const DocumentListLevel *	dll= (const DocumentListLevel *)0;
-
-    if  ( ! sd->sdHasLists		||
-	  sd->sdListOverride < 1	||
-	  sd->sdMultiList		||
-	  sd->sdMultiLevel		)
-	{ *pEnabled= 0; return; }
-
-    if  ( docGetListOfParagraph( &lo, &root, &dl, sd->sdListOverride, bd ) )
-	{ *pEnabled= 0; return; }
-
-    docListGetFormatPath( startPath, formatPath, &dll,
-						    sd->sdListLevel, dl, lo );
-
-    if  ( appFontExpandCurrentFont( afc, &(dll->dllTextAttributeMask),
-				    &(dll->dllTextAttribute),
-				    sd->sdDocumentId, dfl,
-				    dp->dpColors, dp->dpColorCount ) )
-	{ LDEB(1);	}
-
-    (*pPref)--;
-    *pEnabled= 1;
-
-    return;
-    }
-
-void tedFormatShowFontPage(	EditApplication *	ea )
-    {
-    TedAppResources *		tar= (TedAppResources *)ea->eaResourceData;
-
-    if  ( ! tar->tarInspector )
-	{ XDEB(tar->tarInspector); return;	}
-
-    appEnableInspectorSubject( tar->tarInspector, TEDtsiFONT, 1 );
-
-    appInspectorSelectSubject( tar->tarInspector, TEDtsiFONT );
 
     return;
     }
@@ -171,31 +118,3 @@ void tedFontToolGetResourceTable(	EditApplication *		ea,
     return;
     }
 
-static AppConfigurableResource TED_ListFontToolSubjectResourceTable[]=
-    {
-    APP_RESOURCE( "fontToolListFont",
-		offsetof(InspectorSubjectResources,isrSubjectName),
-		"List Font" ),
-    APP_RESOURCE( "fontToolSetListFont",
-		offsetof(InspectorSubjectResources,isrApplyToSubject),
-		"Set" ),
-    APP_RESOURCE( "fontToolRevertListFont",
-		offsetof(InspectorSubjectResources,isrRevert),
-		"Revert" ),
-    };
-
-void tedListFontToolGetResourceTable(	EditApplication *		ea,
-					InspectorSubjectResources *	isr )
-    {
-    static int	gotSubjectResources= 0;
-
-    if  ( ! gotSubjectResources )
-	{
-	appGuiGetResourceValues( &gotSubjectResources, ea, (void *)isr,
-				TED_ListFontToolSubjectResourceTable,
-				sizeof(TED_ListFontToolSubjectResourceTable)/
-				sizeof(AppConfigurableResource) );
-	}
-
-    return;
-    }

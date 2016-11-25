@@ -1,7 +1,5 @@
 #   include	"bitmapConfig.h"
 
-#   include	<string.h>
-
 #   define	y0	math_y0
 #   define	y1	math_y1
 #   include	<math.h>

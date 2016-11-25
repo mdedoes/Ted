@@ -7,18 +7,18 @@
 #   include	"appFrameConfig.h"
 
 #   include	<stddef.h>
-#   include	<stdlib.h>
 #   include	<stdio.h>
 #   include	<string.h>
-#   include	<locale.h>
 
 #   include	<appSystem.h>
-#   include	<sioStdio.h>
+#   include	<sioFileio.h>
 
-#   include	<appFrame.h>
+#   include	"appFrame.h"
+#   include	"appPrintJob.h"
 #   include	<appDebugon.h>
 
 #   include	"appFileChooser.h"
+#   include	"appQuestion.h"
 
 /************************************************************************/
 /*									*/
@@ -81,8 +81,7 @@ void appFileChooserGetTexts(	EditApplication *		ea,
 /************************************************************************/
 
 int appFileChooserTestNameForOpen(
-				const AppChooserInformation *	aci,
-				const char *			filename  )
+				const AppChooserInformation *	aci )
     {
     EditApplication *		ea= aci->aciApplication;
     APP_WIDGET			option= aci->aciOption;
@@ -93,16 +92,16 @@ int appFileChooserTestNameForOpen(
 
     const AppFileChooserResources *	acr= aci->aciResources;
 
-    fileExists= appTestFileExists( filename ) == 0;
+    fileExists= appTestFileExists( &(aci->aciFilename) ) == 0;
 
     if  ( fileExists )
-	{ fileReadable= appTestFileReadable( filename ) == 0;	}
-    else{ isDir= appTestDirectory( filename ) == 0;		}
+	{ fileReadable= appTestFileReadable( &(aci->aciFilename) ) == 0; }
+    else{ isDir= appTestDirectory( &(aci->aciFilename) ) == 0;		}
 
     if  ( isDir )
 	{
-	appQuestionRunSubjectErrorDialog( ea, aci->aciDialog.adTopWidget,
-				option, filename, acr->acrIsDirecoryMessage );
+	appQuestionRunFilenameErrorDialog( ea, aci->aciRelativeTo,
+		    option, &(aci->aciFilename), acr->acrIsDirecoryMessage );
 	return -1;
 	}
 
@@ -110,16 +109,16 @@ int appFileChooserTestNameForOpen(
 	{
 	AppFileMessageResources *	afmr= &(ea->eaFileMessageResources);
 
-	appQuestionRunSubjectErrorDialog( ea, aci->aciDialog.adTopWidget,
-			    option, filename, afmr->afmrNoSuchFileMessage );
+	appQuestionRunFilenameErrorDialog( ea, aci->aciRelativeTo,
+		    option, &(aci->aciFilename), afmr->afmrNoSuchFileMessage );
 
 	return -1;
 	}
 
     if  ( ! fileReadable )
 	{
-	appQuestionRunSubjectErrorDialog( ea, aci->aciDialog.adTopWidget,
-			    option, filename, acr->acrNotReadableMessage );
+	appQuestionRunFilenameErrorDialog( ea, aci->aciRelativeTo,
+		    option, &(aci->aciFilename), acr->acrNotReadableMessage );
 	return -1;
 	}
 
@@ -128,107 +127,54 @@ int appFileChooserTestNameForOpen(
 
 /************************************************************************/
 /*									*/
-/*  Save and partially validate the file name of a file chooser.	*/
+/*  Partially validate the file name of a file chooser: if if has the	*/
+/*  wrong extension.. set the rigth one.				*/
+/*									*/
+/*  Return:  0:  Have saved an acceptable file name.			*/
+/*  Return:  1:  Not an acceptable file name.				*/
+/*  Return: -1:  Failure.						*/
 /*									*/
 /************************************************************************/
 
-int appChooserSaveFilename(		AppChooserInformation *	aci,
-					const char *		filename )
+int appChooserSaveFilename(	AppChooserInformation *		aci,
+				const MemoryBuffer *		filename,
+				const char *			newExtension )
     {
+    int					rval= 0;
     EditApplication *			ea= aci->aciApplication;
     APP_WIDGET				option= aci->aciOption;
 
-    char *				extension= (char *)0;
-    const char *			slash;
-    const char *			relative;
-
-    int					fileNameLength;
-
-    char *				fresh;
-
     const AppFileChooserResources *	acr= aci->aciResources;
 
-    fileNameLength= strlen( filename );
-    fresh= malloc( fileNameLength+ 11 );
-    if  ( ! fresh )
+    MemoryBuffer			relative;
+
+    utilInitMemoryBuffer( &relative );
+
+    if  ( appFileGetRelativeName( &relative, filename ) )
+	{ LDEB(1); rval= -1; goto ready;	}
+
+    if  ( utilMemoryBufferIsEmpty( &relative ) )
 	{
-	LXDEB(fileNameLength,fresh);
-	appGuiBreakDialog( &(aci->aciDialog), ACIrespFAILURE );
-	return -1;
-	}
-    strcpy( fresh, filename );
-
-    if  ( aci->aciFilename )
-	{ free( aci->aciFilename ); aci->aciFilename= (char *)0;	}
-    aci->aciFilename= fresh;
-
-    if  ( aci->aciExtensionCount > 0 )
-	{
-	if  ( aci->aciFormat >= 0 && aci->aciFormat < aci->aciExtensionCount )
-	    {
-	    const AppFileExtension *	afe= aci->aciExtensions+ aci->aciFormat;
-
-	    extension= afe->afeExtension;
-	    }
-	}
-    else{ extension= aci->aciExtension;	}
-
-    slash= strrchr( filename, '/' );
-    if  ( ! slash )
-	{ relative= filename;		}
-    else{ relative= slash+ 1;		}
-
-    if  ( ! relative[0] )
-	{
-	appQuestionRunErrorDialog( ea, aci->aciDialog.adTopWidget, option,
+	appQuestionRunErrorDialog( ea, aci->aciRelativeTo, option,
 						acr->acrNoFilenameMessage );
 
-	free( aci->aciFilename ); aci->aciFilename= (char *)0;
-	/* NO: just stay in the loop.
-	appGuiBreakDialog( &(aci->aciDialog, ACIrespFAILURE );
-	*/
-	return -1;
+	rval= 1; goto ready;
 	}
 
-    if  ( extension && extension[0] )
+    if  ( utilCopyMemoryBuffer( &(aci->aciFilename), filename ) )
+	{ LDEB(1); rval= -1; goto ready;	}
+
+    if  ( newExtension && newExtension[0] )
 	{
-	char *	dot;
-
-	dot= strrchr( relative, '.' );
-
-	if  ( ! dot				||
-	      strcmp( dot+ 1, extension )	)
-	    {
-	    int		le;
-
-	    le= strlen( extension );
-
-	    fresh= malloc( fileNameLength+ le+ 2+ 11 );
-	    if  ( ! fresh )
-		{
-		LXDEB(fileNameLength,fresh);
-		appGuiBreakDialog( &(aci->aciDialog), ACIrespFAILURE );
-		return -1;
-		}
-
-	    strcpy( fresh, filename );
-
-	    if  ( aci->aciFilename )
-		{ free( aci->aciFilename ); aci->aciFilename= (char *)0; }
-	    aci->aciFilename= fresh;
-
-	    if  ( dot && ! dot[1] )
-		{
-		strcpy( fresh+ fileNameLength,    extension );
-		}
-	    else{
-		strcpy( fresh+ fileNameLength   , "." );
-		strcpy( fresh+ fileNameLength+ 1, extension );
-		}
-	    }
+	if  ( appFileSetExtension( &(aci->aciFilename), newExtension ) )
+	    { LDEB(1); rval= -1; goto ready;	}
 	}
 
-    return 0;
+  ready:
+
+    utilCleanMemoryBuffer( &relative );
+
+    return rval;
     }
 
 /************************************************************************/
@@ -237,13 +183,9 @@ int appChooserSaveFilename(		AppChooserInformation *	aci,
 /*									*/
 /************************************************************************/
 
-int appFileChooserTestNameForSave(
-				const AppChooserInformation *	aci,
-				const char *			filename  )
+int appFileChooserTestNameForWrite(
+				const AppChooserInformation *	aci )
     {
-    EditApplication *		ea= aci->aciApplication;
-    APP_WIDGET			option= aci->aciOption;
-
     int				isDir= 0;
     int				fileExists= 0;
     int				dirExists= 0;
@@ -251,36 +193,34 @@ int appFileChooserTestNameForSave(
 
     const AppFileChooserResources *	acr= aci->aciResources;
 
-    fileExists= appTestFileExists( filename ) == 0;
+    const char *	filename= utilMemoryBufferGetString( &(aci->aciFilename) );
+
+    fileExists= appTestFileExists( &(aci->aciFilename) ) == 0;
 
     if  ( fileExists )
-	{ fileWritable= appTestFileWritable( filename ) == 0;	}
-    else{ isDir= appTestDirectory( filename ) == 0;		}
+	{ fileWritable= appTestFileWritable( &(aci->aciFilename) ) == 0; }
+    else{ isDir= appTestDirectory( &(aci->aciFilename) ) == 0;		}
 
     if  ( ! fileExists && ! isDir )
 	{
-	char *	scratch;
-	char *	slash;
+	MemoryBuffer	dir;
 
-	scratch= (char *)malloc( strlen( filename )+ 11 );
-	if  ( ! scratch )
-	    { XDEB(scratch); return ACIrespFAILURE;	}
+	utilInitMemoryBuffer( &dir );
 
-	strcpy( scratch, filename );
-	slash= strrchr( scratch, '/' );
-	if  ( slash )
-	    {
-	    *slash= '\0';
-	    dirExists= appTestDirectory( scratch ) == 0;
-	    }
+	if  ( appDirectoryOfFileName( &dir, &(aci->aciFilename) ) )
+	    { LDEB(1); return ACIrespFAILURE;	}
 
-	free( scratch );
+	if  ( ! utilMemoryBufferIsEmpty( &dir ) )
+	    { dirExists= appTestDirectory( &dir ) == 0;	}
+
+	utilCleanMemoryBuffer( &dir );
 	}
 
     if  ( isDir )
 	{
-	appQuestionRunSubjectErrorDialog( ea, aci->aciDialog.adTopWidget,
-				option, filename, acr->acrIsDirecoryMessage );
+	appQuestionRunSubjectErrorDialog( aci->aciApplication,
+					aci->aciRelativeTo, aci->aciOption,
+					filename, acr->acrIsDirecoryMessage );
 	return ACIrespNONE;
 	}
 
@@ -288,31 +228,13 @@ int appFileChooserTestNameForSave(
 	{
 	if  ( ! fileWritable )
 	    {
-	    appQuestionRunSubjectErrorDialog(
-			ea, aci->aciDialog.adTopWidget, option,
-			filename, acr->acrNotWritableMessage );
+	    appQuestionRunSubjectErrorDialog( aci->aciApplication,
+					aci->aciRelativeTo, aci->aciOption,
+					filename, acr->acrNotWritableMessage );
 	    return ACIrespNONE;
 	    }
 	else{
-	    int		rcc;
-
-	    rcc= appQuestionRunSubjectYesNoCancelDialog(
-			ea, aci->aciDialog.adTopWidget, option,
-			filename, acr->acrOverwriteMessage,
-			(char *)0, (char *)0, (char *)0 );
-
-	    switch( rcc )
-		{
-		case AQDrespYES:
-		    return ACIrespSAVE;
-		case AQDrespNO:
-		    return ACIrespNONE;
-		default:
-		    LDEB(rcc);
-		    /*FALLTHROUGH*/
-		case AQDrespCANCEL:
-		    return ACIrespCANCEL;
-		}
+	    return appFileChooserConfirmOverWrite( aci, filename );
 	    }
 	}
     else{
@@ -324,9 +246,9 @@ int appFileChooserTestNameForSave(
 		{
 		*slash= '\0';
 
-		appQuestionRunSubjectErrorDialog(
-			    ea, aci->aciDialog.adTopWidget, option,
-			    filename, acr->acrNoSuchDirMessage );
+		appQuestionRunSubjectErrorDialog( aci->aciApplication,
+					aci->aciRelativeTo, aci->aciOption,
+					filename, acr->acrNoSuchDirMessage );
 		return ACIrespNONE;
 		}
 	    }
@@ -335,47 +257,43 @@ int appFileChooserTestNameForSave(
     return ACIrespSAVE;
     }
 
+static int appDocPrintDocument(	EditDocument *		ed,
+				void *			through,
+				APP_WIDGET		relative,
+				APP_WIDGET		option,
+				int			format,
+				const MemoryBuffer *	filename )
+    {
+    SimpleOutputStream *	sos;
+
+    PrintJob *			pj= (PrintJob *)through;
+
+    sos= sioOutFileioOpen( filename );
+
+    if  ( ! sos )
+	{ XDEB(sos); return -1;	}
+
+    appCallPrintFunction( sos, pj );
+
+    sioOutClose( sos );
+
+    return 0;
+    }
+
 void appDocPrintToFile(	APP_WIDGET			option,
 			APP_WIDGET			panel,
 			EditDocument *			ed,
 			const PrintGeometry *		pg )
     {
     EditApplication *		ea= ed->edApplication;
-    int				response;
-    char *			filename;
-
-    SimpleOutputStream *	sos;
-
     PrintJob			pj;
 
     if  ( ! ea->eaPrintDocument )
 	{ XDEB(ea->eaPrintDocument); return;	}
 
-    appPrintJobForEditDocument( &pj, ed );
+    appPrintJobForEditDocument( &pj, ed, pg );
 
-    response= appRunPrintToFileChooser( option, panel, ea, ed, &filename );
-
-    switch( response )
-	{
-	case ACIrespCANCEL:
-	    break;
-
-	case ACIrespSAVE:
-	    sos= sioOutStdioOpen( filename );
-
-	    if  ( ! sos )
-		{ SXDEB(filename,sos); free( filename ); return;	}
-
-	    appCallPrintFunction( sos, &pj, pg );
-
-	    sioOutClose( sos );
-
-	    free( filename );
-	    break;
-
-	default:
-	    LDEB(response); break;
-	}
+    appRunPrintToFileChooser( option, panel, appDocPrintDocument, ed, &pj );
     }
 
 /************************************************************************/
@@ -385,58 +303,36 @@ void appDocPrintToFile(	APP_WIDGET			option,
 /*									*/
 /************************************************************************/
 
-extern APP_MENU_CALLBACK_H( appDocFileSaveAs, option, voided, call_data )
+APP_MENU_CALLBACK_H( appDocFileSaveAs, option, voided, e )
     {
     EditDocument *	ed= (EditDocument *)voided;
     EditApplication *	ea= ed->edApplication;
-    const int		interactive= 1;
-
-    int			response;
-    int			format;
-    char *		filename;
 
     if  ( ! ea->eaSaveDocument )
 	{ XDEB(ea->eaSaveDocument); return;	}
 
-    response= appRunSaveChooser( option, ed->edToplevel.atTopWidget, ea, ed,
-				    APPFILE_CAN_SAVE, &format, &filename );
+    appRunSaveChooser( option, ed->edToplevel.atTopWidget,
+			    APPFILE_CAN_SAVE, appDocSaveDocument,
+			    ed, ed->edPrivateData );
+    }
 
-    switch( response )
-	{
-	case ACIrespCANCEL:
-	    break;
+/************************************************************************/
+/*									*/
+/*  Callback from the file-open dialog.					*/
+/*									*/
+/************************************************************************/
 
-	case ACIrespSAVE:
-	    if  ( appDocSaveDocumentByName( ed, option, interactive,
-							format, filename ) )
-		{ free( filename ); return;	}
+int appChooserOpenDocument(	EditApplication *	ea,
+				void *			through,
+				APP_WIDGET		relative,
+				APP_WIDGET		option,
+				const MemoryBuffer *	filename )
+    {
+    const int	readOnly= 0;
 
-	    if  ( format >= 0				&&
-		  format < ea->eaFileExtensionCount	)
-		{
-		const AppFileExtension *	afe;
+    if  ( ! appOpenDocument( ea, relative, option, readOnly, filename ) )
+	{ return -1;	}
 
-		afe= &(ea->eaFileExtensions[format]);
-
-		if  ( afe->afeUseFlags & APPFILE_CAN_OPEN )
-		    {
-		    appDocumentChanged( ed, 0 );
-
-		    if  ( appSetDocumentFilename( ed, filename ) )
-			{ SDEB(filename);	}
-		    if  ( appSetDocumentTitle( ed, filename ) )
-			{ SDEB(filename);	}
-
-		    ed->edFileReadOnly= 0;
-		    ed->edFormat= format;
-		    }
-		}
-
-	    free( filename );
-	    break;
-
-	default:
-	    LDEB(response); break;
-	}
+    return 0;
     }
 

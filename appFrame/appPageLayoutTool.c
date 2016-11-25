@@ -6,20 +6,23 @@
 
 #   include	"appFrameConfig.h"
 
-#   include	<stdlib.h>
 #   include	<stdio.h>
 #   include	<stddef.h>
 #   include	<limits.h>
 
-#   include	<appGeoString.h>
 #   include	<appUnit.h>
 
 #   include	"appFrame.h"
 #   include	"appPageLayoutTool.h"
+#   include	"guiWidgetDrawingSurface.h"
+#   include	"guiDrawingWidget.h"
+#   include	"guiDrawPage.h"
+#   include	"guiToolUtil.h"
+#   include	"guiTextUtil.h"
 
 #   include	<appDebugon.h>
 
-#   define	DRH_MM		40
+#   define	DRH_MM		32
 
 /************************************************************************/
 /*									*/
@@ -30,78 +33,84 @@
 static void appPageLayoutRefreshPageLayoutPage(	PageLayoutTool *	plt )
     {
     EditApplication *		ea= plt->pltApplication;
-    AppDrawingData *		add= &(plt->pltDrawingData);
     DocumentGeometry *		dg= &(plt->pltGeometryChosen);
-
-    char			scratch[50];
 
     appPaperChooserAdaptToGeometry( &(plt->pltPaperChooser), dg );
 
     appMarginToolShowMargins( &(plt->pltMarginTool), plt->pltUnitType, dg );
 
-    appExposeRectangle( add, 0, 0, 0, 0 );
+    guiExposeDrawingWidget( plt->pltPageDrawing );
 
     if  ( plt->pltHeaderPositionText )
 	{
-	appGeoLengthToString( scratch,
+	appLengthToTextWidget( plt->pltHeaderPositionText,
 				dg->dgHeaderPositionTwips, ea->eaUnitInt );
-	appStringToTextWidget( plt->pltHeaderPositionText, scratch );
 	}
 
     if  ( plt->pltFooterPositionText )
 	{
-	appGeoLengthToString( scratch,
+	appLengthToTextWidget( plt->pltFooterPositionText,
 				dg->dgFooterPositionTwips, ea->eaUnitInt );
-	appStringToTextWidget( plt->pltFooterPositionText, scratch );
+	}
+
+    if  ( plt->pltHeaderFooterFrame )
+	{
+	guiEnableWidget( plt->pltHeaderFooterFrame,
+		    plt->pltCanChangeSelection || plt->pltCanChangeDocument );
+
+	guiEnableText( plt->pltHeaderPositionText,
+		    plt->pltCanChangeSelection || plt->pltCanChangeDocument );
+	guiEnableText( plt->pltFooterPositionText,
+		    plt->pltCanChangeSelection || plt->pltCanChangeDocument );
+	}
+
+    appEnablePaperChooser( &(plt->pltPaperChooser),
+		    plt->pltCanChangeSelection || plt->pltCanChangeDocument );
+    appEnableMarginTool( &(plt->pltMarginTool),
+		    plt->pltCanChangeSelection || plt->pltCanChangeDocument );
+
+    if  ( plt->pltChangeSelectionWidget )
+	{
+	guiEnableWidget( plt->pltChangeSelectionWidget,
+						plt->pltCanChangeSelection );
+	}
+    if  ( plt->pltRevertSelectionWidget )
+	{
+	guiEnableWidget( plt->pltRevertSelectionWidget,
+						plt->pltCanChangeSelection );
+	}
+    if  ( plt->pltChangeDocumentWidget )
+	{
+	guiEnableWidget( plt->pltChangeDocumentWidget,
+						plt->pltCanChangeDocument );
+	}
+    if  ( plt->pltRevertDocumentWidget )
+	{
+	guiEnableWidget( plt->pltRevertDocumentWidget,
+						plt->pltCanChangeDocument );
 	}
 
     return;
     }
 
 void appPageLayoutPageRefresh(	PageLayoutTool *		plt,
-				int *				pEnabled,
 				InspectorSubject *		is,
 				const DocumentGeometry *	dgSect,
 				const DocumentGeometry *	dgDoc )
     {
-    int				changed= 0;
-    const DocumentGeometry *	dgSelection;
+    if  ( plt->pltManageSelection && dgSect )
+	{
+	plt->pltGeometryChosen= *dgSect;
+	plt->pltGeometrySetSelection= *dgSect;
+	plt->pltGeometrySetDocument= *dgDoc;
+	}
+    else{
+	plt->pltGeometryChosen= *dgDoc;
+	plt->pltGeometrySetSelection= *dgDoc;
+	plt->pltGeometrySetDocument= *dgDoc;
+	}
 
-    PropertyMask		setMask;
-    PropertyMask		doneMask;
-
-    PROPmaskCLEAR( &setMask );
-    utilPropMaskFill( &setMask, DGprop_COUNT );
-
-    if  ( plt->pltManageSelection )
-	{ dgSelection= dgSect;	}
-    else{ dgSelection= dgDoc;	}
-
-    /**/
-    PROPmaskCLEAR( &doneMask );
-    utilUpdDocumentGeometry( &(plt->pltGeometryChosen), dgSelection,
-						    &doneMask, &setMask );
-    if  ( ! utilPropMaskIsEmpty( &doneMask ) )
-	{ changed= 1;	}
-
-    /**/
-    PROPmaskCLEAR( &doneMask );
-    utilUpdDocumentGeometry( &(plt->pltGeometrySetSelection), dgSelection,
-						    &doneMask, &setMask );
-    if  ( ! utilPropMaskIsEmpty( &doneMask ) )
-	{ changed= 1;	}
-
-    /**/
-    PROPmaskCLEAR( &doneMask );
-    utilUpdDocumentGeometry( &(plt->pltGeometrySetDocument), dgDoc,
-						    &doneMask, &setMask );
-    if  ( ! utilPropMaskIsEmpty( &doneMask ) )
-	{ changed= 1;	}
-
-    if  ( changed )
-	{ appPageLayoutRefreshPageLayoutPage( plt );	}
-
-    *pEnabled= 1;
+    appPageLayoutRefreshPageLayoutPage( plt );
 
     return;
     }
@@ -116,6 +125,7 @@ static void appPageLayoutChangeLayout(	PageLayoutTool *	plt,
 					int			wholeDocument )
     {
     EditApplication *		ea= plt->pltApplication;
+    EditDocument *		ed= ea->eaCurrentDocument;
 
     int				changed;
 
@@ -131,10 +141,13 @@ static void appPageLayoutChangeLayout(	PageLayoutTool *	plt,
     const int			maxValue= INT_MAX;
     const int			adaptToMax= 0;
 
-    PROPmaskCLEAR( &sizeUpdMask );
-    PROPmaskCLEAR( &margUpdMask );
+    if  ( ! ed )
+	{ XDEB(ed); return;	}
 
-    PROPmaskCLEAR( &setMask );
+    utilPropMaskClear( &sizeUpdMask );
+    utilPropMaskClear( &margUpdMask );
+
+    utilPropMaskClear( &setMask );
     utilPropMaskFill( &setMask, DGprop_COUNT );
 
     utilInitDocumentGeometry( &dgNew );
@@ -145,7 +158,7 @@ static void appPageLayoutChangeLayout(	PageLayoutTool *	plt,
 								    &dgNew ) )
 	{ LDEB(1); return;	}
 
-    PROPmaskCLEAR( &margChgMask );
+    utilPropMaskClear( &margChgMask );
     utilPropMaskFill( &margChgMask, DGprop_COUNT );
 
     if  ( appMarginToolGetMargins( &margUpdMask, &margChgMask, plt->pltUnitType,
@@ -174,7 +187,7 @@ static void appPageLayoutChangeLayout(	PageLayoutTool *	plt,
 	PROPmaskUNSET( &setMask, DGpropFOOTER_POSITION );
 	}
 
-    (*ea->eaSetPageLayout)( ea, &dgNew, &setMask, wholeDocument );
+    (*ea->eaSetPageLayout)( ed, &setMask, &dgNew, wholeDocument );
 
     return;
     }
@@ -217,10 +230,7 @@ static void appSectHeaderFooterPosChanged(	PageLayoutTool *	plt,
     if  ( ! appGetLengthFromTextWidget( w, &width, &changed, ea->eaUnitInt,
 				minValue, adaptToMin, maxValue, adaptToMax ) )
 	{
-	char	scratch[50];
-
-	appGeoLengthToString( scratch, width, ea->eaUnitInt );
-	appStringToTextWidget( w, scratch );
+	appLengthToTextWidget( w, width, ea->eaUnitInt );
 	}
     }
 
@@ -251,7 +261,6 @@ static APP_TXTYPING_CALLBACK_H( appSectFooterPositionChanged, w, voidplt )
 static APP_TXACTIVATE_CALLBACK_H( appPaperMarginChanged, w, voidplt )
     {
     PageLayoutTool *		plt= (PageLayoutTool *)voidplt;
-    AppDrawingData *		add= &(plt->pltDrawingData);
     DocumentGeometry *		dgSect= &(plt->pltGeometryChosen);
 
     PropertyMask		dgUpdMask;
@@ -259,8 +268,8 @@ static APP_TXACTIVATE_CALLBACK_H( appPaperMarginChanged, w, voidplt )
 
     DocumentGeometry		dg;
 
-    PROPmaskCLEAR( &dgUpdMask );
-    PROPmaskCLEAR( &dgChgMask );
+    utilPropMaskClear( &dgUpdMask );
+    utilPropMaskClear( &dgChgMask );
 
     dg= *dgSect;
 
@@ -281,7 +290,7 @@ static APP_TXACTIVATE_CALLBACK_H( appPaperMarginChanged, w, voidplt )
     dgSect->dgRightMarginTwips= dg.dgRightMarginTwips;
     dgSect->dgBottomMarginTwips= dg.dgBottomMarginTwips;
 
-    appExposeRectangle( add, 0, 0, 0, 0 );
+    guiExposeDrawingWidget( plt->pltPageDrawing );
 
     return;
     }
@@ -323,10 +332,11 @@ static APP_BUTTON_CALLBACK_H( appPageLayoutRevertDocumentPushed, w, voidplt )
 static APP_EVENT_HANDLER_H( appPageLayoutToolDrawPage, w, voidplt, exposeEvent )
     {
     PageLayoutTool *		plt= (PageLayoutTool *)voidplt;
-    AppDrawingData *		add= &(plt->pltDrawingData);
+    DrawingSurface		ds= plt->pltDrawingSurface;
     DocumentGeometry *		dg= &(plt->pltGeometryChosen);
 
-    appDrawPageDiagram( w, add, DRH_MM, dg );
+    appDrawPageDiagram( w, ds, &(plt->pltBackgroundColor),
+						    plt->pltPixelsPerTwip, dg );
     }
 
 /************************************************************************/
@@ -341,12 +351,11 @@ static void appPageLayoutToolPaperRectChanged(
 				const DocumentGeometry *	dg )
     {
     PageLayoutTool *		plt= (PageLayoutTool *)voidplt;
-    AppDrawingData *		add= &(plt->pltDrawingData);
 
     plt->pltGeometryChosen.dgPageWideTwips= dg->dgPageWideTwips;
     plt->pltGeometryChosen.dgPageHighTwips= dg->dgPageHighTwips;
 
-    appExposeRectangle( add, 0, 0, 0, 0 );
+    guiExposeDrawingWidget( plt->pltPageDrawing );
 
     return;
     }
@@ -380,11 +389,11 @@ static void appPageLayoutMakeHeaderFooterWidgets(
     /**********************/
 #   define	TW	7
 
-    appMakeLabelAndTextRow( &row, &label, &(plt->pltHeaderPositionText),
+    guiToolMakeLabelAndTextRow( &row, &label, &(plt->pltHeaderPositionText),
 				    plt->pltHeaderFooterLeftColumn,
 				    plpr->plprHeaderPositionText, TW, 1 );
 
-    appMakeLabelAndTextRow( &row, &label, &(plt->pltFooterPositionText),
+    guiToolMakeLabelAndTextRow( &row, &label, &(plt->pltFooterPositionText),
 				    plt->pltHeaderFooterRightColumn,
 				    plpr->plprFooterPositionText, TW, 1 );
 
@@ -430,9 +439,12 @@ void appPageLayoutPageFillPage(	PageLayoutTool *		plt,
     plt->pltManageHeadersFooters= doHdFt;
     plt->pltManageSelection= doSelection;
 
+    plt->pltCanChangeSelection= 1;
+    plt->pltCanChangeDocument= 1;
+
     /**/
 
-    appInitDrawingData( &(plt->pltDrawingData) );
+    plt->pltDrawingSurface= (DrawingSurface)0;
 
     utilInitDocumentGeometry( &(plt->pltGeometrySetDocument) );
     utilInitDocumentGeometry( &(plt->pltGeometrySetSelection) );
@@ -445,9 +457,13 @@ void appPageLayoutPageFillPage(	PageLayoutTool *		plt,
     appInitPaperChooser( &(plt->pltPaperChooser) );
 
     /**************/
+    plt->pltPageHighMm= DRH_MM;
+    plt->pltPixelsPerTwip= ( plt->pltPageHighMm* ea->eaPixelsPerTwip )/
+								A3_MM_HIGH;
 
-    plt->pltPageDrawing= appMakePageDrawing( pageWidget, ea, DRH_MM,
-				    appPageLayoutToolDrawPage, (void *)plt );
+    plt->pltPageDrawing= appMakePageDrawing( pageWidget,
+				ea->eaPixelsPerTwip, plt->pltPageHighMm,
+				appPageLayoutToolDrawPage, (void *)plt );
 
     appMakePaperChooserWidgets( pageWidget, plpr->plprPage,
 					    plt->pltUnitType,
@@ -476,7 +492,7 @@ void appPageLayoutPageFillPage(	PageLayoutTool *		plt,
 
     if  ( plt->pltManageSelection )
 	{
-	appInspectorMakeButtonRow( &row, pageWidget,
+	guiToolMake2BottonRow( &row, pageWidget,
 				    &(plt->pltRevertSelectionWidget),
 				    &(plt->pltChangeSelectionWidget),
 				    plpr->plprRevertSelectionText,
@@ -486,7 +502,7 @@ void appPageLayoutPageFillPage(	PageLayoutTool *		plt,
 				    (void *)plt );
 	}
 
-    appInspectorMakeButtonRow( &row, pageWidget,
+    guiToolMake2BottonRow( &(is->isApplyRow), pageWidget,
 				&(is->isRevertButton), &(is->isApplyButton),
 				isr->isrRevert, isr->isrApplyToSubject,
 				appPageLayoutRevertDocumentPushed,
@@ -494,6 +510,7 @@ void appPageLayoutPageFillPage(	PageLayoutTool *		plt,
 				(void *)plt );
 
     plt->pltChangeDocumentWidget= is->isApplyButton;
+    plt->pltRevertDocumentWidget= is->isRevertButton;
 
     return;
     }
@@ -516,15 +533,29 @@ void appPageLayoutPageFillChoosers(	PageLayoutTool *		plt,
 void appPageLayoutPageFinishPage(	PageLayoutTool *		plt,
 					const PageLayoutPageResources *	plpr )
     {
-    AppDrawingData *	add= &(plt->pltDrawingData);
-    const double	magnification= 1.0;
+    appPaperChooserRefreshMenuWidth( &(plt->pltPaperChooser) );
 
-    appPaperChooserRetreshMenuWidth( &(plt->pltPaperChooser) );
+    plt->pltDrawingSurface= guiDrawingSurfaceForNativeWidget(
+		plt->pltPageDrawing,
+		plt->pltApplication->eaPostScriptFontList.psflAvoidFontconfig );
 
-    if  ( appSetDrawingDataForWidget( plt->pltPageDrawing,
-						    magnification, add ) )
-	{ LDEB(1);				}
-    else{ plt->pltDrawingDataAllocated= 1;	}
+    guiGetBackgroundColor( &(plt->pltBackgroundColor), plt->pltPageDrawing );
+
+    return;
+    }
+
+/************************************************************************/
+/*									*/
+/*  Clean the page layout tool.						*/
+/*									*/
+/************************************************************************/
+
+void appCleanPageLayoutTool(	PageLayoutTool *	plt )
+    {
+    appCleanPaperChooser( &(plt->pltPaperChooser) );
+
+    if  ( plt->pltDrawingSurface )
+	{ drawFreeDrawingSurface( plt->pltDrawingSurface );	}
 
     return;
     }

@@ -127,10 +127,10 @@ static int sioInMsGetPacketBytes(	MsLz77InputStream *	mis,
 	    {
 	    int		o;
 
-	    byte1= sioInGetCharacter( mis->misSisMsLz77 );
+	    byte1= sioInGetByte( mis->misSisMsLz77 );
 	    if  ( byte1 == EOF )
 		{ XDEB(byte1); mis->misExhausted= 1; break;	}
-	    byte2= sioInGetCharacter( mis->misSisMsLz77 );
+	    byte2= sioInGetByte( mis->misSisMsLz77 );
 	    if  ( byte2 == EOF )
 		{ XDEB(byte2); mis->misExhausted= 1; break;	}
 
@@ -150,7 +150,7 @@ static int sioInMsGetPacketBytes(	MsLz77InputStream *	mis,
 	    done += got; buffer += got;
 	    }
 	else{
-	    byte1= sioInGetCharacter( mis->misSisMsLz77 );
+	    byte1= sioInGetByte( mis->misSisMsLz77 );
 	    if  ( byte1 == EOF )
 		{ XDEB(byte1); mis->misExhausted= 1; break;	}
 
@@ -176,7 +176,7 @@ static int sioInMsGetPacketBytes(	MsLz77InputStream *	mis,
 
 static int sioInMsLz77ReadBytes( void *			voidmis,
 				unsigned char *		buffer,
-				int			count )
+				unsigned int		count )
     {
     MsLz77InputStream *		mis= (MsLz77InputStream *)voidmis;
 
@@ -211,7 +211,7 @@ static int sioInMsLz77ReadBytes( void *			voidmis,
 	if  ( done >= count || mis->misExhausted )
 	    { break;	}
 
-	mis->misFlagByte= sioInGetCharacter( mis->misSisMsLz77 );
+	mis->misFlagByte= sioInGetByte( mis->misSisMsLz77 );
 	if  ( mis->misFlagByte == EOF )
 	    { XDEB(mis->misFlagByte); mis->misExhausted= 1; break;	}
 
@@ -270,18 +270,18 @@ SimpleInputStream * sioInMsLz77Open(	SimpleInputStream *	sisMsLz77 )
     if  ( magic2 != MSLZ77_MAGIC2 )
 	{ XXDEB(magic2,MSLZ77_MAGIC2); return (SimpleInputStream *)0;	}
 
-    magic3= sioInGetCharacter( sisMsLz77 );
+    magic3= sioInGetByte( sisMsLz77 );
     if  ( magic3 != MSLZ77_MAGIC3 )
 	{ XXDEB(magic3,MSLZ77_MAGIC3); return (SimpleInputStream *)0;	}
 
-    fileFix= sioInGetCharacter( sisMsLz77 );
+    fileFix= sioInGetByte( sisMsLz77 );
     if  ( fileFix == EOF )
 	{ XDEB(fileFix); return (SimpleInputStream *)0;	}
 
-    skip= sioInGetCharacter( sisMsLz77 );
+    skip= sioInGetByte( sisMsLz77 );
     if  ( skip == EOF )
 	{ XDEB(skip); return (SimpleInputStream *)0;	}
-    skip= sioInGetCharacter( sisMsLz77 );
+    skip= sioInGetByte( sisMsLz77 );
     if  ( skip == EOF )
 	{ XDEB(skip); return (SimpleInputStream *)0;	}
 

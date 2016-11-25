@@ -7,6 +7,10 @@
 #   ifndef	TED_COLUMN_TOOL_H
 #   define	TED_COLUMN_TOOL_H
 
+#   include	"tedBorderTool.h"
+#   include	<docSelectionDescription.h>
+#   include	<docSelectionGeometry.h>
+
 /************************************************************************/
 /*									*/
 /*  Resources for the 'Column' page.					*/
@@ -15,10 +19,10 @@
 
 typedef struct ColumnPageResources
     {
-    char *		cprRow;
     char *		cprColumn;
 
     char *		cprWidth;
+    char *		cprBorders;
     char *		cprLeftBorder;
     char *		cprRightBorder;
 
@@ -39,15 +43,25 @@ typedef struct ColumnTool
 
     TableRectangle		ctTableRectangle;
 
-    int				ctPageRight;
-    int				ctPageLeftMargin;
+    int				ctBlockFrameWide;
 
-    RowProperties		ctPropertiesSet;
-    RowProperties		ctPropertiesChosen;
+    CellProperties		ctPropertiesSet;
+    CellProperties		ctPropertiesChosen;
+    int				ctWidthSet;
+    int				ctWidthChosen;
+    int				ctHalfGapWidthTwips;
+    unsigned char		ctCanChange;
 
-    APP_WIDGET			ctNumberText;
+    APP_WIDGET			ctColumnRow;
+    APP_WIDGET			ctColumnLabel;
+    APP_WIDGET			ctColumnText;
+
+    APP_WIDGET			ctWidthRow;
+    APP_WIDGET			ctWidthLabel;
     APP_WIDGET			ctWidthText;
 
+    APP_WIDGET			ctBordersFrame;
+    APP_WIDGET			ctBordersPaned;
     BorderTool			ctLeftBorderTool;
     BorderTool			ctRightBorderTool;
     } ColumnTool;
@@ -58,14 +72,36 @@ typedef struct ColumnTool
 /*									*/
 /************************************************************************/
 
-extern void tedFormatToolRefreshColumnTool(
-				    ColumnTool *		ct,
-				    int *			pEnabled,
-				    int *			pPref,
-				    InspectorSubject *		is,
-				    const DocumentSelection *	bs );
+extern void tedFormatFillColumnPage(	ColumnTool *		ct,
+				const ColumnPageResources *	cpr,
+				AppInspector *			ai,
+				int				subjectPage,
+				InspectorSubject *		is,
+				APP_WIDGET			pageWidget,
+				const InspectorSubjectResources * isr );
+
+extern void tedRefreshColumnTool(
+				ColumnTool *			ct,
+				int *				pEnabled,
+				int *				pPref,
+				InspectorSubject *		is,
+				const DocumentSelection *	ds,
+				const SelectionGeometry *	sg,
+				const SelectionDescription *	sd,
+				const unsigned char *		cmdEnabled );
 
 extern void tedInitColumnTool(	ColumnTool *	ct );
 extern void tedCleanColumnTool(	ColumnTool *	ct );
+
+extern void tedFormatFinishColumnPage(	ColumnTool *			ct,
+					const ColumnPageResources *	cpr );
+
+extern void tedColumnToolFillChoosers( ColumnTool *			ct,
+					const ColumnPageResources *	cpr );
+
+extern void tedFormatToolGetColumnResourceTable(
+					EditApplication *		ea,
+					ColumnPageResources *		cpr,
+					InspectorSubjectResources *	isr );
 
 #   endif	/*  TED_COLUMN_TOOL_H */

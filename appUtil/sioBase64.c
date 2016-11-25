@@ -38,7 +38,7 @@ typedef struct Base64InputStream
 
 static int sioInBase64ReadBytes(	void *		voidbis,
 					unsigned char *	buffer,
-					int		count )
+					unsigned int	count )
     {
     Base64InputStream *		bis= (Base64InputStream *)voidbis;
     int				done= 0;
@@ -61,11 +61,11 @@ static int sioInBase64ReadBytes(	void *		voidbis,
 	for ( n= 0; n < 4; n++ )
 	    {
 	    /*  1,2  */
-	    d[n]= sioInGetCharacter( bis->bisSisBase64 );
+	    d[n]= sioInGetByte( bis->bisSisBase64 );
 	    while( d[n] != EOF			&&
 		   d[n] != '='			&&
 		   d[n] != '-'			)
-		{ d[n]= sioInGetCharacter( bis->bisSisBase64 );	}
+		{ d[n]= sioInGetByte( bis->bisSisBase64 );	}
 
 	    if  ( d[n] == EOF || d[n] == '=' || d[n] == '-' )
 		{ break;	}
@@ -133,10 +133,10 @@ static int sioInBase64Close(	void *	voidbis )
     int				c;
 
     /*  1  */
-    c= sioInGetCharacter( bis->bisSisBase64 );
+    c= sioInGetByte( bis->bisSisBase64 );
     while( c != EOF			&&
 	   c != '-'			)
-	{ c= sioInGetCharacter( bis->bisSisBase64 );	}
+	{ c= sioInGetByte( bis->bisSisBase64 );	}
 
     if  ( c == '-' )
 	{ sioInUngetLastRead( bis->bisSisBase64 );	}
@@ -195,6 +195,7 @@ typedef struct Base64OutputStream
 
 static int sioOutBase64Close(	void *	voidbos )
     {
+    int				rval= 0;
     Base64OutputStream *	bos= (Base64OutputStream *)voidbos;
 
     /*  1  */
@@ -213,8 +214,10 @@ static int sioOutBase64Close(	void *	voidbos )
 
 	if  ( bos->bosColumn >= 72 )
 	    {
-	    sioOutPutCharacter( '\r', bos->bosSosBase64 );
-	    sioOutPutCharacter( '\n', bos->bosSosBase64 );
+	    if  ( sioOutPutByte( '\r', bos->bosSosBase64 ) < 0 )
+		{ rval= -1;	}
+	    if  ( sioOutPutByte( '\n', bos->bosSosBase64 ) < 0 )
+		{ rval= -1;	}
 	    bos->bosColumn= 0;
 	    }
 
@@ -223,17 +226,25 @@ static int sioOutBase64Close(	void *	voidbos )
 	/*  4  */
 	for ( i= 0; i < bos->bosCount+ 1; i++ )
 	    {
-	    sioOutPutCharacter( UTIL_Base64Digits[d[i]], bos->bosSosBase64 );
+	    if  ( sioOutPutByte( UTIL_Base64Digits[d[i]], bos->bosSosBase64 ) < 0 )
+	    { rval= -1;	}
 	    }
 
 	for ( i= bos->bosCount; i < 3; i++ )
-	    { sioOutPutCharacter( '=', bos->bosSosBase64 ); }
+	    {
+	    if  ( sioOutPutByte( '=', bos->bosSosBase64 ) < 0 )
+		{ rval= -1;	}
+	    }
 	}
 
-    sioOutPutCharacter( '\r', bos->bosSosBase64 );
-    sioOutPutCharacter( '\n', bos->bosSosBase64 );
+    if  ( sioOutPutByte( '\r', bos->bosSosBase64 ) < 0 )
+	{ rval= -1;	}
+    if  ( sioOutPutByte( '\n', bos->bosSosBase64 ) < 0 )
+	{ rval= -1;	}
 
-    free( bos ); return 0;
+    free( bos );
+
+    return rval;
     }
 
 /************************************************************************/
@@ -270,14 +281,19 @@ static int sioOutBase64WriteBytes(	void *			voidbos,
     /*  3  */
     if  ( bos->bosColumn >= 72 )
 	{
-	sioOutPutCharacter( '\r', bos->bosSosBase64 );
-	sioOutPutCharacter( '\n', bos->bosSosBase64 );
+	if  ( sioOutPutByte( '\r', bos->bosSosBase64 ) < 0 )
+	    { return -1;	}
+	if  ( sioOutPutByte( '\n', bos->bosSosBase64 ) < 0 )
+	    { return -1;	}
 	bos->bosColumn= 0;
 	}
 
     util_Base64Make( d, bos->bosBytes );
     for ( i= 0; i < 4; i++ )
-	{ sioOutPutCharacter( UTIL_Base64Digits[d[i]], bos->bosSosBase64 ); }
+	{
+	if  ( sioOutPutByte( UTIL_Base64Digits[d[i]], bos->bosSosBase64 ) < 0 )
+	    { return -1;	}
+	}
     bos->bosColumn += 4;
 
     bos->bosCount= 0;
@@ -287,15 +303,18 @@ static int sioOutBase64WriteBytes(	void *			voidbos,
 	{
 	if  ( bos->bosColumn >= 72 )
 	    {
-	    sioOutPutCharacter( '\r', bos->bosSosBase64 );
-	    sioOutPutCharacter( '\n', bos->bosSosBase64 );
+	    if  ( sioOutPutByte( '\r', bos->bosSosBase64 ) < 0 )
+		{ return -1;	}
+	    if  ( sioOutPutByte( '\n', bos->bosSosBase64 ) < 0 )
+		{ return -1;	}
 	    bos->bosColumn= 0;
 	    }
 
 	util_Base64Make( d, buffer );
 	for ( i= 0; i < 4; i++ )
 	    {
-	    sioOutPutCharacter( UTIL_Base64Digits[d[i]], bos->bosSosBase64 );
+	    if  ( sioOutPutByte( UTIL_Base64Digits[d[i]], bos->bosSosBase64 ) < 0 )
+		{ return -1;	}
 	    }
 	bos->bosColumn += 4;
 
@@ -322,8 +341,7 @@ SimpleOutputStream * sioOutBase64Open(	SimpleOutputStream *	sosBase64 )
     bos->bosCount= 0;
     bos->bosColumn= 0;
 
-    sos= sioOutOpen( (void *)bos, sioOutBase64WriteBytes,
-					    (SIOoutSEEK)0, sioOutBase64Close );
+    sos= sioOutOpen( (void *)bos, sioOutBase64WriteBytes, sioOutBase64Close );
 
     if  ( ! sos )
 	{ XDEB(sos); free( bos ); return (SimpleOutputStream *)0; }

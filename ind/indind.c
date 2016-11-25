@@ -1,5 +1,8 @@
 #   include	"indConfig.h"
 
+#   include	<stdlib.h>
+#   include	<string.h>
+
 #   include	"indlocal.h"
 #   include	<appDebugon.h>
 
@@ -19,13 +22,31 @@
 #	define	IND_MMAP
 #   endif
 
+#   include	<stddef.h>
 #   include	<unistd.h>
 #   include	<fcntl.h>
 #   include	<utilEndian.h>
 
+				/**
+				 *  The size of the header. Originally,
+				 *  the header was written through binary 
+				 *  file IO. For that reason, the header
+				 *  has unused space.
+				 */
+#   define	HEADER_BYTES	52
+
+# define POS_MAGIC 0
+# define POS_START 8
+# define POS_NODE_COUNT 24
+# define POS_NODES_ALLOCATED 28
+# define POS_LINKS_ALLOCATED 40
+# define POS_FREE_LINK 44
+# define POS_LAST_HEAD_LINK 48
+
 /************************************************************************/
 /*  Swap a buffer							*/
 /************************************************************************/
+
 static void	indSwapInt( unsigned char * buf )
     {
     register unsigned char	c;
@@ -34,29 +55,11 @@ static void	indSwapInt( unsigned char * buf )
     c= buf[1]; buf[1]= buf[2]; buf[2]= c;
     }
 
-static void	indSwapInd( IND * ind )
-    {
-    indSwapInt( (unsigned char *)&(ind->ind_magic) );
-    indSwapInt( (unsigned char *)&(ind->ind_fd) );
-    indSwapInt( (unsigned char *)&(ind->ind_start) );
-    indSwapInt( (unsigned char *)&(ind->ind_readonly) );
-    indSwapInt( (unsigned char *)&(ind->ind_nnode) );
-    indSwapInt( (unsigned char *)&(ind->indAllocatedNodes) );
-    indSwapInt( (unsigned char *)&(ind->indAllocatedLinks) );
-    indSwapInt( (unsigned char *)&(ind->ind_lfree) );
-    indSwapInt( (unsigned char *)&(ind->ind_lfull) );
-    indSwapInt( (unsigned char *)&(ind->ind_ccount) );
-    indSwapInt( (unsigned char *)&(ind->ind_cfree) );
-    indSwapInt( (unsigned char *)&(ind->ind_cfull) );
-
-    return;
-    }
-
 /************************************************************************/
 /*  Make an index.							*/
 /************************************************************************/
 
-IND * indINDmake( int	read_only )
+IND * indINDmake( int	readOnly )
     {
     IND *	ind= (IND *)malloc( sizeof( IND ) );
 
@@ -66,24 +69,18 @@ IND * indINDmake( int	read_only )
 	ind->ind_fd= -1;
 
 	ind->ind_start= -1;
-	ind->ind_readonly= read_only;
+	ind->ind_readonly= readOnly;
 
 	ind->ind_nodes= (TrieNode *)0;
 	ind->indNodePages= (TrieNode **)0;
-	ind->ind_nnode= 0;
+	ind->indNodeCount= 0;
 	ind->indAllocatedNodes= 0;
 
 	ind->ind_links= (TrieLink *)0;
 	ind->indLinkPages= (TrieLink **)0;
 	ind->indAllocatedLinks= 0;
-	ind->ind_lfree= 0;
-	ind->ind_lfull= 0;
-
-	ind->ind_classes= (int *)0;
-	ind->ind_cpages= (int **)0;
-	ind->ind_ccount= 0;
-	ind->ind_cfree= 0;
-	ind->ind_cfull= 0;
+	ind->indFirstFreeLinkSlot= 0;
+	ind->indLastHeadLinkSlot= 0;
 
 	ind->indMmappedFile= (unsigned char *)0;
 	ind->indMmappedSize= 0;
@@ -159,22 +156,6 @@ void	indINDfree( IND *	ind )
 	free( (char *)ind->indLinkPages );
 	}
 
-    if  ( ind->ind_cpages )
-	{
-	page= 0;
-	if  ( ! pagesAreMemoryMapped )
-	    {
-	    for ( i= 0; i < ind->ind_ccount; i += ITsBLOCK )
-		{
-		p= (char *)ind->ind_cpages[page++];
-		if  ( p )
-		    { free( p );	}
-		}
-	    }
-
-	free( (char *)ind->ind_cpages );
-	}
-
     free( (char *)ind );
     }
 
@@ -201,7 +182,6 @@ static int	indWriteData(	IND *		ind,
 		TrieNode *	tn= &(ind->indNodePages[page][i]);
 
 		indSwapInt( (unsigned char *)&tn->tn_transitions );
-		indSwapInt( (unsigned char *)&tn->tn_items );
 		}
 	    }
 
@@ -215,7 +195,6 @@ static int	indWriteData(	IND *		ind,
 		TrieNode *	tn= &(ind->indNodePages[page][i]);
 
 		indSwapInt( (unsigned char *)&tn->tn_transitions );
-		indSwapInt( (unsigned char *)&tn->tn_items );
 		}
 	    }
 	page++;
@@ -240,69 +219,64 @@ static int	indWriteData(	IND *		ind,
 	page++;
 	}
 
-    page= 0;
-    for ( n= 0; n < ind->ind_ccount; n += ITsBLOCK )
-	{
-	sz= ITsBLOCK * sizeof( int );
-	if  ( swap )
-	    {
-	    for ( i= 0; i < ITsBLOCK; i++ )
-		{ indSwapInt( (unsigned char *)&ind->ind_cpages[page][i] ); }
-	    }
-	if  ( write( fd, (char *)ind->ind_cpages[page], sz ) != sz )
-	    { LDEB(fd); return -1; }
-	if  ( swap )
-	    {
-	    for ( i= 0; i < ITsBLOCK; i++ )
-		{ indSwapInt( (unsigned char *)&ind->ind_cpages[page][i] ); }
-	    }
-	page++;
-	}
-
     return 0;
     }
 
 int	indINDwrite(	IND *		ind,
 			const char *	filename )
     {
-    int		fd= creat( filename, 0666 );
-    int		rval= 0;
-    IND	swapped;
+    int			fd= creat( filename, 0666 );
+    int			rval= 0;
+    unsigned char	hd[HEADER_BYTES];
+
+    unsigned short	one= 1;
+    int			machineBigEndian= ( *(unsigned char *)&one == 0 );
+
+    memset( hd, 0, sizeof(hd) );
 
     if  ( fd < 0 )
 	{ return -1; }
 
 #   if 0
     appDebug( "WRITE: ROOT= %d, nnode= %d, ncount= %d lcount= %d\n",
-	ind->ind_start,	ind->ind_nnode, ind->indAllocatedNodes,
+	ind->ind_start,	ind->indNodeCount, ind->indAllocatedNodes,
 	ind->indAllocatedLinks );
 #   endif
 
-    if  ( offsetof(IND,indMmappedFile) != 72 )
-	{ LLDEB(offsetof(IND,indMmappedFile),72); return -1;	}
-    if  ( sizeof(TrieLink) != 4 )
-	{ LLDEB(sizeof(TrieLink),4); return -1;		}
-    if  ( sizeof(TrieNode) != 12 )
-	{ LLDEB(sizeof(TrieNode),12); return -1;	}
+    if  ( sizeof(TrieLink) != 8 )
+	{ LLDEB(sizeof(TrieLink),8); return -1;		}
+    if  ( sizeof(TrieNode) != 8 )
+	{ LLDEB(sizeof(TrieNode),8); return -1;	}
 
-    if  ( write( fd, ind, offsetof(IND,indMmappedFile) ) !=
-					    offsetof(IND,indMmappedFile) )
+    utilEndianStoreLeInt32( ind->ind_magic, hd+ POS_MAGIC );
+    utilEndianStoreLeInt32( ind->ind_start, hd+ POS_START );
+    utilEndianStoreLeInt32( ind->indNodeCount, hd+ POS_NODE_COUNT );
+    utilEndianStoreLeInt32( ind->indAllocatedNodes, hd+ POS_NODES_ALLOCATED );
+    utilEndianStoreLeInt32( ind->indAllocatedLinks, hd+ POS_LINKS_ALLOCATED );
+    utilEndianStoreLeInt32( ind->indFirstFreeLinkSlot, hd+ POS_FREE_LINK );
+    utilEndianStoreLeInt32( ind->indLastHeadLinkSlot, hd+ POS_LAST_HEAD_LINK );
+
+    if  ( write( fd, hd, sizeof(hd) ) != sizeof(hd) )
 	{ LDEB(fd); rval= -1;	}
     else{
-	if  ( indWriteData( ind, fd, 0 ) )
+	if  ( indWriteData( ind, fd, machineBigEndian ) )
 	    { LDEB(fd); rval= -1;	}
 	}
 
     if  ( ! rval )
 	{
-	swapped= *ind;
-	indSwapInd( &swapped );
+	utilEndianStoreBeInt32( ind->ind_magic, hd+ POS_MAGIC );
+	utilEndianStoreBeInt32( ind->ind_start, hd+ POS_START );
+	utilEndianStoreBeInt32( ind->indNodeCount, hd+ POS_NODE_COUNT );
+	utilEndianStoreBeInt32( ind->indAllocatedNodes, hd+ POS_NODES_ALLOCATED );
+	utilEndianStoreBeInt32( ind->indAllocatedLinks, hd+ POS_LINKS_ALLOCATED );
+	utilEndianStoreBeInt32( ind->indFirstFreeLinkSlot, hd+ POS_FREE_LINK );
+	utilEndianStoreBeInt32( ind->indLastHeadLinkSlot, hd+ POS_LAST_HEAD_LINK );
 
-	if  ( write( fd, &swapped, offsetof(IND,indMmappedFile) ) !=
-						offsetof(IND,indMmappedFile) )
+	if  ( write( fd, hd, sizeof(hd) ) != sizeof(hd) )
 	    { LDEB(fd); rval= -1;	}
 	else{
-	    if  ( indWriteData( ind, fd, 1 ) )
+	    if  ( indWriteData( ind, fd, ! machineBigEndian ) )
 		{ LDEB(fd); rval= -1;	}
 	    }
 	}
@@ -314,17 +288,19 @@ int	indINDwrite(	IND *		ind,
     }
 
 /************************************************************************/
+/*									*/
 /*  Read an index from file						*/
+/*									*/
 /************************************************************************/
+
 IND *	indINDread(	const char *	filename,
-			int		read_only )
+			int		readOnly )
     {
     int			fd;
 
     IND *		ind;
     TrieNode *		nodes;
     TrieLink *		links;
-    int *		items;
     int			n;
     unsigned		sz;
     int			page;
@@ -338,23 +314,22 @@ IND *	indINDread(	const char *	filename,
     unsigned short	one= 1;
     int			machineBigEndian= ( *(unsigned char *)&one == 0 );
 
-    unsigned char	hd[72];
+    unsigned char	hd[HEADER_BYTES];
 
-    if  ( sizeof(TrieNode) != 12 )
-	{ LLDEB(sizeof(TrieNode),12); return (IND *)0;	}
-    if  ( sizeof(TrieLink) != 4 )
-	{ LLDEB(sizeof(TrieLink),4); return (IND *)0;	}
+    if  ( sizeof(TrieNode) != 8 )
+	{ LLDEB(sizeof(TrieNode),8); return (IND *)0;	}
+    if  ( sizeof(TrieLink) != 8 )
+	{ LLDEB(sizeof(TrieLink),8); return (IND *)0;	}
 
     fd= open( filename, 0 );
     if  ( fd < 0 )
-	{ SLDEB(filename,read_only); return (IND *)0;	}
+	{ SLDEB(filename,readOnly); return (IND *)0;	}
 
-    ind= indINDmake( read_only );
-
+    ind= indINDmake( readOnly );
     if  ( ! ind )
 	{ XDEB(ind); goto failure;	}
 
-    ind->ind_readonly= read_only;
+    ind->ind_readonly= readOnly;
 
     if  ( read( fd, hd, sizeof(hd) ) != sizeof(hd) )
 	{ LDEB(sizeof(hd)); goto failure;	}
@@ -365,15 +340,12 @@ IND *	indINDread(	const char *	filename,
 
 	if  ( ind->ind_magic == INDMAGIC )
 	    {
-	    ind->ind_start= utilEndianExtractBeInt32( hd+ 8 );
-	    ind->ind_nnode= utilEndianExtractBeInt32( hd+ 24 );
-	    ind->indAllocatedNodes= utilEndianExtractBeInt32( hd+ 28 );
-	    ind->indAllocatedLinks= utilEndianExtractBeInt32( hd+ 40 );
-	    ind->ind_lfree= utilEndianExtractBeInt32( hd+ 44 );
-	    ind->ind_lfull= utilEndianExtractBeInt32( hd+ 48 );
-	    ind->ind_ccount= utilEndianExtractBeInt32( hd+ 60 );
-	    ind->ind_cfree= utilEndianExtractBeInt32( hd+ 64 );
-	    ind->ind_cfull= utilEndianExtractBeInt32( hd+ 68 );
+	    ind->ind_start= utilEndianExtractBeInt32( hd+ POS_START );
+	    ind->indNodeCount= utilEndianExtractBeInt32( hd+ POS_NODE_COUNT );
+	    ind->indAllocatedNodes= utilEndianExtractBeInt32( hd+ POS_NODES_ALLOCATED );
+	    ind->indAllocatedLinks= utilEndianExtractBeInt32( hd+ POS_LINKS_ALLOCATED );
+	    ind->indFirstFreeLinkSlot= utilEndianExtractBeInt32( hd+ POS_FREE_LINK );
+	    ind->indLastHeadLinkSlot= utilEndianExtractBeInt32( hd+ POS_LAST_HEAD_LINK );
 
 	    fileOff += sizeof(hd);
 	    }
@@ -381,9 +353,8 @@ IND *	indINDread(	const char *	filename,
 	    if  ( ind->ind_magic == INDMAGIC_R )
 		{
 		fileOff= sizeof(hd);
-		fileOff += utilEndianExtractLeInt32( hd+ 28 )* sizeof(TrieNode);
-		fileOff += utilEndianExtractLeInt32( hd+ 40 )* sizeof(TrieLink);
-		fileOff += utilEndianExtractLeInt32( hd+ 60 )* sizeof(int);
+		fileOff += utilEndianExtractLeInt32( hd+ POS_NODES_ALLOCATED )* sizeof(TrieNode);
+		fileOff += utilEndianExtractLeInt32( hd+ POS_LINKS_ALLOCATED )* sizeof(TrieLink);
 
 		if  ( lseek( fd, fileOff, SEEK_SET ) != fileOff	||
 		      read( fd, hd, sizeof(hd) ) != sizeof(hd)	)
@@ -393,15 +364,12 @@ IND *	indINDread(	const char *	filename,
 		if  ( ind->ind_magic != INDMAGIC )
 		    { XXDEB(ind->ind_magic,INDMAGIC); goto failure;	}
 
-		ind->ind_start= utilEndianExtractBeInt32( hd+ 8 );
-		ind->ind_nnode= utilEndianExtractBeInt32( hd+ 24 );
-		ind->indAllocatedNodes= utilEndianExtractBeInt32( hd+ 28 );
-		ind->indAllocatedLinks= utilEndianExtractBeInt32( hd+ 40 );
-		ind->ind_lfree= utilEndianExtractBeInt32( hd+ 44 );
-		ind->ind_lfull= utilEndianExtractBeInt32( hd+ 48 );
-		ind->ind_ccount= utilEndianExtractBeInt32( hd+ 60 );
-		ind->ind_cfree= utilEndianExtractBeInt32( hd+ 64 );
-		ind->ind_cfull= utilEndianExtractBeInt32( hd+ 68 );
+		ind->ind_start= utilEndianExtractBeInt32( hd+ POS_START );
+		ind->indNodeCount= utilEndianExtractBeInt32( hd+ POS_NODE_COUNT );
+		ind->indAllocatedNodes= utilEndianExtractBeInt32( hd+ POS_NODES_ALLOCATED );
+		ind->indAllocatedLinks= utilEndianExtractBeInt32( hd+ POS_LINKS_ALLOCATED );
+		ind->indFirstFreeLinkSlot= utilEndianExtractBeInt32( hd+ POS_FREE_LINK );
+		ind->indLastHeadLinkSlot= utilEndianExtractBeInt32( hd+ POS_LAST_HEAD_LINK );
 
 		fileOff += sizeof(hd);
 
@@ -415,15 +383,12 @@ IND *	indINDread(	const char *	filename,
 
 	if  ( ind->ind_magic == INDMAGIC )
 	    {
-	    ind->ind_start= utilEndianExtractLeInt32( hd+ 8 );
-	    ind->ind_nnode= utilEndianExtractLeInt32( hd+ 24 );
-	    ind->indAllocatedNodes= utilEndianExtractLeInt32( hd+ 28 );
-	    ind->indAllocatedLinks= utilEndianExtractLeInt32( hd+ 40 );
-	    ind->ind_lfree= utilEndianExtractLeInt32( hd+ 44 );
-	    ind->ind_lfull= utilEndianExtractLeInt32( hd+ 48 );
-	    ind->ind_ccount= utilEndianExtractLeInt32( hd+ 60 );
-	    ind->ind_cfree= utilEndianExtractLeInt32( hd+ 64 );
-	    ind->ind_cfull= utilEndianExtractLeInt32( hd+ 68 );
+	    ind->ind_start= utilEndianExtractLeInt32( hd+ POS_START );
+	    ind->indNodeCount= utilEndianExtractLeInt32( hd+ POS_NODE_COUNT );
+	    ind->indAllocatedNodes= utilEndianExtractLeInt32( hd+ POS_NODES_ALLOCATED );
+	    ind->indAllocatedLinks= utilEndianExtractLeInt32( hd+ POS_LINKS_ALLOCATED );
+	    ind->indFirstFreeLinkSlot= utilEndianExtractLeInt32( hd+ POS_FREE_LINK );
+	    ind->indLastHeadLinkSlot= utilEndianExtractLeInt32( hd+ POS_LAST_HEAD_LINK );
 
 	    fileOff += sizeof(hd);
 	    }
@@ -431,9 +396,8 @@ IND *	indINDread(	const char *	filename,
 	    if  ( ind->ind_magic == INDMAGIC_R )
 		{
 		fileOff= sizeof(hd);
-		fileOff += utilEndianExtractBeInt32( hd+ 28 )* sizeof(TrieNode);
-		fileOff += utilEndianExtractBeInt32( hd+ 40 )* sizeof(TrieLink);
-		fileOff += utilEndianExtractBeInt32( hd+ 60 )* sizeof(int);
+		fileOff += utilEndianExtractBeInt32( hd+ POS_NODES_ALLOCATED )* sizeof(TrieNode);
+		fileOff += utilEndianExtractBeInt32( hd+ POS_LINKS_ALLOCATED )* sizeof(TrieLink);
 
 		if  ( lseek( fd, fileOff, SEEK_SET ) != fileOff	||
 		      read( fd, hd, sizeof(hd) ) != sizeof(hd)	)
@@ -443,27 +407,24 @@ IND *	indINDread(	const char *	filename,
 		if  ( ind->ind_magic != INDMAGIC )
 		    { XXDEB(ind->ind_magic,INDMAGIC); goto failure;	}
 
-		ind->ind_start= utilEndianExtractLeInt32( hd+ 8 );
-		ind->ind_nnode= utilEndianExtractLeInt32( hd+ 24 );
-		ind->indAllocatedNodes= utilEndianExtractLeInt32( hd+ 28 );
-		ind->indAllocatedLinks= utilEndianExtractLeInt32( hd+ 40 );
-		ind->ind_lfree= utilEndianExtractLeInt32( hd+ 44 );
-		ind->ind_lfull= utilEndianExtractLeInt32( hd+ 48 );
-		ind->ind_ccount= utilEndianExtractLeInt32( hd+ 60 );
-		ind->ind_cfree= utilEndianExtractLeInt32( hd+ 64 );
-		ind->ind_cfull= utilEndianExtractLeInt32( hd+ 68 );
+		ind->ind_start= utilEndianExtractLeInt32( hd+ POS_START );
+		ind->indNodeCount= utilEndianExtractLeInt32( hd+ POS_NODE_COUNT );
+		ind->indAllocatedNodes= utilEndianExtractLeInt32( hd+ POS_NODES_ALLOCATED );
+		ind->indAllocatedLinks= utilEndianExtractLeInt32( hd+ POS_LINKS_ALLOCATED );
+		ind->indFirstFreeLinkSlot= utilEndianExtractLeInt32( hd+ POS_FREE_LINK );
+		ind->indLastHeadLinkSlot= utilEndianExtractLeInt32( hd+ POS_LAST_HEAD_LINK );
 
 		fileOff += sizeof(hd);
 
 		oppositeEndian= 1;
 		}
-	    else{ LDEB(ind->ind_magic); goto failure;	}
+	    else{ SXDEB(filename,ind->ind_magic); goto failure;	}
 	    }
 	}
 
 #   if 0
     appDebug( "READ:  ROOT= %d, nnode= %d, ncount= %d lcount= %d\n",
-	ind->ind_start,	ind->ind_nnode, ind->indAllocatedNodes,
+	ind->ind_start,	ind->indNodeCount, ind->indAllocatedNodes,
 	ind->indAllocatedLinks );
 #   endif
 
@@ -473,12 +434,11 @@ IND *	indINDread(	const char *	filename,
 
     mmapSize=	memOff+
 		ind->indAllocatedNodes* sizeof(TrieNode)+
-		ind->indAllocatedLinks* sizeof(TrieLink)+
-		ind->ind_ccount* sizeof( int );
+		ind->indAllocatedLinks* sizeof(TrieLink);
     mmapOffset= fileOff- memOff;
 
 #   ifdef IND_MAP_FD
-    if  ( read_only )
+    if  ( readOnly )
 	{
 	kern_return_t	ret;
 
@@ -495,7 +455,7 @@ IND *	indINDread(	const char *	filename,
 #   endif
 
 #   ifdef IND_MMAP
-    if  ( read_only )
+    if  ( readOnly )
 	{
 	void *	mmapResult;
 
@@ -505,7 +465,7 @@ IND *	indINDread(	const char *	filename,
 	if  ( mmapResult == MAP_FAILED )
 	    { LSDEB(errno,strerror(errno));	}
 	else{
-	    ind->indMmappedFile= mmapResult;
+	    ind->indMmappedFile= (unsigned char *)mmapResult;
 	    ind->indMmappedSize= mmapSize;
 	    memory_mapped= 1;
 	    }
@@ -519,9 +479,6 @@ IND *	indINDread(	const char *	filename,
 
 	ind->ind_links= (TrieLink *)( ind->indMmappedFile+ memOff );
 	memOff += ind->indAllocatedLinks* sizeof(TrieLink);
-
-	ind->ind_classes= (int *)( ind->indMmappedFile+ memOff );
-	memOff += ind->ind_ccount* sizeof(int);
 	}
 
     sz= (ind->indAllocatedNodes/TNsBLOCK)* sizeof( TrieNode * );
@@ -543,20 +500,6 @@ IND *	indINDread(	const char *	filename,
     page= 0;
     for ( n= 0; n < ind->indAllocatedLinks; n += TLsBLOCK )
 	{ ind->indLinkPages[page++]= (TrieLink *)0; }
-
-    if  ( ind->ind_ccount > 0 )
-	{
-	sz= (ind->ind_ccount/ITsBLOCK)* sizeof( int * );
-	ind->ind_cpages= (int **)malloc( sz );
-
-	if  ( ! ind->ind_cpages )
-	    { goto failure;	}
-
-	page= 0;
-	for ( n= 0; n < ind->ind_ccount; n += ITsBLOCK )
-	    { ind->ind_cpages[page++]= (int *)0; }
-	}
-    else{ ind->ind_cpages= (int **)0;	}
 
     page= 0;
     for ( n= 0; n < ind->indAllocatedNodes; n += TNsBLOCK )
@@ -592,24 +535,6 @@ IND *	indINDread(	const char *	filename,
 	    fileOff += sz;
 	    }
 	else{ ind->indLinkPages[page++]= ind->ind_links+ n;	}
-	}
-
-    page= 0;
-    for ( n= 0; n < ind->ind_ccount; n += ITsBLOCK )
-	{
-	if  ( ! memory_mapped )
-	    {
-	    sz= ITsBLOCK * sizeof( int );
-	    ind->ind_cpages[page++]= items= (int *)malloc( sz );
-	    if  ( ! items )
-		{ goto failure;	}
-
-	    if  ( read( fd, (char *)items, sz ) != sz )
-		{ goto failure;	}
-
-	    fileOff += sz;
-	    }
-	else{ ind->ind_cpages[page]= ind->ind_classes+ n; page++; }
 	}
 
     if  ( close( fd ) )

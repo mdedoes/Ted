@@ -2,7 +2,7 @@
 
 #   include	<math.h>
 
-#   include	<bmGrayHisto.h>
+#   include	"bmGrayHisto.h"
 
 #   include	<appDebugon.h>
 
@@ -466,6 +466,9 @@ void bmThresholdMinimumError(	ThresholderHistogram *		th )
 	sum_o -= (double)th->thHistogram[tr]* tr;
 	ssq_o -= (double)th->thHistogram[tr]* tr* tr;
 
+	if  ( no == 0 )
+	    { continue; }
+
 	if  ( no > 0 )
 	    {
 	    uo= sum_o/ no;
@@ -473,7 +476,7 @@ void bmThresholdMinimumError(	ThresholderHistogram *		th )
 	    so= sqrt( vo );
 	    }
 
-	if  ( no == 0 || nb == 0 || vb == 0 || vo == 0 )
+	if  ( nb == 0 || vb == 0 || vo == 0 )
 	    { continue; }
 
 	j= 1.0+
@@ -498,14 +501,16 @@ void bmThresholdMinimumError(	ThresholderHistogram *		th )
 /*									*/
 /************************************************************************/
 
-void bmThresholdKapur(	ThresholderHistogram *		th )
+void bmThresholdKapur(	ThresholderHistogram * const		th )
     {
     int		i;
 
     double	p;
     double	Pt[256];
 
-    double	Ht;
+#   if 0
+    double	Ht= 0;
+#   endif
 
     int		tr;
     int		tr0;
@@ -517,7 +522,7 @@ void bmThresholdKapur(	ThresholderHistogram *		th )
     double	Hb;
     double	Ho;
 
-    p= 0; Ht= 0;
+    p= 0;
     for ( i= 0; i < th->thHistogramSize; i++ )
 	{
 	p += (double)th->thHistogram[i];

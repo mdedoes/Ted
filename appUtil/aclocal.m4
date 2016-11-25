@@ -10,117 +10,349 @@ AC_DEFUN(AC_PATH_ZLIB,
 
     ZLIB_CFLAGS=
     ZLIB_LIBS=
-    ZLIB_STATIC_REF=
-    ZLIB_SHARED_REF=
 
+    ZLIB_HEADERS_FOUND=NO
+    ZLIB_LIBS_FOUND=NO
     ZLIB_FOUND=0
 
-    ac_zlib_includes=${ac_zlib_includes:-NO}
-    ac_zlib_libraries=${ac_zlib_libraries:-NO}
-    ac_zlib_static_lib=NO
-    ac_zlib_shared_lib=NO
-
-    if  test $ac_zlib_includes = "NO"
+    if  ( pkg-config zlib --cflags ) > /dev/null 2>&1
     then
-	# Includes
-	for ac_dir in		\
-	    /usr/include		\
-	    /usr/local/include	\
-	    /usr/pkg/include	\
-	    /usr/local/include/zlib	\
-	    /usr/apps/include	\
-	    ../zlib
+	ZLIB_CFLAGS=`pkg-config zlib --cflags`
+	ZLIB_HEADERS_FOUND=YES
+    fi
+
+    if  ( pkg-config zlib --libs ) > /dev/null 2>&1
+    then
+	ZLIB_LIBS=`pkg-config zlib --libs`
+	ZLIB_LIBS_FOUND=YES
+    fi
+
+    ########  The hard way
+    if test $ZLIB_HEADERS_FOUND = NO -o $ZLIB_LIBS_FOUND = NO
+    then
+	h_so_tmp="$$.h_so_tmp"
+	trap "rm -f $h_so_tmp" 0
+	for h_so in \
+	    "/usr/include zlib.h /usr/lib64 z" \
+	    "/usr/include zlib.h /usr/lib z" \
+	    "/usr/local/include zlib.h /usr/local/lib z" \
+	    "/usr/pkg/include zlib.h /usr/pkg/lib z"	\
+	    "/usr/local/include/zlib zlib.h /usr/local/lib/zlib z" \
+	    "/usr/apps/include zlib.h /usr/apps/lib z"
 	do
-	if  test -r "$ac_dir/zlib.h"
-	    then
-		ac_zlib_includes=$ac_dir
-		break
-	    fi
-	done
-    fi
-
-    if  test $ac_zlib_libraries = "NO"
-    then
-	# Libraries
-	for ac_dir in		\
-	    /usr/lib		\
-	    /usr/local/lib		\
-	    /usr/pkg/lib		\
-	    /usr/local/lib/zlib	\
-	    /usr/apps/lib		\
-	    ../zlib
+	    echo $h_so
+	done > ${h_so_tmp}
+	while read hd h sod so
 	do
-	found=no
-
-	if  test -r "$ac_dir/libz.a"
+	    if  test -f $hd/$h -a -f ${sod}/lib${so}.so
 	    then
-		ac_zlib_libraries=$ac_dir
-		ac_zlib_static_lib=$ac_dir/libz.a
-		found=yes
+		case $hd in
+		/usr/include)
+		    : ok
+		    ;;
+		*)
+		    ZLIB_CFLAGS=-I${hd}
+		    ;;
+		esac
+
+		case $sod in
+		/usr/lib|/lib)
+		    ZLIB_LIBS=-l${so}
+		    ;;
+		*)
+		    ZLIB_LIBS="-L${sod} -l${so}"
+		    ;;
+		esac
+
+		ZLIB_HEADERS_FOUND=YES
+		ZLIB_LIBS_FOUND=YES
 		break
 	    fi
+	done < ${h_so_tmp}
+    fi
+    ########
 
-	if  test -r "$ac_dir/libz.so"
+    AC_ARG_WITH( ZLIB,
+	[ --with-ZLIB Use zlib if available],
+	[
+	    if  test $withval = yes
 	    then
-		ac_zlib_libraries=$ac_dir
-		ac_zlib_shared_lib=$ac_dir/libz.so
-		found=yes
-		break
+		USE_ZLIB=YES
+	    else
+		USE_ZLIB=NO
 	    fi
+	],
+	[
+	    USE_ZLIB=TEST;
+	])
 
-	if  test -r "$ac_dir/libz.dylib"
-	    then
-		ac_zlib_libraries=$ac_dir
-		ac_zlib_shared_lib=$ac_dir/libz.dylib
-		found=yes
-		break
-	    fi
+    case $ZLIB_HEADERS_FOUND.$ZLIB_LIBS_FOUND in
+	YES.YES)
+	    ZLIB_FOUND=1
+	    HAVE_ZLIB=YES
+	    ;;
+	*)
+	    ZLIB_FOUND=0
+	    # Try for ourselves
+	    AC_TRY_COMPILE([#include <zlib.h>],
+	      [deflateInit((z_stream *)0,Z_DEFAULT_COMPRESSION);],
+		HAVE_ZLIB=YES,HAVE_ZLIB=NO,)
+	    ;;
+    esac
 
-	if  test $found = yes
-	    then
-		break
-	    fi
-
-	done
-    fi
-
-    #echo Includes : $ac_zlib_includes
-    #echo Libraries: $ac_zlib_libraries
-
-    if  test $ac_zlib_includes = NO
-    then
-	ZLIB_FOUND=0
-	AC_DEFINE(ZLIB_FOUND,0)
-    else
-	ZLIB_FOUND=1
-	AC_DEFINE(ZLIB_FOUND,1)
-	ZLIB_CFLAGS=-I$ac_zlib_includes
-
-	if  test "$ZLIB_CFLAGS" = "-I/usr/include"
-	then
-	    ZLIB_CFLAGS=
-	fi
-    fi
-
-    if  test $ac_zlib_libraries != NO
-    then
-	ZLIB_LIBS="-L$ac_zlib_libraries"
-    fi
-
-    if  test $ac_zlib_static_lib != NO
-    then
-	ZLIB_STATIC_REF="$ac_zlib_static_lib"
-    else
-	ZLIB_STATIC_REF="$ZLIB_LIBS -lz"
-    fi
-
-    ZLIB_SHARED_REF="$ZLIB_LIBS -lz"
+    case $HAVE_ZLIB.$USE_ZLIB in
+	YES.TEST|YES.YES)
+	    echo 'Using zlib'
+	    AC_DEFINE(HAVE_ZLIB,1)
+	    AC_DEFINE(USE_ZLIB,1)
+	    USE_ZLIB=YES
+	    ;;
+	YES.NO)
+	    echo 'Avoiding zlib'
+	    AC_DEFINE(HAVE_ZLIB,1)
+	    AC_DEFINE(USE_ZLIB,0)
+	    ;;
+	NO.TEST)
+	    echo 'No zlib'
+	    AC_DEFINE(HAVE_ZLIB,0)
+	    AC_DEFINE(USE_ZLIB,0)
+	    USE_ZLIB=NO
+	    ;;
+	NO.YES)
+	    echo '##### No zlib found'
+	    AC_DEFINE(HAVE_ZLIB,0)
+	    AC_DEFINE(USE_ZLIB,0)
+	    ;;
+	*)
+	    ;;
+    esac
 
     AC_SUBST(ZLIB_CFLAGS)dnl
     AC_SUBST(ZLIB_LIBS)dnl
-    AC_SUBST(ZLIB_STATIC_REF)dnl
-    AC_SUBST(ZLIB_SHARED_REF)dnl
-    AC_SUBST(ZLIB_FOUND)dnl
+])
+#####################################################################
+##
+##   Look for libpaper headers and libraries.
+##
+#####################################################################
+
+AC_DEFUN(AC_HAVE_LIBPAPER,
+[
+    echo Checking for libpaper etc.
+
+    LIBPAPER_CFLAGS=
+    LIBPAPER_LIBS=
+
+    LIBPAPER_HEADERS_FOUND=NO
+    LIBPAPER_LIBS_FOUND=NO
+    LIBPAPER_FOUND=0
+
+    if  ( pkg-config libpaper --cflags ) > /dev/null 2>&1
+    then
+	LIBPAPER_CFLAGS=`pkg-config libpaper --cflags`
+	LIBPAPER_HEADERS_FOUND=YES
+    fi
+
+    if  ( pkg-config libpaper --libs ) > /dev/null 2>&1
+    then
+	LIBPAPER_LIBS=`pkg-config libpaper --libs`
+	LIBPAPER_LIBS_FOUND=YES
+    fi
+
+    ########  The hard way
+    if test $LIBPAPER_HEADERS_FOUND = NO -o $LIBPAPER_LIBS_FOUND = NO
+    then
+	h_so_tmp="$$.h_so_tmp"
+	trap "rm -f $h_so_tmp" 0
+	for h_so in \
+	    "/usr/include paper.h /usr/lib64 paper" \
+	    "/usr/include paper.h /usr/lib paper"
+	do
+	    echo $h_so
+	done > ${h_so_tmp}
+	while read hd h sod so
+	do
+	    if  test -f $hd/$h -a -f ${sod}/lib${so}.so
+	    then
+		case $hd in
+		/usr/include)
+		    : ok
+		    ;;
+		*)
+		    LIBPAPER_CFLAGS=-I${hd}
+		    ;;
+		esac
+
+		case $sod in
+		/usr/lib|/lib)
+		    LIBPAPER_LIBS=-l${so}
+		    ;;
+		*)
+		    LIBPAPER_LIBS="-L${sod} -l${so}"
+		    ;;
+		esac
+
+		LIBPAPER_HEADERS_FOUND=YES
+		LIBPAPER_LIBS_FOUND=YES
+		break
+	    fi
+	done < ${h_so_tmp}
+    fi
+    ########
+
+    AC_ARG_WITH( LIBPAPER,
+	[ --with-LIBPAPER Use libpaper if available],
+	[
+	    if  test $withval = yes
+	    then
+		USE_LIBPAPER=YES
+	    else
+		USE_LIBPAPER=NO
+	    fi
+	],
+	[
+	    USE_LIBPAPER=TEST;
+	])
+
+    case $LIBPAPER_HEADERS_FOUND.$LIBPAPER_LIBS_FOUND in
+	YES.YES)
+	    LIBPAPER_FOUND=1
+	    HAVE_LIBPAPER=YES
+	    ;;
+	*)
+	    LIBPAPER_FOUND=0
+	    # Try for ourselves
+	    AC_TRY_COMPILE([#include <paper.h>],
+	      [paperinit();],
+		HAVE_LIBPAPER=YES,HAVE_LIBPAPER=NO,)
+	    ;;
+    esac
+
+    case $HAVE_LIBPAPER.$USE_LIBPAPER in
+	YES.TEST|YES.YES)
+	    echo 'Using libpaper'
+	    AC_DEFINE(HAVE_LIBPAPER,1)
+	    AC_DEFINE(USE_LIBPAPER,1)
+	    USE_LIBPAPER=YES
+	    ;;
+	YES.NO)
+	    echo 'Avoiding libpaper'
+	    AC_DEFINE(HAVE_LIBPAPER,1)
+	    AC_DEFINE(USE_LIBPAPER,0)
+	    ;;
+	NO.TEST)
+	    echo 'No libpaper'
+	    AC_DEFINE(HAVE_LIBPAPER,0)
+	    AC_DEFINE(USE_LIBPAPER,0)
+	    USE_LIBPAPER=NO
+	    ;;
+	NO.YES)
+	    echo '##### No libpaper found'
+	    AC_DEFINE(HAVE_LIBPAPER,0)
+	    AC_DEFINE(USE_LIBPAPER,0)
+	    ;;
+	*)
+	    ;;
+    esac
+
+    AC_SUBST(LIBPAPER_CFLAGS)dnl
+    AC_SUBST(LIBPAPER_LIBS)dnl
+])
+#####################################################################
+##
+##   Look for pcre
+##
+#####################################################################
+
+AC_DEFUN(AC_PATH_PCRE,
+[
+    echo Checking for pcre...
+
+    PCRE_CFLAGS=
+    PCRE_LIBS=
+
+    PCRE_HEADERS_FOUND=NO
+    PCRE_LIBS_FOUND=NO
+    PCRE_FOUND=0
+
+    if  ( pkg-config libpcre --cflags ) > /dev/null 2>&1
+    then
+	PCRE_CFLAGS=`pkg-config libpcre --cflags`
+	PCRE_HEADERS_FOUND=YES
+    fi
+
+    if  ( pkg-config libpcre --libs ) > /dev/null 2>&1
+    then
+	PCRE_LIBS=`pkg-config libpcre --libs`
+	PCRE_LIBS_FOUND=YES
+    fi
+
+    ########  The hard way
+    if test $PCRE_HEADERS_FOUND = NO -o $PCRE_LIBS_FOUND = NO
+    then
+	h_so_tmp="$$.h_so_tmp"
+	trap "rm -f $h_so_tmp" 0
+	for h_so in \
+	    "/usr/include pcre.h /usr/lib64 pcre" \
+	    "/usr/include pcre.h /usr/lib pcre" \
+	    "/usr/local/include pcre.h /usr/local/lib pcre" \
+	    "/usr/pkg/include pcre.h /usr/pkg/lib pcre" \
+	    "/usr/include/pcre pcre.h /usr/lib/pcre pcre" \
+	    "/usr/local/include/pcre pcre.h /usr/local/lib/pcre pcre" \
+	    "/usr/apps/include pcre.h /usr/apps/lib pcre"
+	do
+	    echo $h_so
+	done > ${h_so_tmp}
+	while read hd h sod so
+	do
+	    if  test -f $hd/$h -a -f ${sod}/lib${so}.so
+	    then
+		case $hd in
+		/usr/include)
+		    : ok
+		    ;;
+		*)
+		    PCRE_CFLAGS=-I${hd}
+		    ;;
+		esac
+
+		case $sod in
+		/usr/lib|/lib)
+		    PCRE_LIBS=-l${so}
+		    ;;
+		*)
+		    PCRE_LIBS="-L${sod} -l${so}"
+		    ;;
+		esac
+
+		PCRE_HEADERS_FOUND=YES
+		PCRE_LIBS_FOUND=YES
+		break
+	    fi
+	done < ${h_so_tmp}
+    fi
+    ########
+
+    #echo Includes : $PCRE_CFLAGS
+    #echo Libraries: $PCRE_LIBS
+
+    if  test $PCRE_HEADERS_FOUND = NO
+    then
+	PCRE_FOUND=0
+	AC_DEFINE(HAVE_PCRE,0)
+    else
+	PCRE_FOUND=1
+	AC_DEFINE(HAVE_PCRE,1)
+
+	if  test "$PCRE_CFLAGS" = "-I/usr/include"
+	then
+	    PCRE_CFLAGS=
+	fi
+    fi
+
+    AC_SUBST(PCRE_CFLAGS)dnl
+    AC_SUBST(PCRE_LIBS)dnl
+    AC_SUBST(PCRE_FOUND)dnl
 ])
 #####################################################################
 ##

@@ -6,13 +6,11 @@
 
 #   include	"appFrameConfig.h"
 
-#   include	<stdio.h>
-#   include	<string.h>
 #   include	<stdlib.h>
 
 #   include	<math.h>
 
-#   include	<appRgbCube.h>
+#   include	"appRgbCube.h"
 
 #   include	<appDebugon.h>
 
@@ -62,8 +60,6 @@ void appInitRgbCube(	RgbCube *	rc )
     rc->rcGreenSteps= 1;
     rc->rcBlueSteps= 1;
 
-    appInitColors( &(rc->rcColors) );
-
     rc->rcColorBlocks= (RgbColorBlock *)0;
     rc->rcColorBlockCount= 0;
 
@@ -72,7 +68,6 @@ void appInitRgbCube(	RgbCube *	rc )
 
 void appCleanRgbCube(	RgbCube *	rc )
     {
-    appCleanColors( &(rc->rcColors) );
     }
 
 /************************************************************************/
@@ -124,17 +119,17 @@ static void appTryRgbColorFace(		RgbCube *		rc,
 
     Point2DI		points[5];
 
-    points[0].p2diX= scale* xo[nodes[0]]+ square/ 2;
-    points[1].p2diX= scale* xo[nodes[1]]+ square/ 2;
-    points[2].p2diX= scale* xo[nodes[2]]+ square/ 2;
-    points[3].p2diX= scale* xo[nodes[3]]+ square/ 2;
-    points[4].p2diX= scale* xo[nodes[0]]+ square/ 2;
+    points[0].x= scale* xo[nodes[0]]+ square/ 2;
+    points[1].x= scale* xo[nodes[1]]+ square/ 2;
+    points[2].x= scale* xo[nodes[2]]+ square/ 2;
+    points[3].x= scale* xo[nodes[3]]+ square/ 2;
+    points[4].x= scale* xo[nodes[0]]+ square/ 2;
 
-    points[0].p2diY= square/ 2- scale* yo[nodes[0]];
-    points[1].p2diY= square/ 2- scale* yo[nodes[1]];
-    points[2].p2diY= square/ 2- scale* yo[nodes[2]];
-    points[3].p2diY= square/ 2- scale* yo[nodes[3]];
-    points[4].p2diY= square/ 2- scale* yo[nodes[0]];
+    points[0].y= square/ 2- scale* yo[nodes[0]];
+    points[1].y= square/ 2- scale* yo[nodes[1]];
+    points[2].y= square/ 2- scale* yo[nodes[2]];
+    points[3].y= square/ 2- scale* yo[nodes[3]];
+    points[4].y= square/ 2- scale* yo[nodes[0]];
 
     if  ( geo2DIPointInPolygon( &(fc->fcPoint), points, 4 ) )
 	{
@@ -152,28 +147,6 @@ static void appTryRgbColorFace(		RgbCube *		rc,
 /*									*/
 /************************************************************************/
 
-static int appRgbCubeAllocateBlockColor(	RgbCube *	rc,
-						RgbColorBlock *	rcb )
-    {
-    const RGB8Color *	col= &(rcb->rcbRgbColor);
-
-    if  ( appColorRgb( &(rcb->rcbAllocatorColor), &(rc->rcColors),
-					    col->rgb8Red,
-					    col->rgb8Green,
-					    col->rgb8Blue ) )
-	{ LDEB(1); return- 1;	}
-
-    if  ( appColorRgb( &(rcb->rcbAllocatorColorX), &(rc->rcColors),
-					    255- col->rgb8Red,
-					    255- col->rgb8Green,
-					    255- col->rgb8Blue ) )
-	{ LDEB(1); return- 1;	}
-
-    rcb->rcbColorAllocated= 1;
-
-    return 0;
-    }
-
 static void appDrawRgbColorFace(	RgbCube *		rc,
 					RgbColorBlock *		rcb,
 					void *			through,
@@ -184,10 +157,11 @@ static void appDrawRgbColorFace(	RgbCube *		rc,
 					int			canSplit,
 					const int		nodes[4] )
     {
-    AppDrawingData *	add= (AppDrawingData *)through;
+    DrawingSurface	ds= (DrawingSurface)through;
     int			linewidth;
 
-    APP_POINT		points[5];
+    Point2DI		points[5];
+    RGB8Color		colX;
 
     points[0].x= scale* xo[nodes[0]]+ square/ 2;
     points[1].x= scale* xo[nodes[1]]+ square/ 2;
@@ -201,26 +175,25 @@ static void appDrawRgbColorFace(	RgbCube *		rc,
 
     points[4]= points[0];
 
-    if  ( ! rcb->rcbColorAllocated )
-	{
-	if  ( appRgbCubeAllocateBlockColor( rc, rcb ) )
-	    { LDEB(1); return;	}
-	}
+    drawSetForegroundColor( ds, &(rcb->rcbRgbColor) );
 
-    appDrawSetForegroundColor( add, &(rcb->rcbAllocatorColor) );
-
-    appDrawFillPolygon( add, points, 4 );
+    drawFillPolygon( ds, points, 4 );
 
     if  ( rcb->rcbSelected )
 	{ linewidth= 3; }
     else{ linewidth= 1;	}
 
-    appDrawSetForegroundColor( add, &(rcb->rcbAllocatorColorX) );
+    colX= rcb->rcbRgbColor;
+    colX.rgb8Red= 255- rcb->rcbRgbColor.rgb8Red;
+    colX.rgb8Green= 255- rcb->rcbRgbColor.rgb8Green;
+    colX.rgb8Blue= 255- rcb->rcbRgbColor.rgb8Blue;
 
-    appDrawSetLineAttributes( add, linewidth,
-				LINEstyleSOLID, LINEcapBUTT, LINEjoinMITER,
+    drawSetForegroundColor( ds, &colX );
+
+    drawSetLineAttributes( ds, linewidth,
+				LineStyleSolid, LineCapButt, LineJoinMiter,
 				(const unsigned char *)0, 0 );
-    appDrawDrawLines( add, points, 4 );
+    drawLines( ds, points, 4, 0 );
 
     return;
     }
@@ -421,7 +394,7 @@ void appRedrawRgbCube(	RgbCube *			rc,
 			int				wide,
 			int				high,
 			const DocumentRectangle *	drClip,
-			AppDrawingData *		add )
+			DrawingSurface			ds )
     {
     double		k= RGB_K;
 
@@ -433,11 +406,9 @@ void appRedrawRgbCube(	RgbCube *			rc,
 
     appRgbCubeGeometry( &scale, &square, rc, wide, high );
 
-    appDrawSetForegroundColor( add, &(rc->rcBackColor) );
+    drawSetForegroundColor( ds, &(rc->rcBackColor) );
 
-    appDrawFillRectangle( add, drClip->drX0, drClip->drY0,
-					    drClip->drX1- drClip->drX0+ 1,
-					    drClip->drY1- drClip->drY0+ 1 );
+    drawFillRectangle( ds, drClip );
 
     if  ( rc->rcColorSelected >= 0 )
 	{
@@ -454,22 +425,8 @@ void appRedrawRgbCube(	RgbCube *			rc,
 
 	if  ( geoIntersectRectangle( &drSel, &drSel, drClip ) )
 	    {
-	    if  ( ! rc->rcColorAllocated )
-		{
-		if  ( appColorRgb( &(rc->rcAllocatedColor), &(rc->rcColors),
-					    rc->rcSelectedColor.rgb8Red,
-					    rc->rcSelectedColor.rgb8Green,
-					    rc->rcSelectedColor.rgb8Blue ) )
-		    { LDEB(1); return;	}
-
-		rc->rcColorAllocated= 1;
-		}
-
-	    appDrawSetForegroundColor( add, &(rc->rcAllocatedColor) );
-
-	    appDrawFillRectangle( add, drSel.drX0, drSel.drY0,
-						drSel.drX1- drSel.drX0+ 1,
-						drSel.drY1- drSel.drY0+ 1 );
+	    drawSetForegroundColor( ds, &(rc->rcSelectedColor) );
+	    drawFillRectangle( ds, &drSel );
 	    }
 	}
 
@@ -477,7 +434,7 @@ void appRedrawRgbCube(	RgbCube *			rc,
     for ( i= 0; i < rc->rcColorBlockCount; rcb++, i++ )
 	{
 	appHandleRgbColorBlock( k, square, scale, rc,
-				    (void *)add, appDrawRgbColorFace, rcb );
+				    (void *)ds, appDrawRgbColorFace, rcb );
 	}
 
     return;
@@ -510,8 +467,8 @@ int appRgbCubeFindColor(RGB8Color *			rgb8,
     appRgbCubeGeometry( &scale, &square, rc, wide, high );
 
     fc.fcFound= 0;
-    fc.fcPoint.p2diX= mouseX;
-    fc.fcPoint.p2diY= mouseY;
+    fc.fcPoint.x= mouseX;
+    fc.fcPoint.y= mouseY;
 
     rcb= rc->rcColorBlocks;
     for ( i= 0; i < rc->rcColorBlockCount; rcb++, i++ )
@@ -697,11 +654,11 @@ void appRotateRgbCube(		RgbCube *		rc,
     a_xz /= 10;
     a_yz /= 10;
 
-    utilYZRotationAffineTransform3D( &at, a_yz );
-    utilAffineTransform3DProduct( &(rc->rcAt), &at, &(rc->rcAt) );
+    geoYZRotationAffineTransform3D( &at, a_yz );
+    geoAffineTransform3DProduct( &(rc->rcAt), &at, &(rc->rcAt) );
 
-    utilXZRotationAffineTransform3D( &at,  a_xz );
-    utilAffineTransform3DProduct( &(rc->rcAt), &at, &(rc->rcAt) );
+    geoXZRotationAffineTransform3D( &at,  a_xz );
+    geoAffineTransform3DProduct( &(rc->rcAt), &at, &(rc->rcAt) );
 
     appRgbCubeCalculateBlocks( rc );
 
@@ -809,11 +766,23 @@ void appRgbCubeRefreshSplit(	RgbCube *		rc,
 void appRgbCubeSelectColor(	RgbCube *		rc,
 				const RGB8Color *	rgb8 )
     {
-    int		rr= rgb8->rgb8Red/ rc->rcRedStep;
-    int		gg= rgb8->rgb8Green/ rc->rcGreenStep;
-    int		bb= rgb8->rgb8Blue/ rc->rcBlueStep;
+    int		rr;
+    int		gg;
+    int		bb;
 
     int		n;
+
+    if  ( rc->rcRedStep < 1 || rc->rcGreenStep < 1 || rc->rcBlueStep < 1 )
+	{
+	LDEB(rc->rcRedStep);
+	LDEB(rc->rcGreenStep);
+	LDEB(rc->rcBlueStep);
+	return;
+	}
+
+    rr= rgb8->rgb8Red/ rc->rcRedStep;
+    gg= rgb8->rgb8Green/ rc->rcGreenStep;
+    bb= rgb8->rgb8Blue/ rc->rcBlueStep;
 
     n= 0;
     n += rc->rcGreenSteps* rc->rcBlueSteps* rr;
@@ -829,7 +798,6 @@ void appRgbCubeSelectColor(	RgbCube *		rc,
 
     rc->rcSelectedColor= *rgb8;
     rc->rcColorSelected= n;
-    rc->rcColorAllocated= 0;
 
     return;
     }
@@ -840,33 +808,30 @@ void appRgbCubeSelectColor(	RgbCube *		rc,
 /*									*/
 /************************************************************************/
 
-int appPrepareRgbCube(	RgbCube *			rc,
-			AppDrawingData *		add,
-			int				redSteps,
-			int				greenSteps,
-			int				blueSteps )
+int appPrepareRgbCube(	RgbCube *		rc,
+			DrawingSurface		ds,
+			int			redSteps,
+			int			greenSteps,
+			int			blueSteps )
     {
     int			rr;
     int			gg;
     int			bb;
-
-    int			r= 84;
-    int			g= 84;
-    int			b= 84;
 
     int			i;
 
     int			count;
     RgbColorBlock *	fresh;
 
-    if  ( appAllocateColors( add, &(rc->rcColors) ) )
-	{ LDEB(1); return -1;	}
+    if  ( redSteps < 2 || greenSteps < 2 || blueSteps < 2 )
+	{ LLLDEB(redSteps,greenSteps,blueSteps); return -1;	}
 
-    if  ( appColorRgb( &(rc->rcBackColor), &(rc->rcColors), r, g, b ) )
-	{ LLLDEB(r,g,b); return -1;	}
+    rc->rcBackColor.rgb8Red= 84;
+    rc->rcBackColor.rgb8Green= 84;
+    rc->rcBackColor.rgb8Blue= 84;
+    rc->rcBackColor.rgb8Alpha= 255;
 
     rc->rcColorSelected= -1;
-    rc->rcColorAllocated= 0;
 
     count= redSteps* greenSteps* blueSteps;
 
@@ -891,21 +856,21 @@ int appPrepareRgbCube(	RgbCube *			rc,
 
     rc->rcSplitColor= RCsplitNONE;
 
-    utilIdentityAffineTransform3D( &(rc->rcAt) );
+    geoIdentityAffineTransform3D( &(rc->rcAt) );
 
     /**/
     i= 0; fresh= rc->rcColorBlocks;
     for ( rr= 0; rr < redSteps; rr++ )
 	{
-	r= ( 255* rr )/ ( redSteps- 1 );
+	int	r= ( 255* rr )/ ( redSteps- 1 );
 
 	for ( gg= 0; gg < greenSteps; gg++ )
 	    {
-	    g= ( 255* gg )/ ( greenSteps- 1 );
+	    int	g= ( 255* gg )/ ( greenSteps- 1 );
 
 	    for ( bb= 0; bb < blueSteps; bb++ )
 		{
-		b= ( 255* bb )/ ( blueSteps- 1 );
+		int	b= ( 255* bb )/ ( blueSteps- 1 );
 
 		if  ( i >= rc->rcColorBlockCount )
 		    { LLDEB(i,rc->rcColorBlockCount); return -1;	}
@@ -915,7 +880,6 @@ int appPrepareRgbCube(	RgbCube *			rc,
 		fresh->rcbRgbColor.rgb8Blue= b;
 		fresh->rcbRgbColor.rgb8Alpha= 255;
 
-		fresh->rcbColorAllocated= 0;
 		fresh->rcbSelected= 0;
 
 		fresh++; i++;
@@ -932,13 +896,13 @@ int appPrepareRgbCube(	RgbCube *			rc,
     double		angleYZ= a_yz_0;
     double		angleXY= (  0* M_PI )/ 6;
 
-    utilXZRotationAffineTransform3D( &(rc->rcAt), angleXZ );
+    geoXZRotationAffineTransform3D( &(rc->rcAt), angleXZ );
 
-    utilYZRotationAffineTransform3D( &at, angleYZ );
-    utilAffineTransform3DProduct( &(rc->rcAt), &at, &(rc->rcAt) );
+    geoYZRotationAffineTransform3D( &at, angleYZ );
+    geoAffineTransform3DProduct( &(rc->rcAt), &at, &(rc->rcAt) );
 
-    utilXYRotationAffineTransform3D( &at, angleXY );
-    utilAffineTransform3DProduct( &(rc->rcAt), &at, &(rc->rcAt) );
+    geoXYRotationAffineTransform3D( &at, angleXY );
+    geoAffineTransform3DProduct( &(rc->rcAt), &at, &(rc->rcAt) );
     }
 
     /**/

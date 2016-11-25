@@ -189,7 +189,7 @@ static int sioInLzwReadCode(	LzwInputStream *	lis,
 	{
 	int			byte;
 
-	byte= sioInGetCharacter( lis->lisSisLzw );
+	byte= sioInGetByte( lis->lisSisLzw );
 	if  ( byte == EOF )
 	    { XDEB(byte); return -1; }
 
@@ -258,7 +258,7 @@ static int sioInLzwGetPrefixChar(	const unsigned int *	Prefix,
 
 static int sioInLzwReadBytes(	void *		voidlis,
 				unsigned char *	buffer,
-				int		count )
+				unsigned int	count )
 {
     int				i = 0;
     int				j;
@@ -578,7 +578,7 @@ static int sioOutLzwGifWriteCode(	LzwGifOutputStream *	los,
     while( ls->lsBitsAccumulated >= 8 )
 	{
 	/*  1  */
-	if  ( sioOutPutCharacter( ls->lsAccumulator & 0xff,
+	if  ( sioOutPutByte( ls->lsAccumulator & 0xff,
 						    los->losSosLzw ) == EOF )
 	    { rval= -1;	}
 
@@ -618,7 +618,7 @@ static int sioOutLzwGifClose(	void *		voidlos )
     /*  3  */
     while( ls->lsBitsAccumulated > 0 )
 	{
-	if  ( sioOutPutCharacter( ls->lsAccumulator & 0xff,
+	if  ( sioOutPutByte( ls->lsAccumulator & 0xff,
 						    los->losSosLzw ) == EOF )
 	    { LDEB(1); rval= -1;	}
 
@@ -759,8 +759,7 @@ SimpleOutputStream * sioOutLzwGifOpen(	SimpleOutputStream *	sosLzw,
     sioLzwInitState( &(los->losState), codeSize );
 
     /*  4  */
-    sos= sioOutOpen( (void *)los, sioOutLzwGifWriteBytes,
-					    (SIOoutSEEK)0, sioOutLzwGifClose );
+    sos= sioOutOpen( (void *)los, sioOutLzwGifWriteBytes, sioOutLzwGifClose );
 
     if  ( ! sos )
 	{ XDEB(sos); free( los ); return (SimpleOutputStream *)0; }

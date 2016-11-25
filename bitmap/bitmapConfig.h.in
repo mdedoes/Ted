@@ -59,9 +59,9 @@
 /************************************************/
 /*  Libraries that are (Un)Available.		*/
 /************************************************/
-#   undef	JPEG_FOUND
-#   undef	TIFF_FOUND
-#   undef	PNG_FOUND
-#   undef	XPM_FOUND
+#   undef	USE_LIBJPEG
+#   undef	USE_LIBTIFF
+#   undef	USE_LIBPNG
+#   undef	USE_LIBXPM
 
 #   endif	/*  BITMAP_CONFIG_H  */

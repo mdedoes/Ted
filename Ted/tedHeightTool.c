@@ -6,18 +6,35 @@
 
 #   include	"tedConfig.h"
 
-#   include	<stdlib.h>
 #   include	<stdio.h>
 #   include	<stddef.h>
 #   include	<limits.h>
 
-#   include	<appGeoString.h>
 #   include	<appUnit.h>
 
-#   include	"tedApp.h"
-#   include	"tedFormatTool.h"
+#   include	"tedHeightTool.h"
+#   include	"tedToolUtil.h"
+#   include	<guiToolUtil.h>
+#   include	<guiTextUtil.h>
 
 #   include	<appDebugon.h>
+
+/************************************************************************/
+/*									*/
+/*  Enable a height chooser.						*/
+/*									*/
+/************************************************************************/
+
+void tedFormatEnableHeightChooser(	HeightChooser *	hc,
+					int		enabled )
+    {
+    hc->hcEnabled= enabled;
+
+    guiEnableText( hc->hcText, enabled && hc->hcHow != HC_FREE );
+    guiEnableWidget( hc->hcRow, enabled );
+
+    return;
+    }
 
 /************************************************************************/
 /*									*/
@@ -28,29 +45,25 @@
 void tedFormatRefreshHeightChooser(	HeightChooser *	hc,
 					int		height )
     {
-    char		scratch[50];
-
     if  ( height == 0 )
 	{
-	appEnableText( hc->hcText, 0 );
+	guiEnableText( hc->hcText, 0 );
 
 	hc->hcHow= HC_FREE;
 	appStringToTextWidget( hc->hcText, "" );
 	}
     else{
-	appEnableText( hc->hcText, 1 );
+	guiEnableText( hc->hcText, hc->hcEnabled );
 
 	if  ( height > 0 )
 	    {
 	    hc->hcHow= HC_AT_LEAST;
-	    appGeoLengthToString( scratch,  height, UNITtyPOINTS );
+	    appLengthToTextWidget( hc->hcText,  height, UNITtyPOINTS );
 	    }
 	else{
 	    hc->hcHow= HC_EXACTLY;
-	    appGeoLengthToString( scratch, -height, UNITtyPOINTS );
+	    appLengthToTextWidget( hc->hcText, -height, UNITtyPOINTS );
 	    }
-
-	appStringToTextWidget( hc->hcText, scratch );
 	}
 
     appSetOptionmenu( &(hc->hcOptionmenu), hc->hcHow );
@@ -112,68 +125,81 @@ void tedFormatHeightChosen(	int			how,
 				HeightChooser *		hc,
 				int			defaultValue )
     {
-    char		scratch[50];
     int			val;
 
     switch( how )
 	{
 	case HC_FREE:
-	    appEnableText( hc->hcText, 0 );
+	    guiEnableText( hc->hcText, 0 );
 	    appStringToTextWidget( hc->hcText, "" );
 	    hc->hcHow= how;
 	    return;
 
 	case HC_AT_LEAST:
-	    appEnableText( hc->hcText, 1 );
+	    guiEnableText( hc->hcText, 1 );
 	    val= defaultValue;
 	    if  ( val < 0 )
 		{ val= -val;	}
-	    appGeoLengthToString( scratch, val, UNITtyPOINTS );
-	    appStringToTextWidget( hc->hcText, scratch );
+	    appLengthToTextWidget( hc->hcText, val, UNITtyPOINTS );
 	    hc->hcHow= how;
 	    return;
 
 	case HC_EXACTLY:
-	    appEnableText( hc->hcText, 1 );
+	    guiEnableText( hc->hcText, 1 );
 	    val= defaultValue;
-	    appGeoLengthToString( scratch, val, UNITtyPOINTS );
-	    appStringToTextWidget( hc->hcText, scratch );
+	    if  ( val < 0 )
+		{ val= -val;	}
+	    appLengthToTextWidget( hc->hcText, val, UNITtyPOINTS );
 	    hc->hcHow= how;
 	    return;
 
 	default:
 	    LDEB(how); return;
 	}
-
-    LDEB(1);
     }
 
-void tedFormatMakeHeightRow(	APP_WIDGET *			pRow,
-				void *				through,
+int tedHeightToolValidateDimension(	int *			pValue,
+					int *			pChanged,
+					const HeightChooser *	hc,
+					int			orig )
+    {
+    int				value;
+    int				changed= 0;
+
+    if  ( tedFormatValidateDimension( &value, &changed, hc->hcText, orig ) )
+	{ return -1;	}
+
+    *pValue= value;
+    *pChanged= changed;
+    return 0;
+    }
+
+void tedFormatMakeHeightRow(	void *				through,
 				APP_WIDGET			parent,
 				HeightChooser *			hc,
-				APP_TXACTIVATE_CALLBACK_T	callback )
+				APP_TXACTIVATE_CALLBACK_T	textCallback,
+				OptionmenuCallback		menuCallback )
     {
-    APP_WIDGET	row;
-    APP_WIDGET	text;
-
     const int	menuColumn= 0;
     const int	menuColspan= 1;
     const int	textColumn= menuColumn+ menuColspan;
     const int	textColspan= 1;
     const int	heightResizable= 0;
 
-    row= appMakeRowInColumn( parent, 2, heightResizable );
+    hc->hcEnabled= 1;
 
-    appMakeOptionmenuInRow( &(hc->hcOptionmenu), row, menuColumn, menuColspan );
+    hc->hcRow= appMakeRowInColumn( parent, 2, heightResizable );
 
-    appMakeTextInRow( &text, row, textColumn, textColspan, 10, 0 );
+    appMakeOptionmenuInRow( &(hc->hcOptionmenu), hc->hcRow,
+						menuColumn, menuColspan,
+						menuCallback, through );
 
-    if  ( callback )
-	{ appGuiSetGotValueCallbackForText( text, callback, through ); }
-
-    *pRow= row;
-    hc->hcText= text;
+    appMakeTextInRow( &(hc->hcText), hc->hcRow,
+				    textColumn, textColspan, 10, 0 );
+    if  ( textCallback )
+	{
+	appGuiSetGotValueCallbackForText( hc->hcText, textCallback, through );
+	}
 
     return;
     }
@@ -185,8 +211,6 @@ void tedFormatMakeHeightRow(	APP_WIDGET *			pRow,
 /************************************************************************/
 
 void tedFormatFillHeightChooser(	HeightChooser *		hc,
-					APP_OITEM_CALLBACK_T	callback,
-					void *			voidtft,
 					const char *		freeText,
 					const char *		atLeastText,
 					const char *		exactlyText )
@@ -194,13 +218,13 @@ void tedFormatFillHeightChooser(	HeightChooser *		hc,
     appEmptyOptionmenu( &(hc->hcOptionmenu) );
 
     hc->hcMenuItems[HC_FREE]= appAddItemToOptionmenu( &(hc->hcOptionmenu),
-				    freeText, callback, voidtft );
+								freeText );
 
     hc->hcMenuItems[HC_AT_LEAST]= appAddItemToOptionmenu( &(hc->hcOptionmenu),
-				    atLeastText, callback, voidtft );
+								atLeastText );
 
     hc->hcMenuItems[HC_EXACTLY]= appAddItemToOptionmenu( &(hc->hcOptionmenu),
-				    exactlyText, callback, voidtft );
+								exactlyText );
 
     appSetOptionmenu( &(hc->hcOptionmenu), HC_FREE );
     hc->hcHow= HC_FREE;
@@ -225,5 +249,6 @@ void tedInitHeightChooser(	HeightChooser *		hc )
 	{ hc->hcMenuItems[i]= (APP_WIDGET)0;	}
 
     hc->hcHow= HC_FREE;
+    hc->hcEnabled= 0;
     }
 

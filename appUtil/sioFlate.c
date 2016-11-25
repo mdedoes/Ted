@@ -8,23 +8,12 @@
 #   include	"appUtilConfig.h"
 
 #   include	<stdlib.h>
-#   include	<string.h>
 
 #   include	"sioFlate.h"
 #   include	"sioEndian.h"
 #   include	<zlib.h>
 
 #   include	<appDebugon.h>
-
-/************************************************************************/
-/*									*/
-/*  Refuse to seek in input and on output.				*/
-/*									*/
-/************************************************************************/
-
-static int sioFlateSeek(		void *			voidsos,
-					long			pos )
-    { LDEB(1); return -1; return 0; }
 
 /************************************************************************/
 /*									*/
@@ -53,124 +42,14 @@ typedef struct FlateInputStream
 
 /************************************************************************/
 /*									*/
-/*  Read and interpret the first few bytes of the input to find out	*/
-/*  whether it really is a gzip file.					*/
-/*									*/
-/*  1)  Magic number.							*/
-/*  2)  Compression method.						*/
-/*  3)  Flags.								*/
-/*  4)  Creation time.							*/
-/*  5)  Extension flags.						*/
-/*  6)  Operating system.						*/
-/*  7)  Extra Field.							*/
-/*  8)  Original name.							*/
-/*  9)  Comment.							*/
-/*  10) CRC.								*/
-/*									*/
-/************************************************************************/
-
-# if 0
-static int sioInFlateReadHeader(	SimpleInputStream *	sisFlate )
-    {
-    int			method;
-    int			flags;
-    long		timeMade;
-    int			xflags;
-    int			os;
-
-    unsigned int	len;
-    int			c;
-
-    /*  1  */
-    c= sioInGetCharacter( sisFlate );
-    if  ( c != 0x1f )
-	{ sioInUngetLastRead( sisFlate ); return 1;	}
-
-    /*  1  */
-    c= sioInGetCharacter( sisFlate );
-    if  ( c != 0x8b )
-	{ XDEB(c); return -1;	}
-
-    /*  2  */
-    method= sioInGetCharacter( sisFlate );
-    if  ( method != Z_DEFLATED )
-	{ LLDEB(method,Z_DEFLATED); return -1;	}
-
-    /*  3  */
-    flags= sioInGetCharacter( sisFlate );
-    if  ( flags & 0xe0 )
-	{ return -1;	}
-
-    /*  4  */
-    timeMade= sioEndianGetLeInt32( sisFlate );
-
-    /*  5  */
-    xflags= sioInGetCharacter( sisFlate );
-
-    /*  6  */
-    os= sioInGetCharacter( sisFlate );
-
-    /*  7  */
-    if  ( flags & 0x04 )
-	{
-	len= sioEndianGetLeUint16( sisFlate );
-
-	while( len > 0 )
-	    {
-	    c= sioInGetCharacter( sisFlate );
-	    if  ( c == EOF )
-		{ XDEB(c); return -1;	}
-
-	    len--;
-	    }
-	}
-
-    /*  8  */
-    if  ( flags & 0x08 )
-	{
-	for (;;)
-	    {
-	    c= sioInGetCharacter( sisFlate );
-	    if  ( c == 0 )
-		{ break;	}
-	    if  ( c == EOF )
-		{ XDEB(c); return -1;	}
-	    }
-	}
-
-    /*  9  */
-    if  ( flags & 0x10 )
-	{
-	for (;;)
-	    {
-	    c= sioInGetCharacter( sisFlate );
-	    if  ( c == 0 )
-		{ break;	}
-	    if  ( c == EOF )
-		{ XDEB(c); return -1;	}
-	    }
-	}
-
-    /*  10  */
-    if  ( flags & 0x02 )
-	{
-	len= sioEndianGetLeUint16( sisFlate );
-	}
-
-    return 0;
-    }
-# endif
-
-/************************************************************************/
-/*									*/
 /*  The Flate decompression routine:					*/
 /*									*/
 /************************************************************************/
 
 static int sioInFlateReadBytes(	void *			voidfis,
 				unsigned char *		buffer,
-				int			count )
-{
+				unsigned int		count )
+    {
     FlateInputStream *		fis= (FlateInputStream *)voidfis;
     z_stream *			d_stream= &(fis->fisZstream);
 
@@ -211,7 +90,11 @@ static int sioInFlateReadBytes(	void *			voidfis,
 	if  ( ret != Z_OK )
 	    {
 	    if  ( ret == Z_STREAM_END )
-		{ fis->fisExhausted= 1; break;	}
+		{
+		done= count- d_stream->avail_out;
+		fis->fisExhausted= 1;
+		break;
+		}
 	    else{ LDEB(ret); return -1;		}
 	    }
 
@@ -220,7 +103,7 @@ static int sioInFlateReadBytes(	void *			voidfis,
 	}
 
     return done;
-}
+    }
 
 
 /************************************************************************/
@@ -398,14 +281,10 @@ static int sioOutFlateClose(	void *		voidfos )
 	    }
 
 	ret= deflate( c_stream, Z_FINISH );
-	if  ( ret != Z_OK )
-	    {
-	    if  ( ret != Z_STREAM_END )
-		{ LDEB(ret); rval= -1; break;	}
-	    }
-
 	if  ( ret == Z_STREAM_END )
 	    { break;	}
+	if  ( ret != Z_OK )
+	    { LDEB(ret); rval= -1; break;	}
 	}
 
     if  ( c_stream->avail_out < SIOsizBUF )
@@ -433,16 +312,17 @@ static int sioOutFlateClose(	void *		voidfos )
 
 static int sioFlateWriteGzipHeader(	SimpleOutputStream *	sosFlate )
     {
-    sioOutPutCharacter( 0x1f, sosFlate );		/*  magic 0	*/
-    sioOutPutCharacter( 0x8b, sosFlate );		/*  magic 1	*/
-    sioOutPutCharacter( Z_DEFLATED, sosFlate );		/*  method	*/
-    sioOutPutCharacter( 0x00, sosFlate );		/*  flags	*/
+    if  ( sioOutPutByte( 0x1f, sosFlate ) < 0	||	/*  magic 0	*/
+	  sioOutPutByte( 0x8b, sosFlate ) < 0	||	/*  magic 1	*/
+	  sioOutPutByte( Z_DEFLATED, sosFlate ) < 0 ||	/*  method	*/
+	  sioOutPutByte( 0x00, sosFlate ) < 0	||	/*  flags	*/
 
-    sioEndianPutLeInt32( 0L, sosFlate );		/*  time	*/
+	  sioEndianPutLeInt32( 0L, sosFlate ) < 0 ||	/*  time	*/
 
-    sioOutPutCharacter( 0x00, sosFlate );		/*  xfl		*/
+	  sioOutPutByte( 0x00, sosFlate ) < 0	||	/*  xfl		*/
 
-    sioOutPutCharacter( 0x03, sosFlate );		/*  os is unix	*/
+	  sioOutPutByte( 0x03, sosFlate ) < 0	)	/*  os is unix	*/
+	{ return -1;	}
 
     return 0;
     }
@@ -493,13 +373,12 @@ SimpleOutputStream * sioOutFlateOpen(	SimpleOutputStream *	sosFlate,
     c_stream->next_out= fos->fosOutputBuffer;
     c_stream->avail_out= SIOsizBUF;
 
-    sos= sioOutOpen( (void *)fos, sioOutFlateWriteBytes,
-					    sioFlateSeek, sioOutFlateClose );
+    sos= sioOutOpen( (void *)fos, sioOutFlateWriteBytes, sioOutFlateClose );
 
     if  ( ! sos )
 	{
 	XDEB(sos);
-	inflateEnd( c_stream ); free( fos );
+	deflateEnd( c_stream ); free( fos );
 	return (SimpleOutputStream *)0;
 	}
 

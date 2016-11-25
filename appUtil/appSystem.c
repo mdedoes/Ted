@@ -2,7 +2,6 @@
 /*									*/
 /*  Consult the operating system about certain things.			*/
 /*									*/
-/*  0)  mkdir() is not declared on linux, suppress warning.		*/
 /*  1)  Note that we use shell commands to consult the file system.	*/
 /*	this is the easiest way.					*/
 /*									*/
@@ -22,20 +21,16 @@
 #   include	<errno.h>
 #   include	<netinet/in.h>
 #   include	<unistd.h>
+#   include	<fcntl.h>
 #   include	<netdb.h>
 #   include	<sys/utsname.h>
 
-#   include	<appSystem.h>
+#   include	"appSystem.h"
 
 #   include	<appDebugon.h>
 
 #   ifdef NeXT
 #	include	<libc.h>
-#   endif
-
-    /*  0  */
-#   ifdef __linux__
-    extern int mkdir( const char * name, mode_t mode );
 #   endif
 
 #   define	USE_STAT	1
@@ -51,30 +46,30 @@
 #	include	<dirent.h>
 #   endif
 
+#   ifndef PATH_MAX
+#	define	PATH_MAX	1000
+#   endif
+
 /************************************************************************/
 /*									*/
 /*  Determine the home directory of the user.				*/
 /*									*/
 /************************************************************************/
 
-int appHomeDirectory(	char *		home,
-			int		len )
+int appHomeDirectory(	MemoryBuffer *	mb )
     {
     struct passwd *	pwd;
-    int			l;
 
     pwd= getpwuid( getuid() );
     if  ( ! pwd )
 	{ LXDEB(getuid(),pwd); return -1;	}
-
     if  ( ! pwd->pw_dir )
-	{ XDEB(pwd->pw_dir);	}
+	{ XDEB(pwd->pw_dir); return -1;	}
 
-    l= strlen( pwd->pw_dir );
-    if  ( l > len )
-	{ SLDEB(pwd->pw_dir,len); return -1;	}
+    if  ( utilMemoryBufferSetString( mb, pwd->pw_dir ) )
+	{ LDEB(1); return -1;	}
 
-    strcpy( home, pwd->pw_dir ); return l;
+    return mb->mbSize;
     }
 
 /************************************************************************/
@@ -83,36 +78,38 @@ int appHomeDirectory(	char *		home,
 /*									*/
 /************************************************************************/
 
-int appCurrentDirectory(	char *		pwd,
-				int		len )
+int appCurrentDirectory(	MemoryBuffer *	mb )
     {
-#   if USE_GETCWD
-    if  ( ! getcwd( pwd, len ) )
-	{ LSDEB(len,strerror(errno)); return -1; }
+    char	scratch[PATH_MAX+ 1];
 
-    len= strlen( pwd );
+#   if USE_GETCWD
+    if  ( ! getcwd( scratch, sizeof(scratch)- 1 ) )
+	{ SDEB(strerror(errno)); return -1; }
 
 #   else
     {
     FILE *	f= popen( "pwd", "r" );
+    int		len;
 
     if  ( ! f )
 	{ XDEB(f); return -1;	}
 
-    if  ( ! fgets( pwd, len, f ) )
+    if  ( ! fgets( pwd, sizeof(scratch)- 1, f ) )
 	{ LDEB(1); pclose( f ); return -1;	}
-
-    len= strlen( len );
-    if  ( len < 1 || pwd[len -1] != '\n' )
-	{ SDEB(len); return -1;	}
-
-    pwd[len--]= '\0';
-
     pclose( f );
+
+    len= strlen( scratch );
+    if  ( len < 1 || scratch[len -1] != '\n' )
+	{ SDEB(scratch); return -1;	}
+
+    scratch[len--]= '\0';
     }
 #   endif
 
-    return len;
+    if  ( utilMemoryBufferSetString( mb, scratch ) )
+	{ LDEB(1); return -1;	}
+
+    return mb->mbSize;
     }
 
 /************************************************************************/
@@ -122,14 +119,14 @@ int appCurrentDirectory(	char *		pwd,
 /************************************************************************/
 
 #if USE_STAT
-int appTestDirectory(	const char *	dir )
+int appTestDirectory(	const MemoryBuffer *	dir )
     {
     struct stat	st;
 
-    if  ( stat( dir, &st ) )
+    if  ( stat( utilMemoryBufferGetString( dir ), &st ) )
 	{
 	if  ( errno != ENOENT )
-	    { SSDEB(dir,strerror(errno)); }
+	    { SSDEB(utilMemoryBufferGetString(dir),strerror(errno)); }
 
 	return -1;
 	}
@@ -140,11 +137,11 @@ int appTestDirectory(	const char *	dir )
     return 0;
     }
 #else
-int appTestDirectory(	const char *	dir )
+int appTestDirectory(	const MemoryBuffer *	dir )
     {
     char	scratch[1001];
 
-    sprintf( scratch, "test -d '%s'", dir );
+    sprintf( scratch, "test -d '%s'", utilMemoryBufferGetString( dir ) );
 
     if  ( system( scratch ) )
 	{ return -1;	}
@@ -154,19 +151,19 @@ int appTestDirectory(	const char *	dir )
 #endif
 
 #if USE_ACCESS
-int appTestFileWritable( const char *	file )
+int appTestFileWritable( const MemoryBuffer *	file )
     {
-    if  ( access( file, W_OK ) )
+    if  ( access( utilMemoryBufferGetString( file ), W_OK ) )
 	{ return -1;	}
 
     return 0;
     }
 #else
-int appTestFileWritable( const char *	file )
+int appTestFileWritable( const MemoryBuffer *	file )
     {
     char	scratch[1001];
 
-    sprintf( scratch, "test -w '%s'", file );
+    sprintf( scratch, "test -w '%s'", utilMemoryBufferGetString( file ) );
 
     if  ( system( scratch ) )
 	{ return -1;	}
@@ -176,19 +173,19 @@ int appTestFileWritable( const char *	file )
 #endif
 
 #if USE_ACCESS
-int appTestFileReadable( const char *	file )
+int appTestFileReadable( const MemoryBuffer *	file )
     {
-    if  ( access( file, R_OK ) )
+    if  ( access( utilMemoryBufferGetString( file ), R_OK ) )
 	{ return -1;	}
 
     return 0;
     }
 #else
-int appTestFileReadable( const char *	file )
+int appTestFileReadable( const MemoryBuffer *	file )
     {
     char	scratch[1001];
 
-    sprintf( scratch, "test -w '%s'", file );
+    sprintf( scratch, "test -w '%s'", utilMemoryBufferGetString( file ) );
 
     if  ( system( scratch ) )
 	{ return -1;	}
@@ -198,14 +195,14 @@ int appTestFileReadable( const char *	file )
 #endif
 
 #if USE_STAT
-int appTestFileExists(	const char *	file )
+int appTestFileExists(	const MemoryBuffer *	mb )
     {
     struct stat	st;
 
-    if  ( stat( file, &st ) )
+    if  ( stat( utilMemoryBufferGetString( mb ), &st ) )
 	{
 	if  ( errno != ENOENT )
-	    { SSDEB(file,strerror(errno)); }
+	    { SSDEB(utilMemoryBufferGetString(mb),strerror(errno)); }
 
 	return -1;
 	}
@@ -216,11 +213,11 @@ int appTestFileExists(	const char *	file )
     return 0;
     }
 #else
-int appTestFileExists( const char *	file )
+int appTestFileExists(	const MemoryBuffer *	mb )
     {
     char	scratch[1001];
 
-    sprintf( scratch, "test -f '%s'", file );
+    sprintf( scratch, "test -f '%s'", utilMemoryBufferGetString( mb ) );
 
     if  ( system( scratch ) )
 	{ return -1;	}
@@ -235,13 +232,52 @@ int appTestFileExists( const char *	file )
 /*									*/
 /************************************************************************/
 
-int appMakeDirectory(	const char *	dir )
+int appMakeDirectory(	const MemoryBuffer *	dir )
     {
-    if  ( mkdir( dir, 0777 ) )
-	{ SSDEB(dir,strerror(errno)); return -1;	}
+    if  ( mkdir( utilMemoryBufferGetString( dir ), 0777 ) )
+	{ SSDEB(utilMemoryBufferGetString(dir),strerror(errno)); return -1; }
 
     return 0;
     }
+
+static int appMakeDirectoriesX(	const char *	dir )
+    {
+    if  ( mkdir( dir, 0777 ) )
+	{
+	if  ( errno == ENOENT )
+	    {
+	    char *	scratch= strdup( dir );
+	    char *	slash;
+	    int		rval= 0;;
+
+	    if  ( ! scratch )
+		{ XDEB(scratch); return -1;	}
+
+	    slash= strrchr( scratch, '/' );
+	    if  ( ! slash )
+		{ SXDEB(dir,slash);	}
+	    else{
+		*slash= '\0';
+
+		if  ( appMakeDirectoriesX( scratch ) )
+		    { SDEB(scratch); rval= -1;	}
+		else{
+		    if  ( mkdir( dir, 0777 ) )
+			{ SSDEB(dir,strerror(errno)); rval= -1;	}
+		    }
+		}
+
+	    free( scratch );
+	    return rval;
+	    }
+	else{ SSDEB(dir,strerror(errno)); return -1; }
+	}
+
+    return 0;
+    }
+
+int appMakeDirectories(	const MemoryBuffer *	dir )
+    { return appMakeDirectoriesX( utilMemoryBufferGetString( dir ) );	}
 
 /************************************************************************/
 /*									*/
@@ -251,19 +287,21 @@ int appMakeDirectory(	const char *	dir )
 
 long appGetTimestamp( void )
     {
-    time_t	now;
+    static time_t	now;
 
-    now= time( (time_t *)0 ); sleep( 1 );
+    if  ( now == 0 )
+	{ now= time( (time_t *)0 );	}
+    else{ now++;			}
 
     return now;
     }
 
 int appMakeUniqueString(	char *		target,
-				int		maxlen )
+				unsigned int	maxlen )
     {
     int				pid= getpid();
     time_t			now= time( (time_t *)0 );
-    int				needed;
+    unsigned int		needed;
 
     static time_t		prevNow;
     static unsigned long	count;
@@ -346,12 +384,118 @@ int appMakeUniqueString(	char *		target,
 /*									*/
 /************************************************************************/
 
-int appRemoveFile(	const char *	filename )
+int appRemoveFile(	const MemoryBuffer *	filename )
     {
-    if  ( remove( filename ) )
-	{ SSDEB(filename,strerror(errno)); return -1;	}
+    const char *	fn= utilMemoryBufferGetString( filename );
+
+    if  ( remove( fn ) )
+	{ SLSDEB(fn,errno,strerror(errno)); return -1;	}
 
     return 0;
+    }
+
+/************************************************************************/
+/*									*/
+/*  Move a file by copying it.						*/
+/*									*/
+/************************************************************************/
+
+# ifdef		EXDEV
+
+static int appMoveFile(	const char *	fn,
+			const char *	fo )
+    {
+    int			rval= 0;
+
+    int			fdo= -1;
+    int			fdn= -1;
+
+    char		buf[1024];
+    int			done;
+
+    fdn= open( fn, O_WRONLY|O_CREAT, 0666 );
+    if  ( fdn < 0 )
+	{ SLLSDEB(fn,fdn,errno,strerror(errno)); rval= -1; goto ready; }
+
+    fdo= open( fo, O_RDONLY, 0 );
+    if  ( fdo < 0 )
+	{ SLLSDEB(fo,fdo,errno,strerror(errno)); rval= -1; goto ready; }
+
+    while( ( done= read( fdo, buf, sizeof(buf) ) ) > 0 )
+	{
+	if  ( write( fdn, buf, done ) != done )
+	    {
+	    SLLSDEB(fn,done,errno,strerror(errno));
+	    rval= -1; goto ready;
+	    }
+	}
+
+    if  ( done < 0 )
+	{ SLLSDEB(fo,done,errno,strerror(errno)); rval= -1; goto ready; }
+
+    if  ( close( fdn ) )
+	{ SLLSDEB(fn,fdn,errno,strerror(errno)); rval= -1; goto ready; }
+    fdn= -1;
+
+    if  ( close( fdo ) )
+	{ SLLSDEB(fo,fdo,errno,strerror(errno)); rval= -1; goto ready; }
+    fdo= -1;
+
+    if  ( unlink( fo ) )
+	{ SLSDEB(fo,errno,strerror(errno)); rval= -1; goto ready;	}
+
+  ready:
+
+    if  ( fdn >= 0 && close( fdn ) )
+	{ SLSDEB(fn,errno,strerror(errno));	}
+    if  ( fdn >= 0 && unlink( fn ) )
+	{ SLSDEB(fn,errno,strerror(errno));	}
+
+    if  ( fdo >= 0 && close( fdo ) )
+	{ SLSDEB(fo,errno,strerror(errno));	}
+
+    return rval;
+    }
+
+# endif	/*	EXDEV	*/
+
+/************************************************************************/
+/*									*/
+/*  Rename a file.							*/
+/*  Behavior is undefined if we have the file open.			*/
+/*									*/
+/************************************************************************/
+
+int appRenameFile(	const MemoryBuffer *	newName,
+			const MemoryBuffer *	oldName )
+    {
+    int			rval= 0;
+
+    const char *	fn= utilMemoryBufferGetString( newName );
+    const char *	fo= utilMemoryBufferGetString( oldName );
+    int			res;
+
+    res= rename( fo, fn );
+
+#   ifdef EXDEV
+
+    if  ( res < 0 && errno == EXDEV )
+	{
+	res= appMoveFile( fn, fo );
+	if  ( res )
+	    { SSLSDEB(fo,fn,errno,strerror(errno)); rval= -1; goto ready; }
+	} 
+
+#   else
+
+    if  ( res )
+	{ SSLSDEB(fo,fn,errno,strerror(errno)); rval= -1; goto ready;	}
+
+#   endif
+
+  ready:
+
+    return rval;
     }
 
 /************************************************************************/
@@ -364,22 +508,31 @@ int appRemoveFile(	const char *	filename )
 
 #if USE_OPENDIR
 
-int appForAllFiles(	const char *		dir,
+int appForAllFiles(	const MemoryBuffer *	dir,
 			const char *		ext,
 			void *			through,
 			FILE_CALLBACK		callback )
     {
     int			rval= 0;
-    DIR *		d= opendir( dir );
+    DIR *		d= opendir( utilMemoryBufferGetString( dir ) );
     struct dirent *	de;
 
+    MemoryBuffer	absolute;
+    MemoryBuffer	relative;
+
+    utilInitMemoryBuffer( &absolute );
+    utilInitMemoryBuffer( &relative );
+
     if  ( ! d )
-	{ SSDEB(dir,strerror(errno)); return -1;	}
+	{
+	SSDEB(utilMemoryBufferGetString(dir),strerror(errno));
+	rval= -1; goto ready;
+	}
 
     de= readdir( d );
     while( de )
 	{
-	char *	dot= strrchr( de->d_name, '.' );
+	char *		dot= strrchr( de->d_name, '.' );
 
 #	ifdef __VMS
 	char *	semicolon= strrchr( de->d_name, ';' );
@@ -397,23 +550,29 @@ int appForAllFiles(	const char *		dir,
 	      ( dot				&&
 	      ! strcmp( dot+ 1, ext )		)	)
 	    {
-	    char	scratch[FILEL+1];
+	    const int	relativeIsFile= 0;
 
-#	    ifdef __VMS
-	    sprintf( scratch, "%s%s",  dir, de->d_name );
-#	    else
-	    sprintf( scratch, "%s/%s", dir, de->d_name );
-#	    endif
+	    if  ( utilMemoryBufferSetString( &relative, de->d_name ) )
+		{ LDEB(1); rval= -1; goto ready;	}
 
-	    if  ( (*callback)( scratch, through )	)
-		{ SDEB(scratch); rval= -1; break;	}
+	    if  ( appAbsoluteName( &absolute, &relative,
+						relativeIsFile, dir ) < 0 )
+		{ LDEB(1); rval= -1; goto ready;	}
+
+	    if  ( (*callback)( &absolute, through )	)
+		{ SDEB(de->d_name); rval= -1; break;	}
 	    }
 
 	de= readdir( d );
 	}
 
-    if  ( closedir( d ) )
-	{ SSDEB(dir,strerror(errno)); rval= -1;	}
+  ready:
+
+    utilCleanMemoryBuffer( &absolute );
+    utilCleanMemoryBuffer( &relative );
+
+    if  ( d && closedir( d ) )
+	{ SDEB(strerror(errno)); rval= -1;	}
 
     return rval;
     }

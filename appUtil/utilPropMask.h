@@ -15,9 +15,6 @@ typedef struct PropertyMask
     unsigned char	pmBits[PROPmaskSIZE];
     } PropertyMask;
 
-#   define	PROPmaskCLEAR( pm ) \
-			memset( (pm)->pmBits, 0, PROPmaskSIZE )
-
 #   define	PROPmaskADD( pm, v ) \
 			(pm)->pmBits[(v)/8] |= (1<<((v)%8))
 
@@ -26,6 +23,8 @@ typedef struct PropertyMask
 
 #   define	PROPmaskISSET( pm, v ) \
 			( (pm)->pmBits[(v)/8] & (1<<((v)%8)) ) != 0
+
+extern void utilPropMaskClear(		PropertyMask *		pm );
 
 extern void utilPropMaskFill(		PropertyMask *		pm,
 					int			c );

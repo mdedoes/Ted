@@ -7,11 +7,14 @@
 #   include	"appFrameConfig.h"
 
 #   include	<stdlib.h>
+#   include	<stddef.h>
 #   include	<stdio.h>
 
-#   include	<appFrame.h>
+#   include	"appFrame.h"
+#   include	"appInspector.h"
+#   include	"guiWidgetsImpl.h"
 
-#   include	<appRgbChooserPage.h>
+#   include	"appRgbChooserPage.h"
 
 #   include	<appDebugon.h>
 
@@ -42,7 +45,11 @@ static void appDestroyInspector(	AppInspector *	ai )
     if  ( ai->aiDestroy )
 	{ (*ai->aiDestroy)( ai->aiTarget );	}
 
-    appDestroyShellWidget( ai->aiTopWidget );
+    if  ( ai->aiTopWidget )
+	{ appDestroyShellWidget( ai->aiTopWidget );	}
+
+    if  ( ai->aiSubjects )
+	{ free( ai->aiSubjects );	}
 
     free( ai );
 
@@ -60,149 +67,14 @@ static APP_CLOSE_CALLBACK_H( appInspectorCloseCall, w, voidai )
 
 /************************************************************************/
 /*									*/
-/*  Make the form with the two buttons.					*/
-/*									*/
-/************************************************************************/
-
-void appInspectorMakeButtonRow(	APP_WIDGET *		pRow,
-				APP_WIDGET		parent,
-				APP_WIDGET *		pLeftButton,
-				APP_WIDGET *		pRightButton,
-				const char *		leftLabel,
-				const char *		rightLabel,
-				APP_BUTTON_CALLBACK_T	leftCallback,
-				APP_BUTTON_CALLBACK_T	rightCallback,
-				void *			through )
-    {
-    const int	heightResizable= 0;
-    const int	showAsDefault= 0;
-
-    APP_WIDGET	row= appMakeRowInColumn( parent, 2, heightResizable );
-
-    APP_WIDGET	leftButton;
-    APP_WIDGET	rightButton;
-
-    appMakeButtonInRow( &leftButton, row, leftLabel, leftCallback, through,
-							    0, showAsDefault );
-    appMakeButtonInRow( &rightButton, row, rightLabel,rightCallback, through,
-							    1, showAsDefault );
-
-    *pRow= row;
-    *pLeftButton= leftButton;
-    *pRightButton= rightButton;
-
-    return;
-    }
-
-void appInspectorMake3ButtonRow( APP_WIDGET *		pRow,
-				APP_WIDGET		parent,
-				APP_WIDGET *		pLeftButton,
-				APP_WIDGET *		pMiddleButton,
-				APP_WIDGET *		pRightButton,
-				const char *		leftLabel,
-				const char *		middleLabel,
-				const char *		rightLabel,
-				APP_BUTTON_CALLBACK_T	leftCallback,
-				APP_BUTTON_CALLBACK_T	middleCallback,
-				APP_BUTTON_CALLBACK_T	rightCallback,
-				void *			through )
-    {
-    const int	heightResizable= 0;
-    const int	showAsDefault= 0;
-
-    APP_WIDGET	row= appMakeRowInColumn( parent, 3, heightResizable );
-
-    APP_WIDGET	leftButton;
-    APP_WIDGET	middleButton;
-    APP_WIDGET	rightButton;
-
-    appMakeButtonInRow( &leftButton, row, leftLabel, leftCallback, through,
-							    0, showAsDefault );
-    appMakeButtonInRow( &middleButton, row, middleLabel,middleCallback, through,
-							    1, showAsDefault );
-    appMakeButtonInRow( &rightButton, row, rightLabel,rightCallback, through,
-							    2, showAsDefault );
-
-    *pRow= row;
-    *pLeftButton= leftButton;
-    *pMiddleButton= middleButton;
-    *pRightButton= rightButton;
-
-    return;
-    }
-
-void appInspectorMakeToggleRow(		APP_WIDGET *		pRow,
-					APP_WIDGET		parent,
-					APP_WIDGET *		pLeftToggle,
-					APP_WIDGET *		pRightToggle,
-					const char *		leftText,
-					const char *		rightText,
-					APP_TOGGLE_CALLBACK_T	leftCallback,
-					APP_TOGGLE_CALLBACK_T	rightCallback,
-					void *			through )
-    {
-    const int	heightResizable= 0;
-    APP_WIDGET	row= appMakeRowInColumn( parent, 2, heightResizable );
-
-    APP_WIDGET	leftToggle;
-    APP_WIDGET	rightToggle;
-
-    const int	leftColumn= 0;
-    const int	rightColumn= 1;
-
-    leftToggle= appMakeToggleInRow( row, leftText, leftCallback,
-						    through, leftColumn );
-    rightToggle= appMakeToggleInRow( row, rightText, rightCallback,
-						    through, rightColumn );
-
-    *pRow= row;
-    *pLeftToggle= leftToggle;
-    *pRightToggle= rightToggle;
-
-    return;
-    }
-
-void appInspectorMakeMenuRow(	APP_WIDGET *		pRow,
-				AppOptionmenu *		aom,
-				APP_WIDGET *		pLabel,
-				APP_WIDGET		parent,
-				const char *		labelText )
-    {
-    APP_WIDGET	row;
-    APP_WIDGET	label;
-
-    const int	labelColumn= 0;
-    const int	labelColspan= 1;
-
-    const int	menuColumn= labelColumn+ labelColspan;
-    const int	menuColspan= 1;
-    const int	heightResizable= 0;
-
-    row= appMakeRowInColumn( parent, 2, heightResizable );
-
-    /**************/
-    appMakeLabelInRow( &label, row, labelColumn, labelColspan, labelText );
-
-    /**************/
-    appMakeOptionmenuInRow( aom, row, menuColumn, menuColspan );
-
-    /**************/
-
-    *pRow= row;
-    *pLabel= label;
-
-    return;
-    }
-
-/************************************************************************/
-/*									*/
 /*  Make the pages,							*/
 /*  Fill the menu for the pages.					*/
 /*									*/
 /************************************************************************/
 
-static void appInspectorFillSubjects(	InspectorSubjectResources *	isr,
-					AppInspector *			ai )
+static void appInspectorFillSubjects(
+				const InspectorSubjectResources *	isr,
+				AppInspector *				ai )
     {
     int				subject;
     InspectorSubject *		is;
@@ -210,10 +82,34 @@ static void appInspectorFillSubjects(	InspectorSubjectResources *	isr,
     is= ai->aiSubjects;
     for ( subject= 0; subject < ai->aiSubjectCount; is++, isr++, subject++ )
 	{
-	appMakeVerticalInspectorPage( &(is->isPage), &(is->isMenuitem),
-						    ai, isr->isrSubjectName );
+	if  ( appMakeVerticalInspectorPage( &(is->isPage), &(is->isMenuitem),
+						    ai, isr->isrSubjectName ) )
+	    { LDEB(subject);	}
+
 	is->isEnabled= 1;
 	}
+    }
+
+int appInspectorAddSubject(	AppInspector *				ai,
+				const InspectorSubjectResources *	isr )
+    {
+    InspectorSubject *	is;
+
+    is= realloc( ai->aiSubjects,
+			( ai->aiSubjectCount+ 1 )* sizeof(InspectorSubject) );
+    if  ( ! is )
+	{ LXDEB(ai->aiSubjectCount,is); return -1;	}
+    ai->aiSubjects= is;
+
+    is += ai->aiSubjectCount;
+    if  ( appMakeVerticalInspectorPage( &(is->isPage), &(is->isMenuitem),
+						    ai, isr->isrSubjectName ) )
+	{ LDEB(1); return -1;	}
+
+    is->isEnabled= 1;
+    ai->aiSubjectCount++;
+
+    return 0;
     }
 
 /************************************************************************/
@@ -229,8 +125,12 @@ static void appInitInspectorSubject(	InspectorSubject *	is )
     is->isPrivate= (void *)0;
     is->isEnabled= 1;
 
+    is->isNextPrevRow= (APP_WIDGET)0;
     is->isPrevButton= (APP_WIDGET)0;
     is->isNextButton= (APP_WIDGET)0;
+
+    is->isMoveUpButton= (APP_WIDGET)0;
+    is->isMoveDownButton= (APP_WIDGET)0;
 
     is->isSelectButton= (APP_WIDGET)0;
     is->isDeleteButton= (APP_WIDGET)0;
@@ -238,6 +138,7 @@ static void appInitInspectorSubject(	InspectorSubject *	is )
     is->isInsertButton= (APP_WIDGET)0;
     is->isAppendButton= (APP_WIDGET)0;
 
+    is->isApplyRow= (APP_WIDGET)0;
     is->isRevertButton= (APP_WIDGET)0;
     is->isApplyButton= (APP_WIDGET)0;
 
@@ -249,16 +150,6 @@ static void appInitInspectorSubject(	InspectorSubject *	is )
 /*  Turn an inspector or one of its subjects on or off.			*/
 /*									*/
 /************************************************************************/
-
-static APP_BUTTON_CALLBACK_H( appLowerInspector, w, voidai )
-    {
-    AppInspector *	ai= (AppInspector *)voidai;
-    APP_WIDGET		shell= ai->aiTopWidget;
-
-    appGuiLowerShellWidget( shell );
-
-    return;
-    }
 
 static APP_BUTTON_CALLBACK_H( appCloseInspector, w, voidai )
     {
@@ -272,7 +163,7 @@ static APP_BUTTON_CALLBACK_H( appCloseInspector, w, voidai )
 void appEnableInspector(	AppInspector *	ai,
 				int		enabled )
     {
-    appGuiEnableWidget( ai->aiPaned, enabled != 0 );
+    guiEnableWidget( ai->aiPaned, enabled != 0 );
 
     return;
     }
@@ -288,42 +179,8 @@ void appEnableInspectorSubject(		AppInspector *		ai,
     return;
     }
 
-/************************************************************************/
-/*									*/
-/*  Fill an inspector menu.						*/
-/*									*/
-/************************************************************************/
-
-void appFillInspectorMenu(	int			count,
-				int			current,
-				APP_WIDGET *		items,
-				char * const *		texts,
-				AppOptionmenu *		aom,
-				APP_OITEM_CALLBACK_T	callBack,
-				void *			target )
-    {
-    int			i;
-
-    appEmptyOptionmenu( aom );
-
-    for ( i= 0; i < count; i++ )
-	{
-	items[i]= appAddItemToOptionmenu( aom, texts[i], callBack, target );
-	}
-
-    appSetOptionmenu( aom, current );
-
-    appOptionmenuRefreshWidth( aom );
-
-    return;
-    }
-
 static AppConfigurableResource APP_InspectorResourceTable[]=
 {
-    APP_RESOURCE( "inspectorLowerInspector",
-		offsetof(AppInspectorResources,airLowerText),
-		"Lower" ),
-
     APP_RESOURCE( "inspectorCloseInspector",
 		offsetof(AppInspectorResources,airCloseText),
 		"Close" ),
@@ -338,9 +195,9 @@ AppInspector * appMakeInspector(    EditApplication *		ea,
 				    AppToolDestroy		destroy,
 				    void *			through )
     {
+    AppInspector *		rval= (AppInspector *)0;
     AppInspector *		ai;
     int				subject;
-    InspectorSubject *		is;
 
     APP_BITMAP_IMAGE		iconPixmap;
     APP_BITMAP_MASK		iconMask;
@@ -365,32 +222,62 @@ AppInspector * appMakeInspector(    EditApplication *		ea,
     if  ( appGetImagePixmap( ea, pixmapName, &iconPixmap, &iconMask )  )
 	{ SDEB(pixmapName); return (AppInspector *)0; }
 
-    ai= (AppInspector *)malloc( sizeof(AppInspector)+ 
-				subjectCount* sizeof(InspectorSubject) );
+    ai= (AppInspector *)malloc( sizeof(AppInspector) );
     if  ( ! ai )
 	{ LXDEB(subjectCount,ai); return ai;	}
 
-    ai->aiApplication= ea;
-    ai->aiCurrentSubject= -1;
-    ai->aiSubjectCount= subjectCount;
+    ai->aiApplication= (struct EditApplication *)0;
+    ai->aiTopWidget= (APP_WIDGET)0;
+    ai->aiPaned= (APP_WIDGET)0;
 
-    ai->aiDestroy= destroy;
-    ai->aiTarget= through;
+    appInitOptionmenu( &(ai->aiSubjectOptionmenu) );
+
+    ai->aiSeparator= (APP_WIDGET)0;
+    ai->aiPageParent= (APP_WIDGET)0;
+    ai->aiSeparator2= (APP_WIDGET)0;
+    ai->aiCloseButton= (APP_WIDGET)0;
+
     ai->aiNotifySubject= (InspectorNotifySubject)0;
 
-    ai->aiRgbSubjectNumber= -1;
     ai->aiRgbChooser= (void *)0; /* RgbChooserPage */
+    ai->aiRgbSubjectNumber= -1;
 
-    is= ai->aiSubjects;
-    for ( subject= 0; subject < ai->aiSubjectCount; is++, subject++ )
-	{ appInitInspectorSubject( is );	}
+    ai->aiSubjects= (InspectorSubject *)0;
+    ai->aiSubjectCount= 0;
+
+    ai->aiDestroy= (AppToolDestroy)0;
+    ai->aiTarget= (void *)0;
+
+    ai->aiSubjectCount= -1;
+    ai->aiCurrentSubject= -1;
+    ai->aiSubjects= (InspectorSubject *)0;
+
+    if  ( subjectCount > 0 )
+	{
+	InspectorSubject *	is;
+
+	ai->aiSubjects= malloc( subjectCount* sizeof(InspectorSubject) );
+	if  ( ! ai->aiSubjects )
+	    { LXDEB(subjectCount,ai->aiSubjects); goto ready;	}
+	ai->aiSubjectCount= subjectCount;
+
+	is= ai->aiSubjects;
+	for ( subject= 0; subject < ai->aiSubjectCount; is++, subject++ )
+	    { appInitInspectorSubject( is );	}
+	}
+
+    ai->aiApplication= ea;
+    ai->aiDestroy= destroy;
+    ai->aiTarget= through;
+
 
     appMakeVerticalTool( &(ai->aiTopWidget), &(ai->aiPaned), ea,
 				iconPixmap, iconMask,
 				widgetName, userResizable,
 				option, appInspectorCloseCall, (void *)ai );
 
-    appMakeOptionmenuInColumn( &(ai->aiSubjectOptionmenu), ai->aiPaned );
+    appMakeOptionmenuInColumn( &(ai->aiSubjectOptionmenu), ai->aiPaned,
+				    appInspectorPageChosen, (void *)ai );
 
     appGuiInsertSeparatorInColumn( &(ai->aiSeparator), ai->aiPaned );
 
@@ -400,17 +287,30 @@ AppInspector * appMakeInspector(    EditApplication *		ea,
 
     appGuiInsertSeparatorInColumn( &(ai->aiSeparator2), ai->aiPaned );
 
-    appInspectorMakeButtonRow( &row, ai->aiPaned,
-		    &(ai->aiLowerButton), &(ai->aiCloseButton),
-		    air.airLowerText, air.airCloseText,
-		    appLowerInspector, appCloseInspector, (void *)ai );
+    {
+	const int	heightResizable= 0;
+	const int	showAsDefault= 0;
+	const int	colspan= 2;
 
-    return ai;
+	row= appMakeRowInColumn( ai->aiPaned, 4, heightResizable );
+
+	appMakeButtonInRow( &(ai->aiCloseButton), row,
+			air.airCloseText, appCloseInspector, (void *)ai,
+			1, colspan, showAsDefault );
+    }
+
+    rval= ai; ai= (AppInspector *)0; /* steal */
+
+  ready:
+    if  ( ai )
+	{ appDestroyInspector( ai );	}
+
+    return rval;
     }
 
 void appFinishInspector(	AppInspector *		ai )
     {
-    appShowShellWidget( ai->aiTopWidget );
+    appShowShellWidget( ai->aiApplication, ai->aiTopWidget );
 
     appOptionmenuRefreshWidth( &(ai->aiSubjectOptionmenu) );
 
@@ -506,6 +406,32 @@ void appInspectorShowRgbPage(		AppInspector *		ai,
     appEnableInspectorSubject( ai, ai->aiRgbSubjectNumber, 1 );
 
     appInspectorSelectSubject( ai, ai->aiRgbSubjectNumber );
+
+    return;
+    }
+
+/************************************************************************/
+/*									*/
+/*  Callback when an inspector page is chosen.				*/
+/*									*/
+/************************************************************************/
+
+void appInspectorPageChosen(		int		subject,
+					void *		vai )
+    {
+    AppInspector *	ai= (AppInspector *)vai;
+
+    const int		andMenu= 0;
+
+    if  ( subject >= ai->aiSubjectCount )
+	{ LDEB(ai->aiSubjectCount); return;	}
+
+    if  ( ai->aiNotifySubject )
+	{ (*ai->aiNotifySubject)( ai, ai->aiCurrentSubject, subject ); }
+
+    appInspectorChoosePage( ai, andMenu, subject );
+
+    ai->aiCurrentSubject= subject;
 
     return;
     }

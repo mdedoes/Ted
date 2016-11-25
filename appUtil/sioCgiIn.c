@@ -10,7 +10,8 @@
 #   include	<string.h>
 #   include	<unistd.h>
 
-#   include	<sioCgiIn.h>
+#   include	"appTagval.h"
+#   include	"sioCgiIn.h"
 #   include	<appDebugon.h>
 
 typedef struct CgiInputStream
@@ -25,7 +26,7 @@ static int sioInCgiClose(	void *	voidcis )
 
 static int sioInCgiReadBytes(	void *		voidcis,
 				unsigned char *	buffer,
-				int		count )
+				unsigned int	count )
     {
     CgiInputStream *	cis= (CgiInputStream *)voidcis;
     int			done= 0;
@@ -51,7 +52,7 @@ static int sioInCgiReadBytes(	void *		voidcis,
     return done;
     }
 
-extern SimpleInputStream * sioInCgiOpen(	CGIRequest *	cgir )
+SimpleInputStream * sioInCgiOpen(	CGIRequest *	cgir )
     {
     SimpleInputStream *	sis;
     CgiInputStream *	cis;
@@ -75,7 +76,7 @@ extern SimpleInputStream * sioInCgiOpen(	CGIRequest *	cgir )
     if  ( res || null )
 	{ LLDEB(res,null); return (SimpleInputStream *)0;	}
 
-    cis= malloc( sizeof(CgiInputStream) );
+    cis= (CgiInputStream *)malloc( sizeof(CgiInputStream) );
     if  ( ! cis )
 	{ XDEB(cis); return (SimpleInputStream *)0;	}
 

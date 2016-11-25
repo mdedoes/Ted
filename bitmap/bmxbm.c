@@ -4,6 +4,8 @@
 #   include	<stdio.h>
 #   include	<ctype.h>
 #   include	<string.h>
+#   include	<stdlib.h>
+#   include	<sioFileio.h>
 
 #   include	<appDebugon.h>
 
@@ -250,13 +252,12 @@ static int XReadBitmapFileData (
 
 #define BYTES_PER_OUTPUT_LINE 12
 
-int bmWriteXbmFile(	const char *			filename,
+int bmWriteXbmFile(	const MemoryBuffer *		filename,
 			const unsigned char *		buffer,
 			const BitmapDescription *	bd,
-			int				privateFormat,
-			double				compressionFactor )
+			int				privateFormat )
     {
-    FILE *			stream;
+    SimpleOutputStream *	sos;
     int				x_hot= -1;
     int				y_hot= -1;
     const char *		name= "IMAGE";
@@ -269,46 +270,45 @@ int bmWriteXbmFile(	const char *			filename,
     int				c;
     const unsigned char *	ptr;
 
-    stream= fopen( filename, "w" );
-    if  ( ! stream )
-	{ SDEB(filename); return -1;	}
+    sos= sioOutFileioOpen( filename );
+    if  ( ! sos )
+	{ XDEB(sos); return -1;	}
 
     bmXbmSetFlip();
 
 /* #>>>>>>>>>>>>>>>>>>> begin FROM X*/
 
   /* Write out standard header */
-  fprintf(stream, "#define %s_width %d\n", name, width);
-  fprintf(stream, "#define %s_height %d\n", name, height);
+  sioOutPrintf(sos, "#define %s_width %d\n", name, width);
+  sioOutPrintf(sos, "#define %s_height %d\n", name, height);
   if (x_hot != -1) {
-    fprintf(stream, "#define %s_x_hot %d\n", name, x_hot);
-    fprintf(stream, "#define %s_y_hot %d\n", name, y_hot);
+    sioOutPrintf(sos, "#define %s_x_hot %d\n", name, x_hot);
+    sioOutPrintf(sos, "#define %s_y_hot %d\n", name, y_hot);
   }
 
   /* Print out the data itself */
-  fprintf(stream, "static unsigned char %s_bits[] = {", name);
+  sioOutPrintf(sos, "static unsigned char %s_bits[] = {", name);
   for (byte=0, ptr=data; byte<size; byte++, ptr++) {
     if (!byte)
-      fprintf(stream, "\n   ");
+      sioOutPrintf(sos, "\n   ");
     else if (!(byte % BYTES_PER_OUTPUT_LINE))
-      fprintf(stream, ",\n   ");
+      sioOutPrintf(sos, ",\n   ");
     else
-      fprintf(stream, ", ");
+      sioOutPrintf(sos, ", ");
     c = *ptr;
     if (c<0)
       c += 256;
-    fprintf(stream, "0x%02x", BMXBMflip[c]);
+    sioOutPrintf(sos, "0x%02x", BMXBMflip[c]);
   }
-  fprintf(stream, "};\n");
+  sioOutPrintf(sos, "};\n");
 
-  fclose(stream);
+  sioOutClose(sos);
   return(BitmapSuccess);
 }
 /* #<<<<<<<<<<<<<<<<<<< end   FROM X*/
 
 int bmCanWriteXbmFile(	const BitmapDescription *	bd,
-			int				privateFormat,
-			double				compressionFactor )
+			int				privateFormat )
     {
     if  ( privateFormat != 11 )
 	{ return -1;	}
@@ -325,11 +325,10 @@ int bmCanWriteXbmFile(	const BitmapDescription *	bd,
 /*									*/
 /************************************************************************/
 
-int bmReadXbmFile(	const char *		filename,
+int bmReadXbmFile(	const MemoryBuffer *	filename,
 			unsigned char **	pBuffer,
 			BitmapDescription *	bd,
-			int *			pPrivateFormat,
-			double *		pCompressionFactor	)
+			int *			pPrivateFormat )
     {
     unsigned int	width;
     unsigned int	height;
@@ -337,12 +336,12 @@ int bmReadXbmFile(	const char *		filename,
     int			y_hot;
     unsigned char *	s;
 
-    if  ( XReadBitmapFileData (	filename,
+    if  ( XReadBitmapFileData (	utilMemoryBufferGetString( filename ),
 				&width,
 				&height,
 				pBuffer,
 				&x_hot, &y_hot	) )
-	{  SDEB(filename); return -1;	}
+	{  LDEB(1); return -1;	}
 
     bd->bdBytesPerRow= ( width+ 7 )/8;
     bd->bdBufferLength= height* bd->bdBytesPerRow;
@@ -356,7 +355,7 @@ int bmReadXbmFile(	const char *		filename,
     bd->bdUnit= BMunPIXEL;
     bd->bdColorEncoding= BMcoBLACKWHITE;
     bd->bdHasAlpha= 0;
-    bd->bdColorCount= 0;
+    utilInitColorPalette( &(bd->bdPalette) );
 
     *pPrivateFormat= 11;
 

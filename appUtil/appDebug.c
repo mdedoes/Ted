@@ -11,6 +11,7 @@
 #   include	<appDebug.h>
 
 static FILE *	APP_DebugFile;
+const int appDebugZero = 0;
 
 int appDebug(	const char *	format,
 		... )

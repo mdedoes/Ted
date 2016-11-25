@@ -61,9 +61,9 @@ static int bmGifReadColorMap(	GifFileType *		gft,
     rgb8= gcm->gcmColors;
     for ( i = 0; i < gcm->gcmColorCount; rgb8++, i++ )
 	{
-	rgb8->rgb8Red= sioInGetCharacter( gft->gftSis );
-	rgb8->rgb8Green= sioInGetCharacter( gft->gftSis );
-	rgb8->rgb8Blue= sioInGetCharacter( gft->gftSis );
+	rgb8->rgb8Red= sioInGetByte( gft->gftSis );
+	rgb8->rgb8Green= sioInGetByte( gft->gftSis );
+	rgb8->rgb8Blue= sioInGetByte( gft->gftSis );
 	}
 
     return 0;
@@ -104,9 +104,9 @@ static int bmGifReadScreenDescriptor(	GifFileType *	gft )
     gsd->gsdScreenHigh= sioEndianGetLeInt16( gft->gftSis );
 
     /*  3  */
-    gsd->gsdPackedFields= sioInGetCharacter( gft->gftSis );
-    gsd->gsdScreenBackgroundColor= sioInGetCharacter( gft->gftSis );
-    gsd->gsdScreenAspectRatio= sioInGetCharacter( gft->gftSis );
+    gsd->gsdPackedFields= sioInGetByte( gft->gftSis );
+    gsd->gsdScreenBackgroundColor= sioInGetByte( gft->gftSis );
+    gsd->gsdScreenAspectRatio= sioInGetByte( gft->gftSis );
 
     /*  4  */
     gsd->gsdScreenBitsPerPixel = (((gsd->gsdPackedFields & 0x70) + 1) >> 4) + 1;
@@ -137,7 +137,7 @@ static int DGifSetupDecompress(	GifFileType *	gft )
 {
     int				codeSize;
 
-    codeSize= sioInGetCharacter( gft->gftSis );
+    codeSize= sioInGetByte( gft->gftSis );
     if  ( codeSize == EOF )
 	{ LDEB(codeSize); return GIF_ERROR;	}
 
@@ -250,7 +250,7 @@ int bmGifGetRecordType(GifFileType *gft, GifRecordType *Type)
 	return GIF_ERROR;
 	}
 
-    c= sioInGetCharacter( gft->gftSis );
+    c= sioInGetByte( gft->gftSis );
 
     switch( c )
 	{
@@ -309,7 +309,7 @@ int DGifGetImageDesc(	GifFileType *	gft )
     gid->Height= sioEndianGetLeInt16( gft->gftSis );
 
     /*  3  */
-    Buf[0]= sioInGetCharacter( gft->gftSis );
+    Buf[0]= sioInGetByte( gft->gftSis );
 
     bitsPerPixel= (Buf[0] & 0x07) + 1;
     gid->Interlace= (Buf[0] & 0x40);
@@ -333,7 +333,7 @@ int DGifGetImageDesc(	GifFileType *	gft )
 
 /************************************************************************/
 /*									*/
-/*  Get one full scanned line (Line) of length LineLen from GIF file.	*/
+/*  Get one full scanned line (buffer) of length count from GIF file.	*/
 /*									*/
 /*  3)  The image is finished.. Close (and drain) to blocked input	*/
 /*	stream.								*/
@@ -341,8 +341,10 @@ int DGifGetImageDesc(	GifFileType *	gft )
 /************************************************************************/
 
 int bmGifGetPixels(	GifFileType *	gft,
-			GifPixelType *	Line,
-			int		LineLen )
+			int *		pFoundTransparent,
+			unsigned char *	buffer,
+			int		count,
+			int		transparentColor )
 {
     if  ( ! gft->gftSis )
 	{
@@ -351,23 +353,34 @@ int bmGifGetPixels(	GifFileType *	gft,
 	return GIF_ERROR;
 	}
 
-    if  ( LineLen > gft->gftPixelCount )
+    if  ( count > gft->gftPixelCount )
 	{
-	LLDEB(LineLen,gft->gftPixelCount);
+	LLDEB(count,gft->gftPixelCount);
 	_GifError = D_GIF_ERR_DATA_TOO_BIG;
 	return GIF_ERROR;
 	}
 
-    gft->gftPixelCount -= LineLen;
+    gft->gftPixelCount -= count;
 
-    if  ( sioInReadBytes( gft->gftSisLzw, Line, LineLen ) == LineLen )
+    if  ( sioInReadBytes( gft->gftSisLzw, buffer, count ) == count )
 	{
+	if  ( transparentColor >= 0 && ! *pFoundTransparent )
+	    {
+	    int		i;
+
+	    for ( i= 0; i < count; i++ )
+		{
+		if  ( buffer[i] == transparentColor )
+		    { *pFoundTransparent= 1;	}
+		}
+	    }
+
 	if  ( gft->gftPixelCount == 0 )
 	    { bmGifCleanupDecompress( gft );	}
 
 	return GIF_OK;
 	}
-    else{ LDEB(LineLen); return GIF_ERROR;	}
+    else{ LDEB(count); return GIF_ERROR;	}
 }
 
 /************************************************************************/
@@ -396,7 +409,7 @@ int DGifGetExtension(	GifFileType *		gft,
 	return GIF_ERROR;
 	}
 
-    Buf= sioInGetCharacter( gft->gftSis );
+    Buf= sioInGetByte( gft->gftSis );
 
     *ExtCode= Buf;
 
@@ -423,7 +436,7 @@ int DGifGetExtensionNext(	GifFileType *	gft,
 {
     int				byte;
 
-    byte= sioInGetCharacter( gft->gftSis );
+    byte= sioInGetByte( gft->gftSis );
     if  ( byte == EOF )
 	{
 	XDEB(byte);

@@ -10,14 +10,13 @@
 #   include	<stdio.h>
 #   include	<stdlib.h>
 
-#   include	<utilEndian.h>
-#   include	<appImage.h>
+#   include	"appImage.h"
 
 #   include	<appDebugon.h>
 
 #   ifdef USE_MOTIF
 
-#   include	<X11/Xlib.h>
+#   include	"drawUtilMotif.h"
 
 static int appGetIndexedColors(	XColor **	pColors,
 				Display *	display,
@@ -142,10 +141,10 @@ static int appGetRGB8Description(	BitmapDescription *	bd,
 
     bd->bdHasAlpha= 0;
 
-    bd->bdColorCount= 0;
-    bd->bdRGB8Palette= (RGB8Color *)malloc( count* sizeof(RGB8Color) );
-    if  ( ! bd->bdRGB8Palette )
-	{ LXDEB(count,bd->bdRGB8Palette); return -1; }
+    bd->bdPalette.cpColorCount= 0;
+    bd->bdPalette.cpColors= (RGB8Color *)malloc( count* sizeof(RGB8Color) );
+    if  ( ! bd->bdPalette.cpColors )
+	{ LXDEB(count,bd->bdPalette.cpColors); return -1; }
 
     bd->bdBytesPerRow= ( bitsPerPixel/ 8 )* bd->bdPixelsWide;
     bd->bdBufferLength= bd->bdPixelsHigh* bd->bdBytesPerRow;
@@ -171,8 +170,6 @@ static int appGetRGBDescription(	BitmapDescription *	bd,
     bd->bdColorEncoding= BMcoRGB;
 
     bd->bdHasAlpha= 0;
-
-    bd->bdColorCount= 0;
 
     bd->bdBytesPerRow= ( bd->bdBitsPerPixel/ 8 )* bd->bdPixelsWide;
     bd->bdBufferLength= bd->bdPixelsHigh* bd->bdBytesPerRow;
@@ -203,7 +200,14 @@ static int appGetRGB8Palette(	XColor *	xc,
     return to;
     }
 
-static int appGetImage(	AppBitmapImage *	abi,
+/************************************************************************/
+/*									*/
+/*  Extract a bitmap image from an XImage. Used for copy/paste and	*/
+/*  debugging.								*/
+/*									*/
+/************************************************************************/
+
+int appGetImageMotif(	RasterImage *	abi,
 			const APP_IMAGE *	xim,
 			Display *		display )
     {
@@ -231,6 +235,8 @@ static int appGetImage(	AppBitmapImage *	abi,
     double		horPixPerMM;
     double		xfac;
 
+    bmInitDescription( &bd );
+
     bitsPerPixel= xim->bits_per_pixel;
     bytesPerLine= xim->bytes_per_line;
     data= xim->data;
@@ -246,8 +252,6 @@ static int appGetImage(	AppBitmapImage *	abi,
 					DisplayWidthMM( display, screen );
 
     xfac=  ( 25.4/ ( 20.0* 72.0 ) )* horPixPerMM;
-
-    bmInitDescription( &bd );
 
     if  ( xim->xoffset )
 	{ LDEB( xim->xoffset); return -1;	}
@@ -290,10 +294,6 @@ static int appGetImage(	AppBitmapImage *	abi,
 	case DirectColor:
 	    if  ( bitsPerPixel <= 16 )
 		{
-		/*
-		count= appGetCalculatedColors( &xc, xim->depth,
-			xim->red_mask, xim->green_mask, xim->blue_mask );
-		*/
 		count= appGetCalculatedColors( &xc, xim->depth,
 				vi.red_mask, vi.green_mask, vi.blue_mask );
 
@@ -339,7 +339,7 @@ static int appGetImage(	AppBitmapImage *	abi,
 		    { xc[*b].pad= 1; }
 		}
 
-	    bd.bdColorCount= appGetRGB8Palette( xc, count, bd.bdRGB8Palette );
+	    bd.bdPalette.cpColorCount= appGetRGB8Palette( xc, count, bd.bdPalette.cpColors );
 
 	    for ( row= 0; row < bd.bdPixelsHigh; row++ )
 		{
@@ -364,9 +364,9 @@ static int appGetImage(	AppBitmapImage *	abi,
 		    { xc[*psh].pad= 1; }
 		}
 
-	    bd.bdColorCount= appGetRGB8Palette( xc, count, bd.bdRGB8Palette );
+	    bd.bdPalette.cpColorCount= appGetRGB8Palette( xc, count, bd.bdPalette.cpColors );
 
-	    if  ( bd.bdColorCount < 256 )
+	    if  ( bd.bdPalette.cpColorCount < 256 )
 		{
 		unsigned char *	pch= buffer;
 
@@ -444,12 +444,13 @@ static int appGetImage(	AppBitmapImage *	abi,
     if  ( xc )
 	{ free( xc );	}
 
-    abi->abiBuffer= buffer;
-    abi->abiBitmap= bd;
+    abi->riBytes= buffer;
+    abi->riDescription= bd;
+
     return 0;
     }
 
-int appImgPastePixmap(		AppBitmapImage *	abi,
+int appImgPastePixmap(		RasterImage *	abi,
 				APP_WIDGET		w,
 				APP_SELECTION_EVENT *	event )
     {
@@ -506,7 +507,7 @@ int appImgPastePixmap(		AppBitmapImage *	abi,
     if  ( ! xim )
 	{ XDEB(xim); return -1;	}
 
-    if  ( appGetImage( abi, xim, selEvent->display ) )
+    if  ( appGetImageMotif( abi, xim, selEvent->display ) )
 	{
 	LDEB(depth);
 

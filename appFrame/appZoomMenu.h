@@ -4,6 +4,13 @@
 /*									*/
 /************************************************************************/
 
+#   ifndef		APP_ZOOM_MENU_H
+#   define		APP_ZOOM_MENU_H
+
+#   include	"appGuiBase.h"
+#   include	"appFrame.h"
+#   include	<geo2DInteger.h>
+
 #   define	ZOOM_COUNT	7
 
 extern void appZoomChangeFactor( APP_WIDGET		option,
@@ -28,3 +35,5 @@ extern void appMakeZoomMenu(	EditApplication *	ea,
 				AppMenuItem *		optionItems,
 				APP_WIDGET *		options,
 				int			optionCount );
+
+#   endif	/*	APP_ZOOM_MENU_H	*/

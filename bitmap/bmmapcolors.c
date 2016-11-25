@@ -2,12 +2,6 @@
 
 #   include	"bmintern.h"
 
-#   define	y0	math_y0
-#   define	y1	math_y1
-#   include	<math.h>
-#   undef	y0
-#   undef	y1
-
 #   include	<appDebugon.h>
 
 /************************************************************************/
@@ -157,8 +151,8 @@ int bmMapImageColors(		const BitmapDescription *	bd,
 		RGB8Color *	rgb8;
 
 		case 3:
-		    rgb8= bd->bdRGB8Palette;
-		    for ( i= 0; i < bd->bdColorCount; rgb8++, i++ )
+		    rgb8= bd->bdPalette.cpColors;
+		    for ( i= 0; i < bd->bdPalette.cpColorCount; rgb8++, i++ )
 			{
 			rgb8->rgb8Red=	 map[spp* rgb8->rgb8Red+ 0];
 			rgb8->rgb8Green= map[spp* rgb8->rgb8Green+ 1];
@@ -167,8 +161,8 @@ int bmMapImageColors(		const BitmapDescription *	bd,
 		    break;
 
 		case 4:
-		    rgb8= bd->bdRGB8Palette;
-		    for ( i= 0; i < bd->bdColorCount; rgb8++, i++ )
+		    rgb8= bd->bdPalette.cpColors;
+		    for ( i= 0; i < bd->bdPalette.cpColorCount; rgb8++, i++ )
 			{
 			rgb8->rgb8Red=	 map[spp* rgb8->rgb8Red+ 0];
 			rgb8->rgb8Green= map[spp* rgb8->rgb8Green+ 1];

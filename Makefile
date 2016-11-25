@@ -13,6 +13,9 @@
 ####			files for yourself only.
 ####	package:	Build a package. Must sometimes be run as root.
 ####	sysvpkg:	Build a Unix system V (Solaris) package. 
+####	deb:		Build a Debian package. This is NOT the official 
+####			Debian distribution but just a way to produce a 
+####			Debian package. (Must be built as root)
 ####	install:	Install the package. Must be run as root.
 ####	clean:		Cleanup rubbish from previous attempts.
 ####
@@ -23,20 +26,33 @@
 ####			or another user with sufficient privileges to 
 ####			create the directories and files.
 ####			Installs the package just made, does not force
-####			the package to be dynamically linked. This target
-####			exists only for convenience.
+####			the package to be statically linked. This target
+####			only exists for convenience.
 ####
 ####	Actively supported 'configure' options are:
 ####	-------------------------------------------
 ####
+####    Please NOTE that you have to 'make clean' after you have 
+####    changed the CONFIGURE_OPTIONS.
+####
 ####		--prefix		Use another place than /usr/local
 ####					for installation. E.G.
 ####					--prefix=/opt/Ted
-####		--with-MOTIF		Use the Motif gui toolkit. (The
+####		--with-GTK		Use the Gtk+ gui toolkit. (The
 ####					default)
-####		--with-GTK		Use the Gtk+ gui toolkit. (Still
-####					experimental)
-####
+####		--with-MOTIF		Use the Motif gui toolkit. (Preferable
+####					on traditional UNIX systems like
+####					Solaris, AIX, HP/UX)
+####		--without-FONTCONFIG	In older systems, Fontconfig sometimes
+####					is in a state that makes it better
+####					not to use it. This makes it possible
+####					to avoid it even if the software is 
+####					found on the machine.
+####		--without-XFT		In older systems, Xft sometimes
+####					is in a state that makes it better
+####					not to use it. This makes it possible
+####					to avoid it even if the software is 
+####					found on the machine.
 ####
 ####
 ####	P.S.	To port to Compaq OpenVMS, use the descrip.mms file
@@ -45,7 +61,7 @@
 ####	P.S.	I admit that this makefile is more like a shell script.
 ####
 
-CONFIGURE_OPTIONS=--with-MOTIF
+CONFIGURE_OPTIONS=--with-GTK
 
 compile:	tedlibs		\
 		Ted/Ted		\
@@ -72,23 +88,29 @@ compile.shared:	tedlibs		\
 ####
 
 lib:
-	mkdir lib
+	mkdir -p lib
 
 ####
 ####	Build ted libraries
 ####
 
-tedlibs: 	lib		\
-		lib/bitmap.a	\
-		lib/ind.a	\
-		lib/reg.a	\
-		lib/appUtil.a	\
+tedlibs: 	lib			\
+		lib/appUtil.a		\
+		lib/textEncoding.a	\
+		lib/utilPs.a		\
+		lib/bitmap.a		\
+		lib/docFont.a		\
+		lib/docBase.a		\
+		lib/docBuf.a		\
+		lib/ind.a		\
+		lib/drawMeta.a		\
+		lib/docRtf.a		\
+		lib/docEdit.a		\
+		lib/docLayout.a		\
+		lib/docHtml.a		\
 		lib/appFrame.a
 
 ####
-####	Compile the bitmap manipulation library
-####
-
 lib/bitmap.a: bitmap/makefile
 	cd bitmap && $(MAKE)
 
@@ -96,9 +118,48 @@ bitmap/makefile: bitmap/makefile.in Makefile
 	cd bitmap && ./configure $(CONFIGURE_OPTIONS)
 
 ####
-####	Compile the spell checker library
-####
+lib/docBuf.a: docBuf/makefile
+	cd docBuf && $(MAKE)
 
+docBuf/makefile: docBuf/makefile.in Makefile
+	cd docBuf && ./configure $(CONFIGURE_OPTIONS)
+
+####
+lib/docBase.a: docBase/makefile
+	cd docBase && $(MAKE)
+
+docBase/makefile: docBase/makefile.in Makefile
+	cd docBase && ./configure $(CONFIGURE_OPTIONS)
+
+####
+lib/docHtml.a: docHtml/makefile
+	cd docHtml && $(MAKE)
+
+docHtml/makefile: docHtml/makefile.in Makefile
+	cd docHtml && ./configure $(CONFIGURE_OPTIONS)
+
+####
+lib/docLayout.a: docLayout/makefile
+	cd docLayout && $(MAKE)
+
+docLayout/makefile: docLayout/makefile.in Makefile
+	cd docLayout && ./configure $(CONFIGURE_OPTIONS)
+
+####
+lib/docRtf.a: docRtf/makefile
+	cd docRtf && $(MAKE)
+
+docRtf/makefile: docRtf/makefile.in Makefile
+	cd docRtf && ./configure $(CONFIGURE_OPTIONS)
+
+####
+lib/docEdit.a: docEdit/makefile
+	cd docEdit && $(MAKE)
+
+docEdit/makefile: docEdit/makefile.in Makefile
+	cd docEdit && ./configure $(CONFIGURE_OPTIONS)
+
+####
 lib/ind.a: ind/makefile
 	cd ind && $(MAKE)
 
@@ -106,19 +167,6 @@ ind/makefile: ind/makefile.in Makefile
 	cd ind && ./configure $(CONFIGURE_OPTIONS)
 
 ####
-####	Compile the regular expression library
-####
-
-lib/reg.a: libreg/makefile
-	cd libreg && $(MAKE)
-
-libreg/makefile: libreg/makefile.in Makefile
-	cd libreg && ./configure $(CONFIGURE_OPTIONS)
-
-####
-####	Compile the application utility library
-####
-
 lib/appUtil.a: appUtil/makefile
 	cd appUtil && $(MAKE)
 
@@ -126,14 +174,39 @@ appUtil/makefile: appUtil/makefile.in Makefile
 	cd appUtil && ./configure $(CONFIGURE_OPTIONS)
 
 ####
-####	Compile the application framework library
-####
+lib/textEncoding.a: textEncoding/makefile
+	cd textEncoding && $(MAKE)
 
+textEncoding/makefile: textEncoding/makefile.in Makefile
+	cd textEncoding && ./configure $(CONFIGURE_OPTIONS)
+
+####
+lib/utilPs.a: utilPs/makefile
+	cd utilPs && $(MAKE)
+
+utilPs/makefile: utilPs/makefile.in Makefile
+	cd utilPs && ./configure $(CONFIGURE_OPTIONS)
+
+####
+lib/docFont.a: docFont/makefile
+	cd docFont && $(MAKE)
+
+docFont/makefile: docFont/makefile.in Makefile
+	cd docFont && ./configure $(CONFIGURE_OPTIONS)
+
+####
 lib/appFrame.a: appFrame/makefile
 	cd appFrame && $(MAKE)
 
 appFrame/makefile: appFrame/makefile.in Makefile
 	cd appFrame && ./configure $(CONFIGURE_OPTIONS)
+
+####
+lib/drawMeta.a: drawMeta/makefile
+	cd drawMeta && $(MAKE)
+
+drawMeta/makefile: drawMeta/makefile.in Makefile
+	cd drawMeta && ./configure $(CONFIGURE_OPTIONS)
 
 ####
 ####	Compile and link Ted
@@ -172,6 +245,16 @@ sysvpkg: tedPackage/makefile compile
 	cd tedPackage && $(MAKE) sysvpkg
 	:
 	: UNIX system V Package ready.
+	@echo : Run pkgadd -d tedPackage/*.pkg AS ROOT to install Ted
+
+deb-dependencies:
+	apt-get install `grep '^Build-Depends:' tedPackage/debian-control.in | sed -e 's/^Build-Depends://' -e 's/, */ /g'`
+
+deb: deb-dependencies tedPackage/makefile compile
+	cd tedPackage && $(MAKE) deb
+	:
+	: Debian Package ready.
+	@echo : Use sudo dpkg -i tedPackage/*.deb to install Ted
 
 ####
 ####	Install Ted from the package just built
@@ -188,13 +271,13 @@ install.shared: package.shared
 ####
 
 PRIVATE_FILES=\
-	$(HOME)/afm/Helvetica.afm		\
-	$(HOME)/afm/Courier.afm			\
-	$(HOME)/afm/Symbol.afm			\
-	$(HOME)/afm/Times-Roman.afm		\
+	$(HOME)/Ted/afm/Helvetica.afm		\
+	$(HOME)/Ted/afm/Courier.afm		\
+	$(HOME)/Ted/afm/Symbol.afm		\
+	$(HOME)/Ted/afm/Times-Roman.afm		\
 	$(HOME)/Ted/TedDocument-en_US.rtf	\
-	$(HOME)/Ted/Ted.ad.sample		\
-	$(HOME)/ind/US_English.ind
+	$(HOME)/Ted/config/Ted.ad.sample	\
+	$(HOME)/Ted/dfa/en_US.dfa
 
 $(HOME)/bin/Ted: Ted/Ted
 	test -d $(HOME)/bin || mkdir $(HOME)/bin
@@ -207,9 +290,9 @@ private: $(HOME)/bin/Ted $(PRIVATE_FILES)
 	@echo ========= Updating $(HOME)/.Ted.properties:
 	@echo Ted.documentFileName: $(HOME)/Ted/TedDocument-en_US.rtf | \
 					    tee -a $(HOME)/.Ted.properties
-	@echo Ted.afmDirectory: $(HOME)/afm | \
+	@echo Ted.afmDirectory: $(HOME)/Ted/afm | \
 					    tee -a $(HOME)/.Ted.properties
-	@echo Ted.spellToolSystemDicts: $(HOME)/ind | \
+	@echo Ted.spellToolSystemDicts: $(HOME)/Ted/dfa | \
 					    tee -a $(HOME)/.Ted.properties
 
 ####
@@ -219,11 +302,7 @@ private: $(HOME)/bin/Ted $(PRIVATE_FILES)
 clean:
 	rm -fr	lib
 	rm -f	*/config.cache */config.log */config.status
-	rm -f	appUtil/appUtilConfig.h
-	rm -f	appFrame/appFrameConfig.h
-	rm -f	Ted/tedConfig.h
-	rm -f	ind/indConfig.h
-	rm -f	bitmap/bitmapConfig.h
+	rm -f	*/*Config.h
 	rm -f	*/makefile
 	rm -f	*/*.o
 	rm -f	Ted/Ted Ted/Ted.static

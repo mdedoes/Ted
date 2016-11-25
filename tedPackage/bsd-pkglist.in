@@ -1,0 +1,107 @@
+@name ted
+@display Ted
+@comment Maintainer: Mark de Does mark@mdedoes.com
+@comment Version: 2.22
+@arch @ARCH@
+
+@depend zlib1g
+@depend libpcre3
+@depend libx11-6
+@depend libxpm4
+@depend libtiff4
+@depend libjpeg62
+@depend libpng12-0
+@depend libgtk2.0-0
+
+@comment Motif @depends zlib1g
+@comment Motif @depends libpcre3
+@comment Motif @depends libx11-6
+@comment Motif @depends libxpm4
+@comment Motif @depends libtiff4
+@comment Motif @depends libjpeg62
+@comment Motif @depends libpng12-0
+@comment Motif @depends libxft2
+@comment Motif @depends libxt6
+@comment Motif @depends libxp6
+@comment Motif @depends libxmu6
+@comment Motif @depends libmotif3
+
+@owner root
+@group root
+
+@mode 755
+@bin /usr/local/bin/Ted
+
+@mode 755
+@dir /usr/local/Ted
+@dir /usr/local/Ted/afm
+@dir /usr/local/Ted/dfa
+@dir /usr/local/Ted/varia
+@dir /usr/local/Ted/config
+
+@mode 644
+@file /usr/local/afm/AvantGarde-Book.afm
+@file /usr/local/afm/AvantGarde-BookOblique.afm
+@file /usr/local/afm/AvantGarde-Demi.afm
+@file /usr/local/afm/AvantGarde-DemiOblique.afm
+@file /usr/local/afm/Bookman-Demi.afm
+@file /usr/local/afm/Bookman-DemiItalic.afm
+@file /usr/local/afm/Bookman-Light.afm
+@file /usr/local/afm/Bookman-LightItalic.afm
+@file /usr/local/afm/Courier.afm
+@file /usr/local/afm/Courier-Bold.afm
+@file /usr/local/afm/Courier-BoldOblique.afm
+@file /usr/local/afm/Courier-Oblique.afm
+@file /usr/local/afm/Helvetica.afm
+@file /usr/local/afm/Helvetica-Bold.afm
+@file /usr/local/afm/Helvetica-BoldOblique.afm
+@file /usr/local/afm/Helvetica-Narrow.afm
+@file /usr/local/afm/Helvetica-Narrow-Bold.afm
+@file /usr/local/afm/Helvetica-Narrow-BoldOblique.afm
+@file /usr/local/afm/Helvetica-Narrow-Oblique.afm
+@file /usr/local/afm/Helvetica-Oblique.afm
+@file /usr/local/afm/NewCenturySchlbk-Bold.afm
+@file /usr/local/afm/NewCenturySchlbk-BoldItalic.afm
+@file /usr/local/afm/NewCenturySchlbk-Italic.afm
+@file /usr/local/afm/NewCenturySchlbk-Roman.afm
+@file /usr/local/afm/Palatino-Bold.afm
+@file /usr/local/afm/Palatino-BoldItalic.afm
+@file /usr/local/afm/Palatino-Italic.afm
+@file /usr/local/afm/Palatino-Roman.afm
+@file /usr/local/afm/Symbol.afm
+@file /usr/local/afm/Times-Bold.afm
+@file /usr/local/afm/Times-BoldItalic.afm
+@file /usr/local/afm/Times-Italic.afm
+@file /usr/local/afm/Times-Roman.afm
+@file /usr/local/afm/ZapfChancery-MediumItalic.afm
+@file /usr/local/afm/ZapfDingbats.afm
+@file /usr/local/Ted/dfa/US_English.dfa
+@file /usr/local/Ted/TedDocument-en_US.rtf
+@man /usr/local/Ted/Ted.1
+@man /usr/local/Ted/rtf2ps.1
+@man /usr/local/Ted/rtf2pdf.1
+@file /usr/local/Ted/gsfontmetrics.ps
+@file /usr/local/Ted/gslibpath.ps
+@file /usr/local/Ted/gslsfonts.ps
+@file /usr/local/Ted/font.rtf
+@file /usr/local/Ted/font-i.rtf
+@file /usr/local/Ted/font-b.rtf
+@file /usr/local/Ted/font-bi.rtf
+@file /usr/local/Ted/Ted.png
+@file /usr/local/Ted/varia/Ted.mailcap
+@file /usr/local/Ted/varia/Ted.desktop
+@file /usr/local/Ted/varia/base35.fonts.conf
+@file /usr/local/Ted/varia/base35.rtf
+@file /usr/local/Ted/varia/checkfontsdocs.sh
+@sample /usr/local/Ted/config/Ted.ad.sample
+@file /usr/local/Ted/config/ted.gtkrc-2.0
+@file /usr/local/share/applications/Ted.desktop
+
+@mode 755
+@file /usr/local/Ted/rtf2ps.sh
+@file /usr/local/Ted/rtf2pdf.sh
+@file /usr/local/Ted/rtf2txt.sh
+@file /usr/local/Ted/rtf2epub.sh
+@file /usr/local/Ted/rtf2html.sh
+@file /usr/local/Ted/gsafm.sh
+@file /usr/local/Ted/fixOpenOfficeRtf.sh

@@ -9,18 +9,19 @@
 #   include	<stdlib.h>
 #   include	<stdio.h>
 #   include	<stddef.h>
-#   include	<string.h>
 
 #   include	<appDebugon.h>
 
-#   include	<appFrame.h>
-#   include	"appUnit.h"
-#   include	<appGeoString.h>
-#   include	"appPaper.h"
+#   include	"appFrame.h"
+#   include	<appUnit.h>
 #   include	"appPaperChooser.h"
 #   include	"appMarginTool.h"
+#   include	"appTool.h"
+#   include	"guiWidgetDrawingSurface.h"
+#   include	"guiDrawingWidget.h"
+#   include	"guiDrawPage.h"
 
-#   define	DRH_MM	40
+#   define	DRH_MM		32
 
 /************************************************************************/
 /*									*/
@@ -53,13 +54,14 @@ typedef struct AppPageTool
     {
     EditApplication *		aptApplication;
 
-    AppDrawingData		aptDrawingData;
-    int				aptDrawingDataAllocated;
+    DrawingSurface		aptDrawingSurface;
+    RGB8Color			aptBackgroundColor;
 
     APP_WIDGET			aptTopWidget;
     APP_WIDGET			aptMainWidget;
 
     APP_WIDGET			aptPageDrawing;
+    APP_WIDGET			aptButtonRow;
 
     PaperChooser		aptPaperChooser;
     AppMarginTool		aptMarginTool;
@@ -70,6 +72,9 @@ typedef struct AppPageTool
     DocumentGeometry		aptGeometrySet;
 
     int				aptUnitType;
+    double			aptPixelsPerTwip;
+    int				aptPageHighMm;
+
     int				aptCustomPaperSize;
     void *			aptTarget;
     } AppPageTool;
@@ -138,10 +143,12 @@ static AppConfigurableResource APP_PageToolresourceTable[]=
 static APP_EVENT_HANDLER_H( appPageToolDrawPage, w, voidapt, exposeEvent )
     {
     AppPageTool *		apt= (AppPageTool *)voidapt;
-    AppDrawingData *		add= &(apt->aptDrawingData);
+    DrawingSurface		ds= apt->aptDrawingSurface;
 
-    appDrawPageDiagram( apt->aptPageDrawing, add,
-				    DRH_MM, &(apt->aptGeometryChosen) );
+    appDrawPageDiagram( apt->aptPageDrawing, ds,
+				    &(apt->aptBackgroundColor),
+				    apt->aptPixelsPerTwip,
+				    &(apt->aptGeometryChosen) );
     }
 
 /************************************************************************/
@@ -156,12 +163,11 @@ static void appPageToolPaperRectChanged(
 				const DocumentGeometry *	dg )
     {
     AppPageTool *		apt= (AppPageTool *)voidapt;
-    AppDrawingData *		add= &(apt->aptDrawingData);
 
     apt->aptGeometryChosen.dgPageWideTwips= dg->dgPageWideTwips;
     apt->aptGeometryChosen.dgPageHighTwips= dg->dgPageHighTwips;
 
-    appExposeRectangle( add, 0, 0, 0, 0 );
+    guiExposeDrawingWidget( apt->aptPageDrawing );
 
     return;
     }
@@ -175,7 +181,6 @@ static void appPageToolPaperRectChanged(
 static APP_BUTTON_CALLBACK_H( appPageToolRevertPushed, w, voidapt )
     {
     AppPageTool *		apt= (AppPageTool *)voidapt;
-    AppDrawingData *		add= &(apt->aptDrawingData);
 
     apt->aptGeometryChosen.dgPageWideTwips=
 					apt->aptGeometrySet.dgPageWideTwips;
@@ -197,7 +202,7 @@ static APP_BUTTON_CALLBACK_H( appPageToolRevertPushed, w, voidapt )
     appMarginToolShowMargins( &(apt->aptMarginTool),
 				apt->aptUnitType, &(apt->aptGeometryChosen) );
 
-    appExposeRectangle( add, 0, 0, 0, 0 );
+    guiExposeDrawingWidget( apt->aptPageDrawing );
 
     return;
     }
@@ -216,6 +221,7 @@ static APP_BUTTON_CALLBACK_H( appPageToolSetPushed, w, voidapt )
     {
     AppPageTool *	apt= (AppPageTool *)voidapt;
     EditApplication *	ea= apt->aptApplication;
+    EditDocument *	ed= ea->eaCurrentDocument;
 
     DocumentGeometry	dg;
 
@@ -227,17 +233,20 @@ static APP_BUTTON_CALLBACK_H( appPageToolSetPushed, w, voidapt )
     PropertyMask	margChgMask;
     PropertyMask	sizeChgMask;
 
-    PROPmaskCLEAR( &margUpdMask );
+    if  ( ! ed )
+	{ XDEB(ed); return;	}
+
+    utilPropMaskClear( &margUpdMask );
     utilPropMaskFill( &margUpdMask, DGprop_COUNT );
 
-    PROPmaskCLEAR( &setMask );
+    utilPropMaskClear( &setMask );
     utilPropMaskFill( &setMask, DGprop_COUNT );
     PROPmaskUNSET( &setMask, DGpropHEADER_POSITION );
     PROPmaskUNSET( &setMask, DGpropFOOTER_POSITION );
 
-    PROPmaskCLEAR( &margChgMask );
+    utilPropMaskClear( &margChgMask );
     /*
-    PROPmaskCLEAR( &sizeChgMask );
+    utilPropMaskClear( &sizeChgMask );
     */
 
     dg= apt->aptGeometrySet;
@@ -254,7 +263,7 @@ static APP_BUTTON_CALLBACK_H( appPageToolSetPushed, w, voidapt )
 
     appPageToolSetProperties( (void *)apt, &dg );
 
-    (*ea->eaSetPageLayout)( ea, &dg, &setMask, wholeDocument );
+    (*ea->eaSetPageLayout)( ed, &setMask, &dg, wholeDocument );
 
     return;
     }
@@ -268,12 +277,12 @@ static APP_BUTTON_CALLBACK_H( appPageToolSetPushed, w, voidapt )
 static APP_CLOSE_CALLBACK_H( appClosePageTool, w, voidapt )
     {
     AppPageTool *	apt= (AppPageTool *)voidapt;
-    AppDrawingData *	add= &(apt->aptDrawingData);
 
     if  ( apt->aptDestroy )
 	{ (*apt->aptDestroy)( apt->aptTarget );	}
 
-    appCleanDrawingData( add );
+    if  ( apt->aptDrawingSurface )
+	{ drawFreeDrawingSurface( apt->aptDrawingSurface );	}
 
     appDestroyShellWidget( w );
 
@@ -291,16 +300,15 @@ static APP_CLOSE_CALLBACK_H( appClosePageTool, w, voidapt )
 static APP_TXACTIVATE_CALLBACK_H( appPageToolMarginChanged, w, voidapt )
     {
     AppPageTool *		apt= (AppPageTool *)voidapt;
-    AppDrawingData *		add= &(apt->aptDrawingData);
 
     PropertyMask		dgChgMask;
     PropertyMask		dgUpdMask;
 
     DocumentGeometry		dg;
 
-    PROPmaskCLEAR( &dgChgMask );
+    utilPropMaskClear( &dgChgMask );
 
-    PROPmaskCLEAR( &dgUpdMask );
+    utilPropMaskClear( &dgUpdMask );
     utilPropMaskFill( &dgUpdMask, DGprop_COUNT );
 
     dg= apt->aptGeometryChosen;
@@ -320,7 +328,7 @@ static APP_TXACTIVATE_CALLBACK_H( appPageToolMarginChanged, w, voidapt )
     apt->aptGeometryChosen.dgRightMarginTwips= dg.dgRightMarginTwips;
     apt->aptGeometryChosen.dgBottomMarginTwips= dg.dgBottomMarginTwips;
 
-    appExposeRectangle( add, 0, 0, 0, 0 );
+    guiExposeDrawingWidget( apt->aptPageDrawing );
 
     return;
     }
@@ -364,14 +372,15 @@ static APP_WIDGET appPageToolMakeButtonRow( APP_WIDGET		parent,
 
     const int	heightResizable= 0;
     const int	buttonIsDefault= 0;
+    const int	colspan= 1;
 
     row= appMakeRowInColumn( parent, 2, heightResizable );
 
     appMakeButtonInRow( &revertButton, row, aptr->aptrRevert,
-		    appPageToolRevertPushed, (void *)apt, 0, buttonIsDefault );
+	    appPageToolRevertPushed, (void *)apt, 0, colspan, buttonIsDefault );
 
     appMakeButtonInRow( &setButton, row, aptr->aptrSet,
-		    appPageToolSetPushed, (void *)apt, 1, buttonIsDefault );
+	    appPageToolSetPushed, (void *)apt, 1, colspan, buttonIsDefault );
 
     return row;
     }
@@ -405,14 +414,10 @@ void * appMakePageTool(	EditApplication *	ea,
     {
     AppPageTool *	apt;
     
-    APP_WIDGET		buttonForm;
-
     APP_BITMAP_IMAGE	iconPixmap= (APP_BITMAP_IMAGE)0;
     APP_BITMAP_MASK	iconMask= (APP_BITMAP_MASK)0;
 
     const int		userResizable= 0;
-
-    const double	magnification= 1.0;
 
     static int			gotResources= 0;
     static AppPageToolResources	aptr;
@@ -441,16 +446,20 @@ void * appMakePageTool(	EditApplication *	ea,
     apt->aptCustomPaperSize= -1;
 
     appInitPaperChooser( &(apt->aptPaperChooser) );
-    appInitDrawingData( &(apt->aptDrawingData) );
-    apt->aptDrawingDataAllocated= 0;
+    apt->aptDrawingSurface= (DrawingSurface)0;
     
     appMakeVerticalTool( &(apt->aptTopWidget), &(apt->aptMainWidget), ea,
 		    iconPixmap, iconMask, 
 		    ea->eaPageToolName, userResizable, pageOption,
 		    appClosePageTool, (void *)apt );
 
-    apt->aptPageDrawing= appMakePageDrawing( apt->aptMainWidget, ea,
-			DRH_MM, appPageToolDrawPage, (void *)apt );
+    apt->aptPageHighMm= DRH_MM;
+    apt->aptPixelsPerTwip= ( apt->aptPageHighMm* ea->eaPixelsPerTwip )/
+								A3_MM_HIGH;
+
+    apt->aptPageDrawing= appMakePageDrawing( apt->aptMainWidget,
+			ea->eaPixelsPerTwip, apt->aptPageHighMm,
+			appPageToolDrawPage, (void *)apt );
 
     appPageToolMakePaperFrame( apt->aptMainWidget, &aptr, apt );
 
@@ -460,18 +469,20 @@ void * appMakePageTool(	EditApplication *	ea,
 					    appPageToolMarginChanged,
 					    (void *)apt );
 
-    buttonForm= appPageToolMakeButtonRow( apt->aptMainWidget, &aptr, apt );
+    apt->aptButtonRow=
+		appPageToolMakeButtonRow( apt->aptMainWidget, &aptr, apt );
 
     appPaperChooserFillMenu( &(apt->aptPaperChooser), aptr.aptrCustom );
 
-    appShowShellWidget( apt->aptTopWidget );
+    appShowShellWidget( ea, apt->aptTopWidget );
 
-    appPaperChooserRetreshMenuWidth( &(apt->aptPaperChooser) );
+    appPaperChooserRefreshMenuWidth( &(apt->aptPaperChooser) );
 
-    if  ( appSetDrawingDataForWidget( apt->aptPageDrawing, magnification,
-						    &(apt->aptDrawingData) ) )
-	{ LDEB(1);				}
-    else{ apt->aptDrawingDataAllocated= 1;	}
+    apt->aptDrawingSurface= guiDrawingSurfaceForNativeWidget(
+				apt->aptPageDrawing,
+				ea->eaPostScriptFontList.psflAvoidFontconfig );
+
+    guiGetForegroundColor( &(apt->aptBackgroundColor), apt->aptPageDrawing );
 
     return (void *)apt;
     }
@@ -486,7 +497,7 @@ void appShowPageTool(		EditApplication *	ea )
     {
     AppPageTool *		apt= (AppPageTool *)ea->eaPageTool;
 
-    appShowShellWidget( apt->aptTopWidget );
+    appShowShellWidget( ea, apt->aptTopWidget );
     }
 
 /************************************************************************/
@@ -495,12 +506,10 @@ void appShowPageTool(		EditApplication *	ea )
 /*									*/
 /************************************************************************/
 
-
 void appPageToolSetProperties(	void *				voidapt,
 				const DocumentGeometry *	dg )
     {
     AppPageTool *	apt= (AppPageTool *)voidapt;
-    AppDrawingData *	add= &(apt->aptDrawingData);
 
     apt->aptGeometryChosen= apt->aptGeometrySet= *dg;
 
@@ -510,7 +519,7 @@ void appPageToolSetProperties(	void *				voidapt,
     appMarginToolShowMargins( &(apt->aptMarginTool),
 				apt->aptUnitType, &(apt->aptGeometryChosen) );
 
-    appExposeRectangle( add, 0, 0, 0, 0 );
+    guiExposeDrawingWidget( apt->aptPageDrawing );
 
     return;
     }
@@ -520,7 +529,7 @@ void appEnablePageTool(		void *	voidapt,
     {
     AppPageTool *	apt= (AppPageTool *)voidapt;
 
-    appGuiEnableWidget( apt->aptMainWidget, enabled != 0 );
+    guiEnableWidget( apt->aptMainWidget, enabled != 0 );
 
     return;
     }

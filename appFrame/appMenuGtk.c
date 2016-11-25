@@ -10,9 +10,9 @@
 
 #   include	<stddef.h>
 #   include	<stdio.h>
-#   include	<stdlib.h>
 #   include	<string.h>
 
+#   include	"guiWidgetsGtk.h"
 #   include	"appFrame.h"
 #   include	<appDebugon.h>
 
@@ -164,7 +164,7 @@ APP_WIDGET appSetToggleMenuItem(	APP_WIDGET		menu,
 	    }
 	}
 
-    gtk_check_menu_item_set_state( GTK_CHECK_MENU_ITEM( rval ),
+    gtk_check_menu_item_set_active( GTK_CHECK_MENU_ITEM( rval ),
 					ami->amiItemType == ITEMtyTOGGLE_ON );
     gtk_check_menu_item_set_show_toggle( GTK_CHECK_MENU_ITEM( rval ),
 					TRUE );
@@ -196,7 +196,7 @@ APP_WIDGET appMakeMenuInParent(	APP_WIDGET *		pButton,
     menu= gtk_menu_new();
 
     button= gtk_menu_item_new_with_label( itemText );
-    gtk_menu_bar_append( GTK_MENU_BAR( menuBar ), button );
+    gtk_menu_shell_append( GTK_MENU_SHELL( menuBar ), button );
 
     gtk_menu_item_set_submenu( GTK_MENU_ITEM( button ), menu );
 
@@ -220,7 +220,7 @@ APP_WIDGET appMakeMenuInParent(	APP_WIDGET *		pButton,
 void appGuiSetToggleItemState(	APP_WIDGET		toggle,
 				int			set )
     {
-    gtk_check_menu_item_set_state( GTK_CHECK_MENU_ITEM( toggle ), set != 0 );
+    gtk_check_menu_item_set_active( GTK_CHECK_MENU_ITEM( toggle ), set != 0 );
     }
 
 void appGuiSetToggleItemLabel(	APP_WIDGET		toggle,
@@ -231,12 +231,11 @@ void appGuiSetToggleItemLabel(	APP_WIDGET		toggle,
     return;
     }
 
-int appGuiGetMenuToggleStateFromCallback( APP_WIDGET		toggle,
-					void *			voidcbs )
+int appGuiGetMenuToggleStateFromCallbackGtk( APP_WIDGET		toggle )
     {
-    GtkCheckMenuItem *	item= GTK_CHECK_MENU_ITEM( toggle );
+    GtkCheckMenuItem *	option= GTK_CHECK_MENU_ITEM( toggle );
 
-    return item->active;
+    return option->active;
     }
 
 /************************************************************************/
@@ -262,5 +261,18 @@ char *	appGetTextFromMenuOption(	APP_WIDGET		w )
 void appFreeTextFromMenuOption(	char *		s )
     { return;	}
 
-#   endif
+/************************************************************************/
+/*									*/
+/*  Hide a menu option.							*/
+/*									*/
+/************************************************************************/
 
+void guiShowMenuOption(		APP_WIDGET		w,
+				int			visible )
+    {
+    if  ( visible )
+	{ gtk_widget_show( w );	}
+    else{ gtk_widget_hide( w );	}
+    }
+
+#   endif

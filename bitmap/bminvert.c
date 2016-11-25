@@ -2,11 +2,8 @@
 
 #   include	"bmintern.h"
 
-#   define	y0	math_y0
-#   define	y1	math_y1
-#   include	<math.h>
-#   undef	y0
-#   undef	y1
+#   include	<stdlib.h>
+#   include	<string.h>
 
 #   include	<appDebugon.h>
 
@@ -18,28 +15,27 @@
 
 #   define	MAX_COMPONENTS	4
 
-int bmInvertImage(	BitmapDescription *		bdOut,
-			const BitmapDescription *	bdIn,
-			unsigned char **		pBufOut,
-			const unsigned char *		bufIn,
+int bmInvertImage(	RasterImage *			riOut,
+			const RasterImage *		riIn,
 			int				ignoredInt )
     {
-    int			map[256*MAX_COMPONENTS];
-    int *		mp;
-    int			mxv;
+    const BitmapDescription *	bdIn= &(riIn->riDescription);
+    int				rval= 0;
 
-    int			i;
-    int			j;
+    int				map[256*MAX_COMPONENTS];
+    int *			mp;
+    int				mxv;
 
-    unsigned char *	bufOut;
+    int				i;
+    int				j;
 
-    BitmapDescription	bd;
+    RasterImage			ri;
 
-    bmInitDescription( &bd );
+    bmInitRasterImage( &ri );
 
     /*  1  */
     if  ( bdIn->bdBitsPerSample > 8 )
-	{ LDEB(bdIn->bdBitsPerSample); return -1;	}
+	{ LDEB(bdIn->bdBitsPerSample); rval= -1; goto ready;	}
 
     /*  2  */
     mxv= 1;
@@ -55,39 +51,28 @@ int bmInvertImage(	BitmapDescription *		bdOut,
 	    { *(mp++)= mxv- i;	}
 	}
 
+    if  ( bmCopyDescription( &(ri.riDescription), bdIn ) )
+	{ LDEB(1); rval= -1; goto ready;	}
+
     /*  4  */
-    bufOut= malloc( bdIn->bdBufferLength+ bdIn->bdSamplesPerPixel- 1 );
-    if  ( ! bufOut )
-	{ LXDEB(bdIn->bdBufferLength,bufOut); return -1; }
+    ri.riBytes= (unsigned char *)malloc( bdIn->bdBufferLength+ bdIn->bdSamplesPerPixel- 1 );
+    if  ( ! ri.riBytes )
+	{ LXDEB(bdIn->bdBufferLength,ri.riBytes); rval= -1; goto ready; }
 
-    if  ( bmCopyDescription( &bd, bdIn ) )
-	{ LDEB(1); free( bufOut ); return -1;	}
-
-    memcpy( bufOut, bufIn, bdIn->bdBufferLength );
+    memcpy( ri.riBytes, riIn->riBytes, bdIn->bdBufferLength );
 
     /*  5  */
-    if  ( bmMapImageColors( &bd, map, bufOut ) )
-	{
-	LDEB(1);
-
-	bmCleanDescription( &bd );
-	free( bufOut );
-
-	return -1;
-	}
+    if  ( bmMapImageColors( &(ri.riDescription), map, ri.riBytes ) )
+	{ LDEB(1); rval= -1; goto ready;	}
 
     /*  6  */
-    if  ( bmCopyDescription( bdOut, &bd ) )
-	{
-	LDEB(1);
+    /* steal */
+    *riOut= ri; bmInitRasterImage( &ri );
 
-	bmCleanDescription( &bd );
-	free( bufOut );
+  ready:
+    
+    bmCleanRasterImage( &ri );
 
-	return -1;
-
-	}
-
-    *pBufOut= bufOut; return 0;
+    return rval;
     }
 

@@ -6,10 +6,10 @@
 
 #   include	"utilBase64.h"
 
-const unsigned char	UTIL_Base64Digits[]=
-				       "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
-				       "abcdefghijklmnopqrstuvwxyz"
-				       "0123456789+/";
+const char UTIL_Base64Digits[]=
+		       "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
+		       "abcdefghijklmnopqrstuvwxyz"
+		       "0123456789+/";
 
 const int *	utilBase64GetIndexArray( void )
     {
@@ -24,7 +24,7 @@ const int *	utilBase64GetIndexArray( void )
 
 	i= 0;
 	while( UTIL_Base64Digits[i] )
-	    { UTIL_Base64IndexArray[UTIL_Base64Digits[i]]= i; i++;	}
+	    { UTIL_Base64IndexArray[UTIL_Base64Digits[i]&0xff]= i; i++;	}
 	}
 
     return UTIL_Base64IndexArray;

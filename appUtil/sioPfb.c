@@ -10,7 +10,7 @@
 #   include	"appUtilConfig.h"
 
 #   include	"sioPfb.h"
-#   include	<sioEndian.h>
+#   include	"sioEndian.h"
 #   include	<appDebugon.h>
 
 
@@ -49,11 +49,11 @@ static char SIO_PFB_HEXDIGITS[]= "0123456789ABCDEF";
 
 static int sioInPfbReadBytes(	void *		voidbfs,
 				unsigned char *	buffer,
-				int		count )
+				unsigned int	count )
     {
     BinaryFontStream *	bfs= (BinaryFontStream *)voidbfs;
     SimpleInputStream *	sisPfb= bfs->bfsSis;
-    int			done= 0;
+    unsigned int	done= 0;
     int			todo;
 
     int			c;
@@ -71,11 +71,11 @@ static int sioInPfbReadBytes(	void *		voidbfs,
 	{
 	if  ( bfs->bfsBytesLeftInBlock == 0 )
 	    {
-	    c= sioInGetCharacter( sisPfb );
+	    c= sioInGetByte( sisPfb );
 	    if  ( c != MARKER )
 		{ LDEB(c); return -1;	}
 
-	    bfs->bfsKindOfBlock= sioInGetCharacter( sisPfb );
+	    bfs->bfsKindOfBlock= sioInGetByte( sisPfb );
 	    switch( bfs->bfsKindOfBlock )
 		{
 		case ASCII:
@@ -134,7 +134,7 @@ static int sioInPfbReadBytes(	void *		voidbfs,
 		if  ( done+ 1 >= count )
 		    { break;	}
 
-		c= sioInGetCharacter( sisPfb );
+		c= sioInGetByte( sisPfb );
 		if  ( c == EOF )
 		    { return done;	}
 
@@ -147,7 +147,7 @@ static int sioInPfbReadBytes(	void *		voidbfs,
 	    if  ( bfs->bfsBytesLeftInBlock > 0	&&
 		  done < count			)
 		{
-		c= sioInGetCharacter( sisPfb );
+		c= sioInGetByte( sisPfb );
 		if  ( c == EOF )
 		    { return done;	}
 
@@ -173,7 +173,7 @@ SimpleInputStream * sioInPfbOpen(	SimpleInputStream *	sisPfb )
     BinaryFontStream *	bfs;
     SimpleInputStream *	sis;
 
-    bfs= malloc( sizeof(BinaryFontStream) );
+    bfs= (BinaryFontStream *)malloc( sizeof(BinaryFontStream) );
     if  ( ! bfs )
 	{ XDEB(bfs); return (SimpleInputStream *)0;	}
 

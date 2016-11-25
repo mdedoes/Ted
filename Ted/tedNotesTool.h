@@ -7,6 +7,11 @@
 #   ifndef	TED_NOTES_TOOL_H
 #   define	TED_NOTES_TOOL_H
 
+#   include	<appFrame.h>
+#   include	<appInspector.h>
+#   include	<docBuf.h>
+#   include	<docSelectionDescription.h>
+
 /************************************************************************/
 /*									*/
 /*  A notes tool, i.e. the 'Notes' page of the format tool.		*/
@@ -15,45 +20,23 @@
 
 typedef struct NotesPageResources
     {
-    char *		nprCurrentNoteText;
-    char *		nprFootnoteText;
-    char *		nprEndnoteText;
-    char *		nprFixedTextText;
-    char *		nprToNoteRefText;
-    char *		nprToNoteText;
-    char *		nprRevertNoteText;
-    char *		nprChangeNoteText;
+    const char *	nprFootnotesText;
+    const char *	nprEndnotesText;
 
-    char *		nprFootnotesText;
-    char *		nprEndnotesText;
+    const char *	nprFirstNumberText;
+    const char *	nprJustifyText;
+    const char *	nprPositionText;
+    const char *	nprRestartText;
+    const char *	nprStyleText;
 
-    char *		nprFirstNumberText;
-    char *		nprPositionText;
-    char *		nprRestartText;
-    char *		nprStyleText;
+    const char *	nprJustifyMenuTexts[FTNjustify_COUNT];
+    const char *	nprPlacementMenuTexts[FTNplace_COUNT];
+    const char *	nprRestartMenuTexts[FTN_RST__COUNT];
+    const char *	nprNumberStyleMenuTexts[FTNstyle_COUNT];
 
-    char *		nprPositionMenuTexts[FTN_POS__COUNT];
-    char *		nprRestartMenuTexts[FTN_RST__COUNT];
-    char *		nprNumberStyleMenuTexts[FTNstyle_COUNT];
+    const char *	nprRevertSelectionText;
+    const char *	nprChangeSelectionText;
     } NotesPageResources;
-
-typedef struct NotePropertiesTool
-    {
-    APP_WIDGET			nptFrame;
-    APP_WIDGET			nptPaned;
-    APP_WIDGET			nptStartNumberText;
-
-				/*  Not all positions used!	*/
-    AppOptionmenu		nptPositionOptionmenu;
-    APP_WIDGET			nptPositionOptions[FTN_POS__COUNT];
-
-				/*  Not all positions used!	*/
-    AppOptionmenu		nptRestartOptionmenu;
-    APP_WIDGET			nptRestartOptions[FTN_RST__COUNT];
-
-    AppOptionmenu		nptStyleOptionmenu;
-    APP_WIDGET			nptStyleOptions[FTNstyle_COUNT];
-    } NotePropertiesTool;
 
 typedef struct NotesTool
     {
@@ -61,36 +44,46 @@ typedef struct NotesTool
     AppInspector *		ntInspector;
     const NotesPageResources *	ntPageResources;
 
-    int				ntNoteNumber;
-    int				ntNoteKindChosen;
-    int				ntNoteKindSet;
-    int				ntFixedTextChosen;
-    int				ntFixedTextSet;
-    int				ntInsideNote;
+    unsigned int		ntNoteTreeType;
 
-    unsigned char		ntNoteTextSet[20+1];
-    unsigned char		ntNoteTextChosen[20+1];
+    unsigned char		ntCanChangeSelection;
+    unsigned char		ntCanChangeDocument;
+    int				ntInProgrammaticChange;
 
-    DocumentProperties		ntPropertiesChosen;
-    DocumentProperties		ntPropertiesSet;
+    FootEndNotesProperties	ntNotesPropertiesSetDocument;
+    FootEndNotesProperties	ntNotesPropertiesSetSelection;
+    FootEndNotesProperties	ntNotesPropertiesChosen;
 
-    /****/
-    APP_WIDGET			ntCurrentNoteFrame;
-    APP_WIDGET			ntCurrentNotePaned;
-    APP_WIDGET			ntFootnoteToggle;
-    APP_WIDGET			ntEndnoteToggle;
-    APP_WIDGET			ntFixedTextToggle;
-    APP_WIDGET			ntFixedTextText;
+    APP_WIDGET			ntRevertSelectionWidget;
+    APP_WIDGET			ntChangeSelectionWidget;
 
-    APP_WIDGET			ntToNoteRefButton;
-    APP_WIDGET			ntToNoteButton;
 
-    APP_WIDGET			ntRevertNoteButton;
-    APP_WIDGET			ntChangeNoteButton;
+    APP_WIDGET			ntJustifyRow;
+    APP_WIDGET			ntJustifyLabel;
+				/*  Not all positions used!	*/
+    AppOptionmenu		ntJustifyOptionmenu;
+    APP_WIDGET			ntJustifyOptions[FTNjustify_COUNT];
 
-    /****/
-    NotePropertiesTool		ntFootnotePropertiesTool;
-    NotePropertiesTool		ntEndnotePropertiesTool;
+    APP_WIDGET			ntPlacementRow;
+    APP_WIDGET			ntPlacementLabel;
+				/*  Not all positions used!	*/
+    AppOptionmenu		ntPlacementOptionmenu;
+    APP_WIDGET			ntPlacementOptions[FTNplace_COUNT];
+
+    APP_WIDGET			ntRestartRow;
+    APP_WIDGET			ntRestartLabel;
+				/*  Not all positions used!	*/
+    AppOptionmenu		ntRestartOptionmenu;
+    APP_WIDGET			ntRestartOptions[FTN_RST__COUNT];
+
+    APP_WIDGET			ntStyleRow;
+    APP_WIDGET			ntStyleLabel;
+    AppOptionmenu		ntStyleOptionmenu;
+    APP_WIDGET			ntStyleOptions[FTNstyle_COUNT];
+
+    APP_WIDGET			ntStartNumberRow;
+    APP_WIDGET			ntStartNumberLabel;
+    APP_WIDGET			ntStartNumberText;
     } NotesTool;
 
 /************************************************************************/
@@ -103,14 +96,30 @@ extern void tedFormatToolGetNotesResourceTable( EditApplication *	ea,
 					NotesPageResources *		spr,
 					InspectorSubjectResources *	isr );
 
-extern void tedFormatToolRefreshNotesTool(
-				NotesTool *			nt,
+extern void tedRefreshNotesTool( NotesTool *			nt,
 				int *				pEnabled,
 				int *				pPref,
 				InspectorSubject *		is,
 				const DocumentSelection *	ds,
-				BufferDocument *		bd );
+				const SelectionDescription *	sd,
+				BufferDocument *		bd,
+				const unsigned char *		cmdEnabled );
 
 extern void tedFormatCleanNotesTool(	NotesTool *		nt );
+
+extern void tedFormatInitNotesTool(	NotesTool *		nt );
+
+extern void tedFormatFillNotesChoosers(	NotesTool *			nt,
+					const NotesPageResources *	npr );
+
+extern void tedFormatFinishNotesPage(	NotesTool *			nt,
+					const NotesPageResources *	npr );
+
+extern void tedFormatFillNotesPage( NotesTool *			nt,
+				const NotesPageResources *	npr,
+				InspectorSubject *		is,
+				APP_WIDGET			pageWidget,
+				const InspectorSubjectResources * isr,
+				int				treeType );
 
 #   endif	/*  TED_NOTES_TOOL_H */

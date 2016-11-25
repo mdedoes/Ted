@@ -9,10 +9,10 @@
 
 #   include	<stdio.h>
 
-#   include	<bmcolor.h>
-
-#   include	<appGuiBase.h>
-#   include	<appGuiResource.h>
+#   include	"appGuiBase.h"
+#   include	"appFrame.h"
+#   include	"appTool.h"
+#   include	"guiOptionmenu.h"
 
 /************************************************************************/
 /*									*/
@@ -39,8 +39,12 @@ typedef struct InspectorSubject
     void *			isPrivate;
     int				isEnabled;
 
-    APP_WIDGET			isPrevButton;
-    APP_WIDGET			isNextButton;
+    APP_WIDGET			isNextPrevRow;
+    APP_WIDGET				isPrevButton;
+    APP_WIDGET				isNextButton;
+
+    APP_WIDGET			isMoveUpButton;
+    APP_WIDGET			isMoveDownButton;
 
     APP_WIDGET			isSelectButton;
     APP_WIDGET			isDeleteButton;
@@ -48,8 +52,9 @@ typedef struct InspectorSubject
     APP_WIDGET			isInsertButton;
     APP_WIDGET			isAppendButton;
 
-    APP_WIDGET			isRevertButton;
-    APP_WIDGET			isApplyButton;
+    APP_WIDGET			isApplyRow;
+    APP_WIDGET				isRevertButton;
+    APP_WIDGET				isApplyButton;
 
     InspectorSubjectGotColor	isGotColor;
     } InspectorSubject;
@@ -67,7 +72,6 @@ typedef struct AppInspector
     APP_WIDGET			aiPageParent;
     APP_WIDGET			aiSeparator2;
 
-    APP_WIDGET			aiLowerButton;
     APP_WIDGET			aiCloseButton;
 
     InspectorNotifySubject	aiNotifySubject;
@@ -81,29 +85,31 @@ typedef struct AppInspector
     int				aiSubjectCount;
     int				aiCurrentSubject;
 
-    InspectorSubject		aiSubjects[1];		/*  LAST !!	*/
+    InspectorSubject *		aiSubjects;
     } AppInspector;
 
 typedef struct AppInspectorResources
     {
-    char *	airLowerText;
-    char *	airCloseText;
+    char *		airCloseText;
     } AppInspectorResources;
 
 typedef struct InspectorSubjectResources
     {
-    char *		isrSubjectName;
-    char *		isrApplyToSubject;
-    char *		isrRevert;
+    const char *	isrSubjectName;
+    const char *	isrApplyToSubject;
+    const char *	isrRevert;
 
-    char *		isrNextButtonText;
-    char *		isrPrevButtonText;
+    const char *	isrNextButtonText;
+    const char *	isrPrevButtonText;
 
-    char *		isrSelectButtonText;
-    char *		isrDeleteButtonText;
+    const char *	isrMoveDownButtonText;
+    const char *	isrMoveUpButtonText;
 
-    char *		isrInsertButtonText;
-    char *		isrAppendButtonText;
+    const char *	isrSelectButtonText;
+    const char *	isrDeleteButtonText;
+
+    const char *	isrInsertButtonText;
+    const char *	isrAppendButtonText;
     } InspectorSubjectResources;
 
 /************************************************************************/
@@ -137,6 +143,40 @@ extern void appInspectorShowRgbPage(	AppInspector *		ai,
 
 extern void appInspectorSetRgbPage(	AppInspector *		ai,
 					void *			vrcp,
-					int			subjectNumber );
+					int			subject );
+
+extern int appInspectorAddSubject(	AppInspector *				ai,
+				const InspectorSubjectResources *	isr );
+
+extern void appInspectorDeleteSubject(	AppInspector *		ai,
+					int			subject );
+
+extern void appInspectorPageChosen(	int			subject,
+					void *			vai );
+
+extern void appInspectorChoosePage(	AppInspector *		ai,
+					int			andMenu,
+					int			pageNumber );
+
+extern AppInspector * 	appMakeInspector(
+				    EditApplication *		ea,
+				    APP_WIDGET			option,
+				    const char *		pixmapName,
+				    const char *		widgetName,
+				    InspectorSubjectResources * isr,
+				    int				subjectCount,
+				    AppToolDestroy		closeInspector,
+				    void *			through );
+
+extern void appInspectorMakePageParent( AppInspector *	ai );
+
+extern int appMakeVerticalInspectorPage(	APP_WIDGET *	pPage,
+						APP_WIDGET *	pMenuitem,
+						AppInspector *	ai,
+						const char *	label );
+
+extern void appInspectorEnablePage(	AppInspector *	ai,
+					int		pageNumber,
+					int		enabled );
 
 #   endif

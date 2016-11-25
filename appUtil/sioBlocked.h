@@ -6,7 +6,7 @@
 /*									*/
 /************************************************************************/
 
-#   include	<sioGeneral.h>
+#   include	"sioGeneral.h"
 
 extern SimpleInputStream * sioInBlockedOpen(	SimpleInputStream * sisBlocks );
 

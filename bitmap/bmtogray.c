@@ -1,7 +1,7 @@
 #   include	"bitmapConfig.h"
 
-#   include	"bmintern.h"
-#   include	<string.h>
+#   include	"bmRender.h"
+#   include	<stdlib.h>
 #   include	<appDebugon.h>
 
 /************************************************************************/
@@ -176,26 +176,23 @@ int bmSetColorAllocatorForWBImage(	ColorAllocator *		ca,
 /*									*/
 /************************************************************************/
 
-int bmToGrayscale(	BitmapDescription *		bdOut,
-			const BitmapDescription *	bdIn,
-			unsigned char **		pBufOut,
-			const unsigned char *		bufferIn,
+int bmToGrayscale(	RasterImage *			riOut,
+			const RasterImage *		riIn,
 			int				ignoredInt )
     {
-    int			rval= 0;
+    const BitmapDescription *	bdIn= &(riIn->riDescription);
+    int				rval= 0;
 
-    BitmapDescription	bd;
+    RasterImage			ri;
 
-    unsigned char *	buffer= (unsigned char *)0;
+    ColorAllocator		ca;
 
-    ColorAllocator	ca;
+    int				bitmapUnit= 0;
+    int				swapBitmapBytes= 0;
+    int				swapBitmapBits= 0;
+    const int			dither= 0;
 
-    int			bitmapUnit= 0;
-    int			swapBitmapBytes= 0;
-    int			swapBitmapBits= 0;
-    const int		dither= 0;
-
-    bmInitDescription( &bd );
+    bmInitRasterImage( &ri );
     bmInitColorAllocator( &ca );
 
     /*  1  */
@@ -222,44 +219,38 @@ int bmToGrayscale(	BitmapDescription *		bdOut,
 	}
 
     /*  2  */
-    bmCopyDescription( &bd, bdIn );
+    if  ( bmCopyDescription( &(ri.riDescription), bdIn ) )
+	{ LDEB(1); rval= -1; goto ready;	}
 
-    bd.bdColorEncoding= BMcoWHITEBLACK;
-    bd.bdBitsPerSample= 8;
+    ri.riDescription.bdColorEncoding= BMcoWHITEBLACK;
+    ri.riDescription.bdBitsPerSample= 8;
 
-    if  ( bmCalculateSizes( &bd ) )
+    if  ( bmCalculateSizes( &(ri.riDescription) ) )
 	{ LDEB(1); rval= -1; goto ready;	}
 
     /*  3  */
-    if  ( bmGraySetAllocator( &ca, bd.bdBitsPerPixel,
+    if  ( bmGraySetAllocator( &ca, ri.riDescription.bdBitsPerPixel,
 						    bmToGrayAllocateWBColor ) )
-	{ LDEB(bd.bdBitsPerPixel); rval= -1; goto ready;	}
+	{ LDEB(ri.riDescription.bdBitsPerPixel); rval= -1; goto ready; }
 
     /*  4  */
-    buffer= (unsigned char *)malloc( bd.bdBufferLength );
-    if  ( ! buffer )
-	{ LLDEB(bd.bdBufferLength,buffer); rval= -1; goto ready; }
+    ri.riBytes= (unsigned char *)malloc( ri.riDescription.bdBufferLength );
+    if  ( ! ri.riBytes )
+	{ LLDEB(ri.riDescription.bdBufferLength,ri.riBytes); rval= -1; goto ready; }
 
     /*  5  */
     if  ( bmFillImage( &ca, bitmapUnit, swapBitmapBytes, swapBitmapBits,
-				dither, buffer, bufferIn, &bd, bdIn ) )
-	{ LDEB(1); rval= -1; goto ready;	}
-
-    /*  6  */
-    if  ( bmCopyDescription( bdOut, &bd ) )
+			dither, ri.riBytes, &(ri.riDescription),
+			riIn, (const DocumentRectangle *)0 ) )
 	{ LDEB(1); rval= -1; goto ready;	}
 
     /* steal */
-    *pBufOut= buffer; buffer= (unsigned char *)0;
+    *riOut= ri; bmInitRasterImage( &ri );
 
   ready:
 
     /*  7  */
-    if  ( buffer )
-	{ free( buffer );	}
-
-    bmCleanDescription( &bd );
-
+    bmCleanRasterImage( &ri );
     bmCleanColorAllocator( &ca );
 
     return rval;

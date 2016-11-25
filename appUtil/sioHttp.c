@@ -13,8 +13,8 @@
 #   include     <unistd.h>
 #   include     <sys/socket.h>
 
-#   include     <sioHttp.h>
-#   include	<utilMemoryBuffer.h>
+#   include     "sioHttp.h"
+#   include	"utilMemoryBuffer.h"
 
 #   include     <appDebugon.h>
 
@@ -80,7 +80,7 @@ static int sioOutHttpWriteHeaderBytes(	void *			voidhc,
 
     if  ( hc->hcCommunicationPhase == CP_WriteHeader )
 	{
-	if  ( utilAddToMemoryBuffer( &(hc->hcRequestHeaders), buffer, count ) )
+	if  ( utilMemoryBufferAppendBytes( &(hc->hcRequestHeaders), buffer, count ) )
 	    { LDEB(count); return -1;	}
 
 	return count;
@@ -111,19 +111,19 @@ static int sioHttpCloseBodyOutput(       void *  voidhc )
 
 	sprintf( scratch, "%d", hc->hcRequestBody.mbSize );
 
-	if  ( utilAddToMemoryBuffer( &(hc->hcRequestHeaders),
+	if  ( utilMemoryBufferAppendBytes( &(hc->hcRequestHeaders),
 			(const unsigned char *)cl, strlen( cl ) ) )
 	    { LDEB(1); return -1;	}
 
-	if  ( utilAddToMemoryBuffer( &(hc->hcRequestHeaders),
+	if  ( utilMemoryBufferAppendBytes( &(hc->hcRequestHeaders),
 			(const unsigned char *)scratch, strlen( scratch ) ) )
 	    { LDEB(1); return -1;	}
 
-	if  ( utilAddToMemoryBuffer( &(hc->hcRequestHeaders),
+	if  ( utilMemoryBufferAppendBytes( &(hc->hcRequestHeaders),
 			(const unsigned char *)crlf, strlen( crlf ) ) )
 	    { LDEB(1); return -1;	}
 
-	if  ( utilAddToMemoryBuffer( &(hc->hcRequestHeaders),
+	if  ( utilMemoryBufferAppendBytes( &(hc->hcRequestHeaders),
 			(const unsigned char *)crlf, strlen( crlf ) ) )
 	    { LDEB(1); return -1;	}
 
@@ -168,7 +168,7 @@ static int sioOutHttpWriteBodyBytes(	void *			voidhc,
 
     if  ( hc->hcCommunicationPhase == CP_WriteBody )
 	{
-	if  ( utilAddToMemoryBuffer( &(hc->hcRequestBody), buffer, count ) )
+	if  ( utilMemoryBufferAppendBytes( &(hc->hcRequestBody), buffer, count ) )
 	    { LDEB(count); return -1;	}
 
 	return count;
@@ -208,13 +208,13 @@ static int sioHttpUseHeaderBuffer(	HttpConnection *	hc,
 
 static int sioInHttpReadHeaderBytes(	void *		voidhc,
 					unsigned char *	buffer,
-					int		count )
+					unsigned int	count )
     {
     HttpConnection *	hc= (HttpConnection *)voidhc;
 
     if  ( hc->hcCommunicationPhase == CP_ReadHeader )
 	{
-	int		done= 0;
+	unsigned int	done= 0;
 
 	if  ( hc->hcPhases[CP_ReadHeader]
 				    & (HCphaseEXHAUSTED|HCphaseCLOSED)	)
@@ -327,7 +327,7 @@ static int sioHttpCloseBodyInput(       void *  voidhc )
 
 static int sioInHttpReadBodyBytes(	void *		voidhc,
 					unsigned char *	buffer,
-					int		count )
+					unsigned int	count )
     {
     HttpConnection *	hc= (HttpConnection *)voidhc;
 
@@ -416,7 +416,7 @@ static int sioHttpMakeRequest(		int			fd,
     requestLength += 9;				/*  " HTTP/1.0"		*/
     requestLength += 2;				/*  "\r\n"		*/
 
-    request= malloc( requestLength+ 1 );
+    request= (char *)malloc( requestLength+ 1 );
     if  ( ! request )
 	{ XDEB(request); return -1;	}
 
@@ -518,7 +518,7 @@ int sioHttpOpen(	SimpleInputStream **	pSisBody,
     if  ( pSosHeader )
 	{
 	sosHeader= sioOutOpen( (void *)hc, sioOutHttpWriteHeaderBytes,
-				    (SIOoutSEEK)0, sioHttpCloseHeaderOutput );
+						    sioHttpCloseHeaderOutput );
 	if  ( ! sosHeader )
 	    { XDEB(sosHeader); goto failure;	}
 
@@ -530,7 +530,7 @@ int sioHttpOpen(	SimpleInputStream **	pSisBody,
     if  ( openBodyOut )
 	{
 	sosBody= sioOutOpen( (void *)hc, sioOutHttpWriteBodyBytes,
-					(SIOoutSEEK)0, sioHttpCloseBodyOutput );
+						    sioHttpCloseBodyOutput );
 	if  ( ! sosBody )
 	    { XDEB(sosBody); goto failure;	}
 
@@ -561,11 +561,13 @@ int sioHttpOpen(	SimpleInputStream **	pSisBody,
   failure:
     LDEB(1);
 
-    utilCleanMemoryBuffer( &(hc->hcRequestHeaders) );
-    utilCleanMemoryBuffer( &(hc->hcRequestBody) );
-
     if  ( hc )
-	{ free( hc );	}
+	{
+	utilCleanMemoryBuffer( &(hc->hcRequestHeaders) );
+	utilCleanMemoryBuffer( &(hc->hcRequestBody) );
+
+	free( hc );
+	}
 
     if  ( fd >= 0 && close( fd ) )
 	{ LSDEB(fd,strerror(errno));	}

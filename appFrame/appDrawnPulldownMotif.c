@@ -1,17 +1,16 @@
 #   include	"appFrameConfig.h"
 
-#   include	<stdlib.h>
 #   include	<stdio.h>
 
-#   include	"appFrame.h"
-#   include	"appSystem.h"
-#   include	<appGeoString.h>
+#   include	"guiWidgets.h"
+#   include	"appDrawnPulldown.h"
+#   include	"guiDrawingWidget.h"
+
+#   include	<appDebugon.h>
 
 #   ifdef USE_MOTIF
 
 #   include	<Xm/DrawingA.h>
-
-#   include	<appDebugon.h>
 
 /************************************************************************/
 /*									*/
@@ -60,7 +59,7 @@ static APP_EVENT_HANDLER_H( appDrawnPulldownPulldown, w, voidadp, mouseEvent )
 
     /******/
 
-    if  ( appGetCoordinatesFromMouseButtonEvent( &mouseX, &mouseY,
+    if  ( guiGetCoordinatesFromMouseButtonEvent( &mouseX, &mouseY,
 					    &button, &upDown, &seq, &keyState,
 					    w, mouseEvent ) )
 	{ return;	}
@@ -85,14 +84,12 @@ static APP_EVENT_HANDLER_H( appDrawnPulldownPulldown, w, voidadp, mouseEvent )
 
     XtSetValues( adp->adpPulldownShell, al, ac );
 
+    if  ( adp->adpPulldown )
+	{ (*adp->adpPulldown)( adp->adpThrough );	}
+
     XtPopupSpringLoaded( adp->adpPulldownShell );
 
-    {
-    Window	win=  XtWindow( adp->adpPulldownShell );
-    Display *	display= XtDisplay( adp->adpPulldownShell );
-
-    XSetInputFocus( display, win, RevertToParent, CurrentTime );
-    }
+    appGuiMotifSetFocusToWindow( adp->adpPulldownShell );
 
     return;
     }
@@ -131,7 +128,7 @@ static APP_EVENT_HANDLER_H( appDrawnPulldownMouseUpDown, w, voidadp, mouseEvent 
     unsigned int	keyState= 0;
 
     /*  1  */
-    if  ( appGetCoordinatesFromMouseButtonEvent( &mouseX, &mouseY,
+    if  ( guiGetCoordinatesFromMouseButtonEvent( &mouseX, &mouseY,
 					    &button, &upDown, &seq, &keyState,
 					    w, mouseEvent ) )
 	{ XtPopdown( w ); return;	}
@@ -192,16 +189,19 @@ static APP_EVENT_HANDLER_H( appDrawnPulldownFocusChange, w, voidadp, focusEvent 
 /*									*/
 /************************************************************************/
 
-static void appFinishDrawnPulldown(	AppDrawnPulldown *	adp,
-					APP_EVENT_HANDLER_T	redrawInplace,
-					APP_EVENT_HANDLER_T	redrawPulldown,
-					APP_EVENT_HANDLER_T	clickedPulldown,
-					void *			through )
+static void appFinishDrawnPulldown(
+				AppDrawnPulldown *		adp,
+				APP_EVENT_HANDLER_T		redrawInplace,
+				APP_EVENT_HANDLER_T		redrawPulldown,
+				APP_EVENT_HANDLER_T		clickedPulldown,
+				AppDrawnPulldownPuldown		pullDown,
+				void *				through )
     {
     Arg				al[20];
     int				ac= 0;
 
     adp->adpClickHandler= clickedPulldown;
+    adp->adpPulldown= pullDown;
     adp->adpThrough= through;
 
     /******/
@@ -268,12 +268,14 @@ static void appFinishDrawnPulldown(	AppDrawnPulldown *	adp,
 /*									*/
 /************************************************************************/
 
-void appMakeDrawnPulldownInColumn(	AppDrawnPulldown *	adp,
-					APP_EVENT_HANDLER_T	redrawInplace,
-					APP_EVENT_HANDLER_T	redrawPulldown,
-					APP_EVENT_HANDLER_T	clickedPulldown,
-					APP_WIDGET		column,
-					void *			through )
+void appMakeDrawnPulldownInColumn(
+				AppDrawnPulldown *		adp,
+				APP_EVENT_HANDLER_T		redrawInplace,
+				APP_EVENT_HANDLER_T		redrawPulldown,
+				APP_EVENT_HANDLER_T		clickedPulldown,
+				AppDrawnPulldownPuldown		pullDown,
+				APP_WIDGET			column,
+				void *				through )
     {
     Arg				al[20];
     int				ac= 0;
@@ -291,20 +293,21 @@ void appMakeDrawnPulldownInColumn(	AppDrawnPulldown *	adp,
 
     appMotifTurnOfSashTraversal( column );
 
-    appFinishDrawnPulldown( adp,
-		    redrawInplace, redrawPulldown, clickedPulldown, through );
+    appFinishDrawnPulldown( adp, redrawInplace, redrawPulldown,
+					clickedPulldown, pullDown, through );
 
     return;
     }
 
-void appMakeDrawnPulldownInRow(		AppDrawnPulldown *	adp,
-					APP_EVENT_HANDLER_T	redrawInplace,
-					APP_EVENT_HANDLER_T	redrawPulldown,
-					APP_EVENT_HANDLER_T	clickedPulldown,
-					APP_WIDGET		row,
-					int			column,
-					int			colspan,
-					void *			through )
+void appMakeDrawnPulldownInRow(	AppDrawnPulldown *		adp,
+				APP_EVENT_HANDLER_T		redrawInplace,
+				APP_EVENT_HANDLER_T		redrawPulldown,
+				APP_EVENT_HANDLER_T		clickedPulldown,
+				AppDrawnPulldownPuldown		pullDown,
+				APP_WIDGET			row,
+				int				column,
+				int				colspan,
+				void *				through )
     {
     Arg				al[20];
     int				ac= 0;
@@ -334,25 +337,22 @@ void appMakeDrawnPulldownInRow(		AppDrawnPulldown *	adp,
 
     XtManageChild( adp->adpInplaceDrawing );
 
-    appFinishDrawnPulldown( adp,
-		    redrawInplace, redrawPulldown, clickedPulldown, through );
+    appFinishDrawnPulldown( adp, redrawInplace, redrawPulldown,
+					clickedPulldown, pullDown, through );
 
     return;
     }
 
 void appGuiEnableDrawnPulldown(	AppDrawnPulldown *	adp,
-				int			sensitive )
+				int			enabled )
     {
-    XtSetSensitive( adp->adpInplaceDrawing, sensitive != 0 );
-    }
+    if  ( adp->adpEnabled != enabled )
+	{
+	adp->adpEnabled= enabled;
+	XtSetSensitive( adp->adpInplaceDrawing, enabled != 0 );
 
-void appInitDrawnPulldown(		AppDrawnPulldown *		adp )
-    {
-    adp->adpPulldownShell= (APP_WIDGET)0;
-    adp->adpPulldownDrawing= (APP_WIDGET)0;
-    adp->adpInplaceDrawing= (APP_WIDGET)0;
-    adp->adpClickHandler= (APP_EVENT_HANDLER_T)0;
-    adp->adpThrough= (void *)0;
+	appExposeDrawnPulldownInplace( adp );
+	}
     }
 
 void appGuiSetDrawnPulldownHeight(	AppDrawnPulldown *	adp,
@@ -404,7 +404,7 @@ int appGuiDrawnPulldownGetStrip(
 			    XmNwidth,		&inplaceWidth,
 			    NULL );
 
-    if  ( appGetCoordinatesFromMouseButtonEvent( &mouseX, &mouseY,
+    if  ( guiGetCoordinatesFromMouseButtonEvent( &mouseX, &mouseY,
 					    &button, &upDown, &seq, &keyState,
 					    w, mouseEvent ) )
 	{ return -1;	}

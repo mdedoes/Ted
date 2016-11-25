@@ -463,6 +463,8 @@ int utilTreeStoreValue(	void *		tree,
 	    break;
 
 	case 4:
+	    if  ( ! nw )
+		{ XDEB(nw); return -1;	}
 	    /*  before R	*/
 	    nw->no_M= no->no_R;
 	    nw->no_L.nsKey= savedKey;
@@ -493,6 +495,8 @@ int utilTreeStoreValue(	void *		tree,
 	    break;
 
 	case 6:
+	    if  ( ! nw )
+		{ XDEB(nw); return -1;	}
 	    /*  after R	*/
 	    nw->no_L= no->no_R;
 	    nw->no_M.nsKey= savedKey;
@@ -771,7 +775,7 @@ void * utilTreeGetGE(	void *		tree,
 /*									*/
 /************************************************************************/
 
-void * utilTreeGetEQ(		void *		tree,
+void * utilTreeGetEQ(		const void *	tree,
 				const char **	pStoredKey,
 				const char *	key )
     {
@@ -935,7 +939,7 @@ static void trfillslots(	const NodeSlot *	hs,
 
 /************************************************************************/
 /*									*/
-/*  Delete an item from a tree. All gotos jump to the same label from	*/
+/*  Delete a node from a tree. All gotos jump to the same label from	*/
 /*  above. This label cannot be reached otherwise			*/
 /*									*/
 /************************************************************************/

@@ -1,8 +1,61 @@
 #   include	"indConfig.h"
 
-#   include	<ind.h>
+#   include	<stdlib.h>
+
+#   include	"ind.h"
+#   include	<uniUtf8.h>
 #   include	"indlocal.h"
 #   include	<appDebugon.h>
+
+/************************************************************************/
+
+typedef struct DumpThrough
+    {
+    unsigned char *	dtOutbuf;
+    int			dtLevel;
+    } DumpThrough;
+
+static int indDumpAcceptingLink(	void *		vdt,
+					int		dir,
+					int		tnFrom,
+					int		tnTo,
+					unsigned short	key,
+					int		toAccepts )
+    {
+    DumpThrough *	dt= (DumpThrough *)vdt;
+    int			step;
+
+    step= uniPutUtf8( dt->dtOutbuf+ dt->dtLevel, key );
+    if  ( step < 1 )
+	{ LDEB(step); return- 1;	}
+
+    if  ( dir > 0 && toAccepts )
+	{
+	dt->dtOutbuf[dt->dtLevel+ step]= '\0';
+	appDebug( "> %s\n", (char *)dt->dtOutbuf );
+	}
+
+    dt->dtLevel += dir* step;
+
+    return 0;
+    }
+
+void indDump(	void *		voidind )
+    {
+    unsigned char	outbuf[400];
+
+    IND *		ind= (IND *)voidind;
+
+    DumpThrough		dt;
+
+    dt.dtOutbuf= outbuf;
+    dt.dtLevel= 0;
+
+    if  ( ind->ind_magic != INDMAGIC )
+	{ LDEB(ind->ind_magic); return;	}
+
+    indINDforall( ind, ind->ind_start, (void *)&dt, indDumpAcceptingLink );
+    }
 
 /************************************************************************/
 /*									*/
@@ -15,39 +68,87 @@ void *	indMake( void )
 
 /************************************************************************/
 /*									*/
-/*  Read a finite automaton from file. If the read_only flag is set,	*/
+/*  Read a finite automaton from file. If the readOnly flag is set,	*/
 /*  the file is memory mapped. This han an advantage on some operating	*/
 /*  systems.								*/
 /*									*/
 /************************************************************************/
 
-void *	indRead( filename, read_only )
-const char *	filename;
-int		read_only;
-    { return (void *)indINDread(  filename, read_only );	}
+void *	indRead(	const char *	filename,
+			int		readOnly )
+    { return (void *)indINDread(  filename, readOnly );	}
 
 /************************************************************************/
 /*  Make automaton voidint accept word key. The number of the accepting	*/
 /*  state is returned, or -1 on failure.				*/
 /************************************************************************/
-int	indPut(	void *			voidind,
-		const unsigned char *	key )
+
+int indPutUtf8(	void *		voidind,
+		const char *	key )
     {
     IND *	ind= (IND *)voidind;
+    int		tnStart;
 
     if  ( ind->ind_magic != INDMAGIC )
 	{ LDEB(ind->ind_magic); return -1;	}
 
-    return indINDput( ind, key );
+    if  ( ( tnStart= ind->ind_start ) < 0 )
+	{
+	tnStart= ind->ind_start= indTNmake( ind );
+	if  ( tnStart < 0 )
+	    { LDEB(tnStart); return -1;	}
+	}
+
+    return indINDputUtf8( ind, tnStart, (const unsigned char *)key );
+    }
+
+int indPutUtf16(	void *			voidind,
+			const unsigned short *	key )
+    {
+    IND *	ind= (IND *)voidind;
+    int		tnStart;
+
+    if  ( ind->ind_magic != INDMAGIC )
+	{ LDEB(ind->ind_magic); return -1;	}
+
+    if  ( ( tnStart= ind->ind_start ) < 0 )
+	{
+	tnStart= ind->ind_start= indTNmake( ind );
+	if  ( tnStart < 0 )
+	    { LDEB(tnStart); return -1;	}
+	}
+
+    return indINDputUtf16( ind, tnStart, key );
+    }
+
+int indPutSuffixUtf16(	void *			voidind,
+			const unsigned short *	key )
+    {
+    IND *	ind= (IND *)voidind;
+    int		tnStart;
+
+    if  ( ind->ind_magic != INDMAGIC )
+	{ LDEB(ind->ind_magic); return -1;	}
+
+    tnStart= ind->ind_start= indTNmake( ind );
+    if  ( tnStart < 0 )
+	{ LDEB(tnStart); return -1;	}
+
+    if  ( indINDputUtf16( ind, tnStart, key ) < 0 )
+	{ LDEB(tnStart); return -1;	}
+
+    return tnStart;
     }
 
 /************************************************************************/
+/*									*/
 /*  Tell automaton voidind to no longer accept the word key. This is	*/
 /*  done by making the state that accepted key a non final state.	*/
+/*									*/
 /************************************************************************/
-int	indForget( voidind, key )
-void *			voidind;
-const unsigned char *	key;
+
+int indForget(	void *		voidind,
+		const char *	key )
     {
     IND *	ind= (IND *)voidind;
 
@@ -63,16 +164,56 @@ const unsigned char *	key;
 /*  *paccpt is set to 0 if it is a non final state, to other values in	*/
 /*  final states.							*/
 /************************************************************************/
-int	indGet(	int *			paccept,
-		void *			voidind,
-		const unsigned char *	key		)
+
+int indGetUtf8(	int *		paccept,
+		void *		voidind,
+		const char *	key )
     {
     IND *	ind= (IND *)voidind;
 
     if  ( ind->ind_magic != INDMAGIC )
 	{ LDEB(ind->ind_magic); return -1;	}
 
-    return indINDget( paccept, ind, -1, key );
+    if  ( ind->ind_start < 0 )
+	{ return -1;	}
+
+    return indINDgetUtf8( paccept,
+			ind, ind->ind_start, (const unsigned char *)key );
+    }
+
+int indGetUtf16(	int *			paccept,
+			void *			voidind,
+			const unsigned short *	key )
+    {
+    IND *	ind= (IND *)voidind;
+
+    if  ( ind->ind_magic != INDMAGIC )
+	{ LDEB(ind->ind_magic); return -1;	}
+
+    if  ( ind->ind_start < 0 )
+	{ return -1;	}
+
+    return indINDgetUtf16( paccept, ind, ind->ind_start, key );
+    }
+
+int indAddSuffixUtf16(	void *			voidind,
+			const unsigned short *	prefix,
+			int			tnSuf )
+    {
+    IND *	ind= (IND *)voidind;
+
+    int		accepts= 0;
+    int		tnTo;
+
+SDEB("Does not work"); return -1;
+    if  ( ind->ind_magic != INDMAGIC )
+	{ LDEB(ind->ind_magic); return -1;	}
+
+    tnTo= indINDgetUtf16( &accepts, ind, ind->ind_start, prefix );
+    if  ( tnTo < 0 )
+	{ LDEB(tnTo); return -1;	}
+
+    return indINDaddSuffix( ind, tnTo, tnSuf );
     }
 
 /************************************************************************/
@@ -82,27 +223,26 @@ int	indGet(	int *			paccept,
 /*  The value of *phow is set to one of the INDhSOMETHING values from	*/
 /*  ind.h.								*/
 /************************************************************************/
+
 int	indGetWord(	int *			pWhatWasShifted,
 			void *			voidind,
-			const unsigned char *	word,
-			int			asPrefix,
-			const unsigned char *	charKinds,
-			const unsigned char *	charShifts )
+			const char *		word,
+			int			asPrefix )
     {
     IND *	ind= (IND *)voidind;
 
     if  ( ind->ind_magic != INDMAGIC )
 	{ LDEB(ind->ind_magic); return -1;	}
 
-    return indWRDget( ind, pWhatWasShifted, word, asPrefix,
-						    charKinds, charShifts );
+    return indWRDget( ind, pWhatWasShifted,
+				(const unsigned char *)word, asPrefix );
     }
 
 /************************************************************************/
 /*  free a finite automaton.						*/
 /************************************************************************/
-void	indFree( voidind )
-void *	voidind;
+
+void indFree( void *	voidind )
     {
     IND *	ind= (IND *)voidind;
 
@@ -115,9 +255,9 @@ void *	voidind;
 /************************************************************************/
 /*  Write an automaton to file.						*/
 /************************************************************************/
-int	indWrite( voidind, filename )
-void *		voidind;
-const char *	filename;
+
+int	indWrite(	void *		voidind,
+			const char *	filename )
     {
     IND *	ind= (IND *)voidind;
 
@@ -130,8 +270,8 @@ const char *	filename;
 /************************************************************************/
 /*  Minimise an automaton.						*/
 /************************************************************************/
-void *	indMini( voidind )
-void *	voidind;
+
+void *	indMini(	void *	voidind )
     {
     IND *	ind= (IND *)voidind;
 
@@ -146,8 +286,8 @@ void *	voidind;
 /*  Node numbers and transition numbers are given using a 'depth first'	*/
 /*  scan of 'voidind'.							*/
 /************************************************************************/
-void *	indRenumber( voidind )
-void *	voidind;
+
+void *	indRenumber(	void *	voidind )
     {
     IND *	ind= (IND *)voidind;
 
@@ -161,22 +301,31 @@ void *	voidind;
 /*  Make guesses for a certain word.					*/
 /*  For every guess, (*fun)( something, <guess>, how ) is called.	*/
 /************************************************************************/
+
 int indGuess(	void *				voidind,
-		const unsigned char *		word,
+		const char *			word,
 		SpellGuessContext *		sgc,
-		int				how,
-		const GuessSubstitution *	typos,
-		int				count,
-		const unsigned char *		charKinds,
-		const unsigned char *		charShifts )
+		int				how )
     {
-    IND *	ind= (IND *)voidind;
+    int			rval= 0;
+    unsigned short *	ucods= (unsigned short *)0;
+    int			ulen= 0;
+    IND *		ind= (IND *)voidind;
 
     if  ( ind->ind_magic != INDMAGIC )
-	{ LDEB(ind->ind_magic); return -1;	}
+	{ LDEB(ind->ind_magic); rval= -1; goto ready;	}
 
-    return indINDguess( ind, word, sgc, how,
-				typos, count, charKinds, charShifts );
+    ucods= uniUtf8ToUnicodes( &ulen, (const unsigned char *)word );
+    if  ( ! ucods )
+	{ XDEB(ucods); rval= -1; goto ready;		}
+
+    rval= indINDguess( ind, ucods, ulen, sgc, how );
+
+  ready:
+    if  ( ucods )
+	{ free( ucods );	}
+
+    return rval;
     }
 
 /************************************************************************/
@@ -187,55 +336,29 @@ int indGuess(	void *				voidind,
 /*  mapped.								*/
 /*  For every guess, (*fun)( something, <guess>, how ) is called.	*/
 /************************************************************************/
+
 int indGuessWord(	void *				voidind,
-			const unsigned char *		word,
-			SpellGuessContext *		sgc,
-			const GuessSubstitution *	typos,
-			int				count,
-			const unsigned char *		charKinds,
-			const unsigned char *		charShifts )
+			const char *			word,
+			SpellGuessContext *		sgc )
     {
-    IND *	ind= (IND *)voidind;
+    int			rval= 0;
+    unsigned short *	source= (unsigned short *)0;
+    int			sourceLen= 0;
+    IND *		ind= (IND *)voidind;
 
     if  ( ind->ind_magic != INDMAGIC )
-	{ LDEB(ind->ind_magic); return -1;	}
+	{ LDEB(ind->ind_magic); rval= -1; goto ready;	}
 
-    return indWRDguess( ind, word, sgc, typos, count, charKinds, charShifts );
+    source= uniUtf8ToUnicodes( &sourceLen, (const unsigned char *)word );
+    if  ( ! source )
+	{ XDEB(source); rval= -1; goto ready;		}
+
+    rval= indWRDguess( ind, source, sourceLen, sgc );
+
+  ready:
+    if  ( source )
+	{ free( source );	}
+
+    return rval;
     }
 
-/************************************************************************/
-/*  Remember an integer in a state on an automaton.			*/
-/************************************************************************/
-int	indSetItem( voidind, tn, item )
-void *	voidind;
-int	tn;
-int	item;
-    {
-    IND *	ind= (IND *)voidind;
-
-    if  ( ind->ind_magic != INDMAGIC	||
-	  tn < 0			||
-	  tn >= ind->indAllocatedNodes		)
-	{ LDEB(ind->ind_magic); return -1;	}
-
-    return indITset( ind, tn, item );
-    }
-
-/************************************************************************/
-/*  Retrieve the integers that are stored in a state of an automaton.	*/
-/************************************************************************/
-int	indGetItems( voidind, tn, pnitem, pitems )
-void *	voidind;
-int	tn;
-int *	pnitem;
-int **	pitems;
-    {
-    IND *	ind= (IND *)voidind;
-
-    if  ( ind->ind_magic != INDMAGIC	||
-	  tn < 0			||
-	  tn >= ind->indAllocatedNodes		)
-	{ LDEB(ind->ind_magic); return -1;	}
-
-    return indITget( ind, tn, pnitem, pitems );
-    }

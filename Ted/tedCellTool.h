@@ -9,6 +9,7 @@
 
 #   include	"tedBorderTool.h"
 #   include	"tedShadingTool.h"
+#   include	<docSelectionDescription.h>
 
 /************************************************************************/
 /*									*/
@@ -18,22 +19,28 @@
 
 typedef struct CellPageResources
     {
-    char *			cprRow;
-    char *			cprColumn;
+    char *			cprRowColumn;
 
-    char *			cprColspan;
-    char *			cprRowspan;
+    char *			cprMerged;
+
+    const char *		cprValignItemTexts[DOCtva_COUNT];
 
     char *			cprWidth;
+    char *			cprBorders;
+
     char *			cprLeftBorder;
     char *			cprRightBorder;
-
     char *			cprTopBorder;
     char *			cprBottomBorder;
+
     char *			cprShadingPattern;
-    char *			cprVerticalAlignment;
+    char *			cprValign;
 
     char *			cprShading;
+
+    char *			cprNextRow;
+    char *			cprPrevRow;
+
     ShadingToolResources	cprShadingResources;
     BorderToolResources		cprBorderToolResources;
     } CellPageResources;
@@ -51,21 +58,37 @@ typedef struct CellTool
     const CellPageResources *	ctPageResources;
 
     TableRectangle		ctTableRectangle;
+    unsigned char		ctCanMerge;
+    unsigned char		ctHorMerge;
+    unsigned char		ctVerMerge;
+    unsigned char		ctCanChange;
 
-    APP_WIDGET			ctRowText;
-    APP_WIDGET			ctColumnText;
-    APP_WIDGET			ctColspanText;
-    APP_WIDGET			ctRowspanText;
+    APP_WIDGET			ctRowColumnRow;
+    APP_WIDGET			ctRowColumnLabel;
+    APP_WIDGET			ctRowColumnText;
 
-    RowProperties		ctRowPropertiesSet;
-    RowProperties		ctRowPropertiesChosen;
+    APP_WIDGET			ctValignRow;
+    AppOptionmenu		ctValignMenu;
+    APP_WIDGET			ctValignItems[DOCtva_COUNT];
 
+    APP_WIDGET			ctMergedRow;
+    APP_WIDGET			ctMergedLabel; /* to fill the place */
+    APP_WIDGET			ctMergedToggle;
+
+    CellProperties		ctPropertiesSet;
+    CellProperties		ctPropertiesChosen;
+
+    APP_WIDGET			ctBordersFrame;
+    APP_WIDGET			ctBordersPaned;
     BorderTool			ctTopBorderTool;
     BorderTool			ctBottomBorderTool;
     BorderTool			ctLeftBorderTool;
     BorderTool			ctRightBorderTool;
 
     ShadingTool			ctShadingTool;
+
+    APP_WIDGET			ctPrevRowButton;
+    APP_WIDGET			ctNextRowButton;
     } CellTool;
 
 /************************************************************************/
@@ -74,12 +97,15 @@ typedef struct CellTool
 /*									*/
 /************************************************************************/
 
-extern void tedFormatToolRefreshCellTool(
+extern void tedRefreshCellTool(
 				CellTool *			ct,
 				int *				pEnabled,
 				int *				pPref,
 				InspectorSubject *		is,
-				const DocumentSelection *	bs );
+				const DocumentSelection *	ds,
+				const SelectionDescription *	sd,
+				const BufferDocument *		bd,
+				const unsigned char *		cmdEnabled );
 
 extern void tedCellToolFillChoosers(	CellTool *			ct,
 					const CellPageResources *	cpr );
@@ -99,5 +125,8 @@ extern void tedFormatToolGetCellResourceTable(
 
 extern void tedInitCellTool(	CellTool *			ct );
 extern void tedCleanCellTool(	CellTool *			ct );
+
+extern void tedFormatFinishCellPage(	CellTool *			ct,
+					const CellPageResources *	cpr );
 
 #   endif	/*  TED_CELL_TOOL_H */

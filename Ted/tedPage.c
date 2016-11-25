@@ -5,8 +5,14 @@
 #   include	"tedConfig.h"
 
 #   include	"tedApp.h"
-#   include	"tedRuler.h"
-#   include	"docLayout.h"
+#   include	"tedSelect.h"
+#   include	"tedAppResources.h"
+#   include	"tedLayout.h"
+#   include	"tedDocument.h"
+#   include	<docScreenLayout.h>
+#   include	<guiWidgetDrawingSurface.h>
+#   include	<guiDrawingWidget.h>
+#   include	<docTreeNode.h>
 
 #   include	<appDebugon.h>
 
@@ -20,212 +26,59 @@
 void tedRedoDocumentLayout(	EditDocument *		ed )
     {
     TedDocument *		td= (TedDocument *)ed->edPrivateData;
-    AppDrawingData *		add= &(ed->edDrawingData);
+    BufferDocument *		bd= td->tdDocument;
 
-    int				scrolledX= 0;
-    int				scrolledY= 0;
+    int				hasSelection= tedHasSelection( ed );
+    int				reachedBottom= 0;
 
-    int				hasSelection= tedHasSelection( td );
+    LayoutContext		lc;
 
-    tedLayoutDocumentTree( td, add );
+    layoutInitContext( &lc );
+    tedSetScreenLayoutContext( &lc, ed );
 
-    appSetShellConstraints( ed );
+    tedLayoutDocumentBody( &reachedBottom, &lc );
+
+    if  ( tedOpenTreeObjects( &(bd->bdBody), &lc ) )
+	{ LDEB(1); 	}
+
+    if  ( reachedBottom )
+	{
+	BufferItem *	rootNode= bd->bdBody.dtRoot;
+
+	docGetPixelRectangleForPages( &(ed->edFullRect), &lc,
+					    rootNode->biTopPosition.lpPage,
+					    rootNode->biBelowPosition.lpPage );
+	}
 
     if  ( hasSelection )
-	{ tedDelimitCurrentSelection( td, add );	}
+	{ tedDelimitCurrentSelection( ed );	}
 
     appDocSetScrollbarValues( ed );
-    appSetShellConstraints( ed );
 
     if  ( hasSelection )
 	{
-	DocumentSelection	ds;
-	SelectionGeometry	sg;
-	SelectionDescription	sd;
+	DocumentSelection		ds;
+	SelectionGeometry		sg;
+	SelectionDescription		sd;
+	BufferItem *			bodySectNode;
 
-	if  ( tedGetSelection( &ds, &sg, &sd, td ) )
+	if  ( tedGetSelection( &ds, &sg, &sd,
+				    (DocumentTree **)0, &bodySectNode, ed ) )
 	    { LDEB(1); return;	}
 
-	tedDocAdaptHorizontalRuler( ed, ds.dsBegin.dpBi );
+	tedDocAdaptTopRuler( ed, &ds, &sg, &sd, bodySectNode );
 
-	tedScrollToSelection( ed, &scrolledX, &scrolledY );
+	tedScrollToSelection( ed, (int *)0, (int *)0 );
+
+	tedDescribeSelection( ed );
 
 	if  ( td->tdSelectionDescription.sdIsObjectSelection )
 	    { tedMoveObjectWindows( ed );	}
 	}
 
-    appExposeRectangle( add, 0, 0, 0, 0 );
-
-    tedAdaptLeftRuler( ed->edLeftRuler, ed->edLeftRulerWidget,
-			ed->edVisibleRect.drY0, ed->edVisibleRect.drY1,
-			add->addPageStepPixels );
+    guiExposeDrawingWidget( ed->edDocumentWidget.dwWidget );
 
     return;
-    }
-
-/************************************************************************/
-/*									*/
-/*  Change the document geometry: Callback from the page layout tool	*/
-/*  etc.								*/
-/*									*/
-/************************************************************************/
-
-void tedSetPageLayout(	EditApplication *		ea,
-			const DocumentGeometry *	dg,
-			const PropertyMask *		setMask,
-			int				wholeDocument )
-    {
-    AppDrawingData *		add;
-    TedDocument *		td;
-    BufferDocument *		bd;
-    DocumentProperties *	dp;
-
-    PropertyMask		changed;
-    PropertyMask		dgUpdMask;
-
-    int				i;
-
-    EditDocument *		ed= ea->eaCurrentDocument;
-
-    if  ( ! ed )
-	{ XDEB(ed); return;	}
-
-    PROPmaskCLEAR( &changed );
-    PROPmaskCLEAR( &dgUpdMask );
-
-    add= &(ed->edDrawingData);
-    td= (TedDocument *)ed->edPrivateData;
-    bd= td->tdDocument;
-    dp= &(bd->bdProperties);
-
-    PROPmaskCLEAR( &dgUpdMask );
-    utilPropMaskFill( &dgUpdMask, DGprop_COUNT );
-    utilPropMaskAnd( &dgUpdMask, &dgUpdMask, setMask );
-
-    if  ( wholeDocument )
-	{
-	utilUpdDocumentGeometry( &(dp->dpGeometry), dg, &changed, &dgUpdMask );
-
-	for ( i= 0; i < bd->bdItem.biChildCount; i++ )
-	    {
-	    PropertyMask		sectChanged;
-	    BufferItem *		sectBi= bd->bdItem.biChildren[i];
-
-	    PROPmaskCLEAR( &sectChanged );
-
-	    utilUpdDocumentGeometry( &(sectBi->biSectDocumentGeometry),
-						    dg, &sectChanged, setMask );
-
-	    utilPropMaskOr( &changed, &changed, &sectChanged );
-	    }
-
-	if  ( ! utilPropMaskIsEmpty( &changed ) )
-	    {
-	    appDocumentChanged( ed, 1 );
-
-	    tedScreenRectangles( add, &(dp->dpGeometry) );
-
-	    tedRedoDocumentLayout( ed );
-
-	    tedAdaptFormatToolToDocument( ed, 0 );
-	    }
-	}
-    else{
-	SectionProperties		spNew;
-	PropertyMask			doneMask;
-
-	docInitSectionProperties( &spNew );
-	PROPmaskCLEAR( &doneMask );
-
-	utilUpdDocumentGeometry( &(spNew.spDocumentGeometry), dg,
-							&doneMask, setMask );
-
-	if  ( tedAppChangeSectionProperties( ea, setMask, &spNew ) )
-	    { LDEB(1);	}
-
-	docCleanSectionProperties( &spNew );
-	}
-
-    return;
-    }
-
-int tedAppSetDocumentProperties( EditApplication *		ea,
-				const DocumentProperties *	dpNew,
-				const PropertyMask *		updMask )
-    {
-    EditDocument *		ed= ea->eaCurrentDocument;
-    AppDrawingData *		add;
-    TedDocument *		td;
-    BufferDocument *		bd;
-    DocumentProperties *	dp;
-
-    PropertyMask		changed;
-
-    RecalculateFields		rf;
-
-    if  ( ! ed )
-	{ XDEB(ed); return -1;	}
-
-    PROPmaskCLEAR( &changed );
-
-    docInitRecalculateFields( &rf );
-
-    add= &(ed->edDrawingData);
-    td= (TedDocument *)ed->edPrivateData;
-    bd= td->tdDocument;
-    dp= &(bd->bdProperties);
-
-    rf.rfBd= bd;
-    rf.rfVoidadd= (void *)add;
-    rf.rfCloseObject= tedCloseObject;
-    rf.rfUpdateFlags= 0;
-    rf.rfFieldsUpdated= 0;
-
-    if  ( docUpdDocumentProperties( &changed, dp, updMask, dpNew ) )
-	{ LDEB(1); return -1;	}
-
-    if  ( ! utilPropMaskIsEmpty( &changed ) )
-	{
-	int		noteNumbersChanged= 0;
-
-	if  ( PROPmaskISSET( &changed, DPpropFOOTNOTE_RESTART )	||
-	      PROPmaskISSET( &changed, DPpropENDNOTE_RESTART )	)
-	    { docRenumberNotes( &noteNumbersChanged, bd );	}
-
-	if  ( noteNumbersChanged				||
-	      PROPmaskISSET( &changed, DPpropFOOTNOTE_STYLE )	||
-	      PROPmaskISSET( &changed, DPpropFOOTNOTE_STARTNR )	||
-	      PROPmaskISSET( &changed, DPpropENDNOTE_STYLE )	||
-	      PROPmaskISSET( &changed, DPpropENDNOTE_STARTNR )	)
-	    { rf.rfUpdateFlags |= FIELDdoCHFTN;	}
-
-	if  ( PROPmaskISSET( &changed, DPpropTITLE )	||
-	      PROPmaskISSET( &changed, DPpropSUBJECT )	||
-	      PROPmaskISSET( &changed, DPpropKEYWORDS )	||
-	      PROPmaskISSET( &changed, DPpropDOCCOMM )	||
-	      PROPmaskISSET( &changed, DPpropAUTHOR )	||
-	      PROPmaskISSET( &changed, DPpropCOMPANY )	||
-	      PROPmaskISSET( &changed, DPpropCREATIM )	||
-	      PROPmaskISSET( &changed, DPpropREVTIM )	||
-	      PROPmaskISSET( &changed, DPpropPRINTIM )	)
-	    { rf.rfUpdateFlags |= FIELDdoDOC_INFO;	}
-
-	if  ( rf.rfUpdateFlags != 0 )
-	    {
-	    if  ( docRecalculateTextLevelFields( &rf, &(bd->bdItem) ) )
-		{ LDEB(1); return -1;	}
-	    }
-
-	appDocumentChanged( ed, 1 );
-
-	tedScreenRectangles( add, &(dp->dpGeometry) );
-
-	tedRedoDocumentLayout( ed );
-
-	tedAdaptFormatToolToDocument( ed, 0 );
-	}
-
-    return 0;
     }
 
 /************************************************************************/
@@ -257,80 +110,44 @@ void tedAdaptPageToolToDocument(	EditApplication *	ea,
 
 /************************************************************************/
 /*									*/
-/*  Derive private rectangles from document properties.			*/
-/*									*/
-/************************************************************************/
-
-void tedScreenRectangles(	AppDrawingData *		add,
-				const DocumentGeometry *	dg )
-    {
-    double			xfac= add->addMagnifiedPixelsPerTwip;
-    double			yfac= add->addMagnifiedPixelsPerTwip;
-
-    int				leftMarginPixels;
-    int				rightMarginPixels;
-
-#   if 0
-    /*  1  */
-    if  ( dg->dgLeftMarginTwips < MINMARG )
-	{ dg->dgLeftMarginTwips= MINMARG;	}
-    if  ( dg->dgTopMarginTwips < MINMARG )
-	{ dg->dgTopMarginTwips= MINMARG;	}
-    if  ( dg->dgRightMarginTwips < MINMARG )
-	{ dg->dgRightMarginTwips= MINMARG;	}
-    if  ( dg->dgBottomMarginTwips < MINMARG )
-	{ dg->dgBottomMarginTwips= MINMARG;	}
-#   endif
-
-    leftMarginPixels= TWIPStoPIXELS( xfac, dg->dgLeftMarginTwips );
-    rightMarginPixels= TWIPStoPIXELS( xfac, dg->dgRightMarginTwips );
-    add->addBottomMarginPixels= TWIPStoPIXELS( xfac, dg->dgBottomMarginTwips );
-
-    add->addBackRect.drX0= 0;
-    add->addBackRect.drY0= 0;
-    add->addBackRect.drX1= TWIPStoPIXELS( xfac, dg->dgPageWideTwips );
-    add->addBackRect.drY1= TWIPStoPIXELS( yfac, dg->dgPageHighTwips );
-
-    add->addPaperRect.drX0= 0;
-    add->addPaperRect.drY0= 0;
-    add->addPaperRect.drX1= TWIPStoPIXELS( xfac, dg->dgPageWideTwips );
-    add->addPaperRect.drY1= TWIPStoPIXELS( yfac, dg->dgPageHighTwips );
-
-    add->addDocRect.drX0= leftMarginPixels;
-    add->addDocRect.drY0= TWIPStoPIXELS( xfac, dg->dgTopMarginTwips );
-    add->addDocRect.drX1= add->addBackRect.drX1- rightMarginPixels;
-    add->addDocRect.drY1= add->addBackRect.drY1- add->addBottomMarginPixels;
-
-    add->addPageStepPixels= add->addPaperRect.drY1- add->addPaperRect.drY0+
-							add->addPageGapPixels;
-
-    return;
-    }
-
-/************************************************************************/
-/*									*/
 /*  (re)Calculate the layout of a whole document.			*/
 /*									*/
 /************************************************************************/
 
-int tedLayoutDocumentTree(	TedDocument *		td,
-				AppDrawingData *	add )
+int tedLayoutDocumentBody(	int *				pReachedBottom,
+				const LayoutContext *		lc )
     {
-    ScreenFontList *		sfl= &(td->tdScreenFontList);
-    BufferDocument *		bd= td->tdDocument;
-    DocumentProperties *	dp= &(bd->bdProperties);
+    return docScreenLayoutDocumentBody( pReachedBottom, lc->lcDocument, lc );
+    }
 
-    DocumentRectangle		drChanged;
+/************************************************************************/
+/*									*/
+/*  Get a suggestion about the line height: Used for the initial value	*/
+/*  for space before/after in the format tool.				*/
+/*									*/
+/************************************************************************/
 
-    /*  1  */
-    if  ( dp->dpFontList.dflFontCount == 0 )
-	{ LDEB(dp->dpFontList.dflFontCount); return -1;	}
+int tedGetParaLineHeight(	int *			pLineHeight,
+				EditDocument *		ed )
+    {
+    DocumentSelection		ds;
+    SelectionGeometry		sg;
+    SelectionDescription	sd;
+    int				fontSize= 0;
 
-    drChanged= add->addBackRect;
+    LayoutContext		lc;
 
-    if  ( tedLayoutItem( &(bd->bdItem), bd, add, sfl, &drChanged ) )
+    layoutInitContext( &lc );
+    tedSetScreenLayoutContext( &lc, ed );
+
+    if  ( tedGetSelection( &ds, &sg, &sd,
+				(DocumentTree **)0, (BufferItem **)0, ed ) )
 	{ LDEB(1); return -1;	}
 
+    if  ( docLayoutParagraphLineExtents( &fontSize, &lc, ds.dsHead.dpNode ) )
+	{ LDEB(1); return -1;	}
+
+    *pLineHeight= fontSize;
     return 0;
     }
 

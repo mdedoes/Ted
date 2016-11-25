@@ -6,18 +6,18 @@
 
 #   include	"tedConfig.h"
 
-#   include	<stdlib.h>
 #   include	<stdio.h>
 #   include	<stddef.h>
 #   include	<limits.h>
 
-#   include	<appGeoString.h>
-#   include	<appUnit.h>
-
-#   include	"tedApp.h"
-#   include	"tedFormatTool.h"
+#   include	"tedImageTool.h"
+#   include	"tedAppFront.h"
+#   include	<guiToolUtil.h>
+#   include	<guiTextUtil.h>
+#   include	<docEditCommand.h>
 
 #   include	<appDebugon.h>
+#   include	<docObjectProperties.h>
 
 /************************************************************************/
 /*									*/
@@ -31,11 +31,8 @@ static void tedImageToolShowWideAbs(	ImageTool *	it )
     EditApplication *		ea= it->itApplication;
     const PictureProperties *	pip= &(it->itPropertiesChosen);
 
-    char			scratch[50];
-
-    appGeoLengthToString( scratch,
+    appLengthToTextWidget( it->itImageWideText,
 		( pip->pipScaleXSet* pip->pipTwipsWide )/ 100, ea->eaUnitInt );
-    appStringToTextWidget( it->itImageWideText, scratch );
 
     return;
     }
@@ -45,11 +42,8 @@ static void tedImageToolShowHighAbs(	ImageTool *	it )
     EditApplication *		ea= it->itApplication;
     const PictureProperties *	pip= &(it->itPropertiesChosen);
 
-    char			scratch[50];
-
-    appGeoLengthToString( scratch,
+    appLengthToTextWidget( it->itImageHighText,
 		( pip->pipScaleYSet* pip->pipTwipsHigh )/ 100, ea->eaUnitInt );
-    appStringToTextWidget( it->itImageHighText, scratch );
 
     return;
     }
@@ -122,6 +116,24 @@ static void tedFormatToolRefreshImagePage(	ImageTool *	it )
 	appStringToTextWidget( it->itPixelsSizeText, "" );
 	}
 
+    if  ( it->itObjectType >= 0 )
+	{
+	appStringToTextWidget( it->itObjectTypeText,
+					docObjectKindStr( it->itObjectType ) );
+	}
+    else{
+	appStringToTextWidget( it->itObjectTypeText, "" );
+	}
+
+    if  ( it->itImageType >= 0 )
+	{
+	appStringToTextWidget( it->itImageTypeText,
+					docObjectKindStr( it->itImageType ) );
+	}
+    else{
+	appStringToTextWidget( it->itImageTypeText, "" );
+	}
+
     appIntegerToTextWidget( it->itByteSizeText, it->itTotalBytes );
 
     tedImageToolShowWideAbs( it );
@@ -131,14 +143,14 @@ static void tedFormatToolRefreshImagePage(	ImageTool *	it )
     appIntegerToTextWidget( it->itYScaleText, pip->pipScaleYSet );
     }
 
-void tedRefreshImageTool(
-			    ImageTool *				it,
-			    int *				pEnabled,
-			    int *				pPref,
-			    InspectorSubject *			is,
-			    const DocumentSelection *		ds,
-			    const SelectionDescription *	sd,
-			    BufferDocument *			bd )
+void tedRefreshImageTool(	ImageTool *			it,
+				int *				pEnabled,
+				int *				pPref,
+				InspectorSubject *		is,
+				const DocumentSelection *	ds,
+				const SelectionDescription *	sd,
+				BufferDocument *		bd,
+				const unsigned char *		cmdEnabled )
     {
     int			part;
     DocumentPosition	dpObject;
@@ -148,7 +160,7 @@ void tedRefreshImageTool(
     if  ( ! sd->sdIsObjectSelection )
 	{ *pEnabled= 0; return;	}
 
-    if  ( docGetObjectSelection( ds, &part, &dpObject, &io ) )
+    if  ( docGetObjectSelection( ds, bd, &part, &dpObject, &io ) )
 	{ *pEnabled= 0; return;	}
 
     it->itPropertiesSet= io->ioPictureProperties;
@@ -160,6 +172,11 @@ void tedRefreshImageTool(
 	  io->ioResultKind == DOCokPICTWMETAFILE	)
 	{ it->itTotalBytes= io->ioResultData.mbSize; }
 
+    it->itObjectType= io->ioKind;
+    if  ( io->ioKind == DOCokOLEOBJECT )
+	{ it->itImageType= io->ioResultKind;	}
+    else{ it->itImageType= io->ioKind;		}
+
     if  ( pip->pipType == DOCokDIBITMAP				||
 	  pip->pipType == DOCokWBITMAP				||
 	  pip->pipType == DOCokPICTPNGBLIP			||
@@ -167,12 +184,11 @@ void tedRefreshImageTool(
 	  ( pip->pipType == DOCokPICTWMETAFILE &&
 				    pip->pipMetafileIsBitmap )	)
 	{
-	AppBitmapImage *	abi= (AppBitmapImage *)io->ioPrivate;
+	if  ( ! io->ioRasterImage.riBytes )
+	    { XDEB(io->ioRasterImage.riBytes); *pEnabled= 0; return;	}
 
-	if  ( ! abi )
-	    { XDEB(abi); *pEnabled= 0; return;	}
-
-	bmCopyDescription( &(it->itBitmapDescription), &(abi->abiBitmap) );
+	bmCopyDescription( &(it->itBitmapDescription),
+					&(io->ioRasterImage.riDescription) );
 	it->itPictureHasBitmap= 1;
 	}
     else{
@@ -184,12 +200,62 @@ void tedRefreshImageTool(
 
     tedFormatToolRefreshImagePage( it );
 
+    guiEnableWidget( it->itObjectTypeRow, cmdEnabled[EDITcmdUPD_OBJECT] );
+    guiEnableWidget( it->itImageTypeRow, cmdEnabled[EDITcmdUPD_OBJECT] );
+    guiEnableWidget( it->itPixelSizeRow, cmdEnabled[EDITcmdUPD_OBJECT] );
+    guiEnableWidget( it->itByteSizeRow, cmdEnabled[EDITcmdUPD_OBJECT] );
+
+    guiEnableWidget( it->itImageWideRow, cmdEnabled[EDITcmdUPD_OBJECT] );
+    guiEnableWidget( it->itImageHighRow, cmdEnabled[EDITcmdUPD_OBJECT] );
+    guiEnableWidget( it->itXScaleRow, cmdEnabled[EDITcmdUPD_OBJECT] );
+    guiEnableWidget( it->itYScaleRow, cmdEnabled[EDITcmdUPD_OBJECT] );
+
+    guiEnableWidget( is->isRevertButton, cmdEnabled[EDITcmdUPD_OBJECT] );
+    guiEnableWidget( is->isApplyButton, cmdEnabled[EDITcmdUPD_OBJECT] );
+
     it->itImageHighAbsChanged= 0;
     it->itImageWideAbsChanged= 0;
 
     *pPref += 3;
     *pEnabled= 1;
     return;
+    }
+
+/************************************************************************/
+
+static int tedImageToolGetChosen(	ImageTool *		it )
+    {
+    PictureProperties *		pipChosen= &(it->itPropertiesChosen);
+
+    int				minValue= 1;
+    const int			adaptToMin= 0;
+    int				maxValue= 100000;
+    const int			adaptToMax= 1;
+
+    if  ( it->itImageWideAbsChanged )
+	{
+	if  ( tedImageToolGetWideAbs( it ) )
+	    { return -1;	}
+	}
+    else{
+	if  ( appGetIntegerFromTextWidget( it->itXScaleText,
+			    &(pipChosen->pipScaleXSet),
+			    minValue, adaptToMin, maxValue, adaptToMax ) )
+	    { return -1;	}
+	}
+
+    if  ( it->itImageHighAbsChanged )
+	{
+	if  ( tedImageToolGetHighAbs( it ) )
+	    { return -1;	}
+	}
+    else{
+	if  ( appGetIntegerFromTextWidget( it->itYScaleText,
+			    &(pipChosen->pipScaleYSet),
+			    minValue, adaptToMin, maxValue, adaptToMax ) )
+	    { return -1;	}
+	}
+    return 0;
     }
 
 /************************************************************************/
@@ -201,50 +267,23 @@ void tedRefreshImageTool(
 static APP_BUTTON_CALLBACK_H( tedFormatChangeImagePushed, w, voidit )
     {
     ImageTool *			it= (ImageTool *)voidit;
-    PictureProperties *		pip= &(it->itPropertiesChosen);
+    PictureProperties *		pipChosen= &(it->itPropertiesChosen);
+    PictureProperties *		pipSet= &(it->itPropertiesSet);
 
-    PropertyMask		pipSetMask;
+    PropertyMask		pipCmpMask;
+    PropertyMask		pipDifMask;
 
-    int				minValue= 1;
-    const int			adaptToMin= 0;
-    int				maxValue= 100000;
-    const int			adaptToMax= 1;
-
-    PROPmaskCLEAR( &pipSetMask );
-
-    if  ( it->itImageWideAbsChanged )
-	{
-	if  ( tedImageToolGetWideAbs( it ) )
-	    { return;	}
-	}
-    else{
-	if  ( appGetIntegerFromTextWidget( it->itXScaleText,
-			    &(pip->pipScaleXSet),
-			    minValue, adaptToMin, maxValue, adaptToMax ) )
-	    { return;	}
-	}
-
-    if  ( it->itImageHighAbsChanged )
-	{
-	if  ( tedImageToolGetHighAbs( it ) )
-	    { return;	}
-	}
-    else{
-	if  ( appGetIntegerFromTextWidget( it->itYScaleText,
-			    &(pip->pipScaleYSet),
-			    minValue, adaptToMin, maxValue, adaptToMax ) )
-	    { return;	}
-	}
-
-    if  ( pip->pipScaleXSet != it->itPropertiesSet.pipScaleXSet )
-	{ PROPmaskADD( &pipSetMask, PIPpropPICSCALE_X ); }
-    if  ( pip->pipScaleYSet != it->itPropertiesSet.pipScaleYSet )
-	{ PROPmaskADD( &pipSetMask, PIPpropPICSCALE_Y ); }
-
-    if  ( utilPropMaskIsEmpty( &pipSetMask ) )
+    if  ( tedImageToolGetChosen( it ) )
 	{ return;	}
 
-    tedAppSetImageProperties( it->itApplication, &pipSetMask, pip );
+    utilPropMaskClear( &pipCmpMask );
+    utilPropMaskClear( &pipDifMask );
+    PROPmaskADD( &pipCmpMask, PIPpropPICSCALE_X );
+    PROPmaskADD( &pipCmpMask, PIPpropPICSCALE_Y );
+
+    docPicturePropertyDifference( &pipDifMask, pipChosen, &pipCmpMask, pipSet );
+
+    tedAppSetImageProperties( it->itApplication, &pipDifMask, pipChosen );
 
     return;
     }
@@ -401,7 +440,6 @@ void tedFormatFillImagePage(	ImageTool *			it,
 				const InspectorSubjectResources * isr )
     {
     const int	textColumns= 10;
-    APP_WIDGET	row;
 
     /**/
     it->itPageResources= ipr;
@@ -411,29 +449,39 @@ void tedFormatFillImagePage(	ImageTool *			it,
     docInitPictureProperties( &(it->itPropertiesChosen) );
     bmInitDescription( &(it->itBitmapDescription) );
     it->itPictureHasBitmap= 0;
+    it->itObjectType= -1;
+    it->itImageType= -1;
 
     /**************/
-    appMakeLabelAndTextRow( &(it->itPixelSizeRow),
+    guiToolMakeLabelAndTextRow( &(it->itObjectTypeRow),
+			&(it->itObjectTypeLabel), &(it->itObjectTypeText),
+			pageWidget, ipr->iprObjectType, textColumns, 0 );
+
+    guiToolMakeLabelAndTextRow( &(it->itImageTypeRow),
+			&(it->itImageTypeLabel), &(it->itImageTypeText),
+			pageWidget, ipr->iprImageType, textColumns, 0 );
+
+    guiToolMakeLabelAndTextRow( &(it->itPixelSizeRow),
 			&(it->itPixelsSizeLabel), &(it->itPixelsSizeText),
 			pageWidget, ipr->iprPixelSize, textColumns, 0 );
 
-    appMakeLabelAndTextRow( &(it->itByteSizeRow),
+    guiToolMakeLabelAndTextRow( &(it->itByteSizeRow),
 			&(it->itByteSizeLabel), &(it->itByteSizeText),
 			pageWidget, ipr->iprTotalBytes, textColumns, 0 );
 
-    appMakeLabelAndTextRow( &(it->itImageWideRow),
+    guiToolMakeLabelAndTextRow( &(it->itImageWideRow),
 			&(it->itImageWideLabel), &(it->itImageWideText),
 			pageWidget, ipr->iprImageWide, textColumns, 1 );
 
-    appMakeLabelAndTextRow( &(it->itImageHighRow),
+    guiToolMakeLabelAndTextRow( &(it->itImageHighRow),
 			&(it->itImageHighLabel), &(it->itImageHighText),
 			pageWidget, ipr->iprImageHigh, textColumns, 1 );
 
-    appMakeLabelAndTextRow( &(it->itXScaleRow),
+    guiToolMakeLabelAndTextRow( &(it->itXScaleRow),
 			&(it->itXScaleLabel), &(it->itXScaleText),
 			pageWidget, ipr->iprXScale, textColumns, 1 );
 
-    appMakeLabelAndTextRow( &(it->itYScaleRow),
+    guiToolMakeLabelAndTextRow( &(it->itYScaleRow),
 			&(it->itYScaleLabel), &(it->itYScaleText),
 			pageWidget, ipr->iprYScale, textColumns, 1 );
 
@@ -457,7 +505,7 @@ void tedFormatFillImagePage(	ImageTool *			it,
 
     /**************/
 
-    appInspectorMakeButtonRow( &row, pageWidget,
+    guiToolMake2BottonRow( &(is->isApplyRow), pageWidget,
 		&(is->isRevertButton), &(is->isApplyButton),
 		isr->isrRevert, isr->isrApplyToSubject,
 		tedFormatRevertImagePushed, tedFormatChangeImagePushed,
@@ -472,7 +520,7 @@ void tedFormatFillImagePage(	ImageTool *			it,
 /*									*/
 /************************************************************************/
 
-void tedFormatInitImageTool(	ImageTool *	it )
+void tedInitImageTool(	ImageTool *	it )
     {
     docInitPictureProperties( &(it->itPropertiesSet) );
     docInitPictureProperties( &(it->itPropertiesChosen) );
@@ -482,11 +530,13 @@ void tedFormatInitImageTool(	ImageTool *	it )
     it->itImageWideAbsChanged= 0;
 
     it->itPictureHasBitmap= 0;
+    it->itObjectType= -1;
+    it->itImageType= -1;
 
     return;
     }
 
-void tedFormatCleanImageTool(	ImageTool *	it )
+void tedCleanImageTool(	ImageTool *	it )
     {
     bmCleanDescription( &(it->itBitmapDescription) );
 
@@ -520,6 +570,13 @@ static AppConfigurableResource TED_TedImageSubjectResourceTable[]=
 
 static AppConfigurableResource TED_TedImageToolResourceTable[]=
     {
+    APP_RESOURCE( "imageToolObjectType",
+		    offsetof(ImagePageResources,iprObjectType),
+		    "Object Type" ),
+    APP_RESOURCE( "imageToolImageType",
+		    offsetof(ImagePageResources,iprImageType),
+		    "Image Type" ),
+
     APP_RESOURCE( "imageToolPixelSize",
 		    offsetof(ImagePageResources,iprPixelSize),
 		    "Pixel Size" ),

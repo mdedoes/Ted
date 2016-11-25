@@ -7,8 +7,10 @@
 #   ifndef	APP_SYSTEM_H
 #   define	APP_SYSTEM_H
 
-typedef int (*FILE_CALLBACK)	(		const char *	name,
-						void *		through );
+#   include	<utilMemoryBuffer.h>
+
+typedef int (*FILE_CALLBACK)	(	const MemoryBuffer *	name,
+					void *			through );
 
 typedef void (*APP_COMPLAIN)(		void *		through,
 					int		errorId,
@@ -44,33 +46,34 @@ typedef void (*APP_COMPLAIN)(		void *		through,
 /*									*/
 /************************************************************************/
 
-extern int appHomeDirectory(	char *		home,
-				int		len );
+extern int appHomeDirectory(	MemoryBuffer *	mb );
+extern int appCurrentDirectory(	MemoryBuffer *	mb );
 
-extern int appCurrentDirectory(	char *		pwd,
-				int		len );
+extern int appTestDirectory(	const MemoryBuffer *	dir );
+extern int appTestFileWritable( const MemoryBuffer *	file );
+extern int appTestFileExists( const MemoryBuffer *	mb );
+extern int appTestFileReadable( const MemoryBuffer *	file );
 
-extern int appTestDirectory(	const char *	dir );
-extern int appTestFileWritable( const char *	file );
-extern int appTestFileExists( const char *	file );
-extern int appTestFileReadable( const char *	file );
-
-extern int appMakeDirectory(	const char *	dir );
+extern int appMakeDirectory(	const MemoryBuffer *	dir );
+extern int appMakeDirectories(	const MemoryBuffer *	dir );
 
 extern long appGetTimestamp( void );
 
 extern int appMakeUniqueString(	char *		target,
-				int		maxlen );
+				unsigned int	maxlen );
 
-extern int appAbsoluteName(	char *		absolute,
-				int		len,
-				const char *	filename,
-				int		relativeIsFile,
-				const char *	nameRelativeTo );
+extern int appFileNameIsAbsolute( const char *	filename );
 
-extern int appRemoveFile(	const char *	filename );
+extern int appAbsoluteName(	MemoryBuffer *		absolute,
+				const MemoryBuffer *	relative,
+				int			relativeIsFile,
+				const MemoryBuffer *	nameRelativeTo );
 
-extern int appForAllFiles(	const char *		dir,
+extern int appRemoveFile(	const MemoryBuffer *	filename );
+extern int appRenameFile(	const MemoryBuffer *	newName,
+				const MemoryBuffer *	oldName );
+
+extern int appForAllFiles(	const MemoryBuffer *	dir,
 				const char *		ext,
 				void *			through,
 				FILE_CALLBACK		callback );
@@ -87,7 +90,18 @@ extern int appAcceptSocket(	int			lfd,
 				void *			through,
 				APP_COMPLAIN		complain );
 
-extern const char * appFileExtensionOfName(	const char *	filename );
-extern const char * appRelativeName(		const char *	filename );
+extern int appFileGetFileExtension(	MemoryBuffer *		extension,
+					const MemoryBuffer *	filename );
+
+extern int appFileGetRelativeName(	MemoryBuffer *		relative,
+					const MemoryBuffer *	filename );
+
+extern int appDirectoryOfFileName(	MemoryBuffer *		dir,
+					const MemoryBuffer *	name );
+
+extern int appFileSetExtension(		MemoryBuffer *		filename,
+					const char *		extension );
+extern int appFileAddExtension(		MemoryBuffer *		filename,
+					const char *		extension );
 
 #   endif	/*  APP_SYSTEM_H	*/

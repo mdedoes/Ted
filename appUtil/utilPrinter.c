@@ -83,6 +83,8 @@ static int utilPrinterGetLprPrinters(	const char *		command,
 
     while( fgets( scratch, 250, f ) )
 	{
+	scratch[250]= '\0';
+
 	l= strlen( scratch );
 	if  ( l > 0 && scratch[l-1] == '\n' )
 	    { scratch[l-1]= '\0';	}
@@ -168,7 +170,11 @@ static int utilPrinterGetAixPrinters(	const char *		command,
 	{
 	while( fgets( scratch, 250, f ) )
 	    {
-	    char *	s= strchr( scratch, ' ' );
+	    char *	s;
+
+	    scratch[250]= '\0';
+
+	    s= strchr( scratch, ' ' );
 	    if  ( ! s )
 		{ continue;	}
 	    *s= '\0'; l= s- scratch;
@@ -230,7 +236,11 @@ static int utilPrinterGetLpPrinters(	const char *		command,
 
     while( fgets( scratch, 250, f ) )
 	{
-	char *	s= strchr( scratch, ' ' );
+	char *	s;
+
+	scratch[250]= '\0';
+
+	s= strchr( scratch, ' ' );
 	if  ( ! s )
 	    { continue;	}
 	*s= '\0'; l= s- scratch;
@@ -311,6 +321,13 @@ int utilPrinterGetPrinters(	int *			pPrinterCount,
     int				defaultPrinter= -1;
     int				extra= 0;
 
+    /*  3  */
+    if  ( count == 0 )
+	{
+	utilPrinterGetLpPrinters(  "( lpstat -a ) 2>/dev/null",
+						&defaultPrinter, &count, &pd );
+	}
+
     /*  1  */
     if  ( count == 0 )
 	{
@@ -329,13 +346,6 @@ int utilPrinterGetPrinters(	int *			pPrinterCount,
     if  ( count == 0 )
 	{
 	utilPrinterGetAixPrinters(  "( enq -As ) 2>/dev/null",
-						&defaultPrinter, &count, &pd );
-	}
-
-    /*  3  */
-    if  ( count == 0 )
-	{
-	utilPrinterGetLpPrinters(  "( lpstat -a ) 2>/dev/null",
 						&defaultPrinter, &count, &pd );
 	}
 

@@ -1,8 +1,7 @@
 #   ifndef	SIO_ENDIAN_H
 #   define	SIO_ENDIAN_H
 
-#   include	<utilEndian.h>
-#   include	<sioGeneral.h>
+#   include	"sioGeneral.h"
 
 extern int	sioEndianGetLeInt16(SimpleInputStream *);
 extern long	sioEndianGetLeInt32(SimpleInputStream *);
@@ -23,5 +22,11 @@ extern unsigned int	sioEndianGetBeUint16(SimpleInputStream *);
 extern unsigned long	sioEndianGetBeUint32(SimpleInputStream *);
 extern int	sioEndianPutBeUint16(unsigned int, SimpleOutputStream *);
 extern int	sioEndianPutBeUint32(unsigned long, SimpleOutputStream *);
+
+extern float	sioEndianGetLeFloat(SimpleInputStream *);
+extern int	sioEndianPutLeFloat(float, SimpleOutputStream *);
+
+extern float	sioEndianGetBeFloat(SimpleInputStream *);
+extern int	sioEndianPutBeFloat(float, SimpleOutputStream *);
 
 #   endif	/* SIO_ENDIAN_H */

@@ -8,15 +8,12 @@
 
 #   include	<stdlib.h>
 
-#   include	<sioXprop.h>
+#   include	"sioXprop.h"
 #   include	<sioMemory.h>
 
 #   include	<appDebugon.h>
 
 #   ifdef	USE_GTK
-
-static GdkAtom	XA_XV_CLIPBOARD= (GdkAtom)0;
-static GdkAtom	XA_STRING= (GdkAtom)0;
 
 /************************************************************************/
 /*									*/
@@ -32,7 +29,7 @@ typedef struct PasteInputStream
 
 static int sioInPasteReadBytes(		void *			voidxsc,
 					unsigned char *		buffer,
-					int			count )
+					unsigned int		count )
     {
     PasteInputStream *	pis= (PasteInputStream *)voidxsc;
 
@@ -78,11 +75,6 @@ SimpleInputStream * sioInOpenPaste(	APP_WIDGET		w,
 	{ XDEB(sis); free( pis ); return (SimpleInputStream *)0; }
 
     return sis;
-    }
-
-SimpleInputStream * sioInOpenXvPaste(	APP_WIDGET	w )
-    {
-    LDEB(1); return (SimpleInputStream *)0;
     }
 
 /************************************************************************/
@@ -148,75 +140,7 @@ SimpleOutputStream * sioOutOpenCopy(	APP_WIDGET		w,
 	free( cs ); return (SimpleOutputStream *)0;
 	}
 
-    sos= sioOutOpen( (void *)cs, sioOutCopyWriteBytes, (SIOoutSEEK)0,
-							    sioOutCopyClose );
-    if  ( ! sos )
-	{ XDEB(sos); free( cs ); return (SimpleOutputStream *)0; }
-
-    return sos;
-    }
-
-/************************************************************************/
-/*									*/
-/*  Output: Copy to the 'xv' clipboard on the root window.		*/
-/*									*/
-/************************************************************************/
-
-static int sioOutXvCopyClose(		void *			voidxsc )
-    {
-    CopyStream *	cs= (CopyStream *)voidxsc;
-
-    if  ( ! cs->csCopyStream			||
-	  sioOutClose( cs->csCopyStream )	)
-	{ XDEB(cs->csCopyStream); return -1;	}
-
-    gdk_property_change( (GdkWindow *)0, XA_XV_CLIPBOARD, XA_STRING, 8,
-				    GDK_PROP_MODE_REPLACE,
-				    cs->csMemoryBuffer.mbBytes,
-				    cs->csMemoryBuffer.mbSize );
-
-    utilCleanMemoryBuffer( &(cs->csMemoryBuffer) );
-
-    free( cs );
-
-    return 0;
-    }
-
-SimpleOutputStream * sioOutOpenXvCopy(	APP_WIDGET		w )
-    {
-    SimpleOutputStream *	sos;
-    CopyStream *		cs;
-
-    if  ( ! XA_XV_CLIPBOARD )
-	{
-	XA_XV_CLIPBOARD= gdk_atom_intern( "XV_CLIPBOARD", FALSE );
-	if  ( ! XA_XV_CLIPBOARD  )
-	    { XDEB(XA_XV_CLIPBOARD); return (SimpleOutputStream *)0;	}
-	}
-    if  ( ! XA_STRING )
-	{
-	XA_STRING= gdk_atom_intern( "STRING", FALSE );
-	if  ( ! XA_STRING  )
-	    { XDEB(XA_STRING); return (SimpleOutputStream *)0;	}
-	}
-
-    cs= (CopyStream *)malloc( sizeof( CopyStream ) );
-    if  ( ! cs )
-	{ XDEB(cs); return (SimpleOutputStream *)0;	}
-
-    cs->csType= XA_XV_CLIPBOARD;
-    cs->csSelectionData= (GtkSelectionData *)0;
-    utilInitMemoryBuffer( &(cs->csMemoryBuffer) );
-
-    cs->csCopyStream= sioOutMemoryOpen( &(cs->csMemoryBuffer) );
-    if  ( ! cs->csCopyStream )
-	{
-	XDEB(cs->csCopyStream);
-	free( cs ); return (SimpleOutputStream *)0;
-	}
-
-    sos= sioOutOpen( (void *)cs, sioOutCopyWriteBytes,
-					    (SIOoutSEEK)0, sioOutXvCopyClose );
+    sos= sioOutOpen( (void *)cs, sioOutCopyWriteBytes, sioOutCopyClose );
     if  ( ! sos )
 	{ XDEB(sos); free( cs ); return (SimpleOutputStream *)0; }
 

@@ -8,11 +8,12 @@
 #   define	SIO_GENERAL_H
 
 
-#   include	<stdio.h>		/*  for EOF.			*/
+		/*  for EOF:			*/
+#   include	<stdio.h>
 
 #   define	SIOsizBUF		1024
 
-typedef int	(*SIOinREADBYTES)( void *, unsigned char *, int );
+typedef int	(*SIOinREADBYTES)( void *, unsigned char *, unsigned int );
 typedef int	(*SIOinCLOSE)( void * );
 
 typedef struct SimpleInputStream
@@ -22,20 +23,19 @@ typedef struct SimpleInputStream
     int			sisN;
     void *		sisPrivate;
 
-    long		sisReadUpto;
+    long		sisBytesRead;
 
     SIOinREADBYTES	sisReadBytes;
     SIOinCLOSE		sisClose;
     } SimpleInputStream;
 
-#   define	sioInGetCharacter(s)			\
+#   define	sioInGetByte(s)			\
 		    ( (--((s)->sisN)) >= 0	?	\
 		      *(((s)->sisP)++)		:	\
 		      sioInFillBuffer(s)	)
 
 typedef int	(*SIOoutWRITEBYTES)( void *, const unsigned char *, int );
 typedef int	(*SIOoutCLOSE)( void * );
-typedef int	(*SIOoutSEEK)( void *, long );
 
 typedef struct SimpleOutputStream
     {
@@ -44,12 +44,13 @@ typedef struct SimpleOutputStream
     int			sosN;
     void *		sosPrivate;
 
+    long		sosBytesWritten;
+
     SIOoutWRITEBYTES	sosWriteBytes;
-    SIOoutSEEK		sosSeek;
     SIOoutCLOSE		sosClose;
     } SimpleOutputStream;
 
-#   define	sioOutPutCharacter(c,s)		\
+#   define	sioOutPutByte(c,s)		\
 		( ( (s)->sosN >= SIOsizBUF && sioOutFlushBuffer(s) ) ? -1 : \
 		  ( *(((s)->sosP)++)= (c), (s)->sosN++, 0 ) )
 
@@ -69,6 +70,8 @@ extern SimpleInputStream * sioInOpen(	void *			specific,
 					SIOinREADBYTES		readBytes,
 					SIOinCLOSE		closeIt );
 
+extern long sioInGetBytesRead(		SimpleInputStream *	sis );
+
 extern int sioInClose(	SimpleInputStream *		sis );
 
 extern char * sioInGetString(	char *			s,
@@ -85,13 +88,11 @@ extern int sioOutFlushBuffer(	SimpleOutputStream *	sos );
 
 extern SimpleOutputStream * sioOutOpen(	void *			specific,
 					SIOoutWRITEBYTES	writeBytes,
-					SIOoutSEEK		seekTo,
 					SIOoutCLOSE		closeIt );
 
-extern int sioOutSeek(	SimpleOutputStream *		sos,
-			long				pos );
-
 extern int sioOutClose(	SimpleOutputStream *		sos );
+
+extern long sioOutGetBytesWritten(	SimpleOutputStream *	sos );
 
 extern int sioOutPutString(	const char *		s,
 				SimpleOutputStream *	sos );

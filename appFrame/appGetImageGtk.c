@@ -8,16 +8,14 @@
 
 #   include	<stddef.h>
 #   include	<stdio.h>
-#   include	<stdlib.h>
 
-#   include	<utilEndian.h>
-#   include	<appImage.h>
+#   include	"appImage.h"
 
 #   include	<appDebugon.h>
 
 #   ifdef USE_GTK
 
-int appImgPastePixmap(		AppBitmapImage *	abi,
+int appImgPastePixmap(		RasterImage *	abi,
 				APP_WIDGET		w,
 				APP_SELECTION_EVENT *	event )
     {

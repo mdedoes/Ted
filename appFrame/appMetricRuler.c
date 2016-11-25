@@ -3,8 +3,10 @@
 #   include	<stdlib.h>
 #   include	<stdio.h>
 
-#   include	<appFrame.h>
-#   include	<appMetricRuler.h>
+#   include	"guiWidgets.h"
+#   include	"appMetricRuler.h"
+#   include	"guiWidgetDrawingSurface.h"
+#   include	"guiDrawingWidget.h"
 
 #   include	<appDebugon.h>
 
@@ -35,30 +37,27 @@ typedef struct MetricRuler
 typedef struct MetricRulerDrag
     {
     int *		mrdValuePointer;
-    int *		mrdChangedPointer;
     MetricRuler *	mrdMr;
     APP_WIDGET		mrdWidget;
     int			mrdOc;
-    void *		mrdThrough;
-    DragHair		mrdDragHair;
-    int			mrdAsUpper;
+    EditDocument *	mrdDocument;
     } MetricRulerDrag;
 
-void * appMakeMetricRuler(	int			sizeAcross,
-				double			magnifiedPixelsPerTwip,
-				double			magnification,
+void * appMakeMetricRuler(
+			int				sizeAcross,
+			double				magnifiedPixelsPerTwip,
+			double				magnification,
+			const PostScriptFontList *	psfl,
 
-				int			minUnused,
-				int			maxUnused,
+			int				minUnused,
+			int				maxUnused,
 
-				int			documentC0,
-				int			documentC1,
-				int			visibleC0,
-				int			visibleC1,
-				int			rulerC1,
+			int				documentC0,
+			int				documentC1,
+			int				visibleC0,
+			int				visibleC1,
 
-				const char *		fontName,
-				int			whatUnit )
+			int				whatUnit )
     {
     MetricRuler *	mr;
     RulerData *		rd;
@@ -72,19 +71,18 @@ void * appMakeMetricRuler(	int			sizeAcross,
 
     mr->mrMagnification= magnification;
 
+    rd->rdPostScriptFontList= psfl;
+
     rd->rdUnit= whatUnit;
-    rd->rdFontName= fontName;
     appRulerCalculateIncrements( rd, magnifiedPixelsPerTwip, magnification );
 
     rd->rdMinUsed= minUnused;
-    rd->rdMaxUsed= 0;
     rd->rdExtraAfterMaxUsed= maxUnused;
 
     rd->rdDocumentC0= documentC0;
     rd->rdDocumentC1= documentC1;
     rd->rdVisibleC0= visibleC0;
     rd->rdVisibleC1= visibleC1;
-    rd->rdRulerC1= rulerC1;
 
     rd->rdSizeAcross= sizeAcross;
     rd->rdSizeAlong= 0;
@@ -108,6 +106,70 @@ void appFreeMetricRuler(	void *		voidmr )
 
 /************************************************************************/
 /*									*/
+/*  Draw a mark on an horizontal ruler.					*/
+/*									*/
+/************************************************************************/
+
+void appHorizontalRulerDrawMark(	RulerData *		rd,
+					int			fontBottom,
+					int			tagY0,
+					int			tagY1,
+					int			tickY0,
+					int			tickY1,
+					int			iitem,
+					int			tick,
+					double			units,
+					int			ox )
+    {
+    DrawingSurface	ds= rd->rdDrawingSurface;
+    DocumentRectangle	drMark;
+    int			maxUsed= rd->rdSizeAlong- rd->rdExtraAfterMaxUsed;
+
+    drMark.drX0= drMark.drX1= iitem- ox;
+
+    if  ( iitem != 0 && tick % rd->rdTicksPerText == 0 )
+	{
+	char		scratch[30];
+	int		len;
+	int		wide;
+
+	appRulerTagText( scratch, &wide, &len, rd, units );
+
+	if  ( rd->rdScreenFont >= 0			&&
+	      iitem- ox- wide/2 >= rd->rdMinUsed	&&
+	      iitem- ox+ wide/2 <  maxUsed		)
+	    {
+	    drawString( ds, iitem- ox- wide/2, fontBottom, rd->rdScreenFont,
+								scratch, len );
+
+	    drMark.drY0= fontBottom+ 2;
+	    drMark.drY1= tagY1;
+	    }
+	else{
+	    drMark.drY0= tagY0;
+	    drMark.drY1= tagY1;
+	    }
+	}
+    else{
+	if  ( tick % rd->rdTicksPerTag == 0 )
+	    {
+	    drMark.drY0= tagY0;
+	    drMark.drY1= tagY1;
+	    }
+	else{
+	    drMark.drY0= tickY0;
+	    drMark.drY1= tickY1;
+	    }
+	}
+
+    if  ( drMark.drY1 >= drMark.drY0 )
+	{ drawFillRectangle( ds, &drMark );	}
+
+    return;
+    }
+
+/************************************************************************/
+/*									*/
 /*  Draw a horizontal ruler.						*/
 /*									*/
 /************************************************************************/
@@ -119,42 +181,40 @@ static void appDrawHorizontalRuler(	APP_WIDGET		w,
     {
     RulerData *		rd= &(mr->mrRulerData);
     int			sizeAcross= rd->rdSizeAcross;
+    int			maxUsed;
 
     int			tick;
     double		units;
 
-    int			tagY= TAG_TOP(sizeAcross);
-    int			tagH= TAG_HEIGHT(sizeAcross);
+    int			tagY0= TAG_TOP(sizeAcross);
+    int			tagY1= tagY0+ TAG_HEIGHT(sizeAcross) -1;
 
-    int			tickY= TICK_TOP(sizeAcross);
-    int			tickH= TICK_HEIGHT(sizeAcross);
+    int			tickY0= TICK_TOP(sizeAcross);
+    int			tickY1= tickY0+ TICK_HEIGHT(sizeAcross)- 1;
 
     int			fontBottom= FONT_BOTTOM(sizeAcross);
 
-    int			x0;
-    int			x1;
+    DocumentRectangle	drMark;
 
-    AppDrawingData *	add= &(rd->rdDrawingData);
+    DrawingSurface	ds= rd->rdDrawingSurface;
+    DocumentRectangle	drBack;
 
     if  ( rd->rdSizeAlong == 0 )
-	{
-	int	high;
+	{ appHorizontalRulerGetSizeFromWidget( rd, w );	}
 
-	appDrawGetSizeOfWidget( &(rd->rdSizeAlong), &high, w );
+    maxUsed= rd->rdSizeAlong- rd->rdExtraAfterMaxUsed;
 
-	rd->rdMaxUsed= rd->rdSizeAlong- rd->rdExtraAfterMaxUsed;
-	}
-
-    appRulerDrawBackground( rd,
-		    drClip->drX0- ox, drClip->drY0,
-		    drClip->drX1- drClip->drX0, drClip->drY1- drClip->drY0 );
+    drBack= *drClip;
+    drBack.drX0 -= ox;
+    /*drBack.drY0 -= oy;*/
+    appRulerDrawBackground( rd, &drBack );
 
     if  ( mr->mrV0Pixels >= 0 || mr->mrV1Pixels >= 0 )
 	{
 	DocumentRectangle	drSel;
 
 	drSel.drX0= 0;
-	drSel.drX1= rd->rdMaxUsed;
+	drSel.drX1= maxUsed;
 	if  ( mr->mrV0Pixels >= 0 )
 	    { drSel.drX0= mr->mrV0Pixels;	}
 	if  ( mr->mrV1Pixels >= 0 )
@@ -164,28 +224,27 @@ static void appDrawHorizontalRuler(	APP_WIDGET		w,
 
 	if  ( geoIntersectRectangle( &drSel, &drSel, drClip ) )
 	    {
-	    appDrawSetForegroundColor( add, &(add->addBottomColor) );
+	    drawSetForegroundColor( ds, &(rd->rdSelectedColor) );
 
-	    appDrawFillRectangle( add,
-		    drSel.drX0- ox, drSel.drY0,
-		    drSel.drX1- drSel.drX0, drSel.drY1- drSel.drY0 );
+	    drSel.drX0 -= ox;
+	    /*drSel.drY0 -= oy; */
+	    drawFillRectangle( ds, &drSel );
 	    }
 	}
 
-    appDrawSetForegroundColor( add, &(add->addForeColor) );
+    drawSetForegroundColor( ds, &(rd->rdForegroundColor) );
 
-    x0= 0- ox;
-    x1= rd->rdRulerC1- ox;
+    drMark.drX0= 0- ox;
+    drMark.drX1= rd->rdDocumentC1- ox;
+    drMark.drY0= drMark.drY1= sizeAcross- 1;
 
-    if  ( x0 < rd->rdMinUsed )
-	{ x0=  rd->rdMinUsed;	}
-    if  ( x1 > rd->rdMaxUsed )
-	{ x1=  rd->rdMaxUsed;	}
+    if  ( drMark.drX0 < rd->rdMinUsed )
+	{ drMark.drX0=  rd->rdMinUsed;	}
+    if  ( drMark.drX1 > maxUsed )
+	{ drMark.drX1=  maxUsed;	}
 
-    if  ( x1 >= x0 )
-	{
-	appDrawFillRectangle( add, x0, sizeAcross- 1, x1- x0, 1 );
-	}
+    if  ( drMark.drX1 >= drMark.drX0 )
+	{ drawFillRectangle( ds, &drMark );	}
 
     units= 0; tick= 0;
     for (;;)
@@ -197,79 +256,62 @@ static void appDrawHorizontalRuler(	APP_WIDGET		w,
 	    { break;	}
 
 	if  ( iitem- ox <  rd->rdMinUsed	||
-	      iitem- ox >= rd->rdMaxUsed	)
+	      iitem- ox >= maxUsed		)
 	    { units += rd->rdUnitsPerTick; tick++; continue; }
 
-	if  ( iitem != 0 && tick % rd->rdTicksPerText == 0 )
-	    {
-	    char	scratch[30];
-	    int		len;
-	    int		wide;
+	appHorizontalRulerDrawMark( rd,
+		    fontBottom, tagY0, tagY1, tickY0, tickY1,
+		    iitem, tick, units, ox );
 
-	    appRulerTagText( scratch, &wide, &len, rd, units );
-
-	    if  ( iitem- ox- wide/2 >= rd->rdMinUsed	&&
-		  iitem- ox+ wide/2 <  rd->rdMaxUsed	)
-		{
-		appDrawDrawString( add,
-			    iitem- ox- wide/2, fontBottom, scratch, len );
-
-		appDrawFillRectangle( add,
-		    iitem- ox, fontBottom+ 2, 1, sizeAcross- fontBottom- 2 );
-		}
-	    else{
-		appDrawFillRectangle( add, iitem- ox, tagY, 1, tagH );
-		}
-	    }
-	else{
-	    if  ( tick % rd->rdTicksPerTag == 0 )
-		{ appDrawFillRectangle( add, iitem- ox, tagY, 1,  tagH );  }
-	    else{ appDrawFillRectangle( add, iitem- ox, tickY, 1, tickH ); }
-	    }
-
-	units += rd->rdUnitsPerTick; tick++; continue;
+	units += rd->rdUnitsPerTick; tick++;
+	continue;
 	}
 
     /* Already done:
     XSetForeground( display, rd->rdGc, mr->trForePixel );
     */
 
+    drMark.drY0= 0;
+    drMark.drY1= sizeAcross- 1;
+
     if  ( mr->mrV0Pixels >= 0				&&
-	  mr->mrV0Pixels- ox- 2 >= rd->rdMinUsed		&&
-	  mr->mrV0Pixels- ox <  rd->rdMaxUsed		)
+	  mr->mrV0Pixels- ox- 2 >= rd->rdMinUsed	&&
+	  mr->mrV0Pixels- ox <  maxUsed			)
 	{
-	appDrawFillRectangle( add, mr->mrV0Pixels- ox- 1, 0, 1, sizeAcross );
+	drMark.drX0= drMark.drX1= mr->mrV0Pixels- ox- 1;
+	drawFillRectangle( ds, &drMark );
 	}
 
     if  ( mr->mrV1Pixels >= 0				&&
 	  mr->mrV1Pixels- ox >= rd->rdMinUsed		&&
-	  mr->mrV1Pixels- ox+ 2 <  rd->rdMaxUsed	)
+	  mr->mrV1Pixels- ox+ 2 < maxUsed		)
 	{
-	appDrawFillRectangle( add, mr->mrV1Pixels- ox, 0, 1, sizeAcross );
+	drMark.drX0= drMark.drX1= mr->mrV1Pixels- ox;
+	drawFillRectangle( ds, &drMark );
 	}
 
     if  ( mr->mrV0Pixels >= 0 || mr->mrV1Pixels >= 0 )
 	{
-	appDrawSetForegroundWhite( add );
+	drawSetForegroundColorWhite( ds );
 
 	if  ( mr->mrV0Pixels >= 0			&&
 	      mr->mrV0Pixels- ox- 2 >= rd->rdMinUsed	&&
-	      mr->mrV0Pixels- ox <  rd->rdMaxUsed	)
+	      mr->mrV0Pixels- ox < maxUsed		)
 	    {
-	    appDrawFillRectangle( add,
-			    mr->mrV0Pixels- ox- 2, 0, 1, sizeAcross );
+	    drMark.drX0= drMark.drX1= mr->mrV0Pixels- ox- 2;
+	    drawFillRectangle( ds, &drMark );
 	    }
 
 	if  ( mr->mrV1Pixels >= 0			&&
 	      mr->mrV1Pixels- ox >= rd->rdMinUsed	&&
-	      mr->mrV1Pixels- ox+ 2 <  rd->rdMaxUsed	)
+	      mr->mrV1Pixels- ox+ 2 < maxUsed		)
 	    {
-	    appDrawFillRectangle( add,
-			    mr->mrV1Pixels- ox+ 1, 0, 1, sizeAcross );
+	    drMark.drX0= drMark.drX1= mr->mrV1Pixels- ox+ 1;
+	    drawFillRectangle( ds, &drMark );
 	    }
 	}
 
-    appDrawNoClipping( add );
+    drawNoClipping( ds );
 
     return;
     }
@@ -287,38 +329,36 @@ static void appDrawVerticalRuler(	APP_WIDGET		w,
     {
     RulerData *		rd= &(mr->mrRulerData);
     int			sizeAcross= rd->rdSizeAcross;
+    int			maxUsed;
 
     int			tick;
     double		units;
 
-    int			tagX= TAG_TOP(sizeAcross);
-    int			tagW= TAG_HEIGHT(sizeAcross);
+    int			tagX0= TAG_TOP(sizeAcross);
+    int			tagX1= tagX0+ TAG_HEIGHT(sizeAcross)- 1;
 
-    int			tickX= TICK_TOP(sizeAcross);
-    int			tickW= TICK_HEIGHT(sizeAcross);
+    int			tickX0= TICK_TOP(sizeAcross);
+    int			tickX1= tagX1+ TICK_HEIGHT(sizeAcross)- 1;
 
     int			fontBottom= FONT_BOTTOM(sizeAcross);
 
-    int			y0;
-    int			y1;
+    DocumentRectangle	drMark;
 
-    AppDrawingData *	add= &(rd->rdDrawingData);
+    DrawingSurface	ds= rd->rdDrawingSurface;
 
     /*  2  */
-    appDrawSetForegroundColor( add, &(add->addBackColor) );
+    drawSetForegroundColor( ds, &(rd->rdBackgroundColor) );
 
     if  ( rd->rdSizeAlong == 0 )
-	{
-	int	wide;
+	{ appVerticalRulerGetSizeFromWidget( rd, w );	}
 
-	appDrawGetSizeOfWidget( &wide, &(rd->rdSizeAlong), w );
+    maxUsed= rd->rdSizeAlong- rd->rdExtraAfterMaxUsed;
 
-	rd->rdMaxUsed= rd->rdSizeAlong- rd->rdExtraAfterMaxUsed;
-	}
+    drMark= *drClip;
+    drMark.drY0 -= oy;
+    drMark.drY1 -= oy;
 
-    appDrawFillRectangle( add,
-		    drClip->drX0, drClip->drY0- oy,
-		    drClip->drX1- drClip->drX0, drClip->drY1- drClip->drY0 );
+    drawFillRectangle( ds, &drMark );
 
     if  ( mr->mrV0Pixels >= 0 || mr->mrV1Pixels >= 0 )
 	{
@@ -327,7 +367,7 @@ static void appDrawVerticalRuler(	APP_WIDGET		w,
 	drSel.drX0= 0;
 	drSel.drX1= sizeAcross;
 	drSel.drY0= 0;
-	drSel.drY1= rd->rdMaxUsed;
+	drSel.drY1= maxUsed;
 	if  ( mr->mrV0Pixels >= 0 )
 	    { drSel.drY0= mr->mrV0Pixels;	}
 	if  ( mr->mrV1Pixels >= 0 )
@@ -335,27 +375,29 @@ static void appDrawVerticalRuler(	APP_WIDGET		w,
 
 	if  ( geoIntersectRectangle( &drSel, &drSel, drClip ) )
 	    {
-	    appDrawSetForegroundColor( add, &(add->addBottomColor) );
+	    drawSetForegroundColor( ds, &(rd->rdSelectedColor) );
 
-	    appDrawFillRectangle( add,
-		    drSel.drX0, drSel.drY0- oy,
-		    drSel.drX1- drSel.drX0, drSel.drY1- drSel.drY0 );
+	    drSel.drY0 -= oy;
+	    drSel.drY1 -= oy;
+
+	    drawFillRectangle( ds, &drSel );
 	    }
 	}
 
-    appDrawSetForegroundColor( add, &(add->addForeColor) );
+    drawSetForegroundColor( ds, &(rd->rdForegroundColor) );
 
-    y0= 0- oy;
-    y1= rd->rdRulerC1- oy;
+    drMark.drY0= 0- oy;
+    drMark.drY1= rd->rdDocumentC1- oy;
 
-    if  ( y0 < rd->rdMinUsed )
-	{ y0=  rd->rdMinUsed;	}
-    if  ( y1 > rd->rdMaxUsed )
-	{ y1=  rd->rdMaxUsed;	}
+    if  ( drMark.drY0 < rd->rdMinUsed )
+	{ drMark.drY0=  rd->rdMinUsed;	}
+    if  ( drMark.drY1 > maxUsed )
+	{ drMark.drY1=  maxUsed;	}
 
-    if  ( y1 >= y0 )
+    if  ( drMark.drY1 >= drMark.drY0 )
 	{
-	appDrawFillRectangle( add, sizeAcross- 1, y0, 1, y1- y0 );
+	drMark.drX0= drMark.drX1= sizeAcross- 1;
+	drawFillRectangle( ds, &drMark );
 	}
 
     units= 0; tick= 0;
@@ -367,18 +409,20 @@ static void appDrawVerticalRuler(	APP_WIDGET		w,
 	if  ( iitem > drClip->drY1 )
 	    { break;	}
 
+	drMark.drY0= drMark.drY1= iitem- oy;
+
 	if  ( iitem- oy <  rd->rdMinUsed	||
-	      iitem- oy >= rd->rdMaxUsed	)
+	      iitem- oy >= maxUsed		)
 	    { units += rd->rdUnitsPerTick; tick++; continue; }
 
 	if  ( iitem != 0 && tick % rd->rdTicksPerText == 0 )
 	    {
-	    char	scratch[30];
-	    int		len;
-	    int		wide;
+	    char		scratch[30];
+	    int			len;
+	    int			wide;
 
-	    int		ascent;
-	    int		descent;
+	    int			ascent;
+	    int			descent;
 
 	    appRulerTagText( scratch, &wide, &len, rd, units );
 
@@ -386,28 +430,35 @@ static void appDrawVerticalRuler(	APP_WIDGET		w,
 	    descent= FONT_HEIGHT(sizeAcross)/ 2;
 
 	    if  ( iitem- oy- descent >= rd->rdMinUsed	&&
-		  iitem- oy+ ascent  <  rd->rdMaxUsed	)
+		  iitem- oy+ ascent  <  maxUsed		)
 		{
+SDEB((char *)scratch);
+		/*
 		appRulerDrawVerticalString( rd,
 			    fontBottom, iitem+ wide/2- oy, scratch, len );
+		*/
 
-		appDrawFillRectangle( add,
-				fontBottom+ 2, iitem- oy,
-				sizeAcross- fontBottom- 2, 1 );
+		drMark.drX0= fontBottom+ 2;
+		drMark.drX1= sizeAcross- 1;
 		}
 	    else{
-		appDrawFillRectangle( add, tagX, iitem- oy, tagW, 1 );
+		drMark.drX0= tagX0;
+		drMark.drX1= tagX1;
 		}
 	    }
 	else{
 	    if  ( tick % rd->rdTicksPerTag == 0 )
 		{
-		appDrawFillRectangle( add, tagX, iitem- oy, tagW, 1 );
+		drMark.drX0= tagX0;
+		drMark.drX1= tagX1;
 		}
 	    else{
-		appDrawFillRectangle( add, tickX, iitem- oy, tickW, 1 );
+		drMark.drX0= tickX0;
+		drMark.drX1= tickX1;
 		}
 	    }
+
+	drawFillRectangle( ds, &drMark );
 
 	units += rd->rdUnitsPerTick; tick++; continue;
 	}
@@ -416,42 +467,47 @@ static void appDrawVerticalRuler(	APP_WIDGET		w,
     XSetForeground( display, rd->rdGc, mr->trForePixel );
     */
 
+    drMark.drX0= 0;
+    drMark.drX1= sizeAcross- 1;
+
     if  ( mr->mrV0Pixels >= 0				&&
-	  mr->mrV0Pixels- oy- 2 >= rd->rdMinUsed		&&
-	  mr->mrV0Pixels- oy <  rd->rdMaxUsed		)
+	  mr->mrV0Pixels- oy- 2 >= rd->rdMinUsed	&&
+	  mr->mrV0Pixels- oy < maxUsed			)
 	{
-	appDrawFillRectangle( add, 0, mr->mrV0Pixels- oy- 1, sizeAcross, 1 );
+	drMark.drY0= drMark.drY1= mr->mrV0Pixels- oy- 1;
+	drawFillRectangle( ds, &drMark );
 	}
 
     if  ( mr->mrV1Pixels >= 0				&&
 	  mr->mrV1Pixels- oy >= rd->rdMinUsed		&&
-	  mr->mrV1Pixels- oy+ 2 <  rd->rdMaxUsed	)
+	  mr->mrV1Pixels- oy+ 2 < maxUsed		)
 	{
-	appDrawFillRectangle( add, 0, mr->mrV1Pixels- oy, sizeAcross, 1 );
+	drMark.drY0= drMark.drY1= mr->mrV1Pixels- oy;
+	drawFillRectangle( ds, &drMark );
 	}
 
     if  ( mr->mrV0Pixels >= 0 || mr->mrV1Pixels >= 0 )
 	{
-	appDrawSetForegroundWhite( add );
+	drawSetForegroundColorWhite( ds );
 
 	if  ( mr->mrV0Pixels >= 0			&&
 	      mr->mrV0Pixels- oy- 2 >= rd->rdMinUsed	&&
-	      mr->mrV0Pixels- oy <  rd->rdMaxUsed	)
+	      mr->mrV0Pixels- oy < maxUsed		)
 	    {
-	    appDrawFillRectangle( add,
-				    0, mr->mrV0Pixels- oy- 2, sizeAcross, 1 );
+	    drMark.drY0= drMark.drY1= mr->mrV0Pixels- oy- 2;
+	    drawFillRectangle( ds, &drMark );
 	    }
 
 	if  ( mr->mrV1Pixels >= 0			&&
 	      mr->mrV1Pixels- oy >= rd->rdMinUsed	&&
-	      mr->mrV1Pixels- oy+ 2 <  rd->rdMaxUsed	)
+	      mr->mrV1Pixels- oy+ 2 < maxUsed		)
 	    {
-	    appDrawFillRectangle( add,
-				    0, mr->mrV1Pixels- oy+ 1, sizeAcross, 1 );
+	    drMark.drY0= drMark.drY1= mr->mrV1Pixels- oy+ 1;
+	    drawFillRectangle( ds, &drMark );
 	    }
 	}
 
-    appDrawNoClipping( add );
+    drawNoClipping( ds );
 
     return;
     }
@@ -460,22 +516,20 @@ APP_EVENT_HANDLER_H( appRedrawHorizontalMetricRuler, w, voidmr, event )
     {
     MetricRuler *	mr= (MetricRuler *)voidmr;
     RulerData *		rd= &(mr->mrRulerData);
-    AppDrawingData *	add= &(rd->rdDrawingData);
 
     int			ox= rd->rdVisibleC0- rd->rdMinUsed;
-    int			oy= 0;
 
     DocumentRectangle	drClip;
 
-    if  ( ! rd->rdDrawingDataAllocated )
+    if  ( ! rd->rdDrawingSurface )
 	{
 	const int	vertical= 0;
 
-	appRulerAllocateDrawingData( rd, vertical,
+	appRulerMakeDrawingSurface( rd, vertical,
 		    FONT_HEIGHT(rd->rdSizeAcross), mr->mrMagnification, w );
 	}
 
-    appCollectExposures( &drClip, add, ox, oy, event );
+    guiCollectExposures( &drClip, w, event );
 
     appDrawHorizontalRuler( w, mr, &drClip, ox );
     }
@@ -484,22 +538,20 @@ APP_EVENT_HANDLER_H( appRedrawVerticalMetricRuler, w, voidmr, event )
     {
     MetricRuler *	mr= (MetricRuler *)voidmr;
     RulerData *		rd= &(mr->mrRulerData);
-    AppDrawingData *	add= &(rd->rdDrawingData);
 
-    int			ox= 0;
     int			oy= rd->rdVisibleC0- rd->rdMinUsed;
 
     DocumentRectangle	drClip;
 
-    if  ( ! rd->rdDrawingDataAllocated )
+    if  ( ! rd->rdDrawingSurface )
 	{
 	const int	vertical= 1;
 
-	appRulerAllocateDrawingData( rd, vertical,
+	appRulerMakeDrawingSurface( rd, vertical,
 		    FONT_HEIGHT(rd->rdSizeAcross), mr->mrMagnification, w );
 	}
 
-    appCollectExposures( &drClip, add, ox, oy, event );
+    guiCollectExposures( &drClip, w, event );
 
     appDrawVerticalRuler( w, mr, &drClip, oy );
     }
@@ -508,14 +560,8 @@ APP_EVENT_HANDLER_H( appHorizontalRulerConfigure, w, voidmr, event )
     {
     MetricRuler *	mr= (MetricRuler *)voidmr;
     RulerData *		rd= &(mr->mrRulerData);
-    int			wide;
-    int			high;
 
-    if  ( appDrawGetSizeFromConfigureEvent( &wide, &high, w, event ) )
-	{ return;	}
-
-    rd->rdSizeAlong= wide;
-    rd->rdMaxUsed= wide- rd->rdExtraAfterMaxUsed;
+    appHorizontalRulerGetSizeFromConfigureEvent( rd, w, event );
 
     return;
     }
@@ -524,14 +570,8 @@ APP_EVENT_HANDLER_H( appVerticalRulerConfigure, w, voidmr, event )
     {
     MetricRuler *	mr= (MetricRuler *)voidmr;
     RulerData *		rd= &(mr->mrRulerData);
-    int			wide;
-    int			high;
 
-    if  ( appDrawGetSizeFromConfigureEvent( &wide, &high, w, event ) )
-	{ return;	}
-
-    rd->rdSizeAlong= high;
-    rd->rdMaxUsed= high- rd->rdExtraAfterMaxUsed;
+    appVerticalRulerGetSizeFromConfigureEvent( rd, w, event );
 
     return;
     }
@@ -580,31 +620,171 @@ void appScrollVertMetricRuler(	void *			voidmr,
 
 void appSetMetricRulerRange(	void *			voidmr,
 				APP_WIDGET		w,
+				int			docFullV1,
 				int			docVisV0,
-				int			docVisV1,
-				int			docBackV1 )
+				int			docVisV1 )
     {
     MetricRuler *	mr= (MetricRuler *)voidmr;
     RulerData *		rd= &(mr->mrRulerData);
-    AppDrawingData *	add= &(rd->rdDrawingData);
 
+    rd->rdDocumentC1= docFullV1;
     rd->rdVisibleC0= docVisV0;
     rd->rdVisibleC1= docVisV1;
-    rd->rdMaxUsed= docBackV1;
 
-#   ifdef USE_MOTIF
-    if  ( XtIsRealized( w ) )
-#   endif
-#   ifdef USE_GTK
-    if  ( GTK_WIDGET_REALIZED( w ) )
-#   endif
+    if  ( ! rd->rdDrawingSurface )
 	{
-	if  ( ! rd->rdDrawingDataAllocated				&&
-	      appSetDrawingDataForWidget( w, mr->mrMagnification, add )	)
-	    { LDEB(1); return;	}
-
-	appExposeRectangle( add, 0, 0, 0, 0 );
+XDEB(rd->rdDrawingSurface);
 	}
+
+    guiExposeDrawingWidget( w );
+
+    return;
+    }
+
+/************************************************************************/
+
+void appMetricRulerDrawHair(	EditDocument *		ed )
+    {
+    const SelectRectangle *	sr= &(ed->edSelectRectangle);
+    DocumentRectangle		drWhite;
+    DocumentRectangle		drBlack;
+    int				ox= ed->edVisibleRect.drX0;
+    int				oy= ed->edVisibleRect.drY0;
+
+    drWhite= ed->edVisibleRect;
+    drBlack= ed->edVisibleRect;
+
+    switch( sr->srDirection )
+	{
+	case DOCselW:
+	    drWhite.drX0= sr->srSelected.drX0+ sr->srLTM.drX0;
+	    drWhite.drX1= sr->srSelected.drX0;
+	    drBlack.drX0= sr->srSelected.drX0;
+	    drBlack.drX1= sr->srSelected.drX0+ sr->srLTM.drX1;
+	    break;
+
+	case DOCselN:
+	    drWhite.drY0= sr->srSelected.drY0+ sr->srLTM.drY0;
+	    drWhite.drY1= sr->srSelected.drY0;
+	    drBlack.drY0= sr->srSelected.drY0;
+	    drBlack.drY1= sr->srSelected.drY0+ sr->srLTM.drY1;
+	    break;
+
+	case DOCselE:
+	    drBlack.drX0= sr->srSelected.drX1+ sr->srRBM.drX0;
+	    drBlack.drX1= sr->srSelected.drX1;
+	    drWhite.drX0= sr->srSelected.drX1;
+	    drWhite.drX1= sr->srSelected.drX1+ sr->srRBM.drX1;
+	    break;
+
+	case DOCselS:
+	    drBlack.drY0= sr->srSelected.drY1+ sr->srRBM.drY0;
+	    drBlack.drY1= sr->srSelected.drY1;
+	    drWhite.drY0= sr->srSelected.drY1;
+	    drWhite.drY1= sr->srSelected.drY1+ sr->srRBM.drY1;
+	    break;
+
+	default:
+	    LDEB(sr->srDirection);
+	    return;
+	}
+
+    drBlack.drX0 -= ox;
+    drBlack.drX1 -= ox;
+    drBlack.drY0 -= oy;
+    drBlack.drY1 -= oy;
+
+    drWhite.drX0 -= ox;
+    drWhite.drX1 -= ox;
+    drWhite.drY0 -= oy;
+    drWhite.drY1 -= oy;
+
+    drawSetForegroundColorBlack( ed->edDrawingSurface );
+    drawFillRectangle( ed->edDrawingSurface, &drBlack );
+
+    drawSetForegroundColorWhite( ed->edDrawingSurface );
+    drawFillRectangle( ed->edDrawingSurface, &drWhite );
+
+    return;
+    }
+
+
+/************************************************************************/
+
+void appMetricRulerExposeValue(	EditDocument *		ed )
+    {
+    const SelectRectangle *	sr= &(ed->edSelectRectangle);
+    DocumentRectangle		drExpose;
+    int				ox= ed->edVisibleRect.drX0;
+    int				oy= ed->edVisibleRect.drY0;
+
+    drExpose= ed->edVisibleRect;
+
+    switch( sr->srDirection )
+	{
+	case DOCselW:
+	    drExpose.drX0= sr->srSelected.drX0+ sr->srLTM.drX0;
+	    drExpose.drX1= sr->srSelected.drX0+ sr->srLTM.drX1;
+	    break;
+
+	case DOCselN:
+	    drExpose.drY0= sr->srSelected.drY0+ sr->srLTM.drY0;
+	    drExpose.drY1= sr->srSelected.drY0+ sr->srLTM.drY1;
+	    break;
+
+	case DOCselE:
+	    drExpose.drX0= sr->srSelected.drX1+ sr->srRBM.drX0;
+	    drExpose.drX1= sr->srSelected.drX1+ sr->srRBM.drX1;
+	    break;
+
+	case DOCselS:
+	    drExpose.drY0= sr->srSelected.drY1+ sr->srRBM.drY0;
+	    drExpose.drY1= sr->srSelected.drY1+ sr->srRBM.drY1;
+	    break;
+
+	default:
+	    LDEB(sr->srDirection);
+	    return;
+	}
+
+    geoShiftRectangle( &drExpose, -ox, -oy );
+    guiExposeDrawingWidgetRectangle( ed->edDocumentWidget.dwWidget,
+								&drExpose );
+
+    return;
+    }
+
+void appMetricRulerChangeValue(	EditDocument *		ed,
+				int			newValue )
+    {
+    SelectRectangle *	sr= &(ed->edSelectRectangle);
+
+    appMetricRulerExposeValue( ed );
+
+    switch( sr->srDirection )
+	{
+	case DOCselW:
+	    sr->srSelected.drX0= newValue;
+	    break;
+
+	case DOCselN:
+	    sr->srSelected.drY0= newValue;
+	    break;
+
+	case DOCselE:
+	    sr->srSelected.drX1= newValue;
+	    break;
+
+	case DOCselS:
+	    sr->srSelected.drY1= newValue;
+	    break;
+
+	default:
+	    LDEB(sr->srDirection);
+	    return;
+	}
+
+    appMetricRulerExposeValue( ed );
 
     return;
     }
@@ -628,38 +808,46 @@ void appSetMetricRulerRange(	void *			voidmr,
 /************************************************************************/
 
 static void appHorizontalRulerSetValue(	MetricRulerDrag *	mrd,
+					APP_WIDGET		w,
 					int			newValue )
     {
     MetricRuler *		mr= mrd->mrdMr;
     RulerData *			rd= &(mr->mrRulerData);
+    int				ox= rd->rdVisibleC0- rd->rdMinUsed;
+    const int			oy= 0;
+
     int				oldValue= *(mrd->mrdValuePointer);
 
-    DocumentRectangle		drClip;
+    DocumentRectangle		drExpose;
 
     if  ( newValue == oldValue )
 	{ return;	}
 
-    *(mrd->mrdValuePointer)= newValue;
-    *(mrd->mrdChangedPointer)= 1;
+    if  ( mrd->mrdValuePointer )
+	{ *(mrd->mrdValuePointer)= newValue;	}
 
     if  ( oldValue < newValue )
 	{
-	drClip.drX0= oldValue- rd->rdSizeAcross;
-	drClip.drX1= newValue+ rd->rdSizeAcross;
-	drClip.drY0= 0;
-	drClip.drY1= rd->rdSizeAcross;
+	drExpose.drX0= oldValue- rd->rdSizeAcross;
+	drExpose.drX1= newValue+ rd->rdSizeAcross;
+	drExpose.drY0= 0;
+	drExpose.drY1= rd->rdSizeAcross;
 	}
     else{
-	drClip.drX0= newValue- rd->rdSizeAcross;
-	drClip.drX1= oldValue+ rd->rdSizeAcross;
-	drClip.drY0= 0;
-	drClip.drY1= rd->rdSizeAcross;
+	drExpose.drX0= newValue- rd->rdSizeAcross;
+	drExpose.drX1= oldValue+ rd->rdSizeAcross;
+	drExpose.drY0= 0;
+	drExpose.drY1= rd->rdSizeAcross;
 	}
 
-    appDrawHorizontalRuler( mrd->mrdWidget, mr, &drClip, mrd->mrdOc );
+    /*
+    appDrawHorizontalRuler( mrd->mrdWidget, mr, &drExpose, mrd->mrdOc );
+    */
+    geoShiftRectangle( &drExpose, -ox, -oy );
+    guiExposeDrawingWidgetRectangle( w, &drExpose );
 
     /*  5  */
-    (*mrd->mrdDragHair)( mrd->mrdThrough, oldValue, newValue, mrd->mrdAsUpper );
+    appMetricRulerChangeValue( mrd->mrdDocument, newValue );
 
     return;
     }
@@ -671,10 +859,10 @@ static APP_EVENT_HANDLER_H( appHorizontalRulerMouseMove, w, vmrd, event )
     int				x;
     int				y;
 
-    if  ( appGetCoordinatesFromMouseMoveEvent( &x, &y, w, event ) )
+    if  ( guiGetCoordinatesFromMouseMoveEvent( &x, &y, w, event ) )
 	{ return;	}
 
-    appHorizontalRulerSetValue( mrd, x+ mrd->mrdOc );
+    appHorizontalRulerSetValue( mrd, w, x+ mrd->mrdOc );
 
     return;
     }
@@ -691,14 +879,13 @@ static APP_EVENT_HANDLER_H( appHorizontalRulerMouseUp, w, vmrd, event )
     int				seq;
     unsigned int		keyState;
 
-    if  ( appGetCoordinatesFromMouseButtonEvent(
+    if  ( guiGetCoordinatesFromMouseButtonEvent(
 			&x, &y, &button, &upDown, &seq, &keyState, w, event ) )
 	{ return;	}
 
-    appHorizontalRulerSetValue( mrd, x+ mrd->mrdOc );
+    appHorizontalRulerSetValue( mrd, w, x+ mrd->mrdOc );
+    appMetricRulerExposeValue( mrd->mrdDocument );
 
-    (*mrd->mrdDragHair)( mrd->mrdThrough,
-			    *(mrd->mrdValuePointer), -1, mrd->mrdAsUpper );
     return;
     }
 
@@ -709,30 +896,61 @@ static void appHorizontalRulerDragItem(	int *			pValue,
 					APP_EVENT *		downEvent,
 					MetricRuler *		mr,
 					int			ox,
-					void *			voided,
-					DragHair		dragHair,
-					int			asUpper )
+					EditDocument *		ed,
+					int			direction )
     {
+    SelectRectangle *		sr= &(ed->edSelectRectangle);
     MetricRulerDrag		mrd;
+    int				startValue= *pValue;
+    int				oldDirection= sr->srDirection;
 
     mrd.mrdValuePointer= pValue;
-    mrd.mrdChangedPointer= pChanged;
     mrd.mrdMr= mr;
     mrd.mrdWidget= w;
     mrd.mrdOc= ox;
-    mrd.mrdThrough= voided;
-    mrd.mrdDragHair= dragHair;
-    mrd.mrdAsUpper= asUpper;
+    mrd.mrdDocument= ed;
+
+    switch( direction )
+	{
+	case DOCselW:
+	    sr->srSelected.drX0= *pValue;
+	    break;
+
+	case DOCselE:
+	    sr->srSelected.drX1= *pValue;
+	    break;
+
+	default:
+	    LDEB(sr->srDirection);
+	    return;
+	}
 
     /*  1  */
-    (*mrd.mrdDragHair)( mrd.mrdThrough,
-				-1, *(mrd.mrdValuePointer), mrd.mrdAsUpper );
+    sr->srDirection= direction;
+
+    sr->srLTM.drX0= -1;
+    sr->srLTM.drX1=  1;
+    sr->srLTM.drY0= -1;
+    sr->srLTM.drY1=  1;
+
+    sr->srRBM.drX0= -1;
+    sr->srRBM.drX1=  1;
+    sr->srRBM.drY0= -1;
+    sr->srRBM.drY1=  1;
+
+    appMetricRulerExposeValue( ed );
 
     appRunDragLoop( w, ea, downEvent,
 				appHorizontalRulerMouseUp,
 				appHorizontalRulerMouseMove,
 				0, (APP_TIMER_CALLBACK)0,
 				(void *)&mrd );
+
+    if  ( pChanged && *pValue != startValue )
+	{ *pChanged= 1;	}
+
+    sr->srDirection= oldDirection;
+    return;
     }
 
 /************************************************************************/
@@ -750,19 +968,17 @@ void     appHorizontalRulerTrackMouse(	int *			pX0pixels,
 					EditApplication *	ea,
 					APP_EVENT *		downEvent,
 					void *			voidmr,
-					void *			voided,
-					DragHair		dragHair )
+					EditDocument *		ed )
     {
     MetricRuler  *	mr= (MetricRuler *)voidmr;
     RulerData *		rd= &(mr->mrRulerData);
-    AppDrawingData *	add= &(rd->rdDrawingData);
 
     int			x;
     int			y;
     int			ox= rd->rdVisibleC0- rd->rdMinUsed;
+    int			maxUsed= rd->rdSizeAlong- rd->rdExtraAfterMaxUsed;
 
     int			changed= 0;
-    int			asUpper;
 
     int			xp= 2;
 
@@ -771,21 +987,19 @@ void     appHorizontalRulerTrackMouse(	int *			pX0pixels,
     int			seq;
     unsigned int	keyState;
 
-    if  ( appGetCoordinatesFromMouseButtonEvent(
+    if  ( guiGetCoordinatesFromMouseButtonEvent(
 		    &x, &y, &button, &upDown, &seq, &keyState, w, downEvent ) )
 	{ return;	}
 
     if  ( upDown < 1 || button != 1 || seq > 1 )
 	{ return;	}
 
-    if  ( mr->mrV0Pixels >= 0				&&
-	  x+ ox <  mr->mrV0Pixels + xp			&&
+    if  ( mr->mrV0Pixels >= 0					&&
+	  x+ ox <  mr->mrV0Pixels + xp				&&
 	  x+ ox >= mr->mrV0Pixels- HAIR_THICK( sizeAcross ) -xp	)
 	{
-	asUpper= 0;
-
 	appHorizontalRulerDragItem( &mr->mrV0Pixels, &changed,
-		    w, ea, downEvent, mr, ox, voided, dragHair, asUpper );
+				    w, ea, downEvent, mr, ox, ed, DOCselW );
 	goto ready;
 	}
 
@@ -793,10 +1007,10 @@ void     appHorizontalRulerTrackMouse(	int *			pX0pixels,
 	  x+ ox >= mr->mrV1Pixels- xp				&&
 	  x+ ox <  mr->mrV1Pixels+ HAIR_THICK( sizeAcross )+ xp	)
 	{
-	asUpper= 1;
+	/* asUpper= 1; */
 
 	appHorizontalRulerDragItem( &mr->mrV1Pixels, &changed,
-		    w, ea, downEvent, mr, ox, voided, dragHair, asUpper );
+				    w, ea, downEvent, mr, ox, ed, DOCselE );
 
 	goto ready;
 	}
@@ -808,28 +1022,25 @@ void     appHorizontalRulerTrackMouse(	int *			pX0pixels,
 
 	if  ( x+ ox < mr->mrV1Pixels )
 	    {
-	    asUpper= 0;
+	    /* asUpper= 0; */
 	    mr->mrV1Pixels= mr->mrV0Pixels;
 
 	    mr->mrV0Pixels= x+ ox;
 
 	    changed= 1;
-	    (*dragHair)( voided, -1, x+ ox, asUpper );
-
 	    appHorizontalRulerDragItem( &mr->mrV0Pixels, &changed,
-		    w, ea, downEvent, mr, ox, voided, dragHair, asUpper );
+				w, ea, downEvent, mr, ox, ed, DOCselW );
 
 	    goto ready;
 	    }
 	else{
-	    asUpper= 1;
+	    /* asUpper= 1; */
 	    mr->mrV1Pixels= x+ ox;
 
 	    changed= 1;
-	    (*dragHair)( voided, -1, x+ ox, asUpper );
 
 	    appHorizontalRulerDragItem( &mr->mrV1Pixels, &changed,
-		    w, ea, downEvent, mr, ox, voided, dragHair, asUpper );
+				    w, ea, downEvent, mr, ox, ed, DOCselE );
 
 	    goto ready;
 	    }
@@ -839,53 +1050,47 @@ void     appHorizontalRulerTrackMouse(	int *			pX0pixels,
 	{
 	if  ( x+ ox > mr->mrV1Pixels )
 	    {
-	    asUpper= 1;
+	    /* asUpper= 1; */
 	    mr->mrV0Pixels= mr->mrV1Pixels;
 
 	    mr->mrV1Pixels= x+ ox;
 
 	    changed= 1;
-	    (*dragHair)( voided, -1, x+ ox, asUpper );
 
 	    appHorizontalRulerDragItem( &mr->mrV1Pixels, &changed,
-		    w, ea, downEvent, mr, ox, voided, dragHair, asUpper );
+				    w, ea, downEvent, mr, ox, ed, DOCselE );
 
 	    goto ready;
 	    }
 	else{
-	    asUpper= 0;
+	    /* asUpper= 0; */
 	    mr->mrV0Pixels= x+ ox;
 
 	    changed= 1;
-	    (*dragHair)( voided, -1, x+ ox, asUpper );
 
 	    appHorizontalRulerDragItem( &mr->mrV0Pixels, &changed,
-		    w, ea, downEvent, mr, ox, voided, dragHair, asUpper );
+				    w, ea, downEvent, mr, ox, ed, DOCselE );
 
 	    goto ready;
 	    }
 	}
 
-    if  ( x+ ox <= ( rd->rdMinUsed+ rd->rdMaxUsed )/ 2 )
+    if  ( x+ ox <= ( rd->rdMinUsed+ maxUsed )/ 2 )
 	{
-	asUpper= 0;
+	/* asUpper= 0; */
 	mr->mrV0Pixels= x+ ox;
 
 	changed= 1;
-	(*dragHair)( voided, -1, x+ ox, asUpper );
-
 	appHorizontalRulerDragItem( &mr->mrV0Pixels, &changed,
-		    w, ea, downEvent, mr, ox, voided, dragHair, asUpper );
+				    w, ea, downEvent, mr, ox, ed, DOCselW );
 	}
     else{
-	asUpper= 1;
+	/* asUpper= 1; */
 	mr->mrV1Pixels= x+ ox;
 
 	changed= 1;
-	(*dragHair)( voided, -1, x+ ox, asUpper );
-
 	appHorizontalRulerDragItem( &mr->mrV1Pixels, &changed,
-		    w, ea, downEvent, mr, ox, voided, dragHair, asUpper );
+				    w, ea, downEvent, mr, ox, ed, DOCselE );
 	}
 
   ready:
@@ -895,23 +1100,16 @@ void     appHorizontalRulerTrackMouse(	int *			pX0pixels,
 	{
 	int		swap;
 
-	changed= 1;
-
-	(*dragHair)( voided, mr->mrV1Pixels, -1, 1 );
-	(*dragHair)( voided, mr->mrV0Pixels, -1, 0 );
-
 	swap= mr->mrV1Pixels;
 	mr->mrV1Pixels= mr->mrV0Pixels;
 	mr->mrV0Pixels= swap;
-
-	(*dragHair)( voided, -1, mr->mrV1Pixels, 1 );
-	(*dragHair)( voided, -1, mr->mrV0Pixels, 0 );
+	changed= 1;
 	}
 
     if  ( changed )
 	{
 	*pChanged= 1;
-	appExposeRectangle( add, 0, 0, 0, 0 );
+	guiExposeDrawingWidget( w );
 	}
 
     *pX0pixels= mr->mrV0Pixels;
@@ -939,13 +1137,17 @@ void     appHorizontalRulerTrackMouse(	int *			pX0pixels,
 /************************************************************************/
 
 static void appVerticalRulerSetValue(	MetricRulerDrag *	mrd,
+					APP_WIDGET		w,
 					int			newValue )
     {
     MetricRuler *		mr= mrd->mrdMr;
     RulerData *			rd= &(mr->mrRulerData);
+    const int			ox= 0;
+    int				oy= rd->rdVisibleC0- rd->rdMinUsed;
+
     int				oldValue= *(mrd->mrdValuePointer);
 
-    DocumentRectangle		drClip;
+    DocumentRectangle		drExpose;
 
     if  ( newValue < rd->rdDocumentC0 )
 	{ newValue= rd->rdDocumentC0;	}
@@ -956,26 +1158,27 @@ static void appVerticalRulerSetValue(	MetricRulerDrag *	mrd,
 	{ return;	}
 
     *(mrd->mrdValuePointer)= newValue;
-    *(mrd->mrdChangedPointer)= 1;
 
     if  ( oldValue < newValue )
 	{
-	drClip.drX0= 0;
-	drClip.drX1= rd->rdSizeAcross;
-	drClip.drY0= oldValue- rd->rdSizeAcross;
-	drClip.drY1= newValue+ rd->rdSizeAcross;
+	drExpose.drX0= 0;
+	drExpose.drX1= rd->rdSizeAcross;
+	drExpose.drY0= oldValue- rd->rdSizeAcross;
+	drExpose.drY1= newValue+ rd->rdSizeAcross;
 	}
     else{
-	drClip.drX0= 0;
-	drClip.drX1= rd->rdSizeAcross;
-	drClip.drY0= newValue- rd->rdSizeAcross;
-	drClip.drY1= oldValue+ rd->rdSizeAcross;
+	drExpose.drX0= 0;
+	drExpose.drX1= rd->rdSizeAcross;
+	drExpose.drY0= newValue- rd->rdSizeAcross;
+	drExpose.drY1= oldValue+ rd->rdSizeAcross;
 	}
 
-    appDrawVerticalRuler( mrd->mrdWidget, mr, &drClip, mrd->mrdOc );
+    geoShiftRectangle( &drExpose, -ox, -oy );
+    guiExposeDrawingWidgetRectangle( w, &drExpose );
 
     /*  5  */
-    (*mrd->mrdDragHair)( mrd->mrdThrough, oldValue, newValue, mrd->mrdAsUpper );
+    appMetricRulerChangeValue( mrd->mrdDocument, newValue );
+
 
     return;
     }
@@ -987,10 +1190,10 @@ static APP_EVENT_HANDLER_H( appVerticalRulerMouseMove, w, vmrd, event )
     int				x;
     int				y;
 
-    if  ( appGetCoordinatesFromMouseMoveEvent( &x, &y, w, event ) )
+    if  ( guiGetCoordinatesFromMouseMoveEvent( &x, &y, w, event ) )
 	{ return;	}
 
-    appVerticalRulerSetValue( mrd, y+ mrd->mrdOc );
+    appVerticalRulerSetValue( mrd, w, y+ mrd->mrdOc );
 
     return;
     }
@@ -1007,14 +1210,12 @@ static APP_EVENT_HANDLER_H( appVerticalRulerMouseUp, w, vmrd, event )
     int			seq;
     unsigned int	keyState;
 
-    if  ( appGetCoordinatesFromMouseButtonEvent(
+    if  ( guiGetCoordinatesFromMouseButtonEvent(
 			&x, &y, &button, &upDown, &seq, &keyState, w, event ) )
 	{ return;	}
 
-    appVerticalRulerSetValue( mrd, y+ mrd->mrdOc );
-
-    (*mrd->mrdDragHair)( mrd->mrdThrough,
-			    *(mrd->mrdValuePointer), -1, mrd->mrdAsUpper );
+    appVerticalRulerSetValue( mrd, w, y+ mrd->mrdOc );
+    appMetricRulerExposeValue( mrd->mrdDocument );
 
     return;
     }
@@ -1026,30 +1227,60 @@ static void appVerticalRulerDragItem(	int *			pValue,
 					APP_EVENT *		downEvent,
 					MetricRuler *		mr,
 					int			oy,
-					void *			voided,
-					DragHair		dragHair,
-					int			asUpper )
+					EditDocument *		ed,
+					int			direction )
     {
+    SelectRectangle *		sr= &(ed->edSelectRectangle);
     MetricRulerDrag		mrd;
+    int				startValue= *pValue;
+    int				oldDirection= sr->srDirection;
 
     mrd.mrdValuePointer= pValue;
-    mrd.mrdChangedPointer= pChanged;
     mrd.mrdMr= mr;
     mrd.mrdWidget= w;
     mrd.mrdOc= oy;
-    mrd.mrdThrough= voided;
-    mrd.mrdDragHair= dragHair;
-    mrd.mrdAsUpper= asUpper;
+    mrd.mrdDocument= ed;
+
+    switch( direction )
+	{
+	case DOCselN:
+	    sr->srSelected.drY0= *pValue;
+	    break;
+
+	case DOCselS:
+	    sr->srSelected.drY1= *pValue;
+	    break;
+
+	default:
+	    LDEB(sr->srDirection);
+	    return;
+	}
 
     /*  1  */
-    (*mrd.mrdDragHair)( mrd.mrdThrough,
-				-1, *(mrd.mrdValuePointer), mrd.mrdAsUpper );
+    sr->srDirection= direction;
+
+    sr->srLTM.drX0= -1;
+    sr->srLTM.drX1=  1;
+    sr->srLTM.drY0= -1;
+    sr->srLTM.drY1=  1;
+
+    sr->srRBM.drX0= -1;
+    sr->srRBM.drX1=  1;
+    sr->srRBM.drY0= -1;
+    sr->srRBM.drY1=  1;
+
+    appMetricRulerExposeValue( ed );
 
     appRunDragLoop( w, ea, downEvent,
 				appVerticalRulerMouseUp,
 				appVerticalRulerMouseMove,
 				0, (APP_TIMER_CALLBACK)0,
 				(void *)&mrd );
+    if  ( pChanged && *pValue != startValue )
+	{ *pChanged= 1;	}
+
+    sr->srDirection= oldDirection;
+    return;
     }
 
 /************************************************************************/
@@ -1067,19 +1298,17 @@ void     appVerticalRulerTrackMouse(	int *			pY0pixels,
 					EditApplication *	ea,
 					APP_EVENT *		downEvent,
 					void *			voidmr,
-					void *			voided,
-					DragHair		dragHair )
+					EditDocument *		ed )
     {
     MetricRuler  *	mr= (MetricRuler *)voidmr;
     RulerData *		rd= &(mr->mrRulerData);
-    AppDrawingData *	add= &(rd->rdDrawingData);
 
     int			x;
     int			y;
     int			oy= rd->rdVisibleC0- rd->rdMinUsed;
+    int			maxUsed= rd->rdSizeAlong- rd->rdExtraAfterMaxUsed;
 
     int			changed= 0;
-    int			asUpper;
 
     int			xp= 2;
 
@@ -1088,7 +1317,7 @@ void     appVerticalRulerTrackMouse(	int *			pY0pixels,
     int			seq;
     unsigned int	keyState;
 
-    if  ( appGetCoordinatesFromMouseButtonEvent(
+    if  ( guiGetCoordinatesFromMouseButtonEvent(
 		    &x, &y, &button, &upDown, &seq, &keyState, w, downEvent ) )
 	{ return;	}
 
@@ -1096,13 +1325,13 @@ void     appVerticalRulerTrackMouse(	int *			pY0pixels,
 	{ return;	}
 
     if  ( mr->mrV0Pixels >= 0					&&
-	  y+ oy <  mr->mrV0Pixels + xp			&&
+	  y+ oy <  mr->mrV0Pixels + xp				&&
 	  y+ oy >= mr->mrV0Pixels- HAIR_THICK( sizeAcross ) -xp	)
 	{
-	asUpper= 0;
+	/* asUpper= 0; */
 
 	appVerticalRulerDragItem( &(mr->mrV0Pixels), &changed,
-		    w, ea, downEvent, mr, oy, voided, dragHair, asUpper );
+				    w, ea, downEvent, mr, oy, ed, DOCselN );
 
 	goto ready;
 	}
@@ -1111,10 +1340,10 @@ void     appVerticalRulerTrackMouse(	int *			pY0pixels,
 	  y+ oy >= mr->mrV1Pixels- xp			&&
 	  y+ oy <  mr->mrV1Pixels+ HAIR_THICK( sizeAcross )+ xp	)
 	{
-	asUpper= 1;
+	/* asUpper= 1; */
 
 	appVerticalRulerDragItem( &mr->mrV1Pixels, &changed,
-		    w, ea, downEvent, mr, oy, voided, dragHair, asUpper );
+				w, ea, downEvent, mr, oy, ed, DOCselS );
 
 	goto ready;
 	}
@@ -1126,28 +1355,24 @@ void     appVerticalRulerTrackMouse(	int *			pY0pixels,
 
 	if  ( y+ oy < mr->mrV1Pixels )
 	    {
-	    asUpper= 0;
+	    /* asUpper= 0; */
 	    mr->mrV1Pixels= mr->mrV0Pixels;
 
 	    mr->mrV0Pixels= y+ oy;
 
 	    changed= 1;
-	    (*dragHair)( voided, -1, y+ oy, asUpper );
-
 	    appVerticalRulerDragItem( &mr->mrV0Pixels, &changed,
-		    w, ea, downEvent, mr, oy, voided, dragHair, asUpper );
+				    w, ea, downEvent, mr, oy, ed, DOCselN );
 
 	    goto ready;
 	    }
 	else{
-	    asUpper= 1;
+	    /* asUpper= 1; */
 	    mr->mrV1Pixels= y+ oy;
 
 	    changed= 1;
-	    (*dragHair)( voided, -1, y+ oy, asUpper );
-
 	    appVerticalRulerDragItem( &mr->mrV1Pixels, &changed,
-		    w, ea, downEvent, mr, oy, voided, dragHair, asUpper );
+				    w, ea, downEvent, mr, oy, ed, DOCselS );
 
 	    goto ready;
 	    }
@@ -1157,55 +1382,47 @@ void     appVerticalRulerTrackMouse(	int *			pY0pixels,
 	{
 	if  ( y+ oy > mr->mrV1Pixels )
 	    {
-	    asUpper= 1;
+	    /* asUpper= 1; */
 	    mr->mrV0Pixels= mr->mrV1Pixels;
 
 	    mr->mrV1Pixels= y+ oy;
 
 	    changed= 1;
-	    (*dragHair)( voided, -1, y+ oy, asUpper );
-
 	    appVerticalRulerDragItem( &mr->mrV1Pixels, &changed,
-		    w, ea, downEvent, mr, oy, voided, dragHair, asUpper );
+				w, ea, downEvent, mr, oy, ed, DOCselS );
 
 	    goto ready;
 	    }
 	else{
-	    asUpper= 0;
+	    /* asUpper= 0; */
 	    mr->mrV0Pixels= y+ oy;
 
 	    changed= 1;
-	    (*dragHair)( voided, -1, y+ oy, asUpper );
-
 	    appVerticalRulerDragItem( &mr->mrV0Pixels, &changed,
-		    w, ea, downEvent, mr, oy, voided, dragHair, asUpper );
+				    w, ea, downEvent, mr, oy, ed, DOCselN );
 
 	    goto ready;
 	    }
 	}
 
-    if  ( y+ oy <= ( rd->rdMinUsed+ rd->rdMaxUsed )/ 2 )
+    if  ( y+ oy <= ( rd->rdMinUsed+ maxUsed )/ 2 )
 	{
-	asUpper= 0;
+	/* asUpper= 0; */
 	mr->mrV0Pixels= y+ oy;
 
 	changed= 1;
-	(*dragHair)( voided, -1, y+ oy, asUpper );
-
 	appVerticalRulerDragItem( &mr->mrV0Pixels, &changed,
-		    w, ea, downEvent, mr, oy, voided, dragHair, asUpper );
+				    w, ea, downEvent, mr, oy, ed, DOCselN );
 
 	goto ready;
 	}
     else{
-	asUpper= 1;
+	/* asUpper= 1; */
 	mr->mrV1Pixels= y+ oy;
 
 	changed= 1;
-	(*dragHair)( voided, -1, y+ oy, asUpper );
-
 	appVerticalRulerDragItem( &mr->mrV1Pixels, &changed,
-		    w, ea, downEvent, mr, oy, voided, dragHair, asUpper );
+				    w, ea, downEvent, mr, oy, ed, DOCselS );
 
 	goto ready;
 	}
@@ -1217,23 +1434,16 @@ void     appVerticalRulerTrackMouse(	int *			pY0pixels,
 	{
 	int		swap;
 
-	changed= 1;
-
-	(*dragHair)( voided, mr->mrV1Pixels, -1, 1 );
-	(*dragHair)( voided, mr->mrV0Pixels, -1, 0 );
-
 	swap= mr->mrV1Pixels;
 	mr->mrV1Pixels= mr->mrV0Pixels;
 	mr->mrV0Pixels= swap;
-
-	(*dragHair)( voided, -1, mr->mrV1Pixels, 1 );
-	(*dragHair)( voided, -1, mr->mrV0Pixels, 0 );
+	changed= 1;
 	}
 
     if  ( changed )
 	{
 	*pChanged= 1;
-	appExposeRectangle( add, 0, 0, 0, 0 );
+	guiExposeDrawingWidget( w );
 	}
 
     *pY0pixels= mr->mrV0Pixels;
@@ -1254,9 +1464,6 @@ void appSetMetricRulerValues(	APP_WIDGET	w,
 				int		v1 )
     {
     MetricRuler  *	mr= (MetricRuler *)voidmr;
-    RulerData *		rd= &(mr->mrRulerData);
-    AppDrawingData *	add= &(rd->rdDrawingData);
-
     int			changed= 0;
 
     if  ( v0 != mr->mrV0Pixels )
@@ -1266,7 +1473,7 @@ void appSetMetricRulerValues(	APP_WIDGET	w,
 	{ mr->mrV1Pixels= v1; changed= 1; }
 
     if  ( changed )
-	{ appExposeRectangle( add, 0, 0, 0, 0 );	}
+	{ guiExposeDrawingWidget( w );	}
     }
 
 void appSetMetricRulerMagnification(	APP_WIDGET	w,
@@ -1276,31 +1483,26 @@ void appSetMetricRulerMagnification(	APP_WIDGET	w,
     {
     MetricRuler  *		mr= (MetricRuler *)voidmr;
     RulerData *			rd= &(mr->mrRulerData);
-    AppDrawingData *		add= &(rd->rdDrawingData);
 
     appRulerCalculateIncrements( rd, magnifiedPixelsPerTwip, magnification );
 
-    appExposeRectangle( add, 0, 0, 0, 0 );
+    guiExposeDrawingWidget( w );
 
     return;
     }
 
 void appAdaptMetricRuler(	APP_WIDGET	w,
 				void *		voidmr,
-				int		documentC1,
-				int		rulerC1 )
+				int		documentC1 )
     {
     MetricRuler  *	mr= (MetricRuler *)voidmr;
     RulerData *		rd= &(mr->mrRulerData);
-    AppDrawingData *	add= &(rd->rdDrawingData);
 
-    rd->rdDocumentC1= documentC1;
-
-    if  ( rd->rdRulerC1 != rulerC1 )
+    if  ( rd->rdDocumentC1 != documentC1 )
 	{
-	rd->rdRulerC1= rulerC1;
+	rd->rdDocumentC1= documentC1;
 
-	appExposeRectangle( add, 0, 0, 0, 0 );
+	guiExposeDrawingWidget( w );
 	}
     }
 

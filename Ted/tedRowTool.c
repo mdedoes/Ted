@@ -6,16 +6,20 @@
 
 #   include	"tedConfig.h"
 
-#   include	<stdlib.h>
 #   include	<stdio.h>
 #   include	<stddef.h>
 #   include	<limits.h>
 
-#   include	<appGeoString.h>
-#   include	<appUnit.h>
-
-#   include	"tedApp.h"
-#   include	"tedFormatTool.h"
+#   include	"tedRowTool.h"
+#   include	"tedAppFront.h"
+#   include	"tedToolUtil.h"
+#   include	"tedDocFront.h"
+#   include	<docTreeType.h>
+#   include	<guiToolUtil.h>
+#   include	<guiTextUtil.h>
+#   include	<docTreeNode.h>
+#   include	<docNodeTree.h>
+#   include	<docEditCommand.h>
 
 #   include	<appDebugon.h>
 
@@ -27,101 +31,124 @@
 
 static void tedFormatToolRefreshRowPage( RowTool *	rt )
     {
-    const RowProperties *	rp= &(rt->rtPropertiesChosen);
-    const CellProperties *	cp;
+    const RowProperties *	rp= &(rt->rtRowPropertiesChosen);
+    const CellProperties *	cp= &(rt->rtCellPropertiesChosen);
     const TableRectangle *	tr= &(rt->rtTableRectangle);
-    char			scratch[50];
 
-    EditApplication *		ea= rt->rtApplication;
-    EditDocument *		ed= ea->eaCurrentDocument;
+    EditDocument *		ed;
+    int				traced;
+    BufferDocument *		bd= tedFormatCurDoc( &ed, &traced, rt->rtApplication );
 
-    TedDocument *		td;
-    BufferDocument *		bd;
-    DocumentProperties *	dp;
+    if  ( ! bd )
+	{ XDEB(bd); return;	}
 
-    if  ( ! ed )
-	{ XDEB(ed); return;	}
+    appIntervalToTextWidget( rt->rtRowText,
+				    tr->trRow0- tr->trRow00+ 1,
+				    tr->trRow1- tr->trRow00+ 1 );
 
-    td= (TedDocument *)ed->edPrivateData;
-    bd= td->tdDocument;
-    dp= &(bd->bdProperties);
-
-    appIntegerToTextWidget( rt->rtNumberText, tr->trRow0- tr->trRow00+ 1 );
-
+    guiEnableWidget( rt->rtRowRow, rt->rtCanChange );
+    tedFormatEnableHeightChooser( &(rt->rtHeightChooser),
+							rt->rtCanChange );
     tedFormatRefreshHeightChooser( &(rt->rtHeightChooser),
 							rp->rpHeightTwips );
 
-    appGeoLengthToString( scratch, rp->rpHalfGapWidthTwips, UNITtyPOINTS );
-    appStringToTextWidget( rt->rtCellMarginText, scratch );
+    tedRefreshRowMarginsTool( &(rt->rtMarginsTool), rp, rt->rtCanChange );
 
-    appGeoLengthToString( scratch, rp->rpLeftIndentTwips, UNITtyPOINTS );
-    appStringToTextWidget( rt->rtLeftIndentText, scratch );
+    guiEnableWidget( rt->rtBordersFrame, rt->rtCanChange );
+    tedEnableBorderTool( &(rt->rtTopBorderTool), rt->rtCanChange );
+    tedEnableBorderTool( &(rt->rtBottomBorderTool), rt->rtCanChange );
 
-    cp= rp->rpCells;
-    tedBorderToolSetProperties( &(rt->rtTopBorderTool), dp,
-					&(cp[tr->trCol0].cpTopBorder) );
-    tedBorderToolSetProperties( &(rt->rtBottomBorderTool), dp,
-					&(cp[tr->trCol0].cpBottomBorder) );
+    tedBorderToolSetPropertiesByNumber( &(rt->rtTopBorderTool), bd,
+						    cp->cpTopBorderNumber );
+    tedBorderToolSetPropertiesByNumber( &(rt->rtBottomBorderTool), bd,
+						    cp->cpBottomBorderNumber );
 
-    appGuiSetToggleState( rt->rtKeepOnPageToggle,
-						rp->rpKeepOnOnePage );
-    appGuiSetToggleState( rt->rtIsTableHeaderToggle,
-						rp->rpIsTableHeader );
+    tedEnableShadingTool( &(rt->rtShadingTool), rt->rtCanChange );
+    tedSetShadingToolByNumber( &(rt->rtShadingTool), bd, rp->rpShadingNumber );
+
+    guiEnableWidget( rt->rtKeepOnPageToggle, rt->rtCanChange );
+    guiEnableWidget( rt->rtIsTableHeaderToggle, rt->rtCanChange );
+    appGuiSetToggleState( rt->rtKeepOnPageToggle, rp->rpKeepOnOnePage );
+    appGuiSetToggleState( rt->rtIsTableHeaderToggle, rp->rpIsTableHeader );
+
+    if  ( rt->rtKeepfollowToggle )
+	{
+	guiEnableWidget( rt->rtKeepfollowToggle, rt->rtCanChange );
+	appGuiSetToggleState( rt->rtKeepfollowToggle, rp->rp_Keepfollow );
+	}
+
     /*
     appGuiSetToggleState( rt->rtAutofitToggle, rp->rpAutofit );
     */
     }
 
-void tedFormatToolRefreshRowTool(
-				RowTool *			rt,
+void tedRefreshRowTool(		RowTool *			rt,
 				int *				pEnabled,
 				int *				pPref,
 				InspectorSubject *		is,
-				const DocumentSelection *	ds )
+				const DocumentSelection *	ds,
+				const SelectionGeometry *	sg,
+				const SelectionDescription *	sd,
+				BufferDocument *		bd,
+				const unsigned char *		cmdEnabled )
     {
-    TableRectangle *		tr= &(rt->rtTableRectangle);
+    BufferItem *		rowNode;
 
-    const RowProperties *	rp;
-    const DocumentGeometry *	dg;
+    const DocumentAttributeMap * const dam0= (const DocumentAttributeMap *)0;
 
-    const BufferItem *		rowBi;
-    const BufferItem *		sectBi;
+    rt->rtTableRectangle= sd->sdTableRectangle;
+    if  ( ! sd->sdInOneTable )
+	{ *pEnabled= 0; return; }
 
-    if  ( docGetTableRectangle( tr, ds )	||
-	  tr->trRow1 != tr->trRow0		)
-	{ docInitTableRectangle( tr ); *pEnabled= 0; return; }
+    rowNode= docGetRowNode( ds->dsHead.dpNode );
+    if  ( ! rowNode )
+	{ XDEB(rowNode); *pEnabled= 0; return;	}
 
-    rowBi= ds->dsBegin.dpBi;
-    rowBi= rowBi->biParent;
-    rowBi= rowBi->biParent;
-    sectBi= rowBi->biParent;
+    tedRowMarginToolGetMargins( &(rt->rtMarginsTool), rowNode, bd );
 
-    dg= &(sectBi->biSectDocumentGeometry);
-
-    rt->rtPageRight= dg->dgPageWideTwips-
-			    dg->dgLeftMarginTwips- dg->dgRightMarginTwips;
-    rt->rtPageLeftMargin= dg->dgLeftMarginTwips;
-
-    rp= &(rowBi->biRowProperties);
-
-    if  ( docCopyRowProperties( &(rt->rtPropertiesChosen),
-						    rp, (const int *)0 ) )
+    if  ( docCopyRowProperties( &(rt->rtRowPropertiesSet),
+					&(rowNode->biRowProperties), dam0 ) )
 	{ LDEB(1); return;	}
-    if  ( docCopyRowProperties( &(rt->rtPropertiesSet),
-						    rp, (const int *)0 ) )
+    if  ( docCopyRowProperties( &(rt->rtRowPropertiesChosen),
+					&(rt->rtRowPropertiesSet), dam0 ) )
 	{ LDEB(1); return;	}
 
-    appGuiEnableWidget( is->isPrevButton,
-				    tr->trRow0 > tr->trRow00 );
-    appGuiEnableWidget( is->isNextButton,
-				    tr->trRow1 < tr->trRow11 );
+    docSetCellRectangleProperties( &(rt->rtCellPropertiesSet),
+				    rowNode, &(rt->rtTableRectangle), dam0 );
 
-    appGuiEnableWidget( rt->rtIsTableHeaderToggle,
-				rowBi->biInExternalItem == DOCinBODY	&&
+    if  ( docCopyCellProperties( &(rt->rtCellPropertiesChosen),
+					&(rt->rtCellPropertiesSet), dam0 ) )
+	{ LDEB(1); return;	}
+
+    guiEnableWidget( is->isMoveUpButton,
+				    cmdEnabled[EDITcmdSHIFT_ROWS_UP] );
+    guiEnableWidget( is->isMoveDownButton,
+				    cmdEnabled[EDITcmdSHIFT_ROWS_DOWN] );
+
+    rt->rtCanChange= cmdEnabled[EDITcmdUPD_TABLE_PROPS];
+
+    {
+    const TableRectangle *	tr= &(rt->rtTableRectangle);
+    
+    guiEnableWidget( is->isPrevButton, tr->trRow0 > tr->trRow00 );
+    guiEnableWidget( is->isNextButton, tr->trRow1 < tr->trRow11 );
+
+    guiEnableWidget( rt->rtIsTableHeaderToggle,
+				rt->rtCanChange				&&
+				rowNode->biTreeType == DOCinBODY	&&
 				tr->trRow0 == tr->trRow00		&&
 				tr->trRow1 == tr->trRow00		);
+    }
 
     tedFormatToolRefreshRowPage( rt );
+
+    guiEnableWidget( is->isDeleteButton, cmdEnabled[EDITcmdDELETE_ROW] );
+
+    guiEnableWidget( is->isInsertButton, cmdEnabled[EDITcmdINSERT_ROW] );
+    guiEnableWidget( is->isAppendButton, cmdEnabled[EDITcmdAPPEND_ROW] );
+
+    guiEnableWidget( is->isRevertButton, rt->rtCanChange );
+    guiEnableWidget( is->isApplyButton, rt->rtCanChange );
 
     *pEnabled= 1;
     return;
@@ -136,104 +163,66 @@ void tedFormatToolRefreshRowTool(
 static APP_BUTTON_CALLBACK_H( tedFormatChangeRowPushed, w, voidrt )
     {
     RowTool *			rt= (RowTool *)voidrt;
-    RowProperties *		rp= &(rt->rtPropertiesChosen);
-
-    TableRectangle		tr;
-
-    int				width;
-    int				changed;
-
-    int				res;
-
-    const int			minValue= 0;
-    const int			adaptToMin= 0;
-    const int			maxValue= INT_MAX;
-    const int			adaptToMax= 0;
-
-    BorderProperties		bp;
+    RowProperties *		rpChosen= &(rt->rtRowPropertiesChosen);
+    CellProperties *		cpChosen= &(rt->rtCellPropertiesChosen);
 
     PropertyMask		rpSetMask;
     PropertyMask		cpSetMask;
-    PropertyMask		bpSetMask;
+    PropertyMask		rpAllMask;
+    PropertyMask		cpAllMask;
+
+    const int			wholeRow= 1;
+    const int			wholeColumn= 0;
 
     /**/
-    EditApplication *		ea= rt->rtApplication;
-    EditDocument *		ed= ea->eaCurrentDocument;
+    EditDocument *		ed;
+    int				traced;
+    BufferDocument *		bd= tedFormatCurDoc( &ed, &traced, rt->rtApplication );
 
-    TedDocument *		td;
-    BufferDocument *		bd;
-    DocumentProperties *	dp;
+    const DocumentAttributeMap * const dam0= (const DocumentAttributeMap *)0;
 
-    if  ( ! ed )
-	{ XDEB(ed); return;	}
+    if  ( ! bd )
+	{ XDEB(bd); return;	}
 
-    td= (TedDocument *)ed->edPrivateData;
-    bd= td->tdDocument;
-    dp= &(bd->bdProperties);
-
-    /**/
-    PROPmaskCLEAR( &rpSetMask );
-    PROPmaskCLEAR( &cpSetMask );
-
-    PROPmaskADD( &rpSetMask, RPpropKEEP_ON_ONE_PAGE );
-    PROPmaskADD( &rpSetMask, RPpropIS_TABLE_HEADER );
-    /* No! not yet
-    PROPmaskADD( &rpSetMask, RPpropKEEP_WITH_NEXT );
-    */
-
-    docInitBorderProperties( &bp );
-
-    if  ( tedFormatToolGetHeight( &(rp->rpHeightTwips),
+    if  ( tedFormatToolGetHeight( &(rpChosen->rpHeightTwips),
 						&(rt->rtHeightChooser) ) )
 	{ goto ready;	}
-    PROPmaskADD( &rpSetMask, RPpropHEIGHT );
 
-    width= rp->rpHalfGapWidthTwips;
-    if  ( appGetLengthFromTextWidget( rt->rtCellMarginText,
-				&width, &changed, UNITtyPOINTS,
-				minValue, adaptToMin, maxValue, adaptToMax ) )
+    if  ( tedRowMarginToolGetValues( rpChosen, &(rt->rtMarginsTool) ) )
 	{ goto ready;	}
-    rp->rpHalfGapWidthTwips= width;
-    PROPmaskADD( &rpSetMask, RPpropGAP_WIDTH );
-
-    res= tedFormatToolGetRowLeftIndent( rp, rt->rtPageLeftMargin, &width,
-							rt->rtLeftIndentText );
-    if  ( res != 0 )
-	{ goto ready;	}
-    rp->rpLeftIndentTwips= width;
-    PROPmaskADD( &rpSetMask, RPpropLEFT_INDENT );
-
-    tr= rt->rtTableRectangle;
-    docExpandTableRectangleToWholeRows( &tr );
 
     /***/
-    PROPmaskCLEAR( &bpSetMask );
-    if  ( tedBorderToolGetProperties( &bp, &bpSetMask,
-						&(rt->rtTopBorderTool), dp ) )
+    if  ( tedBorderToolGetNumber( &(cpChosen->cpTopBorderNumber), (int *)0,
+					    &(rt->rtTopBorderTool), bd ) )
+	{ goto ready;	}
+    if  ( tedBorderToolGetNumber( &(cpChosen->cpBottomBorderNumber), (int *)0,
+					    &(rt->rtBottomBorderTool), bd ) )
 	{ goto ready;	}
 
-    if  ( ! utilPropMaskIsEmpty( &bpSetMask ) )
-	{
-	docRowSetTopBorderInCols( rp, tr.trCol0, tr.trCol1, &bpSetMask, &bp );
-	PROPmaskADD( &cpSetMask, CLpropTOP_BORDER );
-	}
+    {
+    PropertyMask		isSetMask;
+
+    utilPropMaskClear( &isSetMask );
+
+    if  ( tedShadingToolGetShadingNumber( &(rpChosen->rpShadingNumber),
+				    &isSetMask, &(rt->rtShadingTool), bd ) )
+	{ return;	}
+    }
 
     /***/
-    PROPmaskCLEAR( &bpSetMask );
-    if  ( tedBorderToolGetProperties( &bp, &bpSetMask,
-					    &(rt->rtBottomBorderTool), dp ) )
-	{ goto ready;	}
+    utilPropMaskFill( &rpAllMask, RPprop_FULL_COUNT );
+    utilPropMaskClear( &rpSetMask );
 
-    if  ( ! utilPropMaskIsEmpty( &bpSetMask ) )
-	{
-	docRowSetBottomBorderInCols( rp, tr.trCol0, tr.trCol1,
-							&bpSetMask, &bp );
-	PROPmaskADD( &cpSetMask, CLpropBOTTOM_BORDER );
-	}
+    utilPropMaskFill( &cpAllMask, CLprop_COUNT );
+    utilPropMaskClear( &cpSetMask );
 
-    /***/
-    tedAppSetTableProperties( rt->rtApplication, &tr,
-					    &rpSetMask, &cpSetMask, rp );
+    docRowPropertyDifference( &rpSetMask, &(rt->rtRowPropertiesSet),
+						&rpAllMask, rpChosen, dam0 );
+    docCellPropertyDifference( &cpSetMask, &(rt->rtCellPropertiesSet),
+						&cpAllMask, cpChosen, dam0 );
+
+    tedDocSetTableProperties( ed, wholeRow, wholeColumn,
+			&cpSetMask, cpChosen, &rpSetMask, rpChosen, traced );
 
   ready:
 
@@ -262,34 +251,17 @@ static APP_TXACTIVATE_CALLBACK_H( tedRowHeightChanged, w, voidrt )
 static APP_TXACTIVATE_CALLBACK_H( tedRowCellMarginChanged, w, voidrt )
     {
     RowTool *		rt= (RowTool *)voidrt;
-    RowProperties *	rp= &(rt->rtPropertiesChosen);
 
-    int			width;
-
-    if  ( ! tedFormatToolGetGapWidth( rp, &width, rt->rtCellMarginText ) )
-	{
-	char	scratch[50];
-
-	appGeoLengthToString( scratch, width, UNITtyPOINTS );
-	appStringToTextWidget( rt->rtCellMarginText, scratch );
-	}
+    tedMarginToolCheckCellMargin( &(rt->rtMarginsTool),
+					    &(rt->rtRowPropertiesChosen) );
     }
 
 static APP_TXACTIVATE_CALLBACK_H( tedRowLeftIndentChanged, w, voidrt )
     {
     RowTool *		rt= (RowTool *)voidrt;
-    RowProperties *	rp= &(rt->rtPropertiesChosen);
 
-    int			value;
-
-    if  ( ! tedFormatToolGetRowLeftIndent( rp, rt->rtPageLeftMargin, &value,
-						    rt->rtLeftIndentText ) )
-	{
-	char	scratch[50];
-
-	appGeoLengthToString( scratch, value, UNITtyPOINTS );
-	appStringToTextWidget( rt->rtLeftIndentText, scratch );
-	}
+    tedMarginToolCheckLeftIndent( &(rt->rtMarginsTool),
+						&(rt->rtRowPropertiesChosen) );
     }
 
 /************************************************************************/
@@ -302,8 +274,12 @@ static APP_BUTTON_CALLBACK_H( tedFormatRevertRowPushed, w, voidrt )
     {
     RowTool *	rt= (RowTool *)voidrt;
 
-    docCopyRowProperties( &(rt->rtPropertiesChosen),
-				&(rt->rtPropertiesSet), (const int *)0 );
+    const DocumentAttributeMap * const dam0= (const DocumentAttributeMap *)0;
+
+    docCopyRowProperties( &(rt->rtRowPropertiesChosen),
+					&(rt->rtRowPropertiesSet), dam0 );
+    docCopyCellProperties( &(rt->rtCellPropertiesChosen),
+					&(rt->rtCellPropertiesSet), dam0 );
 
     tedFormatToolRefreshRowPage( rt );
 
@@ -314,23 +290,11 @@ static APP_BUTTON_CALLBACK_H( tedFormatPreviousRow, w, voidrt )
     {
     RowTool *		rt= (RowTool *)voidrt;
     EditApplication *	ea= rt->rtApplication;
-    EditDocument *	ed= ea->eaCurrentDocument;
-    TedDocument *	td;
 
-    TableRectangle	tr;
+    const int		direction= -1;
+    const int		allColumns= 1;
 
-    if  ( ! ed )
-	{ XDEB(ed); return;	}
-
-    tr= rt->rtTableRectangle;
-    td= (TedDocument *)ed->edPrivateData;
-
-    docExpandTableRectangleToWholeRows( &tr );
-
-    if  ( docShiftTableRectangleByRows( &tr, -1 ) )
-	{ return;	}
-
-    tedAppSetTableSelection( ed, &tr );
+    tedAppSelectRow( ea, direction, allColumns );
 
     return;
     }
@@ -339,20 +303,11 @@ static APP_BUTTON_CALLBACK_H( tedFormatSelectRow, w, voidrt )
     {
     RowTool *		rt= (RowTool *)voidrt;
     EditApplication *	ea= rt->rtApplication;
-    EditDocument *	ed= ea->eaCurrentDocument;
-    TedDocument *	td;
 
-    TableRectangle	tr;
+    const int		direction= 0;
+    const int		allColumns= 1;
 
-    if  ( ! ed )
-	{ XDEB(ed); return;	}
-
-    tr= rt->rtTableRectangle;
-    td= (TedDocument *)ed->edPrivateData;
-
-    docExpandTableRectangleToWholeRows( &tr );
-
-    tedAppSetTableSelection( ed, &tr );
+    tedAppSelectRow( ea, direction, allColumns );
 
     return;
     }
@@ -361,23 +316,11 @@ static APP_BUTTON_CALLBACK_H( tedFormatNextRow, w, voidrt )
     {
     RowTool *		rt= (RowTool *)voidrt;
     EditApplication *	ea= rt->rtApplication;
-    EditDocument *	ed= ea->eaCurrentDocument;
-    TedDocument *	td;
 
-    TableRectangle	tr;
+    const int		direction= 1;
+    const int		allColumns= 1;
 
-    if  ( ! ed )
-	{ XDEB(ed); return;	}
-
-    tr= rt->rtTableRectangle;
-    td= (TedDocument *)ed->edPrivateData;
-
-    docExpandTableRectangleToWholeRows( &tr );
-
-    if  ( docShiftTableRectangleByRows( &tr, +1 ) )
-	{ return;	}
-
-    tedAppSetTableSelection( ed, &tr );
+    tedAppSelectRow( ea, direction, allColumns );
 
     return;
     }
@@ -392,14 +335,8 @@ static APP_BUTTON_CALLBACK_H( tedFormatDeleteRow, w, voidrt )
     {
     RowTool *		rt= (RowTool *)voidrt;
     EditApplication *	ea= rt->rtApplication;
-    EditDocument *	ed= ea->eaCurrentDocument;
-    TableRectangle *	tr= &(rt->rtTableRectangle);
 
-    if  ( ! ed )
-	{ XDEB(ed); return;	}
-
-    if  ( tedDeleteRowsFromTable( ed, tr->trRow0, tr->trRow1 ) )
-	{ LLDEB(tr->trRow0,tr->trRow1); return;	}
+    tedAppDeleteRow( ea );
 
     return;
     }
@@ -415,45 +352,51 @@ static APP_BUTTON_CALLBACK_H( tedFormatInsertRow, w, voidrt )
     RowTool *		rt= (RowTool *)voidrt;
     EditApplication *	ea= rt->rtApplication;
 
-    EditDocument *	ed= ea->eaCurrentDocument;
+    const int		after= 0;
 
-    if  ( ! ed )
-	{ XDEB(ed); return;	}
-
-    tedInsertRowInTable( ed );
-
-    appDocumentChanged( ed, 1 );
+    tedAppAddRowToTable( ea, after );
     }
 
 static APP_BUTTON_CALLBACK_H( tedFormatAppendRow, w, voidrt )
     {
     RowTool *		rt= (RowTool *)voidrt;
     EditApplication *	ea= rt->rtApplication;
-    EditDocument *	ed= ea->eaCurrentDocument;
 
-    if  ( ! ed )
-	{ XDEB(ed); return;	}
+    const int		after= 1;
 
-    tedAppendRowToTable( ed );
-
-    appDocumentChanged( ed, 1 );
+    tedAppAddRowToTable( ea, after );
     }
 
-static APP_OITEM_CALLBACK_H( tedRowHeightChosen, w, voidrt )
+static APP_BUTTON_CALLBACK_H( tedRowToolMoveRowDown, w, voidrt )
+    {
+    RowTool *		rt= (RowTool *)voidrt;
+    EditApplication *	ea= rt->rtApplication;
+
+    tedAppShiftRowsInTable( ea, +1 );
+    }
+
+static APP_BUTTON_CALLBACK_H( tedRowToolMoveRowUp, w, voidrt )
+    {
+    RowTool *		rt= (RowTool *)voidrt;
+    EditApplication *	ea= rt->rtApplication;
+
+    tedAppShiftRowsInTable( ea, -1 );
+    }
+
+static void tedRowHeightChosen(		int		how,
+					void *		voidrt )
     {
     RowTool *		rt= (RowTool *)voidrt;
     HeightChooser *	hc= &(rt->rtHeightChooser);
-    int			how;
 
     int			defaultValue;
 
-    defaultValue= rt->rtPropertiesChosen.rpHeightTwips;
+    defaultValue= rt->rtRowPropertiesChosen.rpHeightTwips;
     if  ( defaultValue == 0 )
-	{ defaultValue= rt->rtPropertiesSet.rpHeightTwips;	}
+	{ defaultValue= rt->rtRowPropertiesSet.rpHeightTwips;	}
     if  ( defaultValue == 0 )
 	{ defaultValue= 240;	}
 
-    how= appGuiGetOptionmenuItemIndex( &(hc->hcOptionmenu), w );
     if  ( how < 0 || how >= HC__COUNT )
 	{ LDEB(how); return;	}
 
@@ -471,7 +414,7 @@ static APP_OITEM_CALLBACK_H( tedRowHeightChosen, w, voidrt )
 static APP_TOGGLE_CALLBACK_H( tedRowToggleKeepOnPage, w, voidrt, voidtbcs )
     {
     RowTool *				rt= (RowTool *)voidrt;
-    RowProperties *			rp= &(rt->rtPropertiesChosen);
+    RowProperties *			rp= &(rt->rtRowPropertiesChosen);
     int					set;
 
     set= appGuiGetToggleStateFromCallback( w, voidtbcs );
@@ -484,7 +427,7 @@ static APP_TOGGLE_CALLBACK_H( tedRowToggleKeepOnPage, w, voidrt, voidtbcs )
 static APP_TOGGLE_CALLBACK_H( tedRowToggleIsTableHeader, w, voidrt, voidtbcs )
     {
     RowTool *				rt= (RowTool *)voidrt;
-    RowProperties *			rp= &(rt->rtPropertiesChosen);
+    RowProperties *			rp= &(rt->rtRowPropertiesChosen);
     int					set;
 
     set= appGuiGetToggleStateFromCallback( w, voidtbcs );
@@ -494,11 +437,28 @@ static APP_TOGGLE_CALLBACK_H( tedRowToggleIsTableHeader, w, voidrt, voidtbcs )
     return;
     }
 
+static APP_TOGGLE_CALLBACK_H( tedRowToggleKeepWithNext, w, voidrt, voidtbcs )
+    {
+    RowTool *				rt= (RowTool *)voidrt;
+    RowProperties *			rp= &(rt->rtRowPropertiesChosen);
+    int					set;
+
+    set= appGuiGetToggleStateFromCallback( w, voidtbcs );
+
+    rp->rp_Keepfollow= set;
+
+    return;
+    }
+
 /************************************************************************/
 /*									*/
 /*  Callback from the general color chooser: a color was chosen.	*/
 /*									*/
 /************************************************************************/
+
+/* values are arbitrary but cannot be equal to real RPpropSOMETHING values */
+# define RPprop_SHADE_FORE_COLOR RPprop_COUNT+ 1
+# define RPprop_SHADE_BACK_COLOR RPprop_COUNT+ 2
 
 static void tedRowToolGotColor(		void *			voidrt,
 					int 			which,
@@ -516,9 +476,39 @@ static void tedRowToolGotColor(		void *			voidrt,
 	    tedBorderSetExplicitColorChoice( &(rt->rtBottomBorderTool), rgb8 );
 	    break;
 
+	case RPprop_SHADE_BACK_COLOR:
+	case RPprop_SHADE_FORE_COLOR:
+	    tedShadeSetExplicitColorChoice( &(rt->rtShadingTool),
+							    which, rgb8 );
+	    break;
+
+
 	default:
 	    LDEB(which); return;
 	}
+    }
+
+/************************************************************************/
+
+static void tedRowToolMakeBorderFrame(
+				RowTool *			rt,
+				const RowPageResources *	rpr,
+				AppInspector *			ai,
+				int				subjectPage,
+				APP_WIDGET			pageWidget )
+    {
+    appMakeColumnFrameInColumn( &(rt->rtBordersFrame), &(rt->rtBordersPaned),
+						pageWidget, rpr->rprBorders );
+
+    tedMakeBorderTool( &(rt->rtTopBorderTool), ai, rt->rtBordersPaned,
+	    rpr->rprTopBorder, &(rpr->rprBorderToolResources),
+	    subjectPage, CLpropTOP_BORDER );
+
+    tedMakeBorderTool( &(rt->rtBottomBorderTool), ai, rt->rtBordersPaned,
+	    rpr->rprBottomBorder, &(rpr->rprBorderToolResources),
+	    subjectPage, CLpropBOTTOM_BORDER );
+
+    return;
     }
 
 /************************************************************************/
@@ -535,12 +525,6 @@ void tedFormatFillRowPage(  RowTool *				rt,
 			    APP_WIDGET				pageWidget,
 			    const InspectorSubjectResources *	isr )
     {
-    APP_WIDGET	rowLabel;
-    APP_WIDGET	widthLabel;
-    APP_WIDGET	leftLabel;
-
-    APP_WIDGET	row;
-
     const int	textColumns= 10;
 
     /**/
@@ -548,60 +532,71 @@ void tedFormatFillRowPage(  RowTool *				rt,
     is->isGotColor= tedRowToolGotColor;
 
     rt->rtPageResources= rpr;
+    rt->rtCanChange= 1;
 
     /**************/
-    appMakeLabelAndTextRow( &row, &rowLabel, &(rt->rtNumberText),
+    guiToolMakeLabelAndTextRow( &(rt->rtRowRow),
+			    &(rt->rtRowLabel), &(rt->rtRowText),
 			    pageWidget, isr->isrSubjectName, textColumns, 0 );
 
     /**************/
-    tedFormatMakeHeightRow( &row, rt, pageWidget,
-			&(rt->rtHeightChooser), tedRowHeightChanged );
+    tedFormatMakeHeightRow( rt, pageWidget, &(rt->rtHeightChooser),
+				    tedRowHeightChanged, tedRowHeightChosen );
 
     /**************/
-    appMakeLabelAndTextRow( &row, &leftLabel, &(rt->rtLeftIndentText),
-			    pageWidget, rpr->rprLeftIndent, textColumns, 1 );
-
-    appGuiSetGotValueCallbackForText( rt->rtLeftIndentText,
-				tedRowLeftIndentChanged, (void *)rt );
-
-    /**************/
-    appMakeLabelAndTextRow( &row, &widthLabel, &(rt->rtCellMarginText),
-			    pageWidget, rpr->rprCellMargin, textColumns, 1 );
-
-    appGuiSetGotValueCallbackForText( rt->rtCellMarginText,
-				tedRowCellMarginChanged, (void *)rt );
+    tedFormatFillRowMarginsTool( &(rt->rtMarginsTool),
+			    &(rpr->rprMarginsResources),
+			    tedRowLeftIndentChanged, tedRowCellMarginChanged,
+			    (void *)rt, pageWidget );
 
     /**************/
-    tedMakeBorderTool( &(rt->rtTopBorderTool), ai, pageWidget,
-	    rpr->rprTopBorder, &(rpr->rprBorderToolResources),
-	    subjectPage, CLpropTOP_BORDER );
+    tedRowToolMakeBorderFrame( rt, rpr, ai, subjectPage, pageWidget );
 
-    tedMakeBorderTool( &(rt->rtBottomBorderTool), ai, pageWidget,
-	    rpr->rprBottomBorder, &(rpr->rprBorderToolResources),
-	    subjectPage, CLpropBOTTOM_BORDER );
+    /**/
+    tedFormatMakeShadingTool( &(rt->rtShadingTool), ai, pageWidget,
+		/* rpr->rprShading, */ (const char *)0,
+		&(rpr->rprShadingResources),
+		subjectPage, RPprop_SHADE_FORE_COLOR, RPprop_SHADE_BACK_COLOR,
+		(TedShadingToolCallback)0, (void *)rt );
 
     /**************/
-    appInspectorMakeToggleRow( &row, pageWidget,
+    guiToolMake2ToggleRow( &(rt->rtKeepHeaderRow), pageWidget,
 	    &(rt->rtKeepOnPageToggle), &(rt->rtIsTableHeaderToggle),
 	    rpr->rprKeepOnPage, rpr->rprIsTableHeader,
-	    tedRowToggleKeepOnPage, tedRowToggleIsTableHeader, (void *)rt );
+	    tedRowToggleKeepOnPage, tedRowToggleIsTableHeader,
+	    (void *)rt, (void *)rt );
 
-    appInspectorMakeButtonRow( &row, pageWidget,
+    guiToolMakeToggleAndLabelRow( &(rt->rtKeepfollowRow), pageWidget,
+	    &(rt->rtKeepfollowToggle), &(rt->rtKeepfollowLabel),
+	    rpr->rprKeepWithNext, "",
+	    tedRowToggleKeepWithNext, (void *)rt );
+
+    /**************/
+    guiToolMake2BottonRow( &(is->isNextPrevRow), pageWidget,
 	    &(is->isPrevButton), &(is->isNextButton),
 	    isr->isrPrevButtonText, isr->isrNextButtonText,
 	    tedFormatPreviousRow, tedFormatNextRow, (void *)rt );
 
-    appInspectorMakeButtonRow( &row, pageWidget,
+    {
+    APP_WIDGET	row;
+
+    guiToolMake2BottonRow( &row, pageWidget,
 	    &(is->isSelectButton), &(is->isDeleteButton),
 	    isr->isrSelectButtonText, isr->isrDeleteButtonText,
 	    tedFormatSelectRow, tedFormatDeleteRow, (void *)rt );
 
-    appInspectorMakeButtonRow( &row, pageWidget,
+    guiToolMake2BottonRow( &row, pageWidget,
 	    &(is->isInsertButton), &(is->isAppendButton),
 	    isr->isrInsertButtonText, isr->isrAppendButtonText,
 	    tedFormatInsertRow, tedFormatAppendRow, (void *)rt );
 
-    appInspectorMakeButtonRow( &row, pageWidget,
+    guiToolMake2BottonRow( &row, pageWidget,
+	    &(is->isMoveUpButton), &(is->isMoveDownButton),
+	    isr->isrMoveUpButtonText, isr->isrMoveDownButtonText,
+	    tedRowToolMoveRowUp, tedRowToolMoveRowDown, (void *)rt );
+    }
+
+    guiToolMake2BottonRow( &(is->isApplyRow), pageWidget,
 	    &(is->isRevertButton), &(is->isApplyButton),
 	    isr->isrRevert, isr->isrApplyToSubject,
 	    tedFormatRevertRowPushed, tedFormatChangeRowPushed, (void *)rt );
@@ -609,24 +604,28 @@ void tedFormatFillRowPage(  RowTool *				rt,
     return;
     }
 
-void tedFormatFillRowChoosers(		RowTool *			rt,
+void tedRowToolFillChoosers(		RowTool *			rt,
 					const RowPageResources *	rpr )
     {
     tedFormatFillHeightChooser( &(rt->rtHeightChooser),
-					    tedRowHeightChosen, (void *)rt,
 					    rpr->rprHeightFree,
 					    rpr->rprHeightAtLeast,
 					    rpr->rprHeightExactly );
     }
 
 void tedFormatFinishRowPage( 	RowTool *			rt,
-				TedFormatTool *			tft,
 				const RowPageResources *	rpr )
     {
+    const PostScriptFontList *	psfl;
+
+    psfl= &(rt->rtApplication->eaPostScriptFontList);
+
     appOptionmenuRefreshWidth( &(rt->rtHeightChooser.hcOptionmenu) );
 
-    tedFinishBorderTool( &(rt->rtTopBorderTool) );
-    tedFinishBorderTool( &(rt->rtBottomBorderTool) );
+    tedFinishBorderTool( &(rt->rtTopBorderTool), psfl );
+    tedFinishBorderTool( &(rt->rtBottomBorderTool), psfl );
+
+    tedFinishShadingTool( &(rt->rtShadingTool), psfl );
     }
 
 /************************************************************************/
@@ -641,21 +640,26 @@ void tedInitRowTool(	RowTool *	rt )
     rt->rtInspector= (AppInspector *)0;
     rt->rtPageResources= (const RowPageResources *)0;
 
-    docInitRowProperties( &(rt->rtPropertiesSet) );
-    docInitRowProperties( &(rt->rtPropertiesChosen) );
+    docInitRowProperties( &(rt->rtRowPropertiesSet) );
+    docInitRowProperties( &(rt->rtRowPropertiesChosen) );
+    docInitCellProperties( &(rt->rtCellPropertiesSet) );
+    docInitCellProperties( &(rt->rtCellPropertiesChosen) );
 
     docInitTableRectangle( &(rt->rtTableRectangle ) );
 
-    rt->rtPageRight= 0;
-    rt->rtPageLeftMargin= 0;
+    rt->rtCanChange= 0;
 
-    rt->rtNumberText= (APP_WIDGET)0;
+    rt->rtRowRow= (APP_WIDGET)0;
+    rt->rtRowLabel= (APP_WIDGET)0;
+    rt->rtRowText= (APP_WIDGET)0;
     tedInitHeightChooser( &(rt->rtHeightChooser) );
-    rt->rtCellMarginText= (APP_WIDGET)0;
-    rt->rtLeftIndentText= (APP_WIDGET)0;
+
+    tedInitRowMarginsTool( &(rt->rtMarginsTool) );
 
     tedInitBorderTool( &(rt->rtTopBorderTool) );
     tedInitBorderTool( &(rt->rtBottomBorderTool) );
+
+    tedInitShadingTool( &(rt->rtShadingTool) );
 
     rt->rtKeepOnPageToggle= (APP_WIDGET)0;
     rt->rtIsTableHeaderToggle= (APP_WIDGET)0;
@@ -665,11 +669,15 @@ void tedInitRowTool(	RowTool *	rt )
 
 void tedCleanRowTool(	RowTool *	rt )
     {
-    docCleanRowProperties( &(rt->rtPropertiesSet) );
-    docCleanRowProperties( &(rt->rtPropertiesChosen) );
+    docCleanRowProperties( &(rt->rtRowPropertiesSet) );
+    docCleanRowProperties( &(rt->rtRowPropertiesChosen) );
+    docCleanCellProperties( &(rt->rtCellPropertiesSet) );
+    docCleanCellProperties( &(rt->rtCellPropertiesChosen) );
 
     tedCleanBorderTool( &(rt->rtTopBorderTool) );
     tedCleanBorderTool( &(rt->rtBottomBorderTool) );
+
+    tedCleanShadingTool( &(rt->rtShadingTool) );
 
     return;
     }
@@ -709,6 +717,12 @@ static AppConfigurableResource TED_TedRowSubjectResourceTable[]=
     APP_RESOURCE( "tableToolAppendRow",
 		offsetof(InspectorSubjectResources,isrAppendButtonText),
 		"Append Row" ),
+    APP_RESOURCE( "rowToolMoveDown",
+		offsetof(InspectorSubjectResources,isrMoveDownButtonText),
+		"Move Down" ),
+    APP_RESOURCE( "rowToolMoveUp",
+		offsetof(InspectorSubjectResources,isrMoveUpButtonText),
+		"Move Up" ),
     };
 
 static AppConfigurableResource TED_TedRowToolResourceTable[]=
@@ -724,18 +738,21 @@ static AppConfigurableResource TED_TedRowToolResourceTable[]=
 	    "Height at Least" ),
     /**/
     APP_RESOURCE( "tableToolCellMargin",
-	    offsetof(RowPageResources,rprCellMargin),
+	    offsetof(RowPageResources,rprMarginsResources.rmtrCellMargin),
 	    "Cell Margin" ),
     APP_RESOURCE( "tableToolLeftIndent",
-	    offsetof(RowPageResources,rprLeftIndent),
+	    offsetof(RowPageResources,rprMarginsResources.rmtrLeftIndent),
 	    "Left Margin" ),
     /**/
-    APP_RESOURCE( "tableToolRowTopBorder",
+    APP_RESOURCE( "tableToolRowBorders",
+	    offsetof(RowPageResources,rprBorders),
+	    "Borders" ),
+    APP_RESOURCE( "tableToolRowBorderTop",
 	    offsetof(RowPageResources,rprTopBorder),
-	    "Top Border" ),
-    APP_RESOURCE( "tableToolRowBottomBorder",
+	    "Top" ),
+    APP_RESOURCE( "tableToolRowBorderBottom",
 	    offsetof(RowPageResources,rprBottomBorder),
-	    "Bottom Border" ),
+	    "Bottom" ),
 
     APP_RESOURCE( "formatToolRowBorderColorChooserAutomatic",
 	    offsetof(RowPageResources,rprBorderToolResources.
@@ -747,12 +764,54 @@ static AppConfigurableResource TED_TedRowToolResourceTable[]=
 	    "More Colors..." ),
 
     /**/
+    APP_RESOURCE( "formatToolRowShading",
+	    offsetof(RowPageResources,rprShading),
+	    "Shading" ),
+
+    APP_RESOURCE( "formatToolRowShadingPattern",
+	    offsetof(RowPageResources,rprShadingResources.strPattern),
+	    "Pattern" ),
+    APP_RESOURCE( "formatToolRowShadingLevel",
+	    offsetof(RowPageResources,rprShadingResources.strLevel),
+	    "Level" ),
+    APP_RESOURCE( "formatToolRowShadingForeColor",
+	    offsetof(RowPageResources,rprShadingResources.strForeColor),
+	    "Foreground" ),
+    APP_RESOURCE( "formatToolRowShadingBackColor",
+	    offsetof(RowPageResources,rprShadingResources.strBackColor),
+	    "Background" ),
+
+    /**/
+    APP_RESOURCE( "formatToolRowShadingBackColorChooserNoBackground",
+	    offsetof(RowPageResources,rprShadingResources.
+			    strBackColorChooserResources.ccrAutomaticColor),
+	    "No Background" ),
+    APP_RESOURCE( "formatToolRowShadingBackColorChooserMoreColors",
+	    offsetof(RowPageResources,rprShadingResources.
+			    strBackColorChooserResources.ccrMoreColors),
+	    "More Colors..." ),
+
+    APP_RESOURCE( "formatToolRowShadingForeColorChooserAutomatic",
+	    offsetof(RowPageResources,rprShadingResources.
+			    strForeColorChooserResources.ccrAutomaticColor),
+	    "Automatic" ),
+    APP_RESOURCE( "formatToolRowShadingForeColorChooserMoreColors",
+	    offsetof(RowPageResources,rprShadingResources.
+			    strForeColorChooserResources.ccrMoreColors),
+	    "More Colors..." ),
+
+
+    /**/
     APP_RESOURCE( "formatToolRowKeepOnPage",
 	    offsetof(RowPageResources,rprKeepOnPage),
 	    "Keep on One Page" ),
     APP_RESOURCE( "formatToolRowIsTableHeader",
 	    offsetof(RowPageResources,rprIsTableHeader),
 	    "Is Table Header" ),
+
+    APP_RESOURCE( "formatToolRowKeepWithNext",
+	    offsetof(RowPageResources,rprKeepWithNext),
+	    "Keep with Next" ),
 
     /**/
     APP_RESOURCE( "formatToolRowBorderWidth",

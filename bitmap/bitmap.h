@@ -7,9 +7,10 @@
 #   ifndef	BITMAP_H
 #   define	BITMAP_H
 
-#   include	<stdio.h>
-#   include	<sioGeneral.h>
-#   include	<bmcolor.h>
+#   include	<utilColor.h>
+#   include	<utilPalette.h>
+#   include	<utilMemoryBuffer.h>
+#   include	<geo2DInteger.h>
 
 /************************************************************************/
 /*									*/
@@ -50,9 +51,6 @@ typedef enum BitmapResolution
     } BitmapResolution;
 
 #   define	BMunILLEGALVALUE	BMun_COUNT
-
-#   define	POINTS_PER_M		2834.65
-#   define	TWIPS_PER_M		(20*POINTS_PER_M)
 
 extern const char *	bmunIntToString( int unitInt );
 extern int		bmunStringToInt( const char * unitString );
@@ -113,19 +111,24 @@ typedef struct	BitmapDescription
 					/********************************/
     unsigned char	bdHasAlpha;
 					/********************************/
-					/*  Palette.			*/
-					/*  ColorCount is only relevant	*/
-					/*  with a palette.		*/
+					/*  Palette is only relevant	*/
+					/*  with BMcoRGB8PALETTE.	*/
 					/********************************/
-    unsigned int	bdColorCount;
-    union
-	{
-	RGB8Color *	bdpRGB8Palette;
-	} bdPaletteUninterpreted;
-
-#   define	bdRGB8Palette	bdPaletteUninterpreted.bdpRGB8Palette
-
+    ColorPalette	bdPalette;
     } BitmapDescription;
+
+/************************************************************************/
+/*									*/
+/*  Used to store and manage a bitmap image.				*/
+/*									*/
+/************************************************************************/
+
+typedef struct RasterImage
+    {
+    BitmapDescription	riDescription;
+    unsigned char *	riBytes;
+    int			riFormat;
+    } RasterImage;
 
 /************************************************************************/
 /*									*/
@@ -135,74 +138,32 @@ typedef struct	BitmapDescription
 
 typedef struct	BitmapFileType
     {
-    int (*bftWrite)(	const char *			filename,
+    int (*bftWrite)(	const MemoryBuffer *		filename,
 			const unsigned char *		buffer,
 			const BitmapDescription *	bd,
-			int				privateFormat,
-			double				compressionFactor );
+			int				privateFormat );
 
     int (*bftCanWrite)( const BitmapDescription *	bd,
-			int				privateFormat,
-			double				compressionFactor );
+			int				privateFormat );
 
-    int (*bftRead)(	const char *		filename,
-			unsigned char **	pBuffer,
-			BitmapDescription *	bd,
-			int *			pPrivateFormat,
-			double *		pCompressionFactor	);
+    int (*bftRead)(	const MemoryBuffer *		filename,
+			unsigned char **		pBuffer,
+			BitmapDescription *		bd,
+			int *				pPrivateFormat );
 
-    char *	bftFileExtension;
-    char *	bftFileFilter;
-    char *	bftTypeId;
-    char *	bftTypeDescription;
+    const char *	bftFileExtension;
+    const char *	bftFileFilter;
+    const char *	bftTypeId;
+    const char *	bftTypeDescription;
     } BitmapFileType;
 
 typedef struct	BitmapFileFormat
     {
-    char *		bffDescription;
-    char *		bffId;
+    const char *	bffDescription;
+    const char *	bffId;
     int			bffPrivate;
     BitmapFileType *	bffFileType;
     } BitmapFileFormat;
-
-/************************************************************************/
-/*									*/
-/*  Description of selection from a bitmap.				*/
-/*									*/
-/************************************************************************/
-
-typedef struct	BitmapSelection
-    {
-    int		bsX0;
-    int		bsY0;
-    int		bsPixelsWide;
-    int		bsPixelsHigh;
-    } BitmapSelection;
-
-/************************************************************************/
-/*									*/
-/*  Context for writing images to PostScript.				*/
-/*									*/
-/************************************************************************/
-
-typedef struct BitmapPrinter
-    {
-    int				bpUseFilters;
-    int				bpIndexedImages;
-    SimpleOutputStream *	bpOutput;
-    SimpleOutputStream *	bpHexed;
-    SimpleOutputStream *	bpBase85;
-    SimpleOutputStream *	bpFlate;
-    } BitmapPrinter;
-
-extern int bmPsOpenBitmapPrinter(
-				BitmapPrinter *			bp,
-				SimpleOutputStream *		sos,
-				const BitmapDescription *	bd,
-				int				useFilters,
-				int				indexedImages );
-
-extern void bmCloseBitmapPrinter(	BitmapPrinter *		bp );
 
 /************************************************************************/
 /*									*/
@@ -222,138 +183,34 @@ extern const int	bmNumberOfFileTypes;
 /*									*/
 /************************************************************************/
 
-extern int bmWriteGifFile(	const char *			filename,
+extern int bmWriteGifFile(	const MemoryBuffer *		filename,
 				const unsigned char *		buffer,
 				const BitmapDescription *	bd,
-				int				privateFormat,
-				double				factor );
+				int				privateFormat );
 
 extern int bmCanWriteGifFile(	const BitmapDescription *	bd,
-				int				privateFormat,
-				double				factor );
+				int				privateFormat );
 
-extern int bmWriteJpegFile(	const char *			filename,
+extern int bmWriteJpegFile(	const MemoryBuffer *		filename,
 				const unsigned char *		buffer,
 				const BitmapDescription *	bd,
-				int				privateFormat,
-				double				factor );
+				int				privateFormat );
 
 extern int bmCanWriteJpegFile(	const BitmapDescription *	bd,
-				int				privateFormat,
-				double				factor );
+				int				privateFormat );
 
 /************************************************************************/
-/*									*/
-/*  Write part of a bitmap to postscript.				*/
-/*									*/
-/************************************************************************/
 
-extern int bmPsPrintBitmap(	SimpleOutputStream *		sos,
-				int				level,
-				double				xscale,
-				double				yscale,
-				int				ox,
-				int				oy,
-				int				x0,
-				int				y0,
-				int				wide,
-				int				high,
-				int				useFilters,
-				int				indexedImages,
-				const BitmapDescription *	bd,
-				const unsigned char *		buffer );
-
-extern int bmPsPrintBitmapImage( SimpleOutputStream *		sos,
-				int				level,
-				double				xscale,
-				double				yscale,
-				int				ox,
-				int				oy,
-				int				x0,
-				int				y0,
-				int				wide,
-				int				high,
-				int				useFilters,
-				int				indexedImages,
-				const BitmapDescription *	bd,
-				const unsigned char *		buffer );
-
-extern void bmPsWriteImageInstructions(
-				SimpleOutputStream *		sos,
-				const BitmapDescription *	bd,
-				int				wide,
-				int				high,
-				const char *			source,
-				int				indexedImages );
-
-extern int bmPsWriteBitmapData(	BitmapPrinter *			bp,
-				int				x0,
-				int				y0,
-				int				wide,
-				int				high,
-				const BitmapDescription *	bd,
-				const unsigned char *		inputBuffer );
-
-extern int bmPsRowStringSize(	const BitmapDescription *	bd,
-				int				pixelsWide,
-				int				indexedImages );
-
-extern int bmWmfWriteWmf(	const BitmapDescription *	bd,
+extern int bmWriteRtfFile(	const MemoryBuffer *		filename,
 				const unsigned char *		buffer,
-				SimpleOutputStream *		sos );
+				const BitmapDescription *	bd,
+				int				privateFormat );
 
-extern int bmPngWritePng(	const BitmapDescription *	bd,
-				const unsigned char *		buffer,
-				SimpleOutputStream *		sos );
+extern int bmCanWriteRtfFile(	const BitmapDescription *	bd,
+				int				privateFormat );
 
 extern int bmCanWritePngFile(	const BitmapDescription *	bd,
-				int				privateFormat,
-				double				fac );
-
-extern int bmJpegWriteJfif(	const BitmapDescription *	bd,
-				const unsigned char *		buffer,
-				SimpleOutputStream *		sos );
-
-extern int bmXvWritePaste(	const BitmapDescription *	bd,
-				const unsigned char *		buffer,
-				SimpleOutputStream *		sos );
-
-extern int bmGifWriteGif(	const BitmapDescription *	bd,
-				const unsigned char *		buffer,
-				SimpleOutputStream *		sos );
-
-extern int bmBmpReadDib(	BitmapDescription *	bd,
-				unsigned char **	pBuffer,
-				SimpleInputStream *	sis );
-
-extern int bmJpegReadJfif(	BitmapDescription *	bd,
-				unsigned char **	pBuffer,
-				SimpleInputStream *	sis );
-
-extern int bmPngReadPng(	BitmapDescription *	bd,
-				unsigned char **	pBuffer,
-				SimpleInputStream *	sis );
-
-extern int bmXvReadPaste(	BitmapDescription *	bd,
-				unsigned char **	pBuffer,
-				SimpleInputStream *	sis );
-
-extern int bmGifReadGif(	BitmapDescription *	bd,
-				unsigned char **	pBuffer,
-				SimpleInputStream *	sis );
-
-extern int bmBmpSaveDib(	const BitmapDescription *	bd,
-				const unsigned char *		buffer,
-				int				bytesWritten,
-				void *				voidsos );
-
-typedef int (*bmReadBitmap)(	BitmapDescription *		pBd,
-				unsigned char **		pBuffer,
-				SimpleInputStream *		sis );
-
-typedef int (*bmWriteBitmap)(	const BitmapDescription *	bd,
-				const unsigned char *		buffer,
-				SimpleOutputStream *		sis );
+				int				privateFormat );
 
 /************************************************************************/
 /*  Routines.								*/
@@ -366,30 +223,22 @@ extern void bmCleanDescription(	BitmapDescription *	bd	);
 extern int bmCopyDescription(	BitmapDescription *		bdOut,
 				const BitmapDescription *	bdIn	);
 
-extern int bmWrite(	const char *			filename,
+extern int bmWrite(	const MemoryBuffer *		filename,
 			const unsigned char *		buffer,
 			const BitmapDescription *	bd,
-			int				fileFormat,
-			double				compressionFactor );
+			int				fileFormat );
 
 extern int bmCanWrite(	const BitmapDescription *	bd,
-			int				fileFormat,
-			double				compressionFactor );
+			int				fileFormat );
 
-extern int bmRead(	const char *		filename,
+extern int bmRead(	const MemoryBuffer *	filename,
 			unsigned char **	pBuffer,
 			BitmapDescription *	bd,
-			int *			pFileFormat,
-			double *		pCompressionFactor );
+			int *			pFileFormat );
 
-extern int bmSelect(	BitmapDescription *		bdOut,
-			unsigned char **		pBufOut,
-			const BitmapDescription *	bdIn,
-			const unsigned char *		bufIn,
-			int				x0,
-			int				y0,
-			int				wide,
-			int				high );
+extern int bmSelect(	RasterImage *			riOut,
+			const RasterImage *		riIn,
+			const DocumentRectangle *	drSrc );
 
 extern int bmComponents( void ***		pComponents,
 			int *			pCount,
@@ -398,19 +247,19 @@ extern int bmComponents( void ***		pComponents,
 
 extern int bmComponentBitmap( unsigned char **		buffer,
 			BitmapDescription *		bdout,
-			BitmapSelection *		bs,
+			DocumentRectangle *		dr,
 			const BitmapDescription *	bdin,
-			const void *			component	);
+			const void *			component );
 
 extern int bmGroupBitmap( unsigned char **		buffer,
 			BitmapDescription *		bdout,
-			BitmapSelection *		bs,
+			DocumentRectangle *		dr,
 			const BitmapDescription *	bdin,
 			const void *			vbc	);
 
 int bmgGroupBitmap(	unsigned char **		pBuffer,
 			BitmapDescription *		bdout,
-			BitmapSelection *		bs,
+			DocumentRectangle *		dr,
 			const BitmapDescription *	bdin,
 			const void *			vcg );
 
@@ -432,7 +281,7 @@ int bmExpandRGB8Palette(	unsigned char *		to,
 				const unsigned char *	from,
 				int			pixelsWide,
 				int			bitsPerColor,
-				const RGB8Color *	palette,
+				const ColorPalette *	palette,
 				int			hasAlpha );
 
 /************************************************************************/
@@ -441,7 +290,7 @@ int bmExpandRGB8Palette(	unsigned char *		to,
 /*									*/
 /************************************************************************/
 
-typedef void (*BM_PIX_FUN)(	void *				through,
+typedef int (*BM_PIX_FUN)(	void *				through,
 				int				row,
 				int				col );
 
@@ -451,82 +300,56 @@ typedef void (*BM_SEG_FUN)(	void *				through,
 				int				x1,
 				int				y1 );
 
-typedef int (*BitmapTransformation)(BitmapDescription *		bdOut,
-				const BitmapDescription *	bdIn,
-				unsigned char **		pBufOut,
-				const unsigned char *		bufIn,
+typedef int (*BitmapTransformation)(RasterImage *		riOut,
+				const RasterImage *		riIn,
 				int				option );
 
-extern int bmWhiteToTransparent(BitmapDescription *		bdOut,
-				const BitmapDescription *	bdIn,
-				unsigned char **		pBufOut,
-				const unsigned char *		bufIn,
+extern int bmWhiteToTransparent(RasterImage *			riOut,
+				const RasterImage *		riIn,
 				int				ignoredInt );
 
-extern int bmVerticalFlip(	BitmapDescription *		bdOut,
-				const BitmapDescription *	bdIn,
-				unsigned char **		pBufOut,
-				const unsigned char *		bufIn,
+extern int bmVerticalFlip(	RasterImage *			riOut,
+				const RasterImage *		riIn,
 				int				ignoredInt );
 
-extern int bmHorizontalFlip(	BitmapDescription *		bdOut,
-				const BitmapDescription *	bdIn,
-				unsigned char **		pBufOut,
-				const unsigned char *		bufIn,
+extern int bmHorizontalFlip(	RasterImage *			riOut,
+				const RasterImage *		riIn,
 				int				ignoredInt );
 
-extern int bmUpsideDown(	BitmapDescription *		bdOut,
-				const BitmapDescription *	bdIn,
-				unsigned char **		pBufOut,
-				const unsigned char *		bufIn,
+extern int bmRotate180(		RasterImage *			riOut,
+				const RasterImage *		riIn,
 				int				ignoredInt );
 
-extern int bmRotate90(		BitmapDescription *		bdOut,
-				const BitmapDescription *	bdIn,
-				unsigned char **		pBufOut,
-				const unsigned char *		bufIn,
+extern int bmRotate90(		RasterImage *			riOut,
+				const RasterImage *		riIn,
 				int				ignoredInt );
 
-extern int bmColorReduce(	BitmapDescription *		bdOut,
-				const BitmapDescription *	bdIn,
-				unsigned char **		pBufOut,
-				const unsigned char *		bufIn,
+extern int bmColorReduce(	RasterImage *			riOut,
+				const RasterImage *		riIn,
 				int				colorCount );
 
-extern int bmRotate(	BitmapDescription *		bdOut,
-			const BitmapDescription *	bdIn,
-			unsigned char **		pBufOut,
-			const unsigned char *		bufIn,
+extern int bmRotate(	RasterImage *			riOut,
+			const RasterImage *		riIn,
 			double				angle	);
 
-extern int bmFilterSobel(	BitmapDescription *		bdOut,
-				const BitmapDescription *	bdIn,
-				unsigned char **		pBufOut,
-				const unsigned char *		bufIn,
+extern int bmFilterSobel(	RasterImage *			riOut,
+				const RasterImage *		riIn,
 				int				ignoredInt );
 
-extern int bmFilterLaplace(	BitmapDescription *		bdOut,
-				const BitmapDescription *	bdIn,
-				unsigned char **		pBufOut,
-				const unsigned char *		bufIn,
+extern int bmFilterLaplace(	RasterImage *			riOut,
+				const RasterImage *		riIn,
 				int				ignoredInt );
 
-extern int bmFilterSmoothe(	BitmapDescription *		bdOut,
-				const BitmapDescription *	bdIn,
-				unsigned char **		pBufOut,
-				const unsigned char *		bufIn,
+extern int bmFilterSmoothe(	RasterImage *			riOut,
+				const RasterImage *		riIn,
 				int				ignoredInt );
 
-extern int bmFilterBlur(	BitmapDescription *		bdOut,
-				const BitmapDescription *	bdIn,
-				unsigned char **		pBufOut,
-				const unsigned char *		bufIn,
+extern int bmFilterBlur(	RasterImage *			riOut,
+				const RasterImage *		riIn,
 				int				ignoredInt );
 
-extern int bmFilterRelative(	BitmapDescription *		bdOut,
-				const BitmapDescription *	bdIn,
-				unsigned char **		pBufOut,
-				const unsigned char *		bufIn,
+extern int bmFilterRelative(	RasterImage *			riOut,
+				const RasterImage *		riIn,
 				int				ignoredInt );
 
 extern int bmFlipBytes(		unsigned char *	buffer,
@@ -537,27 +360,14 @@ int bmMapImageColors(		const BitmapDescription *	bd,
 				const int *			map,
 				unsigned char *			buffer );
 
-extern int bmAverage(		BitmapDescription *		bdOut,
-				const BitmapDescription *	bdIn,
-				unsigned char **		pBufOut,
-				const unsigned char *		bufIn,
-				int				pixels );
+extern int bmAverage(		RasterImage *			riOut,
+				const RasterImage *		riIn,
+				int				xpixels,
+				int				ypixels );
 
-extern int bmExpandPaletteImage( BitmapDescription *		bdOut,
-				const BitmapDescription *	bdIn,
-				unsigned char **		pBufOut,
-				const unsigned char *		bufIn,
+extern int bmExpandPaletteImage( RasterImage *			riOut,
+				const RasterImage *		riIn,
 				int				ignoredInt );
-
-extern int bmFillImage(		ColorAllocator *		ca,
-				int				bitmapUnit,
-				int				swapBitmapBytes,
-				int				swapBitmapBits,
-				int				dither,
-				unsigned char *			bufferOut,
-				const unsigned char *		bufferIn,
-				const BitmapDescription *	bdOut,
-				const BitmapDescription *	bdIn );
 
 extern int bmTransparentImage(	BitmapDescription *		bdOut,
 				unsigned char **		pBufOut,
@@ -574,16 +384,12 @@ extern int bmRGBImage(		BitmapDescription *		bdOut,
 				int				wide,
 				int				high );
 
-extern int bmGammaCorrect(	BitmapDescription *		bdOut,
-				const BitmapDescription *	bdIn,
-				unsigned char **		pBufOut,
-				const unsigned char *		bufIn,
+extern int bmGammaCorrect(	RasterImage *			riOut,
+				const RasterImage *		riIn,
 				double				gammaValue );
 
-extern int bmInvertImage(	BitmapDescription *		bdOut,
-				const BitmapDescription *	bdIn,
-				unsigned char **		pBufOut,
-				const unsigned char *		bufIn,
+extern int bmInvertImage(	RasterImage *			riOut,
+				const RasterImage *		riIn,
 				int				ignoredInt );
 
 extern void bmImageSizeTwips(
@@ -591,58 +397,49 @@ extern void bmImageSizeTwips(
 			int *				pImageHighTwips,
 			const BitmapDescription *	bd );
 
+extern void bmRectangleSizeTwips(
+			int *				pRectangleWideTwips,
+			int *				pRectangleHighTwips,
+			const BitmapDescription *	bd,
+			int				pixelsWide,
+			int				pixelsHigh );
+
 extern int bmCalculateSizes(	BitmapDescription *	bd );
 
 extern int bmToGrayscale(
-			BitmapDescription *		bdOut,
-			const BitmapDescription *	bdIn,
-			unsigned char **		pBufOut,
-			const unsigned char *		bufferIn,
+			RasterImage *			riOut,
+			const RasterImage *		riIn,
 			int				ignoredInt );
 
-extern int bmThreshold(	BitmapDescription *		bdOut,
-			const BitmapDescription *	bdIn,
-			unsigned char **		pBufOut,
-			const unsigned char *		bufferIn,
+extern int bmThreshold(	RasterImage *			riOut,
+			const RasterImage *		riIn,
 			int				ignoredInt );
 
 extern int bmMorphoDilateSimple(
-			BitmapDescription *		bdOut,
-			const BitmapDescription *	bdIn,
-			unsigned char **		pBufOut,
-			const unsigned char *		bufferIn,
+			RasterImage *			riOut,
+			const RasterImage *		riIn,
 			int				ignoredInt );
 
 extern int bmMorphoErodeSimple(
-			BitmapDescription *		bdOut,
-			const BitmapDescription *	bdIn,
-			unsigned char **		pBufOut,
-			const unsigned char *		bufferIn,
+			RasterImage *			riOut,
+			const RasterImage *		riIn,
 			int				ignoredInt );
 
-extern int bmMorphoDilate(	BitmapDescription *		bdOut,
-				const BitmapDescription *	bdIn,
-				unsigned char **		pBufOut,
-				const unsigned char *		bufIn,
-				const BitmapDescription *	bdSe,
-				const unsigned char *		bufSe,
+extern int bmMorphoDilate(	RasterImage *			riOut,
+				const RasterImage *		riIn,
+				const RasterImage *		riSe,
 				int				rowOrig,
 				int				colOrig );
 
-extern int bmMorphoErode(	BitmapDescription *		bdOut,
-				const BitmapDescription *	bdIn,
-				unsigned char **		pBufOut,
-				const unsigned char *		bufIn,
-				const BitmapDescription *	bdSe,
-				const unsigned char *		bufSe,
+extern int bmMorphoErode(	RasterImage *			riOut,
+				const RasterImage *		riIn,
+				const RasterImage *		riSe,
 				int				rowOrig,
 				int				colOrig );
 
-extern int bmMorphoSetSimpleSe(	BitmapDescription *		bdOut,
-				unsigned char **		pBufOut );
+extern int bmMorphoSetSimpleSe(	RasterImage *			riOut );
 
-extern int bmMorphoLineElement(	BitmapDescription *		bdOut,
-				unsigned char **		pBufOut,
+extern int bmMorphoLineElement(	RasterImage *			riOut,
 				int				wide,
 				int				high,
 				int				x0,
@@ -652,70 +449,20 @@ extern int bmMorphoLineElement(	BitmapDescription *		bdOut,
 
 extern void bmDraw1BitImage(	const BitmapDescription *	bdTo,
 				unsigned char *			bufTo,
-				const BitmapDescription *	bdIn,
-				const unsigned char *		bufIn,
-				unsigned char			invertMask,
+				const RasterImage *		riIn,
+				unsigned char			invertMaskIn,
 				int				rowTo0,
 				int				colTo0 );
 
-extern void bmForAll1Pixels(	const BitmapDescription *	bdIn,
-				const unsigned char *		bufIn,
+extern int bmForAll1Pixels(	const RasterImage *		riIn,
 				unsigned char			invertMaskIn,
 				void *				through,
 				BM_PIX_FUN			pixFun );
 
-extern int bmFindLineSegments(	const BitmapDescription *	bdIn,
-				const unsigned char *		bufIn,
+extern int bmFindLineSegments(	const RasterImage *		riIn,
 				int				size,
 				void *				through,
 				BM_SEG_FUN			segFun );
-
-extern int bmTextureMap(	ColorAllocator *		ca,
-				int				swapBitmapUnit,
-				int				swapBitmapBytes,
-				int				swapBitmapBits,
-				int				dither,
-				unsigned char *			bufferOut,
-				const unsigned char *		bufferIn,
-				const BitmapDescription *	bdOut,
-				const BitmapDescription *	bdIn,
-				double				E_x,
-				double				E_y,
-				double				E_z,
-				double				P_x,
-				double				P_y,
-				double				P_z,
-				double				N_x,
-				double				N_y,
-				double				N_z,
-				double				M_x,
-				double				M_y,
-				double				M_z );
-
-extern int bmTextureMapInverse(	ColorAllocator *		ca,
-				int				swapBitmapUnit,
-				int				swapBitmapBytes,
-				int				swapBitmapBits,
-				int				dither,
-				unsigned char *			bufferOut,
-				const unsigned char *		bufferIn,
-				const BitmapDescription *	bdOut,
-				const BitmapDescription *	bdIn,
-				double				E_x,
-				double				E_y,
-				double				E_z,
-				double				P_x,
-				double				P_y,
-				double				P_z,
-				double				N_x,
-				double				N_y,
-				double				N_z,
-				double				M_x,
-				double				M_y,
-				double				M_z );
-
-extern int bmSetColorAllocatorForImage(	ColorAllocator *		ca,
-					const BitmapDescription *	bd );
 
 extern int bmCountLinePixels(	const unsigned char *		buffer,
 				const BitmapDescription *	bd,
@@ -739,5 +486,49 @@ extern int bmDrawBox(		unsigned char *			buffer,
 				int				x1,
 				int				y1,
 				int				wide );
+
+extern int bmSuggestFormat(	const MemoryBuffer *		filename,
+				int				suggestedFormat,
+				const BitmapDescription *	bd );
+
+extern int bmSetSolidWhite(	unsigned char *			buffer,
+				BitmapDescription *		bd );
+
+extern int bmSetSolidBlack(	unsigned char *			buffer,
+				BitmapDescription *		bd );
+
+extern int bmCopyArea(		int				up,
+				int				vp,
+				const RasterImage *		riTo,
+				const RasterImage *		riFrom );
+
+extern int bmPaintArea(		int				up,
+				int				vp,
+				const RasterImage *		riTo,
+				const RasterImage *		riFrom );
+
+extern int bmGetAlphaMask(
+			RasterImage *			riOut,
+			const RasterImage *		riIn,
+			int				ignoredInt );
+
+extern int bmRemoveAlpha( RasterImage *			riOut,
+			const RasterImage *		riIn,
+			int				ignoredInt );
+
+extern int bmSetAlphaMask(
+			BitmapDescription *		bdOut,
+			const BitmapDescription *	bdImage,
+			const BitmapDescription *	bdAlpha,
+			unsigned char **		pBufOut,
+			const unsigned char *		bufImage,
+			const unsigned char *		bufAlpha );
+
+extern void bmInitRasterImage(	RasterImage *		ri );
+extern void bmCleanRasterImage(	RasterImage *		ri );
+extern void bmFreeRasterImage(	RasterImage *		ri );
+
+extern int bmCopyRasterImage(	RasterImage *		to,
+				const RasterImage *	from );
 
 #   endif

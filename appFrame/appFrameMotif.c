@@ -1,11 +1,10 @@
 #   include	"appFrameConfig.h"
 
-#   include	<stdlib.h>
 #   include	<stdio.h>
 
 #   include	"appFrame.h"
-#   include	"appSystem.h"
-#   include	<appGeoString.h>
+
+#   include	<appDebugon.h>
 
 #   ifdef USE_MOTIF
 
@@ -13,8 +12,6 @@
 #   include	<Xm/Label.h>
 #   include	<Xm/Form.h>
 #   include	<Xm/PanedW.h>
-
-#   include	<appDebugon.h>
 
 /************************************************************************/
 /*									*/
@@ -165,7 +162,7 @@ void appMakeRowFrameInColumn(	APP_WIDGET *		pFrame,
 /************************************************************************/
 
 int appGuiSetFrameTitle(		APP_WIDGET		frame,
-					const unsigned char *	title )
+					const char *		title )
     {
     WidgetList		children;
     Cardinal		childCount= 0;

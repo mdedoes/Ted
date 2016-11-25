@@ -1,5 +1,119 @@
 #####################################################################
 ##
+##   Look for Qt
+##
+#####################################################################
+
+AC_DEFUN(AC_PATH_QT,
+[
+    echo Checking for Qt...
+
+    QT_CFLAGS=
+    QT_LIBS=
+    QT_EXTRA_LIBS=
+    QT_STATIC_REF=
+    QT_SHARED_REF=
+
+    QT_HEADERS_FOUND=NO
+    QT_LIBS_FOUND=NO
+
+    ac_qt_includes=${ac_qt_includes:-NO}
+    ac_qt_libraries=${ac_qt_libraries:-NO}
+    ac_qt_static_lib=NO
+    ac_qt_shared_lib=NO
+
+    if  test $ac_qt_includes = NO
+    then
+	# Includes
+	for ac_dir in				\
+	    /usr/local/qt/include
+	do
+	if  test -r "$ac_dir/qconfig.h"
+	    then
+		ac_qt_includes=$ac_dir
+		break
+	    fi
+	done
+    fi
+
+    if  test $ac_qt_libraries = NO
+    then
+	# Libraries
+	for ac_dir in				\
+	    /usr/local/qt/lib
+	do
+	found=no
+
+	if  test -r "$ac_dir/libqt.a"
+	    then
+		ac_qt_libraries=$ac_dir
+		ac_qt_static_lib=$ac_dir/libqt.a
+		found=yes
+	    fi
+
+	if  test -r "$ac_dir/libqt.so"
+	    then
+		ac_qt_libraries=$ac_dir
+		ac_qt_shared_lib=$ac_dir/libqt.so
+		found=yes
+	    fi
+
+	if  test -r "$ac_dir/libqt.dylib"
+	    then
+		ac_qt_libraries=$ac_dir
+		ac_qt_shared_lib=$ac_dir/libqt.dylib
+		found=yes
+	    fi
+
+	if  test $found = yes
+	    then
+		break
+	    fi
+	done
+    fi
+
+    #echo Includes : $ac_qt_includes
+    #echo Libraries: $ac_qt_libraries
+
+    if  test $ac_qt_includes != NO
+    then
+	QT_CFLAGS=" -I$ac_qt_includes"
+	QT_HEADERS_FOUND=YES
+
+	if  test "$QT_CFLAGS" = "$X_CFLAGS"
+	then
+	    QT_CFLAGS=
+	fi
+    fi
+
+    if  test $ac_qt_libraries != NO
+    then
+	QT_LIBS=" -L$ac_qt_libraries"
+	QT_LIBS_FOUND=YES
+
+	if  test "$QT_LIBS" = "$X_LIBS"
+	then
+	    QT_LIBS=
+	fi
+    fi
+
+    if  test $ac_qt_static_lib != NO
+    then
+	QT_STATIC_REF="$ac_qt_static_lib"
+    else
+	QT_STATIC_REF="$QT_LIBS -lXm"
+    fi
+
+    QT_SHARED_REF="$QT_LIBS -lXm"
+
+    AC_SUBST(QT_CFLAGS)dnl
+    AC_SUBST(QT_LIBS)dnl
+    AC_SUBST(QT_STATIC_REF)dnl
+    AC_SUBST(QT_SHARED_REF)dnl
+    AC_SUBST(QT_EXTRA_LIBS)dnl
+])
+#####################################################################
+##
 ##   Look for gtk headers and libraries.
 ##
 #####################################################################
@@ -46,141 +160,459 @@ AC_DEFUN(AC_PATH_GTK,
 ])
 #####################################################################
 ##
-##   Look for libxpm
+##   Look for freetype headers and libraries.
+##
+#####################################################################
+
+AC_DEFUN(AC_PATH_FT2,
+[
+    echo Checking for FreeType etc.
+
+    FT2_CFLAGS=
+    FT2_LIBS=
+
+    FT2_HEADERS_FOUND=NO
+    FT2_LIBS_FOUND=NO
+    FT2_FOUND=0
+
+    if  ( freetype-config --cflags ) > /dev/null 2>&1
+    then
+	FT2_CFLAGS=`freetype-config --cflags`
+	FT2_HEADERS_FOUND=YES
+    fi
+
+    if  ( freetype-config --libs ) > /dev/null 2>&1
+    then
+	FT2_LIBS=`freetype-config --libs`
+	FT2_LIBS_FOUND=YES
+    fi
+
+    case $FT2_HEADERS_FOUND.$FT2_LIBS_FOUND in
+	YES.YES)
+	    FT2_FOUND=1
+	    AC_DEFINE(HAVE_FT2,1)
+	    ;;
+	*)
+	    FT2_FOUND=0
+	    AC_DEFINE(HAVE_FT2,0)
+	    ;;
+    esac
+
+    AC_SUBST(FT2_CFLAGS)dnl
+    AC_SUBST(FT2_LIBS)dnl
+])
+#####################################################################
+##
+##   Look for fontconfig headers and libraries.
+##
+#####################################################################
+
+AC_DEFUN(AC_HAVE_FONTCONFIG,
+[
+    echo Checking for Fontconfig etc.
+
+    FONTCONFIG_CFLAGS=
+    FONTCONFIG_LIBS=
+
+    FONTCONFIG_HEADERS_FOUND=NO
+    FONTCONFIG_LIBS_FOUND=NO
+    FONTCONFIG_FOUND=0
+
+    if  ( pkg-config fontconfig --cflags ) > /dev/null 2>&1
+    then
+	FONTCONFIG_CFLAGS=`pkg-config fontconfig --cflags`
+	FONTCONFIG_HEADERS_FOUND=YES
+    fi
+
+    if  ( pkg-config fontconfig --libs ) > /dev/null 2>&1
+    then
+	FONTCONFIG_LIBS=`pkg-config fontconfig --libs`
+	FONTCONFIG_LIBS_FOUND=YES
+    fi
+
+    ########  The hard way
+    if test $FONTCONFIG_HEADERS_FOUND = NO -o $FONTCONFIG_LIBS_FOUND = NO
+    then
+	h_so_tmp="$$.h_so_tmp"
+	trap "rm -f $h_so_tmp" 0
+	for h_so in \
+	    "/usr/include fontconfig/fontconfig.h /usr/lib fontconfig"
+	do
+	    echo $h_so
+	done > ${h_so_tmp}
+	while read hd h sod so
+	do
+	    if  test -f $hd/$h -a -f ${sod}/lib${so}.so
+	    then
+		case $hd in
+		/usr/include)
+		    : ok
+		    ;;
+		*)
+		    FONTCONFIG_CFLAGS=-I${hd}
+		    ;;
+		esac
+
+		case $sod in
+		/usr/lib|/lib)
+		    FONTCONFIG_LIBS=-l${so}
+		    ;;
+		*)
+		    FONTCONFIG_LIBS="-L${sod} -l${so}"
+		    ;;
+		esac
+
+		FONTCONFIG_HEADERS_FOUND=YES
+		FONTCONFIG_LIBS_FOUND=YES
+		break
+	    fi
+	done < ${h_so_tmp}
+    fi
+    ########
+
+    AC_ARG_WITH( FONTCONFIG,
+	[ --with-FONTCONFIG Use Fontconfig if available],
+	[
+	    if  test $withval = yes
+	    then
+		USE_FONTCONFIG=YES
+	    else
+		USE_FONTCONFIG=NO
+	    fi
+	],
+	[
+	    USE_FONTCONFIG=TEST;
+	])
+
+    case $FONTCONFIG_HEADERS_FOUND.$FONTCONFIG_LIBS_FOUND in
+	YES.YES)
+	    FONTCONFIG_FOUND=1
+	    HAVE_FONTCONFIG=YES
+	    ;;
+	*)
+	    FONTCONFIG_FOUND=0
+	    # Try for ourselves
+	    AC_TRY_COMPILE([#include <fontconfig/fontconfig.h>],
+	      [FcObjectSet *os; os = FcObjectSetBuild (FC_FAMILY, FC_WIDTH);],
+		HAVE_FONTCONFIG=YES,HAVE_FONTCONFIG=NO,)
+	    ;;
+    esac
+
+    case $HAVE_FONTCONFIG.$USE_FONTCONFIG in
+	YES.TEST|YES.YES)
+	    echo 'Using Fontconfig'
+	    AC_DEFINE(HAVE_FONTCONFIG,1)
+	    AC_DEFINE(USE_FONTCONFIG,1)
+	    USE_FONTCONFIG=YES
+	    ;;
+	YES.NO)
+	    echo 'Avoiding Fontconfig'
+	    AC_DEFINE(HAVE_FONTCONFIG,1)
+	    AC_DEFINE(USE_FONTCONFIG,0)
+	    ;;
+	NO.TEST)
+	    echo 'No Fontconfig'
+	    AC_DEFINE(HAVE_FONTCONFIG,0)
+	    AC_DEFINE(USE_FONTCONFIG,0)
+	    USE_FONTCONFIG=NO
+	    ;;
+	NO.YES)
+	    echo '##### No Fontconfig found'
+	    AC_DEFINE(HAVE_FONTCONFIG,0)
+	    AC_DEFINE(USE_FONTCONFIG,0)
+	    ;;
+	*)
+	    ;;
+    esac
+
+    AC_SUBST(FONTCONFIG_CFLAGS)dnl
+    AC_SUBST(FONTCONFIG_LIBS)dnl
+])
+#####################################################################
+##
+##   Look for xft headers and libraries.
+##
+#####################################################################
+
+AC_DEFUN(AC_PATH_XFT,
+[
+    echo Checking for XFT etc.
+
+    XFT_CFLAGS=
+    XFT_LIBS=
+
+    XFT_HEADERS_FOUND=NO
+    XFT_LIBS_FOUND=NO
+    HAVE_XFT=NO
+
+    #### Debian/Ubuntu
+    if  ( xft-config --cflags ) > /dev/null 2>&1
+    then
+	XFT_CFLAGS=`xft-config --cflags`
+	XFT_HEADERS_FOUND=YES
+    fi
+
+    #### Debian/Ubuntu
+    if  ( xft-config --libs ) > /dev/null 2>&1
+    then
+	XFT_LIBS=`xft-config --libs`
+	XFT_LIBS_FOUND=YES
+    fi
+
+    #### Redhat
+    if  ( pkg-config xft --cflags ) > /dev/null 2>&1
+    then
+	XFT_CFLAGS=`pkg-config xft --cflags`
+	XFT_HEADERS_FOUND=YES
+    fi
+
+    #### Redhat
+    if  ( pkg-config xft --libs ) > /dev/null 2>&1
+    then
+	XFT_LIBS=`pkg-config xft --libs`
+	XFT_LIBS_FOUND=YES
+    fi
+
+    ########  The hard way
+    if test $XFT_HEADERS_FOUND = NO -o $XFT_LIBS_FOUND = NO
+    then
+	h_so_tmp="$$.h_so_tmp"
+	trap "rm -f $h_so_tmp" 0
+	for h_so in \
+	    "/usr/include X11/Xft/Xft.h /usr/lib64 Xft" \
+	    "/usr/include X11/Xft/Xft.h /usr/lib Xft"
+	do
+	    echo $h_so
+	done > ${h_so_tmp}
+	while read hd h sod so
+	do
+	    if  test -f $hd/$h -a -f ${sod}/lib${so}.so
+	    then
+		case $hd in
+		/usr/include)
+		    : ok
+		    ;;
+		*)
+		    XFT_CFLAGS=-I${hd}
+		    ;;
+		esac
+
+		case $sod in
+		/usr/lib|/lib)
+		    XFT_LIBS=-l${so}
+		    ;;
+		*)
+		    XFT_LIBS="-L${sod} -l${so}"
+		    ;;
+		esac
+
+		XFT_HEADERS_FOUND=YES
+		XFT_LIBS_FOUND=YES
+		break
+	    fi
+	done < ${h_so_tmp}
+    fi
+    ########
+
+    AC_ARG_WITH( XFT,
+	[ --with-XFT Use Xft if available],
+	[
+	    if  test $withval = yes
+	    then
+		USE_XFT=YES
+	    else
+		USE_XFT=NO
+	    fi
+	],
+	[
+	    USE_XFT=TEST;
+	])
+
+    case $XFT_HEADERS_FOUND.$XFT_LIBS_FOUND in
+	YES.YES)
+	    HAVE_XFT=YES
+	    ;;
+	*)
+	    HAVE_XFT=NO
+	    ;;
+    esac
+
+    case $HAVE_XFT.$USE_XFT in
+	YES.TEST|YES.YES)
+	    case $USE_FONTCONFIG in
+		YES)
+		    echo 'Using Xft'
+		    AC_DEFINE(HAVE_XFT,1)
+		    AC_DEFINE(USE_XFT,1)
+		    USE_XFT=YES
+		    ;;
+		*)
+		    echo '##### Not using Xft without Fontconfig'
+		    AC_DEFINE(HAVE_XFT,1)
+		    AC_DEFINE(USE_XFT,0)
+		    USE_XFT=NO
+		    ;;
+	    esac
+	    ;;
+	YES.NO)
+	    echo 'Avoiding Xft'
+	    AC_DEFINE(HAVE_XFT,1)
+	    AC_DEFINE(USE_XFT,0)
+	    ;;
+	NO.TEST)
+	    echo 'No Xft'
+	    AC_DEFINE(HAVE_XFT,0)
+	    AC_DEFINE(USE_XFT,0)
+	    USE_XFT=NO
+	    ;;
+	NO.YES)
+	    echo '##### No Xft found'
+	    AC_DEFINE(HAVE_XFT,0)
+	    AC_DEFINE(USE_XFT,0)
+	    ;;
+	*)
+	    ;;
+    esac
+
+    AC_SUBST(XFT_CFLAGS)dnl
+    AC_SUBST(XFT_LIBS)dnl
+])
+
+#####################################################################
+##
+##   Look for XPM X pixmap headers and libraries.
 ##
 #####################################################################
 
 AC_DEFUN(AC_PATH_XPM,
 [
-    echo Checking for libxpm...
+    echo Checking for XPM X pixmap...
 
-    XPM_CFLAGS=
-    XPM_LIBS=
-    XPM_STATIC_REF=
-    XPM_SHARED_REF=
+    LIBXPM_CFLAGS=
+    LIBXPM_LIBS=
 
-    XPM_FOUND=0
+    LIBXPM_HEADERS_FOUND=NO
+    LIBXPM_LIBS_FOUND=NO
+    LIBXPM_FOUND=0
 
-    ac_xpm_includes=${ac_xpm_includes:-NO}
-    ac_xpm_libraries=${ac_xpm_libraries:-NO}
-    ac_xpm_static_lib=NO
-    ac_xpm_shared_lib=NO
-
-    if  test $ac_xpm_includes = "NO"
-    then
-	# Includes
-	for ac_dir in			\
-	    /usr/X11R6/include		\
-	    /usr/X11/include		\
-	    /usr/local/include		\
-	    /usr/pkg/include		\
-	    /usr/local/include/X11R6	\
-	    /usr/apps/include		\
-	    ../xpm
-	do
-	if  test -r "$ac_dir/X11/xpm.h"
-	    then
-		ac_xpm_includes=$ac_dir
-		break
-	    fi
-	done
-    fi
-
-    if  test $ac_xpm_libraries = "NO"
-    then
-	# Libraries
-	for ac_dir in				\
-	    /usr/X11R6/lib			\
-	    /usr/X11/lib			\
-	    /usr/local/lib			\
-	    /usr/pkg/lib			\
-	    /usr/local/lib/X11R6		\
-	    /usr/apps/lib			\
-	    ../xpm/lib
-	do
-	found=no
-
-	if  test -r "$ac_dir/libXpm.a"
-	    then
-		ac_xpm_libraries=$ac_dir
-		ac_xpm_static_lib=$ac_dir/libXpm.a
-		found=yes
-		break
-	    fi
-
-	if  test -r "$ac_dir/libXpm.so"
-	    then
-		ac_xpm_libraries=$ac_dir
-		ac_xpm_shared_lib=$ac_dir/libXpm.so
-		found=yes
-		break
-	    fi
-
-	if  test -r "$ac_dir/libXpm.dylib"
-	    then
-		ac_xpm_libraries=$ac_dir
-		ac_xpm_shared_lib=$ac_dir/libXpm.dylib
-		found=yes
-		break
-	    fi
-
-	if  test $found = yes
-	    then
-		break
-	    fi
-
-	done
-    fi
-
-    #echo Includes : $ac_xpm_includes
-    #echo Libraries: $ac_xpm_libraries
-
-    if  test $ac_xpm_includes = NO
-    then
-	XPM_FOUND=0
-	AC_DEFINE(XPM_FOUND,0)
-    else
-	XPM_FOUND=1
-	AC_DEFINE(XPM_FOUND,1)
-
-	case $ac_xpm_includes in
-	    /usr/include)
-		;;
-	    *)
-		XPM_CFLAGS=-I$ac_xpm_includes
-
-		if  test "$XPM_CFLAGS" = "$X_CFLAGS"
-		then
-		    XPM_CFLAGS=
-		fi
-		;;
-	esac
-    fi
-
-    if  test $ac_xpm_libraries != NO
-    then
-	XPM_LIBS="-L$ac_xpm_libraries"
-
-	if  test "$XPM_LIBS" = "$X_LIBS"
+    for xpm_name in xpm libxpm4
+    do
+	if  ( pkg-config ${xpm_name} --cflags ) > /dev/null 2>&1
 	then
-	    XPM_LIBS=
+	    LIBXPM_CFLAGS=`pkg-config ${xpm_name} --cflags`
+	    LIBXPM_HEADERS_FOUND=YES
 	fi
-    fi
 
-    if  test $ac_xpm_static_lib != NO
+	if  ( pkg-config ${xpm_name} --libs ) > /dev/null 2>&1
+	then
+	    LIBXPM_LIBS=`pkg-config ${xpm_name} --libs`
+	    LIBXPM_LIBS_FOUND=YES
+	fi
+    done
+
+    ########  The hard way
+    if test $LIBXPM_HEADERS_FOUND = NO -o $LIBXPM_LIBS_FOUND = NO
     then
-	XPM_STATIC_REF="$ac_xpm_static_lib"
-    else
-	XPM_STATIC_REF="$XPM_LIBS -lXpm"
+	h_so_tmp="$$.h_so_tmp"
+	trap "rm -f $h_so_tmp" 0
+	for h_so in \
+	    "/usr/include X11/xpm.h /usr/lib Xpm" \
+	    "/usr/X11R6/include X11/xpm.h /usr/X11R6/lib Xpm" \
+	    "/usr/X11/include X11/xpm.h /usr/X11/lib Xpm" \
+	    "/usr/local/include X11/xpm.h /usr/local/lib Xpm" \
+	    "/usr/pkg/include X11/xpm.h /usr/pkg/lib Xpm" \
+	    "/usr/local/include/X11R6 X11/xpm.h /usr/local/lib/X11R6 Xpm" \
+	    "/usr/apps/include X11/xpm.h /usr/apps/lib Xpm"
+	do
+	    echo $h_so
+	done > ${h_so_tmp}
+	while read hd h sod so
+	do
+	    if  test -f $hd/$h -a \( -f ${sod}/lib${so}.so -o -f ${sod}/lib${so}.so.4 \)
+	    then
+		case $hd in
+		/usr/include)
+		    : ok
+		    ;;
+		*)
+		    LIBXPM_CFLAGS=-I${hd}
+		    ;;
+		esac
+
+		case $sod in
+		/usr/lib|/lib)
+		    LIBXPM_LIBS=-l${so}
+		    ;;
+		*)
+		    LIBXPM_LIBS="-L${sod} -l${so}"
+		    ;;
+		esac
+
+		LIBXPM_HEADERS_FOUND=YES
+		LIBXPM_LIBS_FOUND=YES
+		break
+	    fi
+	done < ${h_so_tmp}
     fi
+    ########
 
-    XPM_SHARED_REF="$XPM_LIBS -lXpm"
+    AC_ARG_WITH( LIBXPM,
+	[ --with-LIBXPM Use LIBXPM X pixmap if available],
+	[
+	    if  test $withval = yes
+	    then
+		USE_LIBXPM=YES
+	    else
+		USE_LIBXPM=NO
+	    fi
+	],
+	[
+	    USE_LIBXPM=TEST;
+	])
 
-    AC_SUBST(XPM_CFLAGS)dnl
-    AC_SUBST(XPM_LIBS)dnl
-    AC_SUBST(XPM_STATIC_REF)dnl
-    AC_SUBST(XPM_SHARED_REF)dnl
-    AC_SUBST(XPM_FOUND)dnl
+    case $LIBXPM_HEADERS_FOUND.$LIBXPM_LIBS_FOUND in
+	YES.YES)
+	    LIBXPM_FOUND=1
+	    HAVE_LIBXPM=YES
+	    ;;
+	*)
+	    LIBXPM_FOUND=0
+	    # Try for ourselves
+	    AC_TRY_COMPILE([#include <X11/xpm.h>],
+	      [XpmImage image; XpmReadFileToXpmImage( "/dev/null", &image, (XpmInfo *)0 );],
+		HAVE_LIBXPM=YES,HAVE_LIBXPM=NO,)
+	    ;;
+    esac
+
+    case $HAVE_LIBXPM.$USE_LIBXPM in
+	YES.TEST|YES.YES)
+	    echo 'Using libxpm'
+	    AC_DEFINE(HAVE_LIBXPM,1)
+	    AC_DEFINE(USE_LIBXPM,1)
+	    USE_LIBXPM=YES
+	    ;;
+	YES.NO)
+	    echo 'Avoiding libxpm'
+	    AC_DEFINE(HAVE_LIBXPM,1)
+	    AC_DEFINE(USE_LIBXPM,0)
+	    ;;
+	NO.TEST)
+	    echo 'No libxpm'
+	    AC_DEFINE(HAVE_LIBXPM,0)
+	    AC_DEFINE(USE_LIBXPM,0)
+	    USE_LIBXPM=NO
+	    ;;
+	NO.YES)
+	    echo '##### No libxpm found'
+	    AC_DEFINE(HAVE_LIBXPM,0)
+	    AC_DEFINE(USE_LIBXPM,0)
+	    ;;
+	*)
+	    ;;
+    esac
+
+    AC_SUBST(LIBXPM_CFLAGS)dnl
+    AC_SUBST(LIBXPM_LIBS)dnl
 ])
 #####################################################################
 ##
@@ -210,6 +642,7 @@ AC_DEFUN(AC_PATH_XM,
     then
 	# Includes
 	for ac_dir in				\
+	    /usr/include			\
 	    /usr/X11R6/include			\
 	    /usr/local/include			\
 	    /usr/dt/include			\
@@ -232,6 +665,7 @@ AC_DEFUN(AC_PATH_XM,
     then
 	# Libraries
 	for ac_dir in				\
+	    /usr/lib				\
 	    /usr/X11R6/lib			\
 	    /usr/local/lib			\
 	    /usr/dt/lib				\
@@ -274,15 +708,16 @@ AC_DEFUN(AC_PATH_XM,
     #echo Includes : $ac_xm_includes
     #echo Libraries: $ac_xm_libraries
 
+    XM_EXTRA_LIBS=""
     #  Too simple..
     #  AC_CHECK_LIB( Xp, XpStartPage, XM_EXTRA_LIBS="-lXp" )
     if  test -r $x_libraries/libXp.a
     then
-	XM_EXTRA_LIBS="-lXp"
+	XM_EXTRA_LIBS="${XM_EXTRA_LIBS} -lXp"
     else
 	if  test -r $x_libraries/libXp.so
 	then
-	    XM_EXTRA_LIBS="-lXp"
+	    XM_EXTRA_LIBS="${XM_EXTRA_LIBS} -lXp"
 	fi
     fi
 
@@ -337,6 +772,14 @@ AC_DEFUN(AC_PATH_XM,
     if  test $ac_xm_static_lib != NO
     then
 	XM_STATIC_REF="$ac_xm_static_lib"
+	if  nm $ac_xm_static_lib | grep -q XpStartPage 2>/dev/null
+	then
+	    XM_EXTRA_LIBS="${XM_EXTRA_LIBS} -lXp"
+	fi
+	if  nm $ac_xm_static_lib | grep -q XEditResPut8 2>/dev/null
+	then
+	    XM_EXTRA_LIBS="${XM_EXTRA_LIBS} -lXmu"
+	fi
     else
 	XM_STATIC_REF="$XM_LIBS -lXm"
     fi
@@ -438,6 +881,131 @@ AC_DEFUN(AC_INSTALL_LOCATIONS,
 ])
 #####################################################################
 ##
+##   Look for iconv
+##
+#####################################################################
+
+AC_DEFUN(AC_PATH_ICONV,
+[
+    echo Checking for iconv...
+
+    ICONV_CFLAGS=
+    ICONV_LIBS=
+    ICONV_STATIC_REF=
+    ICONV_SHARED_REF=
+
+    ICONV_FOUND=0
+
+    ac_iconv_includes=${ac_iconv_includes:-NO}
+    ac_iconv_libraries=${ac_iconv_libraries:-NO}
+    ac_iconv_static_lib=NO
+    ac_iconv_shared_lib=NO
+
+    if  test $ac_iconv_includes = "NO"
+    then
+	# Includes
+	for ac_dir in			\
+	    /usr/include		\
+	    /usr/local/include		\
+	    /usr/pkg/include		\
+	    /usr/local/include/iconv	\
+	    /usr/apps/include		\
+	    ../iconv
+	do
+	if  test -r "$ac_dir/iconv.h"
+	    then
+		ac_iconv_includes=$ac_dir
+		break
+	    fi
+	done
+    fi
+
+    if  test $ac_iconv_libraries = "NO"
+    then
+	# Libraries
+	for ac_dir in			\
+	    /usr/lib			\
+	    /usr/local/lib		\
+	    /usr/pkg/lib		\
+	    /usr/local/lib/iconv	\
+	    /usr/apps/lib		\
+	    ../iconv
+	do
+	found=no
+
+	if  test -r "$ac_dir/iconv.a"
+	    then
+		ac_iconv_libraries=$ac_dir
+		ac_iconv_static_lib=$ac_dir/iconv.a
+		found=yes
+		break
+	    fi
+
+	if  test -r "$ac_dir/iconv.so"
+	    then
+		ac_iconv_libraries=$ac_dir
+		ac_iconv_shared_lib=$ac_dir/iconv.so
+		found=yes
+		break
+	    fi
+
+	if  test -r "$ac_dir/iconv.dylib"
+	    then
+		ac_iconv_libraries=$ac_dir
+		ac_iconv_shared_lib=$ac_dir/iconv.dylib
+		found=yes
+		break
+	    fi
+
+	if  test $found = yes
+	    then
+		break
+	    fi
+
+	done
+    fi
+
+    #echo Includes : $ac_iconv_includes
+    #echo Libraries: $ac_iconv_libraries
+
+    if  test $ac_iconv_includes = NO
+    then
+	ICONV_FOUND=0
+	AC_DEFINE(HAVE_ICONV,0)
+    else
+	ICONV_FOUND=1
+	AC_DEFINE(HAVE_ICONV,1)
+	ICONV_CFLAGS=-I$ac_iconv_includes
+
+	if  test "$ICONV_CFLAGS" = "-I/usr/include"
+	then
+	    ICONV_CFLAGS=
+	fi
+    fi
+
+    if  test $ac_iconv_libraries != NO
+    then
+	ICONV_LIBS="-L$ac_iconv_libraries"
+
+	if  test $ac_iconv_static_lib != NO
+	then
+	    ICONV_STATIC_REF="$ac_iconv_static_lib"
+	else
+	    ICONV_STATIC_REF="$ICONV_LIBS -liconv"
+	fi
+
+    ICONV_SHARED_REF="$ICONV_LIBS -liconv"
+
+    fi
+
+    AC_SUBST(ICONV_CFLAGS)dnl
+    AC_SUBST(ICONV_LIBS)dnl
+    AC_SUBST(ICONV_STATIC_REF)dnl
+    AC_SUBST(ICONV_SHARED_REF)dnl
+    AC_SUBST(ICONV_FOUND)dnl
+])
+#####################################################################
+##
 ##   Choose the GUI thet is used. Relies on settings from the
 ##   Motif and/or Gtk configuration macros.
 ##
@@ -450,6 +1018,7 @@ AC_DEFUN(AC_CHOOSE_GUI,
     GUI=NONE
     NO_MOTIF=NO
     NO_GTK=NO
+    NO_QT=NO
 
     AC_ARG_WITH( MOTIF,
 	[  --with-MOTIF            Use Motif/LessTif user interface],
@@ -459,7 +1028,7 @@ AC_DEFUN(AC_CHOOSE_GUI,
 	    echo Choosing MOTIF ...
 
 	    if  test	x_$MOTIF_HEADERS_FOUND = x_YES	-a \
-			    x_$MOTIF_LIBS_FOUND = x_YES
+			x_$MOTIF_LIBS_FOUND = x_YES
 	    then
 		if  test $GUI = NONE
 		then
@@ -489,7 +1058,7 @@ AC_DEFUN(AC_CHOOSE_GUI,
 	    echo Choosing GTK ...
 
 	    if  test	x_$GTK_HEADERS_FOUND = x_YES	-a \
-			    x_$GTK_LIBS_FOUND = x_YES
+			x_$GTK_LIBS_FOUND = x_YES
 	    then
 		if  test $GUI = NONE
 		then
@@ -511,14 +1080,35 @@ AC_DEFUN(AC_CHOOSE_GUI,
 	]
     )
 
-    if  test	$GUI = NONE				-a \
-		$NO_MOTIF = NO				-a \
-		x_$MOTIF_HEADERS_FOUND = x_YES		-a \
-		x_$MOTIF_LIBS_FOUND = x_YES
-    then
-	echo Found MOTIF
-	GUI=MOTIF
-    fi
+    AC_ARG_WITH( QT,
+	[  --with-QT              Use Qt user interface ],
+	[
+	if  test $withval = yes
+	then
+	    echo Choosing QT ...
+
+	    if  test	x_$QT_HEADERS_FOUND = x_YES	-a \
+			    x_$QT_LIBS_FOUND = x_YES
+	    then
+		if  test $GUI = NONE
+		then
+		    : ok
+		else
+		    echo '############' WARNING '############'
+		    echo 'GUI=' $GUI
+		fi
+	    else
+		echo '############' WARNING '############'
+		echo 'QT_HEADERS_FOUND=' $QT_HEADERS_FOUND
+		echo 'QT_LIBS_FOUND=' $QT_HEADERS_FOUND
+	    fi
+	    
+	    GUI=QT
+	else
+	    NO_QT=YES
+	fi
+	]
+    )
 
     if  test	$GUI = NONE				-a \
 		$NO_GTK = NO				-a \
@@ -529,6 +1119,24 @@ AC_DEFUN(AC_CHOOSE_GUI,
 	GUI=GTK
     fi
 
+    if  test	$GUI = NONE				-a \
+		$NO_MOTIF = NO				-a \
+		x_$MOTIF_HEADERS_FOUND = x_YES		-a \
+		x_$MOTIF_LIBS_FOUND = x_YES
+    then
+	echo Found MOTIF
+	GUI=MOTIF
+    fi
+
+#    if  test	$GUI = NONE				-a \
+#		$NO_QT = NO				-a \
+#		x_$QT_HEADERS_FOUND = x_YES		-a \
+#		x_$QT_LIBS_FOUND = x_YES
+#    then
+#	echo Found QT
+#	GUI=QT
+#    fi
+
     case $GUI in
     MOTIF)
 	AC_SUBST(GUI)
@@ -537,6 +1145,10 @@ AC_DEFUN(AC_CHOOSE_GUI,
     GTK)
 	AC_SUBST(GUI)
 	AC_DEFINE( USE_GTK )
+	;;
+    QT)
+	AC_SUBST(GUI)
+	AC_DEFINE( USE_QT )
 	;;
     *)
 	echo '############' WARNING '############'

@@ -7,9 +7,10 @@
 #   ifndef	APP_PAGE_LAYOUT_TOOL_H
 #   define	APP_PAGE_LAYOUT_TOOL_H
 
-#   include	<appPaper.h>
-#   include	<appPaperChooser.h>
-#   include	<appMarginTool.h>
+#   include	"appFrame.h"
+#   include	"appPaperChooser.h"
+#   include	"appMarginTool.h"
+#   include	"appInspector.h"
 
 /************************************************************************/
 /*									*/
@@ -51,6 +52,11 @@ typedef struct PageLayoutTool
     int					pltManageSelection;
 
     int					pltUnitType;
+    double				pltPixelsPerTwip;
+    int					pltPageHighMm;
+
+    unsigned char			pltCanChangeSelection;
+    unsigned char			pltCanChangeDocument;
 
     DocumentGeometry			pltGeometrySetSelection;
     DocumentGeometry			pltGeometrySetDocument;
@@ -59,8 +65,8 @@ typedef struct PageLayoutTool
     APP_WIDGET				pltPageDrawing;
     PaperChooser			pltPaperChooser;
     AppMarginTool			pltMarginTool;
-    AppDrawingData			pltDrawingData;
-    int					pltDrawingDataAllocated;
+    DrawingSurface			pltDrawingSurface;
+    RGB8Color				pltBackgroundColor;
 
     APP_WIDGET				pltHeaderFooterFrame;
     APP_WIDGET				pltHeaderFooterInside;
@@ -71,6 +77,7 @@ typedef struct PageLayoutTool
 
     APP_WIDGET				pltRevertSelectionWidget;
     APP_WIDGET				pltChangeSelectionWidget;
+    APP_WIDGET				pltRevertDocumentWidget;
     APP_WIDGET				pltChangeDocumentWidget;
     } PageLayoutTool;
 
@@ -87,7 +94,6 @@ extern void appPageLayoutPageGetResourceTable(
 
 extern void appPageLayoutPageRefresh(
 				PageLayoutTool *		plt,
-				int *				pEnabled,
 				InspectorSubject *		is,
 				const DocumentGeometry *	dgSelection,
 				const DocumentGeometry *	dgDoc );
@@ -108,5 +114,7 @@ extern void appPageLayoutPageFillChoosers(
 extern void appPageLayoutPageFinishPage(
 				PageLayoutTool *		plt,
 				const PageLayoutPageResources *	plpr );
+
+extern void appCleanPageLayoutTool(	PageLayoutTool *	plt );
 
 #   endif	/*  APP_PAGE_LAYOUT_TOOL_H */

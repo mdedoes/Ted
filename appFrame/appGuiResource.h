@@ -9,10 +9,6 @@
 #   ifndef	APP_GUI_RESOURCE_H
 #   define	APP_GUI_RESOURCE_H
 
-#   ifdef USE_GTK
-#   include	<gtk/gtk.h>
-#   endif
-
 #   ifdef USE_MOTIF
 #   include	<X11/Xlib.h>
 #   include	<X11/Intrinsic.h>
@@ -28,6 +24,13 @@
 /************************************************************************/
 
 #   ifdef USE_GTK
+#	define USE_OWN_RESOURCE	1
+#   endif
+#   ifdef USE_QT
+#	define USE_OWN_RESOURCE	1
+#   endif
+
+#   ifdef USE_OWN_RESOURCE
 
 typedef struct AppConfigurableResource
     {
@@ -58,21 +61,21 @@ typedef struct AppConfigurableResource
 
 #   define	APP_RESOURCE( x, o, d )					\
 				{					\
-				(x),(x),				\
+				(char *)(x),(char *)(x),		\
 				XtRString, sizeof(char *),		\
 				(o),					\
-				XtRString, (d),				\
+				XtRString, (char *)(d),			\
 				}
 
 #   define	APP_SET_RESOURCE( acr, x, o, d )			\
 				{					\
-				(acr)->resource_name= (x);		\
-				(acr)->resource_class= (x);		\
+				(acr)->resource_name= (char *)(x);	\
+				(acr)->resource_class= (char *)(x);	\
 				(acr)->resource_type= XtRString;	\
 				(acr)->resource_size= sizeof(char *);	\
 				(acr)->resource_offset= (o);		\
 				(acr)->default_type= XtRString;		\
-				(acr)->default_addr= (d);		\
+				(acr)->default_addr= (char *)(d);	\
 				}
 
 #   endif

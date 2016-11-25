@@ -15,44 +15,14 @@
 
 #   include	<appSystem.h>
 
-#   include	<appFrame.h>
-#   include	"appUnit.h"
-#   include	"appPaper.h"
-#   include	"appGeoString.h"
+#   include	"appFrame.h"
+#   include	"appQuestion.h"
+#   include	"appFileChooser.h"
+#   include	<appUnit.h>
+#   include	<appPaper.h>
+#   include	<geoString.h>
+#   include	<utilArgToX.h>
 #   include	<appDebugon.h>
-
-/************************************************************************/
-/*									*/
-/*  Hide the application window if shown as an 'about' window.		*/
-/*									*/
-/************************************************************************/
-
-APP_MENU_CALLBACK_H( appAppFileHide, option, voidea, call_data )
-    {
-    EditApplication *		ea= (EditApplication *)voidea;
-
-    ea->eaMainVisibleAsAbout= 0;
-
-    if  ( ea->eaVisibleDocumentCount > 0 )
-	{ appHideShellWidget( ea->eaToplevel.atTopWidget ); }
-
-    return;
-    }
-
-/************************************************************************/
-/*									*/
-/*  Minimise the application.						*/
-/*									*/
-/************************************************************************/
-
-APP_MENU_CALLBACK_H( appAppFileMini, option, voidea, call_data )
-    {
-    EditApplication *		ea= (EditApplication *)voidea;
-
-    appIconifyShellWidget( ea->eaToplevel.atTopWidget );
-
-    return;
-    }
 
 /************************************************************************/
 /*									*/
@@ -87,7 +57,7 @@ APP_CLOSE_CALLBACK_H( appAppWmClose, w, voidea )
 /*									*/
 /************************************************************************/
 
-int appCountChangedDocuments(	EditApplication *	ea )
+static int appCountChangedDocuments(	EditApplication *	ea )
     {
     int		i;
     int		changedCount= 0;
@@ -103,8 +73,13 @@ int appCountChangedDocuments(	EditApplication *	ea )
     return changedCount;
     }
 
-void appExitApplication(	EditApplication *	ea )
+static void appExitApplication(	EditApplication *	ea )
     {
+    int		i;
+
+    for ( i= ea->eaOpenCount- 1; i >= 0; i-- )
+	{ appCloseDocument( ea->eaOpenDocuments[i] );	}
+
     appDiscardImagePixmaps( ea );
 
     appDestroyShellWidget( ea->eaToplevel.atTopWidget );
@@ -112,8 +87,8 @@ void appExitApplication(	EditApplication *	ea )
     exit( 0 ); LDEB(1); return;
     }
 
-void appAskCloseDocuments(	APP_WIDGET		option,
-				EditApplication *	ea )
+static void appAskCloseDocuments(	APP_WIDGET		option,
+					EditApplication *	ea )
     {
     int		i;
 
@@ -140,7 +115,6 @@ void appQuitApplication(	APP_WIDGET		option,
     int				changedCount= 0;
 
     changedCount= appCountChangedDocuments( ea );
-
     if  ( changedCount == 0 )
 	{ appExitApplication( ea ); LDEB(1); return;	}
 
@@ -151,6 +125,7 @@ void appQuitApplication(	APP_WIDGET		option,
 	switch( rcc )
 	    {
 	    case AQDrespCANCEL:
+	    case AQDrespCLOSED:
 		return;
 	    case AQDrespNO:
 		appExitApplication( ea );
@@ -172,12 +147,11 @@ void appQuitApplication(	APP_WIDGET		option,
     return;
     }
 
-APP_MENU_CALLBACK_H( appAppFileQuit, option, voidea, call_data )
+APP_MENU_CALLBACK_H( appAppFileQuit, option, voidea, e )
     {
     EditApplication *	ea= (EditApplication *)voidea;
-    APP_WIDGET		woption= (APP_WIDGET)option;
 
-    appQuitApplication( woption, ea->eaToplevel.atTopWidget, ea );
+    appQuitApplication( option, ea->eaToplevel.atTopWidget, ea );
     }
 
 /************************************************************************/
@@ -186,13 +160,13 @@ APP_MENU_CALLBACK_H( appAppFileQuit, option, voidea, call_data )
 /*									*/
 /************************************************************************/
 
-APP_MENU_CALLBACK_H( appAppFileNew, option, voidea, call_data )
+APP_MENU_CALLBACK_H( appAppFileNew, option, voidea, e )
     {
     EditApplication *		ea= (EditApplication *)voidea;
-    const char *		filename= (const char *)0;
+    const MemoryBuffer *	filename= (const MemoryBuffer *)0;
 
     if  ( appNewDocument( ea, filename ) )
-	{ SDEB(filename); }
+	{ LDEB(1); }
 
     return;
     }
@@ -207,7 +181,7 @@ static void appHighlightCurrentDocument( EditApplication *	ea,
 					EditDocument *		ed,
 					int			current )
     {
-    appGuiEnableWidget( ed->edMenuBar, current != 0 );
+    guiEnableWidget( ed->edMenuBar, current != 0 );
     return;
     }
 
@@ -270,14 +244,8 @@ void appDocVisible(	EditApplication *	ea,
 	{ from= ea->eaVisibleDocumentCount++;	}
     else{ from= ea->eaVisibleDocumentCount--;	}
 
-    if  ( ea->eaAppFileHideOption )
-	{
-	appGuiEnableWidget( ea->eaAppFileHideOption,
-					ea->eaVisibleDocumentCount > 0 );
-	}
-
     if  ( ea->eaVisibleDocumentCount == 0 )
-	{ appShowShellWidget( ea->eaToplevel.atTopWidget ); }
+	{ appShowShellWidget( ea, ea->eaToplevel.atTopWidget ); }
     else{
 	if  ( ! ea->eaMainVisibleAsAbout )
 	    { appHideShellWidget( ea->eaToplevel.atTopWidget );	}
@@ -329,7 +297,7 @@ void appRemoveDocument(	EditApplication *	ea,
 
 void appRenameDocumentOptions(	EditApplication *	ea,
 				EditDocument *		ed,
-				char *			title )
+				const MemoryBuffer *	title )
     {
     int		i;
 
@@ -355,22 +323,20 @@ void appRenameDocumentOptions(	EditApplication *	ea,
 
 static void appAppSetWindowsOption(	APP_WIDGET		menu,
 					EditDocument *		ed,
-					char *			label )
+					const MemoryBuffer *	title )
     {
-    APP_WIDGET		windowsOption;
     AppMenuItem		ami;
 
     if  ( ed->edHasBeenChanged )
 	{ ami.amiItemType= ITEMtyTOGGLE_ON;	}
     else{ ami.amiItemType= ITEMtyTOGGLE_OFF;	}
 
-    ami.amiItemText= label;
+    ami.amiItemText= utilMemoryBufferGetString( title );
     ami.amiKey= (char *)0;
     ami.amiKeyText= (char *)0;
     ami.amiCallback= (APP_MENU_CALLBACK_T)appDocToFront;
 
-    windowsOption= appSetToggleMenuItem( menu, &(ed->edToplevel),
-							&ami, (void *)ed );
+    appSetToggleMenuItem( menu, &(ed->edToplevel), &ami, (void *)ed );
     }
 
 void appSetDocument(	EditApplication *	ea,
@@ -390,14 +356,14 @@ void appSetDocument(	EditApplication *	ea,
     for ( i= 0; i < ea->eaOpenCount; i++ )
 	{
 	appAppSetWindowsOption( ea->eaOpenDocuments[i]->edWindowMenu,
-							newEd, newEd->edTitle );
+					    newEd, &(newEd->edTitle) );
 
 	appAppSetWindowsOption( newEd->edWindowMenu,
-					    ea->eaOpenDocuments[i],
-					    ea->eaOpenDocuments[i]->edTitle );
+					ea->eaOpenDocuments[i],
+					&(ea->eaOpenDocuments[i]->edTitle) );
 	}
 
-    appAppSetWindowsOption( ea->eaWinMenu, newEd, newEd->edTitle );
+    appAppSetWindowsOption( ea->eaWinMenu, newEd, &(newEd->edTitle) );
 
     ea->eaOpenCount++;
 
@@ -437,21 +403,16 @@ static AppConfigurableResource	APP_ApplicationResourceTable[]=
 		"72pt" ),
     APP_RESOURCE( "magnification",
 		offsetof(EditApplication,eaMagnificationString),
-		"120%" ),
-
-    APP_RESOURCE( "supportXvCopyPaste",
-		offsetof(EditApplication,eaSupportXvCopyPasteString),
-		(char *)0 ),
-
-    APP_RESOURCE( "hideSaveToOption",
-		offsetof(EditApplication,eaHideSaveToOptionString),
-		(char *)0 ),
+		"100%" ),
 
     APP_RESOURCE( "usePostScriptFilters",
 		offsetof(EditApplication,eaUsePostScriptFiltersString),
 		(char *)0 ),
     APP_RESOURCE( "usePostScriptIndexedImages",
 		offsetof(EditApplication,eaUsePostScriptIndexedImagesString),
+		(char *)0 ),
+    APP_RESOURCE( "sevenBitsPostScript",
+		offsetof(EditApplication,ea7BitsPostScriptString),
 		(char *)0 ),
 
     APP_RESOURCE( "skipEmptyPages",
@@ -463,14 +424,39 @@ static AppConfigurableResource	APP_ApplicationResourceTable[]=
     APP_RESOURCE( "omitHeadersOnEmptyPages",
 		offsetof(EditApplication,eaOmitHeadersOnEmptyPagesString),
 		(char *)0 ),
+    APP_RESOURCE( "customPsSetupFilename",
+		offsetof(EditApplication,eaCustomPsSetupFilename),
+		(char *)0 ),
+
+    APP_RESOURCE( "avoidFontconfig",
+		offsetof(EditApplication,eaAvoidFontconfigString),
+		(char *)0 ),
+    APP_RESOURCE( "preferBase35Fonts",
+		offsetof(EditApplication,eaPreferBase35FontsString),
+		(char *)0 ),
+    APP_RESOURCE( "embedFonts",
+		offsetof(EditApplication,eaEmbedFontsString),
+		"1" ),
+    APP_RESOURCE( "useKerning",
+		offsetof(EditApplication,eaUseKerningString),
+		"1" ),
+
+    APP_RESOURCE( "leftRulerWidthMM",
+		offsetof(EditApplication,eaLeftRulerWidthMMString),
+		(char *)0 ),
+    APP_RESOURCE( "topRulerHeightMM",
+		offsetof(EditApplication,eaTopRulerHeightMMString),
+		(char *)0 ),
+    APP_RESOURCE( "rightRulerWidthMM",
+		offsetof(EditApplication,eaRightRulerWidthMMString),
+		(char *)0 ),
+    APP_RESOURCE( "bottomRulerHeightMM",
+		offsetof(EditApplication,eaBottomRulerHeightMMString),
+		(char *)0 ),
 
     APP_RESOURCE( "author",
 		offsetof(EditApplication,eaAuthor),
 		(char *)0 ),
-
-    APP_RESOURCE( "pageNumberFormat",
-		offsetof(EditApplication,eaPageNumberFormat),
-		"Page %d" ),
 
     APP_RESOURCE( "afmDirectory",
 		offsetof(EditApplication,eaAfmDirectory),
@@ -484,12 +470,6 @@ static AppConfigurableResource	APP_ApplicationResourceTable[]=
     APP_RESOURCE( "ghostscriptFontToXmapping",
 		offsetof(EditApplication,eaGhostscriptFontToXmapping),
 		(char *)0 ),
-    APP_RESOURCE( "defaultFont",
-		offsetof(EditApplication,eaDefaultFont),
-		"Helvetica,,,10" ),
-    APP_RESOURCE( "faxCommand",
-		offsetof(EditApplication,eaFaxCommand),
-		(char *)0 ),
     APP_RESOURCE( "customPrintCommand",
 		offsetof(EditApplication,eaCustomPrintCommand),
 		(char *)0 ),
@@ -502,13 +482,6 @@ static AppConfigurableResource	APP_ApplicationResourceTable[]=
     APP_RESOURCE( "customPrinterName2",
 		offsetof(EditApplication,eaCustomPrinterName2),
 		(char *)0 ),
-
-    APP_RESOURCE( "rulerFont",
-		offsetof(EditApplication,eaRulerFont),
-		"-*-helvetica-medium-r-*-*-%d-*-*-*-*-*-iso8859-1" ),
-    APP_RESOURCE( "printDialogFont",
-		offsetof(EditApplication,eaPrintDialogFont),
-		"-*-lucidatypewriter-bold-r-*-*-%d-*-*-*-m-*-iso8859-1" ),
 };
 
 /************************************************************************/
@@ -547,49 +520,39 @@ static void appInitializeGeometrySettings(	EditApplication *	ea )
 	    }
 	}
 
-    if  ( appPaperFormatFromString( &paperFormat,
+    if  ( utilPaperSizeFromString( &paperFormat,
 			    &(ea->eaDefaultDocumentGeometry.dgPageWideTwips),
 			    &(ea->eaDefaultDocumentGeometry.dgPageHighTwips),
-			    ea->eaUnitInt, ea->eaPaperString ) )
+			    ea->eaUnitInt, ea->eaPaperString ) < 0 )
 	{ SDEB(ea->eaPaperString);	}
 
     if  ( ea->eaLeftMarginString )
 	{
-	if  ( appGeoLengthFromString( ea->eaLeftMarginString, ea->eaUnitInt,
+	if  ( geoLengthFromString( ea->eaLeftMarginString, ea->eaUnitInt,
 			&ea->eaDefaultDocumentGeometry.dgLeftMarginTwips ) )
 	    { SDEB(ea->eaLeftMarginString);	}
 	}
 
     if  ( ea->eaRightMarginString )
 	{
-	if  ( appGeoLengthFromString( ea->eaRightMarginString, ea->eaUnitInt,
+	if  ( geoLengthFromString( ea->eaRightMarginString, ea->eaUnitInt,
 			&ea->eaDefaultDocumentGeometry.dgRightMarginTwips ) )
 	    { SDEB(ea->eaRightMarginString);	}
 	}
 
     if  ( ea->eaTopMarginString )
 	{
-	if  ( appGeoLengthFromString( ea->eaTopMarginString, ea->eaUnitInt,
+	if  ( geoLengthFromString( ea->eaTopMarginString, ea->eaUnitInt,
 			&ea->eaDefaultDocumentGeometry.dgTopMarginTwips ) )
 	    { SDEB(ea->eaTopMarginString);	}
 	}
 
     if  ( ea->eaBottomMarginString )
 	{
-	if  ( appGeoLengthFromString( ea->eaBottomMarginString, ea->eaUnitInt,
+	if  ( geoLengthFromString( ea->eaBottomMarginString, ea->eaUnitInt,
 			&ea->eaDefaultDocumentGeometry.dgBottomMarginTwips ) )
 	    { SDEB(ea->eaBottomMarginString);	}
 	}
-
-    ea->eaSupportXvCopyPaste= 0;
-    if  ( ea->eaSupportXvCopyPasteString			&&
-	  ! strcmp( ea->eaSupportXvCopyPasteString, "1" )	)
-	{ ea->eaSupportXvCopyPaste= 1;	}
-
-    ea->eaHideSaveToOption= 0;
-    if  ( ea->eaHideSaveToOptionString			&&
-	  ! strcmp( ea->eaHideSaveToOptionString, "1" )	)
-	{ ea->eaHideSaveToOption= 1;	}
 
     ea->eaUsePostScriptFilters= 0;
     if  ( ea->eaUsePostScriptFiltersString			&&
@@ -600,6 +563,11 @@ static void appInitializeGeometrySettings(	EditApplication *	ea )
     if  ( ea->eaUsePostScriptIndexedImagesString			&&
 	  ! strcmp( ea->eaUsePostScriptIndexedImagesString, "1" )	)
 	{ ea->eaUsePostScriptIndexedImages= 1;	}
+
+    ea->ea7BitsPostScript= 0;
+    if  ( ea->ea7BitsPostScriptString			&&
+	  ! strcmp( ea->ea7BitsPostScriptString, "1" )	)
+	{ ea->ea7BitsPostScript= 1;	}
 
     ea->eaSkipEmptyPages= 0;
     if  ( ea->eaSkipEmptyPagesString			&&
@@ -616,18 +584,113 @@ static void appInitializeGeometrySettings(	EditApplication *	ea )
 	  ! strcmp( ea->eaOmitHeadersOnEmptyPagesString, "1" )	)
 	{ ea->eaOmitHeadersOnEmptyPages= 1;	}
 
-    if  ( ea->eaToplevel.atTopWidget )
-	{
-	double			horPixPerMM;
-	double			verPixPerMM;
-	double			xfac;
-	double			yfac;
+    ea->eaAvoidFontconfig= 0;
+    if  ( ea->eaAvoidFontconfigString			&&
+	  ! strcmp( ea->eaAvoidFontconfigString, "1" )	)
+	{ ea->eaAvoidFontconfig= 1;	}
 
-	appGetFactors( ea, &horPixPerMM, &verPixPerMM, &xfac, &yfac );
+    ea->eaPreferBase35Fonts= 0;
+    if  ( ea->eaPreferBase35FontsString			&&
+	  ! strcmp( ea->eaPreferBase35FontsString, "1" )	)
+	{ ea->eaPreferBase35Fonts= 1;	}
+
+    /*  3  */
+    if  ( ea->eaEmbedFontsString		&&
+	  ea->eaEmbedFonts == 0			)
+	{
+	if  ( ! strcmp( ea->eaEmbedFontsString, "0" ) )
+	    { ea->eaEmbedFonts= -1;	}
+	if  ( ! strcmp( ea->eaEmbedFontsString, "1" ) )
+	    { ea->eaEmbedFonts=  1;	}
+
+	if  ( ea->eaEmbedFonts == 0 )
+	    { SDEB(ea->eaEmbedFontsString);	}
 	}
+
+    if  ( ea->eaUseKerningString		&&
+	  ea->eaUseKerning == 0			)
+	{
+	if  ( ! strcmp( ea->eaUseKerningString, "0" ) )
+	    { ea->eaUseKerning= -1;	}
+	if  ( ! strcmp( ea->eaUseKerningString, "1" ) )
+	    { ea->eaUseKerning=  1;	}
+
+	if  ( ea->eaUseKerning == 0 )
+	    { SDEB(ea->eaUseKerningString);	}
+	}
+
+    if  ( ea->eaLeftRulerWidthMMString )
+	{
+	utilArgToInt( &(ea->eaLeftRulerWidthMM),
+					ea->eaLeftRulerWidthMMString );
+	}
+    if  ( ea->eaRightRulerWidthMMString )
+	{
+	utilArgToInt( &(ea->eaRightRulerWidthMM),
+					ea->eaRightRulerWidthMMString );
+	}
+    if  ( ea->eaTopRulerHeightMMString )
+	{
+	utilArgToInt( &(ea->eaTopRulerHeightMM),
+					ea->eaTopRulerHeightMMString );
+	}
+    if  ( ea->eaBottomRulerHeightMMString )
+	{
+	utilArgToInt( &(ea->eaBottomRulerHeightMM),
+					ea->eaBottomRulerHeightMMString );
+	}
+
+    if  ( ea->eaToplevel.atTopWidget )
+	{ appGetPixelsPerTwip( ea );	}
 
     return;
     }
+
+/************************************************************************/
+/*									*/
+/*  Resolve application resources.					*/
+/*									*/
+/*  9)  Theoretically a program could have more than one application	*/
+/*	object. This has never beem tested. The use of a single		*/
+/*	table and different flags to check for reuse here is one of the	*/
+/*	things to fix.							*/
+/*									*/
+/************************************************************************/
+
+void appGetApplicationResourceValues(	EditApplication *	ea )
+    {
+    /*  b  */
+    if  ( ! ea->eaGotResourceTable )
+	{
+	appGuiGetResourceValues( &(ea->eaGotResourceTable), ea,
+					    ea->eaResourceData,
+					    ea->eaResourceTable,
+					    ea->eaResourceCount );
+	}
+
+    if  ( ! ea->eaGotFileMessageResourceTable )
+	{
+	appGuiGetResourceValues( &(ea->eaGotFileMessageResourceTable), ea,
+					&(ea->eaFileMessageResources),
+					ea->eaFileMessageResourceTable,
+					ea->eaFileMessageResourceCount );
+	}
+
+    /*  9  */
+    if  ( ! ea->eaGotApplicationResources )
+	{
+	appGuiGetResourceValues( &(ea->eaGotApplicationResources), ea,
+				(void *)ea,
+				APP_ApplicationResourceTable,
+				sizeof(APP_ApplicationResourceTable)/
+				sizeof(AppConfigurableResource) );
+	}
+
+    appInitializeGeometrySettings( ea );
+
+    return;
+    }
+
 
 /************************************************************************/
 /*									*/
@@ -653,19 +716,6 @@ static int appFinishApplicationWindow(	EditApplication *	ea )
 			*(ea->eaAppFileMenuText), 0,
 			ea->eaAppFileMenuItems, ea->eaAppFileMenuItemCount,
 			(void *)ea );
-
-    if  ( ea->eaAppFileHideOption == (APP_WIDGET)0 )
-	{
-	int			i;
-	const AppMenuItem *	ami= ea->eaAppFileMenuItems;
-
-	for ( i= 0; i < ea->eaAppFileMenuItemCount; ami++, i++ )
-	    {
-	    if  ( ami->amiCallback == appAppFileHide )
-		{ ea->eaAppFileHideOption= ami->amiOptionWidget;	}
-	    }
-	}
-
 
     ea->eaWinMenu= appMakeMenu( &(ea->eaWinMenuButton),
 			&(ea->eaToplevel), ea, ea->eaMenuBar,
@@ -777,74 +827,192 @@ static int appFinishApplicationWindow(	EditApplication *	ea )
     }
 
 /************************************************************************/
-/*									*/
-/*  Resolve application resources.					*/
-/*									*/
-/*  9)  Theoretically a program could have more than one application	*/
-/*	object. This has never beem tested. The use of a single		*/
-/*	table and different flags to check for reuse here is one of the	*/
-/*	things to fix.							*/
-/*									*/
-/************************************************************************/
 
-void appGetApplicationResourceValues(	EditApplication *	ea )
+static int app_version(		EditApplication *		ea,
+				const char *			prog,
+				const char *			call,
+				int				argc,
+				char **				argv )
     {
-    /*  b  */
-    if  ( ! ea->eaGotResourceTable )
-	{
-	appGuiGetResourceValues( &(ea->eaGotResourceTable), ea,
-					    ea->eaResourceData,
-					    ea->eaResourceTable,
-					    ea->eaResourceCount );
-	}
-
-    if  ( ! ea->eaGotFileMessageResourceTable )
-	{
-	appGuiGetResourceValues( &(ea->eaGotFileMessageResourceTable), ea,
-					&(ea->eaFileMessageResources),
-					ea->eaFileMessageResourceTable,
-					ea->eaFileMessageResourceCount );
-	}
-
-    /*  9  */
-    if  ( ! ea->eaGotApplicationResources )
-	{
-	appGuiGetResourceValues( &(ea->eaGotApplicationResources), ea,
-				(void *)ea,
-				APP_ApplicationResourceTable,
-				sizeof(APP_ApplicationResourceTable)/
-				sizeof(AppConfigurableResource) );
-	}
-
-    appInitializeGeometrySettings( ea );
-
-    return;
+    printf( "%s\n", ea->eaNameAndVersion );
+    return 0;
     }
 
-/************************************************************************/
-/*									*/
-/*  Collect a list of printers.						*/
-/*									*/
-/************************************************************************/
-
-int appGetPrintDestinations(		EditApplication *	ea )
+static int app_platform(	EditApplication *		ea,
+				const char *			prog,
+				const char *			call,
+				int				argc,
+				char **				argv )
     {
-    if  ( ea->eaPrintDestinationsCollected )
-	{ return 0;	}
+    printf( "%s\n", ea->eaPlatformCompiled );
+    return 0;
+    }
 
-    ea->eaPrintDestinationsCollected= 1;
+static int app_build(		EditApplication *		ea,
+				const char *			prog,
+				const char *			call,
+				int				argc,
+				char **				argv )
+    {
+    printf( "%s\n", ea->eaHostDateCompiled );
+    return 0;
+    }
 
-    if  ( utilPrinterGetPrinters( &(ea->eaPrintDestinationCount),
-				    &(ea->eaDefaultPrintDestination),
-				    &(ea->eaPrintDestinations),
-				    ea->eaCustomPrintCommand,
-				    ea->eaCustomPrinterName,
-				    ea->eaCustomPrintCommand2,
-				    ea->eaCustomPrinterName2 ) )
-	{ LDEB(1); return -1; 	}
+static int app_fullVersion(	EditApplication *		ea,
+				const char *			prog,
+				const char *			call,
+				int				argc,
+				char **				argv )
+    {
+    printf( "%s %s %s %s\n",
+		    ea->eaNameAndVersion,
+		    ea->eaOptionalComponents,
+		    ea->eaPlatformCompiled,
+		    ea->eaHostDateCompiled );
 
     return 0;
     }
+
+static int app_saveTo(		EditApplication *		ea,
+				const char *			prog,
+				const char *			call,
+				int				argc,
+				char **				argv )
+    {
+    int		rval= 2;
+
+    MemoryBuffer	a0;
+    MemoryBuffer	a1;
+
+    utilInitMemoryBuffer( &a0 );
+    utilInitMemoryBuffer( &a1 );
+
+    if  ( argc < 2 )
+	{ SLDEB(call,argc); rval= -1; goto ready;	}
+
+    if  ( utilMemoryBufferSetString( &a0, argv[0] ) )
+	{ LDEB(1); rval= -1; goto ready;	}
+    if  ( utilMemoryBufferSetString( &a1, argv[1] ) )
+	{ LDEB(1); rval= -1; goto ready;	}
+
+    if  ( appFileConvert( ea, &a0, &a1 ) )
+	{ SSSDEB(call,argv[0],argv[1]); rval= -1; goto ready; }
+
+  ready:
+
+    utilCleanMemoryBuffer( &a0 );
+    utilCleanMemoryBuffer( &a1 );
+
+    return rval;
+    }
+
+static int app_printToFile(	EditApplication *		ea,
+				const char *			prog,
+				const char *			call,
+				int				argc,
+				char **				argv )
+    {
+    if  ( argc < 2 )
+	{ SLDEB(call,argc); return -1;	}
+
+    if  ( appPrintToFile( ea, argv[0], argv[1], (const char *)0 ) )
+	{ SSSDEB(call,argv[0],argv[1]); return -1; }
+
+    return 2;
+    }
+
+static int app_printToFilePaper( EditApplication *		ea,
+				const char *			prog,
+				const char *			call,
+				int				argc,
+				char **				argv )
+    {
+    if  ( argc < 3 )
+	{ SLDEB(call,argc); return -1;	}
+
+    if  ( appPrintToFile( ea, argv[0], argv[1], argv[2] ) )
+	{ SSSDEB(call,argv[0],argv[2]); return -1; }
+
+    return 3;
+    }
+
+static int app_print( 		EditApplication *		ea,
+				const char *			prog,
+				const char *			call,
+				int				argc,
+				char **				argv )
+    {
+    if  ( argc < 1 )
+	{ SLDEB(call,argc); return -1;	}
+
+    if  ( appPrintToPrinter( ea, argv[0], (const char *)0, (const char *)0 ) )
+	{ SSDEB(call,argv[0]); return -1; }
+
+    return 1;
+    }
+
+static int app_printPaper( 	EditApplication *		ea,
+				const char *			prog,
+				const char *			call,
+				int				argc,
+				char **				argv )
+    {
+    if  ( argc < 2 )
+	{ SLDEB(call,argc); return -1;	}
+
+    if  ( appPrintToPrinter( ea, argv[0], (const char *)0, argv[1] ) )
+	{ SSDEB(call,argv[0]); return -1; }
+
+    return 2;
+    }
+
+static int app_printToPrinter( 	EditApplication *		ea,
+				const char *			prog,
+				const char *			call,
+				int				argc,
+				char **				argv )
+    {
+    if  ( argc < 2 )
+	{ SLDEB(call,argc); return -1;	}
+
+    if  ( appPrintToPrinter( ea, argv[0], argv[1], (const char *)0 ) )
+	{ SSDEB(call,argv[0]); return -1; }
+
+    return 2;
+    }
+
+static int app_printToPrinterPaper(
+				EditApplication *		ea,
+				const char *			prog,
+				const char *			call,
+				int				argc,
+				char **				argv )
+    {
+    if  ( argc < 3 )
+	{ SLDEB(call,argc); return -1;	}
+
+    if  ( appPrintToPrinter( ea, argv[0], argv[1], argv[2] ) )
+	{ SSDEB(call,argv[0]); return -1; }
+
+    return 3;
+    }
+
+static const SpecialCall AppSpecialCalls[]=
+{
+    { "version",		app_version,			},
+    { "platform",		app_platform,			},
+    { "build",			app_build,			},
+    { "fullVersion",		app_fullVersion,		},
+    { "saveTo",			app_saveTo,			},
+    { "printToFile",		app_printToFile,		},
+    { "printToFilePaper",	app_printToFilePaper,		},
+    { "print",			app_print,			},
+    { "printPaper",		app_printPaper,			},
+    { "printToPrinter",		app_printToPrinter,		},
+    { "printToPrinterPaper",	app_printToPrinterPaper,	},
+};
+
+static const int AppSpecialCallCount= sizeof(AppSpecialCalls)/sizeof(SpecialCall);
 
 /************************************************************************/
 /*									*/
@@ -859,148 +1027,67 @@ int appGetPrintDestinations(		EditApplication *	ea )
 /*									*/
 /************************************************************************/
 
-static int appMainHandleSpecialCall(	EditApplication *	ea,
+static const SpecialCall * appGetSpecialCall(
+				const SpecialCall *	calls,
+				int			callCount,
+				const char *		call )
+    {
+    int		c;
+
+    for ( c= 0; c < callCount; calls++, c++ )
+	{
+	if  ( ! strcmp( call, calls->scCall ) )
+	    { return calls;	}
+	}
+
+    return (SpecialCall *)0;
+    }
+
+static int appMainHandleSpecialCalls(	EditApplication *	ea,
 					const char *		prefix,
 					int			getResources,
+					const char *		prog,
 					int			argc,
 					char *			argv[] )
     {
     int			prefixLength= strlen( prefix );
-    const char *	command;
+    int			done= 0;
 
-    if  ( argc < 2 )
+    if  ( argc < 1 )
 	{ return 0;	}
 
-    if  ( strncmp( argv[1], prefix, prefixLength ) )
-	{ return 0;	}
-
-    command= argv[1]+ prefixLength;
-
-    /*  1  */
-    if  ( argc == 2				&&
-	  ! strcmp( command, "version" )	)
+    while( done < argc )
 	{
-	printf( "%s\n", ea->eaNameAndVersion );
-	return 2;
-	}
+	const char *		call;
+	const SpecialCall *	sc;
+	int			args;
+	int			off;
 
-    if  ( argc == 2			&&
-	  ! strcmp( command, "platform" )	)
-	{
-	printf( "%s\n", ea->eaPlatformCompiled );
-	return 2;
-	}
+	if  ( strncmp( argv[done], prefix, prefixLength ) )
+	    { break;	}
 
-    if  ( argc == 2			&&
-	  ! strcmp( command, "build" )	)
-	{
-	printf( "%s\n", ea->eaHostDateCompiled );
-	return 2;
-	}
+	call= argv[done]+ prefixLength;
+	sc= appGetSpecialCall( ea->eaSpecialCalls,
+					    ea->eaSpecialCallCount, call );
+	if  ( ! sc )
+	    {
+	    sc= appGetSpecialCall( AppSpecialCalls,
+					    AppSpecialCallCount, call );
+	    }
+	if  ( ! sc )
+	    { break;	}
 
-    if  ( argc == 2				&&
-	  ! strcmp( command, "fullVersion" )	)
-	{
-	printf( "%s %s %s\n",
-		    ea->eaNameAndVersion,
-		    ea->eaPlatformCompiled,
-		    ea->eaHostDateCompiled );
-
-	return 2;
-	}
-
-    if  ( argc == 4				&&
-	  ! strcmp( command, "saveTo" )	)
-	{
 	if  ( getResources )
 	    { appGetApplicationResourceValues( ea );	}
 
-	if  ( appFileConvert( ea, argv[2], argv[3] ) )
-	    { SSSDEB(argv[1],argv[2],argv[3]); return -1; }
-
-	return 4;
+	off= done+ 1;
+	args= (*sc->scExecuteCall)( ea, prog, call, argc- off, argv+ off );
+	if  ( args < 0 )
+	    { SLDEB(argv[1+done],args); return -1;	}
+	done += 1+ args;
 	}
 
-    /**  print to file **/
-
-    if  ( argc == 4				&&
-	  ! strcmp( command, "printToFile" )	)
-	{
-	if  ( getResources )
-	    { appGetApplicationResourceValues( ea );	}
-
-	if  ( appPrintToFile( ea, argv[2], argv[3], (const char *)0 ) )
-	    { SSSDEB(argv[1],argv[2],argv[3]); return -1; }
-
-	return 4;
-	}
-
-    if  ( argc == 5					&&
-	  ! strcmp( command, "printToFilePaper" )	)
-	{
-	if  ( getResources )
-	    { appGetApplicationResourceValues( ea );	}
-
-	if  ( appPrintToFile( ea, argv[2], argv[3], argv[4] ) )
-	    { SSSDEB(argv[1],argv[2],argv[3]); return -1; }
-
-	return 5;
-	}
-
-    /**  print to printer **/
-
-    if  ( argc == 3			&&
-	  ! strcmp( command, "print" )	)
-	{
-	if  ( getResources )
-	    { appGetApplicationResourceValues( ea );	}
-
-	if  ( appPrintToPrinter( ea, argv[2],
-					(const char *)0, (const char *)0 ) )
-	    { SSDEB(argv[1],argv[2]); return -1; }
-
-	return 3;
-	}
-
-    if  ( argc == 4				&&
-	  ! strcmp( command, "printPaper" )	)
-	{
-	if  ( getResources )
-	    { appGetApplicationResourceValues( ea );	}
-
-	if  ( appPrintToPrinter( ea, argv[2], (const char *)0, argv[3] ) )
-	    { SSDEB(argv[1],argv[2]); return -1; }
-
-	return 4;
-	}
-
-    if  ( argc == 4				&&
-	  ! strcmp( command, "printToPrinter" )	)
-	{
-	if  ( getResources )
-	    { appGetApplicationResourceValues( ea );	}
-
-	if  ( appPrintToPrinter( ea, argv[2], argv[3], (const char *)0 ) )
-	    { SSDEB(argv[1],argv[2]); return -1; }
-
-	return 4;
-	}
-
-    if  ( argc == 5					&&
-	  ! strcmp( command, "printToPrinterPaper" )	)
-	{
-	if  ( getResources )
-	    { appGetApplicationResourceValues( ea );	}
-
-	if  ( appPrintToPrinter( ea, argv[2], argv[3], argv[4] ) )
-	    { SSDEB(argv[1],argv[2]); return -1; }
-
-	return 5;
-	}
-
-    /**  ----- **/
-
-    return 0;
+    return done;
     }
 
 /************************************************************************/
@@ -1011,34 +1098,12 @@ static int appMainHandleSpecialCall(	EditApplication *	ea,
 
 static void appDefaultPapersize(	EditApplication *	ea )
     {
-    const char *	sizeFile= "/etc/papersize";
+    const char *	defsz= utilPaperDefaultSize();
 
-    if  ( ! appTestFileExists( sizeFile ) )
+    if  ( defsz )
 	{
-	FILE *	f;
-
-	f= fopen( sizeFile, "r" );
-	if  ( ! f )
-	    { SXDEB(sizeFile,f);	}
-	else{
-	    char	buf[50];
-
-	    if  ( fgets( buf, sizeof(buf)-1, f ) )
-		{
-		int		l;
-
-		buf[sizeof(buf)-1]= '\0';
-		l= strlen( buf );
-		if  ( l > 0 && buf[l-1] == '\n' )
-		    { buf[l-1]= '\0'; l--; }
-
-		if  ( l > 0 )
-		    {
-		    if  ( appSetSystemProperty( ea, "paper", buf ) )
-			{ SDEB(buf);	}
-		    }
-		}
-	    }
+	if  ( appSetSystemProperty( ea, "paper", defsz ) )
+	    { SDEB(defsz);	}
 	}
 
     return;
@@ -1061,9 +1126,21 @@ int appMain(	EditApplication *	ea,
 		int			argc,
 		char *			argv[] )
     {
+    int			rval= 0;
+
     int			argTo;
     int			arg;
     int			res;
+    int			didSpecial= 0;
+    char *		prog;
+
+    MemoryBuffer	aBuf;
+    MemoryBuffer	absolute;
+    MemoryBuffer	ext;
+
+    utilInitMemoryBuffer( &aBuf );
+    utilInitMemoryBuffer( &absolute );
+    utilInitMemoryBuffer( &ext );
 
     setlocale( LC_ALL, "" );
 
@@ -1071,11 +1148,11 @@ int appMain(	EditApplication *	ea,
 
     res= appReadUserProperties( ea );
     if  ( res )
-	{ LDEB(res); return 1;	}
+	{ LDEB(res); rval= 1; goto ready;	}
 
     res= appReadSystemProperties( ea );
     if  ( res )
-	{ LDEB(res); return 1;	}
+	{ LDEB(res); rval= 1; goto ready;	}
 
     argTo= 1;
     for ( arg= 1; arg < argc; arg++ )
@@ -1086,7 +1163,7 @@ int appMain(	EditApplication *	ea,
 	    if  ( appSetUserProperty( ea, argv[arg+ 1], argv[arg+ 2] ) )
 		{
 		SSDEB(argv[arg+ 1], argv[arg+ 2]);
-		return 1;
+		rval= 1; goto ready;
 		}
 
 	    arg += 2;
@@ -1096,15 +1173,19 @@ int appMain(	EditApplication *	ea,
 	}
     argc= argTo;
 
-    res= appMainHandleSpecialCall( ea, "--", 1, argc, argv );
+    prog= argv[0];
+    res= appMainHandleSpecialCalls( ea, "--", 1, prog, argc- 1, argv+ 1 );
     if  ( res < 0 )
-	{ LDEB(res); return 1;	}
+	{ LDEB(res); rval= 1; goto ready;	}
     if  ( res > 0 )
-	{ return 0;		}
+	{ didSpecial= 1; argc -= res; argv += res; argv[0]= prog;	}
+
+    if  ( argc <= 1 && didSpecial )
+	{ goto ready;	}
 
     /*  1  */
     if  ( appGuiInitApplication( ea, &argc, &argv ) )
-	{ LDEB(1); return 1;	}
+	{ LDEB(1); rval= 1; goto ready;	}
 
     utilInitDocumentGeometry( &(ea->eaDefaultDocumentGeometry) );
 
@@ -1112,7 +1193,7 @@ int appMain(	EditApplication *	ea,
     appGetApplicationResourceValues( ea );
 
     if  ( appFinishApplicationWindow( ea ) )
-	{ LDEB(1); return -1;	}
+	{ LDEB(1); rval= -1; goto ready;	}
 
     appAllocateCopyPasteTargetAtoms( ea );
 
@@ -1124,11 +1205,14 @@ int appMain(	EditApplication *	ea,
 	}
 #   endif
 
-    res= appMainHandleSpecialCall( ea, "++", 0, argc, argv );
+    res= appMainHandleSpecialCalls( ea, "++", 0, prog, argc- 1, argv+ 1 );
     if  ( res < 0 )
-	{ LDEB(res); return 1;	}
+	{ LDEB(res); rval= 1; goto ready;	}
     if  ( res > 0 )
-	{ return 0;		}
+	{ didSpecial= 1; argc -= res; argv += res; argv[0]= prog;	}
+
+    if  ( argc <= 1 && didSpecial )
+	{ goto ready;	}
 
     /*  3  */
     (void) signal( SIGHUP, SIG_IGN );
@@ -1139,114 +1223,79 @@ int appMain(	EditApplication *	ea,
 
     for ( arg= 1; arg < argc; arg++ )
 	{
-	const int			read_only= 0;
+	const int			readOnly= 0;
 	AppFileMessageResources *	afmr= &(ea->eaFileMessageResources);
-	static char			absolute[1000+1];
 
-	EditDocument *			ed;
+	if  ( utilMemoryBufferSetString( &aBuf, argv[arg] ) )
+	    { LDEB(1); rval= 1; goto ready;	}
 
-	if  ( ! strcmp( argv[arg], "++Upd" ) )
+	if  ( ! appTestDirectory( &aBuf ) )
 	    {
-	    if  ( arg+ 3 >= argc )
-		{ LLDEB(arg,argc); arg= argc- 1; continue;	}
+	    appRunOpenChooser( (APP_WIDGET)0, ea->eaToplevel.atTopWidget,
+			ea->eaFileExtensionCount, ea->eaFileExtensions,
+			ea->eaDefaultFileFilter, &aBuf,
+			appChooserOpenDocument, ea, (void *)ea );
 
-	    ed= appOpenDocument( ea, ea->eaToplevel.atTopWidget, (APP_WIDGET)0,
-						read_only, argv[arg+ 1] );
-
-	    if  ( ed )
-		{
-		appSetDocumentTitle( ed, argv[arg+ 2] );
-		appSetDocumentFilename( ed, argv[arg+ 3] );
-
-		appDocumentChanged( ed, 1 );
-		}
-
-	    if  ( appRemoveFile( argv[arg+ 1] ) )
-		{ SDEB(argv[arg+ 1]);	}
-
-	    arg += 3; continue;
+	    continue;
 	    }
 
-	if  ( ! strcmp( argv[arg], "++New" ) )
+	if  ( appTestFileExists( &aBuf ) )
 	    {
-	    if  ( arg+ 2 >= argc )
-		{ LLDEB(arg,argc); arg= argc- 1; continue;	}
+	    int		createNew= ea->eaCreateNewFromCommand;
+	    int		format= -1;
+	    int		suggestStdout= 0;
 
-	    ed= appOpenDocument( ea, ea->eaToplevel.atTopWidget, (APP_WIDGET)0,
-						read_only, argv[arg+ 1] );
+	    format= appDocumentGetSaveFormat( &suggestStdout, ea,
+						&aBuf, (void *)0,
+						APPFILE_CAN_SAVE, format );
+	    if  ( format < 0 || suggestStdout )
+		{ createNew= 0;	}
 
-	    if  ( ed )
+	    if  ( createNew )
 		{
-		appSetDocumentTitle( ed, argv[arg+ 2] );
-		appSetDocumentFilename( ed, (char *)0 );
+		int	ynRes;
 
-		appDocumentChanged( ed, 1 );
-		}
-
-	    if  ( appRemoveFile( argv[arg+ 1] ) )
-		{ SDEB(argv[arg+ 1]);	}
-
-	    arg += 2; continue;
-	    }
-
-	if  ( ! strcmp( argv[arg], "++Old" ) )
-	    {
-	    if  ( arg+ 1 >= argc )
-		{ LLDEB(arg,argc); arg= argc- 1; continue;	}
-
-	    if  ( appRemoveFile( argv[arg+ 1] ) )
-		{ SDEB(argv[arg+ 1]);	}
-
-	    arg += 1; continue;
-	    }
-
-	if  ( ! strcmp( argv[arg], "++Exit" ) )
-	    { continue;	}
-
-	if  ( appTestFileExists( argv[arg] ) )
-	    {
-	    if  ( ea->eaCreateNewFromCommand )
-		{
-		int	res;
-
-		res= appQuestionRunSubjectYesNoDialog( ea,
+		ynRes= appQuestionRunSubjectYesNoDialog( ea,
 				    ea->eaToplevel.atTopWidget, (APP_WIDGET)0,
-				    argv[arg], afmr->afmrMakeItQuestion,
-		    (char *)0, (char *)0 );
+				    argv[arg], afmr->afmrMakeItQuestion );
 
-		if  ( res == AQDrespYES )
+		if  ( ynRes == AQDrespYES )
 		    {
-		    if  ( appNewDocument( ea, argv[arg] ) )
+		    if  ( appNewDocument( ea, &aBuf ) )
 			{ SDEB(argv[arg]);	}
 		    }
 		}
 	    else{
-		appQuestionRunSubjectErrorDialog( ea,
+		appQuestionRunFilenameErrorDialog( ea,
 				    ea->eaToplevel.atTopWidget, (APP_WIDGET)0,
-				    argv[arg], afmr->afmrNoSuchFileMessage );
+				    &aBuf, afmr->afmrNoSuchFileMessage );
 		}
 	    }
 	else{
-	    const char * const	fileRelativeTo= (const char *)0;
-	    int			relativeIsFile= 1;
+	    const MemoryBuffer * const	fileRelativeTo= (const MemoryBuffer *)0;
+	    int				relativeIsFile= 1;
+	    EditDocument *		ed;
 
-	    if  ( appAbsoluteName( absolute, 1000,
-			    argv[arg], relativeIsFile, fileRelativeTo ) < 0 )
+	    if  ( appAbsoluteName( &absolute,
+			    &aBuf, relativeIsFile, fileRelativeTo ) < 0 )
 		{
 		SDEB(argv[arg]);
 		ed= appOpenDocument( ea, ea->eaToplevel.atTopWidget,
-					(APP_WIDGET)0, read_only, argv[arg] );
+					(APP_WIDGET)0, readOnly, &aBuf );
 		}
 	    else{
 		ed= appOpenDocument( ea, ea->eaToplevel.atTopWidget,
-					(APP_WIDGET)0, read_only, absolute );
+					(APP_WIDGET)0, readOnly, &absolute );
 		}
+
+	    if  ( ! ed )
+		{ XDEB(ed);	}
 	    }
 	}
 
     if  ( ea->eaVisibleDocumentCount > 0 )
 	{ appHideShellWidget( ea->eaToplevel.atTopWidget );	}
-    else{ appShowShellWidget( ea->eaToplevel.atTopWidget );	}
+    else{ appShowShellWidget( ea, ea->eaToplevel.atTopWidget );	}
 
 #   ifdef USE_MOTIF
     XtAppMainLoop( ea->eaContext );
@@ -1256,5 +1305,15 @@ int appMain(	EditApplication *	ea,
     gtk_main();
 #   endif
 
-    return 0;
+#   ifdef USE_QT
+    appRunMainLoop( ea );
+#   endif
+
+  ready:
+
+    utilCleanMemoryBuffer( &aBuf );
+    utilCleanMemoryBuffer( &absolute );
+    utilCleanMemoryBuffer( &ext );
+
+    return rval;
     }

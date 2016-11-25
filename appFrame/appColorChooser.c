@@ -9,9 +9,13 @@
 #   include	<stdlib.h>
 #   include	<stdio.h>
 #   include	<stddef.h>
+#   include	<string.h>
 
-#   include	<appColorChooser.h>
-#   include	"appFrame.h"
+#   include	"appColorChooser.h"
+#   include	"guiWidgets.h"
+
+#   include	"guiWidgetDrawingSurface.h"
+#   include	"guiDrawingWidget.h"
 
 #   include	<appDebugon.h>
 
@@ -22,7 +26,7 @@
 /************************************************************************/
 
 void appColorChooserSetColor(	ColorChooser *		cc,
-				int			explicit,
+				int			colorExplicit,
 				const RGB8Color *	rgb8 )
     {
     int		changed= 0;
@@ -35,7 +39,7 @@ void appColorChooserSetColor(	ColorChooser *		cc,
 
     if  ( cc->ccColorExplicit )
 	{
-	if  ( explicit )
+	if  ( colorExplicit )
 	    {
 	    if  ( bmRGB8ColorsDiffer( &(cc->ccColorChosen), rgb8 ) )
 		{
@@ -49,7 +53,7 @@ void appColorChooserSetColor(	ColorChooser *		cc,
 	    }
 	}
     else{
-	if  ( explicit )
+	if  ( colorExplicit )
 	    {
 	    cc->ccColorExplicit= 1;
 	    cc->ccColorChosen= *rgb8;
@@ -59,9 +63,7 @@ void appColorChooserSetColor(	ColorChooser *		cc,
 
     if  ( changed )
 	{
-	cc->ccInplaceColorAllocated= 0;
-
-	appExposeRectangle( &(cc->ccInplaceDrawingData), 0, 0, 0, 0 );
+	appExposeDrawnPulldownInplace( &(cc->ccPulldown) );
 	}
 
     return;
@@ -73,7 +75,7 @@ void appColorChooserUnset(	ColorChooser *	cc )
 	{
 	cc->ccColorSet= 0;
 
-	appExposeRectangle( &(cc->ccInplaceDrawingData), 0, 0, 0, 0 );
+	appExposeDrawnPulldownInplace( &(cc->ccPulldown) );
 	}
 
     return;
@@ -88,31 +90,41 @@ void appColorChooserUnset(	ColorChooser *	cc )
 static APP_EVENT_HANDLER_H( appColorChooserRedrawInplace, w, voidcc, exposeEvent )
     {
     ColorChooser *	cc= (ColorChooser *)voidcc;
-    AppDrawingData *	add= &(cc->ccInplaceDrawingData);
+    DrawingSurface	dsI= cc->ccPulldown.adpInplaceDrawingSurface;
 
     int			wide;
     int			high;
 
+    DocumentRectangle	drClip;
     DocumentRectangle	drI;
 
-    appDrawnPulldownDrawArrow( &wide, &high, w, add );
+    guiCollectExposures( &drClip, cc->ccPulldown.adpInplaceDrawing,
+								exposeEvent );
+
+    drawSetClipRect( dsI, &drClip );
+
+    /* Also draws background */
+    appDrawnPulldownDrawArrow( &drClip, &wide, &high,
+						w, &(cc->ccPulldown) );
+
+    drawNoClipping( dsI );
+
+    if  ( ! cc->ccVisible )
+	{ return;	}
 
     drI.drX0= 3; drI.drX1= wide- 3;
     drI.drY0= 3; drI.drY1= high- 3;
 
     if  ( ! cc->ccColorSet )
 	{
-	appDrawSetForegroundWhite( add );
-	appDrawFillRectangle( add, drI.drX0, drI.drY0,
-			    drI.drX1- drI.drX0+ 1, drI.drY1- drI.drY0+ 1 );
+	drawSetForegroundColorWhite( dsI );
+	drawFillRectangle( dsI, &drI );
 
-	appDrawSetForegroundBlack( add );
+	drawSetForegroundColorBlack( dsI );
+	drawRectangle( dsI, &drI );
 
-	appDrawDrawRectangle( add, drI.drX0, drI.drY0,
-			    drI.drX1- drI.drX0+ 1, drI.drY1- drI.drY0+ 1 );
-
-	appDrawDrawLine( add, drI.drX0, drI.drY0, drI.drX1, drI.drY1 );
-	appDrawDrawLine( add, drI.drX0, drI.drY1, drI.drX1, drI.drY0 );
+	drawLine( dsI, drI.drX0, drI.drY0, drI.drX1, drI.drY1 );
+	drawLine( dsI, drI.drX0, drI.drY1, drI.drX1, drI.drY0 );
 
 	return;
 	}
@@ -122,45 +134,77 @@ static APP_EVENT_HANDLER_H( appColorChooserRedrawInplace, w, voidcc, exposeEvent
 	const ColorChooserResources *	ccr= cc->ccResources;
 	const int			row= 0;
 
-	appDrawSetFont( add, cc->ccTextFont );
+	drawSetForegroundColorWhite( dsI );
+	drawFillRectangle( dsI, &drI );
 
-	appDrawSetForegroundWhite( add );
-	appDrawFillRectangle( add, drI.drX0, drI.drY0,
-			    drI.drX1- drI.drX0+ 1, drI.drY1- drI.drY0+ 1 );
+	drawSetForegroundColorBlack( dsI );
 
-	appDrawSetForegroundBlack( add );
-
-	appDrawDrawString( add, 
+	drawString( dsI, 
 		    cc->ccXShift+ 4, ( row+ 1 )* cc->ccStripHigh- 7,
-		    ccr->ccrAutomaticColor, strlen( ccr->ccrAutomaticColor ) );
+		    cc->ccInplaceScreenFont,
+		    ccr->ccrAutomaticColor,
+		    strlen( ccr->ccrAutomaticColor ) );
 
 	return;
 	}
 
-    if  ( ! cc->ccInplaceColorAllocated )
-	{
-	if  ( appColorRgb( &(cc->ccInplaceColor), &(cc->ccInplaceColors),
-						cc->ccColorChosen.rgb8Red,
-						cc->ccColorChosen.rgb8Green,
-						cc->ccColorChosen.rgb8Blue ) )
-	    { LDEB(1); return;	}
-
-	cc->ccInplaceColorAllocated= 1;
-	}
+    /**/
+    drawSetForegroundColor( dsI, &(cc->ccColorChosen) );
+    drawFillRectangle( dsI, &drI );
 
     /**/
-    appDrawSetForegroundColor( add, &(cc->ccInplaceColor) );
-
-    appDrawFillRectangle( add, drI.drX0, drI.drY0,
-			    drI.drX1- drI.drX0+ 1, drI.drY1- drI.drY0+ 1 );
-
-    /**/
-    appDrawSetForegroundBlack( add );
-
-    appDrawDrawRectangle( add, drI.drX0, drI.drY0,
-			    drI.drX1- drI.drX0+ 1, drI.drY1- drI.drY0+ 1 );
+    drawSetForegroundColorBlack( dsI );
+    drawRectangle( dsI, &drI );
 
     return;
+    }
+
+/************************************************************************/
+
+static int appColorChooserGetColor(	ColorChooser *		cc,
+					RGB8Color **		pRgb8,
+					int			row,
+					int			col )
+    {
+    int				color;
+    ColorChooserPaletteColor *	ccpc;
+
+    color= ( row- cc->ccHasAutomatic )* cc->ccColumns+ col;
+    if  ( color < 0 || color >= cc->ccColorCount )
+	{ LLDEB(color,cc->ccColorCount); return 1;	}
+
+    ccpc= cc->ccColors+ color;
+    if  ( ccpc->ccpcStatus == CCstatusFREE )
+	{ /*LDEB(ccpc->ccpcStatus);*/ return 1;	}
+    *pRgb8= &(ccpc->ccpcRGB8Color);
+
+    return 0;
+    }
+
+/************************************************************************/
+
+static int appColorChooserAllocatePullDownDrawingData(
+					ColorChooser *			cc )
+    {
+    AppDrawnPulldown *	adp= &(cc->ccPulldown);
+
+    if  ( appFinishDrawnPulldownPulldown( adp ) )
+	{ LDEB(1); return -1;	}
+
+    cc->ccPulldownBackgroundColor.rgb8Red= 128;
+    cc->ccPulldownBackgroundColor.rgb8Green= 128;
+    cc->ccPulldownBackgroundColor.rgb8Blue= 128;
+    cc->ccPulldownBackgroundColor.rgb8Alpha= 255;
+
+    if  ( cc->ccPulldownScreenFont < 0 )
+	{
+	cc->ccPulldownScreenFont= guiGetLabelFont(
+			    cc->ccPulldown.adpPulldownDrawingSurface,
+			    cc->ccPostScriptFontList,
+			    cc->ccLabelWidget );
+	}
+
+    return 0;
     }
 
 /************************************************************************/
@@ -172,15 +216,13 @@ static APP_EVENT_HANDLER_H( appColorChooserRedrawInplace, w, voidcc, exposeEvent
 static APP_EVENT_HANDLER_H( appColorChooserRedrawPulldown, w, voidcc, exposeEvent )
     {
     ColorChooser *	cc= (ColorChooser *)voidcc;
-    AppDrawingData *	add= &(cc->ccPulldownDrawingData);
+    DrawingSurface	dsP;
 
     int			inplaceWide;
     int			inplaceHigh;
     int			pulldownWide;
     int			pulldownHigh;
 
-    const int		ox= 0;
-    const int		oy= 0;
     DocumentRectangle	drClip;
 
     int			row;
@@ -189,90 +231,71 @@ static APP_EVENT_HANDLER_H( appColorChooserRedrawPulldown, w, voidcc, exposeEven
     int			currCol= -1;
     int			currRow= -1;
 
-    if  ( ! cc->ccPulldownDrawingDataSet )
-	{
-	appSetDrawingDataForWidget( cc->ccPulldown.adpPulldownDrawing,
-					1.0, &(cc->ccPulldownDrawingData) );
+    DocumentRectangle	drPulldown;
+    DocumentRectangle	drBox;
 
-	if  ( appAllocateColors( add, &(cc->ccPulldownColors) ) )
-	    { LDEB(1);	}
+    if  ( appColorChooserAllocatePullDownDrawingData( cc ) )
+	{ LDEB(1); return;	}
+    dsP= cc->ccPulldown.adpPulldownDrawingSurface;
 
-	cc->ccPulldownDrawingDataSet= 1;
-
-	appColorRgb( &(cc->ccPulldownBackgroundColor),
-				    &(cc->ccPulldownColors), 128, 128,128 );
-	}
-
-    appDrawGetSizeOfWidget( &pulldownWide, &pulldownHigh, w );
-    appDrawGetSizeOfWidget( &inplaceWide, &inplaceHigh,
+    guiDrawGetSizeOfWidget( &pulldownWide, &pulldownHigh, w );
+    guiDrawGetSizeOfWidget( &inplaceWide, &inplaceHigh,
 					cc->ccPulldown.adpInplaceDrawing );
+    drPulldown.drX0= 0;
+    drPulldown.drY0= 0;
+    drPulldown.drX1= pulldownWide- 1;
+    drPulldown.drY1= pulldownHigh- 1;
 
-    appCollectExposures( &drClip, add, ox, oy, exposeEvent );
+    guiCollectExposures( &drClip, cc->ccPulldown.adpPulldownDrawing,
+								exposeEvent );
 
-    appDrawSetForegroundColor( add, &(cc->ccPulldownBackgroundColor) );
+    drawSetForegroundColor( dsP, &(cc->ccPulldownBackgroundColor) );
 
-    appDrawFillRectangle( add, drClip.drX0, drClip.drY0,
-					    drClip.drX1- drClip.drX0+ 1,
-					    drClip.drY1- drClip.drY0+ 1 );
+    drawFillRectangle( dsP, &drClip );
 
-    appDrawSetForegroundBlack( add );
-    appDrawDrawRectangle( add, 0, 0, pulldownWide- 1, pulldownHigh- 1 );
+    drawSetForegroundColorBlack( dsP );
+    drawRectangle( dsP, &drPulldown );
 
     /**/
-    if  ( ! cc->ccTextFont )
-	{ XDEB(cc->ccTextFont);	}
+    if  ( cc->ccPulldownScreenFont < 0 )
+	{ LDEB(cc->ccPulldownScreenFont);	}
     else{
 	const ColorChooserResources *	ccr= cc->ccResources;
 
-	appDrawSetFont( add, cc->ccTextFont );
-
-	row= 0;
-	appDrawDrawString( add, 
-		    cc->ccXShift+ 4, ( row+ 1 )* cc->ccStripHigh- 5,
-		    ccr->ccrAutomaticColor, strlen( ccr->ccrAutomaticColor ) );
+	if  ( cc->ccHasAutomatic )
+	    {
+	    row= 0;
+	    drawString( dsP, 
+			cc->ccXShift+ 4, ( row+ 1 )* cc->ccStripHigh- 5,
+			cc->ccPulldownScreenFont,
+			ccr->ccrAutomaticColor,
+			strlen( ccr->ccrAutomaticColor ) );
+	    }
 
 	row= cc->ccStrips- 1;
-	appDrawDrawString( add, 
+	drawString( dsP, 
 		    cc->ccXShift+ 4, ( row+ 1 )* cc->ccStripHigh- 8,
+		    cc->ccPulldownScreenFont,
 		    ccr->ccrMoreColors, strlen( ccr->ccrMoreColors ) );
 	}
 
-    for ( row= 1; row < cc->ccStrips- 1; row++ )
+    for ( row= cc->ccHasAutomatic; row < cc->ccStrips- 1; row++ )
 	{
+	drBox.drY0= row* cc->ccStripHigh+ 3;
+	drBox.drY1= drBox.drY0+ cc->ccStripHigh- 7;
+
 	for ( col= 0; col < cc->ccColumns; col++ )
 	    {
-	    int				color;
-	    ColorChooserPaletteColor *	ccpc;
-	    const RGB8Color *		rgb8;
+	    RGB8Color *			rgb8;
 
-	    color= ( row- 1 )* cc->ccColumns+ col;
-	    if  ( color < 0 || color >= cc->ccColorCount )
-		{ LLDEB(color,cc->ccColorCount); continue;	}
+	    drBox.drX0= cc->ccXShift+ col* cc->ccColumnWide+ 3;
+	    drBox.drX1= drBox.drX0+ cc->ccColumnWide- 7;
 
-	    ccpc= cc->ccColors+ color;
-	    if  ( ccpc->ccpcStatus == CCstatusFREE )
-		{ /*LDEB(ccpc->ccpcStatus);*/ continue;	}
-	    rgb8= &(ccpc->ccpcRGB8Color);
+	    if  ( appColorChooserGetColor( cc, &rgb8, row, col ) )
+		{ continue;	}
 
-	    if  ( ! ccpc->ccpcColorAllocated )
-		{
-		if  ( appColorRgb( &(ccpc->ccpcAllocatedColor),
-					    &(cc->ccPulldownColors),
-					    rgb8->rgb8Red,
-					    rgb8->rgb8Green,
-					    rgb8->rgb8Blue ) )
-		    { LDEB(1); continue;	}
-
-		ccpc->ccpcColorAllocated= 1;
-		}
-
-	    appDrawSetForegroundColor( add, &(ccpc->ccpcAllocatedColor) );
-
-	    appDrawFillRectangle( add,
-				    cc->ccXShift+ col* cc->ccColumnWide+ 3,
-				    row* cc->ccStripHigh+ 3,
-				    cc->ccColumnWide- 6,
-				    cc->ccStripHigh- 6 );
+	    drawSetForegroundColor( dsP, rgb8 );
+	    drawFillRectangle( dsP, &drBox );
 
 	    if  ( cc->ccColorExplicit					&&
 		  cc->ccColorSet					&&
@@ -284,46 +307,49 @@ static APP_EVENT_HANDLER_H( appColorChooserRedrawPulldown, w, voidcc, exposeEven
 	}
 
     /**/
-    appDrawSetForegroundBlack( add );
+    drawSetForegroundColorBlack( dsP );
 
-    appDrawSetLineAttributes( add, 1,
-				LINEstyleSOLID, LINEcapBUTT, LINEjoinMITER, 
+    drawSetLineAttributes( dsP, 1,
+				LineStyleSolid, LineCapButt, LineJoinMiter, 
 				(const unsigned char *)0, 0 );
 
-    for ( row= 1; row < cc->ccStrips- 1; row++ )
+    for ( row= cc->ccHasAutomatic; row < cc->ccStrips- 1; row++ )
 	{
+	drBox.drY0= row* cc->ccStripHigh+ 3;
+	drBox.drY1= drBox.drY0+ cc->ccStripHigh- 7;
+
 	for ( col= 0; col < cc->ccColumns; col++ )
 	    {
-	    appDrawDrawRectangle( add,
-				    cc->ccXShift+ col* cc->ccColumnWide+ 3,
-				    row* cc->ccStripHigh+ 3,
-				    cc->ccColumnWide- 6,
-				    cc->ccStripHigh- 6 );
+	    drBox.drX0= cc->ccXShift+ col* cc->ccColumnWide+ 3;
+	    drBox.drX1= drBox.drX0+ cc->ccColumnWide- 7;
+
+	    drawRectangle( dsP, &drBox );
 	    }
 	}
 
     if  ( currRow >= 0 && currCol >= 0 )
 	{
-	appDrawSetLineAttributes( add, 3,
-				LINEstyleSOLID, LINEcapBUTT, LINEjoinMITER, 
+	drBox.drY0= currRow* cc->ccStripHigh+ 3;
+	drBox.drY1= drBox.drY0+ cc->ccStripHigh- 7;
+
+	drBox.drX0= cc->ccXShift+ currCol* cc->ccColumnWide+ 3;
+	drBox.drX1= drBox.drX0+ cc->ccColumnWide- 7;
+
+	drawSetLineAttributes( dsP, 3,
+				LineStyleSolid, LineCapButt, LineJoinMiter, 
 				(const unsigned char *)0, 0 );
 
-	appDrawDrawRectangle( add, cc->ccXShift+ currCol* cc->ccColumnWide+ 3,
-				    currRow* cc->ccStripHigh+ 3,
-				    cc->ccColumnWide- 6,
-				    cc->ccStripHigh- 6 );
+	drawRectangle( dsP, &drBox );
 
-	appDrawSetForegroundWhite( add );
-
-	appDrawSetLineAttributes( add, 1,
-				LINEstyleSOLID, LINEcapBUTT, LINEjoinMITER, 
+	drawSetForegroundColorWhite( dsP );
+	drawSetLineAttributes( dsP, 1,
+				LineStyleSolid, LineCapButt, LineJoinMiter, 
 				(const unsigned char *)0, 0 );
 
-	appDrawDrawRectangle( add, cc->ccXShift+ currCol* cc->ccColumnWide+ 2,
-				    currRow* cc->ccStripHigh+ 2,
-				    cc->ccColumnWide- 4,
-				    cc->ccStripHigh- 4 );
+	drBox.drX0--; drBox.drX1++;
+	drBox.drY0--; drBox.drY1++;
 
+	drawRectangle( dsP, &drBox );
 	}
 
     return;
@@ -366,12 +392,12 @@ static APP_EVENT_HANDLER_H( appColorChooserClickedPulldown, w, voidcc, mouseEven
 	{ return;	}
 
     /*  2  */
-    if  ( row == 0 )
+    if  ( cc->ccHasAutomatic && row == 0 )
 	{
 	if  ( cc->ccColorExplicit )
 	    {
 	    cc->ccColorExplicit= 0;
-	    appExposeRectangle( &(cc->ccInplaceDrawingData), 0, 0, 0, 0 );
+	    appExposeDrawnPulldownInplace( &(cc->ccPulldown) );
 	    }
 
 	if  ( cc->ccCallback )
@@ -394,7 +420,7 @@ static APP_EVENT_HANDLER_H( appColorChooserClickedPulldown, w, voidcc, mouseEven
 	return;
 	}
 
-    if  ( appGetCoordinatesFromMouseButtonEvent( &mouseX, &mouseY,
+    if  ( guiGetCoordinatesFromMouseButtonEvent( &mouseX, &mouseY,
 					    &button, &upDown, &seq, &keyState,
 					    w, mouseEvent ) )
 	{ return;	}
@@ -405,7 +431,7 @@ static APP_EVENT_HANDLER_H( appColorChooserClickedPulldown, w, voidcc, mouseEven
     if  ( col >= cc->ccColumns )
 	{ col= cc->ccColumns- 1;	}
 
-    color= ( row- 1 )* cc->ccColumns+ col;
+    color= ( row- cc->ccHasAutomatic )* cc->ccColumns+ col;
     if  ( color < 0 || color >= cc->ccColorCount )
 	{ LLDEB(color,cc->ccColorCount); return;	}
 
@@ -415,9 +441,9 @@ static APP_EVENT_HANDLER_H( appColorChooserClickedPulldown, w, voidcc, mouseEven
 
     if  ( cc->ccCallback )
 	{
-	const int	explicit= 1;
+	const int	colorExplicit= 1;
 
-	appColorChooserSetColor( cc, explicit, &(ccpc->ccpcRGB8Color) );
+	appColorChooserSetColor( cc, colorExplicit, &(ccpc->ccpcRGB8Color) );
 
 	(*cc->ccCallback)( cc, cc->ccWhich, cc->ccTarget,
 				CHOICEccCOLOR, &(ccpc->ccpcRGB8Color) );
@@ -469,7 +495,6 @@ static int appColorChooserAllocateColor(	const ColorChooser *	cc,
 
 	ccpc->ccpcRGB8Color= *rgb8;
 	ccpc->ccpcStatus= status;
-	ccpc->ccpcColorAllocated= 0;
 
 	return i;
 	}
@@ -572,11 +597,9 @@ static int appColorChooserCompareIntensity(	const void *	vccpc1,
     const ColorChooserPaletteColor *	ccpc1;
     const ColorChooserPaletteColor *	ccpc2;
     
-    const RGB8Color *			rgb1;
-    const RGB8Color *			rgb2;
-    
-    int					i1;
-    int					i2;
+    int					luma1= 0, luma2= 0;
+    int					chroma1= 0, chroma2= 0;
+    int					hue1= 0, hue2= 0;
 
     ccpc1= (const ColorChooserPaletteColor *)vccpc1;
     ccpc2= (const ColorChooserPaletteColor *)vccpc2;
@@ -591,15 +614,12 @@ static int appColorChooserCompareIntensity(	const void *	vccpc1,
 	  ccpc2->ccpcStatus != CCstatusFREE	)
 	{ return  1;	}
 
-    rgb1= &(ccpc1->ccpcRGB8Color);
-    rgb2= &(ccpc2->ccpcRGB8Color);
+    utilRGB8LumaChromaHue( &luma1, &chroma1, &hue1, &(ccpc1->ccpcRGB8Color) );
+    utilRGB8LumaChromaHue( &luma2, &chroma2, &hue2, &(ccpc2->ccpcRGB8Color) );
 
-    i1= bmRgbIntensity( rgb1 );
-    i2= bmRgbIntensity( rgb2 );
-
-    if  ( i1 > i2 )
+    if  ( luma1 > luma2 )
 	{ return  1;	}
-    if  ( i1 < i2 )
+    if  ( luma1 < luma2 )
 	{ return -1;	}
 
     return 0;
@@ -611,11 +631,9 @@ static int appColorChooserCompareHue(		const void *	vccpc1,
     const ColorChooserPaletteColor *	ccpc1;
     const ColorChooserPaletteColor *	ccpc2;
 
-    const RGB8Color *			rgb1;
-    const RGB8Color *			rgb2;
-    
-    int					h1;
-    int					h2;
+    int					luma1= 0, luma2= 0;
+    int					chroma1= 0, chroma2= 0;
+    int					hue1= 0, hue2= 0;
 
     ccpc1= (const ColorChooserPaletteColor *)vccpc1;
     ccpc2= (const ColorChooserPaletteColor *)vccpc2;
@@ -630,33 +648,25 @@ static int appColorChooserCompareHue(		const void *	vccpc1,
 	  ccpc2->ccpcStatus != CCstatusFREE	)
 	{ return  1;	}
 
-    rgb1= &(ccpc1->ccpcRGB8Color);
-    rgb2= &(ccpc2->ccpcRGB8Color);
+    utilRGB8LumaChromaHue( &luma1, &chroma1, &hue1, &(ccpc1->ccpcRGB8Color) );
+    utilRGB8LumaChromaHue( &luma2, &chroma2, &hue2, &(ccpc2->ccpcRGB8Color) );
 
-    if  ( rgb1->rgb8Red == rgb1->rgb8Green	&&
-	  rgb1->rgb8Red == rgb1->rgb8Blue	)
-	{
-	if  ( bmRgbIntensity( rgb1 ) >= 128 )
-	    { h1= 255;	}
-	else{ h1= 0;	}
-	}
-    else{ h1= bmRgbHue( rgb1 ); }
-
-    if  ( rgb2->rgb8Red == rgb2->rgb8Green	&&
-	  rgb2->rgb8Red == rgb2->rgb8Blue	)
-	{
-	if  ( bmRgbIntensity( rgb2 ) >= 128 )
-	    { h2= 255;	}
-	else{ h2= 0;	}
-	}
-    else{ h2= bmRgbHue( rgb2 ); }
-
-    if  ( h1 > h2 )
+    if  ( hue1 > hue2 )
 	{ return  1;	}
-    if  ( h1 < h2 )
+    if  ( hue1 < hue2 )
 	{ return -1;	}
 
-    return appColorChooserCompareIntensity( vccpc1, vccpc2 );
+    if  ( luma1 > luma2 )
+	{ return  1;	}
+    if  ( luma1 < luma2 )
+	{ return -1;	}
+
+    if  ( chroma1 > chroma2 )
+	{ return  1;	}
+    if  ( chroma1 < chroma2 )
+	{ return -1;	}
+
+    return 0;
     }
 
 static int appColorChooseMoreColors(	ColorChooser *		cc,
@@ -703,8 +713,7 @@ static int appColorChooseMoreColors(	ColorChooser *		cc,
 
 void appColorChooserSuggestPalette(	ColorChooser *		cc,
 					int			avoidZero,
-					const RGB8Color *	colors,
-					int			colorCount )
+					const ColorPalette *	cp )
     {
     ColorChooserPaletteColor *	ccpc;
 
@@ -713,10 +722,13 @@ void appColorChooserSuggestPalette(	ColorChooser *		cc,
 
     const int			dist= 256/ 12;
 
+    int				colorCount= cp->cpColorCount;
+    const RGB8Color *		colors= cp->cpColors;
+
     if  ( avoidZero && colorCount > 0 )
 	{ colors++; colorCount--; }
 
-    useColors= cc->ccColumns* ( cc->ccStrips- 2 );
+    useColors= cc->ccColumns* ( cc->ccStrips- cc->ccHasAutomatic- 1 );
 
     if  ( cc->ccColorCount < useColors )
 	{
@@ -805,6 +817,7 @@ void appColorChooserSuggestPalette(	ColorChooser *		cc,
     }
 
   ready:
+
     qsort( cc->ccColors, cc->ccColorCount, 
 				    sizeof(ColorChooserPaletteColor),
 				    appColorChooserCompareIntensity );
@@ -827,8 +840,7 @@ void appColorChooserSuggestPalette(	ColorChooser *		cc,
 
 void appCleanColorChooser(		ColorChooser *		cc )
     {
-    appCleanDrawingData( &(cc->ccInplaceDrawingData) );
-    appCleanDrawingData( &(cc->ccPulldownDrawingData) );
+    appCleanDrawnPulldown( &(cc->ccPulldown) );
 
     if  ( cc->ccColors )
 	{ free( cc->ccColors );	}
@@ -836,20 +848,22 @@ void appCleanColorChooser(		ColorChooser *		cc )
     return;
     }
 
-void appFinishColorChooser(	ColorChooser *		cc,
-				APP_FONT *		textFont )
+void appFinishColorChooser(	ColorChooser *			cc,
+				const PostScriptFontList *	psfl,
+				APP_WIDGET			fontWidget )
     {
-    AppDrawingData *	add= &(cc->ccInplaceDrawingData);
-
     int			wide;
     int			strips;
 
-    appSetDrawingDataForWidget( cc->ccPulldown.adpInplaceDrawing, 1.0, add );
+#   ifdef USE_GTK /* Crashes with Motif */
+    if  ( appFinishDrawnPulldownPulldown( &(cc->ccPulldown) ) )
+	{ LDEB(1);	}
+#   endif
 
-    if  ( appAllocateColors( add, &(cc->ccInplaceColors) ) )
+    if  ( appFinishDrawnPulldownInplace( &(cc->ccPulldown) ) )
 	{ LDEB(1);	}
 
-    appDrawGetSizeOfWidget( &wide, &(cc->ccStripHigh),
+    guiDrawGetSizeOfWidget( &wide, &(cc->ccStripHigh),
 					    cc->ccPulldown.adpInplaceDrawing );
 
     cc->ccColumnWide= cc->ccStripHigh;
@@ -861,31 +875,37 @@ void appFinishColorChooser(	ColorChooser *		cc,
 
     appGuiSetDrawnPulldownStrips( &(cc->ccPulldown), cc->ccStrips );
 
+    cc->ccPostScriptFontList= psfl;
+    cc->ccLabelWidget= fontWidget;
+
     /**/
-    cc->ccTextFont= textFont;
+    cc->ccInplaceScreenFont= guiGetLabelFont(
+		cc->ccPulldown.adpInplaceDrawingSurface, psfl, fontWidget );
+#   ifdef USE_GTK /* Crashes with Motif */
+    cc->ccPulldownScreenFont= guiGetLabelFont(
+		cc->ccPulldown.adpPulldownDrawingSurface, psfl, fontWidget );
+#   endif
 
     return;
     }
 
 void appInitColorChooser(	ColorChooser *			cc )
     {
-    cc->ccFilled= 0;;
+    cc->ccFilled= 0;
+    cc->ccEnabled= 1;
+    cc->ccVisible= 1;
 
     cc->ccResources= (const ColorChooserResources *)0;
+    cc->ccPostScriptFontList= (const PostScriptFontList *)0;
 
     appInitDrawnPulldown( &(cc->ccPulldown) );
 
-    appInitDrawingData( &(cc->ccInplaceDrawingData) );
-    appInitDrawingData( &(cc->ccPulldownDrawingData) );
-    cc->ccPulldownDrawingDataSet= 0;
+    cc->ccLabelWidget= (APP_WIDGET)0;
 
-    appInitColors( &(cc->ccInplaceColors) );
-    appInitColors( &(cc->ccPulldownColors) );
+    cc->ccInplaceScreenFont= -1;
+    cc->ccPulldownScreenFont= -1;
 
-    cc->ccInplaceColorAllocated= 0;
-    cc->ccTextFont= (APP_FONT *)0;
-
-    bmInitRGB8Color( &(cc->ccColorChosen) );
+    utilInitRGB8Color( &(cc->ccColorChosen) );
     cc->ccColorExplicit= 0;
     cc->ccColorSet= 0;
 
@@ -904,15 +924,22 @@ void appInitColorChooser(	ColorChooser *			cc )
     }
 
 void appMakeColorChooserInRow(	ColorChooser *			cc,
+				int				hasAutomatic,
 				APP_WIDGET			row,
 				int				col,
+				int				colspan,
 				const ColorChooserResources *	ccr,
 				ColorChooserCallback		callback,
 				int				which,
 				void *				through )
     {
-    const int	valueColumn= 1;
-    const int	valueColspan= 1;
+    AppDrawnPulldownPuldown	pullDown= (AppDrawnPulldownPuldown)0;
+
+#   if 0
+#   ifdef USE_GTK
+    pullDown= appColorChooserAllocatePulldownResources;
+#   endif
+#   endif
 
     /**/
     cc->ccResources= ccr;
@@ -922,14 +949,16 @@ void appMakeColorChooserInRow(	ColorChooser *			cc,
     cc->ccTarget= through;
 
     appMakeDrawnPulldownInRow( &(cc->ccPulldown),
-					    appColorChooserRedrawInplace,
-					    appColorChooserRedrawPulldown,
-					    appColorChooserClickedPulldown,
-					    row, valueColumn, valueColspan,
-					    (void *)cc );
+				    appColorChooserRedrawInplace,
+				    appColorChooserRedrawPulldown,
+				    appColorChooserClickedPulldown,
+				    pullDown,
+				    row, col, colspan,
+				    (void *)cc );
 
     /**/
     cc->ccFilled= 1;
+    cc->ccHasAutomatic= hasAutomatic;
 
     return;
     }
@@ -944,10 +973,11 @@ void appMakeLabelAndColorChooserRow(
 				APP_WIDGET *			pRow,
 				APP_WIDGET *			pLabel,
 				ColorChooser *			cc,
+				int				hasAutomatic,
 				APP_WIDGET			column,
 				const char *			labelText,
 				const ColorChooserResources *	ccr,
-				ColorChooserCallback		callback,
+				ColorChooserCallback		colorCallback,
 				int				which,
 				void *				through )
     {
@@ -957,6 +987,7 @@ void appMakeLabelAndColorChooserRow(
     const int		labelColumn= 0;
     const int		labelColspan= 1;
     const int		ccColumn= 1;
+    const int		ccColspan= 1;
 
     const int		columnCount= 2;
     const int		heightResizable= 0;
@@ -964,10 +995,50 @@ void appMakeLabelAndColorChooserRow(
     row= appMakeRowInColumn( column, columnCount, heightResizable );
 
     appMakeLabelInRow( &label, row, labelColumn, labelColspan, labelText );
-    appMakeColorChooserInRow( cc, row, ccColumn,
-					    ccr, callback, which, through );
+    appMakeColorChooserInRow( cc, hasAutomatic, row, ccColumn, ccColspan,
+					ccr, colorCallback, which, through );
 
     *pRow= row; *pLabel= label; return;
+    }
+
+/************************************************************************/
+/*									*/
+/*  Make a row consisting of a toggle and a color chooser.		*/
+/*									*/
+/************************************************************************/
+
+void appMakeToggleAndColorChooserRow(
+				APP_WIDGET *			pRow,
+				APP_WIDGET *			pToggle,
+				ColorChooser *			cc,
+				int				hasAutomatic,
+				APP_WIDGET			column,
+				const char *			toggleText,
+				const ColorChooserResources *	ccr,
+				APP_TOGGLE_CALLBACK_T		toggleCallback,
+				ColorChooserCallback		colorCallback,
+				int				which,
+				void *				through )
+    {
+    APP_WIDGET		toggle;
+    APP_WIDGET		row;
+
+    const int		toggleColumn= 0;
+    const int		toggleColspan= 1;
+    const int		ccColumn= 1;
+    const int		ccColspan= 1;
+
+    const int		columnCount= 2;
+    const int		heightResizable= 0;
+
+    row= appMakeRowInColumn( column, columnCount, heightResizable );
+
+    toggle= appMakeToggleInRow( row, toggleText, toggleCallback,
+				    through, toggleColumn, toggleColspan );
+    appMakeColorChooserInRow( cc, hasAutomatic, row, ccColumn, ccColspan,
+					ccr, colorCallback, which, through );
+
+    *pRow= row; *pToggle= toggle; return;
     }
 
 /************************************************************************/
@@ -982,10 +1053,10 @@ void appColorChooserColorChosen(	PropertyMask *		isSetMask,
 					RGB8Color *		rgb8To,
 					int *			pExplicit,
 					const RGB8Color *	rgb8Set,
-					int			explicit,
+					int			colorExplicit,
 					int			which )
     {
-    if  ( explicit )
+    if  ( colorExplicit )
 	{
 	if  ( ! *pExplicit )
 	    {
@@ -1020,3 +1091,26 @@ void appColorChooserColorChosen(	PropertyMask *		isSetMask,
     return;
     }
 
+void appEnableColorChooser(	ColorChooser *		cc,
+				int			enabled )
+    {
+    if  ( cc->ccEnabled != enabled )
+	{
+	cc->ccEnabled= enabled;
+
+	appGuiEnableDrawnPulldown( &(cc->ccPulldown),
+					    cc->ccEnabled && cc->ccVisible );
+	}
+    }
+
+void appShowColorChooser(	ColorChooser *		cc,
+				int			visible )
+    {
+    if  ( cc->ccVisible != visible )
+	{
+	cc->ccVisible= visible;
+
+	appGuiEnableDrawnPulldown( &(cc->ccPulldown),
+					    cc->ccEnabled && cc->ccVisible );
+	}
+    }

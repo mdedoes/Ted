@@ -7,8 +7,8 @@
 #   ifndef	SIO_HTTP_H
 #   define	SIO_HTTP_H
 
-#   include     <sioGeneral.h>
-#   include     <appSystem.h>
+#   include     "sioGeneral.h"
+#   include     "appSystem.h"
 
 extern int sioHttpOpen(		SimpleInputStream **	pSisBody,
 				SimpleInputStream **	pSisHeader,

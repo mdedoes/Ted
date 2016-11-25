@@ -3,7 +3,7 @@
 #   include	"bmintern.h"
 #   include	"bmgetrow.h"
 #   include	"bmputrow.h"
-#   include	<string.h>
+#   include	<stdlib.h>
 #   include	<appDebugon.h>
 
 /************************************************************************/
@@ -94,7 +94,7 @@ int bmSetFillJob(		FillJob *			fj,
 
     if  ( scratchSize > 0 )
 	{
-	fj->fjScratch= malloc( scratchSize );
+	fj->fjScratch= (unsigned char *)malloc( scratchSize );
 	if  ( ! fj->fjScratch )
 	    { LXDEB(scratchSize,fj->fjScratch); return -1;	}
 	}

@@ -3,6 +3,7 @@
 #   define	BM_PUT_ROW_H
 
 #   include	"bmintern.h"
+#   include	"bmRender.h"
 #   include	"bmgetrow.h"
 
 /************************************************************************/

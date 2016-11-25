@@ -1,9 +1,9 @@
 #   include	"appUtilConfig.h"
 
-#   include	<string.h>
-
 #   include	"utilDocumentGeometry.h"
 #   include	"utilPropMask.h"
+
+#   include	<appDebugon.h>
 
 /************************************************************************/
 /*									*/
@@ -25,6 +25,7 @@ void utilInitDocumentGeometry(	DocumentGeometry *	dg )
     dg->dgFooterPositionTwips= 720;
 
     dg->dgGutterTwips= 0;
+    dg->dgMirrorMargins= 0;
     }
 
 /************************************************************************/
@@ -33,98 +34,163 @@ void utilInitDocumentGeometry(	DocumentGeometry *	dg )
 /*									*/
 /************************************************************************/
 
-void utilUpdDocumentGeometry(	DocumentGeometry *		dgTo,
-				const DocumentGeometry *	dgFr,
-				PropertyMask *			pChanged,
-				const PropertyMask *		updMask )
+void utilUpdDocumentGeometry(	PropertyMask *			dpDoneMask,
+				DocumentGeometry *		dgTo,
+				const PropertyMask *		dgSetMask,
+				const DocumentGeometry *	dgSet )
     {
-    PropertyMask		changedMask;
+    PropertyMask		doneMask;
 
-    PROPmaskCLEAR( &changedMask );
+    utilPropMaskClear( &doneMask );
 
-    if  ( PROPmaskISSET( updMask, DGpropPAGE_WIDTH ) )
+    if  ( PROPmaskISSET( dgSetMask, DGpropPAGE_WIDTH ) )
 	{
-	if  ( dgTo->dgPageWideTwips != dgFr->dgPageWideTwips )
+	if  ( dgTo->dgPageWideTwips != dgSet->dgPageWideTwips )
 	    {
-	    dgTo->dgPageWideTwips= dgFr->dgPageWideTwips;
-	    PROPmaskADD( &changedMask, DGpropPAGE_WIDTH );
+	    dgTo->dgPageWideTwips= dgSet->dgPageWideTwips;
+	    PROPmaskADD( &doneMask, DGpropPAGE_WIDTH );
 	    }
 	}
 
-    if  ( PROPmaskISSET( updMask, DGpropPAGE_HEIGHT ) )
+    if  ( PROPmaskISSET( dgSetMask, DGpropPAGE_HEIGHT ) )
 	{
-	if  ( dgTo->dgPageHighTwips != dgFr->dgPageHighTwips )
+	if  ( dgTo->dgPageHighTwips != dgSet->dgPageHighTwips )
 	    {
-	    dgTo->dgPageHighTwips= dgFr->dgPageHighTwips;
-	    PROPmaskADD( &changedMask, DGpropPAGE_HEIGHT );
+	    dgTo->dgPageHighTwips= dgSet->dgPageHighTwips;
+	    PROPmaskADD( &doneMask, DGpropPAGE_HEIGHT );
 	    }
 	}
 
-    if  ( PROPmaskISSET( updMask, DGpropLEFT_MARGIN ) )
+    if  ( PROPmaskISSET( dgSetMask, DGpropLEFT_MARGIN ) )
 	{
-	if  ( dgTo->dgLeftMarginTwips != dgFr->dgLeftMarginTwips )
+	if  ( dgTo->dgLeftMarginTwips != dgSet->dgLeftMarginTwips )
 	    {
-	    dgTo->dgLeftMarginTwips= dgFr->dgLeftMarginTwips;
-	    PROPmaskADD( &changedMask, DGpropLEFT_MARGIN );
+	    dgTo->dgLeftMarginTwips= dgSet->dgLeftMarginTwips;
+	    PROPmaskADD( &doneMask, DGpropLEFT_MARGIN );
 	    }
 	}
 
-    if  ( PROPmaskISSET( updMask, DGpropRIGHT_MARGIN ) )
+    if  ( PROPmaskISSET( dgSetMask, DGpropRIGHT_MARGIN ) )
 	{
-	if  ( dgTo->dgRightMarginTwips != dgFr->dgRightMarginTwips )
+	if  ( dgTo->dgRightMarginTwips != dgSet->dgRightMarginTwips )
 	    {
-	    dgTo->dgRightMarginTwips= dgFr->dgRightMarginTwips;
-	    PROPmaskADD( &changedMask, DGpropRIGHT_MARGIN );
+	    dgTo->dgRightMarginTwips= dgSet->dgRightMarginTwips;
+	    PROPmaskADD( &doneMask, DGpropRIGHT_MARGIN );
 	    }
 	}
 
-    if  ( PROPmaskISSET( updMask, DGpropTOP_MARGIN ) )
+    if  ( PROPmaskISSET( dgSetMask, DGpropTOP_MARGIN ) )
 	{
-	if  ( dgTo->dgTopMarginTwips != dgFr->dgTopMarginTwips )
+	if  ( dgTo->dgTopMarginTwips != dgSet->dgTopMarginTwips )
 	    {
-	    dgTo->dgTopMarginTwips= dgFr->dgTopMarginTwips;
-	    PROPmaskADD( &changedMask, DGpropTOP_MARGIN );
+	    dgTo->dgTopMarginTwips= dgSet->dgTopMarginTwips;
+	    PROPmaskADD( &doneMask, DGpropTOP_MARGIN );
 	    }
 	}
 
-    if  ( PROPmaskISSET( updMask, DGpropBOTTOM_MARGIN ) )
+    if  ( PROPmaskISSET( dgSetMask, DGpropBOTTOM_MARGIN ) )
 	{
-	if  ( dgTo->dgBottomMarginTwips != dgFr->dgBottomMarginTwips )
+	if  ( dgTo->dgBottomMarginTwips != dgSet->dgBottomMarginTwips )
 	    {
-	    dgTo->dgBottomMarginTwips= dgFr->dgBottomMarginTwips;
-	    PROPmaskADD( &changedMask, DGpropBOTTOM_MARGIN );
+	    dgTo->dgBottomMarginTwips= dgSet->dgBottomMarginTwips;
+	    PROPmaskADD( &doneMask, DGpropBOTTOM_MARGIN );
 	    }
 	}
 
-    if  ( PROPmaskISSET( updMask, DGpropHEADER_POSITION ) )
+    if  ( PROPmaskISSET( dgSetMask, DGpropHEADER_POSITION ) )
 	{
-	if  ( dgTo->dgHeaderPositionTwips != dgFr->dgHeaderPositionTwips )
+	if  ( dgTo->dgHeaderPositionTwips != dgSet->dgHeaderPositionTwips )
 	    {
-	    dgTo->dgHeaderPositionTwips= dgFr->dgHeaderPositionTwips;
-	    PROPmaskADD( &changedMask, DGpropHEADER_POSITION );
+	    dgTo->dgHeaderPositionTwips= dgSet->dgHeaderPositionTwips;
+	    PROPmaskADD( &doneMask, DGpropHEADER_POSITION );
 	    }
 	}
 
-    if  ( PROPmaskISSET( updMask, DGpropFOOTER_POSITION ) )
+    if  ( PROPmaskISSET( dgSetMask, DGpropFOOTER_POSITION ) )
 	{
-	if  ( dgTo->dgFooterPositionTwips != dgFr->dgFooterPositionTwips )
+	if  ( dgTo->dgFooterPositionTwips != dgSet->dgFooterPositionTwips )
 	    {
-	    dgTo->dgFooterPositionTwips= dgFr->dgFooterPositionTwips;
-	    PROPmaskADD( &changedMask, DGpropFOOTER_POSITION );
+	    dgTo->dgFooterPositionTwips= dgSet->dgFooterPositionTwips;
+	    PROPmaskADD( &doneMask, DGpropFOOTER_POSITION );
 	    }
 	}
 
-    if  ( PROPmaskISSET( updMask, DGpropGUTTER ) )
+    if  ( PROPmaskISSET( dgSetMask, DGpropGUTTER ) )
 	{
-	if  ( dgTo->dgGutterTwips != dgFr->dgGutterTwips )
+	if  ( dgTo->dgGutterTwips != dgSet->dgGutterTwips )
 	    {
-	    dgTo->dgGutterTwips= dgFr->dgGutterTwips;
-	    PROPmaskADD( &changedMask, DGpropGUTTER );
+	    dgTo->dgGutterTwips= dgSet->dgGutterTwips;
+	    PROPmaskADD( &doneMask, DGpropGUTTER );
 	    }
 	}
 
-    *pChanged= changedMask;
+    if  ( PROPmaskISSET( dgSetMask, DGpropMARGMIR ) )
+	{
+	if  ( dgTo->dgMirrorMargins != dgSet->dgMirrorMargins )
+	    {
+	    dgTo->dgMirrorMargins= dgSet->dgMirrorMargins;
+	    PROPmaskADD( &doneMask, DGpropMARGMIR );
+	    }
+	}
+
+    if  ( dpDoneMask )
+	{ utilPropMaskOr( dpDoneMask, dpDoneMask, &doneMask );	}
 
     return;
+    }
+
+void utilDocumentGeometryGetBodyRect(
+				DocumentRectangle *		dr,
+				const DocumentGeometry *	dg )
+    {
+    dr->drX0= dg->dgLeftMarginTwips;
+    dr->drX1= dg->dgPageWideTwips- dg->dgRightMarginTwips;
+    dr->drY0= dg->dgTopMarginTwips;
+    dr->drY1= dg->dgPageHighTwips- dg->dgBottomMarginTwips;
+    }
+
+void utilDocumentGeometryGetHeaderRect(
+				DocumentRectangle *		dr,
+				const DocumentGeometry *	dg )
+    {
+    dr->drX0= dg->dgLeftMarginTwips;
+    dr->drX1= dg->dgPageWideTwips- dg->dgRightMarginTwips;
+    dr->drY0= dg->dgHeaderPositionTwips;
+    dr->drY1= dg->dgTopMarginTwips;
+    }
+
+void utilDocumentGeometryGetFooterRect(
+				DocumentRectangle *		dr,
+				const DocumentGeometry *	dg )
+    {
+    dr->drX0= dg->dgLeftMarginTwips;
+    dr->drX1= dg->dgPageWideTwips- dg->dgRightMarginTwips;
+    dr->drY0= dg->dgPageHighTwips- dg->dgBottomMarginTwips;
+    dr->drY1= dg->dgPageHighTwips- dg->dgFooterPositionTwips;
+    }
+
+void utilDocumentGeometryGetPageBoundingBox(
+				DocumentRectangle *		dr,
+				const DocumentGeometry *	dg,
+				int				hasHeader,
+				int				hasFooter )
+    {
+    utilDocumentGeometryGetBodyRect( dr, dg );
+
+    if  ( hasHeader )
+	{
+	DocumentRectangle	drHead;
+
+	utilDocumentGeometryGetHeaderRect( &drHead, dg );
+	geoUnionRectangle( dr, dr, &drHead );
+	}
+
+    if  ( hasFooter )
+	{
+	DocumentRectangle	drFoot;
+
+	utilDocumentGeometryGetFooterRect( &drFoot, dg );
+	geoUnionRectangle( dr, dr, &drFoot );
+	}
     }
 

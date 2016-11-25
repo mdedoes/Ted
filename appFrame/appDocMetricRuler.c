@@ -7,116 +7,15 @@
 #   include	"appFrameConfig.h"
 
 #   include	<stddef.h>
-#   include	<stdlib.h>
 #   include	<stdio.h>
 #   include	<ctype.h>
 
-#   include	<appFrame.h>
-#   include	<appMetricRuler.h>
+#   include	"guiWidgets.h"
+#   include	"appMetricRuler.h"
+#   include	"guiWidgetDrawingSurface.h"
+#   include	"guiDrawingWidget.h"
 
 #   include	<appDebugon.h>
-
-/************************************************************************/
-/*									*/
-/*  Allow a user to change the selected rectangle.			*/
-/*									*/
-/*  Move the vertical hair on the Document.				*/
-/*									*/
-/*  NOTE: Exposures and Drawing go to the document widget, NOT the	*/
-/*  ruler.								*/
-/*									*/
-/************************************************************************/
-
-void appHorMetricRulerMoveHair(		void *		voided,
-					int		from,
-					int		to,
-					int		asUpper	)
-    {
-    EditDocument *		ed= (EditDocument *)voided;
-    AppDrawingData *		add= &(ed->edDrawingData);
-    int				ox= ed->edVisibleRect.drX0;
-
-    int				high;
-
-    high= ed->edVisibleRect.drY1- ed->edVisibleRect.drY0;
-
-    if  ( from >= 0 )
-	{
-	if  ( asUpper )
-	    { appExposeRectangle( add, from- ox, 0, 2, high );		}
-	else{ appExposeRectangle( add, from- ox- 2, 0, 2, high );	}
-	}
-
-    if  ( to >= 0 )
-	{
-	appDrawSetForegroundBlack( add );
-
-	if  ( asUpper )
-	    {
-	    appDrawFillRectangle( add, to- ox, 0, 1, high );
-	    appDrawSetForegroundWhite( add );
-	    appDrawFillRectangle( add, to- ox+ 1, 0, 1, high );
-	    }
-	else{
-	    appDrawFillRectangle( add, to- ox- 1, 0, 1, high );
-	    appDrawSetForegroundWhite( add );
-	    appDrawFillRectangle( add, to- ox- 2, 0, 1, high );
-	    }
-	}
-
-    return;
-    }
-
-/************************************************************************/
-/*									*/
-/*  Allow a user to change the selected rectangle.			*/
-/*									*/
-/*  Move the horizontal hair on the Document.				*/
-/*									*/
-/*  NOTE: Exposures and Drawing go to the document widget, NOT the	*/
-/*  ruler.								*/
-/*									*/
-/************************************************************************/
-
-void appVertMetricRulerMoveHair(	void *		voided,
-					int		from,
-					int		to,
-					int		asUpper	)
-    {
-    EditDocument *		ed= (EditDocument *)voided;
-    AppDrawingData *		add= &(ed->edDrawingData);
-    int				oy= ed->edVisibleRect.drY0;
-
-    int				wide;
-
-    wide= ed->edVisibleRect.drX1- ed->edVisibleRect.drX0;
-
-    if  ( from >= 0 )
-	{
-	if  ( asUpper )
-	    { appExposeRectangle( add, 0, from- oy, wide, 2 );		}
-	else{ appExposeRectangle( add, 0, from- oy- 2, wide, 2 );	}
-	}
-
-    if  ( to >= 0 )
-	{
-	appDrawSetForegroundBlack( add );
-
-	if  ( asUpper )
-	    {
-	    appDrawFillRectangle( add, 0, to- oy, wide, 1 );
-	    appDrawSetForegroundWhite( add );
-	    appDrawFillRectangle( add, 0, to- oy+ 1, wide, 1 );
-	    }
-	else{
-	    appDrawFillRectangle( add, 0, to- oy- 1, wide, 1 );
-	    appDrawSetForegroundWhite( add );
-	    appDrawFillRectangle( add, 0, to- oy- 2, wide, 1 );
-	    }
-	}
-
-    return;
-    }
 
 /************************************************************************/
 /*									*/
@@ -126,93 +25,95 @@ void appVertMetricRulerMoveHair(	void *		voided,
 /*									*/
 /************************************************************************/
 
-void appDrawRectangleSelection(	DocumentRectangle *	drClip,
-				DocumentRectangle *	drSelected,
-				AppDrawingData *	add,
-				AppColors *		ac,
-				int			ox,
-				int			oy )
+void appDrawRectangleSelection(	DocumentRectangle *		drClip,
+				DocumentRectangle *		drSelected,
+				DrawingSurface			ds,
+				const DocumentRectangle *	drScreen,
+				int				ox,
+				int				oy )
     {
+    DocumentRectangle	drMark;
+
     if  ( drSelected->drX0 < 0	&&
 	  drSelected->drX1 < 0	&&
 	  drSelected->drY0 < 0	&&
 	  drSelected->drY1 < 0	)
 	{ return;	}
 
-    appDrawSetForegroundBlack( add );
+    drawSetForegroundColorBlack( ds );
 
     if  ( drSelected->drX0 >= 0 )
 	{
-	appDrawFillRectangle( add,
-			drSelected->drX0- ox- 1,
-			add->addBackRect.drY0- oy,
-			1,
-			add->addBackRect.drY1- add->addBackRect.drY0 );
+	drMark= *drScreen;
+	drMark.drX0= drMark.drX1= drSelected->drX0- 1;
+
+	geoShiftRectangle( &drMark, -ox, -oy );
+	drawFillRectangle( ds, &drMark );
 	}
 
     if  ( drSelected->drX1 >= 0 )
 	{
-	appDrawFillRectangle( add,
-			drSelected->drX1- ox,
-			add->addBackRect.drY0- oy,
-			1,
-			add->addBackRect.drY1- add->addBackRect.drY0 );
+	drMark= *drScreen;
+	drMark.drX0= drMark.drX1= drSelected->drX1;
+
+	geoShiftRectangle( &drMark, -ox, -oy );
+	drawFillRectangle( ds, &drMark );
 	}
 
     if  ( drSelected->drY0 >= 0 )
 	{
-	appDrawFillRectangle( add,
-			add->addBackRect.drX0- ox,
-			drSelected->drY0- oy- 1,
-			add->addBackRect.drX1- add->addBackRect.drX0,
-			1 );
+	drMark= *drScreen;
+	drMark.drY0= drMark.drY1= drSelected->drY0 -1;
+
+	geoShiftRectangle( &drMark, -ox, -oy );
+	drawFillRectangle( ds, &drMark );
 	}
 
     if  ( drSelected->drY1 >= 0 )
 	{
-	appDrawFillRectangle( add,
-			add->addBackRect.drX0- ox,
-			drSelected->drY1- oy,
-			add->addBackRect.drX1- add->addBackRect.drX0,
-			1 );
+	drMark= *drScreen;
+	drMark.drY0= drMark.drY1= drSelected->drY1;
+
+	geoShiftRectangle( &drMark, -ox, -oy );
+	drawFillRectangle( ds, &drMark );
 	}
 
-    appDrawSetForegroundWhite( add );
+    drawSetForegroundColorWhite( ds );
 
     if  ( drSelected->drX0 >= 0 )
 	{
-	appDrawFillRectangle( add,
-			drSelected->drX0- ox- 2,
-			add->addBackRect.drY0- oy,
-			1,
-			add->addBackRect.drY1- add->addBackRect.drY0 );
+	drMark= *drScreen;
+	drMark.drX0= drMark.drX1= drSelected->drX0- 2;
+
+	geoShiftRectangle( &drMark, -ox, -oy );
+	drawFillRectangle( ds, &drMark );
 	}
 
     if  ( drSelected->drX1 >= 0 )
 	{
-	appDrawFillRectangle( add,
-			drSelected->drX1- ox+ 1,
-			add->addBackRect.drY0- oy,
-			1,
-			add->addBackRect.drY1- add->addBackRect.drY0 );
+	drMark= *drScreen;
+	drMark.drX0= drMark.drX1= drSelected->drX1- 1;
+
+	geoShiftRectangle( &drMark, -ox, -oy );
+	drawFillRectangle( ds, &drMark );
 	}
 
     if  ( drSelected->drY0 >= 0 )
 	{
-	appDrawFillRectangle( add,
-			add->addBackRect.drX0- ox,
-			drSelected->drY0- oy- 2,
-			add->addBackRect.drX1- add->addBackRect.drX0,
-			1 );
+	drMark= *drScreen;
+	drMark.drY0= drMark.drY1= drSelected->drY0- 2;
+
+	geoShiftRectangle( &drMark, -ox, -oy );
+	drawFillRectangle( ds, &drMark );
 	}
 
     if  ( drSelected->drY1 >= 0 )
 	{
-	appDrawFillRectangle( add,
-			add->addBackRect.drX0- ox,
-			drSelected->drY1+ 1- oy,
-			add->addBackRect.drX1- add->addBackRect.drX0,
-			1 );
+	drMark= *drScreen;
+	drMark.drY0= drMark.drY1= drSelected->drY1+ 1;
+
+	geoShiftRectangle( &drMark, -ox, -oy );
+	drawFillRectangle( ds, &drMark );
 	}
 
     return;
@@ -225,41 +126,103 @@ void appDrawRectangleSelection(	DocumentRectangle *	drClip,
 /*									*/
 /************************************************************************/
 
-void appRemoveRectangleSelection( DocumentRectangle *	drVisible,
-				DocumentRectangle *	drSelected,
-				AppDrawingData *	add )
+static void appMetricRulerExposeX0(
+				const DocumentRectangle *	drVisible,
+				int				x0,
+				APP_WIDGET			w )
     {
     int			ox= drVisible->drX0;
-    int			oy= drVisible->drY0;
-
-    int			wide= drVisible->drX1- drVisible->drX0;
     int			high= drVisible->drY1- drVisible->drY0;
 
+    DocumentRectangle	drExpose;
+
+    drExpose.drX0= x0- ox- 2;
+    drExpose.drX1= x0+ 1;
+    drExpose.drY0= 0;
+    drExpose.drY1= high- 1;
+
+    guiExposeDrawingWidgetRectangle( w, &drExpose );
+    }
+
+static void appMetricRulerExposeY0(
+				const DocumentRectangle *	drVisible,
+				int				y0,
+				APP_WIDGET			w )
+    {
+    int			oy= drVisible->drY0;
+    int			wide= drVisible->drX1- drVisible->drX0;
+
+    DocumentRectangle	drExpose;
+
+    drExpose.drX0= 0;
+    drExpose.drX1= wide- 1;
+    drExpose.drY0= y0- oy- 2;
+    drExpose.drY1= y0+ 1;
+
+    guiExposeDrawingWidgetRectangle( w, &drExpose );
+    }
+
+static void appMetricRulerExposeX1(
+				const DocumentRectangle *	drVisible,
+				int				x1,
+				APP_WIDGET			w )
+    {
+    int			ox= drVisible->drX0;
+    int			high= drVisible->drY1- drVisible->drY0;
+
+    DocumentRectangle	drExpose;
+
+    drExpose.drX0= x1- ox;
+    drExpose.drX1= x1+ 1;
+    drExpose.drY0= 0;
+    drExpose.drY1= high- 1;
+
+    guiExposeDrawingWidgetRectangle( w, &drExpose );
+    }
+
+static void appMetricRulerExposeY1(
+				const DocumentRectangle *	drVisible,
+				int				y1,
+				APP_WIDGET			w )
+    {
+    int			oy= drVisible->drY0;
+    int			wide= drVisible->drX1- drVisible->drX0;
+
+    DocumentRectangle	drExpose;
+
+    drExpose.drX0= 0;
+    drExpose.drX1= wide- 1;
+    drExpose.drY0= y1- oy;
+    drExpose.drY1= y1+ 1;
+
+    guiExposeDrawingWidgetRectangle( w, &drExpose );
+    }
+
+void appRemoveRectangleSelection( const DocumentRectangle *	drVisible,
+				DocumentRectangle *		drSelected,
+				APP_WIDGET			w )
+    {
     if  ( drSelected->drX0 >= 0 )
 	{
-	appExposeRectangle( add, drSelected->drX0- ox- 2, 0, 2, high );
-
+	appMetricRulerExposeX0( drVisible, drSelected->drX0, w );
 	drSelected->drX0= -1;
 	}
 
     if  ( drSelected->drX1 >= 0 )
 	{
-	appExposeRectangle( add, drSelected->drX1- ox, 0, 2, high );
-
+	appMetricRulerExposeX1( drVisible, drSelected->drX1, w );
 	drSelected->drX1= -1;
 	}
 
     if  ( drSelected->drY0 >= 0 )
 	{
-	appExposeRectangle( add, 0, drSelected->drY0- oy- 2, wide, 2 );
-
+	appMetricRulerExposeY0( drVisible, drSelected->drY0, w );
 	drSelected->drY0= -1;
 	}
 
     if  ( drSelected->drY1 >= 0 )
 	{
-	appExposeRectangle( add, 0, drSelected->drY1- oy, wide, 2 );
-
+	appMetricRulerExposeY1( drVisible, drSelected->drY1, w );
 	drSelected->drY1= -1;
 	}
 
@@ -270,21 +233,18 @@ void appSetHorRectangleSelection( DocumentRectangle *	drVisible,
 				DocumentRectangle *	drSelected,
 				int			x0Screen,
 				int			x1Screen,
-				AppDrawingData *	add )
+				APP_WIDGET		w )
     {
-    int			ox= drVisible->drX0;
-    int			high= drVisible->drY1- drVisible->drY0;
-
     if  ( drSelected->drX0 != x0Screen )
 	{
 	if  ( drSelected->drX0 >= 0 )
 	    {
-	    appExposeRectangle( add, drSelected->drX0- ox- 2, 0, 2, high );
+	    appMetricRulerExposeX0( drVisible, drSelected->drX0, w );
 	    }
 
 	if  ( x0Screen >= 0 )
 	    {
-	    appExposeRectangle( add, x0Screen- ox- 2, 0, 2, high );
+	    appMetricRulerExposeX0( drVisible, x0Screen, w );
 	    }
 
 	drSelected->drX0= x0Screen;
@@ -294,12 +254,12 @@ void appSetHorRectangleSelection( DocumentRectangle *	drVisible,
 	{
 	if  ( drSelected->drX1 >= 0 )
 	    {
-	    appExposeRectangle( add, drSelected->drX1- ox, 0, 2, high );
+	    appMetricRulerExposeX1( drVisible, drSelected->drX1, w );
 	    }
 
 	if  ( x1Screen >= 0 )
 	    {
-	    appExposeRectangle( add, x1Screen- ox, 0, 2, high );
+	    appMetricRulerExposeX1( drVisible, x1Screen, w );
 	    }
 
 	drSelected->drX1= x1Screen;
@@ -313,21 +273,18 @@ void appSetVertRectangleSelection( DocumentRectangle *	drVisible,
 				DocumentRectangle *	drSelected,
 				int			y0Screen,
 				int			y1Screen,
-				AppDrawingData *	add )
+				APP_WIDGET		w )
     {
-    int			oy= drVisible->drY0;
-    int			wide= drVisible->drX1- drVisible->drX0;
-
     if  ( drSelected->drY0 != y0Screen )
 	{
 	if  ( drSelected->drY0 >= 0 )
 	    {
-	    appExposeRectangle( add, 0, drSelected->drY0- oy- 2, wide, 2 );
+	    appMetricRulerExposeY0( drVisible, drSelected->drY0, w );
 	    }
 
 	if  ( y0Screen >= 0 )
 	    {
-	    appExposeRectangle( add, 0, y0Screen- oy- 2, wide, 2 );
+	    appMetricRulerExposeY0( drVisible, y0Screen, w );
 	    }
 
 	drSelected->drY0= y0Screen;
@@ -337,12 +294,12 @@ void appSetVertRectangleSelection( DocumentRectangle *	drVisible,
 	{
 	if  ( drSelected->drY1 >= 0 )
 	    {
-	    appExposeRectangle( add, 0, drSelected->drY1- oy, wide, 2 );
+	    appMetricRulerExposeY1( drVisible, drSelected->drY1, w );
 	    }
 
 	if  ( y1Screen >= 0 )
 	    {
-	    appExposeRectangle( add, 0, y1Screen- oy, wide, 2 );
+	    appMetricRulerExposeY1( drVisible, y1Screen, w );
 	    }
 
 	drSelected->drY1= y1Screen;
@@ -365,34 +322,35 @@ void appDocSetMetricTopRuler(	EditDocument *		ed,
 				APP_EVENT_HANDLER_T	mouseDown )
     {
     EditApplication *		ea= ed->edApplication;
-    AppDrawingData *		add= &(ed->edDrawingData);
 
     ed->edTopRuler= appMakeMetricRuler(
 
 		    topRulerHeight,		/*  sizeAcross		*/
-		    add->addMagnifiedPixelsPerTwip,
+		    ea->eaMagnification,
 		    magnification,		/*  magnification	*/
+		    &(ea->eaPostScriptFontList),
 
-		    ed->edLeftRulerWidthPixels,	/*  minUnused		*/
-		    ed->edRightRulerWidthPixels,/*  maxUnused		*/
+		    ed->edLeftRulerWidePixels,	/*  minUnused		*/
+		    ed->edRightRulerWidePixels,/*  maxUnused		*/
 
-		    add->addDocRect.drX0,	/*  documentC0		*/
-		    add->addDocRect.drX1,	/*  documentC1		*/
+		    ed->edFullRect.drX0,	/*  documentC0		*/
+		    ed->edFullRect.drX1,	/*  documentC1		*/
 		    ed->edVisibleRect.drX0,	/*  visisbleC0		*/
 		    ed->edVisibleRect.drX1,	/*  visisbleC1		*/
-		    add->addPaperRect.drX1,	/*  rulerC1		*/
 
-		    ea->eaRulerFont,
 		    unitInt );			/*  whatUnit		*/
 
-    appDrawSetConfigureHandler( ed->edTopRulerWidget,
-			appHorizontalRulerConfigure, (void *)ed->edTopRuler );
+    guiDrawSetConfigureHandler( ed->edTopRulerWidget,
+		    appHorizontalRulerConfigure, (void *)ed->edTopRuler );
 
-    appDrawSetRedrawHandler( ed->edTopRulerWidget,
+    guiDrawSetRedrawHandler( ed->edTopRulerWidget,
 		    appRedrawHorizontalMetricRuler, (void *)ed->edTopRuler );
 
-    appDrawSetButtonPressHandler( ed->edTopRulerWidget,
+    guiDrawSetButtonPressHandler( ed->edTopRulerWidget,
 						mouseDown, (void *)ed );
+#   ifdef USE_GTK
+    gtk_widget_add_events( ed->edTopRulerWidget, GDK_POINTER_MOTION_MASK );
+#   endif
 
     return;
     }
@@ -411,32 +369,33 @@ void appDocSetMetricLeftRuler(	EditDocument *		ed,
 				APP_EVENT_HANDLER_T	mouseDown )
     {
     EditApplication *		ea= ed->edApplication;
-    AppDrawingData *		add= &(ed->edDrawingData);
 
     ed->edLeftRuler= appMakeMetricRuler(
 		    leftRulerWidth,		/*  sizeAcross		*/
-		    add->addMagnifiedPixelsPerTwip,
+		    ea->eaMagnification,
 		    magnification,		/*  magnification	*/
+		    &(ea->eaPostScriptFontList),
 
 		    0, 0,			/*  {min,max}Unused	*/
 
-		    add->addDocRect.drY0,	/*  documentC0		*/
-		    add->addDocRect.drY1,	/*  documentC1		*/
+		    ed->edFullRect.drY0,	/*  documentC0		*/
+		    ed->edFullRect.drY1,	/*  documentC1		*/
 		    ed->edVisibleRect.drY0,	/*  visisbleC0		*/
 		    ed->edVisibleRect.drY1,	/*  visisbleC1		*/
-		    add->addPaperRect.drY1,	/*  rulerC1		*/
 
-		    ea->eaRulerFont,
 		    unitInt );			/*  whatUnit		*/
 
-    appDrawSetConfigureHandler( ed->edLeftRulerWidget,
+    guiDrawSetConfigureHandler( ed->edLeftRulerWidget,
 			appVerticalRulerConfigure, (void *)ed->edLeftRuler );
 
-    appDrawSetRedrawHandler( ed->edLeftRulerWidget,
-			    appRedrawVerticalMetricRuler, ed->edLeftRuler );
+    guiDrawSetRedrawHandler( ed->edLeftRulerWidget,
+			appRedrawVerticalMetricRuler, ed->edLeftRuler );
 
-    appDrawSetButtonPressHandler( ed->edLeftRulerWidget,
+    guiDrawSetButtonPressHandler( ed->edLeftRulerWidget,
 						    mouseDown, (void *)ed );
+#   ifdef USE_GTK
+    gtk_widget_add_events( ed->edTopRulerWidget, GDK_POINTER_MOTION_MASK );
+#   endif
 
     return;
     }

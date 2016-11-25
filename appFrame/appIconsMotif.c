@@ -62,7 +62,7 @@ int appGetImagePixmap(	EditApplication *	ea,
 
     res= XpmCreatePixmapFromData( display,
 		RootWindow( display, DefaultScreen( display ) ),
-		np->npBuffer, &pixmap, &mask,
+		(char **)np->npBuffer, &pixmap, &mask,
 		&APP_XpmAttributes );
 
     while( res == XpmColorFailed && APP_XpmAttributes.red_closeness < 10000 )
@@ -73,7 +73,7 @@ int appGetImagePixmap(	EditApplication *	ea,
 
 	res= XpmCreatePixmapFromData( display,
 		RootWindow( display, DefaultScreen( display ) ),
-		np->npBuffer, &pixmap, &mask,
+		(char **)np->npBuffer, &pixmap, &mask,
 		&APP_XpmAttributes );
 	}
 

@@ -7,6 +7,7 @@
 #   include	"appUtilConfig.h"
 
 #   include	<string.h>
+#   include	<time.h>
 
 #   include	"appUnit.h"
 #   include	<appDebugon.h>
@@ -147,7 +148,6 @@ int appWordFormatDate(			char *			to,
 		    default:
 			LDEB(count); return -1;
 		    }
-		continue;
 
 	    case 'd': case 'D':
 		count= 1;
@@ -190,7 +190,6 @@ int appWordFormatDate(			char *			to,
 		    default:
 			LDEB(count); return -1;
 		    }
-		continue;
 
 	    case 'y': case 'Y':
 		count= 1;
@@ -219,7 +218,6 @@ int appWordFormatDate(			char *			to,
 		    default:
 			LDEB(count); return -1;
 		    }
-		continue;
 
 	    case 'H':
 		count= 1;
@@ -247,7 +245,6 @@ int appWordFormatDate(			char *			to,
 		    default:
 			LDEB(count); return -1;
 		    }
-		continue;
 
 	    case 'h':
 		count= 1;
@@ -275,7 +272,6 @@ int appWordFormatDate(			char *			to,
 		    default:
 			LDEB(count); return -1;
 		    }
-		continue;
 
 	    case 'm':
 		count= 1;
@@ -303,7 +299,6 @@ int appWordFormatDate(			char *			to,
 		    default:
 			LDEB(count); return -1;
 		    }
-		continue;
 
 	    case 'A': case 'a':
 		if  ( ! strcmp( from, "AM/PM" )	||
@@ -381,7 +376,7 @@ int appWordFormatDate(			char *			to,
 /*									*/
 /************************************************************************/
 
-void appInvalidateTime(		struct tm *	tm )
+void utilInvalidateTime(		struct tm *	tm )
     {
     const time_t	t= 0;
 

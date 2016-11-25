@@ -7,6 +7,13 @@
 #   ifndef	TED_TABLE_TOOL_H
 #   define	TED_TABLE_TOOL_H
 
+#   include	<appFrame.h>
+#   include	<appInspector.h>
+#   include	<docBuf.h>
+#   include	"tedRowMarginsTool.h"
+#   include	<docSelectionDescription.h>
+#   include	<docSelectionGeometry.h>
+
 /************************************************************************/
 /*									*/
 /*  Resources for the 'Table' page.					*/
@@ -15,8 +22,7 @@
 
 typedef struct TablePageResources
     {
-    char *		tprCellMargin;
-    char *		tprLeftIndent;
+    RowMarginsToolResources	tprMarginsResources;
     } TablePageResources;
 
 /************************************************************************/
@@ -36,11 +42,9 @@ typedef struct TableTool
 
     TableRectangle		ttTableRectangle;
 
-    int				ttPageRight;
-    int				ttPageLeftMargin;
+    unsigned char		ttCanChange;
 
-    APP_WIDGET			ttCellMarginText;
-    APP_WIDGET			ttLeftIndentText;
+    RowMarginsTool		ttMarginsTool;
     } TableTool;
 
 /************************************************************************/
@@ -60,12 +64,16 @@ extern void tedFormatToolGetTableResourceTable(
 					TablePageResources *		tpr,
 					InspectorSubjectResources *	isr );
 
-extern void tedFormatToolRefreshTableTool(
+extern void tedRefreshTableTool(
 				TableTool *			tt,
 				int *				pEnabled,
 				int *				pPref,
 				InspectorSubject *		is,
-				const DocumentSelection *	bs );
+				const DocumentSelection *	ds,
+				const SelectionGeometry *	sg,
+				const SelectionDescription *	sd,
+				BufferDocument *		bd,
+				const unsigned char *		cmdEnabled );
 
 extern void tedFormatCleanTableTool(	TableTool *		tt );
 

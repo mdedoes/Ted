@@ -1,18 +1,16 @@
 #   include	"appFrameConfig.h"
 
-#   include	<stdlib.h>
 #   include	<stdio.h>
 
 #   include	"appFrame.h"
-#   include	"appSystem.h"
-#   include	<appGeoString.h>
+#   include	"appInspector.h"
+
+#   include	<appDebugon.h>
 
 #   ifdef USE_MOTIF
 
 #   include	<Xm/PanedW.h>
 #   include	<Xm/Form.h>
-
-#   include	<appDebugon.h>
 
 void appInspectorMakePageParent(	AppInspector *	ai )
     {
@@ -59,39 +57,12 @@ void appInspectorChoosePage(	AppInspector *		ai,
     return;
     }
 
-static void appInspectorPageChosen(	APP_WIDGET	w,
-					void *		vai,
-					void *		call_data )
-    {
-    AppInspector *	ai= (AppInspector *)vai;
-
-    short		subject= -1;
-
-    const int		andMenu= False;
-
-    XtVaGetValues( w,
-		    XmNpositionIndex,	&subject,
-		    NULL );
-
-    if  ( subject < 0 )
-	{ LDEB(subject); return;	}
-
-    if  ( ai->aiNotifySubject )
-	{ (*ai->aiNotifySubject)( ai, ai->aiCurrentSubject, subject ); }
-
-    appInspectorChoosePage( ai, andMenu, subject );
-
-    ai->aiCurrentSubject= subject;
-
-    return;
-    }
-
-void appMakeVerticalInspectorPage(	APP_WIDGET *	pPage,
+int appMakeVerticalInspectorPage(	APP_WIDGET *	pPage,
 					APP_WIDGET *	pMenuitem,
 					AppInspector *	ai,
 					const char *	label )
     {
-    Widget		item;
+    Widget		option;
     Widget		page;
 
     Arg			al[20];
@@ -113,10 +84,45 @@ void appMakeVerticalInspectorPage(	APP_WIDGET *	pPage,
     page= XmCreatePanedWindow( ai->aiPageParent, WIDGET_NAME, al, ac );
     XtManageChild( page );
 
-    item= appAddItemToOptionmenu( &(ai->aiSubjectOptionmenu), label,
-				    appInspectorPageChosen, (void *)ai );
+    option= appAddItemToOptionmenu( &(ai->aiSubjectOptionmenu), label );
 
-    *pPage= page; *pMenuitem= item; return;
+    *pPage= page; *pMenuitem= option; return 0;
+    }
+
+void appInspectorDeleteSubject(	AppInspector *		ai,
+				int			subject )
+    {
+    WidgetList		children;
+    Cardinal		childCount= 0;
+
+    childCount= 0;
+    XtVaGetValues( ai->aiSubjectOptionmenu.aomPulldown,
+		    XmNchildren,	&children,
+		    XmNnumChildren,	&childCount,
+		    NULL );
+
+    if  ( subject < 0 || subject >= childCount )
+	{ LLDEB(subject,childCount);				}
+    else{
+	appDeleteItemFromOptionmenu( &(ai->aiSubjectOptionmenu),
+							children[subject] );
+	}
+
+    childCount= 0;
+    XtVaGetValues( ai->aiPageParent,
+		    XmNchildren,	&children,
+		    XmNnumChildren,	&childCount,
+		    NULL );
+
+    if  ( subject < 0 || subject >= childCount )
+	{ LLDEB(subject,childCount);			}
+    else{ XtDestroyWidget( children[subject] );		}
+
+    ai->aiSubjectCount--;
+    while( subject < ai->aiSubjectCount )
+	{ ai->aiSubjects[subject]= ai->aiSubjects[subject+ 1];	}
+
+    return;
     }
 
 void appInspectorEnablePage(	AppInspector *	ai,

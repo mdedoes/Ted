@@ -6,16 +6,23 @@
 
 #   include	"tedConfig.h"
 
-#   include	<stdlib.h>
 #   include	<stdio.h>
 #   include	<stddef.h>
 #   include	<limits.h>
 
-#   include	<appGeoString.h>
+#   include	<geoString.h>
 #   include	<appUnit.h>
 
-#   include	"tedApp.h"
-#   include	"tedFormatTool.h"
+#   include	"tedTabsTool.h"
+#   include	"tedAppFront.h"
+#   include	"tedToolUtil.h"
+#   include	<docParaRulerAdmin.h>
+#   include	<guiToolUtil.h>
+#   include	<guiTextUtil.h>
+#   include	<docTreeNode.h>
+#   include	<appQuestion.h>
+#   include	<docEditCommand.h>
+#   include	<docNodeTree.h>
 
 #   include	<appDebugon.h>
 
@@ -31,10 +38,8 @@ static void tedTabToolRefreshCurrentTab(	TabsTool *	tt )
 
     if  ( ts->tsTwips >= 0 )
 	{
-	char			scratch[50];
-
-	appGeoLengthToString( scratch, ts->tsTwips, UNITtyPOINTS );
-	appStringToTextWidget( tt->ttTabPositionText, scratch );
+	appLengthToTextWidget( tt->ttTabPositionText,
+					    ts->tsTwips, UNITtyPOINTS );
 	}
     else{
 	appStringToTextWidget( tt->ttTabPositionText, "" );
@@ -56,8 +61,7 @@ static void tedTabToolRefreshCurrentTab(	TabsTool *	tt )
 static void tedTabsToolSelectTab(	TabsTool *	tt,
 					int		n )
     {
-    ParagraphProperties *	pp= &(tt->ttParaPropertiesChosen);
-    const TabStopList *		tsl= &(pp->ppTabStopList);
+    const TabStopList *		tsl= &(tt->ttTabStopsChosen);
 
     if  ( n >= 0 && n >= tsl->tslTabStopCount )
 	{ LLDEB(n,tsl->tslTabStopCount); n= -1;	}
@@ -90,8 +94,7 @@ static void tedTabsToolSelectTab(	TabsTool *	tt,
 
 static void tedFormatToolRefreshTabsPage(	TabsTool *	tt )
     {
-    ParagraphProperties *	pp= &(tt->ttParaPropertiesChosen);
-    const TabStopList *		tsl= &(pp->ppTabStopList);
+    const TabStopList *		tsl= &(tt->ttTabStopsChosen);
 
     int				below= -1;
     int				above= -1;
@@ -108,8 +111,8 @@ static void tedFormatToolRefreshTabsPage(	TabsTool *	tt )
     ts= tsl->tslTabStops;
     for ( i= 0; i < tsl->tslTabStopCount; ts++, i++ )
 	{
-	appGeoLengthToString( scratch, ts->tsTwips, UNITtyPOINTS );
-	appGuiAddValueToListWidget( tt->ttTabPositionList, scratch );
+	geoLengthToString( scratch, ts->tsTwips, UNITtyPOINTS );
+	appGuiAddValueToListWidget( tt->ttTabPositionList, -1, scratch );
 
 	if  ( ts->tsTwips <= tt->ttTabStopValue.tsTwips )
 	    {
@@ -131,6 +134,13 @@ static void tedFormatToolRefreshTabsPage(	TabsTool *	tt )
 	else{ tedTabsToolSelectTab( tt, below );	}
 	}
 
+    guiEnableWidget( tt->ttInsertTabButton, tt->ttCanChange );
+
+    guiEnableWidget( tt->ttChangeTabButton,
+			    tt->ttCanChange && tt->ttTabStopNumber >= 0 );
+    guiEnableWidget( tt->ttDeleteTabButton,
+			    tt->ttCanChange && tt->ttTabStopNumber >= 0 );
+
     return;
     }
 
@@ -140,68 +150,81 @@ static void tedFormatToolRefreshTabsPage(	TabsTool *	tt )
 /*									*/
 /************************************************************************/
 
-void tedFormatToolRefreshTabsTool(
+void tedRefreshTabsTool(
 				TabsTool *			tt,
 				int *				pEnabled,
 				int *				pPref,
 				InspectorSubject *		is,
 				const DocumentSelection *	ds,
-				const DocumentProperties *	dp )
+				const SelectionGeometry *	sg,
+				const SelectionDescription *	sd,
+				const BufferDocument *		bd,
+				const unsigned char *		cmdEnabled )
     {
-    const ParagraphProperties *		pp;
-
     PropertyMask			chgMask;
     PropertyMask			updMask;
 
-    const int * const			colorMap= (const int *)0;
-    const int * const			listStyleMap= (const int *)0;
+    TabStopList				tsl;
 
-    pp= &(ds->dsBegin.dpBi->biParaProperties);
+    BufferItem *			bi= ds->dsHead.dpNode;
 
-    PROPmaskCLEAR( &updMask );
+    const DocumentAttributeMap * const	dam0= (const DocumentAttributeMap *)0;
+
+    docGetTabStopListByNumber( &tsl, &(bd->bdTabStopListList),
+					    bi->biParaTabStopListNumber );
+
+    utilPropMaskClear( &updMask );
     PROPmaskADD( &updMask, PPpropTAB_STOPS );
 
-    PROPmaskCLEAR( &chgMask );
+    utilPropMaskClear( &chgMask );
 
-    if  ( docUpdParaProperties( &chgMask, &(tt->ttParaPropertiesChosen),
-				    &updMask, pp, colorMap, listStyleMap ) )
+    if  ( docCopyTabStopList( &(tt->ttTabStopsChosen), &tsl ) )
 	{ LDEB(1); return ;	}
-
-    PROPmaskCLEAR( &chgMask );
-
-    if  ( docUpdParaProperties( &chgMask, &(tt->ttParaPropertiesSet),
-				    &updMask, pp, colorMap, listStyleMap ) )
+    if  ( docCopyTabStopList( &(tt->ttTabStopsSet), &tsl ) )
 	{ LDEB(1); return ;	}
 
     /**/
+
+    tt->ttCanChange= cmdEnabled[EDITcmdUPD_PARA_PROPS];
+
+    guiEnableWidget( tt->ttTabPropertyFrame, tt->ttCanChange );
+    guiEnableText( tt->ttTabPositionText, tt->ttCanChange );
 
     tedFormatToolRefreshTabsPage( tt );
 
+    guiEnableWidget( is->isPrevButton,
+				sd->sdInContiguousParagraphs		&&
+				docPrevParagraph( bi ) != (BufferItem *)0 );
+    guiEnableWidget( is->isNextButton,
+				sd->sdInContiguousParagraphs		&&
+				docNextParagraph( bi ) != (BufferItem *)0 );
+
+    guiEnableWidget( is->isRevertButton, tt->ttCanChange );
+
     /**/
 
-    PROPmaskCLEAR( &updMask );
+    utilPropMaskClear( &updMask );
     PROPmaskADD( &updMask, DPpropDEFTAB );
 
-    PROPmaskCLEAR( &chgMask );
+    utilPropMaskClear( &chgMask );
 
     if  ( docUpdDocumentProperties( &chgMask, &(tt->ttDocPropertiesChosen),
-							    &updMask, dp ))
+					&updMask, &(bd->bdProperties), dam0 ) )
 	{ LDEB(1); return ;	}
 
-    PROPmaskCLEAR( &chgMask );
+    utilPropMaskClear( &chgMask );
 
     if  ( docUpdDocumentProperties( &chgMask, &(tt->ttDocPropertiesSet),
-							    &updMask, dp ))
+					&updMask, &(bd->bdProperties), dam0 ) )
 	{ LDEB(1); return ;	}
 
     /**/
 
-    {
-    char		scratch[50];
+    appLengthToTextWidget( tt->ttTabDefaultText,
+		tt->ttDocPropertiesChosen.dpTabIntervalTwips, UNITtyPOINTS );
 
-    appGeoLengthToString( scratch, dp->dpTabIntervalTwips, UNITtyPOINTS );
-    appStringToTextWidget( tt->ttTabDefaultText, scratch );
-    }
+    guiEnableWidget( tt->ttTabDefaultFrame, cmdEnabled[EDITcmdUPD_DOC_PROPS] );
+    guiEnableText( tt->ttTabDefaultText, cmdEnabled[EDITcmdUPD_DOC_PROPS] );
 
     *pEnabled= 1;
     return;
@@ -217,20 +240,9 @@ static APP_BUTTON_CALLBACK_H( tedFormatTabsRevertParaPushed, w, voidtt )
     {
     TabsTool *		tt= (TabsTool *)voidtt;
 
-    PropertyMask	chgMask;
-    PropertyMask	updMask;
-
-    const int * const	colorMap= (const int *)0;
-    const int * const	listStyleMap= (const int *)0;
-
-    PROPmaskCLEAR( &chgMask );
-
-    PROPmaskCLEAR( &updMask );
-    PROPmaskADD( &updMask, PPpropTAB_STOPS );
-
-    docUpdParaProperties( &chgMask, &(tt->ttParaPropertiesChosen),
-			&updMask, &(tt->ttParaPropertiesSet),
-			colorMap, listStyleMap );
+    if  ( docCopyTabStopList( &(tt->ttTabStopsChosen),
+						    &(tt->ttTabStopsSet) ) )
+	{ LDEB(1);	}
 
     tedFormatToolRefreshTabsPage( tt );
 
@@ -244,20 +256,21 @@ static APP_BUTTON_CALLBACK_H( tedFormatTabsRevertDocPushed, w, voidtt )
     PropertyMask		chgMask;
     PropertyMask		updMask;
 
-    PROPmaskCLEAR( &chgMask );
+    const DocumentAttributeMap * const	dam0= (const DocumentAttributeMap *)0;
 
-    PROPmaskCLEAR( &updMask );
+    utilPropMaskClear( &chgMask );
+
+    utilPropMaskClear( &updMask );
     PROPmaskADD( &updMask, DPpropDEFTAB );
 
     docUpdDocumentProperties( &chgMask, &(tt->ttDocPropertiesChosen),
-				    &updMask, &(tt->ttDocPropertiesSet) );
+				&updMask, &(tt->ttDocPropertiesSet), dam0 );
 
     {
-    char			scratch[50];
     const DocumentProperties *	dp= &(tt->ttDocPropertiesChosen);
 
-    appGeoLengthToString( scratch, dp->dpTabIntervalTwips, UNITtyPOINTS );
-    appStringToTextWidget( tt->ttTabDefaultText, scratch );
+    appLengthToTextWidget( tt->ttTabDefaultText,
+				    dp->dpTabIntervalTwips, UNITtyPOINTS );
     }
 
     return;
@@ -301,13 +314,12 @@ static int tedTabToolValueTooCloseToExisting(
 static APP_TXACTIVATE_CALLBACK_H( tedTabPositionChanged, w, voidtt )
     {
     TabsTool *			tt= (TabsTool *)voidtt;
-    ParagraphProperties *	pp= &(tt->ttParaPropertiesChosen);
-    const TabStopList *		tsl= &(pp->ppTabStopList);
+    const TabStopList *		tsl= &(tt->ttTabStopsChosen);
 
     int				value;
     int				changed;
 
-    if  ( tt->ttTabStopNumber < 0		||
+    if  ( tt->ttTabStopNumber < 0			||
 	  tt->ttTabStopNumber >= tsl->tslTabStopCount	)
 	{ value= 0;	}
     else{
@@ -346,8 +358,7 @@ static APP_TXACTIVATE_CALLBACK_H( tedTabDeftabChanged, w, voidtt )
 static APP_LIST_CALLBACK_H( tedTabsToolTabChosen, w, voidtt, voidlcs )
     {
     TabsTool *			tt= (TabsTool *)voidtt;
-    ParagraphProperties *	pp= &(tt->ttParaPropertiesChosen);
-    const TabStopList *		tsl= &(pp->ppTabStopList);
+    const TabStopList *		tsl= &(tt->ttTabStopsChosen);
 
     int				position;
 
@@ -380,7 +391,7 @@ static APP_BUTTON_CALLBACK_H( tedFormatPrevPara, w, voidtt )
     TabsTool *			tt= (TabsTool *)voidtt;
     EditApplication *		ea= tt->ttApplication;
 
-    tedSelectWholeParagraph( ea, -1 );
+    tedAppSelectWholeParagraph( ea, -1 );
 
     return;
     }
@@ -390,7 +401,7 @@ static APP_BUTTON_CALLBACK_H( tedFormatNextPara, w, voidtt )
     TabsTool *			tt= (TabsTool *)voidtt;
     EditApplication *		ea= tt->ttApplication;
 
-    tedSelectWholeParagraph( ea, 1 );
+    tedAppSelectWholeParagraph( ea, 1 );
 
     return;
     }
@@ -409,8 +420,7 @@ static APP_BUTTON_CALLBACK_H( tedTabToolAddTab, w, voidtt )
     {
     TabsTool *			tt= (TabsTool *)voidtt;
     EditApplication *		ea= tt->ttApplication;
-    ParagraphProperties *	pp= &(tt->ttParaPropertiesChosen);
-    const TabStopList *		tsl= &(pp->ppTabStopList);
+    TabStopList *		tsl= &(tt->ttTabStopsChosen);
 
     const TabsPageResources *	tpr= tt->ttPageResources;
 
@@ -419,8 +429,6 @@ static APP_BUTTON_CALLBACK_H( tedTabToolAddTab, w, voidtt )
 
     int				value;
     int				changed;
-
-    PropertyMask		updMask;
 
     /*  1  */
     value= tt->ttTabStopValue.tsTwips; changed= 0;
@@ -434,8 +442,7 @@ static APP_BUTTON_CALLBACK_H( tedTabToolAddTab, w, voidtt )
     if  ( tedTabToolValueTooCloseToExisting( tsl, -1, value ) )
 	{
 	appQuestionRunErrorDialog( tt->ttApplication,
-					tt->ttInspector->aiTopWidget,
-					(APP_WIDGET)w,
+					tt->ttInspector->aiTopWidget, w,
 					tpr->tprTooCloseMessage );
 	return;
 	}
@@ -444,14 +451,11 @@ static APP_BUTTON_CALLBACK_H( tedTabToolAddTab, w, voidtt )
 	{ tt->ttTabStopValue.tsTwips= value;	}
 
     /*  3  */
-    changed= docParaAddTab( pp, &(tt->ttTabStopValue) );
+    changed= docAddTabToListTwips( tsl, &(tt->ttTabStopValue) );
     if  ( changed < 0 )
 	{ LDEB(changed); return;	}
 
-    PROPmaskCLEAR( &updMask );
-    PROPmaskADD( &updMask, PPpropTAB_STOPS );
-
-    if  ( tedAppChangeParagraphProperties( ea, &updMask, pp ) )
+    if  ( tedAppSetParagraphTabs( ea, tsl ) )
 	{ LDEB(1);	}
 
     return;
@@ -473,8 +477,7 @@ static APP_BUTTON_CALLBACK_H( tedFormatChangeParaTabs, w, voidtt )
     {
     TabsTool *			tt= (TabsTool *)voidtt;
     EditApplication *		ea= tt->ttApplication;
-    ParagraphProperties *	pp= &(tt->ttParaPropertiesChosen);
-    const TabStopList *		tsl= &(pp->ppTabStopList);
+    TabStopList *		tsl= &(tt->ttTabStopsChosen);
 
     const TabsPageResources *	tpr= tt->ttPageResources;
 
@@ -483,8 +486,6 @@ static APP_BUTTON_CALLBACK_H( tedFormatChangeParaTabs, w, voidtt )
 
     int				value;
     int				changed;
-
-    PropertyMask		updMask;
 
     /*  2  */
     value= tt->ttTabStopValue.tsTwips; changed= 0;
@@ -499,8 +500,7 @@ static APP_BUTTON_CALLBACK_H( tedFormatChangeParaTabs, w, voidtt )
 	{
 	appQuestionRunErrorDialog( tt->ttApplication,
 					tt->ttInspector->aiTopWidget,
-					(APP_WIDGET)w,
-					tpr->tprTooCloseMessage );
+					w, tpr->tprTooCloseMessage );
 	return;
 	}
 
@@ -510,17 +510,14 @@ static APP_BUTTON_CALLBACK_H( tedFormatChangeParaTabs, w, voidtt )
     /*  4  */
     if  ( tt->ttTabStopNumber >= 0			&&
 	  tt->ttTabStopNumber < tsl->tslTabStopCount	)
-	{ docParaDeleteTab( pp, tt->ttTabStopNumber );	}
+	{ docDeleteTabFromList( tsl, tt->ttTabStopNumber );	}
 
     /*  5  */
-    changed= docParaAddTab( pp, &(tt->ttTabStopValue) );
+    changed= docAddTabToListTwips( tsl, &(tt->ttTabStopValue) );
     if  ( changed < 0 )
 	{ LDEB(changed); return;	}
 
-    PROPmaskCLEAR( &updMask );
-    PROPmaskADD( &updMask, PPpropTAB_STOPS );
-
-    if  ( tedAppChangeParagraphProperties( ea, &updMask, pp ) )
+    if  ( tedAppSetParagraphTabs( ea, tsl ) )
 	{ LDEB(1);	}
 
     return;
@@ -542,10 +539,7 @@ static APP_BUTTON_CALLBACK_H( tedTabToolDeleteTab, w, voidtt )
     {
     TabsTool *			tt= (TabsTool *)voidtt;
     EditApplication *		ea= tt->ttApplication;
-    ParagraphProperties *	pp= &(tt->ttParaPropertiesChosen);
-    const TabStopList *		tsl= &(pp->ppTabStopList);
-
-    PropertyMask		updMask;
+    TabStopList *		tsl= &(tt->ttTabStopsChosen);
 
     /*  1  */
     if  ( tt->ttTabStopNumber < 0		||
@@ -553,15 +547,12 @@ static APP_BUTTON_CALLBACK_H( tedTabToolDeleteTab, w, voidtt )
 	{ LLDEB(tt->ttTabStopNumber,tsl->tslTabStopCount); return;	}
 
     /*  2  */
-    docParaDeleteTab( pp, tt->ttTabStopNumber );
+    docDeleteTabFromList( tsl, tt->ttTabStopNumber );
 
     if  ( tt->ttTabStopNumber < tsl->tslTabStopCount )
 	{ tt->ttTabStopValue= tsl->tslTabStops[tt->ttTabStopNumber];	}
 
-    PROPmaskCLEAR( &updMask );
-    PROPmaskADD( &updMask, PPpropTAB_STOPS );
-
-    if  ( tedAppChangeParagraphProperties( ea, &updMask, pp ) )
+    if  ( tedAppSetParagraphTabs( ea, tsl ) )
 	{ LDEB(1);	}
 
     return;
@@ -579,7 +570,7 @@ static APP_BUTTON_CALLBACK_H( tedFormatTabsApplyDocPushed, w, voidtt )
     {
     TabsTool *			tt= (TabsTool *)voidtt;
     EditApplication *		ea= tt->ttApplication;
-    DocumentProperties *	dp= &(tt->ttDocPropertiesChosen);
+    DocumentProperties *	dpSet= &(tt->ttDocPropertiesChosen);
 
     const int			maxValue= INT_MAX;
     const int			adaptToMax= 0;
@@ -587,12 +578,7 @@ static APP_BUTTON_CALLBACK_H( tedFormatTabsApplyDocPushed, w, voidtt )
     int				value;
     int				changed;
 
-    PropertyMask		updMask;
-
-    PROPmaskCLEAR( &updMask );
-    PROPmaskADD( &updMask, DPpropDEFTAB );
-
-    value= dp->dpTabIntervalTwips;
+    value= dpSet->dpTabIntervalTwips;
 
     if  ( appGetLengthFromTextWidget( tt->ttTabDefaultText,
 					&value, &changed, UNITtyPOINTS,
@@ -600,10 +586,17 @@ static APP_BUTTON_CALLBACK_H( tedFormatTabsApplyDocPushed, w, voidtt )
 	{ return;	}
 
     if  ( changed )
-	{ dp->dpTabIntervalTwips= value;	}
+	{
+	PropertyMask		dpSetMask;
 
-    if  ( tedAppSetDocumentProperties( ea, dp, &updMask ) )
-	{ LDEB(1);	}
+	utilPropMaskClear( &dpSetMask );
+	PROPmaskADD( &dpSetMask, DPpropDEFTAB );
+
+	dpSet->dpTabIntervalTwips= value;
+
+	if  ( tedAppSetDocumentProperties( ea, &dpSetMask, dpSet ) )
+	    { LDEB(1);	}
+	}
 
     return;
     }
@@ -615,14 +608,12 @@ static APP_BUTTON_CALLBACK_H( tedFormatTabsApplyDocPushed, w, voidtt )
 /*									*/
 /************************************************************************/
 
-static APP_OITEM_CALLBACK_H( tedTabAlignmentChosen, w, voidtt )
+static void tedTabAlignmentChosen(	int		alignment,
+					void *		voidtt )
     {
     TabsTool *			tt= (TabsTool *)voidtt;
     TabStop *			ts= &(tt->ttTabStopValue);
 
-    int				alignment;
-
-    alignment= appGuiGetOptionmenuItemIndex( &(tt->ttAlignmentOptionmenu), w );
     if  ( alignment < 0 || alignment >= DOCta_COUNT )
 	{ LLDEB(alignment,DOCta_COUNT); return;	}
 
@@ -638,14 +629,12 @@ static APP_OITEM_CALLBACK_H( tedTabAlignmentChosen, w, voidtt )
 /*									*/
 /************************************************************************/
 
-static APP_OITEM_CALLBACK_H( tedTabLeaderChosen, w, voidtt )
+static void tedTabLeaderChosen(		int		leader,
+					void *		voidtt )
     {
     TabsTool *			tt= (TabsTool *)voidtt;
     TabStop *			ts= &(tt->ttTabStopValue);
 
-    int				leader;
-
-    leader= appGuiGetOptionmenuItemIndex( &(tt->ttLeaderOptionmenu), w );
     if  ( leader < 0 || leader >= DOCtl_COUNT )
 	{ LLDEB(leader,DOCtl_COUNT); return;	}
 
@@ -673,7 +662,7 @@ void tedFormatFillTabsPage(	TabsTool *			tt,
 
     APP_WIDGET		row;
 
-    const int		visibleItems= 8;
+    const int		visibleItems= 5;
 
     const int		textColumns= 10;
 
@@ -684,8 +673,8 @@ void tedFormatFillTabsPage(	TabsTool *			tt,
     docInitDocumentProperties( &(tt->ttDocPropertiesSet) );
     docInitDocumentProperties( &(tt->ttDocPropertiesChosen) );
 
-    docInitParagraphProperties( &(tt->ttParaPropertiesSet) );
-    docInitParagraphProperties( &(tt->ttParaPropertiesChosen) );
+    docInitTabStopList( &(tt->ttTabStopsSet) );
+    docInitTabStopList( &(tt->ttTabStopsChosen) );
 
     docInitTabStop( &(tt->ttTabStopValue) );
     tt->ttTabStopValue.tsTwips= -1;
@@ -696,14 +685,14 @@ void tedFormatFillTabsPage(	TabsTool *			tt,
 			    &(tt->ttTabDefaultPaned),
 			    pageWidget, tpr->tprDefaultTabStopsLabel );
 
-    appMakeLabelAndTextRow( &row, &everyLabel, &(tt->ttTabDefaultText),
+    guiToolMakeLabelAndTextRow( &row, &everyLabel, &(tt->ttTabDefaultText),
 			    tt->ttTabDefaultPaned,
 			    tpr->tprDefaultTabStopsEvery, textColumns, 1 );
 
     appGuiSetGotValueCallbackForText( tt->ttTabDefaultText,
 				    tedTabDeftabChanged, (void *)tt );
 
-    appInspectorMakeButtonRow( &row, tt->ttTabDefaultPaned,
+    guiToolMake2BottonRow( &row, tt->ttTabDefaultPaned,
 					&(tt->ttTabDefaultRevertButton),
 					&(tt->ttTabDefaultApplyButton),
 					tpr->tprDefaultTabStopsRevert,
@@ -711,8 +700,9 @@ void tedFormatFillTabsPage(	TabsTool *			tt,
 					tedFormatTabsRevertDocPushed,
 					tedFormatTabsApplyDocPushed, tt );
     /**/
-    appGuiMakeListInColumn( &(tt->ttTabPositionList), pageWidget,
-			    visibleItems, tedTabsToolTabChosen, (void *)tt );
+    appGuiMakeListInColumn( &(tt->ttTabPositionList),
+		pageWidget, visibleItems,
+		tedTabsToolTabChosen, (APP_BUTTON_CALLBACK_T)0, (void *)tt );
 
     /**/
     appMakeColumnFrameInColumn( &(tt->ttTabPropertyFrame),
@@ -720,37 +710,37 @@ void tedFormatFillTabsPage(	TabsTool *			tt,
 				    pageWidget, tpr->tprTabStop );
 
     /**/
-    appMakeLabelAndTextRow( &row, &posLabel, &(tt->ttTabPositionText),
+    guiToolMakeLabelAndTextRow( &row, &posLabel, &(tt->ttTabPositionText),
 				    tt->ttTabPropertyPaned,
 				    tpr->tprPosition, textColumns, 1 );
 
     appGuiSetGotValueCallbackForText( tt->ttTabPositionText,
 				    tedTabPositionChanged, (void *)tt );
     /**/
-    appInspectorMakeMenuRow( &row, &(tt->ttAlignmentOptionmenu),
-				    &alignmentLabel, tt->ttTabPropertyPaned,
-				    tpr->tprAlignment );
+    guiToolMakeLabelAndMenuRow( &row, &(tt->ttAlignmentOptionmenu),
+			&alignmentLabel, tt->ttTabPropertyPaned,
+			tpr->tprAlignment, tedTabAlignmentChosen, (void *)tt );
 
     /**/
-    appInspectorMakeMenuRow( &row, &(tt->ttLeaderOptionmenu),
-				    &leaderLabel, tt->ttTabPropertyPaned,
-				    tpr->tprLeader );
+    guiToolMakeLabelAndMenuRow( &row, &(tt->ttLeaderOptionmenu),
+			&leaderLabel, tt->ttTabPropertyPaned,
+			tpr->tprLeader, tedTabLeaderChosen, (void *)tt );
 
-    /**/
-    appInspectorMakeButtonRow( &row, pageWidget,
-		&(is->isPrevButton), &(is->isNextButton),
-		isr->isrPrevButtonText, isr->isrNextButtonText,
-		tedFormatPrevPara, tedFormatNextPara, tt );
-
-    appInspectorMakeButtonRow( &row, pageWidget,
-		&(is->isDeleteButton), &(is->isInsertButton),
+    guiToolMake2BottonRow( &row, pageWidget,
+		&(tt->ttDeleteTabButton), &(tt->ttInsertTabButton),
 		isr->isrDeleteButtonText, isr->isrInsertButtonText,
 		tedTabToolDeleteTab, tedTabToolAddTab, tt );
 
-    appInspectorMakeButtonRow( &row, pageWidget,
-		&(is->isRevertButton), &(is->isApplyButton),
+    guiToolMake2BottonRow( &row, pageWidget,
+		&(is->isRevertButton), &(tt->ttChangeTabButton),
 		isr->isrRevert, isr->isrApplyToSubject,
 		tedFormatTabsRevertParaPushed, tedFormatChangeParaTabs, tt );
+
+    /**/
+    guiToolMake2BottonRow( &(is->isNextPrevRow), pageWidget,
+		&(is->isPrevButton), &(is->isNextButton),
+		isr->isrPrevButtonText, isr->isrNextButtonText,
+		tedFormatPrevPara, tedFormatNextPara, tt );
 
     return;
     }
@@ -767,18 +757,16 @@ void tedTabsToolFillChoosers(		TabsTool *			tt )
 
     appFillInspectorMenu( DOCta_COUNT, DOCtaLEFT,
 			tt->ttAlignmentItems, tpr->tprAlignmentOptionTexts,
-			&(tt->ttAlignmentOptionmenu),
-			tedTabAlignmentChosen, (void *)tt );
+			&(tt->ttAlignmentOptionmenu) );
 
-    appGuiEnableWidget( tt->ttAlignmentItems[DOCtaBAR], 0 );
+    guiEnableWidget( tt->ttAlignmentItems[DOCtaBAR], 0 );
 
     appFillInspectorMenu( DOCtl_COUNT, DOCtlNONE,
 			tt->ttLeaderItems, tpr->tprLeaderOptionTexts,
-			&(tt->ttLeaderOptionmenu),
-			tedTabLeaderChosen, (void *)tt );
+			&(tt->ttLeaderOptionmenu) );
 
-    appGuiEnableWidget( tt->ttLeaderItems[DOCtlTHICK], 0 );
-    appGuiEnableWidget( tt->ttLeaderItems[DOCtlEQUAL], 0 );
+    guiEnableWidget( tt->ttLeaderItems[DOCtlTHICK], 0 );
+    guiEnableWidget( tt->ttLeaderItems[DOCtlEQUAL], 0 );
 
     return;
     }
@@ -801,8 +789,9 @@ void tedFormatCleanParaTabsTool(	TabsTool *			tt )
     {
     docCleanDocumentProperties( &(tt->ttDocPropertiesSet) );
     docCleanDocumentProperties( &(tt->ttDocPropertiesChosen) );
-    docCleanParagraphProperties( &(tt->ttParaPropertiesSet) );
-    docCleanParagraphProperties( &(tt->ttParaPropertiesChosen) );
+
+    docCleanTabStopList( &(tt->ttTabStopsSet) );
+    docCleanTabStopList( &(tt->ttTabStopsChosen) );
     
     return;
     }
@@ -817,7 +806,7 @@ static AppConfigurableResource TED_TedTabsSubjectResourceTable[]=
     {
     APP_RESOURCE( "formatToolTabs",
 	offsetof(InspectorSubjectResources,isrSubjectName),
-	"Tabs" ),
+	"Tab Stops" ),
     APP_RESOURCE( "formatToolChangeTabs",
 	offsetof(InspectorSubjectResources,isrApplyToSubject),
 	"Change Tab" ),

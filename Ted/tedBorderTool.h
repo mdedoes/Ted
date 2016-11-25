@@ -7,6 +7,10 @@
 #   ifndef	TED_BORDER_TOOL_H
 #   define	TED_BORDER_TOOL_H
 
+#   include	<docBorderProperties.h>
+#   include	<appFrame.h>
+#   include	<appInspector.h>
+#   include	<docBuf.h>
 #   include	<appColorChooser.h>
 
 struct BorderTool;
@@ -16,19 +20,20 @@ typedef struct BorderTool
     AppInspector *		btInspector;
     int				btSubjectPage;
     int				btWhich;
+    const char *		btLabel;
+
+    unsigned char		btEnabled;
 
     APP_WIDGET			btFrame;
     APP_WIDGET			btPaned;
 
+    APP_WIDGET			btOnOffRow;
     APP_WIDGET			btOnOffToggle;
     APP_WIDGET			btWideText;
 
     APP_WIDGET			btStyleRow;
     APP_WIDGET			btStyleLabel;
     AppDrawnPulldown		btStylePulldown;
-    AppDrawingData		btInplaceDrawingData;
-    AppDrawingData		btPulldownDrawingData;
-    int				btPulldownDrawingDataSet;
 
     APP_WIDGET			btColorRow;
     APP_WIDGET			btColorLabel;
@@ -52,27 +57,31 @@ typedef struct BorderToolResources
 /*									*/
 /************************************************************************/
 
+extern void tedEnableBorderTool(	BorderTool *		bt,
+					int			enabled );
+
 extern void tedInitBorderTool(		BorderTool *		bt );
 extern void tedCleanBorderTool(		BorderTool *		bt );
 
-extern void tedBorderToolSetProperties(	BorderTool *			bt,
-					const DocumentProperties *	dp,
-					const BorderProperties *	bp );
+extern void tedBorderToolSetPropertiesByNumber( BorderTool *		bt,
+					const BufferDocument *		bd,
+					int				num );
 
-extern int tedBorderToolGetProperties(	BorderProperties *	bp,
-					PropertyMask *		pSetMask,
+extern int tedBorderToolGetNumber(	int *			pNum,
+					int *			pChanged,
 					const BorderTool *	bt,
-					DocumentProperties *	dp );
+					BufferDocument *	bd );
 
 extern void tedMakeBorderTool(	BorderTool *			bt,
 				AppInspector *			ai,
 				APP_WIDGET			page,
-				const char *			title,
+				const char *			label,
 				const BorderToolResources *	btr,
 				int				subjectPage,
 				int				which );
 
-extern void tedFinishBorderTool(	BorderTool *		bt );
+extern void tedFinishBorderTool(BorderTool *			bt,
+				const PostScriptFontList *	psfl );
 
 extern void tedBorderSetExplicitColorChoice(
 					BorderTool *		bt,

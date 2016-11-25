@@ -1,9 +1,16 @@
 /************************************************************************/
 /*									*/
 /*  Read a file that can follows the format of an X11 resource file	*/
-/*  ir a java properties file into a tree.				*/
+/*  or a java properties file into a tree.				*/
 /*									*/
 /************************************************************************/
 
-extern int utilPropertiesReadFile(		void *		tree,
-						const char *	filename );
+#   ifndef		UTIL_PROPERTIES_H
+#   define		UTIL_PROPERTIES_H
+
+#   include	"utilMemoryBuffer.h"
+
+extern int utilPropertiesReadFile(	void *			tree,
+					const MemoryBuffer *	filename );
+
+#   endif	/*	UTIL_PROPERTIES_H	*/

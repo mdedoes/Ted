@@ -7,12 +7,12 @@
 #   include	"appUtilConfig.h"
 
 #   include	<stdio.h>
-#   include	<stdlib.h>
 #   include	<string.h>
+#   include	<stdlib.h>
 
-#   include	<unistd.h>
-
-#   include	<appCgiIn.h>
+#   include	"appCgiIn.h"
+#   include	"utilTree.h"
+#   include	"appTagval.h"
 
 #   include	<appDebugon.h>
 
@@ -24,61 +24,52 @@
 
 extern char **		environ;
 
-static TaggedValueList * appCgiInGetHeaderList( void )
+static void * appCgiInGetHeaderList( void )
     {
     char **		e;
-    int			count;
 
-    TaggedValueList *	tvl;
+    const int		ownKeys= 1;
+    void *		rval= (void *)0;
+    void *		tree= utilTreeMakeTree( ownKeys );
 
-    e= environ; count= 0;
+    if  ( ! tree )
+	{ XDEB(tree); goto ready;	}
+
+    e= environ;
     while( *e )
 	{
-	if  ( ! strncmp( *e, "HTTP_", 5 ) )
-	    { count++;	}
+	char *		eq;
+	char *		val;
+	void *		prev= (void *)0;
 
-	e++;
+	if  ( strncmp( *e, "HTTP_", 5 ) )
+	    { e++; continue;	}
+
+	eq= strchr( *e, '=' );
+	if  ( ! eq )
+	    { SDEB(*e); goto ready;	}
+
+	val= strdup( eq+ 1 );
+	if  ( ! val )
+	    { XDEB(val); goto ready;	}
+
+	*eq= '\0';
+	if  ( utilTreeStoreValue( tree, &prev, (const char **)0, *(e+5), val ) )
+	    { *eq= '='; SDEB(*e); goto ready;	}
+	*eq= '=';
+
+	if  ( prev )
+	    { free( prev );	}
 	}
 
-    tvl= appTagvalAllocateList( count );
-    if  ( ! tvl )
-	{ LDEB(1); return (TaggedValueList *)0;	}
+    rval= tree; tree= (void *)0; /* steal */
 
-    e= environ; count= 0;
-    while( *e )
-	{
-	if  ( ! strncmp( *e, "HTTP_", 5 ) )
-	    {
-	    char *	v= strchr( *e, '=' );
+  ready:
 
-	    if  ( ! v )
-		{ SDEB(*e);	}
-	    else{
-		char *			buf;
-		TaggedValueList *	fresh;
+    if  ( tree )
+	{ utilTreeFreeTree( tree, utilTreeFreeValue, (void *)0 );	}
 
-		v++;
-
-		buf= malloc( v- *e- 5 );
-		memcpy( buf, *e+ 5, v- *e- 5 );
-		buf[v- *e- 6]= '\0';
-
-		fresh= appTagvalAddValue( tvl, buf, v, 1, 0 );
-		if  ( ! fresh )
-		    {
-		    LLDEB(tvl->tvlCount,fresh);
-		    appTagvalFreeValueList( tvl );
-		    return fresh;
-		    }
-
-		tvl= fresh;
-		}
-	    }
-
-	e++;
-	}
-
-    return tvl;
+    return rval;
     }
 
 /************************************************************************/
@@ -87,9 +78,9 @@ static TaggedValueList * appCgiInGetHeaderList( void )
 /*									*/
 /************************************************************************/
 
-static TaggedValueList * appCgiInGetEnvironmentList( void )
+static void * appCgiInGetEnvironmentList( void )
     {
-    static char *	environmentVariables[]=
+    static const char *	environmentVariables[]=
 	{
 	"SERVER_PROTOCOL",
 	"SERVER_PORT",
@@ -111,27 +102,74 @@ static TaggedValueList * appCgiInGetEnvironmentList( void )
 	"SERVER_SOFTWARE",
 	};
 
-    TaggedValueList *	values;
-    int			count= sizeof(environmentVariables)/sizeof(char *);
+    const int		count= sizeof(environmentVariables)/sizeof(char *);
+    int			i;
 
-    values= (TaggedValueList *)malloc(
-			sizeof(TaggedValueList)+ count* sizeof(TaggedValue) );
-    if  ( ! values )
-	{ LLDEB(count,values); return (TaggedValueList *)0;	}
+    const int		ownKeys= 0;
+    void *		rval= (void *)0;
+    void *		tree= utilTreeMakeTree( ownKeys );
 
-    values->tvlCount= count;
+    if  ( ! tree )
+	{ XDEB(tree); goto ready;	}
 
-    for ( count= 0; count < values->tvlCount; count++ )
+    for ( i= 0; i < count; i++ )
 	{
-	values->tvlValues[count].tvName= environmentVariables[count];
-	values->tvlValues[count].tvNameAllocated= 0;
+	const char *	key= environmentVariables[i];
+	char *		value= getenv( key );
+	void *		prev= (void *)0;
 
-	values->tvlValues[count].tvValue=
-					getenv( environmentVariables[count] );
-	values->tvlValues[count].tvValueAllocated= 0;
+	if  ( value )
+	    {
+	    value= strdup( value );
+	    if  ( ! value )
+		{ XDEB(value); goto ready;	}
+	    }
+
+	if  ( utilTreeStoreValue( tree, &prev, (const char **)0, key, value ) )
+	    { SDEB(key); goto ready;	}
+
+	if  ( prev )
+	    { free( prev );	}
 	}
 
-    return values;
+    rval= tree; tree= (void *)0; /* steal */
+
+  ready:
+
+    if  ( tree )
+	{ utilTreeFreeTree( tree, utilTreeFreeValue, (void *)0 );	}
+
+    return rval;
+    }
+
+/************************************************************************/
+
+static void utilCgiSave(	char *		to,
+				const char *	from,
+				const char *	upto )
+    {
+    while( from < upto )
+	{
+	int	c= *(from++);
+
+	if  ( c == '%' && isxdigit( from[0] ) && isxdigit( from[1] ) )
+	    {
+	    char		b[3];
+	    unsigned int	uc;
+
+	    b[0]= *(from++);
+	    b[1]= *(from++);
+	    b[2]= '\0';
+
+	    sscanf( b, "%x", &uc );
+	    *(to++)= uc;
+
+	    from += 2;
+	    }
+	else{ *(to)++= c;	}
+	}
+
+    *to= '\0';
     }
 
 /************************************************************************/
@@ -140,114 +178,88 @@ static TaggedValueList * appCgiInGetEnvironmentList( void )
 /*									*/
 /************************************************************************/
 
-static TaggedValueList * appCgiInAnalyseQueryString(
-					const char *	queryString )
+static void * appCgiInAnalyseQueryString(	const char *	queryString )
     {
-    int			consumed= 0;
+    char *		key= (char *)0;
+    char *		value= (char *)0;
 
-    int			count= 0;
-    TaggedValueList *	tvl= (TaggedValueList *)0;
+    const int		ownKeys= 1;
+    void *		rval= (void *)0;
+    void *		tree= utilTreeMakeTree( ownKeys );
+
+    if  ( ! tree )
+	{ XDEB(tree); goto ready;	}
 
     while( * queryString )
 	{
-	char *		pair= (char *)0;
-	int		pos= 0;
-	int		allocatedSize= 0;
-	int		firstEqual= -1;
 	int		c;
-	const char *	from= queryString;
+	void *		prev= (void *)0;
 
-	TaggedValueList *	nw;
+	const char *	from= queryString;
+	const char *	val= (const char *)0;
 
 	if  ( *from == '&' )
 	    { queryString= from+ 1; continue; }
 
 	while( * from )
 	    {
-	    c= *(from++); consumed++;
+	    c= *(from++);
 
 	    if  ( c == '&' )
 		{ break;	}
 	    if  ( ! c )
-		{
-		XDEB(c);
-		if  ( tvl )
-		    { appTagvalFreeValueList( tvl );	}
-		return (TaggedValueList *)0;
-		}
+		{ XDEB(c); goto ready;	}
 
-	    if  ( consumed >= allocatedSize )
-		{
-		int	sz= ( 3* ( allocatedSize+ 1 ) )/ 2;
-		char *	nwp= realloc( pair, sz+ 1 );
-
-		if  ( ! nwp )
-		    {
-		    LLDEB(sz,nwp);
-		    if  ( tvl )
-			{ appTagvalFreeValueList( tvl );	}
-		    return (TaggedValueList *)0;
-		    }
-
-		pair= nwp; allocatedSize= sz;
-		}
-
-	    if  ( c == '=' && firstEqual < 0 )
-		{ firstEqual= pos; }
+	    if  ( c == '=' && ! val )
+		{ val= from; }
 
 	    /*  No.. Only in the argument
 	    if  ( c == '+' )
 		{ pair[pos++]= ' '; continue;	}
 	    */
 
-	    if  ( c == '%' )
-		{
-		char		b[3];
-		unsigned int	uc;
-
-		b[0]= *(from++); consumed++;
-		b[1]= *(from++); consumed++;
-		b[2]= '\0';
-
-		sscanf( b, "%x", &uc );
-
-		pair[pos++]= uc; continue;
-		}
-
-	    pair[pos++]= c; continue;
+	    if  ( c == '%' && isxdigit( from[0] ) && isxdigit( from[1] ) )
+		{ from += 2;	}
 	    }
 
-	pair[pos]= '\0';
+	if  ( ! val )
+	    { SXDEB(queryString,val); queryString= from; continue;	}
 
-	if  ( ! tvl )
-	    {
-	    nw= appTagvalAllocateList( 1 );
-	    if  ( ! nw )
-		{ LLDEB(count,nw); return (TaggedValueList *)0; }
+	key= (char *)malloc( val- queryString );
+	if  ( ! key )
+	    { XDEB(key); goto ready;	}
 
-	    tvl= nw;
-	    }
+	value= (char *)malloc( from- val+ 1 );
+	if  ( ! value )
+	    { XDEB(value); goto ready;	}
 
-	if  ( firstEqual > 0 )
-	    {
-	    pair[firstEqual]= '\0';
-	    nw= appTagvalAddValue( tvl, pair, pair+ firstEqual+ 1, 1, 0 );
-	    }
-	else{ nw= appTagvalAddValue( tvl, pair, (char *)0, 1, 0 );	}
+	utilCgiSave( key, queryString, val- 1 );
+	utilCgiSave( value, val, from );
 
-	if  ( ! nw )
-	    {
-	    LDEB(nw);
-	    appTagvalFreeValueList( tvl );
-	    return (TaggedValueList *)0;
-	    }
+	free( key ); key= (char *)0;
+	free( value ); value= (char *)0;
 
-	tvl= nw;
+	if  ( utilTreeStoreValue( tree, &prev, (const char **)0, key, value ) )
+	    { LDEB(1);	}
+
+	if  ( prev )
+	    { free( prev );	}
 
 	queryString= from;
 	}
 
-    return tvl;
+    rval= tree; tree= (void *)0; /* steal */
+
+  ready:
+
+    if  ( tree )
+	{ utilTreeFreeTree( tree, utilTreeFreeValue, (void *)0 );	}
+    if  ( key )
+	{ free( key );		}
+    if  ( value )
+	{ free( value );	}
+
+    return rval;
     }
 
 /************************************************************************/
@@ -256,29 +268,32 @@ static TaggedValueList * appCgiInAnalyseQueryString(
 /*									*/
 /************************************************************************/
 
-static TaggedValueList * appCgiInReadValueList(	FILE *		from,
-						int		contentLength )
+static void * appCgiInReadValueList(	FILE *		from,
+					unsigned int	contentLength )
     {
-    TaggedValueList *	values= (TaggedValueList *)0;
+    void *	tree= (void *)0;
 
-    char *		buffer;
+    char *	buffer= (char *)0;
 
     if  ( contentLength == 0 )
-	{ LDEB(contentLength); return (TaggedValueList *)0;	}
+	{ LDEB(contentLength); goto ready;	}
 
-    buffer= malloc( contentLength+ 1 );
+    buffer= (char *)malloc( contentLength+ 1 );
     if  ( ! buffer )
-	{ XDEB(buffer); return (TaggedValueList *)0;	}
+	{ XDEB(buffer); goto ready;	}
 
     if  ( fread( buffer, 1, contentLength, from ) != contentLength )
-	{ LDEB(contentLength); free( buffer ); return (TaggedValueList *)0; }
+	{ LDEB(contentLength); goto ready;	}
     buffer[contentLength]= '\0';
 
-    values= appCgiInAnalyseQueryString( buffer );
+    tree= appCgiInAnalyseQueryString( buffer );
 
-    free( buffer );
+ready:
 
-    return values;
+    if  ( buffer )
+	{ free( buffer );	}
+
+    return tree;
     }
 
 /************************************************************************/
@@ -287,95 +302,80 @@ static TaggedValueList * appCgiInReadValueList(	FILE *		from,
 /*									*/
 /************************************************************************/
 
-static TaggedValueList * appCgiInAnalyseCookieString(
-					const char *	cookieString )
+static void * appCgiInAnalyseCookieString( const char *	cookieString )
     {
-    int			consumed= 0;
+    char *		key= (char *)0;
+    char *		value= (char *)0;
 
-    int			count= 0;
-    TaggedValueList *	tvl= (TaggedValueList *)0;
+    const int		ownKeys= 1;
+    void *		rval= (void *)0;
+    void *		tree= utilTreeMakeTree( ownKeys );
+
+    if  ( ! tree )
+	{ XDEB(tree); goto ready;	}
 
     while( * cookieString )
 	{
-	char *		pair= (char *)0;
-	int		pos= 0;
-	int		allocatedSize= 0;
-	int		firstEqual= -1;
 	int		c;
-	const char *	from= cookieString;
+	void *		prev= (void *)0;
 
-	TaggedValueList *	nw;
+	const char *	from= cookieString;
+	const char *	val= (const char *)0;
 
 	if  ( *from == ';' )
 	    { cookieString= from+ 1; continue; }
 
 	while( * from )
 	    {
-	    c= *(from++); consumed++;
+	    c= *(from++);
 
 	    if  ( c == ';' )
 		{ break;	}
 	    if  ( ! c )
-		{
-		XDEB(c);
-		if  ( tvl )
-		    { appTagvalFreeValueList( tvl );	}
-		return (TaggedValueList *)0;
-		}
+		{ XDEB(c); goto ready;	}
 
-	    if  ( consumed >= allocatedSize )
-		{
-		int	sz= ( 3* ( allocatedSize+ 1 ) )/ 2;
-		char *	nwp= realloc( pair, sz+ 1 );
-
-		if  ( ! nwp )
-		    {
-		    LLDEB(sz,nwp);
-		    if  ( tvl )
-			{ appTagvalFreeValueList( tvl );	}
-		    return (TaggedValueList *)0;
-		    }
-
-		pair= nwp; allocatedSize= sz;
-		}
-
-	    if  ( c == '=' && firstEqual < 0 )
-		{ firstEqual= pos; }
-
-	    pair[pos++]= c; continue;
+	    if  ( c == '=' && ! val )
+		{ val= from; }
 	    }
 
-	pair[pos]= '\0';
+	if  ( ! val )
+	    { SXDEB(cookieString,val); cookieString= from; continue;	}
 
-	if  ( ! tvl )
-	    {
-	    nw= appTagvalAllocateList( 1 );
-	    if  ( ! nw )
-		{ LLDEB(count,nw); return (TaggedValueList *)0; }
+	key= (char *)malloc( val- cookieString );
+	if  ( ! key )
+	    { XDEB(key); goto ready;	}
 
-	    tvl= nw;
-	    }
+	value= (char *)malloc( from- val+ 1 );
+	if  ( ! value )
+	    { XDEB(value); goto ready;	}
 
-	if  ( firstEqual > 0 )
-	    {
-	    pair[firstEqual]= '\0';
-	    nw= appTagvalAddValue( tvl, pair, pair+ firstEqual+ 1, 1, 0 );
-	    }
-	else{ nw= appTagvalAddValue( tvl, pair, (char *)0, 1, 0 );	}
+	strncpy( key, cookieString, val- cookieString- 1 )[val- cookieString- 1]= '\0';
+	strncpy( value, val, from- val )[from- val]= '\0';
 
-	if  ( ! nw )
-	    {
-	    LDEB(nw);
-	    appTagvalFreeValueList( tvl );
-	    return (TaggedValueList *)0;
-	    }
+	free( key ); key= (char *)0;
+	free( value ); value= (char *)0;
 
-	tvl= nw;
+	if  ( utilTreeStoreValue( tree, &prev, (const char **)0, key, value ) )
+	    { LDEB(1);	}
+
+	if  ( prev )
+	    { free( prev );	}
 
 	cookieString= from;
 	}
 
-    return tvl;
+    rval= tree; tree= (void *)0; /* steal */
+
+  ready:
+
+    if  ( tree )
+	{ utilTreeFreeTree( tree, utilTreeFreeValue, (void *)0 );	}
+    if  ( key )
+	{ free( key );		}
+    if  ( value )
+	{ free( value );	}
+
+    return rval;
     }
 
 /************************************************************************/
@@ -384,13 +384,13 @@ static TaggedValueList * appCgiInAnalyseCookieString(
 /*									*/
 /************************************************************************/
 
-static int appCgiInGetRequestMethod(	const char **		pValue,
-					TaggedValueList *	tvl	)
+static int appCgiInGetRequestMethod(	const char **	pValue,
+					void *		tree )
     {
     const char *	s;
     int			n;
 
-    int		res= appTagvalGetStringValue( &s, &n, tvl, "REQUEST_METHOD" );
+    int		res= appTagvalGetStringValue( &s, &n, tree, "REQUEST_METHOD" );
 
     if  ( res )
 	{ LDEB(res); return res;	}
@@ -407,7 +407,7 @@ static int appCgiInGetRequestMethod(	const char **		pValue,
 /*									*/
 /************************************************************************/
 
-extern CGIRequest * appCgiInGetRequest( void )
+CGIRequest * appCgiInGetRequest( void )
     {
     CGIRequest *	cgir= (CGIRequest *)malloc( sizeof(CGIRequest) );
     int			res;
@@ -418,10 +418,10 @@ extern CGIRequest * appCgiInGetRequest( void )
     if  ( ! cgir )
 	{ XDEB(cgir); return cgir;	}
 
-    cgir->cgirHeaderValues= (TaggedValueList *)0;
-    cgir->cgirEnvironmentValues= (TaggedValueList *)0;
-    cgir->cgirQueryValues= (TaggedValueList *)0;
-    cgir->cgirCookies= (TaggedValueList *)0;
+    cgir->cgirHeaderValues= (void *)0;
+    cgir->cgirEnvironmentValues= (void *)0;
+    cgir->cgirQueryValues= (void *)0;
+    cgir->cgirCookies= (void *)0;
     cgir->cgirRequestMethod= (char *)0;
     cgir->cgirStdinUsed= 0;
 
@@ -542,14 +542,16 @@ extern CGIRequest * appCgiInGetRequest( void )
     return cgir;
     }
 
-extern void appCgiInFreeRequest( CGIRequest * cgir )
+void appCgiInFreeRequest( CGIRequest * cgir )
     {
     if  ( cgir->cgirHeaderValues )
-        { appTagvalFreeValueList( cgir->cgirHeaderValues );	}
+        { utilTreeFreeTree( cgir->cgirHeaderValues, utilTreeFreeValue, (void *)0 );	}
     if  ( cgir->cgirEnvironmentValues )
-	{ appTagvalFreeValueList( cgir->cgirEnvironmentValues );	}
+	{ utilTreeFreeTree( cgir->cgirEnvironmentValues, utilTreeFreeValue, (void *)0 );	}
     if  ( cgir->cgirQueryValues )
-	{ appTagvalFreeValueList( cgir->cgirQueryValues );	}
+	{ utilTreeFreeTree( cgir->cgirQueryValues, utilTreeFreeValue, (void *)0 );	}
+    if  ( cgir->cgirCookies )
+	{ utilTreeFreeTree( cgir->cgirCookies, utilTreeFreeValue, (void *)0 );	}
 
     free( cgir );
 

@@ -6,13 +6,15 @@
 
 #   include	"appFrameConfig.h"
 
-#   include	<stdlib.h>
 #   include	<stdio.h>
 #   include	<stddef.h>
-#   include	<limits.h>
 
 #   include	"appFrame.h"
 #   include	"appRgbChooserPage.h"
+#   include	"guiWidgetDrawingSurface.h"
+#   include	"guiDrawingWidget.h"
+#   include	"guiToolUtil.h"
+#   include	"guiTextUtil.h"
 
 #   include	<appDebugon.h>
 
@@ -31,16 +33,10 @@ static void appRgbChooserRefreshTexts(	RgbChooserPage *	rcp )
 
 static void appRgbChooserRefreshCube(	RgbChooserPage *	rcp )
     {
-    AppDrawingData *		add= &(rcp->rcpDrawingData);
-
-    int			wide;
-    int			high;
-
     appRgbCubeSelectColor( &(rcp->rcpRgbCube), &(rcp->rcpRGBChosen) );
 
-    appDrawGetSizeOfWidget( &wide, &high, rcp->rcpDrawing );
-
-    appExposeRectangle( add, 0, 0, wide, high );
+    if  ( rcp->rcpDrawing )
+	{ guiExposeDrawingWidget( rcp->rcpDrawing );	}
 
     return;
     }
@@ -48,7 +44,6 @@ static void appRgbChooserRefreshCube(	RgbChooserPage *	rcp )
 static void appRgbChooserRefreshPage(	RgbChooserPage *	rcp )
     {
     appRgbChooserRefreshTexts( rcp );
-
     appRgbChooserRefreshCube( rcp );
 
     return;
@@ -161,20 +156,17 @@ static APP_BUTTON_CALLBACK_H( appRgbChooserRevertRGB, w, voidrcp )
 static APP_EVENT_HANDLER_H( appRGBDrawChooser, w, voidrcp, exposeEvent )
     {
     RgbChooserPage *		rcp= (RgbChooserPage *)voidrcp;
-    AppDrawingData *		add= &(rcp->rcpDrawingData);
 
     int				wide;
     int				high;
     DocumentRectangle		drClip;
 
-    const int			ox= 0;
-    const int			oy= 0;
+    guiCollectExposures( &drClip, rcp->rcpDrawing, exposeEvent );
 
-    appCollectExposures( &drClip, add, ox, oy, exposeEvent );
+    guiDrawGetSizeOfWidget( &wide, &high, w );
 
-    appDrawGetSizeOfWidget( &wide, &high, w );
-
-    appRedrawRgbCube( &(rcp->rcpRgbCube), wide, high, &drClip, add );
+    appRedrawRgbCube( &(rcp->rcpRgbCube), wide, high, &drClip,
+						    rcp->rcpDrawingSurface );
 
     return;
     }
@@ -188,7 +180,6 @@ static APP_EVENT_HANDLER_H( appRGBDrawChooser, w, voidrcp, exposeEvent )
 static APP_EVENT_HANDLER_H( appRGBMouseClick, w, voidrcp, downEvent )
     {
     RgbChooserPage *		rcp= (RgbChooserPage *)voidrcp;
-    AppDrawingData *		add= &(rcp->rcpDrawingData);
 
     int				button;
     int				upDown;
@@ -203,12 +194,12 @@ static APP_EVENT_HANDLER_H( appRGBMouseClick, w, voidrcp, downEvent )
 
     int				canSplit= 0;
 
-    if  ( appGetCoordinatesFromMouseButtonEvent( &mouseX, &mouseY,
+    if  ( guiGetCoordinatesFromMouseButtonEvent( &mouseX, &mouseY,
 					    &button, &upDown, &seq, &keyState,
 					    w, downEvent ) )
 	{ LDEB(1); return;	}
 
-    appDrawGetSizeOfWidget( &wide, &high, w );
+    guiDrawGetSizeOfWidget( &wide, &high, w );
 
     if  ( appRgbCubeFindColor( &(rcp->rcpRGBChosen), &canSplit,
 					    &(rcp->rcpRgbCube),
@@ -216,7 +207,8 @@ static APP_EVENT_HANDLER_H( appRGBMouseClick, w, voidrcp, downEvent )
 	{
 	appRotateRgbCube( &(rcp->rcpRgbCube), mouseX, mouseY, wide, high );
 
-	appExposeRectangle( add, 0, 0, wide, high );
+	if  ( rcp->rcpDrawing )
+	    { guiExposeDrawingWidget( rcp->rcpDrawing );	}
 	}
     else{
 	RgbCube *	rc= &(rcp->rcpRgbCube);
@@ -233,8 +225,8 @@ static APP_EVENT_HANDLER_H( appRGBMouseClick, w, voidrcp, downEvent )
 	    refresh= 1;
 	    }
 
-	if  ( refresh )
-	    { appExposeRectangle( add, 0, 0, wide, high );	}
+	if  ( refresh && rcp->rcpDrawing )
+	    { guiExposeDrawingWidget( rcp->rcpDrawing );	}
 	}
 
     return;
@@ -389,7 +381,7 @@ void appRgbChooserPageFillPage(	RgbChooserPage *		rcp,
 
     /**/
 
-    appInitDrawingData( &(rcp->rcpDrawingData) );
+    rcp->rcpDrawingSurface= (DrawingSurface)0;
     appInitRgbCube( &(rcp->rcpRgbCube) );
 
     /**************/
@@ -403,12 +395,12 @@ void appRgbChooserPageFillPage(	RgbChooserPage *		rcp,
 			    wide, high, heightResizable,
 			    appRGBDrawChooser, (void *)rcp );
 
-    appDrawSetButtonPressHandler( rcp->rcpDrawing, appRGBMouseClick,
+    guiDrawSetButtonPressHandler( rcp->rcpDrawing, appRGBMouseClick,
 							    (void *)rcp );
     }
 
     /**/
-    appMakeToggleAndTextRow( &row, &(rcp->rcpRedToggle), &(rcp->rcpRedText),
+    guiToolMakeToggleAndTextRow( &row, &(rcp->rcpRedToggle), &(rcp->rcpRedText),
 		    pageWidget, rcpr->rcprRedText,
 		    appRgbChooserRedToggled, (void *)rcp,
 		    textColumns, textEnabled );
@@ -417,7 +409,8 @@ void appRgbChooserPageFillPage(	RgbChooserPage *		rcp,
 				    appRgbChooserGotRed, (void *)rcp );
 
     /**/
-    appMakeToggleAndTextRow( &row, &(rcp->rcpGreenToggle), &(rcp->rcpGreenText),
+    guiToolMakeToggleAndTextRow( &row,
+		    &(rcp->rcpGreenToggle), &(rcp->rcpGreenText),
 		    pageWidget, rcpr->rcprGreenText,
 		    appRgbChooserGreenToggled, (void *)rcp,
 		    textColumns, textEnabled );
@@ -426,7 +419,8 @@ void appRgbChooserPageFillPage(	RgbChooserPage *		rcp,
 				    appRgbChooserGotGreen, (void *)rcp );
 
     /**/
-    appMakeToggleAndTextRow( &row, &(rcp->rcpBlueToggle), &(rcp->rcpBlueText),
+    guiToolMakeToggleAndTextRow( &row,
+		    &(rcp->rcpBlueToggle), &(rcp->rcpBlueText),
 		    pageWidget, rcpr->rcprBlueText,
 		    appRgbChooserBlueToggled, (void *)rcp,
 		    textColumns, textEnabled );
@@ -435,7 +429,7 @@ void appRgbChooserPageFillPage(	RgbChooserPage *		rcp,
 				    appRgbChooserGotBlue, (void *)rcp );
 
     /**/
-    appInspectorMake3ButtonRow( &row, pageWidget,
+    guiToolMake3ButtonRow( &(is->isApplyRow), pageWidget,
 					&(is->isRevertButton),
 					&(rcp->rcpCancelButton),
 					&(is->isApplyButton),
@@ -461,15 +455,18 @@ void appRgbChooserPageFillPage(	RgbChooserPage *		rcp,
 void appRgbChooserPageFinishPage(	RgbChooserPage *		rcp,
 					const RgbChooserPageResources *	rcpr )
     {
-    AppDrawingData *	add= &(rcp->rcpDrawingData);
-    const double	magnification= 1.0;
+    const int		avoidFontconfig= 0;
 
-    if  ( appSetDrawingDataForWidget( rcp->rcpDrawing,
-						    magnification, add ) )
-	{ LDEB(1);				}
-    else{ rcp->rcpDrawingDataAllocated= 1;	}
+    if  ( ! rcp->rcpDrawing )
+	{ XDEB(rcp->rcpDrawing); return;	}
 
-    if  ( appPrepareRgbCube( &(rcp->rcpRgbCube), add, 6, 6, 6 ) )
+    rcp->rcpDrawingSurface= guiDrawingSurfaceForNativeWidget(
+					rcp->rcpDrawing, avoidFontconfig );
+    if  ( ! rcp->rcpDrawingSurface )
+	{ XDEB(rcp->rcpDrawingSurface);	}
+
+    if  ( appPrepareRgbCube( &(rcp->rcpRgbCube), rcp->rcpDrawingSurface,
+								6, 6, 6 ) )
 	{ LDEB(6);	}
 
     return;
@@ -485,8 +482,8 @@ void appRgbChooserPageCleanPage(	RgbChooserPage *		rcp )
     {
     appCleanRgbCube( &(rcp->rcpRgbCube) );
 
-    if  ( rcp->rcpDrawingDataAllocated )
-	{ appCleanDrawingData( &(rcp->rcpDrawingData) );	}
+    if  ( rcp->rcpDrawingSurface )
+	{ drawFreeDrawingSurface( rcp->rcpDrawingSurface );	}
 
     return;
     }

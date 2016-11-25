@@ -1,0 +1,41 @@
+#!/bin/sh
+
+set -e -u
+
+PREFIX=@I_PREFIX@
+PLATFORM=@PLATFORM@
+MACHINE=@MACHINE@
+ARCH=@ARCH@
+DEBARCHIVE=ted-2.22-${ARCH}.deb
+
+HERE=`pwd`
+DIR=${HERE}/pkgscratch
+rm -rf ${DIR}
+# To provoke a message:
+if [ -d $DIR ]
+then
+    rm -r ${DIR}
+fi
+mkdir -p ${DIR}${PREFIX}
+
+( umask 0 && cd ${DIR}${PREFIX} && tar xvf ${HERE}/TedBindist.tar )
+chmod 755 ${DIR}/usr ${DIR}/usr/local
+cp ../Ted/Ted.static ${DIR}${PREFIX}/bin/Ted
+strip ${DIR}${PREFIX}/bin/Ted
+chmod 755 ${DIR}${PREFIX}/bin/Ted
+chown -R root:root ${DIR}${PREFIX}/*
+#chown -R root:root ${DIR}${PREFIX}/* || ( echo you must be root! && false )
+
+mkdir ${DIR}/DEBIAN
+chmod 755 ${DIR}/DEBIAN
+cp debian-control  ${DIR}/DEBIAN/control
+
+dpkg-deb --build ${DIR} ${DEBARCHIVE}
+
+(
+set -x
+dpkg-deb --info ${DEBARCHIVE}
+dpkg-deb --contents ${DEBARCHIVE}
+)
+
+rm -rf ${DIR}

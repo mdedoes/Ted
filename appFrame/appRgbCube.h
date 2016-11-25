@@ -7,16 +7,12 @@
 #   ifndef	APP_RGB_CUBE_H
 #   define	APP_RGB_CUBE_H
 
-#   include	<bmcolor.h>
-#   include	<appDraw.h>
-#   include	<utilAffineTransform.h>
+#   include	<drawDrawingSurface.h>
+#   include	<geoAffineTransform.h>
 
 typedef struct RgbColorBlock
     {
     RGB8Color		rcbRgbColor;
-    APP_COLOR_RGB	rcbAllocatorColor;
-    APP_COLOR_RGB	rcbAllocatorColorX;
-    int			rcbColorAllocated;
 
     int			rcbSelected;
     int			rcbMappedIndex;
@@ -55,13 +51,9 @@ typedef struct RgbCube
     int			rcColorBlockCount;
     RgbColorBlock *	rcColorBlocks;
 
-    AppColors		rcColors;
-    APP_COLOR_RGB	rcBackColor;
-
+    RGB8Color		rcBackColor;
     RGB8Color		rcSelectedColor;
     int			rcColorSelected;
-    APP_COLOR_RGB	rcAllocatedColor;
-    int			rcColorAllocated;
     } RgbCube;
 
 typedef enum RgbCubeSplitColor
@@ -88,10 +80,10 @@ extern void appRedrawRgbCube(	RgbCube *			rc,
 				int				wide,
 				int				high,
 				const DocumentRectangle *	drClip,
-				AppDrawingData *		add );
+				DrawingSurface			ds );
 
 extern int appPrepareRgbCube(	RgbCube *			rc,
-				AppDrawingData *		add,
+				DrawingSurface			ds,
 				int				redSteps,
 				int				greenSteps,
 				int				blueSteps );

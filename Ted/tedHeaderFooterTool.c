@@ -6,13 +6,16 @@
 
 #   include	"tedConfig.h"
 
-#   include	<stdlib.h>
 #   include	<stdio.h>
 #   include	<stddef.h>
-#   include	<limits.h>
 
-#   include	"tedApp.h"
-#   include	"tedFormatTool.h"
+#   include	"tedHeaderFooterTool.h"
+#   include	"tedAppFront.h"
+#   include	<guiToolUtil.h>
+#   include	<guiTextUtil.h>
+#   include	<docTreeNode.h>
+#   include	<docNodeTree.h>
+#   include	<docEditCommand.h>
 
 #   include	<appDebugon.h>
 
@@ -34,12 +37,11 @@ static void tedFormatToolRefreshHeadFootPage(	HeaderFooterTool *	hft )
 						hft->hftSectionNumber+ 1 );
 
     appGuiSetToggleState( hft->hftTitlepgToggle, sp->spHasTitlePage );
-
     appGuiSetToggleState( hft->hftFacingpToggle, dp->dpHasFacingPages );
 
     for ( i= 0; i < PAGES__COUNT; i++ )
 	{
-	appGuiEnableWidget( hft->hftPagesItems[i],
+	guiEnableWidget( hft->hftPagesItems[i],
 					hft->hftPagesOptionsEnabled[i] );
 	}
 
@@ -58,6 +60,28 @@ static void tedFormatToolRefreshHeadFootPage(	HeaderFooterTool *	hft )
 	    }
 	}
 
+    if  ( hft->hftPagesChosen >= 0 )
+	{
+	int headerType= DOC_HeaderScopes[hft->hftPagesChosen];
+	int footerType= DOC_FooterScopes[hft->hftPagesChosen];
+
+	guiEnableWidget( hft->hftDeleteHeaderButton,
+			    hft->hftCanDeleteHeader &&
+			    hft->hftPagesHeaderExists[hft->hftPagesChosen] );
+	guiEnableWidget( hft->hftDeleteFooterButton,
+			    hft->hftCanDeleteFooter &&
+			    hft->hftPagesFooterExists[hft->hftPagesChosen] );
+
+	guiEnableWidget( hft->hftEditHeaderButton,
+			hft->hftInTreeType != headerType &&
+			(  hft->hftCanInsertHeader ||
+			   hft->hftPagesHeaderExists[hft->hftPagesChosen] ) );
+	guiEnableWidget( hft->hftEditFooterButton,
+			hft->hftInTreeType != footerType &&
+			(  hft->hftCanInsertFooter ||
+			   hft->hftPagesFooterExists[hft->hftPagesChosen] ) );
+	}
+
     return;
     }
 
@@ -67,7 +91,7 @@ static void tedFormatToolRefreshHeadFootPage(	HeaderFooterTool *	hft )
 /*									*/
 /************************************************************************/
 
-void tedFormatToolRefreshHeaderFooterTool(
+void tedRefreshHeaderFooterTool(
 				HeaderFooterTool *		hft,
 				int *				pEnabled,
 				int *				pPref,
@@ -75,88 +99,96 @@ void tedFormatToolRefreshHeaderFooterTool(
 				const DocumentSelection *	ds,
 				const SelectionDescription *	sd,
 				const SelectionGeometry *	sg,
-				BufferDocument *		bd )
+				BufferDocument *		bd,
+				const unsigned char *		cmdEnabled )
     {
     const DocumentProperties *	dpSet= &(bd->bdProperties);
-
-    PropertyMask		changed;
-    PropertyMask		update;
+    PropertyMask		dpSetMask;
 
     BufferItem *		selSectBi;
+    const BufferItem *		bodySectNode;
+
     const SectionProperties *	spSet;
+    PropertyMask		spSetMask;
 
     int				whatHeaderFooter;
+    int				i;
 
-    PROPmaskCLEAR( &changed );
+    const DocumentAttributeMap * const	dam0= (const DocumentAttributeMap *)0;
 
-    selSectBi= ds->dsBegin.dpBi;
-    while( selSectBi && selSectBi->biLevel > DOClevSECT )
-	{ selSectBi= selSectBi->biParent;	}
+    selSectBi= docGetSectNode( ds->dsHead.dpNode );
     if  ( ! selSectBi )
 	{ XDEB(selSectBi); return;	}
+    bodySectNode= docGetBodySectNode( selSectBi, bd );
+    if  ( ! bodySectNode )
+	{ XDEB(bodySectNode); *pEnabled= 0; return;	}
 
-    whatHeaderFooter= selSectBi->biInExternalItem;
-    if  ( whatHeaderFooter == DOCinBODY )
+    whatHeaderFooter= hft->hftInTreeType= selSectBi->biTreeType;
+    if  ( sd->sdInHeaderFooter )
 	{
-	ExternalItem *	ei;
-	int		isEmpty;
-	int		page= sg->sgBegin.pgTopPosition.lpPage;
-
-	whatHeaderFooter= docWhatPageHeader( &ei, &isEmpty,
-						    selSectBi, page, dpSet );
-
-	hft->hftSectionNumber= selSectBi->biNumberInParent;
-	spSet= &(selSectBi->biSectProperties);
-	}
-    else{
-	const SelectionScope *	ss= &(selSectBi->biSectSelectionScope);
-	const BufferItem *	docBi= &(bd->bdItem);
-	const BufferItem *	bodySectBi;
-
-	if  ( ! sd->sdInHeaderFooter )
-	    { *pEnabled= 0; return;	}
-
-	bodySectBi= docBi->biChildren[ss->ssSectNrExternalTo];
-
-	hft->hftSectionNumber= bodySectBi->biNumberInParent;
-	spSet= &(bodySectBi->biSectProperties);
+	whatHeaderFooter= selSectBi->biTreeType;
+	hft->hftSectionNumber= bodySectNode->biNumberInParent;
+	spSet= &(bodySectNode->biSectProperties);
 
 	(*pPref) += 2;
 	}
+    else{
+	if  ( ! sd->sdInDocumentBody )
+	    { *pEnabled= 0; return;	}
+
+	whatHeaderFooter= sd->sdHeaderTypeForSelection;
+	hft->hftSectionNumber= selSectBi->biNumberInParent;
+	spSet= &(selSectBi->biSectProperties);
+	}
 
     /**********/
 
-    PROPmaskCLEAR( &update );
-    PROPmaskADD( &update, DPpropFACING_PAGES );
+    utilPropMaskClear( &dpSetMask );
+    PROPmaskADD( &dpSetMask, DPpropFACING_PAGES );
 
-    if  ( docUpdDocumentProperties( &changed, &(hft->hftDocPropertiesChosen),
-							&update, dpSet ) )
+    if  ( docUpdDocumentProperties( (PropertyMask *)0,
+		    &(hft->hftDocPropertiesChosen), &dpSetMask, dpSet, dam0 ) )
 	{ LDEB(1); return;	}
-    if  ( docUpdDocumentProperties( &changed, &(hft->hftDocPropertiesSet),
-							&update, dpSet ) )
+    if  ( docUpdDocumentProperties( (PropertyMask *)0,
+		    &(hft->hftDocPropertiesSet), &dpSetMask, dpSet, dam0 ) )
 	{ LDEB(1); return;	}
 
-    PROPmaskCLEAR( &update );
-    PROPmaskADD( &update, SPpropTITLEPG );
+    utilPropMaskClear( &spSetMask );
+    PROPmaskADD( &spSetMask, SPpropTITLEPG );
 
-    if  ( docUpdSectProperties( &changed, &(hft->hftSectPropertiesChosen),
-							&update, spSet ) )
+    if  ( docUpdSectProperties( (PropertyMask *)0,
+		    &(hft->hftSectPropertiesChosen), &spSetMask, spSet ) )
 	{ LDEB(1); return;	}
-    if  ( docUpdSectProperties( &changed, &(hft->hftSectPropertiesSet),
-							&update, spSet ) )
+    if  ( docUpdSectProperties( (PropertyMask *)0,
+		    &(hft->hftSectPropertiesSet), &spSetMask, spSet ) )
 	{ LDEB(1); return;	}
 
     /**********/
+
+    for ( i= 0; i < PAGES__COUNT; i++ )
+	{
+	hft->hftPagesHeaderExists[i]= 0;
+	hft->hftPagesFooterExists[i]= 0;
+
+	if  ( docSectionHasHeaderFooter( bodySectNode,
+					&(hft->hftPagesHeaderApplies[i]),
+					&(hft->hftDocPropertiesSet),
+					DOC_HeaderScopes[i] ) )
+	    { hft->hftPagesHeaderExists[i]= 1;	}
+	if  ( docSectionHasHeaderFooter( bodySectNode,
+					&(hft->hftPagesFooterApplies[i]),
+					&(hft->hftDocPropertiesSet),
+					DOC_FooterScopes[i] ) )
+	    { hft->hftPagesFooterExists[i]= 1;	}
+	}
 
     if  ( sd->sdInHeaderFooter )
 	{
-	int		i;
-
 	for ( i= 0; i < PAGES__COUNT; i++ )
 	    { hft->hftPagesOptionsEnabled[i]= 0; }
 
-	appGuiEnableWidget( hft->hftSectionFrame, 0 );
-	appGuiEnableWidget( hft->hftDocumentFrame, 0 );
+	guiEnableWidget( hft->hftSectionFrame, 0 );
+	guiEnableWidget( hft->hftDocumentFrame, 0 );
 	}
     else{
 	hft->hftPagesOptionsEnabled[PAGES_FIRST_PAGE]=
@@ -172,64 +204,29 @@ void tedFormatToolRefreshHeaderFooterTool(
 	hft->hftPagesOptionsEnabled[PAGES_EVEN_PAGES]=
 					    dpSet->dpHasFacingPages;
 
-	appGuiEnableWidget( hft->hftSectionFrame, 1 );
-	appGuiEnableWidget( hft->hftDocumentFrame, 1 );
+	guiEnableWidget( hft->hftSectionFrame,
+					cmdEnabled[EDITcmdUPD_SECT_PROPS] );
+	guiEnableWidget( hft->hftDocumentFrame,
+					cmdEnabled[EDITcmdUPD_DOC_PROPS] );
 	}
 
-    switch( whatHeaderFooter )
+    if  ( sd->sdInHeaderFooter )
 	{
-	case DOCinSECT_HEADER:
-	case DOCinSECT_FOOTER:
-	    if  ( spSet->spHasTitlePage )
-		{ hft->hftPagesChosen= PAGES_SUBSEQUENT_PAGES;	}
-	    else{ hft->hftPagesChosen= PAGES_ALL_PAGES;		}
+	int	pages;
 
-	    hft->hftPagesOptionsEnabled[hft->hftPagesChosen]= 1;
-	    appSetOptionmenu( &(hft->hftPagesOptionmenu), hft->hftPagesChosen );
+	pages= docWhatPagesForHeaderFooter( dpSet, spSet, whatHeaderFooter );
+	if  ( pages < 0 )
+	    { LLDEB(whatHeaderFooter,pages); *pEnabled= 0; return;	}
+	hft->hftPagesChosen= pages;
+	hft->hftPagesOptionsEnabled[hft->hftPagesChosen]= 1;
 
-	    break;
-
-	case DOCinFIRST_HEADER:
-	case DOCinFIRST_FOOTER:
-	    hft->hftPagesChosen= PAGES_FIRST_PAGE;
-	    hft->hftPagesOptionsEnabled[hft->hftPagesChosen]= 1;
-	    appSetOptionmenu( &(hft->hftPagesOptionmenu), hft->hftPagesChosen );
-	    break;
-
-	case DOCinLEFT_HEADER:
-	case DOCinLEFT_FOOTER:
-	    hft->hftPagesChosen= PAGES_EVEN_PAGES;
-	    hft->hftPagesOptionsEnabled[hft->hftPagesChosen]= 1;
-	    appSetOptionmenu( &(hft->hftPagesOptionmenu), hft->hftPagesChosen );
-	    break;
-
-	case DOCinRIGHT_HEADER:
-	case DOCinRIGHT_FOOTER:
-	    hft->hftPagesChosen= PAGES_ODD_PAGES;
-	    hft->hftPagesOptionsEnabled[hft->hftPagesChosen]= 1;
-	    appSetOptionmenu( &(hft->hftPagesOptionmenu), hft->hftPagesChosen );
-	    break;
-
-	case DOCinFOOTNOTE:
-	case DOCinENDNOTE:
-
-	case DOCinBODY:
-
-	case DOCinFTNSEP:
-	case DOCinFTNSEPC:
-	case DOCinFTNCN:
-	case DOCinAFTNSEP:
-	case DOCinAFTNSEPC:
-	case DOCinAFTNCN:
-
-	    *pEnabled= 0; return;
-
-	default:
-	    LDEB(whatHeaderFooter);
-	    *pEnabled= 0; return;
+	appSetOptionmenu( &(hft->hftPagesOptionmenu), hft->hftPagesChosen );
 	}
 
-    /**********/
+    hft->hftCanInsertHeader= cmdEnabled[EDITcmdINSERT_HEADER];
+    hft->hftCanDeleteHeader= cmdEnabled[EDITcmdDELETE_HEADER];
+    hft->hftCanInsertFooter= cmdEnabled[EDITcmdINSERT_FOOTER];
+    hft->hftCanDeleteFooter= cmdEnabled[EDITcmdDELETE_FOOTER];
 
     tedFormatToolRefreshHeadFootPage( hft );
 
@@ -246,14 +243,14 @@ void tedFormatToolRefreshHeaderFooterTool(
 static APP_BUTTON_CALLBACK_H( tedHeadFootChangeDocPushed, w, voidhft )
     {
     HeaderFooterTool *		hft= (HeaderFooterTool *)voidhft;
-    DocumentProperties *	dp= &(hft->hftDocPropertiesChosen);
+    DocumentProperties *	dpSet= &(hft->hftDocPropertiesChosen);
 
-    PropertyMask		update;
+    PropertyMask		dpSetMask;
 
-    PROPmaskCLEAR( &update );
-    PROPmaskADD( &update, DPpropFACING_PAGES );
+    utilPropMaskClear( &dpSetMask );
+    PROPmaskADD( &dpSetMask, DPpropFACING_PAGES );
 
-    tedAppSetDocumentProperties( hft->hftApplication, dp, &update );
+    tedAppSetDocumentProperties( hft->hftApplication, &dpSetMask, dpSet );
 
     return;
     }
@@ -265,7 +262,7 @@ static APP_BUTTON_CALLBACK_H( tedHeadFootChangeSectPushed, w, voidhft )
 
     PropertyMask		update;
 
-    PROPmaskCLEAR( &update );
+    utilPropMaskClear( &update );
     PROPmaskADD( &update, SPpropTITLEPG );
 
     if  ( tedAppChangeSectionProperties( hft->hftApplication, &update, sp ) )
@@ -279,16 +276,15 @@ static APP_BUTTON_CALLBACK_H( tedHeadFootRevertDocPushed, w, voidhft )
     HeaderFooterTool *		hft= (HeaderFooterTool *)voidhft;
     DocumentProperties *	dp= &(hft->hftDocPropertiesChosen);
 
-    PropertyMask		update;
-    PropertyMask		changed;
+    PropertyMask		dpSetMask;
 
-    PROPmaskCLEAR( &changed );
+    const DocumentAttributeMap * const	dam0= (const DocumentAttributeMap *)0;
 
-    PROPmaskCLEAR( &update );
-    PROPmaskADD( &update, DPpropFACING_PAGES );
+    utilPropMaskClear( &dpSetMask );
+    PROPmaskADD( &dpSetMask, DPpropFACING_PAGES );
 
-    if  ( docUpdDocumentProperties( &changed, dp,
-				    &update, &(hft->hftDocPropertiesSet) ) )
+    if  ( docUpdDocumentProperties( (PropertyMask *)0, dp,
+			    &dpSetMask, &(hft->hftDocPropertiesSet), dam0 ) )
 	{ LDEB(1); return;	}
 
     tedFormatToolRefreshHeadFootPage( hft );
@@ -299,18 +295,15 @@ static APP_BUTTON_CALLBACK_H( tedHeadFootRevertDocPushed, w, voidhft )
 static APP_BUTTON_CALLBACK_H( tedHeadFootRevertSectPushed, w, voidhft )
     {
     HeaderFooterTool *		hft= (HeaderFooterTool *)voidhft;
-    SectionProperties *		sp= &(hft->hftSectPropertiesChosen);
 
-    PropertyMask		update;
-    PropertyMask		changed;
+    PropertyMask		spSetMask;
 
-    PROPmaskCLEAR( &changed );
+    utilPropMaskClear( &spSetMask );
+    PROPmaskADD( &spSetMask, SPpropTITLEPG );
 
-    PROPmaskCLEAR( &update );
-    PROPmaskADD( &update, SPpropTITLEPG );
-
-    if  ( docUpdSectProperties( &changed, sp,
-				    &update, &(hft->hftSectPropertiesSet) ) )
+    if  ( docUpdSectProperties(
+			    (PropertyMask *)0, &(hft->hftSectPropertiesChosen),
+			    &spSetMask, &(hft->hftSectPropertiesSet) ) )
 	{ LDEB(1); return;	}
 
     tedFormatToolRefreshHeadFootPage( hft );
@@ -357,13 +350,11 @@ static APP_TOGGLE_CALLBACK_H( tedHeaderFooterToggleFacingp, w, voidhft, voidtbcs
 /*									*/
 /************************************************************************/
 
-static APP_OITEM_CALLBACK_H( tedHeadFootPagesChosen, w, voidhft )
+static void tedHeadFootPagesChosen(	int		pages,
+					void *		voidhft )
     {
     HeaderFooterTool *		hft= (HeaderFooterTool *)voidhft;
 
-    int				pages= -1;
-
-    pages= appGuiGetOptionmenuItemIndex( &(hft->hftPagesOptionmenu), w );
     if  ( pages < 0 || pages >= PAGES__COUNT )
 	{ LLDEB(pages,PAGES__COUNT); return;		}
 
@@ -471,16 +462,16 @@ void tedFormatFillHeaderFooterPage( HeaderFooterTool *		hft,
 			    &(hft->hftSectionPaned),
 			    pageWidget, hfpr->hfprSectionHeaderText );
 
-    appMakeLabelAndTextRow( &row, &(hft->hftSectionNumberLabel),
+    guiToolMakeLabelAndTextRow( &row, &(hft->hftSectionNumberLabel),
 			    &(hft->hftSectionNumberText),
 			    hft->hftSectionPaned, hfpr->hfprSectionNumberText,
 			    textColumns, 0 );
 
     row= appMakeRowInColumn( hft->hftSectionPaned, 1, heightResizable );
     hft->hftTitlepgToggle= appMakeToggleInRow( row, hfpr->hfprTitlepgText,
-				tedHeaderFooterToggleTitlepg, (void *)hft, 0 );
+			    tedHeaderFooterToggleTitlepg, (void *)hft, 0, 1 );
 
-    appInspectorMakeButtonRow( &row, hft->hftSectionPaned,
+    guiToolMake2BottonRow( &(is->isApplyRow), hft->hftSectionPaned,
 		&(is->isRevertButton), &(is->isApplyButton),
 		isr->isrRevert, isr->isrApplyToSubject,
 		tedHeadFootRevertSectPushed, tedHeadFootChangeSectPushed,
@@ -494,9 +485,9 @@ void tedFormatFillHeaderFooterPage( HeaderFooterTool *		hft,
 
     row= appMakeRowInColumn( hft->hftDocumentPaned, 1, heightResizable );
     hft->hftFacingpToggle= appMakeToggleInRow( row, hfpr->hfprFacingpText,
-				tedHeaderFooterToggleFacingp, (void *)hft, 0 );
+				tedHeaderFooterToggleFacingp, (void *)hft, 0, 1 );
 
-    appInspectorMakeButtonRow( &row, hft->hftDocumentPaned,
+    guiToolMake2BottonRow( &row, hft->hftDocumentPaned,
 		&(hft->hftRevertDocButton), &(hft->hftChangeDocButton),
 		hfpr->hfprRevertDocText, hfpr->hfprChangeDocText,
 		tedHeadFootRevertDocPushed, tedHeadFootChangeDocPushed,
@@ -508,16 +499,16 @@ void tedFormatFillHeaderFooterPage( HeaderFooterTool *		hft,
 			    &(hft->hftPagesPaned),
 			    pageWidget, hfpr->hfprPagesHeaderText );
 
-    appMakeOptionmenuInColumn( &(hft->hftPagesOptionmenu),
-						    hft->hftPagesPaned );
+    appMakeOptionmenuInColumn( &(hft->hftPagesOptionmenu), hft->hftPagesPaned,
+					tedHeadFootPagesChosen, (void *)hft );
 
-    appInspectorMakeButtonRow( &row, hft->hftPagesPaned,
+    guiToolMake2BottonRow( &row, hft->hftPagesPaned,
 		&(hft->hftDeleteHeaderButton), &(hft->hftEditHeaderButton),
 		hfpr->hfprDeleteHeaderText, hfpr->hfprEditHeaderText,
 		tedHeadFootDeleteHeaderPushed, tedHeadFootEditHeaderPushed,
 		(void *)hft );
 
-    appInspectorMakeButtonRow( &row, hft->hftPagesPaned,
+    guiToolMake2BottonRow( &row, hft->hftPagesPaned,
 		&(hft->hftDeleteFooterButton), &(hft->hftEditFooterButton),
 		hfpr->hfprDeleteFooterText, hfpr->hfprEditFooterText,
 		tedHeadFootDeleteFooterPushed, tedHeadFootEditFooterPushed,
@@ -539,8 +530,7 @@ void tedFormatFillHeaderFooterChoosers( HeaderFooterTool *		hft,
     {
     appFillInspectorMenu( PAGES__COUNT, PAGES_ALL_PAGES,
 			hft->hftPagesItems, hfpr->hfprPagesOptionTexts,
-			&(hft->hftPagesOptionmenu),
-			tedHeadFootPagesChosen, (void *)hft );
+			&(hft->hftPagesOptionmenu) );
 
     hft->hftPagesChosen= PAGES_ALL_PAGES;
 
@@ -548,7 +538,6 @@ void tedFormatFillHeaderFooterChoosers( HeaderFooterTool *		hft,
     }
 
 void tedFormatFinishHeaderFooterPage( HeaderFooterTool *		hft,
-				    TedFormatTool *			tft,
 				    const HeaderFooterPageResources *	hfpr )
     {
     appOptionmenuRefreshWidth( &(hft->hftPagesOptionmenu) );

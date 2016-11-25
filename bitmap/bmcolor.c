@@ -1,10 +1,7 @@
 #   include	"bitmapConfig.h"
 
-#   include	<bmcolor.h>
-#   include	<string.h>
+#   include	"bmcolor.h"
 #   include	<stdlib.h>
-
-#   include	<math.h>
 
 #   include	<appDebugon.h>
 
@@ -162,169 +159,10 @@ int bmAllocateAllocatorColors(	ColorAllocator *	ca,
     for ( i= 0; i < count; i++ )
 	{
 	ca->caColors[i].acColorNumber= 0;
+	ca->caColors[i].acColorPrivate= (void *)0;
 	ca->caColors[i].acAllocated= AC_UNALLOCATED;
 	}
 
     return 0;
     }
 
-/************************************************************************/
-/*									*/
-/*  Insert a color in a palette. (Or just return its index)		*/
-/*									*/
-/*  1)  As a HACK return the index of the nearest color if the palette	*/
-/*	is full.							*/
-/*									*/
-/************************************************************************/
-
-int bmInsertColor(	RGB8Color **		pColors,
-			int *			pColorCount,
-			int			avoidZero,
-			int			maxSize,
-			const RGB8Color *	rgb8 )
-    {
-    int		color;
-    int		colorCount= *pColorCount;
-    RGB8Color *	colors;
-    int		extra= 0;
-
-    avoidZero= ( avoidZero != 0 );
-
-    colors= *pColors+ avoidZero;
-    for ( color= avoidZero; color < colorCount; colors++, color++ )
-	{
-	if  ( ! bmRGB8ColorsDiffer( colors, rgb8 ) )
-	    { return color;	}
-	}
-
-    /*  1  */
-    if  ( maxSize > 0 && colorCount >= maxSize )
-	{
-	int		d= 257;
-	int		i;
-
-	LLDEB(colorCount,maxSize);
-
-	color= 0;
-	for ( i= 0; i < colorCount; i++ )
-	    {
-	    int		dd= 0;
-	    int		ddd;
-
-	    ddd= rgb8->rgb8Red- colors[i].rgb8Red;
-	    if  ( ddd < 0 )
-		{ ddd= -ddd;	}
-	    if  ( dd < ddd )
-		{ dd=  ddd;	}
-
-	    ddd= rgb8->rgb8Green- colors[i].rgb8Green;
-	    if  ( ddd < 0 )
-		{ ddd= -ddd;	}
-	    if  ( dd < ddd )
-		{ dd=  ddd;	}
-
-	    ddd= rgb8->rgb8Blue- colors[i].rgb8Blue;
-	    if  ( ddd < 0 )
-		{ ddd= -ddd;	}
-	    if  ( dd < ddd )
-		{ dd=  ddd;	}
-
-	    if  ( dd < d )
-		{ d= dd; color= i;	}
-	    }
-
-	return color;
-	}
-
-    if  ( avoidZero && colorCount == 0 )
-	{ extra= 1;	}
-
-    colors= realloc( *pColors, ( extra+ colorCount+ 1 )* sizeof(RGB8Color) );
-    if  ( ! colors )
-	{ LXDEB(colorCount,colors); return -1; }
-    *pColors= colors;
-
-    if  ( avoidZero && colorCount == 0 )
-	{
-	bmInitRGB8Color( colors+ colorCount );
-	colorCount++;
-	}
-
-    color= colorCount;
-    colors[colorCount++]= *rgb8;
-
-    *pColorCount= colorCount;
-    return color;
-    }
-
-/************************************************************************/
-/*									*/
-/*  Initialize an RGB8Color.						*/
-/*									*/
-/************************************************************************/
-
-void bmInitRGB8Color(	RGB8Color *	rgb8 )
-    {
-    rgb8->rgb8Red= 0;
-    rgb8->rgb8Green= 0;
-    rgb8->rgb8Blue= 0;
-    rgb8->rgb8Alpha= 255;
-
-    return;
-    }
-
-/************************************************************************/
-/*									*/
-/*  RGB -> IHS conversion.						*/
-/*									*/
-/************************************************************************/
-
-#   define	F_R	77
-#   define	F_G	150
-#   define	F_B	29
-
-int bmRgbIntensity(	const RGB8Color *	rgb8 )
-    {
-    return ( F_R* rgb8->rgb8Red+ F_G* rgb8->rgb8Green+ F_B* rgb8->rgb8Blue )/ 
-							    ( F_R+ F_G+ F_B );
-    }
-
-int bmRgbSaturation(	const RGB8Color *	rgb8 )
-    {
-    int		i;
-    int		mi= 256;
-
-    i= ( rgb8->rgb8Red+ rgb8->rgb8Green+ rgb8->rgb8Blue )/ 3;
-
-    if  ( mi > rgb8->rgb8Red )
-	{ mi=  rgb8->rgb8Red;	}
-    if  ( mi > rgb8->rgb8Green )
-	{ mi=  rgb8->rgb8Green;	}
-    if  ( mi > rgb8->rgb8Blue )
-	{ mi=  rgb8->rgb8Blue;	}
-
-    return 255- mi/i;
-    }
-
-int bmRgbHue(	const RGB8Color *	rgb8 )
-    {
-    int		RmG= rgb8->rgb8Red- rgb8->rgb8Green;
-    int		RmB= rgb8->rgb8Red- rgb8->rgb8Blue;
-    int		GmB= rgb8->rgb8Green- rgb8->rgb8Blue;
-
-    double	above;
-    double	below;
-    double	res;
-
-    if  ( RmG == 0 && RmB == 0 )
-	{ return 0;	}
-
-    above= RmG+ RmB;
-    below=  2.0* sqrt( RmG* RmG+ RmB* GmB );
-    res= ( 255.0* acos( above/ below ) )/ ( 2* M_PI );
-
-    if  ( below == 0 )
-	{ FFDEB(above,below); return 0; }
-
-    return res;
-    }

@@ -1,16 +1,21 @@
 #   include	"indConfig.h"
 
-#   include	"indlocal.h"
-#   include	<appDebugoff.h>
+#   include	<stdlib.h>
 
-static void	indTLDivide( IND *, int, int );
-static void indTLClaim( IND *, int, int, int );
+#   include	"indlocal.h"
+#   include	<appDebugon.h>
 
 /************************************************************************/
+/*									*/
 /*  The series of links is divided into groups.				*/
+/*									*/
 /*  Every group is preceded by a group header.				*/
 /*  If the group is used, the tl_to field of the header is TLgUSED	*/
 /*  If the group is free, the tl_to field of the header is TLgFREE	*/
+/*									*/
+/*  The last header always exists (Except at the very beginning) and	*/
+/*  always is TLgFREE.							*/
+/*									*/
 /************************************************************************/
 
 /************************************************************************/
@@ -20,108 +25,329 @@ static void indTLClaim( IND *, int, int, int );
 /*									*/
 /************************************************************************/
 
-int	indTLwalk( IND *	ind )
+int indTLwalk( IND *	ind )
     {
-    int	pos= 0;
-    TrieLink *	link;
+    int		pos= 0;
 
     while( pos < ind->indAllocatedLinks )
 	{
-	link=	LINK(ind,pos);
+	TrieLink *	link= LINK(ind,pos);
+
 	if  ( link->tl_to != TLgUSED && link->tl_to != TLgFREE )
 	    {
-	    appDebug( "AT %d: CORRUPTED CHAIN\n", pos );
+	    LLLLDEB(pos,link->tl_to,TLgUSED,TLgFREE);
 	    indTLprint( ind, pos );
 	    return -1;
 	    }
+
 	pos += link->tl_key+ 1;
+	if  ( pos < 0 || pos > ind->indAllocatedLinks )
+	    {
+	    LLDEB(pos,ind->indAllocatedLinks);
+	    indTLprint( ind, pos );
+	    return -1;
+	    }
+	}
+
+    if  ( pos != ind->indAllocatedLinks )
+	{
+	LLDEB(pos,ind->indAllocatedLinks);
+	return -1;
 	}
 
     return 0;
     }
 
-static void indTLDivide( ind, from, upto )
-IND *	ind;
-int	from;
-int	upto;
+/************************************************************************/
+/*									*/
+/*  Merge a series of free slots.					*/
+/*									*/
+/*  Return the size of the merged range.				*/
+/*									*/
+/************************************************************************/
+
+static int indMergeFreeSlots(	IND *		ind,
+				const int	slot )
     {
-    TrieLink *	link;
+    TrieLink * const	link= LINK(ind,slot);
 
-    if  ( from < ind->ind_lfull )
-	{ ind->ind_lfull= from; }
+    if  ( link->tl_to != TLgFREE )
+	{ LLLDEB(slot,link->tl_to,TLgFREE); return -1;	}
 
-    while( from < upto )
+    if  ( slot == ind->indLastHeadLinkSlot )
+	{ return link->tl_key- 1;	}
+
+    while( slot+ 1+ link->tl_key <= ind->indLastHeadLinkSlot )
 	{
-	int	space= upto- from- 1;
+	TrieLink *	next= LINK(ind,slot+ 1+ link->tl_key);
 
-	link= LINK(ind,from);
+	if  ( next->tl_to == TLgUSED )
+	    { break;	}
 
-	if  ( space > 255 )
-	    { space= 255;	}
+	if  ( slot+ 1+ link->tl_key == ind->indLastHeadLinkSlot )
+	    { ind->indLastHeadLinkSlot= slot;	}
 
-	link->tl_to= TLgFREE;
-	link->tl_key= space;
-	APP_DEB(appDebug("       FREE LINKS AT %6d, COUNT= %3d UPTO= %6d\n",
-		from, space, upto ));
-	from += space+ 1;
+	if  ( link->tl_to == TLgFREE )
+	    {
+	    if  ( link->tl_key+ 1+ next->tl_key >= 0xfffffe )
+		{ break;	}
+
+	    link->tl_key += 1+ next->tl_key;
+	    continue;
+	    }
+
+	LLLLDEB(slot,link->tl_to,TLgUSED,TLgFREE);
+	return -1;
 	}
+
+    if  ( ind->indFirstFreeLinkSlot > slot && link->tl_key > 0 )
+	{ ind->indFirstFreeLinkSlot=  slot;	}
+
+    if  ( link->tl_to != TLgFREE )
+	{ LLDEB(slot,link->tl_to); return -1; }
+
+    if  ( slot == ind->indLastHeadLinkSlot )
+	{ return link->tl_key- 1;	}
+    else{ return link->tl_key;		}
     }
 
-static void indTLClaim( ind, old, at, n )
-IND *	ind;
-int	old;
-int	at;
-int	n;
+/************************************************************************/
+/*									*/
+/*  Determine the number of links that are available at a particular	*/
+/*  position.								*/
+/*									*/
+/*  As an optimization: Merge free cells.				*/
+/*									*/
+/************************************************************************/
+
+static int indSlotCapacity(	IND *		ind,
+				const int	from )
     {
-    TrieLink *	atlink= LINK(ind,at);
+    int		next;
+    int		space;
+    TrieLink *	link= LINK(ind,from);
 
-    atlink->tl_key= n;
-    atlink->tl_to= TLgUSED;
-
-    APP_DEB(appDebug("++++   USE  LINKS AT %6d, COUNT= %3d\n", at, n ));
-
-    if  ( old > 0 )
+    if  ( link->tl_to != TLgUSED && link->tl_to != TLgFREE )
 	{
-	TrieLink *	ollink= LINK(ind,old-1);
+	LLLLDEB(from,link->tl_to,TLgUSED,TLgFREE);
+	indINDprint(ind);
+	return -1;
+	}
 
-	if  ( old- 1 < ind->ind_lfull )
-	    { ind->ind_lfull= old- 1; }
+    if  ( link->tl_to == TLgFREE )
+	{
+	space= indMergeFreeSlots( ind, from );
+	return space;
+	}
 
-	n= ollink->tl_key;
-	APP_DEB(appDebug("OLD    FREE LINKS AT %6d, COUNT= %3d\n", old-1, n ));
-	ollink->tl_to= TLgFREE;
-	at++;
-	while( n > 0 )
+    next= from+ 1+ link->tl_key;
+    if  ( next == ind->indLastHeadLinkSlot )
+	{ return next- from- 1;	}
+
+    link= LINK(ind,next);
+    if  ( link->tl_to == TLgUSED )
+	{
+	return next- from- 1;
+	}
+
+    if  ( link->tl_to == TLgFREE )
+	{
+	space= indMergeFreeSlots( ind, next );
+	return next- from+ space;
+	}
+
+    LLLLDEB(next,link->tl_to,TLgUSED,TLgFREE);
+    return -1;
+    }
+
+/************************************************************************/
+/*									*/
+/*  Claim a slot: Divide the range from pos to nextHeader in a		*/
+/*  used slot and a free slot.						*/
+/*									*/
+/************************************************************************/
+
+static int indSplit(	IND *		ind,
+			int		slot,
+			int		size,
+			int		upto )
+    {
+    int		newHeader= slot+ 1+ size;
+    TrieLink *	link= LINK(ind,slot);
+    TrieLink *	next= LINK(ind,newHeader);
+
+    /*
+    SDEB("FROM");
+    indTLprint(ind,slot);
+    indTLprint(ind,upto);
+    */
+
+    next->tl_to= TLgFREE;
+    next->tl_key= upto- newHeader- 1;
+
+    link->tl_key= size;
+    link->tl_to= TLgUSED;
+
+    /*
+    SDEB("SPLIT");
+    indTLprint(ind,slot);
+    indTLprint(ind,newHeader);
+    indTLprint(ind,upto);
+    */
+
+    if  ( ind->indFirstFreeLinkSlot > slot	&&
+	  ind->indFirstFreeLinkSlot < upto	)
+	{ ind->indFirstFreeLinkSlot= newHeader;	}
+
+    return newHeader;
+    }
+
+static void indClaimSlot(	IND *		ind,
+				int		slot,
+				int		size )
+    {
+    TrieLink *	link= LINK(ind,slot);
+
+    if  ( size < 1 || size >= 0xfffffe )
+	{
+	LLDEB(slot,size); indINDprint(ind);
+	return;
+	}
+
+    if  ( slot == ind->indLastHeadLinkSlot )
+	{
+	if  ( link->tl_to != TLgFREE )
 	    {
-	    atlink= LINK(ind,at);
-	    ollink= LINK(ind,old);
-	    *atlink= *ollink;
-	    at++; old++; n--;
+	    indTLprint(ind,ind->indLastHeadLinkSlot);
+	    return;
+	    }
+
+	ind->indLastHeadLinkSlot=
+		indSplit( ind, slot, size, ind->indAllocatedLinks );
+	}
+    else{
+	int	nextHeader= slot+ 1+ link->tl_key;
+
+	if  ( size > link->tl_key )
+	    {
+	    if  ( nextHeader == ind->indLastHeadLinkSlot )
+		{
+		ind->indLastHeadLinkSlot=
+		    indSplit( ind, slot, size, ind->indAllocatedLinks );
+		}
+	    else{
+		TrieLink *	next= LINK(ind,nextHeader);
+		int		upto= slot+ 1+ link->tl_key+ 1+ next->tl_key;
+
+		if  ( slot+ 1+ size < upto )
+		    { indSplit( ind, slot, size, upto );	}
+		else{
+		    link->tl_key= size;
+		    link->tl_to= TLgUSED;
+
+		    if  ( ind->indFirstFreeLinkSlot == nextHeader )
+			{ ind->indFirstFreeLinkSlot= upto;	}
+		    }
+		}
+	    }
+	else{
+	    if  ( size < link->tl_key )
+		{ indSplit( ind, slot, size, nextHeader );	}
+	    else{
+		link->tl_key= size;
+		link->tl_to= TLgUSED;
+		}
 	    }
 	}
     }
 
-int	indTLalloc( ind, old, n )
-IND *	ind;
-int	old;
-int	n;
+/************************************************************************/
+/*									*/
+/*  Allocate more link pages.						*/
+/*									*/
+/************************************************************************/
+
+static int indClaimLinkPages(		IND *		ind,
+					int		n )
     {
-    int		past;
+    int			linksNeeded;
+    int			pagesNeeded;
+    TrieLink **		fresh;
+
+    TrieLink *		link;
+
+    linksNeeded= ind->indLastHeadLinkSlot+ 1+ n+ 1;
+					    /* +1: For the last FREE!	*/
+    pagesNeeded= ( linksNeeded+ TLsBLOCK- 1 )/ TLsBLOCK;
+
+    fresh= (TrieLink **)realloc( ind->indLinkPages,
+					    pagesNeeded* sizeof(TrieLink *) );
+    if  ( ! fresh )
+	{ LXDEB(pagesNeeded,fresh); return -1;	}
+    ind->indLinkPages= fresh;
+
+    while( ind->indAllocatedLinks < linksNeeded )
+	{
+	TrieLink *	newpage;
+
+	newpage= (TrieLink *)malloc( TLsBLOCK* sizeof( TrieLink ) );
+	if  ( ! newpage )
+	    { XDEB(newpage); return -1;	}
+
+	ind->indLinkPages[ind->indAllocatedLinks/TLsBLOCK]= newpage;
+	ind->indAllocatedLinks += TLsBLOCK;
+
+	link= LINK(ind,ind->indLastHeadLinkSlot);
+	link->tl_key= ind->indAllocatedLinks- ind->indLastHeadLinkSlot- 1;
+	link->tl_to= TLgFREE;
+	}
+
+    return ind->indLastHeadLinkSlot;
+    }
+
+/************************************************************************/
+
+static void indReallocLinks(		IND *		ind,
+					int		slot,
+					int		from )
+    {
+    TrieLink *		link= LINK(ind,from);
+    int			size= link->tl_key;
+    int			i;
+
+    link->tl_to= TLgFREE;
+    if  ( ind->indFirstFreeLinkSlot > from )
+	{ ind->indFirstFreeLinkSlot=  from;	}
+
+    from++; slot++;
+    for ( i= 0; i < size; i++ )
+	{
+	*LINK(ind,slot)= *LINK(ind,from);
+	slot++;from++;
+	}
+
+    return;
+    }
+
+/************************************************************************/
+/*									*/
+/*  Allocate links.							*/
+/*									*/
+/************************************************************************/
+
+int	indTLalloc(	IND *	ind,
+			int	old,
+			int	n )
+    {
+    int		slot;
     int		space;
-    int		lfree;
 
-    int		newn;
-    unsigned	sz;
-    TrieLink **	new;
-    TrieLink *	newpage;
-
-    TrieLink *	link;
-
-    APP_DEB(appDebug( "INDTLALLOC(,old=%d,n=%d)\n", old, n ));
+    /*APP_DEB(appDebug( "indTLalloc(,old=%d,n=%d)\n", old, n ));*/
     if  ( old == 0 )
-	{ return -1;	}
+	{ LDEB(old); return -1;	}
 
-    if  ( n < 1 || n >= 255 )
+
+    if  ( n < 1 || n >= 65534 )
 	{ appDebug("n=%d\n", n ); return -1;	}
 
     /********************************************************************/
@@ -129,130 +355,102 @@ int	n;
     /********************************************************************/
     if  ( old > 0 )
 	{
-	lfree= old- 1;
-
-	link= LINK(ind,lfree);
-	if  ( link->tl_to != TLgUSED )
-	    { return -1;	}
-	if  ( ( space= link->tl_key ) >= n )
-	    { return old;	}
-
-	space= link->tl_key; past= lfree+ space;
-	while( past < ind->indAllocatedLinks			&&
-	       space < n				)
-	    {
-	    link= LINK(ind,past);
-	    if  ( link->tl_key != TLgFREE )
-		{ break;	}
-	    space += link->tl_key+ 1; past  += link->tl_key+ 1;
-	    }
-
+	space= indSlotCapacity( ind, old- 1 );
 	if  ( space >= n )
 	    {
-	    APP_DEB(appDebug("BLOWUP FROM %d to %d\n", link->tl_key, n ));
-	    indTLClaim( ind, -1, old, n );
-	    indTLDivide( ind, old+ n+ 1, past );
+	    indClaimSlot( ind, old- 1, n );
 	    return old;
 	    }
 	}
 
     /********************************************************************/
     /*  Look for an other position, it can be fitted into.		*/
+    /*  Start at the first free position (candidate) and look for a	*/
+    /*  slot where the new block can fit.				*/
     /********************************************************************/
+    slot= 0;
     if  ( ind->indAllocatedLinks > 0 )
 	{
-	int	reachedEnd= 0;
-	int	onlyUsed= 0;
+	int		foundFree= 0;
 
-	lfree= ind->ind_lfree;
+	slot= ind->indFirstFreeLinkSlot;
 
-	while( ! reachedEnd || lfree < ind->ind_lfree )
+	while( slot <= ind->indLastHeadLinkSlot )
 	    {
-	    if  ( lfree >= ind->indAllocatedLinks )
-		{ reachedEnd= 1; onlyUsed= 1; lfree= ind->ind_lfull;	}
+	    TrieLink *	link= LINK(ind,slot);
 
-	    link= LINK(ind,lfree);
-	    past= lfree+ link->tl_key+ 1;
+	    /************************************************************/
+	    /*  Shift free candidate to first slot that is actually	*/
+	    /*  Or to a used one closely before it.			*/
+	    /*  This makes this loop shorter in the next round.		*/
+	    /************************************************************/
+	    if  ( ! foundFree )
+		{ ind->indFirstFreeLinkSlot= slot;	}
 
-	    if  ( link->tl_to == TLgFREE )
+	    /*  Occupied slots cannot be used */
+	    if  ( link->tl_to == TLgUSED )
+		{ slot += link->tl_key+ 1; continue; }
+
+	    if  ( link->tl_to == TLgFREE && link->tl_key > 0 )
 		{
-		int	moreThanOne= 0;
+		space= indSlotCapacity( ind, slot );
+		/*  Would avoid n+1: that gives empty FREE slots that	*/
+		/*  will be reused difficultly. As this is dramatically	*/
+		/*  slow, we do not do this:				*/
+		/*  if  ( space == n || space > n+ 1 )			*/
 
-		onlyUsed= 0;
-
-		space= link->tl_key;
-
-		while( past < ind->indAllocatedLinks			&&
-		       space < n				)
-		    {
-		    link= LINK(ind,past);
-		    if  ( link->tl_key != TLgFREE )
-			{ break;	}
-		    space += link->tl_key+ 1; past  += link->tl_key+ 1;
-		    moreThanOne= 1;
-		    }
 		if  ( space >= n )
 		    {
-		    APP_DEB(appDebug("USE %d OF %d\n", n, link->tl_key ));
-		    indTLClaim( ind, old, lfree, n );
-		    ind->ind_lfree= lfree+ n+ 1;
-		    indTLDivide( ind, lfree+ n+ 1, past );
-		    return lfree+ 1;
+		    indClaimSlot( ind, slot, n );
+		    if  ( old > 0 && slot != old- 1 )
+			{ indReallocLinks( ind, slot, old- 1 );	}
+		    return slot+ 1;
 		    }
-		else{
-		    if  ( moreThanOne )
-			{ indTLDivide( ind, lfree, past );	}
-		    }
+
+		foundFree= 1;
+		slot += space+ 1; continue;
 		}
-	    else{
-		if  ( link->tl_to != TLgUSED )
-		    {
-		    appDebug( "AT %d: CORRUPTED CHAIN\n", lfree );
-		    indTLprint( ind, lfree );
-		    return -1;
-		    }
-		if  ( onlyUsed && ind->ind_lfull < past )
-		    { ind->ind_lfull= past;	}
-		}
-	    lfree= past;
+
+	    if  ( link->tl_to == TLgFREE && link->tl_key == 0 )
+		{ slot += link->tl_key+ 1; continue; }
+
+	    LLLLDEB(slot,link->tl_to,TLgUSED,TLgFREE);
+	    indINDprint(ind);
+	    return -1;
 	    }
 	}
 
     /********************************************************************/
     /*  Reallocate links structure.					*/
     /********************************************************************/
-    newn= ( ind->indAllocatedLinks+ TLsBLOCK )/TLsBLOCK;
-    sz= newn* sizeof(TrieNode *);
-    lfree= ind->indAllocatedLinks;
+    slot= indClaimLinkPages( ind, 1+ n );
+    if  ( slot < 0 )
+	{ LDEB(slot); return -1;	}
 
-    if  ( ind->indLinkPages )
-	{ new= (TrieLink **) realloc( (char *)ind->indLinkPages, sz );	}
-    else{ new= (TrieLink **) malloc( sz );				}
-    if  ( ! new )
-	{ return -1;	}
-    ind->indLinkPages= new;
+    space= indSlotCapacity( ind, slot );
+    if  ( space < n )
+	{ LLLDEB(space,n,slot); return -1;	}
 
-    newpage= (TrieLink *)malloc( TLsBLOCK* sizeof( TrieNode ) );
-    if  ( ! newpage )
-	{ return -1;	}
-    ind->indLinkPages[newn-1]= newpage;
-    ind->indAllocatedLinks += TLsBLOCK;
+    indClaimSlot( ind, slot, n );
+    if  ( old > 0 && slot != old- 1 )
+	{ indReallocLinks( ind, slot, old- 1 );	}
 
-    APP_DEB(appDebug( "%6d(%d*%d) LINKS (%d nodes)\n",
-	ind->indAllocatedLinks, newn, TLsBLOCK, ind->indAllocatedNodes ));
-
-    indTLClaim( ind, old, lfree, n );
-    ind->ind_lfree= lfree+ n+ 1;
-    indTLDivide( ind, lfree+ n+ 1, newn* TLsBLOCK );
-
-    return lfree+ 1;
+    return slot+ 1;
     }
 
-void indTLfree( ind, tl )
-IND *	ind;
-int	tl;
+/************************************************************************/
+/*									*/
+/*  Free a link.							*/
+/*									*/
+/************************************************************************/
+
+void indTLfree(		IND *	ind,
+			int	tl )
     {
     TrieLink *	link= LINK(ind,tl- 1);
 
     link->tl_to= TLgFREE;
+
+    if  ( ind->indFirstFreeLinkSlot > tl && link->tl_key > 0 )
+	{ ind->indFirstFreeLinkSlot= tl;	}
     }

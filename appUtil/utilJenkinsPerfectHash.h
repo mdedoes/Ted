@@ -8,10 +8,10 @@ Source is http://burtleburtle.net/bob/c/perfect.h
 ------------------------------------------------------------------------------
 */
 
-#   include "appUtilConfig.h"
-
 #ifndef UTIL_JENKINS_PERFECT_HASH_H
 #define UTIL_JENKINS_PERFECT_HASH_H
+
+# include "appUtilConfig.h"
 
 # define ub4 UtilUint32
 # define ub2 UtilUint16
@@ -48,24 +48,29 @@ struct gencode
 typedef  struct gencode  gencode;
 
 /* user directives: perfect hash? minimal perfect hash? input is an int? */
-struct hashform
-{
-  enum {
+
+typedef enum hfHashmode {
     NORMAL_HM                                            /* key is a string */
-  } mode;
-  enum {
+} hfHashmode;
+typedef enum hfHashtype {
     STRING_HT                                            /* key is a string */
-  } hashtype;
-  enum {
+} hfHashtype;
+typedef enum hfHashperf {
     NORMAL_HP,                                   /* just find a perfect hash */
     MINIMAL_HP                                /* find a minimal perfect hash */
-  } perfect;
-  enum {
+} hfHashperf;
+typedef enum hfHashspeed {
     FAST_HS,                                                    /* fast mode */
     SLOW_HS                                                     /* slow mode */
-  } speed;
-};
-typedef  struct hashform  hashform;
+} hfHashspeed;
+
+typedef struct hashform
+{
+    hfHashmode	mode;
+    hfHashtype	hashtype;
+    hfHashperf	perfect;
+    hfHashspeed	speed;
+} hashform;
 
 /* representation of a key */
 struct key

@@ -5,18 +5,19 @@
 /************************************************************************/
 
 #   include	"appFrameConfig.h"
+#   include	"appGuiBase.h"
 
 #   include	<stddef.h>
 #   include	<stdio.h>
 
 #   include	<geo2DInteger.h>
-#   include	"appDraw.h"
+#   include	"guiDrawingWidget.h"
 
 #   include	<appDebugon.h>
 
 #   ifdef USE_MOTIF
 
-int appDrawGetSizeFromConfigureEvent(	int *		pWide,
+int guiDrawGetSizeFromConfigureEvent(	int *		pWide,
 					int *		pHigh,
 					Widget		w,
 					XEvent *	event )
@@ -29,7 +30,7 @@ int appDrawGetSizeFromConfigureEvent(	int *		pWide,
     *pWide= cevent->width; *pHigh= cevent->height; return 0;
     }
 					
-int appGetCoordinatesFromMouseButtonEvent(
+int guiGetCoordinatesFromMouseButtonEvent(
 					int *			pX,
 					int *			pY,
 					int *			pButton,
@@ -110,7 +111,25 @@ int appGetCoordinatesFromMouseButtonEvent(
     *pX= bevent->x; *pY= bevent->y; return 0;
     }
 
-int appGetCoordinatesFromMouseMoveEvent(	int *		pX,
+int guiGetCoordinatesRelativeToWidget(	int *			pX,
+					int *			pY,
+					const APP_WIDGET	w )
+    {
+    Window		root;
+    Window		child;
+    int			rootX;
+    int			rootY;
+    int			winX;
+    int			winY;
+    unsigned int	mask;
+
+    XQueryPointer( XtDisplay( w ), XtWindow( w ), &root, &child,
+				    &rootX, &rootY, &winX, &winY, &mask );
+    *pX= winX; *pY= winY;
+    return 0;
+    }
+
+int guiGetCoordinatesFromMouseMoveEvent(	int *		pX,
 						int *		pY,
 						Widget		w,
 						XEvent *	event )
@@ -123,35 +142,35 @@ int appGetCoordinatesFromMouseMoveEvent(	int *		pX,
     *pX= mevent->x; *pY= mevent->y; return 0;
     }
 
-void appDrawSetRedrawHandler(	APP_WIDGET		w,
+void guiDrawSetRedrawHandler(	APP_WIDGET		w,
 				APP_EVENT_HANDLER_T	handler,
 				void *			through )
     {
     XtAddEventHandler( w, ExposureMask, False, handler, through );
     }
 
-void appDrawSetConfigureHandler(	APP_WIDGET		w,
+void guiDrawSetConfigureHandler(	APP_WIDGET		w,
 					APP_EVENT_HANDLER_T	handler,
 					void *			through )
     {
     XtAddEventHandler( w, StructureNotifyMask, False, handler, through );
     }
 
-void appDrawSetButtonPressHandler(	APP_WIDGET		w,
+void guiDrawSetButtonPressHandler(	APP_WIDGET		w,
 					APP_EVENT_HANDLER_T	handler,
 					void *			through )
     {
     XtAddEventHandler( w, ButtonPressMask, False, handler, through );
     }
 
-void appDrawSetKeyboardHandler(		APP_WIDGET		w,
+void guiDrawSetScrollHandler(		APP_WIDGET		w,
 					APP_EVENT_HANDLER_T	handler,
 					void *			through )
     {
-    XtAddEventHandler( w, KeyPressMask, False, handler, through );
+    XtAddEventHandler( w, ButtonPressMask, False, handler, through );
     }
 
-int appDrawGetInoutFromFocusEvent(	int *			pInOut,
+int guiDrawGetInoutFromFocusEvent(	int *			pInOut,
 					APP_WIDGET		w,
 					APP_EVENT *		event )
     {
@@ -166,6 +185,20 @@ int appDrawGetInoutFromFocusEvent(	int *			pInOut,
 	default:
 	    LDEB(event->type); return 1;
 	}
+    }
+
+int guiDrawGetSizeOfWidget(		int *		pWide,
+					int *		pHigh,
+					APP_WIDGET	w )
+    {
+    Dimension		wide;
+    Dimension		high;
+
+    XtVaGetValues( w,	XmNwidth,	&wide,
+			XmNheight,	&high,
+			NULL );
+
+    *pWide= wide; *pHigh= high; return 0;
     }
 
 #   endif

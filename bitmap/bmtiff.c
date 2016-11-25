@@ -2,23 +2,25 @@
 
 #   include	<stdlib.h>
 #   include	"bmintern.h"
-#   include	<tiffio.h>
 #   include	<appDebugon.h>
+
+#   if USE_LIBTIFF
+
+#   include	<tiffio.h>
 
 /************************************************************************/
 /*									*/
 /*  Read a tiff file.							*/
 /*									*/
 /*  9)  Allocate an extra byte as the libtiff fax 3 code scribbles	*/
-/*	beyonf the end of the buffer.					*/
+/*	beyond the end of the buffer.					*/
 /*									*/
 /************************************************************************/
 
-int bmReadTiffFile(	const char *		filename,
+int bmReadTiffFile(	const MemoryBuffer *		filename,
 			unsigned char **	pBuffer,
 			BitmapDescription *	bd,
-			int *			pPrivateFormat,
-			double *		pCompressionFactor	)
+			int *			pPrivateFormat )
     {
     int				rval= 0;
 
@@ -42,30 +44,30 @@ int bmReadTiffFile(	const char *		filename,
 
     unsigned short		planarConfig= 1;
 
-    t= TIFFOpen( (char *)filename, "r" );
+    t= TIFFOpen( utilMemoryBufferGetString( filename ), "r" );
     if  ( ! t )
-	{ SXDEB(filename,t); rval= -1; goto ready;	}
+	{ XDEB(t); rval= -1; goto ready;	}
 
     if  ( TIFFGetField( t, TIFFTAG_COMPRESSION, &unsignedShort ) != 1 )
-	{ SLDEB(filename,TIFFTAG_COMPRESSION); rval= -1; goto ready;	}
+	{ LDEB(TIFFTAG_COMPRESSION); rval= -1; goto ready;	}
     fileFormat= unsignedShort;
 
     if  ( TIFFGetField( t, TIFFTAG_IMAGEWIDTH, &unsignedLong ) != 1 )
-	{ SLDEB(filename,TIFFTAG_IMAGEWIDTH); rval= -1; goto ready;	}
+	{ LDEB(TIFFTAG_IMAGEWIDTH); rval= -1; goto ready;	}
     bd->bdPixelsWide= unsignedLong;
 
     if  ( TIFFGetField( t, TIFFTAG_IMAGELENGTH, &unsignedLong ) != 1 )
-	{ SLDEB(filename,TIFFTAG_IMAGELENGTH); rval= -1; goto ready;	}
+	{ LDEB(TIFFTAG_IMAGELENGTH); rval= -1; goto ready;	}
     bd->bdPixelsHigh= unsignedLong;
 
     if  ( TIFFGetField( t, TIFFTAG_BITSPERSAMPLE, &bitsPerSample ) != 1 )
-	{ SLDEB(filename,TIFFTAG_BITSPERSAMPLE); rval= -1; goto ready; }
+	{ LDEB(TIFFTAG_BITSPERSAMPLE); rval= -1; goto ready; }
     if  ( bitsPerSample > 8 )
 	{ LDEB(bitsPerSample); return -1;	}
     bd->bdBitsPerSample= bitsPerSample;
 
     if  ( TIFFGetField( t, TIFFTAG_SAMPLESPERPIXEL, &unsignedShort ) != 1 )
-	{ SLDEB(filename,TIFFTAG_SAMPLESPERPIXEL); rval= -1; goto ready; }
+	{ LDEB(TIFFTAG_SAMPLESPERPIXEL); rval= -1; goto ready; }
     bd->bdSamplesPerPixel= unsignedShort;
 
     if  ( TIFFGetField( t, TIFFTAG_EXTRASAMPLES, &unsignedShort,
@@ -92,7 +94,7 @@ int bmReadTiffFile(	const char *		filename,
 	}
 
     if  ( TIFFGetField( t, TIFFTAG_PHOTOMETRIC, &photometric ) != 1 )
-	{ SLDEB(filename,TIFFTAG_PHOTOMETRIC); rval= -1; goto ready;	}
+	{ LDEB(TIFFTAG_PHOTOMETRIC); rval= -1; goto ready;	}
 
     switch( photometric )
 	{
@@ -114,7 +116,7 @@ int bmReadTiffFile(	const char *		filename,
 	case PHOTOMETRIC_PALETTE:
 	    if  ( TIFFGetField( t, TIFFTAG_COLORMAP,
 					&redMap, &greenMap, &blueMap ) != 1 )
-		{ SLDEB(filename,TIFFTAG_COLORMAP); rval= -1; goto ready; }
+		{ LDEB(TIFFTAG_COLORMAP); rval= -1; goto ready; }
 
 	    if  ( bd->bdHasAlpha )
 		{
@@ -126,20 +128,14 @@ int bmReadTiffFile(	const char *		filename,
 		    { LDEB(bd->bdSamplesPerPixel); rval= -1; goto ready; }
 		}
 
-	    bd->bdColorCount= 1 << bitsPerSample;
-	    bd->bdRGB8Palette= (RGB8Color *)
-			    malloc( bd->bdColorCount* sizeof(RGB8Color) );
+	    if  ( utilPaletteSetCount( &(bd->bdPalette), 1 << bitsPerSample ) )
+		{ LDEB(1 << bitsPerSample); rval= -1; goto ready;	}
 
-	    if  ( ! bd->bdRGB8Palette )
+	    for ( col= 0; col < bd->bdPalette.cpColorCount; col++ )
 		{
-		LLDEB(bitsPerSample,bd->bdRGB8Palette); 
-		rval= -1; goto ready;
-		}
-	    for ( col= 0; col < bd->bdColorCount; col++ )
-		{
-		bd->bdRGB8Palette[col].rgb8Red= redMap[col]/256;
-		bd->bdRGB8Palette[col].rgb8Green= greenMap[col]/256;
-		bd->bdRGB8Palette[col].rgb8Blue= blueMap[col]/256;
+		bd->bdPalette.cpColors[col].rgb8Red= redMap[col]/256;
+		bd->bdPalette.cpColors[col].rgb8Green= greenMap[col]/256;
+		bd->bdPalette.cpColors[col].rgb8Blue= blueMap[col]/256;
 		}
 
 	    bd->bdBitsPerSample= 8;
@@ -169,7 +165,7 @@ int bmReadTiffFile(	const char *		filename,
 	    { LDEB(TIFFTAG_PLANARCONFIG); rval= -1; goto ready;	}
 	if  ( planarConfig != 1 )
 	    {
-	    SLLDEB(filename,bd->bdSamplesPerPixel,planarConfig);
+	    LLDEB(bd->bdSamplesPerPixel,planarConfig);
 	    LLDEB(bd->bdBitsPerSample,bd->bdBitsPerPixel);
 	    }
 	}
@@ -286,8 +282,7 @@ int bmReadTiffFile(	const char *		filename,
 
 
 int bmCanWriteTiffFile( const BitmapDescription *	bd,
-			int				privateFormat,
-			double				compressionFactor )
+			int				privateFormat )
     {
     switch( privateFormat )
 	{
@@ -342,11 +337,10 @@ int bmCanWriteTiffFile( const BitmapDescription *	bd,
 /*									*/
 /************************************************************************/
 
-int bmWriteTiffFile(	const char *			filename,
+int bmWriteTiffFile(	const MemoryBuffer *		filename,
 			const unsigned char *		buffer,
 			const BitmapDescription *	bd,
-			int				privateFormat,
-			double				compressionFactor )
+			int				privateFormat )
     {
     TIFF *			t;
     int				colorSpace= PHOTOMETRIC_MINISWHITE; /*bah*/
@@ -355,7 +349,7 @@ int bmWriteTiffFile(	const char *			filename,
     int				row;
     int				i;
 
-    t= TIFFOpen( (char *)filename, "w" );
+    t= TIFFOpen( utilMemoryBufferGetString( filename ), "w" );
     if  ( ! t )
 	{ XDEB(t); return -1;	}
 
@@ -431,8 +425,8 @@ int bmWriteTiffFile(	const char *			filename,
 		LLDEB(bd->bdBitsPerPixel,bd->bdBitsPerSample); return -1;
 	    }
 
-	if  ( bd->bdColorCount > colorCountIn )
-	    { LLDEB(bd->bdColorCount,colorCountIn); return -1;	}
+	if  ( bd->bdPalette.cpColorCount > colorCountIn )
+	    { LLDEB(bd->bdPalette.cpColorCount,colorCountIn); return -1; }
 
 	/*
 	if  ( colorCountIn != colorCountOut )
@@ -449,11 +443,11 @@ int bmWriteTiffFile(	const char *			filename,
 	if  ( ! redMap || ! greenMap || ! blueMap )
 	    { LDEB(colorCountOut); return -1; }
 
-	for ( i= 0; i < bd->bdColorCount; i++ )
+	for ( i= 0; i < bd->bdPalette.cpColorCount; i++ )
 	    {
-	    redMap[i]=	 257* bd->bdRGB8Palette[i].rgb8Red;
-	    greenMap[i]= 257* bd->bdRGB8Palette[i].rgb8Green;
-	    blueMap[i]=	 257* bd->bdRGB8Palette[i].rgb8Blue;
+	    redMap[i]=	 257* bd->bdPalette.cpColors[i].rgb8Red;
+	    greenMap[i]= 257* bd->bdPalette.cpColors[i].rgb8Green;
+	    blueMap[i]=	 257* bd->bdPalette.cpColors[i].rgb8Blue;
 	    }
 	for ( ; i < colorCountOut; i++ )
 	    {
@@ -588,3 +582,5 @@ int bmWriteTiffFile(	const char *			filename,
 
     return 0;
     }
+
+#   endif /* TIFF_FOUND */

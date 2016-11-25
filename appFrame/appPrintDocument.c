@@ -2,6 +2,8 @@
 /*									*/
 /*  Printing related functionality.					*/
 /*									*/
+/*  TODO: Look at http://www.pwg.org/standards.html 			*/
+/*									*/
 /************************************************************************/
 
 #   include	"appFrameConfig.h"
@@ -12,24 +14,21 @@
 #   include	<string.h>
 
 #   include	<locale.h>
-#   include	<unistd.h>
+#   include	<errno.h>
 
-#   include	<appSystem.h>
 #   include	<sioPipe.h>
-#   include	<sioFd.h>
 #   include	<sioStdout.h>
-#   include	<sioStdio.h>
+#   include	<sioFileio.h>
+#   include	<sioMemory.h>
 
 #   include	<appPaper.h>
+#   include	<appSystem.h>
 #   include	"appFrame.h"
 
-#   include	<appDebugon.h>
+#   include	"appPrintJob.h"
+#   include	<psNup.h>
 
-#   ifdef HAVE_MKSTEMP
-#	define USE_MKSTEMP 1
-#   else
-#	define USE_MKSTEMP 0
-#   endif
+#   include	<appDebugon.h>
 
 /************************************************************************/
 /*									*/
@@ -44,8 +43,7 @@
 /************************************************************************/
 
 int appCallPrintFunction(	SimpleOutputStream *		sos,
-				const PrintJob *		pj,
-				const PrintGeometry *		pg )
+				const PrintJob *		pj )
     {
     EditApplication *	ea= pj->pjApplication;
     int			rval= 0;
@@ -53,7 +51,7 @@ int appCallPrintFunction(	SimpleOutputStream *		sos,
     /*  1  */
     setlocale( LC_NUMERIC, "C" );
 
-    if  ( (*ea->eaPrintDocument)( sos, pj, pg ) )
+    if  ( (*ea->eaPrintDocument)( sos, pj, pj->pjPrintGeometry ) )
 	{ LDEB(1); rval= -1;	}
 
     /*  1  */
@@ -62,253 +60,133 @@ int appCallPrintFunction(	SimpleOutputStream *		sos,
     return rval;
     }
 
-/*  2  */
-# if USE_MKSTEMP
-
-static int appPrintMakeTempfile(	int *			pFd,
-					char *			scratchName )
+static int appDocBuildTmpfileCommand(	MemoryBuffer *		target,
+					const char *		format,
+					const MemoryBuffer *	fileName )
     {
-    int				fd;
+    int				rval= 0;
+    SimpleOutputStream *	sos= (SimpleOutputStream *)0;
 
-    strcpy( scratchName, "/tmp/tprXXXXXX" );
-    fd= mkstemp( scratchName );
-    if  ( fd < 0 )
-	{ SLDEB(scratchName,fd); return -1;	}
-
-    *pFd= fd;
-    return 0;
-    }
-
-static int appPrintOpenTempfile(	SimpleOutputStream **	pSos,
-					int			fd,
-					const char *		scratchName )
-    {
-    SimpleOutputStream *	sos;
-
-    sos= sioOutFdOpen( fd );
-    if  ( ! sos )
-	{ SLXDEB(scratchName,fd,sos); return -1; }
-
-    *pSos= sos; return 0;
-    }
-
-static int appPrintCloseTempfile(	int			fd,
-					SimpleOutputStream *	sos )
-    {
-    int		rval= 0;
-
-    if  ( sos && sioOutClose( sos ) )
-	{ XDEB(sos); rval= -1;	}
-
-    if  ( fd >= 0 && close( fd ) )
-	{ LDEB(fd); rval= -1;	}
-
-    return rval;
-    }
-
-# else
-
-static int appPrintMakeTempfile(	int *			pFd,
-					char *			scratchName )
-    {
-    int				fd;
-
-    tmpnam( scratchName );
-    fd= -1;
-
-    *pFd= fd;
-    return 0;
-    }
-
-static int appPrintOpenTempfile(	SimpleOutputStream **	pSos,
-					int			fd,
-					const char *		scratchName )
-    {
-    SimpleOutputStream *	sos;
-
-    sos= sioOutStdioOpen( scratchName );
-    if  ( ! sos )
-	{ SXDEB(scratchName,sos); return -1;	}
-
-    *pSos= sos; return 0;
-    }
-
-static int appPrintCloseTempfile(	int			fd,
-					SimpleOutputStream *	sos )
-    {
-    int		rval= 0;
-
-    if  ( sos && sioOutClose( sos ) )
-	{ XDEB(sos); rval= -1;	}
-
-    return rval;
-    }
-
-# endif
-
-static char * appDocBuildTmpfileCommand(	const char *	command,
-						int		commandLen,
-						const char *	fileName,
-						int		fileCount )
-    {
-    char *		rval;
-    char *		to;
+    const char *	head;
     const char *	from;
 
-    int			fileLen;
+    sos= sioOutMemoryOpen( target );
+    if  ( ! sos )
+	{ XDEB(sos); rval= -1; goto ready;	}
 
-    fileLen= strlen( fileName );
-
-    to= rval= malloc( commandLen+ fileCount* fileLen+ 1 );
-    if  ( ! rval )
-	{ LXDEB(commandLen,rval); return (char *)0; }
-    from= command;
-
-    while( *from )
+    from= head= format;
+    while( *head )
 	{
-	if  ( from[0] == '%' && from[1] == 'f' )
+	if  ( head[0] == '%' && head[1] == 'f' )
 	    {
-	    strcpy( to, fileName ); to += fileLen;
-	    from += 2; continue;
+	    if  ( head > from )
+		{
+		if  ( sioOutWriteBytes( sos, (const unsigned char *)from, 
+						head- from ) != head- from )
+		    { LDEB(head- from); rval= -1; goto ready;	}
+		}
+
+	    if  ( sioOutWriteBytes( sos, fileName->mbBytes,
+				    fileName->mbSize ) != fileName->mbSize )
+		{ LDEB(fileName->mbSize); rval= -1; goto ready;	}
+
+	    head += 2; from= head; continue;
 	    }
 
-	*(to++)= *(from++);
+	head++;
 	}
 
-    *to= '\0';
+    if  ( head > from )
+	{
+	if  ( sioOutWriteBytes( sos, (const unsigned char *)from, 
+					head- from ) != head- from )
+	    { LDEB(head- from); rval= -1; goto ready;	}
+	}
+
+  ready:
+
+    if  ( sos && sioOutClose( sos ) )
+	{ XDEB(sos); rval= -1;	}
 
     return rval;
     }
 
 int appPrintDocument(	int				printer,
-			const PrintJob *		pj,
-			const PrintGeometry *		pg )
+			const PrintJob *		pj )
     {
+    int				rval= 0;
     EditApplication *		ea= pj->pjApplication;
     PrintDestination *		pd= ea->eaPrintDestinations+ printer;
-    char			scratchName[L_tmpnam+1];
-    char *			command= (char *)0;
 
     SimpleOutputStream *	sos= (SimpleOutputStream *)0;
-    int				fd= -1;
+
+    MemoryBuffer		command;
+    MemoryBuffer		scratchName;
+
+    const char *		template= "/tmp/tprXXXXXX";
+
+    utilInitMemoryBuffer( &command );
+    utilInitMemoryBuffer( &scratchName );
 
     switch( pd->pdPrintKind )
 	{
 	case APPprinterPIPE:
 	    {
-	    sos= sioOutPipeOpen( pd->pdCommand );
+	    if  ( utilMemoryBufferSetString( &command, pd->pdCommand ) )
+		{ LDEB(1); rval= -1; goto ready;	}
 
+	    sos= sioOutPipeOpen( &command );
 	    if  ( ! sos )
-		{ SXDEB(pd->pdCommand,sos); return -1;	}
+		{ SXDEB(pd->pdCommand,sos); rval= -1; goto ready;	}
 
-	    appCallPrintFunction( sos, pj, pg );
-
-	    if  ( sioOutClose( sos ) )
-		{ SDEB(pd->pdCommand); return -1;	}
+	    appCallPrintFunction( sos, pj );
 	    }
 
-	    return 0;
+	    goto ready;
 
 	case APPprinterTMPFILE:
 
-	    if  ( appPrintMakeTempfile( &fd, scratchName ) )
-		{ LDEB(1); return -1;	}
+	    sos= sioOutFileioOpenTempFile( &scratchName, template );
+	    if  ( ! sos )
+		{ SXDEB(template,sos); rval= -1; goto ready;	}
 
-	    command= appDocBuildTmpfileCommand( 
-				pd->pdCommand, pd->pdCommandLength,
-				scratchName, pd->pdPercentCount );
-	    if  ( ! command )
+	    if  ( appDocBuildTmpfileCommand( &command,
+					    pd->pdCommand, &scratchName ) )
 		{
-		LXDEB(pd->pdCommandLength,command);
-		appPrintCloseTempfile( fd, sos );
-		return -1;
+		LSDEB(pd->pdCommandLength,pd->pdCommand);
+		rval= -1; goto ready;
 		}
 
-	    if  ( appPrintOpenTempfile( &sos, fd, scratchName ) )
-		{
-		SLDEB(scratchName,fd);
-		appPrintCloseTempfile( fd, sos );
-		free( command );
-		return -1;
-		}
+	    appCallPrintFunction( sos, pj );
 
-	    appCallPrintFunction( sos, pj, pg );
+	    sioOutClose( sos ); sos= (SimpleOutputStream *)0;
 
-	    if  ( appPrintCloseTempfile( fd, sos ) )
-		{
-		SLDEB(scratchName,fd);
-		free( command );
-		return -1;
-		}
+	    if  ( system( utilMemoryBufferGetString( &command ) ) )
+		{ LDEB(errno);	}
 
-	    system( command );
-	    free( command );
-	    return 0;
+	    goto ready;
 
 	case APPprinterTOFILE:
 	default:
 	    LDEB(pd->pdPrintKind);
-	    return -1;
+	    rval= -1; goto ready;
 	}
-    }
 
-static char * appDocBuildFaxCommand(		const char *	faxCommand,
-						int		commandLen,
-						const char *	fileName,
-						const char *	faxNumber,
-						char *		title,
-						int		fileCount,
-						int		faxCount,
-						int		titleCount )
-    {
-    char *		command;
-    const char *	s;
-    char *		to;
+  ready:
 
-    int			fileLen;
-    int			faxLen;
-    int			titleLen;
+    if  ( sos && sioOutClose( sos ) )
+	{ SDEB(pd->pdCommand); rval= -1;	}
 
-    if  ( ! title )
-	{ title= "";	}
-
-    fileLen= strlen( fileName );
-    faxLen= strlen( faxNumber );
-    titleLen= strlen( title );
-
-    to= command= (char *)malloc( commandLen+
-					fileCount* fileLen+
-					faxCount* faxLen+
-					titleCount* titleLen+ 1 );
-    if  ( ! command )
-	{ XDEB(command); return (char *)0;	}
-
-    s= faxCommand;
-    while( *s )
+    if  ( ! utilMemoryBufferIsEmpty( &scratchName ) )
 	{
-	if  ( s[0] == '%' && s[1] == 'f' )
-	    {
-	    strcpy( to, fileName ); to += fileLen;
-	    s += 2; continue;
-	    }
-
-	if  ( s[0] == '%' && s[1] == 'n' )
-	    {
-	    strcpy( to, faxNumber ); to += faxLen;
-	    s += 2; continue;
-	    }
-
-	if  ( s[0] == '%' && s[1] == 't' )
-	    {
-	    strcpy( to, title ); to += titleLen;
-	    s += 2; continue;
-	    }
-
-	*(to++)= *(s++);
+	if  ( appRemoveFile( &scratchName ) )
+	    { SDEB(pd->pdCommand); rval= -1;	}
 	}
-    *to= '\0';
 
-    return command;
+    utilCleanMemoryBuffer( &command );
+    utilInitMemoryBuffer( &scratchName );
+
+    return rval;
     }
 
 /************************************************************************/
@@ -318,15 +196,17 @@ static char * appDocBuildFaxCommand(		const char *	faxCommand,
 /************************************************************************/
 
 void appPrintJobForEditDocument(	PrintJob *		pj,
-					EditDocument *		ed )
+					EditDocument *		ed,
+					const PrintGeometry *	pg )
     {
     EditApplication *	ea= ed->edApplication;
 
     pj->pjPrivateData= ed->edPrivateData;
     pj->pjFormat= ed->edFormat;
-    pj->pjDrawingData= &(ed->edDrawingData);
+    pj->pjDrawingSurface= ed->edDrawingSurface;
     pj->pjApplication= ea;
-    pj->pjTitle= ed->edTitle;
+    pj->pjTitle= utilMemoryBufferGetString( &(ed->edTitle) );
+    pj->pjPrintGeometry= pg;
 
     return;
     }
@@ -337,123 +217,17 @@ void appApplicationSettingsToPrintGeometry(
     {
     pg->pgUsePostScriptFilters= ea->eaUsePostScriptFilters;
     pg->pgUsePostScriptIndexedImages= ea->eaUsePostScriptIndexedImages;
+    pg->pgEmbedFonts= ea->eaEmbedFonts > 0;
+    pg->pg7Bits= ea->ea7BitsPostScript;
 
     pg->pgSkipEmptyPages= ea->eaSkipEmptyPages;
     pg->pgSkipBlankPages= ea->eaSkipBlankPages;
     pg->pgOmitHeadersOnEmptyPages= ea->eaOmitHeadersOnEmptyPages;
 
+    if  ( ea->eaCustomPsSetupFilename )
+	{ pg->pgCustomPsSetupFilename= strdup( ea->eaCustomPsSetupFilename ); }
+
     return;
-    }
-
-/************************************************************************/
-/*									*/
-/*  Fax a document.							*/
-/*									*/
-/************************************************************************/
-
-int appFaxDocument(	EditDocument *			ed,
-			const char *			faxNumber,
-			const PrintGeometry *		pg )
-    {
-    EditApplication *		ea= ed->edApplication;
-    int				fileCount= 0;
-    int				faxCount= 0;
-    int				titleCount= 0;
-
-    int				commandLen;
-
-    char			scratchName[L_tmpnam+1];
-
-    char *			command;
-
-    int				fd= -1;
-    SimpleOutputStream *	sos= (SimpleOutputStream *)0;
-
-    PrintJob			pj;
-
-    if  ( ! ea->eaFaxCommand )
-	{ XDEB(ea->eaFaxCommand); return -1;	}
-
-    appPrintJobForEditDocument( &pj, ed );
-
-    {
-    const char * s= ea->eaFaxCommand;
-
-    while( *s )
-	{
-	if  ( s[0] == '%' && s[1] == 'f' )
-	    { fileCount++; s += 2; continue;	}
-
-	if  ( s[0] == '%' && s[1] == 'n' )
-	    { faxCount++; s += 2; continue;	}
-
-	if  ( s[0] == '%' && s[1] == 't' )
-	    { titleCount++; s += 2; continue;	}
-
-	s++;
-	}
-
-    commandLen= s- ea->eaFaxCommand;
-    }
-
-    if  ( faxCount == 0 )
-	{ LDEB(faxCount); return -1;	}
-
-    if  ( fileCount > 0 )
-	{
-	if  ( appPrintMakeTempfile( &fd, scratchName ) )
-	    { LDEB(1); return -1;	}
-
-	command= appDocBuildFaxCommand( ea->eaFaxCommand, commandLen,
-					scratchName, faxNumber, ed->edTitle,
-					fileCount, faxCount, titleCount );
-
-	if  ( ! command )
-	    {
-	    LXDEB(commandLen,command);
-	    appPrintCloseTempfile( fd, sos );
-	    return -1;
-	    }
-
-	if  ( appPrintOpenTempfile( &sos, fd, scratchName ) )
-	    {
-	    SLDEB(scratchName,fd);
-	    appPrintCloseTempfile( fd, sos );
-	    free( command );
-	    return -1;
-	    }
-
-	appCallPrintFunction( sos, &pj, pg );
-
-	if  ( appPrintCloseTempfile( fd, sos ) )
-	    {
-	    SLDEB(scratchName,fd);
-	    free( command );
-	    return -1;
-	    }
-
-	system( command );
-	}
-    else{
-	scratchName[0]= '\0';
-
-	command= appDocBuildFaxCommand( ea->eaFaxCommand, commandLen,
-					scratchName, faxNumber, ed->edTitle,
-					fileCount, faxCount, titleCount );
-
-	sos= sioOutPipeOpen( command );
-	if  ( ! sos )
-	    { SXDEB(command,sos); free( command ); return -1;	}
-
-	appCallPrintFunction( sos, &pj, pg );
-
-	if  ( sioOutClose( sos ) )
-	    { SDEB(command); return -1;	}
-	}
-
-    free( command );
-
-    return 0;
     }
 
 /************************************************************************/
@@ -463,47 +237,41 @@ int appFaxDocument(	EditDocument *			ed,
 /************************************************************************/
 
 static int appPrintJobForCommand(	PrintJob *		pj,
-					AppDrawingData *	add,
+					PrintGeometry *		pg,
 					EditApplication *	ea,
 					const char *		fromName )
     {
-    double		screenPixelsPerMM;
-    double		verPixPerMM;
-    double		xfac;
-    double		yfac;
+    int			rval= 0;
+    MemoryBuffer	filename;
+    const int		readOnly= 1;
+
+    utilInitMemoryBuffer( &filename );
+
+    if  ( utilMemoryBufferSetString( &filename, fromName ) )
+	{ LDEB(1); rval= -1; goto ready;	}
 
     if  ( ea->eaMakePrivateData	)
 	{
 	pj->pjPrivateData= (*ea->eaMakePrivateData)();
 	if  ( ! pj->pjPrivateData )
-	    { XDEB(pj->pjPrivateData); return -1; }
+	    { XDEB(pj->pjPrivateData); rval= -1; goto ready; }
 	}
 
     if  ( (*ea->eaOpenDocument)( ea, pj->pjPrivateData, &(pj->pjFormat),
-					    ea->eaToplevel.atTopWidget,
-					    (APP_WIDGET)0, fromName ) )
-	{ SDEB(fromName); return -1; }
+				    ea->eaToplevel.atTopWidget, (APP_WIDGET)0,
+				    readOnly, &filename ) )
+	{ SDEB((char *)fromName); rval= -1; goto ready; }
 
-    if  ( ea->eaToplevel.atTopWidget )
-	{
-	appGetFactors( ea, &screenPixelsPerMM, &verPixPerMM, &xfac, &yfac );
-
-	appSetDrawingEnvironment( add, ea->eaMagnification, xfac,
-			    screenPixelsPerMM,
-			    &(ea->eaPostScriptFontList),
-			    ea->eaToplevel.atTopWidget );
-
-	add->addPageGapPixels= (int)( ea->eaPageGapMM* verPixPerMM );
-	}
-    else{
-	add->addPostScriptFontList= &(ea->eaPostScriptFontList);
-	}
-
-    pj->pjDrawingData= add;
+    pj->pjDrawingSurface= (DrawingSurface)0;
     pj->pjApplication= ea;
     pj->pjTitle= fromName;
+    pj->pjPrintGeometry= pg;
 
-    return 0;
+  ready:
+
+    utilCleanMemoryBuffer( &filename );
+
+    return rval;
     }
 
 /************************************************************************/
@@ -513,12 +281,9 @@ static int appPrintJobForCommand(	PrintJob *		pj,
 /************************************************************************/
 
 static void appPrintFinishCommandRun(	EditApplication *	ea,
-					PrintJob *		pj,
-					AppDrawingData *	add )
+					PrintJob *		pj )
     {
-    (*ea->eaFreeDocument)( pj->pjPrivateData, pj->pjFormat, add );
-
-    appCleanDrawingData( add );
+    (*ea->eaFreeDocument)( pj->pjPrivateData, pj->pjFormat );
 
     return;
     }
@@ -526,10 +291,12 @@ static void appPrintFinishCommandRun(	EditApplication *	ea,
 static int appPrintStartCommandRun(	EditApplication *	ea,
 					PrintJob *		pj,
 					PrintGeometry *		pg,
-					AppDrawingData *	add,
 					const char *		paperString,
 					const char *		fromName )
     {
+    DocumentRectangle	drScreenIgnored;
+    DocumentRectangle	drVisibleIgnored;
+
     pg->pgSheetGeometry= ea->eaDefaultDocumentGeometry;
 
     if  ( paperString )
@@ -537,24 +304,27 @@ static int appPrintStartCommandRun(	EditApplication *	ea,
 	DocumentGeometry *	dg= &(pg->pgSheetGeometry);
 	int			paperFormat;
 
-	if  ( appPaperFormatFromString( &paperFormat,
+	if  ( utilPaperSizeFromString( &paperFormat,
 					    &(dg->dgPageWideTwips),
 					    &(dg->dgPageHighTwips),
 					    ea->eaUnitInt, paperString ) )
 	    { SDEB(paperString); return -1;	}
 	}
 
-    if  ( appPrintJobForCommand( pj, add, ea, fromName ) )
+    if  ( appPrintJobForCommand( pj, pg, ea, fromName ) )
 	{ SDEB(fromName); return -1;	}
 
-    if  ( ea->eaSuggestNup )
-	{ (*ea->eaSuggestNup)( pg, pj->pjPrivateData );	}
+    if  ( ea->eaSuggestPageSetup )
+	{ (*ea->eaSuggestPageSetup)( pg, pj->pjPrivateData );	}
 
-    if  ( (*ea->eaLayoutDocument)( pj->pjPrivateData, pj->pjFormat, add,
-						    &(pg->pgSheetGeometry) ) )
+    if  ( (*ea->eaLayoutDocument)( &drScreenIgnored, &drVisibleIgnored,
+					    pj->pjPrivateData, pj->pjFormat,
+					    (DrawingSurface)0,
+					    &(ea->eaPostScriptFontList),
+					    &(pg->pgSheetGeometry) ) )
 	{
 	SDEB(fromName);
-	appPrintFinishCommandRun( ea, pj, add );
+	appPrintFinishCommandRun( ea, pj );
 	return -1;
 	}
 
@@ -573,43 +343,87 @@ int appPrintToFile(	EditApplication *	ea,
 			const char *		paperString )
     {
     int				rval= 0;
-    AppDrawingData		add;
 
     SimpleOutputStream *	sos;
 
     PrintGeometry		pg;
     PrintJob			pj;
 
-    utilInitPrintGeometry( &pg );
+    psInitPrintGeometry( &pg );
     appApplicationSettingsToPrintGeometry( &pg, ea );
-    appInitDrawingData( &add );
 
     if  ( ! strcmp( fromName, toName ) )
 	{ SSDEB(fromName,toName); rval= -1; goto ready;	}
 
-    if  ( appPrintStartCommandRun( ea, &pj, &pg, &add, paperString, fromName ) )
+    if  ( appPrintStartCommandRun( ea, &pj, &pg, paperString, fromName ) )
 	{ SDEB(fromName); rval= -1; goto ready;	}
 
-    if  ( ! strcmp( toName, "-" ) )
+    if  ( ! strcmp( toName, "-ps-" )		||
+	  ! strcmp( toName, "-" )		)
 	{ sos= sioOutStdoutOpen();		}
-    else{ sos= sioOutStdioOpen( toName );	}
+    else{ sos= sioOutFileioOpenS( toName );	}
 
     if  ( ! sos )
 	{
 	SXDEB(toName,sos);
-	appPrintFinishCommandRun( ea, &pj, &add );
+	appPrintFinishCommandRun( ea, &pj );
 	rval= -1; goto ready;
 	}
 
-    if  ( appCallPrintFunction( sos, &pj, &pg ) )
+    if  ( appCallPrintFunction( sos, &pj ) )
 	{ SDEB(fromName); rval= -1;	}
 
     sioOutClose( sos );
 
-    appPrintFinishCommandRun( ea, &pj, &add );
+    appPrintFinishCommandRun( ea, &pj );
 
   ready:
-    utilCleanPrintGeometry( &pg );
+    psCleanPrintGeometry( &pg );
+    return rval;
+    }
+
+/************************************************************************/
+
+int appSaveToPs(		EditApplication *	ea,
+				DrawingSurface		ds,
+				SimpleOutputStream *	sos,
+				void *			privateData,
+				const MemoryBuffer *	documentTitle,
+				int			format )
+    {
+    DocumentRectangle		drScreenIgnored;
+    DocumentRectangle		drVisibleIgnored;
+
+    int				rval= 0;
+    PrintGeometry		pg;
+    PrintJob			pj;
+
+    psInitPrintGeometry( &pg );
+    appApplicationSettingsToPrintGeometry( &pg, ea );
+
+    pj.pjPrivateData= privateData;
+    pj.pjFormat= format;
+    pj.pjTitle= utilMemoryBufferGetString( documentTitle );
+    pj.pjDrawingSurface= ds;
+    pj.pjApplication= ea;
+    pj.pjPrintGeometry= &pg;
+
+    if  ( ea->eaSuggestPageSetup )
+	{ (*ea->eaSuggestPageSetup)( &pg, pj.pjPrivateData );	}
+
+    if  ( (*ea->eaLayoutDocument)( &drScreenIgnored, &drVisibleIgnored,
+					    pj.pjPrivateData, pj.pjFormat,
+					    (DrawingSurface)0,
+					    &(ea->eaPostScriptFontList),
+					    &(pg.pgSheetGeometry) ) )
+	{ SDEB(pj.pjTitle); rval= -1; goto ready;	}
+
+    if  ( appCallPrintFunction( sos, &pj ) )
+	{ LDEB(format); rval= -1; goto ready;	}
+
+  ready:
+
+    psCleanPrintGeometry( &pg );
     return rval;
     }
 
@@ -625,16 +439,13 @@ int appPrintToPrinter(	EditApplication *	ea,
 			const char *		paperString )
     {
     int			rval= 0;
-    AppDrawingData	add;
-
     int			printer;
 
     PrintGeometry	pg;
     PrintJob		pj;
 
-    utilInitPrintGeometry( &pg );
+    psInitPrintGeometry( &pg );
     appApplicationSettingsToPrintGeometry( &pg, ea );
-    appInitDrawingData( &add );
 
     if  ( ! ea->eaPrintDestinationsCollected	&&
 	  appGetPrintDestinations( ea )		)
@@ -661,16 +472,17 @@ int appPrintToPrinter(	EditApplication *	ea,
     if  ( printer < 0 )
 	{ LDEB(printer); rval= -1; goto ready;	}
 
-    if  ( appPrintStartCommandRun( ea, &pj, &pg, &add, paperString, fromName ) )
+    if  ( appPrintStartCommandRun( ea, &pj, &pg, paperString, fromName ) )
 	{ SDEB(fromName); rval= -1; goto ready;	}
 
-    if  ( appPrintDocument( printer, &pj, &pg ) )
+    if  ( appPrintDocument( printer, &pj ) )
 	{ SDEB(fromName); rval= -1;	}
 
-    appPrintFinishCommandRun( ea, &pj, &add );
+    appPrintFinishCommandRun( ea, &pj );
 
   ready:
-    utilCleanPrintGeometry( &pg );
+
+    psCleanPrintGeometry( &pg );
     return rval;
     }
 

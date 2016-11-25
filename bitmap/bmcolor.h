@@ -7,34 +7,7 @@
 #   ifndef	BMCOLOR_H
 #   define	BMCOLOR_H
 
-/************************************************************************/
-/*									*/
-/*  An RGB8 Color.							*/
-/*  The most usual way to display images on a computer screen.		*/
-/*									*/
-/*  An RGB16 Color.							*/
-/*  Used to match X11's way of handling colors.				*/
-/*									*/
-/*  NOTE that the structs use native types so the 8/16 indication is	*/
-/*	more a suggestion than an implementation reality.		*/
-/*									*/
-/************************************************************************/
-
-typedef struct	RGB8Color
-    {
-    unsigned char	rgb8Red;
-    unsigned char	rgb8Green;
-    unsigned char	rgb8Blue;
-    unsigned char	rgb8Alpha;
-    } RGB8Color;
-
-typedef struct	RGB16Color
-    {
-    unsigned short	rgb16Red;
-    unsigned short	rgb16Green;
-    unsigned short	rgb16Blue;
-    unsigned char	rgb16Alpha;
-    } RGB16Color;
+#   include	<utilColor.h>
 
 /************************************************************************/
 /*									*/
@@ -46,6 +19,7 @@ typedef struct AllocatorColor
     {
     RGB16Color		acColorValues;
     unsigned long	acColorNumber;
+    void *		acColorPrivate;
     unsigned char	acAllocated;
 #			define		AC_UNALLOCATED		0
 #			define		AC_ALLOCATED		1
@@ -125,18 +99,6 @@ typedef struct ColorAllocator
 
 /************************************************************************/
 /*									*/
-/*  Compare RGB8Colors.							*/
-/*									*/
-/************************************************************************/
-
-# define bmRGB8ColorsDiffer( a, b ) ( \
-			    (a)->rgb8Red != (b)->rgb8Red	|| \
-			    (a)->rgb8Green != (b)->rgb8Green	|| \
-			    (a)->rgb8Blue != (b)->rgb8Blue	|| \
-			    (a)->rgb8Alpha != (b)->rgb8Alpha	)
-
-/************************************************************************/
-/*									*/
 /*  Routine declarations:						*/
 /*									*/
 /************************************************************************/
@@ -157,17 +119,5 @@ extern int bmFindNearestColorRgb(	AllocatorColor *	acRet,
 
 extern int bmAllocateAllocatorColors(	ColorAllocator *	ca,
 					int			count );
-
-extern int bmInsertColor(		RGB8Color **		pColors,
-					int *			pColorCount,
-					int			avoidZero,
-					int			maxSize,
-					const RGB8Color *	rgb8 );
-
-extern void bmInitRGB8Color(		RGB8Color *		rgb8 );
-
-extern int bmRgbHue(		const RGB8Color *	rgb8 );
-extern int bmRgbSaturation(	const RGB8Color *	rgb8 );
-extern int bmRgbIntensity(	const RGB8Color *	rgb8 );
 
 #   endif	/*  BMCOLOR_H  */

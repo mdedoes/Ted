@@ -10,7 +10,7 @@
 /*									*/
 /************************************************************************/
 
-#   include	<utilDate.h>
+#   include	"utilDate.h"
 
 #   include	<appDebugon.h>
 
@@ -104,7 +104,7 @@ void utilDateSplitGregorianDate(	long	day,
 
 # if 0
 
-# include <time.h>
+/*# include <time.h>*/
 
 extern int qqq(void);
 

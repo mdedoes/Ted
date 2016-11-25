@@ -1,5 +1,5 @@
 /* XPM */
-static char * tedspell_xpm[] = {
+static const char * tedspell_xpm[] = {
 "64 64 4 1",
 " 	c #FFFFFFFFFFFF",
 ".	c #FAFA13134040",

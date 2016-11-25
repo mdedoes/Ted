@@ -7,8 +7,10 @@
 #   ifndef	APP_COLOR_CHOOSER_H
 #   define	APP_COLOR_CHOOSER_H
 
-#   include	<appGuiBase.h>
-#   include	<appDraw.h>
+#   include	<psPostScriptFontList.h>
+#   include	<utilPropMask.h>
+#   include	"appGuiBase.h"
+#   include	"appDrawnPulldown.h"
 
 struct ColorChooser;
 
@@ -21,15 +23,13 @@ typedef void (*ColorChooserCallback)(
 
 typedef struct ColorChooserResources
     {
-    char *	ccrAutomaticColor;
-    char *	ccrMoreColors;
+    char *		ccrAutomaticColor;
+    char *		ccrMoreColors;
     } ColorChooserResources;
 
 typedef struct ColorChooserPaletteColor
     {
     RGB8Color		ccpcRGB8Color;
-    APP_COLOR_RGB	ccpcAllocatedColor;
-    int			ccpcColorAllocated;
     int			ccpcStatus;
     } ColorChooserPaletteColor;
 
@@ -39,26 +39,24 @@ typedef struct ColorChooserPaletteColor
 
 typedef struct ColorChooser
     {
-    int					ccFilled;
+    unsigned char			ccFilled;
+    unsigned char			ccEnabled;
+    unsigned char			ccVisible;
+    unsigned char			ccHasAutomatic;
+    unsigned char			ccColorExplicit;
+    unsigned char			ccColorSet;
 
     const ColorChooserResources *	ccResources;
+    const PostScriptFontList *		ccPostScriptFontList;
 
     AppDrawnPulldown			ccPulldown;
-    AppDrawingData			ccInplaceDrawingData;
-    AppDrawingData			ccPulldownDrawingData;
-    int					ccPulldownDrawingDataSet;
-    APP_COLOR_RGB			ccPulldownBackgroundColor;
+    RGB8Color				ccPulldownBackgroundColor;
+    APP_WIDGET				ccLabelWidget;
 
-    AppColors				ccInplaceColors;
-    AppColors				ccPulldownColors;
-
-    int					ccInplaceColorAllocated;
-    APP_COLOR_RGB			ccInplaceColor;
-    APP_FONT *				ccTextFont;
+    int					ccInplaceScreenFont;
+    int					ccPulldownScreenFont;
 
     RGB8Color				ccColorChosen;
-    int					ccColorExplicit;
-    int					ccColorSet;
 
     ColorChooserCallback		ccCallback;
     void *				ccTarget;
@@ -90,7 +88,7 @@ typedef enum ColorChooserChoice
 /************************************************************************/
 
 extern void appColorChooserSetColor(	ColorChooser *		cc,
-					int			explicit,
+					int			colorExplicit,
 					const RGB8Color *	rgb8 );
 
 extern void appColorChooserUnset(	ColorChooser *		cc );
@@ -98,25 +96,40 @@ extern void appColorChooserUnset(	ColorChooser *		cc );
 extern void appColorChooserSuggestPalette(
 					ColorChooser *		cc,
 					int			avoidZero,
-					const RGB8Color *	colors,
-					int			colorCount );
-
-extern void appMakeColorChooserInRow(
-				ColorChooser *			cc,
-				APP_WIDGET			row,
-				int				col,
-				const ColorChooserResources *	ccr,
-				ColorChooserCallback		callback,
-				int				which,
-				void *				through );
+					const ColorPalette *	cp );
 
 extern void appInitColorChooser(	ColorChooser *		cc );
 extern void appCleanColorChooser(	ColorChooser *		cc );
+
+extern void appMakeColorChooserInRow(
+				ColorChooser *			cc,
+				int				hasAutomatic,
+				APP_WIDGET			row,
+				int				col,
+				int				colspan,
+				const ColorChooserResources *	ccr,
+				ColorChooserCallback		colorCallback,
+				int				which,
+				void *				through );
+
+extern void appMakeToggleAndColorChooserRow(
+				APP_WIDGET *			pRow,
+				APP_WIDGET *			pToggle,
+				ColorChooser *			cc,
+				int				hasAutomatic,
+				APP_WIDGET			column,
+				const char *			toggleText,
+				const ColorChooserResources *	ccr,
+				APP_TOGGLE_CALLBACK_T		toggleCallback,
+				ColorChooserCallback		colorCallback,
+				int				which,
+				void *				through );
 
 extern void appMakeLabelAndColorChooserRow(
 				APP_WIDGET *			pRow,
 				APP_WIDGET *			pLabel,
 				ColorChooser *			cc,
+				int				hasAutomatic,
 				APP_WIDGET			column,
 				const char *			labelText,
 				const ColorChooserResources *	ccr,
@@ -126,14 +139,21 @@ extern void appMakeLabelAndColorChooserRow(
 
 extern void appFinishColorChooser(
 				ColorChooser *			cc,
-				APP_FONT *			textFont );
+				const PostScriptFontList *	psfl,
+				APP_WIDGET			fontWidget );
 
 extern void appColorChooserColorChosen(	PropertyMask *		isSetMask,
 					int *			pChanged,
 					RGB8Color *		rgb8To,
 					int *			pExplicit,
 					const RGB8Color *	rgb8Set,
-					int			explicit,
+					int			colorExplicit,
 					int			which );
+
+extern void appEnableColorChooser(	ColorChooser *		cc,
+					int			enabled );
+
+extern void appShowColorChooser(	ColorChooser *		cc,
+					int			visible );
 
 #   endif	/*  APP_COLOR_CHOOSER_H */

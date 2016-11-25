@@ -10,13 +10,13 @@
 #   include	<stdio.h>
 
 #   include	<geo2DInteger.h>
-#   include	"appDraw.h"
+#   include	"guiDrawingWidget.h"
 
 #   include	<appDebugon.h>
 
 #   ifdef USE_GTK
 
-int appDrawGetSizeFromConfigureEvent(	int *		pWide,
+int guiDrawGetSizeFromConfigureEvent(	int *		pWide,
 					int *		pHigh,
 					APP_WIDGET	w,
 					APP_EVENT *	event )
@@ -29,7 +29,7 @@ int appDrawGetSizeFromConfigureEvent(	int *		pWide,
     *pWide= cevent->width; *pHigh= cevent->height; return 0;
     }
 
-int appGetCoordinatesFromMouseButtonEvent(
+int guiGetCoordinatesFromMouseButtonEvent(
 					int *			pX,
 					int *			pY,
 					int *			pButton,
@@ -68,7 +68,21 @@ int appGetCoordinatesFromMouseButtonEvent(
     return 0;
     }
 					
-int appGetCoordinatesFromMouseMoveEvent(	int *		pX,
+int guiGetCoordinatesRelativeToWidget(	int *			pX,
+					int *			pY,
+					const APP_WIDGET	w )
+    {
+    gint		winX;
+    gint		winY;
+    GdkModifierType	mask;
+
+    gdk_window_get_pointer( w->window, &winX, &winY, &mask );
+
+    *pX= winX; *pY= winY;
+    return 0;
+    }
+
+int guiGetCoordinatesFromMouseMoveEvent(	int *		pX,
 						int *		pY,
 						APP_WIDGET	w,
 						APP_EVENT *	event )
@@ -81,7 +95,7 @@ int appGetCoordinatesFromMouseMoveEvent(	int *		pX,
     *pX= mevent->x; *pY= mevent->y; return 0;
     }
 
-void appDrawSetRedrawHandler(	APP_WIDGET		w,
+void guiDrawSetRedrawHandler(	APP_WIDGET		w,
 				APP_EVENT_HANDLER_T	handler,
 				void *			through )
     {
@@ -89,7 +103,7 @@ void appDrawSetRedrawHandler(	APP_WIDGET		w,
 					    (GtkSignalFunc)handler, through );
     }
 
-void appDrawSetConfigureHandler(	APP_WIDGET		w,
+void guiDrawSetConfigureHandler(	APP_WIDGET		w,
 					APP_EVENT_HANDLER_T	handler,
 					void *			through )
     {
@@ -97,7 +111,7 @@ void appDrawSetConfigureHandler(	APP_WIDGET		w,
 					    (GtkSignalFunc)handler, through );
     }
 
-void appDrawSetButtonPressHandler(	APP_WIDGET		w,
+void guiDrawSetButtonPressHandler(	APP_WIDGET		w,
 					APP_EVENT_HANDLER_T	handler,
 					void *			through )
     {
@@ -107,18 +121,23 @@ void appDrawSetButtonPressHandler(	APP_WIDGET		w,
 					    (GtkSignalFunc)handler, through );
     }
 
-void appDrawSetKeyboardHandler(		APP_WIDGET		w,
+/*
+ *  Install a scoll handler. For older versions of GTK the event is 
+ *  handled as a (mouse) button press event.
+ */
+void guiDrawSetScrollHandler(		APP_WIDGET		w,
 					APP_EVENT_HANDLER_T	handler,
 					void *			through )
     {
-    gtk_widget_add_events( w, GDK_KEY_PRESS_MASK );
-    gtk_widget_add_events( w, GDK_KEY_RELEASE_MASK );
+#   if GTK_MAJOR_VERSION >= 2
+    gtk_widget_add_events( w, GDK_SCROLL_MASK );
 
-    gtk_signal_connect_after( GTK_OBJECT( w ), "key_press_event",
+    gtk_signal_connect( GTK_OBJECT( w ), "scroll_event",
 					    (GtkSignalFunc)handler, through );
+#   endif
     }
 
-int appDrawGetInoutFromFocusEvent(	int *			pInOut,
+int guiDrawGetInoutFromFocusEvent(	int *			pInOut,
 					APP_WIDGET		w,
 					APP_EVENT *		event )
     {
@@ -134,6 +153,19 @@ int appDrawGetInoutFromFocusEvent(	int *			pInOut,
 	default:
 	    LDEB(event->type); return 1;
 	}
+    }
+
+int guiDrawGetSizeOfWidget(		int *		pWide,
+					int *		pHigh,
+					APP_WIDGET	w )
+    {
+    gint		wide;
+    gint		high;
+
+    wide= w->allocation.width;
+    high= w->allocation.height;
+
+    *pWide= wide; *pHigh= high; return 0;
     }
 
 #   endif

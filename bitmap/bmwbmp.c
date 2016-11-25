@@ -3,10 +3,9 @@
 #   include	<stdlib.h>
 #   include	<stdio.h>
 #   include	<ctype.h>
-#   include	<string.h>
 
 #   include	"bmintern.h"
-#   include	<sioStdio.h>
+#   include	<sioFileio.h>
 #   include	<appDebugon.h>
 
 /************************************************************************/
@@ -23,7 +22,7 @@ static int bmWbmpGetNumber(	unsigned int *		pNum,
 
     while( kontinue )
 	{
-	int	c= sioInGetCharacter( sis );
+	int	c= sioInGetByte( sis );
 
 	if  ( c == EOF )
 	    { XDEB(c); return -1;	}
@@ -50,7 +49,7 @@ static int bmWbmpReadWbmp(	BitmapDescription *	bd,
     if  ( typeField != 0 )
 	{ LDEB(typeField); return -1;	}
 
-    fixHeaderField= sioInGetCharacter( sis );
+    fixHeaderField= sioInGetByte( sis );
     if  ( fixHeaderField & 0x80 )
 	{ XDEB(fixHeaderField); return -1; }
 
@@ -81,20 +80,19 @@ static int bmWbmpReadWbmp(	BitmapDescription *	bd,
     return 0;
     }
 
-int bmReadWbmpFile(	const char *		filename,
+int bmReadWbmpFile(	const MemoryBuffer *	filename,
 			unsigned char **	pBuffer,
 			BitmapDescription *	bd,
-			int *			pPrivateFormat,
-			double *		pCompressionFactor )
+			int *			pPrivateFormat )
     {
     SimpleInputStream *		sis;
 
-    sis= sioInStdioOpen( filename );
+    sis= sioInFileioOpen( filename );
     if  ( ! sis )
-	{ SXDEB(filename,sis); return -1;	}
+	{ XDEB(sis); return -1;	}
 
     if  ( bmWbmpReadWbmp( bd, pBuffer, sis ) )
-	{ SDEB(filename); sioInClose( sis ); return -1; }
+	{ LDEB(1); sioInClose( sis ); return -1; }
 
     *pPrivateFormat= 0;
 
@@ -110,8 +108,7 @@ int bmReadWbmpFile(	const char *		filename,
 /************************************************************************/
 
 int bmCanWriteWbmpFile(	const BitmapDescription *	bd,
-			int				privateFormat,
-			double				compressionFactor )
+			int				privateFormat )
     {
     if  ( bd->bdColorEncoding != BMcoBLACKWHITE		&&
 	  bd->bdColorEncoding != BMcoWHITEBLACK		)
@@ -126,7 +123,7 @@ int bmCanWriteWbmpFile(	const BitmapDescription *	bd,
     return 0;
     }
 
-static void bmWbmpPutNumber(	int			num,
+static int bmWbmpPutNumber(	int			num,
 				SimpleOutputStream *	sos )
     {
     unsigned int	kontinue= 0x00;
@@ -152,41 +149,49 @@ static void bmWbmpPutNumber(	int			num,
     n--;
     while( n >= 0 )
 	{
-	sioOutPutCharacter( bytes[n], sos );
+	if  ( sioOutPutByte( bytes[n], sos ) < 0 )
+	    { return -1;	}
+
 	n--;
 	}
 
-    return;
+    return 0;
     }
 
-int bmWriteWbmpFile(	const char *			filename,
+int bmWriteWbmpFile(	const MemoryBuffer *		filename,
 			const unsigned char *		buffer,
 			const BitmapDescription *	bd,
-			int				privateFormat,
-			double				compressionFactor )
+			int				privateFormat )
     {
+    int				rval= 0;
     int				done;
-    SimpleOutputStream *	sos;
+    SimpleOutputStream *	sos= (SimpleOutputStream *)0;
 
-    sos= sioOutStdioOpen( filename );
+    sos= sioOutFileioOpen( filename );
     if  ( ! sos )
-	{ SXDEB(filename,sos); return -1;	}
+	{ XDEB(sos); rval= -1; goto ready;	}
 
     if  ( privateFormat != 0 )
-	{ LDEB(privateFormat); return -1;	}
+	{ LDEB(privateFormat); rval= -1; goto ready;	}
 
     bmWbmpPutNumber( privateFormat, sos );
 
-    sioOutPutCharacter( 0, sos );
+    if  ( sioOutPutByte( 0, sos ) < 0 )
+	{ rval= -1; goto ready;	}
 
     bmWbmpPutNumber( bd->bdPixelsWide, sos );
     bmWbmpPutNumber( bd->bdPixelsHigh, sos );
 
     done= sioOutWriteBytes( sos, buffer, bd->bdBufferLength );
     if  ( done != bd->bdBufferLength )
-	{ LLDEB(done,bd->bdBufferLength); sioOutClose( sos ); return -1; }
+	{ LLDEB(done,bd->bdBufferLength); rval= -1; goto ready; }
 
-    sioOutClose( sos );
-    return 0;
+  ready:
+
+    if  ( sos )
+	{ sioOutClose( sos );	}
+
+
+    return rval;
     }
 

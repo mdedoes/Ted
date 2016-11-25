@@ -3,33 +3,16 @@
 #   include	<stdlib.h>
 #   include	<stdio.h>
 #   include	"bmintern.h"
-#   include	<utilEndian.h>
+#   include	<sioFileio.h>
+#   include	<sioEndian.h>
 #   include	<appDebugon.h>
-
-typedef unsigned long CARD32;
-typedef unsigned short CARD16;
-typedef unsigned char CARD8;
-
-# define B32 /*nothing*/
-# define B16 /*nothing*/
-# define B8 /*nothing*/
-
-#define StaticGray		0
-#define GrayScale		1
-#define StaticColor		2
-#define PseudoColor		3
-#define TrueColor		4
-#define DirectColor		5
-
-#define LSBFirst		0
-#define MSBFirst		1
 
 #   include	"XWDFile.h"
 
 /************************************************************************/
 /*  Implementing routines.						*/
 /************************************************************************/
-static int bmReadX11wd(	FILE *			f,
+static int bmReadX11wd(	SimpleInputStream *	sis,
 			XWDFileHeader *		xh,
 			unsigned char **	pBuf,
 			BitmapDescription *	bd );
@@ -37,63 +20,76 @@ static int bmReadX11wd(	FILE *			f,
 /************************************************************************/
 /*  Read an XWD file.							*/
 /************************************************************************/
-int bmReadXwdFile(	const char *		filename,
+
+int bmReadXwdFile(	const MemoryBuffer *	filename,
 			unsigned char **	pBuf,
 			BitmapDescription *	bd,
-			int *			pPrivateFormat,
-			double *		pCompressionFactor	)
+			int *			pPrivateFormat )
     {
-    FILE *		f;
-    int			rval= 0;
-    int			privateFormat= -1;
+    SimpleInputStream *		sis= (SimpleInputStream *)0;
+    int				rval= 0;
+    int				privateFormat= -1;
+    int				done= 0;
 
-    XWDFileHeader	x11Header;
+    XWDFileHeader		x11Header;
 
-    f= fopen( filename, "rb" );
-    if  ( ! f )
-	{ SXDEB(filename,f); return -1;	}
+    sis= sioInFileioOpen( filename );
+    if  ( ! sis )
+	{ XDEB(sis); rval= -1; goto ready;	}
 
     /***************/
-    x11Header.header_size= utilGetBeInt32( f );
-    x11Header.file_version= utilGetBeInt32( f );
-    x11Header.pixmap_format= utilGetBeInt32( f );
-    x11Header.pixmap_depth= utilGetBeInt32( f );
-    x11Header.pixmap_width= utilGetBeInt32( f );
-    x11Header.pixmap_height= utilGetBeInt32( f );
-    x11Header.xoffset= utilGetBeInt32( f );
-    x11Header.byte_order= utilGetBeInt32( f );
-    x11Header.bitmap_unit= utilGetBeInt32( f );
-    x11Header.bitmap_bit_order= utilGetBeInt32( f );
-    x11Header.bitmap_pad= utilGetBeInt32( f );
-    x11Header.bits_per_pixel= utilGetBeInt32( f );
-    x11Header.bytes_per_line= utilGetBeInt32( f );
-    x11Header.visual_class= utilGetBeInt32( f );
-    x11Header.red_mask= utilGetBeInt32( f );
-    x11Header.green_mask= utilGetBeInt32( f );
-    x11Header.blue_mask= utilGetBeInt32( f );
-    x11Header.bits_per_rgb= utilGetBeInt32( f );
-    x11Header.colormap_entries= utilGetBeInt32( f );
-    x11Header.ncolors= utilGetBeInt32( f );
-    x11Header.window_width= utilGetBeInt32( f );
-    x11Header.window_height= utilGetBeInt32( f );
-    x11Header.window_x= utilGetBeInt32( f );
-    x11Header.window_y= utilGetBeInt32( f );
-    x11Header.window_bdrwidth= utilGetBeInt32( f );
+    x11Header.header_size= sioEndianGetBeInt32( sis ); done += 4;
+    x11Header.file_version= sioEndianGetBeInt32( sis ); done += 4;
+    x11Header.pixmap_format= sioEndianGetBeInt32( sis ); done += 4;
+    x11Header.pixmap_depth= sioEndianGetBeInt32( sis ); done += 4;
+    x11Header.pixmap_width= sioEndianGetBeInt32( sis ); done += 4;
+    x11Header.pixmap_height= sioEndianGetBeInt32( sis ); done += 4;
+    x11Header.xoffset= sioEndianGetBeInt32( sis ); done += 4;
+    x11Header.byte_order= sioEndianGetBeInt32( sis ); done += 4;
+    x11Header.bitmap_unit= sioEndianGetBeInt32( sis ); done += 4;
+    x11Header.bitmap_bit_order= sioEndianGetBeInt32( sis ); done += 4;
+    x11Header.bitmap_pad= sioEndianGetBeInt32( sis ); done += 4;
+    x11Header.bits_per_pixel= sioEndianGetBeInt32( sis ); done += 4;
+    x11Header.bytes_per_line= sioEndianGetBeInt32( sis ); done += 4;
+    x11Header.visual_class= sioEndianGetBeInt32( sis ); done += 4;
+    x11Header.red_mask= sioEndianGetBeInt32( sis ); done += 4;
+    x11Header.green_mask= sioEndianGetBeInt32( sis ); done += 4;
+    x11Header.blue_mask= sioEndianGetBeInt32( sis ); done += 4;
+    x11Header.bits_per_rgb= sioEndianGetBeInt32( sis ); done += 4;
+    x11Header.colormap_entries= sioEndianGetBeInt32( sis ); done += 4;
+    x11Header.ncolors= sioEndianGetBeInt32( sis ); done += 4;
+    x11Header.window_width= sioEndianGetBeInt32( sis ); done += 4;
+    x11Header.window_height= sioEndianGetBeInt32( sis ); done += 4;
+    x11Header.window_x= sioEndianGetBeInt32( sis ); done += 4;
+    x11Header.window_y= sioEndianGetBeInt32( sis ); done += 4;
+    x11Header.window_bdrwidth= sioEndianGetBeInt32( sis ); done += 4;
     /***************/
+
+    /*  skip name */
+    while( done < x11Header.header_size )
+	{
+	if  ( sioInGetByte( sis ) == EOF )
+	    { LDEB(EOF); rval= -1; goto ready;	}
+
+	done++;
+	}
 
     switch( x11Header.file_version )
 	{
 	case XWD_FILE_VERSION:
 	    privateFormat= 11;
-	    rval= bmReadX11wd( f, &x11Header, pBuf, bd );
+	    rval= bmReadX11wd( sis, &x11Header, pBuf, bd );
 	    break;
 	case XWD_FILE_VERSION << 24:
-	    XDEB(x11Header.file_version); fclose( f ); return -1;
+	    XDEB(x11Header.file_version); sioInClose( sis ); return -1;
 	default:
-	    XDEB(x11Header.file_version); fclose( f ); return -1;
+	    XDEB(x11Header.file_version); sioInClose( sis ); return -1;
 	}
 
-    fclose( f );
+  ready:
+
+    if  ( sis )
+	{ sioInClose( sis );	}
 
     if  ( ! rval )
 	{ *pPrivateFormat= privateFormat;	}
@@ -107,314 +103,308 @@ int bmReadXwdFile(	const char *		filename,
 /*									*/
 /************************************************************************/
 
-static int bmReadX11wd(	FILE *			f,
+static int bmReadX11wd(	SimpleInputStream *	sis,
 			XWDFileHeader *		xh,
 			unsigned char **	pBuf,
 			BitmapDescription *	bd )
     {
     int			rval= 0;
 
-    unsigned short	one= 1;
-    int			byte_order= *(unsigned char *)&one?LSBFirst:MSBFirst;
-
-    RGB8Color *		pal= (RGB8Color *)0;
-
-    unsigned short *	ps;
-    unsigned char *	pu;
-    unsigned long *	remap;
-
     int			row;
     int			col;
 
-    switch( xh->pixmap_format )
-	{
-	case 0:
-	    bd->bdBitsPerSample= 1;
-	    bd->bdSamplesPerPixel= 1;
-	    bd->bdColorEncoding= BMcoBLACKWHITE;
-	    break;
-	case 1:
-	    bd->bdBitsPerSample= xh->pixmap_depth;
-	    bd->bdSamplesPerPixel= 1;
-	    bd->bdColorEncoding= BMcoBLACKWHITE;
-	    break;
-	case 2:
-	    if  ( xh->colormap_entries == 2 )
-		{
-		bd->bdBitsPerSample= xh->pixmap_depth;
-		bd->bdSamplesPerPixel= 1;
-		bd->bdColorEncoding= BMcoBLACKWHITE;
-		}
-	    else{
-		if  ( xh->colormap_entries > 256 )
-		    {
-		    LLDEB(xh->pixmap_format,xh->colormap_entries);
-		    return -1;
-		    }
-		bd->bdBitsPerSample= xh->pixmap_depth;
-		bd->bdSamplesPerPixel= 3;
-		bd->bdColorEncoding= BMcoRGB8PALETTE;
-		}
-	    break;
-	default:
-	    LDEB(xh->pixmap_format); return -1;
-	}
+    unsigned char *	buf= (unsigned char *)0;
+    unsigned char *	to;
 
-    /*  skip name */
-    if  ( xh->header_size > (unsigned long)ftell( f ) )
-	{ fseek( f, (long)(xh->header_size - ftell( f ) ), SEEK_CUR ); }
+    unsigned long	rm= 0, gm= 0, bm= 0;
+    int			rs= 0, gs= 0, bs= 0;
+    XWDColor *		colors= (XWDColor *)0;
+
+    if  ( xh->ncolors > 0 )
+	{
+	unsigned int	cp;
+
+	colors= (XWDColor *)malloc( xh->ncolors* sizeof(XWDColor) );
+	if  ( ! colors )
+	    { LXDEB(xh->ncolors,colors); rval= -1; goto ready;	}
+
+	for ( cp= 0; cp < xh->ncolors; cp++ )
+	    {
+	    colors[cp].pixel= sioEndianGetBeInt32( sis );
+	    colors[cp].red= sioEndianGetBeInt16( sis );
+	    colors[cp].green= sioEndianGetBeInt16( sis );
+	    colors[cp].blue= sioEndianGetBeInt16( sis );
+	    colors[cp].flags= sioInGetByte( sis );
+	    colors[cp].pad= sioInGetByte( sis );
+	    }
+	}
 
     bd->bdPixelsWide= xh->pixmap_width;
     bd->bdPixelsHigh= xh->pixmap_height;
 
-    if  ( xh->visual_class == TrueColor		||
-	  xh->visual_class == DirectColor	)
+    bd->bdUnit= BMunPIXEL;
+    bd->bdXResolution= 1;
+    bd->bdYResolution= 1;
+
+    switch( xh->visual_class )
 	{
-	XWDColor *		colors= (XWDColor *)0;
+	int	cp;
 
-	if  ( xh->ncolors > 0 )
-	    {
-	    unsigned int	cp;
+	case StaticGray:
+	case GrayScale:
+	    if  ( xh->bits_per_pixel == 1 )
+		{ bd->bdColorEncoding= BMcoBLACKWHITE;	}
+	    else{ bd->bdColorEncoding= BMcoWHITEBLACK;	}
 
-	    colors= (XWDColor *)malloc( xh->ncolors* sizeof(XWDColor) );
-	    if  ( ! colors )
-		{ LXDEB(xh->ncolors,colors); return -1;	}
+	    bd->bdBitsPerSample= xh->bits_per_pixel;
+	    bd->bdSamplesPerPixel= 1;
 
-	    for ( cp= 0; cp < xh->ncolors; cp++ )
-		{
-		colors[cp].pixel= utilGetBeInt32( f );
-		colors[cp].red= utilGetBeInt16( f );
-		colors[cp].green= utilGetBeInt16( f );
-		colors[cp].blue= utilGetBeInt16( f );
-		colors[cp].flags= getc( f );
-		colors[cp].pad= getc( f );
-		}
-	    }
+	    bd->bdUnit= BMunPIXEL;
+	    bd->bdXResolution= 1;
+	    bd->bdYResolution= 1;
 
-	if  ( xh->bits_per_pixel == 16 )
-	    {
-	    unsigned long	rm, gm, bm;
-	    int			rs= 0, gs= 0, bs= 0;
+	    break;
 
-	    rm= xh->red_mask;
-	    while( ! ( rm & 1 ) )
-		{ rm >>= 1; rs++; }
+	case StaticColor:
+	case PseudoColor:
+	    bd->bdColorEncoding= BMcoRGB8PALETTE;
+	    bd->bdBitsPerSample= 8;
+	    bd->bdSamplesPerPixel= 3;
 
-	    gm= xh->green_mask;
-	    while( ! ( gm & 1 ) )
-		{ gm >>= 1; gs++; }
-
-	    bm= xh->blue_mask;
-	    while( ! ( bm & 1 ) )
-		{ bm >>= 1; bs++; }
-
-	    pal= (RGB8Color *)malloc(
-			( 1 << xh->bits_per_pixel ) * sizeof(RGB8Color) );
-	    if  ( ! pal )
-		{ LLDEB(xh->ncolors,pal); return -1;	}
-
-	    if  ( xh->ncolors > 0 )
-		{
-		for ( col= 0; col < 1 << xh->bits_per_pixel; col++ )
-		    {
-		    pal[col].rgb8Red=	colors[ ( col >> rs ) & rm ].red/ 256;
-		    pal[col].rgb8Green=	colors[ ( col >> gs ) & gm ].green/ 256;
-		    pal[col].rgb8Blue=	colors[ ( col >> bs ) & bm ].blue/ 256;
-		    pal[col].rgb8Alpha= 255;
-		    }
-		}
-	    else{
-		for ( col= 0; col < 1 << xh->bits_per_pixel; col++ )
-		    {
-		    pal[col].rgb8Red=	( 256* ( ( col >> rs ) & rm ) )/ rm;
-		    pal[col].rgb8Green=	( 256* ( ( col >> gs ) & gm ) )/ gm;
-		    pal[col].rgb8Blue=	( 256* ( ( col >> bs ) & bm ) )/ bm;
-		    pal[col].rgb8Alpha= 255;
-		    }
-		}
+	    if  ( utilPaletteSetCount( &(bd->bdPalette), xh->ncolors ) )
+		{ LDEB(xh->ncolors); rval= -1; goto ready;	}
 
 	    if  ( colors )
-		{ free( colors );	}
-	    }
-	}
-    else{
-	if  ( xh->ncolors > 0 )
-	    {
-	    XWDColor		color;
-	    unsigned int	cp;
-
-	    pal= (RGB8Color *)malloc( xh->ncolors* sizeof(RGB8Color) );
-	    if  ( ! pal )
-		{ LLDEB(xh->ncolors,pal); return -1;	}
-
-	    for ( cp= 0; cp < xh->ncolors; cp++ )
 		{
-		color.pixel= utilGetBeInt32( f );
-		color.red= utilGetBeInt16( f );
-		color.green= utilGetBeInt16( f );
-		color.blue= utilGetBeInt16( f );
-		color.flags= getc( f );
-		color.pad= getc( f );
-
-		pal[cp].rgb8Red=	color.red/256;
-		pal[cp].rgb8Green=	color.green/256;
-		pal[cp].rgb8Blue=	color.blue/256;
-		pal[cp].rgb8Alpha=	255;
+		for ( cp= 0; cp < xh->ncolors; cp++ )
+		    {
+		    bd->bdPalette.cpColors[cp].rgb8Red= colors[cp].red/256;
+		    bd->bdPalette.cpColors[cp].rgb8Green= colors[cp].green/256;
+		    bd->bdPalette.cpColors[cp].rgb8Blue= colors[cp].blue/256;
+		    bd->bdPalette.cpColors[cp].rgb8Alpha= 255;
+		    }
 		}
-	    }
+
+	    break;
+
+	case TrueColor:
+	case DirectColor:
+	    bd->bdColorEncoding= BMcoRGB;
+	    bd->bdBitsPerSample= xh->bits_per_rgb;
+	    bd->bdSamplesPerPixel= 3;
+
+	    rm= xh->red_mask;
+	    if  ( rm == 0 )
+		{ LDEB(rm); rval= -1; goto ready;	}
+	    else{
+		while( ! ( rm & 1 ) )
+		    { rm >>= 1; rs++; }
+		}
+
+	    gm= xh->green_mask;
+	    if  ( gm == 0 )
+		{ LDEB(gm); rval= -1; goto ready;	}
+	    else{
+		while( ! ( gm & 1 ) )
+		    { gm >>= 1; gs++; }
+		}
+
+	    bm= xh->blue_mask;
+	    if  ( bm == 0 )
+		{ LDEB(bm); rval= -1; goto ready;	}
+	    else{
+		while( ! ( bm & 1 ) )
+		    { bm >>= 1; bs++; }
+		}
+
+	    if  ( xh->ncolors > 0			&&
+	    	  ( xh->ncolors < rm+ 1		||
+		    xh->ncolors < gm+ 1		||
+		    xh->ncolors < bm+ 1		)	)
+		{ LLLLDEB(xh->ncolors,rm,gm,bm); rval= -1; goto ready;	}
+	    break;
 	}
 
     switch( xh->bits_per_pixel )
 	{
 	case 1:
-	    bd->bdBufferLength=
-			    xh->bytes_per_line* xh->pixmap_height;
+	    if  ( bd->bdColorEncoding != BMcoBLACKWHITE )
+		{ LDEB(bd->bdColorEncoding); rval= -1; goto ready;	}
+
+	    bd->bdBufferLength= xh->bytes_per_line* xh->pixmap_height;
 	    bd->bdBitsPerSample= 1;
-	    bd->bdSamplesPerPixel= 1;
-	    bd->bdColorEncoding= BMcoBLACKWHITE;
 	    bd->bdBytesPerRow= xh->bytes_per_line;
 	    bd->bdBitsPerPixel= xh->bits_per_pixel;
 
-	    bd->bdUnit= BMunPIXEL;
-	    bd->bdXResolution= 1;
-	    bd->bdYResolution= 1;
+	    buf= (unsigned char *)malloc( bd->bdBufferLength );
+	    if  ( ! buf )
+		{ LLDEB(bd->bdBufferLength,buf); rval= -1; goto ready; }
 
-	    *pBuf= (unsigned char *)malloc( bd->bdBufferLength );
-	    if  ( ! *pBuf )
-		{ LLDEB(bd->bdBufferLength,*pBuf); rval= -1; }
-	    else{
-		if  ( fread( *pBuf, 1, bd->bdBufferLength, f ) !=
+	    if  ( sioInReadBytes( sis, buf, bd->bdBufferLength ) !=
 							bd->bdBufferLength )
-		    { LDEB(bd->bdBufferLength); free( *pBuf); rval= -1; }
-		}
-	    if  ( pal )
-		{ free( pal );	}
+		{ LDEB(bd->bdBufferLength); rval= -1; goto ready; }
 	    break;
+
 	case	8:
+	    if  ( bd->bdColorEncoding != BMcoRGB8PALETTE	&&
+		  bd->bdColorEncoding != BMcoWHITEBLACK		)
+		{ LDEB(bd->bdColorEncoding); rval= -1; goto ready;	}
+
 	    bd->bdBufferLength= xh->bytes_per_line* xh->pixmap_height;
-	    bd->bdBitsPerSample= 8;
-	    bd->bdSamplesPerPixel= 3;
-	    bd->bdColorCount= xh->ncolors;
-	    bd->bdColorEncoding= BMcoRGB8PALETTE;
 	    bd->bdBytesPerRow= xh->bytes_per_line;
 	    bd->bdBitsPerPixel= xh->bits_per_pixel;
 
-	    bd->bdUnit= BMunPIXEL;
-	    bd->bdXResolution= 1;
-	    bd->bdYResolution= 1;
-
-	    *pBuf= (unsigned char *)malloc( bd->bdBufferLength );
-	    if  ( ! *pBuf )
-		{ LLDEB(bd->bdBufferLength,*pBuf); rval= -1; }
+	    buf= (unsigned char *)malloc( bd->bdBufferLength );
+	    if  ( ! buf )
+		{ LLDEB(bd->bdBufferLength,buf); rval= -1; }
 	    else{
-		if  ( fread( *pBuf, 1, bd->bdBufferLength, f ) !=
+		if  ( sioInReadBytes( sis, buf, bd->bdBufferLength ) !=
 							bd->bdBufferLength )
-		    { LDEB(bd->bdBufferLength); free( *pBuf); rval= -1; }
+		    { LDEB(bd->bdBufferLength); rval= -1; goto ready; }
 		}
 
-	    bd->bdRGB8Palette= pal;
+	    if  ( bd->bdColorEncoding != BMcoRGB8PALETTE )
+		{
+		if  ( xh->ncolors > 0 && colors )
+		    {
+		    if  ( xh->ncolors != 256 )
+			{ LDEB(xh->ncolors); rval= -1; goto ready;	}
+
+		    to= buf;
+		    for ( col= 0; col < bd->bdBufferLength; col++ )
+			{ *to= colors[*to].green/256; to++;	}
+		    }
+		}
 	    break;
+
 	case	16:
-	    bd->bdBufferLength= xh->bytes_per_line* xh->pixmap_height;
+	    if  ( bd->bdColorEncoding != BMcoRGB )
+		{ LDEB(bd->bdColorEncoding); rval= -1; goto ready;	}
+	    if  ( rm == 0 || gm == 0 || bm == 0 )
+		{ LLLDEB(rm,gm,bm); rval= -1; goto ready;	}
+
+
 	    bd->bdBitsPerSample= 8;
 	    bd->bdSamplesPerPixel= 3;
-	    bd->bdColorCount= 1 << xh->bits_per_pixel;
-	    bd->bdColorEncoding= BMcoRGB8PALETTE;
-	    bd->bdBytesPerRow= xh->bytes_per_line;
-	    bd->bdBitsPerPixel= xh->bits_per_pixel;
 
-	    bd->bdUnit= BMunPIXEL;
-	    bd->bdXResolution= 1;
-	    bd->bdYResolution= 1;
+	    bmCalculateSizes( bd );
 
-	    *pBuf= (unsigned char *)malloc( bd->bdBufferLength );
-	    if  ( ! *pBuf )
-		{ LLDEB(bd->bdBufferLength,*pBuf); rval= -1; }
-	    else{
-		if  ( fread( *pBuf, 1, bd->bdBufferLength, f ) !=
-							bd->bdBufferLength )
-		    { LDEB(bd->bdBufferLength); free( *pBuf); rval= -1; }
-		}
+	    to= buf= (unsigned char *)malloc( bd->bdBufferLength );
+	    if  ( ! to )
+		{ LLDEB(bd->bdBufferLength,to); rval= -1; }
 
-	    remap= (unsigned long *)malloc(
-			( 1 << xh->bits_per_pixel )* sizeof(unsigned long) );
-	    if  ( ! remap )
-		{ XDEB(remap); return -1;	}
-
-	    for ( col= 0; col < ( 1 << xh->bits_per_pixel ); col++ )
-		{ remap[col]= 0; }
-
-	    if  ( (int)byte_order != (int)xh->byte_order )
+	    for ( row= 0; row < bd->bdPixelsHigh; row++ )
 		{
-		for ( row= 0; row < bd->bdPixelsHigh; row++ )
-		    {
-		    pu= *pBuf+ row* bd->bdBytesPerRow;
-		    ps= (unsigned short *) ( *pBuf+ row* xh->bytes_per_line );
+		int	got= 0;
 
-		    for ( col= 0; col < bd->bdPixelsWide; ps++, pu += 2, col++ )
+		for ( col= 0; col < xh->xoffset; col++ )
+		    { sioInGetByte( sis );	}
+		got += xh->xoffset;
+
+		for ( col= 0; col < bd->bdPixelsWide; col++ )
+		    {
+		    unsigned long	pix;
+		    int			r, g, b;
+
+		    if  ( xh->byte_order == LSBFirst )
+			{ pix= sioEndianGetLeInt16( sis );	}
+		    else{ pix= sioEndianGetBeInt16( sis );	}
+
+		    r= ( pix >> rs ) & rm;
+		    g= ( pix >> gs ) & gm;
+		    b= ( pix >> bs ) & bm;
+
+		    if  ( xh->ncolors > 0 && colors )
 			{
-			unsigned char c;
-			c= pu[0]; pu[0]= pu[1]; pu[1]= c;
-			remap[*ps]= 1;
+			*(to++)= colors[r].red/ 256;
+			*(to++)= colors[g].green/ 256;
+			*(to++)= colors[b].blue/ 256;
 			}
+		    else{
+			*(to++)= ( 256* r )/ rm;
+			*(to++)= ( 256* g )/ gm;
+			*(to++)= ( 256* b )/ bm;
+			}
+
+		    got += 2;
 		    }
-		}
-	    else{
-		for ( row= 0; row < bd->bdPixelsHigh; row++ )
-		    {
-		    pu= *pBuf+ row* bd->bdBytesPerRow;
-		    ps= (unsigned short *) ( *pBuf+ row* xh->bytes_per_line );
 
-		    for ( col= 0; col < bd->bdPixelsWide; ps++, pu += 2, col++ )
-			{ remap[*ps]= 1; }
-		    }
+		while( got < xh->bytes_per_line )
+		    { sioInGetByte( sis ); got++;	}
 		}
 
-	    row= 0;
-	    for ( col= 0; col < ( 1 << xh->bits_per_pixel ); col++ )
-		{
-		if  ( remap[col] )
-		    { pal[row]= pal[col]; remap[col]= row++; }
-		}
-
-	    bd->bdColorCount= row;
-
-	    if  ( row < 256 )
-		{
-		bd->bdBufferLength /= 2;
-		bd->bdBitsPerSample= 8;
-		bd->bdSamplesPerPixel= 3;
-		bd->bdBytesPerRow /= 2;
-		bd->bdBitsPerPixel= 8;
-
-		for ( row= 0; row < bd->bdPixelsHigh; row++ )
-		    {
-		    pu= *pBuf+ row* bd->bdBytesPerRow;
-		    ps= (unsigned short *) ( *pBuf+ row* xh->bytes_per_line );
-
-		    for ( col= 0; col < bd->bdPixelsWide; ps++, pu++, col++ )
-			{ *pu= remap[*ps]; }
-		    }
-		}
-	    else{
-		for ( row= 0; row < bd->bdPixelsHigh; row++ )
-		    {
-		    ps= (unsigned short *)*pBuf+ row* xh->bytes_per_line;
-
-		    for ( col= 0; col < bd->bdPixelsWide; ps++, pu++, col++ )
-			{ *ps= remap[*ps]; }
-		    }
-		}
-
-	    free( remap );
-
-	    bd->bdRGB8Palette= pal;
 	    break;
+
 	case	32:
+	    if  ( bd->bdColorEncoding != BMcoRGB )
+		{ LDEB(bd->bdColorEncoding); rval= -1; goto ready;	}
+	    if  ( rm == 0 || gm == 0 || bm == 0 )
+		{ LLLDEB(rm,gm,bm); rval= -1; goto ready;	}
+
+	    bd->bdBitsPerSample= 8;
+	    bd->bdSamplesPerPixel= 3;
+
+	    bmCalculateSizes( bd );
+
+	    to= buf= (unsigned char *)malloc( bd->bdBufferLength );
+	    if  ( ! to )
+		{ LLDEB(bd->bdBufferLength,to); rval= -1; }
+
+	    for ( row= 0; row < bd->bdPixelsHigh; row++ )
+		{
+		int	got= 0;
+
+		for ( col= 0; col < xh->xoffset; col++ )
+		    { sioInGetByte( sis );	}
+		got += xh->xoffset;
+
+		for ( col= 0; col < bd->bdPixelsWide; col++ )
+		    {
+		    unsigned long	pix;
+		    int			r, g, b;
+
+		    if  ( xh->byte_order == LSBFirst )
+			{ pix= sioEndianGetLeInt32( sis );	}
+		    else{ pix= sioEndianGetBeInt32( sis );	}
+
+		    r= ( pix >> rs ) & rm;
+		    g= ( pix >> gs ) & gm;
+		    b= ( pix >> bs ) & bm;
+
+		    if  ( xh->ncolors > 0 && colors )
+			{
+			*(to++)= colors[r].red/ 256;
+			*(to++)= colors[g].green/ 256;
+			*(to++)= colors[b].blue/ 256;
+			}
+		    else{
+			*(to++)= ( 256* r )/ rm;
+			*(to++)= ( 256* g )/ gm;
+			*(to++)= ( 256* b )/ bm;
+			}
+
+		    got += 4;
+		    }
+
+		while( got < xh->bytes_per_line )
+		    { sioInGetByte( sis ); got++;	}
+		}
+
+	    break;
+
 	default:
-	    LLDEB(xh->bits_per_pixel,xh->bitmap_unit);
-	    rval= -1;
+	    LLLDEB(xh->bits_per_pixel,xh->bitmap_unit,xh->bits_per_rgb);
+	    rval= -1; goto ready;
 	}
+
+    *pBuf= buf; buf= (unsigned char *)0; /* steal */
+
+  ready:
+
+    if  ( buf )
+	{ free( buf );	}
+    if  ( colors )
+	{ free( colors );	}
 
     return rval;
     }
@@ -425,9 +415,8 @@ static int bmReadX11wd(	FILE *			f,
 /*									*/
 /************************************************************************/
 
-int bmWriteXwdFile(	const char *			filename,
+int bmWriteXwdFile(	const MemoryBuffer *		filename,
 			const unsigned char *		buffer,
 			const BitmapDescription *	bd,
-			int				privateFormat,
-			double				compressionFactor )
+			int				privateFormat )
     { LDEB(-1); return -1; }

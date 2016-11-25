@@ -4,11 +4,9 @@
 #   include	<stdio.h>
 #   include	<string.h>
 
-#   include	<appDebugon.h>
+#   include	"guiWidgets.h"
 
-#   include	"appFrame.h"
-#   include	"appSystem.h"
-#   include	<appGeoString.h>
+#   include	<appDebugon.h>
 
 #   ifdef USE_GTK
 
@@ -19,24 +17,14 @@ void appMakeTextInRow(		APP_WIDGET *		pText,
 				int			textColumns,
 				int			textEnabled )
     {
-    APP_WIDGET		text;
+    APP_WIDGET		text= gtk_entry_new();
 
-    text= gtk_entry_new();
+    gtk_widget_set_name(GTK_WIDGET (text), "tedRowText");
 
+#   if GTK_MAJOR_VERSION >= 2
     if  ( textColumns > 0 )
-	{
-	GtkStyle *	gs= gtk_widget_get_style( text );
-	GdkFont *	gf;
-
-#	if GTK_MAJOR_VERSION < 2
-	gf= gs->font;
-#	else
-	gf= gtk_style_get_font( gs );
-#	endif
-
-	gtk_widget_set_usize( text, ( 55* textColumns*
-				( gf->ascent+ gf->descent ) )/ 100, -1 );
-	}
+	{ gtk_entry_set_width_chars( GTK_ENTRY( text ), textColumns );	}
+#   endif
 
     gtk_table_attach( GTK_TABLE( row ),
 			text,
@@ -50,8 +38,36 @@ void appMakeTextInRow(		APP_WIDGET *		pText,
 
     gtk_entry_set_editable( GTK_ENTRY( text ), textEnabled != 0 );
 
+    if  ( ! textEnabled )
+	{ gtk_widget_set_sensitive( text, FALSE );	}
+
     *pText= text;
     }
+
+void appMakeTextInHBox(		APP_WIDGET *		pText,
+				APP_WIDGET		hbox,
+				int			textColumns,
+				int			textEnabled )
+    {
+    APP_WIDGET		text= gtk_entry_new();
+
+#   if GTK_MAJOR_VERSION >= 2
+    if  ( textColumns > 0 )
+	{ gtk_entry_set_width_chars( GTK_ENTRY( text ), textColumns );	}
+#   endif
+
+    gtk_box_pack_start( GTK_BOX( hbox ), text, FALSE, FALSE, 0 );
+
+    gtk_widget_show( text );
+
+    gtk_entry_set_editable( GTK_ENTRY( text ), textEnabled != 0 );
+
+    if  ( ! textEnabled )
+	{ gtk_widget_set_sensitive( text, FALSE );	}
+
+    *pText= text;
+    }
+
 
 /************************************************************************/
 /*									*/
@@ -66,9 +82,14 @@ void appMakeTextInColumn(	APP_WIDGET *	pText,
     {
     APP_WIDGET		text;
 
+    text= gtk_entry_new();
+
+    gtk_widget_set_name(GTK_WIDGET (text), "tedColumnText");
+
+#   if GTK_MAJOR_VERSION >= 2
     if  ( textColumns > 0 )
-	{ text= gtk_entry_new_with_max_length( textColumns );	}
-    else{ text= gtk_entry_new();				}
+	{ gtk_entry_set_width_chars( GTK_ENTRY( text ), textColumns );	}
+#   endif
 
     gtk_box_pack_start( GTK_BOX( column ), text, FALSE, TRUE, 0 );
 
@@ -83,6 +104,9 @@ void appRefuseTextValue(	APP_WIDGET		text )
     {
     gtk_entry_select_region( GTK_ENTRY( text ), 0, 
 			strlen( gtk_entry_get_text( GTK_ENTRY( text ) ) ) );
+
+    gtk_widget_grab_focus( text );
+
     return;
     }
 
@@ -102,13 +126,28 @@ void appStringToTextWidget(		APP_WIDGET	text,
 
 /************************************************************************/
 /*									*/
+/*  Select text in a text entry box.					*/
+/*									*/
+/************************************************************************/
+
+void appTextSelectContents(		APP_WIDGET	w,
+					int		from,
+					int		upto )
+    {
+    gtk_entry_select_region( GTK_ENTRY(w), from, upto );
+    return;
+    }
+
+/************************************************************************/
+/*									*/
 /*  Turn a text widget on or off.					*/
 /*									*/
 /************************************************************************/
 
-void appEnableText(		APP_WIDGET	text,
+void guiEnableText(		APP_WIDGET	text,
 				int		enabled )
     {
+    gtk_widget_set_sensitive( text, enabled != 0 );
     gtk_entry_set_editable( GTK_ENTRY( text ), enabled != 0 );
     }
 

@@ -6,32 +6,36 @@
 
 #   include	"indConfig.h"
 
-#   include	<ind.h>
+#   include	"ind.h"
 #   include	<string.h>
+#   include	<sioGeneral.h>
 #   include	<appDebugon.h>
 
 /************************************************************************/
+/*									*/
 /*  Move a word from forgotten to learnt, or the other way round.	*/
+/*									*/
 /************************************************************************/
-int	indMoveWord(	void *			fromInd,
-			void *			toInd,
-			const unsigned char *	word )
+
+int	indMoveWord(	void *		fromInd,
+			void *		toInd,
+			const char *	word )
     {
     int				rval= 0;
     int				accepted;
 
     if  ( fromInd					&&
-	  indGet( &accepted, fromInd, word ) >= 0	&&
+	  indGetUtf8( &accepted, fromInd, word ) >= 0	&&
 	  accepted					)
 	{
 	if  ( indForget( fromInd, word ) )
 	    { SDEB((char *)word); rval= -1;	}
 	}
 
-    if  ( indGet( &accepted, toInd, word ) < 0	||
+    if  ( indGetUtf8( &accepted, toInd, word ) < 0	||
 	  ! accepted					)
 	{
-	if  ( indPut( toInd, word ) < 0 )
+	if  ( indPutUtf8( toInd, word ) < 0 )
 	    { SDEB((char *)word); rval= -1;	}
 	}
 
@@ -44,14 +48,14 @@ int	indMoveWord(	void *			fromInd,
 
 #   define SPELBUFL	300
 
-int indReadPrivateDictionary(	FILE *		f,
-				void **		pLearntInd,
-				void **		pForgotInd	)
+int indReadPrivateDictionary(	SimpleInputStream *	sis,
+				void **			pLearntInd,
+				void **			pForgotInd )
     {
     void *		learntInd= *pLearntInd;
     void *		forgotInd= *pForgotInd;
     
-    unsigned char	buf[SPELBUFL+ 1];
+    char		buf[SPELBUFL+ 1];
 
     int			rval= 0;
 
@@ -60,6 +64,7 @@ int indReadPrivateDictionary(	FILE *		f,
 	learntInd= indMake();
 	if  ( ! learntInd )
 	    { XDEB( learntInd ); return -1;	}
+	*pLearntInd= learntInd;
 	}
 
     if  ( ! forgotInd )
@@ -67,9 +72,10 @@ int indReadPrivateDictionary(	FILE *		f,
 	forgotInd= indMake();
 	if  ( ! forgotInd )
 	    { XDEB( forgotInd ); return -1;	}
+	*pForgotInd= forgotInd;
 	}
 
-    while( fgets( (char *)buf, SPELBUFL, f ) == (char *)buf )
+    while( sioInGetString( buf, SPELBUFL, sis ) == buf )
 	{
 	buf[strlen( (char *)buf )- 1]= '\0';
 
@@ -86,25 +92,22 @@ int indReadPrivateDictionary(	FILE *		f,
 	    }
 	}
 
-    if  ( ! rval )
-	{
-	*pLearntInd= learntInd;
-	*pForgotInd= forgotInd;
-	}
-
     return rval;
     }
 
 /************************************************************************/
+/*									*/
 /*  Learn/Forget a word and store a record about this in the private	*/
 /*  dictionary.								*/
+/*									*/
 /************************************************************************/
-int indLearnWord(	FILE *			f,
+
+int indLearnWord(	SimpleOutputStream *	sos,
 			void *			learntInd,
 			void *			forgotInd,
-			const unsigned char *	word	)
+			const char *		word )
     {
-    fprintf( f, "%s %s\n", "L", word );
+    sioOutPrintf( sos, "%s %s\n", "L", word );
 
     if  ( indMoveWord( forgotInd, learntInd, word ) )
 	{ SDEB((char *)word); return -1;	}
@@ -112,12 +115,12 @@ int indLearnWord(	FILE *			f,
     return 0;
     }
 
-int indForgetWord(	FILE *			f,
+int indForgetWord(	SimpleOutputStream *	sos,
 			void *			learntInd,
 			void *			forgotInd,
-			const unsigned char *	word	)
+			const char *		word )
     {
-    fprintf( f, "%s %s\n", "F", word );
+    sioOutPrintf( sos, "%s %s\n", "F", word );
 
     if  ( indMoveWord( learntInd, forgotInd, word ) )
 	{ SDEB((char *)word); return -1;	}

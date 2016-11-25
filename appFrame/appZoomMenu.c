@@ -7,7 +7,6 @@
 #   include	"appFrameConfig.h"
 
 #   include	<stddef.h>
-#   include	<stdlib.h>
 #   include	<stdio.h>
 #   include	<ctype.h>
 
@@ -17,8 +16,8 @@
 #   undef	y0
 #   undef	y1
 
-#   include	<appFrame.h>
-#   include	<appZoomMenu.h>
+#   include	"appFrame.h"
+#   include	"appZoomMenu.h"
 
 #   include	<appDebugon.h>
 
@@ -88,7 +87,7 @@ void appZoomChangeFactor(	APP_WIDGET		option,
 	    { break;	}
 	}
 
-    if  ( num < 0 || num >= optionCount )
+    if  ( /* num < 0 || */ num >= optionCount )
 	{ LDEB(num); return;	}
 
     if  ( num == optionCount/2 )

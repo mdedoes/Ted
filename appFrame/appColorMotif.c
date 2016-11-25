@@ -9,18 +9,16 @@
 #   include	<stddef.h>
 #   include	<stdio.h>
 #   include	<stdlib.h>
-
-#   define	y0	math_y0
-#   define	y1	math_y1
 #   include	<math.h>
-#   undef	y0
-#   undef	y1
-
-#   include	"appDraw.h"
 
 #   include	<appDebugon.h>
 
 #   ifdef	USE_MOTIF
+
+#   include	<X11/Xlib.h>
+
+#   include	"appGuiBase.h"
+#   include	"drawUtilMotif.h"
 
 /************************************************************************/
 /*									*/
@@ -298,10 +296,9 @@ static void appTry222Color(	Display *		display,
 	}
     }
 
-int appAllocateColors(	AppDrawingData *	add,
-			AppColors *		acSys )
+static int appAllocateColors(	Display *		display,
+				AppColors *		acSys )
     {
-    Display *		display= add->addDisplay;
     int			screen= DefaultScreen( display );
     int			depth= DefaultDepth( display, screen );
     Colormap		cmap= DefaultColormap( display, screen );
@@ -479,6 +476,7 @@ int appAllocateColors(	AppDrawingData *	add,
     return 0;
     }
 
+# if 0
 void appCleanColors(	AppColors *		acSys )
     {
     Display *		display= acSys->acDisplay;
@@ -514,6 +512,7 @@ void appCleanColors(	AppColors *		acSys )
 
     bmCleanColorAllocator( ca );
     }
+# endif
 
 void appInitColors(	AppColors *	acSys )
     {
@@ -543,6 +542,23 @@ int appColorFindRgb(	XColor *	xc,
     xc->pixel= acRet.acColorNumber;
 
     return 0;
+    }
+
+static AppColors * APP_TheColors= (AppColors *)0;
+
+AppColors *	guiGetColorsMotif( Display *	display )
+    {
+    if  ( ! APP_TheColors )
+	{
+	APP_TheColors= malloc( sizeof(AppColors) );
+	if  ( ! APP_TheColors )
+	    { XDEB(APP_TheColors); return (AppColors *)0;	}
+
+	appInitColors( APP_TheColors );
+	appAllocateColors( display, APP_TheColors );
+	}
+
+    return APP_TheColors;
     }
 
 #   endif

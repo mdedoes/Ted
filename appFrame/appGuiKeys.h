@@ -11,5 +11,4 @@
 #   include "appGuiKeysMotif.h"
 #   include "appGuiKeysGtk.h"
 
-
 #   endif	/* APP_GUI_KEYS_H */

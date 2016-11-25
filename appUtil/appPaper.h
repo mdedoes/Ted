@@ -1,15 +1,20 @@
+/************************************************************************/
+/*									*/
+/*  Administration of paper sizes					*/
+/*									*/
+/************************************************************************/
 
-extern int appPaperGetInformation(	int		n,
+extern const char * utilPaperDefaultSize( void );
+
+extern int utilPaperGetInfoByNumber(	int		n,
 					int *		pWidth,
 					int *		pHeight,
 					const char **	pLabel );
 
-extern int appPaperGetBySize(		int		width,
+extern int utilPaperGetNumberBySize(	int		width,
 					int		height );
 
-extern int appPaperGetByMnemonic(	const char *	mnemonic );
-
-extern int appPaperFormatFromString(	int *		pFormat,
+extern int utilPaperSizeFromString(	int *		pFormat,
 					int *		pWidth,
 					int *		pHeight,
 					int		unitType,

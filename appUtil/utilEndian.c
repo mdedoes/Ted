@@ -129,7 +129,6 @@ void utilPutLeUint16(	unsigned int		ui,
     return;
     }
 
-
 /************************************************************************/
 /*									*/
 /*  Buffer Extraction.							*/
@@ -382,6 +381,106 @@ unsigned long utilGetBeUint32(	FILE *	f )
     return l;
     }
 
+double utilGetBeDouble64(	FILE *		f )
+    {
+    const unsigned short	one= 1;
+    double			ret;
+    unsigned char *		pret= (unsigned char *)&ret;
+    int				i;
+
+    if  ( sizeof(double) != 8 )
+	{ LDEB(sizeof(double)); return -1;	}
+
+    if  ( *((unsigned char *)&one) )
+	{
+	/* both big-endian */
+	for ( i= 0; i < 8; i++ )
+	    { pret[i]= getc( f );	}
+	}
+    else{
+	/* opposite byte ordering */
+	for ( i= 7; i >= 0; i-- )
+	    { pret[i]= getc( f );	}
+	}
+
+    return ret;
+    }
+
+double utilGetLeDouble64(	FILE *		f )
+    {
+    const unsigned short	one= 1;
+    double			ret;
+    unsigned char *		pret= (unsigned char *)&ret;
+    int				i;
+
+    if  ( sizeof(double) != 8 )
+	{ LDEB(sizeof(double)); return -1;	}
+
+    if  ( *((unsigned char *)&one) )
+	{
+	/* opposite byte ordering */
+	for ( i= 7; i >= 0; i-- )
+	    { pret[i]= getc( f );	}
+	}
+    else{
+	/* both little-endian */
+	for ( i= 0; i < 8; i++ )
+	    { pret[i]= getc( f );	}
+	}
+
+    return ret;
+    }
+
+float utilGetBeFloat32(	FILE *		f )
+    {
+    const unsigned short	one= 1;
+    float			ret;
+    unsigned char *		pret= (unsigned char *)&ret;
+    int				i;
+
+    if  ( sizeof(float) != 4 )
+	{ LDEB(sizeof(float)); return -1;	}
+
+    if  ( *((unsigned char *)&one) )
+	{
+	/* both big-endian */
+	for ( i= 0; i < 4; i++ )
+	    { pret[i]= getc( f );	}
+	}
+    else{
+	/* opposite byte ordering */
+	for ( i= 3; i >= 0; i-- )
+	    { pret[i]= getc( f );	}
+	}
+
+    return ret;
+    }
+
+float utilGetLeFloat32(	FILE *		f )
+    {
+    const unsigned short	one= 1;
+    float			ret;
+    unsigned char *		pret= (unsigned char *)&ret;
+    int				i;
+
+    if  ( sizeof(float) != 4 )
+	{ LDEB(sizeof(float)); return -1;	}
+
+    if  ( *((unsigned char *)&one) )
+	{
+	/* opposite byte ordering */
+	for ( i= 3; i >= 0; i-- )
+	    { pret[i]= getc( f );	}
+	}
+    else{
+	/* both little-endian */
+	for ( i= 0; i < 4; i++ )
+	    { pret[i]= getc( f );	}
+	}
+
+    return ret;
+    }
+
 /************************************************************************/
 /*									*/
 /*  Insert in buffers							*/
@@ -434,5 +533,11 @@ void utilEndianStoreLeInt16(	int		i,
     else{
 	POSBYTES16(b[0],b[1],i)
 	}
+    }
+
+void utilEndianStoreLeUint16(	unsigned	i,
+				unsigned char *	b )
+    {
+    POSBYTES16(b[0],b[1],i)
     }
 

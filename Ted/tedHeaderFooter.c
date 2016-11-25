@@ -8,149 +8,179 @@
 #   include	"tedConfig.h"
 
 #   include	<stddef.h>
-#   include	<stdlib.h>
 #   include	<stdio.h>
 #   include	<ctype.h>
-#   include	<limits.h>
 
-#   include	"docLayout.h"
 #   include	"tedApp.h"
+#   include	"tedSelect.h"
+#   include	"tedAppResources.h"
+#   include	"tedLayout.h"
+#   include	"tedEdit.h"
+#   include	"tedDocFront.h"
+#   include	"tedDocument.h"
+#   include	<docSelectLayout.h>
+#   include	<docRtfTrace.h>
+#   include	<docTreeNode.h>
+#   include	<appQuestion.h>
+#   include	<docEditCommand.h>
+#   include	<docTreeType.h>
 
 #   include	<appDebugon.h>
+
+/************************************************************************/
+/*									*/
+/*  Insert a header or a footer in the document.			*/
+/*									*/
+/*  1)  Start edit opration and tracing.				*/
+/*  2)  Find the header/footer and make sure it has content.		*/
+/*  4)  Move the selection to the head of the fresh header/footer.	*/
+/*  5)  Finish.								*/
+/*									*/
+/************************************************************************/
+
+int tedDocInsertHeaderFooter(	EditDocument *		ed,
+				int			treeType,
+				int			traced )
+    {
+    TedDocument *		td= (TedDocument *)ed->edPrivateData;
+    int				rval = 0;
+
+    TedEditOperation		teo;
+    EditOperation *		eo= &(teo.teoEo);
+
+    SelectionGeometry		sg;
+    SelectionDescription	sd;
+
+    DocumentTree *		dtHdFt;
+    BufferItem *		bodySectNode;
+
+    BufferItem *		treeParaNode;
+    const int			ownerNumber= -1;
+
+    int				page= -1;
+    const int			column= 0;
+    DocumentPosition		dpNew;
+
+    const int			fullWidth= 1;
+
+    /*  1  */
+    tedStartEditOperation( &teo, &sg, &sd, ed, fullWidth, traced );
+
+    if  ( docIsHeaderType( treeType ) )
+	{
+	if  ( tedEditStartStep( &teo, EDITcmdINSERT_HEADER ) )
+	    { LDEB(EDITcmdINSERT_HEADER); goto ready;	}
+	}
+    else{
+	if  ( tedEditStartStep( &teo, EDITcmdINSERT_FOOTER ) )
+	    { LDEB(EDITcmdINSERT_FOOTER); goto ready;	}
+	}
+
+    /*  2  */
+    if  ( docGetHeaderFooter( &dtHdFt, &bodySectNode, &(eo->eoHeadDp),
+						eo->eoDocument, treeType ) )
+	{ LDEB(treeType); rval= -1; goto ready;	}
+
+    treeParaNode= docMakeExternalParagraph( eo->eoDocument, dtHdFt, treeType,
+					    bodySectNode, ownerNumber,
+					    td->tdCurrentTextAttributeNumber );
+    if  ( ! treeParaNode )
+	{ XDEB(treeParaNode); rval= -1; goto ready;	}
+
+    /*  4  */
+    if  ( docHeadPosition( &dpNew, treeParaNode ) )
+	{ LDEB(1); rval= -1; goto ready;	}
+    docAvoidParaHeadField( &dpNew, (int *)0, eo->eoDocument );
+
+    page= docHeaderFooterPage( eo->eoDocument, bodySectNode,
+				sg.sgHead.pgTopPosition.lpPage, treeType );
+    if  ( page < 0 )
+	{ LDEB(page); rval= -1; goto ready;	}
+
+    docInvalidateTreeLayout( dtHdFt );
+
+    dtHdFt->dtPageSelectedUpon= page;
+    dtHdFt->dtColumnSelectedIn= column;
+
+    eo->eoTree= dtHdFt;
+    docGetSelectionScope( &(eo->eoSelectionScope), bodySectNode );
+    eo->eoReformatNeeded= REFORMAT_BODY_SECT;
+
+    /*  5  */
+    docSetIBarRange( &(eo->eoAffectedRange), &dpNew );
+    docSetIBarRange( &(eo->eoSelectedRange), &dpNew );
+    tedEditFinishSelectionTail( &teo );
+
+    if  ( teo.teoEditTrace )
+	{
+	docRtfTraceNewPosition( eo,
+			&(dtHdFt->dtRoot->biSectSelectionScope), SELposHEAD );
+	}
+
+    tedFinishEditOperation( &teo );
+
+  ready:
+
+    tedCleanEditOperation( &teo );
+
+    return rval;
+    }
 
 /************************************************************************/
 /*									*/
 /*  Move the current selection to a certain header/Footer. If the	*/
 /*  header or footer does not exist, make it.				*/
 /*									*/
+/*  1)	Where are we now?						*/
+/*  2)	Already in the correct header/footer: ready.			*/
+/*  3)	Does the section of the body have enough pages to show this	*/
+/*	kind of header or footer?					*/
+/*  4)	Does the the header/footer already exist?			*/
+/*  5)	If so, move the selection to the header/footer and we are ready	*/
+/*  6)	Otherwise make it.						*/
+/*									*/
 /************************************************************************/
 
-static int TED_TryPageOffsets[]=
-    {
-     0,
-     1,
-    -1,
-     2
-    };
-
-void tedAppEditHeaderFooter(		EditApplication *	ea,
+void tedDocEditHeaderFooter(		EditDocument *		ed,
 					APP_WIDGET		relative,
 					APP_WIDGET		option,
-					int			which )
+					int			treeType )
     {
-    EditDocument *		ed= ea->eaCurrentDocument;
-    AppDrawingData *		add;
-    TedDocument *		td;
-    BufferDocument *		bd;
-    const DocumentProperties *	docp;
+    TedDocument *		td= (TedDocument *)ed->edPrivateData;
+    BufferDocument *		bd= td->tdDocument;
 
-    ExternalItem *		ei;
-    ExternalItem *		eiTry;
-    BufferItem *		bodySectBi;
+    DocumentTree *		ei;
+    BufferItem *		bodySectNode;
 
     DocumentSelection		ds;
     SelectionGeometry		sg;
     SelectionDescription	sd;
-    SelectionScope *		ss;
 
     int				page= -1;
-    int				pg;
-    int				i;
+    const int			column= 0;
 
-    int				scrolledX= 0;
-    int				scrolledY= 0;
+    LayoutContext		lc;
 
-    DocumentRectangle		drChanged;
-    ScreenFontList *		sfl;
+    layoutInitContext( &lc );
+    tedSetScreenLayoutContext( &lc, ed );
 
-    if  ( ! ed )
-	{ XDEB(ed); return;	}
-
-    add= &(ed->edDrawingData);
-    td= (TedDocument *)ed->edPrivateData;
-    bd= td->tdDocument;
-    docp= &(bd->bdProperties);
-    sfl= &(td->tdScreenFontList);
-
-    if  ( tedGetSelection( &ds, &sg, &sd, td ) )
+    /*  1  */
+    if  ( tedGetSelection( &ds, &sg, &sd, &ei, &bodySectNode, ed ) )
 	{ LDEB(1); return;	}
-    ss= &(ds.dsSelectionScope);
 
-    drChanged= sg.sgRectangle;
-
-    if  ( docGetHeaderFooter( &ei, &bodySectBi, &ds, bd, which ) )
-	{ LDEB(which); return;	}
-
-    if  ( ss->ssInExternalItem == which					&&
-	  ss->ssSectNrExternalTo == bodySectBi->biNumberInParent	)
+    /*  2  */
+    if  ( ds.dsSelectionScope.ssTreeType == treeType			&&
+	  ds.dsSelectionScope.ssOwnerSectNr == bodySectNode->biNumberInParent )
 	{ return;	}
 
-    if  ( ! ei->eiItem )
+    /*  3  */
+    page= docHeaderFooterPage( bd, bodySectNode,
+				sg.sgHead.pgTopPosition.lpPage, treeType );
+
+    if  ( page < bodySectNode->biTopPosition.lpPage		||
+	  page > bodySectNode->biBelowPosition.lpPage		)
 	{
-	BufferItem *	paraBi;
-	const int	noteIndex= -1;
-
-	paraBi= docMakeExternalparagraph( bd, ei, bodySectBi,
-			td->tdCurrentTextAttributeNumber, noteIndex, which );
-	if  ( ! paraBi )
-	    { XDEB(paraBi); return; }
-
-	if  ( tedLayoutItem( bodySectBi, bd, add, sfl, &drChanged ) )
-	    { LDEB(1); return;	}
-
-	appDocumentChanged( ed, 1 );
-	}
-
-    switch( which )
-	{
-	int		isEmpty;
-
-	case DOCinFIRST_HEADER:
-	case DOCinFIRST_FOOTER:
-	    page= bodySectBi->biTopPosition.lpPage;
-	    break;
-
-	case DOCinSECT_HEADER:
-	case DOCinLEFT_HEADER:
-	case DOCinRIGHT_HEADER:
-	    for ( i= 0; i < sizeof(TED_TryPageOffsets)/sizeof(int); i++ )
-		{
-		pg= sg.sgBegin.pgTopPosition.lpPage+ TED_TryPageOffsets[i];
-
-		if  ( pg < bodySectBi->biTopPosition.lpPage		||
-		      pg > bodySectBi->biBelowPosition.lpPage	)
-		    { continue;	}
-
-		if  ( docWhatPageHeader( &eiTry, &isEmpty,
-					    bodySectBi, pg, docp ) == which )
-		    { page= pg; break;	}
-		}
-	    break;
-
-	case DOCinSECT_FOOTER:
-	case DOCinLEFT_FOOTER:
-	case DOCinRIGHT_FOOTER:
-	    for ( i= 0; i < sizeof(TED_TryPageOffsets)/sizeof(int); i++ )
-		{
-		pg= sg.sgBegin.pgTopPosition.lpPage+ TED_TryPageOffsets[i];
-
-		if  ( pg < bodySectBi->biTopPosition.lpPage		||
-		      pg > bodySectBi->biBelowPosition.lpPage	)
-		    { continue;	}
-
-		if  ( docWhatPageFooter( &eiTry, &isEmpty,
-					    bodySectBi, pg, docp ) == which )
-		    { page= pg; break;	}
-		}
-	    break;
-
-	default:
-	    LDEB(which); return;
-	}
-
-    if  ( page < bodySectBi->biTopPosition.lpPage		||
-	  page > bodySectBi->biBelowPosition.lpPage		)
-	{
+	EditApplication *	ea= ed->edApplication;
 	TedAppResources *	tar= (TedAppResources *)ea->eaResourceData;
 
 	appQuestionRunErrorDialog( ea, relative, option,
@@ -158,11 +188,34 @@ void tedAppEditHeaderFooter(		EditApplication *	ea,
 	return;
 	}
 
-    ei->eiPageSelectedUpon= page;
+    /*  4  */
+    if  ( docGetHeaderFooter( &ei, &bodySectNode, &(ds.dsHead), bd, treeType ) )
+	{ LDEB(treeType); return;	}
 
-    tedSelectItemHome( ed, ei->eiItem, &scrolledX, &scrolledY );
+    /*  5  */
+    if  ( ei->dtRoot )
+	{
+	DocumentPosition	dpNew;
+	const int		lastLine= 0;
 
-    tedAdaptToolsToSelection( ed );
+	int			scrolledX= 0;
+	int			scrolledY= 0;
+
+	ei->dtPageSelectedUpon= page;
+	ei->dtColumnSelectedIn= column;
+
+	if  ( docHeadPosition( &dpNew, ei->dtRoot ) )
+	    { LDEB(1); return;	}
+
+	docAvoidParaHeadField( &dpNew, (int *)0, bd );
+	tedSetSelectedPosition( ed, &dpNew, lastLine, &scrolledX, &scrolledY );
+
+	return;
+	}
+
+    /*  6  */
+    if  ( tedDocInsertHeaderFooter( ed, treeType, td->tdTraced ) )
+	{ LDEB(treeType);	}
 
     return;
     }
@@ -179,190 +232,104 @@ void tedAppEditHeaderFooter(		EditApplication *	ea,
 /*									*/
 /************************************************************************/
 
-void tedAppDeleteHeaderFooter(		EditApplication *	ea,
-					int			which )
+int tedDocDeleteHeaderFooter(		EditDocument *		ed,
+					int			treeType,
+					int			traced )
     {
-    EditDocument *		ed= ea->eaCurrentDocument;
-    TedDocument *		td;
-    BufferDocument *		bd;
+    int				rval= 0;
 
-    ExternalItem *		ei= (ExternalItem *)0;
-    BufferItem *		bodySectBi;
+    TedDocument *		td= (TedDocument *)ed->edPrivateData;
+    BufferDocument *		bd= td->tdDocument;
 
-    DocumentSelection		ds;
+    DocumentTree *		tree= (DocumentTree *)0;
+    BufferItem *		bodySectNode;
+
+    TedEditOperation		teo;
+    EditOperation *		eo= &(teo.teoEo);
     SelectionGeometry		sg;
     SelectionDescription	sd;
 
-    int				scrolledX= 0;
-    int				scrolledY= 0;
+    DocumentSelection		dsOld;
 
-    const ScreenFontList *	sfl;
+    const int			fullWidth= 1;
 
-    if  ( ! ed )
-	{ XDEB(ed); return;	}
+    tedStartEditOperation( &teo, &sg, &sd, ed, fullWidth, traced );
 
-    td= (TedDocument *)ed->edPrivateData;
-    bd= td->tdDocument;
-    sfl= &(td->tdScreenFontList);
-
-    if  ( tedGetSelection( &ds, &sg, &sd, td ) )
-	{ LDEB(1); return;	}
+    docEditOperationGetSelection( &dsOld, eo );
 
     /*  1  */
-    if  ( docGetHeaderFooter( &ei, &bodySectBi, &ds, bd, which ) )
-	{ LDEB(which); return;	}
+    if  ( docGetHeaderFooter( &tree, &bodySectNode, &(eo->eoHeadDp),
+							    bd, treeType ) )
+	{ LDEB(treeType); rval= -1; goto ready;	}
 
-    /*  2  */
-    if  ( ei && ei->eiItem )
+    if  ( ! tree || ! tree->dtRoot )
+	{ XDEB(tree); rval= -1; goto ready;	}
+
+    if  ( docIsHeaderType( treeType ) )
 	{
-	AppDrawingData *	add= &(ed->edDrawingData);
-	DocumentRectangle	drChanged= add->addBackRect;
-
-	/*  3  */
-	if  ( ds.dsBegin.dpBi->biInExternalItem == which )
-	    {
-	    int			docX;
-	    int			docY;
-	    int			part;
-	    const int		lastLine= 0;
-
-	    DocumentPosition	dp;
-	    PositionGeometry	pg;
-
-	    docX= sg.sgBegin.pgXPixels;
-	    docY= sg.sgBegin.pgBaselinePixels;
-
-	    if  ( tedFindPosition( &dp, &pg, &part, bd, &(bd->bdItem),
-						    add, sfl, docX, docY ) )
-		{ LLDEB(docX,docY); return;	}
-
-	    tedSetSelectedPosition( ed, &dp, lastLine, &scrolledX, &scrolledY );
-
-	    tedAdaptToolsToSelection( ed );
-	    }
-
-	docCleanExternalItem( bd, ei );
-	docInitExternalItem( ei );
-
-	appDocumentChanged( ed, 1 );
-
-	appDocExposeRectangle( ed, &drChanged, scrolledX, scrolledY );
+	if  ( tedEditStartStep( &teo, EDITcmdDELETE_HEADER ) )
+	    { LDEB(EDITcmdDELETE_HEADER); goto ready;	}
+	}
+    else{
+	if  ( tedEditStartStep( &teo, EDITcmdDELETE_FOOTER ) )
+	    { LDEB(EDITcmdDELETE_FOOTER); goto ready;	}
 	}
 
-    return;
-    }
+    if  ( teo.teoEditTrace && docRtfTraceHeaderFooter( eo, tree ) )
+	{ LDEB(1); rval= -1; goto ready;	}
 
-/************************************************************************/
-/*									*/
-/*  Jump to the foot/end note thet is selected in the body of the	*/
-/*  document.								*/
-/*									*/
-/************************************************************************/
+    /*  3  */
+    if  ( eo->eoTree->dtRoot->biTreeType == treeType )
+	{
+	DocumentPosition	dpNew;
+	SelectionScope		ssNew;
 
-void tedAppEditNote(		EditApplication *	ea )
-    {
-    EditDocument *		ed= ea->eaCurrentDocument;
-    TedDocument *		td;
-    BufferDocument *		bd;
+	if  ( docPositionNearHeadFoot( &dpNew, treeType, bodySectNode,
+			    bd, eo->eoHeadDp.dpNode->biTopPosition.lpPage ) )
+	    { LDEB(1); rval= -1; goto ready;	}
 
-    int				noteIndex;
-    DocumentNote *		dn= (DocumentNote *)0;
-    ExternalItem *		eiNote= (ExternalItem *)0;
+	docSetIBarRange( &(eo->eoAffectedRange), &dpNew );
+	docSetIBarRange( &(eo->eoSelectedRange), &dpNew );
 
-    DocumentSelection		ds;
-    SelectionGeometry		sg;
-    SelectionDescription	sd;
+	if  ( docMoveEditOperationToBodySect( eo, bodySectNode ) )
+	    { LDEB(1); rval= -1; goto ready;	}
 
-    int				scrolledX= 0;
-    int				scrolledY= 0;
+	/*  2  */
+	docEraseDocumentTree( bd, tree );
 
-    int				noteFieldNr= -1;
-    unsigned char *		fixedText= (unsigned char *)0;
-    const int			fixedTextSize= 0;
+	docGetSelectionScope( &ssNew, dpNew.dpNode );
 
-    if  ( ! ed )
-	{ XDEB(ed); return;	}
+	tedEditFinishSelectionTail( &teo );
 
-    td= (TedDocument *)ed->edPrivateData;
-    bd= td->tdDocument;
+	if  ( teo.teoEditTrace )
+	    {
+	    /* make docReinsertNodes() happy */
+	    docRtfTraceNewPosition( eo, &ssNew, SELposAFTER );
+	    }
+	}
+    else{
+	if  ( docMoveEditOperationToBodySect( eo, bodySectNode ) )
+	    { LDEB(1); rval= -1; goto ready;	}
 
-    if  ( tedGetSelection( &ds, &sg, &sd, td ) )
-	{ LDEB(1); return;	}
+	/*  2  */
+	docEraseDocumentTree( bd, tree );
 
-    if  ( ds.dsSelectionScope.ssInExternalItem != DOCinBODY )
-	{ LDEB(ds.dsSelectionScope.ssInExternalItem); return;	}
+	tedEditFinishSelection( &teo, &dsOld );
 
-    noteIndex= docGetSelectedNote( &dn, &noteFieldNr,
-					fixedText, fixedTextSize, bd, &ds );
-    if  ( noteIndex < 0 )
-	{ LDEB(noteIndex); return;	}
+	if  ( teo.teoEditTrace )
+	    {
+	    /* make docReinsertNodes() happy */
+	    docRtfTraceNewPosition( eo,
+				(const SelectionScope *)0, SELposAFTER );
+	    }
+	}
 
-    eiNote= &(dn->dnExternalItem);
+    tedFinishEditOperation( &teo );
 
-    if  ( ! eiNote->eiItem )
-	{ XDEB(eiNote->eiItem); return;	}
+  ready:
 
-    tedSelectItemHome( ed, eiNote->eiItem, &scrolledX, &scrolledY );
+    tedCleanEditOperation( &teo );
 
-    tedAdaptToolsToSelection( ed );
-
-    return;
-    }
-
-/************************************************************************/
-/*									*/
-/*  Jump to the foot/end note thet is selected in the body of the	*/
-/*  document.								*/
-/*									*/
-/************************************************************************/
-
-void tedAppGotoNoteRef(		EditApplication *	ea )
-    {
-    EditDocument *		ed= ea->eaCurrentDocument;
-    TedDocument *		td;
-    BufferDocument *		bd;
-
-    int				noteIndex;
-    DocumentNote *		dn= (DocumentNote *)0;
-
-    DocumentSelection		ds;
-    SelectionGeometry		sg;
-    SelectionDescription	sd;
-
-    int				scrolledX= 0;
-    int				scrolledY= 0;
-
-    int				noteFieldNr= -1;
-    unsigned char *		fixedText= (unsigned char *)0;
-    const int			fixedTextSize= 0;
-
-    DocumentPosition		dpNoteref;
-    const int			lastLine= 0;
-
-    if  ( ! ed )
-	{ XDEB(ed); return;	}
-
-    td= (TedDocument *)ed->edPrivateData;
-    bd= td->tdDocument;
-
-    if  ( tedGetSelection( &ds, &sg, &sd, td ) )
-	{ LDEB(1); return;	}
-
-    if  ( ds.dsSelectionScope.ssInExternalItem != DOCinFOOTNOTE	&&
-	  ds.dsSelectionScope.ssInExternalItem != DOCinENDNOTE	)
-	{ LDEB(ds.dsSelectionScope.ssInExternalItem); return;	}
-
-    noteIndex= docGetSelectedNote( &dn, &noteFieldNr,
-					fixedText, fixedTextSize, bd, &ds );
-    if  ( noteIndex < 0 )
-	{ LDEB(noteIndex); return;	}
-
-    if  ( docGetNotePosition( &dpNoteref, bd, dn ) )
-	{ LDEB(1); return;	}
-
-    tedSetIBarSelection( ed, dpNoteref.dpBi, dpNoteref.dpStroff, lastLine,
-						    &scrolledX, &scrolledY );
-
-    return;
+    return rval;
     }
 

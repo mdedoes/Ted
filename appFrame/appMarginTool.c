@@ -6,15 +6,35 @@
 
 #   include	"appFrameConfig.h"
 
-#   include	<stdlib.h>
 #   include	<stdio.h>
 #   include	<limits.h>
 
 #   include	<utilPropMask.h>
-#   include	<appFrame.h>
+#   include	"guiWidgets.h"
+#   include	"guiToolUtil.h"
 #   include	"appMarginTool.h"
+#   include	"guiTextUtil.h"
 
 #   include	<appDebugon.h>
+
+/************************************************************************/
+/*									*/
+/*  Turn on/off								*/
+/*									*/
+/************************************************************************/
+
+void appEnableMarginTool(	AppMarginTool *		amt,
+				int			enabled )
+    {
+    guiEnableWidget( amt->amtMarginFrame, enabled );
+
+    guiEnableText( amt->amtLeftMarginText, enabled );
+    guiEnableText( amt->amtTopMarginText, enabled );
+    guiEnableText( amt->amtRightMarginText, enabled );
+    guiEnableText( amt->amtBottomMarginText, enabled );
+
+    return;
+    }
 
 /************************************************************************/
 /*									*/
@@ -26,19 +46,17 @@ void appMarginToolShowMargins(	AppMarginTool *			amt,
 				int				unitInt,
 				const DocumentGeometry *	dg )
     {
-    char			scratch[50];
+    appLengthToTextWidget( amt->amtLeftMarginText,
+					dg->dgLeftMarginTwips, unitInt );
 
-    appGeoLengthToString( scratch, dg->dgLeftMarginTwips, unitInt );
-    appStringToTextWidget( amt->amtLeftMarginText, scratch );
+    appLengthToTextWidget( amt->amtTopMarginText,
+					dg->dgTopMarginTwips, unitInt );
 
-    appGeoLengthToString( scratch, dg->dgTopMarginTwips, unitInt );
-    appStringToTextWidget( amt->amtTopMarginText, scratch );
+    appLengthToTextWidget( amt->amtRightMarginText,
+					dg->dgRightMarginTwips, unitInt );
 
-    appGeoLengthToString( scratch, dg->dgRightMarginTwips, unitInt );
-    appStringToTextWidget( amt->amtRightMarginText, scratch );
-
-    appGeoLengthToString( scratch, dg->dgBottomMarginTwips, unitInt );
-    appStringToTextWidget( amt->amtBottomMarginText, scratch );
+    appLengthToTextWidget( amt->amtBottomMarginText,
+					dg->dgBottomMarginTwips, unitInt );
 
     return;
     }
@@ -64,7 +82,7 @@ int appMarginToolGetMargins(	PropertyMask *		pUpdMask,
 
     PropertyMask	updMask;
 
-    PROPmaskCLEAR( &updMask );
+    utilPropMaskClear( &updMask );
 
     if  ( PROPmaskISSET( chgMask, DGpropLEFT_MARGIN ) )
 	{
@@ -157,17 +175,17 @@ void appMakeMarginToolWidgets(	APP_WIDGET			parent,
 
     /**********************/
 
-    appMakeLabelAndTextRow( &row, &label, &(amt->amtLeftMarginText),
+    guiToolMakeLabelAndTextRow( &row, &label, &(amt->amtLeftMarginText),
 				amt->amtLeftColumn, mtr->mtrLeftMarginText,
 				textWidth, textEnabled );
-    appMakeLabelAndTextRow( &row, &label, &(amt->amtRightMarginText),
+    guiToolMakeLabelAndTextRow( &row, &label, &(amt->amtRightMarginText),
 				amt->amtLeftColumn, mtr->mtrRightMarginText,
 				textWidth, textEnabled );
 
-    appMakeLabelAndTextRow( &row, &label, &(amt->amtTopMarginText),
+    guiToolMakeLabelAndTextRow( &row, &label, &(amt->amtTopMarginText),
 				amt->amtRightColumn, mtr->mtrTopMarginText,
 				textWidth, textEnabled );
-    appMakeLabelAndTextRow( &row, &label, &(amt->amtBottomMarginText),
+    guiToolMakeLabelAndTextRow( &row, &label, &(amt->amtBottomMarginText),
 				amt->amtRightColumn, mtr->mtrBottomMarginText,
 				textWidth, textEnabled );
 

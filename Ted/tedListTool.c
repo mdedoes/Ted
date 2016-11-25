@@ -9,26 +9,31 @@
 #   include	<stdlib.h>
 #   include	<stdio.h>
 #   include	<stddef.h>
+#   include	<string.h>
 #   include	<limits.h>
 
-#   include	<appGeoString.h>
+#   include	"tedListTool.h"
+#   include	"tedAppFront.h"
+#   include	"tedToolUtil.h"
+#   include	<docTreeType.h>
+#   include	<appUnit.h>
+#   include	<guiWidgetsImpl.h>
+#   include	<guiToolUtil.h>
+#   include	<guiTextUtil.h>
+#   include	<docEditCommand.h>
 
-#   include	"docEvalField.h"
-#   include	"tedApp.h"
-#   include	"tedFormatTool.h"
-
-#   include	"appGuiKeys.h"
+#   include	<appGuiKeys.h>
 
 #   include	<appDebugon.h>
 
 #   ifdef USE_MOTIF
 #	include <Xm/Text.h>
-#	include <Xm/Form.h>
-#	include <Xm/Label.h>
 #	include <Xm/PushB.h>
-#	include <Xm/PushBG.h>
 #	include <Xm/RowColumn.h>
 #   endif
+
+#   define IS_STRING(idx)	(((idx)%2)==0)
+#   define IS_NUMBER(idx)	(((idx)%2)!=0)
 
 /************************************************************************/
 /*									*/
@@ -50,6 +55,9 @@ static const int TED_ListToolStyles[LISTTOOLcountSTYLES]=
 
 static void tedListLevelRefreshFormatMenu(	ListTool *	lt );
 static void tedFormatToolRefreshListPage(	ListTool *	lt );
+
+static int tedListToolSetFormatLevel(		ListTool *	lt,
+						int		number );
 
 /************************************************************************/
 /*									*/
@@ -87,12 +95,12 @@ static void tedListToolSetCurrentLevelPath(
     }
 
 static int tedListToolFormatLevelText(	
-				    unsigned char *		listtext,
+				    char *			listtext,
 				    int				maxlen,
 				    int *			offsets,
 				    int				maxoffsets,
 				    ListTool *			lt,
-				    const DocumentListLevel *	dll,
+				    const ListLevel *		ll,
 				    int				level )
     {
     int		numberPath[DLmaxLEVELS];
@@ -104,7 +112,7 @@ static int tedListToolFormatLevelText(
 						offsets, maxoffsets,
 						level, numberPath,
 						lt->ltStartPath,
-						lt->ltFormatPath, dll );
+						lt->ltFormatPath, ll );
     if  ( size < 0 )
 	{ listtext[0]= '\0'; return -1;	}
 
@@ -113,40 +121,79 @@ static int tedListToolFormatLevelText(
 
 /************************************************************************/
 /*									*/
-/*  Switch between 'edit' and string format for the level text.		*/
+/*  1)	Find the segment where the selection starts. Between two 	*/
+/*	segments the choice depends on the end.				*/
+/*  2)	NOTE the special case to make an empty free text piece editable	*/
+/*  3)	Find the segment where the selection ends. Between two segments	*/
+/*	segments the choice depends on the beginning. A selection of	*/
+/*	the end of a number is translated to the head of the subsequent	*/
+/*	string.								*/
+/*  4)	Remember indexes and offsets.					*/
+/*  5)	Extend selection to make sure numbers are never partially	*/
+/*	selected.							*/
+/*  6)	Return 1 if another range was selected.				*/
 /*									*/
 /************************************************************************/
 
-static void tedListToolSetFormatEditable(
-				ListTool *			lt,
-				int				editable )
+static int tedListToolSelectNumberFormatRange(	ListTool *	lt,
+						const int	off0,
+						const int	off1 )
     {
-    if  ( editable )
+    const DocumentList *	dl= &(lt->ltListPropertiesChosen);
+    const int			level= lt->ltCurrentLevel;
+    const ListLevel *		ll= &(dl->dlLevels[level]);
+
+    const int			fieldCount= ll->llLevelNumberCount;
+
+    int				idx0;
+    int				idx1;
+
+    /*  1  */
+    for ( idx0= 0; idx0 < 2* fieldCount+ 2; idx0++ )
 	{
-	appGuiSetWidgetVisible( lt->ltNumberFormatCurrentLabel, 0 );
-	appGuiSetWidgetVisible( lt->ltNumberFormatLabelTail, 0 );
-
-	appGuiSetWidgetVisible( lt->ltNumberFormatCurrentText, 1 );
-	appGuiSetWidgetVisible( lt->ltNumberFormatTextTail, 1 );
-
-#	ifdef USE_MOTIF
-	XmProcessTraversal( lt->ltNumberFormatCurrentText, XmTRAVERSE_CURRENT );
-#	endif
+	if  ( lt->ltNumberFormatOffsets[idx0+ 1] >= off0 )
+	    { break;	}
 	}
-    else{
-	appGuiSetWidgetVisible( lt->ltNumberFormatCurrentText, 0 );
-	appGuiSetWidgetVisible( lt->ltNumberFormatTextTail, 0 );
+    if  ( off1 > off0 && off0 == lt->ltNumberFormatOffsets[idx0+ 1] )
+	{ idx0++;	}
 
-	appGuiSetWidgetVisible( lt->ltNumberFormatCurrentLabel, 1 );
-	appGuiSetWidgetVisible( lt->ltNumberFormatLabelTail, 1 );
+    /*  2  */
+    if  ( off0 == off1					&&
+	  IS_NUMBER( idx0 )				&&
+	  idx0 < 2* fieldCount+ 1			&&
+	  off0 == lt->ltNumberFormatOffsets[idx0+ 1]	&&
+	  off0 == lt->ltNumberFormatOffsets[idx0+ 2]	)
+	{ idx0++;	}
 
-#	ifdef USE_MOTIF
-	XmProcessTraversal( lt->ltNumberFormatCurrentLabel, XmTRAVERSE_CURRENT );
-#	endif
+    /*  3  */
+    for ( idx1= idx0; idx1 < 2* fieldCount+ 2; idx1++ )
+	{
+	if  ( lt->ltNumberFormatOffsets[idx1+ 1] >= off1 )
+	    { break;	}
 	}
+    if  ( off0 == off1					&&
+	  IS_NUMBER( idx1 )				&&
+	  off1 == lt->ltNumberFormatOffsets[idx1+ 1]	)
+	{ idx0= idx1= idx1+ 1;	}
 
-    lt->ltFormatEditable= editable != 0;
-    return;
+    /*  4  */
+    lt->ltFormatIndex0= idx0;
+    lt->ltFormatIndex1= idx1;
+    lt->ltFormatOffset0= off0;
+    lt->ltFormatOffset1= off1;
+
+    /*  5  */
+    if  ( IS_NUMBER( idx0 ) )
+	{ lt->ltFormatOffset0= lt->ltNumberFormatOffsets[idx0];		}
+    if  ( IS_NUMBER( idx1 ) )
+	{ lt->ltFormatOffset1= lt->ltNumberFormatOffsets[idx1+ 1];	}
+
+    /*  6  */
+    if  ( lt->ltFormatOffset0 != off0	||
+	  lt->ltFormatOffset1 != off1	)
+	{ return 1;	}
+
+    return 0;
     }
 
 /************************************************************************/
@@ -155,56 +202,75 @@ static void tedListToolSetFormatEditable(
 /*									*/
 /************************************************************************/
 
-static void tedListToolRefreshLevelFormat(
-					ListTool *			lt,
-					const DocumentListLevel *	dll,
-					int				level )
-    {
-    unsigned char		listtext[50+1];
-    char			scratch[50+1];
-    int				offsets[2* DLmaxLEVELS+ 2];
-    int				from;
-    int				upto;
-    int				size;
-
-    const int			editable= 0;
-
-    tedListToolSetFormatEditable( lt, editable );
-
-    size= tedListToolFormatLevelText( listtext, sizeof(listtext)- 1,
-						offsets, 2* DLmaxLEVELS+ 2,
-						lt, dll, level );
-
-    from= 0; upto= offsets[lt->ltFormatIndex];
-    memcpy( scratch, listtext+ from, upto- from );
-    scratch[upto- from]= '\0';
-    appGuiChangeLabelText( lt->ltNumberFormatHead, scratch );
-
-    from= offsets[lt->ltFormatIndex]; upto= offsets[lt->ltFormatIndex+1];
-    memcpy( scratch, listtext+ from, upto- from );
-    scratch[upto- from]= '\0';
-    appStringToTextWidget( lt->ltNumberFormatCurrentText, (char *)scratch );
-#   ifdef USE_MOTIF
-    XmTextSetSelection( lt->ltNumberFormatCurrentText,
-						0, upto- from, CurrentTime );
-#   endif
 #   ifdef USE_GTK
-    gtk_entry_select_region( GTK_ENTRY( lt->ltNumberFormatCurrentText ),
-						0, upto- from );
+static void tedListToolFormatInsertText(GtkEditable *		w,
+					gchar *			new_text,
+					gint			new_text_length,
+					gint *			position,
+					void *			voidlt );
+
+static void tedListToolFormatDeleteText(GtkEditable *		w,
+					gint			start_pos,
+					gint			end_pos,
+					void *			voidlt );
 #   endif
 
-    if  ( upto == from )
-	{ appGuiChangeLabelText( lt->ltNumberFormatCurrentLabel, " " );	}
-    else{
-	appGuiChangeLabelText( lt->ltNumberFormatCurrentLabel,
-							(char *)scratch );
-	}
+static void tedListToolSetLevelFormatText(
+					ListTool *		lt,
+					const char *		text )
+    {
 
-    from= offsets[lt->ltFormatIndex+ 1]; upto= size;
-    memcpy( scratch, listtext+ from, upto- from );
-    scratch[upto- from]= '\0';
-    appGuiChangeLabelText( lt->ltNumberFormatLabelTail, scratch );
-    appGuiChangeLabelText( lt->ltNumberFormatTextTail, scratch );
+#   ifdef USE_GTK
+#   if GTK_MAJOR_VERSION >= 2
+			/*  The weird construct is to make good compilers
+			 *  shut up about the weird and ugly construct in GTK
+			 */
+    GtkSignalFunc	sit= (GtkSignalFunc)tedListToolFormatInsertText;
+    GtkSignalFunc	sdt= (GtkSignalFunc)tedListToolFormatDeleteText;
+
+    gpointer		it= (gpointer)0;
+    gpointer		dt= (gpointer)0;
+
+    if  ( sizeof(GtkSignalFunc) != sizeof(gpointer) )
+	{ LLDEB(sizeof(GtkSignalFunc),sizeof(gpointer)); return;	}
+
+    memcpy( &it, &sit, sizeof(gpointer) );
+    memcpy( &dt, &sdt, sizeof(gpointer) );
+
+    g_signal_handlers_block_by_func( lt->ltNumberFormatText, it, (void *)lt );
+    g_signal_handlers_block_by_func( lt->ltNumberFormatText, dt, (void *)lt );
+#   endif
+#   endif
+
+    appStringToTextWidget( lt->ltNumberFormatText, (char *)text );
+
+#   ifdef USE_GTK
+#   if GTK_MAJOR_VERSION >= 2
+    g_signal_handlers_unblock_by_func( lt->ltNumberFormatText, it, (void *)lt );
+    g_signal_handlers_unblock_by_func( lt->ltNumberFormatText, dt, (void *)lt );
+#   endif
+#   endif
+    }
+
+static void tedListToolRefreshLevelFormat(	ListTool *		lt,
+						const ListLevel *	ll,
+						int			level )
+    {
+    char		listtext[255+1];
+
+    tedListToolFormatLevelText( listtext, sizeof(listtext)- 1,
+				lt->ltNumberFormatOffsets, 2* DLmaxLEVELS+ 2,
+				lt, ll, level );
+
+    tedListToolSetLevelFormatText( lt, listtext );
+
+    lt->ltFormatIndex0= lt->ltFormatIndex1= -1;
+    lt->ltFormatOffset0= lt->ltFormatOffset1= -1;
+
+    tedListToolSelectNumberFormatRange( lt, 0, 0 );
+
+    appTextSelectContents( lt->ltNumberFormatText,
+				lt->ltFormatOffset0, lt->ltFormatOffset1 );
 
     return;
     }
@@ -215,21 +281,23 @@ static void tedListToolRefreshLevelFormat(
 /*									*/
 /************************************************************************/
 
-static APP_OITEM_CALLBACK_H( tedListFormatLevelChosen, w, voidlt )
+# ifdef USE_MOTIF
+
+static void tedListFormatLevelChosen(	Widget			w,
+					void *			voidlt,
+					void *			pbcs )
     {
-    ListTool *			lt= (ListTool *)voidlt;
-    DocumentList *		dl= &(lt->ltListPropertiesChosen);
-    int				level= lt->ltCurrentLevel;
-    DocumentListLevel *		dll;
+    ListTool *		lt= (ListTool *)voidlt;
+    DocumentList *	dl= &(lt->ltListPropertiesChosen);
+    int			level= lt->ltCurrentLevel;
+    ListLevel *		ll;
 
-    short			number= -1;
-
-    int				changed= 0;
+    short		number= -1;
 
     if  ( level < 0 || level >= dl->dlLevelCount )
 	{ LLDEB(level,dl->dlLevelCount); return;	}
 
-    dll= &(dl->dlLevels[level]);
+    ll= &(dl->dlLevels[level]);
 
 #   ifdef USE_MOTIF
     XtVaGetValues( w,	XmNpositionIndex,	&number,
@@ -239,84 +307,12 @@ static APP_OITEM_CALLBACK_H( tedListFormatLevelChosen, w, voidlt )
     if  ( number < 0 || number > level )
 	{ LLDEB(number,level); return;	}
 
-    docListLevelSetNumber( &changed, dll, number, lt->ltFormatIndex/ 2 );
-
-    if  ( changed )
-	{ tedFormatToolRefreshListPage( lt );	}
+    tedListToolSetFormatLevel( lt, number );
 
     return;
     }
 
-static void tedListDeleteFormatLevel(	ListTool *	lt )
-    {
-    DocumentList *		dl= &(lt->ltListPropertiesChosen);
-    int				level= lt->ltCurrentLevel;
-    DocumentListLevel *		dll;
-
-    if  ( level < 0 || level >= dl->dlLevelCount )
-	{ LLDEB(level,dl->dlLevelCount); return;	}
-
-    dll= &(dl->dlLevels[level]);
-
-    docListLevelDeleteNumber( dll, lt->ltFormatIndex/ 2 );
-
-    if  ( lt->ltFormatIndex > 0 )
-	{ lt->ltFormatIndex--;	}
-
-    if  ( lt->ltFormatIndex > 2* dll->dllNumberSize )
-	{ lt->ltFormatIndex=  2* dll->dllNumberSize; }
-
-    tedFormatToolRefreshListPage( lt );
-
-    return;
-    }
-
-static APP_OITEM_CALLBACK_H( tedListDeleteFormatLevelH, w, voidlt )
-    { tedListDeleteFormatLevel( (ListTool *)voidlt );	}
-
-static APP_OITEM_CALLBACK_H( tedListEditLevelText, w, voidlt )
-    {
-    ListTool *			lt= (ListTool *)voidlt;
-    DocumentList *		dl= &(lt->ltListPropertiesChosen);
-    int				level= lt->ltCurrentLevel;
-    DocumentListLevel *		dll;
-
-    if  ( level < 0 || level >= dl->dlLevelCount )
-	{ LLDEB(level,dl->dlLevelCount); return;	}
-
-    dll= &(dl->dlLevels[level]);
-
-    tedListToolSetFormatEditable( lt, 1 );
-
-    return;
-    }
-
-
-static void tedListInsertFormatLevel(	ListTool *	lt )
-    {
-    DocumentList *		dl= &(lt->ltListPropertiesChosen);
-    int				level= lt->ltCurrentLevel;
-    DocumentListLevel *		dll;
-
-    if  ( level < 0 || level >= dl->dlLevelCount )
-	{ LLDEB(level,dl->dlLevelCount); return;	}
-
-    dll= &(dl->dlLevels[level]);
-
-    docListLevelInsertNumber( dll, level, lt->ltFormatIndex/ 2 );
-
-    if  ( lt->ltFormatIndex % 2 == 0 )
-	{ lt->ltFormatIndex++;	}
-
-    tedFormatToolRefreshListPage( lt );
-
-    return;
-    }
-
-static APP_OITEM_CALLBACK_H( tedListInsertFormatLevelH, w, voidlt )
-    {
-    tedListInsertFormatLevel( (ListTool *)voidlt );
-    }
+# endif
 
 /************************************************************************/
 /*									*/
@@ -324,23 +320,435 @@ static APP_OITEM_CALLBACK_H( tedListInsertFormatLevelH, w, voidlt )
 /*									*/
 /************************************************************************/
 
-static APP_EVENT_HANDLER_H( tedListToolNumberPopup, w, voidlt, mouseEvent )
-    {
-    ListTool *		lt= (ListTool *)voidlt;
-
 #   ifdef USE_MOTIF
-    XmMenuPosition( lt->ltNumberFormatMenu,
-					(XButtonPressedEvent *)mouseEvent );
-    XtManageChild( lt->ltNumberFormatMenu );
-#   endif
+
+static int tedListToolGetSelection(	APP_WIDGET		w,
+					ListTool *		lt )
+    {
+    XmTextPosition		start;
+    XmTextPosition		end;
+
+    if  ( ! XmTextGetSelectionPosition( w, &start, &end ) )
+	{ start= end= XmTextGetCursorPosition( w );	}
+
+    return tedListToolSelectNumberFormatRange( lt, start, end );
+    }
+
+static void tedListToolFormatSelectionChanged(
+					APP_WIDGET		w,
+					void *			voidlt,
+					void *			voidcbs )
+    {
+    XmTextVerifyCallbackStruct *	cbs;
+
+    cbs= (XmTextVerifyCallbackStruct *)voidcbs;
+
+    if  ( cbs->reason == XmCR_MOVING_INSERT_CURSOR )
+	{
+	ListTool *		lt= (ListTool *)voidlt;
+
+	XmTextPosition		off0;
+	XmTextPosition		off1;
+
+	if  ( XmTextGetSelectionPosition( w, &off0, &off1 )	&&
+	      off0 != off1					)
+	    {
+	    if  ( off0 != cbs->newInsert && off1 != cbs->newInsert )
+		{ LLLDEB(cbs->newInsert,off0,off1); return;	}
+	    }
+	else{ off0= off1= cbs->newInsert;	}
+
+	if  ( tedListToolSelectNumberFormatRange( lt, off0, off1 ) )
+	    {
+	    appTextSelectContents( lt->ltNumberFormatText,
+				    lt->ltFormatOffset0, lt->ltFormatOffset1 );
+	    }
+	}
 
     return;
     }
 
+#   endif
+
+#   ifdef USE_GTK
+
+static int tedListToolGetSelection(	APP_WIDGET		w,
+					ListTool *		lt )
+    {
+    gint		start;
+    gint		end;
+
+#   if GTK_MAJOR_VERSION < 2
+    start= end= gtk_editable_get_position( GTK_EDITABLE( w ) );
+#   else
+    if  ( ! gtk_editable_get_selection_bounds( GTK_EDITABLE( w ),
+							    &start, &end ) )
+	{ start= end= gtk_editable_get_position( GTK_EDITABLE( w ) );	}
+#   endif
+
+    return tedListToolSelectNumberFormatRange( lt, start, end );
+    }
+
+# if GTK_MAJOR_VERSION >= 2
+
+static void tedListToolFormatSelectionChanged(
+					GtkEntry *		w,
+					GtkMovementStep		step,
+					gint			arg2,
+					gboolean		arg3,
+					void *			voidlt )
+    {
+    ListTool *		lt= (ListTool *)voidlt;
+
+    if  ( tedListToolGetSelection( lt->ltNumberFormatText, lt ) )
+	{
+	g_signal_stop_emission_by_name( w, "move_cursor" );
+
+	appTextSelectContents( lt->ltNumberFormatText,
+				lt->ltFormatOffset0, lt->ltFormatOffset1 );
+	}
+
+    return;
+    }
+
+#   endif
+
+#   endif
+
+static void tedListToolRefreshFormat(	ListTool *	lt,
+					const int	level,
+					ListLevel *	ll,
+					int		textAlso )
+    {
+    char		listtext[255+1];
+    char		listScratch[3+sizeof(listtext)];
+
+    tedListToolFormatLevelText( listtext, sizeof(listtext)- 1,
+				lt->ltNumberFormatOffsets, 2* DLmaxLEVELS+ 2,
+				lt, ll, level );
+
+    if  ( textAlso )
+	{ tedListToolSetLevelFormatText( lt, listtext ); }
+
+    sprintf( (char *)listScratch, "%d: %s", level+ 1, (char *)listtext );
+
+    appGuiReplaceValueInListWidget( lt->ltListLevelList, level,
+							(char *)listScratch );
+
+    return;
+    }
+
+/************************************************************************/
+
+static int tedListToolModifyConstPiece( ListLevel *		ll,
+					int			field,
+					int			off0,
+					int			off1,
+					const char *		text,
+					int			length )
+
+    {
+    int				size;
+    char			scratch[255+1];
+    int				shift= off0- off1+ length;
+    int				changed= 0;
+
+    size= docListLevelGetText( scratch, sizeof(scratch)- 1, ll, field );
+    if  ( size < 0 )
+	{ LLDEB(field,size); return -1; }
+
+    memmove( scratch+ off1+ shift, scratch+ off1, size- off1 );
+    if  ( length > 0 )
+	{ memcpy( scratch+ off0, text, length );	}
+    scratch[size+shift]= '\0';
+
+    docListLevelSetText( &changed, ll, scratch, field );
+    return 0;
+    }
+
+/************************************************************************/
+/*									*/
+/*  Replace the selection in the number format with a text string.	*/
+/*									*/
+/*  The alogorithm is atrocious; given the size of the strings and the	*/
+/*  infrequency of te action that is not a problem.			*/
+/*									*/
+/*  1)  String replacements are done before the removal of the numbers	*/
+/*	to avoid interference of the concatenation of the strings by	*/
+/*	the removal of the numbers.					*/
+/*  2)  Do the text replacement in the first string piece.		*/
+/*  3)  Do the text replacement in the last and other string pieces in	*/
+/*	reverse order.							*/
+/*  4)  Delete any numbers.						*/
+/*									*/
+/************************************************************************/
+
+static int tedListToolModifyFormatText(	ListTool *		lt,
+					const char *		text,
+					int			length )
+    {
+    DocumentList *	dl= &(lt->ltListPropertiesChosen);
+    const int		level= lt->ltCurrentLevel;
+    ListLevel *		ll= &(dl->dlLevels[level]);
+
+    int			idx0;
+    int			idx1;
+    int			off0;
+    int			off1;
+
+    /*  1  */
+
+    /*  2  */
+    idx0= lt->ltFormatIndex0;
+    off0= lt->ltFormatOffset0;
+    if  ( IS_NUMBER( idx0 ) )
+	{
+	if  ( off0 != lt->ltNumberFormatOffsets[idx0] )
+	    { LLDEB(off0,lt->ltNumberFormatOffsets[idx0]);	}
+
+	idx0++; off0= lt->ltNumberFormatOffsets[idx0];
+	}
+
+    idx1= idx0;
+    off1= lt->ltFormatOffset1;
+    if  ( lt->ltFormatIndex1 > idx0 )
+	{ idx1++; off1= lt->ltNumberFormatOffsets[idx1];	} 
+
+    if  ( off0 < lt->ltNumberFormatOffsets[idx0] )
+	{ LLDEB(off0,lt->ltNumberFormatOffsets[idx0]); return -1; }
+    if  ( off1 < lt->ltNumberFormatOffsets[idx0] )
+	{ LLDEB(off1,lt->ltNumberFormatOffsets[idx0]); return -1; }
+
+    off0 -= lt->ltNumberFormatOffsets[idx0];
+    off1 -= lt->ltNumberFormatOffsets[idx0];
+
+    if  ( tedListToolModifyConstPiece( ll, idx0/2,
+						off0, off1, text, length ) )
+	{ LDEB(idx0/2); return -1;	}
+
+    /*  3  */
+    off0= 0;
+    idx1= lt->ltFormatIndex1;
+    off1= lt->ltFormatOffset1;
+    if  ( IS_NUMBER( idx1 ) )
+	{ off1= lt->ltNumberFormatOffsets[idx1]; idx1--;	}
+
+    while( idx1 > idx0 )
+	{
+	off1 -= lt->ltNumberFormatOffsets[idx1];
+
+	if  ( tedListToolModifyConstPiece( ll, idx1/2, off0, off1, "", 0 ) )
+	    { LDEB(idx1/2); return -1;	}
+
+	idx1--;
+	off1= lt->ltNumberFormatOffsets[idx1]; idx1--;
+	}
+
+    /*  4  */
+    idx0= lt->ltFormatIndex0;
+    idx1= lt->ltFormatIndex1;
+    if  ( IS_STRING( idx1 ) )
+	{ idx1--;	}
+    while( idx1 >= idx0 )
+	{ docListLevelDeleteNumber( ll, idx1/ 2 ); idx1 -= 2; }
+
+    return 0;
+    }
+
+/************************************************************************/
+/*									*/
+/*  Replace the current selection in the level format with a number	*/
+/*  placeholder.							*/
+/*									*/
+/*  1)  Save strings that we might need to redistribute over the result.*/
+/*  2)  Remove the current selection.					*/
+/*  3)  Insert a number placeholder before the current selection.	*/
+/*  4)  Divide the string over the result.				*/
+/*  5)  Refresh tool and select the position after the new insert.	*/
+/*									*/
+/************************************************************************/
+
+static int tedListToolSetFormatLevel(	ListTool *	lt,
+					int		number )
+    {
+    DocumentList *	dl= &(lt->ltListPropertiesChosen);
+    int			level= lt->ltCurrentLevel;
+    ListLevel *		ll= &(dl->dlLevels[level]);
+
+    int			idx0= lt->ltFormatIndex0;
+    int			idx1= lt->ltFormatIndex1;
+    char		scratch[255+1];
+    int			size;
+    int			split= -1;
+
+    tedListToolGetSelection( lt->ltNumberFormatText, lt );
+
+    /*  1  */
+    size= docListLevelGetText( scratch, sizeof(scratch)- 1, ll, idx0/ 2 );
+    if  ( size < 0 )
+	{ LLDEB(idx0/2,size); return -1; }
+
+    if  ( IS_STRING( idx0 ) )
+	{ split= lt->ltFormatOffset0- lt->ltNumberFormatOffsets[idx0];	}
+    else{
+	split= size;
+
+	if  ( IS_STRING( idx1 ) )
+	    {
+	    int		off1;
+
+	    size= docListLevelGetText( scratch+ split,
+			    sizeof(scratch)- split- 1, ll, idx1/ 2 );
+	    if  ( size < 0 )
+		{ LLDEB(idx1/2,size); return -1; }
+
+	    /*  +1: '\0'  */
+	    off1= lt->ltFormatOffset1- lt->ltNumberFormatOffsets[idx1];
+	    memmove( scratch+ split, scratch+ split+ off1, size- off1+ 1 );
+	    }
+	else{
+	    size= docListLevelGetText( scratch+ split,
+			    sizeof(scratch)- split- 1, ll, idx1/ 2+ 1 );
+	    if  ( size < 0 )
+		{ LLDEB(idx1/2+ 1,size); return -1; }
+	    }
+	}
+
+    /*  2  */
+    tedListToolModifyFormatText( lt, "", 0 );
+
+    /*  3  */
+    docListLevelInsertNumber( ll, number, idx0/ 2 );
+
+    /*  4  */
+    if  ( split >= 0 )
+	{
+	int	changed= 1;
+
+	docListLevelSetText( &changed, ll, scratch+ split, idx0/ 2+ 1 );
+	scratch[split]= '\0';
+	docListLevelSetText( &changed, ll, scratch       , idx0/ 2 );
+	}
+
+    /*  5  */
+    tedListToolRefreshFormat( lt, level, ll, 1 );
+
+    tedListToolSelectNumberFormatRange( lt,
+				    lt->ltNumberFormatOffsets[idx0+2],
+				    lt->ltNumberFormatOffsets[idx0+2] );
+
+    appTextSelectContents( lt->ltNumberFormatText,
+				    lt->ltFormatOffset0, lt->ltFormatOffset1 );
+
+    return 0;
+    }
+
+/************************************************************************/
+/*									*/
+/*  Editing callback:							*/
+/*									*/
+/*  Substitute a piece of string for the current selection. If we think	*/
+/*  that our idea of what is selected differs from the callback, we	*/
+/*  refresh our idea. NOTE that the refreshed idea might differ from	*/
+/*  both the origibal idea and the selection in the callback.		*/
+/*									*/
+/************************************************************************/
+
+static void tedListToolReplaceText(	ListTool *		lt,
+					const char *		text,
+					int			length )
+    {
+    DocumentList *	dl= &(lt->ltListPropertiesChosen);
+    const int		level= lt->ltCurrentLevel;
+    ListLevel *		ll= &(dl->dlLevels[level]);
+
+    tedListToolModifyFormatText( lt, text, length );
+
+    tedListToolRefreshFormat( lt, level, ll, 0 );
+
+    tedListToolSelectNumberFormatRange( lt, lt->ltFormatOffset0,
+						lt->ltFormatOffset0+ length );
+
+    return;
+    }
+
+#   ifdef USE_MOTIF
+
+static void tedListToolFormatModified(	APP_WIDGET		w,
+					void *			voidlt,
+					void *			voidcbs )
+    {
+    XmTextVerifyCallbackStruct *	cbs;
+
+    cbs= (XmTextVerifyCallbackStruct *)voidcbs;
+
+    if  ( cbs->event && cbs->reason == XmCR_MODIFYING_TEXT_VALUE )
+	{
+	ListTool *		lt= (ListTool *)voidlt;
+
+	if  ( tedListToolSelectNumberFormatRange( lt,
+						cbs->startPos, cbs->endPos ) )
+	    {
+	    cbs->startPos= lt->ltFormatOffset0;
+	    cbs->endPos= lt->ltFormatOffset1;
+	    }
+
+	tedListToolReplaceText( lt, cbs->text->ptr, cbs->text->length );
+	}
+
+    return;
+    }
+
+#   endif
+
+#   ifdef USE_GTK
+
+static void tedListToolFormatInsertText(GtkEditable *		w,
+					gchar *			new_text,
+					gint			new_text_length,
+					gint *			position,
+					void *			voidlt )
+    {
+    ListTool *		lt= (ListTool *)voidlt;
+
+    if  ( tedListToolSelectNumberFormatRange( lt, *position, *position ) )
+	{
+LDEB(*position);
+	}
+    else{
+	tedListToolReplaceText( lt, new_text, new_text_length );
+	}
+
+    return;
+    }
+
+static void tedListToolFormatDeleteText(GtkEditable *		w,
+					gint			start_pos,
+					gint			end_pos,
+					void *			voidlt )
+    {
+    ListTool *		lt= (ListTool *)voidlt;
+
+    if  ( tedListToolSelectNumberFormatRange( lt, start_pos, end_pos ) )
+	{
+#	if GTK_MAJOR_VERSION >= 2
+	g_signal_stop_emission_by_name( w, "delete_text" );
+#	endif
+
+	gtk_editable_delete_text( w, lt->ltFormatOffset0, lt->ltFormatOffset1 );
+	}
+
+    tedListToolReplaceText( lt, "", 0 );
+
+    return;
+    }
+
+#   endif
+
+#   ifdef USE_MOTIF
+
 static void tedListLevelRefreshFormatMenu(	ListTool *	lt )
     {
-#   ifdef USE_MOTIF
-    const ListsPageResources *	lpr= lt->ltPageResources;
     int				level= lt->ltCurrentLevel;
 
     Arg				al[20];
@@ -351,7 +759,7 @@ static void tedListLevelRefreshFormatMenu(	ListTool *	lt )
     char			scratch[50];
     char			acci[30+1];
 
-    int				i;
+    int				lev;
 
     ac= 0;
     XtSetArg( al[ac], XmNmarginWidth,		1 ); ac++;
@@ -366,71 +774,68 @@ static void tedListLevelRefreshFormatMenu(	ListTool *	lt )
     /**/
     appEmptyParentWidget( lt->ltNumberFormatMenu );
 
-    if  ( lt->ltFormatIndex % 2 != 0 )
+    for ( lev= 0; lev <= level; lev++ )
 	{
-	for ( i= 0; i <= level; i++ )
+	char		texti[30+1];
+
+	ac= acCommon;
+
+	if  ( docListLevelFormatLevelNumber( texti, sizeof(texti)- 1,
+				    lt->ltCurrPath[lev]+ lt->ltStartPath[lev],
+				    lt->ltFormatPath[lev] ) < 0 )
 	    {
-	    unsigned char		texti[30+1];
-
-	    ac= acCommon;
-
-	    if  ( docListLevelFormatLevelNumber( texti, 30,
-					lt->ltCurrPath[i]+ lt->ltStartPath[i],
-					lt->ltFormatPath[i] ) < 0 )
-		{
-		LLDEB(i,lt->ltCurrPath[i]);
-		strcpy( texti, "?" );
-		}
-
-	    sprintf( scratch, "%d: %s", i+ 1, texti );
-	    sprintf( acci, "<Key>%d", i+ 1 );
-
-	    XtSetArg( al[ac], XmNaccelerator, acci ); ac++;
-
-	    option= XmCreatePushButton( lt->ltNumberFormatMenu, 
-							scratch, al, ac );
-
-	    XtAddCallback( option,
-		    XmNactivateCallback, tedListFormatLevelChosen, (void *)lt );
-
-	    XtManageChild( option );
+	    LLDEB(lev,lt->ltCurrPath[lev]);
+	    strcpy( (char *)texti, "?" );
 	    }
 
-	ac= acCommon;
+	sprintf( scratch, "%d: %s", lev+ 1, texti );
+	sprintf( acci, "<Key>%d", lev+ 1 );
+
+	XtSetArg( al[ac], XmNaccelerator, acci ); ac++;
 
 	option= XmCreatePushButton( lt->ltNumberFormatMenu, 
-					lpr->lprDeleteLevelNumber, al, ac );
+						    scratch, al, ac );
 
 	XtAddCallback( option,
-		XmNactivateCallback, tedListDeleteFormatLevelH, (void *)lt );
-
-	XtManageChild( option );
-	}
-    else{
-	ac= acCommon;
-
-	option= XmCreatePushButton( lt->ltNumberFormatMenu, 
-					lpr->lprEditLevelText, al, ac );
-
-	XtAddCallback( option,
-		XmNactivateCallback, tedListEditLevelText, (void *)lt );
+		XmNactivateCallback, tedListFormatLevelChosen, (void *)lt );
 
 	XtManageChild( option );
 	}
 
-    ac= acCommon;
-
-    option= XmCreatePushButton( lt->ltNumberFormatMenu, 
-				    lpr->lprInsertLevelNumber, al, ac );
-
-    XtAddCallback( option,
-	    XmNactivateCallback, tedListInsertFormatLevelH, (void *)lt );
-
-    XtManageChild( option );
-
-#   endif
     return;
     }
+
+#   endif
+
+#   ifdef USE_GTK
+
+static void tedListLevelRefreshFormatMenu(	ListTool *	lt )
+    {
+    int				level= lt->ltCurrentLevel;
+
+    int				lev;
+
+    appEmptyParentWidget( lt->ltNumberFormatMenu );
+
+    for ( lev= 0; lev <= level; lev++ )
+	{
+	GtkWidget *	item;
+	char		texti[30+1];
+
+	if  ( docListLevelFormatLevelNumber( texti, sizeof(texti)- 1,
+				    lt->ltCurrPath[lev]+ lt->ltStartPath[lev],
+				    lt->ltFormatPath[lev] ) < 0 )
+	    {
+	    LLDEB(lev,lt->ltCurrPath[lev]);
+	    strcpy( (char *)texti, "?" );
+	    }
+
+	item= gtk_menu_item_new_with_label( (gchar *)texti );
+	gtk_menu_append( GTK_MENU( lt->ltNumberFormatMenu ), item );
+	}
+    }
+
+#   endif
 
 static void tedListToolSetLevelHeader(		ListTool *	lt,
 						const char *	level )
@@ -439,8 +844,8 @@ static void tedListToolSetLevelHeader(		ListTool *	lt,
     int				levlen= strlen( level );
     int				size;
     const char *		from;
-    unsigned char *		scratch;
-    unsigned char *		to;
+    char *			scratch;
+    char *			to;
 
     size= 0;
 
@@ -455,16 +860,15 @@ static void tedListToolSetLevelHeader(		ListTool *	lt,
 	}
 
     scratch= to= malloc( size+ 1 );
-    if  ( ! scratch )
+    if  ( ! scratch || ! to )
 	{ LXDEB(size,scratch); return; }
 
     from= lpr->lprListLevel;
     while( *from )
 	{
 	if  ( from[0] == '%' && from[1] == 'd' )
-	    {
-	    from++; strcpy( to, level ); to += levlen;	}
-	else{ *(to++)= *from;				}
+	    { from++; strcpy( to, level ); to += levlen;	}
+	else{ *(to++)= *from;						}
 
 	from++;
 	}
@@ -479,23 +883,20 @@ static void tedListToolSetLevelHeader(		ListTool *	lt,
     }
 
 
-static void tedListToolRefreshIndents(	ListTool *			lt,
-					const DocumentListLevel *	dll )
+static void tedListToolRefreshIndents(	ListTool *		lt,
+					const ListLevel *	ll )
     {
-    char			scratch[50];
+    appLengthToTextWidget( lt->ltFirstIndentText,
+	    ll->llLeftIndentTwips+ ll->llFirstIndentTwips, UNITtyPOINTS );
 
-    appGeoLengthToString( scratch,
-	    dll->dllLeftIndentTwips+ dll->dllFirstIndentTwips, UNITtyPOINTS );
-    appStringToTextWidget( lt->ltFirstIndentText, scratch );
-
-    appGeoLengthToString( scratch, dll->dllLeftIndentTwips, UNITtyPOINTS );
-    appStringToTextWidget( lt->ltLeftIndentText, scratch );
+    appLengthToTextWidget( lt->ltLeftIndentText,
+	    ll->llLeftIndentTwips, UNITtyPOINTS );
     }
 
 static void tedListToolRefreshCurrentLevel(	ListTool *	lt )
     {
     const DocumentList *	dl= &(lt->ltListPropertiesChosen);
-    const DocumentListLevel *	dll;
+    const ListLevel *		ll;
     int				level= lt->ltCurrentLevel;
 
     int				i;
@@ -505,49 +906,40 @@ static void tedListToolRefreshCurrentLevel(	ListTool *	lt )
 	{
 	tedListToolSetLevelHeader( lt, "" );
 	appStringToTextWidget( lt->ltStartAtText, "" );
-	appStringToTextWidget( lt->ltNumberFormatHead, "" );
-	appStringToTextWidget( lt->ltNumberFormatCurrentLabel, "" );
-	appStringToTextWidget( lt->ltNumberFormatCurrentText, "" );
-	appStringToTextWidget( lt->ltNumberFormatLabelTail, "" );
-	appStringToTextWidget( lt->ltNumberFormatTextTail, "" );
+	tedListToolSetLevelFormatText( lt, "" );
 
 	appSetOptionmenu( &(lt->ltNumberStyleOptionmenu), -1 );
 	appSetOptionmenu( &(lt->ltJustifyOptionmenu), -1 );
 	appSetOptionmenu( &(lt->ltFollowOptionmenu), -1 );
 
-	appGuiSetWidgetVisible( lt->ltNumberFormatCurrentLabel, 0 );
-
 	return;
 	}
-
-    appGuiSetWidgetVisible( lt->ltNumberFormatCurrentLabel, 1 );
 
     sprintf( scratch, "%d", level+ 1 );
     tedListToolSetLevelHeader( lt, scratch );
 
     tedListToolSetCurrentLevelPath( lt->ltCurrPath, lt->ltCurrentLevel, lt );
 
-    dll= &(dl->dlLevels[level]);
+    ll= &(dl->dlLevels[level]);
 
-    tedListToolRefreshIndents( lt, dll );
+    tedListToolRefreshIndents( lt, ll );
 
-    appIntegerToTextWidget( lt->ltStartAtText, dll->dllStartAt );
+    appIntegerToTextWidget( lt->ltStartAtText, ll->llStartAt );
 
     for ( i= 0; i < LISTTOOLcountSTYLES; i++ )
 	{
-	if  ( dll->dllNumberStyle == TED_ListToolStyles[i] )
+	if  ( ll->llNumberStyle == TED_ListToolStyles[i] )
 	    { break;	}
 	}
     if  ( i >= LISTTOOLcountSTYLES )
 	{ i= -1;	}
 
     appSetOptionmenu( &(lt->ltNumberStyleOptionmenu), i );
-    appSetOptionmenu( &(lt->ltJustifyOptionmenu), dll->dllJustification );
-    appSetOptionmenu( &(lt->ltFollowOptionmenu), dll->dllFollow );
+    appSetOptionmenu( &(lt->ltJustifyOptionmenu), ll->llJustification );
+    appSetOptionmenu( &(lt->ltFollowOptionmenu), ll->llFollow );
 
     /**/
-    tedListToolRefreshLevelFormat( lt, dll, level );
-    tedListLevelRefreshFormatMenu( lt );
+    tedListToolRefreshLevelFormat( lt, ll, level );
 
     return;
     }
@@ -568,20 +960,14 @@ static void tedListToolSelectLevel(	ListTool *	lt,
 
     if  ( level >= 0 )
 	{
-	const DocumentListLevel *	dll= &(dl->dlLevels[level]);
-
 	lt->ltCurrentLevel= level;
 
 	appGuiSelectPositionInListWidget( lt->ltListLevelList, level );
-
-	if  ( lt->ltFormatIndex > 2* dll->dllNumberSize )
-	    { lt->ltFormatIndex=  2* dll->dllNumberSize; }
 	}
     else{
 	lt->ltCurrentLevel= -1;
 
 	appGuiRemoveSelectionFromListWidget( lt->ltListLevelList );
-	lt->ltFormatIndex= 0;
 	}
 
     tedListToolRefreshCurrentLevel( lt );
@@ -604,29 +990,45 @@ static void tedFormatToolRefreshListPage(	ListTool *	lt )
 
     if  ( dl->dlLevelCount > 0 )
 	{
-	char				scratch[100];
-	unsigned char			listtext[50];
+	char			listtext[255+1];
+	char			listScratch[3+sizeof(listtext)];
 
-	const DocumentListLevel *	dll;
-	int				level;
+	const ListLevel *	ll;
+	int			level;
 
 	docListGetFormatPath( lt->ltStartPath, lt->ltFormatPath,
-					&dll, dl->dlLevelCount- 1, dl, lo );
+					&ll, dl->dlLevelCount- 1, dl, lo );
 
-	dll= dl->dlLevels;
-	for ( level= 0; level < dl->dlLevelCount; dll++, level++ )
+	ll= dl->dlLevels;
+	for ( level= 0; level < dl->dlLevelCount; ll++, level++ )
 	    {
 	    tedListToolFormatLevelText( listtext, sizeof(listtext)- 1,
 							    (int *)0, 0,
-							    lt, dll, level );
+							    lt, ll, level );
 
-	    sprintf( scratch, "%d: %s", level+ 1, (char *)listtext );
+	    sprintf( listScratch, "%d: %s", level+ 1, listtext );
 
-	    appGuiAddValueToListWidget( lt->ltListLevelList, scratch );
+	    appGuiAddValueToListWidget( lt->ltListLevelList,
+							level, listScratch );
 	    }
 
 	tedListToolSelectLevel( lt, lt->ltCurrentLevel );
 	}
+
+    return;
+    }
+
+/************************************************************************/
+
+static void tedListEnableListLevel(	ListTool *	lt,
+					int		enabled )
+    {
+    guiEnableWidget( lt->ltListLevelFrame, enabled );
+
+    guiEnableText( lt->ltNumberFormatText, enabled );
+    guiEnableText( lt->ltFirstIndentText, enabled );
+    guiEnableText( lt->ltLeftIndentText, enabled );
+    guiEnableText( lt->ltStartAtText, enabled );
 
     return;
     }
@@ -655,20 +1057,21 @@ static void tedFormatToolNoList(	ListTool *		lt,
     lt->ltCurrentLevel= -1;
     lt->ltHereLevel= -1;
     lt->ltPrevLevel= -1;
-    lt->ltFormatIndex= 0;
+    lt->ltFormatIndex0= -1;
+    lt->ltFormatIndex1= -1;
+    lt->ltFormatOffset0= -1;
+    lt->ltFormatOffset1= -1;
     lt->ltCurrentParagraphNumber= -1;
 
-    appGuiEnableWidget( lt->ltRemoveFromListButton, 0 );
-    appGuiEnableWidget( is->isApplyButton, 0 );
-    appGuiEnableWidget( is->isRevertButton, 0 );
+    guiEnableWidget( lt->ltRemoveFromListButton, 0 );
+    guiEnableWidget( is->isApplyButton, 0 );
+    guiEnableWidget( is->isRevertButton, 0 );
 
-    appGuiEnableWidget( lt->ltListLevelFrame, 0 );
-    appGuiEnableWidget( lt->ltSetLevelButton, 0 );
+    tedListEnableListLevel( lt, 0 );
+    guiEnableWidget( lt->ltSetLevelButton, 0 );
 
     return;
     }
-
-
 
 static int tedFormatToolSetList(	ListTool *			lt,
 					InspectorSubject *		is,
@@ -679,25 +1082,21 @@ static int tedFormatToolSetList(	ListTool *			lt,
 					DocumentList *			dl,
 					ListNumberTreeNode *		root )
     {
-    const int * const	fontMap= (const int *)0;
-    const int * const	colorMap= (const int *)0;
-
-    if  ( docCopyDocumentList( &(lt->ltListPropertiesSet), dl,
-						    fontMap, colorMap ) )
+    if  ( docCopyDocumentListSameDocument( &(lt->ltListPropertiesSet), dl ) )
 	{ LDEB(1); return -1;	}
-    if  ( docCopyDocumentList( &(lt->ltListPropertiesChosen), dl,
-						    fontMap, colorMap ) )
+    if  ( docCopyDocumentListSameDocument( &(lt->ltListPropertiesChosen), dl ) )
 	{ LDEB(1); return -1;	}
 
-    if  ( docCopyListOverride( &(lt->ltListOverrideSet), lo,
-						    fontMap, colorMap ) )
+    if  ( docCopyListOverrideSameDocument( &(lt->ltListOverrideSet), lo ) )
 	{ LDEB(1); return -1;	}
-    if  ( docCopyListOverride( &(lt->ltListOverrideChosen), lo,
-						    fontMap, colorMap ) )
+    if  ( docCopyListOverrideSameDocument( &(lt->ltListOverrideChosen), lo ) )
 	{ LDEB(1); return -1;	}
 
     lt->ltHereLevel= level;
-    lt->ltFormatIndex= 0;
+    lt->ltFormatIndex0= -1;
+    lt->ltFormatIndex1= -1;
+    lt->ltFormatOffset0= -1;
+    lt->ltFormatOffset1= -1;
 
     if  ( paraNr != lt->ltCurrentParagraphNumber			||
 	  lt->ltCurrentLevel < 0					||
@@ -710,7 +1109,7 @@ static int tedFormatToolSetList(	ListTool *			lt,
     docListNumberTreeGetNumberPath( lt->ltHerePath, root, level, paraNr );
 
     if  ( docListNumberTreeGetPrevPath( lt->ltPrevPath, &(lt->ltPrevLevel),
-							root, paraNr ) )
+							    root, paraNr ) )
 	{
 	int i;
 
@@ -720,28 +1119,37 @@ static int tedFormatToolSetList(	ListTool *			lt,
 	lt->ltPrevLevel= -1;
 	}
 
-    appGuiEnableWidget( lt->ltRemoveFromListButton, 1 );
-    appGuiEnableWidget( is->isApplyButton, 1 );
-    appGuiEnableWidget( is->isRevertButton, 1 );
+    guiEnableWidget( lt->ltRemoveFromListButton, lt->ltCanUpdateSelection );
 
-    appGuiEnableWidget( lt->ltListLevelFrame, 1 );
-    appGuiEnableWidget( lt->ltSetLevelButton, 1 );
+    guiEnableWidget( is->isApplyButton, lt->ltCanUpdateList );
+    guiEnableWidget( is->isRevertButton, lt->ltCanUpdateList );
+
+    tedListEnableListLevel( lt, lt->ltCanUpdateList );
+
+    guiEnableWidget( lt->ltSetLevelButton, lt->ltCanUpdateSelection );
 
     return 0;
     }
 
-void tedFormatToolRefreshListTool(
+/************************************************************************/
+/*									*/
+/*  Refresh the list tool. I.E: Display the current selection in the	*/
+/*  document.								*/
+/*									*/
+/************************************************************************/
+
+void tedRefreshListTool(
 				ListTool *			lt,
 				int *				pEnabled,
 				int *				pPref,
 				InspectorSubject *		is,
 				const DocumentSelection *	ds,
 				const SelectionDescription *	sd,
-				BufferDocument *		bd )
+				BufferDocument *		bd,
+				const unsigned char *		cmdEnabled )
     {
     ListOverride *			lo;
     DocumentList *			dl;
-    ListNumberTreeNode *		root;
     const DocumentProperties *		dp= &(bd->bdProperties);
 
     int					i;
@@ -755,14 +1163,28 @@ void tedFormatToolRefreshListTool(
 
     lt->ltPrevLevel= -1;
     lt->ltHereLevel= -1;
-    lt->ltFormatIndex= 0;
+    lt->ltFormatIndex0= -1;
+    lt->ltFormatIndex1= -1;
+    lt->ltFormatOffset0= -1;
+    lt->ltFormatOffset1= -1;
 
-    if  ( ! sd->sdHasLists					||
+    lt->ltCanUpdateSelection= cmdEnabled[EDITcmdUPD_PARA_PROPS];
+    lt->ltCanUpdateList= cmdEnabled[EDITcmdUPD_LIST];
+
+    if  ( ds->dsSelectionScope.ssTreeType != DOCinBODY		||
+	  ! sd->sdHasLists					||
 	  sd->sdListOverride < 1				||
-	  docGetListOfParagraph( &lo, &root, &dl,
+	  docGetListOfParagraph( &lo, &dl,
 				    sd->sdListOverride, bd )	)
 	{ tedFormatToolNoList( lt, is );	}
     else{
+	ListNumberTreeNode *		root;
+
+	root= docGetListNumberTree( &(bd->bdBody.eiListNumberTrees),
+							sd->sdListOverride );
+	if  ( ! root )
+	    { LXDEB(sd->sdListOverride,root); *pEnabled= 0; return;	}
+
 	if  ( tedFormatToolSetList( lt, is, sd->sdFirstListParaNr,
 			sd->sdListOverride, sd->sdListLevel, lo, dl, root ) )
 	    { LDEB(sd->sdFirstListParaNr); return;	}
@@ -770,12 +1192,7 @@ void tedFormatToolRefreshListTool(
 	lt->ltTabIntervalTwips= dp->dpTabIntervalTwips;
 	}
 
-    if  ( sd->sdListOverride > 0 && sd->sdMultiList )
-	{ appGuiEnableWidget( lt->ltSetListButton, 1 );	}
-    else{ appGuiEnableWidget( lt->ltSetListButton, 0 );	}
-
     /**/
-
     if  ( lt->ltCurrentLevel < 0					||
 	  lt->ltCurrentLevel >= lt->ltListPropertiesChosen.dlLevelCount	)
 	{
@@ -784,31 +1201,27 @@ void tedFormatToolRefreshListTool(
 	else{ lt->ltCurrentLevel= -1;	}
 	}
 
+    if  ( lt->ltCanUpdateSelection		&&
+	  sd->sdListOverride > 0		&&
+	  sd->sdMultiList			)
+	{ guiEnableWidget( lt->ltSetListButton, 1 );	}
+    else{ guiEnableWidget( lt->ltSetListButton, 0 );	}
+
+    guiEnableWidget( lt->ltSelectionFrame, lt->ltCanUpdateSelection );
+
+    guiEnableWidget( lt->ltRemoveFromListButton,
+				    lt->ltCanUpdateSelection	&&
+				    sd->sdListOverride > 0	);
+    guiEnableWidget( lt->ltSetLevelButton,
+				    lt->ltCanUpdateSelection	&&
+				    sd->sdListOverride > 0	);
+
+    tedListEnableListLevel( lt, lt->ltCanUpdateList );
+    guiEnableWidget( lt->ltNewListButton, cmdEnabled[EDITcmdSET_NEW_LIST] );
+
     tedFormatToolRefreshListPage( lt );
 
-    *pEnabled= ds->dsSelectionScope.ssInExternalItem == DOCinBODY;
-
-    return;
-    }
-
-/************************************************************************/
-/*									*/
-/*  Retrieve format string from text box.				*/
-/*									*/
-/************************************************************************/
-
-static void tedListToolSyncNumberFormat(int *			pChanged,
-					ListTool *		lt,
-					DocumentListLevel *	dll )
-    {
-    char *	val;
-
-    val= appGetStringFromTextWidget( lt->ltNumberFormatCurrentText );
-
-    docListLevelSetText( pChanged, dll,
-		(unsigned char *)val, lt->ltFormatIndex/ 2 );
-
-    appFreeStringFromTextWidget( val );
+    *pEnabled= ( sd->sdInTreeType == DOCinBODY );
 
     return;
     }
@@ -830,7 +1243,7 @@ static APP_BUTTON_CALLBACK_H( tedFormatListSetListPushed, w, voidlt )
     ParagraphProperties		pp;
     PropertyMask		ppSetMask;
 
-    PROPmaskCLEAR( &ppSetMask );
+    utilPropMaskClear( &ppSetMask );
     PROPmaskADD( &ppSetMask, PPpropLISTOVERRIDE );
 
     docInitParagraphProperties( &pp );
@@ -857,7 +1270,7 @@ static APP_BUTTON_CALLBACK_H( tedFormatListSetLevelPushed, w, voidlt )
     if  ( lt->ltCurrentLevel < 0 || lt->ltCurrentLevel >= dl->dlLevelCount )
 	{ LLDEB(lt->ltCurrentLevel,dl->dlLevelCount); return;	}
 
-    PROPmaskCLEAR( &ppSetMask );
+    utilPropMaskClear( &ppSetMask );
     PROPmaskADD( &ppSetMask, PPpropLISTLEVEL );
 
     docInitParagraphProperties( &pp );
@@ -886,7 +1299,7 @@ static APP_BUTTON_CALLBACK_H( tedFormatListRemoveFromListPushed, w, voidlt )
     ParagraphProperties		pp;
     PropertyMask		ppSetMask;
 
-    PROPmaskCLEAR( &ppSetMask );
+    utilPropMaskClear( &ppSetMask );
     PROPmaskADD( &ppSetMask, PPpropLISTOVERRIDE );
     PROPmaskADD( &ppSetMask, PPpropLISTLEVEL );
 
@@ -921,20 +1334,66 @@ static APP_BUTTON_CALLBACK_H( tedFormatListRevertPushed, w, voidlt )
     {
     ListTool *			lt= (ListTool *)voidlt;
 
-    const int * const		fontMap= (const int *)0;
-    const int * const		colorMap= (const int *)0;
-
-    if  ( docCopyDocumentList( &(lt->ltListPropertiesChosen),
-			    &(lt->ltListPropertiesSet), fontMap, colorMap ) )
+    if  ( docCopyDocumentListSameDocument( &(lt->ltListPropertiesChosen),
+						&(lt->ltListPropertiesSet) ) )
 	{ LDEB(1); return;	}
 
-    if  ( docCopyListOverride( &(lt->ltListOverrideChosen),
-			    &(lt->ltListOverrideSet), fontMap, colorMap ) )
+    if  ( docCopyListOverrideSameDocument( &(lt->ltListOverrideChosen),
+						&(lt->ltListOverrideSet) ) )
 	{ LDEB(1); return;	}
 
     tedFormatToolRefreshListPage( lt );
 
     return;
+    }
+
+/************************************************************************/
+/*									*/
+/*  Try to save level attributes on the current list level.		*/
+/*									*/
+/************************************************************************/
+
+static int tedListToolGetLevelAttributes(	ListTool *	lt,
+						ListLevel *	ll )
+    {
+    int				li;
+    int				lipfi;
+    int				changed;
+
+    const int			maxValue= INT_MAX;
+    const int			adaptToMax= 0;
+
+    /**/
+    lipfi= ll->llLeftIndentTwips+ ll->llFirstIndentTwips;
+    if  ( appGetLengthFromTextWidget( lt->ltFirstIndentText,
+					&lipfi, &changed, UNITtyPOINTS,
+					INT_MIN, 0, maxValue, adaptToMax ) )
+	{ return -1;	}
+
+    li= ll->llLeftIndentTwips;
+    if  ( appGetLengthFromTextWidget( lt->ltLeftIndentText,
+					&li, &changed, UNITtyPOINTS,
+					0, 0, maxValue, adaptToMax ) )
+	{ return -1;	}
+
+    if  ( ll->llLeftIndentTwips != li )
+	{
+	ll->llLeftIndentTwips= li;
+	PROPmaskADD( &(ll->llParaPropertyMask), PPpropLEFT_INDENT );
+	}
+    if  ( ll->llFirstIndentTwips != lipfi- li )
+	{
+	ll->llFirstIndentTwips= lipfi- li;
+	PROPmaskADD( &(ll->llParaPropertyMask), PPpropFIRST_INDENT );
+	}
+
+
+    /**/
+    if  ( appGetIntegerFromTextWidget( lt->ltStartAtText,
+				    &(ll->llStartAt), 1, 0, INT_MAX, 0 ) )
+	{ return -1;	}
+
+    return 0;
     }
 
 /************************************************************************/
@@ -945,27 +1404,25 @@ static APP_BUTTON_CALLBACK_H( tedFormatListRevertPushed, w, voidlt )
 
 static APP_LIST_CALLBACK_H( tedListToolLevelChosen, w, voidlt, voidlcs )
     {
-    ListTool *			lt= (ListTool *)voidlt;
-    const DocumentList *	dl= &(lt->ltListPropertiesChosen);
-    const DocumentListLevel *	dll;
+    ListTool *		lt= (ListTool *)voidlt;
+    DocumentList *	dl= &(lt->ltListPropertiesChosen);
 
-    int				level;
+    int			level;
 
     level= appGuiGetPositionFromListCallback( w, voidlcs );
 
-    /*  No: takes the role of 'Revert'
     if  ( level == lt->ltCurrentLevel )
 	{ return;	}
-    */
-
     if  ( level < 0 || level >= dl->dlLevelCount )
 	{ LLDEB(level,dl->dlLevelCount); return;	}
 
-    lt->ltCurrentLevel= level;
-    dll= &(dl->dlLevels[level]);
+    if  ( lt->ltCurrentLevel >= 0 && lt->ltCurrentLevel < dl->dlLevelCount )
+	{
+	tedListToolGetLevelAttributes( lt,
+				    &(dl->dlLevels[lt->ltCurrentLevel]) );
+	}
 
-    if  ( lt->ltFormatIndex > 2* dll->dllNumberSize )
-	{ lt->ltFormatIndex=  2* dll->dllNumberSize; }
+    lt->ltCurrentLevel= level;
 
     tedListToolRefreshCurrentLevel( lt );
 
@@ -980,56 +1437,19 @@ static APP_LIST_CALLBACK_H( tedListToolLevelChosen, w, voidlt, voidlcs )
 
 static APP_BUTTON_CALLBACK_H( tedFormatChangeList, w, voidlt )
     {
-    ListTool *			lt= (ListTool *)voidlt;
-    EditApplication *		ea= lt->ltApplication;
-    DocumentList *		dl= &(lt->ltListPropertiesChosen);
+    ListTool *		lt= (ListTool *)voidlt;
+    EditApplication *	ea= lt->ltApplication;
+    DocumentList *	dl= &(lt->ltListPropertiesChosen);
 
-    int				level= lt->ltCurrentLevel;
-    DocumentListLevel *		dll;
-
-    int				li;
-    int				lipfi;
-    int				changed;
-
-    const int			maxValue= INT_MAX;
-    const int			adaptToMax= 0;
+    int			level= lt->ltCurrentLevel;
+    ListLevel *		ll;
 
     if  ( level < 0 || level >= dl->dlLevelCount )
 	{ LLDEB(level,dl->dlLevelCount); return;	}
 
-    dll= &(dl->dlLevels[level]);
+    ll= &(dl->dlLevels[level]);
 
-    if  ( lt->ltFormatIndex % 2 == 0 && lt->ltFormatEditable )
-	{ tedListToolSyncNumberFormat( &changed, lt, dll );	}
-
-    /**/
-    lipfi= dll->dllLeftIndentTwips+ dll->dllFirstIndentTwips;
-    if  ( appGetLengthFromTextWidget( lt->ltFirstIndentText,
-					&lipfi, &changed, UNITtyPOINTS,
-					INT_MIN, 0, maxValue, adaptToMax ) )
-	{ return;	}
-
-    li= dll->dllLeftIndentTwips;
-    if  ( appGetLengthFromTextWidget( lt->ltLeftIndentText,
-					&li, &changed, UNITtyPOINTS,
-					0, 0, maxValue, adaptToMax ) )
-	{ return;	}
-
-    if  ( dll->dllLeftIndentTwips != li )
-	{
-	dll->dllLeftIndentTwips= li;
-	PROPmaskADD( &(dll->dllParaPropertyMask), PPpropLEFT_INDENT );
-	}
-    if  ( dll->dllFirstIndentTwips != lipfi- li )
-	{
-	dll->dllFirstIndentTwips= lipfi- li;
-	PROPmaskADD( &(dll->dllParaPropertyMask), PPpropFIRST_INDENT );
-	}
-
-
-    /**/
-    if  ( appGetIntegerFromTextWidget( lt->ltStartAtText,
-				    &(dll->dllStartAt), 1, 0, INT_MAX, 0 ) )
+    if  ( tedListToolGetLevelAttributes( lt, ll ) )
 	{ return;	}
 
     if  ( tedAppChangeCurrentList( ea, dl ) )
@@ -1045,97 +1465,91 @@ static APP_BUTTON_CALLBACK_H( tedFormatChangeList, w, voidlt )
 /*									*/
 /************************************************************************/
 
-static APP_OITEM_CALLBACK_H( tedListNumberStyleChosen, w, voidlt )
+static void tedListNumberStyleChosen(	int		style,
+					void *		voidlt )
     {
-    ListTool *			lt= (ListTool *)voidlt;
-    DocumentList *		dl= &(lt->ltListPropertiesChosen);
-    int				level= lt->ltCurrentLevel;
-    DocumentListLevel *		dll;
-
-    int				style;
+    ListTool *		lt= (ListTool *)voidlt;
+    DocumentList *	dl= &(lt->ltListPropertiesChosen);
+    int			level= lt->ltCurrentLevel;
+    ListLevel *		ll;
 
     if  ( level < 0 || level >= dl->dlLevelCount )
 	{ LLDEB(level,dl->dlLevelCount); return;	}
 
-    dll= &(dl->dlLevels[level]);
+    ll= &(dl->dlLevels[level]);
 
-    style= appGuiGetOptionmenuItemIndex( &(lt->ltNumberStyleOptionmenu), w );
     if  ( style < 0 || style >= LISTTOOLcountSTYLES )
 	{ LLDEB(style,LISTTOOLcountSTYLES); return;	}
 
-    dll->dllNumberStyle= TED_ListToolStyles[style];
+    ll->llNumberStyle= TED_ListToolStyles[style];
 
     tedFormatToolRefreshListPage( lt );
 
     return;
     }
 
-static APP_OITEM_CALLBACK_H( tedListJustifyChosen, w, voidlt )
+static void tedListJustifyChosen(	int		justify,
+					void *		voidlt )
     {
-    ListTool *			lt= (ListTool *)voidlt;
-    DocumentList *		dl= &(lt->ltListPropertiesChosen);
-    int				level= lt->ltCurrentLevel;
-    DocumentListLevel *		dll;
-
-    int				justify;
+    ListTool *		lt= (ListTool *)voidlt;
+    DocumentList *	dl= &(lt->ltListPropertiesChosen);
+    int			level= lt->ltCurrentLevel;
+    ListLevel *		ll;
 
     if  ( level < 0 || level >= dl->dlLevelCount )
 	{ LLDEB(level,dl->dlLevelCount); return;	}
 
-    dll= &(dl->dlLevels[level]);
+    ll= &(dl->dlLevels[level]);
 
-    justify= appGuiGetOptionmenuItemIndex( &(lt->ltJustifyOptionmenu), w );
     if  ( justify < 0 || justify >= DOClla_COUNT )
 	{ LLDEB(justify,DOClla_COUNT); return;	}
 
-    dll->dllJustification= justify;
+    ll->llJustification= justify;
 
-    if  ( dll->dllJustification == DOCllaCENTER		||
-	  dll->dllJustification == DOCllaRIGHT		)
+    if  ( ll->llJustification == DOCllaCENTER		||
+	  ll->llJustification == DOCllaRIGHT		)
 	{
 	int		refresh= 0;
 
-	if  ( dll->dllLeftIndentTwips < 20 )
+	if  ( ll->llLeftIndentTwips < 20 )
 	    {
-	    dll->dllLeftIndentTwips= lt->ltTabIntervalTwips;
-	    PROPmaskADD( &(dll->dllParaPropertyMask), PPpropLEFT_INDENT );
+	    ll->llLeftIndentTwips= lt->ltTabIntervalTwips;
+	    PROPmaskADD( &(ll->llParaPropertyMask), PPpropLEFT_INDENT );
 	    refresh= 1;
 	    }
 
-	if  ( dll->dllLeftIndentTwips+ dll->dllFirstIndentTwips < 20	&&
-	      dll->dllLeftIndentTwips- lt->ltTabIntervalTwips/ 2 >= 20	)
+	if  ( ll->llLeftIndentTwips+ ll->llFirstIndentTwips < 20	&&
+	      ll->llLeftIndentTwips- lt->ltTabIntervalTwips/ 2 >= 20	)
 	    {
-	    dll->dllFirstIndentTwips= -lt->ltTabIntervalTwips/ 2;
-	    PROPmaskADD( &(dll->dllParaPropertyMask), PPpropFIRST_INDENT );
+	    ll->llFirstIndentTwips= -lt->ltTabIntervalTwips/ 2;
+	    PROPmaskADD( &(ll->llParaPropertyMask), PPpropFIRST_INDENT );
 	    refresh= 1;
 	    }
 
 	if  ( refresh )
-	    { tedListToolRefreshIndents( lt, dll );	}
+	    { tedListToolRefreshIndents( lt, ll );	}
 	}
 
     return;
     }
 
-static APP_OITEM_CALLBACK_H( tedListFollowChosen, w, voidlt )
+static void tedListFollowChosen(	int		follow,
+					void *		voidlt )
     {
-    ListTool *			lt= (ListTool *)voidlt;
-    DocumentList *		dl= &(lt->ltListPropertiesChosen);
-    int				level= lt->ltCurrentLevel;
-    DocumentListLevel *		dll;
-
-    int				follow;
+    ListTool *		lt= (ListTool *)voidlt;
+    DocumentList *	dl= &(lt->ltListPropertiesChosen);
+    int			level= lt->ltCurrentLevel;
+    ListLevel *		ll;
 
     if  ( level < 0 || level >= dl->dlLevelCount )
 	{ LLDEB(level,dl->dlLevelCount); return;	}
 
-    dll= &(dl->dlLevels[level]);
+    ll= &(dl->dlLevels[level]);
 
-    follow= appGuiGetOptionmenuItemIndex( &(lt->ltFollowOptionmenu), w );
     if  ( follow < 0 || follow >= DOCllf_COUNT )
 	{ LLDEB(follow,DOCllf_COUNT); return;	}
 
-    dll->dllFollow= follow;
+    ll->llFollow= follow;
 
     return;
     }
@@ -1148,18 +1562,18 @@ static APP_OITEM_CALLBACK_H( tedListFollowChosen, w, voidlt )
 
 static APP_TXACTIVATE_CALLBACK_H( tedLevelStartAtChanged, w, voidlt )
     {
-    ListTool *			lt= (ListTool *)voidlt;
-    DocumentList *		dl= &(lt->ltListPropertiesChosen);
-    int				level= lt->ltCurrentLevel;
-    DocumentListLevel *		dll;
+    ListTool *		lt= (ListTool *)voidlt;
+    DocumentList *	dl= &(lt->ltListPropertiesChosen);
+    int			level= lt->ltCurrentLevel;
+    ListLevel *		ll;
 
     if  ( level < 0 || level >= dl->dlLevelCount )
 	{ LLDEB(level,dl->dlLevelCount); return;	}
 
-    dll= &(dl->dlLevels[level]);
+    ll= &(dl->dlLevels[level]);
 
     if  ( appGetIntegerFromTextWidget( lt->ltStartAtText,
-				    &(dll->dllStartAt), 1, 0, INT_MAX, 0 ) )
+				    &(ll->llStartAt), 1, 0, INT_MAX, 0 ) )
 	{ return;	}
 
     tedFormatToolRefreshListPage( lt );
@@ -1169,10 +1583,10 @@ static APP_TXACTIVATE_CALLBACK_H( tedLevelStartAtChanged, w, voidlt )
 
 static APP_TXACTIVATE_CALLBACK_H( tedLevelFirstIndentChanged, w, voidlt )
     {
-    ListTool *			lt= (ListTool *)voidlt;
-    DocumentList *		dl= &(lt->ltListPropertiesChosen);
-    int				level= lt->ltCurrentLevel;
-    DocumentListLevel *		dll;
+    ListTool *		lt= (ListTool *)voidlt;
+    DocumentList *	dl= &(lt->ltListPropertiesChosen);
+    int			level= lt->ltCurrentLevel;
+    ListLevel *		ll;
 
     int				li;
     int				lipfi;
@@ -1181,24 +1595,24 @@ static APP_TXACTIVATE_CALLBACK_H( tedLevelFirstIndentChanged, w, voidlt )
     if  ( level < 0 || level >= dl->dlLevelCount )
 	{ LLDEB(level,dl->dlLevelCount); return;	}
 
-    dll= &(dl->dlLevels[level]);
+    ll= &(dl->dlLevels[level]);
 
-    li= dll->dllLeftIndentTwips;
-    lipfi=  dll->dllLeftIndentTwips+ dll->dllFirstIndentTwips;
+    li= ll->llLeftIndentTwips;
+    lipfi=  ll->llLeftIndentTwips+ ll->llFirstIndentTwips;
 
     if  ( tedFormatValidateDimension( &lipfi, &changed,
 					    lt->ltFirstIndentText, lipfi ) )
 	{ return;	}
 
-    if  ( dll->dllLeftIndentTwips != li )
+    if  ( ll->llLeftIndentTwips != li )
 	{
-	dll->dllLeftIndentTwips= li;
-	PROPmaskADD( &(dll->dllParaPropertyMask), PPpropLEFT_INDENT );
+	ll->llLeftIndentTwips= li;
+	PROPmaskADD( &(ll->llParaPropertyMask), PPpropLEFT_INDENT );
 	}
-    if  ( dll->dllFirstIndentTwips != lipfi- li )
+    if  ( ll->llFirstIndentTwips != lipfi- li )
 	{
-	dll->dllFirstIndentTwips= lipfi- li;
-	PROPmaskADD( &(dll->dllParaPropertyMask), PPpropFIRST_INDENT );
+	ll->llFirstIndentTwips= lipfi- li;
+	PROPmaskADD( &(ll->llParaPropertyMask), PPpropFIRST_INDENT );
 	}
 
     return;
@@ -1206,36 +1620,36 @@ static APP_TXACTIVATE_CALLBACK_H( tedLevelFirstIndentChanged, w, voidlt )
 
 static APP_TXACTIVATE_CALLBACK_H( tedLevelLeftIndentChanged, w, voidlt )
     {
-    ListTool *			lt= (ListTool *)voidlt;
-    DocumentList *		dl= &(lt->ltListPropertiesChosen);
-    int				level= lt->ltCurrentLevel;
-    DocumentListLevel *		dll;
+    ListTool *		lt= (ListTool *)voidlt;
+    DocumentList *	dl= &(lt->ltListPropertiesChosen);
+    int			level= lt->ltCurrentLevel;
+    ListLevel *		ll;
 
-    int				li;
-    int				lipfi;
-    int				changed;
+    int			li;
+    int			lipfi;
+    int			changed;
 
     if  ( level < 0 || level >= dl->dlLevelCount )
 	{ LLDEB(level,dl->dlLevelCount); return;	}
 
-    dll= &(dl->dlLevels[level]);
+    ll= &(dl->dlLevels[level]);
 
-    li= dll->dllLeftIndentTwips;
-    lipfi=  dll->dllLeftIndentTwips+ dll->dllFirstIndentTwips;
+    li= ll->llLeftIndentTwips;
+    lipfi= ll->llLeftIndentTwips+ ll->llFirstIndentTwips;
 
     if  ( tedFormatValidateDimension( &li, &changed,
 						lt->ltLeftIndentText, li ) )
 	{ return;	}
 
-    if  ( dll->dllLeftIndentTwips != li )
+    if  ( ll->llLeftIndentTwips != li )
 	{
-	dll->dllLeftIndentTwips= li;
-	PROPmaskADD( &(dll->dllParaPropertyMask), PPpropLEFT_INDENT );
+	ll->llLeftIndentTwips= li;
+	PROPmaskADD( &(ll->llParaPropertyMask), PPpropLEFT_INDENT );
 	}
-    if  ( dll->dllFirstIndentTwips != lipfi- li )
+    if  ( ll->llFirstIndentTwips != lipfi- li )
 	{
-	dll->dllFirstIndentTwips= lipfi- li;
-	PROPmaskADD( &(dll->dllParaPropertyMask), PPpropFIRST_INDENT );
+	ll->llFirstIndentTwips= lipfi- li;
+	PROPmaskADD( &(ll->llParaPropertyMask), PPpropFIRST_INDENT );
 	}
 
     return;
@@ -1245,241 +1659,244 @@ static APP_TXACTIVATE_CALLBACK_H( tedLevelLeftIndentChanged, w, voidlt )
 
 /************************************************************************/
 
-static void tedNavigLevelComponent(	ListTool *	lt,
-					int		to )
+static APP_EVENT_HANDLER_H( tedListToolNumberKeyPress, w, voidlt, event )
     {
-    DocumentList *		dl= &(lt->ltListPropertiesChosen);
-    int				level= lt->ltCurrentLevel;
-    DocumentListLevel *		dll;
+    ListTool *		lt= (ListTool *)voidlt;
+    DocumentList *	dl= &(lt->ltListPropertiesChosen);
+    int			level= lt->ltCurrentLevel;
 
-    if  ( level < 0 || level >= dl->dlLevelCount )
-	{ LLDEB(level,dl->dlLevelCount); return;	}
-
-    dll= &(dl->dlLevels[level]);
-
-    if  ( to < 0 || to > 2* dll->dllNumberSize )
-	{ return;	}
-
-    if  ( lt->ltFormatIndex % 2 == 0 && lt->ltFormatEditable )
-	{
-	int		changed= 0;
-
-	tedListToolSyncNumberFormat( &changed, lt, dll );
-
-	if  ( changed )
-	    { tedFormatToolRefreshListPage( lt );	}
-	}
-
-    lt->ltFormatIndex= to;
-
-    tedListToolSetFormatEditable( lt, 0 );
-    tedListToolRefreshLevelFormat( lt, dll, level );
-    tedListLevelRefreshFormatMenu( lt );
-
-    return;
-    }
-
-# ifdef USE_MOTIF
-static void tedPrevLevelComponentH(	APP_WIDGET	x,
-					void *		voidlt,
-					XEvent *	event,
-					Boolean *	pRefused )
-    {
-    ListTool *			lt= (ListTool *)voidlt;
-
-    tedNavigLevelComponent( lt, lt->ltFormatIndex- 1 );
-    }
-
-static void tedNextLevelComponentH(	APP_WIDGET	x,
-					void *		voidlt,
-					XEvent *	event,
-					Boolean *	pRefused )
-    {
-    ListTool *			lt= (ListTool *)voidlt;
-
-    tedNavigLevelComponent( lt, lt->ltFormatIndex+ 1 );
-    }
-# endif
-
-static APP_EVENT_HANDLER_H( tedListToolNumberKeyPress, w, voidlt, keyEvent )
-    {
-    ListTool *			lt= (ListTool *)voidlt;
-    DocumentList *		dl= &(lt->ltListPropertiesChosen);
-    int				level= lt->ltCurrentLevel;
-    DocumentListLevel *		dll;
-
-    APP_KEY_VALUE		keySym;
-    unsigned char		scratch[40];
-    int				gotString;
-    int				gotKey;
-    unsigned int		state;
-
-    int				changed= 0;
-
-    if  ( level < 0 || level >= dl->dlLevelCount )
-	{ LLDEB(level,dl->dlLevelCount); return;	}
-
-    dll= &(dl->dlLevels[level]);
-
-    appGuiGetStringFromKeyboardEvent( (APP_INPUT_CONTEXT)0, w, keyEvent,
-				&gotString, &gotKey, &state,
-				scratch, sizeof(scratch), &keySym );
-
-    switch( keySym )
-	{
-	case KEY_KP_Left:
-	case KEY_Left:
-	    tedNavigLevelComponent( lt, lt->ltFormatIndex- 1 );
-	    break;
-
-	case KEY_KP_Right:
-	case KEY_Right:
-	    tedNavigLevelComponent( lt, lt->ltFormatIndex+ 1 );
-	    break;
-
-	case KEY_KP_Home:
-	case KEY_Home:
-	    tedNavigLevelComponent( lt, 0 );
-	    break;
-
-	case KEY_KP_End:
-	case KEY_End:
-	    tedNavigLevelComponent( lt, 2* dll->dllNumberSize );
-	    break;
-
-	case KEY_KP_Enter:
-	case KEY_Return:
-	    if  ( lt->ltFormatIndex % 2 == 0 )
-		{ tedListToolSetFormatEditable( lt, 1 );	}
-	    else{
-#		ifdef USE_MOTIF
-		Position	screenX;
-		Position	screenY;
-
-		XtTranslateCoords( lt->ltNumberFormatCurrentLabel, 0, 0,
-							&screenX, &screenY );
-
-		XtVaSetValues( lt->ltNumberFormatMenu,
-					XmNx,	screenX,
-					XmNy,	screenY,
-					NULL );
-
-		XtManageChild( lt->ltNumberFormatMenu );
-#		endif
-		}
-	    break;
-
-	case KEY_KP_Insert:
-	case KEY_Insert:
-	    tedListInsertFormatLevel( lt );
-	    break;
-
-	case KEY_KP_Delete:
-	case KEY_Delete:
-	case KEY_BackSpace:
-	    if  ( lt->ltFormatIndex % 2 == 0 )
-		{
-		docListLevelSetText( &changed, dll,
-			    (unsigned char *)"", lt->ltFormatIndex/ 2 );
-
-		if  ( changed )
-		    { tedFormatToolRefreshListPage( lt );	}
-		}
-	    else{ tedListDeleteFormatLevel( lt );	}
-	    break;
-
-	default:
-	    return;
-	}
-
-    return;
-    }
-
-static APP_TXACTIVATE_CALLBACK_H( tedListToolGetNumberFormat, w, voidlt )
-    {
-    ListTool *			lt= (ListTool *)voidlt;
-    DocumentList *		dl= &(lt->ltListPropertiesChosen);
-    int				level= lt->ltCurrentLevel;
-    DocumentListLevel *		dll;
-
-    if  ( level < 0 || level >= dl->dlLevelCount )
-	{ LLDEB(level,dl->dlLevelCount); return;	}
-
-    dll= &(dl->dlLevels[level]);
-
-    if  ( lt->ltFormatIndex % 2 == 0 && lt->ltFormatEditable )
-	{
-	int		changed= 0;
-
-	tedListToolSyncNumberFormat( &changed, lt, dll );
-
-	if  ( changed )
-	    { tedFormatToolRefreshListPage( lt );	}
-
-	tedListToolSetFormatEditable( lt, 0 );
-	}
-
-    return;
-    }
+    APP_KEY_VALUE	keySym;
+    unsigned int	state;
 
 #   ifdef USE_MOTIF
-static void appMakeHBoxInRow(		APP_WIDGET *	pHBox,
-					APP_WIDGET	row,
-					int		position,
-					int		colspan )
+    int		refused= *pRefused;
+#   endif
+#   ifdef USE_GTK
+    int		refused= 1;
+#   endif
+
+    if  ( level < 0 || level >= dl->dlLevelCount )
+	{ LLDEB(level,dl->dlLevelCount); return;	}
+
+#   ifdef USE_MOTIF
     {
-    Arg			al[20];
-    int			ac= 0;
+    XKeyPressedEvent *	keyEvent= &(event->xkey);
+    char		scratch[40];
 
-    Widget		hbox;
-
-    ac= 0;
-    XtSetArg( al[ac], XmNtopAttachment,		XmATTACH_FORM ); ac++;
-    XtSetArg( al[ac], XmNbottomAttachment,	XmATTACH_FORM ); ac++;
-    XtSetArg( al[ac], XmNleftAttachment,	XmATTACH_POSITION ); ac++;
-    XtSetArg( al[ac], XmNrightAttachment,	XmATTACH_POSITION ); ac++;
-    XtSetArg( al[ac], XmNleftPosition,		position ); ac++;
-    XtSetArg( al[ac], XmNrightPosition,		position+ colspan ); ac++;
-
-    XtSetArg( al[ac], XmNskipAdjust,		True ); ac++;
-    XtSetArg( al[ac], XmNallowResize,		True ); ac++;
-
-    XtSetArg( al[ac], XmNmarginWidth,		0 ); ac++;
-    XtSetArg( al[ac], XmNmarginHeight,		0 ); ac++;
-
-    hbox= XmCreateForm( row, WIDGET_NAME, al, ac );
-
-    XtManageChild( hbox );
-
-    *pHBox= hbox; return;
+    XLookupString( keyEvent, scratch, sizeof(scratch)- 1,
+					    &keySym, (XComposeStatus *)0 );
+    state= keyEvent->state;
     }
 #   endif
 
-static void appMakeLabelAndRowRow(	APP_WIDGET *		pRow,
-					APP_WIDGET *		pLabel,
-					APP_WIDGET *		pHBox,
-					APP_WIDGET		column,
-					const char *		labelText )
+#   ifdef USE_GTK
     {
-    APP_WIDGET		label;
-    APP_WIDGET		hbox;
-    APP_WIDGET		row;
+    GdkEventKey *	keyEvent= &(event->key);
 
-    const int		labelColumn= 0;
-    const int		labelColspan= 1;
-    const int		hboxColumn= 1;
-    const int		hboxColspan= 1;
+    keySym= keyEvent->keyval;
+    state= keyEvent->state;
 
-    const int		columnCount= 2;
-    const int		heightResizable= 0;
-
-    row= appMakeRowInColumn( column, columnCount, heightResizable );
-
-    appMakeLabelInRow( &label, row, labelColumn, labelColspan, labelText );
-    appMakeHBoxInRow( &hbox, row, hboxColumn, hboxColspan );
-
-    *pRow= row; *pLabel= label; *pHBox= hbox; return;
+    tedListToolGetSelection( w, lt );
     }
+#   endif
+
+    switch( keySym )
+	{
+	case KEY_KP_Insert:
+	case KEY_Insert:
+	case KEY_KP_Enter:
+	case KEY_Return:
+	    tedListLevelRefreshFormatMenu( lt );
+
+#	    ifdef USE_MOTIF
+	    {
+	    Position	textX= 0;
+	    Position	textY= 0;
+	    Position	screenX;
+	    Position	screenY;
+
+	    int		pos= lt->ltNumberFormatOffsets[lt->ltFormatIndex0];
+
+	    XmTextPosToXY( lt->ltNumberFormatText, pos, &textX, &textY );
+
+	    XtTranslateCoords( lt->ltNumberFormatText, textX, textY,
+						    &screenX, &screenY );
+
+	    XtVaSetValues( lt->ltNumberFormatMenu,
+				    XmNx,	screenX,
+				    XmNy,	screenY,
+				    NULL );
+
+	    XtManageChild( lt->ltNumberFormatMenu );
+
+	    refused= 0;
+	    }
+#	    endif
+
+#	    ifdef USE_GTK
+
+LDEB(1);
+	    gtk_menu_popup( GTK_MENU( lt->ltNumberFormatMenu ),
+					NULL, NULL, NULL, NULL,
+					1, ((GdkEventKey *)event)->time );
+
+	    refused= 0;
+
+#	    endif
+
+	    break;
+
+	case KEY_1:
+	case KEY_KP_1:
+	    if  ( ( state & KEY_CONTROL_MASK ) )
+		{
+		tedListToolSetFormatLevel( lt, 0 );
+
+		refused= 0;
+		}
+	    break;
+	case KEY_2:
+	case KEY_KP_2:
+	    if  ( ( state & KEY_CONTROL_MASK ) )
+		{
+		if  ( level >= 1 )
+		    { tedListToolSetFormatLevel( lt, 1 );	}
+
+		refused= 0;
+		}
+	    break;
+	case KEY_3:
+	case KEY_KP_3:
+	    if  ( ( state & KEY_CONTROL_MASK ) )
+		{
+		if  ( level >= 2 )
+		    { tedListToolSetFormatLevel( lt, 2 );	}
+
+		refused= 0;
+		}
+	    break;
+	case KEY_4:
+	case KEY_KP_4:
+	    if  ( ( state & KEY_CONTROL_MASK ) )
+		{
+		if  ( level >= 3 )
+		    { tedListToolSetFormatLevel( lt, 3 );	}
+
+		refused= 0;
+		}
+	    break;
+	case KEY_5:
+	case KEY_KP_5:
+	    if  ( ( state & KEY_CONTROL_MASK ) )
+		{
+		if  ( level >= 4 )
+		    { tedListToolSetFormatLevel( lt, 4 );	}
+
+		refused= 0;
+		}
+	    break;
+	case KEY_6:
+	case KEY_KP_6:
+	    if  ( ( state & KEY_CONTROL_MASK ) )
+		{
+		if  ( level >= 5 )
+		    { tedListToolSetFormatLevel( lt, 5 );	}
+
+		refused= 0;
+		}
+	    break;
+	case KEY_7:
+	case KEY_KP_7:
+	    if  ( ( state & KEY_CONTROL_MASK ) )
+		{
+		if  ( level >= 6 )
+		    { tedListToolSetFormatLevel( lt, 6 );	}
+
+		refused= 0;
+		}
+	    break;
+	case KEY_8:
+	case KEY_KP_8:
+	    if  ( ( state & KEY_CONTROL_MASK ) )
+		{
+		if  ( level >= 7 )
+		    { tedListToolSetFormatLevel( lt, 7 );	}
+
+		refused= 0;
+		}
+	    break;
+	case KEY_9:
+	case KEY_KP_9:
+	    if  ( ( state & KEY_CONTROL_MASK ) )
+		{
+		if  ( level >= 8 )
+		    { tedListToolSetFormatLevel( lt, 8 );	}
+
+		refused= 0;
+		}
+	    break;
+
+	default:
+	    break;
+	}
+
+#   ifdef USE_MOTIF
+    *pRefused= refused;
+#   endif
+
+#   ifdef USE_GTK
+    if  ( ! refused )
+	{
+#	if GTK_MAJOR_VERSION >= 2
+	g_signal_stop_emission_by_name( lt->ltNumberFormatText,
+							"key_press_event" );
+#	endif
+	}
+#   endif
+
+    return;
+    }
+
+#   ifdef USE_GTK
+
+static void tedListToolFormatMouseUp(	APP_WIDGET		w,
+					APP_EVENT *		event,
+					void *			voidlt )
+    {
+    ListTool *			lt= (ListTool *)voidlt;
+
+    if  ( tedListToolGetSelection( w, lt ) )
+	{
+#	if GTK_MAJOR_VERSION >= 2
+	g_signal_stop_emission_by_name( w, "button_release_event" );
+#	endif
+
+	appTextSelectContents( lt->ltNumberFormatText,
+				lt->ltFormatOffset0, lt->ltFormatOffset1 );
+	}
+    }
+
+static void tedListToolFormatMouseMove(	APP_WIDGET		w,
+					APP_EVENT *		event,
+					void *			voidlt )
+    {
+    ListTool *			lt= (ListTool *)voidlt;
+
+    if  ( ! ( event->motion.state & GDK_BUTTON1_MASK ) )
+	{ return;	}
+
+    if  ( tedListToolGetSelection( w, lt ) )
+	{
+#	if GTK_MAJOR_VERSION >= 2
+	g_signal_stop_emission_by_name( w, "motion_notify_event" );
+#	endif
+
+	appTextSelectContents( lt->ltNumberFormatText,
+				lt->ltFormatOffset0, lt->ltFormatOffset1 );
+	}
+    }
+
+#   endif
 
 /************************************************************************/
 /*									*/
@@ -1502,8 +1919,7 @@ void tedFormatFillListsPage(	ListTool *			lt,
 
     APP_WIDGET		row;
 
-    const int		visibleItems= 9;
-
+    const int		visibleItems= 4;
     const int		textColumns= 10;
 
     /**/
@@ -1521,21 +1937,22 @@ void tedFormatFillListsPage(	ListTool *			lt,
 
 
     /**/
-    appGuiMakeListInColumn( &(lt->ltListLevelList), pageWidget,
-			    visibleItems, tedListToolLevelChosen, (void *)lt );
+    appGuiMakeListInColumn( &(lt->ltListLevelList),
+		pageWidget, visibleItems,
+		tedListToolLevelChosen, (APP_BUTTON_CALLBACK_T)0, (void *)lt );
 
     /**/
     appMakeColumnFrameInColumn( &(lt->ltSelectionFrame),
 				    &(lt->ltSelectionPaned),
 				    pageWidget, lpr->lprSelection );
 
-    appInspectorMakeButtonRow( &row, lt->ltSelectionPaned,
+    guiToolMake2BottonRow( &row, lt->ltSelectionPaned,
 		    &(lt->ltSetListButton), &(lt->ltRemoveFromListButton),
 		    lpr->lprSetList, lpr->lprRemoveFromList,
 		    tedFormatListSetListPushed,
 		    tedFormatListRemoveFromListPushed, lt );
 
-    appInspectorMakeButtonRow( &row, lt->ltSelectionPaned,
+    guiToolMake2BottonRow( &row, lt->ltSelectionPaned,
 		    &(lt->ltSetLevelButton), &(lt->ltNewListButton),
 		    lpr->lprSetLevel, lpr->lprNewList,
 		    tedFormatListSetLevelPushed,
@@ -1547,158 +1964,37 @@ void tedFormatFillListsPage(	ListTool *			lt,
 				    pageWidget, lpr->lprListLevel );
 
     /**/
-    appInspectorMakeMenuRow( &row, &(lt->ltNumberStyleOptionmenu),
+    guiToolMakeLabelAndMenuRow( &row, &(lt->ltNumberStyleOptionmenu),
 				    &styleLabel, lt->ltListLevelPaned,
-				    lpr->lprNumberStyle );
+				    lpr->lprNumberStyle,
+				    tedListNumberStyleChosen, (void *)lt );
 
     /**/
-    appMakeLabelAndRowRow( &row, &(lt->ltFormatLabel),
-				    &(lt->ltNumberFormatHBox),
+    guiToolMakeLabelAndTextRow( &row, &(lt->ltFormatLabel),
+				    &(lt->ltNumberFormatText),
 				    lt->ltListLevelPaned,
-				    lpr->lprNumberFormat );
+				    lpr->lprNumberFormat, textColumns, 1 );
+
 # ifdef USE_MOTIF
 {
-    Display *		display= XtDisplay( row );
-    int			screen= DefaultScreen( display );
-    Pixel		whitePixel= WhitePixel( display, screen );
-    Pixel		blackPixel= BlackPixel( display, screen );
-
     Arg			al[20];
     int			ac= 0;
 
-    ac= 0;
-    XtSetArg( al[ac], XmNtopAttachment,		XmATTACH_FORM ); ac++;
-    XtSetArg( al[ac], XmNtopOffset,		0 ); ac++;
-    XtSetArg( al[ac], XmNbottomAttachment,	XmATTACH_FORM ); ac++;
-    XtSetArg( al[ac], XmNbottomOffset,		0 ); ac++;
+    XtAddCallback( lt->ltNumberFormatText,
+			XmNmotionVerifyCallback,
+			tedListToolFormatSelectionChanged, (void *)lt );
 
-    XtSetArg( al[ac], XmNleftAttachment,	XmATTACH_FORM ); ac++;
-    XtSetArg( al[ac], XmNleftOffset,		0 ); ac++;
+    XtAddCallback( lt->ltNumberFormatText,
+			XmNmodifyVerifyCallback,
+			tedListToolFormatModified, (void *)lt );
 
-    XtSetArg( al[ac], XmNalignment,		XmALIGNMENT_BEGINNING ); ac++;
-    XtSetArg( al[ac], XmNmarginTop,		6 ); ac++;
+    XtInsertEventHandler( lt->ltNumberFormatText,
+			KeyPressMask, False,
+			tedListToolNumberKeyPress, (void *)lt, XtListHead );
 
-    lt->ltNumberFormatHead= XmCreateLabel(
-				lt->ltNumberFormatHBox, WIDGET_NAME, al, ac );
-
-    ac= 0;
-    XtSetArg( al[ac], XmNtopAttachment,		XmATTACH_FORM ); ac++;
-    XtSetArg( al[ac], XmNtopOffset,		0 ); ac++;
-
-    XtSetArg( al[ac], XmNleftAttachment,	XmATTACH_WIDGET ); ac++;
-    XtSetArg( al[ac], XmNleftOffset,		0 ); ac++;
-    XtSetArg( al[ac], XmNleftWidget,		lt->ltNumberFormatHead ); ac++;
-
-    XtSetArg( al[ac], XmNalignment,		XmALIGNMENT_BEGINNING ); ac++;
-    XtSetArg( al[ac], XmNmarginTop,		6 ); ac++;
-
-    XtSetArg( al[ac], XmNtraversalOn,		True ); ac++;
-    XtSetArg( al[ac], XmNmappedWhenManaged,	False ); ac++;
-
-    lt->ltNumberFormatCurrentLabel= XmCreateLabel(
-				lt->ltNumberFormatHBox, WIDGET_NAME, al, ac );
-
-    {
-	Pixel	backPixel;
-	Pixel	forePixel;
-
-	XtVaGetValues(	lt->ltNumberFormatCurrentLabel,
-				    XmNbackground,	&forePixel,
-				    XmNforeground,	&backPixel,
-				    NULL );
-
-	XtVaSetValues(	lt->ltNumberFormatCurrentLabel,
-				    XmNbackground,	backPixel,
-				    XmNforeground,	forePixel,
-				    NULL );
-    }
-
-    ac= 0;
-    XtSetArg( al[ac], XmNtopAttachment,		XmATTACH_FORM ); ac++;
-    XtSetArg( al[ac], XmNtopOffset,		0 ); ac++;
-
-    XtSetArg( al[ac], XmNleftAttachment,	XmATTACH_WIDGET ); ac++;
-    XtSetArg( al[ac], XmNleftOffset,		0 ); ac++;
-    XtSetArg( al[ac], XmNleftWidget,		lt->ltNumberFormatHead ); ac++;
-
-    XtSetArg( al[ac], XmNcolumns,		2 ); ac++;
-    XtSetArg( al[ac], XmNmarginHeight,		TXmargH ); ac++;
-    XtSetArg( al[ac], XmNborderWidth,		0 ); ac++;
-
-    XtSetArg( al[ac], XmNbackground,		whitePixel ); ac++;
-    XtSetArg( al[ac], XmNforeground,		blackPixel ); ac++;
-
-    XtSetArg( al[ac], XmNmappedWhenManaged,	False ); ac++;
-
-    lt->ltNumberFormatCurrentText= XmCreateText(
-				lt->ltNumberFormatHBox, WIDGET_NAME, al, ac );
-
-    ac= 0;
-    XtSetArg( al[ac], XmNtopAttachment,		XmATTACH_FORM ); ac++;
-    XtSetArg( al[ac], XmNtopOffset,		0 ); ac++;
-    XtSetArg( al[ac], XmNbottomAttachment,	XmATTACH_FORM ); ac++;
-    XtSetArg( al[ac], XmNbottomOffset,		0 ); ac++;
-
-    XtSetArg( al[ac], XmNleftAttachment,	XmATTACH_WIDGET ); ac++;
-    XtSetArg( al[ac], XmNleftOffset,		0 ); ac++;
-    XtSetArg( al[ac], XmNleftWidget,		lt->ltNumberFormatCurrentLabel ); ac++;
-    XtSetArg( al[ac], XmNrightAttachment,	XmATTACH_FORM ); ac++;
-    XtSetArg( al[ac], XmNrightOffset,		0 ); ac++;
-
-    XtSetArg( al[ac], XmNalignment,		XmALIGNMENT_BEGINNING ); ac++;
-    XtSetArg( al[ac], XmNmarginTop,		6 ); ac++;
-
-    lt->ltNumberFormatLabelTail= XmCreateLabel(
-				lt->ltNumberFormatHBox, WIDGET_NAME, al, ac );
-
-    ac= 0;
-    XtSetArg( al[ac], XmNtopAttachment,		XmATTACH_FORM ); ac++;
-    XtSetArg( al[ac], XmNtopOffset,		0 ); ac++;
-    XtSetArg( al[ac], XmNbottomAttachment,	XmATTACH_FORM ); ac++;
-    XtSetArg( al[ac], XmNbottomOffset,		0 ); ac++;
-
-    XtSetArg( al[ac], XmNleftAttachment,	XmATTACH_WIDGET ); ac++;
-    XtSetArg( al[ac], XmNleftOffset,		0 ); ac++;
-    XtSetArg( al[ac], XmNleftWidget,		lt->ltNumberFormatCurrentText ); ac++;
-    XtSetArg( al[ac], XmNrightAttachment,	XmATTACH_FORM ); ac++;
-    XtSetArg( al[ac], XmNrightOffset,		0 ); ac++;
-
-    XtSetArg( al[ac], XmNalignment,		XmALIGNMENT_BEGINNING ); ac++;
-    XtSetArg( al[ac], XmNmarginTop,		6 ); ac++;
-
-    XtSetArg( al[ac], XmNmappedWhenManaged,	False ); ac++;
-
-    lt->ltNumberFormatTextTail= XmCreateLabel(
-				lt->ltNumberFormatHBox, WIDGET_NAME, al, ac );
-
-    XtManageChild( lt->ltNumberFormatHead );
-    XtManageChild( lt->ltNumberFormatCurrentLabel );
-    XtManageChild( lt->ltNumberFormatCurrentText );
-    XtManageChild( lt->ltNumberFormatLabelTail );
-    XtManageChild( lt->ltNumberFormatTextTail );
-
-    XtAddEventHandler( lt->ltFormatLabel, ButtonReleaseMask, False,
-					tedPrevLevelComponentH, (void *)lt );
-    XtAddEventHandler( lt->ltNumberFormatHead, ButtonReleaseMask, False,
-					tedPrevLevelComponentH, (void *)lt );
-    XtAddEventHandler( lt->ltNumberFormatLabelTail, ButtonReleaseMask, False,
-					tedNextLevelComponentH, (void *)lt );
-    XtAddEventHandler( lt->ltNumberFormatTextTail, ButtonReleaseMask, False,
-					tedNextLevelComponentH, (void *)lt );
-
-    XtAddEventHandler( lt->ltNumberFormatCurrentLabel, ButtonPressMask, False,
-					tedListToolNumberPopup, (void *)lt );
-    XtAddEventHandler( lt->ltNumberFormatCurrentLabel, KeyPressMask, False,
-					tedListToolNumberKeyPress, (void *)lt );
-
-					/********************************/
-					/*  Attach to label, managing	*/
-					/*  unmanaging the text		*/
-					/*  confuses Motif.		*/
-					/********************************/
     ac= 0;
     lt->ltNumberFormatMenu= XmCreatePopupMenu(
-					    lt->ltFormatLabel,
+					    lt->ltNumberFormatText,
 					    WIDGET_NAME,
 					    al, ac );
 
@@ -1706,20 +2002,47 @@ void tedFormatFillListsPage(	ListTool *			lt,
 }
 # endif
 
+# ifdef USE_GTK
+
+#   if GTK_MAJOR_VERSION >= 2
+    gtk_signal_connect_after( GTK_OBJECT( lt->ltNumberFormatText ),
+	    "move_cursor",
+	    (GtkSignalFunc)tedListToolFormatSelectionChanged, (void *)lt );
+#   endif
+
+    gtk_signal_connect( GTK_OBJECT( lt->ltNumberFormatText ),
+	    "insert_text",
+	    (GtkSignalFunc)tedListToolFormatInsertText, (void *)lt );
+
+    gtk_signal_connect( GTK_OBJECT( lt->ltNumberFormatText ),
+	    "delete_text",
+	    (GtkSignalFunc)tedListToolFormatDeleteText, (void *)lt );
+
+    gtk_signal_connect_after( GTK_OBJECT( lt->ltNumberFormatText ),
+	    "key_press_event",
+	    (GtkSignalFunc)tedListToolNumberKeyPress, (void *)lt );
+
+    gtk_signal_connect_after( GTK_OBJECT( lt->ltNumberFormatText ),
+	    "button_release_event",
+	    (GtkSignalFunc)tedListToolFormatMouseUp, (void *)lt );
+
+    gtk_signal_connect_after( GTK_OBJECT( lt->ltNumberFormatText ),
+	    "motion_notify_event",
+	    (GtkSignalFunc)tedListToolFormatMouseMove, (void *)lt );
+
+    lt->ltNumberFormatMenu= gtk_menu_new();
+
+# endif
 
     /**/
-    appGuiSetGotValueCallbackForText( lt->ltNumberFormatCurrentText,
-				    tedListToolGetNumberFormat, (void *)lt );
-
-    /**/
-    appMakeLabelAndTextRow( &row, &firstLabel, &(lt->ltFirstIndentText),
+    guiToolMakeLabelAndTextRow( &row, &firstLabel, &(lt->ltFirstIndentText),
 				    lt->ltListLevelPaned,
 				    lpr->lprLevelFirstIndent, textColumns, 1 );
 
     appGuiSetGotValueCallbackForText( lt->ltFirstIndentText,
 				    tedLevelFirstIndentChanged, (void *)lt );
     /**/
-    appMakeLabelAndTextRow( &row, &leftLabel, &(lt->ltLeftIndentText),
+    guiToolMakeLabelAndTextRow( &row, &leftLabel, &(lt->ltLeftIndentText),
 				    lt->ltListLevelPaned,
 				    lpr->lprLevelLeftIndent, textColumns, 1 );
 
@@ -1727,22 +2050,24 @@ void tedFormatFillListsPage(	ListTool *			lt,
 				    tedLevelLeftIndentChanged, (void *)lt );
 
     /**/
-    appMakeLabelAndTextRow( &row, &startLabel, &(lt->ltStartAtText),
+    guiToolMakeLabelAndTextRow( &row, &startLabel, &(lt->ltStartAtText),
 				    lt->ltListLevelPaned,
 				    lpr->lprStartAt, textColumns, 1 );
 
     appGuiSetGotValueCallbackForText( lt->ltStartAtText,
 					tedLevelStartAtChanged, (void *)lt );
     /**/
-    appInspectorMakeMenuRow( &row, &(lt->ltJustifyOptionmenu),
+    guiToolMakeLabelAndMenuRow( &row, &(lt->ltJustifyOptionmenu),
 				    &justifyLabel, lt->ltListLevelPaned,
-				    lpr->lprJustify );
+				    lpr->lprJustify,
+				    tedListJustifyChosen, (void *)lt );
 
-    appInspectorMakeMenuRow( &row, &(lt->ltFollowOptionmenu),
+    guiToolMakeLabelAndMenuRow( &row, &(lt->ltFollowOptionmenu),
 				    &followLabel, lt->ltListLevelPaned,
-				    lpr->lprFollowedBy );
+				    lpr->lprFollowedBy,
+				    tedListFollowChosen, (void *)lt );
 
-    appInspectorMakeButtonRow( &row, pageWidget,
+    guiToolMake2BottonRow( &(is->isApplyRow), pageWidget,
 		&(is->isRevertButton), &(is->isApplyButton),
 		isr->isrRevert, isr->isrApplyToSubject,
 		tedFormatListRevertPushed, tedFormatChangeList, lt );
@@ -1762,18 +2087,15 @@ void tedFormatFillListChoosers(		ListTool *			lt )
 
     appFillInspectorMenu( LISTTOOLcountSTYLES, 0,
 			lt->ltNumberStyleItems, lpr->lprStyleOptionTexts,
-			&(lt->ltNumberStyleOptionmenu),
-			tedListNumberStyleChosen, (void *)lt );
+			&(lt->ltNumberStyleOptionmenu) );
 
     appFillInspectorMenu( DOClla_COUNT, DOCllaLEFT,
 			lt->ltJustifyItems, lpr->lprJustifyOptionTexts,
-			&(lt->ltJustifyOptionmenu),
-			tedListJustifyChosen, (void *)lt );
+			&(lt->ltJustifyOptionmenu) );
 
     appFillInspectorMenu( DOCllf_COUNT, DOCllfTAB,
 			lt->ltFollowItems, lpr->lprFollowOptionTexts,
-			&(lt->ltFollowOptionmenu),
-			tedListFollowChosen, (void *)lt );
+			&(lt->ltFollowOptionmenu) );
 
     return;
     }

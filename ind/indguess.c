@@ -1,368 +1,446 @@
 #   include	"indConfig.h"
 
+#   include	<stdlib.h>
+
 #   include	"indlocal.h"
-#   include	<charnames.h>
+#   include	<ucd.h>
 
 #   include	<appDebugoff.h>
 
-static int INDGindent;
+# define LOG_GUESSES	0
+
+typedef struct GuessContext
+    {
+				/*
+				 * The finite automaton that holds the 
+				 * acceptable words.
+				 */
+    IND *			gcInd;
+				/*
+				 * Receives the guesses.
+				 */
+    unsigned short *		gcTarget;
+				/*
+				 * The word to be approximated and its length.
+				 */
+    const unsigned short *	gcSource;
+    int				gcSourceLen;
+
+				/*
+				 * Tells how to capitalize the guesses before 
+				 * they are added to the list of candidates.
+				 */
+    int				gcShiftHow;
+    SpellGuessContext *		gcSpellGuessContext;
+
+				/*
+				 * Penalty for deleting an arbitrary character
+				 */
+    int				gcDelCost;
+				/*
+				 * Penalty for deleting a character that is 
+				 * identical to the previous one in the input
+				 */
+    int				gcDel2Cost;
+				/*
+				 * Penalty for inserting an arbitrary character
+				 */
+    int				gcInsCost;
+				/*
+				 * Penalty for inserting the same character 
+				 * before a character.
+				 */
+    int				gcIns2Cost;
+				/*
+				 * Penalty for substituting an arbitrary
+				 * character
+				 */
+    int				gcSubstCost;
+				/*
+				 * Penalty for changing case of a character.
+				 */
+    int				gcSubstCaseCost;
+				/*
+				 * Penalty for changing an accent on a 
+				 * character.
+				 */
+    int				gcSubstAccentCost;
+				/*
+				 * Penalty for swapping two input characters.
+				 */
+    int				gcSwapCost;
+    } GuessContext;
 
 /************************************************************************/
 /*  Guess a series of strings that are stored on an automaton from an	*/
 /*  approximation.							*/
 /************************************************************************/
 
-typedef int (*IND_HANDLE_GUESS) ( void *, const unsigned char *, int, int );
-
-static int indINDGuessTail(	IND *				ind,
-				int				start,
-				const unsigned char *		tail,
-				unsigned char *			copy,
-				int				p,
-				int				score,
-				SpellGuessContext *		sgc,
-				IND_HANDLE_GUESS		fun,
-				int				how,
-				const GuessSubstitution *	typos,
-				int				count,
-				const unsigned char *		charKinds,
-				const unsigned char *		charShifts )
+static int indSpelRememberGuess(	const GuessContext *	gc,
+					int			len,
+					int			score )
     {
-    int			i, j;
-    int			next, try;
-    int			ignored;
-    TrieLink *		link;
-    TrieNode *		node;
-    int			transitions;
-    int			best= -1;
-    int			rval;
-    int			cost;
-
-    if  ( score < 0 )
-	{ return score;	}
-
-    INDGindent++;
-
-    /********************************************************************/
-    /*  While the letters are accepted.					*/
-    /********************************************************************/
-    while( *tail )
-	{
-	APP_DEB(appDebug( "%*sGUESS (score %3d) %*s '%.*s%c%s'\n",
-					    2*INDGindent, "",
-					    score,
-					    8- 2*INDGindent, "",
-					    p, copy, '^', tail ));
-
-	/****************************************/
-	/*  0)  Try the list of typos.		*/
-	/****************************************/
-	for ( i= 0; i < count; i++ )
-	    {
-	    if  ( * tail == typos[i].gsFrom[0]		&&
-		  typos[i].gsCost <= score		)
-		{
-		try= indINDstep( &ignored, ind, start, typos[i].gsTo );
-
-		if  ( try >= 0 )
-		    {
-		    copy[p]= typos[i].gsTo[0];
-
-		    for ( j= 1; j < typos[i].gsFromLength; j++ )
-			{
-			if  ( tail[j] != typos[i].gsFrom[j] )
-			    { break;	}
-			}
-		    if  ( j == typos[i].gsFromLength )
-			{
-
-			for ( j= 1; j < typos[i].gsToLength; j++ )
-			    {
-			    try= indINDstep( &ignored, ind, try,
-							typos[i].gsTo+ j );
-
-			    if  ( try < 0 )
-				{ break;	}
-
-			    copy[p+j]= typos[i].gsTo[j];
-			    }
-
-			if  ( try >= 0 )
-			    {
-			    rval= indINDGuessTail( ind, try,
-					tail+ typos[i].gsFromLength,
-					copy, p+ typos[i].gsToLength,
-					score- typos[i].gsCost, sgc,
-						fun, how, typos, count,
-						charKinds, charShifts );
-
-			    if  ( rval > best )
-				{ best= rval;	}
-			    }
-			}
-		    }
-		}
-	    }
-
-	next= indINDstep( &ignored, ind, start, tail );
-
-	node= NODE( ind, start );
-	transitions= node->tn_transitions;
-
-	/****************************************/
-	/*  1)  remove one letter.		*/
-	/****************************************/
-	if  ( tail[1] )
-	    {
-	    if  ( tail[0] == tail[1] )	{ cost=  3;	}
-	    else			{ cost= 12;	}
-
-	    if  ( score >= cost )
-		{
-		APP_DEB(appDebug( "%*sREMOVE   '%c' COST %d\n",
-					    50,"#",
-					    tail[0], cost ));
-
-		try= indINDstep( &ignored, ind, start, tail+ 1 );
-		if  ( try >= 0 )
-		    {
-		    copy[p]= tail[1];
-		    rval= indINDGuessTail( ind, try, tail+ 2, copy, p+ 1,
-					    score- cost, sgc,
-					    fun, how, typos, count,
-					    charKinds, charShifts );
-		    if  ( rval > best )
-			{ best= rval;	}
-		    }
-		}
-	    }
-	else{
-	    cost= 12;
-
-	    if  ( score >= cost )
-		{
-		APP_DEB(appDebug( "%*sTRUNCATE '%c' COST %d\n",
-					    50,"#",
-					    tail[0], cost ));
-
-		if  ( NODE(ind,start)->tn_flags & TNfACCEPTS )
-		    {
-		    copy[p]= '\0';
-		    APP_DEB(appDebug( "%*s>>>>> %4d: '%s'\n",
-						INDGindent, "",
-						score- cost, copy ));
-		    (*fun)( sgc, copy, score- cost, how );
-		    if  ( score - cost > best )
-			{ best= score- cost;	}
-		    }
-		}
-	    }
-
-	/****************************************************************/
-	/*  2)  insert one letter. Repeating the next in the tail is	*/
-	/*      less expensive.						*/
-	/*  3)  replace one letter. Changing case is inexpensive.	*/
-	/*  4)  Changing two identical letters at the same time		*/
-	/****************************************************************/
-	for ( j= 0; j < (int)node->tn_ntrans; j++ )
-	    {
-	    link= LINK(ind,transitions+j);
-
-	    copy[p]= link->tl_key;
-
-	    /*  2  */
-	    if  ( link->tl_key == tail[0] )	{ cost=  3;	}
-	    else				{ cost= 12;	}
-	    if  ( score >= cost )
-		{
-		try= indINDstep( &ignored, ind, link->tl_to, tail );
-		if  ( try >= 0 )
-		    {
-		    APP_DEB(appDebug( "%*sINSERT   '%c' COST %d\n",
-					    50,"#",
-					    link->tl_key, cost ));
-
-		    copy[p+1]= tail[0];
-		    rval= indINDGuessTail( ind, try, tail+ 1, copy,
-				p+ 2, score- cost, sgc,
-				fun, how, typos, count,
-				charKinds, charShifts );
-		    if  ( rval > best )
-			{ best= rval;	}
-		    }
-		}
-
-	    /*  3  */
-	    if  ( ( charKinds[*tail] & CHARisUPPER )	&&
-		  copy[p] == charShifts[*tail]		)
-		{ cost= 2;	}
-	    else{
-		if  ( ( charKinds[*tail] & CHARisLOWER )	&&
-		      copy[p] == charShifts[*tail]		)
-		    { cost=  2;	}
-		else{ cost= 10;	}
-		}
-
-	    if  ( score >= cost )
-		{
-		APP_DEB(appDebug( "%*sREPLACE  '%c' WITH '%c' COST %d\n",
-					    50,"#",
-					    *tail, link->tl_key, cost ));
-
-		rval= indINDGuessTail( ind, link->tl_to, tail+ 1, copy,
-			    p+ 1, score- cost, sgc,
-			    fun, how, typos, count,
-			    charKinds, charShifts );
-		if  ( rval > best )
-		    { best= rval;	}
-
-		/*  4  */
-		if  ( tail[0] == tail[1] )
-		    {
-		    copy[p+1]= copy[p];
-		    cost += 3;
-		    if  ( score >= cost )
-			{
-			try= indINDstep( &ignored, ind, link->tl_to, copy+ p );
-			if  ( try >= 0 )
-			    {
-			    copy[p+1]= copy[p];
-			    rval= indINDGuessTail( ind, try, tail+ 2, copy,
-				    p+ 2, score- cost, sgc,
-				    fun, how, typos, count,
-				    charKinds, charShifts );
-			    if  ( rval > best )
-				{ best= rval;	}
-			    }
-			}
-		    }
-		}
-	    }
-
-	/********************************/
-	/*  transposition.		*/
-	/********************************/
-	cost= 10;
-	if  ( tail[0] && tail[1] && score >= cost )
-	    {
-	    try= indINDstep( &ignored, ind, start, tail+ 1 );
-	    if  ( try >= 0 )
-		{
-		try= indINDstep( &ignored, ind, try, tail );
-		if  ( try >= 0 )
-		    {
-		    APP_DEB(appDebug( "%*sSWAP     '%c' AND  '%c' COST %d\n",
-					    50,"#",
-					    tail[0], tail[1], cost ));
-
-		    copy[p]= tail[1]; copy[p+1]= tail[0];
-		    rval= indINDGuessTail( ind, try, tail+ 2, copy,
-			    p+ 2, score- cost, sgc,
-			    fun, how, typos, count,
-			    charKinds, charShifts );
-		    if  ( rval > best )
-			{ best= rval;	}
-		    }
-		}
-	    }
-
-	if  ( next < 0 )
-	    { INDGindent--; return -1;			}
-	else{ start= next; copy[p++]= *(tail++);	}
-	}
-
-    /************************************************************/
-    /*  Add at end.						*/
-    /************************************************************/
-    cost= 10;
-    if  ( score >= cost )
-	{
-	node= NODE( ind, start );
-	transitions= node->tn_transitions;
-
-	for ( j= 0; j < (int)node->tn_ntrans; j++ )
-	    {
-	    link= LINK(ind,transitions+j);
-
-	    APP_DEB(appDebug( "%*sAPPEND   '%c' COST %d\n",
-					    50,"#",
-					    link->tl_key, cost ));
-	    copy[p]= link->tl_key;
-
-	    rval= indINDGuessTail( ind, link->tl_to, tail, copy,
-			p+ 1, score- cost, sgc,
-			fun, how, typos, count,
-			charKinds, charShifts );
-	    if  ( rval > best )
-		{ best= rval;	}
-	    }
-	}
-
-    INDGindent--;
-
-    if  ( NODE(ind,start)->tn_flags & TNfACCEPTS )
-	{
-	copy[p]= '\0';
-	APP_DEB(appDebug( "%*s>>>> %4d: '%s'\n", INDGindent+ 1, "",  score, copy ));
-	(*fun)( sgc, copy, score, how );
-	return score;
-	}
-
-    return best;
-    }
-
-/************************************************************************/
-
-static int indSpelGuess(	void *			voidsgc,
-				const unsigned char *	word,
-				int			score,
-				int			how )
-    {
-    SpellGuessContext *		sgc= (SpellGuessContext *)voidsgc;
+    SpellGuessContext *		sgc= gc->gcSpellGuessContext;
     IndGuessList *		igl= sgc->sgcGuessList;
     SpellCheckContext *		scc= sgc->sgcCheckContext;
 
     int				accepted;
-    unsigned char		copy[100];
+    char			copy[100];
 
-    if  ( indShiftWord( copy, word, how,
-				scc->sccCharKinds, scc->sccCharShifts ) )
-	{ SLDEB((char *)word,how); return 0;	}
+    if  ( indShiftWord( copy, gc->gcTarget, len, gc->gcShiftHow ) )
+	{ LDEB(how); return 0;	}
 
     if  ( scc->sccForgotInd					&&
-	  indGet( &accepted, scc->sccForgotInd, copy ) >= 0	&&
+	  indGetUtf8( &accepted, scc->sccForgotInd, copy ) >= 0	&&
 	  accepted						)
 	{ return 0;	}
 
     if  ( indAddGuess( igl, copy, score ) )
-	{ SLDEB((char *)copy,score); return -1;	}
+	{ SLDEB(copy,score); return -1;	}
 
     return 0;
+    }
+
+/************************************************************************/
+
+static int indGuessAcceptToEndCost(	const GuessContext *	gc,
+					int			to,
+					int			from )
+    {
+    int		cost;
+
+    if  ( from == gc->gcSourceLen )
+	{ return 0;	}
+
+    if  ( from > 0 && from == gc->gcSourceLen- 1	&&
+	  gc->gcSource[from] == gc->gcSource[from-1]	)
+	{ cost= gc->gcDel2Cost;					}
+    else{ cost= gc->gcDelCost* ( gc->gcSourceLen- from );	}
+
+    return cost;
+    }
+
+static int indGuessCanSkip(		const GuessContext *	gc,
+					int *			pN,
+					int *			pCost,
+					int			to,
+					int			from )
+    {
+    int			cost;
+    int			n= 1;
+
+    while( from+ n < gc->gcSourceLen			&&
+	   gc->gcSource[from+ n] != gc->gcTarget[to]	)
+	{ n++;	}
+
+    if  ( from+ n < gc->gcSourceLen )
+	{
+	if  ( from > 0 &&  gc->gcSource[from- 1] ==  gc->gcSource[from] )
+	    { cost= gc->gcDel2Cost;	}
+	else{ cost= gc->gcDelCost;	}
+
+	cost += gc->gcDelCost* ( n- 1 );
+
+	*pN= n; *pCost= cost;
+	return 1;
+	}
+
+    return 0;
+    }
+
+static int indGuessInsertCost(		const GuessContext *	gc,
+					int			to,
+					int			from )
+    {
+    if  ( from < gc->gcSourceLen			&&
+	  gc->gcSource[from] == gc->gcTarget[to]	)
+	{ return gc->gcIns2Cost;	}
+    else{ return gc->gcInsCost;		}
+    }
+
+static int indGuessCanReplace(		const GuessContext *	gc,
+					int *			pCost,
+					int			to,
+					int			from )
+    {
+    if  ( from < gc->gcSourceLen )
+	{
+	*pCost= gc->gcSubstCost;
+
+	if  ( gc->gcSource[from] == ucdToUpper( gc->gcTarget[to] )	||
+	      gc->gcSource[from] == ucdToLower( gc->gcTarget[to] )	)
+	    { *pCost= gc->gcSubstCaseCost;	}
+
+	if  ( ucdBaseCharacter( gc->gcSource[from] ) ==
+				    ucdBaseCharacter( gc->gcTarget[to] ) )
+	    { *pCost= gc->gcSubstAccentCost;	}
+
+	return 1;
+	}
+
+    return 0;
+    }
+
+static int indGuessCanSwap(		const GuessContext *	gc,
+					int *			pNext,
+					int *			pCost,
+					int			next,
+					int			to,
+					int			from )
+    {
+    if  ( from+ 1 < gc->gcSourceLen			&&
+	  gc->gcSource[from+1] != gc->gcSource[from]	&& /* TRUE! */
+	  gc->gcSource[from+1] == gc->gcTarget[to]	)
+	{
+	int		ignored;
+
+	next= indINDstep( &ignored, gc->gcInd, next, gc->gcSource[from] );
+	if  ( next >= 0 )
+	    { *pCost= gc->gcSwapCost; *pNext= next; return 1;	}
+	}
+
+    return 0;
+    }
+
+/************************************************************************/
+
+# if LOG_GUESSES
+
+static void indGuessLogChar(	const GuessContext *		gc,
+				int				key )
+    {
+    unsigned short	ucods[2];
+    char		scratch[100];
+
+    ucods[0]= key;
+
+    if  ( indShiftWord( scratch, ucods, 1, INDhASIS ) )
+	{ LDEB(1); return;	}
+
+    appDebug( "%s", scratch );
+    }
+
+static void indGuessLogTo(	const char *			label,
+				const GuessContext *		gc,
+				int				to )
+    {
+    char		scratch[100];
+
+    if  ( indShiftWord( scratch, gc->gcTarget, to, INDhASIS ) )
+	{ LDEB(1); return;	}
+
+    appDebug( "%s %s", label, scratch );
+    }
+
+static void indGuessLogFrom(	const char *			label,
+				const GuessContext *		gc,
+				int				to )
+    {
+    char		scratch[100];
+
+    if  ( indShiftWord( scratch, gc->gcSource, to, INDhASIS ) )
+	{ LDEB(1); return;	}
+
+    appDebug( "%s %s", label, scratch );
+    }
+
+# endif
+
+/************************************************************************/
+
+static void indIndGuessForNode(	const GuessContext *		gc,
+				int				tn,
+				int				to,
+				int				from,
+				const int			score )
+    {
+    if  ( tn < 0 )
+	{ LDEB(tn); return;	}
+
+    if  ( score < 0 )
+	{ return;	}
+
+    while( tn >= 0 )
+	{
+	int			j;
+	int			cost;
+	int			next;
+	const TrieNode *	node= NODE( gc->gcInd, tn );
+
+	tn= -1;
+
+#	if LOG_GUESSES
+	indGuessLogTo( ">", gc, to );
+	appDebug( ": (%d)\n", score );
+#	endif
+
+	/****************************************************************/
+	/*  0) 	If the cost of removing letters (if any) at the end	*/
+	/*	of the source is not too high, accept the result.	*/
+	/*  1)  Remove letters from inside the source.			*/
+	/*  2)  insert one letter. Repeating the next in the tail is	*/
+	/*      less expensive.						*/
+	/*  3)  replace one letter. Changing case is inexpensive.	*/
+	/*  4)  Transposition: Note that the next is different follows	*/
+	/*	from that it is equal to the key.			*/
+	/****************************************************************/
+
+	/*  0  */
+	if  ( node->tn_flags & TNfACCEPTS )
+	    {
+	    cost= indGuessAcceptToEndCost( gc, to, from );
+
+#	    if LOG_GUESSES
+	    indGuessLogTo( "-", gc, to );
+	    appDebug( ": ACCEPT? (%d- %d)\n", score, cost );
+#	    endif
+
+	    if  ( score >= cost )
+		{ indSpelRememberGuess( gc, to, score- cost );	}
+	    }
+
+	for ( j= 0; j < (int)node->tn_ntrans; j++ )
+	    {
+	    TrieLink *	link= LINK(gc->gcInd,node->tn_transitions+j);
+	    int		n;
+
+	    gc->gcTarget[to]= link->tl_key;
+
+#	    if LOG_GUESSES
+	    indGuessLogTo( ".", gc, to );
+	    appDebug( "|" );
+	    indGuessLogChar( gc, link->tl_key );
+	    appDebug( "\n" );
+#	    endif
+
+	    /*  1  */
+	    if  ( indGuessCanSkip( gc, &n, &cost, to, from )	&&
+		  score >= cost					)
+		{
+		indIndGuessForNode( gc, link->tl_to, to+ 1,
+						    from+ 1+ n, score- cost );
+		}
+
+	    /*  2  */
+	    cost= indGuessInsertCost( gc, to, from );
+	    if  ( score >= cost )
+		{
+		indIndGuessForNode( gc, link->tl_to, to+ 1, from, score- cost );
+		}
+
+	    /*  3  */
+	    if  ( from < gc->gcSourceLen		&&
+		  gc->gcSource[from] == link->tl_key	)
+		{
+		tn= link->tl_to;
+
+#		if  LOG_GUESSES
+		indGuessLogTo( "=", gc, to+ 1 );
+		appDebug( "\n" );
+#		endif
+		}
+	    else{
+		if  ( indGuessCanReplace( gc, &cost, to, from )	&&
+		      score >= cost				)
+		    {
+		    indIndGuessForNode( gc, link->tl_to, to+ 1, from+ 1,
+								score- cost );
+		    }
+
+		/*  4  */
+		if  ( indGuessCanSwap( gc, &next, &cost, link->tl_to,
+							    to, from )	&&
+		      score >= cost					)
+		    {
+		    gc->gcTarget[to+ 1]= gc->gcSource[from];
+		    indIndGuessForNode( gc, next, to+ 2, from+ 2, score- cost );
+		    }
+		}
+	    }
+
+	if  ( tn >= 0 )
+	    { gc->gcTarget[to++]= gc->gcSource[from++];	}
+	}
+
+    return;
     }
 
 int indINDguess(	IND *				ind,
-			const unsigned char *		word,
+			const unsigned short *		source,
+			int				sourceLen,
 			SpellGuessContext *		sgc,
-			int				how,
-			const GuessSubstitution *	typos,
-			int				count,
-			const unsigned char *		charKinds,
-			const unsigned char *		charShifts )
+			int				how )
     {
-    int			l= strlen( (char *)word );
-    unsigned char *	copy= malloc( 2* l+ 2 );
+    int			upto= 2* sourceLen+ 2;
 
-    SLDEB(word,count);
+    GuessContext	gc;
+
+    gc.gcInd= ind;
+    gc.gcSource= source;
+    gc.gcSourceLen= sourceLen;
+    gc.gcShiftHow= how;
+    gc.gcSpellGuessContext= sgc;
+
+    gc.gcDelCost= 12;
+    gc.gcDel2Cost= 3;
+    gc.gcInsCost= 12;
+    gc.gcIns2Cost= 3;
+    gc.gcSubstCost= 10;
+    gc.gcSubstCaseCost= 2;
+    gc.gcSubstAccentCost= 2;
+    gc.gcSwapCost= 10;
+
+    gc.gcTarget= (unsigned short *)malloc( upto* sizeof(unsigned short) );
+    if  ( ! gc.gcTarget )
+	{ LXDEB(upto,target); return -1;	}
 
     if  ( ind->ind_start >= 0 )
 	{
-	indINDGuessTail( ind, ind->ind_start, word, copy, 0,
-			(int)( 1.5* l+ 10 ),
-			sgc, indSpelGuess, how, typos, count,
-			charKinds, charShifts );
+#	if  LOG_GUESSES
+	indGuessLogFrom( "#", &gc, gc.gcSourceLen );
+	appDebug( "\n" );
+#	endif
+
+	indIndGuessForNode( &gc, ind->ind_start,
+					0, 0, ( 3* sourceLen )/ 2+ 10 );
 	}
 
-    free( copy );
+    if  ( gc.gcTarget )
+	{ free( gc.gcTarget );	}
 
     return 0;
     }
+
+int indCollectGuesses(		IndGuessList *		igl,
+				SpellCheckContext *	scc,
+				const char *		word )
+    {
+    SpellGuessContext		sgc;
+
+    int				limit;
+
+    sgc.sgcGuessList= igl;
+    sgc.sgcCheckContext= scc;
+
+    indCleanGuessList( igl );
+    indInitGuessList( igl );
+
+    if  ( scc->sccStaticInd )
+	{ indGuessWord( scc->sccStaticInd, word, &sgc );	}
+
+    if  ( scc->sccLearntInd )
+	{ indGuess( scc->sccLearntInd, word, &sgc, INDhASIS );	}
+
+    indSortGuesses( igl );
+
+    if  ( igl->iglGuessCount > 6 )
+	{
+	limit= ( igl->iglGuesses[0].igsScore+
+		    2* igl->iglGuesses[igl->iglGuessCount-1].igsScore )/ 3;
+	}
+    else{ limit= 0;	}
+
+    return limit;
+    }
+
+/*********************/

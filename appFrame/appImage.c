@@ -8,36 +8,9 @@
 #   include	<stdio.h>
 #   include	<stdlib.h>
 
-#   include	"appImage.h"
-#   include	<appFrame.h>
+#   include	"appFrame.h"
 
 #   include	<appDebugon.h>
-
-/************************************************************************/
-/*									*/
-/*  Clean an image structure.						*/
-/*									*/
-/************************************************************************/
-
-void appCleanBitmapImage(	AppBitmapImage *	abi )
-    {
-    if  ( abi->abiBuffer )
-	{
-	free( abi->abiBuffer );
-	abi->abiBuffer= (unsigned char *)0;
-	}
-
-    bmCleanDescription( &abi->abiBitmap );
-    bmInitDescription( &abi->abiBitmap );
-    }
-
-void appInitBitmapImage(	AppBitmapImage *	abi )
-    {
-    bmInitDescription( &abi->abiBitmap );
-    abi->abiBuffer= (unsigned char *)0;
-    abi->abiFormat= -1;
-    abi->abiFactor= 10;
-    }
 
 /************************************************************************/
 /*									*/

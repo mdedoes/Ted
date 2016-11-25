@@ -3,6 +3,7 @@
 #   include	"bmintern.h"
 #   include	<string.h>
 #   include	<appDebugon.h>
+#   include	<geoUnits.h>
 
 /************************************************************************/
 /*  Translation back and forth between color encoding and string.	*/
@@ -14,7 +15,8 @@ const char *	bmcoStrings[]=
     "white on black",
     "RGB",
     "RGB palette",
-    0
+
+    (const char *)0
     };
 
 const char *	bmcoIntToString( int colorEncodingInt )
@@ -49,7 +51,8 @@ const char *	bmunStrings[]=
     "inch",
     "point",
     "pixel",
-    0
+
+    (const char *)0
     };
 
 const char * bmunIntToString( int unitInt )
@@ -96,11 +99,7 @@ void bmInitDescription	( BitmapDescription *	bd )
 
     bd->bdHasAlpha= 0;
 
-    /********************************************/
-    /*  Or any other member of the union.	*/
-    /********************************************/
-    bd->bdColorCount= 0;
-    bd->bdRGB8Palette= (RGB8Color *)0;
+    utilInitColorPalette( &(bd->bdPalette) );
     }
 
 /************************************************************************/
@@ -111,17 +110,8 @@ void bmInitDescription	( BitmapDescription *	bd )
 
 void bmCleanDescription	( BitmapDescription *	bd )
     {
-    switch( bd->bdColorEncoding )
-	{
-	case BMcoRGB8PALETTE:
-	    if  ( bd->bdRGB8Palette )
-		{ free( bd->bdRGB8Palette );	}
-	    break;
-	default:
-	    break;
-	}
+    utilCleanColorPalette( &(bd->bdPalette) );
     }
-
 
 /************************************************************************/
 /*									*/
@@ -132,21 +122,14 @@ void bmCleanDescription	( BitmapDescription *	bd )
 int bmCopyDescription	(	BitmapDescription *		to,
 				const BitmapDescription *	from )
     {
-    switch( from->bdColorEncoding )
-	{
-	case BMcoRGB8PALETTE:
-	    *to= *from;
-	    to->bdRGB8Palette= malloc( to->bdColorCount* sizeof(RGB8Color) );
-	    if  ( ! to->bdRGB8Palette )
-		{ XDEB(to->bdRGB8Palette); return -1;	}
+    utilCleanColorPalette( &(to->bdPalette) );
 
-	    memcpy( to->bdRGB8Palette, from->bdRGB8Palette, 
-				    from->bdColorCount* sizeof( RGB8Color ) );
-	    break;
-	default:
-	    *to= *from;
-	    break;
-	}
+    *to= *from;
+
+    utilInitColorPalette( &(to->bdPalette) );
+
+    if  ( utilCopyColorPalette( &(to->bdPalette), &(from->bdPalette) ) )
+	{ LDEB(1); return -1;	}
 
     return 0;
     }
@@ -169,52 +152,63 @@ unsigned char	Bmc7Masks[8]=
 /*									*/
 /************************************************************************/
 
-void bmImageSizeTwips(	int *				pImageWideTwips,
-			int *				pImageHighTwips,
-			const BitmapDescription *	bd )
+void bmRectangleSizeTwips(
+			int *				pRectangleWideTwips,
+			int *				pRectangleHighTwips,
+			const BitmapDescription *	bd,
+			int				pixelsWide,
+			int				pixelsHigh )
     {
-    int		imageWideTwips;
-    int		imageHighTwips;
+    int		rectangleWideTwips;
+    int		rectangleHighTwips;
 
     switch( bd->bdUnit )
 	{
 	case BMunM:
-	    imageWideTwips= (int) ( ( TWIPS_PER_M* bd->bdPixelsWide )/
+	    rectangleWideTwips= (int) ( ( TWIPS_PER_M* pixelsWide )/
 							bd->bdXResolution );
-	    imageHighTwips= (int) ( ( TWIPS_PER_M* bd->bdPixelsHigh )/
+	    rectangleHighTwips= (int) ( ( TWIPS_PER_M* pixelsHigh )/
 							bd->bdYResolution );
 	    break;
 
 	case BMunINCH:
-	    imageWideTwips= (int)( ( 72* 20* bd->bdPixelsWide )/
+	    rectangleWideTwips= (int)( ( 72* 20* pixelsWide )/
 							bd->bdXResolution );
-	    imageHighTwips= (int)( ( 72* 20* bd->bdPixelsHigh )/
+	    rectangleHighTwips= (int)( ( 72* 20* pixelsHigh )/
 							bd->bdYResolution );
 	    break;
 
 	case BMunPOINT:
-	    imageWideTwips= (int)( ( 20* bd->bdPixelsWide )/
+	    rectangleWideTwips= (int)( ( 20* pixelsWide )/
 							bd->bdXResolution );
-	    imageHighTwips= (int)( ( 20* bd->bdPixelsHigh )/
+	    rectangleHighTwips= (int)( ( 20* pixelsHigh )/
 							bd->bdYResolution );
 	    break;
 
 	case BMunPIXEL:
-	    imageWideTwips= 20* bd->bdPixelsWide;
-	    imageHighTwips= 20* bd->bdPixelsHigh;
+	    rectangleWideTwips= 20* pixelsWide;
+	    rectangleHighTwips= 20* pixelsHigh;
 	    break;
 
 	default:
 	    LDEB(bd->bdUnit);
-	    imageWideTwips= 20* bd->bdPixelsWide;
-	    imageHighTwips= 20* bd->bdPixelsHigh;
+	    rectangleWideTwips= 20* pixelsWide;
+	    rectangleHighTwips= 20* pixelsHigh;
 	    break;
 	}
 
-    *pImageWideTwips= imageWideTwips;
-    *pImageHighTwips= imageHighTwips;
+    *pRectangleWideTwips= rectangleWideTwips;
+    *pRectangleHighTwips= rectangleHighTwips;
 
     return;
+    }
+
+void bmImageSizeTwips(	int *				pImageWideTwips,
+			int *				pImageHighTwips,
+			const BitmapDescription *	bd )
+    {
+    bmRectangleSizeTwips( pImageWideTwips, pImageHighTwips, bd,
+				bd->bdPixelsWide, bd->bdPixelsHigh );
     }
 
 /************************************************************************/

@@ -8,7 +8,9 @@
 #   define	TED_FONT_TOOL_H
 
 #   include	<appFontTool.h>
-#   include	"tedApp.h"
+#   include	<appFrame.h>
+#   include	<docBuf.h>
+#   include	<docSelectionDescription.h>
 
 /************************************************************************/
 /*									*/
@@ -22,24 +24,13 @@ extern void tedRefreshFontTool(	AppFontChooser *		afc,
 				InspectorSubject *		is,
 				const DocumentSelection *	ds,
 				const SelectionDescription *	sd,
-				EditDocument *			ed );
-
-extern void tedRefreshListFontTool(
-				AppFontChooser *		afc,
-				int *				pEnabled,
-				int *				pPref,
-				InspectorSubject *		is,
-				const DocumentSelection *	ds,
-				const SelectionDescription *	sd,
-				BufferDocument *		bd );
+				const BufferDocument *		bd,
+				int				documentId,
+				const unsigned char *		cmdEnabled );
 
 extern void tedFontToolGetResourceTable(
 				EditApplication *		ea,
 				AppFontToolResources *		aftr,
-				InspectorSubjectResources *	isr );
-
-extern void tedListFontToolGetResourceTable(
-				EditApplication *		ea,
 				InspectorSubjectResources *	isr );
 
 #   endif	/*  TED_FONT_TOOL_H */

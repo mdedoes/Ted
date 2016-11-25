@@ -7,9 +7,9 @@
 #   ifndef	APP_RGB_CHOOSER_PAGE_H
 #   define	APP_RGB_CHOOSER_PAGE_H
 
-#   include	<appFrame.h>
-#   include	<bmcolor.h>
-#   include	<appRgbCube.h>
+#   include	"appFrame.h"
+#   include	"appRgbCube.h"
+#   include	"appInspector.h"
 
 /************************************************************************/
 /*									*/
@@ -51,8 +51,7 @@ typedef struct RgbChooserPage
     int					rcpProperty;
 
     APP_WIDGET				rcpDrawing;
-    AppDrawingData			rcpDrawingData;
-    int					rcpDrawingDataAllocated;
+    DrawingSurface			rcpDrawingSurface;
 
     APP_WIDGET				rcpRedToggle;
     APP_WIDGET				rcpGreenToggle;

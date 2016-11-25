@@ -6,15 +6,18 @@
 
 #   include	"tedConfig.h"
 
-#   include	<stdlib.h>
 #   include	<stdio.h>
 #   include	<stddef.h>
 
-#   include	<appGeoString.h>
-#   include	<appUnit.h>
-
-#   include	"tedApp.h"
-#   include	"tedFormatTool.h"
+#   include	"tedAppFront.h"
+#   include	"tedCellTool.h"
+#   include	"tedDocFront.h"
+#   include	"tedToolUtil.h"
+#   include	<guiToolUtil.h>
+#   include	<guiTextUtil.h>
+#   include	<docTreeNode.h>
+#   include	<docNodeTree.h>
+#   include	<docEditCommand.h>
 
 #   include	<appDebugon.h>
 
@@ -26,93 +29,135 @@
 
 static void tedFormatToolRefreshCellPage(	CellTool *	ct )
     {
-    const RowProperties *	rp= &(ct->ctRowPropertiesChosen);
     const TableRectangle *	tr= &(ct->ctTableRectangle);
-    const CellProperties *	cp= &(rp->rpCells[tr->trCol0]);
+    const CellProperties *	cp= &(ct->ctPropertiesChosen);
 
-    EditApplication *		ea= ct->ctApplication;
-    EditDocument *		ed= ea->eaCurrentDocument;
+    EditDocument *		ed;
+    int				traced;
+    BufferDocument *		bd= tedFormatCurDoc( &ed, &traced, ct->ctApplication );
 
-    TedDocument *		td;
-    BufferDocument *		bd;
-    DocumentProperties *	dp;
+    int				row0= tr->trRow0;
+    int				row1= tr->trRow1;
+    int				col0= tr->trCol0;
+    int				col1= tr->trCol1;
 
-    if  ( ! ed )
-	{ XDEB(ed); return;	}
+    if  ( ! bd )
+	{ XDEB(bd); return;	}
 
-    td= (TedDocument *)ed->edPrivateData;
-    bd= td->tdDocument;
-    dp= &(bd->bdProperties);
+    appSetOptionmenu( &(ct->ctValignMenu), cp->cpValign );
 
-    appIntegerToTextWidget( ct->ctRowText, tr->trRow0- tr->trRow00+ 1 );
-    appIntegerToTextWidget( ct->ctColumnText, tr->trCol0+ 1 );
-
-    if  ( tr->trCol0 == tr->trCol1	&&
-	  tr->trRow0 == tr->trRow1	&&
-	  ! rp->rpIsTableHeader		)
+    if  ( tr->trIsSingleCell )
 	{
-	appEnableText( ct->ctColspanText, 1 );
-	appEnableText( ct->ctRowspanText, 1 );
+	appGuiSetToggleState( ct->ctMergedToggle,
+				    tr->trCellColspan > 1 ||
+				    tr->trCellRowspan > 1 );
 
-	appIntegerToTextWidget( ct->ctColspanText, tr->trCellColspan );
-	appIntegerToTextWidget( ct->ctRowspanText, tr->trCellRowspan );
+	col1= col0+ tr->trCellColspan- 1;
+	row1= row0+ tr->trCellRowspan- 1;
 	}
     else{
-	appEnableText( ct->ctColspanText, 0 );
-	appEnableText( ct->ctRowspanText, 0 );
-
-	appStringToTextWidget( ct->ctColspanText, "" );
-	appStringToTextWidget( ct->ctRowspanText, "" );
+	appGuiSetToggleState( ct->ctMergedToggle, 0 );
 	}
 
-    tedBorderToolSetProperties( &(ct->ctTopBorderTool), dp,
-						&(cp->cpTopBorder) );
-    tedBorderToolSetProperties( &(ct->ctBottomBorderTool), dp,
-						&(cp->cpBottomBorder) );
-    tedBorderToolSetProperties( &(ct->ctLeftBorderTool), dp,
-						&(cp->cpLeftBorder) );
-    tedBorderToolSetProperties( &(ct->ctRightBorderTool), dp,
-						&(cp->cpRightBorder) );
+    guiEnableWidget( ct->ctMergedToggle,
+				ct->ctCanChange && ct->ctCanMerge );
 
-    tedSetShadingTool( &(ct->ctShadingTool), dp, &(cp->cpShading) );
+    appRectangleToTextWidget( ct->ctRowColumnText,
+				    row0- tr->trRow00+ 1,
+				    row1- tr->trRow00+ 1,
+				    col0+ 1, col1+ 1 );
+
+    guiEnableWidget( ct->ctBordersFrame, ct->ctCanChange );
+    tedEnableBorderTool( &(ct->ctTopBorderTool), ct->ctCanChange );
+    tedEnableBorderTool( &(ct->ctBottomBorderTool), ct->ctCanChange );
+    tedEnableBorderTool( &(ct->ctLeftBorderTool), ct->ctCanChange );
+    tedEnableBorderTool( &(ct->ctRightBorderTool), ct->ctCanChange );
+
+    tedBorderToolSetPropertiesByNumber( &(ct->ctTopBorderTool), bd,
+						cp->cpTopBorderNumber );
+    tedBorderToolSetPropertiesByNumber( &(ct->ctBottomBorderTool), bd,
+						cp->cpBottomBorderNumber );
+    tedBorderToolSetPropertiesByNumber( &(ct->ctLeftBorderTool), bd,
+						cp->cpLeftBorderNumber );
+    tedBorderToolSetPropertiesByNumber( &(ct->ctRightBorderTool), bd,
+						cp->cpRightBorderNumber );
+
+    tedEnableShadingTool( &(ct->ctShadingTool), ct->ctCanChange );
+    tedSetShadingToolByNumber( &(ct->ctShadingTool), bd, cp->cpShadingNumber );
     }
 
-void tedFormatToolRefreshCellTool(
-				CellTool *			ct,
+void tedRefreshCellTool(	CellTool *			ct,
 				int *				pEnabled,
 				int *				pPref,
 				InspectorSubject *		is,
-				const DocumentSelection *	ds )
+				const DocumentSelection *	ds,
+				const SelectionDescription *	sd,
+				const BufferDocument *		bd,
+				const unsigned char *		cmdEnabled )
     {
     TableRectangle *		tr= &(ct->ctTableRectangle);
 
-    const RowProperties *	rp;
+    int				row0;
+    int				row1;
+    int				col0;
+    int				col1;
 
-    const BufferItem *		rowBi;
-    const BufferItem *		cellBi;
+    const BufferItem *		rowNode;
 
-    if  ( docGetTableRectangle( tr, ds )	||
-	  tr->trRow1 != tr->trRow0		||
-	  tr->trCol1 != tr->trCol0		)
+    const DocumentAttributeMap * const dam0= (const DocumentAttributeMap *)0;
+
+    if  ( docGetTableRectangle( tr, ds ) )
 	{ docInitTableRectangle( tr ); *pEnabled= 0; return; }
 
-    cellBi= ds->dsBegin.dpBi;
-    cellBi= cellBi->biParent;
-    rowBi= cellBi->biParent;
+    row0= tr->trRow0;
+    row1= tr->trRow1;
+    col0= tr->trCol0;
+    col1= tr->trCol1;
 
-    rp= &(rowBi->biRowProperties);
+    if  ( tr->trIsSingleCell )
+	{
+	col1= col0+ tr->trCellColspan- 1;
+	row1= row0+ tr->trCellRowspan- 1;
+	}
 
-    if  ( docCopyRowProperties( &(ct->ctRowPropertiesChosen),
-						    rp, (const int *)0 ) )
+    ct->ctCanMerge= ( col1 > col0 || row1 > row0 ) &&
+			    ! ( row1 > row0 && tr->trInTableHeader );
+    ct->ctHorMerge= CELLmergeNONE;
+    ct->ctVerMerge= CELLmergeNONE;
+
+    if  ( ct->ctCanMerge )
+	{
+	if  ( col1 > col0 )
+	    { ct->ctHorMerge= CELLmergeHEAD;	}
+	if  ( row1 > row0 )
+	    { ct->ctVerMerge= CELLmergeHEAD;	}
+	}
+
+    rowNode= docGetRowNode( ds->dsHead.dpNode );
+    if  ( ! rowNode )
+	{ XDEB(rowNode); *pEnabled= 0; return;	}
+
+    docSetCellRectangleProperties( &(ct->ctPropertiesSet), rowNode, tr, dam0 );
+
+    if  ( docCopyCellProperties( &(ct->ctPropertiesChosen),
+					&(ct->ctPropertiesSet), dam0 ) )
 	{ LDEB(1); return;	}
-    if  ( docCopyRowProperties( &(ct->ctRowPropertiesSet),
-						    rp, (const int *)0 ) )
-	{ LDEB(1); return;	}
 
-    appGuiEnableWidget( is->isPrevButton, tr->trCol0 > 0 );
-    appGuiEnableWidget( is->isNextButton, tr->trCol1 < tr->trCol11 );
+    guiEnableWidget( is->isPrevButton, tr->trCol0 > 0 );
+    guiEnableWidget( is->isNextButton, tr->trCol1 < tr->trCol11 );
+
+    guiEnableWidget( ct->ctPrevRowButton, tr->trRow0 > tr->trRow00 );
+    guiEnableWidget( ct->ctNextRowButton, tr->trRow1 < tr->trRow11 );
+
+    ct->ctCanChange= cmdEnabled[EDITcmdUPD_TABLE_PROPS];
 
     tedFormatToolRefreshCellPage( ct );
+
+    guiEnableWidget( ct->ctRowColumnRow, ct->ctCanChange );
+
+    guiEnableWidget( is->isRevertButton, ct->ctCanChange );
+    guiEnableWidget( is->isApplyButton, ct->ctCanChange );
+    guiEnableWidget( ct->ctValignRow, ct->ctCanChange );
 
     *pEnabled= 1;
     return;
@@ -120,51 +165,29 @@ void tedFormatToolRefreshCellTool(
 
 
 /************************************************************************/
-/*									*/
-/*  The user typed 'Enter' in the rowspan/colspan text widgets.		*/
-/*									*/
-/************************************************************************/
 
-static APP_TXACTIVATE_CALLBACK_H( tedCellToolRowspanChanged, w, voidct )
+static int tedCellToolGetChosen(	CellTool *		ct,
+					BufferDocument *	bd )
     {
-    CellTool *			ct= (CellTool *)voidct;
-    const TableRectangle *	tr= &(ct->ctTableRectangle);
+    CellProperties *		cpChosen= &(ct->ctPropertiesChosen);
 
-    int				minValue= 1;
-    const int			adaptToMin= 0;
-    int				maxValue;
-    const int			adaptToMax= 1;
+    if  ( tedBorderToolGetNumber( &(cpChosen->cpTopBorderNumber), (int *)0,
+					    &(ct->ctTopBorderTool), bd ) )
+	{ return -1;	}
+    if  ( tedBorderToolGetNumber( &(cpChosen->cpBottomBorderNumber), (int *)0,
+					    &(ct->ctBottomBorderTool), bd ) )
+	{ return -1;	}
+    if  ( tedBorderToolGetNumber( &(cpChosen->cpLeftBorderNumber), (int *)0,
+					    &(ct->ctLeftBorderTool), bd ) )
+	{ return -1;	}
+    if  ( tedBorderToolGetNumber( &(cpChosen->cpRightBorderNumber), (int *)0,
+					    &(ct->ctRightBorderTool), bd ) )
+	{ return -1;	}
 
-    int				rowspan= tr->trCellRowspan;
+    if  ( tedFormatToolGetCellShading( cpChosen, bd, &(ct->ctShadingTool) ) )
+	{ LDEB(1); return -1;	}
 
-    maxValue= tr->trRow11- tr->trRow0+ 1;
-
-    if  ( ! appGetIntegerFromTextWidget( ct->ctRowspanText, &rowspan,
-			    minValue, adaptToMin, maxValue, adaptToMax ) )
-	{ appIntegerToTextWidget( ct->ctRowspanText, rowspan );	}
-
-    return;
-    }
-
-static APP_TXACTIVATE_CALLBACK_H( tedCellToolColspanChanged, w, voidct )
-    {
-    CellTool *			ct= (CellTool *)voidct;
-    const TableRectangle *	tr= &(ct->ctTableRectangle);
-
-    int				minValue= 1;
-    const int			adaptToMin= 0;
-    int				maxValue;
-    const int			adaptToMax= 1;
-
-    int				colspan= tr->trCellColspan;
-
-    maxValue= tr->trCol11- tr->trCol0+ 1;
-
-    if  ( ! appGetIntegerFromTextWidget( ct->ctColspanText, &colspan,
-			    minValue, adaptToMin, maxValue, adaptToMax ) )
-	{ appIntegerToTextWidget( ct->ctColspanText, colspan );	}
-
-    return;
+    return 0;
     }
 
 /************************************************************************/
@@ -176,146 +199,90 @@ static APP_TXACTIVATE_CALLBACK_H( tedCellToolColspanChanged, w, voidct )
 static APP_BUTTON_CALLBACK_H( tedTableChangeCellPushed, w, voidct )
     {
     CellTool *			ct= (CellTool *)voidct;
-    RowProperties *		rp= &(ct->ctRowPropertiesChosen);
-    TableRectangle *		tr= &(ct->ctTableRectangle);
+    CellProperties *		cpChosen= &(ct->ctPropertiesChosen);
 
-    PropertyMask		rpSetMask;
-    PropertyMask		cpSetMask;
-    PropertyMask		bpSetMask;
-    BorderProperties		bp;
+    PropertyMask		cpDifMask;
+    PropertyMask		cpCmpMask;
 
-    /**/
-    EditApplication *		ea= ct->ctApplication;
-    EditDocument *		ed= ea->eaCurrentDocument;
+    const int			wholeRow= 0;
+    const int			wholeColumn= 0;
 
-    TedDocument *		td;
-    BufferDocument *		bd;
-    DocumentProperties *	dp;
-
-    int				minValue= 1;
-    const int			adaptToMin= 0;
-    int				maxValue;
-    const int			adaptToMax= 0;
-
-    int				rowspan= 0;
-    int				colspan= 0;
-
-    if  ( ! ed )
-	{ XDEB(ed); return;	}
-
-    td= (TedDocument *)ed->edPrivateData;
-    bd= td->tdDocument;
-    dp= &(bd->bdProperties);
+    const DocumentAttributeMap * const dam0= (const DocumentAttributeMap *)0;
 
     /**/
-    docInitBorderProperties( &bp );
+    EditDocument *		ed;
+    int				traced;
+    BufferDocument *		bd= tedFormatCurDoc( &ed, &traced, ct->ctApplication );
 
-    PROPmaskCLEAR( &rpSetMask );
-    PROPmaskCLEAR( &cpSetMask );
+    if  ( ! bd )
+	{ XDEB(bd); goto ready;	}
 
-    /****/
-
-    if  ( tr->trCol0 == tr->trCol1	&&
-	  tr->trRow0 == tr->trRow1	&&
-	  ! rp->rpIsTableHeader		)
-	{
-	maxValue= tr->trRow11- tr->trRow0+ 1;
-
-	if  ( appGetIntegerFromTextWidget( ct->ctRowspanText, &rowspan,
-				minValue, adaptToMin, maxValue, adaptToMax ) )
-	    { goto ready;	}
-
-	maxValue= tr->trCol11- tr->trCol0+ 1;
-
-	if  ( appGetIntegerFromTextWidget( ct->ctColspanText, &colspan,
-				minValue, adaptToMin, maxValue, adaptToMax ) )
-	    { goto ready;	}
-
-	if  ( tr->trCellRowspan != rowspan )
-	    {
-	    tr->trCellRowspan= rowspan;
-	    PROPmaskADD( &cpSetMask, CLprop_ROWSPAN );
-	    }
-
-	if  ( tr->trCellColspan != colspan )
-	    {
-	    tr->trCellColspan= colspan;
-	    PROPmaskADD( &cpSetMask, CLprop_COLSPAN );
-	    }
-	}
-
-    /****/
-    PROPmaskCLEAR( &bpSetMask );
-    if  ( tedBorderToolGetProperties( &bp, &bpSetMask,
-						&(ct->ctTopBorderTool), dp ) )
+    if  ( tedCellToolGetChosen( ct, bd ) )
 	{ goto ready;	}
 
-    if  ( ! utilPropMaskIsEmpty( &bpSetMask ) )
-	{
-	docRowSetTopBorderInCols( rp, tr->trCol0, tr->trCol1, &bpSetMask, &bp );
-	PROPmaskADD( &cpSetMask, CLpropTOP_BORDER );
-	}
+    utilPropMaskClear( &cpCmpMask );
+    utilPropMaskFill( &cpCmpMask, CLprop_COUNT );
+    utilPropMaskClear( &cpDifMask );
 
-    /****/
-    PROPmaskCLEAR( &bpSetMask );
-    if  ( tedBorderToolGetProperties( &bp, &bpSetMask,
-					    &(ct->ctBottomBorderTool), dp ) )
-	{ goto ready;	}
+    docCellPropertyDifference( &cpDifMask, &(ct->ctPropertiesSet),
+						&cpCmpMask, cpChosen, dam0 );
 
-    if  ( ! utilPropMaskIsEmpty( &bpSetMask ) )
-	{
-	docRowSetBottomBorderInCols( rp, tr->trCol0, tr->trCol1,
-							    &bpSetMask, &bp );
-	PROPmaskADD( &cpSetMask, CLpropBOTTOM_BORDER );
-	}
-
-    /****/
-    PROPmaskCLEAR( &bpSetMask );
-    if  ( tedBorderToolGetProperties( &bp, &bpSetMask,
-						&(ct->ctLeftBorderTool), dp ) )
-	{ goto ready;	}
-
-    if  ( ! utilPropMaskIsEmpty( &bpSetMask ) )
-	{
-	docRowSetLeftBorderInCols( rp, tr->trCol0, tr->trCol1,
-							    &bpSetMask, &bp );
-	PROPmaskADD( &cpSetMask, CLpropLEFT_BORDER );
-	}
-
-    /****/
-    PROPmaskCLEAR( &bpSetMask );
-    if  ( tedBorderToolGetProperties( &bp, &bpSetMask,
-					    &(ct->ctRightBorderTool), dp ) )
-	{ goto ready;	}
-
-    if  ( ! utilPropMaskIsEmpty( &bpSetMask ) )
-	{
-	docRowSetRightBorderInCols( rp, tr->trCol0, tr->trCol1,
-							    &bpSetMask, &bp );
-	PROPmaskADD( &cpSetMask, CLpropRIGHT_BORDER );
-	}
-
-    if  ( tedFormatToolGetShading( &cpSetMask, rp, tr->trCol0, tr->trCol1,
-						dp, &(ct->ctShadingTool) ) )
-	{ LDEB(1); goto ready;	}
-
-    tedDocSetTableProperties( ed, &(ct->ctTableRectangle),
-					    &rpSetMask, &cpSetMask, rp );
+    tedDocSetTableProperties( ed, wholeRow, wholeColumn,
+			&cpDifMask, cpChosen,
+			(const PropertyMask *)0, (const RowProperties *)0,
+			traced );
 
   ready:
-    docCleanBorderProperties( &bp );
 
     return;
     }
 
+static void tedCellValignChosen(	int		valign,
+					void *		voidct )
+    {
+    CellTool *			ct= (CellTool *)voidct;
+    CellProperties *		cp= &(ct->ctPropertiesChosen);
+
+    if  ( valign < 0 || valign >= DOCtva_COUNT )
+	{ LLDEB(valign,DOCtva_COUNT); return;	}
+
+    cp->cpValign= valign;
+
+    return;
+    }
+
+
 static APP_BUTTON_CALLBACK_H( tedFormatRevertCellPushed, w, voidct )
     {
-    CellTool *	ct= (CellTool *)voidct;
+    CellTool *			ct= (CellTool *)voidct;
 
-    docCopyRowProperties( &(ct->ctRowPropertiesChosen),
-				&(ct->ctRowPropertiesSet), (const int *)0 );
+    const DocumentAttributeMap * const dam0= (const DocumentAttributeMap *)0;
+
+    docCopyCellProperties( &(ct->ctPropertiesChosen),
+						&(ct->ctPropertiesSet), dam0 );
 
     tedFormatToolRefreshCellPage( ct );
+
+    return;
+    }
+
+static APP_TOGGLE_CALLBACK_H( tedCellToggleMerged, w, voidct, voidtbcs )
+    {
+    CellTool *			ct= (CellTool *)voidct;
+    CellProperties *		cp= &(ct->ctPropertiesChosen);
+    int				set;
+
+    set= appGuiGetToggleStateFromCallback( w, voidtbcs );
+
+    if  ( set )
+	{
+	cp->cpHorizontalMerge= ct->ctHorMerge;
+	cp->cpVerticalMerge= ct->ctVerMerge;
+	}
+    else{
+	cp->cpHorizontalMerge= CELLmergeNONE;
+	cp->cpVerticalMerge= CELLmergeNONE;
+	}
 
     return;
     }
@@ -330,62 +297,58 @@ static APP_BUTTON_CALLBACK_H( tedCellPreviousColumn, w, voidct )
     {
     CellTool *		ct= (CellTool *)voidct;
     EditApplication *	ea= ct->ctApplication;
-    EditDocument *	ed= ea->eaCurrentDocument;
-    TedDocument *	td;
 
-    TableRectangle	tr;
+    const int		direction= -1;
+    const int		allRows= 0;
 
-    if  ( ! ed )
-	{ XDEB(ed); return;	}
-
-    tr= ct->ctTableRectangle;
-    td= (TedDocument *)ed->edPrivateData;
-
-    if  ( docShiftTableRectangleByColumns( &tr, -1 ) )
-	{ return;	}
-
-    tedAppSetTableSelection( ed, &tr );
+    tedAppSelectWholeCell( ea, direction, allRows );
     }
 
-/*
+# if 0
 static APP_BUTTON_CALLBACK_H( tedTableSelectCell, w, voidct )
     {
     CellTool *		ct= (CellTool *)voidct;
     EditApplication *	ea= ct->ctApplication;
     EditDocument *	ed= ea->eaCurrentDocument;
-    TedDocument *	td;
 
-    TableRectangle	tr;
+    const int		direction= 0;
+    const int		allRows= 0;
 
-    if  ( ! ed )
-	{ XDEB(ed); return;	}
-
-    tr= ct->ctTableRectangle;
-    td= (TedDocument *)ed->edPrivateData;
-
-    tedAppSetTableSelection( ed, &tr );
+    tedAppSelectWholeCell( ea, direction, allRows );
     }
-*/
+# endif
 
 static APP_BUTTON_CALLBACK_H( tedCellNextColumn, w, voidct )
     {
     CellTool *		ct= (CellTool *)voidct;
     EditApplication *	ea= ct->ctApplication;
-    EditDocument *	ed= ea->eaCurrentDocument;
-    TedDocument *	td;
 
-    TableRectangle	tr;
+    const int		direction= 1;
+    const int		allRows= 0;
 
-    if  ( ! ed )
-	{ XDEB(ed); return;	}
+    tedAppSelectWholeCell( ea, direction, allRows );
+    }
 
-    tr= ct->ctTableRectangle;
-    td= (TedDocument *)ed->edPrivateData;
+static APP_BUTTON_CALLBACK_H( tedCellPreviousRow, w, voidct )
+    {
+    CellTool *		ct= (CellTool *)voidct;
+    EditApplication *	ea= ct->ctApplication;
 
-    if  ( docShiftTableRectangleByColumns( &tr, +1 ) )
-	{ return;	}
+    const int		direction= -1;
+    const int		allColumns= 0;
 
-    tedAppSetTableSelection( ed, &tr );
+    tedAppSelectRow( ea, direction, allColumns );
+    }
+
+static APP_BUTTON_CALLBACK_H( tedCellNextRow, w, voidct )
+    {
+    CellTool *		ct= (CellTool *)voidct;
+    EditApplication *	ea= ct->ctApplication;
+
+    const int		direction= 1;
+    const int		allColumns= 0;
+
+    tedAppSelectRow( ea, direction, allColumns );
     }
 
 /************************************************************************/
@@ -393,6 +356,10 @@ static APP_BUTTON_CALLBACK_H( tedCellNextColumn, w, voidct )
 /*  Callback from the general color chooser: a color was chosen.	*/
 /*									*/
 /************************************************************************/
+
+/* values are arbitrary but cannot be equal to real CLpropSOMETHING values */
+# define CLprop_SHADE_BACK_COLOR CLprop_COUNT+ 1
+# define CLprop_SHADE_FORE_COLOR CLprop_COUNT+ 2
 
 static void tedCellToolGotColor(	void *			voidct,
 					int 			which,
@@ -418,8 +385,8 @@ static void tedCellToolGotColor(	void *			voidct,
 	    tedBorderSetExplicitColorChoice( &(ct->ctRightBorderTool), rgb8 );
 	    break;
 
-	case CLpropSHADE_BACK_COLOR:
-	case CLpropSHADE_FORE_COLOR:
+	case CLprop_SHADE_BACK_COLOR:
+	case CLprop_SHADE_FORE_COLOR:
 	    tedShadeSetExplicitColorChoice( &(ct->ctShadingTool),
 							    which, rgb8 );
 	    break;
@@ -427,6 +394,37 @@ static void tedCellToolGotColor(	void *			voidct,
 	default:
 	    LDEB(which); return;
 	}
+    }
+
+/************************************************************************/
+
+static void tedCellToolMakeBorderFrame(
+				CellTool *			ct,
+				const CellPageResources *	cpr,
+				AppInspector *			ai,
+				int				subjectPage,
+				APP_WIDGET			pageWidget )
+    {
+    appMakeColumnFrameInColumn( &(ct->ctBordersFrame), &(ct->ctBordersPaned),
+						pageWidget, cpr->cprBorders );
+
+    tedMakeBorderTool( &(ct->ctTopBorderTool), ai, ct->ctBordersPaned,
+		cpr->cprTopBorder, &(cpr->cprBorderToolResources),
+		subjectPage, CLpropTOP_BORDER );
+
+    tedMakeBorderTool( &(ct->ctBottomBorderTool), ai, ct->ctBordersPaned,
+		cpr->cprBottomBorder, &(cpr->cprBorderToolResources),
+		subjectPage, CLpropBOTTOM_BORDER );
+
+    tedMakeBorderTool( &(ct->ctLeftBorderTool), ai, ct->ctBordersPaned,
+		cpr->cprLeftBorder, &(cpr->cprBorderToolResources),
+		subjectPage, CLpropLEFT_BORDER );
+
+    tedMakeBorderTool( &(ct->ctRightBorderTool), ai, ct->ctBordersPaned,
+		cpr->cprRightBorder, &(cpr->cprBorderToolResources),
+		subjectPage, CLpropRIGHT_BORDER );
+
+    return;
     }
 
 /************************************************************************/
@@ -451,6 +449,7 @@ void tedFormatFillCellPage(	CellTool *			ct,
 
     /**/
     ct->ctPageResources= cpr;
+    ct->ctCanChange= 1;
 
     is->isPrivate= ct;
     is->isGotColor= tedCellToolGotColor;
@@ -459,66 +458,54 @@ void tedFormatFillCellPage(	CellTool *			ct,
 
     docInitTableRectangle( &(ct->ctTableRectangle) );
 
-    docInitRowProperties( &(ct->ctRowPropertiesSet) );
-    docInitRowProperties( &(ct->ctRowPropertiesChosen) );
+    docInitCellProperties( &(ct->ctPropertiesSet) );
+    docInitCellProperties( &(ct->ctPropertiesChosen) );
 
     /**/
 
-    appMakeLabelAndTextRow( &row, &label, &(ct->ctRowText),
-			    pageWidget, cpr->cprRow, textColumns, 0 );
-    appMakeLabelAndTextRow( &row, &label, &(ct->ctColumnText),
-			    pageWidget, cpr->cprColumn, textColumns, 0 );
+    guiToolMakeLabelAndTextRow( &(ct->ctRowColumnRow),
+			    &(ct->ctRowColumnLabel), &(ct->ctRowColumnText),
+			    pageWidget, cpr->cprRowColumn, textColumns, 0 );
+
+    guiToolMakeToggleAndLabelRow( &(ct->ctMergedRow), pageWidget,
+			    &(ct->ctMergedToggle), &(ct->ctMergedLabel),
+			    cpr->cprMerged, "",
+			    tedCellToggleMerged, (void *)ct );
+    /**/
+    guiToolMakeLabelAndMenuRow( &(ct->ctValignRow), &(ct->ctValignMenu),
+				&label, pageWidget, cpr->cprValign,
+				tedCellValignChosen, (void *)ct );
 
     /**/
-
-    appMakeLabelAndTextRow( &row, &label, &(ct->ctRowspanText),
-			    pageWidget, cpr->cprRowspan, textColumns, 1 );
-    appMakeLabelAndTextRow( &row, &label, &(ct->ctColspanText),
-			    pageWidget, cpr->cprColspan, textColumns, 1 );
-
-
-    appGuiSetGotValueCallbackForText( ct->ctRowspanText,
-				    tedCellToolRowspanChanged, (void *)ct );
-    appGuiSetGotValueCallbackForText( ct->ctColspanText,
-				    tedCellToolColspanChanged, (void *)ct );
-
-    /**/
-    tedMakeBorderTool( &(ct->ctTopBorderTool), ai, pageWidget,
-		cpr->cprTopBorder, &(cpr->cprBorderToolResources),
-		subjectPage, CLpropTOP_BORDER );
-
-    tedMakeBorderTool( &(ct->ctBottomBorderTool), ai, pageWidget,
-		cpr->cprBottomBorder, &(cpr->cprBorderToolResources),
-		subjectPage, CLpropBOTTOM_BORDER );
-
-    tedMakeBorderTool( &(ct->ctLeftBorderTool), ai, pageWidget,
-		cpr->cprLeftBorder, &(cpr->cprBorderToolResources),
-		subjectPage, CLpropLEFT_BORDER );
-
-    tedMakeBorderTool( &(ct->ctRightBorderTool), ai, pageWidget,
-		cpr->cprRightBorder, &(cpr->cprBorderToolResources),
-		subjectPage, CLpropRIGHT_BORDER );
+    tedCellToolMakeBorderFrame( ct, cpr, ai, subjectPage, pageWidget );
 
     /**/
     tedFormatMakeShadingTool( &(ct->ctShadingTool), ai, pageWidget,
-		cpr->cprShading, &(cpr->cprShadingResources),
-		subjectPage, CLpropSHADE_FORE_COLOR, CLpropSHADE_BACK_COLOR,
+		/* cpr->cprShading, */ (const char *)0,
+		&(cpr->cprShadingResources),
+		subjectPage, CLprop_SHADE_FORE_COLOR, CLprop_SHADE_BACK_COLOR,
 		(TedShadingToolCallback)0, (void *)ct );
 
     /**/
-    appInspectorMakeButtonRow( &row, pageWidget,
+    guiToolMake2BottonRow( &(is->isNextPrevRow), pageWidget,
 		    &(is->isPrevButton), &(is->isNextButton),
 		    isr->isrPrevButtonText, isr->isrNextButtonText,
 		    tedCellPreviousColumn, tedCellNextColumn, ct );
 
-    /* ??
-    appInspectorMakeButtonRow( &row, pageWidget,
+    /**/
+    guiToolMake2BottonRow( &row, pageWidget,
+		    &(ct->ctPrevRowButton), &(ct->ctNextRowButton),
+		    cpr->cprPrevRow, cpr->cprNextRow,
+		    tedCellPreviousRow, tedCellNextRow, ct );
+
+    /* ?
+    guiToolMake2BottonRow( &row, pageWidget,
 		    &(is->isSelectButton), &(is->isDeleteButton),
 		    isr->isrSelectButtonText, isr->isrDeleteButtonText,
 		    tedTableSelectColumn, tedTableDeleteColumn, ct );
     */
 
-    appInspectorMakeButtonRow( &row, pageWidget,
+    guiToolMake2BottonRow( &(is->isApplyRow), pageWidget,
 		    &(is->isRevertButton), &(is->isApplyButton),
 		    isr->isrRevert, isr->isrApplyToSubject,
 		    tedFormatRevertCellPushed, tedTableChangeCellPushed,
@@ -530,19 +517,28 @@ void tedFormatFillCellPage(	CellTool *			ct,
 void tedCellToolFillChoosers(		CellTool *			ct,
 					const CellPageResources *	cpr )
     {
+    appFillInspectorMenu( DOCtva_COUNT, DOCtvaTOP,
+					    ct->ctValignItems,
+					    cpr->cprValignItemTexts,
+					    &(ct->ctValignMenu) );
     return;
     }
 
 void tedFormatFinishCellPage(		CellTool *			ct,
-					TedFormatTool *			tft,
 					const CellPageResources *	cpr )
     {
-    tedFinishBorderTool( &(ct->ctTopBorderTool) );
-    tedFinishBorderTool( &(ct->ctBottomBorderTool) );
-    tedFinishBorderTool( &(ct->ctLeftBorderTool) );
-    tedFinishBorderTool( &(ct->ctRightBorderTool) );
+    const PostScriptFontList *	psfl;
 
-    tedFinishShadingTool( &(ct->ctShadingTool) );
+    psfl= &(ct->ctApplication->eaPostScriptFontList);
+
+    appOptionmenuRefreshWidth( &(ct->ctValignMenu) );
+
+    tedFinishBorderTool( &(ct->ctTopBorderTool), psfl );
+    tedFinishBorderTool( &(ct->ctBottomBorderTool), psfl );
+    tedFinishBorderTool( &(ct->ctLeftBorderTool), psfl );
+    tedFinishBorderTool( &(ct->ctRightBorderTool), psfl );
+
+    tedFinishShadingTool( &(ct->ctShadingTool), psfl );
     }
 
 /************************************************************************/
@@ -558,12 +554,23 @@ void tedInitCellTool(	CellTool *	ct )
     ct->ctPageResources= (const CellPageResources *)0;
 
     docInitTableRectangle( &(ct->ctTableRectangle) );
+    ct->ctCanMerge= 0;
+    ct->ctHorMerge= CELLmergeNONE;
+    ct->ctVerMerge= CELLmergeNONE;
+    ct->ctCanChange= 0;
 
-    ct->ctRowText= (APP_WIDGET)0;
-    ct->ctColumnText= (APP_WIDGET)0;
+    ct->ctRowColumnRow= (APP_WIDGET)0;
+    ct->ctRowColumnLabel= (APP_WIDGET)0;
+    ct->ctRowColumnText= (APP_WIDGET)0;
 
-    docInitRowProperties( &(ct->ctRowPropertiesSet) );
-    docInitRowProperties( &(ct->ctRowPropertiesChosen) );
+    ct->ctMergedRow= (APP_WIDGET)0;
+    ct->ctMergedToggle= (APP_WIDGET)0;
+    ct->ctMergedLabel= (APP_WIDGET)0;
+
+    appInitOptionmenu( &(ct->ctValignMenu) );
+
+    docInitCellProperties( &(ct->ctPropertiesSet) );
+    docInitCellProperties( &(ct->ctPropertiesChosen) );
 
     tedInitBorderTool( &(ct->ctTopBorderTool) );
     tedInitBorderTool( &(ct->ctBottomBorderTool) );
@@ -577,8 +584,8 @@ void tedInitCellTool(	CellTool *	ct )
 
 void tedCleanCellTool(	CellTool *	ct )
     {
-    docCleanRowProperties( &(ct->ctRowPropertiesSet) );
-    docCleanRowProperties( &(ct->ctRowPropertiesChosen) );
+    docCleanCellProperties( &(ct->ctPropertiesSet) );
+    docCleanCellProperties( &(ct->ctPropertiesChosen) );
 
     tedCleanBorderTool( &(ct->ctTopBorderTool) );
     tedCleanBorderTool( &(ct->ctBottomBorderTool) );
@@ -620,33 +627,30 @@ static AppConfigurableResource TED_TedCellSubjectResourceTable[]=
 
 static AppConfigurableResource TED_TedCellToolResourceTable[]=
     {
-    APP_RESOURCE( "tableToolCellRow",
-	    offsetof(CellPageResources,cprRow),
-	    "Row" ),
-    APP_RESOURCE( "tableToolCellColumn",
-	    offsetof(CellPageResources,cprColumn),
-	    "Column" ),
+    APP_RESOURCE( "tableToolCellRowColumn",
+	    offsetof(CellPageResources,cprRowColumn),
+	    "Row, Column" ),
 
     /**/
-    APP_RESOURCE( "tableToolCellTopBorder",
+    APP_RESOURCE( "tableToolCellBorders",
+	    offsetof(CellPageResources,cprBorders),
+	    "Borders" ),
+    APP_RESOURCE( "tableToolCellBorderTop",
 	    offsetof(CellPageResources,cprTopBorder),
-	    "Top Border" ),
-    APP_RESOURCE( "tableToolCellBottomBorder",
+	    "Top" ),
+    APP_RESOURCE( "tableToolCellBorderBottom",
 	    offsetof(CellPageResources,cprBottomBorder),
-	    "Bottom Border" ),
-    APP_RESOURCE( "tableToolCellLeftBorder",
+	    "Bottom" ),
+    APP_RESOURCE( "tableToolCellBorderLeft",
 	    offsetof(CellPageResources,cprLeftBorder),
-	    "Left Border" ),
-    APP_RESOURCE( "tableToolCellRightBorder",
+	    "Left" ),
+    APP_RESOURCE( "tableToolCellBorderRight",
 	    offsetof(CellPageResources,cprRightBorder),
-	    "Right Border" ),
+	    "Right" ),
 
-    APP_RESOURCE( "tableToolCellColumnSpan",
-	    offsetof(CellPageResources,cprColspan),
-	    "Columns Occupied" ),
-    APP_RESOURCE( "tableToolCellRowSpan",
-	    offsetof(CellPageResources,cprRowspan),
-	    "Rows Occupied" ),
+    APP_RESOURCE( "tableToolCellMerged",
+	    offsetof(CellPageResources,cprMerged),
+	    "Merged" ),
 
     /**/
     APP_RESOURCE( "formatToolCellBorderWidth",
@@ -706,8 +710,24 @@ static AppConfigurableResource TED_TedCellToolResourceTable[]=
 
     /**/
     APP_RESOURCE( "tableToolCellVerticalAlignment",
-	    offsetof(CellPageResources,cprVerticalAlignment),
+	    offsetof(CellPageResources,cprValign),
 	    "Vertical Alignment" ),
+    APP_RESOURCE( "tableToolCellValignTop",
+		offsetof(CellPageResources,cprValignItemTexts[DOCtvaTOP]),
+		"Top" ),
+    APP_RESOURCE( "tableToolCellValignCenter",
+		offsetof(CellPageResources,cprValignItemTexts[DOCtvaCENTERED]),
+		"Center" ),
+    APP_RESOURCE( "tableToolCellValignBottom",
+		offsetof(CellPageResources,cprValignItemTexts[DOCtvaBOTTOM]),
+		"Bottom" ),
+
+    APP_RESOURCE( "cellToolNextRow",
+		offsetof(CellPageResources,cprNextRow),
+		"Next Row" ),
+    APP_RESOURCE( "cellToolPreviousRow",
+		offsetof(CellPageResources,cprPrevRow),
+		"Previous Row" ),
     };
 
 void tedFormatToolGetCellResourceTable(	EditApplication *		ea,

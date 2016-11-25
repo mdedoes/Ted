@@ -3,7 +3,6 @@
 #   include	"bmintern.h"
 #   include	"bmgetrow.h"
 #   include	"bmputrow.h"
-#   include	<string.h>
 #   include	<appDebugon.h>
 
 /************************************************************************/
@@ -14,12 +13,13 @@
 
 static int bmBuildImage(	FillJob *			fj,
 				unsigned char *			bufferOut,
-				const unsigned char *		bufferIn,
 				const BitmapDescription *	bdOut,
-				const BitmapDescription *	bdIn,
+				const RasterImage *		riIn,
+				const DocumentRectangle *	drSel,
 				GetSourceRow			getSource,
 				PutScreenRow			putRow )
     {
+    const BitmapDescription *	bdIn= &(riIn->riDescription);
     int				rval= 0;
 
     int				rowOut;
@@ -30,12 +30,43 @@ static int bmBuildImage(	FillJob *			fj,
 
     int				toWide= bdOut->bdPixelsWide;
     int				toHigh= bdOut->bdPixelsHigh;
-    int				frWide= bdIn->bdPixelsWide;
-    int				frHigh= bdIn->bdPixelsHigh;
+    int				frWide;
+    int				frHigh;
 
     int				e;
     int				d2;
     int				e2;
+
+    DocumentRectangle		drAll;
+    RasterImage			riSel;
+
+    bmInitRasterImage( &riSel );
+
+    drAll.drX0= 0;
+    drAll.drY0= 0;
+    drAll.drX1= bdIn->bdPixelsWide- 1;
+    drAll.drY1= bdIn->bdPixelsHigh- 1;
+
+    if  ( ! drSel )
+	{ drSel= &drAll;	}
+    else{
+	if  ( drSel->drX0 != drAll.drX0	||
+	      drSel->drY0 != drAll.drY0	||
+	      drSel->drX1 != drAll.drX1	||
+	      drSel->drY1 != drAll.drY1	)
+	    {
+	    /*  Could be done MUCH more efficiently as part of the	*/
+	    /*  regular approach.					*/
+
+	    if  ( bmSelect( &riSel, riIn, drSel ) )
+		{ RECTDEB(drSel); rval= -1; goto ready;	}
+
+	    riIn= &riSel;
+	    }
+	}
+
+    frWide= bdIn->bdPixelsWide;
+    frHigh= bdIn->bdPixelsHigh;
 
     if  ( toHigh <= frHigh )
 	{
@@ -53,7 +84,7 @@ static int bmBuildImage(	FillJob *			fj,
 
 	    while( e >= 0 )
 		{
-		from= bufferIn+ rowIn* bdIn->bdBytesPerRow;
+		from= riIn->riBytes+ rowIn* bdIn->bdBytesPerRow;
 
 		(*getSource)( fj->fjThisRow+ 1, 0,
 					from, 0, bdIn->bdPixelsWide, bdIn );
@@ -75,7 +106,7 @@ static int bmBuildImage(	FillJob *			fj,
 	rowOut= 0;
 	for ( rowIn= 0; rowIn < frHigh; rowIn++ )
 	    {
-	    from= bufferIn+ rowIn* bdIn->bdBytesPerRow;
+	    from= riIn->riBytes+ rowIn* bdIn->bdBytesPerRow;
 
 	    bmInitColorRow( fj->fjThisRow+ 1, frWide );
 	    (*getSource)( fj->fjThisRow+ 1, 0,
@@ -97,6 +128,8 @@ static int bmBuildImage(	FillJob *			fj,
 
   ready:
 
+    bmCleanRasterImage( &riSel );
+
     return rval;
     }
 
@@ -106,19 +139,24 @@ int bmFillImage(	ColorAllocator *		ca,
 			int				swapBitmapBits,
 			int				dither,
 			unsigned char *			bufferOut,
-			const unsigned char *		bufferIn,
 			const BitmapDescription *	bdOut,
-			const BitmapDescription *	bdIn )
+			const RasterImage *		riIn,
+			const DocumentRectangle *	drSel )
     {
-    int			rval= 0;
+    const BitmapDescription *	bdIn= &(riIn->riDescription);
+    int				rval= 0;
 
-    PutScreenRow	putRow= (PutScreenRow)0;
-    GetSourceRow	getRow= (GetSourceRow)0;
-    int			scratchSize= 0;
+    PutScreenRow		putRow= (PutScreenRow)0;
+    GetSourceRow		getRow= (GetSourceRow)0;
+    int				scratchSize= 0;
+    int				pixelsWideIn= bdIn->bdPixelsWide;
 
-    FillJob		fj;
+    FillJob			fj;
 
     bmInitFillJob( &fj );
+
+    if  ( drSel )
+	{ pixelsWideIn= drSel->drX1- drSel->drX0+ 1;	}
 
     /*  1  */
     if  ( bmGetPutRow( &putRow, &scratchSize, ca,
@@ -130,12 +168,11 @@ int bmFillImage(	ColorAllocator *		ca,
 	{ LDEB(1); return -1; }
 
     if  ( bmSetFillJob( &fj, ca,
-			    bdIn->bdPixelsWide, bdOut->bdPixelsWide,
+			    pixelsWideIn, bdOut->bdPixelsWide,
 			    scratchSize, dither ) )
 	{ LDEB(scratchSize); rval= -1; goto ready;	}
 
-    if  ( bmBuildImage( &fj, bufferOut, bufferIn, bdOut, bdIn,
-							    getRow, putRow ) )
+    if  ( bmBuildImage( &fj, bufferOut, bdOut, riIn, drSel, getRow, putRow ) )
 	{ LDEB(1); rval= -1; goto ready;	}
 
   ready:
@@ -187,7 +224,5 @@ int bmSetColorAllocatorForImage(	ColorAllocator *		ca,
 	default:
 	    LDEB(bd->bdColorEncoding); return -1;
 	}
-
-    return 0;
     }
 

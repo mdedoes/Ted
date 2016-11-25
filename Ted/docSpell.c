@@ -6,18 +6,42 @@
 
 #   include	"tedConfig.h"
 
-#   include	<stdlib.h>
-#   include	<string.h>
 #   include	<stdio.h>
 #   include	<ctype.h>
 
 #   include	<appDebugon.h>
 
-#   include	"docBuf.h"
-#   include	"docFind.h"
+#   include	"tedFind.h"
+#   include	<docBuf.h>
+#   include	<docParaParticules.h>
 
 #   include	<ind.h>
-#   include	<charnames.h>
+#   include	<reg.h>
+
+/*
+ * OpenOffice dictionaries are stored in:
+ * Ubuntu 6.06, OpenOffice 2.0.2: /usr/lib/openoffice/share/dict/ooo/
+*/
+
+/* PCRE syntax */
+/*
+Only work for ASCII:
+static const char docSpellWordPattern[]= "\\b(\\w+)\\W*";
+static const char docSpellWordPattern[]= "\\b([[:alnum:]]+)[^[:alnum:]]*";
+Look like unicode, but \\b only works for ASCII
+static const char docSpellWordPattern[]= "\\b([\\p{N}\\p{L}]+)[^\\p{N}\\p{L}]*";
+*/
+
+static const char docSpellFirstWordPat[]= "[^\\p{N}\\p{L}]*([\\p{N}\\p{L}]+)[^\\p{N}\\p{L}]*";
+static regProg * docSpellFirstWordExpr= (regProg *)0;
+
+static const char docSpellToWordPat[]= "[\\p{N}\\p{L}]*[^\\p{N}\\p{L}]*";
+static regProg * docSpellToWordExpr= (regProg *)0;
+
+static const char docSpellNextWordPat[]= "([\\p{N}\\p{L}]+)[^\\p{N}\\p{L}]*";
+static regProg * docSpellNextWordExpr= (regProg *)0;
+
+/************************************************************************/
 
 /************************************************************************/
 /*									*/
@@ -40,96 +64,116 @@ int docSpellParaFindNext(	DocumentSelection *		ds,
 				const DocumentPosition *	dpFrom,
 				void *				through )
     {
-    SpellCheckContext *		scc= (SpellCheckContext *)through;
+    SpellDictionary *		spd= (SpellDictionary *)through;
+
+    DocumentPosition		dpHead= *dpFrom;
+    DocumentPosition		dpHere= *dpFrom;
+    int				acceptedPos= dpHere.dpStroff;
+    char *			paraStr= (char *)docParaString( paraBi, 0 );
+
+    SpellCheckContext *		scc= (SpellCheckContext *)spd->sdSpellCheckContext;
     SpellScanJob		ssj;
-    int				stroff= dpFrom->dpStroff;
-    int				acceptedPos= stroff;
-    const unsigned char *	str= paraBi->biParaString+ stroff;
 
-    const int			lastOne= 1;
-    int				part;
-    const TextParticule *	tp;
+    int				fromHead;
+    const regProg *		stepExpr;
 
-    int				stroffUpto;
+    if  ( ! docSpellFirstWordExpr )
+	{
+	int		options= 0;
+
+	docSpellFirstWordExpr= regCompile( docSpellFirstWordPat, options );
+
+	if  ( ! docSpellFirstWordExpr )
+	    { SXDEB(docSpellFirstWordPat,docSpellFirstWordExpr); return -1; }
+	}
+
+    if  ( ! docSpellToWordExpr )
+	{
+	int		options= 0;
+
+	docSpellToWordExpr= regCompile( docSpellToWordPat, options );
+
+	if  ( ! docSpellToWordExpr )
+	    { SXDEB(docSpellToWordPat,docSpellToWordExpr); return -1; }
+	}
+
+    if  ( ! docSpellNextWordExpr )
+	{
+	int		options= 0;
+
+	docSpellNextWordExpr= regCompile( docSpellNextWordPat, options );
+
+	if  ( ! docSpellNextWordExpr )
+	    { SXDEB(docSpellNextWordPat,docSpellNextWordExpr); return -1; }
+	}
+
+    if  ( docHeadPosition( &dpHead, paraBi ) )
+	{ LDEB(1); return -1;	}
+
+    if  ( dpFrom->dpNode != dpHead.dpNode )
+	{ XXDEB(dpFrom->dpNode,dpHead.dpNode); return -1;	}
+
+    fromHead= dpFrom->dpStroff == dpHead.dpStroff;
+
+    if  ( fromHead )
+	{ stepExpr= docSpellFirstWordExpr;	}
+    else{ stepExpr= docSpellToWordExpr;		}
 
     indInitSpellScanJob( &ssj );
 
-    if  ( docFindParticule( &part, paraBi, stroff, lastOne ) )
-	{ LDEB(stroff); return -1;	}
-
-    tp= paraBi->biParaParticules+ part;
-
-    /*  1  */
-    while( part < paraBi->biParaParticuleCount	&&
-	   tp->tpStroff <= stroff		)
-	{ part++; tp++;	}
-
-    /*  2  */
-    while( part < paraBi->biParaParticuleCount	&&
-	   ! DOCkindBETWEEN_TEXT( tp->tpKind )	)
-	{ part++; tp++;	}
-
-    /*  3  */
-    if  ( stroff > 0						&&
-	  ( scc->sccCharKinds[ str[ 0] ] & CHARisALNUM )	&&
-	  ( scc->sccCharKinds[ str[-1] ] & CHARisALNUM )	)
+    while( dpHere.dpStroff < docParaStrlen( paraBi ) )
 	{
-	/*  4  */
-	if  ( part < paraBi->biParaParticuleCount )
-	    { stroffUpto= tp->tpStroff;		}
-	else{ stroffUpto= paraBi->biParaStrlen; }
+	int			foundWord;
+	int			tail;
+	int			from;
+	ExpressionMatch		em;
 
-	while( stroff < stroffUpto				&&
-	       ( scc->sccCharKinds[ *str ] & CHARisALNUM )	)
-	    { stroff++; str++; }
-	}
+	int			count;
 
-    while( stroff < paraBi->biParaStrlen )
-	{
-	int		count;
+	int			part;
+	const TextParticule *	tp;
 
-	/*  1  */
-	while( part < paraBi->biParaParticuleCount	&&
-	       tp->tpStroff <= stroff		)
-	    { part++; tp++;	}
+	dpHead= dpHere;
 
-	/*  2  */
-	while( part < paraBi->biParaParticuleCount	&&
-	       ! DOCkindBETWEEN_TEXT( tp->tpKind )	)
-	    { part++; tp++;	}
+	foundWord= regFindLeftToRight( &em, stepExpr,
+			paraStr, dpHere.dpStroff, docParaStrlen( paraBi ) );
 
-	/*  4  */
-	if  ( part < paraBi->biParaParticuleCount )
-	    { stroffUpto= tp->tpStroff;		}
-	else{ stroffUpto= paraBi->biParaStrlen; }
-
-	while( stroff < stroffUpto				&&
-	       ! ( scc->sccCharKinds[ *str ] & CHARisALNUM )	)
-	    {
-	    indAddCharacterToPossibilities( &ssj, *str );
-	    stroff++; str++;
-	    }
-
-	if  ( stroff >= paraBi->biParaStrlen )
+	if  ( ! foundWord )
 	    { break;	}
-	if  ( stroff >= stroffUpto )
-	    { continue;	}
 
-	indAddCharacterToPossibilities( &ssj, *str );
+	if  ( regGetFullMatch( &(dpHead.dpStroff), &(dpHere.dpStroff), &em ) )
+	    { LDEB(1); return -1;	}
 
-	if  ( indNewPossibility( &ssj, stroff, *str ) )
-	    { CDEB(*str); return -1;	}
+	if  ( stepExpr == docSpellToWordExpr )
+	    { stepExpr= docSpellNextWordExpr; continue;	}
+	stepExpr= docSpellNextWordExpr;
 
-	stroff++; str++;
-	while( stroff < stroffUpto				&&
-	       ( scc->sccCharKinds[*str] & CHARisALNUM )	)
+	if  ( regGetMatch( &(dpHead.dpStroff), &tail, &em, 0 ) )
+	    { LDEB(1); return -1;	}
+
+	if  ( indNewPossibility( &ssj, dpHead.dpStroff ) )
+	    { CDEB(paraStr[dpHead.dpStroff]); return -1;	}
+
+	if  ( docFindParticuleOfPosition( &part, (int *)0,
+						    &dpHead, PARAfindLAST ) )
+	    { LDEB(dpHead.dpStroff); return -1;	}
+	part++; tp= paraBi->biParaParticules+ part;
+	while( part < paraBi->biParaParticuleCount	&&
+	       tp->tpStroff < dpHere.dpStroff		)
 	    {
-	    indAddCharacterToPossibilities( &ssj, *str );
-	    stroff++; str++;
+	    if  ( tp->tpStroff > dpHead.dpStroff	&&
+		  tp->tpKind != DOCkindSPAN		)
+		{ dpHere.dpStroff= tp->tpStroff; break; }
+	    part++; tp++;
 	    }
 
-	count= indCountPossibilities( &ssj, scc, stroff- 1, stroff,
-				    stroff >= paraBi->biParaStrlen, *str );
+	from= dpHead.dpStroff;
+	while( from < tail )
+	    { indAddCharacterToPossibilities( &ssj, paraStr[from++] ); }
+
+	/*  Does the word match here?  */
+	count= indCountPossibilities( &ssj, scc, tail,
+				dpHere.dpStroff >= docParaStrlen( paraBi ) );
 
 	if  ( count == 0 )
 	    {
@@ -148,6 +192,13 @@ int docSpellParaFindNext(	DocumentSelection *		ds,
 
 	    return 0;
 	    }
+
+	while( from < dpHere.dpStroff )
+	    { indAddCharacterToPossibilities( &ssj, paraStr[from++] ); }
+
+	/*  Is the word and the trailing white space a valid prefix? */
+	count= indCountPossibilities( &ssj, scc, dpHere.dpStroff,
+				dpHere.dpStroff >= docParaStrlen( paraBi ) );
 
 	indRejectPossibilities( &acceptedPos, acceptedPos, &ssj );
 	}

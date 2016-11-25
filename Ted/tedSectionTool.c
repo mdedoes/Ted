@@ -6,16 +6,20 @@
 
 #   include	"tedConfig.h"
 
-#   include	<stdlib.h>
 #   include	<stdio.h>
 #   include	<stddef.h>
 #   include	<limits.h>
 
-#   include	<appGeoString.h>
 #   include	<appUnit.h>
 
-#   include	"tedApp.h"
-#   include	"tedFormatTool.h"
+#   include	"tedSectionTool.h"
+#   include	"tedAppFront.h"
+#   include	<docTreeType.h>
+#   include	<guiToolUtil.h>
+#   include	<guiTextUtil.h>
+#   include	<docTreeNode.h>
+#   include	<docNodeTree.h>
+#   include	<docEditCommand.h>
 
 #   include	<appDebugon.h>
 
@@ -25,7 +29,7 @@
 /*									*/
 /************************************************************************/
 
-static void tedFormatToolRefreshPageRestart(	SectionTool *	st )
+static void tedSectionToolRefreshPageRestart(	SectionTool *	st )
     {
     SectionProperties *		sp= &(st->stPropertiesChosen);
 
@@ -33,22 +37,137 @@ static void tedFormatToolRefreshPageRestart(	SectionTool *	st )
 	{
 	appIntegerToTextWidget( st->stPageRestartText,
 						sp->spStartPageNumber+ 1 );
-	appEnableText( st->stPageRestartText, 1 );
+	guiEnableText( st->stPageRestartText, st->stCanChange );
 
 	appGuiSetToggleState( st->stPageRestartToggle, 1 );
 	}
     else{
 	appStringToTextWidget( st->stPageRestartText, "" );
-	appEnableText( st->stPageRestartText, 0 );
+	guiEnableText( st->stPageRestartText, 0 );
 
 	appGuiSetToggleState( st->stPageRestartToggle, 0 );
 	}
     }
 
+static void tedSectionToolRefreshColumns(	SectionTool *	st )
+    {
+    SectionProperties *		sp= &(st->stPropertiesChosen);
+    int				col;
+    int				emptyFrom= sp->spColumnCount;
+    int				disabledFrom= sp->spColumnCount;
+
+    if  ( sp->spColumnCount < 2 )
+	{
+	guiEnableWidget( st->stEqualWidthToggle, 0 );
+	appGuiSetToggleState( st->stEqualWidthToggle, 0 );
+
+	guiEnableWidget( st->stLineBetweenColumnsToggle, 0 );
+	appGuiSetToggleState( st->stLineBetweenColumnsToggle, 0 );
+
+	appLengthToTextWidget( st->stColwTexts[0],
+			docSectGetColumnWidth( (int *)0, (int *)0, sp, 0 ),
+			st->stUnitInt );
+
+	appStringToTextWidget( st->stColsrTexts[0], "" );
+	emptyFrom= 0;
+	disabledFrom= 0;
+	}
+    else{
+	int	haveFixedWidth= docSectPropsFixedWidthColumns( sp );
+
+	guiEnableWidget( st->stEqualWidthToggle, 1 );
+	appGuiSetToggleState( st->stEqualWidthToggle, haveFixedWidth );
+
+	guiEnableWidget( st->stLineBetweenColumnsToggle, 1 );
+	appGuiSetToggleState( st->stLineBetweenColumnsToggle,
+					    sp->spLineBetweenColumns != 0 );
+
+	if  ( haveFixedWidth )
+	    {
+	    int		fixedWidth;
+
+	    fixedWidth= docSectGetColumnWidth( (int *)0, (int *)0, sp, 0 ),
+
+	    guiEnableText( st->stColwTexts[0], 1 );
+	    guiEnableText( st->stColsrTexts[0], 1 );
+
+	    appLengthToTextWidget( st->stColwTexts[0],
+				    fixedWidth, st->stUnitInt );
+	    appLengthToTextWidget( st->stColsrTexts[0],
+				    sp->spColumnSpacingTwips, st->stUnitInt );
+
+	    for ( col= 1; col < sp->spColumnCount- 1; col++ )
+		{
+		if  ( col >= SECT_MAX_COLUMNS )
+		    { LLDEB(col,SECT_MAX_COLUMNS); break;	}
+
+		appLengthToTextWidget( st->stColwTexts[col],
+				    fixedWidth, st->stUnitInt );
+		appLengthToTextWidget( st->stColsrTexts[col],
+				    sp->spColumnSpacingTwips, st->stUnitInt );
+		}
+
+	    col= sp->spColumnCount- 1;
+	    if  ( col < SECT_MAX_COLUMNS )
+		{
+		appLengthToTextWidget( st->stColwTexts[col],
+						fixedWidth, st->stUnitInt );
+
+		appStringToTextWidget( st->stColsrTexts[col], "" );
+		guiEnableText( st->stColwTexts[col], 0 );
+		guiEnableText( st->stColsrTexts[col], 0 );
+		}
+
+	    disabledFrom= 1;
+	    }
+	else{
+	    for ( col= 0; col < sp->spColumnCount- 1; col++ )
+		{
+		if  ( col >= SECT_MAX_COLUMNS )
+		    { LLDEB(col,SECT_MAX_COLUMNS); break;	}
+
+		appLengthToTextWidget( st->stColwTexts[col],
+					sp->spColumns[col].scColumnWidthTwips,
+					st->stUnitInt );
+		appLengthToTextWidget( st->stColsrTexts[col],
+					sp->spColumns[col].scSpaceToRightTwips,
+					st->stUnitInt );
+
+		guiEnableText( st->stColwTexts[col], 1 );
+		guiEnableText( st->stColsrTexts[col], 1 );
+		}
+
+	    col= sp->spColumnCount- 1;
+	    if  ( col < SECT_MAX_COLUMNS )
+		{
+		appLengthToTextWidget( st->stColwTexts[col],
+					sp->spColumns[col].scColumnWidthTwips,
+					st->stUnitInt );
+		appStringToTextWidget( st->stColsrTexts[col], "" );
+
+		guiEnableText( st->stColwTexts[col], 1 );
+		guiEnableText( st->stColsrTexts[col], 0 );
+		}
+	    }
+	}
+
+    for ( col= emptyFrom; col < SECT_MAX_COLUMNS; col++ )
+	{
+	appStringToTextWidget( st->stColwTexts[col], "" );
+	appStringToTextWidget( st->stColsrTexts[col], "" );
+	}
+
+    for ( col= disabledFrom; col < SECT_MAX_COLUMNS; col++ )
+	{
+	guiEnableText( st->stColwTexts[col], 0 );
+	guiEnableText( st->stColsrTexts[col], 0 );
+	}
+
+    return;
+    }
+
 static void tedFormatToolRefreshSectionPage(	SectionTool *	st )
     {
-    char	scratch[50];
-
     SectionProperties *		sp= &(st->stPropertiesChosen);
 
     appIntegerToTextWidget( st->stNumberText, st->stSectionNumber+ 1 );
@@ -57,60 +176,209 @@ static void tedFormatToolRefreshSectionPage(	SectionTool *	st )
 
     appSetOptionmenu( &(st->stBreakKindOptionmenu), sp->spBreakKind );
 
-    tedFormatToolRefreshPageRestart( st );
+    tedSectionToolRefreshPageRestart( st );
 
-    appIntegerToTextWidget( st->stColumnsText, sp->spColumnCount );
+    if  ( sp->spColumnCount >= SECT_MAX_COLUMNS )
+	{ appSetOptionmenu( &(st->stColumnCountMenu), SECT_MAX_COLUMNS ); }
+    else{ appSetOptionmenu( &(st->stColumnCountMenu), sp->spColumnCount- 1 ); }
 
-    if  ( sp->spColumnCount > 1 )
-	{
-	appGeoLengthToString( scratch, sp->spColumnSpacingTwips, UNITtyPOINTS );
-	appStringToTextWidget( st->stColumnSpacingText, scratch );
-
-	appGeoLengthToString( scratch, sp->spColumnWidthTwips, UNITtyPOINTS );
-	appStringToTextWidget( st->stColumnWidthText, scratch );
-	}
-    else{
-	appStringToTextWidget( st->stColumnSpacingText, "" );
-	appStringToTextWidget( st->stColumnWidthText, "" );
-	}
+    tedSectionToolRefreshColumns( st );
 
     return;
     }
 
-void tedFormatToolRefreshSectionTool(
-				SectionTool *			st,
+void tedRefreshSectionTool(	SectionTool *			st,
 				int *				pEnabled,
 				int *				pPref,
 				InspectorSubject *		is,
-				const DocumentSelection *	ds )
+				const DocumentSelection *	ds,
+				const SelectionDescription *	sd,
+				const BufferDocument *		bd,
+				const unsigned char *		cmdEnabled )
     {
-    BufferItem *		sectBi;
+    BufferItem *		sectNode;
 
-    sectBi= ds->dsBegin.dpBi;
-    while( sectBi && sectBi->biLevel > DOClevSECT )
-	{ sectBi= sectBi->biParent;	}
+    sectNode= docGetSectNode( ds->dsHead.dpNode );
+    if  ( ! sectNode )
+	{ XDEB(sectNode); return;	}
 
-    if  ( ! sectBi )
-	{ XDEB(sectBi); return;	}
+    st->stSectionNumber= sectNode->biNumberInParent;
 
-    st->stSectionNumber= sectBi->biNumberInParent;
+    if  ( docCopySectionProperties( &(st->stPropertiesSet),
+					    &(sectNode->biSectProperties) ) )
+	{ LDEB(1); return ;	}
 
     if  ( docCopySectionProperties( &(st->stPropertiesChosen),
-					    &(sectBi->biSectProperties) ))
-	{ LDEB(1); return ;	}
-    if  ( docCopySectionProperties( &(st->stPropertiesSet),
-					    &(sectBi->biSectProperties) ) )
+					    &(st->stPropertiesSet) ))
 	{ LDEB(1); return ;	}
 
-    appGuiEnableWidget( is->isPrevButton,
-			docPrevSection( sectBi ) != (BufferItem *)0 );
-    appGuiEnableWidget( is->isNextButton,
-			docNextSection( sectBi ) != (BufferItem *)0 );
+    st->stCanChange= cmdEnabled[EDITcmdUPD_SECT_PROPS];
+
+    guiEnableWidget( is->isPrevButton,
+			docPrevSection( sectNode ) != (BufferItem *)0 );
+    guiEnableWidget( is->isNextButton,
+			docNextSection( sectNode ) != (BufferItem *)0 );
+
+    guiEnableWidget( is->isDeleteButton, cmdEnabled[EDITcmdDELETE_SECT] );
+    guiEnableWidget( is->isInsertButton, cmdEnabled[EDITcmdINSERT_SECT] );
+    guiEnableWidget( is->isAppendButton, cmdEnabled[EDITcmdAPPEND_SECT] );
+
+    guiEnableWidget( is->isRevertButton, st->stCanChange );
+    guiEnableWidget( is->isApplyButton, st->stCanChange );
+
+    guiEnableWidget( st->stNumberRow, st->stCanChange );
+
+    guiEnableWidget( st->stPageRestartRow, st->stCanChange );
+    guiEnableWidget( st->stNumberStyleRow, st->stCanChange );
+    guiEnableWidget( st->stBreakKindRow, st->stCanChange );
+
+    guiEnableWidget( st->stColumnsFrame, st->stCanChange );
+
+    guiEnableWidget( st->stBreakKindRow, st->stCanChange );
+    appGuiEnableOptionmenu( &(st->stBreakKindOptionmenu), st->stCanChange );
+
+    guiEnableWidget( st->stNumberStyleRow, st->stCanChange );
+    appGuiEnableOptionmenu( &(st->stNumberStyleOptionmenu), st->stCanChange );
 
     tedFormatToolRefreshSectionPage( st );
 
-    *pEnabled= ds->dsSelectionScope.ssInExternalItem == DOCinBODY;
+    *pEnabled= ds->dsSelectionScope.ssTreeType == DOCinBODY;
+
     return;
+    }
+
+/************************************************************************/
+/*									*/
+/*  Extract the value from one of the spacing text widgets.		*/
+/*									*/
+/************************************************************************/
+
+static int tedSectToolGetColSpacing(	int *			pChanged,
+					SectionTool *		st,
+					int			col,
+					APP_WIDGET		w )
+    {
+    SectionProperties *		sp= &(st->stPropertiesChosen);
+
+    int				value;
+    int				changed= 0;
+
+    const int			adaptToMin= 1;
+    const int			adaptToMax= 1;
+    int				minValue;
+    int				maxValue;
+
+    value= docSectGetColumnSpacing( &minValue, &maxValue, sp, col );
+    if  ( value < 0 )
+	{ LDEB(value); return -1;	}
+
+    if  ( appGetLengthFromTextWidget( w,
+			&value, &changed, st->stUnitInt,
+			minValue, adaptToMin, maxValue, adaptToMax ) )
+	{ return 1;	}
+    if  ( ! changed )
+	{ *pChanged= 0; return 0;	}
+
+    if  ( docSectSetColumnSpacing( sp, col, value ) )
+	{ LLDEB(col,value); return -1;	}
+
+    *pChanged= 1;
+    return 0;
+    }
+
+/************************************************************************/
+/*									*/
+/*  Extract the value from one of the column width text widgets.	*/
+/*									*/
+/************************************************************************/
+
+static int tedSectToolGetColWidth(	int *			pChanged,
+					SectionTool *		st,
+					int			col,
+					APP_WIDGET		w )
+    {
+    SectionProperties *		sp= &(st->stPropertiesChosen);
+
+    int				value;
+    int				changed= 0;
+
+    const int			adaptToMin= 1;
+    const int			adaptToMax= 1;
+    int				minValue;
+    int				maxValue;
+
+    value= docSectGetColumnWidth( &minValue, &maxValue, sp, col );
+    if  ( value < 0 )
+	{ LDEB(value); return -1;	}
+
+    if  ( appGetLengthFromTextWidget( w,
+			&value, &changed, st->stUnitInt,
+			minValue, adaptToMin, maxValue, adaptToMax ) )
+	{ return 1;	}
+    if  ( ! changed )
+	{ *pChanged= 0; return 0;	}
+
+    if  ( docSectSetColumnWidth( sp, col, value ) )
+	{ LLDEB(col,value); return -1;	}
+
+    *pChanged= 1;
+    return 0;
+    }
+
+
+/************************************************************************/
+
+static int tedSectToolGetChosen(	SectionTool *		st )
+    {
+    SectionProperties *		spChosen= &(st->stPropertiesChosen);
+
+    spChosen->spRestartPageNumbers=
+		appGuiGetToggleState( st->stPageRestartToggle ) != 0;
+
+    if  ( spChosen->spRestartPageNumbers )
+	{
+	int			n;
+
+	if  ( appGetIntegerFromTextWidget( st->stPageRestartText, &n,
+							1, 0, INT_MAX, 0 ) )
+	    { return -1;	}
+
+	spChosen->spStartPageNumber= n- 1;
+	}
+
+    if  ( spChosen->spColumnCount > 1 )
+	{
+	int		col;
+	int		upto;
+	int		changed= 0;
+	int		haveFixedWidth;
+
+	haveFixedWidth= docSectPropsFixedWidthColumns( spChosen );
+
+	upto= 1;
+	if  ( ! haveFixedWidth )
+	    { upto= spChosen->spColumnCount- 1;	}
+
+	for ( col= 0; col < upto; col++ )
+	    {
+	    if  ( tedSectToolGetColSpacing( &changed, st,
+						col, st->stColsrTexts[col] ) )
+		{ return -1;	}
+	    }
+
+	upto= 1;
+	if  ( ! haveFixedWidth )
+	    { upto= spChosen->spColumnCount;	}
+
+	for ( col= 0; col < upto; col++ )
+	    {
+	    if  ( tedSectToolGetColWidth( &changed, st,
+						col, st->stColwTexts[col] ) )
+		{ return -1;	}
+	    }
+	}
+
+    return 0;
     }
 
 /************************************************************************/
@@ -122,66 +390,34 @@ void tedFormatToolRefreshSectionTool(
 static APP_BUTTON_CALLBACK_H( tedFormatChangeSectPushed, w, voidst )
     {
     SectionTool *		st= (SectionTool *)voidst;
-    SectionProperties *		spNew= &(st->stPropertiesChosen);
+    SectionProperties *		spChosen= &(st->stPropertiesChosen);
+    SectionProperties *		spSet= &(st->stPropertiesSet);
 
-    int				changed;
+    PropertyMask		spCmpMask;
+    PropertyMask		spDifMask;
 
-    PropertyMask		updMask;
-
-    const int			minValue= 1;
-    const int			adaptToMin= 0;
-    const int			maxValue= INT_MAX;
-    const int			adaptToMax= 0;
-
-    spNew->spRestartPageNumbers=
-		appGuiGetToggleState( st->stPageRestartToggle ) != 0;
-
-    if  ( spNew->spRestartPageNumbers )
-	{
-	int			n;
-
-	if  ( appGetIntegerFromTextWidget( st->stPageRestartText, &n,
-							1, 0, INT_MAX, 0 ) )
-	    { return;	}
-
-	spNew->spStartPageNumber= n- 1;
-	}
-
-    if  ( appGetIntegerFromTextWidget( st->stColumnsText,
-						    &(spNew->spColumnCount),
-						    1, 0, INT_MAX, 0 ) )
+    if  ( tedSectToolGetChosen( st ) )
 	{ return;	}
 
-    if  ( spNew->spColumnCount > 1 )
-	{
-	if  ( appGetLengthFromTextWidget( st->stColumnSpacingText,
-		    &(spNew->spColumnSpacingTwips), &changed, UNITtyPOINTS,
-		    minValue, adaptToMin, maxValue, adaptToMax ) )
-	    { return;	}
+    utilPropMaskClear( &spCmpMask );
+    utilPropMaskClear( &spDifMask );
+    utilPropMaskFill( &spCmpMask, SPprop_COUNT );
 
-	if  ( appGetLengthFromTextWidget( st->stColumnWidthText,
-		    &(spNew->spColumnWidthTwips), &changed, UNITtyPOINTS,
-		    minValue, adaptToMin, maxValue, adaptToMax ) )
-	    { return;	}
-	}
+    docSectPropertyDifference( &spDifMask, spChosen, &spCmpMask, spSet );
 
-    PROPmaskCLEAR( &updMask );
-    utilPropMaskFill( &updMask, SPprop_COUNT );
-
-    if  ( tedAppChangeSectionProperties( st->stApplication, &updMask, spNew ) )
+    if  ( tedAppChangeSectionProperties( st->stApplication,
+						    &spDifMask, spChosen ) )
 	{ LDEB(1);	}
 
     return;
     }
 
-static APP_OITEM_CALLBACK_H( tedSectNumberStyleChosen, w, voidst )
+static void tedSectNumberStyleChosen(	int		style,
+					void *		voidst )
     {
     SectionTool *			st= (SectionTool *)voidst;
     SectionProperties *			sp= &(st->stPropertiesChosen);
 
-    int					style;
-
-    style= appGuiGetOptionmenuItemIndex( &(st->stNumberStyleOptionmenu), w );
     if  ( style < 0 || style >= DOCpgn_COUNT )
 	{ LLDEB(style,DOCpgn_COUNT); return;	}
 
@@ -190,16 +426,14 @@ static APP_OITEM_CALLBACK_H( tedSectNumberStyleChosen, w, voidst )
     return;
     }
 
-static APP_OITEM_CALLBACK_H( tedSectBreakKindChosen, w, voidst )
+static void tedSectBreakKindChosen(	int		breakKind,
+					void *		voidst )
     {
     SectionTool *			st= (SectionTool *)voidst;
     SectionProperties *			sp= &(st->stPropertiesChosen);
 
-    int					breakKind;
-
-    breakKind= appGuiGetOptionmenuItemIndex( &(st->stBreakKindOptionmenu), w );
-    if  ( breakKind < 0 || breakKind >= DOCsbk_COUNT )
-	{ LLDEB(breakKind,DOCsbk_COUNT); return;	}
+    if  ( breakKind < 0 || breakKind >= DOCibk_COUNT )
+	{ LLDEB(breakKind,DOCibk_COUNT); return;	}
 
     sp->spBreakKind= breakKind;
 
@@ -216,7 +450,29 @@ static APP_TOGGLE_CALLBACK_H( tedFormatPageRestartToggled, w, voidst, voidtbcs )
 
     sp->spRestartPageNumbers= ( set != 0 );
 
-    tedFormatToolRefreshPageRestart( st );
+    tedSectionToolRefreshPageRestart( st );
+
+    return;
+    }
+
+static void tedColumnCountChosen(	int		val,
+					void *		voidst )
+    {
+    SectionTool *			st= (SectionTool *)voidst;
+    SectionProperties *			sp= &(st->stPropertiesChosen);
+
+    if  ( val < 0 || val >= SECT_MAX_COLUMNS )
+	{ LLDEB(val,SECT_MAX_COLUMNS); return;	}
+
+    if  ( sp->spColumnCount != val+ 1 )
+	{
+	if  ( docSectionPropertiesSetColumnCount( sp, val+ 1 ) )
+	    { LDEB(val+1); return;	}
+
+	docSectSetEqualColumnWidth( sp );
+
+	tedSectionToolRefreshColumns( st );
+	}
 
     return;
     }
@@ -227,34 +483,56 @@ static APP_TOGGLE_CALLBACK_H( tedFormatPageRestartToggled, w, voidst, voidtbcs )
 /*									*/
 /************************************************************************/
 
-static APP_TXACTIVATE_CALLBACK_H( tedSectColSpacingChanged, w, voidst )
-    {
-    SectionTool *		st= (SectionTool *)voidst;
-    SectionProperties *		sp= &(st->stPropertiesChosen);
-
-    int				value;
-    int				changed;
-
-    value= sp->spColumnSpacingTwips;
-
-    tedFormatValidateDimension( &value, &changed,
-					    st->stColumnSpacingText, value );
-
-    return;
-    }
-
 static APP_TXACTIVATE_CALLBACK_H( tedSectColWidthChanged, w, voidst )
     {
     SectionTool *		st= (SectionTool *)voidst;
     SectionProperties *		sp= &(st->stPropertiesChosen);
+    int				col;
+    int				changed= 0;
 
-    int				value;
-    int				changed;
+    if  ( sp->spColumnCount < 2 )
+	{ LDEB(sp->spColumnCount); return;	}
 
-    value= sp->spColumnWidthTwips;
+    for ( col= 0; col < sp->spColumnCount; col++ )
+	{
+	if  ( w == st->stColwTexts[col] )
+	    { break;	}
+	}
 
-    tedFormatValidateDimension( &value, &changed,
-					    st->stColumnWidthText, value );
+    if  ( col >= sp->spColumnCount )
+	{ LLDEB(col,sp->spColumnCount); return;	}
+
+    if  ( tedSectToolGetColWidth( &changed, st, col, w ) || ! changed )
+	{ return;	}
+
+    tedSectionToolRefreshColumns( st );
+
+    return;
+    }
+
+static APP_TXACTIVATE_CALLBACK_H( tedSectColSpacingChanged, w, voidst )
+    {
+    SectionTool *		st= (SectionTool *)voidst;
+    SectionProperties *		sp= &(st->stPropertiesChosen);
+    int				col;
+    int				changed= 0;
+
+    if  ( sp->spColumnCount < 2 )
+	{ LDEB(sp->spColumnCount); return;	}
+
+    for ( col= 0; col < sp->spColumnCount; col++ )
+	{
+	if  ( w == st->stColsrTexts[col] )
+	    { break;	}
+	}
+
+    if  ( col >= sp->spColumnCount )
+	{ LLDEB(col,sp->spColumnCount); return;	}
+
+    if  ( tedSectToolGetColSpacing( &changed, st, col, w ) || ! changed )
+	{ return;	}
+
+    tedSectionToolRefreshColumns( st );
 
     return;
     }
@@ -271,7 +549,6 @@ static APP_BUTTON_CALLBACK_H( tedFormatRevertSectPushed, w, voidst )
 
     docCopySectionProperties( &(st->stPropertiesChosen),
 						    &(st->stPropertiesSet) );
-
     tedFormatToolRefreshSectionPage( st );
 
     return;
@@ -288,7 +565,7 @@ static APP_BUTTON_CALLBACK_H( tedFormatPrevSect, w, voidst )
     SectionTool *		st= (SectionTool *)voidst;
     EditApplication *		ea= st->stApplication;
 
-    tedSelectWholeSection( ea, -1 );
+    tedAppSelectWholeSection( ea, -1 );
 
     return;
     }
@@ -298,7 +575,7 @@ static APP_BUTTON_CALLBACK_H( tedFormatNextSect, w, voidst )
     SectionTool *		st= (SectionTool *)voidst;
     EditApplication *		ea= st->stApplication;
 
-    tedSelectWholeSection( ea, 1 );
+    tedAppSelectWholeSection( ea, 1 );
 
     return;
     }
@@ -308,7 +585,7 @@ static APP_BUTTON_CALLBACK_H( tedFormatSelectSect, w, voidst )
     SectionTool *		st= (SectionTool *)voidst;
     EditApplication *		ea= st->stApplication;
 
-    tedSelectWholeSection( ea, 0 );
+    tedAppSelectWholeSection( ea, 0 );
 
     return;
     }
@@ -318,15 +595,16 @@ static APP_BUTTON_CALLBACK_H( tedFormatDeleteSect, w, voidst )
     SectionTool *		st= (SectionTool *)voidst;
     EditApplication *		ea= st->stApplication;
 
-    tedDeleteCurrentSection( ea );
+    tedAppDeleteSelectedSections( ea );
     }
 
 static APP_BUTTON_CALLBACK_H( tedFormatInsertSect, w, voidst )
     {
     SectionTool *		st= (SectionTool *)voidst;
     EditApplication *		ea= st->stApplication;
+    const int			after= 0;
 
-    tedInsertSection( ea, 0 );
+    tedAppInsertSection( ea, after );
 
     return;
     }
@@ -335,8 +613,46 @@ static APP_BUTTON_CALLBACK_H( tedFormatAppendSect, w, voidst )
     {
     SectionTool *		st= (SectionTool *)voidst;
     EditApplication *		ea= st->stApplication;
+    const int			after= 1;
 
-    tedInsertSection( ea, 1 );
+    tedAppInsertSection( ea, after );
+
+    return;
+    }
+
+static APP_TOGGLE_CALLBACK_H( tedSectLineBetweenToggled, w, voidst, voidtbcs )
+    {
+    SectionTool *		st= (SectionTool *)voidst;
+    SectionProperties *		sp= &(st->stPropertiesChosen);
+
+    int				set;
+
+    set= appGuiGetToggleStateFromCallback( w, voidtbcs );
+
+    sp->spLineBetweenColumns= ( set != 0 );
+
+    return;
+    }
+
+static APP_TOGGLE_CALLBACK_H( tedSectEqualWidthToggled, w, voidst, voidtbcs )
+    {
+    SectionTool *		st= (SectionTool *)voidst;
+    SectionProperties *		sp= &(st->stPropertiesChosen);
+
+    int				set;
+
+    set= appGuiGetToggleStateFromCallback( w, voidtbcs );
+
+    if  ( set )
+	{ docSectSetEqualColumnWidth( sp );	}
+    else{
+	if  ( sp->spColumnCount > 1 )
+	    {
+	    docSectSetExplicitColumnWidth( sp );
+	    }
+	}
+
+    tedSectionToolRefreshColumns( st );
 
     return;
     }
@@ -346,6 +662,62 @@ static APP_BUTTON_CALLBACK_H( tedFormatAppendSect, w, voidst )
 /*  Make a section tool. I.E. the 'Section' page of the format tool.	*/
 /*									*/
 /************************************************************************/
+
+static void tedSectionToolFillColumnsFrame(
+				SectionTool *			st,
+				const SectionPageResources *	spr,
+				APP_WIDGET			frameColumn )
+    {
+    int			col;
+    APP_WIDGET		row;
+    APP_WIDGET		rowLabel;
+
+    /**************/
+    guiToolMakeLabelAndMenuRow( &row,
+			    &(st->stColumnCountMenu),
+			    &rowLabel, frameColumn, spr->sprColumnCount,
+			    tedColumnCountChosen, (void *)st );
+
+    guiToolMake2ToggleRow( &row, frameColumn,
+		    &(st->stEqualWidthToggle),
+		    &(st->stLineBetweenColumnsToggle),
+		    spr->sprColumnsEqualWidth,
+		    spr->sprLineBetweenColumns,
+		    tedSectEqualWidthToggled,
+		    tedSectLineBetweenToggled,
+		    (void *)st, (void *)st );
+
+    /**************/
+    row= appMakeRowInColumn( frameColumn, 5, 0 );
+    appMakeLabelInRow( &rowLabel, row, 0, 1, spr->sprColumn );
+    appMakeLabelInRow( &rowLabel, row, 1, 2, spr->sprColumnWidth );
+    appMakeLabelInRow( &rowLabel, row, 3, 2, spr->sprColumnSpacing );
+
+    for ( col= 0; col < SECT_MAX_COLUMNS; col++ )
+	{
+	char		scratch[20];
+	const int	textEnabled= 0;
+	const int	textColumns= 7;
+
+	st->stColumnRows[col]= appMakeRowInColumn( frameColumn, 5, 0 );
+
+	sprintf( scratch, "%d", col+ 1 );
+	appMakeLabelInRow( &(st->stColnoLabels[col]),
+		    st->stColumnRows[col], 0, 1, scratch );
+
+	appMakeTextInRow( &(st->stColwTexts[col]),
+		    st->stColumnRows[col], 1, 2, textColumns, textEnabled );
+	appMakeTextInRow( &(st->stColsrTexts[col]),
+		    st->stColumnRows[col], 3, 2, textColumns, textEnabled );
+
+	appGuiSetGotValueCallbackForText( st->stColwTexts[col],
+				    tedSectColWidthChanged, (void *)st );
+	appGuiSetGotValueCallbackForText( st->stColsrTexts[col],
+				    tedSectColSpacingChanged, (void *)st );
+	}
+
+    return;
+    }
 
 void tedFormatFillSectionPage(	SectionTool *			st,
 				const SectionPageResources *	spr,
@@ -361,9 +733,9 @@ void tedFormatFillSectionPage(	SectionTool *			st,
 
     /**/
 
-    st->stUnitType= appUnitTypeInt( spr->sprUnitType );
-    if  ( st->stUnitType < 0 )
-	{ SDEB(spr->sprUnitType); st->stUnitType= UNITtyINCH;	}
+    st->stUnitInt= appUnitTypeInt( spr->sprUnitType );
+    if  ( st->stUnitInt < 0 )
+	{ SDEB(spr->sprUnitType); st->stUnitInt= UNITtyPOINTS;	}
 
     /**/
     st->stPageResources= spr;
@@ -375,57 +747,52 @@ void tedFormatFillSectionPage(	SectionTool *			st,
     docInitSectionProperties( &(st->stPropertiesChosen) );
 
     /**************/
-    appMakeLabelAndTextRow( &row, &rowLabel, &(st->stNumberText),
+    guiToolMakeLabelAndTextRow( &(st->stNumberRow),
+			    &(st->stNumberLabel), &(st->stNumberText),
 			    pageWidget, isr->isrSubjectName, textColumns, 0 );
 
     /**************/
-    appInspectorMakeMenuRow( &row,
-			    &(st->stBreakKindOptionmenu),
-			    &rowLabel, pageWidget, spr->sprBreakKind );
+    guiToolMakeLabelAndMenuRow( &(st->stBreakKindRow),
+			&(st->stBreakKindOptionmenu),
+			&rowLabel, pageWidget, spr->sprBreakKind,
+			tedSectBreakKindChosen, (void *)st );
     /**************/
-    appInspectorMakeMenuRow( &row,
-			    &(st->stNumberStyleOptionmenu),
-			    &rowLabel, pageWidget, spr->sprPageNumberStyle );
+    guiToolMakeLabelAndMenuRow( &(st->stNumberStyleRow),
+			&(st->stNumberStyleOptionmenu),
+			&rowLabel, pageWidget, spr->sprPageNumberStyle,
+			tedSectNumberStyleChosen, (void *)st );
     /**************/
-    appMakeToggleAndTextRow( &row, &(st->stPageRestartToggle),
-			    &(st->stPageRestartText), pageWidget,
-			    spr->sprNumberingRestarts,
-			    tedFormatPageRestartToggled, (void *)st,
-			    textColumns, 1 );
-
-    /**************/
-    appMakeLabelAndTextRow( &row, &rowLabel, &(st->stColumnsText),
-			    pageWidget, spr->sprColumnCount, textColumns, 0 );
-
-    appMakeLabelAndTextRow( &row, &rowLabel, &(st->stColumnSpacingText),
-			    pageWidget, spr->sprColumnSpacing, textColumns, 0 );
-
-    appMakeLabelAndTextRow( &row, &rowLabel, &(st->stColumnWidthText),
-			    pageWidget, spr->sprColumnWidth, textColumns, 0 );
-
-    appGuiSetGotValueCallbackForText( st->stColumnSpacingText,
-					tedSectColSpacingChanged, (void *)st );
-
-    appGuiSetGotValueCallbackForText( st->stColumnWidthText,
-					tedSectColWidthChanged, (void *)st );
+    guiToolMakeToggleAndTextRow( &(st->stPageRestartRow),
+			&(st->stPageRestartToggle),
+			&(st->stPageRestartText), pageWidget,
+			spr->sprNumberingRestarts,
+			tedFormatPageRestartToggled, (void *)st,
+			textColumns, 1 );
 
     /**************/
-    appInspectorMakeButtonRow( &row, pageWidget,
+    appMakeColumnFrameInColumn( &(st->stColumnsFrame),
+				&(st->stColumnsPaned),
+				pageWidget, spr->sprColumns );
+
+    tedSectionToolFillColumnsFrame( st, spr, st->stColumnsPaned );
+
+    /**************/
+    guiToolMake2BottonRow( &(is->isNextPrevRow), pageWidget,
 	    &(is->isPrevButton), &(is->isNextButton),
 	    isr->isrPrevButtonText, isr->isrNextButtonText,
 	    tedFormatPrevSect, tedFormatNextSect, (void *)st );
 
-    appInspectorMakeButtonRow( &row, pageWidget,
+    guiToolMake2BottonRow( &row, pageWidget,
 	    &(is->isSelectButton), &(is->isDeleteButton),
 	    isr->isrSelectButtonText, isr->isrDeleteButtonText,
 	    tedFormatSelectSect, tedFormatDeleteSect, (void *)st );
 
-    appInspectorMakeButtonRow( &row, pageWidget,
+    guiToolMake2BottonRow( &row, pageWidget,
 	    &(is->isInsertButton), &(is->isAppendButton),
 	    isr->isrInsertButtonText, isr->isrAppendButtonText,
 	    tedFormatInsertSect, tedFormatAppendSect, (void *)st );
 
-    appInspectorMakeButtonRow( &row, pageWidget,
+    guiToolMake2BottonRow( &(is->isApplyRow), pageWidget,
 	    &(is->isRevertButton), &(is->isApplyButton),
 	    isr->isrRevert, isr->isrApplyToSubject,
 	    tedFormatRevertSectPushed, tedFormatChangeSectPushed, (void *)st );
@@ -442,26 +809,43 @@ void tedFormatFillSectionPage(	SectionTool *			st,
 void tedFormatFillSectionChoosers(	SectionTool *			st,
 					const SectionPageResources *	spr )
     {
+    int			i;
+    char		texts[20][SECT_MAX_COLUMNS+ 1];
+    const char *	columnCountTexts[SECT_MAX_COLUMNS+ 1];
+
     appFillInspectorMenu( DOCpgn_COUNT, DOCpgnDEC,
 			st->stNumberStyleItems, spr->sprNumberStyleMenuTexts,
-			&(st->stNumberStyleOptionmenu),
-			tedSectNumberStyleChosen, (void *)st );
+			&(st->stNumberStyleOptionmenu) );
 
-    appFillInspectorMenu( DOCsbk_COUNT, DOCsbkPAGE,
+    appFillInspectorMenu( DOCibk_COUNT, DOCibkPAGE,
 			st->stBreakKindItems, spr->sprBreakKindMenuTexts,
-			&(st->stBreakKindOptionmenu),
-			tedSectBreakKindChosen, (void *)st );
+			&(st->stBreakKindOptionmenu) );
+
+    for ( i= 0; i < SECT_MAX_COLUMNS; i++ )
+	{
+	sprintf( texts[i], "%d", i+ 1 );
+	columnCountTexts[i]= texts[i];
+	}
+    sprintf( texts[SECT_MAX_COLUMNS], "> %d", SECT_MAX_COLUMNS );
+    columnCountTexts[SECT_MAX_COLUMNS]= texts[SECT_MAX_COLUMNS];
+
+    appFillInspectorMenu( SECT_MAX_COLUMNS+ 1, 1,
+			st->stColumnCountItems, columnCountTexts,
+			&(st->stColumnCountMenu) );
+
+    guiEnableWidget( st->stColumnCountItems[SECT_MAX_COLUMNS], 0 );
 
     return;
     }
 
 void tedFormatFinishSectionPage(	SectionTool *			st,
-					TedFormatTool *			tft,
 					const SectionPageResources *	spr )
     {
     appOptionmenuRefreshWidth( &(st->stNumberStyleOptionmenu) );
 
     appOptionmenuRefreshWidth( &(st->stBreakKindOptionmenu) );
+
+    appOptionmenuRefreshWidth( &(st->stColumnCountMenu) );
 
     return;
     }
@@ -551,30 +935,42 @@ static AppConfigurableResource TED_TedSectionToolResourceTable[]=
 	    offsetof(SectionPageResources,sprBreakKind),
 	    "Begins" ),
     APP_RESOURCE( "formatToolSectBreakKindNone",
-	    offsetof(SectionPageResources,sprBreakKindMenuTexts[DOCsbkNONE]),
+	    offsetof(SectionPageResources,sprBreakKindMenuTexts[DOCibkNONE]),
 	    "Below Previous" ),
     APP_RESOURCE( "formatToolSectBreakKindCol",
-	    offsetof(SectionPageResources,sprBreakKindMenuTexts[DOCsbkCOL]),
+	    offsetof(SectionPageResources,sprBreakKindMenuTexts[DOCibkCOL]),
 	    "In Next Column" ),
     APP_RESOURCE( "formatToolSectBreakKindPage",
-	    offsetof(SectionPageResources,sprBreakKindMenuTexts[DOCsbkPAGE]),
+	    offsetof(SectionPageResources,sprBreakKindMenuTexts[DOCibkPAGE]),
 	    "On New Page" ),
     APP_RESOURCE( "formatToolSectBreakKindEven",
-	    offsetof(SectionPageResources,sprBreakKindMenuTexts[DOCsbkEVEN]),
+	    offsetof(SectionPageResources,sprBreakKindMenuTexts[DOCibkEVEN]),
 	    "On Even Page" ),
     APP_RESOURCE( "formatToolSectBreakKindOdd",
-	    offsetof(SectionPageResources,sprBreakKindMenuTexts[DOCsbkODD]),
+	    offsetof(SectionPageResources,sprBreakKindMenuTexts[DOCibkODD]),
 	    "On Odd Page" ),
     /**/
+    APP_RESOURCE( "formatToolSectColumns",
+	    offsetof(SectionPageResources,sprColumns),
+	    "Columns" ),
     APP_RESOURCE( "formatToolSectColumnCount",
 	    offsetof(SectionPageResources,sprColumnCount),
 	    "Columns" ),
-    APP_RESOURCE( "formatToolSectColumnSpacing",
-	    offsetof(SectionPageResources,sprColumnSpacing),
-	    "Column Spacing" ),
+    APP_RESOURCE( "formatToolSectColumn",
+	    offsetof(SectionPageResources,sprColumn),
+	    "Column" ),
     APP_RESOURCE( "formatToolSectColumnWidth",
 	    offsetof(SectionPageResources,sprColumnWidth),
-	    "Column Width" ),
+	    "Width" ),
+    APP_RESOURCE( "formatToolSectColumnSpacing",
+	    offsetof(SectionPageResources,sprColumnSpacing),
+	    "Spacing" ),
+    APP_RESOURCE( "formatToolSectLineBetweenColumns",
+	    offsetof(SectionPageResources,sprLineBetweenColumns),
+	    "Line between" ),
+    APP_RESOURCE( "formatToolSectColumnsEqualWidth",
+	    offsetof(SectionPageResources,sprColumnsEqualWidth),
+	    "Equal Width" ),
     };
 
 void tedFormatToolGetSectResourceTable(	EditApplication *		ea,

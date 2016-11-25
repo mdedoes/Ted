@@ -1,5 +1,7 @@
 #   include	"indConfig.h"
 
+#   include	<stdlib.h>
+
 #   include	"indlocal.h"
 
 #   include	<appDebugoff.h>
@@ -64,28 +66,6 @@ static int indRenumberNode(	int	tn,
 	newNode->tn_transitions= -1;
 	}
 
-    if  ( oldNode->tn_nitem > 0 )
-	{
-	int *	oldItems= ITEMS(oldIndex,oldNode->tn_items);
-	int *	newItems;
-	int	items;
-
-	items= indITalloc( newIndex, -1, oldNode->tn_nitem );
-	if  ( items < 0 )
-	    { LDEB(items); return -1;	}
-
-	newItems= ITEMS(newIndex,items);
-	for ( i= 0; i < oldNode->tn_nitem; i++ )
-	    { newItems[i]= oldItems[i]; }
-
-	newNode->tn_nitem= oldNode->tn_nitem;
-	newNode->tn_items= items;
-	}
-    else{
-	newNode->tn_nitem= 0;
-	newNode->tn_items= -1;
-	}
-
     newNode->tn_flags= oldNode->tn_flags;
 
     return newNumbers[tn];
@@ -104,11 +84,11 @@ IND *	indINDrenumber( IND * ind )
     if  ( ! rval )
 	{ XDEB(rval); return rval;	}
 
-    newNumbers= (int *)malloc( ind->ind_nnode* sizeof(int) );
+    newNumbers= (int *)malloc( ind->indNodeCount* sizeof(int) );
     if  ( ! newNumbers )
 	{ XDEB(newNumbers); indINDfree( rval ); return (IND *)0; }
 
-    for ( tn= 0; tn < ind->ind_nnode; tn++ )
+    for ( tn= 0; tn < ind->indNodeCount; tn++ )
 	{ newNumbers[tn]= -1;	}
 
     rval->ind_start= indRenumberNode( ind->ind_start, ind, rval, newNumbers );

@@ -8,8 +8,11 @@
 #   define	TED_SHADING_TOOL_H
 
 #   include <appGuiBase.h>
+#   include <appFrame.h>
+#   include <appInspector.h>
 #   include <appColorChooser.h>
-#   include "docBuf.h"
+#   include <docBuf.h>
+#   include <psShading.h>
 
 struct ShadingTool;
 
@@ -23,6 +26,7 @@ typedef struct ShadingTool
     {
     APP_WIDGET			stFrame;
     APP_WIDGET			stPaned;
+    APP_WIDGET			stRow;
 
     APP_WIDGET			stPatternLabel;
     APP_WIDGET			stLevelLabel;
@@ -31,11 +35,9 @@ typedef struct ShadingTool
 
     int				stShowPattern;
     AppDrawnPulldown		stPatternPulldown;
-    AppDrawingData		stPatternInplaceDrawingData;
-    AppDrawingData		stPatternPulldownDrawingData;
-    APP_BITMAP_IMAGE		stPatternPixmaps[DOCsp_COUNT];
-    int				stPulldownDrawingDataSet;
+    DrawingSurface		stPatternPixmaps[PSshd_COUNT];
 
+    APP_WIDGET			stOnOffToggle;
     APP_WIDGET			stLevelText;
     ColorChooser		stBackColorChooser;
     ColorChooser		stForeColorChooser;
@@ -69,9 +71,12 @@ typedef struct ShadingToolResources
 /*									*/
 /************************************************************************/
 
-extern void tedSetShadingTool(		ShadingTool *			st,
-					const DocumentProperties *	dp,
-					const ItemShading *		is );
+extern void tedEnableShadingTool(	ShadingTool *		st,
+					int			enabled );
+
+extern void tedSetShadingToolByNumber(	ShadingTool *			st,
+					const BufferDocument *		bd,
+					int				num );
 
 extern void tedFormatMakeShadingTool(
 				ShadingTool *			st,
@@ -85,11 +90,6 @@ extern void tedFormatMakeShadingTool(
 				TedShadingToolCallback		callback,
 				void *				through );
 
-extern int tedShadingToolGetShading(
-				ExpandedItemShading *		eisSet,
-				PropertyMask *			pSetMask,
-				const ShadingTool *		st );
-
 extern void tedShadeSetExplicitColorChoice(
 				ShadingTool *			st,
 				int				which,
@@ -98,6 +98,17 @@ extern void tedShadeSetExplicitColorChoice(
 extern void tedInitShadingTool(		ShadingTool *		st );
 extern void tedCleanShadingTool(	ShadingTool *		st );
 
-extern void tedFinishShadingTool(	ShadingTool *		st );
+extern void tedFinishShadingTool(ShadingTool *			st,
+				const PostScriptFontList *	psfl );
+
+extern int tedShadingToolGetShadingNumber(
+					int *			pNum,
+					PropertyMask *		isSetMask,
+					const ShadingTool *	st,
+					BufferDocument *	bd );
+
+extern int tedFormatToolGetCellShading(	CellProperties *	cp,
+					BufferDocument *	bd,
+					ShadingTool *		st );
 
 #   endif	/*  TED_SHADING_TOOL_H */

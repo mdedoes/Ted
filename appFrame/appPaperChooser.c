@@ -7,14 +7,27 @@
 #   include	"appFrameConfig.h"
 
 #   include	<stdlib.h>
-#   include	<string.h>
 
-#   include	<appGeoString.h>
+#   include	<geoString.h>
 #   include	<appPaper.h>
 
 #   include	"appPaperChooser.h"
+#   include	"guiWidgets.h"
 
 #   include	<appDebugon.h>
+
+/************************************************************************/
+/*									*/
+/*  Turn on or off							*/
+/*									*/
+/************************************************************************/
+
+void appEnablePaperChooser(	PaperChooser *			pc,
+				int				enabled )
+    {
+    guiEnableWidget( pc->pcFrame, enabled );
+    guiEnableText( pc->pcSizeText, enabled );
+    }
 
 /************************************************************************/
 /*									*/
@@ -28,7 +41,7 @@ static void appPaperChooserShowWidthHeight(
     {
     char			scratch[50];
 
-    appGeoRectangleToString( scratch,
+    geoRectangleToString( scratch,
 		    dg->dgPageWideTwips, dg->dgPageHighTwips, pc->pcUnitType );
 
     pc->pcProgrammatic++;
@@ -44,31 +57,31 @@ static void appPaperChooserShowWidthHeight(
 /*									*/
 /************************************************************************/
 
-int appPaperChooserGetSize(	PropertyMask *		pChgMask,
+int appPaperChooserGetSize(	PropertyMask *		pDoneMask,
 				PaperChooser *		pc,
 				DocumentGeometry *	dg )
     {
     char *		s;
-    DocumentGeometry	dgHere;
+    DocumentGeometry	dgSet;
 
-    PropertyMask	updMask;
-    PropertyMask	chgMask;
+    PropertyMask	setMask;
+    PropertyMask	doneMask;
 
-    dgHere= *dg;
+    dgSet= *dg;
 
-    PROPmaskCLEAR( &updMask );
-    PROPmaskCLEAR( &chgMask );
+    utilPropMaskClear( &setMask );
+    utilPropMaskClear( &doneMask );
 
-    PROPmaskADD( &updMask, DGpropPAGE_WIDTH );
-    PROPmaskADD( &updMask, DGpropPAGE_HEIGHT );
+    PROPmaskADD( &setMask, DGpropPAGE_WIDTH );
+    PROPmaskADD( &setMask, DGpropPAGE_HEIGHT );
 
     s= appGetStringFromTextWidget( pc->pcSizeText );
 
-    if  ( appGeoRectangleFromString( s, pc->pcUnitType,
-				    &(dgHere.dgPageWideTwips),
-				    &(dgHere.dgPageHighTwips) )		||
-	  dgHere.dgPageWideTwips <= 0					||
-	  dgHere.dgPageHighTwips <= 0					)
+    if  ( geoRectangleFromString( s, pc->pcUnitType,
+				    &(dgSet.dgPageWideTwips),
+				    &(dgSet.dgPageHighTwips) )		||
+	  dgSet.dgPageWideTwips <= 0					||
+	  dgSet.dgPageHighTwips <= 0					)
 	{
 	appFreeStringFromTextWidget( s );
 
@@ -79,9 +92,10 @@ int appPaperChooserGetSize(	PropertyMask *		pChgMask,
 
     appFreeStringFromTextWidget( s );
 
-    utilUpdDocumentGeometry( dg, &dgHere, &chgMask, &updMask );
+    utilUpdDocumentGeometry( &doneMask, dg, &setMask, &dgSet );
 
-    *pChgMask= chgMask;
+    if  ( pDoneMask )
+	{ utilPropMaskOr( pDoneMask, pDoneMask, &doneMask );	}
 
     return 0;
     }
@@ -132,12 +146,14 @@ static void appPaperChooserWidgetSettings(
 
     if  ( dg->dgPageWideTwips > dg->dgPageHighTwips )
 	{
-	sizeNr= appPaperGetBySize( dg->dgPageHighTwips, dg->dgPageWideTwips );
+	sizeNr= utilPaperGetNumberBySize( dg->dgPageHighTwips,
+						    dg->dgPageWideTwips );
 
 	landscape= 1;
 	}
     else{
-	sizeNr= appPaperGetBySize( dg->dgPageWideTwips, dg->dgPageHighTwips );
+	sizeNr= utilPaperGetNumberBySize( dg->dgPageWideTwips,
+						    dg->dgPageHighTwips );
 
 	landscape= 0;
 	}
@@ -202,12 +218,12 @@ void appPaperChooserAdaptToGeometry(	PaperChooser *			pc,
 /*									*/
 /************************************************************************/
 
-static APP_OITEM_CALLBACK_H( appPaperChooserSizeChosen, w, voidpc )
+static void appPaperChooserSizeChosen(	int		i,
+					void *		voidpc )
     {
     PaperChooser *	pc= (PaperChooser *)voidpc;
 
     int			changed= 0;
-    int			i= -1;
 
     int			width;
     int			height;
@@ -215,7 +231,6 @@ static APP_OITEM_CALLBACK_H( appPaperChooserSizeChosen, w, voidpc )
     if  ( pc->pcProgrammatic )
 	{ return;	}
 
-    i= appGuiGetOptionmenuItemIndex( &(pc->pcOptionmenu), w );
     if  ( i < 0 || i >= pc->pcSizeOptionCount )
 	{ LLDEB(i,pc->pcSizeOptionCount); return;	}
 
@@ -226,7 +241,7 @@ static APP_OITEM_CALLBACK_H( appPaperChooserSizeChosen, w, voidpc )
 	PropertyMask		updMask;
 	DocumentGeometry	dgScratch;
 
-	PROPmaskCLEAR( &updMask );
+	utilPropMaskClear( &updMask );
 
 	if  ( appPaperChooserGetSize( &updMask, pc, &dgScratch ) )
 	    { LDEB(1); return;	}
@@ -239,7 +254,7 @@ static APP_OITEM_CALLBACK_H( appPaperChooserSizeChosen, w, voidpc )
 	else{ pc->pcLandscapeChosen= 0;	}
 	}
     else{
-	if  ( appPaperGetInformation( i, &width, &height, (const char **)0 ) )
+	if  ( utilPaperGetInfoByNumber( i, &width, &height, (const char **)0 ) )
 	    { return;	}
 
 	if  ( pc->pcLandscapeChosen )
@@ -286,7 +301,7 @@ static APP_TXTYPING_CALLBACK_H( appPaperChooserTypingCallback, w, voidpc )
 
     s= appGetStringFromTextWidget( pc->pcSizeText );
 
-    if  ( ! appGeoRectangleFromString( s, pc->pcUnitType,
+    if  ( ! geoRectangleFromString( s, pc->pcUnitType,
 				    &(dgHere.dgPageWideTwips),
 				    &(dgHere.dgPageHighTwips) )		&&
 	  dgHere.dgPageWideTwips > 0					&&
@@ -317,7 +332,7 @@ static APP_TXACTIVATE_CALLBACK_H( appPaperChooserGotValueCallback, w, voidpc )
     PaperChooser *	pc= (PaperChooser *)voidpc;
     PropertyMask	updMask;
 
-    PROPmaskCLEAR( &updMask );
+    utilPropMaskClear( &updMask );
 
     if  ( pc->pcProgrammatic )
 	{ return;	}
@@ -469,7 +484,8 @@ void appMakePaperChooserWidgets(	APP_WIDGET		parent,
 				    &(pc->pcVerticalColumn), parent, title );
 
 
-    appMakeOptionmenuInColumn( &(pc->pcOptionmenu), pc->pcVerticalColumn );
+    appMakeOptionmenuInColumn( &(pc->pcOptionmenu), pc->pcVerticalColumn,
+				    appPaperChooserSizeChosen, (void *)pc );
 
     appMakeTextInColumn( &(pc->pcSizeText), pc->pcVerticalColumn,
 							    0, textEnabled );
@@ -499,10 +515,10 @@ void appPaperChooserAddOrientationToggles( PaperChooser *	pc,
 							    heightResizable );
 
     pc->pcPortraitRadio= appMakeToggleInRow( pc->pcOrientationRow,
-		portrait, appPaperChooserPortraitToggled, (void *)pc, 0 );
+		portrait, appPaperChooserPortraitToggled, (void *)pc, 0, 1 );
 
     pc->pcLandscapeRadio= appMakeToggleInRow( pc->pcOrientationRow,
-		landscape, appPaperChooserLandscapeToggled, (void *)pc, 1 );
+		landscape, appPaperChooserLandscapeToggled, (void *)pc, 1, 1 );
 
     return;
     }
@@ -523,7 +539,7 @@ void appPaperChooserFillMenu(	PaperChooser *		pc,
     if  ( ! pc->pcSizeOptions )
 	{
 	i= 0;
-	while( ! appPaperGetInformation( i, (int *)0, (int *)0, &label ) )
+	while( ! utilPaperGetInfoByNumber( i, (int *)0, (int *)0, &label ) )
 	    { i++; }
 
 	pc->pcCustomPaperSize= i++;
@@ -541,10 +557,10 @@ void appPaperChooserFillMenu(	PaperChooser *		pc,
     appEmptyOptionmenu( &(pc->pcOptionmenu) );
 
     i= 0;
-    while( ! appPaperGetInformation( i, (int *)0, (int *)0, &label ) )
+    while( ! utilPaperGetInfoByNumber( i, (int *)0, (int *)0, &label ) )
 	{
-	pc->pcSizeOptions[i]= appAddItemToOptionmenu( &(pc->pcOptionmenu),
-			    label, appPaperChooserSizeChosen, (void *)pc );
+	pc->pcSizeOptions[i]= appAddItemToOptionmenu(
+					    &(pc->pcOptionmenu), label );
 
 	if  ( i == 0 )
 	    { gotSome= 1;	}
@@ -552,8 +568,8 @@ void appPaperChooserFillMenu(	PaperChooser *		pc,
 	i++;
 	}
 
-    pc->pcSizeOptions[i]= appAddItemToOptionmenu( &(pc->pcOptionmenu),
-			customLabel, appPaperChooserSizeChosen, (void *)pc );
+    pc->pcSizeOptions[i]= appAddItemToOptionmenu(
+					    &(pc->pcOptionmenu), customLabel );
     if  ( i == 0 )
 	{ gotSome= 1;	}
 

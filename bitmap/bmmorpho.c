@@ -1,7 +1,7 @@
 #   include	"bitmapConfig.h"
 
 #   include	"bmintern.h"
-#   include	<string.h>
+#   include	<stdlib.h>
 
 #   include	<appDebugon.h>
 
@@ -15,27 +15,63 @@ typedef struct DilateJob
     {
     BitmapDescription		djBdOut;
     unsigned char *		djBufOut;
+				    /************************************/
+				    /*  Output destination.		*/
+				    /************************************/
+
+    const RasterImage *		djRiSel;
     unsigned char		djInvertMaskSel;
-    const BitmapDescription *	djBdSel;
-    const unsigned char *	djBufSel;
+				    /************************************/
+				    /* Structuring element.		*/
+				    /************************************/
     int				djRowSelOrig;
     int				djColSelOrig;
+				    /************************************/
+				    /* Origin of structuring element.	*/
+				    /************************************/
+
+    const RasterImage *		djRiIn;
+    unsigned char		djInvertMaskIn;
+				    /************************************/
+				    /* Input image.			*/
+				    /************************************/
     } DilateJob;
 
-static void bmMorphoDilatePixel(	void *			voiddj,
-					int			rowIn,
-					int			colIn )
+/************************************************************************/
+/*									*/
+/*  Draw the input buffer for a foreground pixel in the structuring	*/
+/*  element.								*/
+/*									*/
+/*  As the input image is supposed to be much bigger than the		*/
+/*  structuring element, it is more efficient to repeatedly draw the	*/
+/*  image than repeatedly draw the element: The tight loops that copy	*/
+/*  the rows of the image are more efficient than the coordinating code	*/
+/*  around them.							*/
+/*									*/
+/*  NOTE: The efficiency assumption could be wrong for a big black	*/
+/*  structuring element.						*/
+/*									*/
+/************************************************************************/
+
+static int bmMorphoDilateElementPixel(	void *			voiddj,
+					int			rowSel,
+					int			colSel )
     
     {
     DilateJob *	dj= (DilateJob *)voiddj;
 
     bmDraw1BitImage( &(dj->djBdOut), dj->djBufOut,
-					dj->djBdSel, dj->djBufSel,
-					dj->djInvertMaskSel,
-					rowIn- dj->djRowSelOrig,
-					colIn- dj->djColSelOrig );
+					dj->djRiIn,
+					dj->djInvertMaskIn,
+					rowSel- dj->djRowSelOrig,
+					colSel- dj->djColSelOrig );
 
-    return;
+    /* test code:
+    bmCopyArea( colIn- dj->djColSelOrig, rowIn- dj->djRowSelOrig,
+		    dj->djBufOut, dj->djBufIn, &(dj->djBdOut), dj->djBdIn );
+    */
+
+    return 0;
     }
 
 /************************************************************************/
@@ -91,19 +127,26 @@ static int bmMorphoCheckInputFormats(	const BitmapDescription *	bdIn,
 
 static void bmMorphoStartDilateJob(
 				DilateJob *			dj,
-				const BitmapDescription *	bdSel,
-				const unsigned char *		bufSel,
-				int				rowOrig,
-				int				colOrig )
+				const RasterImage *		riIn,
+				const RasterImage *		riSel,
+				int				rowSelOrig,
+				int				colSelOrig )
     {
     bmInitDescription( &(dj->djBdOut) );
 
     dj->djBufOut= (unsigned char *)0;
-    dj->djInvertMaskSel= 0x00;
-    dj->djBdSel= bdSel;
-    dj->djBufSel= bufSel;
-    dj->djRowSelOrig= rowOrig;
-    dj->djColSelOrig= colOrig;
+    dj->djRiIn= riIn;
+    dj->djRiSel= riSel;
+    dj->djRowSelOrig= rowSelOrig;
+    dj->djColSelOrig= colSelOrig;
+
+    if  ( riIn->riDescription.bdColorEncoding == BMcoWHITEBLACK )
+	{ dj->djInvertMaskIn= 0xff;	}
+    else{ dj->djInvertMaskIn= 0x00;	}
+
+    if  ( riSel->riDescription.bdColorEncoding == BMcoWHITEBLACK )
+	{ dj->djInvertMaskSel= 0xff;	}
+    else{ dj->djInvertMaskSel= 0x00;	}
 
     return;
     }
@@ -118,51 +161,79 @@ static void bmMorphoStartDilateJob(
 /*  this means that the colors are swapped.				*/
 /*									*/
 /*  1)  Allocate output resources.					*/
-/*  2)  Determine the mask to ignore the trailing bits in the input	*/
-/*	image.								*/
-/*  3)  Dilate the individual rows.					*/
+/*  2)  Draw input image for all pixels in the structuring element.	*/
+/*  3)  Return output.							*/
+/*  4)  Cleanup.							*/
 /*									*/
 /************************************************************************/
 
-static int bmMorphoDilateLow(	DilateJob *			dj,
-				BitmapDescription *		bdOut,
-				const BitmapDescription *	bdIn,
-				unsigned char **		pBufOut,
-				const unsigned char *		bufIn,
-				unsigned char			invertMaskIn )
+static int bmMorphoDilateLow(	RasterImage *			riOut,
+				DilateJob *			dj,
+				int				reverse )
     {
     int			rval= 0;
 
     /*  1  */
-    if  ( bmCopyDescription( &(dj->djBdOut), bdIn ) )
+    if  ( bmCopyDescription( &(dj->djBdOut), &(dj->djRiIn->riDescription) ) )
 	{ LDEB(1); rval= -1; goto ready;	}
 
-    dj->djBufOut= malloc( dj->djBdOut.bdBufferLength+ 1 );
+    /*
+    dj->djBdOut.bdPixelsWide += dj->djBdSel->bdPixelsWide- 1;
+    dj->djBdOut.bdPixelsHigh += dj->djBdSel->bdPixelsHigh- 1;
+    */
+
+    bmCalculateSizes( &(dj->djBdOut) );
+
+    if  ( reverse )
+	{
+	dj->djBufOut= bmForegroundBuffer( dj->djBdOut.bdBufferLength,
+						dj->djBdOut.bdColorEncoding );
+	}
+    else{
+	dj->djBufOut= bmBackgroundBuffer( dj->djBdOut.bdBufferLength,
+						dj->djBdOut.bdColorEncoding );
+	}
     if  ( ! dj->djBufOut )
 	{
 	LXDEB(dj->djBdOut.bdBufferLength,dj->djBufOut);
 	rval= -1; goto ready;
 	}
 
-#   if	PARANOIA
-    bdSelPara= bdSel;
-    bdOutPara= &dj->djBdOut;
+#   if 0
+    {
+    const char *	name= "/tmp/background.png";
+    int			format;
+
+    format=  bmSuggestFormat( name, -1, &(dj->djBdOut) );
+    bmWrite( name, dj->djBufOut, &(dj->djBdOut), format, 1.0 );
+    }
 #   endif
 
-    memset( dj->djBufOut, 0, dj->djBdOut.bdBufferLength+ 1 );
+    /*  2  */
+    bmForAll1Pixels( dj->djRiSel,
+	    dj->djInvertMaskSel, (void *)dj, bmMorphoDilateElementPixel );
 
-    bmForAll1Pixels( bdIn, bufIn, invertMaskIn,
-					(void *)dj, bmMorphoDilatePixel );
+#   if 0
+    {
+    const char *	name= "/tmp/dilated.png";
+    int			format;
 
-    if  ( bmCopyDescription( bdOut, &(dj->djBdOut) ) )
+    format=  bmSuggestFormat( name, -1, &(dj->djBdOut) );
+    bmWrite( name, dj->djBufOut, &(dj->djBdOut), format, 1.0 );
+    }
+#   endif
+
+    /*  3  */
+    if  ( bmCopyDescription( &(riOut->riDescription), &(dj->djBdOut) ) )
 	{ LDEB(1); rval= -1; goto ready;	}
 
     /*  steal  */
-    *pBufOut= dj->djBufOut;
+    riOut->riBytes= dj->djBufOut;
     dj->djBufOut= (unsigned char *)0;
 
   ready:
 
+    /*  4  */
     if  ( dj->djBufOut )
 	{ free( dj->djBufOut );	}
 
@@ -177,24 +248,22 @@ static int bmMorphoDilateLow(	DilateJob *			dj,
 /*									*/
 /************************************************************************/
 
-int bmMorphoDilate(		BitmapDescription *		bdOut,
-				const BitmapDescription *	bdIn,
-				unsigned char **		pBufOut,
-				const unsigned char *		bufIn,
-				const BitmapDescription *	bdSel,
-				const unsigned char *		bufSel,
-				int				rowOrig,
-				int				colOrig )
+int bmMorphoDilate(	RasterImage *			riOut,
+			const RasterImage *		riIn,
+			const RasterImage *		riSe,
+			int				rowSelOrig,
+			int				selColOrig )
     {
-    const unsigned char	invertMaskIn= 0x00;
     DilateJob		dj;
+    int			reverse= 0;
 
-    if  ( bmMorphoCheckInputFormats( bdIn, bdSel ) )
+    if  ( bmMorphoCheckInputFormats( &(riIn->riDescription),
+						&(riSe->riDescription) ) )
 	{ LDEB(1); return -1;	}
 
-    bmMorphoStartDilateJob( &dj, bdSel, bufSel, rowOrig, colOrig );
+    bmMorphoStartDilateJob( &dj, riIn, riSe, rowSelOrig, selColOrig );
 
-    return bmMorphoDilateLow( &dj, bdOut, bdIn, pBufOut, bufIn, invertMaskIn );
+    return bmMorphoDilateLow( riOut, &dj, reverse );
     }
 
 /************************************************************************/
@@ -204,52 +273,53 @@ int bmMorphoDilate(		BitmapDescription *		bdOut,
 /*  Use the fact that the erosion is the complement of the dilation of	*/
 /*  the complement of the input with the mirrored structuring element.	*/
 /*									*/
+/*  1)  Initialization and verification of the input parameters.	*/
+/*  2)  Mirror structuring element.					*/
+/*  3)  Set dilate parameters. Realize that these are dilate parameters	*/
+/*	and that we want to erode.					*/
+/*  4)  To get the complement of the input image, swap the invert mask	*/
+/*	for the input image.						*/
+/*  5)  Invert the output image.					*/
+/*									*/
 /************************************************************************/
 
-int bmMorphoErode(		BitmapDescription *		bdOut,
-				const BitmapDescription *	bdIn,
-				unsigned char **		pBufOut,
-				const unsigned char *		bufIn,
-				const BitmapDescription *	bdSel,
-				const unsigned char *		bufSel,
-				int				rowOrig,
-				int				colOrig )
+int bmMorphoErode(		RasterImage *			riOut,
+				const RasterImage *		riIn,
+				const RasterImage *		riSe,
+				int				rowSelOrig,
+				int				selColOrig )
     {
     int			rval= 0;
-    const unsigned char	invertMaskIn= 0xff;
     DilateJob		dj;
 
-    unsigned char *	bufRot= (unsigned char *)0;
-    BitmapDescription	bdRot;
+    RasterImage		riRot;
 
-    int			i;
-    unsigned char *	to;
+    int			reverse= 1;
 
-    bmInitDescription( &bdRot );
+    /*  1  */
+    bmInitRasterImage( &riRot );
 
-    if  ( bmMorphoCheckInputFormats( bdIn, bdSel ) )
-	{ LDEB(1); rval= -1; goto ready;	}
+    if  ( bmMorphoCheckInputFormats( &(riIn->riDescription),
+						&(riSe->riDescription) ) )
+	{ LDEB(1); return -1;	}
 
-    if  ( bmUpsideDown( &bdRot, bdSel, &bufRot, bufSel, 180 ) )
+    /*  2  */
+    if  ( bmRotate180( &riRot, riSe, 180 ) )
 	{ LDEB(180); rval= -1; goto ready;	}
 
-    bmMorphoStartDilateJob( &dj, &bdRot, bufRot,
-				bdSel->bdPixelsHigh- rowOrig- 1,
-				bdSel->bdPixelsWide- colOrig- 1 );
+    /*  3  */
+    bmMorphoStartDilateJob( &dj, riIn, &riRot, rowSelOrig, selColOrig );
 
-    if  ( bmMorphoDilateLow( &dj, bdOut, bdIn, pBufOut, bufIn, invertMaskIn ) )
-	{ XDEB(invertMaskIn); rval= -1; goto ready;	}
+    /*  4,5  */
+    dj.djInvertMaskIn= ~dj.djInvertMaskIn;
+    reverse= 1;
 
-    to= *pBufOut;
-    for ( i= 0; i < bdOut->bdBufferLength; i++, to++ )
-	{ to[0]= ~to[0]; }
+    if  ( bmMorphoDilateLow( riOut, &dj, reverse ) )
+	{ XDEB(dj.djInvertMaskIn); rval= -1; goto ready;	}
 
   ready:
 
-    if  ( bufRot )
-	{ free( bufRot );	}
-
-    bmCleanDescription( &bdRot );
+    bmCleanRasterImage( &riRot );
 
     return rval;
     }
@@ -260,59 +330,31 @@ int bmMorphoErode(		BitmapDescription *		bdOut,
 /*									*/
 /************************************************************************/
 
-int bmMorphoSetSimpleSe(	BitmapDescription *		bdOut,
-				unsigned char **		pBufOut )
+int bmMorphoSetSimpleSe(	RasterImage *		riOut )
     {
     const int		size= 3;
     const int		wide= size;
     const int		high= size;
 
-    int			bytesPerRow;
-    int			bufferLength;
+    riOut->riDescription.bdColorEncoding= BMcoWHITEBLACK;
+    riOut->riDescription.bdPixelsWide= wide;
+    riOut->riDescription.bdPixelsHigh= high;
+    riOut->riDescription.bdBitsPerSample= 1;
+    riOut->riDescription.bdSamplesPerPixel= 1;
+    riOut->riDescription.bdBitsPerPixel= 1;
+    riOut->riDescription.bdXResolution= 1;
+    riOut->riDescription.bdYResolution= 1;
+    riOut->riDescription.bdUnit= BMunPIXEL;
 
-    unsigned char *	bufOut;
+    if  ( bmCalculateSizes( &(riOut->riDescription) ) )
+	{ LDEB(1); return -1;	}
 
-    int			row;
-    unsigned char	last;
+    riOut->riBytes= bmBackgroundBuffer(
+			    riOut->riDescription.bdBufferLength,
+			    riOut->riDescription.bdColorEncoding );
+    if  ( ! riOut->riBytes )
+	{ LXDEB(riOut->riDescription.bdBufferLength,riOut->riBytes); return -1;	}
 
-    bytesPerRow= ( wide+ 7 )/ 8;
-    bufferLength= high* bytesPerRow;
-
-    bufOut= malloc( bufferLength );
-    if  ( ! bufOut )
-	{ LXDEB(bufferLength,bufOut); return -1;	}
-
-    last= 0xff;
-    if  ( wide % 8 )
-	{ last= ( 0xff << ( 8- wide % 8 ) ) & 0xff;	}
-
-    for ( row= 0; row < high; row++ )
-	{
-	unsigned char *	to= bufOut+ row* bytesPerRow;
-	int		byte;
-
-	for ( byte= 0; byte < bytesPerRow- 1; to++, byte++ )
-	    { *to= 0xff; }
-	*to= last;
-	}
-
-    bmInitDescription( bdOut );
-
-    bdOut->bdColorEncoding= BMcoWHITEBLACK;
-    bdOut->bdPixelsWide= wide;
-    bdOut->bdPixelsHigh= high;
-    bdOut->bdBitsPerSample= 1;
-    bdOut->bdSamplesPerPixel= 1;
-    bdOut->bdBitsPerPixel= 1;
-    bdOut->bdXResolution= 1;
-    bdOut->bdYResolution= 1;
-    bdOut->bdUnit= BMunPIXEL;
-    bdOut->bdColorEncoding= BMcoWHITEBLACK;
-
-    bdOut->bdBytesPerRow= bytesPerRow;
-    bdOut->bdBufferLength= bufferLength;
-
-    *pBufOut= bufOut;
     return 0;
     }
 
@@ -325,81 +367,67 @@ int bmMorphoSetSimpleSe(	BitmapDescription *		bdOut,
 /*									*/
 /************************************************************************/
 
-int bmMorphoDilateSimple(	BitmapDescription *		bdOut,
-				const BitmapDescription *	bdIn,
-				unsigned char **		pBufOut,
-				const unsigned char *		bufIn,
+int bmMorphoDilateSimple(	RasterImage *			riOut,
+				const RasterImage *		riIn,
 				int				ignoredInt )
     {
     int			rval= 0;
 
-    BitmapDescription	bdSel;
-    unsigned char *	bufSel= (unsigned char *)0;
+    RasterImage		riSel;
 
-    const int		rowOrig= 1;
-    const int		colOrig= 1;
+    const int		rowSelOrig= 1;
+    const int		selColOrig= 1;
 
-    bmInitDescription( &bdSel );
+    bmInitRasterImage( &riSel );
 
-    if  ( bmMorphoSetSimpleSe( &bdSel, &bufSel ) )
+    if  ( bmMorphoSetSimpleSe( &riSel ) )
 	{ LDEB(1); rval= -1; goto ready;	}
 
-    if  ( bmMorphoDilate( bdOut, bdIn, pBufOut, bufIn,
-					&bdSel, bufSel, rowOrig, colOrig ) )
-	{ LLDEB(rowOrig,colOrig); rval= -1; goto ready;	}
+    if  ( bmMorphoDilate( riOut, riIn, &riSel, rowSelOrig, selColOrig ) )
+	{ LLDEB(rowSelOrig,selColOrig); rval= -1; goto ready;	}
 
   ready:
 
-    if  ( bufSel )
-	{ free( bufSel );	}
-
-    bmCleanDescription( &bdSel );
+    bmCleanRasterImage( &riSel );
 
     return rval;
     }
 
-int bmMorphoErodeSimple(	BitmapDescription *		bdOut,
-				const BitmapDescription *	bdIn,
-				unsigned char **		pBufOut,
-				const unsigned char *		bufIn,
+int bmMorphoErodeSimple(	RasterImage *			riOut,
+				const RasterImage *		riIn,
 				int				ignoredInt )
     {
     int			rval= 0;
     const unsigned char	invertMaskIn= 0xff;
     DilateJob		dj;
 
-    BitmapDescription	bdSel;
-    unsigned char *	bufSel= (unsigned char *)0;
+    RasterImage		riSel;
 
-    const int		rowOrig= 1;
-    const int		colOrig= 1;
+    const int		rowSelOrig= 1;
+    const int		selColOrig= 1;
+    int			reverse= 1;
 
-    int			i;
-    unsigned char *	to;
+    bmInitRasterImage( &riSel );
 
-    bmInitDescription( &bdSel );
-
-    if  ( bmMorphoSetSimpleSe( &bdSel, &bufSel ) )
+    if  ( bmMorphoSetSimpleSe( &riSel ) )
 	{ LDEB(1); rval= -1; goto ready;	}
 
-    if  ( bmMorphoCheckInputFormats( bdIn, &bdSel ) )
-	{ LDEB(1); rval= -1; goto ready;	}
+    if  ( bmMorphoCheckInputFormats( &(riIn->riDescription),
+						&(riSel.riDescription) ) )
+	{ LDEB(1); return -1;	}
 
-    bmMorphoStartDilateJob( &dj, &bdSel, bufSel, rowOrig, colOrig );
+    bmMorphoStartDilateJob( &dj, riIn, &riSel, rowSelOrig, selColOrig );
 
-    if  ( bmMorphoDilateLow( &dj, bdOut, bdIn, pBufOut, bufIn, invertMaskIn ) )
+    /*  4  */
+    dj.djInvertMaskIn= ~dj.djInvertMaskIn;
+    reverse= 1;
+
+    if  ( bmMorphoDilateLow( riOut, &dj, reverse ) )
 	{ XDEB(invertMaskIn); rval= -1; goto ready;	}
-
-    to= *pBufOut;
-    for ( i= 0; i < bdOut->bdBufferLength; i++, to++ )
-	{ to[0]= ~to[0]; }
 
   ready:
 
-    if  ( bufSel )
-	{ free( bufSel );	}
-
-    bmCleanDescription( &bdSel );
+    bmCleanRasterImage( &riSel );
 
     return rval;
     }
@@ -410,8 +438,7 @@ int bmMorphoErodeSimple(	BitmapDescription *		bdOut,
 /*									*/
 /************************************************************************/
 
-int bmMorphoLineElement(	BitmapDescription *		bdOut,
-				unsigned char **		pBufOut,
+int bmMorphoLineElement(	RasterImage *			riOut,
 				int				wide,
 				int				high,
 				int				x0,
@@ -419,11 +446,6 @@ int bmMorphoLineElement(	BitmapDescription *		bdOut,
 				int				x1,
 				int				y1 )
     {
-    int			bytesPerRow;
-    int			bufferLength;
-
-    unsigned char *	bufOut;
-
     if  ( x0 < 0 || x0 >= wide )
 	{ LLDEB(x0,wide); return -1;	}
     if  ( x1 < 0 || x1 >= wide )
@@ -434,34 +456,27 @@ int bmMorphoLineElement(	BitmapDescription *		bdOut,
     if  ( y1 < 0 || y1 >= high )
 	{ LLDEB(y1,high); return -1;	}
 
-    bytesPerRow= ( wide+ 7 )/ 8;
-    bufferLength= high* bytesPerRow;
+    riOut->riDescription.bdColorEncoding= BMcoWHITEBLACK;
+    riOut->riDescription.bdPixelsWide= wide;
+    riOut->riDescription.bdPixelsHigh= high;
+    riOut->riDescription.bdBitsPerSample= 1;
+    riOut->riDescription.bdSamplesPerPixel= 1;
+    riOut->riDescription.bdBitsPerPixel= 1;
+    riOut->riDescription.bdXResolution= 1;
+    riOut->riDescription.bdYResolution= 1;
+    riOut->riDescription.bdUnit= BMunPIXEL;
 
-    bufOut= malloc( bufferLength );
-    if  ( ! bufOut )
-	{ LXDEB(bufferLength,bufOut); return -1;	}
+    if  ( bmCalculateSizes( &(riOut->riDescription) ) )
+	{ LDEB(1); return -1;	}
 
-    bmInitDescription( bdOut );
+    riOut->riBytes= bmBackgroundBuffer(
+			    riOut->riDescription.bdBufferLength,
+			    riOut->riDescription.bdColorEncoding );
+    if  ( ! riOut->riBytes )
+	{ LXDEB(riOut->riDescription.bdBufferLength,riOut->riBytes); return -1;	}
 
-    bdOut->bdColorEncoding= BMcoWHITEBLACK;
-    bdOut->bdPixelsWide= wide;
-    bdOut->bdPixelsHigh= high;
-    bdOut->bdBitsPerSample= 1;
-    bdOut->bdSamplesPerPixel= 1;
-    bdOut->bdBitsPerPixel= 1;
-    bdOut->bdXResolution= 1;
-    bdOut->bdYResolution= 1;
-    bdOut->bdUnit= BMunPIXEL;
-    bdOut->bdColorEncoding= BMcoWHITEBLACK;
+    bmDrawLine( riOut->riBytes, &(riOut->riDescription), x0, y0, x1, y1, 1 );
 
-    bdOut->bdBytesPerRow= bytesPerRow;
-    bdOut->bdBufferLength= bufferLength;
-
-    memset( bufOut, 0x00, bufferLength );
-
-    bmDrawLine( bufOut, bdOut, x0, y0, x1, y1, 1 );
-
-    *pBufOut= bufOut;
     return 0;
     }
 

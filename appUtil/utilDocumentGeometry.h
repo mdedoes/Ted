@@ -7,7 +7,8 @@
 #   ifndef	UTIL_DOCUMENT_GEOMETRY_H
 #   define	UTIL_DOCUMENT_GEOMETRY_H
 
-#   include	<utilPropMask.h>
+#   include	"utilPropMask.h"
+#   include	"geo2DInteger.h"
 
 typedef struct DocumentGeometry
     {
@@ -23,6 +24,7 @@ typedef struct DocumentGeometry
     int			dgFooterPositionTwips;
 
     int			dgGutterTwips;
+    unsigned char	dgMirrorMargins;
     } DocumentGeometry;
 
 /************************************************************************/
@@ -48,6 +50,7 @@ typedef enum GeometryProperty
     DGpropHEADER_POSITION,
     DGpropFOOTER_POSITION,
     DGpropGUTTER,
+    DGpropMARGMIR,
 
     DGprop_COUNT
     } GeometryProperty;
@@ -61,9 +64,28 @@ typedef enum GeometryProperty
 extern void utilInitDocumentGeometry(	DocumentGeometry *	dg );
 
 extern void utilUpdDocumentGeometry(
+				PropertyMask *			dpDoneMask,
 				DocumentGeometry *		dgTo,
-				const DocumentGeometry *	dgFrom,
-				PropertyMask *			doneMask,
-				const PropertyMask *		setMask );
+				const PropertyMask *		dgSetMask,
+				const DocumentGeometry *	dgSet );
+
+extern void utilDocumentGeometryGetBodyRect(
+				DocumentRectangle *		dr,
+				const DocumentGeometry *	dg );
+
+extern void utilDocumentGeometryGetHeaderRect(
+				DocumentRectangle *		dr,
+				const DocumentGeometry *	dg );
+
+extern void utilDocumentGeometryGetFooterRect(
+				DocumentRectangle *		dr,
+				const DocumentGeometry *	dg );
+
+extern void utilDocumentGeometryGetPageBoundingBox(
+				DocumentRectangle *		dr,
+				const DocumentGeometry *	dg,
+				int				hasHeader,
+				int				hasFooter );
+
 
 #   endif

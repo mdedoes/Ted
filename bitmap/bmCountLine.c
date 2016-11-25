@@ -1,7 +1,6 @@
 #   include	"bitmapConfig.h"
 
 #   include	"bmintern.h"
-#   include	<string.h>
 
 #   include	<appDebugon.h>
 

@@ -1,7 +1,6 @@
 #   include	"bitmapConfig.h"
 
 #   include	"bmintern.h"
-#   include	<string.h>
 
 #   include	<appDebugon.h>
 
@@ -92,7 +91,7 @@ typedef void (*OR_ROW)	(	unsigned char *		bufTo,
 				const int		colInP,
 				int			shift0,
 				int			shift1,
-				unsigned char		inInvertMask,
+				unsigned char		invertMaskIn,
 				unsigned char		endMask );
 
 /********************************/
@@ -108,7 +107,7 @@ static void bmDrawOrRowRight(	unsigned char *		bufTo,
 				const int		colInP,
 				int			shift0,
 				int			shift1,
-				unsigned char		inInvertMask,
+				unsigned char		invertMaskIn,
 				unsigned char		endMask )
     {
     int			col;
@@ -129,14 +128,14 @@ static void bmDrawOrRowRight(	unsigned char *		bufTo,
 	{ mask &= endMask; }
 
     /*  a  */
-    val= bufIn[0] ^ inInvertMask;
+    val= bufIn[0] ^ invertMaskIn;
     bufTo[0] |= ( val & mask ) << shift0;
     bufIn++, col += 8;
 
     /*  b  */
     for (; col+ 8 < colInP; bufIn++, col += 8 )
 	{
-	val= bufIn[0] ^ inInvertMask;
+	val= bufIn[0] ^ invertMaskIn;
 
 	bufTo[0] |= ( val        ) >> shift1;
 	bufTo++;
@@ -146,7 +145,7 @@ static void bmDrawOrRowRight(	unsigned char *		bufTo,
     /*  c  */
     if  ( col < colInP )
 	{
-	val= bufIn[0] ^ inInvertMask;
+	val= bufIn[0] ^ invertMaskIn;
 
 	if  ( col+ 8 > colInP )
 	    { mask &= endMask; }
@@ -176,7 +175,7 @@ static void bmDrawOrRowLeft(	unsigned char *		bufTo,
 				const int		colInP,
 				int			shift0,
 				int			shift1,
-				unsigned char		inInvertMask,
+				unsigned char		invertMaskIn,
 				unsigned char		endMask )
     {
     int			col;
@@ -197,7 +196,7 @@ static void bmDrawOrRowLeft(	unsigned char *		bufTo,
 	{ mask &= endMask; }
 
     /*  A  */
-    val= bufIn[0] ^ inInvertMask;
+    val= bufIn[0] ^ invertMaskIn;
 
     bufTo[0] |= ( val & mask ) >> shift0;
     bufTo++;
@@ -207,7 +206,7 @@ static void bmDrawOrRowLeft(	unsigned char *		bufTo,
     /*  B  */
     for (; col+ 8 < colInP; bufIn++, col += 8 )
 	{
-	val= bufIn[0] ^ inInvertMask;
+	val= bufIn[0] ^ invertMaskIn;
 
 	bufTo[0] |= ( val        ) >> shift0;
 	bufTo++;
@@ -217,7 +216,7 @@ static void bmDrawOrRowLeft(	unsigned char *		bufTo,
     /*  C  */
     if  ( col < colInP )
 	{
-	val= bufIn[0] ^ inInvertMask;
+	val= bufIn[0] ^ invertMaskIn;
 
 	if  ( col+ 8 > colInP )
 	    { mask &= endMask; }
@@ -247,7 +246,7 @@ static void bmDrawOrRowEq(	unsigned char *		bufTo,
 				const int		colInP,
 				int			ign_shift0,
 				int			ign_shift1,
-				unsigned char		inInvertMask,
+				unsigned char		invertMaskIn,
 				unsigned char		endMask )
     {
     int			col;
@@ -268,7 +267,7 @@ static void bmDrawOrRowEq(	unsigned char *		bufTo,
 	{ mask &= endMask; }
 
     /*  A  */
-    val= bufIn[0] ^ inInvertMask;
+    val= bufIn[0] ^ invertMaskIn;
 
     bufTo[0] |= ( val & mask );
     bufTo++;
@@ -277,7 +276,7 @@ static void bmDrawOrRowEq(	unsigned char *		bufTo,
     /*  B  */
     for (; col+ 8 < colInP; bufIn++, col += 8 )
 	{
-	val= bufIn[0] ^ inInvertMask;
+	val= bufIn[0] ^ invertMaskIn;
 
 	bufTo[0] |= ( val        );
 	bufTo++;
@@ -286,7 +285,7 @@ static void bmDrawOrRowEq(	unsigned char *		bufTo,
     /*  C  */
     if  ( col < colInP )
 	{
-	val= bufIn[0] ^ inInvertMask;
+	val= bufIn[0] ^ invertMaskIn;
 
 	if  ( col+ 8 > colInP )
 	    { mask &= endMask; }
@@ -315,12 +314,13 @@ static void bmDrawOrRowEq(	unsigned char *		bufTo,
 
 void bmDraw1BitImage(		const BitmapDescription *	bdTo,
 				unsigned char *			bufTo,
-				const BitmapDescription *	bdIn,
-				const unsigned char *		bufIn,
-				unsigned char			inInvertMask,
+				const RasterImage *		riIn,
+				unsigned char			invertMaskIn,
 				int				rowTo0,
 				int				colTo0 )
     {
+    const BitmapDescription *	bdIn= &(riIn->riDescription);
+
     int			rowToP, colToP;
     int			rowIn0, colIn0;
     int			rowInP, colInP;
@@ -401,10 +401,10 @@ void bmDraw1BitImage(		const BitmapDescription *	bdTo,
 	const unsigned char *	rowBufIn;
 
 	rowBufTo= bufTo+ rowTo* bdTo->bdBytesPerRow;
-	rowBufIn= bufIn+ rowIn* bdIn->bdBytesPerRow;
+	rowBufIn= riIn->riBytes+ rowIn* bdIn->bdBytesPerRow;
 
 	(*orRow)( rowBufTo, rowBufIn, colTo0, colIn0, colInP,
-					shift0, shift1, inInvertMask, endMask );
+			shift0, shift1, invertMaskIn, endMask );
 	}
 
     return;

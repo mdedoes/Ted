@@ -2,6 +2,7 @@
 
 #   include	"bmintern.h"
 #   include	<string.h>
+#   include	<stdlib.h>
 
 #   define	y0	math_y0
 #   define	y1	math_y1
@@ -185,7 +186,7 @@ int bmFillBlock(	unsigned char *		buffer,
 unsigned char *	bmBackgroundBuffer(	int	bufferLength,
 					int	colorEncoding )
     {
-    unsigned char *	buffer= malloc( bufferLength );
+    unsigned char *	buffer= (unsigned char *)malloc( bufferLength );
 
     if  ( ! buffer )
 	{ LLDEB(bufferLength,buffer); return buffer;	}
@@ -197,7 +198,36 @@ unsigned char *	bmBackgroundBuffer(	int	bufferLength,
 	    break;
 
 	case	BMcoWHITEBLACK:
+	case	BMcoRGB:
 	    memset( buffer, 0xff, bufferLength );
+	    break;
+
+	default:
+	    LDEB(colorEncoding);
+	    free( buffer );
+	    return (unsigned char *)0;
+	}
+
+    return buffer;
+    }
+
+unsigned char *	bmForegroundBuffer(	int	bufferLength,
+					int	colorEncoding )
+    {
+    unsigned char *	buffer= (unsigned char *)malloc( bufferLength );
+
+    if  ( ! buffer )
+	{ LLDEB(bufferLength,buffer); return buffer;	}
+
+    switch( colorEncoding )
+	{
+	case	BMcoBLACKWHITE:
+	    memset( buffer, 0xff, bufferLength );
+	    break;
+
+	case	BMcoWHITEBLACK:
+	case	BMcoRGB:
+	    memset( buffer, 0x00, bufferLength );
 	    break;
 
 	default:
@@ -384,6 +414,84 @@ static void bmDrawBres0Line1Bit(unsigned char *		buffer,
 	}
     }
 
+/************************************************************************/
+/*									*/
+/*  Set one run in a bitmap.						*/
+/*  These routines only work for RGB, 24 bit/pixel.			*/
+/*									*/
+/*  1)  End point inclusive.						*/
+/*  2)  Line is supposed to ro to the right.				*/
+/*									*/
+/************************************************************************/
+
+static void bmDrawRun24Bit(	unsigned char *	buffer,
+				int		col0,
+				int		col1 )
+    {
+    /*  1  */
+    memset( buffer+ 3* col0, 0x00, 3* ( col1- col0 ) );
+    }
+
+static void bmDrawBresLine24Bit(unsigned char *		buffer,
+				int			x0,
+				int			y0,
+				int			x1,
+				int			y1,
+				int			bytesPerRow )
+    {
+    int			dx;
+    int			dy;
+    int			i;
+
+    int			e, d2, e2;
+
+    dx= x1- x0;
+    dy= y1- y0;
+
+    /*  2  */
+    if  ( dx < 0 )
+	{ LDEB(dx); return;	}
+
+    buffer += y0* bytesPerRow+ 3* x0;
+
+    if  ( dy < 0 )
+	{ dy = -dy; bytesPerRow= -bytesPerRow; }
+
+    if  ( dx > dy )
+	{
+	e= 2* dy- dx;
+	d2= 2* dx;
+	e2= 2* dy;
+
+	while( x0 <= x1 )
+	    {
+	    buffer[0]= 0x00; buffer[1]= 0x00; buffer[2]= 0x00;
+
+	    while( e >= 0 )
+		{ buffer += bytesPerRow; e -= d2; }
+
+	    buffer += 3; x0++; e += e2;
+	    }
+	}
+    else{
+	e= 2* dx- dy;
+	d2= 2* dy;
+	e2= 2* dx;
+
+	for ( i= 0; i <= dy; i++ )
+	    {
+	    buffer[0]= 0x00; buffer[1]= 0x00; buffer[2]= 0x00;
+
+	    while( e > 0 )
+		{
+		buffer += 3; x0++; e -= d2;
+		}
+
+	    buffer += bytesPerRow; e += e2;
+	    }
+	}
+    }
+
 
 /************************************************************************/
 /*									*/
@@ -445,6 +553,17 @@ int bmDrawLine(	unsigned char *			buffer,
 
 	    drawLine= bmDrawBres0Line1Bit;
 	    drawRun= bmDraw0Run1Bit;
+	    break;
+
+	case BMcoRGB:
+	    if  ( bd->bdBitsPerPixel != 24 )
+		{
+		LLDEB(bd->bdColorEncoding,bd->bdBitsPerPixel);
+		return -1;
+		}
+
+	    drawLine= bmDrawBresLine24Bit;
+	    drawRun= bmDrawRun24Bit;
 	    break;
 
 	default:
@@ -528,6 +647,7 @@ int bmDrawLine(	unsigned char *			buffer,
 	    {
 	    (*drawLine)( buffer, x0, y0, x1, y1, bd->bdBytesPerRow );
 
+	    if  ( wide > 1 )
 	    while( e >= 0 )
 		{
 		y0 += sy; y1 += sy; e -= d2;
@@ -553,6 +673,7 @@ int bmDrawLine(	unsigned char *			buffer,
 	    {
 	    (*drawLine)( buffer, x0, y0, x1, y1, bd->bdBytesPerRow );
 
+	    if  ( wide > 1 )
 	    while( e >= 0 )
 		{
 		x0++; x1++; e -= d2;

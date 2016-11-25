@@ -7,23 +7,21 @@
 #   ifndef APP_MARGIN_TOOL_H
 #   define APP_MARGIN_TOOL_H
 
-#   include	<stdlib.h>
 #   include	<stdio.h>
 
-#   include	<appGuiBase.h>
+#   include	"appGuiBase.h"
 
 #   include	<utilPropMask.h>
 
-#   include	<appUnit.h>
 #   include	<geo2DInteger.h>
-#   include	<appGeoString.h>
+#   include	<utilDocumentGeometry.h>
 
 typedef struct AppMarginTool
     {
+    APP_WIDGET			amtMarginFrame;
+    APP_WIDGET			amtInsideWidget;
     APP_WIDGET			amtLeftColumn;
     APP_WIDGET			amtRightColumn;
-    APP_WIDGET			amtInsideWidget;
-    APP_WIDGET			amtMarginFrame;
 
     APP_WIDGET			amtLeftMarginText;
     APP_WIDGET			amtTopMarginText;
@@ -64,5 +62,8 @@ extern void appMakeMarginToolWidgets(
 				AppMarginTool *			amt,
 				APP_TXACTIVATE_CALLBACK_T	gotValue,
 				void *				through );
+
+extern void appEnableMarginTool(	AppMarginTool *		amt,
+					int			enabled );
 
 #   endif /*  APP_MARGIN_TOOL_H  */

@@ -7,13 +7,20 @@
 #   include	"tedConfig.h"
 
 #   include	<stddef.h>
-#   include	<stdlib.h>
 #   include	<stdio.h>
 #   include	<ctype.h>
 #   include	<limits.h>
 
 #   include	"tedApp.h"
-#   include	"docLayout.h"
+#   include	"tedEdit.h"
+#   include	"tedLayout.h"
+#   include	"tedSelect.h"
+#   include	"tedDocument.h"
+#   include	<docPageGrid.h>
+#   include	<geoGrid.h>
+#   include	<guiWidgetDrawingSurface.h>
+#   include	<guiDrawingWidget.h>
+#   include	<docParaParticules.h>
 
 #   include	<appDebugon.h>
 
@@ -26,6 +33,7 @@
 typedef struct TedObjectDrag
     {
     EditDocument *	todEd;
+    LayoutContext	todLayoutContext;
 
     InsertedObject *	todIo;
     DocumentPosition	todDp;
@@ -62,7 +70,6 @@ static void tedObjectHandleMove(	TedObjectDrag *		tod,
     {
     EditDocument *		ed= tod->todEd;
     TedDocument *		td= (TedDocument *)ed->edPrivateData;
-    AppDrawingData *		add= &(ed->edDrawingData);
     int				ox= ed->edVisibleRect.drX0;
     int				oy= ed->edVisibleRect.drY0;
 
@@ -74,8 +81,9 @@ static void tedObjectHandleMove(	TedObjectDrag *		tod,
     int				mouseYc= mouseY;
 
     /*  1  */
-    tedGetObjectRectangle( &drFrom, (APP_POINT *)0,
-					tod->todIo, &(tod->todPg), td );
+    tedGetObjectRectangle( &drFrom, (Point2DI *)0,
+					tod->todIo, &(tod->todPg),
+					&(tod->todLayoutContext), ed );
 
     if  ( mouseXc < tod->todMouseX0- ox )
 	{ mouseXc=  tod->todMouseX0- ox;	}
@@ -131,14 +139,23 @@ static void tedObjectHandleMove(	TedObjectDrag *		tod,
 	DocumentRectangle	drTo;
 	DocumentRectangle	drExp;
 
-	tedGetObjectRectangle( &drTo, (APP_POINT *)0,
-					tod->todIo, &(tod->todPg), td );
+	tedGetObjectRectangle( &drTo, (Point2DI *)0,
+					tod->todIo, &(tod->todPg),
+					&(tod->todLayoutContext), ed );
 
 	geoUnionRectangle( &drExp, &drFrom, &drTo );
+	geoShiftRectangle( &drExp, -ox, -oy );
 
-	appExposeRectangle( add, drExp.drX0- ox, drExp.drY0- oy,
-					    drExp.drX1- drExp.drX0+ 1,
-					    drExp.drY1- drExp.drY0+ 1 );
+	if  ( drExp.drX0 < 0 )
+	    { drExp.drX0=  0;	}
+	if  ( drExp.drY0 < 0 )
+	    { drExp.drY0=  0;	}
+
+	if  ( drExp.drX1 >= drExp.drX0 && drExp.drY1 >= drExp.drY0 )
+	    {
+	    guiExposeDrawingWidgetRectangle( ed->edDocumentWidget.dwWidget,
+								    &drExp );
+	    }
 	}
 
     /*  5  */
@@ -153,7 +170,7 @@ static APP_EVENT_HANDLER_H( tedObjectDragMouseMove, w, vtod, event )
     int				x;
     int				y;
 
-    if  ( appGetCoordinatesFromMouseMoveEvent( &x, &y, w, event ) )
+    if  ( guiGetCoordinatesFromMouseMoveEvent( &x, &y, w, event ) )
 	{ return;	}
 
     tedObjectHandleMove( tod, x, y );
@@ -173,7 +190,7 @@ static APP_EVENT_HANDLER_H( tedObjectDragMouseUp, w, vtod, event )
     int				seq;
     unsigned int		keyState;
 
-    if  ( appGetCoordinatesFromMouseButtonEvent( &x, &y,
+    if  ( guiGetCoordinatesFromMouseButtonEvent( &x, &y,
 			    &button, &upDown, &seq, &keyState, w, event ) )
 	{ return;	}
 
@@ -213,8 +230,6 @@ int tedObjectDrag(		APP_WIDGET	w,
     EditApplication *		ea= ed->edApplication;
     TedDocument *		td= (TedDocument *)ed->edPrivateData;
     BufferDocument *		bd= td->tdDocument;
-    const ScreenFontList *	sfl= &(td->tdScreenFontList);
-    AppDrawingData *		add= &(ed->edDrawingData);
 
     int				ox= ed->edVisibleRect.drX0;
     int				oy= ed->edVisibleRect.drY0;
@@ -226,17 +241,18 @@ int tedObjectDrag(		APP_WIDGET	w,
 
     int				i;
 
-    const int			lastOne= 1;
     TedObjectDrag		tod;
 
     DocumentRectangle		drObj;
-    APP_POINT			xp[RESIZE_COUNT];
+    Point2DI			xp[RESIZE_COUNT];
 
     tod.todEd= ed;
+    layoutInitContext( &(tod.todLayoutContext) );
+    tedSetScreenLayoutContext( &(tod.todLayoutContext), ed );
     tod.todCorner= -1;
 
     /*  1  */
-    if  ( appGetCoordinatesFromMouseButtonEvent(
+    if  ( guiGetCoordinatesFromMouseButtonEvent(
 				    &(tod.todMouseX), &(tod.todMouseY),
 				    &button, &upDown, &seq, &keyState,
 				    w, downEvent ) )
@@ -244,14 +260,16 @@ int tedObjectDrag(		APP_WIDGET	w,
 
     /*  2  */
     docInitDocumentPosition( &(tod.todDp) );
-    if  ( tedGetObjectSelection( td,
+    if  ( tedGetObjectSelection( ed,
 			&(tod.todParticule), &(tod.todDp), &(tod.todIo) ) )
 	{ return 2;	}
 
     /*  3  */
-    tedPositionGeometry( &(tod.todPg), &(tod.todDp), lastOne, bd, add, sfl );
+    tedPositionGeometry( &(tod.todPg), &(tod.todDp),
+					PARAfindLAST, &(tod.todLayoutContext) );
 
-    tedGetObjectRectangle( &drObj, xp, tod.todIo, &(tod.todPg), td );
+    tedGetObjectRectangle( &drObj, xp, tod.todIo, &(tod.todPg),
+					    &(tod.todLayoutContext), ed );
 
     /*  4  */
     if  ( seq > 1					||
@@ -290,18 +308,18 @@ int tedObjectDrag(		APP_WIDGET	w,
 
     {
     BlockFrame		bf;
-    BufferItem *	paraBi= tod.todDp.dpBi;
+    BufferItem *	paraBi= tod.todDp.dpNode;
     int			frameWide;
     int			frameHigh;
 
     docBlockFrameTwips( &bf, paraBi, bd, paraBi->biTopPosition.lpPage,
 					    paraBi->biTopPosition.lpColumn );
 
-    frameWide= bf.bfX1Twips- bf.bfX0Twips;
-    frameHigh= bf.bfY1Twips- bf.bfY0Twips;
+    frameWide= bf.bfContentRect.drX1- bf.bfContentRect.drX0;
+    frameHigh= bf.bfContentRect.drY1- bf.bfContentRect.drY0;
 
-    frameWide= TWIPStoPIXELS( add->addMagnifiedPixelsPerTwip, frameWide );
-    frameHigh= TWIPStoPIXELS( add->addMagnifiedPixelsPerTwip, frameHigh );
+    frameWide= COORDtoGRID( td->tdPixelsPerTwip, frameWide );
+    frameHigh= COORDtoGRID( td->tdPixelsPerTwip, frameHigh );
 
     switch( tod.todCorner )
 	{
@@ -358,25 +376,25 @@ int tedObjectDrag(		APP_WIDGET	w,
     if  ( td->tdScaleChangedX != 0	||
 	  td->tdScaleChangedY != 0	)
 	{
-	double			xfac= add->addMagnifiedPixelsPerTwip;
-	DocumentRectangle	drObj;
+	double			xfac= td->tdPixelsPerTwip;
+	DocumentRectangle	drResized;
 	InsertedObject *	io= tod.todIo;
 
 	PropertyMask		pipSetMask;
-	PropertyMask		pipDoneMask;
 	PictureProperties	pipFrom= io->ioPictureProperties;
 
-	PROPmaskCLEAR( &pipDoneMask );
-	PROPmaskCLEAR( &pipSetMask );
+	utilPropMaskClear( &pipSetMask );
 
-	tedGetObjectRectangle( &drObj, (APP_POINT *)0,
-					    io, &(tod.todPg), td );
+	tedGetObjectRectangle( &drResized, (Point2DI *)0, io, &(tod.todPg),
+						&(tod.todLayoutContext), ed );
 
 	/*  8  */
 	if  ( td->tdObjectCornerMovedX != 0 )
 	    {
-	    io->ioScaleXSet= ( 100.0* ( drObj.drX1- drObj.drX0+ 1 ) )/
-				    TWIPStoPIXELS( xfac, io->ioTwipsWide );
+	    io->ioScaleXSet= ( 100.0* ( drResized.drX1- drResized.drX0+ 1 ) )/
+				    COORDtoGRID( xfac, io->ioTwipsWide );
+	    if  ( io->ioScaleXSet < 1 )
+		{ io->ioScaleXSet=  1;	}
 	    io->ioScaleXUsed= io->ioScaleXSet;
 
 	    pipFrom.pipScaleXSet= io->ioScaleXSet;
@@ -395,8 +413,10 @@ int tedObjectDrag(		APP_WIDGET	w,
 	/*  8  */
 	if  ( td->tdObjectCornerMovedY != 0 )
 	    {
-	    io->ioScaleYSet= ( 100.0* ( drObj.drY1- drObj.drY0+ 1 ) )/
-				    TWIPStoPIXELS( xfac, io->ioTwipsHigh );
+	    io->ioScaleYSet= ( 100.0* ( drResized.drY1- drResized.drY0+ 1 ) )/
+				    COORDtoGRID( xfac, io->ioTwipsHigh );
+	    if  ( io->ioScaleYSet < 1 )
+		{ io->ioScaleYSet=  1;	}
 	    io->ioScaleYUsed= io->ioScaleYSet;
 
 	    pipFrom.pipScaleYSet= io->ioScaleYSet;
@@ -416,22 +436,26 @@ int tedObjectDrag(		APP_WIDGET	w,
 	if  ( td->tdObjectCornerMovedX != 0	||
 	      td->tdObjectCornerMovedY != 0	)
 	    {
-	    appExposeRectangle( add, drObj.drX0- ox, drObj.drY0- oy,
-					    drObj.drX1- drObj.drX0+ 1,
-					    drObj.drY1- drObj.drY0+ 1 );
+	    DocumentRectangle	drExp= drResized;
 
-	    tedObjectSetImageProperties( &pipDoneMask, ed, io, &(tod.todDp),
-		    tod.todParticule, &(tod.todPg), &pipSetMask, &pipFrom );
+	    geoShiftRectangle( &drExp, -ox, -oy );
+	    if  ( drExp.drX0 < 0 )
+		{ drExp.drX0=  0;	}
+	    if  ( drExp.drY0 < 0 )
+		{ drExp.drY0=  0;	}
 
-	    tedPositionGeometry( &(tod.todPg), &(tod.todDp), lastOne,
-							    bd, add, sfl );
+	    if  ( drExp.drX1 >= drExp.drX0 && drExp.drY1 >= drExp.drY0 )
+		{
+		guiExposeDrawingWidgetRectangle( ed->edDocumentWidget.dwWidget,
+								    &drExp );
+		}
 
-	    tedAdaptToolsToSelection( ed );
+	    tedObjectSetImageProperties( ed, io, &(tod.todDp), tod.todParticule,
+						&pipSetMask, &pipFrom, ((TedDocument *)ed->edPrivateData)->tdTraced );
+
+	    tedPositionGeometry( &(tod.todPg), &(tod.todDp),
+					PARAfindLAST, &(tod.todLayoutContext) );
 	    }
-
-	/*  11  */
-	if  ( ! utilPropMaskIsEmpty( &pipDoneMask ) )
-	    { appDocumentChanged( ed, 1 );	}
 	}
 
     /*  12  */
@@ -442,10 +466,7 @@ int tedObjectDrag(		APP_WIDGET	w,
     td->tdScaleChangedX= 0;
     td->tdScaleChangedY= 0;
 
-    ox= ed->edVisibleRect.drX0;
-    oy= ed->edVisibleRect.drY0;
-
-    tedSetObjectWindows( ed, &(tod.todPg), tod.todIo, ox, oy );
+    tedSetObjectWindows( ed, &(tod.todPg), tod.todIo, &(tod.todLayoutContext) );
 
     return 0;
     }

@@ -6,6 +6,7 @@ NONL_E=
 DOYOU='Do you want to install package'
 
 #
+#   @I_PREFIX@
 #   Intallation directory. As this value is compiled into
 #   the 'Ted' executable as well ( see appFrame/config.h.in )
 #   changing this value will result in an installation that does
@@ -19,14 +20,14 @@ INSTALL_KIND=ROOT
 
 case $RPM_BUILD_ROOT in
     ?*)
-	INSTALL_KIND=RPM
+	INSTALL_KIND=RELATIVE
 	;;
     *)
 	case $# in
 	    1)
 		if  test x_$1 = x_PRIVATE
 		then
-		    INSTALL_KIND=HOME
+		    INSTALL_KIND=PRIVATE
 		    shift
 		fi
 		;;
@@ -37,13 +38,13 @@ case $RPM_BUILD_ROOT in
 esac
 
 case $INSTALL_KIND in
-    RPM)
-	I_PREFIX=${RPM_BUILD_ROOT}@I_PREFIX@
-	XROOT=${RPM_BUILD_ROOT}
+    RELATIVE)
+	FSROOT=${RPM_BUILD_ROOT}
+	I_PREFIX=${FSROOT}@I_PREFIX@
 	;;
     ROOT)
 	I_PREFIX=@I_PREFIX@
-	XROOT=/
+	FSROOT=/
 
 	ID=`id`
 	case $ID in
@@ -61,9 +62,9 @@ case $INSTALL_KIND in
 		;;
 	esac
 	;;
-    HOME)
+    PRIVATE)
 	I_PREFIX=${HOME}
-	XROOT=/is/irrelevant
+	FSROOT=/is/irrelevant
 	;;
     *)
 	echo INSTALL_KIND=$INSTALL_KIND
@@ -102,29 +103,29 @@ finishPrivate()
     then
 	say=yes
     fi
-    if  test -d ${I_PREFIX}/afm
+    if  test -d ${I_PREFIX}/Ted/afm
     then
 	say=yes
     fi
-    if  test -d ${I_PREFIX}/ind
+    if  test -d ${I_PREFIX}/Ted/ind
     then
 	say=yes
     fi
 
     if  test $say = yes
     then
-	echo ========= Include the following in $HOME/.Xdefaults =========
+	echo ========= Include the following in $HOME/.Ted.properties =========
 	if  test -f ${I_PREFIX}/Ted/TedDocument-en_US.rtf
 	then
 	    echo Ted.documentFileName: ${I_PREFIX}/Ted/TedDocument-en_US.rtf
 	fi
-	if  test -d ${I_PREFIX}/afm
+	if  test -d ${I_PREFIX}/Ted/afm
 	then
-	    echo Ted.afmDirectory: ${I_PREFIX}/afm
+	    echo Ted.afmDirectory: ${I_PREFIX}/Ted/afm
 	fi
-	if  test -d ${I_PREFIX}/ind
+	if  test -d ${I_PREFIX}/Ted/ind
 	then
-	    echo Ted.spellToolSystemDicts: ${I_PREFIX}/ind
+	    echo Ted.spellToolSystemDicts: ${I_PREFIX}/Ted/ind
 	fi
     fi
     }
@@ -134,30 +135,30 @@ finishPrivate()
 #
 install()
     {
-    if  test ! -f $HERE/$1.tar.gz
+    if  test ! -f "$HERE/$1.tar.gz"
     then
-	echo $HERE/$1.tar.gz does not exist.
+	echo "$HERE/$1.tar.gz" does not exist.
 	exit 1
     fi
 
-    if  test $INSTALL_KIND != HOME
+    if  test $INSTALL_KIND != PRIVATE
     then
-	if  test -f ${I_PREFIX}/Ted/ad/$1.ad.tar
+	if  test -f ${I_PREFIX}/Ted/$1.ad.tar
 	then
-	    rm Ted/ad/$1.ad.tar
+	    rm ${I_PREFIX}/Ted/$1.ad.tar
 	fi
     fi
 
     (	cd ${I_PREFIX}		&& \
-	cat $HERE/$1.tar.gz	|  \
+	cat "$HERE/$1.tar.gz"	|  \
 	gzip -d			|  \
 	tar mxvf -		)
 
-    if  test $INSTALL_KIND != HOME
+    if  test $INSTALL_KIND != PRIVATE
     then
-	if  test -f ${I_PREFIX}/Ted/ad/$1.ad.tar
+	if  test -f ${I_PREFIX}/Ted/$1.ad.tar
 	then
-	    ( cd $XROOT && tar mxvf ${I_PREFIX}/Ted/ad/$1.ad.tar )
+	    ( cd $FSROOT && tar mxvf ${I_PREFIX}/Ted/$1.ad.tar )
 	fi
     fi
     }
@@ -201,7 +202,7 @@ ask()
 
 if test ! -d ${I_PREFIX}
 then
-    if  mkdir ${I_PREFIX}		&&
+    if  mkdir -p ${I_PREFIX}		&&
         chown @CHOWN_ARG@ ${I_PREFIX}	&&
         chmod 755 ${I_PREFIX}
     then
@@ -228,14 +229,14 @@ case $# in
 	:
 	if  test x_$1 = x_COMMON
 	then
-	    SOURCE=@BINDIST@
+	    SOURCE=ted-2.22-linux-amd64
 	else
 	    SOURCE=$1
 	fi
 
 	install ${SOURCE}
 
-	if  test $INSTALL_KIND = HOME
+	if  test $INSTALL_KIND = PRIVATE
 	then
 	    finishPrivate
 	fi
@@ -254,7 +255,7 @@ esac
 
 FOUND_SOMETHING=NO
 
-for pkg in	@BINDIST@	\
+for pkg in	ted-2.22-linux-amd64	\
 		Ted_nl_NL	\
 		Ted_en_GB	\
 		Ted_de_DE	\
@@ -267,21 +268,21 @@ for pkg in	@BINDIST@	\
 		Ted_cs_CZ	\
 		Ted_da_DK	\
 		Ted_sv_SE	\
-		Ted_no_NO	\
+		Ted_nb_NO	\
 		Ted_pl_PL	\
 		Ted_hu_HU	\
 		Ted_mg_MG	\
 		Ted_oc_FR	\
 		Ted_eu_FR
 do
-    if  test -f $HERE/$pkg.tar.gz
+    if  test -f "$HERE/$pkg.tar.gz"
     then
 	echo
 
-	if  test -f $HERE/$pkg.lsm
+	if  test -f "$HERE/$pkg.lsm"
 	then
 	    sed -n -e	'/^Description/,/^[^ 	]/p'	\
-			    $HERE/$pkg.lsm		|
+			    "$HERE/$pkg.lsm"		|
 	    sed -e	's/Description:/ /'		\
 		-e	'/^[^ 	]/d'			\
 		-e	's/[ 	]*/	/'
@@ -300,7 +301,7 @@ then
     echo WARNING: No Ted distributions found in \"$HERE\"
 fi
 
-if  test $INSTALL_KIND = HOME
+if  test $INSTALL_KIND = PRIVATE
 then
     finishPrivate
 fi

@@ -8,9 +8,8 @@
 #   define APP_FONT_TOOL_H
 
 #   include	<docExpandedTextAttribute.h>
-#   include	<appFrame.h>
-#   include	<appEncodingMenu.h>
-#   include	<appColorChooser.h>
+#   include	"appFrame.h"
+#   include	"appInspector.h"
 
 /************************************************************************/
 /*									*/
@@ -25,27 +24,23 @@ typedef struct AppFontToolResources
     char *			aftrSize;
     char *			aftrRevert;
     char *			aftrSet;
-    char *			aftrTextColor;
 
     char *			aftrTextUnderlined;
     char *			aftrTextStrikethrough;
 
     char *			aftrSuperscript;
     char *			aftrSubscript;
+    char *			aftrBaseline;
 
     char *			aftrSmallcaps;
     char *			aftrCapitals;
-
-    ColorChooserResources	aftrTextColorChooserResources;
-
-    char *			aftrEncodings[CHARSETidxCOUNT];
     char *			aftrFaces[FONTface_COUNT];
     } AppFontToolResources;
 
-typedef void (*FontChooserSetFont)(
+typedef int (*FontChooserSetFont)(
 				void *				target,
-				const ExpandedTextAttribute *	etaSet,
-				const PropertyMask *		taSetMask );
+				const PropertyMask *		taSetMask,
+				const ExpandedTextAttribute *	etaSet );
 
 typedef struct AppFontChooser
     {
@@ -53,36 +48,45 @@ typedef struct AppFontChooser
     AppInspector *		afcInspector;
     int				afcSubjectPage;
     int				afcCurrentDocumentId;
+    int				afcInProgrammaticChange;
 
-    APP_WIDGET			afcFamilyList;
-    APP_WIDGET			afcFaceList;
-    APP_WIDGET			afcSizeList;
-    APP_WIDGET			afcSizeText;
-
-    APP_WIDGET			afcColorRow;
-    APP_WIDGET			afcTextColorLabel;
-    ColorChooser		afcTextColorChooser;
-
-    APP_WIDGET			afcUnderlinedToggle;
-    APP_WIDGET			afcStrikethroughToggle;
-
-    APP_WIDGET			afcSuperscriptToggle;
-    APP_WIDGET			afcSubscriptToggle;
-
-    APP_WIDGET			afcSmallcapsToggle;
-    APP_WIDGET			afcCapitalsToggle;
-
-    APP_WIDGET			afcButtonRow;
-    APP_WIDGET			afcRevertButton;
-    APP_WIDGET			afcSetButton;
+    unsigned char		afcCanChange;
 
     APP_WIDGET			afcSampleDrawing;
-    APP_WIDGET			afcX11Name;
+    APP_WIDGET			afcScreenName;
     APP_WIDGET			afcPsName;
 
-    AppEncodingMenu		afcEncodingMenu;
+    APP_WIDGET			afcChooseRow;
+    APP_WIDGET				afcFamilyColumn;
+    APP_WIDGET					afcFamilyLabel;
+    APP_WIDGET					afcFamilyList;
+    APP_WIDGET				afcFaceColumn;
+    APP_WIDGET					afcFaceLabel;
+    APP_WIDGET					afcFaceList;
+    APP_WIDGET				afcSizeColumn;
+    APP_WIDGET					afcSizeLabel;
+    APP_WIDGET					afcSizeList;
+    APP_WIDGET					afcSizeText;
 
-    int				afcFontFamilyChosen;
+    APP_WIDGET			afcToggleRow1;
+    APP_WIDGET			afcUnderlinedToggle;
+    APP_WIDGET			afcSuperscriptToggle;
+    APP_WIDGET			afcSmallcapsToggle;
+
+    APP_WIDGET			afcToggleRow2;
+    APP_WIDGET			afcStrikethroughToggle;
+    APP_WIDGET			afcSubscriptToggle;
+    APP_WIDGET			afcCapitalsToggle;
+
+    APP_WIDGET			afcApplyRow;
+    APP_WIDGET			afcRevertButton;
+    APP_WIDGET			afcApplyButton;
+
+    APP_WIDGET			afcBaselineRow;
+    APP_WIDGET			afcBaselineLabel;
+    APP_WIDGET			afcBaselineText;
+
+    int				afcFontSortIndexChosen;
     int				afcFaceChosen;
     PropertyMask		afcChosenMask;
     ExpandedTextAttribute	afcTextAttributeChosen;
@@ -90,17 +94,16 @@ typedef struct AppFontChooser
     PropertyMask		afcSetMask;
     ExpandedTextAttribute	afcTextAttributeSet;
 
-    void *			afcTarget;
-
     FontChooserSetFont		afcSetFont;
     
     DocumentFontList		afcDocumentFontList;
 
-    AppDrawingData		afcDrawingData;
+    double			afcPixelsPerTwip;
+    DrawingSurface		afcDrawingSurface;
     const PostScriptFontList *	afcPostScriptFontList;
-    APP_FONT *			afcFont;
+    int				afcScreenFont;
     char			afcChoiceText[120+1];
-    char			afcX11ChoiceText[120+1];
+    char			afcScreenChoiceText[120+1];
     int				afcFaceMapFwd[FONTface_COUNT];
     int				afcFaceMapBck[FONTface_COUNT];
     AppFontToolResources	afcResources;
@@ -132,13 +135,13 @@ extern void appFontToolFinishPage(
 				AppFontChooser *		afc,
 				const AppFontToolResources *	aftr );
 
-extern int appFontExpandCurrentFont(
+extern int appFontToolShowCurrentFont(
 				AppFontChooser *		afc,
 				const PropertyMask *		newMask,
 				const TextAttribute *		taNew,
 				unsigned int			documentId,
+				int				canChange,
 				const DocumentFontList *	dfl,
-				const RGB8Color *		colors,
-				int				colorCount );
+				const ColorPalette *		cp );
 
 #   endif /*	APP_FONT_TOOL_H  */

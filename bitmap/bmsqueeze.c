@@ -1,12 +1,7 @@
 #   include	"bitmapConfig.h"
 
-#   include	<stdio.h>
-#   include	<stdlib.h>
 #   include	<string.h>
 #   include	"bmintern.h"
-#   include	<sioHex.h>
-#   include	<sioEndian.h>
-#   include	<sioStdio.h>
 
 #   include	<appDebugon.h>
 
@@ -305,36 +300,36 @@ static int bmSqueezeBuffer(	const BitmapDescription *	bd,
 		default:
 		    LLDEB(bd->bdBitsPerPixel,bitsPerPixel); return -1;
 		}
-	    break;
 	default:
 	    LLDEB(bd->bdBitsPerPixel,bitsPerPixel); return -1;
 	}
     }
 
 int bmMakeMonochrome(		BitmapDescription *	bd,
-				RGB8Color *		palette,
 				unsigned char *		buffer )
     {
     int		hasAlpha= bd->bdHasAlpha != 0;
     int		bitsPerPixel;
     int		bytesPerRow;
 
-    if  ( bd->bdColorCount == 2 )
+    ColorPalette *	cp= &(bd->bdPalette);
+
+    if  ( cp->cpColorCount == 2 )
 	{
 	bitsPerPixel= 1+ hasAlpha;
 	bytesPerRow= ( bd->bdPixelsWide* bitsPerPixel+ 7 )/ 8;
 
-	if  ( palette[0].rgb8Red	== 0	&&
-	      palette[0].rgb8Green	== 0	&&
-	      palette[0].rgb8Blue	== 0	&&
-	      palette[1].rgb8Red	== 255	&&
-	      palette[1].rgb8Green	== 255	&&
-	      palette[1].rgb8Blue	== 255	)
+	if  ( cp->cpColors[0].rgb8Red	== 0	&&
+	      cp->cpColors[0].rgb8Green	== 0	&&
+	      cp->cpColors[0].rgb8Blue	== 0	&&
+	      cp->cpColors[1].rgb8Red	== 255	&&
+	      cp->cpColors[1].rgb8Green	== 255	&&
+	      cp->cpColors[1].rgb8Blue	== 255	)
 	    {
 	    if  ( bmSqueezeBuffer( bd, bitsPerPixel, bytesPerRow, buffer ) )
 		{ LDEB(1); return -1;	}
 
-	    free( (char *)palette );
+	    utilPaletteSetCount( cp, 0 );
 	    bd->bdBitsPerSample= 1;
 	    bd->bdColorEncoding= BMcoWHITEBLACK;
 	    bd->bdSamplesPerPixel= 1+ hasAlpha;
@@ -344,17 +339,17 @@ int bmMakeMonochrome(		BitmapDescription *	bd,
 	    return 0;
 	    }
 
-	if  ( palette[0].rgb8Red	== 255	&&
-	      palette[0].rgb8Green	== 255	&&
-	      palette[0].rgb8Blue	== 255	&&
-	      palette[1].rgb8Red	== 0	&&
-	      palette[1].rgb8Green	== 0	&&
-	      palette[1].rgb8Blue	== 0	)
+	if  ( cp->cpColors[0].rgb8Red	== 255	&&
+	      cp->cpColors[0].rgb8Green	== 255	&&
+	      cp->cpColors[0].rgb8Blue	== 255	&&
+	      cp->cpColors[1].rgb8Red	== 0	&&
+	      cp->cpColors[1].rgb8Green	== 0	&&
+	      cp->cpColors[1].rgb8Blue	== 0	)
 	    {
 	    if  ( bmSqueezeBuffer( bd, bitsPerPixel, bytesPerRow, buffer ) )
 		{ LDEB(1); return -1;	}
 
-	    free( (char *)palette );
+	    utilPaletteSetCount( cp, 0 );
 	    bd->bdBitsPerSample= 1;
 	    bd->bdColorEncoding= BMcoBLACKWHITE;
 	    bd->bdSamplesPerPixel= 1+ hasAlpha;

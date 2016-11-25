@@ -5,8 +5,16 @@
 /*									*/
 /************************************************************************/
 
-#   include	<utilPropMask.h>
+#   include	<string.h>
+
+#   include	"utilPropMask.h"
 #   include	<appDebugon.h>
+
+void utilPropMaskClear(	PropertyMask *	pm )
+    {
+    memset( pm->pmBits, 0, PROPmaskSIZE );
+    return;
+    }
 
 void utilPropMaskFill(		PropertyMask *	pm,
 				int		c )

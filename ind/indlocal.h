@@ -1,26 +1,14 @@
-#   include	<stdio.h>
-#   include	<stdlib.h>
-#   include	<ctype.h>
-
-#   include	<ind.h>
-
-#   ifdef	__STDC__
-#	include	<stddef.h>
-#	include	<stdlib.h>
-#	include	<string.h>
-#   endif
-
-#   include	<utilEndian.h>
+#   include	"ind.h"
 
 #   define	TNfUSED		1
 #   define	TNfACCEPTS	2
+#   define	TNfREAD_ONLY	4
 
-#   define	INDMAGIC	0x4d61726b
-#   define	INDMAGIC_R	0x6b72614d
+#   define	INDMAGIC	0xdfadfadf
+#   define	INDMAGIC_R	0xdffaaddf
 
 #   define	TLsBLOCK	5000
 #   define	TNsBLOCK	5000
-#   define	ITsBLOCK	5000
 
 #   define	TLgFREE	0xfffffe
 #   define	TLgUSED	0xffffff
@@ -28,22 +16,15 @@
 typedef struct TrieNode
     {
     int			tn_transitions;
-    int			tn_items;
-    unsigned char	tn_ntrans;
-    unsigned char	tn_nitem;
+    unsigned short	tn_ntrans;
     unsigned char	tn_flags;
     unsigned char	tn_unused;
     } TrieNode;
 
 typedef struct TrieLink
     {
-#   ifdef WORDS_BIGENDIAN
-    unsigned int		tl_key:8;
-    unsigned int		tl_to:24;
-#   else
-    unsigned int		tl_to:24;
-    unsigned int		tl_key:8;
-#   endif
+    unsigned int		tl_key:16;
+    unsigned int		tl_to:32;
     } TrieLink;
 
 /************************************************************************/
@@ -66,36 +47,64 @@ typedef struct IND
 
     /*  -  */	TrieNode *	ind_nodes;
     /*  -  */	TrieNode **	indNodePages;
-    /* 24  */	int		ind_nnode;
+    /* 24  */	int		indNodeCount;
     /* 28  */	int		indAllocatedNodes;
 
     /*  -  */	TrieLink *	ind_links;
     /*  -  */	TrieLink **	indLinkPages;
     /* 40  */	int		indAllocatedLinks;
-    /* 44  */	int		ind_lfree;
-    /* 48  */	int		ind_lfull;
+				/****************************************/
+				/*  Range of free slots to optimize	*/
+				/*  searches. Actually, the numbers are	*/
+				/*  candidates: the slot may have been	*/
+				/*  used for a node.			*/
+				/****************************************/
+    /* 44  */	int		indFirstFreeLinkSlot;
+    /* 48  */	int		indLastHeadLinkSlot;
 
-    /*  -  */	int *		ind_classes;
-    /*  -  */	int **		ind_cpages;
-    /* 60  */	int		ind_ccount;
-    /* 64  */	int		ind_cfree;
-    /* 68  */	int		ind_cfull;
-    /* 72  The original size of an ind struct.			*/
-
-    /* 72  */	unsigned char *	indMmappedFile;
-    /* 76  */	unsigned long	indMmappedSize;
+    /* 52  */	unsigned char *	indMmappedFile;
+    /* 56  */	unsigned long	indMmappedSize;
     } IND;
 
-#   define	NODE(ind,tn) ((ind)->indNodePages[(tn)/TNsBLOCK]+((tn)%TNsBLOCK))
-#   define	LINK(ind,tl) ((ind)->indLinkPages[(tl)/TLsBLOCK]+((tl)%TLsBLOCK))
-#   define	ITEMS(ind,cl) ((ind)->ind_cpages[(cl)/ITsBLOCK]+((cl)%ITsBLOCK))
+#   define NODE(ind,tn) ((ind)->indNodePages[(tn)/TNsBLOCK]+((tn)%TNsBLOCK))
+#   define LINK(ind,tl) ((ind)->indLinkPages[(tl)/TLsBLOCK]+((tl)%TLsBLOCK))
 
-extern IND *	indINDmake( int read_only );
-extern IND *	indINDread( const char * filename, int read_only );
-extern int	indINDput( IND * ind, const unsigned char * );
+/************************************************************************/
+/*									*/
+/*  Shift modes for producing spell guesses.				*/
+/*									*/
+/************************************************************************/
+
+#   define	INDhASIS	1	/*  knudde -> knudde		*/
+#   define	INDhFIRSTUP	2	/*  Knudde -> knudde		*/
+#   define	INDhIJUP	3	/*  IJsco -> ijsco		*/
+#   define	INDhALLUP	4	/*  KNUDDE -> knudde		*/
+#   define	INDhTAILUP	5	/*  EDAM -> Edam		*/
+#   define	INDhIJTAILUP	6	/*  IJMUIDEN -> IJmuiden	*/
+
+/************************************************************************/
+/*									*/
+/*  Routine declarations.						*/
+/*									*/
+/************************************************************************/
+
+extern IND *	indINDmake( int readOnly );
+extern IND *	indINDread( const char * filename, int readOnly );
+
+extern int indINDputUtf8(	IND *			ind,
+				int			tn,
+				const unsigned char *	key );
+
+extern int indINDputUtf16(	IND *			ind,
+				int			tn,
+				const unsigned short *	key );
+
+extern int indINDforall(	IND *			ind,
+				int			tn,
+				void *			through,
+				IndForAllFun		fun );
+
 extern int	indINDforget( IND * ind, unsigned char * );
-extern int	indINDget( int *, IND * ind, int,
-				const unsigned char * );
 extern void	indINDfree( IND * ind );
 extern int	indINDwrite( IND * ind, const char * filename );
 extern int	indTNmake( IND * ind );
@@ -106,39 +115,54 @@ extern IND *	indINDmini( IND * ind );
 extern void	indTLprint( IND *, int );
 extern void	indTNprint( IND *, int );
 extern void	indINDprint( IND * );
-extern void	indDump( IND *, int, int );
-extern int	indINDstep( int *, IND * ind, int, const unsigned char * );
-extern int	indINDguess( IND * ind,
-			    const unsigned char *	word,
-			    SpellGuessContext *		sgc,
-			    int				how,
-			    const GuessSubstitution *	typos,
-			    int				count,
-			    const unsigned char *	charKinds,
-			    const unsigned char *	charShifts );
 
-extern int		indITalloc( IND * ind, int old, int n );
-extern void		indITfree( IND * ind, int cl );
-extern int		indITset( IND * ind , int tn, int item );
-extern int		indITget( IND * ind , int tn, int *, int ** );
+extern void indTLprint2(	IND *	ind,
+				int	from,
+				int	upto );
 
-extern int indWRDget(	IND *			ind,
-			int *			pWhatWasShifted,
-			const unsigned char *	word,
-			int			asPrefix,
-			const unsigned char *	charKinds,
-			const unsigned char *	charShifts );
+extern int indINDgetUtf8(	int *				paccept,
+				IND *				ind,
+				int				tn,
+				const unsigned char *		key );
 
-extern int	indWRDguess(	IND *				ind,
-				const unsigned char *		wrd,
+extern int indINDgetUtf16(	int *				paccept,
+				IND *				ind,
+				int				tn,
+				const unsigned short *		key );
+
+extern int	indINDstep(	int *				pTrans,
+				IND *				ind,
+				int				tn,
+				int				sym );
+
+extern int indINDguess(		IND *				ind,
+				const unsigned short *		ucods,
+				int				len,
 				SpellGuessContext *		sgc,
-				const GuessSubstitution *	typos,
-				int				count,
-				const unsigned char *		charKinds,
-				const unsigned char *		charShifts );
+				int				how );
+
+extern int indWRDget(		IND *			ind,
+				int *			pWhatWasShifted,
+				const unsigned char *	word,
+				int			asPrefix );
+
+extern int indWRDguess(	IND *				ind,
+			unsigned short *		ucods,
+			int				ulen,
+			SpellGuessContext *		sgc );
 
 extern IND *	indINDrenumber( IND * ind );
 
 extern void indINDcount( IND *	ind );
 extern int indITwalk( IND *	ind );
 extern int indTLwalk( IND *	ind );
+
+extern int indShiftWord(	char *				target,
+				const unsigned short *		ucods,
+				int				ulen,
+				int				how );
+
+extern int indINDaddSuffix(	IND *		ind,
+				int		tnTo,
+				int		tnSuf );
+

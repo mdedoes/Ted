@@ -1,15 +1,14 @@
 #   include	"appFrameConfig.h"
 
-#   include	<stdlib.h>
 #   include	<stdio.h>
 
 #   include	"appFrame.h"
-#   include	"appSystem.h"
-#   include	<appGeoString.h>
-
-#   ifdef USE_GTK
+#   include	"appInspector.h"
+#   include	"guiWidgetsImpl.h"
 
 #   include	<appDebugon.h>
+
+#   ifdef USE_GTK
 
 void appInspectorMakePageParent(	AppInspector *	ai )
     {
@@ -26,6 +25,8 @@ void appInspectorMakePageParent(	AppInspector *	ai )
 
     ai->aiPageParent= notebook;
 
+    gtk_widget_set_name(GTK_WIDGET (ai->aiPaned), "tedInspector");
+
     return;
     }
 
@@ -41,48 +42,49 @@ void appInspectorChoosePage(	AppInspector *		ai,
     return;
     }
 
-static APP_OITEM_CALLBACK_H( appInspectorPageChosen, w, vai )
-    {
-    AppInspector *	ai= (AppInspector *)vai;
-
-    int			subject;
-
-    const int		andMenu= 0;
-
-    subject= appGuiGetOptionmenuItemIndex( &(ai->aiSubjectOptionmenu), w );
-    if  ( subject >= ai->aiSubjectCount )
-	{ LDEB(ai->aiSubjectCount); return;	}
-
-    if  ( ai->aiNotifySubject )
-	{ (*ai->aiNotifySubject)( ai, ai->aiCurrentSubject, subject ); }
-
-    appInspectorChoosePage( ai, andMenu, subject );
-
-    ai->aiCurrentSubject= subject;
-
-    return;
-    }
-
-void appMakeVerticalInspectorPage(	APP_WIDGET *	pPage,
+int appMakeVerticalInspectorPage(	APP_WIDGET *	pPage,
 					APP_WIDGET *	pMenuitem,
 					AppInspector *	ai,
 					const char *	label )
     {
-    GtkWidget *		item;
+    GtkWidget *		option;
     GtkWidget *		page;
 
     page= gtk_vbox_new( FALSE, COLUMN_SPACING_GTK );
+
+#   if 0
+    gtk_widget_set_name( GTK_WIDGET(page), label );
+#   endif
 
     gtk_notebook_append_page( GTK_NOTEBOOK( ai->aiPageParent ),
 						    page, (GtkWidget *)0 );
 
     gtk_widget_show( page );
 
-    item= appAddItemToOptionmenu( &(ai->aiSubjectOptionmenu), label,
-				    appInspectorPageChosen, (void *)ai );
+    option= appAddItemToOptionmenu( &(ai->aiSubjectOptionmenu), label );
 
-    *pPage= page; *pMenuitem= item; return;
+    *pPage= page; *pMenuitem= option; return 0;
     }
+
+void appInspectorDeleteSubject(	AppInspector *		ai,
+				int			subject )
+    {
+    GtkWidget *		page;
+
+    page= gtk_notebook_get_nth_page( GTK_NOTEBOOK( ai->aiPageParent ),
+								subject );
+
+    gtk_widget_destroy( page );
+
+    gtk_widget_destroy( ai->aiSubjects[subject].isMenuitem );
+
+    ai->aiSubjectCount--;
+    while( subject < ai->aiSubjectCount )
+	{ ai->aiSubjects[subject]= ai->aiSubjects[subject+ 1];	}
+
+    return;
+    }
+
 
 void appInspectorEnablePage(	AppInspector *	ai,
 				int		subject,

@@ -1,7 +1,7 @@
 /************************************************************************/
 /*									*/
 /*  Simple io streams: Duplicate the stream to another one: Usually	*/
-/*  for debugging putposes.						*/
+/*  for debugging purposes.						*/
 /*									*/
 /************************************************************************/
 
@@ -15,7 +15,7 @@
 
 /************************************************************************/
 /*									*/
-/*  Exchange of hexed binary little endian data.			*/
+/*  Exchange of data over the strean and its fork.			*/
 /*									*/
 /************************************************************************/
 
@@ -36,7 +36,7 @@ typedef struct ForkedInputStream
 
 static int sioInForkReadBytes(	void *		voidfis,
 				unsigned char *	buffer,
-				int		count )
+				unsigned int	count )
     {
     ForkedInputStream *	fis= (ForkedInputStream *)voidfis;
     int			done= 0;
@@ -68,7 +68,7 @@ SimpleInputStream * sioInForkOpen(	SimpleInputStream *	sisIn,
     SimpleInputStream *		sis;
     ForkedInputStream *		fis;
 
-    fis= malloc( sizeof(ForkedInputStream) );
+    fis= (ForkedInputStream *)malloc( sizeof(ForkedInputStream) );
     if  ( ! fis )
 	{ XDEB(fis); return (SimpleInputStream *)0;	}
 
@@ -111,15 +111,14 @@ SimpleOutputStream * sioOutForkOpen(	SimpleOutputStream *	sosOut,
     SimpleOutputStream *	sos;
     ForkedOutputStream *	fos;
 
-    fos= malloc( sizeof(ForkedInputStream) );
+    fos= (ForkedOutputStream *)malloc( sizeof(ForkedOutputStream) );
     if  ( ! fos )
 	{ XDEB(fos); return (SimpleOutputStream *)0;	}
 
     fos->fosSosOut= sosOut;
     fos->fosSosFork= sosFork;
 
-    sos= sioOutOpen( (void *)fos, sioOutForkWriteBytes,
-						(SIOoutSEEK)0, sioForkClose );
+    sos= sioOutOpen( (void *)fos, sioOutForkWriteBytes, sioForkClose );
 
     if  ( ! sos )
 	{ XDEB(sos); free( fos ); return (SimpleOutputStream *)0; }

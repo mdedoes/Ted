@@ -8,6 +8,11 @@
 #   define	TED_LINK_TOOL_H
 
 #   include	<appFrame.h>
+#   include	<appInspector.h>
+#   include	<docBuf.h>
+#   include	<docSelectionDescription.h>
+#   include	<docHyperlinkField.h>
+#   include	"tedBookmarkList.h"
 
 /************************************************************************/
 /*									*/
@@ -19,13 +24,6 @@ typedef struct LinkToolResources
     {
     char *		lprFileText;
     char *		lprMarkText;
-
-    char *		lprLinkAsText;
-    char *		lprLinkAsItemTexts[LINKkind_COUNT];
-
-    char *		lprFollowLinkText;
-    char *		lprRemoveLinkText;
-    char *		lprCancelText;
     } LinkToolResources;
 
 typedef struct LinkTool
@@ -35,27 +33,19 @@ typedef struct LinkTool
     const LinkToolResources *	ltPageResources;
 
     APP_WIDGET			ltFileTextWidget;
-    APP_WIDGET			ltMarkTextWidget;
-    APP_WIDGET			ltMarkListWidget;
 
-    APP_WIDGET			ltButtonRow;
+    BookmarkList		ltBookmarkList;
+
     APP_WIDGET			ltSetLinkButton;
+    APP_WIDGET			ltRevertButton;
     APP_WIDGET			ltFollowLinkButton;
     APP_WIDGET			ltRemoveLinkButton;
-    APP_WIDGET			ltCancelButton;
-
-    APP_WIDGET			ltLinkAsFrame;
-    APP_WIDGET			ltLinkAsPaned;
-    AppOptionmenu		ltLinkAsOptionmenu;
-    APP_WIDGET			ltLinkAsItems[LINKkind_COUNT];
 
     unsigned int		ltCurrentDocumentId;
-    int				ltDocumentReadonly;
-    int				ltLinkKind;
-    char *			ltFileSet;
-    char *			ltMarkSet;
-    char *			ltFileChosen;
-    char *			ltMarkChosen;
+    int				ltCanChange;
+    int				ltInProgrammaticChange;
+    HyperlinkField		ltLinkSet;
+    HyperlinkField		ltLinkChosen;
     } LinkTool;
 
 /************************************************************************/
@@ -64,14 +54,13 @@ typedef struct LinkTool
 /*									*/
 /************************************************************************/
 
-extern void tedFormatFillLinkPage(
-				LinkTool *			lt,
+extern void tedFillLinkTool(	LinkTool *			lt,
 				const LinkToolResources *	lpr,
 				InspectorSubject *		is,
 				APP_WIDGET			pageWidget,
 				const InspectorSubjectResources * isr );
 
-extern void tedFormatInitLinkTool(	LinkTool *		lt );
+extern void tedInitLinkTool(	LinkTool *		lt );
 extern void tedFormatCleanLinkTool(	LinkTool *		lt );
 
 extern void tedLinkToolGetResourceTable(
@@ -79,10 +68,8 @@ extern void tedLinkToolGetResourceTable(
 				LinkToolResources *		lpr,
 				InspectorSubjectResources *	isr );
 
-extern void tedLinkToolFillChoosers(	LinkTool *			lt,
-					const LinkToolResources *	ltr );
-extern void tedFinishLinkTool(		LinkTool *			lt,
-					const LinkToolResources *	ltr );
+extern void tedLinkToolFillChoosers(	LinkTool *			lt );
+extern void tedFinishLinkTool(		LinkTool *			lt );
 
 extern void tedRefreshLinkTool(	LinkTool *			lt,
 				int *				pEnabled,
@@ -90,6 +77,7 @@ extern void tedRefreshLinkTool(	LinkTool *			lt,
 				InspectorSubject *		is,
 				const DocumentSelection *	ds,
 				const SelectionDescription *	sd,
-				BufferDocument *		bd );
+				BufferDocument *		bd,
+				const unsigned char *		cmdEnabled );
 
 #   endif	/*  TED_LINK_TOOL_H  */

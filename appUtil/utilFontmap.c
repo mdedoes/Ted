@@ -5,7 +5,7 @@
 /*									*/
 /************************************************************************/
 
-#   include	<appUtilConfig.h>
+#   include	"appUtilConfig.h"
 
 #   include	<stdio.h>
 #   include	<stddef.h>
@@ -13,8 +13,8 @@
 #   include	<string.h>
 #   include	<ctype.h>
 
-#   include	<appSystem.h>
-#   include	<utilFontmap.h>
+#   include	"appSystem.h"
+#   include	"utilFontmap.h"
 
 #   include	<appDebugon.h>
 
@@ -26,7 +26,7 @@ typedef struct FontmapEntry
     } FontmapEntry;
 
 static FontmapEntry *	UTIL_FontmapEntries;
-int			UTIL_FontmapEntryCount;
+static int		UTIL_FontmapEntryCount;
 
 /************************************************************************/
 /*									*/
@@ -123,6 +123,14 @@ int utilFontmapReadMap(	const char *	filename )
 
     static const char runlibfile[]= ".runlibfile";
 
+    MemoryBuffer	fileBuf;
+    MemoryBuffer	runfile;
+    MemoryBuffer	local;
+
+    utilInitMemoryBuffer( &fileBuf );
+    utilInitMemoryBuffer( &runfile );
+    utilInitMemoryBuffer( &local );
+
     recursive++;
 
     if  ( recursive == 1 && UTIL_FontmapEntryCount > 0 )
@@ -130,6 +138,9 @@ int utilFontmapReadMap(	const char *	filename )
 
     if  ( recursive > 20 )
 	{ LDEB(recursive); rval= -1; goto ready;	}
+
+    if  ( utilMemoryBufferSetString( &fileBuf, filename ) )
+	{ LDEB(1); rval= -1; goto ready;	}
 
     f= fopen( filename, "r" );
     if  ( ! f )
@@ -141,7 +152,6 @@ int utilFontmapReadMap(	const char *	filename )
 	FontmapEntry *	fe;
 
 	char		scratch[200+ 1];
-	char		runfile[400+ 1];
 	int		l;
 
 	switch( c )
@@ -194,14 +204,16 @@ int utilFontmapReadMap(	const char *	filename )
 		if  ( c != '\n' )
 		    { CDEB(c); rval= -1; goto ready; }
 
-		if  ( appAbsoluteName( runfile, sizeof(runfile)- 1,
-						scratch, 1, filename ) < 0 )
+		if  ( utilMemoryBufferSetString( &local, scratch ) )
+		    { LDEB(l); rval= -1; goto ready;	}
+
+		if  ( appAbsoluteName( &runfile, &local, 1, &fileBuf ) < 0 )
 		    { SSDEB(filename,scratch); rval= -1; goto ready;	}
 
 		/*  2  */
-		if  ( ! appTestFileExists( runfile )	&&
-		      utilFontmapReadMap( runfile )	)
-		    { SDEB(runfile); rval= -1; goto ready;	}
+		if  ( ! appTestFileExists( &runfile )	&&
+		      utilFontmapReadMap( utilMemoryBufferGetString( &runfile ) ) )
+		    { LDEB(1); rval= -1; goto ready;	}
 
 		c= utilFontmapNextItem( f );
 		continue;
@@ -214,7 +226,7 @@ int utilFontmapReadMap(	const char *	filename )
 		rval= -1; goto ready;
 	    }
 
-	fe= realloc( UTIL_FontmapEntries,
+	fe= (FontmapEntry *)realloc( UTIL_FontmapEntries,
 			( UTIL_FontmapEntryCount+ 1)* sizeof(FontmapEntry) );
 	if  ( ! fe )
 	    { LXDEB(UTIL_FontmapEntryCount,fe); rval= -1; goto ready; }
@@ -304,6 +316,10 @@ int utilFontmapReadMap(	const char *	filename )
 
     if  ( f )
 	{ fclose( f );	}
+
+    utilCleanMemoryBuffer( &fileBuf );
+    utilCleanMemoryBuffer( &runfile );
+    utilCleanMemoryBuffer( &local );
 
     return rval;
     }

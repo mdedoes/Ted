@@ -6,14 +6,49 @@
 
 #   include	"tedConfig.h"
 
-#   include	<stdlib.h>
 #   include	<stdio.h>
 #   include	<stddef.h>
 
-#   include	"tedApp.h"
-#   include	"tedFormatTool.h"
+#   include	"tedDraw.h"
+#   include	"tedBorderTool.h"
+#   include	<guiToolUtil.h>
+#   include	<guiTextUtil.h>
 
+#   include	<docBorderPropertyAdmin.h>
+#   include	<guiWidgetDrawingSurface.h>
+#   include	<guiDrawingWidget.h>
+#   include	<appUnit.h>
 #   include	<appDebugon.h>
+
+#   define	MAKE_COLOR_ROW		0
+
+#   define	USE_FRAME		0
+#   define	USE_FRAME_TITLE		0
+#   define	USE_TOGGLE_TITLE	1
+
+#   define	THICK_CHARS		8
+
+#   if USE_FRAME
+#	define	ONOFF_COLUMN		0
+#	define	ONOFF_COLSPAN		1
+
+#	define	THICK_COLUMN		(ONOFF_COLUMN+ONOFF_COLSPAN)
+#	define	THICK_COLSPAN		3
+
+#	define	COLOR_COLUMN		(THICK_COLUMN+THICK_COLSPAN)
+#	define	COLOR_COLSPAN		7
+#   else
+#	define	ONOFF_COLUMN		0
+#	define	ONOFF_COLSPAN		1
+
+#	define	THICK_COLUMN		(ONOFF_COLUMN+ONOFF_COLSPAN)
+#	define	THICK_COLSPAN		1
+
+#	define	COLOR_COLUMN		(THICK_COLUMN+THICK_COLSPAN)
+#	define	COLOR_COLSPAN		2
+#   endif
+
+#   define	ONOFF_ROW_COLUMNS	(ONOFF_COLSPAN+THICK_COLSPAN+COLOR_COLSPAN)
 
 /************************************************************************/
 /*									*/
@@ -21,22 +56,43 @@
 /*									*/
 /************************************************************************/
 
-static void tedBorderToolShowWide(
-				BorderTool *				bt,
-				const ExpandedBorderProperties *	ebp )
+static void tedBorderToolShowWide(	BorderTool *		bt )
     {
-    appEnableText( bt->btWideText, ebp->ebpStyle != DOCbsNONE );
+    ExpandedBorderProperties *	ebp= &(bt->btPropertiesChosen);
+
+    guiEnableText( bt->btWideText,
+			bt->btEnabled && ebp->ebpStyle != DOCbsNONE  );
 
     if  ( ebp->ebpStyle != DOCbsNONE )
 	{
-	char	scratch[80];
-
-	appGeoLengthToString( scratch, ebp->ebpPenWideTwips, UNITtyPOINTS );
-	appStringToTextWidget( bt->btWideText, scratch );
+	appLengthToTextWidget( bt->btWideText,
+					ebp->ebpPenWideTwips, UNITtyPOINTS );
 	}
     else{ appStringToTextWidget( bt->btWideText, "" );	}
 
     return;
+    }
+
+/************************************************************************/
+
+void tedEnableBorderTool(	BorderTool *		bt,
+				int			enabled )
+    {
+    if  ( bt->btEnabled != enabled )
+	{
+	bt->btEnabled= enabled;
+
+	appEnableColorChooser( &(bt->btColorChooser), enabled );
+	guiEnableWidget( bt->btOnOffToggle, enabled );
+
+	tedBorderToolShowWide( bt );
+
+#	if USE_FRAME
+	guiEnableWidget( bt->btFrame, enabled );
+#	else
+	guiEnableWidget( bt->btOnOffRow, enabled );
+#	endif
+	}
     }
 
 /************************************************************************/
@@ -45,7 +101,7 @@ static void tedBorderToolShowWide(
 /*									*/
 /************************************************************************/
 
-void tedBorderToolSetProperties(	BorderTool *			bt,
+static void tedBorderToolSetProperties(	BorderTool *			bt,
 					const DocumentProperties *	dp,
 					const BorderProperties *	bpSet )
     {
@@ -54,26 +110,43 @@ void tedBorderToolSetProperties(	BorderTool *			bt,
 
     const int			avoidZero= 1;
 
-    docExpandBorderProperties( ebp, bpSet, dp->dpColors, dp->dpColorCount );
+    docExpandBorderProperties( ebp, bpSet, &(dp->dpColorPalette) );
 
     if  ( ebp->ebpStyle != DOCbsNONE )
 	{ set= 1;	}
 
     appGuiSetToggleState( bt->btOnOffToggle, set );
-    tedBorderToolShowWide( bt, ebp );
+    tedBorderToolShowWide( bt );
 
     if  ( bt->btStyleRow )
 	{
-	appExposeRectangle( &(bt->btInplaceDrawingData), 0, 0, 0, 0 );
+	appExposeDrawnPulldownInplace( &(bt->btStylePulldown) );
 	}
 
     appColorChooserSuggestPalette( &(bt->btColorChooser),
-				avoidZero, dp->dpColors, dp->dpColorCount );
+					    avoidZero, &(dp->dpColorPalette) );
     appColorChooserSetColor( &(bt->btColorChooser),
 				    ebp->ebpColorExplicit,
 				    &(ebp->ebpColor) );
+    appShowColorChooser( &(bt->btColorChooser), set );
+    if  ( bt->btColorRow != bt->btOnOffRow )
+	{ guiEnableWidget( bt->btColorRow, set );	}
 
-    PROPmaskCLEAR( &(bt->btPropertiesChanged) );
+    utilPropMaskClear( &(bt->btPropertiesChanged) );
+
+    return;
+    }
+
+void tedBorderToolSetPropertiesByNumber( BorderTool *			bt,
+					const BufferDocument *		bd,
+					int				num )
+    {
+    const DocumentProperties *	dp= &(bd->bdProperties);
+    BorderProperties		bp;
+
+    docGetBorderPropertiesByNumber( &bp, &(bd->bdBorderPropertyList), num );
+
+    tedBorderToolSetProperties( bt, dp, &bp );
 
     return;
     }
@@ -84,7 +157,7 @@ void tedBorderToolSetProperties(	BorderTool *			bt,
 /*									*/
 /************************************************************************/
 
-static void tedDrawBorderStyle(	AppDrawingData *		add,
+static void tedDrawBorderStyle(	DrawingSurface			ds,
 				BorderTool *			bt,
 				int				style,
 				const DocumentRectangle *	drI )
@@ -93,16 +166,16 @@ static void tedDrawBorderStyle(	AppDrawingData *		add,
 	{
 	const int	minThick= 1;
 
-	tedDrawHorizontalBorderLine( add, style, minThick,
+	tedDrawHorizontalBorderLine( ds, style, minThick,
 			    drI->drX0,
 			    drI->drX1, ( drI->drY0+ drI->drY1 )/ 2 );
 	}
 
     /*  NO.. Confuses
-    appDrawDrawLine( add, drI->drX0, drI->drY0, drI->drX1, drI->drY0 );
-    appDrawDrawLine( add, drI->drX1, drI->drY0, drI->drX1, drI->drY1 );
-    appDrawDrawLine( add, drI->drX1, drI->drY1, drI->drX0, drI->drY1 );
-    appDrawDrawLine( add, drI->drX0, drI->drY1, drI->drX0, drI->drY0 );
+    drawLine( ds, drI->drX0, drI->drY0, drI->drX1, drI->drY0 );
+    drawLine( ds, drI->drX1, drI->drY0, drI->drX1, drI->drY1 );
+    drawLine( ds, drI->drX1, drI->drY1, drI->drX0, drI->drY1 );
+    drawLine( ds, drI->drX0, drI->drY1, drI->drX0, drI->drY0 );
     */
 
     return;
@@ -111,25 +184,33 @@ static void tedDrawBorderStyle(	AppDrawingData *		add,
 static APP_EVENT_HANDLER_H( tedBorderToolRedrawInplace, w, voidbt, exposeEvent )
     {
     BorderTool *	bt= (BorderTool *)voidbt;
-    AppDrawingData *	add= &(bt->btInplaceDrawingData);
+    DrawingSurface	dsI= bt->btStylePulldown.adpInplaceDrawingSurface;
 
     int			wide;
     int			high;
 
+    DocumentRectangle	drClip;
     DocumentRectangle	drI;
 
-    appDrawnPulldownDrawArrow( &wide, &high, w, add );
+    guiCollectExposures( &drClip, bt->btStylePulldown.adpInplaceDrawing,
+								exposeEvent );
+
+    drawSetClipRect( dsI, &drClip );
+
+    appDrawnPulldownDrawArrow( &drClip, &wide, &high, w,
+						&(bt->btStylePulldown) );
+
+    drawNoClipping( dsI );
+
+    drI.drX0= 0; drI.drX1= wide- 1;
+    drI.drY0= 0; drI.drY1= high- 1;
+    drawSetForegroundColorWhite( dsI );
+    drawFillRectangle( dsI, &drI );
 
     drI.drX0= 3; drI.drX1= wide- 3;
     drI.drY0= 3; drI.drY1= high- 3;
-
-    appDrawSetForegroundWhite( add );
-
-    appDrawFillRectangle( add, 0, 0, wide, high );
-
-    appDrawSetForegroundBlack( add );
-
-    tedDrawBorderStyle( add, bt, bt->btPropertiesChosen.ebpStyle, &drI );
+    drawSetForegroundColorBlack( dsI );
+    tedDrawBorderStyle( dsI, bt, bt->btPropertiesChosen.ebpStyle, &drI );
 
     return;
     }
@@ -137,41 +218,40 @@ static APP_EVENT_HANDLER_H( tedBorderToolRedrawInplace, w, voidbt, exposeEvent )
 static APP_EVENT_HANDLER_H( tedBorderToolRedrawPulldown, w, voidbt, exposeEvent )
     {
     BorderTool *	bt= (BorderTool *)voidbt;
-    AppDrawingData *	add= &(bt->btPulldownDrawingData);
+    DrawingSurface	dsP;
 
     int			inplaceWide;
     int			inplaceHigh;
     int			pulldownWide;
     int			pulldownHigh;
 
-    const int		ox= 0;
-    const int		oy= 0;
     DocumentRectangle	drClip;
+    DocumentRectangle	drBox;
 
     int			i;
 
-    if  ( ! bt->btPulldownDrawingDataSet )
-	{
-	appSetDrawingDataForWidget( bt->btStylePulldown.adpPulldownDrawing,
-					1.0, &(bt->btPulldownDrawingData) );
+    if  ( appFinishDrawnPulldownPulldown( &(bt->btStylePulldown) ) )
+	{ LDEB(1); return;	}
 
-	bt->btPulldownDrawingDataSet= 1;
-	}
+    dsP= bt->btStylePulldown.adpPulldownDrawingSurface;
 
-    appDrawGetSizeOfWidget( &pulldownWide, &pulldownHigh, w );
-    appDrawGetSizeOfWidget( &inplaceWide, &inplaceHigh,
+    guiDrawGetSizeOfWidget( &pulldownWide, &pulldownHigh, w );
+    guiDrawGetSizeOfWidget( &inplaceWide, &inplaceHigh,
 					bt->btStylePulldown.adpInplaceDrawing );
 
-    appCollectExposures( &drClip, add, ox, oy, exposeEvent );
+    guiCollectExposures( &drClip,  bt->btStylePulldown.adpPulldownDrawing,
+								exposeEvent );
 
-    appDrawSetForegroundWhite( add );
+    drawSetForegroundColorWhite( dsP );
+    drawFillRectangle( dsP, &drClip );
 
-    appDrawFillRectangle( add, drClip.drX0, drClip.drY0,
-					    drClip.drX1- drClip.drX0+ 1,
-					    drClip.drY1- drClip.drY0+ 1 );
+    drBox.drX0= 0;
+    drBox.drY0= 0;
+    drBox.drX1= pulldownWide- 1;
+    drBox.drY1= pulldownHigh- 1;
 
-    appDrawSetForegroundBlack( add );
-    appDrawDrawRectangle( add, 0, 0, pulldownWide- 1, pulldownHigh- 1 );
+    drawSetForegroundColorBlack( dsP );
+    drawRectangle( dsP, &drBox );
 
     for ( i= DOCbsNONE+ 1; i < DOCbs_COUNT; i++ )
 	{
@@ -186,7 +266,7 @@ static APP_EVENT_HANDLER_H( tedBorderToolRedrawPulldown, w, voidbt, exposeEvent 
 	if  ( ! geoIntersectRectangle( &drX, &drI, &drClip ) )
 	    { continue;	}
 
-	tedDrawBorderStyle( add, bt, i, &drI );
+	tedDrawBorderStyle( dsP, bt, i, &drI );
 	}
 
     return;
@@ -204,12 +284,11 @@ static APP_TOGGLE_CALLBACK_H( tedBorderToolOnOffToggled, w, voidbt, voidtbcs )
     BorderTool *		bt= (BorderTool *)voidbt;
     ExpandedBorderProperties *	ebp= &(bt->btPropertiesChosen);
 
-    int			set;
-    int			changed= 0;
+    int				set;
 
     PropertyMask	bpSetMask;
 
-    PROPmaskCLEAR( &bpSetMask );
+    utilPropMaskClear( &bpSetMask );
 
     set= appGuiGetToggleStateFromCallback( w, voidtbcs );
 
@@ -220,7 +299,7 @@ static APP_TOGGLE_CALLBACK_H( tedBorderToolOnOffToggled, w, voidbt, voidtbcs )
 	    ebp->ebpStyle= DOCbsS;
 	    PROPmaskADD( &bpSetMask, BRDRpropSTYLE );
 	    PROPmaskADD( &(bt->btPropertiesChanged), BRDRpropSTYLE );
-	    changed= 1;
+	    /*changed= 1;*/
 	    }
 
 	if  ( ebp->ebpPenWideTwips == 0 )
@@ -228,7 +307,7 @@ static APP_TOGGLE_CALLBACK_H( tedBorderToolOnOffToggled, w, voidbt, voidtbcs )
 	    ebp->ebpPenWideTwips= 15;
 	    PROPmaskADD( &bpSetMask, BRDRpropPEN_WIDE );
 	    PROPmaskADD( &(bt->btPropertiesChanged), BRDRpropPEN_WIDE );
-	    changed= 1;
+	    /*changed= 1;*/
 	    }
 	}
     else{
@@ -237,7 +316,7 @@ static APP_TOGGLE_CALLBACK_H( tedBorderToolOnOffToggled, w, voidbt, voidtbcs )
 	    ebp->ebpStyle= DOCbsNONE;
 	    PROPmaskADD( &bpSetMask, BRDRpropSTYLE );
 	    PROPmaskADD( &(bt->btPropertiesChanged), BRDRpropSTYLE );
-	    changed= 1;
+	    /*changed= 1;*/
 	    }
 	}
 
@@ -246,7 +325,10 @@ static APP_TOGGLE_CALLBACK_H( tedBorderToolOnOffToggled, w, voidbt, voidtbcs )
 	{ (*bt->btCallback)( bt, bt->btTarget, &bpSetMask, bp );	}
     */
 
-    tedBorderToolShowWide( bt, ebp );
+    tedBorderToolShowWide( bt );
+    appShowColorChooser( &(bt->btColorChooser), set );
+    if  ( bt->btColorRow != bt->btOnOffRow )
+	{ guiEnableWidget( bt->btColorRow, set );	}
 
     return;
     }
@@ -287,7 +369,7 @@ static APP_EVENT_HANDLER_H( tedBorderToolClickedPulldown, w, voidbt, mouseEvent 
 	PROPmaskADD( &(bt->btPropertiesChanged), BRDRpropSTYLE );
 
 	/*  5  */
-	appExposeRectangle( &(bt->btInplaceDrawingData), 0, 0, 0, 0 );
+	appExposeDrawnPulldownInplace( &(bt->btStylePulldown) );
 	}
 
     return;
@@ -319,8 +401,6 @@ static APP_TXACTIVATE_CALLBACK_H( tedFormatBorderWidthChanged, w, voidbt )
     int			wide= 0;
     int			changed= 0;
 
-    char		scratch[80];
-
     const int		minValue= 1;
     const int		adaptToMin= 0;
     const int		maxValue= 75;
@@ -328,7 +408,7 @@ static APP_TXACTIVATE_CALLBACK_H( tedFormatBorderWidthChanged, w, voidbt )
 
     PropertyMask	bpSetMask;
 
-    PROPmaskCLEAR( &bpSetMask );
+    utilPropMaskClear( &bpSetMask );
 
     wide= ebp->ebpPenWideTwips;
     if  ( appGetLengthFromTextWidget( bt->btWideText,
@@ -336,8 +416,7 @@ static APP_TXACTIVATE_CALLBACK_H( tedFormatBorderWidthChanged, w, voidbt )
 				minValue, adaptToMin, maxValue, adaptToMax ) )
 	{ return;	}
 
-    appGeoLengthToString( scratch, wide, UNITtyPOINTS );
-    appStringToTextWidget( bt->btWideText, scratch );
+    appLengthToTextWidget( bt->btWideText, wide, UNITtyPOINTS );
 
     if  ( changed )
 	{
@@ -394,13 +473,13 @@ static void tedBorderColorChosen(
 void tedBorderSetExplicitColorChoice(	BorderTool *		bt,
 					const RGB8Color *	rgb8Set )
     {
-    const int			explicit= 1;
+    const int			colorExplicit= 1;
     ExpandedBorderProperties *	ebp= &(bt->btPropertiesChosen);
     int				changed= 0;
 
     appColorChooserColorChosen( &(bt->btPropertiesChanged), &changed,
 				&(ebp->ebpColor), &(ebp->ebpColorExplicit),
-				rgb8Set, explicit, BRDRpropCOLOR );
+				rgb8Set, colorExplicit, BRDRpropCOLOR );
 
     if  ( changed )
 	{
@@ -423,8 +502,14 @@ void tedInitBorderTool(		BorderTool *		bt )
     bt->btSubjectPage= -1;
     bt->btWhich= -1;
 
+    bt->btLabel= (const char *)0;
+
+    bt->btEnabled= 0;
+
     bt->btFrame= (APP_WIDGET)0;
     bt->btPaned= (APP_WIDGET)0;
+
+    bt->btOnOffRow= (APP_WIDGET)0;
     bt->btOnOffToggle= (APP_WIDGET)0;
     bt->btWideText= (APP_WIDGET)0;
 
@@ -432,23 +517,19 @@ void tedInitBorderTool(		BorderTool *		bt )
     bt->btStyleLabel= (APP_WIDGET)0;
     appInitDrawnPulldown( &(bt->btStylePulldown) );
 
-    appInitDrawingData( &(bt->btInplaceDrawingData) );
-    appInitDrawingData( &(bt->btPulldownDrawingData) );
-
     bt->btColorRow= (APP_WIDGET)0;
     bt->btColorLabel= (APP_WIDGET)0;
     appInitColorChooser( &(bt->btColorChooser) );
 
     docInitExpandedBorderProperties( &(bt->btPropertiesChosen) );
-    PROPmaskCLEAR( &(bt->btPropertiesChanged) );
+    utilPropMaskClear( &(bt->btPropertiesChanged) );
 
     return;
     }
 
 void tedCleanBorderTool(		BorderTool *		bt )
     {
-    appCleanDrawingData( &(bt->btInplaceDrawingData) );
-    appCleanDrawingData( &(bt->btPulldownDrawingData) );
+    appCleanDrawnPulldown( &(bt->btStylePulldown) );
 
     return;
     }
@@ -461,13 +542,10 @@ void tedMakeBorderTool(		BorderTool *			bt,
 				int				subjectPage,
 				int				which )
     {
+    const int	bordersHaveAutomaticColor= 1;
+
     const int	heightResizable= 0;
 
-    const int	toggleColumn= 0;
-    const int	textColumn= toggleColumn+ 1;
-    const int	textColspan= 1;
-
-    const int	textColumns= 8;
     const int	textEnabled= 0;
 
     const int	labelColumn= 0;
@@ -476,40 +554,72 @@ void tedMakeBorderTool(		BorderTool *			bt,
     const int	valueColumn= 1;
     const int	valueColspan= 1;
 
-    APP_WIDGET	row;
+    APP_WIDGET	rowParent= pageWidget;
 
     /**/
     bt->btInspector= ai;
     bt->btSubjectPage= subjectPage;
     bt->btWhich= which;
 
+    bt->btEnabled= 1;
+
     /**/
     docInitExpandedBorderProperties( &(bt->btPropertiesChosen) );
 
-    appInitDrawingData( &(bt->btInplaceDrawingData) );
-    appInitDrawingData( &(bt->btPulldownDrawingData) );
-    bt->btPulldownDrawingDataSet= 0;
+    /**/
+#   if USE_FRAME
+#	if USE_FRAME_TITLE
+	appMakeColumnFrameInColumn( &(bt->btFrame), &(bt->btPaned), pageWidget,
+				title );
+#	else
+	appMakeColumnFrameInColumn( &(bt->btFrame), &(bt->btPaned), pageWidget,
+				(const char *)0 );
+#	endif
+
+    rowParent= bt->btPaned;
+
+#   else
+    rowParent= pageWidget;
+#   endif
 
     /**/
-    appMakeColumnFrameInColumn( &(bt->btFrame),
-				&(bt->btPaned), pageWidget, (const char *)0 );
-				/*
-				&(bt->btPaned), pageWidget, title );
-				*/
+    bt->btOnOffRow= appMakeRowInColumn( rowParent,
+					ONOFF_ROW_COLUMNS, heightResizable );
 
-    /**/
-    row= appMakeRowInColumn( bt->btPaned, 2, heightResizable );
+#   if USE_TOGGLE_TITLE
+    bt->btOnOffToggle= appMakeToggleInRow( bt->btOnOffRow, title,
+				tedBorderToolOnOffToggled, (void *)bt,
+				ONOFF_COLUMN, ONOFF_COLSPAN );
+#   else
+    bt->btOnOffToggle= appMakeToggleInRow( bt->btOnOffRow, (const char *)0,
+				tedBorderToolOnOffToggled, (void *)bt,
+				ONOFF_COLUMN, ONOFF_COLSPAN );
+#   endif
 
-    bt->btOnOffToggle= appMakeToggleInRow( row, title,
-				    tedBorderToolOnOffToggled, (void *)bt, 0 );
-
-    appMakeTextInRow( &(bt->btWideText), row, textColumn, textColspan,
-						    textColumns, textEnabled );
+    appMakeTextInRow( &(bt->btWideText), bt->btOnOffRow,
+				THICK_COLUMN, THICK_COLSPAN, THICK_CHARS,
+				textEnabled );
 
     appGuiSetGotValueCallbackForText( bt->btWideText,
-				    tedFormatBorderWidthChanged, (void *)bt );
+				tedFormatBorderWidthChanged, (void *)bt );
     appGuiSetTypingCallbackForText( bt->btWideText,
 				tedFormatBorderWidthTyped, (void *)bt );
+
+#   if MAKE_COLOR_ROW
+    appMakeLabelAndColorChooserRow( &(bt->btColorRow), &(bt->btColorLabel),
+			    &(bt->btColorChooser),
+			    bt->btPaned, btr->btrColor,
+			    &(btr->btrColorChooserResources),
+			    tedBorderColorChosen, which, (void *)bt );
+#   else
+    bt->btColorRow= bt->btOnOffRow;
+
+    appMakeColorChooserInRow( &(bt->btColorChooser), bordersHaveAutomaticColor,
+				    bt->btColorRow,
+				    COLOR_COLUMN, COLOR_COLSPAN,
+				    &(btr->btrColorChooserResources),
+				    tedBorderColorChosen, which, (void *)bt );
+#   endif
 
     /**/
 #   if 0
@@ -527,32 +637,32 @@ void tedMakeBorderTool(		BorderTool *			bt,
 				    tedBorderToolRedrawInplace,
 				    tedBorderToolRedrawPulldown,
 				    tedBorderToolClickedPulldown,
+				    (AppDrawnPulldownPuldown)0,
 				    bt->btStyleRow, valueColumn, valueColspan,
 				    (void *)bt );
 	}
 
-    /****/
-    appMakeLabelAndColorChooserRow( &(bt->btColorRow), &(bt->btColorLabel),
-			    &(bt->btColorChooser),
-			    bt->btPaned, btr->btrColor,
-			    &(btr->btrColorChooserResources),
-			    tedBorderColorChosen, which, (void *)bt );
-
     return;
     }
 
-void tedFinishBorderTool(	BorderTool *		bt )
+void tedFinishBorderTool(	BorderTool *			bt,
+				const PostScriptFontList *	psfl )
     {
     if  ( bt->btStyleRow )
 	{
-	appSetDrawingDataForWidget( bt->btStylePulldown.adpInplaceDrawing, 1.0,
-						&(bt->btInplaceDrawingData) );
+	if  ( appFinishDrawnPulldownInplace( &(bt->btStylePulldown) ) )
+	    { LDEB(1); return;	}
 
 	appGuiSetDrawnPulldownStrips( &(bt->btStylePulldown), DOCbs_COUNT );
 	}
 
-    appFinishColorChooser( &(bt->btColorChooser),
-				    appGuiGetLabelFont( bt->btColorLabel ) );
+    if  ( bt->btColorLabel )
+	{
+	appFinishColorChooser( &(bt->btColorChooser), psfl, bt->btColorLabel );
+	}
+    else{
+	appFinishColorChooser( &(bt->btColorChooser), psfl, bt->btOnOffToggle );
+	}
 
     return;
     }
@@ -569,10 +679,10 @@ void tedFinishBorderTool(	BorderTool *		bt )
 /*									*/
 /************************************************************************/
 
-int tedBorderToolGetProperties(	BorderProperties *	bpSet,
-				PropertyMask *		pSetMask,
-				const BorderTool *	bt,
-				DocumentProperties *	dp )
+static int tedBorderToolGetProperties(	BorderProperties *	bpSet,
+					PropertyMask *		pSetMask,
+					const BorderTool *	bt,
+					DocumentProperties *	dp )
     {
     const ExpandedBorderProperties *	ebpChosen= &(bt->btPropertiesChosen);
 
@@ -598,12 +708,46 @@ int tedBorderToolGetProperties(	BorderProperties *	bpSet,
 
     docIndirectBorderProperties( &bpDoneMask, bpSet,
 				    &(bt->btPropertiesChanged), ebpChosen,
-				    &(dp->dpColors), &(dp->dpColorCount) );
+				    &(dp->dpColorPalette) );
     if  ( PROPmaskISSET( &(bt->btPropertiesChanged), BRDRpropPEN_WIDE )	&&
 	  changed							)
 	{ bpSet->bpPenWideTwips= wide; }
 
     *pSetMask= bt->btPropertiesChanged;
+
+    return 0;
+    }
+
+int tedBorderToolGetNumber(	int *			pNum,
+				int *			pChanged,
+				const BorderTool *	bt,
+				BufferDocument *	bd )
+    {
+    int			num;
+    PropertyMask	doneMask;
+    BorderProperties	bp;
+
+    docGetBorderPropertiesByNumber( &bp,  &(bd->bdBorderPropertyList), *pNum );
+
+    utilPropMaskClear( &doneMask );
+
+    if  ( tedBorderToolGetProperties( &bp, &doneMask, bt,
+						&(bd->bdProperties) ) )
+	{ LDEB(1); return -1;	}
+
+    if  ( ! DOCisBORDER( &bp ) )
+	{
+	docCleanBorderProperties( &bp );
+	docInitBorderProperties( &bp );
+	}
+
+    num= docBorderPropertiesNumber( &(bd->bdBorderPropertyList), &bp );
+    if  ( num < 0 )
+	{ LDEB(num); return -1;	}
+
+    if  ( pChanged )
+	{ *pChanged= ( *pNum != num );	}
+    *pNum= num;
 
     return 0;
     }

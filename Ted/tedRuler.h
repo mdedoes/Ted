@@ -4,18 +4,9 @@
 /*									*/
 /************************************************************************/
 
-#   include	<appUnit.h>
-
 #   include	<appFrame.h>
-#   include	<appRuler.h>
-
-#   include	"docBuf.h"
-
-typedef struct ColumnSeparator
-    {
-    int		csX0;
-    int		csX1;
-    } ColumnSeparator;
+#   include	<docTabStop.h>
+#   include	"tedColumnSeparator.h"
 
 /************************************************************************/
 /*									*/
@@ -23,102 +14,106 @@ typedef struct ColumnSeparator
 /*									*/
 /************************************************************************/
 
-extern void * tedMakeTopRuler(	int			height,
-				double			magnifiedPixelsPerTwip,
-				double			magnification,
+extern int tedDocSetLeftRuler(		EditDocument *	ed );
+extern int tedDocSetRightRuler(		EditDocument *	ed );
+extern int tedDocSetTopRuler(		EditDocument *	ed );
+extern int tedDocSetBottomRuler(	EditDocument *	ed );
 
-				int			leftRulerWidth,
-				int			rightRulerWidth,
-				int			docX0,
-				int			docX1,
+extern void tedVerticalRulerSetBackground( void *		voidrd,
+					const RGB8Color *	back );
+extern void tedTopRulerSetBackground(	void *			voidttr,
+					const RGB8Color *	back );
+extern void tedBottomRulerSetBackground( void *			voidtbr,
+					const RGB8Color *	back );
 
-				int			minVisible,
-				int			maxVisible,
-				int			rulerC1,
+extern void * tedMakeTopRuler(
+			int				height,
+			double				magnifiedPixelsPerTwip,
+			double				magnification,
+			const PostScriptFontList *	psfl,
 
-				const char *		rulerFont,
-				int			whatUnit );
+			int				leftRulerWidth,
+			int				rightRulerWidth,
 
-extern void * tedMakeLeftRuler(	int			width,
-				double			magnifiedPixelsPerTwip,
-				double			magnification,
+			int				docX0,
+			int				docX1,
+			int				marginC0,
+			int				marginC1,
+			int				docVisibleX0,
+			int				docVisibleX1,
 
-				int			minUnused,
-				int			maxUnused,
-				int			docY0,
-				int			docY1,
+			int				whatUnit );
 
-				int			docVisY0,
-				int			docVisY1,
+extern void * tedMakeBottomRuler(
+			const PostScriptFontList *	psfl,
+			int				height,
+			int				leftRulerWidth,
+			int				rightRulerWidth,
+			const char *			pageFormat );
 
-				int			rulerC1,
-				const char *		rulerFont,
-				int			whatUnit,
-				int			pageStep,
-				const char *		tlrPageFormat );
+extern void tedFreeVerticalRuler(	void *		voidrd );
+extern void tedFreeTopRuler(		void *		voidttr );
+extern void tedFreeBottomRuler(		void *		voidtlr );
 
-extern void tedFreeHorizontalRuler(	void *		voidttr );
-extern void tedFreeVerticalRuler(	void *		voidtlr );
+extern APP_EVENT_HANDLER_H( tedRedrawTopRuler, w, voidttr, event );
+extern APP_EVENT_HANDLER_H( tedRedrawBottomRuler, w, voidtlr, event );
 
-extern APP_EVENT_HANDLER_H( tedRedrawHorizontalRuler, w, voidttr, event );
-extern APP_EVENT_HANDLER_H( tedRedrawVerticalRuler, w, voidtlr, event );
-
-extern void tedScrollHorizontalRuler(	void *			voidttr,
+extern void tedScrollTopRuler(		void *			voidttr,
 					APP_WIDGET		w,
-					int			d	);
+					int			d );
 
-extern void tedSetHorizontalRulerRange(	void *		voidttr,
-					APP_WIDGET	w,
-					int		docVisX0,
-					int		docVisX1,
-					int		docBackX1 );
+extern void tedSetTopRulerRange(	void *			voidttr,
+					APP_WIDGET		w,
+					int			docFullX1,
+					int			docVisX0,
+					int			docVisX1 );
 
-extern void tedAdaptHorizontalRuler(	void *			voidttr,
+extern void tedAdaptTopRuler(		void *			voidttr,
 					APP_WIDGET		w,
 					int			docX0,
 					int			docX1,
+					int			marginC0,
+					int			marginC1,
 					int			firstIndent,
 					int			leftIndent,
 					int			rightIndent,
-					int			rulerC1,
-					const TabStopList *	tslSet );
+					const TabStopList *	tslSet,
+					int			x0GeometryPx,
+					double			xfac );
 
-extern void tedHorizontalRulerTrackMouse( int *			pFirstIndent,
+extern int tedTopRulerFindMouse(	int *			pIndex,
+					APP_WIDGET		w,
+					int			mouseX,
+					int			mouseY,
+					EditDocument *		ed );
+
+extern int tedTopRulerTrackMouse( 	int *			pFirstIndent,
 					int *			pLeftIndent,
 					int *			pRightIndent,
 					TabStopList *		tsl,
 					int *			pCsCount,
 					ColumnSeparator **	pCs,
-					int *			pProperty,
 					APP_WIDGET		w,
-					EditApplication *	ea,
 					APP_EVENT *		downEvent,
-					void *			voidttr,
-					void *			voided,
-					DragHair		dragHair );
+					EditDocument *		ed );
 
-extern APP_EVENT_HANDLER_H( tedHorizontalRulerConfigure, w, voidttr, event );
-extern APP_EVENT_HANDLER_H( tedVerticalRulerConfigure, w, voidtlr, event );
+extern APP_EVENT_HANDLER_H( tedTopRulerConfigure, w, voidttr, event );
+extern APP_EVENT_HANDLER_H( tedBottomRulerConfigure, w, voidtlr, event );
 
 extern int tedSetRulerColumns(	APP_WIDGET		w,
 				void *			voidttr,
-				int			colX0,
-				int			colX1,
+				int			bfX0Pixels,
+				int			bfX1Pixels,
+				int			pfX0Pixels,
+				int			pfX1Pixels,
 				ColumnSeparator *	cs,
 				int			csCount );
 
-extern void tedSetLeftRulerRange(	void *			voidtr,
-					APP_WIDGET		w,
-					int			docVisV0,
-					int			docVisV1,
-					int			docBackV1 );
+extern void tedSetBottomRulerValues(
+				void *			voidtbr,
+				APP_WIDGET		w,
+				int			page,
+				int			pages,
+				int			section,
+				int			sections );
 
-extern void tedScrollLeftRuler(		void *			voidtr,
-					APP_WIDGET		w,
-					int			d );
-
-extern void tedAdaptLeftRuler(		void *		voidtlr,
-					APP_WIDGET	w,
-					int		visisbleC0,
-					int		visisbleC1,
-					int		pageStep );

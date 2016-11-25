@@ -4,17 +4,22 @@
 /*									*/
 /************************************************************************/
 
-#   include	<appGuiBase.h>
+#   include	"appGuiBase.h"
 
 #   include	<sioGeneral.h>
+
+# ifdef __cplusplus
+extern "C"
+    {
+# endif
 
 extern SimpleInputStream * sioInOpenPaste(	APP_WIDGET		w,
 						APP_SELECTION_EVENT *	event );
 
-extern SimpleInputStream * sioInOpenXvPaste(	APP_WIDGET	w );
-
 extern SimpleOutputStream * sioOutOpenCopy(	APP_WIDGET		w,
 						APP_SELECTION_EVENT *	event );
 
-extern SimpleOutputStream * sioOutOpenXvCopy(	APP_WIDGET	w );
+# ifdef __cplusplus
+    }
+# endif
 

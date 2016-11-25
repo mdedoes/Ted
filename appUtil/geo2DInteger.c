@@ -1,9 +1,5 @@
 #   include	"appUtilConfig.h"
 
-#   include	<stdio.h>
-#   include	<string.h>
-#   include	<stdlib.h>
-#   include	<stddef.h>
 #   include	<ctype.h>
 #   include	<limits.h>
 #   include	<math.h>
@@ -18,7 +14,12 @@
 /*									*/
 /*  Subject 1.03 in http://www.faqs.org/faqs/graphics/algorithms-faq.	*/
 /*									*/
+/*  Returns:								*/
+/*  	0: If the segments do not intersect.				*/
+/*  	2: If the segments coincide.					*/
+/*  	1: If the segments intersect.					*/
 /*  Arguments:								*/
+/*  	ab, cd:	The segments to intersect.				*/
 /*									*/
 /************************************************************************/
 
@@ -37,21 +38,23 @@ int geo2DIIntersectSegments(	Point2DI *		p1,
     double	xcd;
     double	divxxx;
 
-    double	Ax= ab[0].p2diX;
-    double	Ay= ab[0].p2diY;
-    double	Bx= ab[1].p2diX;
-    double	By= ab[1].p2diY;
+    double	Ax= ab[0].x;
+    double	Ay= ab[0].y;
+    double	Bx= ab[1].x;
+    double	By= ab[1].y;
 
-    double	Cx= cd[0].p2diX;
-    double	Cy= cd[0].p2diY;
-    double	Dx= cd[1].p2diX;
-    double	Dy= cd[1].p2diY;
+    double	Cx= cd[0].x;
+    double	Cy= cd[0].y;
+    double	Dx= cd[1].x;
+    double	Dy= cd[1].y;
 
+    /* Real segments? Or just points.	*/
     if  ( Ax == Bx  && Ay == By )
 	{ FFDEB(Ax,Bx); FFDEB(Ay,By); return 0;	}
     if  ( Cx == Dx  && Cy == Dy )
 	{ FFDEB(Cx,Dx); FFDEB(Cy,Dy); return 0;	}
 
+    /* Numerators and the divisor for the calculation. */
     numXab= ( Ay- Cy )* ( Dx- Cx )- ( Ax- Cx )* ( Dy- Cy );
     numXcd= ( Ay- Cy )* ( Bx- Ax )- ( Ax- Cx )* ( By- Ay );
     divxxx= ( Bx- Ax )* ( Dy- Cy )- ( By- Ay )* ( Dx- Cx );
@@ -90,8 +93,8 @@ int geo2DIIntersectSegments(	Point2DI *		p1,
 		{
 		if  ( D_AB == 0.0 )
 		    {
-		    p1->p2diX= Ax;
-		    p1->p2diY= Ay;
+		    p1->x= Ax;
+		    p1->y= Ay;
 		    *pXab1= 0.0;
 		    *pXcd1= 1.0;
 		    return 1;
@@ -99,30 +102,30 @@ int geo2DIIntersectSegments(	Point2DI *		p1,
 
 		if  ( C_AB >= 0.0 )
 		    {
-		    p1->p2diX= Cx;
-		    p1->p2diY= Cy;
+		    p1->x= Cx;
+		    p1->y= Cy;
 		    *pXab1= C_AB;
 		    *pXcd1= 0.0;
 		    if  ( C_AB == 1.0 )
 			{ return 1;	}
 		    }
 		else{
-		    p1->p2diX= Ax;
-		    p1->p2diY= Ay;
+		    p1->x= Ax;
+		    p1->y= Ay;
 		    *pXab1= 0.0;
 		    *pXcd1= A_CD;
 		    }
 
 		if  ( D_AB <= 1.0 )
 		    {
-		    p2->p2diX= Dx;
-		    p2->p2diY= Dy;
+		    p2->x= Dx;
+		    p2->y= Dy;
 		    *pXab2= D_AB;
 		    *pXcd2= 1.0;
 		    }
 		else{
-		    p2->p2diX= Bx;
-		    p2->p2diY= By;
+		    p2->x= Bx;
+		    p2->y= By;
 		    *pXab2= 1.0;
 		    *pXcd2= B_CD;
 		    }
@@ -132,8 +135,8 @@ int geo2DIIntersectSegments(	Point2DI *		p1,
 	    else{
 		if  ( C_AB == 0.0 )
 		    {
-		    p1->p2diX= Ax;
-		    p1->p2diY= Ay;
+		    p1->x= Ax;
+		    p1->y= Ay;
 		    *pXab1= 0.0;
 		    *pXcd1= 0.0;
 		    return 1;
@@ -141,30 +144,30 @@ int geo2DIIntersectSegments(	Point2DI *		p1,
 
 		if  ( D_AB >= 0.0 )
 		    {
-		    p1->p2diX= Dx;
-		    p1->p2diY= Dy;
+		    p1->x= Dx;
+		    p1->y= Dy;
 		    *pXab1= D_AB;
 		    *pXcd1= 1.0;
 		    if  ( D_AB == 1.0 )
 			{ return 1;	}
 		    }
 		else{
-		    p1->p2diX= Ax;
-		    p1->p2diY= Ay;
+		    p1->x= Ax;
+		    p1->y= Ay;
 		    *pXab1= 0.0;
 		    *pXcd1= A_CD;
 		    }
 
 		if  ( C_AB <= 1.0 )
 		    {
-		    p2->p2diX= Cx;
-		    p2->p2diY= Cy;
+		    p2->x= Cx;
+		    p2->y= Cy;
 		    *pXab2= C_AB;
 		    *pXcd2= 0.0;
 		    }
 		else{
-		    p2->p2diX= Bx;
-		    p2->p2diY= By;
+		    p2->x= Bx;
+		    p2->y= By;
 		    *pXab2= 1.0;
 		    *pXcd2= 1.0- B_CD;
 		    }
@@ -183,13 +186,13 @@ int geo2DIIntersectSegments(	Point2DI *		p1,
     if  ( xcd < 0.0 || xcd > 1.0 )
 	{ return 0;	}
 
-    p1->p2diX= p2->p2diX= Ax+ xab* ( Bx- Ax );
-    p1->p2diY= p2->p2diY= Ay+ xab* ( By- Ay );
+    p1->x= p2->x= Ax+ xab* ( Bx- Ax );
+    p1->y= p2->y= Ay+ xab* ( By- Ay );
     *pXab1= xab;
     *pXcd1= xcd;
     /*
-    p1->p2diX= p2->p2diX= Cx+ xcd* ( Cx- Dx );
-    p1->p2diY= p2->p2diY= Cy+ xcd* ( Cy- Dy );
+    p1->x= p2->x= Cx+ xcd* ( Cx- Dx );
+    p1->y= p2->y= Cy+ xcd* ( Cy- Dy );
     */
 
     return 1;
@@ -207,13 +210,13 @@ int geo2DIIntersectSegments(	Point2DI *		p1,
 double geo2DIDistanceToLine(	const Point2DI *	ab,
 				const Point2DI *	c )
     {
-    double	Ax= ab[0].p2diX;
-    double	Ay= ab[0].p2diY;
-    double	Bx= ab[1].p2diX;
-    double	By= ab[1].p2diY;
+    double	Ax= ab[0].x;
+    double	Ay= ab[0].y;
+    double	Bx= ab[1].x;
+    double	By= ab[1].y;
 
-    double	Cx= c[0].p2diX;
-    double	Cy= c[0].p2diY;
+    double	Cx= c[0].x;
+    double	Cy= c[0].y;
 
     double	L2= ( Bx- Ax )* ( Bx- Ax )+ ( By- Ay )* ( By- Ay );
     /*
@@ -244,13 +247,13 @@ double geo2DIDistanceToLine(	const Point2DI *	ab,
 double geo2DIProjectionOnLine(	const Point2DI *	ab,
 				const Point2DI *	c )
     {
-    double	Ax= ab[0].p2diX;
-    double	Ay= ab[0].p2diY;
-    double	Bx= ab[1].p2diX;
-    double	By= ab[1].p2diY;
+    double	Ax= ab[0].x;
+    double	Ay= ab[0].y;
+    double	Bx= ab[1].x;
+    double	By= ab[1].y;
 
-    double	Cx= c[0].p2diX;
-    double	Cy= c[0].p2diY;
+    double	Cx= c[0].x;
+    double	Cy= c[0].y;
 
     double	L2= ( Bx- Ax )* ( Bx- Ax )+ ( By- Ay )* ( By- Ay );
 
@@ -278,11 +281,10 @@ double geo2DIProjectionOnLine(	const Point2DI *	ab,
 /*  counted. It should be odd.						*/
 /*									*/
 /*  1)  When the line is collinear with one of the sides of the		*/
-/*      polygon, another point far away it tried.			*/
+/*      polygon, another point far away is tried.			*/
 /*  2)  Skip zero length segments.					*/
 /*  3)  Intersect segment with segment to point far away.		*/
-/*  4)  If collinear, abort this attempt.. Another point far away is	*/
-/*	chosen below.							*/
+/*  4)  If collinear, give up.. Another point far away is cohosen below	*/
 /*									*/
 /************************************************************************/
 
@@ -298,7 +300,7 @@ int geo2DIPointInPolygon(	const Point2DI *	p,
     int			attempts= 0;
 
     ab[1]= ab[0]= *p;
-    ab[1].p2diX= INT_MAX;
+    ab[1].x= INT_MAX;
 
     /*  1  */
     for (;;)
@@ -317,8 +319,8 @@ int geo2DIPointInPolygon(	const Point2DI *	p,
 	for ( i= 0; i < pointCount; vp++, i++ )
 	    {
 	    /*  2  */
-	    if  ( vp[0].p2diX == vp[1].p2diX	&&
-		  vp[0].p2diY == vp[1].p2diY	)
+	    if  ( vp[0].x == vp[1].x	&&
+		  vp[0].y == vp[1].y	)
 		{ continue;	}
 
 	    /*  3  */
@@ -332,26 +334,26 @@ int geo2DIPointInPolygon(	const Point2DI *	p,
 		{ /*LDEB(res);*/ break;	}
 
 	    /*  5  */
-	    if  ( p1.p2diX == vp[0].p2diX		&&
-		  p1.p2diY == vp[0].p2diY		)
+	    if  ( p1.x == vp[0].x		&&
+		  p1.y == vp[0].y		)
 		{
-		if  ( p1.p2diX == p->p2diX	&&
-		      p1.p2diY == p->p2diY		)
+		if  ( p1.x == p->x	&&
+		      p1.y == p->y		)
 		    { return 1;	}
 
-		/*FFDEB(p1.p2diX,p1.p2diY);*/
+		/*FFDEB(p1.x,p1.y);*/
 		if  ( attempts < 60 )
 		    { break;	}
 		}
 
-	    if  ( p1.p2diX == vp[1].p2diX		&&
-		  p1.p2diY == vp[1].p2diY		)
+	    if  ( p1.x == vp[1].x		&&
+		  p1.y == vp[1].y		)
 		{
-		if  ( p1.p2diX == p->p2diX	&&
-		      p1.p2diY == p->p2diY		)
+		if  ( p1.x == p->x	&&
+		      p1.y == p->y		)
 		    { return 1;	}
 
-		/*FFDEB(p1.p2diX,p1.p2diY);*/
+		/*FFDEB(p1.x,p1.y);*/
 		if  ( attempts < 60 )
 		    { break;	}
 		}
@@ -367,7 +369,7 @@ int geo2DIPointInPolygon(	const Point2DI *	p,
 	    }
 
 	if  ( i < pointCount )
-	    { ab[1].p2diY += 100; attempts++; continue;	}
+	    { ab[1].y += 100; attempts++; continue;	}
 
 	if  ( crossings % 2 )
 	    { return 1;	}
@@ -401,29 +403,30 @@ static int geo2DIFirstBorderIntersection(
     Point2DI	vp[2];
     Point2DI	side[2];
 
+    p= p0; /* Make gcc happy */
     vp[0]= p0;
     vp[1]= p1;
 
-    side[0].p2diX= dr->drX0; side[0].p2diY= dr->drY0;
-    side[1].p2diX= dr->drX1; side[1].p2diY= dr->drY0;
+    side[0].x= dr->drX0; side[0].y= dr->drY0;
+    side[1].x= dr->drX1; side[1].y= dr->drY0;
     if  ( geo2DIIntersectSegments( &pa, &pb, &xpa, &xpb, &xsa, &xsb,
 						vp, side ) == 1 && xpa < xp )
 	{ p= pa; xp= xpa;	}
 
-    side[0].p2diX= dr->drX0; side[0].p2diY= dr->drY1;
-    side[1].p2diX= dr->drX1; side[1].p2diY= dr->drY1;
+    side[0].x= dr->drX0; side[0].y= dr->drY1;
+    side[1].x= dr->drX1; side[1].y= dr->drY1;
     if  ( geo2DIIntersectSegments( &pa, &pb, &xpa, &xpb, &xsa, &xsb,
 						vp, side ) == 1 && xpa < xp )
 	{ p= pa; xp= xpa;	}
 
-    side[0].p2diX= dr->drX0; side[0].p2diY= dr->drY0;
-    side[1].p2diX= dr->drX0; side[1].p2diY= dr->drY1;
+    side[0].x= dr->drX0; side[0].y= dr->drY0;
+    side[1].x= dr->drX0; side[1].y= dr->drY1;
     if  ( geo2DIIntersectSegments( &pa, &pb, &xpa, &xpb, &xsa, &xsb,
 						vp, side ) == 1 && xpa < xp )
 	{ p= pa; xp= xpa;	}
 
-    side[0].p2diX= dr->drX1; side[0].p2diY= dr->drY0;
-    side[1].p2diX= dr->drX1; side[1].p2diY= dr->drY1;
+    side[0].x= dr->drX1; side[0].y= dr->drY0;
+    side[1].x= dr->drX1; side[1].y= dr->drY1;
     if  ( geo2DIIntersectSegments( &pa, &pb, &xpa, &xpb, &xsa, &xsb,
 						vp, side ) == 1 && xpa < xp )
 	{ p= pa; xp= xpa;	}
@@ -453,29 +456,30 @@ static int geo2DILastBorderIntersection( Point2DI *			pP,
     Point2DI	vp[2];
     Point2DI	side[2];
 
+    p= p0; /* Make gcc happy */
     vp[0]= p0;
     vp[1]= p1;
 
-    side[0].p2diX= dr->drX0; side[0].p2diY= dr->drY0;
-    side[1].p2diX= dr->drX1; side[1].p2diY= dr->drY0;
+    side[0].x= dr->drX0; side[0].y= dr->drY0;
+    side[1].x= dr->drX1; side[1].y= dr->drY0;
     if  ( geo2DIIntersectSegments( &pa, &pb, &xpa, &xpb, &xsa, &xsb,
 						vp, side ) == 1 && xpa > xp )
 	{ p= pa; xp= xpa;	}
 
-    side[0].p2diX= dr->drX0; side[0].p2diY= dr->drY1;
-    side[1].p2diX= dr->drX1; side[1].p2diY= dr->drY1;
+    side[0].x= dr->drX0; side[0].y= dr->drY1;
+    side[1].x= dr->drX1; side[1].y= dr->drY1;
     if  ( geo2DIIntersectSegments( &pa, &pb, &xpa, &xpb, &xsa, &xsb,
 						vp, side ) == 1 && xpa > xp )
 	{ p= pa; xp= xpa;	}
 
-    side[0].p2diX= dr->drX0; side[0].p2diY= dr->drY0;
-    side[1].p2diX= dr->drX0; side[1].p2diY= dr->drY1;
+    side[0].x= dr->drX0; side[0].y= dr->drY0;
+    side[1].x= dr->drX0; side[1].y= dr->drY1;
     if  ( geo2DIIntersectSegments( &pa, &pb, &xpa, &xpb, &xsa, &xsb,
 						vp, side ) == 1 && xpa > xp )
 	{ p= pa; xp= xpa;	}
 
-    side[0].p2diX= dr->drX1; side[0].p2diY= dr->drY0;
-    side[1].p2diX= dr->drX1; side[1].p2diY= dr->drY1;
+    side[0].x= dr->drX1; side[0].y= dr->drY0;
+    side[1].x= dr->drX1; side[1].y= dr->drY1;
     if  ( geo2DIIntersectSegments( &pa, &pb, &xpa, &xpb, &xsa, &xsb,
 						vp, side ) == 1 && xpa > xp )
 	{ p= pa; xp= xpa;	}
@@ -517,3 +521,19 @@ int geo2DIClipSegmentToRectangle(
     return 0;
     }
 
+int geo2DISurface(		Point2DI *			points,
+				int				n )
+    {
+    int		s= 0;
+    int		i;
+
+    for ( i= 0; i < n; i++ )
+	{
+	int	j= ( i+ 1 )% n;
+
+	s += points[i].x* points[j].y;
+	s -= points[i].y* points[j].x;
+	}
+
+    return s/ 2;
+    }

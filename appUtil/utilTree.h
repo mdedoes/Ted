@@ -17,6 +17,19 @@ typedef int (*UTIL_TREE_CALLBACK)(	const char *		key,
 /*									*/
 /************************************************************************/
 
+					/**
+					 *  Build a tree.
+					 *  @param ownKeys If ownKeys is 
+					 *	true, the tree will keep 
+					 *	its own copy of the keys.
+					 *	If ownKeys is false, the tree
+					 *	will use the key values 
+					 *	internally. In that case, it is
+					 *	the responsibility of the caller
+					 *	to keep the keys alive while 
+					 *	they own values in the tree and
+					 *	to free them after that.
+					 */
 extern void * utilTreeMakeTree(		int			ownKeys );
 
 /**/
@@ -35,7 +48,7 @@ extern void * utilTreeGetLE(		void *			tree,
 					const char **		pKey,
 					const char *		key );
 
-extern void * utilTreeGetEQ(		void *			tree,
+extern void * utilTreeGetEQ(		const void *		tree,
 					const char **		pKey,
 					const char *		key );
 

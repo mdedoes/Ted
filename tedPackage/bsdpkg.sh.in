@@ -1,0 +1,16 @@
+#!/bin/sh
+
+set -e -u
+
+DIR=`pwd`/pkgscratch
+rm -rf $DIR
+mkdir $DIR
+
+PKGFILE=Ted_2.22_@ARCH@.bsd.tar.gz
+
+tar xvf TedBindist.tar
+cp ../Ted/Ted.static bin/Ted
+chmod 755 bin/Ted
+pkg_create	-d 'Ted, an easy Rich Text Processor'	\
+		-f bsd-pkglist				\
+		$PKGFILE

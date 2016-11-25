@@ -1,8 +1,8 @@
 #   include	"indConfig.h"
 
-#   include	<indScanStream.h>
+#   include	<ucd.h>
+#   include	"indScanStream.h"
 #   include	<sioGeneral.h>
-#   include	<charnames.h>
 
 #   include	<appDebugon.h>
 
@@ -43,10 +43,10 @@ int indScanStream(	SimpleInputStream *	sis,
 	int		count;
 
 	/*  1  */
-	while( ( c= sioInGetCharacter( sis ) ) != EOF )
+	while( ( c= sioInGetByte( sis ) ) != EOF )
 	    {
 	    position++;
-	    if  ( ( scc->sccCharKinds[ c ] & CHARisALNUM ) )
+	    if  ( ucdIsL( c ) )
 		{ break;	}
 	    }
 
@@ -55,24 +55,23 @@ int indScanStream(	SimpleInputStream *	sis,
 	    { goto ready;	}
 
 	/*  3  */
+
+	if  ( indNewPossibility( &ssj, position ) )
+	    { LDEB(position); rval= -1; goto ready;	}
 	indAddCharacterToPossibilities( &ssj, c );
 
-	if  ( indNewPossibility( &ssj, position, c ) )
-	    { LDEB(position); rval= -1; goto ready;	}
-
 	/*  4  */
-	while( ( c= sioInGetCharacter( sis ) ) != EOF )
+	while( ( c= sioInGetByte( sis ) ) != EOF )
 	    {
 	    position++;
-	    if  ( ! ( scc->sccCharKinds[ c ] & CHARisALNUM ) )
+	    if  ( ! ucdIsL( c ) )
 		{ break;	}
 
 	    indAddCharacterToPossibilities( &ssj, c );
 	    }
 
 	/*  5  */
-	count= indCountPossibilities( &ssj, scc, position, position,
-							    c == EOF, c );
+	count= indCountPossibilities( &ssj, scc, position, c == EOF );
 
 	/*  6  */
 	if  ( count == 0 )
@@ -83,7 +82,6 @@ int indScanStream(	SimpleInputStream *	sis,
 
 	    if  ( ! maxpw )
 		{ XDEB(maxpw); rval= -1; goto ready;	}
-SDEB((char *)maxpw->pwForm);
 	    }
 
 	indRejectPossibilities( &acceptedPos, acceptedPos, &ssj );
