@@ -5,6 +5,7 @@ Ted/Ted.static
 config.log
 config.cache
 config.status
+confdefs.h
 lib/
 
 Ted/makefile
@@ -41,3 +42,8 @@ textEncoding/makefile
 textEncoding/textEncodingConfig.h
 utilPs/makefile
 utilPs/utilPsConfig.h
+appFrame/appResourceHeader
+appTools/appToolsConfig.h
+appTools/makefile
+tedResource/makefile
+tedResource/tedResourceConfig.h
