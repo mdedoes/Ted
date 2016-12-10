@@ -416,7 +416,6 @@ static int docCellRightBorderDrawn(
 	}
     else{
 	rval= docGetCellRightBorder( &bpRight, &bpRightNr, bd, rp, col );
-LLLDEB(col,rval,rp->rpCellCount);
 	if  ( rval < 0 )
 	    { LDEB(rval); return 0;	}
 	}
