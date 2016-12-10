@@ -45,6 +45,10 @@ OBS	=	\
 ../lib/docFont.a:	$(OBS)
 	ar ruv $@ $(OBS) && @RANLIB@ $@
 
+configure: configure.in
+	rm -rf config.cache autom4te.cache
+	autoconf
+
 #
 #  Check for duplicate symbols
 #

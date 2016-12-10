@@ -57,6 +57,10 @@ LIB=	../lib/ind.a
 $(LIB):	$(OBS)
 	ar r $@ $(OBS) && @RANLIB@ $@
 
+configure: configure.in
+	rm -rf config.cache autom4te.cache
+	autoconf
+
 duplicates:
 	nm *.o | grep -w [Tt] | \
 	while read addr t name; do echo $$name; done | sort | uniq -c | sort -n
