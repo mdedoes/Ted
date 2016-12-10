@@ -283,9 +283,18 @@ static int docGetCellRightBorder( const BorderProperties **	pBpRight,
 
     const BorderProperties *	bpRight= (const BorderProperties *)0;
 
-    if  ( col < rp->rpCellCount- 1			&&
-	  cp[1].cpHorizontalMerge ==CELLmergeFOLLOW	)
-	{ drawCellRight= 0;	}
+    if  ( col < rp->rpCellCount- 1 )
+	{
+	int			nextCol= col+ 1;
+	const CellProperties *	nextCp= rp->rpCells+ nextCol;
+
+	while( nextCol < rp->rpCellCount			&&
+	       nextCp->cpHorizontalMerge == CELLmergeFOLLOW	)
+	    { nextCol++; nextCp++;	}
+
+	if  ( nextCol < rp->rpCellCount )
+	    { drawCellRight= 0;	}
+	}
 
     /*  6  */
     if  ( col < rp->rpCellCount- 1					&&
@@ -407,6 +416,7 @@ static int docCellRightBorderDrawn(
 	}
     else{
 	rval= docGetCellRightBorder( &bpRight, &bpRightNr, bd, rp, col );
+LLLDEB(col,rval,rp->rpCellCount);
 	if  ( rval < 0 )
 	    { LDEB(rval); return 0;	}
 	}
