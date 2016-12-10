@@ -238,28 +238,14 @@ refresh:
 
 WMF=sed -i -e 's/^CC=gcc/CC=ccc/' -e 's/^\#CFLAGS=/CFLAGS=/' -e 's/^\#LDFLAGS=/LDFLAGS=/' makefile
 
-RECONF=make -f makefile.in configure && ./configure && $(WMF)
+RECONF= \
+	rm -f *.o makefile ; \
+	make -f makefile.in configure && \
+	./configure && $(WMF)
 
 reconfigure:
-	rm -f	../appUtil/*.o ../appUtil/makefile \
-		../textEncoding/*.o ../textEncoding/makefile \
-		../bitmap/*.o ../bitmap/makefile \
-		../ind/*.o ../ind/makefile \
-		../guiBase/*.o ../guiBase/makefile \
-		../appFrame/*.o ../appFrame/makefile \
-		../appTools/*.o ../appTools/makefile \
-		../drawMeta/*.o ../drawMeta/makefile \
-		../docBuf/*.o ../docBuf/makefile \
-		../docEdit/*.o ../docBuf/makefile \
-		../docRtf/*.o ../docRtf/makefile \
-		../docLayout/*.o ../docLayout/makefile \
-		../docHtml/*.o ../docHtml/makefile \
-		../docBase/*.o ../docBase/makefile \
-		../utilPs/*.o ../utilPs/makefile \
-		../docFont/*.o ../docFont/makefile \
-		../tedTools/*.o ../tedTools/makefile \
-		../tedResource/*.o ../tedResource/makefile \
-		*.o Ted
+	rm -f Ted Ted.static
+	:
 	( cd ../appUtil && $(RECONF) )
 	( cd ../textEncoding && $(RECONF) )
 	( cd ../utilPs && $(RECONF) )
