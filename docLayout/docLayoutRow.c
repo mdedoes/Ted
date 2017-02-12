@@ -500,10 +500,7 @@ static int docLayoutStartRow(
     /*  3a  */
     if  ( lpHere->lpPageYTwips+ minHeightTwips > bf->bfFlowRect.drY1	&&
 	  ! lpHere->lpAtTopOfColumn					)
-	{
-LDEB(lpHere->lpPage);
-LLLDEB(lpHere->lpPageYTwips,minHeightTwips,bf->bfFlowRect.drY1);
-	*pToNextColumn= 1; return 0;	}
+	{ *pToNextColumn= 1; return 0;	}
 
     if  ( precededByHeader )
 	{
@@ -795,7 +792,6 @@ int docLayoutRowNode(	int *				pStopCode,
 					lj, &lpHere, bf, &(rowPlj.pljPos) ) )
 	{ LDEB(rowNode->biChildCount); rval= -1; goto ready;	}
 
-LDEB(toNextColumn);
     if  ( toNextColumn )
 	{
 	if  ( startInThisColumn )
@@ -815,9 +811,6 @@ LDEB(toNextColumn);
 	int	noSpaceToStart= ! rowPlj.pljPos.pspChildAdvanced || someAtHead;
 
 	/*  5, 7  */
-LLDEB(isOnePage,noSpaceToStart);
-
-	/*  7  */
 	if  ( isOnePage || noSpaceToStart )
 	    {
 	    const int	atTopOfRow= 1;

@@ -251,7 +251,7 @@ void docInitNode(	struct BufferItem *		node,
 /*									*/
 /************************************************************************/
 
-static void docSectSetSelectionScopes(		struct BufferItem *	sectNode )
+static void docSectSetSelectionScopes(	struct BufferItem *	sectNode )
     {
     int				n= sectNode->biNumberInParent;
     SectHeadersFooters *	shf= sectNode->biSectHeadersFooters;
@@ -499,10 +499,11 @@ int docValidChildLevel(		int		parentLevel,
 /*									*/
 /************************************************************************/
 
-struct BufferItem * docInsertNode(	const struct BufferDocument *	bd,
+struct BufferItem * docInsertNode(
+				const struct BufferDocument *	bd,
 				struct BufferItem *		parent,
-				int			n,
-				int			level )
+				int				n,
+				int				level )
     {
     struct BufferItem *	rval= (struct BufferItem *)0;
     struct BufferItem *	newNode= (struct BufferItem *)0;
@@ -648,7 +649,7 @@ struct BufferItem * docAppendParagraph(
 
 struct BufferItem * docInsertRowNode(
 			struct BufferDocument *		bd,
-			struct BufferItem *			parentNode,
+			struct BufferItem *		parentNode,
 			int				n,
 			const struct RowProperties *	rp,
 			int				textAttributeNr )
@@ -789,7 +790,8 @@ int docSplitGroupNode(			struct BufferDocument *	bd,
 	oldNode->biChildren[i]->biLeftParagraphs= prev;
 	}
 
-    *pNewNode= newNode; return 0;
+    *pNewNode= newNode;
+    return 0;
     }
 
 /************************************************************************/
@@ -986,8 +988,9 @@ int docNumberOfParagraph(	const struct BufferItem *	node )
     return n;
     }
 
-struct BufferItem * docGetParagraphByNumber(	const struct DocumentTree *	dt,
-					int			paraNr )
+struct BufferItem * docGetParagraphByNumber(
+				const struct DocumentTree *	dt,
+				int				paraNr )
     {
     struct BufferItem *	node= dt->dtRoot;
 
@@ -1120,7 +1123,7 @@ struct BufferItem * docGetCellNode(		struct BufferItem *		node )
 /*									*/
 /************************************************************************/
 
-struct BufferItem * docGetSectNode(		struct BufferItem *		node )
+struct BufferItem * docGetSectNode(	struct BufferItem *		node )
     {
     while( node					&&
 	   node->biLevel != DOClevSECT		)
@@ -1181,7 +1184,7 @@ void docSetParaTableNesting(		struct BufferItem *		paraNode,
 /*									*/
 /************************************************************************/
 
-void docSetTreeTypeOfNode(	struct BufferItem *		node,
+void docSetTreeTypeOfNode(	struct BufferItem *	node,
 				int			treeType )
     {
     int		i;
@@ -1204,8 +1207,8 @@ void docSetTreeTypeOfNode(	struct BufferItem *		node,
 /************************************************************************/
 
 int docNodeAtExtremity(	int *				pAtExtremity,
-			const struct BufferItem *		parentNode,
-			const struct BufferItem *		paraNode,
+			const struct BufferItem *	parentNode,
+			const struct BufferItem *	paraNode,
 			int				after )
     {
     if  ( after )

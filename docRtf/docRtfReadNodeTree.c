@@ -17,6 +17,7 @@
 #   include	<docTreeNode.h>
 #   include	<docAttributes.h>
 #   include	<docParaBuilder.h>
+#   include	<docSelect.h>
 
 #   include	<docDebug.h>
 #   include	<appDebugon.h>
@@ -274,9 +275,32 @@ static int docRtfHierarchyCell(	const RtfControlWord *	rcw,
 	{ SXDEB(rcw->rcwWord,rts->rtsNode); return -1;	}
 
     /* MS-Word does this: The first clue about a table is \cell */
-    if  ( rts->rtsNode->biLevel == DOClevPARA		&&
+    if  ( rts->rtsNode->biLevel == DOClevPARA			&&
 	  rts->rtsNode->biParaProperties->ppTableNesting == 0	)
 	{
+	BufferItem *		rowNode= docGetRowLevelNode( rts->rtsNode );
+	DocumentPosition	dpFirst;
+
+	if  ( ! rowNode || docHeadPosition( &dpFirst, rowNode ) )
+	    { XDEB(rowNode);	}
+	else{
+	    if  ( dpFirst.dpNode != rts->rtsNode	&&
+		  rts->rtsNode->biNumberInParent > 0	)
+		{
+		BufferItem *	cellNode= rts->rtsNode->biParent;
+		BufferItem *	freshNode;
+
+		if  ( docSplitGroupNode( rr->rrDocument, &freshNode, cellNode,
+					    rts->rtsNode->biNumberInParent ) )
+		    { LDEB(rts->rtsNode->biNumberInParent); return -1;	}
+
+		if  ( docSplitGroupNode( rr->rrDocument, &freshNode,
+					    cellNode->biParent,
+					    cellNode->biNumberInParent ) )
+		    { LDEB(cellNode->biNumberInParent); return -1;	}
+		}
+	    }
+
 	/*LDEB(rts->rtsNode->biParaTableNesting);*/
 	docParaNodeSetTableNesting( rts->rtsNode, 1, rr->rrDocument );
 	docRtfSetForRow( rts->rtsNode );
