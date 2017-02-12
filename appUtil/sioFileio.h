@@ -4,6 +4,9 @@
 /*									*/
 /************************************************************************/
 
+# ifndef SIO_FILEIO_H
+# define SIO_FILEIO_H
+
 struct SimpleOutputStream;
 struct SimpleInputStream;
 struct MemoryBuffer;
@@ -26,3 +29,5 @@ extern struct SimpleInputStream * sioInFileioOpen(
 
 extern struct SimpleInputStream * sioInFileioOpenS(
 				    const char *		filename );
+
+# endif

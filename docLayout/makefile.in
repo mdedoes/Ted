@@ -1732,6 +1732,7 @@ docPsPrint.o: \
     ../appUtil/geoRectangleOffsets.h \
     ../appUtil/sioFileio.h \
     ../appUtil/sioGeneral.h \
+    ../appUtil/sioUtil.h \
     ../appUtil/utilColor.h \
     ../appUtil/utilIndexSet.h \
     ../appUtil/utilMemoryBuffer.h \
@@ -1763,10 +1764,10 @@ docPsPrint.o: \
     docLayout.h \
     docPsPrint.h \
     docPsPrintImpl.h \
-    ../drawMeta/drawMetafilePs.h \
     ../include/appDebug.h \
     ../include/appDebugon.h \
     layoutContext.h \
+    ../utilPs/psDrawMetafileProcs.h \
     ../utilPs/psFace.h \
     ../utilPs/psNup.h \
     ../utilPs/psPrint.h \

@@ -78,7 +78,8 @@ int bmReadRasterObject(	RasterImage *			ri,
 	    if  ( bmOpenObjectReader( &or, mb ) )
 		{ LDEB(1); rval= -1; goto ready;	}
 
-	    sprintf( scratch, "/tmp/failed_image_%d.%s", imageNumber++, suggestedExtension );
+	    sprintf( scratch, "/tmp/failed_image_%d.%s",
+					    imageNumber++, suggestedExtension );
 	    sioCopyInputStreamToFile( scratch, or.orSisHex );
 	    }
 

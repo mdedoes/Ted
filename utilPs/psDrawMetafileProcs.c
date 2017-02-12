@@ -1,9 +1,9 @@
-#   include	"drawMetaConfig.h"
+#   include	"utilPsConfig.h"
 
 #   include	<stddef.h>
 
-#   include	"drawMetafilePs.h"
-#   include	<psPrint.h>
+#   include	"psDrawMetafileProcs.h"
+#   include	"psPrint.h"
 #   include	<sioGeneral.h>
 
 #   include	<appDebugon.h>
@@ -18,7 +18,7 @@
 /*									*/
 /************************************************************************/
 
-static const char *	APPMETAPS_FillPrep[]=
+static const char *	PS_FillPrep[]=
 {
 "/fill-prep",
 "    {",
@@ -65,7 +65,7 @@ static const char *	APPMETAPS_FillPrep[]=
 "",
 };
 
-static const char *	APPMETAPS_FillPattern[]=
+static const char *	PS_FillPattern[]=
 {
 "/fill-pattern",
 "    {",
@@ -95,7 +95,7 @@ static const char *	APPMETAPS_FillPattern[]=
 "",
 };
 
-static const char *	APPMETAPS_Rl[]=
+static const char *	PS_Rl[]=
 {
 "/rl",
 "    {",
@@ -104,7 +104,7 @@ static const char *	APPMETAPS_Rl[]=
 "",
 };
 
-static const char *	APPMETAPS_Mt[]=
+static const char *	PS_Mt[]=
 {
 "/mt",
 "    {",
@@ -113,7 +113,7 @@ static const char *	APPMETAPS_Mt[]=
 "",
 };
 
-static const char *	APPMETAPS_Cp[]=
+static const char *	PS_Cp[]=
 {
 "/cp",
 "    {",
@@ -122,7 +122,7 @@ static const char *	APPMETAPS_Cp[]=
 "",
 };
 
-static const char *	APPMETAPS_Bp[]=
+static const char *	PS_Bp[]=
 {
 "/bp",
 "    {",
@@ -131,27 +131,27 @@ static const char *	APPMETAPS_Bp[]=
 "",
 };
 
-int appMetaDefineProcsetPs(	SimpleOutputStream *		sos )
+int psMetaDefineProcset(	SimpleOutputStream *		sos )
     {
     sioOutPrintf( sos, "%%%%BeginProcSet: AppWmfToPs 1.0 1\n\n" );
 
-    psDefineProcedure( sos, APPMETAPS_Bp,
-		    sizeof(APPMETAPS_Bp)/sizeof(const char *) );
+    psDefineProcedure( sos, PS_Bp,
+		    sizeof(PS_Bp)/sizeof(const char *) );
 
-    psDefineProcedure( sos, APPMETAPS_Mt,
-		    sizeof(APPMETAPS_Mt)/sizeof(const char *) );
+    psDefineProcedure( sos, PS_Mt,
+		    sizeof(PS_Mt)/sizeof(const char *) );
 
-    psDefineProcedure( sos, APPMETAPS_Rl,
-		    sizeof(APPMETAPS_Rl)/sizeof(const char *) );
+    psDefineProcedure( sos, PS_Rl,
+		    sizeof(PS_Rl)/sizeof(const char *) );
 
-    psDefineProcedure( sos, APPMETAPS_Cp,
-		    sizeof(APPMETAPS_Cp)/sizeof(const char *) );
+    psDefineProcedure( sos, PS_Cp,
+		    sizeof(PS_Cp)/sizeof(const char *) );
 
-    psDefineProcedure( sos, APPMETAPS_FillPrep,
-		    sizeof(APPMETAPS_FillPrep)/sizeof(const char *) );
+    psDefineProcedure( sos, PS_FillPrep,
+		    sizeof(PS_FillPrep)/sizeof(const char *) );
 
-    psDefineProcedure( sos, APPMETAPS_FillPattern,
-		    sizeof(APPMETAPS_FillPattern)/sizeof(const char *) );
+    psDefineProcedure( sos, PS_FillPattern,
+		    sizeof(PS_FillPattern)/sizeof(const char *) );
 
     sioOutPrintf( sos, "%%%%EndProcSet\n\n" );
     return 0;

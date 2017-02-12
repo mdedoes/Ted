@@ -160,7 +160,6 @@ int docParaReplaceText(	EditOperation *			eo,
     if  ( docEditCleanParticules( eo, dpHead->dpNode, partHead, partUpto ) )
 	{ LLDEB(partHead,partUpto); rval= -1; goto ready;	}
 
-XDEB(eo->eoParagraphBuilder);
     if  ( docParaBuilderStartExistingParagraph( eo->eoParagraphBuilder,
 					dpHead->dpNode, dpHead->dpStroff ) )
 	{ LDEB(dpHead->dpStroff); rval= -1; goto ready;	}

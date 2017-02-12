@@ -434,6 +434,9 @@ int docStartEditOperation(
 	    }
 	}
 
+    if  ( eo->eoParagraphBuilder )
+	{ docCloseParagraphBuilder( eo->eoParagraphBuilder );	}
+
     eo->eoParagraphBuilder= docOpenParagraphBuilder( eo->eoDocument,
 				    &(eo->eoSelectionScope), eo->eoTree );
 

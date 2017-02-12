@@ -47,6 +47,8 @@ int appChooserImplGetFilename(	const AppChooserInformation *	aci,
 	{
 	if  ( utilMemoryBufferSetString( filename, fnm ) )
 	    { LDEB(1); return -1;	}
+
+	g_free( (gpointer)fnm );
 	}
     else{
 	utilEmptyMemoryBuffer( filename );

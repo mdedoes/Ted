@@ -105,6 +105,9 @@ void tedFreeTopRuler(	void *		voidttr )
     {
     TedTopRuler *		ttr= (TedTopRuler *)voidttr;
 
+    if  ( ttr->ttrColumns )
+	{ free( ttr->ttrColumns );	}
+
     docCleanTabStopList( &(ttr->ttrTabStopList) );
 
     appCleanRulerData( &(ttr->ttrRulerData) );

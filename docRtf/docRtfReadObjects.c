@@ -7,6 +7,7 @@
 #   include	"docRtfConfig.h"
 
 #   include	<ctype.h>
+#   include	<string.h>
 #   include	<bitmap.h>
 
 #   include	<docObjectProperties.h>
@@ -156,10 +157,12 @@ static int docRtfSaveObjectData(	RtfReader *		rr,
 					int			len )
     { return docRtfObjectSetData( rr, IOprop_OBJDATA, text, len );	}
 
+/*
 static int docRtfSaveResultData(	RtfReader *		rr,
 					const char *		text,
 					int			len )
     { return docRtfObjectSetData( rr, IOprop_RESULT, text, len );	}
+*/
 
 static int docRtfSaveObjectClass(	RtfReader *		rr,
 					const char *		text,
@@ -170,6 +173,51 @@ static int docRtfSaveObjectName(	RtfReader *		rr,
 					const char *		text,
 					int			len )
     { return docRtfObjectSetData( rr, IOprop_OBJNAME, text, len );	}
+
+static void docRtfCheckPictMagicNumber(	RtfReader *		rr,
+					const char *		text,
+					int			len )
+    {
+    if  ( len >= 16 && ! memcmp( text, "89504e470d0a1a0a", 16 ) )
+	{
+	if  ( rr->rrPictureProperties.pipType != DOCokPICTPNGBLIP )
+	    {
+	    appDebug( "Image at line %d looks like a PNG image\n",
+							rr->rrCurrentLine );
+	    rr->rrPictureProperties.pipType= DOCokPICTPNGBLIP;
+	    }
+	}
+
+    if  ( len >= 4				&&
+	  ! memcmp( text, "ffd8", 4 )		&&
+	  ! memcmp( text+ len- 4, "ffd9", 4 )	)
+	{
+	if  ( rr->rrPictureProperties.pipType != DOCokPICTJPEGBLIP )
+	    {
+	    appDebug( "Image at line %d looks like a JPEG image\n",
+							rr->rrCurrentLine );
+	    rr->rrPictureProperties.pipType= DOCokPICTJPEGBLIP;
+	    }
+	}
+    }
+
+static int docRtfSavePictResultData(	RtfReader *		rr,
+					const char *		text,
+					int			len )
+    {
+    docRtfCheckPictMagicNumber( rr, text, len );
+
+    return docRtfObjectSetData( rr, IOprop_RESULT, text, len );
+    }
+
+static int docRtfSavePictObjectData(	RtfReader *		rr,
+					const char *		text,
+					int			len )
+    {
+    docRtfCheckPictMagicNumber( rr, text, len );
+
+    return docRtfObjectSetData( rr, IOprop_OBJDATA, text, len );
+    }
 
 /************************************************************************/
 
@@ -274,7 +322,7 @@ int docRtfReadPict(	const RtfControlWord *	rcw,
     docRtfPushReadingState( rr, &internRrs );
 
     rval= docRtfConsumeGroup( (const RtfControlWord *)0, 0, -1, rr,
-				    docRtfPictGroups, docRtfSaveObjectData );
+				docRtfPictGroups, docRtfSavePictObjectData );
 
     if  ( rval )
 	{ LDEB(rval);	}
@@ -360,7 +408,7 @@ static int docRtfReadResultPict(	const RtfControlWord *	rcw,
 	{ SDEB(rcw->rcwWord); return -1; }
 
     rval= docRtfConsumeGroup( (const RtfControlWord *)0, 0, -1, rr,
-				    docRtfPictGroups, docRtfSaveResultData );
+				docRtfPictGroups, docRtfSavePictResultData );
 
     if  ( rval )
 	{ SLDEB(rcw->rcwWord,rval);	}

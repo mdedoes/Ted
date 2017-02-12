@@ -142,7 +142,7 @@ typedef struct BufferItem
 # define docIsParaNode( node )	( (node)->biLevel == DOClevPARA )
 # define docIsSectNode( node )	( (node)->biLevel == DOClevSECT )
 # define docIsRowNode( node )	( (node)->biLevel == DOClevROW && \
-				  (node)->BIU.biuRow.brRowPropertyNumber > 0 )
+				  (node)->biRowPropertyNumber > 0 )
 
 /************************************************************************/
 /*									*/

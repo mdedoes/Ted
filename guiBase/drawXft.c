@@ -258,7 +258,7 @@ XftFont * drawOpenXftFont(	DrawScreenFont *	dsf )
 			fcCharset,
 	    NULL );
 
-ready:
+  ready:
 
     if  ( fcCharset )
 	{ FcCharSetDestroy( fcCharset );	}

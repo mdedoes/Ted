@@ -1,6 +1,6 @@
 /************************************************************************/
 /*									*/
-/*  Layout of a document.						*/
+/*  Layout of node in a document.					*/
 /*									*/
 /************************************************************************/
 
@@ -220,6 +220,41 @@ static int docLayoutStackedNodeChildren(
 
 /************************************************************************/
 /*									*/
+/*  Do the layout of a single row node. This is to support the layout	*/
+/*  of any node in the document tree. We cover a few special cases that	*/
+/*  relate to trkeep and trkeepnext. It is not the intention of this	*/
+/*  code to cover the full logic of table formatting: To cover that,	*/
+/*  invoke docLayoutTableSlice() for the appropriate table slice rather	*/
+/*  than docLayoutNode() for a particular row node.			*/
+/*									*/
+/*  1)  Regular code for a row.						*/
+/*									*/
+/************************************************************************/
+
+static int docLayoutSingleRowNode(	LayoutPosition *	lpBelow,
+					const LayoutPosition *	lpTop,
+					struct BufferItem *	rowNode,
+					BlockFrame *		bf,
+					LayoutJob *		lj )
+    {
+    int			stopCode= FORMATstopREADY;
+    const int		inNewFrame= rowNode->biRowPrecededByHeader;
+    const int		startInThisColumn= 0;
+
+    LayoutPosition	lpHere= *lpTop;
+
+    /*  1  */
+    if  ( docLayoutRowNode( &stopCode, &lpHere, &lpHere,
+		    rowNode, bf, inNewFrame, startInThisColumn, lj ) )
+	{ LDEB(1); return -1;	}
+
+    *lpBelow= lpHere;
+
+    return 0;
+    }
+
+/************************************************************************/
+/*									*/
 /*  Do the layout of a node in the document tree.			*/
 /*									*/
 /*  This is the main entry poin of the formatter.			*/
@@ -261,7 +296,7 @@ int docLayoutNodeImplementation(	LayoutPosition *	lpBelow,
 	    break;
 
 	case DOClevSECT:
-	    if  ( ! node->biParent )
+	    if  ( ! node->biParent ) /* IE A header, footer, note etc */
 		{
 		if  ( docLayoutStackedNodeChildren(
 					&lpHere, &lpHere, node, bf, lj ) )
@@ -275,10 +310,6 @@ int docLayoutNodeImplementation(	LayoutPosition *	lpBelow,
 
 	case DOClevROW:
 	    {
-	    int			stopCode= FORMATstopREADY;
-	    const int		inNewFrame= node->biRowPrecededByHeader;
-	    const int		startInThisColumn= 0;
-
 	    if  ( ! docIsRowNode( node ) )
 		{
 		if  ( node->biNumberInParent > 0 )
@@ -291,8 +322,7 @@ int docLayoutNodeImplementation(	LayoutPosition *	lpBelow,
 		    { LDEB(1); return -1;	}
 		}
 	    else{
-		if  ( docLayoutRowNode( &stopCode, &lpHere, &lpHere,
-				node, bf, inNewFrame, startInThisColumn, lj ) )
+		if  ( docLayoutSingleRowNode( &lpHere, &lpHere, node, bf, lj ) )
 		    { LDEB(1); return -1;	}
 		}
 	    }

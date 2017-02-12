@@ -20,7 +20,7 @@ const char *	bmcoStrings[]=
     (const char *)0
     };
 
-const char *	bmcoIntToString( int colorEncodingInt )
+const char * bmcoIntToString( int colorEncodingInt )
     {
     if  ( colorEncodingInt >= 0						&&
 	  colorEncodingInt < sizeof( bmcoStrings )/sizeof(char *) -1	)
@@ -29,7 +29,7 @@ const char *	bmcoIntToString( int colorEncodingInt )
     LDEB(colorEncodingInt); return (char *)0;
     }
 
-int		bmcoStringToInt( const char * colorEncodingString )
+int bmcoStringToInt( const char * colorEncodingString )
     {
     int	i;
 

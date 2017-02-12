@@ -146,7 +146,7 @@ int bmThreshold(	RasterImage *			riOut,
 	bmThresholdJohannsen( &th );
 	}
     else{
-	bmThresholdKapur( &th );
+	bmThresholdVariance( &th );
 	}
 
     /*  5  */

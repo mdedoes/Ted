@@ -97,7 +97,6 @@ static int docParaBuilderSetTextRToLImpl(
 
     if  ( pb->pbBidiTreeBuilder )
 	{
-LLDEB(level,offset);
 	if  ( bidiTreeLevelSwitchToIsolateLevel( &(pb->pbBidiScanner),
 				    pb->pbBidiTreeBuilder, level, offset ) )
 	    { LLDEB(level,offset); return -1;	}
@@ -253,7 +252,6 @@ BufferItem * docParaBuilderStartNewParagraph(
     pb->pbBidiScanner.bsThrough= pb;
     pb->pbBidiScanner.bsGotRun= docParaBbuilderGotBidiRun;
 
-SLDEB("===",pb->pbParaNr);
     docParaBuilderSetTextRToLImpl( pb, textRToL, produced );
 
   ready:

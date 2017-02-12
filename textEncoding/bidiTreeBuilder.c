@@ -26,7 +26,6 @@ void bidiStartTreeBuilder(	BidiTreeBuilder *	btb,
     btb->btbCurrentNode= (BidiNode *)0;
 
     btb->btbOffset= 0;
-LDEB(btb->btbOffset);
     btb->btbHighestLevel= bottomLevel;
 
     while( btb->btbExplicitLevel )
@@ -48,7 +47,6 @@ BidiTreeBuilder * bidiOpenTreeBuilder( void )
     btb->btbCurrentNode= (BidiNode *)0;
 
     btb->btbOffset= 0;
-LDEB(btb->btbOffset);
     btb->btbHighestLevel= 0;
 
     btb->btbExplicitLevel= (struct ExplicitLevel *)0;
@@ -119,9 +117,7 @@ int bidiTreeBuilderStartExistingTree(	BidiTreeBuilder *	btb,
 	return -1;
 	}
 
-XDEB(btb);
     btb->btbOffset= byteOffset;
-LDEB(btb->btbOffset);
     btb->btbCurrentNode= bottomNode;
     btb->btbHighestLevel= bottomNode->bnRun.brLevel;
 
@@ -161,7 +157,6 @@ static int bidiTreeBuilderPushXLevel(
 
     btb->btbCurrentNode= fresh;
     btb->btbOffset= upto;
-LDEB(btb->btbOffset);
 
     btb->btbExplicitLevel= bidiPushExplicitLevel(
 		    btb->btbExplicitLevel, sos, iInitiator, xLevel );
@@ -197,7 +192,6 @@ static int bidiTreeBuilderStartILevel(
 
     btb->btbCurrentNode= fresh;
     btb->btbOffset= upto;
-LDEB(btb->btbOffset);
 
     return 0;
     }
@@ -250,7 +244,6 @@ static int bidiTreeBuilderStartRoot(	BidiTreeBuilder *	btb,
 	    btb->btbBottomNode= fresh;
 	    btb->btbCurrentNode= fresh;
 	    btb->btbOffset= upto;
-LLDEB(level,btb->btbOffset);
 
 	    btb->btbHighestLevel= level;
 
@@ -293,7 +286,6 @@ static int bidiTreeBuilderPopExplicitLevel(
     if  ( bidiStretchNode( current, upto ) )
 	{ LDEB(upto); return -1;	}
 
-LLDEB(eor,upto);
     if  ( bidiFlushRun( bs, &(btb->btbExplicitLevel->el_ImplicitState),
 								eor, upto ) )
 	{ LLDEB(eor,upto); return -1;	}
@@ -379,7 +371,6 @@ static int bidiTreeBuilderPopLevel(
 	case UCDbidi_LRE:
 	case UCDbidi_LRO:
 
-LDEB(upto);
 	    if  ( bidiTreeBuilderPopExplicitLevel( bs, btb, UCDbidi_L, upto ) )
 		{ LDEB(upto); return -1;	}
 
@@ -388,7 +379,6 @@ LDEB(upto);
 	case UCDbidi_RLE:
 	case UCDbidi_RLO:
 
-LDEB(upto);
 	    if  ( bidiTreeBuilderPopExplicitLevel( bs, btb, UCDbidi_R, upto ) )
 		{ LDEB(upto); return -1;	}
 
@@ -398,7 +388,6 @@ LDEB(upto);
 	case UCDbidi_FSI:
 	case UCDbidi_RLI:
 
-LDEB(upto);
 	    if  ( bidiTreeBuilderPopExplicitLevel( bs, btb, UCDbidi_ON, upto ) )
 		{ LDEB(upto); return -1;	}
 
@@ -445,7 +434,6 @@ static int bidiTreeBuilderToLowerLevel(
 	  btb->btbCurrentNode->bnRun.brInitiator == initiator	)
 	{
 	btb->btbOffset= upto;
-LDEB(btb->btbOffset);
 	return 0;
 	}
 
@@ -476,7 +464,6 @@ static int bidiTreeBuilderLevel2Up(
 		case UCDbidi_LRO:
 		case UCDbidi_LRI:
 
-LLLDEB(level,from,upto);
 		    if  ( bidiTreeBuilderPushXLevel( btb, current,
 					UCDbidi_L, UCDbidi_L, level,
 					initiator, level, from, upto ) )
@@ -510,7 +497,6 @@ LLLDEB(level,from,upto);
 		case UCDbidi_RLO:
 		case UCDbidi_RLI:
 
-LLLDEB(level,from,upto);
 		    if  ( bidiTreeBuilderPushXLevel( btb, current,
 					UCDbidi_R, UCDbidi_R, level,
 					initiator, level, from, upto ) )
@@ -573,7 +559,6 @@ static int bidiTreeBuilderLevel1Up(
 		case UCDbidi_RLO:
 		case UCDbidi_RLI:
 
-LLLDEB(level,from,upto);
 		    if  ( bidiTreeBuilderPushXLevel( btb, current,
 					UCDbidi_R, UCDbidi_R, level,
 					initiator, level, from, upto ) )
@@ -603,7 +588,6 @@ LLLDEB(level,from,upto);
 		    if  ( bidiStretchNode( btb->btbCurrentNode, from ) )
 			{ LDEB(from); return -1;	}
 
-LLLDEB(level,from,upto);
 		    if  ( bidiTreeBuilderPushXLevel( btb, current->bnParent,
 					UCDbidi_R, UCDbidi_R, level,
 					initiator, level, from, upto ) )
@@ -637,7 +621,6 @@ LLLDEB(level,from,upto);
 		case UCDbidi_LRO:
 		case UCDbidi_LRI:
 
-LLLDEB(level,from,upto);
 		    if  ( bidiTreeBuilderPushXLevel( btb, current,
 					UCDbidi_L, UCDbidi_L, level,
 					initiator, level, from, upto ) )
@@ -667,7 +650,6 @@ LLLDEB(level,from,upto);
 		    if  ( bidiStretchNode( btb->btbCurrentNode, from ) )
 			{ LDEB(from); return -1;	}
 
-LLLDEB(level,from,upto);
 		    if  ( bidiTreeBuilderPushXLevel( btb, current->bnParent,
 					UCDbidi_L, UCDbidi_L, level,
 					initiator, level, from, upto ) )
@@ -711,13 +693,11 @@ static int bidiTreeBuilderToHigherLevel(
 
     if  ( level == current->bnRun.brLevel+ 2 )
 	{
-LLLDEB(level,from,upto);
 	return bidiTreeBuilderLevel2Up( btb, initiator, level, from, upto );
 	}
 
     if  ( level == current->bnRun.brLevel+ 1 )
 	{
-LLLDEB(level,from,upto);
 	return bidiTreeBuilderLevel1Up( btb, initiator, level, from, upto );
 	}
 
@@ -743,7 +723,6 @@ static int bidiTreeBuilderToSameLevel(
 
 	/*btb->btbCurrentNode= current;*/
 	btb->btbOffset= upto;
-LDEB(btb->btbOffset);
 	return 0;
 	}
 
@@ -817,7 +796,6 @@ int bidiTreeBuilderAddRun(	BidiTreeBuilder *	btb,
     else{
 	if  ( btb->btbCurrentNode->bnRun.brLevel < level )
 	    {
-LLLDEB(level,from,upto);
 	    rval= bidiTreeBuilderToHigherLevel( btb,
 					initiator, level, from, upto );
 	    if  ( rval < 0 )
@@ -861,7 +839,6 @@ int bidiTreeBuilderCloseExplicitRun(
     if  ( ! btb->btbCurrentNode )
 	{ XLDEB(btb->btbCurrentNode,upto); return -1;	}
 
-LDEB(upto);
     if  ( bidiTreeBuilderPopExplicitLevel( bs, btb, eor, upto ) )
 	{ LLDEB(eor,upto); return -1;	}
 
@@ -926,7 +903,6 @@ int bidiTreeLevelSwitchToIsolateLevel(
     else{
 	if  ( btb->btbCurrentNode->bnRun.brLevel < level )
 	    {
-LLDEB(level,offset);
 	    rval= bidiTreeBuilderToHigherLevel( btb,
 					initiator, level, from, upto );
 	    if  ( rval < 0 )

@@ -55,7 +55,7 @@ static int docLayoutRows(	LayoutPosition *	lpBelow,
 				const LayoutPosition *	lpTop,
 				int			inNewFrame,
 				int			stayInThisColumn,
-				int			honourKeep,
+				const int		honourKeep,
 				struct BufferItem *	parentNode,
 				int			from,
 				int			upto,
@@ -88,7 +88,7 @@ static int docLayoutRows(	LayoutPosition *	lpBelow,
 	docLayoutStartNodeLayout( rowNode, lj, &lpHere );
 
 	if  ( docLayoutRowNode( &found, &lpHere, &lpHere, rowNode, bf,
-					inNewFrame, stayInThisColumn, lj ) )
+					    inNewFrame, stayInThisColumn, lj ) )
 	    { LDEB(row); return -1;	}
 
 	if  ( found == FORMATstopFRAME_FULL )
@@ -136,7 +136,7 @@ static int docLayoutRows(	LayoutPosition *	lpBelow,
 static int docLayoutRowsInBlock( LayoutPosition *	lpBelow,
 				const LayoutPosition *	lpTop,
 				struct BufferItem *	parentNode,
-				int			startInThisColumn,
+				const int		startInThisColumn,
 				int			from,
 				int			upto,
 				BlockFrame *		bf,
@@ -207,8 +207,8 @@ static int docLayoutRowsInBlock( LayoutPosition *	lpBelow,
 
 	BufferItem *	rowNode= parentNode->biChildren[row];
 
-	int		inNewFrame= 0;
-	int		startInThisColumn= 0;
+	const int	inNewFrame= 0;
+	const int	startInThisColumn= 0;
 
 	LayoutPosition	lpHere= *lpTop;
 

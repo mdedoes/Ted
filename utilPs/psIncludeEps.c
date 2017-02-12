@@ -76,11 +76,13 @@ void psDefineEpsProcs(	struct SimpleOutputStream *		sos )
 void psBeginEpsObject(		struct SimpleOutputStream *	sos,
 				const DocumentRectangle *	drTo,
 				const DocumentRectangle *	drBBox,
-				const char *			file )
+				const struct MemoryBuffer *	fileName )
     {
     const int		sevenBits= 1;
     const int		utf8= 1;
     AffineTransform2D	at;
+
+    const char *	file= utilMemoryBufferGetString( fileName );
 
     if  ( geoAffineTransformForTriangles( &at,
 				    drBBox->drX0, drBBox->drY0,
@@ -91,7 +93,7 @@ void psBeginEpsObject(		struct SimpleOutputStream *	sos,
 				    drTo->drX1, drTo->drY0 ) )
 	{ LDEB(1); return;	}
 
-    if  ( ! file )
+    if  ( ! file || ! file[0] )
 	{ file= "?-?";	}
 
     sioOutPrintf( sos, "BeginEPSF\n" );

@@ -31,7 +31,7 @@ WFLAGS=	-Wall			\
 
 #CFLAGS= $(WFLAGS) -g -O2 $(INCLUDES)
 
-# 36!!obs
+# 37!!obs
 OBS	=	\
 		textAttributeUtil.o\
 		textAttribute.o\
@@ -62,6 +62,7 @@ OBS	=	\
 		psFontCatalog.o\
 		psFace.o\
 		psDsc.o\
+		psDrawMetafileProcs.o\
 		psDocumentFonts.o\
 		psCompareFontInfo.o\
 		psBuildConfig.o\
@@ -91,7 +92,7 @@ includes:
 
 psAfm.o: \
     ../appUtil/appUtilConfig.h \
-    ../appUtil/geo2DInteger.h \
+    ../appUtil/geoRectangle.h \
     ../appUtil/sioGeneral.h \
     ../appUtil/utilIndexMapping.h \
     ../appUtil/utilIndexSet.h \
@@ -105,7 +106,7 @@ psAfm.o: \
 
 psBase35.o: \
     ../appUtil/appUtilConfig.h \
-    ../appUtil/geo2DInteger.h \
+    ../appUtil/geoRectangle.h \
     ../appUtil/utilIndexMapping.h \
     ../appUtil/utilIndexSet.h \
     ../appUtil/utilMemoryBuffer.h \
@@ -118,7 +119,7 @@ psBase35.o: \
 psBuildConfig.o: \
     ../appUtil/appSystem.h \
     ../appUtil/appUtilConfig.h \
-    ../appUtil/geo2DInteger.h \
+    ../appUtil/geoRectangle.h \
     ../appUtil/sioFileio.h \
     ../appUtil/sioGeneral.h \
     ../appUtil/sioPfb.h \
@@ -140,7 +141,7 @@ psBuildConfig.o: \
 
 psCompareFontInfo.o: \
     ../appUtil/appUtilConfig.h \
-    ../appUtil/geo2DInteger.h \
+    ../appUtil/geoRectangle.h \
     ../appUtil/utilIndexMapping.h \
     ../appUtil/utilIndexSet.h \
     ../appUtil/utilMemoryBuffer.h \
@@ -154,12 +155,13 @@ psCompareFontInfo.o: \
 psDocumentFonts.o: \
     ../appUtil/appSystem.h \
     ../appUtil/appUtilConfig.h \
-    ../appUtil/geo2DInteger.h \
     ../appUtil/geoAffineTransform.h \
+    ../appUtil/geoDocumentPageSetup.h \
+    ../appUtil/geoRectangle.h \
+    ../appUtil/geoRectangleOffsets.h \
     ../appUtil/sioFileio.h \
     ../appUtil/sioGeneral.h \
     ../appUtil/sioPfb.h \
-    ../appUtil/geoDocumentPageSetup.h \
     ../appUtil/utilFontmap.h \
     ../appUtil/utilIndexMapping.h \
     ../appUtil/utilIndexSet.h \
@@ -177,12 +179,29 @@ psDocumentFonts.o: \
     utilPsConfig.h \
     psDocumentFonts.c
 
+psDrawMetafileProcs.o: \
+    ../appUtil/appUtilConfig.h \
+    ../appUtil/geoAffineTransform.h \
+    ../appUtil/geoDocumentPageSetup.h \
+    ../appUtil/geoRectangle.h \
+    ../appUtil/geoRectangleOffsets.h \
+    ../appUtil/sioGeneral.h \
+    ../appUtil/utilMemoryBuffer.h \
+    ../include/appDebug.h \
+    ../include/appDebugon.h \
+    psDrawMetafileProcs.h \
+    psNup.h \
+    psPrint.h \
+    utilPsConfig.h \
+    psDrawMetafileProcs.c
+
 psDsc.o: \
     ../appUtil/appUtilConfig.h \
-    ../appUtil/geo2DInteger.h \
     ../appUtil/geoAffineTransform.h \
-    ../appUtil/sioGeneral.h \
     ../appUtil/geoDocumentPageSetup.h \
+    ../appUtil/geoRectangle.h \
+    ../appUtil/geoRectangleOffsets.h \
+    ../appUtil/sioGeneral.h \
     ../appUtil/utilMemoryBuffer.h \
     ../include/appDebug.h \
     ../include/appDebugon.h \
@@ -193,7 +212,7 @@ psDsc.o: \
 
 psFace.o: \
     ../appUtil/appUtilConfig.h \
-    ../appUtil/geo2DInteger.h \
+    ../appUtil/geoRectangle.h \
     ../appUtil/utilIndexMapping.h \
     ../appUtil/utilIndexSet.h \
     ../appUtil/utilMemoryBuffer.h \
@@ -210,7 +229,7 @@ psFace.o: \
 psFontCatalog.o: \
     ../appUtil/appSystem.h \
     ../appUtil/appUtilConfig.h \
-    ../appUtil/geo2DInteger.h \
+    ../appUtil/geoRectangle.h \
     ../appUtil/sioFileio.h \
     ../appUtil/sioGeneral.h \
     ../appUtil/utilIndexMapping.h \
@@ -226,7 +245,7 @@ psFontCatalog.o: \
 
 psFontFamily.o: \
     ../appUtil/appUtilConfig.h \
-    ../appUtil/geo2DInteger.h \
+    ../appUtil/geoRectangle.h \
     ../appUtil/utilIndexMapping.h \
     ../appUtil/utilIndexSet.h \
     ../appUtil/utilMemoryBuffer.h \
@@ -240,7 +259,7 @@ psFontFamily.o: \
 
 psFontInfo.o: \
     ../appUtil/appUtilConfig.h \
-    ../appUtil/geo2DInteger.h \
+    ../appUtil/geoRectangle.h \
     ../appUtil/utilIndexMapping.h \
     ../appUtil/utilIndexSet.h \
     ../appUtil/utilMemoryBuffer.h \
@@ -255,7 +274,7 @@ psFontInfo.o: \
 
 psFontMetrics.o: \
     ../appUtil/appUtilConfig.h \
-    ../appUtil/geo2DInteger.h \
+    ../appUtil/geoRectangle.h \
     ../appUtil/utilIndexMapping.h \
     ../appUtil/utilIndexSet.h \
     ../appUtil/utilMemoryBuffer.h \
@@ -270,7 +289,7 @@ psFontMetrics.o: \
 
 psFontName.o: \
     ../appUtil/appUtilConfig.h \
-    ../appUtil/geo2DInteger.h \
+    ../appUtil/geoRectangle.h \
     ../appUtil/utilIndexMapping.h \
     ../appUtil/utilIndexSet.h \
     ../appUtil/utilMemoryBuffer.h \
@@ -283,7 +302,7 @@ psFontName.o: \
 
 psGlyphs.o: \
     ../appUtil/appUtilConfig.h \
-    ../appUtil/geo2DInteger.h \
+    ../appUtil/geoRectangle.h \
     ../appUtil/utilIndexMapping.h \
     ../appUtil/utilIndexSet.h \
     ../appUtil/utilMemoryBuffer.h \
@@ -296,11 +315,12 @@ psGlyphs.o: \
 
 psIncludeEps.o: \
     ../appUtil/appUtilConfig.h \
-    ../appUtil/geo2DInteger.h \
     ../appUtil/geoAffineTransform.h \
+    ../appUtil/geoDocumentPageSetup.h \
+    ../appUtil/geoRectangle.h \
+    ../appUtil/geoRectangleOffsets.h \
     ../appUtil/sioFileio.h \
     ../appUtil/sioGeneral.h \
-    ../appUtil/geoDocumentPageSetup.h \
     ../appUtil/utilMemoryBuffer.h \
     ../include/appDebug.h \
     ../include/appDebugon.h \
@@ -311,7 +331,7 @@ psIncludeEps.o: \
 
 psMatchFont.o: \
     ../appUtil/appUtilConfig.h \
-    ../appUtil/geo2DInteger.h \
+    ../appUtil/geoRectangle.h \
     ../appUtil/utilIndexMapping.h \
     ../appUtil/utilIndexSet.h \
     ../appUtil/utilMemoryBuffer.h \
@@ -328,9 +348,10 @@ psMatchFont.o: \
 
 psNup.o: \
     ../appUtil/appUtilConfig.h \
-    ../appUtil/geo2DInteger.h \
     ../appUtil/geoAffineTransform.h \
     ../appUtil/geoDocumentPageSetup.h \
+    ../appUtil/geoRectangle.h \
+    ../appUtil/geoRectangleOffsets.h \
     ../include/appDebug.h \
     ../include/appDebugon.h \
     psNup.h \
@@ -339,10 +360,11 @@ psNup.o: \
 
 psPdfmark.o: \
     ../appUtil/appUtilConfig.h \
-    ../appUtil/geo2DInteger.h \
     ../appUtil/geoAffineTransform.h \
-    ../appUtil/sioGeneral.h \
     ../appUtil/geoDocumentPageSetup.h \
+    ../appUtil/geoRectangle.h \
+    ../appUtil/geoRectangleOffsets.h \
+    ../appUtil/sioGeneral.h \
     ../appUtil/utilMemoryBuffer.h \
     ../include/appDebug.h \
     ../include/appDebugon.h \
@@ -353,7 +375,7 @@ psPdfmark.o: \
 
 psPostScriptFontList.o: \
     ../appUtil/appUtilConfig.h \
-    ../appUtil/geo2DInteger.h \
+    ../appUtil/geoRectangle.h \
     ../appUtil/utilIndexMapping.h \
     ../appUtil/utilIndexSet.h \
     ../appUtil/utilMemoryBuffer.h \
@@ -370,11 +392,12 @@ psPostScriptFontList.o: \
 
 psPrint.o: \
     ../appUtil/appUtilConfig.h \
-    ../appUtil/geo2DInteger.h \
     ../appUtil/geoAffineTransform.h \
+    ../appUtil/geoDocumentPageSetup.h \
+    ../appUtil/geoRectangle.h \
+    ../appUtil/geoRectangleOffsets.h \
     ../appUtil/sioGeneral.h \
     ../appUtil/utilColor.h \
-    ../appUtil/geoDocumentPageSetup.h \
     ../appUtil/utilIndexMapping.h \
     ../appUtil/utilIndexSet.h \
     ../appUtil/utilMemoryBuffer.h \
@@ -391,9 +414,10 @@ psPrint.o: \
 
 psPrintPdf.o: \
     ../appUtil/appUtilConfig.h \
-    ../appUtil/geo2DInteger.h \
     ../appUtil/geoAffineTransform.h \
     ../appUtil/geoDocumentPageSetup.h \
+    ../appUtil/geoRectangle.h \
+    ../appUtil/geoRectangleOffsets.h \
     ../appUtil/utilMemoryBuffer.h \
     ../appUtil/utilMemoryBufferPrintf.h \
     ../include/appDebug.h \
@@ -405,10 +429,11 @@ psPrintPdf.o: \
 
 psPrintProcs.o: \
     ../appUtil/appUtilConfig.h \
-    ../appUtil/geo2DInteger.h \
     ../appUtil/geoAffineTransform.h \
-    ../appUtil/sioGeneral.h \
     ../appUtil/geoDocumentPageSetup.h \
+    ../appUtil/geoRectangle.h \
+    ../appUtil/geoRectangleOffsets.h \
+    ../appUtil/sioGeneral.h \
     ../appUtil/utilMemoryBuffer.h \
     ../include/appDebug.h \
     ../include/appDebugon.h \
@@ -419,7 +444,7 @@ psPrintProcs.o: \
 
 psPrintShape.o: \
     ../appUtil/appUtilConfig.h \
-    ../appUtil/geo2DInteger.h \
+    ../appUtil/geoRectangle.h \
     ../appUtil/sioGeneral.h \
     ../include/appDebug.h \
     ../include/appDebugon.h \
@@ -429,7 +454,7 @@ psPrintShape.o: \
 
 psReadAfm.o: \
     ../appUtil/appUtilConfig.h \
-    ../appUtil/geo2DInteger.h \
+    ../appUtil/geoRectangle.h \
     ../appUtil/sioGeneral.h \
     ../appUtil/utilIndexMapping.h \
     ../appUtil/utilIndexSet.h \
@@ -449,7 +474,7 @@ psShading.o: \
     psShading.c
 
 psT42.o: \
-    ../appUtil/geo2DInteger.h \
+    ../appUtil/geoRectangle.h \
     ../appUtil/sioEndian.h \
     ../appUtil/sioGeneral.h \
     ../appUtil/sioHex.h \
@@ -468,7 +493,7 @@ psT42.o: \
 
 psTextExtents.o: \
     ../appUtil/appUtilConfig.h \
-    ../appUtil/geo2DInteger.h \
+    ../appUtil/geoRectangle.h \
     ../include/appDebug.h \
     ../include/appDebugon.h \
     psTextExtents.h \
@@ -493,7 +518,7 @@ psTtf.o: \
     psTtf.c
 
 psTtfFontInfo.o: \
-    ../appUtil/geo2DInteger.h \
+    ../appUtil/geoRectangle.h \
     ../appUtil/utilEndian.h \
     ../appUtil/utilIndexMapping.h \
     ../appUtil/utilIndexSet.h \
@@ -532,7 +557,7 @@ psTtfTableEntry.o: \
 
 svgWriter.o: \
     ../appUtil/appUtilConfig.h \
-    ../appUtil/geo2DInteger.h \
+    ../appUtil/geoRectangle.h \
     ../appUtil/sioGeneral.h \
     ../appUtil/xmlWriter.h \
     ../include/appDebug.h \

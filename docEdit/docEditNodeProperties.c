@@ -103,6 +103,12 @@ int docEditUpdParaProperties(	EditOperation *			eo,
 
 	if  ( dfBullet )
 	    {
+	    const int	stroffHead= 0;
+
+	    if  ( docParaBuilderStartExistingParagraph(
+				    eo->eoParagraphBuilder, paraNode, stroffHead ) )
+		{ LDEB(stroffHead); return -1;	}
+
 	    if  ( docDeleteField( &dsInsideBullet, eo, paraNode, paraNode,
 			    partBulletHead, partBulletTail, dfBullet ) )
 		{ LLDEB(partBulletHead,partBulletTail);	}
@@ -118,11 +124,17 @@ int docEditUpdParaProperties(	EditOperation *			eo,
 
     if  ( ! wasInList && isInList )
 	{
+	const int	stroffHead= 0;
+
+	if  ( docParaBuilderStartExistingParagraph(
+				eo->eoParagraphBuilder, paraNode, stroffHead ) )
+	    { LDEB(stroffHead); return -1;	}
+
 	if  ( docParagraphBuilderInsertListtextField( &dfBullet,
 					&dsInsideBullet, &dsAroundBullet,
 					&partBulletHead, &partBulletTail,
 					eo->eoParagraphBuilder ) )
-	    { LDEB(1); return -1;	}
+	    { LLDEB(wasInList,isInList); return -1;	}
 
 	listChange= 1;
 	eo->eoFieldUpdate |= FIELDdoLISTTEXT;

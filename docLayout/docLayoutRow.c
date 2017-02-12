@@ -50,9 +50,9 @@ static void docLayoutValignCell( BufferItem *			cellNode,
 
     LayoutPosition		lpCellTop= cellNode->biTopPosition;
     int				rowHigh= lpBelow->lpPageYTwips-
-							    lpRowTop->lpPageYTwips;
+							lpRowTop->lpPageYTwips;
     int				cellHigh= cellNode->biBelowPosition.lpPageYTwips-
-							    lpCellTop.lpPageYTwips;
+							lpCellTop.lpPageYTwips;
 
     int				paraFrom= 0;
     int				paraUpto= cellNode->biChildCount;
@@ -128,8 +128,8 @@ static int docLayoutRowValignCells(
 
 		topRowNode= rowNode->biParent->biChildren[topRow];
 
-		if  ( docCompareLayoutPositionFrames( &(topRowNode->biTopPosition),
-								    lpBelow ) != 0 )
+		if  ( docCompareLayoutPositionFrames(
+				&(topRowNode->biTopPosition), lpBelow ) != 0 )
 		    { continue;	}
 
 		docLayoutValignCell( topRowNode->biChildren[topCol], bf,
@@ -138,7 +138,7 @@ static int docLayoutRowValignCells(
 	    }
 	else{
 	    docLayoutValignCell( cellNode, bf, &(rowNode->biTopPosition),
-								    lpBelow, lj );
+								lpBelow, lj );
 	    }
 	}
 
@@ -501,9 +501,9 @@ static int docLayoutStartRow(
     if  ( lpHere->lpPageYTwips+ minHeightTwips > bf->bfFlowRect.drY1	&&
 	  ! lpHere->lpAtTopOfColumn					)
 	{
-	*pToNextColumn= 1;
-	return 0;
-	}
+LDEB(lpHere->lpPage);
+LLLDEB(lpHere->lpPageYTwips,minHeightTwips,bf->bfFlowRect.drY1);
+	*pToNextColumn= 1; return 0;	}
 
     if  ( precededByHeader )
 	{
@@ -758,6 +758,17 @@ int docLayoutRowNode(	int *				pStopCode,
     const RowProperties *	rp= rowNode->biRowProperties;
     int				precededByHeader;
 
+    /*  1  */
+    if  ( ! docIsRowNode( rowNode ) )
+	{ LLDEB(rowNode->biNumberInParent,rp->rpCellCount); return -1; }
+
+    if  ( rp->rpCellCount < rowNode->biChildCount )
+	{
+	LLDEB(rp->rpCellCount,rowNode->biChildCount);
+	docListNode( 0, rowNode, 0 );
+	rowNode->biChildCount= rp->rpCellCount;
+	}
+
     {
     const int		line= 0;
     const int		part= 0;
@@ -770,17 +781,6 @@ int docLayoutRowNode(	int *				pStopCode,
     }
 
     lpHere= *lpTop;
-
-    /*  1  */
-    if  ( ! docIsRowNode( rowNode ) )
-	{ LLDEB(rowNode->biNumberInParent,rp->rpCellCount); return -1; }
-
-    if  ( rp->rpCellCount < rowNode->biChildCount )
-	{
-	LLDEB(rp->rpCellCount,rowNode->biChildCount);
-	docListNode( 0, rowNode, 0 );
-	rowNode->biChildCount= rp->rpCellCount;
-	}
 
     /*  2,3  */
     toNextColumn= 0;
@@ -795,6 +795,7 @@ int docLayoutRowNode(	int *				pStopCode,
 					lj, &lpHere, bf, &(rowPlj.pljPos) ) )
 	{ LDEB(rowNode->biChildCount); rval= -1; goto ready;	}
 
+LDEB(toNextColumn);
     if  ( toNextColumn )
 	{
 	if  ( startInThisColumn )
@@ -810,25 +811,25 @@ int docLayoutRowNode(	int *				pStopCode,
     if  ( toNextColumn					&&
 	  ! rowNode->biTopPosition.lpAtTopOfColumn	)
 	{
-	int			restartRow;
+	int	isOnePage= RP_IS_ONE_PAGE( rp );
+	int	noSpaceToStart= ! rowPlj.pljPos.pspChildAdvanced || someAtHead;
 
 	/*  5, 7  */
-	restartRow= RP_IS_ONE_PAGE( rp ) ||
-				    ! rowPlj.pljPos.pspChildAdvanced ||
-				    someAtHead;
-
-	if  ( restartRow && startInThisColumn )
-	    {
-	    stopCode= FORMATstopFRAME_FULL; goto ready; }
-
-	/*  6  */
-	if  ( docRowToNextColumn( &lpHere, rowNode, lj,
-						restartRow, bf, &rowPlj ) )
-	    { LDEB(toNextColumn); rval= -1; goto ready;	}
+LLDEB(isOnePage,noSpaceToStart);
 
 	/*  7  */
-	if  ( restartRow )
+	if  ( isOnePage || noSpaceToStart )
 	    {
+	    const int	atTopOfRow= 1;
+
+	    if  ( startInThisColumn )
+		{ stopCode= FORMATstopFRAME_FULL; goto ready; }
+
+	    /*  6  */
+	    if  ( docRowToNextColumn( &lpHere, rowNode, lj,
+						atTopOfRow, bf, &rowPlj ) )
+		{ LDEB(toNextColumn); rval= -1; goto ready;	}
+
 	    rowNode->biTopPosition= lpHere;
 
 	    /*  Do not use rp->rpIsTableHeader as it gives trouble when header 
@@ -842,13 +843,32 @@ int docLayoutRowNode(	int *				pStopCode,
 	    if  ( docLayoutStartRowCells( rowNode, lj,
 					    &lpHere, &(rowPlj.pljPos) ) )
 		{ LDEB(rowNode->biChildCount); rval= -1; goto ready;	}
-	    toNextColumn= 0; /* irrelevant here */
-	    }
 
-	/*  8  */
-	if  ( docLayoutRowPageStrip( &lpHere, &toNextColumn, &someAtHead,
+	    toNextColumn= 0; /* irrelevant here */
+
+	    /*  8  */
+	    if  ( docLayoutRowPageStrip( &lpHere, &toNextColumn, &someAtHead,
 					rowNode, &(rowPlj.pljPos), bf, lj ) )
-	    { LDEB(1); rval= -1; goto ready;	}
+		{ LDEB(1); rval= -1; goto ready;	}
+
+	    /* Restart did not help to keep the row on one page */
+	    if  ( toNextColumn && ! noSpaceToStart )
+		{
+		lpHere= *lpTop;
+		toNextColumn= 0; /* irrelevant here */
+
+		rowNode->biTopPosition= lpHere;
+
+		if  ( docLayoutStartRow( &toNextColumn, rowNode,
+					precededByHeader,
+					lj, &lpHere, bf, &(rowPlj.pljPos) ) )
+		    { LDEB(rowNode->biChildCount); rval= -1; goto ready; }
+
+		if  ( docLayoutRowPageStrip( &lpHere, &toNextColumn,
+			    &someAtHead, rowNode, &(rowPlj.pljPos), bf, lj ) )
+		    { LDEB(1); rval= -1; goto ready;	}
+		}
+	    }
 	}
 
     /*  9  */

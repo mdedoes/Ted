@@ -404,8 +404,8 @@ void geoTranslationAffineTransform2D(	AffineTransform2D *	at2,
     }
 
 void geoScaleAffineTransform2D(	AffineTransform2D *	at2,
-					double			xs,
-					double			ys )
+				double			xs,
+				double			ys )
     {
     geoInitAffineTransform2D( at2 );
 

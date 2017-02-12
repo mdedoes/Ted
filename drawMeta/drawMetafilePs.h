@@ -9,7 +9,6 @@
 
 struct PrintingState;
 struct MetafilePlayer;
-struct SimpleOutputStream;
 
 typedef int (*MetafileWritePs)(	struct PrintingState *		ps,
 				const struct MetafilePlayer *	player );
@@ -28,7 +27,5 @@ extern int appMacPictPlayFilePs( struct PrintingState *		ps,
 
 extern int appMetaPlayEmfPs(	struct PrintingState *		ps,
 				const struct MetafilePlayer *	player );
-
-extern int appMetaDefineProcsetPs( struct SimpleOutputStream *	sos );
 
 #   endif	/*	DRAW_METAFILE_PS_H	*/

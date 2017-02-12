@@ -35,7 +35,7 @@ CFLAGS=	\
 
 #CFLAGS= -g -O2 $(WFLAGS) $(INCLUDES)
 
-# 14!!obs
+# 13!!obs
 OBS	=	\
 		drawWinMetaText.o\
 		drawWinMetaPsFonts.o\
@@ -45,7 +45,6 @@ OBS	=	\
 		drawPlayMacPict.o\
 		drawPlayEmf.o\
 		drawMetafileSvg.o\
-		drawMetafilePsProcs.o\
 		drawMetafilePs.o\
 		drawMetafileImpl.o\
 		drawImageSvg.o
@@ -71,6 +70,7 @@ drawImageSvg.o: \
     ../appUtil/geoRectangle.h \
     ../appUtil/sioBase64.h \
     ../appUtil/sioGeneral.h \
+    ../appUtil/sioUtil.h \
     ../appUtil/utilColor.h \
     ../appUtil/utilPalette.h \
     ../appUtil/xmlWriter.h \
@@ -139,21 +139,6 @@ drawMetafilePs.o: \
     ../utilPs/psTextExtents.h \
     ../utilPs/textAttribute.h \
     drawMetafilePs.c
-
-drawMetafilePsProcs.o: \
-    ../appUtil/geoAffineTransform.h \
-    ../appUtil/geoDocumentPageSetup.h \
-    ../appUtil/geoRectangle.h \
-    ../appUtil/geoRectangleOffsets.h \
-    ../appUtil/sioGeneral.h \
-    ../appUtil/utilMemoryBuffer.h \
-    drawMetaConfig.h \
-    drawMetafilePs.h \
-    ../include/appDebug.h \
-    ../include/appDebugon.h \
-    ../utilPs/psNup.h \
-    ../utilPs/psPrint.h \
-    drawMetafilePsProcs.c
 
 drawMetafileSvg.o: \
     ../appUtil/geo2DInteger.h \

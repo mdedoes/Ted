@@ -189,7 +189,7 @@ int docRtfAdaptToParaProperties(	RtfReader *		rr )
 		rowNode->biRowForTable= 0;
 		}
 	    else{
-		LDEB(rowNode->biChildCount);
+		SLDEB("###",rowNode->biChildCount);
 		LLDEB(paraNode->biParaProperties->ppTableNesting,
 						    rowNode->biRowForTable);
 		}

@@ -56,7 +56,7 @@ int sioInGetUtf8(	SimpleInputStream *	sis )
 	step++;
 	}
 
-    if  ( step >= Utf8RangeCount- 1 )
+    if  ( step == Utf8RangeCount- 1 )
 	{ XLLDEB(buf[0],step,Utf8RangeCount); return -1;	}
 
     if  ( step == 1 )

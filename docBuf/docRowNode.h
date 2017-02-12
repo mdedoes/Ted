@@ -134,6 +134,7 @@ typedef struct RowNode
 					BIU.biuRow.brAboveHeaderPosition
 #	define	biRowForTable		BIU.biuRow.brForTable
 
-#   define	biRowProperties	BIU.biuRow.brProperties
+#   define	biRowProperties		BIU.biuRow.brProperties
+#   define	biRowPropertyNumber	BIU.biuRow.brRowPropertyNumber
 
 #   endif

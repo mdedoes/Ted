@@ -147,8 +147,7 @@ static int docPsPrintIncludeEpsObject(	PrintingState *		ps,
     drTo.drX1= drTo.drX0+ ( io->ioScaleXUsed/ 100.0 )* 20* io->ioTwipsWide;
     drTo.drY1= drTo.drY0- ( io->ioScaleYUsed/ 100.0 )* 20* io->ioTwipsHigh;
 
-    psBeginEpsObject( ps->psSos, &drTo, &drBBox,
-			utilMemoryBufferGetString( &(io->ioObjectData) ) );
+    psBeginEpsObject( ps->psSos, &drTo, &drBBox, &(io->ioObjectData) );
 
     if  ( psIncludeEpsFile( ps->psSos, or.orSisHex ) )
 	{ LDEB(1); rval= -1;	}

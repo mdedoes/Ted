@@ -82,14 +82,15 @@ XDEB(ownData); SDEB("IS PLAATJE");
     return rval;
     }
 
-static int docOpenRasterObject( DrawingSurface *		pSp,
-				RasterImage *			ri,
-				int				pixelsWide,
-				int				pixelsHigh,
-				bmReadBitmap			readRaster,
-				const char *			suggestedExtension,
-				const LayoutContext *		lc,
-				const MemoryBuffer *		mb )
+static int docOpenRasterObject(
+			DrawingSurface *		pSp,
+			RasterImage *			ri,
+			int				pixelsWide,
+			int				pixelsHigh,
+			bmReadBitmap			readRaster,
+			const char *			suggestedExtension,
+			const LayoutContext *		lc,
+			const MemoryBuffer *		mb )
     {
     int			rval= 0;
 

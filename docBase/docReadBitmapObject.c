@@ -177,18 +177,18 @@ int docGetRasterImageForObjectData(	int			kind,
     switch( kind )
 	{
 	case DOCokPICTWMETAFILE:
-	    if  ( bmReadRasterObject( ri, appMetaPlayWmfImg, "wmf", mb )	)
-		{ LDEB(1); return -1;	}
+	    if  ( bmReadRasterObject( ri, appMetaPlayWmfImg, "wmf", mb ) )
+		{ LDEB(kind); return -1;	}
 	    break;
 
 	case DOCokPICTPNGBLIP:
 	    if  ( bmReadRasterObject( ri, bmPngReadPng, "png", mb )	)
-		{ LDEB(1); return -1;	}
+		{ LDEB(kind); return -1;	}
 	    break;
 
 	case DOCokPICTJPEGBLIP:
 	    if  ( bmReadRasterObject( ri, bmJpegReadJfif, "jpg", mb )	)
-		{ LDEB(1); return -1;	}
+		{ LDEB(kind); return -1;	}
 
 	    break;
 

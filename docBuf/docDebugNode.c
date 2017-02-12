@@ -158,6 +158,18 @@ static int docCheckChild(	const BufferItem *	parent,
 	    {
 	    SDEB("#######");
 	    LLDEB(tableNesting,nodeTableNesting);
+	    if  ( tableNesting > 0 && nodeTableNesting == 0 )
+		{
+		const BufferItem *	rowNode;
+
+		rowNode= docGetRowNode( (BufferItem *)child );
+		if  ( ! rowNode )
+		    { XDEB(rowNode);	}
+		else{
+		    LLDEB(rowNode->biRowPropertyNumber,
+					rowNode->biRowProperties->rpCellCount);
+		    }
+		}
 	    rval= -1;
 	    }
 	}
@@ -765,9 +777,8 @@ void docListNode(	int				indent,
     for ( i= 0; i < indent; i++ )
 	{ appDebug( "%-*s", IS, "." );	}
 
-    appDebug( "NODE %4d 0x%08lx: %s(%s) LEFT= %d P%d/C%d/Y%d..P%d/C%d/Y%d\n",
+    appDebug( "NODE %4d %s(%s) LEFT= %d P%d/C%d/Y%d..P%d/C%d/Y%d\n",
 			    node->biNumberInParent,
-			    (unsigned long)node,
 			    docLevelStr( node->biLevel ),
 			    docTreeTypeStr( node->biTreeType ),
 			    node->biLeftParagraphs,

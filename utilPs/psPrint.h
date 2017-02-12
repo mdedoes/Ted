@@ -159,10 +159,10 @@ extern void psDefineProcedure(	struct SimpleOutputStream *	sos,
 
 extern void psDefineEpsProcs(	struct SimpleOutputStream *	sos );
 
-extern void psBeginEpsObject(		struct SimpleOutputStream *		sos,
-					const DocumentRectangle *	drTo,
-					const DocumentRectangle *	drBBox,
-					const char *			file );
+extern void psBeginEpsObject(	struct SimpleOutputStream *	sos,
+				const struct DocumentRectangle * drTo,
+				const struct DocumentRectangle * drBBox,
+				const struct MemoryBuffer *	fileName );
 
 extern void psEndEpsObject(		struct SimpleOutputStream *	sos );
 
