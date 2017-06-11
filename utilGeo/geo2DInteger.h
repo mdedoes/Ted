@@ -15,6 +15,10 @@ typedef struct Point2DI
     int		y;
     } Point2DI;
 
+#   define POINT2IDEB(p) appDebug(					\
+			    "%s(%3d) %s= (%d,%d)\n",			\
+			    __FILE__, __LINE__, #p, (p)->x, (p)->y )
+
 /**
   * A two dimensional arc
   */

@@ -29,6 +29,7 @@
 #   include	<appEditDocument.h>
 #   include	<docBuf.h>
 #   include	<appPrintDialog.h>
+#   include	<bitmap.h>
 
 #   include	<appDebugon.h>
 
@@ -81,6 +82,10 @@ void tedDetermineDefaultSettings(	TedAppResources *	tar )
 					    tar->tarOverridePaperSizeString ) )
 	{ SDEB(tar->tarOverridePaperSizeString);	}
 
+    if  ( appDetermineBoolean( &(tar->tarInlineHtmlImagesInt),
+					    tar->tarInlineHtmlImagesString ) )
+	{ SDEB(tar->tarInlineHtmlImagesString);	}
+
     return;
     }
 
@@ -119,10 +124,11 @@ static int	tedBuildOpenImageExtensions(	TedAppResources *	tar )
 
 /************************************************************************/
 
-static int tedInsertDocumentFile(	EditDocument *		ed,
-					APP_WIDGET		relative,
-					APP_WIDGET		option,
-					const struct MemoryBuffer *	filename )
+static int tedInsertDocumentFile(
+				EditDocument *			ed,
+				APP_WIDGET			relative,
+				APP_WIDGET			option,
+				const struct MemoryBuffer *	filename )
     {
     int			rval= 0;
 

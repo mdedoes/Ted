@@ -34,4 +34,5 @@ AC_SUBST(CC)
 AC_SUBST(CFLAGS)
 
 AC_CONFIG_HEADER(bitmapConfig.h)
-AC_OUTPUT(makefile)
+AC_CONFIG_FILES(makefile)
+AC_OUTPUT

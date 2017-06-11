@@ -208,7 +208,7 @@ int docRtfSaveSectionPropertiesOfNode(
     PROPmaskUNSET( &dgSetMask, DGpropHEADER_POSITION );
     PROPmaskUNSET( &dgSetMask, DGpropFOOTER_POSITION );
 
-    utilUpdDocumentGeometry( (PropertyMask *)0, &(spDef.spDocumentGeometry),
+    geoUpdDocumentGeometry( (PropertyMask *)0, &(spDef.spDocumentGeometry),
 						&dgSetMask, &(dp->dpGeometry) );
 
     spDef.spNotesProperties= dp->dpNotesProps;

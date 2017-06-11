@@ -627,6 +627,9 @@ void appCleanSymbolPicker(	SymbolPicker *	sp )
     if  ( sp->spDrawingSurface )
 	{ drawFreeDrawingSurface( sp->spDrawingSurface );	}
 
+    if  ( sp->spUnicodeBlocks )
+	{ free( sp->spUnicodeBlocks );	}
+
     return;
     }
 

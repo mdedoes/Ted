@@ -8,6 +8,7 @@
 
 #   include	<stddef.h>
 #   include	<stdio.h>
+#   include	<stdlib.h>
 
 #   include	"docDraw.h"
 #   include	"docDrawLine.h"
@@ -23,6 +24,7 @@
 #   include	<docObject.h>
 #   include	<psFace.h>
 #   include	<psPrint.h>
+#   include	<geoAffineTransform.h>
 
 #   include	<appDebugon.h>
 
@@ -240,9 +242,11 @@ static int docPsPrintShapeRaster(	int				kind,
 					PrintingState *			ps,
 					DrawingShape *			ds,
 					const DocumentRectangle *	drTwips,
-					const AffineTransform2D *	at )
+					const struct AffineTransform2D * at )
     {
     const PictureProperties *	pip= &(ds->dsPictureProperties);
+
+    AffineTransform2D		atRaster;
 
     if  ( ! ds->dsRasterImage.riBytes )
 	{
@@ -268,15 +272,16 @@ static int docPsPrintShapeRaster(	int				kind,
 	geoTranslationAffineTransform2D( &atLocal, -0.5, 0.5 );
 	geoAffineTransform2DProduct( &atLocal, at, &atLocal );
 
-	x0= AT2_X( 0, 0, &atLocal );
-	y0= AT2_Y( 0, 0, &atLocal );
-
 	docObjectGetCropRect( &drSel, pip, &(ds->dsRasterImage.riDescription) );
 
+	x0= AT2_X( 0, 0, &atLocal );
+	y0= AT2_Y( 0, 0, &atLocal );
 	xs= drTwips->drX1- drTwips->drX0+ 1;
 	ys= drTwips->drY1- drTwips->drY0+ 1;
 
-	if  ( bmPsPrintRasterImage( ps->psSos, xs, -ys, x0, y0, &drSel,
+	geoScaleAffineTransform2D( &atRaster, xs, -ys );
+	geoAffineTransform2DThenTranslate( &atRaster, x0, y0, &atRaster );
+	if  ( bmPsPrintRasterImage( ps->psSos, &atRaster, &drSel,
 					onWhite,
 					ps->psUsePostScriptFilters,
 					ps->psUsePostScriptIndexedImages,
@@ -293,7 +298,7 @@ int docPsPrintShapeImage(	PrintingState *			ps,
 				DrawingContext *		dc,
 				DrawingShape *			ds,
 				const DocumentRectangle *	drTwips,
-				const AffineTransform2D *	at )
+				const struct AffineTransform2D * at )
     {
     const PictureProperties *	pip= &(ds->dsPictureProperties);
     const LayoutContext *	lc= &(dc->dcLayoutContext);

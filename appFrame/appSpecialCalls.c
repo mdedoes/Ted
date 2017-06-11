@@ -9,9 +9,9 @@
 #   include	<stddef.h>
 #   include	<stdio.h>
 #   include	<string.h>
-#   include	<signal.h>
 
 #   include	"appEditApplication.h"
+#   include	"appPrintDocument.h"
 #   include	<utilMemoryBuffer.h>
 
 #   include	<appDebugon.h>

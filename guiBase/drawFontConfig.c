@@ -35,6 +35,13 @@ static const char * drawFtErrorStr( int e );
 static int		APP_FreeTypeInitialized= 0;
 static FT_Library	APP_FT_Library;
 
+# if 1
+static void drawFcDone_FreeType( void )
+    {
+    FT_Done_FreeType( APP_FT_Library );
+    }
+# endif
+
 static void drawFcScaleRect(	DocumentRectangle *	abb,
 				int			upm )
     {
@@ -574,6 +581,10 @@ int drawFcListFonts(	PostScriptFontList *	psfl )
 	if  ( FcInit() != FcTrue )
 	    { LDEB(1); rval= -1; goto ready;	}
 
+	/* Crashes for one reason or another
+	atexit( FcFini );
+	*/
+
 	APP_FontConfigInitialized= 1;
 	}
 
@@ -583,6 +594,8 @@ int drawFcListFonts(	PostScriptFontList *	psfl )
 
 	if  ( fterror )
 	    { LDEB(fterror); rval= -1; goto ready;	}
+
+	atexit( drawFcDone_FreeType );
 
 	APP_FreeTypeInitialized= 1;
 	}

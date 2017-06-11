@@ -101,6 +101,7 @@ int docEmlSaveDocument(		SimpleOutputStream *	sos,
     hwc.hwcDocument= bd;
     hwc.hwcInlineCss= 1;
     hwc.hwcInlineNotes= 0;
+    hwc.hwcInlineImages= 0;
 
     ew.ewMimeBoundary= mimeBoundary;
     ew.ewContentIdTail[0]= '.';
@@ -169,7 +170,7 @@ int docEmlSaveDocument(		SimpleOutputStream *	sos,
 	}
 
     if  ( hwc.hwcImageCount > 0		&&
-	  docHtmlSaveImages( &hwc )	)
+	  docHtmlSaveImageFiles( &hwc )	)
 	{ LDEB(hwc.hwcImageCount); rval= -1; goto ready;	}
 
     sioOutPutString( "--", sos );

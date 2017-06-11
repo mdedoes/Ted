@@ -257,7 +257,11 @@ int appMakeDocumentWidget(	EditDocument *		ed )
 
     gtk_widget_show( ed->edDocumentWidget.dwWidget );
 
+#   if (GTK_MAJOR_VERSION == 2 && GTK_MINOR_VERSION <= 12)
+    GTK_WIDGET_SET_FLAGS( ed->edDocumentWidget.dwWidget, GTK_CAN_FOCUS );
+#   else
     gtk_widget_set_can_focus( ed->edDocumentWidget.dwWidget, TRUE );
+#   endif
     gtk_window_set_focus( GTK_WINDOW( ed->edToplevel.atTopWidget ),
 					    ed->edDocumentWidget.dwWidget );
 

@@ -829,9 +829,7 @@ int docLayoutRowNode(	int *				pStopCode,
 	     *  rows are not contiguous at the top of the table.  */
 	    if  ( rowNode->biNumberInParent < rowNode->biRowPastHeaderRow ||
 		  rowNode->biRowPastHeaderRow <= rowNode->biRowTableFirst )
-		{
-		rowNode->biRowAboveHeaderPosition= rowNode->biTopPosition;
-		}
+		{ rowNode->biRowAboveHeaderPosition= rowNode->biTopPosition; }
 
 	    if  ( docLayoutStartRowCells( rowNode, lj,
 					    &lpHere, &(rowPlj.pljPos) ) )

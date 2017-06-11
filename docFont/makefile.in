@@ -3,6 +3,7 @@ CC=@CC@
 INCLUDES=			\
 	-I../utilPs		\
 	-I../textEncoding	\
+	-I../utilGeo		\
 	-I../appUtil		\
 	-I../include
 
@@ -59,7 +60,7 @@ duplicates:
 includes:
 	includes.sh docFontConfig.h $(INCLUDES)
 
-# deps -I../include -I../textEncoding -I../appUtil -I../utilPs -I.
+# deps -I../include -I../textEncoding -I../utilGeo -I../appUtil -I../utilPs -I.
 ################################# !! sh
 
 cssFontFamily.o: \
@@ -137,7 +138,6 @@ fontEncodedFont.o: \
 
 fontMatchFont.o: \
     ../appUtil/appUtilConfig.h \
-    ../appUtil/geo2DInteger.h \
     ../appUtil/utilIndexMapping.h \
     ../appUtil/utilIndexSet.h \
     ../appUtil/utilMemoryBuffer.h \
@@ -148,6 +148,7 @@ fontMatchFont.o: \
     ../include/appDebug.h \
     ../include/appDebugon.h \
     ../textEncoding/textOfficeCharset.h \
+    ../utilGeo/geoRectangle.h \
     ../utilPs/psDocumentFontStyle.h \
     ../utilPs/psFontFamily.h \
     ../utilPs/psFontInfo.h \

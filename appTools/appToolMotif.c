@@ -11,6 +11,7 @@
 #   include	<guiWidgets.h>
 #   include	<guiWidgetsImpl.h>
 #   include	"appVerticalTool.h"
+#   include	<appGuiApplication.h>
 
 #   include	<appDebugon.h>
 

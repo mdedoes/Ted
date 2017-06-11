@@ -96,7 +96,7 @@ int psNupFitPagesToSheet(
     return 0;
     }
 
-int utilNupGetBaseTranform(
+int psNupGetBaseTranform(
 			AffineTransform2D *		pAt1Page,
 			int *				pRotatePages,
 			const PrintGeometry *		pg,
@@ -240,7 +240,7 @@ void psNupSheetBoundingBox(
     else{ at= ns->nsNupTransforms;	}
 
     /**/
-    utilDocumentGeometryGetPageBoundingBox( &drBBox, dgPage,
+    geoDocumentGeometryGetPageBoundingBox( &drBBox, dgPage,
 					    hasPageHeader, hasPageFooter );
 
     for ( i= 0; i < ns->nsNup; at++, i++ )
@@ -271,7 +271,7 @@ void psNupSheetBoundingBox(
 /*									*/
 /************************************************************************/
 
-void utilNupGetPageTranform(
+void psNupGetPageTranform(
 			AffineTransform2D *		at,
 			const NupSchema *		ns,
 			int				page )
@@ -386,7 +386,7 @@ static void utilNupSetSheetGrid(	NupSchema *		ns,
 /*									*/
 /************************************************************************/
 
-int utilNupSetSchema(	NupSchema *			ns,
+int psNupSetSchema(	NupSchema *			ns,
 			int				rotateSheetGrid,
 			const AffineTransform2D *	at1Page,
 			const PrintGeometry *		pg,
@@ -452,7 +452,7 @@ int utilNupSetSchema(	NupSchema *			ns,
 
 void psInitPrintGeometry(	PrintGeometry *	pg )
     {
-    utilInitDocumentGeometry( &(pg->pgSheetGeometry) );
+    geoInitDocumentGeometry( &(pg->pgSheetGeometry) );
 
     pg->pgRotatePage90= 0;
     pg->pgCenterPageHorizontally= 0;

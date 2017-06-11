@@ -156,7 +156,7 @@ int docShapeCheckTextLayout(
     const int		page= 0;
     const int		column= 0;
 
-    utilInitDocumentGeometry( &dgBox );
+    geoInitDocumentGeometry( &dgBox );
 
     docShapeRootGeometry( &dgBox, &(ds->dsDrawing), drInside );
 

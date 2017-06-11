@@ -31,31 +31,31 @@
 
 #   include	<appDebugon.h>
 
-typedef struct PlainWritingContext
+typedef struct PlainDocumentWriter
     {
-    SimpleOutputStream *	pwcSos;
-    struct BufferDocument *	pwcDocument;
+    SimpleOutputStream *	pdwSos;
+    struct BufferDocument *	pdwDocument;
 
-    int				pwcFold;
-    int				pwcHasOpenEnd;
-    int				pwcNoteRefCount;
-    int				pwcNoteDefCount;
-    } PlainWritingContext;
+    int				pdwFold;
+    int				pdwHasOpenEnd;
+    int				pdwNoteRefCount;
+    int				pdwNoteDefCount;
+    } PlainDocumentWriter;
 
-static void docInitPlainWritingContext(	PlainWritingContext *	pwc )
+static void docInitPlainWritingContext(	PlainDocumentWriter *	pdw )
     {
-    pwc->pwcSos= (SimpleOutputStream *)0;
-    pwc->pwcDocument= (struct BufferDocument *)0;
+    pdw->pdwSos= (SimpleOutputStream *)0;
+    pdw->pdwDocument= (struct BufferDocument *)0;
 
-    pwc->pwcFold= 0;
-    pwc->pwcHasOpenEnd= 0;
-    pwc->pwcNoteRefCount= 0;
-    pwc->pwcNoteDefCount= 0;
+    pdw->pdwFold= 0;
+    pdw->pdwHasOpenEnd= 0;
+    pdw->pdwNoteRefCount= 0;
+    pdw->pdwNoteDefCount= 0;
     }
 
 typedef struct PlainParagraphWriter
     {
-    PlainWritingContext *	ppwPlainWriter;
+    PlainDocumentWriter *	ppwPlainWriter;
     int				ppwPos;
     int				ppwLineCount;
     unsigned char		ppwClose;
@@ -65,8 +65,8 @@ static int docPlainSaveParticule( const VisitParticule *	vp,
 				void *				vppw )
     {
     PlainParagraphWriter *	ppw= (PlainParagraphWriter *)vppw;
-    PlainWritingContext *	pwc= ppw->ppwPlainWriter;
-    SimpleOutputStream *	sos= pwc->pwcSos;
+    PlainDocumentWriter *	pdw= ppw->ppwPlainWriter;
+    SimpleOutputStream *	sos= pdw->pdwSos;
 
     switch( vp->vpTextParticule->tpKind )
 	{
@@ -112,8 +112,8 @@ static int docPlainSaveField(	const VisitParticule *	vp,
 				void *			vppw )
     {
     PlainParagraphWriter *	ppw= (PlainParagraphWriter *)vppw;
-    PlainWritingContext *	pwc= ppw->ppwPlainWriter;
-    SimpleOutputStream *	sos= pwc->pwcSos;
+    PlainDocumentWriter *	pdw= ppw->ppwPlainWriter;
+    SimpleOutputStream *	sos= pdw->pdwSos;
 
     if  ( df->dfKind == DOCfkPAGEREF )
 	{ return SCANadviceSKIP;	}
@@ -124,12 +124,12 @@ static int docPlainSaveField(	const VisitParticule *	vp,
 
 	if  ( vp->vpParaNode->biTreeType == DOCinBODY )
 	    {
-	    sprintf( scratch, "[%d]", pwc->pwcNoteRefCount+ 1 );
-	    pwc->pwcNoteRefCount++;
+	    sprintf( scratch, "[%d]", pdw->pdwNoteRefCount+ 1 );
+	    pdw->pdwNoteRefCount++;
 	    }
 	else{
-	    sprintf( scratch, "[%d]", pwc->pwcNoteDefCount+ 1 );
-	    pwc->pwcNoteDefCount++;
+	    sprintf( scratch, "[%d]", pdw->pdwNoteDefCount+ 1 );
+	    pdw->pdwNoteDefCount++;
 	    }
 
 	sioOutPutString( scratch, sos );
@@ -145,8 +145,8 @@ static int docPlainSaveRun(	const TextRun *		tr,
 				void *			vppw )
     {
     PlainParagraphWriter *	ppw= (PlainParagraphWriter *)vppw;
-    PlainWritingContext *	pwc= ppw->ppwPlainWriter;
-    SimpleOutputStream *	sos= pwc->pwcSos;
+    PlainDocumentWriter *	pdw= ppw->ppwPlainWriter;
+    SimpleOutputStream *	sos= pdw->pdwSos;
 
     const BufferItem *		paraNode= tr->trParaNode;
     const char *		s= docParaString( paraNode, tr->trStroff );
@@ -160,7 +160,7 @@ static int docPlainSaveRun(	const TextRun *		tr,
 	while( past < tr->trStrlen && s[past] == ' ' )
 	    {  past++;	}
 
-	if  ( pwc->pwcFold			&&
+	if  ( pdw->pdwFold			&&
 	      ppw->ppwPos > 8			&&
 	      ppw->ppwPos+ past- from >= 72	)
 	    {
@@ -189,28 +189,28 @@ static int docPlainSaveRun(	const TextRun *		tr,
     return SCANadviceOK;
     }
 
-static int docPlainSaveParaNode( PlainWritingContext *		pwc,
+static int docPlainSaveParaNode( PlainDocumentWriter *		pdw,
 				struct BufferItem *		paraNode,
 				const DocumentSelection *	ds )
     {
     PlainParagraphWriter	ppw;
     const int			scanFlags= 0;
 
-    ppw.ppwPlainWriter= pwc;
+    ppw.ppwPlainWriter= pdw;
     ppw.ppwPos= 0;
     ppw.ppwClose= 1;
 
     if  ( ds )
 	{
 	if  ( ds->dsTail.dpNode == paraNode )
-	    { ppw.ppwClose= ! pwc->pwcHasOpenEnd;	}
+	    { ppw.ppwClose= ! pdw->pdwHasOpenEnd;	}
 	}
     else{
 	if  ( ! docNextParagraph( (struct BufferItem *)paraNode ) )
-	    { ppw.ppwClose= ! pwc->pwcHasOpenEnd;	}
+	    { ppw.ppwClose= ! pdw->pdwHasOpenEnd;	}
 	}
 
-    if  ( docScanParagraphLogicalOrder( pwc->pwcDocument, paraNode,
+    if  ( docScanParagraphLogicalOrder( pdw->pdwDocument, paraNode,
 				ds, scanFlags,
 				docPlainSaveParticule,
 				docPlainSaveField,
@@ -222,7 +222,7 @@ static int docPlainSaveParaNode( PlainWritingContext *		pwc,
 
     if  ( ppw.ppwClose )
 	{
-	if  ( sioOutPutByte( '\n', pwc->pwcSos ) < 0 )
+	if  ( sioOutPutByte( '\n', pdw->pdwSos ) < 0 )
 	    { LDEB(1); return -1;	}
 	}
 
@@ -234,7 +234,7 @@ static int docPlainWriteEnterNode( struct BufferItem *		node,
 				const struct BufferItem *	bodySectNode,
 				void *				voidpwc )
     {
-    PlainWritingContext *	pwc= (PlainWritingContext *)voidpwc;
+    PlainDocumentWriter *	pdw= (PlainDocumentWriter *)voidpwc;
 
     switch( node->biLevel )
 	{
@@ -245,7 +245,7 @@ static int docPlainWriteEnterNode( struct BufferItem *		node,
 	    return SCANadviceOK;
 
 	case DOClevPARA:
-	    if  ( docPlainSaveParaNode( pwc, node, ds ) )
+	    if  ( docPlainSaveParaNode( pdw, node, ds ) )
 		{ LDEB(1); return -1;	}
 	    return SCANadviceOK;
 
@@ -261,35 +261,35 @@ int docPlainSaveDocument(	SimpleOutputStream *		sos,
 				int				fold )
     {
     const int			flags= 0;
-    PlainWritingContext		pwc;
+    PlainDocumentWriter		pdw;
 
-    docInitPlainWritingContext( &pwc );
+    docInitPlainWritingContext( &pdw );
 
-    pwc.pwcFold= fold;
-    pwc.pwcHasOpenEnd= bd->bdProperties->dpHasOpenEnd;
-    pwc.pwcDocument= bd;
-    pwc.pwcSos= sos;
+    pdw.pdwFold= fold;
+    pdw.pdwHasOpenEnd= bd->bdProperties->dpHasOpenEnd;
+    pdw.pdwDocument= bd;
+    pdw.pdwSos= sos;
 
     if  ( ds )
-	{ pwc.pwcHasOpenEnd= 1;	}
+	{ pdw.pdwHasOpenEnd= 1;	}
 
     if  ( ds )
 	{
 	if  ( docScanSelection( bd, ds,
 				docPlainWriteEnterNode, (NodeVisitor)0,
 				(TreeVisitor)0, (TreeVisitor)0, 
-				flags, (void *)&pwc ) < 0 )
+				flags, (void *)&pdw ) < 0 )
 	    { LDEB(1); return -1; }
 	}
     else{
 	if  ( docScanTree( bd, &(bd->bdBody),
 				docPlainWriteEnterNode, (NodeVisitor)0,
 				(TreeVisitor)0, (TreeVisitor)0, 
-				flags, (void *)&pwc ) < 0 )
+				flags, (void *)&pdw ) < 0 )
 	    { LDEB(1); return -1; }
 	}
 
-    if  ( ! ds && pwc.pwcNoteRefCount > 0 )
+    if  ( ! ds && pdw.pdwNoteRefCount > 0 )
 	{
 	DocumentField *	dfNote;
 	DocumentNote *	dn;
@@ -303,12 +303,12 @@ int docPlainSaveDocument(	SimpleOutputStream *		sos,
 	    if  ( docScanTree( bd, &(dn->dnDocumentTree),
 		    docPlainWriteEnterNode, (NodeVisitor)0,
 		    (TreeVisitor)0, (TreeVisitor)0, 
-		    flags, (void *)&pwc ) < 0 )
+		    flags, (void *)&pdw ) < 0 )
 		{ LDEB(1); return -1; }
 	    }
 
-	if  ( pwc.pwcNoteDefCount != pwc.pwcNoteRefCount )
-	    { LLDEB(pwc.pwcNoteDefCount,pwc.pwcNoteRefCount);	}
+	if  ( pdw.pdwNoteDefCount != pdw.pdwNoteRefCount )
+	    { LLDEB(pdw.pdwNoteDefCount,pdw.pdwNoteRefCount);	}
 	}
 
     return 0;

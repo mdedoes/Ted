@@ -13,10 +13,8 @@
 #   include "guiWidgetDrawingSurface.h"
 #   include <drawDrawingSurface.h>
 #   include "drawDrawingSurfaceImpl.h"
-#   include "drawScreenFontImpl.h"
 #   include "drawUtilGdk.h"
 #   include "drawImpl.h"
-#   include "drawImplXft.h"
 #   include "drawDrawingSurfacePrivate.h"
 #   include "guiDrawingWidget.h"
 #   include <geoRectangle.h>

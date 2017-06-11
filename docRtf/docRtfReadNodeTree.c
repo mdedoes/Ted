@@ -278,7 +278,7 @@ static int docRtfHierarchyCell(	const RtfControlWord *	rcw,
     if  ( rts->rtsNode->biLevel == DOClevPARA			&&
 	  rts->rtsNode->biParaProperties->ppTableNesting == 0	)
 	{
-	BufferItem *		rowNode= docGetRowLevelNode( rts->rtsNode );
+	struct BufferItem *	rowNode= docGetRowLevelNode( rts->rtsNode );
 	DocumentPosition	dpFirst;
 
 	if  ( ! rowNode || docHeadPosition( &dpFirst, rowNode ) )

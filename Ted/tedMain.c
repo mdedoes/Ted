@@ -116,6 +116,9 @@ static AppConfigurableResource TEDApplicationResourceTable[]=
     APP_RESOURCE( "overridePaperSize",
 		offsetof(TedAppResources,tarOverridePaperSizeString),
 		"0" ),
+    APP_RESOURCE( "inlineHtmlImages",
+		offsetof(TedAppResources,tarInlineHtmlImagesString),
+		"0" ),
 };
 
 

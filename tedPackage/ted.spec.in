@@ -71,9 +71,10 @@ zcat ${RPM_SOURCE_DIR}/ted-2.23h.src.tar.gz | tar xvf -
 ##  Install section:
 ##
 %install
-mkdir -p ${RPM_BUILD_ROOT}
-rm -rf ${RPM_BUILD_ROOT}/usr/share/Ted
-cat Ted-2.23h/tedPackage/ted-2.23h-linux-*.tar.gz | ( cd ${RPM_BUILD_ROOT} && umask 0 && tar xfz - )
+echo creating build root: %{buildroot}
+mkdir -p %{buildroot}
+rm -rf %{buildroot}/usr/share/Ted
+cat Ted-2.23h/tedPackage/ted-2.23h-linux-*.tar.gz | ( cd %{buildroot} && umask 0 && tar xfz - )
 ##
 ##  Files section:
 ##
@@ -189,7 +190,7 @@ cat Ted-2.23h/tedPackage/ted-2.23h-linux-*.tar.gz | ( cd ${RPM_BUILD_ROOT} && um
 ##
 %clean
 ( cd Ted-2.23h && make clean )
-rm -rf ${RPM_BUILD_ROOT}/usr/share/Ted
+rm -rf %{buildroot}/usr/share/Ted
 %post
 update-desktop-database -q || true
 %postun

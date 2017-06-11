@@ -39,11 +39,14 @@
 
 /************************************************************************/
 
-int docHtmlObjectSaveHow(	int *			pType,
-				const char **		pMimeType,
-				const char **		pExt,
-				const MemoryBuffer **	pObjectData,
-				const InsertedObject *	io )
+int docHtmlObjectSaveHow(	const HtmlWritingContext *	hwc,
+				int *				pType,
+				int *				pUseDataUrl,
+				bmWriteBitmap *			pWriteBitmap,
+				const char **			pMimeType,
+				const char **			pExt,
+				const MemoryBuffer **		pObjectData,
+				const InsertedObject *		io )
     {
     const RasterImage *		abi= &(io->ioRasterImage);
 
@@ -52,6 +55,8 @@ int docHtmlObjectSaveHow(	int *			pType,
 	  io->ioKind == DOCokMACPICT		)
 	{
 	*pType= io->ioKind;
+	*pUseDataUrl= 0;
+	*pWriteBitmap= (bmWriteBitmap)0;
 	*pMimeType= "image/svg+xml";
 	*pExt= "svg";
 	*pObjectData= &(io->ioObjectData);
@@ -61,6 +66,8 @@ int docHtmlObjectSaveHow(	int *			pType,
     if  ( io->ioKind == DOCokPICTJPEGBLIP )
 	{
 	*pType= io->ioKind;
+	*pUseDataUrl= hwc->hwcInlineImages;
+	*pWriteBitmap= bmJpegWriteJfif;
 	*pMimeType= "image/jpeg";
 	*pExt= "jpg";
 	*pObjectData= &(io->ioObjectData);
@@ -70,6 +77,8 @@ int docHtmlObjectSaveHow(	int *			pType,
     if  ( io->ioKind == DOCokPICTPNGBLIP )
 	{
 	*pType= io->ioKind;
+	*pUseDataUrl= hwc->hwcInlineImages;
+	*pWriteBitmap= bmPngWritePng;
 	*pMimeType= "image/png";
 	*pExt= "png";
 	*pObjectData= &(io->ioObjectData);
@@ -83,6 +92,7 @@ int docHtmlObjectSaveHow(	int *			pType,
 	      io->ioResultKind == DOCokMACPICT		)
 	    {
 	    *pType= io->ioResultKind;
+	    *pUseDataUrl= 0;
 	    *pMimeType= "image/svg+xml";
 	    *pExt= "svg";
 	    *pObjectData= &(io->ioResultData);
@@ -92,6 +102,8 @@ int docHtmlObjectSaveHow(	int *			pType,
 	if  ( io->ioResultKind == DOCokPICTJPEGBLIP )
 	    {
 	    *pType= io->ioResultKind;
+	    *pUseDataUrl= hwc->hwcInlineImages;
+	    *pWriteBitmap= bmJpegWriteJfif;
 	    *pMimeType= "image/jpeg";
 	    *pExt= "jpg";
 	    *pObjectData= &(io->ioResultData);
@@ -101,6 +113,8 @@ int docHtmlObjectSaveHow(	int *			pType,
 	if  ( io->ioResultKind == DOCokPICTPNGBLIP )
 	    {
 	    *pType= io->ioResultKind;
+	    *pUseDataUrl= hwc->hwcInlineImages;
+	    *pWriteBitmap= bmPngWritePng;
 	    *pMimeType= "image/png";
 	    *pExt= "png";
 	    *pObjectData= &(io->ioResultData);
@@ -111,6 +125,7 @@ int docHtmlObjectSaveHow(	int *			pType,
     if  ( io->ioKind == DOCokDRAWING_SHAPE )
 	{
 	*pType= io->ioKind;
+	*pUseDataUrl= 0;
 	*pMimeType= "image/svg+xml";
 	*pExt= "svg";
 	*pObjectData= (const MemoryBuffer *)0;
@@ -125,6 +140,8 @@ int docHtmlObjectSaveHow(	int *			pType,
 	  bmCanSaveAsContentType( &(abi->riDescription), "image/png" )	)
 	{
 	*pType= DOCokPICTPNGBLIP;
+	*pUseDataUrl= hwc->hwcInlineImages;
+	*pWriteBitmap= bmPngWritePng;
 	*pMimeType= "image/png";
 	*pExt= "png";
 	*pObjectData= (const MemoryBuffer *)0;
@@ -136,6 +153,8 @@ int docHtmlObjectSaveHow(	int *			pType,
     if  ( bmCanSaveAsContentType( &(abi->riDescription), "image/gif" ) )
 	{
 	*pType= DOCokGIF_FILE;
+	*pUseDataUrl= hwc->hwcInlineImages;
+	*pWriteBitmap= bmGifWriteGif;
 	*pMimeType= "image/gif";
 	*pExt= "gif";
 	*pObjectData= (const MemoryBuffer *)0;
@@ -146,6 +165,8 @@ int docHtmlObjectSaveHow(	int *			pType,
     if  ( bmCanSaveAsContentType( &(abi->riDescription), "image/jpeg" ) )
 	{
 	*pType= DOCokPICTJPEGBLIP;
+	*pUseDataUrl= hwc->hwcInlineImages;
+	*pWriteBitmap= bmJpegWriteJfif;
 	*pMimeType= "image/jpeg";
 	*pExt= "jpg";
 	*pObjectData= (const MemoryBuffer *)0;
@@ -171,10 +192,11 @@ static void docHtmlSetShapeRight(	char *			style )
     strcat( style, "margin: 5px 0 5px 5px;" );
     }
 
-static void docHtmlSetShapeStyle(	char *				style,
-					HtmlWritingContext *		hwc,
-					const struct BufferItem *	paraNode,
-					const InsertedObject *		io )
+static void docHtmlSetShapeStyle(
+			char *				style,
+			HtmlWritingContext *		hwc,
+			const struct BufferItem *	paraNode,
+			const InsertedObject *		io )
     {
     const DrawingShape *	ds= io->ioDrawingShape;
     const ShapeProperties *	sp= &(ds->dsShapeProperties);
@@ -246,7 +268,7 @@ static void docHtmlStartObject(	HtmlWritingContext *		hwc,
 				const InsertedObject *		io,
 				int				wide,
 				int				high,
-				const char *			mimeType,
+				const char *			contentType,
 				const MemoryBuffer *		src )
     {
     wide= TWIPS_TO_PIXELS( ( io->ioScaleXSet* wide )/100 );
@@ -254,7 +276,7 @@ static void docHtmlStartObject(	HtmlWritingContext *		hwc,
 
     docHtmlPutString( "<object", hwc );
 
-    docHtmlWriteStringAttribute( hwc, "type", mimeType );
+    docHtmlWriteStringAttribute( hwc, "type", contentType );
     docHtmlWriteStringAttribute( hwc, "data", utilMemoryBufferGetString( src ) );
 
     docHtmlWriteIntAttribute( hwc, "width", wide );
@@ -282,16 +304,16 @@ static void docHtmlStartObject(	HtmlWritingContext *		hwc,
 /*									*/
 /************************************************************************/
 
-static void docHtmlEmitImgElement(	HtmlWritingContext *		hwc,
-					const struct BufferItem *	paraNode,
-					const InsertedObject *		io,
-					int				wide,
-					int				high,
-					const MemoryBuffer *		src )
+static int docHtmlStartImgElement(
+				HtmlWritingContext *		hwc,
+				const struct BufferItem *	paraNode,
+				const InsertedObject *		io,
+				int				wide,
+				int				high )
     {
-    docHtmlPutString( "<img", hwc );
+    int				rval= 0;
 
-    docHtmlWriteStringAttribute( hwc, "src", utilMemoryBufferGetString( src ) );
+    docHtmlPutString( "<img", hwc );
 
     docHtmlWriteIntAttribute( hwc, "width", wide );
     docHtmlWriteIntAttribute( hwc, "height", high );
@@ -309,10 +331,8 @@ static void docHtmlEmitImgElement(	HtmlWritingContext *		hwc,
 	}
 
     docHtmlWriteStringAttribute( hwc, "alt", "<IMG>" );
-    docHtmlPutString( "/>", hwc );
-    docHtmlNewLine( hwc );
 
-    return;
+    return rval;
     }
 
 /************************************************************************/
@@ -382,11 +402,14 @@ int docHtmlSaveImgElement(	int *				pDone,
     int				wide;
     int				high;
 
-    const char *		mimeType;
+    const char *		contentType;
     const char *		ext;
-    const MemoryBuffer *	mb= (const MemoryBuffer *)0;
     int				type;
+    int				useDataUrl;
     int				asObject= 0;
+
+    const MemoryBuffer *	mb= (const MemoryBuffer *)0;
+    bmWriteBitmap		writeBitmap= (bmWriteBitmap)0;
 
     int				fixed= 0;
 
@@ -394,17 +417,19 @@ int docHtmlSaveImgElement(	int *				pDone,
 
     utilInitMemoryBuffer( &src );
 
-    if  ( ! hwc->hwcGetImageSrc )
-	{ XDEB(hwc->hwcGetImageSrc); rval= -1; goto ready;	}
-
-    if  ( docHtmlObjectSaveHow( &type, &mimeType, &ext, &mb, io ) )
+    if  ( docHtmlObjectSaveHow( hwc, &type, &useDataUrl,
+				&writeBitmap, &contentType, &ext, &mb, io ) )
 	{ *pDone= 0; rval= 1; goto ready;	}
-
-    if  ( (*hwc->hwcGetImageSrc)( &src, hwc, n, io, ext ) < 0 )
-	{ LSDEB(n,ext); rval= -1; goto ready;	}
 
     if  ( docCheckObjectLayout(	&fixed, io ) )
 	{ LDEB(1);	}
+
+    if  ( ! useDataUrl )
+	{
+	if  ( ! hwc->hwcGetImageSrc					||
+	      (*hwc->hwcGetImageSrc)( &src, hwc, n, io, ext ) < 0	)
+	    { LXSDEB(n,hwc->hwcGetImageSrc,ext); rval= -1; goto ready;	}
+	}
 
     switch( type )
 	{
@@ -412,12 +437,13 @@ int docHtmlSaveImgElement(	int *				pDone,
 	    {
 	    DocumentRectangle	drTwips;
 
-	    docPlaceRootShapeRect( &drTwips, &(io->ioDrawingShape->dsShapeProperties), 0, 0 );
+	    docPlaceRootShapeRect( &drTwips,
+			    &(io->ioDrawingShape->dsShapeProperties), 0, 0 );
 
 	    wide= drTwips.drX1- drTwips.drX0+ 1;
 	    high= drTwips.drY1- drTwips.drY0+ 1;
 
-	    docHtmlStartObject( hwc, paraNode, io, wide, high, mimeType, &src );
+	    docHtmlStartObject( hwc, paraNode, io, wide, high, contentType, &src );
 	    asObject= 1;
 	    }
 	    break;
@@ -428,7 +454,7 @@ int docHtmlSaveImgElement(	int *				pDone,
 	    wide= ( io->ioScaleXSet* io->ioTwipsWide )/100;
 	    high= ( io->ioScaleYSet* io->ioTwipsHigh )/100;
 
-	    docHtmlStartObject( hwc, paraNode, io, wide, high, mimeType, &src );
+	    docHtmlStartObject( hwc, paraNode, io, wide, high, contentType, &src );
 	    asObject= 1;
 	    break;
 
@@ -443,7 +469,21 @@ int docHtmlSaveImgElement(	int *				pDone,
 	    LDEB(type); *pDone= 0; rval= 1; goto ready;
 	}
 
-    docHtmlEmitImgElement( hwc, paraNode, io, wide, high, &src );
+    docHtmlStartImgElement( hwc, paraNode, io, wide, high );
+
+    if  ( useDataUrl )
+	{
+	XmlWriter *	xw= &(hwc->hwcXmlWriter);
+
+	xmlStartDataUrl( xw, "src", contentType );
+	}
+    else{
+	docHtmlWriteStringAttribute( hwc, "src",
+					utilMemoryBufferGetString( &src ) );
+	}
+
+    docHtmlPutString( "/>", hwc );
+    docHtmlNewLine( hwc );
 
     if  ( asObject )
 	{
@@ -470,7 +510,7 @@ int docHtmlSaveImgElement(	int *				pDone,
 static int docHtmlSaveDrawingShape(	HtmlWritingContext *	hwc,
 					int			n,
 					InsertedObject *	io,
-					const char *		mimeType,
+					const char *		contentType,
 					const char *		ext )
     {
     int				rval= 0;
@@ -500,7 +540,7 @@ static int docHtmlSaveDrawingShape(	HtmlWritingContext *	hwc,
     if  ( ! hwc->hwcOpenImageStream )
 	{ XDEB(hwc->hwcOpenImageStream); rval= -1; goto ready;	}
 
-    sosImage= (*hwc->hwcOpenImageStream)( hwc, n, io, mimeType, ext );
+    sosImage= (*hwc->hwcOpenImageStream)( hwc, n, io, contentType, ext );
     if  ( ! sosImage )
 	{ XDEB(sosImage); rval= -1; goto ready; }
 
@@ -528,7 +568,7 @@ static int docHtmlPlayMetafileToSvg(	HtmlWritingContext *	hwc,
 					InsertedObject *	io,
 					const MemoryBuffer *	mb,
 					MetafileWriteSvg	writeSvg,
-					const char *		mimeType,
+					const char *		contentType,
 					const char *		ext )
     {
     int				rval= 0;
@@ -549,7 +589,7 @@ static int docHtmlPlayMetafileToSvg(	HtmlWritingContext *	hwc,
     if  ( ! hwc->hwcOpenImageStream )
 	{ XDEB(hwc->hwcOpenImageStream); rval= -1; goto ready;	}
 
-    sosImage= (*hwc->hwcOpenImageStream)( hwc, n, io, mimeType, ext );
+    sosImage= (*hwc->hwcOpenImageStream)( hwc, n, io, contentType, ext );
     if  ( ! sosImage )
 	{ XDEB(sosImage); rval= -1; goto ready; }
 
@@ -569,7 +609,7 @@ static int docHtmlPlayMetafileToSvg(	HtmlWritingContext *	hwc,
     svgStartDocument( &sw );
 
     if  ( (*writeSvg)( &sw, &mp ) )
-	{ LSDEB(n,mimeType); rval= -1; goto ready;	}
+	{ LSDEB(n,contentType); rval= -1; goto ready;	}
 
     svgFinishDocument( &sw );
 
@@ -593,7 +633,7 @@ static int docHtmlSaveObjectData(	HtmlWritingContext *	hwc,
 					int			n,
 					InsertedObject *	io,
 					const MemoryBuffer *	mb,
-					const char *		mimeType,
+					const char *		contentType,
 					const char *		ext )
     {
     int				rval= 0;
@@ -606,7 +646,7 @@ static int docHtmlSaveObjectData(	HtmlWritingContext *	hwc,
     if  ( ! hwc->hwcOpenImageStream )
 	{ XDEB(hwc->hwcOpenImageStream); rval= -1; goto ready;	}
 
-    sosImage= (*hwc->hwcOpenImageStream)( hwc, n, io, mimeType, ext );
+    sosImage= (*hwc->hwcOpenImageStream)( hwc, n, io, contentType, ext );
     if  ( ! sosImage )
 	{ XDEB(sosImage); rval= -1; goto ready; }
 
@@ -628,15 +668,16 @@ static int docHtmlSaveObjectData(	HtmlWritingContext *	hwc,
 
 /************************************************************************/
 /*									*/
-/*  Save the images in the document.					*/
+/*  Save the data of the images in the document.			*/
+/*  This is for the images that were not directly embedded in the HTML.	*/
 /*									*/
 /************************************************************************/
 
-static int docHtmlSaveImageBytes(	HtmlWritingContext *	hwc,
+static int docHtmlSaveRasterBytes(	HtmlWritingContext *	hwc,
 					bmWriteBitmap		writeBitmap,
 					int			n,
 					InsertedObject *	io,
-					const char *		mimeType,
+					const char *		contentType,
 					const char *		ext )
     {
     int				rval= 0;
@@ -646,7 +687,7 @@ static int docHtmlSaveImageBytes(	HtmlWritingContext *	hwc,
     if  ( ! hwc->hwcOpenImageStream )
 	{ XDEB(hwc->hwcOpenImageStream); rval= -1; goto ready;	}
 
-    sosImage= (*hwc->hwcOpenImageStream)( hwc, n, io, mimeType, ext );
+    sosImage= (*hwc->hwcOpenImageStream)( hwc, n, io, contentType, ext );
     if  ( ! sosImage )
 	{ XDEB(sosImage); rval= -1; goto ready; }
 
@@ -662,51 +703,55 @@ static int docHtmlSaveImageBytes(	HtmlWritingContext *	hwc,
     return rval;
     }
 
-static int docHtmlSaveImage( int n, void * vio, void * vhwc )
+static int docHtmlSaveImageFile( int n, void * vio, void * vhwc )
     {
     HtmlWritingContext *	hwc= (HtmlWritingContext *)vhwc;
     InsertedObject *		io= (InsertedObject *)vio;
 
     int				type;
-    const char *		mimeType;
+    int				useDataUrl;
+    const char *		contentType;
     const char *		ext;
 
     int				fixed= 0;
 
     const MemoryBuffer *	mb= (const MemoryBuffer *)0;
+    bmWriteBitmap		writeBitmap= (bmWriteBitmap)0;
 
-    if  ( docHtmlObjectSaveHow( &type, &mimeType, &ext, &mb, io ) )
+    if  ( docHtmlObjectSaveHow( hwc, &type, &useDataUrl,
+			&writeBitmap, &contentType, &ext, &mb, io )	||
+	  useDataUrl							)
 	{ return 0;	}
 
-    if  ( docCheckObjectLayout(	&fixed, io ) )
+    if  ( docCheckObjectLayout( &fixed, io ) )
 	{ LDEB(1);	}
 
     switch( type )
 	{
 	case DOCokDRAWING_SHAPE:
-	    if  ( docHtmlSaveDrawingShape( hwc, n, io, mimeType, ext ) )
-		{ SDEB(mimeType); return -1;	}
+	    if  ( docHtmlSaveDrawingShape( hwc, n, io, contentType, ext ) )
+		{ SDEB(contentType); return -1;	}
 
 	    return 0;
 
 	case DOCokPICTWMETAFILE:
 	    if  ( docHtmlPlayMetafileToSvg( hwc, n, io, mb,
-				    appMetaPlayWmfSvg, mimeType, ext ) )
-		{ SDEB(mimeType); return -1;	}
+				    appMetaPlayWmfSvg, contentType, ext ) )
+		{ SDEB(contentType); return -1;	}
 
 	    return 0;
 
 	case DOCokPICTEMFBLIP:
 	    if  ( docHtmlPlayMetafileToSvg( hwc, n, io, mb,
-				    appMetaPlayEmfSvg, mimeType, ext ) )
-		{ SDEB(mimeType); return -1;	}
+				    appMetaPlayEmfSvg, contentType, ext ) )
+		{ SDEB(contentType); return -1;	}
 
 	    return 0;
 
 	case DOCokMACPICT:
 	    if  ( docHtmlPlayMetafileToSvg( hwc, n, io, mb,
-				    appMacPictPlayFileSvg, mimeType, ext ) )
-		{ SDEB(mimeType); return -1;	}
+				    appMacPictPlayFileSvg, contentType, ext ) )
+		{ SDEB(contentType); return -1;	}
 
 	    return 0;
 
@@ -714,8 +759,9 @@ static int docHtmlSaveImage( int n, void * vio, void * vhwc )
 	case DOCokPICTJPEGBLIP:
 	    if  ( mb )
 		{
-		if  ( docHtmlSaveObjectData( hwc, n, io, mb, mimeType, ext ) )
-		    { SDEB(mimeType); return -1;	}
+		if  ( docHtmlSaveObjectData( hwc,
+					n, io, mb, contentType, ext ) )
+		    { SDEB(contentType); return -1;	}
 
 		return 0;
 		}
@@ -728,40 +774,31 @@ static int docHtmlSaveImage( int n, void * vio, void * vhwc )
     if  ( ! io->ioRasterImage.riBytes )
 	{ XDEB(io->ioRasterImage.riBytes); return 0;	}
 
-    switch( type )
+    if  ( writeBitmap )
 	{
-	case DOCokPICTPNGBLIP:
-	    if  ( docHtmlSaveImageBytes( hwc, bmPngWritePng,
-						    n, io, mimeType, ext ) )
-		{ SDEB(mimeType); return -1;	}
+	if  ( docHtmlSaveRasterBytes( hwc, writeBitmap,
+						n, io, contentType, ext ) )
+	    { SDEB(contentType); return -1;	}
 
-	    return 0;
-
-	case DOCokPICTJPEGBLIP:
-	    if  ( docHtmlSaveImageBytes( hwc, bmJpegWriteJfif,
-						    n, io, mimeType, ext ) )
-		{ SDEB(mimeType); return -1;	}
-
-	    return 0;
-
-	case DOCokGIF_FILE:
-	    if  ( docHtmlSaveImageBytes( hwc, bmGifWriteGif,
-						    n, io, mimeType, ext ) )
-		{ SDEB(mimeType); return -1;	}
-
-	    return 0;
-
-	default:
-	    LLDEB(n,type); return 0;
+	return 0;
+	}
+    else{
+	LLDEB(n,type); return 0;
 	}
     }
 
-int docHtmlSaveImages(	HtmlWritingContext *		hwc )
+/************************************************************************/
+/*									*/
+/*  Save the content of images that have not been included in line	*/
+/*									*/
+/************************************************************************/
+
+int docHtmlSaveImageFiles(	HtmlWritingContext *		hwc )
     {
     struct BufferDocument *	bd= hwc->hwcDocument;
 
     utilPagedListForAll( &(bd->bdObjectList.iolPagedList),
-					    docHtmlSaveImage, (void *)hwc );
+					    docHtmlSaveImageFile, (void *)hwc );
 
     return 0;
     }

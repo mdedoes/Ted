@@ -13,6 +13,7 @@
 #   include	"appEditApplication.h"
 #   include	"appAppFront.h"
 #   include	<guiWidgets.h>
+#   include	"appGuiApplication.h"
 
 #   include	<appDebugon.h>
 

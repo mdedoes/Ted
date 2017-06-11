@@ -14,6 +14,9 @@
 #undef USE_FONTCONFIG
 #undef USE_ENCHANT
 
+#undef HAVE_LIBPAPER
+#undef USE_LIBPAPER
+
 /************************************************************************/
 /*									*/
 /*  Locations of application related files				*/

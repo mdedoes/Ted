@@ -7,7 +7,7 @@
 #   include	<utilIndexMapping.h>
 #   include	<docEditTrace.h>
 #   include	<docRecalculateFields.h>
-#   include	<bitmap.h>
+#   include	<utilColor.h>
 #   include	<guiWidgets.h>
 #   include	<docResizeHandles.h>
 
@@ -15,6 +15,7 @@ struct TedDocument;
 struct EditDocument;
 struct SimpleLocale;
 struct BufferDocument;
+struct RasterImage;
 
 /************************************************************************/
 /*									*/
@@ -174,7 +175,7 @@ typedef struct TedDocument
     MemoryBuffer		tdCopiedSelection;
     MemoryBuffer		tdCopiedFont;
     MemoryBuffer		tdCopiedRuler;
-    RasterImage			tdCopiedImage;
+    struct RasterImage *	tdCopiedImage;
     int				tdOwnsPrimarySelection;
 
     void *			tdFindProg;

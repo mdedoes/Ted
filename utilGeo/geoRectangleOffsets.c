@@ -1,4 +1,4 @@
-#   include	"appUtilConfig.h"
+#   include	"utilGeoConfig.h"
 
 #   include	"geoRectangleOffsets.h"
 

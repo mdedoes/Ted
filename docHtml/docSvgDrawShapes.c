@@ -111,6 +111,7 @@ static int docSvgDrawShapePath(	const DrawingShape *		ds,
 /************************************************************************/
 
 int docSvgDrawDrawDrawingShape(	const DocumentRectangle *	drOutside,
+				const AffineTransform2D *	atOutside,
 				int				page,
 				DrawingShape *			ds,
 				DrawingContext *		dc,
@@ -122,11 +123,11 @@ int docSvgDrawDrawDrawingShape(	const DocumentRectangle *	drOutside,
 
     int				rval= 0;
 
-    AffineTransform2D		at;
+    AffineTransform2D		atHere;
     DocumentRectangle		drHere;
     DocumentRectangle		drNorm;
 
-    docShapeGetRects( &drHere, &drNorm, drOutside, ds );
+    docShapeGetRects( &drHere, &drNorm, &atHere, drOutside, atOutside, ds );
 
     switch( sd->sdShapeType )
 	{
@@ -152,11 +153,11 @@ int docSvgDrawDrawDrawingShape(	const DocumentRectangle *	drOutside,
 	    if  ( docSvgDrawShapePath( ds, sp, drOutside, dc, sw ) )
 		{ LDEB(1); rval= -1;	}
 
-	    docShapeStartShapeTransform( &at, ds, drOutside,
+	    docShapeStartShapeTransform( &atHere, ds, drOutside,
 						    sp->spXSize, sp->spYSize );
 
 	    if  ( ds->dsPictureProperties.pipType != DOCokUNKNOWN )
-		{ docSvgDrawShapeImage( sw, dc, ds, &drNorm, &at ); }
+		{ docSvgDrawShapeImage( sw, dc, ds, &drNorm, &atHere ); }
 	    }
 	    break;
 
@@ -410,7 +411,7 @@ int docSvgDrawDrawDrawingShape(	const DocumentRectangle *	drOutside,
 		int		x0= ( drOutside->drX1- drOutside->drX0 )/ 2;
 		int		y0= ( drOutside->drY1- drOutside->drY0 )/ 2;
 
-		docShapeStartShapeTransform( &at, ds, drOutside,
+		docShapeStartShapeTransform( &atHere, ds, drOutside,
 					drOutside->drX1- drOutside->drX0,
 					drOutside->drY1- drOutside->drY0 );
 

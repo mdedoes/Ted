@@ -19,8 +19,6 @@ extern "C"
     {
 # endif
 
-struct PrintGeometry;
-struct PrintJob;
 struct EditDocument;
 struct AppSelectionTargetType;
 
@@ -168,10 +166,6 @@ extern int appSetDocumentFilename(	struct EditDocument *	ed,
 
 extern int appSetDocumentTitle(		struct EditDocument *	ed,
 					const struct MemoryBuffer *	title );
-
-extern void appPrintJobForEditDocument(	struct PrintJob *	pj,
-					struct EditDocument *		ed,
-					const struct PrintGeometry *	pg );
 
 # ifdef __cplusplus
     }

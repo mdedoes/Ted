@@ -446,6 +446,8 @@ static int tedRepeatReplace(	EditDocument *		ed,
 	if  ( tedEditIncludeDocument( &teo, &dcj,
 				    es->esCommand, es->esSelectionPosition ) )
 	    { LDEB(1); rval= -1; goto ready;	}
+
+	tedCleanEditOperation( &teo );
 	}
 
   ready:

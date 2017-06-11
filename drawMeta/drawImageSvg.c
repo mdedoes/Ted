@@ -45,8 +45,8 @@ int drawRasterImageSvg(		SvgWriter *			sw,
 				const DocumentRectangle *	drSrc,
 				const DocumentRectangle *	drDest )
     {
-    int				rval= 0;
-    XmlWriter *			xw= &(sw->swXmlWriter);
+    int			rval= 0;
+    XmlWriter *		xw= &(sw->swXmlWriter);
     const RasterImage *	ri= riSrc;
 
     RasterImage		riDest;
@@ -70,9 +70,7 @@ int drawRasterImageSvg(		SvgWriter *			sw,
 	}
 
     drawSvgStartImage( sw, drDest );
-
-    xmlPutString( " xlink:href=\"data:image/png;base64,", xw );
-    xmlNewLine( xw );
+    xmlStartDataUrl( xw, "xlink:href", "image/png" );
 
     sosBase64= sioOutBase64Open( xw->xwSos );
     if  ( ! sosBase64 )

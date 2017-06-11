@@ -3,7 +3,6 @@
 #   if USE_MOTIF
 
 #   include	"guiWidgets.h"
-#   include	"guiNamedImage.h"
 
 #   include	<Xm/PushB.h>
 

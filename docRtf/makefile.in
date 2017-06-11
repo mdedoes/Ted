@@ -28,6 +28,7 @@ INCLUDES=			\
 	-I../utilPs		\
 	-I../docFont		\
 	-I../textEncoding	\
+	-I../utilGeo		\
 	-I../appUtil		\
 	-I../include
 
@@ -166,12 +167,10 @@ duplicates:
 includes:
 	includes.sh docRtfConfig.h $(INCLUDES)
 
-# deps -I. -I../include -I../docBuf -I../docBase -I../bitmap  -I../textEncoding -I../appUtil -I ../docFont -I../utilPs
+# deps -I. -I../include -I../docBuf -I../docBase -I../bitmap  -I../textEncoding -I../utilGeo -I../appUtil -I ../docFont -I../utilPs
 ######################################## !! sh
 
 docPlainRead.o: \
-    ../appUtil/geoDocumentPageSetup.h \
-    ../appUtil/geoRectangleOffsets.h \
     ../appUtil/sioGeneral.h \
     ../appUtil/sioMemory.h \
     ../appUtil/utilColor.h \
@@ -207,12 +206,12 @@ docPlainRead.o: \
     ../include/appDebug.h \
     ../include/appDebugon.h \
     ../textEncoding/sioUtf8.h \
+    ../utilGeo/geoDocumentPageSetup.h \
+    ../utilGeo/geoRectangleOffsets.h \
     ../utilPs/textAttribute.h \
     docPlainRead.c
 
 docPlainWrite.o: \
-    ../appUtil/geoDocumentPageSetup.h \
-    ../appUtil/geoRectangleOffsets.h \
     ../appUtil/sioGeneral.h \
     ../appUtil/utilColor.h \
     ../appUtil/utilIndexSet.h \
@@ -257,11 +256,11 @@ docPlainWrite.o: \
     docRtfConfig.h \
     ../include/appDebug.h \
     ../include/appDebugon.h \
+    ../utilGeo/geoDocumentPageSetup.h \
+    ../utilGeo/geoRectangleOffsets.h \
     docPlainWrite.c
 
 docRtfBorderProperties.o: \
-    ../appUtil/geoDocumentPageSetup.h \
-    ../appUtil/geoRectangleOffsets.h \
     ../appUtil/utilColor.h \
     ../appUtil/utilIndexMapping.h \
     ../appUtil/utilIndexSet.h \
@@ -305,15 +304,12 @@ docRtfBorderProperties.o: \
     ../include/appDebug.h \
     ../include/appDebugon.h \
     ../textEncoding/textOfficeCharset.h \
+    ../utilGeo/geoDocumentPageSetup.h \
+    ../utilGeo/geoRectangleOffsets.h \
     ../utilPs/textAttribute.h \
     docRtfBorderProperties.c
 
 docRtfDrawingObject.o: \
-    ../appUtil/geo2DInteger.h \
-    ../appUtil/geoAffineTransform.h \
-    ../appUtil/geoDocumentPageSetup.h \
-    ../appUtil/geoRectangle.h \
-    ../appUtil/geoRectangleOffsets.h \
     ../appUtil/utilColor.h \
     ../appUtil/utilIndexMapping.h \
     ../appUtil/utilIndexSet.h \
@@ -363,12 +359,15 @@ docRtfDrawingObject.o: \
     ../include/appDebug.h \
     ../include/appDebugon.h \
     ../textEncoding/textOfficeCharset.h \
+    ../utilGeo/geo2DInteger.h \
+    ../utilGeo/geoAffineTransform.h \
+    ../utilGeo/geoDocumentPageSetup.h \
+    ../utilGeo/geoRectangle.h \
+    ../utilGeo/geoRectangleOffsets.h \
     ../utilPs/textAttribute.h \
     docRtfDrawingObject.c
 
 docRtfFrameProperties.o: \
-    ../appUtil/geoDocumentPageSetup.h \
-    ../appUtil/geoRectangleOffsets.h \
     ../appUtil/utilColor.h \
     ../appUtil/utilIndexMapping.h \
     ../appUtil/utilIndexSet.h \
@@ -410,6 +409,8 @@ docRtfFrameProperties.o: \
     ../include/appDebug.h \
     ../include/appDebugon.h \
     ../textEncoding/textOfficeCharset.h \
+    ../utilGeo/geoDocumentPageSetup.h \
+    ../utilGeo/geoRectangleOffsets.h \
     ../utilPs/textAttribute.h \
     docRtfFrameProperties.c
 
@@ -432,8 +433,6 @@ docRtfMakeLookup.o: \
     docRtfMakeLookup.c
 
 docRtfRead.o: \
-    ../appUtil/geoDocumentPageSetup.h \
-    ../appUtil/geoRectangleOffsets.h \
     ../appUtil/utilColor.h \
     ../appUtil/utilIndexMapping.h \
     ../appUtil/utilIndexSet.h \
@@ -498,12 +497,12 @@ docRtfRead.o: \
     ../include/appDebug.h \
     ../include/appDebugon.h \
     ../textEncoding/textOfficeCharset.h \
+    ../utilGeo/geoDocumentPageSetup.h \
+    ../utilGeo/geoRectangleOffsets.h \
     ../utilPs/textAttribute.h \
     docRtfRead.c
 
 docRtfReadCellProperties.o: \
-    ../appUtil/geoDocumentPageSetup.h \
-    ../appUtil/geoRectangleOffsets.h \
     ../appUtil/utilColor.h \
     ../appUtil/utilIndexMapping.h \
     ../appUtil/utilIndexSet.h \
@@ -545,12 +544,12 @@ docRtfReadCellProperties.o: \
     ../include/appDebug.h \
     ../include/appDebugon.h \
     ../textEncoding/textOfficeCharset.h \
+    ../utilGeo/geoDocumentPageSetup.h \
+    ../utilGeo/geoRectangleOffsets.h \
     ../utilPs/textAttribute.h \
     docRtfReadCellProperties.c
 
 docRtfReadColorTable.o: \
-    ../appUtil/geoDocumentPageSetup.h \
-    ../appUtil/geoRectangleOffsets.h \
     ../appUtil/utilColor.h \
     ../appUtil/utilIndexMapping.h \
     ../appUtil/utilIndexSet.h \
@@ -599,12 +598,12 @@ docRtfReadColorTable.o: \
     ../include/appDebug.h \
     ../include/appDebugon.h \
     ../textEncoding/textOfficeCharset.h \
+    ../utilGeo/geoDocumentPageSetup.h \
+    ../utilGeo/geoRectangleOffsets.h \
     ../utilPs/textAttribute.h \
     docRtfReadColorTable.c
 
 docRtfReadDocumentProperties.o: \
-    ../appUtil/geoDocumentPageSetup.h \
-    ../appUtil/geoRectangleOffsets.h \
     ../appUtil/utilColor.h \
     ../appUtil/utilDateTime.h \
     ../appUtil/utilIndexMapping.h \
@@ -654,12 +653,12 @@ docRtfReadDocumentProperties.o: \
     ../include/appDebugon.h \
     ../textEncoding/textConverter.h \
     ../textEncoding/textOfficeCharset.h \
+    ../utilGeo/geoDocumentPageSetup.h \
+    ../utilGeo/geoRectangleOffsets.h \
     ../utilPs/textAttribute.h \
     docRtfReadDocumentProperties.c
 
 docRtfReadDocumentTree.o: \
-    ../appUtil/geoDocumentPageSetup.h \
-    ../appUtil/geoRectangleOffsets.h \
     ../appUtil/utilColor.h \
     ../appUtil/utilIndexMapping.h \
     ../appUtil/utilIndexSet.h \
@@ -724,12 +723,12 @@ docRtfReadDocumentTree.o: \
     ../include/appDebug.h \
     ../include/appDebugon.h \
     ../textEncoding/textOfficeCharset.h \
+    ../utilGeo/geoDocumentPageSetup.h \
+    ../utilGeo/geoRectangleOffsets.h \
     ../utilPs/textAttribute.h \
     docRtfReadDocumentTree.c
 
 docRtfReadField.o: \
-    ../appUtil/geoDocumentPageSetup.h \
-    ../appUtil/geoRectangleOffsets.h \
     ../appUtil/utilColor.h \
     ../appUtil/utilIndexMapping.h \
     ../appUtil/utilIndexSet.h \
@@ -795,12 +794,12 @@ docRtfReadField.o: \
     ../include/appDebug.h \
     ../include/appDebugon.h \
     ../textEncoding/textOfficeCharset.h \
+    ../utilGeo/geoDocumentPageSetup.h \
+    ../utilGeo/geoRectangleOffsets.h \
     ../utilPs/textAttribute.h \
     docRtfReadField.c
 
 docRtfReadFontTable.o: \
-    ../appUtil/geoDocumentPageSetup.h \
-    ../appUtil/geoRectangleOffsets.h \
     ../appUtil/utilColor.h \
     ../appUtil/utilIndexMapping.h \
     ../appUtil/utilIndexSet.h \
@@ -850,12 +849,12 @@ docRtfReadFontTable.o: \
     ../include/appDebug.h \
     ../include/appDebugon.h \
     ../textEncoding/textOfficeCharset.h \
+    ../utilGeo/geoDocumentPageSetup.h \
+    ../utilGeo/geoRectangleOffsets.h \
     ../utilPs/textAttribute.h \
     docRtfReadFontTable.c
 
 docRtfReadFormField.o: \
-    ../appUtil/geoDocumentPageSetup.h \
-    ../appUtil/geoRectangleOffsets.h \
     ../appUtil/utilColor.h \
     ../appUtil/utilIndexMapping.h \
     ../appUtil/utilIndexSet.h \
@@ -896,12 +895,12 @@ docRtfReadFormField.o: \
     ../include/appDebug.h \
     ../include/appDebugon.h \
     ../textEncoding/textOfficeCharset.h \
+    ../utilGeo/geoDocumentPageSetup.h \
+    ../utilGeo/geoRectangleOffsets.h \
     ../utilPs/textAttribute.h \
     docRtfReadFormField.c
 
 docRtfReadListOverrideTable.o: \
-    ../appUtil/geoDocumentPageSetup.h \
-    ../appUtil/geoRectangleOffsets.h \
     ../appUtil/utilColor.h \
     ../appUtil/utilIndexMapping.h \
     ../appUtil/utilIndexSet.h \
@@ -952,12 +951,12 @@ docRtfReadListOverrideTable.o: \
     ../include/appDebug.h \
     ../include/appDebugon.h \
     ../textEncoding/textOfficeCharset.h \
+    ../utilGeo/geoDocumentPageSetup.h \
+    ../utilGeo/geoRectangleOffsets.h \
     ../utilPs/textAttribute.h \
     docRtfReadListOverrideTable.c
 
 docRtfReadListTable.o: \
-    ../appUtil/geoDocumentPageSetup.h \
-    ../appUtil/geoRectangleOffsets.h \
     ../appUtil/utilColor.h \
     ../appUtil/utilIndexMapping.h \
     ../appUtil/utilIndexSet.h \
@@ -1009,12 +1008,12 @@ docRtfReadListTable.o: \
     ../include/appDebug.h \
     ../include/appDebugon.h \
     ../textEncoding/textOfficeCharset.h \
+    ../utilGeo/geoDocumentPageSetup.h \
+    ../utilGeo/geoRectangleOffsets.h \
     ../utilPs/textAttribute.h \
     docRtfReadListTable.c
 
 docRtfReadNodeTree.o: \
-    ../appUtil/geoDocumentPageSetup.h \
-    ../appUtil/geoRectangleOffsets.h \
     ../appUtil/utilColor.h \
     ../appUtil/utilIndexMapping.h \
     ../appUtil/utilIndexSet.h \
@@ -1058,6 +1057,7 @@ docRtfReadNodeTree.o: \
     ../docBuf/docRowNode.h \
     ../docBuf/docRowNodeProperties.h \
     ../docBuf/docSectNode.h \
+    ../docBuf/docSelect.h \
     ../docBuf/docTreeNode.h \
     ../docFont/fontDocFont.h \
     ../docFont/fontEncodedFont.h \
@@ -1068,14 +1068,12 @@ docRtfReadNodeTree.o: \
     ../include/appDebug.h \
     ../include/appDebugon.h \
     ../textEncoding/textOfficeCharset.h \
+    ../utilGeo/geoDocumentPageSetup.h \
+    ../utilGeo/geoRectangleOffsets.h \
     ../utilPs/textAttribute.h \
     docRtfReadNodeTree.c
 
 docRtfReadObjects.o: \
-    ../appUtil/geoAffineTransform.h \
-    ../appUtil/geoDocumentPageSetup.h \
-    ../appUtil/geoRectangle.h \
-    ../appUtil/geoRectangleOffsets.h \
     ../appUtil/utilColor.h \
     ../appUtil/utilIndexMapping.h \
     ../appUtil/utilIndexSet.h \
@@ -1137,12 +1135,14 @@ docRtfReadObjects.o: \
     ../include/appDebug.h \
     ../include/appDebugon.h \
     ../textEncoding/textOfficeCharset.h \
+    ../utilGeo/geoAffineTransform.h \
+    ../utilGeo/geoDocumentPageSetup.h \
+    ../utilGeo/geoRectangle.h \
+    ../utilGeo/geoRectangleOffsets.h \
     ../utilPs/textAttribute.h \
     docRtfReadObjects.c
 
 docRtfReadParaProperties.o: \
-    ../appUtil/geoDocumentPageSetup.h \
-    ../appUtil/geoRectangleOffsets.h \
     ../appUtil/utilColor.h \
     ../appUtil/utilIndexMapping.h \
     ../appUtil/utilIndexSet.h \
@@ -1201,12 +1201,12 @@ docRtfReadParaProperties.o: \
     ../include/appDebug.h \
     ../include/appDebugon.h \
     ../textEncoding/textOfficeCharset.h \
+    ../utilGeo/geoDocumentPageSetup.h \
+    ../utilGeo/geoRectangleOffsets.h \
     ../utilPs/textAttribute.h \
     docRtfReadParaProperties.c
 
 docRtfReadParagraph.o: \
-    ../appUtil/geoDocumentPageSetup.h \
-    ../appUtil/geoRectangleOffsets.h \
     ../appUtil/utilColor.h \
     ../appUtil/utilIndexMapping.h \
     ../appUtil/utilIndexSet.h \
@@ -1264,12 +1264,12 @@ docRtfReadParagraph.o: \
     ../include/appDebug.h \
     ../include/appDebugon.h \
     ../textEncoding/textOfficeCharset.h \
+    ../utilGeo/geoDocumentPageSetup.h \
+    ../utilGeo/geoRectangleOffsets.h \
     ../utilPs/textAttribute.h \
     docRtfReadParagraph.c
 
 docRtfReadRowProperties.o: \
-    ../appUtil/geoDocumentPageSetup.h \
-    ../appUtil/geoRectangleOffsets.h \
     ../appUtil/utilColor.h \
     ../appUtil/utilIndexMapping.h \
     ../appUtil/utilIndexSet.h \
@@ -1311,12 +1311,12 @@ docRtfReadRowProperties.o: \
     ../include/appDebug.h \
     ../include/appDebugon.h \
     ../textEncoding/textOfficeCharset.h \
+    ../utilGeo/geoDocumentPageSetup.h \
+    ../utilGeo/geoRectangleOffsets.h \
     ../utilPs/textAttribute.h \
     docRtfReadRowProperties.c
 
 docRtfReadRtf.o: \
-    ../appUtil/geoDocumentPageSetup.h \
-    ../appUtil/geoRectangleOffsets.h \
     ../appUtil/sioGeneral.h \
     ../appUtil/utilColor.h \
     ../appUtil/utilIndexMapping.h \
@@ -1361,12 +1361,12 @@ docRtfReadRtf.o: \
     ../include/appDebugon.h \
     ../include/charnames.h \
     ../textEncoding/textOfficeCharset.h \
+    ../utilGeo/geoDocumentPageSetup.h \
+    ../utilGeo/geoRectangleOffsets.h \
     ../utilPs/textAttribute.h \
     docRtfReadRtf.c
 
 docRtfReadSectProperties.o: \
-    ../appUtil/geoDocumentPageSetup.h \
-    ../appUtil/geoRectangleOffsets.h \
     ../appUtil/utilColor.h \
     ../appUtil/utilIndexMapping.h \
     ../appUtil/utilIndexSet.h \
@@ -1422,15 +1422,12 @@ docRtfReadSectProperties.o: \
     ../include/appDebug.h \
     ../include/appDebugon.h \
     ../textEncoding/textOfficeCharset.h \
+    ../utilGeo/geoDocumentPageSetup.h \
+    ../utilGeo/geoRectangleOffsets.h \
     ../utilPs/textAttribute.h \
     docRtfReadSectProperties.c
 
 docRtfReadShape.o: \
-    ../appUtil/geo2DInteger.h \
-    ../appUtil/geoAffineTransform.h \
-    ../appUtil/geoDocumentPageSetup.h \
-    ../appUtil/geoRectangle.h \
-    ../appUtil/geoRectangleOffsets.h \
     ../appUtil/utilColor.h \
     ../appUtil/utilIndexMapping.h \
     ../appUtil/utilIndexSet.h \
@@ -1501,12 +1498,15 @@ docRtfReadShape.o: \
     ../include/appDebug.h \
     ../include/appDebugon.h \
     ../textEncoding/textOfficeCharset.h \
+    ../utilGeo/geo2DInteger.h \
+    ../utilGeo/geoAffineTransform.h \
+    ../utilGeo/geoDocumentPageSetup.h \
+    ../utilGeo/geoRectangle.h \
+    ../utilGeo/geoRectangleOffsets.h \
     ../utilPs/textAttribute.h \
     docRtfReadShape.c
 
 docRtfReadText.o: \
-    ../appUtil/geoDocumentPageSetup.h \
-    ../appUtil/geoRectangleOffsets.h \
     ../appUtil/utilColor.h \
     ../appUtil/utilIndexMapping.h \
     ../appUtil/utilIndexSet.h \
@@ -1565,12 +1565,12 @@ docRtfReadText.o: \
     ../textEncoding/textConverter.h \
     ../textEncoding/textOfficeCharset.h \
     ../textEncoding/uniUtf8.h \
+    ../utilGeo/geoDocumentPageSetup.h \
+    ../utilGeo/geoRectangleOffsets.h \
     ../utilPs/textAttribute.h \
     docRtfReadText.c
 
 docRtfReadTextProperties.o: \
-    ../appUtil/geoDocumentPageSetup.h \
-    ../appUtil/geoRectangleOffsets.h \
     ../appUtil/utilColor.h \
     ../appUtil/utilIndexMapping.h \
     ../appUtil/utilIndexSet.h \
@@ -1626,14 +1626,12 @@ docRtfReadTextProperties.o: \
     ../include/appDebug.h \
     ../include/appDebugon.h \
     ../textEncoding/textOfficeCharset.h \
+    ../utilGeo/geoDocumentPageSetup.h \
+    ../utilGeo/geoRectangleOffsets.h \
     ../utilPs/textAttribute.h \
     docRtfReadTextProperties.c
 
 docRtfReadTreeStack.o: \
-    ../appUtil/geoAffineTransform.h \
-    ../appUtil/geoDocumentPageSetup.h \
-    ../appUtil/geoRectangle.h \
-    ../appUtil/geoRectangleOffsets.h \
     ../appUtil/utilColor.h \
     ../appUtil/utilIndexMapping.h \
     ../appUtil/utilIndexSet.h \
@@ -1690,14 +1688,14 @@ docRtfReadTreeStack.o: \
     ../include/appDebug.h \
     ../include/appDebugon.h \
     ../textEncoding/textOfficeCharset.h \
+    ../utilGeo/geoAffineTransform.h \
+    ../utilGeo/geoDocumentPageSetup.h \
+    ../utilGeo/geoRectangle.h \
+    ../utilGeo/geoRectangleOffsets.h \
     ../utilPs/textAttribute.h \
     docRtfReadTreeStack.c
 
 docRtfReaderImpl.o: \
-    ../appUtil/geoAffineTransform.h \
-    ../appUtil/geoDocumentPageSetup.h \
-    ../appUtil/geoRectangle.h \
-    ../appUtil/geoRectangleOffsets.h \
     ../appUtil/utilColor.h \
     ../appUtil/utilDateTime.h \
     ../appUtil/utilIndexMapping.h \
@@ -1749,6 +1747,10 @@ docRtfReaderImpl.o: \
     ../include/appDebugon.h \
     ../textEncoding/textConverter.h \
     ../textEncoding/textOfficeCharset.h \
+    ../utilGeo/geoAffineTransform.h \
+    ../utilGeo/geoDocumentPageSetup.h \
+    ../utilGeo/geoRectangle.h \
+    ../utilGeo/geoRectangleOffsets.h \
     ../utilPs/textAttribute.h \
     docRtfReaderImpl.c
 
@@ -1770,8 +1772,6 @@ docRtfSaveCellProperties.o: \
     docRtfSaveCellProperties.c
 
 docRtfSaveDocument.o: \
-    ../appUtil/geoDocumentPageSetup.h \
-    ../appUtil/geoRectangleOffsets.h \
     ../appUtil/utilColor.h \
     ../appUtil/utilIndexSet.h \
     ../appUtil/utilMemoryBuffer.h \
@@ -1799,12 +1799,12 @@ docRtfSaveDocument.o: \
     docRtfWriterImpl.h \
     ../include/appDebug.h \
     ../include/appDebugon.h \
+    ../utilGeo/geoDocumentPageSetup.h \
+    ../utilGeo/geoRectangleOffsets.h \
     ../utilPs/textAttribute.h \
     docRtfSaveDocument.c
 
 docRtfSaveDocumentProperties.o: \
-    ../appUtil/geoDocumentPageSetup.h \
-    ../appUtil/geoRectangleOffsets.h \
     ../appUtil/utilColor.h \
     ../appUtil/utilIndexSet.h \
     ../appUtil/utilMemoryBuffer.h \
@@ -1834,6 +1834,8 @@ docRtfSaveDocumentProperties.o: \
     docRtfWriterImpl.h \
     ../include/appDebug.h \
     ../include/appDebugon.h \
+    ../utilGeo/geoDocumentPageSetup.h \
+    ../utilGeo/geoRectangleOffsets.h \
     ../utilPs/textAttribute.h \
     docRtfSaveDocumentProperties.c
 
@@ -1884,8 +1886,6 @@ docRtfSaveField.o: \
     docRtfSaveField.c
 
 docRtfSaveFontTable.o: \
-    ../appUtil/geoDocumentPageSetup.h \
-    ../appUtil/geoRectangleOffsets.h \
     ../appUtil/utilColor.h \
     ../appUtil/utilIndexMapping.h \
     ../appUtil/utilIndexSet.h \
@@ -1914,6 +1914,8 @@ docRtfSaveFontTable.o: \
     ../include/appDebug.h \
     ../include/appDebugon.h \
     ../textEncoding/textOfficeCharset.h \
+    ../utilGeo/geoDocumentPageSetup.h \
+    ../utilGeo/geoRectangleOffsets.h \
     ../utilPs/psDocumentFontStyle.h \
     ../utilPs/textAttribute.h \
     docRtfSaveFontTable.c
@@ -2035,8 +2037,6 @@ docRtfSaveRowProperties.o: \
     docRtfSaveRowProperties.c
 
 docRtfSaveSectProperties.o: \
-    ../appUtil/geoDocumentPageSetup.h \
-    ../appUtil/geoRectangleOffsets.h \
     ../appUtil/utilColor.h \
     ../appUtil/utilIndexSet.h \
     ../appUtil/utilMemoryBuffer.h \
@@ -2072,6 +2072,8 @@ docRtfSaveSectProperties.o: \
     docRtfWriterImpl.h \
     ../include/appDebug.h \
     ../include/appDebugon.h \
+    ../utilGeo/geoDocumentPageSetup.h \
+    ../utilGeo/geoRectangleOffsets.h \
     ../utilPs/textAttribute.h \
     docRtfSaveSectProperties.c
 
@@ -2093,10 +2095,6 @@ docRtfSaveShading.o: \
     docRtfSaveShading.c
 
 docRtfSaveShape.o: \
-    ../appUtil/geo2DInteger.h \
-    ../appUtil/geoAffineTransform.h \
-    ../appUtil/geoRectangle.h \
-    ../appUtil/geoUnits.h \
     ../appUtil/sioGeneral.h \
     ../appUtil/sioHex.h \
     ../appUtil/sioMemory.h \
@@ -2130,12 +2128,14 @@ docRtfSaveShape.o: \
     docRtfWriterImpl.h \
     ../include/appDebug.h \
     ../include/appDebugon.h \
+    ../utilGeo/geo2DInteger.h \
+    ../utilGeo/geoAffineTransform.h \
+    ../utilGeo/geoRectangle.h \
+    ../utilGeo/geoUnits.h \
     ../utilPs/textAttribute.h \
     docRtfSaveShape.c
 
 docRtfSaveStylesheet.o: \
-    ../appUtil/geoDocumentPageSetup.h \
-    ../appUtil/geoRectangleOffsets.h \
     ../appUtil/utilIndexSet.h \
     ../appUtil/utilMemoryBuffer.h \
     ../appUtil/utilPagedList.h \
@@ -2160,12 +2160,12 @@ docRtfSaveStylesheet.o: \
     docRtfWriterImpl.h \
     ../include/appDebug.h \
     ../include/appDebugon.h \
+    ../utilGeo/geoDocumentPageSetup.h \
+    ../utilGeo/geoRectangleOffsets.h \
     ../utilPs/textAttribute.h \
     docRtfSaveStylesheet.c
 
 docRtfSaveTextAttribute.o: \
-    ../appUtil/geoDocumentPageSetup.h \
-    ../appUtil/geoRectangleOffsets.h \
     ../appUtil/utilColor.h \
     ../appUtil/utilIndexMapping.h \
     ../appUtil/utilIndexSet.h \
@@ -2200,6 +2200,8 @@ docRtfSaveTextAttribute.o: \
     ../textEncoding/textConverter.h \
     ../textEncoding/textOfficeCharset.h \
     ../textEncoding/uniUtf8.h \
+    ../utilGeo/geoDocumentPageSetup.h \
+    ../utilGeo/geoRectangleOffsets.h \
     ../utilPs/psShading.h \
     ../utilPs/textAttribute.h \
     docRtfSaveTextAttribute.c
@@ -2215,8 +2217,6 @@ docRtfShapePropLookup.o: \
     docRtfShapePropLookup.c
 
 docRtfShapeTab.o: \
-    ../appUtil/geoDocumentPageSetup.h \
-    ../appUtil/geoRectangleOffsets.h \
     ../appUtil/utilColor.h \
     ../appUtil/utilIndexMapping.h \
     ../appUtil/utilIndexSet.h \
@@ -2262,6 +2262,8 @@ docRtfShapeTab.o: \
     ../include/appDebug.h \
     ../include/appDebugon.h \
     ../textEncoding/textOfficeCharset.h \
+    ../utilGeo/geoDocumentPageSetup.h \
+    ../utilGeo/geoRectangleOffsets.h \
     ../utilPs/textAttribute.h \
     docRtfShapeTab.c
 
@@ -2271,8 +2273,6 @@ docRtfStrings.o: \
     docRtfStrings.c
 
 docRtfStylesheet.o: \
-    ../appUtil/geoDocumentPageSetup.h \
-    ../appUtil/geoRectangleOffsets.h \
     ../appUtil/utilColor.h \
     ../appUtil/utilIndexMapping.h \
     ../appUtil/utilIndexSet.h \
@@ -2328,14 +2328,12 @@ docRtfStylesheet.o: \
     ../include/appDebug.h \
     ../include/appDebugon.h \
     ../textEncoding/textOfficeCharset.h \
+    ../utilGeo/geoDocumentPageSetup.h \
+    ../utilGeo/geoRectangleOffsets.h \
     ../utilPs/textAttribute.h \
     docRtfStylesheet.c
 
 docRtfTab.o: \
-    ../appUtil/geoAffineTransform.h \
-    ../appUtil/geoDocumentPageSetup.h \
-    ../appUtil/geoRectangle.h \
-    ../appUtil/geoRectangleOffsets.h \
     ../appUtil/utilColor.h \
     ../appUtil/utilDateTime.h \
     ../appUtil/utilIndexMapping.h \
@@ -2406,6 +2404,10 @@ docRtfTab.o: \
     ../include/appDebugon.h \
     ../include/charnames.h \
     ../textEncoding/textOfficeCharset.h \
+    ../utilGeo/geoAffineTransform.h \
+    ../utilGeo/geoDocumentPageSetup.h \
+    ../utilGeo/geoRectangle.h \
+    ../utilGeo/geoRectangleOffsets.h \
     ../utilPs/psDocumentFontStyle.h \
     ../utilPs/psShading.h \
     ../utilPs/textAttribute.h \
@@ -2422,8 +2424,6 @@ docRtfTagLookup.o: \
     docRtfTagLookup.c
 
 docRtfWriteColorTable.o: \
-    ../appUtil/geoDocumentPageSetup.h \
-    ../appUtil/geoRectangleOffsets.h \
     ../appUtil/utilColor.h \
     ../appUtil/utilIndexSet.h \
     ../appUtil/utilMemoryBuffer.h \
@@ -2439,6 +2439,8 @@ docRtfWriteColorTable.o: \
     docRtfWriterImpl.h \
     ../include/appDebug.h \
     ../include/appDebugon.h \
+    ../utilGeo/geoDocumentPageSetup.h \
+    ../utilGeo/geoRectangleOffsets.h \
     ../utilPs/textAttribute.h \
     docRtfWriteColorTable.c
 
@@ -2484,8 +2486,6 @@ docRtfWriteListTable.o: \
     docRtfWriteListTable.c
 
 docRtfWriteMail.o: \
-    ../appUtil/geoDocumentPageSetup.h \
-    ../appUtil/geoRectangleOffsets.h \
     ../appUtil/sioBase64.h \
     ../appUtil/sioGeneral.h \
     ../appUtil/utilColor.h \
@@ -2516,6 +2516,8 @@ docRtfWriteMail.o: \
     docRtfReadWrite.h \
     ../include/appDebug.h \
     ../include/appDebugon.h \
+    ../utilGeo/geoDocumentPageSetup.h \
+    ../utilGeo/geoRectangleOffsets.h \
     docRtfWriteMail.c
 
 docRtfWriteNode.o: \
@@ -2560,7 +2562,6 @@ docRtfWriteNode.o: \
     docRtfWriteNode.c
 
 docRtfWritePicture.o: \
-    ../appUtil/geoUnits.h \
     ../appUtil/utilIndexSet.h \
     ../appUtil/utilPagedList.h \
     ../appUtil/utilPropMask.h \
@@ -2574,6 +2575,7 @@ docRtfWritePicture.o: \
     docRtfWriterImpl.h \
     ../include/appDebug.h \
     ../include/appDebugon.h \
+    ../utilGeo/geoUnits.h \
     ../utilPs/textAttribute.h \
     docRtfWritePicture.c
 

@@ -13,7 +13,6 @@
 #   include	"guiImageImpl.h"
 #   include	"drawUtilGdk.h"
 #   include	"guiNamedImage.h"
-#   include	"guiNamedImages.h"
 #   include	<geoRectangle.h>
 #   include	<bmFlipBits.h>
 

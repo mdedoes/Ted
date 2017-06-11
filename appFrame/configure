@@ -610,6 +610,8 @@ FONTCONFIG_LIBS
 FONTCONFIG_CFLAGS
 FT2_LIBS
 FT2_CFLAGS
+LIBPAPER_LIBS
+LIBPAPER_CFLAGS
 LIBXPM_LIBS
 LIBXPM_CFLAGS
 X_EXTRA_LIBS
@@ -670,6 +672,7 @@ ac_user_opts='
 enable_option_checking
 with_x
 with_LIBXPM
+with_LIBPAPER
 with_FONTCONFIG
 with_XFT
 with_GTK3
@@ -1311,6 +1314,7 @@ Optional Packages:
   --without-PACKAGE       do not use PACKAGE (same as --with-PACKAGE=no)
   --with-x                use the X Window System
  --with-LIBXPM Use LIBXPM X pixmap if available
+ --with-LIBPAPER Use libpaper if available
  --with-FONTCONFIG Use Fontconfig if available
  --with-XFT Use Xft if available
   --with-GTK3       Use Gtk+3 user interface: use --with-GTK also
@@ -3846,6 +3850,153 @@ rm -f core conftest.err conftest.$ac_objext conftest.$ac_ext
 	    $as_echo "#define HAVE_LIBXPM 0" >>confdefs.h
 
 	    $as_echo "#define USE_LIBXPM 0" >>confdefs.h
+
+	    ;;
+	*)
+	    ;;
+    esac
+
+
+
+    echo Checking for libpaper etc.
+
+    LIBPAPER_CFLAGS=
+    LIBPAPER_LIBS=
+
+    LIBPAPER_HEADERS_FOUND=NO
+    LIBPAPER_LIBS_FOUND=NO
+    LIBPAPER_FOUND=0
+
+    if  ( pkg-config libpaper --cflags ) > /dev/null 2>&1
+    then
+	LIBPAPER_CFLAGS=`pkg-config libpaper --cflags`
+	LIBPAPER_HEADERS_FOUND=YES
+    fi
+
+    if  ( pkg-config libpaper --libs ) > /dev/null 2>&1
+    then
+	LIBPAPER_LIBS=`pkg-config libpaper --libs`
+	LIBPAPER_LIBS_FOUND=YES
+    fi
+
+    ########  The hard way
+    if test $LIBPAPER_HEADERS_FOUND = NO -o $LIBPAPER_LIBS_FOUND = NO
+    then
+	h_so_tmp="$$.h_so_tmp"
+	trap "rm -f $h_so_tmp" 0
+	for h_so in \
+	    "/usr/include paper.h /usr/lib64 paper" \
+	    "/usr/include paper.h - paper"
+	do
+	    echo $h_so
+	done > ${h_so_tmp}
+	while read hd h sod so
+	do
+	    if  test -f $hd/$h -a \( ${sod} = - -o -f ${sod}/lib${so}.so \)
+	    then
+		case $hd in
+		/usr/include)
+		    : ok
+		    ;;
+		*)
+		    LIBPAPER_CFLAGS=-I${hd}
+		    ;;
+		esac
+
+		case $sod in
+		/usr/lib|/lib|-)
+		    LIBPAPER_LIBS=-l${so}
+		    ;;
+		*)
+		    LIBPAPER_LIBS="-L${sod} -l${so}"
+		    ;;
+		esac
+
+		LIBPAPER_HEADERS_FOUND=YES
+		LIBPAPER_LIBS_FOUND=YES
+		break
+	    fi
+	done < ${h_so_tmp}
+    fi
+    ########
+
+
+# Check whether --with-LIBPAPER was given.
+if test "${with_LIBPAPER+set}" = set; then :
+  withval=$with_LIBPAPER;
+	    if  test $withval = yes
+	    then
+		USE_LIBPAPER=YES
+	    else
+		USE_LIBPAPER=NO
+	    fi
+
+else
+
+	    USE_LIBPAPER=TEST;
+
+fi
+
+
+    case $LIBPAPER_HEADERS_FOUND.$LIBPAPER_LIBS_FOUND in
+	YES.YES)
+	    LIBPAPER_FOUND=1
+	    HAVE_LIBPAPER=YES
+	    ;;
+	*)
+	    LIBPAPER_FOUND=0
+	    # Try for ourselves
+	    cat confdefs.h - <<_ACEOF >conftest.$ac_ext
+/* end confdefs.h.  */
+#include <paper.h>
+int
+main ()
+{
+paperinit();
+  ;
+  return 0;
+}
+_ACEOF
+if ac_fn_c_try_compile "$LINENO"; then :
+  HAVE_LIBPAPER=YES
+else
+  HAVE_LIBPAPER=NO
+fi
+rm -f core conftest.err conftest.$ac_objext conftest.$ac_ext
+	    ;;
+    esac
+
+    case $HAVE_LIBPAPER.$USE_LIBPAPER in
+	YES.TEST|YES.YES)
+	    echo 'Using libpaper'
+	    $as_echo "#define HAVE_LIBPAPER 1" >>confdefs.h
+
+	    $as_echo "#define USE_LIBPAPER 1" >>confdefs.h
+
+	    USE_LIBPAPER=YES
+	    ;;
+	YES.NO)
+	    echo 'Avoiding libpaper'
+	    $as_echo "#define HAVE_LIBPAPER 1" >>confdefs.h
+
+	    $as_echo "#define USE_LIBPAPER 0" >>confdefs.h
+
+	    LIBPAPER_CFLAGS=
+	    LIBPAPER_LIBS=
+	    ;;
+	NO.TEST)
+	    echo 'No libpaper'
+	    $as_echo "#define HAVE_LIBPAPER 0" >>confdefs.h
+
+	    $as_echo "#define USE_LIBPAPER 0" >>confdefs.h
+
+	    USE_LIBPAPER=NO
+	    ;;
+	NO.YES)
+	    echo '##### No libpaper found'
+	    $as_echo "#define HAVE_LIBPAPER 0" >>confdefs.h
+
+	    $as_echo "#define USE_LIBPAPER 0" >>confdefs.h
 
 	    ;;
 	*)

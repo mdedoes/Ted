@@ -7,6 +7,7 @@ GTK_CFLAGS=@GTK_CFLAGS@
 FT2_CFLAGS=@FT2_CFLAGS@
 XFT_CFLAGS=@XFT_CFLAGS@
 ENCHANT_CFLAGS=@ENCHANT_CFLAGS@
+LIBPAPER_CFLAGS=@LIBPAPER_CFLAGS@
 
 MOTIF_CFLAGS=$(XM_CFLAGS)
 
@@ -40,6 +41,7 @@ INCLUDES=			\
 	$(X_CFLAGS)		\
 	$(LIBXPM_CFLAGS)	\
 	$(GUI_CFLAGS)		\
+	$(LIBPAPER_CFLAGS)	\
 	-I../guiBase		\
 	-I../guiInterface	\
 	-I../ind		\
@@ -48,6 +50,7 @@ INCLUDES=			\
 	-I../utilPs		\
 	-I../docFont		\
 	-I../textEncoding	\
+	-I../utilGeo		\
 	-I../appUtil		\
 	-I../include
 
@@ -60,13 +63,11 @@ CFLAGS=			\
 
 #CFLAGS= @CFLAGS@ $(WFLAGS) $(INCLUDES) $(DEF_PKGDIR) $(DEF_AFMDIR) $(DEF_INDDIR)
 
-# 45!!obs
+# 44!!obs
 OBS	=	\
 		spellSetup.o\
 		spellLocaleName.o\
 		spellEnchantChecker.o\
-		sioCopyPasteMotif.o\
-		sioCopyPasteGtk.o\
 		appZoomMenu.o\
 		appWinMetaX11.o\
 		appSpecialCalls.o\
@@ -79,6 +80,7 @@ OBS	=	\
 		appQuestionGtk.o\
 		appQuestion.o\
 		appPrintDocument.o\
+		appPaper.o\
 		appOpenDocument.o\
 		appMetricRuler.o\
 		appMenu.o\
@@ -128,6 +130,7 @@ ACLOCAL=				\
 	../configure/motif.m4		\
 	../configure/enchant.m4		\
 	../configure/prefix.m4		\
+	../configure/libpaper.m4	\
 	../configure/gui.m4
 
 aclocal.m4:	$(ACLOCAL)
@@ -144,7 +147,7 @@ duplicates:
 includes:
 	includes.sh appFrameConfig.h $(INCLUDES)
 
-# deps -I/usr/include/freetype2 -I/usr/include/freetype2  -I/usr/include/gtk-2.0 -I/usr/lib/x86_64-linux-gnu/gtk-2.0/include -I/usr/include/atk-1.0 -I/usr/include/cairo -I/usr/include/gdk-pixbuf-2.0 -I/usr/include/pango-1.0 -I/usr/include/gio-unix-2.0/ -I/usr/include/glib-2.0 -I/usr/lib/x86_64-linux-gnu/glib-2.0/include -I/usr/include/pixman-1 -I/usr/include/freetype2 -I/usr/include/libpng12   -I../guiInterface -I../guiBase -I../drawMeta -I../appUtil -I../textEncoding -I../utilPs -I../docFont -I../bitmap -I../ind -I../include
+# deps -I/usr/include/freetype2 -I/usr/include/freetype2  -I/usr/include/gtk-2.0 -I/usr/lib/x86_64-linux-gnu/gtk-2.0/include -I/usr/include/atk-1.0 -I/usr/include/cairo -I/usr/include/gdk-pixbuf-2.0 -I/usr/include/pango-1.0 -I/usr/include/gio-unix-2.0/ -I/usr/include/glib-2.0 -I/usr/lib/x86_64-linux-gnu/glib-2.0/include -I/usr/include/pixman-1 -I/usr/include/freetype2 -I/usr/include/libpng12   -I../guiInterface -I../guiBase -I../drawMeta -I../utilGeo -I../appUtil -I../textEncoding -I../utilPs -I../docFont -I../bitmap -I../ind -I../include
 ################################# !! sh
 
 appAppFront.o: \
@@ -157,9 +160,6 @@ appAppFront.o: \
     appGuiApplication.h \
     appGuiDocument.h \
     ../appUtil/appUtilConfig.h \
-    ../appUtil/geoDocumentPageSetup.h \
-    ../appUtil/geoRectangle.h \
-    ../appUtil/geoRectangleOffsets.h \
     ../appUtil/utilColor.h \
     ../appUtil/utilMemoryBuffer.h \
     ../guiBase/guiBaseGtk.h \
@@ -170,6 +170,9 @@ appAppFront.o: \
     ../guiInterface/drawDrawingSurface.h \
     ../include/appDebug.h \
     ../include/appDebugon.h \
+    ../utilGeo/geoDocumentPageSetup.h \
+    ../utilGeo/geoRectangle.h \
+    ../utilGeo/geoRectangleOffsets.h \
     ../utilPs/psPostScriptFontList.h \
     appAppFront.c
 
@@ -178,13 +181,8 @@ appAppResources.o: \
     appFileMessageResources.h \
     appFrameConfig.h \
     appGuiResource.h \
-    ../appUtil/appPaper.h \
+    appPaper.h \
     ../appUtil/appUtilConfig.h \
-    ../appUtil/geoDocumentPageSetup.h \
-    ../appUtil/geoRectangle.h \
-    ../appUtil/geoRectangleOffsets.h \
-    ../appUtil/geoString.h \
-    ../appUtil/geoUnit.h \
     ../appUtil/utilArgToX.h \
     ../guiBase/guiBaseGtk.h \
     ../guiBase/guiBase.h \
@@ -192,6 +190,11 @@ appAppResources.o: \
     ../guiInterface/drawDrawingSurface.h \
     ../include/appDebug.h \
     ../include/appDebugon.h \
+    ../utilGeo/geoDocumentPageSetup.h \
+    ../utilGeo/geoRectangle.h \
+    ../utilGeo/geoRectangleOffsets.h \
+    ../utilGeo/geoString.h \
+    ../utilGeo/geoUnit.h \
     ../utilPs/psPostScriptFontList.h \
     appAppResources.c
 
@@ -200,9 +203,6 @@ appApplication.o: \
     appFileMessageResources.h \
     appFrameConfig.h \
     ../appUtil/appUtilConfig.h \
-    ../appUtil/geoDocumentPageSetup.h \
-    ../appUtil/geoRectangle.h \
-    ../appUtil/geoRectangleOffsets.h \
     ../appUtil/utilFontmap.h \
     ../appUtil/utilMemoryBuffer.h \
     ../appUtil/utilPrinter.h \
@@ -213,6 +213,9 @@ appApplication.o: \
     ../guiInterface/drawDrawingSurface.h \
     ../include/appDebug.h \
     ../include/appDebugon.h \
+    ../utilGeo/geoDocumentPageSetup.h \
+    ../utilGeo/geoRectangle.h \
+    ../utilGeo/geoRectangleOffsets.h \
     ../utilPs/psPostScriptFontList.h \
     appApplication.c
 
@@ -230,15 +233,15 @@ appCopyPaste.o: \
     appFrameConfig.h \
     appSelectionType.h \
     ../appUtil/appUtilConfig.h \
-    ../appUtil/geoDocumentPageSetup.h \
-    ../appUtil/geoRectangle.h \
-    ../appUtil/geoRectangleOffsets.h \
     ../guiBase/guiBaseGtk.h \
     ../guiBase/guiBase.h \
     ../guiBase/guiBaseMotif.h \
     ../guiInterface/drawDrawingSurface.h \
     ../include/appDebug.h \
     ../include/appDebugon.h \
+    ../utilGeo/geoDocumentPageSetup.h \
+    ../utilGeo/geoRectangle.h \
+    ../utilGeo/geoRectangleOffsets.h \
     ../utilPs/psPostScriptFontList.h \
     appCopyPaste.c
 
@@ -252,9 +255,6 @@ appCopyPasteGtk.o: \
     appGuiDocument.h \
     appSelectionType.h \
     ../appUtil/appUtilConfig.h \
-    ../appUtil/geoDocumentPageSetup.h \
-    ../appUtil/geoRectangle.h \
-    ../appUtil/geoRectangleOffsets.h \
     ../appUtil/utilColor.h \
     ../appUtil/utilMemoryBuffer.h \
     ../guiBase/guiBaseGtk.h \
@@ -264,6 +264,9 @@ appCopyPasteGtk.o: \
     ../guiInterface/drawDrawingSurface.h \
     ../include/appDebug.h \
     ../include/appDebugon.h \
+    ../utilGeo/geoDocumentPageSetup.h \
+    ../utilGeo/geoRectangle.h \
+    ../utilGeo/geoRectangleOffsets.h \
     ../utilPs/psPostScriptFontList.h \
     appCopyPasteGtk.c
 
@@ -285,9 +288,6 @@ appDocFront.o: \
     appGuiApplication.h \
     appGuiDocument.h \
     ../appUtil/appUtilConfig.h \
-    ../appUtil/geoDocumentPageSetup.h \
-    ../appUtil/geoRectangle.h \
-    ../appUtil/geoRectangleOffsets.h \
     ../appUtil/utilColor.h \
     ../appUtil/utilMemoryBuffer.h \
     ../guiBase/guiBaseGtk.h \
@@ -298,6 +298,9 @@ appDocFront.o: \
     ../guiInterface/drawDrawingSurface.h \
     ../include/appDebug.h \
     ../include/appDebugon.h \
+    ../utilGeo/geoDocumentPageSetup.h \
+    ../utilGeo/geoRectangle.h \
+    ../utilGeo/geoRectangleOffsets.h \
     ../utilPs/psPostScriptFontList.h \
     appDocFront.c
 
@@ -308,9 +311,6 @@ appDocMetricRuler.o: \
     appFrameConfig.h \
     appMetricRuler.h \
     ../appUtil/appUtilConfig.h \
-    ../appUtil/geoDocumentPageSetup.h \
-    ../appUtil/geoRectangle.h \
-    ../appUtil/geoRectangleOffsets.h \
     ../appUtil/utilColor.h \
     ../appUtil/utilMemoryBuffer.h \
     ../guiBase/guiBaseGtk.h \
@@ -321,6 +321,9 @@ appDocMetricRuler.o: \
     ../guiInterface/drawDrawingSurface.h \
     ../include/appDebug.h \
     ../include/appDebugon.h \
+    ../utilGeo/geoDocumentPageSetup.h \
+    ../utilGeo/geoRectangle.h \
+    ../utilGeo/geoRectangleOffsets.h \
     ../utilPs/psPostScriptFontList.h \
     appDocMetricRuler.c
 
@@ -335,9 +338,6 @@ appDocument.o: \
     appQuestion.h \
     ../appUtil/appSystem.h \
     ../appUtil/appUtilConfig.h \
-    ../appUtil/geoDocumentPageSetup.h \
-    ../appUtil/geoRectangle.h \
-    ../appUtil/geoRectangleOffsets.h \
     ../appUtil/utilColor.h \
     ../appUtil/utilMemoryBuffer.h \
     ../appUtil/utilMemoryBufferPrintf.h \
@@ -350,6 +350,9 @@ appDocument.o: \
     ../guiInterface/drawDrawingSurface.h \
     ../include/appDebug.h \
     ../include/appDebugon.h \
+    ../utilGeo/geoDocumentPageSetup.h \
+    ../utilGeo/geoRectangle.h \
+    ../utilGeo/geoRectangleOffsets.h \
     ../utilPs/psPostScriptFontList.h \
     appDocument.c
 
@@ -362,9 +365,6 @@ appDocumentFormat.o: \
     appGuiResource.h \
     ../appUtil/appSystem.h \
     ../appUtil/appUtilConfig.h \
-    ../appUtil/geoDocumentPageSetup.h \
-    ../appUtil/geoRectangle.h \
-    ../appUtil/geoRectangleOffsets.h \
     ../appUtil/utilFileExtension.h \
     ../appUtil/utilMemoryBuffer.h \
     ../guiBase/guiBaseGtk.h \
@@ -374,6 +374,9 @@ appDocumentFormat.o: \
     ../guiInterface/drawDrawingSurface.h \
     ../include/appDebug.h \
     ../include/appDebugon.h \
+    ../utilGeo/geoDocumentPageSetup.h \
+    ../utilGeo/geoRectangle.h \
+    ../utilGeo/geoRectangleOffsets.h \
     ../utilPs/psPostScriptFontList.h \
     appDocumentFormat.c
 
@@ -387,9 +390,6 @@ appDocumentGtk.o: \
     appGuiApplication.h \
     appGuiDocument.h \
     ../appUtil/appUtilConfig.h \
-    ../appUtil/geoDocumentPageSetup.h \
-    ../appUtil/geoRectangle.h \
-    ../appUtil/geoRectangleOffsets.h \
     ../appUtil/utilColor.h \
     ../appUtil/utilMemoryBuffer.h \
     ../guiBase/guiBaseGtk.h \
@@ -402,6 +402,9 @@ appDocumentGtk.o: \
     ../guiInterface/drawDrawingSurface.h \
     ../include/appDebug.h \
     ../include/appDebugon.h \
+    ../utilGeo/geoDocumentPageSetup.h \
+    ../utilGeo/geoRectangle.h \
+    ../utilGeo/geoRectangleOffsets.h \
     ../utilPs/psPostScriptFontList.h \
     appDocumentGtk.c
 
@@ -416,7 +419,6 @@ appDocumentOptionGtk.o: \
     appGuiApplication.h \
     appGuiDocument.h \
     ../appUtil/appUtilConfig.h \
-    ../appUtil/geoRectangle.h \
     ../appUtil/utilColor.h \
     ../appUtil/utilMemoryBuffer.h \
     ../guiBase/guiBaseGtk.h \
@@ -426,6 +428,7 @@ appDocumentOptionGtk.o: \
     ../guiBase/guiWidgets.h \
     ../include/appDebug.h \
     ../include/appDebugon.h \
+    ../utilGeo/geoRectangle.h \
     appDocumentOptionGtk.c
 
 appFileChooser.o: \
@@ -438,13 +441,11 @@ appFileChooser.o: \
     appGuiApplication.h \
     appGuiDocument.h \
     appGuiResource.h \
+    appPrintDocument.h \
     appPrintJob.h \
     appQuestion.h \
     ../appUtil/appSystem.h \
     ../appUtil/appUtilConfig.h \
-    ../appUtil/geoDocumentPageSetup.h \
-    ../appUtil/geoRectangle.h \
-    ../appUtil/geoRectangleOffsets.h \
     ../appUtil/sioFileio.h \
     ../appUtil/sioGeneral.h \
     ../appUtil/utilColor.h \
@@ -458,6 +459,9 @@ appFileChooser.o: \
     ../guiInterface/drawDrawingSurface.h \
     ../include/appDebug.h \
     ../include/appDebugon.h \
+    ../utilGeo/geoDocumentPageSetup.h \
+    ../utilGeo/geoRectangle.h \
+    ../utilGeo/geoRectangleOffsets.h \
     ../utilPs/psPostScriptFontList.h \
     appFileChooser.c
 
@@ -472,9 +476,6 @@ appFileChooserGtk.o: \
     appQuestion.h \
     ../appUtil/appSystem.h \
     ../appUtil/appUtilConfig.h \
-    ../appUtil/geoDocumentPageSetup.h \
-    ../appUtil/geoRectangle.h \
-    ../appUtil/geoRectangleOffsets.h \
     ../appUtil/utilColor.h \
     ../appUtil/utilFileExtension.h \
     ../appUtil/utilMemoryBuffer.h \
@@ -487,6 +488,9 @@ appFileChooserGtk.o: \
     ../guiInterface/drawDrawingSurface.h \
     ../include/appDebug.h \
     ../include/appDebugon.h \
+    ../utilGeo/geoDocumentPageSetup.h \
+    ../utilGeo/geoRectangle.h \
+    ../utilGeo/geoRectangleOffsets.h \
     ../utilPs/psPostScriptFontList.h \
     appFileChooserGtk.c
 
@@ -521,9 +525,6 @@ appGui.o: \
     appFrameConfig.h \
     appGuiApplication.h \
     ../appUtil/appUtilConfig.h \
-    ../appUtil/geoDocumentPageSetup.h \
-    ../appUtil/geoRectangle.h \
-    ../appUtil/geoRectangleOffsets.h \
     ../guiBase/guiBaseGtk.h \
     ../guiBase/guiBase.h \
     ../guiBase/guiBaseMotif.h \
@@ -532,6 +533,9 @@ appGui.o: \
     ../guiInterface/drawDrawingSurface.h \
     ../include/appDebug.h \
     ../include/appDebugon.h \
+    ../utilGeo/geoDocumentPageSetup.h \
+    ../utilGeo/geoRectangle.h \
+    ../utilGeo/geoRectangleOffsets.h \
     ../utilPs/psPostScriptFontList.h \
     appGui.c
 
@@ -542,9 +546,6 @@ appGuiGtk.o: \
     appFrameConfig.h \
     appGuiApplication.h \
     ../appUtil/appUtilConfig.h \
-    ../appUtil/geoDocumentPageSetup.h \
-    ../appUtil/geoRectangle.h \
-    ../appUtil/geoRectangleOffsets.h \
     ../guiBase/guiBaseGtk.h \
     ../guiBase/guiBase.h \
     ../guiBase/guiBaseMotif.h \
@@ -552,6 +553,9 @@ appGuiGtk.o: \
     ../guiInterface/drawDrawingSurface.h \
     ../include/appDebug.h \
     ../include/appDebugon.h \
+    ../utilGeo/geoDocumentPageSetup.h \
+    ../utilGeo/geoRectangle.h \
+    ../utilGeo/geoRectangleOffsets.h \
     ../utilPs/psPostScriptFontList.h \
     appGuiGtk.c
 
@@ -568,12 +572,9 @@ appMain.o: \
     appFrameConfig.h \
     appGuiApplication.h \
     appGuiResource.h \
-    ../appUtil/appPaper.h \
+    appPaper.h \
     ../appUtil/appSystem.h \
     ../appUtil/appUtilConfig.h \
-    ../appUtil/geoDocumentPageSetup.h \
-    ../appUtil/geoRectangle.h \
-    ../appUtil/geoRectangleOffsets.h \
     ../appUtil/utilColor.h \
     ../appUtil/utilLocale.h \
     ../appUtil/utilMemoryBuffer.h \
@@ -585,6 +586,9 @@ appMain.o: \
     ../guiInterface/drawDrawingSurface.h \
     ../include/appDebug.h \
     ../include/appDebugon.h \
+    ../utilGeo/geoDocumentPageSetup.h \
+    ../utilGeo/geoRectangle.h \
+    ../utilGeo/geoRectangleOffsets.h \
     ../utilPs/psPostScriptFontList.h \
     appMain.c
 
@@ -595,9 +599,6 @@ appMenu.o: \
     appGuiApplication.h \
     appGuiResource.h \
     ../appUtil/appUtilConfig.h \
-    ../appUtil/geoDocumentPageSetup.h \
-    ../appUtil/geoRectangle.h \
-    ../appUtil/geoRectangleOffsets.h \
     ../guiBase/guiBaseGtk.h \
     ../guiBase/guiBase.h \
     ../guiBase/guiBaseMotif.h \
@@ -605,6 +606,9 @@ appMenu.o: \
     ../guiInterface/drawDrawingSurface.h \
     ../include/appDebug.h \
     ../include/appDebugon.h \
+    ../utilGeo/geoDocumentPageSetup.h \
+    ../utilGeo/geoRectangle.h \
+    ../utilGeo/geoRectangleOffsets.h \
     ../utilPs/psPostScriptFontList.h \
     appMenu.c
 
@@ -616,9 +620,6 @@ appMetricRuler.o: \
     appMetricRuler.h \
     appRuler.h \
     ../appUtil/appUtilConfig.h \
-    ../appUtil/geoDocumentPageSetup.h \
-    ../appUtil/geoRectangle.h \
-    ../appUtil/geoRectangleOffsets.h \
     ../appUtil/utilColor.h \
     ../appUtil/utilMemoryBuffer.h \
     ../guiBase/guiBaseGtk.h \
@@ -630,6 +631,9 @@ appMetricRuler.o: \
     ../guiInterface/drawDrawingSurface.h \
     ../include/appDebug.h \
     ../include/appDebugon.h \
+    ../utilGeo/geoDocumentPageSetup.h \
+    ../utilGeo/geoRectangle.h \
+    ../utilGeo/geoRectangleOffsets.h \
     ../utilPs/psPostScriptFontList.h \
     appMetricRuler.c
 
@@ -645,9 +649,6 @@ appOpenDocument.o: \
     appQuestion.h \
     ../appUtil/appSystem.h \
     ../appUtil/appUtilConfig.h \
-    ../appUtil/geoDocumentPageSetup.h \
-    ../appUtil/geoRectangle.h \
-    ../appUtil/geoRectangleOffsets.h \
     ../appUtil/utilColor.h \
     ../appUtil/utilFileExtension.h \
     ../appUtil/utilMemoryBuffer.h \
@@ -659,22 +660,35 @@ appOpenDocument.o: \
     ../guiInterface/drawDrawingSurface.h \
     ../include/appDebug.h \
     ../include/appDebugon.h \
+    ../utilGeo/geoDocumentPageSetup.h \
+    ../utilGeo/geoRectangle.h \
+    ../utilGeo/geoRectangleOffsets.h \
     ../utilPs/psPostScriptFontList.h \
     appOpenDocument.c
+
+appPaper.o: \
+    appFrameConfig.h \
+    appPaper.h \
+    ../appUtil/appSystem.h \
+    ../appUtil/appUtilConfig.h \
+    ../appUtil/sioFileio.h \
+    ../appUtil/sioGeneral.h \
+    ../appUtil/utilMemoryBuffer.h \
+    ../include/appDebug.h \
+    ../include/appDebugon.h \
+    ../utilGeo/geoString.h \
+    appPaper.c
 
 appPrintDocument.o: \
     appEditApplication.h \
     appEditDocument.h \
     appFileMessageResources.h \
     appFrameConfig.h \
+    appPaper.h \
+    appPrintDocument.h \
     appPrintJob.h \
-    ../appUtil/appPaper.h \
     ../appUtil/appSystem.h \
     ../appUtil/appUtilConfig.h \
-    ../appUtil/geoAffineTransform.h \
-    ../appUtil/geoDocumentPageSetup.h \
-    ../appUtil/geoRectangle.h \
-    ../appUtil/geoRectangleOffsets.h \
     ../appUtil/sioFileio.h \
     ../appUtil/sioGeneral.h \
     ../appUtil/sioMemory.h \
@@ -690,6 +704,10 @@ appPrintDocument.o: \
     ../guiInterface/drawDrawingSurface.h \
     ../include/appDebug.h \
     ../include/appDebugon.h \
+    ../utilGeo/geoAffineTransform.h \
+    ../utilGeo/geoDocumentPageSetup.h \
+    ../utilGeo/geoRectangle.h \
+    ../utilGeo/geoRectangleOffsets.h \
     ../utilPs/psNup.h \
     ../utilPs/psPostScriptFontList.h \
     appPrintDocument.c
@@ -710,9 +728,6 @@ appQuestionGtk.o: \
     appFrameConfig.h \
     appQuestion.h \
     ../appUtil/appUtilConfig.h \
-    ../appUtil/geoDocumentPageSetup.h \
-    ../appUtil/geoRectangle.h \
-    ../appUtil/geoRectangleOffsets.h \
     ../appUtil/utilMemoryBuffer.h \
     ../guiBase/guiBaseGtk.h \
     ../guiBase/guiBase.h \
@@ -721,6 +736,9 @@ appQuestionGtk.o: \
     ../guiInterface/drawDrawingSurface.h \
     ../include/appDebug.h \
     ../include/appDebugon.h \
+    ../utilGeo/geoDocumentPageSetup.h \
+    ../utilGeo/geoRectangle.h \
+    ../utilGeo/geoRectangleOffsets.h \
     ../utilPs/psPostScriptFontList.h \
     appQuestionGtk.c
 
@@ -743,9 +761,6 @@ appReally.o: \
     appGuiDocument.h \
     appQuestion.h \
     ../appUtil/appUtilConfig.h \
-    ../appUtil/geoDocumentPageSetup.h \
-    ../appUtil/geoRectangle.h \
-    ../appUtil/geoRectangleOffsets.h \
     ../appUtil/utilColor.h \
     ../appUtil/utilMemoryBuffer.h \
     ../guiBase/guiBaseGtk.h \
@@ -756,6 +771,9 @@ appReally.o: \
     ../guiInterface/drawDrawingSurface.h \
     ../include/appDebug.h \
     ../include/appDebugon.h \
+    ../utilGeo/geoDocumentPageSetup.h \
+    ../utilGeo/geoRectangle.h \
+    ../utilGeo/geoRectangleOffsets.h \
     ../utilPs/psPostScriptFontList.h \
     appReally.c
 
@@ -766,9 +784,6 @@ appResource.o: \
     appGuiResource.h \
     ../appUtil/appSystem.h \
     ../appUtil/appUtilConfig.h \
-    ../appUtil/geoDocumentPageSetup.h \
-    ../appUtil/geoRectangle.h \
-    ../appUtil/geoRectangleOffsets.h \
     ../appUtil/utilMemoryBuffer.h \
     ../appUtil/utilMemoryBufferPrintf.h \
     ../appUtil/utilProperties.h \
@@ -779,6 +794,9 @@ appResource.o: \
     ../guiInterface/drawDrawingSurface.h \
     ../include/appDebug.h \
     ../include/appDebugon.h \
+    ../utilGeo/geoDocumentPageSetup.h \
+    ../utilGeo/geoRectangle.h \
+    ../utilGeo/geoRectangleOffsets.h \
     ../utilPs/psPostScriptFontList.h \
     appResource.c
 
@@ -790,8 +808,6 @@ appRuler.o: \
     appFrameConfig.h \
     appRuler.h \
     ../appUtil/appUtilConfig.h \
-    ../appUtil/geoRectangle.h \
-    ../appUtil/geoUnit.h \
     ../appUtil/utilColor.h \
     ../guiBase/drawDrawingSurfacePrivate.h \
     ../guiBase/guiBaseGtk.h \
@@ -802,6 +818,8 @@ appRuler.o: \
     ../guiInterface/drawDrawingSurface.h \
     ../include/appDebug.h \
     ../include/appDebugon.h \
+    ../utilGeo/geoRectangle.h \
+    ../utilGeo/geoUnit.h \
     ../utilPs/psPostScriptFontList.h \
     appRuler.c
 
@@ -814,10 +832,6 @@ appScrollDocument.o: \
     appFrameConfig.h \
     appGuiDocument.h \
     ../appUtil/appUtilConfig.h \
-    ../appUtil/geoDocumentPageSetup.h \
-    ../appUtil/geoRectangle.h \
-    ../appUtil/geoRectangleOffsets.h \
-    ../appUtil/geoUnits.h \
     ../appUtil/utilColor.h \
     ../appUtil/utilMemoryBuffer.h \
     ../guiBase/guiBaseGtk.h \
@@ -832,6 +846,10 @@ appScrollDocument.o: \
     ../guiInterface/drawDrawingSurface.h \
     ../include/appDebug.h \
     ../include/appDebugon.h \
+    ../utilGeo/geoDocumentPageSetup.h \
+    ../utilGeo/geoRectangle.h \
+    ../utilGeo/geoRectangleOffsets.h \
+    ../utilGeo/geoUnits.h \
     ../utilPs/psPostScriptFontList.h \
     appScrollDocument.c
 
@@ -839,25 +857,24 @@ appSpecialCalls.o: \
     appEditApplication.h \
     appFileMessageResources.h \
     appFrameConfig.h \
+    appPrintDocument.h \
     ../appUtil/appUtilConfig.h \
-    ../appUtil/geoDocumentPageSetup.h \
-    ../appUtil/geoRectangle.h \
-    ../appUtil/geoRectangleOffsets.h \
+    ../appUtil/utilMemoryBuffer.h \
     ../guiBase/guiBaseGtk.h \
     ../guiBase/guiBase.h \
     ../guiBase/guiBaseMotif.h \
     ../guiInterface/drawDrawingSurface.h \
     ../include/appDebug.h \
     ../include/appDebugon.h \
+    ../utilGeo/geoDocumentPageSetup.h \
+    ../utilGeo/geoRectangle.h \
+    ../utilGeo/geoRectangleOffsets.h \
     ../utilPs/psPostScriptFontList.h \
     appSpecialCalls.c
 
 appWinMetaX11.o: \
     appFrameConfig.h \
     ../appUtil/appUtilConfig.h \
-    ../appUtil/geo2DInteger.h \
-    ../appUtil/geoAffineTransform.h \
-    ../appUtil/geoRectangle.h \
     ../appUtil/sioGeneral.h \
     ../appUtil/utilColor.h \
     ../appUtil/utilIndexSet.h \
@@ -892,6 +909,9 @@ appWinMetaX11.o: \
     ../guiInterface/drawDrawingSurface.h \
     ../include/appDebug.h \
     ../include/appDebugon.h \
+    ../utilGeo/geo2DInteger.h \
+    ../utilGeo/geoAffineTransform.h \
+    ../utilGeo/geoRectangle.h \
     ../utilPs/textAttribute.h \
     appWinMetaX11.c
 
@@ -900,7 +920,6 @@ appZoomMenu.o: \
     appFrameConfig.h \
     appGuiApplication.h \
     ../appUtil/appUtilConfig.h \
-    ../appUtil/geoRectangle.h \
     ../appUtil/utilColor.h \
     ../appUtil/utilMemoryBuffer.h \
     appZoomMenu.h \
@@ -911,33 +930,8 @@ appZoomMenu.o: \
     ../guiBase/guiWidgets.h \
     ../include/appDebug.h \
     ../include/appDebugon.h \
+    ../utilGeo/geoRectangle.h \
     appZoomMenu.c
-
-sioCopyPasteGtk.o: \
-    appFrameConfig.h \
-    ../appUtil/appUtilConfig.h \
-    ../appUtil/sioGeneral.h \
-    ../appUtil/sioMemory.h \
-    ../appUtil/utilMemoryBuffer.h \
-    ../guiBase/guiBaseGtk.h \
-    ../guiBase/guiBase.h \
-    ../guiBase/guiBaseMotif.h \
-    ../include/appDebug.h \
-    ../include/appDebugon.h \
-    sioXprop.h \
-    sioCopyPasteGtk.c
-
-sioCopyPasteMotif.o: \
-    appFrameConfig.h \
-    ../appUtil/appUtilConfig.h \
-    ../appUtil/sioGeneral.h \
-    ../guiBase/guiBaseGtk.h \
-    ../guiBase/guiBase.h \
-    ../guiBase/guiBaseMotif.h \
-    ../include/appDebug.h \
-    ../include/appDebugon.h \
-    sioXprop.h \
-    sioCopyPasteMotif.c
 
 spellEnchantChecker.o: \
     appFrameConfig.h \
@@ -956,9 +950,6 @@ spellLocaleName.o: \
     appFrameConfig.h \
     appGuiResource.h \
     ../appUtil/appUtilConfig.h \
-    ../appUtil/geoDocumentPageSetup.h \
-    ../appUtil/geoRectangle.h \
-    ../appUtil/geoRectangleOffsets.h \
     ../appUtil/utilMemoryBuffer.h \
     ../guiBase/guiBaseGtk.h \
     ../guiBase/guiBase.h \
@@ -971,6 +962,9 @@ spellLocaleName.o: \
     ../ind/spellComplain.h \
     spellLocaleName.h \
     ../textEncoding/textMsLcid.h \
+    ../utilGeo/geoDocumentPageSetup.h \
+    ../utilGeo/geoRectangle.h \
+    ../utilGeo/geoRectangleOffsets.h \
     ../utilPs/psPostScriptFontList.h \
     spellLocaleName.c
 

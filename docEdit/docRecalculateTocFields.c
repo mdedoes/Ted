@@ -28,8 +28,8 @@
 int docRecalculateTocFields( RecalculateFields *		rf )
     {
     struct BufferDocument *	bdDoc= rf->rfDocument;
-    DocumentFieldList *	dfl= &(bdDoc->bdFieldList);
-    int			fieldNr;
+    DocumentFieldList *		dfl= &(bdDoc->bdFieldList);
+    int				fieldNr;
 
     /*  2  */
     docRemoveUnbalancedTocBookmarks( bdDoc );

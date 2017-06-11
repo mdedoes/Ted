@@ -67,6 +67,7 @@ int docDrawShapeGetLine(	int *			pLine,
 /************************************************************************/
 
 static int docDrawDrawingShape(	const DocumentRectangle *	drOutside,
+				const AffineTransform2D *	atOutside,
 				const struct BufferItem *	bodySectNode,
 				int				page,
 				int				column,
@@ -77,15 +78,18 @@ static int docDrawDrawingShape(	const DocumentRectangle *	drOutside,
     int				rval= 0;
     const LayoutContext *	lc= &(dc->dcLayoutContext);
 
+    AffineTransform2D		atHere;
     DocumentRectangle		drHere;
     DocumentRectangle		drNorm;
 
     const struct BufferItem *	saveBodySectNode= dc->dcBodySectNode;
 
-    docShapeGetRects( &drHere, &drNorm, drOutside, ds );
+    docShapeGetRects( &drHere, &drNorm, &atHere, drOutside, atOutside, ds );
 
     dc->dcBodySectNode= bodySectNode;
 
+SDEB(docShapeTypeString(ds->dsDrawing.sdShapeType));
+LDEB(ds->dsDrawing.sdRotation);
     if  ( ds->dsDrawing.sdShapeType == SHPtyGROUP )
 	{
 	int			child;
@@ -94,10 +98,15 @@ static int docDrawDrawingShape(	const DocumentRectangle *	drOutside,
 	    {
 	    DrawingShape *	dsChild= ds->dsChildren[child];
 	    DocumentRectangle	drChild;
+	    AffineTransform2D	atChild;
 
-	    docShapeGetChildRect( &drChild, dsChild, &drHere, ds );
+	    geoIdentityAffineTransform2D( &atChild );
 
-	    if  ( docDrawDrawingShape( &drChild, bodySectNode, page, column,
+	    docShapeGetChildRect( &drChild, &atChild, dsChild,
+						&drHere, atOutside, ds );
+
+	    if  ( docDrawDrawingShape( &drChild, &atChild,
+						    bodySectNode, page, column,
 						    dsChild, dc, through ) )
 		{ LDEB(child); rval= -1; goto ready;	}
 	    }
@@ -116,7 +125,7 @@ static int docDrawDrawingShape(	const DocumentRectangle *	drOutside,
 	    }
 
 	if  ( dc->dcDrawShape						&&
-	      (*dc->dcDrawShape)( drOutside, page, ds, dc, through )	)
+	      (*dc->dcDrawShape)( drOutside, atOutside, page, ds, dc, through )	)
 	    { LDEB(1); rval= -1; goto ready;	}
 
 	dc->dcCurrentTextAttributeSet= 0;
@@ -201,6 +210,10 @@ int docDrawShape(	DrawingContext *		dc,
     int				page= io->ioY0Position.lpPage;
     int				column= io->ioY0Position.lpColumn;
 
+    AffineTransform2D		at;
+
+    geoIdentityAffineTransform2D( &at );
+
     if  ( ! ds )
 	{ XDEB(ds); return 0;	}
 
@@ -216,7 +229,7 @@ int docDrawShape(	DrawingContext *		dc,
 	    { return 0;	}
 	}
 
-    docDrawDrawingShape( drOutside, bodySectNode, page, column,
+    docDrawDrawingShape( drOutside, &at, bodySectNode, page, column,
 							ds, dc, through );
     return 0;
     }

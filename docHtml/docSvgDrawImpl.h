@@ -31,7 +31,8 @@ extern int docSvgEmitFill(	struct SvgWriter *		sw,
 				const struct DrawingShape *	ds );
 
 extern int docSvgDrawDrawDrawingShape(
-				const struct DocumentRectangle * drTwips,
+				const struct DocumentRectangle * drOutside,
+				const struct AffineTransform2D * atOutside,
 				int				page,
 				struct DrawingShape *		ds,
 				struct DrawingContext *		dc,

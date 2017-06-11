@@ -81,37 +81,37 @@ typedef enum GeometryProperty
 /*									*/
 /************************************************************************/
 
-extern void utilInitDocumentGeometry(	DocumentGeometry *	dg );
+extern void geoInitDocumentGeometry(	DocumentGeometry *	dg );
 
-extern void utilUpdDocumentGeometry(
+extern void geoUpdDocumentGeometry(
 				struct PropertyMask *		dpDoneMask,
 				DocumentGeometry *		dgTo,
 				const struct PropertyMask *	dgSetMask,
 				const DocumentGeometry *	dgSet );
 
-extern void utilDocumentGeometryGetBodyRect(
+extern void geoDocumentGeometryGetBodyRect(
 				struct DocumentRectangle *	dr,
 				const DocumentGeometry *	dg );
 
-extern void utilDocumentGeometryGetPageRect(
+extern void geoDocumentGeometryGetPageRect(
 				struct DocumentRectangle *	dr,
 				const DocumentGeometry *	dg );
 
-extern void utilDocumentGeometryGetHeaderRect(
+extern void geoDocumentGeometryGetHeaderRect(
 				struct DocumentRectangle *	dr,
 				const DocumentGeometry *	dg );
 
-extern void utilDocumentGeometryGetFooterRect(
+extern void geoDocumentGeometryGetFooterRect(
 				struct DocumentRectangle *	dr,
 				const DocumentGeometry *	dg );
 
-extern void utilDocumentGeometryGetPageBoundingBox(
+extern void geoDocumentGeometryGetPageBoundingBox(
 				struct DocumentRectangle *	dr,
 				const DocumentGeometry *	dg,
 				int				hasHeader,
 				int				hasFooter );
 
-extern void utilOverridePaperSize(
+extern void geoOverridePaperSize(
 				DocumentGeometry *		dgTo,
 				const DocumentGeometry *	dgFrom );
 

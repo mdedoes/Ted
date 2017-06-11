@@ -59,6 +59,7 @@ INCLUDES=			\
 	-I../utilPs		\
 	-I../docFont		\
 	-I../textEncoding	\
+	-I../utilGeo		\
 	-I../appUtil		\
 	-I../include
 
@@ -159,6 +160,7 @@ TED_LIBS=	../lib/tedTools.a		\
 		../lib/docFont.a		\
 		../lib/utilPs.a			\
 		../lib/textEncoding.a		\
+		../lib/utilGeo.a		\
 		../lib/appUtil.a
 
 IMG_LIBS= \
@@ -217,6 +219,7 @@ Ted.fullystatic: $(OBS) $(TED_LIBS)
 refresh:
 	rm -f	$(TED_LIBS) Ted
 	( cd ../appUtil && make )
+	( cd ../utilGeo && make )
 	( cd ../textEncoding && make )
 	( cd ../utilPs && make )
 	( cd ../docFont && make )
@@ -247,6 +250,7 @@ reconfigure:
 	rm -f Ted Ted.static
 	:
 	( cd ../appUtil && $(RECONF) )
+	( cd ../utilGeo && $(RECONF) )
 	( cd ../textEncoding && $(RECONF) )
 	( cd ../utilPs && $(RECONF) )
 	( cd ../docFont && $(RECONF) )
@@ -357,6 +361,7 @@ includes:
 
 calls:
 	calls.sh ../appUtil/*.o \
+		../utilGeo/*.o \
 		../tedTools/*.o \
 		../tedResource/*.o \
 		../textEncoding/*.o \
@@ -376,16 +381,13 @@ calls:
 		../docFont/*.o \
 		*.o
 
-# deps -I../include -I../tedResource -I../tedFront -I../guiInterface -I../docHtml -I../docLayout -I../docRtf -I../docEdit -I../docBuf -I../docBase -I../drawMeta -I../guiBase -I../appFrame -I../appTools -I../utilPs -I../docFont -I../textEncoding -I../appUtil -I/usr/X11R6/include -I../bitmap -I../ind -I/usr/include/gtk-2.0 -I/usr/lib/x86_64-linux-gnu/gtk-2.0/include -I/usr/include/atk-1.0 -I/usr/include/cairo -I/usr/include/gdk-pixbuf-2.0 -I/usr/include/pango-1.0 -I/usr/include/gio-unix-2.0/ -I/usr/include/glib-2.0 -I/usr/lib/x86_64-linux-gnu/glib-2.0/include -I/usr/include/pixman-1 -I/usr/include/freetype2 -I/usr/include/libpng12
+# deps -I../include -I../tedResource -I../tedFront -I../guiInterface -I../docHtml -I../docLayout -I../docRtf -I../docEdit -I../docBuf -I../docBase -I../drawMeta -I../guiBase -I../appFrame -I../appTools -I../utilPs -I../docFont -I../textEncoding -I../utilGeo -I../appUtil -I/usr/X11R6/include -I../bitmap -I../ind -I/usr/include/gtk-2.0 -I/usr/lib/x86_64-linux-gnu/gtk-2.0/include -I/usr/include/atk-1.0 -I/usr/include/cairo -I/usr/include/gdk-pixbuf-2.0 -I/usr/include/pango-1.0 -I/usr/include/gio-unix-2.0/ -I/usr/include/glib-2.0 -I/usr/lib/x86_64-linux-gnu/glib-2.0/include -I/usr/include/pixman-1 -I/usr/include/freetype2 -I/usr/include/libpng12
 ################################# !! sh
 
 docScreenObjects.o: \
     ../appFrame/appFrameConfig.h \
     ../appFrame/appWinMetaX11.h \
     ../appUtil/appUtilConfig.h \
-    ../appUtil/geoAffineTransform.h \
-    ../appUtil/geoGrid.h \
-    ../appUtil/geoRectangle.h \
     ../appUtil/utilColor.h \
     ../appUtil/utilIndexSet.h \
     ../appUtil/utilMemoryBuffer.h \
@@ -431,6 +433,9 @@ docScreenObjects.o: \
     ../include/appDebug.h \
     ../include/appDebugon.h \
     tedConfig.h \
+    ../utilGeo/geoAffineTransform.h \
+    ../utilGeo/geoGrid.h \
+    ../utilGeo/geoRectangle.h \
     ../utilPs/textAttribute.h \
     docScreenObjects.c
 
@@ -476,13 +481,11 @@ tedApp.o: \
     ../appFrame/appFileChooser.h \
     ../appFrame/appFileMessageResources.h \
     ../appFrame/appFrameConfig.h \
+    ../appFrame/appGuiApplication.h \
     ../appFrame/appTool.h \
     ../appTools/appInspector.h \
     ../appTools/appPrintDialog.h \
     ../appUtil/appUtilConfig.h \
-    ../appUtil/geoDocumentPageSetup.h \
-    ../appUtil/geoRectangle.h \
-    ../appUtil/geoRectangleOffsets.h \
     ../appUtil/utilArgToX.h \
     ../appUtil/utilColor.h \
     ../appUtil/utilFileExtension.h \
@@ -543,6 +546,9 @@ tedApp.o: \
     tedEdit.h \
     ../tedFront/tedDocFront.h \
     tedSelect.h \
+    ../utilGeo/geoDocumentPageSetup.h \
+    ../utilGeo/geoRectangle.h \
+    ../utilGeo/geoRectangleOffsets.h \
     ../utilPs/psPostScriptFontList.h \
     ../utilPs/textAttribute.h \
     tedApp.c
@@ -552,19 +558,15 @@ tedAppFront.o: \
     ../appFrame/appEditDocument.h \
     ../appFrame/appFileMessageResources.h \
     ../appFrame/appFrameConfig.h \
+    ../appFrame/appGuiApplication.h \
     ../appUtil/appUtilConfig.h \
-    ../appUtil/geoDocumentPageSetup.h \
-    ../appUtil/geoRectangle.h \
-    ../appUtil/geoRectangleOffsets.h \
     ../appUtil/utilColor.h \
     ../appUtil/utilIndexMapping.h \
     ../appUtil/utilIndexSet.h \
     ../appUtil/utilMD5.h \
     ../appUtil/utilMemoryBuffer.h \
     ../appUtil/utilPagedList.h \
-    ../appUtil/utilPalette.h \
     ../appUtil/utilPropMask.h \
-    ../bitmap/bitmap.h \
     ../docBase/docCellProperties.h \
     ../docBase/docEditPosition.h \
     ../docBase/docEditRange.h \
@@ -592,6 +594,9 @@ tedAppFront.o: \
     ../tedFront/tedAppFront.h \
     ../tedFront/tedDocFront.h \
     ../textEncoding/textMsLocale.h \
+    ../utilGeo/geoDocumentPageSetup.h \
+    ../utilGeo/geoRectangle.h \
+    ../utilGeo/geoRectangleOffsets.h \
     ../utilPs/psPostScriptFontList.h \
     ../utilPs/textAttribute.h \
     tedAppFront.c
@@ -600,7 +605,6 @@ tedBottomRuler.o: \
     ../appFrame/appFrameConfig.h \
     ../appFrame/appRuler.h \
     ../appUtil/appUtilConfig.h \
-    ../appUtil/geoRectangle.h \
     ../appUtil/utilColor.h \
     ../guiBase/guiBaseGtk.h \
     ../guiBase/guiBase.h \
@@ -612,6 +616,7 @@ tedBottomRuler.o: \
     ../include/appDebugon.h \
     tedConfig.h \
     tedRuler.h \
+    ../utilGeo/geoRectangle.h \
     tedBottomRuler.c
 
 tedCopyPaste.o: \
@@ -621,11 +626,7 @@ tedCopyPaste.o: \
     ../appFrame/appFileMessageResources.h \
     ../appFrame/appFrameConfig.h \
     ../appFrame/appSelectionType.h \
-    ../appFrame/sioXprop.h \
     ../appUtil/appUtilConfig.h \
-    ../appUtil/geoDocumentPageSetup.h \
-    ../appUtil/geoRectangle.h \
-    ../appUtil/geoRectangleOffsets.h \
     ../appUtil/sioFileio.h \
     ../appUtil/sioGeneral.h \
     ../appUtil/sioMemory.h \
@@ -671,6 +672,7 @@ tedCopyPaste.o: \
     ../guiBase/guiBase.h \
     ../guiBase/guiBaseMotif.h \
     ../guiBase/guiWidgets.h \
+    ../guiBase/sioXprop.h \
     ../guiInterface/drawDrawingSurface.h \
     ../include/appDebug.h \
     ../include/appDebugon.h \
@@ -683,6 +685,9 @@ tedCopyPaste.o: \
     tedEdit.h \
     ../tedFront/tedDocFront.h \
     tedSelect.h \
+    ../utilGeo/geoDocumentPageSetup.h \
+    ../utilGeo/geoRectangle.h \
+    ../utilGeo/geoRectangleOffsets.h \
     ../utilPs/psPostScriptFontList.h \
     ../utilPs/textAttribute.h \
     tedCopyPaste.c
@@ -691,7 +696,6 @@ tedCopyPasteImpl.o: \
     ../appFrame/appEditDocument.h \
     ../appFrame/appFrameConfig.h \
     ../appUtil/appUtilConfig.h \
-    ../appUtil/geoRectangle.h \
     ../appUtil/sioFileio.h \
     ../appUtil/sioGeneral.h \
     ../appUtil/sioMemory.h \
@@ -753,13 +757,13 @@ tedCopyPasteImpl.o: \
     tedDocument.h \
     tedEdit.h \
     tedSelect.h \
+    ../utilGeo/geoRectangle.h \
     ../utilPs/textAttribute.h \
     tedCopyPasteImpl.c
 
 tedDeleteFromTable.o: \
     ../appFrame/appFrameConfig.h \
     ../appUtil/appUtilConfig.h \
-    ../appUtil/geoRectangle.h \
     ../appUtil/utilIndexSet.h \
     ../appUtil/utilMemoryBuffer.h \
     ../appUtil/utilPagedList.h \
@@ -803,13 +807,13 @@ tedDeleteFromTable.o: \
     tedEdit.h \
     ../tedFront/tedDocFront.h \
     tedSelect.h \
+    ../utilGeo/geoRectangle.h \
     ../utilPs/textAttribute.h \
     tedDeleteFromTable.c
 
 tedDeleteNode.o: \
     ../appFrame/appFrameConfig.h \
     ../appUtil/appUtilConfig.h \
-    ../appUtil/geoRectangle.h \
     ../appUtil/utilIndexSet.h \
     ../appUtil/utilMemoryBuffer.h \
     ../appUtil/utilPropMask.h \
@@ -843,6 +847,7 @@ tedDeleteNode.o: \
     tedConfig.h \
     tedEdit.h \
     ../tedFront/tedDocFront.h \
+    ../utilGeo/geoRectangle.h \
     ../utilPs/textAttribute.h \
     tedDeleteNode.c
 
@@ -850,16 +855,13 @@ tedDocFont.o: \
     ../appFrame/appEditDocument.h \
     ../appFrame/appFrameConfig.h \
     ../appUtil/appUtilConfig.h \
-    ../appUtil/geoRectangle.h \
     ../appUtil/utilColor.h \
     ../appUtil/utilIndexMapping.h \
     ../appUtil/utilIndexSet.h \
     ../appUtil/utilMD5.h \
     ../appUtil/utilMemoryBuffer.h \
     ../appUtil/utilPagedList.h \
-    ../appUtil/utilPalette.h \
     ../appUtil/utilPropMask.h \
-    ../bitmap/bitmap.h \
     ../docBase/docCellProperties.h \
     ../docBase/docEditPosition.h \
     ../docBase/docEditRange.h \
@@ -882,6 +884,7 @@ tedDocFont.o: \
     tedDocument.h \
     ../tedFront/tedDocFront.h \
     tedSelect.h \
+    ../utilGeo/geoRectangle.h \
     ../utilPs/textAttribute.h \
     tedDocFont.c
 
@@ -891,19 +894,15 @@ tedDocFront.o: \
     ../appFrame/appEditDocument.h \
     ../appFrame/appFileMessageResources.h \
     ../appFrame/appFrameConfig.h \
+    ../appFrame/appGuiDocument.h \
     ../appUtil/appUtilConfig.h \
-    ../appUtil/geoDocumentPageSetup.h \
-    ../appUtil/geoRectangle.h \
-    ../appUtil/geoRectangleOffsets.h \
     ../appUtil/utilColor.h \
     ../appUtil/utilIndexMapping.h \
     ../appUtil/utilIndexSet.h \
     ../appUtil/utilMD5.h \
     ../appUtil/utilMemoryBuffer.h \
     ../appUtil/utilPagedList.h \
-    ../appUtil/utilPalette.h \
     ../appUtil/utilPropMask.h \
-    ../bitmap/bitmap.h \
     ../docBase/docCellProperties.h \
     ../docBase/docChildFields.h \
     ../docBase/docDocumentAttributeMap.h \
@@ -958,6 +957,9 @@ tedDocFront.o: \
     ../tedFront/tedDocFront.h \
     ../tedFront/tedToolFront.h \
     tedSelect.h \
+    ../utilGeo/geoDocumentPageSetup.h \
+    ../utilGeo/geoRectangle.h \
+    ../utilGeo/geoRectangleOffsets.h \
     ../utilPs/psPostScriptFontList.h \
     ../utilPs/textAttribute.h \
     tedDocFront.c
@@ -968,18 +970,13 @@ tedDocRuler.o: \
     ../appFrame/appFileMessageResources.h \
     ../appFrame/appFrameConfig.h \
     ../appUtil/appUtilConfig.h \
-    ../appUtil/geoDocumentPageSetup.h \
-    ../appUtil/geoRectangle.h \
-    ../appUtil/geoRectangleOffsets.h \
     ../appUtil/utilColor.h \
     ../appUtil/utilIndexMapping.h \
     ../appUtil/utilIndexSet.h \
     ../appUtil/utilMD5.h \
     ../appUtil/utilMemoryBuffer.h \
     ../appUtil/utilPagedList.h \
-    ../appUtil/utilPalette.h \
     ../appUtil/utilPropMask.h \
-    ../bitmap/bitmap.h \
     ../docBase/docCellProperties.h \
     ../docBase/docChildFields.h \
     ../docBase/docDocumentFieldList.h \
@@ -1034,6 +1031,9 @@ tedDocRuler.o: \
     tedLayout.h \
     tedRuler.h \
     tedSelect.h \
+    ../utilGeo/geoDocumentPageSetup.h \
+    ../utilGeo/geoRectangle.h \
+    ../utilGeo/geoRectangleOffsets.h \
     ../utilPs/psPostScriptFontList.h \
     ../utilPs/textAttribute.h \
     tedDocRuler.c
@@ -1042,18 +1042,13 @@ tedDocSetProperties.o: \
     ../appFrame/appEditDocument.h \
     ../appFrame/appFrameConfig.h \
     ../appUtil/appUtilConfig.h \
-    ../appUtil/geoDocumentPageSetup.h \
-    ../appUtil/geoRectangle.h \
-    ../appUtil/geoRectangleOffsets.h \
     ../appUtil/utilColor.h \
     ../appUtil/utilIndexMapping.h \
     ../appUtil/utilIndexSet.h \
     ../appUtil/utilMD5.h \
     ../appUtil/utilMemoryBuffer.h \
     ../appUtil/utilPagedList.h \
-    ../appUtil/utilPalette.h \
     ../appUtil/utilPropMask.h \
-    ../bitmap/bitmap.h \
     ../docBase/docCellProperties.h \
     ../docBase/docChildFields.h \
     ../docBase/docDocumentAttributeMap.h \
@@ -1103,6 +1098,9 @@ tedDocSetProperties.o: \
     tedEdit.h \
     ../tedFront/tedDocFront.h \
     tedLayout.h \
+    ../utilGeo/geoDocumentPageSetup.h \
+    ../utilGeo/geoRectangle.h \
+    ../utilGeo/geoRectangleOffsets.h \
     ../utilPs/textAttribute.h \
     tedDocSetProperties.c
 
@@ -1114,10 +1112,6 @@ tedDocument.o: \
     ../appFrame/appFileMessageResources.h \
     ../appFrame/appFrameConfig.h \
     ../appUtil/appUtilConfig.h \
-    ../appUtil/geoAffineTransform.h \
-    ../appUtil/geoDocumentPageSetup.h \
-    ../appUtil/geoRectangle.h \
-    ../appUtil/geoRectangleOffsets.h \
     ../appUtil/utilColor.h \
     ../appUtil/utilIndexMapping.h \
     ../appUtil/utilIndexSet.h \
@@ -1184,6 +1178,10 @@ tedDocument.o: \
     tedLayout.h \
     tedRuler.h \
     tedSelect.h \
+    ../utilGeo/geoAffineTransform.h \
+    ../utilGeo/geoDocumentPageSetup.h \
+    ../utilGeo/geoRectangle.h \
+    ../utilGeo/geoRectangleOffsets.h \
     ../utilPs/psNup.h \
     ../utilPs/psPostScriptFontList.h \
     ../utilPs/textAttribute.h \
@@ -1192,18 +1190,15 @@ tedDocument.o: \
 tedDraw.o: \
     ../appFrame/appEditDocument.h \
     ../appFrame/appFrameConfig.h \
+    ../appFrame/appGuiDocument.h \
     ../appUtil/appUtilConfig.h \
-    ../appUtil/geo2DInteger.h \
-    ../appUtil/geoRectangle.h \
     ../appUtil/utilColor.h \
     ../appUtil/utilIndexMapping.h \
     ../appUtil/utilIndexSet.h \
     ../appUtil/utilMD5.h \
     ../appUtil/utilMemoryBuffer.h \
     ../appUtil/utilPagedList.h \
-    ../appUtil/utilPalette.h \
     ../appUtil/utilPropMask.h \
-    ../bitmap/bitmap.h \
     ../docBase/docCellProperties.h \
     ../docBase/docChildFields.h \
     ../docBase/docDocumentFieldList.h \
@@ -1248,6 +1243,8 @@ tedDraw.o: \
     tedDraw.h \
     tedLayout.h \
     tedSelect.h \
+    ../utilGeo/geo2DInteger.h \
+    ../utilGeo/geoRectangle.h \
     ../utilPs/textAttribute.h \
     tedDraw.c
 
@@ -1257,19 +1254,13 @@ tedDrawGtk.o: \
     ../appFrame/appFileMessageResources.h \
     ../appFrame/appFrameConfig.h \
     ../appUtil/appUtilConfig.h \
-    ../appUtil/geo2DInteger.h \
-    ../appUtil/geoDocumentPageSetup.h \
-    ../appUtil/geoRectangle.h \
-    ../appUtil/geoRectangleOffsets.h \
     ../appUtil/utilColor.h \
     ../appUtil/utilIndexMapping.h \
     ../appUtil/utilIndexSet.h \
     ../appUtil/utilMD5.h \
     ../appUtil/utilMemoryBuffer.h \
     ../appUtil/utilPagedList.h \
-    ../appUtil/utilPalette.h \
     ../appUtil/utilPropMask.h \
-    ../bitmap/bitmap.h \
     ../docBase/docCellProperties.h \
     ../docBase/docEditPosition.h \
     ../docBase/docEditRange.h \
@@ -1297,6 +1288,10 @@ tedDrawGtk.o: \
     tedDraw.h \
     tedLayout.h \
     tedSelect.h \
+    ../utilGeo/geo2DInteger.h \
+    ../utilGeo/geoDocumentPageSetup.h \
+    ../utilGeo/geoRectangle.h \
+    ../utilGeo/geoRectangleOffsets.h \
     ../utilPs/psPostScriptFontList.h \
     ../utilPs/textAttribute.h \
     tedDrawGtk.c
@@ -1312,8 +1307,6 @@ tedDrawRuler.o: \
     ../appFrame/appMetricRuler.h \
     ../appFrame/appRuler.h \
     ../appUtil/appUtilConfig.h \
-    ../appUtil/geo2DInteger.h \
-    ../appUtil/geoRectangle.h \
     ../appUtil/utilColor.h \
     ../docBase/docRulerColumnSeparator.h \
     ../docBase/docTabStop.h \
@@ -1326,22 +1319,21 @@ tedDrawRuler.o: \
     ../include/appDebugon.h \
     tedConfig.h \
     tedDrawRuler.h \
+    ../utilGeo/geo2DInteger.h \
+    ../utilGeo/geoRectangle.h \
     tedDrawRuler.c
 
 tedEdit.o: \
     ../appFrame/appEditDocument.h \
     ../appFrame/appFrameConfig.h \
     ../appUtil/appUtilConfig.h \
-    ../appUtil/geoRectangle.h \
     ../appUtil/utilColor.h \
     ../appUtil/utilIndexMapping.h \
     ../appUtil/utilIndexSet.h \
     ../appUtil/utilMD5.h \
     ../appUtil/utilMemoryBuffer.h \
     ../appUtil/utilPagedList.h \
-    ../appUtil/utilPalette.h \
     ../appUtil/utilPropMask.h \
-    ../bitmap/bitmap.h \
     ../docBase/docCellProperties.h \
     ../docBase/docChildFields.h \
     ../docBase/docDocumentField.h \
@@ -1387,6 +1379,7 @@ tedEdit.o: \
     tedSelect.h \
     ../textEncoding/ucdGeneralCategory.h \
     ../textEncoding/uniUtf8.h \
+    ../utilGeo/geoRectangle.h \
     ../utilPs/textAttribute.h \
     tedEdit.c
 
@@ -1394,18 +1387,13 @@ tedEditList.o: \
     ../appFrame/appEditDocument.h \
     ../appFrame/appFrameConfig.h \
     ../appUtil/appUtilConfig.h \
-    ../appUtil/geoDocumentPageSetup.h \
-    ../appUtil/geoRectangle.h \
-    ../appUtil/geoRectangleOffsets.h \
     ../appUtil/utilColor.h \
     ../appUtil/utilIndexMapping.h \
     ../appUtil/utilIndexSet.h \
     ../appUtil/utilMD5.h \
     ../appUtil/utilMemoryBuffer.h \
     ../appUtil/utilPagedList.h \
-    ../appUtil/utilPalette.h \
     ../appUtil/utilPropMask.h \
-    ../bitmap/bitmap.h \
     ../docBase/docCellProperties.h \
     ../docBase/docChildFields.h \
     ../docBase/docDocumentAttributeMap.h \
@@ -1457,6 +1445,9 @@ tedEditList.o: \
     tedEdit.h \
     ../tedFront/tedDocFront.h \
     tedSelect.h \
+    ../utilGeo/geoDocumentPageSetup.h \
+    ../utilGeo/geoRectangle.h \
+    ../utilGeo/geoRectangleOffsets.h \
     ../utilPs/textAttribute.h \
     tedEditList.c
 
@@ -1464,7 +1455,6 @@ tedEditObject.o: \
     ../appFrame/appEditDocument.h \
     ../appFrame/appFrameConfig.h \
     ../appUtil/appUtilConfig.h \
-    ../appUtil/geoRectangle.h \
     ../appUtil/sioGeneral.h \
     ../appUtil/sioHex.h \
     ../appUtil/sioMemory.h \
@@ -1530,6 +1520,7 @@ tedEditObject.o: \
     ../tedFront/tedDocFront.h \
     tedLayout.h \
     tedSelect.h \
+    ../utilGeo/geoRectangle.h \
     ../utilPs/textAttribute.h \
     tedEditObject.c
 
@@ -1537,16 +1528,13 @@ tedEditOnKey.o: \
     ../appFrame/appEditDocument.h \
     ../appFrame/appFrameConfig.h \
     ../appUtil/appUtilConfig.h \
-    ../appUtil/geoRectangle.h \
     ../appUtil/utilColor.h \
     ../appUtil/utilIndexMapping.h \
     ../appUtil/utilIndexSet.h \
     ../appUtil/utilMD5.h \
     ../appUtil/utilMemoryBuffer.h \
     ../appUtil/utilPagedList.h \
-    ../appUtil/utilPalette.h \
     ../appUtil/utilPropMask.h \
-    ../bitmap/bitmap.h \
     ../docBase/docCellProperties.h \
     ../docBase/docEditPosition.h \
     ../docBase/docEditRange.h \
@@ -1587,23 +1575,22 @@ tedEditOnKey.o: \
     ../tedFront/tedDocFront.h \
     tedKeyboard.h \
     tedSelect.h \
+    ../utilGeo/geoRectangle.h \
     ../utilPs/textAttribute.h \
     tedEditOnKey.c
 
 tedEditOperation.o: \
     ../appFrame/appEditDocument.h \
     ../appFrame/appFrameConfig.h \
+    ../appFrame/appGuiDocument.h \
     ../appUtil/appUtilConfig.h \
-    ../appUtil/geoRectangle.h \
     ../appUtil/utilColor.h \
     ../appUtil/utilIndexMapping.h \
     ../appUtil/utilIndexSet.h \
     ../appUtil/utilMD5.h \
     ../appUtil/utilMemoryBuffer.h \
     ../appUtil/utilPagedList.h \
-    ../appUtil/utilPalette.h \
     ../appUtil/utilPropMask.h \
-    ../bitmap/bitmap.h \
     ../docBase/docCellProperties.h \
     ../docBase/docChildFields.h \
     ../docBase/docDocumentField.h \
@@ -1661,13 +1648,13 @@ tedEditOperation.o: \
     ../tedFront/tedDocFront.h \
     tedLayout.h \
     tedSelect.h \
+    ../utilGeo/geoRectangle.h \
     ../utilPs/textAttribute.h \
     tedEditOperation.c
 
 tedEditSplit.o: \
     ../appFrame/appFrameConfig.h \
     ../appUtil/appUtilConfig.h \
-    ../appUtil/geoRectangle.h \
     ../appUtil/utilIndexSet.h \
     ../appUtil/utilMemoryBuffer.h \
     ../appUtil/utilPropMask.h \
@@ -1704,6 +1691,7 @@ tedEditSplit.o: \
     tedConfig.h \
     tedEdit.h \
     ../tedFront/tedDocFront.h \
+    ../utilGeo/geoRectangle.h \
     ../utilPs/textAttribute.h \
     tedEditSplit.c
 
@@ -1711,16 +1699,13 @@ tedField.o: \
     ../appFrame/appEditDocument.h \
     ../appFrame/appFrameConfig.h \
     ../appUtil/appUtilConfig.h \
-    ../appUtil/geoRectangle.h \
     ../appUtil/utilColor.h \
     ../appUtil/utilIndexMapping.h \
     ../appUtil/utilIndexSet.h \
     ../appUtil/utilMD5.h \
     ../appUtil/utilMemoryBuffer.h \
     ../appUtil/utilPagedList.h \
-    ../appUtil/utilPalette.h \
     ../appUtil/utilPropMask.h \
-    ../bitmap/bitmap.h \
     ../docBase/docCellProperties.h \
     ../docBase/docChildFields.h \
     ../docBase/docDocumentField.h \
@@ -1768,6 +1753,7 @@ tedField.o: \
     tedEdit.h \
     ../tedFront/tedToolFront.h \
     tedSelect.h \
+    ../utilGeo/geoRectangle.h \
     ../utilPs/textAttribute.h \
     tedField.c
 
@@ -1777,9 +1763,6 @@ tedFileConvert.o: \
     ../appFrame/appFrameConfig.h \
     ../appUtil/appSystem.h \
     ../appUtil/appUtilConfig.h \
-    ../appUtil/geoDocumentPageSetup.h \
-    ../appUtil/geoRectangle.h \
-    ../appUtil/geoRectangleOffsets.h \
     ../appUtil/sioFileio.h \
     ../appUtil/sioGeneral.h \
     ../appUtil/sioStdout.h \
@@ -1789,9 +1772,7 @@ tedFileConvert.o: \
     ../appUtil/utilMD5.h \
     ../appUtil/utilMemoryBuffer.h \
     ../appUtil/utilPagedList.h \
-    ../appUtil/utilPalette.h \
     ../appUtil/utilPropMask.h \
-    ../bitmap/bitmap.h \
     ../docBase/docCellProperties.h \
     ../docBase/docEditPosition.h \
     ../docBase/docEditRange.h \
@@ -1817,6 +1798,9 @@ tedFileConvert.o: \
     tedConfig.h \
     tedDocument.h \
     tedFileConvert.h \
+    ../utilGeo/geoDocumentPageSetup.h \
+    ../utilGeo/geoRectangle.h \
+    ../utilGeo/geoRectangleOffsets.h \
     ../utilPs/psBuildConfigFiles.h \
     ../utilPs/psPostScriptFontList.h \
     ../utilPs/textAttribute.h \
@@ -1828,18 +1812,13 @@ tedFind.o: \
     ../appFrame/appFileMessageResources.h \
     ../appFrame/appFrameConfig.h \
     ../appUtil/appUtilConfig.h \
-    ../appUtil/geoDocumentPageSetup.h \
-    ../appUtil/geoRectangle.h \
-    ../appUtil/geoRectangleOffsets.h \
     ../appUtil/utilColor.h \
     ../appUtil/utilIndexMapping.h \
     ../appUtil/utilIndexSet.h \
     ../appUtil/utilMD5.h \
     ../appUtil/utilMemoryBuffer.h \
     ../appUtil/utilPagedList.h \
-    ../appUtil/utilPalette.h \
     ../appUtil/utilPropMask.h \
-    ../bitmap/bitmap.h \
     ../docBase/docCellProperties.h \
     ../docBase/docEditPosition.h \
     ../docBase/docEditRange.h \
@@ -1866,6 +1845,9 @@ tedFind.o: \
     ../tedFront/tedAppFront.h \
     ../tedFront/tedDocFront.h \
     tedSelect.h \
+    ../utilGeo/geoDocumentPageSetup.h \
+    ../utilGeo/geoRectangle.h \
+    ../utilGeo/geoRectangleOffsets.h \
     ../utilPs/psPostScriptFontList.h \
     ../utilPs/textAttribute.h \
     tedFind.c
@@ -1873,7 +1855,6 @@ tedFind.o: \
 tedFindPosition.o: \
     ../appFrame/appFrameConfig.h \
     ../appUtil/appUtilConfig.h \
-    ../appUtil/geoRectangle.h \
     ../appUtil/utilColor.h \
     ../appUtil/utilIndexSet.h \
     ../appUtil/utilMemoryBuffer.h \
@@ -1907,6 +1888,7 @@ tedFindPosition.o: \
     tedConfig.h \
     tedLayout.h \
     tedSelect.h \
+    ../utilGeo/geoRectangle.h \
     ../utilPs/textAttribute.h \
     tedFindPosition.c
 
@@ -1915,11 +1897,9 @@ tedFollowLink.o: \
     ../appFrame/appEditDocument.h \
     ../appFrame/appFileMessageResources.h \
     ../appFrame/appFrameConfig.h \
+    ../appFrame/appGuiApplication.h \
     ../appUtil/appSystem.h \
     ../appUtil/appUtilConfig.h \
-    ../appUtil/geoDocumentPageSetup.h \
-    ../appUtil/geoRectangle.h \
-    ../appUtil/geoRectangleOffsets.h \
     ../appUtil/sioGeneral.h \
     ../appUtil/sioMemory.h \
     ../appUtil/utilColor.h \
@@ -1928,9 +1908,7 @@ tedFollowLink.o: \
     ../appUtil/utilMD5.h \
     ../appUtil/utilMemoryBuffer.h \
     ../appUtil/utilPagedList.h \
-    ../appUtil/utilPalette.h \
     ../appUtil/utilPropMask.h \
-    ../bitmap/bitmap.h \
     ../docBase/docCellProperties.h \
     ../docBase/docChildFields.h \
     ../docBase/docDocumentAttributeMap.h \
@@ -1964,6 +1942,9 @@ tedFollowLink.o: \
     tedConfig.h \
     tedDocument.h \
     ../tedFront/tedDocFront.h \
+    ../utilGeo/geoDocumentPageSetup.h \
+    ../utilGeo/geoRectangle.h \
+    ../utilGeo/geoRectangleOffsets.h \
     ../utilPs/psPostScriptFontList.h \
     ../utilPs/textAttribute.h \
     tedFollowLink.c
@@ -1975,18 +1956,13 @@ tedHeaderFooter.o: \
     ../appFrame/appFrameConfig.h \
     ../appFrame/appQuestion.h \
     ../appUtil/appUtilConfig.h \
-    ../appUtil/geoDocumentPageSetup.h \
-    ../appUtil/geoRectangle.h \
-    ../appUtil/geoRectangleOffsets.h \
     ../appUtil/utilColor.h \
     ../appUtil/utilIndexMapping.h \
     ../appUtil/utilIndexSet.h \
     ../appUtil/utilMD5.h \
     ../appUtil/utilMemoryBuffer.h \
     ../appUtil/utilPagedList.h \
-    ../appUtil/utilPalette.h \
     ../appUtil/utilPropMask.h \
-    ../bitmap/bitmap.h \
     ../docBase/docCellProperties.h \
     ../docBase/docChildFields.h \
     ../docBase/docDocumentFieldList.h \
@@ -2035,6 +2011,9 @@ tedHeaderFooter.o: \
     ../tedFront/tedDocFront.h \
     tedLayout.h \
     tedSelect.h \
+    ../utilGeo/geoDocumentPageSetup.h \
+    ../utilGeo/geoRectangle.h \
+    ../utilGeo/geoRectangleOffsets.h \
     ../utilPs/psPostScriptFontList.h \
     ../utilPs/textAttribute.h \
     tedHeaderFooter.c
@@ -2043,16 +2022,13 @@ tedHyperlink.o: \
     ../appFrame/appEditDocument.h \
     ../appFrame/appFrameConfig.h \
     ../appUtil/appUtilConfig.h \
-    ../appUtil/geoRectangle.h \
     ../appUtil/utilColor.h \
     ../appUtil/utilIndexMapping.h \
     ../appUtil/utilIndexSet.h \
     ../appUtil/utilMD5.h \
     ../appUtil/utilMemoryBuffer.h \
     ../appUtil/utilPagedList.h \
-    ../appUtil/utilPalette.h \
     ../appUtil/utilPropMask.h \
-    ../bitmap/bitmap.h \
     ../docBase/docBookmarkField.h \
     ../docBase/docCellProperties.h \
     ../docBase/docChildFields.h \
@@ -2094,6 +2070,7 @@ tedHyperlink.o: \
     tedEdit.h \
     ../tedFront/tedDocFront.h \
     tedSelect.h \
+    ../utilGeo/geoRectangle.h \
     ../utilPs/textAttribute.h \
     tedHyperlink.c
 
@@ -2101,9 +2078,6 @@ tedIncludeDocument.o: \
     ../appFrame/appEditDocument.h \
     ../appFrame/appFrameConfig.h \
     ../appUtil/appUtilConfig.h \
-    ../appUtil/geoDocumentPageSetup.h \
-    ../appUtil/geoRectangle.h \
-    ../appUtil/geoRectangleOffsets.h \
     ../appUtil/utilColor.h \
     ../appUtil/utilIndexSet.h \
     ../appUtil/utilMemoryBuffer.h \
@@ -2151,6 +2125,9 @@ tedIncludeDocument.o: \
     ../include/appDebugon.h \
     tedConfig.h \
     tedEdit.h \
+    ../utilGeo/geoDocumentPageSetup.h \
+    ../utilGeo/geoRectangle.h \
+    ../utilGeo/geoRectangleOffsets.h \
     ../utilPs/textAttribute.h \
     tedIncludeDocument.c
 
@@ -2158,16 +2135,13 @@ tedInput.o: \
     ../appFrame/appEditDocument.h \
     ../appFrame/appFrameConfig.h \
     ../appUtil/appUtilConfig.h \
-    ../appUtil/geoRectangle.h \
     ../appUtil/utilColor.h \
     ../appUtil/utilIndexMapping.h \
     ../appUtil/utilIndexSet.h \
     ../appUtil/utilMD5.h \
     ../appUtil/utilMemoryBuffer.h \
     ../appUtil/utilPagedList.h \
-    ../appUtil/utilPalette.h \
     ../appUtil/utilPropMask.h \
-    ../bitmap/bitmap.h \
     ../docBase/docCellProperties.h \
     ../docBase/docEditPosition.h \
     ../docBase/docEditRange.h \
@@ -2202,13 +2176,13 @@ tedInput.o: \
     ../tedFront/tedDocFront.h \
     tedKeyboard.h \
     tedSelect.h \
+    ../utilGeo/geoRectangle.h \
     ../utilPs/textAttribute.h \
     tedInput.c
 
 tedInsertNode.o: \
     ../appFrame/appFrameConfig.h \
     ../appUtil/appUtilConfig.h \
-    ../appUtil/geoRectangle.h \
     ../appUtil/utilIndexSet.h \
     ../appUtil/utilMemoryBuffer.h \
     ../appUtil/utilPropMask.h \
@@ -2244,6 +2218,7 @@ tedInsertNode.o: \
     tedConfig.h \
     tedEdit.h \
     ../tedFront/tedDocFront.h \
+    ../utilGeo/geoRectangle.h \
     ../utilPs/textAttribute.h \
     tedInsertNode.c
 
@@ -2253,10 +2228,6 @@ tedLayout.o: \
     ../appFrame/appFileMessageResources.h \
     ../appFrame/appFrameConfig.h \
     ../appUtil/appUtilConfig.h \
-    ../appUtil/geo2DInteger.h \
-    ../appUtil/geoDocumentPageSetup.h \
-    ../appUtil/geoRectangle.h \
-    ../appUtil/geoRectangleOffsets.h \
     ../appUtil/utilColor.h \
     ../appUtil/utilIndexMapping.h \
     ../appUtil/utilIndexSet.h \
@@ -2300,6 +2271,10 @@ tedLayout.o: \
     tedDocument.h \
     tedEdit.h \
     tedLayout.h \
+    ../utilGeo/geo2DInteger.h \
+    ../utilGeo/geoDocumentPageSetup.h \
+    ../utilGeo/geoRectangle.h \
+    ../utilGeo/geoRectangleOffsets.h \
     ../utilPs/psPostScriptFontList.h \
     ../utilPs/textAttribute.h \
     tedLayout.c
@@ -2312,10 +2287,6 @@ tedMain.o: \
     ../appFrame/appGuiResource.h \
     ../appFrame/appSelectionType.h \
     ../appUtil/appUtilConfig.h \
-    ../appUtil/geoDocumentPageSetup.h \
-    ../appUtil/geoRectangle.h \
-    ../appUtil/geoRectangleOffsets.h \
-    ../appUtil/geoUnit.h \
     ../appUtil/sioGeneral.h \
     ../appUtil/sioStdout.h \
     ../appUtil/utilColor.h \
@@ -2324,9 +2295,7 @@ tedMain.o: \
     ../appUtil/utilMD5.h \
     ../appUtil/utilMemoryBuffer.h \
     ../appUtil/utilPagedList.h \
-    ../appUtil/utilPalette.h \
     ../appUtil/utilPropMask.h \
-    ../bitmap/bitmap.h \
     ../docBase/docCellProperties.h \
     ../docBase/docDocumentAttributeMap.h \
     ../docBase/docDocumentProperties.h \
@@ -2367,6 +2336,10 @@ tedMain.o: \
     tedMenu.h \
     ../tedResource/tedResource.h \
     tedRuler.h \
+    ../utilGeo/geoDocumentPageSetup.h \
+    ../utilGeo/geoRectangle.h \
+    ../utilGeo/geoRectangleOffsets.h \
+    ../utilGeo/geoUnit.h \
     ../utilPs/psBuildConfigFiles.h \
     ../utilPs/psPostScriptFontList.h \
     ../utilPs/textAttribute.h \
@@ -2379,19 +2352,15 @@ tedMenu.o: \
     ../appFrame/appEditDocument.h \
     ../appFrame/appFileMessageResources.h \
     ../appFrame/appFrameConfig.h \
+    ../appFrame/appGuiApplication.h \
     ../appUtil/appUtilConfig.h \
-    ../appUtil/geoDocumentPageSetup.h \
-    ../appUtil/geoRectangle.h \
-    ../appUtil/geoRectangleOffsets.h \
     ../appUtil/utilColor.h \
     ../appUtil/utilIndexMapping.h \
     ../appUtil/utilIndexSet.h \
     ../appUtil/utilMD5.h \
     ../appUtil/utilMemoryBuffer.h \
     ../appUtil/utilPagedList.h \
-    ../appUtil/utilPalette.h \
     ../appUtil/utilPropMask.h \
-    ../bitmap/bitmap.h \
     ../docBase/docCellProperties.h \
     ../docBase/docEditPosition.h \
     ../docBase/docEditRange.h \
@@ -2416,6 +2385,9 @@ tedMenu.o: \
     tedDocMenu.h \
     tedDocument.h \
     tedMenu.h \
+    ../utilGeo/geoDocumentPageSetup.h \
+    ../utilGeo/geoRectangle.h \
+    ../utilGeo/geoRectangleOffsets.h \
     ../utilPs/psPostScriptFontList.h \
     ../utilPs/textAttribute.h \
     tedMenu.c
@@ -2426,19 +2398,15 @@ tedMouseInput.o: \
     ../appFrame/appEditDocument.h \
     ../appFrame/appFileMessageResources.h \
     ../appFrame/appFrameConfig.h \
+    ../appFrame/appGuiDocument.h \
     ../appUtil/appUtilConfig.h \
-    ../appUtil/geoDocumentPageSetup.h \
-    ../appUtil/geoRectangle.h \
-    ../appUtil/geoRectangleOffsets.h \
     ../appUtil/utilColor.h \
     ../appUtil/utilIndexMapping.h \
     ../appUtil/utilIndexSet.h \
     ../appUtil/utilMD5.h \
     ../appUtil/utilMemoryBuffer.h \
     ../appUtil/utilPagedList.h \
-    ../appUtil/utilPalette.h \
     ../appUtil/utilPropMask.h \
-    ../bitmap/bitmap.h \
     ../docBase/docCellProperties.h \
     ../docBase/docChildFields.h \
     ../docBase/docDocumentFieldList.h \
@@ -2485,6 +2453,9 @@ tedMouseInput.o: \
     ../tedFront/tedToolFront.h \
     tedLayout.h \
     tedSelect.h \
+    ../utilGeo/geoDocumentPageSetup.h \
+    ../utilGeo/geoRectangle.h \
+    ../utilGeo/geoRectangleOffsets.h \
     ../utilPs/psPostScriptFontList.h \
     ../utilPs/textAttribute.h \
     tedMouseInput.c
@@ -2493,16 +2464,13 @@ tedMoveOnKey.o: \
     ../appFrame/appEditDocument.h \
     ../appFrame/appFrameConfig.h \
     ../appUtil/appUtilConfig.h \
-    ../appUtil/geoRectangle.h \
     ../appUtil/utilColor.h \
     ../appUtil/utilIndexMapping.h \
     ../appUtil/utilIndexSet.h \
     ../appUtil/utilMD5.h \
     ../appUtil/utilMemoryBuffer.h \
     ../appUtil/utilPagedList.h \
-    ../appUtil/utilPalette.h \
     ../appUtil/utilPropMask.h \
-    ../bitmap/bitmap.h \
     ../docBase/docCellProperties.h \
     ../docBase/docChildFields.h \
     ../docBase/docDocumentFieldList.h \
@@ -2553,6 +2521,7 @@ tedMoveOnKey.o: \
     tedKeyboard.h \
     tedLayout.h \
     tedSelect.h \
+    ../utilGeo/geoRectangle.h \
     ../utilPs/textAttribute.h \
     tedMoveOnKey.c
 
@@ -2560,16 +2529,13 @@ tedNote.o: \
     ../appFrame/appEditDocument.h \
     ../appFrame/appFrameConfig.h \
     ../appUtil/appUtilConfig.h \
-    ../appUtil/geoRectangle.h \
     ../appUtil/utilColor.h \
     ../appUtil/utilIndexMapping.h \
     ../appUtil/utilIndexSet.h \
     ../appUtil/utilMD5.h \
     ../appUtil/utilMemoryBuffer.h \
     ../appUtil/utilPagedList.h \
-    ../appUtil/utilPalette.h \
     ../appUtil/utilPropMask.h \
-    ../bitmap/bitmap.h \
     ../docBase/docCellProperties.h \
     ../docBase/docChildFields.h \
     ../docBase/docDocumentField.h \
@@ -2621,6 +2587,7 @@ tedNote.o: \
     tedEdit.h \
     ../tedFront/tedDocFront.h \
     tedSelect.h \
+    ../utilGeo/geoRectangle.h \
     ../utilPs/textAttribute.h \
     tedNote.c
 
@@ -2630,11 +2597,6 @@ tedObjectDrag.o: \
     ../appFrame/appFileMessageResources.h \
     ../appFrame/appFrameConfig.h \
     ../appUtil/appUtilConfig.h \
-    ../appUtil/geo2DInteger.h \
-    ../appUtil/geoDocumentPageSetup.h \
-    ../appUtil/geoGrid.h \
-    ../appUtil/geoRectangle.h \
-    ../appUtil/geoRectangleOffsets.h \
     ../appUtil/utilColor.h \
     ../appUtil/utilIndexMapping.h \
     ../appUtil/utilIndexSet.h \
@@ -2682,6 +2644,11 @@ tedObjectDrag.o: \
     tedEdit.h \
     tedLayout.h \
     tedSelect.h \
+    ../utilGeo/geo2DInteger.h \
+    ../utilGeo/geoDocumentPageSetup.h \
+    ../utilGeo/geoGrid.h \
+    ../utilGeo/geoRectangle.h \
+    ../utilGeo/geoRectangleOffsets.h \
     ../utilPs/psPostScriptFontList.h \
     ../utilPs/textAttribute.h \
     tedObjectDrag.c
@@ -2694,10 +2661,6 @@ tedOpenDocument.o: \
     ../appFrame/appFrameConfig.h \
     ../appUtil/appSystem.h \
     ../appUtil/appUtilConfig.h \
-    ../appUtil/geoDocumentPageSetup.h \
-    ../appUtil/geoRectangle.h \
-    ../appUtil/geoRectangleOffsets.h \
-    ../appUtil/geoUnits.h \
     ../appUtil/sioFd.h \
     ../appUtil/sioFileio.h \
     ../appUtil/sioGeneral.h \
@@ -2710,9 +2673,7 @@ tedOpenDocument.o: \
     ../appUtil/utilMemoryBuffer.h \
     ../appUtil/utilMemoryBufferPrintf.h \
     ../appUtil/utilPagedList.h \
-    ../appUtil/utilPalette.h \
     ../appUtil/utilPropMask.h \
-    ../bitmap/bitmap.h \
     ../docBase/docCellProperties.h \
     ../docBase/docChildFields.h \
     ../docBase/docDocumentAttributeMap.h \
@@ -2763,6 +2724,10 @@ tedOpenDocument.o: \
     tedDocument.h \
     ../tedFront/tedDocFront.h \
     ../textEncoding/textMsLocale.h \
+    ../utilGeo/geoDocumentPageSetup.h \
+    ../utilGeo/geoRectangle.h \
+    ../utilGeo/geoRectangleOffsets.h \
+    ../utilGeo/geoUnits.h \
     ../utilPs/psPostScriptFontList.h \
     ../utilPs/textAttribute.h \
     tedOpenDocument.c
@@ -2773,9 +2738,6 @@ tedOpenDocumentFile.o: \
     ../appFrame/appFrameConfig.h \
     ../appFrame/appQuestion.h \
     ../appUtil/appUtilConfig.h \
-    ../appUtil/geoDocumentPageSetup.h \
-    ../appUtil/geoRectangle.h \
-    ../appUtil/geoRectangleOffsets.h \
     ../appUtil/sioFileio.h \
     ../appUtil/sioGeneral.h \
     ../appUtil/sioMD5.h \
@@ -2811,6 +2773,9 @@ tedOpenDocumentFile.o: \
     tedAppResources.h \
     tedConfig.h \
     ../textEncoding/textMsLocale.h \
+    ../utilGeo/geoDocumentPageSetup.h \
+    ../utilGeo/geoRectangle.h \
+    ../utilGeo/geoRectangleOffsets.h \
     ../utilPs/psPostScriptFontList.h \
     tedOpenDocumentFile.c
 
@@ -2821,18 +2786,13 @@ tedPage.o: \
     ../appFrame/appFrameConfig.h \
     ../appTools/appPageTool.h \
     ../appUtil/appUtilConfig.h \
-    ../appUtil/geoDocumentPageSetup.h \
-    ../appUtil/geoRectangle.h \
-    ../appUtil/geoRectangleOffsets.h \
     ../appUtil/utilColor.h \
     ../appUtil/utilIndexMapping.h \
     ../appUtil/utilIndexSet.h \
     ../appUtil/utilMD5.h \
     ../appUtil/utilMemoryBuffer.h \
     ../appUtil/utilPagedList.h \
-    ../appUtil/utilPalette.h \
     ../appUtil/utilPropMask.h \
-    ../bitmap/bitmap.h \
     ../docBase/docCellProperties.h \
     ../docBase/docChildFields.h \
     ../docBase/docDocumentAttributeMap.h \
@@ -2879,6 +2839,9 @@ tedPage.o: \
     ../tedFront/tedDocFront.h \
     tedLayout.h \
     tedSelect.h \
+    ../utilGeo/geoDocumentPageSetup.h \
+    ../utilGeo/geoRectangle.h \
+    ../utilGeo/geoRectangleOffsets.h \
     ../utilPs/psPostScriptFontList.h \
     ../utilPs/textAttribute.h \
     tedPage.c
@@ -2887,18 +2850,13 @@ tedRepeat.o: \
     ../appFrame/appEditDocument.h \
     ../appFrame/appFrameConfig.h \
     ../appUtil/appUtilConfig.h \
-    ../appUtil/geoDocumentPageSetup.h \
-    ../appUtil/geoRectangle.h \
-    ../appUtil/geoRectangleOffsets.h \
     ../appUtil/utilColor.h \
     ../appUtil/utilIndexMapping.h \
     ../appUtil/utilIndexSet.h \
     ../appUtil/utilMD5.h \
     ../appUtil/utilMemoryBuffer.h \
     ../appUtil/utilPagedList.h \
-    ../appUtil/utilPalette.h \
     ../appUtil/utilPropMask.h \
-    ../bitmap/bitmap.h \
     ../docBase/docCellProperties.h \
     ../docBase/docChildFields.h \
     ../docBase/docDocumentAttributeMap.h \
@@ -2965,6 +2923,9 @@ tedRepeat.o: \
     tedEdit.h \
     ../tedFront/tedDocFront.h \
     tedSelect.h \
+    ../utilGeo/geoDocumentPageSetup.h \
+    ../utilGeo/geoRectangle.h \
+    ../utilGeo/geoRectangleOffsets.h \
     ../utilPs/textAttribute.h \
     tedRepeat.c
 
@@ -2976,9 +2937,6 @@ tedRuler.o: \
     ../appFrame/appMetricRuler.h \
     ../appFrame/appRuler.h \
     ../appUtil/appUtilConfig.h \
-    ../appUtil/geoDocumentPageSetup.h \
-    ../appUtil/geoRectangle.h \
-    ../appUtil/geoRectangleOffsets.h \
     ../appUtil/utilColor.h \
     ../appUtil/utilMemoryBuffer.h \
     ../docBase/docParaProperties.h \
@@ -2997,6 +2955,9 @@ tedRuler.o: \
     tedConfig.h \
     tedDrawRuler.h \
     tedRuler.h \
+    ../utilGeo/geoDocumentPageSetup.h \
+    ../utilGeo/geoRectangle.h \
+    ../utilGeo/geoRectangleOffsets.h \
     ../utilPs/psPostScriptFontList.h \
     tedRuler.c
 
@@ -3004,13 +2965,10 @@ tedSaveDocument.o: \
     ../appFrame/appEditApplication.h \
     ../appFrame/appFileMessageResources.h \
     ../appFrame/appFrameConfig.h \
+    ../appFrame/appPrintDocument.h \
     ../appFrame/appPrintJob.h \
     ../appUtil/appSystem.h \
     ../appUtil/appUtilConfig.h \
-    ../appUtil/geoAffineTransform.h \
-    ../appUtil/geoDocumentPageSetup.h \
-    ../appUtil/geoRectangle.h \
-    ../appUtil/geoRectangleOffsets.h \
     ../appUtil/sioFd.h \
     ../appUtil/sioFileio.h \
     ../appUtil/sioGeneral.h \
@@ -3023,9 +2981,7 @@ tedSaveDocument.o: \
     ../appUtil/utilMD5.h \
     ../appUtil/utilMemoryBuffer.h \
     ../appUtil/utilPagedList.h \
-    ../appUtil/utilPalette.h \
     ../appUtil/utilPropMask.h \
-    ../bitmap/bitmap.h \
     ../docBase/docCellProperties.h \
     ../docBase/docChildFields.h \
     ../docBase/docDocumentAttributeMap.h \
@@ -3060,6 +3016,7 @@ tedSaveDocument.o: \
     ../docEdit/docSelectionDescription.h \
     ../docFont/fontMatchFont.h \
     ../docHtml/docHtmlWrite.h \
+    ../docHtml/docMarkdownReadWrite.h \
     ../docHtml/docSvgDraw.h \
     ../docLayout/docPsPrint.h \
     ../docLayout/docResizeHandles.h \
@@ -3079,6 +3036,10 @@ tedSaveDocument.o: \
     tedConfig.h \
     tedDocument.h \
     tedLayout.h \
+    ../utilGeo/geoAffineTransform.h \
+    ../utilGeo/geoDocumentPageSetup.h \
+    ../utilGeo/geoRectangle.h \
+    ../utilGeo/geoRectangleOffsets.h \
     ../utilPs/psNup.h \
     ../utilPs/psPostScriptFontList.h \
     ../utilPs/psPrint.h \
@@ -3089,17 +3050,15 @@ tedSelect.o: \
     ../appFrame/appDocFront.h \
     ../appFrame/appEditDocument.h \
     ../appFrame/appFrameConfig.h \
+    ../appFrame/appGuiDocument.h \
     ../appUtil/appUtilConfig.h \
-    ../appUtil/geoRectangle.h \
     ../appUtil/utilColor.h \
     ../appUtil/utilIndexMapping.h \
     ../appUtil/utilIndexSet.h \
     ../appUtil/utilMD5.h \
     ../appUtil/utilMemoryBuffer.h \
     ../appUtil/utilPagedList.h \
-    ../appUtil/utilPalette.h \
     ../appUtil/utilPropMask.h \
-    ../bitmap/bitmap.h \
     ../docBase/docCellProperties.h \
     ../docBase/docChildFields.h \
     ../docBase/docDocumentFieldList.h \
@@ -3146,6 +3105,7 @@ tedSelect.o: \
     ../tedFront/tedDocFront.h \
     tedLayout.h \
     tedSelect.h \
+    ../utilGeo/geoRectangle.h \
     ../utilPs/textAttribute.h \
     tedSelect.c
 
@@ -3155,18 +3115,13 @@ tedSelectionDescription.o: \
     ../appFrame/appFileMessageResources.h \
     ../appFrame/appFrameConfig.h \
     ../appUtil/appUtilConfig.h \
-    ../appUtil/geoDocumentPageSetup.h \
-    ../appUtil/geoRectangle.h \
-    ../appUtil/geoRectangleOffsets.h \
     ../appUtil/utilColor.h \
     ../appUtil/utilIndexMapping.h \
     ../appUtil/utilIndexSet.h \
     ../appUtil/utilMD5.h \
     ../appUtil/utilMemoryBuffer.h \
     ../appUtil/utilPagedList.h \
-    ../appUtil/utilPalette.h \
     ../appUtil/utilPropMask.h \
-    ../bitmap/bitmap.h \
     ../docBase/docCellProperties.h \
     ../docBase/docChildFields.h \
     ../docBase/docDocumentFieldList.h \
@@ -3206,6 +3161,9 @@ tedSelectionDescription.o: \
     tedLayout.h \
     tedRuler.h \
     tedSelect.h \
+    ../utilGeo/geoDocumentPageSetup.h \
+    ../utilGeo/geoRectangle.h \
+    ../utilGeo/geoRectangleOffsets.h \
     ../utilPs/psPostScriptFontList.h \
     ../utilPs/textAttribute.h \
     tedSelectionDescription.c
@@ -3214,16 +3172,13 @@ tedTable.o: \
     ../appFrame/appEditDocument.h \
     ../appFrame/appFrameConfig.h \
     ../appUtil/appUtilConfig.h \
-    ../appUtil/geoRectangle.h \
     ../appUtil/utilColor.h \
     ../appUtil/utilIndexMapping.h \
     ../appUtil/utilIndexSet.h \
     ../appUtil/utilMD5.h \
     ../appUtil/utilMemoryBuffer.h \
     ../appUtil/utilPagedList.h \
-    ../appUtil/utilPalette.h \
     ../appUtil/utilPropMask.h \
-    ../bitmap/bitmap.h \
     ../docBase/docCellProperties.h \
     ../docBase/docChildFields.h \
     ../docBase/docDocumentAttributeMap.h \
@@ -3271,22 +3226,20 @@ tedTable.o: \
     tedDocument.h \
     tedEdit.h \
     ../tedFront/tedDocFront.h \
+    ../utilGeo/geoRectangle.h \
     ../utilPs/textAttribute.h \
     tedTable.c
 
 tedToc.o: \
     ../appFrame/appFrameConfig.h \
     ../appUtil/appUtilConfig.h \
-    ../appUtil/geoRectangle.h \
     ../appUtil/utilColor.h \
     ../appUtil/utilIndexMapping.h \
     ../appUtil/utilIndexSet.h \
     ../appUtil/utilMD5.h \
     ../appUtil/utilMemoryBuffer.h \
     ../appUtil/utilPagedList.h \
-    ../appUtil/utilPalette.h \
     ../appUtil/utilPropMask.h \
-    ../bitmap/bitmap.h \
     ../docBase/docCellProperties.h \
     ../docBase/docChildFields.h \
     ../docBase/docDocumentFieldList.h \
@@ -3337,6 +3290,7 @@ tedToc.o: \
     tedEdit.h \
     ../tedFront/tedDocFront.h \
     tedLayout.h \
+    ../utilGeo/geoRectangle.h \
     ../utilPs/textAttribute.h \
     tedToc.c
 
@@ -3344,18 +3298,13 @@ tedUndo.o: \
     ../appFrame/appEditDocument.h \
     ../appFrame/appFrameConfig.h \
     ../appUtil/appUtilConfig.h \
-    ../appUtil/geoDocumentPageSetup.h \
-    ../appUtil/geoRectangle.h \
-    ../appUtil/geoRectangleOffsets.h \
     ../appUtil/utilColor.h \
     ../appUtil/utilIndexMapping.h \
     ../appUtil/utilIndexSet.h \
     ../appUtil/utilMD5.h \
     ../appUtil/utilMemoryBuffer.h \
     ../appUtil/utilPagedList.h \
-    ../appUtil/utilPalette.h \
     ../appUtil/utilPropMask.h \
-    ../bitmap/bitmap.h \
     ../docBase/docCellProperties.h \
     ../docBase/docChildFields.h \
     ../docBase/docDocumentAttributeMap.h \
@@ -3431,6 +3380,9 @@ tedUndo.o: \
     ../tedFront/tedDocFront.h \
     tedLayout.h \
     tedSelect.h \
+    ../utilGeo/geoDocumentPageSetup.h \
+    ../utilGeo/geoRectangle.h \
+    ../utilGeo/geoRectangleOffsets.h \
     ../utilPs/textAttribute.h \
     tedUndo.c
 
@@ -3441,9 +3393,6 @@ tedVerticalRuler.o: \
     ../appFrame/appFrameConfig.h \
     ../appFrame/appRuler.h \
     ../appUtil/appUtilConfig.h \
-    ../appUtil/geoDocumentPageSetup.h \
-    ../appUtil/geoRectangle.h \
-    ../appUtil/geoRectangleOffsets.h \
     ../appUtil/utilColor.h \
     ../appUtil/utilMemoryBuffer.h \
     ../guiBase/guiBaseGtk.h \
@@ -3457,6 +3406,9 @@ tedVerticalRuler.o: \
     ../include/appDebugon.h \
     tedConfig.h \
     tedRuler.h \
+    ../utilGeo/geoDocumentPageSetup.h \
+    ../utilGeo/geoRectangle.h \
+    ../utilGeo/geoRectangleOffsets.h \
     ../utilPs/psPostScriptFontList.h \
     tedVerticalRuler.c
 

@@ -53,7 +53,8 @@ extern void docPsSaveTabLeaderProcedures(
 				struct SimpleOutputStream *	sos );
 
 extern int docPsPrintDrawDrawingShape(
-				const struct DocumentRectangle * drTwips,
+				const struct DocumentRectangle * drOutside,
+				const struct AffineTransform2D * atOutside,
 				int				page,
 				struct DrawingShape *		ds,
 				struct DrawingContext *		dc,

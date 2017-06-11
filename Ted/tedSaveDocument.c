@@ -24,6 +24,7 @@
 #   include	<docSvgDraw.h>
 #   include	<docRtfReadWrite.h>
 #   include	<docPlainReadWrite.h>
+#   include	<docMarkdownReadWrite.h>
 #   include	<docField.h>
 #   include	<docRecalculateTocField.h>
 #   include	<docRtfTrace.h>
@@ -35,6 +36,7 @@
 #   include	<docTreeNode.h>
 #   include	<docDocumentProperties.h>
 #   include	<appEditApplication.h>
+#   include	<appPrintDocument.h>
 #   include	<sioGeneral.h>
 #   include	<layoutContext.h>
 #   include	<docBuf.h>
@@ -264,10 +266,7 @@ static int tedLayoutForSaveFormatted(
 				TedDocument *			td,
 				int				format )
     {
-    DocumentRectangle		drScreenIgnored;
-    DocumentRectangle		drVisibleIgnored;
-
-    struct BufferDocument *		bd= td->tdDocument;
+    struct BufferDocument *	bd= td->tdDocument;
     DocumentProperties *	dp= bd->bdProperties;
 
     docInitRecalculateFields( rf );
@@ -279,6 +278,9 @@ static int tedLayoutForSaveFormatted(
 
     if  ( ! ds )
 	{
+	DocumentRectangle	drScreenIgnored;
+	DocumentRectangle	drVisibleIgnored;
+
 	if  ( tedFirstRecalculateFields( rf, bd ) )
 	    { LDEB(1); return -1;	}
 
@@ -300,7 +302,7 @@ static int tedSaveDocumentImpl(		EditApplication *	ea,
 					const MemoryBuffer *	filename )
     {
     time_t			now;
-    struct BufferDocument *		bd= td->tdDocument;
+    struct BufferDocument *	bd= td->tdDocument;
     DocumentProperties *	dp= bd->bdProperties;
 
     const PostScriptFontList *	psfl= &(ea->eaPostScriptFontList);
@@ -332,15 +334,24 @@ static int tedSaveDocumentImpl(		EditApplication *	ea,
 		{ LDEB(1); return -1;	}
 	    break;
 
+	case TEDdockindMARKDOWN:
+	    if  ( docMarkdownSaveDocument( sos, bd,
+				    (const struct DocumentSelection *)0 ) )
+		{ LDEB(1); return -1;	}
+	    break;
+
 	case TEDdockindHTML_FILES:
 	    {
 	    RecalculateFields	rf;
 	    LayoutContext	lc;
+	    TedAppResources *	tar= (TedAppResources *)ea->eaResourceData;
+	    int			inlineHtmlImages= tar->tarInlineHtmlImagesInt;
 
 	    if  ( tedLayoutForSaveFormatted( &rf, &lc, ds, psfl, td, format ) )
 		{ SDEB(utilMemoryBufferGetString(documentTitle)); return -1; }
 
-	    if  ( docHtmlSaveDocument( sos, bd, filename, &lc ) )
+	    if  ( docHtmlSaveDocument( sos, bd, filename, &lc,
+							inlineHtmlImages ) )
 		{ LDEB(1); return -1;	}
 	    }
 	    break;

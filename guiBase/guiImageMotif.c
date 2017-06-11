@@ -7,13 +7,9 @@
 #   if USE_MOTIF
 
 #   include	"guiWidgets.h"
-#   include	"guiWidgetsGtk.h"
-#   include	"guiWidgetsImpl.h"
 #   include	"guiImageImpl.h"
-#   include	"guiDrawingWidget.h"
 #   include	"drawUtilMotif.h"
 #   include	"guiNamedImage.h"
-#   include	"guiNamedImages.h"
 #   include	<geoRectangle.h>
 
 #   include	<bitmap.h>

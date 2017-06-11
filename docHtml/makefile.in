@@ -32,6 +32,7 @@ INCLUDES=			\
 	-I../utilPs		\
 	-I../docFont		\
 	-I../textEncoding	\
+	-I../utilGeo		\
 	-I../appUtil		\
 	-I../include
 
@@ -41,7 +42,7 @@ CFLAGS=	\
 
 #CFLAGS= -g -O2 $(WFLAGS) $(INCLUDES)
 
-# 17!!obs
+# 18!!obs
 OBS	=	\
 		docWriteCss.o\
 		docSvgDrawTextLine.o\
@@ -49,6 +50,7 @@ OBS	=	\
 		docSvgDrawShapes.o\
 		docSvgDrawImage.o\
 		docSvgDraw.o\
+		docMarkdownWrite.o\
 		docHtmlWriteParagraph.o\
 		docHtmlWriteNotes.o\
 		docHtmlWriteNode.o\
@@ -82,13 +84,10 @@ duplicates:
 includes:
 	includes.sh docHtmlConfig.h $(INCLUDES)
 
-# deps -I. -I../include -I ../guiInterface -I../docBuf -I../docLayout -I../docEdit -I../docBase -I../bitmap  -I../drawMeta  -I../textEncoding -I../appUtil -I ../docFont -I../utilPs
+# deps -I. -I../include -I ../guiInterface -I../docBuf -I../docLayout -I../docEdit -I../docBase -I../bitmap  -I../drawMeta  -I../textEncoding -I../utilGeo -I../appUtil -I ../docFont -I../utilPs
 ######################################## !! sh
 
 docHtmlWrite.o: \
-    ../appUtil/geoDocumentPageSetup.h \
-    ../appUtil/geoRectangle.h \
-    ../appUtil/geoRectangleOffsets.h \
     ../appUtil/sioGeneral.h \
     ../appUtil/utilColor.h \
     ../appUtil/utilIndexMapping.h \
@@ -128,14 +127,14 @@ docHtmlWrite.o: \
     ../include/appDebug.h \
     ../include/appDebugon.h \
     ../textEncoding/textMsLocale.h \
+    ../utilGeo/geoDocumentPageSetup.h \
+    ../utilGeo/geoRectangle.h \
+    ../utilGeo/geoRectangleOffsets.h \
     ../utilPs/psShading.h \
     ../utilPs/textAttribute.h \
     docHtmlWrite.c
 
 docHtmlWriteCss.o: \
-    ../appUtil/geoDocumentPageSetup.h \
-    ../appUtil/geoRectangle.h \
-    ../appUtil/geoRectangleOffsets.h \
     ../appUtil/sioGeneral.h \
     ../appUtil/utilColor.h \
     ../appUtil/utilIndexMapping.h \
@@ -162,14 +161,14 @@ docHtmlWriteCss.o: \
     docWriteCss.h \
     ../include/appDebug.h \
     ../include/appDebugon.h \
+    ../utilGeo/geoDocumentPageSetup.h \
+    ../utilGeo/geoRectangle.h \
+    ../utilGeo/geoRectangleOffsets.h \
     ../utilPs/textAttribute.h \
     docHtmlWriteCss.c
 
 docHtmlWriteEml.o: \
     ../appUtil/appSystem.h \
-    ../appUtil/geoDocumentPageSetup.h \
-    ../appUtil/geoRectangle.h \
-    ../appUtil/geoRectangleOffsets.h \
     ../appUtil/sioBase64.h \
     ../appUtil/sioGeneral.h \
     ../appUtil/sioPushed.h \
@@ -204,13 +203,13 @@ docHtmlWriteEml.o: \
     docHtmlWriteImpl.h \
     ../include/appDebug.h \
     ../include/appDebugon.h \
+    ../utilGeo/geoDocumentPageSetup.h \
+    ../utilGeo/geoRectangle.h \
+    ../utilGeo/geoRectangleOffsets.h \
     ../utilPs/textAttribute.h \
     docHtmlWriteEml.c
 
 docHtmlWriteEpub.o: \
-    ../appUtil/geoDocumentPageSetup.h \
-    ../appUtil/geoRectangle.h \
-    ../appUtil/geoRectangleOffsets.h \
     ../appUtil/sioGeneral.h \
     ../appUtil/sioZip.h \
     ../appUtil/utilColor.h \
@@ -257,14 +256,14 @@ docHtmlWriteEpub.o: \
     ../include/appDebug.h \
     ../include/appDebugon.h \
     ../textEncoding/textMsLocale.h \
+    ../utilGeo/geoDocumentPageSetup.h \
+    ../utilGeo/geoRectangle.h \
+    ../utilGeo/geoRectangleOffsets.h \
     ../utilPs/textAttribute.h \
     docHtmlWriteEpub.c
 
 docHtmlWriteHtml.o: \
     ../appUtil/appSystem.h \
-    ../appUtil/geoDocumentPageSetup.h \
-    ../appUtil/geoRectangle.h \
-    ../appUtil/geoRectangleOffsets.h \
     ../appUtil/sioFileio.h \
     ../appUtil/sioGeneral.h \
     ../appUtil/utilColor.h \
@@ -294,15 +293,15 @@ docHtmlWriteHtml.o: \
     docHtmlWriteImpl.h \
     ../include/appDebug.h \
     ../include/appDebugon.h \
+    ../utilGeo/geoDocumentPageSetup.h \
+    ../utilGeo/geoRectangle.h \
+    ../utilGeo/geoRectangleOffsets.h \
     ../utilPs/textAttribute.h \
     docHtmlWriteHtml.c
 
 docHtmlWriteImage.o: \
-    ../appUtil/geoAffineTransform.h \
-    ../appUtil/geoDocumentPageSetup.h \
-    ../appUtil/geoRectangle.h \
-    ../appUtil/geoRectangleOffsets.h \
     ../appUtil/sioGeneral.h \
+    ../appUtil/sioUtil.h \
     ../appUtil/utilColor.h \
     ../appUtil/utilIndexMapping.h \
     ../appUtil/utilIndexSet.h \
@@ -346,14 +345,15 @@ docHtmlWriteImage.o: \
     ../drawMeta/drawMetafileSvg.h \
     ../include/appDebug.h \
     ../include/appDebugon.h \
+    ../utilGeo/geoAffineTransform.h \
+    ../utilGeo/geoDocumentPageSetup.h \
+    ../utilGeo/geoRectangle.h \
+    ../utilGeo/geoRectangleOffsets.h \
     ../utilPs/svgWriter.h \
     ../utilPs/textAttribute.h \
     docHtmlWriteImage.c
 
 docHtmlWriteNode.o: \
-    ../appUtil/geoDocumentPageSetup.h \
-    ../appUtil/geoRectangle.h \
-    ../appUtil/geoRectangleOffsets.h \
     ../appUtil/sioGeneral.h \
     ../appUtil/utilColor.h \
     ../appUtil/utilIndexMapping.h \
@@ -401,14 +401,14 @@ docHtmlWriteNode.o: \
     docWriteCss.h \
     ../include/appDebug.h \
     ../include/appDebugon.h \
+    ../utilGeo/geoDocumentPageSetup.h \
+    ../utilGeo/geoRectangle.h \
+    ../utilGeo/geoRectangleOffsets.h \
     ../utilPs/psShading.h \
     ../utilPs/textAttribute.h \
     docHtmlWriteNode.c
 
 docHtmlWriteNotes.o: \
-    ../appUtil/geoDocumentPageSetup.h \
-    ../appUtil/geoRectangle.h \
-    ../appUtil/geoRectangleOffsets.h \
     ../appUtil/utilIndexMapping.h \
     ../appUtil/utilIndexSet.h \
     ../appUtil/utilMemoryBuffer.h \
@@ -448,13 +448,13 @@ docHtmlWriteNotes.o: \
     docHtmlWriteImpl.h \
     ../include/appDebug.h \
     ../include/appDebugon.h \
+    ../utilGeo/geoDocumentPageSetup.h \
+    ../utilGeo/geoRectangle.h \
+    ../utilGeo/geoRectangleOffsets.h \
     ../utilPs/textAttribute.h \
     docHtmlWriteNotes.c
 
 docHtmlWriteParagraph.o: \
-    ../appUtil/geoDocumentPageSetup.h \
-    ../appUtil/geoRectangle.h \
-    ../appUtil/geoRectangleOffsets.h \
     ../appUtil/sioGeneral.h \
     ../appUtil/utilColor.h \
     ../appUtil/utilIndexMapping.h \
@@ -493,15 +493,66 @@ docHtmlWriteParagraph.o: \
     docWriteCss.h \
     ../include/appDebug.h \
     ../include/appDebugon.h \
+    ../utilGeo/geoDocumentPageSetup.h \
+    ../utilGeo/geoRectangle.h \
+    ../utilGeo/geoRectangleOffsets.h \
     ../utilPs/psShading.h \
     ../utilPs/textAttribute.h \
     docHtmlWriteParagraph.c
 
+docMarkdownWrite.o: \
+    ../appUtil/sioGeneral.h \
+    ../appUtil/utilColor.h \
+    ../appUtil/utilIndexSet.h \
+    ../appUtil/utilMemoryBuffer.h \
+    ../appUtil/utilPagedList.h \
+    ../docBase/docChildFields.h \
+    ../docBase/docDocumentAttributeMap.h \
+    ../docBase/docDocumentField.h \
+    ../docBase/docDocumentFieldList.h \
+    ../docBase/docDocumentProperties.h \
+    ../docBase/docEditPosition.h \
+    ../docBase/docEditRange.h \
+    ../docBase/docFieldInstructions.h \
+    ../docBase/docFieldKind.h \
+    ../docBase/docHyperlinkField.h \
+    ../docBase/docInsertedObjectList.h \
+    ../docBase/docLayoutPosition.h \
+    ../docBase/docListNumberTree.h \
+    ../docBase/docNoteProperties.h \
+    ../docBase/docNotesProperties.h \
+    ../docBase/docParaProperties.h \
+    ../docBase/docScanner.h \
+    ../docBase/docSelectionScope.h \
+    ../docBase/docStyleSheet.h \
+    ../docBase/docTextParticule.h \
+    ../docBase/docTreeType.h \
+    ../docBuf/docBuf.h \
+    ../docBuf/docCellNode.h \
+    ../docBuf/docDebug.h \
+    ../docBuf/docDocumentNote.h \
+    ../docBuf/docDocumentTree.h \
+    ../docBuf/docDrawingShapeList.h \
+    ../docBuf/docNodeTree.h \
+    ../docBuf/docNotes.h \
+    ../docBuf/docParaNode.h \
+    ../docBuf/docParaScanner.h \
+    ../docBuf/docRowNode.h \
+    ../docBuf/docSectNode.h \
+    ../docBuf/docSelect.h \
+    ../docBuf/docTextRun.h \
+    ../docBuf/docTreeNode.h \
+    ../docBuf/docTreeScanner.h \
+    docHtmlConfig.h \
+    docMarkdownReadWrite.h \
+    ../include/appDebug.h \
+    ../include/appDebugon.h \
+    ../utilGeo/geoDocumentPageSetup.h \
+    ../utilGeo/geoRectangleOffsets.h \
+    ../utilPs/textAttribute.h \
+    docMarkdownWrite.c
+
 docSvgDraw.o: \
-    ../appUtil/geoAffineTransform.h \
-    ../appUtil/geoDocumentPageSetup.h \
-    ../appUtil/geoRectangle.h \
-    ../appUtil/geoRectangleOffsets.h \
     ../appUtil/sioGeneral.h \
     ../appUtil/utilColor.h \
     ../appUtil/utilIndexMapping.h \
@@ -552,6 +603,10 @@ docSvgDraw.o: \
     docWriteCss.h \
     ../include/appDebug.h \
     ../include/appDebugon.h \
+    ../utilGeo/geoAffineTransform.h \
+    ../utilGeo/geoDocumentPageSetup.h \
+    ../utilGeo/geoRectangle.h \
+    ../utilGeo/geoRectangleOffsets.h \
     ../utilPs/psFontInfo.h \
     ../utilPs/psShading.h \
     ../utilPs/svgWriter.h \
@@ -559,8 +614,6 @@ docSvgDraw.o: \
     docSvgDraw.c
 
 docSvgDrawImage.o: \
-    ../appUtil/geoAffineTransform.h \
-    ../appUtil/geoRectangle.h \
     ../appUtil/sioGeneral.h \
     ../appUtil/utilColor.h \
     ../appUtil/utilMemoryBuffer.h \
@@ -595,15 +648,13 @@ docSvgDrawImage.o: \
     ../drawMeta/drawMetafileSvg.h \
     ../include/appDebug.h \
     ../include/appDebugon.h \
+    ../utilGeo/geoAffineTransform.h \
+    ../utilGeo/geoRectangle.h \
     ../utilPs/svgWriter.h \
     ../utilPs/textAttribute.h \
     docSvgDrawImage.c
 
 docSvgDrawShapeText.o: \
-    ../appUtil/geoAffineTransform.h \
-    ../appUtil/geoDocumentPageSetup.h \
-    ../appUtil/geoRectangle.h \
-    ../appUtil/geoRectangleOffsets.h \
     ../appUtil/utilColor.h \
     ../appUtil/utilIndexMapping.h \
     ../appUtil/utilMemoryBuffer.h \
@@ -630,14 +681,15 @@ docSvgDrawShapeText.o: \
     docSvgDrawImpl.h \
     ../include/appDebug.h \
     ../include/appDebugon.h \
+    ../utilGeo/geoAffineTransform.h \
+    ../utilGeo/geoDocumentPageSetup.h \
+    ../utilGeo/geoRectangle.h \
+    ../utilGeo/geoRectangleOffsets.h \
     ../utilPs/svgWriter.h \
     ../utilPs/textAttribute.h \
     docSvgDrawShapeText.c
 
 docSvgDrawShapes.o: \
-    ../appUtil/geo2DInteger.h \
-    ../appUtil/geoAffineTransform.h \
-    ../appUtil/geoRectangle.h \
     ../appUtil/sioGeneral.h \
     ../appUtil/utilColor.h \
     ../appUtil/utilMemoryBuffer.h \
@@ -663,14 +715,14 @@ docSvgDrawShapes.o: \
     docSvgDrawImpl.h \
     ../include/appDebug.h \
     ../include/appDebugon.h \
+    ../utilGeo/geo2DInteger.h \
+    ../utilGeo/geoAffineTransform.h \
+    ../utilGeo/geoRectangle.h \
     ../utilPs/svgWriter.h \
     ../utilPs/textAttribute.h \
     docSvgDrawShapes.c
 
 docSvgDrawTextLine.o: \
-    ../appUtil/geoDocumentPageSetup.h \
-    ../appUtil/geoRectangle.h \
-    ../appUtil/geoRectangleOffsets.h \
     ../appUtil/utilColor.h \
     ../appUtil/utilIndexMapping.h \
     ../appUtil/utilIndexSet.h \
@@ -704,14 +756,15 @@ docSvgDrawTextLine.o: \
     ../include/appDebug.h \
     ../include/appDebugon.h \
     ../textEncoding/textOfficeCharset.h \
+    ../utilGeo/geoDocumentPageSetup.h \
+    ../utilGeo/geoRectangle.h \
+    ../utilGeo/geoRectangleOffsets.h \
     ../utilPs/psTextExtents.h \
     ../utilPs/svgWriter.h \
     ../utilPs/textAttribute.h \
     docSvgDrawTextLine.c
 
 docWriteCss.o: \
-    ../appUtil/geoDocumentPageSetup.h \
-    ../appUtil/geoRectangleOffsets.h \
     ../appUtil/sioGeneral.h \
     ../appUtil/utilColor.h \
     ../appUtil/utilIndexMapping.h \
@@ -746,6 +799,8 @@ docWriteCss.o: \
     ../include/appDebug.h \
     ../include/appDebugon.h \
     ../textEncoding/textOfficeCharset.h \
+    ../utilGeo/geoDocumentPageSetup.h \
+    ../utilGeo/geoRectangleOffsets.h \
     ../utilPs/psShading.h \
     ../utilPs/psTextExtents.h \
     ../utilPs/textAttributeAdmin.h \

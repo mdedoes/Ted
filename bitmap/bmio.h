@@ -14,11 +14,11 @@ struct RasterImage;
 struct DocumentRectangle;
 
 typedef int (*bmReadBitmap)(	struct BitmapDescription *		pBd,
-				unsigned char **		pBuffer,
+				unsigned char **			pBuffer,
 				struct SimpleInputStream *		sis );
 
 typedef int (*bmWriteBitmap)(	const struct BitmapDescription *	bd,
-				const unsigned char *		buffer,
+				const unsigned char *			buffer,
 				struct SimpleOutputStream *		sos );
 
 /************************************************************************/

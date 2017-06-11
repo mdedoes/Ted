@@ -91,7 +91,7 @@ int appPaperChooserGetSize(	PropertyMask *		pDoneMask,
 
     guiFreeStringFromTextWidget( s );
 
-    utilUpdDocumentGeometry( &doneMask, dg, &setMask, &dgSet );
+    geoUpdDocumentGeometry( &doneMask, dg, &setMask, &dgSet );
 
     if  ( pDoneMask )
 	{ utilPropMaskOr( pDoneMask, pDoneMask, &doneMask );	}
@@ -295,7 +295,7 @@ static APP_TXTYPING_CALLBACK_H( appPaperChooserTypingCallback, w, voidpc )
 
     DocumentGeometry	dgHere;
 
-    utilInitDocumentGeometry( &dgHere );
+    geoInitDocumentGeometry( &dgHere );
 
     if  ( pc->pcProgrammatic )
 	{ return;	}
@@ -604,7 +604,7 @@ void appInitPaperChooser(	PaperChooser *	pc )
     pc->pcSizeChosen= -1;
     pc->pcLandscapeChosen= -1;
 
-    utilInitDocumentGeometry( &(pc->pcGeometryChosen) );
+    geoInitDocumentGeometry( &(pc->pcGeometryChosen) );
 
     pc->pcSizeOptionsMade= 0;
 

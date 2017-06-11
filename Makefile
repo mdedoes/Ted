@@ -116,6 +116,7 @@ lib:
 ####
 
 tedlibs: 	lib/appUtil.a		\
+		lib/utilGeo.a		\
 		lib/textEncoding.a	\
 		lib/utilPs.a		\
 		lib/bitmap.a		\
@@ -134,317 +135,210 @@ tedlibs: 	lib/appUtil.a		\
 		lib/tedResource.a	\
 		lib/tedTools.a
 
-####
-AUT_DEP= Makefile
-AUT_CFG= appUtil/appUtilConfig.h
+####    Generated piece that enforces sequential 'configure' 
+####    invocations
+#### appUtil
+CFG_appUtil=appUtil/appUtilConfig.h
+DEP_appUtil= $(CFG_appUtil)
 
-lib/appUtil.a: $(AUT_CFG) lib
-	cd appUtil && $(MAKE)
+$(CFG_appUtil): appUtil/makefile.in $(DEP_appUtil) Makefile
+	 cd appUtil && ./configure $(CONFIGURE_OPTIONS)
 
-$(AUT_CFG): \
-	appUtil/makefile.in appUtil/appUtilConfig.h.in $(AUT_DEP)
-	cd appUtil && ./configure $(CONFIGURE_OPTIONS)
+lib/appUtil.a: $(CFG_appUtil) lib
+	 cd appUtil && $(MAKE)
 
-####
-TXE_DEP= \
-	$(AUT_CFG) \
-	Makefile
-TXE_CFG= textEncoding/textEncodingConfig.h
+#### utilGeo
+CFG_utilGeo=utilGeo/utilGeoConfig.h
+DEP_utilGeo= $(DEP_appUtil) $(CFG_utilGeo)
 
-lib/textEncoding.a: $(TXE_CFG) lib
-	cd textEncoding && $(MAKE)
+$(CFG_utilGeo): utilGeo/makefile.in $(DEP_utilGeo) Makefile
+	 cd utilGeo && ./configure $(CONFIGURE_OPTIONS)
 
-$(TXE_CFG): \
-	textEncoding/makefile.in textEncoding/textEncodingConfig.h.in $(TXE_DEP)
-	cd textEncoding && ./configure $(CONFIGURE_OPTIONS)
+lib/utilGeo.a: $(CFG_utilGeo) lib
+	 cd utilGeo && $(MAKE)
 
-####
-UPS_DEP= \
-	$(AUT_CFG) $(TXE_CFG) \
-	Makefile
-UPS_CFG= utilPs/utilPsConfig.h
+#### textEncoding
+CFG_textEncoding=textEncoding/textEncodingConfig.h
+DEP_textEncoding= $(DEP_appUtil) $(DEP_utilGeo) $(CFG_textEncoding)
 
-lib/utilPs.a: $(UPS_CFG) lib
-	cd utilPs && $(MAKE)
+$(CFG_textEncoding): textEncoding/makefile.in $(DEP_textEncoding) Makefile
+	 cd textEncoding && ./configure $(CONFIGURE_OPTIONS)
 
-$(UPS_CFG): utilPs/makefile.in utilPs/utilPsConfig.h.in $(UPS_DEP)
-	cd utilPs && ./configure $(CONFIGURE_OPTIONS)
+lib/textEncoding.a: $(CFG_textEncoding) lib
+	 cd textEncoding && $(MAKE)
 
-####
-DFT_DEP= \
-	$(AUT_CFG) $(TXE_CFG) \
-	$(UPS_CFG) \
-	Makefile
-DFT_CFG= docFont/docFontConfig.h
+#### utilPs
+CFG_utilPs=utilPs/utilPsConfig.h
+DEP_utilPs= $(DEP_appUtil) $(DEP_utilGeo) $(DEP_textEncoding) $(CFG_utilPs)
 
-lib/docFont.a: $(DFT_CFG) lib
-	cd docFont && $(MAKE)
+$(CFG_utilPs): utilPs/makefile.in $(DEP_utilPs) Makefile
+	 cd utilPs && ./configure $(CONFIGURE_OPTIONS)
 
-$(DFT_CFG): docFont/makefile.in docFont/docFontConfig.h.in $(DFT_DEP)
-	cd docFont && ./configure $(CONFIGURE_OPTIONS)
+lib/utilPs.a: $(CFG_utilPs) lib
+	 cd utilPs && $(MAKE)
 
-####
-IND_DEP= \
-	$(AUT_CFG) $(TXE_CFG) \
-	\
-	$(DFT_CFG) $(UPS_CFG) \
-	Makefile
-IND_CFG= ind/indConfig.h
+#### bitmap
+CFG_bitmap=bitmap/bitmapConfig.h
+DEP_bitmap= $(DEP_appUtil) $(DEP_utilGeo) $(DEP_textEncoding) $(DEP_utilPs) $(CFG_bitmap)
 
-lib/ind.a: $(IND_CFG) lib
-	cd ind && $(MAKE)
+$(CFG_bitmap): bitmap/makefile.in $(DEP_bitmap) Makefile
+	 cd bitmap && ./configure $(CONFIGURE_OPTIONS)
 
-$(IND_CFG): ind/makefile.in ind/indConfig.h.in $(IND_DEP)
-	cd ind && ./configure $(CONFIGURE_OPTIONS)
+lib/bitmap.a: $(CFG_bitmap) lib
+	 cd bitmap && $(MAKE)
 
-####
-BIM_DEP= \
-	$(AUT_CFG) $(UPSE_CFG) \
-	\
-	$(TXE_CFG) \
-	Makefile
-BIM_CFG= bitmap/bitmapConfig.h
+#### docFont
+CFG_docFont=docFont/docFontConfig.h
+DEP_docFont= $(DEP_appUtil) $(DEP_utilGeo) $(DEP_textEncoding) $(DEP_utilPs) $(DEP_bitmap) $(CFG_docFont)
 
-lib/bitmap.a: $(BIM_CFG) lib
-	cd bitmap && $(MAKE)
+$(CFG_docFont): docFont/makefile.in $(DEP_docFont) Makefile
+	 cd docFont && ./configure $(CONFIGURE_OPTIONS)
 
-$(BIM_CFG): bitmap/makefile.in bitmap/bitmapConfig.h.in $(BIM_DEP)
-	cd bitmap && ./configure $(CONFIGURE_OPTIONS)
+lib/docFont.a: $(CFG_docFont) lib
+	 cd docFont && $(MAKE)
 
-####
-DRM_DEP= \
-	$(AUT_CFG) $(TXE_CFG) \
-	$(DFT_CFG) $(UPS_CFG) \
-	$(BIM_CFG) \
-	\
-	$(IND_CFG) \
-	Makefile
-DRM_CFG= drawMeta/drawMetaConfig.h
+#### drawMeta
+CFG_drawMeta=drawMeta/drawMetaConfig.h
+DEP_drawMeta= $(DEP_appUtil) $(DEP_utilGeo) $(DEP_textEncoding) $(DEP_utilPs) $(DEP_bitmap) $(DEP_docFont) $(CFG_drawMeta)
 
-lib/drawMeta.a: $(DRM_CFG) lib
-	cd drawMeta && $(MAKE)
+$(CFG_drawMeta): drawMeta/makefile.in $(DEP_drawMeta) Makefile
+	 cd drawMeta && ./configure $(CONFIGURE_OPTIONS)
 
-$(DRM_CFG): drawMeta/makefile.in drawMeta/drawMetaConfig.h.in $(DRM_DEP)
-	cd drawMeta && ./configure $(CONFIGURE_OPTIONS)
+lib/drawMeta.a: $(CFG_drawMeta) lib
+	 cd drawMeta && $(MAKE)
 
-####
-DBA_DEP= \
-	$(AUT_CFG) $(TXE_CFG) \
-	$(DFT_CFG) $(UPS_CFG) \
-	$(BIM_CFG) $(DRM_CFG) \
-	\
-	$(IND_CFG) \
-	Makefile
-DBA_CFG= docBase/docBaseConfig.h
+#### docBase
+CFG_docBase=docBase/docBaseConfig.h
+DEP_docBase= $(DEP_appUtil) $(DEP_utilGeo) $(DEP_textEncoding) $(DEP_utilPs) $(DEP_bitmap) $(DEP_docFont) $(DEP_drawMeta) $(CFG_docBase)
 
-lib/docBase.a: $(DBA_CFG) lib
-	cd docBase && $(MAKE)
+$(CFG_docBase): docBase/makefile.in $(DEP_docBase) Makefile
+	 cd docBase && ./configure $(CONFIGURE_OPTIONS)
 
-$(DBA_CFG): docBase/makefile.in docBase/docBaseConfig.h.in $(DBA_DEP)
-	cd docBase && ./configure $(CONFIGURE_OPTIONS)
+lib/docBase.a: $(CFG_docBase) lib
+	 cd docBase && $(MAKE)
 
-####
-DBU_DEP= \
-	$(AUT_CFG) $(TXE_CFG) \
-	$(DFT_CFG) $(UPS_CFG) \
-	$(DBA_CFG) \
-	\
-	$(BIM_CFG) $(IND_CFG) \
-	Makefile
-DBU_CFG= docBuf/docBufConfig.h
+#### docBuf
+CFG_docBuf=docBuf/docBufConfig.h
+DEP_docBuf= $(DEP_appUtil) $(DEP_utilGeo) $(DEP_textEncoding) $(DEP_utilPs) $(DEP_bitmap) $(DEP_docFont) $(DEP_drawMeta) $(DEP_docBase) $(CFG_docBuf)
 
-lib/docBuf.a: $(DBU_CFG) lib
-	cd docBuf && $(MAKE)
+$(CFG_docBuf): docBuf/makefile.in $(DEP_docBuf) Makefile
+	 cd docBuf && ./configure $(CONFIGURE_OPTIONS)
 
-$(DBU_CFG): docBuf/makefile.in docBuf/docBufConfig.h.in $(DBU_DEP)
-	cd docBuf && ./configure $(CONFIGURE_OPTIONS)
+lib/docBuf.a: $(CFG_docBuf) lib
+	 cd docBuf && $(MAKE)
 
-####
-DRT_DEP= \
-	$(AUT_CFG) $(TXE_CFG) \
-	$(DFT_CFG) $(UPS_CFG) \
-	$(BIM_CFG) \
-	$(DBA_CFG) $(DBU_CFG) \
-	\
-	$(IND_CFG) \
-	Makefile
-DRT_CFG= docRtf/docRtfConfig.h
+#### docRtf
+CFG_docRtf=docRtf/docRtfConfig.h
+DEP_docRtf= $(DEP_appUtil) $(DEP_utilGeo) $(DEP_textEncoding) $(DEP_utilPs) $(DEP_bitmap) $(DEP_docFont) $(DEP_drawMeta) $(DEP_docBase) $(DEP_docBuf) $(CFG_docRtf)
 
-lib/docRtf.a: $(DRT_CFG) lib
-	cd docRtf && $(MAKE)
+$(CFG_docRtf): docRtf/makefile.in $(DEP_docRtf) Makefile
+	 cd docRtf && ./configure $(CONFIGURE_OPTIONS)
 
-$(DRT_CFG): docRtf/makefile.in docRtf/docRtfConfig.h.in $(DRT_DEP)
-	cd docRtf && ./configure $(CONFIGURE_OPTIONS)
+lib/docRtf.a: $(CFG_docRtf) lib
+	 cd docRtf && $(MAKE)
 
-####
-DED_DEP= \
-	$(AUT_CFG) $(TXE_CFG) \
-	$(DFT_CFG) $(UPS_CFG) \
-	$(BIM_CFG) \
-	$(DBA_CFG) $(DBU_CFG) \
-	$(DRT_CFG) \
-	\
-	$(IND_CFG) \
-	Makefile
-DED_CFG= docEdit/docEditConfig.h
+#### ind
+CFG_ind=ind/indConfig.h
+DEP_ind= $(DEP_appUtil) $(DEP_utilGeo) $(DEP_textEncoding) $(DEP_utilPs) $(DEP_bitmap) $(DEP_docFont) $(DEP_drawMeta) $(DEP_docBase) $(DEP_docBuf) $(DEP_docRtf) $(CFG_ind)
 
-lib/docEdit.a: $(DED_CFG) lib
-	cd docEdit && $(MAKE)
+$(CFG_ind): ind/makefile.in $(DEP_ind) Makefile
+	 cd ind && ./configure $(CONFIGURE_OPTIONS)
 
-$(DED_CFG): docEdit/makefile.in docEdit/docEditConfig.h.in $(DED_DEP)
-	cd docEdit && ./configure $(CONFIGURE_OPTIONS)
+lib/ind.a: $(CFG_ind) lib
+	 cd ind && $(MAKE)
 
-####
-DLY_DEP= \
-	$(AUT_CFG) $(TXE_CFG) \
-	$(DFT_CFG) $(UPS_CFG) \
-	$(BIM_CFG) $(DRM_CFG) \
-	$(DBA_CFG) $(DBU_CFG) \
-	$(DED_CFG) \
-	\
-	$(IND_CFG) \
-	Makefile
-DLY_CFG= docLayout/docLayoutConfig.h
+#### docEdit
+CFG_docEdit=docEdit/docEditConfig.h
+DEP_docEdit= $(DEP_appUtil) $(DEP_utilGeo) $(DEP_textEncoding) $(DEP_utilPs) $(DEP_bitmap) $(DEP_docFont) $(DEP_drawMeta) $(DEP_docBase) $(DEP_docBuf) $(DEP_docRtf) $(DEP_ind) $(CFG_docEdit)
 
-lib/docLayout.a: $(DLY_CFG) lib
-	cd docLayout && $(MAKE)
+$(CFG_docEdit): docEdit/makefile.in $(DEP_docEdit) Makefile
+	 cd docEdit && ./configure $(CONFIGURE_OPTIONS)
 
-$(DLY_CFG): docLayout/makefile.in docLayout/docLayoutConfig.h.in $(DLY_DEP)
-	cd docLayout && ./configure $(CONFIGURE_OPTIONS)
+lib/docEdit.a: $(CFG_docEdit) lib
+	 cd docEdit && $(MAKE)
 
-####
-DHT_DEP= \
-	$(AUT_CFG) $(TXE_CFG) \
-	$(DFT_CFG) $(UPS_CFG) \
-	$(BIM_CFG) $(DRM_CFG) \
-	$(DBA_CFG) $(DBU_CFG) \
-	$(DLY_CFG) $(DED_CFG) \
-	\
-	$(IND_CFG) \
-	Makefile
-DHT_CFG= docHtml/docHtmlConfig.h
+#### guiBase
+CFG_guiBase=guiBase/guiBaseConfig.h
+DEP_guiBase= $(DEP_appUtil) $(DEP_utilGeo) $(DEP_textEncoding) $(DEP_utilPs) $(DEP_bitmap) $(DEP_docFont) $(DEP_drawMeta) $(DEP_docBase) $(DEP_docBuf) $(DEP_docRtf) $(DEP_ind) $(DEP_docEdit) $(CFG_guiBase)
 
-lib/docHtml.a: $(DHT_CFG) lib
-	cd docHtml && $(MAKE)
+$(CFG_guiBase): guiBase/makefile.in $(DEP_guiBase) Makefile
+	 cd guiBase && ./configure $(CONFIGURE_OPTIONS)
 
-$(DHT_CFG): docHtml/makefile.in docHtml/docHtmlConfig.h.in $(DHT_DEP)
-	cd docHtml && ./configure $(CONFIGURE_OPTIONS)
+lib/guiBase.a: $(CFG_guiBase) lib
+	 cd guiBase && $(MAKE)
 
-####
-GUB_DEP= \
-	$(AUT_CFG) $(TXE_CFG) \
-	$(DFT_CFG) $(UPS_CFG) \
-	$(BIM_CFG) $(DRM_CFG) \
-	$(IND_CFG) \
-	\
-	$(DBA_CFG) $(DBU_CFG) \
-	$(DLY_CFG) $(DED_CFG) \
-	Makefile
-GUB_CFG= guiBase/guiBaseConfig.h
+#### docLayout
+CFG_docLayout=docLayout/docLayoutConfig.h
+DEP_docLayout= $(DEP_appUtil) $(DEP_utilGeo) $(DEP_textEncoding) $(DEP_utilPs) $(DEP_bitmap) $(DEP_docFont) $(DEP_drawMeta) $(DEP_docBase) $(DEP_docBuf) $(DEP_docRtf) $(DEP_ind) $(DEP_docEdit) $(DEP_guiBase) $(CFG_docLayout)
 
-lib/guiBase.a: $(GUB_CFG) lib
-	cd guiBase && $(MAKE)
+$(CFG_docLayout): docLayout/makefile.in $(DEP_docLayout) Makefile
+	 cd docLayout && ./configure $(CONFIGURE_OPTIONS)
 
-$(GUB_CFG): guiBase/makefile.in guiBase/guiBaseConfig.h.in $(GUB_DEP)
-	cd guiBase && ./configure $(CONFIGURE_OPTIONS)
+lib/docLayout.a: $(CFG_docLayout) lib
+	 cd docLayout && $(MAKE)
 
-####
-APF_DEP= \
-	$(AUT_CFG) $(TXE_CFG) \
-	$(DFT_CFG) $(UPS_CFG) \
-	$(BIM_CFG) $(DRM_CFG) \
-	$(IND_CFG) $(GUB_CFG) \
-	\
-	$(DBA_CFG) $(DBU_CFG) \
-	$(DLY_CFG) $(DED_CFG) \
-	Makefile
-APF_CFG= appFrame/appFrameConfig.h
+#### appFrame
+CFG_appFrame=appFrame/appFrameConfig.h
+DEP_appFrame= $(DEP_appUtil) $(DEP_utilGeo) $(DEP_textEncoding) $(DEP_utilPs) $(DEP_bitmap) $(DEP_docFont) $(DEP_drawMeta) $(DEP_docBase) $(DEP_docBuf) $(DEP_docRtf) $(DEP_ind) $(DEP_docEdit) $(DEP_guiBase) $(DEP_docLayout) $(CFG_appFrame)
 
-lib/appFrame.a: $(APF_CFG) lib
-	cd appFrame && $(MAKE)
+$(CFG_appFrame): appFrame/makefile.in $(DEP_appFrame) Makefile
+	 cd appFrame && ./configure $(CONFIGURE_OPTIONS)
 
-$(APF_CFG): appFrame/makefile.in appFrame/appFrameConfig.h.in $(APF_DEP)
-	cd appFrame && ./configure $(CONFIGURE_OPTIONS)
+lib/appFrame.a: $(CFG_appFrame) lib
+	 cd appFrame && $(MAKE)
 
-####
-APT_DEP= \
-	$(AUT_CFG) $(TXE_CFG) \
-	$(DFT_CFG) $(UPS_CFG) \
-	$(BIM_CFG) $(DRM_CFG) \
-	$(IND_CFG) $(GUB_CFG) \
-	$(APF_CFG) \
-	$(DBA_CFG) $(DBU_CFG) \
-	$(DLY_CFG) $(DED_CFG) \
-	Makefile
-APT_CFG= appTools/appToolsConfig.h
+#### docHtml
+CFG_docHtml=docHtml/docHtmlConfig.h
+DEP_docHtml= $(DEP_appUtil) $(DEP_utilGeo) $(DEP_textEncoding) $(DEP_utilPs) $(DEP_bitmap) $(DEP_docFont) $(DEP_drawMeta) $(DEP_docBase) $(DEP_docBuf) $(DEP_docRtf) $(DEP_ind) $(DEP_docEdit) $(DEP_guiBase) $(DEP_docLayout) $(DEP_appFrame) $(CFG_docHtml)
 
-lib/appTools.a: $(APT_CFG) lib
-	cd appTools && $(MAKE)
+$(CFG_docHtml): docHtml/makefile.in $(DEP_docHtml) Makefile
+	 cd docHtml && ./configure $(CONFIGURE_OPTIONS)
 
-$(APT_CFG): appTools/makefile.in appTools/appToolsConfig.h.in $(APT_DEP)
-	cd appTools && ./configure $(CONFIGURE_OPTIONS)
+lib/docHtml.a: $(CFG_docHtml) lib
+	 cd docHtml && $(MAKE)
 
-####
-TER_DEP= \
-	$(AUT_CFG) $(TXE_CFG) \
-	$(DFT_CFG) $(UPS_CFG) \
-	$(BIM_CFG) $(DRM_CFG) \
-	$(IND_CFG) $(GUB_CFG) \
-	$(APF_CFG) $(APT_DEB) \
-	$(DBA_CFG) $(DBU_CFG) \
-	$(DLY_CFG) $(DED_CFG) \
-	Makefile
-TER_CFG= tedResource/tedResourceConfig.h
+#### appTools
+CFG_appTools=appTools/appToolsConfig.h
+DEP_appTools= $(DEP_appUtil) $(DEP_utilGeo) $(DEP_textEncoding) $(DEP_utilPs) $(DEP_bitmap) $(DEP_docFont) $(DEP_drawMeta) $(DEP_docBase) $(DEP_docBuf) $(DEP_docRtf) $(DEP_ind) $(DEP_docEdit) $(DEP_guiBase) $(DEP_docLayout) $(DEP_appFrame) $(DEP_docHtml) $(CFG_appTools)
 
-lib/tedResource.a: $(TER_CFG) lib
-	cd tedResource && $(MAKE)
+$(CFG_appTools): appTools/makefile.in $(DEP_appTools) Makefile
+	 cd appTools && ./configure $(CONFIGURE_OPTIONS)
 
-$(TER_CFG): tedResource/makefile.in tedResource/tedResourceConfig.h.in $(TER_DEP)
-	cd tedResource && ./configure $(CONFIGURE_OPTIONS)
+lib/appTools.a: $(CFG_appTools) lib
+	 cd appTools && $(MAKE)
 
-####
-TET_DEP= \
-	$(AUT_CFG) $(TXE_CFG) \
-	$(DFT_CFG) $(UPS_CFG) \
-	$(BIM_CFG) $(DRM_CFG) \
-	$(IND_CFG) $(GUB_CFG) \
-	$(DBA_CFG) $(DBU_CFG) \
-	$(DLY_CFG) $(DED_CFG) \
-	$(APF_CFG) $(APT_CFG) \
-	$(TER_CFG) \
-	tedTools/tedToolsConfig.h
-TET_CFG= tedTools/tedToolsConfig.h
+#### tedTools
+CFG_tedTools=tedTools/tedToolsConfig.h
+DEP_tedTools= $(DEP_appUtil) $(DEP_utilGeo) $(DEP_textEncoding) $(DEP_utilPs) $(DEP_bitmap) $(DEP_docFont) $(DEP_drawMeta) $(DEP_docBase) $(DEP_docBuf) $(DEP_docRtf) $(DEP_ind) $(DEP_docEdit) $(DEP_guiBase) $(DEP_docLayout) $(DEP_appFrame) $(DEP_docHtml) $(DEP_appTools) $(CFG_tedTools)
 
-lib/tedTools.a: $(TET_CFG) lib
-	cd tedTools && $(MAKE)
+$(CFG_tedTools): tedTools/makefile.in $(DEP_tedTools) Makefile
+	 cd tedTools && ./configure $(CONFIGURE_OPTIONS)
 
-$(TET_CFG): tedTools/makefile.in tedTools/tedToolsConfig.h.in $(TET_DEP)
-	cd tedTools && ./configure $(CONFIGURE_OPTIONS)
+lib/tedTools.a: $(CFG_tedTools) lib
+	 cd tedTools && $(MAKE)
 
-####
-####	Compile and link Ted
-####
-TED_DEP= \
-	$(AUT_CFG) $(TXE_CFG) \
-	$(DFT_CFG) $(UPS_CFG) \
-	$(BIM_CFG) $(DRM_CFG) \
-	$(IND_CFG) $(GUB_CFG) \
-	$(DBA_CFG) $(DBU_CFG) \
-	$(DLY_CFG) $(DED_CFG) \
-	$(DRT_CFG) $(DHT_CFG) \
-	$(APF_CFG) $(APT_CFG) \
-	$(TER_CFG) \
-	Makefile
-TED_CFG= Ted/tedConfig.h
+#### tedResource
+CFG_tedResource=tedResource/tedResourceConfig.h
+DEP_tedResource= $(DEP_appUtil) $(DEP_utilGeo) $(DEP_textEncoding) $(DEP_utilPs) $(DEP_bitmap) $(DEP_docFont) $(DEP_drawMeta) $(DEP_docBase) $(DEP_docBuf) $(DEP_docRtf) $(DEP_ind) $(DEP_docEdit) $(DEP_guiBase) $(DEP_docLayout) $(DEP_appFrame) $(DEP_docHtml) $(DEP_appTools) $(DEP_tedTools) $(CFG_tedResource)
 
-Ted/Ted.static: tedlibs $(TED_CFG) Ted/Ted
-	cd Ted && $(MAKE) Ted.static
+$(CFG_tedResource): tedResource/makefile.in $(DEP_tedResource) Makefile
+	 cd tedResource && ./configure $(CONFIGURE_OPTIONS)
 
-Ted/Ted: tedlibs $(TED_CFG)
-	cd Ted && $(MAKE)
+lib/tedResource.a: $(CFG_tedResource) lib
+	 cd tedResource && $(MAKE)
 
-$(TED_CFG): Ted/makefile.in Ted/tedConfig.h.in $(TED_DEP)
-	cd Ted && ./configure $(CONFIGURE_OPTIONS)
+#### Ted
+DEP_Ted= $(DEP_appUtil) $(DEP_utilGeo) $(DEP_textEncoding) $(DEP_utilPs) $(DEP_bitmap) $(DEP_docFont) $(DEP_drawMeta) $(DEP_docBase) $(DEP_docBuf) $(DEP_docRtf) $(DEP_ind) $(DEP_docEdit) $(DEP_guiBase) $(DEP_docLayout) $(DEP_appFrame) $(DEP_docHtml) $(DEP_appTools) $(DEP_tedTools) $(DEP_tedResource)
+CFG_Ted=Ted/tedConfig.h
+
+$(CFG_Ted): Ted/makefile.in Ted/tedConfig.h.in $(DEP_Ted) Makefile
+	 cd Ted && ./configure $(CONFIGURE_OPTIONS)
+
+Ted/Ted: tedlibs $(CFG_Ted)
+	 cd Ted && $(MAKE)
+
+Ted/Ted.static: tedlibs $(CFG_Ted) Ted/Ted
+	 cd Ted && $(MAKE) Ted.static
 
 ####
 ####	Make a ready to install package

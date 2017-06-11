@@ -233,7 +233,8 @@ static int docOpenEpsfObject(		const LayoutContext *	lc,
     }
 
 static int docOpenShapePixmaps(	DrawingShape *			ds,
-				const DocumentRectangle *	drTwips,
+				const DocumentRectangle *	drOutside,
+				const AffineTransform2D *	atOutside,
 				const LayoutContext *		lc )
     {
     double			xfac= lc->lcPixelsPerTwip;
@@ -243,28 +244,30 @@ static int docOpenShapePixmaps(	DrawingShape *			ds,
     int				pixelsWide;
     int				pixelsHigh;
 
-    pixelsWide= docLayoutXPixels( lc, drTwips->drX1 )-
-		docLayoutXPixels( lc, drTwips->drX0 )+ 1;
-    pixelsHigh= COORDtoGRID( xfac, drTwips->drY1 )-
-		COORDtoGRID( xfac, drTwips->drY0 )+ 1;
+    pixelsWide= docLayoutXPixels( lc, drOutside->drX1 )-
+		docLayoutXPixels( lc, drOutside->drX0 )+ 1;
+    pixelsHigh= COORDtoGRID( xfac, drOutside->drY1 )-
+		COORDtoGRID( xfac, drOutside->drY0 )+ 1;
 
     if  ( ds->dsChildCount > 0 )
 	{
 	int			child;
 
+	AffineTransform2D	atHere;
 	DocumentRectangle	drHere;
 	DocumentRectangle	drNorm;
 
-	docShapeGetRects( &drHere, &drNorm, drTwips, ds );
+	docShapeGetRects( &drHere, &drNorm, &atHere, drOutside, atOutside, ds );
 
 	for ( child= 0; child < ds->dsChildCount; child++ )
 	    {
 	    DrawingShape *	dsChild= ds->dsChildren[child];
 	    DocumentRectangle	drChild;
 
-	    docShapeGetChildRect( &drChild, dsChild, &drHere, ds );
+	    docShapeGetChildRect( &drChild, &atHere,
+					dsChild, &drHere, atOutside, ds );
 
-	    if  ( docOpenShapePixmaps( dsChild, &drChild, lc ) )
+	    if  ( docOpenShapePixmaps( dsChild, &drChild, &atHere, lc ) )
 		{ LDEB(child); rval= -1;	}
 	    }
 	}
@@ -388,12 +391,15 @@ int docScreenOpenObject(	InsertedObject *	io,
 	case DOCokDRAWING_SHAPE:
 	    {
 	    DrawingShape *		ds= io->ioDrawingShape;
+	    AffineTransform2D		atRoot;
 
 	    if  ( ! ds )
 		{ XDEB(ds); return 0;	}
 
+	    geoIdentityAffineTransform2D( &atRoot );
+
 	    if  ( docOpenShapePixmaps( ds,
-				&(ds->dsShapeProperties.spRect), lc ) )
+				&(ds->dsShapeProperties.spRect), &atRoot, lc ) )
 		{ LDEB(1); return 0;	}
 	    }
 	    return 0;

@@ -7,6 +7,7 @@
 #   include	<guiWidgets.h>
 #   include	<guiWidgetsImpl.h>
 #   include	<guiImageImpl.h>
+#   include	"appGuiApplication.h"
 
 #   include	<appDebugon.h>
 

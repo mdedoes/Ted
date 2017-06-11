@@ -10,6 +10,7 @@
 struct SimpleOutputStream;
 struct BitmapDescription;
 struct DocumentRectangle;
+struct AffineTransform2D;
 
 /************************************************************************/
 /*									*/
@@ -57,15 +58,12 @@ extern int bmPsPrintBitmap(	struct SimpleOutputStream *	sos,
 				const unsigned char *		buffer );
 
 extern int bmPsPrintRasterImage( struct SimpleOutputStream *	sos,
-				double				xscale,
-				double				yscale,
-				int				ox,
-				int				oy,
-				const struct DocumentRectangle *	drSrc,
+				const struct AffineTransform2D * at,
+				const struct DocumentRectangle * drSrc,
 				int				onWhite,
 				int				useFilters,
 				int				indexedImages,
-				const struct BitmapDescription *	bd,
+				const struct BitmapDescription * bd,
 				const unsigned char *		buffer );
 
 extern void bmPsWriteImageInstructions(

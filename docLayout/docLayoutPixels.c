@@ -215,7 +215,7 @@ void docPageRectsPixels(	DocumentRectangle *		drOut,
 	dg= &(bodySectNode->biSectDocumentGeometry);
 	}
 
-    utilDocumentGeometryGetPageRect( &drPage, dg );
+    geoDocumentGeometryGetPageRect( &drPage, dg );
 
     drPage.drX0= COORDtoGRID( xfac, drPage.drX0 );
     drPage.drY0= COORDtoGRID( xfac, drPage.drY0 );
@@ -229,7 +229,7 @@ void docPageRectsPixels(	DocumentRectangle *		drOut,
 	{
 	DocumentRectangle		drBody;
 
-	utilDocumentGeometryGetBodyRect( &drBody, dg );
+	geoDocumentGeometryGetBodyRect( &drBody, dg );
 
 	drIn->drX0= COORDtoGRID( xfac, drBody.drX0 );
 	drIn->drY0= COORDtoGRID( xfac, drBody.drY0 );

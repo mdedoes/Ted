@@ -51,8 +51,12 @@ extern void xmlEscapeCharacters(	XmlWriter *		xw,
 					const char *		ss,
 					int			len );
 
-extern void xmlEscapeBuffer(		XmlWriter *		xw,
-					const struct MemoryBuffer *	mb );
+extern void xmlEscapeBuffer(	XmlWriter *			xw,
+				const struct MemoryBuffer *	mb );
+
+extern void xmlStartDataUrl(	XmlWriter *		xw,
+				const char *		attributeName,
+				const char *		contentType );
 
 #   endif	/*	XML_WRITER_H	*/
 

@@ -197,14 +197,18 @@ static int appDrawMetaBitmapImagePs(
     int				twipsWide= drDest->drX1- drDest->drX0+ 1;
     int				twipsHigh= drDest->drY1- drDest->drY0+ 1;
 
+    AffineTransform2D		at;
+
     sioOutPrintf( sos, "gsave 1 setgray\n" );
     sioOutPrintf( sos, "%d %d %d %d rectfill\n", drDest->drX0, drDest->drY0,
 							twipsWide, twipsHigh );
     sioOutPrintf( sos, "grestore\n" );
 
-    if  ( bmPsPrintRasterImage( sos, twipsWide, -twipsHigh,
-			    drDest->drX0, ( drDest->drY0+ twipsHigh ),
-			    drSrc, onWhite,
+    geoScaleAffineTransform2D( &at, twipsWide, -twipsHigh );
+    geoAffineTransform2DThenTranslate( &at,
+				drDest->drX0, drDest->drY0+ twipsHigh, &at );
+
+    if  ( bmPsPrintRasterImage( sos, &at, drSrc, onWhite,
 			    ps->psUsePostScriptFilters,
 			    ps->psUsePostScriptIndexedImages,
 			    bd, abi->riBytes ) )

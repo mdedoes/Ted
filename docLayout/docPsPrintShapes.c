@@ -504,6 +504,7 @@ static int docPsPrintRoundedRectShape(
 # endif
 
 int docPsPrintDrawDrawingShape(	const DocumentRectangle *	drOutside,
+				const AffineTransform2D *	atOutside,
 				int				page,
 				DrawingShape *			ds,
 				DrawingContext *		dc,

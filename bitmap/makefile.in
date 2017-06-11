@@ -34,6 +34,7 @@ INCLUDES=			\
 	$(LIBJPEG_CFLAGS)	\
 	$(LIBTIFF_CFLAGS)	\
 	-I../utilPs		\
+	-I../utilGeo		\
 	-I../appUtil		\
 	-I../include
 
@@ -138,7 +139,7 @@ duplicates:
 includes:
 	includes.sh bitmapConfig.h $(INCLUDES)
 
-# deps -I. -I../include -I../appUtil -I../utilPs -I/home/gaai/mark/LinuxProgrammas/zlib -I/home/gaai/mark/LinuxProgrammas/jpeg -I/usr/local/include -I/home/gaai/mark/LinuxProgrammas/libpng
+# deps -I. -I../include -I../utilGeo -I../appUtil -I../utilPs -I/home/gaai/mark/LinuxProgrammas/zlib -I/home/gaai/mark/LinuxProgrammas/jpeg -I/usr/local/include -I/home/gaai/mark/LinuxProgrammas/libpng
 ######################################## !! sh
 
 bmBitmapImage.o: \
@@ -151,7 +152,6 @@ bmBitmapImage.o: \
     bmBitmapImage.c
 
 bmBitmapPrinter.o: \
-    ../appUtil/geoRectangle.h \
     ../appUtil/sioBase85.h \
     ../appUtil/sioFlate.h \
     ../appUtil/sioGeneral.h \
@@ -163,6 +163,7 @@ bmBitmapPrinter.o: \
     bmBitmapPrinter.h \
     ../include/appDebug.h \
     ../include/appDebugon.h \
+    ../utilGeo/geoRectangle.h \
     bmBitmapPrinter.c
 
 bmClusterSegments.o: \
@@ -191,8 +192,6 @@ bmDrawImage.o: \
     bmDrawImage.c
 
 bmEmfIo.o: \
-    ../appUtil/geoAffineTransform.h \
-    ../appUtil/geoRectangle.h \
     ../appUtil/sioEndian.h \
     ../appUtil/sioGeneral.h \
     ../appUtil/utilColor.h \
@@ -200,6 +199,8 @@ bmEmfIo.o: \
     bmEmfIo.h \
     ../include/appDebug.h \
     ../include/appDebugon.h \
+    ../utilGeo/geoAffineTransform.h \
+    ../utilGeo/geoRectangle.h \
     bmEmfIo.c
 
 bmFileExtensions.o: \
@@ -228,9 +229,6 @@ bmFillJob.o: \
     bmFillJob.c
 
 bmFindLineSegments.o: \
-    ../appUtil/geo2DInteger.h \
-    ../appUtil/geoAffineTransform.h \
-    ../appUtil/geoRectangle.h \
     ../appUtil/utilColor.h \
     ../appUtil/utilPalette.h \
     bitmapConfig.h \
@@ -238,6 +236,9 @@ bmFindLineSegments.o: \
     bmintern.h \
     ../include/appDebug.h \
     ../include/appDebugon.h \
+    ../utilGeo/geo2DInteger.h \
+    ../utilGeo/geoAffineTransform.h \
+    ../utilGeo/geoRectangle.h \
     bmFindLineSegments.c
 
 bmFlipBits.o: \
@@ -268,6 +269,7 @@ bmJpegToPs.o: \
     ../appUtil/sioBase85.h \
     ../appUtil/sioEndian.h \
     ../appUtil/sioGeneral.h \
+    ../appUtil/sioUtil.h \
     bitmapConfig.h \
     bmio.h \
     ../include/appDebug.h \
@@ -275,7 +277,6 @@ bmJpegToPs.o: \
     bmJpegToPs.c
 
 bmMacPictRaster.o: \
-    ../appUtil/geoRectangle.h \
     ../appUtil/sioEndian.h \
     ../appUtil/sioGeneral.h \
     ../appUtil/utilColor.h \
@@ -285,6 +286,7 @@ bmMacPictRaster.o: \
     bmio.h \
     ../include/appDebug.h \
     ../include/appDebugon.h \
+    ../utilGeo/geoRectangle.h \
     bmMacPictRaster.c
 
 bmMakeImage.o: \
@@ -301,6 +303,7 @@ bmObjectReader.o: \
     ../appUtil/sioGeneral.h \
     ../appUtil/sioHex.h \
     ../appUtil/sioMemory.h \
+    ../appUtil/sioUtil.h \
     ../appUtil/utilColor.h \
     ../appUtil/utilPalette.h \
     bitmapConfig.h \
@@ -312,7 +315,6 @@ bmObjectReader.o: \
     bmObjectReader.c
 
 bmSegments.o: \
-    ../appUtil/geoRectangle.h \
     ../appUtil/utilColor.h \
     ../appUtil/utilPalette.h \
     bitmapConfig.h \
@@ -321,6 +323,7 @@ bmSegments.o: \
     bmSegments.h \
     ../include/appDebug.h \
     ../include/appDebugon.h \
+    ../utilGeo/geoRectangle.h \
     bmSegments.c
 
 bmTextureMap.o: \
@@ -349,13 +352,13 @@ bmWebSafe.o: \
     bmWebSafe.c
 
 bmWmfIo.o: \
-    ../appUtil/geoRectangle.h \
     ../appUtil/sioEndian.h \
     ../appUtil/sioGeneral.h \
     ../appUtil/utilColor.h \
     bmcolor.h \
     bmWmf.h \
     bmWmfIo.h \
+    ../utilGeo/geoRectangle.h \
     bmWmfIo.c
 
 bm_dgif_lib.o: \
@@ -383,7 +386,6 @@ bm_egif_lib.o: \
     bm_egif_lib.c
 
 bmadm.o: \
-    ../appUtil/geoUnits.h \
     ../appUtil/utilColor.h \
     ../appUtil/utilPalette.h \
     bitmapConfig.h \
@@ -391,6 +393,7 @@ bmadm.o: \
     bmintern.h \
     ../include/appDebug.h \
     ../include/appDebugon.h \
+    ../utilGeo/geoUnits.h \
     bmadm.c
 
 bmalpha.o: \
@@ -413,7 +416,6 @@ bmaverage.o: \
     bmaverage.c
 
 bmbmp.o: \
-    ../appUtil/geoUnits.h \
     ../appUtil/sioEndian.h \
     ../appUtil/sioFileio.h \
     ../appUtil/sioGeneral.h \
@@ -429,6 +431,7 @@ bmbmp.o: \
     bmio.h \
     ../include/appDebug.h \
     ../include/appDebugon.h \
+    ../utilGeo/geoUnits.h \
     bmbmp.c
 
 bmcolor.o: \
@@ -440,7 +443,6 @@ bmcolor.o: \
     bmcolor.c
 
 bmconvert.o: \
-    ../appUtil/geoRectangle.h \
     ../appUtil/utilColor.h \
     ../appUtil/utilPalette.h \
     bitmapConfig.h \
@@ -452,6 +454,7 @@ bmconvert.o: \
     bmRender.h \
     ../include/appDebug.h \
     ../include/appDebugon.h \
+    ../utilGeo/geoRectangle.h \
     bmconvert.c
 
 bmdraw.o: \
@@ -465,10 +468,6 @@ bmdraw.o: \
     bmdraw.c
 
 bmeps.o: \
-    ../appUtil/geoAffineTransform.h \
-    ../appUtil/geoDocumentPageSetup.h \
-    ../appUtil/geoRectangle.h \
-    ../appUtil/geoRectangleOffsets.h \
     ../appUtil/sioFileio.h \
     ../appUtil/sioGeneral.h \
     ../appUtil/sioPipe.h \
@@ -482,6 +481,10 @@ bmeps.o: \
     bmformats.h \
     ../include/appDebug.h \
     ../include/appDebugon.h \
+    ../utilGeo/geoAffineTransform.h \
+    ../utilGeo/geoDocumentPageSetup.h \
+    ../utilGeo/geoRectangle.h \
+    ../utilGeo/geoRectangleOffsets.h \
     ../utilPs/psNup.h \
     ../utilPs/psPrint.h \
     bmeps.c
@@ -501,9 +504,6 @@ bmfilter.o: \
     bmfilter.c
 
 bmflip.o: \
-    ../appUtil/geo2DInteger.h \
-    ../appUtil/geoAffineTransform.h \
-    ../appUtil/geoRectangle.h \
     ../appUtil/utilColor.h \
     ../appUtil/utilPalette.h \
     bitmapConfig.h \
@@ -511,6 +511,9 @@ bmflip.o: \
     bmintern.h \
     ../include/appDebug.h \
     ../include/appDebugon.h \
+    ../utilGeo/geo2DInteger.h \
+    ../utilGeo/geoAffineTransform.h \
+    ../utilGeo/geoRectangle.h \
     bmflip.c
 
 bmformats.o: \
@@ -677,7 +680,6 @@ bmplanar.o: \
     bmplanar.c
 
 bmpng.o: \
-    ../appUtil/geoUnits.h \
     ../appUtil/sioFileio.h \
     ../appUtil/sioGeneral.h \
     ../appUtil/utilColor.h \
@@ -690,10 +692,10 @@ bmpng.o: \
     bmio.h \
     ../include/appDebug.h \
     ../include/appDebugon.h \
+    ../utilGeo/geoUnits.h \
     bmpng.c
 
 bmps.o: \
-    ../appUtil/geoRectangle.h \
     ../appUtil/sioGeneral.h \
     ../appUtil/utilColor.h \
     ../appUtil/utilPalette.h \
@@ -702,6 +704,8 @@ bmps.o: \
     bmBitmapPrinter.h \
     ../include/appDebug.h \
     ../include/appDebugon.h \
+    ../utilGeo/geoAffineTransform.h \
+    ../utilGeo/geoRectangle.h \
     bmps.c
 
 bmputrow.o: \
@@ -730,7 +734,6 @@ bmreduce.o: \
     bmreduce.c
 
 bmrtf.o: \
-    ../appUtil/geoUnits.h \
     ../appUtil/sioFileio.h \
     ../appUtil/sioGeneral.h \
     ../appUtil/sioHex.h \
@@ -742,16 +745,17 @@ bmrtf.o: \
     bmio.h \
     ../include/appDebug.h \
     ../include/appDebugon.h \
+    ../utilGeo/geoUnits.h \
     bmrtf.c
 
 bmselect.o: \
-    ../appUtil/geoRectangle.h \
     ../appUtil/utilColor.h \
     ../appUtil/utilPalette.h \
     bitmapConfig.h \
     bitmap.h \
     ../include/appDebug.h \
     ../include/appDebugon.h \
+    ../utilGeo/geoRectangle.h \
     bmselect.c
 
 bmsqueeze.o: \
@@ -812,7 +816,6 @@ bmwbmp.o: \
     bmwbmp.c
 
 bmwebp.o: \
-    ../appUtil/geoUnits.h \
     ../appUtil/sioFileio.h \
     ../appUtil/sioGeneral.h \
     ../appUtil/utilColor.h \
@@ -825,7 +828,6 @@ bmwebp.o: \
     bmwebp.c
 
 bmwmf.o: \
-    ../appUtil/geoRectangle.h \
     ../appUtil/sioEndian.h \
     ../appUtil/sioFileio.h \
     ../appUtil/sioGeneral.h \
@@ -842,6 +844,7 @@ bmwmf.o: \
     bmWmf.h \
     ../include/appDebug.h \
     ../include/appDebugon.h \
+    ../utilGeo/geoRectangle.h \
     bmwmf.c
 
 bmxbm.o: \

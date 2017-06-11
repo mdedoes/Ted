@@ -4,7 +4,7 @@
 /*									*/
 /************************************************************************/
 
-#   include	"appUtilConfig.h"
+#   include	"utilGeoConfig.h"
 
 #   include	<stdio.h>
 #   include	<string.h>

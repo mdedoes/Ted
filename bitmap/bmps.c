@@ -6,6 +6,8 @@
 #   include	<sioGeneral.h>
 #   include	"bitmap.h"
 #   include	<geoRectangle.h>
+#   include	<geoAffineTransform.h>
+#   include	<psPrint.h>
 
 #   include	<appDebugon.h>
 
@@ -113,6 +115,8 @@ int bmPsPrintBitmap(	SimpleOutputStream *		sos,
     int			rectangleHighTwips;
     const int		onWhite= 0;
 
+    AffineTransform2D	at;
+
     DocumentRectangle	drAll;
     drAll.drX0= 0;
     drAll.drY0= 0;
@@ -126,10 +130,16 @@ int bmPsPrintBitmap(	SimpleOutputStream *		sos,
 						drSel->drX1- drSel->drX0+ 1,
 						drSel->drY1- drSel->drY0+ 1 );
 
+    geoScaleAffineTransform2D( &at,
+			( xscale* rectangleWideTwips )/ 20,
+			( yscale* rectangleHighTwips )/ 20 );
+    geoAffineTransform2DThenTranslate( &at,
+				ox, oy, &at );
+
     xscale= ( xscale* rectangleWideTwips )/ 20;
     yscale= ( yscale* rectangleHighTwips )/ 20;
 
-    return bmPsPrintRasterImage( sos, xscale, yscale, ox, oy, drSel,
+    return bmPsPrintRasterImage( sos, &at, drSel,
 			    onWhite, useFilters, indexedImages, bd, buffer );
     }
 
@@ -242,6 +252,7 @@ static void bmPsWriteIndexedImageInstructions(
 				const char *			source )
     {
     int		i;
+    const int	PL= 11;
 
     /*  Done by caller
     sioOutPrintf( sos, "gsave\n" );
@@ -251,12 +262,19 @@ static void bmPsWriteIndexedImageInstructions(
 					    bd->bdPalette.cpColorCount- 1 );
     sioOutPrintf( sos, "<\n" );
 
-    for ( i= 0; i < bd->bdPalette.cpColorCount; i++ )
+    for ( i= 0; i < bd->bdPalette.cpColorCount; i += PL )
 	{
-	sioOutPrintf( sos, " %02x%02x%02x\n", 
-				bd->bdPalette.cpColors[i].rgb8Red,
-				bd->bdPalette.cpColors[i].rgb8Green,
-				bd->bdPalette.cpColors[i].rgb8Blue );
+	int	j;
+
+	for ( j= 0; j < PL && i+ j < bd->bdPalette.cpColorCount; j++ )
+	    {
+	    const RGB8Color *	rgb8= bd->bdPalette.cpColors+ i+ j;
+
+	    sioOutPrintf( sos, " %02x%02x%02x", 
+			rgb8->rgb8Red, rgb8->rgb8Green, rgb8->rgb8Blue );
+	    }
+
+	sioOutPrintf( sos, "\n" );
 	}
 
     sioOutPrintf( sos, ">\n" );
@@ -355,10 +373,7 @@ void bmPsWriteImageInstructions(
     }
 
 int bmPsPrintRasterImage(	SimpleOutputStream *		sos,
-				double				xscale,
-				double				yscale,
-				int				ox,
-				int				oy,
+				const AffineTransform2D *	at,
 				const DocumentRectangle *	drSel,
 				int				onWhite,
 				int				useFilters,
@@ -373,15 +388,8 @@ int bmPsPrintRasterImage(	SimpleOutputStream *		sos,
 
     sioOutPrintf( sos, "gsave 10 dict begin %% {> raster image\n" );
 
-    if  ( ox != 0 || oy != 0 || xscale != 1.0 || yscale != 1.0 )
-	{
-	if  ( ox != 0 || oy != 0 )
-	    { sioOutPrintf( sos, "%d %d translate ", ox, oy );	}
-	if  ( xscale != 1.0 || yscale != 1.0 )
-	    { sioOutPrintf( sos, "%f %f scale ", xscale, yscale ); }
-
-	sioOutPrintf( sos, "\n" );
-	}
+    psTransformMatrix( sos, at );
+    sioOutPrintf( sos, " concat\n" );
 
     if  ( useFilters )
 	{

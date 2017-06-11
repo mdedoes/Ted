@@ -76,7 +76,7 @@ extern int psNupFitPagesToSheet(
 			const PrintGeometry *		pg,
 			const DocumentGeometry *	dgPage );
 
-extern int utilNupGetBaseTranform(
+extern int psNupGetBaseTranform(
 			AffineTransform2D *		pAt1Page,
 			int *				pRotatePages,
 			const PrintGeometry *		pg,
@@ -90,7 +90,7 @@ extern void psNupSheetBoundingBox(
 			int				hasPageHeader,
 			int				hasPageFooter );
 
-extern int utilNupSetSchema(
+extern int psNupSetSchema(
 			NupSchema *			ns,
 			int				rotateSheetGrid,
 			const AffineTransform2D *	at1Page,
@@ -98,7 +98,7 @@ extern int utilNupSetSchema(
 			double				fac,
 			const DocumentGeometry *	dgPage );
 
-extern void utilNupGetPageTranform(
+extern void psNupGetPageTranform(
 			AffineTransform2D *		at,
 			const NupSchema *		ns,
 			int				page );

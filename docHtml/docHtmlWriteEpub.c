@@ -39,6 +39,12 @@ typedef struct EpubWriter
     ZipOutput		ewZipOutput;
     } EpubWriter;
 
+typedef struct EpubXmlWriter
+    {
+    HtmlWritingContext *	exwHtmlWriter;
+    XmlWriter			exwXmlWriter;
+    } EpubXmlWriter;
+
 static int docEpubGetImageSrcX(		MemoryBuffer *		target,
 					int			relative,
 					int			n,
@@ -326,18 +332,22 @@ static int docEpubEmitSpineItem(	XmlWriter *		xw,
 
 static int docEpubAddImageToOpf(	int			n,
 					void *			vio,
-					void *			vxw )
+					void *			vexw )
     {
     int				rval= 0;
 
     const InsertedObject *	io= (InsertedObject *)vio;
     const PictureProperties *	pip= &(io->ioPictureProperties);
-    XmlWriter *			xw= (XmlWriter *)vxw;
+    EpubXmlWriter *		exw= (EpubXmlWriter *)vexw;
+    XmlWriter *			xw= &(exw->exwXmlWriter);
 
     const char *		mimeType;
     const char *		ext;
-    const MemoryBuffer *	mb= (const MemoryBuffer *)0;
     int				type;
+    int				useDataUrl;
+
+    const MemoryBuffer *	mb= (const MemoryBuffer *)0;
+    bmWriteBitmap		writeBitmap= (bmWriteBitmap)0;
 
     MemoryBuffer		href;
     char			id[20+1];
@@ -345,19 +355,23 @@ static int docEpubAddImageToOpf(	int			n,
 
     utilInitMemoryBuffer( &href );
 
-    if  ( docHtmlObjectSaveHow( &type, &mimeType, &ext, &mb, io ) )
+    if  ( docHtmlObjectSaveHow( exw->exwHtmlWriter, &type, &useDataUrl,
+				&writeBitmap, &mimeType, &ext, &mb, io ) )
 	{ goto ready;	}
 
-    if  ( docEpubGetImageSrcX( &href, relative, n, io, ext )
-									< 0 )
-	{ LDEB(n); rval= -1; goto ready;	}
+    if  ( ! useDataUrl )
+	{
+	if  ( docEpubGetImageSrcX( &href, relative, n, io, ext ) < 0 )
+	    { LDEB(n); rval= -1; goto ready;	}
 
-    if  ( 1 || pip->pipBliptag == 0 )
-	{ sprintf( id, "i%d", n );			}
-    else{ sprintf( id, "b%08lx", pip->pipBliptag );	}
+	if  ( 1 || pip->pipBliptag == 0 )
+	    { sprintf( id, "i%d", n );			}
+	else{ sprintf( id, "b%08lx", pip->pipBliptag );	}
 
-    if  ( docEpubEmitManifestItem( xw, id, utilMemoryBufferGetString( &href ), mimeType ) )
-	{ SDEB(id); rval= -1; goto ready;	}
+	if  ( docEpubEmitManifestItem( xw, id,
+			    utilMemoryBufferGetString( &href ), mimeType ) )
+	    { SDEB(id); rval= -1; goto ready;	}
+	}
 
   ready:
 
@@ -366,11 +380,12 @@ static int docEpubAddImageToOpf(	int			n,
     return rval;
     }
 
-static int docEpubAddImagesToOpf(	const struct BufferDocument *	bd,
-					XmlWriter *		xw )
+static int docEpubAddImagesToOpf(	EpubXmlWriter *			exw )
     {
+    const struct BufferDocument *	bd= exw->exwHtmlWriter->hwcDocument;
+
     utilPagedListForAll( &(bd->bdObjectList.iolPagedList),
-					docEpubAddImageToOpf, (void *)xw );
+					docEpubAddImageToOpf, (void *)exw );
 
     return 0;
     }
@@ -419,45 +434,47 @@ static int docEpubStartOpf(	ZipOutput *		zo,
     }
 
 static int docEpubEmitSimpleOpf(	ZipOutput *		zo,
+					HtmlWritingContext *	hwc,
 					const MemoryBuffer *	title,
-					const MemoryBuffer *	identifier,
-					const struct BufferDocument *	bd )
+					const MemoryBuffer *	identifier )
     {
     int				rval= 0;
     int				l;
 
-    XmlWriter			xw;
+    EpubXmlWriter		exw;
 
-    xmlInitXmlWriter( &xw );
+    xmlInitXmlWriter( &(exw.exwXmlWriter) );
+    exw.exwHtmlWriter= hwc;
 
-    if  ( docEpubStartOpf( zo, &xw, title, identifier, bd ) )
+    if  ( docEpubStartOpf( zo, &(exw.exwXmlWriter),
+				    title, identifier, hwc->hwcDocument ) )
 	{ LDEB(1); rval= -1; goto ready;	}
 
-    sioOutPutString( DocEpubOpfManifestHead, xw.xwSos );
+    sioOutPutString( DocEpubOpfManifestHead, exw.exwXmlWriter.xwSos );
 
-    docEpubEmitManifestItem( &xw,
+    docEpubEmitManifestItem( &(exw.exwXmlWriter),
 			    DocEpubIdNcx, DocEpubNameNcx, DocEpubMediaNcx );
-    docEpubEmitManifestItem( &xw,
+    docEpubEmitManifestItem( &(exw.exwXmlWriter),
 			    DocEpubIdCss, DocEpubNameCssAbs, DocEpubMediaCss );
-    docEpubEmitManifestItem( &xw,
+    docEpubEmitManifestItem( &(exw.exwXmlWriter),
 			    DocEpubIdDoc, DocEpubNameDocAbs, DocEpubMediaDoc );
 
-    docEpubAddImagesToOpf( bd, &xw );
+    docEpubAddImagesToOpf( &exw );
 
-    sioOutPutString( DocEpubOpfManifestTail, xw.xwSos );
+    sioOutPutString( DocEpubOpfManifestTail, exw.exwXmlWriter.xwSos );
 
     for ( l= 0; l < sizeof(DocEpubSpineHead)/sizeof(char *); l++ )
-	{ sioOutPutString( DocEpubSpineHead[l], xw.xwSos ); }
+	{ sioOutPutString( DocEpubSpineHead[l], exw.exwXmlWriter.xwSos ); }
 
-    docEpubEmitSpineItem( &xw, DocEpubIdDoc );
+    docEpubEmitSpineItem( &(exw.exwXmlWriter), DocEpubIdDoc );
 
-    sioOutPutString( DocEpubSpineTail, xw.xwSos );
+    sioOutPutString( DocEpubSpineTail, exw.exwXmlWriter.xwSos );
 
-    sioOutPutString( DocEpubOpfTail, xw.xwSos );
+    sioOutPutString( DocEpubOpfTail, exw.exwXmlWriter.xwSos );
 
   ready:
 
-    if  ( xw.xwSos && sioOutClose( xw.xwSos ) )
+    if  ( exw.exwXmlWriter.xwSos && sioOutClose( exw.exwXmlWriter.xwSos ) )
 	{ LDEB(1); rval= -1;	}
 
     return rval;
@@ -940,6 +957,7 @@ int docEpubSaveDocument(	SimpleOutputStream *	sos,
     hwc.hwcDocument= bd;
     hwc.hwcInlineCss= 0;
     hwc.hwcInlineNotes= 1;
+    hwc.hwcInlineImages= 0;
 
     if  ( ! utilMemoryBufferIsEmpty( &(dp->dpTitle) ) )
 	{
@@ -958,8 +976,8 @@ int docEpubSaveDocument(	SimpleOutputStream *	sos,
 	if  ( docCollectTocInput( &(ew.ewCalculateToc) ) )
 	    { LDEB(1); rval= -1; goto ready;	}
 
-	if  ( docEpubEmitSimpleOpf( &(ew.ewZipOutput),
-						&title, &identifier, bd ) )
+	if  ( docEpubEmitSimpleOpf( &(ew.ewZipOutput), &hwc,
+						&title, &identifier ) )
 	    { LDEB(1); rval= -1; goto ready;	}
 	if  ( docEpubEmitCompositeNcx( &ew, &title, &identifier, bd ) )
 	    { LDEB(1); rval= -1; goto ready;	}
@@ -968,8 +986,8 @@ int docEpubSaveDocument(	SimpleOutputStream *	sos,
 	    { LDEB(1); rval= -1; goto ready;	}
 	}
     else{
-	if  ( docEpubEmitSimpleOpf( &(ew.ewZipOutput),
-						&title, &identifier, bd ) )
+	if  ( docEpubEmitSimpleOpf( &(ew.ewZipOutput), &hwc,
+						&title, &identifier ) )
 	    { LDEB(1); rval= -1; goto ready;	}
 	if  ( docEpubEmitSimpleNcx( &(ew.ewZipOutput),
 						&title, &identifier ) )
@@ -982,7 +1000,7 @@ int docEpubSaveDocument(	SimpleOutputStream *	sos,
     if  ( ! hwc.hwcInlineCss && docEpubWriteCss( &hwc ) )
 	{ LDEB(1); rval= -1; return -1;	}
 
-    if  ( docHtmlSaveImages( &hwc ) )
+    if  ( docHtmlSaveImageFiles( &hwc ) )
 	{ LDEB(hwc.hwcImageCount); rval= -1; goto ready;	}
 
     if  ( sioZipFlushOutput( &(ew.ewZipOutput) ) )

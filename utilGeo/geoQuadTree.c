@@ -12,7 +12,7 @@
 /*									*/
 /************************************************************************/
 
-#   include	"appUtilConfig.h"
+#   include	"utilGeoConfig.h"
 #   include	"geoQuadTree.h"
 
 #   include	<stdlib.h>

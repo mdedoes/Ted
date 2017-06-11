@@ -23,7 +23,7 @@
 
 void tedInitIndentsTool(	IndentsTool *	it )
     {
-    utilInitDocumentGeometry( &(it->itDocumentGeometry) );
+    geoInitDocumentGeometry( &(it->itDocumentGeometry) );
 
     it->itLToRFirstIndentRow= (APP_WIDGET)0;
     it->itLToRFirstIndentLabel= (APP_WIDGET)0;

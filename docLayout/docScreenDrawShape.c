@@ -663,6 +663,7 @@ static int docScreenDrawRoundedRectangleShape(
     }
 
 int docScreenDrawDrawingShape(	const DocumentRectangle *	drOutside,
+				const AffineTransform2D *	atOutside,
 				int				page,
 				DrawingShape *			ds,
 				DrawingContext *		dc,

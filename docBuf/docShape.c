@@ -23,10 +23,33 @@
 
 void docShapeGetRects(	DocumentRectangle *		drHere,
 			DocumentRectangle *		drNorm,
-			const DocumentRectangle *	drTwips,
+			AffineTransform2D *		atHere,
+			const DocumentRectangle *	drOutside,
+			const AffineTransform2D *	atOutside,
 			const DrawingShape *		ds )
     {
-    *drHere= *drTwips;
+    const ShapeDrawing *	sd= &(ds->dsDrawing);
+    AffineTransform2D		atIntern;
+
+    *drHere= *drOutside;
+
+    geoIdentityAffineTransform2D( &atIntern );
+
+    if  ( sd->sdRotation != 0 )
+	{
+	double angle= ( M_PI* sd->sdRotation )/ ( 180.0* 65536 );
+	geoAffineTransform2DThenRotate( &atIntern, angle, &atIntern );
+	}
+
+    if  ( DSflipHORIZONTAL( ds ) )
+	{
+	geoAffineTransform2DThenMirrorX( &atIntern, 0.5, &atIntern );
+	}
+
+    if  ( DSflipVERTICAL( ds ) )
+	{
+	geoAffineTransform2DThenMirrorY( &atIntern, 0.5, &atIntern );
+	}
 
     if  ( DSflipHORIZONTAL( ds ) )
 	{ int sw= drHere->drX0; drHere->drX0= drHere->drX1; drHere->drX1= sw; }
@@ -35,6 +58,8 @@ void docShapeGetRects(	DocumentRectangle *		drHere,
 	{ int sw= drHere->drY0; drHere->drY0= drHere->drY1; drHere->drY1= sw; }
 
     geoNormalizeRectangle( drNorm, drHere );
+
+    *atHere= atIntern;
 
     return;
     }
@@ -46,8 +71,10 @@ void docShapeGetRects(	DocumentRectangle *		drHere,
 /************************************************************************/
 
 void docShapeGetChildRect(	DocumentRectangle *		drChild,
+				AffineTransform2D *		atChild,
 				const DrawingShape *		dsChild,
-				const DocumentRectangle *	dr,
+				const DocumentRectangle *	drOutside,
+				const AffineTransform2D *	atOutside,
 				const DrawingShape *		ds )
     {
     const ShapeDrawing *	sd= &(ds->dsDrawing);
@@ -56,18 +83,18 @@ void docShapeGetChildRect(	DocumentRectangle *		drChild,
     double			xscale;
     double			yscale;
 
-    xscale= ( 1.0* ( dr->drX1- dr->drX0 ) )/
+    xscale= ( 1.0* ( drOutside->drX1- drOutside->drX0 ) )/
 				( sd->sdGroupRect.drX1- sd->sdGroupRect.drX0 );
-    yscale= ( 1.0* ( dr->drY1- dr->drY0 ) )/
+    yscale= ( 1.0* ( drOutside->drY1- drOutside->drY0 ) )/
 				( sd->sdGroupRect.drY1- sd->sdGroupRect.drY0 );
 
-    drChild->drX0= dr->drX0+ xscale* 
+    drChild->drX0= drOutside->drX0+ xscale* 
 			    ( sdChild->sdRelRect.drX0- sd->sdGroupRect.drX0 );
-    drChild->drY0= dr->drY0+ yscale*
+    drChild->drY0= drOutside->drY0+ yscale*
 			    ( sdChild->sdRelRect.drY0- sd->sdGroupRect.drY0 );
-    drChild->drX1= dr->drX0+ xscale* 
+    drChild->drX1= drOutside->drX0+ xscale* 
 			    ( sdChild->sdRelRect.drX1- sd->sdGroupRect.drX0 );
-    drChild->drY1= dr->drY0+ yscale*
+    drChild->drY1= drOutside->drY0+ yscale*
 			    ( sdChild->sdRelRect.drY1- sd->sdGroupRect.drY0 );
 
     return;

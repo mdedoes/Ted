@@ -13,6 +13,11 @@ typedef struct Point2DD
     double	y;
     } Point2DD;
 
+#   define POINT2DDEB(p) appDebug(					\
+			    "%s(%3d) %s= (%g,%g)\n",			\
+			    __FILE__, __LINE__, #p, (p)->x, (p)->y )
+
+
 typedef struct Rectangle2DD
     {
     double	x0;

@@ -242,20 +242,20 @@ static struct BufferDocument * tedTryTxtFile(
 /*									*/
 /************************************************************************/
 
-int tedOpenDocumentFile(	unsigned char *		digest,
-				int *			pFormat,
-				struct BufferDocument **	pBd,
-				EditApplication *	ea,
-				int			suggestStdin,
-				int			formatHint,
-				const struct MemoryBuffer *	filename,
-				int			complain,
-				APP_WIDGET		relative,
-				APP_WIDGET		option )
+int tedOpenDocumentFile( unsigned char *		digest,
+			int *				pFormat,
+			struct BufferDocument **	pBd,
+			EditApplication *		ea,
+			int				suggestStdin,
+			int				formatHint,
+			const struct MemoryBuffer *	filename,
+			int				complain,
+			APP_WIDGET			relative,
+			APP_WIDGET			option )
     {
     int				rval= 0;
 
-    struct BufferDocument *		bd= (struct BufferDocument *)0;
+    struct BufferDocument *	bd= (struct BufferDocument *)0;
     int				format= -1;
 
     int				failedFile= 0;

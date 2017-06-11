@@ -1,15 +1,13 @@
 #   include	"guiBaseConfig.h"
 
-#   include	"guiWidgetsImpl.h"
-#   include	"guiWidgets.h"
-#   include	"guiOptionmenu.h"
-
-#   include	<appDebugon.h>
-
 #   if USE_MOTIF
 
 #   include	<Xm/RowColumn.h>
 #   include	<Xm/PushBG.h>
+
+#   include	"guiOptionmenu.h"
+
+#   include	<appDebugon.h>
 
 #   define	RECLAIM_FOCUS	0
 

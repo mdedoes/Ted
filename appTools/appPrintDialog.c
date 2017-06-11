@@ -11,6 +11,7 @@
 #   include	<string.h>
 
 #   include	<appEditApplication.h>
+#   include	<appPrintDocument.h>
 #   include	<appEditDocument.h>
 #   include	<appGuiDocument.h>
 #   include	"appPaperChooser.h"

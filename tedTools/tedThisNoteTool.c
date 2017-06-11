@@ -427,9 +427,9 @@ static void * tedFormatBuildThisNotePage(
 				APP_WIDGET			pageWidget,
 				const InspectorSubjectResources * isr )
     {
-    const ThisNotePageResources *	npr= &TED_ThisNotePageResources;
+    const ThisNotePageResources * npr= &TED_ThisNotePageResources;
 
-    const int	textColumns= 6;
+    const int			textColumns= 6;
 
     ThisNoteTool *		tnt= malloc( sizeof(ThisNoteTool) );
 
@@ -477,12 +477,14 @@ static void * tedFormatBuildThisNotePage(
 /*									*/
 /************************************************************************/
 
-static void tedFormatCleanThisNoteTool(	void *	vtnt )
+static void tedFormatFreeThisNoteTool(	void *	vtnt )
     {
     ThisNoteTool *			tnt= (ThisNoteTool *)vtnt;
 
     docCleanNoteProperties( &(tnt->tntNotePropertiesSet) );
     docCleanNoteProperties( &(tnt->tntNotePropertiesChosen) );
+
+    free( tnt );
 
     return;
     }
@@ -576,7 +578,7 @@ int tedThisNoteToolFillSubjectTypes( struct EditApplication *		ea,
     ist->istBuildTool= tedFormatBuildThisNotePage;
     /* ist->istFillChoosers */
     /* ist->istFinishPage */
-    ist->istFreeTool= tedFormatCleanThisNoteTool;
+    ist->istFreeTool= tedFormatFreeThisNoteTool;
 
     ftst->ftstRefreshPage= tedRefreshThisNoteTool;
     /*ftst->ftstToolResetCache*/

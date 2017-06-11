@@ -69,6 +69,8 @@ void appInitRgbCube(	RgbCube *	rc )
 
 void appCleanRgbCube(	RgbCube *	rc )
     {
+    if  ( rc->rcColorBlocks )
+	{ free( rc->rcColorBlocks );	}
     }
 
 /************************************************************************/

@@ -32,7 +32,7 @@ static NamedImage	TEDPictures[]=
     };
 
 void tedGetNamedImages(	NamedImage **		pPictures,
-				int *			pPictureCount )
+			int *			pPictureCount )
     {
     *pPictures= TEDPictures;
     *pPictureCount= sizeof(TEDPictures)/sizeof(NamedImage);

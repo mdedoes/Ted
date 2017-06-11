@@ -40,9 +40,6 @@
 #   include	"tedLanguageTool.h"
 #   include	"tedRgbChooserPage.h"
 #   include	<docSelect.h>
-#   include	<docPageGrid.h>
-#   include	<docBlockFrame.h>
-#   include	<docTreeNode.h>
 #   include	<appInspectorSubject.h>
 #   include	<appEditApplication.h>
 #   include	<appGuiApplication.h>
@@ -353,7 +350,7 @@ void tedAppFormatFieldListChanged(	EditApplication *	ea )
 
     is= ai->aiSubjects;
     ftst= TED_APP_FormatToolSubjectTypes;
-    for ( i= 0; i < TED_APPtsi_COUNT; ftst++, i++ )
+    for ( i= 0; i < TED_APPtsi_COUNT; ftst++, is++, i++ )
 	{
 	if  ( is->isTool		&&
 	      ftst->ftstResetCache	)

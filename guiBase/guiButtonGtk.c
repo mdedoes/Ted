@@ -7,6 +7,17 @@
 #   include	<appDebugon.h>
 #   include	"guiWidgetsGtk.h"
 
+static void guiGtkRemoveButtonDefault(	GtkWidget *	button )
+    {
+#   if  ( GTK_MAJOR_VERSION == 2 && GTK_MINOR_VERSION <= 12 )
+	GTK_WIDGET_UNSET_FLAGS( button, GTK_CAN_FOCUS );
+	GTK_WIDGET_UNSET_FLAGS( button, GTK_CAN_DEFAULT );
+#   else
+	gtk_widget_set_can_focus( button, FALSE );
+	gtk_widget_set_can_default( button, FALSE );
+#   endif
+    }
+
 static GtkWidget * guiGtkMakeTextButton(
 				const char *		text,
 				int			showAsDefault )
@@ -16,10 +27,7 @@ static GtkWidget * guiGtkMakeTextButton(
     gtk_button_set_relief ( GTK_BUTTON(button), GTK_RELIEF_HALF );
 
     if  ( ! showAsDefault )
-	{
-	gtk_widget_set_can_focus( button, FALSE );
-	gtk_widget_set_can_default( button, FALSE );
-	}
+	{ guiGtkRemoveButtonDefault( button );	}
 
     return button;
     }
@@ -39,7 +47,10 @@ static GtkWidget * guiGtkMakeImageButton(
 	}
 
     gtk_button_set_image( GTK_BUTTON( button ), imageWidget );
+
+#   if (GTK_MAJOR_VERSION > 2 || GTK_MINOR_VERSION > 12)
     gtk_widget_set_tooltip_text( button, tooltip );
+#   endif
 
     return button;
     }

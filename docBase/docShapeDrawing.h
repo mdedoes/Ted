@@ -75,6 +75,9 @@ typedef struct ShapeDrawing
 			/************************************************/
 			/*  Object Type					*/
 			/************************************************/
+			/**
+			 *  Rotation. Unit is 1/65536 degree
+			 */
     int			sdRotation;
 
     int			sdWrapDistLeftEmu;

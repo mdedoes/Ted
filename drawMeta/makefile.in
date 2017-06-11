@@ -26,6 +26,7 @@ INCLUDES=			\
 	-I../utilPs		\
 	-I../docFont		\
 	-I../textEncoding	\
+	-I../utilGeo		\
 	-I../appUtil		\
 	-I../include
 
@@ -63,11 +64,10 @@ duplicates:
 includes:
 	includes.sh drawMetaConfig.h $(INCLUDES)
 
-# deps -I. -I../include -I../bitmap -I../textEncoding -I../appUtil -I../docFont -I../utilPs
+# deps -I. -I../include -I../bitmap -I../textEncoding -I../utilGeo -I../appUtil -I../docFont -I../utilPs
 ######################################## !! sh
 
 drawImageSvg.o: \
-    ../appUtil/geoRectangle.h \
     ../appUtil/sioBase64.h \
     ../appUtil/sioGeneral.h \
     ../appUtil/sioUtil.h \
@@ -81,13 +81,11 @@ drawImageSvg.o: \
     drawMetaConfig.h \
     ../include/appDebug.h \
     ../include/appDebugon.h \
+    ../utilGeo/geoRectangle.h \
     ../utilPs/svgWriter.h \
     drawImageSvg.c
 
 drawMetafileImpl.o: \
-    ../appUtil/geo2DInteger.h \
-    ../appUtil/geoAffineTransform.h \
-    ../appUtil/geoRectangle.h \
     ../appUtil/utilColor.h \
     ../appUtil/utilMemoryBuffer.h \
     ../appUtil/utilPalette.h \
@@ -102,15 +100,13 @@ drawMetafileImpl.o: \
     drawWinMetaImpl.h \
     ../include/appDebug.h \
     ../include/appDebugon.h \
+    ../utilGeo/geo2DInteger.h \
+    ../utilGeo/geoAffineTransform.h \
+    ../utilGeo/geoRectangle.h \
     ../utilPs/textAttribute.h \
     drawMetafileImpl.c
 
 drawMetafilePs.o: \
-    ../appUtil/geo2DInteger.h \
-    ../appUtil/geoAffineTransform.h \
-    ../appUtil/geoDocumentPageSetup.h \
-    ../appUtil/geoRectangle.h \
-    ../appUtil/geoRectangleOffsets.h \
     ../appUtil/sioGeneral.h \
     ../appUtil/utilColor.h \
     ../appUtil/utilMemoryBuffer.h \
@@ -132,6 +128,11 @@ drawMetafilePs.o: \
     drawWinMetaImpl.h \
     ../include/appDebug.h \
     ../include/appDebugon.h \
+    ../utilGeo/geo2DInteger.h \
+    ../utilGeo/geoAffineTransform.h \
+    ../utilGeo/geoDocumentPageSetup.h \
+    ../utilGeo/geoRectangle.h \
+    ../utilGeo/geoRectangleOffsets.h \
     ../utilPs/psNup.h \
     ../utilPs/psPrint.h \
     ../utilPs/psPrintShape.h \
@@ -141,9 +142,6 @@ drawMetafilePs.o: \
     drawMetafilePs.c
 
 drawMetafileSvg.o: \
-    ../appUtil/geo2DInteger.h \
-    ../appUtil/geoAffineTransform.h \
-    ../appUtil/geoRectangle.h \
     ../appUtil/sioGeneral.h \
     ../appUtil/utilColor.h \
     ../appUtil/utilMemoryBuffer.h \
@@ -166,6 +164,9 @@ drawMetafileSvg.o: \
     drawWinMetaImpl.h \
     ../include/appDebug.h \
     ../include/appDebugon.h \
+    ../utilGeo/geo2DInteger.h \
+    ../utilGeo/geoAffineTransform.h \
+    ../utilGeo/geoRectangle.h \
     ../utilPs/psShading.h \
     ../utilPs/psTextExtents.h \
     ../utilPs/svgWriter.h \
@@ -173,9 +174,6 @@ drawMetafileSvg.o: \
     drawMetafileSvg.c
 
 drawPlayEmf.o: \
-    ../appUtil/geo2DInteger.h \
-    ../appUtil/geoAffineTransform.h \
-    ../appUtil/geoRectangle.h \
     ../appUtil/sioEndian.h \
     ../appUtil/sioGeneral.h \
     ../appUtil/utilColor.h \
@@ -194,13 +192,13 @@ drawPlayEmf.o: \
     ../include/appDebug.h \
     ../include/appDebugon.h \
     ../textEncoding/uniUtf8.h \
+    ../utilGeo/geo2DInteger.h \
+    ../utilGeo/geoAffineTransform.h \
+    ../utilGeo/geoRectangle.h \
     ../utilPs/textAttribute.h \
     drawPlayEmf.c
 
 drawPlayMacPict.o: \
-    ../appUtil/geo2DInteger.h \
-    ../appUtil/geoAffineTransform.h \
-    ../appUtil/geoRectangle.h \
     ../appUtil/sioEndian.h \
     ../appUtil/sioGeneral.h \
     ../appUtil/utilColor.h \
@@ -225,14 +223,14 @@ drawPlayMacPict.o: \
     ../textEncoding/textOfficeCharset.h \
     ../textEncoding/uniLegacyEncoding.h \
     ../textEncoding/uniUtf8.h \
+    ../utilGeo/geo2DInteger.h \
+    ../utilGeo/geoAffineTransform.h \
+    ../utilGeo/geoRectangle.h \
     ../utilPs/psDocumentFontStyle.h \
     ../utilPs/textAttribute.h \
     drawPlayMacPict.c
 
 drawPlayWmf.o: \
-    ../appUtil/geo2DInteger.h \
-    ../appUtil/geoAffineTransform.h \
-    ../appUtil/geoRectangle.h \
     ../appUtil/sioEndian.h \
     ../appUtil/sioGeneral.h \
     ../appUtil/utilColor.h \
@@ -251,14 +249,13 @@ drawPlayWmf.o: \
     ../include/appDebug.h \
     ../include/appDebugon.h \
     ../textEncoding/uniUtf8.h \
+    ../utilGeo/geo2DInteger.h \
+    ../utilGeo/geoAffineTransform.h \
+    ../utilGeo/geoRectangle.h \
     ../utilPs/textAttribute.h \
     drawPlayWmf.c
 
 drawWinMeta.o: \
-    ../appUtil/geo2DInteger.h \
-    ../appUtil/geoAffineTransform.h \
-    ../appUtil/geoRectangle.h \
-    ../appUtil/geoUnits.h \
     ../appUtil/sioEndian.h \
     ../appUtil/sioGeneral.h \
     ../appUtil/utilColor.h \
@@ -281,14 +278,15 @@ drawWinMeta.o: \
     ../include/appDebugon.h \
     ../textEncoding/textConverter.h \
     ../textEncoding/textOfficeCharset.h \
+    ../utilGeo/geo2DInteger.h \
+    ../utilGeo/geoAffineTransform.h \
+    ../utilGeo/geoRectangle.h \
+    ../utilGeo/geoUnits.h \
     ../utilPs/psDocumentFontStyle.h \
     ../utilPs/textAttribute.h \
     drawWinMeta.c
 
 drawWinMetaImg.o: \
-    ../appUtil/geo2DInteger.h \
-    ../appUtil/geoAffineTransform.h \
-    ../appUtil/geoRectangle.h \
     ../appUtil/sioEndian.h \
     ../appUtil/sioGeneral.h \
     ../appUtil/utilColor.h \
@@ -304,13 +302,13 @@ drawWinMetaImg.o: \
     drawWinMetaImpl.h \
     ../include/appDebug.h \
     ../include/appDebugon.h \
+    ../utilGeo/geo2DInteger.h \
+    ../utilGeo/geoAffineTransform.h \
+    ../utilGeo/geoRectangle.h \
     ../utilPs/textAttribute.h \
     drawWinMetaImg.c
 
 drawWinMetaPsFonts.o: \
-    ../appUtil/geo2DInteger.h \
-    ../appUtil/geoAffineTransform.h \
-    ../appUtil/geoRectangle.h \
     ../appUtil/sioGeneral.h \
     ../appUtil/utilColor.h \
     ../appUtil/utilIndexMapping.h \
@@ -332,6 +330,9 @@ drawWinMetaPsFonts.o: \
     drawWinMetaImpl.h \
     ../include/appDebug.h \
     ../include/appDebugon.h \
+    ../utilGeo/geo2DInteger.h \
+    ../utilGeo/geoAffineTransform.h \
+    ../utilGeo/geoRectangle.h \
     ../utilPs/psFace.h \
     ../utilPs/psFontInfo.h \
     ../utilPs/psPostScriptFontList.h \
@@ -339,9 +340,6 @@ drawWinMetaPsFonts.o: \
     drawWinMetaPsFonts.c
 
 drawWinMetaText.o: \
-    ../appUtil/geo2DInteger.h \
-    ../appUtil/geoAffineTransform.h \
-    ../appUtil/geoRectangle.h \
     ../appUtil/sioEndian.h \
     ../appUtil/sioGeneral.h \
     ../appUtil/utilColor.h \
@@ -361,6 +359,9 @@ drawWinMetaText.o: \
     ../textEncoding/textConverter.h \
     ../textEncoding/textOfficeCharset.h \
     ../textEncoding/uniUtf8.h \
+    ../utilGeo/geo2DInteger.h \
+    ../utilGeo/geoAffineTransform.h \
+    ../utilGeo/geoRectangle.h \
     ../utilPs/textAttribute.h \
     drawWinMetaText.c
 

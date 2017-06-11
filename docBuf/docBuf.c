@@ -299,13 +299,13 @@ void docOverridePaperSize(	struct BufferDocument *		bd,
     DocumentProperties *	dp= bd->bdProperties;
     int			sect;
 
-    utilOverridePaperSize( &(dp->dpGeometry), dgFrom );
+    geoOverridePaperSize( &(dp->dpGeometry), dgFrom );
 
     for ( sect= 0; sect < bd->bdBody.dtRoot->biChildCount; sect++ )
 	{
 	struct BufferItem *	sectNode= bd->bdBody.dtRoot->biChildren[sect];
 
-	utilOverridePaperSize( &(sectNode->biSectDocumentGeometry), dgFrom );
+	geoOverridePaperSize( &(sectNode->biSectDocumentGeometry), dgFrom );
 	}
 
     return;

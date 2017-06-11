@@ -11,7 +11,6 @@
 #   include "guiWidgetDrawingSurface.h"
 #   include <drawDrawingSurface.h>
 #   include "drawDrawingSurfaceImpl.h"
-#   include "drawScreenFontImpl.h"
 #   include "drawUtilMotif.h"
 #   include "drawImpl.h"
 #   include "drawImplXft.h"

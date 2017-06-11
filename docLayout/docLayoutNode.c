@@ -260,7 +260,7 @@ static int docLayoutSingleRowNode(	LayoutPosition *	lpBelow,
 /*  This is the main entry poin of the formatter.			*/
 /*									*/
 /*  1)  While balancing columns in the last page of a section.. Do not	*/
-/*	reformat items that are irrelevant because they are on an	*/
+/*	reformat nodes that are irrelevant because they are on an	*/
 /*	earlier page.							*/
 /*									*/
 /************************************************************************/
@@ -309,7 +309,6 @@ int docLayoutNodeImplementation(	LayoutPosition *	lpBelow,
 	    break;
 
 	case DOClevROW:
-	    {
 	    if  ( ! docIsRowNode( node ) )
 		{
 		if  ( node->biNumberInParent > 0 )
@@ -325,7 +324,6 @@ int docLayoutNodeImplementation(	LayoutPosition *	lpBelow,
 		if  ( docLayoutSingleRowNode( &lpHere, &lpHere, node, bf, lj ) )
 		    { LDEB(1); return -1;	}
 		}
-	    }
 	    break;
 
 	case DOClevPARA:

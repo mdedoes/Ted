@@ -9,7 +9,6 @@ dnl Checks for libraries.
 
 dnl Checks for header files.
 AC_PATH_ZLIB
-AC_HAVE_LIBPAPER
 
 AC_HEADER_DIRENT
 AC_HEADER_STDC

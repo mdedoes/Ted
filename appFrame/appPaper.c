@@ -4,22 +4,23 @@
 /*									*/
 /************************************************************************/
 
-#   include	"appUtilConfig.h"
+#   include	"appFrameConfig.h"
 
 #   if USE_LIBPAPER
 #	include		<paper.h>
+#   else
+#	include		<string.h>
+#	include		"appSystem.h"
+#	include		"sioFileio.h"
+#	include		"sioGeneral.h"
+#	include		"utilMemoryBuffer.h"
 #   endif
 
-#   include	<string.h>
 #   include	<stdio.h>
 #   include	<stdlib.h>
 
-#   include	"appSystem.h"
 #   include	"appPaper.h"
-#   include	"geoString.h"
-#   include	"sioFileio.h"
-#   include	"sioGeneral.h"
-#   include	"utilMemoryBuffer.h"
+#   include	<geoString.h>
 
 #   include	<appDebugon.h>
 
@@ -268,7 +269,7 @@ int utilPaperSizeFromString(	int *		pFormat,
 		    { *pHigh= (int) ( ( paperpsheight( sp )* 20.0 ) +0.499 ); }
 		if  ( pFormat )
 		    { *pFormat= i;	}
-		return 0;
+		return i;
 		}
 	    }
 	SXDEB(paperString,sp);
@@ -345,9 +346,6 @@ const char * utilPaperDefaultSize( void )
     MemoryBuffer	sizeFile;
 
     utilInitMemoryBuffer( &sizeFile );
-    if  ( utilMemoryBufferSetString( &sizeFile, "/etc/papersize" ) )
-	{ LDEB(1); goto ready;	}
-
     if  ( utilDefaultPaperSize )
 	{
 	if  ( utilDefaultPaperSize[0] )
@@ -355,6 +353,9 @@ const char * utilPaperDefaultSize( void )
 
 	goto ready;
 	}
+
+    if  ( utilMemoryBufferSetString( &sizeFile, "/etc/papersize" ) )
+	{ LDEB(1); goto ready;	}
 
     if  ( ! fileTestFileExists( &sizeFile ) )
 	{

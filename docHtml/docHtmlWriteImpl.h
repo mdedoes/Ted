@@ -19,6 +19,7 @@
 #   include		<docParaProperties.h>
 #   include		<textAttribute.h>
 #   include		<utilIndexMapping.h>
+#   include		<bmio.h>
 
 struct InsertedObject;
 struct DocumentField;
@@ -73,8 +74,20 @@ typedef struct HtmlWritingContext
 
     IndexMapping		hwcDeferredNotes;
 
-    int				hwcInlineCss;
-    int				hwcInlineNotes;
+				/**
+				 *  Directly include CSS in the HTML file.
+				 */
+    unsigned char		hwcInlineCss;
+				/**
+				 *  Insert notes at the end of the paragraph 
+				 *  or a top level table, rather than at the 
+				 *  end of the document.
+				 */
+    unsigned char		hwcInlineNotes;
+				/**
+				 *  Include image data as a data url
+				 */
+    unsigned char		hwcInlineImages;
 
     int				hwcInHyperlink;
     int				hwcInBookmark;
@@ -91,9 +104,9 @@ typedef struct HtmlWritingContext
     int				hwcTableNesting;
 
     int				hwcCurrentAttributeNumber;
-					/**
-					 *  Support bullets? Only in  browser!
-					 */
+				/**
+				 *  Support bullets? Only in browser!
+				 */
     unsigned char		hwcSupportsBullets;
     unsigned char		hwcEmitBackground;
     } HtmlWritingContext;
@@ -119,7 +132,7 @@ extern int docHtmlSaveImgElement(
 				const struct BufferItem *	paraNode,
 				struct InsertedObject *		io );
 
-extern int docHtmlSaveImages(	HtmlWritingContext *		hwc );
+extern int docHtmlSaveImageFiles(	HtmlWritingContext *		hwc );
 
 extern void docHtmlChangeAttributes(
 				HtmlWritingContext *		hwc,
@@ -166,11 +179,15 @@ extern int docHtmlFinishDocument(	HtmlWritingContext *	hwc );
 
 extern int docHtmlSaveNotes(		HtmlWritingContext *	hwc );
 
-extern int docHtmlObjectSaveHow(int *				pType,
-				const char **			pMimeType,
-				const char **			pExt,
-				const struct MemoryBuffer **	pObjectData,
-				const struct InsertedObject *	io );
+extern int docHtmlObjectSaveHow(
+			const struct HtmlWritingContext *	hwc,
+			int *					pUseDataUrl,
+			int *					pType,
+			bmWriteBitmap *				pWriteBitmap,
+			const char **				pMimeType,
+			const char **				pExt,
+			const struct MemoryBuffer **		pObjectData,
+			const struct InsertedObject *		io );
 
 extern int docHtmlSaveDeferredNotes(	HtmlWritingContext *		hwc );
 

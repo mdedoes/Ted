@@ -149,7 +149,7 @@ static void appPageLayoutChangeLayout(	PageLayoutTool *	plt,
     utilPropMaskClear( &setMask );
     utilPropMaskFill( &setMask, DGprop_COUNT );
 
-    utilInitDocumentGeometry( &dgNew );
+    geoInitDocumentGeometry( &dgNew );
 
     dgNew= plt->pltGeometryChosen;
 
@@ -456,9 +456,9 @@ void appPageLayoutPageFillPage(	PageLayoutTool *		plt,
 
     plt->pltDrawingSurface= (DrawingSurface)0;
 
-    utilInitDocumentGeometry( &(plt->pltGeometrySetDocument) );
-    utilInitDocumentGeometry( &(plt->pltGeometrySetSelection) );
-    utilInitDocumentGeometry( &(plt->pltGeometryChosen) );
+    geoInitDocumentGeometry( &(plt->pltGeometrySetDocument) );
+    geoInitDocumentGeometry( &(plt->pltGeometrySetSelection) );
+    geoInitDocumentGeometry( &(plt->pltGeometryChosen) );
 
     plt->pltGeometrySetDocument.dgPageWideTwips= 0;
     plt->pltGeometrySetSelection.dgPageWideTwips= 0;

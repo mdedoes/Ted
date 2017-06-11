@@ -1,6 +1,7 @@
 /************************************************************************/
 /*									*/
-/*  Save a BufferDocument into an HTML file.				*/
+/*  Save a Document as a HTML file.					*/
+/*									*/
 /*  Depending on the parameters, this is either an HTML file with	*/
 /*  a directory for the images, or a MHTML (rfc2112,rfc2557) aggregate.	*/
 /*  RFC 2557 was never validated.					*/
@@ -27,7 +28,8 @@ struct LayoutContext;
 extern int docHtmlSaveDocument(	struct SimpleOutputStream *	sos,
 				struct BufferDocument *		bd,
 				const struct MemoryBuffer *	filename,
-				const struct LayoutContext *	lc );
+				const struct LayoutContext *	lc,
+				int				inlineImages );
 
 extern int docEmlSaveDocument(	struct SimpleOutputStream *	sos,
 				struct BufferDocument *		bd,

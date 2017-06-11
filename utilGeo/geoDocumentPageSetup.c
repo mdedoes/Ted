@@ -1,8 +1,8 @@
-#   include	"appUtilConfig.h"
+#   include	"utilGeoConfig.h"
 
 #   include	"geoDocumentPageSetup.h"
 #   include	"geoRectangle.h"
-#   include	"utilPropMask.h"
+#   include	<utilPropMask.h>
 
 #   include	<appDebugon.h>
 
@@ -12,7 +12,7 @@
 /*									*/
 /************************************************************************/
 
-void utilInitDocumentGeometry(	DocumentGeometry *	dg )
+void geoInitDocumentGeometry(	DocumentGeometry *	dg )
     {
     dg->dgPageWideTwips= 12240;
     dg->dgPageHighTwips= 15840;
@@ -35,7 +35,7 @@ void utilInitDocumentGeometry(	DocumentGeometry *	dg )
 /*									*/
 /************************************************************************/
 
-void utilUpdDocumentGeometry(	PropertyMask *			dpDoneMask,
+void geoUpdDocumentGeometry(	PropertyMask *			dpDoneMask,
 				DocumentGeometry *		dgTo,
 				const PropertyMask *		dgSetMask,
 				const DocumentGeometry *	dgSet )
@@ -140,7 +140,7 @@ void utilUpdDocumentGeometry(	PropertyMask *			dpDoneMask,
     return;
     }
 
-void utilDocumentGeometryGetPageRect(
+void geoDocumentGeometryGetPageRect(
 				DocumentRectangle *		dr,
 				const DocumentGeometry *	dg )
     {
@@ -150,7 +150,7 @@ void utilDocumentGeometryGetPageRect(
     dr->drY1= dg->dgPageHighTwips;
     }
 
-void utilDocumentGeometryGetBodyRect(
+void geoDocumentGeometryGetBodyRect(
 				DocumentRectangle *		dr,
 				const DocumentGeometry *	dg )
     {
@@ -160,7 +160,7 @@ void utilDocumentGeometryGetBodyRect(
     dr->drY1= dg->dgPageHighTwips- dg->dgMargins.roBottomOffset;
     }
 
-void utilDocumentGeometryGetHeaderRect(
+void geoDocumentGeometryGetHeaderRect(
 				DocumentRectangle *		dr,
 				const DocumentGeometry *	dg )
     {
@@ -170,7 +170,7 @@ void utilDocumentGeometryGetHeaderRect(
     dr->drY1= dg->dgMargins.roTopOffset;
     }
 
-void utilDocumentGeometryGetFooterRect(
+void geoDocumentGeometryGetFooterRect(
 				DocumentRectangle *		dr,
 				const DocumentGeometry *	dg )
     {
@@ -180,19 +180,19 @@ void utilDocumentGeometryGetFooterRect(
     dr->drY1= dg->dgPageHighTwips- dg->dgFooterPositionTwips;
     }
 
-void utilDocumentGeometryGetPageBoundingBox(
+void geoDocumentGeometryGetPageBoundingBox(
 				DocumentRectangle *		dr,
 				const DocumentGeometry *	dg,
 				int				hasHeader,
 				int				hasFooter )
     {
-    utilDocumentGeometryGetBodyRect( dr, dg );
+    geoDocumentGeometryGetBodyRect( dr, dg );
 
     if  ( hasHeader )
 	{
 	DocumentRectangle	drHead;
 
-	utilDocumentGeometryGetHeaderRect( &drHead, dg );
+	geoDocumentGeometryGetHeaderRect( &drHead, dg );
 	geoUnionRectangle( dr, dr, &drHead );
 	}
 
@@ -200,12 +200,12 @@ void utilDocumentGeometryGetPageBoundingBox(
 	{
 	DocumentRectangle	drFoot;
 
-	utilDocumentGeometryGetFooterRect( &drFoot, dg );
+	geoDocumentGeometryGetFooterRect( &drFoot, dg );
 	geoUnionRectangle( dr, dr, &drFoot );
 	}
     }
 
-void utilOverridePaperSize(	DocumentGeometry *		dgTo,
+void geoOverridePaperSize(	DocumentGeometry *		dgTo,
 				const DocumentGeometry *	dgFrom )
     {
     if  ( dgTo->dgPageWideTwips > dgTo->dgPageHighTwips		&&

@@ -391,12 +391,12 @@ void appDrawNupDiagram(	APP_WIDGET			w,
     sheetWidePixels= pixelsPerTwip* dgSheet->dgPageWideTwips+ 0.49;
     sheetHighPixels= pixelsPerTwip* dgSheet->dgPageHighTwips+ 0.49;
 
-    if  ( utilNupGetBaseTranform( &atPage, &rotatePages, pg, dgPage,
+    if  ( psNupGetBaseTranform( &atPage, &rotatePages, pg, dgPage,
 							    pixelsPerTwip ) )
 	{ LDEB(1); goto ready;	}
 
     rotateSheet= rotatePages;
-    if  ( utilNupSetSchema( &ns, rotateSheet, &atPage, pg,
+    if  ( psNupSetSchema( &ns, rotateSheet, &atPage, pg,
 						    pixelsPerTwip, dgPage ) )
 	{ LLDEB(pg->pgGridRows,pg->pgGridCols); goto ready;	}
 
@@ -418,7 +418,7 @@ void appDrawNupDiagram(	APP_WIDGET			w,
 
     if  ( pg->pgGridRows* pg->pgGridCols == 1 )
 	{
-	utilNupGetPageTranform( &atPage, &ns, 0 );
+	psNupGetPageTranform( &atPage, &ns, 0 );
 
 	x0= AT2_X( dgPage->dgMargins.roLeftOffset,
 				    dgPage->dgMargins.roTopOffset, &atPage )+ 0.49;
@@ -456,7 +456,7 @@ void appDrawNupDiagram(	APP_WIDGET			w,
 
 	for ( i= 0; i < pg->pgGridRows* pg->pgGridCols; i++ )
 	    {
-	    utilNupGetPageTranform( &atPage, &ns, i );
+	    psNupGetPageTranform( &atPage, &ns, i );
 
 	    sprintf( scratch, "%d", i+ 1 );
 

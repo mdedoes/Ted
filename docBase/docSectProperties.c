@@ -300,7 +300,7 @@ void docCleanSectionProperties(	SectionProperties *	sp )
 
 void docInitSectionProperties(	SectionProperties *	sp )
     {
-    utilInitDocumentGeometry( &(sp->spDocumentGeometry) );
+    geoInitDocumentGeometry( &(sp->spDocumentGeometry) );
 
     sp->spStyle= 0;
 

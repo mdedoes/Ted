@@ -500,7 +500,8 @@ static int docScanParticulesFwd( const ParagraphScanner *	ps,
 			    { LDEB(step); return -1;	}
 
 			step += closed;
-			vp.vpParticule += step; continue;
+			vp.vpParticule += 1+ step;
+			continue;
 			}
 		    }
 		else{
@@ -678,7 +679,7 @@ static int docScanParticulesBwd( const ParagraphScanner *	ps,
 			    { LDEB(step); return -1;	}
 
 			step += closed;
-			vp.vpParticule -= step;
+			vp.vpParticule -= 1+ step;
 			continue;
 			}
 		    }

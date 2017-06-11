@@ -153,3 +153,15 @@ void xmlEscapeBuffer(	XmlWriter *		xw,
     {
     xmlEscapeCharacters( xw, (const char *)mb->mbBytes, mb->mbSize );
     }
+
+void xmlStartDataUrl(	XmlWriter *		xw,
+			const char *		attributeName,
+			const char *		contentType )
+    {
+    xmlPutString( " ", xw );
+    xmlPutString( attributeName, xw );
+    xmlPutString( "=\"data:", xw );
+    xmlPutString( contentType, xw );
+    xmlPutString( ";base64,", xw );
+    xmlNewLine( xw );
+    }

@@ -32,6 +32,7 @@
 #   include	<sioGeneral.h>
 #   include	<docBuf.h>
 #   include	<appDocFront.h>
+#   include	<bitmap.h>
 
 #   include	<appDebugon.h>
 
@@ -285,15 +286,15 @@ static int tedCopyImageFile(	APP_WIDGET		w,
 
     SimpleOutputStream *	sos= (SimpleOutputStream *)0;
 
-    if  ( ! td->tdCopiedImage.riBytes )
-	{ XDEB(td->tdCopiedImage.riBytes); rval= -1; goto ready;	}
+    if  ( ! td->tdCopiedImage )
+	{ XDEB(td->tdCopiedImage); rval= -1; goto ready;	}
 
     sos= sioOutOpenCopy( w, event );
     if  ( ! sos )
 	{ XDEB(sos); rval= -1; goto ready;	}
 
-    if  ( (*writeBitmap)( &(td->tdCopiedImage.riDescription),
-					td->tdCopiedImage.riBytes, sos ) )
+    if  ( (*writeBitmap)( &(td->tdCopiedImage->riDescription),
+					td->tdCopiedImage->riBytes, sos ) )
 	{ LDEB(1); rval= -1; goto ready;	}
 
   ready:
@@ -636,7 +637,7 @@ void tedCopyRuler( EditDocument *	ed )
 
     DocumentSelection		dsPara;
 
-    const int			rtfFlags= RTFflagNO_BOOKMARKS;
+    const int			rtfFlags= RTFflagNO_BOOKMARKS|RTFflagSAVE_SOMETHING;
 
     if  ( tedGetSelection( &ds, &sg, &sd,
 			(struct DocumentTree **)0, (struct BufferItem **)0, ed ) )

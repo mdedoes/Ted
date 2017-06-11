@@ -81,10 +81,11 @@ const int  DocHtmlDirectorySuffixLength= sizeof(DocHtmlDirectorySuffix)- 1;
 /*									*/
 /************************************************************************/
 
-int docHtmlSaveDocument(	SimpleOutputStream *	sos,
-				struct BufferDocument *	bd,
-				const MemoryBuffer *	filename,
-				const struct LayoutContext *	lc )
+int docHtmlSaveDocument(	SimpleOutputStream *		sos,
+				struct BufferDocument *		bd,
+				const MemoryBuffer *		filename,
+				const struct LayoutContext *	lc,
+				int				inlineImages )
     {
     int				rval= 0;
     HtmlWritingContext		hwc;
@@ -110,6 +111,7 @@ int docHtmlSaveDocument(	SimpleOutputStream *	sos,
     hwc.hwcDocument= bd;
     hwc.hwcInlineCss= ( bd->bdObjectList.iolPagedList.plItemCount == 0 || ! filename );
     hwc.hwcInlineNotes= 0;
+    hwc.hwcInlineImages= inlineImages;
 
     hw.hwFilename= filename;
 
@@ -169,7 +171,7 @@ int docHtmlSaveDocument(	SimpleOutputStream *	sos,
     if  ( ! hwc.hwcInlineCss && docDocHtmlWriteCss( &hwc ) )
 	{ LDEB(1); rval= -1; goto ready;	}
 
-    if  ( docHtmlSaveImages( &hwc ) )
+    if  ( docHtmlSaveImageFiles( &hwc ) )
 	{ LDEB(hwc.hwcImageCount); rval= -1; goto ready;	}
 
   ready:

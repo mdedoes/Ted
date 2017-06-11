@@ -117,16 +117,21 @@ extern int docShapeGetLine(	int *			pFill,
 				RGB8Color *		rgb8,
 				const DrawingShape *	ds );
 
-extern void docShapeGetRects(	DocumentRectangle *		drHere,
-				DocumentRectangle *		drNorm,
-				const DocumentRectangle *	drTwips,
-				const DrawingShape *		ds );
+extern void docShapeGetRects(
+			struct DocumentRectangle *		drHere,
+			struct DocumentRectangle *		drNorm,
+			struct AffineTransform2D *		atHere,
+			const struct DocumentRectangle *	drOutside,
+			const struct AffineTransform2D *	atOutside,
+			const struct DrawingShape *		ds );
 
 extern void docShapeGetChildRect(
-				DocumentRectangle *		drChild,
-				const DrawingShape *		dsChild,
-				const DocumentRectangle *	dr,
-				const DrawingShape *		ds );
+			struct DocumentRectangle *		drChild,
+			struct AffineTransform2D *		atChild,
+			const struct DrawingShape *		dsChild,
+			const struct DocumentRectangle *	drOutside,
+			const struct AffineTransform2D *	atOutside,
+			const struct DrawingShape *		ds );
 
 extern int docGetAttributesUsedInShape( struct BufferDocument *	bd,
 				struct DrawingShape *		ds,

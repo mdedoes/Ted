@@ -104,10 +104,10 @@ static void docPsPageBoxes(	DrawingContext *		dc,
 
     rgb8.rgb8Alpha= 255;
 
-    utilDocumentGeometryGetPageBoundingBox( &drBBox, dg, 1, 1 );
-    utilDocumentGeometryGetBodyRect( &drBody, dg );
-    utilDocumentGeometryGetHeaderRect( &drHead, dg );
-    utilDocumentGeometryGetFooterRect( &drFoot, dg );
+    geoDocumentGeometryGetPageBoundingBox( &drBBox, dg, 1, 1 );
+    geoDocumentGeometryGetBodyRect( &drBody, dg );
+    geoDocumentGeometryGetHeaderRect( &drHead, dg );
+    geoDocumentGeometryGetFooterRect( &drFoot, dg );
 
     rgb8.rgb8Red= 255;
     rgb8.rgb8Green= 199;

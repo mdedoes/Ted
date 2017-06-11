@@ -1,15 +1,16 @@
 #   include "guiBaseConfig.h"
-#   include "guiBase.h"
 
 #   include <appDebugon.h>
 
 #   if USE_MOTIF
 #	define TRANSLATE_KEYSYMS
+#       include "guiBase.h"
 #   endif
 
 #   if USE_GTK
 #   if GTK_MAJOR_VERSION < 2
 #	define TRANSLATE_KEYSYMS
+#       include "guiBase.h"
 #   endif
 #   endif
 

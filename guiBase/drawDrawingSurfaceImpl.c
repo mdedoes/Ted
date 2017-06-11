@@ -6,12 +6,10 @@
 
 #   include "guiBaseConfig.h"
 
-#   include "guiWidgetDrawingSurface.h"
 #   include <drawDrawingSurface.h>
 #   include "drawDrawingSurfaceImpl.h"
 #   include "drawScreenFontImpl.h"
 #   include "drawScreenFontAdmin.h"
-#   include "drawImplXft.h"
 #   include "drawDrawingSurfacePrivate.h"
 #   include "drawImpl.h"
 

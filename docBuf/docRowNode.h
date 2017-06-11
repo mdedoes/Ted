@@ -123,16 +123,16 @@ typedef struct RowNode
 /************************************************************************/
 
 
-#	define	biRowTopInset		BIU.biuRow.brTopInset
+#   define	biRowTopInset		BIU.biuRow.brTopInset
 
-#	define	biRowTableFirst		BIU.biuRow.brTableFirst
-#	define	biRowTablePast		BIU.biuRow.brTablePast
-#	define	biRowPastHeaderRow	BIU.biuRow.brPastHeaderRow
-#	define	biRowPrecededByHeader	BIU.biuRow.brPrecededByHeader
-#	define	biRowBelowAllCellsPosition	BIU.biuRow.brBelowAllCellsPosition
-#	define	biRowAboveHeaderPosition \
+#   define	biRowTableFirst		BIU.biuRow.brTableFirst
+#   define	biRowTablePast		BIU.biuRow.brTablePast
+#   define	biRowPastHeaderRow	BIU.biuRow.brPastHeaderRow
+#   define	biRowPrecededByHeader	BIU.biuRow.brPrecededByHeader
+#   define	biRowBelowAllCellsPosition	BIU.biuRow.brBelowAllCellsPosition
+#   define	biRowAboveHeaderPosition \
 					BIU.biuRow.brAboveHeaderPosition
-#	define	biRowForTable		BIU.biuRow.brForTable
+#   define	biRowForTable		BIU.biuRow.brForTable
 
 #   define	biRowProperties		BIU.biuRow.brProperties
 #   define	biRowPropertyNumber	BIU.biuRow.brRowPropertyNumber

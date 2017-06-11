@@ -483,16 +483,6 @@ extern int appFileConvert(	EditApplication *	ea,
 				const struct MemoryBuffer *	fromName,
 				const struct MemoryBuffer *	toName );
 
-extern int appPrintToFile(	EditApplication *	ea,
-				const char *		fromName,
-				const char *		toName,
-				const char *		paperString );
-
-extern int appPrintToPrinter(	EditApplication *	ea,
-				const char *		fromName,
-				const char *		toName,
-				const char *		paperString );
-
 extern int appGuiInitApplication(	EditApplication *	ea,
 					int *			pArgc,
 					char ***		pArgv );
@@ -536,13 +526,6 @@ extern int appGetPrintDestinations(	EditApplication *	ea );
 extern const struct AppSelectionType * appDocGetSelectionType(
 				const EditApplication *		ea,
 				const char *			selection );
-
-extern int appSaveToPs(			EditApplication *	ea,
-					DrawingSurface		ds,
-					struct SimpleOutputStream *	sos,
-					void *			privateData,
-					const struct MemoryBuffer *	documentTitle,
-					int			format );
 
 extern int appMakeDocumentWindow(	struct EditDocument **	pEd,
 					EditApplication *	ea,

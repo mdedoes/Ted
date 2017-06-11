@@ -16,6 +16,7 @@
 #   include	<sioFileio.h>
 
 #   include	"appEditApplication.h"
+#   include	"appPrintDocument.h"
 #   include	"appGuiApplication.h"
 #   include	"appEditDocument.h"
 #   include	"appGuiDocument.h"

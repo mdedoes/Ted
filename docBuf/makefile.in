@@ -27,6 +27,7 @@ INCLUDES=			\
 	-I../utilPs		\
 	-I../docFont		\
 	-I../textEncoding	\
+	-I../utilGeo		\
 	-I../appUtil		\
 	-I../include
 
@@ -132,12 +133,10 @@ duplicates:
 includes:
 	includes.sh docBufConfig.h $(INCLUDES)
 
-# deps -I. -I../include -I../docBase -I../bitmap  -I../textEncoding -I../appUtil -I ../docFont -I../utilPs
+# deps -I. -I../include -I../docBase -I../bitmap  -I../textEncoding -I../utilGeo -I../appUtil -I ../docFont -I../utilPs
 ######################################## !! sh
 
 docAttributes.o: \
-    ../appUtil/geoDocumentPageSetup.h \
-    ../appUtil/geoRectangleOffsets.h \
     ../appUtil/utilColor.h \
     ../appUtil/utilIndexSet.h \
     ../appUtil/utilIntegerValueNode.h \
@@ -169,16 +168,14 @@ docAttributes.o: \
     ../docFont/fontDocFontList.h \
     ../include/appDebug.h \
     ../include/appDebugon.h \
+    ../utilGeo/geoDocumentPageSetup.h \
+    ../utilGeo/geoRectangleOffsets.h \
     ../utilPs/psTextExtents.h \
     ../utilPs/textAttributeAdmin.h \
     ../utilPs/textAttribute.h \
     docAttributes.c
 
 docBuf.o: \
-    ../appUtil/geoAffineTransform.h \
-    ../appUtil/geoDocumentPageSetup.h \
-    ../appUtil/geoRectangle.h \
-    ../appUtil/geoRectangleOffsets.h \
     ../appUtil/utilColor.h \
     ../appUtil/utilIndexSet.h \
     ../appUtil/utilIntegerValueNode.h \
@@ -224,13 +221,15 @@ docBuf.o: \
     docTreeNode.h \
     ../include/appDebug.h \
     ../include/appDebugon.h \
+    ../utilGeo/geoAffineTransform.h \
+    ../utilGeo/geoDocumentPageSetup.h \
+    ../utilGeo/geoRectangle.h \
+    ../utilGeo/geoRectangleOffsets.h \
     ../utilPs/textAttributeAdmin.h \
     ../utilPs/textAttribute.h \
     docBuf.c
 
 docCalcuateChftnField.o: \
-    ../appUtil/geoDocumentPageSetup.h \
-    ../appUtil/geoRectangleOffsets.h \
     ../appUtil/utilIndexSet.h \
     ../appUtil/utilMemoryBuffer.h \
     ../appUtil/utilPagedList.h \
@@ -273,13 +272,13 @@ docCalcuateChftnField.o: \
     ../include/appDebugon.h \
     ../textEncoding/bidiScanner.h \
     ../textEncoding/textChicago.h \
+    ../utilGeo/geoDocumentPageSetup.h \
+    ../utilGeo/geoRectangleOffsets.h \
     ../utilPs/textAttribute.h \
     docCalcuateChftnField.c
 
 docCalculateDocpropField.o: \
     ../appUtil/appSystem.h \
-    ../appUtil/geoDocumentPageSetup.h \
-    ../appUtil/geoRectangleOffsets.h \
     ../appUtil/utilColor.h \
     ../appUtil/utilDateTime.h \
     ../appUtil/utilIndexSet.h \
@@ -309,6 +308,8 @@ docCalculateDocpropField.o: \
     docRecalculateFields.h \
     ../include/appDebug.h \
     ../include/appDebugon.h \
+    ../utilGeo/geoDocumentPageSetup.h \
+    ../utilGeo/geoRectangleOffsets.h \
     docCalculateDocpropField.c
 
 docCalculateFormulaField.o: \
@@ -407,8 +408,6 @@ docCalculateFormulaValue.o: \
 
 docCalculateIncludePictureField.o: \
     ../appUtil/appSystem.h \
-    ../appUtil/geoDocumentPageSetup.h \
-    ../appUtil/geoRectangleOffsets.h \
     ../appUtil/utilColor.h \
     ../appUtil/utilIndexSet.h \
     ../appUtil/utilMemoryBuffer.h \
@@ -452,6 +451,8 @@ docCalculateIncludePictureField.o: \
     ../include/appDebug.h \
     ../include/appDebugon.h \
     ../textEncoding/bidiScanner.h \
+    ../utilGeo/geoDocumentPageSetup.h \
+    ../utilGeo/geoRectangleOffsets.h \
     docCalculateIncludePictureField.c
 
 docCalculateListtextField.o: \
@@ -514,9 +515,6 @@ docCalculateMergeField.o: \
     docCalculateMergeField.c
 
 docCalculatePageField.o: \
-    ../appUtil/geoDocumentPageSetup.h \
-    ../appUtil/geoRectangle.h \
-    ../appUtil/geoRectangleOffsets.h \
     ../appUtil/utilIndexSet.h \
     ../appUtil/utilMemoryBuffer.h \
     ../appUtil/utilPagedList.h \
@@ -555,6 +553,9 @@ docCalculatePageField.o: \
     docTreeNode.h \
     ../include/appDebug.h \
     ../include/appDebugon.h \
+    ../utilGeo/geoDocumentPageSetup.h \
+    ../utilGeo/geoRectangle.h \
+    ../utilGeo/geoRectangleOffsets.h \
     docCalculatePageField.c
 
 docCalculateRefField.o: \
@@ -640,8 +641,6 @@ docCalculateSeqField.o: \
     docCalculateSeqField.c
 
 docCalculateSymbolField.o: \
-    ../appUtil/geoDocumentPageSetup.h \
-    ../appUtil/geoRectangleOffsets.h \
     ../appUtil/utilColor.h \
     ../appUtil/utilIndexSet.h \
     ../appUtil/utilMemoryBuffer.h \
@@ -670,6 +669,8 @@ docCalculateSymbolField.o: \
     ../textEncoding/bidiScanner.h \
     ../textEncoding/uniLegacyEncoding.h \
     ../textEncoding/uniUtf8.h \
+    ../utilGeo/geoDocumentPageSetup.h \
+    ../utilGeo/geoRectangleOffsets.h \
     ../utilPs/textAttribute.h \
     docCalculateSymbolField.c
 
@@ -694,7 +695,6 @@ docCollectReference.o: \
     docCollectReference.c
 
 docCollectStatistics.o: \
-    ../appUtil/geoRectangle.h \
     ../appUtil/utilIndexSet.h \
     ../appUtil/utilMemoryBuffer.h \
     ../appUtil/utilPagedList.h \
@@ -720,10 +720,10 @@ docCollectStatistics.o: \
     docTreeScanner.h \
     ../include/appDebug.h \
     ../include/appDebugon.h \
+    ../utilGeo/geoRectangle.h \
     docCollectStatistics.c
 
 docDebug.o: \
-    ../appUtil/geoRectangle.h \
     ../appUtil/utilIndexMapping.h \
     ../appUtil/utilIndexSet.h \
     ../appUtil/utilMemoryBuffer.h \
@@ -754,6 +754,7 @@ docDebug.o: \
     ../include/appDebug.h \
     ../include/appDebugon.h \
     ../textEncoding/textOfficeCharset.h \
+    ../utilGeo/geoRectangle.h \
     docDebug.c
 
 docDebugFields.o: \
@@ -796,7 +797,6 @@ docDebugFields.o: \
     docDebugFields.c
 
 docDebugNode.o: \
-    ../appUtil/geoRectangle.h \
     ../appUtil/utilMemoryBuffer.h \
     ../docBase/docLayoutPosition.h \
     ../docBase/docParaProperties.h \
@@ -819,11 +819,10 @@ docDebugNode.o: \
     ../textEncoding/bidiScanner.h \
     ../textEncoding/bidiTree.h \
     ../textEncoding/uniUtf8.h \
+    ../utilGeo/geoRectangle.h \
     docDebugNode.c
 
 docDebugObject.o: \
-    ../appUtil/geoAffineTransform.h \
-    ../appUtil/geoRectangle.h \
     ../appUtil/utilColor.h \
     ../appUtil/utilIndexSet.h \
     ../appUtil/utilMemoryBuffer.h \
@@ -859,6 +858,8 @@ docDebugObject.o: \
     docTreeNode.h \
     ../include/appDebug.h \
     ../include/appDebugon.h \
+    ../utilGeo/geoAffineTransform.h \
+    ../utilGeo/geoRectangle.h \
     docDebugObject.c
 
 docDebugValues.o: \
@@ -909,7 +910,6 @@ docDelimitField.o: \
     docDelimitField.c
 
 docDelimitRun.o: \
-    ../appUtil/geoRectangle.h \
     ../appUtil/utilMemoryBuffer.h \
     docAttributes.h \
     ../docBase/docLayoutPosition.h \
@@ -924,6 +924,7 @@ docDelimitRun.o: \
     docTreeNode.h \
     ../include/appDebug.h \
     ../include/appDebugon.h \
+    ../utilGeo/geoRectangle.h \
     ../utilPs/textAttribute.h \
     docDelimitRun.c
 
@@ -945,10 +946,6 @@ docDocumentSelection.o: \
     docDocumentSelection.c
 
 docDocumentTree.o: \
-    ../appUtil/geoAffineTransform.h \
-    ../appUtil/geoDocumentPageSetup.h \
-    ../appUtil/geoRectangle.h \
-    ../appUtil/geoRectangleOffsets.h \
     ../appUtil/utilColor.h \
     ../appUtil/utilIndexSet.h \
     ../appUtil/utilMemoryBuffer.h \
@@ -990,11 +987,13 @@ docDocumentTree.o: \
     docTreeNode.h \
     ../include/appDebug.h \
     ../include/appDebugon.h \
+    ../utilGeo/geoAffineTransform.h \
+    ../utilGeo/geoDocumentPageSetup.h \
+    ../utilGeo/geoRectangle.h \
+    ../utilGeo/geoRectangleOffsets.h \
     docDocumentTree.c
 
 docDrawingShapeList.o: \
-    ../appUtil/geoAffineTransform.h \
-    ../appUtil/geoRectangle.h \
     ../appUtil/utilColor.h \
     ../appUtil/utilIndexSet.h \
     ../appUtil/utilMemoryBuffer.h \
@@ -1013,6 +1012,8 @@ docDrawingShapeList.o: \
     docShape.h \
     ../include/appDebug.h \
     ../include/appDebugon.h \
+    ../utilGeo/geoAffineTransform.h \
+    ../utilGeo/geoRectangle.h \
     docDrawingShapeList.c
 
 docEvalField.o: \
@@ -1128,8 +1129,6 @@ docFileExtensions.o: \
     docFileExtensions.c
 
 docFind.o: \
-    ../appUtil/geoDocumentPageSetup.h \
-    ../appUtil/geoRectangleOffsets.h \
     ../appUtil/utilColor.h \
     ../appUtil/utilIndexSet.h \
     ../appUtil/utilMemoryBuffer.h \
@@ -1163,6 +1162,8 @@ docFind.o: \
     docTreeNode.h \
     ../include/appDebug.h \
     ../include/appDebugon.h \
+    ../utilGeo/geoDocumentPageSetup.h \
+    ../utilGeo/geoRectangleOffsets.h \
     docFind.c
 
 docFindBookmark.o: \
@@ -1243,8 +1244,6 @@ docFixedNote.o: \
     docFixedNote.c
 
 docGetFont.o: \
-    ../appUtil/geoDocumentPageSetup.h \
-    ../appUtil/geoRectangleOffsets.h \
     ../appUtil/utilColor.h \
     ../appUtil/utilIndexMapping.h \
     ../appUtil/utilIndexSet.h \
@@ -1285,12 +1284,12 @@ docGetFont.o: \
     ../include/appDebug.h \
     ../include/appDebugon.h \
     ../textEncoding/textOfficeCharset.h \
+    ../utilGeo/geoDocumentPageSetup.h \
+    ../utilGeo/geoRectangleOffsets.h \
     ../utilPs/textAttribute.h \
     docGetFont.c
 
 docHeaderFooter.o: \
-    ../appUtil/geoDocumentPageSetup.h \
-    ../appUtil/geoRectangleOffsets.h \
     ../appUtil/utilColor.h \
     ../appUtil/utilIndexSet.h \
     ../appUtil/utilMemoryBuffer.h \
@@ -1325,11 +1324,11 @@ docHeaderFooter.o: \
     docTreeNode.h \
     ../include/appDebug.h \
     ../include/appDebugon.h \
+    ../utilGeo/geoDocumentPageSetup.h \
+    ../utilGeo/geoRectangleOffsets.h \
     docHeaderFooter.c
 
 docHyperlink.o: \
-    ../appUtil/geoDocumentPageSetup.h \
-    ../appUtil/geoRectangleOffsets.h \
     ../appUtil/utilColor.h \
     ../appUtil/utilIndexSet.h \
     ../appUtil/utilMemoryBuffer.h \
@@ -1351,12 +1350,12 @@ docHyperlink.o: \
     docField.h \
     ../include/appDebug.h \
     ../include/appDebugon.h \
+    ../utilGeo/geoDocumentPageSetup.h \
+    ../utilGeo/geoRectangleOffsets.h \
     ../utilPs/textAttribute.h \
     docHyperlink.c
 
 docListAttributesUsed.o: \
-    ../appUtil/geoAffineTransform.h \
-    ../appUtil/geoRectangle.h \
     ../appUtil/utilColor.h \
     ../appUtil/utilIndexSet.h \
     ../appUtil/utilMemoryBuffer.h \
@@ -1377,11 +1376,11 @@ docListAttributesUsed.o: \
     docTreeScanner.h \
     ../include/appDebug.h \
     ../include/appDebugon.h \
+    ../utilGeo/geoAffineTransform.h \
+    ../utilGeo/geoRectangle.h \
     docListAttributesUsed.c
 
 docListFontsUsed.o: \
-    ../appUtil/geoDocumentPageSetup.h \
-    ../appUtil/geoRectangleOffsets.h \
     ../appUtil/utilColor.h \
     ../appUtil/utilIndexMapping.h \
     ../appUtil/utilIndexSet.h \
@@ -1431,12 +1430,12 @@ docListFontsUsed.o: \
     ../include/appDebugon.h \
     ../textEncoding/textOfficeCharset.h \
     ../textEncoding/uniUtf8.h \
+    ../utilGeo/geoDocumentPageSetup.h \
+    ../utilGeo/geoRectangleOffsets.h \
     ../utilPs/textAttribute.h \
     docListFontsUsed.c
 
 docListUtil.o: \
-    ../appUtil/geoDocumentPageSetup.h \
-    ../appUtil/geoRectangleOffsets.h \
     ../appUtil/utilColor.h \
     ../appUtil/utilIndexSet.h \
     ../appUtil/utilMemoryBuffer.h \
@@ -1479,6 +1478,8 @@ docListUtil.o: \
     docTreeScanner.h \
     ../include/appDebug.h \
     ../include/appDebugon.h \
+    ../utilGeo/geoDocumentPageSetup.h \
+    ../utilGeo/geoRectangleOffsets.h \
     ../utilPs/textAttribute.h \
     docListUtil.c
 
@@ -1513,8 +1514,6 @@ docNodeObjects.o: \
     docNodeObjects.c
 
 docNodeProperties.o: \
-    ../appUtil/geoDocumentPageSetup.h \
-    ../appUtil/geoRectangleOffsets.h \
     ../appUtil/utilMemoryBuffer.h \
     ../docBase/docLayoutPosition.h \
     ../docBase/docNotesProperties.h \
@@ -1529,11 +1528,11 @@ docNodeProperties.o: \
     docTreeNode.h \
     ../include/appDebug.h \
     ../include/appDebugon.h \
+    ../utilGeo/geoDocumentPageSetup.h \
+    ../utilGeo/geoRectangleOffsets.h \
     docNodeProperties.c
 
 docNodeTree.o: \
-    ../appUtil/geoDocumentPageSetup.h \
-    ../appUtil/geoRectangleOffsets.h \
     ../appUtil/utilColor.h \
     ../appUtil/utilIndexSet.h \
     ../appUtil/utilMemoryBuffer.h \
@@ -1570,6 +1569,8 @@ docNodeTree.o: \
     docTreeNode.h \
     ../include/appDebug.h \
     ../include/appDebugon.h \
+    ../utilGeo/geoDocumentPageSetup.h \
+    ../utilGeo/geoRectangleOffsets.h \
     docNodeTree.c
 
 docNoteList.o: \
@@ -1641,8 +1642,6 @@ docNotes.o: \
     docNotes.c
 
 docObjectList.o: \
-    ../appUtil/geoAffineTransform.h \
-    ../appUtil/geoRectangle.h \
     ../appUtil/utilColor.h \
     ../appUtil/utilIndexSet.h \
     ../appUtil/utilMemoryBuffer.h \
@@ -1670,11 +1669,11 @@ docObjectList.o: \
     docShape.h \
     ../include/appDebug.h \
     ../include/appDebugon.h \
+    ../utilGeo/geoAffineTransform.h \
+    ../utilGeo/geoRectangle.h \
     docObjectList.c
 
 docParaBuilder.o: \
-    ../appUtil/geoDocumentPageSetup.h \
-    ../appUtil/geoRectangleOffsets.h \
     ../appUtil/utilColor.h \
     ../appUtil/utilIndexSet.h \
     ../appUtil/utilMemoryBuffer.h \
@@ -1727,6 +1726,8 @@ docParaBuilder.o: \
     ../textEncoding/bidiTree.h \
     ../textEncoding/textConverter.h \
     ../textEncoding/ucdBidiClass.h \
+    ../utilGeo/geoDocumentPageSetup.h \
+    ../utilGeo/geoRectangleOffsets.h \
     docParaBuilder.c
 
 docParaBuilderAppend.o: \
@@ -1862,8 +1863,6 @@ docParaContent.o: \
     docParaContent.c
 
 docParaNode.o: \
-    ../appUtil/geoAffineTransform.h \
-    ../appUtil/geoRectangle.h \
     ../appUtil/utilColor.h \
     ../appUtil/utilIndexSet.h \
     ../appUtil/utilMemoryBuffer.h \
@@ -1904,6 +1903,8 @@ docParaNode.o: \
     ../include/appDebug.h \
     ../include/appDebugon.h \
     ../textEncoding/bidiTree.h \
+    ../utilGeo/geoAffineTransform.h \
+    ../utilGeo/geoRectangle.h \
     docParaNode.c
 
 docParaNodeProperties.o: \
@@ -1984,7 +1985,6 @@ docParaParticuleAdmin.o: \
     docParaParticuleAdmin.c
 
 docParaScanner.o: \
-    ../appUtil/geoRectangle.h \
     ../appUtil/utilColor.h \
     ../appUtil/utilIndexSet.h \
     ../appUtil/utilMemoryBuffer.h \
@@ -2029,6 +2029,7 @@ docParaScanner.o: \
     ../include/appDebugon.h \
     ../textEncoding/bidiScanner.h \
     ../textEncoding/bidiTree.h \
+    ../utilGeo/geoRectangle.h \
     ../utilPs/textAttribute.h \
     docParaScanner.c
 
@@ -2073,7 +2074,6 @@ docParaString.o: \
     docParaString.c
 
 docParaTextLines.o: \
-    ../appUtil/geoRectangle.h \
     ../appUtil/utilMemoryBuffer.h \
     ../docBase/docLayoutPosition.h \
     ../docBase/docSelectionScope.h \
@@ -2089,6 +2089,7 @@ docParaTextLines.o: \
     docTreeNode.h \
     ../include/appDebug.h \
     ../include/appDebugon.h \
+    ../utilGeo/geoRectangle.h \
     docParaTextLines.c
 
 docPositions.o: \
@@ -2122,8 +2123,6 @@ docPositions.o: \
     docPositions.c
 
 docProperties.o: \
-    ../appUtil/geoDocumentPageSetup.h \
-    ../appUtil/geoRectangleOffsets.h \
     ../appUtil/utilColor.h \
     ../appUtil/utilIndexMapping.h \
     ../appUtil/utilIndexSet.h \
@@ -2169,6 +2168,8 @@ docProperties.o: \
     ../include/appDebug.h \
     ../include/appDebugon.h \
     ../textEncoding/textOfficeCharset.h \
+    ../utilGeo/geoDocumentPageSetup.h \
+    ../utilGeo/geoRectangleOffsets.h \
     ../utilPs/textAttribute.h \
     docProperties.c
 
@@ -2216,8 +2217,6 @@ docRecalculateTextLevelFields.o: \
     docRecalculateTextLevelFields.c
 
 docRenumberNotes.o: \
-    ../appUtil/geoDocumentPageSetup.h \
-    ../appUtil/geoRectangleOffsets.h \
     ../appUtil/utilColor.h \
     ../appUtil/utilIndexSet.h \
     ../appUtil/utilMemoryBuffer.h \
@@ -2247,6 +2246,8 @@ docRenumberNotes.o: \
     docRecalculateFields.h \
     ../include/appDebug.h \
     ../include/appDebugon.h \
+    ../utilGeo/geoDocumentPageSetup.h \
+    ../utilGeo/geoRectangleOffsets.h \
     docRenumberNotes.c
 
 docRenumberSeqFields.o: \
@@ -2316,7 +2317,6 @@ docRowNodeProperties.o: \
     docRowNodeProperties.c
 
 docSelect.o: \
-    ../appUtil/geoRectangle.h \
     ../appUtil/utilIndexSet.h \
     ../appUtil/utilMemoryBuffer.h \
     ../appUtil/utilPagedList.h \
@@ -2350,6 +2350,7 @@ docSelect.o: \
     docTreeNode.h \
     ../include/appDebug.h \
     ../include/appDebugon.h \
+    ../utilGeo/geoRectangle.h \
     docSelect.c
 
 docSelectNode.o: \
@@ -2435,8 +2436,6 @@ docSetFont.o: \
     docSetFont.c
 
 docShading.o: \
-    ../appUtil/geoDocumentPageSetup.h \
-    ../appUtil/geoRectangleOffsets.h \
     ../appUtil/utilColor.h \
     ../appUtil/utilIndexSet.h \
     ../appUtil/utilMemoryBuffer.h \
@@ -2458,12 +2457,12 @@ docShading.o: \
     docDrawingShapeList.h \
     ../include/appDebug.h \
     ../include/appDebugon.h \
+    ../utilGeo/geoDocumentPageSetup.h \
+    ../utilGeo/geoRectangleOffsets.h \
     ../utilPs/psShading.h \
     docShading.c
 
 docShape.o: \
-    ../appUtil/geoAffineTransform.h \
-    ../appUtil/geoRectangle.h \
     ../appUtil/utilColor.h \
     ../appUtil/utilMemoryBuffer.h \
     ../appUtil/utilPalette.h \
@@ -2479,6 +2478,8 @@ docShape.o: \
     docShape.h \
     ../include/appDebug.h \
     ../include/appDebugon.h \
+    ../utilGeo/geoAffineTransform.h \
+    ../utilGeo/geoRectangle.h \
     docShape.c
 
 docTable.o: \
@@ -2551,8 +2552,6 @@ docTreeOfNode.o: \
     docTreeOfNode.c
 
 docTreeParaScanner.o: \
-    ../appUtil/geoAffineTransform.h \
-    ../appUtil/geoRectangle.h \
     ../appUtil/utilColor.h \
     ../appUtil/utilMemoryBuffer.h \
     ../appUtil/utilPalette.h \
@@ -2577,6 +2576,8 @@ docTreeParaScanner.o: \
     docTreeScanner.h \
     ../include/appDebug.h \
     ../include/appDebugon.h \
+    ../utilGeo/geoAffineTransform.h \
+    ../utilGeo/geoRectangle.h \
     docTreeParaScanner.c
 
 docTreeScanner.o: \

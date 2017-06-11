@@ -141,7 +141,7 @@ static void tedBorderToolSetProperties(	BorderTool *			bt,
     }
 
 void tedBorderToolSetPropertiesByNumber( BorderTool *			bt,
-					const struct BufferDocument *		bd,
+					const struct BufferDocument *	bd,
 					int				num )
     {
     const DocumentProperties *	dp= bd->bdProperties;
@@ -531,6 +531,8 @@ void tedInitBorderTool(		BorderTool *		bt )
 void tedCleanBorderTool(		BorderTool *		bt )
     {
     guiCleanDrawnPulldown( &(bt->btStylePulldown) );
+
+    appCleanColorChooser( &(bt->btColorChooser) );
 
     return;
     }

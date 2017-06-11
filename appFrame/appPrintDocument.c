@@ -21,10 +21,11 @@
 #   include	<sioFileio.h>
 #   include	<sioMemory.h>
 
-#   include	<appPaper.h>
+#   include	"appPaper.h"
 #   include	<appSystem.h>
 #   include	"appEditApplication.h"
 #   include	"appEditDocument.h"
+#   include	"appPrintDocument.h"
 
 #   include	"appPrintJob.h"
 #   include	<psNup.h>
@@ -306,7 +307,7 @@ static int appPrintStartCommandRun(	EditApplication *	ea,
 	if  ( utilPaperSizeFromString( &paperFormat,
 					    &(dg->dgPageWideTwips),
 					    &(dg->dgPageHighTwips),
-					    ea->eaUnitInt, paperString ) )
+					    ea->eaUnitInt, paperString ) < 0 )
 	    { SDEB(paperString); return -1;	}
 	}
 

@@ -24,7 +24,6 @@
 #   include	<psDocumentFontStyle.h>
 #   include	"drawDrawingSurfacePrivate.h"
 #   include	"drawMatchFont.h"
-#   include	"drawFontFc.h"
 #   include	<psFontInfo.h>
 
 #   include	<appDebugon.h>

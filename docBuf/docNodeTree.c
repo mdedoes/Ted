@@ -80,7 +80,7 @@ NOTE: I am educated as a biologist. My trees have their root at the
 
 /************************************************************************/
 /*									*/
-/*  Free a struct BufferItem.							*/
+/*  Free a BufferItem.							*/
 /*									*/
 /************************************************************************/
 
@@ -153,7 +153,7 @@ struct BufferItem * docMakeNode( void )
 
 /************************************************************************/
 /*									*/
-/*  Initialise a struct BufferItem.						*/
+/*  Initialise a BufferItem.						*/
 /*									*/
 /************************************************************************/
 
@@ -1086,7 +1086,7 @@ struct BufferItem * docGetCommonParent(	struct BufferItem *	paraNode1,
 
 /************************************************************************/
 /*									*/
-/*  Return the nearest parent of a struct BufferItem that is a real row.	*/
+/*  Return the nearest parent of a BufferItem that is a real row.	*/
 /*  candidate row, cell.						*/
 /*									*/
 /************************************************************************/
@@ -1119,7 +1119,7 @@ struct BufferItem * docGetCellNode(		struct BufferItem *		node )
 
 /************************************************************************/
 /*									*/
-/*  Return the nearest parent of a struct BufferItem that is a section.	*/
+/*  Return the nearest parent of a BufferItem that is a section.	*/
 /*									*/
 /************************************************************************/
 

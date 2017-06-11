@@ -9,11 +9,10 @@
 #   include	<stddef.h>
 #   include	<stdio.h>
 #   include	<string.h>
-#   include	<signal.h>
 
 #   include	"appEditApplication.h"
 #   include	<geoUnit.h>
-#   include	<appPaper.h>
+#   include	"appPaper.h"
 #   include	<geoString.h>
 #   include	<utilArgToX.h>
 #   include	"appGuiResource.h"

@@ -49,6 +49,7 @@ void docInitHtmlWritingContext(	HtmlWritingContext *	hwc )
 
     hwc->hwcInlineCss= 0;
     hwc->hwcInlineNotes= 0;
+    hwc->hwcInlineImages= 0;
 
     hwc->hwcInHyperlink= 0;
     hwc->hwcInBookmark= 0;
@@ -453,16 +454,11 @@ int docHtmlStartDocument(	HtmlWritingContext *	hwc )
 
     localeTag= textGetMsLocaleTagById( dp->dpDefaultLocaleId );
 
-#   if 0
-    docHtmlPutString( "<!DOCTYPE HTML PUBLIC \"-//W3C//DTD HTML 4.01//EN\">\r\n",
-									hwc );
-#   else
     docHtmlPutString( "<?xml version=\"1.0\" encoding=\"UTF-8\" ?>\r\n", hwc );
     docHtmlPutString( "<!DOCTYPE html PUBLIC \"-//W3C//DTD XHTML 1.1//EN\" ",
 									hwc );
     docHtmlPutString( "\"http://www.w3.org/TR/xhtml11/DTD/xhtml11.dtd\">\r\n",
 									hwc );
-#   endif
 
     docHtmlNewLine( hwc );
     docHtmlPutString( "<html", hwc );

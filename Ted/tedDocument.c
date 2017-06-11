@@ -33,6 +33,7 @@
 #   include	<docObjects.h>
 #   include	<docBuf.h>
 #   include	<appDocFront.h>
+#   include	<bitmap.h>
 
 #   include	<docDebug.h>
 #   include	<appDebugon.h>
@@ -144,7 +145,7 @@ void tedMakeDocumentReadonly(	EditDocument *	ed,
     guiShowMenuOption( td->tdToolsPageLayoutOption, visible );
     guiShowMenuOption( td->tdToolsSymbolOption, visible );
 
-    /* Oops wrong call */
+    /* TODO: wrong call */
     guiShowMenuOption( td->tdInsertMenuButton, visible );
     }
 
@@ -448,7 +449,8 @@ void tedFreeDocument(		void *			voidtd,
     utilCleanMemoryBuffer( &(td->tdCopiedFont) );
     utilCleanMemoryBuffer( &(td->tdCopiedRuler) );
 
-    bmCleanRasterImage( &(td->tdCopiedImage) );
+    if  ( td->tdCopiedImage )
+	{ bmFreeRasterImage( td->tdCopiedImage );	}
 
     docFindSetPattern( &(td->tdFindProg), (const char *)0, 0, 0, 0 );
 
@@ -704,7 +706,7 @@ void * tedMakePrivateData( const EditApplication *	ea )
     utilInitMemoryBuffer( &(td->tdCopiedFont) );
     utilInitMemoryBuffer( &(td->tdCopiedRuler) );
 
-    bmInitRasterImage( &(td->tdCopiedImage) );
+    td->tdCopiedImage= (struct RasterImage *)0;
 
     td->tdFindProg= (void *)0;
     td->tdOwnsPrimarySelection= 0;

@@ -120,6 +120,9 @@ void docRemoveUnbalancedTocBookmarks(	struct BufferDocument *	bdDoc )
 					    &headPart, &tailPart, bdDoc, df ) )
 		{ LDEB(fieldNr); continue; }
 
+	    if  ( docStartEditOperation( &eo, &dsInside, bdDoc, df ) )
+		{ LDEB(fieldNr); 	}
+
 	    if  ( docDeleteField( &dsExInside, &eo,
 			dsInside.dsHead.dpNode, dsInside.dsTail.dpNode,
 			headPart, tailPart, df ) )

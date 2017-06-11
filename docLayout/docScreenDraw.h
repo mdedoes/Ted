@@ -18,6 +18,7 @@ struct LayoutPosition;
 struct TextRun;
 struct DrawingContext;
 struct DocumentRectangle;
+struct AffineTransform2D;
 struct DrawingShape;
 struct LayoutContext;
 struct TextAttribute;
@@ -49,7 +50,8 @@ typedef struct ScreenDrawingData
 /************************************************************************/
 
 extern int docScreenDrawDrawingShape(
-			const struct DocumentRectangle *	drTwips,
+			const struct DocumentRectangle *	drOutside,
+			const struct AffineTransform2D *	atOutside,
 			int					page,
 			struct DrawingShape *			ds,
 			struct DrawingContext *			dc,

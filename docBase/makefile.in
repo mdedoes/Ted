@@ -27,6 +27,7 @@ INCLUDES=			\
 	-I../utilPs		\
 	-I../docFont		\
 	-I../textEncoding	\
+	-I../utilGeo		\
 	-I../appUtil		\
 	-I../include
 
@@ -132,7 +133,7 @@ duplicates:
 includes:
 	includes.sh docBaseConfig.h $(INCLUDES)
 
-# deps -I. -I../include -I../textEncoding -I../appUtil -I../bitmap -I../docFont -I../drawMeta -I../utilPs
+# deps -I. -I../include -I../textEncoding -I../utilGeo -I../appUtil -I../bitmap -I../docFont -I../drawMeta -I../utilPs
 ######################################## !! sh
 
 docBlockOrnaments.o: \
@@ -309,8 +310,6 @@ docDocumentList.o: \
     docDocumentList.c
 
 docDocumentProperties.o: \
-    ../appUtil/geoDocumentPageSetup.h \
-    ../appUtil/geoRectangleOffsets.h \
     ../appUtil/utilColor.h \
     ../appUtil/utilDateTime.h \
     ../appUtil/utilIndexMapping.h \
@@ -328,12 +327,11 @@ docDocumentProperties.o: \
     ../include/appDebug.h \
     ../include/appDebugon.h \
     ../textEncoding/textOfficeCharset.h \
+    ../utilGeo/geoDocumentPageSetup.h \
+    ../utilGeo/geoRectangleOffsets.h \
     docDocumentProperties.c
 
 docDrawShapeArrow.o: \
-    ../appUtil/geo2DDouble.h \
-    ../appUtil/geoAffineTransform.h \
-    ../appUtil/geoRectangle.h \
     ../appUtil/utilColor.h \
     ../appUtil/utilMemoryBuffer.h \
     docBaseConfig.h \
@@ -341,6 +339,9 @@ docDrawShapeArrow.o: \
     docShapeDrawing.h \
     ../include/appDebug.h \
     ../include/appDebugon.h \
+    ../utilGeo/geo2DDouble.h \
+    ../utilGeo/geoAffineTransform.h \
+    ../utilGeo/geoRectangle.h \
     docDrawShapeArrow.c
 
 docEditPosition.o: \
@@ -569,11 +570,11 @@ docItemShadingAdmin.o: \
     docItemShadingAdmin.c
 
 docLayoutPosition.o: \
-    ../appUtil/geoRectangle.h \
     docBaseConfig.h \
     docLayoutPosition.h \
     ../include/appDebug.h \
     ../include/appDebugon.h \
+    ../utilGeo/geoRectangle.h \
     docLayoutPosition.c
 
 docListAdmin.o: \
@@ -717,8 +718,6 @@ docNumericField.o: \
     docNumericField.c
 
 docObject.o: \
-    ../appUtil/geoGrid.h \
-    ../appUtil/geoRectangle.h \
     ../appUtil/utilColor.h \
     ../appUtil/utilMemoryBuffer.h \
     ../appUtil/utilPalette.h \
@@ -730,6 +729,8 @@ docObject.o: \
     docPictureProperties.h \
     ../include/appDebug.h \
     ../include/appDebugon.h \
+    ../utilGeo/geoGrid.h \
+    ../utilGeo/geoRectangle.h \
     docObject.c
 
 docPagerefField.o: \
@@ -825,6 +826,7 @@ docReadBitmapObject.o: \
     ../appUtil/sioGeneral.h \
     ../appUtil/sioHex.h \
     ../appUtil/sioMemory.h \
+    ../appUtil/sioUtil.h \
     ../appUtil/utilColor.h \
     ../appUtil/utilMemoryBuffer.h \
     ../appUtil/utilPalette.h \
@@ -844,13 +846,11 @@ docReadBitmapObject.o: \
     docReadBitmapObject.c
 
 docReadEmfObject.o: \
-    ../appUtil/geoAffineTransform.h \
-    ../appUtil/geoRectangle.h \
-    ../appUtil/geoUnits.h \
     ../appUtil/sioFileio.h \
     ../appUtil/sioGeneral.h \
     ../appUtil/sioHex.h \
     ../appUtil/sioMemory.h \
+    ../appUtil/sioUtil.h \
     ../appUtil/utilColor.h \
     ../appUtil/utilMemoryBuffer.h \
     ../appUtil/utilPalette.h \
@@ -867,13 +867,12 @@ docReadEmfObject.o: \
     docPictureProperties.h \
     ../include/appDebug.h \
     ../include/appDebugon.h \
+    ../utilGeo/geoAffineTransform.h \
+    ../utilGeo/geoRectangle.h \
+    ../utilGeo/geoUnits.h \
     docReadEmfObject.c
 
 docReadEpsObject.o: \
-    ../appUtil/geoAffineTransform.h \
-    ../appUtil/geoDocumentPageSetup.h \
-    ../appUtil/geoRectangle.h \
-    ../appUtil/geoRectangleOffsets.h \
     ../appUtil/sioGeneral.h \
     ../appUtil/sioHex.h \
     ../appUtil/sioMemory.h \
@@ -889,6 +888,10 @@ docReadEpsObject.o: \
     docPictureProperties.h \
     ../include/appDebug.h \
     ../include/appDebugon.h \
+    ../utilGeo/geoAffineTransform.h \
+    ../utilGeo/geoDocumentPageSetup.h \
+    ../utilGeo/geoRectangle.h \
+    ../utilGeo/geoRectangleOffsets.h \
     ../utilPs/psNup.h \
     ../utilPs/psPrint.h \
     docReadEpsObject.c
@@ -909,12 +912,12 @@ docReadFileObject.o: \
     docReadFileObject.c
 
 docReadWmfObject.o: \
-    ../appUtil/geoRectangle.h \
     ../appUtil/sioEndian.h \
     ../appUtil/sioFileio.h \
     ../appUtil/sioGeneral.h \
     ../appUtil/sioHex.h \
     ../appUtil/sioMemory.h \
+    ../appUtil/sioUtil.h \
     ../appUtil/utilColor.h \
     ../appUtil/utilMemoryBuffer.h \
     ../appUtil/utilPalette.h \
@@ -932,6 +935,7 @@ docReadWmfObject.o: \
     docPictureProperties.h \
     ../include/appDebug.h \
     ../include/appDebugon.h \
+    ../utilGeo/geoRectangle.h \
     docReadWmfObject.c
 
 docRefField.o: \
@@ -974,8 +978,6 @@ docRowPropertyAdmin.o: \
     docRowPropertyAdmin.c
 
 docSectProperties.o: \
-    ../appUtil/geoDocumentPageSetup.h \
-    ../appUtil/geoRectangleOffsets.h \
     ../appUtil/utilPropMask.h \
     docBaseConfig.h \
     docNotesProperties.h \
@@ -983,6 +985,8 @@ docSectProperties.o: \
     docSectProperties.h \
     ../include/appDebug.h \
     ../include/appDebugon.h \
+    ../utilGeo/geoDocumentPageSetup.h \
+    ../utilGeo/geoRectangleOffsets.h \
     docSectProperties.c
 
 docSelectionScope.o: \
@@ -1010,8 +1014,6 @@ docSeqField.o: \
     docSeqField.c
 
 docShapeDrawing.o: \
-    ../appUtil/geo2DInteger.h \
-    ../appUtil/geoRectangle.h \
     ../appUtil/utilColor.h \
     ../appUtil/utilMemoryBuffer.h \
     docBaseConfig.h \
@@ -1021,12 +1023,11 @@ docShapeDrawing.o: \
     docShapeType.h \
     ../include/appDebug.h \
     ../include/appDebugon.h \
+    ../utilGeo/geo2DInteger.h \
+    ../utilGeo/geoRectangle.h \
     docShapeDrawing.c
 
 docShapeGeometry.o: \
-    ../appUtil/geoDocumentPageSetup.h \
-    ../appUtil/geoRectangle.h \
-    ../appUtil/geoRectangleOffsets.h \
     ../appUtil/utilColor.h \
     ../appUtil/utilMemoryBuffer.h \
     docBaseConfig.h \
@@ -1036,25 +1037,28 @@ docShapeGeometry.o: \
     docShapeType.h \
     ../include/appDebug.h \
     ../include/appDebugon.h \
+    ../utilGeo/geoDocumentPageSetup.h \
+    ../utilGeo/geoRectangle.h \
+    ../utilGeo/geoRectangleOffsets.h \
     docShapeGeometry.c
 
 docShapePath.o: \
-    ../appUtil/geo2DInteger.h \
-    ../appUtil/geoRectangle.h \
     docBaseConfig.h \
     docShapePath.h \
     ../include/appDebug.h \
     ../include/appDebugon.h \
+    ../utilGeo/geo2DInteger.h \
+    ../utilGeo/geoRectangle.h \
     docShapePath.c
 
 docShapeProperties.o: \
-    ../appUtil/geoRectangle.h \
     ../appUtil/utilPropMask.h \
     docBaseConfig.h \
     docPropVal.h \
     docShapeProperties.h \
     ../include/appDebug.h \
     ../include/appDebugon.h \
+    ../utilGeo/geoRectangle.h \
     docShapeProperties.c
 
 docStatistics.o: \
@@ -1063,8 +1067,6 @@ docStatistics.o: \
     docStatistics.c
 
 docStyle.o: \
-    ../appUtil/geoDocumentPageSetup.h \
-    ../appUtil/geoRectangleOffsets.h \
     ../appUtil/utilPropMask.h \
     docBaseConfig.h \
     docCellProperties.h \
@@ -1077,12 +1079,12 @@ docStyle.o: \
     docStyle.h \
     ../include/appDebug.h \
     ../include/appDebugon.h \
+    ../utilGeo/geoDocumentPageSetup.h \
+    ../utilGeo/geoRectangleOffsets.h \
     ../utilPs/textAttribute.h \
     docStyle.c
 
 docStyleSheet.o: \
-    ../appUtil/geoDocumentPageSetup.h \
-    ../appUtil/geoRectangleOffsets.h \
     ../appUtil/utilPropMask.h \
     ../appUtil/utilTree.h \
     docBaseConfig.h \
@@ -1097,6 +1099,8 @@ docStyleSheet.o: \
     docStyleSheet.h \
     ../include/appDebug.h \
     ../include/appDebugon.h \
+    ../utilGeo/geoDocumentPageSetup.h \
+    ../utilGeo/geoRectangleOffsets.h \
     ../utilPs/textAttribute.h \
     docStyleSheet.c
 
@@ -1145,12 +1149,12 @@ docTcField.o: \
     docTcField.c
 
 docTextLine.o: \
-    ../appUtil/geoRectangle.h \
     docBaseConfig.h \
     docLayoutPosition.h \
     docTextLine.h \
     ../include/appDebug.h \
     ../include/appDebugon.h \
+    ../utilGeo/geoRectangle.h \
     docTextLine.c
 
 docTextParticule.o: \

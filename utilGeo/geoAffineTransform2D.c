@@ -11,6 +11,7 @@
 #   undef	y1
 
 #   include	"geoAffineTransform.h"
+#   include	"geo2DDouble.h"
 #   include	<appDebugon.h>
 
 #   if 0
@@ -118,6 +119,13 @@ a_21=
 #   endif
 
 #   define	PARANOIA 	0
+
+/************************************************************************/
+/*									*/
+/*  Affine transform T: T(x)= Ax+ t, maps triangle XYZ to PQR.		*/
+/*  XYZ nor PQR is collinear.						*/
+/*									*/
+/************************************************************************/
 
 int geoAffineTransformForTriangles(	AffineTransform2D *	atRes,
 					double			x_1,
@@ -374,10 +382,10 @@ void geoIdentityAffineTransform2D(	AffineTransform2D *	at2 )
     }
 
 void geoRotationAffineTransform2D(	AffineTransform2D *	at2,
-					double			a )
+					double			angle )
     {
-    double	cosa= cos( a );
-    double	sina= sin( a );
+    double	cosa= cos( angle );
+    double	sina= sin( angle );
 
     geoInitAffineTransform2D( at2 );
 
@@ -385,6 +393,20 @@ void geoRotationAffineTransform2D(	AffineTransform2D *	at2,
     at2->at2Axy= +sina;
     at2->at2Ayx= -sina;
     at2->at2Ayy= +cosa;
+
+    return;
+    }
+
+void geoAffineTransform2DThenRotate(
+				AffineTransform2D *		ba,
+				double				angle,
+				const AffineTransform2D *	a )
+    {
+    AffineTransform2D		b;
+
+    geoRotationAffineTransform2D( &b, angle );
+
+    geoAffineTransform2DProduct( ba, &b, a );
 
     return;
     }
@@ -403,6 +425,21 @@ void geoTranslationAffineTransform2D(	AffineTransform2D *	at2,
     return;
     }
 
+void geoAffineTransform2DThenTranslate(
+				AffineTransform2D *		ba,
+				double				tx,
+				double				ty,
+				const AffineTransform2D *	a )
+    {
+    AffineTransform2D		b;
+
+    geoTranslationAffineTransform2D( &b, tx, ty );
+
+    geoAffineTransform2DProduct( ba, &b, a );
+
+    return;
+    }
+
 void geoScaleAffineTransform2D(	AffineTransform2D *	at2,
 				double			xs,
 				double			ys )
@@ -411,6 +448,21 @@ void geoScaleAffineTransform2D(	AffineTransform2D *	at2,
 
     at2->at2Axx= xs;
     at2->at2Ayy= ys;
+
+    return;
+    }
+
+void geoAffineTransform2DThenScale(
+				AffineTransform2D *		ba,
+				double				xs,
+				double				ys,
+				const AffineTransform2D *	a )
+    {
+    AffineTransform2D		b;
+
+    geoScaleAffineTransform2D( &b, xs, ys );
+
+    geoAffineTransform2DProduct( ba, &b, a );
 
     return;
     }
@@ -506,343 +558,69 @@ double geoAffineTransformDeterminant2D(
 		at2->at2Axy* at2->at2Ayx;
     }
 
-double geoAffineTransformDeterminant3D(
-				    const AffineTransform3D *	at3 )
+void geoMirrorXAffineTransform2D(	AffineTransform2D *	at,
+					double			x )
     {
-    return	at3->at3Axx* at3->at3Ayy* at3->at3Azz+
-		at3->at3Axy* at3->at3Azy* at3->at3Axz+
-		at3->at3Azx* at3->at3Axy* at3->at3Ayz-
-		at3->at3Axz* at3->at3Ayy* at3->at3Azx-
-		at3->at3Ayz* at3->at3Azy* at3->at3Axx-
-		at3->at3Azz* at3->at3Axy* at3->at3Ayx;
+    geoInitAffineTransform2D( at );
+
+    at->at2Axx= -1.0;
+    at->at2Ayy= +1.0;
+    at->at2Tx= 2.0* x;
     }
 
-/************************************************************************/
-/*									*/
-/*  Find the affine transform A: A(x,y)= (fx,fy) where			*/
-/*	fx is the distance along the line. The origin is chosen in such	*/
-/*	    a way that fx= 0 for the point on the line closest to the	*/
-/*	    origin of the plane.					*/
-/*	fy is the distance from the line: Positive values are to the	*/
-/*	    left of the line						*/
-/*									*/
-/************************************************************************/
-
-# if 0
-
-    Ortogonal line through origin:
-	(1)  bx- ay= 0 => y= bx/ a.
-    And this line:
-	(2)  ax+ by+ c= 0;
-    Substitute (1) in (2)
-	(2)  ax+ (b^2*x)/a+ c= 0;
-	(2) [ a+ (b^2)/a ]* x+ c= 0
-	(2) [ a+ (b^2)/a ]* x= -c
-	(2) x=  -c/ [ a+ (b^2)/a ];
-	(1) y= -bc/ [ a+ (b^2)/a ];
-
-# endif
-
-void geoLineAffineTransform2D(		AffineTransform2D *	at,
-					double			a,
-					double			b,
-					double			c )
+void geoAffineTransform2DThenMirrorX(	AffineTransform2D *		ba,
+					double				x,
+					const AffineTransform2D *	a )
     {
-    double	div;
-    double	x0;
-    double	y0;
+    AffineTransform2D		b;
 
-    at->at2Axx=  b;
-    at->at2Axy=  a;
-    at->at2Ayx= -a;
-    at->at2Ayy=  b;
+    geoMirrorXAffineTransform2D( &b, x );
 
-    if  ( a == 0 || b == 0 )
-	{
-	at->at2Tx= 0;
-	at->at2Ty= c;
-	return;
-	}
+    geoAffineTransform2DProduct( ba, &b, a );
 
-    div= ( a+ (b*b)/ a );
-    x0= -c     /  div;
-    y0= (-b*c) / (div*a);
+    return;
+    }
 
-    /*FFFFDEB(x0,y0,a*x0+b*y0,sqrt(x0*x0+y0*y0));*/
+void geoMirrorYAffineTransform2D(	AffineTransform2D *	at,
+					double			y )
+    {
+    geoInitAffineTransform2D( at );
 
-    at->at2Tx= 0;
-    at->at2Tx= -AT2_X( x0, y0, at );
-    at->at2Ty= c;
+    at->at2Axx= +1.0;
+    at->at2Ayy= -1.0;
+    at->at2Ty= 2.0* y;
+    }
+
+void geoAffineTransform2DThenMirrorY(	AffineTransform2D *		ba,
+					double				y,
+					const AffineTransform2D *	a )
+    {
+    AffineTransform2D		b;
+
+    geoMirrorYAffineTransform2D( &b, y );
+
+    geoAffineTransform2DProduct( ba, &b, a );
 
     return;
     }
 
 /************************************************************************/
 /*									*/
-/*  Determine the constants A,B,C to give the line equation		*/
-/*  A*x+ B*y+ C= 0 for the carrier of the line segment through (x0,y0)	*/
-/*  and (x1,y1).							*/
-/*									*/
-/*  A and B are chosen such that A*A+ B*B= 1.				*/
+/*  Apply								*/
 /*									*/
 /************************************************************************/
 
-int geoLineConstants(		double *	pA,
-				double *	pB,
-				double *	pC,
-				double		x0,
-				double		y0,
-				double		x1,
-				double		y1 )
+void geoAffineTransform2DApply(		Point2DD *			ax,
+					const AffineTransform2D *	a,
+					const Point2DD *		x )
     {
-    if  ( x1 == x0 && y1 == y0 )
-	{ FFFFDEB(x0,y0,x1,y1); return -1;	}
-
-    if  ( x1 == x0 )
-	{
-	if  ( y1 > y0 )
-	    { *pA= -1; *pB= 0;	}
-	else{ *pA=  1; *pB= 0;	}
-	}
-    else{
-	if  ( y1 == y0 )
-	    {
-	    if  ( x1 > x0 )
-		{ *pA= 0; *pB=  1;	}
-	    else{ *pA= 0; *pB= -1;	}
-	    }
-	else{
-	    double		dx= x1- x0;
-	    double		dy= y1- y0;
-	    double		r= sqrt( dx*dx+ dy*dy );
-
-	    *pA= -dy/r;
-	    *pB=  dx/r;
-	    }
-	}
-
-    *pC= -( *pA* x0+ *pB* y0 );
-    return 0;
-    }
-
-# if 0
-
-# define LL(x0,y0,x1,y1) \
-appDebug( "(%8.3f, %8.3f) .. (%8.3f, %8.3f) #####\n", \
-    (double)x0, (double)y0, (double)x1, (double)y1 ); \
-    geoLineConstants( &a, &b, &c, x0, y0, x1, y1 ); \
-    geoLineAffineTransform2D( &at, a, b, c )
-
-static int about( double d1, double d2 )
-    {
-    double	d;
-
-    if  ( d1 == d2 )
-	{ return 1;	}
-
-    if  ( d2+ d1 > -0.001 && d2+ d1 < 0.001 )
-	{
-	d= ( d2- d1 );
-	}
-    else{
-	d= ( d2- d1 )/ ( d2+ d1 );
-	}
-
-    if  ( d >= -0.001 && d <= 0.001 )
-	{ return 1;	}
-
-    return 0;
-    }
-
-# define TT(x,y,ex,ey) \
-appDebug( "(%8.3f, %8.3f) -> (%8.3f, %8.3f)\n                 Expect (%8.3f, %8.3f) %s\n\n", \
-    (double)x, (double)y, \
-    AT2_X( x, y, &at ), AT2_Y( x, y, &at ), \
-    (double)ex, (double)ey, \
-    (about( AT2_X( x, y, &at ), ex ) && \
-     about( AT2_Y( x, y, &at ), ey ) )?"":" !!!" )
-
-extern void xxx( void );
-void xxx()
-    {
-    double		a, b, c;
-    AffineTransform2D	at;
-
-    LL(0,0, 4,3 );
-    TT(0,0, 0,0);
-    TT(4,3, 5,0);
-    TT(0.8,0.6, 1,0);
-    TT(-0.6,0.8, 0,1);
-
-    LL(0,0, -4,3 );
-    TT(0,0, 0,0);
-    TT(-4,3, 5,0);
-
-    LL(0,0, 4,-3 );
-    TT(0,0, 0,0);
-    TT(4,-3, 5,0);
-
-    LL(0,0, -4,-3 );
-    TT(0,0, 0,0);
-    TT(-4,-3, 5,0);
-
-    LL(0,2, 4,5 );
-    TT(0,2, 1.2,0);
-    TT(4,5, 6.2,0);
-
-    /****/
-    LL(0,1, 4,4 );
-    TT(0,1, 0.6,0);
-    TT(4,4, 5.6,0);
-
-    LL(0,1, -4,4 );
-    TT(0,1, 0.6,0);
-    TT(-4,4, 5.6,0);
-
-    LL(0,-1, 4,-4 );
-    TT(0,-1, 0.6,0);
-    TT(4,-4, 5.6,0);
-
-    LL(0,-1, -4,-4 );
-    TT(0,-1, 0.6,0);
-    TT(-4,-4, 5.6,0);
-
-    /****/
-
-    LL(0,0, 1,0 );
-    TT(0,0, 0,0);
-    TT(1,0, 1,0);
-    TT(2,0, 2,0);
-
-    LL(0,0, -1,0 );
-    TT(0,0, 0,0);
-    TT(-1,0, 1,0);
-    TT(-2,0, 2,0);
-
-    LL(0,1, 1,1 );
-    TT(0,1, 0,0);
-    TT(1,1, 1,0);
-
-    LL(0,1, -1,1 );
-    TT(0,1, 0,0);
-    TT(-1,1, 1,0);
-
-    /****/
-    LL(0,0, 0,1 );
-    TT(0,0, 0,0);
-    TT(0,1, 1,0);
-    TT(0,2, 2,0);
-
-    LL(0,0, 0,-1 );
-    TT(0,0, 0,0);
-    TT(0,-1, 1,0);
-
-    LL(1,0, 1,1 );
-    TT(1,0, 0,0);
-    TT(1,1, 1,0);
-
-    LL(1,0, 1,-1 );
-    TT(1,0, 0,0);
-    TT(1,-1, 1,0);
-
-    }
-# endif
-
-/************************************************************************/
-/*									*/
-/*  Initialise affine transforms (3D)					*/
-/*									*/
-/************************************************************************/
-
-void geoInitAffineTransform3D(		AffineTransform3D *	at3 )
-    {
-    at3->at3Axx= 0.0;
-    at3->at3Axy= 0.0;
-    at3->at3Axz= 0.0;
-
-    at3->at3Ayx= 0.0;
-    at3->at3Ayy= 0.0;
-    at3->at3Ayz= 0.0;
-
-    at3->at3Azx= 0.0;
-    at3->at3Azy= 0.0;
-    at3->at3Azz= 0.0;
-
-    at3->at3Tx=  0.0;
-    at3->at3Ty=  0.0;
-    at3->at3Tz=  0.0;
-
-    return;
-    }
-
-void geoIdentityAffineTransform3D(	AffineTransform3D *	at3 )
-    {
-    geoInitAffineTransform3D( at3 );
-
-    at3->at3Axx= 1.0;
-    at3->at3Ayy= 1.0;
-    at3->at3Azz= 1.0;
-
-    return;
-    }
-
-void geoXYRotationAffineTransform3D(	AffineTransform3D *	at3,
-					double			a )
-    {
-    double	cosa= cos( a );
-    double	sina= sin( a );
-
-    geoInitAffineTransform3D( at3 );
-
-    at3->at3Axx= +cosa;
-    at3->at3Axy= +sina;
-    at3->at3Ayx= -sina;
-    at3->at3Ayy= +cosa;
-
-    at3->at3Azz= 1.0;
-
-    return;
-    }
-
-void geoXZRotationAffineTransform3D(	AffineTransform3D *	at3,
-					double			a )
-    {
-    double	cosa= cos( a );
-    double	sina= sin( a );
-
-    geoInitAffineTransform3D( at3 );
-
-    at3->at3Axx= +cosa;
-    at3->at3Axz= +sina;
-    at3->at3Azx= -sina;
-    at3->at3Azz= +cosa;
-
-    at3->at3Ayy= 1.0;
-
-    return;
-    }
-
-void geoYZRotationAffineTransform3D(	AffineTransform3D *	at3,
-					double			a )
-    {
-    double	cosa= cos( a );
-    double	sina= sin( a );
-
-    geoInitAffineTransform3D( at3 );
-
-    at3->at3Ayy= +cosa;
-    at3->at3Ayz= +sina;
-    at3->at3Azy= -sina;
-    at3->at3Azz= +cosa;
-
-    at3->at3Axx= 1.0;
-
-    return;
+    ax->x= AT2_X( x->x, x->y, a );
+    ax->y= AT2_Y( x->x, x->y, a );
     }
 
 /************************************************************************/
 /*									*/
-/*  Products.								*/
+/*  Product.								*/
 /*									*/
 /************************************************************************/
 
@@ -863,40 +641,6 @@ void geoAffineTransform2DProduct(	AffineTransform2D *		ba,
     /**/
     c.at2Tx= b->at2Axx* a->at2Tx+ b->at2Ayx* a->at2Ty+ b->at2Tx;
     c.at2Ty= b->at2Axy* a->at2Tx+ b->at2Ayy* a->at2Ty+ b->at2Ty;
-
-    /**/
-
-    *ba= c;
-    }
-
-void geoAffineTransform3DProduct(	AffineTransform3D *		ba,
-					const AffineTransform3D *	b,
-					const AffineTransform3D *	a )
-    {
-    AffineTransform3D	c;
-
-    /**/
-    c.at3Axx= b->at3Axx* a->at3Axx+ b->at3Ayx* a->at3Axy+ b->at3Azx* a->at3Axz;
-    c.at3Axy= b->at3Axy* a->at3Axx+ b->at3Ayy* a->at3Axy+ b->at3Azy* a->at3Axz;
-    c.at3Axz= b->at3Axz* a->at3Axx+ b->at3Ayz* a->at3Axy+ b->at3Azz* a->at3Axz;
-
-    /**/
-    c.at3Ayx= b->at3Axx* a->at3Ayx+ b->at3Ayx* a->at3Ayy+ b->at3Azx* a->at3Ayz;
-    c.at3Ayy= b->at3Axy* a->at3Ayx+ b->at3Ayy* a->at3Ayy+ b->at3Azy* a->at3Ayz;
-    c.at3Ayz= b->at3Axz* a->at3Ayx+ b->at3Ayz* a->at3Ayy+ b->at3Azz* a->at3Ayz;
-
-    /**/
-    c.at3Azx= b->at3Axx* a->at3Azx+ b->at3Ayx* a->at3Azy+ b->at3Azx* a->at3Azz;
-    c.at3Azy= b->at3Axy* a->at3Azx+ b->at3Ayy* a->at3Azy+ b->at3Azy* a->at3Azz;
-    c.at3Azz= b->at3Axz* a->at3Azx+ b->at3Ayz* a->at3Azy+ b->at3Azz* a->at3Azz;
-
-    /**/
-    c.at3Tx= b->at3Axx* a->at3Tx+ b->at3Ayx* a->at3Ty+ b->at3Azx* a->at3Tz+
-								    b->at3Tx;
-    c.at3Ty= b->at3Axy* a->at3Tx+ b->at3Ayy* a->at3Ty+ b->at3Azy* a->at3Tz+
-								    b->at3Ty;
-    c.at3Tz= b->at3Axz* a->at3Tx+ b->at3Ayz* a->at3Ty+ b->at3Azz* a->at3Tz+
-								    b->at3Tz;
 
     /**/
 

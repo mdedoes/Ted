@@ -46,7 +46,7 @@ static void tedRefreshFontTool(	void *				vafc,
 				const DocumentSelection *	ds,
 				const struct SelectionGeometry * sg,
 				const SelectionDescription *	sd,
-				const struct BufferDocument *		bd,
+				const struct BufferDocument *	bd,
 				const unsigned char *		cmdEnabled )
     {
     AppFontChooser *		afc= (AppFontChooser *)vafc;

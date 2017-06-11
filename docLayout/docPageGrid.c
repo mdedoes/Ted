@@ -41,7 +41,7 @@ void docLayoutInitBlockFrame(	BlockFrame *	bf )
     geoInitRectangle( &(bf->bfFlowRect) );
     geoInitRectangle( &(bf->bfContentRect) );
 
-    utilInitDocumentGeometry( &(bf->bfPageGeometry) );
+    geoInitDocumentGeometry( &(bf->bfPageGeometry) );
 
     bf->bfFootnotesPlaced= 0;
     docInitNotesReservation( &(bf->bfNotesReservation) );

@@ -20,10 +20,9 @@
 #   include	<guiTextUtil.h>
 #   include	<appGuiResource.h>
 #   include	<appEditApplication.h>
+#   include	<guiTextValidate.h>
 
 #   include	<guiWidgets.h>
-#   include	<drawUtilMotif.h>
-#   include	<drawColors.h>
 
 #   include	<appDebugon.h>
 
@@ -56,74 +55,12 @@ static SpellToolResources APP_SpellToolResources;
 /*									*/
 /************************************************************************/
 
-#   if USE_GTK
-
 static void appSpellAdaptToDiagnosis(	SpellTool *	st,
 					int		size,
 					int		inDict )
     {
-    if  ( inDict )
-	{
-	GdkColor xc;
-	gdk_color_parse( "#ddffdd", &xc );
-	gtk_widget_modify_base( st->stWordText, GTK_STATE_NORMAL, &xc );
-	gtk_widget_modify_base( st->stWordText, GTK_STATE_ACTIVE, &xc );
-	}
-    else{
-	if  ( size > 0 )
-	    {
-	    GdkColor xc;
-	    gdk_color_parse( "#ffdddd", &xc );
-	    gtk_widget_modify_base( st->stWordText, GTK_STATE_NORMAL, &xc );
-	    gtk_widget_modify_base( st->stWordText, GTK_STATE_ACTIVE, &xc );
-	    }
-	else{
-	    gtk_widget_modify_base( st->stWordText,
-					GTK_STATE_NORMAL, (GdkColor *)0 );
-	    gtk_widget_modify_base( st->stWordText,
-					GTK_STATE_ACTIVE, (GdkColor *)0 );
-	    }
-	}
+    guiTextShowValidity( st->stWordText, size > 0, inDict );
     }
-
-#   endif
-
-#   if USE_MOTIF
-
-static void appSpellAdaptToDiagnosis(	SpellTool *	st,
-					int		size,
-					int		inDict )
-    {
-    Display *		display= XtDisplay( st->stWordText );
-
-    if  ( inDict )
-	{
-	XColor xc;
-	drawColorRgb( &xc, drawGetColorsMotif( display ), 0xdd,0xff,0xdd );
-
-	XtVaSetValues( st->stWordText,
-				XmNbackground,	xc.pixel,
-				NULL );
-	}
-    else{
-	if  ( size > 0 )
-	    {
-	    XColor xc;
-	    drawColorRgb( &xc, drawGetColorsMotif( display ), 0xff,0xdd,0xdd );
-
-	    XtVaSetValues( st->stWordText,
-				XmNbackground,	xc.pixel,
-				NULL );
-	    }
-	else{
-	    XtVaSetValues( st->stWordText,
-		XmNbackground,	WhitePixel( display, DefaultScreen(display) ),
-		NULL );
-	    }
-	}
-    }
-
-#   endif
 
 /************************************************************************/
 /*									*/

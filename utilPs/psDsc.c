@@ -175,8 +175,8 @@ static int psPageOperator(		const char *		psOperator,
 int psStartPage(	PrintingState *			ps,
 			int				documentPage )
     {
-    int				nup= ps->psNupSchema.nsNup;
-    int				firstOnSheet= 0;
+    int		nup= ps->psNupSchema.nsNup;
+    int		firstOnSheet= 0;
 
     if  ( nup == 1			||
 	  ps->psPagesPrinted % nup == 0	)
@@ -203,7 +203,7 @@ int psStartPage(	PrintingState *			ps,
 	ps->psSheetsStarted= ps->psSheetsPrinted+ 1;
 	}
 
-    utilNupGetPageTranform( &(ps->psCurrentTransform),
+    psNupGetPageTranform( &(ps->psCurrentTransform),
 				    &(ps->psNupSchema), ps->psPagesPrinted );
 
     if  ( psPageOperator( "gsave", ps, documentPage ) )

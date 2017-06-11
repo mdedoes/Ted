@@ -37,13 +37,13 @@ int psSetNupSchema(	PrintingState *			ps,
 
     AffineTransform2D		at1Page;
 
-    if  ( utilNupGetBaseTranform( &at1Page, &rotatePages, pg, dgPage, fac ) )
+    if  ( psNupGetBaseTranform( &at1Page, &rotatePages, pg, dgPage, fac ) )
 	{ LDEB(1); return -1;	}
 
     ps->psRotateSheetGrid= rotatePages;
     ps->psPrintGeometry= *pg;
 
-    if  ( utilNupSetSchema( &(ps->psNupSchema),
+    if  ( psNupSetSchema( &(ps->psNupSchema),
 			ps->psRotateSheetGrid, &at1Page, pg, fac, dgPage ) )
 	{ LLDEB(pg->pgGridRows,pg->pgGridCols); return -1;	}
 
@@ -67,10 +67,10 @@ void psRefreshNupSchema(
 
     int				rotatePages; /* ignored */
 
-    if  ( utilNupGetBaseTranform( &at1Page, &rotatePages, pg, dgPage, fac ) )
+    if  ( psNupGetBaseTranform( &at1Page, &rotatePages, pg, dgPage, fac ) )
 	{ LDEB(1); return;	}
 
-    if  ( utilNupSetSchema( &(ps->psNupSchema),
+    if  ( psNupSetSchema( &(ps->psNupSchema),
 			ps->psRotateSheetGrid, &at1Page, pg, fac, dgPage ) )
 	{ LLDEB(pg->pgGridRows,pg->pgGridCols); return;	}
 

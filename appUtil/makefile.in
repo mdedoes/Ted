@@ -1,11 +1,9 @@
 CC=@CC@
 
 ZLIB_CFLAGS=@ZLIB_CFLAGS@
-LIBPAPER_CFLAGS=@LIBPAPER_CFLAGS@
 
 INCLUDES=			\
 	$(ZLIB_CFLAGS)		\
-	$(LIBPAPER_CFLAGS)	\
 	-I../include
 
 CFLAGS=	@CFLAGS@ 	\
@@ -34,7 +32,7 @@ WFLAGS=	-Wall			\
 
 #CFLAGS= $(WFLAGS) -g -O2 $(INCLUDES)
 
-# 77!!obs
+# 66!!obs
 OBS	=	\
 		xmlWriter.o\
 		utilX11FontNames.o\
@@ -94,21 +92,10 @@ OBS	=	\
 		sioBlocked.o\
 		sioBase85.o\
 		sioBase64.o\
-		geoUnit.o\
-		geoString.o\
-		geoRectangleOffsets.o\
-		geoRectangle.o\
-		geoQuadTree.o\
-		geoLineFitter.o\
-		geoDocumentPageSetup.o\
-		geoClusterSegments.o\
-		geoAffineTransform.o\
-		geo2DInteger.o\
 		csvsheet.o\
 		appUrl.o\
 		appTagval.o\
 		appSystem.o\
-		appPaper.o\
 		appDebug.o\
 		appCgiIn.o
 
@@ -132,7 +119,6 @@ includes:
 #
 ACLOCAL=				\
 	../configure/zlib.m4		\
-	../configure/libpaper.m4	\
 	../configure/utsn.m4
 
 aclocal.m4:	$(ACLOCAL)
@@ -158,18 +144,6 @@ appDebug.o: \
     appUtilConfig.h \
     ../include/appDebug.h \
     appDebug.c
-
-appPaper.o: \
-    appPaper.h \
-    appSystem.h \
-    appUtilConfig.h \
-    geoString.h \
-    ../include/appDebug.h \
-    ../include/appDebugon.h \
-    sioFileio.h \
-    sioGeneral.h \
-    utilMemoryBuffer.h \
-    appPaper.c
 
 appSystem.o: \
     appSystem.h \
@@ -199,85 +173,6 @@ csvsheet.o: \
     ../include/appDebug.h \
     ../include/appDebugon.h \
     csvsheet.c
-
-geo2DInteger.o: \
-    appUtilConfig.h \
-    geo2DInteger.h \
-    geoRectangle.h \
-    ../include/appDebug.h \
-    ../include/appDebugon.h \
-    geo2DInteger.c
-
-geoAffineTransform.o: \
-    geoAffineTransform.h \
-    ../include/appDebug.h \
-    ../include/appDebugon.h \
-    geoAffineTransform.c
-
-geoClusterSegments.o: \
-    geo2DInteger.h \
-    geoAffineTransform.h \
-    geoClusterSegments.h \
-    geoLineFitter.h \
-    geoQuadTree.h \
-    geoRectangle.h \
-    ../include/appDebug.h \
-    ../include/appDebugon.h \
-    geoClusterSegments.c
-
-geoDocumentPageSetup.o: \
-    appUtilConfig.h \
-    geoDocumentPageSetup.h \
-    geoRectangle.h \
-    geoRectangleOffsets.h \
-    ../include/appDebug.h \
-    ../include/appDebugon.h \
-    utilPropMask.h \
-    geoDocumentPageSetup.c
-
-geoLineFitter.o: \
-    geoLineFitter.h \
-    ../include/appDebug.h \
-    ../include/appDebugon.h \
-    geoLineFitter.c
-
-geoQuadTree.o: \
-    appUtilConfig.h \
-    geoQuadTree.h \
-    geoRectangle.h \
-    ../include/appDebug.h \
-    ../include/appDebugon.h \
-    geoQuadTree.c
-
-geoRectangle.o: \
-    appUtilConfig.h \
-    geoRectangle.h \
-    geoRectangleOffsets.h \
-    ../include/appDebug.h \
-    ../include/appDebugon.h \
-    geoRectangle.c
-
-geoRectangleOffsets.o: \
-    appUtilConfig.h \
-    geoRectangleOffsets.h \
-    ../include/appDebug.h \
-    ../include/appDebugon.h \
-    geoRectangleOffsets.c
-
-geoString.o: \
-    appUtilConfig.h \
-    geoString.h \
-    geoUnit.h \
-    ../include/appDebug.h \
-    ../include/appDebugon.h \
-    geoString.c
-
-geoUnit.o: \
-    appUtilConfig.h \
-    geoUnit.h \
-    ../include/appDebug.h \
-    ../include/appDebugon.h \
-    geoUnit.c
 
 sioBase64.o: \
     appUtilConfig.h \

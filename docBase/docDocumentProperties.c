@@ -191,7 +191,7 @@ void docInitDocumentProperties(	DocumentProperties *	dp )
     dp->dpIsDocumentTemplate= 0;
     dp->dpRToL= 0;
 
-    utilInitDocumentGeometry( &(dp->dpGeometry) );
+    geoInitDocumentGeometry( &(dp->dpGeometry) );
 
     dp->dpFontList= (struct DocumentFontList *)0;
     dp->dpListAdmin= (struct ListAdmin *)0;

@@ -260,5 +260,43 @@ typedef struct AppToplevel
 #   define	LINEjoinROUND		GDK_JOIN_ROUND
 #   define	LINEjoinBEVEL		GDK_JOIN_BEVEL
 
+/************************************************************************/
+/*									*/
+/*  Compatibility nuisance						*/
+/*									*/
+/************************************************************************/
+
+#if (GTK_MAJOR_VERSION == 2 && GTK_MINOR_VERSION <= 12)
+#   define gtk_widget_get_window(w) ((w)->window)
+#endif
+
+#if (GTK_MAJOR_VERSION == 2 && GTK_MINOR_VERSION <= 12)
+#   define gtk_widget_get_allocation( w, pa ) *(pa)=((w)->allocation)
+#   define gtk_widget_set_allocation( w, pa ) ((w)->allocation)=*(pa)
+#endif
+
+#if (GTK_MAJOR_VERSION == 2 && GTK_MINOR_VERSION <= 12)
+#   define gtk_selection_data_get_data( gsd ) (gsd)->data
+#   define gtk_selection_data_get_length( gsd ) (gsd)->length
+#   define gtk_selection_data_get_target( gsd ) (gsd)->target
+#   define gtk_selection_data_get_selection( gsd ) (gsd)->selection
+#   define gtk_selection_data_get_data_type( gsd ) (gsd)->type
+#endif
+
+#if (GTK_MAJOR_VERSION == 2 && GTK_MINOR_VERSION <= 12)
+#   define gtk_adjustment_set_lower( ga, v ) (ga)->lower= (v)
+#   define gtk_adjustment_set_upper( ga, v ) (ga)->upper= (v)
+#   define gtk_adjustment_set_value( ga, v ) (ga)->value= (v)
+#   define gtk_adjustment_get_value( ga ) ((ga)->value)
+#   define gtk_adjustment_set_page_size( ga, v ) (ga)->page_size= (v)
+#   define gtk_adjustment_get_page_size( ga ) ((ga)->page_size)
+#   define gtk_adjustment_set_step_increment( ga, v ) (ga)->step_increment= (v)
+#   define gtk_adjustment_set_page_increment( ga, v ) (ga)->page_increment= (v)
+#endif
+
+#if (GTK_MAJOR_VERSION == 2 && GTK_MINOR_VERSION <= 12)
+#   define gtk_widget_has_grab( w ) GTK_WIDGET_HAS_GRAB( (w) )
+#endif
+
 # endif		/*  } USE_GTK */
 

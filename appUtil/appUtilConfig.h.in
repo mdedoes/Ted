@@ -72,7 +72,4 @@
 #	endif
 #   endif
 
-#undef HAVE_LIBPAPER
-#undef USE_LIBPAPER
-
 #   endif	/*  APP_UTIL_CONFIG_H  */

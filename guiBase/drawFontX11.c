@@ -15,8 +15,6 @@
 
 #   if		FONTS_X11
 
-#   include	"drawDrawingSurfaceImpl.h"
-
 #   include	<utilLongestCommonSubstring.h>
 #   include	<uniLegacyEncoding.h>
 #   include	<uniLegacyMapping.h>

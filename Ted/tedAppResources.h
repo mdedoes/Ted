@@ -52,6 +52,9 @@ typedef struct TedAppResources
     char *			tarOverridePaperSizeString;
     int				tarOverridePaperSizeInt;
 
+    char *			tarInlineHtmlImagesString;
+    int				tarInlineHtmlImagesInt;
+
 				/****************************************/
 				/*  Global data.			*/
 				/****************************************/

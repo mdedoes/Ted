@@ -4,7 +4,7 @@
 /*									*/
 /************************************************************************/
 
-#   include	"appFrameConfig.h"
+#   include	"guiBaseConfig.h"
 
 #   include	<stdlib.h>
 

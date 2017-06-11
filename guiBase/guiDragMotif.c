@@ -3,9 +3,6 @@
 #   if USE_MOTIF
 
 #   include	"guiBase.h"
-#   include	"guiWidgets.h"
-#   include	"guiWidgetsImpl.h"
-#   include	"guiImageImpl.h"
 
 #   include	<X11/Xatom.h>
 

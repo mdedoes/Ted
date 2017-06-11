@@ -2,7 +2,6 @@
 #   define		DRAW_IMPL_XFT_H
 
 #   include	"drawImpl.h"
-#   include	"drawColorsXft.h"
 
 struct DrawScreenFont;
 struct AppXftColorList;

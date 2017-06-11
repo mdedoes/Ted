@@ -23,7 +23,7 @@
 
 #   include	"drawUtilGdk.h"
 #   include	"drawImpl.h"
-#   include	"drawImplXft.h"
+#   include	"drawColorsXft.h"
 
 #   include	<appDebugon.h>
 

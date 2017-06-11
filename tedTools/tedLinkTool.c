@@ -288,7 +288,7 @@ static APP_BUTTON_CALLBACK_H( tedLinkChangePushed, w, voidlt )
     LinkTool *			lt= (LinkTool *)voidlt;
     BookmarkList *		bl= &(lt->ltBookmarkList);
     HyperlinkField *		hfChosen= &(lt->ltLinkChosen);
-    struct EditApplication *		ea= lt->ltApplication;
+    struct EditApplication *	ea= lt->ltApplication;
 
     if  ( guiBufferFromText( &(hfChosen->hfFile),
 						    lt->ltFileTextWidget ) )

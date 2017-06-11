@@ -37,13 +37,21 @@
 /*									*/
 /************************************************************************/
 
-static int tedSaveObjectPicture(	RasterImage *		abiTo,
+static int tedSaveObjectPicture(	RasterImage **		riTo,
 					const InsertedObject *	io )
     {
     if  ( ! io->ioRasterImage.riBytes )
 	{ LXDEB(io->ioKind,io->ioRasterImage.riBytes); return -1;	}
 
-    if  ( bmCopyRasterImage( abiTo, &(io->ioRasterImage) ) )
+    if  ( ! * riTo )
+	{
+	*riTo= malloc( sizeof(RasterImage) );
+	if  ( ! * riTo )
+	    { XDEB(*riTo); return -1;	}
+	bmInitRasterImage( *riTo );
+	}
+
+    if  ( bmCopyRasterImage( *riTo, &(io->ioRasterImage) ) )
 	{ LDEB(1); return -1;	}
 
     return 0;
@@ -62,7 +70,7 @@ void tedSaveSelectionToFile(	struct BufferDocument *		bd,
     {
     SimpleOutputStream *	sos;
 
-    SDEB(filename);
+    SXDEB(filename,rtfFlags);
     sos= sioOutFileioOpenS( filename );
     if  ( ! sos )
 	{ SPDEB( filename, sos );	}
@@ -161,8 +169,11 @@ int tedDocCopySelection(	EditDocument *	ed )
     if  ( tedDocSaveSelectionRtf( &(td->tdCopiedSelection), &ds, &sd, ed ) )
 	{ LDEB(1); return -1;	}
 
-    bmCleanRasterImage( &(td->tdCopiedImage) );
-    bmInitRasterImage( &(td->tdCopiedImage) );
+    if  ( td->tdCopiedImage )
+	{
+	bmFreeRasterImage( td->tdCopiedImage );
+	td->tdCopiedImage= (struct RasterImage *)0;
+	}
 
     docInitDocumentPosition( &dpObject );
 

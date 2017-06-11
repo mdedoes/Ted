@@ -350,6 +350,10 @@ static int docDeleteFieldParticule(	EditOperation *		eo,
 				(const char *)0, 0 );
     docDeleteParticules( paraNode, part, 1 );
 
+    if  ( docParaBuilderStartExistingParagraph( eo->eoParagraphBuilder,
+							paraNode, partStroff ) )
+	{ LDEB(partStroff); return -1;	}
+
     docEditShiftParticuleOffsets( eo, paraNode, paraNr, part,
 						partStroff, -partStrlen );
 

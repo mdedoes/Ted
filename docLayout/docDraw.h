@@ -18,6 +18,7 @@ struct DrawTextLine;
 struct LayoutPosition;
 struct BlockFrame;
 struct DocumentRectangle;
+struct AffineTransform2D;
 struct DocumentGeometry;
 struct TextRun;
 struct TextLine;
@@ -56,7 +57,8 @@ typedef int (*SET_FONT)(	struct DrawingContext *		dc,
 				int				textAttrNr,
 				const struct TextAttribute *	ta );
 
-typedef int (*DRAW_SHAPE)(	const struct DocumentRectangle *drTwips,
+typedef int (*DRAW_SHAPE)(	const struct DocumentRectangle *drOutside,
+				const struct AffineTransform2D *atOutside,
 				int				page,
 				struct DrawingShape *		ds,
 				struct DrawingContext *		dc,

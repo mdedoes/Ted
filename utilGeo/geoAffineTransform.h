@@ -1,6 +1,8 @@
 #   ifndef	UTIL_AFFINE_TRANSFORM_H
 #   define	UTIL_AFFINE_TRANSFORM_H
 
+struct Point2DD;
+
 /************************************************************************/
 /*									*/
 /*  Affine transformation 2 dimensional.				*/
@@ -29,11 +31,11 @@ typedef struct AffineTransform2D
 #   define	AT2_DET( at ) \
 		( (at)->at2Axx* (at)->at2Ayy - (at)->at2Ayx* (at)->at2Axy )
 
-#   define AFF2DEB(af) appDebug( "%s(%3d) %s= [%g,%g,%g,%g + %g,%g]\n",	\
-			    __FILE__, __LINE__, #af,			\
-			    (af)->at2Axx, (af)->at2Ayx,			\
-			    (af)->at2Axy, (af)->at2Ayy,			\
-			    (af)->at2Tx,  (af)->at2Ty )
+#   define AT2DEB(at) appDebug( "%s(%3d) %s= [%g,%g,%g,%g + %g,%g]\n",	\
+			    __FILE__, __LINE__, #at,			\
+			    (at)->at2Axx, (at)->at2Ayx,			\
+			    (at)->at2Axy, (at)->at2Ayy,			\
+			    (at)->at2Tx,  (at)->at2Ty )
 
 /************************************************************************/
 /*									*/
@@ -93,17 +95,54 @@ extern int geoAffineTransformForTriangles(	AffineTransform2D *	atRes,
 
 extern void geoInitAffineTransform2D(		AffineTransform2D *	at2 );
 extern void geoIdentityAffineTransform2D(	AffineTransform2D *	at2 );
+
 extern void geoRotationAffineTransform2D(	AffineTransform2D *	at2,
-						double			a );
+						double			angle );
+
+extern void geoAffineTransform2DThenRotate(
+					AffineTransform2D *		ba,
+					double				angle,
+					const AffineTransform2D *	a );
+
+extern void geoMirrorXAffineTransform2D(	AffineTransform2D *	at2,
+						double			x );
+
+extern void geoAffineTransform2DThenMirrorX(
+					AffineTransform2D *		ba,
+					double				x,
+					const AffineTransform2D *	a );
+
+extern void geoMirrorYAffineTransform2D(	AffineTransform2D *	at2,
+						double			y );
+
+extern void geoAffineTransform2DThenMirrorY(
+					AffineTransform2D *		ba,
+					double				y,
+					const AffineTransform2D *	a );
+
 extern void geoRotationAffineTransform2DAtan(	AffineTransform2D *	at2,
 						double			y,
 						double			x );
+
 extern void geoTranslationAffineTransform2D(	AffineTransform2D *	at2,
-						double			x,
-						double			y );
+						double			tx,
+						double			ty );
+
+extern void geoAffineTransform2DThenTranslate(
+					AffineTransform2D *		ba,
+					double				tx,
+					double				ty,
+					const AffineTransform2D *	a );
+
 extern void geoScaleAffineTransform2D(		AffineTransform2D *	at2,
 						double			xs,
 						double			ys );
+
+extern void geoAffineTransform2DThenScale(
+					AffineTransform2D *		ba,
+					double				xs,
+					double				ys,
+					const AffineTransform2D *	a );
 
 extern void geoAffineTransform2DProduct(
 					AffineTransform2D *		ba,
@@ -144,5 +183,9 @@ extern int geoLineConstants(		double *	pA,
 					double		x_y0,
 					double		x_x1,
 					double		x_y1 );
+
+extern void geoAffineTransform2DApply(	struct Point2DD *		ax,
+					const struct AffineTransform2D * a,
+					const struct Point2DD *		x );
 
 #   endif	/*  UTIL_AFFINE_TRANSFORM_H	*/

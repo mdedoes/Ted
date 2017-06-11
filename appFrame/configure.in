@@ -8,6 +8,7 @@ AC_PROG_RANLIB
 dnl Checks for header files.
 AC_PATH_XTRA
 AC_PATH_XPM
+AC_HAVE_LIBPAPER
 
 # In this order:
 AC_PATH_FT2

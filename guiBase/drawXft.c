@@ -14,6 +14,7 @@
 #   include	"drawImpl.h"
 #   include	"drawImplXft.h"
 #   include	"drawScreenFontImpl.h"
+#   include	"drawColorsXft.h"
 #   include	<psFontInfo.h>
 #   include	<uniUtf8.h>
 

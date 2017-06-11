@@ -606,12 +606,12 @@ void tedDocSetPageLayout(	EditDocument *			ed,
     docInitSectionProperties( &spSet );
     docInitDocumentProperties( &dpSet );
 
-    utilUpdDocumentGeometry( (PropertyMask *)0, &(spSet.spDocumentGeometry),
+    geoUpdDocumentGeometry( (PropertyMask *)0, &(spSet.spDocumentGeometry),
 							    dgSetMask, dgSet );
 
     if  ( wholeDocument )
 	{
-	utilUpdDocumentGeometry( (PropertyMask *)0, &(dpSet.dpGeometry),
+	geoUpdDocumentGeometry( (PropertyMask *)0, &(dpSet.dpGeometry),
 							    dgSetMask, dgSet );
 
 	if  ( tedDocChangeAllSectionProperties( ed,

@@ -15,9 +15,11 @@
 #   include	"appEditDocument.h"
 #   include	"appDocument.h"
 #   include	"appDocFront.h"
+#   include	"appGuiDocument.h"
 #   include	<guiMenuItem.h>
 #   include	<guiDrawingWidget.h>
 #   include	<guiWidgetsImpl.h>
+#   include	"appGuiApplication.h"
 
 #   include	<appDebugon.h>
 

@@ -20,8 +20,12 @@
 #   include	"appGuiApplication.h"
 #   include	"appEditDocument.h"
 #   include	"appFileChooser.h"
-#   include	<appPaper.h>
+#   include	"appPaper.h"
 #   include	"appGuiResource.h"
+
+#   if USE_MOTIF
+#       include	"appAppFront.h"
+#   endif
 
 #   include	<appDebugon.h>
 
@@ -193,7 +197,7 @@ int appMain(	EditApplication *	ea,
 	    { SDEB(overrideProperties); rval= 1; goto ready;	}
 	}
 
-    utilInitDocumentGeometry( &(ea->eaDefaultDocumentGeometry) );
+    geoInitDocumentGeometry( &(ea->eaDefaultDocumentGeometry) );
 
     /*  b  */
     appGetApplicationResourceValues( ea );

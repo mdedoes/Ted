@@ -4,8 +4,6 @@
 
 #   include	"guiBase.h"
 #   include	"guiWidgets.h"
-#   include	"guiWidgetsImpl.h"
-#   include	"guiImageImpl.h"
 
 #   include	<X11/Xatom.h>
 #   include	<Xm/ToggleB.h>

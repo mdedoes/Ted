@@ -25,6 +25,7 @@ typedef enum DocumentKind
     TEDdockindTEXT_OPEN,
     TEDdockindTEXT_SAVE_WIDE,
     TEDdockindTEXT_SAVE_FOLDED,
+    TEDdockindMARKDOWN,
     TEDdockindHTML_FILES,
     TEDdockindEML,
     TEDdockindEPUB,
