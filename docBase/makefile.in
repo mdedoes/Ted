@@ -190,6 +190,7 @@ docCellProperties.o: \
     docCellProperties.h \
     docDocumentAttributeMap.h \
     docPropVal.h \
+    docTextFlow.h \
     ../include/appDebug.h \
     ../include/appDebugon.h \
     docCellProperties.c
@@ -451,7 +452,7 @@ docFormulaField.o: \
 docFrameProperties.o: \
     docBaseConfig.h \
     docFrameProperties.h \
-    docPropVal.h \
+    docTextFlow.h \
     ../include/appDebug.h \
     ../include/appDebugon.h \
     docFrameProperties.c
@@ -464,7 +465,6 @@ docFramePropertiesAdmin.o: \
     docBaseConfig.h \
     docFramePropertiesAdmin.h \
     docFrameProperties.h \
-    docPropVal.h \
     ../include/appDebug.h \
     ../include/appDebugon.h \
     docFramePropertiesAdmin.c
@@ -752,6 +752,7 @@ docPagerefField.o: \
 docParaProperties.o: \
     ../appUtil/utilPropMask.h \
     docBaseConfig.h \
+    docBreakKind.h \
     docDocumentAttributeMap.h \
     docListDepth.h \
     docParaProperties.h \
@@ -978,10 +979,12 @@ docRowPropertyAdmin.o: \
     docRowPropertyAdmin.c
 
 docSectProperties.o: \
+    ../appUtil/utilMemoryBuffer.h \
     ../appUtil/utilPropMask.h \
     docBaseConfig.h \
+    docBreakKind.h \
+    docDocumentProperties.h \
     docNotesProperties.h \
-    docPropVal.h \
     docSectProperties.h \
     ../include/appDebug.h \
     ../include/appDebugon.h \
@@ -1017,7 +1020,7 @@ docShapeDrawing.o: \
     ../appUtil/utilColor.h \
     ../appUtil/utilMemoryBuffer.h \
     docBaseConfig.h \
-    docPropVal.h \
+    docFrameProperties.h \
     docShapeDrawing.h \
     docShapeProp.h \
     docShapeType.h \
@@ -1054,7 +1057,7 @@ docShapePath.o: \
 docShapeProperties.o: \
     ../appUtil/utilPropMask.h \
     docBaseConfig.h \
-    docPropVal.h \
+    docFrameProperties.h \
     docShapeProperties.h \
     ../include/appDebug.h \
     ../include/appDebugon.h \

@@ -10,15 +10,15 @@
 #   include	<time.h>
 
 #   include	<geoDocumentPageSetup.h>
-#   include	<utilColor.h>
 #   include	<utilMemoryBuffer.h>
 
 #   include	"docNotesProperties.h"
-#   include	"docDocumentAttributeMap.h"
 
 struct PropertyMask;
 struct DocumentFontList;
 struct ListAdmin;
+struct DocumentAttributeMap;
+struct RGB8Color;
 
 typedef enum DocumentProperty
     {
@@ -235,11 +235,11 @@ extern int docCopyDocumentProperties(	DocumentProperties *		to,
 					const DocumentProperties *	from );
 
 extern int docUpdDocumentProperties(
-				struct PropertyMask *		pDoneMask,
-				DocumentProperties *		dpTo,
-				const struct PropertyMask *	dpSetMask,
-				const DocumentProperties *	dpFrom,
-				const DocumentAttributeMap *	dam );
+			struct PropertyMask *			pDoneMask,
+			DocumentProperties *			dpTo,
+			const struct PropertyMask *		dpSetMask,
+			const DocumentProperties *		dpFrom,
+			const struct DocumentAttributeMap *	dam );
 
 extern void docDocumentPropertyDifference(
 				struct PropertyMask *		pDifMask,
@@ -250,8 +250,9 @@ extern void docDocumentPropertyDifference(
 extern int docPropertiesSetFilename(	DocumentProperties *	dp,
 					const MemoryBuffer *	filename );
 
-extern int docAllocateDocumentColor(	DocumentProperties *	dp,
-					const RGB8Color *	rgb8 );
+extern int docAllocateDocumentColor(
+				DocumentProperties *		dp,
+				const struct RGB8Color *	rgb8 );
 
 extern int docSetDocumentProperty(	DocumentProperties *	dp,
 					int			prop,

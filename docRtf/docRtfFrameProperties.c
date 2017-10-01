@@ -8,10 +8,11 @@
 
 #   include	<ctype.h>
 
-#   include	<appDebugon.h>
-
 #   include	"docRtfWriterImpl.h"
 #   include	"docRtfReaderImpl.h"
+#   include	<docTextFlow.h>
+
+#   include	<appDebugon.h>
 
 /************************************************************************/
 /*									*/
@@ -369,7 +370,7 @@ int docRtfRememberRowFrameProperty(	const RtfControlWord *	rcw,
 					int			arg,
 					RtfReader *		rr )
     {
-    FrameProperties *	fp= &(rr->rrcRowFrameProperties);
+    FrameProperties *	fp= &(rr->rrRowFrameProperties);
 
     if  ( docSetFrameProperty( fp, rcw->rcwID, arg ) )
 	{ LSLDEB(rcw->rcwID,rcw->rcwWord,arg); return -1;	}

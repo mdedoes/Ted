@@ -9,6 +9,7 @@
 #   include	<appDebugon.h>
 
 #   include	"docFrameProperties.h"
+#   include	"docTextFlow.h"
 
 /************************************************************************/
 /*									*/
@@ -48,7 +49,10 @@ void docInitFrameProperties(	FrameProperties *	fp )
     return;
     }
 
+/*
 const unsigned char docFrameYAllowed[FYpos_COUNT][FYref_COUNT]=
+*/
+static const unsigned char DOC_FRAME_Y_ALLOWED[FYpos_COUNT][FYref_COUNT]=
 {
 /*			FYrefMARGIN	FYrefPAGE	FYrefPARA	*/
 /* FYposYGIVEN	*/ {	1,		1,		1,		},
@@ -58,6 +62,18 @@ const unsigned char docFrameYAllowed[FYpos_COUNT][FYref_COUNT]=
 /* FYposYIN	*/ {	1,		1,		0,		},
 /* FYposYOUT	*/ {	1,		1,		0,		},
 };
+
+int docFrameYAllowed(	int		pos,
+			int		ref )
+    {
+    if  ( pos < 0 || ref < 0 || pos >= FYpos_COUNT || ref >= FYref_COUNT )
+	{
+	LLLLDEB(pos,ref,FYpos_COUNT,FYref_COUNT);
+	return 0;
+	}
+
+    return DOC_FRAME_Y_ALLOWED[pos][ref];
+    }
 
 int docSetFrameProperty(	FrameProperties *	fp,
 				int			prop,

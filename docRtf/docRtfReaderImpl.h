@@ -13,7 +13,6 @@
 #   include	<docTabStopList.h>
 #   include	<docFrameProperties.h>
 #   include	<utilMemoryBuffer.h>
-#   include	<docSelectionScope.h>
 #   include	<docCellProperties.h>
 #   include	<docSectProperties.h>
 #   include	<docRowProperties.h>
@@ -27,7 +26,6 @@
 #   include	<fontEncodedFont.h>
 #   include	<utilPagedList.h>
 #   include	<docPictureProperties.h>
-#   include	<docEditRange.h>
 #   include	<docNoteProperties.h>
 #   include	<fontDocFont.h>
 #   include	<docFormField.h>
@@ -38,6 +36,8 @@ struct RtfReader;
 struct SimpleInputStream;
 struct RtfTreeStack;
 struct BufferItem;
+struct RtfTraceReader;
+struct SelectionScope;
 
 typedef struct RtfReader RtfReader;
 
@@ -158,7 +158,7 @@ struct RtfReader
 				 *  Character that could not be unread
 				 *  using ungetc().
 				 */
-    int				rrcCharacterAhead;
+    int				rrCharacterAhead;
 
     int				rrReadFlags;
 
@@ -176,7 +176,7 @@ struct RtfReader
 				 *  The properties of the row frame (If any) 
 				 *  that we are collecting.
 				 */
-    FrameProperties		rrcRowFrameProperties;
+    FrameProperties		rrRowFrameProperties;
 
 				/**
 				 *  The properties of the cell (If any) 
@@ -189,7 +189,7 @@ struct RtfReader
     ItemShading			rrCellShading;
 
     SectionProperties		rrSectionProperties;
-    PropertyMask		rrcSectionPropertyMask;
+    PropertyMask		rrSectionPropertyMask;
 
 				/**
 				 *  The section column that we are currently 
@@ -212,7 +212,7 @@ struct RtfReader
     MemoryBuffer		rrShapePropertyName;
     MemoryBuffer		rrShapePropertyValue;
 
-    int				rrcNextObjectVertex;
+    int				rrNextObjectVertex;
 				    /**
 				     *  The style in the stylesheet that is 
 				     *  built up before it is inserted in the 
@@ -222,11 +222,10 @@ struct RtfReader
     DocumentStyle		rrStyle;
     DocumentProperties		rrDocumentProperties;
     PropertyMask		rrDocPropertyMask;
-    TabStop			rrcTabStop;
-    RGB8Color			rrcColor;
-    int				rrcGotComponent;
+    TabStop			rrTabStop;
+    RGB8Color			rrColor;
+    int				rrGotColorComponent;
     struct tm			rrTm;
-    unsigned char *		rrcInfoText;
 
     DocumentList		rrcDocumentList;
     ListLevel			rrcDocumentListLevel;
@@ -276,11 +275,6 @@ struct RtfReader
     MemoryBuffer		rrcBookmark;
 
 				/**
-				 *  For coping with the way word saves
-				 *  {\pntext ... }
-				 */
-    unsigned char		rrAfterParaHeadField;
-				/**
 				 *  We just met a reference to a foot/end note.
 				 */
     unsigned char		rrAfterNoteref;
@@ -296,6 +290,23 @@ struct RtfReader
 				 */
     int				rrInlineShapeObjectNumber;
 
+				/**
+				 *  The offset immediately after the head
+				 *  field of the paragraph. This is to cope
+				 *  with the way word saves {\pntext ... } 
+				 *  and similar fields: It first saves the 
+				 *  field and then the page break at the head 
+				 *  of the paragraph.
+				 */
+    int				rrParaHeadFieldTailOffset;
+
+				/**
+				 *  If we encounter an explicit break at
+				 *  the beginning of a paragraph, we make it a
+				 *  property of the paragraph, rather than that 
+				 *  we insert a break at the start of the 
+				 *  contents of the paragraph.
+				 */
     int				rrParagraphBreakOverride;
 
     unsigned char		rrGotDocGeometry;
@@ -306,38 +317,17 @@ struct RtfReader
 				 *  file.
 				 */
     struct TextConverter *	rrRtfTextConverter;
-
-				/**
-				 * Only used for reading Undo/Redo traces.
-				 * -1: old; 1: new
-				 */
-    int				rrTraceReadWhat;
-    int				rrTraceCommand;
-    int				rrTraceSelectionPosition;
-    int				rrcTraceFieldKind;
-    int				rrTraceInProps;
-
-    SelectionScope		rrcTraceOldSelectionScope;
-    EditRange			rrcTraceOldRange;
-    int				rrcTraceOldCol0;
-    int				rrcTraceOldCol1;
-    int				rrcTraceOldPage;
-    int				rrcTraceOldColumn;
-
-    int				rrcTracePropLevel;
-    int				rrcTraceTargetType;
-
-    SelectionScope		rrcTraceNewSelectionScope;
-    EditRange			rrcTraceNewRange;
-    int				rrcTraceNewCol0;
-    int				rrcTraceNewCol1;
-    int				rrcTraceNewPage;
-    int				rrcTraceNewColumn;
-
     NoteProperties		rrNoteProperties;
     PropertyMask		rrNotePropertyMask;
 
     FormField			rrFormField;
+
+				/**
+				 *  Extra administration for reading the trace
+				 *  for undo/redo.
+				 */
+    struct RtfTraceReader *	rrTraceReader;
+
     };
 
 /************************************************************************/
@@ -676,7 +666,7 @@ extern int docRtfFontProperty(	const RtfControlWord *		rcw,
 				RtfReader *			rr );
 
 extern int docRtfCommitFontDest(	const RtfControlWord *	rcw,
-					RtfReader *		rrc );
+					RtfReader *		rr );
 
 extern int docRtfObjectProperty(	const RtfControlWord *	rcw,
 					int			arg,
@@ -695,6 +685,9 @@ extern int docRtfTextUnicode(		const RtfControlWord *	rcw,
 					RtfReader *		rr );
 
 extern int docRtfTextSpecialParticule(	const RtfControlWord *	rcw,
+					int			arg,
+					RtfReader *		rr );
+extern int docRtfBreakParticule(	const RtfControlWord *	rcw,
 					int			arg,
 					RtfReader *		rr );
 
@@ -720,7 +713,7 @@ extern int docRtfReadDocumentTree(	const RtfControlWord *	rcw,
 					int *			pTreeType,
 					RtfReader *		rr,
 					int			ignoreEmpty,
-					const SelectionScope *	ss );
+					const struct SelectionScope *	ss );
 
 extern int docRtfShapeProperty(		const RtfControlWord *	rcw,
 					int			arg,
@@ -906,7 +899,7 @@ extern int docRtfRememberFormFieldProperty(
 					RtfReader *		rr );
 
 extern int docRtfCommitFormFieldText(	const RtfControlWord *	rcw,
-					RtfReader *		rrc );
+					RtfReader *		rr );
 
 extern int docRtfStartParagraph(	RtfReader *		rr );
 
@@ -921,5 +914,8 @@ extern int docRtfReadStartObject(	struct InsertedObject ** pIo,
 					RtfReader *		rr );
 
 extern int docRtfInsideShapeField(	RtfReader *		rr );
+
+extern void docRtfResetParagraphReadingState(
+					RtfReader *		rr );
 
 #   endif	/*	RTF_READER_IMPL_H	*/

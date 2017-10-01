@@ -13,7 +13,7 @@
 #   include	"docStripLayoutJob.h"
 #   include	<docTreeType.h>
 #   include	<docTreeNode.h>
-#   include	<docPropVal.h>
+#   include	<docBreakKind.h>
 #   include	<docRowProperties.h>
 #   include	<docDocumentProperties.h>
 #   include	<docParaProperties.h>
@@ -224,10 +224,11 @@ static int docPsFixupParentGeometry(	struct BufferItem *	node,
 /*									*/
 /************************************************************************/
 
-static int docAdjustParaParentLayout(	LayoutPosition *	lpHere,
-					const struct BufferItem *	node,
-					const struct BufferItem *	parentNode,
-					struct LayoutJob *	lj )
+static int docAdjustParaParentLayout(
+				LayoutPosition *		lpHere,
+				const struct BufferItem *	node,
+				const struct BufferItem *	parentNode,
+				struct LayoutJob *		lj )
     {
     int			from;
     ParagraphLayoutJob	plj;
@@ -244,17 +245,17 @@ static int docAdjustParaParentLayout(	LayoutPosition *	lpHere,
 				lpHere->lpPage, lpHere->lpColumn, parentNode );
 
     if  ( node->biParaProperties->ppBreakKind != DOCibkNONE	&&
-	  node->biParaProperties->ppTableNesting == 0	)
+	  node->biParaProperties->ppTableNesting == 0		)
 	{
-	const struct BufferItem *	bbi= node;
+	const struct BufferItem *	nde= node;
 
-	while( bbi->biNumberInParent == 0 )
+	while( nde->biNumberInParent == 0 )
 	    {
-	    if  ( ! bbi->biParent )
+	    if  ( ! nde->biParent )
 		{ break;	}
 
-	    bbi->biParent->biTopPosition= node->biTopPosition;
-	    bbi= bbi->biParent;
+	    nde->biParent->biTopPosition= node->biTopPosition;
+	    nde= nde->biParent;
 	    }
 	}
 
@@ -288,7 +289,7 @@ static int docAdjustParaParentLayout(	LayoutPosition *	lpHere,
 /************************************************************************/
 
 int docAdjustLayoutToChangedTree(	LayoutPosition *	lpHere,
-					struct BufferItem *		node,
+					struct BufferItem *	node,
 					LayoutJob *		lj )
     {
     switch( node->biTreeType )

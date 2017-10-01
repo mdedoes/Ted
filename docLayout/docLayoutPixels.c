@@ -10,7 +10,7 @@
 #   include	<geoGrid.h>
 #   include	<docTreeNode.h>
 #   include	<docTreeType.h>
-#   include	<docPropVal.h>
+#   include	<docBreakKind.h>
 #   include	<docDocumentProperties.h>
 #   include	<docSectProperties.h>
 #   include	"docSelectionGeometry.h"

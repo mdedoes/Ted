@@ -72,13 +72,15 @@ extern int docSvgDrawTextRun(	const struct TextRun *		tr,
 extern int docSvgStartTextLine(	struct DrawTextLine *		dtl,
 				int				x0Twips );
 
-extern int docSvgSaveShapeObject( struct SimpleOutputStream *	sos,
-				int				page,
-				int				pixelsWide,
-				int				pixelsHigh,
-				const struct InsertedObject *	io,
-				struct BufferItem *		bodySectNode,
-				const struct LayoutContext *	lc );
+extern int docSvgSaveShapeObject(
+			struct SimpleOutputStream *	sos,
+			int				includeSvgDeclaration,
+			int				page,
+			int				pixelsWide,
+			int				pixelsHigh,
+			const struct InsertedObject *	io,
+			struct BufferItem *		bodySectNode,
+			const struct LayoutContext *	lc );
 
 extern int docSvgDrawShapeText(	const struct DocumentRectangle *	drHere,
 				const struct BufferItem *	bodySectNode,

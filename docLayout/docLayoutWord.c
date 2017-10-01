@@ -119,7 +119,7 @@ int docLayoutWord(	LineLayoutJob *			llj,
     int				x= lr->lrRectangle.drX0;
     int				visibleX1= lr->lrRectangle.drX0;
 
-    struct BufferItem *		paraNode= llj->lljParaNode;
+    const struct BufferItem *	paraNode= llj->lljParaNode;
     struct BufferDocument *	bd= llj->lljLayoutContext->lcDocument;
 
     int				part= lr->lrHeadParticule;

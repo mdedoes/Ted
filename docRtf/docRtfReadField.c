@@ -221,10 +221,7 @@ static int docRtfReadPushResultField(	DocumentField **	pField,
     if  ( docFieldStackPushLevel( &(rts->rtsFieldStack), df, FSpieceFLDRSLT ) )
 	{ LDEB(1); rval= -1; goto ready;	}
 
-    rr->rrAfterNoteref= 0;
-    rr->rrAfterParaHeadField= 0;
-    rr->rrAfterInlineShape= 0;
-    rr->rrInlineShapeObjectNumber= -1;
+    docRtfResetParagraphReadingState( rr );
 
     *pField= df; df= (struct DocumentField *)0; /* steal */
 
@@ -262,10 +259,7 @@ static int docRtfReadPushInstructionsField(
 							df, FSpieceFLDINST ) )
 	{ LDEB(1); rval= -1; goto ready;	}
 
-    rr->rrAfterNoteref= 0;
-    rr->rrAfterParaHeadField= 0;
-    rr->rrAfterInlineShape= 0;
-    rr->rrInlineShapeObjectNumber= -1;
+    docRtfResetParagraphReadingState( rr );
 
     *pField= df;
 
@@ -310,10 +304,8 @@ static int docRtfTerminateTopResultField(	RtfReader *		rr,
 	{ LDEB(1); return -1;	}
 
     rr->rrTreeStack->rtsLastFieldNumber= df->dfFieldNumber;
-    rr->rrAfterNoteref= 0;
-    rr->rrAfterParaHeadField= 0;
-    rr->rrAfterInlineShape= 0;
-    rr->rrInlineShapeObjectNumber= -1;
+
+    docRtfResetParagraphReadingState( rr );
 
     return 0;
     }
@@ -754,6 +746,25 @@ DocumentField * docRtfSpecialField(
 
 /************************************************************************/
 /*									*/
+/*  Remember the tail offset of the paragraph head field that we just	*/
+/*  inserted at the head of the current paragraph.			*/
+/*									*/
+/************************************************************************/
+
+static int docRtfSetParaHeadFieldTailOffset(	RtfReader *	rr )
+    {
+    struct BufferItem *	paraNode= docRtfGetParaNode( rr );
+
+    if  ( ! paraNode )
+	{ XDEB(paraNode); return -1; }
+
+    rr->rrParaHeadFieldTailOffset= docParaStrlen( paraNode );
+
+    return 0;
+    }
+
+/************************************************************************/
+/*									*/
 /*  Handle an rtf control word that results in a special character in	*/
 /*  the RTF spec, but that is implemented as a field in Ted.		*/
 /*									*/
@@ -810,7 +821,11 @@ int docRtfTextSpecialToField(	const RtfControlWord *	rcw,
 	{ SDEB(rcw->rcwWord); return -1;	}
 
     rr->rrAfterNoteref= afterNoteref;
-    rr->rrAfterParaHeadField= afterNoteref != 0;
+    if  ( afterNoteref )
+	{
+	if  ( docRtfSetParaHeadFieldTailOffset( rr ) )
+	    { SLDEB(rcw->rcwWord,afterNoteref); return -1;	}
+	}
     rr->rrAfterInlineShape= 0;
     rr->rrInlineShapeObjectNumber= -1;
 
@@ -859,7 +874,10 @@ int docRtfReadTextField(	const RtfControlWord *	rcw,
 	{ LDEB(1);	}
 
     if  ( rcw->rcwID == DOCfkLISTTEXT )
-	{ rr->rrAfterParaHeadField= 1;	}
+	{
+	if  ( docRtfSetParaHeadFieldTailOffset( rr ) )
+	    { SDEB(rcw->rcwWord); return -1;	}
+	}
 
     return res;
     }

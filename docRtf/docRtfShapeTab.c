@@ -8,7 +8,6 @@
 
 #   include	<ctype.h>
 
-#   include	"docRtfReaderImpl.h"
 #   include	"docRtfShapeTab.h"
 #   include	"docRtfTagHash.h"
 #   include	"docRtfShapePropLookup.h"

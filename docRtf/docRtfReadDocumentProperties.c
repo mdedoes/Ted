@@ -14,6 +14,7 @@
 #   include	<textOfficeCharset.h>
 #   include	<textConverter.h>
 #   include	"docRtfReaderImpl.h"
+#   include	"docRtfReadTrace.h"
 #   include	<docBuf.h>
 #   include	<docDocumentProperties.h>
 
@@ -238,7 +239,7 @@ int docRtfRememberDocProperty(	const RtfControlWord *	rcw,
 	    break;
 	}
 
-    if  ( rr->rrTraceInProps )
+    if  ( rr->rrTraceReader && rr->rrTraceReader->rtrTraceInProps )
 	{
 	/*  Working copy for undo */
 	if  ( docSetDocumentProperty( &(rr->rrDocumentProperties),
@@ -275,7 +276,7 @@ int docRtfCommitDocPropText(	const RtfControlWord *	rcw,
     if  ( docRtfStoreSavedText( &text, &size, rr, removeSemicolon ) )
 	{ SDEB(rcw->rcwWord); rval= -1; goto ready;	}
 
-    if  ( rr->rrTraceInProps )
+    if  ( rr->rrTraceReader && rr->rrTraceReader->rtrTraceInProps )
 	{
 	if  ( docSetDocumentPropertyString( &(rr->rrDocumentProperties),
 						    rcw->rcwID, text, size ) )
@@ -313,7 +314,7 @@ int docRtfDocTimeGroup(	const RtfControlWord *	rcw,
 		(RtfControlWord *)0, docRtfRefuseText, (RtfCommitGroup)0 ) )
 	{ SLDEB(rcw->rcwWord,arg); return -1;	}
 
-    if  ( rr->rrTraceInProps )
+    if  ( rr->rrTraceReader && rr->rrTraceReader->rtrTraceInProps )
 	{
 	if  ( docSetDocumentPropertyTime( &(rr->rrDocumentProperties),
 						rcw->rcwID, &(rr->rrTm) ) )

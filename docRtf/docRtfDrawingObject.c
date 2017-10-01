@@ -77,7 +77,7 @@ int docRtfDrawingObjectProperty(	const RtfControlWord *	rcw,
 
 	    if  ( sd->sdShapeType == SHPtyLINE )
 		{
-		rr->rrcNextObjectVertex= sd->sdVertexCount;
+		rr->rrNextObjectVertex= sd->sdVertexCount;
 		if  ( docRtfDrawingObjectAllocatePoints( ds, 2 ) )
 		    { LDEB(arg); return -1;	}
 		}
@@ -157,7 +157,7 @@ int docRtfDrawingObjectProperty(	const RtfControlWord *	rcw,
 	    break;
 
 	case DOpropPOINT_COUNT:
-	    rr->rrcNextObjectVertex= sd->sdVertexCount;
+	    rr->rrNextObjectVertex= sd->sdVertexCount;
 	    if  ( docRtfDrawingObjectAllocatePoints( ds, arg ) )
 		{ LDEB(arg); return -1;	}
 	    break;
@@ -252,20 +252,20 @@ int docRtfDrawingObjectCoordinate(	const RtfControlWord *	rcw,
 
     sd= &(ds->dsDrawing);
 
-    if  ( rr->rrcNextObjectVertex >= sd->sdVertexCount	||
-	  rr->rrcNextObjectVertex < 0			)
+    if  ( rr->rrNextObjectVertex >= sd->sdVertexCount	||
+	  rr->rrNextObjectVertex < 0			)
 	{
-	LLLDEB(sd->sdShapeType,rr->rrcNextObjectVertex,sd->sdVertexCount);
+	LLLDEB(sd->sdShapeType,rr->rrNextObjectVertex,sd->sdVertexCount);
 	return 0;
 	}
 
     switch( rcw->rcwID )
 	{
 	case DOpropX:
-	    sd->sdVertices[rr->rrcNextObjectVertex  ].x= arg;
+	    sd->sdVertices[rr->rrNextObjectVertex  ].x= arg;
 	    break;
 	case DOpropY:
-	    sd->sdVertices[rr->rrcNextObjectVertex++].y= arg;
+	    sd->sdVertices[rr->rrNextObjectVertex++].y= arg;
 	    break;
 
 	default:

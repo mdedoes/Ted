@@ -12,7 +12,7 @@
 #   include	<docTreeNode.h>
 #   include	"docRtfWriterImpl.h"
 #   include	"docRtfTags.h"
-#   include	<docPropVal.h>
+#   include	<docBreakKind.h>
 #   include	<docDocumentProperties.h>
 #   include	<docSectProperties.h>
 #   include	<docBuf.h>

@@ -7,7 +7,7 @@
 #   include	<docObjectProperties.h>
 #   include	<docTextParticule.h>
 #   include	<textAttribute.h>
-#   include	<docPropVal.h>
+#   include	<docBreakKind.h>
 
 #   include	"docDebug.h"
 #   include	<appDebugon.h>

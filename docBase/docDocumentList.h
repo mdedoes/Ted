@@ -11,6 +11,7 @@
 
 #   include	"docListDepth.h"
 #   include	"docListLevel.h"
+#   include	<utilMemoryBuffer.h>
 
 typedef struct DocumentList
     {

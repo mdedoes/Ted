@@ -272,7 +272,8 @@ static void tedRefreshTabsTool(	void *				vtt,
 
     struct BufferItem *			paraNode= ds->dsHead.dpNode;
 
-    const DocumentAttributeMap * const	dam0= (const DocumentAttributeMap *)0;
+    const struct DocumentAttributeMap * const	dam0=
+					(const struct DocumentAttributeMap *)0;
 
     tsl= docParaNodeGetTabStopList( paraNode, bd );
 
@@ -363,7 +364,8 @@ static APP_BUTTON_CALLBACK_H( tedFormatTabsRevertDocPushed, w, voidtt )
     PropertyMask		chgMask;
     PropertyMask		updMask;
 
-    const DocumentAttributeMap * const	dam0= (const DocumentAttributeMap *)0;
+    const struct DocumentAttributeMap * const	dam0=
+				(const struct DocumentAttributeMap *)0;
 
     utilPropMaskClear( &chgMask );
 

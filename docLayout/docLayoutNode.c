@@ -69,7 +69,7 @@ static int docLayoutParaNode(	LayoutPosition *	lpBelow,
 
 int docLayoutCellNode(	LayoutPosition *	lpBelow,
 			const LayoutPosition *	lpTop,
-			struct BufferItem *		cellNode,
+			struct BufferItem *	cellNode,
 			int			from,
 			BlockFrame *		bf,
 			LayoutJob *		lj )

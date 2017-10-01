@@ -462,7 +462,7 @@ static short mapBack[]=
      530L,	/*   407: "sprstsm" */
      359L,	/*   408: "tscbandverteven" */
      316L,	/*   409: "clcbpatraw" */
-     947L,	/*   410: "chftnsepc" */
+     945L,	/*   410: "chftnsepc" */
      396L,	/*   411: "trspdt" */
     1038L,	/*   412: "do" */
     1121L,	/*   413: "nofpages" */
@@ -727,7 +727,7 @@ static short mapBack[]=
      844L,	/*   672: "listoverrideformat" */
      472L,	/*   673: "paperh" */
      813L,	/*   674: "list" */
-     946L,	/*   675: "chftnsep" */
+     944L,	/*   675: "chftnsep" */
     1057L,	/*   676: "ffmaxlen" */
     1032L,	/*   677: "listtable" */
     1020L,	/*   678: "shpbymargin" */
@@ -777,7 +777,7 @@ static short mapBack[]=
     1081L,	/*   722: "footer" */
      363L,	/*   723: "tscsecell" */
     1175L,	/*   724: "brdrtnthmg" */
-     948L,	/*   725: "ltrmark" */
+     946L,	/*   725: "ltrmark" */
      882L,	/*   726: "wbmbitspixel" */
      446L,	/*   727: "tsbgdkbdiag" */
      745L,	/*   728: "defformat" */
@@ -1046,7 +1046,7 @@ static short mapBack[]=
      254L,	/*   991: "dfrmtxtx" */
      625L,	/*   992: "vertalt" */
      704L,	/*   993: "pca" */
-     949L,	/*   994: "rtlmark" */
+     947L,	/*   994: "rtlmark" */
      694L,	/*   995: "shidden" */
      367L,	/*   996: "trleft" */
      974L,	/*   997: "dpastartsol" */
@@ -1119,7 +1119,7 @@ static short mapBack[]=
      896L,	/*  1064: "picscaled" */
      183L,	/*  1065: "brdrl" */
      232L,	/*  1066: "phmrg" */
-     944L,	/*  1067: "page" */
+     948L,	/*  1067: "page" */
      555L,	/*  1068: "krnprsnet" */
      984L,	/*  1069: "dodhgt" */
     1065L,	/*  1070: "ffentrymcr" */
@@ -1243,7 +1243,7 @@ static short mapBack[]=
      957L,	/*  1188: "dparc" */
      203L,	/*  1189: "tphcol" */
      148L,	/*  1190: "qc" */
-     945L,	/*  1191: "column" */
+     949L,	/*  1191: "column" */
     };
 
 /* The hash function */

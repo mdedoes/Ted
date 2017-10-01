@@ -37,6 +37,7 @@ PKGEXEC_BIN=	$(PKGBINDIR)/Ted
 PKGDESKTOPDIR=	$(PKGDATADIR)/applications
 PKGTEDDIR=	$(PKGDATADIR)/Ted
 PKGTEDVARIADIR=	$(PKGTEDDIR)/varia
+PKGTEDDOCDIR=	$(PKGTEDDIR)/doc
 
 PKGDIRS=	$(PKGDESTDIR) \
 		$(PKGPREFIX) \
@@ -197,6 +198,7 @@ datadir:	README		\
 	:
 	( cd $(PKGDATADIR)/Ted && umask 0 && tar xvf - ) < TedDatadir.tar
 	cp $(PKGDATADIR)/Ted/doc/TedDocument-en_US.rtf TedDocument-en_US.rtf
+	sh ./customize.sh $(CUSTOMIZE_ARGS) < TedDocument-en_US.rtf > $(PKGTEDDOCDIR)/TedDocument-en_US.rtf
 	( umask 022 && mkdir -p $(PKGMANDIR) )
 	sh ./customize.sh $(CUSTOMIZE_ARGS) < $(PKGDATADIR)/Ted/doc/Ted.1 | \
 					    gzip -n -9 > $(PKGMANDIR)/Ted.1.gz

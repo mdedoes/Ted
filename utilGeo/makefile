@@ -1,4 +1,4 @@
-CC=gcc
+CC=ccc
 
 INCLUDES=			\
 	-I../appUtil		\
@@ -28,7 +28,7 @@ WFLAGS=	-Wall			\
 	-Wno-sign-compare	\
 	-Werror
 
-#CFLAGS= $(WFLAGS) -g -O2 $(INCLUDES)
+CFLAGS= $(WFLAGS) -g -O2 $(INCLUDES)
 
 # 14!!obs
 OBS	=	\

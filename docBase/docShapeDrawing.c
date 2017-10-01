@@ -9,10 +9,10 @@
 #   include	<stdlib.h>
 #   include	<stdio.h>
 
-#   include	"docPropVal.h"
 #   include	"docShapeProp.h"
 #   include	"docShapeDrawing.h"
 #   include	"docShapeType.h"
+#   include	"docFrameProperties.h"
 #   include	<geo2DInteger.h>
 
 #   include	<appDebugon.h>

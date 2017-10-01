@@ -42,7 +42,7 @@ CFLAGS=	\
 
 #CFLAGS= -g -O2 $(WFLAGS) $(INCLUDES)
 
-# 18!!obs
+# 19!!obs
 OBS	=	\
 		docWriteCss.o\
 		docSvgDrawTextLine.o\
@@ -56,6 +56,7 @@ OBS	=	\
 		docHtmlWriteNode.o\
 		docHtmlWriteImage.o\
 		docHtmlWriteHtml.o\
+		docHtmlWriteField.o\
 		docHtmlWriteEpub.o\
 		docHtmlWriteEml.o\
 		docHtmlWriteCss.o\
@@ -88,42 +89,31 @@ includes:
 ######################################## !! sh
 
 docHtmlWrite.o: \
-    ../appUtil/sioGeneral.h \
     ../appUtil/utilColor.h \
     ../appUtil/utilIndexMapping.h \
     ../appUtil/utilIndexSet.h \
     ../appUtil/utilMemoryBuffer.h \
     ../appUtil/utilPagedList.h \
     ../appUtil/xmlWriter.h \
-    ../docBase/docBookmarkField.h \
+    ../bitmap/bmio.h \
     ../docBase/docChildFields.h \
-    ../docBase/docDocumentAttributeMap.h \
-    ../docBase/docDocumentField.h \
     ../docBase/docDocumentFieldList.h \
     ../docBase/docDocumentProperties.h \
-    ../docBase/docEditPosition.h \
-    ../docBase/docEditRange.h \
-    ../docBase/docFieldInstructions.h \
-    ../docBase/docFieldKind.h \
-    ../docBase/docHyperlinkField.h \
     ../docBase/docInsertedObjectList.h \
     ../docBase/docItemShading.h \
     ../docBase/docListNumberTree.h \
-    ../docBase/docNoteProperties.h \
     ../docBase/docNotesProperties.h \
     ../docBase/docParaProperties.h \
-    ../docBase/docSelectionScope.h \
     ../docBase/docStyleSheet.h \
     ../docBuf/docAttributes.h \
     ../docBuf/docBlockFrame.h \
     ../docBuf/docBuf.h \
-    ../docBuf/docDocumentNote.h \
     ../docBuf/docDocumentTree.h \
     ../docBuf/docDrawingShapeList.h \
-    ../docBuf/docNotes.h \
     ../docBuf/docStripFrame.h \
     docHtmlConfig.h \
     docHtmlWriteImpl.h \
+    ../drawMeta/drawMetafileSvg.h \
     ../include/appDebug.h \
     ../include/appDebugon.h \
     ../textEncoding/textMsLocale.h \
@@ -136,14 +126,13 @@ docHtmlWrite.o: \
 
 docHtmlWriteCss.o: \
     ../appUtil/sioGeneral.h \
-    ../appUtil/utilColor.h \
     ../appUtil/utilIndexMapping.h \
     ../appUtil/utilIndexSet.h \
     ../appUtil/utilMemoryBuffer.h \
     ../appUtil/utilPagedList.h \
     ../appUtil/xmlWriter.h \
+    ../bitmap/bmio.h \
     ../docBase/docChildFields.h \
-    ../docBase/docDocumentAttributeMap.h \
     ../docBase/docDocumentFieldList.h \
     ../docBase/docDocumentProperties.h \
     ../docBase/docInsertedObjectList.h \
@@ -159,6 +148,7 @@ docHtmlWriteCss.o: \
     docHtmlConfig.h \
     docHtmlWriteImpl.h \
     docWriteCss.h \
+    ../drawMeta/drawMetafileSvg.h \
     ../include/appDebug.h \
     ../include/appDebugon.h \
     ../utilGeo/geoDocumentPageSetup.h \
@@ -181,8 +171,8 @@ docHtmlWriteEml.o: \
     ../appUtil/utilPalette.h \
     ../appUtil/xmlWriter.h \
     ../bitmap/bitmap.h \
+    ../bitmap/bmio.h \
     ../docBase/docChildFields.h \
-    ../docBase/docDocumentAttributeMap.h \
     ../docBase/docDocumentFieldList.h \
     ../docBase/docDocumentProperties.h \
     ../docBase/docInsertedObjectList.h \
@@ -201,6 +191,7 @@ docHtmlWriteEml.o: \
     docHtmlConfig.h \
     docHtmlWrite.h \
     docHtmlWriteImpl.h \
+    ../drawMeta/drawMetafileSvg.h \
     ../include/appDebug.h \
     ../include/appDebugon.h \
     ../utilGeo/geoDocumentPageSetup.h \
@@ -221,8 +212,8 @@ docHtmlWriteEpub.o: \
     ../appUtil/utilPalette.h \
     ../appUtil/xmlWriter.h \
     ../bitmap/bitmap.h \
+    ../bitmap/bmio.h \
     ../docBase/docChildFields.h \
-    ../docBase/docDocumentAttributeMap.h \
     ../docBase/docDocumentField.h \
     ../docBase/docDocumentFieldList.h \
     ../docBase/docDocumentProperties.h \
@@ -253,6 +244,7 @@ docHtmlWriteEpub.o: \
     docHtmlConfig.h \
     docHtmlWrite.h \
     docHtmlWriteImpl.h \
+    ../drawMeta/drawMetafileSvg.h \
     ../include/appDebug.h \
     ../include/appDebugon.h \
     ../textEncoding/textMsLocale.h \
@@ -261,6 +253,41 @@ docHtmlWriteEpub.o: \
     ../utilGeo/geoRectangleOffsets.h \
     ../utilPs/textAttribute.h \
     docHtmlWriteEpub.c
+
+docHtmlWriteField.o: \
+    ../appUtil/sioGeneral.h \
+    ../appUtil/utilIndexMapping.h \
+    ../appUtil/utilMemoryBuffer.h \
+    ../appUtil/xmlWriter.h \
+    ../bitmap/bmio.h \
+    ../docBase/docBookmarkField.h \
+    ../docBase/docChildFields.h \
+    ../docBase/docDocumentField.h \
+    ../docBase/docEditPosition.h \
+    ../docBase/docEditRange.h \
+    ../docBase/docFieldInstructions.h \
+    ../docBase/docFieldKind.h \
+    ../docBase/docHyperlinkField.h \
+    ../docBase/docListNumberTree.h \
+    ../docBase/docNoteProperties.h \
+    ../docBase/docParaProperties.h \
+    ../docBase/docSelectionScope.h \
+    ../docBuf/docBlockFrame.h \
+    ../docBuf/docDebug.h \
+    ../docBuf/docDocumentNote.h \
+    ../docBuf/docDocumentTree.h \
+    ../docBuf/docNotes.h \
+    ../docBuf/docStripFrame.h \
+    docHtmlConfig.h \
+    docHtmlWriteImpl.h \
+    ../drawMeta/drawMetafileSvg.h \
+    ../include/appDebug.h \
+    ../include/appDebugon.h \
+    ../utilGeo/geoDocumentPageSetup.h \
+    ../utilGeo/geoRectangle.h \
+    ../utilGeo/geoRectangleOffsets.h \
+    ../utilPs/textAttribute.h \
+    docHtmlWriteField.c
 
 docHtmlWriteHtml.o: \
     ../appUtil/appSystem.h \
@@ -274,6 +301,7 @@ docHtmlWriteHtml.o: \
     ../appUtil/utilPalette.h \
     ../appUtil/xmlWriter.h \
     ../bitmap/bitmap.h \
+    ../bitmap/bmio.h \
     ../docBase/docChildFields.h \
     ../docBase/docDocumentFieldList.h \
     ../docBase/docInsertedObjectList.h \
@@ -291,6 +319,7 @@ docHtmlWriteHtml.o: \
     docHtmlConfig.h \
     docHtmlWrite.h \
     docHtmlWriteImpl.h \
+    ../drawMeta/drawMetafileSvg.h \
     ../include/appDebug.h \
     ../include/appDebugon.h \
     ../utilGeo/geoDocumentPageSetup.h \
@@ -301,6 +330,7 @@ docHtmlWriteHtml.o: \
 
 docHtmlWriteImage.o: \
     ../appUtil/sioGeneral.h \
+    ../appUtil/sioMemory.h \
     ../appUtil/sioUtil.h \
     ../appUtil/utilColor.h \
     ../appUtil/utilIndexMapping.h \
@@ -329,6 +359,7 @@ docHtmlWriteImage.o: \
     ../docBase/docStyleSheet.h \
     ../docBuf/docBlockFrame.h \
     ../docBuf/docBuf.h \
+    ../docBuf/docDebug.h \
     ../docBuf/docDocumentTree.h \
     ../docBuf/docDrawingShapeList.h \
     ../docBuf/docPageGrid.h \
@@ -361,9 +392,10 @@ docHtmlWriteNode.o: \
     ../appUtil/utilMemoryBuffer.h \
     ../appUtil/utilPagedList.h \
     ../appUtil/xmlWriter.h \
+    ../bitmap/bmio.h \
+    ../docBase/docBreakKind.h \
     ../docBase/docCellProperties.h \
     ../docBase/docChildFields.h \
-    ../docBase/docDocumentAttributeMap.h \
     ../docBase/docDocumentFieldList.h \
     ../docBase/docDocumentProperties.h \
     ../docBase/docInsertedObjectList.h \
@@ -393,12 +425,10 @@ docHtmlWriteNode.o: \
     ../docBuf/docStripFrame.h \
     ../docBuf/docTreeNode.h \
     ../docBuf/docTreeScanner.h \
-    ../docFont/fontMatchFont.h \
     docHtmlConfig.h \
     docHtmlWriteImpl.h \
-    ../docLayout/docLayout.h \
-    ../docLayout/layoutContext.h \
     docWriteCss.h \
+    ../drawMeta/drawMetafileSvg.h \
     ../include/appDebug.h \
     ../include/appDebugon.h \
     ../utilGeo/geoDocumentPageSetup.h \
@@ -415,6 +445,7 @@ docHtmlWriteNotes.o: \
     ../appUtil/utilMemoryBufferPrintf.h \
     ../appUtil/utilPagedList.h \
     ../appUtil/xmlWriter.h \
+    ../bitmap/bmio.h \
     ../docBase/docChildFields.h \
     ../docBase/docDocumentField.h \
     ../docBase/docDocumentFieldList.h \
@@ -446,6 +477,7 @@ docHtmlWriteNotes.o: \
     ../docBuf/docTreeNode.h \
     docHtmlConfig.h \
     docHtmlWriteImpl.h \
+    ../drawMeta/drawMetafileSvg.h \
     ../include/appDebug.h \
     ../include/appDebugon.h \
     ../utilGeo/geoDocumentPageSetup.h \
@@ -461,6 +493,7 @@ docHtmlWriteParagraph.o: \
     ../appUtil/utilMemoryBuffer.h \
     ../appUtil/utilPropMask.h \
     ../appUtil/xmlWriter.h \
+    ../bitmap/bmio.h \
     ../docBase/docChildFields.h \
     ../docBase/docDocumentField.h \
     ../docBase/docEditPosition.h \
@@ -491,6 +524,7 @@ docHtmlWriteParagraph.o: \
     docHtmlConfig.h \
     docHtmlWriteImpl.h \
     docWriteCss.h \
+    ../drawMeta/drawMetafileSvg.h \
     ../include/appDebug.h \
     ../include/appDebugon.h \
     ../utilGeo/geoDocumentPageSetup.h \
@@ -502,15 +536,12 @@ docHtmlWriteParagraph.o: \
 
 docMarkdownWrite.o: \
     ../appUtil/sioGeneral.h \
-    ../appUtil/utilColor.h \
     ../appUtil/utilIndexSet.h \
     ../appUtil/utilMemoryBuffer.h \
     ../appUtil/utilPagedList.h \
     ../docBase/docChildFields.h \
-    ../docBase/docDocumentAttributeMap.h \
     ../docBase/docDocumentField.h \
     ../docBase/docDocumentFieldList.h \
-    ../docBase/docDocumentProperties.h \
     ../docBase/docEditPosition.h \
     ../docBase/docEditRange.h \
     ../docBase/docFieldInstructions.h \
@@ -520,8 +551,6 @@ docMarkdownWrite.o: \
     ../docBase/docLayoutPosition.h \
     ../docBase/docListNumberTree.h \
     ../docBase/docNoteProperties.h \
-    ../docBase/docNotesProperties.h \
-    ../docBase/docParaProperties.h \
     ../docBase/docScanner.h \
     ../docBase/docSelectionScope.h \
     ../docBase/docStyleSheet.h \
@@ -533,7 +562,6 @@ docMarkdownWrite.o: \
     ../docBuf/docDocumentNote.h \
     ../docBuf/docDocumentTree.h \
     ../docBuf/docDrawingShapeList.h \
-    ../docBuf/docNodeTree.h \
     ../docBuf/docNotes.h \
     ../docBuf/docParaNode.h \
     ../docBuf/docParaScanner.h \
@@ -547,8 +575,6 @@ docMarkdownWrite.o: \
     docMarkdownReadWrite.h \
     ../include/appDebug.h \
     ../include/appDebugon.h \
-    ../utilGeo/geoDocumentPageSetup.h \
-    ../utilGeo/geoRectangleOffsets.h \
     ../utilPs/textAttribute.h \
     docMarkdownWrite.c
 
@@ -566,7 +592,6 @@ docSvgDraw.o: \
     ../docBase/docBlockOrnaments.h \
     ../docBase/docBorderProperties.h \
     ../docBase/docChildFields.h \
-    ../docBase/docDocumentAttributeMap.h \
     ../docBase/docDocumentFieldList.h \
     ../docBase/docDocumentProperties.h \
     ../docBase/docInsertedObjectList.h \
@@ -661,6 +686,7 @@ docSvgDrawShapeText.o: \
     ../appUtil/utilPalette.h \
     ../appUtil/xmlWriter.h \
     ../bitmap/bitmap.h \
+    ../bitmap/bmio.h \
     ../docBase/docChildFields.h \
     ../docBase/docListNumberTree.h \
     ../docBase/docParaProperties.h \
@@ -679,6 +705,7 @@ docSvgDrawShapeText.o: \
     ../docLayout/docLayoutDocumentTree.h \
     ../docLayout/layoutContext.h \
     docSvgDrawImpl.h \
+    ../drawMeta/drawMetafileSvg.h \
     ../include/appDebug.h \
     ../include/appDebugon.h \
     ../utilGeo/geoAffineTransform.h \
@@ -730,7 +757,6 @@ docSvgDrawTextLine.o: \
     ../appUtil/utilPagedList.h \
     ../appUtil/xmlWriter.h \
     ../docBase/docChildFields.h \
-    ../docBase/docDocumentAttributeMap.h \
     ../docBase/docDocumentFieldList.h \
     ../docBase/docDocumentProperties.h \
     ../docBase/docInsertedObjectList.h \
@@ -776,7 +802,6 @@ docWriteCss.o: \
     ../appUtil/utilPalette.h \
     ../docBase/docBorderProperties.h \
     ../docBase/docChildFields.h \
-    ../docBase/docDocumentAttributeMap.h \
     ../docBase/docDocumentFieldList.h \
     ../docBase/docDocumentProperties.h \
     ../docBase/docInsertedObjectList.h \

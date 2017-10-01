@@ -622,39 +622,3 @@ void docCellRectangleTwips(	DocumentRectangle *		drCell,
     return;
     }
 
-/************************************************************************/
-/*									*/
-/*  Continue to lay out the text on a subsequent page.			*/
-/*									*/
-/*  1)  Continuous section wrap to the same position as where they	*/
-/*	started on the page.						*/
-/*									*/
-/************************************************************************/
-
-void docLayoutSectColumnTop(	LayoutPosition *	lpTop,
-				BlockFrame *		bf,
-				struct BufferItem *	bodySectNode,
-				struct BufferDocument *	bd )
-    {
-    if  ( bodySectNode->biTreeType != DOCinBODY )
-	{ SDEB(docTreeTypeStr(bodySectNode->biTreeType));	}
-
-    docSectionBlockFrameTwips( bf, bodySectNode, bodySectNode, bd,
-					    lpTop->lpPage, lpTop->lpColumn );
-
-    lpTop->lpPageYTwips= bf->bfContentRect.drY0;
-    lpTop->lpAtTopOfColumn= 1;
-
-    /*  1  */
-    if  ( bodySectNode->biSectBreakKind == DOCibkNONE		&&
-	  lpTop->lpPage == bodySectNode->biTopPosition.lpPage	&&
-	  bodySectNode->biSectColumnCount > 1			&&
-	  lpTop->lpColumn > 0					)
-	{
-	lpTop->lpPageYTwips= bodySectNode->biTopPosition.lpPageYTwips;
-	lpTop->lpAtTopOfColumn= 0;
-	}
-
-    return;
-    }
-

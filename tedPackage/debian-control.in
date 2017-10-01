@@ -5,7 +5,7 @@ Maintainer: Mark de Does <mark@mdedoes.com>
 Architecture: @ARCH@
 Version: 2.23h
 Installed-Size: @INSTSIZE@
-Depends: zlib1g, libpcre3, libx11-6, libxpm4, libjpeg8 | libjpeg62-turbo , libtiff4 | libtiff5, libpng12-0, libgtk2.0-0, libpaper1
+Depends: zlib1g, libpcre3, libx11-6, libxpm4, libjpeg8 | libjpeg62-turbo , libtiff4 | libtiff5, libpng12-0 | libpng16-16, libgtk2.0-0, libpaper1
 Build-Depends: build-essential, zlib1g-dev, libpcre3-dev, libx11-dev, libxpm-dev, libjpeg8-dev, libtiff4-dev, libpng12-dev, libgtk2.0-dev, libpaper-dev lintian fakeroot
 XS-Motif-Build-Depends: build-essential, zlib1g-dev, libpcre3-dev, libx11-dev, libxpm-dev, libjpeg8-dev, libtiff4-dev, libpng12-dev, libfontconfig1-dev, libfreetype6-dev, libxrender-dev, libexpat1-dev, libxft-dev, libxp-dev, libxmu-dev, libmotif-dev libxt6-dev, libpaper-dev
 XB-Motif-Depends: zlib1g, libpcre3, libx11-6, libxpm4, libjpeg8, libtiff4, libpng12-0, libxft2, libxt6, libxp6, libxmu6, libmotif4, libpaper1

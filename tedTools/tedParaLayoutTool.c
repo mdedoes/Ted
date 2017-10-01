@@ -22,6 +22,7 @@
 #   include	<docTreeNode.h>
 #   include	<docEditCommand.h>
 #   include	<docPropVal.h>
+#   include	<docBreakKind.h>
 #   include	<docParaProperties.h>
 #   include	<docSelect.h>
 #   include	<appInspectorSubject.h>

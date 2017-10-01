@@ -105,7 +105,7 @@ int docEditShiftIndent(		EditOperation *	eo,
 	    {
 	    if  ( docEditUpdParaProperties( eo, &ppDoneMask, paraNode,
 				    &ppSetMask, &ppSet,
-				    (const DocumentAttributeMap *)0 ) )
+				    (const struct DocumentAttributeMap *)0 ) )
 		{ LDEB(1); rval= -1; goto ready; }
 
 	    if  ( ! utilPropMaskIsEmpty( &ppDoneMask ) )

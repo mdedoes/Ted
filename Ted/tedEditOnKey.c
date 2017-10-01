@@ -22,6 +22,7 @@
 #   include	<guiKeys.h>
 #   include	<appEditDocument.h>
 #   include	"tedKeyboard.h"
+#   include	<docBreakKind.h>
 
 #   include	<appDebugon.h>
 
@@ -81,10 +82,8 @@ static void tedEditOnEnterKeySamePage(
     {
     TedDocument *	td= (TedDocument *)ed->edPrivateData;
 
-    const int 		onNewPage= 0;
-    const int 		editCommand= EDITcmdREPLACE;
-
-    tedDocSplitParagraph( ed, onNewPage, editCommand, td->tdTraced );
+    tedDocSplitParagraph( ed, DOCibkNONE,
+				EDITcmdREPLACE, td->tdTraced );
 
     return;
     }
@@ -99,10 +98,8 @@ static void tedEditOnEnterKeyNewPage(
     {
     TedDocument *	td= (TedDocument *)ed->edPrivateData;
 
-    const int 		onNewPage= 1;
-    const int 		editCommand= EDITcmdREPLACE_BODY_LEVEL;
-
-    tedDocSplitParagraph( ed, onNewPage, editCommand, td->tdTraced );
+    tedDocSplitParagraph( ed, DOCibkCOL,
+				EDITcmdREPLACE_BODY_LEVEL, td->tdTraced );
 
     return;
     }
@@ -115,7 +112,7 @@ static void tedEditOnDeleteKey(	struct EditDocument *		ed,
 				const SelectionGeometry *	sg )
     {
     TedDocument *		td= (TedDocument *)ed->edPrivateData;
-    struct BufferDocument *		bd= td->tdDocument;
+    struct BufferDocument *	bd= td->tdDocument;
 
     DocumentPosition		dpNew;
     int				headAtLineHead;

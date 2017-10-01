@@ -21,11 +21,11 @@
 /************************************************************************/
 
 int docChangeDocumentProperties(
-			EditOperation *			eo,
-			PropertyMask *			docDpDoneMask,
-			const PropertyMask *		dpSetMask,
-			const DocumentProperties *	dpSet,
-			const DocumentAttributeMap *	dam )
+			EditOperation *				eo,
+			PropertyMask *				docDpDoneMask,
+			const PropertyMask *			dpSetMask,
+			const DocumentProperties *		dpSet,
+			const struct DocumentAttributeMap *	dam )
     {
     PropertyMask	dpDoneMask;
 

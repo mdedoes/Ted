@@ -250,6 +250,7 @@ int docRtfGotText(	RtfReader *		rr,
     RtfReadingState *		rrs= rr->rrState;
     RtfTreeStack *		rts= rr->rrTreeStack;
     struct BufferItem *		paraNode;
+    int				paraStrlen;
 
     if  ( rr->rrInIgnoredGroup )
 	{ return 0;	}
@@ -258,11 +259,16 @@ int docRtfGotText(	RtfReader *		rr,
     if  ( ! paraNode )
 	{ XDEB(paraNode); return -1; }
 
-    if  ( docParaStrlen( paraNode ) == 0	||
-	  rr->rrAfterParaHeadField		)
+    paraStrlen= docParaStrlen( paraNode );
+    if  ( paraStrlen == 0				||
+	  paraStrlen == rr->rrParaHeadFieldTailOffset	)
 	{
 	if  ( docRtfAdaptToParaProperties( rr ) )
 	    { LDEB(1); return -1;	}
+	/*
+	 * No need to update rrParaHeadFieldTailOffset, as we append text after
+	   the head field anyway
+	 */
 	}
 
     if  ( docRtfReadAdaptToFontEncoding( rr, rrs ) )
@@ -275,10 +281,7 @@ int docRtfGotText(	RtfReader *		rr,
 					&(rrs->rrsTextAttribute), text, len ) )
 	{ LDEB(1); return -1;	}
 
-    rr->rrAfterNoteref= 0;
-    rr->rrAfterParaHeadField= 0;
-    rr->rrAfterInlineShape= 0;
-    rr->rrInlineShapeObjectNumber= -1;
+    docRtfResetParagraphReadingState( rr );
     
     return 0;
     }
@@ -400,42 +403,12 @@ int docRtfTextSpecialParticule(	const RtfControlWord *	rcw,
 				&(rrs->rrsTextAttribute), rcw->rcwID ) )
 		{ LDEB(1); return -1;	}
 
-	    rr->rrAfterNoteref= 0;
-	    rr->rrAfterParaHeadField= 0;
-	    rr->rrAfterInlineShape= 0;
-	    rr->rrInlineShapeObjectNumber= -1;
+	    docRtfResetParagraphReadingState( rr );
 
 	    break;
 
 	case TPkindPAGEBREAK:
 	case TPkindCOLUMNBREAK:
-	    {
-	    int				done= 0;
-
-	    if  ( rr->rrParagraphBreakOverride == -1		&&
-		  ( docParaStrlen(paraNode) == 0	||
-		    rr->rrAfterParaHeadField		)	)
-		{
-		if  ( rcw->rcwID == TPkindPAGEBREAK )
-		    { rr->rrParagraphBreakOverride= DOCibkPAGE; done= 1; }
-
-		if  ( rcw->rcwID == TPkindCOLUMNBREAK )
-		    { rr->rrParagraphBreakOverride= DOCibkCOL; done= 1; }
-		}
-
-	    if  ( ! done						&&
-		  docParaBuilderAppendSpecialParticule(
-				rts->rtsParagraphBuilder,
-				&(rrs->rrsTextAttribute), rcw->rcwID ) )
-		{ LDEB(1); return -1;	}
-
-	    rr->rrAfterNoteref= 0;
-	    rr->rrAfterParaHeadField= 0;
-	    rr->rrAfterInlineShape= 0;
-	    rr->rrInlineShapeObjectNumber= -1;
-
-	    break;
-	    }
 
 	default:
 	    SLDEB(rcw->rcwWord,rcw->rcwID);

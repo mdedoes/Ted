@@ -252,7 +252,7 @@ extern int tedDocInsertImageFile(
 				const struct MemoryBuffer *	filename );
 
 extern void tedDocSplitParagraph( struct EditDocument *		ed,
-				int				onNewPage,
+				int				breakKind,
 				int				editCommand,
 				int				traced );
 

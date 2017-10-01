@@ -499,7 +499,6 @@ tedApp.o: \
     ../bitmap/bitmap.h \
     ../docBase/docCellProperties.h \
     ../docBase/docChildFields.h \
-    ../docBase/docDocumentAttributeMap.h \
     ../docBase/docDocumentFieldList.h \
     ../docBase/docDocumentProperties.h \
     ../docBase/docEditPosition.h \
@@ -905,7 +904,6 @@ tedDocFront.o: \
     ../appUtil/utilPropMask.h \
     ../docBase/docCellProperties.h \
     ../docBase/docChildFields.h \
-    ../docBase/docDocumentAttributeMap.h \
     ../docBase/docDocumentFieldList.h \
     ../docBase/docDocumentProperties.h \
     ../docBase/docEditPosition.h \
@@ -1051,7 +1049,6 @@ tedDocSetProperties.o: \
     ../appUtil/utilPropMask.h \
     ../docBase/docCellProperties.h \
     ../docBase/docChildFields.h \
-    ../docBase/docDocumentAttributeMap.h \
     ../docBase/docDocumentFieldList.h \
     ../docBase/docDocumentProperties.h \
     ../docBase/docEditPosition.h \
@@ -1123,7 +1120,6 @@ tedDocument.o: \
     ../bitmap/bitmap.h \
     ../docBase/docCellProperties.h \
     ../docBase/docChildFields.h \
-    ../docBase/docDocumentAttributeMap.h \
     ../docBase/docDocumentFieldList.h \
     ../docBase/docDocumentProperties.h \
     ../docBase/docEditPosition.h \
@@ -1396,7 +1392,6 @@ tedEditList.o: \
     ../appUtil/utilPropMask.h \
     ../docBase/docCellProperties.h \
     ../docBase/docChildFields.h \
-    ../docBase/docDocumentAttributeMap.h \
     ../docBase/docDocumentFieldList.h \
     ../docBase/docDocumentList.h \
     ../docBase/docDocumentProperties.h \
@@ -1535,6 +1530,7 @@ tedEditOnKey.o: \
     ../appUtil/utilMemoryBuffer.h \
     ../appUtil/utilPagedList.h \
     ../appUtil/utilPropMask.h \
+    ../docBase/docBreakKind.h \
     ../docBase/docCellProperties.h \
     ../docBase/docEditPosition.h \
     ../docBase/docEditRange.h \
@@ -1658,12 +1654,12 @@ tedEditSplit.o: \
     ../appUtil/utilIndexSet.h \
     ../appUtil/utilMemoryBuffer.h \
     ../appUtil/utilPropMask.h \
+    ../docBase/docBreakKind.h \
     ../docBase/docCellProperties.h \
     ../docBase/docEditPosition.h \
     ../docBase/docEditRange.h \
     ../docBase/docLayoutPosition.h \
     ../docBase/docParaProperties.h \
-    ../docBase/docPropVal.h \
     ../docBase/docSelectionScope.h \
     ../docBuf/docCellNode.h \
     ../docBuf/docParaNode.h \
@@ -1911,7 +1907,6 @@ tedFollowLink.o: \
     ../appUtil/utilPropMask.h \
     ../docBase/docCellProperties.h \
     ../docBase/docChildFields.h \
-    ../docBase/docDocumentAttributeMap.h \
     ../docBase/docDocumentFieldList.h \
     ../docBase/docDocumentProperties.h \
     ../docBase/docEditPosition.h \
@@ -2297,7 +2292,6 @@ tedMain.o: \
     ../appUtil/utilPagedList.h \
     ../appUtil/utilPropMask.h \
     ../docBase/docCellProperties.h \
-    ../docBase/docDocumentAttributeMap.h \
     ../docBase/docDocumentProperties.h \
     ../docBase/docEditPosition.h \
     ../docBase/docEditRange.h \
@@ -2305,7 +2299,6 @@ tedMain.o: \
     ../docBase/docLayoutPosition.h \
     ../docBase/docNotesProperties.h \
     ../docBase/docParaProperties.h \
-    ../docBase/docPropVal.h \
     ../docBase/docRowProperties.h \
     ../docBase/docSelectionScope.h \
     ../docBuf/docFileExtensions.h \
@@ -2742,12 +2735,10 @@ tedOpenDocumentFile.o: \
     ../appUtil/sioGeneral.h \
     ../appUtil/sioMD5.h \
     ../appUtil/sioStdin.h \
-    ../appUtil/utilColor.h \
     ../appUtil/utilIndexSet.h \
     ../appUtil/utilMemoryBuffer.h \
     ../appUtil/utilPagedList.h \
     ../docBase/docChildFields.h \
-    ../docBase/docDocumentAttributeMap.h \
     ../docBase/docDocumentFieldList.h \
     ../docBase/docDocumentProperties.h \
     ../docBase/docInsertedObjectList.h \
@@ -2795,7 +2786,6 @@ tedPage.o: \
     ../appUtil/utilPropMask.h \
     ../docBase/docCellProperties.h \
     ../docBase/docChildFields.h \
-    ../docBase/docDocumentAttributeMap.h \
     ../docBase/docDocumentFieldList.h \
     ../docBase/docDocumentProperties.h \
     ../docBase/docEditPosition.h \
@@ -2984,7 +2974,6 @@ tedSaveDocument.o: \
     ../appUtil/utilPropMask.h \
     ../docBase/docCellProperties.h \
     ../docBase/docChildFields.h \
-    ../docBase/docDocumentAttributeMap.h \
     ../docBase/docDocumentFieldList.h \
     ../docBase/docDocumentProperties.h \
     ../docBase/docEditPosition.h \

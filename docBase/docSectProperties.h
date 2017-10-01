@@ -10,6 +10,8 @@
 #   include	<geoDocumentPageSetup.h>
 #   include	"docNotesProperties.h"
 
+struct DocumentProperties;
+
 typedef enum PageNumberStyle
     {
     DOCpgnDEC= 0,
@@ -264,5 +266,8 @@ extern int docSectGetColumnWidth(
 extern int docSectSetColumnWidth(	SectionProperties *	sp,
 					int			col,
 					int			value );
+
+extern int docSectGetBreakKind( const SectionProperties *		sp,
+				const struct DocumentProperties *	dp );
 
 #   endif	/*  DOC_SECT_PROP_H  */

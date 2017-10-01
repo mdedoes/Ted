@@ -54,15 +54,17 @@ int docRtfCloseParagraph(	RtfReader *		rr,
 
     if  ( docRtfAdaptToParaProperties( rr ) )
 	{ LDEB(1); return -1;	}
+    /*
+     * No need to update rr->rrParaHeadFieldTailOffset as we leave the
+     * paragraph
+     */
 
     if  ( docParaBuilderFinishParagraph( rts->rtsParagraphBuilder, &ta ) )
 	{ LDEB(paraNr); return -1;	}
 
     rr->rrParagraphBreakOverride= -1;
-    rr->rrAfterNoteref= 0;
-    rr->rrAfterParaHeadField= 0;
-    rr->rrAfterInlineShape= 0;
-    rr->rrInlineShapeObjectNumber= -1;
+
+    docRtfResetParagraphReadingState( rr );
 
     return 0;
     }
@@ -160,7 +162,7 @@ int docRtfRememberTabStopProperty(	const RtfControlWord *	rcw,
 					RtfReader *		rrc )
     {
     RtfReadingState *	rrs= rrc->rrState;
-    TabStop *		ts= &(rrc->rrcTabStop);
+    TabStop *		ts= &(rrc->rrTabStop);
 
     if  ( docTabStopSetProperty( ts, rcw->rcwID, arg ) )
 	{ SLDEB(rcw->rcwWord,arg); return 0;	}

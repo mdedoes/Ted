@@ -16,12 +16,12 @@
 #   include	<docNodeTree.h>
 #   include	<docTextLine.h>
 #   include	<docSelect.h>
-#   include	<docPropVal.h>
 #   include	<docFrameProperties.h>
 #   include	<docRowProperties.h>
 #   include	<docParaProperties.h>
 #   include	<docBlockFrame.h>
 #   include	<docAttributes.h>
+#   include	<docBreakKind.h>
 
 #   include	<docDebug.h>
 #   include	<appDebugon.h>
@@ -323,36 +323,25 @@ int docLayoutStripChildren(	int *				pStopCode,
 /*									*/
 /************************************************************************/
 
-static void docCommitStripLayout_x(
+/* Implement (a) */
+static int docCommitStripAtExplicitPageBreak(
 				ParagraphLayoutPosition *	plp0,
 				const ParagraphLayoutPosition *	plp1,
-				const int			advanceAnyway,
-				int				page,
-				int				column,
 				const struct BufferItem *	cellNode )
     {
-    const struct BufferItem *		paraNode0;
-    const struct BufferItem *		paraNode1;
-    const TextLine *		tl;
-
-    int				para;
-
-    int				line0;
-
-    paraNode0= cellNode->biChildren[plp0->pspChild];
-    paraNode1= (const struct BufferItem *)0;
-
-    if  ( paraNode0->biLevel != DOClevPARA )
-	{ LSDEB(paraNode0->biLevel,docLevelStr(paraNode0->biLevel)); return; }
-
-    /*  a  */
     if  ( plp1->pspChild < cellNode->biChildCount )
 	{
-	int		line1;
+	const struct BufferItem *	paraNode1;
+	int				line1= plp1->pspLine;
 
 	paraNode1= cellNode->biChildren[plp1->pspChild];
 
-	line1= plp1->pspLine;
+	if  ( line1 == 0						&&
+	      paraNode1->biParaProperties->ppBreakKind != DOCibkNONE	)
+	    {
+	    *plp0= *plp1;
+	    return 1;
+	    }
 
 	if  ( line1- 1 >= 0				&&
 	      line1- 1 < paraNode1->biParaLineCount	)
@@ -362,31 +351,59 @@ static void docCommitStripLayout_x(
 	    if  ( tl->tlFlags & TLflagBLOCKBREAK )
 		{
 		*plp0= *plp1;
-		return;
+		return 1;
 		}
 	    }
 	}
 
-    /*  b  */
-    if  ( paraNode1					&&
-	  paraNode1->biLevel == DOClevPARA		&& /* no nestrow */
-	  paraNode1->biParaProperties->ppKeepOnPage	&&
-	  ! paraNode1->biParaProperties->ppKeepWithNext	&&
-	  plp1->pspLine > 0		)
+    return 0;
+    }
+
+/* Implement (b) */
+static int docCommitStripAtLegalPosition(
+				ParagraphLayoutPosition *	plp0,
+				const ParagraphLayoutPosition *	plp1,
+				const struct BufferItem *	cellNode )
+    {
+    if  ( plp1->pspChild < cellNode->biChildCount )
 	{
-	int		line= 1;
+	const struct BufferItem *	paraNode1;
 
-	if  ( paraNode1->biParaProperties->ppWidowControl )
-	    { line++;	}
+	paraNode1= cellNode->biChildren[plp1->pspChild];
 
-	if  ( plp1->pspLine >= line )
+	if  ( paraNode1->biLevel == DOClevPARA			&& /*!nestrow*/
+	      ! paraNode1->biParaProperties->ppKeepOnPage	&&
+	      ! paraNode1->biParaProperties->ppKeepWithNext	&&
+	      plp1->pspLine > 0		)
 	    {
-	    *plp0= *plp1;
-	    return;
+	    int		line= 1;
+
+	    if  ( paraNode1->biParaProperties->ppWidowControl )
+		{ line++;	}
+
+	    if  ( plp1->pspLine >= line )
+		{
+		*plp0= *plp1;
+		return 1;
+		}
 	    }
 	}
 
-    /*  1  */
+    return 0;
+    }
+
+/* Implement (1) */
+static const struct BufferItem * docCommitParagraphsBeforeFrame(
+				ParagraphLayoutPosition *	plp0,
+				const ParagraphLayoutPosition *	plp1,
+				int				page,
+				int				column,
+				const struct BufferItem *	cellNode )
+    {
+    const struct BufferItem *	paraNode0;
+
+    paraNode0= cellNode->biChildren[plp0->pspChild];
+
     while( plp0->pspChild < plp1->pspChild )
 	{
 	if  ( docCompareLayoutPositionToFrame( &(paraNode0->biBelowPosition),
@@ -397,7 +414,20 @@ static void docCommitStripLayout_x(
 	paraNode0= cellNode->biChildren[plp0->pspChild];
 	}
 
-    /*  2  */
+    return paraNode0;
+    }
+
+/* Implement (2) */
+static void docCommitLinesBeforeFrame(
+				ParagraphLayoutPosition *	plp0,
+				const ParagraphLayoutPosition *	plp1,
+				int				page,
+				int				column,
+				const struct BufferItem *	paraNode0 )
+    {
+    int				line0;
+    const TextLine *		tl;
+
     if  ( plp0->pspChild < plp1->pspChild )
 	{ line0= paraNode0->biParaLineCount;	}
     else{ line0= plp1->pspLine;			}
@@ -411,8 +441,18 @@ static void docCommitStripLayout_x(
 
 	plp0->pspLine++; tl++;
 	}
+    }
 
-    /*  3  */
+/* Implement (3) */
+static const struct BufferItem * docCommitParagraphsNoKeepNext(
+				ParagraphLayoutPosition *	plp0,
+				const ParagraphLayoutPosition *	plp1,
+				int				advanceAnyway,
+				const struct BufferItem *	cellNode,
+				const struct BufferItem *	paraNode0 )
+    {
+    int	para;
+
     for ( para= plp0->pspChild; para < plp1->pspChild; para++ )
 	{
 	const struct BufferItem *	childNode= cellNode->biChildren[para];
@@ -428,6 +468,77 @@ static void docCommitStripLayout_x(
 	    /*  else .. return below */
 	    }
 	}
+
+    return paraNode0;
+    }
+
+/* Implement (6) */
+static int docCommitStripToAvoidOrphan(
+				ParagraphLayoutPosition *	plp0,
+				const ParagraphLayoutPosition *	plp1,
+				int				advanceAnyway,
+				const struct BufferItem *	cellNode )
+    {
+    if  ( plp1->pspChild < cellNode->biChildCount )
+	{
+	const struct BufferItem *	paraNode1;
+
+	paraNode1= cellNode->biChildren[plp1->pspChild];
+
+	if  ( ! advanceAnyway					&&
+	      paraNode1->biLevel == DOClevPARA			&&
+	      paraNode1->biParaProperties->ppWidowControl	&&
+	      plp1->pspLine == 1				&&
+	      paraNode1->biParaLineCount >= 1		)
+	    {
+	    const TextLine *		tl;
+
+	    tl= paraNode1->biParaLines+ 0;
+
+	    if  ( tl->tlFirstParticule+ tl->tlParticuleCount <
+					paraNode1->biParaParticuleCount	)
+		{
+		docStripLayoutStartChild( plp0, plp0->pspChild );
+		return 1;
+		}
+	    }
+	}
+
+    return 0;
+    }
+
+static void docCommitStripLayout_x(
+				ParagraphLayoutPosition *	plp0,
+				const ParagraphLayoutPosition *	plp1,
+				const int			advanceAnyway,
+				int				page,
+				int				column,
+				const struct BufferItem *	cellNode )
+    {
+    const struct BufferItem *	paraNode0;
+
+    paraNode0= cellNode->biChildren[plp0->pspChild];
+
+    if  ( paraNode0->biLevel != DOClevPARA )
+	{ LSDEB(paraNode0->biLevel,docLevelStr(paraNode0->biLevel)); return; }
+
+    /*  a  */
+    if  ( docCommitStripAtExplicitPageBreak( plp0, plp1, cellNode ) )
+	{ return;	}
+
+    /*  b  */
+    if  ( docCommitStripAtLegalPosition( plp0, plp1, cellNode ) )
+	{ return;	}
+
+    /*  1  */
+    paraNode0= docCommitParagraphsBeforeFrame( plp0, plp1,
+						    page, column, cellNode );
+    /*  2  */
+    docCommitLinesBeforeFrame( plp0, plp1, page, column, paraNode0 );
+
+    /*  3  */
+    paraNode0= docCommitParagraphsNoKeepNext( plp0, plp1, advanceAnyway,
+						    cellNode, paraNode0 );
 
     /*  4  */
     if  ( plp0->pspChild < plp1->pspChild )
@@ -450,22 +561,8 @@ static void docCommitStripLayout_x(
 	}
 
     /*  6  */
-    if  ( ! advanceAnyway				&&
-	  paraNode1					&&
-	  paraNode1->biLevel == DOClevPARA		&&
-	  paraNode1->biParaProperties->ppWidowControl	&&
-	  plp1->pspLine == 1				&&
-	  paraNode1->biParaLineCount >= 1		)
-	{
-	tl= paraNode1->biParaLines+ 0;
-
-	if  ( tl->tlFirstParticule+ tl->tlParticuleCount <
-					paraNode1->biParaParticuleCount	)
-	    {
-	    docStripLayoutStartChild( plp0, plp0->pspChild );
-	    return;
-	    }
-	}
+    if  ( docCommitStripToAvoidOrphan( plp0, plp1, advanceAnyway,cellNode ) )
+	{ return;	}
 
     /*  7  */
 
@@ -551,7 +648,7 @@ void docCommitStripLayout(	int *				pAdvanced,
 /*									*/
 /*  Find out where to start formatting a strip.				*/
 /*  After some thought: That is the position that would be committed	*/
-/*  if the strip were formatted upto the stat position.			*/
+/*  if the strip were formatted upto the start position.		*/
 /*									*/
 /************************************************************************/
 

@@ -118,15 +118,10 @@ static int docHtmlSaveFieldTail( const VisitParticule *	vp,
 
     fki= DOC_FieldKinds+ df->dfKind;
 
-    if  ( df->dfKind == DOCfkCHFTN )
+    if  ( df->dfKind == DOCfkCHFTN					||
+	  df->dfKind == DOCfkBOOKMARK					||
+	  ( fki->fkiIsFieldInRtf && fki->fkiLevel == DOClevSPAN )	)
 	{ docHtmlFinishField( df, hwc );	}
-
-    if  ( df->dfKind == DOCfkBOOKMARK )
-	{ docHtmlFinishField( df, hwc ); 	}
-
-    if  ( fki->fkiIsFieldInRtf		&&
-	  fki->fkiLevel == DOClevSPAN	)
-	{ docHtmlFinishField( df, hwc ); 	}
 
     return SCANadviceOK;
     }
@@ -153,25 +148,7 @@ static int docHtmlSaveFieldHead( const VisitParticule *	vp,
 
     if  ( df->dfKind == DOCfkCHFTN )
 	{
-	char		scratch[20+1];
-
-	docHtmlStartField( df, hwc, vp->vpParaNode, vp->vpTextAttributeNr );
-
-	if  ( vp->vpParaNode->biTreeType == DOCinBODY )
-	    {
-	    sprintf( scratch, "%d", hwc->hwcNoteRefCount+ 1 );
-	    hwc->hwcNoteRefCount++;
-	    hpw->hpwNoteRefCount++;
-	    }
-	else{
-	    sprintf( scratch, "%d", hwc->hwcNoteDefCount+ 1 );
-	    hwc->hwcNoteDefCount++;
-	    }
-
-	docHtmlPutString( scratch, hwc );
-
-	if  ( hwc->hwcInHyperlink )
-	    { hwc->hwcBytesInLink += strlen( scratch );	}
+	char	scratch[20+1];
 
 	if  ( vp->vpParaNode->biTreeType == DOCinBODY	&&
 	      hwc->hwcInlineNotes			)
@@ -181,7 +158,32 @@ static int docHtmlSaveFieldHead( const VisitParticule *	vp,
 		{ LDEB(vp->vpTextParticule->tpObjectNumber);	}
 	    }
 
+	docHtmlStartField( df, hwc, vp->vpParaNode, vp->vpTextAttributeNr );
+
+	if  ( vp->vpParaNode->biTreeType == DOCinBODY )
+	    {
+	    sprintf( scratch, "%d", hwc->hwcNoteRefCount+ 1 );
+	    hwc->hwcNoteRefCount++;
+	    }
+	else{
+	    sprintf( scratch, "%d", hwc->hwcNoteDefCount+ 1 );
+	    hwc->hwcNoteDefCount++;
+	    }
+
+#	if 1
+	/* Save unified note text */
+	docHtmlPutString( scratch, hwc );
+
+	if  ( hwc->hwcInHyperlink )
+	    { hwc->hwcBytesInLink += strlen( scratch );	}
+
+	docHtmlFinishField( df, hwc );
+
 	return SCANadviceSKIP;
+#	else
+	/* Save original note text */
+	return SCANadviceOK;
+#	endif
 	}
 
     return SCANadviceOK;

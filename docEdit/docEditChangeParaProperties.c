@@ -50,7 +50,7 @@ static int docEditChangeParaAndTextProperties(
 				const PropertyMask *		ppSetMask,
 				const struct ParagraphProperties * ppSet )
     {
-    struct BufferDocument *		bd= eo->eoDocument;
+    struct BufferDocument *	bd= eo->eoDocument;
 
     PropertyMask		ppDoneMask;
     PropertyMask		taDoneMask;

@@ -134,7 +134,6 @@ docCalculateIncludeTextField.o: \
     ../appUtil/appSystem.h \
     ../appUtil/sioFileio.h \
     ../appUtil/sioGeneral.h \
-    ../appUtil/utilColor.h \
     ../appUtil/utilFileExtension.h \
     ../appUtil/utilIndexSet.h \
     ../appUtil/utilMemoryBuffer.h \
@@ -435,13 +434,11 @@ docEditAdmin.o: \
     docEditAdmin.c
 
 docEditChangeDocumentProperties.o: \
-    ../appUtil/utilColor.h \
     ../appUtil/utilIndexSet.h \
     ../appUtil/utilMemoryBuffer.h \
     ../appUtil/utilPagedList.h \
     ../appUtil/utilPropMask.h \
     ../docBase/docChildFields.h \
-    ../docBase/docDocumentAttributeMap.h \
     ../docBase/docDocumentFieldList.h \
     ../docBase/docDocumentProperties.h \
     ../docBase/docEditPosition.h \
@@ -711,13 +708,11 @@ docEditList.o: \
     docEditList.c
 
 docEditListImpl.o: \
-    ../appUtil/utilColor.h \
     ../appUtil/utilIndexSet.h \
     ../appUtil/utilMemoryBuffer.h \
     ../appUtil/utilPagedList.h \
     ../appUtil/utilPropMask.h \
     ../docBase/docChildFields.h \
-    ../docBase/docDocumentAttributeMap.h \
     ../docBase/docDocumentFieldList.h \
     ../docBase/docDocumentList.h \
     ../docBase/docDocumentProperties.h \
@@ -954,6 +949,7 @@ docEditParagraph.o: \
     ../appUtil/utilMemoryBuffer.h \
     ../appUtil/utilPagedList.h \
     ../appUtil/utilPropMask.h \
+    ../docBase/docBreakKind.h \
     ../docBase/docChildFields.h \
     ../docBase/docDocumentAttributeMap.h \
     ../docBase/docDocumentFieldList.h \
@@ -963,7 +959,6 @@ docEditParagraph.o: \
     ../docBase/docLayoutPosition.h \
     ../docBase/docListNumberTree.h \
     ../docBase/docParaProperties.h \
-    ../docBase/docPropVal.h \
     ../docBase/docSelectionScope.h \
     ../docBase/docStyleSheet.h \
     ../docBase/docTextParticule.h \
@@ -1059,7 +1054,6 @@ docEditSetProperties.o: \
     docEditSetProperties.c
 
 docEditStep.o: \
-    ../appUtil/utilColor.h \
     ../appUtil/utilIndexSet.h \
     ../appUtil/utilMemoryBuffer.h \
     ../appUtil/utilPagedList.h \
@@ -1167,7 +1161,6 @@ docFontReport.o: \
     ../appUtil/appSystem.h \
     ../appUtil/sioFileio.h \
     ../appUtil/sioGeneral.h \
-    ../appUtil/utilColor.h \
     ../appUtil/utilIndexMapping.h \
     ../appUtil/utilIndexSet.h \
     ../appUtil/utilMemoryBuffer.h \
@@ -1221,7 +1214,6 @@ docFontReport.o: \
     docFontReport.c
 
 docIncludeDocument.o: \
-    ../appUtil/utilColor.h \
     ../appUtil/utilIndexSet.h \
     ../appUtil/utilMemoryBuffer.h \
     ../appUtil/utilPagedList.h \
@@ -1273,7 +1265,6 @@ docIntermediaryDocument.o: \
     ../appUtil/utilPagedList.h \
     ../appUtil/utilPalette.h \
     ../docBase/docChildFields.h \
-    ../docBase/docDocumentAttributeMap.h \
     ../docBase/docDocumentFieldList.h \
     ../docBase/docDocumentProperties.h \
     ../docBase/docInsertedObjectList.h \
@@ -1397,7 +1388,6 @@ docRtfReadTrace.o: \
     ../docBase/docNotesProperties.h \
     ../docBase/docParaProperties.h \
     ../docBase/docPictureProperties.h \
-    ../docBase/docPropVal.h \
     ../docBase/docRowProperties.h \
     ../docBase/docSectProperties.h \
     ../docBase/docSelectionScope.h \
@@ -1420,6 +1410,7 @@ docRtfReadTrace.o: \
     ../docRtf/docRtfFindProperty.h \
     ../docRtf/docRtfFlags.h \
     ../docRtf/docRtfReaderImpl.h \
+    ../docRtf/docRtfReadTrace.h \
     ../docRtf/docRtfReadTreeStack.h \
     ../docRtf/docRtfTags.h \
     ../docRtf/docRtfTraceImpl.h \
@@ -1436,7 +1427,6 @@ docRtfWriteTrace.o: \
     ../appUtil/appUtilConfig.h \
     ../appUtil/sioFd.h \
     ../appUtil/sioGeneral.h \
-    ../appUtil/utilColor.h \
     ../appUtil/utilIndexSet.h \
     ../appUtil/utilMD5.h \
     ../appUtil/utilMemoryBuffer.h \
@@ -1444,7 +1434,6 @@ docRtfWriteTrace.o: \
     ../appUtil/utilPropMask.h \
     ../docBase/docCellProperties.h \
     ../docBase/docChildFields.h \
-    ../docBase/docDocumentAttributeMap.h \
     ../docBase/docDocumentField.h \
     ../docBase/docDocumentFieldList.h \
     ../docBase/docDocumentProperties.h \
@@ -1509,7 +1498,6 @@ docSelectionDescription.o: \
     ../docBase/docNoteProperties.h \
     ../docBase/docNotesProperties.h \
     ../docBase/docParaProperties.h \
-    ../docBase/docPropVal.h \
     ../docBase/docRowProperties.h \
     ../docBase/docSectProperties.h \
     ../docBase/docSelectionScope.h \
@@ -1545,13 +1533,11 @@ docSelectionDescription.o: \
     docSelectionDescription.c
 
 docShiftIndent.o: \
-    ../appUtil/utilColor.h \
     ../appUtil/utilIndexSet.h \
     ../appUtil/utilMemoryBuffer.h \
     ../appUtil/utilPagedList.h \
     ../appUtil/utilPropMask.h \
     ../docBase/docChildFields.h \
-    ../docBase/docDocumentAttributeMap.h \
     ../docBase/docDocumentFieldList.h \
     ../docBase/docDocumentList.h \
     ../docBase/docDocumentProperties.h \
@@ -1627,7 +1613,6 @@ docTocBookmarks.o: \
     docTocBookmarks.c
 
 docTocResult.o: \
-    ../appUtil/utilColor.h \
     ../appUtil/utilIndexSet.h \
     ../appUtil/utilMemoryBuffer.h \
     ../appUtil/utilPagedList.h \

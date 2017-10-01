@@ -731,7 +731,7 @@ int docSplitGroupNode(			struct BufferDocument *	bd,
 
 	case DOClevROW:
 	    if  ( docCopyRowNodeProperties( newNode, oldNode, bd,
-					(const DocumentAttributeMap *)0 ) )
+					(const struct DocumentAttributeMap *)0 ) )
 		{ LDEB(1); return -1;	}
 	    break;
 

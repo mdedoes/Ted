@@ -165,7 +165,8 @@ static void tedAdaptOptions(	TedDocument *			td,
     guiEnableWidget( td->tdInsInsertPageBreakOption,
 				    cmdEnabled[EDITcmdREPLACE_BODY_LEVEL] );
     guiEnableWidget( td->tdInsInsertColumnBreakOption,
-				    cmdEnabled[EDITcmdREPLACE_BODY_LEVEL] );
+				    cmdEnabled[EDITcmdREPLACE_BODY_LEVEL] &&
+				    sd->sdHeadInMultiColumnSection );
     guiEnableWidget( td->tdInsInsertSectBreakOption,
 				    cmdEnabled[EDITcmdSPLIT_SECT] );
 

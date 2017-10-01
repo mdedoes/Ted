@@ -8,6 +8,7 @@
 
 #   include	"docCellProperties.h"
 #   include	"docPropVal.h"
+#   include	"docTextFlow.h"
 #   include	"docDocumentAttributeMap.h"
 #   include	<utilPropMask.h>
 

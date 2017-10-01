@@ -15,7 +15,6 @@
 #   include	<docBuf.h>
 #   include	<docNotes.h>
 #   include	<docTreeNode.h>
-#   include	<docNodeTree.h>
 #   include	<docTreeType.h>
 #   include	<docTreeScanner.h>
 #   include	<docScanner.h>
@@ -26,8 +25,6 @@
 #   include	<docFieldKind.h>
 #   include	<sioGeneral.h>
 #   include	<docSelect.h>
-#   include	<docDocumentProperties.h>
-#   include	<docParaProperties.h>
 #   include	<docTextRun.h>
 #   include	<docParaScanner.h>
 #   include	<textAttribute.h>

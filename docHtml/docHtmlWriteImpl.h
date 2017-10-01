@@ -20,6 +20,7 @@
 #   include		<textAttribute.h>
 #   include		<utilIndexMapping.h>
 #   include		<bmio.h>
+#   include		<drawMetafileSvg.h>
 
 struct InsertedObject;
 struct DocumentField;
@@ -184,6 +185,7 @@ extern int docHtmlObjectSaveHow(
 			int *					pUseDataUrl,
 			int *					pType,
 			bmWriteBitmap *				pWriteBitmap,
+			MetafileWriteSvg *			pWriteSvg,
 			const char **				pMimeType,
 			const char **				pExt,
 			const struct MemoryBuffer **		pObjectData,

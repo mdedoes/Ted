@@ -330,7 +330,8 @@ int docRtfDocPropMask(	PropertyMask *			dpSaveMask,
     PropertyMask		dpSetMask;
     DocumentProperties		dpDef;
 
-    const DocumentAttributeMap * const dam0= (const DocumentAttributeMap *)0;
+    const struct DocumentAttributeMap * const dam0=
+				(const struct DocumentAttributeMap *)0;
 
     docInitDocumentProperties( &dpDef );
 

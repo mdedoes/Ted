@@ -568,7 +568,7 @@ int docSvgDrawDocument(	SimpleOutputStream *		sos,
 			const char *			applicationReference,
 			const LayoutContext *		lc )
     {
-    struct BufferDocument *		bd= lc->lcDocument;
+    struct BufferDocument *	bd= lc->lcDocument;
     DocumentProperties *	dp= bd->bdProperties;
     DocumentGeometry *		dg= &(dp->dpGeometry);
     struct BufferItem *		bodyNode= bd->bdBody.dtRoot;
@@ -576,6 +576,8 @@ int docSvgDrawDocument(	SimpleOutputStream *		sos,
     DrawingContext		dc;
     SvgWriter			sw;
     XmlWriter *			xw= &(sw.swXmlWriter);
+
+    const int			includeSvgDeclaration= 1;
 
     docInitDrawingContext( &dc );
     docSvgSetDrawingContext( &dc, lc, 0, bodyNode->biBelowPosition.lpPage );
@@ -600,7 +602,7 @@ int docSvgDrawDocument(	SimpleOutputStream *		sos,
     dc.dcDocHasPageFooters= f;
     }
 
-    svgStartDocument( &sw );
+    svgStartDocument( &sw, includeSvgDeclaration );
 
     if  ( sw.swMultiPage )
 	{
@@ -648,6 +650,7 @@ int docSvgDrawDocument(	SimpleOutputStream *		sos,
 /************************************************************************/
 
 int docSvgSaveShapeObject(	SimpleOutputStream *	sos,
+				int			includeSvgDeclaration,
 				int			page,
 				int			pixelsWide,
 				int			pixelsHigh,
@@ -683,7 +686,7 @@ int docSvgSaveShapeObject(	SimpleOutputStream *	sos,
     sw.swWide= pixelsWide;
     sw.swHigh= pixelsHigh;
 
-    svgStartDocument( &sw );
+    svgStartDocument( &sw, includeSvgDeclaration );
 
     xmlPutString( "<defs>", xw ); xmlNewLine( xw );
     xmlPutString( "    <style type=\"text/css\"><![CDATA[", xw );

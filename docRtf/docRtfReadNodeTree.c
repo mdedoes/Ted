@@ -18,6 +18,8 @@
 #   include	<docAttributes.h>
 #   include	<docParaBuilder.h>
 #   include	<docSelect.h>
+#   include	<docTextParticule.h>
+#   include	<docBreakKind.h>
 
 #   include	<docDebug.h>
 #   include	<appDebugon.h>
@@ -40,7 +42,7 @@ static int docRtfSetRowProperties(	RtfReader *		rr,
 				rr->rrDocument, &(rr->rrRowShading) );
 
     rp->rpFrameNumber= docFramePropertiesNumber(
-			    rr->rrDocument, &(rr->rrcRowFrameProperties) );
+			    rr->rrDocument, &(rr->rrRowFrameProperties) );
 
     utilPropMaskClear( &rpDoneMask );
     utilPropMaskClear( &cpSetMask );
@@ -485,7 +487,7 @@ static int docRtfStartCell(	RtfReader *	rr )
 
 /************************************************************************/
 /*									*/
-/*  Finish the node that is currently under construction.		*/
+/*  Finish the tree that is currently under construction.		*/
 /*									*/
 /************************************************************************/
 
@@ -645,5 +647,88 @@ struct BufferItem * docRtfGetSectNode(	RtfReader *	rr )
 	{ XDEB(sectNode); return (struct BufferItem *)0;	}
 
     return sectNode;
+    }
+
+/************************************************************************/
+/*									*/
+/*  Handle \page or \col: Finish the current paragraph and remember	*/
+/*  that the subequent one starts at the appropriate position.		*/
+/*									*/
+/************************************************************************/
+
+static int docRtfSetParaBreak(	const RtfControlWord *	rcw,
+				RtfReader *		rr )
+    {
+    if  ( rcw->rcwID == TPkindPAGEBREAK )
+	{ rr->rrParagraphBreakOverride= DOCibkPAGE; return 1; }
+
+    if  ( rcw->rcwID == TPkindCOLUMNBREAK )
+	{ rr->rrParagraphBreakOverride= DOCibkCOL; return 1; }
+
+    SDEB(rcw->rcwWord);
+    return 0;
+    }
+
+int docRtfBreakParticule(	const RtfControlWord *	rcw,
+				int			arg,
+				RtfReader *		rr )
+    {
+    RtfReadingState *	rrs= rr->rrState;
+    RtfTreeStack *	rts= rr->rrTreeStack;
+    struct BufferItem *	paraNode;
+
+    if  ( rr->rrInIgnoredGroup > 0 )
+	{ return 0;	}
+
+    if  ( rrs->rrsTextShadingChanged )
+	{ docRtfRefreshTextShading( rr, rrs );	}
+
+    paraNode= docRtfGetParaNode( rr );
+    if  ( ! paraNode )
+	{ SXDEB(rcw->rcwWord,paraNode); return -1; }
+
+    switch( rcw->rcwID )
+	{
+	case TPkindPAGEBREAK:
+	case TPkindCOLUMNBREAK:
+	    {
+	    int			done= 0;
+	    int			paraStrlen= docParaStrlen( paraNode );
+
+	    if  ( paraStrlen == 0				||
+		  paraStrlen == rr->rrParaHeadFieldTailOffset	)
+		{
+		if  ( rr->rrParagraphBreakOverride == -1		   &&
+		      paraNode->biParaProperties->ppBreakKind == DOCibkNONE )
+		    { done= docRtfSetParaBreak( rcw, rr );	}
+		}
+	    else{
+		if  ( docRtfPopNode( rr, paraNode ) )
+		    { SDEB(rcw->rcwWord); return -1;	}
+
+		paraNode= docRtfGetParaNode( rr );
+		if  ( ! paraNode )
+		    { SXDEB(rcw->rcwWord,paraNode); return -1; }
+
+		done= docRtfSetParaBreak( rcw, rr );
+		}
+
+	    if  ( ! done						&&
+		  docParaBuilderAppendSpecialParticule(
+				rts->rtsParagraphBuilder,
+				&(rrs->rrsTextAttribute), rcw->rcwID ) )
+		{ LDEB(done); return -1;	}
+
+	    docRtfResetParagraphReadingState( rr );
+
+	    break;
+	    }
+
+	default:
+	    SLDEB(rcw->rcwWord,rcw->rcwID);
+	    break;
+	}
+
+    return 0;
     }
 

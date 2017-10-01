@@ -7,7 +7,7 @@
 #   include	"docBufConfig.h"
 
 #   include	"docTreeNode.h"
-#   include	<docPropVal.h>
+#   include	<docBreakKind.h>
 #   include	<docSectProperties.h>
 
 #   include	<appDebugon.h>

@@ -13,6 +13,7 @@
 #   include	<fontDocFontList.h>
 
 #   include	"docDocumentProperties.h"
+#   include	"docDocumentAttributeMap.h"
 #   include	"docListAdmin.h"
 
 #   include	<appDebugon.h>
@@ -261,7 +262,8 @@ int docCopyDocumentProperties(	DocumentProperties *		to,
 
     int			rval =0;
 
-    const DocumentAttributeMap * const dam0= (const DocumentAttributeMap *)0;
+    const struct DocumentAttributeMap * const dam0=
+			(const struct DocumentAttributeMap *)0;
 
     utilPropMaskClear( &dpSetMask );
     utilPropMaskFill( &dpSetMask, DPprop_COUNT );

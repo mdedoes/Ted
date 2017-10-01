@@ -147,7 +147,6 @@ docAttributes.o: \
     docAttributes.h \
     ../docBase/docBorderPropertyAdmin.h \
     ../docBase/docChildFields.h \
-    ../docBase/docDocumentAttributeMap.h \
     ../docBase/docDocumentFieldList.h \
     ../docBase/docDocumentProperties.h \
     ../docBase/docFramePropertiesAdmin.h \
@@ -187,7 +186,6 @@ docBuf.o: \
     ../appUtil/utilTree.h \
     ../bitmap/bitmap.h \
     ../docBase/docChildFields.h \
-    ../docBase/docDocumentAttributeMap.h \
     ../docBase/docDocumentFieldList.h \
     ../docBase/docDocumentProperties.h \
     ../docBase/docInsertedObjectList.h \
@@ -279,14 +277,12 @@ docCalcuateChftnField.o: \
 
 docCalculateDocpropField.o: \
     ../appUtil/appSystem.h \
-    ../appUtil/utilColor.h \
     ../appUtil/utilDateTime.h \
     ../appUtil/utilIndexSet.h \
     ../appUtil/utilMemoryBuffer.h \
     ../appUtil/utilPagedList.h \
     ../docBase/docChildFields.h \
     ../docBase/docDateField.h \
-    ../docBase/docDocumentAttributeMap.h \
     ../docBase/docDocumentField.h \
     ../docBase/docDocumentFieldList.h \
     ../docBase/docDocumentProperties.h \
@@ -415,7 +411,6 @@ docCalculateIncludePictureField.o: \
     ../appUtil/utilPalette.h \
     ../bitmap/bitmap.h \
     ../docBase/docChildFields.h \
-    ../docBase/docDocumentAttributeMap.h \
     ../docBase/docDocumentField.h \
     ../docBase/docDocumentFieldList.h \
     ../docBase/docDocumentProperties.h \
@@ -641,13 +636,11 @@ docCalculateSeqField.o: \
     docCalculateSeqField.c
 
 docCalculateSymbolField.o: \
-    ../appUtil/utilColor.h \
     ../appUtil/utilIndexSet.h \
     ../appUtil/utilMemoryBuffer.h \
     ../appUtil/utilPagedList.h \
     ../appUtil/utilPropMask.h \
     ../docBase/docChildFields.h \
-    ../docBase/docDocumentAttributeMap.h \
     ../docBase/docDocumentFieldList.h \
     ../docBase/docDocumentProperties.h \
     ../docBase/docEditPosition.h \
@@ -1129,12 +1122,10 @@ docFileExtensions.o: \
     docFileExtensions.c
 
 docFind.o: \
-    ../appUtil/utilColor.h \
     ../appUtil/utilIndexSet.h \
     ../appUtil/utilMemoryBuffer.h \
     ../appUtil/utilPagedList.h \
     ../docBase/docChildFields.h \
-    ../docBase/docDocumentAttributeMap.h \
     ../docBase/docDocumentFieldList.h \
     ../docBase/docDocumentProperties.h \
     ../docBase/docInsertedObjectList.h \
@@ -1244,7 +1235,6 @@ docFixedNote.o: \
     docFixedNote.c
 
 docGetFont.o: \
-    ../appUtil/utilColor.h \
     ../appUtil/utilIndexMapping.h \
     ../appUtil/utilIndexSet.h \
     ../appUtil/utilMemoryBuffer.h \
@@ -1252,7 +1242,6 @@ docGetFont.o: \
     ../appUtil/utilPropMask.h \
     docAttributes.h \
     ../docBase/docChildFields.h \
-    ../docBase/docDocumentAttributeMap.h \
     ../docBase/docDocumentFieldList.h \
     ../docBase/docDocumentProperties.h \
     ../docBase/docInsertedObjectList.h \
@@ -1290,13 +1279,11 @@ docGetFont.o: \
     docGetFont.c
 
 docHeaderFooter.o: \
-    ../appUtil/utilColor.h \
     ../appUtil/utilIndexSet.h \
     ../appUtil/utilMemoryBuffer.h \
     ../appUtil/utilPagedList.h \
     docAttributes.h \
     ../docBase/docChildFields.h \
-    ../docBase/docDocumentAttributeMap.h \
     ../docBase/docDocumentFieldList.h \
     ../docBase/docDocumentProperties.h \
     ../docBase/docInsertedObjectList.h \
@@ -1336,7 +1323,6 @@ docHyperlink.o: \
     ../appUtil/utilPropMask.h \
     docAttributes.h \
     ../docBase/docChildFields.h \
-    ../docBase/docDocumentAttributeMap.h \
     ../docBase/docDocumentFieldList.h \
     ../docBase/docDocumentProperties.h \
     ../docBase/docInsertedObjectList.h \
@@ -1381,7 +1367,6 @@ docListAttributesUsed.o: \
     docListAttributesUsed.c
 
 docListFontsUsed.o: \
-    ../appUtil/utilColor.h \
     ../appUtil/utilIndexMapping.h \
     ../appUtil/utilIndexSet.h \
     ../appUtil/utilMemoryBuffer.h \
@@ -1436,13 +1421,11 @@ docListFontsUsed.o: \
     docListFontsUsed.c
 
 docListUtil.o: \
-    ../appUtil/utilColor.h \
     ../appUtil/utilIndexSet.h \
     ../appUtil/utilMemoryBuffer.h \
     ../appUtil/utilPagedList.h \
     ../appUtil/utilPropMask.h \
     ../docBase/docChildFields.h \
-    ../docBase/docDocumentAttributeMap.h \
     ../docBase/docDocumentFieldList.h \
     ../docBase/docDocumentList.h \
     ../docBase/docDocumentProperties.h \
@@ -1533,12 +1516,10 @@ docNodeProperties.o: \
     docNodeProperties.c
 
 docNodeTree.o: \
-    ../appUtil/utilColor.h \
     ../appUtil/utilIndexSet.h \
     ../appUtil/utilMemoryBuffer.h \
     ../appUtil/utilPagedList.h \
     ../docBase/docChildFields.h \
-    ../docBase/docDocumentAttributeMap.h \
     ../docBase/docDocumentFieldList.h \
     ../docBase/docDocumentProperties.h \
     ../docBase/docInsertedObjectList.h \
@@ -1674,14 +1655,12 @@ docObjectList.o: \
     docObjectList.c
 
 docParaBuilder.o: \
-    ../appUtil/utilColor.h \
     ../appUtil/utilIndexSet.h \
     ../appUtil/utilMemoryBuffer.h \
     ../appUtil/utilPagedList.h \
     ../appUtil/utilPropMask.h \
     docAttributes.h \
     ../docBase/docChildFields.h \
-    ../docBase/docDocumentAttributeMap.h \
     ../docBase/docDocumentField.h \
     ../docBase/docDocumentFieldList.h \
     ../docBase/docDocumentProperties.h \
@@ -2132,7 +2111,6 @@ docProperties.o: \
     ../appUtil/utilPropMask.h \
     docAttributes.h \
     ../docBase/docChildFields.h \
-    ../docBase/docDocumentAttributeMap.h \
     ../docBase/docDocumentFieldList.h \
     ../docBase/docDocumentList.h \
     ../docBase/docDocumentProperties.h \
@@ -2217,12 +2195,10 @@ docRecalculateTextLevelFields.o: \
     docRecalculateTextLevelFields.c
 
 docRenumberNotes.o: \
-    ../appUtil/utilColor.h \
     ../appUtil/utilIndexSet.h \
     ../appUtil/utilMemoryBuffer.h \
     ../appUtil/utilPagedList.h \
     ../docBase/docChildFields.h \
-    ../docBase/docDocumentAttributeMap.h \
     ../docBase/docDocumentField.h \
     ../docBase/docDocumentFieldList.h \
     ../docBase/docDocumentProperties.h \
@@ -2443,7 +2419,6 @@ docShading.o: \
     ../appUtil/utilPalette.h \
     docAttributes.h \
     ../docBase/docChildFields.h \
-    ../docBase/docDocumentAttributeMap.h \
     ../docBase/docDocumentFieldList.h \
     ../docBase/docDocumentProperties.h \
     ../docBase/docInsertedObjectList.h \

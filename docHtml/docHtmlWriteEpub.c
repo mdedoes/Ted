@@ -348,6 +348,7 @@ static int docEpubAddImageToOpf(	int			n,
 
     const MemoryBuffer *	mb= (const MemoryBuffer *)0;
     bmWriteBitmap		writeBitmap= (bmWriteBitmap)0;
+    MetafileWriteSvg		writeSvg= (MetafileWriteSvg)0;
 
     MemoryBuffer		href;
     char			id[20+1];
@@ -356,7 +357,8 @@ static int docEpubAddImageToOpf(	int			n,
     utilInitMemoryBuffer( &href );
 
     if  ( docHtmlObjectSaveHow( exw->exwHtmlWriter, &type, &useDataUrl,
-				&writeBitmap, &mimeType, &ext, &mb, io ) )
+				&writeBitmap, &writeSvg,
+				&mimeType, &ext, &mb, io ) )
 	{ goto ready;	}
 
     if  ( ! useDataUrl )

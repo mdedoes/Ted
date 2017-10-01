@@ -8,6 +8,7 @@
 
 #   include	"docParaProperties.h"
 #   include	"docPropVal.h"
+#   include	"docBreakKind.h"
 #   include	"docListDepth.h"
 #   include	"docDocumentAttributeMap.h"
 #   include	<utilPropMask.h>

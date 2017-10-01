@@ -77,12 +77,12 @@ int docAdjustParaLayout(	struct BufferItem * const	paraNode,
 
     LayoutPosition		oldLpBelow;
     int				paraUpto;
-    const struct BufferItem *		prevParaNode= (const struct BufferItem *)0;
+    const struct BufferItem *	prevParaNode= (const struct BufferItem *)0;
     struct BufferItem *		cellNode= paraNode->biParent;
 
     int				fromPara;
     int				fromLine= 0;
-    struct BufferItem *		biParaFrom;
+    struct BufferItem *		fromParaNode;
 
     LayoutPosition		lpHere;
 
@@ -137,13 +137,13 @@ int docAdjustParaLayout(	struct BufferItem * const	paraNode,
 	{ prevParaNode= cellNode->biChildren[paraNode->biNumberInParent- 1]; }
 
     /*  d  */
-    biParaFrom= paraNode;
-    fromPara= biParaFrom->biNumberInParent;
+    fromParaNode= paraNode;
+    fromPara= fromParaNode->biNumberInParent;
     if  ( afterReplace					&&
 	  paraNode->biParaProperties->ppWidowControl	&&
 	  fromLine < 3					&&
 	  prevParaNode					&&
-	  paraNode->biNumberInParent > 0	)
+	  paraNode->biNumberInParent > 0		)
 	{
 	fromLine= 0;
 	fromPart= 0;
@@ -153,7 +153,7 @@ int docAdjustParaLayout(	struct BufferItem * const	paraNode,
 	    prevParaNode= cellNode->biChildren[prevParaNode->biNumberInParent- 1];
 
 	    fromPara--;
-	    biParaFrom= cellNode->biChildren[fromPara];
+	    fromParaNode= cellNode->biChildren[fromPara];
 
 	    if  ( ! prevParaNode->biParaProperties->ppKeepWithNext )
 		{ break;	}
@@ -176,16 +176,16 @@ int docAdjustParaLayout(	struct BufferItem * const	paraNode,
 	}
 
     /*  2  */
-    docLayoutBlockFrame( &bf, biParaFrom, lj, lpHere.lpPage, lpHere.lpColumn );
+    docLayoutBlockFrame( &bf, fromParaNode, lj, lpHere.lpPage, lpHere.lpColumn );
 
     /*  3  */
-    if  ( biParaFrom->biTreeType == DOCinBODY )
+    if  ( fromParaNode->biTreeType == DOCinBODY )
 	{
 	TextLine *			tlHere;
 	DocumentPosition		dpHere;
 
-	tlHere= biParaFrom->biParaLines+ fromLine;
-	dpHere.dpNode= biParaFrom;
+	tlHere= fromParaNode->biParaLines+ fromLine;
+	dpHere.dpNode= fromParaNode;
 	dpHere.dpStroff= tlHere->tlStroff;
 
 	if  ( docCollectFootnotesFromColumn( &bf, &dpHere, fromPart, bd,
@@ -194,25 +194,25 @@ int docAdjustParaLayout(	struct BufferItem * const	paraNode,
 	}
 
     /*  4  */
-    docLayoutAdjustFrame( &bf, biParaFrom );
+    docLayoutAdjustFrame( &bf, fromParaNode );
 
     docParagraphFrameTwips( &(plj.pljPos.plpParagraphFrame),
-						    &bf, biParaFrom );
+						    &bf, fromParaNode );
 
-    if  ( docLayoutParagraphLineExtents( &fontSize, lc, biParaFrom ) )
+    if  ( docLayoutParagraphLineExtents( &fontSize, lc, fromParaNode ) )
 	{ LDEB(1); rval= -1; goto ready;	}
 
     docLayoutCalculateParaTopInset( bd, paraNode );
     docLayoutCalculateParaBottomInset( bd, paraNode );
 
     if  ( lj->ljStartScreenParagraph					&&
-	  (*lj->ljStartScreenParagraph)( biParaFrom,
+	  (*lj->ljStartScreenParagraph)( fromParaNode,
 			&(plj.pljPos.plpParagraphFrame), lc )	)
 	{ LDEB(1); rval= -1; goto ready;	}
 
     /*  6  */
     docBeginParagraphLayoutProgress( &plj, lj,
-			biParaFrom->biNumberInParent, fromLine, fromPart,
+			fromParaNode->biNumberInParent, fromLine, fromPart,
 			paraUpto, &lpHere );
 
     docFindStripLayoutOrigin( &plj, lpHere.lpPage, lpHere.lpColumn, cellNode );

@@ -12,8 +12,9 @@
 
 #   include	<utilPropMask.h>
 
-#   include	"docPropVal.h"
+#   include	"docBreakKind.h"
 #   include	"docSectProperties.h"
+#   include	"docDocumentProperties.h"
 
 #   define	MIN_COL_WIDE	( 20* 36 )
 #   define	MIN_GAP_WIDE	( 20* 12 )
@@ -1116,4 +1117,23 @@ int docSectSetColumnWidth(	SectionProperties *	sp,
 	}
 
     return 0;
+    }
+
+/************************************************************************/
+/*									*/
+/*  Return the kind of page where this section starts.			*/
+/*  MS-Word only implements odd/even if the document has different odd	*/
+/*  and even pages.							*/
+/*									*/
+/************************************************************************/
+
+int docSectGetBreakKind(	const SectionProperties *	sp,
+				const DocumentProperties *	dp )
+    {
+    if  ( ( sp->spBreakKind == DOCibkEVEN	||
+	    sp->spBreakKind == DOCibkODD	)	&&
+	    ! dp->dpHasFacingPages			)
+	{ return DOCibkPAGE;	}
+
+    return sp->spBreakKind;
     }

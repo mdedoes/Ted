@@ -33,15 +33,15 @@ static int docRtfSaveColor(	RtfReader *		rrc,
     if  ( utilPaletteSetCount( dp->dpColorPalette, n+ 1 ) )
 	{ LDEB(n); return -1;	}
 
-    dp->dpColorPalette->cpColors[n]= rrc->rrcColor;
+    dp->dpColorPalette->cpColors[n]= rrc->rrColor;
 
-    if  ( ! rrc->rrcGotComponent )
+    if  ( ! rrc->rrGotColorComponent )
 	{
 	if  ( dp->dpDefaultColor < 0 )
 	    { dp->dpDefaultColor= n;	}
 	}
 
-    rrc->rrcGotComponent= 0;
+    rrc->rrGotColorComponent= 0;
     return 0;
     }
 
@@ -57,16 +57,16 @@ int docRtfColorComp(	const RtfControlWord *	rcw,
     switch( rcw->rcwID )
 	{
 	case RGBAcompRED:
-	    rrc->rrcGotComponent= 1;
-	    rrc->rrcColor.rgb8Red= arg;
+	    rrc->rrGotColorComponent= 1;
+	    rrc->rrColor.rgb8Red= arg;
 	    break;
 	case RGBAcompGREEN:
-	    rrc->rrcGotComponent= 1;
-	    rrc->rrcColor.rgb8Green= arg;
+	    rrc->rrGotColorComponent= 1;
+	    rrc->rrColor.rgb8Green= arg;
 	    break;
 	case RGBAcompBLUE:
-	    rrc->rrcGotComponent= 1;
-	    rrc->rrcColor.rgb8Blue= arg;
+	    rrc->rrGotColorComponent= 1;
+	    rrc->rrColor.rgb8Blue= arg;
 	    break;
 	default:
 	    /* SLDEB(rcw->rcwWord,arg); */
@@ -80,12 +80,12 @@ int docRtfColorTable(		const RtfControlWord *	rcw,
 				int			arg,
 				RtfReader *		rrc )
     {
-    rrc->rrcGotComponent= 0;
+    rrc->rrGotColorComponent= 0;
 
-    rrc->rrcColor.rgb8Red= 255;
-    rrc->rrcColor.rgb8Green= 255;
-    rrc->rrcColor.rgb8Blue= 255;
-    rrc->rrcColor.rgb8Alpha= 255;
+    rrc->rrColor.rgb8Red= 255;
+    rrc->rrColor.rgb8Green= 255;
+    rrc->rrColor.rgb8Blue= 255;
+    rrc->rrColor.rgb8Alpha= 255;
 
     if  ( docRtfReadGroup( rcw, 0, 0, rrc,
 		    (RtfControlWord *)0, docRtfSaveColor, (RtfCommitGroup)0 ) )

@@ -517,7 +517,7 @@ int tedLayoutDocument(		DocumentRectangle *		drScreen,
 				const DocumentGeometry *	dgDef )
     {
     TedDocument *		td= (TedDocument *)privateData;
-    struct BufferDocument *		bd= td->tdDocument;
+    struct BufferDocument *	bd= td->tdDocument;
 
     const int			page= 0;
     int				noteNumbersChanged= 0;

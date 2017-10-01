@@ -16,7 +16,7 @@
 #   include	<docSelect.h>
 #   include	<docDocumentProperties.h>
 #   include	<docSectProperties.h>
-#   include	<docPropVal.h>
+#   include	<docBreakKind.h>
 #   include	<docBuf.h>
 #   include	<docBlockFrame.h>
 
@@ -61,26 +61,27 @@ static void docLayoutPlaceSectTop(	struct BufferItem *	sectNode,
 	    LayoutPosition	lpBelowNotes;
 
 	    if  ( BF_HAS_FOOTNOTES( bf )				&&
-		  ( sectNode->biTreeType == DOCinBODY	||
+		  ( sectNode->biTreeType == DOCinBODY		||
 		    sectNode->biTreeType == DOCinENDNOTE	)	&&
 		  docLayoutFootnotesForColumn( &lpBelowNotes, lpHere, bf,
 						      belowText, lj )	)
 		{ LDEB(1); return;	}
 
-	    docLayoutToNextColumn( lpHere, bf, sectNode, lj );
-	    changedFrame= 1;
+	    /*AVOID_PAGE_BREAKS*/
+	    if  ( ! lpHere->lpAtTopOfColumn )
+		{
+		docLayoutToNextColumn( lpHere, bf, sectNode, lj );
+		changedFrame= 1;
+		}
 	    }
 	}
 
-    breakKind= docLayoutGetSectBreakKind( sectNode->biSectProperties,
+    breakKind= docSectGetBreakKind( sectNode->biSectProperties,
 				lj->ljContext.lcDocument->bdProperties );
 
     switch( breakKind )
 	{
 	case DOCibkNONE:
-	    if  ( sectNode->biSectBreakKind != DOCibkNONE )
-		{ goto pageCase;	}
-
 	    lpHere->lpColumn= 0;
 
 	    docLayoutBlockFrame( bf, sectNode, lj,
@@ -90,12 +91,11 @@ static void docLayoutPlaceSectTop(	struct BufferItem *	sectNode,
 	    break;
 
 	case DOCibkPAGE:
-	  pageCase:
 	    if  ( docLayoutToFirstColumn( lpHere, bf, sectNode, lj ) )
 		{ changedFrame= 1;	}
 	    break;
 
-	case DOCibkEVEN:	/*  1  */
+	case DOCibkEVEN: /*  1  */
 	    if  ( docLayoutToEvenPage( lpHere, bf, sectNode, lj ) )
 		{ changedFrame= 1;	}
 	    break;
@@ -146,7 +146,7 @@ static void docLayoutPlaceSectTop(	struct BufferItem *	sectNode,
 
 int docLayoutSectChildren(	LayoutPosition *	lpBelow,
 				const LayoutPosition *	lpTop,
-				struct BufferItem *		sectNode,
+				struct BufferItem *	sectNode,
 				int			from,
 				BlockFrame *		bf,
 				LayoutJob *		lj )
@@ -415,7 +415,7 @@ int docLayoutFinishSectNode(	LayoutPosition *		lpBelow,
 
 int docLayoutSectNode(	LayoutPosition *		lpBelow,
 			const LayoutPosition *		lpTop,
-			struct BufferItem *			sectNode,
+			struct BufferItem *		sectNode,
 			BlockFrame *			bf,
 			LayoutJob *			lj )
     {
@@ -458,23 +458,4 @@ int docLayoutSectNode(	LayoutPosition *		lpBelow,
 
     *lpBelow= lpHere;
     return 0;
-    }
-
-/************************************************************************/
-/*									*/
-/*  Return the kind of page where this section starts.			*/
-/*  MS-Word only implements odd/even if the document has different odd	*/
-/*  and even pages.							*/
-/*									*/
-/************************************************************************/
-
-int docLayoutGetSectBreakKind(	const SectionProperties *	sp,
-				const DocumentProperties *	dp )
-    {
-    if  ( ( sp->spBreakKind == DOCibkEVEN	||
-	    sp->spBreakKind == DOCibkODD	)	&&
-	    ! dp->dpHasFacingPages			)
-	{ return DOCibkPAGE;	}
-
-    return sp->spBreakKind;
     }

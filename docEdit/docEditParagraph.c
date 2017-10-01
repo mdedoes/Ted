@@ -15,7 +15,7 @@
 #   include	<docParaString.h>
 #   include	<docParaParticules.h>
 #   include	"docEdit.h"
-#   include	<docPropVal.h>
+#   include	<docBreakKind.h>
 #   include	<docParaNodeProperties.h>
 #   include	<docParaProperties.h>
 #   include	"docEditOperation.h"

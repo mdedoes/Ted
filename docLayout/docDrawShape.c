@@ -88,8 +88,6 @@ static int docDrawDrawingShape(	const DocumentRectangle *	drOutside,
 
     dc->dcBodySectNode= bodySectNode;
 
-SDEB(docShapeTypeString(ds->dsDrawing.sdShapeType));
-LDEB(ds->dsDrawing.sdRotation);
     if  ( ds->dsDrawing.sdShapeType == SHPtyGROUP )
 	{
 	int			child;

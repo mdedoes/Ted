@@ -26,6 +26,14 @@
 /*									*/
 /************************************************************************/
 
+void docRtfResetParagraphReadingState(	RtfReader *	rr )
+    {
+    rr->rrAfterNoteref= 0;
+    rr->rrParaHeadFieldTailOffset= 0; /* Does no harm without one */
+    rr->rrAfterInlineShape= 0;
+    rr->rrInlineShapeObjectNumber= -1;
+    }
+
 static void docRtfInitReader(	RtfReader *	rr )
     {
     rr->rrGotText= (RtfGotText)0;
@@ -36,12 +44,9 @@ static void docRtfInitReader(	RtfReader *	rr )
     rr->rrInIgnoredGroup= 0;
 
     rr->rrComplainUnknown= 1;
-    rr->rrcCharacterAhead= EOF;
+    rr->rrCharacterAhead= EOF;
 
-    rr->rrAfterNoteref= 0;
-    rr->rrAfterParaHeadField= 0;
-    rr->rrAfterInlineShape= 0;
-    rr->rrInlineShapeObjectNumber= -1;
+    docRtfResetParagraphReadingState( rr );
 
     rr->rrReadFlags= 0;
 
@@ -56,7 +61,7 @@ static void docRtfInitReader(	RtfReader *	rr )
 				 */
     rr->rrDocument= (struct BufferDocument *)0;
 
-    docInitFrameProperties( &(rr->rrcRowFrameProperties) );
+    docInitFrameProperties( &(rr->rrRowFrameProperties) );
 
     docInitCellProperties( &(rr->rrCellProperties) );
     utilPropMaskClear( &(rr->rrCellPropertyMask) );
@@ -80,17 +85,16 @@ static void docRtfInitReader(	RtfReader *	rr )
     rr->rrShapeProperty= (struct RtfControlWord *)0;
     utilInitMemoryBuffer( &(rr->rrShapePropertyName) );
     utilInitMemoryBuffer( &(rr->rrShapePropertyValue) );
-    rr->rrcNextObjectVertex= 0;
-    docInitTabStop( &(rr->rrcTabStop) );
+    rr->rrNextObjectVertex= 0;
+    docInitTabStop( &(rr->rrTabStop) );
 
-    rr->rrcColor.rgb8Red= rr->rrcColor.rgb8Green= rr->rrcColor.rgb8Blue= 0;
-    rr->rrcGotComponent= 0;
+    rr->rrColor.rgb8Red= rr->rrColor.rgb8Green= rr->rrColor.rgb8Blue= 0;
+    rr->rrGotColorComponent= 0;
 
     utilInvalidateTime( &(rr->rrTm) );
-    rr->rrcInfoText= (unsigned char *)0;
-				/****************************************/
-				/*  Document properties.		*/
-				/****************************************/
+				/*
+				 *  Document properties
+				 */
     fontInitDocumentFont( &(rr->rrCurrentFont) );
     utilInitPagedList( &(rr->rrEncodedFontList) );
     fontInitEncodedFont( &(rr->rrCurrentEncodedFont) );
@@ -114,11 +118,9 @@ static void docRtfInitReader(	RtfReader *	rr )
     utilPropMaskClear( &(rr->rrPicturePropMask) );
 
     utilInitMemoryBuffer( &(rr->rrcBookmark) );
-				/****************************************/
-				/*  For reading 'objects' and pictures.	*/
-				/*  For reading 'fields'.		*/
-				/****************************************/
+
     rr->rrParagraphBreakOverride= -1;
+
     rr->rrGotDocGeometry= 0;
 				/****************************************/
 				/*  For coping with the way word saves	*/
@@ -127,32 +129,13 @@ static void docRtfInitReader(	RtfReader *	rr )
 
     rr->rrRtfTextConverter= (struct TextConverter *)0;
 
-				/*
-				 * Only used for reading Undo/Redo traces.
-				 */
-    rr->rrTraceReadWhat= 0;
-    rr->rrTraceCommand= -1;
-    rr->rrTraceSelectionPosition= -1;
-    rr->rrTraceInProps= 0;
-
-    docInitSelectionScope( &(rr->rrcTraceOldSelectionScope) );
-    docInitEditRange( &(rr->rrcTraceOldRange) );
-    rr->rrcTraceOldCol0= -1;
-    rr->rrcTraceOldCol1= -1;
-    rr->rrcTraceOldPage= -1;
-    rr->rrcTraceOldColumn= -1;
-
-    docInitSelectionScope( &(rr->rrcTraceNewSelectionScope) );
-    docInitEditRange( &(rr->rrcTraceNewRange) );
-    rr->rrcTraceNewCol0= -1;
-    rr->rrcTraceNewCol1= -1;
-    rr->rrcTraceNewPage= -1;
-    rr->rrcTraceNewColumn= -1;
-
     docInitNoteProperties( &(rr->rrNoteProperties) );
     utilPropMaskClear( &(rr->rrNotePropertyMask) );
 
     docInitFormField( &(rr->rrFormField) );
+
+				/* No trace reader */
+    rr->rrTraceReader= (struct RtfTraceReader *)0;
     }
 
 static void docRtfCleanReader(	RtfReader *	rr )

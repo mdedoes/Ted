@@ -284,7 +284,7 @@ static int docLayoutParticules( LineRun *		blr,
     {
     int				acceptAtLeast= 1;
 
-    struct BufferItem * const	paraNode= llj->lljParaNode;
+    const struct BufferItem * const	paraNode= llj->lljParaNode;
 
     int				accepted;
 

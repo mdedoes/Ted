@@ -12,17 +12,14 @@
 struct BufferItem;
 struct BufferDocument;
 struct DocumentTree;
-struct SectionProperties;
 struct TextAttribute;
 struct ParagraphLayoutJob;
 struct LayoutJob;
 struct DocumentPosition;
 struct DocumentSelection;
-struct DocumentProperties;
 struct PositionGeometry;
 struct AfmFontInfo;
 struct DocumentRectangle;
-struct ParticuleData;
 struct TextLine;
 struct DocumentNote;
 struct DrawingShape;
@@ -36,7 +33,6 @@ struct BlockFrame;
 struct NotesReservation;
 struct TextRun;
 struct LineLayoutJob;
-struct LineRun;
 
 /************************************************************************/
 /*									*/
@@ -76,12 +72,44 @@ typedef struct LayoutJob
 				 */
     struct BufferItem *		ljChangedNode;
 
+				/**
+				 * The context of this layout action. It holds
+				 * the document and methods to lookup fonts
+				 * etc.
+				 */
     LayoutContext		ljContext;
+
+				/**
+				 * Set to true when the layout job reaches 
+				 * the bottom of the document. I.E. there is
+				 * no content after the job that has not been
+				 * touched by the action.
+				 *
+				 * This is to optimize screen drawing.
+				 */
     int				ljReachedDocumentBottom;
 
+				/**
+				 * The page on which we are balancing the 
+				 * columns of a section. This is used during 
+				 * the binary search for the best height of 
+				 * the columns.
+				 */
     int				ljBalancePage;
+				/**
+				 * The y1 value (column height) that we use
+				 * in the search for the best column height
+				 * while balancing the columns of a section.
+				 */
     int				ljBalanceY1;
 
+				/**
+				 * The section in the body of the document that
+				 * determines the page setup for this layout 
+				 * job. It is the current section for nodes in 
+				 * the body of the document. For headers and 
+				 * footers it is the section that owns them.
+				 */
     const struct BufferItem *	ljBodySectNode;
 
 				/**
@@ -100,17 +128,6 @@ typedef struct LayoutJob
 
 extern void docInitLayoutJob(		LayoutJob *	lj );
 extern void docCleanLayoutJob(		LayoutJob *	lj );
-
-extern void docStartLayoutLine(	struct LineRun *		lr,
-				struct LineLayoutJob *		llj,
-				struct BufferItem *		paraNode,
-				int				part,
-				const LayoutContext *		lc,
-				struct ParticuleData *		pd,
-				const struct ParagraphFrame *	pf );
-
-extern int docLayoutLineBox(	struct LineRun *		lr,
-				struct LineLayoutJob *		llj );
 
 extern int docLayoutParagraphLineExtents(
 				int *				pFontSize,
@@ -546,10 +563,6 @@ extern int docLayoutSelectedRoot(	const LayoutContext *	lc,
 					struct BufferItem *	bodySectNodeSet,
 					int			page,
 					int			column );
-
-extern int docLayoutGetSectBreakKind(
-				const struct SectionProperties *	sp,
-				const struct DocumentProperties *	dp );
 
 extern int docLayoutLineXOfPosition(
 				int *				pDocXPixels,

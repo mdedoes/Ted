@@ -15,12 +15,12 @@
 #   include	<docEditCommand.h>
 #   include	"tedEdit.h"
 #   include	<tedDocFront.h>
-#   include	<docPropVal.h>
 #   include	<docParaNodeProperties.h>
 #   include	<docParaProperties.h>
 #   include	<docTreeNode.h>
 #   include	<docSelectionGeometry.h>
 #   include	<docSelectionDescription.h>
+#   include	<docBreakKind.h>
 
 #   include	<appDebugon.h>
 
@@ -41,24 +41,31 @@
 
 static int tedSplitParaNode(	TedEditOperation *		teo,
 				int				splitLevel,
-				int				onNewPage )
+				int				breakKind )
     {
     EditOperation *		eo= &(teo->teoEo);
-    struct BufferItem *		newParaNode;
     const LayoutContext *	lc= &(teo->teoLayoutContext);
+    struct BufferItem *		oldParaNode= eo->eoTailDp.dpNode;
+    struct BufferItem *		newParaNode;
 
     DocumentRectangle		drPara;
 
-    docNodeRectangle( &drPara, eo->eoTailDp.dpNode, lc,
-						    (const BlockOrigin *)0 );
+    docNodeRectangle( &drPara, oldParaNode, lc, (const BlockOrigin *)0 );
 
     /*  1  */
     if  ( docSplitParaNode( &newParaNode, &(teo->teoEo), splitLevel ) )
 	{ LDEB(1); return -1;	}
 
-    if  ( newParaNode->biParaProperties->ppTableNesting == 0 && onNewPage )
-	{ docParaNodeSetBreakKind( newParaNode, DOCibkPAGE, eo->eoDocument ); }
-    else{ docParaNodeSetBreakKind( newParaNode, DOCibkNONE, eo->eoDocument ); }
+    if  ( newParaNode->biParaProperties->ppTableNesting != 0 )
+	{ breakKind= DOCibkNONE;	}
+    else{
+	/*TODO: Is not undone by undo
+	if  ( breakKind != DOCibkNONE )
+	    { docParaNodeSetKeepWithNext( oldParaNode, 0, eo->eoDocument ); }
+	*/
+	}
+
+    docParaNodeSetBreakKind( newParaNode, breakKind, eo->eoDocument );
     
     /*  3  */
     geoUnionRectangle( &(teo->teoChangedRect),
@@ -71,12 +78,11 @@ static int tedSplitParaNode(	TedEditOperation *		teo,
     }
 
 void tedDocSplitParagraph(	struct EditDocument *	ed,
-				int			onNewPage,
+				int			breakKind,
 				const int		editCommand,
 				int			traced )
     {
     TedEditOperation		teo;
-    EditOperation *		eo= &(teo.teoEo);
     SelectionGeometry		sg;
     SelectionDescription	sd;
 
@@ -93,10 +99,10 @@ void tedDocSplitParagraph(	struct EditDocument *	ed,
     if  ( tedEditDeleteSelection( &teo ) )
 	{ LDEB(1); goto ready;	}
 
-    if  ( tedSplitParaNode( &teo, DOClevPARA, onNewPage ) )
+    if  ( tedSplitParaNode( &teo, DOClevPARA, breakKind ) )
 	{ LDEB(1); goto ready;	}
 
-    dpBefore= eo->eoTailDp;
+    dpBefore= teo.teoEo.eoTailDp;
     if  ( docPrevPosition( &dpBefore  ) )
 	{ LDEB(1); goto ready;	}
 
@@ -104,13 +110,14 @@ void tedDocSplitParagraph(	struct EditDocument *	ed,
 
     if  ( teo.teoEditTrace )
 	{
-	if  ( docRtfTraceNewContents( eo, SELposTAIL ) )
+	if  ( docRtfTraceNewContents( &(teo.teoEo), SELposTAIL ) )
 	    { LDEB(1); goto ready;	}
 	}
 
     tedFinishEditOperation( &teo );
 
   ready:
+
     tedCleanEditOperation( &teo );
 
     return;
@@ -137,7 +144,6 @@ int tedDocInsertSectBreak(	struct EditDocument *	ed,
 				int			traced )
     {
     int				rval= 0;
-    const int			onNewPage= 0;
 
     TedEditOperation		teo;
     EditOperation *		eo= &(teo.teoEo);
@@ -183,7 +189,7 @@ int tedDocInsertSectBreak(	struct EditDocument *	ed,
 
     if  ( ! ( pastFlags & (POSflagPARA_HEAD|POSflagPARA_TAIL) ) )
 	{
-	if  ( tedSplitParaNode( &teo, DOClevSECT, onNewPage ) )
+	if  ( tedSplitParaNode( &teo, DOClevSECT, DOCibkNONE ) )
 	    { LDEB(1); rval= -1; goto ready;	}
 
 	eo->eoSectionsAdded++;

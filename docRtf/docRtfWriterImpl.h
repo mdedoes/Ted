@@ -116,7 +116,7 @@ struct RtfWriter
 
 				/**
 				 *  The tree that we are cuttently saving.
-				 *  This member is replaced during excustions 
+				 *  This member is replaced during excursions
 				 *  into headers, footers, notes etc.
 				 */
     struct PushedTree *		rwCurrentTree;
@@ -253,12 +253,12 @@ extern void docRtfSaveBorderByNumber(	RtfWriter *		rw,
 
 extern void docRtfSaveTextAttribute(	RtfWriter *		rw,
 					const struct PropertyMask *	updMask,
-					const TextAttribute *	ta );
+					const struct TextAttribute *	ta );
 
 extern void docRtfSaveParagraphProperties(
 				RtfWriter *			rw,
-				const struct PropertyMask *		updMask,
-				const ParagraphProperties *	pp );
+				const struct PropertyMask *	updMask,
+				const struct ParagraphProperties *	pp );
 
 extern int docRtfWriteDestinationBegin( RtfWriter *		rw,
 					const char *		tag );
@@ -308,7 +308,7 @@ extern int docRtfSaveDocumentProperties( RtfWriter *			rw,
 
 extern int docRtfSaveNotesProperties(
 		RtfWriter *			rw,
-		const struct PropertyMask *		mask,
+		const struct PropertyMask *	mask,
 		const struct NotesProperties *	np,
 		const int			propMap[],
 		const char *			startNrTag,
@@ -350,7 +350,7 @@ extern void docRtfSaveCellProperties(	RtfWriter *		rw,
 
 extern void docRtfSaveRowProperties(	RtfWriter *		rw,
 					const struct PropertyMask *	rpSetMask,
-					const RowProperties *	rpSet,
+					const struct RowProperties *	rpSet,
 					int			col0,
 					int			col1 );
 

@@ -7,7 +7,8 @@
 #   ifndef		RTF_SHP_TAB_H
 #   define		RTF_SHP_TAB_H
 
-#   include	"docRtfReaderImpl.h"
+struct RtfControlWord;
+struct RtfReader;
 
 /************************************************************************/
 /*									*/
@@ -15,20 +16,20 @@
 /*									*/
 /************************************************************************/
 
-extern int docRtfShpArray(		const RtfControlWord *	rcw,
-					int			arg,
-					RtfReader *		rr );
+extern int docRtfShpArray(		const struct RtfControlWord *	rcw,
+					int				arg,
+					struct RtfReader *		rr );
 
-extern int docRtfShpString(		const RtfControlWord *	rcw,
-					int			arg,
-					RtfReader *		rr );
+extern int docRtfShpString(		const struct RtfControlWord *	rcw,
+					int				arg,
+					struct RtfReader *		rr );
 
-extern int docRtfShpPicture(		const RtfControlWord *	rcw,
-					int			arg,
-					RtfReader *		rr );
+extern int docRtfShpPicture(		const struct RtfControlWord *	rcw,
+					int				arg,
+					struct RtfReader *		rr );
 
-extern int docRtfShapeNumber(		const RtfControlWord *	rcw,
-					int			arg,
-					RtfReader *		rr );
+extern int docRtfShapeNumber(		const struct RtfControlWord *	rcw,
+					int				arg,
+					struct RtfReader *		rr );
 
 #   endif	/*	RTF_SHP_TAB_H	*/

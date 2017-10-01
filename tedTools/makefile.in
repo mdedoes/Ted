@@ -67,7 +67,7 @@ CFLAGS=			\
 
 #CFLAGS= @CFLAGS@ $(WFLAGS) $(INCLUDES) $(DEF_PKGDIR)
 
-# 38!!obs
+# 39!!obs
 OBS	=	\
 		tedTocTool.o\
 		tedThisNoteTool.o\
@@ -100,6 +100,7 @@ OBS	=	\
 		tedDocFormatTool.o\
 		tedColumnTool.o\
 		tedCellTool.o\
+		tedBreakTool.o\
 		tedBorderTool.o\
 		tedBookmarkTool.o\
 		tedBookmarkList.o\
@@ -207,7 +208,6 @@ tedAppFormatToolShowPage.o: \
     ../appFrame/appFileMessageResources.h \
     ../appFrame/appFrameConfig.h \
     ../appFrame/appTool.h \
-    ../appTools/appFindTool.h \
     ../appTools/appInspector.h \
     ../appTools/appInspectorSubject.h \
     ../appUtil/appUtilConfig.h \
@@ -301,7 +301,6 @@ tedBorderTool.o: \
     ../appUtil/utilPropMask.h \
     ../docBase/docBorderProperties.h \
     ../docBase/docChildFields.h \
-    ../docBase/docDocumentAttributeMap.h \
     ../docBase/docDocumentFieldList.h \
     ../docBase/docDocumentProperties.h \
     ../docBase/docInsertedObjectList.h \
@@ -333,6 +332,22 @@ tedBorderTool.o: \
     ../utilGeo/geoUnit.h \
     ../utilPs/psPostScriptFontList.h \
     tedBorderTool.c
+
+tedBreakTool.o: \
+    ../appFrame/appFrameConfig.h \
+    ../appUtil/appUtilConfig.h \
+    ../docBase/docBreakKind.h \
+    ../guiBase/guiBaseGtk.h \
+    ../guiBase/guiBase.h \
+    ../guiBase/guiBaseMotif.h \
+    ../guiBase/guiOptionmenu.h \
+    ../guiBase/guiToolUtil.h \
+    ../guiBase/guiWidgets.h \
+    ../include/appDebug.h \
+    ../include/appDebugon.h \
+    tedBreakTool.h \
+    tedToolsConfig.h \
+    tedBreakTool.c
 
 tedCellTool.o: \
     ../appFrame/appEditApplication.h \
@@ -478,7 +493,6 @@ tedDocprops.o: \
     ../appUtil/utilColor.h \
     ../appUtil/utilMemoryBuffer.h \
     ../appUtil/utilPropMask.h \
-    ../docBase/docDocumentAttributeMap.h \
     ../docBase/docDocumentProperties.h \
     ../docBase/docNotesProperties.h \
     ../docBase/docStatistics.h \
@@ -539,7 +553,6 @@ tedFontTool.o: \
     ../appUtil/utilPropMask.h \
     ../docBase/docCellProperties.h \
     ../docBase/docChildFields.h \
-    ../docBase/docDocumentAttributeMap.h \
     ../docBase/docDocumentFieldList.h \
     ../docBase/docDocumentList.h \
     ../docBase/docDocumentProperties.h \
@@ -612,7 +625,6 @@ tedFrameTool.o: \
     ../docBase/docCellProperties.h \
     ../docBase/docFrameProperties.h \
     ../docBase/docParaProperties.h \
-    ../docBase/docPropVal.h \
     ../docBase/docSelectionScope.h \
     ../docBuf/docAttributes.h \
     ../docBuf/docParaNodeProperties.h \
@@ -645,14 +657,12 @@ tedHeaderFooterTool.o: \
     ../appTools/appInspector.h \
     ../appTools/appInspectorSubject.h \
     ../appUtil/appUtilConfig.h \
-    ../appUtil/utilColor.h \
     ../appUtil/utilIndexSet.h \
     ../appUtil/utilMemoryBuffer.h \
     ../appUtil/utilPagedList.h \
     ../appUtil/utilPropMask.h \
     ../docBase/docCellProperties.h \
     ../docBase/docChildFields.h \
-    ../docBase/docDocumentAttributeMap.h \
     ../docBase/docDocumentFieldList.h \
     ../docBase/docDocumentProperties.h \
     ../docBase/docInsertedObjectList.h \
@@ -790,7 +800,6 @@ tedLanguageTool.o: \
     ../appUtil/utilPropMask.h \
     ../docBase/docCellProperties.h \
     ../docBase/docChildFields.h \
-    ../docBase/docDocumentAttributeMap.h \
     ../docBase/docDocumentFieldList.h \
     ../docBase/docDocumentProperties.h \
     ../docBase/docInsertedObjectList.h \
@@ -865,14 +874,12 @@ tedListTool.o: \
     ../appFrame/appGuiResource.h \
     ../appTools/appInspectorSubject.h \
     ../appUtil/appUtilConfig.h \
-    ../appUtil/utilColor.h \
     ../appUtil/utilIndexSet.h \
     ../appUtil/utilMemoryBuffer.h \
     ../appUtil/utilPagedList.h \
     ../appUtil/utilPropMask.h \
     ../docBase/docCellProperties.h \
     ../docBase/docChildFields.h \
-    ../docBase/docDocumentAttributeMap.h \
     ../docBase/docDocumentFieldList.h \
     ../docBase/docDocumentList.h \
     ../docBase/docDocumentProperties.h \
@@ -926,13 +933,11 @@ tedNotesTool.o: \
     ../appFrame/appGuiResource.h \
     ../appTools/appInspectorSubject.h \
     ../appUtil/appUtilConfig.h \
-    ../appUtil/utilColor.h \
     ../appUtil/utilIndexSet.h \
     ../appUtil/utilMemoryBuffer.h \
     ../appUtil/utilPagedList.h \
     ../appUtil/utilPropMask.h \
     ../docBase/docChildFields.h \
-    ../docBase/docDocumentAttributeMap.h \
     ../docBase/docDocumentFieldList.h \
     ../docBase/docDocumentProperties.h \
     ../docBase/docInsertedObjectList.h \
@@ -986,7 +991,6 @@ tedPageLayoutTool.o: \
     ../appUtil/utilPropMask.h \
     ../docBase/docCellProperties.h \
     ../docBase/docChildFields.h \
-    ../docBase/docDocumentAttributeMap.h \
     ../docBase/docDocumentFieldList.h \
     ../docBase/docDocumentProperties.h \
     ../docBase/docInsertedObjectList.h \
@@ -1031,6 +1035,7 @@ tedParaLayoutTool.o: \
     ../appUtil/appUtilConfig.h \
     ../appUtil/utilMemoryBuffer.h \
     ../appUtil/utilPropMask.h \
+    ../docBase/docBreakKind.h \
     ../docBase/docCellProperties.h \
     ../docBase/docLayoutPosition.h \
     ../docBase/docNotesProperties.h \
@@ -1233,20 +1238,18 @@ tedSectionTool.o: \
     ../appFrame/appGuiResource.h \
     ../appTools/appInspectorSubject.h \
     ../appUtil/appUtilConfig.h \
-    ../appUtil/utilColor.h \
     ../appUtil/utilIndexSet.h \
     ../appUtil/utilMemoryBuffer.h \
     ../appUtil/utilPagedList.h \
     ../appUtil/utilPropMask.h \
+    ../docBase/docBreakKind.h \
     ../docBase/docChildFields.h \
-    ../docBase/docDocumentAttributeMap.h \
     ../docBase/docDocumentFieldList.h \
     ../docBase/docDocumentProperties.h \
     ../docBase/docInsertedObjectList.h \
     ../docBase/docLayoutPosition.h \
     ../docBase/docListNumberTree.h \
     ../docBase/docNotesProperties.h \
-    ../docBase/docPropVal.h \
     ../docBase/docSectProperties.h \
     ../docBase/docSelectionScope.h \
     ../docBase/docStyleSheet.h \
@@ -1271,6 +1274,7 @@ tedSectionTool.o: \
     ../guiBase/guiWidgets.h \
     ../include/appDebug.h \
     ../include/appDebugon.h \
+    tedBreakTool.h \
     tedFormatToolSubject.h \
     ../tedFront/tedAppFront.h \
     tedSectionTool.h \
@@ -1293,7 +1297,6 @@ tedShadingTool.o: \
     ../appUtil/utilPalette.h \
     ../appUtil/utilPropMask.h \
     ../docBase/docChildFields.h \
-    ../docBase/docDocumentAttributeMap.h \
     ../docBase/docDocumentFieldList.h \
     ../docBase/docDocumentProperties.h \
     ../docBase/docInsertedObjectList.h \
@@ -1375,7 +1378,6 @@ tedSymbolPicker.o: \
     ../appUtil/utilPropMask.h \
     ../docBase/docCellProperties.h \
     ../docBase/docChildFields.h \
-    ../docBase/docDocumentAttributeMap.h \
     ../docBase/docDocumentFieldList.h \
     ../docBase/docDocumentProperties.h \
     ../docBase/docInsertedObjectList.h \
@@ -1452,14 +1454,12 @@ tedTabsTool.o: \
     ../appTools/appInspector.h \
     ../appTools/appInspectorSubject.h \
     ../appUtil/appUtilConfig.h \
-    ../appUtil/utilColor.h \
     ../appUtil/utilIndexSet.h \
     ../appUtil/utilMemoryBuffer.h \
     ../appUtil/utilPagedList.h \
     ../appUtil/utilPropMask.h \
     ../docBase/docCellProperties.h \
     ../docBase/docChildFields.h \
-    ../docBase/docDocumentAttributeMap.h \
     ../docBase/docDocumentFieldList.h \
     ../docBase/docDocumentProperties.h \
     ../docBase/docInsertedObjectList.h \
@@ -1519,7 +1519,6 @@ tedTextOrnamentsTool.o: \
     ../docBase/docBorderProperties.h \
     ../docBase/docCellProperties.h \
     ../docBase/docChildFields.h \
-    ../docBase/docDocumentAttributeMap.h \
     ../docBase/docDocumentFieldList.h \
     ../docBase/docDocumentProperties.h \
     ../docBase/docInsertedObjectList.h \
@@ -1562,14 +1561,12 @@ tedThisNoteTool.o: \
     ../appFrame/appGuiResource.h \
     ../appTools/appInspectorSubject.h \
     ../appUtil/appUtilConfig.h \
-    ../appUtil/utilColor.h \
     ../appUtil/utilIndexSet.h \
     ../appUtil/utilMemoryBuffer.h \
     ../appUtil/utilPagedList.h \
     ../appUtil/utilPropMask.h \
     ../docBase/docCellProperties.h \
     ../docBase/docChildFields.h \
-    ../docBase/docDocumentAttributeMap.h \
     ../docBase/docDocumentFieldList.h \
     ../docBase/docDocumentProperties.h \
     ../docBase/docInsertedObjectList.h \

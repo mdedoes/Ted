@@ -226,10 +226,10 @@ int docRtfFindControl(		RtfReader *		rr,
     int			c;
     int			res;
 
-    if  ( rr->rrcCharacterAhead != EOF )
+    if  ( rr->rrCharacterAhead != EOF )
 	{
-	*pC= rr->rrcCharacterAhead;
-	rr->rrcCharacterAhead= EOF;
+	*pC= rr->rrCharacterAhead;
+	rr->rrCharacterAhead= EOF;
 	return RTFfiCHAR;
 	}
 
@@ -333,7 +333,7 @@ int docRtfFindControl(		RtfReader *		rr,
 			if  ( rrs && rrs->rrsUnicodeBytesToSkip > 0 )
 			    { rrs->rrsUnicodeBytesToSkip= 0;	}
 
-			rr->rrcCharacterAhead= c;
+			rr->rrCharacterAhead= c;
 
 			return RTFfiTEXTGROUP;
 			}

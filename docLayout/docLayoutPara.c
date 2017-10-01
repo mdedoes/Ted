@@ -25,6 +25,7 @@
 #   include	<docRowProperties.h>
 #   include	<docParaProperties.h>
 #   include	<docPropVal.h>
+#   include	<docBreakKind.h>
 #   include	<docCellProperties.h>
 #   include	<docBuf.h>
 #   include	<docStripFrame.h>
@@ -733,6 +734,7 @@ int docLayoutStartParagraph(	const LayoutJob *		lj,
     /*  1  */
     paraBreakKind= paraNode->biParaProperties->ppBreakKind;
 
+    /*AVOID_PAGE_BREAKS*/
     if  ( paraNode->biTreeType == DOCinBODY			&&
 	  paraNode->biParaProperties->ppTableNesting == 0	&&
 	  paraBreakKind != DOCibkNONE				&&

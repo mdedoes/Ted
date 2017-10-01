@@ -553,13 +553,13 @@ static void tedFrameYRefChosen(		int		ref,
 
     fp->fpYReference= ref;
 
-    if  ( ! docFrameYAllowed[fp->fpYPosition][fp->fpYReference] )
+    if  ( ! docFrameYAllowed( fp->fpYPosition, fp->fpYReference ) )
 	{
 	int	pos;
 
 	for ( pos= 0; pos < FYpos_COUNT; pos++ )
 	    {
-	    if  ( docFrameYAllowed[pos][ref] )
+	    if  ( docFrameYAllowed( pos, ref ) )
 		{
 		fp->fpYPosition= pos;
 		guiSetOptionmenu( &(ft->ftYPosMenu), fp->fpYPosition );
@@ -583,13 +583,13 @@ static void tedFrameYPosChosen(		int		pos,
     fp->fpYPosition= pos;
     tedFormatRefreshYPosText( ft );
 
-    if  ( ! docFrameYAllowed[fp->fpYPosition][fp->fpYReference] )
+    if  ( ! docFrameYAllowed( fp->fpYPosition, fp->fpYReference ) )
 	{
 	int		ref;
 
 	for ( ref= 0; ref < FYref__FRAME_COUNT; ref++ )
 	    {
-	    if  ( docFrameYAllowed[pos][ref] )
+	    if  ( docFrameYAllowed( pos, ref ) )
 		{
 		fp->fpYReference= ref;
 		guiSetOptionmenu( &(ft->ftYRefMenu), fp->fpYReference );

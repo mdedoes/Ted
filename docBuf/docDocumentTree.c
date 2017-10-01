@@ -17,7 +17,7 @@
 #   include	<docTreeType.h>
 #   include	"docDocumentNote.h"
 #   include	<docDocumentField.h>
-#   include	<docPropVal.h>
+#   include	<docBreakKind.h>
 #   include	<docSectProperties.h>
 #   include	"docFields.h"
 

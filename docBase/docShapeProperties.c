@@ -6,7 +6,7 @@
 
 #   include	"docBaseConfig.h"
 
-#   include	"docPropVal.h"
+#   include	"docFrameProperties.h"
 #   include	"docShapeProperties.h"
 #   include	<utilPropMask.h>
 

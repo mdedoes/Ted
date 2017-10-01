@@ -373,4 +373,15 @@ extern void docLayoutLineJobGeometry(
 				int				firstLine,
 				const struct ParagraphFrame *	pf );
 
+extern void docStartLayoutLine(	struct LineRun *		lr,
+				struct LineLayoutJob *		llj,
+				struct BufferItem *		paraNode,
+				int				part,
+				const struct LayoutContext *	lc,
+				struct ParticuleData *		pd,
+				const struct ParagraphFrame *	pf );
+
+extern int docLayoutLineBox(	struct LineRun *		lr,
+				struct LineLayoutJob *		llj );
+
 #   endif	/*  DOC_LAYOUT_LINE_H  */

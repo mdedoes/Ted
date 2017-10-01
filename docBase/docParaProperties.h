@@ -167,9 +167,9 @@ typedef struct ParagraphProperties
 			 *  - DOCibkCOL Column break
 			 *  - DOCibkPAGE Page break
 			 *
-			 *  As the rtf file format does not support column 
-			 *  breaks, a paragraph with a column break is saved 
-			 *  with a column break at its beginning.
+			 *  As the rtf file format does not support paragraphs
+			 *  with column breaks, a paragraph with a column break 
+			 *  is saved with a column break at its beginning.
 			 */
     unsigned char	ppBreakKind;
 
@@ -219,7 +219,8 @@ typedef struct ParagraphProperties
 			 *  If true, (try to) keep the text of this 
 			 *  paragraph on the same page as the first line of 
 			 *  the subsequent paragraph in the document. (Or 
-			 *  rather in one newspaper style column) (boolean)
+			 *  rather the same newspaper style column) (boolean)
+			 *  This is the way RTF implements paragraph headers.
 			 */
     unsigned char	ppKeepWithNext;
 

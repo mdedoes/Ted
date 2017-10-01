@@ -335,8 +335,8 @@ int docEditUpdSectProperties(	EditOperation *			eo,
     }
 
 void docEditAdaptRowPropertiesToFirstChild(
-					EditOperation *		eo,
-					const struct BufferItem *	paraNode )
+				EditOperation *			eo,
+				const struct BufferItem *	paraNode )
     {
     if  ( paraNode->biParaProperties->ppTableNesting > 0	&&
 	  paraNode->biNumberInParent == 0			)

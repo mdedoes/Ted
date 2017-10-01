@@ -27,6 +27,7 @@
 #   include	<docFieldKind.h>
 #   include	<docExpandedTextAttribute.h>
 #   include	<docPropVal.h>
+#   include	<docBreakKind.h>
 #   include	<docStatistics.h>
 #   include	<docDocumentProperties.h>
 #   include	<appEditApplication.h>
@@ -367,11 +368,17 @@ APP_MENU_CALLBACK_H( tedDocInsertPageBreak, option, voided, e )
     {
     EditDocument *	ed= (EditDocument *)voided;
     TedDocument *	td= (TedDocument *)ed->edPrivateData;
+
+    /*
     const int		redoLayout= 1;
 
     tedEditInsertSpecialParticule( ed,
 		    TPkindPAGEBREAK, EDITcmdREPLACE_BODY_LEVEL,
 		    redoLayout, td->tdTraced );
+    */
+
+    tedDocSplitParagraph( ed, DOCibkPAGE,
+				EDITcmdREPLACE_BODY_LEVEL, td->tdTraced );
 
     return;
     }
@@ -380,11 +387,17 @@ APP_MENU_CALLBACK_H( tedDocInsertColumnBreak, option, voided, e )
     {
     EditDocument *	ed= (EditDocument *)voided;
     TedDocument *	td= (TedDocument *)ed->edPrivateData;
+
+    /*
     const int		redoLayout= 1;
 
     tedEditInsertSpecialParticule( ed,
 		    TPkindCOLUMNBREAK, EDITcmdREPLACE_BODY_LEVEL,
 		    redoLayout, td->tdTraced );
+    */
+
+    tedDocSplitParagraph( ed, DOCibkCOL,
+				EDITcmdREPLACE_BODY_LEVEL, td->tdTraced );
 
     return;
     }

@@ -10,7 +10,6 @@
 
 #   include	"tedAppFormatTool.h"
 #   include	<tedToolFront.h>
-#   include	<appFindTool.h>
 #   include	<appEditApplication.h>
 #   include	<appInspector.h>
 #   include	<appInspectorSubject.h>

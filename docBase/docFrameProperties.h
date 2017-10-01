@@ -7,8 +7,6 @@
 #   ifndef	DOC_FRAME_PROPERTIES_H
 #   define	DOC_FRAME_PROPERTIES_H
 
-#   include	"docPropVal.h"
-
 typedef enum FrameWrapStyle
     {
     FWSwrapWRAP= 0,
@@ -51,6 +49,89 @@ typedef struct FrameProperties
     
     unsigned char	fpTextFlowDirection;
     } FrameProperties;
+
+/************************************************************************/
+/*									*/
+/*  NOTE that these are hard values set in the RTF spec.		*/
+/*  NOTE that some values only apply to shapes, not to frames.		*/
+/*									*/
+/************************************************************************/
+
+typedef enum FrameXReference
+    {
+    FXrefMARGIN= 0,
+    FXrefPAGE,
+    FXrefCOLUMN,
+#   define	FXref__FRAME_COUNT	(FXrefCOLUMN+1)
+    FXrefCHARACTER,
+    FXrefIGNORE,
+
+    FXref_COUNT
+    } FrameXReference;
+
+/************************************************************************/
+/*									*/
+/*  NOTE that these are hard values set in the RTF spec.		*/
+/*  NOTE that some values only apply to shapes, not to frames.		*/
+/*									*/
+/************************************************************************/
+
+typedef enum FrameYReference
+    {
+    FYrefMARGIN= 0,
+    FYrefPAGE,
+    FYrefPARA,
+#   define	FYref__FRAME_COUNT	(FYrefPARA+1)
+		    /**
+		     *  Position relative to the line of the anchor.
+		     *  Experimenting with Word 2003 shows that for 
+		     *  shapes the deepest level is positioning relative
+		     *  to the paragraph. (For shapes) In the user interface,
+		     *  it is possible to select the line. If you select
+		     *  positioning relative to the line, MS-Word calculates 
+		     *  the vertical offset relative to the paragraph.
+		     */
+    FYrefLINE,
+    FYrefIGNORE,
+
+    FYref_COUNT
+    } FrameYReference;
+
+/************************************************************************/
+/*									*/
+/*  Note that these are hard values set in the RTF spec.		*/
+/*									*/
+/************************************************************************/
+
+typedef enum FrameXPosition
+    {
+    FXposXGIVEN= 0,
+    FXposXL,
+    FXposXC,
+    FXposXR,
+    FXposXI,
+    FXposXO,
+
+    FXpos_COUNT
+    } FrameXPosition;
+
+/************************************************************************/
+/*									*/
+/*  Note that these are hard values set in the RTF spec.		*/
+/*									*/
+/************************************************************************/
+
+typedef enum FrameYPosition
+    {
+    FYposYGIVEN= 0,
+    FYposYT,
+    FYposYC,
+    FYposYB,
+    FYposYIN,
+    FYposYOUT,
+
+    FYpos_COUNT
+    } FrameYPosition;
 
 /************************************************************************/
 /*									*/
@@ -103,7 +184,8 @@ typedef enum TextFrameProperty
 /*									*/
 /************************************************************************/
 
-extern const unsigned char docFrameYAllowed[FYpos_COUNT][FYref_COUNT];
+extern int docFrameYAllowed(	int		pos,
+				int		ref );
 
 # define docCopyFrameProperties( to, from ) ( *(to)= *(from) )
 # define docCleanFrameProperties( fp ) /* nothing */

@@ -349,7 +349,7 @@ int docLayoutFootnotesForColumn(	LayoutPosition *	lpBelowNotes,
 					const LayoutJob *	refLj )
     {
     const LayoutContext *	lc= &(refLj->ljContext);
-    struct BufferDocument *		bd= lc->lcDocument;
+    struct BufferDocument *	bd= lc->lcDocument;
     const NotesReservation *	refNr= &(refBf->bfNotesReservation);
     const DocumentProperties *	dp= bd->bdProperties;
     const NotesProperties *	npFootnotes= &(dp->dpNotesProps.fepFootnotesProps);
@@ -519,7 +519,7 @@ int docLayoutEndnotesForSection(	LayoutPosition *	lpBelow,
 					LayoutJob *		lj )
     {
     const LayoutContext *	lc= &(lj->ljContext);
-    struct BufferDocument *		bd= lc->lcDocument;
+    struct BufferDocument *	bd= lc->lcDocument;
     const DocumentProperties *	dp= bd->bdProperties;
     const NotesProperties *	npFootnotes= &(dp->dpNotesProps.fepFootnotesProps);
 

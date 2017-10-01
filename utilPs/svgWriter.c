@@ -47,12 +47,18 @@ static const char DocSvgSvgTail[]=
 
 /************************************************************************/
 
-int svgStartDocument(	SvgWriter *	sw )
+int svgStartDocument(	SvgWriter *	sw,
+			int		includeSvgDeclaration )
     {
     int		l;
 
-    for ( l= 0; l < sizeof(DocSvgSvgStart)/sizeof(char *); l++ )
-	{ sioOutPutString( DocSvgSvgStart[l], sw->swXmlWriter.xwSos );	}
+    if  ( includeSvgDeclaration )
+	{
+	for ( l= 0; l < sizeof(DocSvgSvgStart)/sizeof(char *); l++ )
+	    {
+	    sioOutPutString( DocSvgSvgStart[l], sw->swXmlWriter.xwSos );
+	    }
+	}
 
     sioOutPrintf( sw->swXmlWriter.xwSos, DocSvgSvgHead,
 			    sw->swWide, sw->swUnit,

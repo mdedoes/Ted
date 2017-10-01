@@ -60,7 +60,9 @@ typedef struct SvgWriter
 
 extern void svgInitSvgWriter(	SvgWriter *		sw );
 
-extern int svgStartDocument(	SvgWriter *		sw );
+extern int svgStartDocument(	SvgWriter *		sw,
+				int			includeSvgDeclaration );
+
 extern int svgFinishDocument(	SvgWriter *		sw );
 
 extern int svgDefineShading(	SvgWriter *		sw,

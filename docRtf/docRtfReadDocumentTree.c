@@ -264,10 +264,7 @@ int docRtfReadNote(		const RtfControlWord *	rcw,
     if  ( noteIndex < 0 )
 	{ LDEB(noteIndex); rval= -1; goto ready;	}
 
-    rr->rrAfterNoteref= 0;
-    rr->rrAfterParaHeadField= 0;
-    rr->rrAfterInlineShape= 0;
-    rr->rrInlineShapeObjectNumber= -1;
+    docRtfResetParagraphReadingState( rr );
 
     ss.ssTreeType= DOCinFOOTNOTE;
     ss.ssSectNr= 0;

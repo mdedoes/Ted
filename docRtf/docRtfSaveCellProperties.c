@@ -11,6 +11,7 @@
 #   include	"docRtfWriterImpl.h"
 #   include	"docRtfTags.h"
 #   include	<docPropVal.h>
+#   include	<docTextFlow.h>
 #   include	<docCellProperties.h>
 #   include	<utilPropMask.h>
 

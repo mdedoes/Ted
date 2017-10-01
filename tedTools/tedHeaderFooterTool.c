@@ -272,7 +272,8 @@ static void tedRefreshHeaderFooterTool(
     int				whatHeaderFooter;
     int				i;
 
-    const DocumentAttributeMap * const	dam0= (const DocumentAttributeMap *)0;
+    const struct DocumentAttributeMap * const	dam0=
+				(const struct DocumentAttributeMap *)0;
 
     selSectNode= docGetSectNode( ds->dsHead.dpNode );
     if  ( ! selSectNode )
@@ -425,7 +426,8 @@ static APP_BUTTON_CALLBACK_H( tedHeadFootRevertDocPushed, w, voidhft )
 
     PropertyMask		dpSetMask;
 
-    const DocumentAttributeMap * const	dam0= (const DocumentAttributeMap *)0;
+    const struct DocumentAttributeMap * const	dam0=
+				(const struct DocumentAttributeMap *)0;
 
     utilPropMaskClear( &dpSetMask );
     PROPmaskADD( &dpSetMask, DPpropFACING_PAGES );

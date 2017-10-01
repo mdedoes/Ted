@@ -6,11 +6,8 @@
 
 #   include	"tedToolsConfig.h"
 
-#   include	<stdio.h>
-#   include	<stddef.h>
-#   include	<stdlib.h>
 #   include	<string.h>
-#   include	<limits.h>
+#   include	<stdlib.h>
 
 #   include	<geoUnit.h>
 
@@ -22,7 +19,7 @@
 #   include	<docTreeNode.h>
 #   include	<docNodeTree.h>
 #   include	<docEditCommand.h>
-#   include	<docPropVal.h>
+#   include	<docBreakKind.h>
 #   include	<docSelect.h>
 #   include	<appInspectorSubject.h>
 #   include	<utilPropMask.h>
@@ -32,6 +29,7 @@
 #   include	<docDocumentProperties.h>
 #   include	<docBuf.h>
 #   include	"tedFormatToolSubject.h"
+#   include	"tedBreakTool.h"
 
 #   include	<appDebugon.h>
 
@@ -50,8 +48,7 @@ typedef struct SectionPageResources
     const char *	sprPageNumberStyle;
     const char *	sprNumberStyleMenuTexts[DOCpgn_COUNT];
 
-    const char *	sprBreakKind;
-    const char *	sprBreakKindMenuTexts[DOCibk_COUNT];
+    BreakToolResources	sprBreakToolResources;
 
     const char *	sprDirection;
     const char *	sprDirectionMenuTexts[2];
@@ -98,8 +95,7 @@ typedef struct SectionTool
     APP_WIDGET				stNumberStyleRow;
     AppOptionmenu			stNumberStyleOptionmenu;
 
-    APP_WIDGET				stBreakKindRow;
-    AppOptionmenu			stBreakKindOptionmenu;
+    BreakTool				stBreakTool;
 
     APP_WIDGET				stDirectionRow;
     APP_WIDGET				stDirectionLabel;
@@ -278,7 +274,7 @@ static void tedFormatToolRefreshSectionPage(	SectionTool *	st )
 
     guiSetOptionmenu( &(st->stNumberStyleOptionmenu), sp->spPageNumberStyle );
 
-    guiSetOptionmenu( &(st->stBreakKindOptionmenu), sp->spBreakKind );
+    tedSetBreakTool( &(st->stBreakTool), sp->spBreakKind );
 
     guiSetOptionmenu( &(st->stDirectionOptionmenu), sp->spRToL );
 
@@ -340,17 +336,17 @@ static void tedRefreshSectionTool(
 
     guiEnableWidget( st->stPageRestartRow, st->stCanChange );
     guiEnableWidget( st->stNumberStyleRow, st->stCanChange );
-    guiEnableWidget( st->stBreakKindRow, st->stCanChange );
+
+    tedEnableBreakTool( &(st->stBreakTool),
+			st->stCanChange && st->stSectionNumber > 0 );
+    tedEnableBreakToolOption( &(st->stBreakTool),
+		    DOCibkCOL, sectNode->biSectProperties->spColumnCount > 1 );
+    tedEnableBreakToolOption( &(st->stBreakTool),
+					DOCibkODD, dp->dpHasFacingPages );
+    tedEnableBreakToolOption( &(st->stBreakTool),
+					DOCibkEVEN, dp->dpHasFacingPages );
 
     guiEnableWidget( st->stColumnsFrame, st->stCanChange );
-
-    guiEnableWidget( st->stBreakKindRow, st->stCanChange );
-    guiEnableOptionmenu( &(st->stBreakKindOptionmenu), st->stCanChange );
-
-    guiOptionMenuEnablePosition( &(st->stBreakKindOptionmenu),
-					DOCibkODD, dp->dpHasFacingPages );
-    guiOptionMenuEnablePosition( &(st->stBreakKindOptionmenu),
-					DOCibkEVEN, dp->dpHasFacingPages );
 
     guiEnableWidget( st->stNumberStyleRow, st->stCanChange );
     guiEnableOptionmenu( &(st->stNumberStyleOptionmenu), st->stCanChange );
@@ -587,6 +583,9 @@ static void tedColumnCountChosen(	int		val,
 	docSectSetEqualColumnWidth( sp );
 
 	tedSectionToolRefreshColumns( st );
+
+	tedEnableBreakToolOption( &(st->stBreakTool),
+					    DOCibkCOL, sp->spColumnCount > 1 );
 	}
 
     return;
@@ -889,10 +888,10 @@ static void * tedFormatBuildSectionPage(
 			    pageWidget, isr->isrSubjectName, textColumns, 0 );
 
     /**************/
-    guiToolMakeLabelAndMenuRow( &(st->stBreakKindRow),
-			&(st->stBreakKindOptionmenu),
-			&rowLabel, pageWidget, spr->sprBreakKind,
-			tedSectBreakKindChosen, (void *)st );
+    tedBuildBreakTool( pageWidget, &(st->stBreakTool),
+				&(spr->sprBreakToolResources),
+				tedSectBreakKindChosen, (void *)st );
+
     /**************/
     guiToolMakeLabelAndMenuRow( &(st->stNumberStyleRow),
 			&(st->stNumberStyleOptionmenu),
@@ -941,8 +940,8 @@ static void tedFormatFillSectionChoosers(
     appFillInspectorMenu( DOCpgn_COUNT, DOCpgnDEC,
 		spr->sprNumberStyleMenuTexts, &(st->stNumberStyleOptionmenu) );
 
-    appFillInspectorMenu( DOCibk_COUNT, DOCibkPAGE,
-		spr->sprBreakKindMenuTexts, &(st->stBreakKindOptionmenu) );
+    tedFillBreakToolChooser( DOCibk_COUNT, DOCibkPAGE,
+		&(st->stBreakTool), &(spr->sprBreakToolResources) );
 
     for ( i= 0; i < SECT_MAX_COLUMNS; i++ )
 	{
@@ -970,7 +969,7 @@ static void tedFormatFinishSectionPage(	void *		vst )
 
     guiOptionmenuRefreshWidth( &(st->stNumberStyleOptionmenu) );
 
-    guiOptionmenuRefreshWidth( &(st->stBreakKindOptionmenu) );
+    tedFinishBreakTool( &(st->stBreakTool) );
 
     guiOptionmenuRefreshWidth( &(st->stColumnCountMenu) );
 
@@ -1063,22 +1062,27 @@ static AppConfigurableResource TED_TedSectionToolResourceTable[]=
 	    "a, b, c" ),
     /**/
     APP_RESOURCE( "formatToolSectBreakKind",
-	    offsetof(SectionPageResources,sprBreakKind),
+	    offsetof(SectionPageResources,sprBreakToolResources.btrBreakKind),
 	    "Begins" ),
     APP_RESOURCE( "formatToolSectBreakKindNone",
-	    offsetof(SectionPageResources,sprBreakKindMenuTexts[DOCibkNONE]),
+	    offsetof(SectionPageResources,
+		    sprBreakToolResources.btrBreakKindMenuTexts[DOCibkNONE]),
 	    "Below Previous" ),
     APP_RESOURCE( "formatToolSectBreakKindCol",
-	    offsetof(SectionPageResources,sprBreakKindMenuTexts[DOCibkCOL]),
+	    offsetof(SectionPageResources,
+		    sprBreakToolResources.btrBreakKindMenuTexts[DOCibkCOL]),
 	    "In Next Column" ),
     APP_RESOURCE( "formatToolSectBreakKindPage",
-	    offsetof(SectionPageResources,sprBreakKindMenuTexts[DOCibkPAGE]),
+	    offsetof(SectionPageResources,
+		    sprBreakToolResources.btrBreakKindMenuTexts[DOCibkPAGE]),
 	    "On New Page" ),
     APP_RESOURCE( "formatToolSectBreakKindEven",
-	    offsetof(SectionPageResources,sprBreakKindMenuTexts[DOCibkEVEN]),
+	    offsetof(SectionPageResources,
+		    sprBreakToolResources.btrBreakKindMenuTexts[DOCibkEVEN]),
 	    "On Even Page" ),
     APP_RESOURCE( "formatToolSectBreakKindOdd",
-	    offsetof(SectionPageResources,sprBreakKindMenuTexts[DOCibkODD]),
+	    offsetof(SectionPageResources,
+		    sprBreakToolResources.btrBreakKindMenuTexts[DOCibkODD]),
 	    "On Odd Page" ),
 
     /**/

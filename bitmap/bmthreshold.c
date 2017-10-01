@@ -117,7 +117,7 @@ int bmThreshold(	RasterImage *			riOut,
 	case BMcoRGB8PALETTE:
 	case BMcoRGB:
 	default:
-	    LDEB(bdIn->bdColorEncoding);
+	    LSDEB(bdIn->bdColorEncoding,bmcoIntToString(bdIn->bdColorEncoding));
 	    rval= -1; goto ready;
 	}
 

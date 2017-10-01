@@ -13,7 +13,7 @@
 #   include	<docTreeType.h>
 #   include	<docTreeNode.h>
 #   include	<docNodeTree.h>
-#   include	<docPropVal.h>
+#   include	<docBreakKind.h>
 #   include	<docFrameProperties.h>
 #   include	<docSectProperties.h>
 #   include	<docBlockFrame.h>
@@ -43,12 +43,32 @@ void docLayoutBlockFrame(	BlockFrame *			bf,
 
 /************************************************************************/
 /*									*/
-/*  Continue to lay out the text on a subsequent page.			*/
+/*  Continue to lay out the text in a subsequent column, or on a	*/
+/*  subsequent page.							*/
 /*									*/
 /*  1)  Continuous sections wrap to the same position as where they	*/
 /*	started on the page.						*/
 /*									*/
 /************************************************************************/
+
+static void docLayoutSetColumnTop(	LayoutPosition *	lpTop,
+					const BlockFrame *	bf,
+					struct BufferItem *	bodySectNode )
+    {
+    lpTop->lpPageYTwips= bf->bfContentRect.drY0;
+    lpTop->lpAtTopOfColumn= 1;
+
+    /*  1  */
+    if  ( bodySectNode->biSectBreakKind == DOCibkNONE		&&
+	  lpTop->lpPage == bodySectNode->biTopPosition.lpPage	&&
+	  bodySectNode->biSectColumnCount > 1			&&
+	  lpTop->lpColumn > 0					)
+	{
+	lpTop->lpPageYTwips= bodySectNode->biTopPosition.lpPageYTwips;
+	/* NO: we are at the top for this section lpTop->lpAtTopOfColumn= 0; */
+	}
+
+    }
 
 void docLayoutColumnTop(	LayoutPosition *	lpTop,
 				BlockFrame *		bf,
@@ -65,18 +85,7 @@ void docLayoutColumnTop(	LayoutPosition *	lpTop,
 
     docLayoutBlockFrame( bf, bodySectNode, lj, lpTop->lpPage, lpTop->lpColumn );
 
-    lpTop->lpPageYTwips= bf->bfContentRect.drY0;
-    lpTop->lpAtTopOfColumn= 1;
-
-    /*  1  */
-    if  ( bodySectNode->biSectBreakKind == DOCibkNONE		&&
-	  lpTop->lpPage == bodySectNode->biTopPosition.lpPage	&&
-	  bodySectNode->biSectColumnCount > 1			&&
-	  lpTop->lpColumn > 0					)
-	{
-	lpTop->lpPageYTwips= bodySectNode->biTopPosition.lpPageYTwips;
-	/* NO: we are at the top for this section lpTop->lpAtTopOfColumn= 0; */
-	}
+    docLayoutSetColumnTop( lpTop, bf, bodySectNode );
 
     return;
     }
@@ -280,6 +289,31 @@ void docLayoutFinishFrame(	const FrameProperties *		fp,
 
 	paraNode1->biBelowPosition.lpPageYTwips= yBelow;
 	}
+
+    return;
+    }
+
+/************************************************************************/
+/*									*/
+/*  Continue to lay out the text on a subsequent page.			*/
+/*									*/
+/*  1)  Continuous section wrap to the same position as where they	*/
+/*	started on the page.						*/
+/*									*/
+/************************************************************************/
+
+void docLayoutSectColumnTop(	LayoutPosition *	lpTop,
+				BlockFrame *		bf,
+				struct BufferItem *	bodySectNode,
+				struct BufferDocument *	bd )
+    {
+    if  ( bodySectNode->biTreeType != DOCinBODY )
+	{ SDEB(docTreeTypeStr(bodySectNode->biTreeType));	}
+
+    docSectionBlockFrameTwips( bf, bodySectNode, bodySectNode, bd,
+					    lpTop->lpPage, lpTop->lpColumn );
+
+    docLayoutSetColumnTop( lpTop, bf, bodySectNode );
 
     return;
     }

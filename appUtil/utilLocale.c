@@ -69,7 +69,6 @@ int utilGetSimpleLocale(	SimpleLocale *	sl )
     if  ( lc->thousands_sep && lc->thousands_sep[0] )
 	{ sl->slDigitSeparator= lc->thousands_sep[0];	}
     else{
-	SDEB(lc->thousands_sep);
 	if  ( sl->slDecimalPoint == ',' )
 	    { sl->slDigitSeparator= '.';	}
 	else{ sl->slDigitSeparator= ',';	}

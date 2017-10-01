@@ -87,7 +87,7 @@ int docHtmlSaveDeferredNotes(	HtmlWritingContext *		hwc )
 
 int docHtmlStartNote(	const DocumentField *		df,
 			HtmlWritingContext *		hwc,
-			const struct BufferItem *		node,
+			const struct BufferItem *	node,
 			int				attNr )
     {
     int				rval= 0;
@@ -110,8 +110,8 @@ int docHtmlStartNote(	const DocumentField *		df,
 	{
 	DocumentNote *	dn;
 
-	utilMemoryBufferPrintf( &mbRef, "_NREF_%d", hwc->hwcNoteRefCount+ 1 );
-	utilMemoryBufferPrintf( &mbDef, "_NDEF_%d", hwc->hwcNoteRefCount+ 1 );
+	utilMemoryBufferPrintf( &mbRef, "ID_NREF_%d", hwc->hwcNoteRefCount+ 1 );
+	utilMemoryBufferPrintf( &mbDef, "ID_NDEF_%d", hwc->hwcNoteRefCount+ 1 );
 
 	markName= &mbDef;
 	refName=  &mbRef;
@@ -134,8 +134,8 @@ int docHtmlStartNote(	const DocumentField *		df,
 	    }
 	}
     else{
-	utilMemoryBufferPrintf( &mbRef, "_NREF_%d", hwc->hwcNoteDefCount+ 1 );
-	utilMemoryBufferPrintf( &mbDef, "_NDEF_%d", hwc->hwcNoteDefCount+ 1 );
+	utilMemoryBufferPrintf( &mbRef, "ID_NREF_%d", hwc->hwcNoteDefCount+ 1 );
+	utilMemoryBufferPrintf( &mbDef, "ID_NDEF_%d", hwc->hwcNoteDefCount+ 1 );
 
 	markName= &mbRef;
 	refName=  &mbDef;

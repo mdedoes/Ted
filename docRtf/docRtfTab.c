@@ -32,7 +32,11 @@
 #   include	<docFieldKind.h>
 #   include	<docFieldProperty.h>
 #   include	<docTreeNode.h>
+#   include	<docBreakKind.h>
+#   include	<docPropVal.h>
+#   include	<docTextFlow.h>
 #   include	<utilDateTime.h>
+#   include	<docEditPosition.h>
 
 #   include	<appDebugon.h>
 
@@ -68,6 +72,7 @@
 #	define		docRtfTextSpecialChar			0
 #	define		docRtfTextUnicode			0
 #	define		docRtfTextSpecialParticule		0
+#	define		docRtfBreakParticule			0
 #	define		docRtfTextSpecialToField		0
 #	define		docRtfDrawingObjectProperty		0
 #	define		docRtfDrawingObjectCoordinate		0
@@ -2106,12 +2111,19 @@ static RtfControlWord	docRtfPropertyWords[]=
     RTF_SPECIAL_PART( "tab",		TPkindTAB ),
     RTF_SPECIAL_PART( "line",		TPkindLINEBREAK ),
     RTF_SPECIAL_PART_X( "lbr",		TPkindLINEBREAK ),
-    RTF_SPECIAL_PART( "page",		TPkindPAGEBREAK ),
-    RTF_SPECIAL_PART( "column",		TPkindCOLUMNBREAK ),
     RTF_SPECIAL_PART( "chftnsep",	TPkindCHFTNSEP ),
     RTF_SPECIAL_PART( "chftnsepc",	TPkindCHFTNSEPC ),
     RTF_SPECIAL_PART( "ltrmark",	TPkindLTR_MARK ),
     RTF_SPECIAL_PART( "rtlmark",	TPkindRTL_MARK ),
+
+# define	RTF_BREAK_PART(s,id) \
+		    { \
+		    s, RTCscopeSPECIAL_PARTICULE, id, RTCtypeANY, \
+		    docRtfBreakParticule, \
+		    }
+
+    RTF_BREAK_PART(   "page",		TPkindPAGEBREAK ),
+    RTF_BREAK_PART(   "column",		TPkindCOLUMNBREAK ),
 
 				/****************************************/
 				/*  Word 95 drawing objects.		*/

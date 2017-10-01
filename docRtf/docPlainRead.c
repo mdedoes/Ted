@@ -15,7 +15,7 @@
 #   include	<sioUtf8.h>
 #   include	<textAttribute.h>
 #   include	"docPlainReadWrite.h"
-#   include	<docPropVal.h>
+#   include	<docBreakKind.h>
 #   include	<docParaNodeProperties.h>
 #   include	<docSelect.h>
 #   include	<docTreeNode.h>

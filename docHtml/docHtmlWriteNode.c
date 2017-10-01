@@ -24,10 +24,10 @@
 #   include	<docScanner.h>
 #   include	<docTreeNode.h>
 #   include	<docNodeTree.h>
-#   include	<docLayout.h>
 #   include	<docRowProperties.h>
 #   include	<docItemShading.h>
 #   include	<docPropVal.h>
+#   include	<docBreakKind.h>
 #   include	<docDocumentProperties.h>
 #   include	<docSectProperties.h>
 #   include	<docCellProperties.h>
@@ -220,7 +220,7 @@ static int docHtmlEnterCellNode( HtmlWritingContext *		hwc,
     }
 
 static int docHtmlEnterRowNode(	HtmlWritingContext *		hwc,
-				const struct BufferItem *		rowNode )
+				const struct BufferItem *	rowNode )
     {
     int			high;
     int			tableNesting= docTableNesting( rowNode );
@@ -320,7 +320,7 @@ static int dochtmlEnterSectNode(	struct BufferItem *	node,
 
     docHtmlPutString( "<div style=\"", hwc );
 
-    breakKind= docLayoutGetSectBreakKind( node->biSectProperties, dp );
+    breakKind= docSectGetBreakKind( node->biSectProperties, dp );
 
     switch( breakKind )
 	{
@@ -372,10 +372,11 @@ static int dochtmlLeaveSectNode(	HtmlWritingContext *	hwc )
     return 0;
     }
 
-static int docHtmlLeaveNode(	struct BufferItem *			node,
-				const struct DocumentSelection * ds,
-				const struct BufferItem *		bodySectNode,
-				void *				voidhwc )
+static int docHtmlLeaveNode(
+			struct BufferItem *			node,
+			const struct DocumentSelection * 	ds,
+			const struct BufferItem *		bodySectNode,
+			void *					voidhwc )
     {
     HtmlWritingContext *	hwc= (HtmlWritingContext *)voidhwc;
 
