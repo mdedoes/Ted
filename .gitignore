@@ -13,12 +13,16 @@ Ted/makefile
 Ted/tedConfig.h
 appFrame/appFrameConfig.h
 appFrame/makefile
+utilGeo/utilGeoConfig.h
+utilGeo/makefile
 appUtil/appUtilConfig.h
 appUtil/makefile
 bitmap/bitmapConfig.h
 bitmap/makefile
 docBase/docBaseConfig.h
 docBase/makefile
+docField/docFieldConfig.h
+docField/makefile
 docBuf/docBufConfig.h
 docBuf/makefile
 docEdit/docEditConfig.h
